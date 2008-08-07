@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+  <Plugin name="Boxlib2D" type="database" label="Boxlib2D" version="1.0" enabled="true" mdspecificcode="false" engspecificcode="false" onlyengine="false" noengine="false" dbtype="STMD" haswriter="false" hasoptions="false" specifiedFilenames="true">
+    <CXXFLAGS>
+      $(BOXLIB2D_INCLUDE)
+    </CXXFLAGS>
+    <LIBS>
+      $(BOXLIB2D_LIBS)
+    </LIBS>
+    <Extensions>
+      boxlib2d
+      boxlib2D
+    </Extensions>
+    <Filenames>
+      Header
+    </Filenames>
+    <Attribute name="" purpose="" persistent="false" keyframe="true" exportAPI="" exportInclude="">
+    </Attribute>
+  </Plugin>

@@ -1,0 +1,37 @@
+#!/bin/sh
+# This follows the same idea as the `pre-commit' script, but is meant to be run
+# after the commit is accepted/completed/finalized.  This would be a good place
+# to inform a buildbot to start an automated build, for example.
+
+REPOS="$1"
+REV="$2"
+
+#
+# Set some env variables used by the scripts
+#
+source ${REPOS}/hooks/hook_vars.sh
+
+hadError=0
+function run_sh()
+{
+   SCRIPT="$@"
+   sh ${REPOS}/hooks/${SCRIPT} ${REPOS} ${REV}
+   if [ $? != 0 ]; then
+       hadError=1
+   fi
+}
+
+# background it -- this might take some time, and shouldnt slow down the
+# users commit.
+sh ${REPOS}/hooks/ciabot_svn.sh "${REPOS}" "${REV}" &
+
+# handle automatic installation of updated/new hooks. Should probably
+# remain first.
+run_sh "hooks_update.sh"
+
+# Uncomment if you want to grab the committing user's email.
+#email=`sh ${REPOS}/hooks/output_email.sh ${REPOS} ${REV}`
+
+run_sh "state_update.sh"
+
+exit $hadError

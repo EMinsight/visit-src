@@ -1,0 +1,1 @@
+../../avt/Queries/Pick/avtLocateNodeQuery.h

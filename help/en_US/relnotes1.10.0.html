@@ -1,0 +1,157 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta http-equiv="Content-Language" content="en-us">
+   <meta name="GENERATOR" content="Microsoft FrontPage 5.0">
+   <meta name="ProgId" content="FrontPage.Editor.Document">
+   <title>VisIt 1.10.0 Release Notes</title>
+</head>
+<body>
+
+<center><b><font size="6">VisIt 1.10.0 Release Notes</font></b></center>
+
+<p>Welcome to VisIt's release notes page. This page describes the important
+enhancements and bug-fixes that were added to this release.</p>
+<!-- COMMENT OUT FOR NOW 
+<p><b><font size="4">Announcements</font></b></p>
+<ul>
+    <li>The VisIt team released a patch release, <a href="relnotes1.9.1.html">version 1.9.1</a>, to
+    fix some critical defects that surfaced in the VisIt 1.9 release. Descriptions of the defects addressed
+    by the patch release can be found in the <a href="relnotes1.9.1.html">VisIt 1.9.1 release notes</a>. 
+    All version 1.9.1 fixes are included in this release.</li>
+</ul>
+-->
+<p><b>Sections<b></p>
+<ul>
+    <li><a href="#General_Features">Features for all users</a></li>
+    <li><a href="#Advanced_Features">Features for advanced users</a></li>
+    <li><a href="#File_format">Changes to file format readers</a></li>
+    <li><a href="#Plot_changes">Changes to plots</a></li>
+    <li><a href="#Operator_changes">Changes to operators</a></li>
+    <li><a href="#Expression_changes">Changes to expressions</a></li>
+    <li><a href="#CLI_changes">Changes to the command line interface</a></li>
+    <li><a href="#Bugs_fixed">Bugs fixed (bug fixes also found in other categories)</a></li>
+    <li><a href="#Config_changes">Changes to machine configuration files</a></li>
+    <li><a href="#Dev_changes">Changes for VisIt developers</a></li>
+</ul>
+
+<a name="General_Features"></a>
+<p><b><font size="4">General features added in version 1.10.0</font></b></p>
+<ul>
+    <li>Initial support for internationalization has been added. This allows the GUI to be translated
+        into languages other than English, following standard Qt internationalization procedures.</li>
+    <li>Queries that accept variables for input now have a variable widget for ease of entry. </li>
+    <li>The Overlay button has been changed so that it only creates new copies of the selected 
+        plots in the plot list instead of copying all plots in the plot list. The new behavior
+        results in far fewer unwanted plots when using overlay to create new plots with a
+        different database. Overlay was also changed so that it is possible to overlay plots
+        from a specific database time step.</li>
+</ul>
+
+<a name="Advanced_Features"></a>
+<p><b><font size="4">Advanced features added in version 1.10.0</font></b></p>
+<ul>
+    <li>VisIt's plugin managers have been reworked so that multiple instances
+        can coexist in the same process. This enables simulations that are
+        instrumented with libsim (and are thus VisIt compute engines) to include
+        other VisIt components such as the VisIt Python interface. A simulation
+        that is both a VisIt CLI and a VisIt compute engine can create plots
+        using VisIt's normal Python scripting but also generate the plotted data 
+        as a simulation.</li>
+    <li>VisIt now supports the IceT library for improved rendering times.  
+        IceT requires a parallel version of VisIt, and is only supported in 
+        scalable rendering mode.  Use the <tt>-icet</tt> command line option 
+        to enable use of IceT for a session.</li>
+</ul>
+
+<a name="File_format"></a>
+<p><b><font size="4">File format reader changes in version 1.10.0</font></b></p>
+<ul>
+    <li>The Tecplot reader has been enhanced so it can read binary Tecplot files.</li>
+    <li>The XDMF reader has been fixed so it no longer causes memory problems when
+        reading meshes of type VxVyVz, which are curvilinear meshes where the coordinates
+        exist in separate HDF5 arrays.</li>
+    <li>The BOV reader has been optimized to perform better when using a large number
+        of processors.  Previously, all of VisIt's processors read the same header
+        file simultaneously, which severely affects parallel performance on some
+        machines.</li>
+    <li>The VTK reader will now read 'CYCLE' from the FieldData.  It also fully supports the 'Try harder to get accurate cycles/times' option.</li> 
+</ul>
+
+<a name="Plot_changes"></a>
+<p><b><font size="4">Changes to VisIt's plots in version 1.10.0</font></b></p>
+<ul>
+    <li>The Spreadsheet plot's data window has been fixed on the MacOS X platform so 
+        the File, Edit, and Operations menu are once again available as they are on
+        other platforms.</li>
+</ul>
+
+<a name="Operator_changes"></a>
+<p><b><font size="4">Changes to VisIt's operators in version 1.10.0</font></b></p>
+<ul>
+    <li>&nbsp;</li>
+    <li>&nbsp;</li>
+    <li>&nbsp;</li>
+    <li>&nbsp;</li>
+    <li>&nbsp;</li>
+</ul>
+
+<a name="Expression_changes"></a>
+<p><b><font size="4">Changes to VisIt's expression language in version 1.10.0</font></b></p>
+<ul>
+    <li>&nbsp;</li>
+    <li>&nbsp;</li>
+    <li>&nbsp;</li>
+    <li>&nbsp;</li>
+    <li>&nbsp;</li>
+</ul>
+
+<a name="CLI_changes"></a>
+<p><b><font size="4">Changes to VisIt's command-line interface in version 1.10.0</font></b></p>
+<ul>
+    <li>The <i>OverlayDatabase</i> function now accepts an optional second argument for specifying a time state.</li>
+    <li>&nbsp;</li>
+    <li>&nbsp;</li>
+    <li>&nbsp;</li>
+    <li>&nbsp;</li>
+</ul>
+
+<a name="Bugs_fixed"></a>
+<p><b><font size="4">Bugs fixed in version 1.10.0</font></b></p>
+<ul>
+    <li>The "visit -movie" movie generation script once again can detect the engine configuration 
+        used to generate the plots in a session file and can reuse that configuration when 
+        generating a movie.</li>
+    <li>Query-over-time of a non-default variable now uses the correct variable name and units in the legend.</li>
+    <li>Pick-through-time now uses the variable name and units for the y-axis labels.</li>
+    <li>Pick no longer confused on variable to use when selected after a Query on a non-default variable has been performed.</li>
+    <li>For windows platforms, running 'visit -cli -o', 'visit -cli -s', or double-clicking a python now correctly parses paths and works correctly.</li>
+    <li>Pick now works on time-curves.</li>
+    <li>Macro recording for 2D zooming produced invalid Python code for setting the 2D view attributes.</li>
+    <li>VisIt's libsim library used a non-zero idle timeout that slowed down polling simulations.</li>
+    <li>Restore session from sources is broken.</li>
+    <li>VisIt displays the files from localhost in the File panel when the <i>-launchengine</i> argument is provided to launch a remote compute engine.</li>
+    <li>Queries such as NumNodes and Variable Sum now work correctly with material selection enabled.</li>
+</ul>
+
+<a name="Config_changes"></a>
+<p><b><font size="4">Changes to configuration files in version 1.10.0</font></b></p>
+<ul>
+    <li>&nbsp;</li>
+    <li>&nbsp;</li>
+    <li>&nbsp;</li>
+    <li>&nbsp;</li>
+    <li>&nbsp;</li>
+</ul>
+
+<a name="Dev_changes"></a>
+<p><b><font size="4">Changes for VisIt developers in version 1.10.0</font></b></p>
+<ul>
+    <li>Development on Windows can now be done directly from the SVN repository, as the build process has been modified to use native source tree instead of a modified one.</li>
+</ul>
+
+<p>Click the following link to view the release notes for the previous version
+of VisIt: <a href="relnotes1.9.0.html">VisIt 1.9 Release Notes</a>.</p>
+</body>
+</html>

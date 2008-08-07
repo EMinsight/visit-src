@@ -1,0 +1,439 @@
+#                         Copyright (c) 2000 - 2008
+#                  Lawrence Livermore National Security, LLC
+#            Produced at the Lawrence Livermore National Laboratory
+#                              LLNL-CODE-400124
+#                            All rights reserved.
+#
+# This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
+# full copyright notice is contained in the file COPYRIGHT located at the root
+# of the VisIt distribution or at https://visit.llnl.gov/copyright.html.
+#
+# Redistribution  and  use  in  source  and  binary  forms,  with  or  without
+# modification, are permitted provided  that the following conditions are met:
+#
+# - Redistributions of  source code  must retain  the above  copyright notice,
+#   this list of conditions and the disclaimer below.
+# - Redistributions in binary form must  reproduce the above copyright notice,
+#   this  list of  conditions  and  the  disclaimer  (as noted below)  in  the
+#   documentation and/or other materials provided with the distribution.
+# - Neither the name of the LLNS/LLNL nor the names of its contributors may be
+#   used to endorse  or promote products  derived from  this software  without
+#   specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE  COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR  IMPLIED WARRANTIES,  INCLUDING, BUT NOT  LIMITED TO, THE
+# IMPLIED WARRANTIES  OF MERCHANTABILITY AND FITNESS FOR  A PARTICULAR PURPOSE
+# ARE  DISCLAIMED. IN  NO EVENT  SHALL LAWRENCE  LIVERMORE NATIONAL  SECURITY,
+# LLC, THE  U.S.  DEPARTMENT OF  ENERGY  OR  CONTRIBUTORS BE  LIABLE  FOR  ANY
+# DIRECT,  INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL  DAMAGES
+# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR  BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+# ON ANY THEORY OF  LIABILITY, WHETHER IN CONTRACT, STRICT  LIABILITY, OR TORT
+# (INCLUDING  NEGLIGENCE OR  OTHERWISE) ARISING IN ANY  WAY OUT OF  THE USE OF
+# THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+# Modifications:
+#    Jeremy Meredith, Thu May 10 14:01:14 PDT 2001
+#    First incarnation.
+#
+#    Jeremy Meredith, Wed Jun  6 23:01:59 PDT 2001
+#    Force it to always regenerate symlinks.
+#
+#    Jeremy Meredith, Fri Jul 27 13:49:19 PDT 2001
+#    It now only touches the libqt symlinks if @QTDIR@ was set by configure.
+#
+#    Brad Whitlock, Mon Dec 10 16:03:06 PST 2001
+#    I added a link for python.
+#
+#    Kathleen Bonnell, Thu Nov 15 12:48:49 PST 2001 
+#    Change vtk lib info to match VTK 4.0 directory tree structure. 
+#
+#    Eric Brugger, Tue Apr 16 09:09:04 PDT 2002
+#    Add links to the mesa libraries.
+#
+#    Jeremy Meredith, Mon Jun 17 15:20:09 PDT 2002
+#    Made a link to the python directory instead of just the python library.
+#
+#    Jeremy Meredith, Wed Jul  3 13:35:22 PDT 2002
+#    Check to make sure scripting is enabled before making the link to python.
+#
+#    Jeremy Meredith, Thu Jul 18 13:20:39 PDT 2002
+#    Added link to the python library again.   This allows a libpython.so
+#    and prevents having to add another path to LD_LIBRARY_PATH et al.
+#
+#    Kathleen Bonnell, Thu Jan  2 09:06:57 PST 2003 
+#    Added two new vtk libs: vtkfreetype and vtkftgl.   
+#
+#    Brad Whitlock, Thu May 15 14:33:03 PST 2003
+#    Fixed a shared library extension problem. I also made it create a link
+#    for Silo if we're on MacOS X.
+#
+#    Kathleen Bonnell, Wed Nov 12 17:20:03 PST 2003 
+#    Added new vtk libs: vtkDICOMParser.
+#
+#    Brad Whitlock, Wed Apr 28 15:50:23 PST 2004
+#    I made it create links to Mili and HDF5 on MacOS X.
+#
+#    Eric Brugger, Tue Oct  5 10:49:26 PDT 2004
+#    I replaced QTDIR with QT_LIB.
+#
+#    Brad Whitlock, Thu Jan 6 12:51:10 PDT 2005
+#    Added support for HDF4 on MacOS X.
+#
+#    Brad Whitlock, Tue Aug 23 14:40:07 PST 2005
+#    Added support for NETCDF on MacOS X.
+#
+#    Brad Whitlock, Thu Sep 1 17:17:43 PST 2005
+#    Added support for CGNS on MacOS X.
+#
+#    Brad Whitlock, Tue Sep 6 11:23:04 PDT 2005
+#    Added support for GDAL.
+#
+#    Brad Whitlock, Mon Dec 5 12:06:20 PDT 2005
+#    Added support for ExodusII on MacOS X.
+#
+#    Eric Brugger, Tue Jan 24 08:42:55 PST 2006
+#    I added links to qui.
+#
+#    Eric Brugger, Mon Feb  6 12:58:57 PST 2006
+#    I added links to libqt.a and libqui.a.
+#
+#    Kathleen Bonnell, Wed May 17 15:39:08 PDT 2006 
+#    Update vtk libs for update to 5.0 version. 
+#
+#    Mark C. Miller, Sun Dec  3 12:20:11 PST 2006
+#    Added fast interval library (filib) 
+#
+#    Thomas R. Treadway, Tue Feb  6 17:04:03 PST 2007
+#    Added $(GLEW_LIBS) for MacOS X.
+#
+#    Thomas R. Treadway, Wed Feb  7 16:05:38 PST 2007
+#    Added create a link for Boxlib, and CFITSIO.
+#
+#    Thomas R. Treadway, Mon Mar 26 16:35:27 PDT 2007
+#    Appears libGLU was added to the release.
+#
+#    Eric Brugger, Fri Apr  6 14:07:02 PDT 2007
+#    Removed links for libvtkexoIIc and libvtkNetCDF.
+#
+#    Thomas R. Treadway, Tue Apr 10 11:53:31 PDT 2007
+#    Adding NetCDF_c++ library.
+#
+#    Mark C. Miller, Wed Apr 11 18:21:24 PDT 2007
+#    Removed references LIBVTKNETCDF and LIBVTKEXOIIC in clean target.
+#    Removed 'distclean' as alias for clean target.
+#
+#    Mark C. Miller, Thu May 24 20:57:11 PDT 2007
+#    Added links for itaps libraries. Added cleanlinks target
+#
+#    Eric Brugger, Fri Jun 29 09:16:03 PDT 2007
+#    Removed the setting of the DISTRIB variable.
+#
+#    Thomas R. Treadway, Wed Jul 11 16:08:40 PDT 2007
+#    Added links for H5Part
+#
+#    Brad Whitlock, Thu Aug 2 17:55:41 PST 2007
+#    Added link for CCMIO.
+#
+#    Kathleen Bonnell, Wed Aug  8 14:48:58 PDT 2007 
+#    Added '*' after $(LIBMESAGL) and $(LIBOSMESA) to pick up extensions that
+#    some versions of linux add.
+#
+#    Jeremy Meredith, Thu Aug 30 12:55:30 EDT 2007
+#    Made the 'clean' target not remove things needed to correctly
+#    generate dependencies.  That's now reserved for distclean.
+#    In this case, it means removing the symbolic links only in 'distclean'.
+#
+#    Jeremy Meredith, Thu Sep  6 16:03:21 EDT 2007
+#    Allowed make clean to remove symlinks to library files, since these
+#    are not needed for dependencies.  I left the python link for distclean,
+#    though, since it is to a directory which contains include files.
+#    Also, don't forget to remove the Makefile in distclean.
+#
+#    Thomas R. Treadway, Fri Sep 21 13:33:37 PDT 2007
+#    Added szip support
+#    Using HDF5_LIBDIR now
+#    Added visit.so and visitmodule.so to clean rule
+#
+#    Brad Whitlock, Thu Dec 13 16:29:47 PST 2007
+#    Make LIBSILO get set by configure so we can create links to libsilo.dylib
+#    or to libsiloh5.dylib on the Mac, depending on how Silo was built.
+#
+#    Hank Childs, Fri Jun 13 15:36:21 PDT 2008
+#    Add support for google-perftools' tcmalloc.
+#
+##############################################################################
+
+@SET_MAKE@
+@VARIABLES@
+
+LIBVTKCOMMON=libvtkCommon.@SHLIB_LIBEXT@
+LIBVTKDICOM=libvtkDICOMParser.@SHLIB_LIBEXT@
+LIBVTKFILTERING=libvtkFiltering.@SHLIB_LIBEXT@
+LIBVTKGRAPHICS=libvtkGraphics.@SHLIB_LIBEXT@
+LIBVTKHYBRID=libvtkHybrid.@SHLIB_LIBEXT@
+LIBVTKIO=libvtkIO.@SHLIB_LIBEXT@
+LIBVTKIMAGING=libvtkImaging.@SHLIB_LIBEXT@
+LIBVTKRENDERING=libvtkRendering.@SHLIB_LIBEXT@
+LIBVTKZLIB=libvtkzlib.@SHLIB_LIBEXT@
+LIBVTKPNG=libvtkpng.@SHLIB_LIBEXT@
+LIBVTKJPEG=libvtkjpeg.@SHLIB_LIBEXT@
+LIBVTKEXPAT=libvtkexpat.@SHLIB_LIBEXT@
+LIBVTKTIFF=libvtktiff.@SHLIB_LIBEXT@
+LIBVTKFREETYPE=libvtkfreetype.@SHLIB_LIBEXT@
+LIBVTKFTGL=libvtkftgl.@SHLIB_LIBEXT@
+LIBVTKSYS=libvtksys.@SHLIB_LIBEXT@
+LIBVTKMPEG2ENCODE=libvtkMPEG2Encode.@SHLIB_LIBEXT@
+LIBMESAGL=libMesaGL.@SHLIB_LIBEXT@
+LIBGLU=libGLU.@SHLIB_LIBEXT@
+LIBOSMESA=libOSMesa.@SHLIB_LIBEXT@
+LIBQT=@LIBQT@.@SHLIB_LIBEXT@
+LIBQUI=libqui.@SHLIB_LIBEXT@
+LIBSILO=@LIBSILO@
+LIBPYTHON=lib@PYVERSION@.@SHLIB_LIBEXT@
+
+# The following targets were split up so that they would work properly
+# with the make on AIX systems.
+all: libvtkcommon libvtkdicom libvtkfiltering libvtkgraphics libvtkhybrid \
+     libvtkio libvtkimaging libvtkrendering libvtkzlib libvtkpng libvtkjpeg \
+     libvtkexpat libvtktiff libvtkfreetype libvtkftgl libvtksys \
+     libvtkmpeg2encode libosmesa libmesagl libGLU libqt libqui pythondir \
+     @CREATE_SILO_LINK@ @CREATE_MILI_LINK@ @CREATE_SZIP_LINK@ \
+     @CREATE_HDF4_LINK@ @CREATE_HDF5_LINK@ @CREATE_NETCDF_LINK@ \
+     @CREATE_CGNS_LINK@ @CREATE_GDAL_LINK@ @CREATE_EXODUS_LINK@ \
+     @CREATE_BOXLIB2D_LINK@ @CREATE_BOXLIB3D_LINK@ \
+     @CREATE_CFITSIO_LINK@ @CREATE_ITAPS_LINK@ @CREATE_H5PART_LINK@ \
+     @CREATE_CCMIO_LINK@ @CREATE_TCMALLOC_LINK@
+
+libvtkcommon:
+	$(RM) $(LIBVTKCOMMON)*
+	ln -s @VTK_DIR@/lib/$(LIBVTKCOMMON)*   .
+
+libvtkdicom:
+	$(RM) $(LIBVTKDICOM)*
+	ln -s @VTK_DIR@/lib/$(LIBVTKDICOM)*   .
+
+libvtkfiltering:
+	$(RM) $(LIBVTKFILTERING)*
+	ln -s @VTK_DIR@/lib/$(LIBVTKFILTERING)*   .
+
+libvtkgraphics:
+	$(RM) $(LIBVTKGRAPHICS)*
+	ln -s @VTK_DIR@/lib/$(LIBVTKGRAPHICS)* .
+
+libvtkhybrid:
+	$(RM) $(LIBVTKHYBRID)*
+	ln -s @VTK_DIR@/lib/$(LIBVTKHYBRID)* .
+
+libvtkio:
+	$(RM) $(LIBVTKIO)*
+	ln -s @VTK_DIR@/lib/$(LIBVTKIO)* .
+
+libvtkimaging:
+	$(RM) $(LIBVTKIMAGING)*
+	ln -s @VTK_DIR@/lib/$(LIBVTKIMAGING)*  .
+
+libvtkrendering:
+	$(RM) $(LIBVTKRENDERING)*
+	ln -s @VTK_DIR@/lib/$(LIBVTKRENDERING)*  .
+
+libvtkzlib:
+	$(RM) $(LIBVTKZLIB)*
+	ln -s @VTK_DIR@/lib/$(LIBVTKZLIB)*  .
+
+libvtkjpeg:
+	$(RM) $(LIBVTKJPEG)*
+	ln -s @VTK_DIR@/lib/$(LIBVTKJPEG)*  .
+
+libvtkpng:
+	$(RM) $(LIBVTKPNG)*
+	ln -s @VTK_DIR@/lib/$(LIBVTKPNG)*  .
+
+libvtkexpat:
+	$(RM) $(LIBVTKEXPAT)*
+	ln -s @VTK_DIR@/lib/$(LIBVTKEXPAT)*  .
+
+libvtktiff:
+	$(RM) $(LIBVTKTIFF)*
+	ln -s @VTK_DIR@/lib/$(LIBVTKTIFF)*  .
+
+libvtkfreetype:
+	$(RM) $(LIBVTKFREETYPE)*
+	ln -s @VTK_DIR@/lib/$(LIBVTKFREETYPE)*  .
+
+libvtkftgl:
+	$(RM) $(LIBVTKFTGL)*
+	ln -s @VTK_DIR@/lib/$(LIBVTKFTGL)*  .
+
+libvtksys:
+	$(RM) $(LIBVTKSYS)*
+	ln -s @VTK_DIR@/lib/$(LIBVTKSYS)*  .
+
+libvtkmpeg2encode:
+	$(RM) $(LIBVTKMPEG2ENCODE)*
+	ln -s @VTK_DIR@/lib/$(LIBVTKMPEG2ENCODE)*  .
+
+libmesagl:
+	$(RM) $(LIBMESAGL)*
+	ln -s @MESA_DIR@/lib/$(LIBMESAGL)*  .
+
+libGLU:
+	$(RM) $(LIBGLU)
+	ln -s @MESA_DIR@/lib/$(LIBGLU)  .
+
+libosmesa:
+	$(RM) $(LIBOSMESA)*
+	ln -s @MESA_DIR@/lib/$(LIBOSMESA)*  .
+
+libqt:
+	if test -n "@QT_LIB@"; then              \
+	    $(RM) $(LIBQT)*                 ;    \
+	    ln -s @QT_LIB@/$(LIBQT)* .   ;       \
+            if test -n "@QT_LIB@/@LIBQT@.a"; then  \
+                $(RM) @LIBQT@.a ;                  \
+                ln -s @QT_LIB@/@LIBQT@.a . ;       \
+            fi                                   \
+	fi
+
+libqui:
+	if test -n "@QT_LIB@"; then              \
+	    $(RM) $(LIBQUI)*              ;      \
+	    ln -s @QT_LIB@/$(LIBQUI)* .   ;      \
+            if test -n "@QT_LIB@/libqui.a"; then \
+                $(RM) libqui.a ;                 \
+                ln -s @QT_LIB@/libqui.a . ;      \
+            fi                                   \
+	fi
+
+pythondir:
+	if test -n "@PYDIR@"; then                                     \
+	    $(RM) python lib@PYVERSION@.@SHLIB_LIBEXT@              ;  \
+	    ln -s @PYDIR@ python                                    ;  \
+	    ln -s python/lib/@PYVERSION@/config/$(LIBPYTHON) . ;  \
+	fi
+
+create_silo_link:
+	$(RM) $(LIBSILO)
+	ln -s @SILO_LIBDIR@/$(LIBSILO) .
+
+create_mili_link:
+	$(RM) libmili.@SHLIB_LIBEXT@ libgahl.@SHLIB_LIBEXT@
+	ln -s @MILI_DIR@/libmili.@SHLIB_LIBEXT@ .
+
+create_szip_link:
+	$(RM) libsz.@SHLIB_LIBEXT@
+	ln -s @SZIP_LIBDIR@/libsz.@SHLIB_LIBEXT@ .
+
+create_hdf5_link:
+	$(RM) libhdf5.@SHLIB_LIBEXT@
+	ln -s @HDF5_LIBDIR@/libhdf5.@SHLIB_LIBEXT@ .
+
+create_hdf4_link:
+	$(RM) libdf.@SHLIB_LIBEXT@ libmfhdf.@SHLIB_LIBEXT@
+	ln -s @HDF4_LIBDIR@/libdf.@SHLIB_LIBEXT@ .
+	ln -s @HDF4_LIBDIR@/libmfhdf.@SHLIB_LIBEXT@ .
+
+create_boxlib2D_link:
+	$(RM) libbox2D.@SHLIB_LIBEXT@ 
+	ln -s @BOXLIB2D_LIBDIR@/libbox2D.@SHLIB_LIBEXT@ .
+
+create_boxlib3D_link:
+	$(RM) libbox3D.@SHLIB_LIBEXT@
+	ln -s @BOXLIB3D_LIBDIR@/libbox3D.@SHLIB_LIBEXT@ .
+
+create_cfitsio_link:
+	$(RM) libcfitsio.@SHLIB_LIBEXT@     
+	ln -s @CFITSIO_LIBDIR@/libcfitsio.@SHLIB_LIBEXT@ .
+
+create_netcdf_link:
+	$(RM) libnetcdf.@SHLIB_LIBEXT@
+	ln -s @NETCDF_LIB@ .
+	$(RM) libnetcdf_c++.@SHLIB_LIBEXT@
+	ln -s @NETCDF_CXX_LIB@ .
+
+create_cgns_link:
+	$(RM) libcgns.@SHLIB_LIBEXT@
+	ln -s @CGNS_LIB@ .
+
+create_gdal_link:
+	$(RM) libgdal.@SHLIB_LIBEXT@
+	ln -s @GDAL_LIB@ .
+
+create_tcmalloc_link:
+	$(RM) libtcmalloc.@SHLIB_LIBEXT@*
+	ln -s @TCMALLOC_DIR@/libtcmalloc.@SHLIB_LIBEXT@* .
+
+create_exodus_link:
+	$(RM) libexoIIv2c.@SHLIB_LIBEXT@
+	ln -s @EXODUS_LIB@ .
+
+create_ccmio_link:
+	$(RM) libccmio.@SHLIB_LIBEXT@ libadf.@SHLIB_LIBEXT@
+	ln -s @CCMIO_LIBDIR@/libccmio.@SHLIB_LIBEXT@ .
+	ln -s @CCMIO_LIBDIR@/libadf.@SHLIB_LIBEXT@ .
+
+create_itaps_link:
+	libDirs=`echo "@ITAPS_LIB@" | tr -s ' ' | tr ' ' '\n' | grep '^-L' | sed -e 's|^-L\(.*\)|\1|'` ; \
+	libFiles=`echo "@ITAPS_LIB@" | tr -s ' ' | tr ' ' '\n' | grep '^-l' | grep -v 'netcdf\|hdf\|exoIIv2c' | sed -e 's|^-l\(.*\)|\1|'` ; \
+	for d in $$libDirs; do \
+	    for f in $$libFiles; do \
+	        if test -e $$d/lib$$f.a ; then \
+		    for fvers in $$d/lib$$f*.a ; do \
+		        $(RM) `basename $$fvers` ; \
+			ln -s $$fvers . ; \
+		    done ; \
+	        elif test -e $$d/lib$$f.@SHLIB_LIBEXT@ ; then \
+		    for fvers in $$d/lib$$f*.@SHLIB_LIBEXT@ ; do \
+		        $(RM) `basename $$fvers` ; \
+			ln -s $$fvers . ; \
+		    done ; \
+	        fi ; \
+	    done ; \
+	done
+
+create_h5part_link:
+	$(RM) libH5Part.@SHLIB_LIBEXT@     
+	ln -s @H5PART_LIBDIR@/libH5Part.@SHLIB_LIBEXT@ .
+
+cleanlinks:
+	find . -type l -maxdepth 1 -exec $(RM) {} \;
+
+clean:
+	$(RM) \
+	$(LIBMESAGL)* \
+	$(LIBGLU) \
+	$(LIBOSMESA)* \
+	$(LIBQT)* \
+	$(LIBQUI)* \
+	$(LIBVTKCOMMON)* \
+	$(LIBVTKDICOM)* \
+	$(LIBVTKFILTERING)* \
+	$(LIBVTKHYBRID)* \
+	$(LIBVTKIMAGING)* \
+	$(LIBVTKIO)* \
+	$(LIBVTKJPEG)* \
+	$(LIBVTKPNG)* \
+	$(LIBVTKTIFF)* \
+	$(LIBVTKFREETYPE)* \
+	$(LIBVTKFTGL)* \
+	$(LIBVTKZLIB)* \
+	$(LIBVTKSYS)* \
+	$(LIBVTKMPEG2ENCODE)* \
+	$(LIBPYTHON) \
+	$(LIBVTKEXPAT)* \
+	$(LIBVTKGRAPHICS)* \
+	$(LIBVTKRENDERING)* \
+	$(LIBSILO) \
+	libqt.a \
+	libqui.a \
+	visit.so \
+	visitmodule.so
+
+distclean: cleanlinks
+	$(RM) python Makefile
+
+install:
+install_bin:
+install_lib:
+install_dirs:
+
