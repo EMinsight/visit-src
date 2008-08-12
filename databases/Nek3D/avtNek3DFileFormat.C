@@ -145,8 +145,9 @@ typedef __int64 int64_t;
 //
 // --------
 // If the data was written in parallel
-// The header becomes 132 chars.  Here are two example headers:
+// The header becomes 132 chars.  Here are three example headers:
 // #std 4  6  6  6   120  240  0.1500E+01  300  1  2XUPT
+// #std 4  6  6  6   120  240  0.1500E+01  300  1  2 XUPTS03
 // #std 4  6  6  6   120  240  0.1500E+01  300  1  2 U T123
 // This example means:  #std is for versioning, 4 bytes per sample (could be 8, 
 //   for double precision), 6x6x6 blocks, 120 of 240 blocks are in this file, 
@@ -175,6 +176,29 @@ typedef __int64 int64_t;
 //     for each block
 //         for each sample in the block
 //             write the sample
+//
+//
+// ****************************************************************************
+// Example of a metadata input file
+//
+// NEK3D
+// version: 1.0
+// filetemplate: example.fld%02d  
+// firsttimestep: 2                 # first dump here: example.fld02
+// numtimesteps: 3                  # number of dumps
+// type: binary                     # ascii or binary
+//
+// 
+// NEK3D
+// version: 1.0
+// filetemplate: example%02d.f%04d  
+// firsttimestep: 2                 # first dump here: example??.f0002
+// numtimesteps: 3                  # number of dumps
+// type: binary                     # ascii or binary
+//
+//
+// NOTE: if the number of printf tokens is > 1 than the multiple fld format
+//       is used.
 // ****************************************************************************
 
 
@@ -224,6 +248,12 @@ typedef __int64 int64_t;
 //    Support varying numbers of blocks per file in the parallel format.
 //    Removed the code to read on one proc and broadcast the header, rather
 //    than having all procs read it, because it made no performance difference.
+//
+//    Dave Bremer, Fri Aug  8 12:57:47 PDT 2008
+//    Brought in a change from Stefan Kerkemeier to correct an error message.
+//
+//    Dave Bremer, Mon Aug 11 13:53:18 PDT 2008
+//    Brought in a change from Stefan Kerkemeier to change default init values.
 // ****************************************************************************
 
 avtNek3DFileFormat::avtNek3DFileFormat(const char *filename)
@@ -236,11 +266,11 @@ avtNek3DFileFormat::avtNek3DFileFormat(const char *filename)
     fileTemplate = "";
     iFirstTimestep = 1;
     iNumTimesteps = 1;
-    bBinary = true;
-    iNumOutputDirs = 1;
+    bBinary = false;
+    iNumOutputDirs = 0;
     bParFormat = false;
 
-    iNumBlocks = 1;
+    iNumBlocks = 0;
     iBlockSize[0] = 1;
     iBlockSize[1] = 1;
     iBlockSize[2] = 1;
@@ -257,7 +287,7 @@ avtNek3DFileFormat::avtNek3DFileFormat(const char *filename)
     iCurrVarProc  = -999;
     iAsciiMeshFileStart = -999;
     iAsciiCurrFileStart = -999;
-    iHeaderSize = 84;
+    iHeaderSize = 80;
     iDim = 3;
     iPrecision = 4;
     aBlockLocs = NULL;
@@ -293,6 +323,13 @@ avtNek3DFileFormat::avtNek3DFileFormat(const char *filename)
 //
 //    Kathleen Bonnell, Wed Jul 2 09:44:44 PDT 2008 
 //    Removed unreferenced variables.
+//
+//    Dave Bremer, Fri Aug  8 12:57:47 PDT 2008
+//    Brought in changes prompted by Stefan Kerkemeier, to check that a 
+//    file open succeeded, allow parsing of the S## style of scalar field
+//    tag within the serial file header, and read the number of output
+//    directories from the parallel file header, allowing users to skip
+//    the "numoutputdirs:" tag in the .nek file.
 //
 // ****************************************************************************
 
@@ -383,6 +420,8 @@ avtNek3DFileFormat::ParseMetaDataFile(const char *filename)
         }
         else if (STREQUAL("type:", tag.c_str())==0)
         {
+            //This tag can be deprecated, because the type can be determined
+            //from the header 
             string t;
             f >> t;
             if (STREQUAL("binary", t.c_str())==0)
@@ -401,11 +440,15 @@ avtNek3DFileFormat::ParseMetaDataFile(const char *filename)
             else
             {
                 EXCEPTION1(InvalidDBTypeException, 
-                   "Value following type: must be \"binary\" or \"ascii\"" );
+                    "Value following type: \"ascii\" or \"binary\" or \"binary6\"" );
             }
         }
         else if (STREQUAL("numoutputdirs:", tag.c_str())==0)
         {
+            //This tag can be deprecated, because the number of output dirs 
+            //can be determined from the header, and the parallel nature of the
+            //file can be inferred from the number of printf tokens in the template.
+            //This reader scans the headers for the number of fld files
             f >> iNumOutputDirs;
             if (iNumOutputDirs > 1)
                 bParFormat = true;
@@ -490,6 +533,11 @@ avtNek3DFileFormat::ParseMetaDataFile(const char *filename)
 //    Kathleen Bonnell, Wed Jul 2 09:44:44 PDT 2008 
 //    Removed unreferenced variables.
 //
+//    Dave Bremer, Mon Aug 11 13:53:18 PDT 2008
+//    Brought in a change from Stefan Kerkemeier to determine if a file is binary
+//    by looking for the endian-ness tag.  Added my own change to field tag 
+//    parsing, to parse the same way between serial and parallel binary files.
+//
 // ****************************************************************************
 
 void
@@ -503,6 +551,43 @@ avtNek3DFileFormat::ParseNekFileHeader()
     GetFileName(iFirstTimestep, 0, blockfilename, fileTemplate.size() + 64);
     ifstream  f(blockfilename);
 
+    if (!f.is_open())
+    {
+        char msg[1024];
+        SNPRINTF(msg, 1024, "Could not open file %s.", filename);
+        EXCEPTION1(InvalidFilesException, msg);
+    }
+
+    // Determine the type (ascii or binary)
+    // Parallel type is determined by the number of tokens in the file template
+    // and is always binary
+    if (!bParFormat)
+    {
+        float test;
+        f.seekg (80, ios::beg);
+
+        f.read((char *)(&test), 4);
+        if (test > 6.5 && test < 6.6)
+            bBinary = true;
+        else
+        {
+            ByteSwap32(&test, 1);
+            if (test > 6.5 && test < 6.6)
+                bBinary = true;
+        } 
+        f.seekg (0, ios::beg);
+    } 
+
+    //iHeaderSize no longer includes the size of the block index metadata, for the 
+    //parallel format, since this now can vary per file.
+    if (bBinary && bParFormat)
+        iHeaderSize = 136;
+    else if (bBinary && !bParFormat)
+        iHeaderSize = 84;
+    else
+        iHeaderSize = 80;
+
+
     if (!bParFormat)
     {
         f >> iNumBlocks;
@@ -513,48 +598,7 @@ avtNek3DFileFormat::ParseNekFileHeader()
         f >> buf2;   //skip
         f >> buf2;   //skip
     
-        while (1)
-        {
-            f >> tag;
-            if (tag == "X" || tag == "Y" || tag == "Z")
-                continue;
-            else if (tag == "U")
-                bHasVelocity = true;
-            else if (tag == "P")
-                bHasPressure = true;
-            else if (tag == "T")
-                bHasTemperature = true;
-            else if (tag == "1")
-            {
-                char c;
-                iNumSFields++;
-    
-                //From this file pos, figure out how long the sequence is.
-                //Starting with 1, we'll have a sequence of chars separated by
-                //a single space.  "1" or "1 2 3" for example.  This sequence
-                //is also the last possible sequence, hence the break after
-                //the while loop.
-                while (1)
-                {
-                    f.read(&c, 1);
-                    if (c == ' ' && f.peek() != ' ')
-                    {
-                        f >> tag;
-                        if ( atoi(tag.c_str()) == iNumSFields+1 )
-                        {
-                            iNumSFields++;
-                        }
-                        else
-                            break;
-                    }
-                    else
-                        break;
-                }
-                break;
-            }
-            else
-                break;
-        }
+        ParseFieldTags(f);
     }
     else
     {
@@ -597,60 +641,28 @@ avtNek3DFileFormat::ParseNekFileHeader()
         //the field tags without a whitespace separator.
         while (f.peek() == ' ')
             f.get();
+
+        //The number of output dirs comes next, but may abut the field tags
+        iNumOutputDirs = 0;
         while (f.peek() >= '0' && f.peek() <= '9')
-            f.get();
-        
-        char tmpTags[32];
-        f.read(tmpTags, 32);
-        tmpTags[31] = '\0';
-        string fieldTags(tmpTags);
-
-        if (fieldTags.find("U") != std::string::npos)
-            bHasVelocity = true;
-        if (fieldTags.find("P") != std::string::npos)
-            bHasPressure = true;
-        if (fieldTags.find("T") != std::string::npos)
-            bHasTemperature = true;
-
-        //The first if branch looks for additional scalar fields 
-        //specified the 'binary6' way--e.g. 4 fields specified as S04.
-        //The other branch looks for them as a sequence like 1234.
-        int indexS;
-        indexS = fieldTags.find("S");
-        if (indexS != std::string::npos)
         {
-            iNumSFields = 10*((int)fieldTags[indexS+1]-'0')
-                            +((int)fieldTags[indexS+2]-'0');
+            iNumOutputDirs *= 10;
+            iNumOutputDirs += (f.get() - '0');
         }
-        else
-        {
-            indexS = fieldTags.find("1");
-            if (indexS != std::string::npos)
-            {
-                iNumSFields = 1;
-                while ((fieldTags[indexS+iNumSFields]-'0') == (iNumSFields+1))
-                    iNumSFields++;
 
-            }
-        }
+        ParseFieldTags(f);
+
     }
+
     if (iBlockSize[2] == 1)
         iDim = 2;
     
-    //iHeaderSize no longer includes the size of the block index metadata, for the 
-    //parallel format, since this now can vary per file.
-    if (bBinary && bParFormat)
-        iHeaderSize = 136;
-    else if (bBinary && !bParFormat)
-        iHeaderSize = 84;
-    else
-        iHeaderSize = 80;
-
     if (bBinary)
     {
         // Determine endianness and whether we need to swap bytes.
         // If this machine's endian matches the file's, the read will 
         // put 6.54321 into this float.
+
         float test;  
         if (!bParFormat)
         {
@@ -677,7 +689,78 @@ avtNek3DFileFormat::ParseNekFileHeader()
         }
     }
     delete[] blockfilename;
+
 }
+
+
+
+// ****************************************************************************
+//  Method: avtNek3DFileFormat::ParseFieldTags
+//
+//  Purpose:
+//      Parses the characters in a binary Nek header file that indicate which
+//  fields are present.  Tags can be separated by 0 or more spaces.  Parsing
+//  stops when an unknown character is encountered, or when the file pointer
+//  moves beyond this->iHeaderSize characters.
+//
+//  X or X Y Z indicate a mesh.  Ignored here, UpdateCyclesAndTimes picks this up.
+//  U indicates velocity
+//  P indicates pressure
+//  T indicates temperature
+//  1 2 3 or S03  indicate 3 other scalar fields
+//
+//  Programmer: David Bremer
+//  Creation:   Mon Aug 11 13:53:18 PDT 2008
+//
+//  Modified:
+// ****************************************************************************
+
+void avtNek3DFileFormat::ParseFieldTags(ifstream &f)
+{
+    while (f.tellg() < iHeaderSize)
+    {
+        char c = f.get();
+        if (c == ' ')
+            continue;
+        if (c == 'X' || c == 'Y' || c == 'Z')
+            continue;
+        else if (c == 'U')
+            bHasVelocity = true;
+        else if (c == 'P')
+            bHasPressure = true;
+        else if (c == 'T')
+            bHasTemperature = true;
+        else if (c == '1')
+        {
+            while (f.tellg() < iHeaderSize)
+            {
+                while (f.peek() == ' ')
+                    f.get();
+                if ((f.peek()-'0') == (iNumSFields+1))
+                {
+                    iNumSFields++;
+                    f.get();
+                }
+                else
+                    break;
+            }
+        }
+        else if (c == 'S')
+        {
+            while (f.peek() == ' ')
+                f.get();
+            char digit1 = f.get();
+            while (f.peek() == ' ')
+                f.get();
+            char digit2 = f.get();
+
+            iNumSFields = (digit1-'0')*10 + (digit2-'0');
+        }
+        else
+            break;
+    }
+}
+
 
 
 
@@ -718,6 +801,7 @@ avtNek3DFileFormat::ReadBlockLocations()
     // each local block to a global id which starts at 1.  Here, I make 
     // an inverse map, from a zero-based global id to a proc num and local
     // offset.
+
     if (!bBinary || !bParFormat || aBlockLocs != NULL)
         return;
 
@@ -800,6 +884,7 @@ avtNek3DFileFormat::ReadBlockLocations()
 
     //Do a sanity check
     int sum = 0;
+
     for (ii = 0; ii < iNumOutputDirs; ii++)
         sum += aBlocksPerFile[ii];
 
@@ -1552,6 +1637,10 @@ avtNek3DFileFormat::GetTimes(std::vector<double> &outTimes)
 //    Dave Bremer, Fri Jun  6 15:38:45 PDT 2008
 //    Added the bParFormat flag allowing the parallel format to be used
 //    by a serial code, in which there is only one output dir.
+//
+//    Dave Bremer, Fri Aug  8 12:57:47 PDT 2008
+//    Brought in a change from Stefan Kerkemeier to infer that the parallel/binary
+//    format is in use if 2 or 3 printf tokens are in the file template.
 // ****************************************************************************
 
 void
@@ -1564,6 +1653,12 @@ avtNek3DFileFormat::GetFileName(int timestep, int pardir, char *outFileName, int
     {
         if (fileTemplate[ii] == '%' && fileTemplate[ii+1] != '%')
             nPrintfTokens++;
+    }
+
+    if (nPrintfTokens > 1) 
+    {
+        bBinary = true;
+        bParFormat = true;
     }
 
     if (!bParFormat && nPrintfTokens != 1)
