@@ -232,6 +232,9 @@ class avtIVPState
 //    Dave Pugmire, Fri Aug  8 16:05:34 EDT 2008
 //    Added OnExitDomain method.
 //
+//    Dave Pugmire, Tue Aug 19, 17:38:03 EDT 2008
+//    Chagned how distanced based termination is computed.
+//
 // ****************************************************************************
 
 class avtIVPSolver
@@ -249,7 +252,9 @@ class avtIVPSolver
     virtual void    Reset(const double& t_start, const avtVecRef& y_start) = 0;
 
     virtual Result  Step(const avtIVPField* field, 
+                         const bool &timeMode,
                          const double& t_max, 
+                         const double& d_max,
                          avtIVPStep* ivpstep = 0 ) = 0;
     virtual void    OnExitDomain() {}
     virtual avtVec  GetCurrentY() const = 0;
