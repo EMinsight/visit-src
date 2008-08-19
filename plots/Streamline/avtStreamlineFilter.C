@@ -4736,7 +4736,10 @@ avtStreamlineFilter::StagedLoadOnDemand(
 //
 //   Dave Pugmire, Wed Aug 13 14:11:04 EST 2008
 //   Pass domain extents into integration for ghost zone handling.
-
+//
+//   Hank Childs, Tue Aug 19 14:41:44 PDT 2008
+//   Make sure we initialize the bounds, especially if we are in 2D.
+//
 //
 // ****************************************************************************
 
@@ -4759,7 +4762,7 @@ avtStreamlineFilter::IntegrateStreamline(avtStreamlineWrapper *slSeg)
         slSeg->UpdateDomainCount(slSeg->domain);
 
         int integrationTimer = visitTimer->StartTimer();
-        double extents[6];
+        double extents[6] = { 0.,0., 0.,0., 0.,0. };
         intervalTree->GetElementExtents(slSeg->domain, extents);
         avtIVPSolver::Result result = IntegrateDomain(slSeg, ds, extents);
         integrationTime += visitTimer->StopTimer(integrationTimer, 
@@ -5076,8 +5079,11 @@ randMinus1_1()
 //    Moved the box extents code from PreExecute to here.
 //    Attempt to slightly adjust seed points not in the DS.
 //
-//   Dave Pugmire, Wed Aug 13 14:11:04 EST 2008
-//   Add dataSpatialDimension.
+//    Dave Pugmire, Wed Aug 13 14:11:04 EST 2008
+//    Add dataSpatialDimension.
+//
+//    Hank Childs, Tue Aug 19 14:41:44 PDT 2008
+//    Make sure we initialize the bounds, especially if we are in 2D.
 //
 // ****************************************************************************
 
@@ -5233,7 +5239,7 @@ avtStreamlineFilter::GetSeedPoints(std::vector<avtStreamlineWrapper *> &pts)
     //heartburn.
     //Also, filter out any points that aren't inside the DS.
     vector<seedPtDomain> ptDom;
-    double dataRange[6];
+    double dataRange[6] = { 0.,0., 0.,0., 0.,0. };
     
     intervalTree->GetExtents(dataRange);
     double dX = dataRange[1]-dataRange[0];

@@ -85,13 +85,16 @@ struct avtIVPStateHelper;
 //    Dave Pugmire, Wed Aug 13 10:58:32 EDT 2008
 //    Store the velocity with each step.
 //
+//    Hank Childs, Tue Aug 19 15:34:14 PDT 2008
+//    Make sure that velStart and velEnd are appropriately sized.
 //
 // ****************************************************************************
 
 class IVP_API avtIVPStep: public avtBezierSegment
 {
 public:
-    avtIVPStep() : avtBezierSegment() { tStart = tEnd = vorticity = 0.0; }
+    avtIVPStep() : avtBezierSegment(), velStart(0.,0.,0.), velEnd(0.,0.,0.) 
+                                           { tStart = tEnd = vorticity = 0.0; }
     
     void   ComputeVorticity(const avtIVPField *field)
     {
