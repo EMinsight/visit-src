@@ -93,8 +93,9 @@ struct avtIVPStateHelper;
 class IVP_API avtIVPStep: public avtBezierSegment
 {
 public:
-    avtIVPStep() : avtBezierSegment(), velStart(0.,0.,0.), velEnd(0.,0.,0.) 
-                                           { tStart = tEnd = vorticity = 0.0; }
+    avtIVPStep() : avtBezierSegment()
+                  { tStart = tEnd = vorticity = 0.0; 
+                    velStart = avtVec(0.,0.,0.); velEnd = avtVec(0.,0.,0.); }
     
     void   ComputeVorticity(const avtIVPField *field)
     {
