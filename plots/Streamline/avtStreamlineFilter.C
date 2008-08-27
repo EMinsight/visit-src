@@ -460,6 +460,9 @@ avtStreamlineWrapper::ComputeStatistics()
 //   Dave Pugmire, Tue Aug 19 17:13:04EST 2008
 //   Remove accurate distance calculate option.
 //
+//   Kathleen Bonnell, Wed Aug 27 15:13:07 PDT 2008
+//   Initialize solver.
+//
 // ****************************************************************************
 
 avtStreamlineFilter::avtStreamlineFilter()
@@ -479,6 +482,7 @@ avtStreamlineFilter::avtStreamlineFilter()
     absTol = 0;
     haveGhostZones = false;
     intervalTree = NULL;
+    solver = NULL;
     dataSpatialDimension = 3;
 
     //
