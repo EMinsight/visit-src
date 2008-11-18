@@ -1,0 +1,92 @@
+#! /bin/sh
+exec perl -x $0 ${1+"$@"};
+#!perl
+
+# ----------------------------------------------------------------------------
+
+if  (! -d "src")
+{
+   die "invoke $0 from the root of the VisIt source tree\n";
+}
+
+sub get ($@)
+{
+    my ($dir, $recursearg) = @_;
+    @tmpfiles = `svn status -v $recursearg $dir | grep -v '^?' | tr -s ' ' | cut -d' ' -f5 | grep -v -x \.`;
+    my @files = ();
+    foreach (@tmpfiles)
+    {
+        chomp;
+        push @files, "$_";
+    }
+    return @files
+}
+
+sub get_svn_recursive ($@)
+{
+    my ($dir) = @_;
+    return get($dir, "");
+}
+
+sub get_svn_norecursive ($@)
+{
+    my ($dir) = @_;
+    return get($dir, "-N");
+}
+
+sub get_norecursive ($@)
+{
+    my ($files) = @_;
+    @tmpfiles = `ls $files | egrep -v /\$`;
+    my @files = ();
+    foreach (@tmpfiles)
+    {
+        chomp;
+        push @files, "$_";
+    }
+    return @files
+}
+
+
+@files = ();
+
+push @files, get_svn_norecursive  "./src";
+push @files, get_svn_recursive    "./src/ac";
+push @files, get_svn_recursive    "./src/common";
+push @files, get_svn_recursive    "./src/visit_vtk";
+push @files, get_svn_recursive    "./src/engine";
+push @files, get_svn_recursive    "./src/launcher";
+push @files, get_svn_recursive    "./src/avt";
+push @files, get_svn_recursive    "./src/vtkqt";
+push @files, get_svn_recursive    "./src/plots";
+push @files, get_svn_recursive    "./src/operators";
+push @files, get_svn_recursive    "./src/databases";
+push @files, get_svn_recursive    "./src/winutil";
+push @files, get_svn_recursive    "./src/viewer";
+push @files, get_svn_recursive    "./src/gui";
+push @files, get_svn_recursive    "./src/mdserver";
+push @files, get_svn_recursive    "./src/visitpy";
+push @files, get_svn_recursive    "./src/java";
+push @files, get_svn_recursive    "./src/tools";
+push @files, get_svn_recursive    "./src/sim";
+push @files, get_svn_recursive    "./src/include";
+push @files, get_svn_recursive    "./src/bin";
+push @files, get_svn_recursive    "./src/exe";
+push @files, get_svn_norecursive  "./src/lib";
+push @files, get_svn_recursive    "./src/help";
+push @files, get_svn_recursive    "./src/archives";
+push @files, get_svn_recursive    "./src/plugins";
+push @files, get_svn_recursive    "./src/clearcase_bin";
+push @files, get_svn_recursive    "./src/svn_bin";
+push @files, get_svn_recursive    "./src/config-site";
+push @files, get_svn_recursive    "./src/cqscore";
+push @files, get_svn_recursive    "./src/third_party_builtin";
+push @files, get_norecursive      "./src/SVN_REVISION";
+push @files, get_norecursive      "./data/Makefile.in";
+push @files, get_norecursive      "./data/*.C";
+
+foreach (sort @files)
+{
+    print "$_\n";
+}
+

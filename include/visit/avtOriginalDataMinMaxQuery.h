@@ -1,0 +1,1 @@
+../../avt/Queries/Queries/avtOriginalDataMinMaxQuery.h
