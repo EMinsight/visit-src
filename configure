@@ -7736,15 +7736,19 @@ esac
 # All libs should be switched to use this new macro.
 #
 
+    withval=no
 
 # Check whether --with-hdf5 or --without-hdf5 was given.
 if test "${with_hdf5+set}" = set; then
   withval="$with_hdf5"
 
 else
-  withval=$DEFAULT_HDF5_LIBLOC:$DEFAULT_HDF5_LIBDEP
+  if test -n "$DEFAULT_HDF5_LIBLOC"; then
+            withval=$DEFAULT_HDF5_LIBLOC:$DEFAULT_HDF5_LIBDEP
+        fi
 fi;
 
+    with_hdf5=$withval
     HDF5_INCLUDE=""
     HDF5_LIB=""
     HDF5_TARGET=""
@@ -8092,25 +8096,36 @@ _ACEOF
             deplib_links=
         fi
 
+        #
+        # Adjust these strings so they format better in the result message.
+        #
+        lib_links=`echo $lib_links | tr -s ' ' | sed -e s'@ @\n    @'`
+        deplib_links=`echo $deplib_links | tr -s ' ' | sed -e s'@ @\n    @'`
         if test -z "$deplib_links"; then
             echo "$as_me:$LINENO: result:
     HDF5_INCLUDE=$HDF5_INCLUDE
     HDF5_LIB=$HDF5_LIB
+    Library...
     $lib_links" >&5
 echo "${ECHO_T}
     HDF5_INCLUDE=$HDF5_INCLUDE
     HDF5_LIB=$HDF5_LIB
+    Library...
     $lib_links" >&6
         else
             echo "$as_me:$LINENO: result:
     HDF5_INCLUDE=$HDF5_INCLUDE
     HDF5_LIB=$HDF5_LIB
+    Library...
     $lib_links
+    Dependent libraries...
     $deplib_links" >&5
 echo "${ECHO_T}
     HDF5_INCLUDE=$HDF5_INCLUDE
     HDF5_LIB=$HDF5_LIB
+    Library...
     $lib_links
+    Dependent libraries...
     $deplib_links" >&6
         fi
 
