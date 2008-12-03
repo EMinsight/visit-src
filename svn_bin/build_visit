@@ -4533,6 +4533,8 @@ function build_hdf5
     cd ${HDF5_DIR}
     if [[ "$OPSYS" == "Darwin" ]]; then
         export DYLD_LIBRARY_PATH="$VISITDIR/szip/$SZIP_VERSION/$VISITARCH/lib":$DYLD_LIBRARY_PATH
+    else
+        export LD_LIBRARY_PATH="$VISITDIR/szip/$SZIP_VERSION/$VISITARCH/lib":$LD_LIBRARY_PATH
     fi
     echo "Invoking command to configure HDF5"
     cf_szip=""
@@ -5713,6 +5715,7 @@ function build_hdf4
     echo "Invoking command to configure HDF4"
     MAKEOPS=""
     if [[ "$OPSYS" == "Darwin" || "$OPSYS" == "AIX" ]]; then
+        export DYLD_LIBRARY_PATH="$VISITDIR/szip/$SZIP_VERSION/$VISITARCH/lib":$DYLD_LIBRARY_PATH
         ./configure CXX="$CXX_COMPILER" CC="$C_COMPILER" \
         CFLAGS="$C_OPT_FLAGS" \
         CPPFLAGS="-I$VISITDIR/vtk/${VTK_VERSION}/$VISITARCH/Utilities \
@@ -5727,6 +5730,7 @@ function build_hdf4
         fi
         MAKEOPS="-i"
     else
+        export LD_LIBRARY_PATH="$VISITDIR/szip/$SZIP_VERSION/$VISITARCH/lib":$LD_LIBRARY_PATH
         ./configure CXX="$CXX_COMPILER" CC="$C_COMPILER" \
         CFLAGS="$C_OPT_FLAGS" LIBS="-lm" --disable-fortran \
         --prefix="$VISITDIR/hdf4/$HDF4_VERSION/$VISITARCH" \
@@ -7210,6 +7214,10 @@ function build_h5part
        export DYLD_LIBRARY_PATH="$VISITDIR/hdf5/$HDF5_VERSION/$VISITARCH/lib":\
 "$VISITDIR/szip/$SZIP_VERSION/$VISITARCH/lib":\
 $DYLD_LIBRARY_PATH
+    else
+       export LD_LIBRARY_PATH="$VISITDIR/hdf5/$HDF5_VERSION/$VISITARCH/lib":\
+"$VISITDIR/szip/$SZIP_VERSION/$VISITARCH/lib":\
+$LD_LIBRARY_PATH
     fi
     echo "Invoking command to configure H5Part"
     ./configure ${WITHHDF5ARG} ${OPTIONAL} \
