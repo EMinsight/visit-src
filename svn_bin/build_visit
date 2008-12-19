@@ -48,7 +48,7 @@
 #          Python	Python-2.5.tgz
 #          VTK		vtk-5.0.0c.tar.gz
 #          CMake	cmake-2.4.5.tar.gz
-#          Silo		silo-4.6.1.tar.gz
+#          Silo		silo-4.6.2.tar.gz
 #
 #        The following optional libraries need to be in the current directory
 #        to be built. You must explicitly select which option library to
@@ -63,7 +63,7 @@
 #           GDAL     1.3.2    gdal-1.3.2.tar.gz      -g (no AIX)
 #           H5part   1.4.0    H5Part-1.4.0.tar.gz    -r
 #           HDF4     2.4.1    HDF4.2r1.tar.gz        -4
-#           HDF5     1.6.5    hdf5-1.6.5.tar.gz      -5
+#           HDF5     1.8.1    hdf5-1.8.1.tar.gz      -5
 #           Mili     1.10     mili-1.10a.tar.gz      -m (internal)
 #           NetCDF   3.6.0    netcdf.tar.gz          -n
 #           szip     2.1      szip-2.1.tar.gz
@@ -445,6 +445,9 @@
 #     Eric Brugger, Mon Dec  8 12:58:59 PST 2008
 #     Changed the version to 1.11.1.
 #
+#     Eric Brugger, Thu Dec 18 16:05:16 PST 2008
+#     Modified the script to use HDF5 1.8.1 and Silo 4.6.2.
+#
 # *****************************************************************************
 #
 # *************************************************************************** #
@@ -724,20 +727,20 @@ fi
 # to use our own.
 export BV_QT_DIR=${BV_QT_DIR-"${QT_FILE%.tar*}"}
 
-export SILO_FILE=${SILO_FILE-"silo-4.6.1.tar.gz"}
-export SILO_VERSION=${SILO_VERSION-"4.6.1"}
+export SILO_FILE=${SILO_FILE-"silo-4.6.2.tar.gz"}
+export SILO_VERSION=${SILO_VERSION-"4.6.2"}
 export SILO_COMPATIBILITY_VERSION=${SILO_COMPATIBILITY_VERSION-"4.6"}
-export SILO_DIR=${SILO_DIR-"silo-4.6.1"}
+export SILO_DIR=${SILO_DIR-"silo-4.6.2"}
 
 export SZIP_FILE=${SZIP_FILE-"szip-2.1.tar.gz"}
 export SZIP_VERSION=${SZIP_VERSION-"2.1"}
 export SZIP_COMPATIBILITY_VERSION=${SZIP_COMPATIBILITY_VERSION-"2.0"}
 export SZIP_DIR=${SZIP_DIR-"szip-2.1"}
 
-export HDF5_FILE=${HDF5_FILE-"hdf5-1.6.5.tar.gz"}
-export HDF5_VERSION=${HDF5_VERSION-"1.6.5"}
-export HDF5_COMPATIBILITY_VERSION=${HDF5_COMPATIBILITY_VERSION-"1.6"}
-export HDF5_DIR=${HDF5_DIR-"hdf5-1.6.5"}
+export HDF5_FILE=${HDF5_FILE-"hdf5-1.8.1.tar.gz"}
+export HDF5_VERSION=${HDF5_VERSION-"1.8.1"}
+export HDF5_COMPATIBILITY_VERSION=${HDF5_COMPATIBILITY_VERSION-"1.8"}
+export HDF5_DIR=${HDF5_DIR-"hdf5-1.8.1"}
 
 export HDF4_FILE=${HDF4_FILE-"HDF4.2r1.tar.gz"}
 export HDF4_VERSION=${HDF4_VERSION-"4.2.1"}
@@ -4153,71 +4156,6 @@ function build_pil
 #                            Function 8, build_silo                           #
 # *************************************************************************** #
 
-function apply_generic_silo_patch
-{
-    # THESE PATCHES SHOULD BE REMOVED WHEN SILO IS PATCHED.
-    patch -p0 << \EOF
---- silo-4.6.1/tools/silex/SiloArrayView.cpp.orig       2008-08-18 12:37:47.000000000 -0600
-+++ silo-4.6.1/tools/silex/SiloArrayView.cpp    2008-08-18 12:38:01.000000000 -0600
-@@ -40,6 +40,7 @@
- #include <qlistbox.h>
- #include <qapplication.h>
- #include <iostream>
-+#include <stdlib.h>
- using std::cerr;
-
- // ----------------------------------------------------------------------------
-EOF
-    if [[ $? != 0 ]] ; then
-       echo "Unable to patch Silo. Wrong version?"
-       return 1
-    fi
-    patch -p0 << \EOF
---- silo-4.6.1/tools/silex/SiloObjectView.cpp.orig      2008-08-18 12:40:16.000000000 -0600
-+++ silo-4.6.1/tools/silex/SiloObjectView.cpp   2008-08-18 12:40:35.000000000 -0600
-@@ -41,6 +41,7 @@
- #include <qmessagebox.h>
- #include <iostream>
- #include <string>
-+#include <stdlib.h>
-
- // ----------------------------------------------------------------------------
- //                            Object View Window
-EOF
-    if [[ $? != 0 ]] ; then
-       echo "Unable to patch Silo. Wrong version?"
-       return 1
-    fi
-    patch -p0 << \EOF
---- silo-4.6.1/tools/silex/SiloValueView.cpp.orig       2008-08-18 12:38:19.000000000 -0600
-+++ silo-4.6.1/tools/silex/SiloValueView.cpp    2008-08-18 12:38:38.000000000 -0600
-@@ -39,6 +39,7 @@
- #include <SiloFile.h>
- #include <qlabel.h>
- #include <iostream>
-+#include <stdlib.h>
- using std::cerr;
-
- // ----------------------------------------------------------------------------
-EOF
-    if [[ $? != 0 ]] ; then
-       echo "Unable to patch Silo. Wrong version?"
-       return 1
-    fi
-
-   return 0
-}
-
-function apply_silo_patch
-{
-   apply_generic_silo_patch
-   if [[ $? != 0 ]] ; then
-       return 1
-   fi
-
-   return 0
-}
-
 function build_silo
 {
     #
@@ -4245,20 +4183,6 @@ function build_silo
 "Unable to untar ${SILO_FILE%.*}.  Corrupted file or out of space on device?"
           return 1
        fi
-    fi
-
-    #
-    # Apply patches
-    #
-    info_box "Patching Silo . . ." 1>&3
-    apply_silo_patch
-    if [[ $? != 0 ]] ; then
-       echo "Patch failed, but continuing.  I believe that this script "
-       echo "tried to apply a patch to an existing directory which had "
-       echo "already been patched ... that is, that the patch is "
-       echo "failing harmlessly on a second application."
-       echo "*OR* this is the wrong Silo version, so the patch may not be "
-       echo "necessary."
     fi
 
     #
@@ -8538,7 +8462,7 @@ if [[ "$DO_OPTIONAL" == "yes" && "$GRAPHICAL" == "yes" ]] ; then
            "GDAL"     "1.3.2  $GDAL_FILE"      $ON_GDAL \
            "H5Part"   "1.3.3  $H5PART_FILE"    $ON_H5PART \
            "HDF4"     "2.4.1  $HDF4_FILE"      $ON_HDF4 \
-           "HDF5"     "1.6.5  $HDF5_FILE"      $ON_HDF5 \
+           "HDF5"     "1.8.1  $HDF5_FILE"      $ON_HDF5 \
            "Mili"     "1.10   $MILI_FILE (not available from the web)"      $ON_MILI \
            "TCMALLOC" "0.97   $TCMALLOC_FILE (not available from the web)"      $ON_TCMALLOC \
            "NetCDF"   "3.6.0  $NETCDF_FILE"    $ON_NETCDF 2> tmp$$
