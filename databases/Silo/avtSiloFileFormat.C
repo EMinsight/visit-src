@@ -5961,7 +5961,6 @@ avtSiloFileFormat::GetMeshHelper(int *_domain, const char *m, DBmultimesh **_mm,
     if (_mm) *_mm = mm;
     if (_type) *_type = type;
     if (_domain_file) *_domain_file = domain_file;
-    if (_directory_mesh) *_directory_mesh = directory_mesh;
     if (_directory_mesh && _allocated_directory_mesh)
     {
         // If it's already been allocated, don't bother making
@@ -5982,6 +5981,13 @@ avtSiloFileFormat::GetMeshHelper(int *_domain, const char *m, DBmultimesh **_mm,
         // memory without passing it back to the caller.
         if (allocated_directory_mesh)
             delete [] directory_mesh;
+        // Just in case caller put a non-null value
+        // for one of these pointers, put the appropriate
+        // NULL/false response in that return value.
+        if (_allocated_directory_mesh)
+            *_allocated_directory_mesh = false;
+        if (_directory_mesh)
+            *_directory_mesh = NULL;
     }
 
     // We've now made a copy of any important chunk of this
