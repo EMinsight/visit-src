@@ -448,6 +448,9 @@
 #     Eric Brugger, Thu Dec 18 16:05:16 PST 2008
 #     Modified the script to use HDF5 1.8.1 and Silo 4.6.2.
 #
+#     Eric Brugger, Mon Dec 29 15:07:09 PST 2008
+#     Changed the version to 1.11.2.
+#
 # *****************************************************************************
 #
 # *************************************************************************** #
@@ -682,7 +685,7 @@ if [[ "$VISIT_FILE" != "" ]] ; then
   USE_VISIT_FILE="yes"
   ON_USE_VISIT_FILE="on"
 fi
-export VISIT_VERSION=${VISIT_VERSION-"1.11.1"}
+export VISIT_VERSION=${VISIT_VERSION-"1.11.2"}
 export VISIT_FILE=${VISIT_FILE-"visit${VISIT_VERSION}.tar.gz"}
 
 export VTK_FILE=${VTK_FILE-"vtk-5.0.0c.tar.gz"}

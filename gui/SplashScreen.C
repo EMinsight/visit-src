@@ -138,6 +138,9 @@
 //    Eric Brugger, Tue Oct 14 11:26:43 PDT 2008
 //    Changed the date on the splash screen.
 //
+//    Eric Brugger, Mon Dec 29 15:08:57 PST 2008
+//    Changed the date on the splash screen.
+//
 // ****************************************************************************
 
 SplashScreen::SplashScreen(bool cyclePictures, const char *name) :
@@ -244,7 +247,7 @@ SplashScreen::SplashScreen(bool cyclePictures, const char *name) :
     versionText += " ";
     versionText += SVN_REVISION;
     lLayout->addWidget(new QLabel(versionText, this, "versionText"));
-    lLayout->addWidget(new QLabel(tr("November 2008"), this, "dateCompiled"));
+    lLayout->addWidget(new QLabel(tr("January 2009"), this, "dateCompiled"));
 
     copyrightButton = 0;
     contributorButton = 0;
