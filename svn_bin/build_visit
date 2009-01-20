@@ -451,6 +451,9 @@
 #     Eric Brugger, Mon Dec 29 15:07:09 PST 2008
 #     Changed the version to 1.11.2.
 #
+#     Mark C. Miller, Tue Jan 20 12:30:49 PST 2009
+#     Added code for Silo install on Darwin to try a C++ compiler if a C
+#     compiler fails the link phase of the install.
 # *****************************************************************************
 #
 # *************************************************************************** #
@@ -4304,6 +4307,17 @@ qt -lSM -lICE -L/usr/X11R6/lib -lX11 -lXext -lXmu -lXt -lXi"
            -Wl,-install_name,$INSTALLNAMEPATH/libsilo${SILO_H5}.${SO_EXT} \
            -Wl,-compatibility_version,${SILO_COMPATIBILITY_VERSION} \
            -Wl,-current_version,${SILO_VERSION} $SILO_LINK_OPT
+        #
+        # The above could have failed in libsilo has C++ code (from hzip/fpzip)
+        # So, in that case, try it with a C++ compiler too.
+        #
+        if [[ $? != 0 ]] ; then
+            $CXX_COMPILER -dynamiclib -o libsilo${SILO_H5}.${SO_EXT} *.o \
+               -Wl,-headerpad_max_install_names \
+               -Wl,-install_name,$INSTALLNAMEPATH/libsilo${SILO_H5}.${SO_EXT} \
+               -Wl,-compatibility_version,${SILO_COMPATIBILITY_VERSION} \
+               -Wl,-current_version,${SILO_VERSION} $SILO_LINK_OPT
+        fi
         if [[ $? != 0 ]] ; then
            echo "Silo dynamic library build failed.  Giving up"
            return 1
