@@ -1,0 +1,103 @@
+#!/bin/sh
+#
+#  Script: nersc_username_to_email
+#
+#  Purpose: 
+#     This script is used by our regression suite to send e-mails to developers 
+#     where there are failures.
+# 
+#  Note:  You should use your NERSC username and your normal e-mail adress.
+#
+#  Modifications:
+#
+#    Hank Childs, Mon Feb 25 11:18:06 PST 2008
+#    Added modifications log.  Also removed developers shelly, mblair, and 
+#    tarwater.
+#
+#    Hank Childs, Mon Feb 25 14:08:56 PST 2008
+#    Add back previous developers.
+#
+#    Randy Hudson, Wed Feb 27 12:05:00 CST 2008
+#    Add case for me (userid "rhudson").
+#
+#    John C. Anderson, Thu Sep 11 12:27:08 PDT 2008
+#    Added case for userid "jcanders".
+#
+# *****************************************************************************
+
+
+case $1 in
+    # Sean Ahern, Oak Ridge National Laboratory
+    "ahern")
+        emaddr=ahern@ornl.gov
+        ;;
+    # Jeremy Meredith, Oak Ridge National Laboratory
+    "js9")
+        emaddr=jsmeredith@ornl.gov
+        ;;
+    # Hank Childs, Lawrence Livermore National Laboratory
+    "hrchilds")
+        emaddr=childs3@llnl.gov
+        ;;
+    # Mark Miller, Lawrence Livermore National Laboratory
+    "miller86")
+        emaddr=miller86@llnl.gov
+        ;;
+    # Brad Whitlock, Lawrence Livermore National Laboratory
+    "whitlocb")
+        emaddr=whitlock2@llnl.gov
+        ;;
+    # Cyrus Harrison, Lawrence Livermore National Laboratory
+    "cyrush")
+        emaddr=harrison37@llnl.gov
+        ;;
+    # David Bremer, Lawrence Livermore National Laboratory
+    "dbremer")
+        emaddr=bremer4@llnl.gov
+        ;;
+    # Tom Treadway, Lawrence Livermore National Laboratory
+    "treadway")
+        emaddr=treadway1@llnl.gov
+        ;;
+    # Gunther Weber, Lawrence Berkeley National Laboratory
+    "ghweber")
+        emaddr=ghweber@lbl.gov
+        ;;
+    # Kathleen Bonnell, Lawrence Livermore National Laboratory
+    "bonnell")
+        emaddr=bonnell2@llnl.gov
+        ;;
+    # Eric Brugger, Lawrence Livermore National Laboratory
+    "brugger")
+        emaddr=brugger1@llnl.gov
+        ;;
+    # Tom Fogal, University of New Hampshire
+    "fogal1")
+        emaddr=tfogal@alumni.unh.edu
+        ;;
+    # Dave Pugmire, Oak Ridge National Laboratory
+    "pugmire")
+        emaddr=pugmire@ornl.gov
+        ;;
+    # Randy Hudson, University of Chicago, Argonne National Laboratory
+    "rhudson")
+        emaddr=hudson@mcs.anl.gov
+        ;;
+    # John C. Anderson, UC Davis / LLNL
+    "jcanders")
+        emaddr=anderson@cs.ucdavis.edu
+        ;;
+    *)
+        emaddr=visit@llnl.gov
+        ;;
+esac
+
+### Previous developers: *****************************************************
+##
+## shelly = Shelly Prevost, formerly of Lawrence Livermore National Laboratory
+## tarwater = Ellen Tarwater, Lawrence Livermore National Laboratory
+## mblair = Mark Blair, Lawrence Livermore National Laboratory
+##
+## ***************************************************************************
+
+echo $emaddr

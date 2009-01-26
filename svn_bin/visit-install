@@ -1,0 +1,690 @@
+#!/bin/csh -f
+#-----------------------------------------------------------------------
+#
+# VISIT_INSTALL - Install a compressed tar file distribution of visit
+#                 in an existing directory.
+#
+# Author: Eric Brugger
+# Date:   October 26, 1996
+#
+# Usage
+#    visit-install [-c open | closed | ornl | nersc | anl | princeton] [-g group] [-gw] [-l] [-dmg]
+#                  [-beta | -private] version platform directory
+#
+#    The default is to install this version as the current version.
+#    The -beta flag makes this version the current beta version instead.
+#    The -private flag simply adds this version to the tree without making
+#        it the current stable or current beta.
+#
+# Notes:
+#    The options must be first.
+#
+# Modifications:
+#    Jeremy Meredith, Mon Mar 19 12:06:55 PST 2001
+#    Made it create symlinks for the current or beta release.
+#    Made it support a -beta and -private flag.
+#
+#    Eric Brugger, Thu Mar 29 14:21:39 PST 2001
+#    Replace incorrect "else if" constructs with "elif".
+#
+#    Eric Brugger, Fri Mar 30 08:45:12 PST 2001
+#    I undid my previous replacement of "else if" with "elif".  I
+#    replaced tests for links (-l) with tests for existance (-e), since
+#    tests for links behaved strangely on AIX systems.
+#
+#    Eric Brugger, Fri Mar 30 10:55:49 PST 2001
+#    Reorder some lines cleaing up old versions and backing up the
+#    current version so that it would work properly.
+#
+#    Eric Brugger, Wed Jul 18 15:51:32 PDT 2001
+#    I added the -a flag.
+#
+#    Eric Brugger, Wed Feb 20 10:52:52 PST 2002
+#    I added support for install sample data files.
+#
+#    Eric Brugger, Wed Aug 21 14:04:25 PDT 2002
+#    I modified the script so that existing distributions would be
+#    consistent as much as possible while being updated.
+#
+#    Eric Brugger, Mon Jul 21 17:53:22 PDT 2003
+#    I added the ability to install a configuration file.
+#
+#    Eric Brugger, Thu Jul 31 12:09:02 PDT 2003
+#    I removed some error tests that were redundant and caused a
+#    maintenance issue.
+#
+#    Brad Whitlock, Wed Oct 8 16:29:25 PST 2003
+#    Added support for clickable scripts in MacOS X.
+#
+#    Brad Whitlock, Tue Oct 21 14:07:33 PST 2003
+#    I made the command script files that we generate on MacOS X have
+#    execute file permissions so they can run when double-clicked in
+#    the Finder.
+#
+#    Eric Brugger, Tue Dec 23 11:05:37 PST 2003
+#    I added an option to enable usage logging.
+#
+#    Eric Brugger, Wed May 12 11:05:58 PDT 2004
+#    I changed the default for append to be true, and replaced the -a
+#    option with -r to make it false.
+#
+#    Eric Brugger, Thu Sep 23 13:41:22 PDT 2004
+#    I corrected a bug where the usage logging flag in the visit script
+#    doesn't get set when logging is enabled.  The sed command that made
+#    the substitution assumed a certain number of spaces in the line,
+#    which changed on a recent update.  The current sed command is more
+#    forgiving of extra whitespace.
+#
+#    Eric Brugger, Thu Sep 30 10:09:21 PDT 2004
+#    I made a chgrp command for installing on the mac conditional on the
+#    user specifying a group on the command line.
+#
+#    Jeremy Meredith, Thu Dec  9 17:41:35 PST 2004
+#    Made the switch to version-specific visit scripts.
+#    Now the main "visit" script is a symlink to frontendlauncher,
+#    legacylauncher is the old "visit" script, and frontendlauncher
+#    is the new main script.  Thus we should just erase the old visit
+#    script and treat legacylauncher and frontendlauncher as two
+#    modern equivalents of the old visit script.  Added the ability to
+#    launch tools without passing them as an argument to the visit script.
+#
+#    Jeremy Meredith, Mon Apr 18 09:27:00 PDT 2005
+#    Renamed convert to visitconvert.
+#
+#    Jeremy Meredith, Wed Apr 20 15:36:36 PDT 2005
+#    I ensured that "internallauncher" had the right permissions.
+#
+#    Jeremy Meredith, Wed Aug 31 16:48:05 PDT 2005
+#    I added xml2plugin.
+#
+#    Brad Whitlock, Tue Mar 7 13:47:00 PST 2006
+#    I added the ability to choose a bank other than bdivp.
+#
+#    Eric Brugger, Fri Mar 10 09:55:15 PST 2006
+#    I added the ability to install a nersc or ornl config site file.
+#    I made a chgrp command conditional on the user having set a group.
+# 
+#    Brad Whitlock, Thu May 25 15:22:32 PST 2006
+#    Added logic to create .installinfo file.
+#
+#    Eric Brugger, Wed Jun  7 16:38:48 PDT 2006
+#    Remove some debug statements.
+#
+#    Hank Childs, Mon Oct 16 09:12:38 PDT 2006
+#    Add support for cli_usagelog.
+#
+#    Brad Whitlock, Wed Sep 20 11:44:49 PDT 2006
+#    I made it use mpeg2encode. I also made it install visit_composite
+#    and visit_transition.
+#
+#    Brad Whitlock, Fri Feb 2 12:14:08 PDT 2007
+#    Added support for spaces in the install directory name.
+#
+#    Thomas R. Treadway, Tue Feb 13 16:20:12 PST 2007
+#    Added an dmg option to create a Mac disk image.
+#
+#    Eric Brugger, Wed Feb 21 15:36:59 PST 2007
+#    Added code to delete the link bin/convert in case it is there
+#    from a previous installation.
+#
+#    Thomas R. Treadway, Wed Apr  4 10:22:37 PDT 2007
+#    Treat the platformDir like all of the others, allowing darwin-ppc,
+#    darwin-i386, or darwin (universal) directory.
+#
+#    Hank Childs, Mon May 14 17:28:28 PDT 2007
+#    Add information to usage statement regarding directory format.
+#
+#    Mark C. Miller, Tue Jun 19 17:29:08 PDT 2007
+#    Added visit_plugin and mkgrdbl
+#
+#    Hank Childs, Wed Nov 14 16:54:09 PST 2007
+#    Make sure we have write permission for the target directory.
+#
+#    Hank Childs, Mon Nov 19 09:20:04 PST 2007
+#    Check for corrupted downloads.
+#
+#    Hank Childs, Mon Nov 26 16:17:06 PST 2007
+#    Add some more checks to issue better error messages for various
+#    common ways to do this wrong.
+#
+#    Sean Ahern, Tue Dec  4 11:42:27 EST 2007
+#    Added documentation for "-c ornl" and "-c nersc" options.
+#
+#    Eric Brugger, Wed Dec 12 17:49:34 PST 2007
+#    I removed the -r option. I modified the behavior of the private
+#    install to leave the name of the newly installed version as
+#    $version+, to avoid the possibility that it would be recognized
+#    as a patch.
+#
+#    Eric Brugger, Fri Jan 11 10:15:40 PST 2008
+#    I corrected a test checking for write permission in the install
+#    directory inadvertently also required that the install directory
+#    already exist.
+#
+#    Dave Bremer, Wed Mar  5 14:02:40 CST 2008
+#    Added anl (Argonne National Lab) site option.
+#
+#    Hank Childs, Tue Jan 20 14:58:07 PST 2009
+#    Added princeton site option.
+#
+#-----------------------------------------------------------------------
+
+set Compress = COMPRESS
+
+set beta = false
+set private = false
+set config = prompt
+set configSpecified = false
+set bank = prompt
+set logging = false
+set group_ownership = none
+set dir_permission = 755
+set file_permission = 644
+set dmg = false
+
+# Figure out the platform so if we're on a platform for which we need to
+# perform extra steps, we know it.
+set uname = `which uname`
+set os = `$uname -s | tr "[A-Z]" "[a-z]" | tr -d "[0-9]"`
+
+set option_found = true
+while ($option_found == true)
+   switch ($1)
+      case -gw:
+         set dir_permission = 775
+         set file_permission = 664
+         shift
+         breaksw
+      case -g:
+         set group_ownership = $2
+         shift
+         shift
+         breaksw
+      case -beta:
+         set beta = true
+         shift
+         breaksw
+      case -private:
+         set private = true
+         shift
+         breaksw
+      case -c:
+         set config = $2
+         set configSpecified = true
+         shift
+         shift
+         breaksw
+      case -b:
+         set bank = $2
+         shift
+         shift
+         breaksw
+      case -l:
+         set logging = true
+         shift
+         breaksw
+      case -dmg:
+         set dmg = true
+         shift
+         breaksw
+      default:
+         set option_found = false
+         breaksw
+   endsw
+end
+
+if ($#argv != 3) then
+   echo "Usage: visit-install [-c open | closed | ornl | nersc | anl | princeton] [-g group] [-b bank] [-gw] [-l] [-dmg]"
+   echo "                     [-beta | -private] version platform directory"
+   echo ""
+   echo "                     This will install all of its files and subdirectories"
+   echo "                     directly in the specified directory."
+   echo "                     (So use /usr/local/visit, not /usr/local)"
+   exit (1)
+endif
+
+if ($beta == true && $private == true) then
+   echo "Only -beta or -private may be specified, not both."
+   exit (1)
+endif
+
+
+set version = "$1";
+set base = `echo visit$version | tr "." "_"`
+set platform = "$2"
+set dir = "$3"
+
+set fname1 = $base.$platform.tar.Z
+if (! -e $fname1) then
+   set Compress = GZIP
+   set fname1 = $base.$platform.tar.gz
+   if (! -e $fname1) then
+      set tarname = $base.$platform.tar
+      if (-e $tarname) then
+          # Note: as far as I can tell, it would be fine to just
+          # accept the unzipped distribution.  But I decided that 
+          # would be a bigger change than I wanted to make.
+          # ** The purpose of the above comment is to communicate to
+          #    a developer that *was* inclined to modify this script to
+          #    accept unzipped distributions that I don't have any 
+          #    special knowledge that this is a bad idea ... I'm just
+          #    not brave enough right now to deal with any potential 
+          #    fallout. **
+          echo "It appears that you unzipped the distribution file yourself."
+          echo "That is not what this script expects."
+          echo "Please download the zipped distribution again."
+      else
+          ls -1 $base.*.tar.* >& /dev/null
+          if ($status == 0) then
+              echo "You specified your distribution as $platform."
+              echo "I could not locate that distribution."
+              set num_dist = `ls -1 $base*.tar.* | wc -l`
+              if ($num_dist == "1") then
+                 echo "But I could find this distribution that you downloaded:"
+              else
+                 echo "But I could find these distributions that you downloaded:"
+              endif
+              ls -1 $base*.tar.* | sed 's/'$base'\./    /g' | sed 's/.tar.gz//g' | sed 's/.tar.Z//g'
+              if ($num_dist == 1) then
+                  echo "Either try specifying visit-install again with this "
+                  echo "distribution, or, if you think you specified the distribution"
+                  echo "name correctly, try downloading the file for $platform ($fname1)"
+              else
+                  echo "Either try specifying visit-install again with one of these "
+                  echo "distributions, or, if you think you specified the distribution"
+                  echo "name correctly, try downloading the file for $platform ($fname1)"
+              endif
+              echo ""
+          else
+              echo "Could not find file containing the distribution."
+              echo "(I was looking for file: $fname1)"
+          endif
+      endif
+      echo "Bailing out..."
+      exit (2)
+   endif
+endif
+set fname2 = $base.$platform.tar
+
+#
+# If the directory name is not an absolute path then make it one.
+#
+if (`echo "$dir" | grep "^/"` == "") then
+   set dir = `pwd`/"$dir"
+endif
+
+if (-e $dir) then
+   touch $dir/test.$$
+   if (! -e $dir/test.$$) then
+      echo ""
+      echo "You do not have write permission to $dir"
+      echo "Bailing out"
+      echo ""
+      exit (2)
+   else
+      rm $dir/test.$$
+   endif
+else
+   touch $dir.test.$$
+   if (! -e $dir.test.$$) then
+      echo ""
+      echo "You do not have write permission to create $dir"
+      echo "Bailing out"
+      echo ""
+      exit (2)
+   else
+      rm $dir.test.$$
+   endif
+endif
+
+while ($config == prompt)
+   echo "Choose a system configuration file.  A system configuration"
+   echo "file contains profiles that make it easy to access VisIt on"
+   echo "remote computers."
+   echo ""
+   echo "   1) No system configuration"
+   echo "   2) LLNL open network"
+   echo "   3) LLNL closed network"
+   echo "   4) NERSC network"
+   echo "   5) ORNL network"
+   echo "   6) ANL network"
+   echo "   7) Princeton network"
+   echo ""
+   echo "(1,2,3,4,5,6,7):"
+
+   set config = $<
+   switch ($config)
+      case 1:
+         set config = none
+         breaksw
+      case 2:
+         set config = open
+         breaksw
+      case 3:
+         set config = closed
+         breaksw
+      case 4:
+         set config = nersc
+         breaksw
+      case 5:
+         set config = ornl
+         breaksw
+      case 6:
+         set config = anl
+         breaksw
+      case 7:
+         set config = princeton
+         breaksw
+      default:
+         set config = prompt
+         breaksw
+   endsw
+end
+
+if ($config != none && $config != open && $config != closed && $config != nersc && $config != ornl && $config != anl && $config != princeton) then
+   echo "Illegal configuration option, choices are none, open, closed, ornl, nersc, anl, and princeton."
+   exit (1)
+endif
+
+# If the config was specified as "none" and we're on Darwin then assume
+# for now that the -b option was not passed. If this is the case then let's
+# not prompt for a bank and just assume bdivp. This should let "Check for updates"
+# work on the Mac with the broken 1.5.2.
+# REMOVE IN VISIT 1.6.
+if ($configSpecified == true && "$config" == "none" && "$2" == "darwin") then
+    set bank = "bdivp"
+endif
+
+if ($bank == prompt) then
+    # Determine whether the user needs a bank in order to install.
+    set yn = ""
+    while ("$yn" == "")
+        echo "Do you need to use a bank when submitting parallel jobs to a"
+        echo "batch system? (y/n):"
+        set yn = `echo $< | tr "[A-Z]" "[a-z]"`
+        if ("$yn" != "y" && "$yn" != "n") then
+            set yn = ""
+        endif
+    end
+
+    # If a bank is required then prompt for it.
+    if ("$yn" == "y") then
+        while ($bank == prompt)
+           echo ""
+           echo "Type the name of a bank for VisIt to use when launching its"
+           echo "parallel compute engine in a batch system:"
+
+           set bank = $<
+           if ("$bank" == "") then
+               echo "YOU MUST ENTER A BANK NAME!"
+               set bank = prompt
+           else
+               echo "You chose bank: $bank"
+           endif
+        end
+    else
+        # No bank was required. Use the default of bdivp.
+        set bank = "bdivp"
+    endif
+endif
+
+#
+# If both $dir/$version and $dir/$version+ exist it is an error.
+#
+if (-e "$dir"/$version) then
+   if (-e "$dir"/$version+) then
+      echo "Both the directories $version and $version+ exist. Remove"
+      echo "one or both."
+      exit (3)
+   endif
+endif
+
+#
+# Set up the distribution directory
+#
+rm -rf distribution
+mkdir distribution
+cp $fname1 distribution
+cd distribution
+if ($Compress == "COMPRESS") then
+   uncompress $fname1
+else
+   gunzip $fname1
+endif
+if (! -e $fname2) then
+   echo ""
+   echo "Unable to unzip $fname1.  The file appears to be corrupted."
+   echo "This is often the case when a download has not yet completed."
+   echo "Bailing out..."
+   echo ""
+   exit (2)
+endif
+tar xvbf 20 $fname2
+cd ..
+
+#
+# If the installation directory doesn't exist, create it.
+#
+if (! -e "$dir")                mkdir "$dir"
+if (! -e "$dir"/bin)            mkdir "$dir"/bin
+if (! -e "$dir"/data)           mkdir "$dir"/data
+
+#
+# Copy in the new files.  We are careful to leave the current
+# installation in a consistent state with the exception of the
+# data directory.
+#
+if ($logging == false) then
+   cp distribution/visit/bin/legacylauncher "$dir"/bin/legacylauncher+
+else
+   sed -e "s/logging[ \t]*= 0/logging        = 1/" distribution/visit/bin/legacylauncher > "$dir"/bin/legacylauncher+
+endif
+cp distribution/visit/bin/frontendlauncher "$dir"/bin/frontendlauncher+
+cp distribution/visit/bin/xml2plugin       "$dir"/bin/xml2plugin+
+cp distribution/visit/bin/visit_plugin     "$dir"/bin/visit_plugin+
+cp distribution/visit/bin/mkgrdbl          "$dir"/bin/mkgrdbl+
+
+if (-e "$dir"/$version) then
+   mv "$dir"/$version "$dir"/$version+
+   ln -s $version+ "$dir"/$version
+endif
+if (! -e "$dir"/$version+)                 mkdir "$dir"/$version+
+
+cd distribution/visit/$version
+
+# Determine the platform
+set findcli = `find . -name cli`
+set platformBin = `echo "$findcli" | sed -e "s/cli//"`
+set savepwd = `pwd`
+cd $platformBin/..
+set platformPath = `pwd`
+cd $savepwd
+set platformDir = ""
+foreach f (`echo $platformPath | tr "/" " "`)
+   set platformDir = $f
+end
+# Copy the files
+find . -print | cpio -pmud "$dir"/$version+
+cd ../../..
+cp distribution/visit/data/* "$dir"/data
+
+#
+# Store some of the installation options so they can be used by VisIt when
+# it updates itself later in the "Check for new versions" code.
+#
+echo "1;$config;$bank;$platform" > "$dir"/$version+/$platformDir/.installinfo
+
+
+#
+# Use the appropriate configuration file, setting the bank to the right value.
+#
+rm -f "$dir"/$version+/.visit/config
+if ($config == closed) then
+   ln -s visit-config-closed "$dir"/$version+/.visit/config_template
+else if ($config == nersc) then
+   ln -s visit-config-nersc "$dir"/$version+/.visit/config_template
+else if ($config == open) then
+   ln -s visit-config-open  "$dir"/$version+/.visit/config_template
+else if ($config == ornl) then
+   ln -s visit-config-ornl "$dir"/$version+/.visit/config_template
+else if ($config == anl) then
+   ln -s visit-config-anl "$dir"/$version+/.visit/config_template
+else if ($config == princeton) then
+   ln -s visit-config-princeton "$dir"/$version+/.visit/config_template
+endif
+if (-e "$dir"/$version+/.visit/config_template) then
+    sed -e "s/bdivp/$bank/" "$dir"/$version+/.visit/config_template > "$dir"/$version+/.visit/config
+    if ($group_ownership != none) then
+        chgrp $group_ownership "$dir"/$version+/.visit/config
+    endif
+    chmod 664 "$dir"/$version+/.visit/config
+endif
+
+#
+# If we're on MacOS X, then we want to create some small scripts that
+# can be clicked on from the Finder and have VisIt work.
+#
+if("$os" == "darwin") then
+    # Create a clickable script to run the cli, silex, and xmledit.
+    set csh = `which csh`
+    set scriptNames = ("VisIt" "cli" "Silex" "XmlEdit")
+    set appNames = ("visit" "cli" "silex" "xmledit")
+    @ i = 1
+    while($i < 5)
+        set app = $appNames[$i]
+        set appscript = $scriptNames[$i]
+        if(-e "$dir"/bin/$appscript.command) then
+            rm -f "$dir"/bin/$appscript.command
+        endif
+        echo "#\!$csh -f"           >  "$dir"/bin/$appscript.command
+        if($i > 1) then
+            echo "`pwd`/visit -$app" >> "$dir"/bin/$appscript.command
+        else
+            echo "`pwd`/visit"       >> "$dir"/bin/$appscript.command
+        endif
+        echo "exit 0"               >> "$dir"/bin/$appscript.command
+        if ($group_ownership != none) then
+            chgrp $group_ownership "$dir"/bin/$appscript.command
+        endif
+        chmod $dir_permission  "$dir"/bin/$appscript.command
+        @ i++
+    end
+endif
+
+#
+# Set the permissions properly
+#
+chmod $dir_permission "$dir"
+chmod $dir_permission "$dir"/bin
+chmod $dir_permission "$dir"/bin/legacylauncher+
+chmod $dir_permission "$dir"/bin/frontendlauncher+
+chmod $dir_permission "$dir"/bin/xml2plugin+
+chmod $dir_permission "$dir"/bin/visit_plugin+
+chmod $dir_permission "$dir"/bin/mkgrdbl+
+chmod $dir_permission "$dir"/data
+chmod $file_permission "$dir"/data/*
+chmod $dir_permission "$dir"/$version+
+
+#
+# Note that there is a short period of time when the second command
+# below has set the file permission for some files that should be
+# executable to be non-executable, until the next two commands can
+# set the executable permission back again.  This will leave the install
+# broken for a short period of time (depending on how long the recursive
+# chmod takes to execute).
+#
+find "$dir"/$version+ -type d -exec chmod $dir_permission {} \;
+find "$dir"/$version+ -type f -exec chmod $file_permission {} \;
+
+chmod $dir_permission "$dir"/$version+/*/bin/*
+chmod $dir_permission "$dir"/$version+/bin/*
+
+#
+# Set the group ownership properly
+#
+if ($group_ownership != none) then
+    chgrp $group_ownership "$dir"/bin
+    chgrp $group_ownership "$dir"/bin/legacylauncher+
+    chgrp $group_ownership "$dir"/bin/frontendlauncher+
+    chgrp $group_ownership "$dir"/bin/xml2plugin+
+    chgrp $group_ownership "$dir"/bin/visit_plugin+
+    chgrp $group_ownership "$dir"/bin/mkgrdbl+
+    chgrp $group_ownership "$dir"/data
+    chgrp $group_ownership "$dir"/data/*
+    find "$dir"/$version+ -type d -exec chgrp $group_ownership {} \;
+    find "$dir"/$version+ -type f -exec chgrp $group_ownership {} \;
+endif
+
+if ($logging == true) then
+    sed -e "s/logging[ \t]*= 0/logging        = 1/" distribution/visit/$version/bin/internallauncher > "$dir"/$version+/bin/internallauncher
+    chmod $dir_permission "$dir"/$version+/bin/internallauncher
+    touch "$dir"/$version+/usagelog
+    touch "$dir"/$version+/cli_usagelog
+    chmod 666 "$dir"/$version+/usagelog
+    chmod 666 "$dir"/$version+/cli_usagelog
+    if ($group_ownership != none) then
+        chgrp $group_ownership "$dir"/$version+/usagelog
+        chgrp $group_ownership "$dir"/$version+/cli_usagelog
+    endif
+endif
+
+#
+# Clean up the temporary directories.
+#
+rm -rf distribution
+
+#
+# Make the symbolic links for the programs
+#
+set programs = "curv3dprep makemili mpeg2encode silex surfcomp text2polys time_annotation visit visitconvert xml2atts xml2avt xml2info xml2java xml2makefile xml2projectfile xml2python xml2window xmledit xmltest visit_composite visit_transition"
+
+cd "$dir"/bin
+foreach prog ($programs)
+    rm -f $prog
+    ln -s frontendlauncher $prog
+end
+
+#
+# Remove the symbolic link for "convert" in case it is there from a previous
+# installation.
+#
+rm -f convert
+
+#
+# Make the symbolic links for the version
+#
+cd "$dir"
+
+#
+# If $version exists at this point it is a link and must be removed
+# with the rm command and replaced with the "plus" version.
+#
+if (-e $version) then
+   rm -f $version
+   mv $version+ $version
+endif
+if (-e bin/legacylauncher)       rm -f bin/legacylauncher
+mv bin/legacylauncher+ bin/legacylauncher
+if (-e bin/frontendlauncher)     rm -f bin/frontendlauncher
+mv bin/frontendlauncher+ bin/frontendlauncher
+if (-e bin/xml2plugin)           rm -f bin/xml2plugin
+mv bin/xml2plugin+ bin/xml2plugin
+if (-e bin/visit_plugin)         rm -f bin/visit_plugin
+mv bin/visit_plugin+ bin/visit_plugin
+if (-e bin/mkgrdbl)              rm -f bin/mkgrdbl
+mv bin/mkgrdbl+ bin/mkgrdbl
+if ($beta == true) then
+   if (-e $version+)             mv $version+ $version
+   if (-e beta)                  rm -f beta
+   ln -s $version beta
+else if ($private == false) then
+   if (-e $version+)             mv $version+ $version
+   if (-e current)               rm -f current
+   ln -s $version current
+endif
+
+#
+# Create dmg if requested
+if ($dmg == true) then
+   /usr/bin/hdiutil create -fs HFS+ -srcfolder $dir -volname VisIt-$version VisIt-$version.dmg
+endif

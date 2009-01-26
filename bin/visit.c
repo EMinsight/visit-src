@@ -1,0 +1,998 @@
+/*****************************************************************************
+*
+* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Produced at the Lawrence Livermore National Laboratory
+* LLNL-CODE-400142
+* All rights reserved.
+*
+* This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
+* full copyright notice is contained in the file COPYRIGHT located at the root
+* of the VisIt distribution or at http://www.llnl.gov/visit/copyright.html.
+*
+* Redistribution  and  use  in  source  and  binary  forms,  with  or  without
+* modification, are permitted provided that the following conditions are met:
+*
+*  - Redistributions of  source code must  retain the above  copyright notice,
+*    this list of conditions and the disclaimer below.
+*  - Redistributions in binary form must reproduce the above copyright notice,
+*    this  list of  conditions  and  the  disclaimer (as noted below)  in  the
+*    documentation and/or other materials provided with the distribution.
+*  - Neither the name of  the LLNS/LLNL nor the names of  its contributors may
+*    be used to endorse or promote products derived from this software without
+*    specific prior written permission.
+*
+* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT  HOLDERS AND CONTRIBUTORS "AS IS"
+* AND ANY EXPRESS OR  IMPLIED WARRANTIES, INCLUDING,  BUT NOT  LIMITED TO, THE
+* IMPLIED WARRANTIES OF MERCHANTABILITY AND  FITNESS FOR A PARTICULAR  PURPOSE
+* ARE  DISCLAIMED. IN  NO EVENT  SHALL LAWRENCE  LIVERMORE NATIONAL  SECURITY,
+* LLC, THE  U.S.  DEPARTMENT OF  ENERGY  OR  CONTRIBUTORS BE  LIABLE  FOR  ANY
+* DIRECT,  INDIRECT,   INCIDENTAL,   SPECIAL,   EXEMPLARY,  OR   CONSEQUENTIAL
+* DAMAGES (INCLUDING, BUT NOT  LIMITED TO, PROCUREMENT OF  SUBSTITUTE GOODS OR
+* SERVICES; LOSS OF  USE, DATA, OR PROFITS; OR  BUSINESS INTERRUPTION) HOWEVER
+* CAUSED  AND  ON  ANY  THEORY  OF  LIABILITY,  WHETHER  IN  CONTRACT,  STRICT
+* LIABILITY, OR TORT  (INCLUDING NEGLIGENCE OR OTHERWISE)  ARISING IN ANY  WAY
+* OUT OF THE  USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
+* DAMAGE.
+*
+*****************************************************************************/
+
+#include <direct.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <visit-config.h>
+#include <windows.h>
+#include <Winbase.h>
+#include <sys/stat.h>
+#include <shlobj.h>
+#include <shlwapi.h>
+#include <snprintf.h>
+
+#if _MSC_VER <= 1310
+#define _VISIT_MSVC "MSVC7.Net"
+#elif _MSC_VER <= 1400
+#define _VISIT_MSVC "MSVC8.Net"
+#else
+#define _VISIT_MSVC ""
+#endif
+
+/*
+ * Macros
+ */
+#define ARG(A) (strcmp((A), argv[i]) == 0)
+
+#define PUSHARG(A) componentArgs[nComponentArgs] = (char*)malloc(strlen(A)+1); \
+                   strcpy(componentArgs[nComponentArgs], A); \
+                   ++nComponentArgs;
+
+#define BEGINSWITHQUOTE(A) (A[0] == '\'' || A[0] == '\"')
+
+#define ENDSWITHQUOTE(A) (A[strlen(A)-1] == '\'' || A[strlen(A)-1] == '\"')
+
+#define HASSPACE(A) (strstr(A, " ") != NULL)
+
+
+/*
+ * Constants
+ */
+static const char usage[] = 
+"USAGE:  visit [arguments]\n"
+"\n"
+"    Program arguments:\n"
+"        -gui                 Run with the Graphical User Interface (default)\n"
+"        -cli                 Run with the Command Line Interface\n"
+"        -silex               Run silex\n"
+"        -xmledit             Run xmledit\n"
+"        -mpeg2encode         Run mpeg2encode program for movie-making\n"
+"        -composite           Run composite program for movie-making\n"
+"        -transition          Run transition program for movie-making\n"
+"\n"
+"    Window arguments:\n"
+"        -small               Use a smaller desktop area/window size\n"
+"        -geometry   <spec>   What portion of the screen to use.  This is a\n"
+"                                 standard X Windows geometry specification\n"
+"        -style      <style>  One of: windows,cde,motif,sgi\n"
+"        -background <color>  Background color for GUI\n"
+"        -foreground <color>  Foreground color for GUI\n"
+"        -nowin               Run without viewer windows\n"
+"        -newconsole          Run the component in a new console window\n"
+"\n"
+"    Scripting arguments:\n"
+"        -s    <scriptname>   Runs the specified VisIt script. Note that\n"
+"                             this argument only takes effect with -cli.\n"
+"        -verbose             Prints status information during pipeline\n"
+"                             execution.\n"
+"\n"
+"    Debugging arguments:\n"
+"        -debug <level>       Run with <level> levels of output logging.\n"
+"                             <level> must be between 1 and 5.\n";
+
+/*
+ * Prototypes
+ */
+char *AddEnvironment(int);
+void AddPath(char *, const char *, const char*);
+int ReadKey(const char *key, char **keyval);
+
+/******************************************************************************
+ *
+ * Purpose: This is the main function for a simple C program that launches
+ *          VisIt's components on MS Windows.
+ *
+ * Programmer: Brad Whitlock
+ * Date:       Wed Apr 10 12:23:32 PDT 2002
+ *
+ * Modifications:
+ *   Brad Whitlock, Mon Jul 15 10:57:32 PDT 2002
+ *   I changed the code so it uses the entire path to the executable. This 
+ *   prevents an error where the viewer cannot be found because of another 
+ *   Windows program called "viewer".
+ *
+ *   Brad Whitlock, Thu Jul 18 11:32:52 PDT 2002
+ *   I added quotes around the path and name of the component being run
+ *   since it almost always gets installed in a path that has spaces in
+ *   the name.
+ *
+ *   Brad Whitlock, Mon Feb 10 11:59:38 PDT 2003
+ *   I added code to prevent the -key argument from being printed.
+ *
+ *   Brad Whitlock, Thu Apr 24 07:26:43 PDT 2003
+ *   I added code to strip off the -v version arguments because they are
+ *   not important on Windows.
+ *
+ *   Brad Whitlock, Wed May 7 09:49:59 PDT 2003
+ *   I added the vcl component.
+ *
+ *   Brad Whitlock, Tue Aug 12 09:41:07 PDT 2003
+ *   I added some support for movie making.
+ *
+ *   Brad Whitlock, Tue Nov 11 17:20:05 PST 2003
+ *   I added code to launch Silex and XMLedit.
+ *
+ *   Brad Whitlock, Tue Mar 8 10:28:21 PDT 2005
+ *   I added support for adding any additional arguments in the registry's
+ *   VISITARGS key to the component's command line.
+ *
+ *   Brad Whitlock, Fri Jun 3 14:46:18 PST 2005
+ *   Added code to flush stderr so the Java client can start up the viewer.
+ *
+ *   Brad Whitlock, Wed Jun 22 17:24:08 PST 2005
+ *   Added support for -newconsole.
+ *
+ *   Brad Whitlock, Thu Feb 2 14:48:18 PST 2006
+ *   I changed makemovie.py to makemoviemain.py so right-click movies and
+ *   the "visit -movie" commands work again.
+ *
+ *   Brad Whitlock, Tue Sep 19 17:09:57 PST 2006
+ *   Added support for mpeg2enc.exe so we can create MPEG movies on Windows.
+ * 
+ *   Brad Whitlock, Thu Dec 21 14:52:11 PST 2006
+ *   Added support for transition and composite programs.
+ *
+ *   Kathleen Bonnell, Thu Mar 22 09:29:45 PDT 2007
+ *   Enclose argv[i] in quotes before calling PUSHARG, if there are spaces. 
+ *
+ *   Kathleen Bonnell, Mon Jul  2 10:43:29 PDT 2007 
+ *   Remove last fix. 
+ *
+ *   Kathleen Bonnell, Tue Jul 24 15:19:23 PDT 2007 
+ *   Added tests for spaces in args, so they can be surrounded in quotes, and
+ *   for args beginning with quotes so that the entire arg can be concatenated
+ *   into 1 argument surrounded by quotes. 
+ *
+ *   Kathleen Bonnell, Tue Jan  8 18:09:38 PST 2008 
+ *   When parsing args, moved around the order of testing for spaces and
+ *   surrounding quotes, to fix problem with path-with-spaces used with -o. 
+ * 
+ *   Kathleen Bonnell, Fri Feb 29 16:43:46 PST 2008 
+ *   Added call to free printCommand. 
+ *
+ *   Kathleen Bonnell, Thu Jul 17 4:16:22 PDT 2008 
+ *   Added call to free visitargs if not found, because ReadKey does the
+ *   allocation regardless.
+ *
+ *   Kathleen Bonnell, Wed Sep 10 16:19:53 PDT 2008 
+ *   Added loopback support: it replaces the remote host name with 127.0.0.1
+ *   unless the "-noloopback" flag is given by visit or by the user.
+ *
+ *   Brad Whitlock, Mon Nov 17 12:11:35 PST 2008
+ *   I fixed a bug with host renaming that caused invalid security keys on
+ *   machines with short hostnames.
+ *
+ *****************************************************************************/
+
+int
+main(int argc, char *argv[])
+{
+    int   nComponentArgs = 0;
+    char *componentArgs[100], *command = 0, *printCommand = 0, *visitpath = 0,
+         *visitargs = 0, *cptr = 0, *cptr2 = 0, tmpArg[512];
+    int i, j, size = 0, retval = 0, skipping = 0, nArgsSkip = 0, tmplen = 0;
+    int addMovieArguments = 0, addVISITARGS = 1, useShortFileName = 0;
+    int newConsole = 0;
+    int noloopback = 0;
+    int parallel = 0;
+    int hostset = 0;
+
+    /*
+     * Default values.
+     */
+    char component[100];
+    strcpy(component, "gui");
+
+    /*
+     * Parse the command line arguments.
+     */
+    for(i = 1; i < argc; ++i)
+    {
+        if(ARG("-help"))
+        {
+            printf("%s", usage);
+            return 0;
+        }
+        else if(ARG("-version"))
+        {
+            printf("%s\n", VERSION);
+            return 0;
+        }
+        else if(ARG("-gui"))
+        {
+            strcpy(component, "gui");
+            addVISITARGS = 1;
+        }
+        else if(ARG("-cli"))
+        {
+            strcpy(component, "cli");
+            addVISITARGS = 1;
+        }
+        else if(ARG("-viewer"))
+        {
+            strcpy(component, "viewer");
+            addVISITARGS = 0;
+        }
+        else if(ARG("-mdserver"))
+        {
+            strcpy(component, "mdserver");
+            addVISITARGS = 0;
+        }
+        else if(ARG("-engine"))
+        {
+            strcpy(component, "engine");
+            addVISITARGS = 0;
+        }
+        else if(ARG("-vcl"))
+        {
+            strcpy(component, "vcl");
+            addVISITARGS = 0;
+        }
+        else if(ARG("-movie"))
+        {
+            strcpy(component, "cli");
+            addMovieArguments = 1;
+            useShortFileName = 1;
+        }
+        else if(ARG("-mpeg2encode"))
+        {
+            strcpy(component, "mpeg2enc.exe");
+            addVISITARGS = 1;
+        }
+        else if(ARG("-transition"))
+        {
+            strcpy(component, "visit_transition");
+            addVISITARGS = 1;
+        }
+        else if(ARG("-composite"))
+        {
+            strcpy(component, "visit_composite");
+            addVISITARGS = 1;
+        }
+        else if(ARG("-mpeg_encode"))
+        {
+            fprintf(stderr, "The mpeg_encode component is not supported "
+                            "on Windows! You can only generate sequences "
+                            "of still images.\n");
+            return -1;
+        }
+        else if(ARG("-xmledit"))
+        {
+            strcpy(component, "xmledit");
+            addVISITARGS = 0;
+        }
+        else if(ARG("-silex"))
+        {
+            strcpy(component, "silex");
+            addVISITARGS = 0;
+        }
+        else if(ARG("-v"))
+        {
+            /* Skip the next argument too. */
+            ++i;
+        }
+        else if(ARG("-newconsole"))
+        {
+            newConsole = 1;
+        }
+        else if(ARG("-noloopback"))
+        {
+            noloopback = 1;
+            PUSHARG("-noloopback");
+        }
+        else if(ARG("-par"))
+        {
+            parallel = 1;
+            PUSHARG("-par");
+        }
+        else if(ARG("-np"))
+        {
+            parallel = 1;
+            PUSHARG("-np");
+        }
+        else if(ARG("-host"))
+        {
+            hostset = 1;
+            PUSHARG("-host");
+        }
+        else
+        {
+            if (!BEGINSWITHQUOTE(argv[i]) && HASSPACE(argv[i]))
+            {
+                sprintf(tmpArg, "\'%s\'", argv[i]);
+                PUSHARG(tmpArg);
+            }
+            else if (BEGINSWITHQUOTE(argv[i]) && !ENDSWITHQUOTE(argv[i]))
+            {
+                strcpy(tmpArg, argv[i]);
+                nArgsSkip = 1;
+                tmplen += strlen(argv[i]);
+                for (j = i+1; j < argc; j++)
+                {
+                    nArgsSkip++;
+                    strcat(tmpArg, " ");
+                    strcat(tmpArg, argv[j]);
+                    tmplen += (strlen(argv[j]) +1);
+                    if (ENDSWITHQUOTE(argv[j]))
+                        break;
+                }
+                tmpArg[tmplen] = '\0';
+                PUSHARG(tmpArg);
+                i += (nArgsSkip -1);
+            }
+            else 
+            {
+                PUSHARG(argv[i]);
+            }
+        }
+    }
+
+    if (parallel && !noloopback)
+    {
+        noloopback = 1;
+        PUSHARG("-noloopback");
+    }
+
+    /*
+     * If we want a new console, allocate it now.
+     */
+    if(newConsole)
+    {
+        FreeConsole();
+        AllocConsole();
+    }
+
+    /*
+     * Add some stuff to the environment.
+     */
+    visitpath = AddEnvironment(useShortFileName);
+
+    /*
+     * Get additional VisIt arguments.
+     */
+    if(addVISITARGS)
+    {
+        if(ReadKey("VISITARGS", &visitargs) == 0)
+        {
+            addVISITARGS = 0;
+            free(visitargs);
+            visitargs = 0;
+        }
+    }
+
+    /*
+     * Figure out the length of the command string.
+     */
+    size = strlen(visitpath) + strlen(component) + 4;
+    for(i = 0; i < nComponentArgs; ++i)
+    {
+        /*
+         * Replace the host arg with the loopback instead before we
+         * calculate the size.
+         */
+        if(strcmp(componentArgs[i], "-host") == 0 && !noloopback)
+        {
+            free(componentArgs[i+1]);
+            componentArgs[i+1] = strdup("127.0.0.1"); 
+        }
+
+        size += (strlen(componentArgs[i]) + 1);
+        if (!BEGINSWITHQUOTE(componentArgs[i]) && HASSPACE(componentArgs[i]))
+            size += 2;
+    }
+    if(addMovieArguments)
+    {
+        size += strlen("-s") + 1;
+        size += 1 + strlen(visitpath) + 1 + strlen("makemoviemain.py") + 2;
+        size += strlen("-nowin") + 1;
+    }
+    if(addVISITARGS)
+        size += (strlen(visitargs) + 1);
+
+    /*
+     * Create the command to execute and the string that we print.
+     */
+    command = (char *)malloc(size);
+    memset(command, 0, size);
+    printCommand = (char *)malloc(size);
+    memset(printCommand, 0, size);
+    if(useShortFileName)
+    {
+        sprintf(command, "%s\\%s", visitpath, component);
+        sprintf(printCommand, "%s\\%s", visitpath, component);
+    }
+    else
+    {
+        sprintf(command, "\"%s\\%s\"", visitpath, component);
+        sprintf(printCommand, "\"%s\\%s\"", visitpath, component);
+    }
+    cptr = command + strlen(command);
+    cptr2 = printCommand + strlen(printCommand);
+    for(i = 0; i < nComponentArgs; ++i)
+    {
+        if (!BEGINSWITHQUOTE(componentArgs[i])&& HASSPACE(componentArgs[i]))
+        {
+            sprintf(cptr, " \'%s\'", componentArgs[i]);
+            cptr += (strlen(componentArgs[i]) + 3);
+        }
+        else
+        {
+            sprintf(cptr, " %s", componentArgs[i]);
+            cptr += (strlen(componentArgs[i]) + 1);
+        }
+
+        if(strcmp(componentArgs[i], "-key") == 0)
+            skipping = 1;
+
+        if(skipping == 0) 
+        {
+            if (!BEGINSWITHQUOTE(componentArgs[i])&& HASSPACE(componentArgs[i]))
+            {
+                sprintf(cptr2, " \'%s\'", componentArgs[i]);
+                cptr2 += (strlen(componentArgs[i]) + 3);
+            }
+            else
+            {
+                sprintf(cptr2, " %s", componentArgs[i]);
+                cptr2 += (strlen(componentArgs[i]) + 1);
+            }
+        }
+    }
+    if(addVISITARGS)
+    {
+        sprintf(cptr, " %s", visitargs);
+        cptr += (strlen(visitargs) + 1);
+        sprintf(cptr2, " %s", visitargs);
+        cptr2 += (strlen(visitargs) + 1);
+    }
+    if(addMovieArguments)
+    {
+        sprintf(cptr, " -s \"%s\\makemoviemain.py\" -nowin", visitpath);
+        sprintf(cptr2, " -s \"%s\\makemoviemain.py\" -nowin", visitpath);
+    }
+    command[size-1] = '\0';
+    printCommand[size-1] = '\0';
+
+    /*
+     * Print the run information.
+     */
+    fprintf(stderr, "Running: %s\n", printCommand);
+    fflush(stderr);
+
+    /*
+     * Launch the appropriate VisIt component.
+     */
+    retval = system(command);
+
+    /*
+     * Free memory
+     */
+    free(command);
+    free(printCommand);
+    for(i = 0; i < nComponentArgs; ++i)
+        free(componentArgs[i]);
+    free(visitpath);
+    if(visitargs != 0)
+        free(visitargs);
+
+    return retval;
+}
+
+/******************************************************************************
+ *
+ * Purpose: Reads a string value from the Windows registry entry for the
+ *          current version of VisIt.
+ *
+ * Programmer: Brad Whitlock
+ * Date:       Mon Aug 26 13:08:21 PST 2002
+ *
+ * Input Arguments:
+ *   which_root : The root key to open.
+ *   key        : The key that we're looking for.
+ *
+ * Output Arguments:
+ *   keyval : A string containing the value for the key. This memory is
+ *            allocated regardless of whether or not the key is found and it
+ *            should be freed by the caller.
+ *
+ * Modifications:
+ *   Kathleen Bonnell, Fri Feb 29 16:43:46 PST 2008 
+ *   Only malloc keyval if it is null. 
+ *
+ *****************************************************************************/
+
+int
+ReadKeyFromRoot(HKEY which_root, const char *key, char **keyval)
+{
+    int  readSuccess = 0;
+    char regkey[100];
+    HKEY hkey;
+
+    /* 
+     * Try and read the key from the system registry. 
+     */
+    sprintf(regkey, "VISIT%s", VERSION);
+    if (*keyval == 0)
+        *keyval = (char *)malloc(500);
+    
+    if(RegOpenKeyEx(which_root, regkey, 0, KEY_QUERY_VALUE, &hkey) == 
+       ERROR_SUCCESS)
+    {
+        DWORD keyType, strSize = 500;
+        if(RegQueryValueEx(hkey, key, NULL, &keyType, (LPBYTE)*keyval, 
+                           &strSize) == ERROR_SUCCESS)
+        {
+            readSuccess = 1;
+        }
+
+        RegCloseKey(hkey);
+    }
+
+    return readSuccess;
+}
+
+/******************************************************************************
+ *
+ * Purpose: Reads a string value from the Windows registry entry for the
+ *          current version of VisIt.
+ *
+ * Programmer: Brad Whitlock
+ * Date:       Mon Aug 26 13:08:21 PST 2002
+ *
+ * Input Arguments:
+ *   key : The key that we're looking for.
+ *
+ * Output Arguments:
+ *   keyval : A string containing the value for the key. This memory is
+ *            allocated regardless of whether or not the key is found and it
+ *            should be freed by the caller.
+ *
+ * Modifications:
+ *   Brad Whitlock, Mon Jul 12 16:34:18 PST 2004
+ *   I made it use ReadKeyFromRoot so we can check for VisIt information
+ *   in a couple places. This is to avoid the situation where VisIt won't
+ *   run when installed without Administrator access.
+ *
+ *****************************************************************************/
+
+int
+ReadKey(const char *key, char **keyval)
+{
+    int retval = 0;
+
+    if((retval = ReadKeyFromRoot(HKEY_CLASSES_ROOT, key, keyval)) == 0)
+        retval = ReadKeyFromRoot(HKEY_CURRENT_USER, key, keyval);
+    
+    return retval;     
+}
+
+
+/******************************************************************************
+ *
+ * Purpose: Adds information needed to run VisIt to the environment.
+ *
+ * Programmer: Brad Whitlock
+ * Date:       Tue Apr 16 14:26:30 PST 2002
+ *
+ * Modifications:
+ *   Brad Whitlock, Thu May 9 11:50:49 PDT 2002
+ *   I made it read from the Windows registry to get the installation path.
+ *
+ *   Brad Whitlock, Mon Jul 15 10:59:19 PDT 2002
+ *   I made the function return the path to the VisIt installation.
+ *
+ *   Brad Whitlock, Mon Aug 26 12:54:36 PDT 2002
+ *   I made it try and read SSH and SSHARGS from the registry.
+ *
+ *   Brad Whitlock, Thu Sep 5 15:58:07 PST 2002
+ *   I added VISITHOME.
+ *
+ *   Brad Whitlock, Fri Feb 28 12:24:11 PDT 2003
+ *   I improved how the path is added and I fixed a potential memory problem.
+ *
+ *   Brad Whitlock, Wed Apr 23 09:28:44 PDT 2003 
+ *   I added VISITSYSTEMCONFIG to the environment.
+ *
+ *   Brad Whitlock, Tue Aug 12 10:47:16 PDT 2003
+ *   I added an option that lets us return VisIt's path as the short system
+ *   name version of the path so we can effectively do visit -movie from
+ *   the command line.
+ *
+ *   Brad Whitlock, Wed Dec 10 16:12:21 PST 2003
+ *   I changed the default directory that we use if VISITHOME is not
+ *   found. In that case, it now tries to look up VISITDEVDIR. Finally,
+ *   if that is not found then it resorts to using
+ *
+ *   Brad Whitlock, Mon Aug 16 09:22:53 PDT 2004
+ *   Added binary locations for MSVC7.Net versions of VisIt.
+ *
+ *   Kathleen Bonnell, Thu Jul 19 07:56:22 PDT 2007
+ *   Added VISITUSERHOME, which defaults to VISITHOME if the reg key could
+ *   not be found.  Create the directory if it does not exist, and add 
+ *   "My images" subdir for saving windows.
+ *
+ *   Kathleen Bonnell, Tue Jan  8 18:09:38 PST 2008 
+ *   Account for the fact that VisIt may be built with MSVC8, so location of
+ *   config dir and binaries differs -- use new _VISIT_MSVC define. 
+ *   
+ *   Kathleen Bonnell, Fri Feb 29 16:43:46 PST 2008 
+ *   Added call to free visituserpath and visitdevdir.
+ *
+ *   Kathleen Bonnell, Thu Apr 17 10:20:25 PDT 2008
+ *   Use SHGetFolderPath to retrieve "My Documents" folder path (no longer
+ *   stored in registry at install) to better support roaming profiles.
+ *   Use "Application Data" path for private plugins, as users have write-
+ *   privileges there (and it better supports roaming profiles).
+ *
+ *   Kathleen Bonnell, Wed May 21 08:12:16 PDT 2008 
+ *   Use ';' to separate different paths for VISITPLUGINDIR. 
+ *
+ *   Kathleen Bonnell, Mon Jun 2 18:08:32 PDT 2008
+ *   Change how VisItDevDir is retrieved and stored.
+ *
+ *   Kathleen Bonnell, Thu July 17 16:20:22 PDT 2008 
+ *   Free visitpath if we didn't find VISITHOME, because ReadKey mallocs
+ *   regardless.  Same for tempvisitdev.  If VISITDEVDIR not defined, then
+ *   find the full path to this executable and use it for visitpath and
+ *   visitdevdir instead.
+ *
+ *   Kathleen Bonnell, Thu July 31 16:55:43 PDT 2008 
+ *   Initialize visitdevdir.
+ *
+ *   Kathleen Bonnell, Wed Oct 8 08:49:11 PDT 2008 
+ *   Re-organized code.  Modified settingup of VISITSSH and VISITSSHARGS so
+ *   that if these are already set by user in environment they won't be 
+ *   overwritten. 
+ *
+ *****************************************************************************/
+
+char *
+AddEnvironment(int useShortFileName)
+{
+    char *tmp, *visitpath = 0;
+    char *visitdevdir = 0;
+    char tmpdir[512];
+    int haveVISITHOME = 0;
+    int haveVISITDEVDIR=0;
+
+    tmp = (char *)malloc(10000);
+
+    /*
+     * Determine visit path
+     */
+    haveVISITHOME         = ReadKey("VISITHOME", &visitpath);
+
+    /*
+     * We could not get the value associated with the key. It may mean
+     * that VisIt was not installed properly. Use a default value.
+     */
+    if(!haveVISITHOME)
+    {
+        char *tempvisitdev = 0;
+        int freetempvisitdev = 1;
+        free(visitpath);
+        haveVISITDEVDIR = 0;
+        haveVISITDEVDIR = ReadKey("VISITDEVDIR", &tempvisitdev);
+
+        if (!haveVISITDEVDIR)
+        {
+            free(tempvisitdev);
+            freetempvisitdev = 0;
+            if((tempvisitdev = getenv("VISITDEVDIR")) != NULL)
+            {
+                haveVISITDEVDIR = 1;
+            }
+        }
+
+        if(haveVISITDEVDIR)
+        {
+            char configDir[512];
+            char thirdPartyDir[512];
+#if defined(_DEBUG)
+            sprintf(configDir, "\\windowsbuild\\bin\\%s\\Debug", _VISIT_MSVC);
+#else
+            sprintf(configDir, "\\windowsbuild\\bin\\%s\\Release", 
+                    _VISIT_MSVC);
+#endif
+            sprintf(thirdPartyDir, "\\windowsbuild\\bin\\%s\\ThirdParty", 
+                    _VISIT_MSVC);
+            visitpath = (char *)malloc(strlen(tempvisitdev) + 
+                        strlen(configDir) + 1);
+            visitdevdir = (char *)malloc(strlen(tempvisitdev) + 
+                          strlen(thirdPartyDir) + 1);
+            sprintf(visitpath, "%s%s", tempvisitdev, configDir);
+            sprintf(visitdevdir, "%s%s", tempvisitdev, thirdPartyDir);
+        }
+        else
+        {
+            char tmpdir[MAX_PATH];
+            if (GetModuleFileName(NULL, tmpdir, MAX_PATH) != 0)
+            {
+                int pos = 0;
+                int len = strlen(tmpdir);
+                for (pos = len; tmpdir[pos] != '\\' && pos >=0; pos--)
+                {
+                    continue;
+                }
+                if (pos <= 0)
+                    pos = len;
+
+                visitpath = (char*)malloc(pos +1);
+                strncpy(visitpath, tmpdir, pos);
+                visitpath[pos] = '\0';
+                len = strlen(visitpath);
+                for (pos = len; visitpath[pos] != '\\' && pos >=0; pos--)
+                {
+                    continue;
+                }
+                if (pos <= 0)
+                    pos = len;
+
+                visitdevdir = (char*)malloc(pos +12);
+                strncpy(visitdevdir, visitpath, pos);
+                visitdevdir[pos] = '\0';
+                sprintf(visitdevdir,"%s\\ThirdParty", visitdevdir);
+            }
+        }
+        if (tempvisitdev != 0 && freetempvisitdev)
+            free(tempvisitdev);
+    }
+ 
+    /*
+     * Determine visit user path (Path to My Documents).
+     */
+    {
+        char visituserpath[512], expvisituserpath[512];
+        int haveVISITUSERHOME=0;
+        TCHAR szPath[MAX_PATH];
+        struct _stat fs;
+        if(SUCCEEDED(SHGetFolderPath(NULL, CSIDL_PERSONAL, NULL, 
+                                 SHGFP_TYPE_CURRENT, szPath))) 
+        {
+            SNPRINTF(visituserpath, 512, "%s\\VisIt %s", szPath, VERSION);
+            haveVISITUSERHOME = 1;
+        }
+
+        if (haveVISITUSERHOME)
+        {
+            ExpandEnvironmentStrings(visituserpath,expvisituserpath,512);
+            if (_stat(expvisituserpath, &fs) == -1)
+            {
+                mkdir(expvisituserpath);
+            }
+        }
+        else
+        {
+            strcpy(expvisituserpath, visitpath);
+        }
+        sprintf(tmpdir, "%s\\My images", expvisituserpath);
+        if (_stat(tmpdir, &fs) == -1)
+        {
+            mkdir(tmpdir);
+        }
+        sprintf(tmp, "VISITUSERHOME=%s", expvisituserpath);
+        putenv(tmp);
+    }
+
+    /* 
+     * Turn the long VisIt path into the shortened system path.
+     */
+    if(useShortFileName)
+    {
+        char *vp2 = (char *)malloc(512);
+        GetShortPathName(visitpath, vp2, 512);
+        free(visitpath);
+        visitpath = vp2;
+    }
+
+
+    /*
+     * Add VisIt's home directory to the path.
+     */
+    AddPath(tmp, visitpath, visitdevdir);
+
+    /*
+     * Set the VisIt home dir.
+     */
+    sprintf(tmp, "VISITHOME=%s", visitpath);
+    putenv(tmp);
+
+    if (visitdevdir != 0)
+        free(visitdevdir);
+
+    /*
+     * Set the plugin dir.
+     */
+    { 
+        char appData[MAX_PATH];
+        if (SUCCEEDED(SHGetFolderPath(NULL, CSIDL_APPDATA, NULL,
+                                          SHGFP_TYPE_CURRENT, appData)))
+        {
+            PathAppend(appData, "LLNL");
+            PathAppend(appData, "VisIt");
+            sprintf(tmp, "VISITPLUGINDIR=%s;%s", appData, visitpath);
+        }
+        else
+        {
+            sprintf(tmp, "VISITPLUGINDIR=%s", visitpath);
+        }
+    }
+
+    putenv(tmp);
+
+    /*
+     * Set the help dir.
+     */
+    sprintf(tmp, "VISITHELPHOME=%s\\help", visitpath);
+    putenv(tmp);
+
+
+    /*
+     * Set the SSH program.
+     */
+    { 
+        char *ssh = NULL, *sshargs = NULL;
+        int haveSSH = 0, haveSSHARGS = 0, freeSSH = 0, freeSSHARGS = 0;
+        
+        if((ssh = getenv("VISITSSH")) == NULL)
+        {
+            haveSSH = ReadKey("SSH", &ssh);
+            if(haveSSH)
+            {
+                sprintf(tmp, "VISITSSH=%s", ssh);
+                putenv(tmp);
+            }
+            else
+            {
+                sprintf(tmp, "VISITSSH=%s\\qtssh.exe", visitpath);
+                putenv(tmp);
+            }
+            free(ssh);
+        }
+
+        /*
+         * Set the SSH arguments.
+         */
+        if((sshargs = getenv("VISITSSHARGS")) == NULL)
+        {
+            haveSSHARGS = ReadKey("SSHARGS", &sshargs);
+            if(haveSSHARGS)
+            {
+                sprintf(tmp, "VISITSSHARGS=%s", sshargs);
+                putenv(tmp);
+            }
+            free(sshargs);
+        }
+    }
+
+    /*
+     * Set the system config variable.
+     */
+    {
+        char *visitsystemconfig = NULL;
+        int haveVISITSYSTEMCONFIG = 0;
+        haveVISITSYSTEMCONFIG = ReadKey("VISITSYSTEMCONFIG",
+                                        &visitsystemconfig);
+        if(haveVISITSYSTEMCONFIG)
+        {
+            sprintf(tmp, "VISITSYSTEMCONFIG=%s", visitsystemconfig);
+            putenv(tmp);
+        }
+        free(visitsystemconfig);
+    }
+
+    free(tmp);
+
+    return visitpath;
+}
+
+/******************************************************************************
+ *
+ * Purpose: Removes all versions of VisIt from the path and adds the current
+ *          VisIt version.
+ *
+ * Programmer: Brad Whitlock
+ * Date:       Fri Feb 28 12:22:31 PDT 2003
+ *
+ * Input Arguments:
+ *   tmp       : A temporary buffer to use for string concatenation.
+ *   visitpath : The path to the current version of VisIt.
+ *
+ * Modifications:
+ *   Kathleen Bonnell, Mon Jun 2 18:11:01 PDT 2008
+ *   Add 'visitdev' argument. Add it to the path if not null.
+ *
+ *****************************************************************************/
+
+void
+AddPath(char *tmp, const char *visitpath, const char *visitdev)
+{
+    char *env = 0, *path, *start = tmp;
+
+    strcpy(tmp, "PATH=");
+    start = path = tmp + 5;
+
+    if((env = getenv("PATH")) != NULL)
+    {
+       char *token, *env2;
+
+       env2 = (char *)malloc(strlen(env) + 1);
+       strcpy(env2, env);
+
+       token = strtok( env2, ";" );
+       while(token != NULL)
+       {
+           /* 
+            * If the token does not contain "VisIt " then add it to the path.
+            */
+           if(strstr(token, "VisIt ") == NULL)
+           {
+               int len = strlen(token);
+               if(path == start)
+               {
+                   sprintf(path, "%s", token);
+                   path += len;
+               }
+               else
+               {
+                   sprintf(path, ";%s", token);
+                   path += (len + 1);
+               }
+           }
+
+           /* 
+            * Get next token:
+            */
+           token = strtok( NULL, ";" );
+       }
+
+       free(env2);
+    }
+
+    if(path == start)
+        sprintf(path, "%s", visitpath);
+    else
+        sprintf(path, ";%s", visitpath);
+
+    if (visitdev != 0)
+        sprintf(path, ";%s", visitdev);
+
+    putenv(tmp);
+}
