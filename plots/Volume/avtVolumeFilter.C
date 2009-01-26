@@ -47,8 +47,6 @@
 #include <ExpressionList.h>
 #include <ParsingExprList.h>
 
-#include <vtkSkew.h>
-
 #include <avtCommonDataFunctions.h>
 #include <avtCompositeRF.h>
 #include <avtDatasetExaminer.h>
@@ -248,6 +246,22 @@ avtVolumeFilter::Execute(void)
 //    Make sure the min and max for log and skew are set right.
 //
 // ****************************************************************************
+
+
+template <class T>
+inline T
+vtkSkewValue(T val, T min, T max, T factor)
+{ 
+    if (factor <= 0 || factor == 1. || min == max) 
+        return val;
+
+    T range = max - min; 
+    T k = range / (factor - 1.); 
+    T t = (val - min) / range;
+    T rv =  k * ((T)exp(t * (T)log(factor)) -1.) + min;
+    return rv;
+}
+
 
 avtImage_p
 avtVolumeFilter::RenderImage(avtImage_p opaque_image,
