@@ -47,6 +47,8 @@
 #include <ExpressionList.h>
 #include <ParsingExprList.h>
 
+#include <vtkSkew.h>
+
 #include <avtCommonDataFunctions.h>
 #include <avtCompositeRF.h>
 #include <avtDatasetExaminer.h>
@@ -238,6 +240,13 @@ avtVolumeFilter::Execute(void)
 //    Hank Childs, Sat Aug 30 10:51:40 PDT 2008
 //    Turn on shading.
 //
+//    Hank Childs, Fri Dec 19 15:42:39 PST 2008
+//    Fix an indexing problem with kernel based sampling combined with
+//    lighting.
+//
+//    Hank Childs, Mon Jan 26 11:44:40 PST 2009
+//    Make sure the min and max for log and skew are set right.
+//
 // ****************************************************************************
 
 avtImage_p
@@ -272,6 +281,30 @@ avtVolumeFilter::RenderImage(avtImage_p opaque_image,
     double range[2];
     range[0] = (artificialMin ? atts.GetColorVarMin() : actualRange[0]);
     range[1] = (artificialMax ? atts.GetColorVarMax() : actualRange[1]);
+    if (atts.GetScaling() == VolumeAttributes::Log10)
+    {
+        if (artificialMin)
+            if (range[0] > 0)
+                range[0] = log10(range[0]);
+        if (artificialMax)
+            if (range[1] > 0)
+                range[1] = log10(range[1]);
+    }
+    else if (atts.GetScaling() == VolumeAttributes::Skew)
+    {
+        if (artificialMin)
+        {
+            double newMin = vtkSkewValue(range[0], range[0], range[1],
+                                         atts.GetSkewFactor()); 
+            range[0] = newMin;
+        }
+        if (artificialMax)
+        {
+            double newMax = vtkSkewValue(range[1], range[0], range[1],
+                                         atts.GetSkewFactor()); 
+            range[1] = newMax;
+        }
+    }
     om.SetMin(range[0]);
     om.SetMax(range[1]);
 
@@ -456,7 +489,7 @@ avtVolumeFilter::RenderImage(avtImage_p opaque_image,
     if (atts.GetSampling() == VolumeAttributes::KernelBased)
     {
         software->SetKernelBasedSampling(true);
-        compositeRF->SetWeightVariableIndex(vl.nvars);
+        compositeRF->SetWeightVariableIndex(count);
     }
     
     if (atts.GetRendererType() == VolumeAttributes::RayCastingIntegration)
