@@ -325,6 +325,9 @@
 #   Brad Whitlock, Wed Oct 29 15:13:15 PDT 2008
 #   Added Ralph Bruckschen's Gadget 2.0 reader.
 #
+#   Hank Childs, Tue Jan 27 08:45:57 PST 2009
+#   Added FastBit category (will add Prabhat's HDF_UC reader later).
+#
 ##############################################################################
 
 @SET_MAKE@
@@ -359,6 +362,7 @@ PDB=Cale KullLite PDB
 NETCDF=NETCDF S3D
 VISUS=ViSUS
 H5PART=H5Part
+FASTBIT=
 CCMIO=CCM
 SIMULATION=SimV1 SimV1Writer
 
@@ -421,7 +425,7 @@ REQUIRED=\
 # The following is a minimal subset of the OPTIONAL/REQUIRED plugins
 MINIMAL=Curve2D RAW VTK
 
-THIRDPARTY_DEPENDENT=@EXODUS@ @HDF4@ @HDF5_TARGET@ @SILO_TARGET@ @PDB@ @MILI@ @BOXLIB2D@ @BOXLIB3D@ @VISUS@ @NETCDF@ @CGNS@ @GDAL@ @CFITSIO@ @ITAPS_C@ @H5PART@ @CCMIO@ @SIMULATION@
+THIRDPARTY_DEPENDENT=@EXODUS@ @HDF4@ @HDF5_TARGET@ @SILO_TARGET@ @PDB@ @MILI@ @BOXLIB2D@ @BOXLIB3D@ @VISUS@ @NETCDF@ @CGNS@ @GDAL@ @CFITSIO@ @ITAPS_C@ @H5PART@ @CCMIO@ @SIMULATION@ @FASTBIT@
 
 SUBDIRS=@DB_BUILD_DIRS@
 ALLSUBDIRS=$(REQUIRED) $(THIRDPARTY_DEPENDENT) $(SAMPLES) $(OPTIONAL)
