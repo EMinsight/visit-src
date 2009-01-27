@@ -326,7 +326,10 @@
 #   Added Ralph Bruckschen's Gadget 2.0 reader.
 #
 #   Hank Childs, Tue Jan 27 08:45:57 PST 2009
-#   Added FastBit category (will add Prabhat's HDF_UC reader later).
+#   Added FastBit category.
+#
+#   Hank Childs, Tue Jan 27 10:36:10 PST 2009
+#   Added Prabhat's HDF_UC reader.
 #
 ##############################################################################
 
@@ -362,7 +365,7 @@ PDB=Cale KullLite PDB
 NETCDF=NETCDF S3D
 VISUS=ViSUS
 H5PART=H5Part
-FASTBIT=
+FASTBIT=HDF_UC
 CCMIO=CCM
 SIMULATION=SimV1 SimV1Writer
 

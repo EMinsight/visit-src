@@ -249,6 +249,9 @@
 #    Hank Childs, Sun Aug 31 08:04:42 PDT 2008
 #    Remove avtGradients.
 #
+#    Hank Childs and Jeremy Meredith, Tue Jan 27 11:00:31 PST 2009
+#    Added avtHistogramSpecification and avtIdentifierSelection.
+#
 ##############################################################################
 
 @SET_MAKE@
@@ -284,6 +287,8 @@ Data_src= \
   Data/avtHexahedronExtractor.C \
   Data/avtHexahedron20Extractor.C \
   Data/avtHexahedron27Extractor.C \
+  Data/avtHistogramSpecification.C \
+  Data/avtIdentifierSelection.C \
   Data/avtImage.C \
   Data/avtImagePartition.C \
   Data/avtImageRepresentation.C \

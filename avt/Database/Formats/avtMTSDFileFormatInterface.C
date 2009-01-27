@@ -233,6 +233,11 @@ avtMTSDFileFormatInterface::GetVectorVar(int ts, int dom, const char *var)
 //  Programmer: Hank Childs
 //  Creation:   October 8, 2001
 //
+//  Modifications:
+//
+//    Hank Childs, Tue Jan 27 11:08:46 PST 2009
+//    Change behavior with requesting meta data for all domains.
+//
 // ****************************************************************************
 
 void *
@@ -243,8 +248,14 @@ avtMTSDFileFormatInterface::GetAuxiliaryData(const char *var, int ts, int dom,
     {
         debug5 << "Auxiliary data was requested of multiple timestep, "
                << "single domain file format.  Since the data was requested "
-               << "for all domains, returning NULL." << endl;
-        return NULL;
+               << "for all domains, requesting it of the first domain" << endl;
+        if (domains[0] != NULL)
+            return domains[0]->GetAuxiliaryData(var, ts, type, args, df);
+        else
+        {
+            debug5 << "REVERSAL: domains[0] is NULL!  Returning NULL" << endl;
+            return NULL;
+        }
     }
 
     if (dom < 0 || dom >= nDomains)
