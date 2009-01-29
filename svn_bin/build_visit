@@ -454,6 +454,10 @@
 #     Mark C. Miller, Tue Jan 20 12:30:49 PST 2009
 #     Added code for Silo install on Darwin to try a C++ compiler if a C
 #     compiler fails the link phase of the install.
+#
+#     Jeremy Meredith, Thu Jan 29 13:24:34 EST 2009
+#     Fixing Mesa 6.4.2 patching.  (This is already fixed on the 2.0 branch?)
+#
 # *****************************************************************************
 #
 # *************************************************************************** #
@@ -2561,7 +2565,7 @@ function apply_mesa_patch
 {
    info_box "Patching Mesa . . ." 1>&3
    if [[ ${MESA_VERSION} == 6.4.2 ]] ; then
-      apply_mesa_642_patch_general
+      apply_mesa_642_patch
    fi
 
    return 0
