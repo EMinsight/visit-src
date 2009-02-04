@@ -241,6 +241,11 @@ public:
         TurnOffAllLocksRPC,
         SetDefaultFileOpenOptionsRPC,
         SetSuppressMessagesRPC,
+        ApplyNamedSelectionRPC,
+        CreateNamedSelectionRPC,
+        DeleteNamedSelectionRPC,
+        LoadNamedSelectionRPC,
+        SaveNamedSelectionRPC,
         MaxRPC
     };
 

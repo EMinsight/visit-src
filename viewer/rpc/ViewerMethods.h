@@ -106,6 +106,9 @@ class ViewerState;
 //   Brad Whitlock, Thu Jul 24 09:18:11 PDT 2008
 //   Added time state argument to OverlayDatabase.
 //
+//   Hank Childs, Wed Jan 28 14:28:59 PST 2009
+//   Added support for named selection methods.
+//
 // ****************************************************************************
 
 class VIEWER_RPC_API ViewerMethods
@@ -168,6 +171,12 @@ public:
     void OpenComputeEngine(const std::string &hostName, const stringVector &argv);
     void CloseComputeEngine(const std::string &hostName, const std::string &simName);
     void InterruptComputeEngine(const std::string &hostName, const std::string &simName);
+
+    void ApplyNamedSelection(const std::string &selName);
+    void CreateNamedSelection(const std::string &selName);
+    void DeleteNamedSelection(const std::string &selName);
+    void LoadNamedSelection(const std::string &selName);
+    void SaveNamedSelection(const std::string &selName);
 
     void AnimationSetNFrames(int nFrames);
     void AnimationPlay();

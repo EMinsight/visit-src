@@ -289,6 +289,9 @@ typedef std::map<std::string, int> StringIntMap;
 //    followsTime from the ViewerPlotListElement because it's not necessary.
 //    Added inheritSILRestriction bool argument to AddPlot.
 //   
+//    Hank Childs, Mon Feb  2 16:02:04 PST 2009
+//    Added argument to GetActivePlotIDs.
+//
 // ****************************************************************************
 
 
@@ -446,7 +449,7 @@ public:
     void ResetNetworkIds(const EngineKey &key);
     std::string GetVarName();
     ViewerPlot *GetPlot(const int id) const;
-    void GetActivePlotIDs(intVector &) const;
+    void GetActivePlotIDs(intVector &, bool onlyRealizedAndUnhidden = true) const;
 
     int GetWindowId() const;
 

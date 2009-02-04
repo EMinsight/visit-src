@@ -99,6 +99,9 @@
 #    Dave Pugmire, Mon Oct  6 12:47:24 EDT 2008
 #    Added back the streamlinefilter.
 #
+#    Hank Childs, Mon Feb  2 16:42:03 PST 2009
+#    Added avtNamedSelectionFilter.
+#
 ##############################################################################
 
 ##
@@ -131,6 +134,7 @@ SRC=\
  avtLineoutFilter.C \
  avtMassVoxelExtractor.C \
  avtMeshLogFilter.C \
+ avtNamedSelectionFilter.C \
  avtPointToGlyphFilter.C \
  avtRayCompositer.C \
  avtRayTracer.C \
