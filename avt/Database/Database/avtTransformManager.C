@@ -62,6 +62,9 @@
 #include <vtkRectilinearGrid.h>
 #include <vtkCellTypes.h>
 #include <vtkUnstructuredGrid.h>
+#include <vtkStructuredGrid.h>
+
+#include <vtkVisItUtility.h>
 
 #include <avtDatabaseMetaData.h>
 #include <avtDatasetCollection.h>
@@ -626,6 +629,10 @@ avtTransformManager::avtTransformManager(avtVariableCache *_gdbCache) :
 
 avtTransformManager::~avtTransformManager()
 {
+    // Take care to clear any of the funky timesteps that might have been
+    // introduced to handle things we want to cache ACROSS timesteps. See,
+    // for example, CSGToDiscrete().
+    cache.ClearTimestep(-1);
 }
 
 void
@@ -900,6 +907,52 @@ avtTransformManager::NativeToFloat(const avtDatabaseMetaData *const md,
 
 
 // ****************************************************************************
+//  Method: FindMatchingCSGDiscretization 
+//
+//  Purpose: Search all timesteps in cache for matching discretization.
+//
+//  Programmer: Mark C. Miller 
+//  Creation:   Friday, February 13, 2009 
+// ****************************************************************************
+
+vtkDataSet *
+avtTransformManager::FindMatchingCSGDiscretization(
+    const avtDatabaseMetaData *const md,
+    const avtDataRequest_p &dataRequest,
+    const char *vname, const char *type,
+    int ts, int dom, const char *mat)
+{
+    vtkCSGGrid *curTsDs = (vtkCSGGrid *) gdbCache->GetVTKObject(vname, type, ts, dom, mat);
+    if (curTsDs == 0)
+        return 0;
+
+    // compare the CSGGrid object as read from the format to the
+    // current object
+    vtkCSGGrid *oldTsDs = (vtkCSGGrid *) cache.GetVTKObject(vname, type, -1, dom, mat);
+    if (oldTsDs && *oldTsDs == *curTsDs)
+    {
+        // compare the discretization parameters
+        void_ref_ptr oldVrDr = cache.GetVoidRef(vname,
+                               avtVariableCache::DATA_SPECIFICATION, -1, dom);
+        avtDataRequest *oldDr = (avtDataRequest *) *oldVrDr;
+        if ((oldDr->DiscBoundaryOnly() == dataRequest->DiscBoundaryOnly()) &&
+            (oldDr->DiscTol() == dataRequest->DiscTol()) &&
+            (oldDr->FlatTol() == dataRequest->FlatTol()) && 
+            (oldDr->DiscMode() == dataRequest->DiscMode()))
+        {
+            //
+            // If we arrive here, we know that the CSGGrid objects
+            // are the same as well as the discretization parameters
+            //
+            debug1 << "For CSGGrid object \"" << vname << "\"(ts=" << ts 
+                   << "), found matching discretization at (ts=" << -1 << ")." << endl;
+            return (vtkDataSet*) cache.GetVTKObject(vname, "DISCRETIZED_CSG", -1, dom, mat);
+        }
+    }
+    return 0;
+}
+
+// ****************************************************************************
 //  Method: CSGToDiscrete transformation
 //
 //  Purpose: Convert dataset and/or data arrays defined on it to from their
@@ -924,6 +977,10 @@ avtTransformManager::NativeToFloat(const avtDatabaseMetaData *const md,
 //    Added argument for the domain ID to the signature.  This is needed for
 //    efficiency when accessing the cache.
 //
+//    Mark C. Miller, Fri Feb 13 17:07:38 PST 2009
+//    Added call to find matching CSG discretization. Made it smarter about
+//    caching discretizations to reduce frequency of cases where a CSG mesh
+//    that does not vary with time is re-discretized each timestep.
 // ****************************************************************************
 vtkDataSet *
 avtTransformManager::CSGToDiscrete(const avtDatabaseMetaData *const md,
@@ -971,9 +1028,18 @@ avtTransformManager::CSGToDiscrete(const avtDatabaseMetaData *const md,
                     (olddataRequest->FlatTol() != dataRequest->FlatTol()) ||
                     (olddataRequest->DiscMode() != dataRequest->DiscMode()))
                     dgrid = 0;
-	        debug1 << "Found discretized CSG grid in cache" << endl;
+                else
+	            debug1 << "Found discretized CSG grid in cache for current timestate." << endl;
             }
-            if (!dgrid)
+
+            //
+            // Ok, we didn't find a result for the current timestate. But, there might
+            // be a result from another timestate we could use. We look for one now.
+            //
+            if (dgrid == 0)
+                dgrid = FindMatchingCSGDiscretization(md, dataRequest, vname, type, ts, dom, mat);
+
+            if (dgrid == 0)
             {
 	        debug1 << "No discretized CSG grid in cache. Computing a disrcetization..." << endl;
 
@@ -1000,12 +1066,40 @@ avtTransformManager::CSGToDiscrete(const avtDatabaseMetaData *const md,
                                                      bnds[3], bnds[4], bnds[5]);
                 }
                 dgrid->Update();
+
+                //
+                // Cache the discretized mesh for this timestep
+                //
                 cache.CacheVTKObject(vname, type, ts, dom, mat, dgrid);
                 dgrid->Delete();
+
+                //
+                // Ok, this is a bit of a hack. We want to cache BOTH the
+                // discretized result AND the original CSG input mesh in such
+                // a way that a later ClearTimestep() WILL NOT delete 'em. So,
+                // we stick them in the cache at timestep=-1. Also, we use 
+                // a TransformManager unique 'type' of "DISCRETEIZED_CSG" to
+                // disambiguate between the csg input and its discretized output.
+                // We do this caching so that if a CSG grid does NOT change with
+                // time, we can avoid re-discretizing it each timestep. 
+                //
+                vtkCSGGrid *csgcopy = vtkCSGGrid::New();
+                csgcopy->ShallowCopy(csgmesh);
+                cache.CacheVTKObject(vname, type, -1, dom, mat, csgcopy);
+                csgcopy->Delete();
+
+                vtkDataSet *dgridcopy = dgrid->NewInstance();
+                dgridcopy->ShallowCopy(dgrid);
+                cache.CacheVTKObject(vname, "DISCRETIZED_CSG", -1, dom, mat, dgridcopy);
+                dgridcopy->Delete();
+
                 avtDataRequest *newdataRequest = new avtDataRequest(dataRequest);
                 const void_ref_ptr vr = void_ref_ptr(newdataRequest, DestructDspec);
                 cache.CacheVoidRef(vname, avtVariableCache::DATA_SPECIFICATION,
                     ts, dom, vr);
+                // Also, cache a copy of the data specification at time -1, too.
+                cache.CacheVoidRef(vname, avtVariableCache::DATA_SPECIFICATION,
+                    -1, dom, vr);
             }
 
             // copy same procuedure used in avtGenericDatabase to put object into
@@ -1173,12 +1267,15 @@ avtTransformManager::TransformMaterialDataset(const avtDatabaseMetaData *const m
 //
 //  Programmer: Mark C. Miller, Wed Jan  7 09:35:22 PST 2009
 //
+//  Modifications:
+//    Mark C. Miller, Tue Jan 13 10:50:19 PST 2009
+//    Added logic to examine cell/pt data arrays too.
 // ****************************************************************************
 
 vtkDataSet *
 avtTransformManager::AddVertexCellsToPointsOnlyDataset(vtkDataSet *ds)
 {
-    int doType = ds->GetDataObjectType();
+    int i, doType = ds->GetDataObjectType();
 
     if (doType != VTK_POLY_DATA && 
         doType != VTK_UNSTRUCTURED_GRID)
@@ -1190,6 +1287,31 @@ avtTransformManager::AddVertexCellsToPointsOnlyDataset(vtkDataSet *ds)
     if (ds->GetNumberOfCells() != 0)
         return ds; // no-op
 
+    if ((ds->GetCellData() == 0 || ds->GetCellData()->GetNumberOfArrays() == 0) &&
+        (ds->GetPointData() == 0 || ds->GetPointData()->GetNumberOfArrays() == 0))
+        return ds; // no-op
+
+    bool hasEmptyCellDataArrays = true;
+    for (i = 0; i < ds->GetCellData()->GetNumberOfArrays(); i++)
+    {
+        if (ds->GetCellData()->GetArray(i)->GetNumberOfTuples() == ds->GetNumberOfPoints())
+        {
+            hasEmptyCellDataArrays = false;
+            break;
+        }
+    }
+    bool hasEmptyPointDataArrays = true;
+    for (i = 0; i < ds->GetPointData()->GetNumberOfArrays(); i++)
+    {
+        if (ds->GetPointData()->GetArray(i)->GetNumberOfTuples() == ds->GetNumberOfPoints())
+        {
+            hasEmptyPointDataArrays = false;
+            break;
+        }
+    }
+    if (hasEmptyCellDataArrays && hasEmptyPointDataArrays)
+        return ds; // no-op
+
     debug1 << "avtTransformManager: Adding " << ds->GetNumberOfPoints() << " VTK_VERTEX cells" << endl;
     debug1 << "to a dataset that consists solely of points but no cells." << endl;
 
@@ -1197,7 +1319,6 @@ avtTransformManager::AddVertexCellsToPointsOnlyDataset(vtkDataSet *ds)
     // The only way to arrive here is if we have non-zero number of points
     // but zero cells. So, we can add vertex cells.
     //
-    int i;
     vtkIdType onevertex[1];
     if (doType == VTK_POLY_DATA)
     {
@@ -1224,7 +1345,8 @@ avtTransformManager::AddVertexCellsToPointsOnlyDataset(vtkDataSet *ds)
     //
     // Note, we're returning the original pointer here. So, transform manager
     // will NOT think we've done any work on it. In fact, we have 'transformed'
-    // it in place. This should be harmless.
+    // it 'in place' meaning the version in generic db's cache was modified.
+    // This should be harmless to TransformManager.
     //
     return ds;
 }
@@ -1252,7 +1374,6 @@ avtTransformManager::AddVertexCellsToPointsOnlyDataset(vtkDataSet *ds)
 //    Hank Childs, Fri May  9 16:01:45 PDT 2008
 //    Pass in domain IDs to transforming functions, because they are needed
 //    to efficiently access cache.
-//
 // ****************************************************************************
 bool
 avtTransformManager::TransformDataset(avtDatasetCollection &dsc,
