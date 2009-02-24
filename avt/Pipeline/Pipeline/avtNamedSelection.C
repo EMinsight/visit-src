@@ -42,6 +42,8 @@
 
 #include <avtNamedSelection.h>
 
+#include <avtIdentifierSelection.h>
+
 #include <visitstream.h>
 #include <VisItException.h>
 
@@ -282,6 +284,23 @@ avtFloatingPointIdNamedSelection::avtFloatingPointIdNamedSelection(
 
 
 // ****************************************************************************
+//  Method: avtFloatingPointIdNamedSelection constructor
+//
+//  Programmer: Hank Childs
+//  Creation:   February 23, 2009
+//
+// ****************************************************************************
+
+avtFloatingPointIdNamedSelection::avtFloatingPointIdNamedSelection(
+                                                const std::string &n,
+                                                const std::vector<double> &ids2)
+    : avtNamedSelection(n)
+{
+    ids = ids2;
+}
+
+
+// ****************************************************************************
 //  Method: avtFloatingPointIdNamedSelection destructor
 //
 //  Programmer: Hank Childs
@@ -350,6 +369,27 @@ avtFloatingPointIdNamedSelection::Read(const std::string &fname)
     {
         ifile >> ids[i];
     }
+}
+
+
+// ****************************************************************************
+//  Method: avtFloatingPointIdNamedSelection::CreateSelection
+//
+//  Purpose:
+//      Creates an avtDataSelection for the database to read in only the data
+//      corresponding to this selection.
+//
+//  Programmer: Hank Childs
+//  Creation:   February 23, 2009
+//
+// ****************************************************************************
+
+avtDataSelection *
+avtFloatingPointIdNamedSelection::CreateSelection(void)
+{
+    avtIdentifierSelection *rv = new avtIdentifierSelection;
+    rv->SetIdentifiers(ids);
+    return rv;
 }
 
 
