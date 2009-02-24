@@ -36,57 +36,25 @@
 *
 *****************************************************************************/
 
-// ************************************************************************* //
-//  File: avtNamedSelectionFilter.h
-// ************************************************************************* //
+#ifndef PY_PERSISTENTPARTICLESATTRIBUTES_H
+#define PY_PERSISTENTPARTICLESATTRIBUTES_H
+#include <Python.h>
+#include <PersistentParticlesAttributes.h>
 
-#ifndef AVT_NamedSelection_FILTER_H
-#define AVT_NamedSelection_FILTER_H
-
-#include <filters_exports.h>
-
-#include <avtDataTreeIterator.h>
-
-class vtkDataSet;
-
-
-// ****************************************************************************
-//  Class: avtNamedSelectionFilter
 //
-//  Purpose:
-//      A filter that removes all identifiers that aren't part of the named
-//      selection.
+// Functions exposed to the VisIt module.
 //
-//  Programmer: Hank Childs
-//  Creation:   February 2, 2009
-//
-//  Modifications:
-//
-//    Hank Childs, Mon Feb 23 21:27:00 PST 2009
-//    Added data member selectionId.
-//
-// ****************************************************************************
-
-class AVTFILTERS_API avtNamedSelectionFilter : public avtDataTreeIterator
-{
-  public:
-                         avtNamedSelectionFilter();
-    virtual             ~avtNamedSelectionFilter();
-
-    virtual const char  *GetType(void)  { return "avtNamedSelectionFilter"; };
-    virtual const char  *GetDescription(void)
-                             { return "Applying named selection"; };
-
-    void                 SetSelectionName(const std::string &s)
-                                { selName = s; };
-
-  protected:
-    std::string           selName;
-    int                   selectionId;
-
-    virtual vtkDataSet   *ExecuteData(vtkDataSet *, int, std::string);
-    virtual avtContract_p ModifyContract(avtContract_p);
-};
-
+void           PyPersistentParticlesAttributes_StartUp(PersistentParticlesAttributes *subj, void *data);
+void           PyPersistentParticlesAttributes_CloseDown();
+PyMethodDef *   PyPersistentParticlesAttributes_GetMethodTable(int *nMethods);
+bool           PyPersistentParticlesAttributes_Check(PyObject *obj);
+PersistentParticlesAttributes *  PyPersistentParticlesAttributes_FromPyObject(PyObject *obj);
+PyObject *      PyPersistentParticlesAttributes_New();
+PyObject *      PyPersistentParticlesAttributes_Wrap(const PersistentParticlesAttributes *attr);
+void           PyPersistentParticlesAttributes_SetParent(PyObject *obj, PyObject *parent);
+void           PyPersistentParticlesAttributes_SetDefaults(const PersistentParticlesAttributes *atts);
+std::string    PyPersistentParticlesAttributes_GetLogString();
+std::string    PyPersistentParticlesAttributes_ToString(const PersistentParticlesAttributes *, const char *);
 
 #endif
+
