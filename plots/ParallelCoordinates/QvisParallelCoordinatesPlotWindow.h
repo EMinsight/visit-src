@@ -78,6 +78,11 @@ class QListViewItem;
 //    Changed axis list to QListView to support multiple columns.
 //    Added min/max extents columns for each axis, and a button to reset them.
 //
+//    Jeremy Meredith, Wed Feb 25 12:54:37 EST 2009
+//    Added number of line partitions settings since histograms are now also
+//    used to draw the lines.  Allow user to force into the mode using
+//    individual data point lines for the focus instead of using a histogram.
+//
 // ****************************************************************************
 
 class QvisParallelCoordinatesPlotWindow : public QvisPostableWindowObserver
@@ -102,6 +107,9 @@ class QvisParallelCoordinatesPlotWindow : public QvisPostableWindowObserver
   private slots:
     void drawLinesChanged(bool val);
     void linesColorChanged(const QColor &color);
+    void linesNumPartitionsProcessText();
+    void linesNumPartitionsSliderChanged(int val);
+    void linesNumPartitionsSliderReleased();
     void drawContextChanged(bool val);
     void contextGammaProcessText();
     void contextGammaSliderChanged(int val);
@@ -118,6 +126,7 @@ class QvisParallelCoordinatesPlotWindow : public QvisPostableWindowObserver
     void resetAxisExtents();
     void linesOnlyIfExtentsToggled(bool);
     void unifyAxisExtentsToggled(bool);
+    void forceIndividualLineFocusToggled(bool);
   private:
     int plotType;
 
@@ -132,6 +141,8 @@ class QvisParallelCoordinatesPlotWindow : public QvisPostableWindowObserver
     QGroupBox *drawLines;
     QCheckBox *linesOnlyIfExtents;
     QvisColorButton *linesColor;
+    QLineEdit *linesNumPartitions;
+    QSlider   *linesNumPartitionsSlider;
 
     QGroupBox *drawContext;
     QLineEdit *contextGamma;
@@ -141,11 +152,14 @@ class QvisParallelCoordinatesPlotWindow : public QvisPostableWindowObserver
     QvisColorButton *contextColor;
 
     QLabel *linesColorLabel;
+    QLabel *linesNumPartitionsLabel;
     QLabel *contextGammaLabel;
     QLabel *contextNumPartitionsLabel;
     QLabel *contextColorLabel;
 
     QCheckBox *unifyAxisExtents;
+
+    QCheckBox *forceIndividualLineFocusToggle;
 
     ParallelCoordinatesAttributes *atts;
 };
