@@ -39,6 +39,7 @@
 #ifndef PP_Z_MTSD_FILE_FORMAT_H
 #define PP_Z_MTSD_FILE_FORMAT_H
 #include <avtMTSDFileFormat.h>
+#include <Streaker.h>
 
 class avtFileFormatInterface;
 class PP_ZFileReader;
@@ -104,6 +105,7 @@ private:
     void DetermineTimeFlow(int);
     int  GetReaderIndexAndTimeStep(int ts, int &localTimeState);
 
+    Streaker               streaker;
     int                    nReaders;
     PP_ZFileReader       **readers;
     int                    nTotalTimeSteps;
