@@ -577,6 +577,8 @@ avtSILRestriction::SetTopSet(const char *meshname)
 //
 // Modifications:
 //   
+//    Mark C. Miller, Wed Feb 25 17:10:12 PST 2009
+//    Fix error in indexing used to examine useSet state of material sets
 // ****************************************************************************
 
 SetState
@@ -599,9 +601,10 @@ avtSILRestriction::EnsureRestrictionCorrectness()
         avtSILCollection_p coll = GetSILCollection(mapsOut[i]);
         if (coll->GetRole() == SIL_MATERIAL)
         {
-            // check if only some are used
-            if( useSet[mapsOut[i]] == SomeUsed)
-                some_mats = true;
+            const vector<int> &matSetList = coll->GetSubsetList();
+            for (int j = 0 ; j < matSetList.size() && ! some_mats ; j++)
+                if( useSet[matSetList[j]] == SomeUsed)
+                    some_mats = true;
         }
     }
     
