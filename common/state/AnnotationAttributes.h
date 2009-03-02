@@ -121,6 +121,8 @@ public:
     void SetDatabaseInfoFlag(bool databaseInfoFlag_);
     void SetDatabaseInfoFont(const FontAttributes &databaseInfoFont_);
     void SetDatabaseInfoExpansionMode(PathExpansionMode databaseInfoExpansionMode_);
+    void SetDatabaseInfoTimeScale(double databaseInfoTimeScale_);
+    void SetDatabaseInfoTimeOffset(double databaseInfoTimeOffset_);
     void SetLegendInfoFlag(bool legendInfoFlag_);
     void SetBackgroundColor(const ColorAttribute &backgroundColor_);
     void SetForegroundColor(const ColorAttribute &foregroundColor_);
@@ -144,6 +146,8 @@ public:
     const FontAttributes &GetDatabaseInfoFont() const;
           FontAttributes &GetDatabaseInfoFont();
     PathExpansionMode    GetDatabaseInfoExpansionMode() const;
+    double               GetDatabaseInfoTimeScale() const;
+    double               GetDatabaseInfoTimeOffset() const;
     bool                 GetLegendInfoFlag() const;
     const ColorAttribute &GetBackgroundColor() const;
           ColorAttribute &GetBackgroundColor();
@@ -200,6 +204,8 @@ public:
         ID_databaseInfoFlag,
         ID_databaseInfoFont,
         ID_databaseInfoExpansionMode,
+        ID_databaseInfoTimeScale,
+        ID_databaseInfoTimeOffset,
         ID_legendInfoFlag,
         ID_backgroundColor,
         ID_foregroundColor,
@@ -220,6 +226,8 @@ private:
     bool           databaseInfoFlag;
     FontAttributes databaseInfoFont;
     int            databaseInfoExpansionMode;
+    double         databaseInfoTimeScale;
+    double         databaseInfoTimeOffset;
     bool           legendInfoFlag;
     ColorAttribute backgroundColor;
     ColorAttribute foregroundColor;

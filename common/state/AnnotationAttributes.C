@@ -154,7 +154,7 @@ AnnotationAttributes::PathExpansionMode_FromString(const std::string &s, Annotat
 }
 
 // Type map format string
-const char *AnnotationAttributes::TypeMapFormatString = "aababaibaaiaaisii";
+const char *AnnotationAttributes::TypeMapFormatString = "aababaiddbaaiaaisii";
 
 // ****************************************************************************
 // Method: AnnotationAttributes::AnnotationAttributes
@@ -179,6 +179,8 @@ AnnotationAttributes::AnnotationAttributes() :
     userInfoFlag = true;
     databaseInfoFlag = true;
     databaseInfoExpansionMode = File;
+    databaseInfoTimeScale = 1;
+    databaseInfoTimeOffset = 0;
     legendInfoFlag = true;
     gradientBackgroundStyle = Radial;
     backgroundMode = Solid;
@@ -211,6 +213,8 @@ AnnotationAttributes::AnnotationAttributes(const AnnotationAttributes &obj) :
     databaseInfoFlag = obj.databaseInfoFlag;
     databaseInfoFont = obj.databaseInfoFont;
     databaseInfoExpansionMode = obj.databaseInfoExpansionMode;
+    databaseInfoTimeScale = obj.databaseInfoTimeScale;
+    databaseInfoTimeOffset = obj.databaseInfoTimeOffset;
     legendInfoFlag = obj.legendInfoFlag;
     backgroundColor = obj.backgroundColor;
     foregroundColor = obj.foregroundColor;
@@ -271,6 +275,8 @@ AnnotationAttributes::operator = (const AnnotationAttributes &obj)
     databaseInfoFlag = obj.databaseInfoFlag;
     databaseInfoFont = obj.databaseInfoFont;
     databaseInfoExpansionMode = obj.databaseInfoExpansionMode;
+    databaseInfoTimeScale = obj.databaseInfoTimeScale;
+    databaseInfoTimeOffset = obj.databaseInfoTimeOffset;
     legendInfoFlag = obj.legendInfoFlag;
     backgroundColor = obj.backgroundColor;
     foregroundColor = obj.foregroundColor;
@@ -312,6 +318,8 @@ AnnotationAttributes::operator == (const AnnotationAttributes &obj) const
             (databaseInfoFlag == obj.databaseInfoFlag) &&
             (databaseInfoFont == obj.databaseInfoFont) &&
             (databaseInfoExpansionMode == obj.databaseInfoExpansionMode) &&
+            (databaseInfoTimeScale == obj.databaseInfoTimeScale) &&
+            (databaseInfoTimeOffset == obj.databaseInfoTimeOffset) &&
             (legendInfoFlag == obj.legendInfoFlag) &&
             (backgroundColor == obj.backgroundColor) &&
             (foregroundColor == obj.foregroundColor) &&
@@ -472,6 +480,8 @@ AnnotationAttributes::SelectAll()
     Select(ID_databaseInfoFlag,          (void *)&databaseInfoFlag);
     Select(ID_databaseInfoFont,          (void *)&databaseInfoFont);
     Select(ID_databaseInfoExpansionMode, (void *)&databaseInfoExpansionMode);
+    Select(ID_databaseInfoTimeScale,     (void *)&databaseInfoTimeScale);
+    Select(ID_databaseInfoTimeOffset,    (void *)&databaseInfoTimeOffset);
     Select(ID_legendInfoFlag,            (void *)&legendInfoFlag);
     Select(ID_backgroundColor,           (void *)&backgroundColor);
     Select(ID_foregroundColor,           (void *)&foregroundColor);
@@ -578,6 +588,18 @@ AnnotationAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool f
     {
         addToParent = true;
         node->AddNode(new DataNode("databaseInfoExpansionMode", PathExpansionMode_ToString(databaseInfoExpansionMode)));
+    }
+
+    if(completeSave || !FieldsEqual(ID_databaseInfoTimeScale, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("databaseInfoTimeScale", databaseInfoTimeScale));
+    }
+
+    if(completeSave || !FieldsEqual(ID_databaseInfoTimeOffset, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("databaseInfoTimeOffset", databaseInfoTimeOffset));
     }
 
     if(completeSave || !FieldsEqual(ID_legendInfoFlag, &defaultObject))
@@ -712,6 +734,10 @@ AnnotationAttributes::SetFromNode(DataNode *parentNode)
                 SetDatabaseInfoExpansionMode(value);
         }
     }
+    if((node = searchNode->GetNode("databaseInfoTimeScale")) != 0)
+        SetDatabaseInfoTimeScale(node->AsDouble());
+    if((node = searchNode->GetNode("databaseInfoTimeOffset")) != 0)
+        SetDatabaseInfoTimeOffset(node->AsDouble());
     if((node = searchNode->GetNode("legendInfoFlag")) != 0)
         SetLegendInfoFlag(node->AsBool());
     if((node = searchNode->GetNode("backgroundColor")) != 0)
@@ -813,6 +839,20 @@ AnnotationAttributes::SetDatabaseInfoExpansionMode(AnnotationAttributes::PathExp
 {
     databaseInfoExpansionMode = databaseInfoExpansionMode_;
     Select(ID_databaseInfoExpansionMode, (void *)&databaseInfoExpansionMode);
+}
+
+void
+AnnotationAttributes::SetDatabaseInfoTimeScale(double databaseInfoTimeScale_)
+{
+    databaseInfoTimeScale = databaseInfoTimeScale_;
+    Select(ID_databaseInfoTimeScale, (void *)&databaseInfoTimeScale);
+}
+
+void
+AnnotationAttributes::SetDatabaseInfoTimeOffset(double databaseInfoTimeOffset_)
+{
+    databaseInfoTimeOffset = databaseInfoTimeOffset_;
+    Select(ID_databaseInfoTimeOffset, (void *)&databaseInfoTimeOffset);
 }
 
 void
@@ -953,6 +993,18 @@ AnnotationAttributes::PathExpansionMode
 AnnotationAttributes::GetDatabaseInfoExpansionMode() const
 {
     return PathExpansionMode(databaseInfoExpansionMode);
+}
+
+double
+AnnotationAttributes::GetDatabaseInfoTimeScale() const
+{
+    return databaseInfoTimeScale;
+}
+
+double
+AnnotationAttributes::GetDatabaseInfoTimeOffset() const
+{
+    return databaseInfoTimeOffset;
 }
 
 bool
@@ -1134,6 +1186,8 @@ AnnotationAttributes::GetFieldName(int index) const
     case ID_databaseInfoFlag:          return "databaseInfoFlag";
     case ID_databaseInfoFont:          return "databaseInfoFont";
     case ID_databaseInfoExpansionMode: return "databaseInfoExpansionMode";
+    case ID_databaseInfoTimeScale:     return "databaseInfoTimeScale";
+    case ID_databaseInfoTimeOffset:    return "databaseInfoTimeOffset";
     case ID_legendInfoFlag:            return "legendInfoFlag";
     case ID_backgroundColor:           return "backgroundColor";
     case ID_foregroundColor:           return "foregroundColor";
@@ -1175,6 +1229,8 @@ AnnotationAttributes::GetFieldType(int index) const
     case ID_databaseInfoFlag:          return FieldType_bool;
     case ID_databaseInfoFont:          return FieldType_att;
     case ID_databaseInfoExpansionMode: return FieldType_enum;
+    case ID_databaseInfoTimeScale:     return FieldType_double;
+    case ID_databaseInfoTimeOffset:    return FieldType_double;
     case ID_legendInfoFlag:            return FieldType_bool;
     case ID_backgroundColor:           return FieldType_color;
     case ID_foregroundColor:           return FieldType_color;
@@ -1216,6 +1272,8 @@ AnnotationAttributes::GetFieldTypeName(int index) const
     case ID_databaseInfoFlag:          return "bool";
     case ID_databaseInfoFont:          return "att";
     case ID_databaseInfoExpansionMode: return "enum";
+    case ID_databaseInfoTimeScale:     return "double";
+    case ID_databaseInfoTimeOffset:    return "double";
     case ID_legendInfoFlag:            return "bool";
     case ID_backgroundColor:           return "color";
     case ID_foregroundColor:           return "color";
@@ -1285,6 +1343,16 @@ AnnotationAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
     case ID_databaseInfoExpansionMode:
         {  // new scope
         retval = (databaseInfoExpansionMode == obj.databaseInfoExpansionMode);
+        }
+        break;
+    case ID_databaseInfoTimeScale:
+        {  // new scope
+        retval = (databaseInfoTimeScale == obj.databaseInfoTimeScale);
+        }
+        break;
+    case ID_databaseInfoTimeOffset:
+        {  // new scope
+        retval = (databaseInfoTimeOffset == obj.databaseInfoTimeOffset);
         }
         break;
     case ID_legendInfoFlag:

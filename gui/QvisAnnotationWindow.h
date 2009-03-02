@@ -125,6 +125,9 @@ class QvisLineWidthWidget;
 //   Brad Whitlock, Wed Apr  9 10:58:41 PDT 2008
 //   QString for caption, shortName.
 //
+//   Brad Whitlock, Mon Mar  2 14:31:48 PST 2009
+//   I added support for scaling and offsetting time.
+//
 // ****************************************************************************
 
 class GUI_API QvisAnnotationWindow : public QvisPostableWindowSimpleObserver
@@ -175,6 +178,8 @@ private slots:
     void databaseInfoFontChanged(const FontAttributes &);
     void legendChecked(bool val);
     void turnOffAllAnnotations();
+    void databaseTimeScaleChanged();
+    void databaseTimeOffsetChanged();
 
     // 2D option slots
     void axesFlagChecked2D(bool val);
@@ -239,6 +244,8 @@ private:
     QComboBox                *databasePathExpansionMode;
     QCheckBox                *legendInfo;
     QPushButton              *turnOffAllButton;
+    QNarrowLineEdit          *databaseTimeScale;
+    QNarrowLineEdit          *databaseTimeOffset;
 
     // 2D tab widgets
     QVBox                    *page2D;

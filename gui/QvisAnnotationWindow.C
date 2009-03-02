@@ -423,7 +423,7 @@ QvisAnnotationWindow::CreateGeneralTab()
     dbInnerLayout->setMargin(10);
     dbInnerLayout->addSpacing(15);
     dbInnerLayout->setSpacing(10);
-    QGridLayout *dLayout = new QGridLayout(dbInnerLayout, 3, 2);
+    QGridLayout *dLayout = new QGridLayout(dbInnerLayout, 5, 2);
     dLayout->setSpacing(5);
     dLayout->setColStretch(1, 10);
     ++row;
@@ -449,6 +449,26 @@ QvisAnnotationWindow::CreateGeneralTab()
     connect(databaseInfoFont, SIGNAL(fontChanged(const FontAttributes &)),
             this, SLOT(databaseInfoFontChanged(const FontAttributes &)));
     dLayout->addMultiCellWidget(databaseInfoFont, 2, 2, 0, 1);
+
+    QFrame *dbSep2 = new QFrame(databaseInfo);
+    dbSep2->setFrameStyle(QFrame::HLine + QFrame::Sunken);
+    dLayout->addMultiCellWidget(dbSep2, 3, 3, 0, 1);
+
+    QWidget *timeControls = new QWidget(databaseInfo);
+    dLayout->addMultiCellWidget(timeControls, 4, 4, 0, 1);
+    QHBoxLayout *htLayout = new QHBoxLayout(timeControls);
+    htLayout->setSpacing(5);
+    databaseTimeScale = new QNarrowLineEdit(timeControls);
+    connect(databaseTimeScale, SIGNAL(returnPressed()),
+            this, SLOT(databaseTimeScaleChanged()));
+    htLayout->addWidget(new QLabel(tr("Time scale factor"), timeControls));
+    htLayout->addWidget(databaseTimeScale);
+
+    databaseTimeOffset = new QNarrowLineEdit(timeControls);
+    connect(databaseTimeOffset, SIGNAL(returnPressed()),
+            this, SLOT(databaseTimeOffsetChanged()));
+    htLayout->addWidget(new QLabel(tr("Time offset"), timeControls));
+    htLayout->addWidget(databaseTimeOffset);
 
     //
     // Create the user information
@@ -1335,6 +1355,9 @@ QvisAnnotationWindow::UpdateAxes3D()
 //   Brad Whitlock, Thu Feb 7 17:43:01 PST 2008
 //   Updated to new AnnotationAttributes interface.
 //
+//   Brad Whitlock, Mon Mar  2 14:43:04 PST 2009
+//   I added time scale and offset.
+//
 // ****************************************************************************
 
 void
@@ -1387,6 +1410,14 @@ QvisAnnotationWindow::UpdateAnnotationControls(bool doAll)
             databasePathExpansionMode->setCurrentItem(
                                 annotationAtts->GetDatabaseInfoExpansionMode());
             databasePathExpansionMode->blockSignals(false);
+            break;
+        case AnnotationAttributes::ID_databaseInfoTimeScale:
+            databaseTimeScale->setText(
+                QString("%1").arg(annotationAtts->GetDatabaseInfoTimeScale()));
+            break;
+        case AnnotationAttributes::ID_databaseInfoTimeOffset:
+            databaseTimeOffset->setText(
+                QString("%1").arg(annotationAtts->GetDatabaseInfoTimeOffset()));
             break;
         case AnnotationAttributes::ID_legendInfoFlag:
             legendInfo->blockSignals(true);
@@ -1591,6 +1622,9 @@ QvisAnnotationWindow::UpdateAnnotationObjectControls(bool doAll)
 //   Brad Whitlock, Fri Feb 8 10:47:31 PDT 2008
 //   Totally rewrote.
 //
+//   Brad Whitlock, Mon Mar  2 14:40:38 PST 2009
+//   I added database time scale and offset.
+//
 // ****************************************************************************
 
 void
@@ -1627,6 +1661,18 @@ QvisAnnotationWindow::GetCurrentValues(int which_widget)
     {
         QString temp(backgroundImage->displayText().stripWhiteSpace());
         annotationAtts->SetBackgroundImage(temp.latin1());
+    }
+
+    if (which_widget == AnnotationAttributes::ID_databaseInfoTimeScale || doAll)
+    {
+        QString temp(databaseTimeScale->displayText().stripWhiteSpace());
+        annotationAtts->SetDatabaseInfoTimeScale(temp.toDouble());
+    }
+
+    if (which_widget == AnnotationAttributes::ID_databaseInfoTimeOffset || doAll)
+    {
+        QString temp(databaseTimeOffset->displayText().stripWhiteSpace());
+        annotationAtts->SetDatabaseInfoTimeOffset(temp.toDouble());
     }
 }
 
@@ -2069,6 +2115,46 @@ QvisAnnotationWindow::databaseInfoFontChanged(const FontAttributes &f)
 {
     annotationAtts->SetDatabaseInfoFont(f);
     SetUpdate(false);
+    Apply();
+}
+
+// ****************************************************************************
+// Method: QvisAnnotationWindow::databaseTimeScaleChanged
+//
+// Purpose: 
+//   This is a Qt slot that is called when the database time scale changes.
+//
+// Programmer: Brad Whitlock
+// Creation:   Mon Mar  2 14:39:48 PST 2009
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+QvisAnnotationWindow::databaseTimeScaleChanged()
+{
+    GetCurrentValues(AnnotationAttributes::ID_databaseInfoTimeScale);
+    Apply();
+}
+
+// ****************************************************************************
+// Method: QvisAnnotationWindow::databaseTimeOffsetChanged
+//
+// Purpose: 
+//   This is a Qt slot that is called when the database time offset changes.
+//
+// Programmer: Brad Whitlock
+// Creation:   Mon Mar  2 14:39:48 PST 2009
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+QvisAnnotationWindow::databaseTimeOffsetChanged()
+{
+    GetCurrentValues(AnnotationAttributes::ID_databaseInfoTimeOffset);
     Apply();
 }
 
