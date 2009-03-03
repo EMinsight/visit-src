@@ -4072,6 +4072,9 @@ ViewerWindow::GetScaleFactorAndType(double &s, int &t)
 //    Brad Whitlock, Wed Apr 30 09:32:47 PDT 2008
 //    Support for internationalization.
 //
+//    Kathleen Bonnell, Tue Mar  3 15:04:57 PST 2009
+//    CanDoLogViewScaling changed to PermitsLogViewScaling.
+//
 // ****************************************************************************
 
 void
@@ -4109,7 +4112,7 @@ ViewerWindow::RecenterViewCurve(const double *limits)
 #define SMALL 1e-100
     if (viewCurve.domainScale == LOG || viewCurve.rangeScale == LOG)
     {
-        bool logsOkay = GetPlotList()->CanDoLogViewScaling(WINMODE_CURVE);
+        bool logsOkay = GetPlotList()->PermitsLogViewScaling(WINMODE_CURVE);
         if (logsOkay)
         {
             if (viewCurve.domainScale == LOG)
@@ -4182,6 +4185,9 @@ ViewerWindow::RecenterViewCurve(const double *limits)
 //    Brad Whitlock, Wed Apr 30 09:32:47 PDT 2008
 //    Support for internationalization.
 //
+//    Kathleen Bonnell, Tue Mar  3 15:04:57 PST 2009
+//    CanDoLogViewScaling changed to PermitsLogViewScaling.
+//
 // ****************************************************************************
 
 void
@@ -4221,7 +4227,7 @@ ViewerWindow::RecenterView2d(const double *limits)
 #define SMALL 1e-100
     if (view2D.xScale == LOG || view2D.yScale == LOG)
     {
-        bool logsOkay = GetPlotList()->CanDoLogViewScaling(WINMODE_2D);
+        bool logsOkay = GetPlotList()->PermitsLogViewScaling(WINMODE_2D);
         if (logsOkay)
         {
             if (view2D.xScale == LOG)
@@ -4502,6 +4508,9 @@ ViewerWindow::RecenterViewAxisArray(const double *limits)
 //    Brad Whitlock, Wed Apr 30 09:32:47 PDT 2008
 //    Support for internationalization.
 //
+//    Kathleen Bonnell, Tue Mar  3 15:04:57 PST 2009
+//    CanDoLogViewScaling changed to PermitsLogViewScaling.
+//
 // ****************************************************************************
 
 void
@@ -4545,7 +4554,7 @@ ViewerWindow::ResetViewCurve()
     
     if (viewCurve.domainScale == LOG || viewCurve.rangeScale == LOG)
     {
-        bool logsOkay = GetPlotList()->CanDoLogViewScaling(WINMODE_CURVE);
+        bool logsOkay = GetPlotList()->PermitsLogViewScaling(WINMODE_CURVE);
         if (logsOkay)
         {
             if (viewCurve.domainScale == LOG)
@@ -4633,6 +4642,9 @@ ViewerWindow::ResetViewCurve()
 //    Brad Whitlock, Wed Apr 30 09:32:47 PDT 2008
 //    Support for internationalization.
 //
+//    Kathleen Bonnell, Tue Mar  3 15:04:57 PST 2009
+//    CanDoLogViewScaling changed to PermitsLogViewScaling.
+//
 // ****************************************************************************
 
 void
@@ -4676,7 +4688,7 @@ ViewerWindow::ResetView2d()
 #define SMALL 1e-100
     if (view2D.xScale == LOG || view2D.yScale == LOG)
     {
-        bool logsOkay = GetPlotList()->CanDoLogViewScaling(WINMODE_2D);
+        bool logsOkay = GetPlotList()->PermitsLogViewScaling(WINMODE_2D);
         if (logsOkay)
         {
             if (view2D.xScale == LOG)
@@ -5247,6 +5259,9 @@ ViewerWindow::SetInitialView3d()
 //    Kathleen Bonnell, Fri May 11 09:20:06 PDT 2007 
 //    Added support for Log scaling.
 //
+//    Kathleen Bonnell, Tue Mar  3 15:04:57 PST 2009
+//    CanDoLogViewScaling changed to PermitsLogViewScaling.
+//
 // ****************************************************************************
 
 void
@@ -5326,7 +5341,7 @@ ViewerWindow::UpdateViewCurve(const double *limits)
         const avtViewCurve &viewCurve = GetViewCurve();
         bool mustReset = 
             ((viewCurve.domainScale == LOG  || viewCurve.rangeScale == LOG ) &&
-              !GetPlotList()->CanDoLogViewScaling(WINMODE_CURVE));
+              !GetPlotList()->PermitsLogViewScaling(WINMODE_CURVE));
        
         if (!mustReset) 
             visWindow->UpdateView();
@@ -5386,6 +5401,9 @@ ViewerWindow::UpdateViewCurve(const double *limits)
 //
 //    Kathleen Bonnell, Fri May 11 09:20:06 PDT 2007 
 //    Added support for Log scaling.
+//
+//    Kathleen Bonnell, Tue Mar  3 15:04:57 PST 2009
+//    CanDoLogViewScaling changed to PermitsLogViewScaling.
 //
 // ****************************************************************************
 
@@ -5495,7 +5513,7 @@ ViewerWindow::UpdateView2d(const double *limits)
     // Ensure we aren't attempting log scaling when plots don't support it.
     // 
     if ((view2d.xScale == LOG  || view2d.yScale == LOG ) &&
-        !GetPlotList()->CanDoLogViewScaling(WINMODE_2D))
+        !GetPlotList()->PermitsLogViewScaling(WINMODE_2D))
     {
         ResetView2d();
     }

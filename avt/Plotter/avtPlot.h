@@ -244,6 +244,10 @@ class     WindowAttributes;
 //    Hank Childs, Wed Aug 13 10:36:40 PDT 2008
 //    Add new virtual method "NeedZBufferToCompositeEvenIn2D".
 //
+//    Kathleen Bonnell, Mon Mar  2 16:29:09 PST 2009
+//    Removed CanDoCurveViewScaling, CanDo2DViewScaling (moved into 
+//    ViewerPlotPluginInfo)
+//
 // ****************************************************************************
 
 class PLOTTER_API avtPlot
@@ -312,8 +316,6 @@ class PLOTTER_API avtPlot
     bool                      SetScaleMode(ScaleMode, ScaleMode, WINDOW_MODE);
     bool                      ScaleModeRequiresUpdate(WINDOW_MODE, ScaleMode,
                                                       ScaleMode rs);
-    virtual bool              CanDoCurveViewScaling(void) { return false; } 
-    virtual bool              CanDo2DViewScaling(void)    { return true; } 
     virtual bool              NeedZBufferToCompositeEvenIn2D(void) 
                                                           { return false; };
 

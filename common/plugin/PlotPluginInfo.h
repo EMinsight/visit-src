@@ -139,6 +139,9 @@ class ViewerPlot;
 //    Made the GUI plugin info return QString so we can internationalize
 //    plot names. Added const to strings returned from GeneralPlotPluginInfo.
 //
+//    Kathleen Bonnell, Mon Mar  2 16:25:53 PST 2009
+//    Added PermitsCurveViewScaling, Permits2DViewScaling.
+//
 // ****************************************************************************
 
 class PLUGIN_API GeneralPlotPluginInfo
@@ -187,6 +190,8 @@ class PLUGIN_API ViewerPlotPluginInfo : public virtual CommonPlotPluginInfo
     virtual avtPlot *AllocAvtPlot() = 0;
 
     virtual bool ProvidesLegend() const { return true; }
+    virtual bool PermitsCurveViewScaling() const { return false; }
+    virtual bool Permits2DViewScaling() const { return true; }
 
     virtual void InitializePlotAtts(AttributeSubject *atts, ViewerPlot *) = 0;
     virtual void ReInitializePlotAtts(AttributeSubject *atts, 

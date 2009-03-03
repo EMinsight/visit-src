@@ -285,6 +285,9 @@ class avtToolInterface;
 //    Brad Whitlock, Tue Apr 29 15:34:48 PDT 2008
 //    Added GetMenuName.
 //
+//    Kathleen Bonnell, Tue Mar  3 15:03:19 PST 2009
+//    Renamed CanDoLogViewScaling to PermitsLogViewScaling.
+//
 // ****************************************************************************
 
 class VIEWER_API ViewerPlot : public ViewerBase
@@ -484,7 +487,7 @@ class VIEWER_API ViewerPlot : public ViewerBase
 
     const PlotInfoAttributes *GetPlotInfoAtts(void);
     void SetScaleMode(ScaleMode ds, ScaleMode rs, WINDOW_MODE wm);
-    bool CanDoLogViewScaling(WINDOW_MODE wm);
+    bool PermitsLogViewScaling(WINDOW_MODE wm);
 
   protected:
     void CopyHelper(const ViewerPlot &);

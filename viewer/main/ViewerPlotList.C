@@ -9049,21 +9049,27 @@ ViewerPlotList::SetScaleMode(ScaleMode ds, ScaleMode rs, WINDOW_MODE wm)
 //   Kathleen Bonnell, Fri Sep 28 08:34:36 PDT 2007
 //   Added scaleModeSet.
 //
+//   Kathleen Bonnell, Tue Mar  3 09:35:52 PST 2009
+//   Ensure ds & rs are set appropriately by ensuring that xScaleMode and 
+//   yScaleMode have been set.
+//
 // ****************************************************************************
 
 void 
 ViewerPlotList::GetScaleMode(ScaleMode &ds, ScaleMode &rs, WINDOW_MODE wm)
 {
     if (!scaleModeSet)
-        window->GetScaleMode(ds, rs, wm);
-    xScaleMode = ds;
-    yScaleMode = rs;
-    scaleModeSet = true;
+    {
+        window->GetScaleMode(xScaleMode, yScaleMode, wm);
+        scaleModeSet = true;
+    }
+    ds = xScaleMode;
+    rs = yScaleMode;
 }
 
 
 // ****************************************************************************
-// Method: ViewerPlotList::CanDoLogViewScaling
+// Method: ViewerPlotList::PermitsLogViewScaling
 //
 // Purpose: 
 //   Returns whether or not all plots support log view scaling.
@@ -9075,11 +9081,18 @@ ViewerPlotList::GetScaleMode(ScaleMode &ds, ScaleMode &rs, WINDOW_MODE wm)
 // Creation:   May 11, 2007
 //
 // Modifications:
+//   Kathleen Bonnell, Tue Mar  3 09:35:52 PST 2009
+//   Only test an individual plot if it has been realized (otherwise, it
+//   will always return false). 
 //  
+//   Kathleen Bonnell, Tue Mar  3 10:16:49 PST 2009
+//   Renamed to PermitsLogViewScaling, no longer test for 'realized' as it
+//   is no longer necessary.
+//
 // ****************************************************************************
 
 bool 
-ViewerPlotList::CanDoLogViewScaling(WINDOW_MODE wm)
+ViewerPlotList::PermitsLogViewScaling(WINDOW_MODE wm)
 {
     if (nPlots <= 0)
         return false;
@@ -9087,7 +9100,7 @@ ViewerPlotList::CanDoLogViewScaling(WINDOW_MODE wm)
     bool rv = true;
     for (int i = 0; i < nPlots && rv; ++i)
     {
-        rv &= plots[i].plot->CanDoLogViewScaling(wm);
+        rv &= plots[i].plot->PermitsLogViewScaling(wm);
     }
     return rv;
 }

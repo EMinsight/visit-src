@@ -103,6 +103,9 @@ class avtResampleFilter;
 //    Remove definition of "CanCacheWriterExternally", as it was leading to
 //    unnecessary pipeline re-executions.
 //
+//    Kathleen Bonnell, Tue Mar  3 13:37:13 PST 2009
+//    Removed CanDo2DViewScaling (moved into Viewer PluginInfo)
+//
 // ****************************************************************************
 
 class
@@ -125,7 +128,6 @@ avtVolumePlot : public avtVolumeDataPlot
                                                      const WindowAttributes &);
     virtual bool        Equivalent(const AttributeGroup *);
 
-    virtual bool        CanDo2DViewScaling(void) { return false; }
     virtual bool        UtilizeRenderingFilters(void) { return false; };
 
   protected:

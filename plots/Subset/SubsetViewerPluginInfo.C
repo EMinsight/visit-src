@@ -448,7 +448,6 @@ SubsetViewerPluginInfo::PrivateSetPlotAtts(AttributeSubject *atts,
     stringVector::const_iterator pos;
     set<int> groupSet;
     vector<int> gIDS;
-    int i;
     char temp[512];
 
     // 
@@ -463,7 +462,7 @@ SubsetViewerPluginInfo::PrivateSetPlotAtts(AttributeSubject *atts,
           defaultAtts->SetSubsetType(SubsetAttributes::Domain);
           if (mesh->blockNames.empty())
           {
-              for (i = 0; i < mesh->numBlocks; i++)
+              for (int i = 0; i < mesh->numBlocks; i++)
               { 
                   sprintf(temp, "%d", i+mesh->blockOrigin);
                   sv.push_back(temp);
@@ -483,7 +482,7 @@ SubsetViewerPluginInfo::PrivateSetPlotAtts(AttributeSubject *atts,
           debug5 << "Variable for subset plot is a group Mesh." << endl; 
           subsetAtts->SetSubsetType(SubsetAttributes::Group);
           defaultAtts->SetSubsetType(SubsetAttributes::Group);
-          for (i = 0; i < mesh->groupIds.size(); i++)
+          for (size_t i = 0; i < mesh->groupIds.size(); i++)
           {
               if (groupSet.count(mesh->groupIds[i]) == 0)
               {
@@ -491,7 +490,7 @@ SubsetViewerPluginInfo::PrivateSetPlotAtts(AttributeSubject *atts,
                   gIDS.push_back(mesh->groupIds[i]);
               }
           }
-          for (i = 0; i < gIDS.size(); i++)
+          for (size_t i = 0; i < gIDS.size(); i++)
           {
               sprintf(temp, "%d", gIDS[i]);
               sv.push_back(temp);
@@ -552,7 +551,7 @@ SubsetViewerPluginInfo::PrivateSetPlotAtts(AttributeSubject *atts,
     if(ct->IsDiscrete(ct->GetDefaultDiscreteColorTable()))
     {
         // The CT is discrete, get its color color control points.
-        for(int i = 0; i < sv.size(); ++i)
+        for(size_t i = 0; i < sv.size(); ++i)
         {
             unsigned char rgb[3] = {0,0,0};
             ct->GetControlPointColor(ct->GetDefaultDiscreteColorTable(), i, rgb);
@@ -569,7 +568,7 @@ SubsetViewerPluginInfo::PrivateSetPlotAtts(AttributeSubject *atts,
             ct->GetDefaultDiscreteColorTable(), sv.size());
         if(rgb)
         {
-            for(int i = 0; i < sv.size(); ++i)
+            for(size_t i = 0; i < sv.size(); ++i)
             {
                 ca[i].SetRed(int(rgb[i*3]));
                 ca[i].SetGreen(int(rgb[i*3+1]));

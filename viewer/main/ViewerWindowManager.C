@@ -2447,6 +2447,9 @@ ViewerWindowManager::SetInteractionMode(INTERACTION_MODE m,
 //    in case the view has inadvertently been changed to include non-positive
 //    values.  Only do the non-postive test if log scaling is being turned on.
 //
+//    Kathleen Bonnell, Tue Mar  3 15:04:57 PST 2009
+//    CanDoLogViewScaling changed to PermitsLogViewScaling.
+//
 // ****************************************************************************
 
 void
@@ -2466,7 +2469,7 @@ ViewerWindowManager::SetViewCurveFromClient()
     {
         ViewerPlotList *vpl = windows[activeWindow]->GetPlotList();
         if ((newDomainScale == LOG || newRangeScale == LOG) &&
-           (vpl->GetNumPlots() > 0 && !vpl->CanDoLogViewScaling(WINMODE_CURVE)))
+           (vpl->GetNumPlots() > 0 && !vpl->PermitsLogViewScaling(WINMODE_CURVE)))
         {
             UpdateViewAtts(activeWindow, true, false, false, false);
             Error(tr("There are plots in the window that do not\n"
@@ -2637,6 +2640,9 @@ ViewerWindowManager::SetViewCurveFromClient()
 //    in case the view has inadvertently been changed to include non-positive
 //    values.  Only do the non-postive test if log scaling is being turned on.
 //
+//    Kathleen Bonnell, Tue Mar  3 15:04:57 PST 2009
+//    CanDoLogViewScaling changed to PermitsLogViewScaling.
+//
 // ****************************************************************************
 
 void
@@ -2659,7 +2665,7 @@ ViewerWindowManager::SetView2DFromClient()
     {
         ViewerPlotList *vpl = windows[activeWindow]->GetPlotList();
         if ((newXScale == LOG || newYScale == LOG) && 
-            (vpl->GetNumPlots() > 0 && !vpl->CanDoLogViewScaling(WINMODE_2D)))
+            (vpl->GetNumPlots() > 0 && !vpl->PermitsLogViewScaling(WINMODE_2D)))
         {
             UpdateViewAtts(activeWindow, false, true, false, false);
             Error(tr("There are plots in the window that do not\n" 
