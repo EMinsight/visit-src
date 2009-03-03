@@ -882,6 +882,8 @@ dnl    client simulation. It also prevents the sim writers from having to do
 dnl    very bad things such as using a specific VisIt rpath when linking
 dnl    their codes.
 dnl
+dnl    Mark C. Miller, Mon Mar  2 17:25:10 PST 2009
+dnl    Added logic to itaps-impl option to add -D${impl_name} to CXXFLAGS
 dnl --------------------------------------------------------------------------
 
 dnl
@@ -2891,7 +2893,7 @@ if test -n "$with_itaps_impls" && test with_itaps_impls != "no"; then
         # Fix contents of the .xml file 
         #
         sed -i -e "s%<Extensions>\(.*\)</Extensions>%<Extensions>${impl_exts}</Extensions>%" databases/$impl_name/$impl_name.xml
-        sed -i -e "s%<CXXFLAGS>\(.*\)</CXXFLAGS>%<CXXFLAGS>$\(ITAPS_C${itaps_impl_id}_INCLUDE)</CXXFLAGS>%" databases/$impl_name/$impl_name.xml
+        sed -i -e "s%<CXXFLAGS>\(.*\)</CXXFLAGS>%<CXXFLAGS>-D${impl_name} $\(ITAPS_C${itaps_impl_id}_INCLUDE)</CXXFLAGS>%" databases/$impl_name/$impl_name.xml
         sed -i -e "s%<LIBS>\(.*\)</LIBS>%<LIBS>$\(ITAPS_C${itaps_impl_id}_LIB)</LIBS>%" databases/$impl_name/$impl_name.xml
 
         #

@@ -43,6 +43,12 @@
 #include "iBase.h"
 #include "iMesh.h"
 
+#if 0 // PARALLEL
+#include "iMeshP.h"
+#include <mpi.h>
+#include <avtParallel.h>
+#endif
+
 #include <snprintf.h>
 
 #include <avtITAPS_CFileFormat.h>
@@ -115,7 +121,6 @@ static const char *supressMessage = "further warnings regarding this error will 
 //  
 //
 // ****************************************************************************
-#ifdef ITAPS_MOAB
 #define CheckITAPSError2(IMI, ERR, ARGS, THELINE, THEFILE)                                      \
     if (ERR != 0)                                                                               \
     {                                                                                           \
@@ -144,31 +149,6 @@ static const char *supressMessage = "further warnings regarding this error will 
         ITAPSErrorCleanupHelper ARGS;                                                           \
         goto funcEnd;                                                                           \
     }
-#else
-#define CheckITAPSError2(IMI, ERR, ARGS, THELINE, THEFILE)                                      \
-    if (ERR != 0)                                                                               \
-    {                                                                                           \
-        char msg[1024];                                                                         \
-        SNPRINTF(msg, sizeof(msg), "Encountered ITAPS error (%d) at line %d in file \"%s\"\n"   \
-            "The description is not available\n", ERR, THELINE, THEFILE);                       \
-        if (messageCounts.find(msg) == messageCounts.end())                                     \
-            messageCounts[msg] = 1;                                                             \
-        else                                                                                    \
-            messageCounts[msg]++;                                                               \
-        if (messageCounts[msg] < 6)                                                             \
-        {                                                                                       \
-            if (!avtCallback::IssueWarning(msg))                                                \
-                cerr << msg << endl;                                                            \
-        }                                                                                       \
-        else if (messageCounts[msg] == 6)                                                       \
-        {                                                                                       \
-            if (!avtCallback::IssueWarning(supressMessage))                                     \
-                cerr << supressMessage << endl;                                                 \
-        }                                                                                       \
-        ITAPSErrorCleanupHelper ARGS;                                                           \
-        goto funcEnd;                                                                           \
-    }
-#endif
 
 #define CheckITAPSError(IMI, ARGS) CheckITAPSError2(IMI, itapsError, ARGS, __LINE__, __FILE__)
 
@@ -228,11 +208,7 @@ static string
 VisIt_iMesh_getTagName(iMesh_Instance theMesh, iBase_TagHandle theTag)
 {
     static char tmpName[256];
-#ifdef ITAPS_MOAB
     iMesh_getTagName(theMesh, theTag, tmpName, &itapsError, sizeof(tmpName));
-#elif ITAPS_GRUMMP
-    iMesh_getTagName(theMesh, theTag, tmpName, sizeof(tmpName), &itapsError);
-#endif
     return string(tmpName);
 }
 
@@ -878,9 +854,23 @@ avtITAPS_CFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
     // ok, try loading the mesh.
     try
     {
+#if 0 //PARALLEL
+        cerr << "got here" << endl;
+        iMeshP_createPartitionAll(itapsMesh, MPI_COMM_WORLD, &itapsPart, &itapsError);
+        CheckITAPSError(itapsMesh, iMeshP_createPartitionAll, NoL);
+        iMeshP_loadAll(itapsMesh, itapsPart, rootSet, tmpFileName.c_str(), dummyStr, &itapsError,
+            tmpFileName.length(), 0);
+        CheckITAPSError(itapsMesh, iMeshP_loadAll, NoL);
+        itapsParts = 0;
+        int parts_allocated = 0, parts_size = 0;
+        iMeshP_getLocalParts(itapsMesh, itapsPart, &itapsParts, &parts_allocated, &parts_size, &itapsError);
+        CheckITAPSError(itapsMesh, iMeshP_getLocalParts, NoL);
+        debug5 << "parts_size = " << parts_size << endl;
+#else
         iMesh_load(itapsMesh, rootSet, tmpFileName.c_str(), dummyStr, &itapsError,
             tmpFileName.length(), 0);
         CheckITAPSError(itapsMesh, NoL);
+#endif
 
         // determine spatial and topological dimensions of mesh
         int geomDim;
@@ -904,6 +894,10 @@ avtITAPS_CFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
         if (numRegns > 0)
             topoDim = 3;
 
+        debug5 << "numVerts = " << numVerts << endl;
+        debug5 << "numEdges = " << numEdges << endl;
+        debug5 << "numFaces = " << numFaces << endl;
+        debug5 << "numRegns = " << numRegns << endl;
         //
         // Decide if we've got a 'mixed element' mesh
         //
@@ -1123,10 +1117,7 @@ avtITAPS_CFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
         char desc[256];
         desc[0] = '\0';
         int tmpError = itapsError;
-#ifdef ITAPS_MOAB
         iMesh_getDescription(itapsMesh, desc, &itapsError, sizeof(desc));
-#elif ITAPS_GRUMMP
-#endif
         SNPRINTF(msg, sizeof(msg), "Encountered ITAPS error (%d) \"%s\""
             "\nUnable to open file!", tmpError, desc); 
         if (!avtCallback::IssueWarning(msg))
@@ -1167,6 +1158,8 @@ avtITAPS_CFileFormat::GetMesh(int domain, const char *meshname)
 {
     int i, j;
 
+    debug4 << "avtITAPS_FMDBFileFormat::GetMesh, domain=" << domain << endl;
+
     try
     {
         //
@@ -1175,8 +1168,13 @@ avtITAPS_CFileFormat::GetMesh(int domain, const char *meshname)
         iBase_EntitySetHandle theSet = (void*) -1; // CHECK 
         int setCount = 0;
         int entType = -1;
+#ifdef ITAPS_FMDB
+        theSet = rootSet;
+        entType = iBase_REGION;
+#else
         theSet = domainSets[domain];
         entType = domainEntType;
+#endif
 
         if (theSet == (void*) -1 || entType == -1)
         {
@@ -1185,12 +1183,26 @@ avtITAPS_CFileFormat::GetMesh(int domain, const char *meshname)
             EXCEPTION1(ImproperUseException, msg);
         }
 
+#ifdef ITAPS_FMDB
+        iBase_EntityHandle *entHdls = 0;
+        int entHdls_allocated = 0, entHdls_size;
+        iMesh_getEntities(itapsMesh, theSet, iBase_REGION, iMesh_ALL_TOPOLOGIES, 
+            &entHdls, &entHdls_allocated, &entHdls_size, &itapsError);
+        CheckITAPSError(itapsMesh, (0,entHdls,EoL));
+        debug4 << "entHdls_size = " << entHdls_size << endl;
+#endif
+
         int coords2Size, mapSize;
         double *coords2 = 0; int coords2_allocated = 0;
         int *inEntSetMap = 0; int inEntSetMap_allocated = 0;
         iBase_StorageOrder storageOrder2 = iBase_UNDETERMINED;
+#if 0 //PARALLEL
+        iMeshP_getAllVtxCoords(itapsMesh, itapsPart, itapsParts[0], theSet, &coords2, &coords2_allocated, &coords2Size,
+            &inEntSetMap, &inEntSetMap_allocated, &mapSize, (int*) &storageOrder2, &itapsError);
+#else
         iMesh_getAllVtxCoords(itapsMesh, theSet, &coords2, &coords2_allocated, &coords2Size,
             &inEntSetMap, &inEntSetMap_allocated, &mapSize, (int*) &storageOrder2, &itapsError);
+#endif
         CheckITAPSError(itapsMesh, (0,coords2,inEntSetMap,EoL));
         int vertCount = mapSize;
         if (vertCount == 0)
@@ -1244,15 +1256,32 @@ avtITAPS_CFileFormat::GetMesh(int domain, const char *meshname)
         int *offset = 0; int offsetSize; int offset_allocated = 0;
         int *index = 0; int indexSize; int index_allocated = 0;
         iMesh_EntityTopology *topos = 0; int toposSize; int topos_allocated = 0;
+#if 0 //PARALLEL 
+        iMeshP_getVtxCoordIndex(itapsMesh, itapsPart, itapsParts[0], theSet,
+            entType, iMesh_ALL_TOPOLOGIES, iBase_VERTEX, 
+            &offset, &offset_allocated, &offsetSize,
+            &index, &index_allocated, &indexSize,
+            (int**) &topos, &topos_allocated, &toposSize,
+            &itapsError);
+#endif
+
+        //
+        // This call just upon VERTEX/POINT returns global node ids
+        //
         iMesh_getVtxCoordIndex(itapsMesh, theSet,
-            entType, iMesh_ALL_TOPOLOGIES, entType, 
+#ifdef ITAPS_FMDB
+            iBase_VERTEX, iMesh_POINT, iBase_VERTEX, 
+#else
+            entType, iMesh_ALL_TOPOLOGIES, entType,
+#endif
             &offset, &offset_allocated, &offsetSize,
             &index, &index_allocated, &indexSize,
             (int**) &topos, &topos_allocated, &toposSize,
             &itapsError);
         CheckITAPSError(itapsMesh, (0,topos,offset,index,EoL));
 
-        for (int off = 0; off < offsetSize; off++)
+        map<int,int> globToLocNodeId;
+        for (int off = 0; off < offsetSize-1; off++)
         {
             int vtkZoneType = ITAPSEntityTopologyToVTKZoneType(topos[off]);
             if (vtkZoneType == -1)
@@ -1261,9 +1290,55 @@ avtITAPS_CFileFormat::GetMesh(int domain, const char *meshname)
             int jj = 0;
             for (int idx = offset[off];
                  idx < ((off+1) < offsetSize ? offset[off+1] : indexSize); idx++)
+            {
                 vertIds[jj++] = index[idx];
+#ifdef ITAPS_FMDB
+                globToLocNodeId[index[idx]] = off;
+#endif
+            }
+#ifndef ITAPS_FMDB
+            ugrid->InsertNextCell(vtkZoneType, jj, vertIds);
+#endif
+        }
+
+#ifdef ITAPS_FMDB
+        if (topos_allocated)
+            free(topos);
+        if (offset_allocated)
+            free(offset);
+        if (index_allocated)
+            free(index);
+
+        //
+        // This call returns connectivity of elements in terms of global
+        // node ids.
+        //
+        offset = 0; offsetSize = 0; offset_allocated = 0;
+        index = 0; indexSize = 0; index_allocated = 0;
+        topos = 0; toposSize = 0; topos_allocated = 0;
+        iMesh_getVtxCoordIndex(itapsMesh, theSet,
+            iBase_REGION, iMesh_ALL_TOPOLOGIES, iBase_VERTEX, 
+            &offset, &offset_allocated, &offsetSize,
+            &index, &index_allocated, &indexSize,
+            (int**) &topos, &topos_allocated, &toposSize,
+            &itapsError);
+        CheckITAPSError(itapsMesh, (0,topos,offset,index,EoL));
+
+        for (int off = 0; off < offsetSize-1; off++)
+        {
+            int vtkZoneType = ITAPSEntityTopologyToVTKZoneType(topos[off]);
+            if (vtkZoneType == -1)
+                continue;
+            vtkIdType vertIds[256];
+            int jj = 0;
+            for (int idx = offset[off];
+                 idx < ((off+1) < offsetSize ? offset[off+1] : indexSize); idx++)
+            {
+                vertIds[jj++] = globToLocNodeId[index[idx]];
+            }
             ugrid->InsertNextCell(vtkZoneType, jj, vertIds);
         }
+#endif
 
         if (topos_allocated)
             free(topos);
@@ -1281,10 +1356,7 @@ avtITAPS_CFileFormat::GetMesh(int domain, const char *meshname)
         char desc[256];
         desc[0] = '\0';
         int tmpError = itapsError;
-#ifdef ITAPS_MOAB
         iMesh_getDescription(itapsMesh, desc, &itapsError, sizeof(desc));
-#elif ITAPS_GRUMMP
-#endif
         SNPRINTF(msg, sizeof(msg), "Encountered ITAPS error (%d) \"%s\""
             "\nUnable to open file!", tmpError, desc); 
         if (!avtCallback::IssueWarning(msg))
@@ -1433,10 +1505,7 @@ avtITAPS_CFileFormat::GetNodalSubsetVar(int domain, const char *varname,
         char desc[256];
         desc[0] = '\0';
         int tmpError = itapsError;
-#ifdef ITAPS_MOAB
         iMesh_getDescription(itapsMesh, desc, &itapsError, sizeof(desc));
-#elif ITAPS_GRUMMP
-#endif
         SNPRINTF(msg, sizeof(msg), "Encountered ITAPS error (%d) \"%s\""
             "\nUnable to open file!", tmpError, desc); 
         if (!avtCallback::IssueWarning(msg))
@@ -1645,10 +1714,7 @@ tagFound:
         char desc[256];
         desc[0] = '\0';
         int tmpError = itapsError;
-#ifdef ITAPS_MOAB
         iMesh_getDescription(itapsMesh, desc, &itapsError, sizeof(desc));
-#elif ITAPS_GRUMMP
-#endif
         SNPRINTF(msg, sizeof(msg), "Encountered ITAPS error (%d) \"%s\""
             "\nUnable to open file!", tmpError, desc); 
         if (!avtCallback::IssueWarning(msg))

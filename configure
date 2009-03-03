@@ -9130,7 +9130,7 @@ echo "$as_me: error: \"Configure needs to remove ITAPS implementation copy datab
         # Fix contents of the .xml file
         #
         sed -i -e "s%<Extensions>\(.*\)</Extensions>%<Extensions>${impl_exts}</Extensions>%" databases/$impl_name/$impl_name.xml
-        sed -i -e "s%<CXXFLAGS>\(.*\)</CXXFLAGS>%<CXXFLAGS>$\(ITAPS_C${itaps_impl_id}_INCLUDE)</CXXFLAGS>%" databases/$impl_name/$impl_name.xml
+        sed -i -e "s%<CXXFLAGS>\(.*\)</CXXFLAGS>%<CXXFLAGS>-D${impl_name} $\(ITAPS_C${itaps_impl_id}_INCLUDE)</CXXFLAGS>%" databases/$impl_name/$impl_name.xml
         sed -i -e "s%<LIBS>\(.*\)</LIBS>%<LIBS>$\(ITAPS_C${itaps_impl_id}_LIB)</LIBS>%" databases/$impl_name/$impl_name.xml
 
         #
