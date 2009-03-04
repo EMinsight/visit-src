@@ -202,6 +202,9 @@ static const int maxCoincidentNodelists = 12;
 //    Mark C. Miller, Wed Mar  4 12:05:45 PST 2009
 //    Made option processing for extents compatible with 'old' way of doing
 //    them.
+//
+//    Mark C. Miller, Wed Mar  4 13:39:58 PST 2009
+//    Backed out preceding change. It had backwards compatibility problems.
 // ****************************************************************************
 
 avtSiloFileFormat::avtSiloFileFormat(const char *toc_name,
@@ -215,8 +218,6 @@ avtSiloFileFormat::avtSiloFileFormat(const char *toc_name,
     numNodeLists = 0;
     maxAnnotIntLists = 0;
     tocIndex = 0; 
-    ignoreSpatialExtentsAAN = Auto;
-    ignoreDataExtentsAAN = Auto;
     ignoreSpatialExtents = false;
     ignoreDataExtents = false;
     searchForAnnotInt = false;
@@ -241,35 +242,9 @@ avtSiloFileFormat::avtSiloFileFormat(const char *toc_name,
         else if (rdatts->GetName(i) == "Search For ANNOTATION_INT (!!Slow!!)")
             searchForAnnotInt = rdatts->GetBool("Search For ANNOTATION_INT (!!Slow!!)");
         else if (rdatts->GetName(i) == "Ignore Spatial Extents")
-        {
-            // Handle the old (bool) way of doing this
-            if (rdatts->GetType(i) == DBOptionsAttributes::Bool)
-            {
-                if (rdatts->GetBool("Ignore Spatial Extents"))
-                    ignoreSpatialExtentsAAN = Always;
-                else
-                    ignoreSpatialExtentsAAN = Never;
-            }
-            else
-            {
-                ignoreSpatialExtentsAAN = (AANTriState) rdatts->GetEnum("Ignore Spatial Extents");
-            }
-        }
+            ignoreSpatialExtents = rdatts->GetBool("Ignore Spatial Extents");
         else if (rdatts->GetName(i) == "Ignore Data Extents")
-        {
-            // Handle the old (bool) way of doing this
-            if (rdatts->GetType(i) == DBOptionsAttributes::Bool)
-            {
-                if (rdatts->GetBool("Ignore Data Extents"))
-                    ignoreDataExtentsAAN = Always;
-                else
-                    ignoreDataExtentsAAN = Never;
-            }
-            else
-            {
-                ignoreDataExtentsAAN = (AANTriState) rdatts->GetEnum("Ignore Data Extents");
-            }
-        }
+            ignoreDataExtents = rdatts->GetBool("Ignore Data Extents");
         else
             debug1 << "Ignoring unknown option \"" << rdatts->GetName(i) << "\"" << endl;
     }
@@ -1216,6 +1191,9 @@ avtSiloFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
 //    Mark C. Miller, Wed Mar  4 08:54:57 PST 2009
 //    Improved logic to handle ignoring of spatial/data extents so that user
 //    can override explicitly or let plugin handle automatically.
+//
+//    Mark C. Miller, Wed Mar  4 13:39:58 PST 2009
+//    Backed out preceding change. It had backwards compatibility problems.
 // ****************************************************************************
 
 void
@@ -1378,28 +1356,10 @@ avtSiloFileFormat::ReadDir(DBfile *dbfile, const char *dirname,
     {
         codeNameGuess = GuessCodeNameFromTopLevelVars(dbfile);
 
-        // Decide whether or not to ignore data extents
-        if (ignoreDataExtentsAAN == Always)
+        if (codeNameGuess == "BlockStructured")
             ignoreDataExtents = true;
-        else if (ignoreDataExtentsAAN == Never)
-            ignoreDataExtents = false;
-        else // Auto
-        {
-            if (codeNameGuess == "BlockStructured")
-                ignoreDataExtents = true;
-            else if (codeNameGuess == "Ale3d")
-                ignoreDataExtents = true;
-        }
-
-        // Decide whether or not to ignore spatial extents
-        if (ignoreSpatialExtentsAAN == Always)
-            ignoreSpatialExtents = true;
-        else if (ignoreSpatialExtentsAAN == Never)
-            ignoreSpatialExtents = false;
-        else // Auto
-        {
-            // Nothing automaticly to do for sptail extents, yet
-        }
+        else if (codeNameGuess == "Ale3d")
+            ignoreDataExtents = true;
 
         if (DBInqVarExists(dbfile, "ConnectivityIsTimeVarying"))
         {

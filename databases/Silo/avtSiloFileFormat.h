@@ -211,6 +211,9 @@ typedef struct
 //
 //    Mark C. Miller, Wed Mar  4 08:54:57 PST 2009
 //    Added tri-state variables to better manage ignoring of extents. 
+//
+//    Mark C. Miller, Wed Mar  4 13:39:58 PST 2009
+//    Backed out preceding change. It had backwards compatibility problems.
 // ****************************************************************************
 
 class avtSiloFileFormat : public avtSTMDFileFormat
@@ -244,12 +247,9 @@ class avtSiloFileFormat : public avtSTMDFileFormat
     void                  ActivateTimestep(void);
 
   protected:
-    enum AANTriState {Always=0, Auto, Never};
     DBfile              **dbfiles;
     int                   tocIndex;
     int                   dontForceSingle; // used primarily for testing
-    AANTriState           ignoreSpatialExtentsAAN;
-    AANTriState           ignoreDataExtentsAAN;
     bool                  ignoreSpatialExtents;
     bool                  ignoreDataExtents;
     bool                  searchForAnnotInt;
