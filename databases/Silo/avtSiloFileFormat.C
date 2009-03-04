@@ -194,6 +194,10 @@ static const int maxCoincidentNodelists = 12;
 //
 //    Mark C. Miller, Tue Jun 10 22:36:25 PDT 2008
 //    Added logic to ignore spatial/data extents.
+//
+//    Mark C. Miller, Wed Mar  4 08:54:57 PST 2009
+//    Improved logic to handle ignoring of spatial/data extents so that user
+//    can override explicitly or let plugin handle automatically.
 // ****************************************************************************
 
 avtSiloFileFormat::avtSiloFileFormat(const char *toc_name,
@@ -207,6 +211,8 @@ avtSiloFileFormat::avtSiloFileFormat(const char *toc_name,
     numNodeLists = 0;
     maxAnnotIntLists = 0;
     tocIndex = 0; 
+    ignoreSpatialExtentsAAN = Auto;
+    ignoreDataExtentsAAN = Auto;
     ignoreSpatialExtents = false;
     ignoreDataExtents = false;
     searchForAnnotInt = false;
@@ -228,12 +234,12 @@ avtSiloFileFormat::avtSiloFileFormat(const char *toc_name,
     {
         if (rdatts->GetName(i) == "Force Single")
             dontForceSingle = rdatts->GetBool("Force Single") ? 0 : 1;
-        else if (rdatts->GetName(i) == "Ignore Spatial Extents")
-            ignoreSpatialExtents = rdatts->GetBool("Ignore Spatial Extents");
-        else if (rdatts->GetName(i) == "Ignore Data Extents")
-            ignoreDataExtents = rdatts->GetBool("Ignore Data Extents");
         else if (rdatts->GetName(i) == "Search For ANNOTATION_INT (!!Slow!!)")
             searchForAnnotInt = rdatts->GetBool("Search For ANNOTATION_INT (!!Slow!!)");
+        else if (rdatts->GetName(i) == "Ignore Spatial Extents")
+            ignoreSpatialExtentsAAN = (AANTriState) rdatts->GetEnum("Ignore Spatial Extents");
+        else if (rdatts->GetName(i) == "Ignore Data Extents")
+            ignoreDataExtentsAAN = (AANTriState) rdatts->GetEnum("Ignore Data Extents");
         else
             debug1 << "Ignoring unknown option \"" << rdatts->GetName(i) << "\"" << endl;
     }
@@ -1176,6 +1182,10 @@ avtSiloFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
 //    Mark C. Miller, Mon Mar  2 11:50:08 PST 2009
 //    Removed call to CloseFile(1) just prior to adding annot-int nodelists.
 //    The issue that addressed is now handled in the AddAnnotInt... routine.
+//
+//    Mark C. Miller, Wed Mar  4 08:54:57 PST 2009
+//    Improved logic to handle ignoring of spatial/data extents so that user
+//    can override explicitly or let plugin handle automatically.
 // ****************************************************************************
 
 void
@@ -1338,9 +1348,28 @@ avtSiloFileFormat::ReadDir(DBfile *dbfile, const char *dirname,
     {
         codeNameGuess = GuessCodeNameFromTopLevelVars(dbfile);
 
-        // summarily ignore extents for block structured code
-        if (codeNameGuess == "BlockStructured")
+        // Decide whether or not to ignore data extents
+        if (ignoreDataExtentsAAN == Always)
             ignoreDataExtents = true;
+        else if (ignoreDataExtentsAAN == Never)
+            ignoreDataExtents = false;
+        else // Auto
+        {
+            if (codeNameGuess == "BlockStructured")
+                ignoreDataExtents = true;
+            else if (codeNameGuess == "Ale3d")
+                ignoreDataExtents = true;
+        }
+
+        // Decide whether or not to ignore spatial extents
+        if (ignoreSpatialExtentsAAN == Always)
+            ignoreSpatialExtents = true;
+        else if (ignoreSpatialExtentsAAN == Never)
+            ignoreSpatialExtents = false;
+        else // Auto
+        {
+            // Nothing automaticly to do for sptail extents, yet
+        }
 
         if (DBInqVarExists(dbfile, "ConnectivityIsTimeVarying"))
         {
