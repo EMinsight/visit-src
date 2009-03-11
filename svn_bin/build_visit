@@ -460,6 +460,9 @@
 #     Hank Childs, Mon Jan 26 15:57:02 PST 2009
 #     Add support for FastBit.
 #
+#     Patrick Shinpaugh, Wed Mar 11 11:38:55 MST 2009
+#     Set flags + Mesa && Qt targets for ppc64 systems.
+#
 # *****************************************************************************
 #
 # *************************************************************************** #
