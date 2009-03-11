@@ -1483,6 +1483,9 @@ for ($os) {
         elsif ($mach =~ /x86_64/) {
             push @supportedarchs, "linux-x86_64";
         }
+        elsif ($mach =~ /ppc64/) {
+            push @supportedarchs, "linux-ppc64";
+        }
         else {
             if ($req_compiler eq "icc") {
                 push @supportedarchs, "linux-intel-icc";
