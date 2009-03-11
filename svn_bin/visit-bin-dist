@@ -360,6 +360,9 @@
 #    Hank Childs, Tue Jan 20 15:18:10 PST 2009
 #    Copy over the Princeton config files.
 #
+#    Patrick Shinpaugh, Wed Mar 11 11:34:16 MST 2009
+#    Fix directories to account for linux-ppc64.
+#
 #------------------------------------------------------------------------------
 
 set DataFiles = "TRUE"
@@ -740,6 +743,10 @@ if ("$ArchGiven" == "FALSE") then
          case x86_64:
             set osver = linux-x86_64
             set visitbindir = linux-x86_64
+            breaksw
+         case ppc64:
+            set osver = linux-ppc64
+            set visitbindir = linux-ppc64
             breaksw
       endsw
       breaksw
