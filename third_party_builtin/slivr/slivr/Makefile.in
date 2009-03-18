@@ -43,6 +43,9 @@
 #   Tom Fogal, Sat Dec 27 21:46:28 MST 2008
 #   Pass VisIt's compilation flags to SLIVRs configuration.
 #
+#   Tom Fogal, Wed Mar 18 11:14:05 MST 2009
+#   Fix SLIVR tarball name.
+#
 ##############################################################################
 
 
@@ -53,7 +56,7 @@
 @VARIABLES@
 
 SLIVR_IS_EXTRACTED=slivr-extracted
-SLIVR_TARBALL=slivr-r141.tar.gz
+SLIVR_TARBALL=slivr-rev-141.tar.gz
 
 ##
 ## Standard targets...
