@@ -470,6 +470,10 @@
 #     Tom Fogal, Wed Mar 11 11:52:09 MST 2009
 #     Incorporated a patch from Patrick which fixes the Linux-ppc64 HDF4 build.
 #
+#     Tom Fogal, Tue Mar 17 21:15:53 MST 2009
+#     Added a patch which sets the endianness properly on Linux-ppc systems
+#     (based on a patch from Patrick Shinpaugh).
+#
 # *****************************************************************************
 #
 # *************************************************************************** #
@@ -5697,6 +5701,23 @@ function apply_hdf4_421_ppc_patch
 EOF
 }
 
+# Switches a define for the endianness on PPC systems.
+function apply_hdf4_421_ppc_patch_endianness
+{
+  patch -p0 << \EOF
+--- HDF4.2r1/hdf/fmpool/config/fmplinux.h.orig	2009-03-17 21:10:59.240084436 -0700
++++ HDF4.2r1/hdf/fmpool/config/fmplinux.h	2009-03-17 21:11:24.868152481 -0700
+@@ -36,7 +36,7 @@
+ #define HAVE_STAT
+ #define HAVE_MIN_MAX
+ #define HAVE_CDEFS_H
+-#define	BYTE_ORDER  LITTLE_ENDIAN	
++#define	BYTE_ORDER  BIG_ENDIAN	
+ 
+ #endif /* _FMPCONF_H */
+EOF
+}
+
 function apply_hdf4_421_patch
 {
    if [[ "$OPSYS" == "Darwin" ]]; then
@@ -5719,6 +5740,7 @@ function apply_hdf4_patch
    fi
     if test `uname -m` = "ppc64" ; then
         apply_hdf4_421_ppc_patch
+        apply_hdf4_421_ppc_patch_endianness
     fi
 
    return 0
