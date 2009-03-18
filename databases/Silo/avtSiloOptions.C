@@ -74,21 +74,18 @@ using std::vector;
 //
 //    Mark C. Miller, Wed Mar  4 08:56:57 PST 2009
 //    Made controls for ignoring extents tri-state.
+//
+//    Mark C. Miller, Tue Mar 17 21:06:16 PDT 2009
+//    Undid previous change because it breaks compatibility of the 1.11 RC.
 // ****************************************************************************
 
 DBOptionsAttributes *
 GetSiloReadOptions(void)
 {
     DBOptionsAttributes *rv = new DBOptionsAttributes;
-    vector<string> ignoreOpts;
-    ignoreOpts.push_back("Always"); // 0
-    ignoreOpts.push_back("Auto");   // 1
-    ignoreOpts.push_back("Never");  // 2
-    rv->SetEnum("Ignore Spatial Extents", 1); // Auto
-    rv->SetEnumStrings("Ignore Spatial Extents", ignoreOpts);
-    rv->SetEnum("Ignore Data Extents", 1); // Auto 
-    rv->SetEnumStrings("Ignore Data Extents", ignoreOpts);
     rv->SetBool("Force Single", true);
+    rv->SetBool("Ignore Spatial Extents", false);
+    rv->SetBool("Ignore Data Extents", false);
     rv->SetBool("Search For ANNOTATION_INT (!!Slow!!)", false);
     return rv;
 }
