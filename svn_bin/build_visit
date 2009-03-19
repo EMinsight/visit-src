@@ -564,6 +564,9 @@
 #     Mark C. Miller, Wed Mar 18 16:06:51 PDT 2009
 #     Wholesale merged trunk version to 1.11.2 release candidate and modified
 #     just stuff related to Qt 3 (RC) and 4 (trunk).
+#
+#     Mark C. Miller, Wed Mar 18 22:06:43 PDT 2009
+#     Reverted visit source code version number to 1.11.1
 # *****************************************************************************
 #
 # *************************************************************************** #
@@ -818,7 +821,7 @@ if [[ "$VISIT_FILE" != "" ]] ; then
   USE_VISIT_FILE="yes"
   ON_USE_VISIT_FILE="on"
 fi
-export VISIT_VERSION=${VISIT_VERSION-"1.11.2"}
+export VISIT_VERSION=${VISIT_VERSION-"1.11.1"}
 export VISIT_FILE=${VISIT_FILE-"visit${VISIT_VERSION}.tar.gz"}
 
 export VTK_FILE=${VTK_FILE-"vtk-5.0.0c.tar.gz"}
