@@ -567,6 +567,11 @@
 #
 #     Mark C. Miller, Wed Mar 18 22:06:43 PDT 2009
 #     Reverted visit source code version number to 1.11.1
+#
+#     Mark C. Miller, Thu Mar 19 08:55:41 PDT 2009
+#     Adjusted Silo to be a required lib as it was orig. The 1.11 RC still
+#     requires it though the trunk no longer does. Added web path for fastbit.
+#     Fixed cut-n-paste typos in error messages from ITAPS configures.
 # *****************************************************************************
 #
 # *************************************************************************** #
@@ -776,8 +781,8 @@ export DO_CCMIO="no"
 export ON_CCMIO="off"
 export DO_ITAPS="no"
 export ON_ITAPS="off"
-export DO_SILO="no"
-export ON_SILO="off"
+export DO_SILO="yes"
+export ON_SILO="on"
 export DO_SLIVR="no"
 export ON_SLIVR="off"
 export DO_VISUS="no"
@@ -1481,6 +1486,13 @@ function check_required_3rdparty
             return 1
         fi
     fi
+
+    if [[ "$DO_SILO" == "yes" ]] ; then
+        ensure_built_or_ready "silo" $SILO_VERSION $SILO_BUILD_DIR $SILO_FILE "https://wci.llnl.gov/codes/silo/silo-4.7"
+        if [[ $? != 0 ]] ; then
+            return 1
+        fi
+    fi
     
     return 0
 }   
@@ -1596,7 +1608,7 @@ function check_optional_3rdparty
         fi
     fi
     if [[ "$DO_FASTBIT" == "yes" ]] ; then
-        ensure_built_or_ready "fastbit" $FASTBIT_VERSION $FASTBIT_DIR $FASTBIT_FILE
+        ensure_built_or_ready "fastbit" $FASTBIT_VERSION $FASTBIT_DIR $FASTBIT_FILE https://codeforge.lbl.gov/frs/download.php/33
         if [[ $? != 0 ]] ; then
             warn "Unable to build FastBit.  ${FASTBIT_FILE} not found."
             warn "FastBit is not available for download from the VisIt build site"
@@ -1692,15 +1704,6 @@ function check_optional_3rdparty
             ANY_ERRORS="yes"
             DO_NETCDF="no"
             error "Unable to build NetCDF.  ${NETCDF_FILE} not found."
-        fi
-    fi
-    
-    if [[ "$DO_SILO" == "yes" ]] ; then
-        ensure_built_or_ready "silo" $SILO_VERSION $SILO_BUILD_DIR $SILO_FILE "https://wci.llnl.gov/codes/silo/silo-4.7"
-        if [[ $? != 0 ]] ; then
-            ANY_ERRORS="yes"
-            DO_SILO="no"
-            error "Unable to build Silo.  ${SILO_FILE} not found."
         fi
     fi
     
@@ -7616,7 +7619,7 @@ function build_itaps_moab
         --enable-imesh=nofortran --with-zlib \
         $WITHHDF5ARG "$WITHSZIPARG" "$WITHNETCDFARG"
     if [[ $? != 0 ]] ; then
-       warn "Silo configure failed.  Giving up"
+       warn "ITAPS_MOAB configure failed.  Giving up"
        return 1
     fi
 
@@ -7681,7 +7684,7 @@ function build_itaps_fmdb
         --prefix="$VISITDIR/itaps/FMDB/$ITAPS_FMDB_VERSION/$VISITARCH" \
         --enable-iMesh
     if [[ $? != 0 ]] ; then
-       warn "Silo configure failed.  Giving up"
+       warn "ITAPS_FMBD configure failed.  Giving up"
        return 1
     fi
 
@@ -7746,7 +7749,7 @@ function build_itaps_grummp
         --prefix="$VISITDIR/itaps/GRUMMP/$ITAPS_GRUMMP_VERSION/$VISITARCH" \
         --enable-iBase --enable-iMesh
     if [[ $? != 0 ]] ; then
-       warn "Silo configure failed.  Giving up"
+       warn "ITAPS_GRUMMP configure failed.  Giving up"
        return 1
     fi
 
@@ -8889,7 +8892,6 @@ if [[ "$DO_OPTIONAL" == "yes" && "$GRAPHICAL" == "yes" ]] ; then
            "IceT"     "0.5.4  $ICET_FILE"      $ON_ICET \
            "Mili"     "1.10   $MILI_FILE (not available from the web)"      $ON_MILI \
            "TCMALLOC" "0.97   $TCMALLOC_FILE (not available from the web)"      $ON_TCMALLOC \
-           "Silo"     "4.7    $SILO_FILE"      $ON_SILO \
            "SZip"     "2.1    $SZIP_FILE"      $ON_SZIP \
            "NetCDF"   "3.6.0  $NETCDF_FILE"    $ON_NETCDF 2> tmp$$
     retval=$?
@@ -8911,7 +8913,6 @@ if [[ "$DO_OPTIONAL" == "yes" && "$GRAPHICAL" == "yes" ]] ; then
         DO_ICET="no"
         DO_MILI="no"
         DO_NETCDF="no"
-        DO_SILO="no"
         DO_SZIP="no"
         for OPTION in $choice
         do
@@ -8947,8 +8948,6 @@ if [[ "$DO_OPTIONAL" == "yes" && "$GRAPHICAL" == "yes" ]] ; then
                  DO_MILI="yes";;
               NetCDF)
                  DO_NETCDF="yes";;
-              Silo)
-                 DO_SILO="yes";;
               SZip)
                  DO_SZIP="yes";;
             esac
