@@ -474,6 +474,9 @@
 #     Added a patch which sets the endianness properly on Linux-ppc systems
 #     (based on a patch from Patrick Shinpaugh).
 #
+#     Tom Fogal, Sun Mar 22 15:34:39 MST 2009
+#     Fix CCMIO builds on Linux-PPC. -- thanks to Patrick Shinpaugh.
+#
 # *****************************************************************************
 #
 # *************************************************************************** #
@@ -7466,6 +7469,23 @@ EOF
    return 0
 }
 
+function apply_ccmio_261_linux_ppc_patch
+{
+  patch -p1 << \EOF
+--- visit-build-old/libccmio-2.6.1/config/linux64_2.6-pwr4-glibc_2.3.3/qmake.conf	2009-03-19 21:31:31.207392275 -0400
++++ visit-build/libccmio-2.6.1/config/linux64_2.6-pwr4-glibc_2.3.3/qmake.conf	2009-03-19 21:31:54.522915173 -0400
+@@ -72,7 +72,7 @@
+ QMAKE_UIC		= $(QTDIR)/bin/uic
+ 
+ QMAKE_AR		= ar cq
+-QMAKE_RANLIB		= ranlib -X64
++QMAKE_RANLIB		= ranlib
+ 
+ QMAKE_TAR		= tar -cf
+ QMAKE_GZIP		= gzip -9f
+EOF
+}
+
 function apply_ccmio_261_patch
 {
    if [[ "$OPSYS" == "Darwin" ]]; then
@@ -7473,6 +7493,9 @@ function apply_ccmio_261_patch
        if [[ $? != 0 ]] ; then
            return 1
        fi
+   fi
+   if [[ `uname -m` == "ppc64" ]]; then
+       apply_ccmio_261_linux_ppc_patch
    fi
 
    return 0
