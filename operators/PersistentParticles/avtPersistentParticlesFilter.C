@@ -176,6 +176,10 @@ avtPersistentParticlesFilter::InspectPrincipalData(void)
 //      the information from the current time slice to the new dataset with
 //      the particle paths. 
 //
+//  Modifications:
+//    Oliver Ruebel, Mo Mar 28 2009
+//    Clean-up. Removed cout statements used for debugging and added comments
+//
 //  Programmer: Hank Childs
 //  Creation:   January 25, 2008
 //
@@ -309,6 +313,11 @@ avtPersistentParticlesFilter::Iterate(int ts, avtDataTree_p tree)
 //      either all points of the different time slices or the dataset with
 //      the particle paths.
 //
+//  Modifications:
+//    Oliver Ruebel, Mo Mar 28 2009
+//    Clean-up. Removed cout statements used for debugging and added comments.
+//
+//
 //  Programmer: Hank Childs
 //  Creation:   January 25, 2008
 //
@@ -354,6 +363,10 @@ avtPersistentParticlesFilter::Finalize(void)
 //      to, e.g., request that the index variable is also loaded if it 
 //      is not already part of the contract.
 //
+//  Modifications:
+//    Oliver Ruebel, Mo Mar 28 2009
+//    Clean-up. Removed cout statements used for debugging and added comments.
+//
 // ****************************************************************************
 
 avtContract_p
@@ -371,6 +384,13 @@ avtPersistentParticlesFilter::ModifyContract(avtContract_p in_contract)
     return out_contract;
 }
 
+
+// ****************************************************************************
+//  Method: avtPersistentParticlesFilter::UpdateDataObjectInfo
+//
+//  Purpose:
+//
+// ****************************************************************************
 void
 avtPersistentParticlesFilter::UpdateDataObjectInfo(void)
 {
