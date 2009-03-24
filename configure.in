@@ -2128,64 +2128,17 @@ if test -n "$HDF5_LIB"; then
 fi
 
 #
-# Check for the public SILO includes since that's what we'll use.
+# Handle the Silo library
 #
-AC_ARG_WITH(silo_include,
-	[  --with-silo_include=<INC-DIR>     User-specified SILO include directory],
-	silo_include=$withval,
-	silo_include=$DEFAULT_SILO_INCLUDES)
-if test -n "$silo_include"; then
-    AC_MSG_CHECKING(for SILO include files)
-    SILO_INCLUDE="-I`echo $silo_include|sed 's/ 	*/ -I/g'`"
-    AC_MSG_RESULT(user specified ("$SILO_INCLUDE"))
-fi
-AC_SUBST(SILO_INCLUDE)
-
-#
-# Check for the public SILO library since that's what we'll use.
-#
-LIBSILO=
-SILO_LIBDIR=
-SILO_LIB=
-SILO_TARGET=
-AC_ARG_WITH(silo_library,
-	[  --with-silo_library=<LIB-DIR>     User-specified SILO library directory],
-	silo_library=$withval,
-	silo_library=$DEFAULT_SILO_LIBRARY)
-if test -n "$silo_library"; then
-    AC_MSG_CHECKING(for SILO library)
-    silo_names="siloxx siloh5 silo"
-    silo_extns="dylib so a"
-    for n in $silo_names; do
-        for e in $silo_extns; do
-            if test -r $silo_library/lib$n.$e; then
-                LIBSILO="lib$n.$e"
-                SILO_LIBDIR="$silo_library"
-                SILO_LIB="-L`echo $silo_library|sed 's/  */ -L/g'` -l$n"
-                SILO_TARGET="$""(SILO_TARGET)"
-                break 2
-            fi
-        done
-    done
-    if test -n "$SILO_LIB"; then
-        # check for possible dependence on hdf5
-        if test -n "`strings $silo_library/lib$n.$e | grep -i 'SILO built with HDF5 library version'`"; then
-            if test -z "$HDF5_LIB"; then
-                AC_MSG_ERROR(Silo appears to have a dependence on HDF5. Please use --with-hdf5 option to configure.)
-            fi
-            SILO_LIB="$SILO_LIB $HDF5_LIB"
+VAC_ARG_WITH3RD(silo,,siloxx siloh5 silo)
+# Check for possible dependence on HDF5
+if test -n "$SILO_LIB"; then
+    if test -n "`strings $SILO_LIBFILE | grep -i 'SILO built with HDF5'`"; then
+        if test -z "`echo $SILO_LIB | tr ' ' '\n' | grep -x -e '-lhdf5'`"; then
+            AC_MSG_ERROR(Silo appears to have a dependence on HDF5. Add dependent libs after ':' in --with-silo arg.)
         fi
-        AC_MSG_RESULT(user specified ("$SILO_LIB"))
-    else
-        AC_MSG_RESULT(not found)
-        AC_MSG_ERROR(could not find a suitable silo library at $silo_library.)
     fi
 fi
-# The name of the actual Silo library for use in lib/Makefile.in
-AC_SUBST(LIBSILO)
-AC_SUBST(SILO_LIBDIR)
-AC_SUBST(SILO_LIB)
-AC_SUBST(SILO_TARGET)
 
 dnl
 dnl Check for exodus libraries

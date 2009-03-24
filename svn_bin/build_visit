@@ -585,6 +585,10 @@
 #     Eric Brugger, Fri Mar 20 16:18:00 PDT 2009
 #     Changed the source code version number to 1.11.2.
 #
+#     Eric Brugger, Mon Mar 23 17:09:00 PDT 2009
+#     Added -DH5_USE_16_API to the CFLAGS and CXXFLAGS for the gdal build
+#     so that it would build with hdf5 1.8.
+#
 # *****************************************************************************
 #
 # *************************************************************************** #
@@ -6117,7 +6121,8 @@ EOF
         fi
     fi
     ./configure CXX="$CXX_COMPILER" CC="$C_COMPILER" $EXTRA_FLAGS \
-       CFLAGS="$C_OPT_FLAGS" CXXFLAGS="$CXX_OPT_FLAGS" \
+       CFLAGS="$C_OPT_FLAGS -DH5_USE_16_API" \
+       CXXFLAGS="$CXX_OPT_FLAGS -DH5_USE_16_API" \
        --prefix="$VISITDIR/gdal/$GDAL_VERSION/$VISITARCH" \
        --with-libtiff=internal --with-gif=internal \
        --with-png=internal --with-jpeg=internal \
