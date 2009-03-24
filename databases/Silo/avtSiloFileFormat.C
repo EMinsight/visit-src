@@ -1201,6 +1201,11 @@ avtSiloFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
 //    Added logic to NOT descend to first non-EMPTY block of a multi-mat if
 //    the multi-mat appears to have enough information about the global
 //    material context (#mats, names and colors).
+//
+//    Mark C. Miller, Tue Mar 24 11:46:22 PDT 2009
+//    Changed #if defined(SILO_VERSION_GE) && SILO_VERSION_GE(4,6,2) to nested
+//    #if statements. The former assumes short-circuit evaluation and not
+//    all C pre-processors apparently obey it.
 // ****************************************************************************
 
 void
@@ -1535,9 +1540,11 @@ avtSiloFileFormat::ReadDir(DBfile *dbfile, const char *dirname,
                 }
                 ndims = um->ndims;
                 tdims = ndims;
-#if defined(SILO_VERSION_GE) && SILO_VERSION_GE(4,6,1)
+#ifdef SILO_VERSION_GE
+#if SILO_VERSION_GE(4,6,1)
                 if (um->topo_dim != -1)
                     tdims = um->topo_dim;
+#endif
 #endif
                 cellOrigin = um->origin;
                 if (um->units[0] != NULL)
@@ -1860,9 +1867,11 @@ avtSiloFileFormat::ReadDir(DBfile *dbfile, const char *dirname,
 
         // Handle data-specified topological dimension if its available
         int tdims = um->ndims;
-#if defined(SILO_VERSION_GE) && SILO_VERSION_GE(4,6,1)
+#ifdef SILO_VERSION_GE
+#if SILO_VERSION_GE(4,6,1)
         if (um->topo_dim != -1)
             tdims = um->topo_dim;
+#endif
 #endif
 
         char *name_w_dir = GenerateName(dirname, ucdmesh_names[i], topDir.c_str());
@@ -2082,7 +2091,8 @@ avtSiloFileFormat::ReadDir(DBfile *dbfile, const char *dirname,
 
             if (valid_var)
             {
-#if defined(SILO_VERSION_GE) && SILO_VERSION_GE(4,6,2)
+#ifdef SILO_VERSION_GE
+#if SILO_VERSION_GE(4,6,2)
                 if (mv->mmesh_name != 0)
                 {
                     meshname = mv->mmesh_name;
@@ -2091,6 +2101,7 @@ avtSiloFileFormat::ReadDir(DBfile *dbfile, const char *dirname,
                            << meshname.c_str() << "\"" << endl;
                 }
                 else
+#endif
 #endif
                 {
                     // NOTE: There is an explicit assumption that the corresponding
@@ -2707,7 +2718,8 @@ avtSiloFileFormat::ReadDir(DBfile *dbfile, const char *dirname,
 #endif
             }
 
-#if defined(SILO_VERSION_GE) && SILO_VERSION_GE(4,6,2)
+#ifdef SILO_VERSION_GE
+#if SILO_VERSION_GE(4,6,2)
             if (mm->mmesh_name != 0)
             {
                 meshname = mm->mmesh_name;
@@ -2716,6 +2728,7 @@ avtSiloFileFormat::ReadDir(DBfile *dbfile, const char *dirname,
                        << meshname.c_str() << "\"" << endl;
             }
             else
+#endif
 #endif
             {
                 TRY
