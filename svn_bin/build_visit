@@ -1200,7 +1200,7 @@ function download_file
     if [[ "$DO_SVN" == "yes" ]] ; then
         svn cat $SVN_ROOT_PATH/trunk/third_party/$dfile > $dfile
         if [[ $? == 0 && -e $dfile ]] ; then
-            info "SVN download succeded: $SVN_ROOT_PATH/trunk/third_party/$dfile"
+            info "SVN download succeeded: $SVN_ROOT_PATH/trunk/third_party/$dfile"
             return 0
         fi
         warn "SVN download attempt failed: $SVN_ROOT_PATH/trunk/third_party/$dfile"
@@ -1262,7 +1262,7 @@ function try_download_file
     fi
 
     if [[ $? == 0 && -e `basename $1` ]] ; then
-        info "Download succeded: $1"
+        info "Download succeeded: $1"
         return 0
     else    
         warn "Download attempt failed: $1"
