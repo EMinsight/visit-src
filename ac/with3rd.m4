@@ -218,7 +218,13 @@ AC_DEFUN(VAC_ARG_WITH3RD,
         rm -rf lib/${libfile}*
         for f in $libdir/${libfile}*; do
             fb=`basename $f`
-            ln -s $f lib/$fb
+            if test -z "$VAC_CV_LIBDIR_CREATE_LINKS"; then
+                VAC_CV_LIBDIR_CREATE_LINKS="ln -sf $f $fb"
+                VAC_CV_LIBDIR_DESTROY_LINKS="rm -f $fb"
+            else
+                VAC_CV_LIBDIR_CREATE_LINKS="$VAC_CV_LIBDIR_CREATE_LINKS; ln -sf $f $fb"
+                VAC_CV_LIBDIR_DESTROY_LINKS="$VAC_CV_LIBDIR_DESTROY_LINKS; rm -f $fb"
+            fi
             lib_links="$lib_links $f"
         done
 
@@ -257,7 +263,13 @@ AC_DEFUN(VAC_ARG_WITH3RD,
                             rm -rf lib/lib${l}.${e}*
                             for lf in $libfiles; do
                                 lfb=`basename $lf`
-                                ln -s $lf lib/$lfb
+                                if test -z "$VAC_CV_LIBDIR_CREATE_LINKS"; then
+                                    VAC_CV_LIBDIR_CREATE_LINKS="ln -sf $lf $lfb"
+                                    VAC_CV_LIBDIR_DESTROY_LINKS="rm -f $lfb"
+                                else
+                                    VAC_CV_LIBDIR_CREATE_LINKS="$VAC_CV_LIBDIR_CREATE_LINKS; ln -sf $lf $lfb"
+                                    VAC_CV_LIBDIR_DESTROY_LINKS="$VAC_CV_LIBDIR_DESTROY_LINKS; rm -f $lfb"
+                                fi
                                 deplib_links="$deplib_links $lf"
                                 deplib_found="`echo $deplib_found | tr ' ' '\n' | grep -xve ${l}`"
                             done
