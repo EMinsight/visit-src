@@ -60,6 +60,12 @@
 //    Add ENGINE and MDSERVER preprocessor defines when plugin has engine
 //    specific mdserver specific code respectively.
 //    
+//    Kathleen Bonnell, Wed Mar 25 08:44:21 PDT 2009
+//    Removed unneccessary lines from File Configurations.  Changed RTL to
+//    always be MD, even for Debug as we do not link against debug versions
+//    of third-party, and all libs linked into the project must use the same
+//    RTL
+//  
 // ****************************************************************************
 
     void WriteProject_TOP_LEVEL_Version7(ostream &out)
@@ -180,9 +186,9 @@
         const char *suffix = (pluginComponent == 'E') ? "_ser" : "";
 
         QString configs[] = {"Release", "Debug", "Purify"};
-        QString debug[] = {"NDEBUG", "_DEBUG", "_DEBUG"};
+        QString debug[] = {"NDEBUG", "", ""};
         int optims[] = {2, 0, 0};
-        int rtl[] = {2, 3, 3};
+        int rtl[] = {2, 2, 2};
         int brc[] = {0, 3, 0};
         int dif[] = {0, 4, 3};
         int li[] = {1, 2, 1};
@@ -361,14 +367,6 @@
                 out << "\t\t\t\t\tName=\"" << configs[j] << "|Win32\">" << endl;
                 out << "\t\t\t\t\t<Tool" << endl;
                 out << "\t\t\t\t\t\tName=\"VCCLCompilerTool\"" << endl;
-                out << "\t\t\t\t\t\tOptimization=\"" << optims[j] 
-                    << "\"" << endl;
-                out << "\t\t\t\t\t\tPreprocessorDefinitions=\"$(Inherit)\"" 
-                    << endl;
-                if (configs[j] == "Debug")
-                    out << "\t\t\t\t\t\tBasicRuntimeChecks=\"3\"" << endl;
-                else if (configs[j] == "Purify")
-                    out << "\t\t\t\t\t\tBasicRuntimeChecks=\"0\"" << endl;
                 out << "\t\t\t\t\t\tCompileAs=\"2\"/>" << endl;
                 out << "\t\t\t\t</FileConfiguration>" << endl;
             }
@@ -515,8 +513,8 @@
         out << "\t</Platforms>" << endl;
         out << "\t<Configurations>" << endl;
         {
-        QString debug[] = {"NDEBUG", "_DEBUG", "_DEBUG"};
-        int rtl[] = {2, 3, 3};
+        QString debug[] = {"NDEBUG", "", ""};
+        int rtl[] = {2, 2, 2};
         int li[] = {1, 2, 1};
         int dif[] = {0, 4, 3};
         for (int i = 0; i < 3; ++i)
@@ -691,13 +689,6 @@
                 out << "\t\t\t\t\tName=\"" << configs[j] << "|Win32\">" << endl;
                 out << "\t\t\t\t\t<Tool" << endl;
                 out << "\t\t\t\t\t\tName=\"VCCLCompilerTool\"" << endl;
-                out << "\t\t\t\t\t\tOptimization=\"" << optims[j] 
-                    << "\"" << endl;
-                out << "\t\t\t\t\t\tPreprocessorDefinitions=\"$(Inherit)\"" 
-                    << endl;
-                if (configs[j] != "Release")
-                    out << "\t\t\t\t\t\tBasicRuntimeChecks=\"" << brc[j] 
-                        << "\"" << endl;
                 out << "\t\t\t\t\t\tCompileAs=\"2\"/>" << endl;
                 out << "\t\t\t\t</FileConfiguration>" << endl;
             }
