@@ -130,6 +130,11 @@ avtZoneIdNamedSelection::~avtZoneIdNamedSelection()
 //  Programmer: Hank Childs
 //  Creation:   February 2, 2009
 //
+//  Modifications:
+//    Kathleen Bonnell, Thur Mar 26 08:16:23 MST 2009
+//    Use size_t for loop variable to remove signed/unsigned int comparison
+//    warnings.
+//
 // ****************************************************************************
 
 void
@@ -138,7 +143,7 @@ avtZoneIdNamedSelection::Write(const std::string &fname)
     ofstream ofile(fname.c_str());
     ofile << ZONE_ID << endl;
     ofile << domId.size() << endl;
-    for (int i = 0 ; i < domId.size() ; i++)
+    for (size_t i = 0 ; i < domId.size() ; i++)
     {
         ofile << domId[i] << " " << zoneId[i] << endl;
     }
@@ -194,15 +199,18 @@ avtZoneIdNamedSelection::Read(const std::string &fname)
 //  Programmer: Hank Childs
 //  Creation:   February 3, 2009
 //
+//  Modifications:
+//    Kathleen Bonnell, Thur Mar 26 08:16:23 MST 2009
+//    Use size_t for loop variable to remove signed/unsigned int comparison
+//    warnings.
+//
 // ****************************************************************************
 
 bool
 avtZoneIdNamedSelection::GetDomainList(std::vector<int> &domains)
 {
-    int  i;
-
     int maxDomain = 0;
-    for (i = 0 ; i < domId.size() ; i++)
+    for (size_t i = 0 ; i < domId.size() ; i++)
     {
         if (domId[i] > maxDomain)
             maxDomain = domId[i];
@@ -210,7 +218,7 @@ avtZoneIdNamedSelection::GetDomainList(std::vector<int> &domains)
 
     std::vector<bool> useDomain(maxDomain+1, false);
     int numDoms = 0;
-    for (i = 0 ; i < domId.size() ; i++)
+    for (size_t i = 0 ; i < domId.size() ; i++)
     {
         if (! useDomain[domId[i]])
         {
@@ -221,7 +229,7 @@ avtZoneIdNamedSelection::GetDomainList(std::vector<int> &domains)
 
     domains.resize(numDoms);
     int curDom = 0;
-    for (i = 0 ; i < maxDomain+1 ; i++)
+    for (int i = 0 ; i < maxDomain+1 ; i++)
         if (useDomain[i])
             domains[curDom++] = i;
 
@@ -238,6 +246,12 @@ avtZoneIdNamedSelection::GetDomainList(std::vector<int> &domains)
 //  Programmer: Hank Childs
 //  Creation:   February 3, 2009
 //
+//  Modifications:
+//    Kathleen Bonnell, Thur Mar 26 08:16:23 MST 2009
+//    Use size_t for loop variable to remove signed/unsigned int comparison
+//    warnings.  Added PairCompare to iterator specification for compilation
+//    on windows.
+//
 // ****************************************************************************
 
 void
@@ -246,7 +260,7 @@ avtZoneIdNamedSelection::GetMatchingIds(unsigned int *pts, int nvals,
 {
     if (lookupSet.size() == 0)
     {
-        for (int i = 0 ; i < domId.size() ; i++)
+        for (size_t i = 0 ; i < domId.size() ; i++)
         {
             IntPair ip;
             ip.d = domId[i];
@@ -260,7 +274,7 @@ avtZoneIdNamedSelection::GetMatchingIds(unsigned int *pts, int nvals,
         IntPair ip;
         ip.d = (int) pts[2*i];
         ip.z = (int) pts[2*i+1];
-        std::set<IntPair>::iterator it;
+        std::set<IntPair, PairCompare>::iterator it;
         it = lookupSet.find(ip);
         if (it != lookupSet.end())
             ids.push_back(i);
@@ -319,6 +333,11 @@ avtFloatingPointIdNamedSelection::~avtFloatingPointIdNamedSelection()
 //  Programmer: Hank Childs
 //  Creation:   February 2, 2009
 //
+//  Modifications:
+//    Kathleen Bonnell, Thur Mar 26 08:16:23 MST 2009
+//    Use size_t for loop variable to remove signed/unsigned int comparison
+//    warnings.
+//
 // ****************************************************************************
 
 void
@@ -327,7 +346,7 @@ avtFloatingPointIdNamedSelection::Write(const std::string &fname)
     ofstream ofile(fname.c_str());
     ofile << FLOAT_ID << endl;
     ofile << ids.size() << endl;
-    for (int i = 0 ; i < ids.size() ; i++)
+    for (size_t i = 0 ; i < ids.size() ; i++)
     {
         ofile << ids[i] << endl;
     }
