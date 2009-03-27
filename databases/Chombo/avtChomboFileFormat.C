@@ -348,6 +348,9 @@ avtChomboFileFormat::ActivateTimestep(void)
 //    Dave Pugmire, Fri Aug 22 10:27:39 EDT 2008
 //    boxes_buff was leaking.
 //
+//    Gunther H. Weber, Wed Mar 25 13:31:56 PDT 2009
+//    Close file to prevent file handle depletion
+//
 // ****************************************************************************
 
 void
@@ -904,6 +907,8 @@ avtChomboFileFormat::InitializeReader(void)
         visitTimer->StopTimer(t0, "Chombo calculating domain nesting");
     }
 
+    H5Fclose(file_handle);
+    file_handle = -1;
     initializedReader = true;
 
     //
@@ -1809,6 +1814,9 @@ avtChomboFileFormat::GetMesh(int patch, const char *meshname)
 //    Gunther H. Weber, Mon Mar 24 20:46:04 PDT 2008
 //    Added support for node centered Chombo data.
 //
+//    Gunther H. Weber, Wed Mar 25 13:31:56 PDT 2009
+//    Open and close file to prevent file handle depletion
+//
 // ****************************************************************************
 
 vtkDataArray *
@@ -1909,6 +1917,15 @@ avtChomboFileFormat::GetVar(int patch, const char *varname)
     //
     char name[1024];
     SNPRINTF(name, 1024, "level_%d", level);
+    if (file_handle < 0)
+    {
+        file_handle = H5Fopen(filenames[0], H5F_ACC_RDONLY, H5P_DEFAULT);
+        if (file_handle < 0)
+        {
+            EXCEPTION1(InvalidDBTypeException, "Cannot be a Chombo file, since "
+                                               "it is not even an HDF5 file.");
+        }
+    }
     hid_t level_id = H5Gopen(file_handle, name);
     if (level_id < 0)
     {
