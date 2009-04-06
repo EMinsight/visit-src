@@ -247,7 +247,7 @@ SplashScreen::SplashScreen(bool cyclePictures, const char *name) :
     versionText += " ";
     versionText += SVN_REVISION;
     lLayout->addWidget(new QLabel(versionText, this, "versionText"));
-    lLayout->addWidget(new QLabel(tr("January 2009"), this, "dateCompiled"));
+    lLayout->addWidget(new QLabel(tr("April 2009"), this, "dateCompiled"));
 
     copyrightButton = 0;
     contributorButton = 0;
