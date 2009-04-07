@@ -693,11 +693,15 @@ SumIntArrayAcrossAllProcessors(int *inArray, int *outArray, int nArray)
 //  Creation:      February 22, 2008
 //
 //  Modifications:
-//    Gunther H. Weber, Mon Apr  6 20:18:26 PDT 2009
-//    Only use MPI_Type_get_extent if HAS_MPI_TYPE_GET_EXTENT is defined.
-//    Otherwise fall back to MPI_Type_extent. Check if MPI_UNSIGNED_LONG_LONG
-//    is defined.
+//    Mark C. Miller, Tue Jan 27 18:34:41 PST 2009
+//    MPI_Type_get_extent is only in MPI-2. Likewise for
+//    MPI_UNSIGNED_LONG_LONG. So, I made the first check conditional
+//    on MPI_UNSIGNED_LONG_LONG being defined.
 //
+//    Gunther H. Weber, Mon Apr  6 20:50:50 PDT 2009
+//    Check whether MPI_INTEGER8 defined even if MPI_UNSIGNED_LONG_LONG
+//    is defined.
+//    
 // ****************************************************************************
 
 void
@@ -706,41 +710,25 @@ SumLongLongArrayAcrossAllProcessors(VISIT_LONG_LONG *inArray,
 {
 #ifdef PARALLEL
     MPI_Datatype datatype = MPI_LONG_LONG;
-#ifdef HAS_MPI_TYPE_GET_EXTENT
     MPI_Aint lb,e;
-#else
-    MPI_Aint e;
-#endif
     // On at least one mpi implementation (mpich2-1.0.5, Linux-x86-64),
     // MPI_LONG_LONG blatantly fails.  But for some reason INTEGER8 works.
     // Luckily we can tell this by checking the datatype size of the type.
     // We'll try a few different ones, and if none work, just do it slowly
     // using a single-precision int.
-#ifdef HAS_MPI_TYPE_GET_EXTENT
+#if defined(MPI_UNSIGNED_LONG_LONG)
     MPI_Type_get_extent(datatype, &lb, &e);
-#else
-    MPI_Type_extent(datatype, &e);
-#endif
-#ifdef MPI_UNSIGNED_LONG_LONG
     if (e != sizeof(VISIT_LONG_LONG))
     {
         datatype = MPI_UNSIGNED_LONG_LONG;
-#ifdef HAS_MPI_TYPE_GET_EXTENT
         MPI_Type_get_extent(datatype, &lb, &e);
-#else
-        MPI_Type_extent(datatype, &e);
-#endif
     }
 #endif
-#ifdef MPI_INTEGER8  // ... may only be MPI-2.
+#if defined(MPI_INTEGER8)  // ... may only be MPI-2.
     if (e != sizeof(VISIT_LONG_LONG))
     {
         datatype = MPI_INTEGER8;
-#ifdef HAS_MPI_TYPE_GET_EXTENT
         MPI_Type_get_extent(datatype, &lb, &e);
-#else
-        MPI_Type_extent(datatype, &e);
-#endif
     }
 #endif
     if (e == sizeof(VISIT_LONG_LONG))
