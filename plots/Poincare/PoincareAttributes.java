@@ -61,20 +61,13 @@ import llnl.visit.ColorAttribute;
 public class PoincareAttributes extends AttributeSubject implements Plugin
 {
     // Enum values
-    public final static int COLORINGMETHOD_SOLID = 0;
-    public final static int COLORINGMETHOD_COLORBYSPEED = 1;
-    public final static int COLORINGMETHOD_COLORBYVORTICITY = 2;
-    public final static int COLORINGMETHOD_COLORBYLENGTH = 3;
-    public final static int COLORINGMETHOD_COLORBYTIME = 4;
-    public final static int COLORINGMETHOD_COLORBYSEEDPOINTID = 5;
+    public final static int SOURCETYPE_SPECIFIEDPOINT = 0;
+    public final static int SOURCETYPE_SPECIFIEDLINE = 1;
+    public final static int SOURCETYPE_SPECIFIEDPLANE = 2;
 
-    public final static int TERMINATIONTYPE_STEPS = 0;
-    public final static int TERMINATIONTYPE_DISTANCE = 1;
-    public final static int TERMINATIONTYPE_TIME = 2;
-
-    public final static int SOURCETYPE_POINTSOURCE = 0;
-    public final static int SOURCETYPE_LINESOURCE = 1;
-    public final static int SOURCETYPE_PLANESOURCE = 2;
+    public final static int TERMINATIONTYPE_DISTANCE = 0;
+    public final static int TERMINATIONTYPE_TIME = 1;
+    public final static int TERMINATIONTYPE_STEP = 2;
 
     public final static int COLORSTYLETYPE_ORIGINALVALUE = 0;
     public final static int COLORSTYLETYPE_INPUTORDER = 1;
@@ -94,21 +87,17 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
     public final static int OVERLAPTYPE_MERGE = 2;
     public final static int OVERLAPTYPE_SMOOTH = 3;
 
-    public final static int INTEGRATORTYPE_RUNGEKUTTA = 0;
-    public final static int INTEGRATORTYPE_ADAMSBASHFORTH = 1;
+    public final static int INTEGRATIONTYPE_DORMANDPRINCE = 0;
+    public final static int INTEGRATIONTYPE_ADAMSBASHFORTH = 1;
 
 
     public PoincareAttributes()
     {
         super(30);
 
+        sourceType = SOURCETYPE_SPECIFIEDPOINT;
+        maxStepLength = 0.1;
         termination = 10;
-        terminationType = TERMINATIONTYPE_STEPS;
-        integratorType = INTEGRATORTYPE_ADAMSBASHFORTH;
-            showStreamlines = false;
-        showPoints = false;
-        pointDensity = 1;
-        sourceRadius = 1;
         pointSource = new double[3];
         pointSource[0] = 0;
         pointSource[1] = 0;
@@ -121,25 +110,30 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         lineSourceEnd[0] = 1;
         lineSourceEnd[1] = 0;
         lineSourceEnd[2] = 0;
-        planeSourcePoint = new double[3];
-        planeSourcePoint[0] = 0;
-        planeSourcePoint[1] = 0;
-        planeSourcePoint[2] = 0;
+        planeSourceOrigin = new double[3];
+        planeSourceOrigin[0] = 0;
+        planeSourceOrigin[1] = 0;
+        planeSourceOrigin[2] = 0;
         planeSourceNormal = new double[3];
         planeSourceNormal[0] = 0;
         planeSourceNormal[1] = 0;
         planeSourceNormal[2] = 1;
-        planeSourceUpVec = new double[3];
-        planeSourceUpVec[0] = 0;
-        planeSourceUpVec[1] = 1;
-        planeSourceUpVec[2] = 0;
-        colorTableName = new String("Default");
-        singleColor = new ColorAttribute(0, 0, 0);
+        planeSourceUpAxis = new double[3];
+        planeSourceUpAxis[0] = 0;
+        planeSourceUpAxis[1] = 1;
+        planeSourceUpAxis[2] = 0;
         legendFlag = true;
         lightingFlag = true;
         relTol = 0.0001;
         absTol = 1e-05;
-        maxStepLength = 0.1;
+        terminationType = TERMINATIONTYPE_STEP;
+        integrationType = INTEGRATIONTYPE_ADAMSBASHFORTH;
+        showStreamlines = false;
+        showPoints = false;
+        pointDensity = 1;
+        sourceRadius = 1;
+        colorTableName = new String("Default");
+        singleColor = new ColorAttribute(0, 0, 0);
         NumberPlanes = 1;
         ColorStyle = COLORSTYLETYPE_SAFETYFACTOR;
         MaxToroidalWinding = 30;
@@ -157,14 +151,9 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
 
         int i;
 
+        sourceType = obj.sourceType;
+        maxStepLength = obj.maxStepLength;
         termination = obj.termination;
-        terminationType = obj.terminationType;
-        integratorType = obj.integratorType;
-        streamlineSource = obj.streamlineSource;
-        showStreamlines = obj.showStreamlines;
-        showPoints = obj.showPoints;
-        pointDensity = obj.pointDensity;
-        sourceRadius = obj.sourceRadius;
         pointSource = new double[3];
         pointSource[0] = obj.pointSource[0];
         pointSource[1] = obj.pointSource[1];
@@ -180,28 +169,33 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         lineSourceEnd[1] = obj.lineSourceEnd[1];
         lineSourceEnd[2] = obj.lineSourceEnd[2];
 
-        planeSourcePoint = new double[3];
-        planeSourcePoint[0] = obj.planeSourcePoint[0];
-        planeSourcePoint[1] = obj.planeSourcePoint[1];
-        planeSourcePoint[2] = obj.planeSourcePoint[2];
+        planeSourceOrigin = new double[3];
+        planeSourceOrigin[0] = obj.planeSourceOrigin[0];
+        planeSourceOrigin[1] = obj.planeSourceOrigin[1];
+        planeSourceOrigin[2] = obj.planeSourceOrigin[2];
 
         planeSourceNormal = new double[3];
         planeSourceNormal[0] = obj.planeSourceNormal[0];
         planeSourceNormal[1] = obj.planeSourceNormal[1];
         planeSourceNormal[2] = obj.planeSourceNormal[2];
 
-        planeSourceUpVec = new double[3];
-        planeSourceUpVec[0] = obj.planeSourceUpVec[0];
-        planeSourceUpVec[1] = obj.planeSourceUpVec[1];
-        planeSourceUpVec[2] = obj.planeSourceUpVec[2];
+        planeSourceUpAxis = new double[3];
+        planeSourceUpAxis[0] = obj.planeSourceUpAxis[0];
+        planeSourceUpAxis[1] = obj.planeSourceUpAxis[1];
+        planeSourceUpAxis[2] = obj.planeSourceUpAxis[2];
 
-        colorTableName = new String(obj.colorTableName);
-        singleColor = new ColorAttribute(obj.singleColor);
         legendFlag = obj.legendFlag;
         lightingFlag = obj.lightingFlag;
         relTol = obj.relTol;
         absTol = obj.absTol;
-        maxStepLength = obj.maxStepLength;
+        terminationType = obj.terminationType;
+        integrationType = obj.integrationType;
+        showStreamlines = obj.showStreamlines;
+        showPoints = obj.showPoints;
+        pointDensity = obj.pointDensity;
+        sourceRadius = obj.sourceRadius;
+        colorTableName = new String(obj.colorTableName);
+        singleColor = new ColorAttribute(obj.singleColor);
         NumberPlanes = obj.NumberPlanes;
         ColorStyle = obj.ColorStyle;
         MaxToroidalWinding = obj.MaxToroidalWinding;
@@ -234,43 +228,43 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         for(i = 0; i < 3 && lineSourceEnd_equal; ++i)
             lineSourceEnd_equal = (lineSourceEnd[i] == obj.lineSourceEnd[i]);
 
-        // Compare the planeSourcePoint arrays.
-        boolean planeSourcePoint_equal = true;
-        for(i = 0; i < 3 && planeSourcePoint_equal; ++i)
-            planeSourcePoint_equal = (planeSourcePoint[i] == obj.planeSourcePoint[i]);
+        // Compare the planeSourceOrigin arrays.
+        boolean planeSourceOrigin_equal = true;
+        for(i = 0; i < 3 && planeSourceOrigin_equal; ++i)
+            planeSourceOrigin_equal = (planeSourceOrigin[i] == obj.planeSourceOrigin[i]);
 
         // Compare the planeSourceNormal arrays.
         boolean planeSourceNormal_equal = true;
         for(i = 0; i < 3 && planeSourceNormal_equal; ++i)
             planeSourceNormal_equal = (planeSourceNormal[i] == obj.planeSourceNormal[i]);
 
-        // Compare the planeSourceUpVec arrays.
-        boolean planeSourceUpVec_equal = true;
-        for(i = 0; i < 3 && planeSourceUpVec_equal; ++i)
-            planeSourceUpVec_equal = (planeSourceUpVec[i] == obj.planeSourceUpVec[i]);
+        // Compare the planeSourceUpAxis arrays.
+        boolean planeSourceUpAxis_equal = true;
+        for(i = 0; i < 3 && planeSourceUpAxis_equal; ++i)
+            planeSourceUpAxis_equal = (planeSourceUpAxis[i] == obj.planeSourceUpAxis[i]);
 
         // Create the return value
-        return ((termination == obj.termination) &&
-                (terminationType == obj.terminationType) &&
-                (integratorType == obj.integratorType) &&
-                (streamlineSource == obj.streamlineSource) &&
-                (showStreamlines == obj.showStreamlines) &&
-                (showPoints == obj.showPoints) &&
-                (pointDensity == obj.pointDensity) &&
-                (sourceRadius == obj.sourceRadius) &&
+        return ((sourceType == obj.sourceType) &&
+                (maxStepLength == obj.maxStepLength) &&
+                (termination == obj.termination) &&
                 pointSource_equal &&
                 lineSourceStart_equal &&
                 lineSourceEnd_equal &&
-                planeSourcePoint_equal &&
+                planeSourceOrigin_equal &&
                 planeSourceNormal_equal &&
-                planeSourceUpVec_equal &&
-                (colorTableName.equals(obj.colorTableName)) &&
-                (singleColor == obj.singleColor) &&
+                planeSourceUpAxis_equal &&
                 (legendFlag == obj.legendFlag) &&
                 (lightingFlag == obj.lightingFlag) &&
                 (relTol == obj.relTol) &&
                 (absTol == obj.absTol) &&
-                (maxStepLength == obj.maxStepLength) &&
+                (terminationType == obj.terminationType) &&
+                (integrationType == obj.integrationType) &&
+                (showStreamlines == obj.showStreamlines) &&
+                (showPoints == obj.showPoints) &&
+                (pointDensity == obj.pointDensity) &&
+                (sourceRadius == obj.sourceRadius) &&
+                (colorTableName.equals(obj.colorTableName)) &&
+                (singleColor == obj.singleColor) &&
                 (NumberPlanes == obj.NumberPlanes) &&
                 (ColorStyle == obj.ColorStyle) &&
                 (MaxToroidalWinding == obj.MaxToroidalWinding) &&
@@ -286,52 +280,22 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
     public String GetVersion() { return "1.0"; }
 
     // Property setting methods
-    public void SetTermination(double termination_)
+    public void SetSourceType(int sourceType_)
     {
-        termination = termination_;
+        sourceType = sourceType_;
         Select(0);
     }
 
-    public void SetTerminationType(int terminationType_)
+    public void SetMaxStepLength(double maxStepLength_)
     {
-        terminationType = terminationType_;
+        maxStepLength = maxStepLength_;
         Select(1);
     }
 
-    public void SetIntegratorType(int integratorType_)
+    public void SetTermination(double termination_)
     {
-        integratorType = integratorType_;
+        termination = termination_;
         Select(2);
-    }
-
-    public void SetStreamlineSource(int streamlineSource_)
-    {
-        streamlineSource = streamlineSource_;
-        Select(3);
-    }
-
-    public void SetShowStreamlines(boolean showStreamlines_)
-    {
-        showStreamlines = showStreamlines_;
-        Select(4);
-    }
-
-    public void SetShowPoints(boolean showPoints_)
-    {
-        showPoints = showPoints_;
-        Select(5);
-    }
-
-    public void SetPointDensity(int pointDensity_)
-    {
-        pointDensity = pointDensity_;
-        Select(6);
-    }
-
-    public void SetSourceRadius(double sourceRadius_)
-    {
-        sourceRadius = sourceRadius_;
-        Select(7);
     }
 
     public void SetPointSource(double[] pointSource_)
@@ -339,7 +303,7 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         pointSource[0] = pointSource_[0];
         pointSource[1] = pointSource_[1];
         pointSource[2] = pointSource_[2];
-        Select(8);
+        Select(3);
     }
 
     public void SetPointSource(double e0, double e1, double e2)
@@ -347,7 +311,7 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         pointSource[0] = e0;
         pointSource[1] = e1;
         pointSource[2] = e2;
-        Select(8);
+        Select(3);
     }
 
     public void SetLineSourceStart(double[] lineSourceStart_)
@@ -355,7 +319,7 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         lineSourceStart[0] = lineSourceStart_[0];
         lineSourceStart[1] = lineSourceStart_[1];
         lineSourceStart[2] = lineSourceStart_[2];
-        Select(9);
+        Select(4);
     }
 
     public void SetLineSourceStart(double e0, double e1, double e2)
@@ -363,7 +327,7 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         lineSourceStart[0] = e0;
         lineSourceStart[1] = e1;
         lineSourceStart[2] = e2;
-        Select(9);
+        Select(4);
     }
 
     public void SetLineSourceEnd(double[] lineSourceEnd_)
@@ -371,7 +335,7 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         lineSourceEnd[0] = lineSourceEnd_[0];
         lineSourceEnd[1] = lineSourceEnd_[1];
         lineSourceEnd[2] = lineSourceEnd_[2];
-        Select(10);
+        Select(5);
     }
 
     public void SetLineSourceEnd(double e0, double e1, double e2)
@@ -379,23 +343,23 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         lineSourceEnd[0] = e0;
         lineSourceEnd[1] = e1;
         lineSourceEnd[2] = e2;
-        Select(10);
+        Select(5);
     }
 
-    public void SetPlaneSourcePoint(double[] planeSourcePoint_)
+    public void SetPlaneSourceOrigin(double[] planeSourceOrigin_)
     {
-        planeSourcePoint[0] = planeSourcePoint_[0];
-        planeSourcePoint[1] = planeSourcePoint_[1];
-        planeSourcePoint[2] = planeSourcePoint_[2];
-        Select(11);
+        planeSourceOrigin[0] = planeSourceOrigin_[0];
+        planeSourceOrigin[1] = planeSourceOrigin_[1];
+        planeSourceOrigin[2] = planeSourceOrigin_[2];
+        Select(6);
     }
 
-    public void SetPlaneSourcePoint(double e0, double e1, double e2)
+    public void SetPlaneSourceOrigin(double e0, double e1, double e2)
     {
-        planeSourcePoint[0] = e0;
-        planeSourcePoint[1] = e1;
-        planeSourcePoint[2] = e2;
-        Select(11);
+        planeSourceOrigin[0] = e0;
+        planeSourceOrigin[1] = e1;
+        planeSourceOrigin[2] = e2;
+        Select(6);
     }
 
     public void SetPlaneSourceNormal(double[] planeSourceNormal_)
@@ -403,7 +367,7 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         planeSourceNormal[0] = planeSourceNormal_[0];
         planeSourceNormal[1] = planeSourceNormal_[1];
         planeSourceNormal[2] = planeSourceNormal_[2];
-        Select(12);
+        Select(7);
     }
 
     public void SetPlaneSourceNormal(double e0, double e1, double e2)
@@ -411,64 +375,94 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         planeSourceNormal[0] = e0;
         planeSourceNormal[1] = e1;
         planeSourceNormal[2] = e2;
-        Select(12);
+        Select(7);
     }
 
-    public void SetPlaneSourceUpVec(double[] planeSourceUpVec_)
+    public void SetPlaneSourceUpAxis(double[] planeSourceUpAxis_)
     {
-        planeSourceUpVec[0] = planeSourceUpVec_[0];
-        planeSourceUpVec[1] = planeSourceUpVec_[1];
-        planeSourceUpVec[2] = planeSourceUpVec_[2];
-        Select(13);
+        planeSourceUpAxis[0] = planeSourceUpAxis_[0];
+        planeSourceUpAxis[1] = planeSourceUpAxis_[1];
+        planeSourceUpAxis[2] = planeSourceUpAxis_[2];
+        Select(8);
     }
 
-    public void SetPlaneSourceUpVec(double e0, double e1, double e2)
+    public void SetPlaneSourceUpAxis(double e0, double e1, double e2)
     {
-        planeSourceUpVec[0] = e0;
-        planeSourceUpVec[1] = e1;
-        planeSourceUpVec[2] = e2;
-        Select(13);
-    }
-
-    public void SetColorTableName(String colorTableName_)
-    {
-        colorTableName = colorTableName_;
-        Select(14);
-    }
-
-    public void SetSingleColor(ColorAttribute singleColor_)
-    {
-        singleColor = singleColor_;
-        Select(15);
+        planeSourceUpAxis[0] = e0;
+        planeSourceUpAxis[1] = e1;
+        planeSourceUpAxis[2] = e2;
+        Select(8);
     }
 
     public void SetLegendFlag(boolean legendFlag_)
     {
         legendFlag = legendFlag_;
-        Select(16);
+        Select(9);
     }
 
     public void SetLightingFlag(boolean lightingFlag_)
     {
         lightingFlag = lightingFlag_;
-        Select(17);
+        Select(10);
     }
 
     public void SetRelTol(double relTol_)
     {
         relTol = relTol_;
-        Select(18);
+        Select(11);
     }
 
     public void SetAbsTol(double absTol_)
     {
         absTol = absTol_;
+        Select(12);
+    }
+
+    public void SetTerminationType(int terminationType_)
+    {
+        terminationType = terminationType_;
+        Select(13);
+    }
+
+    public void SetIntegrationType(int integrationType_)
+    {
+        integrationType = integrationType_;
+        Select(14);
+    }
+
+    public void SetShowStreamlines(boolean showStreamlines_)
+    {
+        showStreamlines = showStreamlines_;
+        Select(15);
+    }
+
+    public void SetShowPoints(boolean showPoints_)
+    {
+        showPoints = showPoints_;
+        Select(16);
+    }
+
+    public void SetPointDensity(int pointDensity_)
+    {
+        pointDensity = pointDensity_;
+        Select(17);
+    }
+
+    public void SetSourceRadius(double sourceRadius_)
+    {
+        sourceRadius = sourceRadius_;
+        Select(18);
+    }
+
+    public void SetColorTableName(String colorTableName_)
+    {
+        colorTableName = colorTableName_;
         Select(19);
     }
 
-    public void SetMaxStepLength(double maxStepLength_)
+    public void SetSingleColor(ColorAttribute singleColor_)
     {
-        maxStepLength = maxStepLength_;
+        singleColor = singleColor_;
         Select(20);
     }
 
@@ -527,27 +521,27 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
     }
 
     // Property getting methods
+    public int            GetSourceType() { return sourceType; }
+    public double         GetMaxStepLength() { return maxStepLength; }
     public double         GetTermination() { return termination; }
-    public int            GetTerminationType() { return terminationType; }
-    public int            GetIntegratorType() { return integratorType; }
-    public int            GetStreamlineSource() { return streamlineSource; }
-    public boolean        GetShowStreamlines() { return showStreamlines; }
-    public boolean        GetShowPoints() { return showPoints; }
-    public int            GetPointDensity() { return pointDensity; }
-    public double         GetSourceRadius() { return sourceRadius; }
     public double[]       GetPointSource() { return pointSource; }
     public double[]       GetLineSourceStart() { return lineSourceStart; }
     public double[]       GetLineSourceEnd() { return lineSourceEnd; }
-    public double[]       GetPlaneSourcePoint() { return planeSourcePoint; }
+    public double[]       GetPlaneSourceOrigin() { return planeSourceOrigin; }
     public double[]       GetPlaneSourceNormal() { return planeSourceNormal; }
-    public double[]       GetPlaneSourceUpVec() { return planeSourceUpVec; }
-    public String         GetColorTableName() { return colorTableName; }
-    public ColorAttribute GetSingleColor() { return singleColor; }
+    public double[]       GetPlaneSourceUpAxis() { return planeSourceUpAxis; }
     public boolean        GetLegendFlag() { return legendFlag; }
     public boolean        GetLightingFlag() { return lightingFlag; }
     public double         GetRelTol() { return relTol; }
     public double         GetAbsTol() { return absTol; }
-    public double         GetMaxStepLength() { return maxStepLength; }
+    public int            GetTerminationType() { return terminationType; }
+    public int            GetIntegrationType() { return integrationType; }
+    public boolean        GetShowStreamlines() { return showStreamlines; }
+    public boolean        GetShowPoints() { return showPoints; }
+    public int            GetPointDensity() { return pointDensity; }
+    public double         GetSourceRadius() { return sourceRadius; }
+    public String         GetColorTableName() { return colorTableName; }
+    public ColorAttribute GetSingleColor() { return singleColor; }
     public int            GetNumberPlanes() { return NumberPlanes; }
     public int            GetColorStyle() { return ColorStyle; }
     public int            GetMaxToroidalWinding() { return MaxToroidalWinding; }
@@ -562,47 +556,47 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
     public void WriteAtts(CommunicationBuffer buf)
     {
         if(WriteSelect(0, buf))
-            buf.WriteDouble(termination);
+            buf.WriteInt(sourceType);
         if(WriteSelect(1, buf))
-            buf.WriteInt(terminationType);
-        if(WriteSelect(2, buf))
-            buf.WriteInt(integratorType);
-        if(WriteSelect(3, buf))
-            buf.WriteInt(streamlineSource);
-        if(WriteSelect(4, buf))
-            buf.WriteBool(showStreamlines);
-        if(WriteSelect(5, buf))
-            buf.WriteBool(showPoints);
-        if(WriteSelect(6, buf))
-            buf.WriteInt(pointDensity);
-        if(WriteSelect(7, buf))
-            buf.WriteDouble(sourceRadius);
-        if(WriteSelect(8, buf))
-            buf.WriteDoubleArray(pointSource);
-        if(WriteSelect(9, buf))
-            buf.WriteDoubleArray(lineSourceStart);
-        if(WriteSelect(10, buf))
-            buf.WriteDoubleArray(lineSourceEnd);
-        if(WriteSelect(11, buf))
-            buf.WriteDoubleArray(planeSourcePoint);
-        if(WriteSelect(12, buf))
-            buf.WriteDoubleArray(planeSourceNormal);
-        if(WriteSelect(13, buf))
-            buf.WriteDoubleArray(planeSourceUpVec);
-        if(WriteSelect(14, buf))
-            buf.WriteString(colorTableName);
-        if(WriteSelect(15, buf))
-            singleColor.Write(buf);
-        if(WriteSelect(16, buf))
-            buf.WriteBool(legendFlag);
-        if(WriteSelect(17, buf))
-            buf.WriteBool(lightingFlag);
-        if(WriteSelect(18, buf))
-            buf.WriteDouble(relTol);
-        if(WriteSelect(19, buf))
-            buf.WriteDouble(absTol);
-        if(WriteSelect(20, buf))
             buf.WriteDouble(maxStepLength);
+        if(WriteSelect(2, buf))
+            buf.WriteDouble(termination);
+        if(WriteSelect(3, buf))
+            buf.WriteDoubleArray(pointSource);
+        if(WriteSelect(4, buf))
+            buf.WriteDoubleArray(lineSourceStart);
+        if(WriteSelect(5, buf))
+            buf.WriteDoubleArray(lineSourceEnd);
+        if(WriteSelect(6, buf))
+            buf.WriteDoubleArray(planeSourceOrigin);
+        if(WriteSelect(7, buf))
+            buf.WriteDoubleArray(planeSourceNormal);
+        if(WriteSelect(8, buf))
+            buf.WriteDoubleArray(planeSourceUpAxis);
+        if(WriteSelect(9, buf))
+            buf.WriteBool(legendFlag);
+        if(WriteSelect(10, buf))
+            buf.WriteBool(lightingFlag);
+        if(WriteSelect(11, buf))
+            buf.WriteDouble(relTol);
+        if(WriteSelect(12, buf))
+            buf.WriteDouble(absTol);
+        if(WriteSelect(13, buf))
+            buf.WriteInt(terminationType);
+        if(WriteSelect(14, buf))
+            buf.WriteInt(integrationType);
+        if(WriteSelect(15, buf))
+            buf.WriteBool(showStreamlines);
+        if(WriteSelect(16, buf))
+            buf.WriteBool(showPoints);
+        if(WriteSelect(17, buf))
+            buf.WriteInt(pointDensity);
+        if(WriteSelect(18, buf))
+            buf.WriteDouble(sourceRadius);
+        if(WriteSelect(19, buf))
+            buf.WriteString(colorTableName);
+        if(WriteSelect(20, buf))
+            singleColor.Write(buf);
         if(WriteSelect(21, buf))
             buf.WriteInt(NumberPlanes);
         if(WriteSelect(22, buf))
@@ -631,68 +625,68 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
             switch(index)
             {
             case 0:
-                SetTermination(buf.ReadDouble());
+                SetSourceType(buf.ReadInt());
                 break;
             case 1:
-                SetTerminationType(buf.ReadInt());
+                SetMaxStepLength(buf.ReadDouble());
                 break;
             case 2:
-                SetIntegratorType(buf.ReadInt());
+                SetTermination(buf.ReadDouble());
                 break;
             case 3:
-                SetStreamlineSource(buf.ReadInt());
-                break;
-            case 4:
-                SetShowStreamlines(buf.ReadBool());
-                break;
-            case 5:
-                SetShowPoints(buf.ReadBool());
-                break;
-            case 6:
-                SetPointDensity(buf.ReadInt());
-                break;
-            case 7:
-                SetSourceRadius(buf.ReadDouble());
-                break;
-            case 8:
                 SetPointSource(buf.ReadDoubleArray());
                 break;
-            case 9:
+            case 4:
                 SetLineSourceStart(buf.ReadDoubleArray());
                 break;
-            case 10:
+            case 5:
                 SetLineSourceEnd(buf.ReadDoubleArray());
                 break;
-            case 11:
-                SetPlaneSourcePoint(buf.ReadDoubleArray());
+            case 6:
+                SetPlaneSourceOrigin(buf.ReadDoubleArray());
                 break;
-            case 12:
+            case 7:
                 SetPlaneSourceNormal(buf.ReadDoubleArray());
                 break;
-            case 13:
-                SetPlaneSourceUpVec(buf.ReadDoubleArray());
+            case 8:
+                SetPlaneSourceUpAxis(buf.ReadDoubleArray());
                 break;
-            case 14:
-                SetColorTableName(buf.ReadString());
-                break;
-            case 15:
-                singleColor.Read(buf);
-                Select(15);
-                break;
-            case 16:
+            case 9:
                 SetLegendFlag(buf.ReadBool());
                 break;
-            case 17:
+            case 10:
                 SetLightingFlag(buf.ReadBool());
                 break;
-            case 18:
+            case 11:
                 SetRelTol(buf.ReadDouble());
                 break;
-            case 19:
+            case 12:
                 SetAbsTol(buf.ReadDouble());
                 break;
+            case 13:
+                SetTerminationType(buf.ReadInt());
+                break;
+            case 14:
+                SetIntegrationType(buf.ReadInt());
+                break;
+            case 15:
+                SetShowStreamlines(buf.ReadBool());
+                break;
+            case 16:
+                SetShowPoints(buf.ReadBool());
+                break;
+            case 17:
+                SetPointDensity(buf.ReadInt());
+                break;
+            case 18:
+                SetSourceRadius(buf.ReadDouble());
+                break;
+            case 19:
+                SetColorTableName(buf.ReadString());
+                break;
             case 20:
-                SetMaxStepLength(buf.ReadDouble());
+                singleColor.Read(buf);
+                Select(20);
                 break;
             case 21:
                 SetNumberPlanes(buf.ReadInt());
@@ -728,46 +722,46 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
     public String toString(String indent)
     {
         String str = new String();
+        str = str + indent + "sourceType = ";
+        if(sourceType == SOURCETYPE_SPECIFIEDPOINT)
+            str = str + "SOURCETYPE_SPECIFIEDPOINT";
+        if(sourceType == SOURCETYPE_SPECIFIEDLINE)
+            str = str + "SOURCETYPE_SPECIFIEDLINE";
+        if(sourceType == SOURCETYPE_SPECIFIEDPLANE)
+            str = str + "SOURCETYPE_SPECIFIEDPLANE";
+        str = str + "\n";
+        str = str + doubleToString("maxStepLength", maxStepLength, indent) + "\n";
         str = str + doubleToString("termination", termination, indent) + "\n";
+        str = str + doubleArrayToString("pointSource", pointSource, indent) + "\n";
+        str = str + doubleArrayToString("lineSourceStart", lineSourceStart, indent) + "\n";
+        str = str + doubleArrayToString("lineSourceEnd", lineSourceEnd, indent) + "\n";
+        str = str + doubleArrayToString("planeSourceOrigin", planeSourceOrigin, indent) + "\n";
+        str = str + doubleArrayToString("planeSourceNormal", planeSourceNormal, indent) + "\n";
+        str = str + doubleArrayToString("planeSourceUpAxis", planeSourceUpAxis, indent) + "\n";
+        str = str + boolToString("legendFlag", legendFlag, indent) + "\n";
+        str = str + boolToString("lightingFlag", lightingFlag, indent) + "\n";
+        str = str + doubleToString("relTol", relTol, indent) + "\n";
+        str = str + doubleToString("absTol", absTol, indent) + "\n";
         str = str + indent + "terminationType = ";
-        if(terminationType == TERMINATIONTYPE_STEPS)
-            str = str + "TERMINATIONTYPE_STEPS";
         if(terminationType == TERMINATIONTYPE_DISTANCE)
             str = str + "TERMINATIONTYPE_DISTANCE";
         if(terminationType == TERMINATIONTYPE_TIME)
             str = str + "TERMINATIONTYPE_TIME";
+        if(terminationType == TERMINATIONTYPE_STEP)
+            str = str + "TERMINATIONTYPE_STEP";
         str = str + "\n";
-        str = str + indent + "integratorType = ";
-        if(integratorType == INTEGRATORTYPE_RUNGEKUTTA)
-            str = str + "INTEGRATORTYPE_RUNGEKUTTA";
-        if(integratorType == INTEGRATORTYPE_ADAMSBASHFORTH)
-            str = str + "INTEGRATORTYPE_ADAMSBASHFORTH";
-        str = str + "\n";
-        str = str + indent + "streamlineSource = ";
-        if(streamlineSource == SOURCETYPE_POINTSOURCE)
-            str = str + "SOURCETYPE_POINTSOURCE";
-        if(streamlineSource == SOURCETYPE_LINESOURCE)
-            str = str + "SOURCETYPE_LINESOURCE";
-        if(streamlineSource == SOURCETYPE_PLANESOURCE)
-            str = str + "SOURCETYPE_PLANESOURCE";
+        str = str + indent + "integrationType = ";
+        if(integrationType == INTEGRATIONTYPE_DORMANDPRINCE)
+            str = str + "INTEGRATIONTYPE_DORMANDPRINCE";
+        if(integrationType == INTEGRATIONTYPE_ADAMSBASHFORTH)
+            str = str + "INTEGRATIONTYPE_ADAMSBASHFORTH";
         str = str + "\n";
         str = str + boolToString("showStreamlines", showStreamlines, indent) + "\n";
         str = str + boolToString("showPoints", showPoints, indent) + "\n";
         str = str + intToString("pointDensity", pointDensity, indent) + "\n";
         str = str + doubleToString("sourceRadius", sourceRadius, indent) + "\n";
-        str = str + doubleArrayToString("pointSource", pointSource, indent) + "\n";
-        str = str + doubleArrayToString("lineSourceStart", lineSourceStart, indent) + "\n";
-        str = str + doubleArrayToString("lineSourceEnd", lineSourceEnd, indent) + "\n";
-        str = str + doubleArrayToString("planeSourcePoint", planeSourcePoint, indent) + "\n";
-        str = str + doubleArrayToString("planeSourceNormal", planeSourceNormal, indent) + "\n";
-        str = str + doubleArrayToString("planeSourceUpVec", planeSourceUpVec, indent) + "\n";
         str = str + stringToString("colorTableName", colorTableName, indent) + "\n";
         str = str + indent + "singleColor = {" + singleColor.Red() + ", " + singleColor.Green() + ", " + singleColor.Blue() + ", " + singleColor.Alpha() + "}\n";
-        str = str + boolToString("legendFlag", legendFlag, indent) + "\n";
-        str = str + boolToString("lightingFlag", lightingFlag, indent) + "\n";
-        str = str + doubleToString("relTol", relTol, indent) + "\n";
-        str = str + doubleToString("absTol", absTol, indent) + "\n";
-        str = str + doubleToString("maxStepLength", maxStepLength, indent) + "\n";
         str = str + intToString("NumberPlanes", NumberPlanes, indent) + "\n";
         str = str + indent + "ColorStyle = ";
         if(ColorStyle == COLORSTYLETYPE_ORIGINALVALUE)
@@ -815,27 +809,27 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
 
 
     // Attributes
+    private int            sourceType;
+    private double         maxStepLength;
     private double         termination;
-    private int            terminationType;
-    private int            integratorType;
-    private int            streamlineSource;
-    private boolean        showStreamlines;
-    private boolean        showPoints;
-    private int            pointDensity;
-    private double         sourceRadius;
     private double[]       pointSource;
     private double[]       lineSourceStart;
     private double[]       lineSourceEnd;
-    private double[]       planeSourcePoint;
+    private double[]       planeSourceOrigin;
     private double[]       planeSourceNormal;
-    private double[]       planeSourceUpVec;
-    private String         colorTableName;
-    private ColorAttribute singleColor;
+    private double[]       planeSourceUpAxis;
     private boolean        legendFlag;
     private boolean        lightingFlag;
     private double         relTol;
     private double         absTol;
-    private double         maxStepLength;
+    private int            terminationType;
+    private int            integrationType;
+    private boolean        showStreamlines;
+    private boolean        showPoints;
+    private int            pointDensity;
+    private double         sourceRadius;
+    private String         colorTableName;
+    private ColorAttribute singleColor;
     private int            NumberPlanes;
     private int            ColorStyle;
     private int            MaxToroidalWinding;

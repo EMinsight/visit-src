@@ -129,169 +129,169 @@ QvisPoincarePlotWindow::CreateWindowContents()
     QGridLayout *mainLayout = new QGridLayout(topLayout, 30,2,  10, "mainLayout");
 
 
+    sourceTypeLabel = new QLabel(tr("Streamline Source"), central, "sourceTypeLabel");
+    mainLayout->addWidget(sourceTypeLabel,0,0);
+    sourceType = new QButtonGroup(central, "sourceType");
+    sourceType->setFrameStyle(QFrame::NoFrame);
+    QHBoxLayout *sourceTypeLayout = new QHBoxLayout(sourceType);
+    sourceTypeLayout->setSpacing(10);
+    QRadioButton *sourceTypeSourceTypeSpecifiedPoint = new QRadioButton(tr("SpecifiedPoint"), sourceType);
+    sourceTypeLayout->addWidget(sourceTypeSourceTypeSpecifiedPoint);
+    QRadioButton *sourceTypeSourceTypeSpecifiedLine = new QRadioButton(tr("SpecifiedLine"), sourceType);
+    sourceTypeLayout->addWidget(sourceTypeSourceTypeSpecifiedLine);
+    QRadioButton *sourceTypeSourceTypeSpecifiedPlane = new QRadioButton(tr("SpecifiedPlane"), sourceType);
+    sourceTypeLayout->addWidget(sourceTypeSourceTypeSpecifiedPlane);
+    connect(sourceType, SIGNAL(clicked(int)),
+            this, SLOT(sourceTypeChanged(int)));
+    mainLayout->addWidget(sourceType, 0,1);
+
+    maxStepLengthLabel = new QLabel(tr("maximum step length"), central, "maxStepLengthLabel");
+    mainLayout->addWidget(maxStepLengthLabel,1,0);
+    maxStepLength = new QLineEdit(central, "maxStepLength");
+    connect(maxStepLength, SIGNAL(returnPressed()),
+            this, SLOT(maxStepLengthProcessText()));
+    mainLayout->addWidget(maxStepLength, 1,1);
+
     terminationLabel = new QLabel(tr("Termination"), central, "terminationLabel");
-    mainLayout->addWidget(terminationLabel,0,0);
+    mainLayout->addWidget(terminationLabel,2,0);
     termination = new QLineEdit(central, "termination");
     connect(termination, SIGNAL(returnPressed()),
             this, SLOT(terminationProcessText()));
-    mainLayout->addWidget(termination, 0,1);
-
-    terminationTypeLabel = new QLabel(tr("Termination Type"), central, "terminationTypeLabel");
-    mainLayout->addWidget(terminationTypeLabel,1,0);
-    terminationType = new QButtonGroup(central, "terminationType");
-    terminationType->setFrameStyle(QFrame::NoFrame);
-    QHBoxLayout *terminationTypeLayout = new QHBoxLayout(terminationType);
-    terminationTypeLayout->setSpacing(10);
-    QRadioButton *terminationTypeTerminationTypeSteps = new QRadioButton(tr("Steps"), terminationType);
-    terminationTypeLayout->addWidget(terminationTypeTerminationTypeSteps);
-    QRadioButton *terminationTypeTerminationTypeDistance = new QRadioButton(tr("Distance"), terminationType);
-    terminationTypeLayout->addWidget(terminationTypeTerminationTypeDistance);
-    QRadioButton *terminationTypeTerminationTypeTime = new QRadioButton(tr("Time"), terminationType);
-    terminationTypeLayout->addWidget(terminationTypeTerminationTypeTime);
-    connect(terminationType, SIGNAL(clicked(int)),
-            this, SLOT(terminationTypeChanged(int)));
-    mainLayout->addWidget(terminationType, 1,1);
-
-    integratorTypeLabel = new QLabel(tr("Integrator"), central, "integratorTypeLabel");
-    mainLayout->addWidget(integratorTypeLabel,2,0);
-    integratorType = new QButtonGroup(central, "integratorType");
-    integratorType->setFrameStyle(QFrame::NoFrame);
-    QHBoxLayout *integratorTypeLayout = new QHBoxLayout(integratorType);
-    integratorTypeLayout->setSpacing(10);
-    QRadioButton *integratorTypeIntegratorTypeRungeKutta = new QRadioButton(tr("RungeKutta"), integratorType);
-    integratorTypeLayout->addWidget(integratorTypeIntegratorTypeRungeKutta);
-    QRadioButton *integratorTypeIntegratorTypeAdamsBashforth = new QRadioButton(tr("AdamsBashforth"), integratorType);
-    integratorTypeLayout->addWidget(integratorTypeIntegratorTypeAdamsBashforth);
-    connect(integratorType, SIGNAL(clicked(int)),
-            this, SLOT(integratorTypeChanged(int)));
-    mainLayout->addWidget(integratorType, 2,1);
-
-    streamlineSourceLabel = new QLabel(tr("Streamline Source"), central, "streamlineSourceLabel");
-    mainLayout->addWidget(streamlineSourceLabel,3,0);
-    streamlineSource = new QButtonGroup(central, "streamlineSource");
-    streamlineSource->setFrameStyle(QFrame::NoFrame);
-    QHBoxLayout *streamlineSourceLayout = new QHBoxLayout(streamlineSource);
-    streamlineSourceLayout->setSpacing(10);
-    QRadioButton *streamlineSourceSourceTypePointSource = new QRadioButton(tr("PointSource"), streamlineSource);
-    streamlineSourceLayout->addWidget(streamlineSourceSourceTypePointSource);
-    QRadioButton *streamlineSourceSourceTypeLineSource = new QRadioButton(tr("LineSource"), streamlineSource);
-    streamlineSourceLayout->addWidget(streamlineSourceSourceTypeLineSource);
-    QRadioButton *streamlineSourceSourceTypePlaneSource = new QRadioButton(tr("PlaneSource"), streamlineSource);
-    streamlineSourceLayout->addWidget(streamlineSourceSourceTypePlaneSource);
-    connect(streamlineSource, SIGNAL(clicked(int)),
-            this, SLOT(streamlineSourceChanged(int)));
-    mainLayout->addWidget(streamlineSource, 3,1);
-
-    showStreamlines = new QCheckBox(tr("Show Streamlines"), central, "showStreamlines");
-    connect(showStreamlines, SIGNAL(toggled(bool)),
-            this, SLOT(showStreamlinesChanged(bool)));
-    mainLayout->addWidget(showStreamlines, 4,0);
-
-    showPoints = new QCheckBox(tr("Show Points"), central, "showPoints");
-    connect(showPoints, SIGNAL(toggled(bool)),
-            this, SLOT(showPointsChanged(bool)));
-    mainLayout->addWidget(showPoints, 5,0);
-
-    pointDensityLabel = new QLabel(tr("Point Density"), central, "pointDensityLabel");
-    mainLayout->addWidget(pointDensityLabel,6,0);
-    pointDensity = new QLineEdit(central, "pointDensity");
-    connect(pointDensity, SIGNAL(returnPressed()),
-            this, SLOT(pointDensityProcessText()));
-    mainLayout->addWidget(pointDensity, 6,1);
-
-    sourceRadiusLabel = new QLabel(tr("Source Radius"), central, "sourceRadiusLabel");
-    mainLayout->addWidget(sourceRadiusLabel,7,0);
-    sourceRadius = new QLineEdit(central, "sourceRadius");
-    connect(sourceRadius, SIGNAL(returnPressed()),
-            this, SLOT(sourceRadiusProcessText()));
-    mainLayout->addWidget(sourceRadius, 7,1);
+    mainLayout->addWidget(termination, 2,1);
 
     pointSourceLabel = new QLabel(tr("Point Source"), central, "pointSourceLabel");
-    mainLayout->addWidget(pointSourceLabel,8,0);
+    mainLayout->addWidget(pointSourceLabel,3,0);
     pointSource = new QLineEdit(central, "pointSource");
     connect(pointSource, SIGNAL(returnPressed()),
             this, SLOT(pointSourceProcessText()));
-    mainLayout->addWidget(pointSource, 8,1);
+    mainLayout->addWidget(pointSource, 3,1);
 
     lineSourceStartLabel = new QLabel(tr("Line Point Start"), central, "lineSourceStartLabel");
-    mainLayout->addWidget(lineSourceStartLabel,9,0);
+    mainLayout->addWidget(lineSourceStartLabel,4,0);
     lineSourceStart = new QLineEdit(central, "lineSourceStart");
     connect(lineSourceStart, SIGNAL(returnPressed()),
             this, SLOT(lineSourceStartProcessText()));
-    mainLayout->addWidget(lineSourceStart, 9,1);
+    mainLayout->addWidget(lineSourceStart, 4,1);
 
     lineSourceEndLabel = new QLabel(tr("Line Point End"), central, "lineSourceEndLabel");
-    mainLayout->addWidget(lineSourceEndLabel,10,0);
+    mainLayout->addWidget(lineSourceEndLabel,5,0);
     lineSourceEnd = new QLineEdit(central, "lineSourceEnd");
     connect(lineSourceEnd, SIGNAL(returnPressed()),
             this, SLOT(lineSourceEndProcessText()));
-    mainLayout->addWidget(lineSourceEnd, 10,1);
+    mainLayout->addWidget(lineSourceEnd, 5,1);
 
-    planeSourcePointLabel = new QLabel(tr("Plane Source Point"), central, "planeSourcePointLabel");
-    mainLayout->addWidget(planeSourcePointLabel,11,0);
-    planeSourcePoint = new QLineEdit(central, "planeSourcePoint");
-    connect(planeSourcePoint, SIGNAL(returnPressed()),
-            this, SLOT(planeSourcePointProcessText()));
-    mainLayout->addWidget(planeSourcePoint, 11,1);
+    planeSourceOriginLabel = new QLabel(tr("Plane Source Point"), central, "planeSourceOriginLabel");
+    mainLayout->addWidget(planeSourceOriginLabel,6,0);
+    planeSourceOrigin = new QLineEdit(central, "planeSourceOrigin");
+    connect(planeSourceOrigin, SIGNAL(returnPressed()),
+            this, SLOT(planeSourceOriginProcessText()));
+    mainLayout->addWidget(planeSourceOrigin, 6,1);
 
     planeSourceNormalLabel = new QLabel(tr("Plane Source Normal"), central, "planeSourceNormalLabel");
-    mainLayout->addWidget(planeSourceNormalLabel,12,0);
+    mainLayout->addWidget(planeSourceNormalLabel,7,0);
     planeSourceNormal = new QLineEdit(central, "planeSourceNormal");
     connect(planeSourceNormal, SIGNAL(returnPressed()),
             this, SLOT(planeSourceNormalProcessText()));
-    mainLayout->addWidget(planeSourceNormal, 12,1);
+    mainLayout->addWidget(planeSourceNormal, 7,1);
 
-    planeSourceUpVecLabel = new QLabel(tr("Plane Source Up Vec"), central, "planeSourceUpVecLabel");
-    mainLayout->addWidget(planeSourceUpVecLabel,13,0);
-    planeSourceUpVec = new QLineEdit(central, "planeSourceUpVec");
-    connect(planeSourceUpVec, SIGNAL(returnPressed()),
-            this, SLOT(planeSourceUpVecProcessText()));
-    mainLayout->addWidget(planeSourceUpVec, 13,1);
-
-    colorTableNameLabel = new QLabel(tr("Color table"), central, "colorTableNameLabel");
-    mainLayout->addWidget(colorTableNameLabel,14,0);
-    colorTableName = new QvisColorTableButton(central, "colorTableName");
-    connect(colorTableName, SIGNAL(selectedColorTable(bool, const QString&)),
-            this, SLOT(colorTableNameChanged(bool, const QString&)));
-    mainLayout->addWidget(colorTableName, 14,1);
-
-    singleColorLabel = new QLabel(tr("Single color"), central, "singleColorLabel");
-    mainLayout->addWidget(singleColorLabel,15,0);
-    singleColor = new QvisColorButton(central, "singleColor");
-    connect(singleColor, SIGNAL(selectedColor(const QColor&)),
-            this, SLOT(singleColorChanged(const QColor&)));
-    mainLayout->addWidget(singleColor, 15,1);
+    planeSourceUpAxisLabel = new QLabel(tr("Plane Source Up Axis"), central, "planeSourceUpAxisLabel");
+    mainLayout->addWidget(planeSourceUpAxisLabel,8,0);
+    planeSourceUpAxis = new QLineEdit(central, "planeSourceUpAxis");
+    connect(planeSourceUpAxis, SIGNAL(returnPressed()),
+            this, SLOT(planeSourceUpAxisProcessText()));
+    mainLayout->addWidget(planeSourceUpAxis, 8,1);
 
     legendFlag = new QCheckBox(tr("Legend"), central, "legendFlag");
     connect(legendFlag, SIGNAL(toggled(bool)),
             this, SLOT(legendFlagChanged(bool)));
-    mainLayout->addWidget(legendFlag, 16,0);
+    mainLayout->addWidget(legendFlag, 9,0);
 
     lightingFlag = new QCheckBox(tr("Lighting"), central, "lightingFlag");
     connect(lightingFlag, SIGNAL(toggled(bool)),
             this, SLOT(lightingFlagChanged(bool)));
-    mainLayout->addWidget(lightingFlag, 17,0);
+    mainLayout->addWidget(lightingFlag, 10,0);
 
     relTolLabel = new QLabel(tr("rel. tolerance"), central, "relTolLabel");
-    mainLayout->addWidget(relTolLabel,18,0);
+    mainLayout->addWidget(relTolLabel,11,0);
     relTol = new QLineEdit(central, "relTol");
     connect(relTol, SIGNAL(returnPressed()),
             this, SLOT(relTolProcessText()));
-    mainLayout->addWidget(relTol, 18,1);
+    mainLayout->addWidget(relTol, 11,1);
 
     absTolLabel = new QLabel(tr("abs. tolerance"), central, "absTolLabel");
-    mainLayout->addWidget(absTolLabel,19,0);
+    mainLayout->addWidget(absTolLabel,12,0);
     absTol = new QLineEdit(central, "absTol");
     connect(absTol, SIGNAL(returnPressed()),
             this, SLOT(absTolProcessText()));
-    mainLayout->addWidget(absTol, 19,1);
+    mainLayout->addWidget(absTol, 12,1);
 
-    maxStepLengthLabel = new QLabel(tr("maximum step length"), central, "maxStepLengthLabel");
-    mainLayout->addWidget(maxStepLengthLabel,20,0);
-    maxStepLength = new QLineEdit(central, "maxStepLength");
-    connect(maxStepLength, SIGNAL(returnPressed()),
-            this, SLOT(maxStepLengthProcessText()));
-    mainLayout->addWidget(maxStepLength, 20,1);
+    terminationTypeLabel = new QLabel(tr("Termination Type"), central, "terminationTypeLabel");
+    mainLayout->addWidget(terminationTypeLabel,13,0);
+    terminationType = new QButtonGroup(central, "terminationType");
+    terminationType->setFrameStyle(QFrame::NoFrame);
+    QHBoxLayout *terminationTypeLayout = new QHBoxLayout(terminationType);
+    terminationTypeLayout->setSpacing(10);
+    QRadioButton *terminationTypeTerminationTypeDistance = new QRadioButton(tr("Distance"), terminationType);
+    terminationTypeLayout->addWidget(terminationTypeTerminationTypeDistance);
+    QRadioButton *terminationTypeTerminationTypeTime = new QRadioButton(tr("Time"), terminationType);
+    terminationTypeLayout->addWidget(terminationTypeTerminationTypeTime);
+    QRadioButton *terminationTypeTerminationTypeStep = new QRadioButton(tr("Step"), terminationType);
+    terminationTypeLayout->addWidget(terminationTypeTerminationTypeStep);
+    connect(terminationType, SIGNAL(clicked(int)),
+            this, SLOT(terminationTypeChanged(int)));
+    mainLayout->addWidget(terminationType, 13,1);
+
+    integrationTypeLabel = new QLabel(tr("Integrator"), central, "integrationTypeLabel");
+    mainLayout->addWidget(integrationTypeLabel,14,0);
+    integrationType = new QButtonGroup(central, "integrationType");
+    integrationType->setFrameStyle(QFrame::NoFrame);
+    QHBoxLayout *integrationTypeLayout = new QHBoxLayout(integrationType);
+    integrationTypeLayout->setSpacing(10);
+    QRadioButton *integrationTypeIntegrationTypeDormandPrince = new QRadioButton(tr("DormandPrince"), integrationType);
+    integrationTypeLayout->addWidget(integrationTypeIntegrationTypeDormandPrince);
+    QRadioButton *integrationTypeIntegrationTypeAdamsBashforth = new QRadioButton(tr("AdamsBashforth"), integrationType);
+    integrationTypeLayout->addWidget(integrationTypeIntegrationTypeAdamsBashforth);
+    connect(integrationType, SIGNAL(clicked(int)),
+            this, SLOT(integrationTypeChanged(int)));
+    mainLayout->addWidget(integrationType, 14,1);
+
+    showStreamlines = new QCheckBox(tr("Show Streamlines"), central, "showStreamlines");
+    connect(showStreamlines, SIGNAL(toggled(bool)),
+            this, SLOT(showStreamlinesChanged(bool)));
+    mainLayout->addWidget(showStreamlines, 15,0);
+
+    showPoints = new QCheckBox(tr("Show Points"), central, "showPoints");
+    connect(showPoints, SIGNAL(toggled(bool)),
+            this, SLOT(showPointsChanged(bool)));
+    mainLayout->addWidget(showPoints, 16,0);
+
+    pointDensityLabel = new QLabel(tr("Point Density"), central, "pointDensityLabel");
+    mainLayout->addWidget(pointDensityLabel,17,0);
+    pointDensity = new QLineEdit(central, "pointDensity");
+    connect(pointDensity, SIGNAL(returnPressed()),
+            this, SLOT(pointDensityProcessText()));
+    mainLayout->addWidget(pointDensity, 17,1);
+
+    sourceRadiusLabel = new QLabel(tr("Source Radius"), central, "sourceRadiusLabel");
+    mainLayout->addWidget(sourceRadiusLabel,18,0);
+    sourceRadius = new QLineEdit(central, "sourceRadius");
+    connect(sourceRadius, SIGNAL(returnPressed()),
+            this, SLOT(sourceRadiusProcessText()));
+    mainLayout->addWidget(sourceRadius, 18,1);
+
+    colorTableNameLabel = new QLabel(tr("Color table"), central, "colorTableNameLabel");
+    mainLayout->addWidget(colorTableNameLabel,19,0);
+    colorTableName = new QvisColorTableButton(central, "colorTableName");
+    connect(colorTableName, SIGNAL(selectedColorTable(bool, const QString&)),
+            this, SLOT(colorTableNameChanged(bool, const QString&)));
+    mainLayout->addWidget(colorTableName, 19,1);
+
+    singleColorLabel = new QLabel(tr("Single color"), central, "singleColorLabel");
+    mainLayout->addWidget(singleColorLabel,20,0);
+    singleColor = new QvisColorButton(central, "singleColor");
+    connect(singleColor, SIGNAL(selectedColor(const QColor&)),
+            this, SLOT(singleColorChanged(const QColor&)));
+    mainLayout->addWidget(singleColor, 20,1);
 
     NumberPlanesLabel = new QLabel(tr("NumberPlanes"), central, "NumberPlanesLabel");
     mainLayout->addWidget(NumberPlanesLabel,21,0);
@@ -436,48 +436,8 @@ QvisPoincarePlotWindow::UpdateWindow(bool doAll)
         QColor                tempcolor;
         switch(i)
         {
-          case PoincareAttributes::ID_termination:
-            termination->blockSignals(true);
-            temp.setNum(atts->GetTermination());
-            termination->setText(temp);
-            termination->blockSignals(false);
-            break;
-          case PoincareAttributes::ID_terminationType:
-            terminationType->blockSignals(true);
-            terminationType->setButton(atts->GetTerminationType());
-            terminationType->blockSignals(false);
-            break;
-          case PoincareAttributes::ID_integratorType:
-            integratorType->blockSignals(true);
-            integratorType->setButton(atts->GetIntegratorType());
-            integratorType->blockSignals(false);
-            break;
-          case PoincareAttributes::ID_streamlineSource:
-            if (atts->GetStreamlineSource() == PoincareAttributes::LineSource || atts->GetStreamlineSource() == PoincareAttributes::PlaneSource)
-            {
-                pointDensity->setEnabled(true);
-                if(pointDensityLabel)
-                    pointDensityLabel->setEnabled(true);
-            }
-            else
-            {
-                pointDensity->setEnabled(false);
-                if(pointDensityLabel)
-                    pointDensityLabel->setEnabled(false);
-            }
-            if (atts->GetStreamlineSource() == PoincareAttributes::PlaneSource)
-            {
-                sourceRadius->setEnabled(true);
-                if(sourceRadiusLabel)
-                    sourceRadiusLabel->setEnabled(true);
-            }
-            else
-            {
-                sourceRadius->setEnabled(false);
-                if(sourceRadiusLabel)
-                    sourceRadiusLabel->setEnabled(false);
-            }
-            if (atts->GetStreamlineSource() == PoincareAttributes::PointSource)
+          case PoincareAttributes::ID_sourceType:
+            if (atts->GetSourceType() == PoincareAttributes::SpecifiedPoint)
             {
                 pointSource->setEnabled(true);
                 if(pointSourceLabel)
@@ -489,7 +449,7 @@ QvisPoincarePlotWindow::UpdateWindow(bool doAll)
                 if(pointSourceLabel)
                     pointSourceLabel->setEnabled(false);
             }
-            if (atts->GetStreamlineSource() == PoincareAttributes::LineSource)
+            if (atts->GetSourceType() == PoincareAttributes::SpecifiedLine)
             {
                 lineSourceStart->setEnabled(true);
                 if(lineSourceStartLabel)
@@ -501,7 +461,7 @@ QvisPoincarePlotWindow::UpdateWindow(bool doAll)
                 if(lineSourceStartLabel)
                     lineSourceStartLabel->setEnabled(false);
             }
-            if (atts->GetStreamlineSource() == PoincareAttributes::LineSource)
+            if (atts->GetSourceType() == PoincareAttributes::SpecifiedLine)
             {
                 lineSourceEnd->setEnabled(true);
                 if(lineSourceEndLabel)
@@ -513,19 +473,19 @@ QvisPoincarePlotWindow::UpdateWindow(bool doAll)
                 if(lineSourceEndLabel)
                     lineSourceEndLabel->setEnabled(false);
             }
-            if (atts->GetStreamlineSource() == PoincareAttributes::PlaneSource)
+            if (atts->GetSourceType() == PoincareAttributes::SpecifiedPlane)
             {
-                planeSourcePoint->setEnabled(true);
-                if(planeSourcePointLabel)
-                    planeSourcePointLabel->setEnabled(true);
+                planeSourceOrigin->setEnabled(true);
+                if(planeSourceOriginLabel)
+                    planeSourceOriginLabel->setEnabled(true);
             }
             else
             {
-                planeSourcePoint->setEnabled(false);
-                if(planeSourcePointLabel)
-                    planeSourcePointLabel->setEnabled(false);
+                planeSourceOrigin->setEnabled(false);
+                if(planeSourceOriginLabel)
+                    planeSourceOriginLabel->setEnabled(false);
             }
-            if (atts->GetStreamlineSource() == PoincareAttributes::PlaneSource)
+            if (atts->GetSourceType() == PoincareAttributes::SpecifiedPlane)
             {
                 planeSourceNormal->setEnabled(true);
                 if(planeSourceNormalLabel)
@@ -537,43 +497,57 @@ QvisPoincarePlotWindow::UpdateWindow(bool doAll)
                 if(planeSourceNormalLabel)
                     planeSourceNormalLabel->setEnabled(false);
             }
-            if (atts->GetStreamlineSource() == PoincareAttributes::PlaneSource)
+            if (atts->GetSourceType() == PoincareAttributes::SpecifiedPlane)
             {
-                planeSourceUpVec->setEnabled(true);
-                if(planeSourceUpVecLabel)
-                    planeSourceUpVecLabel->setEnabled(true);
+                planeSourceUpAxis->setEnabled(true);
+                if(planeSourceUpAxisLabel)
+                    planeSourceUpAxisLabel->setEnabled(true);
             }
             else
             {
-                planeSourceUpVec->setEnabled(false);
-                if(planeSourceUpVecLabel)
-                    planeSourceUpVecLabel->setEnabled(false);
+                planeSourceUpAxis->setEnabled(false);
+                if(planeSourceUpAxisLabel)
+                    planeSourceUpAxisLabel->setEnabled(false);
             }
-            streamlineSource->blockSignals(true);
-            streamlineSource->setButton(atts->GetStreamlineSource());
-            streamlineSource->blockSignals(false);
+            if (atts->GetSourceType() == PoincareAttributes::SpecifiedLine || atts->GetSourceType() == PoincareAttributes::SpecifiedPlane)
+            {
+                pointDensity->setEnabled(true);
+                if(pointDensityLabel)
+                    pointDensityLabel->setEnabled(true);
+            }
+            else
+            {
+                pointDensity->setEnabled(false);
+                if(pointDensityLabel)
+                    pointDensityLabel->setEnabled(false);
+            }
+            if (atts->GetSourceType() == PoincareAttributes::SpecifiedPlane)
+            {
+                sourceRadius->setEnabled(true);
+                if(sourceRadiusLabel)
+                    sourceRadiusLabel->setEnabled(true);
+            }
+            else
+            {
+                sourceRadius->setEnabled(false);
+                if(sourceRadiusLabel)
+                    sourceRadiusLabel->setEnabled(false);
+            }
+            sourceType->blockSignals(true);
+            sourceType->setButton(atts->GetSourceType());
+            sourceType->blockSignals(false);
             break;
-          case PoincareAttributes::ID_showStreamlines:
-            showStreamlines->blockSignals(true);
-            showStreamlines->setChecked(atts->GetShowStreamlines());
-            showStreamlines->blockSignals(false);
+          case PoincareAttributes::ID_maxStepLength:
+            maxStepLength->blockSignals(true);
+            temp.setNum(atts->GetMaxStepLength());
+            maxStepLength->setText(temp);
+            maxStepLength->blockSignals(false);
             break;
-          case PoincareAttributes::ID_showPoints:
-            showPoints->blockSignals(true);
-            showPoints->setChecked(atts->GetShowPoints());
-            showPoints->blockSignals(false);
-            break;
-          case PoincareAttributes::ID_pointDensity:
-            pointDensity->blockSignals(true);
-            temp.sprintf("%d", atts->GetPointDensity());
-            pointDensity->setText(temp);
-            pointDensity->blockSignals(false);
-            break;
-          case PoincareAttributes::ID_sourceRadius:
-            sourceRadius->blockSignals(true);
-            temp.setNum(atts->GetSourceRadius());
-            sourceRadius->setText(temp);
-            sourceRadius->blockSignals(false);
+          case PoincareAttributes::ID_termination:
+            termination->blockSignals(true);
+            temp.setNum(atts->GetTermination());
+            termination->setText(temp);
+            termination->blockSignals(false);
             break;
           case PoincareAttributes::ID_pointSource:
             dptr = atts->GetPointSource();
@@ -596,12 +570,12 @@ QvisPoincarePlotWindow::UpdateWindow(bool doAll)
             lineSourceEnd->setText(temp);
             lineSourceEnd->blockSignals(false);
             break;
-          case PoincareAttributes::ID_planeSourcePoint:
-            dptr = atts->GetPlaneSourcePoint();
+          case PoincareAttributes::ID_planeSourceOrigin:
+            dptr = atts->GetPlaneSourceOrigin();
             temp.sprintf("%g %g %g", dptr[0], dptr[1], dptr[2]);
-            planeSourcePoint->blockSignals(true);
-            planeSourcePoint->setText(temp);
-            planeSourcePoint->blockSignals(false);
+            planeSourceOrigin->blockSignals(true);
+            planeSourceOrigin->setText(temp);
+            planeSourceOrigin->blockSignals(false);
             break;
           case PoincareAttributes::ID_planeSourceNormal:
             dptr = atts->GetPlaneSourceNormal();
@@ -610,25 +584,12 @@ QvisPoincarePlotWindow::UpdateWindow(bool doAll)
             planeSourceNormal->setText(temp);
             planeSourceNormal->blockSignals(false);
             break;
-          case PoincareAttributes::ID_planeSourceUpVec:
-            dptr = atts->GetPlaneSourceUpVec();
+          case PoincareAttributes::ID_planeSourceUpAxis:
+            dptr = atts->GetPlaneSourceUpAxis();
             temp.sprintf("%g %g %g", dptr[0], dptr[1], dptr[2]);
-            planeSourceUpVec->blockSignals(true);
-            planeSourceUpVec->setText(temp);
-            planeSourceUpVec->blockSignals(false);
-            break;
-          case PoincareAttributes::ID_colorTableName:
-            colorTableName->blockSignals(true);
-            colorTableName->setColorTable(atts->GetColorTableName().c_str());
-            colorTableName->blockSignals(false);
-            break;
-          case PoincareAttributes::ID_singleColor:
-            tempcolor = QColor(atts->GetSingleColor().Red(),
-                               atts->GetSingleColor().Green(),
-                               atts->GetSingleColor().Blue());
-            singleColor->blockSignals(true);
-            singleColor->setButtonColor(tempcolor);
-            singleColor->blockSignals(false);
+            planeSourceUpAxis->blockSignals(true);
+            planeSourceUpAxis->setText(temp);
+            planeSourceUpAxis->blockSignals(false);
             break;
           case PoincareAttributes::ID_legendFlag:
             legendFlag->blockSignals(true);
@@ -652,11 +613,50 @@ QvisPoincarePlotWindow::UpdateWindow(bool doAll)
             absTol->setText(temp);
             absTol->blockSignals(false);
             break;
-          case PoincareAttributes::ID_maxStepLength:
-            maxStepLength->blockSignals(true);
-            temp.setNum(atts->GetMaxStepLength());
-            maxStepLength->setText(temp);
-            maxStepLength->blockSignals(false);
+          case PoincareAttributes::ID_terminationType:
+            terminationType->blockSignals(true);
+            terminationType->setButton(atts->GetTerminationType());
+            terminationType->blockSignals(false);
+            break;
+          case PoincareAttributes::ID_integrationType:
+            integrationType->blockSignals(true);
+            integrationType->setButton(atts->GetIntegrationType());
+            integrationType->blockSignals(false);
+            break;
+          case PoincareAttributes::ID_showStreamlines:
+            showStreamlines->blockSignals(true);
+            showStreamlines->setChecked(atts->GetShowStreamlines());
+            showStreamlines->blockSignals(false);
+            break;
+          case PoincareAttributes::ID_showPoints:
+            showPoints->blockSignals(true);
+            showPoints->setChecked(atts->GetShowPoints());
+            showPoints->blockSignals(false);
+            break;
+          case PoincareAttributes::ID_pointDensity:
+            pointDensity->blockSignals(true);
+            temp.sprintf("%d", atts->GetPointDensity());
+            pointDensity->setText(temp);
+            pointDensity->blockSignals(false);
+            break;
+          case PoincareAttributes::ID_sourceRadius:
+            sourceRadius->blockSignals(true);
+            temp.setNum(atts->GetSourceRadius());
+            sourceRadius->setText(temp);
+            sourceRadius->blockSignals(false);
+            break;
+          case PoincareAttributes::ID_colorTableName:
+            colorTableName->blockSignals(true);
+            colorTableName->setColorTable(atts->GetColorTableName().c_str());
+            colorTableName->blockSignals(false);
+            break;
+          case PoincareAttributes::ID_singleColor:
+            tempcolor = QColor(atts->GetSingleColor().Red(),
+                               atts->GetSingleColor().Green(),
+                               atts->GetSingleColor().Blue());
+            singleColor->blockSignals(true);
+            singleColor->setButtonColor(tempcolor);
+            singleColor->blockSignals(false);
             break;
           case PoincareAttributes::ID_NumberPlanes:
             NumberPlanes->blockSignals(true);
@@ -734,6 +734,28 @@ QvisPoincarePlotWindow::GetCurrentValues(int which_widget)
     bool okay, doAll = (which_widget == -1);
     QString msg, temp;
 
+    // Do maxStepLength
+    if(which_widget == PoincareAttributes::ID_maxStepLength || doAll)
+    {
+        temp = maxStepLength->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
+        {
+            double val = temp.toDouble(&okay);
+            if(okay)
+                atts->SetMaxStepLength(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of maxStepLength was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetMaxStepLength());
+            Message(msg);
+            atts->SetMaxStepLength(atts->GetMaxStepLength());
+        }
+    }
+
     // Do termination
     if(which_widget == PoincareAttributes::ID_termination || doAll)
     {
@@ -753,50 +775,6 @@ QvisPoincarePlotWindow::GetCurrentValues(int which_widget)
                   arg(atts->GetTermination());
             Message(msg);
             atts->SetTermination(atts->GetTermination());
-        }
-    }
-
-    // Do pointDensity
-    if(which_widget == PoincareAttributes::ID_pointDensity || doAll)
-    {
-        temp = pointDensity->displayText().simplifyWhiteSpace();
-        okay = !temp.isEmpty();
-        if(okay)
-        {
-            int val = temp.toInt(&okay);
-            if(okay)
-                atts->SetPointDensity(val);
-        }
-
-        if(!okay)
-        {
-            msg = tr("The value of pointDensity was invalid. "
-                     "Resetting to the last good value of %1.").
-                  arg(atts->GetPointDensity());
-            Message(msg);
-            atts->SetPointDensity(atts->GetPointDensity());
-        }
-    }
-
-    // Do sourceRadius
-    if(which_widget == PoincareAttributes::ID_sourceRadius || doAll)
-    {
-        temp = sourceRadius->displayText().simplifyWhiteSpace();
-        okay = !temp.isEmpty();
-        if(okay)
-        {
-            double val = temp.toDouble(&okay);
-            if(okay)
-                atts->SetSourceRadius(val);
-        }
-
-        if(!okay)
-        {
-            msg = tr("The value of sourceRadius was invalid. "
-                     "Resetting to the last good value of %1.").
-                  arg(atts->GetSourceRadius());
-            Message(msg);
-            atts->SetSourceRadius(atts->GetSourceRadius());
         }
     }
 
@@ -875,28 +853,28 @@ QvisPoincarePlotWindow::GetCurrentValues(int which_widget)
         }
     }
 
-    // Do planeSourcePoint
-    if(which_widget == PoincareAttributes::ID_planeSourcePoint || doAll)
+    // Do planeSourceOrigin
+    if(which_widget == PoincareAttributes::ID_planeSourceOrigin || doAll)
     {
-        temp = planeSourcePoint->displayText().simplifyWhiteSpace();
+        temp = planeSourceOrigin->displayText().simplifyWhiteSpace();
         okay = !temp.isEmpty();
         if(okay)
         {
             double val[3];
             if((okay = (sscanf(temp.latin1(), "%lg %lg %lg", &val[0], &val[1], &val[2]) == 3)) == true)
-                atts->SetPlaneSourcePoint(val);
+                atts->SetPlaneSourceOrigin(val);
         }
 
         if(!okay)
         {
-            const double *val = atts->GetPlaneSourcePoint();
+            const double *val = atts->GetPlaneSourceOrigin();
             QString num; num.sprintf("<%g %g %g>", 
                 val[0], val[1], val[2]);
-            msg = tr("The value of planeSourcePoint was invalid. "
+            msg = tr("The value of planeSourceOrigin was invalid. "
                      "Resetting to the last good value of %1.").
                   arg(num);
             Message(msg);
-            atts->SetPlaneSourcePoint(atts->GetPlaneSourcePoint());
+            atts->SetPlaneSourceOrigin(atts->GetPlaneSourceOrigin());
         }
     }
 
@@ -925,28 +903,28 @@ QvisPoincarePlotWindow::GetCurrentValues(int which_widget)
         }
     }
 
-    // Do planeSourceUpVec
-    if(which_widget == PoincareAttributes::ID_planeSourceUpVec || doAll)
+    // Do planeSourceUpAxis
+    if(which_widget == PoincareAttributes::ID_planeSourceUpAxis || doAll)
     {
-        temp = planeSourceUpVec->displayText().simplifyWhiteSpace();
+        temp = planeSourceUpAxis->displayText().simplifyWhiteSpace();
         okay = !temp.isEmpty();
         if(okay)
         {
             double val[3];
             if((okay = (sscanf(temp.latin1(), "%lg %lg %lg", &val[0], &val[1], &val[2]) == 3)) == true)
-                atts->SetPlaneSourceUpVec(val);
+                atts->SetPlaneSourceUpAxis(val);
         }
 
         if(!okay)
         {
-            const double *val = atts->GetPlaneSourceUpVec();
+            const double *val = atts->GetPlaneSourceUpAxis();
             QString num; num.sprintf("<%g %g %g>", 
                 val[0], val[1], val[2]);
-            msg = tr("The value of planeSourceUpVec was invalid. "
+            msg = tr("The value of planeSourceUpAxis was invalid. "
                      "Resetting to the last good value of %1.").
                   arg(num);
             Message(msg);
-            atts->SetPlaneSourceUpVec(atts->GetPlaneSourceUpVec());
+            atts->SetPlaneSourceUpAxis(atts->GetPlaneSourceUpAxis());
         }
     }
 
@@ -994,25 +972,47 @@ QvisPoincarePlotWindow::GetCurrentValues(int which_widget)
         }
     }
 
-    // Do maxStepLength
-    if(which_widget == PoincareAttributes::ID_maxStepLength || doAll)
+    // Do pointDensity
+    if(which_widget == PoincareAttributes::ID_pointDensity || doAll)
     {
-        temp = maxStepLength->displayText().simplifyWhiteSpace();
+        temp = pointDensity->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
+        {
+            int val = temp.toInt(&okay);
+            if(okay)
+                atts->SetPointDensity(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of pointDensity was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetPointDensity());
+            Message(msg);
+            atts->SetPointDensity(atts->GetPointDensity());
+        }
+    }
+
+    // Do sourceRadius
+    if(which_widget == PoincareAttributes::ID_sourceRadius || doAll)
+    {
+        temp = sourceRadius->displayText().simplifyWhiteSpace();
         okay = !temp.isEmpty();
         if(okay)
         {
             double val = temp.toDouble(&okay);
             if(okay)
-                atts->SetMaxStepLength(val);
+                atts->SetSourceRadius(val);
         }
 
         if(!okay)
         {
-            msg = tr("The value of maxStepLength was invalid. "
+            msg = tr("The value of sourceRadius was invalid. "
                      "Resetting to the last good value of %1.").
-                  arg(atts->GetMaxStepLength());
+                  arg(atts->GetSourceRadius());
             Message(msg);
-            atts->SetMaxStepLength(atts->GetMaxStepLength());
+            atts->SetSourceRadius(atts->GetSourceRadius());
         }
     }
 
@@ -1233,9 +1233,110 @@ QvisPoincarePlotWindow::reset()
 
 
 void
+QvisPoincarePlotWindow::sourceTypeChanged(int val)
+{
+    if(val != atts->GetSourceType())
+    {
+        atts->SetSourceType(PoincareAttributes::SourceType(val));
+        Apply();
+    }
+}
+
+
+void
+QvisPoincarePlotWindow::maxStepLengthProcessText()
+{
+    GetCurrentValues(PoincareAttributes::ID_maxStepLength);
+    Apply();
+}
+
+
+void
 QvisPoincarePlotWindow::terminationProcessText()
 {
     GetCurrentValues(PoincareAttributes::ID_termination);
+    Apply();
+}
+
+
+void
+QvisPoincarePlotWindow::pointSourceProcessText()
+{
+    GetCurrentValues(PoincareAttributes::ID_pointSource);
+    Apply();
+}
+
+
+void
+QvisPoincarePlotWindow::lineSourceStartProcessText()
+{
+    GetCurrentValues(PoincareAttributes::ID_lineSourceStart);
+    Apply();
+}
+
+
+void
+QvisPoincarePlotWindow::lineSourceEndProcessText()
+{
+    GetCurrentValues(PoincareAttributes::ID_lineSourceEnd);
+    Apply();
+}
+
+
+void
+QvisPoincarePlotWindow::planeSourceOriginProcessText()
+{
+    GetCurrentValues(PoincareAttributes::ID_planeSourceOrigin);
+    Apply();
+}
+
+
+void
+QvisPoincarePlotWindow::planeSourceNormalProcessText()
+{
+    GetCurrentValues(PoincareAttributes::ID_planeSourceNormal);
+    Apply();
+}
+
+
+void
+QvisPoincarePlotWindow::planeSourceUpAxisProcessText()
+{
+    GetCurrentValues(PoincareAttributes::ID_planeSourceUpAxis);
+    Apply();
+}
+
+
+void
+QvisPoincarePlotWindow::legendFlagChanged(bool val)
+{
+    atts->SetLegendFlag(val);
+    SetUpdate(false);
+    Apply();
+}
+
+
+void
+QvisPoincarePlotWindow::lightingFlagChanged(bool val)
+{
+    atts->SetLightingFlag(val);
+    SetUpdate(false);
+    Apply();
+}
+
+
+void
+QvisPoincarePlotWindow::relTolProcessText()
+{
+    GetCurrentValues(PoincareAttributes::ID_relTol);
+    Apply();
+}
+
+
+void
+QvisPoincarePlotWindow::absTolProcessText()
+{
+    GetCurrentValues(PoincareAttributes::ID_absTol);
     Apply();
 }
 
@@ -1253,23 +1354,12 @@ QvisPoincarePlotWindow::terminationTypeChanged(int val)
 
 
 void
-QvisPoincarePlotWindow::integratorTypeChanged(int val)
+QvisPoincarePlotWindow::integrationTypeChanged(int val)
 {
-    if(val != atts->GetIntegratorType())
+    if(val != atts->GetIntegrationType())
     {
-        atts->SetIntegratorType(PoincareAttributes::IntegratorType(val));
+        atts->SetIntegrationType(PoincareAttributes::IntegrationType(val));
         SetUpdate(false);
-        Apply();
-    }
-}
-
-
-void
-QvisPoincarePlotWindow::streamlineSourceChanged(int val)
-{
-    if(val != atts->GetStreamlineSource())
-    {
-        atts->SetStreamlineSource(PoincareAttributes::SourceType(val));
         Apply();
     }
 }
@@ -1310,54 +1400,6 @@ QvisPoincarePlotWindow::sourceRadiusProcessText()
 
 
 void
-QvisPoincarePlotWindow::pointSourceProcessText()
-{
-    GetCurrentValues(PoincareAttributes::ID_pointSource);
-    Apply();
-}
-
-
-void
-QvisPoincarePlotWindow::lineSourceStartProcessText()
-{
-    GetCurrentValues(PoincareAttributes::ID_lineSourceStart);
-    Apply();
-}
-
-
-void
-QvisPoincarePlotWindow::lineSourceEndProcessText()
-{
-    GetCurrentValues(PoincareAttributes::ID_lineSourceEnd);
-    Apply();
-}
-
-
-void
-QvisPoincarePlotWindow::planeSourcePointProcessText()
-{
-    GetCurrentValues(PoincareAttributes::ID_planeSourcePoint);
-    Apply();
-}
-
-
-void
-QvisPoincarePlotWindow::planeSourceNormalProcessText()
-{
-    GetCurrentValues(PoincareAttributes::ID_planeSourceNormal);
-    Apply();
-}
-
-
-void
-QvisPoincarePlotWindow::planeSourceUpVecProcessText()
-{
-    GetCurrentValues(PoincareAttributes::ID_planeSourceUpVec);
-    Apply();
-}
-
-
-void
 QvisPoincarePlotWindow::colorTableNameChanged(bool useDefault, const QString &ctName)
 {
     atts->SetColorTableName(ctName.latin1());
@@ -1372,48 +1414,6 @@ QvisPoincarePlotWindow::singleColorChanged(const QColor &color)
     ColorAttribute temp(color.red(), color.green(), color.blue());
     atts->SetSingleColor(temp);
     SetUpdate(false);
-    Apply();
-}
-
-
-void
-QvisPoincarePlotWindow::legendFlagChanged(bool val)
-{
-    atts->SetLegendFlag(val);
-    SetUpdate(false);
-    Apply();
-}
-
-
-void
-QvisPoincarePlotWindow::lightingFlagChanged(bool val)
-{
-    atts->SetLightingFlag(val);
-    SetUpdate(false);
-    Apply();
-}
-
-
-void
-QvisPoincarePlotWindow::relTolProcessText()
-{
-    GetCurrentValues(PoincareAttributes::ID_relTol);
-    Apply();
-}
-
-
-void
-QvisPoincarePlotWindow::absTolProcessText()
-{
-    GetCurrentValues(PoincareAttributes::ID_absTol);
-    Apply();
-}
-
-
-void
-QvisPoincarePlotWindow::maxStepLengthProcessText()
-{
-    GetCurrentValues(PoincareAttributes::ID_maxStepLength);
     Apply();
 }
 

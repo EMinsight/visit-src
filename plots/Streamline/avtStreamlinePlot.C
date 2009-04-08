@@ -337,6 +337,10 @@ avtStreamlinePlot::EnhanceSpecification(avtContract_p in_contract)
 //   Dave Pugmire, Tue Mar 10 12:41:11 EDT 2009
 //   Add pathline option.
 //
+//   Jeremy Meredith, Wed Apr  8 16:48:05 EDT 2009
+//   Initial steps to unification with Poincare attributes.
+//   
+//
 // ****************************************************************************
 
 void
@@ -374,15 +378,15 @@ avtStreamlinePlot::SetAtts(const AttributeGroup *a)
     streamlineFilter->SetStreamlineDirection(atts.GetStreamlineDirection());
 
     streamlineFilter->SetPointSource(atts.GetPointSource());
-    streamlineFilter->SetLineSource(atts.GetLineStart(),
-                                    atts.GetLineEnd());
-    streamlineFilter->SetPlaneSource(atts.GetPlaneOrigin(),
-                                     atts.GetPlaneNormal(),
-                                     atts.GetPlaneUpAxis(),
-                                     atts.GetPlaneRadius());
-    streamlineFilter->SetSphereSource(atts.GetSphereOrigin(),
-                                      atts.GetSphereRadius());
-    streamlineFilter->SetBoxSource(atts.GetBoxExtents());
+    streamlineFilter->SetLineSource(atts.GetLineSourceStart(),
+                                    atts.GetLineSourceEnd());
+    streamlineFilter->SetPlaneSource(atts.GetPlaneSourceOrigin(),
+                                     atts.GetPlaneSourceNormal(),
+                                     atts.GetPlaneSourceUpAxis(),
+                                     atts.GetPlaneSourceRadius());
+    streamlineFilter->SetSphereSource(atts.GetSphereSourceOrigin(),
+                                      atts.GetSphereSourceRadius());
+    streamlineFilter->SetBoxSource(atts.GetBoxSourceExtents());
     streamlineFilter->SetUseWholeBox(atts.GetUseWholeBox());
     streamlineFilter->SetColoringMethod(int(atts.GetColoringMethod()));
 #endif

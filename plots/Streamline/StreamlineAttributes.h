@@ -95,16 +95,16 @@ public:
         Time,
         Step
     };
-    enum IntegrationType
-    {
-        DormandPrince,
-        AdamsBashforth
-    };
     enum StreamlineAlgorithmType
     {
         LoadOnDemand,
         ParallelStaticDomains,
         MasterSlave
+    };
+    enum IntegrationType
+    {
+        DormandPrince,
+        AdamsBashforth
     };
 
     StreamlineAttributes();
@@ -123,13 +123,13 @@ public:
     // Property selection methods
     virtual void SelectAll();
     void SelectPointSource();
-    void SelectLineStart();
-    void SelectLineEnd();
-    void SelectPlaneOrigin();
-    void SelectPlaneNormal();
-    void SelectPlaneUpAxis();
-    void SelectSphereOrigin();
-    void SelectBoxExtents();
+    void SelectLineSourceStart();
+    void SelectLineSourceEnd();
+    void SelectPlaneSourceOrigin();
+    void SelectPlaneSourceNormal();
+    void SelectPlaneSourceUpAxis();
+    void SelectSphereSourceOrigin();
+    void SelectBoxSourceExtents();
     void SelectColorTableName();
     void SelectSingleColor();
 
@@ -138,15 +138,15 @@ public:
     void SetMaxStepLength(double maxStepLength_);
     void SetTermination(double termination_);
     void SetPointSource(const double *pointSource_);
-    void SetLineStart(const double *lineStart_);
-    void SetLineEnd(const double *lineEnd_);
-    void SetPlaneOrigin(const double *planeOrigin_);
-    void SetPlaneNormal(const double *planeNormal_);
-    void SetPlaneUpAxis(const double *planeUpAxis_);
-    void SetPlaneRadius(double planeRadius_);
-    void SetSphereOrigin(const double *sphereOrigin_);
-    void SetSphereRadius(double sphereRadius_);
-    void SetBoxExtents(const double *boxExtents_);
+    void SetLineSourceStart(const double *lineSourceStart_);
+    void SetLineSourceEnd(const double *lineSourceEnd_);
+    void SetPlaneSourceOrigin(const double *planeSourceOrigin_);
+    void SetPlaneSourceNormal(const double *planeSourceNormal_);
+    void SetPlaneSourceUpAxis(const double *planeSourceUpAxis_);
+    void SetPlaneSourceRadius(double planeSourceRadius_);
+    void SetSphereSourceOrigin(const double *sphereSourceOrigin_);
+    void SetSphereSourceRadius(double sphereSourceRadius_);
+    void SetBoxSourceExtents(const double *boxSourceExtents_);
     void SetUseWholeBox(bool useWholeBox_);
     void SetPointDensity(int pointDensity_);
     void SetDisplayMethod(DisplayMethod displayMethod_);
@@ -175,22 +175,22 @@ public:
     double               GetTermination() const;
     const double         *GetPointSource() const;
           double         *GetPointSource();
-    const double         *GetLineStart() const;
-          double         *GetLineStart();
-    const double         *GetLineEnd() const;
-          double         *GetLineEnd();
-    const double         *GetPlaneOrigin() const;
-          double         *GetPlaneOrigin();
-    const double         *GetPlaneNormal() const;
-          double         *GetPlaneNormal();
-    const double         *GetPlaneUpAxis() const;
-          double         *GetPlaneUpAxis();
-    double               GetPlaneRadius() const;
-    const double         *GetSphereOrigin() const;
-          double         *GetSphereOrigin();
-    double               GetSphereRadius() const;
-    const double         *GetBoxExtents() const;
-          double         *GetBoxExtents();
+    const double         *GetLineSourceStart() const;
+          double         *GetLineSourceStart();
+    const double         *GetLineSourceEnd() const;
+          double         *GetLineSourceEnd();
+    const double         *GetPlaneSourceOrigin() const;
+          double         *GetPlaneSourceOrigin();
+    const double         *GetPlaneSourceNormal() const;
+          double         *GetPlaneSourceNormal();
+    const double         *GetPlaneSourceUpAxis() const;
+          double         *GetPlaneSourceUpAxis();
+    double               GetPlaneSourceRadius() const;
+    const double         *GetSphereSourceOrigin() const;
+          double         *GetSphereSourceOrigin();
+    double               GetSphereSourceRadius() const;
+    const double         *GetBoxSourceExtents() const;
+          double         *GetBoxSourceExtents();
     bool                 GetUseWholeBox() const;
     int                  GetPointDensity() const;
     DisplayMethod        GetDisplayMethod() const;
@@ -245,15 +245,15 @@ public:
 protected:
     static std::string TerminationType_ToString(int);
 public:
-    static std::string IntegrationType_ToString(IntegrationType);
-    static bool IntegrationType_FromString(const std::string &, IntegrationType &);
-protected:
-    static std::string IntegrationType_ToString(int);
-public:
     static std::string StreamlineAlgorithmType_ToString(StreamlineAlgorithmType);
     static bool StreamlineAlgorithmType_FromString(const std::string &, StreamlineAlgorithmType &);
 protected:
     static std::string StreamlineAlgorithmType_ToString(int);
+public:
+    static std::string IntegrationType_ToString(IntegrationType);
+    static bool IntegrationType_FromString(const std::string &, IntegrationType &);
+protected:
+    static std::string IntegrationType_ToString(int);
 public:
 
     // Keyframing methods
@@ -271,15 +271,15 @@ public:
         ID_maxStepLength,
         ID_termination,
         ID_pointSource,
-        ID_lineStart,
-        ID_lineEnd,
-        ID_planeOrigin,
-        ID_planeNormal,
-        ID_planeUpAxis,
-        ID_planeRadius,
-        ID_sphereOrigin,
-        ID_sphereRadius,
-        ID_boxExtents,
+        ID_lineSourceStart,
+        ID_lineSourceEnd,
+        ID_planeSourceOrigin,
+        ID_planeSourceNormal,
+        ID_planeSourceUpAxis,
+        ID_planeSourceRadius,
+        ID_sphereSourceOrigin,
+        ID_sphereSourceRadius,
+        ID_boxSourceExtents,
         ID_useWholeBox,
         ID_pointDensity,
         ID_displayMethod,
@@ -308,15 +308,15 @@ private:
     double         maxStepLength;
     double         termination;
     double         pointSource[3];
-    double         lineStart[3];
-    double         lineEnd[3];
-    double         planeOrigin[3];
-    double         planeNormal[3];
-    double         planeUpAxis[3];
-    double         planeRadius;
-    double         sphereOrigin[3];
-    double         sphereRadius;
-    double         boxExtents[6];
+    double         lineSourceStart[3];
+    double         lineSourceEnd[3];
+    double         planeSourceOrigin[3];
+    double         planeSourceNormal[3];
+    double         planeSourceUpAxis[3];
+    double         planeSourceRadius;
+    double         sphereSourceOrigin[3];
+    double         sphereSourceRadius;
+    double         boxSourceExtents[6];
     bool           useWholeBox;
     int            pointDensity;
     int            displayMethod;

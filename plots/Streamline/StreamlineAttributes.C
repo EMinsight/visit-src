@@ -237,43 +237,6 @@ StreamlineAttributes::TerminationType_FromString(const std::string &s, Streamlin
 }
 
 //
-// Enum conversion methods for StreamlineAttributes::IntegrationType
-//
-
-static const char *IntegrationType_strings[] = {
-"DormandPrince", "AdamsBashforth"};
-
-std::string
-StreamlineAttributes::IntegrationType_ToString(StreamlineAttributes::IntegrationType t)
-{
-    int index = int(t);
-    if(index < 0 || index >= 2) index = 0;
-    return IntegrationType_strings[index];
-}
-
-std::string
-StreamlineAttributes::IntegrationType_ToString(int t)
-{
-    int index = (t < 0 || t >= 2) ? 0 : t;
-    return IntegrationType_strings[index];
-}
-
-bool
-StreamlineAttributes::IntegrationType_FromString(const std::string &s, StreamlineAttributes::IntegrationType &val)
-{
-    val = StreamlineAttributes::DormandPrince;
-    for(int i = 0; i < 2; ++i)
-    {
-        if(s == IntegrationType_strings[i])
-        {
-            val = (IntegrationType)i;
-            return true;
-        }
-    }
-    return false;
-}
-
-//
 // Enum conversion methods for StreamlineAttributes::StreamlineAlgorithmType
 //
 
@@ -311,6 +274,43 @@ StreamlineAttributes::StreamlineAlgorithmType_FromString(const std::string &s, S
     return false;
 }
 
+//
+// Enum conversion methods for StreamlineAttributes::IntegrationType
+//
+
+static const char *IntegrationType_strings[] = {
+"DormandPrince", "AdamsBashforth"};
+
+std::string
+StreamlineAttributes::IntegrationType_ToString(StreamlineAttributes::IntegrationType t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 2) index = 0;
+    return IntegrationType_strings[index];
+}
+
+std::string
+StreamlineAttributes::IntegrationType_ToString(int t)
+{
+    int index = (t < 0 || t >= 2) ? 0 : t;
+    return IntegrationType_strings[index];
+}
+
+bool
+StreamlineAttributes::IntegrationType_FromString(const std::string &s, StreamlineAttributes::IntegrationType &val)
+{
+    val = StreamlineAttributes::DormandPrince;
+    for(int i = 0; i < 2; ++i)
+    {
+        if(s == IntegrationType_strings[i])
+        {
+            val = (IntegrationType)i;
+            return true;
+        }
+    }
+    return false;
+}
+
 // Type map format string
 const char *StreamlineAttributes::TypeMapFormatString = "iddDDDDDDdDdDbiibdiisabbiddiiiiiib";
 
@@ -339,32 +339,32 @@ StreamlineAttributes::StreamlineAttributes() :
     pointSource[0] = 0;
     pointSource[1] = 0;
     pointSource[2] = 0;
-    lineStart[0] = 0;
-    lineStart[1] = 0;
-    lineStart[2] = 0;
-    lineEnd[0] = 1;
-    lineEnd[1] = 0;
-    lineEnd[2] = 0;
-    planeOrigin[0] = 0;
-    planeOrigin[1] = 0;
-    planeOrigin[2] = 0;
-    planeNormal[0] = 0;
-    planeNormal[1] = 0;
-    planeNormal[2] = 1;
-    planeUpAxis[0] = 0;
-    planeUpAxis[1] = 1;
-    planeUpAxis[2] = 0;
-    planeRadius = 1;
-    sphereOrigin[0] = 0;
-    sphereOrigin[1] = 0;
-    sphereOrigin[2] = 0;
-    sphereRadius = 1;
-    boxExtents[0] = 0;
-    boxExtents[1] = 1;
-    boxExtents[2] = 0;
-    boxExtents[3] = 1;
-    boxExtents[4] = 0;
-    boxExtents[5] = 1;
+    lineSourceStart[0] = 0;
+    lineSourceStart[1] = 0;
+    lineSourceStart[2] = 0;
+    lineSourceEnd[0] = 1;
+    lineSourceEnd[1] = 0;
+    lineSourceEnd[2] = 0;
+    planeSourceOrigin[0] = 0;
+    planeSourceOrigin[1] = 0;
+    planeSourceOrigin[2] = 0;
+    planeSourceNormal[0] = 0;
+    planeSourceNormal[1] = 0;
+    planeSourceNormal[2] = 1;
+    planeSourceUpAxis[0] = 0;
+    planeSourceUpAxis[1] = 1;
+    planeSourceUpAxis[2] = 0;
+    planeSourceRadius = 1;
+    sphereSourceOrigin[0] = 0;
+    sphereSourceOrigin[1] = 0;
+    sphereSourceOrigin[2] = 0;
+    sphereSourceRadius = 1;
+    boxSourceExtents[0] = 0;
+    boxSourceExtents[1] = 1;
+    boxSourceExtents[2] = 0;
+    boxSourceExtents[3] = 1;
+    boxSourceExtents[4] = 0;
+    boxSourceExtents[5] = 1;
     useWholeBox = true;
     pointDensity = 2;
     displayMethod = Lines;
@@ -412,34 +412,34 @@ StreamlineAttributes::StreamlineAttributes(const StreamlineAttributes &obj) :
     pointSource[1] = obj.pointSource[1];
     pointSource[2] = obj.pointSource[2];
 
-    lineStart[0] = obj.lineStart[0];
-    lineStart[1] = obj.lineStart[1];
-    lineStart[2] = obj.lineStart[2];
+    lineSourceStart[0] = obj.lineSourceStart[0];
+    lineSourceStart[1] = obj.lineSourceStart[1];
+    lineSourceStart[2] = obj.lineSourceStart[2];
 
-    lineEnd[0] = obj.lineEnd[0];
-    lineEnd[1] = obj.lineEnd[1];
-    lineEnd[2] = obj.lineEnd[2];
+    lineSourceEnd[0] = obj.lineSourceEnd[0];
+    lineSourceEnd[1] = obj.lineSourceEnd[1];
+    lineSourceEnd[2] = obj.lineSourceEnd[2];
 
-    planeOrigin[0] = obj.planeOrigin[0];
-    planeOrigin[1] = obj.planeOrigin[1];
-    planeOrigin[2] = obj.planeOrigin[2];
+    planeSourceOrigin[0] = obj.planeSourceOrigin[0];
+    planeSourceOrigin[1] = obj.planeSourceOrigin[1];
+    planeSourceOrigin[2] = obj.planeSourceOrigin[2];
 
-    planeNormal[0] = obj.planeNormal[0];
-    planeNormal[1] = obj.planeNormal[1];
-    planeNormal[2] = obj.planeNormal[2];
+    planeSourceNormal[0] = obj.planeSourceNormal[0];
+    planeSourceNormal[1] = obj.planeSourceNormal[1];
+    planeSourceNormal[2] = obj.planeSourceNormal[2];
 
-    planeUpAxis[0] = obj.planeUpAxis[0];
-    planeUpAxis[1] = obj.planeUpAxis[1];
-    planeUpAxis[2] = obj.planeUpAxis[2];
+    planeSourceUpAxis[0] = obj.planeSourceUpAxis[0];
+    planeSourceUpAxis[1] = obj.planeSourceUpAxis[1];
+    planeSourceUpAxis[2] = obj.planeSourceUpAxis[2];
 
-    planeRadius = obj.planeRadius;
-    sphereOrigin[0] = obj.sphereOrigin[0];
-    sphereOrigin[1] = obj.sphereOrigin[1];
-    sphereOrigin[2] = obj.sphereOrigin[2];
+    planeSourceRadius = obj.planeSourceRadius;
+    sphereSourceOrigin[0] = obj.sphereSourceOrigin[0];
+    sphereSourceOrigin[1] = obj.sphereSourceOrigin[1];
+    sphereSourceOrigin[2] = obj.sphereSourceOrigin[2];
 
-    sphereRadius = obj.sphereRadius;
+    sphereSourceRadius = obj.sphereSourceRadius;
     for(int i = 0; i < 6; ++i)
-        boxExtents[i] = obj.boxExtents[i];
+        boxSourceExtents[i] = obj.boxSourceExtents[i];
 
     useWholeBox = obj.useWholeBox;
     pointDensity = obj.pointDensity;
@@ -513,34 +513,34 @@ StreamlineAttributes::operator = (const StreamlineAttributes &obj)
     pointSource[1] = obj.pointSource[1];
     pointSource[2] = obj.pointSource[2];
 
-    lineStart[0] = obj.lineStart[0];
-    lineStart[1] = obj.lineStart[1];
-    lineStart[2] = obj.lineStart[2];
+    lineSourceStart[0] = obj.lineSourceStart[0];
+    lineSourceStart[1] = obj.lineSourceStart[1];
+    lineSourceStart[2] = obj.lineSourceStart[2];
 
-    lineEnd[0] = obj.lineEnd[0];
-    lineEnd[1] = obj.lineEnd[1];
-    lineEnd[2] = obj.lineEnd[2];
+    lineSourceEnd[0] = obj.lineSourceEnd[0];
+    lineSourceEnd[1] = obj.lineSourceEnd[1];
+    lineSourceEnd[2] = obj.lineSourceEnd[2];
 
-    planeOrigin[0] = obj.planeOrigin[0];
-    planeOrigin[1] = obj.planeOrigin[1];
-    planeOrigin[2] = obj.planeOrigin[2];
+    planeSourceOrigin[0] = obj.planeSourceOrigin[0];
+    planeSourceOrigin[1] = obj.planeSourceOrigin[1];
+    planeSourceOrigin[2] = obj.planeSourceOrigin[2];
 
-    planeNormal[0] = obj.planeNormal[0];
-    planeNormal[1] = obj.planeNormal[1];
-    planeNormal[2] = obj.planeNormal[2];
+    planeSourceNormal[0] = obj.planeSourceNormal[0];
+    planeSourceNormal[1] = obj.planeSourceNormal[1];
+    planeSourceNormal[2] = obj.planeSourceNormal[2];
 
-    planeUpAxis[0] = obj.planeUpAxis[0];
-    planeUpAxis[1] = obj.planeUpAxis[1];
-    planeUpAxis[2] = obj.planeUpAxis[2];
+    planeSourceUpAxis[0] = obj.planeSourceUpAxis[0];
+    planeSourceUpAxis[1] = obj.planeSourceUpAxis[1];
+    planeSourceUpAxis[2] = obj.planeSourceUpAxis[2];
 
-    planeRadius = obj.planeRadius;
-    sphereOrigin[0] = obj.sphereOrigin[0];
-    sphereOrigin[1] = obj.sphereOrigin[1];
-    sphereOrigin[2] = obj.sphereOrigin[2];
+    planeSourceRadius = obj.planeSourceRadius;
+    sphereSourceOrigin[0] = obj.sphereSourceOrigin[0];
+    sphereSourceOrigin[1] = obj.sphereSourceOrigin[1];
+    sphereSourceOrigin[2] = obj.sphereSourceOrigin[2];
 
-    sphereRadius = obj.sphereRadius;
+    sphereSourceRadius = obj.sphereSourceRadius;
     for(int i = 0; i < 6; ++i)
-        boxExtents[i] = obj.boxExtents[i];
+        boxSourceExtents[i] = obj.boxSourceExtents[i];
 
     useWholeBox = obj.useWholeBox;
     pointDensity = obj.pointDensity;
@@ -591,55 +591,55 @@ StreamlineAttributes::operator == (const StreamlineAttributes &obj) const
     for(int i = 0; i < 3 && pointSource_equal; ++i)
         pointSource_equal = (pointSource[i] == obj.pointSource[i]);
 
-    // Compare the lineStart arrays.
-    bool lineStart_equal = true;
-    for(int i = 0; i < 3 && lineStart_equal; ++i)
-        lineStart_equal = (lineStart[i] == obj.lineStart[i]);
+    // Compare the lineSourceStart arrays.
+    bool lineSourceStart_equal = true;
+    for(int i = 0; i < 3 && lineSourceStart_equal; ++i)
+        lineSourceStart_equal = (lineSourceStart[i] == obj.lineSourceStart[i]);
 
-    // Compare the lineEnd arrays.
-    bool lineEnd_equal = true;
-    for(int i = 0; i < 3 && lineEnd_equal; ++i)
-        lineEnd_equal = (lineEnd[i] == obj.lineEnd[i]);
+    // Compare the lineSourceEnd arrays.
+    bool lineSourceEnd_equal = true;
+    for(int i = 0; i < 3 && lineSourceEnd_equal; ++i)
+        lineSourceEnd_equal = (lineSourceEnd[i] == obj.lineSourceEnd[i]);
 
-    // Compare the planeOrigin arrays.
-    bool planeOrigin_equal = true;
-    for(int i = 0; i < 3 && planeOrigin_equal; ++i)
-        planeOrigin_equal = (planeOrigin[i] == obj.planeOrigin[i]);
+    // Compare the planeSourceOrigin arrays.
+    bool planeSourceOrigin_equal = true;
+    for(int i = 0; i < 3 && planeSourceOrigin_equal; ++i)
+        planeSourceOrigin_equal = (planeSourceOrigin[i] == obj.planeSourceOrigin[i]);
 
-    // Compare the planeNormal arrays.
-    bool planeNormal_equal = true;
-    for(int i = 0; i < 3 && planeNormal_equal; ++i)
-        planeNormal_equal = (planeNormal[i] == obj.planeNormal[i]);
+    // Compare the planeSourceNormal arrays.
+    bool planeSourceNormal_equal = true;
+    for(int i = 0; i < 3 && planeSourceNormal_equal; ++i)
+        planeSourceNormal_equal = (planeSourceNormal[i] == obj.planeSourceNormal[i]);
 
-    // Compare the planeUpAxis arrays.
-    bool planeUpAxis_equal = true;
-    for(int i = 0; i < 3 && planeUpAxis_equal; ++i)
-        planeUpAxis_equal = (planeUpAxis[i] == obj.planeUpAxis[i]);
+    // Compare the planeSourceUpAxis arrays.
+    bool planeSourceUpAxis_equal = true;
+    for(int i = 0; i < 3 && planeSourceUpAxis_equal; ++i)
+        planeSourceUpAxis_equal = (planeSourceUpAxis[i] == obj.planeSourceUpAxis[i]);
 
-    // Compare the sphereOrigin arrays.
-    bool sphereOrigin_equal = true;
-    for(int i = 0; i < 3 && sphereOrigin_equal; ++i)
-        sphereOrigin_equal = (sphereOrigin[i] == obj.sphereOrigin[i]);
+    // Compare the sphereSourceOrigin arrays.
+    bool sphereSourceOrigin_equal = true;
+    for(int i = 0; i < 3 && sphereSourceOrigin_equal; ++i)
+        sphereSourceOrigin_equal = (sphereSourceOrigin[i] == obj.sphereSourceOrigin[i]);
 
-    // Compare the boxExtents arrays.
-    bool boxExtents_equal = true;
-    for(int i = 0; i < 6 && boxExtents_equal; ++i)
-        boxExtents_equal = (boxExtents[i] == obj.boxExtents[i]);
+    // Compare the boxSourceExtents arrays.
+    bool boxSourceExtents_equal = true;
+    for(int i = 0; i < 6 && boxSourceExtents_equal; ++i)
+        boxSourceExtents_equal = (boxSourceExtents[i] == obj.boxSourceExtents[i]);
 
     // Create the return value
     return ((sourceType == obj.sourceType) &&
             (maxStepLength == obj.maxStepLength) &&
             (termination == obj.termination) &&
             pointSource_equal &&
-            lineStart_equal &&
-            lineEnd_equal &&
-            planeOrigin_equal &&
-            planeNormal_equal &&
-            planeUpAxis_equal &&
-            (planeRadius == obj.planeRadius) &&
-            sphereOrigin_equal &&
-            (sphereRadius == obj.sphereRadius) &&
-            boxExtents_equal &&
+            lineSourceStart_equal &&
+            lineSourceEnd_equal &&
+            planeSourceOrigin_equal &&
+            planeSourceNormal_equal &&
+            planeSourceUpAxis_equal &&
+            (planeSourceRadius == obj.planeSourceRadius) &&
+            sphereSourceOrigin_equal &&
+            (sphereSourceRadius == obj.sphereSourceRadius) &&
+            boxSourceExtents_equal &&
             (useWholeBox == obj.useWholeBox) &&
             (pointDensity == obj.pointDensity) &&
             (displayMethod == obj.displayMethod) &&
@@ -721,6 +721,9 @@ StreamlineAttributes::TypeName() const
 //    Hank Childs, Sat Mar  3 09:00:12 PST 2007
 //    Disable useWholeBox if we are copying box extents.
 //
+//    Jeremy Meredith, Wed Apr  8 16:48:05 EDT 2009
+//    Initial steps to unification with Poincare attributes.
+//
 // ****************************************************************************
 
 bool
@@ -749,8 +752,8 @@ StreamlineAttributes::CopyAttributes(const AttributeGroup *atts)
         if(sourceType == SpecifiedLine)
         {
             const Line *line = (const Line *)atts;
-            SetLineStart(line->GetPoint1());
-            SetLineEnd(line->GetPoint2());
+            SetLineSourceStart(line->GetPoint1());
+            SetLineSourceEnd(line->GetPoint2());
             retval = true;
         }
     }
@@ -759,10 +762,10 @@ StreamlineAttributes::CopyAttributes(const AttributeGroup *atts)
         if(sourceType == SpecifiedPlane)
         {
             const PlaneAttributes *plane = (const PlaneAttributes *)atts;
-            SetPlaneOrigin(plane->GetOrigin());
-            SetPlaneNormal(plane->GetNormal());
-            SetPlaneUpAxis(plane->GetUpAxis());
-            SetPlaneRadius(plane->GetRadius());
+            SetPlaneSourceOrigin(plane->GetOrigin());
+            SetPlaneSourceNormal(plane->GetNormal());
+            SetPlaneSourceUpAxis(plane->GetUpAxis());
+            SetPlaneSourceRadius(plane->GetRadius());
             retval = true;
         }
     }
@@ -771,8 +774,8 @@ StreamlineAttributes::CopyAttributes(const AttributeGroup *atts)
         if(sourceType == SpecifiedSphere)
         {
             const SphereAttributes *sphere = (const SphereAttributes *)atts;
-            SetSphereOrigin(sphere->GetOrigin());
-            SetSphereRadius(sphere->GetRadius());
+            SetSphereSourceOrigin(sphere->GetOrigin());
+            SetSphereSourceRadius(sphere->GetRadius());
             retval = true;
         }
     }   
@@ -781,7 +784,7 @@ StreamlineAttributes::CopyAttributes(const AttributeGroup *atts)
         if(sourceType == SpecifiedBox)
         {
             const BoxExtents *box = (const BoxExtents *)atts;
-            SetBoxExtents(box->GetExtents());
+            SetBoxSourceExtents(box->GetExtents());
             SetUseWholeBox(false);
             retval = true;
         }
@@ -807,6 +810,9 @@ StreamlineAttributes::CopyAttributes(const AttributeGroup *atts)
 //    Brad Whitlock, Wed Dec 22 12:54:43 PDT 2004
 //    I added code to support the point tool.
 //
+//    Jeremy Meredith, Wed Apr  8 16:48:05 EDT 2009
+//    Initial steps to unification with Poincare attributes.
+//
 // ****************************************************************************
 
 AttributeSubject *
@@ -827,31 +833,31 @@ StreamlineAttributes::CreateCompatible(const std::string &tname) const
     else if(tname == "Line")
     {
         Line *l = new Line;
-        l->SetPoint1(GetLineStart());
-        l->SetPoint2(GetLineEnd());
+        l->SetPoint1(GetLineSourceStart());
+        l->SetPoint2(GetLineSourceEnd());
         retval = l;
     }
     else if(tname == "PlaneAttributes")
     {
         PlaneAttributes *p = new PlaneAttributes;
-        p->SetOrigin(GetPlaneOrigin());
-        p->SetNormal(GetPlaneNormal());
-        p->SetUpAxis(GetPlaneUpAxis());
-        p->SetRadius(GetPlaneRadius());
+        p->SetOrigin(GetPlaneSourceOrigin());
+        p->SetNormal(GetPlaneSourceNormal());
+        p->SetUpAxis(GetPlaneSourceUpAxis());
+        p->SetRadius(GetPlaneSourceRadius());
         p->SetHaveRadius(true);
         retval = p;
     }
     else if(tname == "SphereAttributes")
     {
         SphereAttributes *s = new SphereAttributes;
-        s->SetOrigin(GetSphereOrigin());
-        s->SetRadius(GetSphereRadius());
+        s->SetOrigin(GetSphereSourceOrigin());
+        s->SetRadius(GetSphereSourceRadius());
         retval = s;
     }
     else if(tname == "BoxExtents")
     {
         BoxExtents *b = new BoxExtents;
-        b->SetExtents(GetBoxExtents());
+        b->SetExtents(GetBoxSourceExtents());
         retval = b;
     }
 
@@ -907,15 +913,15 @@ StreamlineAttributes::SelectAll()
     Select(ID_maxStepLength,             (void *)&maxStepLength);
     Select(ID_termination,               (void *)&termination);
     Select(ID_pointSource,               (void *)pointSource, 3);
-    Select(ID_lineStart,                 (void *)lineStart, 3);
-    Select(ID_lineEnd,                   (void *)lineEnd, 3);
-    Select(ID_planeOrigin,               (void *)planeOrigin, 3);
-    Select(ID_planeNormal,               (void *)planeNormal, 3);
-    Select(ID_planeUpAxis,               (void *)planeUpAxis, 3);
-    Select(ID_planeRadius,               (void *)&planeRadius);
-    Select(ID_sphereOrigin,              (void *)sphereOrigin, 3);
-    Select(ID_sphereRadius,              (void *)&sphereRadius);
-    Select(ID_boxExtents,                (void *)boxExtents, 6);
+    Select(ID_lineSourceStart,           (void *)lineSourceStart, 3);
+    Select(ID_lineSourceEnd,             (void *)lineSourceEnd, 3);
+    Select(ID_planeSourceOrigin,         (void *)planeSourceOrigin, 3);
+    Select(ID_planeSourceNormal,         (void *)planeSourceNormal, 3);
+    Select(ID_planeSourceUpAxis,         (void *)planeSourceUpAxis, 3);
+    Select(ID_planeSourceRadius,         (void *)&planeSourceRadius);
+    Select(ID_sphereSourceOrigin,        (void *)sphereSourceOrigin, 3);
+    Select(ID_sphereSourceRadius,        (void *)&sphereSourceRadius);
+    Select(ID_boxSourceExtents,          (void *)boxSourceExtents, 6);
     Select(ID_useWholeBox,               (void *)&useWholeBox);
     Select(ID_pointDensity,              (void *)&pointDensity);
     Select(ID_displayMethod,             (void *)&displayMethod);
@@ -993,58 +999,58 @@ StreamlineAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool f
         node->AddNode(new DataNode("pointSource", pointSource, 3));
     }
 
-    if(completeSave || !FieldsEqual(ID_lineStart, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_lineSourceStart, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("lineStart", lineStart, 3));
+        node->AddNode(new DataNode("lineSourceStart", lineSourceStart, 3));
     }
 
-    if(completeSave || !FieldsEqual(ID_lineEnd, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_lineSourceEnd, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("lineEnd", lineEnd, 3));
+        node->AddNode(new DataNode("lineSourceEnd", lineSourceEnd, 3));
     }
 
-    if(completeSave || !FieldsEqual(ID_planeOrigin, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_planeSourceOrigin, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("planeOrigin", planeOrigin, 3));
+        node->AddNode(new DataNode("planeSourceOrigin", planeSourceOrigin, 3));
     }
 
-    if(completeSave || !FieldsEqual(ID_planeNormal, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_planeSourceNormal, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("planeNormal", planeNormal, 3));
+        node->AddNode(new DataNode("planeSourceNormal", planeSourceNormal, 3));
     }
 
-    if(completeSave || !FieldsEqual(ID_planeUpAxis, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_planeSourceUpAxis, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("planeUpAxis", planeUpAxis, 3));
+        node->AddNode(new DataNode("planeSourceUpAxis", planeSourceUpAxis, 3));
     }
 
-    if(completeSave || !FieldsEqual(ID_planeRadius, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_planeSourceRadius, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("planeRadius", planeRadius));
+        node->AddNode(new DataNode("planeSourceRadius", planeSourceRadius));
     }
 
-    if(completeSave || !FieldsEqual(ID_sphereOrigin, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_sphereSourceOrigin, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("sphereOrigin", sphereOrigin, 3));
+        node->AddNode(new DataNode("sphereSourceOrigin", sphereSourceOrigin, 3));
     }
 
-    if(completeSave || !FieldsEqual(ID_sphereRadius, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_sphereSourceRadius, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("sphereRadius", sphereRadius));
+        node->AddNode(new DataNode("sphereSourceRadius", sphereSourceRadius));
     }
 
-    if(completeSave || !FieldsEqual(ID_boxExtents, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_boxSourceExtents, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("boxExtents", boxExtents, 6));
+        node->AddNode(new DataNode("boxSourceExtents", boxSourceExtents, 6));
     }
 
     if(completeSave || !FieldsEqual(ID_useWholeBox, &defaultObject))
@@ -1233,24 +1239,24 @@ StreamlineAttributes::SetFromNode(DataNode *parentNode)
         SetTermination(node->AsDouble());
     if((node = searchNode->GetNode("pointSource")) != 0)
         SetPointSource(node->AsDoubleArray());
-    if((node = searchNode->GetNode("lineStart")) != 0)
-        SetLineStart(node->AsDoubleArray());
-    if((node = searchNode->GetNode("lineEnd")) != 0)
-        SetLineEnd(node->AsDoubleArray());
-    if((node = searchNode->GetNode("planeOrigin")) != 0)
-        SetPlaneOrigin(node->AsDoubleArray());
-    if((node = searchNode->GetNode("planeNormal")) != 0)
-        SetPlaneNormal(node->AsDoubleArray());
-    if((node = searchNode->GetNode("planeUpAxis")) != 0)
-        SetPlaneUpAxis(node->AsDoubleArray());
-    if((node = searchNode->GetNode("planeRadius")) != 0)
-        SetPlaneRadius(node->AsDouble());
-    if((node = searchNode->GetNode("sphereOrigin")) != 0)
-        SetSphereOrigin(node->AsDoubleArray());
-    if((node = searchNode->GetNode("sphereRadius")) != 0)
-        SetSphereRadius(node->AsDouble());
-    if((node = searchNode->GetNode("boxExtents")) != 0)
-        SetBoxExtents(node->AsDoubleArray());
+    if((node = searchNode->GetNode("lineSourceStart")) != 0)
+        SetLineSourceStart(node->AsDoubleArray());
+    if((node = searchNode->GetNode("lineSourceEnd")) != 0)
+        SetLineSourceEnd(node->AsDoubleArray());
+    if((node = searchNode->GetNode("planeSourceOrigin")) != 0)
+        SetPlaneSourceOrigin(node->AsDoubleArray());
+    if((node = searchNode->GetNode("planeSourceNormal")) != 0)
+        SetPlaneSourceNormal(node->AsDoubleArray());
+    if((node = searchNode->GetNode("planeSourceUpAxis")) != 0)
+        SetPlaneSourceUpAxis(node->AsDoubleArray());
+    if((node = searchNode->GetNode("planeSourceRadius")) != 0)
+        SetPlaneSourceRadius(node->AsDouble());
+    if((node = searchNode->GetNode("sphereSourceOrigin")) != 0)
+        SetSphereSourceOrigin(node->AsDoubleArray());
+    if((node = searchNode->GetNode("sphereSourceRadius")) != 0)
+        SetSphereSourceRadius(node->AsDouble());
+    if((node = searchNode->GetNode("boxSourceExtents")) != 0)
+        SetBoxSourceExtents(node->AsDoubleArray());
     if((node = searchNode->GetNode("useWholeBox")) != 0)
         SetUseWholeBox(node->AsBool());
     if((node = searchNode->GetNode("pointDensity")) != 0)
@@ -1414,79 +1420,79 @@ StreamlineAttributes::SetPointSource(const double *pointSource_)
 }
 
 void
-StreamlineAttributes::SetLineStart(const double *lineStart_)
+StreamlineAttributes::SetLineSourceStart(const double *lineSourceStart_)
 {
-    lineStart[0] = lineStart_[0];
-    lineStart[1] = lineStart_[1];
-    lineStart[2] = lineStart_[2];
-    Select(ID_lineStart, (void *)lineStart, 3);
+    lineSourceStart[0] = lineSourceStart_[0];
+    lineSourceStart[1] = lineSourceStart_[1];
+    lineSourceStart[2] = lineSourceStart_[2];
+    Select(ID_lineSourceStart, (void *)lineSourceStart, 3);
 }
 
 void
-StreamlineAttributes::SetLineEnd(const double *lineEnd_)
+StreamlineAttributes::SetLineSourceEnd(const double *lineSourceEnd_)
 {
-    lineEnd[0] = lineEnd_[0];
-    lineEnd[1] = lineEnd_[1];
-    lineEnd[2] = lineEnd_[2];
-    Select(ID_lineEnd, (void *)lineEnd, 3);
+    lineSourceEnd[0] = lineSourceEnd_[0];
+    lineSourceEnd[1] = lineSourceEnd_[1];
+    lineSourceEnd[2] = lineSourceEnd_[2];
+    Select(ID_lineSourceEnd, (void *)lineSourceEnd, 3);
 }
 
 void
-StreamlineAttributes::SetPlaneOrigin(const double *planeOrigin_)
+StreamlineAttributes::SetPlaneSourceOrigin(const double *planeSourceOrigin_)
 {
-    planeOrigin[0] = planeOrigin_[0];
-    planeOrigin[1] = planeOrigin_[1];
-    planeOrigin[2] = planeOrigin_[2];
-    Select(ID_planeOrigin, (void *)planeOrigin, 3);
+    planeSourceOrigin[0] = planeSourceOrigin_[0];
+    planeSourceOrigin[1] = planeSourceOrigin_[1];
+    planeSourceOrigin[2] = planeSourceOrigin_[2];
+    Select(ID_planeSourceOrigin, (void *)planeSourceOrigin, 3);
 }
 
 void
-StreamlineAttributes::SetPlaneNormal(const double *planeNormal_)
+StreamlineAttributes::SetPlaneSourceNormal(const double *planeSourceNormal_)
 {
-    planeNormal[0] = planeNormal_[0];
-    planeNormal[1] = planeNormal_[1];
-    planeNormal[2] = planeNormal_[2];
-    Select(ID_planeNormal, (void *)planeNormal, 3);
+    planeSourceNormal[0] = planeSourceNormal_[0];
+    planeSourceNormal[1] = planeSourceNormal_[1];
+    planeSourceNormal[2] = planeSourceNormal_[2];
+    Select(ID_planeSourceNormal, (void *)planeSourceNormal, 3);
 }
 
 void
-StreamlineAttributes::SetPlaneUpAxis(const double *planeUpAxis_)
+StreamlineAttributes::SetPlaneSourceUpAxis(const double *planeSourceUpAxis_)
 {
-    planeUpAxis[0] = planeUpAxis_[0];
-    planeUpAxis[1] = planeUpAxis_[1];
-    planeUpAxis[2] = planeUpAxis_[2];
-    Select(ID_planeUpAxis, (void *)planeUpAxis, 3);
+    planeSourceUpAxis[0] = planeSourceUpAxis_[0];
+    planeSourceUpAxis[1] = planeSourceUpAxis_[1];
+    planeSourceUpAxis[2] = planeSourceUpAxis_[2];
+    Select(ID_planeSourceUpAxis, (void *)planeSourceUpAxis, 3);
 }
 
 void
-StreamlineAttributes::SetPlaneRadius(double planeRadius_)
+StreamlineAttributes::SetPlaneSourceRadius(double planeSourceRadius_)
 {
-    planeRadius = planeRadius_;
-    Select(ID_planeRadius, (void *)&planeRadius);
+    planeSourceRadius = planeSourceRadius_;
+    Select(ID_planeSourceRadius, (void *)&planeSourceRadius);
 }
 
 void
-StreamlineAttributes::SetSphereOrigin(const double *sphereOrigin_)
+StreamlineAttributes::SetSphereSourceOrigin(const double *sphereSourceOrigin_)
 {
-    sphereOrigin[0] = sphereOrigin_[0];
-    sphereOrigin[1] = sphereOrigin_[1];
-    sphereOrigin[2] = sphereOrigin_[2];
-    Select(ID_sphereOrigin, (void *)sphereOrigin, 3);
+    sphereSourceOrigin[0] = sphereSourceOrigin_[0];
+    sphereSourceOrigin[1] = sphereSourceOrigin_[1];
+    sphereSourceOrigin[2] = sphereSourceOrigin_[2];
+    Select(ID_sphereSourceOrigin, (void *)sphereSourceOrigin, 3);
 }
 
 void
-StreamlineAttributes::SetSphereRadius(double sphereRadius_)
+StreamlineAttributes::SetSphereSourceRadius(double sphereSourceRadius_)
 {
-    sphereRadius = sphereRadius_;
-    Select(ID_sphereRadius, (void *)&sphereRadius);
+    sphereSourceRadius = sphereSourceRadius_;
+    Select(ID_sphereSourceRadius, (void *)&sphereSourceRadius);
 }
 
 void
-StreamlineAttributes::SetBoxExtents(const double *boxExtents_)
+StreamlineAttributes::SetBoxSourceExtents(const double *boxSourceExtents_)
 {
     for(int i = 0; i < 6; ++i)
-        boxExtents[i] = boxExtents_[i];
-    Select(ID_boxExtents, (void *)boxExtents, 6);
+        boxSourceExtents[i] = boxSourceExtents_[i];
+    Select(ID_boxSourceExtents, (void *)boxSourceExtents, 6);
 }
 
 void
@@ -1671,99 +1677,99 @@ StreamlineAttributes::GetPointSource()
 }
 
 const double *
-StreamlineAttributes::GetLineStart() const
+StreamlineAttributes::GetLineSourceStart() const
 {
-    return lineStart;
+    return lineSourceStart;
 }
 
 double *
-StreamlineAttributes::GetLineStart()
+StreamlineAttributes::GetLineSourceStart()
 {
-    return lineStart;
+    return lineSourceStart;
 }
 
 const double *
-StreamlineAttributes::GetLineEnd() const
+StreamlineAttributes::GetLineSourceEnd() const
 {
-    return lineEnd;
+    return lineSourceEnd;
 }
 
 double *
-StreamlineAttributes::GetLineEnd()
+StreamlineAttributes::GetLineSourceEnd()
 {
-    return lineEnd;
+    return lineSourceEnd;
 }
 
 const double *
-StreamlineAttributes::GetPlaneOrigin() const
+StreamlineAttributes::GetPlaneSourceOrigin() const
 {
-    return planeOrigin;
+    return planeSourceOrigin;
 }
 
 double *
-StreamlineAttributes::GetPlaneOrigin()
+StreamlineAttributes::GetPlaneSourceOrigin()
 {
-    return planeOrigin;
+    return planeSourceOrigin;
 }
 
 const double *
-StreamlineAttributes::GetPlaneNormal() const
+StreamlineAttributes::GetPlaneSourceNormal() const
 {
-    return planeNormal;
+    return planeSourceNormal;
 }
 
 double *
-StreamlineAttributes::GetPlaneNormal()
+StreamlineAttributes::GetPlaneSourceNormal()
 {
-    return planeNormal;
+    return planeSourceNormal;
 }
 
 const double *
-StreamlineAttributes::GetPlaneUpAxis() const
+StreamlineAttributes::GetPlaneSourceUpAxis() const
 {
-    return planeUpAxis;
+    return planeSourceUpAxis;
 }
 
 double *
-StreamlineAttributes::GetPlaneUpAxis()
+StreamlineAttributes::GetPlaneSourceUpAxis()
 {
-    return planeUpAxis;
+    return planeSourceUpAxis;
 }
 
 double
-StreamlineAttributes::GetPlaneRadius() const
+StreamlineAttributes::GetPlaneSourceRadius() const
 {
-    return planeRadius;
+    return planeSourceRadius;
 }
 
 const double *
-StreamlineAttributes::GetSphereOrigin() const
+StreamlineAttributes::GetSphereSourceOrigin() const
 {
-    return sphereOrigin;
+    return sphereSourceOrigin;
 }
 
 double *
-StreamlineAttributes::GetSphereOrigin()
+StreamlineAttributes::GetSphereSourceOrigin()
 {
-    return sphereOrigin;
+    return sphereSourceOrigin;
 }
 
 double
-StreamlineAttributes::GetSphereRadius() const
+StreamlineAttributes::GetSphereSourceRadius() const
 {
-    return sphereRadius;
+    return sphereSourceRadius;
 }
 
 const double *
-StreamlineAttributes::GetBoxExtents() const
+StreamlineAttributes::GetBoxSourceExtents() const
 {
-    return boxExtents;
+    return boxSourceExtents;
 }
 
 double *
-StreamlineAttributes::GetBoxExtents()
+StreamlineAttributes::GetBoxSourceExtents()
 {
-    return boxExtents;
+    return boxSourceExtents;
 }
 
 bool
@@ -1915,45 +1921,45 @@ StreamlineAttributes::SelectPointSource()
 }
 
 void
-StreamlineAttributes::SelectLineStart()
+StreamlineAttributes::SelectLineSourceStart()
 {
-    Select(ID_lineStart, (void *)lineStart, 3);
+    Select(ID_lineSourceStart, (void *)lineSourceStart, 3);
 }
 
 void
-StreamlineAttributes::SelectLineEnd()
+StreamlineAttributes::SelectLineSourceEnd()
 {
-    Select(ID_lineEnd, (void *)lineEnd, 3);
+    Select(ID_lineSourceEnd, (void *)lineSourceEnd, 3);
 }
 
 void
-StreamlineAttributes::SelectPlaneOrigin()
+StreamlineAttributes::SelectPlaneSourceOrigin()
 {
-    Select(ID_planeOrigin, (void *)planeOrigin, 3);
+    Select(ID_planeSourceOrigin, (void *)planeSourceOrigin, 3);
 }
 
 void
-StreamlineAttributes::SelectPlaneNormal()
+StreamlineAttributes::SelectPlaneSourceNormal()
 {
-    Select(ID_planeNormal, (void *)planeNormal, 3);
+    Select(ID_planeSourceNormal, (void *)planeSourceNormal, 3);
 }
 
 void
-StreamlineAttributes::SelectPlaneUpAxis()
+StreamlineAttributes::SelectPlaneSourceUpAxis()
 {
-    Select(ID_planeUpAxis, (void *)planeUpAxis, 3);
+    Select(ID_planeSourceUpAxis, (void *)planeSourceUpAxis, 3);
 }
 
 void
-StreamlineAttributes::SelectSphereOrigin()
+StreamlineAttributes::SelectSphereSourceOrigin()
 {
-    Select(ID_sphereOrigin, (void *)sphereOrigin, 3);
+    Select(ID_sphereSourceOrigin, (void *)sphereSourceOrigin, 3);
 }
 
 void
-StreamlineAttributes::SelectBoxExtents()
+StreamlineAttributes::SelectBoxSourceExtents()
 {
-    Select(ID_boxExtents, (void *)boxExtents, 6);
+    Select(ID_boxSourceExtents, (void *)boxSourceExtents, 6);
 }
 
 void
@@ -1996,15 +2002,15 @@ StreamlineAttributes::GetFieldName(int index) const
     case ID_maxStepLength:             return "maxStepLength";
     case ID_termination:               return "termination";
     case ID_pointSource:               return "pointSource";
-    case ID_lineStart:                 return "lineStart";
-    case ID_lineEnd:                   return "lineEnd";
-    case ID_planeOrigin:               return "planeOrigin";
-    case ID_planeNormal:               return "planeNormal";
-    case ID_planeUpAxis:               return "planeUpAxis";
-    case ID_planeRadius:               return "planeRadius";
-    case ID_sphereOrigin:              return "sphereOrigin";
-    case ID_sphereRadius:              return "sphereRadius";
-    case ID_boxExtents:                return "boxExtents";
+    case ID_lineSourceStart:           return "lineSourceStart";
+    case ID_lineSourceEnd:             return "lineSourceEnd";
+    case ID_planeSourceOrigin:         return "planeSourceOrigin";
+    case ID_planeSourceNormal:         return "planeSourceNormal";
+    case ID_planeSourceUpAxis:         return "planeSourceUpAxis";
+    case ID_planeSourceRadius:         return "planeSourceRadius";
+    case ID_sphereSourceOrigin:        return "sphereSourceOrigin";
+    case ID_sphereSourceRadius:        return "sphereSourceRadius";
+    case ID_boxSourceExtents:          return "boxSourceExtents";
     case ID_useWholeBox:               return "useWholeBox";
     case ID_pointDensity:              return "pointDensity";
     case ID_displayMethod:             return "displayMethod";
@@ -2054,15 +2060,15 @@ StreamlineAttributes::GetFieldType(int index) const
     case ID_maxStepLength:             return FieldType_double;
     case ID_termination:               return FieldType_double;
     case ID_pointSource:               return FieldType_doubleArray;
-    case ID_lineStart:                 return FieldType_doubleArray;
-    case ID_lineEnd:                   return FieldType_doubleArray;
-    case ID_planeOrigin:               return FieldType_doubleArray;
-    case ID_planeNormal:               return FieldType_doubleArray;
-    case ID_planeUpAxis:               return FieldType_doubleArray;
-    case ID_planeRadius:               return FieldType_double;
-    case ID_sphereOrigin:              return FieldType_doubleArray;
-    case ID_sphereRadius:              return FieldType_double;
-    case ID_boxExtents:                return FieldType_doubleArray;
+    case ID_lineSourceStart:           return FieldType_doubleArray;
+    case ID_lineSourceEnd:             return FieldType_doubleArray;
+    case ID_planeSourceOrigin:         return FieldType_doubleArray;
+    case ID_planeSourceNormal:         return FieldType_doubleArray;
+    case ID_planeSourceUpAxis:         return FieldType_doubleArray;
+    case ID_planeSourceRadius:         return FieldType_double;
+    case ID_sphereSourceOrigin:        return FieldType_doubleArray;
+    case ID_sphereSourceRadius:        return FieldType_double;
+    case ID_boxSourceExtents:          return FieldType_doubleArray;
     case ID_useWholeBox:               return FieldType_bool;
     case ID_pointDensity:              return FieldType_int;
     case ID_displayMethod:             return FieldType_enum;
@@ -2112,15 +2118,15 @@ StreamlineAttributes::GetFieldTypeName(int index) const
     case ID_maxStepLength:             return "double";
     case ID_termination:               return "double";
     case ID_pointSource:               return "doubleArray";
-    case ID_lineStart:                 return "doubleArray";
-    case ID_lineEnd:                   return "doubleArray";
-    case ID_planeOrigin:               return "doubleArray";
-    case ID_planeNormal:               return "doubleArray";
-    case ID_planeUpAxis:               return "doubleArray";
-    case ID_planeRadius:               return "double";
-    case ID_sphereOrigin:              return "doubleArray";
-    case ID_sphereRadius:              return "double";
-    case ID_boxExtents:                return "doubleArray";
+    case ID_lineSourceStart:           return "doubleArray";
+    case ID_lineSourceEnd:             return "doubleArray";
+    case ID_planeSourceOrigin:         return "doubleArray";
+    case ID_planeSourceNormal:         return "doubleArray";
+    case ID_planeSourceUpAxis:         return "doubleArray";
+    case ID_planeSourceRadius:         return "double";
+    case ID_sphereSourceOrigin:        return "doubleArray";
+    case ID_sphereSourceRadius:        return "double";
+    case ID_boxSourceExtents:          return "doubleArray";
     case ID_useWholeBox:               return "bool";
     case ID_pointDensity:              return "int";
     case ID_displayMethod:             return "enum";
@@ -2193,84 +2199,84 @@ StreamlineAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = pointSource_equal;
         }
         break;
-    case ID_lineStart:
+    case ID_lineSourceStart:
         {  // new scope
-        // Compare the lineStart arrays.
-        bool lineStart_equal = true;
-        for(int i = 0; i < 3 && lineStart_equal; ++i)
-            lineStart_equal = (lineStart[i] == obj.lineStart[i]);
+        // Compare the lineSourceStart arrays.
+        bool lineSourceStart_equal = true;
+        for(int i = 0; i < 3 && lineSourceStart_equal; ++i)
+            lineSourceStart_equal = (lineSourceStart[i] == obj.lineSourceStart[i]);
 
-        retval = lineStart_equal;
+        retval = lineSourceStart_equal;
         }
         break;
-    case ID_lineEnd:
+    case ID_lineSourceEnd:
         {  // new scope
-        // Compare the lineEnd arrays.
-        bool lineEnd_equal = true;
-        for(int i = 0; i < 3 && lineEnd_equal; ++i)
-            lineEnd_equal = (lineEnd[i] == obj.lineEnd[i]);
+        // Compare the lineSourceEnd arrays.
+        bool lineSourceEnd_equal = true;
+        for(int i = 0; i < 3 && lineSourceEnd_equal; ++i)
+            lineSourceEnd_equal = (lineSourceEnd[i] == obj.lineSourceEnd[i]);
 
-        retval = lineEnd_equal;
+        retval = lineSourceEnd_equal;
         }
         break;
-    case ID_planeOrigin:
+    case ID_planeSourceOrigin:
         {  // new scope
-        // Compare the planeOrigin arrays.
-        bool planeOrigin_equal = true;
-        for(int i = 0; i < 3 && planeOrigin_equal; ++i)
-            planeOrigin_equal = (planeOrigin[i] == obj.planeOrigin[i]);
+        // Compare the planeSourceOrigin arrays.
+        bool planeSourceOrigin_equal = true;
+        for(int i = 0; i < 3 && planeSourceOrigin_equal; ++i)
+            planeSourceOrigin_equal = (planeSourceOrigin[i] == obj.planeSourceOrigin[i]);
 
-        retval = planeOrigin_equal;
+        retval = planeSourceOrigin_equal;
         }
         break;
-    case ID_planeNormal:
+    case ID_planeSourceNormal:
         {  // new scope
-        // Compare the planeNormal arrays.
-        bool planeNormal_equal = true;
-        for(int i = 0; i < 3 && planeNormal_equal; ++i)
-            planeNormal_equal = (planeNormal[i] == obj.planeNormal[i]);
+        // Compare the planeSourceNormal arrays.
+        bool planeSourceNormal_equal = true;
+        for(int i = 0; i < 3 && planeSourceNormal_equal; ++i)
+            planeSourceNormal_equal = (planeSourceNormal[i] == obj.planeSourceNormal[i]);
 
-        retval = planeNormal_equal;
+        retval = planeSourceNormal_equal;
         }
         break;
-    case ID_planeUpAxis:
+    case ID_planeSourceUpAxis:
         {  // new scope
-        // Compare the planeUpAxis arrays.
-        bool planeUpAxis_equal = true;
-        for(int i = 0; i < 3 && planeUpAxis_equal; ++i)
-            planeUpAxis_equal = (planeUpAxis[i] == obj.planeUpAxis[i]);
+        // Compare the planeSourceUpAxis arrays.
+        bool planeSourceUpAxis_equal = true;
+        for(int i = 0; i < 3 && planeSourceUpAxis_equal; ++i)
+            planeSourceUpAxis_equal = (planeSourceUpAxis[i] == obj.planeSourceUpAxis[i]);
 
-        retval = planeUpAxis_equal;
+        retval = planeSourceUpAxis_equal;
         }
         break;
-    case ID_planeRadius:
+    case ID_planeSourceRadius:
         {  // new scope
-        retval = (planeRadius == obj.planeRadius);
+        retval = (planeSourceRadius == obj.planeSourceRadius);
         }
         break;
-    case ID_sphereOrigin:
+    case ID_sphereSourceOrigin:
         {  // new scope
-        // Compare the sphereOrigin arrays.
-        bool sphereOrigin_equal = true;
-        for(int i = 0; i < 3 && sphereOrigin_equal; ++i)
-            sphereOrigin_equal = (sphereOrigin[i] == obj.sphereOrigin[i]);
+        // Compare the sphereSourceOrigin arrays.
+        bool sphereSourceOrigin_equal = true;
+        for(int i = 0; i < 3 && sphereSourceOrigin_equal; ++i)
+            sphereSourceOrigin_equal = (sphereSourceOrigin[i] == obj.sphereSourceOrigin[i]);
 
-        retval = sphereOrigin_equal;
+        retval = sphereSourceOrigin_equal;
         }
         break;
-    case ID_sphereRadius:
+    case ID_sphereSourceRadius:
         {  // new scope
-        retval = (sphereRadius == obj.sphereRadius);
+        retval = (sphereSourceRadius == obj.sphereSourceRadius);
         }
         break;
-    case ID_boxExtents:
+    case ID_boxSourceExtents:
         {  // new scope
-        // Compare the boxExtents arrays.
-        bool boxExtents_equal = true;
-        for(int i = 0; i < 6 && boxExtents_equal; ++i)
-            boxExtents_equal = (boxExtents[i] == obj.boxExtents[i]);
+        // Compare the boxSourceExtents arrays.
+        bool boxSourceExtents_equal = true;
+        for(int i = 0; i < 6 && boxSourceExtents_equal; ++i)
+            boxSourceExtents_equal = (boxSourceExtents[i] == obj.boxSourceExtents[i]);
 
-        retval = boxExtents_equal;
+        retval = boxSourceExtents_equal;
         }
         break;
     case ID_useWholeBox:
@@ -2408,6 +2414,9 @@ StreamlineAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
 //    Hank Childs, Sat Mar  3 09:00:12 PST 2007
 //    Add support for useWholeBox.
 //
+//    Jeremy Meredith, Wed Apr  8 16:48:05 EDT 2009
+//    Initial steps to unification with Poincare attributes.
+//
 // ****************************************************************************
 
 #define PDIF(p1,p2,i) ((p1)[i] != (p2)[i])
@@ -2424,28 +2433,28 @@ StreamlineAttributes::ChangesRequireRecalculation(const StreamlineAttributes &ob
     // If we're in line source mode and the line differs, sourceLineDiffers
     // evaluates to true.
     bool sourceLineDiffers = ((sourceType == SpecifiedLine) &&
-       (POINT_DIFFERS(lineStart, obj.lineStart) ||
-        POINT_DIFFERS(lineEnd, obj.lineEnd)));
+       (POINT_DIFFERS(lineSourceStart, obj.lineSourceStart) ||
+        POINT_DIFFERS(lineSourceEnd, obj.lineSourceEnd)));
 
     // If we're in plane source mode and the plane differs, sourcePlaneDiffers
     // evaluates to true.
     bool sourcePlaneDiffers = ((sourceType == SpecifiedPlane) &&
-       (POINT_DIFFERS(planeOrigin, obj.planeOrigin) ||
-        POINT_DIFFERS(planeNormal, obj.planeNormal) ||
-        POINT_DIFFERS(planeUpAxis, obj.planeUpAxis) ||
-        planeRadius != obj.planeRadius));
+       (POINT_DIFFERS(planeSourceOrigin, obj.planeSourceOrigin) ||
+        POINT_DIFFERS(planeSourceNormal, obj.planeSourceNormal) ||
+        POINT_DIFFERS(planeSourceUpAxis, obj.planeSourceUpAxis) ||
+        planeSourceRadius != obj.planeSourceRadius));
 
     // If we're in sphere source mode and the sphere differs, sourceSphereDiffers
     // evaluates to true.
     bool sourceSphereDiffers = ((sourceType == SpecifiedSphere) &&
-       (POINT_DIFFERS(sphereOrigin, obj.sphereOrigin) ||
-        (sphereRadius != obj.sphereRadius)));
+       (POINT_DIFFERS(sphereSourceOrigin, obj.sphereSourceOrigin) ||
+        (sphereSourceRadius != obj.sphereSourceRadius)));
 
     // If we're in box source mode and the box differs, boxSourceDiffers
     // evaluates to true.
     bool boxSourceDiffers = (sourceType == SpecifiedBox) &&
-        (POINT_DIFFERS(boxExtents, obj.boxExtents) ||
-         POINT_DIFFERS(boxExtents+3, obj.boxExtents+3));
+        (POINT_DIFFERS(boxSourceExtents, obj.boxSourceExtents) ||
+         POINT_DIFFERS(boxSourceExtents+3, obj.boxSourceExtents+3));
     if (useWholeBox != obj.useWholeBox)
         boxSourceDiffers = true;
 
@@ -2469,7 +2478,6 @@ StreamlineAttributes::ChangesRequireRecalculation(const StreamlineAttributes &ob
            (relTol != obj.relTol) ||
            (absTol != obj.absTol) ||
            (coloringMethod != obj.coloringMethod && obj.coloringMethod != Solid) ||
-           (pathlines != obj.pathlines) ||
            sourcePointsDiffer ||
            sourceLineDiffers ||
            sourcePlaneDiffers ||

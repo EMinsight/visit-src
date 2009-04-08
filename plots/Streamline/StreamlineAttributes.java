@@ -86,12 +86,12 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
     public final static int TERMINATIONTYPE_TIME = 1;
     public final static int TERMINATIONTYPE_STEP = 2;
 
-    public final static int INTEGRATIONTYPE_DORMANDPRINCE = 0;
-    public final static int INTEGRATIONTYPE_ADAMSBASHFORTH = 1;
-
     public final static int STREAMLINEALGORITHMTYPE_LOADONDEMAND = 0;
     public final static int STREAMLINEALGORITHMTYPE_PARALLELSTATICDOMAINS = 1;
     public final static int STREAMLINEALGORITHMTYPE_MASTERSLAVE = 2;
+
+    public final static int INTEGRATIONTYPE_DORMANDPRINCE = 0;
+    public final static int INTEGRATIONTYPE_ADAMSBASHFORTH = 1;
 
 
     public StreamlineAttributes()
@@ -105,39 +105,39 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         pointSource[0] = 0;
         pointSource[1] = 0;
         pointSource[2] = 0;
-        lineStart = new double[3];
-        lineStart[0] = 0;
-        lineStart[1] = 0;
-        lineStart[2] = 0;
-        lineEnd = new double[3];
-        lineEnd[0] = 1;
-        lineEnd[1] = 0;
-        lineEnd[2] = 0;
-        planeOrigin = new double[3];
-        planeOrigin[0] = 0;
-        planeOrigin[1] = 0;
-        planeOrigin[2] = 0;
-        planeNormal = new double[3];
-        planeNormal[0] = 0;
-        planeNormal[1] = 0;
-        planeNormal[2] = 1;
-        planeUpAxis = new double[3];
-        planeUpAxis[0] = 0;
-        planeUpAxis[1] = 1;
-        planeUpAxis[2] = 0;
-        planeRadius = 1;
-        sphereOrigin = new double[3];
-        sphereOrigin[0] = 0;
-        sphereOrigin[1] = 0;
-        sphereOrigin[2] = 0;
-        sphereRadius = 1;
-        boxExtents = new double[6];
-        boxExtents[0] = 0;
-        boxExtents[1] = 1;
-        boxExtents[2] = 0;
-        boxExtents[3] = 1;
-        boxExtents[4] = 0;
-        boxExtents[5] = 1;
+        lineSourceStart = new double[3];
+        lineSourceStart[0] = 0;
+        lineSourceStart[1] = 0;
+        lineSourceStart[2] = 0;
+        lineSourceEnd = new double[3];
+        lineSourceEnd[0] = 1;
+        lineSourceEnd[1] = 0;
+        lineSourceEnd[2] = 0;
+        planeSourceOrigin = new double[3];
+        planeSourceOrigin[0] = 0;
+        planeSourceOrigin[1] = 0;
+        planeSourceOrigin[2] = 0;
+        planeSourceNormal = new double[3];
+        planeSourceNormal[0] = 0;
+        planeSourceNormal[1] = 0;
+        planeSourceNormal[2] = 1;
+        planeSourceUpAxis = new double[3];
+        planeSourceUpAxis[0] = 0;
+        planeSourceUpAxis[1] = 1;
+        planeSourceUpAxis[2] = 0;
+        planeSourceRadius = 1;
+        sphereSourceOrigin = new double[3];
+        sphereSourceOrigin[0] = 0;
+        sphereSourceOrigin[1] = 0;
+        sphereSourceOrigin[2] = 0;
+        sphereSourceRadius = 1;
+        boxSourceExtents = new double[6];
+        boxSourceExtents[0] = 0;
+        boxSourceExtents[1] = 1;
+        boxSourceExtents[2] = 0;
+        boxSourceExtents[3] = 1;
+        boxSourceExtents[4] = 0;
+        boxSourceExtents[5] = 1;
         useWholeBox = true;
         pointDensity = 2;
         displayMethod = DISPLAYMETHOD_LINES;
@@ -175,41 +175,41 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         pointSource[1] = obj.pointSource[1];
         pointSource[2] = obj.pointSource[2];
 
-        lineStart = new double[3];
-        lineStart[0] = obj.lineStart[0];
-        lineStart[1] = obj.lineStart[1];
-        lineStart[2] = obj.lineStart[2];
+        lineSourceStart = new double[3];
+        lineSourceStart[0] = obj.lineSourceStart[0];
+        lineSourceStart[1] = obj.lineSourceStart[1];
+        lineSourceStart[2] = obj.lineSourceStart[2];
 
-        lineEnd = new double[3];
-        lineEnd[0] = obj.lineEnd[0];
-        lineEnd[1] = obj.lineEnd[1];
-        lineEnd[2] = obj.lineEnd[2];
+        lineSourceEnd = new double[3];
+        lineSourceEnd[0] = obj.lineSourceEnd[0];
+        lineSourceEnd[1] = obj.lineSourceEnd[1];
+        lineSourceEnd[2] = obj.lineSourceEnd[2];
 
-        planeOrigin = new double[3];
-        planeOrigin[0] = obj.planeOrigin[0];
-        planeOrigin[1] = obj.planeOrigin[1];
-        planeOrigin[2] = obj.planeOrigin[2];
+        planeSourceOrigin = new double[3];
+        planeSourceOrigin[0] = obj.planeSourceOrigin[0];
+        planeSourceOrigin[1] = obj.planeSourceOrigin[1];
+        planeSourceOrigin[2] = obj.planeSourceOrigin[2];
 
-        planeNormal = new double[3];
-        planeNormal[0] = obj.planeNormal[0];
-        planeNormal[1] = obj.planeNormal[1];
-        planeNormal[2] = obj.planeNormal[2];
+        planeSourceNormal = new double[3];
+        planeSourceNormal[0] = obj.planeSourceNormal[0];
+        planeSourceNormal[1] = obj.planeSourceNormal[1];
+        planeSourceNormal[2] = obj.planeSourceNormal[2];
 
-        planeUpAxis = new double[3];
-        planeUpAxis[0] = obj.planeUpAxis[0];
-        planeUpAxis[1] = obj.planeUpAxis[1];
-        planeUpAxis[2] = obj.planeUpAxis[2];
+        planeSourceUpAxis = new double[3];
+        planeSourceUpAxis[0] = obj.planeSourceUpAxis[0];
+        planeSourceUpAxis[1] = obj.planeSourceUpAxis[1];
+        planeSourceUpAxis[2] = obj.planeSourceUpAxis[2];
 
-        planeRadius = obj.planeRadius;
-        sphereOrigin = new double[3];
-        sphereOrigin[0] = obj.sphereOrigin[0];
-        sphereOrigin[1] = obj.sphereOrigin[1];
-        sphereOrigin[2] = obj.sphereOrigin[2];
+        planeSourceRadius = obj.planeSourceRadius;
+        sphereSourceOrigin = new double[3];
+        sphereSourceOrigin[0] = obj.sphereSourceOrigin[0];
+        sphereSourceOrigin[1] = obj.sphereSourceOrigin[1];
+        sphereSourceOrigin[2] = obj.sphereSourceOrigin[2];
 
-        sphereRadius = obj.sphereRadius;
-        boxExtents = new double[6];
-        for(i = 0; i < obj.boxExtents.length; ++i)
-            boxExtents[i] = obj.boxExtents[i];
+        sphereSourceRadius = obj.sphereSourceRadius;
+        boxSourceExtents = new double[6];
+        for(i = 0; i < obj.boxSourceExtents.length; ++i)
+            boxSourceExtents[i] = obj.boxSourceExtents[i];
 
         useWholeBox = obj.useWholeBox;
         pointDensity = obj.pointDensity;
@@ -245,55 +245,55 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         for(i = 0; i < 3 && pointSource_equal; ++i)
             pointSource_equal = (pointSource[i] == obj.pointSource[i]);
 
-        // Compare the lineStart arrays.
-        boolean lineStart_equal = true;
-        for(i = 0; i < 3 && lineStart_equal; ++i)
-            lineStart_equal = (lineStart[i] == obj.lineStart[i]);
+        // Compare the lineSourceStart arrays.
+        boolean lineSourceStart_equal = true;
+        for(i = 0; i < 3 && lineSourceStart_equal; ++i)
+            lineSourceStart_equal = (lineSourceStart[i] == obj.lineSourceStart[i]);
 
-        // Compare the lineEnd arrays.
-        boolean lineEnd_equal = true;
-        for(i = 0; i < 3 && lineEnd_equal; ++i)
-            lineEnd_equal = (lineEnd[i] == obj.lineEnd[i]);
+        // Compare the lineSourceEnd arrays.
+        boolean lineSourceEnd_equal = true;
+        for(i = 0; i < 3 && lineSourceEnd_equal; ++i)
+            lineSourceEnd_equal = (lineSourceEnd[i] == obj.lineSourceEnd[i]);
 
-        // Compare the planeOrigin arrays.
-        boolean planeOrigin_equal = true;
-        for(i = 0; i < 3 && planeOrigin_equal; ++i)
-            planeOrigin_equal = (planeOrigin[i] == obj.planeOrigin[i]);
+        // Compare the planeSourceOrigin arrays.
+        boolean planeSourceOrigin_equal = true;
+        for(i = 0; i < 3 && planeSourceOrigin_equal; ++i)
+            planeSourceOrigin_equal = (planeSourceOrigin[i] == obj.planeSourceOrigin[i]);
 
-        // Compare the planeNormal arrays.
-        boolean planeNormal_equal = true;
-        for(i = 0; i < 3 && planeNormal_equal; ++i)
-            planeNormal_equal = (planeNormal[i] == obj.planeNormal[i]);
+        // Compare the planeSourceNormal arrays.
+        boolean planeSourceNormal_equal = true;
+        for(i = 0; i < 3 && planeSourceNormal_equal; ++i)
+            planeSourceNormal_equal = (planeSourceNormal[i] == obj.planeSourceNormal[i]);
 
-        // Compare the planeUpAxis arrays.
-        boolean planeUpAxis_equal = true;
-        for(i = 0; i < 3 && planeUpAxis_equal; ++i)
-            planeUpAxis_equal = (planeUpAxis[i] == obj.planeUpAxis[i]);
+        // Compare the planeSourceUpAxis arrays.
+        boolean planeSourceUpAxis_equal = true;
+        for(i = 0; i < 3 && planeSourceUpAxis_equal; ++i)
+            planeSourceUpAxis_equal = (planeSourceUpAxis[i] == obj.planeSourceUpAxis[i]);
 
-        // Compare the sphereOrigin arrays.
-        boolean sphereOrigin_equal = true;
-        for(i = 0; i < 3 && sphereOrigin_equal; ++i)
-            sphereOrigin_equal = (sphereOrigin[i] == obj.sphereOrigin[i]);
+        // Compare the sphereSourceOrigin arrays.
+        boolean sphereSourceOrigin_equal = true;
+        for(i = 0; i < 3 && sphereSourceOrigin_equal; ++i)
+            sphereSourceOrigin_equal = (sphereSourceOrigin[i] == obj.sphereSourceOrigin[i]);
 
-        // Compare the boxExtents arrays.
-        boolean boxExtents_equal = true;
-        for(i = 0; i < 6 && boxExtents_equal; ++i)
-            boxExtents_equal = (boxExtents[i] == obj.boxExtents[i]);
+        // Compare the boxSourceExtents arrays.
+        boolean boxSourceExtents_equal = true;
+        for(i = 0; i < 6 && boxSourceExtents_equal; ++i)
+            boxSourceExtents_equal = (boxSourceExtents[i] == obj.boxSourceExtents[i]);
 
         // Create the return value
         return ((sourceType == obj.sourceType) &&
                 (maxStepLength == obj.maxStepLength) &&
                 (termination == obj.termination) &&
                 pointSource_equal &&
-                lineStart_equal &&
-                lineEnd_equal &&
-                planeOrigin_equal &&
-                planeNormal_equal &&
-                planeUpAxis_equal &&
-                (planeRadius == obj.planeRadius) &&
-                sphereOrigin_equal &&
-                (sphereRadius == obj.sphereRadius) &&
-                boxExtents_equal &&
+                lineSourceStart_equal &&
+                lineSourceEnd_equal &&
+                planeSourceOrigin_equal &&
+                planeSourceNormal_equal &&
+                planeSourceUpAxis_equal &&
+                (planeSourceRadius == obj.planeSourceRadius) &&
+                sphereSourceOrigin_equal &&
+                (sphereSourceRadius == obj.sphereSourceRadius) &&
+                boxSourceExtents_equal &&
                 (useWholeBox == obj.useWholeBox) &&
                 (pointDensity == obj.pointDensity) &&
                 (displayMethod == obj.displayMethod) &&
@@ -355,118 +355,118 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         Select(3);
     }
 
-    public void SetLineStart(double[] lineStart_)
+    public void SetLineSourceStart(double[] lineSourceStart_)
     {
-        lineStart[0] = lineStart_[0];
-        lineStart[1] = lineStart_[1];
-        lineStart[2] = lineStart_[2];
+        lineSourceStart[0] = lineSourceStart_[0];
+        lineSourceStart[1] = lineSourceStart_[1];
+        lineSourceStart[2] = lineSourceStart_[2];
         Select(4);
     }
 
-    public void SetLineStart(double e0, double e1, double e2)
+    public void SetLineSourceStart(double e0, double e1, double e2)
     {
-        lineStart[0] = e0;
-        lineStart[1] = e1;
-        lineStart[2] = e2;
+        lineSourceStart[0] = e0;
+        lineSourceStart[1] = e1;
+        lineSourceStart[2] = e2;
         Select(4);
     }
 
-    public void SetLineEnd(double[] lineEnd_)
+    public void SetLineSourceEnd(double[] lineSourceEnd_)
     {
-        lineEnd[0] = lineEnd_[0];
-        lineEnd[1] = lineEnd_[1];
-        lineEnd[2] = lineEnd_[2];
+        lineSourceEnd[0] = lineSourceEnd_[0];
+        lineSourceEnd[1] = lineSourceEnd_[1];
+        lineSourceEnd[2] = lineSourceEnd_[2];
         Select(5);
     }
 
-    public void SetLineEnd(double e0, double e1, double e2)
+    public void SetLineSourceEnd(double e0, double e1, double e2)
     {
-        lineEnd[0] = e0;
-        lineEnd[1] = e1;
-        lineEnd[2] = e2;
+        lineSourceEnd[0] = e0;
+        lineSourceEnd[1] = e1;
+        lineSourceEnd[2] = e2;
         Select(5);
     }
 
-    public void SetPlaneOrigin(double[] planeOrigin_)
+    public void SetPlaneSourceOrigin(double[] planeSourceOrigin_)
     {
-        planeOrigin[0] = planeOrigin_[0];
-        planeOrigin[1] = planeOrigin_[1];
-        planeOrigin[2] = planeOrigin_[2];
+        planeSourceOrigin[0] = planeSourceOrigin_[0];
+        planeSourceOrigin[1] = planeSourceOrigin_[1];
+        planeSourceOrigin[2] = planeSourceOrigin_[2];
         Select(6);
     }
 
-    public void SetPlaneOrigin(double e0, double e1, double e2)
+    public void SetPlaneSourceOrigin(double e0, double e1, double e2)
     {
-        planeOrigin[0] = e0;
-        planeOrigin[1] = e1;
-        planeOrigin[2] = e2;
+        planeSourceOrigin[0] = e0;
+        planeSourceOrigin[1] = e1;
+        planeSourceOrigin[2] = e2;
         Select(6);
     }
 
-    public void SetPlaneNormal(double[] planeNormal_)
+    public void SetPlaneSourceNormal(double[] planeSourceNormal_)
     {
-        planeNormal[0] = planeNormal_[0];
-        planeNormal[1] = planeNormal_[1];
-        planeNormal[2] = planeNormal_[2];
+        planeSourceNormal[0] = planeSourceNormal_[0];
+        planeSourceNormal[1] = planeSourceNormal_[1];
+        planeSourceNormal[2] = planeSourceNormal_[2];
         Select(7);
     }
 
-    public void SetPlaneNormal(double e0, double e1, double e2)
+    public void SetPlaneSourceNormal(double e0, double e1, double e2)
     {
-        planeNormal[0] = e0;
-        planeNormal[1] = e1;
-        planeNormal[2] = e2;
+        planeSourceNormal[0] = e0;
+        planeSourceNormal[1] = e1;
+        planeSourceNormal[2] = e2;
         Select(7);
     }
 
-    public void SetPlaneUpAxis(double[] planeUpAxis_)
+    public void SetPlaneSourceUpAxis(double[] planeSourceUpAxis_)
     {
-        planeUpAxis[0] = planeUpAxis_[0];
-        planeUpAxis[1] = planeUpAxis_[1];
-        planeUpAxis[2] = planeUpAxis_[2];
+        planeSourceUpAxis[0] = planeSourceUpAxis_[0];
+        planeSourceUpAxis[1] = planeSourceUpAxis_[1];
+        planeSourceUpAxis[2] = planeSourceUpAxis_[2];
         Select(8);
     }
 
-    public void SetPlaneUpAxis(double e0, double e1, double e2)
+    public void SetPlaneSourceUpAxis(double e0, double e1, double e2)
     {
-        planeUpAxis[0] = e0;
-        planeUpAxis[1] = e1;
-        planeUpAxis[2] = e2;
+        planeSourceUpAxis[0] = e0;
+        planeSourceUpAxis[1] = e1;
+        planeSourceUpAxis[2] = e2;
         Select(8);
     }
 
-    public void SetPlaneRadius(double planeRadius_)
+    public void SetPlaneSourceRadius(double planeSourceRadius_)
     {
-        planeRadius = planeRadius_;
+        planeSourceRadius = planeSourceRadius_;
         Select(9);
     }
 
-    public void SetSphereOrigin(double[] sphereOrigin_)
+    public void SetSphereSourceOrigin(double[] sphereSourceOrigin_)
     {
-        sphereOrigin[0] = sphereOrigin_[0];
-        sphereOrigin[1] = sphereOrigin_[1];
-        sphereOrigin[2] = sphereOrigin_[2];
+        sphereSourceOrigin[0] = sphereSourceOrigin_[0];
+        sphereSourceOrigin[1] = sphereSourceOrigin_[1];
+        sphereSourceOrigin[2] = sphereSourceOrigin_[2];
         Select(10);
     }
 
-    public void SetSphereOrigin(double e0, double e1, double e2)
+    public void SetSphereSourceOrigin(double e0, double e1, double e2)
     {
-        sphereOrigin[0] = e0;
-        sphereOrigin[1] = e1;
-        sphereOrigin[2] = e2;
+        sphereSourceOrigin[0] = e0;
+        sphereSourceOrigin[1] = e1;
+        sphereSourceOrigin[2] = e2;
         Select(10);
     }
 
-    public void SetSphereRadius(double sphereRadius_)
+    public void SetSphereSourceRadius(double sphereSourceRadius_)
     {
-        sphereRadius = sphereRadius_;
+        sphereSourceRadius = sphereSourceRadius_;
         Select(11);
     }
 
-    public void SetBoxExtents(double[] boxExtents_)
+    public void SetBoxSourceExtents(double[] boxSourceExtents_)
     {
         for(int i = 0; i < 6; ++i)
-             boxExtents[i] = boxExtents_[i];
+             boxSourceExtents[i] = boxSourceExtents_[i];
         Select(12);
     }
 
@@ -601,15 +601,15 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
     public double         GetMaxStepLength() { return maxStepLength; }
     public double         GetTermination() { return termination; }
     public double[]       GetPointSource() { return pointSource; }
-    public double[]       GetLineStart() { return lineStart; }
-    public double[]       GetLineEnd() { return lineEnd; }
-    public double[]       GetPlaneOrigin() { return planeOrigin; }
-    public double[]       GetPlaneNormal() { return planeNormal; }
-    public double[]       GetPlaneUpAxis() { return planeUpAxis; }
-    public double         GetPlaneRadius() { return planeRadius; }
-    public double[]       GetSphereOrigin() { return sphereOrigin; }
-    public double         GetSphereRadius() { return sphereRadius; }
-    public double[]       GetBoxExtents() { return boxExtents; }
+    public double[]       GetLineSourceStart() { return lineSourceStart; }
+    public double[]       GetLineSourceEnd() { return lineSourceEnd; }
+    public double[]       GetPlaneSourceOrigin() { return planeSourceOrigin; }
+    public double[]       GetPlaneSourceNormal() { return planeSourceNormal; }
+    public double[]       GetPlaneSourceUpAxis() { return planeSourceUpAxis; }
+    public double         GetPlaneSourceRadius() { return planeSourceRadius; }
+    public double[]       GetSphereSourceOrigin() { return sphereSourceOrigin; }
+    public double         GetSphereSourceRadius() { return sphereSourceRadius; }
+    public double[]       GetBoxSourceExtents() { return boxSourceExtents; }
     public boolean        GetUseWholeBox() { return useWholeBox; }
     public int            GetPointDensity() { return pointDensity; }
     public int            GetDisplayMethod() { return displayMethod; }
@@ -644,23 +644,23 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         if(WriteSelect(3, buf))
             buf.WriteDoubleArray(pointSource);
         if(WriteSelect(4, buf))
-            buf.WriteDoubleArray(lineStart);
+            buf.WriteDoubleArray(lineSourceStart);
         if(WriteSelect(5, buf))
-            buf.WriteDoubleArray(lineEnd);
+            buf.WriteDoubleArray(lineSourceEnd);
         if(WriteSelect(6, buf))
-            buf.WriteDoubleArray(planeOrigin);
+            buf.WriteDoubleArray(planeSourceOrigin);
         if(WriteSelect(7, buf))
-            buf.WriteDoubleArray(planeNormal);
+            buf.WriteDoubleArray(planeSourceNormal);
         if(WriteSelect(8, buf))
-            buf.WriteDoubleArray(planeUpAxis);
+            buf.WriteDoubleArray(planeSourceUpAxis);
         if(WriteSelect(9, buf))
-            buf.WriteDouble(planeRadius);
+            buf.WriteDouble(planeSourceRadius);
         if(WriteSelect(10, buf))
-            buf.WriteDoubleArray(sphereOrigin);
+            buf.WriteDoubleArray(sphereSourceOrigin);
         if(WriteSelect(11, buf))
-            buf.WriteDouble(sphereRadius);
+            buf.WriteDouble(sphereSourceRadius);
         if(WriteSelect(12, buf))
-            buf.WriteDoubleArray(boxExtents);
+            buf.WriteDoubleArray(boxSourceExtents);
         if(WriteSelect(13, buf))
             buf.WriteBool(useWholeBox);
         if(WriteSelect(14, buf))
@@ -725,31 +725,31 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
                 SetPointSource(buf.ReadDoubleArray());
                 break;
             case 4:
-                SetLineStart(buf.ReadDoubleArray());
+                SetLineSourceStart(buf.ReadDoubleArray());
                 break;
             case 5:
-                SetLineEnd(buf.ReadDoubleArray());
+                SetLineSourceEnd(buf.ReadDoubleArray());
                 break;
             case 6:
-                SetPlaneOrigin(buf.ReadDoubleArray());
+                SetPlaneSourceOrigin(buf.ReadDoubleArray());
                 break;
             case 7:
-                SetPlaneNormal(buf.ReadDoubleArray());
+                SetPlaneSourceNormal(buf.ReadDoubleArray());
                 break;
             case 8:
-                SetPlaneUpAxis(buf.ReadDoubleArray());
+                SetPlaneSourceUpAxis(buf.ReadDoubleArray());
                 break;
             case 9:
-                SetPlaneRadius(buf.ReadDouble());
+                SetPlaneSourceRadius(buf.ReadDouble());
                 break;
             case 10:
-                SetSphereOrigin(buf.ReadDoubleArray());
+                SetSphereSourceOrigin(buf.ReadDoubleArray());
                 break;
             case 11:
-                SetSphereRadius(buf.ReadDouble());
+                SetSphereSourceRadius(buf.ReadDouble());
                 break;
             case 12:
-                SetBoxExtents(buf.ReadDoubleArray());
+                SetBoxSourceExtents(buf.ReadDoubleArray());
                 break;
             case 13:
                 SetUseWholeBox(buf.ReadBool());
@@ -837,15 +837,15 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         str = str + doubleToString("maxStepLength", maxStepLength, indent) + "\n";
         str = str + doubleToString("termination", termination, indent) + "\n";
         str = str + doubleArrayToString("pointSource", pointSource, indent) + "\n";
-        str = str + doubleArrayToString("lineStart", lineStart, indent) + "\n";
-        str = str + doubleArrayToString("lineEnd", lineEnd, indent) + "\n";
-        str = str + doubleArrayToString("planeOrigin", planeOrigin, indent) + "\n";
-        str = str + doubleArrayToString("planeNormal", planeNormal, indent) + "\n";
-        str = str + doubleArrayToString("planeUpAxis", planeUpAxis, indent) + "\n";
-        str = str + doubleToString("planeRadius", planeRadius, indent) + "\n";
-        str = str + doubleArrayToString("sphereOrigin", sphereOrigin, indent) + "\n";
-        str = str + doubleToString("sphereRadius", sphereRadius, indent) + "\n";
-        str = str + doubleArrayToString("boxExtents", boxExtents, indent) + "\n";
+        str = str + doubleArrayToString("lineSourceStart", lineSourceStart, indent) + "\n";
+        str = str + doubleArrayToString("lineSourceEnd", lineSourceEnd, indent) + "\n";
+        str = str + doubleArrayToString("planeSourceOrigin", planeSourceOrigin, indent) + "\n";
+        str = str + doubleArrayToString("planeSourceNormal", planeSourceNormal, indent) + "\n";
+        str = str + doubleArrayToString("planeSourceUpAxis", planeSourceUpAxis, indent) + "\n";
+        str = str + doubleToString("planeSourceRadius", planeSourceRadius, indent) + "\n";
+        str = str + doubleArrayToString("sphereSourceOrigin", sphereSourceOrigin, indent) + "\n";
+        str = str + doubleToString("sphereSourceRadius", sphereSourceRadius, indent) + "\n";
+        str = str + doubleArrayToString("boxSourceExtents", boxSourceExtents, indent) + "\n";
         str = str + boolToString("useWholeBox", useWholeBox, indent) + "\n";
         str = str + intToString("pointDensity", pointDensity, indent) + "\n";
         str = str + indent + "displayMethod = ";
@@ -922,15 +922,15 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
     private double         maxStepLength;
     private double         termination;
     private double[]       pointSource;
-    private double[]       lineStart;
-    private double[]       lineEnd;
-    private double[]       planeOrigin;
-    private double[]       planeNormal;
-    private double[]       planeUpAxis;
-    private double         planeRadius;
-    private double[]       sphereOrigin;
-    private double         sphereRadius;
-    private double[]       boxExtents;
+    private double[]       lineSourceStart;
+    private double[]       lineSourceEnd;
+    private double[]       planeSourceOrigin;
+    private double[]       planeSourceNormal;
+    private double[]       planeSourceUpAxis;
+    private double         planeSourceRadius;
+    private double[]       sphereSourceOrigin;
+    private double         sphereSourceRadius;
+    private double[]       boxSourceExtents;
     private boolean        useWholeBox;
     private int            pointDensity;
     private int            displayMethod;

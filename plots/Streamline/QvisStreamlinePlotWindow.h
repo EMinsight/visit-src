@@ -84,6 +84,18 @@ class StreamlineAttributes;
 //   Dave Pugmire, Tue Aug 19 17:18:03 EST 2008
 //   Removed the accurate distance calculation option.
 //
+//   Dave Pugmire, Thu Feb  5 12:20:15 EST 2009
+//   Added workGroupSize for the masterSlave algorithm.
+//
+//   Dave Pugmire, Mon Feb 23, 09:11:34 EST 2009
+//   Added number of steps as a termination criterion.
+//
+//   Dave Pugmire, Tue Mar 10 12:41:11 EDT 2009
+//   Add pathline GUI.
+//    
+//   Jeremy Meredith, Wed Apr  8 16:49:07 EDT 2009
+//   Back-port recent stuff to Qt3.
+//
 // ****************************************************************************
 
 class QvisStreamlinePlotWindow : public QvisPostableWindowObserver
@@ -110,6 +122,7 @@ class QvisStreamlinePlotWindow : public QvisPostableWindowObserver
     void UpdateSourceAttributes();
     void UpdateAlgorithmAttributes();
     void UpdateIntegrationAttributes();
+    void UpdateTerminationType();
   private slots:
     void sourceTypeChanged(int val);
     void termTypeChanged(int val);
@@ -132,6 +145,7 @@ class QvisStreamlinePlotWindow : public QvisPostableWindowObserver
     void pointDensityChanged(int val);
     void maxSLCountChanged(int val);
     void maxDomainCacheChanged(int val);
+    void workGroupSizeChanged(int val);
     void displayMethodChanged(int val);
     void showStartChanged(bool val);
     void radiusProcessText();
@@ -141,6 +155,7 @@ class QvisStreamlinePlotWindow : public QvisPostableWindowObserver
     void singleColorChanged(const QColor &color);
     void legendFlagChanged(bool val);
     void lightingFlagChanged(bool val);
+    void pathlineFlagChanged(bool val);
     void useWholeBoxChanged(bool val);
     void boxExtentsProcessText();
   private:
@@ -190,6 +205,7 @@ class QvisStreamlinePlotWindow : public QvisPostableWindowObserver
     QLabel    *singleColorLabel;
     QCheckBox *legendFlag;
     QCheckBox *lightingFlag;
+    QCheckBox *pathlineFlag;
     QComboBox *termType;
     QComboBox *integrationType;
     QLabel    *slAlgoLabel;
@@ -198,6 +214,8 @@ class QvisStreamlinePlotWindow : public QvisPostableWindowObserver
     QSpinBox  *maxSLCount;
     QLabel    *maxDomainCacheLabel;
     QSpinBox  *maxDomainCache;
+    QLabel    *workGroupSizeLabel;
+    QSpinBox  *workGroupSize;
 
     StreamlineAttributes *streamAtts;
 };
