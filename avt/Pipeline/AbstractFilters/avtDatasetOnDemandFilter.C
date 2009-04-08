@@ -48,6 +48,8 @@
 #include <avtDataTree.h>
 #include <avtExtents.h>
 #include <avtOriginatingSource.h>
+#include <avtPointSelection.h>
+#include <vtkVisItCellLocator.h>
 
 #include <ImproperUseException.h>
 #include <IncompatibleDomainListsException.h>
@@ -66,6 +68,12 @@
 //
 //   Hank Childs, Thu Jun 12 16:08:41 PDT 2008
 //   Initialize operatingOnDemand.
+//   
+//    Dave Pugmire, Mon Jan 26 13:04:56 EST 2009
+//    Initialize purgeDSCount.
+//
+//    Dave Pugmire, Tue Feb  3 11:05:24 EST 2009
+//    Initialize loadDSCount.
 //
 // ****************************************************************************
 
@@ -73,6 +81,8 @@ avtDatasetOnDemandFilter::avtDatasetOnDemandFilter()
 {
     maxQueueLength = 2;
     operatingOnDemand = false;
+    purgeDSCount = 0;
+    loadDSCount = 0;
 }
 
 
@@ -86,6 +96,12 @@ avtDatasetOnDemandFilter::avtDatasetOnDemandFilter()
 //   Dave Pugmire, Thu Mar 13 08:44:18 EDT 2008
 //   Change domain cache from map to list.
 //
+//    Dave Pugmire, Wed Mar 25 09:15:23 EDT 2009
+//    Add domain caching for point decomposed domains.
+//
+//    Gunther H. Weber, Fri Apr  3 17:37:18 PDT 2009
+//    Moved vtkCellLocator from map to DomainCacheEntry data structure.
+//
 // ****************************************************************************
 
 avtDatasetOnDemandFilter::~avtDatasetOnDemandFilter()
@@ -93,6 +109,7 @@ avtDatasetOnDemandFilter::~avtDatasetOnDemandFilter()
     while ( ! domainQueue.empty() )
     {
         domainQueue.front().ds->Delete();
+        if (domainQueue.front().cl) domainQueue.front().cl->Delete();
         domainQueue.pop_front();
     }
 }
@@ -115,12 +132,25 @@ avtDatasetOnDemandFilter::~avtDatasetOnDemandFilter()
 //   Hank Childs, Thu Jun 12 11:08:55 PDT 2008
 //   Tell the contract we are streaming.
 //
+//    Dave Pugmire, Mon Jan 26 13:04:56 EST 2009
+//    Increment purgeDSCount when a DS is purged.
+//
+//    Dave Pugmire, Tue Feb  3 11:05:24 EST 2009
+//    Increment loadDSCount when a DS is loaded.
+//
+//    Dave Pugmire, Tue Mar 10 12:41:11 EDT 2009
+//    Added support for time/domain.
+//
+//    Dave Pugmire, Sat Mar 28 09:42:15 EDT 2009
+//    Counter to keep track of how many times a domain is loaded.
+//
 // ****************************************************************************
 
 vtkDataSet *
-avtDatasetOnDemandFilter::GetDomain(int domainId)
+avtDatasetOnDemandFilter::GetDomain(int domainId,
+                                    int timeStep)
 {
-    debug1<<"avtDatasetOnDemandFilter::GetDomain( "<<domainId<<" );\n";
+    debug5<<"avtDatasetOnDemandFilter::GetDomain("<<domainId<<", "<<timeStep<<");"<<endl;
     if ( ! OperatingOnDemand() )
         EXCEPTION0(ImproperUseException);
 
@@ -131,11 +161,13 @@ avtDatasetOnDemandFilter::GetDomain(int domainId)
     std::list<DomainCacheEntry>::iterator it;
     for ( it = domainQueue.begin(); it != domainQueue.end(); it++ )
         // Found it. Move it to the front of the list.
-        if ( it->domainID == domainId )
+        if (it->domainID == domainId &&
+            it->timeStep == timeStep)
         {
             DomainCacheEntry entry;
             entry.ds = it->ds;
             entry.domainID = it->domainID;
+            entry.timeStep = timeStep;
 
             //Remove, then move to front.
             domainQueue.erase( it );
@@ -143,11 +175,15 @@ avtDatasetOnDemandFilter::GetDomain(int domainId)
             return entry.ds;
         }
 
+
+    debug5<<"     Update->GetDomain "<<domainId<<" time= "<<timeStep<<endl;
     avtContract_p new_contract = new avtContract(firstContract);
     vector<int> domains;
     domains.push_back(domainId);
     new_contract->GetDataRequest()->GetRestriction()->TurnOnAll();
     new_contract->GetDataRequest()->GetRestriction()->RestrictDomains(domains);
+    if (timeStep >= 0)
+        new_contract->GetDataRequest()->SetTimestep(timeStep);
     new_contract->SetOnDemandStreaming(true);
 
     GetInput()->Update(new_contract);
@@ -156,8 +192,20 @@ avtDatasetOnDemandFilter::GetDomain(int domainId)
     // Add it to the cache.
     DomainCacheEntry entry;
     entry.domainID = domainId;
+    entry.timeStep = timeStep;
     entry.ds = rv;
     rv->Register(NULL);
+    loadDSCount++;
+    
+    //Update the domainLoadCount.
+    //Turn two ints into a long. Put timeStep in upper, domain in lower.
+    unsigned long A =  (((unsigned long)timeStep)<<32);
+    unsigned long B =  ((unsigned long)domainId);
+    unsigned long long idx = A | B;
+
+    if (domainLoadCount.find(idx) == domainLoadCount.end())
+        domainLoadCount[idx] = 0;
+    domainLoadCount[idx] ++;
 
     domainQueue.push_front(entry);
     if ( domainQueue.size() > maxQueueLength )
@@ -166,6 +214,152 @@ avtDatasetOnDemandFilter::GetDomain(int domainId)
         int purgeDomainID = domainQueue.back().domainID;
         domainQueue.pop_back();
         purgeDS->Delete();
+        purgeDSCount++;
+    }
+
+    return rv;
+}
+
+// ****************************************************************************
+//  Method: avtDatasetOnDemandFilter::GetDataAroundPoint
+//
+//  Purpose:
+//      Forces a pipeline update to fetch the data around a point.
+//
+//  Programmer: Hank Childs
+//  Creation:   March 22, 2009
+//
+//  Modifications:
+//    Dave Pugmire, Wed Mar 25 09:15:23 EDT 2009
+//    Add domain caching for point decomposed domains.
+//
+//    Gunther H. Weber, Fri Apr  3 17:38:12 PDT 2009
+//    Enabled Dave's caching code. Since we currently use the same domain id
+//    for all requests of data around points, using a map from the domain id
+//    to a cell locator would not have worked. Thus, I moved the entry to
+//    the DataCacheEntry instead.
+//
+// ****************************************************************************
+
+vtkDataSet *
+avtDatasetOnDemandFilter::GetDataAroundPoint(double X, double Y, double Z,
+                                             int timeStep)
+{
+    debug1<<"avtDatasetOnDemandFilter::GetDataAroundPoint("<<X<<", "<<Y<<", "<<Z<<", "<<timeStep<<");"<<endl;
+    if ( ! OperatingOnDemand() )
+    {
+        EXCEPTION0(ImproperUseException);
+    }
+
+    int domainId = 0; //Need to hash XYZ to domainId ???
+    // FIXME: For the moment we just use one domain ID (0) for all points. This choice will cause
+    // the following for loop to test *all* cache entries whether they contain the point location.
+    // This strategy is not very efficient, but better than a pipeline re-execute.
+
+    debug5<<"Look in cache: "<<domainId<<" sz= "<<domainQueue.size()<<endl;
+
+    //See if it's in the cache.
+    std::list<DomainCacheEntry>::iterator it;
+    int foundPos = 0;
+    for ( it = domainQueue.begin(); it != domainQueue.end(); it++ )
+    {
+        // Found it. Move it to the front of the list.
+        if (it->domainID == domainId &&
+            it->timeStep == timeStep)
+        {
+            //Do a bbox check.
+            double bbox[6];
+            it->ds->GetBounds(bbox);
+            debug5<<"BBOX ["<<bbox[0]<<", "<<bbox[1]<<"]["<<bbox[2]<<", "<<bbox[3]<<"]["<<bbox[4]<<", "<<bbox[5]<<"]"<<endl;
+
+            if (! (X >= bbox[0] && X <= bbox[1] &&
+                   Y >= bbox[2] && Y <= bbox[3] &&
+                   Z >= bbox[4] && Z <= bbox[5]))
+                continue;
+            
+            bool foundIt = false;
+            
+            // If rectilinear, we found the domain.
+            if (it->ds->GetDataObjectType() == VTK_RECTILINEAR_GRID)
+                foundIt = true;
+            else
+            {
+                //Do a cell check....
+                debug5<<"It's in the bbox. Check the cell.\n";
+
+                vtkVisItCellLocator *cellLocator = it->cl;
+                if ( cellLocator == NULL )
+                {
+                    cellLocator = vtkVisItCellLocator::New();
+                    cellLocator->SetDataSet(it->ds);
+                    cellLocator->IgnoreGhostsOn();
+                    cellLocator->BuildLocator();
+                    it->cl = cellLocator;
+                }
+                
+                double rad = 1e-6, dist=0.0;
+                double p[3] = {X,Y,Z}, resPt[3]={0.0,0.0,0.0};
+                int foundCell = -1, subId = 0;
+
+                if (cellLocator->FindClosestPointWithinRadius(p, rad, resPt,
+                                                              foundCell, subId, dist))
+                {
+                    foundIt = true;
+                    debug5<<"Cell locate: We found the domain!\n";
+                }
+            }
+
+            if (foundIt)
+            {
+                debug5<<"Found data in cace, returning cache entry " << foundPos << std::endl;
+                DomainCacheEntry entry;
+                entry.ds = it->ds;
+                entry.domainID = it->domainID;
+                entry.timeStep = timeStep;
+
+                //Remove, then move to front.
+                domainQueue.erase( it );
+                domainQueue.push_front( entry );
+                return entry.ds;
+            }
+        }
+    }
+
+    debug5<<"     Update->GetDataAroundPoint, time= "<<timeStep<<endl;
+    avtContract_p new_contract = new avtContract(firstContract);
+    new_contract->GetDataRequest()->GetRestriction()->TurnOnAll();
+    avtPointSelection *ptsel = new avtPointSelection;
+    double p[3] = { X, Y, Z };
+    ptsel->SetPoint(p);
+
+    // data selection will be deleted by contract.
+    new_contract->GetDataRequest()->AddDataSelection(ptsel);
+
+    if (timeStep >= 0)
+        new_contract->GetDataRequest()->SetTimestep(timeStep);
+    new_contract->SetOnDemandStreaming(true);
+
+    GetInput()->Update(new_contract);
+    vtkDataSet *rv = GetInputDataTree()->GetSingleLeaf();
+
+    // Add it to the cache.
+    DomainCacheEntry entry;
+    entry.domainID = domainId;
+    entry.timeStep = timeStep;
+    entry.ds = rv;
+    entry.cl = 0;
+    rv->Register(NULL);
+    loadDSCount++;
+
+    domainQueue.push_front(entry);
+    if ( domainQueue.size() > maxQueueLength )
+    {
+        if (domainQueue.back().cl) domainQueue.back().cl->Delete();
+        vtkDataSet *purgeDS = domainQueue.back().ds;
+        int purgeDomainID = domainQueue.back().domainID;
+        domainQueue.pop_back();
+        purgeDS->Delete();
+        purgeDSCount++;
     }
 
     return rv;
@@ -180,9 +374,14 @@ avtDatasetOnDemandFilter::GetDomain(int domainId)
 //  Programmer: Dave Pugmire
 //  Creation:   March 13, 2008
 //
+//  Modifications:
+//
+//    Dave Pugmire, Tue Mar 10 12:41:11 EDT 2009
+//    Added support for time/domain.
+//
 // ****************************************************************************
 bool
-avtDatasetOnDemandFilter::DomainLoaded(int domainID) const
+avtDatasetOnDemandFilter::DomainLoaded(int domainID, int timeStep) const
 {
     if ( ! OperatingOnDemand() )
         EXCEPTION0(ImproperUseException);
@@ -190,8 +389,9 @@ avtDatasetOnDemandFilter::DomainLoaded(int domainID) const
     if ( domainID >= 0 )
     {
         std::list<DomainCacheEntry>::const_iterator it;
-        for ( it = domainQueue.begin(); it != domainQueue.end(); it++ )
-            if ( it->domainID == domainID )
+        for (it = domainQueue.begin(); it != domainQueue.end(); it++)
+            if (it->domainID == domainID &&
+                it->timeStep == timeStep)
                 return true;
     }
     return false;
@@ -206,19 +406,31 @@ avtDatasetOnDemandFilter::DomainLoaded(int domainID) const
 //  Programmer: Dave Pugmire
 //  Creation:   March 19, 2008
 //
+//  Modifications:
+//
+//    Dave Pugmire, Tue Mar 10 12:41:11 EDT 2009
+//    Added support for time/domain.
+//
 // ****************************************************************************
 void
-avtDatasetOnDemandFilter::GetLoadedDomains( std::vector<int> &domains )
+avtDatasetOnDemandFilter::GetLoadedDomains(std::vector<std::vector<int> > &domains)
 {
     debug1<<"avtDatasetOnDemandFilter::GetLoadedDomains()\n";
     if ( ! OperatingOnDemand() )
         EXCEPTION0(ImproperUseException);
 
+
     domains.resize(0);
     std::list<DomainCacheEntry>::const_iterator it;
     for ( it = domainQueue.begin(); it != domainQueue.end(); it++ )
-        domains.push_back( it->domainID );
+    {
+        vector<int> dom(2);
+        dom[0] = it->domainID;
+        dom[1] = it->timeStep;
+        domains.push_back(dom);
+    }
 }
+
 
 // ****************************************************************************
 //  Method: avtDatasetOnDemandFilter::ModifyContract

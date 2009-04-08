@@ -33,6 +33,7 @@
       <Enum name="TerminationType">
         Distance
         Time
+        Step
       </Enum>
       <Enum name="IntegrationType">
         DormandPrince
@@ -41,6 +42,7 @@
       <Enum name="StreamlineAlgorithmType">
         LoadOnDemand
         ParallelStaticDomains
+        MasterSlave
       </Enum>
       <Field name="sourceType" label="Source" type="enum" subtype="SourceType">
         SpecifiedPoint
@@ -159,6 +161,12 @@
       </Field>
       <Field name="maxDomainCacheSize" label="Max domain cache" type="int">
         3
+      </Field>
+      <Field name="workGroupSize" label="Work group size" type="int">
+        32
+      </Field>
+      <Field name="pathlines" label="Do pathlines" type="bool">
+        false
       </Field>
       <Function name="CopyAttributes" user="false" member="true">
       </Function>

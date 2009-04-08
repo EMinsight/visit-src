@@ -1,0 +1,95 @@
+Function: CopyAttributes
+Declaration: bool CopyAttributes(const AttributeGroup *atts);
+Definition:
+// ****************************************************************************
+// Method: PoincareAttributes::CopyAttributes
+//
+// Purpose: 
+//   CopyAttributes method for the PoincareAttributes class.
+//
+// Programmer: Dave Pugmire
+// Creation:   Tues Oct 21 14:22:17 EDT 2008
+//
+// ****************************************************************************
+
+bool
+PoincareAttributes::CopyAttributes(const AttributeGroup *atts)
+{
+    bool retval = false;
+    if(TypeName() == atts->TypeName())
+    {
+        // Call assignment operator.
+        const PoincareAttributes *tmp = (const PoincareAttributes *)atts;
+        *this = *tmp;
+        retval = true;
+    }
+    else if(atts->TypeName() == "PointAttributes")
+    {
+        const PointAttributes *p = (PointAttributes *)atts;
+        SetPointSource(p->GetPoint());
+        retval = true;
+    }
+    else if(atts->TypeName() == "Line")
+    {
+        const Line *line = (const Line *)atts;
+        SetLineSourceStart(line->GetPoint1());
+        SetLineSourceEnd(line->GetPoint2());
+        retval = true;
+    }
+    else if(atts->TypeName() == "PlaneAttributes")
+    {
+        const PlaneAttributes *plane = (const PlaneAttributes *)atts;
+        SetPlaneSourcePoint(plane->GetOrigin());
+        SetPlaneSourceNormal(plane->GetNormal());
+        SetPlaneSourceUpVec(plane->GetUpAxis());
+        retval = true;
+    }
+    return retval;
+}
+
+Function: CreateCompatible
+Declaration: AttributeSubject *CreateCompatible(const std::string &tname) const
+Definition:
+// ****************************************************************************
+// Method: PoincareAttributes::CreateCompatible
+//
+// Purpose: 
+//   Creates a new state object of the desired type.
+//
+// Programmer: Dave Pugmire
+// Creation:   Tues Oct 21 14:22:17 EDT 2008
+//
+// ****************************************************************************
+
+AttributeSubject *
+PoincareAttributes::CreateCompatible(const std::string &tname) const
+{
+    AttributeSubject *retval = 0;
+    if (TypeName() == tname)
+    {
+        retval = new PoincareAttributes(*this);
+    }
+    else if (tname == "PointAttributes")
+    {
+        PointAttributes *p = new PointAttributes;
+        p->SetPoint(GetPointSource());
+        retval = p;
+    }
+    else if (tname == "Line")
+    {
+        Line *l = new Line;
+        l->SetPoint1(GetLineSourceStart());
+        l->SetPoint2(GetLineSourceEnd());
+        retval = l;
+    }
+    else if (tname == "PlaneAttributes")
+    {
+        PlaneAttributes *p = new PlaneAttributes;
+        p->SetOrigin(GetPlaneSourcePoint());
+        p->SetNormal(GetPlaneSourceNormal());
+        p->SetUpAxis(GetPlaneSourceUpVec());
+        retval = p;
+    }
+    return retval;
+}
+

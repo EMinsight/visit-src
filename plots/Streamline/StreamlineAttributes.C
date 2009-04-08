@@ -203,20 +203,21 @@ StreamlineAttributes::IntegrationDirection_FromString(const std::string &s, Stre
 //
 
 static const char *TerminationType_strings[] = {
-"Distance", "Time"};
+"Distance", "Time", "Step"
+};
 
 std::string
 StreamlineAttributes::TerminationType_ToString(StreamlineAttributes::TerminationType t)
 {
     int index = int(t);
-    if(index < 0 || index >= 2) index = 0;
+    if(index < 0 || index >= 3) index = 0;
     return TerminationType_strings[index];
 }
 
 std::string
 StreamlineAttributes::TerminationType_ToString(int t)
 {
-    int index = (t < 0 || t >= 2) ? 0 : t;
+    int index = (t < 0 || t >= 3) ? 0 : t;
     return TerminationType_strings[index];
 }
 
@@ -224,7 +225,7 @@ bool
 StreamlineAttributes::TerminationType_FromString(const std::string &s, StreamlineAttributes::TerminationType &val)
 {
     val = StreamlineAttributes::Distance;
-    for(int i = 0; i < 2; ++i)
+    for(int i = 0; i < 3; ++i)
     {
         if(s == TerminationType_strings[i])
         {
@@ -277,20 +278,21 @@ StreamlineAttributes::IntegrationType_FromString(const std::string &s, Streamlin
 //
 
 static const char *StreamlineAlgorithmType_strings[] = {
-"LoadOnDemand", "ParallelStaticDomains"};
+"LoadOnDemand", "ParallelStaticDomains", "MasterSlave"
+};
 
 std::string
 StreamlineAttributes::StreamlineAlgorithmType_ToString(StreamlineAttributes::StreamlineAlgorithmType t)
 {
     int index = int(t);
-    if(index < 0 || index >= 2) index = 0;
+    if(index < 0 || index >= 3) index = 0;
     return StreamlineAlgorithmType_strings[index];
 }
 
 std::string
 StreamlineAttributes::StreamlineAlgorithmType_ToString(int t)
 {
-    int index = (t < 0 || t >= 2) ? 0 : t;
+    int index = (t < 0 || t >= 3) ? 0 : t;
     return StreamlineAlgorithmType_strings[index];
 }
 
@@ -298,7 +300,7 @@ bool
 StreamlineAttributes::StreamlineAlgorithmType_FromString(const std::string &s, StreamlineAttributes::StreamlineAlgorithmType &val)
 {
     val = StreamlineAttributes::LoadOnDemand;
-    for(int i = 0; i < 2; ++i)
+    for(int i = 0; i < 3; ++i)
     {
         if(s == StreamlineAlgorithmType_strings[i])
         {
@@ -310,7 +312,7 @@ StreamlineAttributes::StreamlineAlgorithmType_FromString(const std::string &s, S
 }
 
 // Type map format string
-const char *StreamlineAttributes::TypeMapFormatString = "iddDDDDDDdDdDbiibdiisabbiddiiiii";
+const char *StreamlineAttributes::TypeMapFormatString = "iddDDDDDDdDdDbiibdiisabbiddiiiiiib";
 
 // ****************************************************************************
 // Method: StreamlineAttributes::StreamlineAttributes
@@ -380,6 +382,8 @@ StreamlineAttributes::StreamlineAttributes() :
     streamlineAlgorithmType = ParallelStaticDomains;
     maxStreamlineProcessCount = 10;
     maxDomainCacheSize = 3;
+    workGroupSize = 32;
+    pathlines = false;
 }
 
 // ****************************************************************************
@@ -456,6 +460,8 @@ StreamlineAttributes::StreamlineAttributes(const StreamlineAttributes &obj) :
     streamlineAlgorithmType = obj.streamlineAlgorithmType;
     maxStreamlineProcessCount = obj.maxStreamlineProcessCount;
     maxDomainCacheSize = obj.maxDomainCacheSize;
+    workGroupSize = obj.workGroupSize;
+    pathlines = obj.pathlines;
 
     SelectAll();
 }
@@ -555,6 +561,8 @@ StreamlineAttributes::operator = (const StreamlineAttributes &obj)
     streamlineAlgorithmType = obj.streamlineAlgorithmType;
     maxStreamlineProcessCount = obj.maxStreamlineProcessCount;
     maxDomainCacheSize = obj.maxDomainCacheSize;
+    workGroupSize = obj.workGroupSize;
+    pathlines = obj.pathlines;
 
     SelectAll();
     return *this;
@@ -650,7 +658,9 @@ StreamlineAttributes::operator == (const StreamlineAttributes &obj) const
             (integrationType == obj.integrationType) &&
             (streamlineAlgorithmType == obj.streamlineAlgorithmType) &&
             (maxStreamlineProcessCount == obj.maxStreamlineProcessCount) &&
-            (maxDomainCacheSize == obj.maxDomainCacheSize));
+            (maxDomainCacheSize == obj.maxDomainCacheSize) &&
+            (workGroupSize == obj.workGroupSize) &&
+            (pathlines == obj.pathlines));
 }
 
 // ****************************************************************************
@@ -925,6 +935,8 @@ StreamlineAttributes::SelectAll()
     Select(ID_streamlineAlgorithmType,   (void *)&streamlineAlgorithmType);
     Select(ID_maxStreamlineProcessCount, (void *)&maxStreamlineProcessCount);
     Select(ID_maxDomainCacheSize,        (void *)&maxDomainCacheSize);
+    Select(ID_workGroupSize,             (void *)&workGroupSize);
+    Select(ID_pathlines,                 (void *)&pathlines);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1151,6 +1163,18 @@ StreamlineAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool f
         node->AddNode(new DataNode("maxDomainCacheSize", maxDomainCacheSize));
     }
 
+    if(completeSave || !FieldsEqual(ID_workGroupSize, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("workGroupSize", workGroupSize));
+    }
+
+    if(completeSave || !FieldsEqual(ID_pathlines, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("pathlines", pathlines));
+    }
+
 
     // Add the node to the parent node.
     if(addToParent || forceAdd)
@@ -1303,7 +1327,7 @@ StreamlineAttributes::SetFromNode(DataNode *parentNode)
         if(node->GetNodeType() == INT_NODE)
         {
             int ival = node->AsInt();
-            if(ival >= 0 && ival < 2)
+            if(ival >= 0 && ival < 3)
                 SetTerminationType(TerminationType(ival));
         }
         else if(node->GetNodeType() == STRING_NODE)
@@ -1335,7 +1359,7 @@ StreamlineAttributes::SetFromNode(DataNode *parentNode)
         if(node->GetNodeType() == INT_NODE)
         {
             int ival = node->AsInt();
-            if(ival >= 0 && ival < 2)
+            if(ival >= 0 && ival < 3)
                 SetStreamlineAlgorithmType(StreamlineAlgorithmType(ival));
         }
         else if(node->GetNodeType() == STRING_NODE)
@@ -1349,6 +1373,10 @@ StreamlineAttributes::SetFromNode(DataNode *parentNode)
         SetMaxStreamlineProcessCount(node->AsInt());
     if((node = searchNode->GetNode("maxDomainCacheSize")) != 0)
         SetMaxDomainCacheSize(node->AsInt());
+    if((node = searchNode->GetNode("workGroupSize")) != 0)
+        SetWorkGroupSize(node->AsInt());
+    if((node = searchNode->GetNode("pathlines")) != 0)
+        SetPathlines(node->AsBool());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1592,6 +1620,20 @@ StreamlineAttributes::SetMaxDomainCacheSize(int maxDomainCacheSize_)
 {
     maxDomainCacheSize = maxDomainCacheSize_;
     Select(ID_maxDomainCacheSize, (void *)&maxDomainCacheSize);
+}
+
+void
+StreamlineAttributes::SetWorkGroupSize(int workGroupSize_)
+{
+    workGroupSize = workGroupSize_;
+    Select(ID_workGroupSize, (void *)&workGroupSize);
+}
+
+void
+StreamlineAttributes::SetPathlines(bool pathlines_)
+{
+    pathlines = pathlines_;
+    Select(ID_pathlines, (void *)&pathlines);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1850,6 +1892,18 @@ StreamlineAttributes::GetMaxDomainCacheSize() const
     return maxDomainCacheSize;
 }
 
+int
+StreamlineAttributes::GetWorkGroupSize() const
+{
+    return workGroupSize;
+}
+
+bool
+StreamlineAttributes::GetPathlines() const
+{
+    return pathlines;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Select property methods
 ///////////////////////////////////////////////////////////////////////////////
@@ -1970,6 +2024,8 @@ StreamlineAttributes::GetFieldName(int index) const
     case ID_streamlineAlgorithmType:   return "streamlineAlgorithmType";
     case ID_maxStreamlineProcessCount: return "maxStreamlineProcessCount";
     case ID_maxDomainCacheSize:        return "maxDomainCacheSize";
+    case ID_workGroupSize:             return "workGroupSize";
+    case ID_pathlines:                 return "pathlines";
     default:  return "invalid index";
     }
 }
@@ -2026,6 +2082,8 @@ StreamlineAttributes::GetFieldType(int index) const
     case ID_streamlineAlgorithmType:   return FieldType_enum;
     case ID_maxStreamlineProcessCount: return FieldType_int;
     case ID_maxDomainCacheSize:        return FieldType_int;
+    case ID_workGroupSize:             return FieldType_int;
+    case ID_pathlines:                 return FieldType_bool;
     default:  return FieldType_unknown;
     }
 }
@@ -2082,6 +2140,8 @@ StreamlineAttributes::GetFieldTypeName(int index) const
     case ID_streamlineAlgorithmType:   return "enum";
     case ID_maxStreamlineProcessCount: return "int";
     case ID_maxDomainCacheSize:        return "int";
+    case ID_workGroupSize:             return "int";
+    case ID_pathlines:                 return "bool";
     default:  return "invalid index";
     }
 }
@@ -2308,6 +2368,16 @@ StreamlineAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (maxDomainCacheSize == obj.maxDomainCacheSize);
         }
         break;
+    case ID_workGroupSize:
+        {  // new scope
+        retval = (workGroupSize == obj.workGroupSize);
+        }
+        break;
+    case ID_pathlines:
+        {  // new scope
+        retval = (pathlines == obj.pathlines);
+        }
+        break;
     default: retval = false;
     }
 
@@ -2399,6 +2469,7 @@ StreamlineAttributes::ChangesRequireRecalculation(const StreamlineAttributes &ob
            (relTol != obj.relTol) ||
            (absTol != obj.absTol) ||
            (coloringMethod != obj.coloringMethod && obj.coloringMethod != Solid) ||
+           (pathlines != obj.pathlines) ||
            sourcePointsDiffer ||
            sourceLineDiffers ||
            sourcePlaneDiffers ||

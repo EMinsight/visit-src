@@ -92,7 +92,8 @@ public:
     enum TerminationType
     {
         Distance,
-        Time
+        Time,
+        Step
     };
     enum IntegrationType
     {
@@ -102,7 +103,8 @@ public:
     enum StreamlineAlgorithmType
     {
         LoadOnDemand,
-        ParallelStaticDomains
+        ParallelStaticDomains,
+        MasterSlave
     };
 
     StreamlineAttributes();
@@ -164,6 +166,8 @@ public:
     void SetStreamlineAlgorithmType(StreamlineAlgorithmType streamlineAlgorithmType_);
     void SetMaxStreamlineProcessCount(int maxStreamlineProcessCount_);
     void SetMaxDomainCacheSize(int maxDomainCacheSize_);
+    void SetWorkGroupSize(int workGroupSize_);
+    void SetPathlines(bool pathlines_);
 
     // Property getting methods
     SourceType           GetSourceType() const;
@@ -208,6 +212,8 @@ public:
     StreamlineAlgorithmType GetStreamlineAlgorithmType() const;
     int                  GetMaxStreamlineProcessCount() const;
     int                  GetMaxDomainCacheSize() const;
+    int                  GetWorkGroupSize() const;
+    bool                 GetPathlines() const;
 
     // Persistence methods
     virtual bool CreateNode(DataNode *node, bool completeSave, bool forceAdd);
@@ -292,7 +298,9 @@ public:
         ID_integrationType,
         ID_streamlineAlgorithmType,
         ID_maxStreamlineProcessCount,
-        ID_maxDomainCacheSize
+        ID_maxDomainCacheSize,
+        ID_workGroupSize,
+        ID_pathlines
     };
 
 private:
@@ -328,6 +336,8 @@ private:
     int            streamlineAlgorithmType;
     int            maxStreamlineProcessCount;
     int            maxDomainCacheSize;
+    int            workGroupSize;
+    bool           pathlines;
 
     // Static class format string for type map.
     static const char *TypeMapFormatString;

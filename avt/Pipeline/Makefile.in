@@ -255,6 +255,9 @@
 #    Hank Childs, Mon Feb  2 08:24:47 PST 2009
 #    Added named selections.
 #
+#    Hank Childs, Sun Mar 22 14:25:29 CDT 2009
+#    Added avtPointSelection.
+#
 ##############################################################################
 
 @SET_MAKE@
@@ -311,6 +314,7 @@ Data_src= \
   Data/avtPixelizer.C \
   Data/avtPointAttribute.C \
   Data/avtPointExtractor.C \
+  Data/avtPointSelection.C \
   Data/avtPyramidExtractor.C \
   Data/avtRangeMaxTable.C \
   Data/avtRay.C \

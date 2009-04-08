@@ -38,8 +38,21 @@
 
 #ifndef VECTOR_H
 #define VECTOR_H
+
+#include <visit-config.h>
+#include <math.h>
 #include <math_exports.h>
 #include <visitstream.h>
+
+#ifdef DBIO_ONLY 
+#define STUB_VOID {}
+#define STUB_OSTR {return ostr;}
+#define STUB_STR {return "";}
+#else
+#define STUB_VOID
+#define STUB_OSTR
+#define STUB_STR
+#endif
 
 // ****************************************************************************
 //  Class:  avtVector
@@ -54,6 +67,9 @@
 //  Modifications:
 //    Eric Brugger, Mon Feb  9 16:32:31 PST 2004
 //    Added const to a couple of constructors.
+//
+//    Dave Pugmire, Mon Nov 17 12:05:04 EST 2008
+//    Added operators == != and methods dot, cross, length2 and length.
 //
 // ****************************************************************************
 class MATH_API avtVector
@@ -83,11 +99,17 @@ class MATH_API avtVector
     avtVector  operator/(const double&) const;
     void       operator/=(const double&);
 
+    // comparison.
+    bool       operator==(const avtVector&) const;
+    bool       operator!=(const avtVector&) const;
+
     // cross product
     avtVector  operator%(const avtVector&) const;
+    avtVector  cross(const avtVector&) const;
 
     // dot product
     double     operator*(const avtVector&) const;
+    double     dot(const avtVector&) const;
 
     // 2-norm
     double     norm() const;
@@ -95,18 +117,23 @@ class MATH_API avtVector
     void       normalize();
     avtVector  normalized() const;
 
+    // length.
+    double length2() const;
+    double length() const;
+
     // friends
-    friend ostream& operator<<(ostream&,const avtVector&);
+    friend ostream& operator<<(ostream& ostr,const avtVector&) STUB_OSTR;
 
     // input/output
-    const char *getAsText();
-    void        setAsText(const char*);
+    const char *getAsText() STUB_STR;
+    void        setAsText(const char*) STUB_VOID;
   private:
     char text[256];
 };
 
-#include <math.h>
-#include <visitstream.h>
+#undef STUB_VOID
+#undef STUB_OSTR
+#undef STUB_STR
 
 inline 
 avtVector::avtVector()
@@ -187,6 +214,12 @@ avtVector::operator-=(const avtVector &r)
 
 // scalar multiplication/division
 
+// Allows for double * avtVector so that everything doesn't have to be
+// avtVector * double
+inline avtVector operator*(const double s, const avtVector& v) {
+  return v*s;
+}
+
 inline avtVector
 avtVector::operator*(const double &s) const
 {
@@ -215,11 +248,28 @@ avtVector::operator/=(const double &s)
     z /= s;
 }
 
+inline bool
+avtVector::operator==(const avtVector &v) const
+{
+    return x == v.x && y == v.y && z == v.z;
+}
+
+inline bool
+avtVector::operator!=(const avtVector &v) const
+{
+    return x != v.x || y != v.y || z != v.z;
+}
 
 
 // cross product
 inline avtVector
 avtVector::operator%(const avtVector &r) const
+{
+    return cross(r);
+}
+
+inline avtVector
+avtVector::cross(const avtVector &r) const
 {
     avtVector v;
     v.x = y*r.z - z*r.y;
@@ -228,18 +278,32 @@ avtVector::operator%(const avtVector &r) const
     return v;
 }
 
+inline avtVector Cross(const avtVector& v0, const avtVector& v1) {
+  return v0.cross(v1);
+}
+
 // dot product
 inline double
 avtVector::operator*(const avtVector &r) const
 {
+    return dot(r);
+}
+
+inline double
+avtVector::dot(const avtVector &r) const
+{
     return x*r.x + y*r.y + z*r.z;
+}
+
+inline double Dot(const avtVector& v0, const avtVector& v1) {
+  return v0.dot(v1);
 }
 
 // 2-norm
 inline double
 avtVector::norm() const
 {
-    double n = (x*x + y*y + z*z);
+    double n = length2();
     if (n>0)
         n = sqrt(n);
     return n;
@@ -249,7 +313,7 @@ avtVector::norm() const
 inline void
 avtVector::normalize()
 {
-    double n = (x*x + y*y + z*z);
+    double n = length2();
     if (n>0)
     {
         n = 1./sqrt(n);
@@ -262,12 +326,25 @@ avtVector::normalize()
 inline avtVector
 avtVector::normalized() const
 {
-    double n = (x*x + y*y + z*z);
+    double n = length2();
     if (n==0)
         return *this;
 
     n = 1./sqrt(n);
     return avtVector(x*n, y*n, z*n);
+}
+
+// length
+inline double
+avtVector::length2() const
+{
+    return (x*x + y*y + z*z);
+}
+
+inline double
+avtVector::length() const
+{
+    return sqrt(length2());
 }
 
 

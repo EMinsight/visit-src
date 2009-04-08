@@ -153,6 +153,11 @@ avtIVPDopri5::~avtIVPDopri5()
 //  Programmer: Christoph Garth
 //  Creation:   February 25, 2008
 //
+//  Modifications:
+//    Dave Pugmire, Mon Feb 23, 09:11:34 EST 2009
+//    Reworked the termination code. Added a type enum and value. Made num steps
+//    a termination criterion.
+//  
 // ****************************************************************************
 
 void 
@@ -168,6 +173,7 @@ avtIVPDopri5::Reset(const double& t_start, const avtVecRef& y_start)
     
     t = t_start;
     d = 0.0;
+    numStep = 0;
     y = y_start;
     k1 = avtVec(y_start.dim());
 }
@@ -334,6 +340,10 @@ avtIVPDopri5::SetTolerances(const double& relt, const double& abst)
 //    Dave Pugmire, Tue Aug 19, 17:38:03 EDT 2008
 //    Consider a negative stepsize.
 //
+//    Hank Childs, Thu Apr  2 16:40:08 PDT 2009
+//    Incorporate fix from Christoph to do a better job guessing the
+//    initial step size.
+//
 // ****************************************************************************
 
 double 
@@ -341,62 +351,91 @@ avtIVPDopri5::GuessInitialStep(const avtIVPField* field,
                                const double& h_max, 
                                const double& t_max)
 {
+    // make a local copy since we may need to modify it
+    double local_h_max = h_max;
     double direction = sign(1.0, t_max - t);
-    double sk, sqr;
-    double dnf = 0.0;
-    double dny = 0.0;
-    
-    double h;
-    
-    for(size_t i=0 ; i < y.dim() ; i++) 
+        
+    // loop until an estimate succeeds
+    while( true )
     {
-        sk = abstol + reltol * std::abs(y[i]);
-        sqr = k1[i] / sk;
-        dnf += sqr * sqr;
-        sqr = y[i] / sk;
-        dny += sqr * sqr;
+        try
+        {
+            double sk, sqr;
+            double dnf = 0.0;
+            double dny = 0.0;
+    
+            double h;
+    
+            for(size_t i=0 ; i < y.dim() ; i++) 
+            {
+                sk = abstol + reltol * std::abs(y[i]);
+                sqr = k1[i] / sk;
+                dnf += sqr * sqr;
+                sqr = y[i] / sk;
+                dny += sqr * sqr;
+            }
+
+            if( (dnf <= 1.0e-10) || (dny <= 1.0e-10) ) 
+                h = 1.0e-6;
+            else 
+                h = sqrt( dny/dnf ) * 0.01;
+
+            h = std::min( h, local_h_max );
+            h = sign( h, direction );
+
+            // perform an explicit Euler step
+            avtVec k3 = y + h * k1;
+            avtVec k2 = (*field)( t+h, k3 );
+
+            n_eval++;
+
+            // estimate the second derivative of the solution
+            double der2 = 0.0;
+
+            for( size_t i=0; i<y.dim(); i++) 
+            {
+                sk = abstol + reltol * std::abs( y[i] );
+                sqr = ( k2[i] - k1[i] ) / sk;
+                der2 += sqr*sqr;
+            }
+
+            der2 = sqrt( der2 ) / h;
+
+            // step size is computed such that
+            // h**(1/5) * max( norm(k1), norm(der2) ) = 0.01
+            double der12 = std::max( std::abs(der2), sqrt(dnf) );
+            double h1;
+
+            if( der12 <= 1.0e-15 ) 
+                h1 = std::max( 1.0e-6, std::abs(h)*1.0e-3 );
+            else 
+                h1 = pow( 0.01/der12, 0.2 );
+
+            h = std::min( fabs(100.0*h), std::min( h1, local_h_max ) );
+            h = sign( h, direction );
+
+            return h;
+        }
+        catch( avtIVPField::Undefined& )
+        {
+            // Somehow we couldn't evaluate one of the points we need for the 
+            // starting estimate. The above code adheres to the h_max that is 
+            // passed in - let's reduce that and try again.
+            // (we're really using local_h_max since h_max is const double&)
+            
+            // (Oh, and if local_h_max is zero, let's set it to unit length (= direction))
+            if( !local_h_max )
+                local_h_max = direction;
+            else 
+                local_h_max /= 2;
+                
+            // if local_h_max is smaller then epsilon, we stop trying
+            // return that back to Step() which will then fail with a 
+            // stepsize underflow
+            if( local_h_max < std::numeric_limits<double>::epsilon() )
+                return local_h_max;
+        }
     }
-
-    if( (dnf <= 1.0e-10) || (dny <= 1.0e-10) ) 
-        h = 1.0e-6;
-    else 
-        h = sqrt( dny/dnf ) * 0.01;
-
-    h = std::min( h, h_max );
-    h = sign( h, direction );
-
-    // perform an explicit Euler step
-    avtVec k3 = y + h * k1;
-    avtVec k2 = (*field)( t+h, k3 );
-
-    n_eval++;
-
-    // estimate the second derivative of the solution
-    double der2 = 0.0;
-
-    for( size_t i=0; i<y.dim(); i++) 
-    {
-        sk = abstol + reltol * std::abs( y[i] );
-        sqr = ( k2[i] - k1[i] ) / sk;
-        der2 += sqr*sqr;
-    }
-
-    der2 = sqrt( der2 ) / h;
-
-    // step size is computed such that
-    // h**(1/5) * max( norm(k1), norm(der2) ) = 0.01
-    double der12 = std::max( std::abs(der2), sqrt(dnf) );
-    double h1;
-
-    if( der12 <= 1.0e-15 ) 
-        h1 = std::max( 1.0e-6, std::abs(h)*1.0e-3 );
-    else 
-        h1 = pow( 0.01/der12, 0.2 );
-
-    h = std::min( fabs(100.0*h), std::min( h1, h_max ) );
-    h = sign( h, direction );
-
-    return h;
 }
 
 
@@ -420,15 +459,29 @@ avtIVPDopri5::GuessInitialStep(const avtIVPField* field,
 //    Dave Pugmire, Tue Aug 19, 17:38:03 EDT 2008
 //    Consider a negative stepsize. Change how distance termination is computed.
 //
+//    Dave Pugmire, Mon Feb 23, 09:11:34 EST 2009
+//    Reworked the termination code. Added a type enum and value. Made num steps
+//    a termination criterion.    
+//
 // ****************************************************************************
 
 avtIVPSolver::Result 
 avtIVPDopri5::Step(const avtIVPField* field,
-                   const bool &timeMode,
-                   const double& t_max,
-                   const double& d_max,
+                   const TerminateType &termType,
+                   const double &end,
                    avtIVPStep* ivpstep) 
 {
+    if (termType == TIME)
+        t_max = end;
+    else if (termType == DISTANCE || termType == STEP)
+    {
+        t_max = std::numeric_limits<double>::max();
+        if (end < 0)
+            t_max = -t_max;
+    }
+
+    debug5<<"End= "<<end<<" t_max= "<<t_max<<endl;
+    
     const double direction = sign( 1.0, t_max - t );
 
     avtVec k2, k3, k4, k5, k6, k7;
@@ -451,11 +504,14 @@ avtIVPDopri5::Step(const avtIVPField* field,
     // determine stepsize (user-specified or educated guess)
     if( h == 0.0 )
         h = h_init;
-    
     if( h == 0.0 )
+    {
         h = GuessInitialStep( field, local_h_max, t_max );
+    }
     else
+    {   
         h = sign( h, direction );
+    }
 
     // integration step loop, will exit after successful step
     while( true )
@@ -466,8 +522,8 @@ avtIVPDopri5::Step(const avtIVPField* field,
         // stepsize underflow?
         if( 0.1*std::abs(h) <= std::abs(t)*epsilon ) 
         {
-            //debug1 << "\tavtIVPDopri5::step(): exiting at t = " 
-            //       << t << ", step size too small (h = " << h << ")\n";
+            debug5 << "\tavtIVPDopri5::step(): exiting at t = " 
+                   << t << ", step size too small (h = " << h << ")\n";
             return STEPSIZE_UNDERFLOW;
         }
 
@@ -480,8 +536,8 @@ avtIVPDopri5::Step(const avtIVPField* field,
 
         n_steps++;
 
-        //debug1 << "\tavtIVPDopri5::step(): t = " << t << ", y = " << y 
-        //       << ", h = " << h << ", t+h = " << t+h << '\n';
+        debug5 << "\tavtIVPDopri5::step(): t = " << t << ", y = " << y 
+               << ", h = " << h << ", t+h = " << t+h << '\n';
 
         // perform stages
         y_new = y + h*a21*k1;
@@ -559,9 +615,9 @@ avtIVPDopri5::Step(const avtIVPField* field,
                 
                     if( iasti == 15 ) 
                     {
-                        //debug1 << "\tavtIVPDopri5::step(): exiting at t = " 
-                        //       << t << ", problem seems stiff (y = " << y 
-                        //       << ")\n";
+                        debug5 << "\tavtIVPDopri5::step(): exiting at t = " 
+                               << t << ", problem seems stiff (y = " << y 
+                               << ")\n";
                         return STIFFNESS_DETECTED;
                     }
                 }
@@ -602,18 +658,29 @@ avtIVPDopri5::Step(const avtIVPField* field,
 
             t = t+h;
             h = h_new;
-            
-            if (!timeMode)
+            numStep++;
+
+            if (termType == TIME)
+            {
+                if ((end > 0 && t >= end) ||
+                    (end < 0 && t <= end))
+                    return TERMINATE;
+            }
+            else if (termType == DISTANCE)
             {
                 double len = ivpstep->Length();
-                if ( d+len > d_max )
+                if (d+len > fabs(end))
                     throw avtIVPField::Undefined();
                 d = d + len;
             }
+            else if (termType == STEP &&
+                     numStep >= (int)fabs(end))
+                return TERMINATE;
+                
             
             // normal exit
-            //debug1 << "\tavtIVPDopri5::step(): normal exit, now at t = " 
-            //       << t << ", y = " << y << ", h = " << h << '\n';
+            debug5 << "\tavtIVPDopri5::step(): normal exit, now at t = " 
+                   << t << ", y = " << y << ", h = " << h << '\n';
             return OK;
         }
         else 
@@ -627,8 +694,8 @@ avtIVPDopri5::Step(const avtIVPField* field,
 
             h = h_new;
             
-            //debug1 << "\tavtIVPDopri5::step(): step rejected, retry with h = "
-            //       << h << '\n';
+            debug5 << "\tavtIVPDopri5::step(): step rejected, retry with h = "
+                   << h << '\n';
         }
     }
 }
@@ -648,7 +715,8 @@ avtIVPDopri5::Step(const avtIVPField* field,
 void
 avtIVPDopri5::AcceptStateVisitor(avtIVPStateHelper& aiss)
 {
-    aiss.Accept(reltol)
+    aiss.Accept(numStep)
+        .Accept(reltol)
         .Accept(abstol)
         .Accept(h)
         .Accept(h_max)

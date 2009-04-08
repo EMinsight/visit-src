@@ -318,6 +318,10 @@
 #    Brad Whitlock, Fri Oct 3 10:35:38 EDT 2008
 #    Added avtIVP to the link line.
 #
+#    Jeremy Meredith, Wed Apr  8 09:57:01 EDT 2009
+#    Added libraries to link line to match what's in the trunk
+#    due to port of streamline work from trunk.
+#
 ##############################################################################
 
 ##
@@ -336,7 +340,8 @@ VTK_INCLUDE=@VTK_INCLUDES@
 LIBS=-L../../lib -L../../vtkqt -lengineproxy -lenginerpc -lviewerrpc \
      -lmdserverproxy -lmdserverrpc -lvclproxy -lvclrpc -ldbatts -lexpr \
      -lexpr -lparser -lplugin -lqtviswindow -lviswindow_ser -lavtmath_ser -lplotter_ser \
-     -lavtfilters_ser -lavtwriter_ser -lavtview -lpipeline_ser -lvisit_vtk -lavtivp_ser \
+     -lavtfilters_ser -ldatabase_ser -lmir_ser -lavtwriter_ser \
+     -lavtview -lpipeline_ser -lvisit_vtk -lavtivp_ser \
      -llightweight_visit_vtk -lparallel_visit_vtk_ser -lvtkqt -lwinutil \
      @QT_LIBS@ -lproxybase -lmisc -lcomm -lstate -lutility -lavtexceptions \
      $(VTK_LIBS) $(X_LIBS) $(ZLIB_LIB) $(GLEW_LIBS) $(FILIB_LIBS) @LIBS@ @PTHREAD_LIB@

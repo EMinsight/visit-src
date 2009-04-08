@@ -43,7 +43,7 @@
 #include <avtStreamlinePlot.h>
 
 #include <avtShiftCenteringFilter.h>
-#include <avtStreamlineFilter.h>
+#include <avtStreamlinePolyDataFilter.h>
 #include <avtVariableLegend.h>
 #include <avtVariableMapper.h>
 #include <avtLookupTable.h>
@@ -66,7 +66,7 @@ avtStreamlinePlot::avtStreamlinePlot()
 {
     colorsInitialized = false;
 #ifdef ENGINE
-    streamlineFilter = new avtStreamlineFilter;
+    streamlineFilter = new avtStreamlinePolyDataFilter;
 #endif
     shiftCenteringFilter = NULL;
 
@@ -331,6 +331,12 @@ avtStreamlinePlot::EnhanceSpecification(avtContract_p in_contract)
 //   Dave Pugmire, Tue Aug 19 17:13:04EST 2008
 //   Remove accurate distance calculate option.
 //
+//   Dave Pugmire, Thu Feb  5 12:23:33 EST 2009
+//   Add workGroupSize for masterSlave algorithm.
+//
+//   Dave Pugmire, Tue Mar 10 12:41:11 EDT 2009
+//   Add pathline option.
+//
 // ****************************************************************************
 
 void
@@ -353,9 +359,11 @@ avtStreamlinePlot::SetAtts(const AttributeGroup *a)
     //
     streamlineFilter->SetSourceType(atts.GetSourceType());
     streamlineFilter->SetIntegrationType(atts.GetIntegrationType());
+    streamlineFilter->SetPathlines(atts.GetPathlines());
     streamlineFilter->SetStreamlineAlgorithm(atts.GetStreamlineAlgorithmType(), 
                                              atts.GetMaxStreamlineProcessCount(),
-                                             atts.GetMaxDomainCacheSize());
+                                             atts.GetMaxDomainCacheSize(),
+                                             atts.GetWorkGroupSize());
     streamlineFilter->SetMaxStepLength(atts.GetMaxStepLength());
     streamlineFilter->SetTolerances(atts.GetRelTol(),atts.GetAbsTol());
     streamlineFilter->SetTermination(atts.GetTerminationType(), atts.GetTermination());

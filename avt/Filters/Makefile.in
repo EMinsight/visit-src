@@ -99,8 +99,14 @@
 #    Dave Pugmire, Mon Oct  6 12:47:24 EDT 2008
 #    Added back the streamlinefilter.
 #
+#    Hank Childs, Tue Dec  2 13:41:08 PST 2008
+#    Add the avtStreamlinePolyDataFilter.
+#
 #    Hank Childs, Mon Feb  2 16:42:03 PST 2009
 #    Added avtNamedSelectionFilter.
+#
+#    Dave Pugmire, Tue Feb  3 10:56:45 EST 2009
+#    Add the streamline algorithm code.
 #
 ##############################################################################
 
@@ -133,19 +139,26 @@ SRC=\
  avtLineScanFilter.C \
  avtLineoutFilter.C \
  avtMassVoxelExtractor.C \
+ avtMasterSlaveSLAlgorithm.C \
  avtMeshLogFilter.C \
  avtNamedSelectionFilter.C \
+ avtParDomSLAlgorithm.C \
+ avtParSLAlgorithm.C \
  avtPointToGlyphFilter.C \
  avtRayCompositer.C \
  avtRayTracer.C \
  avtResampleFilter.C \
+ avtSLAlgorithm.C \
  avtSamplePointCommunicator.C \
  avtSamplePointExtractor.C \
  avtSamplePointToSurfaceFilter.C \
+ avtSerialSLAlgorithm.C \
  avtShiftCenteringFilter.C \
  avtSimilarityTransformFilter.C \
  avtSmoothPolyDataFilter.C \
  avtStreamlineFilter.C \
+ avtStreamlinePolyDataFilter.C \
+ avtStreamlineWrapper.C \
  avtSummationFilter.C \
  avtSurfaceFilter.C \
  avtTiledImageCompositor.C \

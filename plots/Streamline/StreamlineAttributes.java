@@ -84,17 +84,19 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
 
     public final static int TERMINATIONTYPE_DISTANCE = 0;
     public final static int TERMINATIONTYPE_TIME = 1;
+    public final static int TERMINATIONTYPE_STEP = 2;
 
     public final static int INTEGRATIONTYPE_DORMANDPRINCE = 0;
     public final static int INTEGRATIONTYPE_ADAMSBASHFORTH = 1;
 
     public final static int STREAMLINEALGORITHMTYPE_LOADONDEMAND = 0;
     public final static int STREAMLINEALGORITHMTYPE_PARALLELSTATICDOMAINS = 1;
+    public final static int STREAMLINEALGORITHMTYPE_MASTERSLAVE = 2;
 
 
     public StreamlineAttributes()
     {
-        super(32);
+        super(34);
 
         sourceType = SOURCETYPE_SPECIFIEDPOINT;
         maxStepLength = 0.1;
@@ -155,11 +157,13 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         streamlineAlgorithmType = STREAMLINEALGORITHMTYPE_PARALLELSTATICDOMAINS;
         maxStreamlineProcessCount = 10;
         maxDomainCacheSize = 3;
+        workGroupSize = 32;
+        pathlines = false;
     }
 
     public StreamlineAttributes(StreamlineAttributes obj)
     {
-        super(32);
+        super(34);
 
         int i;
 
@@ -226,6 +230,8 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         streamlineAlgorithmType = obj.streamlineAlgorithmType;
         maxStreamlineProcessCount = obj.maxStreamlineProcessCount;
         maxDomainCacheSize = obj.maxDomainCacheSize;
+        workGroupSize = obj.workGroupSize;
+        pathlines = obj.pathlines;
 
         SelectAll();
     }
@@ -306,7 +312,9 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
                 (integrationType == obj.integrationType) &&
                 (streamlineAlgorithmType == obj.streamlineAlgorithmType) &&
                 (maxStreamlineProcessCount == obj.maxStreamlineProcessCount) &&
-                (maxDomainCacheSize == obj.maxDomainCacheSize));
+                (maxDomainCacheSize == obj.maxDomainCacheSize) &&
+                (workGroupSize == obj.workGroupSize) &&
+                (pathlines == obj.pathlines));
     }
 
     public String GetName() { return "Streamline"; }
@@ -576,6 +584,18 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         Select(31);
     }
 
+    public void SetWorkGroupSize(int workGroupSize_)
+    {
+        workGroupSize = workGroupSize_;
+        Select(32);
+    }
+
+    public void SetPathlines(boolean pathlines_)
+    {
+        pathlines = pathlines_;
+        Select(33);
+    }
+
     // Property getting methods
     public int            GetSourceType() { return sourceType; }
     public double         GetMaxStepLength() { return maxStepLength; }
@@ -609,6 +629,8 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
     public int            GetStreamlineAlgorithmType() { return streamlineAlgorithmType; }
     public int            GetMaxStreamlineProcessCount() { return maxStreamlineProcessCount; }
     public int            GetMaxDomainCacheSize() { return maxDomainCacheSize; }
+    public int            GetWorkGroupSize() { return workGroupSize; }
+    public boolean        GetPathlines() { return pathlines; }
 
     // Write and read methods.
     public void WriteAtts(CommunicationBuffer buf)
@@ -677,6 +699,10 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
             buf.WriteInt(maxStreamlineProcessCount);
         if(WriteSelect(31, buf))
             buf.WriteInt(maxDomainCacheSize);
+        if(WriteSelect(32, buf))
+            buf.WriteInt(workGroupSize);
+        if(WriteSelect(33, buf))
+            buf.WriteBool(pathlines);
     }
 
     public void ReadAtts(int n, CommunicationBuffer buf)
@@ -783,6 +809,12 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
             case 31:
                 SetMaxDomainCacheSize(buf.ReadInt());
                 break;
+            case 32:
+                SetWorkGroupSize(buf.ReadInt());
+                break;
+            case 33:
+                SetPathlines(buf.ReadBool());
+                break;
             }
         }
     }
@@ -860,6 +892,8 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
             str = str + "TERMINATIONTYPE_DISTANCE";
         if(terminationType == TERMINATIONTYPE_TIME)
             str = str + "TERMINATIONTYPE_TIME";
+        if(terminationType == TERMINATIONTYPE_STEP)
+            str = str + "TERMINATIONTYPE_STEP";
         str = str + "\n";
         str = str + indent + "integrationType = ";
         if(integrationType == INTEGRATIONTYPE_DORMANDPRINCE)
@@ -872,9 +906,13 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
             str = str + "STREAMLINEALGORITHMTYPE_LOADONDEMAND";
         if(streamlineAlgorithmType == STREAMLINEALGORITHMTYPE_PARALLELSTATICDOMAINS)
             str = str + "STREAMLINEALGORITHMTYPE_PARALLELSTATICDOMAINS";
+        if(streamlineAlgorithmType == STREAMLINEALGORITHMTYPE_MASTERSLAVE)
+            str = str + "STREAMLINEALGORITHMTYPE_MASTERSLAVE";
         str = str + "\n";
         str = str + intToString("maxStreamlineProcessCount", maxStreamlineProcessCount, indent) + "\n";
         str = str + intToString("maxDomainCacheSize", maxDomainCacheSize, indent) + "\n";
+        str = str + intToString("workGroupSize", workGroupSize, indent) + "\n";
+        str = str + boolToString("pathlines", pathlines, indent) + "\n";
         return str;
     }
 
@@ -912,5 +950,7 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
     private int            streamlineAlgorithmType;
     private int            maxStreamlineProcessCount;
     private int            maxDomainCacheSize;
+    private int            workGroupSize;
+    private boolean        pathlines;
 }
 

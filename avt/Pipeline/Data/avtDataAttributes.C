@@ -161,6 +161,9 @@ using     std::sort;
 //    Hank Childs, Sun Oct 28 09:42:50 PST 2007
 //    Initialize containsExteriorBoundaryGhosts.
 //
+//    Hank Childs, Tue Jan 20 12:03:05 CST 2009
+//    Initialize dynamicDomainDecomposition.
+//
 // ****************************************************************************
 
 avtDataAttributes::avtDataAttributes()
@@ -186,6 +189,8 @@ avtDataAttributes::avtDataAttributes()
     dtime                  = 0.;
     timeIsAccurate         = false;
     
+    dynamicDomainDecomposition = false;
+
     xLabel                 = "X-Axis";
     yLabel                 = "Y-Axis";
     zLabel                 = "Z-Axis";
@@ -459,6 +464,9 @@ avtDataAttributes::DestructSelf(void)
 //    Jeremy Meredith, Thu Feb  7 17:52:59 EST 2008
 //    Added component extents for array variables.
 //
+//    Hank Childs, Tue Jan 20 12:03:05 CST 2009
+//    Added dynamicDomainDecomposition.
+//
 // ****************************************************************************
 
 void
@@ -478,6 +486,10 @@ avtDataAttributes::Print(ostream &out)
         out << "Cycle is not known. Suspected to be " << cycle << endl;
     else
         out << "Cycle = " << cycle << endl;
+
+    if (dynamicDomainDecomposition)
+        out << "The data set is being decomposed in parallel dynamically" 
+            << endl;
 
     if (containsOriginalCells)
         out << "This dataset contains the original cells list." << endl;
@@ -939,6 +951,9 @@ avtDataAttributes::Print(ostream &out)
 //    Jeremy Meredith, Thu Feb  7 17:52:59 EST 2008
 //    Added component extents for array variables.
 //
+//    Hank Childs, Tue Jan 20 12:03:05 CST 2009
+//    Added dynamicDomainDecomposition.
+//
 // ****************************************************************************
 
 void
@@ -969,7 +984,8 @@ avtDataAttributes::Copy(const avtDataAttributes &di)
     {
         timeIsAccurate = false;
     }
-
+   
+    SetDynamicDomainDecomposition(di.dynamicDomainDecomposition);
     SetMeshname(di.GetMeshname());
     SetFilename(di.GetFilename());
     SetFullDBName(di.GetFullDBName());
@@ -2452,6 +2468,25 @@ avtDataAttributes::SetTime(double d)
 
 
 // ****************************************************************************
+//  Method: avtDataAttributes::SetDynamicDomainDecomposition
+//
+//  Purpose:
+//      Sets whether the file format reader is doing its own domain 
+//      decomposition (dynamically) based on the number of processors.
+//
+//  Programmer: Hank Childs
+//  Creation:   January 20, 2009
+//
+// ****************************************************************************
+
+void
+avtDataAttributes::SetDynamicDomainDecomposition(bool ddd)
+{
+    dynamicDomainDecomposition = ddd;
+}
+
+
+// ****************************************************************************
 //  Method: avtDataAttributes::Write
 //
 //  Purpose:
@@ -2590,6 +2625,9 @@ avtDataAttributes::SetTime(double d)
 //    Kathleen Bonnell, Tue Feb 12 11:47:08 PST 2008
 //    Check for binRange size before writing.
 //
+//    Hank Childs, Tue Jan 20 12:03:05 CST 2009
+//    Added dynamicDomainDecomposition.
+//
 // ****************************************************************************
 
 void
@@ -2599,7 +2637,7 @@ avtDataAttributes::Write(avtDataObjectString &str,
     int   i, j;
 
     int varSize = 7;
-    int numVals = 31 + varSize*variables.size();
+    int numVals = 32 + varSize*variables.size();
     int *vals = new int[numVals];
     i = 0;
     vals[i++] = topologicalDimension;
@@ -2611,6 +2649,7 @@ avtDataAttributes::Write(avtDataObjectString &str,
     vals[i++] = cycle;
     vals[i++] = (cycleIsAccurate ? 1 : 0);
     vals[i++] = (timeIsAccurate ? 1 : 0);
+    vals[i++] = (dynamicDomainDecomposition ? 1 : 0);
     vals[i++] = (int) containsGhostZones;
     vals[i++] = (int) containsExteriorBoundaryGhosts;
     vals[i++] = (containsOriginalCells ? 1 : 0);
@@ -2876,6 +2915,9 @@ avtDataAttributes::Write(avtDataObjectString &str,
 //    Jeremy Meredith, Thu Feb  7 17:52:59 EST 2008
 //    Added component extents for array variables.
 //
+//    Hank Childs, Tue Jan 20 12:03:05 CST 2009
+//    Added dynamicDomainDecomposition.
+//
 // ****************************************************************************
 
 int
@@ -2921,6 +2963,10 @@ avtDataAttributes::Read(char *input)
     memcpy(&tmp, input, sizeof(int));
     input += sizeof(int); size += sizeof(int);
     timeIsAccurate = (tmp != 0 ? true : false);
+
+    memcpy(&tmp, input, sizeof(int));
+    input += sizeof(int); size += sizeof(int);
+    dynamicDomainDecomposition = (tmp != 0 ? true : false);
 
     memcpy(&tmp, input, sizeof(int));
     input += sizeof(int); size += sizeof(int);

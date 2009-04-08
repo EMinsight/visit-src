@@ -49,12 +49,33 @@
 #include <list>
 
 class  avtExtents;
+class vtkVisItCellLocator;
 
-typedef struct
+// ****************************************************************************
+//  Class: avtDatasetOnDemandFilter
+//
+//  Purpose:
+//     Helper class for list of entries 
+//
+//  Programmer: Hank Childs
+//  Creation:   March 1, 2008
+//
+//  Modifications:
+//    Gunther H. Weber, Fri Apr  3 17:32:29 PDT 2009
+//    Added visitCellLocator entry and a constructor that ensures that it
+//    is set to 0 (because if the value is different from 0 the destructor
+//    of avtDatasetOnDemandFilter will call Delete() on it.
+//
+// **************************************************************************** 
+
+struct DomainCacheEntry
 {
     vtkDataSet *ds;
-    int domainID;
-} DomainCacheEntry;
+    int domainID, timeStep;
+    vtkVisItCellLocator* cl;
+
+    DomainCacheEntry() : ds(0), timeStep(-1), cl(0) {}
+};
 
 
 // ****************************************************************************
@@ -79,6 +100,28 @@ typedef struct
 //    Hank Childs, Thu Jun 12 15:39:13 PDT 2008
 //    Added support for preventing on demand operation.
 //
+//    Dave Pugmire, Mon Jan 26 13:04:56 EST 2009
+//    Added purgeDSCount and access function.
+//
+//    Dave Pugmire, Tue Feb  3 11:05:24 EST 2009
+//    Added loadDSCount and access function
+//
+//    Dave Pugmire, Tue Mar 10 12:41:11 EDT 2009
+//    Added support for time/domain.
+//
+//    Hank Childs, Sun Mar 22 13:31:08 CDT 2009
+//    Add support for getting data around a point.
+//
+//    Dave Pugmire, Wed Mar 25 09:15:23 EDT 2009
+//    Add domain caching for point decomposed domains.
+//
+//    Dave Pugmire, Sat Mar 28 09:42:15 EDT 2009
+//    Counter to keep track of how many times a domain is loaded.
+//
+//    Gunther H. Weber, Fri Apr  3 17:40:05 PDT 2009
+//    Removed map from domain id to cell locator since we currently
+//    use the same domain id for all point based data load operations.
+//
 // **************************************************************************** 
 
 class PIPELINE_API avtDatasetOnDemandFilter : virtual public 
@@ -89,10 +132,11 @@ class PIPELINE_API avtDatasetOnDemandFilter : virtual public
      virtual                    ~avtDatasetOnDemandFilter();
 
   protected:
-    virtual bool                 DomainLoaded(int) const;
-    void                         GetLoadedDomains( std::vector<int> &domains );
-    void                         SetMaxQueueLength( int len ) { maxQueueLength = len; }
-    virtual vtkDataSet           *GetDomain(int);
+    virtual bool                 DomainLoaded(int, int) const;
+    void                         GetLoadedDomains(std::vector<std::vector<int> > &domains);
+    void                         SetMaxQueueLength(int len) { maxQueueLength = len; }
+    virtual vtkDataSet           *GetDomain(int, int);
+    virtual vtkDataSet           *GetDataAroundPoint(double, double, double, int);
     avtContract_p                ModifyContract(avtContract_p);
     virtual void                 UpdateDataObjectInfo(void);
 
@@ -104,11 +148,18 @@ class PIPELINE_API avtDatasetOnDemandFilter : virtual public
     // This needs to do something else......
     void                         SetOperatingOnDemand( bool v ) { operatingOnDemand = v; }
 
+protected:
+    int                          GetPurgeDSCount() const { return purgeDSCount; }
+    int                          GetLoadDSCount() const { return loadDSCount; }
+
+    std::map<unsigned long, int>           domainLoadCount;
+
   private:
     std::list<DomainCacheEntry>  domainQueue;
     int                          maxQueueLength;
     avtContract_p                firstContract;
     bool                         operatingOnDemand;
+    int                          purgeDSCount, loadDSCount;
 };
 
 
