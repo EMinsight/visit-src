@@ -35,16 +35,16 @@ PoincareAttributes::CopyAttributes(const AttributeGroup *atts)
     else if(atts->TypeName() == "Line")
     {
         const Line *line = (const Line *)atts;
-        SetLineSourceStart(line->GetPoint1());
-        SetLineSourceEnd(line->GetPoint2());
+        SetLineStart(line->GetPoint1());
+        SetLineEnd(line->GetPoint2());
         retval = true;
     }
     else if(atts->TypeName() == "PlaneAttributes")
     {
         const PlaneAttributes *plane = (const PlaneAttributes *)atts;
-        SetPlaneSourceOrigin(plane->GetOrigin());
-        SetPlaneSourceNormal(plane->GetNormal());
-        SetPlaneSourceUpAxis(plane->GetUpAxis());
+        SetPlaneOrigin(plane->GetOrigin());
+        SetPlaneNormal(plane->GetNormal());
+        SetPlaneUpAxis(plane->GetUpAxis());
         retval = true;
     }
     return retval;
@@ -84,16 +84,16 @@ PoincareAttributes::CreateCompatible(const std::string &tname) const
     else if (tname == "Line")
     {
         Line *l = new Line;
-        l->SetPoint1(GetLineSourceStart());
-        l->SetPoint2(GetLineSourceEnd());
+        l->SetPoint1(GetLineStart());
+        l->SetPoint2(GetLineEnd());
         retval = l;
     }
     else if (tname == "PlaneAttributes")
     {
         PlaneAttributes *p = new PlaneAttributes;
-        p->SetOrigin(GetPlaneSourceOrigin());
-        p->SetNormal(GetPlaneSourceNormal());
-        p->SetUpAxis(GetPlaneSourceUpAxis());
+        p->SetOrigin(GetPlaneOrigin());
+        p->SetNormal(GetPlaneNormal());
+        p->SetUpAxis(GetPlaneUpAxis());
         retval = p;
     }
     return retval;

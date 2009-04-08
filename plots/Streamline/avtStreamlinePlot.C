@@ -378,15 +378,15 @@ avtStreamlinePlot::SetAtts(const AttributeGroup *a)
     streamlineFilter->SetStreamlineDirection(atts.GetStreamlineDirection());
 
     streamlineFilter->SetPointSource(atts.GetPointSource());
-    streamlineFilter->SetLineSource(atts.GetLineSourceStart(),
-                                    atts.GetLineSourceEnd());
-    streamlineFilter->SetPlaneSource(atts.GetPlaneSourceOrigin(),
-                                     atts.GetPlaneSourceNormal(),
-                                     atts.GetPlaneSourceUpAxis(),
-                                     atts.GetPlaneSourceRadius());
-    streamlineFilter->SetSphereSource(atts.GetSphereSourceOrigin(),
-                                      atts.GetSphereSourceRadius());
-    streamlineFilter->SetBoxSource(atts.GetBoxSourceExtents());
+    streamlineFilter->SetLineSource(atts.GetLineStart(),
+                                    atts.GetLineEnd());
+    streamlineFilter->SetPlaneSource(atts.GetPlaneOrigin(),
+                                     atts.GetPlaneNormal(),
+                                     atts.GetPlaneUpAxis(),
+                                     atts.GetPlaneRadius());
+    streamlineFilter->SetSphereSource(atts.GetSphereOrigin(),
+                                      atts.GetSphereRadius());
+    streamlineFilter->SetBoxSource(atts.GetBoxExtents());
     streamlineFilter->SetUseWholeBox(atts.GetUseWholeBox());
     streamlineFilter->SetColoringMethod(int(atts.GetColoringMethod()));
 #endif

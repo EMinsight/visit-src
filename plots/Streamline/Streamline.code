@@ -17,9 +17,6 @@ Definition:
 //    Hank Childs, Sat Mar  3 09:00:12 PST 2007
 //    Disable useWholeBox if we are copying box extents.
 //
-//    Jeremy Meredith, Wed Apr  8 16:48:05 EDT 2009
-//    Initial steps to unification with Poincare attributes.
-//
 // ****************************************************************************
 
 bool
@@ -48,8 +45,8 @@ StreamlineAttributes::CopyAttributes(const AttributeGroup *atts)
         if(sourceType == SpecifiedLine)
         {
             const Line *line = (const Line *)atts;
-            SetLineSourceStart(line->GetPoint1());
-            SetLineSourceEnd(line->GetPoint2());
+            SetLineStart(line->GetPoint1());
+            SetLineEnd(line->GetPoint2());
             retval = true;
         }
     }
@@ -58,10 +55,10 @@ StreamlineAttributes::CopyAttributes(const AttributeGroup *atts)
         if(sourceType == SpecifiedPlane)
         {
             const PlaneAttributes *plane = (const PlaneAttributes *)atts;
-            SetPlaneSourceOrigin(plane->GetOrigin());
-            SetPlaneSourceNormal(plane->GetNormal());
-            SetPlaneSourceUpAxis(plane->GetUpAxis());
-            SetPlaneSourceRadius(plane->GetRadius());
+            SetPlaneOrigin(plane->GetOrigin());
+            SetPlaneNormal(plane->GetNormal());
+            SetPlaneUpAxis(plane->GetUpAxis());
+            SetPlaneRadius(plane->GetRadius());
             retval = true;
         }
     }
@@ -70,8 +67,8 @@ StreamlineAttributes::CopyAttributes(const AttributeGroup *atts)
         if(sourceType == SpecifiedSphere)
         {
             const SphereAttributes *sphere = (const SphereAttributes *)atts;
-            SetSphereSourceOrigin(sphere->GetOrigin());
-            SetSphereSourceRadius(sphere->GetRadius());
+            SetSphereOrigin(sphere->GetOrigin());
+            SetSphereRadius(sphere->GetRadius());
             retval = true;
         }
     }   
@@ -80,7 +77,7 @@ StreamlineAttributes::CopyAttributes(const AttributeGroup *atts)
         if(sourceType == SpecifiedBox)
         {
             const BoxExtents *box = (const BoxExtents *)atts;
-            SetBoxSourceExtents(box->GetExtents());
+            SetBoxExtents(box->GetExtents());
             SetUseWholeBox(false);
             retval = true;
         }
@@ -109,9 +106,6 @@ Definition:
 //    Brad Whitlock, Wed Dec 22 12:54:43 PDT 2004
 //    I added code to support the point tool.
 //
-//    Jeremy Meredith, Wed Apr  8 16:48:05 EDT 2009
-//    Initial steps to unification with Poincare attributes.
-//
 // ****************************************************************************
 
 AttributeSubject *
@@ -132,31 +126,31 @@ StreamlineAttributes::CreateCompatible(const std::string &tname) const
     else if(tname == "Line")
     {
         Line *l = new Line;
-        l->SetPoint1(GetLineSourceStart());
-        l->SetPoint2(GetLineSourceEnd());
+        l->SetPoint1(GetLineStart());
+        l->SetPoint2(GetLineEnd());
         retval = l;
     }
     else if(tname == "PlaneAttributes")
     {
         PlaneAttributes *p = new PlaneAttributes;
-        p->SetOrigin(GetPlaneSourceOrigin());
-        p->SetNormal(GetPlaneSourceNormal());
-        p->SetUpAxis(GetPlaneSourceUpAxis());
-        p->SetRadius(GetPlaneSourceRadius());
+        p->SetOrigin(GetPlaneOrigin());
+        p->SetNormal(GetPlaneNormal());
+        p->SetUpAxis(GetPlaneUpAxis());
+        p->SetRadius(GetPlaneRadius());
         p->SetHaveRadius(true);
         retval = p;
     }
     else if(tname == "SphereAttributes")
     {
         SphereAttributes *s = new SphereAttributes;
-        s->SetOrigin(GetSphereSourceOrigin());
-        s->SetRadius(GetSphereSourceRadius());
+        s->SetOrigin(GetSphereOrigin());
+        s->SetRadius(GetSphereRadius());
         retval = s;
     }
     else if(tname == "BoxExtents")
     {
         BoxExtents *b = new BoxExtents;
-        b->SetExtents(GetBoxSourceExtents());
+        b->SetExtents(GetBoxExtents());
         retval = b;
     }
 
@@ -186,9 +180,6 @@ Definition:
 //    Hank Childs, Sat Mar  3 09:00:12 PST 2007
 //    Add support for useWholeBox.
 //
-//    Jeremy Meredith, Wed Apr  8 16:48:05 EDT 2009
-//    Initial steps to unification with Poincare attributes.
-//
 // ****************************************************************************
 
 #define PDIF(p1,p2,i) ((p1)[i] != (p2)[i])
@@ -205,28 +196,28 @@ StreamlineAttributes::ChangesRequireRecalculation(const StreamlineAttributes &ob
     // If we're in line source mode and the line differs, sourceLineDiffers
     // evaluates to true.
     bool sourceLineDiffers = ((sourceType == SpecifiedLine) &&
-       (POINT_DIFFERS(lineSourceStart, obj.lineSourceStart) ||
-        POINT_DIFFERS(lineSourceEnd, obj.lineSourceEnd)));
+       (POINT_DIFFERS(lineStart, obj.lineStart) ||
+        POINT_DIFFERS(lineEnd, obj.lineEnd)));
 
     // If we're in plane source mode and the plane differs, sourcePlaneDiffers
     // evaluates to true.
     bool sourcePlaneDiffers = ((sourceType == SpecifiedPlane) &&
-       (POINT_DIFFERS(planeSourceOrigin, obj.planeSourceOrigin) ||
-        POINT_DIFFERS(planeSourceNormal, obj.planeSourceNormal) ||
-        POINT_DIFFERS(planeSourceUpAxis, obj.planeSourceUpAxis) ||
-        planeSourceRadius != obj.planeSourceRadius));
+       (POINT_DIFFERS(planeOrigin, obj.planeOrigin) ||
+        POINT_DIFFERS(planeNormal, obj.planeNormal) ||
+        POINT_DIFFERS(planeUpAxis, obj.planeUpAxis) ||
+        planeRadius != obj.planeRadius));
 
     // If we're in sphere source mode and the sphere differs, sourceSphereDiffers
     // evaluates to true.
     bool sourceSphereDiffers = ((sourceType == SpecifiedSphere) &&
-       (POINT_DIFFERS(sphereSourceOrigin, obj.sphereSourceOrigin) ||
-        (sphereSourceRadius != obj.sphereSourceRadius)));
+       (POINT_DIFFERS(sphereOrigin, obj.sphereOrigin) ||
+        (sphereRadius != obj.sphereRadius)));
 
-    // If we're in box source mode and the box differs, boxSourceDiffers
+    // If we're in box source mode and the box differs, boxDiffers
     // evaluates to true.
     bool boxSourceDiffers = (sourceType == SpecifiedBox) &&
-        (POINT_DIFFERS(boxSourceExtents, obj.boxSourceExtents) ||
-         POINT_DIFFERS(boxSourceExtents+3, obj.boxSourceExtents+3));
+        (POINT_DIFFERS(boxExtents, obj.boxExtents) ||
+         POINT_DIFFERS(boxExtents+3, obj.boxExtents+3));
     if (useWholeBox != obj.useWholeBox)
         boxSourceDiffers = true;
 

@@ -298,21 +298,21 @@ PoincareAttributes::PoincareAttributes() :
     pointSource[0] = 0;
     pointSource[1] = 0;
     pointSource[2] = 0;
-    lineSourceStart[0] = 0;
-    lineSourceStart[1] = 0;
-    lineSourceStart[2] = 0;
-    lineSourceEnd[0] = 1;
-    lineSourceEnd[1] = 0;
-    lineSourceEnd[2] = 0;
-    planeSourceOrigin[0] = 0;
-    planeSourceOrigin[1] = 0;
-    planeSourceOrigin[2] = 0;
-    planeSourceNormal[0] = 0;
-    planeSourceNormal[1] = 0;
-    planeSourceNormal[2] = 1;
-    planeSourceUpAxis[0] = 0;
-    planeSourceUpAxis[1] = 1;
-    planeSourceUpAxis[2] = 0;
+    lineStart[0] = 0;
+    lineStart[1] = 0;
+    lineStart[2] = 0;
+    lineEnd[0] = 1;
+    lineEnd[1] = 0;
+    lineEnd[2] = 0;
+    planeOrigin[0] = 0;
+    planeOrigin[1] = 0;
+    planeOrigin[2] = 0;
+    planeNormal[0] = 0;
+    planeNormal[1] = 0;
+    planeNormal[2] = 1;
+    planeUpAxis[0] = 0;
+    planeUpAxis[1] = 1;
+    planeUpAxis[2] = 0;
     legendFlag = true;
     lightingFlag = true;
     relTol = 0.0001;
@@ -359,25 +359,25 @@ PoincareAttributes::PoincareAttributes(const PoincareAttributes &obj) :
     pointSource[1] = obj.pointSource[1];
     pointSource[2] = obj.pointSource[2];
 
-    lineSourceStart[0] = obj.lineSourceStart[0];
-    lineSourceStart[1] = obj.lineSourceStart[1];
-    lineSourceStart[2] = obj.lineSourceStart[2];
+    lineStart[0] = obj.lineStart[0];
+    lineStart[1] = obj.lineStart[1];
+    lineStart[2] = obj.lineStart[2];
 
-    lineSourceEnd[0] = obj.lineSourceEnd[0];
-    lineSourceEnd[1] = obj.lineSourceEnd[1];
-    lineSourceEnd[2] = obj.lineSourceEnd[2];
+    lineEnd[0] = obj.lineEnd[0];
+    lineEnd[1] = obj.lineEnd[1];
+    lineEnd[2] = obj.lineEnd[2];
 
-    planeSourceOrigin[0] = obj.planeSourceOrigin[0];
-    planeSourceOrigin[1] = obj.planeSourceOrigin[1];
-    planeSourceOrigin[2] = obj.planeSourceOrigin[2];
+    planeOrigin[0] = obj.planeOrigin[0];
+    planeOrigin[1] = obj.planeOrigin[1];
+    planeOrigin[2] = obj.planeOrigin[2];
 
-    planeSourceNormal[0] = obj.planeSourceNormal[0];
-    planeSourceNormal[1] = obj.planeSourceNormal[1];
-    planeSourceNormal[2] = obj.planeSourceNormal[2];
+    planeNormal[0] = obj.planeNormal[0];
+    planeNormal[1] = obj.planeNormal[1];
+    planeNormal[2] = obj.planeNormal[2];
 
-    planeSourceUpAxis[0] = obj.planeSourceUpAxis[0];
-    planeSourceUpAxis[1] = obj.planeSourceUpAxis[1];
-    planeSourceUpAxis[2] = obj.planeSourceUpAxis[2];
+    planeUpAxis[0] = obj.planeUpAxis[0];
+    planeUpAxis[1] = obj.planeUpAxis[1];
+    planeUpAxis[2] = obj.planeUpAxis[2];
 
     legendFlag = obj.legendFlag;
     lightingFlag = obj.lightingFlag;
@@ -450,25 +450,25 @@ PoincareAttributes::operator = (const PoincareAttributes &obj)
     pointSource[1] = obj.pointSource[1];
     pointSource[2] = obj.pointSource[2];
 
-    lineSourceStart[0] = obj.lineSourceStart[0];
-    lineSourceStart[1] = obj.lineSourceStart[1];
-    lineSourceStart[2] = obj.lineSourceStart[2];
+    lineStart[0] = obj.lineStart[0];
+    lineStart[1] = obj.lineStart[1];
+    lineStart[2] = obj.lineStart[2];
 
-    lineSourceEnd[0] = obj.lineSourceEnd[0];
-    lineSourceEnd[1] = obj.lineSourceEnd[1];
-    lineSourceEnd[2] = obj.lineSourceEnd[2];
+    lineEnd[0] = obj.lineEnd[0];
+    lineEnd[1] = obj.lineEnd[1];
+    lineEnd[2] = obj.lineEnd[2];
 
-    planeSourceOrigin[0] = obj.planeSourceOrigin[0];
-    planeSourceOrigin[1] = obj.planeSourceOrigin[1];
-    planeSourceOrigin[2] = obj.planeSourceOrigin[2];
+    planeOrigin[0] = obj.planeOrigin[0];
+    planeOrigin[1] = obj.planeOrigin[1];
+    planeOrigin[2] = obj.planeOrigin[2];
 
-    planeSourceNormal[0] = obj.planeSourceNormal[0];
-    planeSourceNormal[1] = obj.planeSourceNormal[1];
-    planeSourceNormal[2] = obj.planeSourceNormal[2];
+    planeNormal[0] = obj.planeNormal[0];
+    planeNormal[1] = obj.planeNormal[1];
+    planeNormal[2] = obj.planeNormal[2];
 
-    planeSourceUpAxis[0] = obj.planeSourceUpAxis[0];
-    planeSourceUpAxis[1] = obj.planeSourceUpAxis[1];
-    planeSourceUpAxis[2] = obj.planeSourceUpAxis[2];
+    planeUpAxis[0] = obj.planeUpAxis[0];
+    planeUpAxis[1] = obj.planeUpAxis[1];
+    planeUpAxis[2] = obj.planeUpAxis[2];
 
     legendFlag = obj.legendFlag;
     lightingFlag = obj.lightingFlag;
@@ -519,41 +519,41 @@ PoincareAttributes::operator == (const PoincareAttributes &obj) const
     for(int i = 0; i < 3 && pointSource_equal; ++i)
         pointSource_equal = (pointSource[i] == obj.pointSource[i]);
 
-    // Compare the lineSourceStart arrays.
-    bool lineSourceStart_equal = true;
-    for(int i = 0; i < 3 && lineSourceStart_equal; ++i)
-        lineSourceStart_equal = (lineSourceStart[i] == obj.lineSourceStart[i]);
+    // Compare the lineStart arrays.
+    bool lineStart_equal = true;
+    for(int i = 0; i < 3 && lineStart_equal; ++i)
+        lineStart_equal = (lineStart[i] == obj.lineStart[i]);
 
-    // Compare the lineSourceEnd arrays.
-    bool lineSourceEnd_equal = true;
-    for(int i = 0; i < 3 && lineSourceEnd_equal; ++i)
-        lineSourceEnd_equal = (lineSourceEnd[i] == obj.lineSourceEnd[i]);
+    // Compare the lineEnd arrays.
+    bool lineEnd_equal = true;
+    for(int i = 0; i < 3 && lineEnd_equal; ++i)
+        lineEnd_equal = (lineEnd[i] == obj.lineEnd[i]);
 
-    // Compare the planeSourceOrigin arrays.
-    bool planeSourceOrigin_equal = true;
-    for(int i = 0; i < 3 && planeSourceOrigin_equal; ++i)
-        planeSourceOrigin_equal = (planeSourceOrigin[i] == obj.planeSourceOrigin[i]);
+    // Compare the planeOrigin arrays.
+    bool planeOrigin_equal = true;
+    for(int i = 0; i < 3 && planeOrigin_equal; ++i)
+        planeOrigin_equal = (planeOrigin[i] == obj.planeOrigin[i]);
 
-    // Compare the planeSourceNormal arrays.
-    bool planeSourceNormal_equal = true;
-    for(int i = 0; i < 3 && planeSourceNormal_equal; ++i)
-        planeSourceNormal_equal = (planeSourceNormal[i] == obj.planeSourceNormal[i]);
+    // Compare the planeNormal arrays.
+    bool planeNormal_equal = true;
+    for(int i = 0; i < 3 && planeNormal_equal; ++i)
+        planeNormal_equal = (planeNormal[i] == obj.planeNormal[i]);
 
-    // Compare the planeSourceUpAxis arrays.
-    bool planeSourceUpAxis_equal = true;
-    for(int i = 0; i < 3 && planeSourceUpAxis_equal; ++i)
-        planeSourceUpAxis_equal = (planeSourceUpAxis[i] == obj.planeSourceUpAxis[i]);
+    // Compare the planeUpAxis arrays.
+    bool planeUpAxis_equal = true;
+    for(int i = 0; i < 3 && planeUpAxis_equal; ++i)
+        planeUpAxis_equal = (planeUpAxis[i] == obj.planeUpAxis[i]);
 
     // Create the return value
     return ((sourceType == obj.sourceType) &&
             (maxStepLength == obj.maxStepLength) &&
             (termination == obj.termination) &&
             pointSource_equal &&
-            lineSourceStart_equal &&
-            lineSourceEnd_equal &&
-            planeSourceOrigin_equal &&
-            planeSourceNormal_equal &&
-            planeSourceUpAxis_equal &&
+            lineStart_equal &&
+            lineEnd_equal &&
+            planeOrigin_equal &&
+            planeNormal_equal &&
+            planeUpAxis_equal &&
             (legendFlag == obj.legendFlag) &&
             (lightingFlag == obj.lightingFlag) &&
             (relTol == obj.relTol) &&
@@ -653,16 +653,16 @@ PoincareAttributes::CopyAttributes(const AttributeGroup *atts)
     else if(atts->TypeName() == "Line")
     {
         const Line *line = (const Line *)atts;
-        SetLineSourceStart(line->GetPoint1());
-        SetLineSourceEnd(line->GetPoint2());
+        SetLineStart(line->GetPoint1());
+        SetLineEnd(line->GetPoint2());
         retval = true;
     }
     else if(atts->TypeName() == "PlaneAttributes")
     {
         const PlaneAttributes *plane = (const PlaneAttributes *)atts;
-        SetPlaneSourceOrigin(plane->GetOrigin());
-        SetPlaneSourceNormal(plane->GetNormal());
-        SetPlaneSourceUpAxis(plane->GetUpAxis());
+        SetPlaneOrigin(plane->GetOrigin());
+        SetPlaneNormal(plane->GetNormal());
+        SetPlaneUpAxis(plane->GetUpAxis());
         retval = true;
     }
     return retval;
@@ -699,16 +699,16 @@ PoincareAttributes::CreateCompatible(const std::string &tname) const
     else if (tname == "Line")
     {
         Line *l = new Line;
-        l->SetPoint1(GetLineSourceStart());
-        l->SetPoint2(GetLineSourceEnd());
+        l->SetPoint1(GetLineStart());
+        l->SetPoint2(GetLineEnd());
         retval = l;
     }
     else if (tname == "PlaneAttributes")
     {
         PlaneAttributes *p = new PlaneAttributes;
-        p->SetOrigin(GetPlaneSourceOrigin());
-        p->SetNormal(GetPlaneSourceNormal());
-        p->SetUpAxis(GetPlaneSourceUpAxis());
+        p->SetOrigin(GetPlaneOrigin());
+        p->SetNormal(GetPlaneNormal());
+        p->SetUpAxis(GetPlaneUpAxis());
         retval = p;
     }
     return retval;
@@ -763,11 +763,11 @@ PoincareAttributes::SelectAll()
     Select(ID_maxStepLength,           (void *)&maxStepLength);
     Select(ID_termination,             (void *)&termination);
     Select(ID_pointSource,             (void *)pointSource, 3);
-    Select(ID_lineSourceStart,         (void *)lineSourceStart, 3);
-    Select(ID_lineSourceEnd,           (void *)lineSourceEnd, 3);
-    Select(ID_planeSourceOrigin,       (void *)planeSourceOrigin, 3);
-    Select(ID_planeSourceNormal,       (void *)planeSourceNormal, 3);
-    Select(ID_planeSourceUpAxis,       (void *)planeSourceUpAxis, 3);
+    Select(ID_lineStart,               (void *)lineStart, 3);
+    Select(ID_lineEnd,                 (void *)lineEnd, 3);
+    Select(ID_planeOrigin,             (void *)planeOrigin, 3);
+    Select(ID_planeNormal,             (void *)planeNormal, 3);
+    Select(ID_planeUpAxis,             (void *)planeUpAxis, 3);
     Select(ID_legendFlag,              (void *)&legendFlag);
     Select(ID_lightingFlag,            (void *)&lightingFlag);
     Select(ID_relTol,                  (void *)&relTol);
@@ -845,34 +845,34 @@ PoincareAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool for
         node->AddNode(new DataNode("pointSource", pointSource, 3));
     }
 
-    if(completeSave || !FieldsEqual(ID_lineSourceStart, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_lineStart, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("lineSourceStart", lineSourceStart, 3));
+        node->AddNode(new DataNode("lineStart", lineStart, 3));
     }
 
-    if(completeSave || !FieldsEqual(ID_lineSourceEnd, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_lineEnd, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("lineSourceEnd", lineSourceEnd, 3));
+        node->AddNode(new DataNode("lineEnd", lineEnd, 3));
     }
 
-    if(completeSave || !FieldsEqual(ID_planeSourceOrigin, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_planeOrigin, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("planeSourceOrigin", planeSourceOrigin, 3));
+        node->AddNode(new DataNode("planeOrigin", planeOrigin, 3));
     }
 
-    if(completeSave || !FieldsEqual(ID_planeSourceNormal, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_planeNormal, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("planeSourceNormal", planeSourceNormal, 3));
+        node->AddNode(new DataNode("planeNormal", planeNormal, 3));
     }
 
-    if(completeSave || !FieldsEqual(ID_planeSourceUpAxis, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_planeUpAxis, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("planeSourceUpAxis", planeSourceUpAxis, 3));
+        node->AddNode(new DataNode("planeUpAxis", planeUpAxis, 3));
     }
 
     if(completeSave || !FieldsEqual(ID_legendFlag, &defaultObject))
@@ -1061,16 +1061,16 @@ PoincareAttributes::SetFromNode(DataNode *parentNode)
         SetTermination(node->AsDouble());
     if((node = searchNode->GetNode("pointSource")) != 0)
         SetPointSource(node->AsDoubleArray());
-    if((node = searchNode->GetNode("lineSourceStart")) != 0)
-        SetLineSourceStart(node->AsDoubleArray());
-    if((node = searchNode->GetNode("lineSourceEnd")) != 0)
-        SetLineSourceEnd(node->AsDoubleArray());
-    if((node = searchNode->GetNode("planeSourceOrigin")) != 0)
-        SetPlaneSourceOrigin(node->AsDoubleArray());
-    if((node = searchNode->GetNode("planeSourceNormal")) != 0)
-        SetPlaneSourceNormal(node->AsDoubleArray());
-    if((node = searchNode->GetNode("planeSourceUpAxis")) != 0)
-        SetPlaneSourceUpAxis(node->AsDoubleArray());
+    if((node = searchNode->GetNode("lineStart")) != 0)
+        SetLineStart(node->AsDoubleArray());
+    if((node = searchNode->GetNode("lineEnd")) != 0)
+        SetLineEnd(node->AsDoubleArray());
+    if((node = searchNode->GetNode("planeOrigin")) != 0)
+        SetPlaneOrigin(node->AsDoubleArray());
+    if((node = searchNode->GetNode("planeNormal")) != 0)
+        SetPlaneNormal(node->AsDoubleArray());
+    if((node = searchNode->GetNode("planeUpAxis")) != 0)
+        SetPlaneUpAxis(node->AsDoubleArray());
     if((node = searchNode->GetNode("legendFlag")) != 0)
         SetLegendFlag(node->AsBool());
     if((node = searchNode->GetNode("lightingFlag")) != 0)
@@ -1220,48 +1220,48 @@ PoincareAttributes::SetPointSource(const double *pointSource_)
 }
 
 void
-PoincareAttributes::SetLineSourceStart(const double *lineSourceStart_)
+PoincareAttributes::SetLineStart(const double *lineStart_)
 {
-    lineSourceStart[0] = lineSourceStart_[0];
-    lineSourceStart[1] = lineSourceStart_[1];
-    lineSourceStart[2] = lineSourceStart_[2];
-    Select(ID_lineSourceStart, (void *)lineSourceStart, 3);
+    lineStart[0] = lineStart_[0];
+    lineStart[1] = lineStart_[1];
+    lineStart[2] = lineStart_[2];
+    Select(ID_lineStart, (void *)lineStart, 3);
 }
 
 void
-PoincareAttributes::SetLineSourceEnd(const double *lineSourceEnd_)
+PoincareAttributes::SetLineEnd(const double *lineEnd_)
 {
-    lineSourceEnd[0] = lineSourceEnd_[0];
-    lineSourceEnd[1] = lineSourceEnd_[1];
-    lineSourceEnd[2] = lineSourceEnd_[2];
-    Select(ID_lineSourceEnd, (void *)lineSourceEnd, 3);
+    lineEnd[0] = lineEnd_[0];
+    lineEnd[1] = lineEnd_[1];
+    lineEnd[2] = lineEnd_[2];
+    Select(ID_lineEnd, (void *)lineEnd, 3);
 }
 
 void
-PoincareAttributes::SetPlaneSourceOrigin(const double *planeSourceOrigin_)
+PoincareAttributes::SetPlaneOrigin(const double *planeOrigin_)
 {
-    planeSourceOrigin[0] = planeSourceOrigin_[0];
-    planeSourceOrigin[1] = planeSourceOrigin_[1];
-    planeSourceOrigin[2] = planeSourceOrigin_[2];
-    Select(ID_planeSourceOrigin, (void *)planeSourceOrigin, 3);
+    planeOrigin[0] = planeOrigin_[0];
+    planeOrigin[1] = planeOrigin_[1];
+    planeOrigin[2] = planeOrigin_[2];
+    Select(ID_planeOrigin, (void *)planeOrigin, 3);
 }
 
 void
-PoincareAttributes::SetPlaneSourceNormal(const double *planeSourceNormal_)
+PoincareAttributes::SetPlaneNormal(const double *planeNormal_)
 {
-    planeSourceNormal[0] = planeSourceNormal_[0];
-    planeSourceNormal[1] = planeSourceNormal_[1];
-    planeSourceNormal[2] = planeSourceNormal_[2];
-    Select(ID_planeSourceNormal, (void *)planeSourceNormal, 3);
+    planeNormal[0] = planeNormal_[0];
+    planeNormal[1] = planeNormal_[1];
+    planeNormal[2] = planeNormal_[2];
+    Select(ID_planeNormal, (void *)planeNormal, 3);
 }
 
 void
-PoincareAttributes::SetPlaneSourceUpAxis(const double *planeSourceUpAxis_)
+PoincareAttributes::SetPlaneUpAxis(const double *planeUpAxis_)
 {
-    planeSourceUpAxis[0] = planeSourceUpAxis_[0];
-    planeSourceUpAxis[1] = planeSourceUpAxis_[1];
-    planeSourceUpAxis[2] = planeSourceUpAxis_[2];
-    Select(ID_planeSourceUpAxis, (void *)planeSourceUpAxis, 3);
+    planeUpAxis[0] = planeUpAxis_[0];
+    planeUpAxis[1] = planeUpAxis_[1];
+    planeUpAxis[2] = planeUpAxis_[2];
+    Select(ID_planeUpAxis, (void *)planeUpAxis, 3);
 }
 
 void
@@ -1446,63 +1446,63 @@ PoincareAttributes::GetPointSource()
 }
 
 const double *
-PoincareAttributes::GetLineSourceStart() const
+PoincareAttributes::GetLineStart() const
 {
-    return lineSourceStart;
+    return lineStart;
 }
 
 double *
-PoincareAttributes::GetLineSourceStart()
+PoincareAttributes::GetLineStart()
 {
-    return lineSourceStart;
+    return lineStart;
 }
 
 const double *
-PoincareAttributes::GetLineSourceEnd() const
+PoincareAttributes::GetLineEnd() const
 {
-    return lineSourceEnd;
+    return lineEnd;
 }
 
 double *
-PoincareAttributes::GetLineSourceEnd()
+PoincareAttributes::GetLineEnd()
 {
-    return lineSourceEnd;
+    return lineEnd;
 }
 
 const double *
-PoincareAttributes::GetPlaneSourceOrigin() const
+PoincareAttributes::GetPlaneOrigin() const
 {
-    return planeSourceOrigin;
+    return planeOrigin;
 }
 
 double *
-PoincareAttributes::GetPlaneSourceOrigin()
+PoincareAttributes::GetPlaneOrigin()
 {
-    return planeSourceOrigin;
+    return planeOrigin;
 }
 
 const double *
-PoincareAttributes::GetPlaneSourceNormal() const
+PoincareAttributes::GetPlaneNormal() const
 {
-    return planeSourceNormal;
+    return planeNormal;
 }
 
 double *
-PoincareAttributes::GetPlaneSourceNormal()
+PoincareAttributes::GetPlaneNormal()
 {
-    return planeSourceNormal;
+    return planeNormal;
 }
 
 const double *
-PoincareAttributes::GetPlaneSourceUpAxis() const
+PoincareAttributes::GetPlaneUpAxis() const
 {
-    return planeSourceUpAxis;
+    return planeUpAxis;
 }
 
 double *
-PoincareAttributes::GetPlaneSourceUpAxis()
+PoincareAttributes::GetPlaneUpAxis()
 {
-    return planeSourceUpAxis;
+    return planeUpAxis;
 }
 
 bool
@@ -1654,33 +1654,33 @@ PoincareAttributes::SelectPointSource()
 }
 
 void
-PoincareAttributes::SelectLineSourceStart()
+PoincareAttributes::SelectLineStart()
 {
-    Select(ID_lineSourceStart, (void *)lineSourceStart, 3);
+    Select(ID_lineStart, (void *)lineStart, 3);
 }
 
 void
-PoincareAttributes::SelectLineSourceEnd()
+PoincareAttributes::SelectLineEnd()
 {
-    Select(ID_lineSourceEnd, (void *)lineSourceEnd, 3);
+    Select(ID_lineEnd, (void *)lineEnd, 3);
 }
 
 void
-PoincareAttributes::SelectPlaneSourceOrigin()
+PoincareAttributes::SelectPlaneOrigin()
 {
-    Select(ID_planeSourceOrigin, (void *)planeSourceOrigin, 3);
+    Select(ID_planeOrigin, (void *)planeOrigin, 3);
 }
 
 void
-PoincareAttributes::SelectPlaneSourceNormal()
+PoincareAttributes::SelectPlaneNormal()
 {
-    Select(ID_planeSourceNormal, (void *)planeSourceNormal, 3);
+    Select(ID_planeNormal, (void *)planeNormal, 3);
 }
 
 void
-PoincareAttributes::SelectPlaneSourceUpAxis()
+PoincareAttributes::SelectPlaneUpAxis()
 {
-    Select(ID_planeSourceUpAxis, (void *)planeSourceUpAxis, 3);
+    Select(ID_planeUpAxis, (void *)planeUpAxis, 3);
 }
 
 void
@@ -1723,11 +1723,11 @@ PoincareAttributes::GetFieldName(int index) const
     case ID_maxStepLength:           return "maxStepLength";
     case ID_termination:             return "termination";
     case ID_pointSource:             return "pointSource";
-    case ID_lineSourceStart:         return "lineSourceStart";
-    case ID_lineSourceEnd:           return "lineSourceEnd";
-    case ID_planeSourceOrigin:       return "planeSourceOrigin";
-    case ID_planeSourceNormal:       return "planeSourceNormal";
-    case ID_planeSourceUpAxis:       return "planeSourceUpAxis";
+    case ID_lineStart:               return "lineStart";
+    case ID_lineEnd:                 return "lineEnd";
+    case ID_planeOrigin:             return "planeOrigin";
+    case ID_planeNormal:             return "planeNormal";
+    case ID_planeUpAxis:             return "planeUpAxis";
     case ID_legendFlag:              return "legendFlag";
     case ID_lightingFlag:            return "lightingFlag";
     case ID_relTol:                  return "relTol";
@@ -1777,11 +1777,11 @@ PoincareAttributes::GetFieldType(int index) const
     case ID_maxStepLength:           return FieldType_double;
     case ID_termination:             return FieldType_double;
     case ID_pointSource:             return FieldType_doubleArray;
-    case ID_lineSourceStart:         return FieldType_doubleArray;
-    case ID_lineSourceEnd:           return FieldType_doubleArray;
-    case ID_planeSourceOrigin:       return FieldType_doubleArray;
-    case ID_planeSourceNormal:       return FieldType_doubleArray;
-    case ID_planeSourceUpAxis:       return FieldType_doubleArray;
+    case ID_lineStart:               return FieldType_doubleArray;
+    case ID_lineEnd:                 return FieldType_doubleArray;
+    case ID_planeOrigin:             return FieldType_doubleArray;
+    case ID_planeNormal:             return FieldType_doubleArray;
+    case ID_planeUpAxis:             return FieldType_doubleArray;
     case ID_legendFlag:              return FieldType_bool;
     case ID_lightingFlag:            return FieldType_bool;
     case ID_relTol:                  return FieldType_double;
@@ -1831,11 +1831,11 @@ PoincareAttributes::GetFieldTypeName(int index) const
     case ID_maxStepLength:           return "double";
     case ID_termination:             return "double";
     case ID_pointSource:             return "doubleArray";
-    case ID_lineSourceStart:         return "doubleArray";
-    case ID_lineSourceEnd:           return "doubleArray";
-    case ID_planeSourceOrigin:       return "doubleArray";
-    case ID_planeSourceNormal:       return "doubleArray";
-    case ID_planeSourceUpAxis:       return "doubleArray";
+    case ID_lineStart:               return "doubleArray";
+    case ID_lineEnd:                 return "doubleArray";
+    case ID_planeOrigin:             return "doubleArray";
+    case ID_planeNormal:             return "doubleArray";
+    case ID_planeUpAxis:             return "doubleArray";
     case ID_legendFlag:              return "bool";
     case ID_lightingFlag:            return "bool";
     case ID_relTol:                  return "double";
@@ -1908,54 +1908,54 @@ PoincareAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = pointSource_equal;
         }
         break;
-    case ID_lineSourceStart:
+    case ID_lineStart:
         {  // new scope
-        // Compare the lineSourceStart arrays.
-        bool lineSourceStart_equal = true;
-        for(int i = 0; i < 3 && lineSourceStart_equal; ++i)
-            lineSourceStart_equal = (lineSourceStart[i] == obj.lineSourceStart[i]);
+        // Compare the lineStart arrays.
+        bool lineStart_equal = true;
+        for(int i = 0; i < 3 && lineStart_equal; ++i)
+            lineStart_equal = (lineStart[i] == obj.lineStart[i]);
 
-        retval = lineSourceStart_equal;
+        retval = lineStart_equal;
         }
         break;
-    case ID_lineSourceEnd:
+    case ID_lineEnd:
         {  // new scope
-        // Compare the lineSourceEnd arrays.
-        bool lineSourceEnd_equal = true;
-        for(int i = 0; i < 3 && lineSourceEnd_equal; ++i)
-            lineSourceEnd_equal = (lineSourceEnd[i] == obj.lineSourceEnd[i]);
+        // Compare the lineEnd arrays.
+        bool lineEnd_equal = true;
+        for(int i = 0; i < 3 && lineEnd_equal; ++i)
+            lineEnd_equal = (lineEnd[i] == obj.lineEnd[i]);
 
-        retval = lineSourceEnd_equal;
+        retval = lineEnd_equal;
         }
         break;
-    case ID_planeSourceOrigin:
+    case ID_planeOrigin:
         {  // new scope
-        // Compare the planeSourceOrigin arrays.
-        bool planeSourceOrigin_equal = true;
-        for(int i = 0; i < 3 && planeSourceOrigin_equal; ++i)
-            planeSourceOrigin_equal = (planeSourceOrigin[i] == obj.planeSourceOrigin[i]);
+        // Compare the planeOrigin arrays.
+        bool planeOrigin_equal = true;
+        for(int i = 0; i < 3 && planeOrigin_equal; ++i)
+            planeOrigin_equal = (planeOrigin[i] == obj.planeOrigin[i]);
 
-        retval = planeSourceOrigin_equal;
+        retval = planeOrigin_equal;
         }
         break;
-    case ID_planeSourceNormal:
+    case ID_planeNormal:
         {  // new scope
-        // Compare the planeSourceNormal arrays.
-        bool planeSourceNormal_equal = true;
-        for(int i = 0; i < 3 && planeSourceNormal_equal; ++i)
-            planeSourceNormal_equal = (planeSourceNormal[i] == obj.planeSourceNormal[i]);
+        // Compare the planeNormal arrays.
+        bool planeNormal_equal = true;
+        for(int i = 0; i < 3 && planeNormal_equal; ++i)
+            planeNormal_equal = (planeNormal[i] == obj.planeNormal[i]);
 
-        retval = planeSourceNormal_equal;
+        retval = planeNormal_equal;
         }
         break;
-    case ID_planeSourceUpAxis:
+    case ID_planeUpAxis:
         {  // new scope
-        // Compare the planeSourceUpAxis arrays.
-        bool planeSourceUpAxis_equal = true;
-        for(int i = 0; i < 3 && planeSourceUpAxis_equal; ++i)
-            planeSourceUpAxis_equal = (planeSourceUpAxis[i] == obj.planeSourceUpAxis[i]);
+        // Compare the planeUpAxis arrays.
+        bool planeUpAxis_equal = true;
+        for(int i = 0; i < 3 && planeUpAxis_equal; ++i)
+            planeUpAxis_equal = (planeUpAxis[i] == obj.planeUpAxis[i]);
 
-        retval = planeSourceUpAxis_equal;
+        retval = planeUpAxis_equal;
         }
         break;
     case ID_legendFlag:

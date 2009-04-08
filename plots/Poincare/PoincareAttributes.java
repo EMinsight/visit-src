@@ -102,26 +102,26 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         pointSource[0] = 0;
         pointSource[1] = 0;
         pointSource[2] = 0;
-        lineSourceStart = new double[3];
-        lineSourceStart[0] = 0;
-        lineSourceStart[1] = 0;
-        lineSourceStart[2] = 0;
-        lineSourceEnd = new double[3];
-        lineSourceEnd[0] = 1;
-        lineSourceEnd[1] = 0;
-        lineSourceEnd[2] = 0;
-        planeSourceOrigin = new double[3];
-        planeSourceOrigin[0] = 0;
-        planeSourceOrigin[1] = 0;
-        planeSourceOrigin[2] = 0;
-        planeSourceNormal = new double[3];
-        planeSourceNormal[0] = 0;
-        planeSourceNormal[1] = 0;
-        planeSourceNormal[2] = 1;
-        planeSourceUpAxis = new double[3];
-        planeSourceUpAxis[0] = 0;
-        planeSourceUpAxis[1] = 1;
-        planeSourceUpAxis[2] = 0;
+        lineStart = new double[3];
+        lineStart[0] = 0;
+        lineStart[1] = 0;
+        lineStart[2] = 0;
+        lineEnd = new double[3];
+        lineEnd[0] = 1;
+        lineEnd[1] = 0;
+        lineEnd[2] = 0;
+        planeOrigin = new double[3];
+        planeOrigin[0] = 0;
+        planeOrigin[1] = 0;
+        planeOrigin[2] = 0;
+        planeNormal = new double[3];
+        planeNormal[0] = 0;
+        planeNormal[1] = 0;
+        planeNormal[2] = 1;
+        planeUpAxis = new double[3];
+        planeUpAxis[0] = 0;
+        planeUpAxis[1] = 1;
+        planeUpAxis[2] = 0;
         legendFlag = true;
         lightingFlag = true;
         relTol = 0.0001;
@@ -159,30 +159,30 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         pointSource[1] = obj.pointSource[1];
         pointSource[2] = obj.pointSource[2];
 
-        lineSourceStart = new double[3];
-        lineSourceStart[0] = obj.lineSourceStart[0];
-        lineSourceStart[1] = obj.lineSourceStart[1];
-        lineSourceStart[2] = obj.lineSourceStart[2];
+        lineStart = new double[3];
+        lineStart[0] = obj.lineStart[0];
+        lineStart[1] = obj.lineStart[1];
+        lineStart[2] = obj.lineStart[2];
 
-        lineSourceEnd = new double[3];
-        lineSourceEnd[0] = obj.lineSourceEnd[0];
-        lineSourceEnd[1] = obj.lineSourceEnd[1];
-        lineSourceEnd[2] = obj.lineSourceEnd[2];
+        lineEnd = new double[3];
+        lineEnd[0] = obj.lineEnd[0];
+        lineEnd[1] = obj.lineEnd[1];
+        lineEnd[2] = obj.lineEnd[2];
 
-        planeSourceOrigin = new double[3];
-        planeSourceOrigin[0] = obj.planeSourceOrigin[0];
-        planeSourceOrigin[1] = obj.planeSourceOrigin[1];
-        planeSourceOrigin[2] = obj.planeSourceOrigin[2];
+        planeOrigin = new double[3];
+        planeOrigin[0] = obj.planeOrigin[0];
+        planeOrigin[1] = obj.planeOrigin[1];
+        planeOrigin[2] = obj.planeOrigin[2];
 
-        planeSourceNormal = new double[3];
-        planeSourceNormal[0] = obj.planeSourceNormal[0];
-        planeSourceNormal[1] = obj.planeSourceNormal[1];
-        planeSourceNormal[2] = obj.planeSourceNormal[2];
+        planeNormal = new double[3];
+        planeNormal[0] = obj.planeNormal[0];
+        planeNormal[1] = obj.planeNormal[1];
+        planeNormal[2] = obj.planeNormal[2];
 
-        planeSourceUpAxis = new double[3];
-        planeSourceUpAxis[0] = obj.planeSourceUpAxis[0];
-        planeSourceUpAxis[1] = obj.planeSourceUpAxis[1];
-        planeSourceUpAxis[2] = obj.planeSourceUpAxis[2];
+        planeUpAxis = new double[3];
+        planeUpAxis[0] = obj.planeUpAxis[0];
+        planeUpAxis[1] = obj.planeUpAxis[1];
+        planeUpAxis[2] = obj.planeUpAxis[2];
 
         legendFlag = obj.legendFlag;
         lightingFlag = obj.lightingFlag;
@@ -218,41 +218,41 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         for(i = 0; i < 3 && pointSource_equal; ++i)
             pointSource_equal = (pointSource[i] == obj.pointSource[i]);
 
-        // Compare the lineSourceStart arrays.
-        boolean lineSourceStart_equal = true;
-        for(i = 0; i < 3 && lineSourceStart_equal; ++i)
-            lineSourceStart_equal = (lineSourceStart[i] == obj.lineSourceStart[i]);
+        // Compare the lineStart arrays.
+        boolean lineStart_equal = true;
+        for(i = 0; i < 3 && lineStart_equal; ++i)
+            lineStart_equal = (lineStart[i] == obj.lineStart[i]);
 
-        // Compare the lineSourceEnd arrays.
-        boolean lineSourceEnd_equal = true;
-        for(i = 0; i < 3 && lineSourceEnd_equal; ++i)
-            lineSourceEnd_equal = (lineSourceEnd[i] == obj.lineSourceEnd[i]);
+        // Compare the lineEnd arrays.
+        boolean lineEnd_equal = true;
+        for(i = 0; i < 3 && lineEnd_equal; ++i)
+            lineEnd_equal = (lineEnd[i] == obj.lineEnd[i]);
 
-        // Compare the planeSourceOrigin arrays.
-        boolean planeSourceOrigin_equal = true;
-        for(i = 0; i < 3 && planeSourceOrigin_equal; ++i)
-            planeSourceOrigin_equal = (planeSourceOrigin[i] == obj.planeSourceOrigin[i]);
+        // Compare the planeOrigin arrays.
+        boolean planeOrigin_equal = true;
+        for(i = 0; i < 3 && planeOrigin_equal; ++i)
+            planeOrigin_equal = (planeOrigin[i] == obj.planeOrigin[i]);
 
-        // Compare the planeSourceNormal arrays.
-        boolean planeSourceNormal_equal = true;
-        for(i = 0; i < 3 && planeSourceNormal_equal; ++i)
-            planeSourceNormal_equal = (planeSourceNormal[i] == obj.planeSourceNormal[i]);
+        // Compare the planeNormal arrays.
+        boolean planeNormal_equal = true;
+        for(i = 0; i < 3 && planeNormal_equal; ++i)
+            planeNormal_equal = (planeNormal[i] == obj.planeNormal[i]);
 
-        // Compare the planeSourceUpAxis arrays.
-        boolean planeSourceUpAxis_equal = true;
-        for(i = 0; i < 3 && planeSourceUpAxis_equal; ++i)
-            planeSourceUpAxis_equal = (planeSourceUpAxis[i] == obj.planeSourceUpAxis[i]);
+        // Compare the planeUpAxis arrays.
+        boolean planeUpAxis_equal = true;
+        for(i = 0; i < 3 && planeUpAxis_equal; ++i)
+            planeUpAxis_equal = (planeUpAxis[i] == obj.planeUpAxis[i]);
 
         // Create the return value
         return ((sourceType == obj.sourceType) &&
                 (maxStepLength == obj.maxStepLength) &&
                 (termination == obj.termination) &&
                 pointSource_equal &&
-                lineSourceStart_equal &&
-                lineSourceEnd_equal &&
-                planeSourceOrigin_equal &&
-                planeSourceNormal_equal &&
-                planeSourceUpAxis_equal &&
+                lineStart_equal &&
+                lineEnd_equal &&
+                planeOrigin_equal &&
+                planeNormal_equal &&
+                planeUpAxis_equal &&
                 (legendFlag == obj.legendFlag) &&
                 (lightingFlag == obj.lightingFlag) &&
                 (relTol == obj.relTol) &&
@@ -314,83 +314,83 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         Select(3);
     }
 
-    public void SetLineSourceStart(double[] lineSourceStart_)
+    public void SetLineStart(double[] lineStart_)
     {
-        lineSourceStart[0] = lineSourceStart_[0];
-        lineSourceStart[1] = lineSourceStart_[1];
-        lineSourceStart[2] = lineSourceStart_[2];
+        lineStart[0] = lineStart_[0];
+        lineStart[1] = lineStart_[1];
+        lineStart[2] = lineStart_[2];
         Select(4);
     }
 
-    public void SetLineSourceStart(double e0, double e1, double e2)
+    public void SetLineStart(double e0, double e1, double e2)
     {
-        lineSourceStart[0] = e0;
-        lineSourceStart[1] = e1;
-        lineSourceStart[2] = e2;
+        lineStart[0] = e0;
+        lineStart[1] = e1;
+        lineStart[2] = e2;
         Select(4);
     }
 
-    public void SetLineSourceEnd(double[] lineSourceEnd_)
+    public void SetLineEnd(double[] lineEnd_)
     {
-        lineSourceEnd[0] = lineSourceEnd_[0];
-        lineSourceEnd[1] = lineSourceEnd_[1];
-        lineSourceEnd[2] = lineSourceEnd_[2];
+        lineEnd[0] = lineEnd_[0];
+        lineEnd[1] = lineEnd_[1];
+        lineEnd[2] = lineEnd_[2];
         Select(5);
     }
 
-    public void SetLineSourceEnd(double e0, double e1, double e2)
+    public void SetLineEnd(double e0, double e1, double e2)
     {
-        lineSourceEnd[0] = e0;
-        lineSourceEnd[1] = e1;
-        lineSourceEnd[2] = e2;
+        lineEnd[0] = e0;
+        lineEnd[1] = e1;
+        lineEnd[2] = e2;
         Select(5);
     }
 
-    public void SetPlaneSourceOrigin(double[] planeSourceOrigin_)
+    public void SetPlaneOrigin(double[] planeOrigin_)
     {
-        planeSourceOrigin[0] = planeSourceOrigin_[0];
-        planeSourceOrigin[1] = planeSourceOrigin_[1];
-        planeSourceOrigin[2] = planeSourceOrigin_[2];
+        planeOrigin[0] = planeOrigin_[0];
+        planeOrigin[1] = planeOrigin_[1];
+        planeOrigin[2] = planeOrigin_[2];
         Select(6);
     }
 
-    public void SetPlaneSourceOrigin(double e0, double e1, double e2)
+    public void SetPlaneOrigin(double e0, double e1, double e2)
     {
-        planeSourceOrigin[0] = e0;
-        planeSourceOrigin[1] = e1;
-        planeSourceOrigin[2] = e2;
+        planeOrigin[0] = e0;
+        planeOrigin[1] = e1;
+        planeOrigin[2] = e2;
         Select(6);
     }
 
-    public void SetPlaneSourceNormal(double[] planeSourceNormal_)
+    public void SetPlaneNormal(double[] planeNormal_)
     {
-        planeSourceNormal[0] = planeSourceNormal_[0];
-        planeSourceNormal[1] = planeSourceNormal_[1];
-        planeSourceNormal[2] = planeSourceNormal_[2];
+        planeNormal[0] = planeNormal_[0];
+        planeNormal[1] = planeNormal_[1];
+        planeNormal[2] = planeNormal_[2];
         Select(7);
     }
 
-    public void SetPlaneSourceNormal(double e0, double e1, double e2)
+    public void SetPlaneNormal(double e0, double e1, double e2)
     {
-        planeSourceNormal[0] = e0;
-        planeSourceNormal[1] = e1;
-        planeSourceNormal[2] = e2;
+        planeNormal[0] = e0;
+        planeNormal[1] = e1;
+        planeNormal[2] = e2;
         Select(7);
     }
 
-    public void SetPlaneSourceUpAxis(double[] planeSourceUpAxis_)
+    public void SetPlaneUpAxis(double[] planeUpAxis_)
     {
-        planeSourceUpAxis[0] = planeSourceUpAxis_[0];
-        planeSourceUpAxis[1] = planeSourceUpAxis_[1];
-        planeSourceUpAxis[2] = planeSourceUpAxis_[2];
+        planeUpAxis[0] = planeUpAxis_[0];
+        planeUpAxis[1] = planeUpAxis_[1];
+        planeUpAxis[2] = planeUpAxis_[2];
         Select(8);
     }
 
-    public void SetPlaneSourceUpAxis(double e0, double e1, double e2)
+    public void SetPlaneUpAxis(double e0, double e1, double e2)
     {
-        planeSourceUpAxis[0] = e0;
-        planeSourceUpAxis[1] = e1;
-        planeSourceUpAxis[2] = e2;
+        planeUpAxis[0] = e0;
+        planeUpAxis[1] = e1;
+        planeUpAxis[2] = e2;
         Select(8);
     }
 
@@ -525,11 +525,11 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
     public double         GetMaxStepLength() { return maxStepLength; }
     public double         GetTermination() { return termination; }
     public double[]       GetPointSource() { return pointSource; }
-    public double[]       GetLineSourceStart() { return lineSourceStart; }
-    public double[]       GetLineSourceEnd() { return lineSourceEnd; }
-    public double[]       GetPlaneSourceOrigin() { return planeSourceOrigin; }
-    public double[]       GetPlaneSourceNormal() { return planeSourceNormal; }
-    public double[]       GetPlaneSourceUpAxis() { return planeSourceUpAxis; }
+    public double[]       GetLineStart() { return lineStart; }
+    public double[]       GetLineEnd() { return lineEnd; }
+    public double[]       GetPlaneOrigin() { return planeOrigin; }
+    public double[]       GetPlaneNormal() { return planeNormal; }
+    public double[]       GetPlaneUpAxis() { return planeUpAxis; }
     public boolean        GetLegendFlag() { return legendFlag; }
     public boolean        GetLightingFlag() { return lightingFlag; }
     public double         GetRelTol() { return relTol; }
@@ -564,15 +564,15 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         if(WriteSelect(3, buf))
             buf.WriteDoubleArray(pointSource);
         if(WriteSelect(4, buf))
-            buf.WriteDoubleArray(lineSourceStart);
+            buf.WriteDoubleArray(lineStart);
         if(WriteSelect(5, buf))
-            buf.WriteDoubleArray(lineSourceEnd);
+            buf.WriteDoubleArray(lineEnd);
         if(WriteSelect(6, buf))
-            buf.WriteDoubleArray(planeSourceOrigin);
+            buf.WriteDoubleArray(planeOrigin);
         if(WriteSelect(7, buf))
-            buf.WriteDoubleArray(planeSourceNormal);
+            buf.WriteDoubleArray(planeNormal);
         if(WriteSelect(8, buf))
-            buf.WriteDoubleArray(planeSourceUpAxis);
+            buf.WriteDoubleArray(planeUpAxis);
         if(WriteSelect(9, buf))
             buf.WriteBool(legendFlag);
         if(WriteSelect(10, buf))
@@ -637,19 +637,19 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
                 SetPointSource(buf.ReadDoubleArray());
                 break;
             case 4:
-                SetLineSourceStart(buf.ReadDoubleArray());
+                SetLineStart(buf.ReadDoubleArray());
                 break;
             case 5:
-                SetLineSourceEnd(buf.ReadDoubleArray());
+                SetLineEnd(buf.ReadDoubleArray());
                 break;
             case 6:
-                SetPlaneSourceOrigin(buf.ReadDoubleArray());
+                SetPlaneOrigin(buf.ReadDoubleArray());
                 break;
             case 7:
-                SetPlaneSourceNormal(buf.ReadDoubleArray());
+                SetPlaneNormal(buf.ReadDoubleArray());
                 break;
             case 8:
-                SetPlaneSourceUpAxis(buf.ReadDoubleArray());
+                SetPlaneUpAxis(buf.ReadDoubleArray());
                 break;
             case 9:
                 SetLegendFlag(buf.ReadBool());
@@ -733,11 +733,11 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         str = str + doubleToString("maxStepLength", maxStepLength, indent) + "\n";
         str = str + doubleToString("termination", termination, indent) + "\n";
         str = str + doubleArrayToString("pointSource", pointSource, indent) + "\n";
-        str = str + doubleArrayToString("lineSourceStart", lineSourceStart, indent) + "\n";
-        str = str + doubleArrayToString("lineSourceEnd", lineSourceEnd, indent) + "\n";
-        str = str + doubleArrayToString("planeSourceOrigin", planeSourceOrigin, indent) + "\n";
-        str = str + doubleArrayToString("planeSourceNormal", planeSourceNormal, indent) + "\n";
-        str = str + doubleArrayToString("planeSourceUpAxis", planeSourceUpAxis, indent) + "\n";
+        str = str + doubleArrayToString("lineStart", lineStart, indent) + "\n";
+        str = str + doubleArrayToString("lineEnd", lineEnd, indent) + "\n";
+        str = str + doubleArrayToString("planeOrigin", planeOrigin, indent) + "\n";
+        str = str + doubleArrayToString("planeNormal", planeNormal, indent) + "\n";
+        str = str + doubleArrayToString("planeUpAxis", planeUpAxis, indent) + "\n";
         str = str + boolToString("legendFlag", legendFlag, indent) + "\n";
         str = str + boolToString("lightingFlag", lightingFlag, indent) + "\n";
         str = str + doubleToString("relTol", relTol, indent) + "\n";
@@ -813,11 +813,11 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
     private double         maxStepLength;
     private double         termination;
     private double[]       pointSource;
-    private double[]       lineSourceStart;
-    private double[]       lineSourceEnd;
-    private double[]       planeSourceOrigin;
-    private double[]       planeSourceNormal;
-    private double[]       planeSourceUpAxis;
+    private double[]       lineStart;
+    private double[]       lineEnd;
+    private double[]       planeOrigin;
+    private double[]       planeNormal;
+    private double[]       planeUpAxis;
     private boolean        legendFlag;
     private boolean        lightingFlag;
     private double         relTol;

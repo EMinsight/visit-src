@@ -339,14 +339,14 @@ avtPoincarePlot::SetAtts(const AttributeGroup *a)
 
       case PoincareAttributes::SpecifiedLine:
         poincareFilter->SetSourceType(STREAMLINE_SOURCE_LINE);
-        poincareFilter->SetLineSource(atts.GetLineSourceStart(), atts.GetLineSourceEnd());
+        poincareFilter->SetLineSource(atts.GetLineStart(), atts.GetLineEnd());
         break;
 
       case PoincareAttributes::SpecifiedPlane:
         poincareFilter->SetSourceType(STREAMLINE_SOURCE_PLANE);
-        poincareFilter->SetPlaneSource(atts.GetPlaneSourceOrigin(),
-                                       atts.GetPlaneSourceNormal(),
-                                       atts.GetPlaneSourceUpAxis(),
+        poincareFilter->SetPlaneSource(atts.GetPlaneOrigin(),
+                                       atts.GetPlaneNormal(),
+                                       atts.GetPlaneUpAxis(),
                                        atts.GetSourceRadius());
         break;
     }

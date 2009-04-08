@@ -118,11 +118,11 @@ public:
     // Property selection methods
     virtual void SelectAll();
     void SelectPointSource();
-    void SelectLineSourceStart();
-    void SelectLineSourceEnd();
-    void SelectPlaneSourceOrigin();
-    void SelectPlaneSourceNormal();
-    void SelectPlaneSourceUpAxis();
+    void SelectLineStart();
+    void SelectLineEnd();
+    void SelectPlaneOrigin();
+    void SelectPlaneNormal();
+    void SelectPlaneUpAxis();
     void SelectColorTableName();
     void SelectSingleColor();
 
@@ -131,11 +131,11 @@ public:
     void SetMaxStepLength(double maxStepLength_);
     void SetTermination(double termination_);
     void SetPointSource(const double *pointSource_);
-    void SetLineSourceStart(const double *lineSourceStart_);
-    void SetLineSourceEnd(const double *lineSourceEnd_);
-    void SetPlaneSourceOrigin(const double *planeSourceOrigin_);
-    void SetPlaneSourceNormal(const double *planeSourceNormal_);
-    void SetPlaneSourceUpAxis(const double *planeSourceUpAxis_);
+    void SetLineStart(const double *lineStart_);
+    void SetLineEnd(const double *lineEnd_);
+    void SetPlaneOrigin(const double *planeOrigin_);
+    void SetPlaneNormal(const double *planeNormal_);
+    void SetPlaneUpAxis(const double *planeUpAxis_);
     void SetLegendFlag(bool legendFlag_);
     void SetLightingFlag(bool lightingFlag_);
     void SetRelTol(double relTol_);
@@ -164,16 +164,16 @@ public:
     double               GetTermination() const;
     const double         *GetPointSource() const;
           double         *GetPointSource();
-    const double         *GetLineSourceStart() const;
-          double         *GetLineSourceStart();
-    const double         *GetLineSourceEnd() const;
-          double         *GetLineSourceEnd();
-    const double         *GetPlaneSourceOrigin() const;
-          double         *GetPlaneSourceOrigin();
-    const double         *GetPlaneSourceNormal() const;
-          double         *GetPlaneSourceNormal();
-    const double         *GetPlaneSourceUpAxis() const;
-          double         *GetPlaneSourceUpAxis();
+    const double         *GetLineStart() const;
+          double         *GetLineStart();
+    const double         *GetLineEnd() const;
+          double         *GetLineEnd();
+    const double         *GetPlaneOrigin() const;
+          double         *GetPlaneOrigin();
+    const double         *GetPlaneNormal() const;
+          double         *GetPlaneNormal();
+    const double         *GetPlaneUpAxis() const;
+          double         *GetPlaneUpAxis();
     bool                 GetLegendFlag() const;
     bool                 GetLightingFlag() const;
     double               GetRelTol() const;
@@ -247,11 +247,11 @@ public:
         ID_maxStepLength,
         ID_termination,
         ID_pointSource,
-        ID_lineSourceStart,
-        ID_lineSourceEnd,
-        ID_planeSourceOrigin,
-        ID_planeSourceNormal,
-        ID_planeSourceUpAxis,
+        ID_lineStart,
+        ID_lineEnd,
+        ID_planeOrigin,
+        ID_planeNormal,
+        ID_planeUpAxis,
         ID_legendFlag,
         ID_lightingFlag,
         ID_relTol,
@@ -280,11 +280,11 @@ private:
     double         maxStepLength;
     double         termination;
     double         pointSource[3];
-    double         lineSourceStart[3];
-    double         lineSourceEnd[3];
-    double         planeSourceOrigin[3];
-    double         planeSourceNormal[3];
-    double         planeSourceUpAxis[3];
+    double         lineStart[3];
+    double         lineEnd[3];
+    double         planeOrigin[3];
+    double         planeNormal[3];
+    double         planeUpAxis[3];
     bool           legendFlag;
     bool           lightingFlag;
     double         relTol;

@@ -166,40 +166,40 @@ QvisPoincarePlotWindow::CreateWindowContents()
             this, SLOT(pointSourceProcessText()));
     mainLayout->addWidget(pointSource, 3,1);
 
-    lineSourceStartLabel = new QLabel(tr("Line Point Start"), central, "lineSourceStartLabel");
-    mainLayout->addWidget(lineSourceStartLabel,4,0);
-    lineSourceStart = new QLineEdit(central, "lineSourceStart");
-    connect(lineSourceStart, SIGNAL(returnPressed()),
-            this, SLOT(lineSourceStartProcessText()));
-    mainLayout->addWidget(lineSourceStart, 4,1);
+    lineStartLabel = new QLabel(tr("Line Point Start"), central, "lineStartLabel");
+    mainLayout->addWidget(lineStartLabel,4,0);
+    lineStart = new QLineEdit(central, "lineStart");
+    connect(lineStart, SIGNAL(returnPressed()),
+            this, SLOT(lineStartProcessText()));
+    mainLayout->addWidget(lineStart, 4,1);
 
-    lineSourceEndLabel = new QLabel(tr("Line Point End"), central, "lineSourceEndLabel");
-    mainLayout->addWidget(lineSourceEndLabel,5,0);
-    lineSourceEnd = new QLineEdit(central, "lineSourceEnd");
-    connect(lineSourceEnd, SIGNAL(returnPressed()),
-            this, SLOT(lineSourceEndProcessText()));
-    mainLayout->addWidget(lineSourceEnd, 5,1);
+    lineEndLabel = new QLabel(tr("Line Point End"), central, "lineEndLabel");
+    mainLayout->addWidget(lineEndLabel,5,0);
+    lineEnd = new QLineEdit(central, "lineEnd");
+    connect(lineEnd, SIGNAL(returnPressed()),
+            this, SLOT(lineEndProcessText()));
+    mainLayout->addWidget(lineEnd, 5,1);
 
-    planeSourceOriginLabel = new QLabel(tr("Plane Source Point"), central, "planeSourceOriginLabel");
-    mainLayout->addWidget(planeSourceOriginLabel,6,0);
-    planeSourceOrigin = new QLineEdit(central, "planeSourceOrigin");
-    connect(planeSourceOrigin, SIGNAL(returnPressed()),
-            this, SLOT(planeSourceOriginProcessText()));
-    mainLayout->addWidget(planeSourceOrigin, 6,1);
+    planeOriginLabel = new QLabel(tr("Plane Source Point"), central, "planeOriginLabel");
+    mainLayout->addWidget(planeOriginLabel,6,0);
+    planeOrigin = new QLineEdit(central, "planeOrigin");
+    connect(planeOrigin, SIGNAL(returnPressed()),
+            this, SLOT(planeOriginProcessText()));
+    mainLayout->addWidget(planeOrigin, 6,1);
 
-    planeSourceNormalLabel = new QLabel(tr("Plane Source Normal"), central, "planeSourceNormalLabel");
-    mainLayout->addWidget(planeSourceNormalLabel,7,0);
-    planeSourceNormal = new QLineEdit(central, "planeSourceNormal");
-    connect(planeSourceNormal, SIGNAL(returnPressed()),
-            this, SLOT(planeSourceNormalProcessText()));
-    mainLayout->addWidget(planeSourceNormal, 7,1);
+    planeNormalLabel = new QLabel(tr("Plane Source Normal"), central, "planeNormalLabel");
+    mainLayout->addWidget(planeNormalLabel,7,0);
+    planeNormal = new QLineEdit(central, "planeNormal");
+    connect(planeNormal, SIGNAL(returnPressed()),
+            this, SLOT(planeNormalProcessText()));
+    mainLayout->addWidget(planeNormal, 7,1);
 
-    planeSourceUpAxisLabel = new QLabel(tr("Plane Source Up Axis"), central, "planeSourceUpAxisLabel");
-    mainLayout->addWidget(planeSourceUpAxisLabel,8,0);
-    planeSourceUpAxis = new QLineEdit(central, "planeSourceUpAxis");
-    connect(planeSourceUpAxis, SIGNAL(returnPressed()),
-            this, SLOT(planeSourceUpAxisProcessText()));
-    mainLayout->addWidget(planeSourceUpAxis, 8,1);
+    planeUpAxisLabel = new QLabel(tr("Plane Source Up Axis"), central, "planeUpAxisLabel");
+    mainLayout->addWidget(planeUpAxisLabel,8,0);
+    planeUpAxis = new QLineEdit(central, "planeUpAxis");
+    connect(planeUpAxis, SIGNAL(returnPressed()),
+            this, SLOT(planeUpAxisProcessText()));
+    mainLayout->addWidget(planeUpAxis, 8,1);
 
     legendFlag = new QCheckBox(tr("Legend"), central, "legendFlag");
     connect(legendFlag, SIGNAL(toggled(bool)),
@@ -451,63 +451,63 @@ QvisPoincarePlotWindow::UpdateWindow(bool doAll)
             }
             if (atts->GetSourceType() == PoincareAttributes::SpecifiedLine)
             {
-                lineSourceStart->setEnabled(true);
-                if(lineSourceStartLabel)
-                    lineSourceStartLabel->setEnabled(true);
+                lineStart->setEnabled(true);
+                if(lineStartLabel)
+                    lineStartLabel->setEnabled(true);
             }
             else
             {
-                lineSourceStart->setEnabled(false);
-                if(lineSourceStartLabel)
-                    lineSourceStartLabel->setEnabled(false);
+                lineStart->setEnabled(false);
+                if(lineStartLabel)
+                    lineStartLabel->setEnabled(false);
             }
             if (atts->GetSourceType() == PoincareAttributes::SpecifiedLine)
             {
-                lineSourceEnd->setEnabled(true);
-                if(lineSourceEndLabel)
-                    lineSourceEndLabel->setEnabled(true);
+                lineEnd->setEnabled(true);
+                if(lineEndLabel)
+                    lineEndLabel->setEnabled(true);
             }
             else
             {
-                lineSourceEnd->setEnabled(false);
-                if(lineSourceEndLabel)
-                    lineSourceEndLabel->setEnabled(false);
+                lineEnd->setEnabled(false);
+                if(lineEndLabel)
+                    lineEndLabel->setEnabled(false);
             }
             if (atts->GetSourceType() == PoincareAttributes::SpecifiedPlane)
             {
-                planeSourceOrigin->setEnabled(true);
-                if(planeSourceOriginLabel)
-                    planeSourceOriginLabel->setEnabled(true);
+                planeOrigin->setEnabled(true);
+                if(planeOriginLabel)
+                    planeOriginLabel->setEnabled(true);
             }
             else
             {
-                planeSourceOrigin->setEnabled(false);
-                if(planeSourceOriginLabel)
-                    planeSourceOriginLabel->setEnabled(false);
+                planeOrigin->setEnabled(false);
+                if(planeOriginLabel)
+                    planeOriginLabel->setEnabled(false);
             }
             if (atts->GetSourceType() == PoincareAttributes::SpecifiedPlane)
             {
-                planeSourceNormal->setEnabled(true);
-                if(planeSourceNormalLabel)
-                    planeSourceNormalLabel->setEnabled(true);
+                planeNormal->setEnabled(true);
+                if(planeNormalLabel)
+                    planeNormalLabel->setEnabled(true);
             }
             else
             {
-                planeSourceNormal->setEnabled(false);
-                if(planeSourceNormalLabel)
-                    planeSourceNormalLabel->setEnabled(false);
+                planeNormal->setEnabled(false);
+                if(planeNormalLabel)
+                    planeNormalLabel->setEnabled(false);
             }
             if (atts->GetSourceType() == PoincareAttributes::SpecifiedPlane)
             {
-                planeSourceUpAxis->setEnabled(true);
-                if(planeSourceUpAxisLabel)
-                    planeSourceUpAxisLabel->setEnabled(true);
+                planeUpAxis->setEnabled(true);
+                if(planeUpAxisLabel)
+                    planeUpAxisLabel->setEnabled(true);
             }
             else
             {
-                planeSourceUpAxis->setEnabled(false);
-                if(planeSourceUpAxisLabel)
-                    planeSourceUpAxisLabel->setEnabled(false);
+                planeUpAxis->setEnabled(false);
+                if(planeUpAxisLabel)
+                    planeUpAxisLabel->setEnabled(false);
             }
             if (atts->GetSourceType() == PoincareAttributes::SpecifiedLine || atts->GetSourceType() == PoincareAttributes::SpecifiedPlane)
             {
@@ -556,40 +556,40 @@ QvisPoincarePlotWindow::UpdateWindow(bool doAll)
             pointSource->setText(temp);
             pointSource->blockSignals(false);
             break;
-          case PoincareAttributes::ID_lineSourceStart:
-            dptr = atts->GetLineSourceStart();
+          case PoincareAttributes::ID_lineStart:
+            dptr = atts->GetLineStart();
             temp.sprintf("%g %g %g", dptr[0], dptr[1], dptr[2]);
-            lineSourceStart->blockSignals(true);
-            lineSourceStart->setText(temp);
-            lineSourceStart->blockSignals(false);
+            lineStart->blockSignals(true);
+            lineStart->setText(temp);
+            lineStart->blockSignals(false);
             break;
-          case PoincareAttributes::ID_lineSourceEnd:
-            dptr = atts->GetLineSourceEnd();
+          case PoincareAttributes::ID_lineEnd:
+            dptr = atts->GetLineEnd();
             temp.sprintf("%g %g %g", dptr[0], dptr[1], dptr[2]);
-            lineSourceEnd->blockSignals(true);
-            lineSourceEnd->setText(temp);
-            lineSourceEnd->blockSignals(false);
+            lineEnd->blockSignals(true);
+            lineEnd->setText(temp);
+            lineEnd->blockSignals(false);
             break;
-          case PoincareAttributes::ID_planeSourceOrigin:
-            dptr = atts->GetPlaneSourceOrigin();
+          case PoincareAttributes::ID_planeOrigin:
+            dptr = atts->GetPlaneOrigin();
             temp.sprintf("%g %g %g", dptr[0], dptr[1], dptr[2]);
-            planeSourceOrigin->blockSignals(true);
-            planeSourceOrigin->setText(temp);
-            planeSourceOrigin->blockSignals(false);
+            planeOrigin->blockSignals(true);
+            planeOrigin->setText(temp);
+            planeOrigin->blockSignals(false);
             break;
-          case PoincareAttributes::ID_planeSourceNormal:
-            dptr = atts->GetPlaneSourceNormal();
+          case PoincareAttributes::ID_planeNormal:
+            dptr = atts->GetPlaneNormal();
             temp.sprintf("%g %g %g", dptr[0], dptr[1], dptr[2]);
-            planeSourceNormal->blockSignals(true);
-            planeSourceNormal->setText(temp);
-            planeSourceNormal->blockSignals(false);
+            planeNormal->blockSignals(true);
+            planeNormal->setText(temp);
+            planeNormal->blockSignals(false);
             break;
-          case PoincareAttributes::ID_planeSourceUpAxis:
-            dptr = atts->GetPlaneSourceUpAxis();
+          case PoincareAttributes::ID_planeUpAxis:
+            dptr = atts->GetPlaneUpAxis();
             temp.sprintf("%g %g %g", dptr[0], dptr[1], dptr[2]);
-            planeSourceUpAxis->blockSignals(true);
-            planeSourceUpAxis->setText(temp);
-            planeSourceUpAxis->blockSignals(false);
+            planeUpAxis->blockSignals(true);
+            planeUpAxis->setText(temp);
+            planeUpAxis->blockSignals(false);
             break;
           case PoincareAttributes::ID_legendFlag:
             legendFlag->blockSignals(true);
@@ -803,128 +803,128 @@ QvisPoincarePlotWindow::GetCurrentValues(int which_widget)
         }
     }
 
-    // Do lineSourceStart
-    if(which_widget == PoincareAttributes::ID_lineSourceStart || doAll)
+    // Do lineStart
+    if(which_widget == PoincareAttributes::ID_lineStart || doAll)
     {
-        temp = lineSourceStart->displayText().simplifyWhiteSpace();
+        temp = lineStart->displayText().simplifyWhiteSpace();
         okay = !temp.isEmpty();
         if(okay)
         {
             double val[3];
             if((okay = (sscanf(temp.latin1(), "%lg %lg %lg", &val[0], &val[1], &val[2]) == 3)) == true)
-                atts->SetLineSourceStart(val);
+                atts->SetLineStart(val);
         }
 
         if(!okay)
         {
-            const double *val = atts->GetLineSourceStart();
+            const double *val = atts->GetLineStart();
             QString num; num.sprintf("<%g %g %g>", 
                 val[0], val[1], val[2]);
-            msg = tr("The value of lineSourceStart was invalid. "
+            msg = tr("The value of lineStart was invalid. "
                      "Resetting to the last good value of %1.").
                   arg(num);
             Message(msg);
-            atts->SetLineSourceStart(atts->GetLineSourceStart());
+            atts->SetLineStart(atts->GetLineStart());
         }
     }
 
-    // Do lineSourceEnd
-    if(which_widget == PoincareAttributes::ID_lineSourceEnd || doAll)
+    // Do lineEnd
+    if(which_widget == PoincareAttributes::ID_lineEnd || doAll)
     {
-        temp = lineSourceEnd->displayText().simplifyWhiteSpace();
+        temp = lineEnd->displayText().simplifyWhiteSpace();
         okay = !temp.isEmpty();
         if(okay)
         {
             double val[3];
             if((okay = (sscanf(temp.latin1(), "%lg %lg %lg", &val[0], &val[1], &val[2]) == 3)) == true)
-                atts->SetLineSourceEnd(val);
+                atts->SetLineEnd(val);
         }
 
         if(!okay)
         {
-            const double *val = atts->GetLineSourceEnd();
+            const double *val = atts->GetLineEnd();
             QString num; num.sprintf("<%g %g %g>", 
                 val[0], val[1], val[2]);
-            msg = tr("The value of lineSourceEnd was invalid. "
+            msg = tr("The value of lineEnd was invalid. "
                      "Resetting to the last good value of %1.").
                   arg(num);
             Message(msg);
-            atts->SetLineSourceEnd(atts->GetLineSourceEnd());
+            atts->SetLineEnd(atts->GetLineEnd());
         }
     }
 
-    // Do planeSourceOrigin
-    if(which_widget == PoincareAttributes::ID_planeSourceOrigin || doAll)
+    // Do planeOrigin
+    if(which_widget == PoincareAttributes::ID_planeOrigin || doAll)
     {
-        temp = planeSourceOrigin->displayText().simplifyWhiteSpace();
+        temp = planeOrigin->displayText().simplifyWhiteSpace();
         okay = !temp.isEmpty();
         if(okay)
         {
             double val[3];
             if((okay = (sscanf(temp.latin1(), "%lg %lg %lg", &val[0], &val[1], &val[2]) == 3)) == true)
-                atts->SetPlaneSourceOrigin(val);
+                atts->SetPlaneOrigin(val);
         }
 
         if(!okay)
         {
-            const double *val = atts->GetPlaneSourceOrigin();
+            const double *val = atts->GetPlaneOrigin();
             QString num; num.sprintf("<%g %g %g>", 
                 val[0], val[1], val[2]);
-            msg = tr("The value of planeSourceOrigin was invalid. "
+            msg = tr("The value of planeOrigin was invalid. "
                      "Resetting to the last good value of %1.").
                   arg(num);
             Message(msg);
-            atts->SetPlaneSourceOrigin(atts->GetPlaneSourceOrigin());
+            atts->SetPlaneOrigin(atts->GetPlaneOrigin());
         }
     }
 
-    // Do planeSourceNormal
-    if(which_widget == PoincareAttributes::ID_planeSourceNormal || doAll)
+    // Do planeNormal
+    if(which_widget == PoincareAttributes::ID_planeNormal || doAll)
     {
-        temp = planeSourceNormal->displayText().simplifyWhiteSpace();
+        temp = planeNormal->displayText().simplifyWhiteSpace();
         okay = !temp.isEmpty();
         if(okay)
         {
             double val[3];
             if((okay = (sscanf(temp.latin1(), "%lg %lg %lg", &val[0], &val[1], &val[2]) == 3)) == true)
-                atts->SetPlaneSourceNormal(val);
+                atts->SetPlaneNormal(val);
         }
 
         if(!okay)
         {
-            const double *val = atts->GetPlaneSourceNormal();
+            const double *val = atts->GetPlaneNormal();
             QString num; num.sprintf("<%g %g %g>", 
                 val[0], val[1], val[2]);
-            msg = tr("The value of planeSourceNormal was invalid. "
+            msg = tr("The value of planeNormal was invalid. "
                      "Resetting to the last good value of %1.").
                   arg(num);
             Message(msg);
-            atts->SetPlaneSourceNormal(atts->GetPlaneSourceNormal());
+            atts->SetPlaneNormal(atts->GetPlaneNormal());
         }
     }
 
-    // Do planeSourceUpAxis
-    if(which_widget == PoincareAttributes::ID_planeSourceUpAxis || doAll)
+    // Do planeUpAxis
+    if(which_widget == PoincareAttributes::ID_planeUpAxis || doAll)
     {
-        temp = planeSourceUpAxis->displayText().simplifyWhiteSpace();
+        temp = planeUpAxis->displayText().simplifyWhiteSpace();
         okay = !temp.isEmpty();
         if(okay)
         {
             double val[3];
             if((okay = (sscanf(temp.latin1(), "%lg %lg %lg", &val[0], &val[1], &val[2]) == 3)) == true)
-                atts->SetPlaneSourceUpAxis(val);
+                atts->SetPlaneUpAxis(val);
         }
 
         if(!okay)
         {
-            const double *val = atts->GetPlaneSourceUpAxis();
+            const double *val = atts->GetPlaneUpAxis();
             QString num; num.sprintf("<%g %g %g>", 
                 val[0], val[1], val[2]);
-            msg = tr("The value of planeSourceUpAxis was invalid. "
+            msg = tr("The value of planeUpAxis was invalid. "
                      "Resetting to the last good value of %1.").
                   arg(num);
             Message(msg);
-            atts->SetPlaneSourceUpAxis(atts->GetPlaneSourceUpAxis());
+            atts->SetPlaneUpAxis(atts->GetPlaneUpAxis());
         }
     }
 
@@ -1268,41 +1268,41 @@ QvisPoincarePlotWindow::pointSourceProcessText()
 
 
 void
-QvisPoincarePlotWindow::lineSourceStartProcessText()
+QvisPoincarePlotWindow::lineStartProcessText()
 {
-    GetCurrentValues(PoincareAttributes::ID_lineSourceStart);
+    GetCurrentValues(PoincareAttributes::ID_lineStart);
     Apply();
 }
 
 
 void
-QvisPoincarePlotWindow::lineSourceEndProcessText()
+QvisPoincarePlotWindow::lineEndProcessText()
 {
-    GetCurrentValues(PoincareAttributes::ID_lineSourceEnd);
+    GetCurrentValues(PoincareAttributes::ID_lineEnd);
     Apply();
 }
 
 
 void
-QvisPoincarePlotWindow::planeSourceOriginProcessText()
+QvisPoincarePlotWindow::planeOriginProcessText()
 {
-    GetCurrentValues(PoincareAttributes::ID_planeSourceOrigin);
+    GetCurrentValues(PoincareAttributes::ID_planeOrigin);
     Apply();
 }
 
 
 void
-QvisPoincarePlotWindow::planeSourceNormalProcessText()
+QvisPoincarePlotWindow::planeNormalProcessText()
 {
-    GetCurrentValues(PoincareAttributes::ID_planeSourceNormal);
+    GetCurrentValues(PoincareAttributes::ID_planeNormal);
     Apply();
 }
 
 
 void
-QvisPoincarePlotWindow::planeSourceUpAxisProcessText()
+QvisPoincarePlotWindow::planeUpAxisProcessText()
 {
-    GetCurrentValues(PoincareAttributes::ID_planeSourceUpAxis);
+    GetCurrentValues(PoincareAttributes::ID_planeUpAxis);
     Apply();
 }
 

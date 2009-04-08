@@ -639,53 +639,53 @@ QvisStreamlinePlotWindow::UpdateWindow(bool doAll)
             temp.sprintf("%g %g %g", dptr[0], dptr[1], dptr[2]);
             pointSource->setText(temp);
             break;
-        case StreamlineAttributes::ID_lineSourceStart:
-            dptr = streamAtts->GetLineSourceStart();
+        case StreamlineAttributes::ID_lineStart:
+            dptr = streamAtts->GetLineStart();
             temp.sprintf("%g %g %g", dptr[0], dptr[1], dptr[2]);
             lineStart->setText(temp);
             break;
-        case StreamlineAttributes::ID_lineSourceEnd:
-            dptr = streamAtts->GetLineSourceEnd();
+        case StreamlineAttributes::ID_lineEnd:
+            dptr = streamAtts->GetLineEnd();
             temp.sprintf("%g %g %g", dptr[0], dptr[1], dptr[2]);
             lineEnd->setText(temp);
             break;
-        case StreamlineAttributes::ID_planeSourceOrigin:
-            dptr = streamAtts->GetPlaneSourceOrigin();
+        case StreamlineAttributes::ID_planeOrigin:
+            dptr = streamAtts->GetPlaneOrigin();
             temp.sprintf("%g %g %g", dptr[0], dptr[1], dptr[2]);
             planeOrigin->setText(temp);
             break;
-        case StreamlineAttributes::ID_planeSourceNormal:
-            dptr = streamAtts->GetPlaneSourceNormal();
+        case StreamlineAttributes::ID_planeNormal:
+            dptr = streamAtts->GetPlaneNormal();
             temp.sprintf("%g %g %g", dptr[0], dptr[1], dptr[2]);
             planeNormal->setText(temp);
             break;
-        case StreamlineAttributes::ID_planeSourceUpAxis:
-            dptr = streamAtts->GetPlaneSourceUpAxis();
+        case StreamlineAttributes::ID_planeUpAxis:
+            dptr = streamAtts->GetPlaneUpAxis();
             temp.sprintf("%g %g %g", dptr[0], dptr[1], dptr[2]);
             planeUpAxis->setText(temp);
             break;
-        case StreamlineAttributes::ID_planeSourceRadius:
-            temp.setNum(streamAtts->GetPlaneSourceRadius());
+        case StreamlineAttributes::ID_planeRadius:
+            temp.setNum(streamAtts->GetPlaneRadius());
             planeRadius->setText(temp);
             break;
-        case StreamlineAttributes::ID_sphereSourceOrigin:
-            dptr = streamAtts->GetSphereSourceOrigin();
+        case StreamlineAttributes::ID_sphereOrigin:
+            dptr = streamAtts->GetSphereOrigin();
             temp.sprintf("%g %g %g", dptr[0], dptr[1], dptr[2]);
             sphereOrigin->setText(temp);
             break;
-        case StreamlineAttributes::ID_sphereSourceRadius:
-            temp.setNum(streamAtts->GetSphereSourceRadius());
+        case StreamlineAttributes::ID_sphereRadius:
+            temp.setNum(streamAtts->GetSphereRadius());
             sphereRadius->setText(temp);
             break;
-        case StreamlineAttributes::ID_boxSourceExtents:
-            temp.sprintf("%g %g", streamAtts->GetBoxSourceExtents()[0],
-                streamAtts->GetBoxSourceExtents()[1]);
+        case StreamlineAttributes::ID_boxExtents:
+            temp.sprintf("%g %g", streamAtts->GetBoxExtents()[0],
+                streamAtts->GetBoxExtents()[1]);
             boxExtents[0]->setText(temp);
-            temp.sprintf("%g %g", streamAtts->GetBoxSourceExtents()[2],
-                streamAtts->GetBoxSourceExtents()[3]);
+            temp.sprintf("%g %g", streamAtts->GetBoxExtents()[2],
+                streamAtts->GetBoxExtents()[3]);
             boxExtents[1]->setText(temp);
-            temp.sprintf("%g %g", streamAtts->GetBoxSourceExtents()[4],
-                streamAtts->GetBoxSourceExtents()[5]);
+            temp.sprintf("%g %g", streamAtts->GetBoxExtents()[4],
+                streamAtts->GetBoxExtents()[5]);
             boxExtents[2]->setText(temp);
             break;
         case StreamlineAttributes::ID_useWholeBox:
@@ -1291,7 +1291,7 @@ QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
     }
 
     // Do lineStart
-    if(which_widget == StreamlineAttributes::ID_lineSourceStart || doAll)
+    if(which_widget == StreamlineAttributes::ID_lineStart || doAll)
     {
         temp = lineStart->displayText().simplifyWhiteSpace();
         okay = !temp.isEmpty();
@@ -1299,23 +1299,23 @@ QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
         {
             double val[3];
             if((okay = (sscanf(temp.latin1(), "%lg %lg %lg", &val[0], &val[1], &val[2]) == 3)) == true)
-                streamAtts->SetLineSourceStart(val);
+                streamAtts->SetLineStart(val);
         }
 
         if(!okay)
         {
-            const double *val = streamAtts->GetLineSourceStart();
+            const double *val = streamAtts->GetLineStart();
             QString values; values.sprintf("<%g %g %g>", val[0], val[1], val[2]);
             msg = tr("The value of lineStart was invalid. "
                      "Resetting to the last good value of %1.").
                   arg(values);
             Message(msg);
-            streamAtts->SetLineSourceStart(streamAtts->GetLineSourceStart());
+            streamAtts->SetLineStart(streamAtts->GetLineStart());
         }
     }
 
     // Do lineEnd
-    if(which_widget == StreamlineAttributes::ID_lineSourceEnd || doAll)
+    if(which_widget == StreamlineAttributes::ID_lineEnd || doAll)
     {
         temp = lineEnd->displayText().simplifyWhiteSpace();
         okay = !temp.isEmpty();
@@ -1323,23 +1323,23 @@ QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
         {
             double val[3];
             if((okay = (sscanf(temp.latin1(), "%lg %lg %lg", &val[0], &val[1], &val[2]) == 3)) == true)
-                streamAtts->SetLineSourceEnd(val);
+                streamAtts->SetLineEnd(val);
         }
 
         if(!okay)
         {
-            const double *val = streamAtts->GetLineSourceEnd();
+            const double *val = streamAtts->GetLineEnd();
             QString values; values.sprintf("<%g %g %g>", val[0], val[1], val[2]);
             msg = tr("The value of lineEnd was invalid. "
                      "Resetting to the last good value of %1.").
                   arg(values);
             Message(msg);
-            streamAtts->SetLineSourceEnd(streamAtts->GetLineSourceEnd());
+            streamAtts->SetLineEnd(streamAtts->GetLineEnd());
         }
     }
 
     // Do planeOrigin
-    if(which_widget == StreamlineAttributes::ID_planeSourceOrigin || doAll)
+    if(which_widget == StreamlineAttributes::ID_planeOrigin || doAll)
     {
         temp = planeOrigin->displayText().simplifyWhiteSpace();
         okay = !temp.isEmpty();
@@ -1347,23 +1347,23 @@ QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
         {
             double val[3];
             if((okay = (sscanf(temp.latin1(), "%lg %lg %lg", &val[0], &val[1], &val[2]) == 3)) == true)
-                streamAtts->SetPlaneSourceOrigin(val);
+                streamAtts->SetPlaneOrigin(val);
         }
 
         if(!okay)
         {
-            const double *val = streamAtts->GetPlaneSourceOrigin();
+            const double *val = streamAtts->GetPlaneOrigin();
             QString values; values.sprintf("<%g %g %g>", val[0], val[1], val[2]);
             msg = tr("The value of planeOrigin was invalid. "
                      "Resetting to the last good value of %1.").
                   arg(values);
             Message(msg);
-            streamAtts->SetPlaneSourceOrigin(streamAtts->GetPlaneSourceOrigin());
+            streamAtts->SetPlaneOrigin(streamAtts->GetPlaneOrigin());
         }
     }
 
     // Do planeNormal
-    if(which_widget == StreamlineAttributes::ID_planeSourceNormal || doAll)
+    if(which_widget == StreamlineAttributes::ID_planeNormal || doAll)
     {
         temp = planeNormal->displayText().simplifyWhiteSpace();
         okay = !temp.isEmpty();
@@ -1371,23 +1371,23 @@ QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
         {
             double val[3];
             if((okay = (sscanf(temp.latin1(), "%lg %lg %lg", &val[0], &val[1], &val[2]) == 3)) == true)
-                streamAtts->SetPlaneSourceNormal(val);
+                streamAtts->SetPlaneNormal(val);
         }
 
         if(!okay)
         {
-            const double *val = streamAtts->GetPlaneSourceNormal();
+            const double *val = streamAtts->GetPlaneNormal();
             QString values; values.sprintf("<%g %g %g>", val[0], val[1], val[2]);
             msg = tr("The value of planeNormal was invalid. "
                      "Resetting to the last good value of %1.").
                   arg(values);
             Message(msg);
-            streamAtts->SetPlaneSourceNormal(streamAtts->GetPlaneSourceNormal());
+            streamAtts->SetPlaneNormal(streamAtts->GetPlaneNormal());
         }
     }
 
     // Do planeUpAxis
-    if(which_widget == StreamlineAttributes::ID_planeSourceUpAxis || doAll)
+    if(which_widget == StreamlineAttributes::ID_planeUpAxis || doAll)
     {
         temp = planeUpAxis->displayText().simplifyWhiteSpace();
         okay = !temp.isEmpty();
@@ -1395,23 +1395,23 @@ QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
         {
             double val[3];
             if((okay = (sscanf(temp.latin1(), "%lg %lg %lg", &val[0], &val[1], &val[2]) == 3)) == true)
-                streamAtts->SetPlaneSourceUpAxis(val);
+                streamAtts->SetPlaneUpAxis(val);
         }
 
         if(!okay)
         {
-            const double *val = streamAtts->GetPlaneSourceUpAxis();
+            const double *val = streamAtts->GetPlaneUpAxis();
             QString values; values.sprintf("<%g %g %g>", val[0], val[1], val[2]);
             msg = tr("The value of planeUpAxis was invalid. "
                      "Resetting to the last good value of %1.").
                   arg(values);
             Message(msg);
-            streamAtts->SetPlaneSourceUpAxis(streamAtts->GetPlaneSourceUpAxis());
+            streamAtts->SetPlaneUpAxis(streamAtts->GetPlaneUpAxis());
         }
     }
 
     // Do planeRadius
-    if(which_widget == StreamlineAttributes::ID_planeSourceRadius || doAll)
+    if(which_widget == StreamlineAttributes::ID_planeRadius || doAll)
     {
         temp = planeRadius->displayText().simplifyWhiteSpace();
         okay = !temp.isEmpty();
@@ -1419,21 +1419,21 @@ QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
         {
             double val = temp.toDouble(&okay);
             if(okay)
-                streamAtts->SetPlaneSourceRadius(val);
+                streamAtts->SetPlaneRadius(val);
         }
 
         if(!okay)
         {
             msg = tr("The value of planeRadius was invalid. "
                      "Resetting to the last good value of %1.").
-                  arg(streamAtts->GetPlaneSourceRadius());
+                  arg(streamAtts->GetPlaneRadius());
             Message(msg);
-            streamAtts->SetPlaneSourceRadius(streamAtts->GetPlaneSourceRadius());
+            streamAtts->SetPlaneRadius(streamAtts->GetPlaneRadius());
         }
     }
 
     // Do sphereOrigin
-    if(which_widget == StreamlineAttributes::ID_sphereSourceOrigin || doAll)
+    if(which_widget == StreamlineAttributes::ID_sphereOrigin || doAll)
     {
         temp = sphereOrigin->displayText().simplifyWhiteSpace();
         okay = !temp.isEmpty();
@@ -1441,23 +1441,23 @@ QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
         {
             double val[3];
             if((okay = (sscanf(temp.latin1(), "%lg %lg %lg", &val[0], &val[1], &val[2]) == 3)) == true)
-                streamAtts->SetSphereSourceOrigin(val);
+                streamAtts->SetSphereOrigin(val);
         }
 
         if(!okay)
         {
-            const double *val = streamAtts->GetSphereSourceOrigin();
+            const double *val = streamAtts->GetSphereOrigin();
             QString values; values.sprintf("<%g %g %g>", val[0], val[1], val[2]);
             msg = tr("The value of sphereOrigin was invalid. "
                      "Resetting to the last good value of %1.").
                   arg(values);
             Message(msg);
-            streamAtts->SetSphereSourceOrigin(streamAtts->GetSphereSourceOrigin());
+            streamAtts->SetSphereOrigin(streamAtts->GetSphereOrigin());
         }
     }
 
     // Do sphereRadius
-    if(which_widget == StreamlineAttributes::ID_sphereSourceRadius || doAll)
+    if(which_widget == StreamlineAttributes::ID_sphereRadius || doAll)
     {
         temp = sphereRadius->displayText().simplifyWhiteSpace();
         okay = !temp.isEmpty();
@@ -1465,21 +1465,21 @@ QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
         {
             double val = temp.toDouble(&okay);
             if(okay)
-                streamAtts->SetSphereSourceRadius(val);
+                streamAtts->SetSphereRadius(val);
         }
 
         if(!okay)
         {
             msg = tr("The value of sphereRadius was invalid. "
                      "Resetting to the last good value of %1.").
-                  arg(streamAtts->GetSphereSourceRadius());
+                  arg(streamAtts->GetSphereRadius());
             Message(msg);
-            streamAtts->SetSphereSourceRadius(streamAtts->GetSphereSourceRadius());
+            streamAtts->SetSphereRadius(streamAtts->GetSphereRadius());
         }
     }
 
     // Do boxExtents
-    if(which_widget == StreamlineAttributes::ID_boxSourceExtents || doAll)
+    if(which_widget == StreamlineAttributes::ID_boxExtents || doAll)
     {
         double d[6];
         bool allOkay = true;
@@ -1499,10 +1499,10 @@ QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
         {
             Message(tr("The box extents contained errors so the previous "
                        "values will be used."));
-            streamAtts->SelectBoxSourceExtents();
+            streamAtts->SelectBoxExtents();
         }
         else
-            streamAtts->SetBoxSourceExtents(d);
+            streamAtts->SetBoxExtents(d);
     }
 
     // pointDensity

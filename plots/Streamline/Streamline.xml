@@ -58,43 +58,43 @@
         0.000000
         0.000000
       </Field>
-      <Field name="lineSourceStart" label="Line start" type="doubleArray" length="3" enabler="sourceType:SpecifiedLine">
+      <Field name="lineStart" label="Line start" type="doubleArray" length="3" enabler="sourceType:SpecifiedLine">
         0.000000
         0.000000
         0.000000
       </Field>
-      <Field name="lineSourceEnd" label="Line end" type="doubleArray" length="3" enabler="sourceType:SpecifiedLine">
+      <Field name="lineEnd" label="Line end" type="doubleArray" length="3" enabler="sourceType:SpecifiedLine">
         1.000000
         0.000000
         0.000000
       </Field>
-      <Field name="planeSourceOrigin" label="Plane origin" type="doubleArray" length="3" enabler="sourceType:SpecifiedPlane">
+      <Field name="planeOrigin" label="Plane origin" type="doubleArray" length="3" enabler="sourceType:SpecifiedPlane">
         0.000000
         0.000000
         0.000000
       </Field>
-      <Field name="planeSourceNormal" label="Plane normal" type="doubleArray" length="3" enabler="sourceType:SpecifiedPlane">
+      <Field name="planeNormal" label="Plane normal" type="doubleArray" length="3" enabler="sourceType:SpecifiedPlane">
         0.000000
         0.000000
         1.000000
       </Field>
-      <Field name="planeSourceUpAxis" label="Plane up axis" type="doubleArray" length="3" enabler="sourceType:SpecifiedPlane">
+      <Field name="planeUpAxis" label="Plane up axis" type="doubleArray" length="3" enabler="sourceType:SpecifiedPlane">
         0.000000
         1.000000
         0.000000
       </Field>
-      <Field name="planeSourceRadius" label="Plane radius" type="double" enabler="sourceType:SpecifiedPlane">
+      <Field name="planeRadius" label="Plane radius" type="double" enabler="sourceType:SpecifiedPlane">
         1.000000
       </Field>
-      <Field name="sphereSourceOrigin" label="Sphere origin" type="doubleArray" length="3" enabler="sourceType:SpecifiedSphere">
+      <Field name="sphereOrigin" label="Sphere origin" type="doubleArray" length="3" enabler="sourceType:SpecifiedSphere">
         0.000000
         0.000000
         0.000000
       </Field>
-      <Field name="sphereSourceRadius" label="Sphere radius" type="double" enabler="sourceType:SpecifiedSphere">
+      <Field name="sphereRadius" label="Sphere radius" type="double" enabler="sourceType:SpecifiedSphere">
         1.000000
       </Field>
-      <Field name="boxSourceExtents" label="Box extents" type="doubleArray" length="6" enabler="sourceType:SpecifiedBox">
+      <Field name="boxExtents" label="Box extents" type="doubleArray" length="6" enabler="sourceType:SpecifiedBox">
         0.000000
         1.000000
         0.000000
