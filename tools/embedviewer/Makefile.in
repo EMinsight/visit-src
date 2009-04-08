@@ -37,6 +37,12 @@
 #   Dave Pugmire, Fri Oct 3 11:29:19 EDT 2008
 #   Added avtIVP libs.
 #
+#   Brad Whitlock, Wed Apr  8 09:08:10 PDT 2009
+#   I added some new files.
+#
+#   Jeremy Meredith
+#   Back-port to 1.12.
+#
 ##############################################################################
 
 ##
@@ -53,7 +59,8 @@ VTK_INCLUDE=@VTK_INCLUDES@
 LIBS=-L../../lib -L../../vtkqt -lviewer -lengineproxy -lenginerpc -lviewerrpc \
      -lmdserverproxy -lmdserverrpc -lvclproxy -lvclrpc -ldbatts -lexpr \
      -lexpr -lparser -lplugin -lqtviswindow -lviswindow_ser -lavtivp_ser -lavtmath_ser -lplotter_ser \
-     -lavtfilters_ser -lavtwriter_ser -lavtview -lpipeline_ser -lvisit_vtk \
+     -lavtfilters_ser -ldatabase_ser -lmir_ser -lavtwriter_ser -lavtview \
+     -lpipeline_ser -lvisit_vtk \
      -llightweight_visit_vtk -lparallel_visit_vtk_ser -lvtkqt -lwinutil \
      @QT_LIBS@ -lproxybase -lmisc -lcomm -lstate -lutility -lavtexceptions \
      $(VTK_LIBS) $(X_LIBS) $(BZIP2_LIBS) $(GLEW_LIBS) $(FILIB_LIBS) @LIBS@ @PTHREAD_LIB@
