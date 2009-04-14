@@ -54,6 +54,7 @@ class QListViewItem;
 class QPushButton;
 class QLineEdit;
 class QPixmap;
+class QPopupMenu;
 class QvisAnimationSlider;
 class QvisListViewFileItem;
 class QvisVCRControl;
@@ -150,6 +151,10 @@ class ViewerProxy;
 //   Added SetTimeFieldText() helper to make sure long time values remain 
 //   visible.
 //
+//    Cyrus Harrison, Tue Apr 14 13:35:54 PDT 2009
+//    Added right click popup menu w/ file options including new 
+//    "Replace Selected" option, which only replaces active plots.
+//
 // ****************************************************************************
 
 class GUI_API QvisFilePanel : public QWidget, public SimpleObserver, public GUIBase
@@ -210,12 +215,14 @@ private:
     void UpdateTimeFieldText(int timeState);
     void SetTimeFieldText(const QString &text);
     void UpdateAnimationControlsEnabledState();
+    bool CheckIfReplaceIsValid();
     bool UpdateReplaceButtonEnabledState();
     void UpdateOpenButtonState(QvisListViewFileItem *fileItem);
 
     bool OpenFile(const QualifiedFilename &filename, int timeState,
                   bool reOpen);
-    void ReplaceFile(const QualifiedFilename &filename, int timeState=0);
+    void ReplaceFile(const QualifiedFilename &filename, int timeState=0, 
+                     bool onlyReplaceActive = false);
     void OverlayFile(const QualifiedFilename &filename, int timeState=0);
 
     void ExpandDatabases();
@@ -254,10 +261,16 @@ private slots:
     void openFile();
     void openFileDblClick(QListViewItem *);
     void replaceFile();
+    void replaceActivePlots();
     void overlayFile();
+    void closeFile();
     void updateHeaderWidth();
     void updateHeaderWidthForLongName();
     void internalUpdateFileList();
+
+    void showFilePopup(QListViewItem *,const QPoint &,int);
+    void onFilePopupClick(int);
+
 private:
     bool                     showSelectedFiles;
 
@@ -273,7 +286,8 @@ private:
     QPixmap                  *computerPixmap;
     QPixmap                  *databasePixmap;
     QPixmap                  *folderPixmap;
-
+    QPopupMenu               *filePopupMenu;
+    
     WindowInformation        *windowInfo;
 
     bool                      allowFileSelectionChange;

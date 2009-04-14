@@ -4503,12 +4503,15 @@ ViewerPlotList::CloseDatabase(const std::string &dbName)
 //   Brad Whitlock, Tue Apr 29 16:03:00 PDT 2008
 //   Support for internationalization.
 //
+//   Cyrus Harrison, Tue Apr 14 13:32:18 PDT 2009
+//   Added ability to only replace active plots.
+//
 // ****************************************************************************
 
 void
 ViewerPlotList::ReplaceDatabase(const EngineKey &key,
     const std::string &database, int timeState, bool setTimeState,
-    bool onlyReplaceSame)
+    bool onlyReplaceSame, bool onlyReplaceActive)
 {
     //
     // Loop through the list replacing the plot's database.
@@ -4518,6 +4521,8 @@ ViewerPlotList::ReplaceDatabase(const EngineKey &key,
     const std::string &host = key.OriginalHostName();
     for (int i = 0; i < nPlots; i++)
     {
+        if(onlyReplaceActive && !plots[i].active)
+            continue;
         //
         // Decide which files to replace.
         //
