@@ -45,10 +45,12 @@
 class PoincareAttributes;
 class QLabel;
 class QCheckBox;
+class QGroupBox;
 class QLineEdit;
 class QSpinBox;
 class QVBox;
 class QButtonGroup;
+class QComboBox;
 class QvisColorTableButton;
 class QvisOpacitySlider;
 class QvisColorButton;
@@ -68,6 +70,8 @@ class QvisVariableButton;
 // Creation:   omitted
 //
 // Modifications:
+//    Jeremy Meredith, Tue Apr 14 16:16:56 EDT 2009
+//    Reworked and reorganized to make more usable.
 //   
 // ****************************************************************************
 
@@ -101,7 +105,7 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     void planeNormalProcessText();
     void planeUpAxisProcessText();
     void planeRadiusProcessText();
-    void pointDensityProcessText();
+    void pointDensityChanged(int val);
     void colorTableNameChanged(bool useDefault, const QString &ctName);
     void singleColorChanged(const QColor &color);
     void legendFlagChanged(bool val);
@@ -123,9 +127,15 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     void OverlapsChanged(int val);
   private:
     int plotType;
-    QButtonGroup *sourceType;
+
+    // streamline options
+    QComboBox *sourceType;
+    QGroupBox *sourceAtts;
+    QComboBox *directionType;
     QLineEdit *maxStepLength;
     QLineEdit *termination;
+    QLineEdit *relTol;
+    QLineEdit *absTol;
     QLineEdit *pointSource;
     QLineEdit *lineStart;
     QLineEdit *lineEnd;
@@ -133,26 +143,31 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     QLineEdit *planeNormal;
     QLineEdit *planeUpAxis;
     QLineEdit *planeRadius;
-    QLineEdit *pointDensity;
+    QSpinBox  *pointDensity;
+
+    QButtonGroup *terminationType;
+    QButtonGroup *integrationType;
+
+    // display options
     QvisColorTableButton *colorTableName;
     QvisColorButton *singleColor;
     QCheckBox *legendFlag;
     QCheckBox *lightingFlag;
-    QLineEdit *relTol;
-    QLineEdit *absTol;
-    QButtonGroup *terminationType;
-    QButtonGroup *integrationType;
     QCheckBox *showStreamlines;
     QCheckBox *showPoints;
+    QCheckBox *ShowIslands;
+    QComboBox *ColorStyle;
+    QButtonGroup *ShowCurves;
+
+    // poincare options
     QLineEdit *NumberPlanes;
-    QButtonGroup *ColorStyle;
     QLineEdit *MaxToroidalWinding;
     QLineEdit *OverrideToroidalWinding;
     QLineEdit *HitRate;
-    QButtonGroup *ShowCurves;
     QLineEdit *AdjustPlane;
-    QCheckBox *ShowIslands;
     QButtonGroup *Overlaps;
+
+    // labels
     QLabel *sourceTypeLabel;
     QLabel *maxStepLengthLabel;
     QLabel *terminationLabel;
