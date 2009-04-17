@@ -72,6 +72,9 @@ class QvisVariableButton;
 // Modifications:
 //    Jeremy Meredith, Tue Apr 14 16:16:56 EDT 2009
 //    Reworked and reorganized to make more usable.
+//
+//    Dave Pugmire, Fri Apr 17 11:32:40 EDT 2009
+//    GUI reorganization.
 //   
 // ****************************************************************************
 
@@ -116,12 +119,12 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     void integrationTypeChanged(int val);
     void showStreamlinesChanged(bool val);
     void showPointsChanged(bool val);
-    void NumberPlanesProcessText();
+    void NumberPlanesSizeChanged(int val);
     void ColorStyleChanged(int val);
-    void MaxToroidalWindingProcessText();
+    void MaxToroidalWindingSizeChanged(int val);
     void OverrideToroidalWindingProcessText();
     void HitRateProcessText();
-    void ShowCurvesChanged(int val);
+    void DisplayTypeChanged(int val);
     void AdjustPlaneProcessText();
     void ShowIslandsChanged(bool val);
     void OverlapsChanged(int val);
@@ -145,8 +148,8 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     QLineEdit *planeRadius;
     QSpinBox  *pointDensity;
 
-    QButtonGroup *terminationType;
-    QButtonGroup *integrationType;
+    QComboBox *terminationType;
+    QComboBox *integrationType;
 
     // display options
     QvisColorTableButton *colorTableName;
@@ -157,11 +160,11 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     QCheckBox *showPoints;
     QCheckBox *ShowIslands;
     QComboBox *ColorStyle;
-    QButtonGroup *ShowCurves;
+    QComboBox *DisplayType;
 
     // poincare options
-    QLineEdit *NumberPlanes;
-    QLineEdit *MaxToroidalWinding;
+    QSpinBox *NumberPlanes;
+    QSpinBox *MaxToroidalWinding;
     QLineEdit *OverrideToroidalWinding;
     QLineEdit *HitRate;
     QLineEdit *AdjustPlane;
@@ -190,7 +193,7 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     QLabel *MaxToroidalWindingLabel;
     QLabel *OverrideToroidalWindingLabel;
     QLabel *HitRateLabel;
-    QLabel *ShowCurvesLabel;
+    QLabel *DisplayTypeLabel;
     QLabel *AdjustPlaneLabel;
     QLabel *OverlapsLabel;
 
