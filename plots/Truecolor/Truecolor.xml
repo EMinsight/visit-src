@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-  <Plugin name="Truecolor" type="plot" label="Truecolor" version="1.0" enabled="true" vartype="vector">
+  <Plugin name="Truecolor" type="plot" label="Truecolor" version="1.0" enabled="true" vartype="vector" iconFile="Truecolor.xpm">
     <Attribute name="TruecolorAttributes" purpose="Truecolor plot" persistent="true" exportAPI="" exportInclude="" codefile="TruecolorAttributes.code">
       <Field name="opacity" label="opacity" type="opacity">
         1.000000
