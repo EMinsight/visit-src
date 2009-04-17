@@ -2,6 +2,9 @@
 //                            avtH5PartFileFormat.C                           //
 // ************************************************************************* //
 
+#define H5_USE_16_API
+#include <hdf5.h>
+
 #include <avtH5PartFileFormat.h>
 
 #include <string>
@@ -13,11 +16,13 @@
 #include <vtkUnstructuredGrid.h>
 
 #include <avtDatabaseMetaData.h>
+#include <DBOptionsAttributes.h>
 
 #include <Expression.h>
 
 #include <InvalidVariableException.h>
 #include <InvalidFilesException.h>
+#include <InvalidDBTypeException.h>
 #include <BadIndexException.h>
 #include <vtkCellType.h>
 #include <vtkPolyData.h>
@@ -32,7 +37,6 @@
 #include <iostream>
 
 #include <DebugStream.h>
-
 
 #ifdef PARALLEL
 #include <avtParallel.h>
@@ -50,11 +54,61 @@ using namespace std;
 //    Kathleen Bonnell, Wed Jul 2 8:49:52 PDT 2008
 //    Removed unreferenced variables.
 //
+//    Gunther H. Weber, Fri Apr 17 12:42:38 PDT 2009
+//    Added option allowing to ignore files with FastBit index so that
+//    they get passed on to the HDF_UC file format.
+//
 // ****************************************************************************
 
-avtH5PartFileFormat::avtH5PartFileFormat(const char *filename)
+avtH5PartFileFormat::avtH5PartFileFormat(const char *filename, DBOptionsAttributes *readOpts)
     : avtMTMDFileFormat(filename)
 {
+    // Depending on options reject file if it has a FastBit index
+    if (readOpts->GetBool("Ignore files with FastBit index"))
+    {
+        bool hasIndex = false;
+        hid_t filehandle = H5Fopen(filename, H5F_ACC_RDONLY, H5P_DEFAULT);
+        if (filehandle > 0)
+        {
+            //
+            // Get current automatic stack traversal function to re-enable it later and
+            // disable HDF5's automatic error printing
+            //
+            H5E_auto_t h5e_autofunc;
+            void* h5e_clientdata;
+            H5Eget_auto(&h5e_autofunc, &h5e_clientdata);
+            H5Eset_auto(0, 0);
+
+            hid_t indexGroup = H5Gopen(filehandle, "__H5PartIndex__");
+            if (indexGroup > 0)
+            {
+                hasIndex = true;
+                H5Gclose(indexGroup);
+            }
+
+            //
+            // Re-enable HDF5's automatic diagnostic output
+            //
+            H5Eset_auto(h5e_autofunc, h5e_clientdata);
+
+            H5Fclose(filehandle);
+        }
+        else
+        {
+            EXCEPTION1(InvalidDBTypeException, "Cannot be a H5Part file, since "
+                                "it is not even an HDF5 file.");
+        }
+        
+        if (hasIndex)
+        {
+            EXCEPTION1(InvalidDBTypeException, "May be an H5Part file, but has an "
+                    "FastBit index. Rejecting file so that HDF_UC plugin can take "
+                    "a turn. If you want to open this file with the H5Part plugin "
+                    " disable the file reader option \"Ignore files with FastBit "
+                    " index\".");
+        }
+    }
+
     // INITIALIZE DATA MEMBERS
     H5PartFile *file;
     fname = filename;
