@@ -58,13 +58,24 @@ using namespace std;
 //    Added option allowing to ignore files with FastBit index so that
 //    they get passed on to the HDF_UC file format.
 //
+//    Gunther H. Weber, Fri Apr 17 14:24:33 PDT 2009
+//    Fixed handling of FastBit option in case there is a config file without
+//    the option saved.
+//
 // ****************************************************************************
 
-avtH5PartFileFormat::avtH5PartFileFormat(const char *filename, DBOptionsAttributes *readOpts)
-    : avtMTMDFileFormat(filename)
+avtH5PartFileFormat::avtH5PartFileFormat(const char *filename,
+        DBOptionsAttributes *atts) : avtMTMDFileFormat(filename)
 {
     // Depending on options reject file if it has a FastBit index
-    if (readOpts->GetBool("Ignore files with FastBit index"))
+    bool ignoreFilesWithFastBitIndex = true;
+    if (atts != NULL)
+        for (int i = 0; i < atts->GetNumberOfOptions(); ++i)
+            if (atts->GetName(i) == "Ignore files with FastBit index")
+                ignoreFilesWithFastBitIndex =
+                    atts->GetBool("Ignore files with FastBit index");
+ 
+    if (ignoreFilesWithFastBitIndex)
     {
         bool hasIndex = false;
         hid_t filehandle = H5Fopen(filename, H5F_ACC_RDONLY, H5P_DEFAULT);
@@ -457,6 +468,10 @@ avtH5PartFileFormat::GetMesh(int timestate, int domain, const char *meshname)
 //  Programmer: kurts
 //  Creation:   Tue Aug 28 17:35:50 PDT 2007
 //
+//  Modifications:
+//    Gunther H. Weber, Fri Apr 17 13:55:07 PDT 2009
+//    Read block origin from file.
+//
 // ****************************************************************************
 
 vtkDataSet *
@@ -497,6 +512,15 @@ avtH5PartFileFormat::GetMeshBlock(int timestate, int domain)
     if (status != H5PART_SUCCESS)
         EXCEPTION1(VisItException, "Could not read field information");
 
+    double xOrigin = 0;
+    double yOrigin = 0;
+    double zOrigin = 0;
+    status = H5Block3dGetFieldOrigin(file, fieldName, &xOrigin, &yOrigin, &zOrigin);
+    if (status != H5PART_SUCCESS)
+    {
+        EXCEPTION1(VisItException, "Could not read field origin.");
+    }
+
     double xSpacing = 0;
     double ySpacing = 0;
     double zSpacing = 0;
@@ -517,7 +541,7 @@ avtH5PartFileFormat::GetMeshBlock(int timestate, int domain)
     float *xarray = (float *) coords[0]->GetVoidPointer(0);
     for (int i=subBlockDims[0]; i <= subBlockDims[1]; i++)
     {
-        xarray[i-subBlockDims[0]] = i * xSpacing;
+        xarray[i-subBlockDims[0]] = xOrigin + i * xSpacing;
     }
 
     // set y coordinates
@@ -525,7 +549,7 @@ avtH5PartFileFormat::GetMeshBlock(int timestate, int domain)
     coords[1]->SetNumberOfTuples(subBlockDims[3] - subBlockDims[2] + 1);
     float *yarray = (float *) coords[1]->GetVoidPointer(0);
     for (int i=subBlockDims[2]; i <= subBlockDims[3]; i++) {
-        yarray[i-subBlockDims[2]] = i * ySpacing;
+        yarray[i-subBlockDims[2]] = yOrigin + i * ySpacing;
     }
 
     // set z coordinates
@@ -533,7 +557,7 @@ avtH5PartFileFormat::GetMeshBlock(int timestate, int domain)
     coords[2]->SetNumberOfTuples(subBlockDims[5] - subBlockDims[4] + 1);
     float *zarray = (float *) coords[2]->GetVoidPointer(0);
     for (int i=subBlockDims[4]; i <= subBlockDims[5]; i++) {
-        zarray[i-subBlockDims[4]] = i * zSpacing;
+        zarray[i-subBlockDims[4]] = zOrigin + i * zSpacing;
     }
 
     // create vtkRectilinearGrid objects + set dims and coords
