@@ -885,6 +885,10 @@ dnl
 dnl    Hank Childs, Fri Feb 22 15:57:11 PST 2008
 dnl    Add FastBit.
 dnl
+dnl    Gunther H. Weber, Fri Apr 17 13:22:44 PDT 2009
+dnl    Do not add "-lrt" for FastBit on MacOS (Darwin machines)
+dnl    Do not change H5PART_LIBDIR in FastBit config.
+dnl    
 dnl --------------------------------------------------------------------------
 
 dnl
@@ -2603,7 +2607,6 @@ else
          # At least on Linux we need librt for fastbit
          FASTBIT_LIB="-L$DEFAULT_FASTBIT_LIB -lfastbit -lrt"
       fi
-      H5PART_LIBDIR="$DEFAULT_FASTBIT_LIB"
    fi
 fi
 if test "$FASTBIT_LIB" != "" ; then
