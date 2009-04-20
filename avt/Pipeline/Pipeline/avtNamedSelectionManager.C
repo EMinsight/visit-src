@@ -122,6 +122,9 @@ avtNamedSelectionManager::GetInstance(void)
 //    Hank Childs, Sun Apr 19 18:40:32 PDT 2009
 //    Fix problem with named selections on non-FastBit files.
 //
+//    Hank Childs, Sun Apr 19 22:42:09 PDT 2009
+//    Fix problem with named selections not being overwritten.
+//
 // ****************************************************************************
 
 void
@@ -242,6 +245,7 @@ avtNamedSelectionManager::CreateNamedSelection(avtDataObject_p dob,
     // data structure for tracking named selections.
     //
     ns = new avtZoneIdNamedSelection(selName,numTotal,selForDoms,selForZones);
+    DeleteNamedSelection(selName, false); // Remove sel if it already exists.
     int curSize = selList.size();
     selList.resize(curSize+1);
     selList[curSize] = ns;
@@ -264,10 +268,17 @@ avtNamedSelectionManager::CreateNamedSelection(avtDataObject_p dob,
 //  Programmer: Hank Childs
 //  Creation:   January 30, 2009
 //
+//  Modifications:
+//
+//    Hank Childs, Sun Apr 19 22:42:09 PDT 2009
+//    Add a default argument for whether or not the named selection should
+//    be in the list.
+//
 // ****************************************************************************
 
 void
-avtNamedSelectionManager::DeleteNamedSelection(const std::string &name)
+avtNamedSelectionManager::DeleteNamedSelection(const std::string &name,
+                                               bool shouldExpectSel)
 {
     int i;
 
@@ -283,6 +294,9 @@ avtNamedSelectionManager::DeleteNamedSelection(const std::string &name)
 
     if (numToRemove == -1)
     {
+        if (! shouldExpectSel)
+            return;
+
         EXCEPTION1(VisItException, "Cannot delete selection; does not exist");
     }
 
