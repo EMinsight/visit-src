@@ -47,9 +47,6 @@
 
 class     vtkDataArray;
 class     vtkRectilinearGrid;
-//class     ArgsExpr;
-//class     ExprPipelineState;
-//class     ConstExpr;
 
 // ****************************************************************************
 //  Class: avtCurveCMFEExpression
@@ -95,5 +92,3 @@ class EXPRESSION_API avtCurveCMFEExpression : public avtCMFEExpression
 
 
 #endif
-
-

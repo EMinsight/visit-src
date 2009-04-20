@@ -55,7 +55,6 @@
 #include <avtSILRestrictionTraverser.h>
 
 #include <DebugStream.h>
-#include <TimingsManager.h>
 #include <InvalidMergeException.h>
 #include <Utility.h>
 #include <snprintf.h>
