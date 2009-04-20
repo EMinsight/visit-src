@@ -117,6 +117,11 @@ avtNamedSelectionManager::GetInstance(void)
 //  Programmer: Hank Childs
 //  Creation:   January 30, 2009
 //
+//  Modifications:
+//
+//    Hank Childs, Sun Apr 19 18:40:32 PDT 2009
+//    Fix problem with named selections on non-FastBit files.
+//
 // ****************************************************************************
 
 void
@@ -158,7 +163,7 @@ avtNamedSelectionManager::CreateNamedSelection(avtDataObject_p dob,
         return;
     }
 
-    if (contract->GetDataRequest()->NeedZoneNumbers() == false)
+    if (c1->GetDataRequest()->NeedZoneNumbers() == false)
     {
         debug1 << "Must re-execute pipeline to create named selection" << endl;
         dob->Update(contract);
@@ -174,6 +179,9 @@ avtNamedSelectionManager::CreateNamedSelection(avtDataObject_p dob,
     vtkDataSet **leaves = tree->GetAllLeaves(nleaves);
     for (i = 0 ; i < nleaves ; i++)
     {
+        if (leaves[i]->GetNumberOfCells() == 0)
+            continue;
+
         vtkDataArray *ocn = leaves[i]->GetCellData()->
                                             GetArray("avtOriginalCellNumbers");
         if (ocn == NULL)
