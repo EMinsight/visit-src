@@ -50,6 +50,7 @@ class QvisColorButton;
 class QvisPointControl;
 class Subject;
 class MeshAttributes;
+class QvisOpacitySlider;
 
 // ****************************************************************************
 // Class: QvisMeshPlotWindow
@@ -133,6 +134,8 @@ private slots:
     void pointSizeVarToggled(bool);
     void pointSizeVarChanged(const QString &);
 
+    void changedOpacity(int opacity, const void *);
+
 private:
     int                     plotType;
     MeshAttributes         *meshAtts;
@@ -154,6 +157,8 @@ private:
     QCheckBox              *foregroundToggle;
     QButtonGroup           *smoothingLevelButtons;
     QvisPointControl       *pointControl;
+    QLabel                *opacityLabel;
+    QvisOpacitySlider     *opacitySlider;
 };
 
 #endif

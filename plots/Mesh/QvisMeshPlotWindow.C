@@ -52,6 +52,7 @@
 #include <QvisColorManagerWidget.h>
 #include <QvisLineStyleWidget.h>
 #include <QvisLineWidthWidget.h>
+#include <QvisOpacitySlider.h>
 
 #include <MeshAttributes.h>
 #include <ViewerProxy.h>
@@ -150,6 +151,9 @@ QvisMeshPlotWindow::~QvisMeshPlotWindow()
 //   Brad Whitlock, Wed Apr 23 09:58:27 PDT 2008
 //   Added tr()'s
 //
+//   Jeremy Meredith, Fri Feb 20 17:28:17 EST 2009
+//   Added per-plot alpha (opacity) support.
+//
 // ****************************************************************************
 
 void
@@ -158,7 +162,7 @@ QvisMeshPlotWindow::CreateWindowContents()
     //
     // Create the layout that we'll use.
     //
-    QGridLayout *theLayout = new QGridLayout(topLayout, 9, 4);
+    QGridLayout *theLayout = new QGridLayout(topLayout, 10, 4);
     theLayout->setSpacing(10);
 
     // Create the lineSyle widget.
@@ -231,28 +235,44 @@ QvisMeshPlotWindow::CreateWindowContents()
     opaqueModeLayout->addWidget(rb, 0, 4);
     theLayout->addMultiCellLayout(opaqueModeLayout, 3, 3, 0, 3);
 
+
+    //
+    // Create the opacity slider
+    //
+    opacityLabel = new QLabel(tr("Opacity"), central);
+    opacityLabel->setBuddy(opacitySlider);
+    theLayout->addWidget(opacityLabel, 4, 0);
+
+    opacitySlider = new QvisOpacitySlider(0, 255, 25, 255, central);
+    opacitySlider->setTickInterval(64);
+    opacitySlider->setGradientColor(QColor(0, 0, 0));
+    connect(opacitySlider, SIGNAL(valueChanged(int, const void*)),
+            this, SLOT(changedOpacity(int, const void*)));
+    theLayout->addMultiCellWidget(opacitySlider, 4,4, 1, 3);
+
+
     // Create the showInternal toggle
     showInternalToggle = new QCheckBox(tr("Show Internal Zones"), central, 
                                        "showInternalToggle");
     connect(showInternalToggle, SIGNAL(toggled(bool)),
             this, SLOT(showInternalToggled(bool)));
-    theLayout->addMultiCellWidget(showInternalToggle, 4,4, 0,1);
+    theLayout->addMultiCellWidget(showInternalToggle, 5,5, 0,1);
 
     // Create the outline only toggle
     outlineOnlyToggle = new QCheckBox(tr("Outline only"), central,
                                       "OutlineOnlyToggle");
     connect(outlineOnlyToggle, SIGNAL(toggled(bool)),
             this, SLOT(outlineOnlyToggled(bool)));
-    theLayout->addWidget(outlineOnlyToggle, 5, 0);
+    theLayout->addWidget(outlineOnlyToggle, 6, 0);
 
     // Create the error tolerance line edit
     errorToleranceLineEdit = new QLineEdit(central, "errorToleranceLineEdit");
     connect(errorToleranceLineEdit, SIGNAL(returnPressed()),
             this, SLOT(processErrorToleranceText()));
-    theLayout->addMultiCellWidget(errorToleranceLineEdit, 5, 5, 2, 3);
+    theLayout->addMultiCellWidget(errorToleranceLineEdit, 6, 6, 2, 3);
     errorToleranceLabel = new QLabel(errorToleranceLineEdit, tr("Tolerance"),
                                         central, "errorToleranceLabel");
-    theLayout->addWidget(errorToleranceLabel, 5, 1);
+    theLayout->addWidget(errorToleranceLabel, 6, 1);
     //errorToleranceLineEdit->setEnabled(false); 
     //errorToleranceLabel->setEnabled(false); 
 
@@ -267,14 +287,14 @@ QvisMeshPlotWindow::CreateWindowContents()
             this, SLOT(pointSizeVarToggled(bool)));
     connect(pointControl, SIGNAL(pointTypeChanged(int)),
             this, SLOT(pointTypeChanged(int)));
-    theLayout->addMultiCellWidget(pointControl, 6, 6, 0, 3);
+    theLayout->addMultiCellWidget(pointControl, 7, 7, 0, 3);
  
 
     // Create the legend toggle
     legendToggle = new QCheckBox(tr("Legend"), central, "legendToggle");
     connect(legendToggle, SIGNAL(toggled(bool)),
             this, SLOT(legendToggled(bool)));
-    theLayout->addWidget(legendToggle, 7, 0);
+    theLayout->addWidget(legendToggle, 8, 0);
 
     // Create the smoothing level buttons
     smoothingLevelButtons = new QButtonGroup(0, "smoothingButtons");
@@ -293,7 +313,7 @@ QvisMeshPlotWindow::CreateWindowContents()
     rb = new QRadioButton(tr("High"), central, "HighSmoothing");
     smoothingLevelButtons->insert(rb);
     smoothingLayout->addWidget(rb, 0, 3);
-    theLayout->addMultiCellLayout(smoothingLayout, 8,8 , 0,3);
+    theLayout->addMultiCellLayout(smoothingLayout, 9,9 , 0,3);
 }
 
 // ****************************************************************************
@@ -363,6 +383,9 @@ QvisMeshPlotWindow::CreateWindowContents()
 //
 //   Brad Whitlock, Wed Jul 20 15:01:21 PST 2005
 //   Added pointSizePixels.
+//
+//   Jeremy Meredith, Fri Feb 20 17:28:17 EST 2009
+//   Added per-plot alpha (opacity) support.
 //
 // ****************************************************************************
 
@@ -543,6 +566,11 @@ QvisMeshPlotWindow::UpdateWindow(bool doAll)
             pointControl->blockSignals(true);
             pointControl->SetPointSizePixels(meshAtts->GetPointSizePixels());
             pointControl->blockSignals(false);
+            break;
+        case MeshAttributes::ID_opacity:
+            opacitySlider->blockSignals(true);
+            opacitySlider->setValue(int((float)meshAtts->GetOpacity() * 255.f));
+            opacitySlider->blockSignals(false);
             break;
         }
     } // end for
@@ -1130,3 +1158,25 @@ QvisMeshPlotWindow::pointSizeVarChanged(const QString &var)
     meshAtts->SetPointSizeVar(var.latin1()); 
     Apply();
 }
+
+
+// ****************************************************************************
+//  Method:  QvisMeshPlotWindow::changedOpacity
+//
+//  Purpose:
+//    Callback function when opacity slider moves.
+//
+//  Arguments:
+//    opacity    the new value
+//
+//  Programmer:  Jeremy Meredith
+//  Creation:    February 20, 2009
+//
+// ****************************************************************************
+void
+QvisMeshPlotWindow::changedOpacity(int opacity, const void*)
+{
+    meshAtts->SetOpacity((float)opacity/255.);
+    Apply();
+}
+
