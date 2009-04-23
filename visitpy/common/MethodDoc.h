@@ -125,6 +125,7 @@ extern const char *visit_InvertBackgroundColor_doc;
 extern const char *visit_Lineout_doc;
 extern const char *visit_List_doc;
 extern const char *visit_ListPlots_doc;
+extern const char *visit_LoadUltra_doc;
 extern const char *visit_LoadNamedSelection_doc;
 extern const char *visit_LongFileName_doc;
 extern const char *visit_MovePlotDatabaseKeyframe_doc;

@@ -681,6 +681,9 @@ ReadKey(const char *key, char **keyval)
  *   that if these are already set by user in environment they won't be 
  *   overwritten. 
  *
+ *   Kathleen Bonnell, Wed Apr 22 17:47:34 PDT 2009
+ *   Added VISITULTRAHOME env var.
+ *
  *****************************************************************************/
 
 char *
@@ -863,6 +866,11 @@ AddEnvironment(int useShortFileName)
     sprintf(tmp, "VISITHELPHOME=%s\\help", visitpath);
     putenv(tmp);
 
+    /*
+     * Set the ultrawrapper dir.
+     */
+    sprintf(tmp, "VISITULTRAHOME=%s\\ultrawrapper", visitpath);
+    putenv(tmp);
 
     /*
      * Set the SSH program.

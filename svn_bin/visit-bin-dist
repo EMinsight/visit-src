@@ -363,6 +363,8 @@
 #    Patrick Shinpaugh, Wed Mar 11 11:34:16 MST 2009
 #    Fix directories to account for linux-ppc64.
 #
+#    Kathleen Bonnell, Wed Apr 22 16:46:53 PDT 2009
+#    Add ultrawapper files, pyparsing files.
 #------------------------------------------------------------------------------
 
 set DataFiles = "TRUE"
@@ -797,6 +799,7 @@ set plugindir = distribution/visit/$Version/$visitbindir/plugins
 set javadir = distribution/visit/$Version/$visitbindir/java
 set simv1dir = distribution/visit/$Version/$visitbindir/libsim/V1
 set frameworkdir = distribution/visit/$Version/$visitbindir/Frameworks
+set ultradir = distribution/visit/$Version/$visitbindir/ultrawrapper
 
 #
 # Make the directory structure shell.
@@ -826,6 +829,7 @@ mkdir distribution/visit/$Version/$visitbindir/libsim
 mkdir distribution/visit/$Version/$visitbindir/libsim/V1
 mkdir distribution/visit/$Version/$visitbindir/libsim/V1/include
 mkdir distribution/visit/$Version/$visitbindir/libsim/V1/lib
+mkdir distribution/visit/$Version/$visitbindir/ultrawrapper
 
 #
 # Create and copy in the sample data files.
@@ -1137,6 +1141,10 @@ ls $VisItDir/lib/python/lib/$pyver/site-packages/PIL/* >& /dev/null
 if ($status == 0) then
   cp $VisItDir/lib/python/lib/$pyver/site-packages/PIL/*  $libdir/python/lib/$pyver/site-packages/PIL
 endif
+ls $VisItDir/lib/python/lib/$pyver/site-packages/pyparsing* >& /dev/null
+if ($status == 0) then
+  cp $VisItDir/lib/python/lib/$pyver/site-packages/pyparsing.* $libdir/python/lib/$pyver/site-packages
+endif
 cp $VisItDir/lib/python/lib/$pyver/xml/*.{py,pyc,pyo}         $libdir/python/lib/$pyver/xml
 cp $VisItDir/lib/python/lib/$pyver/xml/dom/*.{py,pyc,pyo}     $libdir/python/lib/$pyver/xml/dom
 cp $VisItDir/lib/python/lib/$pyver/xml/parsers/*.{py,pyc,pyo} $libdir/python/lib/$pyver/xml/parsers
@@ -1407,6 +1415,11 @@ endif
 if (-e $VisItDir/archives/libsimf.a) then
     cp $VisItDir/archives/libsimf.a $simv1dir/lib
 endif
+
+#
+# Copy the ultra wrapper files
+#
+cp $VisItDir/ultrawrapper/*.py $ultradir/
 
 #
 # Copy the configuration files.

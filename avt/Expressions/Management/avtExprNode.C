@@ -164,6 +164,8 @@
 #include <avtPerMaterialValueExpression.h>
 #include <avtApplyEnumerationExpression.h>
 #include <avtConstantFunctionExpression.h>
+#include <avtCurveDomainExpression.h>
+#include <avtCurveExpression.h>
 
 #include <stdio.h>
 #include <ExpressionException.h>
@@ -939,6 +941,10 @@ avtFunctionExpr::CreateFilters(string functionName)
         return new avtConstantFunctionExpression(false);
     if (functionName == "point_constant")
         return new avtConstantFunctionExpression(true);
+    if (functionName == "curve_domain")
+        return new avtCurveDomainExpression();
+    if (functionName == "curve")
+        return new avtCurveExpression();
 
     return NULL;
 }
