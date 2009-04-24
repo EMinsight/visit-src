@@ -189,6 +189,9 @@ class Xfer;
 //    Instance variable to store what kind of display we'll render with, and
 //    made SetupDisplay a method.
 //
+//    Brad Whitlock, Thu Apr 23 12:08:17 PDT 2009
+//    I added simulationPluginsEnabled.
+//
 // ****************************************************************************
 
 class Engine
@@ -204,6 +207,7 @@ class Engine
     void            SetUpViewerInterface(int *argc, char **argv[]);
 
     // Needed for simulations
+    void            EnableSimulationPlugins();
     void            PopulateSimulationMetaData(const std::string &db,
                                                const std::string &fmt);
     void            SimulationTimeStepChanged();
@@ -281,6 +285,7 @@ class Engine
     // Here's the network manager!
     NetworkManager    *netmgr;
     std::string        pluginDir;
+    bool               simulationPluginsEnabled;
 
     // The connection
     Connection        *vtkConnection;

@@ -86,6 +86,9 @@
 //    Brad Whitlock, Thu Jan 25 15:08:59 PST 2007
 //    Added new functions.
 //
+//    Brad Whitlock, Thu Apr 23 12:09:11 PDT 2009
+//    Enable simulation plugins in the engine.
+//
 // ****************************************************************************
 
 void *get_engine()
@@ -95,6 +98,8 @@ void *get_engine()
     if ( visitTimer == NULL)
         TimingsManager::Initialize( "Simulation");
     Engine *engine = Engine::Instance();
+    if(engine != NULL)
+        engine->EnableSimulationPlugins();
     return (void*)engine;
 }
 
