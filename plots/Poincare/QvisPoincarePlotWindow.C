@@ -365,27 +365,66 @@ QvisPoincarePlotWindow::CreateWindowContents()
     displayLayout->addWidget(NumberPlanes,row,1);
     row++;
 
-    showStreamlines = new QCheckBox(tr("Show Streamlines"), displayTab, "showStreamlines");
-    connect(showStreamlines, SIGNAL(toggled(bool)),
-            this, SLOT(showStreamlinesChanged(bool)));
-    displayLayout->addWidget(showStreamlines,row,0);
-    row++;
+    // Create the max toggle and line edit
+    limitsGrp = new QGroupBox(displayTab, "limitsGrp");
+    limitsGrp->setTitle(tr("Limits") );
+    displayLayout->addMultiCellWidget(limitsGrp, 1,1,0,3);
+    QVBoxLayout *limitsAVLayout = new QVBoxLayout(limitsGrp);
+    limitsAVLayout->setMargin(10);
+    limitsAVLayout->addSpacing(15);
+    QGridLayout *limitsGLayout = new QGridLayout(limitsAVLayout, 2, 2);
+    limitsGLayout->setSpacing(10);
+    limitsGLayout->setColStretch(1,10);
 
-    showPoints = new QCheckBox(tr("Show Points"), displayTab, "showPoints");
-    connect(showPoints, SIGNAL(toggled(bool)),
-            this, SLOT(showPointsChanged(bool)));
-    displayLayout->addWidget(showPoints,row,0);
-    row++;
+    maxToggle = new QCheckBox(tr("Max"), limitsGrp, "maxToggle");
+    limitsGLayout->addWidget(maxToggle, 0, 0);
+    connect(maxToggle, SIGNAL(toggled(bool)),
+            this, SLOT(maxToggled(bool)));
+    maxLineEdit = new QLineEdit(limitsGrp, "maxLineEdit");
+    connect(maxLineEdit, SIGNAL(returnPressed()),
+            this, SLOT(processMaxLimitText())); 
+    limitsGLayout->addWidget(maxLineEdit, 0, 1);
 
-    ShowIslands = new QCheckBox(tr("Show Islands"), displayTab, "ShowIslands");
-    connect(ShowIslands, SIGNAL(toggled(bool)),
-            this, SLOT(ShowIslandsChanged(bool)));
-    displayLayout->addWidget(ShowIslands,row,0);
-    row++;
+    minToggle = new QCheckBox(tr("Min"), limitsGrp, "minToggle");
+    limitsGLayout->addWidget(minToggle, 1, 0);
+    connect(minToggle, SIGNAL(toggled(bool)),
+            this, SLOT(minToggled(bool)));
+    minLineEdit = new QLineEdit(limitsGrp, "minLineEdit");
+    connect(minLineEdit, SIGNAL(returnPressed()),
+            this, SLOT(processMinLimitText())); 
+    limitsGLayout->addWidget(minLineEdit, 1, 1);
 
-    ColorStyleLabel = new QLabel(tr("Color by"), displayTab, "ColorStyleLabel");
-    displayLayout->addWidget(ColorStyleLabel,row,0);
-    ColorStyle = new QComboBox(displayTab, "ColorStyle");
+    //Coloring options.
+    colorGrp = new QGroupBox(displayTab, "colorGrp");
+    colorGrp->setTitle(tr("Color options") );
+    displayLayout->addWidget(colorGrp, row, 0);
+    row++;
+    QVBoxLayout *colorVLayout = new QVBoxLayout(colorGrp);
+    colorVLayout->setMargin(10);
+    colorVLayout->addSpacing(15);
+
+    colorModeButtons = new QButtonGroup(0, "colorModeButtons");
+    connect(colorModeButtons, SIGNAL(clicked(int)),
+            this, SLOT(colorModeChanged(int)));
+
+    QGridLayout *colorGLayout = new QGridLayout(colorVLayout, 5, 2);
+    colorGLayout->setSpacing(10);
+    colorGLayout->setColStretch(2, 1000);
+
+    QRadioButton *rb = new QRadioButton(tr("Single"), colorGrp, "singleColor");
+    colorModeButtons->insert(rb);
+    colorGLayout->addWidget(rb, 0, 0);
+
+    singleColor = new QvisColorButton(colorGrp, "singleColorWidget");
+    colorGLayout->addWidget(singleColor,0,1);
+    connect(singleColor, SIGNAL(selectedColor(const QColor&)),
+            this, SLOT(singleColorChanged(const QColor&)));
+
+    rb = new QRadioButton(tr("Color table"), colorGrp, "colorTable");
+    colorModeButtons->insert(rb);
+    colorGLayout->addWidget(rb, 1, 0);
+
+    ColorStyle = new QComboBox(colorGrp, "ColorStyle");
     ColorStyle->insertItem(tr("OriginalValue"));
     ColorStyle->insertItem(tr("InputOrder"));
     ColorStyle->insertItem(tr("PointIndex"));
@@ -395,29 +434,16 @@ QvisPoincarePlotWindow::CreateWindowContents()
     ColorStyle->insertItem(tr("ToroidalWindings"));
     ColorStyle->insertItem(tr("PoloidalWindings"));
     ColorStyle->insertItem(tr("SafetyFactor"));
-    ColorStyle->insertItem(tr("Solid"));
     connect(ColorStyle, SIGNAL(activated(int)),
             this, SLOT(ColorStyleChanged(int)));
-    displayLayout->addWidget(ColorStyle,row,1);
-    row++;
+    colorGLayout->addWidget(ColorStyle,1,1);
 
-    colorTableNameLabel = new QLabel(tr("Color table"), displayTab, "colorTableNameLabel");
-    displayLayout->addWidget(colorTableNameLabel,row,0);
-    colorTableName = new QvisColorTableButton(displayTab, "colorTableName");
+    colorTableName = new QvisColorTableButton(colorGrp, "colorTableName");
     connect(colorTableName, SIGNAL(selectedColorTable(bool, const QString&)),
             this, SLOT(colorTableNameChanged(bool, const QString&)));
-    displayLayout->addWidget(colorTableName,row,1);
+    colorGLayout->addWidget(colorTableName,2,1);
     row++;
-
-    singleColorLabel = new QLabel(tr("Single color"), displayTab, "singleColorLabel");
-    displayLayout->addWidget(singleColorLabel,row,0);
-    singleColor = new QvisColorButton(displayTab, "singleColor");
-    connect(singleColor, SIGNAL(selectedColor(const QColor&)),
-            this, SLOT(singleColorChanged(const QColor&)));
-    displayLayout->addWidget(singleColor,row,1);
-    row++;
-
-
+    
     legendFlag = new QCheckBox(tr("Legend"), displayTab, "legendFlag");
     connect(legendFlag, SIGNAL(toggled(bool)),
             this, SLOT(legendFlagChanged(bool)));
@@ -698,34 +724,30 @@ QvisPoincarePlotWindow::UpdateWindow(bool doAll)
             integrationType->setCurrentItem(atts->GetIntegrationType());
             integrationType->blockSignals(false);
             break;
-          case PoincareAttributes::ID_showStreamlines:
-            showStreamlines->blockSignals(true);
-            showStreamlines->setChecked(atts->GetShowStreamlines());
-            showStreamlines->blockSignals(false);
-            break;
-          case PoincareAttributes::ID_showPoints:
-            showPoints->blockSignals(true);
-            showPoints->setChecked(atts->GetShowPoints());
-            showPoints->blockSignals(false);
-            break;
           case PoincareAttributes::ID_NumberPlanes:
             NumberPlanes->blockSignals(true);
             NumberPlanes->setValue(atts->GetNumberPlanes());
             NumberPlanes->blockSignals(false);
             break;
-          case PoincareAttributes::ID_ColorStyle:
-            {
-            bool needCT = atts->GetColorStyle() != PoincareAttributes::Solid;
-            colorTableNameLabel->setEnabled(needCT);
-            colorTableName->setEnabled(needCT);
-            singleColor->setEnabled(!needCT);
-            singleColorLabel->setEnabled(!needCT);
+          case PoincareAttributes::ID_colorType:
+            colorModeButtons->blockSignals(true);
+            colorModeButtons->setButton(atts->GetColorType());
 
-            ColorStyle->blockSignals(true);
-            ColorStyle->setCurrentItem(atts->GetColorStyle());
-            ColorStyle->blockSignals(false);
+            if (atts->GetColorType() == PoincareAttributes::ColorBySingleColor)
+            {
+                singleColor->setEnabled(true);
+                ColorStyle->setEnabled(false);
+                colorTableName->setEnabled(false);
             }
+            else if (atts->GetColorType() == PoincareAttributes::ColorByColorTable)
+            {
+                singleColor->setEnabled(false);
+                ColorStyle->setEnabled(true);
+                colorTableName->setEnabled(true);
+            }
+            colorModeButtons->blockSignals(false);
             break;
+
           case PoincareAttributes::ID_MaxToroidalWinding:
             MaxToroidalWinding->blockSignals(true);
             MaxToroidalWinding->setValue(atts->GetMaxToroidalWinding());
@@ -754,15 +776,30 @@ QvisPoincarePlotWindow::UpdateWindow(bool doAll)
             AdjustPlane->setText(temp);
             AdjustPlane->blockSignals(false);
             break;
-          case PoincareAttributes::ID_ShowIslands:
-            ShowIslands->blockSignals(true);
-            ShowIslands->setChecked(atts->GetShowIslands());
-            ShowIslands->blockSignals(false);
-            break;
           case PoincareAttributes::ID_Overlaps:
             Overlaps->blockSignals(true);
             Overlaps->setButton(atts->GetOverlaps());
             Overlaps->blockSignals(false);
+            break;
+          case PoincareAttributes::ID_Min:
+            temp.setNum(atts->GetMin());
+            minLineEdit->setText(temp);
+            break;
+          case PoincareAttributes::ID_Max:
+            temp.setNum(atts->GetMax());
+            maxLineEdit->setText(temp);
+            break;
+          case PoincareAttributes::ID_useMin:
+            minToggle->blockSignals(true);
+            minToggle->setChecked(atts->GetUseMin());
+            minLineEdit->setEnabled(atts->GetUseMin());
+            minToggle->blockSignals(false);
+            break;
+          case PoincareAttributes::ID_useMax:
+            maxToggle->blockSignals(true);
+            maxToggle->setChecked(atts->GetUseMax());
+            maxLineEdit->setEnabled(atts->GetUseMax());
+            maxToggle->blockSignals(false);
             break;
         }
     }
@@ -1065,7 +1102,7 @@ QvisPoincarePlotWindow::GetCurrentValues(int which_widget)
     if(which_widget == PoincareAttributes::ID_NumberPlanes || doAll)
     {
         int val = NumberPlanes->value();
-        if (val >= 2)
+        if (val >= 1)
             atts->SetNumberPlanes(val);
         else
         {
@@ -1159,6 +1196,49 @@ QvisPoincarePlotWindow::GetCurrentValues(int which_widget)
         }
     }
 
+    //Min
+    if(which_widget == PoincareAttributes::ID_Min || doAll)
+    {
+        temp = minLineEdit->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
+        {
+            double val = temp.toDouble(&okay);
+            if(okay)
+                atts->SetMin(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of Min was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetMin());
+            Message(msg);
+            atts->SetMin(atts->GetMin());
+        }
+    }
+
+    //Max
+    if(which_widget == PoincareAttributes::ID_Max || doAll)
+    {
+        temp = maxLineEdit->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
+        {
+            double val = temp.toDouble(&okay);
+            if(okay)
+                atts->SetMax(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of Max was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetMax());
+            Message(msg);
+            atts->SetMax(atts->GetMax());
+        }
+    }
 }
 
 
@@ -1534,4 +1614,88 @@ QvisPoincarePlotWindow::OverlapsChanged(int val)
     }
 }
 
+void
+QvisPoincarePlotWindow::colorModeChanged(int val)
+{
+    if(val == 0)
+        atts->SetColorType(PoincareAttributes::ColorBySingleColor);
+    else if(val == 1)
+        atts->SetColorType(PoincareAttributes::ColorByColorTable);
+    Apply();
+}
+
+
+void
+QvisPoincarePlotWindow::processMinLimitText()
+{
+    GetCurrentValues(PoincareAttributes::ID_Min);
+    Apply();
+
+    QString temp, msg;
+    temp = minLineEdit->displayText().stripWhiteSpace();
+    bool okay = !temp.isEmpty();
+    if(okay)
+    {
+        double val = temp.toDouble(&okay);
+        if(okay)
+            atts->SetMin(val);
+    }
+
+    if(!okay)
+    {
+        msg = tr("The minimum value was invalid. "
+                 "Resetting to the last good value of %1.").
+            arg(atts->GetMin());
+        Message(msg);
+
+        atts->SetMin(atts->GetMin());
+    }
+    cout<<"min= "<<atts->GetMin()<<endl;
+    Apply();
+}
+
+void
+QvisPoincarePlotWindow::processMaxLimitText()
+{
+    GetCurrentValues(PoincareAttributes::ID_Max);
+    Apply();
+
+
+    QString temp, msg;
+    
+    temp = maxLineEdit->displayText().stripWhiteSpace();
+    bool okay = !temp.isEmpty();
+    if(okay)
+    {
+        double val = temp.toDouble(&okay);
+        if(okay)
+            atts->SetMax(val);
+    }
+
+    if(!okay)
+    {
+        msg = tr("The maximum value was invalid. "
+                 "Resetting to the last good value of %1.").
+            arg(atts->GetMax());
+        Message(msg);
+
+        atts->SetMax(atts->GetMax());
+    }
+    cout<<"max= "<<atts->GetMax()<<endl;
+    Apply();
+}
+
+void
+QvisPoincarePlotWindow::minToggled(bool val)
+{
+    atts->SetUseMin(val);
+    Apply();
+}
+
+void
+QvisPoincarePlotWindow::maxToggled(bool val)
+{
+    atts->SetUseMax(val);
+    Apply();
+}
 

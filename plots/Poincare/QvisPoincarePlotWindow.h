@@ -128,6 +128,11 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     void AdjustPlaneProcessText();
     void ShowIslandsChanged(bool val);
     void OverlapsChanged(int val);
+    void colorModeChanged(int val);
+    void minToggled(bool on);
+    void maxToggled(bool on);
+    void processMaxLimitText();
+    void processMinLimitText();
   private:
     int plotType;
 
@@ -156,11 +161,16 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     QvisColorButton *singleColor;
     QCheckBox *legendFlag;
     QCheckBox *lightingFlag;
-    QCheckBox *showStreamlines;
-    QCheckBox *showPoints;
-    QCheckBox *ShowIslands;
     QComboBox *ColorStyle;
     QComboBox *DisplayType;
+    QGroupBox *limitsGrp;
+    QGroupBox *colorGrp;
+    QButtonGroup *colorModeButtons;
+    QCheckBox *minToggle;
+    QCheckBox *maxToggle;
+    QLineEdit *maxLineEdit;
+    QLineEdit *minLineEdit;
+
 
     // poincare options
     QSpinBox *NumberPlanes;
@@ -182,8 +192,6 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     QLabel *planeUpAxisLabel;
     QLabel *planeRadiusLabel;
     QLabel *pointDensityLabel;
-    QLabel *colorTableNameLabel;
-    QLabel *singleColorLabel;
     QLabel *relTolLabel;
     QLabel *absTolLabel;
     QLabel *terminationTypeLabel;
