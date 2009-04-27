@@ -42,6 +42,7 @@
 
 #include <qbuttongroup.h>
 #include <qcheckbox.h>
+#include <qcombobox.h>
 #include <qgroupbox.h>
 #include <qlabel.h>
 #include <qlayout.h>
@@ -140,6 +141,10 @@ QvisParallelCoordinatesPlotWindow::~QvisParallelCoordinatesPlotWindow()
 //    Allow user to force into the mode using individual data point lines
 //    for the focus instead of using a histogram.
 //
+//    Jeremy Meredith, Mon Apr 27 10:44:49 EDT 2009
+//    Added ability to draw focus as color-graduated bins.  Added focus gamma.
+//    Renamed some "line" text to "focus".
+//
 // ****************************************************************************
 
 void
@@ -203,7 +208,7 @@ QvisParallelCoordinatesPlotWindow::CreateWindowContents()
     //
     // Draw lines, and the needed settings
     //
-    drawLines = new QGroupBox(tr("Draw individual lines"),
+    drawLines = new QGroupBox(tr("Draw focus"),
                               central, "drawLines");
     drawLines->setCheckable(true);
     connect(drawLines, SIGNAL(toggled(bool)),
@@ -214,7 +219,7 @@ QvisParallelCoordinatesPlotWindow::CreateWindowContents()
     linesSpacingLayout->setMargin(10);
     linesSpacingLayout->addSpacing(20);
 
-    QGridLayout *linesLayout = new QGridLayout(linesSpacingLayout, 3, 2, 5);
+    QGridLayout *linesLayout = new QGridLayout(linesSpacingLayout, 3, 4, 5);
 
     // Lines color
     linesOnlyIfExtents = new QCheckBox(
@@ -222,32 +227,60 @@ QvisParallelCoordinatesPlotWindow::CreateWindowContents()
                                        drawLines, "linesOnlyIfExtents");
     connect(linesOnlyIfExtents, SIGNAL(toggled(bool)),
             this, SLOT(linesOnlyIfExtentsToggled(bool)));
-    linesLayout->addMultiCellWidget(linesOnlyIfExtents, 0,0, 0,1);
+    linesLayout->addMultiCellWidget(linesOnlyIfExtents, 0,0, 0,2);
 
-    // Lines color
-    linesColorLabel = new QLabel(tr("Line color"), drawLines, "linesColorLabel");
-    linesLayout->addWidget(linesColorLabel,1,0);
-    linesColor = new QvisColorButton(drawLines, "linesColor");
-    connect(linesColor, SIGNAL(selectedColor(const QColor&)),
-            this, SLOT(linesColorChanged(const QColor&)));
-    linesLayout->addWidget(linesColor, 1,1);
+    // Draw focus as
+    drawFocusAsLabel = new QLabel(tr("Draw focus as"),
+                                  drawLines);
+    linesLayout->addWidget(drawFocusAsLabel, 1,0);
+    drawFocusAs = new QComboBox(drawLines, "drawFocusAs");
+    drawFocusAs->insertItem(tr("Individual lines"));
+    drawFocusAs->insertItem(tr("Bins of constant color"));
+    drawFocusAs->insertItem(tr("Bins colored by population"));
+    linesLayout->addMultiCellWidget(drawFocusAs, 1,1,1,2);
+    connect(drawFocusAs, SIGNAL(activated(int)),
+            this, SLOT(drawFocusAsChanged(int)));
+
+    // Focus gamma correction
+    focusGammaLabel = new QLabel(tr("Brightness (gamma)"),
+                                   drawLines, "focusGammaLabel");
+    linesLayout->addWidget(focusGammaLabel,2,0);
+    focusGamma = new QNarrowLineEdit(drawLines, "focusGamma");
+    connect(focusGamma, SIGNAL(returnPressed()),
+            this, SLOT(focusGammaProcessText()));
+    linesLayout->addWidget(focusGamma, 2,1);
+    focusGammaSlider = new QSlider(0,119,5,80,Qt::Horizontal,drawLines,
+                                     "focusGammaSlider");
+    connect(focusGammaSlider, SIGNAL(valueChanged(int)),
+            this, SLOT(focusGammaSliderChanged(int)));
+    connect(focusGammaSlider, SIGNAL(sliderReleased()),
+            this, SLOT(focusGammaSliderReleased()));
+    linesLayout->addWidget(focusGammaSlider, 2,2);
 
     // Number of partitions
-    linesNumPartitionsLabel = new QLabel(tr("Vertical screen resolution"),
+    linesNumPartitionsLabel = new QLabel(tr("Number of partitions"),
                                          drawLines, "linesNumPartitionsLabel");
-    linesLayout->addWidget(linesNumPartitionsLabel,2,0);
+    linesLayout->addWidget(linesNumPartitionsLabel,3,0);
     linesNumPartitions = new QNarrowLineEdit(drawLines,
                                              "linesNumPartitions");
     connect(linesNumPartitions, SIGNAL(returnPressed()),
             this, SLOT(linesNumPartitionsProcessText()));
-    linesLayout->addWidget(linesNumPartitions, 2,1);
+    linesLayout->addWidget(linesNumPartitions, 3,1);
     linesNumPartitionsSlider = new QSlider(1,7,1,4,Qt::Horizontal,
                                          drawLines,"linesNumPartitionsSlider");
     connect(linesNumPartitionsSlider, SIGNAL(valueChanged(int)),
             this, SLOT(linesNumPartitionsSliderChanged(int)));
     connect(linesNumPartitionsSlider, SIGNAL(sliderReleased()),
             this, SLOT(linesNumPartitionsSliderReleased()));
-    linesLayout->addWidget(linesNumPartitionsSlider, 2,2);
+    linesLayout->addWidget(linesNumPartitionsSlider, 3,2);
+
+    // Lines color
+    linesColorLabel = new QLabel(tr("Focus color"), drawLines, "linesColorLabel");
+    linesLayout->addWidget(linesColorLabel,4,0);
+    linesColor = new QvisColorButton(drawLines, "linesColor");
+    connect(linesColor, SIGNAL(selectedColor(const QColor&)),
+            this, SLOT(linesColorChanged(const QColor&)));
+    linesLayout->addMultiCellWidget(linesColor, 4,4, 1,2);
 
     //
     // Draw context, and the needed settings
@@ -313,14 +346,6 @@ QvisParallelCoordinatesPlotWindow::CreateWindowContents()
     connect(unifyAxisExtents, SIGNAL(toggled(bool)),
             this, SLOT(unifyAxisExtentsToggled(bool)));
     topLayout->addWidget(unifyAxisExtents);
-
-    // Force individual data point lines for focus
-    forceIndividualLineFocusToggle =
-        new QCheckBox(tr("Force individual data point lines for focus"),
-                      central, "forceIndividualLineFocusToggle");
-    connect(forceIndividualLineFocusToggle, SIGNAL(toggled(bool)),
-            this, SLOT(forceIndividualLineFocusToggled(bool)));
-    topLayout->addWidget(forceIndividualLineFocusToggle);
 }
 
 
@@ -373,6 +398,9 @@ QvisParallelCoordinatesPlotWindow::CreateWindowContents()
 //    Added number of bins for line drawing.
 //    Allow user to force into the mode using individual data point lines
 //    for the focus instead of using a histogram.
+//
+//    Jeremy Meredith, Mon Apr 27 10:44:49 EDT 2009
+//    Added ability to draw focus as color-graduated bins.  Added focus gamma.
 //
 // ****************************************************************************
 
@@ -493,10 +521,29 @@ QvisParallelCoordinatesPlotWindow::UpdateWindow(bool doAll)
             unifyAxisExtents->setChecked(atts->GetUnifyAxisExtents());
             unifyAxisExtents->blockSignals(false);
             break;
-          case ParallelCoordinatesAttributes::ID_forceFullDataFocus:
-            forceIndividualLineFocusToggle->blockSignals(true);
-            forceIndividualLineFocusToggle->setChecked(atts->GetForceFullDataFocus());
-            forceIndividualLineFocusToggle->blockSignals(false);
+          case ParallelCoordinatesAttributes::ID_focusGamma:
+            focusGamma->blockSignals(true);
+            focusGammaSlider->blockSignals(true);
+            temp.sprintf("%.2f", atts->GetFocusGamma());
+            focusGamma->setText(temp);
+            sliderpos = int(50 + 50*log10(atts->GetFocusGamma()) + .5);
+            sliderpos = QMIN(QMAX(0, sliderpos), 119);
+            focusGammaSlider->setValue(sliderpos);
+            focusGamma->blockSignals(false);
+            focusGammaSlider->blockSignals(false);
+            break;
+          case ParallelCoordinatesAttributes::ID_drawFocusAs:
+            drawFocusAs->blockSignals(true);
+            drawFocusAs->setCurrentItem(atts->GetDrawFocusAs());
+            drawFocusAs->blockSignals(false);
+            focusGamma->setEnabled(atts->GetDrawFocusAs()==
+                       ParallelCoordinatesAttributes::BinsColoredByPopulation);
+            focusGammaSlider->setEnabled(atts->GetDrawFocusAs()==
+                       ParallelCoordinatesAttributes::BinsColoredByPopulation);
+            linesNumPartitions->setEnabled(atts->GetDrawFocusAs()!=
+                       ParallelCoordinatesAttributes::IndividualLines);
+            linesNumPartitionsSlider->setEnabled(atts->GetDrawFocusAs()!=
+                       ParallelCoordinatesAttributes::IndividualLines);
             break;
         }
     }
@@ -539,6 +586,9 @@ QvisParallelCoordinatesPlotWindow::UpdateWindow(bool doAll)
 //    Added fields for iterating over time.
 //    Switched to named indexes.
 //
+//    Jeremy Meredith, Mon Apr 27 10:44:49 EDT 2009
+//    Added ability to draw focus as color-graduated bins.  Added focus gamma.
+//
 // ****************************************************************************
 
 void
@@ -568,6 +618,30 @@ QvisParallelCoordinatesPlotWindow::GetCurrentValues(int which_widget)
                   arg(atts->GetContextGamma());
             Message(msg);
             atts->SetContextGamma(atts->GetContextGamma());
+        }
+    }
+
+    // Do focusGamma
+    if(which_widget == ParallelCoordinatesAttributes::ID_focusGamma || doAll)
+    {
+        temp = focusGamma->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
+        {
+            float val = temp.toFloat(&okay);
+            if (val>0 && val<1000)
+                atts->SetFocusGamma(val);
+            else
+                okay = false;
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of focusGamma was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetFocusGamma());
+            Message(msg);
+            atts->SetFocusGamma(atts->GetFocusGamma());
         }
     }
 
@@ -1067,6 +1141,63 @@ QvisParallelCoordinatesPlotWindow::contextGammaSliderReleased()
 
 
 // ****************************************************************************
+//  Method:  QvisParallelCoordinatesPlotWindow::focusGammaSliderChanged
+//
+//  Purpose:
+//    Set the gamma based on the integral gamma slider position
+//
+//  Arguments:
+//    val        the position of the slider (currently [0,119])
+//
+//  Programmer:  Jeremy Meredith
+//  Creation:    April 27, 2009
+//
+// ****************************************************************************
+
+void
+QvisParallelCoordinatesPlotWindow::focusGammaSliderChanged(int val)
+{
+#if defined(__GNUC__) && ((__GNUC__ < 3) || (__GNUC__ == 3 && __GNUC_MINOR__ < 2) || (__GNUC__ == 3 && __GNUC_MINOR__ == 2 && __GNUC_PATCHLEVEL__ == 0))
+    float gamma = pow(10.,double(val/50.)-1);
+#else
+    float gamma = powf(10.f,float(val/50.)-1);
+#endif
+    //old: gamma = 0.1 * float(val);
+
+    // round:
+    gamma = int(gamma*100+.5)/100.;
+
+    // set the attributes
+    atts->SetFocusGamma(gamma);
+
+    // Set the value in the line edit.
+    QString tmp;
+    tmp.sprintf("%.2f", gamma);
+    focusGamma->setText(tmp);
+}
+
+// ****************************************************************************
+//  Method:  QvisParallelCoordinatesPlotWindow::focusGammaSliderReleased
+//
+//  Purpose:
+//    When the slider is released, update the plot atts as necessary.
+//
+//  Arguments:
+//    none
+//
+//  Programmer:  Jeremy Meredith
+//  Creation:    April 27, 2009
+//
+// ****************************************************************************
+
+void
+QvisParallelCoordinatesPlotWindow::focusGammaSliderReleased()
+{
+    Apply();
+}
+
+
+// ****************************************************************************
 //  Method:  QvisParallelCoordinatesPlotWindow::contextNumPartitionsSliderChanged
 //
 //  Purpose:
@@ -1158,28 +1289,6 @@ QvisParallelCoordinatesPlotWindow::unifyAxisExtentsToggled(bool val)
 }
 
 // ****************************************************************************
-//  Method:  QvisParallelCoordinatesPlotWindow::forceIndividualLineFocusToggled
-//
-//  Purpose:
-//    Executed when the toggle button for forcing focus to be draw
-//    using individual data points is toggled.
-//
-//  Arguments:
-//    val        the new state
-//
-//  Programmer:  Jeremy Meredith
-//  Creation:    March 27, 2008
-//
-// ****************************************************************************
-
-void
-QvisParallelCoordinatesPlotWindow::forceIndividualLineFocusToggled(bool val)
-{
-    atts->SetForceFullDataFocus(val);
-    Apply();
-}
-
-// ****************************************************************************
 //  Method:  QvisParallelCoordinatesPlotWindow::linesNumPartitionsSliderChanged
 //
 //  Purpose:
@@ -1226,4 +1335,27 @@ QvisParallelCoordinatesPlotWindow::linesNumPartitionsSliderReleased()
     Apply();
 }
 
+
+// ****************************************************************************
+//  Method:  QvisParallelCoordinatesPlotWindow::drawFocusAsChanged
+//
+//  Purpose:
+//    Callback for draw-focus-as combo box
+//
+//  Arguments:
+//    val        the new setting
+//
+//  Programmer:  Jeremy Meredith
+//  Creation:    April 27, 2009
+//
+// ****************************************************************************
+void
+QvisParallelCoordinatesPlotWindow::drawFocusAsChanged(int val)
+{
+    if (val != atts->GetDrawFocusAs())
+    {
+        atts->SetDrawFocusAs(ParallelCoordinatesAttributes::FocusRendering(val));
+        Apply();
+    }
+}
 
