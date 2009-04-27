@@ -236,7 +236,7 @@ avtITAPS_CUtility::TraverseSetHierarchy(iMesh_Instance aMesh, int level,
 
     // Do the callback if one was requested
     bool shouldRecurse = true;
-    if (handleSetCb)
+    if (isEntitySet && handleSetCb)
         shouldRecurse = (*handleSetCb)(aMesh, level, memberId, isEntitySet, eh, esh, handleSetCb_data);
 
     iBase_EntitySetHandle *sets = 0; int sets_allocated = 0;
@@ -716,6 +716,15 @@ avtITAPS_CUtility::GetTagsForEntity(iMesh_Instance aMesh, bool isEntitySet,
 funcEnd: ;
 }
 
+
+// ****************************************************************************
+//  Function: GetTopLevelSets 
+//
+//  Purpose: Filter function used in traversing set hierarchy. Return
+//  sets meeting certain criteria at the top of the hierarchy. 
+//
+//  Mark C. Miller, Mon Apr 14 15:41:21 PDT 2008
+// ****************************************************************************
 bool 
 avtITAPS_CUtility::GetTopLevelSets(iMesh_Instance ima, int level, int memidx,
     bool ises, iBase_EntityHandle eh, iBase_EntitySetHandle esh, void *cb_data)
@@ -724,6 +733,8 @@ avtITAPS_CUtility::GetTopLevelSets(iMesh_Instance ima, int level, int memidx,
     vector<int>    tagTypes;
     vector<int>    tagSizes;
     vector<string> tagVals;
+
+    if (!ises) return false;
 
     map<string, vector<iBase_EntitySetHandle> > *theSets = 
         (map<string, vector<iBase_EntitySetHandle> > *) cb_data;
@@ -734,9 +745,120 @@ avtITAPS_CUtility::GetTopLevelSets(iMesh_Instance ima, int level, int memidx,
     {
         if (tagNames[i] == "CATEGORY")
             (*theSets)[tagVals[i]].push_back(esh);
+        else if (tagNames[i] == "PARALLEL_PARTITION" && level == 1)
+            (*theSets)[tagNames[i]].push_back(esh);
     }
 
     if (level > 0)
         return false;
     return true;
+}
+
+// ****************************************************************************
+//  Function: GetTagStuff 
+//
+//  Purpose: Utility function to get tag info on an entity set or entity
+//  but will presently NOT return tag values except on entity set.
+//
+//  Mark C. Miller, Mon Apr 14 15:41:21 PDT 2008
+// ****************************************************************************
+int avtITAPS_CUtility::GetTagStuff(iMesh_Instance ima, iBase_EntitySetHandle set,
+    int ent_type, string name, int *type, int *size, void **vals)
+{
+    int err;
+    IMESH_ADEF(iBase_TagHandle, tags);
+
+    //
+    // Get all tags either on the EntSet or on the first Ent of specified type
+    // in the set.
+    //
+    if (0 <= ent_type && ent_type < iBase_ALL_TYPES)
+    {
+        int has_data;
+        iBase_EntityHandle oneEnt;
+        iMesh_EntityIterator entIt;
+
+        iMesh_initEntIter(ima, set, ent_type, iMesh_ALL_TOPOLOGIES, &entIt, &err);
+        iMesh_getNextEntIter(ima, entIt, &oneEnt, &has_data, &err);
+        if (has_data && err == iBase_SUCCESS)
+            iMesh_getAllTags(ima, oneEnt, IMESH_AARG(tags), &err); 
+        iMesh_endEntIter(ima, entIt, &err);
+    }
+    else
+    {
+        iMesh_getAllEntSetTags(ima, set, IMESH_AARG(tags), &err);
+    }
+    if (err != iBase_SUCCESS)
+        return err;
+
+    for (int i = 0; i < tags_size; i++)
+    {
+        if (VisIt_iMesh_getTagName(ima, tags[i]) == name)
+        {
+            if (type)
+                iMesh_getTagType(ima, tags[i], type, &err);
+            if (err != iBase_SUCCESS)
+                return err;
+            if (size)
+                iMesh_getTagSizeValues(ima, tags[i], size, &err);
+            if (err != iBase_SUCCESS)
+                return err;
+            if (vals)
+            {
+                // We don't support getting vals on entities here yet
+                if (0 <= ent_type && ent_type < iBase_ALL_TYPES)
+                    return iBase_FAILURE;
+
+                int tmp_type = type ? *type : 0;
+                int tmp_size = size ? *size : 0;
+                if (!type)
+                    iMesh_getTagType(ima, tags[i], &tmp_type, &err);
+                if (!size)
+                    iMesh_getTagSizeValues(ima, tags[i], &tmp_size, &err);
+                switch(tmp_type)
+                {
+                    case iBase_BYTES:
+                    {
+                        int vals_allocated = 0, vals_size = 0;
+                        if (*vals == 0)
+                        {
+                            *vals = (void *) malloc(tmp_size * 1);
+                            vals_allocated = tmp_size;
+                        }
+                        iMesh_getEntSetData(ima, set, tags[i], (char**) vals, &vals_allocated, &vals_size, &err);
+                        break;
+                    }
+                    case iBase_INTEGER:
+                        if (*vals == 0)
+                            *vals = (void *) malloc(tmp_size * sizeof(int));
+                        iMesh_getEntSetIntData(ima, set, tags[i], (int*) *vals, &err);
+                        break;
+                    case iBase_DOUBLE:
+                        if (*vals == 0)
+                            *vals = (void *) malloc(tmp_size * sizeof(double));
+                        iMesh_getEntSetDblData(ima, set, tags[i], (double*) *vals, &err);
+                        break;
+                    case iBase_ENTITY_HANDLE:
+                    {
+                        int vals_allocated = 0, vals_size = 0;
+                        if (*vals == 0)
+                        {
+                            *vals = (void *) malloc(tmp_size * sizeof(iBase_EntityHandle));
+                            vals_allocated = tmp_size * sizeof(iBase_EntityHandle);
+                        }
+                        iMesh_getEntSetData(ima, set, tags[i], (char**) vals, &vals_allocated, &vals_size, &err);
+                        //iMesh_getEntSetEHData(ima, set, tags[i], *vals, &err);
+                        break;
+                    }
+                }
+            }
+
+            IMESH_AFREE(tags);
+            return err;
+
+        }
+    }
+
+    IMESH_AFREE(tags);
+    return iBase_FAILURE;
 }
