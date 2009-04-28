@@ -57,6 +57,7 @@
 
 #include <DebugStream.h>
 #include <avtCallback.h>
+#include <Utility.h>
 
 //
 // Global variables.
@@ -922,7 +923,8 @@ ViewerServerManager::SimConnectThroughLauncher(const std::string &remoteHost,
             // progress window.
             typedef struct {
                 string h; int p; string k;
-                 ViewerConnectionProgressDialog *d;} SimData;
+                ViewerConnectionProgressDialog *d;
+                bool tunnel;} SimData;
             SimData *simData = (SimData*)data;
 
             // Search the args list and see if we've supplied the path to
@@ -945,7 +947,12 @@ ViewerServerManager::SimConnectThroughLauncher(const std::string &remoteHost,
                 cancelled = true;
             else
             {
-                launchers[remoteHost].launcher->ConnectSimulation(args,
+                // If we're doing SSH tunneling, change the arguments here.
+                stringVector args2(args);
+                if(simData->tunnel)
+                    ConvertArgsToTunneledValues(GetPortTunnelMap(remoteHost), args2);
+
+                launchers[remoteHost].launcher->ConnectSimulation(args2,
                     simData->h, simData->p, simData->k);
 
                 // Indicate success.
