@@ -368,34 +368,40 @@ QvisPoincarePlotWindow::CreateWindowContents()
     displayLayout->addWidget(NumberPlanes,row,1);
     row++;
 
+    int maxWidth = fontMetrics().width("1.0000000000");
     // Create the max toggle and line edit
     limitsGrp = new QGroupBox(displayTab, "limitsGrp");
     limitsGrp->setTitle(tr("Limits") );
-    displayLayout->addMultiCellWidget(limitsGrp, 1,1,0,3);
+    displayLayout->addMultiCellWidget(limitsGrp, row,row+1,0,2);
+    row += 2;
+
     QVBoxLayout *limitsAVLayout = new QVBoxLayout(limitsGrp);
     limitsAVLayout->setMargin(10);
     limitsAVLayout->addSpacing(15);
-    QGridLayout *limitsGLayout = new QGridLayout(limitsAVLayout, 2, 2);
+    QGridLayout *limitsGLayout = new QGridLayout(limitsAVLayout, 2, 5);
     limitsGLayout->setSpacing(10);
     limitsGLayout->setColStretch(1,10);
 
-    maxToggle = new QCheckBox(tr("Max"), limitsGrp, "maxToggle");
-    limitsGLayout->addWidget(maxToggle, 0, 0);
-    connect(maxToggle, SIGNAL(toggled(bool)),
-            this, SLOT(maxToggled(bool)));
-    maxLineEdit = new QLineEdit(limitsGrp, "maxLineEdit");
-    connect(maxLineEdit, SIGNAL(returnPressed()),
-            this, SLOT(processMaxLimitText())); 
-    limitsGLayout->addWidget(maxLineEdit, 0, 1);
-
     minToggle = new QCheckBox(tr("Min"), limitsGrp, "minToggle");
-    limitsGLayout->addWidget(minToggle, 1, 0);
+    limitsGLayout->addWidget(minToggle, 0, 0);
     connect(minToggle, SIGNAL(toggled(bool)),
             this, SLOT(minToggled(bool)));
     minLineEdit = new QLineEdit(limitsGrp, "minLineEdit");
+    minLineEdit->setMaximumWidth(maxWidth);
+
     connect(minLineEdit, SIGNAL(returnPressed()),
             this, SLOT(processMinLimitText())); 
-    limitsGLayout->addWidget(minLineEdit, 1, 1);
+    limitsGLayout->addWidget(minLineEdit, 0, 1);
+
+    maxToggle = new QCheckBox(tr("Max"), limitsGrp, "maxToggle");
+    limitsGLayout->addWidget(maxToggle, 0, 2);
+    connect(maxToggle, SIGNAL(toggled(bool)),
+            this, SLOT(maxToggled(bool)));
+    maxLineEdit = new QLineEdit(limitsGrp, "maxLineEdit");
+    maxLineEdit->setMaximumWidth(maxWidth);
+    connect(maxLineEdit, SIGNAL(returnPressed()),
+            this, SLOT(processMaxLimitText())); 
+    limitsGLayout->addWidget(maxLineEdit, 0, 3);
 
     //Coloring options.
     colorGrp = new QGroupBox(displayTab, "colorGrp");
