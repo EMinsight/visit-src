@@ -143,6 +143,9 @@
 //    Renamed smallest_angle to minimum_angle and largest_angle to
 //    maximum_angle.
 //
+//    Kathleen Bonnell, Mon Apr 27 17:35:25 PDT 2009
+//    Added sinh, cosh, tanh to expr_trig.
+//
 // ****************************************************************************
 
 struct ExprNameList
@@ -230,10 +233,13 @@ const char *expr_trig[] = {
     "asin",
     "atan",
     "cos",
+    "cosh",
     "deg2rad",
     "rad2deg",
     "sin",
+    "sinh",
     "tan",
+    "tanh",
     NULL
 };
 
