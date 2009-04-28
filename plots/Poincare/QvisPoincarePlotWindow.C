@@ -127,6 +127,9 @@ QvisPoincarePlotWindow::~QvisPoincarePlotWindow()
 //
 //    Dave Pugmire, Fri Apr 17 11:32:40 EDT 2009
 //    GUI reorganization.
+//
+//    Dave Pugmire, Tue Apr 28 09:26:06 EDT 2009
+//    GUI reorganization.
 //   
 // ****************************************************************************
 
@@ -423,26 +426,31 @@ QvisPoincarePlotWindow::CreateWindowContents()
     rb = new QRadioButton(tr("Color table"), colorGrp, "colorTable");
     colorModeButtons->insert(rb);
     colorGLayout->addWidget(rb, 1, 0);
-
-    ColorStyle = new QComboBox(colorGrp, "ColorStyle");
-    ColorStyle->insertItem(tr("OriginalValue"));
-    ColorStyle->insertItem(tr("InputOrder"));
-    ColorStyle->insertItem(tr("PointIndex"));
-    ColorStyle->insertItem(tr("Plane"));
-    ColorStyle->insertItem(tr("ToroidalWindingOrder"));
-    ColorStyle->insertItem(tr("ToroidalWindingPointOrder"));
-    ColorStyle->insertItem(tr("ToroidalWindings"));
-    ColorStyle->insertItem(tr("PoloidalWindings"));
-    ColorStyle->insertItem(tr("SafetyFactor"));
-    connect(ColorStyle, SIGNAL(activated(int)),
-            this, SLOT(ColorStyleChanged(int)));
-    colorGLayout->addWidget(ColorStyle,1,1);
-
+    
     colorTableName = new QvisColorTableButton(colorGrp, "colorTableName");
     connect(colorTableName, SIGNAL(selectedColorTable(bool, const QString&)),
             this, SLOT(colorTableNameChanged(bool, const QString&)));
-    colorGLayout->addWidget(colorTableName,2,1);
-    row++;
+    colorGLayout->addWidget(colorTableName,1,1);
+
+
+    ColorByLabel = new QLabel(tr("Color by"), colorGrp, "colorByLabel");
+    colorGLayout->addWidget(ColorByLabel, 2, 0, Qt::AlignRight);
+
+    ColorBy = new QComboBox(colorGrp, "ColorStyle");
+    ColorBy->insertItem(tr("OriginalValue"));
+    ColorBy->insertItem(tr("InputOrder"));
+    ColorBy->insertItem(tr("PointIndex"));
+    ColorBy->insertItem(tr("Plane"));
+    ColorBy->insertItem(tr("ToroidalWindingOrder"));
+    ColorBy->insertItem(tr("ToroidalWindingPointOrder"));
+    ColorBy->insertItem(tr("ToroidalWindings"));
+    ColorBy->insertItem(tr("PoloidalWindings"));
+    ColorBy->insertItem(tr("SafetyFactor"));
+    connect(ColorBy, SIGNAL(activated(int)),
+            this, SLOT(ColorByChanged(int)));
+    colorGLayout->addWidget(ColorBy,2,1);
+
+    //row++;
     
     legendFlag = new QCheckBox(tr("Legend"), displayTab, "legendFlag");
     connect(legendFlag, SIGNAL(toggled(bool)),
@@ -474,6 +482,9 @@ QvisPoincarePlotWindow::CreateWindowContents()
 //    Reworked and reorganized to make more usable.
 //
 //    Dave Pugmire, Fri Apr 17 11:32:40 EDT 2009
+//    GUI reorganization.
+//
+//    Dave Pugmire, Tue Apr 28 09:26:06 EDT 2009
 //    GUI reorganization.
 //   
 // ****************************************************************************
@@ -716,7 +727,7 @@ QvisPoincarePlotWindow::UpdateWindow(bool doAll)
             break;
           case PoincareAttributes::ID_terminationType:
             terminationType->blockSignals(true);
-            integrationType->setCurrentItem(atts->GetIntegrationType());
+            terminationType->setCurrentItem(atts->GetTerminationType());
             terminationType->blockSignals(false);
             break;
           case PoincareAttributes::ID_integrationType:
@@ -724,7 +735,7 @@ QvisPoincarePlotWindow::UpdateWindow(bool doAll)
             integrationType->setCurrentItem(atts->GetIntegrationType());
             integrationType->blockSignals(false);
             break;
-          case PoincareAttributes::ID_NumberPlanes:
+          case PoincareAttributes::ID_numberPlanes:
             NumberPlanes->blockSignals(true);
             NumberPlanes->setValue(atts->GetNumberPlanes());
             NumberPlanes->blockSignals(false);
@@ -736,69 +747,71 @@ QvisPoincarePlotWindow::UpdateWindow(bool doAll)
             if (atts->GetColorType() == PoincareAttributes::ColorBySingleColor)
             {
                 singleColor->setEnabled(true);
-                ColorStyle->setEnabled(false);
+                ColorBy->setEnabled(false);
                 colorTableName->setEnabled(false);
+                ColorByLabel->setEnabled(false);
             }
             else if (atts->GetColorType() == PoincareAttributes::ColorByColorTable)
             {
                 singleColor->setEnabled(false);
-                ColorStyle->setEnabled(true);
+                ColorBy->setEnabled(true);
                 colorTableName->setEnabled(true);
+                ColorByLabel->setEnabled(true);
             }
             colorModeButtons->blockSignals(false);
             break;
 
-          case PoincareAttributes::ID_MaxToroidalWinding:
+          case PoincareAttributes::ID_maxToroidalWinding:
             MaxToroidalWinding->blockSignals(true);
             MaxToroidalWinding->setValue(atts->GetMaxToroidalWinding());
             MaxToroidalWinding->blockSignals(false);
             break;
-          case PoincareAttributes::ID_OverrideToroidalWinding:
+          case PoincareAttributes::ID_overrideToroidalWinding:
             OverrideToroidalWinding->blockSignals(true);
             temp.sprintf("%d", atts->GetOverrideToroidalWinding());
             OverrideToroidalWinding->setText(temp);
             OverrideToroidalWinding->blockSignals(false);
             break;
-          case PoincareAttributes::ID_HitRate:
+          case PoincareAttributes::ID_hitRate:
             HitRate->blockSignals(true);
             temp.setNum(atts->GetHitRate());
             HitRate->setText(temp);
             HitRate->blockSignals(false);
             break;
-          case PoincareAttributes::ID_ShowCurves:
+          case PoincareAttributes::ID_showCurves:
             DisplayType->blockSignals(true);
             DisplayType->setCurrentItem(atts->GetShowCurves());
             DisplayType->blockSignals(false);
             break;
-          case PoincareAttributes::ID_AdjustPlane:
+          case PoincareAttributes::ID_adjustPlane:
             AdjustPlane->blockSignals(true);
             temp.sprintf("%d", atts->GetAdjustPlane());
             AdjustPlane->setText(temp);
             AdjustPlane->blockSignals(false);
             break;
-          case PoincareAttributes::ID_Overlaps:
+          case PoincareAttributes::ID_overlaps:
             Overlaps->blockSignals(true);
             Overlaps->setButton(atts->GetOverlaps());
             Overlaps->blockSignals(false);
             break;
-          case PoincareAttributes::ID_Min:
+          case PoincareAttributes::ID_min:
             temp.setNum(atts->GetMin());
             minLineEdit->setText(temp);
             break;
-          case PoincareAttributes::ID_Max:
+          case PoincareAttributes::ID_max:
             temp.setNum(atts->GetMax());
             maxLineEdit->setText(temp);
             break;
-          case PoincareAttributes::ID_useMin:
+          case PoincareAttributes::ID_minFlag:
             minToggle->blockSignals(true);
-            minToggle->setChecked(atts->GetUseMin());
-            minLineEdit->setEnabled(atts->GetUseMin());
+            minToggle->setChecked(atts->GetMinFlag());
+            minLineEdit->setEnabled(atts->GetMinFlag());
             minToggle->blockSignals(false);
             break;
-          case PoincareAttributes::ID_useMax:
+          case PoincareAttributes::ID_maxFlag:
             maxToggle->blockSignals(true);
-            maxToggle->setChecked(atts->GetUseMax());
-            maxLineEdit->setEnabled(atts->GetUseMax());
+            maxToggle->setChecked(atts->GetMaxFlag());
+            maxLineEdit->setEnabled(atts->GetMaxFlag());
             maxToggle->blockSignals(false);
             break;
         }
@@ -1099,7 +1112,7 @@ QvisPoincarePlotWindow::GetCurrentValues(int which_widget)
     }
 
     // Do NumberPlanes
-    if(which_widget == PoincareAttributes::ID_NumberPlanes || doAll)
+    if(which_widget == PoincareAttributes::ID_numberPlanes || doAll)
     {
         int val = NumberPlanes->value();
         if (val >= 1)
@@ -1115,7 +1128,7 @@ QvisPoincarePlotWindow::GetCurrentValues(int which_widget)
     }
 
     // Do MaxToroidalWinding
-    if(which_widget == PoincareAttributes::ID_MaxToroidalWinding || doAll)
+    if(which_widget == PoincareAttributes::ID_maxToroidalWinding || doAll)
     {
         int val = MaxToroidalWinding->value();
         if (val >= 1)
@@ -1131,7 +1144,7 @@ QvisPoincarePlotWindow::GetCurrentValues(int which_widget)
     }
 
     // Do OverrideToroidalWinding
-    if(which_widget == PoincareAttributes::ID_OverrideToroidalWinding || doAll)
+    if(which_widget == PoincareAttributes::ID_overrideToroidalWinding || doAll)
     {
         temp = OverrideToroidalWinding->displayText().simplifyWhiteSpace();
         okay = !temp.isEmpty();
@@ -1153,7 +1166,7 @@ QvisPoincarePlotWindow::GetCurrentValues(int which_widget)
     }
 
     // Do HitRate
-    if(which_widget == PoincareAttributes::ID_HitRate || doAll)
+    if(which_widget == PoincareAttributes::ID_hitRate || doAll)
     {
         temp = HitRate->displayText().simplifyWhiteSpace();
         okay = !temp.isEmpty();
@@ -1175,7 +1188,7 @@ QvisPoincarePlotWindow::GetCurrentValues(int which_widget)
     }
 
     // Do AdjustPlane
-    if(which_widget == PoincareAttributes::ID_AdjustPlane || doAll)
+    if(which_widget == PoincareAttributes::ID_adjustPlane || doAll)
     {
         temp = AdjustPlane->displayText().simplifyWhiteSpace();
         okay = !temp.isEmpty();
@@ -1197,7 +1210,7 @@ QvisPoincarePlotWindow::GetCurrentValues(int which_widget)
     }
 
     //Min
-    if(which_widget == PoincareAttributes::ID_Min || doAll)
+    if(which_widget == PoincareAttributes::ID_min || doAll)
     {
         temp = minLineEdit->displayText().simplifyWhiteSpace();
         okay = !temp.isEmpty();
@@ -1219,7 +1232,7 @@ QvisPoincarePlotWindow::GetCurrentValues(int which_widget)
     }
 
     //Max
-    if(which_widget == PoincareAttributes::ID_Max || doAll)
+    if(which_widget == PoincareAttributes::ID_max || doAll)
     {
         temp = maxLineEdit->displayText().simplifyWhiteSpace();
         okay = !temp.isEmpty();
@@ -1539,12 +1552,11 @@ QvisPoincarePlotWindow::NumberPlanesSizeChanged(int val)
 
 
 void
-QvisPoincarePlotWindow::ColorStyleChanged(int val)
+QvisPoincarePlotWindow::ColorByChanged(int val)
 {
-    if(val != atts->GetColorStyle())
+    if(val != atts->GetColorBy())
     {
-        atts->SetColorStyle(PoincareAttributes::ColorStyleType(val));
-        //SetUpdate(false);
+        atts->SetColorBy(PoincareAttributes::ColorBy(val));
         Apply();
     }
 }
@@ -1561,7 +1573,7 @@ QvisPoincarePlotWindow::MaxToroidalWindingSizeChanged(int val)
 void
 QvisPoincarePlotWindow::OverrideToroidalWindingProcessText()
 {
-    GetCurrentValues(PoincareAttributes::ID_OverrideToroidalWinding);
+    GetCurrentValues(PoincareAttributes::ID_overrideToroidalWinding);
     Apply();
 }
 
@@ -1569,7 +1581,7 @@ QvisPoincarePlotWindow::OverrideToroidalWindingProcessText()
 void
 QvisPoincarePlotWindow::HitRateProcessText()
 {
-    GetCurrentValues(PoincareAttributes::ID_HitRate);
+    GetCurrentValues(PoincareAttributes::ID_hitRate);
     Apply();
 }
 
@@ -1589,7 +1601,7 @@ QvisPoincarePlotWindow::DisplayTypeChanged(int val)
 void
 QvisPoincarePlotWindow::AdjustPlaneProcessText()
 {
-    GetCurrentValues(PoincareAttributes::ID_AdjustPlane);
+    GetCurrentValues(PoincareAttributes::ID_adjustPlane);
     Apply();
 }
 
@@ -1628,7 +1640,7 @@ QvisPoincarePlotWindow::colorModeChanged(int val)
 void
 QvisPoincarePlotWindow::processMinLimitText()
 {
-    GetCurrentValues(PoincareAttributes::ID_Min);
+    GetCurrentValues(PoincareAttributes::ID_min);
     Apply();
 
     QString temp, msg;
@@ -1657,7 +1669,7 @@ QvisPoincarePlotWindow::processMinLimitText()
 void
 QvisPoincarePlotWindow::processMaxLimitText()
 {
-    GetCurrentValues(PoincareAttributes::ID_Max);
+    GetCurrentValues(PoincareAttributes::ID_max);
     Apply();
 
 
@@ -1688,14 +1700,14 @@ QvisPoincarePlotWindow::processMaxLimitText()
 void
 QvisPoincarePlotWindow::minToggled(bool val)
 {
-    atts->SetUseMin(val);
+    atts->SetMinFlag(val);
     Apply();
 }
 
 void
 QvisPoincarePlotWindow::maxToggled(bool val)
 {
-    atts->SetUseMax(val);
+    atts->SetMaxFlag(val);
     Apply();
 }
 

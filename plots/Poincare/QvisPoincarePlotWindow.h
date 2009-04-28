@@ -75,6 +75,9 @@ class QvisVariableButton;
 //
 //    Dave Pugmire, Fri Apr 17 11:32:40 EDT 2009
 //    GUI reorganization.
+//
+//    Dave Pugmire, Tue Apr 28 09:26:06 EDT 2009
+//    GUI reorganization.
 //   
 // ****************************************************************************
 
@@ -120,7 +123,7 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     void showStreamlinesChanged(bool val);
     void showPointsChanged(bool val);
     void NumberPlanesSizeChanged(int val);
-    void ColorStyleChanged(int val);
+    void ColorByChanged(int val);
     void MaxToroidalWindingSizeChanged(int val);
     void OverrideToroidalWindingProcessText();
     void HitRateProcessText();
@@ -161,7 +164,7 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     QvisColorButton *singleColor;
     QCheckBox *legendFlag;
     QCheckBox *lightingFlag;
-    QComboBox *ColorStyle;
+    QComboBox *ColorBy;
     QComboBox *DisplayType;
     QGroupBox *limitsGrp;
     QGroupBox *colorGrp;
@@ -204,6 +207,7 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     QLabel *DisplayTypeLabel;
     QLabel *AdjustPlaneLabel;
     QLabel *OverlapsLabel;
+    QLabel *ColorByLabel;
 
     PoincareAttributes *atts;
 };
