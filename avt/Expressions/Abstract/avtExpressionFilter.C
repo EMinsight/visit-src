@@ -641,6 +641,11 @@ avtExpressionFilter::GetVariableDimension(void)
 //      Added a target centering.  Defaults to toggling if not set
 //      (AVT_UNKNOWN_CENT).
 //
+//      Jeremy Meredith, Tue Apr 28 13:42:56 EDT 2009
+//      If we're doing a no-op, add one to the reference count.  Callers
+//      assume they own the result.
+//      Also, add support for "recentering" singletons (also a no-op).
+//
 // ****************************************************************************
 
 vtkDataArray *
@@ -662,6 +667,7 @@ avtExpressionFilter::Recenter(vtkDataSet *ds, vtkDataArray *arr,
     if (currCent == targCent)
     {
         // Nothing to do.  Return the original array.
+        arr->Register(NULL);
         return arr;
     }
 
@@ -670,6 +676,12 @@ avtExpressionFilter::Recenter(vtkDataSet *ds, vtkDataArray *arr,
     {
         if (ds2->GetNumberOfPoints() != arr->GetNumberOfTuples())
         {
+            if (arr->GetNumberOfTuples() == 1)
+            {
+                // okay, it's a singleton; no recentering necessary
+                arr->Register(NULL);
+                return arr;
+            }
             EXCEPTION2(ExpressionException, name, "Asked to re-center a nodal "
                        "variable that is not nodal.");
         }
@@ -694,6 +706,12 @@ avtExpressionFilter::Recenter(vtkDataSet *ds, vtkDataArray *arr,
     {
         if (ds2->GetNumberOfCells() != arr->GetNumberOfTuples())
         {
+            if (arr->GetNumberOfTuples() == 1)
+            {
+                // okay, it's a singleton; no recentering necessary
+                arr->Register(NULL);
+                return arr;
+            }
             EXCEPTION2(ExpressionException, name, "Asked to re-center a zonal "
                        "variable that is not zonal.");
         }
