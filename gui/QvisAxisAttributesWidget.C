@@ -93,9 +93,11 @@ QvisAxisAttributesWidget::QvisAxisAttributesWidget(QWidget *parent,
     titleGroup->setTitle(tr("Title"));
     if(titleEnabled)
     {
+#if QT_VERSION >= 0x030300
         titleGroup->setCheckable(true);
         connect(titleGroup, SIGNAL(toggled(bool)),
                 this, SLOT(titleToggled(bool)));
+#endif
     }
     QVBoxLayout *tInnerLayout = new QVBoxLayout(titleGroup);
     tInnerLayout->setMargin(10);
@@ -145,9 +147,11 @@ QvisAxisAttributesWidget::QvisAxisAttributesWidget(QWidget *parent,
     row = 0;
     labelGroup = new QGroupBox(this, "labelGroup");
     labelGroup->setTitle(tr("Labels"));
+#if QT_VERSION >= 0x030300
     labelGroup->setCheckable(true);
     connect(labelGroup, SIGNAL(toggled(bool)),
             this, SLOT(labelToggled(bool)));
+#endif
     QVBoxLayout *lInnerLayout = new QVBoxLayout(labelGroup);
     lInnerLayout->setMargin(10);
     lInnerLayout->addSpacing(15);
@@ -186,9 +190,11 @@ QvisAxisAttributesWidget::QvisAxisAttributesWidget(QWidget *parent,
     tickGroup->setTitle(tr("Tick marks"));
     if(tickEnabled)
     {
+#if QT_VERSION >= 0x030300
         tickGroup->setCheckable(true);
         connect(tickGroup, SIGNAL(toggled(bool)),
                 this, SLOT(tickToggled(bool)));
+#endif
     }
     QVBoxLayout *tgInnerLayout = new QVBoxLayout(tickGroup);
     tgInnerLayout->setMargin(10);

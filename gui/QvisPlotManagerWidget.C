@@ -2451,11 +2451,19 @@ QvisPlotManagerWidget::copyToWinThisPlot()
                               QMessageBox::Cancel | QMessageBox::Default);
     
     // add in a pop-up menu to allow user to select target window:
+#if QT_VERSION >= 0x030300
     win1Act = new QAction(tr("Window 1"), 0, this);
+#else
+    win1Act = new QAction(tr("Window 1"), tr("Window 1"), QKeySequence(), this);
+#endif
     win1Act->setStatusTip(tr("Copy Plot to Window 1"));
     connect( win1Act, SIGNAL(toggled(bool)), this, SIGNAL(CopyPlotToWin(1)));
-    
+
+#if QT_VERSION >= 0x030300
     win2Act = new QAction(tr("Window 2"), 0, this);
+#else
+    win2Act = new QAction(tr("Window 2"), tr("Window 2"), QKeySequence(), this);
+#endif
     win2Act->setStatusTip(tr("Copy Plot to Window 2"));
     connect( win2Act, SIGNAL(toggled(bool)), this, SIGNAL(copyPlotToWin(2)));
 

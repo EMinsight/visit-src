@@ -46,7 +46,10 @@
 #include <qdir.h>
 #include <qfiledialog.h>
 #include <qlabel.h>
+#if QT_VERSION >= 0x030300
 #include <qlocale.h>
+#endif
+#include <qstringlist.h>
 #include <qmessagebox.h>
 #include <qprintdialog.h>
 #include <qprinter.h>
@@ -729,6 +732,7 @@ QvisGUIApplication::QvisGUIApplication(int &argc, char **argv) :
     SetWaitCursor();
     GetViewerState()->GetAppearanceAttributes()->SelectAll();
 
+#if QT_VERSION >= 0x030300
     // Make VisIt translation aware.
     QTranslator *translator = new QTranslator(0);
 #if defined(_WIN32)
@@ -752,6 +756,7 @@ QvisGUIApplication::QvisGUIApplication(int &argc, char **argv) :
         debug1 << "Could not load translation." << endl;
         delete translator;
     }
+#endif
 
     // Customize the colors and fonts.
     CustomizeAppearance(false);
@@ -8049,7 +8054,11 @@ QvisGUIApplication::RestoreCrashRecoveryFile()
     QFile cr(filename);
     if(cr.exists())
     {
+#if QT_VERSION >= 0x030300
         int btn = QMessageBox::question(0, tr("Crash recovery"),
+#else
+        int btn = QMessageBox::information(0, tr("Crash recovery"),
+#endif
             tr("VisIt found a crash recovery session file. Would you like to "
                "restore it to return to the last saved state?"), QMessageBox::Yes,
             QMessageBox::No);

@@ -415,7 +415,9 @@ QvisAnnotationWindow::CreateGeneralTab()
     //
     databaseInfo = new QGroupBox(pageGeneral, "dbGroup");
     databaseInfo->setTitle(tr("Database"));
+#if QT_VERSION >= 0x030300
     databaseInfo->setCheckable(true);
+#endif
     connect(databaseInfo, SIGNAL(toggled(bool)),
             this, SLOT(databaseInfoChecked(bool)));
     glayout->addMultiCellWidget(databaseInfo, row, row, 0, 1);
@@ -475,7 +477,9 @@ QvisAnnotationWindow::CreateGeneralTab()
     //
     userInfo = new QGroupBox(pageGeneral, "userInfo");
     userInfo->setTitle(tr("User information"));
+#if QT_VERSION >= 0x030300
     userInfo->setCheckable(true);
+#endif
     connect(userInfo, SIGNAL(toggled(bool)),
             this, SLOT(userInfoChecked(bool)));
     glayout->addMultiCellWidget(userInfo, row, row, 0, 1);
@@ -1387,18 +1391,21 @@ QvisAnnotationWindow::UpdateAnnotationControls(bool doAll)
             UpdateAxes3D();
             break;
         case AnnotationAttributes::ID_userInfoFlag:
+#if QT_VERSION >= 0x030300
             userInfo->blockSignals(true);
             userInfo->setChecked(annotationAtts->GetUserInfoFlag());
             userInfo->blockSignals(false);
+#endif
             break;
         case AnnotationAttributes::ID_userInfoFont:
             userInfoFont->setFontAttributes(annotationAtts->GetUserInfoFont());
             break;
         case AnnotationAttributes::ID_databaseInfoFlag:
+#if QT_VERSION >= 0x030300
             databaseInfo->blockSignals(true);
             databaseInfo->setChecked(annotationAtts->GetDatabaseInfoFlag());
             databaseInfo->blockSignals(false);
-
+#endif
             databasePathExpansionMode->setEnabled(annotationAtts->GetDatabaseInfoFlag());
             databasePathExpansionModeLabel->setEnabled(annotationAtts->GetDatabaseInfoFlag());
             break;

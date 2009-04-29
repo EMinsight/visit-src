@@ -42,6 +42,7 @@
 #include <vector>
 #include <string>
 #include <qobject.h>
+#include <qstringlist.h>
 #include <visit-config.h>
 #include <ViewerProxy.h>
 #include <ConfigManager.h>

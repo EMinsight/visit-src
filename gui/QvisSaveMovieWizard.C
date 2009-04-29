@@ -2526,8 +2526,7 @@ QvisSaveMovieWizard::page3_PopulateSources()
     AccessViewerSession sessionAccess;
     if(!sessionAccess.ReadConfigFile(sessionFile.c_str()))
     {
-        QString err(tr("VisIt could not read the session file: %1."));
-        err.replace("%1", sessionFile.c_str());
+        QString err(tr("VisIt could not read the session file: %1.").arg(sessionFile.c_str()));
         Error(err);
         debug1 << mName << "Could not read the session file: "
                << sessionFile.c_str() << endl;
@@ -3903,12 +3902,11 @@ QvisSaveMovieWizard::AddSequencePages()
         sequencePages.clear();
 
         QString msg2;
-        QString msg2_sing(tr("The user interface file %1 could not be loaded."));
-        QString msg2_plur(tr("The user interface files %1 could not be loaded."));
+        QString msg2_sing(tr("The user interface file %1 could not be loaded.").arg(badUIFiles));
+        QString msg2_plur(tr("The user interface files %1 could not be loaded.").arg(badUIFiles));
         msg2 = msg2_sing;
         if(noLoadCount > 1)
             msg2 = msg2_plur;
-        msg2.replace("%1", badUIFiles);
         Warning(msg2);
     }
     else
@@ -3917,10 +3915,10 @@ QvisSaveMovieWizard::AddSequencePages()
         for(int i = 0; i < sequencePages.size(); ++i)
         {
             QString num; num.sprintf("%d", i+1);
-            QString pageTitle(tr("%1 page %2 for sequence %3"));
-            pageTitle.replace("%1", currentMovieTemplate.c_str());
-            pageTitle.replace("%2", num);
-            pageTitle.replace("%3", sequencePages[i].name.c_str());
+            QString pageTitle(tr("%1 page %2 for sequence %3")
+                              .arg(currentMovieTemplate.c_str())
+                              .arg(num)
+                              .arg(sequencePages[i].name.c_str()));
             debug1 << "Inserting new wizard page at " << (i+6) << endl;
             insertPage(sequencePages[i].ui, pageTitle, i+6);
         }

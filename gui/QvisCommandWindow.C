@@ -46,6 +46,7 @@
 #include <qlabel.h>
 #include <qlayout.h>
 #include <qpushbutton.h>
+#include <qstringlist.h>
 #include <qtabwidget.h>
 #include <qtextedit.h>
 #include <qtextstream.h>

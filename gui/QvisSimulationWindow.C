@@ -191,7 +191,9 @@ QvisSimulationWindow::CreateWindowContents()
     QSplitter *s1 = new QSplitter (central);
     s1->setOrientation(QSplitter::Vertical);
     s1->show();
+#if QT_VERSION >= 0x030305
     s1->setChildrenCollapsible(true);
+#endif
     topLayout->addWidget(s1);
 
     QGridLayout *grid1 = new QGridLayout(topLayout, 2, 2);
@@ -302,7 +304,9 @@ QvisSimulationWindow::CreateWindowContents()
     QSplitter *s2 = new QSplitter (central);
     s2->setOrientation(QSplitter::Vertical);
     s2->show();
+#if QT_VERSION >= 0x030305
     s2->setChildrenCollapsible(true);
+#endif
     topLayout->addWidget(s2);
 
     // Create the status message widgets.

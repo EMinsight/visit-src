@@ -456,29 +456,34 @@ QvisPlotListBox::contextMenuCreateActions()
      //  - need to get the max # of wins for copyToWin...
      // const int maxNwins = 10;
      // int selectWindow[maxNwins];
-     
-     hideShowAct = new QAction(tr("&Hide/Show"), 0, this);
+#if QT_VERSION >= 0x030300
+#define MAKE_ACTION(A,B,C) QAction(A,B,C)
+#else
+#define MAKE_ACTION(A,B,C) QAction(A, A, QKeySequence(), C, B)
+#endif
+
+     hideShowAct = new MAKE_ACTION(tr("&Hide/Show"), 0, this);
      hideShowAct->setStatusTip(tr("Hide or Show this plot"));
      hideShowAct->setToggleAction(true);
      connect( hideShowAct, SIGNAL(toggled(bool)), this, SIGNAL(hideThisPlot()));
      
-     deleteAct = new QAction(tr("Delete"), 0, this);
+     deleteAct = new MAKE_ACTION(tr("Delete"), 0, this);
      deleteAct->setStatusTip(tr("Delete this plot"));
      connect( deleteAct, SIGNAL(activated()), this, SIGNAL(deleteThisPlot()));
           
-     drawAct = new QAction(tr("Draw"), 0, this);
+     drawAct = new MAKE_ACTION(tr("Draw"), 0, this);
      drawAct->setStatusTip(tr("Draw this plot"));
      connect( drawAct, SIGNAL(activated()), this, SIGNAL(drawThisPlot()));    
 
-     clearAct = new QAction(tr("Clear"), 0, this);
+     clearAct = new MAKE_ACTION(tr("Clear"), 0, this);
      clearAct->setStatusTip(tr("Clear this plot"));
      connect( clearAct, SIGNAL(activated()), this, SIGNAL(clearThisPlot()));    
 
-     redrawAct = new QAction(tr("Redraw"), 0, this);
+     redrawAct = new MAKE_ACTION(tr("Redraw"), 0, this);
      redrawAct->setStatusTip(tr("Redraw this plot"));
      connect( redrawAct, SIGNAL(activated()), this, SIGNAL(redrawThisPlot()));  
      
-     copyAct = new QAction(tr("Copy"), 0, this);
+     copyAct = new MAKE_ACTION(tr("Copy"), 0, this);
      copyAct->setStatusTip(tr("Copy this plot"));
      connect( copyAct, SIGNAL(activated()), this, SIGNAL(copyThisPlot()));  
        
@@ -495,11 +500,11 @@ QvisPlotListBox::contextMenuCreateActions()
     
     
 // copy to window incomplete!!!!! Commented out below...
-     copyToWinAct = new QAction(tr("Copy To Window"), 0, this);
+     copyToWinAct = new MAKE_ACTION(tr("Copy To Window"), 0, this);
      copyToWinAct->setStatusTip(tr("Copy this plot to different window"));
      connect( copyToWinAct, SIGNAL(activated()), this, SIGNAL(copyToWinThisPlot()));    
-     win1Act = new QAction(tr("Window 1"), 0, this);
-     win2Act = new QAction(tr("Window 2"), 0, this);
+     win1Act = new MAKE_ACTION(tr("Window 1"), 0, this);
+     win2Act = new MAKE_ACTION(tr("Window 2"), 0, this);
      win1Act->setStatusTip(tr("Copy this plot to different window"));
      win2Act->setStatusTip(tr("Copy this plot to different window"));
      connect( win1Act, SIGNAL(activated()), this, SIGNAL(copyToWinThisPlot()));    
@@ -521,7 +526,7 @@ QvisPlotListBox::contextMenuCreateActions()
      plotContextMenu->insertSeparator();
     
      // Now, for the "Disconnect From TimeSlider" option:
-     disconnectAct = new QAction(tr("Disconnect From TimeSlider"), 0, this);
+     disconnectAct = new MAKE_ACTION(tr("Disconnect From TimeSlider"), 0, this);
      disconnectAct->setStatusTip(tr("Disconnect this plot from time slider"));
      disconnectAct->setToggleAction(true);
      connect( disconnectAct, SIGNAL(toggled(bool)), this, SIGNAL(disconnectThisPlot()));
