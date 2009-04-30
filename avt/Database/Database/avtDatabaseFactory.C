@@ -41,16 +41,16 @@
 // ************************************************************************* //
 
 #include <avtDatabaseFactory.h>
-
-#include <errno.h> // for errno
-#include <visitstream.h>
-#include <sys/stat.h>
-
-#include <vector>
-#include <string>
-
 #include <visit-config.h>
 
+#include <cerrno>
+#include <cstring>
+#include <string>
+#include <vector>
+
+#include <sys/stat.h>
+
+#include <visitstream.h>
 #include <avtDatabase.h>
 #include <avtDatabaseMetaData.h>
 #include <avtGenericDatabase.h>
