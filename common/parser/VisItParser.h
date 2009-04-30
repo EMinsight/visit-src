@@ -112,6 +112,9 @@ struct PARSER_API ParseElem
 //    Renamed this class Parser for consistency.  Added list of tokens
 //    to the rule reduction method to make life easier for the implementor.
 //
+//    Tom Fogal, Wed Apr 29 15:36:42 MDT 2009
+//    Check for empty `elems' so we don't deref an empty vector.
+//
 // ****************************************************************************
 class PARSER_API Parser
 {
@@ -122,7 +125,12 @@ public:
     void    ParseOneToken(Token *);
     bool    Accept() { return accept; }
     virtual ParseTreeNode *Parse(const std::string &) = 0;
-    ParseTreeNode *GetParseTree() { return elems[0].node; }
+    ParseTreeNode *GetParseTree() {
+      if(elems.empty()) {
+        return NULL;
+      }
+      return elems[0].node;
+    }
     void    SetGrammar(Grammar * g) { G = g; }
 
 protected:
