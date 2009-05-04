@@ -448,6 +448,9 @@ avtGenericDatabase::SetCycleTimeInDatabaseMetaData(avtDatabaseMetaData *md, int 
 //    Hank Childs, Mon Sep 15 16:28:51 PST 2008
 //    Manage memory for non-cachable vars.
 //
+//    Tom Fogal, Sun May  3 19:50:37 MDT 2009
+//    Don't do any ghost calculations when there are no domains.
+//
 // ****************************************************************************
 
 avtDataTree_p
@@ -728,11 +731,11 @@ avtGenericDatabase::GetOutput(avtDataRequest_p spec,
     //
     // Apply ghosting when domains nest within other domains (AMR meshes)
     //
-    if (!alreadyDidNesting)
+    if (!alreadyDidNesting && nDomains > 0)
     {
         int t0 = visitTimer->StartTimer();
         ApplyGhostForDomainNesting(datasetCollection, domains, allDomains, spec,
-                               canDoCollectiveCommunication);
+                                   canDoCollectiveCommunication);
         visitTimer->StopTimer(t0, "Doing ghost nesting");
     }
 
@@ -750,7 +753,7 @@ avtGenericDatabase::GetOutput(avtDataRequest_p spec,
     if (ghostType != NO_GHOST_DATA)
         ghostDataIsNeeded = true;
 
-    if (ghostDataIsNeeded && !alreadyDidGhosts)
+    if (ghostDataIsNeeded && !alreadyDidGhosts && nDomains > 0)
     {
         didGhosts = CommunicateGhosts(ghostType, datasetCollection, domains, 
                                       spec, src, allDomains, 
