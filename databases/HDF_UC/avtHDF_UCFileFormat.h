@@ -148,6 +148,9 @@ class avtHDF_UCFileFormat : public avtMTSDFileFormat
     bool                              processAllTimesteps;
     bool                              querySpecified;
     bool                              userMadeSelection;
+
+    std::string                       baseFileName;
+    bool                              compareFileNameToBase(string filename);
     
     int                get_string_from_identifiers(const vector<double>& Identifiers, string& id_string);
     

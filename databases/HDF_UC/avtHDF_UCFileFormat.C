@@ -151,6 +151,10 @@ avtHDF_UCFileFormat::findAllTimesteps(const char *filename)
     }
   
   string dir = fileOpened.substr(0, last_slash);
+  
+  baseFileName = fileOpened.substr(last_slash+1, fileOpened.length()-last_slash);
+  debug4<<"baseFileName is "<<baseFileName<<std::endl;
+
   ReadAndProcessDirectory(dir, CheckFileCallback, this);
 
   for (int i=0; i<fileNames.size(); i++)
@@ -177,15 +181,36 @@ avtHDF_UCFileFormat::AddFileInThisDirectory(const std::string &filenameWithDir)
   // Filename is filenameWithDir without the directory qualification.
   std::string filename = filenameWithDir.substr(last_slash+1);
   
-  // now that we have the filename, we need to find 2 patterns
-  // test_electrons_ 
-  // and h5part
-  //  if ((filename.find("test_electrons_") != string::npos) && 
-  //      (filename.find(".h5part") != string::npos))
-  if (filename.find(".h5part") != string::npos)
+  if (compareFileNameToBase(filename))
     fileNames.push_back(filenameWithDir);
+  
+  //if (filename.find(".h5part") != string::npos)
+  //fileNames.push_back(filenameWithDir);
  
   sort(fileNames.begin(), fileNames.end());
+
+}
+
+bool 
+avtHDF_UCFileFormat::compareFileNameToBase(string filename) {
+  
+  if (filename.size()!=baseFileName.size())
+    return false;
+
+  for (int i=0; i<filename.size(); i++) {
+    
+    char c = filename[i];
+    char d = baseFileName[i];
+    
+    if (isdigit(c)) {
+      // do nothing, we allow filenames to differ by [0..9] digit
+    } else {
+      if (c!=d) 
+        return false;
+    }   
+  }
+
+  return true;
 
 }
 
