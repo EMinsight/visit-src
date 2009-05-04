@@ -66,9 +66,6 @@
 
 #include <avtParallel.h>
 #ifdef PARALLEL
-  #undef SEEK_SET
-  #undef SEEK_CUR
-  #undef SEEK_END
   #include <mpi.h>
 #endif
 
