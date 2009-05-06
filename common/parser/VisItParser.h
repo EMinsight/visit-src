@@ -112,8 +112,17 @@ struct PARSER_API ParseElem
 //    Renamed this class Parser for consistency.  Added list of tokens
 //    to the rule reduction method to make life easier for the implementor.
 //
+//    Jeremy Meredith, Mon Nov 17 17:04:43 EST 2008
+//    Don't use the element stack to store the final parse tree; it's not
+//    really a parse element, because there's not really a lhs other than
+//    START, which doesn't make much sense.  Instead, we just store it in
+//    a new data member, which is more direct and more clear.
+//
 //    Tom Fogal, Wed Apr 29 15:36:42 MDT 2009
 //    Check for empty `elems' so we don't deref an empty vector.
+//
+//    Kathleen Bonnell, Tue May  5 17:23:42 PDT 2009
+//    Revert GetParseTree changes back to Jeremy's fix from Nov 17, 2008.
 //
 // ****************************************************************************
 class PARSER_API Parser
@@ -125,12 +134,7 @@ public:
     void    ParseOneToken(Token *);
     bool    Accept() { return accept; }
     virtual ParseTreeNode *Parse(const std::string &) = 0;
-    ParseTreeNode *GetParseTree() {
-      if(elems.empty()) {
-        return NULL;
-      }
-      return elems[0].node;
-    }
+    ParseTreeNode *GetParseTree() { return parseTree; }
     void    SetGrammar(Grammar * g) { G = g; }
 
 protected:
@@ -138,6 +142,7 @@ protected:
     std::vector<int> states;
     std::vector<ParseElem> elems;
     bool    accept;
+    ParseTreeNode *parseTree;
 
 protected:
     void    Shift(Token *, int);

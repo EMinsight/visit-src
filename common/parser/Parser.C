@@ -74,6 +74,11 @@ Parser::Parser()
 //  Programmer:  Jeremy Meredith
 //  Creation:    April  5, 2002
 //
+//  Modifications:
+//    Jeremy Meredith, Mon Nov 17 17:08:46 EST 2008
+//    We're now storing the parse tree result directly instead of pretending
+//    it makes sense to leave it on the parse element stack.
+//
 // ****************************************************************************
 void
 Parser::Init()
@@ -82,6 +87,7 @@ Parser::Init()
     states.clear();
     states.push_back(0);
     accept = false;
+    parseTree = NULL;
 }
 
 // ****************************************************************************
@@ -102,12 +108,15 @@ void
 Parser::Shift(Token *t, int s)
 {
 #ifdef MOREDEBUG
-    cerr << "Shifting token "; t->PrintNode(cerr); cerr << endl;
+    cerr << "Shifting token "; t->PrintNode(cerr);
 #endif
     elems.push_back(ParseElem(G->GetDictionary().Get(t->GetType()), t));
     states.push_back(s);
 
     PrintState(cerr);
+#ifdef MOREDEBUG
+    cerr << endl;
+#endif
 }
 
 // ****************************************************************************
@@ -138,6 +147,12 @@ Parser::Shift(Token *t, int s)
 //    Kathleen Bonnell,  Thu Nov 6 11:57:28 PST 2008
 //    To prevent a crash on windows for referencing (from GetParseTree)
 //    elems[0] when elems is empty, don't pop elems if rule->index is 0. 
+//
+//    Jeremy Meredith, Mon Nov 17 17:07:04 EST 2008
+//    The windows bug (see previous comment) was truly a multi-platform
+//    bug.  Now we store the result parse tree directly instead of
+//    trying to pretend it's still on the parse elem stack (which
+//    wasn't even happening anyway; it only worked due to a lot of luck!)...
 //
 // ****************************************************************************
 void
@@ -182,16 +197,14 @@ Parser::Reduce(int r)
     for (i=0; i<len; i++)
     {
         states.pop_back();
-#ifdef WIN32
-        if (rule->GetIndex() != 0)
-#endif
-            elems.pop_back();
+        elems.pop_back();
     }
 
     State &state = G->GetState(states.back());
 
     if (G->GetStartSymbol() == lhs)
     {
+        parseTree = node;
         PrintState(cerr);
 #ifdef MOREDEBUG
         cerr << "Accepting!\n\n";
