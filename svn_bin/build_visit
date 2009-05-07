@@ -1532,7 +1532,6 @@ function check_optional_3rdparty
         fi
         if [[ "$HAVE_FASTBIT_ALREADY" = "NO" && \
               "$HAVE_FASTBIT_TARBALL" = "NO" ]] ; then
-            echo "Downloading FastBit"
             webget ${FASTBIT_URL}
             if [[ $? == 0 ]] ; then
                 echo "Unable to bulild FastBit. ${FASTBIT_FILE} not found at ${FASTBIT_URL}."
@@ -9335,7 +9334,6 @@ if [[ "$DO_H5PART" == "yes" ]] ; then
    fi
 fi
 cd "$START_DIR"
-echo DO_FASTBIT=$DO_FASTBIT
 if [[ "$DO_FASTBIT" == "yes" ]] ; then
    if [[ -d "$VISITDIR/fastbit/${FASTBIT_VERSION}/$VISITARCH" ]] ; then
       echo "Skipping FastBit build.  FastBit is already installed."
