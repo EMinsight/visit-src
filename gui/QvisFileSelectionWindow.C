@@ -581,6 +581,9 @@ QvisFileSelectionWindow::UpdateWindowFromFiles(bool doAll)
 //    of code in this file now call this method to update the host combo
 //    box, there will be no more inconsistencies.
 //
+//    Hank Childs, Thu May  7 19:59:13 PDT 2009
+//    Add support for nicknames.
+//
 // ****************************************************************************
 
 void
@@ -598,7 +601,11 @@ QvisFileSelectionWindow::UpdateHostComboBox()
         // Create a constant reference to the i'th profile.
         const HostProfile &p = profiles->operator[](i);
 
-        stringVector hostNames(p.SplitHostPattern(p.GetHost()));
+        stringVector hostNames;
+        if (p.GetHostNickname() != "")
+            hostNames.push_back(p.GetHostNickname());
+        else
+            hostNames = p.SplitHostPattern(p.GetHost());
         for (int k = 0; k < hostNames.size(); ++k)
         {
             if(std::find(hosts.begin(), hosts.end(), hostNames[k]) == hosts.end())
@@ -1140,6 +1147,9 @@ QvisFileSelectionWindow::GetCurrentValues(bool allowPathChange)
 //    Catching CancelledConnectException now that the file server throws it
 //    instead of catching it internally.
 //
+//    Hank Childs, Thu May  7 20:08:04 PDT 2009
+//    Added support for nicknames.
+//
 // ****************************************************************************
 
 bool
@@ -1153,6 +1163,13 @@ QvisFileSelectionWindow::ChangeHosts()
         // Take the string from the text field and strip whitespace.
         std::string host(hostComboBox->currentText().stripWhiteSpace().latin1());
         std::string currentHost(fileServer->GetHost());
+        for(int i = 0; i < profiles->GetNumProfiles(); ++i)
+        {
+            // Create a constant reference to the i'th profile.
+            const HostProfile &p = profiles->operator[](i);
+            if (p.GetHostNickname() == host)
+                host = p.GetHost();
+        }
 
         if(host != fileServer->GetHost())
         {
