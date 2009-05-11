@@ -41,8 +41,9 @@
 #include <qtable.h>
 #include <list>
 
+#include <vtkDataArray.h>
+
 class avtLookupTable;
-class vtkDataArray;
 
 // ****************************************************************************
 // Class: SpreadsheetTable
@@ -62,6 +63,9 @@ class vtkDataArray;
 //
 //   Gunther H. Weber, Thu Sep 27 13:33:36 PDT 2007
 //   Add support for updating column width after changing the font
+//
+//   Brad Whitlock, Fri May  8 12:07:49 PDT 2009
+//   I added functions to return the vtkIdTypes for a row and col.
 //
 // ****************************************************************************
 
@@ -86,6 +90,8 @@ public:
     QString selectedCellsAsText() const;
     double  selectedCellsSum() const;
     double  selectedCellsAverage() const;
+    vtkIdType *selectedColumnIndices(int &nvals) const;
+    vtkIdType *selectedRowIndices(int &nvals) const;
 
     void addSelectedCellLabel(int, int, const std::string&);
     void clearSelectedCellLabels();

@@ -473,6 +473,61 @@ SpreadsheetTable::selectedCellsAverage() const
     return avg;
 }
 
+vtkIdType *
+SpreadsheetTable::selectedColumnIndices(int &nvals) const
+{
+    vtkIdType *ids = 0;
+    nvals = 0;
+
+    if(dataArray != 0)
+    {
+        int selId = 0;
+        if(currentSelection() > -1)
+            selId = currentSelection();
+        else if(numSelections() > 0)
+            selId = 0;
+        else
+            return 0;
+
+        QTableSelection sel(selection(selId));
+        int col = sel.anchorCol();
+        nvals = numRows();
+        ids = new vtkIdType[nvals];
+        for(int row = 0; row < nvals; ++row)
+            ids[nvals-1-row] = rowColToIndex(row, col);
+    }
+
+    return ids;
+}
+
+vtkIdType *
+SpreadsheetTable::selectedRowIndices(int &nvals) const
+{
+    vtkIdType *ids = 0;
+    nvals = 0;
+
+    if(dataArray != 0)
+    {
+        int selId = 0;
+        if(currentSelection() > -1)
+            selId = currentSelection();
+        else if(numSelections() > 0)
+            selId = 0;
+        else
+            return 0;
+
+        QTableSelection sel(selection(selId));
+        int row = sel.anchorRow();
+        nvals = numCols();
+        ids = new vtkIdType[nvals];
+        for(int col = 0; col < nvals; ++col)
+            ids[col] = rowColToIndex(row, col);
+    }
+
+    return ids;
+}
+
+
 // ****************************************************************************
 // Method: SpreadsheetTable::addSelectedCellLabel()
 //
