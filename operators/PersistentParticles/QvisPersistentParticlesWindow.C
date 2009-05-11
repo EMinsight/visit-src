@@ -125,7 +125,7 @@ QvisPersistentParticlesWindow::~QvisPersistentParticlesWindow()
 void
 QvisPersistentParticlesWindow::CreateWindowContents()
 {
-    QGridLayout *mainLayout = new QGridLayout(topLayout, 5,2,  10, "mainLayout");
+    QGridLayout *mainLayout = new QGridLayout(topLayout, 7,2,  10, "mainLayout");
 
 
     startIndexLabel = new QLabel(tr("Index of first time slice"), central, "startIndexLabel");
@@ -135,32 +135,42 @@ QvisPersistentParticlesWindow::CreateWindowContents()
             this, SLOT(startIndexProcessText()));
     mainLayout->addWidget(startIndex, 0,1);
 
+    startIndexRelative = new QCheckBox(tr("Index of first time slice relative to current time"), central, "startIndexRelative");
+    connect(startIndexRelative, SIGNAL(toggled(bool)),
+            this, SLOT(startIndexRelativeChanged(bool)));
+    mainLayout->addWidget(startIndexRelative, 1,0);
+
     stopIndexLabel = new QLabel(tr("Index of last time slice"), central, "stopIndexLabel");
-    mainLayout->addWidget(stopIndexLabel,1,0);
+    mainLayout->addWidget(stopIndexLabel,2,0);
     stopIndex = new QLineEdit(central, "stopIndex");
     connect(stopIndex, SIGNAL(returnPressed()),
             this, SLOT(stopIndexProcessText()));
-    mainLayout->addWidget(stopIndex, 1,1);
+    mainLayout->addWidget(stopIndex, 2,1);
+
+    stopIndexRelative = new QCheckBox(tr("Index of last time slice relative to current time"), central, "stopIndexRelative");
+    connect(stopIndexRelative, SIGNAL(toggled(bool)),
+            this, SLOT(stopIndexRelativeChanged(bool)));
+    mainLayout->addWidget(stopIndexRelative, 3,0);
 
     strideLabel = new QLabel(tr("Skip rate between time slices"), central, "strideLabel");
-    mainLayout->addWidget(strideLabel,2,0);
+    mainLayout->addWidget(strideLabel,4,0);
     stride = new QLineEdit(central, "stride");
     connect(stride, SIGNAL(returnPressed()),
             this, SLOT(strideProcessText()));
-    mainLayout->addWidget(stride, 2,1);
+    mainLayout->addWidget(stride, 4,1);
 
     indexVariableLabel = new QLabel(tr("Index Variable"), central, "indexVariableLabel");
-    mainLayout->addWidget(indexVariableLabel,3,0);
+    mainLayout->addWidget(indexVariableLabel,5,0);
     int indexVariableMask = QvisVariableButton::Scalars;
     indexVariable = new QvisVariableButton(true, true, true, indexVariableMask, central, "indexVariable");
     connect(indexVariable, SIGNAL(activated(const QString&)),
             this, SLOT(indexVariableChanged(const QString&)));
-    mainLayout->addWidget(indexVariable, 3,1);
+    mainLayout->addWidget(indexVariable, 5,1);
 
     connectParticles = new QCheckBox(tr("Connect Particles"), central, "connectParticles");
     connect(connectParticles, SIGNAL(toggled(bool)),
             this, SLOT(connectParticlesChanged(bool)));
-    mainLayout->addWidget(connectParticles, 4,0);
+    mainLayout->addWidget(connectParticles, 6,0);
 
 }
 
@@ -211,11 +221,21 @@ QvisPersistentParticlesWindow::UpdateWindow(bool doAll)
             startIndex->setText(temp);
             startIndex->blockSignals(false);
             break;
+          case PersistentParticlesAttributes::ID_startIndexRelative:
+            startIndexRelative->blockSignals(true);
+            startIndexRelative->setChecked(atts->GetStartIndexRelative());
+            startIndexRelative->blockSignals(false);
+            break;
           case PersistentParticlesAttributes::ID_stopIndex:
             stopIndex->blockSignals(true);
             temp.sprintf("%d", atts->GetStopIndex());
             stopIndex->setText(temp);
             stopIndex->blockSignals(false);
+            break;
+          case PersistentParticlesAttributes::ID_stopIndexRelative:
+            stopIndexRelative->blockSignals(true);
+            stopIndexRelative->setChecked(atts->GetStopIndexRelative());
+            stopIndexRelative->blockSignals(false);
             break;
           case PersistentParticlesAttributes::ID_stride:
             stride->blockSignals(true);
@@ -342,9 +362,27 @@ QvisPersistentParticlesWindow::startIndexProcessText()
 
 
 void
+QvisPersistentParticlesWindow::startIndexRelativeChanged(bool val)
+{
+    atts->SetStartIndexRelative(val);
+    SetUpdate(false);
+    Apply();
+}
+
+
+void
 QvisPersistentParticlesWindow::stopIndexProcessText()
 {
     GetCurrentValues(PersistentParticlesAttributes::ID_stopIndex);
+    Apply();
+}
+
+
+void
+QvisPersistentParticlesWindow::stopIndexRelativeChanged(bool val)
+{
+    atts->SetStopIndexRelative(val);
+    SetUpdate(false);
     Apply();
 }
 

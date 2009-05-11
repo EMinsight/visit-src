@@ -141,5 +141,5 @@ PersistentParticlesGeneralPluginInfo::GetID() const
 bool
 PersistentParticlesGeneralPluginInfo::EnabledByDefault() const
 {
-    return false;
+    return true;
 }
