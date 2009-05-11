@@ -41,6 +41,7 @@
 #include <qfile.h>
 #include <qfiledialog.h>
 #include <qlayout.h>
+#include <qmenubar.h>
 #include <qpopupmenu.h>
 #include <qpushbutton.h>
 #include <qtextedit.h>
