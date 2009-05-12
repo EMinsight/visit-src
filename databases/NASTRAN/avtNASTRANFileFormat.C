@@ -188,6 +188,13 @@ avtNASTRANFileFormat::ActivateTimestep()
 //    Mark C. Miller, Wed May  6 11:43:37 PDT 2009
 //    Added logic to deal with funky NASTRAN format where the 'e' character
 //    may be missing from exponentiated numbers.
+//
+//    Mark C. Miller, Thu May  7 10:30:49 PDT 2009
+//    Fixed bug of triggering funky case in presence of leading spaces. 
+//
+//    Mark C. Miller, Mon May 11 14:21:22 PDT 2009
+//    Ok, I 'fixed' this funky logic again. The above 'fix' caused the alg.
+//    to basically completely fail.
 // ****************************************************************************
 static float Getf(const char *s)
 {
@@ -199,13 +206,21 @@ static float Getf(const char *s)
     // file as '1.2345-5' with the 'e' character missing. It is awkward but 
     // apparently a NASTRAN standard. I guess the rationale is that given
     // an 8 character field width limit, removing the 'e' character gives them
-    // one additional digit of precision.
+    // one additional digit of precision. This logic is basically looking for
+    // the condition of encountering a sign character, '-' or '+', AFTER having
+    // seen characters that could represent part of a number. In such a case,
+    // it MUST be the sign of the exponent.
     const char *p = s;
-    char tmps[64];
+    char tmps[32];
     char *q = tmps;
-    while (*p != '-' && *p != '+' && *p != 'e' && *p != 'E' && *p != '\0')
+    bool haveSeenNumChars = false;
+    while (!haveSeenNumChars || (*p != '-' && *p != '+' && *p != '\0'))
+    {
+        if ('0' <= *p && *p <= '9' || *p == '.' || *p == '+' || *p == '-')
+            haveSeenNumChars = true;
         *q++ = *p++;
-    if (*p == '-' || *p == '+')
+    }
+    if (haveSeenNumChars && (*p == '-' || *p == '+'))
     {
         *q++ = 'e';
         while (*p != '\0')
