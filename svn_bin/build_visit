@@ -589,6 +589,8 @@
 #     Added -DH5_USE_16_API to the CFLAGS and CXXFLAGS for the gdal build
 #     so that it would build with hdf5 1.8.
 #
+#     Mark C. Miller, Wed May 13 14:29:33 PDT 2009
+#     Ensure default for Silo is 'no'/'off'
 # *****************************************************************************
 #
 # *************************************************************************** #
@@ -798,8 +800,8 @@ export DO_CCMIO="no"
 export ON_CCMIO="off"
 export DO_ITAPS="no"
 export ON_ITAPS="off"
-export DO_SILO="yes"
-export ON_SILO="on"
+export DO_SILO="no"
+export ON_SILO="off"
 export DO_SLIVR="no"
 export ON_SLIVR="off"
 export DO_VISUS="no"
