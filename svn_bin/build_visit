@@ -490,6 +490,7 @@
 #
 #     Tom Fogal, Sat May 16 14:47:05 MDT 2009
 #     Enhanced downloadv to check subversion.
+#     Update NetCDF version to workaround compilation issues.
 #
 # *****************************************************************************
 #
@@ -804,10 +805,10 @@ export MILI_COMPATIBILITY_VERSION=${MILI_COMPATIBILITY_VERSION-"1.0"}
 # is recognized by VisIt's configure script.
 export BV_MILI_DIR=${BV_MILI_DIR-"mili"}
 
-export NETCDF_FILE=${NETCDF_FILE-"netcdf.tar.gz"}
-export NETCDF_VERSION=${NETCDF_VERSION-"3.6.0"}
+export NETCDF_VERSION=${NETCDF_VERSION-"3.6.3"}
+export NETCDF_FILE=${NETCDF_FILE-"netcdf-${NETCDF_VERSION}.tar.gz"}
 export NETCDF_COMPATIBILITY_VERSION=${NETCDF_COMPATIBILITY_VERSION-"3.6"}
-export NETCDF_DIR=${NETCDF_DIR-"netcdf-3.6.0-p1/src"}
+export NETCDF_DIR=${NETCDF_DIR-"netcdf-3.6.3"}
 
 export CGNS_FILE=${CGNS_FILE-"cgnslib_2.4-3.tar.gz"}
 export CGNS_VERSION=${CGNS_VERSION-"2.4"}
@@ -1728,11 +1729,9 @@ function check_optional_3rdparty
         fi
         if [[ "$HAVE_NETCDF_ALREADY" = "NO" && \
               "$HAVE_NETCDF_TARBALL" = "NO" ]] ; then
-            download_3rdparty ${NETCDF_FILE}
-            if [[ $? == 0 ]] ; then
-                echo "Unable to build NetCDF.  ${NETCDF_FILE} not found."
-                DO_NETCDF="no"
-            fi
+            downloadv \
+              "http://www.unidata.ucar.edu/downloads/netcdf/ftp/${NETCDF_FILE}"\
+              "https://wci.llnl.gov/codes/visit/${NETCDF_FILE}"
         fi
     fi
     #
