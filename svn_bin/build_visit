@@ -488,6 +488,9 @@
 #     to the HDF_UC database plugin. Download FastBit automatically from
 #     LBNL Codeforge if TAR ball not present.
 #
+#     Tom Fogal, Sat May 16 14:47:05 MDT 2009
+#     Enhanced downloadv to check subversion.
+#
 # *****************************************************************************
 #
 # *************************************************************************** #
@@ -989,6 +992,9 @@ function webget
 #                                                                             #
 # Modifications:                                                              #
 #                                                                             #
+#   Tom Fogal, Sat May 16 14:40:33 MDT 2009                                   #
+#   Fall back to svn if all else fails.                                       #
+#                                                                             #
 # *************************************************************************** #
 function downloadv
 {
@@ -1000,6 +1006,14 @@ function downloadv
         fi
         info "Download failed.."
     done
+    # Last chance: try svn.
+    if test "x${DO_SVN}" = "xyes" ; then
+        filename=$(basename "$@[0]")
+        svn cat "${SVN_ROOT_PATH}/trunk/third_party/${filename}" > ${filename}
+        if test $? -eq 0 ; then
+            return 0
+        fi
+    fi
     error "Could not download any of '$@'."
 }
 
