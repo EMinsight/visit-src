@@ -62,6 +62,7 @@
 
 #include <snprintf.h>
 #include <DebugStream.h>
+#include <Expression.h>
 #include <InvalidVariableException.h>
 #include <InvalidFilesException.h>
 
@@ -686,6 +687,9 @@ avtVTKFileFormat::FreeUpResources(void)
 //    Jeremy Meredith, Mon Aug 28 17:40:47 EDT 2006
 //    Added support for unit cell vectors.
 //
+//    Brad Whitlock, Fri May 15 16:05:22 PDT 2009
+//    I added support for array and label variables.
+//
 // ****************************************************************************
 
 void
@@ -842,6 +846,33 @@ avtVTKFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
         {
             AddTensorVarToMetaData(md, name, MESHNAME, AVT_NODECENT);
         }
+        else
+        {
+            if(arr->GetDataType() == VTK_UNSIGNED_CHAR ||
+               arr->GetDataType() == VTK_CHAR)
+            {
+                md->Add(new avtLabelMetaData(name, MESHNAME, AVT_NODECENT));
+            }
+            else
+            {
+                AddArrayVarToMetaData(md, name, ncomp, MESHNAME, AVT_NODECENT);
+                int compnamelen = strlen(name) + 40;
+                char *exp_name = new char[compnamelen];
+                char *exp_def = new char[compnamelen];
+                for(int c = 0; c < ncomp; ++c)
+                {
+                    SNPRINTF(exp_name, compnamelen, "%s/comp_%d", name, c);
+                    SNPRINTF(exp_def,  compnamelen, "array_decompose(<%s>, %d)",  name, c);
+                    Expression *e = new Expression;
+                    e->SetType(Expression::ScalarMeshVar);
+                    e->SetName(exp_name);
+                    e->SetDefinition(exp_def);
+                    md->AddExpression(e);
+                }
+                delete [] exp_name;
+                delete [] exp_def;
+            }
+        }
         nvars++;
     }
     for (i = 0 ; i < dataset->GetCellData()->GetNumberOfArrays() ; i++)
@@ -901,6 +932,33 @@ avtVTKFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
         else if (ncomp == 9)
         {
             AddTensorVarToMetaData(md, name, MESHNAME, AVT_ZONECENT);
+        }
+        else
+        {
+            if(arr->GetDataType() == VTK_UNSIGNED_CHAR ||
+               arr->GetDataType() == VTK_CHAR)
+            {
+                md->Add(new avtLabelMetaData(name, MESHNAME, AVT_ZONECENT));
+            }
+            else
+            {
+                AddArrayVarToMetaData(md, name, ncomp, MESHNAME, AVT_ZONECENT);
+                int compnamelen = strlen(name) + 40;
+                char *exp_name = new char[compnamelen];
+                char *exp_def = new char[compnamelen];
+                for(int c = 0; c < ncomp; ++c)
+                {
+                    SNPRINTF(exp_name, compnamelen, "%s/comp_%d", name, c);
+                    SNPRINTF(exp_def,  compnamelen, "array_decompose(<%s>, %d)",  name, c);
+                    Expression *e = new Expression;
+                    e->SetType(Expression::ScalarMeshVar);
+                    e->SetName(exp_name);
+                    e->SetDefinition(exp_def);
+                    md->AddExpression(e);
+                }
+                delete [] exp_name;
+                delete [] exp_def;
+            }
         }
         nvars++;
     }
