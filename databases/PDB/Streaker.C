@@ -1001,7 +1001,7 @@ Streaker::ConstructDataset(const std::string &var, const StreakInfo &s, const PD
 
     // Transform zvar.
     float *zarr = (float *)zvar->GetVoidPointer(0);
-    for(int i = 0; i < zarr->GetNumberOfTuples(); ++i)
+    for(int i = 0; i < zvar->GetNumberOfTuples(); ++i)
         zarr[i] = zarr[i] * s.z_scale + s.z_translate;
 
     if(s.cellCentered)
