@@ -4953,6 +4953,10 @@ QvisGUIApplication::ProcessWindowConfigSettings(DataNode *node)
 //   Brad Whitlock, Tue Jun 24 11:53:56 PDT 2008
 //   Get the plugin manager from the viewer proxy.
 //
+//   Kathleen Bonnell, Tue Feb 24 11:12:56 PST 2009
+//   Went back to using GetMenuName for the key, as it matches what is used
+//   to write the plugin settings.
+//
 // ****************************************************************************
 
 void
@@ -4971,7 +4975,7 @@ QvisGUIApplication::ReadPluginWindowConfigs(DataNode *parentNode,
         GUIPlotPluginInfo *GUIInfo = plotPluginManager->GetGUIPluginInfo(
             plotPluginManager->GetEnabledID(i));
 
-        std::string key(GUIInfo->GetName());
+        std::string key(GUIInfo->GetMenuName()->latin1());
         key += " plot attributes";
 
         if(plotWindows[i] != 0 &&
@@ -5002,7 +5006,7 @@ QvisGUIApplication::ReadPluginWindowConfigs(DataNode *parentNode,
         GUIOperatorPluginInfo *GUIInfo = operatorPluginManager->GetGUIPluginInfo(
                                        operatorPluginManager->GetEnabledID(i));
 
-        std::string key(GUIInfo->GetName());
+        std::string key(GUIInfo->GetMenuName()->latin1());
         key += " operator attributes";
 
         if(operatorWindows[i] != 0 &&

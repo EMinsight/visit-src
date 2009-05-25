@@ -37,21 +37,22 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                            avtITAPS_CFileFormat.C                           //
+//                           avtITAPS_CFileFormat.C                          //
 // ************************************************************************* //
 
 #include "iBase.h"
 #include "iMesh.h"
 
+#if 0 // PARALLEL
+#include "iMeshP.h"
+#include <mpi.h>
+#include <avtParallel.h>
+#endif
+
 #include <snprintf.h>
 
 #include <avtITAPS_CFileFormat.h>
-
-#include <map>
-#include <string>
-#include <vector>
-
-#include <stdarg.h>
+#include <avtITAPS_CUtility.h>
 
 #include <vtkCellType.h>
 #include <vtkCharArray.h>
@@ -65,697 +66,23 @@
 #include <avtDatabaseMetaData.h>
 #include <avtVariableCache.h>
 
+#include <DBOptionsAttributes.h>
 #include <DebugStream.h>
 #include <Expression.h>
 
 #include <InvalidVariableException.h>
 #include <InvalidFilesException.h>
 
+#include <map>
+#include <string>
+#include <vector>
+
 using     std::map;
 using     std::string;
 using     std::vector;
+using namespace avtITAPS_CUtility;
 
 static const int maxCoincidentSets = 6;
-
-// end of list
-#define EoL (void*)-1
-// no list
-#define NoL (0,EoL)
-
-// supports passing variable length list of void pointers that if non-zero
-// need to be free'd.
-static void
-ITAPSErrorCleanupHelper(int dummy, ...)
-{
-   va_list ap;
-   va_start(ap, dummy);
-   void *ptr = va_arg(ap, void*);
-   while (ptr != EoL)
-   {
-       if (ptr)
-           free(ptr);
-       ptr = va_arg(ap, void*);
-   }
-   va_end(ap);
-}
-
-static map<string, int> messageCounts;
-static const char *supressMessage = "further warnings regarding this error will be supressed";
-
-
-// ****************************************************************************
-//  Macro: CheckITAPSError2
-//
-//  Purpose: Very useful macro for checking error condition of ITAPS
-//  implementation after a call into the implementation. This macro does work
-//  to get an error description, issues a VisIt warning, keeps track of how
-//  many times a given warning has been issued and suppresses above 5 aborts
-//  (via 'goto') to the end of the function from which it is called and
-//  ensures that all pointers allocated prior to the abort get freed.
-//  
-//
-// ****************************************************************************
-#ifdef ITAPS_MOAB
-#define CheckITAPSError2(IMI, ERR, ARGS, THELINE, THEFILE)                                      \
-    if (ERR != 0)                                                                               \
-    {                                                                                           \
-        char msg[1024];                                                                         \
-        char desc[256];                                                                         \
-        for (int i = 0; i < sizeof(desc); i++) desc[i] = '\0';                                  \
-        int dummyError = ERR;                                                                   \
-        iMesh_getDescription(IMI, desc, &dummyError, sizeof(desc));                             \
-        SNPRINTF(msg, sizeof(msg), "Encountered ITAPS error (%d) at line %d in file \"%s\"\n"   \
-            "The description is...\n"                                                           \
-            "    \"%s\"\n", ERR, THELINE, THEFILE, desc);                                       \
-        if (messageCounts.find(msg) == messageCounts.end())                                     \
-            messageCounts[msg] = 1;                                                             \
-        else                                                                                    \
-            messageCounts[msg]++;                                                               \
-        if (messageCounts[msg] < 6)                                                             \
-        {                                                                                       \
-            if (!avtCallback::IssueWarning(msg))                                                \
-                cerr << msg << endl;                                                            \
-        }                                                                                       \
-        else if (messageCounts[msg] == 6)                                                       \
-        {                                                                                       \
-            if (!avtCallback::IssueWarning(supressMessage))                                     \
-                cerr << supressMessage << endl;                                                 \
-        }                                                                                       \
-        ITAPSErrorCleanupHelper ARGS;                                                           \
-        goto funcEnd;                                                                           \
-    }
-#else
-#define CheckITAPSError2(IMI, ERR, ARGS, THELINE, THEFILE)                                      \
-    if (ERR != 0)                                                                               \
-    {                                                                                           \
-        char msg[1024];                                                                         \
-        SNPRINTF(msg, sizeof(msg), "Encountered ITAPS error (%d) at line %d in file \"%s\"\n"   \
-            "The description is not available\n", ERR, THELINE, THEFILE);                       \
-        if (messageCounts.find(msg) == messageCounts.end())                                     \
-            messageCounts[msg] = 1;                                                             \
-        else                                                                                    \
-            messageCounts[msg]++;                                                               \
-        if (messageCounts[msg] < 6)                                                             \
-        {                                                                                       \
-            if (!avtCallback::IssueWarning(msg))                                                \
-                cerr << msg << endl;                                                            \
-        }                                                                                       \
-        else if (messageCounts[msg] == 6)                                                       \
-        {                                                                                       \
-            if (!avtCallback::IssueWarning(supressMessage))                                     \
-                cerr << supressMessage << endl;                                                 \
-        }                                                                                       \
-        ITAPSErrorCleanupHelper ARGS;                                                           \
-        goto funcEnd;                                                                           \
-    }
-#endif
-
-#define CheckITAPSError(IMI, ARGS) CheckITAPSError2(IMI, itapsError, ARGS, __LINE__, __FILE__)
-
-static int itapsError;
-
-static char** entTypes = 0;
-static char** entTopologies = 0;
-static char** itapsDataTypeNames = 0;
-
-static void
-InitDataTypeNames()
-{
-    // Only need these when debugging is turned on 
-    if (!debug1_real)
-        return;
-
-    // No need to generate if we've already created 'em 
-    if (entTopologies != 0)
-        return;
-
-    // Ensure we map entity topologies to appropriate strings
-    int nTopologies = iMesh_ALL_TOPOLOGIES+1;
-    entTopologies = new char*[nTopologies];
-    entTopologies[iMesh_POINT]          = "point";
-    entTopologies[iMesh_LINE_SEGMENT]   = "line segment";
-    entTopologies[iMesh_POLYGON]        = "polygon";
-    entTopologies[iMesh_TRIANGLE]       = "triangle";
-    entTopologies[iMesh_QUADRILATERAL]  = "quadrilateral";
-    entTopologies[iMesh_POLYHEDRON]     = "polyhedron";
-    entTopologies[iMesh_TETRAHEDRON]    = "tetrahedron";
-    entTopologies[iMesh_HEXAHEDRON]     = "hexahedron";
-    entTopologies[iMesh_PRISM]          = "prism";
-    entTopologies[iMesh_PYRAMID]        = "pyramid";
-    entTopologies[iMesh_SEPTAHEDRON]    = "septahedron";
-    entTopologies[iMesh_ALL_TOPOLOGIES] = "all topologies";
-
-    // Ensure we map entity types to appropriate strings
-    int nTypes = iBase_ALL_TYPES+1;
-    entTypes = new char*[nTypes];
-    entTypes[iBase_VERTEX]    = "vertex";
-    entTypes[iBase_EDGE]      = "edge";
-    entTypes[iBase_FACE]      = "face";
-    entTypes[iBase_REGION]    = "region";
-    entTypes[iBase_ALL_TYPES] = "all types";
-
-    // Ensure we map data type names to appropriate strings
-    int nDataTypes = 4;
-    itapsDataTypeNames = new char*[nDataTypes];
-    itapsDataTypeNames[iBase_INTEGER]       = "integer";
-    itapsDataTypeNames[iBase_DOUBLE]        = "double";
-    itapsDataTypeNames[iBase_ENTITY_HANDLE] = "ehandle";
-    itapsDataTypeNames[iBase_BYTES]         = "bytes";
-}
-
-
-static string
-VisIt_iMesh_getTagName(iMesh_Instance theMesh, iBase_TagHandle theTag)
-{
-    static char tmpName[256];
-#ifdef ITAPS_MOAB
-    iMesh_getTagName(theMesh, theTag, tmpName, &itapsError, sizeof(tmpName));
-#elif ITAPS_GRUMMP
-    iMesh_getTagName(theMesh, theTag, tmpName, sizeof(tmpName), &itapsError);
-#endif
-    return string(tmpName);
-}
-
-static int ITAPSEntityTopologyToVTKZoneType(int ttype)
-{
-    switch (ttype)
-    {
-    case iMesh_POINT:         return VTK_VERTEX;
-    case iMesh_LINE_SEGMENT:  return VTK_LINE;
-    case iMesh_POLYGON:       return VTK_POLYGON;
-    case iMesh_TRIANGLE:      return VTK_TRIANGLE;
-    case iMesh_QUADRILATERAL: return VTK_QUAD;
-    case iMesh_TETRAHEDRON:   return VTK_TETRA;
-    case iMesh_HEXAHEDRON:    return VTK_HEXAHEDRON;
-    case iMesh_PRISM:         return VTK_WEDGE;
-    case iMesh_PYRAMID:       return VTK_PYRAMID;
-    }
-    return -1;
-}
-
-//
-// We re-define debug5 here because we use TraverseSetHierarchy for multiple
-// purposes and don't want data spewed to debug logs every time we traverse
-// the set hierarchy
-//
-#undef debug5
-#define debug5 if (debugOff || !debug5_real) ; else debug5_real
-
-typedef bool (*HandleThisSet)(iMesh_Instance ima, int level, int memidx, bool ises,
-    iBase_EntitySetHandle esh, void *cb_data);
-
-// ****************************************************************************
-//  Function: TraverseSetHierarchy 
-//
-//  Purpose: Very verbose description of the set hierarchy. Only used for
-//  debugging.
-//
-//  Modifications:
-//    Mark C. Miller, Mon Apr 14 15:41:21 PDT 2008
-//    Added code to output entity type and topology
-// ****************************************************************************
-
-static void
-TraverseSetHierarchy(iMesh_Instance aMesh, int level, int memberId, bool isEntitySet,
-    iBase_EntitySetHandle esh, bool debugOff,
-    HandleThisSet handleSetCb, void *handleSetCb_data)
-{
-#ifndef MDSERVER
-    // If we're not on the MDSERVER, we'll never output debugging stuff
-    debugOff = true;
-#endif
-
-    // Do the callback if one was requested
-    bool shouldRecurse = true;
-    if (handleSetCb)
-        shouldRecurse = (*handleSetCb)(aMesh, level, memberId, isEntitySet, esh, handleSetCb_data);
-
-    iBase_EntitySetHandle *sets = 0; int sets_allocated = 0;
-    int sets_size = 0;
-    iBase_EntityHandle *ents = 0; int ents_allocated = 0;
-    int ents_size = 0;
-    iBase_TagHandle *tags = 0; int tags_allocated = 0; int tags_size = 0;
-
-    // compute an indentation
-    std::string ident;
-    for (int i = 0; i < level; i++)
-        ident += "        ";
-
-    if (isEntitySet)
-        debug5 << ident << "For Entity Set at level " << level << ", index " << memberId << ":" << endl;
-    else
-        debug5 << ident << "For Entity     at level " << level << ", index " << memberId << ":" << endl;
-    debug5 << ident << "{" << endl;
-
-    if (!isEntitySet)
-    {
-        int topo, type;
-        iMesh_getEntType(aMesh, esh, &type, &itapsError);
-        CheckITAPSError(aMesh, NoL);
-        debug5 << ident << "    type = \"" << entTypes[type] << "\"" << endl;
-        iMesh_getEntTopo(aMesh, esh, &topo, &itapsError);
-        CheckITAPSError(aMesh, NoL);
-        debug5 << ident << "    topology = \"" << entTopologies[topo] << "\"" << endl;
-    }
-
-    if (isEntitySet)
-        iMesh_getAllEntSetTags(aMesh, esh, &tags, &tags_allocated, &tags_size, &itapsError);
-    else
-        iMesh_getAllTags(aMesh, esh, &tags, &tags_allocated, &tags_size, &itapsError);
-    CheckITAPSError(aMesh, (0,tags,EoL));
-    if (tags_size)
-    {
-        debug5 << ident << "    tags = " << tags_size << endl;
-        debug5 << ident << "    {" << endl;
-        debug5 << ident << "            name                 type     size     value(s)..." << endl;
-        debug5 << ident << "     --------------------       -------   ----     -----------" << endl;
-        for (int t = 0; t < tags_size; t++)
-        {
-            char lineBuf[256];
-            int typeId;
-            iMesh_getTagType(aMesh, tags[t], (int*) &typeId, &itapsError);
-            CheckITAPSError(aMesh, NoL);
-            int tagSize;
-            iMesh_getTagSizeValues(aMesh, tags[t], &tagSize, &itapsError);
-            CheckITAPSError(aMesh, NoL); 
-            string tagName = VisIt_iMesh_getTagName(aMesh, tags[t]);
-            CheckITAPSError(aMesh, NoL); 
-            if (typeId == iBase_INTEGER)
-            {
-                if (tagSize == 1)
-                {
-                    int theVal;
-                    if (isEntitySet)
-                        iMesh_getEntSetIntData(aMesh, esh, tags[t], &theVal, &itapsError);
-                    else
-                        iMesh_getIntData(aMesh, esh, tags[t], &theVal, &itapsError);
-                    CheckITAPSError(aMesh, NoL); 
-                    if (debug5_real)
-                    {
-                        SNPRINTF(lineBuf, sizeof(lineBuf), "% 16s     % 8s     %03d     %d", 
-                            tagName.c_str(), itapsDataTypeNames[typeId], tagSize, theVal);
-                    }
-                }
-                else if (tagSize > 1)
-                {
-                    int *tagvals = 0; int tagvals_allocated = 0; int tagvals_size = 0;
-                    iMesh_getIntArrData(aMesh, &esh, 1, tags[t],
-                        &tagvals, &tagvals_allocated, &tagvals_size, &itapsError);
-                    CheckITAPSError(aMesh, (0,tagvals,EoL)); 
-                    std::string valBuf;
-                    for (int k = 0; k < tagvals_size; k++)
-                    {
-                        char tmpChars[32];
-                        sprintf(tmpChars, "%d ", tagvals[k]);
-                        valBuf += std::string(tmpChars);
-                    }
-                    if (tagvals_allocated)
-                        free(tagvals);
-                    if (debug5_real)
-                    {
-                        SNPRINTF(lineBuf, sizeof(lineBuf), "% 16s     % 8s     %03d     %s", 
-                            tagName.c_str(), itapsDataTypeNames[typeId], tagSize, valBuf.c_str());
-                    }
-                }
-                else
-                {
-                    if (debug5_real)
-                    {
-                        SNPRINTF(lineBuf, sizeof(lineBuf), "% 16s     % 8s     %03d     %s", 
-                            tagName.c_str(), itapsDataTypeNames[typeId], tagSize, "invalid size");
-                    }
-                }
-            }
-            else if (typeId == iBase_DOUBLE)
-            {
-                if (tagSize == 1)
-                {
-                    double theVal;
-                    if (isEntitySet)
-                        iMesh_getEntSetDblData(aMesh, esh, tags[t], &theVal, &itapsError);
-                    else
-                        iMesh_getDblData(aMesh, esh, tags[t], &theVal, &itapsError);
-                    CheckITAPSError(aMesh, NoL); 
-                    if (debug5_real)
-                    {
-                        SNPRINTF(lineBuf, sizeof(lineBuf), "% 16s     % 8s     %03d     %f", 
-                            tagName.c_str(), itapsDataTypeNames[typeId], tagSize, theVal);
-                    }
-                }
-                else if (tagSize > 1)
-                {
-                    double *tagvals = 0; int tagvals_allocated = 0; int tagvals_size = 0;
-                    iMesh_getDblArrData(aMesh, &esh, 1, tags[t],
-                        &tagvals, &tagvals_allocated, &tagvals_size, &itapsError);
-                    CheckITAPSError(aMesh, (0,tagvals,EoL)); 
-                    std::string valBuf;
-                    for (int k = 0; k < tagvals_size; k++)
-                    {
-                        char tmpChars[32];
-                        sprintf(tmpChars, "%f ", tagvals[k]);
-                        valBuf += std::string(tmpChars);
-                    }
-                    if (tagvals_allocated)
-                        free(tagvals);
-                    if (debug5_real)
-                    {
-                        SNPRINTF(lineBuf, sizeof(lineBuf), "% 16s     % 8s     %03d     %s", 
-                            tagName.c_str(), itapsDataTypeNames[typeId], tagSize, valBuf.c_str());
-                    }
-                }
-                else
-                {
-                    if (debug5_real)
-                    {
-                        SNPRINTF(lineBuf, sizeof(lineBuf), "% 16s     % 8s     %03d     %s", 
-                            tagName.c_str(), itapsDataTypeNames[typeId], tagSize, "invalid size");
-                    }
-                }
-            }
-            else if (typeId == iBase_BYTES)
-            {
-                char *theVal = 0; int theVal_allocated = 0;
-                int theValSize = 0;
-                if (isEntitySet)
-                    iMesh_getEntSetData(aMesh, esh, tags[t], &theVal, &theVal_allocated, &theValSize, &itapsError);
-                else
-                    iMesh_getData(aMesh, esh, tags[t], &theVal, &theVal_allocated, &theValSize, &itapsError);
-                CheckITAPSError(aMesh,(0,theVal,EoL));
-                std::string valBuf;
-                for (int k = 0; k < theValSize; k++)
-                {
-                    char tmpChars[32];
-                    if (theValSize > 4)
-                        sprintf(tmpChars, "%c", theVal[k]);
-                    else
-                        sprintf(tmpChars, "%hhX", theVal[k]);
-                    valBuf += std::string(tmpChars);
-                }
-                if (theVal_allocated)
-                    free(theVal);
-                if (debug5_real)
-                {
-                    SNPRINTF(lineBuf, sizeof(lineBuf), "% 16s     % 8s     %03d     %s", 
-                        tagName.c_str(), itapsDataTypeNames[typeId], tagSize, valBuf.c_str());
-                }
-            }
-            else if (typeId == iBase_ENTITY_HANDLE)
-            {
-                if (tagSize == 1)
-                {
-                    iBase_EntitySetHandle theVal;
-                    if (isEntitySet)
-                        iMesh_getEntSetEHData(aMesh, esh, tags[t], &theVal, &itapsError);
-                    else
-                        iMesh_getEHData(aMesh, esh, tags[t], &theVal, &itapsError);
-                    CheckITAPSError(aMesh, NoL); 
-                    if (debug5_real)
-                    {
-                        SNPRINTF(lineBuf, sizeof(lineBuf), "% 16s     % 8s     %03d     %X", 
-                            tagName.c_str(), itapsDataTypeNames[typeId], tagSize, theVal, &itapsError);
-                    }
-                }
-                else if (tagSize > 1)
-                {
-                    iBase_EntitySetHandle *tagvals = 0; int tagvals_allocated = 0; int tagvals_size = 0;
-                    iMesh_getEHArrData(aMesh, &esh, 1, tags[t],
-                        &tagvals, &tagvals_allocated, &tagvals_size, &itapsError);
-                    CheckITAPSError(aMesh, (0,tagvals,EoL)); 
-                    std::string valBuf;
-                    for (int k = 0; k < tagvals_size; k++)
-                    {
-                        char tmpChars[32];
-                        sprintf(tmpChars, "%X ", tagvals[k]);
-                        valBuf += std::string(tmpChars);
-                    }
-                    if (tagvals_allocated)
-                        free(tagvals);
-                    if (debug5_real)
-                    {
-                        SNPRINTF(lineBuf, sizeof(lineBuf), "% 16s     % 8s     %03d     %s", 
-                            tagName.c_str(), itapsDataTypeNames[typeId], tagSize, valBuf.c_str());
-                    }
-                }
-                else
-                {
-                    if (debug5_real)
-                    {
-                        SNPRINTF(lineBuf, sizeof(lineBuf), "% 16s     % 8s     %03d     %s", 
-                            tagName.c_str(), itapsDataTypeNames[typeId], tagSize, "invalid size");
-                    }
-                }
-            }
-            debug5 << ident << "         " << lineBuf << endl;
-        }
-        debug5 << ident << "    }" << endl;
-    }
-    else
-    {
-        debug5 << ident << "    tags = NONE" << endl;
-    }
-
-    if (isEntitySet == false)
-    {
-        debug5 << ident << "}" << endl;
-        return;
-    }
-
-    iMesh_getEntSets(aMesh, esh, 1, &sets, &sets_allocated, &sets_size, &itapsError);
-    CheckITAPSError(aMesh,(0,sets,EoL));
-    if (sets_size > 0 && shouldRecurse)
-    {
-        debug5 << ident << "    entity sets = " << sets_size << endl;
-        debug5 << ident << "    {" << endl;
-        for (int i = 0; i < sets_size; i++)
-            TraverseSetHierarchy(aMesh, level+1, i, true, sets[i], debugOff,
-                handleSetCb, handleSetCb_data);
-        debug5 << ident << "    }" << endl;
-    }
-    else
-    {
-        debug5 << ident << "    entity sets = NONE" << endl;
-    }
-
-    iMesh_getEntities(aMesh, esh, iBase_ALL_TYPES,
-        iMesh_ALL_TOPOLOGIES, &ents, &ents_allocated, &ents_size, &itapsError);
-    CheckITAPSError(aMesh,(0,ents,EoL));
-    if (ents_size > 0 && shouldRecurse)
-    {
-        debug5 << ident << "    entities = " << ents_size << endl;
-        debug5 << ident << "    {" << endl;
-        for (int i = 0; i < ents_size; i++)
-            TraverseSetHierarchy(aMesh, level+1, i, false, ents[i], debugOff,
-                handleSetCb, handleSetCb_data);
-        debug5 << ident << "    }" << endl;
-    }
-    else
-    {
-        debug5 << ident << "    entities = NONE" << endl;
-    }
-
-    debug5 << ident << "}" << endl;
-
-    if (sets_allocated)
-        free(sets);
-    if (ents_allocated)
-        free(ents);
-    if (tags_allocated)
-        free(tags);
-
-funcEnd: ;
-}
-
-// Reset our overrided definition for debug5
-#undef debug5
-#define debug5 if (!debug5_real) ; else debug5_real
-
-static void
-GetTagsForEntity(iMesh_Instance aMesh, bool isEntitySet, iBase_EntitySetHandle esh,
-    vector<string> &tagNames, vector<int> &tagTypes,
-    vector<int> &tagSizes, vector<string> &tagVals)
-{
-    iBase_TagHandle *tags = 0; int tags_allocated = 0; int tags_size = 0;
-
-    if (isEntitySet)
-        iMesh_getAllEntSetTags(aMesh, esh, &tags, &tags_allocated, &tags_size, &itapsError);
-    else
-        iMesh_getAllTags(aMesh, esh, &tags, &tags_allocated, &tags_size, &itapsError);
-    CheckITAPSError(aMesh, (0,tags,EoL));
-
-    if (tags_size)
-    {
-        for (int t = 0; t < tags_size; t++)
-        {
-            char lineBuf[256];
-
-            int typeId;
-            iMesh_getTagType(aMesh, tags[t], (int*) &typeId, &itapsError);
-            CheckITAPSError(aMesh, NoL);
-            tagTypes.push_back(typeId);
-
-            int tagSize;
-            iMesh_getTagSizeValues(aMesh, tags[t], &tagSize, &itapsError);
-            CheckITAPSError(aMesh, NoL); 
-            tagSizes.push_back(tagSize);
-
-            string tagName = VisIt_iMesh_getTagName(aMesh, tags[t]);
-            CheckITAPSError(aMesh, NoL); 
-            tagNames.push_back(tagName);
-
-            tagVals.push_back("");
-
-            if (typeId == iBase_INTEGER)
-            {
-                if (tagSize == 1)
-                {
-                    int theVal;
-                    if (isEntitySet)
-                        iMesh_getEntSetIntData(aMesh, esh, tags[t], &theVal, &itapsError);
-                    else
-                        iMesh_getIntData(aMesh, esh, tags[t], &theVal, &itapsError);
-                    CheckITAPSError(aMesh, NoL); 
-                    SNPRINTF(lineBuf, sizeof(lineBuf), "%d", theVal);
-                }
-                else if (tagSize > 1)
-                {
-                    int *tagvals = 0; int tagvals_allocated = 0; int tagvals_size = 0;
-                    iMesh_getIntArrData(aMesh, &esh, 1, tags[t],
-                        &tagvals, &tagvals_allocated, &tagvals_size, &itapsError);
-                    CheckITAPSError(aMesh, (0,tagvals,EoL)); 
-                    std::string valBuf;
-                    for (int k = 0; k < tagvals_size; k++)
-                    {
-                        char tmpChars[32];
-                        sprintf(tmpChars, "%d ", tagvals[k]);
-                        valBuf += std::string(tmpChars);
-                    }
-                    if (tagvals_allocated)
-                        free(tagvals);
-                    SNPRINTF(lineBuf, sizeof(lineBuf), "%s", valBuf.c_str());
-                }
-            }
-            else if (typeId == iBase_DOUBLE)
-            {
-                if (tagSize == 1)
-                {
-                    double theVal;
-                    if (isEntitySet)
-                        iMesh_getEntSetDblData(aMesh, esh, tags[t], &theVal, &itapsError);
-                    else
-                        iMesh_getDblData(aMesh, esh, tags[t], &theVal, &itapsError);
-                    CheckITAPSError(aMesh, NoL); 
-                    SNPRINTF(lineBuf, sizeof(lineBuf), "%f", theVal);
-                }
-                else if (tagSize > 1)
-                {
-                    double *tagvals = 0; int tagvals_allocated = 0; int tagvals_size = 0;
-                    iMesh_getDblArrData(aMesh, &esh, 1, tags[t],
-                        &tagvals, &tagvals_allocated, &tagvals_size, &itapsError);
-                    CheckITAPSError(aMesh, (0,tagvals,EoL)); 
-                    std::string valBuf;
-                    for (int k = 0; k < tagvals_size; k++)
-                    {
-                        char tmpChars[32];
-                        sprintf(tmpChars, "%f ", tagvals[k]);
-                        valBuf += std::string(tmpChars);
-                    }
-                    if (tagvals_allocated)
-                        free(tagvals);
-                    SNPRINTF(lineBuf, sizeof(lineBuf), "%s", valBuf.c_str());
-                }
-            }
-            else if (typeId == iBase_BYTES)
-            {
-                char *theVal = 0; int theVal_allocated = 0;
-                int theValSize = 0;
-                if (isEntitySet)
-                    iMesh_getEntSetData(aMesh, esh, tags[t], &theVal, &theVal_allocated, &theValSize, &itapsError);
-                else
-                    iMesh_getData(aMesh, esh, tags[t], &theVal, &theVal_allocated, &theValSize, &itapsError);
-                CheckITAPSError(aMesh,(0,theVal,EoL));
-                std::string valBuf;
-                for (int k = 0; k < theValSize; k++)
-                {
-                    char tmpChars[32];
-                    if (theValSize > 4)
-                        sprintf(tmpChars, "%c", theVal[k]);
-                    else
-                        sprintf(tmpChars, "%hhX", theVal[k]);
-                    valBuf += std::string(tmpChars);
-                }
-                if (theVal_allocated)
-                    free(theVal);
-                SNPRINTF(lineBuf, sizeof(lineBuf), "%s", valBuf.c_str());
-            }
-            else if (typeId == iBase_ENTITY_HANDLE)
-            {
-                if (tagSize == 1)
-                {
-                    iBase_EntitySetHandle theVal;
-                    if (isEntitySet)
-                        iMesh_getEntSetEHData(aMesh, esh, tags[t], &theVal, &itapsError);
-                    else
-                        iMesh_getEHData(aMesh, esh, tags[t], &theVal, &itapsError);
-                    CheckITAPSError(aMesh, NoL); 
-                    SNPRINTF(lineBuf, sizeof(lineBuf), "%X", theVal);
-                }
-                else if (tagSize > 1)
-                {
-                    iBase_EntitySetHandle *tagvals = 0; int tagvals_allocated = 0; int tagvals_size = 0;
-                    iMesh_getEHArrData(aMesh, &esh, 1, tags[t],
-                        &tagvals, &tagvals_allocated, &tagvals_size, &itapsError);
-                    CheckITAPSError(aMesh, (0,tagvals,EoL)); 
-                    std::string valBuf;
-                    for (int k = 0; k < tagvals_size; k++)
-                    {
-                        char tmpChars[32];
-                        sprintf(tmpChars, "%X ", tagvals[k]);
-                        valBuf += std::string(tmpChars);
-                    }
-                    if (tagvals_allocated)
-                        free(tagvals);
-                    SNPRINTF(lineBuf, sizeof(lineBuf), "%s", valBuf.c_str());
-                }
-            }
-
-            tagVals[tagVals.size()-1] = string(lineBuf);
-
-        }
-    }
-
-    if (tags_allocated)
-        free(tags);
-
-funcEnd: ;
-}
-
-static bool 
-GetTopLevelSets(iMesh_Instance ima, int level, int memidx, bool ises,
-    iBase_EntitySetHandle esh, void *cb_data)
-{
-    // don't descend deeper than one level
-    if (level > 1)
-        return false;
-
-    vector<string> tagNames;
-    vector<int>    tagTypes;
-    vector<int>    tagSizes;
-    vector<string> tagVals;
-
-    map<string, vector<iBase_EntitySetHandle> > *theSets = 
-        (map<string, vector<iBase_EntitySetHandle> > *) cb_data;
-
-    GetTagsForEntity(ima, ises, esh, tagNames, tagTypes, tagSizes, tagVals);
-
-    for (int i = 0; i < tagNames.size(); i++)
-    {
-        if (tagNames[i] == "CATEGORY")
-            (*theSets)[tagVals[i]].push_back(esh);
-    }
-
-    return true;
-}
-
 
 // ****************************************************************************
 //  Method: avtITAPS_C constructor
@@ -767,19 +94,21 @@ GetTopLevelSets(iMesh_Instance ima, int level, int memidx, bool ises,
 //    Mark C. Miller, Tue Jun 26 11:27:48 PDT 2007
 //    Modified for C interface to ITAPS
 //
+//    Mark C. Miller, Tue Apr 21 15:56:05 PDT 2009
+//    Removed class storage for vert, edge, face and regn entities. We just
+//    read them whenever we need to read a tag defined on them.
 // ****************************************************************************
 
-avtITAPS_CFileFormat::avtITAPS_CFileFormat(const char *filename)
-    : avtSTMDFileFormat(&filename, 1)
+avtITAPS_CFileFormat::avtITAPS_CFileFormat(const char *filename,
+    DBOptionsAttributes *rdatts) : avtSTMDFileFormat(&filename, 1)
 {
     InitDataTypeNames();
     vmeshFileName = filename;
     geomDim = topoDim = 0;
-    vertEnts = edgeEnts = faceEnts = regnEnts = 0;
-    numVerts = numEdges = numFaces = numRegns = 0;
-    vertEnts_allocated = edgeEnts_allocated =
-    faceEnts_allocated = regnEnts_allocated = 0;
     haveMixedElementMesh = false;
+    for (int i = 0; rdatts != 0 && i < rdatts->GetNumberOfOptions(); ++i)
+    {
+    }
 }
 
 avtITAPS_CFileFormat::~avtITAPS_CFileFormat()
@@ -804,27 +133,18 @@ avtITAPS_CFileFormat::~avtITAPS_CFileFormat()
 //    Mark C. Miller, Tue Jun 26 11:27:48 PDT 2007
 //    Modified for C interface to ITAPS
 //
+//    Mark C. Miller, Thu Mar 26 17:30:15 PDT 2009
+//    Added call to destroy the iMesh instance (duh!)
+//
+//    Mark C. Miller, Tue Apr 21 15:56:05 PDT 2009
+//    Removed class storage for vert, edge, face and regn entities. We just
+//    read them whenever we need to read a tag defined on them.
 // ****************************************************************************
 
 void
 avtITAPS_CFileFormat::FreeUpResources(void)
 {
-    if (vertEnts && vertEnts_allocated)
-        free(vertEnts);
-    vertEnts = 0;
-    vertEnts_allocated = 0;
-    if (edgeEnts && edgeEnts_allocated)
-        free(edgeEnts);
-    edgeEnts = 0;
-    edgeEnts_allocated = 0;
-    if (faceEnts && faceEnts_allocated)
-        free(faceEnts);
-    faceEnts = 0;
-    faceEnts_allocated = 0;
-    if (regnEnts && regnEnts_allocated)
-        free(regnEnts);
-    regnEnts = 0;
-    regnEnts_allocated = 0;
+    iMesh_dtor(itapsMesh, &itapsError);
 }
 
 
@@ -851,6 +171,30 @@ avtITAPS_CFileFormat::FreeUpResources(void)
 //    Mark C. Miller, Tue Apr 22 21:45:41 PDT 2008
 //    Big changes to support MOAB's subsets
 //
+//    Mark C. Miller, Tue Jan  6 18:48:22 PST 2009
+//    Added check for has_data==0 in loop to find tags (variables) centering.
+//
+//    Mark C. Miller, Wed Mar 25 22:02:06 PDT 2009
+//    Made it so the entity iterator in the loop to find dense tags for
+//    variable centering is NOT ended until AFTER the returned entity has
+//    been queried.
+//
+//    Mark C. Miller, Thu Mar 26 17:32:01 PDT 2009
+//    Added logic to destroy the iMesh instance if we're on the mdserver.
+//
+//    Mark C. Miller, Mon Mar 30 17:35:44 PDT 2009
+//    Ensure dummyStr is initialized.
+//
+//    Mark C. Miller, Tue Apr 21 15:56:56 PDT 2009
+//    Updated to current iMesh/iBase specification. Changed debug level used
+//    for various messages. Added to logic which searches for a suitable
+//    'domain' class to check of candidate classes can 'cover' the root in
+//    the set theoretic sense. Changed loop that searches for tags and
+//    determines centering to add stuff to variable name if the same tag is
+//    defined on different classes of entities.
+//
+//    Mark C. Miller, Thu Apr 23 08:10:02 PDT 2009
+//    Added logic to handle Zoltan partition as VisIt's domains.
 // ****************************************************************************
 
 void
@@ -869,47 +213,52 @@ avtITAPS_CFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
              vmeshFileName[q-4] == 'u' && vmeshFileName[q-3] == 'b')
         tmpFileName = string(vmeshFileName, 0, q-4);
 
-    char dummyStr[32];
+    char dummyStr[32] = "";
     iMesh_newMesh(dummyStr, &itapsMesh, &itapsError, 0);
-    CheckITAPSError(itapsMesh, NoL);
+    CheckITAPSError(itapsMesh, iMesh_newMesh, NoL);
     iMesh_getRootSet(itapsMesh, &rootSet, &itapsError);
-    CheckITAPSError(itapsMesh, NoL);
+    CheckITAPSError(itapsMesh, iMesh_getRootSet, NoL);
 
     // ok, try loading the mesh.
     try
     {
+#if 0 //PARALLEL
+        cerr << "got here" << endl;
+        iMeshP_createPartitionAll(itapsMesh, MPI_COMM_WORLD, &itapsPart, &itapsError);
+        CheckITAPSError(itapsMesh, iMeshP_createPartitionAll, NoL);
+        iMeshP_loadAll(itapsMesh, itapsPart, rootSet, tmpFileName.c_str(), dummyStr, &itapsError,
+            tmpFileName.length(), 0);
+        CheckITAPSError(itapsMesh, iMeshP_loadAll, NoL);
+        itapsParts = 0;
+        int parts_allocated = 0, parts_size = 0;
+        iMeshP_getLocalParts(itapsMesh, itapsPart, &itapsParts, &parts_allocated, &parts_size, &itapsError);
+        CheckITAPSError(itapsMesh, iMeshP_getLocalParts, NoL);
+        debug3 << "parts_size = " << parts_size << endl;
+#else
         iMesh_load(itapsMesh, rootSet, tmpFileName.c_str(), dummyStr, &itapsError,
             tmpFileName.length(), 0);
-        CheckITAPSError(itapsMesh, NoL);
+        CheckITAPSError(itapsMesh, iMesh_load, NoL);
+#endif
 
         // determine spatial and topological dimensions of mesh
         int geomDim;
         iMesh_getGeometricDimension(itapsMesh, &geomDim, &itapsError);
-        CheckITAPSError(itapsMesh, NoL);
+        CheckITAPSError(itapsMesh, iMesh_getGeometricDimension, NoL);
         topoDim = -1;
-        iMesh_getNumOfType(itapsMesh, rootSet, iBase_VERTEX, &numVerts, &itapsError);
-        CheckITAPSError(itapsMesh, NoL);
-        if (numVerts > 0)
-            topoDim = 0;
-        iMesh_getNumOfType(itapsMesh, rootSet, iBase_EDGE, &numEdges, &itapsError);
-        CheckITAPSError(itapsMesh, NoL);
-        if (numEdges > 0)
-            topoDim = 1;
-        iMesh_getNumOfType(itapsMesh, rootSet, iBase_FACE, &numFaces, &itapsError);
-        CheckITAPSError(itapsMesh, NoL);
-        if (numFaces > 0)
-            topoDim = 2;
-        iMesh_getNumOfType(itapsMesh, rootSet, iBase_REGION, &numRegns, &itapsError);
-        CheckITAPSError(itapsMesh, NoL);
-        if (numRegns > 0)
-            topoDim = 3;
+        for (i = 0; i < iBase_ALL_TYPES; i++)
+        {
+            iMesh_getNumOfType(itapsMesh, rootSet, i, &numOfType[i], &itapsError);
+            if (numOfType[i] > 0)
+                topoDim = i;
+            debug3 << "numOfType["<<i<<"] = " << numOfType[i] << endl;
+        }
 
         //
         // Decide if we've got a 'mixed element' mesh
         //
-        if ((numEdges > 0 && numFaces > 0) ||
-            (numEdges > 0 && numRegns > 0) ||
-            (numFaces > 0 && numRegns > 0))
+        if ((numOfType[1] > 0 && numOfType[2] > 0) ||
+            (numOfType[1] > 0 && numOfType[3] > 0) ||
+            (numOfType[2] > 0 && numOfType[3] > 0))
             haveMixedElementMesh = true;
 
         //
@@ -941,34 +290,78 @@ avtITAPS_CFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
         // This first call is purely to provide opportunity to output stuff
         // to debug logs.
         const bool debugOff = true;
-        if (debug5_real)
-            TraverseSetHierarchy(itapsMesh, 0, 0, true, rootSet, !debugOff, 0, 0);
+        iBase_EntityHandle junk;
+        if (debug4_real)
+            TraverseSetHierarchy(itapsMesh, 0, 0, true, junk, rootSet, !debugOff, 0, 0);
 
         // Ok, do some real work to get top-level sets
-        TraverseSetHierarchy(itapsMesh, 0, 0, true, rootSet, debugOff,
+        TraverseSetHierarchy(itapsMesh, 0, 0, true, junk, rootSet, debugOff,
             GetTopLevelSets, &topLevelSets);
 
         //
         // Find the 'domain' set class and assign its sets for the domains.
         //
         map<string, vector<iBase_EntitySetHandle> >::iterator tlsit;
-        if (topLevelSets.size() == 0)
+        if (GetTagStuff(itapsMesh, rootSet, -1, "PARALLEL_PARTITION", 0, 0, 0) == iBase_SUCCESS ||
+            GetTagStuff(itapsMesh, rootSet, iBase_VERTEX, "PARALLEL_PARTITION", 0, 0, 0) == iBase_SUCCESS ||
+            GetTagStuff(itapsMesh, rootSet, iBase_REGION, "PARALLEL_PARTITION", 0, 0, 0) == iBase_SUCCESS)
         {
-            domainSets.push_back(rootSet);
-            domainSetClassName = "Root";
+            domainSets = topLevelSets["PARALLEL_PARTITION"]; 
+            domainSetClassName = "PARALLEL_PARTITION";
         }
         else
         {
-            for (tlsit = topLevelSets.begin(); tlsit != topLevelSets.end(); tlsit++)
             {
-                if (tlsit->first == domainSetClassName)
+                for (tlsit = topLevelSets.begin(); tlsit != topLevelSets.end(); tlsit++)
                 {
-                    domainSets = tlsit->second;
-                    debug5 << "selected \"" << tlsit->first << "\" as the domain class" << endl;
-                    break;
+                    if (tlsit->first == domainSetClassName)
+                    {
+                        //
+                        // Lets at least ensure that the choosen class of entity sets
+                        // has enough entities to at least 'cover' the root.
+                        //
+                        int nverts = 0;
+                        int nother = 0;
+                        for (unsigned int q = 0; q < tlsit->second.size(); q++)
+                        {
+                            int nverts_tmp;
+                            int nother_tmp;
+                            iMesh_getNumOfType(itapsMesh, tlsit->second[q], iBase_VERTEX, &nverts_tmp, &itapsError);
+                            iMesh_getNumOfType(itapsMesh, tlsit->second[q], domainEntType, &nother_tmp, &itapsError);
+                            nverts += nverts_tmp;
+                            nother += nother_tmp;
+                        }
+                        //
+                        // MOAB seems to be 'funny' with vertex entities in subsets and so
+                        // a vertex cover is never possible to achieve from MOAB. So, we
+                        // currently only test for 'other'
+                        //if (nverts >= numOfType[0] && nother >= numOfType[topoDim])
+                        if (nother >= numOfType[topoDim])
+                        {
+                            domainSets = tlsit->second;
+                            debug3 << "selected \"" << tlsit->first << "\" as the domain class" << endl;
+                            break;
+                        }
+                        else
+                        {
+                            debug3 << "skipping \"" << tlsit->first << "\" as candidate domain class "
+                                   << "because it cannot possible 'cover' root" << endl;
+                        }
+                    }
+                    debug3 << "skipping \"" << tlsit->first << "\" as candidate domain class" << endl;
                 }
-                debug5 << "skipping \"" << tlsit->first << "\" as candidate domain class" << endl;
             }
+        }
+
+        //
+        // This test for <=1 catches MOAB cases where there is only one Volume type entity
+        // set AND yet that set's verticies don't cover the root (brick_10.0.cub).
+        //
+        if (domainSets.size() <= 1)
+        {
+            domainSets.clear();
+            domainSets.push_back(rootSet);
+            domainSetClassName = "Root";
         }
 
         //
@@ -1031,33 +424,38 @@ avtITAPS_CFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
         int entTypeClass;
         for (entTypeClass = 0; entTypeClass < 4; entTypeClass++)
         {
-            // initialize an entity iterator and get the first entity
-            iMesh_EntityIterator entIt;
-            iMesh_initEntIter(itapsMesh, rootSet, (iBase_EntityType) entTypeClass,
-                iMesh_ALL_TOPOLOGIES, &entIt, &itapsError);
-            CheckITAPSError(itapsMesh, NoL);
             iBase_EntityHandle oneEntity;
             int has_data;
+            iMesh_EntityIterator entIt;
+
+            // initialize an entity iterator and get the first entity
+            iMesh_initEntIter(itapsMesh, domainSets[0], (iBase_EntityType) entTypeClass,
+                iMesh_ALL_TOPOLOGIES, &entIt, &itapsError);
+            CheckITAPSError(itapsMesh, iMesh_initEntIter, NoL);
             iMesh_getNextEntIter(itapsMesh, entIt, &oneEntity, &has_data, &itapsError);
-            CheckITAPSError(itapsMesh, NoL);
+            CheckITAPSError(itapsMesh, iMesh_getNextEntIter, NoL);
+
+            if (has_data && itapsError == iBase_SUCCESS)
+            {
+                // get all the tags defined on this one entity
+                iBase_TagHandle *tagsOnOneEntity = 0; int tagsOnOneEntity_allocated = 0;
+                int tagsOnOneEntity_size = 0;
+                iMesh_getAllTags(itapsMesh, oneEntity, &tagsOnOneEntity,
+                    &tagsOnOneEntity_allocated, &tagsOnOneEntity_size, &itapsError);
+                CheckITAPSError(itapsMesh, iMesh_getAllTags, (0,tagsOnOneEntity,EoL));
+
+                // make a vector of the found handles and copy it
+                // to the saved list of primitive tag handles
+                vector<iBase_TagHandle> tmpTagHandles;
+                for (int kk = 0; kk < tagsOnOneEntity_size; kk++)
+                    tmpTagHandles.push_back(tagsOnOneEntity[kk]);
+                primitiveTagHandles[entTypeClass] = tmpTagHandles;
+                if (tagsOnOneEntity_allocated)
+                    free(tagsOnOneEntity);
+            }
+
             iMesh_endEntIter(itapsMesh, entIt, &itapsError);
-            CheckITAPSError(itapsMesh, NoL);
-
-            // get all the tags defined on this one entity
-            iBase_TagHandle *tagsOnOneEntity = 0; int tagsOnOneEntity_allocated = 0;
-            int tagsOnOneEntity_size = 0;
-            iMesh_getAllTags(itapsMesh, oneEntity, &tagsOnOneEntity,
-                &tagsOnOneEntity_allocated, &tagsOnOneEntity_size, &itapsError);
-            CheckITAPSError(itapsMesh, (0,tagsOnOneEntity,EoL));
-
-            // make a vector of the found handles and copy it
-            // to the saved list of primitive tag handles
-            vector<iBase_TagHandle> tmpTagHandles;
-            for (int kk = 0; kk < tagsOnOneEntity_size; kk++)
-                tmpTagHandles.push_back(tagsOnOneEntity[kk]);
-            primitiveTagHandles[entTypeClass] = tmpTagHandles;
-            if (tagsOnOneEntity_allocated)
-                free(tagsOnOneEntity);
+            CheckITAPSError(itapsMesh, iMesh_endEntIter, NoL);
         }
 
         for (entTypeClass = 0; entTypeClass < 4; entTypeClass++)
@@ -1066,43 +464,56 @@ avtITAPS_CFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
 
             vector<iBase_TagHandle> tagHandles = primitiveTagHandles[entTypeClass];
 
+            debug3 << "Checking " << tagHandles.size() << " tags defined on entity class \""
+                   << entTypes[entTypeClass] << "\"" << endl;
+
             for (int tagIdx = 0; tagIdx < tagHandles.size(); tagIdx++)
             {
                 iBase_TagHandle theTag = tagHandles[tagIdx]; 
                 string tagName = VisIt_iMesh_getTagName(itapsMesh, theTag);
-                CheckITAPSError(itapsMesh, NoL);
+                CheckITAPSError(itapsMesh, VisIt_iMesh_getTagName, NoL);
                 int valSize;
                 iMesh_getTagSizeValues(itapsMesh, theTag, &valSize, &itapsError);
-                CheckITAPSError(itapsMesh, NoL);
+                CheckITAPSError(itapsMesh, iMesh_getTagSizeValues, NoL);
                 avtVarType var_type = GuessVarTypeFromNumDimsAndComps(geomDim, valSize);
 
-                // ITAPS can sometimes define same tag on multiple entities
-                bool shouldSkip = false;
-                if (entTypeClass > 0)
+                debug3 << "Checking tag \"" << tagName << "\", size = "
+                       << valSize << ", candidate variable type is \""
+                       << avtVarTypeToString(var_type) << "\"" << endl;
+
+                // ITAPS can sometimes define same tag on multiple entities. If so,
+                // be sure to append the class name to the variable name.
+                bool shouldAddEntTypeClassNameToVar = false;
+                for (int et = 0; et < iBase_ALL_TYPES; et++)
                 {
-                    vector<iBase_TagHandle> tagHandlesOnVerts = primitiveTagHandles[0];
-                    for (int t = 0; t < tagHandlesOnVerts.size(); t++)
+                    // We only want to check the tag name's existence on other entity types
+                    if (et == entTypeClass)
+                        continue;
+
+                    vector<iBase_TagHandle> tagHandlesOnEnts = primitiveTagHandles[et];
+                    for (int t = 0; t < tagHandlesOnEnts.size(); t++)
                     {
-                        string vertTagName = VisIt_iMesh_getTagName(itapsMesh, tagHandlesOnVerts[t]);
-                        CheckITAPSError(itapsMesh, NoL);
+                        string vertTagName = VisIt_iMesh_getTagName(itapsMesh, tagHandlesOnEnts[t]);
+                        CheckITAPSError(itapsMesh, VisIt_iMesh_getTagName, NoL);
                         if (tagName == vertTagName)
                         {
-                            shouldSkip = true;
+                            shouldAddEntTypeClassNameToVar = true;
                             break;
                         }
                     }
                 }
-                if (shouldSkip)
-                    continue;
+                string addVarName = "";
+                if (shouldAddEntTypeClassNameToVar)
+                    addVarName = "_on_" + string(entTypes[entTypeClass]) + "_entities";
 
                 if (var_type == AVT_SCALAR_VAR)
-                    AddScalarVarToMetaData(md, tagName.c_str(), "mesh", centering);
+                    AddScalarVarToMetaData(md, tagName.c_str()+addVarName, "mesh", centering);
                 else if (var_type == AVT_VECTOR_VAR)
-                    AddVectorVarToMetaData(md, tagName.c_str(), "mesh", centering, valSize);
+                    AddVectorVarToMetaData(md, tagName.c_str()+addVarName, "mesh", centering, valSize);
                 else if (var_type == AVT_SYMMETRIC_TENSOR_VAR)
-                    AddSymmetricTensorVarToMetaData(md, tagName.c_str(), "mesh", centering, valSize);
+                    AddSymmetricTensorVarToMetaData(md, tagName.c_str()+addVarName, "mesh", centering, valSize);
                 else if (var_type == AVT_TENSOR_VAR)
-                    AddTensorVarToMetaData(md, tagName.c_str(), "mesh", centering, valSize);
+                    AddTensorVarToMetaData(md, tagName.c_str()+addVarName, "mesh", centering, valSize);
                 else
                 {
                     vector<string> memberNames;
@@ -1112,7 +523,7 @@ avtITAPS_CFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
                         SNPRINTF(tmpName, sizeof(tmpName), "%s_%03d", tagName.c_str(), c);
                         memberNames.push_back(tmpName);
                     }
-                    AddArrayVarToMetaData(md, tagName.c_str(), memberNames, "mesh", centering);
+                    AddArrayVarToMetaData(md, tagName.c_str()+addVarName, memberNames, "mesh", centering);
                 }
             }
         }
@@ -1123,9 +534,8 @@ avtITAPS_CFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
         char desc[256];
         desc[0] = '\0';
         int tmpError = itapsError;
-#ifdef ITAPS_MOAB
+#if !defined(ITAPS_GRUMMP)
         iMesh_getDescription(itapsMesh, desc, &itapsError, sizeof(desc));
-#elif ITAPS_GRUMMP
 #endif
         SNPRINTF(msg, sizeof(msg), "Encountered ITAPS error (%d) \"%s\""
             "\nUnable to open file!", tmpError, desc); 
@@ -1133,6 +543,11 @@ avtITAPS_CFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
             cerr << msg << endl;
     }
 funcEnd: ;
+
+#ifdef MDSERVER
+    // We don't need to keep this thing around on the mdserver, so free it up
+    iMesh_dtor(itapsMesh, &itapsError);
+#endif
 }
 
 // ****************************************************************************
@@ -1160,6 +575,12 @@ funcEnd: ;
 //    Mark C. Miller, Tue Apr 22 21:45:41 PDT 2008
 //    Big changes to support MOAB's subsets
 //
+//    Mark C. Miller, Tue Apr 21 16:00:12 PDT 2009
+//    Added logic with junkSet and memset to be real careful to ensure that
+//    the set did in fact get set to someting. Updated to current iMesh/iBase
+//    interface. Added logic where cells are inserted into the mesh to
+//    ensure we're not attempting to insert cells that we don't think VTK
+//    will think are valid.
 // ****************************************************************************
 
 vtkDataSet *
@@ -1167,110 +588,166 @@ avtITAPS_CFileFormat::GetMesh(int domain, const char *meshname)
 {
     int i, j;
 
+    debug3 << "avtITAPS_FMDBFileFormat::GetMesh, domain=" << domain << endl;
+
     try
     {
         //
-        // Get the entity set handle for this domain
+        // Get the entity set handle for this domain.
+        // We use the memset stuff to set the handle to something
+        // with low probably of being validly returned from an implementation
+        // so that we can check if indeed the logic here sets it. 
         //
-        iBase_EntitySetHandle theSet = (void*) -1; // CHECK 
+        iBase_EntitySetHandle theSet, junkSet;
+        memset(&theSet, 0xFF, sizeof(iBase_EntitySetHandle));
+        memset(&junkSet, 0xFF, sizeof(iBase_EntitySetHandle));
         int setCount = 0;
         int entType = -1;
+#ifdef ITAPS_FMDB
+        theSet = rootSet;
+        entType = iBase_REGION;
+#else
         theSet = domainSets[domain];
         entType = domainEntType;
+#endif
 
-        if (theSet == (void*) -1 || entType == -1)
+        if (memcmp(&junkSet, &theSet, sizeof(iBase_EntitySetHandle)) == 0 || entType == -1)
         {
             char msg[256];
             SNPRINTF(msg, sizeof(msg), "Unable to find entity set handle for domain %d", domain);
             EXCEPTION1(ImproperUseException, msg);
         }
 
-        int coords2Size, mapSize;
-        double *coords2 = 0; int coords2_allocated = 0;
-        int *inEntSetMap = 0; int inEntSetMap_allocated = 0;
-        iBase_StorageOrder storageOrder2 = iBase_UNDETERMINED;
-        iMesh_getAllVtxCoords(itapsMesh, theSet, &coords2, &coords2_allocated, &coords2Size,
-            &inEntSetMap, &inEntSetMap_allocated, &mapSize, (int*) &storageOrder2, &itapsError);
-        CheckITAPSError(itapsMesh, (0,coords2,inEntSetMap,EoL));
-        int vertCount = mapSize;
-        if (vertCount == 0)
+        // This call to iMesh_getAdjEntIndices is being used to obtain all the
+        // vertex entities for the elements comprising this domain as well as
+        // the list of vertices that comprise each element.
+        iBase_EntityHandle *entHdls = 0;
+        int entHdls_allocated = 0, entHdls_size;
+        iBase_EntityHandle *adjHdls = 0;
+        int adjHdls_allocated = 0, adjHdls_size;
+        int *adjInds = 0; int adjInds_allocated = 0, adjInds_size;
+        int *offs = 0; int offs_allocated = 0, offs_size;
+        iMesh_getAdjEntIndices(
+            itapsMesh,            // iMesh_Instance instance,
+            theSet,               // iBase_EntitySetHandle entity_set_handle,
+            entType,              // int entity_type_requestor,
+            iMesh_ALL_TOPOLOGIES, // int entity_topology_requestor,
+            iBase_VERTEX,         // int entity_type_requested,
+
+            // The returned entities matching type/topo requestor
+            // For this particular call, it will be the edge, face and/or
+            // volume elements that exist in the set.
+            &entHdls,            // iBase_EntityHandle** entity_handles,
+            &entHdls_allocated,  // int* entity_handles_allocated,
+            &entHdls_size,       // int* entity_handles_size,
+
+            // The UNIQUE set of entities ADJACENT to those in entHdls 
+            // For this particular call, this will be the set of UNIQUE
+            // vertices shared by all the different entities returned 
+            // above.
+            &adjHdls,            // iBase_EntityHandle** adj_entity_handles,
+            &adjHdls_allocated,  // int* adj_entity_handles_allocated,
+            &adjHdls_size,       // int* adj_entity_handles_size,
+
+            // The CONCATENATED listing of indices into adjHdls of
+            // entites adjacent to entHdls[i] for all i.
+            &adjInds,            // int** adj_entity_indices,
+            &adjInds_allocated,  // int* adj_entity_indices_allocated,
+            &adjInds_size,       // int* adj_entity_indices_size,
+
+            // The starting index into adjIndcs of the list of adjacent
+            // entities for entHdles[i] for all i.
+            &offs,                // int** offset,
+            &offs_allocated,      // int* offset_allocated,
+            &offs_size,           // int* offset_size,
+
+            &itapsError);         //int *err)
+        CheckITAPSError(itapsMesh, iMesh_getAdjEntIndices, (0,entHdls,adjHdls,adjInds,offs,EoL));
+
+        if (entHdls_size <= 0 || adjHdls_size <= 0)
         {
-            if (coords2_allocated)
-                free(coords2);
-            if (inEntSetMap_allocated)
-                free(inEntSetMap);
+            ITAPSErrorCleanupHelper(0,entHdls,adjHdls,adjInds,offs,EoL);
+            debug3 << "Mesh is empty" << endl;
             return 0;
         }
+
+        //
+        // Get the coordinates for the vertex elements.
+        //
+        double *coords = 0; int coords_allocated = 0, coords_size;
+        iMesh_getVtxArrCoords(itapsMesh, adjHdls, adjHdls_size, iBase_INTERLEAVED,
+            &coords, &coords_allocated, &coords_size, &itapsError);
+        CheckITAPSError(itapsMesh, iMesh_getVtxArrCoords, (0,coords,EoL));
 
         //
         // If its a 1D or 2D mesh, the coords could be 3-tuples where
         // the 'extra' values are always zero or they could be reduced
         // dimensioned tuples. The ITAPS interface doesn't specify.
         //
-        int tupleSize = coords2Size / vertCount;
+        int tupleSize = coords_size / adjHdls_size;
 
         //
         // Populate the coordinates.  Put in 3D points with z=0 if the mesh is 2D.
         //
         vtkPoints *points  = vtkPoints::New();
-        points->SetNumberOfPoints(vertCount);
+        points->SetNumberOfPoints(adjHdls_size);
         float *pts = (float *) points->GetVoidPointer(0);
-        for (i = 0; i < vertCount; i++)
+        for (i = 0; i < adjHdls_size; i++)
         {
-            if (storageOrder2 == iBase_INTERLEAVED)
-            {
-                for (j = 0; j < tupleSize; j++)
-                    pts[i*3+j] = (float) coords2[i*tupleSize+j];
-                for (j = tupleSize; j < 3; j++)
-                    pts[i*3+j] = 0.0;
-            }
-            else if (storageOrder2 == iBase_BLOCKED)
-            {
-                for (j = 0; j < tupleSize; j++)
-                    pts[i*3+j] = (float) coords2[j*vertCount+i];
-                for (j = tupleSize; j < 3; j++)
-                    pts[i*3+j] = 0.0;
-            }
+            for (j = 0; j < tupleSize; j++)
+                pts[i*3+j] = (float) coords[i*tupleSize+j];
+            for (j = tupleSize; j < 3; j++)
+                pts[i*3+j] = 0.0;
         }
-        if (coords2_allocated)
-            free(coords2);
-        if (inEntSetMap_allocated)
-            free(inEntSetMap);
+        if (coords_allocated)
+            free(coords);
 
         vtkUnstructuredGrid *ugrid = vtkUnstructuredGrid::New(); 
         ugrid->SetPoints(points);
         points->Delete();
 
-        int *offset = 0; int offsetSize; int offset_allocated = 0;
-        int *index = 0; int indexSize; int index_allocated = 0;
-        iMesh_EntityTopology *topos = 0; int toposSize; int topos_allocated = 0;
-        iMesh_getVtxCoordIndex(itapsMesh, theSet,
-            entType, iMesh_ALL_TOPOLOGIES, entType, 
-            &offset, &offset_allocated, &offsetSize,
-            &index, &index_allocated, &indexSize,
-            (int**) &topos, &topos_allocated, &toposSize,
-            &itapsError);
-        CheckITAPSError(itapsMesh, (0,topos,offset,index,EoL));
-
-        for (int off = 0; off < offsetSize; off++)
+        for (int i = 0; i < entHdls_size; i++)
         {
-            int vtkZoneType = ITAPSEntityTopologyToVTKZoneType(topos[off]);
+            int topoType;
+            iMesh_getEntTopo(itapsMesh, entHdls[i], &topoType, &itapsError);
+            int vtkZoneType = ITAPSEntityTopologyToVTKZoneType(topoType);
             if (vtkZoneType == -1)
+            {
+                debug3 << "Invalid VTK zone type for iMesh entity " << i
+                       << " and topology type \"" << entTopologies[topoType]
+                       << "\"" << endl;
                 continue;
-            vtkIdType vertIds[256];
+            }
+            vtkIdType vertIds[8];
             int jj = 0;
-            for (int idx = offset[off];
-                 idx < ((off+1) < offsetSize ? offset[off+1] : indexSize); idx++)
-                vertIds[jj++] = index[idx];
+            bool valid = true;
+            for (int idx = offs[i];
+                 idx < ((i+1) < offs_size ? offs[i+1] : offs_size); idx++)
+            {
+                if (jj >= sizeof(vertIds) / sizeof(vertIds[0]))
+                    valid = false;
+                if (valid)
+                    vertIds[jj++] = adjInds[idx];
+                else
+                   jj++;
+            }
+            if (!valid)
+            {
+                debug3 << "Invalid vert count " << jj
+                       << " for iMesh entity " << i << endl;
+                continue;
+            }
             ugrid->InsertNextCell(vtkZoneType, jj, vertIds);
         }
 
-        if (topos_allocated)
-            free(topos);
-        if (offset_allocated)
-            free(offset);
-        if (index_allocated)
-            free(index);
+        if (entHdls_allocated)
+            free(entHdls);
+        if (adjHdls_allocated)
+            free(adjHdls);
+        if (adjInds_allocated)
+            free(adjInds);
+        if (offs_allocated)
+            free(offs);
 
         return ugrid;
 
@@ -1281,9 +758,8 @@ avtITAPS_CFileFormat::GetMesh(int domain, const char *meshname)
         char desc[256];
         desc[0] = '\0';
         int tmpError = itapsError;
-#ifdef ITAPS_MOAB
+#if !defined(ITAPS_GRUMMP)
         iMesh_getDescription(itapsMesh, desc, &itapsError, sizeof(desc));
-#elif ITAPS_GRUMMP
 #endif
         SNPRINTF(msg, sizeof(msg), "Encountered ITAPS error (%d) \"%s\""
             "\nUnable to open file!", tmpError, desc); 
@@ -1299,7 +775,7 @@ funcEnd: ;
 //  Method: avtITAPS_CFileFormat::GetNodalSubsetVar
 //
 //  Purpose: Return a node-centered variable indicating subset membership of
-//  each node in the assocaited domain (chunk of mesh).
+//  each node in the associated domain (chunk of mesh).
 //
 //  I would have liked to use iMesh_getEntities and then iMesh_isEntContained.
 //  However, I ran into problems where getEntities for entType of iBase_VERTEX
@@ -1314,6 +790,8 @@ vtkDataArray *
 avtITAPS_CFileFormat::GetNodalSubsetVar(int domain, const char *varname,
     const vector<iBase_EntitySetHandle> &theSets)
 {
+    debug3 << "GetNodalSubsetVar: dom=" << domain << ", var=\"" << varname
+           << "\", theSets.size()=" << theSets.size() << endl;
     //
     // Look up the mesh in the cache.
     //
@@ -1334,7 +812,7 @@ avtITAPS_CFileFormat::GetNodalSubsetVar(int domain, const char *varname,
     vtkFloatArray *result = 0;
     try {
 
-        int i,j;
+        int i,j,k;
 
         //
         // Build a map from coordinate values to node indices.
@@ -1352,41 +830,80 @@ avtITAPS_CFileFormat::GetNodalSubsetVar(int domain, const char *varname,
 
         for (j = 0; j < theSets.size(); j++)
         {
-            int coords2Size, mapSize;
-            double *coords2 = 0; int coords2_allocated = 0;
-            int *inEntSetMap = 0; int inEntSetMap_allocated = 0;
-            iBase_StorageOrder storageOrder2 = iBase_UNDETERMINED;
-            iMesh_getAllVtxCoords(itapsMesh, theSets[j], &coords2, &coords2_allocated, &coords2Size,
-                &inEntSetMap, &inEntSetMap_allocated, &mapSize, (int*) &storageOrder2, &itapsError);
-            int vertCount = mapSize;
-            if (vertCount == 0)
+            //
+            // Examine this set and any of its subsets, looking for primitive,
+            // entities. Find the majority type of entity and the set it occurs
+            // in and use that as the set to query for vertices. In most cases
+            // this will be the entry in theSets[j]. But, not all.
+            //
+            int ent_type = -1;
+            int max_num_ents = 0;
+            iBase_EntitySetHandle qSet;
+            vector<iBase_EntitySetHandle> setStack;
+            setStack.push_back(theSets[j]);
+            while (setStack.size())
             {
-                if (coords2_allocated)
-                    free(coords2);
-                if (inEntSetMap_allocated)
-                    free(inEntSetMap);
+                iBase_EntitySetHandle aset = setStack.back();
+                setStack.pop_back();
+
+                for (k = 0; k < iBase_ALL_TYPES; k++)
+                {
+                    int num_ents = 0;
+                    iMesh_getNumOfType(itapsMesh, aset, k, &num_ents, &itapsError);
+                    debug3 << num_ents << " " << entTypes[k] << endl;
+                    if (num_ents > max_num_ents)
+                    {
+                        max_num_ents = num_ents;
+                        ent_type = k;
+                        qSet = aset;
+                    }
+                }
+
+                iBase_EntitySetHandle *esHdls = 0; int esHdls_allocated = 0, esHdls_size;
+                iMesh_getEntSets(itapsMesh, aset, 1,
+                    &esHdls, &esHdls_allocated, &esHdls_size, &itapsError);
+                for (k = 0; k < esHdls_size; k++)
+                    setStack.push_back(esHdls[k]);
+                free(esHdls);
+            }
+            debug3 << "Querying adjEntIndices using entity_type of \""
+                   << entTypes[ent_type] << "\"" << endl;
+
+            double *coords2 = 0; int coords2_allocated = 0, coords2_size;
+            iBase_EntityHandle *verts = 0; int verts_allocated = 0, verts_size;
+            iBase_EntityHandle *adjHdls = 0; int adjHdls_allocated = 0, adjHdls_size;
+            int *adjInds = 0; int adjInds_allocated = 0, adjInds_size;
+            int *off = 0, off_allocated = 0, off_size;
+            iMesh_getAdjEntIndices(itapsMesh, qSet, ent_type,
+                iMesh_ALL_TOPOLOGIES, iBase_VERTEX,
+                &adjHdls, &adjHdls_allocated, &adjHdls_size,
+                &verts, &verts_allocated, &verts_size,
+                &adjInds, &adjInds_allocated, &adjInds_size,
+                &off, &off_allocated, &off_size, &itapsError);
+            CheckITAPSError(itapsMesh, iMesh_getAdjEntities, (0,verts,adjHdls,adjInds,off,EoL));
+            free(off);
+            free(adjHdls);
+            free(adjInds);
+            debug3 << "For set index " << j << " got " << verts_size << " verts." << endl;
+            if (verts_size == 0)
+            {
+                free(verts);
                 continue;
             }
+            iMesh_getVtxArrCoords(itapsMesh, verts, verts_size, iBase_INTERLEAVED,
+                                  &coords2, &coords2_allocated, &coords2_size, &itapsError);
+            CheckITAPSError(itapsMesh, iMesh_getVtxArrCoords, (0,coords2,EoL));
+            free(verts);
 
-            int tupleSize = coords2Size / vertCount;
-            for (int k = 0; k < vertCount; k++)
+            int tupleSize = coords2_size / verts_size;
+            for (int k = 0; k < verts_size; k++)
             {
                 int l;
                 float thePoint[3];
-                if (storageOrder2 == iBase_INTERLEAVED)
-                {
-                    for (l = 0; l < tupleSize; l++)
-                        thePoint[l] = (float) coords2[k*tupleSize+l];
-                    for (l = tupleSize; l < 3; l++)
-                        thePoint[l] = 0.0;
-                }
-                else if (storageOrder2 == iBase_BLOCKED)
-                {
-                    for (l = 0; l < tupleSize; l++)
-                        thePoint[l] = (float) coords2[l*vertCount+k];
-                    for (l = tupleSize; l < 3; l++)
-                        thePoint[l] = 0.0;
-                }
+                for (l = 0; l < tupleSize; l++)
+                    thePoint[l] = (float) coords2[k*tupleSize+l];
+                for (l = tupleSize; l < 3; l++)
+                    thePoint[l] = 0.0;
 
                 int entIndex = -1;
                 map<float, map<float, map<float, int> > >::const_iterator itx =
@@ -1407,7 +924,10 @@ avtITAPS_CFileFormat::GetNodalSubsetVar(int domain, const char *varname,
                 }
 
                 if (entIndex == -1)
+                {
+                    debug3 << "skipping vert " << k << " because it is not in map" << endl;
                     continue;
+                }
 
                 if (p[entIndex] == -1) // haven't assigned this vertex to any set yet
                     p[entIndex] = j;
@@ -1419,12 +939,7 @@ avtITAPS_CFileFormat::GetNodalSubsetVar(int domain, const char *varname,
                     p[entIndex] = float(curval);
                 }
             }
-
-            if (coords2_allocated)
-                free(coords2);
-            if (inEntSetMap_allocated)
-                free(inEntSetMap);
-
+            free(coords2);
         }
     }
     catch (iBase_Error TErr)
@@ -1433,9 +948,8 @@ avtITAPS_CFileFormat::GetNodalSubsetVar(int domain, const char *varname,
         char desc[256];
         desc[0] = '\0';
         int tmpError = itapsError;
-#ifdef ITAPS_MOAB
+#if !defined(ITAPS_GRUMMP)
         iMesh_getDescription(itapsMesh, desc, &itapsError, sizeof(desc));
-#elif ITAPS_GRUMMP
 #endif
         SNPRINTF(msg, sizeof(msg), "Encountered ITAPS error (%d) \"%s\""
             "\nUnable to open file!", tmpError, desc); 
@@ -1444,6 +958,7 @@ avtITAPS_CFileFormat::GetNodalSubsetVar(int domain, const char *varname,
         return 0;
     }
 
+funcEnd:
     return result;
 }
 
@@ -1471,6 +986,11 @@ avtITAPS_CFileFormat::GetNodalSubsetVar(int domain, const char *varname,
 //    Mark C. Miller, Tue Apr 22 21:45:41 PDT 2008
 //    Big changes to support MOAB's subsets
 //
+//    Mark C. Miller, Tue Apr 21 16:02:11 PDT 2009
+//    Removed logic attempting avoid repeated calls to getEntities by having
+//    them cached in this object. Added logic to deal with variable names
+//    that have had 'stuff' added to them because the are same name on
+//    different classes of entities.
 // ****************************************************************************
 
 vtkDataArray *
@@ -1494,19 +1014,30 @@ avtITAPS_CFileFormat::GetVar(int domain, const char *varname)
     //
     int entType;
     iBase_TagHandle tagToGet = 0;
-    for (entType = 0; entType < 4; entType++)
+    // We make 2 passes here to search of the correct tag and entity type. The
+    // first pass matches the varname against the tag+addVarName names. The second
+    // pass just matches varnames to tagnames.
+    for (int pass = 0; pass < 2; pass++)
     {
-        vector<void*> tagHandles = primitiveTagHandles[entType];
-        for (int tagIdx = 0; tagIdx < tagHandles.size(); tagIdx++)
+        for (entType = 0; entType < 4; entType++)
         {
-            iBase_TagHandle theTag = tagHandles[tagIdx]; 
-            string tagName = VisIt_iMesh_getTagName(itapsMesh, theTag);
-            CheckITAPSError(itapsMesh, NoL);
-            int nmsz = tagName.length();
-            if (string(tagName, 0, nmsz) == string(varname, 0, nmsz))
+            vector<iBase_TagHandle> tagHandles = primitiveTagHandles[entType];
+            for (int tagIdx = 0; tagIdx < tagHandles.size(); tagIdx++)
             {
-                tagToGet = theTag;
-                goto tagFound;
+                iBase_TagHandle theTag = tagHandles[tagIdx]; 
+                string tagName = VisIt_iMesh_getTagName(itapsMesh, theTag);
+                CheckITAPSError(itapsMesh, VisIt_iMesh_getTagName, NoL);
+                int nmsz = tagName.length();
+                if (pass == 0 && string(tagName, 0, nmsz)+"_on_"+string(entTypes[entType])+"_entities" == varname)
+                {
+                    tagToGet = theTag;
+                    goto tagFound;
+                }
+                else if (pass == 1 && string(tagName, 0, nmsz) == string(varname, 0, nmsz))
+                {
+                    tagToGet = theTag;
+                    goto tagFound;
+                }
             }
         }
     }
@@ -1518,87 +1049,39 @@ tagFound:
         //
         // Get the array of entities if we haven't already
         //
-        iBase_EntityHandle **entHandles_p = 0;
-        int ents_size = 0, *ents_allocated_p = 0;
-
-        switch (entType)
-        {
-            case iBase_VERTEX:
-                entHandles_p = &vertEnts;
-                ents_size = numVerts;
-                ents_allocated_p = &vertEnts_allocated;
-                break;
-            case iBase_EDGE:
-                entHandles_p = &edgeEnts;
-                ents_size = numFaces;
-                ents_allocated_p = &edgeEnts_allocated;
-                break;
-            case iBase_FACE:
-                entHandles_p = &faceEnts;
-                ents_size = numEdges;
-                ents_allocated_p = &faceEnts_allocated;
-                break;
-            case iBase_REGION:
-                entHandles_p = &regnEnts;
-                ents_size = numRegns;
-                ents_allocated_p = &regnEnts_allocated;
-                break;
-        }
-        if (*entHandles_p == 0)
-        {
-            iMesh_getEntities(itapsMesh, domainSets[domain], entType,
-                iMesh_ALL_TOPOLOGIES, entHandles_p, ents_allocated_p, &ents_size, &itapsError);
-            CheckITAPSError(itapsMesh, (0,*entHandles_p,EoL));
-            int expectedSize;
-            switch (entType)
-            {
-                case iBase_VERTEX:
-                    vertEnts = *entHandles_p; expectedSize = numVerts; break;
-                case iBase_EDGE:
-                    edgeEnts = *entHandles_p; expectedSize = numEdges; break;
-                case iBase_FACE:
-                    faceEnts = *entHandles_p; expectedSize = numFaces; break;
-                case iBase_REGION:
-                    regnEnts = *entHandles_p; expectedSize = numRegns; break;
-            }
-            if (expectedSize != ents_size)
-            {
-                char tmpMsg[256];
-                SNPRINTF(tmpMsg, sizeof(tmpMsg), "for variable \"%s\" "
-                    "getEntities() returned %d entities but VisIt expected %d",
-                    varname, ents_size, expectedSize);
-                EXCEPTION1(InvalidVariableException, tmpMsg);
-            }
-        }
+        IMESH_ADEF(iBase_EntityHandle, varEnts);
+        iMesh_getEntities(itapsMesh, domainSets[domain], entType,
+            iMesh_ALL_TOPOLOGIES, IMESH_AARG(varEnts), &itapsError);
+        CheckITAPSError(itapsMesh, iMesh_getEntities, (0,varEnts,EoL));
 
         //
         // Now, get the tag data and put it in an appropriate vtk data array 
         //
         int tagSizeValues;
         iMesh_getTagSizeValues(itapsMesh, tagToGet, &tagSizeValues, &itapsError);
-        CheckITAPSError(itapsMesh, NoL);
+        CheckITAPSError(itapsMesh, iMesh_getTagSizeValues, NoL);
         int tagTypeId;
         iMesh_getTagType(itapsMesh, tagToGet, &tagTypeId, &itapsError);
-        CheckITAPSError(itapsMesh, NoL);
+        CheckITAPSError(itapsMesh, iMesh_getTagType, NoL);
         int arraySize;
         switch (tagTypeId)
         {
             case iBase_INTEGER:
             {
                 int *intArray; int intArray_allocated = 0;
-                iMesh_getIntArrData(itapsMesh, *entHandles_p, ents_size, tagToGet,
+                iMesh_getIntArrData(itapsMesh, varEnts, varEnts_size, tagToGet,
                     &intArray, &intArray_allocated, &arraySize, &itapsError); 
-                CheckITAPSError(itapsMesh, (0,intArray,EoL)); 
-                if (arraySize != ents_size * tagSizeValues)
+                CheckITAPSError(itapsMesh, iMesh_getIntArrData, (0,intArray,EoL)); 
+                if (arraySize != varEnts_size * tagSizeValues)
                 {
                     char tmpMsg[256];
                     SNPRINTF(tmpMsg, sizeof(tmpMsg), "getIntArrData() returned %d values "
-                        " but VisIt expected %d * %d", arraySize, ents_size, tagSizeValues);
+                        " but VisIt expected %d * %d", arraySize, varEnts_size, tagSizeValues);
                     EXCEPTION1(InvalidVariableException, tmpMsg);
                 }
                 vtkIntArray *ia = vtkIntArray::New();
                 ia->SetNumberOfComponents(tagSizeValues);
-                ia->SetNumberOfTuples(ents_size);
+                ia->SetNumberOfTuples(varEnts_size);
                 for (int i = 0; i < arraySize; i++)
                     ia->SetValue(i, intArray[i]);
                 result = ia;
@@ -1609,19 +1092,19 @@ tagFound:
             case iBase_DOUBLE:
             {
                 double *dblArray; int dblArray_allocated = 0;
-                iMesh_getDblArrData(itapsMesh, *entHandles_p, ents_size, tagToGet,
+                iMesh_getDblArrData(itapsMesh, varEnts, varEnts_size, tagToGet,
                     &dblArray, &dblArray_allocated, &arraySize, &itapsError); 
-                CheckITAPSError(itapsMesh, (0,dblArray,EoL)); 
-                if (arraySize != ents_size * tagSizeValues)
+                CheckITAPSError(itapsMesh, iMesh_getDblArrData, (0,dblArray,EoL)); 
+                if (arraySize != varEnts_size * tagSizeValues)
                 {
                     char tmpMsg[256];
                     SNPRINTF(tmpMsg, sizeof(tmpMsg), "getDblArrData() returned %d values "
-                        " but VisIt expected %d * %d", arraySize, ents_size, tagSizeValues);
+                        " but VisIt expected %d * %d", arraySize, varEnts_size, tagSizeValues);
                     EXCEPTION1(InvalidVariableException, tmpMsg);
                 }
                 vtkDoubleArray *da = vtkDoubleArray::New();
                 da->SetNumberOfComponents(tagSizeValues);
-                da->SetNumberOfTuples(ents_size);
+                da->SetNumberOfTuples(varEnts_size);
                 for (int i = 0; i < arraySize; i++)
                     da->SetValue(i, dblArray[i]);
                 result = da;
@@ -1638,6 +1121,8 @@ tagFound:
                 EXCEPTION1(InvalidVariableException, tmpMsg);
             }
         }
+
+        IMESH_AFREE(varEnts);
     }
     catch (iBase_Error TErr)
     {
@@ -1645,9 +1130,8 @@ tagFound:
         char desc[256];
         desc[0] = '\0';
         int tmpError = itapsError;
-#ifdef ITAPS_MOAB
+#if !defined(ITAPS_GRUMMP)
         iMesh_getDescription(itapsMesh, desc, &itapsError, sizeof(desc));
-#elif ITAPS_GRUMMP
 #endif
         SNPRINTF(msg, sizeof(msg), "Encountered ITAPS error (%d) \"%s\""
             "\nUnable to open file!", tmpError, desc); 

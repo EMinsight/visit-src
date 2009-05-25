@@ -208,6 +208,12 @@ typedef struct
 //
 //    Mark C. Miller, Tue Dec 23 22:14:30 PST 2008
 //    Added support for ANNOTATION_INT nodelists (special case)
+//
+//    Mark C. Miller, Wed Mar  4 08:54:57 PST 2009
+//    Added tri-state variables to better manage ignoring of extents. 
+//
+//    Mark C. Miller, Wed Mar  4 13:39:58 PST 2009
+//    Backed out preceding change. It had backwards compatibility problems.
 // ****************************************************************************
 
 class avtSiloFileFormat : public avtSTMDFileFormat

@@ -185,13 +185,55 @@ avtNASTRANFileFormat::ActivateTimestep()
 //    Jeremy Meredith, Thu Aug  7 13:43:03 EDT 2008
 //    Format %s doesn't use space modifier.
 //
+//    Mark C. Miller, Wed May  6 11:43:37 PDT 2009
+//    Added logic to deal with funky NASTRAN format where the 'e' character
+//    may be missing from exponentiated numbers.
+//
+//    Mark C. Miller, Thu May  7 10:30:49 PDT 2009
+//    Fixed bug of triggering funky case in presence of leading spaces. 
+//
+//    Mark C. Miller, Mon May 11 14:21:22 PDT 2009
+//    Ok, I 'fixed' this funky logic again. The above 'fix' caused the alg.
+//    to basically completely fail.
 // ****************************************************************************
 static float Getf(const char *s)
 {
     char *ends;
+    double val = 0.0;
 
-    errno = 0;
-    double val = strtod(s, &ends);
+    // Check for one of these funky 'NASTRAN exponential format' strings.
+    // This is where a value like '1.2345e-5' is actually represented in the 
+    // file as '1.2345-5' with the 'e' character missing. It is awkward but 
+    // apparently a NASTRAN standard. I guess the rationale is that given
+    // an 8 character field width limit, removing the 'e' character gives them
+    // one additional digit of precision. This logic is basically looking for
+    // the condition of encountering a sign character, '-' or '+', AFTER having
+    // seen characters that could represent part of a number. In such a case,
+    // it MUST be the sign of the exponent.
+    const char *p = s;
+    char tmps[32];
+    char *q = tmps;
+    bool haveSeenNumChars = false;
+    while (!haveSeenNumChars || (*p != '-' && *p != '+' && *p != '\0'))
+    {
+        if ('0' <= *p && *p <= '9' || *p == '.' || *p == '+' || *p == '-')
+            haveSeenNumChars = true;
+        *q++ = *p++;
+    }
+    if (haveSeenNumChars && (*p == '-' || *p == '+'))
+    {
+        *q++ = 'e';
+        while (*p != '\0')
+            *q++ = *p++;
+        *q++ = '\0';
+        errno = 0;
+        val = strtod(tmps, &ends);
+    }
+    else
+    {
+        errno = 0;
+        val = strtod(s, &ends);
+    }
 
     if (errno != 0)
     {
@@ -259,6 +301,11 @@ static int Geti(const char *s)
 //    Mark C. Miller, Thu Mar 30 16:45:35 PST 2006
 //    Made it use VisItStat instead of stat
 //
+//    Mark C. Miller, Tue May  5 11:26:50 PDT 2009
+//    Fixed bug handling mesh with very small number of points (<10). The
+//    logic to increase vtkPoints object size resulted in having no effect
+//    because 1.1* current size was resulting in same size. Also, added
+//    logic to deal with CPENTA element types that are really pyramids.
 // ****************************************************************************
 
 bool
@@ -300,6 +347,7 @@ avtNASTRANFileFormat::ReadFile(const char *name, int nLines)
     ugrid->SetPoints(pts);
     ugrid->Allocate(nCells);
     pts->Delete();
+    pts = ugrid->GetPoints();
 
     char  line[1024];
     float pt[3];
@@ -355,6 +403,8 @@ avtNASTRANFileFormat::ReadFile(const char *name, int nLines)
                 int newSize = int(float(nPoints) * 1.1f);
                 if(newSize < psi)
                     newSize = int(float(psi) * 1.1f);
+                if(newSize <= nPoints)
+                    newSize = nPoints + 1;
 
                 debug4 << "Resizing point array from " << nPoints
                        << " points to " << newSize
@@ -406,6 +456,8 @@ avtNASTRANFileFormat::ReadFile(const char *name, int nLines)
                 int newSize = int(float(nPoints) * 1.1f);
                 if(newSize < psi)
                     newSize = int(float(psi) * 1.1f);
+                if(newSize <= nPoints)
+                    newSize = nPoints + 1;
 
                 debug4 << "Resizing point array from " << nPoints
                        << " points to " << newSize
@@ -586,7 +638,15 @@ avtNASTRANFileFormat::ReadFile(const char *name, int nLines)
                    << ", " << verts[5]
                    << endl;
 #endif
-            ugrid->InsertNextCell(VTK_WEDGE, 6, verts);
+            //
+            // http://www.simcenter.msstate.edu/docs/ug_io/3d_grid_file_type_nastran.html
+            // says that if 5th and 6th nodes are identical, then its really a 5 noded
+            // pyramid.
+            //
+            if (verts[4] == verts[5])
+                ugrid->InsertNextCell(VTK_PYRAMID, 5, verts);
+            else
+                ugrid->InsertNextCell(VTK_WEDGE, 6, verts);
         }
         else if(strncmp(line, "CQUAD4", 6) == 0)
         {

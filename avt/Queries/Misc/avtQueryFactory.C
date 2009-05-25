@@ -271,6 +271,11 @@ avtQueryFactory::Instance()
 //    Cyrus Harrison, Wed Mar  5 08:56:01 PST 2008
 //    Added Memory Usage Query. 
 //
+//    Eric Brugger, Mon May 11 12:19:32 PDT 2009
+//    Enhanced the hohlraum flux query so that it took an additional argument
+//    that caused it to optionally use the emissivity divided by the
+//    absorbtivity in place of the emissivity.
+//
 // ****************************************************************************
 
 
@@ -548,6 +553,7 @@ avtQueryFactory::CreateQuery(const QueryAttributes *qa)
         avtHohlraumFluxQuery *mdq = new avtHohlraumFluxQuery();
         mdq->SetVariableNames(qa->GetVariables());
         mdq->SetNumberOfLines(qa->GetElement()); // Element == intarg1
+        mdq->SetDivideEmisByAbsorb((qa->GetDomain() == 0) ? false : true); // Domain == intarg2
         mdq->SetRayCenter(qa->GetDarg1()[0],
                           qa->GetDarg1()[1],
                           qa->GetDarg1()[2]);

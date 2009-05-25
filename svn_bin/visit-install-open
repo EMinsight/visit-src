@@ -11,10 +11,6 @@
 #    visit-install-open [-beta | -private | -public] -v <version>
 #
 # Modifications:
-#   Brad Whitlock, Wed Dec 14 09:50:55 PDT 2005
-#   I fixed some errors that prevented other users from installing on
-#   mcr and thunder.
-#
 #   Brad Whitlock, Tue Mar 7 14:08:59 PST 2006
 #   Added -b bank to the visit-install invokations.
 #
@@ -56,10 +52,7 @@ esac
 # Parse the execute line, providing default values for error checking.
 #
 hoth=true
-sunspot=true
 up=true
-alc=true
-thunder=true
 yana=true
 xchem=true
 davinci=true
@@ -77,10 +70,7 @@ do
    case $1 in
       -none)
          hoth=false
-         sunspot=false
          up=false
-         alc=false
-         thunder=false
          yana=false
          xchem=false
          davinci=false
@@ -95,36 +85,12 @@ do
          hoth=true
          shift
          ;;
-      -sunspot)
-         sunspot=false
-         shift
-         ;;
-      +sunspot)
-         sunspot=true
-         shift
-         ;;
       -up)
          up=false
          shift
          ;;
       +up)
          up=true
-         shift
-         ;;
-      -alc)
-         alc=false
-         shift
-         ;;
-      +alc)
-         alc=true
-         shift
-         ;;
-      -thunder)
-         thunder=false
-         shift
-         ;;
-      +thunder)
-         thunder=true
          shift
          ;;
       -yana)
@@ -224,42 +190,6 @@ then
 fi
 
 #
-# Install on sunspot.
-#
-rm -f sunspot
-cat <<EOF > sunspot
-#!/bin/sh
-./visit-install -private -c open -g visit -b bdivp -gw -l $ver sunos5 /usr/gapps/visit > installlog 2>&1
-rm -f resultlog
-echo "        install of visit on sunspot"         > resultlog 2>&1
-echo "       -----------------------------"        >> resultlog 2>&1
-echo ""                                            >> resultlog 2>&1
-df -k /usr/gapps/visit                             >> resultlog 2>&1
-echo ""                                            >> resultlog 2>&1
-ls -l /usr/gapps/visit/$ver+/sun4-sunos5-sparc/bin >> resultlog 2>&1
-echo ""                                            >> resultlog 2>&1
-echo "number of database plugins = "\`ls /usr/gapps/visit/$ver+/sun4-sunos5-sparc/plugins/databases/libI* | wc -l\` >> resultlog 2>&1
-echo "number of operator plugins = "\`ls /usr/gapps/visit/$ver+/sun4-sunos5-sparc/plugins/operators/libI* | wc -l\` >> resultlog 2>&1
-echo "number of plot plugins = "\`ls /usr/gapps/visit/$ver+/sun4-sunos5-sparc/plugins/plots/libI* | wc -l\` >> resultlog 2>&1
-echo ""                                            >> resultlog 2>&1
-echo "The database plugins:"                       >> resultlog 2>&1
-ls /usr/gapps/visit/$ver+/sun4-sunos5-sparc/plugins/databases/libI* | sed "s/\/usr\/gapps\/visit\/$ver+\/sun4-sunos5-sparc\/plugins\/databases\/libI//" | sed "s/Database.so//" >> resultlog 2>&1
-mail -s "VisIt install ($ver): sunspot" $emailName < resultlog
-EOF
-
-if [ $sunspot = true ]
-then
-   if [ $test = no ]
-   then
-      scp sunspot:/export/scratch/$user/sunspot/visitbuild/visit$ver2.sunos5.tar.gz .
-      scp visit$ver2.sunos5.tar.gz kickit:
-      scp visit-install kickit:
-      scp sunspot kickit:sunspot_install
-      ssh kickit "chmod 750 sunspot_install;./sunspot_install"
-   fi
-fi
-
-#
 # Install on up.
 #
 rm -f up
@@ -309,78 +239,6 @@ then
       scp visit-install yana:
       scp up yana:up_install
       ssh yana "chmod 750 up_install;./up_install"
-   fi
-fi
-
-#
-# Install on alc.
-#
-rm -f alc
-cat <<EOF > alc
-#!/bin/sh
-./visit-install -private -c open -g visit -b bdivp -gw -l $ver linux_chaos /usr/gapps/visit > installlog 2>&1
-rm -f resultlog
-echo "         install of visit on alc"            > resultlog 2>&1
-echo "        -------------------------"           >> resultlog 2>&1
-echo ""                                            >> resultlog 2>&1
-df -k /usr/gapps/visit                             >> resultlog 2>&1
-echo ""                                            >> resultlog 2>&1
-ls -l /usr/gapps/visit/$ver+/linux-intel/bin       >> resultlog 2>&1
-echo ""                                            >> resultlog 2>&1
-echo "number of database plugins = "\`ls /usr/gapps/visit/$ver+/linux-intel/plugins/databases/libI* | wc -l\` >> resultlog 2>&1
-echo "number of operator plugins = "\`ls /usr/gapps/visit/$ver+/linux-intel/plugins/operators/libI* | wc -l\` >> resultlog 2>&1
-echo "number of plot plugins = "\`ls /usr/gapps/visit/$ver+/linux-intel/plugins/plots/libI* | wc -l\` >> resultlog 2>&1
-echo ""                                            >> resultlog 2>&1
-echo "The database plugins:"                       >> resultlog 2>&1
-ls /usr/gapps/visit/$ver+/linux-intel/plugins/databases/libI* | sed "s/\/usr\/gapps\/visit\/$ver+\/linux-intel\/plugins\/databases\/libI//" | sed "s/Database.so//" >> resultlog 2>&1
-mail -s "VisIt install ($ver): alc" $emailName < resultlog
-EOF
-
-if [ $alc = true ]
-then
-   if [ $test = no ]
-   then
-      scp alc1:/usr/tmp/$user/alc/visitbuild/visit$ver2.linux.tar.gz visit$ver2.linux_chaos.tar.gz
-      scp visit$ver2.linux_chaos.tar.gz yana:
-      scp visit-install yana:
-      scp alc yana:alc_install
-      ssh yana "chmod 750 alc_install;./alc_install"
-   fi
-fi
-
-#
-# Install on thunder.
-#
-rm -f thunder
-cat <<EOF > thunder
-#!/bin/sh
-./visit-install -private -c open -g visit -b bdivp -gw -l $ver linux-ia64 /usr/gapps/visit > installlog 2>&1
-rm -f resultlog
-echo "        install of visit on thunder"         > resultlog 2>&1
-echo "       -----------------------------"        >> resultlog 2>&1
-echo ""                                            >> resultlog 2>&1
-df -k /usr/gapps/visit                             >> resultlog 2>&1
-echo ""                                            >> resultlog 2>&1
-ls -l /usr/gapps/visit/$ver+/linux-ia64/bin        >> resultlog 2>&1
-echo ""                                            >> resultlog 2>&1
-echo "number of database plugins = "\`ls /usr/gapps/visit/$ver+/linux-ia64/plugins/databases/libI* | wc -l\` >> resultlog 2>&1
-echo "number of operator plugins = "\`ls /usr/gapps/visit/$ver+/linux-ia64/plugins/operators/libI* | wc -l\` >> resultlog 2>&1
-echo "number of plot plugins = "\`ls /usr/gapps/visit/$ver+/linux-ia64/plugins/plots/libI* | wc -l\` >> resultlog 2>&1
-echo ""                                            >> resultlog 2>&1
-echo "The database plugins:"                       >> resultlog 2>&1
-ls /usr/gapps/visit/$ver+/linux-ia64/plugins/databases/libI* | sed "s/\/usr\/gapps\/visit\/$ver+\/linux-ia64\/plugins\/databases\/libI//" | sed "s/Database.so//" >> resultlog 2>&1
-mail -s "VisIt install ($ver): thunder" $emailName < resultlog
-EOF
-
-if [ $thunder = true ]
-then
-   if [ $test = no ]
-   then
-      scp thunder2:/usr/tmp/$user/thunder/visitbuild/visit$ver2.linux-ia64.tar.gz .
-      scp visit$ver2.linux-ia64.tar.gz yana:
-      scp visit-install yana:
-      scp thunder yana:thunder_install
-      ssh yana "chmod 750 thunder_install;./thunder_install"
    fi
 fi
 
@@ -533,5 +391,5 @@ fi
 #
 if [ $test = no ]
 then
-   rm -f hoth sunspot up alc thunder yana xchem davinci ellipse
+   rm -f hoth up yana xchem davinci ellipse
 fi

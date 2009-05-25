@@ -137,6 +137,8 @@ static void RemoveValuesForSkippedZones(vector<int>& zoneRangesSkipped,
 static string GuessCodeNameFromTopLevelVars(DBfile *dbfile);
 static void AddAle3drlxstatEnumerationInfo(avtScalarMetaData *smd);
 
+static int MultiMatHasAllMatInfo(const DBmultimat *const mm);
+
 // the maximum number of nodelists any given single node can be in
 static const int maxCoincidentNodelists = 12;
 
@@ -194,6 +196,17 @@ static const int maxCoincidentNodelists = 12;
 //
 //    Mark C. Miller, Tue Jun 10 22:36:25 PDT 2008
 //    Added logic to ignore spatial/data extents.
+//
+//    Mark C. Miller, Wed Mar  4 08:54:57 PST 2009
+//    Improved logic to handle ignoring of spatial/data extents so that user
+//    can override explicitly or let plugin handle automatically.
+//
+//    Mark C. Miller, Wed Mar  4 12:05:45 PST 2009
+//    Made option processing for extents compatible with 'old' way of doing
+//    them.
+//
+//    Mark C. Miller, Wed Mar  4 13:39:58 PST 2009
+//    Backed out preceding change. It had backwards compatibility problems.
 // ****************************************************************************
 
 avtSiloFileFormat::avtSiloFileFormat(const char *toc_name,
@@ -228,12 +241,12 @@ avtSiloFileFormat::avtSiloFileFormat(const char *toc_name,
     {
         if (rdatts->GetName(i) == "Force Single")
             dontForceSingle = rdatts->GetBool("Force Single") ? 0 : 1;
+        else if (rdatts->GetName(i) == "Search For ANNOTATION_INT (!!Slow!!)")
+            searchForAnnotInt = rdatts->GetBool("Search For ANNOTATION_INT (!!Slow!!)");
         else if (rdatts->GetName(i) == "Ignore Spatial Extents")
             ignoreSpatialExtents = rdatts->GetBool("Ignore Spatial Extents");
         else if (rdatts->GetName(i) == "Ignore Data Extents")
             ignoreDataExtents = rdatts->GetBool("Ignore Data Extents");
-        else if (rdatts->GetName(i) == "Search For ANNOTATION_INT (!!Slow!!)")
-            searchForAnnotInt = rdatts->GetBool("Search For ANNOTATION_INT (!!Slow!!)");
         else
             debug1 << "Ignoring unknown option \"" << rdatts->GetName(i) << "\"" << endl;
     }
@@ -1166,6 +1179,39 @@ avtSiloFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
 //    Mark C. Miller, Tue Jan  6 22:11:33 PST 2009
 //    Added support for explicit specification of topological dimension of a
 //    ucd mesh from the database via the DBOPT_TOPO_DIM option.
+//
+//    Mark C. Miller, Wed Feb 25 17:35:05 PST 2009
+//    Tightened logic for triggering ANNOTATION_INT nodelist search to ensure
+//    it happens only when ReadDir is in the root (topDir) directory. Also,
+//    Added a call to CloseFile(1) just prior to calling AddAnnotInt... as 
+//    a work-around for a bug in HDF5.
+//
+//    Mark C. Miller, Mon Mar  2 11:50:08 PST 2009
+//    Removed call to CloseFile(1) just prior to adding annot-int nodelists.
+//    The issue that addressed is now handled in the AddAnnotInt... routine.
+//
+//    Mark C. Miller, Wed Mar  4 08:54:57 PST 2009
+//    Improved logic to handle ignoring of spatial/data extents so that user
+//    can override explicitly or let plugin handle automatically.
+//
+//    Mark C. Miller, Wed Mar  4 13:39:58 PST 2009
+//    Backed out preceding change. It had backwards compatibility problems.
+//
+//    Mark C. Miller, Fri Mar 20 04:38:56 PDT 2009
+//    Added logic to NOT descend to first non-EMPTY block of a multi-mat if
+//    the multi-mat appears to have enough information about the global
+//    material context (#mats, names and colors).
+//
+//    Mark C. Miller, Tue Mar 24 11:46:22 PDT 2009
+//    Changed #if defined(SILO_VERSION_GE) && SILO_VERSION_GE(4,6,2) to nested
+//    #if statements. The former assumes short-circuit evaluation and not
+//    all C pre-processors apparently obey it.
+//
+//    Mark C. Miller, Tue May  5 11:11:19 PDT 2009
+//    Changed level of info returned from MultiMatHasAllMatInfo necessary to
+//    skirt reading individual material object to 3 or greater. This fixes
+//    cases where material numbers are known at the multi-block level but
+//    all other material info is known only on the individual material blocks.
 // ****************************************************************************
 
 void
@@ -1328,8 +1374,9 @@ avtSiloFileFormat::ReadDir(DBfile *dbfile, const char *dirname,
     {
         codeNameGuess = GuessCodeNameFromTopLevelVars(dbfile);
 
-        // summarily ignore extents for block structured code
         if (codeNameGuess == "BlockStructured")
+            ignoreDataExtents = true;
+        else if (codeNameGuess == "Ale3d")
             ignoreDataExtents = true;
 
         if (DBInqVarExists(dbfile, "ConnectivityIsTimeVarying"))
@@ -1499,9 +1546,11 @@ avtSiloFileFormat::ReadDir(DBfile *dbfile, const char *dirname,
                 }
                 ndims = um->ndims;
                 tdims = ndims;
-#if defined(SILO_VERSION_GE) && SILO_VERSION_GE(4,6,1)
+#ifdef SILO_VERSION_GE
+#if SILO_VERSION_GE(4,6,1)
                 if (um->topo_dim != -1)
                     tdims = um->topo_dim;
+#endif
 #endif
                 cellOrigin = um->origin;
                 if (um->units[0] != NULL)
@@ -1679,7 +1728,8 @@ avtSiloFileFormat::ReadDir(DBfile *dbfile, const char *dirname,
             haveAddedNodelistEnumerations[name_w_dir] = true;
             AddNodelistEnumerations(dbfile, md, name_w_dir);
         }
-        else if (searchForAnnotInt)
+        else if (searchForAnnotInt && strcmp(dirname, topDir.c_str()) == 0)
+
         {
             AddAnnotIntNodelistEnumerations(dbfile, md, name_w_dir, mm);
         }
@@ -1823,9 +1873,11 @@ avtSiloFileFormat::ReadDir(DBfile *dbfile, const char *dirname,
 
         // Handle data-specified topological dimension if its available
         int tdims = um->ndims;
-#if defined(SILO_VERSION_GE) && SILO_VERSION_GE(4,6,1)
+#ifdef SILO_VERSION_GE
+#if SILO_VERSION_GE(4,6,1)
         if (um->topo_dim != -1)
             tdims = um->topo_dim;
+#endif
 #endif
 
         char *name_w_dir = GenerateName(dirname, ucdmesh_names[i], topDir.c_str());
@@ -2043,39 +2095,45 @@ avtSiloFileFormat::ReadDir(DBfile *dbfile, const char *dirname,
                 }
             }
 
-            TRY
+            if (valid_var)
             {
-                // NOTE: There is an explicit assumption that the corresponding
-                //       multimesh has already been read.  Thus it must reside
-                //       in the same directory (or a previously read one) as
-                //       this variable.
-                if (valid_var)
+#ifdef SILO_VERSION_GE
+#if SILO_VERSION_GE(4,6,2)
+                if (mv->mmesh_name != 0)
                 {
-#if defined(SILO_VERSION_GE) && SILO_VERSION_GE(4,6,2)
-                    if (mv->mmesh_name != 0)
-                    {
-                        meshname = mv->mmesh_name;
-                    }
-                    else
+                    meshname = mv->mmesh_name;
+                    debug5 << "Variable \"" << multivar_names[i] 
+                           << "\" indicates it is defined on mesh \""
+                           << meshname.c_str() << "\"" << endl;
+                }
+                else
 #endif
+#endif
+                {
+                    // NOTE: There is an explicit assumption that the corresponding
+                    //       multimesh has already been read.  Thus it must reside
+                    //       in the same directory (or a previously read one) as
+                    //       this variable.
+                    TRY
                     {
                         meshname = DetermineMultiMeshForSubVariable(dbfile,
                             multivar_names[i], mv->varnames, mv->nvars, dirname);
+                        debug5 << "Guessing variable \"" << multivar_names[i] 
+                               << "\" is defined on mesh \""
+                               << meshname.c_str() << "\"" << endl;
                     }
-                    debug5 << "Variable " << multivar_names[i] 
-                           << " is defined on mesh " << meshname.c_str() << endl;
+                    CATCH(SiloException)
+                    {
+                        debug1 << "Invalidating var \"" << multivar_names[i] 
+                               << "\" since its first non-empty block ";
+                        if(valid_var)
+                            debug1 << "(" << mv->varnames[meshnum] << ") ";
+                        debug1 << "is invalid." << endl;
+                        valid_var = false;
+                    }
+                    ENDTRY
                 }
             }
-            CATCH(SiloException)
-            {
-                debug1 << "Invalidating var \"" << multivar_names[i] 
-                       << "\" since its first non-empty block ";
-                if(valid_var)
-                    debug1 << "(" << mv->varnames[meshnum] << ") ";
-                debug1 << "is invalid." << endl;
-                valid_var = false;
-            }
-            ENDTRY
         }
         else
         {
@@ -2546,7 +2604,6 @@ avtSiloFileFormat::ReadDir(DBfile *dbfile, const char *dirname,
                                           mat->nmat, matnames);
         mmd->validVariable = valid_var;
         md->Add(mmd);
-//#warning FIX MATERIAL PROBLEMS FOR CSG
 
         delete [] name_w_dir;
         delete [] meshname_w_dir;
@@ -2567,40 +2624,66 @@ avtSiloFileFormat::ReadDir(DBfile *dbfile, const char *dirname,
         }
         RegisterDomainDirs(mm->matnames, mm->nmats, dirname);
 
-        // Find the first non-empty mesh
-        int meshnum = 0;
-        while (string(mm->matnames[meshnum]) == "EMPTY")
+        DBmaterial *mat = NULL;
+        char *material  = NULL;
+        if (MultiMatHasAllMatInfo(mm) < 3)
         {
-            meshnum++;
-            if (meshnum >= mm->nmats)
+            // Find the first non-empty mesh
+            int meshnum = 0;
+            while (string(mm->matnames[meshnum]) == "EMPTY")
+            {
+                meshnum++;
+                if (meshnum >= mm->nmats)
+                {
+                    debug1 << "Invalidating material \"" << multimat_names[i] 
+                           << "\" since all its blocks are EMPTY." << endl;
+                    valid_var = false;
+                    break;
+                }
+            }
+
+            material = valid_var ? mm->matnames[meshnum] : NULL;
+
+            char   *realvar = NULL;
+            DBfile *correctFile = dbfile;
+
+            if (valid_var)
+            {
+                DetermineFileAndDirectory(material, correctFile, 0, realvar);
+                mat = DBGetMaterial(correctFile, realvar);
+            }
+
+            if (mat == NULL)
             {
                 debug1 << "Invalidating material \"" << multimat_names[i] 
-                       << "\" since all its blocks are EMPTY." << endl;
+                       << "\" since its first non-empty block ";
+                if(valid_var)
+                    debug1 << "(" << material << ") ";
+                debug1 << "is invalid." << endl;
                 valid_var = false;
-                break;
+            }
+            else
+            {
+                if (mm->nmatnos > 0 && mm->nmatnos != mat->nmat)
+                {
+                    debug1 << "Invalidating material \"" << multimat_names[i] 
+                           << "\" since its first non-empty block ";
+                    if(valid_var)
+                        debug1 << "(" << material << ") ";
+                    debug1 << "has different # materials than its parent multimat." << endl;
+                    valid_var = false;
+                }
             }
         }
-
-        char *material = valid_var ? mm->matnames[meshnum] : NULL;
-
-        char   *realvar = NULL;
-        DBfile *correctFile = dbfile;
-        DBmaterial *mat = NULL;
-
-        if (valid_var)
+        else
         {
-            DetermineFileAndDirectory(material, correctFile, 0, realvar);
-            mat = DBGetMaterial(correctFile, realvar);
-        }
-
-        if (mat == NULL)
-        {
-            debug1 << "Invalidating material \"" << multimat_names[i] 
-                   << "\" since its first non-empty block ";
-            if(valid_var)
-                debug1 << "(" << material << ") ";
-            debug1 << "is invalid." << endl;
-            valid_var = false;
+            // Spoof the material object for code block below so it contains
+            // all the info from the multi-mat.
+            mat = DBAllocMaterial();
+            mat->nmat = mm->nmatnos;
+            mat->matnos = mm->matnos;
+            mat->matnames = mm->material_names;
+            mat->matcolors = mm->matcolors;
         }
 
         //
@@ -2641,23 +2724,38 @@ avtSiloFileFormat::ReadDir(DBfile *dbfile, const char *dirname,
 #endif
             }
 
-            TRY
+#ifdef SILO_VERSION_GE
+#if SILO_VERSION_GE(4,6,2)
+            if (mm->mmesh_name != 0)
             {
-                meshname = DetermineMultiMeshForSubVariable(dbfile,
-                                                            multimat_names[i],
-                                                            mm->matnames,
-                                                            mm->nmats, dirname);
-                debug5 << "Material " << multimat_names[i]<< " is defined on mesh "
-                       << meshname.c_str() << endl;
+                meshname = mm->mmesh_name;
+                debug5 << "Material \"" << multimat_names[i]
+                       << "\" indicates it is defined on mesh \""
+                       << meshname.c_str() << "\"" << endl;
             }
-            CATCH(SiloException)
+            else
+#endif
+#endif
             {
-                debug1 << "Giving up on var \"" << multimat_names[i] 
-                       << "\" since its first non-empty block (" << material
-                       << ") is invalid." << endl;
-                valid_var = false;
+                TRY
+                {
+                    meshname = DetermineMultiMeshForSubVariable(dbfile,
+                                                                multimat_names[i],
+                                                                mm->matnames,
+                                                                mm->nmats, dirname);
+                    debug5 << "Guessing material \"" << multimat_names[i]
+                           << "\" is defined on mesh \""
+                           << meshname.c_str() << "\"" << endl;
+                }
+                CATCH(SiloException)
+                {
+                    debug1 << "Giving up on var \"" << multimat_names[i] 
+                           << "\" since its first non-empty block (" << material
+                           << ") is invalid." << endl;
+                    valid_var = false;
+                }
+                ENDTRY
             }
-            ENDTRY
         }
 
         char *name_w_dir = GenerateName(dirname, multimat_names[i], topDir.c_str());
@@ -2672,9 +2770,19 @@ avtSiloFileFormat::ReadDir(DBfile *dbfile, const char *dirname,
 
         mmd->validVariable = valid_var;
         md->Add(mmd);
-//#warning FIX MATERIAL PROBLEMS FOR CSG 
 
         delete [] name_w_dir;
+
+        if (MultiMatHasAllMatInfo(mm) >= 2)
+        {
+            // Remove everything we stuck into the spoof'd material object
+            // before moving on to DBFreeMaterial call.
+            mat->nmat = 0;
+            mat->matnos = 0;
+            mat->matnames = 0;
+            mat->matcolors = 0;
+        }
+
         DBFreeMaterial(mat);
     }
 
@@ -4511,6 +4619,9 @@ UpdateNodelistEntry(float *ptr, int nodeId, int val, float uval,
 //    Kathleen Bonnell, Wed Jul 2 14:43:22 PDT 2008
 //    Removed unreferenced variables.
 //
+//    Mark C. Miller, Tue Mar  3 19:33:23 PST 2009
+//    Added logic to get blockNum from groupInfo before attempting to use
+//    special vtk array.
 // ****************************************************************************
 
 vtkDataArray *
@@ -4570,15 +4681,24 @@ avtSiloFileFormat::GetNodelistsVar(int domain)
     base_index[1] = arr->GetValue(1) ? arr->GetValue(1)-1 : 0;
     base_index[2] = arr->GetValue(2) ? arr->GetValue(2)-1 : 0;
 
-    vtkIntArray *arr1 = vtkIntArray::SafeDownCast(ds->GetFieldData()->GetArray("group_id"));
-    if (arr1 == 0)
+    int blockNum = -1;
+    if (groupInfo.haveGroups)
+    {
+        blockNum = groupInfo.ids[domain];
+    }
+    else
+    {
+        vtkIntArray *arr1 = vtkIntArray::SafeDownCast(ds->GetFieldData()->GetArray("group_id"));
+        if (arr1 != 0)
+            blockNum = arr1->GetValue(0);
+    }
+    if (blockNum == -1)
     {
         char msg[256];
-        SNPRINTF(msg, sizeof(msg), "Cannot find field data array \"group_id\""
+        SNPRINTF(msg, sizeof(msg), "Cannot find obtain block number " 
             "on mesh \"%s\" for domain %d to paint Nodelists variable", meshName.c_str(), domain);
         EXCEPTION1(ImproperUseException, msg);
     }
-    int blockNum = arr1->GetValue(0);
 
     int group_min_idx[3] = {0,0,0};
     int group_max_idx[3] = {0,0,0};
@@ -4664,13 +4784,28 @@ avtSiloFileFormat::GetNodelistsVar(int domain)
 //
 //  Programmer: Mark C. Miller 
 //  Creation:   December 19, 2008 
+//
+//  Modifications
+//    Mark C. Miller, Fri Mar 20 11:05:22 PDT 2009
+//    Made it treat negative values (unspecified node ids) as really larger
+//    than any positive node. This way, negative valued node ids always wind
+//    up at the end of the sorted list.
 // ****************************************************************************
 static int
 compare_node_ids(const void *a, const void *b)
 {
     int *ia = (int *) a;
     int *ib = (int *) b;
-    if (*ia < *ib)
+    if (*ia < 0)
+    {
+        if (*ib < 0)
+            return 0;
+        else
+            return 1;
+    }
+    else if (*ib < 0)
+        return -1;
+    else if (*ia < *ib)
         return -1;
     else if (*ia > *ib)
         return 1;
@@ -4724,6 +4859,10 @@ compare_ev_pair(const void *a, const void *b)
 //  Modifications:
 //    Mark C. Miller, Sat Dec 20 08:31:29 PST 2008
 //    Added 3D code.
+//
+//    Mark C. Miller, Fri Mar 20 11:10:04 PDT 2009
+//    Added comment regarding effect of compare_node_ids on negative valued
+//    node ids (-1) of 3-node faces.
 // ****************************************************************************
 
 static void
@@ -5013,7 +5152,6 @@ PaintNodesForAnnotIntFacelist(float *ptr,
                                     unseenFace = true;
                                 else
                                 {
-                                    //
                                     // Since we know we'll only ever see any given face at most
                                     // twice, when we arrive here, we know we're seeing it for
                                     // the second time and we can safely erase it, reducing
@@ -5053,6 +5191,9 @@ PaintNodesForAnnotIntFacelist(float *ptr,
                                 -1.0, maxAnnotIntLists, pascalsTriangleMap);
                             UpdateNodelistEntry(ptr, face[i][2], elemidv[elemIdx].val,
                                 -1.0, maxAnnotIntLists, pascalsTriangleMap);
+                            // The compare_node_ids comparison method used to sort the nodes
+                            // of the face in the call to qsort, above, is designed to cause
+                            // all -1 valued nodes to wind up at the end of the sorted list.
                             if (face[i][3] != -1)
                                 UpdateNodelistEntry(ptr, face[i][3], elemidv[elemIdx].val,
                                     -1.0, maxAnnotIntLists, pascalsTriangleMap);
@@ -5083,6 +5224,10 @@ PaintNodesForAnnotIntFacelist(float *ptr,
 //  Programmer: Mark C. Miller 
 //  Creation:   December 18, 2008 
 //
+//  Modifications:
+//    Mark C. Miller, Wed Feb 25 17:36:51 PST 2009
+//    Add missing DBZonelistInfo flag from setting of data read mask just
+//    prior to getting the ucdmesh.
 // ****************************************************************************
 
 vtkDataArray *
@@ -5211,7 +5356,7 @@ avtSiloFileFormat::GetAnnotIntNodelistsVar(int domain, string listsname)
         //
         // Read the mesh header and just the zonelist for it.
         //
-        long oldMask = DBSetDataReadMask(DBUMZonelist);
+        long oldMask = DBSetDataReadMask(DBUMZonelist|DBZonelistInfo);
         DBucdmesh  *um = DBGetUcdmesh(domain_file, directory_mesh);
         DBSetDataReadMask(oldMask);
         if (allocated_directory_mesh)
@@ -7150,6 +7295,9 @@ avtSiloFileFormat::ReadInConnectivity(vtkUnstructuredGrid *ugrid,
 //    Cyrus Harrison, Thu Apr 26 10:14:42 PDT 2007
 //    Added group_id as field data to the VTK dataset.
 //
+//    Mark C. Miller, Tue Mar  3 19:35:35 PST 2009
+//    Predicated addition of "group_id" as field data on it having
+//    non-negative value.
 // ****************************************************************************
 
 vtkDataSet *
@@ -7193,12 +7341,15 @@ avtSiloFileFormat::GetQuadMesh(DBfile *dbfile, const char *mn, int domain)
     //
     // Add group id as field data
     //
-    vtkIntArray *grp_id_arr = vtkIntArray::New();
-    grp_id_arr->SetNumberOfTuples(1);
-    grp_id_arr->SetValue(0, qm->group_no);
-    grp_id_arr->SetName("group_id");
-    ds->GetFieldData()->AddArray(grp_id_arr);
-    grp_id_arr->Delete();
+    if (qm->group_no >= 0)
+    {
+        vtkIntArray *grp_id_arr = vtkIntArray::New();
+        grp_id_arr->SetNumberOfTuples(1);
+        grp_id_arr->SetValue(0, qm->group_no);
+        grp_id_arr->SetName("group_id");
+        ds->GetFieldData()->AddArray(grp_id_arr);
+        grp_id_arr->Delete();
+    }
 
     //
     // Determine the indices of the mesh within its group.  Add that to the
@@ -9529,6 +9680,13 @@ avtSiloFileFormat::GetDataExtents(const char *varName)
 //    Mark C. Miller, Tue Dec 16 09:36:56 PST 2008
 //    Added casts to deal with new Silo API where datatype'd pointers
 //    have been changed from float* to void*.
+//
+//    Mark C. Miller, Fri Mar 20 04:36:49 PDT 2009
+//    Added logic to obtain global material context (# materials, names and
+//    numbers) from parent multimat, if it exists and has that info. This has
+//    the effect of freeing the data-producer of having to re-enumerate that
+//    information on each and every individual material object in a large
+//    multi-mesh with many materials.
 // ****************************************************************************
 
 avtMaterial *
@@ -9541,6 +9699,13 @@ avtSiloFileFormat::CalcMaterial(DBfile *dbfile, char *matname, const char *tmn,
         EXCEPTION1(InvalidVariableException, matname);
     }
 
+    //
+    // Get the parent multi-mat object, if there is any, because it could
+    // have information about global material context that the individual
+    // material block object read here doesn't have.
+    //
+    DBmultimat *mm = QueryMultimat("", const_cast< char * >(tmn));
+
     char dom_string[128];
     sprintf(dom_string, "Domain %d", dom);
 
@@ -9550,15 +9715,13 @@ avtSiloFileFormat::CalcMaterial(DBfile *dbfile, char *matname, const char *tmn,
     //
     char **matnames = NULL;
     char *buffer = NULL;
-    if (silomat->matnames != NULL)
+    if (silomat->matnames || (mm&&mm->material_names))
     {
-        int nmat = silomat->nmat;
-        
-        
+        int nmat = (mm&&mm->nmatnos>0) ? mm->nmatnos : silomat->nmat;
         int max_dlen = 0;
         for (int i = 0 ; i < nmat ; i++)
         {
-            int dlen =int(log10(float(silomat->matnos[i]+1))) + 1;
+            int dlen =int(log10(float(((mm&&mm->matnos)?mm->matnos[i]:silomat->matnos[i])+1))) + 1;
             if(dlen>max_dlen)
                 max_dlen = dlen;
         }
@@ -9569,8 +9732,9 @@ avtSiloFileFormat::CalcMaterial(DBfile *dbfile, char *matname, const char *tmn,
         for (int i = 0 ; i < nmat ; i++)
         {
             matnames[i] = buffer + (256+max_dlen)*i;
-            sprintf(matnames[i], "%d %s", silomat->matnos[i],
-                                          silomat->matnames[i]);
+            sprintf(matnames[i], "%d %s",
+                (mm&&mm->matnos)?mm->matnos[i]:silomat->matnos[i],
+                (mm&&mm->material_names)?mm->material_names[i]:silomat->matnames[i]);
         }
     }
 
@@ -9611,8 +9775,8 @@ avtSiloFileFormat::CalcMaterial(DBfile *dbfile, char *matname, const char *tmn,
         }
     }
 
-    avtMaterial *mat = new avtMaterial(silomat->nmat,
-                                       silomat->matnos,
+    avtMaterial *mat = new avtMaterial((mm&&mm->nmatnos>0)?mm->nmatnos:silomat->nmat,
+                                       (mm&&mm->matnos)?mm->matnos:silomat->matnos,
                                        matnames,
                                        ndims,
                                        dims,
@@ -11027,16 +11191,27 @@ AddAle3drlxstatEnumerationInfo(avtScalarMetaData *smd)
 //    Mark C. Miller, Tue Apr 29 23:33:55 PDT 2008
 //    Added call to clear nlBlockToWindowsMap before build-it, or possibly
 //    re-building from a second or more call to this method.
+//
+//    Mark C. Miller, Tue Mar  3 19:31:37 PST 2009
+//    As per Cyrus' recommendation, forced it to work only if mesh name
+//    is specifically 'hydro_mesh' but left all other logic (which supports
+//    perhaps multiple meshes) in place.
 // ****************************************************************************
 void
 avtSiloFileFormat::AddNodelistEnumerations(DBfile *dbfile, avtDatabaseMetaData *md,
     string meshname)
 {
+    if (meshname != "hydro_mesh")
+        return;
+
     if (DBInqVarType(dbfile, "/Global/Nodelists") != DB_DIR)
         return;
 
     DBReadVar(dbfile, "/Global/Nodelists/NumberNodelists", &numNodeLists);
 
+    // Note, if we ever remove the restriction on meshname, above, we need
+    // to make sure we don't wind up defining the same name scalar on different
+    // meshes.
     avtScalarMetaData *smd = new avtScalarMetaData("Nodelists",
                                      meshname, AVT_NODECENT);
 
@@ -11111,6 +11286,21 @@ avtSiloFileFormat::AddNodelistEnumerations(DBfile *dbfile, avtDatabaseMetaData *
 //    Mark C. Miller, Tue Dec 23 11:12:31 PST 2008
 //    Fixed wrong parameter based to setting of NChoosR min/max values.
 //
+//    Mark C. Miller, Tue Feb 24 16:58:31 PST 2009
+//    Replaced use of DetermineFileAndDirectory with
+//    DetermineFilenameAndDirectory and explicit opens. The latter DOES NOT
+//    use the plugin's file management routines and this is important because
+//    this method is being called from within ReadDir we cannot allow file
+//    pointer stuff to change out from underneath ReadDir while it is still
+//    completing. 
+//
+//    Mark C. Miller, Mon Mar  2 11:46:47 PST 2009
+//    Undid previous change and instead added a call to the loop which has
+//    the effect of keeping the toc file open. The previous logic failed
+//    whenever the file being opened was not in '.' and it made more sense to
+//    just try to re-use the file opening logic and management routines of
+//    the plugin instead of solve problems with file naming here. Also, added
+//    logic to deal with EMTPY blocks in the mesh.
 // ****************************************************************************
 void
 avtSiloFileFormat::AddAnnotIntNodelistEnumerations(DBfile *dbfile, avtDatabaseMetaData *md,
@@ -11130,10 +11320,14 @@ avtSiloFileFormat::AddAnnotIntNodelistEnumerations(DBfile *dbfile, avtDatabaseMe
     bool haveNodeLists = false;
     for (int i = 0; i < mm->nblocks; i++)
     {
+        if (string(mm->meshnames[i]) == "EMPTY")
+            continue;
+
         char *realvar;
         DBfile *correctFile;
-        DetermineFileAndDirectory(mm->meshnames[i], correctFile,
-                                          0, realvar);
+        DetermineFileAndDirectory(mm->meshnames[i], correctFile, 0, realvar);
+        if (correctFile == 0)
+            continue;
 
         DBcompoundarray *ai = DBGetCompoundarray(correctFile, "ANNOTATION_INT");
         if (ai)
@@ -11150,6 +11344,13 @@ avtSiloFileFormat::AddAnnotIntNodelistEnumerations(DBfile *dbfile, avtDatabaseMe
             }
             DBFreeCompoundarray(ai);
         }
+
+        //
+        // Ensure that the toc file remains open while iterating through
+        // this loop because the caller, ReadDir(), will expect that it
+        // will not be closed.
+        //
+        OpenFile(tocIndex);
     }
 
     //
@@ -11211,4 +11412,42 @@ avtSiloFileFormat::AddAnnotIntNodelistEnumerations(DBfile *dbfile, avtDatabaseMe
     // Build the pascal triangle map for updating nodelist variable values
     //
     avtScalarMetaData::BuildEnumNChooseRMap(maxAnnotIntLists, maxCoincidentNodelists, pascalsTriangleMap);
+}
+
+// ****************************************************************************
+//  Function: MultiMatHasAllMatInfo
+//
+//  Purpose: Return an int indicating if a multi-mat object has all the
+//  pieces of information necessary to correctly define a material variable.
+//
+//  0 ==> don't even know how many materials there are
+//  1 ==> know how many materials, but not their numbers, names or colors
+//  2 ==> know how many materials and their numbers, but not names or colors
+//  3 ==> know how many materials, their numbers and names but not colors
+//  4 ==> know everything.
+//
+//  Programmer: Mark C. Miller 
+//  Creation:   March 19, 2009 
+//
+// ****************************************************************************
+static int
+MultiMatHasAllMatInfo(const DBmultimat *const mm)
+{
+    if (mm->nmatnos <= 0)
+        return 0; // has nothing
+
+    if (mm->matnos)
+    {
+        if (mm->material_names)
+        {
+            if (mm->matcolors)
+                return 4; // has everything
+            else
+                return 3; // has everything but matcolors
+        }
+        else
+            return 2; // has just enough to be workable
+    }
+    else
+        return 1;
 }
