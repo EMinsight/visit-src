@@ -1,6 +1,25 @@
-#! /bin/sh
-exec perl -x $0 ${1+"$@"};
-#!perl
+#!/bin/sh
+# Do a little magic to run perl from anywhere in your path.
+
+lines=`cat $0 | wc -l`
+lines=`expr $lines - 20`
+if (test -n "$TMPDIR") then
+    if (test ! -d "$TMPDIR") then
+        TMPDIR=$HOME
+    fi
+else
+    TMPDIR=$HOME
+fi
+tail -$lines $0 1> $TMPDIR/visitilperl$$ 2>/dev/null
+if (test $? -ne 0) then
+    tail --lines=$lines $0 1>> $TMPDIR/visitilperl$$
+fi
+echo "__END__" >> $TMPDIR/visitilperl$$
+echo "$0 $*" >> $TMPDIR/visitilperl$$
+exec perl $TMPDIR/visitilperl$$ $0 ${1+"$@"}
+
+unlink $0;
+$0 = shift @ARGV;
 
 ###############################################################################
 #
@@ -414,11 +433,27 @@ exec perl -x $0 ${1+"$@"};
 #    Added environemnt variable VISITULTRAHOME, so that VisIt knows where to 
 #    find the ultra wrapper.
 #
+#    Hank Childs, Sat Apr 25 11:35:31 CDT 2009
+#    (1) Undo Perl magic that Sean put in about a year ago.  It seemed like a
+#    more elegant solution, but it was biting LLNL and TACC and Perl experts
+#    were not able to figure it out.  (2) Add support for TACC.
+#
 #    Dave Pugmire, Wed Apr 29 13:41:45 EDT 2009
 #    Fix module loading for lens.ccs.ornl.gov
 #
 #    Tom Fogal, Wed Apr 29 12:12:20 MDT 2009
 #    Add message about module loading.
+#
+#    Paul Navratil, Fri May  8 14:08:20 CDT 2009
+#    updated TACC support
+#
+#    Paul Navratil, Fri May  8 17:00:59 CDT 2009
+#    deleted ref to tacc_qsub, special qsub now gets auto-magically generated, like TFILE
+#
+#    Paul Navratil, Mon May 11 15:09:27 CDT 2009
+#    changed TACC-specific bits to use total procs and nodes format 
+#    for parallel engine request.  added error check for > 16way config, 
+#    will now generate (hopefully) helpful error message
 #
 ###############################################################################
 
@@ -1330,6 +1365,25 @@ if ( ($parallel) and $exe_name eq "engine" and $host =~ /lens/ )
 }
 
 # ----
+# HACK for ranger/spur @ TACC
+# ----
+$IsRunningOnRanger_TACC = 0;
+$IsRunningOnSpur_TACC = 0;
+# Hostnames are of the form spur.tacc.utexas.edu, (vis*|login#).ranger.tacc.utexas.edu
+if ( ($parallel) and $exe_name eq "engine" and (($host =~ /spur.tacc/) or ($host =~ /ranger.tacc/)))
+{
+    $IsRunningOnRanger_TACC = 1;
+    $IsRunningOnSpur_TACC = 1 if $part =~ /vis/ ;  # determine machine by queue, since all jobs submit from spur
+    print STDERR "\n\nAttempting to launch parallel engine at TACC\n";
+    print STDERR "For more information about TACC resources and configurations, see:\n";
+    print STDERR "\thttp://services.tacc.utexas.edu/index.php/ranger-user-guide\n";
+    print STDERR "\thttp://services.tacc.utexas.edu/index.php/spur-user-guide\n\n";
+
+    # if launching from spur visnode to ranger, prepend 'i' to visnode hostname to get IB interface
+    $remotehost = "i".$remotehost if ($remotehost =~ /vis([0-9]|big).ranger/) and ($remotehost !~ /^i/);
+}
+
+# ----
 # HACK for jaguarcnl @ ORNL
 #
 # ----
@@ -2043,6 +2097,17 @@ if ($procs_set or ($parallel and $parlaunch_set))
         push @parcmd, @post_args;
         chomp($printcmd[0] = `basename $printcmd[0]`);
     }
+    # ibrun
+    elsif ($launch eq "ibrun")
+    {
+        @parcmd = ("ibrun", "tacc_affinity"); # use affinity magick to help layout per node
+        push @parcmd, @visitcmd;
+
+        @printcmd = @parcmd;
+        if ($security_key_set) { push @parcmd, "-key", $security_key; }
+        push @parcmd, @post_args;
+        chomp($printcmd[0] = `basename $printcmd[0]`);
+    }
     # prun
     elsif ($launch eq "prun")
     {
@@ -2178,6 +2243,7 @@ if ($procs_set or ($parallel and $parlaunch_set))
         {
             $script_dir="/home/$tuser";
         }
+        $tdate =~ s/:/./g if ($IsRunningOnRanger_TACC);
         $tfilename = "$script_dir/visit.$tuser.$tdate";
         $tfile_opened = 1;
         open(TFILE, ">$tfilename") or $tfile_opened = 0;
@@ -2225,6 +2291,11 @@ if ($procs_set or ($parallel and $parlaunch_set))
                 }
                 push @mpicmd, "@visitcmd\n";
             }
+            elsif ($sublauncher eq "ibrun")
+            {
+                @mpicmd = ("ibrun", "tacc_affinity"); # use affinity magick to help layout per node
+                push @mpicmd, "@visitcmd\n";
+            }
             elsif ($sublauncher eq "")
             {
                 @mpicmd = "@visitcmd\n";
@@ -2246,6 +2317,39 @@ if ($procs_set or ($parallel and $parlaunch_set))
             {
                 print TFILE "export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/mx/lib\n";
             }
+            if ($IsRunningOnRanger_TACC)
+            {
+                # put some SGE opts in the script header, since command-line opts fail
+                print TFILE "#\$ -V\n";  # inherit shell env
+                if ($time_set)
+                {
+                    print TFILE "#\$ -l h_rt=$time\n";
+                } else {
+                    # if no time set, put in something reasonable, since job won't launch without it
+                    if ($part eq "development")
+                    {print TFILE "#\$ -l h_rt=0:10:0\n";}
+                    else 
+                    {print TFILE "#\$ -l h_rt=1:0:0\n";}
+                }            
+
+                # get correct module environmnet for Ranger/Spur
+                print TFILE "module purge\n";
+                print TFILE "module load TACC\n";
+                print TFILE "module delete pgi mvapich CTSSV4\n";
+                print TFILE "module load intel mvapich\n";
+                if ($IsRunningOnSpur_TACC) {
+                    # Spur has GPUs and a usable GL stack
+                    print TFILE "module load vis visit\n";
+                } else {
+                    # Ranger has no GPUs or GL stack, so load Mesa
+                    print TFILE "module load vis mesa visit\n";
+                }
+
+                # cache the binary on each node so lustre doesn't get hammered for large jobs
+                $pwd = `pwd`;
+                chomp $pwd;
+                print TFILE "cache_binary $pwd $visitbindir/engine_par\n";
+            }
             print TFILE $cdcmd;
             print TFILE $limitcmd;
             print TFILE "@sublaunchprecmd", "\n", if $sublaunchprecmd_set;
@@ -2258,9 +2362,33 @@ if ($procs_set or ($parallel and $parlaunch_set))
                 `chmod 755 $tfilename`;
             }
             @parcmd = ($plauncher);
+            if ($IsRunningOnRanger_TACC)
+            {
+                # full path to qsub hack until TACC non-interactive shells work correctly
+                $tqsubname = "$script_dir/tacc_qsub.$tuser.$tdate";
+                $tqsub_opened = 1;
+                open(TQSUB, ">$tqsubname") or $tqsub_opened = 0;
+                if ($tqsub_opened) {
+                    print TQSUB "#!/bin/bash -l\n";
+                    print TQSUB "qsub \$@\n";
+                    close(TQSUB);
+                    `chmod 755 $tqsubname`;
+
+                    @parcmd = ("$tqsubname") if ($plauncher eq "qsub");
+                }
+                else
+                {
+                    print STDERR "Could not create temporary qsub (\"$tqsubname\").\n";
+                    exit 1;
+                }
+            }
+
 
             # Add the env variables.
-            push @parcmd, "-v LIBPATH=$ENV{LIBPATH},LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH},VISITPLUGINDIR=$ENV{VISITPLUGINDIR}";
+            if (! $IsRunningOnRanger_TACC)
+            {
+                push @parcmd, "-v LIBPATH=$ENV{LIBPATH},LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH},VISITPLUGINDIR=$ENV{VISITPLUGINDIR}";
+            }
 
             # parse for '-l vis' so it can be separated from the
             # launchargs
@@ -2286,19 +2414,42 @@ if ($procs_set or ($parallel and $parlaunch_set))
             push @parcmd, @newlaunchargs if $newlaunchargs_set;
             $nodes = $procs if (!$nodes_set);
             $ppn = ceil($procs / $nodes);
-            $qsubNumNodeStr = "nodes";
-            $qsubPPNStr = "ppn";
-            $qsubSeparator = ":";
-            if ( $IsRunningOnJaguarCNL_ORNL ) {$qsubNumNodeStr = "size";}
-            if ( $IsRunningOnFranklinNERSC ) {
-                $qsubNumNodeStr = "mppwidth";
-                $qsubPPNStr = "mppnppn";
-                $qsubSeparator = ",";
+            if ($IsRunningOnRanger_TACC)
+            {
+                if ($nodes_set) 
+                { $tacc_way = $ppn; $tacc_procs = 16*$nodes; }
+                # if nodes not set explicitly assume 1way
+                else 
+                { $tacc_way = 1; $tacc_procs = 16*$procs; }  
+                if ($tacc_way > 16) {
+                    print STDERR "TACC-hosted engine configured with $procs procs on $nodes nodes (${ppn}x).\n";
+                    print STDERR "Number of procs must be no more than 16x number of nodes.\n";
+                    exit(1);
+                }
+                push @parcmd, "-pe", "${tacc_way}way", $tacc_procs;
             }
-            if ( $IsRunningOnLens_ORNL ) {$qsubPPNStr = "ppn";}
-            if ( $use_vis ) { push @parcmd, "-l", "$qsubNumNodeStr=$nodes$qsubSeparator$qsubPPNStr=$ppn:vis";}
-            else { push @parcmd, "-l", "$qsubNumNodeStr=$nodes$qsubSeparator$qsubPPNStr=$ppn"; }
-            push @parcmd, "-l", "walltime=$time" if $time_set;
+            else
+            {
+                $qsubNumNodeStr = "nodes";
+                $qsubPPNStr = "ppn";
+                $qsubSeparator = ":";
+                if ( $IsRunningOnJaguarCNL_ORNL ) {$qsubNumNodeStr = "size";}
+                if ( $IsRunningOnFranklinNERSC ) {
+                    $qsubNumNodeStr = "mppwidth";
+                    $qsubPPNStr = "mppnppn";
+                    $qsubSeparator = ",";
+                }
+                if ( $IsRunningOnLens_ORNL ) {$qsubPPNStr = "ppn";}
+                if ( $use_vis ) { push @parcmd, "-l", "$qsubNumNodeStr=$nodes$qsubSeparator$qsubPPNStr=$ppn:vis";}
+                else { push @parcmd, "-l", "$qsubNumNodeStr=$nodes$qsubSeparator$qsubPPNStr=$ppn"; }
+            }
+
+            # command-line time fails on TACC machines, must be set in the TFILE, above
+            if (! $IsRunningOnRanger_TACC)
+            {
+                push @parcmd, "-l", "walltime=$time" if $time_set;
+            }
+
             if ($UseTTC) { push @parcmd, "-l", "ttc=$procs"; }
             push @parcmd, "-q",  $part  if $part_set;
             push @parcmd, "-A",  $bank  if $bank_set;

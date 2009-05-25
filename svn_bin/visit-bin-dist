@@ -365,6 +365,10 @@
 #
 #    Kathleen Bonnell, Wed Apr 22 16:46:53 PDT 2009
 #    Add ultrawapper files, pyparsing files.
+#
+#    Hank Childs, Sat May  2 10:59:41 CDT 2009
+#    Added configs for TACC.  Also change incorrect "fi" to be an "endif".
+#
 #------------------------------------------------------------------------------
 
 set DataFiles = "TRUE"
@@ -1390,7 +1394,7 @@ if (-e $VisItDir/help) then
               cp $VisItDir/help/$translation/visit.helpml $helpdir/$translation
            endif
        endif
-   end
+   endif
 endif
 
 #
@@ -1425,13 +1429,15 @@ cp $VisItDir/ultrawrapper/*.py $ultradir/
 # Copy the configuration files.
 #
 mkdir $verdir/.visit
-cp $VisItDir/svn_bin/visit-config-closed $verdir/.visit
+cp $VisItDir/svn_bin/visit-config-llnl_closed $verdir/.visit
 cp $VisItDir/svn_bin/visit-config-nersc  $verdir/.visit
-cp $VisItDir/svn_bin/visit-config-open   $verdir/.visit
+cp $VisItDir/svn_bin/visit-config-llnl_open   $verdir/.visit
 cp $VisItDir/svn_bin/visit-config-ornl   $verdir/.visit
 cp $VisItDir/svn_bin/visit-config-anag   $verdir/.visit
 cp $VisItDir/svn_bin/visit-config-anl    $verdir/.visit
 cp $VisItDir/svn_bin/visit-config-princeton    $verdir/.visit
+cp $VisItDir/svn_bin/visit-config-tacc    $verdir/.visit
+cp $VisItDir/svn_bin/visit-config-tacc_internal    $verdir/.visit
 if (-e $verdir/.visit/visit-config-$Configuration) then
     ln -s visit-config-$Configuration $verdir/.visit/config
 endif

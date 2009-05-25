@@ -460,6 +460,9 @@ QvisHostProfileWindow::CreateSelectedTab(QWidget *parent)
 //   Eric Brugger, Mon Aug 18 10:39:11 PDT 2008
 //   Added support for just "msub" as a parallel launch method.
 //
+//   Hank Childs, Sat Apr 25 13:51:17 PDT 2009
+//   Added support for ibrun & qsub/ibrun.
+//
 // ****************************************************************************
 
 QWidget *
@@ -480,6 +483,7 @@ QvisHostProfileWindow::CreateParallelTab(QWidget *parent)
     launchMethod->insertItem(tr("(default)"));
     launchMethod->insertItem("bsub");
     launchMethod->insertItem("dmpirun");
+    launchMethod->insertItem("ibrun");
     launchMethod->insertItem("mpirun");
     launchMethod->insertItem("msub");
     launchMethod->insertItem("poe");
@@ -492,6 +496,7 @@ QvisHostProfileWindow::CreateParallelTab(QWidget *parent)
     launchMethod->insertItem("psub/poe");
     launchMethod->insertItem("psub/srun");
     launchMethod->insertItem("qsub/aprun");
+    launchMethod->insertItem("qsub/ibrun");
     launchMethod->insertItem("qsub/mpiexec");
     launchMethod->insertItem("qsub/mpirun");
     launchMethod->insertItem("qsub/srun");
