@@ -1212,6 +1212,10 @@ avtSiloFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
 //    skirt reading individual material object to 3 or greater. This fixes
 //    cases where material numbers are known at the multi-block level but
 //    all other material info is known only on the individual material blocks.
+//
+//    Hank Childs, Mon May 25 11:07:17 PDT 2009
+//    Add support for Silo releases before 4.6.3.
+//
 // ****************************************************************************
 
 void
@@ -2664,7 +2668,14 @@ avtSiloFileFormat::ReadDir(DBfile *dbfile, const char *dirname,
             }
             else
             {
+                bool invalidateVar = false;
+#ifdef SILO_VERSION_GE
+#if SILO_VERSION_GE(4,6,3)
                 if (mm->nmatnos > 0 && mm->nmatnos != mat->nmat)
+                    invalidateVar = true;
+#endif
+#endif
+                if (invalidateVar)
                 {
                     debug1 << "Invalidating material \"" << multimat_names[i] 
                            << "\" since its first non-empty block ";
@@ -2677,6 +2688,8 @@ avtSiloFileFormat::ReadDir(DBfile *dbfile, const char *dirname,
         }
         else
         {
+#ifdef SILO_VERSION_GE
+    #if SILO_VERSION_GE(4,6,3)
             // Spoof the material object for code block below so it contains
             // all the info from the multi-mat.
             mat = DBAllocMaterial();
@@ -2684,6 +2697,8 @@ avtSiloFileFormat::ReadDir(DBfile *dbfile, const char *dirname,
             mat->matnos = mm->matnos;
             mat->matnames = mm->material_names;
             mat->matcolors = mm->matcolors;
+    #endif
+#endif
         }
 
         //
@@ -9687,6 +9702,10 @@ avtSiloFileFormat::GetDataExtents(const char *varName)
 //    the effect of freeing the data-producer of having to re-enumerate that
 //    information on each and every individual material object in a large
 //    multi-mesh with many materials.
+//
+//    Hank Childs, Mon May 25 11:07:17 PDT 2009
+//    Add support for Silo releases before 4.6.3.
+//
 // ****************************************************************************
 
 avtMaterial *
@@ -9715,13 +9734,33 @@ avtSiloFileFormat::CalcMaterial(DBfile *dbfile, char *matname, const char *tmn,
     //
     char **matnames = NULL;
     char *buffer = NULL;
-    if (silomat->matnames || (mm&&mm->material_names))
+    bool haveMatnames = silomat->matnames;
+#ifdef SILO_VERSION_GE
+#if SILO_VERSION_GE(4,6,3)
+    if (mm&&mm->material_names))
+        haveMatnames = true;
+#endif
+#endif
+    if (haveMatnames)
     {
-        int nmat = (mm&&mm->nmatnos>0) ? mm->nmatnos : silomat->nmat;
+        int nmat = silomat->nmat;
+#ifdef SILO_VERSION_GE
+#if SILO_VERSION_GE(4,6,3)
+        if (mm&&mm->nmatnos>0) 
+            nmat = mm->nmatnos;
+#endif
+#endif
         int max_dlen = 0;
         for (int i = 0 ; i < nmat ; i++)
         {
-            int dlen =int(log10(float(((mm&&mm->matnos)?mm->matnos[i]:silomat->matnos[i])+1))) + 1;
+            int matno = silomat->matnos[i];
+#ifdef SILO_VERSION_GE
+#if SILO_VERSION_GE(4,6,3)
+            if (mm&&mm->matnos)
+                matno = mm->matnos[i]:
+#endif
+#endif
+            int dlen =int(log10(float(matno+1))) + 1;
             if(dlen>max_dlen)
                 max_dlen = dlen;
         }
@@ -9732,9 +9771,17 @@ avtSiloFileFormat::CalcMaterial(DBfile *dbfile, char *matname, const char *tmn,
         for (int i = 0 ; i < nmat ; i++)
         {
             matnames[i] = buffer + (256+max_dlen)*i;
-            sprintf(matnames[i], "%d %s",
-                (mm&&mm->matnos)?mm->matnos[i]:silomat->matnos[i],
-                (mm&&mm->material_names)?mm->material_names[i]:silomat->matnames[i]);
+            int matno = silomat->matnos[i];
+            const char *matname = silomat->matnames[i];
+#ifdef SILO_VERSION_GE
+#if SILO_VERSION_GE(4,6,3)
+            if (mm&&mm->matnos)
+                matno = mm->matnos[i]:
+            if (mm&&mm->material_names)
+                matname = mm->material_names[i]:
+#endif
+#endif
+            sprintf(matnames[i], "%d %s", matno, matname);
         }
     }
 
@@ -9775,8 +9822,18 @@ avtSiloFileFormat::CalcMaterial(DBfile *dbfile, char *matname, const char *tmn,
         }
     }
 
-    avtMaterial *mat = new avtMaterial((mm&&mm->nmatnos>0)?mm->nmatnos:silomat->nmat,
-                                       (mm&&mm->matnos)?mm->matnos:silomat->matnos,
+    int nummats = silomat->nmat;
+    int *matnos = silomat->matnos;
+#ifdef SILO_VERSION_GE
+#if SILO_VERSION_GE(4,6,3)
+    if (mm&&mm->nmatnos>0)
+        nummats = mm->nmatnos:
+    if (mm&&mm->matnos)
+        matnos = mm->matnos:
+#endif
+#endif
+    avtMaterial *mat = new avtMaterial(nummats, 
+                                       matnos,
                                        matnames,
                                        ndims,
                                        dims,
@@ -11429,10 +11486,18 @@ avtSiloFileFormat::AddAnnotIntNodelistEnumerations(DBfile *dbfile, avtDatabaseMe
 //  Programmer: Mark C. Miller 
 //  Creation:   March 19, 2009 
 //
+//  Modifications:
+//
+//    Hank Childs, Mon May 25 11:07:17 PDT 2009
+//    Add support for Silo releases before 4.6.3.
+//
 // ****************************************************************************
+
 static int
 MultiMatHasAllMatInfo(const DBmultimat *const mm)
 {
+#ifdef SILO_VERSION_GE
+#if SILO_VERSION_GE(4,6,3)
     if (mm->nmatnos <= 0)
         return 0; // has nothing
 
@@ -11450,4 +11515,8 @@ MultiMatHasAllMatInfo(const DBmultimat *const mm)
     }
     else
         return 1;
+#endif
+#endif
+    return 0;
 }
+
