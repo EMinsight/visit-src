@@ -94,6 +94,9 @@ class ViewerPlot;
 //   Gunther H. Weber, Wed Nov 28 15:20:13 PST 2007
 //   Added toggle for current cell outline
 //
+//   Brad Whitlock, Tue May 26 11:09:08 PDT 2009
+//   I added lineout operations.
+//
 // ****************************************************************************
 
 class SpreadsheetViewer : public QMainWindow, public Observer
@@ -137,8 +140,12 @@ private slots:
     void selectNone();
     void operationSum();
     void operationAverage();
-    void operationCurveX();
-    void operationCurveY();
+    void operationCurveX(int);
+    void operationCurveY(int);
+    void operationCurveX0();
+    void operationCurveY0();
+    void operationCurveX1();
+    void operationCurveY1();
 private:
     void updateSpreadsheet();
     bool moveSliceToCurrentPick();
@@ -157,6 +164,7 @@ private:
     int  GetCell(double, double, double);
     bool PickPointsChanged() const;
     void GetBaseIndexFromMetaData(int *base_index) const;
+    void GetPickIJK(int pickId, int pickType, int *ijk) const;
 
     void DisplayCurve(const double *vals, int nvals);
     bool GetDataVsCoordinate(double *curve, const vtkIdType *, int nvals, int coord) const;
@@ -230,10 +238,6 @@ private:
     int                   editMenuId;
     int                   editMenu_CopyId;
     int                   operationMenuId;
-
-    // A cache for previous picks, to prevent cell lookups again.
-    std::vector<double>   pickPt;
-    std::vector<int>      cellId;
 };
 
 #endif
