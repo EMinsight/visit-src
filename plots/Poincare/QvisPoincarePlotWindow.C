@@ -492,6 +492,9 @@ QvisPoincarePlotWindow::CreateWindowContents()
 //
 //    Dave Pugmire, Tue Apr 28 09:26:06 EDT 2009
 //    GUI reorganization.
+//
+//    Dave Pugmire, Wed May 27 15:03:42 EDT 2009
+//    Add blockSignals around min/max line edits.
 //   
 // ****************************************************************************
 
@@ -802,11 +805,15 @@ QvisPoincarePlotWindow::UpdateWindow(bool doAll)
             break;
           case PoincareAttributes::ID_min:
             temp.setNum(atts->GetMin());
+            minLineEdit->blockSignals(true);
             minLineEdit->setText(temp);
+            minLineEdit->blockSignals(false);
             break;
           case PoincareAttributes::ID_max:
             temp.setNum(atts->GetMax());
+            maxLineEdit->blockSignals(true);
             maxLineEdit->setText(temp);
+            maxLineEdit->blockSignals(false);
             break;
           case PoincareAttributes::ID_minFlag:
             minToggle->blockSignals(true);
