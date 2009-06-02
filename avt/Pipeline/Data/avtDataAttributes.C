@@ -164,6 +164,9 @@ using     std::sort;
 //    Hank Childs, Tue Jan 20 12:03:05 CST 2009
 //    Initialize dynamicDomainDecomposition.
 //
+//    Jeremy Meredith, Tue Jun  2 16:25:01 EDT 2009
+//    Added support for unit cell origin (previously assumed to be 0,0,0);
+//
 // ****************************************************************************
 
 avtDataAttributes::avtDataAttributes()
@@ -232,6 +235,7 @@ avtDataAttributes::avtDataAttributes()
             unitCellVectors[i*3+j] = (i==j) ? 1.0 : 0.0;
         }
     }
+    unitCellOrigin[0] = unitCellOrigin[1] = unitCellOrigin[2] = 0.0;
     for (int m=0; m<4; m++)
     {
         for (int n=0; n<4; n++)
@@ -466,6 +470,9 @@ avtDataAttributes::DestructSelf(void)
 //
 //    Hank Childs, Tue Jan 20 12:03:05 CST 2009
 //    Added dynamicDomainDecomposition.
+//
+//    Jeremy Meredith, Tue Jun  2 16:25:01 EDT 2009
+//    Added support for unit cell origin (previously assumed to be 0,0,0);
 //
 // ****************************************************************************
 
@@ -800,6 +807,10 @@ avtDataAttributes::Print(ostream &out)
             << unitCellVectors[i*3+1] << " "
             << unitCellVectors[i*3+2] << endl;
     }
+    out << "Unit cell origin is "
+        << unitCellOrigin[0] << " "
+        << unitCellOrigin[1] << " "
+        << unitCellOrigin[2] << endl;
 
     out << "Rectilinear grids "
         << (rectilinearGridHasTransform ? "do" : "do not")
@@ -954,6 +965,9 @@ avtDataAttributes::Print(ostream &out)
 //    Hank Childs, Tue Jan 20 12:03:05 CST 2009
 //    Added dynamicDomainDecomposition.
 //
+//    Jeremy Meredith, Tue Jun  2 16:25:01 EDT 2009
+//    Added support for unit cell origin (previously assumed to be 0,0,0);
+//
 // ****************************************************************************
 
 void
@@ -1050,6 +1064,8 @@ avtDataAttributes::Copy(const avtDataAttributes &di)
     nodesAreCritical = di.nodesAreCritical;
     for (int j=0; j<9; j++)
         unitCellVectors[j] = di.unitCellVectors[j];
+    for (int j=0; j<3; j++)
+        unitCellOrigin[j] = di.unitCellOrigin[j];
     rectilinearGridHasTransform = di.rectilinearGridHasTransform;
     for (int k=0; k<16; k++)
         rectilinearGridTransform[k] = di.rectilinearGridTransform[k];
@@ -2628,6 +2644,9 @@ avtDataAttributes::SetDynamicDomainDecomposition(bool ddd)
 //    Hank Childs, Tue Jan 20 12:03:05 CST 2009
 //    Added dynamicDomainDecomposition.
 //
+//    Jeremy Meredith, Tue Jun  2 16:25:01 EDT 2009
+//    Added support for unit cell origin (previously assumed to be 0,0,0);
+//
 // ****************************************************************************
 
 void
@@ -2767,6 +2786,9 @@ avtDataAttributes::Write(avtDataObjectString &str,
 
     for (i = 0; i < 9 ; i++)
         wrtr->WriteDouble(str, unitCellVectors[i]);
+
+    for (i = 0; i < 3 ; i++)
+        wrtr->WriteDouble(str, unitCellOrigin[i]);
 
     for (i = 0; i < 16 ; i++)
         wrtr->WriteDouble(str, rectilinearGridTransform[i]);
@@ -2917,6 +2939,9 @@ avtDataAttributes::Write(avtDataObjectString &str,
 //
 //    Hank Childs, Tue Jan 20 12:03:05 CST 2009
 //    Added dynamicDomainDecomposition.
+//
+//    Jeremy Meredith, Tue Jun  2 16:25:01 EDT 2009
+//    Added support for unit cell origin (previously assumed to be 0,0,0);
 //
 // ****************************************************************************
 
@@ -3263,6 +3288,13 @@ avtDataAttributes::Read(char *input)
         memcpy(&dtmp, input, sizeof(double));
         input += sizeof(double); size += sizeof(double);
         unitCellVectors[i] = dtmp;
+    }
+
+    for (i = 0; i < 3 ; i++)
+    {
+        memcpy(&dtmp, input, sizeof(double));
+        input += sizeof(double); size += sizeof(double);
+        unitCellOrigin[i] = dtmp;
     }
 
     for (i = 0; i < 16 ; i++)

@@ -63,11 +63,14 @@ class QvisVariableButton;
 //   Defines QvisReplicateWindow class.
 //
 // Notes:      This class was automatically generated!
-
+//
 // Programmer: xml2window
 // Creation:   Thu Mar 22 12:57:41 PDT 2007
 //
 // Modifications:
+//    Jeremy Meredith, Tue Jun  2 16:25:01 EDT 2009
+//    Added support for shifting atoms to a new unit cell origin.
+//
 //   
 // ****************************************************************************
 
@@ -95,6 +98,8 @@ class QvisReplicateWindow : public QvisOperatorWindow
     void zReplicationsProcessText();
     void mergeResultsChanged(bool val);
     void replicateUnitCellAtomsChanged(bool val);
+    void shiftPeriodicAtomOriginChanged(bool val);
+    void newPeriodicOriginProcessText();
   private:
     QCheckBox *useUnitCellVectors;
     QLineEdit *xVector;
@@ -105,6 +110,8 @@ class QvisReplicateWindow : public QvisOperatorWindow
     QLineEdit *zReplications;
     QCheckBox *mergeResults;
     QCheckBox *replicateUnitCellAtoms;
+    QCheckBox *shiftPeriodicAtomOrigin;
+    QLineEdit *newPeriodicOrigin;
     QLabel *useUnitCellVectorsLabel;
     QLabel *xVectorLabel;
     QLabel *yVectorLabel;
@@ -113,7 +120,7 @@ class QvisReplicateWindow : public QvisOperatorWindow
     QLabel *yReplicationsLabel;
     QLabel *zReplicationsLabel;
     QLabel *mergeResultsLabel;
-    QLabel *replicateUnitCellAtomsLabel;
+    QLabel *newPeriodicOriginLabel;
 
     ReplicateAttributes *atts;
 };
