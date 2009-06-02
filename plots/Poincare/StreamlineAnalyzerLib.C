@@ -904,7 +904,7 @@ basicChecks( vector< Point >& points,
   avenode = 0;
   island = 0;
   
-  bool convex;
+  bool convex=false;
 
   // A toroidalWinding of one is valid only if it is an island. An island with
   // one toroidalWinding must have a non-convex hull otherwise it is a surface.
@@ -2690,7 +2690,7 @@ smoothCurve( vector< vector < Point > > &bins,
       {
         unsigned int nodes = bins[i].size();
 
-        pair< Point, unsigned int > newPts[add*nodes];
+        pair< Point, unsigned int > *newPts = new pair< Point, unsigned int >[add*nodes];
 
         for( unsigned int j=0; j<add*nodes; j++ )
           newPts[j] = pair< Point, unsigned int > (Point(0,0,0), 0 );
@@ -2763,6 +2763,8 @@ smoothCurve( vector< vector < Point > > &bins,
             }
           }
         }
+
+        delete [] newPts;
       }
 
       // Remove the last point so it is possilble to see the groups.
@@ -3003,7 +3005,7 @@ mergeOverlap( vector< vector < Point > > &bins,
     }
   } else {
 
-    vector < Point > tmp_bins[toroidalWinding];
+    vector < Point > *tmp_bins = new vector<Point>[toroidalWinding];
 
     // This gives the minimal number of nodes for each group.
     surfaceOverlapCheck( bins, toroidalWinding, skip, nnodes );
@@ -3110,6 +3112,8 @@ mergeOverlap( vector< vector < Point > > &bins,
     // Remove the last point so it is possilble to see the groups.
     for( unsigned int i=0; i<toroidalWinding; i++ )
       bins[i].erase( bins[i].end() );
+
+    delete [] tmp_bins;
   }
 
   // Update the approximate node count.

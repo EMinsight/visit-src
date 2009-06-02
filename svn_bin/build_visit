@@ -543,10 +543,18 @@ elif [[ "$OPSYS" == "Linux" ]]; then
       export MESA_TARGET=${MESA_TARGET-"linux"}
       QT_PLATFORM="linux-g++-64"
    elif [[ "$(uname -m)" == "ppc64" ]] ; then
-      C_OPT_FLAGS="$C_OPT_FLAGS -fPIC"
-      CXX_OPT_FLAGS="$CXX_OPT_FLAGS -fPIC"
-      export MESA_TARGET=${MESA_TARGET-"linux"}
-      QT_PLATFORM="linux-g++"
+      if [[ "$C_COMPILER" == "xlc" ]] ; then
+          C_OPT_FLAGS="$C_OPT_FLAGS -qpic"
+          CXX_OPT_FLAGS="$CXX_OPT_FLAGS -qpic"
+          export CXX_COMPILER=${CXX_COMPILER-"xlC"}
+          export MESA_TARGET=${MESA_TARGET-"linux"}
+          QT_PLATFORM="linux-xlc" #aix-xlc"
+      else
+          C_OPT_FLAGS="$C_OPT_FLAGS -fPIC"
+          CXX_OPT_FLAGS="$CXX_OPT_FLAGS -fPIC"
+          export MESA_TARGET=${MESA_TARGET-"linux"}
+          QT_PLATFORM="linux-g++"
+      fi
    elif [[ "$(uname -m)" == "ia64" ]] ; then
       C_OPT_FLAGS="$C_OPT_FLAGS -fPIC"
       CXX_OPT_FLAGS="$CXX_OPT_FLAGS -fPIC"
@@ -682,8 +690,8 @@ export DO_VERBOSE="no"
 export ON_VERBOSE="off"
 export DO_JAVA="no"
 export ON_JAVA="off"
-export DO_SILO="yes"
-export ON_SILO="on"
+export DO_SILO="no"
+export ON_SILO="off"
 export DO_SZIP="no"
 export ON_SZIP="off"
 export DO_CCMIO="no"
@@ -3076,6 +3084,7 @@ function build_qt
     elif [[ -e ${QT_FILE} ]] ; then
        info_box "Unzipping/Untarring ${QT_FILE} . . ." 1>&3
        uncompress_untar ${QT_FILE}
+       tar xf qt-linux-xlc.tar
        untarred_qt=1
        if [[ $? != 0 ]] ; then
           echo \
@@ -3359,9 +3368,11 @@ function build_cmake
     info_box "Bootstrapping CMake . . ." 1>&3
     cd ${CMAKE_DIR}
     if [[ "$OPSYS" == "AIX" ]]; then
-        env CXX=xlC CC=xlc CXXFLAGS="" CFLAGS="" ./bootstrap
+        env CXX=xlC CC=xlc CXXFLAGS="" CFLAGS="" ./bootstrap --prefix="$VISITDIR/cmake/${CMAKE_VERSION}/$VISITARCH"
+    elif [[ "$OPSYS" == "Linux" && "$C_COMPILER" == "xlc" ]]; then
+        env CXX=xlC CC=xlc CXXFLAGS="" CFLAGS="" ./bootstrap --prefix="$VISITDIR/cmake/${CMAKE_VERSION}/$VISITARCH"
     else
-        env CXXFLAGS="" CFLAGS="" ./bootstrap
+        env CC=${C_COMPILER} CXX=${CXX_COMPILER} CXXFLAGS="" CFLAGS="" ./bootstrap --prefix="$VISITDIR/cmake/${CMAKE_VERSION}/$VISITARCH"
     fi
     if [[ $? != 0 ]] ; then
        echo "Bootstrap for cmake failed, giving up."
@@ -3380,14 +3391,7 @@ function build_cmake
 
     info_box "Installing Cmake . . ." 1>&3
     echo "Installing Cmake"
-    mkdir "$VISITDIR/cmake"
-    mkdir "$VISITDIR/cmake/${CMAKE_VERSION}"
-    mkdir "$VISITDIR/cmake/${CMAKE_VERSION}/$VISITARCH"
-    mkdir "$VISITDIR/cmake/${CMAKE_VERSION}/$VISITARCH/bin"
-    cp bin/ccmake "$VISITDIR/cmake/${CMAKE_VERSION}/$VISITARCH/bin"
-    cp bin/cmake "$VISITDIR/cmake/${CMAKE_VERSION}/$VISITARCH/bin"
-    cp bin/cpack "$VISITDIR/cmake/${CMAKE_VERSION}/$VISITARCH/bin"
-    cp bin/ctest "$VISITDIR/cmake/${CMAKE_VERSION}/$VISITARCH/bin"
+    $MAKE install
     echo "Successfully built CMake"
     if [[ "$DO_GROUP" == "yes" ]] ; then
        chmod -R ug+w,a+rX "$VISITDIR/cmake"
@@ -4100,12 +4104,22 @@ function build_python
     #
     info_box "Configuring Python . . ." 1>&3
     cd ${PYTHON_DIR}
-    PYTHON_OPT="$C_OPT_FLAGS"
+    cCompiler="${C_COMPILER}"
+    cFlags="${C_OPT_FLAGS}"
+    cxxCompiler="${CXX_COMPILER}"
+    cxxFlags="${CXX_OPT_FLAGS}"
+    if [[ "$OPSYS" == "Linux" && "$C_COMPILER" == "xlc" ]]; then
+        cCompiler="gxlc"
+        cxxCompiler="gxlC"
+        cFlags=`echo ${C_OPT_FLAGS} | sed "s/-qpic/-fPIC/g"`
+        cxxFlags=`echo ${CXX_OPT_FLAGS} | sed "s/-qpic/-fPIC/g"`
+    fi
+    PYTHON_OPT="$cFlags"
     echo \
 "Invoking command to build Python: ./configure OPT=\"$PTHON_OPT\" \
-CXX=\"$CXX_COMPILER\" CC=\"$C_COMPILER\" \
+CXX=\"$cxxCompiler\" CC=\"$cCompiler\" \
 --prefix=\"$VISITDIR/python/$PYTHON_VERSION/$VISITARCH\""
-    ./configure OPT="$PYTHON_OPT" CXX="$CXX_COMPILER" CC="$C_COMPILER" \
+    ./configure OPT="$PYTHON_OPT" CXX="$cxxCompiler" CC="$cCompiler" \
     --prefix="$VISITDIR/python/$PYTHON_VERSION/$VISITARCH" --disable-ipv6
     if [[ $? != 0 ]] ; then
        echo "Python configure failed.  Giving up"
@@ -4325,6 +4339,12 @@ qt-mt -L/usr/openwin/lib -L/usr/openwin/lib -lGL -lXmu -lXext -lX11 \
         WITHQTLIBSARG="--with-Qt-lib=\
 qt -lSM -lICE -L/usr/X11R6/lib -lX11 -lXext -lXmu -lXt -lXi"
     fi
+    echo ./configure CXX="$CXX_COMPILER" CC="$C_COMPILER" \
+        CFLAGS="$C_OPT_FLAGS" CXXFLAGS="$CXX_OPT_FLAGS" \
+        --prefix="$VISITDIR/silo/$SILO_VERSION/$VISITARCH" \
+        "$WITHHDF5ARG" "$WITHSZIPARG" \
+        "$WITHQTINCARG" "$WITHQTBINARG" "$WITHQTLIBARG" "$WITHQTLIBSARG" \
+        --without-readline --disable-fortran --disable-browser --enable-silex
     ./configure CXX="$CXX_COMPILER" CC="$C_COMPILER" \
         CFLAGS="$C_OPT_FLAGS" CXXFLAGS="$CXX_OPT_FLAGS" \
         --prefix="$VISITDIR/silo/$SILO_VERSION/$VISITARCH" \
@@ -4454,7 +4474,7 @@ function build_szip
     #
     info_box "Configuring SZIP . . ." 1>&3
     cd ${SZIP_DIR}
-    echo "Invoking command to configure SZIP"
+    echo "Invoking command to configure SZIP: ./configure CXX=\"$CXX_COMPILER\" CC=\"$C_COMPILER\" LIBS=\"-lm\" CFLAGS=\"$C_OPT_FLAGS\" CXXFLAGS=\"$CXX_OPT_FLAGS\" --prefix=\"$VISITDIR/szip/$SZIP_VERSION/$VISITARCH\""
     ./configure CXX="$CXX_COMPILER" CC="$C_COMPILER" LIBS="-lm" \
         CFLAGS="$C_OPT_FLAGS" CXXFLAGS="$CXX_OPT_FLAGS" \
         --prefix="$VISITDIR/szip/$SZIP_VERSION/$VISITARCH"
@@ -4531,6 +4551,7 @@ function build_szip
 
 function build_hdf5
 {
+return 0
     #
     # Unzip the file, provided a gzipped file exists.
     #
@@ -4569,6 +4590,10 @@ function build_hdf5
         sz_dir="${VISITDIR}/szip/${SZIP_VERSION}/${VISITARCH}"
         cf_szip="--with-szlib=${sz_dir}"
     fi
+    echo ./configure CXX="$CXX_COMPILER" CC="$C_COMPILER" \
+        CFLAGS="$C_OPT_FLAGS" CXXFLAGS="$CXX_OPT_FLAGS" \
+        --prefix="$VISITDIR/hdf5/$HDF5_VERSION/$VISITARCH" \
+        ${cf_szip}
     ./configure CXX="$CXX_COMPILER" CC="$C_COMPILER" \
         CFLAGS="$C_OPT_FLAGS" CXXFLAGS="$CXX_OPT_FLAGS" \
         --prefix="$VISITDIR/hdf5/$HDF5_VERSION/$VISITARCH" \
@@ -8399,6 +8424,7 @@ usage () {
   printf "%-15s %s [%s]\n" "--parallel" "Enable parallel build, display MPI prompt" "$parallel"
   printf "%-15s %s [%s]\n" "--print-vars" "Display user settable environment variables" "false"
   printf "%-15s %s [%s]\n" "--python" "Build with the VisIt Python module" "$DO_MODULE"
+  printf "%-15s %s [%s]\n" "--silo"    "Build Silo" "$DO_SILO"
   printf "%-15s %s [%s]\n" "--slivr" "Build with SLIVR shader support" "$DO_SLIVR"
   printf "%-15s %s [%s]\n" "--stdout" "Write build log to stdout" "$LOG_FILE"
   printf "%-15s %s [%s]\n" "--tcmalloc" "Build tcmalloc from Google's perftools" "$DO_TCMALLOC"
@@ -8419,6 +8445,8 @@ usage () {
   printf "\t  %s\n" "'linux_gcc-3.4.6' or 'Darwin_gcc-4.0.1'"
   printf "%-11s %s [%s]\n" "--cflags"  "Explicitly set CFLAGS" "$CFLAGS"
   printf "%-11s %s [%s]\n" "--cxxflags" "Explicitly set CXXFLAGS" "$CXXFLAGS"
+  printf "%-11s %s [%s]\n" "--cc"  "Explicitly set C_COMPILER" "$C_COMPILER"
+  printf "%-11s %s [%s]\n" "--cxx" "Explicitly set CXX_COMPILER" "$CXX_COMPILER"
   printf "%-11s <%s> %s [%s]\n" "--makeflags" "flags" "Flags to 'make'" "$MAKE_OPT_FLAGS"
   printf "%-11s <%s> %s [%s]\n" "--svn" "revision" \
     "Use the SVN server for the VisIt distribution" "${SVNREVISION}"
@@ -8559,6 +8587,8 @@ for arg in "${arguments[@]}" ; do
             arch) VISITARCH="${arg}";;
             cflags) C_OPT_FLAGS=$(strip_quotes "${arg}");;
             cxxflags) CXX_OPT_FLAGS=$(strip_quotes "${arg}");;
+            cc) C_COMPILER="${arg}";;
+            cxx) CXX_COMPILER="${arg}";;
             flags-debug) C_OPT_FLAGS="${C_OPT_FLAGS} -g"
                          CXX_OPT_FLAGS="${CXX_OPT_FLAGS} -g";;
             makeflags) MAKE_OPT_FLAGS="${arg}";;
@@ -8584,6 +8614,8 @@ for arg in "${arguments[@]}" ; do
         --cflags) next_arg="cflags";;
         --cgns) DO_CGNS="yes"; ON_CGNS="on";;
         --cxxflags) next_arg="cxxflags";;
+        --cc) next_arg="cc";;
+        --cxx) next_arg="cxx";;
         --console) GRAPHICAL="no"; ON_GRAPHICAL="off";;
         --debug) set -vx;;
         --fastbit) DO_FASTBIT="yes"; ON_FASTBIT="on"
@@ -8610,6 +8642,7 @@ for arg in "${arguments[@]}" ; do
         --parallel) parallel="yes"; ON_parallel="ON";;
         --print-vars) next_action="print-vars";;
         --python) DO_MODULE="yes"; ON_MODULE="on";;
+        --silo) DO_SILO="yes"; ON_SILO="on";;
         --szip) DO_SZIP="yes"; ON_SZIP="on";;
         --slivr) DO_SLIVR="yes"; ON_SLIVR="on";;
         --stdout) LOG_FILE="/dev/tty";;
@@ -9387,7 +9420,7 @@ fi
 # Build Silo
 #
 cd "$START_DIR"
-if [[ "$DO_REQUIRED_THIRD_PARTY" == "yes" ]] ; then
+if [[ "$DO_REQUIRED_THIRD_PARTY" == "yes" || "$DO_SILO" == "yes" ]] ; then
    if [[ -d "$VISITDIR/silo/${SILO_VERSION}/$VISITARCH" ]] ; then
       echo "Skipping Silo build.  Silo is already installed."
    else
