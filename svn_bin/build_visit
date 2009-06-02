@@ -4551,7 +4551,6 @@ function build_szip
 
 function build_hdf5
 {
-return 0
     #
     # Unzip the file, provided a gzipped file exists.
     #
