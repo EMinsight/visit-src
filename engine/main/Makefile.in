@@ -295,7 +295,7 @@ CPPFLAGS= -I@tmpinc@ @ENGINE_CPPFLAGS@ @PLATFORM_CPPFLAGS@ @CPPFLAGS@ \
          -I. -I../../include/visit
 
 COMMONLIBS=-L../../lib -lplugin -lavtview \
-        -lvisit_vtk -llightweight_visit_vtk \
+        -lvisit_vtk -llightweight_visit_vtk -lrendering_visit_vtk\
 	-lenginerpc -lutility -lmisc -lcomm -lstate \
         -ldbatts -lavtexceptions -lexpr -lexpr -lparser \
 	$(VISIT_VTK_LDFLAGS)

@@ -45,16 +45,21 @@
 #include <DatabasePluginInfo.h>
 #include <VisItInit.h>
 
+#ifndef DISABLE_EXPRESSIONS
 #include <ExprParser.h>
 #include <ParsingExprList.h>
+#endif
 #include <Utility.h>
 
 #include <avtDatabase.h>
 #include <avtDatabaseFactory.h>
 #include <avtDatabaseMetaData.h>
 #include <avtDatabaseWriter.h>
+#ifndef DISABLE_EXPRESSIONS
 #include <avtExpressionEvaluatorFilter.h>
 #include <avtExprNodeFactory.h>
+#endif
+#include <avtParallel.h>
 #include <DBOptionsAttributes.h>
 
 #include <VisItException.h>
@@ -215,15 +220,16 @@ int main(int argc, char *argv[])
 {
     int  i;
 
+    bool parallel = false;
+#ifdef PARALLEL
+    parallel = true;
+    PAR_Init(argc, argv);
+#endif
     VisItInit::Initialize(argc, argv);
 
     //
     // Initialize the plugin readers.
     //
-    bool parallel = false;
-#ifdef PARALLEL
-    parallel = true;
-#endif
     DatabasePluginManager *dbmgr = new DatabasePluginManager;
     dbmgr->Initialize(DatabasePluginManager::Engine, parallel);
     dbmgr->LoadPluginsNow();
@@ -439,6 +445,7 @@ int main(int argc, char *argv[])
         }
     }
 
+#ifndef DISABLE_EXPRESSIONS
     //
     // Hook up the expressions we have associated with the database, so
     // we can get those as well.
@@ -451,14 +458,17 @@ int main(int argc, char *argv[])
         const Expression *e = md->GetExpression(i);
         list->AddExpressions(*e);
     }
+#endif
 
     cerr << "Operating on " << md->GetNumStates() << " timestep(s)." << endl;
     for (i = 0 ; i < md->GetNumStates() ; i++)
     {
          avtDataObject_p dob = db->GetOutput(meshname.c_str(), i);
+#ifndef DISABLE_EXPRESSIONS
          avtExpressionEvaluatorFilter eef;
          eef.SetInput(dob);
          dob = eef.GetOutput();
+#endif
          wrtr->SetInput(dob);
 
          char filename[1024];
@@ -493,6 +503,10 @@ int main(int argc, char *argv[])
     }
 
     delete dbmgr;
+
+#ifdef PARALLEL
+    PAR_Exit();
+#endif
 
     return 0;
 }

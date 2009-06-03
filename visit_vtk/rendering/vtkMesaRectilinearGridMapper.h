@@ -1,10 +1,10 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    $RCSfile: vtkOpenGLRectilinearGridMapper.h,v $
+  Module:    $RCSfile: vtkMesaRectilinearGridMapper.h,v $
   Language:  C++
-  Date:      $Date: 2002/08/22 18:39:31 $
-  Version:   $Revision: 1.31 $
+  Date:      $Date: 2002/08/22 18:39:30 $
+  Version:   $Revision: 1.20 $
 
   Copyright (c) 1993-2002 Ken Martin, Will Schroeder, Bill Lorensen 
   All rights reserved.
@@ -15,27 +15,28 @@
      PURPOSE.  See the above copyright notice for more information.
 
 =========================================================================*/
-// .NAME vtkOpenGLRectilinearGridMapper - a RectilinearGridMapper for the OpenGL library
+// .NAME vtkMesaRectilinearGridMapper - a RectilinearGridMapper for the Mesa library
 // .SECTION Description
-// vtkOpenGLRectilinearGridMapper is a subclass of vtkRectilinearGridMapper.
-// vtkOpenGLRectilinearGridMapper is a geometric RectilinearGridMapper for the OpenGL 
+// vtkMesaRectilinearGridMapper is a subclass of vtkRectilinearGridMapper.
+// vtkMesaRectilinearGridMapper is a geometric RectilinearGridMapper for the Mesa 
 // rendering library.
 
-#ifndef __vtkOpenGLRectilinearGridMapper_h
-#define __vtkOpenGLRectilinearGridMapper_h
+#ifndef __vtkMesaRectilinearGridMapper_h
+#define __vtkMesaRectilinearGridMapper_h
 
 #include "vtkRectilinearGridMapper.h"
-#include <visit_vtk_exports.h>
+#include <rendering_visit_vtk_exports.h>
 
 class vtkProperty;
 class vtkRenderWindow;
-class vtkOpenGLRenderer;
+class vtkMesaRenderer;
+class vtkTimerLog;
 
-class VISIT_VTK_API vtkOpenGLRectilinearGridMapper : public vtkRectilinearGridMapper
+class RENDERING_VISIT_VTK_API vtkMesaRectilinearGridMapper : public vtkRectilinearGridMapper
 {
 public:
-  static vtkOpenGLRectilinearGridMapper *New();
-  vtkTypeRevisionMacro(vtkOpenGLRectilinearGridMapper,vtkRectilinearGridMapper);
+  static vtkMesaRectilinearGridMapper *New();
+  vtkTypeRevisionMacro(vtkMesaRectilinearGridMapper,vtkRectilinearGridMapper);
   virtual void PrintSelf(ostream& os, vtkIndent indent);
 
   // Description:
@@ -49,7 +50,7 @@ public:
   void ReleaseGraphicsResources(vtkWindow *);
 
   // Description:
-  // Draw method for OpenGL.
+  // Draw method for Mesa.
   virtual int Draw(vtkRenderer *ren, vtkActor *a);
 
   // Description:
@@ -58,8 +59,8 @@ public:
   vtkGetMacro(EnableColorTexturing, bool);
 
 protected:
-  vtkOpenGLRectilinearGridMapper();
-  ~vtkOpenGLRectilinearGridMapper();
+  vtkMesaRectilinearGridMapper();
+  ~vtkMesaRectilinearGridMapper();
 
   int ListStart;
   int CurrentList;
@@ -83,10 +84,9 @@ protected:
   bool UsesPointData(vtkDataSet *input, int scalarMode,
                      int arrayAccessMode, int arrayId, const char *arrayName,
                      int& offset);
-
 private:
-  vtkOpenGLRectilinearGridMapper(const vtkOpenGLRectilinearGridMapper&);  // Not implemented.
-  void operator=(const vtkOpenGLRectilinearGridMapper&);  // Not implemented.
+  vtkMesaRectilinearGridMapper(const vtkMesaRectilinearGridMapper&);  // Not implemented.
+  void operator=(const vtkMesaRectilinearGridMapper&);  // Not implemented.
 };
 
 #endif

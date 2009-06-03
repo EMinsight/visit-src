@@ -310,7 +310,7 @@ ac_includes_default="\
 # include <unistd.h>
 #endif"
 
-ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS TOPDIR PLATFORM_CPPFLAGS CMAKE CXXFLAGS EGREP CXX LDFLAGS CPPFLAGS ac_ct_CXX EXEEXT OBJEXT PARALLEL PARALLEL_CPPFLAGS MPI_LIBS MPI_CC MPI_CXX LIBSTATICPAR LIBSHAREDPAR LIBSHAREDPAR_UPDATEONLY PARDEP BUILD_COGNOMEN LIBCOGNOMEN MESA_DIR MESA_INCLUDE MESA_LIBS VIEWER_MESA_STUB_CPPFLAGS VIEWER_MESA_LIBS BUILD_MESA_STUB ICET_CXXFLAGS ICET_LDFLAGS ICET_LIBS ICET_ENG_MAIN_OBJ CC CFLAGS ac_ct_CC GL_LIBS VTK_DIR VTK_INCLUDES VTK_LIBS VTK_LIGHTWEIGHT_LIBS AVTPREP_SER AVTPREP_PAR CONVERT_SER CONVERT_PAR MAKEMILI_SER MAKEMILI_PAR ENGINE_SER ENGINE_PAR ENGINELIBSER ENGINELIBPAR METADATA_SERVER MDSERVERLIB MDSERVEROBJ VISITPY SCRIPTINGLIB SCRIPTINGOBJ PY_BUILD_VISITMODULE GUI GUILIB GUIOBJ GUIFRAMEWORKS VIEWER VISWINDOW VIEWERLIB VIEWEROBJ ENGINEPROXYDIR ANNOTATION_FLAGS JAVAC JAVA_TARGET JAR JAVAFLAGS JAVAPLUGINFLAGS BUILD_SLIVR SLIVR_INCLUDE SLIVR_LIBS TEEM_CMAKE_C_FLAGS SLIVR_CMAKE_SHARED_LINKER_FLAGS SLIVR_GUI_IMPL SLIVR_GUI_HDR HELP PLOT_BUILD_DIRS OPERATOR_BUILD_DIRS DB_BUILD_DIRS BUILD_GLEW GLEW_INCLUDE GLEW_LIBS BUILD_BILIB VISITWRAPPER_RPATH CXXCPP CPP F77 FFLAGS ac_ct_F77 SET_MAKE RANLIB ac_ct_RANLIB MAKEDEPEND BUILD_FORTRAN OS_RULE BUILD_ZLIB ZLIB_LIB HDF5_INCLUDE HDF5_LIB HDF5_TARGET SILO_INCLUDE SILO_LIB SILO_TARGET EXODUS EXODUS_LIB EXODUS_LIBS EXODUS_FLAGS PDB PDB_FLAGS PDB_LIBS PDB_EXEC MILI MILI_FLAGS MILI_LIBS MILI_DIR TCMALLOC_LIB TCMALLOC_DIR CREATE_TCMALLOC_LINK HDF4 HDF4_FLAGS HDF4_LIBS HDF4_LIBDIR BOXLIB2D BOXLIB2D_INCLUDE BOXLIB2D_LIBS BOXLIB2D_LIBDIR BOXLIB3D BOXLIB3D_INCLUDE BOXLIB3D_LIBS BOXLIB3D_LIBDIR H5PART H5PART_INCLUDE H5PART_LIB H5PART_LIBDIR FASTBIT FASTBIT_INCLUDE FASTBIT_LIB FASTBIT_LIBDIR VISUS VISUS_INCLUDE VISUS_LIB NETCDF NETCDF_INCLUDE NETCDF_LIB NETCDF_CXX_LIB CGNS CGNS_INCLUDE CGNS_LIB GDAL GDAL_INCLUDE GDAL_LIB GDAL_LIBS CFITSIO CFITSIO_INCLUDE CFITSIO_LIB CFITSIO_LIBDIR ITAPS_C_INCLUDE ITAPS_C_LIB ITAPS_C0_INCLUDE ITAPS_C0_LIB ITAPS_C1_INCLUDE ITAPS_C1_LIB ITAPS_C2_INCLUDE ITAPS_C2_LIB ITAPS_C3_INCLUDE ITAPS_C3_LIB ITAPS_C4_INCLUDE ITAPS_C4_LIB ITAPS_C CCMIO CCMIO_INCLUDE CCMIO_LIBS CCMIO_LIBDIR SIMULATION EXPORT_DYNAMIC ENGINE_CPPFLAGS SILOOBJVTK_CPPFLAGS PREPROCESSOR_CPPFLAGS PREPROCESSOR_PARALLEL_SRC COMPONENT_CPPFLAGS VISIT_VTK_CPPFLAGS VISIT_VTK_LDFLAGS VIEWER_CPPFLAGS QT_BIN QT_INCLUDE QT_LIB LIBQT QT_LIBS QUI_LIBS QT_LDFLAGS QT_STATICLDFLAGS QT_CXXFLAGS QT_MOC X_LIBS VTKQT_CPPFLAGS VTKQT VTKQT_LIBS PTHREAD_LIB PTHREAD_CXXFLAGS PYDIR PYVERSION PY_INCLUDEDIR PY_CXXFLAGS PY_LDFLAGS PY_LIB PY_CLI_LIB EXE_LDFLAGS PLUGIN_LDFLAGS DATA_EXE_LDFLAGS SHLIB_CREATEPROG SHLIB_LIBS SHLIB_SERLIBS SHLIB_PARLIBS SHLIB_MPI_LIBS SHLIB_ILIBS SHLIB_GLIBS SHLIB_VLIBS SHLIB_MLIBS SHLIB_ESERLIBS SHLIB_EPARLIBS SHLIB_SLIBS SHLIB_POSTPROCESS_ILIBS SHLIB_POSTPROCESS_GLIBS SHLIB_POSTPROCESS_VLIBS SHLIB_POSTPROCESS_MLIBS SHLIB_POSTPROCESS_ESERLIBS SHLIB_POSTPROCESS_EPARLIBS SHLIB_POSTPROCESS_SLIBS SHLIB_SOEXT SHLIB_LIBEXT SHLIB_POSTPROCESS SHLIB_POSTPROCESS_SER SHLIB_POSTPROCESS_PAR SHLIB_TMPDIR PREBIND_LIBS ENGINEWRAPSER ENGINEWRAPPAR CREATE_SILO_LINK CREATE_MILI_LINK CREATE_HDF4_LINK CREATE_NETCDF_LINK CREATE_CGNS_LINK CREATE_GDAL_LINK CREATE_EXODUS_LINK CREATE_BOXLIB2D_LINK CREATE_BOXLIB3D_LINK CREATE_CFITSIO_LINK CREATE_H5PART_LINK CREATE_FASTBIT_LINK CREATE_CCMIO_LINK VAC_CV_LIBDIR_CREATE_LINKS VAC_CV_LIBDIR_DESTROY_LINKS MG tmpbin tmpinc tmplib plotplugindir operatorplugindir databaseplugindir DATA_REL_VISIT_PATH LIBOBJS LTLIBOBJS'
+ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS TOPDIR PLATFORM_CPPFLAGS SUBDIRS ALLSUBDIRS SRC BUILD_DBIO_ONLY NON_DBIO_SERLIBS NON_DBIO_PARLIBS CMAKE CXXFLAGS EGREP CXX LDFLAGS CPPFLAGS ac_ct_CXX EXEEXT OBJEXT PARALLEL PARALLEL_CPPFLAGS MPI_LIBS MPI_CC MPI_CXX LIBSTATICPAR LIBSHAREDPAR LIBSHAREDPAR_UPDATEONLY PARDEP BUILD_COGNOMEN LIBCOGNOMEN MESA_DIR MESA_INCLUDE MESA_LIBS VIEWER_MESA_STUB_CPPFLAGS VIEWER_MESA_LIBS BUILD_MESA_STUB ICET_CXXFLAGS ICET_LDFLAGS ICET_LIBS ICET_ENG_MAIN_OBJ CC CFLAGS ac_ct_CC GL_LIBS VTK_DIR VTK_INCLUDES VTK_LIBS VTK_LIGHTWEIGHT_LIBS AVTPREP_SER AVTPREP_PAR CONVERT_SER CONVERT_PAR MAKEMILI_SER MAKEMILI_PAR ENGINE_SER ENGINE_PAR ENGINELIBSER ENGINELIBPAR METADATA_SERVER MDSERVERLIB MDSERVEROBJ VISITPY SCRIPTINGLIB SCRIPTINGOBJ PY_BUILD_VISITMODULE VIEWER VISWINDOW VIEWERLIB VIEWEROBJ VIEWERLIB_SRC VIEWEREXE_SRC ENGINEPROXYDIR GUI GUILIB GUIOBJ GUIFRAMEWORKS ANNOTATION_FLAGS JAVAC JAVA_TARGET JAR JAVAFLAGS JAVAPLUGINFLAGS BUILD_SLIVR SLIVR_INCLUDE SLIVR_LIBS TEEM_CMAKE_C_FLAGS SLIVR_CMAKE_SHARED_LINKER_FLAGS SLIVR_GUI_IMPL SLIVR_GUI_HDR HELP PLOT_BUILD_DIRS OPERATOR_BUILD_DIRS DB_BUILD_DIRS BUILD_GLEW GLEW_INCLUDE GLEW_LIBS BUILD_BILIB VISITWRAPPER_RPATH CXXCPP CPP F77 FFLAGS ac_ct_F77 SET_MAKE RANLIB ac_ct_RANLIB MAKEDEPEND BUILD_FORTRAN OS_RULE BUILD_ZLIB ZLIB_LIB HDF5_INCLUDE HDF5_LIB HDF5_TARGET SILO_INCLUDE SILO_LIB SILO_TARGET EXODUS EXODUS_LIB EXODUS_LIBS EXODUS_FLAGS PDB PDB_FLAGS PDB_LIBS PDB_EXEC MILI MILI_FLAGS MILI_LIBS MILI_DIR TCMALLOC_LIB TCMALLOC_DIR CREATE_TCMALLOC_LINK HDF4 HDF4_FLAGS HDF4_LIBS HDF4_LIBDIR BOXLIB2D BOXLIB2D_INCLUDE BOXLIB2D_LIBS BOXLIB2D_LIBDIR BOXLIB3D BOXLIB3D_INCLUDE BOXLIB3D_LIBS BOXLIB3D_LIBDIR H5PART H5PART_INCLUDE H5PART_LIB H5PART_LIBDIR FASTBIT FASTBIT_INCLUDE FASTBIT_LIB FASTBIT_LIBDIR VISUS VISUS_INCLUDE VISUS_LIB NETCDF NETCDF_INCLUDE NETCDF_LIB NETCDF_CXX_LIB CGNS CGNS_INCLUDE CGNS_LIB GDAL GDAL_INCLUDE GDAL_LIB GDAL_LIBS CFITSIO CFITSIO_INCLUDE CFITSIO_LIB CFITSIO_LIBDIR ITAPS_C_INCLUDE ITAPS_C_LIB ITAPS_C0_INCLUDE ITAPS_C0_LIB ITAPS_C1_INCLUDE ITAPS_C1_LIB ITAPS_C2_INCLUDE ITAPS_C2_LIB ITAPS_C3_INCLUDE ITAPS_C3_LIB ITAPS_C4_INCLUDE ITAPS_C4_LIB ITAPS_C CCMIO CCMIO_INCLUDE CCMIO_LIBS CCMIO_LIBDIR SIMULATION EXPORT_DYNAMIC ENGINE_CPPFLAGS SILOOBJVTK_CPPFLAGS PREPROCESSOR_CPPFLAGS PREPROCESSOR_PARALLEL_SRC COMPONENT_CPPFLAGS VISIT_VTK_CPPFLAGS VISIT_VTK_LDFLAGS VIEWER_CPPFLAGS QT_BIN QT_INCLUDE QT_LIB LIBQT QT_LIBS QUI_LIBS QT_LDFLAGS QT_STATICLDFLAGS QT_CXXFLAGS QT_MOC X_LIBS VTKQT_CPPFLAGS VTKQT VTKQT_LIBS PTHREAD_LIB PTHREAD_CXXFLAGS PYDIR PYVERSION PY_INCLUDEDIR PY_CXXFLAGS PY_LDFLAGS PY_LIB PY_CLI_LIB EXE_LDFLAGS PLUGIN_LDFLAGS DATA_EXE_LDFLAGS SHLIB_CREATEPROG SHLIB_LIBS SHLIB_SERLIBS SHLIB_PARLIBS SHLIB_MPI_LIBS SHLIB_ILIBS SHLIB_GLIBS SHLIB_VLIBS SHLIB_MLIBS SHLIB_ESERLIBS SHLIB_EPARLIBS SHLIB_SLIBS SHLIB_POSTPROCESS_ILIBS SHLIB_POSTPROCESS_GLIBS SHLIB_POSTPROCESS_VLIBS SHLIB_POSTPROCESS_MLIBS SHLIB_POSTPROCESS_ESERLIBS SHLIB_POSTPROCESS_EPARLIBS SHLIB_POSTPROCESS_SLIBS SHLIB_SOEXT SHLIB_LIBEXT SHLIB_POSTPROCESS SHLIB_POSTPROCESS_SER SHLIB_POSTPROCESS_PAR SHLIB_TMPDIR PREBIND_LIBS ENGINEWRAPSER ENGINEWRAPPAR CREATE_SILO_LINK CREATE_MILI_LINK CREATE_HDF4_LINK CREATE_NETCDF_LINK CREATE_CGNS_LINK CREATE_GDAL_LINK CREATE_EXODUS_LINK CREATE_BOXLIB2D_LINK CREATE_BOXLIB3D_LINK CREATE_CFITSIO_LINK CREATE_H5PART_LINK CREATE_FASTBIT_LINK CREATE_CCMIO_LINK VAC_CV_LIBDIR_CREATE_LINKS VAC_CV_LIBDIR_DESTROY_LINKS MG tmpbin tmpinc tmplib plotplugindir operatorplugindir databaseplugindir DATA_REL_VISIT_PATH LIBOBJS LTLIBOBJS'
 ac_subst_files='VARIABLES TARGETS DIRTARGETS LIBTARGETS PARLIBTARGETS SOURCE_DEPENDENCIES'
 
 # Initialize some variables set by options.
@@ -865,6 +865,8 @@ if test -n "$ac_init_help"; then
 Optional Features:
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
+  --enable-dbio-only      build only the components necessary to support
+                          database I/O
   --enable-fake-exceptions       do not make use of C++'s exception library
   --enable-ignore-hangups        ignore hangup signals (this avoids RHEL3 bug)
   --enable-parallel       make the parallel version
@@ -875,7 +877,6 @@ Optional Features:
   --disable-mdserver      build without mdserver
   --disable-scripting     build without CLI Python scripting capability
   --enable-visitmodule    build a VisIt Python module
-  --disable-gui           build without gui
   --disable-annotations   build without annotations
   --enable-java           build the Java client library
   --enable-slivr           build with the SLIVR volume rendering library
@@ -1558,6 +1559,44 @@ fi
 #
 # Check for platform specific flags.
 #
+
+
+#
+# Setup default standard dir targets. These can get overridden
+# for specific types of builds like dbio-only.
+#
+SUBDIRS="$""(SUBDIRS_STD)"
+ALLSUBDIRS="$""(ALLSUBDIRS_STD)"
+SRC="$""(SRC_STD)"
+BUILD_DBIO_ONLY=""
+
+
+
+
+
+#
+# Check for database-only build. Disable a slew of things if so.
+#
+enable_scripting=yes
+# Check whether --enable-dbio-only or --disable-dbio-only was given.
+if test "${enable_dbio_only+set}" = set; then
+  enableval="$enable_dbio_only"
+
+fi;
+if test "$enable_dbio_only" = yes; then
+    enable_scripting=no
+
+cat >>confdefs.h <<\_ACEOF
+#define DBIO_ONLY 1
+_ACEOF
+
+    NON_DBIO_SERLIBS=""
+    NON_DBIO_PARLIBS=""
+else
+    NON_DBIO_SERLIBS="$""(NON_DBIO_SERLIBS)"
+    NON_DBIO_PARLIBS="$""(NON_DBIO_SERLIBS)"
+fi
+
 
 
 #
@@ -3940,94 +3979,63 @@ fi
 
 
 
-# Check to see if the --disable-gui configure flag was given. If
-# if was then we will use the enable_gui variable later on to see
-# if we should test for X. We will also not build the Gui or the
-# viewer.
-#
-echo "$as_me:$LINENO: checking if GUI features are enabled" >&5
-echo $ECHO_N "checking if GUI features are enabled... $ECHO_C" >&6
-# Check whether --enable-gui or --disable-gui was given.
-if test "${enable_gui+set}" = set; then
-  enableval="$enable_gui"
-  UseGUI="$enable_gui"
-else
-  UseGUI=yes
-fi;
-if test "$UseGUI" = "yes"; then
-    echo "$as_me:$LINENO: result: yes" >&5
-echo "${ECHO_T}yes" >&6
-    enable_gui=yes
-
-                echo "$as_me:$LINENO: checking for viewer" >&5
+echo "$as_me:$LINENO: checking for viewer" >&5
 echo $ECHO_N "checking for viewer... $ECHO_C" >&6
-    if test -d viewer; then
-        echo "$as_me:$LINENO: result: found" >&5
+if test -d viewer; then
+    echo "$as_me:$LINENO: result: found" >&5
 echo "${ECHO_T}found" >&6
-        VIEWER="viewer"
-        VISWINDOW="VisWindow"
-        VIEWERLIB="$""(VDSO)"
-        VIEWEROBJ="$""(VOBJ)"
-
-        if test -z "$VTK"; then
-            { { echo "$as_me:$LINENO: error: viewer is here, but no VTK library was specified.
-The viewer cannot be built without VTK.  Make sure the VTK environment variable
-is set and rerun 'configure'." >&5
-echo "$as_me: error: viewer is here, but no VTK library was specified.
-The viewer cannot be built without VTK.  Make sure the VTK environment variable
-is set and rerun 'configure'." >&2;}
-   { (exit 1); exit 1; }; }
-        fi
+    VIEWER="viewer"
+    VISWINDOW="VisWindow"
+    VIEWERLIB="$""(VDSO)"
+    VIEWEROBJ="$""(VOBJ)"
+    # The private source can go into the executable on all UNIX versions
+    # except for MacOS X.
+    if test "$UNAME" = "Darwin" ; then
+        VIEWERLIB_SRC="$""(PUBLIC_SRC) $""(PRIVATE_SRC) $""(SRCMOC)"
+        VIEWEREXE_SRC="$""(MAINSRC)"
     else
-        echo "$as_me:$LINENO: result: not found" >&5
-echo "${ECHO_T}not found" >&6
-        VIEWER=""
-        VISWINDOW=""
+        VIEWERLIB_SRC="$""(PUBLIC_SRC)"
+        VIEWEREXE_SRC="$""(MAINSRC) $""(PRIVATE_SRC) $""(SRCMOC)"
     fi
-
-                echo "$as_me:$LINENO: checking for gui" >&5
-echo $ECHO_N "checking for gui... $ECHO_C" >&6
-    if test -d gui; then
-        echo "$as_me:$LINENO: result: found" >&5
-echo "${ECHO_T}found" >&6
-        GUI="gui"
-        GUILIB="$""(GDSO)"
-        GUIOBJ="$""(GOBJ)"
-        if test "$UNAME" = "Darwin"; then
-            GUIFRAMEWORKS="-framework Carbon"
-        else
-            GUIFRAMEWORKS=""
-        fi
-        if test -z "$METADATA_SERVER"; then
-            { { echo "$as_me:$LINENO: error: gui is here, but the metadata server is not.
-The gui will not run without the metadata server. Check to see that the
-mdserver directory exists and rerun 'configure'." >&5
-echo "$as_me: error: gui is here, but the metadata server is not.
-The gui will not run without the metadata server. Check to see that the
-mdserver directory exists and rerun 'configure'." >&2;}
-   { (exit 1); exit 1; }; }
-        fi
-    else
-        echo "$as_me:$LINENO: result: not found" >&5
-echo "${ECHO_T}not found" >&6
-        GUI=""
-        GUIOBJ=""
-        GUIFRAMEWORKS=""
-    fi
-
     ENGINEPROXYDIR="proxy"
 else
-    echo "$as_me:$LINENO: result: no" >&5
-echo "${ECHO_T}no" >&6
-    enable_gui=no
+    VIEWER=""
+    VISWINDOW=""
+    VIEWERLIB=""
+    VIEWEROBJ=""
+    VIEWERLIB_SRC=""
+    VIEWEREXE_SRC=""
     ENGINEPROXYDIR=""
-    GUI_CXXFLAGS=""
 fi
 
 
 
 
 
+
+
+
+echo "$as_me:$LINENO: checking for gui" >&5
+echo $ECHO_N "checking for gui... $ECHO_C" >&6
+if test -d gui; then
+    echo "$as_me:$LINENO: result: found" >&5
+echo "${ECHO_T}found" >&6
+    GUI="gui"
+    GUILIB="$""(GDSO)"
+    GUIOBJ="$""(GOBJ)"
+    if test "$UNAME" = "Darwin"; then
+        GUIFRAMEWORKS="-framework Carbon"
+    else
+        GUIFRAMEWORKS=""
+    fi
+else
+    echo "$as_me:$LINENO: result: not found" >&5
+echo "${ECHO_T}not found" >&6
+    GUI=""
+    GUILIB=""
+    GUIOBJ=""
+    GUIFRAMEWORKS=""
+fi
 
 
 
@@ -6026,7 +6034,7 @@ fi
 
 
 # Provide some information about the compiler.
-echo "$as_me:6029:" \
+echo "$as_me:6037:" \
      "checking for Fortran 77 compiler version" >&5
 ac_compiler=`set X $ac_compile; echo $2`
 { (eval echo "$as_me:$LINENO: \"$ac_compiler --version </dev/null >&5\"") >&5
@@ -9857,7 +9865,7 @@ VISIT_VTK_CPPFLAGS="$VISIT_VTK_CPPFLAGS $VTK_INCLUDES -I$""(TOPDIR)/include/visi
 # Check to see if we can compile with Gui support. If we can't then
 # make sure no windowing system stuff gets in.
 #
-if test "$enable_gui" = "yes"; then
+if test ! "$enable_dbio_only" = yes; then
                 VIEWER_CPPFLAGS="$VIEWER_CPPFLAGS $VTK_INCLUDES"
     VIEWER_CPPFLAGS="$VIEWER_CPPFLAGS $SILO_INCLUDE"
 
@@ -9950,7 +9958,7 @@ fi
 #
 # Only enable VTKQT if we're building the viewer.
 #
-if test -n "$VIEWER"; then
+if test ! "$enable_dbio_only" = yes; then
    VTKQT_CPPFLAGS="-I$""(TOPDIR)/vtkqt"
    VTKQT="vtkqt"
    #
@@ -10074,7 +10082,7 @@ ac_x_header_dirs='
 /usr/openwin/share/include'
 
 if test "$ac_x_includes" = no; then
-  # Guess where to find include files, by looking for Intrinsic.h.
+  # Guess where to find include files, by looking for Xlib.h.
   # First, try using that file with no special directory specified.
   cat >conftest.$ac_ext <<_ACEOF
 /* confdefs.h.  */
@@ -10082,7 +10090,7 @@ _ACEOF
 cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
-#include <X11/Intrinsic.h>
+#include <X11/Xlib.h>
 _ACEOF
 if { (eval echo "$as_me:$LINENO: \"$ac_cpp conftest.$ac_ext\"") >&5
   (eval $ac_cpp conftest.$ac_ext) 2>conftest.er1
@@ -10109,7 +10117,7 @@ else
 sed 's/^/| /' conftest.$ac_ext >&5
 
   for ac_dir in $ac_x_header_dirs; do
-  if test -r "$ac_dir/X11/Intrinsic.h"; then
+  if test -r "$ac_dir/X11/Xlib.h"; then
     ac_x_includes=$ac_dir
     break
   fi
@@ -10123,18 +10131,18 @@ if test "$ac_x_libraries" = no; then
   # See if we find them without any special options.
   # Don't add to $LIBS permanently.
   ac_save_LIBS=$LIBS
-  LIBS="-lXt $LIBS"
+  LIBS="-lX11 $LIBS"
   cat >conftest.$ac_ext <<_ACEOF
 /* confdefs.h.  */
 _ACEOF
 cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
-#include <X11/Intrinsic.h>
+#include <X11/Xlib.h>
 int
 main ()
 {
-XtMalloc (0)
+XrmInitialize ()
   ;
   return 0;
 }
@@ -10634,8 +10642,8 @@ echo "${ECHO_T}yes" >&6
 cat >>confdefs.h <<\_ACEOF
 #define HAVE_PYPARSING 1
 _ACEOF
-    else
 
+    else
         echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6
     fi
@@ -11303,19 +11311,14 @@ case $UNAME in
     ;;
 
   Linux)
-    if test "`echo $CXX | cut -c1-3`" = "xlC"; then
-        if test -z "$SHLIB_CREATEPROG"; then
-            SHLIB_CREATEPROG="$""(CXX) -qmkshrobj -o"
-        fi
-    else # Expecting g++
-        if test -z "$SHLIB_CREATEPROG"; then
-            SHLIB_CREATEPROG="$""(CXX) -shared -o"
-        fi
-        # Set RPATH relative to executable
-        EXE_LDFLAGS="$EXE_LDFLAGS -Wl,--rpath,\\\$\$ORIGIN/../lib"
-        PLUGIN_LDFLAGS="$PLUGIN_LDFLAGS -Wl,--rpath,\\\$\$ORIGIN/../../lib"
-        DATA_EXE_LDFLAGS="$DATA_EXE_LDFLAGS -Wl,--rpath,\\\$\$ORIGIN/../src/lib"
+    # Expecting g++
+    if test -z "$SHLIB_CREATEPROG"; then
+        SHLIB_CREATEPROG="$""(CXX) -shared -o"
     fi
+    # Set RPATH relative to executable
+    EXE_LDFLAGS="$EXE_LDFLAGS -Wl,--rpath,\\\$\$ORIGIN/../lib"
+    PLUGIN_LDFLAGS="$PLUGIN_LDFLAGS -Wl,--rpath,\\\$\$ORIGIN/../../lib"
+    DATA_EXE_LDFLAGS="$DATA_EXE_LDFLAGS -Wl,--rpath,\\\$\$ORIGIN/../src/lib"
     ;;
 
   Darwin)
@@ -19296,11 +19299,7 @@ else
     MDSERVER_FILES=""
 fi
 
-if test -n "$GUI" && test "$enable_gui" = "yes" ; then
-    GUI_FILES="gui/Makefile"
-else
-    GUI_FILES=""
-fi
+GUI_FILES="gui/Makefile"
 
 if test -n "$HELP"; then
     HELP_FILES="help/Makefile"
@@ -19373,7 +19372,8 @@ TOOLS_FILES="tools/Makefile
 VISIT_VTK_FILES="visit_vtk/Makefile
                  visit_vtk/lightweight/Makefile
                  visit_vtk/full/Makefile
-                 visit_vtk/parallel/Makefile"
+                 visit_vtk/parallel/Makefile
+                 visit_vtk/rendering/Makefile"
 COMPONENT_FILES="avt/Makefile
                  avt/DBAtts/Makefile
                  avt/DDF/Makefile
@@ -19442,6 +19442,51 @@ LAUNCHER_FILES="launcher/Makefile
                 launcher/rpc/Makefile
                 launcher/proxy/Makefile
                 launcher/main/Makefile"
+
+if test "$enable_dbio_only" = yes; then
+    CONVERT_SER=""
+    CONVERT_PAR=""
+    SUBDIRS="$""(SUBDIRS_DBIO_ONLY)"
+    ALLSUBDIRS="$""(ALLSUBDIRS_DBIO_ONLY)"
+    SRC="$""(SRC_DBIO_ONLY)"
+    BUILD_DBIO_ONLY="$""(BUILD_DBIO_ONLY)"
+    MDSERVERLIB="$""(MDSO)"
+    MDSERVEROBJ="$""(MOBJ)"
+    ENGINELIBSER="$""(ESERDSO)"
+    ENGINELIBPAR="$""(EPARDSO)"
+    GUI_FILES=""
+    HELP_FILES=""
+    WINUTIL_FILES=""
+    VIEWER_FILES=""
+    ENGINE_FILES=""
+    MDSERVER_FILES=""
+    LAUNCHER_FILES=""
+    VTKQT_FILES=""
+    PLOT_FILES=""
+    OPERATOR_FILES=""
+    VISITPY_FILES=""
+    SIMULATION=""
+    SIMULATION_PROTOTYPE_FILES=""
+    CQSCORE_FILES=""
+    JAVA_FILES=""
+    THIRD_PARTY_BUILTIN_FILES="
+        third_party_builtin/Makefile
+        third_party_builtin/bilib/Makefile
+        third_party_builtin/bow/Makefile"
+    TOOLS_FILES="
+        tools/Makefile
+        tools/convert/Makefile
+        bin/topdir"
+    VISIT_VTK_FILES="
+        visit_vtk/Makefile
+        visit_vtk/lightweight/Makefile
+        visit_vtk/full/Makefile"
+    COMPONENT_FILES="
+        avt/Makefile
+        avt/DBAtts/Makefile
+        avt/Database/Makefile
+        avt/Pipeline/Makefile"
+fi
 
                                                                                                                                                                                                                             ac_config_files="$ac_config_files $STANDARD_FILES $GUI_FILES $HELP_FILES $WINUTIL_FILES $VIEWER_FILES $ENGINE_FILES $MDSERVER_FILES $LAUNCHER_FILES $COMMON_FILES $TOOLS_FILES $VISIT_VTK_FILES $VTKQT_FILES $COMPONENT_FILES $PLOT_FILES $OPERATOR_FILES $DATABASE_FILES $DATA_FILES $VISITPY_FILES $SIMULATION_PROTOTYPE_FILES $CQSCORE_FILES $THIRD_PARTY_BUILTIN_FILES $JAVA_FILES"
           ac_config_commands="$ac_config_commands default"
@@ -20083,6 +20128,12 @@ s,@ECHO_T@,$ECHO_T,;t t
 s,@LIBS@,$LIBS,;t t
 s,@TOPDIR@,$TOPDIR,;t t
 s,@PLATFORM_CPPFLAGS@,$PLATFORM_CPPFLAGS,;t t
+s,@SUBDIRS@,$SUBDIRS,;t t
+s,@ALLSUBDIRS@,$ALLSUBDIRS,;t t
+s,@SRC@,$SRC,;t t
+s,@BUILD_DBIO_ONLY@,$BUILD_DBIO_ONLY,;t t
+s,@NON_DBIO_SERLIBS@,$NON_DBIO_SERLIBS,;t t
+s,@NON_DBIO_PARLIBS@,$NON_DBIO_PARLIBS,;t t
 s,@CMAKE@,$CMAKE,;t t
 s,@CXXFLAGS@,$CXXFLAGS,;t t
 s,@EGREP@,$EGREP,;t t
@@ -20138,15 +20189,17 @@ s,@VISITPY@,$VISITPY,;t t
 s,@SCRIPTINGLIB@,$SCRIPTINGLIB,;t t
 s,@SCRIPTINGOBJ@,$SCRIPTINGOBJ,;t t
 s,@PY_BUILD_VISITMODULE@,$PY_BUILD_VISITMODULE,;t t
-s,@GUI@,$GUI,;t t
-s,@GUILIB@,$GUILIB,;t t
-s,@GUIOBJ@,$GUIOBJ,;t t
-s,@GUIFRAMEWORKS@,$GUIFRAMEWORKS,;t t
 s,@VIEWER@,$VIEWER,;t t
 s,@VISWINDOW@,$VISWINDOW,;t t
 s,@VIEWERLIB@,$VIEWERLIB,;t t
 s,@VIEWEROBJ@,$VIEWEROBJ,;t t
+s,@VIEWERLIB_SRC@,$VIEWERLIB_SRC,;t t
+s,@VIEWEREXE_SRC@,$VIEWEREXE_SRC,;t t
 s,@ENGINEPROXYDIR@,$ENGINEPROXYDIR,;t t
+s,@GUI@,$GUI,;t t
+s,@GUILIB@,$GUILIB,;t t
+s,@GUIOBJ@,$GUIOBJ,;t t
+s,@GUIFRAMEWORKS@,$GUIFRAMEWORKS,;t t
 s,@ANNOTATION_FLAGS@,$ANNOTATION_FLAGS,;t t
 s,@JAVAC@,$JAVAC,;t t
 s,@JAVA_TARGET@,$JAVA_TARGET,;t t
@@ -20984,17 +21037,23 @@ fi
 (cd include   && ${MAKE-make})
 (cd lib       && ${MAKE-make})
 (cd bin       && ${MAKE-make})
-rm -f $TOPDIR/exe/xml2makefile
-(cd tools/xml && ${MAKE-make} $TOPDIR/exe/xml2makefile)
+if test ! "$enable_dbio_only" = yes; then
+    rm -f $TOPDIR/exe/xml2makefile
+    (cd tools/xml && ${MAKE-make} $TOPDIR/exe/xml2makefile)
+fi
 
 # If we 're on a Darwin system, make bundles for the gui and the viewer.
 if test "$UNAME" = "Darwin";  then
     svn_bin/makebundles
 fi
 
-(cd plots     && ${MAKE-make} dirmakefiles)
-(cd operators && ${MAKE-make} dirmakefiles)
-(cd databases && ${MAKE-make} dirmakefiles)
+if test ! "$enable_dbio_only" = yes; then
+    (cd plots     && ${MAKE-make} dirmakefiles)
+    (cd operators && ${MAKE-make} dirmakefiles)
+    (cd databases && ${MAKE-make} dirmakefiles)
+else
+    (cd databases && ${MAKE-make} dirmakefiles_dbio_only)
+fi
 if test -n "$JAVA_TARGET"; then
 (cd java      && ${MAKE-make} version)
 fi

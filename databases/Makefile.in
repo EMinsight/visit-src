@@ -458,6 +458,9 @@ dirmakefiles:
 	@files=""; for dir in $(ALLSUBDIRS); do if test -d $$dir; then files="$$files $$dir/$${dir}.xml"; fi; done; \
         ../bin/xml2makefile -noprint -clobber -outputtoinputdir $$files
 
+dirmakefiles_dbio_only:
+	for dir in $(ALLSUBDIRS); do if test -d $$dir; then (cd $$dir && ../../bin/db_xml2makefile $${dir}.xml) || exit 1; fi; done
+
 clean:
 	-$(RM) $(LIB)
 	for dir in $(SUBDIRS); do (cd $$dir && test ! -f Makefile || $(MAKE) $@) || exit 1; done

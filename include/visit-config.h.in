@@ -1,5 +1,8 @@
 /* include/visit-config.h.in.  Generated from configure.in by autoheader.  */
 
+/* Define if this is a database I/O only build */
+#undef DBIO_ONLY
+
 /* Define if you have the boost interval template library. */
 #undef HAVE_BILIB
 
@@ -17,9 +20,6 @@
 
 /* Define if you have the gdal headers. */
 #undef HAVE_GDAL_H
-
-/* Define if you have pyparsing */
-#undef HAVE_PYPARSING
 
 /* Define if you have the IceT library */
 #undef HAVE_ICET
@@ -51,6 +51,9 @@
 /* Define if you have the netcdf library. */
 #undef HAVE_LIBNETCDF
 
+/* Define if you have silo. */
+#undef HAVE_LIBSILO
+
 /* Define if you have the SLIVR library. */
 #undef HAVE_LIBSLIVR
 
@@ -71,6 +74,9 @@
 
 /* Define if you are using PDB proper instead of PDB lite. */
 #undef HAVE_PDB_PROPER
+
+/* Define if you have pyparsing. */
+#undef HAVE_PYPARSING
 
 /* Define to 1 if you have the `select' function. */
 #undef HAVE_SELECT

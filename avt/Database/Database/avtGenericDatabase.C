@@ -41,6 +41,7 @@
 // ************************************************************************* //
 
 #include <avtGenericDatabase.h>
+#include <visit-config.h>
 #include <algorithm>
 #include <float.h>
 
@@ -97,8 +98,10 @@
 #include <avtUnstructuredPointBoundaries.h>
 #include <PickAttributes.h>
 #include <PickVarInfo.h>
+#ifndef DBIO_ONLY
 #include <TetMIR.h>
 #include <ZooMIR.h>
+#endif
 
 #include <DebugStream.h>
 #include <BadDomainException.h>
@@ -3484,6 +3487,7 @@ avtGenericDatabase::MaterialSelect(vtkDataSet *ds, avtMaterial *mat,
                         bool &notAllCellsSubdivided,
                         bool reUseMIR)
 {
+#ifndef DBIO_ONLY
     if (ds == NULL)
     {
         char msg[128];
@@ -3748,6 +3752,9 @@ avtGenericDatabase::MaterialSelect(vtkDataSet *ds, avtMaterial *mat,
     delete [] out_ds;
 
     return outDT;
+#else
+    return 0;
+#endif
 }
 
 
@@ -4228,8 +4235,10 @@ avtGenericDatabase::SpeciesSelect(avtDatasetCollection &dsc,
 
             avtMixedVariable *mixVarOut = NULL;
             vtkDataArray     *scalarOut = NULL;
+#ifndef DBIO_ONLY
             MIR::SpeciesSelect(specList, mat, species, arr, mixvar, 
                                scalarOut, mixVarOut);
+#endif
             ds->GetCellData()->RemoveArray(var.c_str());
             ds->GetCellData()->AddArray(scalarOut);
             if (activeVar)
@@ -4346,6 +4355,8 @@ avtGenericDatabase::GetMIR(int domain, const char *varname, int timestep,
                            bool &notAllCellsSubdivided, bool reUseMIR,
                            avtMaterial *&mat_to_use)
 {
+    void_ref_ptr vr = void_ref_ptr();
+#ifndef DBIO_ONLY
     mat_to_use = mat;
 
     char cacheLbl[1000];
@@ -4365,7 +4376,6 @@ avtGenericDatabase::GetMIR(int domain, const char *varname, int timestep,
     avtDatabaseMetaData *md = GetMetaData(timestep);
     string meshname = md->MeshForVar(varname);
     string matname  = md->MaterialOnMesh(meshname);
-    void_ref_ptr vr = void_ref_ptr();
     if (reUseMIR)
     {
         vr = cache.GetVoidRef(matname.c_str(), cacheLbl, timestep, domain);
@@ -4434,6 +4444,7 @@ avtGenericDatabase::GetMIR(int domain, const char *varname, int timestep,
     MIR *rv = (MIR *) *vr;
     subdivisionOccurred   = rv->SubdivisionOccurred();
     notAllCellsSubdivided = rv->NotAllCellsSubdivided();
+#endif
     return vr;
 }
 

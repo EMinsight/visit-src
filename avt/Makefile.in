@@ -95,9 +95,13 @@
 @VARIABLES@
 @DIRTARGETS@
 
-SUBDIRS=DBAtts Math IVP Pipeline DDF MIR Shapelets\
+SUBDIRS_DBIO_ONLY=DBAtts Pipeline Database
+
+SUBDIRS_STD=DBAtts Math IVP Pipeline DDF MIR Shapelets\
         View Filters Database Expressions Queries Plotter FileWriter \
         @VISWINDOW@ QtVisWindow
+
+SUBDIRS=@SUBDIRS@
 
 message:
 	@echo

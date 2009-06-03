@@ -35,55 +35,26 @@
 * DAMAGE.
 *
 *****************************************************************************/
-#ifndef VTK_TEXTURED_BACKGROUND_ACTOR_H
-#define VTK_TEXTURED_BACKGROUND_ACTOR_H
-#include <vtkActor2D.h>
-#include <visit_vtk_exports.h>
 
-class vtkTexture;
-class vtkRenderer;
+#ifndef RENDERING_VISIT_VTK_EXPORTS_H
+#define RENDERING_VISIT_VTK_EXPORTS_H
 
-// ****************************************************************************
-// Class: vtkTexturedBackgroundActor
-//
-// Purpose:
-//   This class is a 2D actor that can draw a background image into a render
-//   window.
-//
-// Notes:      This class does not need to be associated with a mapper because
-//             a specialized mapper is created and used internally.
-//
-// Programmer: Brad Whitlock
-// Creation:   Fri Nov 16 10:21:51 PST 2007
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-class VISIT_VTK_API vtkTexturedBackgroundActor : public vtkActor2D
-{
-public:
-  static vtkTexturedBackgroundActor *New();
- 
-  vtkTypeMacro(vtkTexturedBackgroundActor, vtkActor2D); 
-  virtual void PrintSelf(ostream &os, vtkIndent indent);
- 
-  virtual void ReleaseGraphicsResources(vtkWindow *);
-
-  int SetTextureAndRenderers(const char *filename, vtkRenderer *bg, vtkRenderer *canvas);
-
-  void SetSphereMode(bool);
-  void SetImageRepetitions(int,int);
-protected:
-   vtkTexturedBackgroundActor();
-  ~vtkTexturedBackgroundActor(); 
-
-   vtkMapper2D *GetInitializedMapper();
-   vtkTexture  *GetTexture(const char *);
-   void         SetTextureAndRenderers(vtkTexture *tex, vtkRenderer *bg, vtkRenderer *canvas);
-
-   vtkTexture  *texture;
-   char        *imageFile;
-};
+#if defined(_WIN32)
+#if defined(RENDERING_VISIT_VTK_EXPORTS) || defined (rendering_visit_vtk_EXPORTS)
+#define RENDERING_VISIT_VTK_API __declspec(dllexport)
+#else
+#define RENDERING_VISIT_VTK_API __declspec(dllimport)
+#endif
+#if defined(_MSC_VER)
+// Turn off warning about lack of DLL interface
+#pragma warning(disable:4251)
+// Turn off warning non-dll class is base for dll-interface class.
+#pragma warning(disable:4275)
+// Turn off warning about identifier truncation
+#pragma warning(disable:4786)
+#endif
+#else
+#define RENDERING_VISIT_VTK_API
+#endif
 
 #endif

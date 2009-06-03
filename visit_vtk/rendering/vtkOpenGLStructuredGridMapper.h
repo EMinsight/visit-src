@@ -25,13 +25,13 @@
 #define __vtkOpenGLStructuredGridMapper_h
 
 #include "vtkStructuredGridMapper.h"
-#include <visit_vtk_exports.h>
+#include <rendering_visit_vtk_exports.h>
 
 class vtkProperty;
 class vtkRenderWindow;
 class vtkOpenGLRenderer;
 
-class VISIT_VTK_API vtkOpenGLStructuredGridMapper : public vtkStructuredGridMapper
+class RENDERING_VISIT_VTK_API vtkOpenGLStructuredGridMapper : public vtkStructuredGridMapper
 {
 public:
   static vtkOpenGLStructuredGridMapper *New();
