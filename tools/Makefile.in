@@ -89,6 +89,10 @@
 #
 #    Mark C. Miller, Wed May 13 14:34:17 PDT 2009
 #    Moved some silo dependent dirs to SILO_TARGET
+#
+#    Brad Whitlock, Wed Jun 3 15:47:33 PST 2009
+#    I added an engine-only build option.
+#
 ##############################################################################
 
 @SET_MAKE@
@@ -103,10 +107,13 @@ OPTIONAL=avtprep classwriter doxygenate embedviewer windowmaker \
 SILO_TARGET=curv3dprep silex
 
 SUBDIRS_DBIO_ONLY=convert
+SUBDIRS_ENGINE_ONLY=xml
+SUBDIRS_SERVER_COMPONENTS_ONLY=xml
 SUBDIRS_STD=imagetools annotations convert embedviewer @MILI@ mpeg2encode protocol \
         surfcomp writer xml xmledit @SILO_TARGET@
 
 ALLSUBDIRS_DBIO_ONLY=$(SUBDIRS_DBIO_ONLY)
+ALLSUBDIRS_ENGINE_ONLY=$(SUBDIRS_ENGINE_ONLY)
 ALLSUBDIRS_STD=$(SUBDIRS_STD) $(MILI) $(OPTIONAL)
 
 SUBDIRS=@SUBDIRS@
