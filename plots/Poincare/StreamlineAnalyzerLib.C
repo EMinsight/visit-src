@@ -674,7 +674,7 @@ islandChecks( vector< Point >& points,
   // the hull is convex the base point may the centroid of all of the
   // points or based upon a point that is perpendicular to the
   // principal axis of the group of points.
-  unsigned int nodes[toroidalWinding];
+  vector<unsigned int>nodes(toroidalWinding);
 
   for( unsigned int i=0; i<toroidalWinding; i++ ) {
 
@@ -2690,7 +2690,7 @@ smoothCurve( vector< vector < Point > > &bins,
       {
         unsigned int nodes = bins[i].size();
 
-        pair< Point, unsigned int > *newPts = new pair< Point, unsigned int >[add*nodes];
+        vector<pair< Point, unsigned int > > newPts(add*nodes);
 
         for( unsigned int j=0; j<add*nodes; j++ )
           newPts[j] = pair< Point, unsigned int > (Point(0,0,0), 0 );
@@ -2763,8 +2763,6 @@ smoothCurve( vector< vector < Point > > &bins,
             }
           }
         }
-
-        delete [] newPts;
       }
 
       // Remove the last point so it is possilble to see the groups.
@@ -3005,7 +3003,7 @@ mergeOverlap( vector< vector < Point > > &bins,
     }
   } else {
 
-    vector < Point > *tmp_bins = new vector<Point>[toroidalWinding];
+    vector<vector < Point > > tmp_bins(toroidalWinding);
 
     // This gives the minimal number of nodes for each group.
     surfaceOverlapCheck( bins, toroidalWinding, skip, nnodes );
@@ -3112,8 +3110,6 @@ mergeOverlap( vector< vector < Point > > &bins,
     // Remove the last point so it is possilble to see the groups.
     for( unsigned int i=0; i<toroidalWinding; i++ )
       bins[i].erase( bins[i].end() );
-
-    delete [] tmp_bins;
   }
 
   // Update the approximate node count.
