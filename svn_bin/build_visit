@@ -4417,7 +4417,7 @@ qt -lSM -lICE -L/usr/X11R6/lib -lX11 -lXext -lXmu -lXt -lXi"
                -Wl,-headerpad_max_install_names \
                -Wl,-install_name,$INSTALLNAMEPATH/libsilo${SILO_H5}.${SO_EXT} \
                -Wl,-compatibility_version,${SILO_COMPATIBILITY_VERSION} \
-               -Wl,-current_version,${SILO_VERSION} $SILO_LINK_OPT
+               -Wl,-current_version,${SILO_VERSION} $SILO_LINK_OPT -lz
         fi
         if [[ $? != 0 ]] ; then
            echo "Silo dynamic library build failed.  Giving up"

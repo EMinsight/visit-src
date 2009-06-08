@@ -458,7 +458,7 @@ class MakefileGeneratorPlugin : public Plugin
                    "-lenginerpc -lviewerrpc -lmdserverproxy -lmdserverrpc "
                    "-lvclproxy -lvclrpc -lplugin -lqtviswindow "
                    "-lviswindow_ser -lavtwriter_ser -lvtkqt -lwinutil "
-                   "-lproxybase $(QT_LDFLAGS) $(QT_LIBS) $(ZLIB_LIB) "
+                   "-lproxybase -lrendering_visit_vtk $(QT_LDFLAGS) $(QT_LIBS) $(ZLIB_LIB) "
                    "$(GLEW_LIBS) $(MESA_LIBS) $(GL_LIBS)" << endl;
             out << "ESERLIBS_FOR_MACOSX_PREBINDING=-lavtddf_ser "
                    "-ldatabase_ser -lmir_ser -lplugin" << endl;
@@ -661,7 +661,7 @@ class MakefileGeneratorPlugin : public Plugin
                    "-lenginerpc -lviewerrpc -lmdserverproxy -lmdserverrpc "
                    "-lvclproxy -lvclrpc -lplugin -lqtviswindow "
                    "-lviswindow_ser -lavtwriter_ser -lvtkqt -lwinutil "
-                   "-lproxybase $(QT_LDFLAGS) $(QT_LIBS) $(ZLIB_LIB) "
+                   "-lproxybase -lrendering_visit_vtk $(QT_LDFLAGS) $(QT_LIBS) $(ZLIB_LIB) "
                    "$(GLEW_LIBS) $(MESA_LIBS) $(GL_LIBS)" << endl;
             out << "ESERLIBS_FOR_MACOSX_PREBINDING=-lavtddf_ser -ldatabase_ser -lmir_ser -lplugin" << endl;
             out << "EPARLIBS_FOR_MACOSX_PREBINDING=-lavtddf_par -ldatabase_par -lmir_par -lplugin" << endl;
