@@ -1398,14 +1398,23 @@ GetVisItInstallationDirectory(const char *version)
     }
     else
     {
-        // Use the VISITDEVDIR environment var.
-        std::string visitdev;
-        char *devdir = getenv("VISITDEVDIR");
-        if(devdir == 0)
-            visitdev = std::string("C:\\VisItDev") + std::string(version);
+        // See if the VISITHOME is defined as environment var.
+        char *homedir = getenv("VISITHOME");
+        if (homedir != 0)
+        {
+            installDir = homedir;
+        }
         else
-            visitdev = std::string(devdir);
-        installDir = visitdev + "\\bin\\" + _VISIT_MSVC_VER + "\\Release";
+        {
+            // Use the VISITDEVDIR environment var.
+            std::string visitdev;
+            char *devdir = getenv("VISITDEVDIR");
+            if(devdir == 0)
+                visitdev = std::string("C:\\VisItDev") + std::string(version);
+            else
+                visitdev = std::string(devdir);
+            installDir = visitdev + "\\bin\\" + _VISIT_MSVC_VER + "\\Release";
+        }
     }
     if (visitHome != 0)
         free(visitHome);
