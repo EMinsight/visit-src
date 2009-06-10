@@ -97,7 +97,7 @@ Consider the leaveDomains SLs and the balancing at the same time.
 #include <Expression.h>
 #include <ExpressionList.h>
 #include <ParsingExprList.h>
-
+#include <VisItStreamUtil.h>
 #include <snprintf.h>
 
 #ifdef PARALLEL
@@ -403,10 +403,10 @@ vtkDataSet *
 avtStreamlineFilter::GetDomain(const DomainType &domain,
                                double X, double Y, double Z)
 {
-    debug5<<"avtStreamlineFilter::GetDomain("<<domain<<" "<<X<<" "<<Y<<" "<<Z<<");"<<endl;
+    //debug5<<"avtStreamlineFilter::GetDomain("<<domain<<" "<<X<<" "<<Y<<" "<<Z<<");"<<endl;
     vtkDataSet *ds = NULL;
 
-    debug5<<"OperatingOnDemand() = "<<OperatingOnDemand()<<endl;
+    //debug5<<"OperatingOnDemand() = "<<OperatingOnDemand()<<endl;
 
     if (OperatingOnDemand())
     {
@@ -449,7 +449,6 @@ avtStreamlineFilter::GetDomain(const DomainType &domain,
 
     }
     
-    debug5<<"GetDomain("<<domain<<") = "<<ds<<endl;
     return ds;
 }
 
@@ -719,13 +718,17 @@ avtStreamlineFilter::SetTolerances(double reltol, double abstol)
 // Creation:   Wed Dec 22 12:41:08 PDT 2004
 //
 // Modifications:
+//
+//   Dave Pugmire, Mon Jun 8 2009, 11:44:01 EDT 2009
+//   Added color by secondary variable.
 //   
 // ****************************************************************************
 
 void
-avtStreamlineFilter::SetColoringMethod(int m)
+avtStreamlineFilter::SetColoringMethod(int m, const string &var)
 {
     coloringMethod = m;
+    coloringVariable = var;
 }
 
 
@@ -1442,12 +1445,13 @@ avtStreamlineFilter::Initialize()
 bool
 avtStreamlineFilter::PointInDomain(avtVector &pt, DomainType &domain)
 {
-    debug5<< "avtStreamlineFilter::PointInDomain("<<pt<<", dom= "<<domain<<");\n";
+    debug5<< "avtStreamlineFilter::PointInDomain("<<pt<<", dom= "<<domain<<") = ";
     vtkDataSet *ds = GetDomain(domain, pt.x, pt.y, pt.z);
 
     if (ds == NULL)
     {
         EXCEPTION0(ImproperUseException);
+        debug5<<"FALSE"<<endl;
         return false;
     }
 
@@ -1459,16 +1463,18 @@ avtStreamlineFilter::PointInDomain(avtVector &pt, DomainType &domain)
     {
         double bbox[6];
         intervalTree->GetElementExtents(domain.domain, bbox);
-        debug5<<"[ "<<bbox[0]<<" "<<bbox[1]<<" ] [ "<<bbox[2]<<" "<<bbox[3]<<" ] [ "<<bbox[4]<<" "<<bbox[5]<<" ]"<<endl;
+        //debug5<<"[ "<<bbox[0]<<" "<<bbox[1]<<" ] [ "<<bbox[2]<<" "<<bbox[3]<<" ] [ "<<bbox[4]<<" "<<bbox[5]<<" ]"<<endl;
         if (pt.x < bbox[0] || pt.x > bbox[1] ||
             pt.y < bbox[2] || pt.y > bbox[3])
         {
+            debug5<<"FALSE bboxXY"<<endl;
             return false;
         }
         
         if(dataSpatialDimension == 3 &&
            (pt.z < bbox[4] || pt.z > bbox[5]))
         {
+            debug5<<"FALSE bboxZ"<<endl;
             return false;
         }
 
@@ -1476,6 +1482,7 @@ avtStreamlineFilter::PointInDomain(avtVector &pt, DomainType &domain)
         //point is in this domain. For ghost zones, we have to check cells.
         if (ds->GetCellData()->GetArray("avtGhostZones") == NULL)
         {
+            debug5<<"TRUE noGhosts"<<endl;
             return true;
         }
     }
@@ -1509,11 +1516,13 @@ avtStreamlineFilter::PointInDomain(avtVector &pt, DomainType &domain)
     double p[3] = {pt.x, pt.y, pt.z}, resPt[3]={0.0,0.0,0.0};
     int foundCell = -1, subId = 0;
     int success = cellLocator->FindClosestPointWithinRadius(p, rad, resPt, 
-                                                       foundCell, subId, dist);
-    debug5<< "suc = "<<success<<" dist = "<<dist<<" resPt= ["<<resPt[0]
-          <<" "<<resPt[1]<<" "<<resPt[2]<<"]\n\n";
+                                                            foundCell, subId, dist);
+    
+    debug5<<(success?"TRUE":"FALSE")<<" cellLocator"<<endl;
+    if (success)
+        debug5<< "suc = "<<success<<" dist = "<<dist<<" resPt= ["<<resPt[0]
+              <<" "<<resPt[1]<<" "<<resPt[2]<<"] subId= "<<subId<<" foundCell= "<<foundCell<<endl;
 
-    debug5<< "PointInDomain() = "<<(success?"TRUE":"FALSE")<<endl;
     return (success == 1 ? true : false);
 }
 
@@ -1679,6 +1688,9 @@ avtStreamlineFilter::DomainToRank(DomainType &domain)
 //   Use a single vtkVisItInterpolatedVelocity for pathlines, which means
 //   that cell locations are done once, not twice.
 //
+//   Dave Pugmire, Mon Jun 8 2009, 11:44:01 EDT 2009
+//   Added color by secondary variable. Remove vorticity/ghostzones flags.
+//
 // ****************************************************************************
 
 avtIVPSolver::Result
@@ -1688,10 +1700,8 @@ avtStreamlineFilter::IntegrateDomain(avtStreamlineWrapper *slSeg,
                                      int maxSteps )
 {
     avtDataAttributes &a = GetInput()->GetInfo().GetAttributes();
-    bool haveGhostZones = false; //(a.GetContainsGhostZones()==AVT_NO_GHOSTS ? false : true);
 
-    debug5<< "avtStreamlineFilter::IntegrateDomain(dom= "
-          <<slSeg->domain<<") HGZ = "<<haveGhostZones <<endl;
+    debug5<<"avtStreamlineFilter::IntegrateDom(dom= "<<slSeg->domain<<")"<<endl;
 
     // prepare streamline integration ingredients
     vtkVisItInterpolatedVelocityField* velocity1 = vtkVisItInterpolatedVelocityField::New();
@@ -1716,6 +1726,9 @@ avtStreamlineFilter::IntegrateDomain(avtStreamlineWrapper *slSeg,
     }
     else
         velocity1->SetDataSet(ds);
+
+    if (coloringMethod == STREAMLINE_COLOR_VARIABLE)
+        ds->GetPointData()->SetActiveScalars(coloringVariable.c_str());
     
     double t1, t2;
     if (doPathlines)
@@ -1746,33 +1759,22 @@ avtStreamlineFilter::IntegrateDomain(avtStreamlineWrapper *slSeg,
         end = - end;
 
     //slSeg->Debug();
-    bool doVorticity = ((coloringMethod == STREAMLINE_COLOR_VORTICITY)
-                        || (displayMethod == STREAMLINE_DISPLAY_RIBBONS));
-
     int numSteps = slSeg->sl->size();
     avtIVPSolver::Result result;
 
-    double bbox[6];
-    ds->GetBounds(bbox);
     if (doPathlines)
     {
         avtIVPVTKTimeVaryingField field(velocity1, t1, t2);
         result = slSeg->sl->Advance(&field,
                                     terminationType,
-                                    end,
-                                    doVorticity,
-                                    haveGhostZones,
-                                    bbox);
+                                    end);
     }
     else
     {
         avtIVPVTKField field(velocity1);
         result = slSeg->sl->Advance(&field,
                                     terminationType,
-                                    end,
-                                    doVorticity,
-                                    haveGhostZones,
-                                    bbox);
+                                    end);
     }
     
     numSteps = slSeg->sl->size() - numSteps;
@@ -2121,6 +2123,9 @@ randMinus1_1()
 //   Change seedTimeStep0 to seedTime0 (integers were mistakenly being
 //   send in as doubles).
 //
+//   Dave Pugmire, Mon Jun 8 2009, 11:44:01 EDT 2009
+//   Set what scalars to compute on the avtStreamline object.
+//
 // ****************************************************************************
 
 void
@@ -2326,10 +2331,8 @@ avtStreamlineFilter::GetSeedPoints(std::vector<avtStreamlineWrapper *> &pts)
         }
 
         debug5<<"Candidate pt: "<<i<<" "<<candidatePts[i];
-        debug5<<" id= "<<i<<" dom =[";
-        for (int j = 0; j < dl.size();j++)debug5<<dl[j]<<", ";
-        debug5<<"]\n";
-        
+        debug5<<" id= "<<i<<" dom ="<<dl<<endl;
+
         // Add seed for each domain/pt. At this point, we don't know where 
         // the pt belongs....
         for (int j = 0; j < dl.size(); j++)
@@ -2344,6 +2347,17 @@ avtStreamlineFilter::GetSeedPoints(std::vector<avtStreamlineWrapper *> &pts)
     // Now, sort the ptDom.
     qsort(&ptDom[0], ptDom.size(), sizeof(seedPtDomain), comparePtDom);
 
+    avtStreamline::ScalarValueType scalarVal = avtStreamline::NONE;
+    if (coloringMethod == STREAMLINE_COLOR_SPEED)
+        scalarVal = avtStreamline::SPEED;
+    else if (coloringMethod == STREAMLINE_COLOR_VORTICITY)
+        scalarVal = avtStreamline::VORTICITY;
+    else if (coloringMethod == STREAMLINE_COLOR_VARIABLE)
+        scalarVal = avtStreamline::SCALAR_VARIABLE;
+
+    if (displayMethod == STREAMLINE_DISPLAY_RIBBONS)
+        scalarVal = (avtStreamline::ScalarValueType)(scalarVal | avtStreamline::VORTICITY);
+    
     for (int i = 0; i < ptDom.size(); i++)
     {
         avtVec pt(ptDom[i].pt.x, ptDom[i].pt.y, ptDom[i].pt.z);
@@ -2352,6 +2366,8 @@ avtStreamlineFilter::GetSeedPoints(std::vector<avtStreamlineWrapper *> &pts)
              streamlineDirection == VTK_INTEGRATE_BOTH_DIRECTIONS)
         {
             avtStreamline *sl = new avtStreamline(solver, seedTime0, pt);
+            sl->SetScalarValueType(scalarVal);
+
             avtStreamlineWrapper *slSeg;
             slSeg = new avtStreamlineWrapper(sl,
                                              avtStreamlineWrapper::FWD,
@@ -2365,6 +2381,8 @@ avtStreamlineFilter::GetSeedPoints(std::vector<avtStreamlineWrapper *> &pts)
              streamlineDirection == VTK_INTEGRATE_BOTH_DIRECTIONS)
         {
             avtStreamline *sl = new avtStreamline(solver, seedTime0, pt);
+            sl->SetScalarValueType(scalarVal);
+
             avtStreamlineWrapper *slSeg;
             slSeg = new avtStreamlineWrapper(sl, 
                                              avtStreamlineWrapper::BWD,
@@ -2482,6 +2500,9 @@ avtStreamlineFilter::ModifyContract(avtContract_p in_contract)
         // contract now.
         out_dr = new avtDataRequest(in_dr,in_dr->GetOriginalVariable());
     }
+
+    if (coloringMethod == STREAMLINE_COLOR_VARIABLE)
+        out_dr->AddSecondaryVariable(coloringVariable.c_str());
 
     if (doPathlines)
     {

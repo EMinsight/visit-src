@@ -156,6 +156,9 @@ QvisStreamlinePlotWindow::~QvisStreamlinePlotWindow()
 //   Jeremy Meredith, Wed Apr  8 14:40:48 EDT 2009
 //   Backported recent additons to Qt3.
 //
+//   Dave Pugmire, Wed Jun 10 16:26:25 EDT 2009
+//   Add color by variable.
+//
 // ****************************************************************************
 
 void
@@ -342,7 +345,7 @@ QvisStreamlinePlotWindow::CreateWindowContents()
     QGroupBox *pageAppearance = new QGroupBox(central, "pageAppearance");
     pageAppearance->setFrameStyle(QFrame::NoFrame);
     tabs->addTab(pageAppearance, tr("Appearance"));
-    QGridLayout *aLayout = new QGridLayout(pageAppearance, 8, 2);
+    QGridLayout *aLayout = new QGridLayout(pageAppearance, 10, 2);
     aLayout->setMargin(10);
     aLayout->setSpacing(5);
 
@@ -384,35 +387,34 @@ QvisStreamlinePlotWindow::CreateWindowContents()
     coloringMethod->insertItem(tr("Arc length"),3);
     coloringMethod->insertItem(tr("Time"),4);
     coloringMethod->insertItem(tr("Seed point ID"),5);
+    coloringMethod->insertItem(tr("Variable"),6);
     connect(coloringMethod, SIGNAL(activated(int)),
             this, SLOT(coloringMethodChanged(int)));
     aLayout->addWidget(new QLabel(coloringMethod, tr("Color by"), 
         pageAppearance, "colorbylabel"), 4,0);
     aLayout->addWidget(coloringMethod, 4,1);
 
+    varLabel = new QLabel(lineWidth, tr("Color Variable"), pageAppearance, "varLabel");
+    var = new QvisVariableButton(false, true, true, QvisVariableButton::Scalars,
+                                 pageAppearance, "varLabel");
+    aLayout->addWidget(varLabel,5,0);
+    aLayout->addWidget(var,5,1);
+    connect(var, SIGNAL(activated(const QString &)),
+            this, SLOT(coloringVariableChanged(const QString&)));
+
     colorTableName = new QvisColorTableButton(pageAppearance, "colorTableName");
     connect(colorTableName, SIGNAL(selectedColorTable(bool, const QString&)),
             this, SLOT(colorTableNameChanged(bool, const QString&)));
     colorTableNameLabel = new QLabel(colorTableName, tr("Color table"), pageAppearance, "colorTableNameLabel");
-    aLayout->addWidget(colorTableNameLabel,5,0);
-    aLayout->addWidget(colorTableName, 5,1, Qt::AlignLeft);
+    aLayout->addWidget(colorTableNameLabel,6,0);
+    aLayout->addWidget(colorTableName, 6,1, Qt::AlignLeft);
 
     singleColor = new QvisColorButton(pageAppearance, "singleColor");
     connect(singleColor, SIGNAL(selectedColor(const QColor&)),
             this, SLOT(singleColorChanged(const QColor&)));
     singleColorLabel = new QLabel(singleColor, tr("Single color"), pageAppearance, "singleColorLabel");
-    aLayout->addWidget(singleColorLabel,6,0);
-    aLayout->addWidget(singleColor, 6,1, Qt::AlignLeft);
-
-#if 0
-// This is unfinished. A) you would not declare the widget locally and B) there's no varChanged slot.
-    QvisVariableButton *var = new QvisVariableButton(true, true, true,
-                                                     QvisVariableButton::Scalars, pageAppearance, "nm");
-    connect(var, SIGNAL(activated(const QString &)),
-            this, SLOT(varChanged(const QString&)));
-    aLayout->addWidget(var,7,0);
-    //    aLayout->addStretch(5);
-#endif
+    aLayout->addWidget(singleColorLabel,7,0);
+    aLayout->addWidget(singleColor, 7,1, Qt::AlignLeft);
 
     //
     // Create advanced widgets.
@@ -759,6 +761,22 @@ QvisStreamlinePlotWindow::UpdateWindow(bool doAll)
             coloringMethod->blockSignals(true);
             coloringMethod->setCurrentItem(int(streamAtts->GetColoringMethod()));
             coloringMethod->blockSignals(false);
+
+            if (streamAtts->GetColoringMethod() == StreamlineAttributes::ColorByVariable)
+            {
+                varLabel->setEnabled(true);
+                var->setEnabled(true);
+                varLabel->show();
+                var->show();
+            }
+            else
+            {
+                varLabel->setEnabled(false);
+                var->setEnabled(false);
+                varLabel->hide();
+                var->hide();
+            }
+
             }
             break;
         case StreamlineAttributes::ID_colorTableName:
@@ -1853,6 +1871,13 @@ void
 QvisStreamlinePlotWindow::coloringMethodChanged(int val)
 {
     streamAtts->SetColoringMethod((StreamlineAttributes::ColoringMethod)val);
+    Apply();
+}
+
+void
+QvisStreamlinePlotWindow::coloringVariableChanged(const QString &var)
+{
+    streamAtts->SetColoringVariable(var.latin1());
     Apply();
 }
 

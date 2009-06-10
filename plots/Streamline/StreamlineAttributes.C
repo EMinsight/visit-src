@@ -89,21 +89,21 @@ StreamlineAttributes::SourceType_FromString(const std::string &s, StreamlineAttr
 
 static const char *ColoringMethod_strings[] = {
 "Solid", "ColorBySpeed", "ColorByVorticity", 
-"ColorByLength", "ColorByTime", "ColorBySeedPointID"
-};
+"ColorByLength", "ColorByTime", "ColorBySeedPointID", 
+"ColorByVariable"};
 
 std::string
 StreamlineAttributes::ColoringMethod_ToString(StreamlineAttributes::ColoringMethod t)
 {
     int index = int(t);
-    if(index < 0 || index >= 6) index = 0;
+    if(index < 0 || index >= 7) index = 0;
     return ColoringMethod_strings[index];
 }
 
 std::string
 StreamlineAttributes::ColoringMethod_ToString(int t)
 {
-    int index = (t < 0 || t >= 6) ? 0 : t;
+    int index = (t < 0 || t >= 7) ? 0 : t;
     return ColoringMethod_strings[index];
 }
 
@@ -111,7 +111,7 @@ bool
 StreamlineAttributes::ColoringMethod_FromString(const std::string &s, StreamlineAttributes::ColoringMethod &val)
 {
     val = StreamlineAttributes::Solid;
-    for(int i = 0; i < 6; ++i)
+    for(int i = 0; i < 7; ++i)
     {
         if(s == ColoringMethod_strings[i])
         {
@@ -312,7 +312,7 @@ StreamlineAttributes::IntegrationType_FromString(const std::string &s, Streamlin
 }
 
 // Type map format string
-const char *StreamlineAttributes::TypeMapFormatString = "iddDDDDDDdDdDbiibdiisabbiddiiiiiib";
+const char *StreamlineAttributes::TypeMapFormatString = "iddDDDDDDdDdDbiibdiisabbiddiiiiiibs";
 
 // ****************************************************************************
 // Method: StreamlineAttributes::StreamlineAttributes
@@ -462,6 +462,7 @@ StreamlineAttributes::StreamlineAttributes(const StreamlineAttributes &obj) :
     maxDomainCacheSize = obj.maxDomainCacheSize;
     workGroupSize = obj.workGroupSize;
     pathlines = obj.pathlines;
+    coloringVariable = obj.coloringVariable;
 
     SelectAll();
 }
@@ -563,6 +564,7 @@ StreamlineAttributes::operator = (const StreamlineAttributes &obj)
     maxDomainCacheSize = obj.maxDomainCacheSize;
     workGroupSize = obj.workGroupSize;
     pathlines = obj.pathlines;
+    coloringVariable = obj.coloringVariable;
 
     SelectAll();
     return *this;
@@ -660,7 +662,8 @@ StreamlineAttributes::operator == (const StreamlineAttributes &obj) const
             (maxStreamlineProcessCount == obj.maxStreamlineProcessCount) &&
             (maxDomainCacheSize == obj.maxDomainCacheSize) &&
             (workGroupSize == obj.workGroupSize) &&
-            (pathlines == obj.pathlines));
+            (pathlines == obj.pathlines) &&
+            (coloringVariable == obj.coloringVariable));
 }
 
 // ****************************************************************************
@@ -937,6 +940,7 @@ StreamlineAttributes::SelectAll()
     Select(ID_maxDomainCacheSize,        (void *)&maxDomainCacheSize);
     Select(ID_workGroupSize,             (void *)&workGroupSize);
     Select(ID_pathlines,                 (void *)&pathlines);
+    Select(ID_coloringVariable,          (void *)&coloringVariable);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1175,6 +1179,12 @@ StreamlineAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool f
         node->AddNode(new DataNode("pathlines", pathlines));
     }
 
+    if(completeSave || !FieldsEqual(ID_coloringVariable, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("coloringVariable", coloringVariable));
+    }
+
 
     // Add the node to the parent node.
     if(addToParent || forceAdd)
@@ -1283,7 +1293,7 @@ StreamlineAttributes::SetFromNode(DataNode *parentNode)
         if(node->GetNodeType() == INT_NODE)
         {
             int ival = node->AsInt();
-            if(ival >= 0 && ival < 6)
+            if(ival >= 0 && ival < 7)
                 SetColoringMethod(ColoringMethod(ival));
         }
         else if(node->GetNodeType() == STRING_NODE)
@@ -1377,6 +1387,8 @@ StreamlineAttributes::SetFromNode(DataNode *parentNode)
         SetWorkGroupSize(node->AsInt());
     if((node = searchNode->GetNode("pathlines")) != 0)
         SetPathlines(node->AsBool());
+    if((node = searchNode->GetNode("coloringVariable")) != 0)
+        SetColoringVariable(node->AsString());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1634,6 +1646,13 @@ StreamlineAttributes::SetPathlines(bool pathlines_)
 {
     pathlines = pathlines_;
     Select(ID_pathlines, (void *)&pathlines);
+}
+
+void
+StreamlineAttributes::SetColoringVariable(const std::string &coloringVariable_)
+{
+    coloringVariable = coloringVariable_;
+    Select(ID_coloringVariable, (void *)&coloringVariable);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1904,6 +1923,18 @@ StreamlineAttributes::GetPathlines() const
     return pathlines;
 }
 
+const std::string &
+StreamlineAttributes::GetColoringVariable() const
+{
+    return coloringVariable;
+}
+
+std::string &
+StreamlineAttributes::GetColoringVariable()
+{
+    return coloringVariable;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Select property methods
 ///////////////////////////////////////////////////////////////////////////////
@@ -1968,6 +1999,12 @@ StreamlineAttributes::SelectSingleColor()
     Select(ID_singleColor, (void *)&singleColor);
 }
 
+void
+StreamlineAttributes::SelectColoringVariable()
+{
+    Select(ID_coloringVariable, (void *)&coloringVariable);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Keyframing methods
 ///////////////////////////////////////////////////////////////////////////////
@@ -2026,6 +2063,7 @@ StreamlineAttributes::GetFieldName(int index) const
     case ID_maxDomainCacheSize:        return "maxDomainCacheSize";
     case ID_workGroupSize:             return "workGroupSize";
     case ID_pathlines:                 return "pathlines";
+    case ID_coloringVariable:          return "coloringVariable";
     default:  return "invalid index";
     }
 }
@@ -2084,6 +2122,7 @@ StreamlineAttributes::GetFieldType(int index) const
     case ID_maxDomainCacheSize:        return FieldType_int;
     case ID_workGroupSize:             return FieldType_int;
     case ID_pathlines:                 return FieldType_bool;
+    case ID_coloringVariable:          return FieldType_string;
     default:  return FieldType_unknown;
     }
 }
@@ -2142,6 +2181,7 @@ StreamlineAttributes::GetFieldTypeName(int index) const
     case ID_maxDomainCacheSize:        return "int";
     case ID_workGroupSize:             return "int";
     case ID_pathlines:                 return "bool";
+    case ID_coloringVariable:          return "string";
     default:  return "invalid index";
     }
 }
@@ -2378,6 +2418,11 @@ StreamlineAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (pathlines == obj.pathlines);
         }
         break;
+    case ID_coloringVariable:
+        {  // new scope
+        retval = (coloringVariable == obj.coloringVariable);
+        }
+        break;
     default: retval = false;
     }
 
@@ -2469,6 +2514,7 @@ StreamlineAttributes::ChangesRequireRecalculation(const StreamlineAttributes &ob
            (relTol != obj.relTol) ||
            (absTol != obj.absTol) ||
            (coloringMethod != obj.coloringMethod && obj.coloringMethod != Solid) ||
+           (coloringVariable != obj.coloringVariable) ||
            sourcePointsDiffer ||
            sourceLineDiffers ||
            sourcePlaneDiffers ||

@@ -73,6 +73,7 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
     public final static int COLORINGMETHOD_COLORBYLENGTH = 3;
     public final static int COLORINGMETHOD_COLORBYTIME = 4;
     public final static int COLORINGMETHOD_COLORBYSEEDPOINTID = 5;
+    public final static int COLORINGMETHOD_COLORBYVARIABLE = 6;
 
     public final static int DISPLAYMETHOD_LINES = 0;
     public final static int DISPLAYMETHOD_TUBES = 1;
@@ -96,7 +97,7 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
 
     public StreamlineAttributes()
     {
-        super(34);
+        super(35);
 
         sourceType = SOURCETYPE_SPECIFIEDPOINT;
         maxStepLength = 0.1;
@@ -159,11 +160,12 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         maxDomainCacheSize = 3;
         workGroupSize = 32;
         pathlines = false;
+        coloringVariable = new String("");
     }
 
     public StreamlineAttributes(StreamlineAttributes obj)
     {
-        super(34);
+        super(35);
 
         int i;
 
@@ -232,6 +234,7 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         maxDomainCacheSize = obj.maxDomainCacheSize;
         workGroupSize = obj.workGroupSize;
         pathlines = obj.pathlines;
+        coloringVariable = new String(obj.coloringVariable);
 
         SelectAll();
     }
@@ -314,7 +317,8 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
                 (maxStreamlineProcessCount == obj.maxStreamlineProcessCount) &&
                 (maxDomainCacheSize == obj.maxDomainCacheSize) &&
                 (workGroupSize == obj.workGroupSize) &&
-                (pathlines == obj.pathlines));
+                (pathlines == obj.pathlines) &&
+                (coloringVariable.equals(obj.coloringVariable)));
     }
 
     public String GetName() { return "Streamline"; }
@@ -596,6 +600,12 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         Select(33);
     }
 
+    public void SetColoringVariable(String coloringVariable_)
+    {
+        coloringVariable = coloringVariable_;
+        Select(34);
+    }
+
     // Property getting methods
     public int            GetSourceType() { return sourceType; }
     public double         GetMaxStepLength() { return maxStepLength; }
@@ -631,6 +641,7 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
     public int            GetMaxDomainCacheSize() { return maxDomainCacheSize; }
     public int            GetWorkGroupSize() { return workGroupSize; }
     public boolean        GetPathlines() { return pathlines; }
+    public String         GetColoringVariable() { return coloringVariable; }
 
     // Write and read methods.
     public void WriteAtts(CommunicationBuffer buf)
@@ -703,6 +714,8 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
             buf.WriteInt(workGroupSize);
         if(WriteSelect(33, buf))
             buf.WriteBool(pathlines);
+        if(WriteSelect(34, buf))
+            buf.WriteString(coloringVariable);
     }
 
     public void ReadAtts(int n, CommunicationBuffer buf)
@@ -815,6 +828,9 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
             case 33:
                 SetPathlines(buf.ReadBool());
                 break;
+            case 34:
+                SetColoringVariable(buf.ReadString());
+                break;
             }
         }
     }
@@ -872,6 +888,8 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
             str = str + "COLORINGMETHOD_COLORBYTIME";
         if(coloringMethod == COLORINGMETHOD_COLORBYSEEDPOINTID)
             str = str + "COLORINGMETHOD_COLORBYSEEDPOINTID";
+        if(coloringMethod == COLORINGMETHOD_COLORBYVARIABLE)
+            str = str + "COLORINGMETHOD_COLORBYVARIABLE";
         str = str + "\n";
         str = str + stringToString("colorTableName", colorTableName, indent) + "\n";
         str = str + indent + "singleColor = {" + singleColor.Red() + ", " + singleColor.Green() + ", " + singleColor.Blue() + ", " + singleColor.Alpha() + "}\n";
@@ -913,6 +931,7 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         str = str + intToString("maxDomainCacheSize", maxDomainCacheSize, indent) + "\n";
         str = str + intToString("workGroupSize", workGroupSize, indent) + "\n";
         str = str + boolToString("pathlines", pathlines, indent) + "\n";
+        str = str + stringToString("coloringVariable", coloringVariable, indent) + "\n";
         return str;
     }
 
@@ -952,5 +971,6 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
     private int            maxDomainCacheSize;
     private int            workGroupSize;
     private boolean        pathlines;
+    private String         coloringVariable;
 }
 
