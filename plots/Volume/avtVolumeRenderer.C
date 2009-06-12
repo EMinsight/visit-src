@@ -52,9 +52,11 @@
 
 #include <avtCallback.h>
 #include <avtOpenGLSplattingVolumeRenderer.h>
-#include <avtMesaSplattingVolumeRenderer.h>
 #include <avtOpenGL3DTextureVolumeRenderer.h>
+#ifdef VTK_USE_MANGLED_MESA
+#include <avtMesaSplattingVolumeRenderer.h>
 #include <avtMesa3DTextureVolumeRenderer.h>
+#endif
 #ifdef HAVE_LIBSLIVR
 #include <avtOpenGLSLIVRVolumeRenderer.h>
 #include <sys/types.h>
@@ -250,7 +252,11 @@ avtVolumeRenderer::ReducedDetailModeOff()
 //    Brad Whitlock, Thu Jan 10 14:42:59 PST 2008
 //    Added support for SLIVR.
 //
+//    Brad Whitlock, Wed Jun 10 14:00:37 PST 2009
+//    I made Mesa support be conditional.
+//
 // ****************************************************************************
+
 void
 avtVolumeRenderer::Render(vtkDataSet *ds)
 {
@@ -259,6 +265,7 @@ avtVolumeRenderer::Render(vtkDataSet *ds)
         if (rendererImplementation)
             delete rendererImplementation;
 
+#ifdef VTK_USE_MANGLED_MESA
         if (avtCallback::GetSoftwareRendering())
         {
             if (atts.GetRendererType() == VolumeAttributes::Splatting)
@@ -275,10 +282,11 @@ avtVolumeRenderer::Render(vtkDataSet *ds)
                 rendererImplementation = new avtMesa3DTextureVolumeRenderer;
         }
         else
-        { 
+        {
+#endif
             if (atts.GetRendererType() == VolumeAttributes::Splatting)
                 rendererImplementation = new avtOpenGLSplattingVolumeRenderer;
-#ifdef HAVE_LIBSLIVR
+#if defined(HAVE_LIBSLIVR)
             else if(atts.GetRendererType() == VolumeAttributes::SLIVR)
                 rendererImplementation = new avtOpenGLSLIVRVolumeRenderer;
 #endif
@@ -286,7 +294,9 @@ avtVolumeRenderer::Render(vtkDataSet *ds)
                 rendererImplementation = new avtOpenGL3DTextureVolumeRenderer;
         }
         currentRendererIsValid = true;
+#ifdef VTK_USE_MANGLED_MESA
     }
+#endif
 
     // Do other initialization
     if (!initialized)
