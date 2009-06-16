@@ -78,6 +78,9 @@
 /* Define if you have pyparsing. */
 #undef HAVE_PYPARSING
 
+/* Define if we want to use select function. */
+#undef HAVE_SELECT
+
 /* Define to 1 if you have the `setenv' function. */
 #undef HAVE_SETENV
 
