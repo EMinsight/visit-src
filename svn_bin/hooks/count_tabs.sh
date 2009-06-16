@@ -28,6 +28,9 @@
 #   Hank Childs, Wed Sep 10 15:34:53 PDT 2008
 #   Allow files named "Makefile" to have tabs.
 #
+#   Brad Whitlock, Tue Jun 16 09:26:57 PDT 2009
+#   Allow aclocal.m4 to have tabs.
+#
 ##############################################################################
 REPOS="$1"
 TXN="$2"
@@ -76,6 +79,9 @@ for f in ${files} ; do
             continue
             ;;
         *Makefile)
+            continue
+            ;;
+        *aclocal.m4)
             continue
             ;;
     esac
