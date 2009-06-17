@@ -250,6 +250,8 @@ ViewerFileServer::~ViewerFileServer()
 //   Brad Whitlock, Fri Dec 27 14:47:54 PST 2002
 //   I added debugging information.
 //
+//   Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//   Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 
 void
@@ -268,7 +270,7 @@ ViewerFileServer::CloseServers()
             // Tell the server to quit.
             pos->second->proxy->Close();
         }
-        CATCHALL(...)
+        CATCHALL
         {
             debug1 << "Caught an exception while closing the server."
                    << endl;
@@ -620,6 +622,8 @@ ViewerFileServer::GetMetaDataForState(const std::string &host,
 //   Kathleen Bonnell, Thu Aug 14 16:13:41 PDT 2008 
 //   Added call to SendFileOpenOptions after StartServer.
 //
+//   Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//   Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 
 const avtDatabaseMetaData *
@@ -747,7 +751,7 @@ ViewerFileServer::GetMetaDataHelper(const std::string &host,
                     StartServer(host, startArgs);
                     SendFileOpenOptions(host);
                 }
-                CATCHALL(...)
+                CATCHALL
                 {
                     tryAgain = false;
                 }
@@ -946,6 +950,8 @@ ViewerFileServer::GetSILForState(const std::string &host,
 //   Kathleen Bonnell, Thu Aug 14 16:13:41 PDT 2008 
 //   Added call to SendFileOpenOptions after StartServer.
 //
+//   Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//   Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 
 const avtSIL *
@@ -1031,7 +1037,7 @@ ViewerFileServer::GetSILHelper(const std::string &host, const std::string &db,
                     StartServer(host, startArgs);
                     SendFileOpenOptions(host);
                 }
-                CATCHALL(...)
+                CATCHALL
                 {
                     tryAgain = false;
                 }
@@ -1116,6 +1122,8 @@ ViewerFileServer::ExpandDatabaseName(std::string &hostDBName,
 //   Kathleen Bonnell, Thu Aug 14 16:13:41 PDT 2008 
 //   Added call to SendFileOpenOptions after StartServer.
 //
+//   Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//   Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 
 std::string
@@ -1165,7 +1173,7 @@ ViewerFileServer::ExpandedFileName(const std::string &host,
                         StartServer(host, startArgs);
                         SendFileOpenOptions(host);
                     }
-                    CATCHALL(...)
+                    CATCHALL
                     {
                         tryAgain = false;
                     }
@@ -1338,6 +1346,8 @@ ViewerFileServer::StartServer(const std::string &host)
 //    Moved UpdateDBPluginInfo and setting of default file open options to
 //    SendFileOpenOptions, and call that method after this one completes. 
 //
+//    Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//    Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 
 void
@@ -1513,7 +1523,7 @@ ViewerFileServer::StartServer(const std::string &host, const stringVector &args)
         // Re-throw the exception.
         RETHROW;
     }
-    CATCHALL(...)
+    CATCHALL
     {
         delete newServer;
         delete dialog;
@@ -1607,6 +1617,8 @@ ViewerFileServer::NoFaultStartServer(const std::string &host)
 //   Kathleen Bonnell, Thu Aug 14 16:13:41 PDT 2008 
 //   Added call to SendFileOpenOptions after StartServer.
 //
+//   Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//   Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 
 void
@@ -1621,7 +1633,7 @@ ViewerFileServer::NoFaultStartServer(const std::string &host,
             StartServer(host, args);
             SendFileOpenOptions(host);
         }
-        CATCHALL(...)
+        CATCHALL
         {
             // Do nothing.
         }
@@ -1674,6 +1686,8 @@ ViewerFileServer::CloseServer(const std::string &host, bool close)
 //
 // Modifications:
 //   
+//   Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//   Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 
 void
@@ -1689,7 +1703,7 @@ ViewerFileServer::SendKeepAlives()
             pos->second->proxy->SendKeepAlive();
             ++pos;
         }
-        CATCHALL(...)
+        CATCHALL
         {
             debug2 << "Could not send keep alive signal to mdserver on "
                    << pos->first.c_str() << " so that mdserver will be closed."
@@ -1912,6 +1926,8 @@ ViewerFileServer::ConnectServer(const std::string &mdServerHost,
 //   Brad Whitlock, Tue Jul 29 11:40:07 PDT 2003
 //   Changed interface to ParentProcess::Connect.
 //
+//   Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//   Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 
 void
@@ -1934,7 +1950,7 @@ ViewerFileServer::TerminateConnectionRequest(const stringVector &args, int failC
         // Connect back to the process.
         killer.Connect(1, 1, &argc, &argv, true, failCode);
     }
-    CATCHALL(...)
+    CATCHALL
     {
         // We know that we're going to get here, but no action is required.
     }

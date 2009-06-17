@@ -129,6 +129,8 @@ extern "C" VISITCLI_API int Py_Main(int, char **);
 //    Assume Python won't modify argv, and cast a string literal to
 //    a const.
 //
+//    Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//    Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 
 int
@@ -343,7 +345,7 @@ main(int argc, char *argv[])
         delete[] argv3;
         
     }
-    CATCHALL(...)
+    CATCHALL
     {
         retval = -1;
     }

@@ -154,7 +154,7 @@ int process_input(void *e)
     {
         debug1 << "Caught a damn VisIt exception: " << e.Message() << endl;
     }
-    CATCHALL (...)
+    CATCHALL
     {
         // Unknown processing error!  Ignoring....
         CATCH_RETURN2(1, 1);

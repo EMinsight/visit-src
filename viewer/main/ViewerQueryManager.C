@@ -4221,6 +4221,8 @@ ViewerQueryManager::UpdateQueryOverTimeAtts()
 //    Use the query var name when creating the results plot, not the 
 //    originating plot's var name. 
 //
+//    Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//    Replaced CATCHALL(...) with CATCHALL.
 // ***********************************************************************
 
 void
@@ -4292,7 +4294,7 @@ ViewerQueryManager::DoTimeQuery(ViewerWindow *origWin, QueryAttributes *qA)
                     issueWarning = true;
                 }
             }
-            CATCHALL( ...)
+            CATCHALL
             {
                 debug4 << "ViewerQueryManager::DoTimeQuery could not perform "
                        << "centering consistency check." << endl;
@@ -4517,6 +4519,8 @@ ViewerQueryManager::DoTimeQuery(ViewerWindow *origWin, QueryAttributes *qA)
 //    Support new pick-through-time options which perserve picked coordinates
 //    instead of picked element.
 //
+//    Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//    Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 
 void
@@ -4575,7 +4579,7 @@ ViewerQueryManager::PickThroughTime(PICK_POINT_INFO *ppi, const int dom,
                 }
             }
         }
-        CATCHALL( ... )
+        CATCHALL
         {
             debug4 << "ViewerQueryManager::PickThroughTime could not perform "
                    << " centering consistency check." << endl;

@@ -405,6 +405,8 @@ ViewerEngineManager::EngineExists(const EngineKey &ek) const
 //    were allowing the exception to propagate to a level where the viewer
 //    self-quit because it incorrectly thought the GUI had died.
 //
+//    Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//    Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 
 bool
@@ -516,7 +518,7 @@ ViewerEngineManager::CreateEngine(const EngineKey &ek,
             // small amount of time.
             newEngine.proxy->SendKeepAlive();
         }
-        CATCHALL(...)
+        CATCHALL
         {
             inLaunch = false;
             RETHROW;
@@ -852,6 +854,8 @@ ViewerEngineManager::ConnectSim(const EngineKey &ek,
 //    Brad Whitlock, Wed Aug 4 17:21:25 PST 2004
 //    I changed EngineMap.
 //
+//    Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//    Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 
 void
@@ -882,7 +886,7 @@ ViewerEngineManager::CloseEngines()
         {
             engine->Close();
         }
-        CATCHALL(...)
+        CATCHALL
         {
             debug1 << "Caught an exception while closing the engine." << endl;
         }
@@ -1075,6 +1079,8 @@ ViewerEngineManager::InLaunch() const
 //   Brad Whitlock, Wed Aug 4 17:23:00 PST 2004
 //   Changed EngineMap.
 //
+//   Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//   Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 
 void
@@ -1094,7 +1100,7 @@ ViewerEngineManager::SendKeepAlives()
             {
                 i->second.proxy->SendKeepAlive();
             }
-            CATCHALL(...)
+            CATCHALL
             {
                 debug1 << "Caught an exception while sending a keep alive "
                           "signal to the engine."

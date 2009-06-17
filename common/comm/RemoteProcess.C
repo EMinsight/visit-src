@@ -1430,6 +1430,8 @@ RemoteProcess::StartMakingConnection(const std::string &rHost, int numRead,
 //   Brad Whitlock, Tue Jan 17 14:15:14 PST 2006
 //   Added debug logging.
 //
+//   Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//   Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 
 void
@@ -1482,7 +1484,7 @@ RemoteProcess::FinishMakingConnection(int numRead, int numWrite)
         debug5 << mName << "Exchanging type representations" << endl;
         ExchangeTypeRepresentations();
     }
-    CATCHALL(...)
+    CATCHALL
     {
         // Call the progress callback and tell it to end.
         CallProgressCallback(2);

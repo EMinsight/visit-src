@@ -4691,6 +4691,8 @@ ViewerPlotList::ReplaceDatabase(const EngineKey &key,
 //   the SIL restriction. I also added a timeState argument so it's possible
 //   to overlay a database at a paricular time state.
 //
+//   Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//   Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 
 void
@@ -4794,7 +4796,7 @@ ViewerPlotList::OverlayDatabase(const EngineKey &key,
             }
             ENDTRY
         }
-        CATCHALL(...)
+        CATCHALL
         {
             // newPlot will be zero if an error occurred, so we don't
             // need to do further error handling right here
@@ -8239,6 +8241,8 @@ ViewerPlotList::CreateNode(DataNode *parentNode,
 //   Brad Whitlock, Thu Jan 24 11:53:57 PDT 2008
 //   Added another argument to NewPlot().
 //
+//   Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//   Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 
 bool
@@ -8606,7 +8610,7 @@ ViewerPlotList::SetFromNode(DataNode *parentNode,
                         plot = NewPlot(type,engineKey,plotHost,
                                        plotDB,plotVar,false,false,plotName);
                     }
-                    CATCHALL(...)
+                    CATCHALL
                     {
                         // plot will be zero if an error occurred, so we don't
                         // need to do further error handling right here

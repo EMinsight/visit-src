@@ -253,6 +253,8 @@ IceTNetworkManager::TileLayout(size_t width, size_t height) const
 //    Use MemoMultipass; this fixes a bug which occurs when IceT calls our
 //    render function multiple times on a subset of nodes.
 //
+//    Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//    Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 avtDataObjectWriter_p
 IceTNetworkManager::Render(intVector networkIds, bool getZBuffer,
@@ -382,7 +384,7 @@ IceTNetworkManager::Render(intVector networkIds, bool getZBuffer,
 
         CATCH_RETURN2(1, writer);
     }
-    CATCHALL(...)
+    CATCHALL
     {
         RETHROW;
     }

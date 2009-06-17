@@ -348,6 +348,8 @@ avtCMFEExpression::ProcessArguments(ArgsExpr *args,
 //    Hank Childs, Thu Apr 10 16:10:33 PDT 2008
 //    Make sure that consistent ghost levels are requested.
 //
+//    Mark C. Miller, Wed Jun 17 14:23:25 PDT 2009
+//    Replaced CATCH(...) with CATCHALL
 // ****************************************************************************
 
 void
@@ -423,7 +425,7 @@ avtCMFEExpression::Execute()
     {
         dob->Update(spec);
     }
-    CATCH(...)
+    CATCHALL
     {
         //
         // Now switch back #1 and #2
