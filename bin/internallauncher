@@ -800,6 +800,9 @@ $fullusage = "$usage
                              logging. For example, '-debug_mdserver 4' will run
                              the mdserver with level 4 debugging. Multiple
                              '-debug_<compname> <level>' args are allowed.
+        -debug-processor-stride N
+                             Have only every Nth processor output debug logs.
+                             Prevents overwhelming parallel file systems.
         -clobber_vlogs       By default, each invokation or restart of a VisIt
                              component will write its debug logs to new files.
                              This flag causes VisIt to overwrite existing debug
