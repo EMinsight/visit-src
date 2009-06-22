@@ -624,6 +624,9 @@ ViewerFileServer::GetMetaDataForState(const std::string &host,
 //
 //   Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
 //   Replaced CATCHALL(...) with CATCHALL.
+//
+//   Mark C. Miller, Mon Jun 22 15:16:05 PDT 2009
+//   Replaced typo of '%`' with '%1' in in an arg to QObject::tr().
 // ****************************************************************************
 
 const avtDatabaseMetaData *
@@ -707,7 +710,7 @@ ViewerFileServer::GetMetaDataHelper(const std::string &host,
                 else
                 {
                     msg = tr("VisIt could not read from the file "
-                             "\"%`\" on host %2.\n\nThe generated error message"
+                             "\"%1\" on host %2.\n\nThe generated error message"
                              " was:\n\n%3").
                           arg(db.c_str()).arg(host.c_str()).
                           arg(gmde.Message().c_str());
