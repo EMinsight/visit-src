@@ -231,7 +231,7 @@ REQUIRED=BoundaryOp Box Clip Cone CoordSwap CracksClipper CreateBonds Cylinder \
          IndexSelect InverseGhostZone Isosurface Isovolume Lineout Merge \
          OnionPeel PDF PersistentParticles Project Reflect Replicate Resample \
          Revolve Slice Smooth SphereSlice ThreeSlice Threshold Transform \
-         TriangulateRegPoints Tube ZoneDump
+         TriangulateRegularPoints Tube ZoneDump
 
 # The following is a minimal subset of the OPTIONAL/REQUIRED plugins
 MINIMAL=Lineout Slice Threshold
