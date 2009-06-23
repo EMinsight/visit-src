@@ -363,6 +363,11 @@
 #    Patrick Shinpaugh, Wed Mar 11 11:34:16 MST 2009
 #    Fix directories to account for linux-ppc64.
 #
+#    Mark C. Miller, Wed Apr  8 11:06:38 PDT 2009
+#    Added minimum possible logic for dbio-only distros. Many commands fail
+#    in this mode. But, those failures are harmless and the script should
+#    continue on to complete the creation of a binary distro.
+#
 #    Kathleen Bonnell, Wed Apr 22 16:46:53 PDT 2009
 #    Add ultrawapper files, pyparsing files.
 #
@@ -393,6 +398,7 @@ set Strip = "TRUE"
 set Make = "make"
 set Help = "FALSE"
 set Configuration = "open"
+set dbioOnly = "FALSE"
 
 #
 # Parse the argument list.
@@ -475,6 +481,15 @@ while ($#argv >= 1)
                set Configuration = $1
                breaksw
  
+      case -dbio-only:
+               set dbioOnly = TRUE
+               set DataFiles = FALSE 
+               set QtLibs = FALSE
+               set MesaLibs = FALSE 
+               set VTKLibs = TRUE
+               set PythonExe = FALSE 
+               breaksw
+
       default:
                echo " "
                echo ">>>>>>>>>>  Illegal option $1  <<<<<<<<<<"
@@ -505,6 +520,7 @@ if ($Help == TRUE) then
    echo "       -os os         Operating system."
    echo "       -compiler cc   Compiler."
    echo "       -arch architecture Force architecture package."
+   echo "       -dbio-only     Prepare a dbio-only distribution." 
    exit (1)
 endif
 

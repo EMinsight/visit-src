@@ -458,16 +458,6 @@
 #     Fixed typo in DEFAULT_SILO symbols put in generated config-site file.
 #     Updated DEFAULT_SILO symbols to use LIBLOC/LIBDEP form.
 #
-#     Cyrus Harrison, Tue Nov 18 16:34:49 PST 2008
-#     Changes for Qt4 including:
-#      *Added build_qt4 (doesn't currently download the src tarball however)
-#      *Replaced the repeated "check for dir + try to unzip + try to untar" 
-#        chunk of code with new function: prepare_build_dir
-#      *Changed all build dirs vars to name [NAME]_BUILD_DIR, instead of 
-#        [NAME]_DIR.In some cases [NAME]_DIR caused problems and was previously 
-#        fixed with a special name BV_[NAME]_DIR, I just made everything 
-#        uniform.
-#
 #     Cyrus Harrison, Tue Dec  2 13:44:29 PST 2008
 #     Stopped creating symlink of szip static lib in hdf5 install.
 #
@@ -8957,12 +8947,13 @@ if [[ "$DO_DBIO_ONLY" == "yes" ]]; then
 #    ON_FASTBIT="on"
 
     #
-    # Releasibility of these libs is not yet understood
+    # Not releaseable or obsolete 
     #
 #    DO_MILI="yes"
 #    ON_MILI="on"
 #    DO_VISUS="yes"
 #    ON_VISUS="on"
+
 fi
 
 # Show a splashscreen. This routine also determines if we have "dialog"
@@ -9303,11 +9294,10 @@ if [[ $? != 0 ]] ; then
 fi
 
 
-cd "$START_DIR"
 #
 # We are now ready to build.  Start with Mesa.
 #
-
+cd "$START_DIR"
 if [[ "$DO_MESA" == "yes" ]] ; then
     check_if_installed "mesa" $MESA_VERSION
     if [[ $? == 0 ]] ; then
@@ -9330,14 +9320,14 @@ cd "$START_DIR"
 if [[ "$DO_QT" == "yes" ]] ; then
         check_if_installed "qt" $QT_VERSION
     if [[ $? == 0 ]] ; then
-        info "Skipping Qt4 build.  Qt4 is already installed."
+        info "Skipping Qt3 build.  Qt3 is already installed."
    else
-      info "Building Qt4 (~60 minutes)"
+      info "Building Qt3 (~60 minutes)"
       build_qt
       if [[ $? != 0 ]] ; then
-         error "Unable to build or install Qt4.  Bailing out."
+         error "Unable to build or install Qt3.  Bailing out."
       fi
-      info "Done building Qt4"
+      info "Done building Qt3"
    fi
 fi
 
@@ -9345,7 +9335,6 @@ fi
 # Build CMake
 #
 cd "$START_DIR"
-
 if [[ "$DO_CMAKE" == "yes" ]]; then
     check_if_installed "cmake" $CMAKE_VERSION
     if [[ $? == 0 ]] ; then
