@@ -970,10 +970,12 @@ export SZIP_VERSION=${SZIP_VERSION:-"2.1"}
 export SZIP_COMPATIBILITY_VERSION=${SZIP_COMPATIBILITY_VERSION:-"2.0"}
 export SZIP_BUILD_DIR=${SZIP_BUILD_DIR:-"szip-2.1"}
 
-export HDF5_FILE=${HDF5_FILE:-"hdf5-1.8.2.tar.gz"}
 export HDF5_VERSION=${HDF5_VERSION:-"1.8.2"}
+export HDF5_FILE=${HDF5_FILE:-"hdf5-${HDF5_VERSION}.tar.gz"}
 export HDF5_COMPATIBILITY_VERSION=${HDF5_COMPATIBILITY_VERSION:-"1.8"}
-export HDF5_BUILD_DIR=${HDF5_BUILD_DIR:-"hdf5-1.8.2"}
+export HDF5_BUILD_DIR=${HDF5_BUILD_DIR:-"hdf5-${HDF5_VERSION}"}
+# Note: Versions of HDF5 1.6.5 and earlier DO NOT have last path component
+export HDF5_URL=${HDF5_URL:-"http://www.hdfgroup.org/ftp/HDF5/prev-releases/hdf5-${HDF5_VERSION}/src"}
 
 export HDF4_FILE=${HDF4_FILE:-"HDF4.2r1.tar.gz"}
 export HDF4_VERSION=${HDF4_VERSION:-"4.2.1"}
@@ -1769,7 +1771,7 @@ function check_optional_3rdparty
     fi
     
     if [[ "$DO_HDF5" == "yes" ]] ; then
-        ensure_built_or_ready "hdf5" $HDF5_VERSION $HDF5_BUILD_DIR $HDF5_FILE ftp://ftp.hdfgroup.org/HDF5/prev-releases/hdf5-1.8.2/src
+        ensure_built_or_ready "hdf5" $HDF5_VERSION $HDF5_BUILD_DIR $HDF5_FILE $HDF5_URL 
         if [[ $? != 0 ]] ; then
             ANY_ERRORS="yes"
             DO_HDF5="no"
