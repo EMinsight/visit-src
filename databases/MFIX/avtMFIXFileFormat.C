@@ -265,6 +265,9 @@ avtMFIXFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md,
 //    Kathleen Bonnell, Wed Oct 22 17:11:35 PDT 2008
 //    Reworked to use vtkMFIXReader for bulk of work.
 //
+//    Kathleen Bonnell, Wed Jun 24 07:45:11 PDT 2009
+//    Set the timestate in the reader.
+//
 // ****************************************************************************
 
 vtkDataSet *
@@ -272,6 +275,9 @@ avtMFIXFileFormat::GetMesh(int timestate, int domain, const char *meshname)
 {
     if (!readInData)
         ReadInData();
+
+    reader->SetTimeStep(timestate);
+    reader->Update();
 
     vtkUnstructuredGrid *dataset = vtkUnstructuredGrid::New();
     vtkDataObject *dob = reader->GetOutputDataObject(domain);
@@ -305,6 +311,9 @@ avtMFIXFileFormat::GetMesh(int timestate, int domain, const char *meshname)
 //    Kathleen Bonnell, Wed Oct 22 17:11:35 PDT 2008
 //    Reworked to use vtkMFIXReader for bulk of work.
 //
+//    Kathleen Bonnell, Wed Jun 24 07:45:11 PDT 2009
+//    Set the timestate in the reader.
+//
 // ****************************************************************************
 
 vtkDataArray *
@@ -312,6 +321,9 @@ avtMFIXFileFormat::GetVar(int timestate, int domain, const char *varname)
 {
     if (!readInData)
         ReadInData();
+
+    reader->SetTimeStep(timestate);
+    reader->Update();
 
     vtkDataArray *v = NULL;
     if (domain == 0)
@@ -336,7 +348,6 @@ avtMFIXFileFormat::GetVar(int timestate, int domain, const char *varname)
         }
     }
     return v;
-
 }
 
 
@@ -363,6 +374,9 @@ avtMFIXFileFormat::GetVar(int timestate, int domain, const char *varname)
 //    Kathleen Bonnell, Wed Oct 22 17:11:35 PDT 2008
 //    Reworked to use vtkMFIXReader for bulk of work.
 //
+//    Kathleen Bonnell, Wed Jun 24 07:45:11 PDT 2009
+//    Set the timestate in the reader.
+//
 // ****************************************************************************
 
 vtkDataArray *
@@ -370,6 +384,9 @@ avtMFIXFileFormat::GetVectorVar(int timestate, int domain,const char *varname)
 {
     if (!readInData)
         ReadInData();
+
+    reader->SetTimeStep(timestate);
+    reader->Update();
 
     vtkDataArray *v = NULL;
     if (domain == 0)
