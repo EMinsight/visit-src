@@ -39,6 +39,9 @@
 // Modifications:
 //    Jeremy Meredith, Wed Oct 17 10:32:42 EDT 2007
 //    Filled in some holes in atomic radii.
+//
+//    Jeremy Meredith, Tue Jun 30 11:29:50 EDT 2009
+//    Added inexplicably missing elements in name-to-number maps.
 
 #include "AtomicProperties.h"
 
@@ -848,8 +851,8 @@ InitializeResidueNameToLongNameMap()
 static void
 InitializeElementNameToAtomicNumberMap()
 {
-    // These are sorted by covalent radius to make the map
-    // tree more balanced.
+    // These are sorted by an unrelated number (basically covalent radius)
+    // for randomiation make the map tree more balanced.
     elementname_to_atomicnumber["H"]  = 1;
     elementname_to_atomicnumber["Ne"] = 10;
     elementname_to_atomicnumber["F"]  = 9;
@@ -937,6 +940,28 @@ InitializeElementNameToAtomicNumberMap()
     elementname_to_atomicnumber["K"]  = 19;
     elementname_to_atomicnumber["Rb"] = 37;
     elementname_to_atomicnumber["Cs"] = 55;
+    elementname_to_atomicnumber["Rn"] = 86;
+    elementname_to_atomicnumber["Fr"] = 87;
+    elementname_to_atomicnumber["Ra"] = 88;
+    elementname_to_atomicnumber["Ac"] = 89;
+    elementname_to_atomicnumber["Pa"] = 91;
+    elementname_to_atomicnumber["Np"] = 93;
+    elementname_to_atomicnumber["Pu"] = 94;
+    elementname_to_atomicnumber["Am"] = 95;
+    elementname_to_atomicnumber["Cm"] = 96;
+    elementname_to_atomicnumber["Bk"] = 97;
+    elementname_to_atomicnumber["Cf"] = 98;
+    elementname_to_atomicnumber["Es"] = 99;
+    elementname_to_atomicnumber["Fm"] = 100;
+    elementname_to_atomicnumber["Md"] = 101;
+    elementname_to_atomicnumber["No"] = 102;
+    elementname_to_atomicnumber["Lr"] = 103;
+    elementname_to_atomicnumber["Rf"] = 104;
+    elementname_to_atomicnumber["Db"] = 105;
+    elementname_to_atomicnumber["Sg"] = 106;
+    elementname_to_atomicnumber["Bh"] = 107;
+    elementname_to_atomicnumber["Hs"] = 108;
+    elementname_to_atomicnumber["Mt"] = 109;
 }
 
 static void PrintColorTablesFor_avtColorTables();
@@ -985,14 +1010,17 @@ int ElementNameToAtomicNumber(const char *element)
         {
             switch (name[1])
             {
+            case 'c': return 89;
             case 'g': return 47;
             case 'l': return 13;
+            case 'm': return 95;
             case 'r': return 18;
             case 's': return 33;
             case 't': return 85;
             case 'u': return 79;
             }
         }
+        break;
 
     case 'B':
         {
@@ -1001,10 +1029,13 @@ int ElementNameToAtomicNumber(const char *element)
             case '\0': return 5;
             case 'a': return 56;
             case 'e': return 4;
+            case 'h': return 107;
             case 'i': return 83;
+            case 'k': return 97;
             case 'r': return 35;
             }
         }
+        break;
 
     case 'C':
         {
@@ -1014,30 +1045,37 @@ int ElementNameToAtomicNumber(const char *element)
             case 'a': return 20;
             case 'd': return 48;
             case 'e': return 58;
+            case 'f': return 98;
             case 'l': return 17;
+            case 'm': return 96;
             case 'o': return 27;
             case 'r': return 24;
             case 's': return 55;
             case 'u': return 29;
             }
         }
+        break;
 
     case 'D':
         {
             switch (name[1])
             {
+            case 'b': return 105;
             case 'y': return 66;
             }
         }
+        break;
 
     case 'E':
         {
             switch (name[1])
             {
             case 'r': return 68;
+            case 's': return 99;
             case 'u': return 63;
             }
         }
+        break;
 
     case 'F':
         {
@@ -1045,8 +1083,11 @@ int ElementNameToAtomicNumber(const char *element)
             {
             case '\0': return 9;
             case 'e': return 26;
+            case 'm': return 100;
+            case 'r': return 87;
             }
         }
+        break;
 
     case 'G':
         {
@@ -1057,6 +1098,7 @@ int ElementNameToAtomicNumber(const char *element)
             case 'e': return 32;
             }
         }
+        break;
 
     case 'H':
         {
@@ -1067,8 +1109,10 @@ int ElementNameToAtomicNumber(const char *element)
             case 'f': return 72;
             case 'g': return 80;
             case 'o': return 67;
+            case 's': return 108;
             }
         }
+        break;
 
     case 'I':
         {
@@ -1079,6 +1123,7 @@ int ElementNameToAtomicNumber(const char *element)
             case 'r': return 77;
             }
         }
+        break;
 
     case 'K':
         {
@@ -1088,6 +1133,7 @@ int ElementNameToAtomicNumber(const char *element)
             case 'r': return 36;
             }
         }
+        break;
 
     case 'L':
         {
@@ -1095,19 +1141,24 @@ int ElementNameToAtomicNumber(const char *element)
             {
             case 'a': return 57;
             case 'i': return 3;
+            case 'r': return 103;
             case 'u': return 71;
             }
         }
+        break;
 
     case 'M':
         {
             switch (name[1])
             {
+            case 'd': return 101;
             case 'g': return 12;
             case 'n': return 25;
             case 'o': return 42;
+            case 't': return 109;
             }
         }
+        break;
 
     case 'N':
         {
@@ -1119,8 +1170,11 @@ int ElementNameToAtomicNumber(const char *element)
             case 'd': return 60;
             case 'e': return 10;
             case 'i': return 28;
+            case 'o': return 102;
+            case 'p': return 93;
             }
         }
+        break;
 
     case 'O':
         {
@@ -1130,31 +1184,39 @@ int ElementNameToAtomicNumber(const char *element)
             case 's': return 76;
             }
         }
+        break;
 
     case 'P':
         {
             switch (name[1])
             {
             case '\0': return 15;
+            case 'a': return 91;
             case 'b': return 82;
             case 'd': return 46;
             case 'm': return 61;
             case 'o': return 84;
             case 'r': return 59;
             case 't': return 78;
+            case 'u': return 94;
             }
         }
+        break;
 
     case 'R':
         {
             switch (name[1])
             {
+            case 'a': return 88;
             case 'b': return 37;
             case 'e': return 75;
+            case 'f': return 104;
             case 'h': return 45;
+            case 'n': return 86;
             case 'u': return 44;
             }
         }
+        break;
 
     case 'S':
         {
@@ -1164,12 +1226,14 @@ int ElementNameToAtomicNumber(const char *element)
             case 'b': return 51;
             case 'c': return 21;
             case 'e': return 34;
+            case 'g': return 106;
             case 'i': return 14;
             case 'm': return 62;
             case 'n': return 50;
             case 'r': return 38;
             }
         }
+        break;
 
     case 'T':
         {
@@ -1185,6 +1249,7 @@ int ElementNameToAtomicNumber(const char *element)
             case 'm': return 69;
             }
         }
+        break;
 
     case 'U':
         {
@@ -1193,6 +1258,7 @@ int ElementNameToAtomicNumber(const char *element)
             case '\0': return 92;
             }
         }
+        break;
 
     case 'V':
         {
@@ -1201,6 +1267,7 @@ int ElementNameToAtomicNumber(const char *element)
             case '\0': return 23;
             }
         }
+        break;
 
     case 'W':
         {
@@ -1209,6 +1276,7 @@ int ElementNameToAtomicNumber(const char *element)
             case '\0': return 74;
             }
         }
+        break;
 
     case 'X':
         {
@@ -1217,6 +1285,7 @@ int ElementNameToAtomicNumber(const char *element)
             case 'e': return 54;
             }
         }
+        break;
 
     case 'Y':
         {
@@ -1226,6 +1295,7 @@ int ElementNameToAtomicNumber(const char *element)
             case 'b': return 70;
             }
         }
+        break;
 
     case 'Z':
         {
@@ -1235,6 +1305,7 @@ int ElementNameToAtomicNumber(const char *element)
             case 'r': return 40;
             }
         }
+        break;
     }
     return -1;
 }

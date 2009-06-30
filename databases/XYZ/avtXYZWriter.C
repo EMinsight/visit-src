@@ -117,6 +117,11 @@ avtXYZWriter::WriteHeaders(const avtDatabaseMetaData *md,
 //  Programmer: Jeremy Meredith
 //  Creation:   June  2, 2009
 //
+//    Jeremy Meredith, Tue Jun 30 11:25:15 EDT 2009
+//    Fixed off-by-one error not accounted for in backport from trunk.
+//    (The trunk should not have this problem; atomic numbers no longer
+//    require a -1 to convert to a H-zero-origin value in the trunk.)
+//
 // ****************************************************************************
 
 void
@@ -167,11 +172,11 @@ avtXYZWriter::WriteChunk(vtkDataSet *ds, int chunk)
         int atomicNumber = 0;
         if (element)
             atomicNumber = element->GetTuple1(ids[0]);
-        if (atomicNumber > MAX_ELEMENT_NUMBER)
-            atomicNumber = 0;
+        if (atomicNumber < 1 || atomicNumber >= MAX_ELEMENT_NUMBER)
+            atomicNumber = 1;
 
         // write out the element, coordinates, and any variables
-        out << element_names[atomicNumber] << "\t";
+        out << element_names[atomicNumber-1] << "\t";
         out << coord[0] << "\t";
         out << coord[1] << "\t";
         out << coord[2] << "\t";
