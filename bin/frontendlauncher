@@ -65,6 +65,10 @@ exec perl -x $0 ${1+"$@"};
 #    Sean Ahern, Mon Aug  4 10:55:39 EDT 2008
 #    Changed how we run perl.
 #
+#    Mark C. Miller, Tue Jul  7 18:00:34 PDT 2009
+#    Added logic to avoid backtick pwd if possible. That is causing problems
+#    on LLNL systems when ANY lscratch filesystem happens to be down and
+#    the user may be starting VisIt from ANOTHER lscratch filesystem.
 ###############################################################################
 
 
@@ -79,7 +83,10 @@ $ENV{PATH} = join ':' , ("$ENV{PATH}","/bin","/usr/bin","/usr/sbin",
 # set base directory
 chomp( $progname= `basename $0`);
 chomp( $progdir = `dirname $0` );
-chomp( $cwd     = `pwd`        );
+chomp( $cwd     = $ENV{PWD}    );
+if (!$cwd) {
+    chomp( $cwd     = `pwd`        );
+}
 
 # check if we are called via a symbolic link to visit
 $link = readlink($0);

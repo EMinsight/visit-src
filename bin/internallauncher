@@ -455,6 +455,10 @@ $0 = shift @ARGV;
 #    for parallel engine request.  added error check for > 16way config, 
 #    will now generate (hopefully) helpful error message
 #
+#    Mark C. Miller, Tue Jul  7 18:00:34 PDT 2009
+#    Added logic to avoid backtick pwd if possible. That is causing problems
+#    on LLNL systems when ANY lscratch filesystem happens to be down and
+#    the user may be starting VisIt from ANOTHER lscratch filesystem.
 ###############################################################################
 
 use POSIX qw(ceil);
@@ -466,7 +470,11 @@ use POSIX qw(ceil);
 $visitdir = $ENV{VISITDIR};
 $progname = $ENV{VISITPROGRAM};
 $ver      = $ENV{VISITVERSION};
-$cwd      =`pwd`;
+$cwd      = $ENV{PWD};
+if (!$cwd)
+{
+    $cwd = `pwd`;
+}
 chomp $cwd;
 
 if (!defined $visitdir or
