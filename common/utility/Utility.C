@@ -58,6 +58,9 @@ using std::vector;
 #include <windows.h>
 #include <userenv.h> // for GetProfilesDirectory
 #else
+#if defined(__APPLE__)
+#include <malloc/malloc.h> // for mstat
+#endif
 #include <unistd.h>
 #include <sys/types.h>
 #include <dirent.h>
@@ -216,6 +219,10 @@ LongestCommonSuffixLength(const char * const *list, int listN)
 //  Programmer: Hank Childs (from code from Peter Lindstrom)
 //  Creation:   February 28, 2008
 //
+//  Modifications:
+//    Brad Whitlock, Tue Jun 23 17:07:57 PDT 2009
+//    I added a Mac implementation.
+//
 // ****************************************************************************
 
 void
@@ -223,7 +230,12 @@ GetMemorySize(int &size, int &rss)
 {
     size = -1;
     rss  = -1;
-#if !defined(_WIN32)
+#if defined(__APPLE__)
+    struct mstats m = mstats();
+    size = m.bytes_used; // The bytes used out of the bytes_total.
+    rss = m.bytes_total; // not quite accurate but this should be the total
+                         // amount allocated by malloc.
+#elif !defined(_WIN32)
     FILE *file = fopen("/proc/self/statm", "r");
     if (file == NULL)
     {

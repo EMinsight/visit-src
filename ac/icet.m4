@@ -59,6 +59,14 @@ dnl
 dnl    Tom Fogal, Mon Aug  4 10:52:41 EDT 2008
 dnl    Don't force USE_MGL_NAMESPACE; not required, and may do strange things
 dnl    in the HW rendering case.
+dnl
+dnl    Brad Whitlock, Tue Jun 23 15:23:02 PST 2009
+dnl    Use EXE_LDFLAGS if they are set so we can link on platforms that require
+dnl    special flags to make an executable. This variable is used for special
+dnl    linking flags that get an executable to link with shared libraries and
+dnl    is needed on some platforms. I also changed a check so it uses $MPI_LIBS
+dnl    if it is set, reverting to -lmpi when $MPI_LIBS is not set.
+dnl
 
 dnl provide --enable-icet and --with-icet-(include|lib)dir=... options.  These
 dnl values will be picked up later by the AX_CHECK_ICET macro.
@@ -109,6 +117,13 @@ AS_IF([test "x$enable_icet" != "xno"],
         ax_save_LDFLAGS="${LDFLAGS}"
         ax_save_CXXFLAGS="${CXXFLAGS}"
 
+        dnl On some platforms, we need to pass special flags to link an exe
+        dnl against shared libraries. IceT or Mesa could be shared libraries
+        dnl so we need to set our LDFLAGS temporarily.
+        AS_IF([test -n "${EXE_LDFLAGS}"],
+            [LDFLAGS="${LDFLAGS} ${EXE_LDFLAGS}"]
+        )
+
         dnl Did they specify --with-icet options?  If they didn't, default to
         dnl use anything they might have had in the environment.
         AS_IF([test "x$with_icet_includedir" != xno],
@@ -151,12 +166,21 @@ some custom LDFLAGS?])],
             dnl you've checked for / setup Mesa'.
             [-L$MESA_DIR/lib $MESA_LIBS -lm]
         )
+
+        dnl Detect MPI first from our MPI_LIBS variable, which is commonly
+        dnl set in most config-site files. If we don't have it, revert to
+        dnl using -lmpi
+        AS_IF([test -n "${MPI_LIBS}"],
+           [ICET_MPI_LIBS="${MPI_LIBS}"],
+           [ICET_MPI_LIBS="-lmpi"]
+        )
+
         AC_CHECK_LIB([icet_mpi], [icetCreateMPICommunicator],
             [ax_ICET_LIB_MPI="-licet_mpi"],
             [AC_MSG_FAILURE([
 --enable-icet was given, but I could not use IceT's MPI wrappers.  Perhaps you
 need to set some custom LDFLAGS?])],
-            [-L$MESA_DIR/lib $MESA_LIBS -lm -licet -lmpi]
+            [-L$MESA_DIR/lib $MESA_LIBS -lm -licet ${ICET_MPI_LIBS}]
         )
         dnl This is tricky.  We test to make sure it works, but really I don't
         dnl think any of the functions in this library are designed to be
@@ -169,7 +193,7 @@ need to set some custom LDFLAGS?])],
 might mean the library was updated and VisIt's IceT test simply needs to be
 updated, or it might mean your IceT install is not quite right.  You may need
 to set some custom LDFLAGS.])],
-            [-L$MESA_DIR/lib $MESA_LIBS -lm -licet -lmpi]
+            [-L$MESA_DIR/lib $MESA_LIBS -lm -licet ${ICET_MPI_LIBS}]
         )
         ICET_LIBS="${ax_ICET_LIB} ${ax_ICET_LIB_MPI} ${ax_ICET_LIB_STRATEGIES}"
         PARALLEL_CPPFLAGS="${PARALLEL_CPPFLAGS} -I${ICET_INCLUDEDIR}"

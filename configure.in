@@ -898,7 +898,8 @@ dnl
 dnl    Brad Whitlock, Thu Jun 11 15:31:48 PST 2009
 dnl    I've made many changes, including: --enable-engine-only, 
 dnl    --enable-server-components-only, --disable-select, --disable-nospin-bcast.
-dnl    These are aimed at getting VisIt to build on BlueGene/P.
+dnl    These are aimed at getting VisIt to build on BlueGene/P. I made some
+dnl    changes to icet.m4 as well.
 dnl
 dnl --------------------------------------------------------------------------
 
