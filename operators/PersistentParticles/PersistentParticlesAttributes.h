@@ -59,6 +59,12 @@
 class PersistentParticlesAttributes : public AttributeSubject
 {
 public:
+    enum PathTypeEnum
+    {
+        Absolute,
+        Relative
+    };
+
     PersistentParticlesAttributes();
     PersistentParticlesAttributes(const PersistentParticlesAttributes &obj);
     virtual ~PersistentParticlesAttributes();
@@ -78,18 +84,18 @@ public:
 
     // Property setting methods
     void SetStartIndex(int startIndex_);
-    void SetStartIndexRelative(bool startIndexRelative_);
+    void SetStartPathType(PathTypeEnum startPathType_);
     void SetStopIndex(int stopIndex_);
-    void SetStopIndexRelative(bool stopIndexRelative_);
+    void SetStopPathType(PathTypeEnum stopPathType_);
     void SetStride(int stride_);
     void SetIndexVariable(const std::string &indexVariable_);
     void SetConnectParticles(bool connectParticles_);
 
     // Property getting methods
     int               GetStartIndex() const;
-    bool              GetStartIndexRelative() const;
+    PathTypeEnum      GetStartPathType() const;
     int               GetStopIndex() const;
-    bool              GetStopIndexRelative() const;
+    PathTypeEnum      GetStopPathType() const;
     int               GetStride() const;
     const std::string &GetIndexVariable() const;
           std::string &GetIndexVariable();
@@ -99,6 +105,12 @@ public:
     virtual bool CreateNode(DataNode *node, bool completeSave, bool forceAdd);
     virtual void SetFromNode(DataNode *node);
 
+    // Enum conversion functions
+    static std::string PathTypeEnum_ToString(PathTypeEnum);
+    static bool PathTypeEnum_FromString(const std::string &, PathTypeEnum &);
+protected:
+    static std::string PathTypeEnum_ToString(int);
+public:
 
     // Keyframing methods
     virtual std::string               GetFieldName(int index) const;
@@ -110,22 +122,22 @@ public:
     // IDs that can be used to identify fields in case statements
     enum {
         ID_startIndex = 0,
-        ID_startIndexRelative,
+        ID_startPathType,
         ID_stopIndex,
-        ID_stopIndexRelative,
+        ID_stopPathType,
         ID_stride,
         ID_indexVariable,
         ID_connectParticles
     };
 
 private:
-    int         startIndex;
-    bool        startIndexRelative;
-    int         stopIndex;
-    bool        stopIndexRelative;
-    int         stride;
-    std::string indexVariable;
-    bool        connectParticles;
+    int          startIndex;
+    PathTypeEnum startPathType;
+    int          stopIndex;
+    PathTypeEnum stopPathType;
+    int          stride;
+    std::string  indexVariable;
+    bool         connectParticles;
 
     // Static class format string for type map.
     static const char *TypeMapFormatString;

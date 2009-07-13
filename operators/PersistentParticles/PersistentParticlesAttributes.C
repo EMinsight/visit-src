@@ -39,8 +39,45 @@
 #include <PersistentParticlesAttributes.h>
 #include <DataNode.h>
 
+//
+// Enum conversion methods for PersistentParticlesAttributes::PathTypeEnum
+//
+
+static const char *PathTypeEnum_strings[] = {
+"Absolute", "Relative"};
+
+std::string
+PersistentParticlesAttributes::PathTypeEnum_ToString(PersistentParticlesAttributes::PathTypeEnum t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 2) index = 0;
+    return PathTypeEnum_strings[index];
+}
+
+std::string
+PersistentParticlesAttributes::PathTypeEnum_ToString(int t)
+{
+    int index = (t < 0 || t >= 2) ? 0 : t;
+    return PathTypeEnum_strings[index];
+}
+
+bool
+PersistentParticlesAttributes::PathTypeEnum_FromString(const std::string &s, PersistentParticlesAttributes::PathTypeEnum &val)
+{
+    val = PersistentParticlesAttributes::Absolute;
+    for(int i = 0; i < 2; ++i)
+    {
+        if(s == PathTypeEnum_strings[i])
+        {
+            val = (PathTypeEnum)i;
+            return true;
+        }
+    }
+    return false;
+}
+
 // Type map format string
-const char *PersistentParticlesAttributes::TypeMapFormatString = "ibibisb";
+const char *PersistentParticlesAttributes::TypeMapFormatString = "iiiiisb";
 
 // ****************************************************************************
 // Method: PersistentParticlesAttributes::PersistentParticlesAttributes
@@ -62,10 +99,11 @@ PersistentParticlesAttributes::PersistentParticlesAttributes() :
     indexVariable("default")
 {
     startIndex = 0;
-    startIndexRelative = false;
+    startPathType = Absolute;
     stopIndex = 1;
-    stopIndexRelative = false;
+    stopPathType = Absolute;
     stride = 1;
+    connectParticles = true;
 }
 
 // ****************************************************************************
@@ -87,9 +125,9 @@ PersistentParticlesAttributes::PersistentParticlesAttributes(const PersistentPar
     AttributeSubject(PersistentParticlesAttributes::TypeMapFormatString)
 {
     startIndex = obj.startIndex;
-    startIndexRelative = obj.startIndexRelative;
+    startPathType = obj.startPathType;
     stopIndex = obj.stopIndex;
-    stopIndexRelative = obj.stopIndexRelative;
+    stopPathType = obj.stopPathType;
     stride = obj.stride;
     indexVariable = obj.indexVariable;
     connectParticles = obj.connectParticles;
@@ -137,9 +175,9 @@ PersistentParticlesAttributes::operator = (const PersistentParticlesAttributes &
 {
     if (this == &obj) return *this;
     startIndex = obj.startIndex;
-    startIndexRelative = obj.startIndexRelative;
+    startPathType = obj.startPathType;
     stopIndex = obj.stopIndex;
-    stopIndexRelative = obj.stopIndexRelative;
+    stopPathType = obj.stopPathType;
     stride = obj.stride;
     indexVariable = obj.indexVariable;
     connectParticles = obj.connectParticles;
@@ -168,9 +206,9 @@ PersistentParticlesAttributes::operator == (const PersistentParticlesAttributes 
 {
     // Create the return value
     return ((startIndex == obj.startIndex) &&
-            (startIndexRelative == obj.startIndexRelative) &&
+            (startPathType == obj.startPathType) &&
             (stopIndex == obj.stopIndex) &&
-            (stopIndexRelative == obj.stopIndexRelative) &&
+            (stopPathType == obj.stopPathType) &&
             (stride == obj.stride) &&
             (indexVariable == obj.indexVariable) &&
             (connectParticles == obj.connectParticles));
@@ -317,13 +355,13 @@ PersistentParticlesAttributes::NewInstance(bool copy) const
 void
 PersistentParticlesAttributes::SelectAll()
 {
-    Select(ID_startIndex,         (void *)&startIndex);
-    Select(ID_startIndexRelative, (void *)&startIndexRelative);
-    Select(ID_stopIndex,          (void *)&stopIndex);
-    Select(ID_stopIndexRelative,  (void *)&stopIndexRelative);
-    Select(ID_stride,             (void *)&stride);
-    Select(ID_indexVariable,      (void *)&indexVariable);
-    Select(ID_connectParticles,   (void *)&connectParticles);
+    Select(ID_startIndex,       (void *)&startIndex);
+    Select(ID_startPathType,    (void *)&startPathType);
+    Select(ID_stopIndex,        (void *)&stopIndex);
+    Select(ID_stopPathType,     (void *)&stopPathType);
+    Select(ID_stride,           (void *)&stride);
+    Select(ID_indexVariable,    (void *)&indexVariable);
+    Select(ID_connectParticles, (void *)&connectParticles);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -362,10 +400,10 @@ PersistentParticlesAttributes::CreateNode(DataNode *parentNode, bool completeSav
         node->AddNode(new DataNode("startIndex", startIndex));
     }
 
-    if(completeSave || !FieldsEqual(ID_startIndexRelative, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_startPathType, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("startIndexRelative", startIndexRelative));
+        node->AddNode(new DataNode("startPathType", PathTypeEnum_ToString(startPathType)));
     }
 
     if(completeSave || !FieldsEqual(ID_stopIndex, &defaultObject))
@@ -374,10 +412,10 @@ PersistentParticlesAttributes::CreateNode(DataNode *parentNode, bool completeSav
         node->AddNode(new DataNode("stopIndex", stopIndex));
     }
 
-    if(completeSave || !FieldsEqual(ID_stopIndexRelative, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_stopPathType, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("stopIndexRelative", stopIndexRelative));
+        node->AddNode(new DataNode("stopPathType", PathTypeEnum_ToString(stopPathType)));
     }
 
     if(completeSave || !FieldsEqual(ID_stride, &defaultObject))
@@ -436,12 +474,40 @@ PersistentParticlesAttributes::SetFromNode(DataNode *parentNode)
     DataNode *node;
     if((node = searchNode->GetNode("startIndex")) != 0)
         SetStartIndex(node->AsInt());
-    if((node = searchNode->GetNode("startIndexRelative")) != 0)
-        SetStartIndexRelative(node->AsBool());
+    if((node = searchNode->GetNode("startPathType")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 2)
+                SetStartPathType(PathTypeEnum(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            PathTypeEnum value;
+            if(PathTypeEnum_FromString(node->AsString(), value))
+                SetStartPathType(value);
+        }
+    }
     if((node = searchNode->GetNode("stopIndex")) != 0)
         SetStopIndex(node->AsInt());
-    if((node = searchNode->GetNode("stopIndexRelative")) != 0)
-        SetStopIndexRelative(node->AsBool());
+    if((node = searchNode->GetNode("stopPathType")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 2)
+                SetStopPathType(PathTypeEnum(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            PathTypeEnum value;
+            if(PathTypeEnum_FromString(node->AsString(), value))
+                SetStopPathType(value);
+        }
+    }
     if((node = searchNode->GetNode("stride")) != 0)
         SetStride(node->AsInt());
     if((node = searchNode->GetNode("indexVariable")) != 0)
@@ -462,10 +528,10 @@ PersistentParticlesAttributes::SetStartIndex(int startIndex_)
 }
 
 void
-PersistentParticlesAttributes::SetStartIndexRelative(bool startIndexRelative_)
+PersistentParticlesAttributes::SetStartPathType(PersistentParticlesAttributes::PathTypeEnum startPathType_)
 {
-    startIndexRelative = startIndexRelative_;
-    Select(ID_startIndexRelative, (void *)&startIndexRelative);
+    startPathType = startPathType_;
+    Select(ID_startPathType, (void *)&startPathType);
 }
 
 void
@@ -476,10 +542,10 @@ PersistentParticlesAttributes::SetStopIndex(int stopIndex_)
 }
 
 void
-PersistentParticlesAttributes::SetStopIndexRelative(bool stopIndexRelative_)
+PersistentParticlesAttributes::SetStopPathType(PersistentParticlesAttributes::PathTypeEnum stopPathType_)
 {
-    stopIndexRelative = stopIndexRelative_;
-    Select(ID_stopIndexRelative, (void *)&stopIndexRelative);
+    stopPathType = stopPathType_;
+    Select(ID_stopPathType, (void *)&stopPathType);
 }
 
 void
@@ -513,10 +579,10 @@ PersistentParticlesAttributes::GetStartIndex() const
     return startIndex;
 }
 
-bool
-PersistentParticlesAttributes::GetStartIndexRelative() const
+PersistentParticlesAttributes::PathTypeEnum
+PersistentParticlesAttributes::GetStartPathType() const
 {
-    return startIndexRelative;
+    return PathTypeEnum(startPathType);
 }
 
 int
@@ -525,10 +591,10 @@ PersistentParticlesAttributes::GetStopIndex() const
     return stopIndex;
 }
 
-bool
-PersistentParticlesAttributes::GetStopIndexRelative() const
+PersistentParticlesAttributes::PathTypeEnum
+PersistentParticlesAttributes::GetStopPathType() const
 {
-    return stopIndexRelative;
+    return PathTypeEnum(stopPathType);
 }
 
 int
@@ -589,13 +655,13 @@ PersistentParticlesAttributes::GetFieldName(int index) const
 {
     switch (index)
     {
-    case ID_startIndex:         return "startIndex";
-    case ID_startIndexRelative: return "startIndexRelative";
-    case ID_stopIndex:          return "stopIndex";
-    case ID_stopIndexRelative:  return "stopIndexRelative";
-    case ID_stride:             return "stride";
-    case ID_indexVariable:      return "indexVariable";
-    case ID_connectParticles:   return "connectParticles";
+    case ID_startIndex:       return "startIndex";
+    case ID_startPathType:    return "startPathType";
+    case ID_stopIndex:        return "stopIndex";
+    case ID_stopPathType:     return "stopPathType";
+    case ID_stride:           return "stride";
+    case ID_indexVariable:    return "indexVariable";
+    case ID_connectParticles: return "connectParticles";
     default:  return "invalid index";
     }
 }
@@ -620,13 +686,13 @@ PersistentParticlesAttributes::GetFieldType(int index) const
 {
     switch (index)
     {
-    case ID_startIndex:         return FieldType_int;
-    case ID_startIndexRelative: return FieldType_bool;
-    case ID_stopIndex:          return FieldType_int;
-    case ID_stopIndexRelative:  return FieldType_bool;
-    case ID_stride:             return FieldType_int;
-    case ID_indexVariable:      return FieldType_variablename;
-    case ID_connectParticles:   return FieldType_bool;
+    case ID_startIndex:       return FieldType_int;
+    case ID_startPathType:    return FieldType_enum;
+    case ID_stopIndex:        return FieldType_int;
+    case ID_stopPathType:     return FieldType_enum;
+    case ID_stride:           return FieldType_int;
+    case ID_indexVariable:    return FieldType_variablename;
+    case ID_connectParticles: return FieldType_bool;
     default:  return FieldType_unknown;
     }
 }
@@ -651,13 +717,13 @@ PersistentParticlesAttributes::GetFieldTypeName(int index) const
 {
     switch (index)
     {
-    case ID_startIndex:         return "int";
-    case ID_startIndexRelative: return "bool";
-    case ID_stopIndex:          return "int";
-    case ID_stopIndexRelative:  return "bool";
-    case ID_stride:             return "int";
-    case ID_indexVariable:      return "variablename";
-    case ID_connectParticles:   return "bool";
+    case ID_startIndex:       return "int";
+    case ID_startPathType:    return "enum";
+    case ID_stopIndex:        return "int";
+    case ID_stopPathType:     return "enum";
+    case ID_stride:           return "int";
+    case ID_indexVariable:    return "variablename";
+    case ID_connectParticles: return "bool";
     default:  return "invalid index";
     }
 }
@@ -689,9 +755,9 @@ PersistentParticlesAttributes::FieldsEqual(int index_, const AttributeGroup *rhs
         retval = (startIndex == obj.startIndex);
         }
         break;
-    case ID_startIndexRelative:
+    case ID_startPathType:
         {  // new scope
-        retval = (startIndexRelative == obj.startIndexRelative);
+        retval = (startPathType == obj.startPathType);
         }
         break;
     case ID_stopIndex:
@@ -699,9 +765,9 @@ PersistentParticlesAttributes::FieldsEqual(int index_, const AttributeGroup *rhs
         retval = (stopIndex == obj.stopIndex);
         }
         break;
-    case ID_stopIndexRelative:
+    case ID_stopPathType:
         {  // new scope
-        retval = (stopIndexRelative == obj.stopIndexRelative);
+        retval = (stopPathType == obj.stopPathType);
         }
         break;
     case ID_stride:

@@ -87,17 +87,17 @@ class QvisPersistentParticlesWindow : public QvisOperatorWindow
     virtual void GetCurrentValues(int which_widget);
   private slots:
     void startIndexProcessText();
-    void startIndexRelativeChanged(bool val);
+    void startPathTypeChanged(int button);
     void stopIndexProcessText();
-    void stopIndexRelativeChanged(bool val);
+    void stopPathTypeChanged(int button);
     void strideProcessText();
     void indexVariableChanged(const QString &varName);
     void connectParticlesChanged(bool val);
   private:
     QLineEdit *startIndex;
-    QCheckBox *startIndexRelative;
+    QButtonGroup *startPathTypeButtons;
     QLineEdit *stopIndex;
-    QCheckBox *stopIndexRelative;
+    QButtonGroup *stopPathTypeButtons;
     QLineEdit *stride;
     QvisVariableButton *indexVariable;
     QCheckBox *connectParticles;

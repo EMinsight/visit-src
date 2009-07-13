@@ -125,53 +125,111 @@ QvisPersistentParticlesWindow::~QvisPersistentParticlesWindow()
 void
 QvisPersistentParticlesWindow::CreateWindowContents()
 {
-    QGridLayout *mainLayout = new QGridLayout(topLayout, 7,2,  10, "mainLayout");
+    QLabel *dummyLabel = new QLabel(tr(" "), central, "dummyLabel");
 
+    //
+    // Create the start absolute/relative path type radio buttons
+    //
 
-    startIndexLabel = new QLabel(tr("Index of first time slice"), central, "startIndexLabel");
-    mainLayout->addWidget(startIndexLabel,0,0);
+    QGridLayout *startLayout = new QGridLayout(topLayout, 1, 2, 10, "startLayout");
+
+    startIndexLabel = new QLabel(tr("Index of the first time slice"), central, "startIndexLabel");
+    startLayout->addWidget(startIndexLabel,0,0);
     startIndex = new QLineEdit(central, "startIndex");
     connect(startIndex, SIGNAL(returnPressed()),
             this, SLOT(startIndexProcessText()));
-    mainLayout->addWidget(startIndex, 0,1);
+    startLayout->addWidget(startIndex, 0,1);
 
-    startIndexRelative = new QCheckBox(tr("Index of first time slice relative to current time"), central, "startIndexRelative");
-    connect(startIndexRelative, SIGNAL(toggled(bool)),
-            this, SLOT(startIndexRelativeChanged(bool)));
-    mainLayout->addWidget(startIndexRelative, 1,0);
 
-    stopIndexLabel = new QLabel(tr("Index of last time slice"), central, "stopIndexLabel");
-    mainLayout->addWidget(stopIndexLabel,2,0);
+    QHBoxLayout *startPathTypeLayout = new QHBoxLayout(topLayout);
+ 
+    // Create a group of radio buttons 
+    startPathTypeButtons = new QButtonGroup( central, "startPathTypeRadioGroup" );
+    startPathTypeButtons->setFrameStyle(QFrame::NoFrame);
+    QLabel *startPathTypeLabel = new QLabel(startPathTypeButtons, tr("    Start Path Type"),
+         central, "startPathTypeLabel");
+    startPathTypeLayout->addWidget(startPathTypeLabel);
+ 
+    QHBoxLayout *startPathTypeButtonsLayout = new QHBoxLayout(startPathTypeButtons);
+    startPathTypeButtonsLayout->setSpacing(10);
+    QRadioButton *rb = new QRadioButton(tr("Absolute"), startPathTypeButtons );
+    rb->setChecked( TRUE );
+    startPathTypeButtonsLayout->addWidget(rb);
+    rb = new QRadioButton( startPathTypeButtons );
+    rb->setText( tr("Relative to current time slice") );
+    startPathTypeButtonsLayout->addWidget(rb);
+    startPathTypeLayout->addWidget( startPathTypeButtons );
+    startPathTypeLayout->addStretch(0);
+    // Each time a radio button is clicked, call the startPathTypeChanged slot.
+    connect(startPathTypeButtons, SIGNAL(clicked(int)),
+            this, SLOT(startPathTypeChanged(int)));
+ 
+    //
+    // Create the stop absolute/relative path type radio buttons
+    //
+
+    QGridLayout *stopLayout = new QGridLayout(topLayout, 2, 2, 10, "stopLayout");
+
+    stopLayout->addWidget(dummyLabel,0,0);
+
+    stopIndexLabel = new QLabel(tr("Index of the last time slice"), central, "stopIndexLabel");
+    stopLayout->addWidget(stopIndexLabel,1,0);
     stopIndex = new QLineEdit(central, "stopIndex");
     connect(stopIndex, SIGNAL(returnPressed()),
             this, SLOT(stopIndexProcessText()));
-    mainLayout->addWidget(stopIndex, 2,1);
+    stopLayout->addWidget(stopIndex, 1,1);
 
-    stopIndexRelative = new QCheckBox(tr("Index of last time slice relative to current time"), central, "stopIndexRelative");
-    connect(stopIndexRelative, SIGNAL(toggled(bool)),
-            this, SLOT(stopIndexRelativeChanged(bool)));
-    mainLayout->addWidget(stopIndexRelative, 3,0);
+
+    QHBoxLayout *stopPathTypeLayout = new QHBoxLayout(topLayout);
+ 
+    // Create a group of radio buttons 
+    stopPathTypeButtons = new QButtonGroup( central, "stopPathTypeRadioGroup" );
+    stopPathTypeButtons->setFrameStyle(QFrame::NoFrame);
+    QLabel *stopPathTypeLabel = new QLabel(stopPathTypeButtons, tr("    Stop Path Type"),
+         central, "stopPathTypeLabel");
+    stopPathTypeLayout->addWidget(stopPathTypeLabel);
+ 
+    QHBoxLayout *stopPathTypeButtonsLayout = new QHBoxLayout(stopPathTypeButtons);
+    stopPathTypeButtonsLayout->setSpacing(10);
+    rb = new QRadioButton(tr("Absolute"), stopPathTypeButtons );
+    rb->setChecked( TRUE );
+    stopPathTypeButtonsLayout->addWidget(rb);
+    rb = new QRadioButton( stopPathTypeButtons );
+    rb->setText( tr("Relative to current time slice") );
+    stopPathTypeButtonsLayout->addWidget(rb);
+    stopPathTypeLayout->addWidget( stopPathTypeButtons );
+    stopPathTypeLayout->addStretch(0);
+    // Each time a radio button is clicked, call the stopPathTypeChanged slot.
+    connect(stopPathTypeButtons, SIGNAL(clicked(int)),
+            this, SLOT(stopPathTypeChanged(int)));
+ 
+    //
+    // Create the stop absolute/relative path type radio buttons
+    //
+
+    QGridLayout *mainLayout = new QGridLayout(topLayout, 4, 2, 10, "mainLayout");
+
+    mainLayout->addWidget(dummyLabel,0,0);
 
     strideLabel = new QLabel(tr("Skip rate between time slices"), central, "strideLabel");
-    mainLayout->addWidget(strideLabel,4,0);
+    mainLayout->addWidget(strideLabel,1,0);
     stride = new QLineEdit(central, "stride");
     connect(stride, SIGNAL(returnPressed()),
             this, SLOT(strideProcessText()));
-    mainLayout->addWidget(stride, 4,1);
+    mainLayout->addWidget(stride, 1,1);
 
     indexVariableLabel = new QLabel(tr("Index Variable"), central, "indexVariableLabel");
-    mainLayout->addWidget(indexVariableLabel,5,0);
+    mainLayout->addWidget(indexVariableLabel,2,0);
     int indexVariableMask = QvisVariableButton::Scalars;
     indexVariable = new QvisVariableButton(true, true, true, indexVariableMask, central, "indexVariable");
     connect(indexVariable, SIGNAL(activated(const QString&)),
             this, SLOT(indexVariableChanged(const QString&)));
-    mainLayout->addWidget(indexVariable, 5,1);
+    mainLayout->addWidget(indexVariable, 2,1);
 
     connectParticles = new QCheckBox(tr("Connect Particles"), central, "connectParticles");
     connect(connectParticles, SIGNAL(toggled(bool)),
             this, SLOT(connectParticlesChanged(bool)));
-    mainLayout->addWidget(connectParticles, 6,0);
-
+    mainLayout->addWidget(connectParticles, 3,0);
 }
 
 
@@ -221,10 +279,10 @@ QvisPersistentParticlesWindow::UpdateWindow(bool doAll)
             startIndex->setText(temp);
             startIndex->blockSignals(false);
             break;
-          case PersistentParticlesAttributes::ID_startIndexRelative:
-            startIndexRelative->blockSignals(true);
-            startIndexRelative->setChecked(atts->GetStartIndexRelative());
-            startIndexRelative->blockSignals(false);
+          case PersistentParticlesAttributes::ID_startPathType:
+            startPathTypeButtons->blockSignals(true);
+            startPathTypeButtons->setButton(atts->GetStartPathType());
+            startPathTypeButtons->blockSignals(false);
             break;
           case PersistentParticlesAttributes::ID_stopIndex:
             stopIndex->blockSignals(true);
@@ -232,10 +290,10 @@ QvisPersistentParticlesWindow::UpdateWindow(bool doAll)
             stopIndex->setText(temp);
             stopIndex->blockSignals(false);
             break;
-          case PersistentParticlesAttributes::ID_stopIndexRelative:
-            stopIndexRelative->blockSignals(true);
-            stopIndexRelative->setChecked(atts->GetStopIndexRelative());
-            stopIndexRelative->blockSignals(false);
+          case PersistentParticlesAttributes::ID_stopPathType:
+            stopPathTypeButtons->blockSignals(true);
+            stopPathTypeButtons->setButton(atts->GetStopPathType());
+            stopPathTypeButtons->blockSignals(false);
             break;
           case PersistentParticlesAttributes::ID_stride:
             stride->blockSignals(true);
@@ -352,6 +410,51 @@ QvisPersistentParticlesWindow::GetCurrentValues(int which_widget)
 // Qt Slot functions
 //
 
+void
+QvisPersistentParticlesWindow::startPathTypeChanged(int button)
+{
+    PersistentParticlesAttributes::PathTypeEnum val =
+      PersistentParticlesAttributes::PathTypeEnum(button);
+
+    // Only do it if it changed.
+    if (val != atts->GetStartPathType())
+    {
+        atts->SetStartPathType(val);
+        Apply();
+    }
+
+    if(button == 0)
+    {
+        startIndexLabel->setText(tr("Index of the first time slice"));
+    }
+    else
+    {
+        startIndexLabel->setText(tr("Number of slices backwards in time"));
+    }
+}
+
+void
+QvisPersistentParticlesWindow::stopPathTypeChanged(int button)
+{
+    PersistentParticlesAttributes::PathTypeEnum val =
+      PersistentParticlesAttributes::PathTypeEnum(button);
+
+    // Only do it if it changed.
+    if (val != atts->GetStopPathType())
+    {
+        atts->SetStopPathType(val);
+        Apply();
+    }
+
+    if(button == 0)
+    {
+        stopIndexLabel->setText(tr("Index of the last time slice"));
+    }
+    else
+    {
+        stopIndexLabel->setText(tr("Number of slices forward in time"));
+    }
+}
 
 void
 QvisPersistentParticlesWindow::startIndexProcessText()
@@ -362,27 +465,9 @@ QvisPersistentParticlesWindow::startIndexProcessText()
 
 
 void
-QvisPersistentParticlesWindow::startIndexRelativeChanged(bool val)
-{
-    atts->SetStartIndexRelative(val);
-    SetUpdate(false);
-    Apply();
-}
-
-
-void
 QvisPersistentParticlesWindow::stopIndexProcessText()
 {
     GetCurrentValues(PersistentParticlesAttributes::ID_stopIndex);
-    Apply();
-}
-
-
-void
-QvisPersistentParticlesWindow::stopIndexRelativeChanged(bool val)
-{
-    atts->SetStopIndexRelative(val);
-    SetUpdate(false);
     Apply();
 }
 
@@ -411,5 +496,4 @@ QvisPersistentParticlesWindow::connectParticlesChanged(bool val)
     SetUpdate(false);
     Apply();
 }
-
 
