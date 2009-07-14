@@ -156,6 +156,10 @@
 #    expectation is that this is a reasonable stop-gap since the issue will
 #    go away entirely upon moving to CMake.
 #
+#    Hank Childs, Tue Jul 14 14:28:36 PDT 2009
+#    Remove '==' inside test, as it doesn't work on my machine (it is not
+#    compliant).
+#
 ##############################################################################
 
 @SET_MAKE@
