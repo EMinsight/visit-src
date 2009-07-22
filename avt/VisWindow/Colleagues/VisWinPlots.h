@@ -187,6 +187,10 @@ class avtTransparencyActor;
 //    Added IsMakingExternalRenderRequests, GetAverageExternalRenderingTime
 //    and DoNextExternalRenderAsVisualQueue to support the 'in-progress'
 //    visual queue for SR mode.
+//
+//    Tom Fogal, Mon May 25 18:20:46 MDT 2009
+//    Added GetTransparencyActor method.
+//
 // ****************************************************************************
 
 class VISWINDOW_API VisWinPlots : public VisWinColleague
@@ -255,6 +259,7 @@ class VISWINDOW_API VisWinPlots : public VisWinColleague
     bool                          DoAllPlotsAxesHaveSameUnits();
 
     bool                          TransparenciesExist(void);
+    avtTransparencyActor*         GetTransparencyActor();
 
     void                          SuspendOpaqueGeometry(void);
     void                          SuspendTranslucentGeometry(void);

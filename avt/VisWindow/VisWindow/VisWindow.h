@@ -396,6 +396,9 @@ class VisitInteractor;
 //    Tom Fogal, Sun Jul 27 01:21:06 EDT 2008
 //    Add interface for ScreenRender.
 //
+//    Tom Fogal, Mon May 25 18:21:24 MDT 2009
+//    Added GetTransparencyActor, so clients may invalidate the cache.
+//
 // ****************************************************************************
 
 class VISWINDOW_API VisWindow
@@ -618,6 +621,7 @@ public:
     void                 ResumeTranslucentGeometry();
 
     bool                 TransparenciesExist(void);
+    avtTransparencyActor* GetTransparencyActor();
 
     void                 GlyphPick(const double*, const double*, int&, int&, 
                                    bool&, const bool = false);
