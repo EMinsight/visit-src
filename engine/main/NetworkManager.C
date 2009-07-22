@@ -2164,6 +2164,11 @@ NetworkManager::NeedZBufferToCompositeEvenIn2D(const intVector plotIds)
 //
 //    Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
 //    Replaced CATCHALL(...) with CATCHALL.
+//
+//    Tom Fogal,  Wed Jul 22 10:50:58 MDT 2009
+//    Invalidate the cache earlier, to make sure we don't use cached values
+//    from the last rendering.  (trunk backport)
+//
 // ****************************************************************************
 
 avtDataObjectWriter_p
@@ -2178,6 +2183,12 @@ NetworkManager::Render(intVector plotIds, bool getZBuffer, int annotMode,
     std::vector<avtPlot_p>& imageBasedPlots = viswinInfo.imageBasedPlots;
 
     bool dump_renders = avtDebugDumpOptions::DumpEnabled();
+
+    { // Make sure transparency gets recalculated.
+        debug5 << "Invalidating transparency cache." << std::endl;
+        avtTransparencyActor* trans = viswin->GetTransparencyActor();
+        trans->InvalidateTransparencyCache();
+    }
 
     TRY
     {
