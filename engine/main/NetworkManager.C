@@ -2172,6 +2172,10 @@ NetworkManager::NeedZBufferToCompositeEvenIn2D(const intVector plotIds)
 //    Tom Fogal, Fri May 29 20:50:23 MDT 2009 (Wed Jul 22 10:54:47 MDT 2009)
 //    Remove transparency cache invalidation from here ... (backport)
 //
+//    Tom Fogal, Wed Jul 22 15:29:43 MDT 2009
+//    Make sure to call *our* render methods.  Allows derived classes to fall
+//    back on this class, even if it overrides rendering methods.
+//
 // ****************************************************************************
 
 avtDataObjectWriter_p
@@ -2217,7 +2221,7 @@ NetworkManager::Render(intVector plotIds, bool getZBuffer, int annotMode,
         // FIRST PASS - Opaque only
         // ************************************************************
 
-        avtImage_p theImage = this->RenderGeometry();
+        avtImage_p theImage = NetworkManager::RenderGeometry();
 
         CallProgressCallback("NetworkManager", "Compositing", 0, 1);
 
@@ -2300,7 +2304,7 @@ NetworkManager::Render(intVector plotIds, bool getZBuffer, int annotMode,
             CopyTo(tmp_img, compositedImageAsDataObject);
 
             compositedImageAsDataObject =
-                this->RenderTranslucent(windowID, tmp_img);
+                NetworkManager::RenderTranslucent(windowID, tmp_img);
         }
 
         //

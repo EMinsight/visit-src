@@ -2193,6 +2193,10 @@ ParallelMergeClonedWriterOutputs(avtDataObject_p dob,
 //    the scalable threshold was exceeded. But a collective call after the
 //    data merge and send to viewer I felt was much less harmless than one
 //    before any data merging can even start.
+//
+//    Tom Fogal, Tue Jul 21 17:11:47 MDT 2009
+//    Debug statements.
+//
 // ****************************************************************************
 void
 Engine::WriteData(NonBlockingRPC *rpc, avtDataObjectWriter_p &writer,
@@ -2295,6 +2299,7 @@ Engine::WriteData(NonBlockingRPC *rpc, avtDataObjectWriter_p &writer,
             if (thresholdExceeded && !sendDataAnyway)
             {
                 // dummy a null data object message to send to viewer
+                debug2 << "Sending back null dataset message." << std::endl;
                 avtNullData_p nullData = new avtNullData(NULL,AVT_NULL_DATASET_MSG);
                 CopyTo(ui_dob, nullData);
             }
@@ -2320,6 +2325,7 @@ Engine::WriteData(NonBlockingRPC *rpc, avtDataObjectWriter_p &writer,
         }
         else
         {
+            debug1 << "Sending error: " << v.GetErrorMessage() << std::endl;
             rpc->SendError(v.GetErrorMessage());
         }
 

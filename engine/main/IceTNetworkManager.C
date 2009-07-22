@@ -45,6 +45,7 @@
 #include <avtParallel.h>
 #include <avtSoftwareShader.h>
 #include <avtSourceFromImage.h>
+#include <avtTransparencyActor.h>
 #include <DebugStream.h>
 #include <Engine.h>
 #include <snprintf.h>
@@ -267,6 +268,10 @@ IceTNetworkManager::TileLayout(size_t width, size_t height) const
 //
 //    Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
 //    Replaced CATCHALL(...) with CATCHALL.
+//
+//    Tom Fogal, Tue Jul 21 19:20:40 MDT 2009
+//    Fall back to the NetworkManager when we find transparency.
+//
 // ****************************************************************************
 avtDataObjectWriter_p
 IceTNetworkManager::Render(intVector networkIds, bool getZBuffer,
@@ -283,6 +288,20 @@ IceTNetworkManager::Render(intVector networkIds, bool getZBuffer,
     {
         this->StartTimer();
         this->RenderSetup(networkIds, getZBuffer, annotMode, windowID, leftEye);
+
+        // We can't easily figure out a compositing order, which IceT requires
+        // in order to properly composite transparent geometry.  Thus if there
+        // is some transparency, fallback to our parent implementation.
+        avtTransparencyActor* trans = viswin->GetTransparencyActor();
+        if(trans->TransparenciesExist() || this->MemoMultipass(viswin))
+        {
+            debug2 << "Encountered transparency: falling back to old "
+                      "SR / compositing routines." << std::endl;
+            CATCH_RETURN2(1, NetworkManager::Render(networkIds, getZBuffer,
+                                                    annotMode, windowID,
+                                                    leftEye));
+        }
+
         bool needZB = !imageBasedPlots.empty() ||
                       this->Shadowing(windowID)  ||
                       this->DepthCueing(windowID);
