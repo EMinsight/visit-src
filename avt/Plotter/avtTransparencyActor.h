@@ -105,6 +105,9 @@ class     vtkParallelImageSpaceRedistributor;
 //    Jeremy Meredith, Thu Oct 21 12:09:00 PDT 2004
 //    Renamed the parallel filter.
 //
+//    Tom Fogal, Mon May 25 14:03:14 MDT 2009
+//    Added caching for transparency calculation.
+//
 // ****************************************************************************
 
 class PLOTTER_API avtTransparencyActor
@@ -134,6 +137,9 @@ class PLOTTER_API avtTransparencyActor
 
     bool                             TransparenciesExist(void);
     bool                             TransparenciesMightExist(void) const;
+    void                             InvalidateTransparencyCache() {
+                                         cachedTransparencies = false;
+                                     }
 
     void                             AddToRenderer(vtkRenderer *);
     void                             RemoveFromRenderer(vtkRenderer *);
@@ -172,12 +178,11 @@ class PLOTTER_API avtTransparencyActor
     vtkMatrix4x4                                    *lastCamera;
 
     bool                                             renderingSuspended;
+    bool                                             transparenciesExist;
+    bool                                             cachedTransparencies;
 
     void                                             SetUpActor(void);
     void                                             PrepareDataset(int, int);
+    void                                             DetermineTransparencies();
 };
-
-
 #endif
-
-    
