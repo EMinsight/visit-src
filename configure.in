@@ -901,6 +901,10 @@ dnl    --enable-server-components-only, --disable-select, --disable-nospin-bcast
 dnl    These are aimed at getting VisIt to build on BlueGene/P. I made some
 dnl    changes to icet.m4 as well.
 dnl
+dnl    Gunther H. Weber, Wed Jul 22 13:42:01 PDT 2009
+dnl    Link to tcmalloc_minimal instead of regular version to avoid additional
+dnl    dependencies (e.g. unwind) on 64-bit machines.   
+dnl
 dnl --------------------------------------------------------------------------
 
 dnl
@@ -2401,12 +2405,12 @@ AC_ARG_WITH(google_perftools,
 if test "$google_perftools_specified" = "yes"; then
    if test "$withval" != "no"; then
       TCMALLOC_DIR=`echo $withval | cut -f1 -d' '`
-      TCMALLOC_LIB="-ltcmalloc"
+      TCMALLOC_LIB="-ltcmalloc_minimal"
    fi
 else
    if test "$DEFAULT_TCMALLOC_DIR" != "" ; then
       TCMALLOC_DIR=$DEFAULT_TCMALLOC_DIR
-      TCMALLOC_LIB="-ltcmalloc"
+      TCMALLOC_LIB="-ltcmalloc_minimal"
    fi
 fi
 if test "$TCMALLOC_LIB" != "" ; then
