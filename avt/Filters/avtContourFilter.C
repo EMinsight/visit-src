@@ -233,6 +233,11 @@ avtContourFilter::~avtContourFilter()
 //    are streaming, not about whether we are doing dynamic load balancing.
 //    And the two are no longer synonymous.
 //
+//    Eric Brugger, Fri Jul 24 10:59:44 PDT 2009
+//    Added the variable name to the call to GetMetaData()->GetDataExtents()
+//    so that it would get the correct interval tree.  This fix was provided
+//    Hank Childs.
+//
 // ****************************************************************************
 
 avtContract_p
@@ -266,7 +271,7 @@ avtContourFilter::ModifyContract(avtContract_p in_spec)
     //
     // Get the interval tree of data extents.
     //
-    avtIntervalTree *it = GetMetaData()->GetDataExtents();
+    avtIntervalTree *it = GetMetaData()->GetDataExtents(varname);
     if (it != NULL && it->GetDimension() != 1)
     {
         debug1 << "The interval tree returned for the contour variable "
