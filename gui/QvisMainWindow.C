@@ -54,6 +54,7 @@
 #include <QvisFilePanel.h>
 #include <QvisNotepadArea.h>
 #include <QvisPostableWindow.h>
+#include <QvisPostableMainWindow.h>
 #include <QvisPlotManagerWidget.h>
 
 #include <DataNode.h>
@@ -306,6 +307,10 @@
 //    Made the Mac use Command-Q to quit, just like other Mac applications.
 //    I had to move Query and Query-over-time to use 'Y' instead.
 //
+//    Brad Whitlock, Thu Jul 23 17:03:45 PDT 2009
+//    I changed the window so when we run on short screens, the notepad
+//    becomes the dominant window control and we post everything else into it.
+//
 // ****************************************************************************
 
 QvisMainWindow::QvisMainWindow(int orientation, const char *captionString)
@@ -549,74 +554,56 @@ QvisMainWindow::QvisMainWindow(int orientation, const char *captionString)
     helpPopup->insertItem( tr("Release notes . . ."), this, SIGNAL(activateReleaseNotesWindow()));
     helpPopup->insertSeparator();
     updateVisItId = helpPopup->insertItem( tr("Check for new version . . ."), this, SIGNAL(updateVisIt()));
-
-    // Make a central widget to contain the other widgets
-    splitter = new QSplitter(this);
-    splitter->setOrientation(QSplitter::Vertical);
-    setCentralWidget(splitter);
-
-    //
-    // Create the file panel and make it an observer of the file server.
-    //
-    QVBox *panel1 = new QVBox(splitter);
-    panel1->setMargin(5);
-    filePanel = new QvisFilePanel(panel1, "FilePanel");
-    connect(filePanel, SIGNAL(reopenOnNextFrame()),
-            this, SIGNAL(reopenOnNextFrame()));
-    filePanel->ConnectFileServer(fileServer);
-    filePanel->ConnectWindowInformation(GetViewerState()->GetWindowInformation());
-
-    // Create the global area.
-    QVBox *panel2 = new QVBox(splitter);
-    panel2->setMargin(5);
-    QWidget *topOfHBox = new QWidget(panel2);
-    CreateGlobalArea(topOfHBox);
-    splitter->setResizeMode(panel2,QSplitter::Stretch);
-
-    // Create the plot Manager.
-    plotManager = new QvisPlotManagerWidget(menuBar(), panel2, "plotManager");
-    plotManager->ConnectPlotList(GetViewerState()->GetPlotList());
-    plotManager->ConnectFileServer(fileServer);
-    plotManager->ConnectGlobalAttributes(GetViewerState()->GetGlobalAttributes());
-    plotManager->ConnectExpressionList(GetViewerState()->GetExpressionList());
-    plotManager->ConnectPluginManagerAttributes(GetViewerState()->GetPluginManagerAttributes());
-    plotManager->ConnectWindowInformation(GetViewerState()->GetWindowInformation());
-    plotManager->ConnectDatabaseMetaData(GetViewerState()->GetDatabaseMetaData());
-
-    QValueList<int> splitterSizes;
-    int nVisiblePanels = 2;
-
+ 
     if(qApp->desktop()->height() < 1024)
     {
-        // No notepad
-        notepad = 0;
+        splitter = 0;
 
-        debug1 << "The screen's vertical resolution is less than 1024 "
-                  "so the notepad will not be available." << endl;
-        QvisPostableWindow::SetPostEnabled(false);
+        // Make the notepad be the main area.
+        notepad = new QvisNotepadArea(this);
+        setCentralWidget(notepad);
+
+        // Create a postable window to house the main window's stuff.
+        QvisPostableMainWindow *pmw = new QvisPostableMainWindow(
+            tr("Main Controls"), tr("Main"), notepad);
+
+        // Create the main window's widgets into the postable window
+        pmw->post();
+        CreateMainContents(pmw->ContentsWidget(), 0, pmw->ContentsLayout());
+
+        // Unpost and Post the window to make the widgets resize.
+        pmw->unpost(); pmw->post();
     }
     else 
     {
-        // Create the notepad widget. Use a big stretch factor so the
-        // notpad widget will fill all the remaining space.
+        // Make a central widget to contain the other widgets
+        splitter = new QSplitter(this);
+        splitter->setOrientation(QSplitter::Vertical);
+        setCentralWidget(splitter);
+
+        CreateMainContents(splitter, splitter, 0);
+        QValueList<int> splitterSizes;
+        int nVisiblePanels = 2;
+
+        // Create the notepad widget.
         notepad = new QvisNotepadArea( splitter );
         ++nVisiblePanels;
-    }
 
-    // May want to read these from the config file but here are the defaults.
-    int hgt = qApp->desktop()->height();
-    if(nVisiblePanels == 2)
-    {
-        splitterSizes.push_back(int(hgt * 0.5));
-        splitterSizes.push_back(int(hgt * 0.5));
+        // May want to read these from the config file but here are the defaults.
+        int hgt = qApp->desktop()->height();
+        if(nVisiblePanels == 2)
+        {
+            splitterSizes.push_back(int(hgt * 0.5));
+            splitterSizes.push_back(int(hgt * 0.5));
+        }
+        else
+        {
+            splitterSizes.push_back(int(hgt * 0.3));
+            splitterSizes.push_back(int(hgt * 0.3));
+            splitterSizes.push_back(int(hgt * 0.4));
+        }
+        splitter->setSizes(splitterSizes);
     }
-    else
-    {
-        splitterSizes.push_back(int(hgt * 0.3));
-        splitterSizes.push_back(int(hgt * 0.3));
-        splitterSizes.push_back(int(hgt * 0.4));
-    }
-    splitter->setSizes(splitterSizes);
 
     // Create the output button and put it in the status bar as a
     // permanent widget.
@@ -697,6 +684,61 @@ QvisMainWindow::~QvisMainWindow()
     delete outputButton;
     delete outputRed;
     delete outputBlue;
+}
+
+// ****************************************************************************
+// Method: QvisMainWindow::CreateMainContents
+//
+// Purpose: 
+//   This method creates most of the interesting window controls.
+//
+// Arguments:
+//   parent : The parent that will contain the widgets.
+//   s      : The splitter to use.
+//   L      : The layout to use.
+//
+// Programmer: Brad Whitlock
+// Creation:   Thu Jul 23 16:26:55 PDT 2009
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+QvisMainWindow::CreateMainContents(QWidget *parent, QSplitter *s, QVBoxLayout *L)
+{
+    //
+    // Create the file panel and make it an observer of the file server.
+    //
+    QVBox *panel1 = new QVBox(parent);
+    panel1->setMargin(5);
+    if(L != 0)
+        L->addWidget(panel1, 10);
+    filePanel = new QvisFilePanel(panel1, "FilePanel");
+    connect(filePanel, SIGNAL(reopenOnNextFrame()),
+            this, SIGNAL(reopenOnNextFrame()));
+    filePanel->ConnectFileServer(fileServer);
+    filePanel->ConnectWindowInformation(GetViewerState()->GetWindowInformation());
+
+    // Create the global area.
+    QVBox *panel2 = new QVBox(parent);
+    panel2->setMargin(5);
+    if(L != 0)
+        L->addWidget(panel2, 10);
+    QWidget *topOfHBox = new QWidget(panel2);
+    CreateGlobalArea(topOfHBox);
+    if(s != 0)
+        s->setResizeMode(panel2,QSplitter::Stretch);
+
+    // Create the plot Manager.
+    plotManager = new QvisPlotManagerWidget(menuBar(), panel2, "plotManager");
+    plotManager->ConnectPlotList(GetViewerState()->GetPlotList());
+    plotManager->ConnectFileServer(fileServer);
+    plotManager->ConnectGlobalAttributes(GetViewerState()->GetGlobalAttributes());
+    plotManager->ConnectExpressionList(GetViewerState()->GetExpressionList());
+    plotManager->ConnectPluginManagerAttributes(GetViewerState()->GetPluginManagerAttributes());
+    plotManager->ConnectWindowInformation(GetViewerState()->GetWindowInformation());
+    plotManager->ConnectDatabaseMetaData(GetViewerState()->GetDatabaseMetaData());
 }
 
 // ****************************************************************************
@@ -1529,13 +1571,19 @@ QvisMainWindow::GetPlotManager()
 //   Brad Whitlock, Mon Jul 24 17:43:44 PST 2006
 //   I made it use a splitter.
 //
+//   Brad Whitlock, Thu Jul 23 15:27:08 PDT 2009
+//   Guard against NULL splitter.
+//
 // ****************************************************************************
 
 void
 QvisMainWindow::SetOrientation(int orientation)
 {
-    splitter->setOrientation((orientation < 2) ? QSplitter::Vertical :
-                             QBoxLayout::Horizontal);
+    if(splitter != 0)
+    {
+        splitter->setOrientation((orientation < 2) ? QSplitter::Vertical :
+                                 QBoxLayout::Horizontal);
+    }
 }
 
 // ****************************************************************************
@@ -1553,6 +1601,9 @@ QvisMainWindow::SetOrientation(int orientation)
 // Modifications:
 //   Brad Whitlock, Tue Sep 19 12:06:45 PDT 2006
 //   Compensate for window decorations on the Mac.
+//
+//   Brad Whitlock, Thu Jul 23 15:27:08 PDT 2009
+//   Guard against NULL splitter.
 //
 // ****************************************************************************
 
@@ -1577,13 +1628,16 @@ QvisMainWindow::CreateNode(DataNode *parentNode)
 #endif
 
     // Add splitter values as a proportion of the window height.
-    QValueList<int> splitterSizes(splitter->sizes());
-    floatVector ss;
-    for(int i = 0; i < splitterSizes.size(); ++i)
-        ss.push_back(float(splitterSizes[i]) / 
-                     float(splitter->height()));
-    if(ss.size() >= 2)
-        node->AddNode(new DataNode("SPLITTER_VALUES", ss));
+    if(splitter != 0)
+    {
+        QValueList<int> splitterSizes(splitter->sizes());
+        floatVector ss;
+        for(int i = 0; i < splitterSizes.size(); ++i)
+            ss.push_back(float(splitterSizes[i]) / 
+                         float(splitter->height()));
+        if(ss.size() >= 2)
+            node->AddNode(new DataNode("SPLITTER_VALUES", ss));
+    }
 }
 
 // ****************************************************************************
@@ -1609,6 +1663,9 @@ QvisMainWindow::CreateNode(DataNode *parentNode)
 // Modifications:
 //   Brad Whitlock, Tue Jan 22 16:03:57 PST 2008
 //   Check for NULL notepad.
+//
+//   Brad Whitlock, Thu Jul 23 15:27:08 PDT 2009
+//   Guard against NULL splitter.
 //
 // ****************************************************************************
 
@@ -1698,22 +1755,25 @@ QvisMainWindow::SetFromNode(DataNode *parentNode, bool overrideGeometry,
     }
 
     // Default splitter values.
-    if(splitterSizes.size() == 0)
+    if(splitter != 0)
     {
-        debug1 << mName << "Using default splitter values." << endl;
-        if(notepad != 0 && notepad->isVisible())
+        if(splitterSizes.size() == 0)
         {
-            splitterSizes.push_back(int(0.3 * h));
-            splitterSizes.push_back(int(0.3 * h));
-            splitterSizes.push_back(int(0.4 * h));
+            debug1 << mName << "Using default splitter values." << endl;
+            if(notepad != 0 && notepad->isVisible())
+            {
+                splitterSizes.push_back(int(0.3 * h));
+                splitterSizes.push_back(int(0.3 * h));
+                splitterSizes.push_back(int(0.4 * h));
+            }
+            else
+            {
+                splitterSizes.push_back(int(0.5 * h));
+                splitterSizes.push_back(int(0.5 * h));
+            }
         }
-        else
-        {
-            splitterSizes.push_back(int(0.5 * h));
-            splitterSizes.push_back(int(0.5 * h));
-        }
+        splitter->setSizes(splitterSizes);
     }
-    splitter->setSizes(splitterSizes);
 }
 
 //

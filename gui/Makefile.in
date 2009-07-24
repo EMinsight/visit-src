@@ -479,6 +479,7 @@ HDRMOC = \
     QvisPlotManagerWidget.h \
     QvisPluginWindow.h \
     QvisPointControl.h \
+    QvisPostableMainWindow.h \
     QvisPostableWindow.h \
     QvisPostableWindowObserver.h \
     QvisPostableWindowSimpleObserver.h \

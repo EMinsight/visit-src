@@ -345,6 +345,7 @@ private slots:
     void lockView();
     void unlockEverything();
 private:
+    void CreateMainContents(QWidget *parent, QSplitter *splitter, QVBoxLayout *L);
     void CreateGlobalArea(QWidget *par);
     void UpdateFileMenuPopup(QPopupMenu *, int);
     void UpdateGlobalArea(bool doAll);

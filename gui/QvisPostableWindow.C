@@ -87,7 +87,12 @@ QvisPostableWindow::QvisPostableWindow(const QString &captionString,
 
     isCreated = false;
     isPosted = false;
+    central = 0;
+    topLayout = 0;
+    postButton = 0;
+    dismissButton = 0;    
     notepad = n;
+    addStretch = (notepad != 0);
 }
 
 // ****************************************************************************
@@ -293,6 +298,48 @@ void
 QvisPostableWindow::SetPostEnabled(bool v)
 {
     postEnabled = v;
+}
+
+// ****************************************************************************
+// Method: QvisPostableWindow::SetDismissEnabled
+//
+// Purpose: 
+//   Sets whether window dismissing is enabled.
+//
+// Arguments:
+//   v : True if enabled; false otherwise.
+//
+// Programmer: Brad Whitlock
+// Creation:   Thu Jul 23 14:58:23 PDT 2009
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+QvisPostableWindow::SetDismissEnabled(bool v)
+{
+    if(dismissButton != 0)
+        dismissButton->setEnabled(v);
+}
+
+// ****************************************************************************
+// Method: QvisPostableWindow::SetAddStretch
+//
+// Purpose: 
+//   Sets whether to add stretch to the layout.
+//
+// Programmer: Brad Whitlock
+// Creation:   Thu Jul 23 16:13:12 PDT 2009
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+QvisPostableWindow::SetAddStretch(bool v)
+{
+    addStretch = v;
 }
 
 // ****************************************************************************
@@ -630,6 +677,9 @@ QvisPostableWindow::GetShortCaption()
 //   Brad Whitlock, Tue Apr  8 15:26:49 PDT 2008
 //   Support for internationalization.
 //
+//   Brad Whitlock, Thu Jul 23 16:13:47 PDT 2009
+//   I made adding stretch optional.
+//
 // ****************************************************************************
 
 void
@@ -678,10 +728,10 @@ QvisPostableWindow::CreateEntireWindow()
     postButton = new QPushButton(tr("Post"), topCentral,
         "postButton");
     buttonLayout->addWidget(postButton);
-    QPushButton *dismissButton = new QPushButton(tr("Dismiss"), topCentral,
+    dismissButton = new QPushButton(tr("Dismiss"), topCentral,
         "dismissButton");
     buttonLayout->addWidget(dismissButton);
-    if(notepad != 0)
+    if(addStretch)
         vLayout->addStretch(0);
 
     // Make the window post itself when the post button is clicked.

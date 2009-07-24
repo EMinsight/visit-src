@@ -228,8 +228,11 @@ const int FileTree::FileTreeNode::DATABASE_NODE = 3;
 //   enabled allows changing of the sort and in some circumstances broke
 //   time sequences.  ('5391)
 //
-//    Cyrus Harrison, Tue Apr 14 13:35:54 PDT 2009
-//    Added creation & setup of filePopupMenu.
+//   Cyrus Harrison, Tue Apr 14 13:35:54 PDT 2009
+//   Added creation & setup of filePopupMenu.
+//
+//   Brad Whitlock, Thu Jul 23 16:54:28 PDT 2009
+//   I turned on the header's stretch mode.
 //
 // ****************************************************************************
 
@@ -248,7 +251,7 @@ QvisFilePanel::QvisFilePanel(QWidget *parent, const char *name) :
     fileListView = new QListView(this, "fileList");
     fileListView->header()->setClickEnabled(false);
     fileListView->addColumn(tr("Selected files"), 1);
-    fileListView->setColumnWidth(0, fileListView->visibleWidth());
+    fileListView->header()->setStretchEnabled(true);
     fileListView->setVScrollBarMode(QScrollView::AlwaysOn);
     fileListView->setHScrollBarMode(QScrollView::Auto);
     connect(fileListView, SIGNAL(doubleClicked(QListViewItem *)),
@@ -781,11 +784,13 @@ QvisFilePanel::RepopulateFileList()
     // Highlight the selected file.
     UpdateFileSelection();
 
+#if 0
     // Set the width of the zeroeth column.
     if(hScrollMode == QScrollView::AlwaysOn)
         QTimer::singleShot(100, this, SLOT(updateHeaderWidthForLongName()));
     else
         QTimer::singleShot(100, this, SLOT(updateHeaderWidth()));
+#endif
 
     // If the scroll mode changed, force the list view to update.
     if(hScrollModeChanged)
