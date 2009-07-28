@@ -658,6 +658,8 @@
 #     Tom Fogal, Thu Jul 23 15:52:24 MDT 2009
 #     Make sure the user knows why we couldn't use the dialog interface.
 #
+#     Mark C. Miller, Tue Jul 28 15:21:50 PDT 2009
+#     Removed attempt to copy silex in the Darwin version of build_silo.
 # *****************************************************************************
 #                                                                             #
 # *************************************************************************** #
@@ -4392,8 +4394,6 @@ function build_silo
 "$VISITDIR/silo/${SILO_VERSION}/$VISITARCH/include"
         cp src/silo/pmpio.h \
 "$VISITDIR/silo/${SILO_VERSION}/$VISITARCH/include"
-        cp tools/silex/silex \
-"$VISITDIR/silo/${SILO_VERSION}/$VISITARCH/bin"
         cp tools/browser/browser \
 "$VISITDIR/silo/${SILO_VERSION}/$VISITARCH/bin"
         cp tools/browser/silodiff \
