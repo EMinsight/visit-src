@@ -574,6 +574,7 @@
 #
 #     Eric Brugger, Fri Mar 20 16:18:00 PDT 2009
 #     Changed the source code version number to 1.11.2.
+#
 #     Tom Fogal, Tue Mar 17 21:15:53 MST 2009
 #     Added a patch which sets the endianness properly on Linux-ppc systems
 #     (based on a patch from Patrick Shinpaugh).
@@ -660,6 +661,10 @@
 #
 #     Mark C. Miller, Tue Jul 28 15:21:50 PDT 2009
 #     Removed attempt to copy silex in the Darwin version of build_silo.
+#
+#     Eric Brugger, Thu Jul 30 17:35:23 PDT 2009
+#     Changed the source code version number to 1.12.0.
+#
 # *****************************************************************************
 #                                                                             #
 # *************************************************************************** #
@@ -922,7 +927,7 @@ if [[ "$VISIT_FILE" != "" ]] ; then
   USE_VISIT_FILE="yes"
   ON_USE_VISIT_FILE="on"
 fi
-export VISIT_VERSION=${VISIT_VERSION:-"1.11.2"}
+export VISIT_VERSION=${VISIT_VERSION:-"1.12.0"}
 export VISIT_FILE=${VISIT_FILE:-"visit${VISIT_VERSION}.tar.gz"}
 
 export VTK_FILE=${VTK_FILE:-"vtk-5.0.0c.tar.gz"}
