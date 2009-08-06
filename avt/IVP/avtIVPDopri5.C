@@ -473,7 +473,7 @@ avtIVPDopri5::Step(const avtIVPField* field,
 {
     if (termType == TIME)
         t_max = end;
-    else if (termType == DISTANCE || termType == STEP)
+    else if (termType == DISTANCE || termType == STEPS)
     {
         t_max = std::numeric_limits<double>::max();
         if (end < 0)
@@ -673,7 +673,7 @@ avtIVPDopri5::Step(const avtIVPField* field,
                     throw avtIVPField::Undefined();
                 d = d + len;
             }
-            else if (termType == STEP &&
+            else if (termType == STEPS &&
                      numStep >= (int)fabs(end))
                 return TERMINATE;
                 
