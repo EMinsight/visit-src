@@ -156,6 +156,7 @@ QvisPoincarePlotWindow::CreateWindowContents()
     terminationType->insertItem(tr("Distance"));
     terminationType->insertItem(tr("Time"));
     terminationType->insertItem(tr("Number of Steps"));
+    terminationType->insertItem(tr("Number of Puctures"));
     connect(terminationType, SIGNAL(activated(int)),
             this, SLOT(terminationTypeChanged(int)));
     streamlineLayout->addWidget(terminationType, row,0);    
@@ -296,7 +297,7 @@ QvisPoincarePlotWindow::CreateWindowContents()
     analysisLayout->addWidget(MaxToroidalWindingLabel,row,0);
     MaxToroidalWinding = new QSpinBox(1,10000, 1, analysisTab, "MaxToroidalWinding");
     connect(MaxToroidalWinding, SIGNAL(valueChanged(int)),
-            this, SLOT(MaxToroidalWindingSizeChanged(int)));
+            this, SLOT(maxToroidalWindingSizeChanged(int)));
     analysisLayout->addWidget(MaxToroidalWinding,row,1);
     row++;
 
@@ -304,7 +305,7 @@ QvisPoincarePlotWindow::CreateWindowContents()
     analysisLayout->addWidget(OverrideToroidalWindingLabel,row,0);
     OverrideToroidalWinding = new QLineEdit(analysisTab, "OverrideToroidalWinding");
     connect(OverrideToroidalWinding, SIGNAL(returnPressed()),
-            this, SLOT(OverrideToroidalWindingProcessText()));
+            this, SLOT(overrideToroidalWindingProcessText()));
     analysisLayout->addWidget(OverrideToroidalWinding,row,1);
     row++;
 
@@ -312,7 +313,7 @@ QvisPoincarePlotWindow::CreateWindowContents()
     analysisLayout->addWidget(HitRateLabel,row,0);
     HitRate = new QLineEdit(analysisTab, "HitRate");
     connect(HitRate, SIGNAL(returnPressed()),
-            this, SLOT(HitRateProcessText()));
+            this, SLOT(hitRateProcessText()));
     analysisLayout->addWidget(HitRate,row,1);
     row++;
 
@@ -320,7 +321,7 @@ QvisPoincarePlotWindow::CreateWindowContents()
     analysisLayout->addWidget(AdjustPlaneLabel,row,0);
     AdjustPlane = new QLineEdit(analysisTab, "AdjustPlane");
     connect(AdjustPlane, SIGNAL(returnPressed()),
-            this, SLOT(AdjustPlaneProcessText()));
+            this, SLOT(adjustPlaneProcessText()));
     analysisLayout->addWidget(AdjustPlane,row,1);
     row++;
 
@@ -339,13 +340,13 @@ QvisPoincarePlotWindow::CreateWindowContents()
     QRadioButton *OverlapsOverlapTypeSmooth = new QRadioButton(tr("Smooth"), Overlaps);
     OverlapsLayout->addWidget(OverlapsOverlapTypeSmooth);
     connect(Overlaps, SIGNAL(clicked(int)),
-            this, SLOT(OverlapsChanged(int)));
+            this, SLOT(overlapsChanged(int)));
     analysisLayout->addWidget(Overlaps,row,1);
     row++;
 
     // tab for display options
     QFrame *displayTab = new QFrame(tabs);
-    QGridLayout *displayLayout = new QGridLayout(displayTab, 30, 2, 5);
+    QGridLayout *displayLayout = new QGridLayout(displayTab, 30, 5, 5);
     tabs->addTab(displayTab, "Display");
     row = 0;
 
@@ -356,7 +357,7 @@ QvisPoincarePlotWindow::CreateWindowContents()
     DisplayType->insertItem(tr("Curves"),0);
     DisplayType->insertItem(tr("Surfaces"),1);
     connect(DisplayType, SIGNAL(activated(int)),
-            this, SLOT(DisplayTypeChanged(int)));
+            this, SLOT(displayTypeChanged(int)));
     displayLayout->addWidget(DisplayType,row,1);
     row++;
 
@@ -364,7 +365,7 @@ QvisPoincarePlotWindow::CreateWindowContents()
     displayLayout->addWidget(NumberPlanesLabel,row,0);
     NumberPlanes = new QSpinBox(1,10000, 1, displayTab, "NumberPlanes");
     connect(NumberPlanes, SIGNAL(valueChanged(int)),
-            this, SLOT(NumberPlanesSizeChanged(int)));
+            this, SLOT(numberPlanesSizeChanged(int)));
     displayLayout->addWidget(NumberPlanes,row,1);
     row++;
 
@@ -453,20 +454,35 @@ QvisPoincarePlotWindow::CreateWindowContents()
     ColorBy->insertItem(tr("PoloidalWindings"));
     ColorBy->insertItem(tr("SafetyFactor"));
     connect(ColorBy, SIGNAL(activated(int)),
-            this, SLOT(ColorByChanged(int)));
+            this, SLOT(colorByChanged(int)));
     colorGLayout->addWidget(ColorBy,2,1);
 
     //row++;
     
+    showIslands = new QCheckBox(tr("Show Islands"), displayTab, "showIslands");
+    connect(showIslands, SIGNAL(toggled(bool)),
+            this, SLOT(showIslandsChanged(bool)));
+    displayLayout->addWidget(showIslands,row,0);
+
+    showPoints = new QCheckBox(tr("Show Points"), displayTab, "showPoints");
+    connect(showPoints, SIGNAL(toggled(bool)),
+            this, SLOT(showPointsChanged(bool)));
+    displayLayout->addWidget(showPoints,row,1);
+
+    verboseFlag = new QCheckBox(tr("Verbose"), displayTab, "verboseFlag");
+    connect(verboseFlag, SIGNAL(toggled(bool)),
+            this, SLOT(verboseFlagChanged(bool)));
+    displayLayout->addWidget(verboseFlag,row,2);
+
     legendFlag = new QCheckBox(tr("Legend"), displayTab, "legendFlag");
     connect(legendFlag, SIGNAL(toggled(bool)),
             this, SLOT(legendFlagChanged(bool)));
-    displayLayout->addWidget(legendFlag,row,0);
+    displayLayout->addWidget(legendFlag,row,3);
 
     lightingFlag = new QCheckBox(tr("Lighting"), displayTab, "lightingFlag");
     connect(lightingFlag, SIGNAL(toggled(bool)),
             this, SLOT(lightingFlagChanged(bool)));
-    displayLayout->addWidget(lightingFlag,row,1);
+    displayLayout->addWidget(lightingFlag,row,4);
     row++;
 
 }
@@ -826,6 +842,11 @@ QvisPoincarePlotWindow::UpdateWindow(bool doAll)
             maxToggle->setChecked(atts->GetMaxFlag());
             maxLineEdit->setEnabled(atts->GetMaxFlag());
             maxToggle->blockSignals(false);
+            break;
+          case PoincareAttributes::ID_verboseFlag:
+            verboseFlag->blockSignals(true);
+            verboseFlag->setChecked(atts->GetVerboseFlag());
+            verboseFlag->blockSignals(false);
             break;
         }
     }
@@ -1481,6 +1502,15 @@ QvisPoincarePlotWindow::singleColorChanged(const QColor &color)
 
 
 void
+QvisPoincarePlotWindow::verboseFlagChanged(bool val)
+{
+    atts->SetVerboseFlag(val);
+    SetUpdate(false);
+    Apply();
+}
+
+
+void
 QvisPoincarePlotWindow::legendFlagChanged(bool val)
 {
     atts->SetLegendFlag(val);
@@ -1557,7 +1587,7 @@ QvisPoincarePlotWindow::showPointsChanged(bool val)
 
 
 void
-QvisPoincarePlotWindow::NumberPlanesSizeChanged(int val)
+QvisPoincarePlotWindow::numberPlanesSizeChanged(int val)
 {
     atts->SetNumberPlanes(val);
     Apply();
@@ -1565,7 +1595,7 @@ QvisPoincarePlotWindow::NumberPlanesSizeChanged(int val)
 
 
 void
-QvisPoincarePlotWindow::ColorByChanged(int val)
+QvisPoincarePlotWindow::colorByChanged(int val)
 {
     if(val != atts->GetColorBy())
     {
@@ -1576,7 +1606,7 @@ QvisPoincarePlotWindow::ColorByChanged(int val)
 
 
 void
-QvisPoincarePlotWindow::MaxToroidalWindingSizeChanged(int val)
+QvisPoincarePlotWindow::maxToroidalWindingSizeChanged(int val)
 {
     atts->SetMaxToroidalWinding(val);
     Apply();
@@ -1584,7 +1614,7 @@ QvisPoincarePlotWindow::MaxToroidalWindingSizeChanged(int val)
 
 
 void
-QvisPoincarePlotWindow::OverrideToroidalWindingProcessText()
+QvisPoincarePlotWindow::overrideToroidalWindingProcessText()
 {
     GetCurrentValues(PoincareAttributes::ID_overrideToroidalWinding);
     Apply();
@@ -1592,7 +1622,7 @@ QvisPoincarePlotWindow::OverrideToroidalWindingProcessText()
 
 
 void
-QvisPoincarePlotWindow::HitRateProcessText()
+QvisPoincarePlotWindow::hitRateProcessText()
 {
     GetCurrentValues(PoincareAttributes::ID_hitRate);
     Apply();
@@ -1600,7 +1630,7 @@ QvisPoincarePlotWindow::HitRateProcessText()
 
 
 void
-QvisPoincarePlotWindow::DisplayTypeChanged(int val)
+QvisPoincarePlotWindow::displayTypeChanged(int val)
 {
     if(val != atts->GetShowCurves())
     {
@@ -1612,7 +1642,7 @@ QvisPoincarePlotWindow::DisplayTypeChanged(int val)
 
 
 void
-QvisPoincarePlotWindow::AdjustPlaneProcessText()
+QvisPoincarePlotWindow::adjustPlaneProcessText()
 {
     GetCurrentValues(PoincareAttributes::ID_adjustPlane);
     Apply();
@@ -1620,7 +1650,7 @@ QvisPoincarePlotWindow::AdjustPlaneProcessText()
 
 
 void
-QvisPoincarePlotWindow::ShowIslandsChanged(bool val)
+QvisPoincarePlotWindow::showIslandsChanged(bool val)
 {
     atts->SetShowIslands(val);
     SetUpdate(false);
@@ -1629,7 +1659,7 @@ QvisPoincarePlotWindow::ShowIslandsChanged(bool val)
 
 
 void
-QvisPoincarePlotWindow::OverlapsChanged(int val)
+QvisPoincarePlotWindow::overlapsChanged(int val)
 {
     if(val != atts->GetOverlaps())
     {

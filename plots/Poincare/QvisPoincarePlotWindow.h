@@ -114,6 +114,7 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     void pointDensityChanged(int val);
     void colorTableNameChanged(bool useDefault, const QString &ctName);
     void singleColorChanged(const QColor &color);
+    void verboseFlagChanged(bool val);
     void legendFlagChanged(bool val);
     void lightingFlagChanged(bool val);
     void relTolProcessText();
@@ -122,15 +123,15 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     void integrationTypeChanged(int val);
     void showStreamlinesChanged(bool val);
     void showPointsChanged(bool val);
-    void NumberPlanesSizeChanged(int val);
-    void ColorByChanged(int val);
-    void MaxToroidalWindingSizeChanged(int val);
-    void OverrideToroidalWindingProcessText();
-    void HitRateProcessText();
-    void DisplayTypeChanged(int val);
-    void AdjustPlaneProcessText();
-    void ShowIslandsChanged(bool val);
-    void OverlapsChanged(int val);
+    void numberPlanesSizeChanged(int val);
+    void colorByChanged(int val);
+    void maxToroidalWindingSizeChanged(int val);
+    void overrideToroidalWindingProcessText();
+    void hitRateProcessText();
+    void displayTypeChanged(int val);
+    void adjustPlaneProcessText();
+    void showIslandsChanged(bool val);
+    void overlapsChanged(int val);
     void colorModeChanged(int val);
     void minToggled(bool on);
     void maxToggled(bool on);
@@ -162,6 +163,7 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     // display options
     QvisColorTableButton *colorTableName;
     QvisColorButton *singleColor;
+    QCheckBox *verboseFlag;
     QCheckBox *legendFlag;
     QCheckBox *lightingFlag;
     QComboBox *ColorBy;
@@ -174,6 +176,8 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     QLineEdit *maxLineEdit;
     QLineEdit *minLineEdit;
 
+    QCheckBox *showIslands;
+    QCheckBox *showPoints;
 
     // poincare options
     QSpinBox *NumberPlanes;
