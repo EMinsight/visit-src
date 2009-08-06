@@ -246,13 +246,13 @@ avtPersistentParticlesFilter::Execute(void)
     if (myStop >= numStates)
       myStop = numStates-1;
     
-    if( myStart == myStop )
-    {
-      std::string msg(GetType());
-      msg = msg + ":  Start and stop indexes are the same. The start time " +
-        "must be smaller than the stop time.";
-      avtCallback::IssueWarning(msg.c_str());
-    }
+//     if( myStart == myStop )
+//     {
+//       std::string msg(GetType());
+//       msg = msg + ":  Start and stop indexes are the same. The start time " +
+//         "must be smaller than the stop time.";
+//       avtCallback::IssueWarning(msg.c_str());
+//     }
 
     //Update the start and end frame 
     SetStartFrame(myStart);
