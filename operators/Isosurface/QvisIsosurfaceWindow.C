@@ -153,6 +153,44 @@ QvisIsosurfaceWindow::CreateWindowContents()
            this, SLOT(processSelectByText()));
     limitsLayout->addWidget(selectByLineEdit, 0, 2);
  
+   //
+    // Create the Limits stuff
+    //
+    QLabel *limitsLabel = new QLabel(tr("Limits"), central, "limitsLabel");
+    limitsLayout->addWidget(limitsLabel, 1, 0);
+
+    // Create the max toggle and line edit
+    maxToggle = new QCheckBox(tr("Max"), central, "maxToggle");
+    limitsLayout->addWidget(maxToggle, 1, 1);
+    connect(maxToggle, SIGNAL(toggled(bool)),
+            this, SLOT(maxToggled(bool)));
+    maxLineEdit = new QLineEdit(central, "maxLineEdit");
+    connect(maxLineEdit, SIGNAL(returnPressed()),
+            this, SLOT(processMaxLimitText()));
+    limitsLayout->addWidget(maxLineEdit, 1, 2);
+
+    // Create the min toggle and line edit
+    minToggle = new QCheckBox(tr("Min"), central, "minToggle");
+    limitsLayout->addWidget(minToggle, 2, 1);
+    connect(minToggle, SIGNAL(toggled(bool)),
+            this, SLOT(minToggled(bool)));
+    minLineEdit = new QLineEdit(central, "minLineEdit");
+    connect(minLineEdit, SIGNAL(returnPressed()),
+            this, SLOT(processMinLimitText()));
+    limitsLayout->addWidget(minLineEdit, 2, 2);
+ 
+    //
+    // Create the variable stuff
+    //
+    QLabel *variableLabel = new QLabel(tr("Variable"), central, "variableLabel");
+    limitsLayout->addWidget(variableLabel,3,0);
+
+    variable = new QvisVariableButton(true, true, true, 
+        QvisVariableButton::Scalars, central, "variable");
+    connect(variable, SIGNAL(activated(const QString &)),
+            this, SLOT(variableChanged(const QString &)));
+    limitsLayout->addMultiCellWidget(variable, 3, 3, 1, 2);
+
     //
     // Create the scale radio buttons
     //
@@ -179,39 +217,7 @@ QvisIsosurfaceWindow::CreateWindowContents()
     connect(scalingButtons, SIGNAL(clicked(int)),
             this, SLOT(scaleClicked(int)));
  
-    //
-    // Create the Limits stuff
-    //
-    QLabel *limitsLabel = new QLabel(tr("Limits"), central, "limitsLabel");
-    limitsLayout->addWidget(limitsLabel, 1, 0);
-
-    // Create the max toggle and line edit
-    maxToggle = new QCheckBox(tr("Max"), central, "maxToggle");
-    limitsLayout->addWidget(maxToggle, 1, 1);
-    connect(maxToggle, SIGNAL(toggled(bool)),
-            this, SLOT(maxToggled(bool)));
-    maxLineEdit = new QLineEdit(central, "maxLineEdit");
-    connect(maxLineEdit, SIGNAL(returnPressed()),
-            this, SLOT(processMaxLimitText()));
-    limitsLayout->addWidget(maxLineEdit, 1, 2);
-
-    // Create the min toggle and line edit
-    minToggle = new QCheckBox(tr("Min"), central, "minToggle");
-    limitsLayout->addWidget(minToggle, 2, 1);
-    connect(minToggle, SIGNAL(toggled(bool)),
-            this, SLOT(minToggled(bool)));
-    minLineEdit = new QLineEdit(central, "minLineEdit");
-    connect(minLineEdit, SIGNAL(returnPressed()),
-            this, SLOT(processMinLimitText()));
-    limitsLayout->addWidget(minLineEdit, 2, 2);
- 
-    limitsLayout->addWidget(new QLabel(tr("Variable"), central, "variableLabel"),3,0);
-    variable = new QvisVariableButton(true, true, true, 
-        QvisVariableButton::Scalars, central, "variable");
-    connect(variable, SIGNAL(activated(const QString &)),
-            this, SLOT(variableChanged(const QString &)));
-    limitsLayout->addMultiCellWidget(variable, 3, 3, 1, 2);
-}
+ }
 
 
 // ****************************************************************************
