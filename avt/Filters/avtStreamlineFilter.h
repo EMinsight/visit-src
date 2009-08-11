@@ -183,6 +183,9 @@ class DomainType;
 //    Dave Pugmire, Fri Apr  3 09:18:03 EDT 2009
 //    Add SeedInfoString method to report seed information.
 //
+//   Dave Pugmire, Tue Aug 11 10:25:45 EDT 2009
+//   Add new termination criterion: Number of intersections with an object.
+//
 // ****************************************************************************
 
 class AVTFILTERS_API avtStreamlineFilter : public avtDatasetOnDemandFilter
@@ -199,6 +202,7 @@ class AVTFILTERS_API avtStreamlineFilter : public avtDatasetOnDemandFilter
     void                      SetSourceType(int sourceType);
     void                      SetMaxStepLength(double len);
     void                      SetTermination(int type, double term);
+    void                      SetIntersectionObject(vtkObject *obj);
     void                      SetPathlines(bool pathlines, double time0=0.0);
     void                      SetIntegrationType(int algo);
     void                      SetStreamlineAlgorithm(int algo, int maxCnt,
@@ -264,6 +268,8 @@ class AVTFILTERS_API avtStreamlineFilter : public avtDatasetOnDemandFilter
     double sphereOrigin[3], sphereRadius;
     double boxExtents[6];
     bool   useWholeBox;
+
+    vtkObject *intersectObj;
 
     // Data retrieved from contract
     int activeTimeStep;

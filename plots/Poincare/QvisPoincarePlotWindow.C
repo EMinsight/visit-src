@@ -130,6 +130,9 @@ QvisPoincarePlotWindow::~QvisPoincarePlotWindow()
 //
 //    Dave Pugmire, Tue Apr 28 09:26:06 EDT 2009
 //    GUI reorganization.
+//
+//    Dave Pugmire, Tue Aug 11 10:33:05 EDT 2009
+//    Add number of intersections termination criterion
 //   
 // ****************************************************************************
 
@@ -156,7 +159,7 @@ QvisPoincarePlotWindow::CreateWindowContents()
     terminationType->insertItem(tr("Distance"));
     terminationType->insertItem(tr("Time"));
     terminationType->insertItem(tr("Number of Steps"));
-    terminationType->insertItem(tr("Number of Puctures"));
+    terminationType->insertItem(tr("Number of Punctures"));
     connect(terminationType, SIGNAL(activated(int)),
             this, SLOT(terminationTypeChanged(int)));
     streamlineLayout->addWidget(terminationType, row,0);    
@@ -247,11 +250,37 @@ QvisPoincarePlotWindow::CreateWindowContents()
 
     pointDensityLabel = new QLabel(tr("Point density"), streamlineTab, "pointDensityLabel");
     streamlineLayout->addWidget(pointDensityLabel,row,0);
-    pointDensity = new QSpinBox(1, 1000, 1, streamlineTab, "pointDensity");
+    pointDensity = new QSpinBox(2, 1000, 1, streamlineTab, "pointDensity");
     connect(pointDensity, SIGNAL(valueChanged(int)), 
             this, SLOT(pointDensityChanged(int)));
     streamlineLayout->addWidget(pointDensity,row,1);
     row++;
+
+    // Create a group box for the intersect plane attributes.
+    QGroupBox *intPlnGrp = new QGroupBox(streamlineTab, "intPlnGrp");
+    //sourceAtts = intPlnGrp;
+    intPlnGrp->setTitle(tr("Intersect Plane"));
+    streamlineLayout->addMultiCellWidget(intPlnGrp, row,row, 0,1);
+    QVBoxLayout *intPlnLayout = new QVBoxLayout(intPlnGrp, 10, 2);
+    intPlnLayout->addSpacing(10);
+    QGridLayout *intPlnGridLayout = new QGridLayout(intPlnLayout, 16, 2);
+    intPlnGridLayout->setMargin(10);
+    row++;
+
+    // Create the widgets that specify a point source.
+    intPlnLocation = new QLineEdit(intPlnGrp, "intPlnLocation");
+    intPlnNormal = new QLineEdit(intPlnGrp, "intPlnNormal");
+    connect(intPlnLocation, SIGNAL(returnPressed()),
+            this, SLOT(intersectPlanePointSourceProcessText()));
+    connect(intPlnNormal, SIGNAL(returnPressed()),
+            this, SLOT(intersectPlaneNormalSourceProcessText()));
+    
+    intPlnLocationLabel = new QLabel(intPlnLocation, tr("Origin"), intPlnGrp, "intPlnLocationLabel");
+    intPlnNormalLabel = new QLabel(intPlnNormal, tr("Normal"), intPlnGrp, "intPlnNormalLabel");
+    intPlnGridLayout->addWidget(intPlnLocationLabel, 3, 0);
+    intPlnGridLayout->addWidget(intPlnLocation, 3,1);
+    intPlnGridLayout->addWidget(intPlnNormalLabel, 4, 0);
+    intPlnGridLayout->addWidget(intPlnNormal, 4,1);
 
     integrationTypeLabel = new QLabel(tr("Integrator"), streamlineTab, "integrationTypeLabel");
     streamlineLayout->addWidget(integrationTypeLabel,row,0);
@@ -751,9 +780,30 @@ QvisPoincarePlotWindow::UpdateWindow(bool doAll)
             absTol->blockSignals(false);
             break;
           case PoincareAttributes::ID_terminationType:
+            {
+                bool intersectOn = atts->GetTerminationType() == PoincareAttributes::Intersections;
+                intPlnLocation->setEnabled(intersectOn);
+                intPlnLocationLabel->setEnabled(intersectOn);
+                intPlnNormal->setEnabled(intersectOn);
+                intPlnNormalLabel->setEnabled(intersectOn);
+            }
             terminationType->blockSignals(true);
             terminationType->setCurrentItem(atts->GetTerminationType());
             terminationType->blockSignals(false);
+            break;
+          case PoincareAttributes::ID_intersectPlaneOrigin:
+            dptr = atts->GetIntersectPlaneOrigin();
+            temp.sprintf("%g %g %g", dptr[0], dptr[1], dptr[2]);
+            intPlnLocation->blockSignals(true);
+            intPlnLocation->setText(temp);
+            intPlnLocation->blockSignals(false);
+            break;
+          case PoincareAttributes::ID_intersectPlaneNormal:
+            dptr = atts->GetIntersectPlaneNormal();
+            temp.sprintf("%g %g %g", dptr[0], dptr[1], dptr[2]);
+            intPlnNormal->blockSignals(true);
+            intPlnNormal->setText(temp);
+            intPlnNormal->blockSignals(false);
             break;
           case PoincareAttributes::ID_integrationType:
             integrationType->blockSignals(true);
@@ -1097,8 +1147,58 @@ QvisPoincarePlotWindow::GetCurrentValues(int which_widget)
     {
         // This can only be an integer, so no error checking is needed.
         int val = pointDensity->value();
-        if (val >= 1)
+        if (val >= 2)
             atts->SetPointDensity(val);
+    }
+
+    // Do planeOrigin
+    if(which_widget == PoincareAttributes::ID_intersectPlaneOrigin || doAll)
+    {
+        temp = intPlnLocation->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
+        {
+            double val[3];
+            if((okay = (sscanf(temp.latin1(), "%lg %lg %lg", &val[0], &val[1], &val[2]) == 3)) == true)
+                atts->SetIntersectPlaneOrigin(val);
+        }
+
+        if(!okay)
+        {
+            const double *val = atts->GetIntersectPlaneOrigin();
+            QString num; num.sprintf("<%g %g %g>", 
+                val[0], val[1], val[2]);
+            msg = tr("The value of intersect planeOrigin was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(num);
+            Message(msg);
+            atts->SetIntersectPlaneOrigin(atts->GetIntersectPlaneOrigin());
+        }
+    }
+
+    // Do planeNormal
+    if(which_widget == PoincareAttributes::ID_intersectPlaneNormal || doAll)
+    {
+        temp = intPlnNormal->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
+        {
+            double val[3];
+            if((okay = (sscanf(temp.latin1(), "%lg %lg %lg", &val[0], &val[1], &val[2]) == 3)) == true)
+                atts->SetIntersectPlaneNormal(val);
+        }
+
+        if(!okay)
+        {
+            const double *val = atts->GetIntersectPlaneNormal();
+            QString num; num.sprintf("<%g %g %g>", 
+                val[0], val[1], val[2]);
+            msg = tr("The value of intersectPlaneNormal was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(num);
+            Message(msg);
+            atts->SetIntersectPlaneNormal(atts->GetIntersectPlaneNormal());
+        }
     }
 
     // Do relTol
@@ -1483,6 +1583,20 @@ QvisPoincarePlotWindow::pointDensityChanged(int val)
 }
 
 void
+QvisPoincarePlotWindow::intersectPlanePointSourceProcessText()
+{
+    GetCurrentValues(PoincareAttributes::ID_intersectPlaneOrigin);
+    Apply();
+}
+
+void
+QvisPoincarePlotWindow::intersectPlaneNormalSourceProcessText()
+{
+    GetCurrentValues(PoincareAttributes::ID_intersectPlaneNormal);
+    Apply();
+}
+
+void
 QvisPoincarePlotWindow::colorTableNameChanged(bool useDefault, const QString &ctName)
 {
     atts->SetColorTableName(ctName.latin1());
@@ -1550,7 +1664,7 @@ QvisPoincarePlotWindow::terminationTypeChanged(int val)
     if(val != atts->GetTerminationType())
     {
         atts->SetTerminationType(PoincareAttributes::TerminationType(val));
-        SetUpdate(false);
+        //SetUpdate(false);
         Apply();
     }
 }

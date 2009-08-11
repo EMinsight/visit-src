@@ -463,6 +463,9 @@ avtIVPDopri5::GuessInitialStep(const avtIVPField* field,
 //    Reworked the termination code. Added a type enum and value. Made num steps
 //    a termination criterion.    
 //
+//   Dave Pugmire, Tue Aug 11 10:25:45 EDT 2009
+//   Add new termination criterion: Number of intersections with an object.
+//
 // ****************************************************************************
 
 avtIVPSolver::Result 
@@ -473,7 +476,7 @@ avtIVPDopri5::Step(const avtIVPField* field,
 {
     if (termType == TIME)
         t_max = end;
-    else if (termType == DISTANCE || termType == STEPS)
+    else if (termType == DISTANCE || termType == STEPS || termType == INTERSECTIONS)
     {
         t_max = std::numeric_limits<double>::max();
         if (end < 0)

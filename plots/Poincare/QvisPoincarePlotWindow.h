@@ -78,6 +78,9 @@ class QvisVariableButton;
 //
 //    Dave Pugmire, Tue Apr 28 09:26:06 EDT 2009
 //    GUI reorganization.
+//
+//    Dave Pugmire, Tue Aug 11 10:33:05 EDT 2009
+//    Add number of intersections termination criterion
 //   
 // ****************************************************************************
 
@@ -112,6 +115,8 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     void planeUpAxisProcessText();
     void planeRadiusProcessText();
     void pointDensityChanged(int val);
+    void intersectPlanePointSourceProcessText();
+    void intersectPlaneNormalSourceProcessText();
     void colorTableNameChanged(bool useDefault, const QString &ctName);
     void singleColorChanged(const QColor &color);
     void verboseFlagChanged(bool val);
@@ -156,7 +161,10 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     QLineEdit *planeUpAxis;
     QLineEdit *planeRadius;
     QSpinBox  *pointDensity;
-
+    QLineEdit *intPlnLocation;
+    QLineEdit *intPlnNormal;
+    QLabel *intPlnLocationLabel;
+    QLabel *intPlnNormalLabel;
     QComboBox *terminationType;
     QComboBox *integrationType;
 
