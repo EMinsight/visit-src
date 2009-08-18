@@ -63,6 +63,7 @@ class vtkRibbonFilter;
 class vtkAppendPolyData;
 class avtStreamlineWrapper;
 class DomainType;
+class avtSLAlgorithm;
 
 #define STREAMLINE_SOURCE_POINT      0
 #define STREAMLINE_SOURCE_LINE       1
@@ -186,6 +187,9 @@ class DomainType;
 //   Dave Pugmire, Tue Aug 11 10:25:45 EDT 2009
 //   Add new termination criterion: Number of intersections with an object.
 //
+//   Dave Pugmire, Tue Aug 18 09:10:49 EDT 2009
+//   Add ability to restart integration of streamlines.
+//
 // ****************************************************************************
 
 class AVTFILTERS_API avtStreamlineFilter : public avtDatasetOnDemandFilter
@@ -241,6 +245,7 @@ class AVTFILTERS_API avtStreamlineFilter : public avtDatasetOnDemandFilter
     int    coloringMethod;
     std::string coloringVariable;
     int    dataSpatialDimension;
+    avtSLAlgorithm *slAlgo;
 
     avtContract_p lastContract;
 
@@ -282,6 +287,7 @@ class AVTFILTERS_API avtStreamlineFilter : public avtDatasetOnDemandFilter
     int                       InitialDomLoads;
 
     virtual void              Execute(void);
+    virtual bool              ContinueExecute() { return false;}
     virtual void              UpdateDataObjectInfo(void);
     virtual void              PreExecute(void);
     virtual void              PostExecute(void);
@@ -305,6 +311,7 @@ class AVTFILTERS_API avtStreamlineFilter : public avtDatasetOnDemandFilter
     virtual void              CreateStreamlineOutput( 
                                                      vector<avtStreamlineWrapper *> &streamlines)
                                                     = 0;
+    void                      GetTerminatedStreamlines(vector<avtStreamlineWrapper *> &sls);
 
     // Helper functions.
     bool                      PointInDomain(avtVector &pt, DomainType &domain);
