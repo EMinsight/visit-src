@@ -245,6 +245,10 @@ avtVolumeFilter::Execute(void)
 //    Hank Childs, Mon Jan 26 11:44:40 PST 2009
 //    Make sure the min and max for log and skew are set right.
 //
+//    Hank Childs, Wed Aug 19 18:24:46 PDT 2009
+//    Lighting queues should be taken from the gradient of the opacity var,
+//    not the color var.
+//
 // ****************************************************************************
 
 
@@ -364,7 +368,10 @@ avtVolumeFilter::RenderImage(avtImage_p opaque_image,
     int gradIndex = -1;
     int count = 0;
     char gradName[128];
-    SNPRINTF(gradName, 128, "_%s_gradient", primaryVariable);
+    const char *gradvar = atts.GetOpacityVariable().c_str();
+    if (strcmp(gradvar, "default") == 0)
+        gradvar = primaryVariable;
+    SNPRINTF(gradName, 128, "_%s_gradient", gradvar);
     
     for (int i = 0 ; i < vl.nvars ; i++)
     {
@@ -713,6 +720,10 @@ CreateViewInfoFromViewAttributes(avtViewInfo &vi, const View3DAttributes &view)
 //    Sean Ahern, Wed Sep 10 13:04:41 EDT 2008
 //    Refined the recenter so that it always asks for nodal centering.
 //
+//    Hank Childs, Wed Aug 19 18:24:46 PDT 2009
+//    Lighting queues should be taken from the gradient of the opacity var,
+//    not the color var.
+//
 // ****************************************************************************
 
 avtContract_p
@@ -792,15 +803,19 @@ avtVolumeFilter::ModifyContract(avtContract_p contract)
     if (atts.GetLightingFlag())
     {
         char exprName[128];
-        SNPRINTF(exprName, 128, "_%s_gradient", primaryVariable);
+        const char *gradvar = atts.GetOpacityVariable().c_str();
+        if (strcmp(gradvar, "default") == 0)
+            gradvar = primaryVariable;
+
+        SNPRINTF(exprName, 128, "_%s_gradient", gradvar);
         char exprDef[512];
         if (atts.GetSmoothData())
         {
-            SNPRINTF(exprDef, 512, "gradient(recenter(<%s>, \"nodal\"))", primaryVariable);
+            SNPRINTF(exprDef, 512, "gradient(recenter(<%s>, \"nodal\"))", gradvar);
         }
         else
         {
-            SNPRINTF(exprDef, 512, "gradient(<%s>)", primaryVariable);
+            SNPRINTF(exprDef, 512, "gradient(<%s>)", gradvar);
         }
         ExpressionList *elist = ParsingExprList::Instance()->GetList();
 
