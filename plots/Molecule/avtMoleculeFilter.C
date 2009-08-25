@@ -287,6 +287,15 @@ avtMoleculeFilter::PreExecute()
 //    Jeremy Meredith, Mon Aug 28 18:29:47 EDT 2006
 //    Account for model number directory prefix.
 //
+//    Jeremy Meredith, Tue Aug 25 14:17:15 EDT 2009
+//    A strange bug occurs when switching the radius variable to an expression;
+//    the plot legend picks up the extents of the radius variable instead of
+//    the old primary variable, because it thinks the primary variable has
+//    changed.  This is a bug at a different level, but the diagnosis of the
+//    fuller problem is complex, and has not yet been replicated in other
+//    plots; therefore, I simply set the primary variable again here, just
+//    to make sure it's correct, which effectively works around the problem.
+//
 // ****************************************************************************
 void
 avtMoleculeFilter::PostExecute()
@@ -339,6 +348,7 @@ avtMoleculeFilter::PostExecute()
     }
 
     GetOutput()->GetInfo().GetAttributes().SetLabels(labels);
+    OutputSetActiveVariable(pipelineVariable);
 }
 
 
