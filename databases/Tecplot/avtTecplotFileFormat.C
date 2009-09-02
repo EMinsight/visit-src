@@ -1334,6 +1334,9 @@ avtTecplotFileFormat::FreeUpResources(void)
 //    Jeremy Meredith, Wed Oct 15 12:07:59 EDT 2008
 //    Added support for cell-centered vars (through VARLOCATION).
 //
+//    Brad Whitlock, Wed Sep  2 14:15:37 PDT 2009
+//    Set node origin to 1.
+//
 // ****************************************************************************
 
 void
@@ -1368,6 +1371,7 @@ avtTecplotFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
         mesh->numBlocks = meshes.size();
         mesh->blockOrigin = 1;
         mesh->cellOrigin = 1;
+        mesh->nodeOrigin = 1;
         mesh->blockTitle = "Zones";
         mesh->blockPieceName = "Zone";
         mesh->hasSpatialExtents = false;
