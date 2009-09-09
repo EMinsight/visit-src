@@ -58,6 +58,112 @@
 #include <LineAttributes.h>
 #include <InvalidColortableException.h>
 
+#define COMBINE_LINES_INTO_POLYLINES
+#ifdef COMBINE_LINES_INTO_POLYLINES
+#include <avtDatasetExaminer.h>
+#include <avtExtents.h>
+#include <avtLineToPolylineFilter.h>
+// ****************************************************************************
+// Class: avtLineToPolylineAndCurrentExtentFilter
+//
+// Purpose:
+//   This class temporarily takes the place of the currentExtents filter in
+//   the Contour plot's pipeline. I'll change how I stick the avtLineToPolylineFilter
+//   into the pipeline for 2.0.
+//
+// Notes:      
+//
+// Programmer: Brad Whitlock
+// Creation:   Wed Sep  9 14:33:45 PDT 2009
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+class avtLineToPolylineAndCurrentExtentFilter : virtual public avtLineToPolylineFilter
+{
+public:
+    avtLineToPolylineAndCurrentExtentFilter() : avtLineToPolylineFilter()
+    {
+        combineLines = false;
+    }
+
+    virtual ~avtLineToPolylineAndCurrentExtentFilter()
+    {
+    }
+
+    virtual const char *GetType()
+    {
+        return "avtLineToPolylineAndCurrentExtentFilter";
+    }
+
+    virtual const char *GetDescription(void)
+    {
+        if(combineLines)
+            return avtLineToPolylineFilter::GetDescription();
+        return "Calculating Current Extents";
+    }
+
+    void SetCombineLines(bool val)
+    {
+        combineLines = val;
+    }
+
+    virtual void Execute(void)
+    {
+        if(combineLines)
+            avtLineToPolylineFilter::Execute();
+        else
+            SetOutputDataTree(GetInputDataTree());
+    }
+
+    //
+    // Code that does the job of avtCurrentExtentFilter
+    //
+    virtual void UpdateDataObjectInfo(void)
+    {
+        avtDataAttributes &atts = GetInput()->GetInfo().GetAttributes();
+        avtDataAttributes &outAtts = GetOutput()->GetInfo().GetAttributes();
+        avtDataset_p ds = GetTypedInput();
+
+        int nVars = atts.GetNumberOfVariables();
+        double de[2];
+        for (int i = 0 ; i < nVars ; i++)
+        {
+            const char *vname = atts.GetVariableName(i).c_str();
+    
+            bool foundDE = avtDatasetExaminer::GetDataExtents(ds, de, vname);
+            if (foundDE)
+            {
+                outAtts.GetCumulativeCurrentDataExtents(vname)->Merge(de);
+            }
+        }
+
+        double se[6];
+        bool foundSE = avtDatasetExaminer::GetSpatialExtents(ds, se);
+        if (foundSE)
+        {
+            outAtts.GetCumulativeCurrentSpatialExtents()->Merge(se);
+        }
+    }
+
+    virtual bool FilterUnderstandsTransformedRectMesh()
+    {
+        // there were some changes made at lower levels which make
+        // this filter safe
+        return true;
+    }
+
+    virtual avtContract_p ModifyContract(avtContract_p c)
+    {
+        return c;
+    }
+
+private:
+    bool combineLines;
+};
+#endif
+
 // ****************************************************************************
 //  Method: avtContourPlot constructor
 //
@@ -74,10 +180,21 @@
 //    Hank Childs, Fri Feb 15 15:42:08 PST 2008
 //    Initialize edgeFilter.
 //
+//    Brad Whitlock, Wed Sep  9 15:50:56 PDT 2009
+//    Use a special filter for current extents since we want to gather lines
+//    into polylines at that stage of the pipeline but can't because it would
+//    mean changing a header file.
+//
 // ****************************************************************************
 
 avtContourPlot::avtContourPlot()
 {
+#ifdef COMBINE_LINES_INTO_POLYLINES
+    // Let's override the filter we use for calculating current extents.
+    delete currentExtentFilter;
+    currentExtentFilter = new avtLineToPolylineAndCurrentExtentFilter;
+#endif
+
     levelsMapper  = new avtLevelsMapper;
     levelsLegend  = new avtLevelsLegend;
     levelsLegend->SetTitle("Contour");
@@ -663,7 +780,7 @@ avtContourPlot::ApplyOperators(avtDataObject_p input)
 }
 
 // ****************************************************************************
-//  Method: avtContourPlot::ApplyOperators
+//  Method: avtContourPlot::ApplyRenderingTransformation
 //
 //  Purpose:
 //      Performs the rendering transformation for an isocontour plot, namely,
@@ -678,24 +795,38 @@ avtContourPlot::ApplyOperators(avtDataObject_p input)
 //  Creation:   October 22, 2002 
 //
 //  Modifications:
-//
 //    Hank Childs, Fri Feb 15 15:43:37 PST 2008
 //    Fix memory leak.
+//
+//    Brad Whitlock, Fri Aug 28 11:55:45 PDT 2009
+//    Added lineFilter to bin up lines into polylines.
 //
 // ****************************************************************************
 
 avtDataObject_p
 avtContourPlot::ApplyRenderingTransformation(avtDataObject_p input)
 {
+    avtDataObject_p dob = input;
+
     if (atts.GetWireframe())
     {
         if (edgeFilter != NULL)
             delete edgeFilter;
         edgeFilter = new avtFeatureEdgesFilter();
         edgeFilter->SetInput(input);
-        return edgeFilter->GetOutput();
+        dob = edgeFilter->GetOutput();
     }
-    return input;
+
+#ifdef COMBINE_LINES_INTO_POLYLINES
+    // Tell the compact tree filter that it should combine lines into polylines
+    bool combineLines = (dob->GetInfo().GetAttributes().GetTopologicalDimension() == 1 ||
+                         atts.GetWireframe());
+    avtLineToPolylineAndCurrentExtentFilter *f = 
+        dynamic_cast<avtLineToPolylineAndCurrentExtentFilter *>(currentExtentFilter);
+    f->SetCombineLines(combineLines);
+#endif
+
+    return dob;
 }
 
 
