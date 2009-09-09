@@ -413,7 +413,7 @@ avtH5PartFileFormat::GetMesh(int timestate, int domain, const char *meshname)
       // No x value so try r (cylindrical or spherical)
       status = H5PartReadDataFloat64(file, "r", x);
       if (status != H5PART_SUCCESS) {
-        EXCEPTION1(VisItException, "Could not read x coordinates");
+        EXCEPTION1(VisItException, "Could not read x or r coordinates");
       } else {
 	// Found r value so try phi (cylindrical or spherical)
 	status = H5PartReadDataFloat64(file, "phi", y);
@@ -436,7 +436,7 @@ avtH5PartFileFormat::GetMesh(int timestate, int domain, const char *meshname)
       status = H5PartReadDataFloat64(file, "theta", z);
 
       if (status != H5PART_SUCCESS)
-          EXCEPTION1(VisItException, "Could not read z coordinates");
+          EXCEPTION1(VisItException, "Could not read z or theta coordinates");
     }
 
     H5PartSetView(file,-1, -1);
