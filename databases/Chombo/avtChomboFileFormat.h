@@ -121,6 +121,15 @@ class DBOptionsAttributes;
 //    Gunther H. Weber, Tue Apr 15 17:43:30 PDT 2008
 //    Add support to automatically import a coordinate mapping file via conn_cmfe
 //
+//    Hank Childs, Sun Jan 25 15:38:50 PST 2009
+//    Improve support for ghost data.
+//
+//    Gunther H. Weber, Wed Jun 10 18:25:34 PDT 2009
+//    Added support for particle data in Chombo files
+//
+//    Gunther H. Weber, Tue Sep 15 11:25:21 PDT 2009
+//    Added support for 3D mappings for 2D files
+//
 // ****************************************************************************
 
 class avtChomboFileFormat : public avtSTMDFileFormat
@@ -152,6 +161,8 @@ class avtChomboFileFormat : public avtSTMDFileFormat
     hid_t                  file_handle;
     std::vector<std::string>  varnames;
     int                    nMaterials;
+    bool                   hasParticles;
+    std::vector<std::string>  particleVarnames;
     double                 dtime;
     int                    cycle;
     //int                    max_level;
@@ -162,10 +173,13 @@ class avtChomboFileFormat : public avtSTMDFileFormat
     std::vector<int>       refinement_ratio;
     std::vector<double>    dx;
     std::list<Expression*> expressions;
-    bool                   useGhosts;
+    bool                   allowedToUseGhosts;
+    bool                   fileContainsGhosts;
     bool                   enableOnlyRootLevel;
     bool                   enableOnlyExplicitMaterials;
     bool                   checkForMappingFile;
+    bool                   mappingFileExists;
+    bool                   mappingIs3D;
 
     std::vector<int>       lowProbI;
     std::vector<int>       hiProbI;
