@@ -394,6 +394,11 @@
 #    I modified the logic that packages up the help files to avoid using
 #    the "-maxdepth" option to find, since it is not supported on AIX.
 #
+#    Gunther H. Weber, Tue Sep 22 14:42:47 PDT 2009
+#    Determine Mesa and OSMesa major release version via readlink and cut
+#    since old method did not work for Mesa 7.5. Do not copy python or qt
+#    when npython or nqt options are used.
+#
 #------------------------------------------------------------------------------
 
 set DataFiles = "TRUE"
@@ -638,14 +643,15 @@ if ("$os" == "darwin") then
     set MesaOSMesaLibName = "libOSMesa.$SHLIB_SOEXT"
     set MesaMesaGLLibName = "libMesaGL.$SHLIB_SOEXT"
 else 
-    set MesaOSMesaLibName = `cd $VisItDir/lib && ls libOSMesa.$SHLIB_SOEXT.?.?.??????`
-    set MesaMesaGLLibName = `cd $VisItDir/lib && ls libMesaGL.$SHLIB_SOEXT.?.?.??????`
+    set MesaOSMesaLibFile = `readlink -f $VisItDir/lib/libOSMesa.$SHLIB_SOEXT`
+    set MesaMesaGLLibFile = `readlink -f $VisItDir/lib/libMesaGL.$SHLIB_SOEXT`
+    set MesaOSMesaLibName = `basename $MesaOSMesaLibFile`
+    set MesaMesaGLLibName = `basename $MesaMesaGLLibFile`
     if ("$MesaOSMesaLibName" == "") then
         set MesaOSMesaLibName = "libOSMesa.$SHLIB_SOEXT"
         set MesaMesaGLLibName = "libMesaGL.$SHLIB_SOEXT"
     endif
 endif
-
 
 #
 # Check that the Mesa libraries exist.
@@ -1120,38 +1126,40 @@ endif
 #
 # Copy the Qt libraries to the distribution.
 #
-cp $VisItDir/lib/$QtLibName $libdir/$QtLibName
-if ("$os" != "darwin") then
-    set QtLibBase = `echo $QtLibName | awk '{printf substr($1, 1, 8)}'`
-    if ("$QtLibBase" == "libqt.so") then
-        set majorVersion = `echo $QtLibName | awk '{printf substr($1, 10, 1)}'`
-        set minorVersion = `echo $QtLibName | awk '{printf substr($1, 12, 1)}'`
-        ln -s $QtLibName $libdir/libqt.so.$majorVersion.$minorVersion
-        ln -s $QtLibName $libdir/libqt.so.$majorVersion
-        ln -s $QtLibName $libdir/libqt.so
-        if (-e $VisItDir/lib/libqt.a) then
-            ln -s $QtLibName $libdir/libqt.a
-        endif
-    else
-        set majorVersion = `echo $QtLibName | awk '{printf substr($1, 13, 1)}'`
-        set minorVersion = `echo $QtLibName | awk '{printf substr($1, 15, 1)}'`
-        ln -s $QtLibName $libdir/libqt-mt.so.$majorVersion.$minorVersion
-        ln -s $QtLibName $libdir/libqt-mt.so.$majorVersion
-        ln -s $QtLibName $libdir/libqt-mt.so
-        if (-e $VisItDir/lib/libqt-mt.a) then
-            ln -s $QtLibName $libdir/libqt-mt.a
+if("$QtLibs" == "TRUE") then
+    cp $VisItDir/lib/$QtLibName $libdir/$QtLibName
+    if ("$os" != "darwin") then
+        set QtLibBase = `echo $QtLibName | awk '{printf substr($1, 1, 8)}'`
+        if ("$QtLibBase" == "libqt.so") then
+            set majorVersion = `echo $QtLibName | awk '{printf substr($1, 10, 1)}'`
+            set minorVersion = `echo $QtLibName | awk '{printf substr($1, 12, 1)}'`
+            ln -s $QtLibName $libdir/libqt.so.$majorVersion.$minorVersion
+            ln -s $QtLibName $libdir/libqt.so.$majorVersion
+            ln -s $QtLibName $libdir/libqt.so
+            if (-e $VisItDir/lib/libqt.a) then
+                ln -s $QtLibName $libdir/libqt.a
+            endif
+        else
+            set majorVersion = `echo $QtLibName | awk '{printf substr($1, 13, 1)}'`
+            set minorVersion = `echo $QtLibName | awk '{printf substr($1, 15, 1)}'`
+            ln -s $QtLibName $libdir/libqt-mt.so.$majorVersion.$minorVersion
+            ln -s $QtLibName $libdir/libqt-mt.so.$majorVersion
+            ln -s $QtLibName $libdir/libqt-mt.so
+            if (-e $VisItDir/lib/libqt-mt.a) then
+                ln -s $QtLibName $libdir/libqt-mt.a
+            endif
         endif
     endif
-endif
-cp $VisItDir/lib/$QUILibName $libdir/$QUILibName
-set majorVersion = `echo $QUILibName | awk '{printf substr($1, 11, 1)}'`
-set minorVersion = `echo $QUILibName | awk '{printf substr($1, 13, 1)}'`
-if ("$os" != "darwin") then
-    ln -s $QUILibName $libdir/libqui.so.$majorVersion.$minorVersion
-    ln -s $QUILibName $libdir/libqui.so.$majorVersion
-    ln -s $QUILibName $libdir/libqui.so
-    if (-e $VisItDir/lib/libqui.a) then
-        ln -s $QUILibName $libdir/libqui.a
+    cp $VisItDir/lib/$QUILibName $libdir/$QUILibName
+    set majorVersion = `echo $QUILibName | awk '{printf substr($1, 11, 1)}'`
+    set minorVersion = `echo $QUILibName | awk '{printf substr($1, 13, 1)}'`
+    if ("$os" != "darwin") then
+        ln -s $QUILibName $libdir/libqui.so.$majorVersion.$minorVersion
+        ln -s $QUILibName $libdir/libqui.so.$majorVersion
+        ln -s $QUILibName $libdir/libqui.so
+        if (-e $VisItDir/lib/libqui.a) then
+            ln -s $QUILibName $libdir/libqui.a
+        endif
     endif
 endif
 
@@ -1162,14 +1170,14 @@ cp $VisItDir/lib/$MesaOSMesaLibName $libdir/$MesaOSMesaLibName
 cp $VisItDir/lib/$MesaMesaGLLibName $libdir/$MesaMesaGLLibName
 
 if ("$os" != "darwin") then
-    set OSMesaMajorVersion = `echo $MesaOSMesaLibName | awk '{printf substr($1, 14, 1)}'`
-    set MesaGLMajorVersion = `echo $MesaMesaGLLibName | awk '{printf substr($1, 14, 1)}'`
+    set OSMesaMajorVersion = `echo $MesaOSMesaLibName | cut -c 14`
+    set MesaGLMajorVersion = `echo $MesaMesaGLLibName | cut -c 14`
 
     if ("$OSMesaMajorVersion" != "") then
         ln -s $MesaOSMesaLibName $libdir/libOSMesa.so.$OSMesaMajorVersion
-        ln -s $MesaOSMesaLibName $libdir/libOSMesa.so
+        ln -s libOSMesa.so.$OSMesaMajorVersion $libdir/libOSMesa.so
         ln -s $MesaMesaGLLibName $libdir/libMesaGL.so.$MesaGLMajorVersion
-        ln -s $MesaMesaGLLibName $libdir/libMesaGL.so
+        ln -s libMesaGL.so.$MesaGLMajorVersion $libdir/libMesaGL.so
     endif
 endif
 
@@ -1183,7 +1191,7 @@ endif
 #
 # Copy Python to the distribution
 #
-if("$cli_exists" == "TRUE") then
+if(("$PythonExe" == "TRUE") && "$cli_exists" == "TRUE") then
     set pyver = `basename $VisItDir/lib/python/lib/python?.?`;
     mkdir $libdir/python
     mkdir $libdir/python/lib
