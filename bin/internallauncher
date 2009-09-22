@@ -1919,7 +1919,7 @@ else
 {
     $ENV{LIBPATH} = "$visitlibdir:$ENV{LIBPATH_VISITORIG}";
 }
-if (-x $visitlibdir/python)
+if (-x "$visitlibdir/python")
 {
     if ($ENV{PYTHONPATH_VISITORIG} eq "")
     {
@@ -2004,7 +2004,7 @@ $ENV{VISITHOME}     = "$visitdir";
 $ENV{VISITARCHHOME} = "$visitarchdir";
 $ENV{VISITHELPHOME} = "$visithelpdir";
 $ENV{VISITULTRAHOME} = "$visitultradir";
-if (-x $visitlibdir/python)
+if (-x "$visitlibdir/python")
 {
     $ENV{PYTHONHOME}    = "$visitlibdir/python";
 
