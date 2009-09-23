@@ -81,6 +81,9 @@ class   avtIntervalTree;
 //    Hank Childs, Thu May 29 10:23:39 PDT 2008
 //    Added argument to method for culling domains for the aspect ratio.
 //
+//    Hank Childs, Tue Sep 22 20:40:39 PDT 2009
+//    Redefine virtual method in order to disable transformation of vectors.
+//
 // ****************************************************************************
 
 class AVTFILTERS_API avtWorldSpaceToImageSpaceTransform : public avtTransform
@@ -128,6 +131,8 @@ class AVTFILTERS_API avtWorldSpaceToImageSpaceTransform : public avtTransform
     virtual void            UpdateDataObjectInfo(void);
     virtual void            PreExecute(void);
     virtual bool            FilterUnderstandsTransformedRectMesh();
+    // Never want to do it for volume rendering.
+    virtual bool            TransformVectors(void) { return false; };
 };
 
 

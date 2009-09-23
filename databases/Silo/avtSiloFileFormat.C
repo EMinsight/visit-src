@@ -401,6 +401,9 @@ avtSiloFileFormat::GetFile(int f)
 //    Jeremy Meredith, Thu Aug  7 16:16:34 EDT 2008
 //    Added missing filename argument to an sprintf.
 //
+//    Hank Childs, Tue Sep 22 20:47:16 PDT 2009
+//    Remove assumption of new version of Silo library.
+//
 // ****************************************************************************
 
 DBfile *
@@ -452,8 +455,13 @@ avtSiloFileFormat::OpenFile(int f, bool skipGlobalInfo)
             toc->nmultimesh + toc->nmultimeshadj + toc->nmultivar +
             toc->nmultimat + toc->nmultimatspecies + toc->nqmesh +
             toc->nqvar + toc->nucdmesh + toc->nucdvar + toc->nptmesh +
-            toc->nptvar + toc->nvar + toc->nmat + toc->nobj + toc->ndir +
-            toc->narrays + toc->nmrgtrees + toc->ngroupelmaps + toc->nmrgvars;
+            toc->nptvar + toc->nvar + toc->nmat + toc->nobj + toc->ndir
+#ifdef SILO_VERSION_GE
+#if SILO_VERSION_GE(4,6,1)
+            + toc->nmrgtrees + toc->ngroupelmaps + toc->nmrgvars
+#endif
+#endif
+            + toc->narrays;
 
         //
         // We don't appear to have any silo objects, so we'll fail it
