@@ -151,7 +151,7 @@ avtSerialSLAlgorithm::Initialize(vector<avtStreamlineWrapper *> &seedPts)
 }
 
 // ****************************************************************************
-//  Method: avtSerialSLAlgorithm::Execute
+//  Method: avtSerialSLAlgorithm::RunAlgorithm
 //
 //  Purpose:
 //      Execute the serial streamline algorithm.
@@ -164,12 +164,15 @@ avtSerialSLAlgorithm::Initialize(vector<avtStreamlineWrapper *> &seedPts)
 //   Dave Pugmire, Mon Mar 23 18:33:10 EDT 2009
 //   Make changes for point decomposed domain databases.
 //
+//   Dave Pugmire, Thu Sep 24 13:52:59 EDT 2009
+//   Change Execute to RunAlgorithm.
+//
 // ****************************************************************************
 
 void
-avtSerialSLAlgorithm::Execute()
+avtSerialSLAlgorithm::RunAlgorithm()
 {
-    debug1<<"avtSerialSLAlgorithm::Execute()\n";
+    debug1<<"avtSerialSLAlgorithm::RunAlgorithm()\n";
     int timer = visitTimer->StartTimer();
 
     while (1)

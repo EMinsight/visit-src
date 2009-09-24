@@ -243,7 +243,7 @@ avtStreamline::DoAdvance(avtIVPSolver* ivp,
                          double end)
 {
     avtIVPSolver::Result result;
-
+    
     // catch cases where the start position is outside the 
     // domain of field
     if (!field->IsInside(ivp->GetCurrentT(), ivp->GetCurrentY()))
@@ -690,28 +690,40 @@ avtStreamline::IntersectPlane(const avtVec &p0, const avtVec &p1)
 //   Dave Pugmire, Tue Aug 18 08:47:40 EDT 2009
 //   Don't record intersection points, just count them.
 //
+//   Dave Pugmire, Thu Sep 24 13:52:59 EDT 2009
+//   Option to serialize steps.
+//
 // ****************************************************************************
 
 void
 avtStreamline::Serialize(MemStream::Mode mode, MemStream &buff, 
-                         avtIVPSolver *solver)
+                         avtIVPSolver *solver,
+                         bool serializeSteps)
 {
+    debug5<<"  avtStreamline::Serialize "<<(mode==MemStream::READ?"READ":"WRITE")<<" serSteps= "<<serializeSteps<<endl;
     buff.io(mode, _p0);
     buff.io(mode, _t0);
     buff.io(mode, scalarValueType);
     buff.io(mode, numIntersections);
 
     // R/W the steps.
-    if ( mode == MemStream::WRITE )
+    if (mode == MemStream::WRITE)
     {
         size_t sz = _steps.size();
-        buff.io( mode, sz );
-        for ( iterator si = _steps.begin(); si != _steps.end(); si++ )
-            (*si)->Serialize( mode, buff );
+        if (serializeSteps)
+        {
+            buff.io(mode, sz);
+            for (iterator si = _steps.begin(); si != _steps.end(); si++)
+                (*si)->Serialize(mode, buff);
+        }
+        else
+        {
+            sz = 0;
+            buff.io(mode, sz);
+        }
     }
     else
     {
-        debug5 << "avtStreamline READ: listSz = " << _steps.size() <<endl;
         _steps.clear();
         size_t sz = 0;
         buff.io( mode, sz );
