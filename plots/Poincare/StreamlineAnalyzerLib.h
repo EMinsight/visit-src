@@ -136,10 +136,14 @@ public:
 		                      double > >& ridgelineSetList );
 
   double
-  calculatePeriodVariance( vector< Point >& poloidalWinding_points,
-			   unsigned int poloidalWinding,
-			   bool zCheckOnly = false );
+  calculateAutoCorrelation( vector< Point >& poloidalWinding_points,
+			    unsigned int poloidalWinding );
 
+  double
+  calculateVariance( vector< Point >& poloidalWinding_points,
+		     unsigned int poloidalWinding,
+		     bool zCheckOnly = false );
+  
   bool
   rationalCheck( vector< Point >& points,
                  unsigned int toroidalWinding,

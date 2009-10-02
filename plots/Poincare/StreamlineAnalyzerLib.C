@@ -1,4 +1,4 @@
-/*
+ /*
    For more information, please see: http://software.sci.utah.edu
 
    The MIT License
@@ -43,6 +43,8 @@
 #include <algorithm>
 #include <float.h>
 #include <iostream>
+
+#include <fftw3.h>
 
 using namespace std;
 
@@ -478,15 +480,36 @@ poloidalWindingCheck( vector< unsigned int > &poloidalWindingSet,
   }
 
   // Now sort the results.
-  sort( windingSetList.begin(), windingSetList.end(),
-	compareWindingSet );
+  sort( windingSetList.begin(), windingSetList.end(), compareWindingSet );
 }
 
 
 double FieldlineLib::
-calculatePeriodVariance( vector< Point >& points,
-			 unsigned int period,
-			 bool zCheckOnly )
+calculateAutoCorrelation( vector< Point >& points,
+			  unsigned int period )
+{
+  if( period > points.size() / 2 )
+    return 0;
+
+  double correlation = 0;
+
+  // Test an integer number of the period.
+  int nsamples = period * (points.size()/period) - period;
+
+  for( unsigned int i=0; i<nsamples; ++i )
+  {
+    correlation += (points[i].z*points[i+period].z);
+  }
+
+  // Get the average correlation.
+  return correlation / (float) (nsamples);
+}
+
+
+double FieldlineLib::
+calculateVariance( vector< Point >& points,
+		   unsigned int period,
+		   bool zCheckOnly )
 {
   if( period > points.size() / 2 )
     return 99999.9;
@@ -497,10 +520,8 @@ calculatePeriodVariance( vector< Point >& points,
 
   // Note: for a rational surface the variance should be zero.
 
-  unsigned int nSamples = 0;
-
   double variance = 0;
-    
+
   for( unsigned int i=0; i<period; ++i )
   {
     // Find the centroid of the points based on the poloidal winding.
@@ -516,11 +537,9 @@ calculatePeriodVariance( vector< Point >& points,
     centroid /= (double) npts;
 
     // Get the variance for each group.
-    for( unsigned int j=i; j<points.size(); j+=period )
+    for( unsigned int j=i; j<points.size()-period; j+=period )
     {
       Vector diff = points[j] - centroid;
-
-      ++nSamples;
 
       if( zCheckOnly )
 	variance += (diff.z * diff.z);
@@ -533,11 +552,20 @@ calculatePeriodVariance( vector< Point >& points,
 }
 
 int
-compareSecond( const pair< unsigned int, double > s0,
-	       const pair< unsigned int, double > s1 )
+pairCompareSecondLess( const pair< unsigned int, double > s0,
+		       const pair< unsigned int, double > s1 )
 {
   return ( s0.second < s1.second );
 }
+
+int
+pairCompareSecondGreater( const pair< unsigned int, double > s0,
+			  const pair< unsigned int, double > s1 )
+{
+  return ( s0.second > s1.second );
+}
+
+//#define CORRELATE 1
 
 unsigned int FieldlineLib::
 poloidalWindingStats( unsigned int base_period,
@@ -550,7 +578,7 @@ poloidalWindingStats( unsigned int base_period,
 
  // Find the base poloidal periodicity variance.
   unsigned int best_period = base_period;
-  double best_var = calculatePeriodVariance( poloidalPoints, base_period );
+  double best_var = calculateVariance( poloidalPoints, base_period );
 
   if( verboseFlag )
     cerr << "Base poloidal  " << best_period << "  " << best_var << "  ";
@@ -560,7 +588,7 @@ poloidalWindingStats( unsigned int base_period,
  
   for( unsigned int i=1; i<=poloidalPoints.size()/2; ++i ) 
   {
-    double test_var = calculatePeriodVariance( poloidalPoints, i );
+    double test_var = calculateVariance( poloidalPoints, i );
     
     // 	cerr << "Test poloidal  " << i  << "  " << test_var << endl;
     
@@ -574,38 +602,72 @@ poloidalWindingStats( unsigned int base_period,
   cerr << "Best poloidal  " << best_period << "  " << best_var << endl;
 
 
-
  // Find the base poloidal periodicity variance.
   best_period = base_period;
-  best_var = calculatePeriodVariance( ridgelinePoints, base_period, true );
-
+#ifdef CORRELATE
+  best_var = calculateAutoCorrelation( ridgelinePoints, base_period );
+#else
+  best_var = calculateVariance( ridgelinePoints, base_period, true );
+#endif
   if( verboseFlag )
     cerr << "Base ridgeline  " << base_period << "  " << best_var << "  ";
 
   // Find the period with the best variance.  Note dividing by two
   // insures that there are at least two points in each group.
-  
   for( unsigned int i=1; i<=ridgelinePoints.size()/2; ++i ) 
   {
-    double test_var = calculatePeriodVariance( ridgelinePoints, i, true );
-
+#ifdef CORRELATE
+    double test_var = calculateAutoCorrelation( ridgelinePoints, i );
+#else
+    double test_var = calculateVariance( ridgelinePoints, i, true );
+#endif
     ridgelineSetList.push_back( pair< unsigned int, double >
 				(i, test_var ) );
-
-    //    cerr << "Test ridgeline  " << i << "  " << test_var << endl;
-
+    
+#ifdef CORRELATE
+    if( best_var < test_var ) 
+#else
     if( best_var > test_var ) 
+#endif
     {
       best_var = test_var;
       best_period = i;
     }
   }
 
+//   if( verboseFlag )
+//   {  
+//     for( unsigned int i=0; i<ridgelineSetList.size(); ++i )
+//     {
+//       cerr << "Test ridgeline  "
+// 	   << ridgelineSetList[i].first << "  "
+// 	   << ridgelineSetList[i].second;
+    
+// #ifdef CORRELATE
+//       if( 1 < i && i < ridgelineSetList.size()-1 && 
+// 	  ridgelineSetList[i-1].second < ridgelineSetList[i].second &&
+// 	  ridgelineSetList[i+1].second < ridgelineSetList[i].second 
+// 	  cerr << "  ***********";
+// #else
+//       if( 1 < i && i < ridgelineSetList.size()-1 && 
+// 	  ridgelineSetList[i-1].second > ridgelineSetList[i].second &&
+// 	  ridgelineSetList[i+1].second > ridgelineSetList[i].second )
+// 	cerr << "  ***********";
+// #endif
+
+//       cerr << endl;
+//     }
+//   }
+
   cerr << "Best ridgeline  " << best_period << "  " << best_var << endl;
 
   // Now sort the results.
-  sort( ridgelineSetList.begin(), ridgelineSetList.end(), compareSecond );
-
+  sort( ridgelineSetList.begin(), ridgelineSetList.end(),
+#ifdef CORRELATE
+	pairCompareSecondGreater );
+#else
+	pairCompareSecondLess );
+#endif
 
   // Debug info
   if( verboseFlag )
@@ -621,12 +683,13 @@ poloidalWindingStats( unsigned int base_period,
     }
   }
 
-  // Z max test.
-  unsigned int period = 0;
-  unsigned int cc = 0;
-  unsigned int index = 0;
+  // Zero Crossing Rate.
+  unsigned int nzc = 0;
+  unsigned int zc_index = 0;
 
-  cerr << "max test ";
+  cerr << "Zero Crossing test ";
+
+  vector< unsigned int > zc;
 
   double dc = 0;
   for( unsigned int i=0; i<ridgelinePoints.size(); ++i ) 
@@ -636,26 +699,94 @@ poloidalWindingStats( unsigned int base_period,
 
   for( unsigned int j=1; j<ridgelinePoints.size()-1; ++j )
   {
-    if( ridgelinePoints[j].z > dc &&
-	ridgelinePoints[j].z >  ridgelinePoints[j-1].z &&
-	ridgelinePoints[j].z >= ridgelinePoints[j+1].z )
+    if( ridgelinePoints[j-1].z < dc && dc <= ridgelinePoints[j  ].z )
     {
-      if( index == 0 )
-	index = j;
+      if( zc_index == 0 )
+	zc_index = j;
       else
       {
-	cerr << (j - index) << "  ";
+	cerr << (j - zc_index) << "  ";
 	
-	period += (j - index);
-	index = j;
-	++cc;
+	unsigned int zcr = (j - zc_index);
+
+	zc.push_back( zcr );
+	zc_index = j;
+	++nzc;
+      }
+    }
+  }	
+
+  cerr << endl;
+
+  if( nzc )
+  {
+
+    // The actual period may have multiple zero crossings so look at
+    // sums of the the number of points between zero crossing.
+    vector< unsigned int > zcr;
+
+    if( zc.size() == 1 )
+    {
+      zcr.push_back( zc[0] );
+
+      cerr << "Zero Crossing Period " << zc[0] << "  "
+	   << endl;
+    }
+
+    // Number of zero crossings to sum
+    for( unsigned int i=1; i<=zc.size()/2; ++i )
+    {
+      // Because of partial periods at teh beginning vary the starting
+      // index.
+      for( unsigned int j=0; j<i; ++j )
+      {
+	// Number of values that will be sampled - at two are needed.
+	unsigned int nvalues = ((zc.size()-j) / i);
+
+	if( nvalues < 2 )
+	  continue;
+
+	// Number of zero crossing samples  
+	unsigned int nsamples = i * nvalues;
+
+	unsigned int period = 0;
+
+	for( unsigned int k=j; k<j+nsamples; ++k )
+	  period += zc[k];
+
+	// Interger sampling only.
+	if( i == 1 || period % nvalues == 0 )
+	{
+	  if( i == 1 )
+	    period = ((float) period / (float) nvalues + 0.5);
+	  else
+	    period /= nvalues;
+
+	  // Save only the lower order periods found.
+	  bool found = false;
+
+	  for(unsigned int k=0; k<zcr.size(); ++k )
+	  {
+	    if( period % zcr[k] == 0 )
+	      found = true;
+	  }
+
+	  if( !found )
+	  {
+	    zcr.push_back( period );
+	  
+	    cerr << "Zero Crossing Period " << period << "  "
+		 << endl;
+	  }
+	}
       }
     }
   }
+  else
+  {
+    cerr << "Not enough data" << endl;
+  }
 
-  period = (( (float) period / (float) cc ) + 0.5);
-  cerr << "average period " << period << endl;
-  
   return best_period;
 }
 
@@ -1305,7 +1436,7 @@ FieldlineLib::fieldlineProperties( vector< Point > &ptList,
   for( unsigned int i=0; i<ridgeline_points.size(); ++i ) 
     ridgeline_dc_var += ((ridgeline_points[i].z - ridgeline_dc) *
 			 (ridgeline_points[i].z - ridgeline_dc));
-  
+
   // At this point all of the puncture points (toroidal points) as
   // well as the poloidal points have been found.
     if( verboseFlag )
@@ -1709,31 +1840,31 @@ FieldlineLib::fieldlineProperties( vector< Point > &ptList,
 	  islands = 0;
 //	    nPuncturesNeeded = 0;
 	  
-	  unsigned int i = 0;
-	  vector< pair < pair<unsigned int, unsigned int >, double > >::iterator
-	    iter = windingSetList.begin();
+// 	  unsigned int i = 0;
+// 	  vector< pair < pair<unsigned int, unsigned int >, double > >::iterator
+// 	    iter = windingSetList.begin();
 
-	  // Erase everything up to but not including the current match.
-	  if( i<toroidalMatchIndex )
-	  {
-	    while( i<toroidalMatchIndex ) { ++i; ++iter; }
+// 	  // Erase everything up to but not including the current match.
+// 	  if( i<toroidalMatchIndex )
+// 	  {
+// 	    while( i<toroidalMatchIndex ) { ++i; ++iter; }
 	    
-	    windingSetList.erase(windingSetList.begin(), iter);
-	  }
+// 	    windingSetList.erase(windingSetList.begin(), iter);
+// 	  }
 
-	  // Erase everything after the current match.
-	  ++i;
-	  ++iter;
+// 	  // Erase everything after the current match.
+// 	  ++i;
+// 	  ++iter;
 
-	  if( i < windingSetList.size() )
-	    windingSetList.erase( iter, windingSetList.end() );
+// 	  if( i < windingSetList.size() )
+// 	    windingSetList.erase( iter, windingSetList.end() );
 
 	  if( verboseFlag )
 	      cerr << endl << "!!!!!!!!!!!!!!!!!!!!!!  "
 		   << "Probably not an island assuming a surface - poloidal surface matched " << cc << "  "
 		   << "!!!!!!!!!!!!!!!!!!!!!!" << endl;
 
-	  toroidalMatchIndex = 0;
+//	  toroidalMatchIndex = 0;
 	  poloidalMatchIndex = -1;
 	}
 
@@ -1851,6 +1982,7 @@ FieldlineLib::fieldlineProperties( vector< Point > &ptList,
 	    cerr << "Too few toroidal points, at least "
 		 << (nnodes+additionalPts) * toroidalWinding
 		 << "  puncture points are needed."
+		 << "  " << additionalPts << "  " << toroidalWinding << "  "
 		 << endl;
 	}
       }
@@ -1930,7 +2062,7 @@ FieldlineLib::fieldlineProperties( vector< Point > &ptList,
 	  poloidalMatchIndex = i;
 
 	  if( verboseFlag )
-	    cerr << "Integer +/-1 Poloidal Winding " << ridgelinePeriod
+	    cerr << "Integer +1/-1 Poloidal Winding " << ridgelinePeriod
 		 << endl;
 
 	  break;

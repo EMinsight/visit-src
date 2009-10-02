@@ -62,6 +62,10 @@
 #include <avtDatasetExaminer.h>
 #include <avtExtents.h>
 
+#include <utility>
+
+using namespace std;
+
 #define SIGN(x) ((x) < 0.0 ? -1 : 1)
 
 
@@ -106,6 +110,7 @@ static const int COLOR_Solid = 11;
 avtPoincareFilter::avtPoincareFilter() :
     verboseFlag(1),
     showIslands( 0 ),
+    showLines( 1 ),
     showPoints( 0 ),
     override( 0 ),
     maxToroidalWinding( 30 ),
@@ -722,6 +727,46 @@ avtPoincareFilter::ClassifyStreamlines()
 //    Replaced cerr/cout with debug5.
 //
 // ****************************************************************************
+template< class T > int
+pairsortfirst( const pair < T, T > s0, const pair < T, T > s1 )
+{
+  return (s0.first > s1.first );
+}
+
+template< class T > int
+pairsortsecond( const pair < T, T > s0, const pair < T, T > s1 )
+{
+  return (s0.second > s1.second );
+}
+
+void realDFTamp( vector< double > &g, vector< double > &G )
+{
+  unsigned int N = g.size();
+
+  G.resize(N/2);
+
+  for(unsigned int i=0; i<N/2; i++)
+  {
+    double freq = double(i) / double(N);
+
+    double GRe = 0;
+    double GIm = 0;
+
+    for( unsigned int j=0; j<N; j++)
+    {
+      double a = -2.0 * M_PI * double(j) * freq;
+//    if(inverse) a *= -1.0;
+      double ca = cos(a);
+      double sa = sin(a);
+      
+      GRe += g[j] * ca; // - in[x][1] * sa;
+      GIm += g[j] * sa; // + in[x][1] * ca;
+    }
+
+    G[i] = sqrt(GRe*GRe + GIm*GIm);
+  }
+}
+
 
 avtDataTree *
 avtPoincareFilter::CreatePoincareOutput()
@@ -1239,8 +1284,8 @@ avtPoincareFilter::CreatePoincareOutput()
         }
         
         // Record the topology.
-        std::pair< unsigned int, unsigned int >
-            topo( toroidalWinding, poloidalWinding );
+        //std::pair< unsigned int, unsigned int >
+        //  topo( toroidalWinding, poloidalWinding );
         
         //    topology.push_back(topo);
         
@@ -1281,7 +1326,169 @@ avtPoincareFilter::CreatePoincareOutput()
 
 	    loadPoints( dt, ridgelinePts, ridgelinePeriod,
 			nnodes, islands, poloidalWinding,
-			colorBy, color_value );
+			colorBy, color_value, true );
+
+//     double best_period = 0;
+//     double best_amp = 0;
+
+
+//     vector< unsigned int > periodList;
+
+//     for(unsigned int p=2; p<ridgelinePts.size()/2; p++)
+//     {
+//       unsigned int N = p * (ridgelinePts.size() / p);
+
+//       if( find( periodList.begin(), periodList.end(), N/2 ) != periodList.end())
+// 	continue;
+//       else
+// 	periodList.push_back( N/2 );
+
+//       vector< pair < double, double > > dft;
+//       dft.resize( N/2 );
+
+//       vector< pair < double, double > > g, G;
+
+//       g.resize( N/2 );
+//       G.resize( N/2 );
+
+//       double local_best_period = 0;
+//       double local_best_amp = 0;
+
+//       for(unsigned int f=1; f<N/2; f++)
+//       {
+// 	double freq = double(f) / double(N);
+	
+// 	double GRe = 0;
+// 	double GIm = 0;
+
+// 	for( unsigned int cc=0; cc<N; cc++)
+// 	{
+// 	  double a = -2.0 * M_PI * double(cc) * freq;
+// //        if(inverse) a *= -1.0;
+// 	  double ca = cos(a);
+// 	  double sa = sin(a);
+	  
+// 	  GRe += ridgelinePts[cc].z * ca; // - in[x][1] * sa;
+// 	  GIm += ridgelinePts[cc].z * sa; // + in[x][1] * ca;
+// 	}
+
+// 	G[f].first  = GRe;
+// 	G[f].second = GIm;
+
+// 	double amp = sqrt(GRe*GRe + GIm*GIm);
+
+// 	dft[f] = pair< double, double >(freq, amp);
+
+// 	if( local_best_amp < amp )
+// 	{
+// 	  local_best_amp = amp;
+// 	  local_best_period = 1.0 / freq;
+// 	}
+//       }
+
+//       if( best_amp < local_best_amp )
+//       {
+// 	best_amp = local_best_amp;
+// 	best_period = local_best_period;
+//       }
+      
+//       cerr << "local  "
+// 	   << p << "  "
+// 	   << N << "  "
+// 	   << local_best_period << "  " << local_best_amp << endl;
+      
+//       continue;
+      
+//       for( unsigned int cc=1; cc<N/2; ++cc )
+//       {
+// 	double period = ((int) (10000.0 / dft[cc].first) / 10000.0);
+	
+// 	double amp_1 = dft[cc-1].second;
+// 	double amp   = dft[cc  ].second;
+// 	double amp1  = dft[cc+1].second;
+	
+// //       cerr << period << "  "
+// // 	   << dft[cc].first  << "  "
+// // 	   << dft[cc].second << "  "
+// // 	   << ((amp_1<amp && amp>amp1) ? "******" : "")
+// // 	   << endl;
+//       }
+//     }
+    
+//     cerr << "best overall  "
+// 	 << best_period << "  " << best_amp << endl;
+
+    ///////////////////////////
+  
+//     best_period = 0;
+//     best_amp = 0;
+
+//     unsigned int N = ridgelinePts.size();
+
+//     vector< double > height;
+//     vector< double > Gamp;
+//     vector< double > gamp;
+
+//     height.resize( N );
+
+//     for( unsigned int cc=0; cc<N; cc++)
+//       height[cc] = ridgelinePts[cc].z;
+
+//     // DFT of the original height signal
+//     realDFTamp( height, Gamp );
+
+// //     ridgelinePts.resize( N / 2 );
+// //     ridgelinePts[0].z = 0;
+// //     for(unsigned int f=1; f<ridgelinePts.size(); f++)
+// //       ridgelinePts[f].z = Gamp[f] / 100.0;
+
+//     // Throw awway the DC component and compute the log of the amplitude.
+//     gamp.resize( Gamp.size() - 1 );
+
+//     for( unsigned int cc=1; cc<Gamp.size(); cc++)
+//       gamp[cc-1] = log2( Gamp[cc] );
+
+//     // DFT of the amplitude signal
+//     realDFTamp( gamp, Gamp );
+
+//     bool foundFirstMin = false;
+//     double last_amp = 1.0e15;
+
+//     for(unsigned int cc=1; cc<Gamp.size(); cc++)
+//     {
+//       cerr << cc << "  " << Gamp[cc];
+
+//       if( 1<cc && cc<Gamp.size()-1 &&
+// 	  Gamp[cc-1] < Gamp[cc] && Gamp[cc] > Gamp[cc+1] )
+// 	cerr << "**" << endl;
+//       else
+// 	cerr << endl;
+
+//       if( !foundFirstMin && last_amp < Gamp[cc] )
+// 	foundFirstMin = true;
+
+//       if( foundFirstMin && best_amp < Gamp[cc] )
+//       {
+// 	  best_amp = Gamp[cc];
+// 	  best_period = cc;
+//       }
+
+//       last_amp = Gamp[cc];
+//     }
+
+//     cerr << __LINE__ << endl;
+
+//     cerr << "best  " << best_period << "  " << best_amp << endl;
+
+ //    ridgelinePts.resize( Gamp.size() - 1 );
+//     for(unsigned int f=1; f<Gamp.size(); f++)
+//       ridgelinePts[f-1].z = Gamp[f] / 100.0;
+
+
+//     loadPoints( dt, ridgelinePts, ridgelinePts.size(),
+// 		nnodes, islands, poloidalWinding,
+// 		colorBy, color_value, true );
+
 
         }
     }
@@ -1324,11 +1531,11 @@ avtPoincareFilter::loadCurve( avtDataTree *dt,
     unsigned int toroidalWindings = nodes[0].size();
 
     // If an island then only points.
-    if( islands == 0 )
-
-    // Loop through each plane
-    for( unsigned int p=0; p<nplanes; ++p ) 
+    if( showLines && islands == 0 )
     {
+      // Loop through each plane
+      for( unsigned int p=0; p<nplanes; ++p ) 
+      {
         if( color == COLOR_Plane )
             color_value = p;
         
@@ -1377,7 +1584,8 @@ avtPoincareFilter::loadCurve( avtDataTree *dt,
         
         points->Delete();
         cells->Delete();
-        scalars->Delete();       
+        scalars->Delete();
+      }   
     }
 
     if (showPoints)
@@ -1451,9 +1659,11 @@ avtPoincareFilter::loadCurve( avtDataTree *dt,
     unsigned int nplanes = nodes.size();
     unsigned int toroidalWindings = nodes[0].size();
     
-    // Loop through each plane
-    for( unsigned int p=0; p<nplanes; ++p ) 
+    if (showLines)
     {
+      // Loop through each plane
+      for( unsigned int p=0; p<nplanes; ++p ) 
+      {
         if( color == COLOR_Plane )
             color_value = p;
         
@@ -1502,6 +1712,7 @@ avtPoincareFilter::loadCurve( avtDataTree *dt,
             cells->Delete();
             scalars->Delete();       
         }
+      }
     }
     
     if (showPoints)
@@ -1792,10 +2003,9 @@ avtPoincareFilter::loadPoints( avtDataTree *dt,
 			       unsigned int islands,
 			       unsigned int poloidalWindings,
 			       unsigned int color,
-			       double color_value ) 
+			       double color_value,
+			       bool ptFlag )
 {
-  //  period = 27;
-
   if( period <= 1 )
     period = nodes.size();
 
@@ -1831,14 +2041,15 @@ avtPoincareFilter::loadPoints( avtDataTree *dt,
       
       cc = 0;
     }
-    
-//    points->InsertPoint(cc, nodes[i].x, nodes[i].y, nodes[i].z);
- 
-    points->InsertPoint(cc,
-			(float) (i % period) / 50.0,
-			nodes[i].y,
-			nodes[i].z);
 
+    if( ptFlag )
+      points->InsertPoint(cc,
+			  (float) (i % period) / 50.0,
+			  nodes[i].y,
+			  nodes[i].z);
+    else
+      points->InsertPoint(cc, nodes[i].x, nodes[i].y, nodes[i].z);
+    
     cells->InsertCellPoint(cc);
 
     if( color == COLOR_PointIndex )
