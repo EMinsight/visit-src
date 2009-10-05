@@ -775,19 +775,19 @@ QvisPoincarePlotWindow::UpdateWindow(bool doAll)
 
 
           case PoincareAttributes::ID_showIslands:
-            verboseFlag->blockSignals(true);
-            verboseFlag->setChecked(atts->GetShowIslands());
-            verboseFlag->blockSignals(false);
+            showIslands->blockSignals(true);
+            showIslands->setChecked(atts->GetShowIslands());
+            showIslands->blockSignals(false);
             break;
           case PoincareAttributes::ID_showLines:
-            verboseFlag->blockSignals(true);
-            verboseFlag->setChecked(atts->GetShowLines());
-            verboseFlag->blockSignals(false);
+            showLines->blockSignals(true);
+            showLines->setChecked(atts->GetShowLines());
+            showLines->blockSignals(false);
             break;
           case PoincareAttributes::ID_showPoints:
-            verboseFlag->blockSignals(true);
-            verboseFlag->setChecked(atts->GetShowPoints());
-            verboseFlag->blockSignals(false);
+            showPoints->blockSignals(true);
+            showPoints->setChecked(atts->GetShowPoints());
+            showPoints->blockSignals(false);
             break;
           case PoincareAttributes::ID_verboseFlag:
             verboseFlag->blockSignals(true);
