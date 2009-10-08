@@ -2083,15 +2083,16 @@ PoincareAttributes::StreamlineAttsRequireRecalculation(const PoincareAttributes 
 			   (pointDensity != obj.pointDensity));
 
     return (minPunctures != obj.minPunctures ||
+	    maxPunctures != obj.maxPunctures ||
 	    sourcePointsDiffer ||
 	    sourceLineDiffers ||
 	    densityMatters ||
 
-	    (sourceType != obj.sourceType) ||
-	    (integrationType != obj.integrationType) ||
-	    (maxStepLength != obj.maxStepLength) ||
-	    (relTol != obj.relTol) ||
-	    (absTol != obj.absTol) );
+	    sourceType != obj.sourceType ||
+	    integrationType != obj.integrationType ||
+	    maxStepLength != obj.maxStepLength ||
+	    relTol != obj.relTol ||
+	    absTol != obj.absTol);
 }
 
 // ****************************************************************************

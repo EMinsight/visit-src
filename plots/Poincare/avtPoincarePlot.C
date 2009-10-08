@@ -338,10 +338,12 @@ avtPoincarePlot::SetAtts(const AttributeGroup *a)
     poincareFilter->SetMaxStepLength(atts.GetMaxStepLength());
     poincareFilter->SetTolerances(atts.GetRelTol(),atts.GetAbsTol());
 
+    // Make the number of punctures 2x because the analysis uses only
+    // the punctures in the same direction as the plane.
     poincareFilter->SetTermination(STREAMLINE_TERMINATE_INTERSECTIONS,
-				   atts.GetMinPunctures());
+				   2*atts.GetMinPunctures());
 
-    poincareFilter->SetMaxPunctures(atts.GetMaxPunctures());
+    poincareFilter->SetMaxPunctures(2*atts.GetMaxPunctures());
     
     vtkPlane *intPlane = vtkPlane::New();
     intPlane->SetOrigin( 0,0,0 ); 
@@ -409,7 +411,6 @@ avtPoincarePlot::SetAtts(const AttributeGroup *a)
     varMapper->TurnLightingOn();
     varMapper->SetSpecularIsInappropriate(false);
     SetLegend(atts.GetLegendFlag());
-
 }
 
 // ****************************************************************************

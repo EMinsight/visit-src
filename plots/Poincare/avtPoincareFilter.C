@@ -656,6 +656,8 @@ avtPoincareFilter::ClassifyStreamlines()
 				     maxToroidalWinding,
 				     hitrate );
 
+	fi.nPuncturesNeeded *= 2;
+
         poincareClassification[i] = fi;
 
 	if( fi.nPuncturesNeeded > maxPunctures )

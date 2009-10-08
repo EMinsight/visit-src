@@ -44,8 +44,6 @@
 #include <float.h>
 #include <iostream>
 
-#include <fftw3.h>
-
 using namespace std;
 
 namespace FusionPSE {
