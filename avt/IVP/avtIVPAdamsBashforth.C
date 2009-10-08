@@ -55,13 +55,6 @@ static const double divisor = 1.0 / 720.0;
 
 #define NSTEPS sizeof(bashforth)/sizeof(bashforth[0])
 
-// helper function
-// returns a with the same sign as b
-static inline double sign( const double& a, const double& b )
-{
-    return (b > 0.0) ? std::abs(a) : -std::abs(a);
-}
-
 // ****************************************************************************
 //  Method: avtIVPAdamsBashforth constructor
 //
@@ -90,10 +83,9 @@ avtIVPAdamsBashforth::avtIVPAdamsBashforth()
     tol = 1e-8;
     h = 1e-5;
     t = 0.0;
-    d = 0.0;
-    numStep = 0;
     initialized = 0;
     degenerate_iterations = 0;
+    max_degenerate_iterations = 15;
     stiffness_eps = tol / 1000.0;
 }
 
@@ -108,6 +100,24 @@ avtIVPAdamsBashforth::avtIVPAdamsBashforth()
 
 avtIVPAdamsBashforth::~avtIVPAdamsBashforth()
 {
+}
+
+
+// ****************************************************************************
+//  Method: avtIVPAdamsBashforth::SetCurrentT
+//
+//  Purpose:
+//      Sets the current T.
+//
+//  Programmer: Dave Pugmire
+//  Creation:   August 5, 2008
+//
+// ****************************************************************************
+
+void
+avtIVPAdamsBashforth::SetCurrentT(double newT)
+{
+    t = newT;
 }
 
 
@@ -128,28 +138,6 @@ avtIVPAdamsBashforth::GetCurrentT() const
     return t;
 }
 
-
-// ****************************************************************************
-//  Method: avtIVPAdamsBashforth::GetCurrentY
-//
-//  Purpose:
-//      Gets the current Y.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   August 5, 2008
-//
-//  Modifications:
-//    Dave Pugmire, Fri Aug  8 16:05:34 EDT 2008
-//    Improved version of A-B solver that builds function history from
-//    initial RK4 steps.
-//
-// ****************************************************************************
-
-avtVec 
-avtIVPAdamsBashforth::GetCurrentY() const
-{
-    return yCur;
-}
 
 // ****************************************************************************
 //  Method: avtIVPAdamsBashforth::SetCurrentY
@@ -175,20 +163,25 @@ avtIVPAdamsBashforth::SetCurrentY(const avtVec &newY)
 
 
 // ****************************************************************************
-//  Method: avtIVPAdamsBashforth::SetCurrentT
+//  Method: avtIVPAdamsBashforth::GetCurrentY
 //
 //  Purpose:
-//      Sets the current T.
+//      Gets the current Y.
 //
 //  Programmer: Dave Pugmire
 //  Creation:   August 5, 2008
 //
+//  Modifications:
+//    Dave Pugmire, Fri Aug  8 16:05:34 EDT 2008
+//    Improved version of A-B solver that builds function history from
+//    initial RK4 steps.
+//
 // ****************************************************************************
 
-void
-avtIVPAdamsBashforth::SetCurrentT(double newT)
+avtVec 
+avtIVPAdamsBashforth::GetCurrentY() const
 {
-    t = newT;
+    return yCur;
 }
 
 
@@ -204,9 +197,9 @@ avtIVPAdamsBashforth::SetCurrentT(double newT)
 // ****************************************************************************
 
 void 
-avtIVPAdamsBashforth::SetNextStepSize(const double& _h)
+avtIVPAdamsBashforth::SetNextStepSize(const double& newH)
 {
-    h = _h;
+    h = newH;
 }
 
 
@@ -240,9 +233,43 @@ avtIVPAdamsBashforth::GetNextStepSize() const
 // ****************************************************************************
 
 void
-avtIVPAdamsBashforth::SetMaximumStepSize(const double& hMax)
+avtIVPAdamsBashforth::SetMaximumStepSize(const double& maxH)
 {
-    h_max = hMax;
+    h_max = maxH;
+}
+
+// ****************************************************************************
+//  Method: avtIVPAdamsBashforth::GetMaximumStepSize
+//
+//  Purpose:
+//      Gets the maximum step size for the next step.
+//
+//  Programmer: Dave Pugmire
+//  Creation:   August 5, 2008
+//
+// ****************************************************************************
+
+double
+avtIVPAdamsBashforth::GetMaximumStepSize() const
+{
+    return h_max;
+}
+
+// ****************************************************************************
+//  Method: avtIVPAdamsBashforth::SetMaximumDegenerateIterations
+//
+//  Purpose:
+//      Sets the maximum number of degenerate steps allowed
+//
+//  Creationist: Allen Sanderson
+//  Creation:   Octobert 5, 2009
+//
+// ****************************************************************************
+
+void
+avtIVPAdamsBashforth::SetMaximumDegenerateIterations( const unsigned int& max )
+{
+    max_degenerate_iterations = max;
 }
 
 
@@ -267,6 +294,7 @@ avtIVPAdamsBashforth::SetTolerances(const double& relt, const double& abst)
     tol = abst;
     stiffness_eps = tol / 1000.0;
 }
+
 
 // ****************************************************************************
 //  Method: avtIVPAdamsBashforth::Reset
@@ -302,16 +330,13 @@ avtIVPAdamsBashforth::SetTolerances(const double& relt, const double& abst)
 // ****************************************************************************
 
 void 
-avtIVPAdamsBashforth::Reset(const double& t_start, const avtVecRef& y_start)
+avtIVPAdamsBashforth::Reset(const double& newT, const avtVecRef& newY)
 {
-    t = t_start;
-    d = 0.0;
-    numStep = 0;
-
-    degenerate_iterations = 0;
-    yCur = y_start;
+    t = newT;
+    yCur = newY;
     h = h_max;
     initialized = 0;
+    degenerate_iterations = 0;
 
     history[0] = avtVec(yCur.dim());
     history[1] = avtVec(yCur.dim());
@@ -357,7 +382,7 @@ avtIVPAdamsBashforth::OnExitDomain()
 //
 // ****************************************************************************
 
-avtIVPSolver::Result 
+void
 avtIVPAdamsBashforth::RK4Step(const avtIVPField* field,
                               avtVec &yNew )
 {
@@ -369,8 +394,6 @@ avtIVPAdamsBashforth::RK4Step(const avtIVPField* field,
   f[3] = (*field)(t,yCur + f[2])       * h;
 
   yNew = yCur + (f[0] + 2.0 * f[1] + 2.0 * f[2] + f[3]) * (1.0 / 6.0);
-
-  return avtIVPSolver::OK;
 }
 
 
@@ -393,7 +416,7 @@ avtIVPAdamsBashforth::RK4Step(const avtIVPField* field,
 //
 // ****************************************************************************
 
-avtIVPSolver::Result 
+void
 avtIVPAdamsBashforth::ABStep(const avtIVPField* field,
                              avtVec &yNew )
 {
@@ -402,8 +425,6 @@ avtIVPAdamsBashforth::ABStep(const avtIVPField* field,
 
     for (size_t i = 0; i < NSTEPS; i++)
         yNew += h*divisor*bashforth[i] * history[i];
-
-    return avtIVPSolver::OK;
 }
 
 // ****************************************************************************
@@ -444,118 +465,60 @@ avtIVPAdamsBashforth::ABStep(const avtIVPField* field,
 
 avtIVPSolver::Result 
 avtIVPAdamsBashforth::Step(const avtIVPField* field,
-                           const TerminateType &termType,
-                           const double &end,   
+                           const double &end,
+                           const double &t_max,
                            avtIVPStep* ivpstep)
 {
-    double t_max;
-
-    if (termType == TIME)
-        t_max = end;
-    else if (termType == DISTANCE || termType == STEPS || termType == INTERSECTIONS)
-    {
-        t_max = std::numeric_limits<double>::max();
-        if (end < 0)
-            t_max = -t_max;
-    }
-
-    const double direction = sign( 1.0, t_max - t );
-    
-    h = sign( h, direction );
-    
-    // do not run past integration end
-    if( (t + 1.01*h - t_max) * direction > 0.0 ) 
-    {
-        h = t_max - t;
-    }
-
-    // stepsize underflow?
-    if( 0.1*std::abs(h) <= std::abs(t)*epsilon )
-    {
-        return avtIVPSolver::STEPSIZE_UNDERFLOW;
-    }
-
-    avtIVPSolver::Result res;
     avtVec yNew(yCur.dim());
+
     // Use a forth order Runga Kutta integration to seed the Adams-Bashforth.
     if ( initialized < NSTEPS )
     {
-        // Save the first vector values in the history. 
+        // Save the seed point vector value in the history. 
         if( initialized == 0 )
-        {
-            history[0] = (*field)(t,yCur);
-        }
-        res = RK4Step( field, yNew );
+	  history[0] = (*field)(t,yCur);
+
+	RK4Step( field, yNew );
         
         ++initialized;
     }
     else
     {
-        res = ABStep( field, yNew );
+        ABStep( field, yNew );
     }
 
-    if ( res == avtIVPSolver::OK )
+    ivpstep->resize( yCur.dim(), 2 );
+    
+    (*ivpstep)[0] = yCur;
+    (*ivpstep)[1] = yNew;
+
+    ivpstep->tStart = t;
+    ivpstep->tEnd = t + h;
+    
+    ivpstep->velStart = (*field)( t   ,yCur);
+    ivpstep->velEnd   = (*field)((t+h),yNew);
+    
+    // Update the history to save the last 5 vector values.
+    history[4] = history[3];
+    history[3] = history[2];
+    history[2] = history[1];
+    history[1] = history[0];
+    history[0] = (*field)(t,yNew); 
+    
+    yCur = yNew;
+    t = t + h;
+
+    double len = ivpstep->length();
+
+    if (len < stiffness_eps &&
+	++degenerate_iterations > max_degenerate_iterations)
     {
-        ivpstep->resize( yCur.dim(), 2 );
-        
-        (*ivpstep)[0] = yCur;
-        (*ivpstep)[1] = yNew;
-        ivpstep->tStart = t;
-        ivpstep->tEnd = t + h;
-        numStep++;
-
-        // Handle distanced based termination.
-        if (termType == TIME)
-        {
-            if ((end > 0 && t >= end) ||
-                (end < 0 && t <= end))
-                return TERMINATE;
-        }
-        else if (termType == DISTANCE)
-        {
-            double len = ivpstep->length();
-            
-            //debug1<<"ABStep: "<<t<<" d: "<<d<<" => "<<(d+len)<<" h= "<<h<<" len= "<<len<<" sEps= "<<stiffness_eps<<endl;
-            if (len < stiffness_eps)
-            {
-                degenerate_iterations++;
-                if (degenerate_iterations > 15)
-                {
-                    //debug1<<"********** STIFFNESS ***************************\n";
-                    return STIFFNESS_DETECTED;
-                }
-            }
-            else
-                degenerate_iterations = 0;
-
-            if (d+len > fabs(end))
-                throw avtIVPField::Undefined();
-            else if (d+len >= fabs(end))
-                return TERMINATE;
-
-            d = d+len;
-        }
-        else if (termType == STEPS &&
-                 numStep >= (int)fabs(end))
-            return TERMINATE;
-
-        ivpstep->velStart = (*field)(t,yCur);
-        ivpstep->velEnd = (*field)((t+h),yNew);
-
-        // Update the history to save the last 5 vector values.
-        history[4] = history[3];
-        history[3] = history[2];
-        history[2] = history[1];
-        history[1] = history[0];
-        history[0] = (*field)(t,yNew); 
-
-        yCur = yNew;
-        t = t+h;
+	return avtIVPSolver::STIFFNESS_DETECTED;
     }
+    else
+      degenerate_iterations = 0;
 
-    // Reset the step size on sucessful step.
-    h = h_max;
-    return res;
+    return avtIVPSolver::OK;
 }
 
 // ****************************************************************************
@@ -579,15 +542,14 @@ avtIVPAdamsBashforth::Step(const avtIVPField* field,
 void
 avtIVPAdamsBashforth::AcceptStateVisitor(avtIVPStateHelper& aiss)
 {
-    aiss.Accept(numStep)
-        .Accept(tol)
-        .Accept(degenerate_iterations)
-        .Accept(stiffness_eps)
+    aiss.Accept(tol)
         .Accept(h)
         .Accept(h_max)
         .Accept(t)
-        .Accept(d)
         .Accept(yCur)
+        .Accept(degenerate_iterations)
+        .Accept(max_degenerate_iterations)
+        .Accept(stiffness_eps)
         .Accept(history[0])
         .Accept(history[1])
         .Accept(history[2])

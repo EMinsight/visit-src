@@ -44,6 +44,7 @@
 #define AVT_IVPSOLVER_H
 
 #include <avtVec.h>
+#include <avtVector.h>
 #include <avtIVPField.h>
 #include <avtBezierSegment.h>
 #include <MemStream.h>
@@ -291,8 +292,8 @@ class avtIVPSolver
     virtual void    Reset(const double& t_start, const avtVecRef& y_start) = 0;
 
     virtual Result  Step(const avtIVPField* field,
-                         const TerminateType &type,
                          const double &end,
+                         const double &t_max,
                          avtIVPStep* ivpstep = 0 ) = 0;
     virtual void    OnExitDomain() {}
     virtual avtVec  GetCurrentY() const = 0;
@@ -304,6 +305,7 @@ class avtIVPSolver
     virtual void    SetNextStepSize(const double& h)  = 0;
     virtual double  GetNextStepSize() const = 0;
     virtual void    SetMaximumStepSize(const double& h) = 0;
+    virtual double  GetMaximumStepSize() const = 0;
 
     virtual void    SetTolerances(const double& reltol, 
                                   const double& abstol) = 0;
@@ -313,6 +315,9 @@ class avtIVPSolver
     virtual void    PutState(const avtIVPState&);
             
     virtual avtIVPSolver* Clone() const = 0;
+
+    virtual void SetPlane(const avtVector &planePt,
+			  const avtVector &planeN) {};
             
 protected:
     virtual void    AcceptStateVisitor(avtIVPStateHelper& sv) = 0;

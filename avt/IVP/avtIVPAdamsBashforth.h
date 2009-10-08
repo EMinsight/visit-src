@@ -46,6 +46,8 @@
 #include <avtIVPSolver.h>
 #include <ivp_exports.h>
 
+#include <avtVector.h>
+
 // ****************************************************************************
 //  Class: avtIVPAdamsBashforth
 //
@@ -86,27 +88,30 @@ class IVP_API avtIVPAdamsBashforth: public avtIVPSolver
     ~avtIVPAdamsBashforth();
 
     // begin a new IVP solution
-    virtual void     Reset( const double& t_start, const avtVecRef& y_start );
+    virtual void   Reset( const double& t_start, const avtVecRef& y_start );
 
     // perform a single integration step
     // adaptive stepsize control retries until success or underflow
-    virtual Result   Step(const avtIVPField* field,
-                          const TerminateType &type,
+    virtual Result Step(const avtIVPField* field,
                           const double &end,
+                          const double &t_max,
                           avtIVPStep* ivpstep = NULL);
-    virtual void    OnExitDomain();
+    virtual void   OnExitDomain();
 
-    virtual avtVec   GetCurrentY() const;
-    virtual double   GetCurrentT() const;
+    virtual avtVec GetCurrentY() const;
+    virtual double GetCurrentT() const;
+    virtual double GetNextStepSize() const;
+    virtual double GetMaximumStepSize() const;
 
-    virtual void     SetCurrentY( const avtVec &newY );
-    virtual void     SetCurrentT( double newT );
+    virtual void   SetCurrentY( const avtVec &newY );
+    virtual void   SetCurrentT( double newT );
+    virtual void   SetNextStepSize( const double& h );
+    virtual void   SetMaximumStepSize( const double& hMax );
 
-    virtual void     SetNextStepSize( const double& h );
-    virtual double   GetNextStepSize() const;
-    virtual void     SetMaximumStepSize( const double& hMax );
+    virtual void   SetMaximumDegenerateIterations( const unsigned int& max );
 
-    virtual void     SetTolerances(const double& reltol, const double& abstol);
+    virtual void   SetTolerances(const double& reltol, const double& abstol);
+
     virtual avtIVPAdamsBashforth* Clone() const
     {
         return new avtIVPAdamsBashforth( *this );
@@ -118,18 +123,15 @@ class IVP_API avtIVPAdamsBashforth: public avtIVPSolver
     
     void             UpdateHistory( const avtVec &yNew );
 
-    avtIVPSolver::Result RK4Step(const avtIVPField* field,
-                                 avtVec &yNew);
-
-    avtIVPSolver::Result ABStep(const avtIVPField* field,
-                                avtVec &yNew);
+    void RK4Step(const avtIVPField* field, avtVec &yNew);
+    void  ABStep(const avtIVPField* field, avtVec &yNew);
 
   private:
-    int numStep;
     double tol;
     double h, h_max;
-    double t, d;
-    int degenerate_iterations;
+    double t;
+    unsigned int max_degenerate_iterations;
+    unsigned int degenerate_iterations;
     double stiffness_eps;
     avtVec history[5];
     avtVec yCur;
