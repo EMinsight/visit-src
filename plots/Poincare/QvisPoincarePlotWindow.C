@@ -1272,6 +1272,7 @@ QvisPoincarePlotWindow::reset()
     GetViewerMethods()->ResetPlotOptions(plotType);
 }
 
+
 void
 QvisPoincarePlotWindow::minPuncturesProcessText()
 {
@@ -1577,3 +1578,9 @@ QvisPoincarePlotWindow::lightingFlagChanged(bool val)
     Apply();
 }
 
+void
+QvisPoincarePlotWindow::maxStepLengthProcessText()
+{
+    GetCurrentValues(PoincareAttributes::ID_maxStepLength);
+    Apply();
+}
