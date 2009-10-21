@@ -8588,6 +8588,9 @@ ArbInsertHex(vtkUnstructuredGrid *ugrid, int *nids, unsigned int ocdata[2],
 //
 //  Programmer: Mark C. Miller, Wed Oct  7 11:24:34 PDT 2009
 //
+//  Modifications:
+//    Mark C. Miller, Wed Oct 21 03:48:24 PDT 2009
+//    Fixed setting of 'mingn' when a new min is found.
 // ****************************************************************************
 static void
 ArbInsertArbitrary(vtkUnstructuredGrid *ugrid, DBucdmesh *um, int gz,
@@ -8617,7 +8620,7 @@ ArbInsertArbitrary(vtkUnstructuredGrid *ugrid, DBucdmesh *um, int gz,
             int gn = phzl->nodelist[nlidx];	// gn = global node #
             if (gn < mingn)
             {
-                gn = mingn;
+                mingn = gn;
                 lnmingn = ln;
             }
             if (nodemap.find(gn) != nodemap.end())
