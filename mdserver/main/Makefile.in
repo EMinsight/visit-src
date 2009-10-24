@@ -182,6 +182,9 @@
 #    Jeremy Meredith, Wed Jan 23 16:17:16 EST 2008
 #    Added SetMFileOpenOptionsRPCExecutor.
 #
+#    Hank Childs, Fri Oct 23 18:37:41 PDT 2009
+#    Remove spurious $INCLUDE's.
+#
 ##############################################################################
 
 ##
@@ -257,16 +260,16 @@ clean:
 ## Other targets...
 ##
 $(tmpbin)/mdserver: $(LIBDEP) $(OBJ)
-	$(CXX) $(INCLUDE) -o $@ $(LDFLAGS) $(OBJ) $(LIBS)
+	$(CXX) -o $@ $(LDFLAGS) $(OBJ) $(LIBS)
 
 purify: $(LIBDEP) $(OBJ)
-	purify -cache-dir=$(TOPDIR)/lib -always-use-cache-dir $(CXX) $(INCLUDE) -o $(tmpbin)/mdserver $(LDFLAGS) $(OBJ) $(LIBS)
+	purify -cache-dir=$(TOPDIR)/lib -always-use-cache-dir $(CXX) -o $(tmpbin)/mdserver $(LDFLAGS) $(OBJ) $(LIBS)
 
 quantify: $(LIBDEP) $(OBJ)
-	quantify $(CXX) $(INCLUDE) -o $(tmpbin)/mdserver $(LDFLAGS) $(OBJ) $(LIBS)
+	quantify $(CXX) -o $(tmpbin)/mdserver $(LDFLAGS) $(OBJ) $(LIBS)
 
 $(tmpbin)/testmds: $(LIBDEP) $(TESTOBJ)
-	$(CXX) $(INCLUDE) -o $@ $(LDFLAGS) $(TESTOBJ) $(LIBS) -lmdserverproxy -lproxybase
+	$(CXX) -o $@ $(LDFLAGS) $(TESTOBJ) $(LIBS) -lmdserverproxy -lproxybase
 
 install_bin: $(tmpbin)/mdserver
 	$(INSTALL) $(tmpbin)/mdserver $(bindir)
