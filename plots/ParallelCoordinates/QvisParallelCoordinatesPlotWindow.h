@@ -84,6 +84,9 @@ class QListViewItem;
 //    used to draw the lines.  Allow user to force into the mode using
 //    individual data point lines for the focus instead of using a histogram.
 //
+//    Jeremy Meredith, Tue Oct 27 11:01:51 EDT 2009
+//    Added ability to set axis values.
+//
 // ****************************************************************************
 
 class QvisParallelCoordinatesPlotWindow : public QvisPostableWindowObserver
@@ -131,6 +134,9 @@ class QvisParallelCoordinatesPlotWindow : public QvisPostableWindowObserver
     void focusGammaSliderChanged(int val);
     void focusGammaSliderReleased();
     void drawFocusAsChanged(int);
+    void axisMinValChanged(const QString &val);
+    void axisMaxValChanged(const QString &val);
+    void axisMinOrMaxValProcessText();
   private:
     int plotType;
 
@@ -140,6 +146,12 @@ class QvisParallelCoordinatesPlotWindow : public QvisPostableWindowObserver
     QPushButton *axisDelButton;
     QPushButton *axisUpButton;
     QPushButton *axisDownButton;
+
+    QLabel *axisMinValLabel;
+    QLineEdit *axisMinVal;
+    QLabel *axisMaxValLabel;
+    QLineEdit *axisMaxVal;
+
     QPushButton *axisResetExtentsButton;
 
     QGroupBox *drawLines;

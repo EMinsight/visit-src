@@ -145,6 +145,9 @@ QvisParallelCoordinatesPlotWindow::~QvisParallelCoordinatesPlotWindow()
 //    Added ability to draw focus as color-graduated bins.  Added focus gamma.
 //    Renamed some "line" text to "focus".
 //
+//    Jeremy Meredith, Tue Oct 27 11:18:23 EDT 2009
+//    Added ability to manually set axis extents to specific values.
+//
 // ****************************************************************************
 
 void
@@ -160,7 +163,7 @@ QvisParallelCoordinatesPlotWindow::CreateWindowContents()
     axisSpacingLayout->setMargin(10);
     axisSpacingLayout->addSpacing(20);
 
-    QGridLayout *axisLayout = new QGridLayout(axisSpacingLayout, 5, 2, 5);
+    QGridLayout *axisLayout = new QGridLayout(axisSpacingLayout, 6, 4, 5);
 
     // axes list
     axisList = new QListView(axisGroup, "axisList");
@@ -170,7 +173,7 @@ QvisParallelCoordinatesPlotWindow::CreateWindowContents()
     axisList->addColumn(tr("Axis"));
     axisList->addColumn(tr("Min"));
     axisList->addColumn(tr("Max"));
-    axisLayout->addMultiCellWidget(axisList, 0,3, 0,0);
+    axisLayout->addMultiCellWidget(axisList, 0,3, 0,2);
     connect(axisList, SIGNAL(currentChanged(QListViewItem*)),
             this, SLOT(axisSelected(QListViewItem*)));
 
@@ -180,28 +183,54 @@ QvisParallelCoordinatesPlotWindow::CreateWindowContents()
                                            axisGroup, "axisNewButton");
     axisNewButton->setText(tr("Add axis"));
     axisNewButton->setChangeTextOnVariableChange(false);
-    axisLayout->addWidget(axisNewButton, 0, 1);
+    axisLayout->addWidget(axisNewButton, 0, 3);
     connect(axisNewButton, SIGNAL(activated(const QString &)),
             this, SLOT(addAxis(const QString &)));
 
     axisDelButton = new QPushButton(tr("Delete"), axisGroup, "axisDelButton");
-    axisLayout->addWidget(axisDelButton, 1, 1);
+    axisLayout->addWidget(axisDelButton, 1, 3);
     connect(axisDelButton, SIGNAL(clicked()),
             this, SLOT(delAxis()));
 
     axisUpButton = new QPushButton(tr("Move up"), axisGroup, "axisUpButton");
-    axisLayout->addWidget(axisUpButton, 2, 1);
+    axisLayout->addWidget(axisUpButton, 2, 3);
     connect(axisUpButton, SIGNAL(clicked()),
             this, SLOT(moveAxisUp()));
 
     axisDownButton = new QPushButton(tr("Move down"), axisGroup, "axisDownButton");
-    axisLayout->addWidget(axisDownButton, 3, 1);
+    axisLayout->addWidget(axisDownButton, 3, 3);
     connect(axisDownButton, SIGNAL(clicked()),
             this, SLOT(moveAxisDown()));
 
+    axisMinValLabel = new QLabel(tr("Min value"),axisGroup);
+    axisLayout->addWidget(axisMinValLabel, 4,0);
+
+    // axis min and max values
+    axisMinVal = new QNarrowLineEdit(axisGroup, "axisMinVal");
+    axisLayout->addWidget(axisMinVal, 4,1);
+    connect(axisMinVal, SIGNAL(textChanged(const QString&)),
+            this, SLOT(axisMinValChanged(const QString&)));
+    connect(axisMinVal, SIGNAL(returnPressed()),
+            this, SLOT(axisMinOrMaxValProcessText()));
+
+    axisMaxValLabel = new QLabel(tr("Max value"),axisGroup);
+    axisLayout->addWidget(axisMaxValLabel, 4,2);
+
+    axisMaxVal = new QNarrowLineEdit(axisGroup, "axisMaxVal");
+    axisLayout->addWidget(axisMaxVal, 4,3);
+    connect(axisMaxVal, SIGNAL(textChanged(const QString&)),
+            this, SLOT(axisMaxValChanged(const QString&)));
+    connect(axisMaxVal, SIGNAL(returnPressed()),
+            this, SLOT(axisMinOrMaxValProcessText()));
+
+    axisMinValLabel->setEnabled(false);
+    axisMinVal->setEnabled(false);
+    axisMaxValLabel->setEnabled(false);
+    axisMaxVal->setEnabled(false);
+
     axisResetExtentsButton = new QPushButton(tr("Reset all axis restrictions"),
                                            axisGroup,"axisResetExtentsButton");
-    axisLayout->addWidget(axisResetExtentsButton, 4, 0);
+    axisLayout->addMultiCellWidget(axisResetExtentsButton, 5,5, 0,3);
     connect(axisResetExtentsButton, SIGNAL(clicked()),
             this, SLOT(resetAxisExtents()));
 
@@ -402,6 +431,9 @@ QvisParallelCoordinatesPlotWindow::CreateWindowContents()
 //    Jeremy Meredith, Mon Apr 27 10:44:49 EDT 2009
 //    Added ability to draw focus as color-graduated bins.  Added focus gamma.
 //
+//    Jeremy Meredith, Tue Oct 27 11:18:23 EDT 2009
+//    Added ability to manually set axis extents to specific values.
+//
 // ****************************************************************************
 
 void
@@ -553,7 +585,17 @@ QvisParallelCoordinatesPlotWindow::UpdateWindow(bool doAll)
     QListViewItem *item = axisList->firstChild();    
     while (item && item->text(0) != oldAxis)
         item = item->nextSibling();
+
+    if (!item)
+        item = axisList->firstChild();
+
     axisList->setCurrentItem(item);
+    if (item)
+    {
+        item->setSelected(true);
+        axisSelected(item);
+    }
+
 
     // Set enabled states
     axisDelButton->setEnabled(atts->GetScalarAxisNames().size() > 0 &&
@@ -692,6 +734,10 @@ QvisParallelCoordinatesPlotWindow::GetCurrentValues(int which_widget)
             atts->SetLinesNumPartitions(atts->GetLinesNumPartitions());
         }
     }
+
+    // we don't need to do do the axis min/max text fields here,
+    // since the local copy of the state attributes is updated
+    // each time a character is types.
 }
 
 
@@ -918,12 +964,29 @@ QvisParallelCoordinatesPlotWindow::resetAxisExtents()
 void
 QvisParallelCoordinatesPlotWindow::axisSelected(QListViewItem*)
 {
+    QListViewItem *ci = axisList->currentItem();
     axisDelButton->setEnabled(atts->GetScalarAxisNames().size() > 0 &&
-                              axisList->currentItem()!= NULL);
+                              ci != NULL);
     axisUpButton->setEnabled(atts->GetScalarAxisNames().size() > 0 &&
-                             axisList->currentItem()!= axisList->firstChild());
+                             ci != axisList->firstChild());
     axisDownButton->setEnabled(atts->GetScalarAxisNames().size() > 0 &&
-                               axisList->currentItem()!= axisList->lastItem());
+                               ci != axisList->lastItem());
+
+    axisMinValLabel->setEnabled(ci != NULL);
+    axisMinVal->setEnabled(ci != NULL);
+    axisMaxValLabel->setEnabled(ci != NULL);
+    axisMaxVal->setEnabled(ci != NULL);
+
+    if (ci)
+    {
+        axisMinVal->setText(ci->text(1));
+        axisMaxVal->setText(ci->text(2));
+    }
+    else
+    {
+        axisMinVal->setText("");
+        axisMaxVal->setText("");
+    }
 }
 
 // ****************************************************************************
@@ -1365,5 +1428,133 @@ QvisParallelCoordinatesPlotWindow::drawFocusAsChanged(int val)
         atts->SetDrawFocusAs(ParallelCoordinatesAttributes::FocusRendering(val));
         Apply();
     }
+}
+
+// ****************************************************************************
+// Method:  QvisParallelCoordinatesPlotWindow::axisMinOrMaxValProcessText
+//
+// Purpose:
+//   When return is pressed in the min or max axis value text field,
+//   this method is called.  We don't have to actually populate the value
+//   in the local atts since that gets updated as they type.
+//
+// Arguments:
+//   none
+//
+// Programmer:  Jeremy Meredith
+// Creation:    October 27, 2009
+//
+// ****************************************************************************
+void
+QvisParallelCoordinatesPlotWindow::axisMinOrMaxValProcessText()
+{
+    atts->Notify();
+    Apply();
+}
+
+// ****************************************************************************
+// Method:  QvisParallelCoordinatesPlotWindow::axisMinValChanged
+//
+// Purpose:
+//   Called when the user types in the axis min value text field.
+//   We update the local copy here as they type so that if they
+//   click on another axis before hitting apply or enter, it retains
+//   the values they entered.  (Which means they can update all axes
+//   before hitting apply -- or return for auto-update.)
+//
+// Arguments:
+//   val        the current contents of the field
+//
+// Programmer:  Jeremy Meredith
+// Creation:    October 27, 2009
+//
+// ****************************************************************************
+void
+QvisParallelCoordinatesPlotWindow::axisMinValChanged(const QString &val)
+{
+    int index = 0;
+    QListViewItem *item = axisList->firstChild();
+    while (item && item != axisList->currentItem())
+    {
+        item = item->nextSibling();
+        index++;
+    }
+
+    // verify something is selected
+    if (!item)
+        return;
+
+    bool ok = false;
+    double v = val.toDouble(&ok);
+    if (val == "min")
+    {
+        ok = true;
+        v = -1e+37;
+    }
+    else if (val == "max")
+    {
+        ok = true;
+        v = +1e+37;
+    }
+    if (!ok)
+        return;
+
+    
+    atts->GetExtentMinima()[index] = v;
+    atts->SelectExtentMinima();
+    item->setText(1, val);
+}
+
+// ****************************************************************************
+// Method:  QvisParallelCoordinatesPlotWindow::axisMaxValChanged
+//
+// Purpose:
+//   Called when the user types in the axis max value text field.
+//   We update the local copy here as they type so that if they
+//   click on another axis before hitting apply or enter, it retains
+//   the values they entered.  (Which means they can update all axes
+//   before hitting apply -- or return for auto-update.)
+//
+// Arguments:
+//   val        the current contents of the field
+//
+// Programmer:  Jeremy Meredith
+// Creation:    October 27, 2009
+//
+// ****************************************************************************
+void
+QvisParallelCoordinatesPlotWindow::axisMaxValChanged(const QString &val)
+{
+    int index = 0;
+    QListViewItem *item = axisList->firstChild();
+    while (item && item != axisList->currentItem())
+    {
+        item = item->nextSibling();
+        index++;
+    }
+
+    // verify something is selected
+    if (!item)
+        return;
+
+    bool ok = false;
+    double v = val.toDouble(&ok);
+    if (val == "min")
+    {
+        ok = true;
+        v = -1e+37;
+    }
+    else if (val == "max")
+    {
+        ok = true;
+        v = +1e+37;
+    }
+    if (!ok)
+        return;
+
+    
+    atts->GetExtentMaxima()[index] = v;
+    atts->SelectExtentMaxima();
+    item->setText(2, val);
 }
 
