@@ -669,6 +669,10 @@
 #     Added BUILD_VISIT_ENV to facilitate correct behavior of top-level
 #     Makefile's env-make var collision check when it is being run from within
 #     build_visit.
+#
+#     Eric Brugger, Fri Oct 30 15:43:13 PDT 2009
+#     Changed the source code version number to 1.12.1.
+#
 # *****************************************************************************
 #                                                                             #
 # *************************************************************************** #
@@ -935,7 +939,7 @@ if [[ "$VISIT_FILE" != "" ]] ; then
   USE_VISIT_FILE="yes"
   ON_USE_VISIT_FILE="on"
 fi
-export VISIT_VERSION=${VISIT_VERSION:-"1.12.0"}
+export VISIT_VERSION=${VISIT_VERSION:-"1.12.1"}
 export VISIT_FILE=${VISIT_FILE:-"visit${VISIT_VERSION}.tar.gz"}
 
 export VTK_FILE=${VTK_FILE:-"vtk-5.0.0c.tar.gz"}
