@@ -2138,7 +2138,7 @@ avtSiloWriter::WriteMaterials(DBfile *dbfile, vtkCellData *cd, int chunk)
 //   Add support for old Silo versions.
 //
 //    Mark C. Miller, Fri Oct 30 11:06:19 PDT 2009
-//    Reversed conditional compilation logic for DBPutDefvars calls.
+//    Fixed conditional compilation logic for DBPutDefvars calls.
 // ****************************************************************************
 
 void
@@ -2187,12 +2187,8 @@ avtSiloWriter::WriteExpressions(DBfile *dbfile)
         // 4.6.1 chosen arbitrarily. 
 #ifdef SILO_VERSION_GE
 #if SILO_VERSION_GE(4,6,1)
-        DBPutDefvars(dbfile, "expressions", ecount, (const char **) exprNames, exprTypes, (const char **) exprDefs, NULL);
-#else
+        DBPutDefvars(dbfile, "expressions", ecount, exprNames, exprTypes, exprDefs, NULL);
 #endif
-        DBPutDefvars(dbfile, "expressions", ecount, exprNames, exprTypes, exprDefs, NULL);
-#else
-        DBPutDefvars(dbfile, "expressions", ecount, exprNames, exprTypes, exprDefs, NULL);
 #endif
 
         // Clean up
