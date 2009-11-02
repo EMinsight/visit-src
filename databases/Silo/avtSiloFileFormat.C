@@ -8012,6 +8012,11 @@ MakePHZonelistFromZonelistArbFragment(const int *nl, int shapecnt)
 //
 //    Mark C. Miller, Fri Oct 30 14:03:13 PDT 2009
 //    Handle Silo's DB_DTPTR configuration option.
+//
+//    Mark C. Miller, Sun Nov  1 17:51:05 PST 2009
+//    Fixed off by one indexing problem for last+1...numCells loop to create
+//    ghost values. Fixed missing call to set VTK array name for ghost data.
+//    Fixed missing delete for gvals.
 // ****************************************************************************
 
 void
@@ -8403,7 +8408,7 @@ avtSiloFileFormat::ReadInConnectivity(vtkUnstructuredGrid *ugrid,
             gvals[i] = val;
         for (i = first; i <= last; i++)
             gvals[i] = 0;
-        for (i = last; i < numCells; i++)
+        for (i = last+1; i < numCells; i++)
             gvals[i] = val;
 
         //
@@ -8427,7 +8432,9 @@ avtSiloFileFormat::ReadInConnectivity(vtkUnstructuredGrid *ugrid,
         vtkDataArray *ghostZones = CopyUcdVar<unsigned char,vtkUnsignedCharArray>(&tmp,
             cellReMap?*cellReMap:noremap);
         delete [] tmp.vals;
+        delete [] gvals;
 
+        ghostZones->SetName("avtGhostZones");
         ugrid->GetCellData()->AddArray(ghostZones);
         ghostZones->Delete();
         ugrid->SetUpdateGhostLevel(0);
@@ -8825,6 +8832,10 @@ ArbInsertArbitrary(vtkUnstructuredGrid *ugrid, DBphzonelist *phzl, int gz,
 //
 //    Mark C. Miller, Fri Oct 30 14:03:13 PDT 2009
 //    Handle Silo's DB_DTPTR configuration option.
+//
+//    Mark C. Miller, Sun Nov  1 17:51:05 PST 2009
+//    Fixed off by one indexing problem for hi_off+1...numCells loop to create
+//    ghost values. Fixed missing delete for gvals.
 // ****************************************************************************
 void
 avtSiloFileFormat::ReadInArbConnectivity(const char *meshname,
@@ -9052,7 +9063,7 @@ avtSiloFileFormat::ReadInArbConnectivity(const char *meshname,
             gvals[i] = val;
         for (i = phzl->lo_offset; i <= phzl->hi_offset; i++)
             gvals[i] = 0;
-        for (i = phzl->hi_offset; i < phzl->nzones; i++)
+        for (i = phzl->hi_offset+1; i < phzl->nzones; i++)
             gvals[i] = val;
        
         //
@@ -9077,6 +9088,7 @@ avtSiloFileFormat::ReadInArbConnectivity(const char *meshname,
 #endif
         vtkDataArray *ghostZones = CopyUcdVar<unsigned char,vtkUnsignedCharArray>(&tmp, *remap);
         delete [] tmp.vals;
+        delete [] gvals;
 
         //
         // Assign the ghost zone array to the ugrid object.
