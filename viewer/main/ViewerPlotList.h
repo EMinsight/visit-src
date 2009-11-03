@@ -298,6 +298,9 @@ typedef std::map<std::string, int> StringIntMap;
 //    Cyrus Harrison, Tue Apr 14 13:34:15 PDT 2009
 //    Modified ReplaceDatabase to add option for replacing only active plots.
 //
+//    Brad Whitlock, Mon Oct 26 15:44:55 PDT 2009
+//    I added DeleteAllPlots and I added a default argument to DeleteActivePlots.
+//
 // ****************************************************************************
 
 
@@ -387,7 +390,8 @@ public:
     void ClearPlots(bool clearAll = true);
     void ClearActors();
     void TransmutePlots(bool turningOffScalableRendering);
-    void DeleteActivePlots();
+    void DeleteActivePlots(bool doUpdates = true);
+    void DeleteAllPlots(bool doUpdates);
 
     int  FindCompatiblePlot(ViewerPlot *);
 

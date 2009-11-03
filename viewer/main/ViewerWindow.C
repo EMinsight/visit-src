@@ -8228,6 +8228,10 @@ ViewerWindow::CreateNode(DataNode *parentNode,
 //   Brad Whitlock, Wed Feb 13 14:02:15 PST 2008
 //   Added configVersion so we can let the objects process older versions.
 //
+//   Brad Whitlock, Mon Oct 26 15:43:23 PDT 2009
+//   I replaced the code to delete the active plots with a new,more direct
+//   way that does not cause metadata read side-effects.
+//
 // ****************************************************************************
 
 void
@@ -8268,11 +8272,7 @@ ViewerWindow::SetFromNode(DataNode *parentNode,
     // Delete the plots first and update the frame so when we set the 
     // view, etc no updates can happen.
     //
-    intVector plots, tmp;
-    for(int j = 0; j < GetPlotList()->GetNumPlots(); ++j)
-        plots.push_back(j);
-    GetPlotList()->SetActivePlots(plots, tmp, tmp, false);
-    GetPlotList()->DeleteActivePlots();
+    GetPlotList()->DeleteAllPlots(false);
 
     ////////////////////// Reformat pre 1.3 session files /////////////////////
     //
