@@ -5825,6 +5825,9 @@ QvisGUIApplication::LoadFile(QualifiedFilename &f, bool addDefaultPlots)
 //   Tom Fogal, Mon Jul  7 10:34:04 EDT 2008
 //   Updated message on how to get help.
 //
+//   Brad Whitlock, Tue Mar 10 09:25:27 PDT 2009
+//   Quit instead of rethrowing the exception into Qt.
+//
 // ****************************************************************************
 
 void
@@ -5846,8 +5849,7 @@ QvisGUIApplication::ReadFromViewer(int)
                  << endl;
             viewerIsAlive = false;
 
-            // Re-throw the exception.
-            RETHROW;
+            qApp->quit();
         }
         ENDTRY
     }
