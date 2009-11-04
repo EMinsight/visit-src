@@ -346,6 +346,10 @@
 #   Eric Brugger, Thu Sep  3 08:36:01 PDT 2009
 #   Added the paraDIS and paraDIS_tecplot readers.
 #
+#   Hank Childs, Wed Nov  4 11:19:20 PST 2009
+#   Added Vs (VizSchema) plugin on behalf of Marc Durant and Sveta
+#   Shesharina of Tech-X.
+#
 ##############################################################################
 
 @SET_MAKE@
@@ -372,6 +376,7 @@ HDF5_TARGET= \
 	SAMRAI \
 	Tetrad \
 	UNIC \
+	Vs \
 	XDMF
 
 MILI=Mili
