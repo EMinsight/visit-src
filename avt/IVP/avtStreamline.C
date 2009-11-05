@@ -47,14 +47,8 @@
 #include <limits>
 #include <avtVecArray.h>
 #include <ImproperUseException.h>
-#include <TimingsManager.h>
 #include <DebugStream.h>
 #include <vtkPlane.h>
-
-#define SIGN(x) ((x) < 0.0 ? -1 : 1)
-
-static const double epsilon = std::numeric_limits<double>::epsilon();
-
 
 // ****************************************************************************
 //  Method: avtStreamline constructor
@@ -86,9 +80,9 @@ avtStreamline::avtStreamline(const avtIVPSolver* model, const double& t_start,
     _t0 = t_start;
     _p0 = p_start;
     id = ID;
-    numSteps         = 0;
+    intersectionsSet = false;
     numIntersections = 0;
-    distance         = 0;
+    
     _ivpSolver = model->Clone();
     _ivpSolver->Reset(_t0, _p0);
 }
@@ -116,10 +110,9 @@ avtStreamline::avtStreamline(const avtIVPSolver* model, const double& t_start,
 avtStreamline::avtStreamline() :
     scalarValueType(NONE)
 {
+    intersectionsSet = false;
     _ivpSolver = NULL;
-    numSteps         = 0;
     numIntersections = 0;
-    distance         = 0;
 }
 
 
@@ -185,9 +178,7 @@ avtStreamline::Advance(const avtIVPField* field,
                        avtIVPSolver::TerminateType termType,
                        double end)
 {
-    int timerHandle = visitTimer->StartTimer();
-    avtIVPSolver::Result res = DoAdvance(field, termType, end);
-    visitTimer->StopTimer(timerHandle, "DoAdvance()");
+    avtIVPSolver::Result res = DoAdvance(_ivpSolver, field, termType, end);
     return res;
 }
 
@@ -246,7 +237,8 @@ avtStreamline::Advance(const avtIVPField* field,
 // ****************************************************************************
 
 avtIVPSolver::Result
-avtStreamline::DoAdvance(const avtIVPField* field,
+avtStreamline::DoAdvance(avtIVPSolver* ivp,
+                         const avtIVPField* field,
                          avtIVPSolver::TerminateType termType,
                          double end)
 {
@@ -254,25 +246,14 @@ avtStreamline::DoAdvance(const avtIVPField* field,
     
     // catch cases where the start position is outside the 
     // domain of field
-    if (!field->IsInside(_ivpSolver->GetCurrentT(), _ivpSolver->GetCurrentY()))
+    if (!field->IsInside(ivp->GetCurrentT(), ivp->GetCurrentY()))
         return avtIVPSolver::OUTSIDE_DOMAIN;
-
-    const double direction = SIGN( end );
     
-    double h = _ivpSolver->GetMaximumStepSize() * direction;
-
-    _ivpSolver->SetNextStepSize(h);
-    _ivpSolver->SetCurrentT(0);
-
-
-    bool adjustStepSize = false;
-    double lastStepSize  = 0;
-
     while (1)
     {
         // record state for later restore, if needed
         avtIVPState state;
-        _ivpSolver->GetState( state );
+        ivp->GetState( state );
 
         // create new step to be filled in by ivp
         avtIVPStep* step = new avtIVPStep;
@@ -280,207 +261,86 @@ avtStreamline::DoAdvance(const avtIVPField* field,
         try
         {
             debug5<<"Step( mode= "<<termType<<" end= "<<end<<endl;
+            result = ivp->Step(field, termType, end, step);
+            debug5<<"   T= "<<ivp->GetCurrentT()<<" "<<ivp->GetCurrentY()<<endl;
 
-            result = _ivpSolver->Step(field, end, end, step);
+            if (intersectionsSet)
+                HandleIntersections((end>0), step, termType, end, &result);
 
-            debug5<<"   T= "<<_ivpSolver->GetCurrentT()<<" "<<_ivpSolver->GetCurrentY()<<endl;
         }
-
         catch( avtIVPField::Undefined& )
         {
-	  adjustStepSize = true;
+            debug5<<ivp->GetCurrentY()<<" not in domain\n";
+            // integrator left the domain, retry with smaller step
+            // if step size is below given minimum, give up
+
+            // restore old state to before failed step
+            double hBeforePush = ivp->GetNextStepSize();
+            ivp->PutState( state );
+            if (ivp->GetNextStepSize() == 0.)
+            {
+                // This can happen if we try to look a few points out
+                // for the very first step and one of those points
+                // is outside the domain.  Just set the step size
+                // back to what it was before so we can try again
+                // with a smaller step.
+                ivp->SetNextStepSize(hBeforePush);
+            }
+
+            double h = ivp->GetNextStepSize();
+
+            h = h/2;
+            if( fabs(h) < 1e-9 )
+            {
+                delete step;
+                if (!field->HasGhostZones())
+                {
+                    double bbox[6];
+                    field->GetExtents(bbox);
+                    HandleGhostZones((end > 0.0), bbox);
+                }
+
+                debug5<<"avtStreamline::DoAdvance() DONE  result= OUTSIDE_DOMAIN\n";
+                return avtIVPSolver::OUTSIDE_DOMAIN;        
+            }
+            
+            ivp->SetNextStepSize( h );
+
+            // retry step
+            delete step;
+            continue;
         }
-  
-	// If the distance is past the termination length retry with a
-	// smaller step size.
-	if( termType == avtIVPSolver::DISTANCE &&
-	    result == avtIVPSolver::OK &&
-	    distance+step->length() > fabs(end))
-	{
-	  adjustStepSize = true;
-	}
+        
+        catch( std::exception& )
+        {
+        }
 
-
-	if( adjustStepSize == true )
-	{
-	  adjustStepSize = false;
-
-	  // Save the current step size.
-	  if( lastStepSize == 0 )
-	    lastStepSize = _ivpSolver->GetNextStepSize();
-
-	  debug5<<_ivpSolver->GetCurrentY()<<" not in domain\n";
-	  // integrator left the domain, retry with smaller step
-	  // if step size is below given minimum, give up
-	  
-	  // restore old state to before failed step
-	  double hBeforePush = _ivpSolver->GetNextStepSize();
-	  _ivpSolver->PutState( state );
-	  if (_ivpSolver->GetNextStepSize() == 0.)
-	  {
-	    // This can happen if we try to look a few points out
-	    // for the very first step and one of those points
-	    // is outside the domain.  Just set the step size
-	    // back to what it was before so we can try again
-	    // with a smaller step.
-	    _ivpSolver->SetNextStepSize(hBeforePush);
-	  }
-	  
-	  double h = _ivpSolver->GetNextStepSize() / 2.0;
-
-	  if( fabs(h) < 1e-9 )
-	  {
-	    if (!field->HasGhostZones())
-	    {
-	      double bbox[6];
-	      field->GetExtents(bbox);
-	      HandleGhostZones((end > 0.0), bbox);
-	    }
-	    
-	    debug5<<"avtStreamline::DoAdvance() DONE  result= OUTSIDE_DOMAIN\n";
-	    delete step;
-	    return avtIVPSolver::OUTSIDE_DOMAIN;        
-	  }
-	      
-	  _ivpSolver->SetNextStepSize( h );
-	  
-	  // retry step
-	  delete step;
-	  continue;
-	}
-
-	  // Record step if it was successful
-	else if (result == avtIVPSolver::OK )
-	{ 
-	  if (end < 0) //backwards
-	    _steps.push_front( step );
-	  else
-	    _steps.push_back( step );
-	  
-	  // Because the size() method that is in a std::list does not
-	  // always have an internal counter keep track of the number
-	  // of steps.
-	  ++numSteps;
-	  
-	  // Handle step based termination.
-	  if (termType == avtIVPSolver::STEPS &&
-	      numSteps >= (int)fabs(end))
-	  {
-	    result = avtIVPSolver::TERMINATE;
-	  }
-	  
-	  // Handle time based termination.
-	  else if (termType == avtIVPSolver::TIME)
-	  {
-	    if ((end > 0 && step->tEnd >= end) ||
-		(end < 0 && step->tEnd <= end))
-	    {
-	      result = avtIVPSolver::TERMINATE;
-	    }
-	    else
-	    {
-	      double h = _ivpSolver->GetNextStepSize();
-
-	      // Do not run past integration end.
-	      if( (step->tEnd + 1.01*h - end) * direction > 0.0 )
-	      {
-		h = end - step->tEnd;
-	      }
-
-	      // Stepsize underflow check.
-	      if( 0.1*std::abs(h) <= std::abs(step->tEnd)*epsilon )
-	      {
-		debug5 << "avtIVPAdamsBashforth::Step() -  UNDERFLOW ERROR  "
-		       << 0.1 * std::abs(h) << "  "
-		       << std::abs( step->tEnd ) * epsilon << endl;
-		
-		break;
-	      }
-
-	      _ivpSolver->SetNextStepSize(h);
-	    }
-	  }
-	  
-	  // Handle distanced based termination.
-	  else if (termType == avtIVPSolver::DISTANCE)
-	  {
-	    distance += step->length();
-	    
-	    if (distance >= fabs(end))
-	      result = avtIVPSolver::TERMINATE;
-	  }
-
-	    // Handle intersection based termination.
-	  else if (termType == avtIVPSolver::INTERSECTIONS)
-	  {
-	    double *values = step->front().values();
-	    
-	    if (numSteps == 1)
-	    {
-	      lastDist = (intersectPlaneEq[0] * values[0] +
-			  intersectPlaneEq[1] * values[1] +
-			  intersectPlaneEq[2] * values[2] -
-			  intersectPlaneEq[3]);
-	    }
-	      
-	    currDist = (intersectPlaneEq[0] * values[0] +
-			intersectPlaneEq[1] * values[1] +
-			intersectPlaneEq[2] * values[2] -
-			intersectPlaneEq[3]);
-	      
-	    // If either point on the plane, or points on opposite
-	    // sides of the plane, the line intersects.
-	    if (SIGN(lastDist) != SIGN(currDist))
-	    {
-	      numIntersections++;
-	      
-	      if (numIntersections >= (int)end)
-	      {
-		result = avtIVPSolver::TERMINATE;
-	      }
-	      
-	      lastDist = currDist;
-	    }
-	  }
-	  
-	  // Restore the last set size before adjusting it.
-	  if( lastStepSize != 0.0 )
-	  {
-	    _ivpSolver->SetNextStepSize(lastStepSize);
-	    lastStepSize = 0.0;
-	  }
-
-	  if (result == avtIVPSolver::TERMINATE)
-	    break;
-	}
+        // record step if it was successful
+        if (result == avtIVPSolver::OK ||
+            result == avtIVPSolver::TERMINATE)
+        {
+            //Set scalar value, if any...
+            if (scalarValueType & VORTICITY)
+                step->ComputeVorticity(field);
+            if (scalarValueType & SPEED)
+                step->ComputeSpeed(field);
+            if (scalarValueType & SCALAR_VARIABLE)
+                step->ComputeScalarVariable(field);
+            
+            if (end < 0) //backwards
+                _steps.push_front( step );
+            else
+                _steps.push_back( step );
+            
+            if (result == avtIVPSolver::TERMINATE)
+                break;
+        }
         else
         {
             delete step;
             break;
-	}
+        }
     }
-
-    // Set scalar value, if necessary. Done here to avoid unneccessary if
-    // statement calls in the mainn loop.
-    if ((scalarValueType & VORTICITY) ||
-	(scalarValueType & SPEED) ||
-	(scalarValueType & SCALAR_VARIABLE) )
-    {
-      iterator itr = _steps.begin();
-
-      while( itr != _steps.end() )
-      {
-	  if (scalarValueType & VORTICITY)
-	    (*itr)->ComputeVorticity(field);
-	  if (scalarValueType & SPEED)
-	    (*itr)->ComputeSpeed(field);
-	  if (scalarValueType & SCALAR_VARIABLE)
-	    (*itr)->ComputeScalarVariable(field);
-
-	  ++itr;
-      }
-    }
-
     return result;
 }
 
@@ -507,14 +367,17 @@ avtStreamline::DoAdvance(const avtIVPField* field,
 //    Code cleanup. 
 //
 //    Dave Pugmire,  Tue Mar 31 17:08:29 EDT 2009
-//    Set the step's T value when leaping out.  
+//    Set the step's T value when leaping out.
+//
+//   Dave Pugmire, Tue Nov  3 09:15:41 EST 2009
+//   Replace size() with much more efficient empty().
 //
 // ****************************************************************************
 
 void
 avtStreamline::HandleGhostZones(bool forward, double *extents)
 {
-    if (size() == 0 || extents == NULL)
+    if (_steps.empty() || extents == NULL)
         return;
     
     // Determine the minimum non-zero data extent.
@@ -564,7 +427,6 @@ avtStreamline::HandleGhostZones(bool forward, double *extents)
     dir *= leapingDistance;
     avtVec newPt = pt + dir;
     _ivpSolver->SetCurrentY(newPt);
-
     _ivpSolver->SetCurrentT(_ivpSolver->GetCurrentT() + leapingDistance);
     
     if (forward)
@@ -711,6 +573,7 @@ avtStreamline::SetIntersectionObject(vtkObject *obj)
     if (!obj->IsA("vtkPlane"))
         EXCEPTION1(ImproperUseException, "Only plane supported.");
 
+    intersectionsSet = true;
     avtVector intersectPlanePt = avtVector(((vtkPlane *)obj)->GetOrigin());
     avtVector intersectPlaneNorm = avtVector(((vtkPlane *)obj)->GetNormal());
 
@@ -719,6 +582,89 @@ avtStreamline::SetIntersectionObject(vtkObject *obj)
     intersectPlaneEq[1] = intersectPlaneNorm.y;
     intersectPlaneEq[2] = intersectPlaneNorm.z;
     intersectPlaneEq[3] = intersectPlanePt.length();
+}
+
+// ****************************************************************************
+//  Method: avtStreamline::HandleIntersections
+//
+//  Purpose:
+//      Defines an object for streamline intersection.
+//
+//  Programmer: Dave Pugmire
+//  Creation:   August 10, 2009
+//
+//  Modifications:
+//
+//   Dave Pugmire, Tue Aug 18 08:47:40 EDT 2009
+//   Don't record intersection points, just count them.
+//
+// ****************************************************************************
+
+void
+avtStreamline::HandleIntersections(bool forward,
+                                   avtIVPStep *step,
+                                   avtIVPSolver::TerminateType termType,
+                                   double end,
+                                   avtIVPSolver::Result *result)
+{
+    if (step == NULL || _steps.empty())
+        return;
+    
+    avtIVPStep *step0 = (forward ? _steps.back() : _steps.front());
+
+    if (IntersectPlane(step0->front(), step->front()))
+    {
+        numIntersections++;
+        if (termType == avtIVPSolver::INTERSECTIONS &&
+            numIntersections >= (int)end)
+        {
+            *result = avtIVPSolver::TERMINATE;
+        }
+    }
+}
+
+
+// ****************************************************************************
+//  Method: avtStreamline::IntersectPlane
+//
+//  Purpose:
+//      Intersect streamline with a plane.
+//
+//  Programmer: Dave Pugmire
+//  Creation:   August 10, 2009
+//
+//  Modifications:
+//
+//   Dave Pugmire, Tue Aug 18 08:47:40 EDT 2009
+//   Don't record intersection points, just count them.
+//
+// ****************************************************************************
+
+bool
+avtStreamline::IntersectPlane(const avtVec &p0, const avtVec &p1)
+{
+    const double *p0values = p0.values(), *p1values = p1.values();
+    double distP0 = intersectPlaneEq[0] * p0values[0] +
+                    intersectPlaneEq[1] * p0values[1] +
+                    intersectPlaneEq[2] * p0values[2] +
+                    intersectPlaneEq[3];
+
+    double distP1 = intersectPlaneEq[0] * p1values[0] +
+                    intersectPlaneEq[1] * p1values[1] +
+                    intersectPlaneEq[2] * p1values[2] +
+                    intersectPlaneEq[3];
+
+#define SIGN(x) ((x) < 0.0 ? -1 : 1)
+
+    // If either point on the plane, or points on opposite
+    // sides of the plane, the line intersects.
+    if (distP0 == 0.0 || distP1 == 0.0 ||
+        SIGN(distP0) != SIGN(distP1))
+    {
+        return true;
+    }
+
+    return false;
 }
 
 

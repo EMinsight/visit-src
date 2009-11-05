@@ -44,7 +44,6 @@
 #define AVT_IVPSOLVER_H
 
 #include <avtVec.h>
-#include <avtVector.h>
 #include <avtIVPField.h>
 #include <avtBezierSegment.h>
 #include <MemStream.h>
@@ -265,7 +264,10 @@ class avtIVPState
 //    Added OnExitDomain method.
 //
 //    Dave Pugmire, Tue Aug 19, 17:38:03 EDT 2008
-//    Chagned how distanced based termination is computed.
+//    Changned how distanced based termination is computed.
+//
+//   Dave Pugmire, Tue Nov  3 09:15:41 EST 2009
+//   Add operator<< for enums.
 //
 // ****************************************************************************
 
@@ -292,8 +294,8 @@ class avtIVPSolver
     virtual void    Reset(const double& t_start, const avtVecRef& y_start) = 0;
 
     virtual Result  Step(const avtIVPField* field,
+                         const TerminateType &type,
                          const double &end,
-                         const double &t_max,
                          avtIVPStep* ivpstep = 0 ) = 0;
     virtual void    OnExitDomain() {}
     virtual avtVec  GetCurrentY() const = 0;
@@ -305,7 +307,6 @@ class avtIVPSolver
     virtual void    SetNextStepSize(const double& h)  = 0;
     virtual double  GetNextStepSize() const = 0;
     virtual void    SetMaximumStepSize(const double& h) = 0;
-    virtual double  GetMaximumStepSize() const = 0;
 
     virtual void    SetTolerances(const double& reltol, 
                                   const double& abstol) = 0;
@@ -315,13 +316,41 @@ class avtIVPSolver
     virtual void    PutState(const avtIVPState&);
             
     virtual avtIVPSolver* Clone() const = 0;
-
-    virtual void SetPlane(const avtVector &planePt,
-			  const avtVector &planeN) {};
             
 protected:
     virtual void    AcceptStateVisitor(avtIVPStateHelper& sv) = 0;
 };
+
+
+inline std::ostream& operator<<( std::ostream& out, const avtIVPSolver::Result &res )
+{
+    switch (res)
+    {
+      case avtIVPSolver::OK:  out<<"OK"; break;
+      case avtIVPSolver::TERMINATE: out<<"TERMINATE"; break;
+      case avtIVPSolver::OUTSIDE_DOMAIN: out<<"OUTSIDE_DOMAIN"; break;
+      case avtIVPSolver::STEPSIZE_UNDERFLOW: out<<"STEPSIZE_UNDERFLOW"; break;
+      case avtIVPSolver::STIFFNESS_DETECTED: out<<"STIFFNESS_DETECTED"; break;
+      case avtIVPSolver::UNSPECIFIED_ERROR: out<<"UNSPECIFIED_ERROR"; break;
+      default:
+        out<<"UNKNOWN_RESULT"; break;
+    }
+    return out;
+}
+
+inline std::ostream& operator<<( std::ostream& out, const avtIVPSolver::TerminateType &term )
+{
+    switch (term)
+    {
+      case avtIVPSolver::TIME:  out<<"TIME"; break;
+      case avtIVPSolver::DISTANCE: out<<"DISTANCE"; break;
+      case avtIVPSolver::STEPS: out<<"STEPS"; break;
+      case avtIVPSolver::INTERSECTIONS: out<<"INTERSECTIONS"; break;
+      default:
+        out<<"UNKNOWN_TERMINATION"; break;
+    }
+    return out;
+}
 
 #endif
 

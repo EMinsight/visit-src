@@ -161,7 +161,8 @@ class IVP_API avtStreamline
     avtStreamline( const avtStreamline& );
     avtStreamline& operator=( const avtStreamline& );
     
-    avtIVPSolver::Result DoAdvance(const avtIVPField* field,
+    avtIVPSolver::Result DoAdvance(avtIVPSolver* ivp,
+                                   const avtIVPField* field,
                                    avtIVPSolver::TerminateType termType,
                                    double end);
 
@@ -171,7 +172,7 @@ class IVP_API avtStreamline
                                   avtIVPSolver::TerminateType termType,
                                   double end,
                                   avtIVPSolver::Result *result);
-    bool      IntersectPlane(const avtVec &currPt);
+    bool      IntersectPlane(const avtVec &p0, const avtVec &p1);
 
   public:
     // Integration steps.
@@ -179,12 +180,9 @@ class IVP_API avtStreamline
   protected:
 
     // Intersection points.
-    int numSteps;
+    bool intersectionsSet;
     int numIntersections;
-    double distance;
-    double intersectPlaneEq[4];
-    double lastDist, currDist;
-    avtVec lastPt, currPt;
+    double     intersectPlaneEq[4];
 
     // Initial T and seed point.
     double _t0;
