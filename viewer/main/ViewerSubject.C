@@ -6853,12 +6853,16 @@ ViewerSubject::LineQuery()
 //    rescheduling the method to run again and were losing the sync. When the
 //    sync was not being sent back to the CLI, it hung. VisIt00005692.
 //
+//    Brad Whitlock, Mon Nov  9 11:51:49 PST 2009
+//    Don't process messages while the engine is launching.
+//
 // ****************************************************************************
 
 void
 ViewerSubject::ProcessFromParent()
 {
-    if(ViewerEngineManager::Instance()->InExecute())
+    if(ViewerEngineManager::Instance()->InExecute() ||
+       ViewerEngineManager::Instance()->InLaunch())
     {
         debug1 << "The viewer engine manager is busy processing a request "
                   "so we should not process input from the client. Let's "
@@ -7072,6 +7076,9 @@ ViewerSubject::EnableSocketSignals()
 //    Brad Whitlock, Thu Jan 24 09:45:18 PST 2008
 //    Added simcmd to handle deferred simulation commands.
 //
+//    Brad Whitlock, Mon Nov  9 11:47:17 PST 2009
+//    Don't process commands during an engine launch.
+//
 // ****************************************************************************
 
 void
@@ -7126,6 +7133,7 @@ ViewerSubject::ProcessRendererMessage()
         // event loop to try to process the message again later.
         //
         else if(ViewerEngineManager::Instance()->InExecute() ||
+                ViewerEngineManager::Instance()->InLaunch() ||
                 launchingComponent)
         {
             // Add the message back into the buffer.
@@ -7382,13 +7390,19 @@ ViewerSubject::LaunchProgressCB(void *d, int stage)
 //
 //   Mark C. Miller, Mon Dec 13 15:59:26 PST 2004
 //   Subsumed meaning of InRender in InExecute
-//   
+//
+//   Brad Whitlock, Mon Nov  9 11:49:32 PST 2009
+//   Don't send keep alives during an engine launch (this flag more broadly
+//   applies to don't do it during the engine chooser or during launch).
+//
 // ****************************************************************************
 
 void
 ViewerSubject::SendKeepAlives()
 {
-    if(launchingComponent || ViewerEngineManager::Instance()->InExecute())
+    if(launchingComponent || 
+       ViewerEngineManager::Instance()->InExecute() ||
+       ViewerEngineManager::Instance()->InLaunch())
     {
         // We're launching a component so we don't want to send keep alive
         // signals right now but try again in 20 seconds.

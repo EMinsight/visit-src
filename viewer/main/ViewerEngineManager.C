@@ -407,6 +407,12 @@ ViewerEngineManager::EngineExists(const EngineKey &ek) const
 //
 //    Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
 //    Replaced CATCHALL(...) with CATCHALL.
+//
+//    Brad Whitlock, Mon Nov  9 11:40:27 PST 2009
+//    I expanded when inLaunch is true so we can use it to prevent certain
+//    types of events from executing elsewhere via the engine chooser's
+//    event loop.
+//
 // ****************************************************************************
 
 bool
@@ -432,6 +438,11 @@ ViewerEngineManager::CreateEngine(const EngineKey &ek,
     if (InLaunch())
         return false;
 
+    // Consider the state to be inLaunch from now on so we can check for
+    // recursion into this function as a result of getting into the
+    // engine chooser's event loop.
+    inLaunch = true;
+
     //
     // If an engine for the host doesn't already exist, create one.
     //
@@ -442,6 +453,7 @@ ViewerEngineManager::CreateEngine(const EngineKey &ek,
     if (!chooser->SelectProfile(clientAtts,ek.HostName(),skipChooser,
         newEngine.profile))
     {
+        inLaunch = false;
         return false;
     }
 
@@ -497,7 +509,6 @@ ViewerEngineManager::CreateEngine(const EngineKey &ek,
         //
         TRY
         {
-            inLaunch = true;
             if (!ShouldShareBatchJob(ek.HostName()) && 
                 HostIsLocalHost(ek.HostName()))
                 newEngine.proxy->Create("localhost", chd, clientHostName,
@@ -527,7 +538,6 @@ ViewerEngineManager::CreateEngine(const EngineKey &ek,
 
         // Add the new engine to the engine list.
         engines[ek] = newEngine;
-        inLaunch = false;
 
         // Make the engine manager observe the proxy's status atts.
         newEngine.proxy->GetStatusAttributes()->Attach(this);
@@ -620,6 +630,9 @@ ViewerEngineManager::CreateEngine(const EngineKey &ek,
         Error(msg);
     }
     ENDTRY
+
+    // Nothing bad happened and the engine is launched so turn off this flag.
+    inLaunch = false;
 
     // Clear the status message.
     ClearStatus();
