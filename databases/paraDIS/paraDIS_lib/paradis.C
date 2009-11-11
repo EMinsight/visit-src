@@ -11,9 +11,6 @@
 #include "stringutil.h"
 #include "timer.h"
 #include <algorithm>
-#if defined(__GNUC__)
-#include <ext/hash_set>
-#endif
 #include <dirent.h>
 #include <sys/stat.h>
 #include <errno.h>
