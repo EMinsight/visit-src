@@ -11,7 +11,9 @@
 #include "stringutil.h"
 #include "timer.h"
 #include <algorithm>
+#if defined(__GNUC__)
 #include <ext/hash_set>
+#endif
 #include <dirent.h>
 #include <sys/stat.h>
 #include <errno.h>
@@ -1194,6 +1196,7 @@ namespace paraDIS {
           
           currentSegment->ComputeBurgersType(burgers); 
           
+#ifdef __GNUC__
           ArmSegmentSet::iterator foundSegment = mQuickFindArmSegments.find(currentSegment); 
           if (foundSegment == mQuickFindArmSegments.end()) {
             currentSegment->SetID(); 
@@ -1203,6 +1206,7 @@ namespace paraDIS {
             (*foundSegment)->ReplacePlaceholder(fullNode);             
           }
           fullNode->AddNeighbor((*foundSegment)); 
+#endif
          
           ++neighbornum; 
         }; // done reading neighbor information

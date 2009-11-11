@@ -81,7 +81,6 @@
 #include <fstream>
 #include <iostream>
 #include <ostream> 
-#include <ext/hash_set>
 #include <math.h>
 
 #include "Point.h"
