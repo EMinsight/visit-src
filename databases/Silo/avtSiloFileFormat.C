@@ -7487,6 +7487,9 @@ avtSiloFileFormat::GetQuadVar(DBfile *dbfile, const char *vname,
 //    Brad Whitlock, Fri Aug  7 10:38:34 PDT 2009
 //    I added support for non-float data types.
 //
+//    Mark C. Miller, Thu Nov 12 14:56:15 PST 2009
+//    Changed logic for exception for variable with more than 1 component
+//    to use 'nvals' instead of 'ndims'
 // ****************************************************************************
 
 vtkDataArray *
@@ -7507,7 +7510,7 @@ avtSiloFileFormat::GetPointVar(DBfile *dbfile, const char *vname)
         EXCEPTION1(InvalidVariableException, varname);
     }
 
-    if(mv->ndims > 1)
+    if(mv->nvals > 1)
     {
         EXCEPTION1(InvalidVariableException, "Pointvar with more than 1 component. Fix Silo reader.");
     }
