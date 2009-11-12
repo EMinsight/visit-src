@@ -1733,7 +1733,9 @@ avtSiloFileFormat::ReadMultimeshes(DBfile *dbfile,
                     mmd->groupTitle = "levels";
                     mmd->groupPieceName = "level";
                     mmd->blockNames = amr_block_names;
+                    mmd->meshType = AVT_AMR_MESH;
                     md->Add(mmd);
+                    groupInfo.haveGroups = false;
                     md->AddGroupInformation(num_amr_groups, mm?mm->nblocks:0, amr_group_ids);
                 }
                 else
@@ -4603,6 +4605,8 @@ avtSiloFileFormat::FindStandardConnectivity(DBfile *dbfile, int &ndomains,
 //    Guard against read mask problem that occurs with treat all dbs as time 
 //    varying.
 //
+//    Mark C. Miller, Wed Nov 11 12:28:25 PST 2009
+//    Added guard against case where some mmadj->nodelists arrays are null.
 // ****************************************************************************
 
 void
@@ -4679,6 +4683,9 @@ avtSiloFileFormat::FindMultiMeshAdjConnectivity(DBfile *dbfile, int &ndomains,
         int idx = 0;
         for( i =0; i < ndomains; i++)
         {
+            if (!mmadj_obj->nodelists[idx])
+                continue;
+
             // the node list provides the overlap region between
             // the current domain and each neighbor and an orientation
             memcpy(extents_ptr, mmadj_obj->nodelists[idx],6*sizeof(int));
