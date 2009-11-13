@@ -104,7 +104,7 @@ PoincareGeneralPluginInfo::GetName() const
 const char *
 PoincareGeneralPluginInfo::GetVersion() const
 {
-    return "1.0";
+    return "2.0";
 }
 
 // ****************************************************************************
@@ -123,7 +123,7 @@ PoincareGeneralPluginInfo::GetVersion() const
 const char *
 PoincareGeneralPluginInfo::GetID() const
 {
-    return "Poincare_1.0";
+    return "Poincare_2.0";
 }
 // ****************************************************************************
 //  Method: PoincareGeneralPluginInfo::EnabledByDefault
