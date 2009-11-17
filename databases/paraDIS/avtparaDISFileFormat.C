@@ -525,7 +525,8 @@ avtparaDISFileFormat::GetMesh(const char *meshname)
 }
 
 vtkDataSet *
-avtparaDISFileFormat::TestGetMesh(const char *meshname) {
+avtparaDISFileFormat::TestGetMesh(const char *meshname) 
+{
   //----------------------------------------------------------------------
   //OLD CODE OLD CODE OLD CODE   
   // First pass:  just pass back a cube and see what happens
@@ -580,7 +581,7 @@ avtparaDISFileFormat::TestGetMesh(const char *meshname) {
     debug1 << "done with GetMesh (nodes)"<<endl; 
     return nodemesh; 
   }
-  //return mesh; 
+  return NULL; 
 }
 
 
