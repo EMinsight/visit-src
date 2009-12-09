@@ -42,6 +42,8 @@
 
 #include "avtIVPM3DC1Field.h"
 
+#include <DebugStream.h>
+
 #include <vtkCellData.h>
 #include <vtkIntArray.h>
 #include <vtkFloatArray.h>
@@ -163,11 +165,6 @@ type* avtIVPM3DC1Field::SetDataPointer( vtkDataSet *ds,
     return 0;
   }
 
-  // Because the triangluar mesh is defined by using non unique points
-  // and the data is cell centered data VisIt moves it out to the
-  // nodes. So create a new structure that is what is really needed.
-  float* ptr = (float*) array->GetVoidPointer(0);
-
   type* newptr = new type[ntuples*ncomponents];
 
   if( newptr == 0 )
@@ -176,11 +173,48 @@ type* avtIVPM3DC1Field::SetDataPointer( vtkDataSet *ds,
     return 0;
   }
 
-  for( int i=0; i<ntuples; ++i )
-    for( int j=0; j<ncomponents; ++j )
-      newptr[i*ncomponents+j] = ptr[i*3*ncomponents+j];
+  // Because the triangluar mesh is defined by using non unique points
+  // and the data is cell centered data VisIt moves it out to the
+  // nodes. So create a new structure that is what is really needed.
+  if( array->IsA("vtkIntArray") ) 
+  {
+    int* ptr = (int*) array->GetVoidPointer(0);
 
-  return newptr;
+    for( int i=0; i<ntuples; ++i )
+      for( int j=0; j<ncomponents; ++j )
+        newptr[i*ncomponents+j] = ptr[i*3*ncomponents+j];
+
+    return newptr;
+  }
+  else if( array->IsA("vtkFloatArray") ) 
+  {
+    float* ptr = (float*) array->GetVoidPointer(0);
+
+    for( int i=0; i<ntuples; ++i )
+      for( int j=0; j<ncomponents; ++j )
+        newptr[i*ncomponents+j] = ptr[i*3*ncomponents+j];
+
+    return newptr;
+  }
+  else if( array->IsA("vtkDoubleArray") ) 
+  {
+    double* ptr = (double*) array->GetVoidPointer(0);
+
+    for( int i=0; i<ntuples; ++i )
+      for( int j=0; j<ncomponents; ++j )
+        newptr[i*ncomponents+j] = ptr[i*3*ncomponents+j];
+
+    return newptr;
+  }
+  else
+  {
+    debug1 << "avtIVPM3DC1Field::SetDataPointer "
+           << "Variable " << varname
+           << " is not of type float - can not safely down cast"
+           << endl;
+    
+    return 0;
+  }
 }
 
 
