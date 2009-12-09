@@ -146,20 +146,20 @@ type* avtIVPM3DC1Field::SetDataPointer( vtkDataSet *ds,
 
   if( array == 0 )
   {
-    cerr << "Variable " << varname
-         << " does not exist"
-         << endl;
-
+    debug1 << "Variable " << varname
+           << " does not exist"
+           << endl;
+    
     return 0;
   }
 
   if( ntuples != array->GetNumberOfTuples() / 3 ||
       ncomponents != array->GetNumberOfComponents() )
   {
-    cerr << "Variable " << varname
-         << " size does not equal the number elements and/or components"
-         << endl;
-
+    debug1 << "Variable " << varname
+           << " size does not equal the number elements and/or components"
+           << endl;
+    
     return 0;
   }
 
@@ -172,7 +172,7 @@ type* avtIVPM3DC1Field::SetDataPointer( vtkDataSet *ds,
 
   if( newptr == 0 )
   {
-    cerr << "Variable " << varname << " can not allocated" << endl;
+    debug1 << "Variable " << varname << " can not allocated" << endl;
     return 0;
   }
 
@@ -375,6 +375,34 @@ void avtIVPM3DC1Field::add_edge(edge *list, int *tri,
 //  Creation:   20 November 2009
 //
 // ****************************************************************************
+int avtIVPM3DC1Field::get_tri_coords2D(double *xin, int el, double *xout)
+{
+  float     *tri;
+  double     co, sn, rrel, zrel;
+
+  /* Compute coordinates local to the current element */
+  co = trigtable[2*el];
+  sn = trigtable[2*el + 1];
+  
+  tri = elements + ELEMENT_SIZE*el;
+  
+  rrel = xin[0] - (tri[4] + tri[1]*co);
+  zrel = xin[2] - (tri[5] + tri[1]*sn);
+  
+  xout[0] = rrel*co + zrel*sn;  /* = xi */
+  xout[1] = zrel*co - rrel*sn;  /* = eta */
+
+  return el;
+}
+
+
+// ****************************************************************************
+//  Method: get_tri_coords2D
+//
+//  Creationist: Allen Sanderson
+//  Creation:   20 November 2009
+//
+// ****************************************************************************
 int avtIVPM3DC1Field::get_tri_coords2D(double *xin, double *xout)
 {
   static int el=0;
@@ -395,7 +423,6 @@ int avtIVPM3DC1Field::get_tri_coords2D(double *xin, double *xout)
 
     xout[0] = rrel*co + zrel*sn;  /* = xi */
     xout[1] = zrel*co - rrel*sn;  /* = eta */
-
     /* Determine whether point is inside element */
     if ((flag0 = ((*tri + tri[1])*xout[1] < 0.0))) /* "Outside" side 0? */
       if ((next = neighbors[3*el]) >= 0) {

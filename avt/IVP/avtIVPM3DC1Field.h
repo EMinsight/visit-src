@@ -96,6 +96,7 @@ class IVP_API avtIVPM3DC1Field: public avtIVPVTKField
     void add_edge(edge *list, int *tri, int side, int el, int *nlist);
 
     int get_tri_coords2D(double *x, double *xout);
+    int get_tri_coords2D(double *x, int el, double *xout);
 
     float interp    (float *var, int el, double *lcoords);
     float interpdR  (float *var, int el, double *lcoords);

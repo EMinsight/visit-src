@@ -117,6 +117,7 @@ class avtM3DC1FileFormat : public avtMTSDFileFormat
     std::string m_filename;
     int m_refinementLevel;
     int m_poloidalPlanes;
+    avtCentering m_dataLocation;
 
     std::vector<float> m_timeSteps;
 
@@ -125,7 +126,7 @@ class avtM3DC1FileFormat : public avtMTSDFileFormat
     std::vector<std::string> m_fieldVarNames;
 
     // Variables read from mesh and field attributes.
-    int nelms, nfields;
+    int nelms;
 
   protected:
     virtual void           PopulateDatabaseMetaData(avtDatabaseMetaData *, int);

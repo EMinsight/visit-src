@@ -70,10 +70,16 @@ GetM3DC1ReadOptions(void)
 {
     DBOptionsAttributes *rv = new DBOptionsAttributes;
 
-    rv->SetInt("Levels of mesh refinement 0-5", 0);
-
     rv->SetInt("Number of poloidal planes", 1);
 
+    rv->SetInt("Levels of mesh refinement 0-5", 0);
+
+    rv->SetEnum("Linear Mesh Data Location", 0);
+    vector<string> centering;
+    centering.push_back("Node");
+    centering.push_back("Element");
+    rv->SetEnumStrings("Linear Mesh Data Location", centering);
+ 
     return rv;
 }
 
