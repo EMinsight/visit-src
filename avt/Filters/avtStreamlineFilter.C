@@ -85,6 +85,8 @@ Consider the leaveDomains SLs and the balancing at the same time.
 #include <avtIVPVTKTimeVaryingField.h>
 #include <avtIVPDopri5.h>
 #include <avtIVPAdamsBashforth.h>
+#include <avtIVPM3DC1Integrator.h>
+#include <avtIVPM3DC1Field.h>
 #include <avtIntervalTree.h>
 #include <avtMetaData.h>
 #include <avtParallel.h>
@@ -1813,10 +1815,6 @@ avtStreamlineFilter::IntegrateDomain(avtStreamlineWrapper *slSeg,
         velocity1->SetNextTime(t2);
     }
 
-    double end = termination;
-    if (slSeg->dir == avtStreamlineWrapper::BWD)
-        end = - end;
-
     //slSeg->Debug();
     int numSteps = slSeg->sl->size();
     avtIVPSolver::Result result;
@@ -1839,17 +1837,24 @@ avtStreamlineFilter::IntegrateDomain(avtStreamlineWrapper *slSeg,
         }
         else
         {
+          if (integrationType == STREAMLINE_INTEGRATE_M3D_C1_INTEGRATOR) {
+            avtIVPM3DC1Field field(velocity1);
+            result = slSeg->sl->Advance(&field,
+                                        slSeg->terminationType,
+                                        slSeg->termination);
+          } else {
             avtIVPVTKField field(velocity1);
             result = slSeg->sl->Advance(&field,
                                         slSeg->terminationType,
                                         slSeg->termination);
+          }
         }
         
         // Termination criteria was met.
         slSeg->terminated = (result == avtIVPSolver::TERMINATE);
         debug5<<"Advance:= "<<result<<endl;
         debug5<<"IntegrateDomain: slSeg->terminated= "<<slSeg->terminated<<endl;
-	
+        
     }
     else
         result = avtIVPSolver::TERMINATE;
@@ -2047,6 +2052,12 @@ avtStreamlineFilter::PreExecute(void)
         solver->SetMaximumStepSize(maxStepLength);
         solver->SetTolerances(relTol, absTol);
     }
+    else if (integrationType == STREAMLINE_INTEGRATE_M3D_C1_INTEGRATOR)
+    {
+        solver = new avtIVPM3DC1Integrator;
+        solver->SetMaximumStepSize(maxStepLength);
+        solver->SetTolerances(relTol, absTol);
+    }
 }
 
 
@@ -2238,7 +2249,7 @@ avtStreamlineFilter::GetSeedPoints(std::vector<avtStreamlineWrapper *> &pts)
 
         for (int i = 0; i< line->GetOutput()->GetNumberOfPoints(); i++)
         {
-	    double *pt = line->GetOutput()->GetPoint(i);
+            double *pt = line->GetOutput()->GetPoint(i);
             avtVector p(pt[0], pt[1], pt[2]);
             candidatePts.push_back(p);
         }
@@ -2448,7 +2459,7 @@ avtStreamlineFilter::GetSeedPoints(std::vector<avtStreamlineWrapper *> &pts)
     for (int i = 0; i < ptDom.size(); i++)
     {
         avtVec pt(ptDom[i].pt.x, ptDom[i].pt.y, ptDom[i].pt.z);
-        
+
         if (streamlineDirection == VTK_INTEGRATE_FORWARD ||
              streamlineDirection == VTK_INTEGRATE_BOTH_DIRECTIONS)
         {

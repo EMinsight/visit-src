@@ -84,20 +84,21 @@ PoincareAttributes::SourceType_FromString(const std::string &s, PoincareAttribut
 //
 
 static const char *IntegrationType_strings[] = {
-"DormandPrince", "AdamsBashforth"};
+"DormandPrince", "AdamsBashforth", "M3DC1Integrator"
+};
 
 std::string
 PoincareAttributes::IntegrationType_ToString(PoincareAttributes::IntegrationType t)
 {
     int index = int(t);
-    if(index < 0 || index >= 2) index = 0;
+    if(index < 0 || index >= 3) index = 0;
     return IntegrationType_strings[index];
 }
 
 std::string
 PoincareAttributes::IntegrationType_ToString(int t)
 {
-    int index = (t < 0 || t >= 2) ? 0 : t;
+    int index = (t < 0 || t >= 3) ? 0 : t;
     return IntegrationType_strings[index];
 }
 
@@ -105,7 +106,7 @@ bool
 PoincareAttributes::IntegrationType_FromString(const std::string &s, PoincareAttributes::IntegrationType &val)
 {
     val = PoincareAttributes::DormandPrince;
-    for(int i = 0; i < 2; ++i)
+    for(int i = 0; i < 3; ++i)
     {
         if(s == IntegrationType_strings[i])
         {
@@ -1038,7 +1039,7 @@ PoincareAttributes::SetFromNode(DataNode *parentNode)
         if(node->GetNodeType() == INT_NODE)
         {
             int ival = node->AsInt();
-            if(ival >= 0 && ival < 2)
+            if(ival >= 0 && ival < 3)
                 SetIntegrationType(IntegrationType(ival));
         }
         else if(node->GetNodeType() == STRING_NODE)

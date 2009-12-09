@@ -235,6 +235,7 @@ QvisPoincarePlotWindow::CreateWindowContents()
     integrationType = new QComboBox(streamlineTab, "integrationType");
     integrationType->insertItem(tr("Dormand-Prince (Runge-Kutta)"));
     integrationType->insertItem(tr("Adams-Bashforth (Multi-step)"));
+    integrationType->insertItem(tr("M3D C1 Integrator via Newton's Method"));
     connect(integrationType, SIGNAL(activated(int)),
             this, SLOT(integrationTypeChanged(int)));
     streamlineLayout->addWidget(integrationType,row,1);

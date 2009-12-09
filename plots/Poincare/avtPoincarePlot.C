@@ -330,8 +330,10 @@ avtPoincarePlot::SetAtts(const AttributeGroup *a)
     // Set the streamline attributes.
     if (atts.GetIntegrationType() == PoincareAttributes::DormandPrince)
         poincareFilter->SetIntegrationType(STREAMLINE_INTEGRATE_DORMAND_PRINCE);
-    else // if (atts.GetIntegratorType() == AdamsBashforth)
+    else if (atts.GetIntegrationType() == PoincareAttributes::AdamsBashforth)
         poincareFilter->SetIntegrationType(STREAMLINE_INTEGRATE_ADAMS_BASHFORTH);
+    else if (atts.GetIntegrationType() == PoincareAttributes::M3DC1Integrator)
+        poincareFilter->SetIntegrationType(STREAMLINE_INTEGRATE_M3D_C1_INTEGRATOR);
 
     poincareFilter->SetStreamlineAlgorithm(STREAMLINE_PARALLEL_STATIC_DOMAINS,
                                            10, 3, 1);
@@ -341,7 +343,7 @@ avtPoincarePlot::SetAtts(const AttributeGroup *a)
     // Make the number of punctures 2x because the analysis uses only
     // the punctures in the same direction as the plane.
     poincareFilter->SetTermination(STREAMLINE_TERMINATE_INTERSECTIONS,
-				   2*atts.GetMinPunctures());
+                                   2*atts.GetMinPunctures());
 
     poincareFilter->SetMaxPunctures(2*atts.GetMaxPunctures());
     

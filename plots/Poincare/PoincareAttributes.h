@@ -68,7 +68,8 @@ public:
     enum IntegrationType
     {
         DormandPrince,
-        AdamsBashforth
+        AdamsBashforth,
+        M3DC1Integrator
     };
     enum OverlapType
     {

@@ -130,14 +130,14 @@ class avtPoincareFilter : public avtStreamlineFilter
                             double color_value);
 
   virtual void loadPoints( avtDataTree *dt,
-			   vector < Point  > &nodes,
-			   unsigned int period,
-			   unsigned int nnodes,
-			   unsigned int islands,
-			   unsigned int poloidalWindings,
-			   unsigned int color,
-			   double color_value,
-			   bool ptFlag );
+                           vector < Point  > &nodes,
+                           unsigned int period,
+                           unsigned int nnodes,
+                           unsigned int islands,
+                           unsigned int poloidalWindings,
+                           unsigned int color,
+                           double color_value,
+                           bool ptFlag );
 
     // Poincare filter methods.
     bool                      ClassifyStreamlines();

@@ -47,7 +47,7 @@
 ##
 ## Files...
 ##
-SRC=avtIVPDopri5.C avtIVPSolver.C avtIVPVTKField.C avtStreamline.C MemStream.C avtIVPAdamsBashforth.C avtIVPVTKTimeVaryingField.C
+SRC=avtIVPDopri5.C avtIVPSolver.C avtIVPVTKField.C avtIVPM3DC1Field.C avtStreamline.C MemStream.C avtIVPAdamsBashforth.C avtIVPVTKTimeVaryingField.C avtIVPM3DC1Integrator.C
 
 CPPFLAGS=@COMPONENT_CPPFLAGS@ @CPPFLAGS@
 
