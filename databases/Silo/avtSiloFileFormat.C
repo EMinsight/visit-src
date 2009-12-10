@@ -122,6 +122,34 @@ using std::vector;
 using std::map;
 using std::set;
 
+// ****************************************************************************
+// Macro: FIX_DATA_TYPE
+//
+// Purpose: The following macro is needed and sprinkled throughout the plugin
+// following any DBGet<whatever> call to ensure the datatype member of the
+// object the Silo library returns is set correctly. With ForceSingle ON, the
+// Silo library converts everything (char, short, int, long, float, double) to
+// float -- well almost everything. I don't think it converts material objects,
+// groupel maps and a few others -- but then fails to inform the caller of that
+// by setting datatype member of the object ot DB_FLOAT. This macro basically
+// does that. However, it should be removed from the plugin when the Silo
+// library is corrected which should be in version 4.7.2 or greater. So, this
+// macro is DESIGNED to fail a compile and force someone to look at this issue
+// again if its ever compiled against a 4.7.2 or greater version of Silo.
+//
+// Programmer: Mark C. Miller, Thu Dec 10 09:47:46 PST 2009
+//
+// ****************************************************************************
+#ifdef SILO_VERSION_GE
+#if SILO_VERSION_GE(4,7,2)
+#error SILO DEVELOPERS NEED TO RE-ADUIT NEED FOR FIX_DATA_TYPE MACRO FOR THIS VERSION OF SILO
+#else
+#define FIX_DATA_TYPE(SOBJ) {if (!dontForceSingle) SOBJ->datatype = DB_FLOAT;}
+#endif
+#else
+#define FIX_DATA_TYPE(SOBJ) {if (!dontForceSingle) SOBJ->datatype = DB_FLOAT;}
+#endif
+
 static void      ExceptionGenerator(char *);
 static char     *GenerateName(const char *, const char *, const char *);
 static string    PrepareDirName(const char *, const char *);
@@ -148,9 +176,10 @@ static void AddAle3drlxstatEnumerationInfo(avtScalarMetaData *smd);
 
 static void HandleMrgtreeForMultimesh(DBfile *dbfile, DBmultimesh *mm,
     const char *multimesh_name, avtMeshType *mt, int *num_groups,
-    vector<int> *group_ids, vector<string> *block_names);
+    vector<int> *group_ids, vector<string> *block_names, int dontForceSingle);
 static void BuildDomainAuxiliaryInfoForAMRMeshes(DBfile *dbfile, DBmultimesh *mm,
-    const char *meshName, int timestate, int type, avtVariableCache *cache);
+    const char *meshName, int timestate, int type, avtVariableCache *cache,
+    int dontForceSingle);
 
 static int MultiMatHasAllMatInfo(const DBmultimat *const mm);
 
@@ -1444,6 +1473,9 @@ avtSiloFileFormat::ReadTopDirStuff(DBfile *dbfile, const char *dirname,
 //    Mark C. Miller, Thu Jun 18 20:56:08 PDT 2009
 //    Replaced DBtoc* arg. with list of object names. Also added logic to
 //    handle freeing of multimesh object during exceptions.
+//
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 void
 avtSiloFileFormat::ReadMultimeshes(DBfile *dbfile, 
@@ -1526,6 +1558,7 @@ avtSiloFileFormat::ReadMultimeshes(DBfile *dbfile,
                                    << ") is invalid." << endl;
                             break;
                         }
+                        FIX_DATA_TYPE(um);
                         ndims = um->ndims;
                         tdims = ndims;
 #ifdef SILO_VERSION_GE
@@ -1572,6 +1605,7 @@ avtSiloFileFormat::ReadMultimeshes(DBfile *dbfile,
                                    << ") is invalid." << endl;
                             break;
                         }
+                        FIX_DATA_TYPE(pm);
                         ndims = pm->ndims;
                         tdims = 0;
                         cellOrigin = pm->origin;
@@ -1607,6 +1641,7 @@ avtSiloFileFormat::ReadMultimeshes(DBfile *dbfile,
                                    << ") is invalid." << endl;
                             break;
                         }
+                        FIX_DATA_TYPE(qm);
                         ndims = qm->ndims;
                         tdims = ndims;
                         cellOrigin = qm->origin;
@@ -1647,6 +1682,7 @@ avtSiloFileFormat::ReadMultimeshes(DBfile *dbfile,
                                    << ") is invalid." << endl;
                             break;
                         }
+                        FIX_DATA_TYPE(qm);
                         ndims = qm->ndims;
                         tdims = ndims; 
                         cellOrigin = qm->origin;
@@ -1710,7 +1746,8 @@ avtSiloFileFormat::ReadMultimeshes(DBfile *dbfile,
                 {
                     // So far, we've coded only for MRG trees representing AMR hierarchies
                     HandleMrgtreeForMultimesh(dbfile, mm, multimesh_names[i],
-                        &mt, &num_amr_groups, &amr_group_ids, &amr_block_names);
+                        &mt, &num_amr_groups, &amr_group_ids, &amr_block_names,
+                        dontForceSingle);
                 }
 #endif
 #endif
@@ -1795,6 +1832,9 @@ avtSiloFileFormat::ReadMultimeshes(DBfile *dbfile,
 //  Modifications:
 //    Mark C. Miller, Thu Jun 18 20:56:08 PDT 2009
 //    Replaced DBtoc* arg. with list of object names.
+//
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 void
 avtSiloFileFormat::ReadQuadmeshes(DBfile *dbfile,
@@ -1821,6 +1861,8 @@ avtSiloFileFormat::ReadQuadmeshes(DBfile *dbfile,
                 valid_var = false;
                 qm = DBAllocQuadmesh(); // to fool code block below
             }
+            else
+                FIX_DATA_TYPE(qm);
 
             avtMeshType   mt;
             switch (qm->coordtype)
@@ -1912,6 +1954,9 @@ avtSiloFileFormat::ReadQuadmeshes(DBfile *dbfile,
 //  Modifications:
 //    Mark C. Miller, Thu Jun 18 20:56:08 PDT 2009
 //    Replaced DBtoc* arg. with list of object names.
+//
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 void
 avtSiloFileFormat::ReadUcdmeshes(DBfile *dbfile,
@@ -1938,6 +1983,8 @@ avtSiloFileFormat::ReadUcdmeshes(DBfile *dbfile,
                 valid_var = false;
                 um = DBAllocUcdmesh(); // to fool code block below
             }
+            else
+                FIX_DATA_TYPE(um);
 
             double   extents[6];
             double  *extents_to_use = NULL;
@@ -2024,6 +2071,9 @@ avtSiloFileFormat::ReadUcdmeshes(DBfile *dbfile,
 //  Modifications:
 //    Mark C. Miller, Thu Jun 18 20:56:08 PDT 2009
 //    Replaced DBtoc* arg. with list of object names.
+//
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 void
 avtSiloFileFormat::ReadPointmeshes(DBfile *dbfile,
@@ -2050,6 +2100,8 @@ avtSiloFileFormat::ReadPointmeshes(DBfile *dbfile,
                 valid_var = false;
                 pm = DBAllocPointmesh(); // to fool code block below
             }
+            else
+                FIX_DATA_TYPE(pm);
 
             avtMeshMetaData *mmd = new avtMeshMetaData(name_w_dir, 1, 0,pm->origin,
                                                   0, pm->ndims, 0, AVT_POINT_MESH); mmd->groupTitle = "blocks";
@@ -2096,6 +2148,9 @@ avtSiloFileFormat::ReadPointmeshes(DBfile *dbfile,
 //  Modifications:
 //    Mark C. Miller, Thu Jun 18 20:56:08 PDT 2009
 //    Replaced DBtoc* arg. with list of object names.
+//
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 void
 avtSiloFileFormat::ReadCurves(DBfile *dbfile,
@@ -2122,6 +2177,8 @@ avtSiloFileFormat::ReadCurves(DBfile *dbfile,
                 valid_var = false;
                 cur = DBAllocCurve(); // to fool code block below
             }
+            else
+                FIX_DATA_TYPE(cur);
 
 
             avtCurveMetaData *cmd = new avtCurveMetaData(name_w_dir);
@@ -2160,6 +2217,9 @@ avtSiloFileFormat::ReadCurves(DBfile *dbfile,
 //  Modifications:
 //    Mark C. Miller, Thu Jun 18 20:56:08 PDT 2009
 //    Replaced DBtoc* arg. with list of object names.
+//
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 void
 avtSiloFileFormat::ReadCSGmeshes(DBfile *dbfile,
@@ -2196,6 +2256,8 @@ avtSiloFileFormat::ReadCSGmeshes(DBfile *dbfile,
                csgm = DBAllocCsgmesh();
                csgm->zones = DBAllocCSGZonelist();
            }
+           else
+               FIX_DATA_TYPE(csgm);
 
            double   extents[6];
            double  *extents_to_use = NULL;
@@ -2269,6 +2331,9 @@ avtSiloFileFormat::ReadCSGmeshes(DBfile *dbfile,
 //    Mark C. Miller, Thu Jun 18 20:56:08 PDT 2009
 //    Replaced DBtoc* arg. with list of object names. Also added logic to
 //    handle freeing of multivar during exceptions.
+//
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 void
 avtSiloFileFormat::ReadMultivars(DBfile *dbfile,
@@ -2364,6 +2429,7 @@ avtSiloFileFormat::ReadMultivars(DBfile *dbfile,
                             valid_var = false;
                             break;
                         }
+                        FIX_DATA_TYPE(uv);
                         centering = (uv->centering == DB_ZONECENT ? AVT_ZONECENT 
                                                                   : AVT_NODECENT);
                         nvals = uv->nvals;
@@ -2382,6 +2448,7 @@ avtSiloFileFormat::ReadMultivars(DBfile *dbfile,
                             valid_var = false;
                             break;
                         }
+                        FIX_DATA_TYPE(qv);
                         centering = (qv->align[0] == 0. ? AVT_NODECENT 
                                                         : AVT_ZONECENT);
                         nvals = qv->nvals;
@@ -2401,6 +2468,7 @@ avtSiloFileFormat::ReadMultivars(DBfile *dbfile,
                             valid_var = false;
                             break;
                         }
+                        FIX_DATA_TYPE(pv);
                         nvals = pv->nvals;
                         treatAsASCII = (pv->ascii_labels);
                         if(pv->units != 0)
@@ -2421,6 +2489,7 @@ avtSiloFileFormat::ReadMultivars(DBfile *dbfile,
                             valid_var = false;
                             break;
                         }
+                        FIX_DATA_TYPE(csgv);
                         nvals = csgv->nvals;
                         treatAsASCII = (csgv->ascii_labels);
                         if(csgv->units != 0)
@@ -2502,6 +2571,9 @@ avtSiloFileFormat::ReadMultivars(DBfile *dbfile,
 //  Modifications:
 //    Mark C. Miller, Thu Jun 18 20:56:08 PDT 2009
 //    Replaced DBtoc* arg. with list of object names.
+//
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 void
 avtSiloFileFormat::ReadQuadvars(DBfile *dbfile,
@@ -2529,6 +2601,8 @@ avtSiloFileFormat::ReadQuadvars(DBfile *dbfile,
                 valid_var = false;
                 qv = DBAllocQuadvar();
             }
+            else
+                FIX_DATA_TYPE(qv);
 
             char meshname[256];
             DBInqMeshname(correctFile, realvar, meshname);
@@ -2596,6 +2670,9 @@ avtSiloFileFormat::ReadQuadvars(DBfile *dbfile,
 //  Modifications:
 //    Mark C. Miller, Thu Jun 18 20:56:08 PDT 2009
 //    Replaced DBtoc* arg. with list of object names.
+//
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 void
 avtSiloFileFormat::ReadUcdvars(DBfile *dbfile,
@@ -2623,6 +2700,8 @@ avtSiloFileFormat::ReadUcdvars(DBfile *dbfile,
                 valid_var = false;
                 uv = DBAllocUcdvar();
             }
+            else
+                FIX_DATA_TYPE(uv);
 
             char meshname[256];
             DBInqMeshname(correctFile, realvar, meshname);
@@ -2689,6 +2768,9 @@ avtSiloFileFormat::ReadUcdvars(DBfile *dbfile,
 //  Modifications:
 //    Mark C. Miller, Thu Jun 18 20:56:08 PDT 2009
 //    Replaced DBtoc* arg. with list of object names.
+//
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 void
 avtSiloFileFormat::ReadPointvars(DBfile *dbfile,
@@ -2716,6 +2798,8 @@ avtSiloFileFormat::ReadPointvars(DBfile *dbfile,
                 valid_var = false;
                 pv = DBAllocMeshvar();
             }
+            else
+                FIX_DATA_TYPE(pv);
 
             char meshname[256];
             DBInqMeshname(correctFile, realvar, meshname);
@@ -2776,6 +2860,9 @@ avtSiloFileFormat::ReadPointvars(DBfile *dbfile,
 //  Modifications:
 //    Mark C. Miller, Thu Jun 18 20:56:08 PDT 2009
 //    Replaced DBtoc* arg. with list of object names.
+//
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 void
 avtSiloFileFormat::ReadCSGvars(DBfile *dbfile,
@@ -2804,6 +2891,8 @@ avtSiloFileFormat::ReadCSGvars(DBfile *dbfile,
                 valid_var = false;
                 csgv = DBAllocCsgvar();
             }
+            else
+                FIX_DATA_TYPE(csgv);
 
             char meshname[256];
             DBInqMeshname(correctFile, realvar, meshname);
@@ -2875,6 +2964,9 @@ avtSiloFileFormat::ReadCSGvars(DBfile *dbfile,
 //
 //    Mark C. Miller, Wed Aug 26 11:09:29 PDT 2009
 //    Uncommented hidFromGUI setting.
+//
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 void
 avtSiloFileFormat::ReadMaterials(DBfile *dbfile,
@@ -2902,6 +2994,8 @@ avtSiloFileFormat::ReadMaterials(DBfile *dbfile,
                 valid_var = false;
                 mat = DBAllocMaterial();
             }
+            else
+                FIX_DATA_TYPE(mat);
 
             char meshname[256];
             DBInqMeshname(correctFile, realvar, meshname);
@@ -2992,6 +3086,8 @@ avtSiloFileFormat::ReadMaterials(DBfile *dbfile,
 //    Cyrus Harrison, Tue Nov 24 14:05:28 PST 2009
 //    Added guard to avoid crash from unset material name.
 //
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 void
 avtSiloFileFormat::ReadMultimats(DBfile *dbfile,
@@ -3058,6 +3154,7 @@ avtSiloFileFormat::ReadMultimats(DBfile *dbfile,
                 else
                 {
                     bool invalidateVar = false;
+                    FIX_DATA_TYPE(mat);
 #ifdef SILO_VERSION_GE
 #if SILO_VERSION_GE(4,6,3)
                     if (mm->nmatnos > 0 && mm->nmatnos != mat->nmat)
@@ -3209,6 +3306,9 @@ avtSiloFileFormat::ReadMultimats(DBfile *dbfile,
 //  Modifications:
 //    Mark C. Miller, Thu Jun 18 20:56:08 PDT 2009
 //    Replaced DBtoc* arg. with list of object names.
+//
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 void
 avtSiloFileFormat::ReadSpecies(DBfile *dbfile,
@@ -3237,6 +3337,8 @@ avtSiloFileFormat::ReadSpecies(DBfile *dbfile,
                 valid_var = false;
                 spec = DBAllocMatspecies();
             }
+            else
+                FIX_DATA_TYPE(spec);
 
             char meshname[256];
             GetMeshname(dbfile, spec->matname, meshname);
@@ -3293,6 +3395,9 @@ avtSiloFileFormat::ReadSpecies(DBfile *dbfile,
 //    Mark C. Miller, Thu Jun 18 20:56:08 PDT 2009
 //    Replaced DBtoc* arg. with list of object names. Also added logic to
 //    handle freeing of multimat species during exceptions.
+//
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 void
 avtSiloFileFormat::ReadMultispecies(DBfile *dbfile,
@@ -3380,6 +3485,8 @@ avtSiloFileFormat::ReadMultispecies(DBfile *dbfile,
                                << ") is invalid." << endl;
                         valid_var = false;
                     }
+                    else
+                        FIX_DATA_TYPE(spec);
                 }
             }
 
@@ -4678,14 +4785,16 @@ avtSiloFileFormat::FindMultiMeshAdjConnectivity(DBfile *dbfile, int &ndomains,
         // Note: Silo's MultiMesh Adjacency Object supports unstructured 
         // and point meshes - but so far we only support structured meshes.
 
-        lneighbors = mmadj_obj->lneighbors * 11;
+        int nnodelists = mmadj_obj->lneighbors;
+        lneighbors = nnodelists * 11;
         neighbors  = new int[lneighbors];
 
         int *extents_ptr = extents;
         int *neighbors_ptr = neighbors;
 
         int idx = 0;
-        for( i =0; i < ndomains; i++)
+
+        for( i =0; i < ndomains && idx < nnodelists; i++)
         {
             if (!mmadj_obj->nodelists[idx])
                 continue;
@@ -5006,6 +5115,10 @@ AddDefvars(const char *defvars, avtDatabaseMetaData *md)
 //
 //  Programmer: Mark C. Miller 
 //  Creation:   June 26, 2006 
+//
+//  Modifications:
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 void
 avtSiloFileFormat::AddCSGMultimesh(const char *const dirname,
@@ -5038,6 +5151,7 @@ avtSiloFileFormat::AddCSGMultimesh(const char *const dirname,
         DBcsgmesh *csgm = DBGetCsgmesh(correctFile, realvar);
         if (csgm == NULL)
             EXCEPTION1(InvalidVariableException, multimesh_name);
+        FIX_DATA_TYPE(csgm);
 
         if (!((csgm->min_extents[0] == 0.0 && csgm->max_extents[0] == 0.0 &&
                csgm->min_extents[1] == 0.0 && csgm->max_extents[1] == 0.0 &&
@@ -5818,6 +5932,9 @@ PaintNodesForAnnotIntFacelist(float *ptr,
 //    Mark C. Miller, Wed Feb 25 17:36:51 PST 2009
 //    Add missing DBZonelistInfo flag from setting of data read mask just
 //    prior to getting the ucdmesh.
+//
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 
 vtkDataArray *
@@ -5863,6 +5980,7 @@ avtSiloFileFormat::GetAnnotIntNodelistsVar(int domain, string listsname)
     DBcompoundarray *ai = DBGetCompoundarray(domain_file, "ANNOTATION_INT"); 
     if (ai == 0)
         return nlvar;
+    FIX_DATA_TYPE(ai);
 
     //
     // Using scalar metadata, determine the 'value' to be associated with
@@ -5958,6 +6076,7 @@ avtSiloFileFormat::GetAnnotIntNodelistsVar(int domain, string listsname)
                 "paint \"%s\" variable", meshName.c_str(), domain, listsname.c_str());
             EXCEPTION1(InvalidVariableException, msg);
         }
+        FIX_DATA_TYPE(um);
 
         //
         // Call the method that traverses the zonelist, enumerating faces and then
@@ -6517,6 +6636,9 @@ CopyUcdVar(const DBucdvar *uv, const vector<int> &remap)
 //    Replaced arb. polyhederal zone skipping logic with real remapping
 //    as now Silo plugin will read and decompose arb. polyhedral mesh.
 //    Replaced CopyUcdVectorVar a vector-enhanced version of CopyUcdVar.
+//
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 
 vtkDataArray *
@@ -6537,6 +6659,7 @@ avtSiloFileFormat::GetUcdVectorVar(DBfile *dbfile, const char *vname,
     {
         EXCEPTION1(InvalidVariableException, varname);
     }
+    FIX_DATA_TYPE(uv);
 
     string meshName = metadata->MeshForVar(tvn);
     vector<int> noremap;
@@ -6557,6 +6680,8 @@ avtSiloFileFormat::GetUcdVectorVar(DBfile *dbfile, const char *vname,
         vectors = CopyUcdVar<double,vtkDoubleArray>(uv, *remap);
     else if(uv->datatype == DB_FLOAT)
         vectors = CopyUcdVar<float,vtkFloatArray>(uv, *remap);
+    else if(uv->datatype == DB_LONG)
+        vectors = CopyUcdVar<long,vtkLongArray>(uv, *remap);
     else if(uv->datatype == DB_INT)
         vectors = CopyUcdVar<int,vtkIntArray>(uv, *remap);
     else if(uv->datatype == DB_SHORT)
@@ -6590,7 +6715,7 @@ avtSiloFileFormat::GetUcdVectorVar(DBfile *dbfile, const char *vname,
 // ****************************************************************************
 
 template <typename T, typename Tarr>
-vtkDataArray *
+static vtkDataArray *
 CopyQuadVectorVar(const DBquadvar *qv)
 {
     Tarr *vectors = Tarr::New();
@@ -6642,6 +6767,9 @@ CopyQuadVectorVar(const DBquadvar *qv)
 //    Mark C. Miller, Tue Dec 16 09:36:56 PST 2008
 //    Added casts to deal with new Silo API where datatype'd pointers
 //    have been changed from float* to void*.
+//
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 
 vtkDataArray *
@@ -6662,6 +6790,7 @@ avtSiloFileFormat::GetQuadVectorVar(DBfile *dbfile, const char *vname,
     {
         EXCEPTION1(InvalidVariableException, varname);
     }
+    FIX_DATA_TYPE(qv);
 
     //
     // Populate the variable.  This assumes it is a scalar variable.
@@ -6671,6 +6800,8 @@ avtSiloFileFormat::GetQuadVectorVar(DBfile *dbfile, const char *vname,
         vectors = CopyQuadVectorVar<double,vtkDoubleArray>(qv);
     else if(qv->datatype == DB_FLOAT)
         vectors = CopyQuadVectorVar<float,vtkFloatArray>(qv);
+    else if(qv->datatype == DB_LONG)
+        vectors = CopyQuadVectorVar<long,vtkLongArray>(qv);
     else if(qv->datatype == DB_INT)
         vectors = CopyQuadVectorVar<int,vtkIntArray>(qv);
     else if(qv->datatype == DB_SHORT)
@@ -6700,11 +6831,14 @@ avtSiloFileFormat::GetQuadVectorVar(DBfile *dbfile, const char *vname,
 // Creation:   Thu Aug  6 15:12:29 PDT 2009
 //
 // Modifications:
+//
+//    Mark C. Miller, Tue Oct 20 16:50:41 PDT 2009
+//    Made it static.
 //   
 // ****************************************************************************
 
 template <typename T, typename Tarr>
-vtkDataArray *
+static vtkDataArray *
 CopyPointVectorVar(const DBmeshvar *mv)
 {
     Tarr *vectors = Tarr::New();
@@ -6754,6 +6888,8 @@ CopyPointVectorVar(const DBmeshvar *mv)
 //    Brad Whitlock, Thu Aug  6 14:55:49 PDT 2009
 //    I added support for non-float data types.
 //
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 
 vtkDataArray *
@@ -6773,12 +6909,15 @@ avtSiloFileFormat::GetPointVectorVar(DBfile *dbfile, const char *vname)
     {
         EXCEPTION1(InvalidVariableException, varname);
     }
+    FIX_DATA_TYPE(mv);
 
     vtkDataArray *vectors = 0;
     if(mv->datatype == DB_DOUBLE)
         vectors = CopyPointVectorVar<double,vtkDoubleArray>(mv);
     else if(mv->datatype == DB_FLOAT)
         vectors = CopyPointVectorVar<float,vtkFloatArray>(mv);
+    else if(mv->datatype == DB_LONG)
+        vectors = CopyPointVectorVar<long,vtkLongArray>(mv);
     else if(mv->datatype == DB_INT)
         vectors = CopyPointVectorVar<int,vtkIntArray>(mv);
     else if(mv->datatype == DB_SHORT)
@@ -7028,7 +7167,8 @@ avtSiloFileFormat::GetMesh(int domain, const char *m)
     else if (type==DB_QUADMESH || type==DB_QUAD_RECT || type==DB_QUAD_CURV)
     {
         if (metadata->GetMesh(m)->meshType == AVT_AMR_MESH)
-            BuildDomainAuxiliaryInfoForAMRMeshes(dbfile, mm, m, timestep, type, cache);
+            BuildDomainAuxiliaryInfoForAMRMeshes(dbfile, mm, m, timestep, type, cache,
+                dontForceSingle);
         rv = GetQuadMesh(domain_file, directory_mesh, domain);
     }
     else if (type == DB_POINTMESH)
@@ -7246,6 +7386,9 @@ ConvertToFloat(int silotype, void *data, int nels)
 //
 //    Mark C. Miller, Mon Oct 19 20:25:08 PDT 2009
 //    Replaced skipping logic with remapping logic.
+//
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 
 vtkDataArray *
@@ -7266,6 +7409,7 @@ avtSiloFileFormat::GetUcdVar(DBfile *dbfile, const char *vname,
     {
         EXCEPTION1(InvalidVariableException, varname);
     }
+    FIX_DATA_TYPE(uv);
 
     string meshName = metadata->MeshForVar(tvn);
     vector<int> noremap;
@@ -7286,6 +7430,8 @@ avtSiloFileFormat::GetUcdVar(DBfile *dbfile, const char *vname,
         scalars = CopyUcdVar<double,vtkDoubleArray>(uv, *remap);
     else if(uv->datatype == DB_FLOAT)
         scalars = CopyUcdVar<float,vtkFloatArray>(uv, *remap);
+    else if(uv->datatype == DB_LONG)
+        scalars = CopyUcdVar<long,vtkLongArray>(uv, *remap);
     else if(uv->datatype == DB_INT)
         scalars = CopyUcdVar<int,vtkIntArray>(uv, *remap);
     else if(uv->datatype == DB_SHORT)
@@ -7368,6 +7514,8 @@ avtSiloFileFormat::GetUcdVar(DBfile *dbfile, const char *vname,
 //    Brad Whitlock, Fri Aug  7 10:33:26 PDT 2009
 //    I created more types of vtkDataArray to add support beyond float/double.
 //
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 
 template <class T>
@@ -7407,6 +7555,7 @@ avtSiloFileFormat::GetQuadVar(DBfile *dbfile, const char *vname,
     {
         EXCEPTION1(InvalidVariableException, varname);
     }
+    FIX_DATA_TYPE(qv);
 
     //
     // Populate the variable.  This assumes it is a scalar variable.
@@ -7494,6 +7643,9 @@ avtSiloFileFormat::GetQuadVar(DBfile *dbfile, const char *vname,
 //    Mark C. Miller, Thu Nov 12 14:56:15 PST 2009
 //    Changed logic for exception for variable with more than 1 component
 //    to use 'nvals' instead of 'ndims'
+//
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 
 vtkDataArray *
@@ -7513,6 +7665,7 @@ avtSiloFileFormat::GetPointVar(DBfile *dbfile, const char *vname)
     {
         EXCEPTION1(InvalidVariableException, varname);
     }
+    FIX_DATA_TYPE(mv);
 
     if(mv->nvals > 1)
     {
@@ -7544,6 +7697,8 @@ avtSiloFileFormat::GetPointVar(DBfile *dbfile, const char *vname)
 //    Brad Whitlock, Fri Aug  7 11:01:59 PDT 2009
 //    I added non-float support.
 //
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 
 vtkDataArray *
@@ -7563,6 +7718,7 @@ avtSiloFileFormat::GetCsgVar(DBfile *dbfile, const char *vname)
     {
         EXCEPTION1(InvalidVariableException, varname);
     }
+    FIX_DATA_TYPE(csgv);
 
     //
     // Populate the variable.  This assumes it is a scalar variable.
@@ -7597,10 +7753,12 @@ avtSiloFileFormat::GetCsgVar(DBfile *dbfile, const char *vname)
 //
 // Modifications:
 //   
+//    Mark C. Miller, Tue Oct 20 16:51:50 PDT 2009
+//    Made it static.
 // ****************************************************************************
 
 template <typename T>
-void
+static void
 CopyUnstructuredMeshCoordinates(T *pts, const DBucdmesh *um)
 {
     int nnodes = um->nnodes;
@@ -7786,6 +7944,9 @@ avtSiloFileFormat::HandleGlobalZoneIds(const char *meshname, int domain,
 //    Removed logic/warning for skipping arb. polyhedral zones that are
 //    embedded in 'ordinary' zonelist. They are now correctly handled in
 //    ReadInConnectivity.
+//
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 
 vtkDataSet *
@@ -7812,6 +7973,7 @@ avtSiloFileFormat::GetUnstructuredMesh(DBfile *dbfile, const char *mn,
     {
         EXCEPTION1(InvalidVariableException, meshname);
     }
+    FIX_DATA_TYPE(um);
 
     vtkPoints *points  = vtkPoints::New();
 
@@ -9181,6 +9343,8 @@ avtSiloFileFormat::ReadInArbConnectivity(const char *meshname,
 //    Brad Whitlock, Fri Aug  7 11:11:29 PDT 2009
 //    I added some exception handling.
 //
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 
 vtkDataSet *
@@ -9206,6 +9370,7 @@ avtSiloFileFormat::GetQuadMesh(DBfile *dbfile, const char *mn, int domain)
     {
         EXCEPTION1(InvalidVariableException, meshname);
     }
+    FIX_DATA_TYPE(qm);
 
     VerifyQuadmesh(qm, meshname);
 
@@ -9529,10 +9694,12 @@ avtSiloFileFormat::VerifyQuadmesh(DBquadmesh *qm, const char *meshname)
 //   Brad Whitlock, Thu Aug  6 12:16:09 PDT 2009
 //   I moved this block out from GetCurve and I templated it.
 //
+//   Mark C. Miller, Tue Oct 20 16:51:36 PDT 2009
+//   Made it static.
 // ****************************************************************************
 
 template <typename T, typename Tarr>
-vtkRectilinearGrid *
+static vtkRectilinearGrid *
 CreateCurve(DBcurve *cur, const char *curvename, int vtkType)
 {
     T *px = (T *) cur->x;
@@ -9579,6 +9746,8 @@ CreateCurve(DBcurve *cur, const char *curvename, int vtkType)
 //    Brad Whitlock, Thu Aug  6 12:15:50 PDT 2009
 //    Use templates.
 //
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 
 vtkDataSet *
@@ -9600,12 +9769,15 @@ avtSiloFileFormat::GetCurve(DBfile *dbfile, const char *cn)
     {
         EXCEPTION1(InvalidVariableException, curvename);
     }
+    FIX_DATA_TYPE(cur);
 
     vtkRectilinearGrid *rg = 0;
     if (cur->datatype == DB_FLOAT)
         rg = CreateCurve<float,vtkFloatArray>(cur, curvename, VTK_FLOAT);
     else if (cur->datatype == DB_DOUBLE)
         rg = CreateCurve<double,vtkDoubleArray>(cur, curvename, VTK_DOUBLE);
+    else if (cur->datatype == DB_LONG)
+        rg = CreateCurve<long,vtkLongArray>(cur, curvename, VTK_LONG);
     else if (cur->datatype == DB_INT)
         rg = CreateCurve<int,vtkIntArray>(cur, curvename, VTK_INT);
     else if (cur->datatype == DB_SHORT)
@@ -10003,10 +10175,12 @@ avtSiloFileFormat::GetQuadGhostZones(DBquadmesh *qm, vtkDataSet *ds)
 //
 // Modifications:
 //   
+//    Mark C. Miller, Tue Oct 20 16:51:18 PDT 2009
+//    Made it static.
 // ****************************************************************************
 
 template <typename T>
-void
+static void
 CopyPointMeshCoordinates(T *pts, const DBpointmesh *pm)
 {
     for (int i = 0 ; i < 3 ; i++)
@@ -10065,6 +10239,8 @@ CopyPointMeshCoordinates(T *pts, const DBpointmesh *pm)
 //    Brad Whitlock, Thu Aug  6 11:50:13 PDT 2009
 //    I added support for double coordinates.
 //
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 
 vtkDataSet *
@@ -10090,6 +10266,7 @@ avtSiloFileFormat::GetPointMesh(DBfile *dbfile, const char *mn)
     {
         EXCEPTION1(InvalidVariableException, meshname);
     }
+    FIX_DATA_TYPE(pm);
 
     if(pm->datatype != DB_FLOAT && pm->datatype != DB_DOUBLE)
     {
@@ -10166,6 +10343,9 @@ avtSiloFileFormat::GetPointMesh(DBfile *dbfile, const char *mn)
 //    Mark C. Miller, Wed Aug 20 11:39:39 PDT 2008
 //    Had to force a copy on the csg object returned here to prevent collisions
 //    in the variable cache with stuff that generic database is doing.
+//
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 
 vtkDataSet *
@@ -10216,6 +10396,7 @@ avtSiloFileFormat::GetCSGMesh(DBfile *dbfile, const char *mn, int dom)
     {
         EXCEPTION1(InvalidVariableException, meshname);
     }
+    FIX_DATA_TYPE(csgm);
 
     //
     // Create the VTK objects and connect them up.
@@ -11303,6 +11484,9 @@ avtSiloFileFormat::GetExternalFacelist(int dom, const char *mesh)
 //    Mark C. Miller, Sun Dec  3 12:20:11 PST 2006
 //    Moved code to set data read mask back to its original value to *before*
 //    throwing of exeption.
+//
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 
 vtkDataArray *
@@ -11337,6 +11521,7 @@ avtSiloFileFormat::GetGlobalNodeIds(int dom, const char *mesh)
     DBSetDataReadMask(mask);
     if (um == NULL)
         EXCEPTION1(InvalidVariableException, mesh);
+    FIX_DATA_TYPE(um);
 
     vtkIntArray *rv = NULL;
     if (um->gnodeno != NULL)
@@ -11386,6 +11571,9 @@ avtSiloFileFormat::GetGlobalNodeIds(int dom, const char *mesh)
 //    library where attempt to DBGetUcdmesh causes call to DBGetZonelist
 //    and a subsequent segv down in the bowels of Silo due to invalid
 //    assumptions regarding the existence of certain zonelist strutures.
+//
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 
 vtkDataArray *
@@ -11416,6 +11604,7 @@ avtSiloFileFormat::GetGlobalZoneIds(int dom, const char *mesh)
     DBSetDataReadMask(mask);
     if (um == NULL)
         EXCEPTION1(InvalidVariableException, mesh);
+    FIX_DATA_TYPE(um);
 
     vtkIntArray *rv = NULL;
     if (um->zones->gzoneno != NULL)
@@ -11641,6 +11830,9 @@ avtSiloFileFormat::GetDataExtents(const char *varName)
 //
 //    Mark C. Miller, Fri Oct 30 14:03:13 PDT 2009
 //    Handle Silo's DB_DTPTR configuration option.
+//
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 
 avtMaterial *
@@ -11652,6 +11844,7 @@ avtSiloFileFormat::CalcMaterial(DBfile *dbfile, char *matname, const char *tmn,
     {
         EXCEPTION1(InvalidVariableException, matname);
     }
+    FIX_DATA_TYPE(silomat);
 
     //
     // Get the parent multi-mat object, if there is any, because it could
@@ -11827,6 +12020,8 @@ avtSiloFileFormat::CalcMaterial(DBfile *dbfile, char *matname, const char *tmn,
 //    Convert other data types to float for now since avtSpecies can't 
 //    store them.
 //
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 
 avtSpecies *
@@ -11837,6 +12032,7 @@ avtSiloFileFormat::CalcSpecies(DBfile *dbfile, char *specname)
     {
         EXCEPTION1(InvalidVariableException, specname);
     }
+    FIX_DATA_TYPE(silospec);
 
     if(silospec->datatype != DB_FLOAT)
     {
@@ -11909,6 +12105,9 @@ avtSiloFileFormat::CalcSpecies(DBfile *dbfile, char *specname)
 //    Mark C. Miller, Sun Dec  3 12:20:11 PST 2006
 //    Moved code to set data read mask back to its original value to *before*
 //    throwing of exeption.
+//
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 
 avtFacelist *
@@ -11926,6 +12125,7 @@ avtSiloFileFormat::CalcExternalFacelist(DBfile *dbfile, char *mesh)
     DBSetDataReadMask(mask);
     if (um == NULL)
         EXCEPTION1(InvalidVariableException, mesh);
+    FIX_DATA_TYPE(um);
     DBfacelist *fl = um->faces;
 
     if (fl == NULL)
@@ -13353,6 +13553,9 @@ avtSiloFileFormat::AddNodelistEnumerations(DBfile *dbfile, avtDatabaseMetaData *
 //    just try to re-use the file opening logic and management routines of
 //    the plugin instead of solve problems with file naming here. Also, added
 //    logic to deal with EMTPY blocks in the mesh.
+//
+//    Mark C. Miller, Thu Dec 10 09:55:42 PST 2009
+//    Added FIX_DATA_TYPE. See note at top of this file.
 // ****************************************************************************
 void
 avtSiloFileFormat::AddAnnotIntNodelistEnumerations(DBfile *dbfile, avtDatabaseMetaData *md,
@@ -13384,6 +13587,7 @@ avtSiloFileFormat::AddAnnotIntNodelistEnumerations(DBfile *dbfile, avtDatabaseMe
         DBcompoundarray *ai = DBGetCompoundarray(correctFile, "ANNOTATION_INT");
         if (ai)
         {
+            FIX_DATA_TYPE(ai);
             debug5 << "Found ANNOTATION_INT object for block " << i << endl;
             for (int j = 0; j < ai->nelems; j++)
             {
@@ -13492,19 +13696,23 @@ avtSiloFileFormat::AddAnnotIntNodelistEnumerations(DBfile *dbfile, avtDatabaseMe
 //    Hank Childs, Mon May 25 11:26:25 PDT 2009
 //    Fix macro compilation problem with old versions of Silo.
 //
+//    Mark C. Miller, Mon Nov  9 08:54:28 PST 2009
+//    Protected calls to DBForceSingle with check for whether plugin is
+//    actually forcing single precision.
 // ****************************************************************************
 
 #ifdef SILO_VERSION_GE 
 #if SILO_VERSION_GE(4,6,3)
 static DBgroupelmap * 
-GetCondensedGroupelMap(DBfile *dbfile, DBmrgtnode *rootNode)
+GetCondensedGroupelMap(DBfile *dbfile, DBmrgtnode *rootNode, int dontForceSingle)
 {
     int i,j,k,q,pass;
     DBgroupelmap *retval = 0;
 
     // We do this to prevent Silo for re-interpreting integer data in
     // groupel maps
-    DBForceSingle(0);
+    if (dontForceSingle != 0)
+        DBForceSingle(0);
 
     if (rootNode->num_children == 1 && rootNode->children[0]->narray == 0)
     {
@@ -13606,7 +13814,8 @@ GetCondensedGroupelMap(DBfile *dbfile, DBmrgtnode *rootNode)
         }
     }
 
-    DBForceSingle(1);
+    if (dontForceSingle == 0)
+        DBForceSingle(1);
     return retval;
 }
 #endif
@@ -13630,11 +13839,14 @@ GetCondensedGroupelMap(DBfile *dbfile, DBmrgtnode *rootNode)
 //    Hank Childs, Mon May 25 11:26:25 PDT 2009
 //    Fix macro compilation problem with old versions of Silo.
 //
+//    Mark C. Miller, Mon Nov  9 10:43:05 PST 2009
+//    Added dontForceSingle arg.
 // ****************************************************************************
 
 static void
 HandleMrgtreeForMultimesh(DBfile *dbfile, DBmultimesh *mm, const char *multimesh_name,
-    avtMeshType *mt, int *num_groups, vector<int> *group_ids, vector<string> *block_names)
+    avtMeshType *mt, int *num_groups, vector<int> *group_ids, vector<string> *block_names,
+    int dontForceSingle)
 {
 #ifdef SILO_VERSION_GE
 #if SILO_VERSION_GE(4,6,3)
@@ -13691,7 +13903,7 @@ HandleMrgtreeForMultimesh(DBfile *dbfile, DBmultimesh *mm, const char *multimesh
     //
     // Get level grouping information from the levels subtree
     //
-    DBgroupelmap *lvlgm = GetCondensedGroupelMap(dbfile, levelsNode);
+    DBgroupelmap *lvlgm = GetCondensedGroupelMap(dbfile, levelsNode, dontForceSingle);
     *num_groups = lvlgm->num_segments;
     group_ids->resize(mm->nblocks,-1);
     for (i = 0; i < lvlgm->num_segments; i++)
@@ -13832,11 +14044,14 @@ HandleMrgtreeForMultimesh(DBfile *dbfile, DBmultimesh *mm, const char *multimesh
 //    Hank Childs, Mon May 25 11:26:25 PDT 2009
 //    Add support for old versions of Silo.
 //
+//    Mark C. Miller, Mon Nov  9 08:54:59 PST 2009
+//    Protecting calls to DBForceSingle with check to see if plugin is
+//    really forcing single.
 // ****************************************************************************
 static void
 BuildDomainAuxiliaryInfoForAMRMeshes(DBfile *dbfile, DBmultimesh *mm,
     const char *meshName, int timestate, int db_mesh_type,
-    avtVariableCache *cache)
+    avtVariableCache *cache, int dontForceSingle)
 {
 #ifdef MDSERVER
 
@@ -13942,7 +14157,7 @@ BuildDomainAuxiliaryInfoForAMRMeshes(DBfile *dbfile, DBmultimesh *mm,
     //
     // Get level grouping information from tree
     //
-    DBgroupelmap *lvlgm = GetCondensedGroupelMap(dbfile, levelsNode);
+    DBgroupelmap *lvlgm = GetCondensedGroupelMap(dbfile, levelsNode, dontForceSingle);
     num_levels = lvlgm->num_segments;
     debug5 << "num_levels = " << num_levels << endl;
     vector<int> levelId;
@@ -13974,16 +14189,18 @@ BuildDomainAuxiliaryInfoForAMRMeshes(DBfile *dbfile, DBmultimesh *mm,
     //
     // Get Parent/Child maps
     //
-    DBgroupelmap *chldgm = GetCondensedGroupelMap(dbfile, childsNode);
+    DBgroupelmap *chldgm = GetCondensedGroupelMap(dbfile, childsNode, dontForceSingle);
 
     //
     // Read the ratios variable (on the levels) and the parent/child
     // map.
     //
-    DBForceSingle(0);
+    if (dontForceSingle != 0)
+        DBForceSingle(0);
     DBmrgvar *ratvar = DBGetMrgvar(dbfile, ratioVarName.c_str());
     DBmrgvar *ijkvar = DBGetMrgvar(dbfile, ijkExtsVarName.c_str());
-    DBForceSingle(1);
+    if (dontForceSingle == 0)
+        DBForceSingle(1);
 
     //
     // The number of patches can be inferred from the size of the child groupel map.
