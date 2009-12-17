@@ -3057,8 +3057,7 @@ function apply_qt_338_linux_gcc_x86_64_patch__after_configure
 
     # By placing in environment variable, it removes extraneously whitespace,
     # making "cut" command easier to form.
-    OLDDIR=$PWD
-    cd $QT_BUILD_DIR
+
     QT_X11DIR_TMP=$(cat mkspecs/${QT_PLATFORM}/qmake.conf | \
     grep QMAKE_LIBDIR_X11)
     QT_X11DIR=$(echo $QT_X11DIR_TMP | cut -d' ' -f3)
@@ -3110,11 +3109,9 @@ diff -rp qt-x11-free-3.3.8.orig/config.tests/x11/opengl.test qt-x11-free-3.3.8/c
 EOF
       if [[ $? != 0 ]] ; then
          echo "Qt patch for V3.3.8 on Linux x86_64/gcc failed."
-         cd $OLDDIR
          return 1
       fi
    fi
-   cd $OLDDIR
 
    return 0
 }
@@ -3155,8 +3152,7 @@ function apply_qt_patch_after_first_configure
    if [[ "$QT_PLATFORM" == "linux-g++-64" ]] ; then
        apply_qt_338_linux_gcc_x86_64_patch__after_configure
    fi
-   OLDDIR=$PWD
-   cd ${QT_BUILD_DIR}
+
    if [[ "$HAS_THREAD" != "" ]] ; then
       cat mkspecs/${QT_PLATFORM}/qmake.conf | sed 's/qt-mt/qt/g' > tmp.conf
       mv -f mkspecs/${QT_PLATFORM}/qmake.conf \
@@ -3171,7 +3167,6 @@ function apply_qt_patch_after_first_configure
       mkspecs/${QT_PLATFORM}/qmake.conf.orig
       mv -f tmp.conf mkspecs/${QT_PLATFORM}/qmake.conf
    fi
-   cd $OLDDIR
 
    return 0
 }
@@ -3181,6 +3176,7 @@ function build_qt
     #
     # Unzip the file, provided a gzipped file exists.
     #
+    info "Unzipping/Untarring Qt . . ."
     untarred_qt=0
     if [[ -d ${QT_BUILD_DIR} ]] ; then
        info_box "Found ${QT_BUILD_DIR} . . ." 1>&3
@@ -3188,28 +3184,28 @@ function build_qt
     elif [[ -e ${QT_FILE} ]] ; then
        info_box "Unzipping/Untarring ${QT_FILE} . . ." 1>&3
        uncompress_untar ${QT_FILE}
-       tar xf qt-linux-xlc.tar
-       untarred_qt=1
        if [[ $? != 0 ]] ; then
           echo \
 "Unable to untar $QT_FILE  Corrupted file or out of space on device?"
           return 1
        fi
+       untarred_qt=1
     elif [[ -e ${QT_FILE%.gz} ]] ; then
        info_box "Untarring ${QT_FILE%.*} . . ." 1>&3
        tar xf ${QT_FILE%.*}
-       untarred_qt=1
        if [[ $? != 0 ]] ; then
           echo \
 "Unable to untar ${QT_FILE%.*}.  Corrupted file or out of space on device?"
           return 1
        fi
+       untarred_qt=1
     fi
     echo "Done with untar"
 
     #
     # Patch Qt
     #
+    info "Patching Qt . . ."
     info_box "Patching Qt . . ." 1>&3
     apply_qt_patch
     if [[ $? != 0 ]] ; then
@@ -3227,6 +3223,7 @@ function build_qt
     #
     # Set up environment variables for Qt.
     #
+    info "Building Qt . . ."
     cd ${QT_BUILD_DIR}
     export QTDIR="$PWD"
     export PATH="$QTDIR"/bin:"$PATH"
