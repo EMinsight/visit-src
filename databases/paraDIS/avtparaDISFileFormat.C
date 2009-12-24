@@ -89,14 +89,25 @@ avtparaDISFileFormat::avtparaDISFileFormat(const char *filename)
  
   paraDIS_init(); 
   // DebugStream::GetLevel doesn't exist in 1.12RC, so turning off
-  // debugging as a work around.
+  // debugging as a work around.  It does exist in the trunk, so 
+  // leave as follows in trunk.  Sigh.  
   // mVerbosity = DebugStream::GetLevel(); 
   mVerbosity = 0; 
+  if (debug1_real) mVerbosity++;
+  if (debug2_real) mVerbosity++;
+  if (debug3_real) mVerbosity++;
+  if (debug4_real) mVerbosity++;
+  if (debug5_real) mVerbosity++;
+  
   string debugfile ; 
+  char *paradis_verbose = getenv("PARADIS_VERBOSE"); 
+  if (paradis_verbose) {
+    mVerbosity = atoi(paradis_verbose); 
+  }
+  
   if (mVerbosity) {
     debugfile = "paradis_debug_out.log";
   }
-  
   paraDIS_SetVerbosity(mVerbosity, debugfile.c_str()); 
   /*!
     Write out files
