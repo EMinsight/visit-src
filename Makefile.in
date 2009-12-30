@@ -170,6 +170,11 @@
 #    been defined by build_visit and it will contain the user's env. just
 #    after starting build_visit but before build_visit starts adding things
 #    to the user's environment.
+# 
+#    Cyrus Harrison, Wed Dec 30 13:28:52 PST 2009
+#    Removed env-make var collision check  b/c it is bad actor on too many
+#    systems.
+#
 ##############################################################################
 
 @SET_MAKE@
@@ -223,7 +228,6 @@ DISTCLEAN_FILES= Makefile config.cache config.log config.status \
 	include/make-depend-gnu include/make-depend-std \
 	include/make-targets-gnu include/make-targets-std
 
-message: check-make-and-env-vars
 
 maintainer-clean: distclean
 	-$(RM) ${DISTCLEAN_FILES}
@@ -231,40 +235,3 @@ maintainer-clean: distclean
 
 visitmodule:
 	do (cd visitpy && $(MAKE) $@) || exit 1; done
-
-check-make-and-env-vars:
-	@isdbg=$$(echo $(CXXFLAGS) | tr ' ' '\n' | grep -e '-g'); \
-	if test -z "$$isdbg" -a -z "$(VISIT_NOCKENV)"; then \
-	    echo "Checking for possible collisions between environment"; \
-	    echo -n "and VisIt's Make variables..."; \
-	    if test -z "$(BUILD_VISIT_ENV)"; then \
-	        env | cut -d'=' -f1 | sort | uniq | grep . > env_vars.txt; \
-            else \
-                echo $(BUILD_VISIT_ENV) | tr ' ' '\n' | grep . > env_vars.txt; \
-            fi; \
-	    os=$$(uname -s); \
-	    if test "$$os" = "Darwin"; then \
-	        find . -name .svn -prune -o -name Makefile | grep -v .svn | xargs -n 1 -I '{}' cat '{}' | tr ' ' '\n'| grep '$$([A-Z_]*)' | sed -e 's#.*$$(\(.*\)).*#\1#' | sort | uniq > make_vars.txt; \
-	    else \
-	        find . -name .svn -prune -o -name Makefile | grep -v .svn | xargs -n 1 -i cat '{}' | tr ' ' '\n'| grep '$$([A-Z_]*)' | sed -e 's#.*$$(\(.*\)).*#\1#' | sort | uniq > make_vars.txt; \
-	    fi; \
-	    em_vars=$$(grep -x -f env_vars.txt make_vars.txt); \
-	    rm -f env_vars.txt make_vars.txt; \
-	    if test -n "$$em_vars"; then \
-	        echo ""; \
-	        echo "The following variables in your environment MAY collide with"; \
-	        echo "variables in VisIt's Makefiles..."; \
-	        echo "------------------------------------------------------------"; \
-	        echo $$em_vars | tr ' ' '\n'; \
-	        echo "------------------------------------------------------------"; \
-                echo "Please temporarily remove these variables from your environment"; \
-	        echo "using unsetenv (csh) or unset (sh) before proceeding. Or,"; \
-	        echo "you may instead and at your own risk, override this error by"; \
-                echo "adding 'VISIT_NOCKENV=1' to your make command line"; \
-                echo "(e.g. 'make VISIT_NOCKENV=1 ...') or set VISIT_NOCKENV to 1";\
-                echo "in your environment."; \
-	        exit 1; \
-	    else \
-	        echo "OK"; \
-	    fi \
-	fi
