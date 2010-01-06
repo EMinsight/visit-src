@@ -228,6 +228,7 @@ DISTCLEAN_FILES= Makefile config.cache config.log config.status \
 	include/make-depend-gnu include/make-depend-std \
 	include/make-targets-gnu include/make-targets-std
 
+message:
 
 maintainer-clean: distclean
 	-$(RM) ${DISTCLEAN_FILES}
