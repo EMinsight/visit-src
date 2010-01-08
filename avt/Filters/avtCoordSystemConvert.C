@@ -755,6 +755,9 @@ FixWraparounds(vtkDataSet *in_ds, int comp_idx)
 //    Hank Childs, Tue Nov 15 15:40:04 PST 2005
 //    Re-order coordinates.
 //
+//    Hank Childs, Thu Jan  7 16:20:04 PST 2010
+//    Invalidate spatial meta-data.
+//
 // ****************************************************************************
 
 void
@@ -821,6 +824,7 @@ avtCoordSystemConvert::UpdateDataObjectInfo(void)
         outAtts.SetYUnits("radians");
     }
     GetOutput()->GetInfo().GetValidity().SetPointsWereTransformed(true);
+    GetOutput()->GetInfo().GetValidity().InvalidateSpatialMetaData();
 }
 
 
