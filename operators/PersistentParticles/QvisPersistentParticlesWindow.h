@@ -87,23 +87,36 @@ class QvisPersistentParticlesWindow : public QvisOperatorWindow
     virtual void GetCurrentValues(int which_widget);
   private slots:
     void startIndexProcessText();
-    void startPathTypeChanged(int button);
+    void startPathTypeChanged(int val);
     void stopIndexProcessText();
-    void stopPathTypeChanged(int button);
+    void stopPathTypeChanged(int val);
+    void updateStopIndexText();
+    void updateStartIndexText();
     void strideProcessText();
-    void indexVariableChanged(const QString &varName);
+    void traceVariableXChanged(const QString &varName);
+    void traceVariableYChanged(const QString &varName);
+    void traceVariableZChanged(const QString &varName);
     void connectParticlesChanged(bool val);
+    void indexVariableChanged(const QString &varName);
   private:
     QLineEdit *startIndex;
-    QButtonGroup *startPathTypeButtons;
+    QButtonGroup *startPathType;
     QLineEdit *stopIndex;
-    QButtonGroup *stopPathTypeButtons;
+    QButtonGroup *stopPathType;
     QLineEdit *stride;
-    QvisVariableButton *indexVariable;
+    QvisVariableButton *traceVariableX;
+    QvisVariableButton *traceVariableY;
+    QvisVariableButton *traceVariableZ;
     QCheckBox *connectParticles;
+    QvisVariableButton *indexVariable;
     QLabel *startIndexLabel;
+    QLabel *startPathTypeLabel;
     QLabel *stopIndexLabel;
+    QLabel *stopPathTypeLabel;
     QLabel *strideLabel;
+    QLabel *traceVariableXLabel;
+    QLabel *traceVariableYLabel;
+    QLabel *traceVariableZLabel;
     QLabel *indexVariableLabel;
 
     PersistentParticlesAttributes *atts;

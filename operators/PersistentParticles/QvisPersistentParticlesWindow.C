@@ -125,111 +125,95 @@ QvisPersistentParticlesWindow::~QvisPersistentParticlesWindow()
 void
 QvisPersistentParticlesWindow::CreateWindowContents()
 {
-    QLabel *dummyLabel = new QLabel(tr(" "), central, "dummyLabel");
+    QGridLayout *mainLayout = new QGridLayout(topLayout, 10,2,  10, "mainLayout");
 
-    //
-    // Create the start absolute/relative path type radio buttons
-    //
 
-    QGridLayout *startLayout = new QGridLayout(topLayout, 1, 2, 10, "startLayout");
-
-    startIndexLabel = new QLabel(tr("Index of the first time slice"), central, "startIndexLabel");
-    startLayout->addWidget(startIndexLabel,0,0);
+    startIndexLabel = new QLabel(tr("Index of first time slice"), central, "startIndexLabel");
+    mainLayout->addWidget(startIndexLabel,0,0);
     startIndex = new QLineEdit(central, "startIndex");
     connect(startIndex, SIGNAL(returnPressed()),
             this, SLOT(startIndexProcessText()));
-    startLayout->addWidget(startIndex, 0,1);
+    mainLayout->addWidget(startIndex, 0,1);
 
-
-    QHBoxLayout *startPathTypeLayout = new QHBoxLayout(topLayout);
- 
-    // Create a group of radio buttons 
-    startPathTypeButtons = new QButtonGroup( central, "startPathTypeRadioGroup" );
-    startPathTypeButtons->setFrameStyle(QFrame::NoFrame);
-    QLabel *startPathTypeLabel = new QLabel(startPathTypeButtons, tr("    Start Path Type"),
-         central, "startPathTypeLabel");
-    startPathTypeLayout->addWidget(startPathTypeLabel);
- 
-    QHBoxLayout *startPathTypeButtonsLayout = new QHBoxLayout(startPathTypeButtons);
-    startPathTypeButtonsLayout->setSpacing(10);
-    QRadioButton *rb = new QRadioButton(tr("Absolute"), startPathTypeButtons );
-    rb->setChecked( TRUE );
-    startPathTypeButtonsLayout->addWidget(rb);
-    rb = new QRadioButton( startPathTypeButtons );
-    rb->setText( tr("Relative to current time slice") );
-    startPathTypeButtonsLayout->addWidget(rb);
-    startPathTypeLayout->addWidget( startPathTypeButtons );
-    startPathTypeLayout->addStretch(0);
-    // Each time a radio button is clicked, call the startPathTypeChanged slot.
-    connect(startPathTypeButtons, SIGNAL(clicked(int)),
+    startPathTypeLabel = new QLabel(tr("Type of path"), central, "startPathTypeLabel");
+    mainLayout->addWidget(startPathTypeLabel,1,0);
+    startPathType = new QButtonGroup(central, "startPathType");
+    startPathType->setFrameStyle(QFrame::NoFrame);
+    QHBoxLayout *startPathTypeLayout = new QHBoxLayout(startPathType);
+    startPathTypeLayout->setSpacing(10);
+    QRadioButton *startPathTypePathTypeEnumAbsolute = new QRadioButton(tr("Absolute"), startPathType);
+    startPathTypeLayout->addWidget(startPathTypePathTypeEnumAbsolute);
+    QRadioButton *startPathTypePathTypeEnumRelative = new QRadioButton(tr("Relative"), startPathType);
+    startPathTypeLayout->addWidget(startPathTypePathTypeEnumRelative);
+    connect(startPathType, SIGNAL(clicked(int)),
             this, SLOT(startPathTypeChanged(int)));
- 
-    //
-    // Create the stop absolute/relative path type radio buttons
-    //
+    mainLayout->addWidget(startPathType, 1,1);
 
-    QGridLayout *stopLayout = new QGridLayout(topLayout, 2, 2, 10, "stopLayout");
-
-    stopLayout->addWidget(dummyLabel,0,0);
-
-    stopIndexLabel = new QLabel(tr("Index of the last time slice"), central, "stopIndexLabel");
-    stopLayout->addWidget(stopIndexLabel,1,0);
+    stopIndexLabel = new QLabel(tr("Index of last time slice"), central, "stopIndexLabel");
+    mainLayout->addWidget(stopIndexLabel,2,0);
     stopIndex = new QLineEdit(central, "stopIndex");
     connect(stopIndex, SIGNAL(returnPressed()),
             this, SLOT(stopIndexProcessText()));
-    stopLayout->addWidget(stopIndex, 1,1);
+    mainLayout->addWidget(stopIndex, 2,1);
 
-
-    QHBoxLayout *stopPathTypeLayout = new QHBoxLayout(topLayout);
- 
-    // Create a group of radio buttons 
-    stopPathTypeButtons = new QButtonGroup( central, "stopPathTypeRadioGroup" );
-    stopPathTypeButtons->setFrameStyle(QFrame::NoFrame);
-    QLabel *stopPathTypeLabel = new QLabel(stopPathTypeButtons, tr("    Stop Path Type"),
-         central, "stopPathTypeLabel");
-    stopPathTypeLayout->addWidget(stopPathTypeLabel);
- 
-    QHBoxLayout *stopPathTypeButtonsLayout = new QHBoxLayout(stopPathTypeButtons);
-    stopPathTypeButtonsLayout->setSpacing(10);
-    rb = new QRadioButton(tr("Absolute"), stopPathTypeButtons );
-    rb->setChecked( TRUE );
-    stopPathTypeButtonsLayout->addWidget(rb);
-    rb = new QRadioButton( stopPathTypeButtons );
-    rb->setText( tr("Relative to current time slice") );
-    stopPathTypeButtonsLayout->addWidget(rb);
-    stopPathTypeLayout->addWidget( stopPathTypeButtons );
-    stopPathTypeLayout->addStretch(0);
-    // Each time a radio button is clicked, call the stopPathTypeChanged slot.
-    connect(stopPathTypeButtons, SIGNAL(clicked(int)),
+    stopPathTypeLabel = new QLabel(tr("Type of path"), central, "stopPathTypeLabel");
+    mainLayout->addWidget(stopPathTypeLabel,3,0);
+    stopPathType = new QButtonGroup(central, "stopPathType");
+    stopPathType->setFrameStyle(QFrame::NoFrame);
+    QHBoxLayout *stopPathTypeLayout = new QHBoxLayout(stopPathType);
+    stopPathTypeLayout->setSpacing(10);
+    QRadioButton *stopPathTypePathTypeEnumAbsolute = new QRadioButton(tr("Absolute"), stopPathType);
+    stopPathTypeLayout->addWidget(stopPathTypePathTypeEnumAbsolute);
+    QRadioButton *stopPathTypePathTypeEnumRelative = new QRadioButton(tr("Relative"), stopPathType);
+    stopPathTypeLayout->addWidget(stopPathTypePathTypeEnumRelative);
+    connect(stopPathType, SIGNAL(clicked(int)),
             this, SLOT(stopPathTypeChanged(int)));
- 
-    //
-    // Create the stop absolute/relative path type radio buttons
-    //
-
-    QGridLayout *mainLayout = new QGridLayout(topLayout, 4, 2, 10, "mainLayout");
-
-    mainLayout->addWidget(dummyLabel,0,0);
+    mainLayout->addWidget(stopPathType, 3,1);
 
     strideLabel = new QLabel(tr("Skip rate between time slices"), central, "strideLabel");
-    mainLayout->addWidget(strideLabel,1,0);
+    mainLayout->addWidget(strideLabel,4,0);
     stride = new QLineEdit(central, "stride");
     connect(stride, SIGNAL(returnPressed()),
             this, SLOT(strideProcessText()));
-    mainLayout->addWidget(stride, 1,1);
+    mainLayout->addWidget(stride, 4,1);
 
-    indexVariableLabel = new QLabel(tr("Index Variable"), central, "indexVariableLabel");
-    mainLayout->addWidget(indexVariableLabel,2,0);
-    int indexVariableMask = QvisVariableButton::Scalars;
-    indexVariable = new QvisVariableButton(true, true, true, indexVariableMask, central, "indexVariable");
-    connect(indexVariable, SIGNAL(activated(const QString&)),
-            this, SLOT(indexVariableChanged(const QString&)));
-    mainLayout->addWidget(indexVariable, 2,1);
+    traceVariableXLabel = new QLabel(tr("X-Coordinate"), central, "traceVariableXLabel");
+    mainLayout->addWidget(traceVariableXLabel,5,0);
+    int traceVariableXMask = QvisVariableButton::Scalars;
+    traceVariableX = new QvisVariableButton(true, true, true, traceVariableXMask, central, "traceVariableX");
+    connect(traceVariableX, SIGNAL(activated(const QString&)),
+            this, SLOT(traceVariableXChanged(const QString&)));
+    mainLayout->addWidget(traceVariableX, 5,1);
+
+    traceVariableYLabel = new QLabel(tr("Y-Coordinate"), central, "traceVariableYLabel");
+    mainLayout->addWidget(traceVariableYLabel,6,0);
+    int traceVariableYMask = QvisVariableButton::Scalars;
+    traceVariableY = new QvisVariableButton(true, true, true, traceVariableYMask, central, "traceVariableY");
+    connect(traceVariableY, SIGNAL(activated(const QString&)),
+            this, SLOT(traceVariableYChanged(const QString&)));
+    mainLayout->addWidget(traceVariableY, 6,1);
+
+    traceVariableZLabel = new QLabel(tr("Z-Coordinate"), central, "traceVariableZLabel");
+    mainLayout->addWidget(traceVariableZLabel,7,0);
+    int traceVariableZMask = QvisVariableButton::Scalars;
+    traceVariableZ = new QvisVariableButton(true, true, true, traceVariableZMask, central, "traceVariableZ");
+    connect(traceVariableZ, SIGNAL(activated(const QString&)),
+            this, SLOT(traceVariableZChanged(const QString&)));
+    mainLayout->addWidget(traceVariableZ, 7,1);
 
     connectParticles = new QCheckBox(tr("Connect Particles"), central, "connectParticles");
     connect(connectParticles, SIGNAL(toggled(bool)),
             this, SLOT(connectParticlesChanged(bool)));
-    mainLayout->addWidget(connectParticles, 3,0);
+    mainLayout->addWidget(connectParticles, 8,0);
+
+    indexVariableLabel = new QLabel(tr("Index Variable"), central, "indexVariableLabel");
+    mainLayout->addWidget(indexVariableLabel,9,0);
+    int indexVariableMask = QvisVariableButton::Scalars;
+    indexVariable = new QvisVariableButton(true, true, true, indexVariableMask, central, "indexVariable");
+    connect(indexVariable, SIGNAL(activated(const QString&)),
+            this, SLOT(indexVariableChanged(const QString&)));
+    mainLayout->addWidget(indexVariable, 9,1);
+
 }
 
 
@@ -280,9 +264,10 @@ QvisPersistentParticlesWindow::UpdateWindow(bool doAll)
             startIndex->blockSignals(false);
             break;
           case PersistentParticlesAttributes::ID_startPathType:
-            startPathTypeButtons->blockSignals(true);
-            startPathTypeButtons->setButton(atts->GetStartPathType());
-            startPathTypeButtons->blockSignals(false);
+            startPathType->blockSignals(true);
+            startPathType->setButton(atts->GetStartPathType());
+            updateStartIndexText();
+            startPathType->blockSignals(false);
             break;
           case PersistentParticlesAttributes::ID_stopIndex:
             stopIndex->blockSignals(true);
@@ -291,9 +276,10 @@ QvisPersistentParticlesWindow::UpdateWindow(bool doAll)
             stopIndex->blockSignals(false);
             break;
           case PersistentParticlesAttributes::ID_stopPathType:
-            stopPathTypeButtons->blockSignals(true);
-            stopPathTypeButtons->setButton(atts->GetStopPathType());
-            stopPathTypeButtons->blockSignals(false);
+            stopPathType->blockSignals(true);
+            stopPathType->setButton(atts->GetStopPathType());
+            updateStopIndexText();
+            stopPathType->blockSignals(false);
             break;
           case PersistentParticlesAttributes::ID_stride:
             stride->blockSignals(true);
@@ -301,15 +287,42 @@ QvisPersistentParticlesWindow::UpdateWindow(bool doAll)
             stride->setText(temp);
             stride->blockSignals(false);
             break;
+          case PersistentParticlesAttributes::ID_traceVariableX:
+            traceVariableX->blockSignals(true);
+            traceVariableX->setText(atts->GetTraceVariableX().c_str());
+            traceVariableX->blockSignals(false);
+            break;
+          case PersistentParticlesAttributes::ID_traceVariableY:
+            traceVariableY->blockSignals(true);
+            traceVariableY->setText(atts->GetTraceVariableY().c_str());
+            traceVariableY->blockSignals(false);
+            break;
+          case PersistentParticlesAttributes::ID_traceVariableZ:
+            traceVariableZ->blockSignals(true);
+            traceVariableZ->setText(atts->GetTraceVariableZ().c_str());
+            traceVariableZ->blockSignals(false);
+            break;
+          case PersistentParticlesAttributes::ID_connectParticles:
+            if (atts->GetConnectParticles() == true)
+            {
+                indexVariable->setEnabled(true);
+                if(indexVariableLabel)
+                    indexVariableLabel->setEnabled(true);
+            }
+            else
+            {
+                indexVariable->setEnabled(false);
+                if(indexVariableLabel)
+                    indexVariableLabel->setEnabled(false);
+            }
+            connectParticles->blockSignals(true);
+            connectParticles->setChecked(atts->GetConnectParticles());
+            connectParticles->blockSignals(false);
+            break;
           case PersistentParticlesAttributes::ID_indexVariable:
             indexVariable->blockSignals(true);
             indexVariable->setText(atts->GetIndexVariable().c_str());
             indexVariable->blockSignals(false);
-            break;
-          case PersistentParticlesAttributes::ID_connectParticles:
-            connectParticles->blockSignals(true);
-            connectParticles->setChecked(atts->GetConnectParticles());
-            connectParticles->blockSignals(false);
             break;
         }
     }
@@ -410,57 +423,25 @@ QvisPersistentParticlesWindow::GetCurrentValues(int which_widget)
 // Qt Slot functions
 //
 
-void
-QvisPersistentParticlesWindow::startPathTypeChanged(int button)
-{
-    PersistentParticlesAttributes::PathTypeEnum val =
-      PersistentParticlesAttributes::PathTypeEnum(button);
-
-    // Only do it if it changed.
-    if (val != atts->GetStartPathType())
-    {
-        atts->SetStartPathType(val);
-        Apply();
-    }
-
-    if(button == 0)
-    {
-        startIndexLabel->setText(tr("Index of the first time slice"));
-    }
-    else
-    {
-        startIndexLabel->setText(tr("Number of slices backwards in time"));
-    }
-}
-
-void
-QvisPersistentParticlesWindow::stopPathTypeChanged(int button)
-{
-    PersistentParticlesAttributes::PathTypeEnum val =
-      PersistentParticlesAttributes::PathTypeEnum(button);
-
-    // Only do it if it changed.
-    if (val != atts->GetStopPathType())
-    {
-        atts->SetStopPathType(val);
-        Apply();
-    }
-
-    if(button == 0)
-    {
-        stopIndexLabel->setText(tr("Index of the last time slice"));
-    }
-    else
-    {
-        stopIndexLabel->setText(tr("Number of slices forward in time"));
-    }
-}
 
 void
 QvisPersistentParticlesWindow::startIndexProcessText()
 {
     GetCurrentValues(PersistentParticlesAttributes::ID_startIndex);
     Apply();
+}
+
+
+void
+QvisPersistentParticlesWindow::startPathTypeChanged(int val)
+{
+    if(val != atts->GetStartPathType())
+    {
+        atts->SetStartPathType(PersistentParticlesAttributes::PathTypeEnum(val));
+        SetUpdate(false);
+        Apply();
+    }
+    updateStartIndexText();
 }
 
 
@@ -473,9 +454,82 @@ QvisPersistentParticlesWindow::stopIndexProcessText()
 
 
 void
+QvisPersistentParticlesWindow::stopPathTypeChanged(int val)
+{
+    if(val != atts->GetStopPathType())
+    {
+        atts->SetStopPathType(PersistentParticlesAttributes::PathTypeEnum(val));
+        SetUpdate(false);
+        Apply();
+    }
+    updateStopIndexText();
+}
+
+void
+QvisPersistentParticlesWindow::updateStopIndexText()
+{
+    if( atts->GetStopPathType() == 0 )
+    {
+        stopIndexLabel->setText(tr("Index of the last time slice"));
+    }
+    else
+    {
+        stopIndexLabel->setText(tr("Number of slices forward in time"));
+    }
+}
+
+void
+QvisPersistentParticlesWindow::updateStartIndexText()
+{
+    if( atts->GetStartPathType() == 0 )
+    {
+        startIndexLabel->setText(tr("Index of the first time slice"));
+    }
+    else
+    {
+        startIndexLabel->setText(tr("Number of slices backwards in time"));
+    }
+}
+
+void
 QvisPersistentParticlesWindow::strideProcessText()
 {
     GetCurrentValues(PersistentParticlesAttributes::ID_stride);
+    Apply();
+}
+
+
+void
+QvisPersistentParticlesWindow::traceVariableXChanged(const QString &varName)
+{
+    atts->SetTraceVariableX(varName.latin1());
+    SetUpdate(false);
+    Apply();
+}
+
+
+void
+QvisPersistentParticlesWindow::traceVariableYChanged(const QString &varName)
+{
+    atts->SetTraceVariableY(varName.latin1());
+    SetUpdate(false);
+    Apply();
+}
+
+
+void
+QvisPersistentParticlesWindow::traceVariableZChanged(const QString &varName)
+{
+    atts->SetTraceVariableZ(varName.latin1());
+    SetUpdate(false);
+    Apply();
+}
+
+
+void
+QvisPersistentParticlesWindow::connectParticlesChanged(bool val)
+{
+    atts->SetConnectParticles(val);
     Apply();
 }
 
@@ -488,12 +542,4 @@ QvisPersistentParticlesWindow::indexVariableChanged(const QString &varName)
     Apply();
 }
 
-
-void
-QvisPersistentParticlesWindow::connectParticlesChanged(bool val)
-{
-    atts->SetConnectParticles(val);
-    SetUpdate(false);
-    Apply();
-}
 

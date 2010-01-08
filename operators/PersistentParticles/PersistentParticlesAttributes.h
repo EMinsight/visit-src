@@ -80,6 +80,9 @@ public:
 
     // Property selection methods
     virtual void SelectAll();
+    void SelectTraceVariableX();
+    void SelectTraceVariableY();
+    void SelectTraceVariableZ();
     void SelectIndexVariable();
 
     // Property setting methods
@@ -88,8 +91,11 @@ public:
     void SetStopIndex(int stopIndex_);
     void SetStopPathType(PathTypeEnum stopPathType_);
     void SetStride(int stride_);
-    void SetIndexVariable(const std::string &indexVariable_);
+    void SetTraceVariableX(const std::string &traceVariableX_);
+    void SetTraceVariableY(const std::string &traceVariableY_);
+    void SetTraceVariableZ(const std::string &traceVariableZ_);
     void SetConnectParticles(bool connectParticles_);
+    void SetIndexVariable(const std::string &indexVariable_);
 
     // Property getting methods
     int               GetStartIndex() const;
@@ -97,9 +103,15 @@ public:
     int               GetStopIndex() const;
     PathTypeEnum      GetStopPathType() const;
     int               GetStride() const;
+    const std::string &GetTraceVariableX() const;
+          std::string &GetTraceVariableX();
+    const std::string &GetTraceVariableY() const;
+          std::string &GetTraceVariableY();
+    const std::string &GetTraceVariableZ() const;
+          std::string &GetTraceVariableZ();
+    bool              GetConnectParticles() const;
     const std::string &GetIndexVariable() const;
           std::string &GetIndexVariable();
-    bool              GetConnectParticles() const;
 
     // Persistence methods
     virtual bool CreateNode(DataNode *node, bool completeSave, bool forceAdd);
@@ -126,18 +138,24 @@ public:
         ID_stopIndex,
         ID_stopPathType,
         ID_stride,
-        ID_indexVariable,
-        ID_connectParticles
+        ID_traceVariableX,
+        ID_traceVariableY,
+        ID_traceVariableZ,
+        ID_connectParticles,
+        ID_indexVariable
     };
 
 private:
-    int          startIndex;
-    PathTypeEnum startPathType;
-    int          stopIndex;
-    PathTypeEnum stopPathType;
-    int          stride;
-    std::string  indexVariable;
-    bool         connectParticles;
+    int         startIndex;
+    int         startPathType;
+    int         stopIndex;
+    int         stopPathType;
+    int         stride;
+    std::string traceVariableX;
+    std::string traceVariableY;
+    std::string traceVariableZ;
+    bool        connectParticles;
+    std::string indexVariable;
 
     // Static class format string for type map.
     static const char *TypeMapFormatString;
