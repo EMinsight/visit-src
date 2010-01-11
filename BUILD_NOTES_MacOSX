@@ -1,8 +1,11 @@
                          Building VisIt on MacOS X
                          =========================
 
-This document describes how to build VisIt on MacOS X under at least 10.4.x 
-on Intel and 10.3.9 on PPC. 
+This document describes how to build VisIt on MacOS X under at least
+10.4.x on Intel and 10.3.9 on PPC.  Do note that *building* under OS
+X 10.6 ("Snow Leopard") is not supported in the VisIt 1.12 release
+series.  Binaries built on earlier versions of Mac OS X should still
+run fine on Snow Leopard, however.
 
 build_visit
   The recomended method for building VisIt on MacOS X is to use the 
