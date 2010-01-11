@@ -1302,7 +1302,11 @@ I needed to do a machine merge in order to get a universal binary.
 # Build Boxlib.
 #
 # Boxlib requires a Fortran compiler, skip the Boxlib building if you
-# don't have access to a Fortran compiler
+# don't have access to a Fortran compiler.
+# Do note that the 3D version of BoxLib appears to have issues on the
+# Mac.  The build seems okay but 3D BoxLib files do not load on some
+# Mac systems.  The exact issue is not known, but the VisIt team would
+# welcome contributions to address the problem.
 
 tar -zxf boxlib.tar.gz
 cd CCSEApps/BoxLib
