@@ -253,6 +253,12 @@ static const int maxCoincidentNodelists = 12;
 //    Moved logic for 'old' extents interface to CommonPluginInfo where 
 //    old (obsolete) options can be merged with current interface. Also, use
 //    const char* symbol names for options defined in avtSiloOptions.h.
+//
+//    Mark C. Miller, Thu Jan  7 16:22:58 PST 2010
+//    Made it always call DBForceSingle so that you couldn't get into a
+//    situation where you opened a file with dontForceSingle false and later
+//    set dontForceSingle to true but would then neglect to call
+//    DBForceSingle unsetting the value.
 // ****************************************************************************
 
 avtSiloFileFormat::avtSiloFileFormat(const char *toc_name,
@@ -300,8 +306,7 @@ avtSiloFileFormat::avtSiloFileFormat(const char *toc_name,
     //
     // Set any necessary Silo library behavior 
     //
-    if (dontForceSingle == 0)
-        DBForceSingle(1);
+    DBForceSingle(!dontForceSingle);
     
     //
     // If there is ever a problem with Silo, we want it to throw an

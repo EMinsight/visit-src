@@ -199,12 +199,20 @@ avtFLASHFileFormat::InitializeHDF5(void)
 //  Programmer:  Mark C. Miller
 //  Creation:    March 5, 2007 
 //
+//  Modifications:
+//
+//    Mark C. Miller, Mon Jan 11 11:12:46 PST 2010
+//    Replaced call to H5close with H5garbage_collect. Calling H5close is
+//    problematic as VisIt may have other plugins instantiated which are
+//    still interacting with HDF5. Calling garbage collect routine achieves
+//    the desired goal of reducing memory usage without effecting other
+//    plugins that might still be using the HDF5 library.
 // ****************************************************************************
 void
 avtFLASHFileFormat::FinalizeHDF5(void)
 {
-    debug5 << "Finalizing HDF5 Library" << endl;
-    H5close();
+    debug5 << "Garbage collecting HDF5 Library" << endl;
+    H5garbage_collect();
 }
 
 // ****************************************************************************
