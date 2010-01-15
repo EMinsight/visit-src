@@ -1,40 +1,40 @@
 /*****************************************************************************
-*
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
-* Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
-* All rights reserved.
-*
-* This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
-* full copyright notice is contained in the file COPYRIGHT located at the root
-* of the VisIt distribution or at http://www.llnl.gov/visit/copyright.html.
-*
-* Redistribution  and  use  in  source  and  binary  forms,  with  or  without
-* modification, are permitted provided that the following conditions are met:
-*
-*  - Redistributions of  source code must  retain the above  copyright notice,
-*    this list of conditions and the disclaimer below.
-*  - Redistributions in binary form must reproduce the above copyright notice,
-*    this  list of  conditions  and  the  disclaimer (as noted below)  in  the
-*    documentation and/or other materials provided with the distribution.
-*  - Neither the name of  the LLNS/LLNL nor the names of  its contributors may
-*    be used to endorse or promote products derived from this software without
-*    specific prior written permission.
-*
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT  HOLDERS AND CONTRIBUTORS "AS IS"
-* AND ANY EXPRESS OR  IMPLIED WARRANTIES, INCLUDING,  BUT NOT  LIMITED TO, THE
-* IMPLIED WARRANTIES OF MERCHANTABILITY AND  FITNESS FOR A PARTICULAR  PURPOSE
-* ARE  DISCLAIMED. IN  NO EVENT  SHALL LAWRENCE  LIVERMORE NATIONAL  SECURITY,
-* LLC, THE  U.S.  DEPARTMENT OF  ENERGY  OR  CONTRIBUTORS BE  LIABLE  FOR  ANY
-* DIRECT,  INDIRECT,   INCIDENTAL,   SPECIAL,   EXEMPLARY,  OR   CONSEQUENTIAL
-* DAMAGES (INCLUDING, BUT NOT  LIMITED TO, PROCUREMENT OF  SUBSTITUTE GOODS OR
-* SERVICES; LOSS OF  USE, DATA, OR PROFITS; OR  BUSINESS INTERRUPTION) HOWEVER
-* CAUSED  AND  ON  ANY  THEORY  OF  LIABILITY,  WHETHER  IN  CONTRACT,  STRICT
-* LIABILITY, OR TORT  (INCLUDING NEGLIGENCE OR OTHERWISE)  ARISING IN ANY  WAY
-* OUT OF THE  USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
-* DAMAGE.
-*
-*****************************************************************************/
+ *
+ * Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+ * Produced at the Lawrence Livermore National Laboratory
+ * LLNL-CODE-400142
+ * All rights reserved.
+ *
+ * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
+ * full copyright notice is contained in the file COPYRIGHT located at the root
+ * of the VisIt distribution or at http://www.llnl.gov/visit/copyright.html.
+ *
+ * Redistribution  and  use  in  source  and  binary  forms,  with  or  without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ *  - Redistributions of  source code must  retain the above  copyright notice,
+ *    this list of conditions and the disclaimer below.
+ *  - Redistributions in binary form must reproduce the above copyright notice,
+ *    this  list of  conditions  and  the  disclaimer (as noted below)  in  the
+ *    documentation and/or other materials provided with the distribution.
+ *  - Neither the name of  the LLNS/LLNL nor the names of  its contributors may
+ *    be used to endorse or promote products derived from this software without
+ *    specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT  HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR  IMPLIED WARRANTIES, INCLUDING,  BUT NOT  LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND  FITNESS FOR A PARTICULAR  PURPOSE
+ * ARE  DISCLAIMED. IN  NO EVENT  SHALL LAWRENCE  LIVERMORE NATIONAL  SECURITY,
+ * LLC, THE  U.S.  DEPARTMENT OF  ENERGY  OR  CONTRIBUTORS BE  LIABLE  FOR  ANY
+ * DIRECT,  INDIRECT,   INCIDENTAL,   SPECIAL,   EXEMPLARY,  OR   CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT  LIMITED TO, PROCUREMENT OF  SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF  USE, DATA, OR PROFITS; OR  BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED  AND  ON  ANY  THEORY  OF  LIABILITY,  WHETHER  IN  CONTRACT,  STRICT
+ * LIABILITY, OR TORT  (INCLUDING NEGLIGENCE OR OTHERWISE)  ARISING IN ANY  WAY
+ * OUT OF THE  USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
+ * DAMAGE.
+ *
+ *****************************************************************************/
 
 #include <VsPluginInfo.h>
 #include <avtVsFileFormat.h>
@@ -49,9 +49,9 @@
 
 //by default we load 100% of data
 const int VsCommonPluginInfo::defaultStride = 1;
-std::string VsCommonPluginInfo::strideSettingAxis1_Name ="Stride for loading data - Axis 1:";
-std::string VsCommonPluginInfo::strideSettingAxis2_Name ="Stride for loading data - Axis 2:";
-std::string VsCommonPluginInfo::strideSettingAxis3_Name ="Stride for loading data - Axis 3:";
+std::string VsCommonPluginInfo::strideSettingAxis1_Name = "Stride for loading data - Axis 1:";
+std::string VsCommonPluginInfo::strideSettingAxis2_Name = "Stride for loading data - Axis 2:";
+std::string VsCommonPluginInfo::strideSettingAxis3_Name = "Stride for loading data - Axis 3:";
 
 // ****************************************************************************
 //  Method:  VsCommonPluginInfo::VsCommonPluginInfo
@@ -64,10 +64,10 @@ std::string VsCommonPluginInfo::strideSettingAxis3_Name ="Stride for loading dat
 //
 // ****************************************************************************
 VsCommonPluginInfo::VsCommonPluginInfo() {
-       settings.resize(3);
-       settings[0] = defaultStride;
-       settings[1] = defaultStride;
-       settings[2] = defaultStride;
+  settings.resize(3);
+  settings[0] = defaultStride;
+  settings[1] = defaultStride;
+  settings[2] = defaultStride;
 }
 
 // ****************************************************************************
@@ -81,9 +81,9 @@ VsCommonPluginInfo::VsCommonPluginInfo() {
 //
 // ****************************************************************************
 DatabaseType
-VsCommonPluginInfo::GetDatabaseType()
+VsCommonPluginInfo::GetDatabaseType() 
 {
-    return DB_TYPE_STSD;
+  return DB_TYPE_STSD;
 }
 
 // ****************************************************************************
@@ -104,28 +104,29 @@ VsCommonPluginInfo::GetDatabaseType()
 //
 // ****************************************************************************
 avtDatabase *
-VsCommonPluginInfo::SetupDatabase(const char *const *list,
+VsCommonPluginInfo::SetupDatabase(const char * const *list,
                                    int nList, int nBlock)
 {
 #if HDF5_VERSION_GE(1,8,1)
-    avtSTMDFileFormat **ffl = new avtSTMDFileFormat*[nList];
-    for (int i = 0 ; i < nList ; i++)
-    {
-        ffl[i] = new avtVsFileFormat(list[i], settings);
-    }
-    avtSTMDFileFormatInterface *inter
-           = new avtSTMDFileFormatInterface(ffl, nList);
-    return new avtGenericDatabase(inter);
+  avtSTMDFileFormat **ffl = new avtSTMDFileFormat*[nList];
+  for (int i = 0; i < nList; i++)
+  {
+    ffl[i] = new avtVsFileFormat(list[i], settings);
+  }
+  avtSTMDFileFormatInterface *inter
+  = new avtSTMDFileFormatInterface(ffl, nList);
+  return new avtGenericDatabase(inter);
 #else
-                     #ifdef VISIT_VERSION //Visit 2.0.0 and later use VISIT_VERSION instead of VERSION, and require a different debugstream accessor as well
-                            DebugStream::Stream3() <<"VsCommonPluginInfo::SetupDatabase() - Vizschema database plugin requires hdf5 1.8.1 or later." <<std::endl;
-                            DebugStream::Stream3() <<"VsCommonPluginInfo::SetupDatabase() - Plugin is disabled and will not open files." <<std::endl;
-                #else
-                            debug3 <<"VsCommonPluginInfo::SetupDatabase() - Vizschema database plugin requires hdf5 1.8.1 or later." <<std::endl;
-                            debug3 <<"VsCommonPluginInfo::SetupDatabase() - Plugin is disabled and will not open files." <<std::endl;
-                #endif
+#ifdef VISIT_VERSION //Visit 2.0.0 and later use VISIT_VERSION instead of VERSION, and require a different debugstream accessor as well
+  DebugStream::Stream3() <<"VsCommonPluginInfo::SetupDatabase() - Vizschema database plugin requires hdf5 1.8.1 or later." <<std::endl;
+  DebugStream::Stream3() <<"VsCommonPluginInfo::SetupDatabase() - Plugin is disabled and will not open files." <<std::endl;
+#else
+  debug3 << "VsCommonPluginInfo::SetupDatabase() - Vizschema database plugin requires hdf5 1.8.1 or later." <<std::endl;
+      << std::endl;
+  debug3 << "VsCommonPluginInfo::SetupDatabase() - Plugin is disabled and will not open files." << std::endl;
+#endif
 
-    return NULL;
+  return NULL;
 #endif
 }
 
@@ -146,32 +147,32 @@ VsCommonPluginInfo::SetupDatabase(const char *const *list,
 DBOptionsAttributes *
 VsCommonPluginInfo::GetReadOptions() const
 {
-    /* This code is from the SILO plugin and is here as reference
-    DBOptionsAttributes *rv = new DBOptionsAttributes;
-    vector<string> ignoreOpts;
-    ignoreOpts.push_back("Always"); // 0
-    ignoreOpts.push_back("Auto");   // 1
-    ignoreOpts.push_back("Never");  // 2
-    ignoreOpts.push_back("Undef");  // 3
-    rv->SetEnum(SILO_RDOPT_IGNORE_SEXTS, 3); // Undef
-    rv->SetEnumStrings(SILO_RDOPT_IGNORE_SEXTS, ignoreOpts);
-    rv->SetEnum(SILO_RDOPT_IGNORE_DEXTS, 3); // Undef
-    rv->SetEnumStrings(SILO_RDOPT_IGNORE_DEXTS, ignoreOpts);
-    rv->SetBool(SILO_RDOPT_FORCE_SINGLE, true);
-    rv->SetBool(SILO_RDOPT_SEARCH_ANNOTINT, false);
+  /* This code is from the SILO plugin and is here as reference
+   DBOptionsAttributes *rv = new DBOptionsAttributes;
+   vector<string> ignoreOpts;
+   ignoreOpts.push_back("Always"); // 0
+   ignoreOpts.push_back("Auto");   // 1
+   ignoreOpts.push_back("Never");  // 2
+   ignoreOpts.push_back("Undef");  // 3
+   rv->SetEnum(SILO_RDOPT_IGNORE_SEXTS, 3); // Undef
+   rv->SetEnumStrings(SILO_RDOPT_IGNORE_SEXTS, ignoreOpts);
+   rv->SetEnum(SILO_RDOPT_IGNORE_DEXTS, 3); // Undef
+   rv->SetEnumStrings(SILO_RDOPT_IGNORE_DEXTS, ignoreOpts);
+   rv->SetBool(SILO_RDOPT_FORCE_SINGLE, true);
+   rv->SetBool(SILO_RDOPT_SEARCH_ANNOTINT, false);
 
-    // Specify obsolete options and their default values
-    rv->SetObsolete(SILO_RDOPT_IGNORE_SEXTS2);
-    rv->SetObsolete(SILO_RDOPT_IGNORE_DEXTS2);
+   // Specify obsolete options and their default values
+   rv->SetObsolete(SILO_RDOPT_IGNORE_SEXTS2);
+   rv->SetObsolete(SILO_RDOPT_IGNORE_DEXTS2);
 
-    return rv;*/
+   return rv;*/
 
-    DBOptionsAttributes *rv = new DBOptionsAttributes;
-    rv->SetInt(VsCommonPluginInfo::strideSettingAxis1_Name.c_str(), defaultStride);
-    rv->SetInt(VsCommonPluginInfo::strideSettingAxis2_Name.c_str(), defaultStride);
-    rv->SetInt(VsCommonPluginInfo::strideSettingAxis3_Name.c_str(), defaultStride);
+  DBOptionsAttributes *rv = new DBOptionsAttributes;
+  rv->SetInt(VsCommonPluginInfo::strideSettingAxis1_Name.c_str(), defaultStride);
+  rv->SetInt(VsCommonPluginInfo::strideSettingAxis2_Name.c_str(), defaultStride);
+  rv->SetInt(VsCommonPluginInfo::strideSettingAxis3_Name.c_str(), defaultStride);
 
-    return rv;
+  return rv;
 
 }
 
@@ -192,25 +193,24 @@ VsCommonPluginInfo::GetReadOptions() const
 // ****************************************************************************
 void VsCommonPluginInfo::SetReadOptions(DBOptionsAttributes *opts) {
 
-       for (int i = 0; i < opts->GetNumberOfOptions(); i++)
-    {
-        string optname = opts->GetName(i);
-        if (optname == VsCommonPluginInfo::strideSettingAxis1_Name.c_str()) {
-               settings[0] = opts->GetInt(VsCommonPluginInfo::strideSettingAxis1_Name.c_str());
-               if (settings[0] < 0)
-                      settings[0] = defaultStride;
-        }
-
-        if (optname == VsCommonPluginInfo::strideSettingAxis2_Name.c_str()) {
-               settings[1] = opts->GetInt(VsCommonPluginInfo::strideSettingAxis2_Name.c_str());
-                if (settings[1] < 0)
-                       settings[1] = defaultStride;
-        }
-
-        if (optname == VsCommonPluginInfo::strideSettingAxis3_Name.c_str()) {
-               settings[2] = opts->GetInt(VsCommonPluginInfo::strideSettingAxis3_Name.c_str());
-                if (settings[2] < 0)
-                       settings[2] = defaultStride;
-         }
+  for (int i = 0; i < opts->GetNumberOfOptions(); i++) {
+    string optname = opts->GetName(i);
+    if (optname == VsCommonPluginInfo::strideSettingAxis1_Name.c_str()) {
+      settings[0] = opts->GetInt(VsCommonPluginInfo::strideSettingAxis1_Name.c_str());
+      if (settings[0] < 0)
+        settings[0] = defaultStride;
     }
+
+    if (optname == VsCommonPluginInfo::strideSettingAxis2_Name.c_str()) {
+      settings[1] = opts->GetInt(VsCommonPluginInfo::strideSettingAxis2_Name.c_str());
+      if (settings[1] < 0)
+        settings[1] = defaultStride;
+    }
+
+    if (optname == VsCommonPluginInfo::strideSettingAxis3_Name.c_str()) {
+      settings[2] = opts->GetInt(VsCommonPluginInfo::strideSettingAxis3_Name.c_str());
+      if (settings[2] < 0)
+        settings[2] = defaultStride;
+    }
+  }
 }
