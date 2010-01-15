@@ -229,5 +229,6 @@ BaseFileInterface::DataType H5D::getDataType(){
         answer = BaseFileInterface::H5_Error;
     }
     H5Tclose(specific_type);
+    H5Tclose(data_type);
     return answer;
 }

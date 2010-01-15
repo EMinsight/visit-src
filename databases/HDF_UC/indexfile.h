@@ -188,7 +188,8 @@ public:
     bool setBitmapKeys(const std::string& variableName,
                        int64_t timestep,
                        void *data,
-                       uint64_t numelements);
+                       uint64_t numelements,
+                       BaseFileInterface::DataType type);
 
     bool getBitmapOffsetsLength(const std::string& variableName,
                                 uint64_t timestep,
