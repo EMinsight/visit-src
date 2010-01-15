@@ -309,62 +309,9 @@ std::string H5_Index::getSortedFieldName() const {
         (void) memset(data, 0, 200);
         H5PartReadFileAttrib(h5partFile, "sortedKey", (void*)&data);
         result = std::string(data);
-
-        // Hack because H5part assumes strings to be a character array
-        // rather than the posibility of being a null terminated
-        // string.
-        if( result == std::string("") )
-        {
-          hid_t attr_id = H5Aopen_name(h5partFile->file, "sortedKey");
-
-          if (attr_id < 0) {
-            return "";
-          } else {
-
-            hid_t type_id = H5Aget_type( attr_id );
-            hid_t file_space_id = H5Aget_space( attr_id );
-
-            if( file_space_id < 0 ) {
-              H5Aclose( file_space_id );
-              H5Aclose( type_id );
-              H5Aclose( attr_id );
-              return "";
-            }
-
-            hid_t mem_type_id;
-
-            switch (H5Tget_class(type_id)) {
-            case H5T_STRING:
-              // String
-              if(H5Tis_variable_str(type_id)) {
-                mem_type_id = H5Tcopy(H5T_C_S1);
-                H5Tset_size(mem_type_id, H5T_VARIABLE);
-              } else {
-                mem_type_id = H5Tcopy(type_id);
-                H5Tset_cset(mem_type_id, H5T_CSET_ASCII);
-              }
-              break;
-            default:
-              H5Aclose( file_space_id );
-              H5Aclose( type_id );
-              H5Aclose( attr_id );
-              return "";
-            }
-
-            if( H5Aread(attr_id, mem_type_id, data) < 0 )
-              result = "";
-            else
-              result = std::string(data);
-            
-            H5Aclose( mem_type_id );
-            H5Aclose( file_space_id );
-            H5Aclose( type_id );
-            H5Aclose( attr_id );
-          }
-        }
     }
     else {
-        result = "";
+        result = "";    
     }
     return result;
 }
@@ -862,7 +809,12 @@ bool H5_Index::createBitmap(const std::string& variableName,
 
     if (useH5Part) {
         // create index group 
+      if( !group_id.open(file_id.getID(),"/__H5PartIndex__") )
+        {
+          std::cerr << "opened failed " << std::endl;
+
         group_id.create(file_id.getID(),"/__H5PartIndex__");
+        }
         sprintf(p2,"/__H5PartIndex__/Step#%d",(int)timestep);
           
         // create time step group
@@ -916,7 +868,7 @@ bool H5_Index::getPointData(const std::string& variablename,int64_t time,
     answer = dataset_id.open(file_id.getID(),path.c_str());
     if(answer == false) {
         LOGGER(ibis::gVerbose >= 0)
-          << "Dataset " << path.c_str() << " of file " << file_id.getID() << " could not be opened";
+          << "Dataset " << variablename << " of file " << file_id.getID() << " could not be opened";
         return answer;
     }
     //first get the type information...
@@ -1165,11 +1117,14 @@ bool H5_Index::getType(const std::string& variable, uint64_t time,
     variableName = p2;
     variableName += "/";
     variableName += variable;
+
     answer = dataset_id.open(file_id.getID(),variableName.c_str());
+
     if(answer != false){
-        //get the type of data in the data set
-        *type = dataset_id.getDataType();
+      //get the type of data in the data set
+      *type = dataset_id.getDataType();
     }
+
     return answer;
 }
 
@@ -1182,6 +1137,7 @@ bool H5_Index::getAttribute(const std::string& variable, uint64_t time,
     strncpy(p2,"",200);
     //sprintf(p2,"/HDF5_UC/TimeStep%d",(int)time);
     sprintf(p2, timestepPath,(int)time);
+    // THIS CODE DOES NOTHING !!!!!!!!!!!!!!!
     answer = getType(variable,time,type);
     if(answer == false) return answer;
     variableName = p2;
@@ -1242,13 +1198,14 @@ bool H5_Index::getBitmapKeysLength(const std::string& variableName,
 bool H5_Index::getBitmapSize(const std::string& variableName, uint64_t timestep,
                              uint64_t *length){
     bool answer = true;
-    BaseFileInterface::DataType type;
     std::string file_path;
     char p2[200];
   
     //determine the type of the original data...
-    answer = getType(variableName,timestep,&type);
-    if(answer == false) return answer;
+    // THIS CODE DOES NOTHING !!!!!!!!!!!!!!!
+    //    BaseFileInterface::DataType type;
+    //    answer = getType(variableName,timestep,&type);
+    //    if(answer == false) return answer;
     strncpy(p2,"",(int)200);
     sprintf(p2,timestepPath,(int)timestep);
   
@@ -1294,16 +1251,18 @@ bool H5_Index::getBitmapKeys(const std::string& variableName,uint64_t timestep,
 }
 
 bool H5_Index::setBitmapKeys(const std::string& variableName, int64_t timestep,
-                             void *data, uint64_t numelements){
+                             void *data, uint64_t numelements, 
+                             BaseFileInterface::DataType type){
     bool answer = true;
-    BaseFileInterface::DataType type;
+    //    BaseFileInterface::DataType type;
     hsize_t temp_size = numelements;
     std::string file_path;
     char p2[200];
 
     //determine the type of the original data...
-    answer = getType(variableName,timestep,&type);
-    if(answer == false) return answer;
+    // THE TYPE IS KNOWN BEFORE THIS CALL IS MADE SO JUST PASS THE TYPE
+    //    answer = getType(variableName,timestep,&type);
+    //    if(answer == false) return answer;
     strncpy(p2,"",(int)200);
     //sprintf(p2,"/HDF5_UC/TimeStep%d",(int)timestep);
     sprintf(p2,timestepPath,(int)timestep);
