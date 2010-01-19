@@ -13109,6 +13109,28 @@ visit_RegisterCallback(PyObject *, PyObject *args)
 }
 
 // ****************************************************************************
+// Function: visit_UserActionFinished
+//
+// Purpose: 
+//   Returns all arguments after the -s script.py argument.
+//
+// Programmer: Tilo Ochotta
+// Creation:   Tue May 26 14:10:12 MST 2009
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+STATIC PyObject *
+visit_UserActionFinished(PyObject *self, PyObject *args)
+{
+    NO_ARGUMENTS();
+    ENSURE_CALLBACK_MANAGER_EXISTS();
+
+    return PyLong_FromLong(long(!callbackMgr->IsWorking()));
+}
+
+// ****************************************************************************
 // Function: visit_exec_client_method
 //
 // Purpose:
@@ -13703,7 +13725,10 @@ AddMethod(const char *methodName, PyObject *(cb)(PyObject *, PyObject *),
 //
 //   Kathleen Bonnell, Mon Feb  9 17:41:02 PST 2009
 //   Added LoadUltra.
-
+//
+//   Hank Childs, Mon Jan 18 21:35:17 PST 2010
+//   Added method UserActionFinished, on behalf of Tila Ochatta, Huy Vo,
+//   and Claudio Silva.
 //
 // ****************************************************************************
 
@@ -14071,6 +14096,7 @@ AddDefaultMethods()
                                                          visit_ToggleMode_doc);
     AddMethod("ToggleSpinMode", visit_ToggleSpinMode, visit_ToggleMode_doc);
     AddMethod("UndoView",  visit_UndoView, visit_UndoView_doc);
+    AddMethod("UserActionFinished",visit_UserActionFinished,NULL);
     AddMethod("RedoView",  visit_RedoView, visit_RedoView_doc);
     AddMethod("WriteConfigFile",  visit_WriteConfigFile, 
                                                     visit_WriteConfigFile_doc);
