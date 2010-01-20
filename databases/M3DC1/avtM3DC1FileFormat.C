@@ -41,7 +41,7 @@
 // ************************************************************************* //
 
 #include <avtM3DC1FileFormat.h>
-#include <avtIVPM3DC1Field.h>
+#include <avtM3DC1Field.h>
 
 #include <string>
 
@@ -856,7 +856,7 @@ avtM3DC1FileFormat::GetVar(int timestate, const char *varname)
 
   // Get the M3D C1 field so the variables can be interpolated on the
   // linear mesh.
-  avtIVPM3DC1Field m3dField(elements, nelms);
+  avtM3DC1Field m3dField(elements, nelms);
 
   // Get the field variable to be interpolated on the linear mesh.
   vtkDataArray* vtkVar = GetFieldVar( timestate, varname );
@@ -1040,7 +1040,7 @@ avtM3DC1FileFormat::GetVectorVar(int timestate, const char *varname)
 
     // Get the M3D C1 field so the variables can be interpolated on the
     // linear mesh.
-    avtIVPM3DC1Field m3dField(elements, nelms);
+    avtM3DC1Field m3dField(elements, nelms);
 
     // Header variables are at the top level group.
     hid_t rootID = H5Gopen( m_fileID, "/", H5P_DEFAULT);

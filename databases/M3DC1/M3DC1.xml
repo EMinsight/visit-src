@@ -6,11 +6,18 @@
     <LIBS>
       $(HDF5_LIB)
       $(ZLIB_LIB)
-      -lavtivp_ser
     </LIBS>
     <Extensions>
       h5
     </Extensions>
+    <Files components="M">
+      avtM3DC1FileFormat.C
+      avtM3DC1Field.C
+    </Files>
+    <Files components="E">
+      avtM3DC1FileFormat.C
+      avtM3DC1Field.C
+    </Files>
     <Attribute name="" purpose="" persistent="false" keyframe="true" exportAPI="" exportInclude="">
     </Attribute>
   </Plugin>
