@@ -1,4 +1,4 @@
-// $Id: fqindex.h,v 1.3 2009-05-06 22:54:17 prabhat Exp $
+// $Id: fqindex.h,v 1.2 2009-05-06 21:51:12 kewu Exp $
 #ifndef _FASTQUERY_INDEX_H
 #define _FASTQUERY_INDEX_H
 #include "indexfile.h"  // the underline HDF5 operations

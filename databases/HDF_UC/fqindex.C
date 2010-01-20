@@ -1,4 +1,4 @@
-// $Id: fqindex.C,v 1.2 2009-05-06 22:54:17 prabhat Exp $
+// $Id: fqindex.C,v 1.1 2009-05-06 19:14:36 prabhat Exp $
 #include <math.h>       // std::log
 #include "fqindex.h"
 
@@ -257,16 +257,11 @@ void H5_FQ_IndexUnbinned::write(H5_Index& h5file) const {
 
     // write the bitmap offsets
     berr = h5file.setBitmapOffsets(nm, tval, off, nobs+1);
-    if (! berr) {
-        col->logWarning("H5_FQ_IndexUnbinned::write",
-                        "failed to write the offset array (%lu elements)",
-                        static_cast<unsigned long>(nobs+1));
-    }
 
     // write the keys, need return the values to their original type
     if (col->type() == ibis::DOUBLE) {
         berr = h5file.setBitmapKeys(nm, tval,
-                                    const_cast<double*>(vals.begin()), nobs, BaseFileInterface::H5_Double);
+                                    const_cast<double*>(vals.begin()), nobs);
         if (! berr) {
             col->logWarning("H5_FQ_IndexUnbinned::write",
                             "failed to write the bitmap keys array[%lu])",
@@ -283,7 +278,7 @@ void H5_FQ_IndexUnbinned::write(H5_Index& h5file) const {
         array_t<float> tmp(vals.size());
         for (unsigned i = 0; i < vals.size(); ++ i)
             tmp[i] = static_cast<float>(vals[i]);
-        berr = h5file.setBitmapKeys(nm, tval, tmp.begin(), nobs, BaseFileInterface::H5_Float);
+        berr = h5file.setBitmapKeys(nm, tval, tmp.begin(), nobs);
         float range[2];
         range[0] = static_cast<float>(vals[0]);
         range[1] = static_cast<float>(vals[nobs-1]);
@@ -294,7 +289,7 @@ void H5_FQ_IndexUnbinned::write(H5_Index& h5file) const {
         array_t<int64_t> tmp(vals.size());
         for (unsigned i = 0; i < vals.size(); ++ i)
             tmp[i] = static_cast<int64_t>(vals[i]);
-        berr = h5file.setBitmapKeys(nm, tval, tmp.begin(), nobs, BaseFileInterface::H5_Int64);
+        berr = h5file.setBitmapKeys(nm, tval, tmp.begin(), nobs);
         int64_t range[2];
         range[0] = static_cast<int64_t>(vals[0]);
         range[1] = static_cast<int64_t>(vals[nobs-1]);
@@ -305,7 +300,7 @@ void H5_FQ_IndexUnbinned::write(H5_Index& h5file) const {
         array_t<int32_t> tmp(vals.size());
         for (unsigned i = 0; i < vals.size(); ++ i)
             tmp[i] = static_cast<int>(vals[i]);
-        berr = h5file.setBitmapKeys(nm, tval, tmp.begin(), nobs, BaseFileInterface::H5_Int32);
+        berr = h5file.setBitmapKeys(nm, tval, tmp.begin(), nobs);
         int range[2];
         range[0] = static_cast<int>(vals[0]);
         range[1] = static_cast<int>(vals[nobs-1]);
@@ -822,7 +817,6 @@ void H5_FQ_IndexBinned::write(H5_Index& h5file) const {
         return;
     }
 
-
     // go through the bitmaps to write each one separately
     for (unsigned i = 0; i < nobs; ++ i) {
         if (off[i] < off[i+1]) {
@@ -841,7 +835,6 @@ void H5_FQ_IndexBinned::write(H5_Index& h5file) const {
         }
     }
 
-
     // write the bitmap offsets
     berr = h5file.setBitmapOffsets(nm, tval, off, nobs+1);
     if (! berr) {
@@ -858,7 +851,7 @@ void H5_FQ_IndexBinned::write(H5_Index& h5file) const {
             buf[i] = minval[i];
             buf[i+nobs] = maxval[i];
         }
-        berr = h5file.setBitmapKeys(nm, tval, buf.begin(), nkeys, BaseFileInterface::H5_Double);
+        berr = h5file.setBitmapKeys(nm, tval, buf.begin(), nkeys);
         if (! berr) {
             col->logWarning("H5_FQ_IndexBinned::write",
                             "failed to write the bitmap keys array[%lu])",
@@ -881,7 +874,7 @@ void H5_FQ_IndexBinned::write(H5_Index& h5file) const {
             buf[i] = static_cast<float>(minval[i]);
             buf[i+nobs] = static_cast<float>(maxval[i]);
         }
-        berr = h5file.setBitmapKeys(nm, tval, buf.begin(), nkeys, BaseFileInterface::H5_Float);
+        berr = h5file.setBitmapKeys(nm, tval, buf.begin(), nkeys);
         if (! berr) {
             col->logWarning("H5_FQ_IndexBinned::write",
                             "failed to write the bitmap keys array[%lu])",
@@ -898,7 +891,7 @@ void H5_FQ_IndexBinned::write(H5_Index& h5file) const {
             buf[i] = static_cast<int64_t>(minval[i]);
             buf[i+nobs] = static_cast<int64_t>(maxval[i]);
         }
-        berr = h5file.setBitmapKeys(nm, tval, buf.begin(), nkeys, BaseFileInterface::H5_Int64);
+        berr = h5file.setBitmapKeys(nm, tval, buf.begin(), nkeys);
         if (! berr) {
             col->logWarning("H5_FQ_IndexBinned::write",
                             "failed to write the bitmap keys array[%lu])",
@@ -915,7 +908,7 @@ void H5_FQ_IndexBinned::write(H5_Index& h5file) const {
             buf[i] = static_cast<int>(minval[i]);
             buf[i+nobs] = static_cast<int>(maxval[i]);
         }
-        berr = h5file.setBitmapKeys(nm, tval, buf.begin(), nkeys, BaseFileInterface::H5_Int32);
+        berr = h5file.setBitmapKeys(nm, tval, buf.begin(), nkeys);
         if (! berr) {
             col->logWarning("H5_FQ_IndexBinned::write",
                             "failed to write the bitmap keys array[%lu])",
@@ -931,7 +924,6 @@ void H5_FQ_IndexBinned::write(H5_Index& h5file) const {
                         "HDF5_FastQuery does not support this data type "
                         "yet (dataset name=%s)", col->name());
     }
-
 } // H5_FQ_IndexBinned::write
 
 // activate all bitmaps at once by reading all of them into memory.
