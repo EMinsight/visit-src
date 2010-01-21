@@ -239,7 +239,7 @@ SplashScreen::SplashScreen(bool cyclePictures, const char *name) :
     rLayout = new QVBoxLayout(lrLayout);
     rLayout->addStretch(1);
 
-    QString C("(c) 2000-2009 LLNS. ");
+    QString C("(c) 2000-2010 LLNS. ");
     C += tr("All Rights Reserved");
     C += ".";
     lLayout->addWidget(new QLabel(C, this, "(C)"));
@@ -250,7 +250,7 @@ SplashScreen::SplashScreen(bool cyclePictures, const char *name) :
     versionText += " ";
     versionText += SVN_REVISION;
     lLayout->addWidget(new QLabel(versionText, this, "versionText"));
-    lLayout->addWidget(new QLabel(tr("November 2009"), this, "dateCompiled"));
+    lLayout->addWidget(new QLabel(tr("January 2010"), this, "dateCompiled"));
 
     copyrightButton = 0;
     contributorButton = 0;
