@@ -229,6 +229,10 @@ typedef struct _GroupInfo
 //    Mark C. Miller, Thu Oct 29 15:15:37 PDT 2009
 //    Removed arbMeshZoneRangesToSkip. Added HandleGlobalZoneIds. Adjusted
 //    interface to ReadInConnectivity.
+//
+//    Mark C. Miller, Wed Jan 27 13:13:20 PST 2010
+//    Added an extra level of indirection to the arbMeshXXXRemap maps to
+//    make sure they work for multi-block case.
 // ****************************************************************************
 
 class avtSiloFileFormat : public avtSTMDFileFormat
@@ -296,8 +300,8 @@ class avtSiloFileFormat : public avtSTMDFileFormat
 
     GroupInfo                       groupInfo;
 
-    map<string, vector<int>* >      arbMeshCellReMap;
-    map<string, vector<int>* >      arbMeshNodeReMap;
+    map<string, map<int, vector<int>* > >      arbMeshCellReMap;
+    map<string, map<int, vector<int>* > >      arbMeshNodeReMap;
 
     vector<avtDataSelection_p>      selList;
     vector<bool>                   *selsApplied;
