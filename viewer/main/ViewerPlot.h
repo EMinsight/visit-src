@@ -291,6 +291,9 @@ class avtToolInterface;
 //    Hank Childs, Tue Jul 14 14:28:36 PDT 2009
 //    Added methods and data member for named selections.
 //
+//    Eric Brugger, Fri Feb 12 15:28:11 PST 2010
+//    Added SetNumPlotsCreated.
+//
 // ****************************************************************************
 
 class VIEWER_API ViewerPlot : public ViewerBase
@@ -493,6 +496,8 @@ class VIEWER_API ViewerPlot : public ViewerBase
     const PlotInfoAttributes *GetPlotInfoAtts(void);
     void SetScaleMode(ScaleMode ds, ScaleMode rs, WINDOW_MODE wm);
     bool PermitsLogViewScaling(WINDOW_MODE wm);
+
+    static void SetNumPlotsCreated(int);
 
   protected:
     void CopyHelper(const ViewerPlot &);

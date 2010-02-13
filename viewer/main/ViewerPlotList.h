@@ -301,6 +301,10 @@ typedef std::map<std::string, int> StringIntMap;
 //    Brad Whitlock, Mon Oct 26 15:44:55 PDT 2009
 //    I added DeleteAllPlots and I added a default argument to DeleteActivePlots.
 //
+//    Eric Brugger, Fri Feb 12 15:34:07 PST 2010
+//    I added maxPlotNumber, which is used to tell the ViewerPlot what
+//    number to use to start numbering plots from.
+//
 // ****************************************************************************
 
 
@@ -539,6 +543,8 @@ public:
     double                 bgColor[3];
     double                 fgColor[3];
     avtExtentType          spatialExtentsType;
+
+    static int             maxPlotNumber;
 
     void                   CanMeshPlotBeOpaque();
     void                   GetMeshVarNameForActivePlots(
