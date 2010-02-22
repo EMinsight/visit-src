@@ -1,0 +1,3644 @@
+/*****************************************************************************
+*
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Produced at the Lawrence Livermore National Laboratory
+* LLNL-CODE-400124
+* All rights reserved.
+*
+* This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
+* full copyright notice is contained in the file COPYRIGHT located at the root
+* of the VisIt distribution or at http://www.llnl.gov/visit/copyright.html.
+*
+* Redistribution  and  use  in  source  and  binary  forms,  with  or  without
+* modification, are permitted provided that the following conditions are met:
+*
+*  - Redistributions of  source code must  retain the above  copyright notice,
+*    this list of conditions and the disclaimer below.
+*  - Redistributions in binary form must reproduce the above copyright notice,
+*    this  list of  conditions  and  the  disclaimer (as noted below)  in  the
+*    documentation and/or other materials provided with the distribution.
+*  - Neither the name of  the LLNS/LLNL nor the names of  its contributors may
+*    be used to endorse or promote products derived from this software without
+*    specific prior written permission.
+*
+* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT  HOLDERS AND CONTRIBUTORS "AS IS"
+* AND ANY EXPRESS OR  IMPLIED WARRANTIES, INCLUDING,  BUT NOT  LIMITED TO, THE
+* IMPLIED WARRANTIES OF MERCHANTABILITY AND  FITNESS FOR A PARTICULAR  PURPOSE
+* ARE  DISCLAIMED. IN  NO EVENT  SHALL LAWRENCE  LIVERMORE NATIONAL  SECURITY,
+* LLC, THE  U.S.  DEPARTMENT OF  ENERGY  OR  CONTRIBUTORS BE  LIABLE  FOR  ANY
+* DIRECT,  INDIRECT,   INCIDENTAL,   SPECIAL,   EXEMPLARY,  OR   CONSEQUENTIAL
+* DAMAGES (INCLUDING, BUT NOT  LIMITED TO, PROCUREMENT OF  SUBSTITUTE GOODS OR
+* SERVICES; LOSS OF  USE, DATA, OR PROFITS; OR  BUSINESS INTERRUPTION) HOWEVER
+* CAUSED  AND  ON  ANY  THEORY  OF  LIABILITY,  WHETHER  IN  CONTRACT,  STRICT
+* LIABILITY, OR TORT  (INCLUDING NEGLIGENCE OR OTHERWISE)  ARISING IN ANY  WAY
+* OUT OF THE  USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
+* DAMAGE.
+*
+*****************************************************************************/
+
+#include <StreamlineAttributes.h>
+#include <DataNode.h>
+#include <PointAttributes.h>
+#include <Line.h>
+#include <PlaneAttributes.h>
+#include <SphereAttributes.h>
+#include <PointAttributes.h>
+#include <BoxExtents.h>
+
+//
+// Enum conversion methods for StreamlineAttributes::SourceType
+//
+
+static const char *SourceType_strings[] = {
+"SpecifiedPoint", "SpecifiedLine", "SpecifiedPlane", 
+"SpecifiedSphere", "SpecifiedBox", "SpecifiedCircle", 
+"SpecifiedPointList"};
+
+std::string
+StreamlineAttributes::SourceType_ToString(StreamlineAttributes::SourceType t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 7) index = 0;
+    return SourceType_strings[index];
+}
+
+std::string
+StreamlineAttributes::SourceType_ToString(int t)
+{
+    int index = (t < 0 || t >= 7) ? 0 : t;
+    return SourceType_strings[index];
+}
+
+bool
+StreamlineAttributes::SourceType_FromString(const std::string &s, StreamlineAttributes::SourceType &val)
+{
+    val = StreamlineAttributes::SpecifiedPoint;
+    for(int i = 0; i < 7; ++i)
+    {
+        if(s == SourceType_strings[i])
+        {
+            val = (SourceType)i;
+            return true;
+        }
+    }
+    return false;
+}
+
+//
+// Enum conversion methods for StreamlineAttributes::ColoringMethod
+//
+
+static const char *ColoringMethod_strings[] = {
+"Solid", "ColorBySpeed", "ColorByVorticity", 
+"ColorByLength", "ColorByTime", "ColorBySeedPointID", 
+"ColorByVariable"};
+
+std::string
+StreamlineAttributes::ColoringMethod_ToString(StreamlineAttributes::ColoringMethod t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 7) index = 0;
+    return ColoringMethod_strings[index];
+}
+
+std::string
+StreamlineAttributes::ColoringMethod_ToString(int t)
+{
+    int index = (t < 0 || t >= 7) ? 0 : t;
+    return ColoringMethod_strings[index];
+}
+
+bool
+StreamlineAttributes::ColoringMethod_FromString(const std::string &s, StreamlineAttributes::ColoringMethod &val)
+{
+    val = StreamlineAttributes::Solid;
+    for(int i = 0; i < 7; ++i)
+    {
+        if(s == ColoringMethod_strings[i])
+        {
+            val = (ColoringMethod)i;
+            return true;
+        }
+    }
+    return false;
+}
+
+//
+// Enum conversion methods for StreamlineAttributes::DisplayMethod
+//
+
+static const char *DisplayMethod_strings[] = {
+"Lines", "Tubes", "Ribbons"
+};
+
+std::string
+StreamlineAttributes::DisplayMethod_ToString(StreamlineAttributes::DisplayMethod t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 3) index = 0;
+    return DisplayMethod_strings[index];
+}
+
+std::string
+StreamlineAttributes::DisplayMethod_ToString(int t)
+{
+    int index = (t < 0 || t >= 3) ? 0 : t;
+    return DisplayMethod_strings[index];
+}
+
+bool
+StreamlineAttributes::DisplayMethod_FromString(const std::string &s, StreamlineAttributes::DisplayMethod &val)
+{
+    val = StreamlineAttributes::Lines;
+    for(int i = 0; i < 3; ++i)
+    {
+        if(s == DisplayMethod_strings[i])
+        {
+            val = (DisplayMethod)i;
+            return true;
+        }
+    }
+    return false;
+}
+
+//
+// Enum conversion methods for StreamlineAttributes::IntegrationDirection
+//
+
+static const char *IntegrationDirection_strings[] = {
+"Forward", "Backward", "Both"
+};
+
+std::string
+StreamlineAttributes::IntegrationDirection_ToString(StreamlineAttributes::IntegrationDirection t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 3) index = 0;
+    return IntegrationDirection_strings[index];
+}
+
+std::string
+StreamlineAttributes::IntegrationDirection_ToString(int t)
+{
+    int index = (t < 0 || t >= 3) ? 0 : t;
+    return IntegrationDirection_strings[index];
+}
+
+bool
+StreamlineAttributes::IntegrationDirection_FromString(const std::string &s, StreamlineAttributes::IntegrationDirection &val)
+{
+    val = StreamlineAttributes::Forward;
+    for(int i = 0; i < 3; ++i)
+    {
+        if(s == IntegrationDirection_strings[i])
+        {
+            val = (IntegrationDirection)i;
+            return true;
+        }
+    }
+    return false;
+}
+
+//
+// Enum conversion methods for StreamlineAttributes::TerminationType
+//
+
+static const char *TerminationType_strings[] = {
+"Distance", "Time", "Step"
+};
+
+std::string
+StreamlineAttributes::TerminationType_ToString(StreamlineAttributes::TerminationType t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 3) index = 0;
+    return TerminationType_strings[index];
+}
+
+std::string
+StreamlineAttributes::TerminationType_ToString(int t)
+{
+    int index = (t < 0 || t >= 3) ? 0 : t;
+    return TerminationType_strings[index];
+}
+
+bool
+StreamlineAttributes::TerminationType_FromString(const std::string &s, StreamlineAttributes::TerminationType &val)
+{
+    val = StreamlineAttributes::Distance;
+    for(int i = 0; i < 3; ++i)
+    {
+        if(s == TerminationType_strings[i])
+        {
+            val = (TerminationType)i;
+            return true;
+        }
+    }
+    return false;
+}
+
+//
+// Enum conversion methods for StreamlineAttributes::StreamlineAlgorithmType
+//
+
+static const char *StreamlineAlgorithmType_strings[] = {
+"LoadOnDemand", "ParallelStaticDomains", "MasterSlave"
+};
+
+std::string
+StreamlineAttributes::StreamlineAlgorithmType_ToString(StreamlineAttributes::StreamlineAlgorithmType t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 3) index = 0;
+    return StreamlineAlgorithmType_strings[index];
+}
+
+std::string
+StreamlineAttributes::StreamlineAlgorithmType_ToString(int t)
+{
+    int index = (t < 0 || t >= 3) ? 0 : t;
+    return StreamlineAlgorithmType_strings[index];
+}
+
+bool
+StreamlineAttributes::StreamlineAlgorithmType_FromString(const std::string &s, StreamlineAttributes::StreamlineAlgorithmType &val)
+{
+    val = StreamlineAttributes::LoadOnDemand;
+    for(int i = 0; i < 3; ++i)
+    {
+        if(s == StreamlineAlgorithmType_strings[i])
+        {
+            val = (StreamlineAlgorithmType)i;
+            return true;
+        }
+    }
+    return false;
+}
+
+//
+// Enum conversion methods for StreamlineAttributes::IntegrationType
+//
+
+static const char *IntegrationType_strings[] = {
+"DormandPrince", "AdamsBashforth"};
+
+std::string
+StreamlineAttributes::IntegrationType_ToString(StreamlineAttributes::IntegrationType t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 2) index = 0;
+    return IntegrationType_strings[index];
+}
+
+std::string
+StreamlineAttributes::IntegrationType_ToString(int t)
+{
+    int index = (t < 0 || t >= 2) ? 0 : t;
+    return IntegrationType_strings[index];
+}
+
+bool
+StreamlineAttributes::IntegrationType_FromString(const std::string &s, StreamlineAttributes::IntegrationType &val)
+{
+    val = StreamlineAttributes::DormandPrince;
+    for(int i = 0; i < 2; ++i)
+    {
+        if(s == IntegrationType_strings[i])
+        {
+            val = (IntegrationType)i;
+            return true;
+        }
+    }
+    return false;
+}
+
+//
+// Enum conversion methods for StreamlineAttributes::OpacityType
+//
+
+static const char *OpacityType_strings[] = {
+"None", "Constant", "Ramp", 
+"VariableRange"};
+
+std::string
+StreamlineAttributes::OpacityType_ToString(StreamlineAttributes::OpacityType t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 4) index = 0;
+    return OpacityType_strings[index];
+}
+
+std::string
+StreamlineAttributes::OpacityType_ToString(int t)
+{
+    int index = (t < 0 || t >= 4) ? 0 : t;
+    return OpacityType_strings[index];
+}
+
+bool
+StreamlineAttributes::OpacityType_FromString(const std::string &s, StreamlineAttributes::OpacityType &val)
+{
+    val = StreamlineAttributes::None;
+    for(int i = 0; i < 4; ++i)
+    {
+        if(s == OpacityType_strings[i])
+        {
+            val = (OpacityType)i;
+            return true;
+        }
+    }
+    return false;
+}
+
+//
+// Enum conversion methods for StreamlineAttributes::DisplayQuality
+//
+
+static const char *DisplayQuality_strings[] = {
+"Low", "Medium", "High", 
+"Super"};
+
+std::string
+StreamlineAttributes::DisplayQuality_ToString(StreamlineAttributes::DisplayQuality t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 4) index = 0;
+    return DisplayQuality_strings[index];
+}
+
+std::string
+StreamlineAttributes::DisplayQuality_ToString(int t)
+{
+    int index = (t < 0 || t >= 4) ? 0 : t;
+    return DisplayQuality_strings[index];
+}
+
+bool
+StreamlineAttributes::DisplayQuality_FromString(const std::string &s, StreamlineAttributes::DisplayQuality &val)
+{
+    val = StreamlineAttributes::Low;
+    for(int i = 0; i < 4; ++i)
+    {
+        if(s == DisplayQuality_strings[i])
+        {
+            val = (DisplayQuality)i;
+            return true;
+        }
+    }
+    return false;
+}
+
+//
+// Enum conversion methods for StreamlineAttributes::GeomDisplayType
+//
+
+static const char *GeomDisplayType_strings[] = {
+"Sphere", "Cone"};
+
+std::string
+StreamlineAttributes::GeomDisplayType_ToString(StreamlineAttributes::GeomDisplayType t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 2) index = 0;
+    return GeomDisplayType_strings[index];
+}
+
+std::string
+StreamlineAttributes::GeomDisplayType_ToString(int t)
+{
+    int index = (t < 0 || t >= 2) ? 0 : t;
+    return GeomDisplayType_strings[index];
+}
+
+bool
+StreamlineAttributes::GeomDisplayType_FromString(const std::string &s, StreamlineAttributes::GeomDisplayType &val)
+{
+    val = StreamlineAttributes::Sphere;
+    for(int i = 0; i < 2; ++i)
+    {
+        if(s == GeomDisplayType_strings[i])
+        {
+            val = (GeomDisplayType)i;
+            return true;
+        }
+    }
+    return false;
+}
+
+// ****************************************************************************
+// Method: StreamlineAttributes::StreamlineAttributes
+//
+// Purpose: 
+//   Init utility for the StreamlineAttributes class.
+//
+// Note:       Autogenerated by xml2atts.
+//
+// Programmer: xml2atts
+// Creation:   omitted
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void StreamlineAttributes::Init()
+{
+    sourceType = SpecifiedPoint;
+    maxStepLength = 0.1;
+    termination = 10;
+    pointSource[0] = 0;
+    pointSource[1] = 0;
+    pointSource[2] = 0;
+    lineStart[0] = 0;
+    lineStart[1] = 0;
+    lineStart[2] = 0;
+    lineEnd[0] = 1;
+    lineEnd[1] = 0;
+    lineEnd[2] = 0;
+    planeOrigin[0] = 0;
+    planeOrigin[1] = 0;
+    planeOrigin[2] = 0;
+    planeNormal[0] = 0;
+    planeNormal[1] = 0;
+    planeNormal[2] = 1;
+    planeUpAxis[0] = 0;
+    planeUpAxis[1] = 1;
+    planeUpAxis[2] = 0;
+    planeRadius = 1;
+    sphereOrigin[0] = 0;
+    sphereOrigin[1] = 0;
+    sphereOrigin[2] = 0;
+    sphereRadius = 1;
+    boxExtents[0] = 0;
+    boxExtents[1] = 1;
+    boxExtents[2] = 0;
+    boxExtents[3] = 1;
+    boxExtents[4] = 0;
+    boxExtents[5] = 1;
+    useWholeBox = true;
+    pointList.push_back(0);
+    pointList.push_back(0);
+    pointList.push_back(0);
+    pointList.push_back(1);
+    pointList.push_back(0);
+    pointList.push_back(0);
+    pointList.push_back(0);
+    pointList.push_back(1);
+    pointList.push_back(0);
+    pointDensity = 2;
+    displayMethod = Lines;
+    showSeeds = false;
+    showHeads = false;
+    tubeRadius = 0.125;
+    ribbonWidth = 0.125;
+    lineWidth = 2;
+    coloringMethod = ColorBySpeed;
+    legendFlag = true;
+    lightingFlag = true;
+    streamlineDirection = Forward;
+    relTol = 0.0001;
+    absTol = 1e-05;
+    terminationType = Distance;
+    integrationType = DormandPrince;
+    streamlineAlgorithmType = ParallelStaticDomains;
+    maxStreamlineProcessCount = 10;
+    maxDomainCacheSize = 3;
+    workGroupSize = 32;
+    pathlines = false;
+    legendMinFlag = false;
+    legendMaxFlag = false;
+    legendMin = 0;
+    legendMax = 1;
+    displayBegin = 0;
+    displayEnd = 1;
+    displayBeginFlag = false;
+    displayEndFlag = false;
+    seedDisplayRadius = 0.25;
+    headDisplayType = Sphere;
+    headDisplayRadius = 0.25;
+    headDisplayHeight = 0.5;
+    opacityType = None;
+    opacity = 1;
+    opacityVarMin = 0;
+    opacityVarMax = 1;
+    opacityVarMinFlag = false;
+    opacityVarMaxFlag = false;
+    tubeDisplayDensity = 10;
+    geomDisplayQuality = Medium;
+
+    StreamlineAttributes::SelectAll();
+}
+
+// ****************************************************************************
+// Method: StreamlineAttributes::StreamlineAttributes
+//
+// Purpose: 
+//   Copy utility for the StreamlineAttributes class.
+//
+// Note:       Autogenerated by xml2atts.
+//
+// Programmer: xml2atts
+// Creation:   omitted
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void StreamlineAttributes::Copy(const StreamlineAttributes &obj)
+{
+
+    sourceType = obj.sourceType;
+    maxStepLength = obj.maxStepLength;
+    termination = obj.termination;
+    pointSource[0] = obj.pointSource[0];
+    pointSource[1] = obj.pointSource[1];
+    pointSource[2] = obj.pointSource[2];
+
+    lineStart[0] = obj.lineStart[0];
+    lineStart[1] = obj.lineStart[1];
+    lineStart[2] = obj.lineStart[2];
+
+    lineEnd[0] = obj.lineEnd[0];
+    lineEnd[1] = obj.lineEnd[1];
+    lineEnd[2] = obj.lineEnd[2];
+
+    planeOrigin[0] = obj.planeOrigin[0];
+    planeOrigin[1] = obj.planeOrigin[1];
+    planeOrigin[2] = obj.planeOrigin[2];
+
+    planeNormal[0] = obj.planeNormal[0];
+    planeNormal[1] = obj.planeNormal[1];
+    planeNormal[2] = obj.planeNormal[2];
+
+    planeUpAxis[0] = obj.planeUpAxis[0];
+    planeUpAxis[1] = obj.planeUpAxis[1];
+    planeUpAxis[2] = obj.planeUpAxis[2];
+
+    planeRadius = obj.planeRadius;
+    sphereOrigin[0] = obj.sphereOrigin[0];
+    sphereOrigin[1] = obj.sphereOrigin[1];
+    sphereOrigin[2] = obj.sphereOrigin[2];
+
+    sphereRadius = obj.sphereRadius;
+    for(int i = 0; i < 6; ++i)
+        boxExtents[i] = obj.boxExtents[i];
+
+    useWholeBox = obj.useWholeBox;
+    pointList = obj.pointList;
+    pointDensity = obj.pointDensity;
+    displayMethod = obj.displayMethod;
+    showSeeds = obj.showSeeds;
+    showHeads = obj.showHeads;
+    tubeRadius = obj.tubeRadius;
+    ribbonWidth = obj.ribbonWidth;
+    lineWidth = obj.lineWidth;
+    coloringMethod = obj.coloringMethod;
+    colorTableName = obj.colorTableName;
+    singleColor = obj.singleColor;
+    legendFlag = obj.legendFlag;
+    lightingFlag = obj.lightingFlag;
+    streamlineDirection = obj.streamlineDirection;
+    relTol = obj.relTol;
+    absTol = obj.absTol;
+    terminationType = obj.terminationType;
+    integrationType = obj.integrationType;
+    streamlineAlgorithmType = obj.streamlineAlgorithmType;
+    maxStreamlineProcessCount = obj.maxStreamlineProcessCount;
+    maxDomainCacheSize = obj.maxDomainCacheSize;
+    workGroupSize = obj.workGroupSize;
+    pathlines = obj.pathlines;
+    coloringVariable = obj.coloringVariable;
+    legendMinFlag = obj.legendMinFlag;
+    legendMaxFlag = obj.legendMaxFlag;
+    legendMin = obj.legendMin;
+    legendMax = obj.legendMax;
+    displayBegin = obj.displayBegin;
+    displayEnd = obj.displayEnd;
+    displayBeginFlag = obj.displayBeginFlag;
+    displayEndFlag = obj.displayEndFlag;
+    seedDisplayRadius = obj.seedDisplayRadius;
+    headDisplayType = obj.headDisplayType;
+    headDisplayRadius = obj.headDisplayRadius;
+    headDisplayHeight = obj.headDisplayHeight;
+    opacityType = obj.opacityType;
+    opacityVariable = obj.opacityVariable;
+    opacity = obj.opacity;
+    opacityVarMin = obj.opacityVarMin;
+    opacityVarMax = obj.opacityVarMax;
+    opacityVarMinFlag = obj.opacityVarMinFlag;
+    opacityVarMaxFlag = obj.opacityVarMaxFlag;
+    tubeDisplayDensity = obj.tubeDisplayDensity;
+    geomDisplayQuality = obj.geomDisplayQuality;
+
+    StreamlineAttributes::SelectAll();
+}
+
+// Type map format string
+const char *StreamlineAttributes::TypeMapFormatString = STREAMLINEATTRIBUTES_TMFS;
+const AttributeGroup::private_tmfs_t StreamlineAttributes::TmfsStruct = {STREAMLINEATTRIBUTES_TMFS};
+
+
+// ****************************************************************************
+// Method: StreamlineAttributes::StreamlineAttributes
+//
+// Purpose: 
+//   Default constructor for the StreamlineAttributes class.
+//
+// Note:       Autogenerated by xml2atts.
+//
+// Programmer: xml2atts
+// Creation:   omitted
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+StreamlineAttributes::StreamlineAttributes() : 
+    AttributeSubject(StreamlineAttributes::TypeMapFormatString),
+    colorTableName("Default"), singleColor(0, 0, 0)
+{
+    StreamlineAttributes::Init();
+}
+
+// ****************************************************************************
+// Method: StreamlineAttributes::StreamlineAttributes
+//
+// Purpose: 
+//   Constructor for the derived classes of StreamlineAttributes class.
+//
+// Note:       Autogenerated by xml2atts.
+//
+// Programmer: xml2atts
+// Creation:   omitted
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+StreamlineAttributes::StreamlineAttributes(private_tmfs_t tmfs) : 
+    AttributeSubject(tmfs.tmfs),
+    colorTableName("Default"), singleColor(0, 0, 0)
+{
+    StreamlineAttributes::Init();
+}
+
+// ****************************************************************************
+// Method: StreamlineAttributes::StreamlineAttributes
+//
+// Purpose: 
+//   Copy constructor for the StreamlineAttributes class.
+//
+// Note:       Autogenerated by xml2atts.
+//
+// Programmer: xml2atts
+// Creation:   omitted
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+StreamlineAttributes::StreamlineAttributes(const StreamlineAttributes &obj) : 
+    AttributeSubject(StreamlineAttributes::TypeMapFormatString)
+{
+    StreamlineAttributes::Copy(obj);
+}
+
+// ****************************************************************************
+// Method: StreamlineAttributes::StreamlineAttributes
+//
+// Purpose: 
+//   Copy constructor for derived classes of the StreamlineAttributes class.
+//
+// Note:       Autogenerated by xml2atts.
+//
+// Programmer: xml2atts
+// Creation:   omitted
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+StreamlineAttributes::StreamlineAttributes(const StreamlineAttributes &obj, private_tmfs_t tmfs) : 
+    AttributeSubject(tmfs.tmfs)
+{
+    StreamlineAttributes::Copy(obj);
+}
+
+// ****************************************************************************
+// Method: StreamlineAttributes::~StreamlineAttributes
+//
+// Purpose: 
+//   Destructor for the StreamlineAttributes class.
+//
+// Note:       Autogenerated by xml2atts.
+//
+// Programmer: xml2atts
+// Creation:   omitted
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+StreamlineAttributes::~StreamlineAttributes()
+{
+    // nothing here
+}
+
+// ****************************************************************************
+// Method: StreamlineAttributes::operator = 
+//
+// Purpose: 
+//   Assignment operator for the StreamlineAttributes class.
+//
+// Note:       Autogenerated by xml2atts.
+//
+// Programmer: xml2atts
+// Creation:   omitted
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+StreamlineAttributes& 
+StreamlineAttributes::operator = (const StreamlineAttributes &obj)
+{
+    if (this == &obj) return *this;
+
+    StreamlineAttributes::Copy(obj);
+
+    return *this;
+}
+
+// ****************************************************************************
+// Method: StreamlineAttributes::operator == 
+//
+// Purpose: 
+//   Comparison operator == for the StreamlineAttributes class.
+//
+// Note:       Autogenerated by xml2atts.
+//
+// Programmer: xml2atts
+// Creation:   omitted
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+bool
+StreamlineAttributes::operator == (const StreamlineAttributes &obj) const
+{
+    // Compare the pointSource arrays.
+    bool pointSource_equal = true;
+    for(int i = 0; i < 3 && pointSource_equal; ++i)
+        pointSource_equal = (pointSource[i] == obj.pointSource[i]);
+
+    // Compare the lineStart arrays.
+    bool lineStart_equal = true;
+    for(int i = 0; i < 3 && lineStart_equal; ++i)
+        lineStart_equal = (lineStart[i] == obj.lineStart[i]);
+
+    // Compare the lineEnd arrays.
+    bool lineEnd_equal = true;
+    for(int i = 0; i < 3 && lineEnd_equal; ++i)
+        lineEnd_equal = (lineEnd[i] == obj.lineEnd[i]);
+
+    // Compare the planeOrigin arrays.
+    bool planeOrigin_equal = true;
+    for(int i = 0; i < 3 && planeOrigin_equal; ++i)
+        planeOrigin_equal = (planeOrigin[i] == obj.planeOrigin[i]);
+
+    // Compare the planeNormal arrays.
+    bool planeNormal_equal = true;
+    for(int i = 0; i < 3 && planeNormal_equal; ++i)
+        planeNormal_equal = (planeNormal[i] == obj.planeNormal[i]);
+
+    // Compare the planeUpAxis arrays.
+    bool planeUpAxis_equal = true;
+    for(int i = 0; i < 3 && planeUpAxis_equal; ++i)
+        planeUpAxis_equal = (planeUpAxis[i] == obj.planeUpAxis[i]);
+
+    // Compare the sphereOrigin arrays.
+    bool sphereOrigin_equal = true;
+    for(int i = 0; i < 3 && sphereOrigin_equal; ++i)
+        sphereOrigin_equal = (sphereOrigin[i] == obj.sphereOrigin[i]);
+
+    // Compare the boxExtents arrays.
+    bool boxExtents_equal = true;
+    for(int i = 0; i < 6 && boxExtents_equal; ++i)
+        boxExtents_equal = (boxExtents[i] == obj.boxExtents[i]);
+
+    // Create the return value
+    return ((sourceType == obj.sourceType) &&
+            (maxStepLength == obj.maxStepLength) &&
+            (termination == obj.termination) &&
+            pointSource_equal &&
+            lineStart_equal &&
+            lineEnd_equal &&
+            planeOrigin_equal &&
+            planeNormal_equal &&
+            planeUpAxis_equal &&
+            (planeRadius == obj.planeRadius) &&
+            sphereOrigin_equal &&
+            (sphereRadius == obj.sphereRadius) &&
+            boxExtents_equal &&
+            (useWholeBox == obj.useWholeBox) &&
+            (pointList == obj.pointList) &&
+            (pointDensity == obj.pointDensity) &&
+            (displayMethod == obj.displayMethod) &&
+            (showSeeds == obj.showSeeds) &&
+            (showHeads == obj.showHeads) &&
+            (tubeRadius == obj.tubeRadius) &&
+            (ribbonWidth == obj.ribbonWidth) &&
+            (lineWidth == obj.lineWidth) &&
+            (coloringMethod == obj.coloringMethod) &&
+            (colorTableName == obj.colorTableName) &&
+            (singleColor == obj.singleColor) &&
+            (legendFlag == obj.legendFlag) &&
+            (lightingFlag == obj.lightingFlag) &&
+            (streamlineDirection == obj.streamlineDirection) &&
+            (relTol == obj.relTol) &&
+            (absTol == obj.absTol) &&
+            (terminationType == obj.terminationType) &&
+            (integrationType == obj.integrationType) &&
+            (streamlineAlgorithmType == obj.streamlineAlgorithmType) &&
+            (maxStreamlineProcessCount == obj.maxStreamlineProcessCount) &&
+            (maxDomainCacheSize == obj.maxDomainCacheSize) &&
+            (workGroupSize == obj.workGroupSize) &&
+            (pathlines == obj.pathlines) &&
+            (coloringVariable == obj.coloringVariable) &&
+            (legendMinFlag == obj.legendMinFlag) &&
+            (legendMaxFlag == obj.legendMaxFlag) &&
+            (legendMin == obj.legendMin) &&
+            (legendMax == obj.legendMax) &&
+            (displayBegin == obj.displayBegin) &&
+            (displayEnd == obj.displayEnd) &&
+            (displayBeginFlag == obj.displayBeginFlag) &&
+            (displayEndFlag == obj.displayEndFlag) &&
+            (seedDisplayRadius == obj.seedDisplayRadius) &&
+            (headDisplayType == obj.headDisplayType) &&
+            (headDisplayRadius == obj.headDisplayRadius) &&
+            (headDisplayHeight == obj.headDisplayHeight) &&
+            (opacityType == obj.opacityType) &&
+            (opacityVariable == obj.opacityVariable) &&
+            (opacity == obj.opacity) &&
+            (opacityVarMin == obj.opacityVarMin) &&
+            (opacityVarMax == obj.opacityVarMax) &&
+            (opacityVarMinFlag == obj.opacityVarMinFlag) &&
+            (opacityVarMaxFlag == obj.opacityVarMaxFlag) &&
+            (tubeDisplayDensity == obj.tubeDisplayDensity) &&
+            (geomDisplayQuality == obj.geomDisplayQuality));
+}
+
+// ****************************************************************************
+// Method: StreamlineAttributes::operator != 
+//
+// Purpose: 
+//   Comparison operator != for the StreamlineAttributes class.
+//
+// Note:       Autogenerated by xml2atts.
+//
+// Programmer: xml2atts
+// Creation:   omitted
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+bool
+StreamlineAttributes::operator != (const StreamlineAttributes &obj) const
+{
+    return !(this->operator == (obj));
+}
+
+// ****************************************************************************
+// Method: StreamlineAttributes::TypeName
+//
+// Purpose: 
+//   Type name method for the StreamlineAttributes class.
+//
+// Note:       Autogenerated by xml2atts.
+//
+// Programmer: xml2atts
+// Creation:   omitted
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+const std::string
+StreamlineAttributes::TypeName() const
+{
+    return "StreamlineAttributes";
+}
+
+// ****************************************************************************
+// Method: StreamlineAttributes::CopyAttributes
+//
+// Purpose: 
+//   CopyAttributes method for the StreamlineAttributes class.
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri Oct 4 15:22:57 PST 2002
+//
+// Modifications:
+//    Brad Whitlock, Wed Dec 22 12:57:53 PDT 2004
+//    I added code to support the point tool.
+//
+//    Hank Childs, Sat Mar  3 09:00:12 PST 2007
+//    Disable useWholeBox if we are copying box extents.
+//
+// ****************************************************************************
+
+bool
+StreamlineAttributes::CopyAttributes(const AttributeGroup *atts)
+{
+    bool retval = false;
+
+    if(TypeName() == atts->TypeName())
+    {
+        // Call assignment operator.
+        const StreamlineAttributes *tmp = (const StreamlineAttributes *)atts;
+        *this = *tmp;
+        retval = true;
+    }
+    else if(atts->TypeName() == "PointAttributes")
+    {
+        if(sourceType == SpecifiedPoint)
+        {
+            const PointAttributes *p = (PointAttributes *)atts;
+            SetPointSource(p->GetPoint());
+            retval = true;
+        }
+    } 
+    else if(atts->TypeName() == "Line")
+    {
+        if(sourceType == SpecifiedLine)
+        {
+            const Line *line = (const Line *)atts;
+            SetLineStart(line->GetPoint1());
+            SetLineEnd(line->GetPoint2());
+            retval = true;
+        }
+    }
+    else if(atts->TypeName() == "PlaneAttributes")
+    {
+        if(sourceType == SpecifiedPlane)
+        {
+            const PlaneAttributes *plane = (const PlaneAttributes *)atts;
+            SetPlaneOrigin(plane->GetOrigin());
+            SetPlaneNormal(plane->GetNormal());
+            SetPlaneUpAxis(plane->GetUpAxis());
+            SetPlaneRadius(plane->GetRadius());
+            retval = true;
+        }
+    }
+    else if(atts->TypeName() == "SphereAttributes")
+    {
+        if(sourceType == SpecifiedSphere)
+        {
+            const SphereAttributes *sphere = (const SphereAttributes *)atts;
+            SetSphereOrigin(sphere->GetOrigin());
+            SetSphereRadius(sphere->GetRadius());
+            retval = true;
+        }
+    }   
+    else if(atts->TypeName() == "CircleAttributes")
+    {
+        if(sourceType == SpecifiedCircle)
+        {
+            const PlaneAttributes *plane = (const PlaneAttributes *)atts;
+            SetPlaneOrigin(plane->GetOrigin());
+            SetPlaneNormal(plane->GetNormal());
+            SetPlaneUpAxis(plane->GetUpAxis());
+            SetPlaneRadius(plane->GetRadius());
+            retval = true;
+        }
+    }
+    else if(atts->TypeName() == "BoxExtents")
+    {
+        if(sourceType == SpecifiedBox)
+        {
+            const BoxExtents *box = (const BoxExtents *)atts;
+            SetBoxExtents(box->GetExtents());
+            SetUseWholeBox(false);
+            retval = true;
+        }
+    }
+
+    return retval;
+}
+
+// ****************************************************************************
+//  Method: StreamlineAttributes::CreateCompatible
+//
+//  Purpose:
+//     Creates a new state object of the desired type.
+//
+//  Programmer: Brad Whitlock
+//  Creation:   Fri Oct 4 15:22:57 PST 2002
+//
+//  Modifications:
+//    Brad Whitlock, Tue Jan 21 12:33:04 PDT 2003
+//    I added code to set the "have radius" flag to true so the plane tool
+//    resizes properly when resizing the plane radius.
+//
+//    Brad Whitlock, Wed Dec 22 12:54:43 PDT 2004
+//    I added code to support the point tool.
+//
+// ****************************************************************************
+
+AttributeSubject *
+StreamlineAttributes::CreateCompatible(const std::string &tname) const
+{
+    AttributeSubject *retval = 0;
+
+    if(TypeName() == tname)
+    {
+        retval = new StreamlineAttributes(*this);
+    }
+    else if(tname == "PointAttributes")
+    {
+        PointAttributes *p = new PointAttributes;
+        p->SetPoint(GetPointSource());
+        retval = p;
+    }
+    else if(tname == "Line")
+    {
+        Line *l = new Line;
+        l->SetPoint1(GetLineStart());
+        l->SetPoint2(GetLineEnd());
+        retval = l;
+    }
+    else if(tname == "PlaneAttributes")
+    {
+        PlaneAttributes *p = new PlaneAttributes;
+        p->SetOrigin(GetPlaneOrigin());
+        p->SetNormal(GetPlaneNormal());
+        p->SetUpAxis(GetPlaneUpAxis());
+        p->SetRadius(GetPlaneRadius());
+        p->SetHaveRadius(true);
+        retval = p;
+    }
+    else if(tname == "SphereAttributes")
+    {
+        SphereAttributes *s = new SphereAttributes;
+        s->SetOrigin(GetSphereOrigin());
+        s->SetRadius(GetSphereRadius());
+        retval = s;
+    }
+    else if(tname == "CircleAttributes")
+    {
+        PlaneAttributes *p = new PlaneAttributes;
+        p->SetOrigin(GetPlaneOrigin());
+        p->SetNormal(GetPlaneNormal());
+        p->SetUpAxis(GetPlaneUpAxis());
+        p->SetRadius(GetPlaneRadius());
+        p->SetHaveRadius(true);
+        retval = p;
+    }
+    else if(tname == "BoxExtents")
+    {
+        BoxExtents *b = new BoxExtents;
+        b->SetExtents(GetBoxExtents());
+        retval = b;
+    }
+
+    return retval;
+}
+
+// ****************************************************************************
+// Method: StreamlineAttributes::NewInstance
+//
+// Purpose: 
+//   NewInstance method for the StreamlineAttributes class.
+//
+// Note:       Autogenerated by xml2atts.
+//
+// Programmer: xml2atts
+// Creation:   omitted
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+AttributeSubject *
+StreamlineAttributes::NewInstance(bool copy) const
+{
+    AttributeSubject *retval = 0;
+    if(copy)
+        retval = new StreamlineAttributes(*this);
+    else
+        retval = new StreamlineAttributes;
+
+    return retval;
+}
+
+// ****************************************************************************
+// Method: StreamlineAttributes::SelectAll
+//
+// Purpose: 
+//   Selects all attributes.
+//
+// Note:       Autogenerated by xml2atts.
+//
+// Programmer: xml2atts
+// Creation:   omitted
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+StreamlineAttributes::SelectAll()
+{
+    Select(ID_sourceType,                (void *)&sourceType);
+    Select(ID_maxStepLength,             (void *)&maxStepLength);
+    Select(ID_termination,               (void *)&termination);
+    Select(ID_pointSource,               (void *)pointSource, 3);
+    Select(ID_lineStart,                 (void *)lineStart, 3);
+    Select(ID_lineEnd,                   (void *)lineEnd, 3);
+    Select(ID_planeOrigin,               (void *)planeOrigin, 3);
+    Select(ID_planeNormal,               (void *)planeNormal, 3);
+    Select(ID_planeUpAxis,               (void *)planeUpAxis, 3);
+    Select(ID_planeRadius,               (void *)&planeRadius);
+    Select(ID_sphereOrigin,              (void *)sphereOrigin, 3);
+    Select(ID_sphereRadius,              (void *)&sphereRadius);
+    Select(ID_boxExtents,                (void *)boxExtents, 6);
+    Select(ID_useWholeBox,               (void *)&useWholeBox);
+    Select(ID_pointList,                 (void *)&pointList);
+    Select(ID_pointDensity,              (void *)&pointDensity);
+    Select(ID_displayMethod,             (void *)&displayMethod);
+    Select(ID_showSeeds,                 (void *)&showSeeds);
+    Select(ID_showHeads,                 (void *)&showHeads);
+    Select(ID_tubeRadius,                (void *)&tubeRadius);
+    Select(ID_ribbonWidth,               (void *)&ribbonWidth);
+    Select(ID_lineWidth,                 (void *)&lineWidth);
+    Select(ID_coloringMethod,            (void *)&coloringMethod);
+    Select(ID_colorTableName,            (void *)&colorTableName);
+    Select(ID_singleColor,               (void *)&singleColor);
+    Select(ID_legendFlag,                (void *)&legendFlag);
+    Select(ID_lightingFlag,              (void *)&lightingFlag);
+    Select(ID_streamlineDirection,       (void *)&streamlineDirection);
+    Select(ID_relTol,                    (void *)&relTol);
+    Select(ID_absTol,                    (void *)&absTol);
+    Select(ID_terminationType,           (void *)&terminationType);
+    Select(ID_integrationType,           (void *)&integrationType);
+    Select(ID_streamlineAlgorithmType,   (void *)&streamlineAlgorithmType);
+    Select(ID_maxStreamlineProcessCount, (void *)&maxStreamlineProcessCount);
+    Select(ID_maxDomainCacheSize,        (void *)&maxDomainCacheSize);
+    Select(ID_workGroupSize,             (void *)&workGroupSize);
+    Select(ID_pathlines,                 (void *)&pathlines);
+    Select(ID_coloringVariable,          (void *)&coloringVariable);
+    Select(ID_legendMinFlag,             (void *)&legendMinFlag);
+    Select(ID_legendMaxFlag,             (void *)&legendMaxFlag);
+    Select(ID_legendMin,                 (void *)&legendMin);
+    Select(ID_legendMax,                 (void *)&legendMax);
+    Select(ID_displayBegin,              (void *)&displayBegin);
+    Select(ID_displayEnd,                (void *)&displayEnd);
+    Select(ID_displayBeginFlag,          (void *)&displayBeginFlag);
+    Select(ID_displayEndFlag,            (void *)&displayEndFlag);
+    Select(ID_seedDisplayRadius,         (void *)&seedDisplayRadius);
+    Select(ID_headDisplayType,           (void *)&headDisplayType);
+    Select(ID_headDisplayRadius,         (void *)&headDisplayRadius);
+    Select(ID_headDisplayHeight,         (void *)&headDisplayHeight);
+    Select(ID_opacityType,               (void *)&opacityType);
+    Select(ID_opacityVariable,           (void *)&opacityVariable);
+    Select(ID_opacity,                   (void *)&opacity);
+    Select(ID_opacityVarMin,             (void *)&opacityVarMin);
+    Select(ID_opacityVarMax,             (void *)&opacityVarMax);
+    Select(ID_opacityVarMinFlag,         (void *)&opacityVarMinFlag);
+    Select(ID_opacityVarMaxFlag,         (void *)&opacityVarMaxFlag);
+    Select(ID_tubeDisplayDensity,        (void *)&tubeDisplayDensity);
+    Select(ID_geomDisplayQuality,        (void *)&geomDisplayQuality);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Persistence methods
+///////////////////////////////////////////////////////////////////////////////
+
+// ****************************************************************************
+// Method: StreamlineAttributes::CreateNode
+//
+// Purpose: 
+//   This method creates a DataNode representation of the object so it can be saved to a config file.
+//
+// Note:       Autogenerated by xml2atts.
+//
+// Programmer: xml2atts
+// Creation:   omitted
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+bool
+StreamlineAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool forceAdd)
+{
+    if(parentNode == 0)
+        return false;
+
+    StreamlineAttributes defaultObject;
+    bool addToParent = false;
+    // Create a node for StreamlineAttributes.
+    DataNode *node = new DataNode("StreamlineAttributes");
+
+    if(completeSave || !FieldsEqual(ID_sourceType, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("sourceType", SourceType_ToString(sourceType)));
+    }
+
+    if(completeSave || !FieldsEqual(ID_maxStepLength, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("maxStepLength", maxStepLength));
+    }
+
+    if(completeSave || !FieldsEqual(ID_termination, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("termination", termination));
+    }
+
+    if(completeSave || !FieldsEqual(ID_pointSource, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("pointSource", pointSource, 3));
+    }
+
+    if(completeSave || !FieldsEqual(ID_lineStart, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("lineStart", lineStart, 3));
+    }
+
+    if(completeSave || !FieldsEqual(ID_lineEnd, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("lineEnd", lineEnd, 3));
+    }
+
+    if(completeSave || !FieldsEqual(ID_planeOrigin, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("planeOrigin", planeOrigin, 3));
+    }
+
+    if(completeSave || !FieldsEqual(ID_planeNormal, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("planeNormal", planeNormal, 3));
+    }
+
+    if(completeSave || !FieldsEqual(ID_planeUpAxis, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("planeUpAxis", planeUpAxis, 3));
+    }
+
+    if(completeSave || !FieldsEqual(ID_planeRadius, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("planeRadius", planeRadius));
+    }
+
+    if(completeSave || !FieldsEqual(ID_sphereOrigin, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("sphereOrigin", sphereOrigin, 3));
+    }
+
+    if(completeSave || !FieldsEqual(ID_sphereRadius, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("sphereRadius", sphereRadius));
+    }
+
+    if(completeSave || !FieldsEqual(ID_boxExtents, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("boxExtents", boxExtents, 6));
+    }
+
+    if(completeSave || !FieldsEqual(ID_useWholeBox, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("useWholeBox", useWholeBox));
+    }
+
+    if(completeSave || !FieldsEqual(ID_pointList, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("pointList", pointList));
+    }
+
+    if(completeSave || !FieldsEqual(ID_pointDensity, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("pointDensity", pointDensity));
+    }
+
+    if(completeSave || !FieldsEqual(ID_displayMethod, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("displayMethod", DisplayMethod_ToString(displayMethod)));
+    }
+
+    if(completeSave || !FieldsEqual(ID_showSeeds, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("showSeeds", showSeeds));
+    }
+
+    if(completeSave || !FieldsEqual(ID_showHeads, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("showHeads", showHeads));
+    }
+
+    if(completeSave || !FieldsEqual(ID_tubeRadius, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("tubeRadius", tubeRadius));
+    }
+
+    if(completeSave || !FieldsEqual(ID_ribbonWidth, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("ribbonWidth", ribbonWidth));
+    }
+
+    if(completeSave || !FieldsEqual(ID_lineWidth, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("lineWidth", lineWidth));
+    }
+
+    if(completeSave || !FieldsEqual(ID_coloringMethod, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("coloringMethod", ColoringMethod_ToString(coloringMethod)));
+    }
+
+    if(completeSave || !FieldsEqual(ID_colorTableName, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("colorTableName", colorTableName));
+    }
+
+        DataNode *singleColorNode = new DataNode("singleColor");
+        if(singleColor.CreateNode(singleColorNode, completeSave, true))
+        {
+            addToParent = true;
+            node->AddNode(singleColorNode);
+        }
+        else
+            delete singleColorNode;
+    if(completeSave || !FieldsEqual(ID_legendFlag, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("legendFlag", legendFlag));
+    }
+
+    if(completeSave || !FieldsEqual(ID_lightingFlag, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("lightingFlag", lightingFlag));
+    }
+
+    if(completeSave || !FieldsEqual(ID_streamlineDirection, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("streamlineDirection", IntegrationDirection_ToString(streamlineDirection)));
+    }
+
+    if(completeSave || !FieldsEqual(ID_relTol, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("relTol", relTol));
+    }
+
+    if(completeSave || !FieldsEqual(ID_absTol, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("absTol", absTol));
+    }
+
+    if(completeSave || !FieldsEqual(ID_terminationType, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("terminationType", TerminationType_ToString(terminationType)));
+    }
+
+    if(completeSave || !FieldsEqual(ID_integrationType, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("integrationType", IntegrationType_ToString(integrationType)));
+    }
+
+    if(completeSave || !FieldsEqual(ID_streamlineAlgorithmType, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("streamlineAlgorithmType", StreamlineAlgorithmType_ToString(streamlineAlgorithmType)));
+    }
+
+    if(completeSave || !FieldsEqual(ID_maxStreamlineProcessCount, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("maxStreamlineProcessCount", maxStreamlineProcessCount));
+    }
+
+    if(completeSave || !FieldsEqual(ID_maxDomainCacheSize, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("maxDomainCacheSize", maxDomainCacheSize));
+    }
+
+    if(completeSave || !FieldsEqual(ID_workGroupSize, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("workGroupSize", workGroupSize));
+    }
+
+    if(completeSave || !FieldsEqual(ID_pathlines, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("pathlines", pathlines));
+    }
+
+    if(completeSave || !FieldsEqual(ID_coloringVariable, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("coloringVariable", coloringVariable));
+    }
+
+    if(completeSave || !FieldsEqual(ID_legendMinFlag, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("legendMinFlag", legendMinFlag));
+    }
+
+    if(completeSave || !FieldsEqual(ID_legendMaxFlag, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("legendMaxFlag", legendMaxFlag));
+    }
+
+    if(completeSave || !FieldsEqual(ID_legendMin, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("legendMin", legendMin));
+    }
+
+    if(completeSave || !FieldsEqual(ID_legendMax, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("legendMax", legendMax));
+    }
+
+    if(completeSave || !FieldsEqual(ID_displayBegin, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("displayBegin", displayBegin));
+    }
+
+    if(completeSave || !FieldsEqual(ID_displayEnd, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("displayEnd", displayEnd));
+    }
+
+    if(completeSave || !FieldsEqual(ID_displayBeginFlag, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("displayBeginFlag", displayBeginFlag));
+    }
+
+    if(completeSave || !FieldsEqual(ID_displayEndFlag, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("displayEndFlag", displayEndFlag));
+    }
+
+    if(completeSave || !FieldsEqual(ID_seedDisplayRadius, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("seedDisplayRadius", seedDisplayRadius));
+    }
+
+    if(completeSave || !FieldsEqual(ID_headDisplayType, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("headDisplayType", GeomDisplayType_ToString(headDisplayType)));
+    }
+
+    if(completeSave || !FieldsEqual(ID_headDisplayRadius, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("headDisplayRadius", headDisplayRadius));
+    }
+
+    if(completeSave || !FieldsEqual(ID_headDisplayHeight, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("headDisplayHeight", headDisplayHeight));
+    }
+
+    if(completeSave || !FieldsEqual(ID_opacityType, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("opacityType", OpacityType_ToString(opacityType)));
+    }
+
+    if(completeSave || !FieldsEqual(ID_opacityVariable, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("opacityVariable", opacityVariable));
+    }
+
+    if(completeSave || !FieldsEqual(ID_opacity, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("opacity", opacity));
+    }
+
+    if(completeSave || !FieldsEqual(ID_opacityVarMin, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("opacityVarMin", opacityVarMin));
+    }
+
+    if(completeSave || !FieldsEqual(ID_opacityVarMax, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("opacityVarMax", opacityVarMax));
+    }
+
+    if(completeSave || !FieldsEqual(ID_opacityVarMinFlag, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("opacityVarMinFlag", opacityVarMinFlag));
+    }
+
+    if(completeSave || !FieldsEqual(ID_opacityVarMaxFlag, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("opacityVarMaxFlag", opacityVarMaxFlag));
+    }
+
+    if(completeSave || !FieldsEqual(ID_tubeDisplayDensity, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("tubeDisplayDensity", tubeDisplayDensity));
+    }
+
+    if(completeSave || !FieldsEqual(ID_geomDisplayQuality, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("geomDisplayQuality", DisplayQuality_ToString(geomDisplayQuality)));
+    }
+
+
+    // Add the node to the parent node.
+    if(addToParent || forceAdd)
+        parentNode->AddNode(node);
+    else
+        delete node;
+
+    return (addToParent || forceAdd);
+}
+
+// ****************************************************************************
+// Method: StreamlineAttributes::SetFromNode
+//
+// Purpose: 
+//   This method sets attributes in this object from values in a DataNode representation of the object.
+//
+// Note:       Autogenerated by xml2atts.
+//
+// Programmer: xml2atts
+// Creation:   omitted
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+StreamlineAttributes::SetFromNode(DataNode *parentNode)
+{
+    if(parentNode == 0)
+        return;
+
+    DataNode *searchNode = parentNode->GetNode("StreamlineAttributes");
+    if(searchNode == 0)
+        return;
+
+    DataNode *node;
+    if((node = searchNode->GetNode("sourceType")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 7)
+                SetSourceType(SourceType(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            SourceType value;
+            if(SourceType_FromString(node->AsString(), value))
+                SetSourceType(value);
+        }
+    }
+    if((node = searchNode->GetNode("maxStepLength")) != 0)
+        SetMaxStepLength(node->AsDouble());
+    if((node = searchNode->GetNode("termination")) != 0)
+        SetTermination(node->AsDouble());
+    if((node = searchNode->GetNode("pointSource")) != 0)
+        SetPointSource(node->AsDoubleArray());
+    if((node = searchNode->GetNode("lineStart")) != 0)
+        SetLineStart(node->AsDoubleArray());
+    if((node = searchNode->GetNode("lineEnd")) != 0)
+        SetLineEnd(node->AsDoubleArray());
+    if((node = searchNode->GetNode("planeOrigin")) != 0)
+        SetPlaneOrigin(node->AsDoubleArray());
+    if((node = searchNode->GetNode("planeNormal")) != 0)
+        SetPlaneNormal(node->AsDoubleArray());
+    if((node = searchNode->GetNode("planeUpAxis")) != 0)
+        SetPlaneUpAxis(node->AsDoubleArray());
+    if((node = searchNode->GetNode("planeRadius")) != 0)
+        SetPlaneRadius(node->AsDouble());
+    if((node = searchNode->GetNode("sphereOrigin")) != 0)
+        SetSphereOrigin(node->AsDoubleArray());
+    if((node = searchNode->GetNode("sphereRadius")) != 0)
+        SetSphereRadius(node->AsDouble());
+    if((node = searchNode->GetNode("boxExtents")) != 0)
+        SetBoxExtents(node->AsDoubleArray());
+    if((node = searchNode->GetNode("useWholeBox")) != 0)
+        SetUseWholeBox(node->AsBool());
+    if((node = searchNode->GetNode("pointList")) != 0)
+        SetPointList(node->AsDoubleVector());
+    if((node = searchNode->GetNode("pointDensity")) != 0)
+        SetPointDensity(node->AsInt());
+    if((node = searchNode->GetNode("displayMethod")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 3)
+                SetDisplayMethod(DisplayMethod(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            DisplayMethod value;
+            if(DisplayMethod_FromString(node->AsString(), value))
+                SetDisplayMethod(value);
+        }
+    }
+    if((node = searchNode->GetNode("showSeeds")) != 0)
+        SetShowSeeds(node->AsBool());
+    if((node = searchNode->GetNode("showHeads")) != 0)
+        SetShowHeads(node->AsBool());
+    if((node = searchNode->GetNode("tubeRadius")) != 0)
+        SetTubeRadius(node->AsDouble());
+    if((node = searchNode->GetNode("ribbonWidth")) != 0)
+        SetRibbonWidth(node->AsDouble());
+    if((node = searchNode->GetNode("lineWidth")) != 0)
+        SetLineWidth(node->AsInt());
+    if((node = searchNode->GetNode("coloringMethod")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 7)
+                SetColoringMethod(ColoringMethod(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            ColoringMethod value;
+            if(ColoringMethod_FromString(node->AsString(), value))
+                SetColoringMethod(value);
+        }
+    }
+    if((node = searchNode->GetNode("colorTableName")) != 0)
+        SetColorTableName(node->AsString());
+    if((node = searchNode->GetNode("singleColor")) != 0)
+        singleColor.SetFromNode(node);
+    if((node = searchNode->GetNode("legendFlag")) != 0)
+        SetLegendFlag(node->AsBool());
+    if((node = searchNode->GetNode("lightingFlag")) != 0)
+        SetLightingFlag(node->AsBool());
+    if((node = searchNode->GetNode("streamlineDirection")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 3)
+                SetStreamlineDirection(IntegrationDirection(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            IntegrationDirection value;
+            if(IntegrationDirection_FromString(node->AsString(), value))
+                SetStreamlineDirection(value);
+        }
+    }
+    if((node = searchNode->GetNode("relTol")) != 0)
+        SetRelTol(node->AsDouble());
+    if((node = searchNode->GetNode("absTol")) != 0)
+        SetAbsTol(node->AsDouble());
+    if((node = searchNode->GetNode("terminationType")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 3)
+                SetTerminationType(TerminationType(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            TerminationType value;
+            if(TerminationType_FromString(node->AsString(), value))
+                SetTerminationType(value);
+        }
+    }
+    if((node = searchNode->GetNode("integrationType")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 2)
+                SetIntegrationType(IntegrationType(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            IntegrationType value;
+            if(IntegrationType_FromString(node->AsString(), value))
+                SetIntegrationType(value);
+        }
+    }
+    if((node = searchNode->GetNode("streamlineAlgorithmType")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 3)
+                SetStreamlineAlgorithmType(StreamlineAlgorithmType(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            StreamlineAlgorithmType value;
+            if(StreamlineAlgorithmType_FromString(node->AsString(), value))
+                SetStreamlineAlgorithmType(value);
+        }
+    }
+    if((node = searchNode->GetNode("maxStreamlineProcessCount")) != 0)
+        SetMaxStreamlineProcessCount(node->AsInt());
+    if((node = searchNode->GetNode("maxDomainCacheSize")) != 0)
+        SetMaxDomainCacheSize(node->AsInt());
+    if((node = searchNode->GetNode("workGroupSize")) != 0)
+        SetWorkGroupSize(node->AsInt());
+    if((node = searchNode->GetNode("pathlines")) != 0)
+        SetPathlines(node->AsBool());
+    if((node = searchNode->GetNode("coloringVariable")) != 0)
+        SetColoringVariable(node->AsString());
+    if((node = searchNode->GetNode("legendMinFlag")) != 0)
+        SetLegendMinFlag(node->AsBool());
+    if((node = searchNode->GetNode("legendMaxFlag")) != 0)
+        SetLegendMaxFlag(node->AsBool());
+    if((node = searchNode->GetNode("legendMin")) != 0)
+        SetLegendMin(node->AsDouble());
+    if((node = searchNode->GetNode("legendMax")) != 0)
+        SetLegendMax(node->AsDouble());
+    if((node = searchNode->GetNode("displayBegin")) != 0)
+        SetDisplayBegin(node->AsDouble());
+    if((node = searchNode->GetNode("displayEnd")) != 0)
+        SetDisplayEnd(node->AsDouble());
+    if((node = searchNode->GetNode("displayBeginFlag")) != 0)
+        SetDisplayBeginFlag(node->AsBool());
+    if((node = searchNode->GetNode("displayEndFlag")) != 0)
+        SetDisplayEndFlag(node->AsBool());
+    if((node = searchNode->GetNode("seedDisplayRadius")) != 0)
+        SetSeedDisplayRadius(node->AsDouble());
+    if((node = searchNode->GetNode("headDisplayType")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 2)
+                SetHeadDisplayType(GeomDisplayType(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            GeomDisplayType value;
+            if(GeomDisplayType_FromString(node->AsString(), value))
+                SetHeadDisplayType(value);
+        }
+    }
+    if((node = searchNode->GetNode("headDisplayRadius")) != 0)
+        SetHeadDisplayRadius(node->AsDouble());
+    if((node = searchNode->GetNode("headDisplayHeight")) != 0)
+        SetHeadDisplayHeight(node->AsDouble());
+    if((node = searchNode->GetNode("opacityType")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 4)
+                SetOpacityType(OpacityType(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            OpacityType value;
+            if(OpacityType_FromString(node->AsString(), value))
+                SetOpacityType(value);
+        }
+    }
+    if((node = searchNode->GetNode("opacityVariable")) != 0)
+        SetOpacityVariable(node->AsString());
+    if((node = searchNode->GetNode("opacity")) != 0)
+        SetOpacity(node->AsDouble());
+    if((node = searchNode->GetNode("opacityVarMin")) != 0)
+        SetOpacityVarMin(node->AsDouble());
+    if((node = searchNode->GetNode("opacityVarMax")) != 0)
+        SetOpacityVarMax(node->AsDouble());
+    if((node = searchNode->GetNode("opacityVarMinFlag")) != 0)
+        SetOpacityVarMinFlag(node->AsBool());
+    if((node = searchNode->GetNode("opacityVarMaxFlag")) != 0)
+        SetOpacityVarMaxFlag(node->AsBool());
+    if((node = searchNode->GetNode("tubeDisplayDensity")) != 0)
+        SetTubeDisplayDensity(node->AsInt());
+    if((node = searchNode->GetNode("geomDisplayQuality")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 4)
+                SetGeomDisplayQuality(DisplayQuality(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            DisplayQuality value;
+            if(DisplayQuality_FromString(node->AsString(), value))
+                SetGeomDisplayQuality(value);
+        }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Set property methods
+///////////////////////////////////////////////////////////////////////////////
+
+void
+StreamlineAttributes::SetSourceType(StreamlineAttributes::SourceType sourceType_)
+{
+    sourceType = sourceType_;
+    Select(ID_sourceType, (void *)&sourceType);
+}
+
+void
+StreamlineAttributes::SetMaxStepLength(double maxStepLength_)
+{
+    maxStepLength = maxStepLength_;
+    Select(ID_maxStepLength, (void *)&maxStepLength);
+}
+
+void
+StreamlineAttributes::SetTermination(double termination_)
+{
+    termination = termination_;
+    Select(ID_termination, (void *)&termination);
+}
+
+void
+StreamlineAttributes::SetPointSource(const double *pointSource_)
+{
+    pointSource[0] = pointSource_[0];
+    pointSource[1] = pointSource_[1];
+    pointSource[2] = pointSource_[2];
+    Select(ID_pointSource, (void *)pointSource, 3);
+}
+
+void
+StreamlineAttributes::SetLineStart(const double *lineStart_)
+{
+    lineStart[0] = lineStart_[0];
+    lineStart[1] = lineStart_[1];
+    lineStart[2] = lineStart_[2];
+    Select(ID_lineStart, (void *)lineStart, 3);
+}
+
+void
+StreamlineAttributes::SetLineEnd(const double *lineEnd_)
+{
+    lineEnd[0] = lineEnd_[0];
+    lineEnd[1] = lineEnd_[1];
+    lineEnd[2] = lineEnd_[2];
+    Select(ID_lineEnd, (void *)lineEnd, 3);
+}
+
+void
+StreamlineAttributes::SetPlaneOrigin(const double *planeOrigin_)
+{
+    planeOrigin[0] = planeOrigin_[0];
+    planeOrigin[1] = planeOrigin_[1];
+    planeOrigin[2] = planeOrigin_[2];
+    Select(ID_planeOrigin, (void *)planeOrigin, 3);
+}
+
+void
+StreamlineAttributes::SetPlaneNormal(const double *planeNormal_)
+{
+    planeNormal[0] = planeNormal_[0];
+    planeNormal[1] = planeNormal_[1];
+    planeNormal[2] = planeNormal_[2];
+    Select(ID_planeNormal, (void *)planeNormal, 3);
+}
+
+void
+StreamlineAttributes::SetPlaneUpAxis(const double *planeUpAxis_)
+{
+    planeUpAxis[0] = planeUpAxis_[0];
+    planeUpAxis[1] = planeUpAxis_[1];
+    planeUpAxis[2] = planeUpAxis_[2];
+    Select(ID_planeUpAxis, (void *)planeUpAxis, 3);
+}
+
+void
+StreamlineAttributes::SetPlaneRadius(double planeRadius_)
+{
+    planeRadius = planeRadius_;
+    Select(ID_planeRadius, (void *)&planeRadius);
+}
+
+void
+StreamlineAttributes::SetSphereOrigin(const double *sphereOrigin_)
+{
+    sphereOrigin[0] = sphereOrigin_[0];
+    sphereOrigin[1] = sphereOrigin_[1];
+    sphereOrigin[2] = sphereOrigin_[2];
+    Select(ID_sphereOrigin, (void *)sphereOrigin, 3);
+}
+
+void
+StreamlineAttributes::SetSphereRadius(double sphereRadius_)
+{
+    sphereRadius = sphereRadius_;
+    Select(ID_sphereRadius, (void *)&sphereRadius);
+}
+
+void
+StreamlineAttributes::SetBoxExtents(const double *boxExtents_)
+{
+    for(int i = 0; i < 6; ++i)
+        boxExtents[i] = boxExtents_[i];
+    Select(ID_boxExtents, (void *)boxExtents, 6);
+}
+
+void
+StreamlineAttributes::SetUseWholeBox(bool useWholeBox_)
+{
+    useWholeBox = useWholeBox_;
+    Select(ID_useWholeBox, (void *)&useWholeBox);
+}
+
+void
+StreamlineAttributes::SetPointList(const doubleVector &pointList_)
+{
+    pointList = pointList_;
+    Select(ID_pointList, (void *)&pointList);
+}
+
+void
+StreamlineAttributes::SetPointDensity(int pointDensity_)
+{
+    pointDensity = pointDensity_;
+    Select(ID_pointDensity, (void *)&pointDensity);
+}
+
+void
+StreamlineAttributes::SetDisplayMethod(StreamlineAttributes::DisplayMethod displayMethod_)
+{
+    displayMethod = displayMethod_;
+    Select(ID_displayMethod, (void *)&displayMethod);
+}
+
+void
+StreamlineAttributes::SetShowSeeds(bool showSeeds_)
+{
+    showSeeds = showSeeds_;
+    Select(ID_showSeeds, (void *)&showSeeds);
+}
+
+void
+StreamlineAttributes::SetShowHeads(bool showHeads_)
+{
+    showHeads = showHeads_;
+    Select(ID_showHeads, (void *)&showHeads);
+}
+
+void
+StreamlineAttributes::SetTubeRadius(double tubeRadius_)
+{
+    tubeRadius = tubeRadius_;
+    Select(ID_tubeRadius, (void *)&tubeRadius);
+}
+
+void
+StreamlineAttributes::SetRibbonWidth(double ribbonWidth_)
+{
+    ribbonWidth = ribbonWidth_;
+    Select(ID_ribbonWidth, (void *)&ribbonWidth);
+}
+
+void
+StreamlineAttributes::SetLineWidth(int lineWidth_)
+{
+    lineWidth = lineWidth_;
+    Select(ID_lineWidth, (void *)&lineWidth);
+}
+
+void
+StreamlineAttributes::SetColoringMethod(StreamlineAttributes::ColoringMethod coloringMethod_)
+{
+    coloringMethod = coloringMethod_;
+    Select(ID_coloringMethod, (void *)&coloringMethod);
+}
+
+void
+StreamlineAttributes::SetColorTableName(const std::string &colorTableName_)
+{
+    colorTableName = colorTableName_;
+    Select(ID_colorTableName, (void *)&colorTableName);
+}
+
+void
+StreamlineAttributes::SetSingleColor(const ColorAttribute &singleColor_)
+{
+    singleColor = singleColor_;
+    Select(ID_singleColor, (void *)&singleColor);
+}
+
+void
+StreamlineAttributes::SetLegendFlag(bool legendFlag_)
+{
+    legendFlag = legendFlag_;
+    Select(ID_legendFlag, (void *)&legendFlag);
+}
+
+void
+StreamlineAttributes::SetLightingFlag(bool lightingFlag_)
+{
+    lightingFlag = lightingFlag_;
+    Select(ID_lightingFlag, (void *)&lightingFlag);
+}
+
+void
+StreamlineAttributes::SetStreamlineDirection(StreamlineAttributes::IntegrationDirection streamlineDirection_)
+{
+    streamlineDirection = streamlineDirection_;
+    Select(ID_streamlineDirection, (void *)&streamlineDirection);
+}
+
+void
+StreamlineAttributes::SetRelTol(double relTol_)
+{
+    relTol = relTol_;
+    Select(ID_relTol, (void *)&relTol);
+}
+
+void
+StreamlineAttributes::SetAbsTol(double absTol_)
+{
+    absTol = absTol_;
+    Select(ID_absTol, (void *)&absTol);
+}
+
+void
+StreamlineAttributes::SetTerminationType(StreamlineAttributes::TerminationType terminationType_)
+{
+    terminationType = terminationType_;
+    Select(ID_terminationType, (void *)&terminationType);
+}
+
+void
+StreamlineAttributes::SetIntegrationType(StreamlineAttributes::IntegrationType integrationType_)
+{
+    integrationType = integrationType_;
+    Select(ID_integrationType, (void *)&integrationType);
+}
+
+void
+StreamlineAttributes::SetStreamlineAlgorithmType(StreamlineAttributes::StreamlineAlgorithmType streamlineAlgorithmType_)
+{
+    streamlineAlgorithmType = streamlineAlgorithmType_;
+    Select(ID_streamlineAlgorithmType, (void *)&streamlineAlgorithmType);
+}
+
+void
+StreamlineAttributes::SetMaxStreamlineProcessCount(int maxStreamlineProcessCount_)
+{
+    maxStreamlineProcessCount = maxStreamlineProcessCount_;
+    Select(ID_maxStreamlineProcessCount, (void *)&maxStreamlineProcessCount);
+}
+
+void
+StreamlineAttributes::SetMaxDomainCacheSize(int maxDomainCacheSize_)
+{
+    maxDomainCacheSize = maxDomainCacheSize_;
+    Select(ID_maxDomainCacheSize, (void *)&maxDomainCacheSize);
+}
+
+void
+StreamlineAttributes::SetWorkGroupSize(int workGroupSize_)
+{
+    workGroupSize = workGroupSize_;
+    Select(ID_workGroupSize, (void *)&workGroupSize);
+}
+
+void
+StreamlineAttributes::SetPathlines(bool pathlines_)
+{
+    pathlines = pathlines_;
+    Select(ID_pathlines, (void *)&pathlines);
+}
+
+void
+StreamlineAttributes::SetColoringVariable(const std::string &coloringVariable_)
+{
+    coloringVariable = coloringVariable_;
+    Select(ID_coloringVariable, (void *)&coloringVariable);
+}
+
+void
+StreamlineAttributes::SetLegendMinFlag(bool legendMinFlag_)
+{
+    legendMinFlag = legendMinFlag_;
+    Select(ID_legendMinFlag, (void *)&legendMinFlag);
+}
+
+void
+StreamlineAttributes::SetLegendMaxFlag(bool legendMaxFlag_)
+{
+    legendMaxFlag = legendMaxFlag_;
+    Select(ID_legendMaxFlag, (void *)&legendMaxFlag);
+}
+
+void
+StreamlineAttributes::SetLegendMin(double legendMin_)
+{
+    legendMin = legendMin_;
+    Select(ID_legendMin, (void *)&legendMin);
+}
+
+void
+StreamlineAttributes::SetLegendMax(double legendMax_)
+{
+    legendMax = legendMax_;
+    Select(ID_legendMax, (void *)&legendMax);
+}
+
+void
+StreamlineAttributes::SetDisplayBegin(double displayBegin_)
+{
+    displayBegin = displayBegin_;
+    Select(ID_displayBegin, (void *)&displayBegin);
+}
+
+void
+StreamlineAttributes::SetDisplayEnd(double displayEnd_)
+{
+    displayEnd = displayEnd_;
+    Select(ID_displayEnd, (void *)&displayEnd);
+}
+
+void
+StreamlineAttributes::SetDisplayBeginFlag(bool displayBeginFlag_)
+{
+    displayBeginFlag = displayBeginFlag_;
+    Select(ID_displayBeginFlag, (void *)&displayBeginFlag);
+}
+
+void
+StreamlineAttributes::SetDisplayEndFlag(bool displayEndFlag_)
+{
+    displayEndFlag = displayEndFlag_;
+    Select(ID_displayEndFlag, (void *)&displayEndFlag);
+}
+
+void
+StreamlineAttributes::SetSeedDisplayRadius(double seedDisplayRadius_)
+{
+    seedDisplayRadius = seedDisplayRadius_;
+    Select(ID_seedDisplayRadius, (void *)&seedDisplayRadius);
+}
+
+void
+StreamlineAttributes::SetHeadDisplayType(StreamlineAttributes::GeomDisplayType headDisplayType_)
+{
+    headDisplayType = headDisplayType_;
+    Select(ID_headDisplayType, (void *)&headDisplayType);
+}
+
+void
+StreamlineAttributes::SetHeadDisplayRadius(double headDisplayRadius_)
+{
+    headDisplayRadius = headDisplayRadius_;
+    Select(ID_headDisplayRadius, (void *)&headDisplayRadius);
+}
+
+void
+StreamlineAttributes::SetHeadDisplayHeight(double headDisplayHeight_)
+{
+    headDisplayHeight = headDisplayHeight_;
+    Select(ID_headDisplayHeight, (void *)&headDisplayHeight);
+}
+
+void
+StreamlineAttributes::SetOpacityType(StreamlineAttributes::OpacityType opacityType_)
+{
+    opacityType = opacityType_;
+    Select(ID_opacityType, (void *)&opacityType);
+}
+
+void
+StreamlineAttributes::SetOpacityVariable(const std::string &opacityVariable_)
+{
+    opacityVariable = opacityVariable_;
+    Select(ID_opacityVariable, (void *)&opacityVariable);
+}
+
+void
+StreamlineAttributes::SetOpacity(double opacity_)
+{
+    opacity = opacity_;
+    Select(ID_opacity, (void *)&opacity);
+}
+
+void
+StreamlineAttributes::SetOpacityVarMin(double opacityVarMin_)
+{
+    opacityVarMin = opacityVarMin_;
+    Select(ID_opacityVarMin, (void *)&opacityVarMin);
+}
+
+void
+StreamlineAttributes::SetOpacityVarMax(double opacityVarMax_)
+{
+    opacityVarMax = opacityVarMax_;
+    Select(ID_opacityVarMax, (void *)&opacityVarMax);
+}
+
+void
+StreamlineAttributes::SetOpacityVarMinFlag(bool opacityVarMinFlag_)
+{
+    opacityVarMinFlag = opacityVarMinFlag_;
+    Select(ID_opacityVarMinFlag, (void *)&opacityVarMinFlag);
+}
+
+void
+StreamlineAttributes::SetOpacityVarMaxFlag(bool opacityVarMaxFlag_)
+{
+    opacityVarMaxFlag = opacityVarMaxFlag_;
+    Select(ID_opacityVarMaxFlag, (void *)&opacityVarMaxFlag);
+}
+
+void
+StreamlineAttributes::SetTubeDisplayDensity(int tubeDisplayDensity_)
+{
+    tubeDisplayDensity = tubeDisplayDensity_;
+    Select(ID_tubeDisplayDensity, (void *)&tubeDisplayDensity);
+}
+
+void
+StreamlineAttributes::SetGeomDisplayQuality(StreamlineAttributes::DisplayQuality geomDisplayQuality_)
+{
+    geomDisplayQuality = geomDisplayQuality_;
+    Select(ID_geomDisplayQuality, (void *)&geomDisplayQuality);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Get property methods
+///////////////////////////////////////////////////////////////////////////////
+
+StreamlineAttributes::SourceType
+StreamlineAttributes::GetSourceType() const
+{
+    return SourceType(sourceType);
+}
+
+double
+StreamlineAttributes::GetMaxStepLength() const
+{
+    return maxStepLength;
+}
+
+double
+StreamlineAttributes::GetTermination() const
+{
+    return termination;
+}
+
+const double *
+StreamlineAttributes::GetPointSource() const
+{
+    return pointSource;
+}
+
+double *
+StreamlineAttributes::GetPointSource()
+{
+    return pointSource;
+}
+
+const double *
+StreamlineAttributes::GetLineStart() const
+{
+    return lineStart;
+}
+
+double *
+StreamlineAttributes::GetLineStart()
+{
+    return lineStart;
+}
+
+const double *
+StreamlineAttributes::GetLineEnd() const
+{
+    return lineEnd;
+}
+
+double *
+StreamlineAttributes::GetLineEnd()
+{
+    return lineEnd;
+}
+
+const double *
+StreamlineAttributes::GetPlaneOrigin() const
+{
+    return planeOrigin;
+}
+
+double *
+StreamlineAttributes::GetPlaneOrigin()
+{
+    return planeOrigin;
+}
+
+const double *
+StreamlineAttributes::GetPlaneNormal() const
+{
+    return planeNormal;
+}
+
+double *
+StreamlineAttributes::GetPlaneNormal()
+{
+    return planeNormal;
+}
+
+const double *
+StreamlineAttributes::GetPlaneUpAxis() const
+{
+    return planeUpAxis;
+}
+
+double *
+StreamlineAttributes::GetPlaneUpAxis()
+{
+    return planeUpAxis;
+}
+
+double
+StreamlineAttributes::GetPlaneRadius() const
+{
+    return planeRadius;
+}
+
+const double *
+StreamlineAttributes::GetSphereOrigin() const
+{
+    return sphereOrigin;
+}
+
+double *
+StreamlineAttributes::GetSphereOrigin()
+{
+    return sphereOrigin;
+}
+
+double
+StreamlineAttributes::GetSphereRadius() const
+{
+    return sphereRadius;
+}
+
+const double *
+StreamlineAttributes::GetBoxExtents() const
+{
+    return boxExtents;
+}
+
+double *
+StreamlineAttributes::GetBoxExtents()
+{
+    return boxExtents;
+}
+
+bool
+StreamlineAttributes::GetUseWholeBox() const
+{
+    return useWholeBox;
+}
+
+const doubleVector &
+StreamlineAttributes::GetPointList() const
+{
+    return pointList;
+}
+
+doubleVector &
+StreamlineAttributes::GetPointList()
+{
+    return pointList;
+}
+
+int
+StreamlineAttributes::GetPointDensity() const
+{
+    return pointDensity;
+}
+
+StreamlineAttributes::DisplayMethod
+StreamlineAttributes::GetDisplayMethod() const
+{
+    return DisplayMethod(displayMethod);
+}
+
+bool
+StreamlineAttributes::GetShowSeeds() const
+{
+    return showSeeds;
+}
+
+bool
+StreamlineAttributes::GetShowHeads() const
+{
+    return showHeads;
+}
+
+double
+StreamlineAttributes::GetTubeRadius() const
+{
+    return tubeRadius;
+}
+
+double
+StreamlineAttributes::GetRibbonWidth() const
+{
+    return ribbonWidth;
+}
+
+int
+StreamlineAttributes::GetLineWidth() const
+{
+    return lineWidth;
+}
+
+StreamlineAttributes::ColoringMethod
+StreamlineAttributes::GetColoringMethod() const
+{
+    return ColoringMethod(coloringMethod);
+}
+
+const std::string &
+StreamlineAttributes::GetColorTableName() const
+{
+    return colorTableName;
+}
+
+std::string &
+StreamlineAttributes::GetColorTableName()
+{
+    return colorTableName;
+}
+
+const ColorAttribute &
+StreamlineAttributes::GetSingleColor() const
+{
+    return singleColor;
+}
+
+ColorAttribute &
+StreamlineAttributes::GetSingleColor()
+{
+    return singleColor;
+}
+
+bool
+StreamlineAttributes::GetLegendFlag() const
+{
+    return legendFlag;
+}
+
+bool
+StreamlineAttributes::GetLightingFlag() const
+{
+    return lightingFlag;
+}
+
+StreamlineAttributes::IntegrationDirection
+StreamlineAttributes::GetStreamlineDirection() const
+{
+    return IntegrationDirection(streamlineDirection);
+}
+
+double
+StreamlineAttributes::GetRelTol() const
+{
+    return relTol;
+}
+
+double
+StreamlineAttributes::GetAbsTol() const
+{
+    return absTol;
+}
+
+StreamlineAttributes::TerminationType
+StreamlineAttributes::GetTerminationType() const
+{
+    return TerminationType(terminationType);
+}
+
+StreamlineAttributes::IntegrationType
+StreamlineAttributes::GetIntegrationType() const
+{
+    return IntegrationType(integrationType);
+}
+
+StreamlineAttributes::StreamlineAlgorithmType
+StreamlineAttributes::GetStreamlineAlgorithmType() const
+{
+    return StreamlineAlgorithmType(streamlineAlgorithmType);
+}
+
+int
+StreamlineAttributes::GetMaxStreamlineProcessCount() const
+{
+    return maxStreamlineProcessCount;
+}
+
+int
+StreamlineAttributes::GetMaxDomainCacheSize() const
+{
+    return maxDomainCacheSize;
+}
+
+int
+StreamlineAttributes::GetWorkGroupSize() const
+{
+    return workGroupSize;
+}
+
+bool
+StreamlineAttributes::GetPathlines() const
+{
+    return pathlines;
+}
+
+const std::string &
+StreamlineAttributes::GetColoringVariable() const
+{
+    return coloringVariable;
+}
+
+std::string &
+StreamlineAttributes::GetColoringVariable()
+{
+    return coloringVariable;
+}
+
+bool
+StreamlineAttributes::GetLegendMinFlag() const
+{
+    return legendMinFlag;
+}
+
+bool
+StreamlineAttributes::GetLegendMaxFlag() const
+{
+    return legendMaxFlag;
+}
+
+double
+StreamlineAttributes::GetLegendMin() const
+{
+    return legendMin;
+}
+
+double
+StreamlineAttributes::GetLegendMax() const
+{
+    return legendMax;
+}
+
+double
+StreamlineAttributes::GetDisplayBegin() const
+{
+    return displayBegin;
+}
+
+double
+StreamlineAttributes::GetDisplayEnd() const
+{
+    return displayEnd;
+}
+
+bool
+StreamlineAttributes::GetDisplayBeginFlag() const
+{
+    return displayBeginFlag;
+}
+
+bool
+StreamlineAttributes::GetDisplayEndFlag() const
+{
+    return displayEndFlag;
+}
+
+double
+StreamlineAttributes::GetSeedDisplayRadius() const
+{
+    return seedDisplayRadius;
+}
+
+StreamlineAttributes::GeomDisplayType
+StreamlineAttributes::GetHeadDisplayType() const
+{
+    return GeomDisplayType(headDisplayType);
+}
+
+double
+StreamlineAttributes::GetHeadDisplayRadius() const
+{
+    return headDisplayRadius;
+}
+
+double
+StreamlineAttributes::GetHeadDisplayHeight() const
+{
+    return headDisplayHeight;
+}
+
+StreamlineAttributes::OpacityType
+StreamlineAttributes::GetOpacityType() const
+{
+    return OpacityType(opacityType);
+}
+
+const std::string &
+StreamlineAttributes::GetOpacityVariable() const
+{
+    return opacityVariable;
+}
+
+std::string &
+StreamlineAttributes::GetOpacityVariable()
+{
+    return opacityVariable;
+}
+
+double
+StreamlineAttributes::GetOpacity() const
+{
+    return opacity;
+}
+
+double
+StreamlineAttributes::GetOpacityVarMin() const
+{
+    return opacityVarMin;
+}
+
+double
+StreamlineAttributes::GetOpacityVarMax() const
+{
+    return opacityVarMax;
+}
+
+bool
+StreamlineAttributes::GetOpacityVarMinFlag() const
+{
+    return opacityVarMinFlag;
+}
+
+bool
+StreamlineAttributes::GetOpacityVarMaxFlag() const
+{
+    return opacityVarMaxFlag;
+}
+
+int
+StreamlineAttributes::GetTubeDisplayDensity() const
+{
+    return tubeDisplayDensity;
+}
+
+StreamlineAttributes::DisplayQuality
+StreamlineAttributes::GetGeomDisplayQuality() const
+{
+    return DisplayQuality(geomDisplayQuality);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Select property methods
+///////////////////////////////////////////////////////////////////////////////
+
+void
+StreamlineAttributes::SelectPointSource()
+{
+    Select(ID_pointSource, (void *)pointSource, 3);
+}
+
+void
+StreamlineAttributes::SelectLineStart()
+{
+    Select(ID_lineStart, (void *)lineStart, 3);
+}
+
+void
+StreamlineAttributes::SelectLineEnd()
+{
+    Select(ID_lineEnd, (void *)lineEnd, 3);
+}
+
+void
+StreamlineAttributes::SelectPlaneOrigin()
+{
+    Select(ID_planeOrigin, (void *)planeOrigin, 3);
+}
+
+void
+StreamlineAttributes::SelectPlaneNormal()
+{
+    Select(ID_planeNormal, (void *)planeNormal, 3);
+}
+
+void
+StreamlineAttributes::SelectPlaneUpAxis()
+{
+    Select(ID_planeUpAxis, (void *)planeUpAxis, 3);
+}
+
+void
+StreamlineAttributes::SelectSphereOrigin()
+{
+    Select(ID_sphereOrigin, (void *)sphereOrigin, 3);
+}
+
+void
+StreamlineAttributes::SelectBoxExtents()
+{
+    Select(ID_boxExtents, (void *)boxExtents, 6);
+}
+
+void
+StreamlineAttributes::SelectPointList()
+{
+    Select(ID_pointList, (void *)&pointList);
+}
+
+void
+StreamlineAttributes::SelectColorTableName()
+{
+    Select(ID_colorTableName, (void *)&colorTableName);
+}
+
+void
+StreamlineAttributes::SelectSingleColor()
+{
+    Select(ID_singleColor, (void *)&singleColor);
+}
+
+void
+StreamlineAttributes::SelectColoringVariable()
+{
+    Select(ID_coloringVariable, (void *)&coloringVariable);
+}
+
+void
+StreamlineAttributes::SelectOpacityVariable()
+{
+    Select(ID_opacityVariable, (void *)&opacityVariable);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Keyframing methods
+///////////////////////////////////////////////////////////////////////////////
+
+// ****************************************************************************
+// Method: StreamlineAttributes::GetFieldName
+//
+// Purpose: 
+//   This method returns the name of a field given its index.
+//
+// Note:       Autogenerated by xml2atts.
+//
+// Programmer: xml2atts
+// Creation:   omitted
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+std::string
+StreamlineAttributes::GetFieldName(int index) const
+{
+    switch (index)
+    {
+    case ID_sourceType:                return "sourceType";
+    case ID_maxStepLength:             return "maxStepLength";
+    case ID_termination:               return "termination";
+    case ID_pointSource:               return "pointSource";
+    case ID_lineStart:                 return "lineStart";
+    case ID_lineEnd:                   return "lineEnd";
+    case ID_planeOrigin:               return "planeOrigin";
+    case ID_planeNormal:               return "planeNormal";
+    case ID_planeUpAxis:               return "planeUpAxis";
+    case ID_planeRadius:               return "planeRadius";
+    case ID_sphereOrigin:              return "sphereOrigin";
+    case ID_sphereRadius:              return "sphereRadius";
+    case ID_boxExtents:                return "boxExtents";
+    case ID_useWholeBox:               return "useWholeBox";
+    case ID_pointList:                 return "pointList";
+    case ID_pointDensity:              return "pointDensity";
+    case ID_displayMethod:             return "displayMethod";
+    case ID_showSeeds:                 return "showSeeds";
+    case ID_showHeads:                 return "showHeads";
+    case ID_tubeRadius:                return "tubeRadius";
+    case ID_ribbonWidth:               return "ribbonWidth";
+    case ID_lineWidth:                 return "lineWidth";
+    case ID_coloringMethod:            return "coloringMethod";
+    case ID_colorTableName:            return "colorTableName";
+    case ID_singleColor:               return "singleColor";
+    case ID_legendFlag:                return "legendFlag";
+    case ID_lightingFlag:              return "lightingFlag";
+    case ID_streamlineDirection:       return "streamlineDirection";
+    case ID_relTol:                    return "relTol";
+    case ID_absTol:                    return "absTol";
+    case ID_terminationType:           return "terminationType";
+    case ID_integrationType:           return "integrationType";
+    case ID_streamlineAlgorithmType:   return "streamlineAlgorithmType";
+    case ID_maxStreamlineProcessCount: return "maxStreamlineProcessCount";
+    case ID_maxDomainCacheSize:        return "maxDomainCacheSize";
+    case ID_workGroupSize:             return "workGroupSize";
+    case ID_pathlines:                 return "pathlines";
+    case ID_coloringVariable:          return "coloringVariable";
+    case ID_legendMinFlag:             return "legendMinFlag";
+    case ID_legendMaxFlag:             return "legendMaxFlag";
+    case ID_legendMin:                 return "legendMin";
+    case ID_legendMax:                 return "legendMax";
+    case ID_displayBegin:              return "displayBegin";
+    case ID_displayEnd:                return "displayEnd";
+    case ID_displayBeginFlag:          return "displayBeginFlag";
+    case ID_displayEndFlag:            return "displayEndFlag";
+    case ID_seedDisplayRadius:         return "seedDisplayRadius";
+    case ID_headDisplayType:           return "headDisplayType";
+    case ID_headDisplayRadius:         return "headDisplayRadius";
+    case ID_headDisplayHeight:         return "headDisplayHeight";
+    case ID_opacityType:               return "opacityType";
+    case ID_opacityVariable:           return "opacityVariable";
+    case ID_opacity:                   return "opacity";
+    case ID_opacityVarMin:             return "opacityVarMin";
+    case ID_opacityVarMax:             return "opacityVarMax";
+    case ID_opacityVarMinFlag:         return "opacityVarMinFlag";
+    case ID_opacityVarMaxFlag:         return "opacityVarMaxFlag";
+    case ID_tubeDisplayDensity:        return "tubeDisplayDensity";
+    case ID_geomDisplayQuality:        return "geomDisplayQuality";
+    default:  return "invalid index";
+    }
+}
+
+// ****************************************************************************
+// Method: StreamlineAttributes::GetFieldType
+//
+// Purpose: 
+//   This method returns the type of a field given its index.
+//
+// Note:       Autogenerated by xml2atts.
+//
+// Programmer: xml2atts
+// Creation:   omitted
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+AttributeGroup::FieldType
+StreamlineAttributes::GetFieldType(int index) const
+{
+    switch (index)
+    {
+    case ID_sourceType:                return FieldType_enum;
+    case ID_maxStepLength:             return FieldType_double;
+    case ID_termination:               return FieldType_double;
+    case ID_pointSource:               return FieldType_doubleArray;
+    case ID_lineStart:                 return FieldType_doubleArray;
+    case ID_lineEnd:                   return FieldType_doubleArray;
+    case ID_planeOrigin:               return FieldType_doubleArray;
+    case ID_planeNormal:               return FieldType_doubleArray;
+    case ID_planeUpAxis:               return FieldType_doubleArray;
+    case ID_planeRadius:               return FieldType_double;
+    case ID_sphereOrigin:              return FieldType_doubleArray;
+    case ID_sphereRadius:              return FieldType_double;
+    case ID_boxExtents:                return FieldType_doubleArray;
+    case ID_useWholeBox:               return FieldType_bool;
+    case ID_pointList:                 return FieldType_doubleVector;
+    case ID_pointDensity:              return FieldType_int;
+    case ID_displayMethod:             return FieldType_enum;
+    case ID_showSeeds:                 return FieldType_bool;
+    case ID_showHeads:                 return FieldType_bool;
+    case ID_tubeRadius:                return FieldType_double;
+    case ID_ribbonWidth:               return FieldType_double;
+    case ID_lineWidth:                 return FieldType_linewidth;
+    case ID_coloringMethod:            return FieldType_enum;
+    case ID_colorTableName:            return FieldType_colortable;
+    case ID_singleColor:               return FieldType_color;
+    case ID_legendFlag:                return FieldType_bool;
+    case ID_lightingFlag:              return FieldType_bool;
+    case ID_streamlineDirection:       return FieldType_enum;
+    case ID_relTol:                    return FieldType_double;
+    case ID_absTol:                    return FieldType_double;
+    case ID_terminationType:           return FieldType_enum;
+    case ID_integrationType:           return FieldType_enum;
+    case ID_streamlineAlgorithmType:   return FieldType_enum;
+    case ID_maxStreamlineProcessCount: return FieldType_int;
+    case ID_maxDomainCacheSize:        return FieldType_int;
+    case ID_workGroupSize:             return FieldType_int;
+    case ID_pathlines:                 return FieldType_bool;
+    case ID_coloringVariable:          return FieldType_string;
+    case ID_legendMinFlag:             return FieldType_bool;
+    case ID_legendMaxFlag:             return FieldType_bool;
+    case ID_legendMin:                 return FieldType_double;
+    case ID_legendMax:                 return FieldType_double;
+    case ID_displayBegin:              return FieldType_double;
+    case ID_displayEnd:                return FieldType_double;
+    case ID_displayBeginFlag:          return FieldType_bool;
+    case ID_displayEndFlag:            return FieldType_bool;
+    case ID_seedDisplayRadius:         return FieldType_double;
+    case ID_headDisplayType:           return FieldType_enum;
+    case ID_headDisplayRadius:         return FieldType_double;
+    case ID_headDisplayHeight:         return FieldType_double;
+    case ID_opacityType:               return FieldType_enum;
+    case ID_opacityVariable:           return FieldType_string;
+    case ID_opacity:                   return FieldType_double;
+    case ID_opacityVarMin:             return FieldType_double;
+    case ID_opacityVarMax:             return FieldType_double;
+    case ID_opacityVarMinFlag:         return FieldType_bool;
+    case ID_opacityVarMaxFlag:         return FieldType_bool;
+    case ID_tubeDisplayDensity:        return FieldType_int;
+    case ID_geomDisplayQuality:        return FieldType_enum;
+    default:  return FieldType_unknown;
+    }
+}
+
+// ****************************************************************************
+// Method: StreamlineAttributes::GetFieldTypeName
+//
+// Purpose: 
+//   This method returns the name of a field type given its index.
+//
+// Note:       Autogenerated by xml2atts.
+//
+// Programmer: xml2atts
+// Creation:   omitted
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+std::string
+StreamlineAttributes::GetFieldTypeName(int index) const
+{
+    switch (index)
+    {
+    case ID_sourceType:                return "enum";
+    case ID_maxStepLength:             return "double";
+    case ID_termination:               return "double";
+    case ID_pointSource:               return "doubleArray";
+    case ID_lineStart:                 return "doubleArray";
+    case ID_lineEnd:                   return "doubleArray";
+    case ID_planeOrigin:               return "doubleArray";
+    case ID_planeNormal:               return "doubleArray";
+    case ID_planeUpAxis:               return "doubleArray";
+    case ID_planeRadius:               return "double";
+    case ID_sphereOrigin:              return "doubleArray";
+    case ID_sphereRadius:              return "double";
+    case ID_boxExtents:                return "doubleArray";
+    case ID_useWholeBox:               return "bool";
+    case ID_pointList:                 return "doubleVector";
+    case ID_pointDensity:              return "int";
+    case ID_displayMethod:             return "enum";
+    case ID_showSeeds:                 return "bool";
+    case ID_showHeads:                 return "bool";
+    case ID_tubeRadius:                return "double";
+    case ID_ribbonWidth:               return "double";
+    case ID_lineWidth:                 return "linewidth";
+    case ID_coloringMethod:            return "enum";
+    case ID_colorTableName:            return "colortable";
+    case ID_singleColor:               return "color";
+    case ID_legendFlag:                return "bool";
+    case ID_lightingFlag:              return "bool";
+    case ID_streamlineDirection:       return "enum";
+    case ID_relTol:                    return "double";
+    case ID_absTol:                    return "double";
+    case ID_terminationType:           return "enum";
+    case ID_integrationType:           return "enum";
+    case ID_streamlineAlgorithmType:   return "enum";
+    case ID_maxStreamlineProcessCount: return "int";
+    case ID_maxDomainCacheSize:        return "int";
+    case ID_workGroupSize:             return "int";
+    case ID_pathlines:                 return "bool";
+    case ID_coloringVariable:          return "string";
+    case ID_legendMinFlag:             return "bool";
+    case ID_legendMaxFlag:             return "bool";
+    case ID_legendMin:                 return "double";
+    case ID_legendMax:                 return "double";
+    case ID_displayBegin:              return "double";
+    case ID_displayEnd:                return "double";
+    case ID_displayBeginFlag:          return "bool";
+    case ID_displayEndFlag:            return "bool";
+    case ID_seedDisplayRadius:         return "double";
+    case ID_headDisplayType:           return "enum";
+    case ID_headDisplayRadius:         return "double";
+    case ID_headDisplayHeight:         return "double";
+    case ID_opacityType:               return "enum";
+    case ID_opacityVariable:           return "string";
+    case ID_opacity:                   return "double";
+    case ID_opacityVarMin:             return "double";
+    case ID_opacityVarMax:             return "double";
+    case ID_opacityVarMinFlag:         return "bool";
+    case ID_opacityVarMaxFlag:         return "bool";
+    case ID_tubeDisplayDensity:        return "int";
+    case ID_geomDisplayQuality:        return "enum";
+    default:  return "invalid index";
+    }
+}
+
+// ****************************************************************************
+// Method: StreamlineAttributes::FieldsEqual
+//
+// Purpose: 
+//   This method compares two fields and return true if they are equal.
+//
+// Note:       Autogenerated by xml2atts.
+//
+// Programmer: xml2atts
+// Creation:   omitted
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+bool
+StreamlineAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
+{
+    const StreamlineAttributes &obj = *((const StreamlineAttributes*)rhs);
+    bool retval = false;
+    switch (index_)
+    {
+    case ID_sourceType:
+        {  // new scope
+        retval = (sourceType == obj.sourceType);
+        }
+        break;
+    case ID_maxStepLength:
+        {  // new scope
+        retval = (maxStepLength == obj.maxStepLength);
+        }
+        break;
+    case ID_termination:
+        {  // new scope
+        retval = (termination == obj.termination);
+        }
+        break;
+    case ID_pointSource:
+        {  // new scope
+        // Compare the pointSource arrays.
+        bool pointSource_equal = true;
+        for(int i = 0; i < 3 && pointSource_equal; ++i)
+            pointSource_equal = (pointSource[i] == obj.pointSource[i]);
+
+        retval = pointSource_equal;
+        }
+        break;
+    case ID_lineStart:
+        {  // new scope
+        // Compare the lineStart arrays.
+        bool lineStart_equal = true;
+        for(int i = 0; i < 3 && lineStart_equal; ++i)
+            lineStart_equal = (lineStart[i] == obj.lineStart[i]);
+
+        retval = lineStart_equal;
+        }
+        break;
+    case ID_lineEnd:
+        {  // new scope
+        // Compare the lineEnd arrays.
+        bool lineEnd_equal = true;
+        for(int i = 0; i < 3 && lineEnd_equal; ++i)
+            lineEnd_equal = (lineEnd[i] == obj.lineEnd[i]);
+
+        retval = lineEnd_equal;
+        }
+        break;
+    case ID_planeOrigin:
+        {  // new scope
+        // Compare the planeOrigin arrays.
+        bool planeOrigin_equal = true;
+        for(int i = 0; i < 3 && planeOrigin_equal; ++i)
+            planeOrigin_equal = (planeOrigin[i] == obj.planeOrigin[i]);
+
+        retval = planeOrigin_equal;
+        }
+        break;
+    case ID_planeNormal:
+        {  // new scope
+        // Compare the planeNormal arrays.
+        bool planeNormal_equal = true;
+        for(int i = 0; i < 3 && planeNormal_equal; ++i)
+            planeNormal_equal = (planeNormal[i] == obj.planeNormal[i]);
+
+        retval = planeNormal_equal;
+        }
+        break;
+    case ID_planeUpAxis:
+        {  // new scope
+        // Compare the planeUpAxis arrays.
+        bool planeUpAxis_equal = true;
+        for(int i = 0; i < 3 && planeUpAxis_equal; ++i)
+            planeUpAxis_equal = (planeUpAxis[i] == obj.planeUpAxis[i]);
+
+        retval = planeUpAxis_equal;
+        }
+        break;
+    case ID_planeRadius:
+        {  // new scope
+        retval = (planeRadius == obj.planeRadius);
+        }
+        break;
+    case ID_sphereOrigin:
+        {  // new scope
+        // Compare the sphereOrigin arrays.
+        bool sphereOrigin_equal = true;
+        for(int i = 0; i < 3 && sphereOrigin_equal; ++i)
+            sphereOrigin_equal = (sphereOrigin[i] == obj.sphereOrigin[i]);
+
+        retval = sphereOrigin_equal;
+        }
+        break;
+    case ID_sphereRadius:
+        {  // new scope
+        retval = (sphereRadius == obj.sphereRadius);
+        }
+        break;
+    case ID_boxExtents:
+        {  // new scope
+        // Compare the boxExtents arrays.
+        bool boxExtents_equal = true;
+        for(int i = 0; i < 6 && boxExtents_equal; ++i)
+            boxExtents_equal = (boxExtents[i] == obj.boxExtents[i]);
+
+        retval = boxExtents_equal;
+        }
+        break;
+    case ID_useWholeBox:
+        {  // new scope
+        retval = (useWholeBox == obj.useWholeBox);
+        }
+        break;
+    case ID_pointList:
+        {  // new scope
+        retval = (pointList == obj.pointList);
+        }
+        break;
+    case ID_pointDensity:
+        {  // new scope
+        retval = (pointDensity == obj.pointDensity);
+        }
+        break;
+    case ID_displayMethod:
+        {  // new scope
+        retval = (displayMethod == obj.displayMethod);
+        }
+        break;
+    case ID_showSeeds:
+        {  // new scope
+        retval = (showSeeds == obj.showSeeds);
+        }
+        break;
+    case ID_showHeads:
+        {  // new scope
+        retval = (showHeads == obj.showHeads);
+        }
+        break;
+    case ID_tubeRadius:
+        {  // new scope
+        retval = (tubeRadius == obj.tubeRadius);
+        }
+        break;
+    case ID_ribbonWidth:
+        {  // new scope
+        retval = (ribbonWidth == obj.ribbonWidth);
+        }
+        break;
+    case ID_lineWidth:
+        {  // new scope
+        retval = (lineWidth == obj.lineWidth);
+        }
+        break;
+    case ID_coloringMethod:
+        {  // new scope
+        retval = (coloringMethod == obj.coloringMethod);
+        }
+        break;
+    case ID_colorTableName:
+        {  // new scope
+        retval = (colorTableName == obj.colorTableName);
+        }
+        break;
+    case ID_singleColor:
+        {  // new scope
+        retval = (singleColor == obj.singleColor);
+        }
+        break;
+    case ID_legendFlag:
+        {  // new scope
+        retval = (legendFlag == obj.legendFlag);
+        }
+        break;
+    case ID_lightingFlag:
+        {  // new scope
+        retval = (lightingFlag == obj.lightingFlag);
+        }
+        break;
+    case ID_streamlineDirection:
+        {  // new scope
+        retval = (streamlineDirection == obj.streamlineDirection);
+        }
+        break;
+    case ID_relTol:
+        {  // new scope
+        retval = (relTol == obj.relTol);
+        }
+        break;
+    case ID_absTol:
+        {  // new scope
+        retval = (absTol == obj.absTol);
+        }
+        break;
+    case ID_terminationType:
+        {  // new scope
+        retval = (terminationType == obj.terminationType);
+        }
+        break;
+    case ID_integrationType:
+        {  // new scope
+        retval = (integrationType == obj.integrationType);
+        }
+        break;
+    case ID_streamlineAlgorithmType:
+        {  // new scope
+        retval = (streamlineAlgorithmType == obj.streamlineAlgorithmType);
+        }
+        break;
+    case ID_maxStreamlineProcessCount:
+        {  // new scope
+        retval = (maxStreamlineProcessCount == obj.maxStreamlineProcessCount);
+        }
+        break;
+    case ID_maxDomainCacheSize:
+        {  // new scope
+        retval = (maxDomainCacheSize == obj.maxDomainCacheSize);
+        }
+        break;
+    case ID_workGroupSize:
+        {  // new scope
+        retval = (workGroupSize == obj.workGroupSize);
+        }
+        break;
+    case ID_pathlines:
+        {  // new scope
+        retval = (pathlines == obj.pathlines);
+        }
+        break;
+    case ID_coloringVariable:
+        {  // new scope
+        retval = (coloringVariable == obj.coloringVariable);
+        }
+        break;
+    case ID_legendMinFlag:
+        {  // new scope
+        retval = (legendMinFlag == obj.legendMinFlag);
+        }
+        break;
+    case ID_legendMaxFlag:
+        {  // new scope
+        retval = (legendMaxFlag == obj.legendMaxFlag);
+        }
+        break;
+    case ID_legendMin:
+        {  // new scope
+        retval = (legendMin == obj.legendMin);
+        }
+        break;
+    case ID_legendMax:
+        {  // new scope
+        retval = (legendMax == obj.legendMax);
+        }
+        break;
+    case ID_displayBegin:
+        {  // new scope
+        retval = (displayBegin == obj.displayBegin);
+        }
+        break;
+    case ID_displayEnd:
+        {  // new scope
+        retval = (displayEnd == obj.displayEnd);
+        }
+        break;
+    case ID_displayBeginFlag:
+        {  // new scope
+        retval = (displayBeginFlag == obj.displayBeginFlag);
+        }
+        break;
+    case ID_displayEndFlag:
+        {  // new scope
+        retval = (displayEndFlag == obj.displayEndFlag);
+        }
+        break;
+    case ID_seedDisplayRadius:
+        {  // new scope
+        retval = (seedDisplayRadius == obj.seedDisplayRadius);
+        }
+        break;
+    case ID_headDisplayType:
+        {  // new scope
+        retval = (headDisplayType == obj.headDisplayType);
+        }
+        break;
+    case ID_headDisplayRadius:
+        {  // new scope
+        retval = (headDisplayRadius == obj.headDisplayRadius);
+        }
+        break;
+    case ID_headDisplayHeight:
+        {  // new scope
+        retval = (headDisplayHeight == obj.headDisplayHeight);
+        }
+        break;
+    case ID_opacityType:
+        {  // new scope
+        retval = (opacityType == obj.opacityType);
+        }
+        break;
+    case ID_opacityVariable:
+        {  // new scope
+        retval = (opacityVariable == obj.opacityVariable);
+        }
+        break;
+    case ID_opacity:
+        {  // new scope
+        retval = (opacity == obj.opacity);
+        }
+        break;
+    case ID_opacityVarMin:
+        {  // new scope
+        retval = (opacityVarMin == obj.opacityVarMin);
+        }
+        break;
+    case ID_opacityVarMax:
+        {  // new scope
+        retval = (opacityVarMax == obj.opacityVarMax);
+        }
+        break;
+    case ID_opacityVarMinFlag:
+        {  // new scope
+        retval = (opacityVarMinFlag == obj.opacityVarMinFlag);
+        }
+        break;
+    case ID_opacityVarMaxFlag:
+        {  // new scope
+        retval = (opacityVarMaxFlag == obj.opacityVarMaxFlag);
+        }
+        break;
+    case ID_tubeDisplayDensity:
+        {  // new scope
+        retval = (tubeDisplayDensity == obj.tubeDisplayDensity);
+        }
+        break;
+    case ID_geomDisplayQuality:
+        {  // new scope
+        retval = (geomDisplayQuality == obj.geomDisplayQuality);
+        }
+        break;
+    default: retval = false;
+    }
+
+    return retval;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// User-defined methods.
+///////////////////////////////////////////////////////////////////////////////
+
+// ****************************************************************************
+//  Method: StreamlineAttributes::ChangesRequireRecalculation
+//
+//  Purpose:
+//     Determines whether or not the plot must be recalculated based on the
+//     new attributes.
+//
+//  Programmer: Brad Whitlock
+//  Creation:   Fri Oct 4 15:22:57 PST 2002
+//
+//  Notes:  Most attributes cause the streamline to change.
+//
+//  Modifications:
+//    Brad Whitlock, Wed Dec 22 12:52:45 PDT 2004
+//    I made the coloring method matter when comparing streamline attributes
+//    and I added support for ribbons.
+//
+//    Hank Childs, Sat Mar  3 09:00:12 PST 2007
+//    Add support for useWholeBox.
+//
+//    Hank Childs, Sun May  3 11:49:31 CDT 2009
+//    Add support for point lists.
+//
+//   Dave Pugmire, Tue Dec 29 14:37:53 EST 2009
+//   Add custom renderer and lots of appearance options to the streamlines plots.
+//
+//   Christoph Garth, Wed Jan 13 17:14:21 PST 2010 
+//   Add support for circle source.
+// ****************************************************************************
+
+#define PDIF(p1,p2,i) ((p1)[i] != (p2)[i])
+#define POINT_DIFFERS(p1,p2) (PDIF(p1,p2,0) || PDIF(p1,p2,1) || PDIF(p1,p2,2))
+
+bool
+StreamlineAttributes::ChangesRequireRecalculation(const StreamlineAttributes &obj) const
+{
+    // If we're in point source mode and the points differ, sourcePointsDiffer
+    // evaluates to true.
+    bool sourcePointsDiffer = ((sourceType == SpecifiedPoint) &&
+       POINT_DIFFERS(pointSource, obj.pointSource));
+
+    // If we're in line source mode and the line differs, sourceLineDiffers
+    // evaluates to true.
+    bool sourceLineDiffers = ((sourceType == SpecifiedLine) &&
+       (POINT_DIFFERS(lineStart, obj.lineStart) ||
+        POINT_DIFFERS(lineEnd, obj.lineEnd)));
+
+    // If we're in plane source mode and the plane differs, sourcePlaneDiffers
+    // evaluates to true.
+    bool sourcePlaneDiffers = ((sourceType == SpecifiedPlane) &&
+       (POINT_DIFFERS(planeOrigin, obj.planeOrigin) ||
+        POINT_DIFFERS(planeNormal, obj.planeNormal) ||
+        POINT_DIFFERS(planeUpAxis, obj.planeUpAxis) ||
+        planeRadius != obj.planeRadius));
+
+    // If we're in sphere source mode and the sphere differs, sourceSphereDiffers
+    // evaluates to true.
+    bool sourceSphereDiffers = ((sourceType == SpecifiedSphere) &&
+       (POINT_DIFFERS(sphereOrigin, obj.sphereOrigin) ||
+        (sphereRadius != obj.sphereRadius)));
+
+    bool sourcePointListDiffers = (sourceType == SpecifiedPointList);
+    if (sourcePointListDiffers)
+    {
+        sourcePointListDiffers = false;
+        if (pointList.size() != obj.pointList.size())
+            sourcePointListDiffers = true;
+        else
+            for (int i = 0 ; i < pointList.size() ; i++)
+                if (pointList[i] != obj.pointList[i])
+                    sourcePointListDiffers = true;
+    }
+
+    // If we're in circle source mode and the plane differs, sourcePlaneDiffers
+    // evaluates to true.
+    bool sourceCircleDiffers = ((sourceType == SpecifiedCircle) &&
+       (POINT_DIFFERS(planeOrigin, obj.planeOrigin) ||
+        POINT_DIFFERS(planeNormal, obj.planeNormal) ||
+        POINT_DIFFERS(planeUpAxis, obj.planeUpAxis) ||
+        planeRadius != obj.planeRadius));
+
+    // If we're in box source mode and the box differs, boxDiffers
+    // evaluates to true.
+    bool boxSourceDiffers = (sourceType == SpecifiedBox) &&
+        (POINT_DIFFERS(boxExtents, obj.boxExtents) ||
+         POINT_DIFFERS(boxExtents+3, obj.boxExtents+3));
+    if (useWholeBox != obj.useWholeBox)
+        boxSourceDiffers = true;
+
+    // Other things need to be true before we start paying attention to
+    // point density.
+    bool densityMatters = (sourceType == SpecifiedLine ||
+        sourceType == SpecifiedPlane || sourceType == SpecifiedSphere ||
+        sourceType == SpecifiedBox || sourceType == SpecifiedCircle) &&
+        (pointDensity != obj.pointDensity);
+
+    //If opacity is turned on, or the variable changes...
+    bool opacityMatters = (opacityType == VariableRange) &&
+                          (obj.opacityType != VariableRange ||
+                           opacityVariable != obj.opacityVariable);
+
+    //Ribbons requires the engine to calculate vorticity.
+    bool displayMatters = (displayMethod != obj.displayMethod && obj.displayMethod == Ribbons);
+
+    return (sourceType != obj.sourceType) ||
+           (streamlineDirection != obj.streamlineDirection) ||
+           displayMatters ||
+           (termination != obj.termination) ||
+           (terminationType != obj.terminationType) ||
+           (integrationType != obj.integrationType) ||
+           (maxStepLength != obj.maxStepLength) ||
+           (relTol != obj.relTol) ||
+           (absTol != obj.absTol) ||
+           (coloringMethod != obj.coloringMethod && obj.coloringMethod != Solid) ||
+           (pathlines != obj.pathlines) ||
+           (coloringVariable != obj.coloringVariable) ||
+           opacityMatters ||
+           sourcePointsDiffer ||
+           sourceLineDiffers ||
+           sourcePlaneDiffers ||
+           sourceSphereDiffers ||
+           sourceCircleDiffers ||
+           sourcePointListDiffers ||
+           boxSourceDiffers ||
+           densityMatters;
+}
+
+// ****************************************************************************
+// Method: StreamlineAttributes::ProcessOldVersions
+//
+// Purpose: 
+//   This method creates modifies a DataNode representation of the object
+//   so it conforms to the newest representation of the object, which can
+//   can be read back in.
+//
+// Programmer: Dave Pugmire
+// Creation:   January 20 2010
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+StreamlineAttributes::ProcessOldVersions(DataNode *parentNode,
+                                         const char *configVersion)
+{
+    DataNode *searchNode = parentNode->GetNode("StreamlineDirection");
+    if (searchNode)
+    {
+        int val = searchNode->AsInt();
+        parentNode->RemoveNode(searchNode);
+        
+        DataNode *newNode = new DataNode("streamlineDirection", val);
+        parentNode->AddNode(newNode);
+    }
+
+    searchNode = parentNode->GetNode("showStart");
+    if (searchNode)
+    {
+        bool val = searchNode->AsBool();
+        parentNode->RemoveNode(searchNode);
+        
+        DataNode *newNode = new DataNode("showSeeds", val);
+        parentNode->AddNode(newNode);
+    }
+
+    searchNode = parentNode->GetNode("radius");
+    if (searchNode)
+    {
+        double val = searchNode->AsDouble();
+        parentNode->RemoveNode(searchNode);
+        DataNode *newNode = new DataNode("tubeRadius", val);
+        parentNode->AddNode(newNode);
+        
+        newNode = new DataNode("ribbonWidth", val);
+        parentNode->AddNode(newNode);
+    }
+}
+

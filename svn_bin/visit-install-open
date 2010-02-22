@@ -1,0 +1,398 @@
+#!/bin/sh
+#-----------------------------------------------------------------------
+#
+# VISIT-INSTALL-OPEN - Install the visit distributions on the open
+#                      network.
+#
+# Author: Eric Brugger
+# Date:   October 27, 2000
+#
+# Usage:
+#    visit-install-open [-beta | -private | -public] -v <version>
+#
+# Modifications:
+#   Brad Whitlock, Tue Mar 7 14:08:59 PST 2006
+#   Added -b bank to the visit-install invokations.
+#
+#   Hank Childs, Wed Oct 17 16:25:14 PDT 2007
+#   Add a subject line to the status e-mail.
+#
+#   Hank Childs, Sat May  2 13:26:51 CDT 2009
+#   Change config file to "llnl_open".
+#
+#-----------------------------------------------------------------------
+
+test=no
+
+user=`whoami`
+
+#
+# Set the user e-mail address.
+#
+emailName=brugger1@llnl.gov
+case $user in
+   kbonnell)
+      emailName=bonnell2@llnl.gov
+      ;;
+   brugger)
+      emailName=brugger1@llnl.gov
+      ;;
+   childs)
+      emailName=childs3@llnl.gov
+      ;;
+   mcmiller)
+      emailName=miller86@llnl.gov
+      ;;
+   miller)
+      emailName=miller86@llnl.gov
+      ;;
+   whitlocb)
+      emailName=whitlock2@llnl.gov
+      ;;
+esac
+
+#
+# Parse the execute line, providing default values for error checking.
+#
+hoth=true
+up=true
+yana=true
+xchem=true
+davinci=true
+ellipse=true
+
+ver=undefined
+
+#
+# The loop is executed once for each symbol on the execute line.  This means
+# that $1 may be blank for later executions of the loop if any "shift 2"
+# commands are executed.  The variable abc is not used in the loop.
+#
+for abc
+do
+   case $1 in
+      -none)
+         hoth=false
+         up=false
+         yana=false
+         xchem=false
+         davinci=false
+         ellipse=false
+         shift
+         ;;
+      -hoth)
+         hoth=false
+         shift
+         ;;
+      +hoth)
+         hoth=true
+         shift
+         ;;
+      -up)
+         up=false
+         shift
+         ;;
+      +up)
+         up=true
+         shift
+         ;;
+      -yana)
+         yana=false
+         shift
+         ;;
+      +yana)
+         yana=true
+         shift
+         ;;
+      -xchem)
+         xchem=false
+         shift
+         ;;
+      +xchem)
+         xchem=true
+         shift
+         ;;
+      -davinci)
+         davinci=false
+         shift
+         ;;
+      +davinci)
+         davinci=true
+         shift
+         ;;
+      -ellipse)
+         ellipse=false
+         shift
+         ;;
+      +ellipse)
+         ellipse=true
+         shift
+         ;;
+      -v)
+         ver=$2
+         shift 2
+         ;;
+   esac
+done
+
+#
+# Check that the version was provided.
+#
+if [ $ver = undefined ]
+then
+   echo "Usage: [-none] [-<machine name>] -v <version>"
+   exit
+fi
+
+#
+# Check that the visit install script is present.
+#
+if [ ! -e visit-install ]
+then
+   echo "visit-install is missing."
+   exit
+fi
+
+ver2=`echo $ver | tr "." "_"`
+ver=`echo $ver2 | tr "_" "."`
+
+#
+# Install on hoth.
+#
+rm -f hoth
+cat <<EOF > hoth
+#!/bin/sh
+./visit-install -private -c llnl_open -g visit -b bdivp -gw -l $ver linux_rhel3 /usr/gapps/visit > installlog 2>&1
+rm -f resultlog
+echo "        install of visit on hoth"            > resultlog 2>&1
+echo "       --------------------------"           >> resultlog 2>&1
+echo ""                                            >> resultlog 2>&1
+df -k /usr/gapps/visit                             >> resultlog 2>&1
+echo ""                                            >> resultlog 2>&1
+ls -l /usr/gapps/visit/$ver+/linux-intel/bin       >> resultlog 2>&1
+echo ""                                            >> resultlog 2>&1
+echo "number of database plugins = "\`ls /usr/gapps/visit/$ver+/linux-intel/plugins/databases/libI* | wc -l\` >> resultlog 2>&1
+echo "number of operator plugins = "\`ls /usr/gapps/visit/$ver+/linux-intel/plugins/operators/libI* | wc -l\` >> resultlog 2>&1
+echo "number of plot plugins = "\`ls /usr/gapps/visit/$ver+/linux-intel/plugins/plots/libI* | wc -l\` >> resultlog 2>&1
+echo ""                                            >> resultlog 2>&1
+echo "The database plugins:"                       >> resultlog 2>&1
+ls /usr/gapps/visit/$ver+/linux-intel/plugins/databases/libI* | sed "s/\/usr\/gapps\/visit\/$ver+\/linux-intel\/plugins\/databases\/libI//" | sed "s/Database.so//" >> resultlog 2>&1
+mail -s "VisIt install ($ver): hoth" $emailName < resultlog
+EOF
+
+if [ $hoth = true ]
+then
+   if [ $test = no ]
+   then
+      scp hoth:/scratch/$user/hoth/visitbuild/visit$ver2.linux.tar.gz visit$ver2.linux_rhel3.tar.gz
+      scp visit$ver2.linux_rhel3.tar.gz kickit:
+      scp visit-install kickit:
+      scp hoth kickit:hoth_install
+      ssh kickit "chmod 750 hoth_install;./hoth_install"
+   fi
+fi
+
+#
+# Install on up.
+#
+rm -f up
+cat <<EOF > up
+#!/bin/sh
+./visit-install -private -c llnl_open -g visit -b bdivp -gw -l $ver aix /usr/gapps/visit > installlog 2>&1
+./visit-install -private -c llnl_open -g visit -b bdivp -gw -l $ver aix64 /usr/gapps/visit > installlog 2>&1
+rm -f resultlog
+echo ""                                            > resultlog 2>&1
+echo "        install of visit on up"              >> resultlog 2>&1
+echo "       ------------------------"             >> resultlog 2>&1
+echo ""                                            >> resultlog 2>&1
+df -k /usr/gapps/visit                             >> resultlog 2>&1
+echo ""                                            >> resultlog 2>&1
+echo "            32 bit version"                  >> resultlog 2>&1
+echo ""                                            >> resultlog 2>&1
+ls -l /usr/gapps/visit/$ver+/ibm-aix-pwr/bin       >> resultlog 2>&1
+echo ""                                            >> resultlog 2>&1
+echo "number of database plugins = "\`ls /usr/gapps/visit/$ver+/ibm-aix-pwr/plugins/databases/libI* | wc -l\` >> resultlog 2>&1
+echo "number of operator plugins = "\`ls /usr/gapps/visit/$ver+/ibm-aix-pwr/plugins/operators/libI* | wc -l\` >> resultlog 2>&1
+echo "number of plot plugins = "\`ls /usr/gapps/visit/$ver+/ibm-aix-pwr/plugins/plots/libI* | wc -l\` >> resultlog 2>&1
+echo ""                                            >> resultlog 2>&1
+echo "The database plugins:"                       >> resultlog 2>&1
+ls /usr/gapps/visit/$ver+/ibm-aix-pwr/plugins/databases/libI* | sed "s/\/usr\/gapps\/visit\/$ver+\/ibm-aix-pwr\/plugins\/databases\/libI//" | sed "s/Database.so//" >> resultlog 2>&1
+echo ""                                            >> resultlog 2>&1
+echo "            64 bit version"                  >> resultlog 2>&1
+echo ""                                            >> resultlog 2>&1
+ls -l /usr/gapps/visit/$ver+/ibm-aix-pwr64/bin     >> resultlog 2>&1
+echo ""                                            >> resultlog 2>&1
+echo "number of database plugins = "\`ls /usr/gapps/visit/$ver+/ibm-aix-pwr64/plugins/databases/libI* | wc -l\` >> resultlog 2>&1
+echo "number of operator plugins = "\`ls /usr/gapps/visit/$ver+/ibm-aix-pwr64/plugins/operators/libI* | wc -l\` >> resultlog 2>&1
+echo "number of plot plugins = "\`ls /usr/gapps/visit/$ver+/ibm-aix-pwr64/plugins/plots/libI* | wc -l\` >> resultlog 2>&1
+echo ""                                            >> resultlog 2>&1
+echo "The database plugins:"                       >> resultlog 2>&1
+ls /usr/gapps/visit/$ver+/ibm-aix-pwr64/plugins/databases/libI* | sed "s/\/usr\/gapps\/visit\/$ver+\/ibm-aix-pwr64\/plugins\/databases\/libI//" | sed "s/Database.so//" >> resultlog 2>&1
+mail -s "VisIt install ($ver): up" $emailName < resultlog
+EOF
+
+if [ $up = true ]
+then
+   if [ $test = no ]
+   then
+      scp up:/p/gup1/$user/up32/visitbuild/visit$ver2.aix.tar.gz .
+      scp up:/p/gup1/$user/up64/visitbuild/visit$ver2.aix64.tar.gz .
+      scp visit$ver2.aix.tar.gz yana:
+      scp visit$ver2.aix64.tar.gz yana:
+      scp visit-install yana:
+      scp up yana:up_install
+      ssh yana "chmod 750 up_install;./up_install"
+   fi
+fi
+
+#
+# Install on yana.
+#
+rm -f yana
+cat <<EOF > yana
+#!/bin/sh
+./visit-install -private -c llnl_open -g visit -b bdivp -gw -l $ver linux-x86_64 /usr/gapps/visit > installlog 2>&1
+rm -f resultlog
+echo "        install of visit on yana"            > resultlog 2>&1
+echo "       --------------------------"           >> resultlog 2>&1
+echo ""                                            >> resultlog 2>&1
+df -k /usr/gapps/visit                             >> resultlog 2>&1
+echo ""                                            >> resultlog 2>&1
+ls -l /usr/gapps/visit/$ver+/linux-x86_64/bin      >> resultlog 2>&1
+echo ""                                            >> resultlog 2>&1
+echo "number of database plugins = "\`ls /usr/gapps/visit/$ver+/linux-x86_64/plugins/databases/libI* | wc -l\` >> resultlog 2>&1
+echo "number of operator plugins = "\`ls /usr/gapps/visit/$ver+/linux-x86_64/plugins/operators/libI* | wc -l\` >> resultlog 2>&1
+echo "number of plot plugins = "\`ls /usr/gapps/visit/$ver+/linux-x86_64/plugins/plots/libI* | wc -l\` >> resultlog 2>&1
+echo ""                                            >> resultlog 2>&1
+echo "The database plugins:"                       >> resultlog 2>&1
+ls /usr/gapps/visit/$ver+/linux-x86_64/plugins/databases/libI* | sed "s/\/usr\/gapps\/visit\/$ver+\/linux-x86_64\/plugins\/databases\/libI//" | sed "s/Database.so//" >> resultlog 2>&1
+mail -s "VisIt install ($ver): yana" $emailName < resultlog
+EOF
+
+if [ $yana = true ]
+then
+   if [ $test = no ]
+   then
+      scp yana3:/usr/tmp/$user/yana/visitbuild/visit$ver2.linux-x86_64.tar.gz .
+      scp visit$ver2.linux-x86_64.tar.gz yana:
+      scp visit-install yana:
+      scp yana yana:yana_install
+      ssh yana "chmod 750 yana_install;./yana_install"
+   fi
+fi
+
+#
+# Install on xchem.
+#
+rm -f xchem
+cat <<EOF > xchem
+#!/bin/sh
+./visit-install -private -c llnl_open -b bdivp -gw -l $ver linux-x86_64-fedora4 /opt/llnl/visit > installlog 2>&1
+rm -f resultlog
+echo "        install of visit on xchem"           > resultlog 2>&1
+echo "       ---------------------------"          >> resultlog 2>&1
+echo ""                                            >> resultlog 2>&1
+df -k /opt/llnl/visit                              >> resultlog 2>&1
+echo ""                                            >> resultlog 2>&1
+ls -l /opt/llnl/visit/$ver+/linux-x86_64/bin       >> resultlog 2>&1
+echo ""                                            >> resultlog 2>&1
+echo "number of database plugins = "\`ls /opt/llnl/visit/$ver+/linux-x86_64/plugins/databases/libI* | wc -l\` >> resultlog 2>&1
+echo "number of operator plugins = "\`ls /opt/llnl/visit/$ver+/linux-x86_64/plugins/operators/libI* | wc -l\` >> resultlog 2>&1
+echo "number of plot plugins = "\`ls /opt/llnl/visit/$ver+/linux-x86_64/plugins/plots/libI* | wc -l\` >> resultlog 2>&1
+echo ""                                            >> resultlog 2>&1
+echo "The database plugins:"                       >> resultlog 2>&1
+ls /opt/llnl/visit/$ver+/linux-x86_64/plugins/databases/libI* | sed "s/\/opt\/llnl\/visit\/$ver+\/linux-x86_64\/plugins\/databases\/libI//" | sed "s/Database.so//" >> resultlog 2>&1
+mail -s "VisIt install ($ver): xchem" $emailName < resultlog
+EOF
+
+if [ $xchem = true ]
+then
+   if [ $test = no ]
+   then
+      scp xchem:tmp/$user/xchem/visitbuild/visit$ver2.linux-x86_64.tar.gz visit$ver2.linux-x86_64-fedora4.tar.gz
+      scp visit$ver2.linux-x86_64-fedora4.tar.gz xchem:
+      scp visit-install xchem:
+      scp xchem xchem:xchem_install
+      ssh xchem "chmod 750 xchem_install;./xchem_install"
+   fi
+fi
+
+#
+# Install on davinci.
+#
+rm -f davinci
+cat <<EOF > davinci
+#!/bin/sh
+./visit-install -private -c nersc -b bdivp $ver linux-altix visit > installlog 2>&1
+rm -f resultlog
+echo "        install of visit on davinci"         > resultlog 2>&1
+echo "       -----------------------------"        >> resultlog 2>&1
+echo ""                                            >> resultlog 2>&1
+df -k visit                                        >> resultlog 2>&1
+echo ""                                            >> resultlog 2>&1
+ls -l visit/$ver+/linux-ia64/bin                   >> resultlog 2>&1
+echo ""                                            >> resultlog 2>&1
+echo "number of database plugins = "\`ls visit/$ver+/linux-ia64/plugins/databases/libI* | wc -l\` >> resultlog 2>&1
+echo "number of operator plugins = "\`ls visit/$ver+/linux-ia64/plugins/operators/libI* | wc -l\` >> resultlog 2>&1
+echo "number of plot plugins = "\`ls visit/$ver+/linux-ia64/plugins/plots/libI* | wc -l\` >> resultlog 2>&1
+echo ""                                            >> resultlog 2>&1
+echo "The database plugins:"                       >> resultlog 2>&1
+ls visit/$ver+/linux-ia64/plugins/databases/libI* | sed "s/visit\/$ver+\/linux-ia64\/plugins\/databases\/libI//" | sed "s/Database.so//" >> resultlog 2>&1
+mail -s "VisIt install ($ver): davinci" $emailName < resultlog
+EOF
+
+if [ $davinci = true ]
+then
+   if [ $test = no ]
+   then
+      scp davinci.nersc.gov:tmp/$user/davinci/visitbuild/visit$ver2.linux-ia64.tar.gz visit$ver2.linux-altix.tar.gz
+      scp visit$ver2.linux-altix.tar.gz davinci.nersc.gov:
+      scp visit-install davinci.nersc.gov:
+      scp davinci davinci.nersc.gov:davinci_install
+      ssh davinci.nersc.gov "chmod 750 davinci_install;./davinci_install"
+   fi
+fi
+
+#
+# Install on ellipse.
+#
+rm -f ellipse
+cat <<EOF > ellipse
+#!/bin/sh
+./visit-install -private -c llnl_open -b bdivp $ver linux-ellipse visit > installlog 2>&1
+rm -f resultlog
+echo "        install of visit on ellipse"         > resultlog 2>&1
+echo "       -----------------------------"        >> resultlog 2>&1
+echo ""                                            >> resultlog 2>&1
+df -k visit                                        >> resultlog 2>&1
+echo ""                                            >> resultlog 2>&1
+ls -l visit/$ver+/linux-intel/bin                  >> resultlog 2>&1
+echo ""                                            >> resultlog 2>&1
+echo "number of database plugins = "\`ls visit/$ver+/linux-intel/plugins/databases/libI* | wc -l\` >> resultlog 2>&1
+echo "number of operator plugins = "\`ls visit/$ver+/linux-intel/plugins/operators/libI* | wc -l\` >> resultlog 2>&1
+echo "number of plot plugins = "\`ls visit/$ver+/linux-intel/plugins/plots/libI* | wc -l\` >> resultlog 2>&1
+echo ""                                            >> resultlog 2>&1
+echo "The database plugins:"                       >> resultlog 2>&1
+ls visit/$ver+/linux-intel/plugins/databases/libI* | sed "s/visit\/$ver+\/linux-intel\/plugins\/databases\/libI//" | sed "s/Database.so//" >> resultlog 2>&1
+mail -s "VisIt install ($ver): ellipse" $emailName < resultlog
+EOF
+
+if [ $ellipse = true ]
+then
+   if [ $test = no ]
+   then
+      scp ellipse.uchicago.edu:tmp/$user/ellipse/visitbuild/visit$ver2.linux.tar.gz visit$ver2.linux-ellipse.tar.gz
+      scp visit$ver2.linux-ellipse.tar.gz ellipse.uchicago.edu:
+      scp visit-install ellipse.uchicago.edu:
+      scp ellipse ellipse.uchicago.edu:ellipse_install
+      ssh ellipse.uchicago.edu "chmod 750 ellipse_install;./ellipse_install"
+   fi
+fi
+
+#
+# Clean up.
+#
+if [ $test = no ]
+then
+   rm -f hoth up yana xchem davinci ellipse
+fi

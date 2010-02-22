@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+  <Plugin name="Boxlib3D" type="database" label="Boxlib3D" version="1.0" enabled="true" mdspecificcode="false" engspecificcode="false" onlyengine="false" noengine="false" dbtype="STMD" haswriter="false" hasoptions="false" filePatternsStrict="true">
+    <CXXFLAGS>
+      -DBL_SPACEDIM=3
+      ${BOXLIB3D_INCLUDE_DIR}
+    </CXXFLAGS>
+    <LDFLAGS>
+      ${BOXLIB3D_LIBRARY_DIR}
+    </LDFLAGS>
+    <LIBS>
+      ${BOXLIB3D_LIB}
+    </LIBS>
+    <FilePatterns>
+      *.boxlib3d
+      Header
+    </FilePatterns>
+    <Files components="M">
+      avtBoxlibFileFormat.C
+      avtBoxlib3DFileFormat.C
+    </Files>
+    <Files components="E">
+      avtBoxlibFileFormat.C
+      avtBoxlib3DFileFormat.C
+    </Files>
+    <Attribute name="" purpose="" persistent="false" keyframe="true" exportAPI="" exportInclude="">
+    </Attribute>
+  </Plugin>

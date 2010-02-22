@@ -1,0 +1,79 @@
+Function: GetActiveLaunchProfileForHost
+Declaration: LaunchProfile *GetActiveLaunchProfileForHost(const std::string &hostName) const;
+Definition:
+// ****************************************************************************
+//  Method: HostProfileList::GetActiveLaunchProfileForHost
+//
+//  Purpose: 
+//    Returns the active launch profile for the machine with a host name
+//    pattern matching the specified host name.
+//
+//  Arguments:
+//    hostName    the host name to match with the profile hostname patterns
+//   
+//  Returns:    
+//    A pointer to the host profile, or NULL.
+//
+//  Programmer: Jeremy Meredith
+//  Creation:   February 18, 2010
+//
+//  Modifications:
+//
+// ****************************************************************************
+LaunchProfile *
+HostProfileList::GetActiveLaunchProfileForHost(const std::string &hostName) const
+{   
+    MachineProfile *machine = GetMachineProfileForHost(hostName);
+    return machine->GetActiveLaunchProfile();
+}
+
+Function: GetMachineProfileForHost
+Declaration: MachineProfile *GetMachineProfileForHost(const std::string &hostName) const;
+Definition:
+// ****************************************************************************
+//  Method: HostProfileList::GetMachineProfileForHost
+//
+//  Purpose: 
+//    Gets the machine profile with a host name pattern
+//    matching the specified host name.
+//
+//  Arguments:
+//    hostName    the host name to match with the profile hostname patterns
+//   
+//  Returns:    
+//    A pointer to the machine profile, or NULL.
+//
+//  Programmer: Jeremy Meredith
+//  Creation:   February 18, 2010
+//
+//  Modifications:
+//    Brad Whitlock, Tue May 20 11:53:37 PDT 2003
+//    I moved these include files to here so we can successfully regenerate
+//    the class.
+//
+// ****************************************************************************
+#if defined(_WIN32)
+#include <winsock2.h>
+#else
+#include <netdb.h>
+#endif
+
+MachineProfile *
+HostProfileList::GetMachineProfileForHost(const std::string &hostName) const
+{
+    std::string fqhostName(hostName);
+    struct hostent *hostEnt = gethostbyname(fqhostName.c_str());
+    if (hostEnt)
+        fqhostName = std::string(hostEnt->h_name);
+
+    for(size_t i = 0; i < machines.size(); i++)
+    {
+        MachineProfile *m = (MachineProfile *)(machines[i]);
+
+        if (m->ProfileMatchesHost(fqhostName))
+            return m;
+    }
+
+    return NULL;
+}
+

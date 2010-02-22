@@ -1,0 +1,188 @@
+<?xml version="1.0"?>
+  <Plugin name="Poincare" type="plot" label="Poincare" version="2.0" enabled="true" mdspecificcode="false" engspecificcode="true" onlyengine="false" noengine="false" vartype="vector" iconFile="Poincare.xpm">
+    <Files components="V">
+    </Files>
+    <Files components="E">
+      avtPoincareFilter.C
+      StreamlineAnalyzerLib.C
+    </Files>
+
+    <Attribute name="PoincareAttributes" purpose="Attributes for the Poincare plot" persistent="true" keyframe="true" exportAPI="" exportInclude="" codefile="Poincare.code">
+      <Enum name="SourceType">
+        SpecifiedPoint
+        SpecifiedLine
+      </Enum>
+
+      <Enum name="IntegrationType">
+        DormandPrince
+        AdamsBashforth
+        M3DC1Integrator
+      </Enum>
+
+      <Enum name="OverlapType">
+        Raw
+        Remove
+        Merge
+        Smooth
+      </Enum>
+
+      <Enum name="ShowMeshType">
+        Curves
+        Surfaces
+      </Enum>
+
+      <Enum name="ColoringMethod">
+        ColorBySingleColor
+        ColorByColorTable
+      </Enum>
+
+      <Enum name="ColorBy">
+        OriginalValue
+        InputOrder
+        PointIndex
+        Plane
+        WindingOrder
+        WindingPointOrder
+        ToroidalWindings
+        PoloidalWindings
+        SafetyFactor
+	Confidence
+	RidgelineVariance
+      </Enum>
+
+      <Field name="minPunctures" label="Minimum number of Punctures" type="double">
+        10.000000
+      </Field>
+      <Field name="maxPunctures" label="Maximum number of Punctures" type="double">
+        100.000000
+      </Field>
+
+      <Field name="sourceType" label="Streamline Source" type="enum" subtype="SourceType">
+        SpecifiedPoint
+      </Field>
+      <Field name="pointSource" label="Point Source" type="doubleArray" length="3" enabler="sourceType:SpecifiedPoint">
+        0.000000
+        0.000000
+        0.000000
+      </Field>
+      <Field name="lineStart" label="Line Point Start" type="doubleArray" length="3" enabler="sourceType:SpecifiedLine">
+        0.000000
+        0.000000
+        0.000000
+      </Field>
+      <Field name="lineEnd" label="Line Point End" type="doubleArray" length="3" enabler="sourceType:SpecifiedLine">
+        1.000000
+        0.000000
+        0.000000
+      </Field>
+      <Field name="pointDensity" label="Point density" type="int" enabler="sourceType:SpecifiedLine">
+        1
+      </Field>
+
+
+      <Field name="integrationType" label="Integrator" type="enum" subtype="IntegrationType">
+        AdamsBashforth
+      </Field>
+      <Field name="maxStepLength" label="maximum step length" type="double">
+        0.100000
+      </Field>
+      <Field name="relTol" label="rel. tolerance" type="double">
+        0.000100
+      </Field>
+      <Field name="absTol" label="abs. tolerance" type="double">
+        0.000010
+      </Field>
+
+      <Field name="maxToroidalWinding" label="Max Toroidal Winding" type="int">
+        30
+      </Field>
+      <Field name="overrideToroidalWinding" label="Override Toroidal Winding" type="int">
+        0
+      </Field>
+      <Field name="hitRate" label="Hit Rate" type="double">
+        0.900000
+      </Field>
+      <Field name="adjustPlane" label="Adjust plane" type="int">
+        -1
+      </Field>
+      <Field name="overlaps" label="Overlaps" type="enum" subtype="OverlapType">
+        Remove
+      </Field>
+
+      <Field name="meshType" label="Mesh Type" type="enum" subtype="ShowMeshType">
+        Curves
+      </Field>
+      <Field name="numberPlanes" label="numberPlanes" type="int">
+        1
+      </Field>
+
+      <Field name="min" label="min" type="double">
+        0.000000
+      </Field>
+      <Field name="max" label="max" type="double">
+        0.000000
+      </Field>
+      <Field name="minFlag" label="minFlag" type="bool">
+        false
+      </Field>
+      <Field name="maxFlag" label="maxFlag" type="bool">
+        false
+      </Field>
+
+      <Field name="colorType" label="Color type" type="enum" subtype="ColoringMethod">
+        ColorBySingleColor
+      </Field>
+
+      <Field name="singleColor" label="Single color" type="color" length="4">
+        0
+        0
+        0
+        255
+      </Field>
+      <Field name="colorTableName" label="Color table" type="colortable">
+        Default
+      </Field>
+      <Field name="colorBy" label="colorBy" type="enum" subtype="ColorBy">
+        SafetyFactor
+      </Field>
+
+      <Field name="showIslands" label="Show Islands" type="bool">
+        false
+      </Field>
+      <Field name="showLines" label="Show Lines" type="bool">
+        true
+      </Field>
+      <Field name="showPoints" label="Show Points" type="bool">
+        false
+      </Field>
+      <Field name="verboseFlag" label="Verbose" type="bool">
+        true
+      </Field>
+      <Field name="legendFlag" label="Legend" type="bool">
+        true
+      </Field>
+      <Field name="lightingFlag" label="Lighting" type="bool">
+        true
+      </Field>
+
+      <Function name="CopyAttributes" user="false" member="true">
+      </Function>
+      <Function name="CreateCompatible" user="false" member="true">
+      </Function>
+      <Function name="ChangesRequireRecalculation" user="true" member="true">
+      </Function>
+      <Function name="StreamlineAttsRequireRecalculation" user="true" member="true">
+      </Function>
+      <Function name="PoincareAttsRequireRecalculation" user="true" member="true">
+      </Function>
+      <Include file="source" quoted="false">
+        PlaneAttributes.h
+      </Include>
+      <Include file="source" quoted="false">
+        PointAttributes.h
+      </Include>
+      <Include file="source" quoted="false">
+        Line.h
+      </Include>
+    </Attribute>
+  </Plugin>
