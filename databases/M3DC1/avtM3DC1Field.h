@@ -40,13 +40,12 @@
 //                              avtM3DC1Field.h                              //
 // ************************************************************************* //
 
-#ifndef AVT_IVP_M3D_LOCAL_FIELD_H
-#define AVT_IVP_M3D_LOCAL_FIELD_H
+#ifndef AVT_M3DC1_FIELD_H
+#define AVT_M3DC1_FIELD_H
 
 #include <vtkDataSet.h>
 #include <vtkPointData.h>
 
-#include <ivp_exports.h>
 
 
 // ****************************************************************************
@@ -62,7 +61,7 @@
 //
 // ****************************************************************************
 
-class IVP_API avtM3DC1Field
+class avtM3DC1Field
 {
  protected:
 /* Local typedefs */
