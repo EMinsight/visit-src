@@ -80,6 +80,8 @@ class paraDISCommonPluginInfo : public virtual CommonDatabasePluginInfo, public 
     virtual DatabaseType              GetDatabaseType();
     virtual avtDatabase              *SetupDatabase(const char * const *list,
                                                     int nList, int nBlock);
+    virtual DBOptionsAttributes *GetReadOptions() const;
+    virtual DBOptionsAttributes *GetWriteOptions() const;
 };
 
 class paraDISMDServerPluginInfo : public virtual MDServerDatabasePluginInfo, public virtual paraDISCommonPluginInfo
