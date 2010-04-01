@@ -113,7 +113,7 @@ avtparaDISFileFormat::avtparaDISFileFormat(const char *filename,
   */ 
   paraDIS_EnableDebugOutput(rdatts->GetBool(PARADIS_ENABLE_DEBUG_OUTPUT)); 
 
-  //dbg_setverbose(3); 
+  dbg_setverbose(mVerbosity); 
 
 #ifdef PARALLEL
   /*!  I keep this here to remind myself how to use MPI.  LOL
