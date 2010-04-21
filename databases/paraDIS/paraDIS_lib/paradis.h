@@ -41,13 +41,13 @@
 
    ------------------------------------------------------------------ 
  
-   5) ADDED, and DONE BUT UNTESTED:  The data is periodic.  Go back and find all segments that connect two nodes such that if one is "wrapped" around any boundary of the data, it is closer to the other end than if it is not so wrapped.  Each such segment found requires creation of one new segment and two new "wrapped" nodes.  "wrapped" nodes are those created for this purpose, which lie on the intersection of the segment with the bounds of the subspace. When done, the wrapped segment, which normally would draw a crazy line all the way across the data, is replaced with two new segments that are one data space apart from each other. 
+   5) DONE:  The data is periodic.  Go back and find all segments that connect two nodes such that if one is "wrapped" around any boundary of the data, it is closer to the other end than if it is not so wrapped.  Each such segment found requires creation of one new segment and two new "wrapped" nodes.  "wrapped" nodes are those created for this purpose, which lie on the intersection of the segment with the bounds of the subspace. When done, the wrapped segment, which normally would draw a crazy line all the way across the data, is replaced with two new segments that are one data space apart from each other. 
 
    ------------------------------------------------------------------  
 
-   6)  DONE, BUT PROBABLY NEED TO FIX FOR NEW METHODS...  
-   We can now create all arms for our region. 
-   IN THE FUTURE, to save memory, we will implement the following: 
+   6)  DONE, BUT COMMENTED OUT AS DESTRUCTIVE
+   We no longer do this.  All FullNodes are kept, in bounds or not.  This is because deleting "useless" nodes was causing significant portions of arms to not get drawn, and there is no point to this.  Parallelism will proceed by another mechanism. 
+   IN THE FUTURE, to save memory, we could implement the following: 
    Segments that connect two PartialNodes are PartialSegments.  Segments that connect two OOB FullNodes are CollapsedSegments.  Segments that connect an IB FullNode to another node are FullSegments.  Only FullSegments are drawn. 
    HOWEVER, For the first implementation, we will not distinguish between Partial and Full Segments, and we will not even collapse arms, so that we can get a good view of what things are like.  After it is clear that we are making sensible things, we can collapse arms to save memory. 
 
@@ -947,6 +947,9 @@ namespace paraDIS {
       If not, then  goes through and removes all the leftover crappy useless endpoints from our ghost endpoints, since they will just be deleted and become dangling references anyhow.  The returns false. 
     */ 
     bool IsUseless(void) const {
+      // I don't remember why we consider any nodes useless.. Let's keep everything. 
+      return false; 
+
       if( mEndpoints[0]->GetNodeType() == USELESS_NODE ||
           mEndpoints[1]->GetNodeType() == USELESS_NODE || 
           (!mEndpoints[0]->InBounds() && ! mEndpoints[1]->InBounds())) {  
@@ -1199,6 +1202,8 @@ namespace paraDIS {
       Else, return false.
     */ 
     bool IsUseless(void) {
+      return false; 
+
      int segnum =  mTerminalSegments.size(); 
      bool useless = false; 
       while (segnum--) {
