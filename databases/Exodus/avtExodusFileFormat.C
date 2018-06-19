@@ -88,10 +88,6 @@
 #include <netcdf.h>
 
 #include <string.h>
-#ifdef HAVE_VTK_SIZEOF___INT64
-#include <boost/cstdint.hpp>
-#endif
-
 #include <cstdlib> // for qsort
 #include <cstdarg>
 
@@ -108,9 +104,6 @@
 using     std::map;
 using     std::string;
 using     std::vector;
-#ifdef HAVE_VTK_SIZEOF___INT64
-using     boost::int64_t;
-#endif
 using namespace ExodusDBOptions;
 
 static int VisItNCErr;
@@ -282,7 +275,7 @@ static void fill_tmp_suffixes(int n, ...)
         fill_tmp_suffixes STRLIST;                                     \
         int q = 0;                                                     \
         bool things_match = true;                                      \
-        while (tmp_suffixes[q] && things_match)                        \
+        while (list[i+q] && tmp_suffixes[q] && things_match)           \
         {                                                              \
             char sepStr[2] = {sepChar, '\0'};                          \
             char ex_var_name[256];                                     \
@@ -588,7 +581,7 @@ static int SizeOfNCType(int type)
 #ifdef HAVE_VTK_SIZEOF___INT64
         case NC_INT64:
         case NC_UINT64:
-            return sizeof(int64_t);
+            return sizeof(__int64);
 #endif
         case NC_FLOAT:
             return sizeof(float);
@@ -612,6 +605,12 @@ InsertExodusCellInVTKUnstructuredGrid(vtkUnstructuredGrid *ugrid, int vtk_cellty
     bool contains_nonlinear_elems = false;
     switch (vtk_celltype)
     {
+        case VTK_TETRA:
+        {
+            if (nnodes == 8)
+                nnodes = 4;
+            break;
+        }
         case VTK_BIQUADRATIC_QUADRATIC_WEDGE:
         case VTK_QUADRATIC_WEDGE:
         {
@@ -911,11 +910,12 @@ GetData(int exncfid, int ts, const char *visit_varname, int numBlocks, avtVarTyp
         // time_step, num_el_in_blkK, for each element block as in...
         // double vals_elem_var1eb1(time_step, num_el_in_blk1) ;
         // double vals_elem_var2eb1(time_step, num_el_in_blk1) ;
-        int num_elem = 0;
         buf = 0;
+        type = 0;
         for (int pass = 0; pass < 2; pass++)
         {
             int ndims, dimids[NC_MAX_VAR_DIMS];
+            int num_elem = 0;
             size_t dlen;
             char *p = (char *) buf; // p not relevant on first pass
             for (int i = 0; i < numBlocks; i++)
@@ -925,34 +925,50 @@ GetData(int exncfid, int ts, const char *visit_varname, int numBlocks, avtVarTyp
 //warning THIS LOGIC DOESNT WORK FOR ZONAL VARS WITH MULTIPLE COMPONENTS
                 SNPRINTF(elem_varname, sizeof(elem_varname), "vals_elem_var%deb%d", exvaridx+1, i+1);
                 ncerr = nc_inq_varid(exncfid, elem_varname, &elem_varid);
-                if (ncerr != NC_NOERR) continue;
-
-                ncerr = nc_inq_var(exncfid, elem_varid, 0, &type, &ndims, dimids, 0);
-                nc_inq_dimlen(exncfid, dimids[1], &dlen);
-                num_elem += (int) dlen;
-
-                if (pass == 1)
+                if (ncerr != NC_NOERR) // handle no-var on this eb case
                 {
-                    size_t starts[2] = {ts, 0};
-                    size_t counts[2] = {1, dlen};
-                    ncerr = nc_get_vara(exncfid, elem_varid, starts, counts, p);
-                    CheckNCError2(ncerr, nc_get_vara, __LINE__, __FILE__)      
-                    if (ncerr != NC_NOERR)
+                    char num_el_in_blk_dimname[NC_MAX_NAME+1];
+                    SNPRINTF(num_el_in_blk_dimname, sizeof(num_el_in_blk_dimname), "num_el_in_blk%d", i+1);
+                    int num_el_in_blk_dimId;
+                    ncerr = nc_inq_dimid(exncfid, num_el_in_blk_dimname, &num_el_in_blk_dimId);
+                    if (ncerr == NC_NOERR) // handle no eb on this proc case.
                     {
-                        free(buf);
-                        EXCEPTION1(InvalidVariableException, visit_varname);
+                        size_t num_el_in_blk_len;
+                        nc_inq_dimlen(exncfid, num_el_in_blk_dimId, &num_el_in_blk_len);
+                        int num_elems_in_blk = (int) num_el_in_blk_len;
+                        dlen = num_elems_in_blk;
+                        num_elem += (int) dlen;
+                        if (pass == 1)
+                            p += (((int) dlen) * SizeOfNCType(type));
                     }
-                    p += (((int) dlen) * SizeOfNCType(type));
                 }
-
+                else
+                {
+                    nc_inq_var(exncfid, elem_varid, 0, &type, &ndims, dimids, 0);
+                    nc_inq_dimlen(exncfid, dimids[1], &dlen);
+                    num_elem += (int) dlen;
+                    if (pass == 1)
+                    {
+                        size_t starts[2] = {ts, 0};
+                        size_t counts[2] = {1, dlen};
+                        ncerr = nc_get_vara(exncfid, elem_varid, starts, counts, p);
+                        CheckNCError2(ncerr, nc_get_vara, __LINE__, __FILE__)      
+                        if (ncerr != NC_NOERR)
+                        {
+                            free(buf);
+                            EXCEPTION1(InvalidVariableException, visit_varname);
+                        }
+                        p += (((int) dlen) * SizeOfNCType(type));
+                    }
+                }
             }
 
             if (pass == 0)
             {
-                if (num_elem == 0)
+                if (num_elem == 0 || type == 0)
                     EXCEPTION1(InvalidVariableException, visit_varname);
                 num_vals = num_elem;
-                buf = (void*) malloc(num_comps * num_elem * SizeOfNCType(type));
+                buf = (void*) calloc(num_comps * num_elem, SizeOfNCType(type));
             }
         }
     }
@@ -1068,26 +1084,26 @@ MakeVTKDataArrayByTakingOwnershipOfNCVarData(nc_type type,
         {
             if (num_comps > 1)
             {
-                void *newbuf = (void*) Interleave<int64_t>((int64_t*) buf, num_comps, num_vals);
+                void *newbuf = (void*) Interleave<__int64>((__int64*) buf, num_comps, num_vals);
                 free(buf);
                 buf = newbuf;
             }
             vtk__Int64Array *arr = vtk__Int64Array::New();
             arr->SetNumberOfComponents(num_comps);
-            arr->SetArray((int64_t*)buf, num_comps * num_vals, SAVE_ARRAY, VTK_DA_FREE);
+            arr->SetArray((__int64*)buf, num_comps * num_vals, SAVE_ARRAY, VTK_DA_FREE);
             return arr;
         }
         case NC_UINT64:
         {
             if (num_comps > 1)
             {
-                void *newbuf = (void*) Interleave<unsigned int64_t>((unsigned int64_t*) buf, num_comps, num_vals);
+                void *newbuf = (void*) Interleave<unsigned __int64>((unsigned __int64*) buf, num_comps, num_vals);
                 free(buf);
                 buf = newbuf;
             }
             vtkUnsigned__Int64Array *arr = vtkUnsigned__Int64Array::New();
             arr->SetNumberOfComponents(num_comps);
-            arr->SetArray((unsigned int64_t*)buf, num_comps * num_vals, SAVE_ARRAY, VTK_DA_FREE);
+            arr->SetArray((unsigned __int64*)buf, num_comps * num_vals, SAVE_ARRAY, VTK_DA_FREE);
             return arr;
         }
 #endif
@@ -1200,7 +1216,6 @@ GetExodusSetsVar(int exncfid, int ts, char const *var, int numNodes, int numElem
     const int bpuc = sizeof(unsigned char)*8;
     retval = vtkBitArray::New();
     retval->SetNumberOfComponents(((num_set+bpuc-1)/bpuc)*bpuc);
-    //retval->SetNumberOfComponents(num_set);
     retval->SetNumberOfTuples(stype=="node"?numNodes:numElems);
     memset(retval->GetVoidPointer(0), 0, retval->GetSize()/bpuc);
 
@@ -1275,11 +1290,11 @@ GetExodusSetsVar(int exncfid, int ts, char const *var, int numNodes, int numElem
                 delete [] sideids;
                 continue;
             }
-        }
 
-        // Handling of side sets is in-complete. Need to get connectivity
-        // and iterate over elems in connects using sideids for a 'side' of
-        // an elem.
+            // Handling of side sets is in-complete. Need to get connectivity
+            // and iterate over elems in connects using sideids for a 'side' of
+            // an elem.
+        }
 
         for (int j = 0; j < (int) dlen; j++)
             retval->SetComponent(setids[j]-1, i, 1);
@@ -1388,7 +1403,7 @@ GetElementBlockNamesAndIds(int ncExIIId, int numBlocks,
     {
         case NC_INT:   READ_BLOCK_IDS(ncExIIId, eb_blockid_varid, numBlocks, blockId, int); break;
 #ifdef HAVE_VTK_SIZEOF___INT64
-        case NC_INT64: READ_BLOCK_IDS(ncExIIId, eb_blockid_varid, numBlocks, blockId, int64_t); break;
+        case NC_INT64: READ_BLOCK_IDS(ncExIIId, eb_blockid_varid, numBlocks, blockId, __int64); break;
 #endif
     }
 }
@@ -1856,10 +1871,7 @@ DecodeExodusElemTypeAttText(const char *ex_elem_type_att, int *tdim, int *vtk_ce
             else if (8 == num_nodes)
                 *vtk_celltype = VTK_QUADRATIC_QUAD;
             else if (8 == num_nodes)
-            {
                 *vtk_celltype = VTK_QUADRATIC_QUAD;
-                num_nodes = 8;
-            }
         }
         return;
     }
@@ -1873,12 +1885,9 @@ DecodeExodusElemTypeAttText(const char *ex_elem_type_att, int *tdim, int *vtk_ce
             else if (20 == num_nodes)
                 *vtk_celltype = VTK_QUADRATIC_HEXAHEDRON;
             else if (21 == num_nodes)
-            {
                 *vtk_celltype = VTK_QUADRATIC_HEXAHEDRON;
-                num_nodes = 20;
-            }
-            //else if (27 == num_nodes)
-            //    *vtk_celltype = VTK_TRIQUADRATIC_HEXAHEDRON;
+            else if (27 == num_nodes)
+                *vtk_celltype = VTK_TRIQUADRATIC_HEXAHEDRON;
         }
         return;
     }
@@ -1889,13 +1898,12 @@ DecodeExodusElemTypeAttText(const char *ex_elem_type_att, int *tdim, int *vtk_ce
         {
             if (4 == num_nodes)
                 *vtk_celltype = VTK_TETRA;
+            else if (8 == num_nodes) // no VTK support for tet8
+                *vtk_celltype = VTK_TETRA;
             else if (10 == num_nodes)
                 *vtk_celltype = VTK_QUADRATIC_TETRA;
             else if (11 == num_nodes)
-            {
                 *vtk_celltype = VTK_QUADRATIC_TETRA;
-                num_nodes = 10;
-            }
         }
         return;
     }
@@ -1985,9 +1993,7 @@ DecodeExodusElemTypeAttText(const char *ex_elem_type_att, int *tdim, int *vtk_ce
     {
         if (tdim) *tdim = 1;
         if (vtk_celltype)
-        {
             *vtk_celltype = VTK_POLY_VERTEX;
-        }
         return;
     }
     else if (elemType.substr(0, 4) == "null")
@@ -1997,7 +2003,7 @@ DecodeExodusElemTypeAttText(const char *ex_elem_type_att, int *tdim, int *vtk_ce
         return;
     }
     if (tdim) *tdim = -1;
-    if (vtk_celltype) *vtk_celltype = -1;
+    if (vtk_celltype) *vtk_celltype = VTK_EMPTY_CELL;
 }
 
 static int
@@ -2105,7 +2111,8 @@ avtExodusFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md,
     // Acquire spatial dimension information
     int num_dim_dimId;
     VisItNCErr = nc_inq_dimid(ncExIIId, "num_dim", &num_dim_dimId);
-    CheckNCError(nc_inq_dimid);
+    if (VisItNCErr != NC_NOERR) return;
+
     size_t num_dim_len;
     VisItNCErr = nc_inq_dimlen(ncExIIId, num_dim_dimId, &num_dim_len);
     CheckNCError(nc_inq_dimlen);
@@ -2116,7 +2123,7 @@ avtExodusFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md,
     // datasets and take the max.
     int num_el_blk_dimId;
     VisItNCErr = nc_inq_dimid(ncExIIId, "num_el_blk", &num_el_blk_dimId);
-    CheckNCError(nc_inq_dimid);
+    if (VisItNCErr != NC_NOERR) return;
 
     size_t num_el_blk_len;
     VisItNCErr = nc_inq_dimlen(ncExIIId, num_el_blk_dimId, &num_el_blk_len);
@@ -2192,19 +2199,14 @@ avtExodusFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md,
     GetElementBlockNamesAndIds(ncExIIId, numBlocks, blockName, blockId);
     avtScalarMetaData *ebsmd = new avtScalarMetaData("ElementBlock", meshName, AVT_ZONECENT);
     ebsmd->SetEnumerationType(avtScalarMetaData::ByValue);
-    if (numBlocks > 0 && blockName[0] == "")
+    for (i = 0 ; i < numBlocks ; i++)
     {
-        for (i = 0 ; i < numBlocks ; i++)
-        {
-            char name[128];
-            sprintf(name, "%d", blockId[i]);
-            ebsmd->AddEnumNameValue(name,blockId[i]);
-        }
-    }
-    else
-    {
-        for (i = 0 ; i < numBlocks ; i++)
-            ebsmd->AddEnumNameValue(blockName[i],blockId[i]);
+        char name[256];
+        if (blockName[0] == "")
+            SNPRINTF(name, sizeof(name), "%d", blockId[i]);
+        else
+            SNPRINTF(name, sizeof(name), "%s_%d", blockName[i].c_str(), blockId[i]);
+        ebsmd->AddEnumNameValue(name, i+1);
     }
     md->Add(ebsmd);
 
@@ -2385,6 +2387,9 @@ avtExodusFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md,
         md->Add(smd);
     }
 
+    // This is presently disabled because we don't have logic to paint a nodal
+    // var from side ids yet.
+#if 0
     //
     // Add exodus sidesets, if any exist, as enumerated scalars
     //
@@ -2404,6 +2409,7 @@ avtExodusFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md,
         smd->hideFromGUI = true;
         md->Add(smd);
     }
+#endif
 }
 
 // ****************************************************************************
@@ -2423,6 +2429,10 @@ avtExodusFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md,
 //
 //    Mark C. Miller, Thu Sep 26 12:01:01 PDT 2013
 //    Fixed assumption that length of connect variable was always dimension 0.
+//
+//    Mark C. Miller, Thu May  7 11:01:30 PDT 2015
+//    Bracket query for "elem_num_map" with TRY/CATCH. It isn't always in an
+//    exodus file.    
 // ****************************************************************************
 
 vtkDataSet *
@@ -2544,6 +2554,7 @@ avtExodusFileFormat::GetMesh(int ts, const char *mesh)
         SNPRINTF(connect_varname, sizeof(connect_varname), "connect%d", i+1);
         VisItNCErr = nc_inq_varid(ncExIIId, connect_varname, &connect_varid);
 
+        bool arb3D = false;
         if (VisItNCErr != NC_NOERR)
         {
             // Check for possible arbitrary polyehdra connectivities
@@ -2684,6 +2695,7 @@ avtExodusFileFormat::GetMesh(int ts, const char *mesh)
             delete [] facelist_buf;
             delete [] facecnts_buf;
  
+            arb3D = true;
             continue;
         }
 
@@ -2723,6 +2735,9 @@ avtExodusFileFormat::GetMesh(int ts, const char *mesh)
         int num_nodes_per_elem = (int) num_nod_per_len;
         int vtk_celltype = ExodusElemTypeAtt2VTKCellType(connect_elem_type_attval, num_nodes_per_elem, num_spatial_dims);
         delete [] connect_elem_type_attval;
+
+        if (vtk_celltype == VTK_POLYHEDRON && !arb3D)
+            vtk_celltype = VTK_POLYGON;
 
         int *ebepecnt_buf = 0;
         int connect_varlen = num_elems_in_blk * num_nodes_per_elem;
@@ -2817,7 +2832,16 @@ avtExodusFileFormat::GetMesh(int ts, const char *mesh)
         // track element edges correctly
         if (contains_nonlinear_elems)
         {
-            vtkDataArray *gzoneIds = GetVar(ts, "elem_num_map");
+            vtkDataArray *gzoneIds = 0;
+            TRY
+            {
+                gzoneIds = GetVar(ts, "elem_num_map");
+            }
+            CATCH(InvalidVariableException)
+            {
+                ; // no-op
+            }
+            ENDTRY
             if (gzoneIds)
             {
                 vtkDataArray *domNums;
@@ -2983,14 +3007,14 @@ avtExodusFileFormat::GetVar(int ts, const char *var)
             }
             ENDTRY
 
-            if (!mv_buf[m]) break;
+            if (!mv_buf[m]) continue;
             
             foundCount++;
             mvarr[m] = MakeVTKDataArrayByTakingOwnershipOfNCVarData(
                 mv_type, mv_num_comps, mv_num_vals, mv_buf[m]);
         }
 
-        if (foundCount == matCount)
+        if (foundCount == matCount - 1 || foundCount == matCount)
         {
             // First, see if material object is already cached
             void_ref_ptr vr = cache->GetVoidRef("Materials", AUXILIARY_DATA_MATERIAL, ts, myDomain);

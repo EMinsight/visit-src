@@ -361,6 +361,12 @@
 #    Eric Brugger, Wed Oct 22 11:33:35 PDT 2014
 #    I added a host profile for surface.
 #
+#    Kathleen Biagas, Mon Jan 26 07:46:28 PST 2015
+#    Removed host profile for edge.
+#
+#    Kathleen Biagas, Thu May  7 09:48:06 PDT 2015
+#    Fix second 'data' conditional to test for "$distributiondir"/data
+#
 #-----------------------------------------------------------------------
 
 Compress=COMPRESS
@@ -999,7 +1005,7 @@ for f in `echo $platformPath | tr "/" " "`; do
 done
 # Copy the files
 find . -print | cpio -pmud "$dir"/$version+
-if [ -e "$dir"/data ]; then
+if [ -e "$distributiondir"/data ]; then
     cd ../data
     find . -print | cpio -pmud "$dir"/data
 fi
@@ -1053,7 +1059,6 @@ elif [ "$config" = "llnl_open_cz" ]; then
    # Copy the files explicitly to avoid the rzgw hosts. We're most likely installing on a cz machine.
    cp "$dir"/$version+/$platformDir/resources/hosts/llnl/host_llnl_aztec.xml    "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/$platformDir/resources/hosts/llnl/host_llnl_cab.xml      "$dir"/$version+/.visit/hosts/
-   cp "$dir"/$version+/$platformDir/resources/hosts/llnl/host_llnl_edge.xml     "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/$platformDir/resources/hosts/llnl/host_llnl_hera.xml     "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/$platformDir/resources/hosts/llnl/host_llnl_oslic.xml    "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/$platformDir/resources/hosts/llnl/host_llnl_sierra.xml   "$dir"/$version+/.visit/hosts/

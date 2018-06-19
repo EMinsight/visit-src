@@ -180,6 +180,8 @@
 #include <SharedDaemon.h>
 #include <MDServerManager.h>
 
+#include <CommunicationHeader.h>
+
 #ifdef HAVE_DDT
 #include <DDTManager.h>
 #endif
@@ -1306,8 +1308,9 @@ ViewerSubject::DisconnectClient(ViewerClientConnection *client)
 
         debug1 << "VisIt's viewer lost a connection to one of its clients ("
                << client->Name().toStdString() << ")." << endl;
-        if(client->GetViewerClientAttributes().GetExternalClient())
+        if(client->GetViewerClientAttributes().GetExternalClient()) {
             std::cout << "Disconnecting client: " << client->GetViewerClientAttributes().GetTitle() << std::endl;
+        }
         client->deleteLater();
 
         // check to see if all other clients are remote, if they are then quit since
@@ -2378,6 +2381,7 @@ ViewerSubject::ProcessCommandLine(int argc, char **argv)
 
     int shared_daemon_port = -1;
     std::string shared_daemon_password = "";
+    bool enable_shared = false;
 
     //
     // Process the command line for the viewer.
@@ -2743,13 +2747,24 @@ ViewerSubject::ProcessCommandLine(int argc, char **argv)
         }
         else if (strcmp(argv[i], "-shared_port") == 0)
         {
-            if ((i + 1 >= argc) || (!isdigit(*(argv[i+1]))))
+            if ((i + 1 >= argc)) // || (!isdigit(*(argv[i+1]))))
             {
                 cerr << "The -shared_port option must be followed by an "
                         "integer(valid port) number." << endl;
                 continue;
             }
-            shared_daemon_port = atoi(argv[i+1]);
+
+            QString port_number = argv[i+1];
+            bool ok = false;
+            shared_daemon_port = port_number.toInt(&ok);
+
+            if(ok) {
+                enable_shared = true;
+            } else {
+                std::cerr << "Viewer Sharing not enabled port not set correctly"
+                    << std::endl;
+            }
+
             ++i;
         }
         else if (strcmp(argv[i], "-shared_password") == 0)
@@ -2774,25 +2789,25 @@ ViewerSubject::ProcessCommandLine(int argc, char **argv)
 #endif
     }
 
-    if(shared_daemon_port != -1 || shared_daemon_password.length() > 0)
-    {
-        if(shared_daemon_port == -1 || shared_daemon_password == "")
-        {
-             std::cerr << "Viewer Sharing not enabled port or password not set correctly"
-                 << std::endl;
+    if(enable_shared) {
+        /// if no password given then create one..
+        if(shared_daemon_password.length() == 0) {
+            /// create OTP password using RandomKey from CommunicationHeader.
+            shared_daemon_password = CommunicationHeader::CreateRandomKey(20);
+            std::cout << "Shared Key: " << shared_daemon_password << std::endl;
         }
-        else
-        {
-            shared_viewer_daemon = new SharedDaemon(this,shared_daemon_port,shared_daemon_password);
-            ///register visWindow update function
-            ///TODO: possibly come up with a better solution?
-            ViewerWindow::SetRenderEventCallback(RenderEventCallback, this);
-            VisWinRenderingWithoutWindowWithInteractions::SetInteractorCallback(CreateGlobalInteractor);
-            /// force shared mode to have interactions when in nowin mode..
-            avtCallback::SetNowinInteractionMode(true);
 
-        }
+        shared_viewer_daemon = new SharedDaemon(this,shared_daemon_port,shared_daemon_password);
+
+        ///register visWindow update function
+        ///TODO: possibly come up with a better solution?
+        ViewerWindow::SetRenderEventCallback(RenderEventCallback, this);
+        VisWinRenderingWithoutWindowWithInteractions::SetInteractorCallback(CreateGlobalInteractor);
+        /// force shared mode to have interactions when in nowin mode..
+        avtCallback::SetNowinInteractionMode(true);
+
     }
+
 
     // Set the geometry based on the argument that was provided with
     // -viewer_geometry taking precedence.
@@ -3197,7 +3212,7 @@ ViewerSubject::Export()
     JSONNode node;
     std::string str = GetViewerState()->GetViewerRPC()->GetStringArg1();
     int clientId = GetViewerState()->GetViewerRPC()->GetIntArg1();
-
+    std::cout << "EXPORT" << std::endl;
     replaceAll(str,"\\\\", "\\");
     replaceAll(str,"\\\"", "\"");
     node.Parse(str);
@@ -3216,7 +3231,7 @@ ViewerSubject::Export()
         std::string host = node["host"].GetString();
         std::string remotePath = node["path"].GetString();
 
-        //std::cout << "host!" << host << " " << remotePath << std::endl;
+        std::cout << "host!" << host << " " << remotePath << std::endl;
 
         GetViewerFileServer()->NoFaultStartServer(host, stringVector());
 
@@ -3235,7 +3250,7 @@ ViewerSubject::Export()
                 expanded.truncate(expanded.length()-2);
             }
 
-            std::cout << "expanded: " << expanded.toStdString() << std::endl;
+            //std::cout << "expanded: " << expanded.toStdString() << std::endl;
 
             info->proxy->GetMDServerMethods()->ChangeDirectory(expanded.toStdString());
 
@@ -3245,10 +3260,10 @@ ViewerSubject::Export()
             node["files"] = JSONNode::JSONArray();
             node["dirs"] = JSONNode::JSONArray();
 
-            for(int i = 0; i < list->files.size(); ++i) {
+            for(size_t i = 0; i < list->files.size(); ++i) {
                 node["files"].Append("&quot;" + list->files[i].name + "&quot;" );
             }
-            for(int i = 0; i < list->dirs.size(); ++i) {
+            for(size_t i = 0; i < list->dirs.size(); ++i) {
                 node["dirs"].Append("&quot;" + list->dirs[i].name + "&quot;");
             }
 
@@ -3263,7 +3278,7 @@ ViewerSubject::Export()
     if(action == "RegisterNewWindow") {
         int windowId = node["windowId"].GetInt();
         std::string typeMap = node["type"].ToString();
-        std::cout << typeMap << std::endl;
+        //std::cout << typeMap << std::endl;
         int type = (int)ViewerClientAttributes::None;
         if(typeMap == "Image" || typeMap == "\"Image\"") {
             type = (int)ViewerClientAttributes::Image;
@@ -3283,8 +3298,8 @@ ViewerSubject::Export()
                     break;
                 }
             }
-            std::cout << "registering new window for clientId " << activeWindows.size() << " "
-                      << clientId << " " << index << "  " << " " << windowId << " " << type << std::endl;
+            //std::cout << "registering new window for clientId " << activeWindows.size() << " "
+            //          << clientId << " " << index << "  " << " " << windowId << " " << type << std::endl;
             if(index == -1) {
                 activeWindows.push_back(windowId);
                 typeWindows.push_back(type);
@@ -3306,7 +3321,7 @@ ViewerSubject::Export()
         intVector alpha = node["alpha"].AsIntVector();
         intVector pcnt = node["pcnt"].AsIntVector();
 
-        std::cout << "creating colormap: " << node.ToString() << std::endl;
+        //std::cout << "creating colormap: " << node.ToString() << std::endl;
 
         ColorTableAttributes* ctAtts = GetViewerState()->GetColorTableAttributes();
 
@@ -3343,7 +3358,7 @@ ViewerSubject::Export()
             //std::cout << (int)colors[0] << " " << (int)colors[1] << " " << (int)colors[2] << " " << (int)colors[3] << " " << position << std::endl;
         }
 
-        std::cout << "setting color table:" << name << std::endl;
+        //std::cout << "setting color table:" << name << std::endl;
         ctAtts->AddColorTable(name,ccpl);
         ctAtts->Notify();
 
@@ -3368,7 +3383,7 @@ ViewerSubject::Export()
             return;
         }
 
-        std::cout << "button action: " << button << std::endl;
+        //std::cout << "button action: " << button << std::endl;
         if(button == "Pan") {
             avtView3D v = win->GetView3D();
             v.imagePan[0] = start_dx;
@@ -4001,6 +4016,10 @@ ViewerSubject::HandleViewerRPC()
 //    Brad Whitlock, Fri Aug 29 00:10:15 PDT 2014
 //    Massive rewrite.
 //
+//    Kathleen Biagas, Thu Mar 12 18:56:27 MST 2015
+//    Move UpdateDBPluginInfo out of Actions, back to being handled here,
+//    to prevent a startup hang on Windows.
+//
 // ****************************************************************************
 
 void
@@ -4030,10 +4049,15 @@ ViewerSubject::HandleViewerRPCEx()
         Close();
         break;
     case ViewerRPC::ConnectToMetaDataServerRPC:
-        // This comes in before the action manager is initialized so let's handle
-        // it without actions. It's okay since this is not an RPC that we'd usually
-        // handle from something that's not the viewer.
+        // This comes in before the action manager is initialized so let's
+        // handle it without actions. It's okay since this is not an RPC that
+        // we'd usually handle from something that's not the viewer.
         ConnectToMetaDataServer();
+        break;
+    case ViewerRPC::UpdateDBPluginInfoRPC:
+        // This comes in before the action manager is initialized (at least
+        // on Windows), so let's handle it without actions.
+        GetViewerFileServer()->UpdateDBPluginInfo(GetViewerState()->GetViewerRPC()->GetProgramHost());
         break;
     case ViewerRPC::OpenClientRPC:
         // This action only has relevance for the viewer.
@@ -4082,7 +4106,7 @@ ViewerSubject::BroadcastData(int windowId, int clientId)
         const intVector& typeWindows = clatts.GetRenderingTypes();
 
         for(size_t j = 0; j < activeWindows.size(); ++j) {
-            std::cout << activeWindows[j] << " " << typeWindows[j] << std::endl;
+            //std::cout << activeWindows[j] << " " << typeWindows[j] << std::endl;
             if(activeWindows[j] == windowId+1 &&
               (ViewerClientAttributes::RenderType)typeWindows[j] == ViewerClientAttributes::Data) {
                 activeClients.push_back(clients[i]);
@@ -4150,7 +4174,7 @@ ViewerSubject::BroadcastData(int windowId, int clientId)
         for(size_t k = 0; k < elementList.size(); ++k) {
             qatts->AddVars(elementList[k]);
         }
-        std::cout << "broadcasting data" << std::endl;
+        //std::cout << "broadcasting data" << std::endl;
         activeClients[i]->BroadcastToClient(qatts);
     }
 
@@ -5199,6 +5223,9 @@ ViewerSubject::DeferCommandFromSimulation(const EngineKey &key,
 //   Brad Whitlock, Sun Feb 27 21:12:17 PST 2011
 //   I added the SetUI command.
 //
+//   Brad Whitlock, Thu May 28 15:27:56 PDT 2015
+//   I added more commands that can come from simulations.
+//
 // ****************************************************************************
 
 void
@@ -5261,6 +5288,151 @@ ViewerSubject::HandleCommandFromSimulation(const EngineKey &key,
             GetViewerState()->GetSimulationUIValues()->SetSvalue(s[3]);
         GetViewerState()->GetSimulationUIValues()->SetEnabled(s[4] == "1");
         GetViewerState()->GetSimulationUIValues()->Notify();
+    }
+    else if(command.substr(0,10) == "SaveWindow")
+    {
+        stringVector s = SplitValues(command, ':');
+        // s[0] = SaveWindow
+        // s[1] = dName
+        // s[2] = fName
+        // s[3] = w
+        // s[4] = h
+        // s[5] = format
+        int ival = 0, w = 100, h = 100;
+        if(sscanf(s[3].c_str(), "%d", &ival) == 1)
+            w = (ival > 0) ? ival : w;
+        if(sscanf(s[4].c_str(), "%d", &ival) == 1)
+            h = (ival > 0) ? ival : h;
+        SaveWindowAttributes::FileFormat fmt = SaveWindowAttributes::PNG;
+        SaveWindowAttributes::FileFormat_FromString(s[5], fmt);
+
+        SaveWindowAttributes *swa = GetViewerState()->GetSaveWindowAttributes();
+        swa->SetFileName(s[2]);
+        swa->SetOutputToCurrentDirectory(false);
+        swa->SetOutputDirectory(s[1]);
+        swa->SetFamily(false);
+        swa->SetFormat(fmt);
+        swa->SetWidth(w);
+        swa->SetHeight(h);
+        swa->SetSaveTiled(false);
+        swa->SetScreenCapture(false);
+        swa->Notify();
+
+        GetViewerMethods()->SaveWindow();
+    }
+    else if(command.substr(0,14) == "ExportDatabase")
+    {
+        stringVector s = SplitValues(command, ':');
+        // s[0] = ExportDatabase
+        // s[1] = name
+        // s[2] = id
+        // s[3] = dName
+        // s[4] = fName
+        // s[5] = var0
+        // ...   more vars.
+
+        stringVector vars;
+        for(size_t i = 5; i < s.size(); ++i)
+            vars.push_back(s[i]);
+
+        ExportDBAttributes *atts = GetViewerState()->GetExportDBAttributes();
+        atts->SetAllTimes(false);
+        atts->SetDb_type(s[1]);
+        atts->SetDb_type_fullname(s[2]);
+        atts->SetDirname(s[3]);
+        atts->SetFilename(s[4]);
+        atts->SetVariables(vars);
+        atts->Notify();
+
+        GetViewerMethods()->ExportDatabase();
+    }
+    else if(command.substr(0,14) == "RestoreSession")
+    {
+        stringVector s = SplitValues(command, ':');
+        // s[0] = RestoreSession
+        // s[1] = filename
+        stringVector sources;
+        for(int i = 0; i < 10; ++i)
+            sources.push_back(db);
+
+        GetViewerMethods()->
+            ImportEntireStateWithDifferentSources(s[1], false, sources);
+    }
+    else if(command.substr(0,7) == "AddPlot")
+    {
+        stringVector s = SplitValues(command, ':');
+        // s[0] = AddPlot
+        // s[1] = plotType
+        // s[2] = var
+
+        // Get the plugin id from the input plotType, which could be an id or a name.
+        std::string id;
+        for(int i = 0; i < GetPlotPluginManager()->GetNEnabledPlugins(); ++i)
+        {
+            std::string thisID(GetPlotPluginManager()->GetEnabledID(i));
+            if(thisID == s[1])
+                id = thisID;
+            if(GetPlotPluginManager()->GetPluginName(thisID) == s[1])
+                id = thisID;
+        }
+        if(!id.empty())
+        {
+            int plotIndex = GetPlotPluginManager()->GetEnabledIndex(id);
+            GetViewerMethods()->AddPlot(plotIndex, s[2]);
+        }
+    }
+    else if(command.substr(0,11) == "AddOperator")
+    {
+        stringVector s = SplitValues(command, ':');
+        // s[0] = AddPlot
+        // s[1] = operatorType
+        // s[2] = applyToAll
+
+        // Get the plugin id from the input plotType, which could be an id or a name.
+        std::string id;
+        for(int i = 0; i < GetOperatorPluginManager()->GetNEnabledPlugins(); ++i)
+        {
+            std::string thisID(GetOperatorPluginManager()->GetEnabledID(i));
+            if(thisID == s[1])
+                id = thisID;
+            if(GetOperatorPluginManager()->GetPluginName(thisID) == s[1])
+                id = thisID;
+        }
+        if(!id.empty())
+        {
+            bool applyToAll = (s[2]=="1");
+
+            bool applyOperatorSave = GetViewerState()->GetGlobalAttributes()->GetApplyOperator();
+            GetViewerState()->GetGlobalAttributes()->SetApplyOperator(applyToAll);
+
+            int operatorIndex = GetOperatorPluginManager()->GetEnabledIndex(id);
+            GetViewerMethods()->AddOperator(operatorIndex);
+
+            GetViewerState()->GetGlobalAttributes()->SetApplyOperator(applyOperatorSave);
+        }
+    }
+    else if(command.substr(0,9) == "DrawPlots")
+    {
+        GetViewerMethods()->DrawPlots();
+    }
+    else if(command.substr(0,17) == "DeleteActivePlots")
+    {
+        GetViewerMethods()->DeleteActivePlots();
+    }
+    else if(command.substr(0,14) == "SetActivePlots")
+    {
+        stringVector s = SplitValues(command, ':');
+        // s[0] = SetActivePlots
+        // s[1] = activePlot0
+        // ... more active plots.
+        intVector activePlots;
+        for(size_t i = 1; i < s.size(); ++i)
+        {
+            int ival = atoi(s[i].c_str());
+            if(ival >= 0)
+                activePlots.push_back(ival);
+        }
+        GetViewerMethods()->SetActivePlots(activePlots);
     }
 }
 

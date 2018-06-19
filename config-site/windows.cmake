@@ -6,6 +6,7 @@ IF (MSVC_VERSION)
       SET(VISIT_MSVC_VERSION "MSVC2013")
   ELSEIF (MSVC11)
       SET(VISIT_MSVC_VERSION "MSVC2012")
+      VISIT_OPTION_DEFAULT(VISIT_ENABLE_XDB ON)
   ELSEIF (MSVC10)
       SET(VISIT_MSVC_VERSION "MSVC2010")
   ELSE()
@@ -36,13 +37,17 @@ SET(VISITHOME ${VISIT_WINDOWS_DIR}/${VISIT_MSVC_VERSION})
 
 # Create the NSIS installer package (override default from root CMakeLists.txt
 OPTION(VISIT_MAKE_NSIS_INSTALLER "Create an installer package using NSIS." ON)
-SET(BOOST_INCLUDE_DIR ${VISIT_SOURCE_DIR}/third_party_builtin/bilib/boost_1_42_0 CACHE PATH "boost include")
 
 ##############################################################
 ##
 ## Required libraries
 ##
 ##############################################################
+
+##
+## BOOST
+##
+VISIT_OPTION_DEFAULT(VISIT_BOOST_DIR ${VISITHOME}/boost_minimal_headers/1.57.0)
 
 
 ##
@@ -73,12 +78,10 @@ endif()
 ##
 ## PYTHON
 ##
-if(MSVC12)
-  VISIT_OPTION_DEFAULT(VISIT_PYTHON_DIR ${VISITHOME}/python/2.7.8)
-elseif(MSVC11)
-  VISIT_OPTION_DEFAULT(VISIT_PYTHON_DIR ${VISITHOME}/python/2.7.6)
-else()
+if(MSVC10)
   VISIT_OPTION_DEFAULT(VISIT_PYTHON_DIR ${VISITHOME}/python/2.7.5)
+else()
+  VISIT_OPTION_DEFAULT(VISIT_PYTHON_DIR ${VISITHOME}/python/2.7.9)
 endif()
 
 ##
@@ -259,6 +262,10 @@ VISIT_OPTION_DEFAULT(VISIT_H5PART_LIBDEP
     TYPE STRING
 )
 
+##
+## MFEM
+##
+VISIT_OPTION_DEFAULT(VISIT_MFEM_DIR     ${VISITHOME}/mfem/3.0)
 
 ##
 ## MILI
@@ -301,3 +308,7 @@ VISIT_OPTION_DEFAULT(VISIT_XDMF_LIBDEP
     VTK_LIBRARY_DIRS vtklibxml2-${VTK_MAJOR_VERSION}.${VTK_MINOR_VERSION}
     TYPE STRING
 )
+
+if (MSVC11)
+  VISIT_OPTION_DEFAULT(VISIT_VISUS_DIR ${VISITHOME}/ViSUS/330725d)
+endif()

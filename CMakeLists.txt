@@ -380,12 +380,21 @@
 #    Kathleen Biagas, Wed Oct 22 16:31:49 MST 2014
 #    Always use -DNOMINMAX on Windows.
 #
+#    Cyrus Harrison, Tue Feb 10 20:06:07 PST 2015
+#    Change boost support.
+#
+#    Kathleen Biagas, Tue Apr 14 14:56:12 MST 2015
+#    Added find_file for MS HPC Scheduler.
+#
 #****************************************************************************/
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8.8 FATAL_ERROR)
 
 IF (COMMAND cmake_policy)
     cmake_policy(SET CMP0003 NEW)
+    if(CMAKE_MAJOR_VERSION GREATER 2)
+        cmake_policy(SET CMP0033 OLD)
+    endif()
     IF(WIN32 AND VISIT_QT5)
         cmake_policy(SET CMP0020 OLD)
     ENDIF()
@@ -1020,68 +1029,20 @@ ELSE(VISIT_USE_X)
 ENDIF(VISIT_USE_X)
 INCLUDE(${CMAKE_ROOT}/Modules/TestBigEndian.cmake)
 
+
+# Configure Nektar++ support. 
+# Do it before the other libraries like boost because many can depend on it.
+INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindNektar++.cmake)
+IF(NEKTAR++_FOUND)
+    SET(HAVE_LIBNEKTAR++ 1)
+ENDIF(NEKTAR++_FOUND)
+
+
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItBoost.cmake)
 IF(BOOST_FOUND)
   SET(HAVE_BOOST 1)
 ENDIF(BOOST_FOUND)
 
-#IF(VISIT_USE_BOOST)
-#    INCLUDE(${CMAKE_ROOT}/Modules/FindBoost.cmake)
-#ENDIF(VISIT_USE_BOOST)
-
-# Cmake's FindBoost sets Boost_VERSION whereas
-# VisIt's FindVisItBoost's sets BOOST_VERSION.
-# As such, copy over from one to the other. However, we use
-# SET_APP_VERSION in the site-config file which does all that so
-# none of this code is needed any more.
-
-#SET(Boost_VERSION ${BOOST_VERSION})
-
-# Set the boost directory if requested otherwise use the visit built in.
-#IF(Boost_VERSION)
-#    MESSAGE(STATUS "  Boost_VERSION=${Boost_VERSION}")
-#    # FindBoost.cmake does not always properly set the major, minor
-#    # and subminor versions correctly, so do that ourselves.
-#    STRING(REPLACE "." "0" Boost_VERSION_NUMERIC "${Boost_VERSION}")
-#    SET(Boost_MAJOR_VERSION 0)
-#    SET(Boost_MINOR_VERSION 0)
-#    SET(Boost_SUBMINOR_VERSION 0)
-#    IF(NOT "${Boost_VERSION_NUMERIC}" STREQUAL "0")
-#        MATH(EXPR Boost_MAJOR_VERSION "${Boost_VERSION_NUMERIC} / 100000")
-#        MATH(EXPR Boost_MINOR_VERSION "${Boost_VERSION_NUMERIC} / 100 % 1000")
-#        MATH(EXPR Boost_SUBMINOR_VERSION "${Boost_VERSION_NUMERIC} % 100")
-#    ENDIF(NOT "${Boost_VERSION_NUMERIC}" STREQUAL "0")
-#    MESSAGE(STATUS "  Boost_MAJOR_VERSION=${Boost_MAJOR_VERSION}")
-#    MESSAGE(STATUS "  Boost_MINOR_VERSION=${Boost_MINOR_VERSION}")
-#    MESSAGE(STATUS "  Boost_SUBMINOR_VERSION=${Boost_SUBMINOR_VERSION}")
-
-#    SET(BOOST_INCLUDE_DIR ${Boost_INCLUDE_DIR} CACHE PATH "Path to boost lib")
-#ELSE(Boost_VERSION)
-#    SET(BOOST_INCLUDE_DIR ${VISIT_SOURCE_DIR}/third_party_builtin/bilib/boost_1_42_0 CACHE PATH "Path to boost lib")
-#ENDIF(Boost_VERSION)
-
-
-# TEMPORARY CODE INCASE SOMEONE DOES NOT BUILD BOOST SO THAT CODE THAT
-# USES BOOST BUT DOES NOT HAVE THE WRAPPER LIKE WE HAVE FOR PARADIS
-# WILL STILL COMPILE.
-
-# Set the boost directory if requested otherwise use the visit built in.
-IF(NOT BOOST_INCLUDE_DIR)
-    SET(BOOST_INCLUDE_DIR ${VISIT_SOURCE_DIR}/third_party_builtin/bilib/boost_1_42_0 CACHE PATH "Path to boost lib")
-ENDIF(NOT BOOST_INCLUDE_DIR)
-
-
-# Set BOOST_USABLE_PARADIS if boost 1.36.0 or later is found. ParaDIS
-# uses make_shared, which was only introduced in boost 1.36.0.
-
-IF(VISIT_PARADIS)
-    IF(BOOST_MAJOR_VERSION GREATER 0 AND BOOST_MINOR_VERSION GREATER 35)
-        SET(BOOST_USABLE_PARADIS 1)
-        MESSAGE(STATUS "  Boost usable by paraDIS")
-    ELSE(BOOST_MAJOR_VERSION GREATER 0 AND BOOST_MINOR_VERSION GREATER 35)
-        MESSAGE(STATUS "  Boost was not found or is not usable by paraDIS")
-    ENDIF(BOOST_MAJOR_VERSION GREATER 0 AND BOOST_MINOR_VERSION GREATER 35)
-ENDIF(VISIT_PARADIS)
 
 IF( (VISIT_PYTHON_SCRIPTING OR VISIT_PYTHON_FILTERS) AND NOT VISIT_DBIO_ONLY)
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItPython.cmake)
@@ -1389,13 +1350,6 @@ IF(NOT VISIT_BUILD_MINIMAL_PLUGINS OR VISIT_SELECTED_DATABASE_PLUGINS)
         SET(HAVE_LIBMILI 1)
     ENDIF(MILI_FOUND)
 
-    # Configure Nektar++ support. 
-    # Do it before the other libraries since many can depend on it.
-    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindNektar++.cmake)
-    IF(NEKTAR++_FOUND)
-        SET(HAVE_LIBNEKTAR++ 1)
-    ENDIF(NEKTAR++_FOUND)
-
     # Configure netcdf support.
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindNetcdf.cmake)
     IF(NETCDF_FOUND)
@@ -1605,6 +1559,7 @@ IF(VISIT_PARALLEL)
                       SET(VISIT_PARALLEL_LINKER_FLAGS "${MPI_LINK_FLAGS}"
                           CACHE STRING "Parallel LDFLAGS")
                   ENDIF(MPI_LINK_FLAGS)
+                  find_file(HAVE_HPC_SCHEDULER "Microsoft.Hpc.Scheduler.tlb")
                 ELSE(MPI_FOUND)
                   MESSAGE(FATAL_ERROR "To build parallel VisIt, you must at a "
                           "minimum define VISIT_MPI_COMPILER or VISIT_MPI_LIBS. "

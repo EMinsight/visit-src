@@ -275,9 +275,6 @@ done
 export DO_HOSTCONF="yes"
 export ON_HOSTCONF="on"
 
-export DO_BOOST="yes"
-export ON_BOOST="on"
-
 export DO_DEBUG="no"
 export ON_DEBUG="off"
 export DO_GROUP="no"
@@ -327,6 +324,7 @@ export USE_VISIBILITY_HIDDEN="no"
 export VISIT_INSTALL_PREFIX=""
 export VISIT_BUILD_MODE="Release"
 export VISIT_SELECTED_DATABASE_PLUGINS=""
+export DO_XDB="no"
 DOWNLOAD_ONLY="no"
 
 
@@ -967,6 +965,7 @@ for arg in "${arguments[@]}" ; do
         --thirdparty-path) next_arg="thirdparty-path"
                            ON_THIRD_PARTY_PATH="on";;
         --version) next_arg="version";;
+        --xdb) DO_XDB="yes";;
         -4) deprecated="${deprecated} --hdf4";;
         -5) deprecated="${deprecated} --hdf5";;
         -c) deprecated="${deprecated} --cgns";;

@@ -274,6 +274,8 @@ function uncompress_untar
         COMPRESSTYPE="bzip"
     elif [[ $(echo $1 | egrep "\.tgz$" ) != "" ]] ; then
         COMPRESSTYPE="targzip"
+    elif [[ $(echo $1 | egrep "\.tar.gz$" ) != "" ]] ; then
+        COMPRESSTYPE="targzip"
     else
         warn "unsupported uncompression method"
         return 1
@@ -1524,7 +1526,8 @@ function usage
   printf "%-15s %s [%s]\n" "--paradis" "Build with the paraDIS client library" "${DO_PARADIS}"
   printf "%-15s %s [%s]\n" "--static" "Build using static linking" "$DO_STATIC_BUILD"
   printf "%-15s %s [%s]\n" "--stdout" "Write build log to stdout" "$LOG_FILE"
-  
+  printf "%-15s %s [%s]\n" "--xdb" "Enable FieldView XDB plugin." "$DO_XDB"
+
   for (( bv_i=0; bv_i<${#grouplibs_comment[*]}; ++bv_i ))
   do
         name=${grouplibs_name[$bv_i]}

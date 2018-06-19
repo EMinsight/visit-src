@@ -120,17 +120,6 @@ function apply_boost_patch
 
 function build_boost
 {
-
-    build_libs="$build_libs --with-libraries=\"system\" "
-
-    if [[ "$DO_NEKTAR_PLUS_PLUS" == "yes" ]] ; then
-        build_libs="$build_libs --with-libraries=\"iostreams,thread,date_time,filesystem,system,program_options\" "
-    fi
-
-#    if [[ "$build_libs" == ""  ]] ; then
-#        build_libs="--without-libraries=\"chrono,context,filesystem,graph_parallel,iostreams,locale,mpi,program_options,python,regex,serialization,signals,system,thread,timer,wave,date_time,graph,math,random,test,exception\" "
-#    fi
-
     #
     # Prepare build dir
     #
@@ -147,59 +136,109 @@ function build_boost
     if [[ $? != 0 ]]; then
         warn "Patch failed, but continuing."
     fi
-    info "Configuring BOOST . . . $build_libs"
 
-    if [[ "$DO_STATIC_BUILD" == "yes" ]]; then
-            cf_build_type="--disable-shared --enable-static"
-        else
-            cf_build_type="--enable-shared --disable-static"
+    libs=""
+    build_libs=""
+
+    if [[ "$DO_NEKTAR_PLUS_PLUS" == "yes" ]] ; then
+	libs="$libs \
+              iostreams thread date_time filesystem \
+              system program_options regex"
+
+        build_libs="$build_libs --with-libraries=\"iostreams,thread,date_time,filesystem,system,program_options,regex\" "
     fi
 
-    cf_build_thread=""
-    if [[ "$DO_THREAD_BUILD" == "yes" ]]; then
-        cf_build_thread="--enable-threadsafe --with-pthread"
-    fi
+    if [[ "$build_libs" != ""  ]] ; then
 
-    # In order to ensure $FORTRANARGS is expanded to build the arguments to
-    # configure, we wrap the invokation in 'sh -c "..."' syntax
-    info "Invoking command to configure BOOST"
-#    info  "./bootstrap.sh $build_libs \
-#        --prefix=\"$VISITDIR/boost/$BOOST_VERSION/$VISITARCH\" "
+        info "Configuring BOOST . . . $build_libs"
 
-    sh -c "./bootstrap.sh $build_libs \
-        --prefix=\"$VISITDIR/boost/$BOOST_VERSION/$VISITARCH\" "
+#        if [[ "$DO_STATIC_BUILD" == "yes" ]]; then
+#            cf_build_type="--disable-shared --enable-static"
+#        else
+#            cf_build_type="--enable-shared --disable-static"
+#        fi
 
-    if [[ $? != 0 ]] ; then
-       warn "BOOST configure failed.  Giving up"
-       return 1
-    fi
+#        if [[ "$DO_THREAD_BUILD" == "yes" ]]; then
+#            cf_build_thread="--enable-threadsafe --with-pthread"
+#        else
+#            cf_build_thread=""
+#        fi
 
-    #
-    # Build BOOST
-    #
-    info "Making BOOST . . ."
+        # In order to ensure $FORTRANARGS is expanded to build the arguments to
+        # configure, we wrap the invokation in 'sh -c "..."' syntax
+        info "Invoking command to configure BOOST"
+#        info  "./bootstrap.sh $build_libs \
+#            --prefix=\"$VISITDIR/boost/$BOOST_VERSION/$VISITARCH\" "
 
-    sh -c "./b2"
-    if [[ $? != 0 ]] ; then
-       warn "BOOST build failed.  Giving up"
-       return 1
-    fi
-    #
-    # Install into the VisIt third party location.
-    #
-    info "Installing BOOST . . ."
-    sh -c "./b2 install"
-    if [[ $? != 0 ]] ; then
-       warn "BOOST install failed.  Giving up"
-       return 1
-    fi
+        sh -c "./bootstrap.sh $build_libs \
+            --prefix=\"$VISITDIR/boost/$BOOST_VERSION/$VISITARCH\" "
 
-    if [[ "$DO_STATIC_BUILD" == "no" && "$OPSYS" == "Darwin" ]]; then
+        if [[ $? != 0 ]] ; then
+           warn "BOOST configure failed.  Giving up"
+           return 1
+        fi
+
         #
-        # Make dynamic executable, need to patch up the install path and
-        # version information.
+        # Build BOOST
         #
-        info "Creating dynamic libraries for BOOST . . ."
+        info "Making BOOST . . ."
+
+        sh -c "./b2"
+        if [[ $? != 0 ]] ; then
+           warn "BOOST build failed.  Giving up"
+           return 1
+        fi
+
+        #
+        # Install into the VisIt third party location.
+        #
+        info "Installing BOOST . . ."
+        sh -c "./b2 install \
+              --prefix=\"$VISITDIR/boost/$BOOST_VERSION/$VISITARCH\" "
+
+        if [[ $? != 0 ]] ; then
+           warn "BOOST install failed.  Giving up"
+           return 1
+        fi
+
+        if [[ "$DO_STATIC_BUILD" == "no" && "$OPSYS" == "Darwin" ]]; then
+            #
+            # Make dynamic executable, need to patch up the install path and
+            # version information.
+            #
+            info "Creating dynamic libraries for BOOST . . ."
+            INSTALLNAMEPATH="$VISITDIR/boost/${BOOST_VERSION}/$VISITARCH/lib"
+
+	    for lib in $libs;
+	    do
+                install_name_tool \
+		    -id $INSTALLNAMEPATH/libboost_${lib}.${SO_EXT} \
+                    $INSTALLNAMEPATH/libboost_${lib}.${SO_EXT}
+
+		# The filesystem and thread library depend on the 
+		# system library so fix up those paths as well
+		if [[ $lib == "filesystem" || $lib == "thread" ]] ; then
+		    install_name_tool -change \
+			libboost_system.${SO_EXT} $INSTALLNAMEPATH/libboost_system.${SO_EXT} \
+			$INSTALLNAMEPATH/libboost_${lib}.${SO_EXT}
+		fi
+            done
+        fi
+
+    else
+        info "Installing BOOST . . . headers only"
+
+	mkdir "$VISITDIR/boost"
+	mkdir "$VISITDIR/boost/$BOOST_VERSION"
+	mkdir "$VISITDIR/boost/$BOOST_VERSION/$VISITARCH"
+	mkdir "$VISITDIR/boost/$BOOST_VERSION/$VISITARCH/include"
+
+	cp -r boost $VISITDIR/boost/$BOOST_VERSION/$VISITARCH/include
+
+        if [[ $? != 0 ]] ; then
+           warn "BOOST install failed.  Giving up"
+           return 1
+        fi
     fi
 
     if [[ "$DO_GROUP" == "yes" ]] ; then
@@ -251,3 +290,39 @@ if [[ "$DO_BOOST" == "yes" && "$USE_SYSTEM_BOOST" == "no" ]] ; then
     fi
 fi
 }
+
+
+
+# Notes to Windows developers on building boost:
+# grab the .zip or .7z tarball and extract
+# Open command prompt in the extracted boost_<version> directory
+# To build everything and install to default C:\Boost location:
+#   .\bootstrap
+#   .\b2
+#   .\b2 install
+#
+# To change install location, add --prefix="\path\to\boost" to
+# all commands. (All might be overkill, but I experienced problems
+# when specified for only bootrap or b2, so I added it to all).
+#
+# If you want shared libs only, linked with shared CRT, release only, 64-bit:
+#
+#   .\boostrap --prefix="C:\path\to\where\you\want\boost"
+#   .\b2 --prefix="C:\path\to\where\you\want\boost" link=shared runtime-link=shared variant=release threading=multi address-model=64
+#   .\b2 --prefix="C:\path\to\where\you\want\boost" link=shared runtime-link=shared variant=release threading=multi address-model=64 install
+#
+# If you only want a subset of the libraries add a '--with-<lib>' for each 
+# library you want:
+#   .\boostrap --prefix="C:\path\to\where\you\want\boost"
+#   .\b2 --with-system --prefix="C:\path\to\where\you\want\boost" link=shared runtime-link=shared variant=release threading=multi address-model=64
+#   .\b2 --with-system --prefix="C:\path\to\where\you\want\boost" link=shared runtime-link=shared variant=release threading=multi address-model=64 install
+#
+# Still not certain that all the arguments are needed for the 'install' step
+# of running b2, but I ran into problems without using them, so ...
+#
+# I found the following links helpful, as well as running '.\b2 --help'
+# once I had bootstrapped.
+#
+# http://www.boost.org/doc/libs/1_57_0/more/getting_started/windows.html#simplified-build-from-source
+# 
+# http://www.boost.org/build/doc/html/bbv2/overview/invocation.html

@@ -2679,6 +2679,11 @@ GetRestrictedMaterialIndices(const avtDatabaseMetaData *md, const char *const va
 //    Mark C. Miller, Mon Aug 11 20:09:51 PDT 2014
 //    Decode and utilize multivar's tensor_rank member if its set. Populate
 //    metadata accordingly.
+//
+//    Eric Brugger, Wed Mar 11 11:03:57 PDT 2015
+//    I corrected a bug where a NULL pointer would be de-referenced causing
+//    a crash if a multivar was completely empty.
+//
 // ****************************************************************************
 void
 avtSiloFileFormat::ReadMultivars(DBfile *dbfile,
@@ -2788,12 +2793,13 @@ avtSiloFileFormat::ReadMultivars(DBfile *dbfile,
             string  varUnits;
             int nvals = 1;
             double missing_value = DB_MISSING_VALUE_NOT_SET;
-            if (mv->missing_value != DB_MISSING_VALUE_NOT_SET)
-                missing_value = mv->missing_value;
-            if (mv->tensor_rank != 0)
-                tensor_rank = mv->tensor_rank;
             if (valid_var && mv)
             {
+                if (mv->missing_value != DB_MISSING_VALUE_NOT_SET)
+                    missing_value = mv->missing_value;
+                if (mv->tensor_rank != 0)
+                    tensor_rank = mv->tensor_rank;
+
                 DetermineFileAndDirectory(mb_varname.c_str(),"",
                                           correctFile, realvar);
 
@@ -9491,6 +9497,8 @@ RemapFacelistForPolyhedronZones(DBfacelist *sfl, DBzonelist *szl)
 //    Kathleen Biagas, Wed Sep 17 09:56:05 PDT 2014
 //    Create avtOriginaNodeNumbers array when nodes added (eg arb poly).
 //
+//    Mark C. Miller, Wed Feb 11 17:06:02 PST 2015
+//    Made it return a point mesh for a DBucdmesh with no topology defined.
 // ****************************************************************************
 
 vtkDataSet *
@@ -9545,6 +9553,45 @@ avtSiloFileFormat::GetUnstructuredMesh(DBfile *dbfile, const char *mn,
         DBFreeUcdmesh(um);
         EXCEPTION1(InvalidVariableException, "The Silo reader supports only "
             "float and double precision coordinates in unstructured meshes.");
+    }
+
+    // 
+    // Quick check to see if this is really a point mesh 
+    //
+    if (um->faces == 0 && um->zones == 0 && um->edges == 0 && um->phzones == 0)
+    {
+        //
+        // Create the VTK objects and connect them up.
+        //
+        vtkUnstructuredGrid *ugrid = vtkUnstructuredGrid::New();
+        ugrid->SetPoints(points);
+        ugrid->Allocate(um->nnodes);
+        vtkIdType onevertex[1];
+        for (int i = 0 ; i < um->nnodes; i++)
+        {
+            onevertex[0] = i;
+            ugrid->InsertNextCell(VTK_VERTEX, 1, onevertex);
+        }
+
+        //
+        // If we have global node ids, set them up and cache 'em
+        //
+        if (um->gnodeno != NULL)
+        {
+            vtkDataArray *arr = CreateDataArray(um->gnznodtype, um->gnodeno, um->nnodes);
+            um->gnodeno = 0; // vtkDataArray now owns the data.
+
+            //
+            // Cache this VTK object but in the VoidRefCache, not the VTK cache
+            // so that it can be obtained through the GetAuxiliaryData call
+            //
+            void_ref_ptr vr = void_ref_ptr(arr, avtVariableCache::DestructVTKObject);
+            cache->CacheVoidRef(mn, AUXILIARY_DATA_GLOBAL_NODE_IDS, timestep, domain, vr);
+        }
+
+        points->Delete();
+        DBFreeUcdmesh(um);
+        return ugrid;
     }
     
     //

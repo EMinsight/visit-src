@@ -52,13 +52,15 @@
 #include <FileFunctions.h>
 
 #include <VisItInterfaceTypes_V2.h>
-
+#include <VisItInterfaceTypes_V2P.h>
 
 #ifdef SIMV2_VIEWER_INTEGRATION
 #include <ViewerRPC.h>
 
 #include <ExportDBAttributes.h>
 #include <GlobalAttributes.h>
+#include <Plot.h>
+#include <PlotList.h>
 #include <SaveWindowAttributes.h>
 
 #include <ViewerActionManager.h>
@@ -168,6 +170,21 @@ SimEngine::SimEngine() : Engine()
 
 SimEngine::~SimEngine()
 {
+#ifdef SIMV2_VIEWER_INTEGRATION
+    if(!viewerInitialized)
+    {
+        delete ViewerBase::GetPlotFactory();
+        delete ViewerBase::GetOperatorFactory();
+
+        delete ViewerBase::GetViewerProperties();
+        delete ViewerBase::GetViewerState();
+        delete ViewerBase::GetViewerMethods();
+        delete ViewerBase::GetViewerStateManager();
+        delete ViewerBase::GetViewerMessaging();
+        delete ViewerBase::GetViewerFileServer();
+        delete ViewerBase::GetViewerEngineManager();
+    }
+#endif
 }
 
 // ****************************************************************************
@@ -462,28 +479,29 @@ SimEngine::ExportDatabase(const std::string &filename, const std::string &format
                           const stringVector &vars)
 {
     bool retval = false;
+
+    // Get the plugin id from the input format, which could be an id or a name.
+    std::string id, name;
+    for(int i = 0; i < GetNetMgr()->GetDatabasePluginManager()->GetNAllPlugins(); ++i)
+    {
+        std::string thisID(GetNetMgr()->GetDatabasePluginManager()->GetAllID(i));
+        if(thisID == format)
+            id = thisID;
+        if(GetNetMgr()->GetDatabasePluginManager()->GetPluginName(thisID) == format)
+            id = thisID;
+    }
+    if(id.empty())
+        return false;
+    name = GetNetMgr()->GetDatabasePluginManager()->GetPluginName(id);
+
+    std::string dName(FileFunctions::Dirname(filename));
+    std::string fName(FileFunctions::Basename(filename));
+    if(dName.empty() || dName == ".")
+        dName = FileFunctions::GetCurrentWorkingDirectory();
+
 #ifdef SIMV2_VIEWER_INTEGRATION
     if(viewerInitialized)
     {
-        // Get the plugin id from the input format, which could be an id or a name.
-        std::string id, name;
-        for(int i = 0; i < GetNetMgr()->GetDatabasePluginManager()->GetNAllPlugins(); ++i)
-        {
-            std::string thisID(GetNetMgr()->GetDatabasePluginManager()->GetAllID(i));
-            if(thisID == format)
-                id = thisID;
-            if(GetNetMgr()->GetDatabasePluginManager()->GetPluginName(thisID) == format)
-                id = thisID;
-        }
-        if(id.empty())
-            return false;
-        name = GetNetMgr()->GetDatabasePluginManager()->GetPluginName(id);
-
-        std::string dName(FileFunctions::Dirname(filename));
-        std::string fName(FileFunctions::Basename(filename));
-        if(dName.empty() || dName == ".")
-            dName = FileFunctions::GetCurrentWorkingDirectory();
-
         ExportDBAttributes *atts = GetViewerState()->GetExportDBAttributes();
         atts->SetAllTimes(false);
         atts->SetDb_type(name);
@@ -495,6 +513,24 @@ SimEngine::ExportDatabase(const std::string &filename, const std::string &format
 
         GetViewerMethods()->ExportDatabase();
         retval = true;
+    }
+    else
+    {
+#endif
+        // Send a message to the viewer indicating we want it to export.
+        char tmp[2048];
+        SNPRINTF(tmp, 2048, "ExportDatabase:%s:%s:%s:%s:",
+            name.c_str(), id.c_str(), dName.c_str(), fName.c_str());
+        std::string cmd(tmp);
+        for(size_t i = 0; i < vars.size(); ++i)
+        {
+            cmd.append(vars[i]);
+            if(i < vars.size()-1)
+                cmd.append(":");
+        }
+        SimulationInitiateCommand(cmd);
+        retval = true;
+#ifdef SIMV2_VIEWER_INTEGRATION
     }
 #endif
     return retval;
@@ -542,6 +578,15 @@ SimEngine::RestoreSession(const std::string &filename)
             retval = false;
         }
         ENDTRY
+    }
+    else
+    {
+#endif
+        std::string cmd("RestoreSession:");
+        cmd.append(filename);
+        SimulationInitiateCommand(cmd);
+        retval = true;
+#ifdef SIMV2_VIEWER_INTEGRATION
     }
 #endif
     return retval;
@@ -593,15 +638,15 @@ SimEngine::SaveWindow(const std::string &filename, int w, int h, int format)
         else
             fmt = SaveWindowAttributes::TIFF;
 
+        std::string dName(FileFunctions::Dirname(filename));
+        std::string fName(FileFunctions::Basename(filename));
+        if(dName.empty() || dName == ".")
+            dName = FileFunctions::GetCurrentWorkingDirectory();
+
 #ifdef SIMV2_VIEWER_INTEGRATION
         // Viewer based method.
         if(viewerInitialized)
         {
-            std::string dName(FileFunctions::Dirname(filename));
-            std::string fName(FileFunctions::Basename(filename));
-            if(dName.empty() || dName == ".")
-                dName = FileFunctions::GetCurrentWorkingDirectory();
-
             SaveWindowAttributes *swa = GetViewerState()->GetSaveWindowAttributes();
             swa->SetFileName(fName);
             swa->SetOutputToCurrentDirectory(false);
@@ -617,6 +662,18 @@ SimEngine::SaveWindow(const std::string &filename, int w, int h, int format)
             GetViewerMethods()->SaveWindow();
 
             retval = true;
+        }
+        else
+        {
+#endif
+            // Send a message to the viewer indicating we want it to save an image.
+            std::string f(SaveWindowAttributes::FileFormat_ToString(fmt));
+            char cmd[2048];
+            SNPRINTF(cmd, 2048, "SaveWindow:%s:%s:%d:%d:%s",
+                dName.c_str(), fName.c_str(), w, h, f.c_str());
+            SimulationInitiateCommand(cmd);
+            retval = true;
+#ifdef SIMV2_VIEWER_INTEGRATION
         }
 #endif
     }
@@ -679,6 +736,16 @@ SimEngine::AddPlot(const std::string &plotType, const std::string &var)
             GetViewerMethods()->AddPlot(plotIndex, var);
             retval = true;
         }
+        else
+        {
+#endif
+            // Send the viewer a message to add  plot.
+            char cmd[200];
+            SNPRINTF(cmd, 200, "AddPlot:%s:%s", plotType.c_str(), var.c_str());
+            SimulationInitiateCommand(cmd);
+            retval = true;
+#ifdef SIMV2_VIEWER_INTEGRATION
+        }
 #endif
     }
     CATCHALL
@@ -730,12 +797,12 @@ SimEngine::AddOperator(const std::string &operatorType, bool applyToAll)
     bool retval = false;
     TRY
     {
+        int operatorIndex = GetNetMgr()->GetOperatorPluginManager()->GetEnabledIndex(id);
+
 #ifdef SIMV2_VIEWER_INTEGRATION
         // Viewer based method.
         if(viewerInitialized)
         {
-            int operatorIndex = GetNetMgr()->GetPlotPluginManager()->GetEnabledIndex(id);
-
             bool applyOperatorSave = GetViewerState()->GetGlobalAttributes()->GetApplyOperator();
             GetViewerState()->GetGlobalAttributes()->SetApplyOperator(applyToAll != 0);
 
@@ -744,6 +811,16 @@ SimEngine::AddOperator(const std::string &operatorType, bool applyToAll)
 
             GetViewerState()->GetGlobalAttributes()->SetApplyOperator(applyOperatorSave);
             retval = true;
+        }
+        else
+        {
+#endif
+            // Send the viewer a message to add an operator.
+            char cmd[200];
+            SNPRINTF(cmd, 200, "AddOperator:%s:%d", operatorType.c_str(), applyToAll?1:0);
+            SimulationInitiateCommand(cmd);
+            retval = true;
+#ifdef SIMV2_VIEWER_INTEGRATION
         }
 #endif
     }
@@ -790,6 +867,13 @@ SimEngine::DrawPlots()
             GetViewerMethods()->DrawPlots();
             retval = true;
         }
+        else
+        {
+#endif
+            SimulationInitiateCommand("DrawPlots");
+            retval = true;
+#ifdef SIMV2_VIEWER_INTEGRATION
+        }
 #endif
     }
     CATCHALL
@@ -833,6 +917,534 @@ SimEngine::DeleteActivePlots()
         {
             GetViewerMethods()->DeleteActivePlots();
             retval = true;
+        }
+        else
+        {
+#endif
+            SimulationInitiateCommand("DeleteActivePlots");
+            retval = true;
+#ifdef SIMV2_VIEWER_INTEGRATION
+        }
+#endif
+    }
+    CATCHALL
+    {
+        retval = false;
+    }
+    ENDTRY
+
+    return retval;
+}
+
+// ****************************************************************************
+// Method: SimEngine::SetActivePlots
+//
+// Purpose:
+//   Set the active plots.
+//
+// Arguments:
+//   ids : The plot ids.
+//   nids : The number of ids.
+//
+// Returns:    true on success; false on failure.
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Thu Sep 18 18:02:39 PDT 2014
+//
+// Modifications:
+//
+// ****************************************************************************
+
+bool
+SimEngine::SetActivePlots(const int *ids, int nids)
+{
+    bool retval = false;
+
+    TRY
+    {
+#ifdef SIMV2_VIEWER_INTEGRATION
+        // Viewer based method.
+        if(viewerInitialized)
+        {
+            if(ids != NULL && nids > 0)
+            {
+                intVector activePlotIds;
+                for(int i = 0; i < nids; ++i)
+                    activePlotIds.push_back(ids[i]);
+                GetViewerMethods()->SetActivePlots(activePlotIds);
+            }
+            retval = true;
+        }
+        else
+        {
+#endif
+            std::string cmd("SetActivePlots");
+            char tmp[10];
+            for(int i = 0; i < nids; ++i)
+            {
+                SNPRINTF(tmp, 10, ":%d", ids[i]);
+                cmd.append(tmp);
+            }
+            SimulationInitiateCommand(cmd);
+            retval = true;
+#ifdef SIMV2_VIEWER_INTEGRATION
+        }
+#endif
+    }
+    CATCHALL
+    {
+        retval = false;
+    }
+    ENDTRY
+
+    return retval;
+}
+
+// ****************************************************************************
+// Method: SetAttributeSubjectValues
+//
+// Purpose:
+//   Set some field data into the attribute subject.
+//
+// Arguments:
+//   
+//
+// Returns:    
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Mon Feb  2 14:57:36 PST 2015
+//
+// Modifications:
+//
+// ****************************************************************************
+
+template <class T>
+static std::vector<T> makevector(const T *val, int nval)
+{
+    std::vector<T> vec;
+    vec.reserve(nval);
+    for(int i = 0; i < nval; ++i)
+        vec.push_back(val[i]);
+    return vec;
+}
+
+static bool 
+SetAttributeSubjectValues(AttributeSubject *atts, 
+    const std::string &name, int fieldType, void *fieldVal, int fieldLen)
+{
+    bool retval = true;
+    int fIndex = atts->FieldNameToIndex(name);
+    if(fIndex < 0 || fieldVal == NULL)
+        return false;
+    AttributeGroup::FieldType ft = atts->GetFieldType(fIndex);
+
+    if(fieldType == VISIT_FIELDTYPE_CHAR)
+    {
+        const char *val = (const char *)fieldVal;
+        if(ft == AttributeGroup::FieldType_char)
+            retval = atts->SetValue(name, *val);
+        // "casts"
+        else if(ft == AttributeGroup::FieldType_uchar)
+            retval = atts->SetValue(name, (unsigned char)*val);
+        else if(ft == AttributeGroup::FieldType_bool)
+            retval = atts->SetValue(name, *val > 0);
+        else if(ft == AttributeGroup::FieldType_int)
+            retval = atts->SetValue(name, (int)*val);
+        else if(ft == AttributeGroup::FieldType_long)
+            retval = atts->SetValue(name, (long)*val);
+        else if(ft == AttributeGroup::FieldType_float)
+            retval = atts->SetValue(name, (float)*val);
+        else if(ft == AttributeGroup::FieldType_double)
+            retval = atts->SetValue(name, (double)*val);
+        else
+            retval = false;
+    }
+    else if(fieldType == VISIT_FIELDTYPE_UNSIGNED_CHAR)
+    {
+        const unsigned char *val = (const unsigned char *)fieldVal;
+        if(ft == AttributeGroup::FieldType_uchar)
+            retval = atts->SetValue(name, *val);
+        // "casts"
+        else if(ft == AttributeGroup::FieldType_char)
+            retval = atts->SetValue(name, (char)*val);
+        else if(ft == AttributeGroup::FieldType_bool)
+            retval = atts->SetValue(name, *val > 0);
+        else if(ft == AttributeGroup::FieldType_int)
+            retval = atts->SetValue(name, (int)*val);
+        else if(ft == AttributeGroup::FieldType_long)
+            retval = atts->SetValue(name, (long)*val);
+        else if(ft == AttributeGroup::FieldType_float)
+            retval = atts->SetValue(name, (float)*val);
+        else if(ft == AttributeGroup::FieldType_double)
+            retval = atts->SetValue(name, (double)*val);
+        else
+            retval = false;
+    }
+    else if(fieldType == VISIT_FIELDTYPE_INT)
+    {
+        const int *val = (const int *)fieldVal;
+        if(ft == AttributeGroup::FieldType_int)
+           retval = atts->SetValue(name, *val);
+        // "casts"
+        else if(ft == AttributeGroup::FieldType_enum)
+            retval = atts->SetValue(name, *val);
+        else if(ft == AttributeGroup::FieldType_char)
+            retval = atts->SetValue(name, (char)*val);
+        else if(ft == AttributeGroup::FieldType_uchar)
+            retval = atts->SetValue(name, (unsigned char)*val);
+        else if(ft == AttributeGroup::FieldType_bool)
+            retval = atts->SetValue(name, *val > 0);
+        else if(ft == AttributeGroup::FieldType_long)
+            retval = atts->SetValue(name, (long)*val);
+        else if(ft == AttributeGroup::FieldType_float)
+            retval = atts->SetValue(name, (float)*val);
+        else if(ft == AttributeGroup::FieldType_double)
+            retval = atts->SetValue(name, (double)*val);
+        else
+            retval = false;
+    }
+    else if(fieldType == VISIT_FIELDTYPE_LONG)
+    {
+        const long *val = (const long *)fieldVal;
+        if(ft == AttributeGroup::FieldType_long)
+            retval = atts->SetValue(name, *val);
+        // "casts"
+        else if(ft == AttributeGroup::FieldType_char)
+            retval = atts->SetValue(name, (char)*val);
+        else if(ft == AttributeGroup::FieldType_uchar)
+            retval = atts->SetValue(name, (unsigned char)*val);
+        else if(ft == AttributeGroup::FieldType_bool)
+            retval = atts->SetValue(name, *val > 0);
+        else if(ft == AttributeGroup::FieldType_int)
+            retval = atts->SetValue(name, (int)*val);
+        else if(ft == AttributeGroup::FieldType_float)
+            retval = atts->SetValue(name, (float)*val);
+        else if(ft == AttributeGroup::FieldType_double)
+            retval = atts->SetValue(name, (double)*val);
+        else
+            retval = false;
+    }
+    else if(fieldType == VISIT_FIELDTYPE_FLOAT)
+    {
+        const float *val = (const float *)fieldVal;
+        if(ft == AttributeGroup::FieldType_float)
+            retval = atts->SetValue(name, *val);
+        // "casts"
+        else if(ft == AttributeGroup::FieldType_char)
+            retval = atts->SetValue(name, (char)*val);
+        else if(ft == AttributeGroup::FieldType_uchar)
+            retval = atts->SetValue(name, (unsigned char)*val);
+        else if(ft == AttributeGroup::FieldType_bool)
+            retval = atts->SetValue(name, *val > 0);
+        else if(ft == AttributeGroup::FieldType_int)
+            retval = atts->SetValue(name, (int)*val);
+        else if(ft == AttributeGroup::FieldType_long)
+            retval = atts->SetValue(name, (long)*val);
+        else if(ft == AttributeGroup::FieldType_double)
+            retval = atts->SetValue(name, (double)*val);
+        else
+            retval = false;
+    }
+    else if(fieldType == VISIT_FIELDTYPE_DOUBLE)
+    {
+        const double *val = (const double *)fieldVal;
+
+        if(ft == AttributeGroup::FieldType_double)
+            retval = atts->SetValue(name, *val);
+        // "casts"
+        else if(ft == AttributeGroup::FieldType_char)
+            retval = atts->SetValue(name, (char)*val);
+        else if(ft == AttributeGroup::FieldType_uchar)
+            retval = atts->SetValue(name, (unsigned char)*val);
+        else if(ft == AttributeGroup::FieldType_bool)
+            retval = atts->SetValue(name, *val > 0);
+        else if(ft == AttributeGroup::FieldType_int)
+            retval = atts->SetValue(name, (int)*val);
+        else if(ft == AttributeGroup::FieldType_long)
+            retval = atts->SetValue(name, (long)*val);
+        else if(ft == AttributeGroup::FieldType_float)
+            retval = atts->SetValue(name, (float)*val);
+        else
+            retval = false;
+    }
+    else if(fieldType == VISIT_FIELDTYPE_STRING)
+    {
+        std::string val((const char *)fieldVal);
+        retval = atts->SetValue(name, val);
+    }
+    else if(fieldLen <= 0)
+    {
+        retval = false;
+    }
+    // Array and vector
+    else if(fieldType == VISIT_FIELDTYPE_CHAR_ARRAY)
+    {
+        const char *val = (const char *)fieldVal;
+        if(ft == AttributeGroup::FieldType_charArray)
+            retval = atts->SetValue(name, val, fieldLen);
+        else if(ft == AttributeGroup::FieldType_charVector)
+            retval = atts->SetValue(name, makevector(val, fieldLen));
+        else
+            retval = false;
+    }
+    else if(fieldType == VISIT_FIELDTYPE_UNSIGNED_CHAR_ARRAY)
+    {
+        const unsigned char *val = (const unsigned char *)fieldVal;
+        if(ft == AttributeGroup::FieldType_ucharArray)
+            retval = atts->SetValue(name, val, fieldLen);
+        else if(ft == AttributeGroup::FieldType_ucharVector)
+            retval = atts->SetValue(name, makevector(val, fieldLen));
+        else
+            retval = false;
+    }
+    else if(fieldType == VISIT_FIELDTYPE_INT_ARRAY)
+    {
+        const int *val = (const int *)fieldVal;
+        if(ft == AttributeGroup::FieldType_intArray)
+            retval = atts->SetValue(name, val, fieldLen);
+        else if(ft == AttributeGroup::FieldType_intVector)
+            retval = atts->SetValue(name, makevector(val, fieldLen));
+        else
+            retval = false;
+    }
+    else if(fieldType == VISIT_FIELDTYPE_LONG_ARRAY)
+    {
+        const long *val = (const long *)fieldVal;
+        if(ft == AttributeGroup::FieldType_longArray)
+            retval = atts->SetValue(name, val, fieldLen);
+        else if(ft == AttributeGroup::FieldType_longVector)
+            retval = atts->SetValue(name, makevector(val, fieldLen));
+        else
+            retval = false;
+    }
+    else if(fieldType == VISIT_FIELDTYPE_FLOAT_ARRAY)
+    {
+        const float *val = (const float *)fieldVal;
+        if(ft == AttributeGroup::FieldType_floatArray)
+            retval = atts->SetValue(name, val, fieldLen);
+        else if(ft == AttributeGroup::FieldType_floatVector)
+            retval = atts->SetValue(name, makevector(val, fieldLen));
+        else
+            retval = false;
+    }
+    else if(fieldType == VISIT_FIELDTYPE_DOUBLE_ARRAY)
+    {
+        const double *val = (const double *)fieldVal;
+        if(ft == AttributeGroup::FieldType_doubleArray)
+            retval = atts->SetValue(name, val, fieldLen);
+        else if(ft == AttributeGroup::FieldType_doubleVector)
+            retval = atts->SetValue(name, makevector(val, fieldLen));
+        else
+            retval = false;
+    }
+    else if(fieldType == VISIT_FIELDTYPE_STRING_ARRAY)
+    {
+        const char **val = (const char **)fieldVal;
+        stringVector s;
+        s.resize(fieldLen);
+        for(int i = 0; i < fieldLen; ++i)
+            s[i] = std::string(val[i]);
+        if(ft == AttributeGroup::FieldType_stringArray)
+            retval = atts->SetValue(name, &s[0], fieldLen);
+        else if(ft == AttributeGroup::FieldType_stringVector)
+            retval = atts->SetValue(name, s);
+        else
+            retval = false;        
+    }
+    else
+        retval = false;
+
+    return retval;
+}
+
+// ****************************************************************************
+// Method: SimEngine::SetPlotOptions
+//
+// Purpose:
+//   Set the plot attributes for the active plots.
+//
+// Arguments:
+//   fieldName : The name of the field to set.
+//   fieldType : The type of the data we're passing in.
+//   fieldVal  : A pointer to the field data we're passing in.
+//   fieldLen  : The length of the field data (if it is an array).   
+//
+// Returns:    true on success; false on failure.
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Mon Feb  2 14:14:37 PST 2015
+//
+// Modifications:
+//
+// ****************************************************************************
+
+bool SimEngine::SetPlotOptions(const std::string &fieldName, 
+     int fieldType, void *fieldVal, int fieldLen)
+{
+    bool retval = false;
+
+    TRY
+    {
+#ifdef SIMV2_VIEWER_INTEGRATION
+        // Viewer based method.
+        if(viewerInitialized)
+        {
+            if(fieldVal != NULL)
+            {
+                // Get the plot type of the plot from the first active plot
+                // in the plot list.
+                int activePlotType = -1;
+                for(int i = 0; i < GetViewerState()->GetPlotList()->GetNumPlots(); ++i)
+                {
+                    const Plot &p = GetViewerState()->GetPlotList()->GetPlots(i);
+                    if(i == 0)
+                        activePlotType = p.GetPlotType();
+                    if(p.GetActiveFlag())
+                    {
+                        activePlotType = p.GetPlotType();
+                        break;
+                    }
+                }
+                if(activePlotType != -1)
+                {
+                    AttributeSubject *atts = GetViewerState()->GetPlotAttributes(activePlotType);
+                    if(atts != NULL)
+                    {
+                        if(SetAttributeSubjectValues(atts, fieldName, fieldType, fieldVal, fieldLen))
+                        {
+#if 0
+                            cout << *atts << endl;
+#endif
+                            GetViewerMethods()->SetPlotOptions(activePlotType);
+                            retval = true;
+                        }
+                    }
+                }
+            }
+        }
+        else
+        {
+#endif
+            debug5 << "SimEngine::SetPlotOptions is just implemented for batch mode." << endl;
+#ifdef SIMV2_VIEWER_INTEGRATION
+        }
+#endif
+    }
+    CATCHALL
+    {
+        retval = false;
+    }
+    ENDTRY
+
+    return retval;
+}
+
+// ****************************************************************************
+// Method: SimEngine::SetOperatorOptions
+//
+// Purpose:
+//   Set the plot attributes for the active plots.
+//
+// Arguments:
+//   fieldName : The name of the field to set.
+//   fieldType : The type of the data we're passing in.
+//   fieldVal  : A pointer to the field data we're passing in.
+//   fieldLen  : The length of the field data (if it is an array).   
+//
+// Returns:    true on success; false on failure.
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Mon Feb  2 14:14:37 PST 2015
+//
+// Modifications:
+//
+// ****************************************************************************
+
+bool SimEngine::SetOperatorOptions(const std::string &fieldName, 
+     int fieldType, void *fieldVal, int fieldLen)
+{
+    bool retval = false;
+
+    TRY
+    {
+#ifdef SIMV2_VIEWER_INTEGRATION
+        // Viewer based method.
+        if(viewerInitialized)
+        {
+            if(fieldVal != NULL)
+            {
+                // Get the plot type of the plot from the first active plot
+                // in the plot list.
+                int activePlotType = -1, plotIndex = -1;
+                for(int i = 0; i < GetViewerState()->GetPlotList()->GetNumPlots(); ++i)
+                {
+                    const Plot &p = GetViewerState()->GetPlotList()->GetPlots(i);
+                    if(i == 0)
+                    {
+                        activePlotType = p.GetPlotType();
+                        plotIndex = i;
+                    }
+                    if(p.GetActiveFlag())
+                    {
+                        activePlotType = p.GetPlotType();
+                        plotIndex = i;
+                        break;
+                    }
+                }
+                // Get the active operator on the active plot.
+                int activeOperatorType = -1;
+                if(activePlotType != -1)
+                {
+                    const Plot &p = GetViewerState()->GetPlotList()->GetPlots(plotIndex);
+                    if(!p.GetOperators().empty())
+                    {
+                        activeOperatorType = p.GetOperators()[p.GetActiveOperator()];
+                    }
+                    else
+                    {
+                        // The active plot had no operators, get the first plot that has some operators.
+                        for(int i = 0; i < GetViewerState()->GetPlotList()->GetNumPlots(); ++i)
+                        {
+                            const Plot &p2 = GetViewerState()->GetPlotList()->GetPlots(i);
+                            if(!p2.GetOperators().empty())
+                            {
+                                activeOperatorType = p2.GetOperators()[p2.GetActiveOperator()];
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if(activeOperatorType != -1)
+                {
+                    AttributeSubject *atts = GetViewerState()->GetOperatorAttributes(activeOperatorType);
+                    if(atts != NULL)
+                    {
+                        if(SetAttributeSubjectValues(atts, fieldName, fieldType, fieldVal, fieldLen))
+                        {
+#if 0
+                            cout << *atts << endl;
+#endif
+                            GetViewerMethods()->SetOperatorOptions(activeOperatorType);
+                            retval = true;
+                        }
+                    }
+                }
+            }
+        }
+        else
+        {
+#endif
+            debug5 << "SimEngine::SetOperatorOptions is just implemented for batch mode." << endl;
+#ifdef SIMV2_VIEWER_INTEGRATION
         }
 #endif
     }
