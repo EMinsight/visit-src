@@ -30,7 +30,11 @@ function bv_hdf5_depends_on
     if [[ "$USE_SYSTEM_HDF5" == "yes" ]]; then
         echo ""
     else
-        local depends_on="szip"
+        local depends_on=""
+
+        if [[ "$DO_SZIP" == "yes" ]] ; then
+            depends_on="$depends_on szip"    
+        fi
 
         if [[ "$DO_ZLIB" == "yes" ]] ; then
             depends_on="$depends_on zlib"    
@@ -44,6 +48,9 @@ function bv_hdf5_initialize_vars
 {
     if [[ "$USE_SYSTEM_HDF5" == "no" ]]; then
         HDF5_INSTALL_DIR="${VISITDIR}/hdf5/$HDF5_VERSION/${VISITARCH}"
+        if [[ -n "$PAR_COMPILER" && "$DO_MOAB" == "yes" ]]; then
+            HDF5_MPI_INSTALL_DIR="${VISITDIR}/hdf5_mpi/$HDF5_VERSION/${VISITARCH}"
+        fi
     fi
 }
 
@@ -96,6 +103,13 @@ function bv_hdf5_host_profile
                 "VISIT_OPTION_DEFAULT(VISIT_HDF5_DIR \${VISITHOME}/hdf5/$HDF5_VERSION/\${VISITARCH})" \
                 >> $HOSTCONF 
 
+            if [[ -n "$HDF5_MPI_INSTALL_DIR" ]]; then
+                echo \
+                    "VISIT_OPTION_DEFAULT(VISIT_HDF5_MPI_DIR \${VISITHOME}/hdf5_mpi/$HDF5_VERSION/\${VISITARCH})" \
+                    >> $HOSTCONF 
+            fi
+
+            ZLIB_LIBDEP=""
             if [[ "$DO_ZLIB" == "yes" ]] ; then
                 ZLIB_LIBDEP="\${VISITHOME}/zlib/$ZLIB_VERSION/\${VISITARCH}/lib z"
             else
@@ -106,14 +120,18 @@ function bv_hdf5_host_profile
                 fi
             fi
 
+            SZIP_LIBDEP=""
             if [[ "$DO_SZIP" == "yes" ]] ; then
-                echo \
-                    "VISIT_OPTION_DEFAULT(VISIT_HDF5_LIBDEP \${VISITHOME}/szip/$SZIP_VERSION/\${VISITARCH}/lib sz $ZLIB_LIBDEP TYPE STRING)" \
+                SZIP_LIBDEP="\${VISITHOME}/szip/$SZIP_VERSION/\${VISITARCH}/lib sz"
+            fi
+            
+            echo \
+                "VISIT_OPTION_DEFAULT(VISIT_HDF5_LIBDEP $SZIP_LIBDEP $ZLIB_LIBDEP TYPE STRING)" \
                     >> $HOSTCONF
-            else
+            if [[ -n "$HDF5_MPI_INSTALL_DIR" ]]; then
                 echo \
-                    "VISIT_OPTION_DEFAULT(VISIT_HDF5_LIBDEP $ZLIB_LIBDEP TYPE STRING)" \
-                    >> $HOSTCONF
+                    "VISIT_OPTION_DEFAULT(VISIT_HDF5_MPI_LIBDEP $SZIP_LIBDEP $ZLIB_LIBDEP TYPE STRING)" \
+                        >> $HOSTCONF
             fi
         fi
     fi
@@ -622,9 +640,9 @@ function build_hdf5
     fi
 
     if [[ "$FC_COMPILER" == "no" ]] ; then
-        FORTRANARGS=""
+        cf_fortranargs=""
     else
-        FORTRANARGS="FC=\"$FC_COMPILER\" F77=\"$FC_COMPILER\" FCFLAGS=\"$FCFLAGS\" FFLAGS=\"$FCFLAGS\" --enable-fortran"
+        cf_fortranargs="FC=\"$FC_COMPILER\" F77=\"$FC_COMPILER\" FCFLAGS=\"$FCFLAGS\" FFLAGS=\"$FCFLAGS\" --enable-fortran"
     fi
 
     cf_build_thread=""
@@ -632,56 +650,80 @@ function build_hdf5
         cf_build_thread="--enable-threadsafe --with-pthread"
     fi
 
-    # In order to ensure $FORTRANARGS is expanded to build the arguments to
-    # configure, we wrap the invokation in 'sh -c "..."' syntax
-    info "Invoking command to configure HDF5"
-    info "./configure CXX=\"$CXX_COMPILER\" CC=\"$C_COMPILER\" \
-        CFLAGS=\"$CFLAGS $C_OPT_FLAGS\" CXXFLAGS=\"$CXXFLAGS $CXX_OPT_FLAGS\" \
-        $FORTRANARGS \
-        --prefix=\"$VISITDIR/hdf5/$HDF5_VERSION/$VISITARCH\" \
-        ${cf_szip} ${cf_build_type} ${cf_build_thread}"
-    sh -c "./configure CXX=\"$CXX_COMPILER\" CC=\"$C_COMPILER\" \
-        CFLAGS=\"$CFLAGS $C_OPT_FLAGS\" CXXFLAGS=\"$CXXFLAGS $CXX_OPT_FLAGS\" \
-        $FORTRANARGS \
-        --prefix=\"$VISITDIR/hdf5/$HDF5_VERSION/$VISITARCH\" \
-        ${cf_szip} ${cf_build_type} ${cf_build_thread}"
-    if [[ $? != 0 ]] ; then
-        warn "HDF5 configure failed.  Giving up"
-        return 1
+    par_build_types="serial"
+    if [[ -n "$PAR_COMPILER" && "$DO_MOAB" == "yes" ]]; then
+        par_build_types="$par_build_types parallel"
     fi
 
-    #
-    # Build HDF5
-    #
-    info "Making HDF5 . . ."
-    $MAKE $MAKE_OPT_FLAGS
-    if [[ $? != 0 ]] ; then
-        warn "HDF5 build failed.  Giving up"
-        return 1
-    fi
-    #
-    # Install into the VisIt third party location.
-    #
-    info "Installing HDF5 . . ."
+    for bt in $par_build_types; do
 
-    $MAKE install
-    if [[ $? != 0 ]] ; then
-        warn "HDF5 install failed.  Giving up"
-        return 1
-    fi
+        mkdir build_$bt
+        pushd build_$bt
 
-    if [[ "$DO_STATIC_BUILD" == "no" && "$OPSYS" == "Darwin" ]]; then
+        cf_build_parallel=""
+        cf_par_suffix=""
+        if [[ "$bt" == "serial" ]]; then
+            cf_build_parallel="--disable-parallel"
+            cf_c_compiler="$C_COMPILER"
+        elif [[ "$bt" == "parallel" ]]; then
+            # these commands ruin the untar'd source code for 'normal' builds
+            sed -e 's/libhdf5/libhdf5_mpi/g' -i.orig ../configure
+            find .. -name Makefile.in -exec sed -e 's/libhdf5/libhdf5_mpi/g' -i.orig {} \;
+            sed -e 's/libhdf5\.settings/libhdf5_mpi.settings/g' -i.orig ../src/H5make_libsettings.c
+            pushd ../src; ln -s libhdf5.settings.in libhdf5_mpi.settings.in; popd
+            cf_build_parallel="--enable-parallel"
+            cf_par_suffix="_mpi"
+            cf_c_compiler="$PAR_COMPILER"
+        fi
+
+        # In order to ensure $cf_fortranargs is expanded to build the arguments to
+        # configure, we wrap the invokation in 'sh -c "..."' syntax
+        info "Invoking command to configure $bt HDF5"
+        info "../configure CC=\"$cf_c_compiler\" CFLAGS=\"$CFLAGS $C_OPT_FLAGS\" \
+            $cf_fortranargs \
+            --prefix=\"$VISITDIR/hdf5${cf_par_suffix}/$HDF5_VERSION/$VISITARCH\" \
+            ${cf_szip} ${cf_build_type} ${cf_build_thread} ${cf_build_parallel}"
+        sh -c "../configure CC=\"$cf_c_compiler\" CFLAGS=\"$CFLAGS $C_OPT_FLAGS\" \
+            $cf_fortranargs \
+            --prefix=\"$VISITDIR/hdf5${cf_par_suffix}/$HDF5_VERSION/$VISITARCH\" \
+            ${cf_szip} ${cf_build_type} ${cf_build_thread} ${cf_build_parallel}"
+        if [[ $? != 0 ]] ; then
+            warn "$bt HDF5 configure failed.  Giving up"
+            return 1
+        fi
+
         #
-        # Make dynamic executable, need to patch up the install path and
-        # version information.
+        # Build HDF5
         #
-        info "Creating dynamic libraries for HDF5 . . ."
-    fi
+        info "Making $bt HDF5 . . ."
+        info "$MAKE $MAKE_OPT_FLAGS" lib
+        $MAKE $MAKE_OPT_FLAGS lib
+        if [[ $? != 0 ]] ; then
+            warn "$bt HDF5 build failed.  Giving up"
+            return 1
+        fi
+        #
+        # Install into the VisIt third party location.
+        # Avoid building all the test clients by cd src/hl
+        #
+        info "Installing $bt HDF5 . . ."
+        info "(cd src; $MAKE install)"
+        (cd src; $MAKE install)
+        info "(cd hl; $MAKE install)"
+        (cd hl; $MAKE install)
+        if [[ $? != 0 ]] ; then
+            warn "$bt HDF5 install failed.  Giving up"
+            return 1
+        fi
 
-    if [[ "$DO_GROUP" == "yes" ]] ; then
-        chmod -R ug+w,a+rX "$VISITDIR/hdf5"
-        chgrp -R ${GROUP} "$VISITDIR/hdf5"
-    fi
+        if [[ "$DO_GROUP" == "yes" ]] ; then
+            chmod -R ug+w,a+rX "$VISITDIR/hdf5"
+            chgrp -R ${GROUP} "$VISITDIR/hdf5"
+        fi
+
+        popd
+    done
+
     cd "$START_DIR"
     info "Done with HDF5"
     return 0

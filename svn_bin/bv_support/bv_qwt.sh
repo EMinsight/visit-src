@@ -1,5 +1,10 @@
 function bv_qwt_initialize
 {
+    if [[ "$DO_SERVER_COMPONENTS_ONLY" == "yes" ]]; then
+        export DO_QT="no"
+    else
+        export DO_QT="yes"
+    fi
     export DO_QWT="yes"
     export ON_QWT="on"
     export FORCE_QWT="no"
@@ -86,21 +91,27 @@ function bv_qwt_graphical
 
 function bv_qwt_host_profile
 {
-    echo >> $HOSTCONF
-    echo "##" >> $HOSTCONF
-    echo "## QWT" >> $HOSTCONF
-    echo "##" >> $HOSTCONF
-    echo "SETUP_APP_VERSION(QWT $QWT_VERSION)" >> $HOSTCONF
-    if [[ "$USE_SYSTEM_QWT" == "yes" ]]; then
-        echo "VISIT_OPTION_DEFAULT(VISIT_QWT_DIR $SYSTEM_QWT_DIR)" >> $HOSTCONF
-    else
-        echo "VISIT_OPTION_DEFAULT(VISIT_QWT_DIR \${VISITHOME}/qwt/\${QWT_VERSION}/\${VISITARCH})" >> $HOSTCONF
+    if [[ "$DO_DBIO_ONLY" != "yes" ]]; then
+        if [[ "$DO_ENGINE_ONLY" != "yes" ]]; then
+            if [[ "$DO_SERVER_COMPONENTS_ONLY" != "yes" ]]; then 
+                echo >> $HOSTCONF
+                echo "##" >> $HOSTCONF
+                echo "## QWT" >> $HOSTCONF
+                echo "##" >> $HOSTCONF
+                echo "SETUP_APP_VERSION(QWT $QWT_VERSION)" >> $HOSTCONF
+                if [[ "$USE_SYSTEM_QWT" == "yes" ]]; then
+                    echo "VISIT_OPTION_DEFAULT(VISIT_QWT_DIR $SYSTEM_QWT_DIR)" >> $HOSTCONF
+                else
+                    echo "VISIT_OPTION_DEFAULT(VISIT_QWT_DIR \${VISITHOME}/qwt/\${QWT_VERSION}/\${VISITARCH})" >> $HOSTCONF
+                fi
+            fi
+        fi
     fi
 }
 
 function bv_qwt_ensure
 {    
-    if [[ "$DO_QWT" == "yes" ]] ; then
+    if [[ "$DO_QWT" == "yes" && "$DO_SERVER_COMPONENTS_ONLY" == "no" ]] ; then
         ensure_built_or_ready "qwt" $QWT_VERSION $QWT_BUILD_DIR $QWT_FILE
         if [[ $? != 0 ]] ; then
             ANY_ERRORS="yes"
@@ -300,6 +311,9 @@ function build_qwt
 
 function bv_qwt_is_enabled
 {
+    if [[ "$DO_SERVER_COMPONENTS_ONLY" == "yes" ]]; then
+        return 0
+    fi
     if [[ $DO_QWT == "yes" ]]; then
         return 1    
     fi
@@ -318,7 +332,7 @@ function bv_qwt_is_installed
 function bv_qwt_build
 {
     cd "$START_DIR"
-    if [[ "$DO_QWT" == "yes" ]] ; then
+    if [[ "$DO_QWT" == "yes" && "$DO_SERVER_COMPONENTS_ONLY" == "no" ]] ; then
         check_if_installed "qwt" $QWT_VERSION
         if [[ $? == 0 ]] ; then
             info "Skipping QWT build. Qwt is already installed."

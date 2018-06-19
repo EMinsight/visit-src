@@ -401,6 +401,12 @@
 #    Cyrus Harrison, Thu Jun 16 08:44:43 PDT 2016
 #    Added support for conduit (software.llnl.gov/conduit).
 #
+#    Iulian R. Grindeanu & Vijay S. Mahadevan via Mark C Miller
+#    Wed Aug 10 14:54:05 PDT 2016
+#    Added support for ANL's Mesh Object datABase (MOAB)
+#
+#    Mark C. Miller, Mon Aug 22 15:23:12 PDT 2016
+#    Add tools/writer to installed headers
 #****************************************************************************/
 
 CMAKE_MINIMUM_REQUIRED(VERSION 3.0 FATAL_ERROR)
@@ -502,8 +508,6 @@ FUNCTION(VISIT_OPTION_DEFAULT var)
       SET(${var} "${opt_ARGS}" CACHE ${opt_TYPE} "${var} value" FORCE)
   ENDIF(NOT "${default_base_val}" STREQUAL "${opt_ARGS}")
 ENDFUNCTION(VISIT_OPTION_DEFAULT var)
-
-INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/CMake/SetupITAPS.cmake)
 
 SET(VTK_MINIMUM_VERSION "6.0.0" CACHE INTERNAL "minimum version of vtk that VisIt can use")
 
@@ -785,6 +789,11 @@ ENDIF(WIN32)
 #       needs to link but not to compile). Use the plugin's .xml file for
 #       libs a plugin is DIRECTLY dependent on (e.g. needs to both compile
 #       and link).
+#
+# _MPI_ variables are needed *only* for TPLs that support *both* serial and mpi
+# parallel variants. Otherwise, the TPL is assumed to be either serial only or parallel
+# only and not require separate varibles for both serial and MPI parallel variants.
+#
 VISIT_3RDPARTY_VAR(ADIOS_DIR     "Path containing the ADIOS library's include and lib")
 VISIT_3RDPARTY_VAR(ADVIO_DIR     "Path containing the AdvIO library's include and lib")
 VISIT_3RDPARTY_VAR(BOOST_DIR     "Path containing the BOOST library's include and lib")
@@ -804,6 +813,8 @@ VISIT_3RDPARTY_VAR(HDF4_DIR      "Path containing the HDF4 library's include and
 VISIT_3RDPARTY_DEP(HDF4_LIBDEP   "HDF4 library dependencies")
 VISIT_3RDPARTY_VAR(HDF5_DIR      "Path containing the HDF5 library's include and lib")
 VISIT_3RDPARTY_DEP(HDF5_LIBDEP   "HDF5 library dependencies")
+VISIT_3RDPARTY_VAR(HDF5_MPI_DIR  "Path containing the parallel HDF5 library's include and lib")
+VISIT_3RDPARTY_DEP(HDF5_MPI_LIBDEP "HDF5 parallel library dependencies")
 VISIT_3RDPARTY_VAR(H5PART_DIR    "Path containing the H5Part library's include and lib")
 VISIT_3RDPARTY_DEP(H5PART_LIBDEP "H5Part library dependencies")
 VISIT_3RDPARTY_VAR(MFEM_DIR      "Path containing the mfem library's include and lib")
@@ -827,6 +838,8 @@ VISIT_3RDPARTY_VAR(XSD_DIR       "Path containing the XSD library's include and 
 VISIT_3RDPARTY_VAR(MDSPLUS_DIR   "Path containing the MDSplus library's include and lib")
 VISIT_3RDPARTY_VAR(MANTA_DIR     "Path containing the Manta library's include and lib")
 VISIT_3RDPARTY_VAR(ZLIB_DIR      "Path containing the zlib library's include and lib")
+VISIT_3RDPARTY_VAR(MOAB_DIR      "Path containing the MOAB library's include and lib")
+VISIT_3RDPARTY_VAR(MOAB_MPI_DIR  "Path containing the parallel MOAB library's include and lib")
 
 #-----------------------------------------------------------------------------
 # Read the version
@@ -1008,7 +1021,7 @@ ENDMACRO(VISIT_INSTALL_TARGETS)
 IF(VISIT_HEADERS_SKIP_INSTALL)
     MESSAGE(STATUS "Skipping VisIt headers installation")
 ELSE(VISIT_HEADERS_SKIP_INSTALL)
-    INSTALL(DIRECTORY avt common engine gui launcher mdserver third_party_builtin viewer visit_vtk visitpy vtkm vtkqt winutil
+    INSTALL(DIRECTORY avt common engine gui launcher mdserver third_party_builtin tools/writer viewer visit_vtk visitpy vtkm vtkqt winutil
         DESTINATION ${VISIT_INSTALLED_VERSION_INCLUDE}/visit
         FILE_PERMISSIONS OWNER_READ OWNER_WRITE
                          GROUP_READ GROUP_WRITE
@@ -1274,6 +1287,9 @@ INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindTCMALLOC.cmake)
 
 # zlib
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindZlib.cmake)
+IF(ZLIB_FOUND)
+    SET(HAVE_LIBZ 1)
+ENDIF(ZLIB_FOUND)
 
 # szip and jpeg
 IF(WIN32)
@@ -1294,6 +1310,9 @@ IF(NOT VISIT_BUILD_MINIMAL_PLUGINS OR VISIT_SELECTED_DATABASE_PLUGINS)
     IF(HDF5_FOUND)
         SET(HAVE_LIBHDF5 1)
     ENDIF(HDF5_FOUND)
+    IF(HDF5_MPI_FOUND)
+        SET(HAVE_LIBHDF5_MPI 1)
+    ENDIF(HDF5_MPI_FOUND)
 
     # Configure adios support.
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindADIOS.cmake)
@@ -1374,8 +1393,14 @@ IF(NOT VISIT_BUILD_MINIMAL_PLUGINS OR VISIT_SELECTED_DATABASE_PLUGINS)
         SET(HAVE_LIBH5PART 1)
     ENDIF(H5PART_FOUND)
 
-    # Configure ITAPS support -- it's treated specially.
-    CONFIGURE_ITAPS()
+    # Configure MOAB support.
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindMOAB.cmake)
+    IF(MOAB_FOUND)
+      SET(HAVE_LIBMOAB 1)
+    ENDIF(MOAB_FOUND)
+    IF(MOAB_MPI_FOUND)
+      SET(HAVE_LIBMOAB_MPI 1)
+    ENDIF(MOAB_MPI_FOUND)
 
     # Configure mfem support.
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindMFEM.cmake)
