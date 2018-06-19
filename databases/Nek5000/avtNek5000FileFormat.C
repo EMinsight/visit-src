@@ -56,6 +56,8 @@
 #include <vtkUnsignedCharArray.h>
 #include <vtkUnstructuredGrid.h>
 
+#include <DBOptionsAttributes.h>
+
 #include <avtDatabaseMetaData.h>
 #include <avtDatabase.h>
 #include <avtIntervalTree.h>
@@ -266,9 +268,13 @@ using std::vector;
 //    Eric Brugger, Thu Nov 12 17:20:03 PST 2009
 //    Removed the data member version since it is no longer used.
 //
+//    Hank Childs, Sun Oct 28 17:56:17 PDT 2012
+//    Add database options.
+//
 // ****************************************************************************
 
-avtNek5000FileFormat::avtNek5000FileFormat(const char *filename)
+avtNek5000FileFormat::avtNek5000FileFormat(const char *filename,
+                                           DBOptionsAttributes *atts)
     : avtMTMDFileFormat(filename)
 {
     int t0 = visitTimer->StartTimer();
@@ -281,6 +287,8 @@ avtNek5000FileFormat::avtNek5000FileFormat(const char *filename)
     iNumOutputDirs = 0;
     bParFormat = false;
     curTimestep = 0;
+
+    readOptionToGetAllTimes = atts->GetBool("Read all times and cycles");
 
     iNumBlocks = 0;
     iBlockSize[0] = 1;
@@ -1130,6 +1138,9 @@ avtNek5000FileFormat::FreeUpResources(void)
 //    Hank Childs, Tue Apr 10 15:48:35 PDT 2012
 //    Read all times and cycles if that is part of the request.
 //
+//    Hank Childs, Sun Oct 28 18:32:18 PDT 2012
+//    Read times and cycles for mdserver.
+//
 // ****************************************************************************
 
 void
@@ -1176,7 +1187,18 @@ avtNek5000FileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md, int /*ti
                        AUXILIARY_DATA_DOMAIN_BOUNDARY_INFORMATION, -1, -1, vr);
     }
 
-    if (readAllCyclesAndTimes)
+    bool doIt = false;
+    if (readAllCyclesAndTimes) // this is the control from the avtDatabase level
+                               // it is activated for pathlines
+        doIt = true;
+
+    // If we are on the metadata server and the read option is set, then read all
+    // times.
+    if (avtDatabase::OnlyServeUpMetaData())
+        if (readOptionToGetAllTimes)
+            doIt = true;
+
+    if (doIt)
     {
         int tmpstep = curTimestep;
         for(int i = 0; i < iNumTimesteps; ++i)
@@ -2997,6 +3019,9 @@ avtNek5000FileFormat::GetDataExtentsIntervalTree(int timestep, const char *var)
 //    Add support for the case where we are streaming data in parallel and
 //    we can't rely on other processors to help out.
 //
+//    Hank Childs, Tue Oct 23 14:53:01 PDT 2012
+//    Mark selections as applied.
+//
 // ****************************************************************************
 
 void
@@ -3032,6 +3057,7 @@ avtNek5000FileFormat::RegisterDataSelections(
             itree->GetElementsListFromRange(mins, maxs, domainsToUse[i]);
             if (domainsToUse[i].size() == 0)
                 noMatches = true;
+            (*selectionsApplied)[i] = true;
         }
         if (string(selList[i]->GetType()) == "Plane Selection")
         {
@@ -3050,6 +3076,7 @@ avtNek5000FileFormat::RegisterDataSelections(
             itree->GetElementsList(normal, D, domainsToUse[i]);
             if (domainsToUse[i].size() == 0)
                 noMatches = true;
+            (*selectionsApplied)[i] = true;
         }
         if (string(selList[i]->GetType()) == "Point Selection")
         {
@@ -3064,6 +3091,7 @@ avtNek5000FileFormat::RegisterDataSelections(
             itree->GetElementsListFromRange(pt, pt, domainsToUse[i]);
             if (domainsToUse[i].size() == 0)
                 noMatches = true;
+            (*selectionsApplied)[i] = true;
         }
         if (string(selList[i]->GetType()) == "Isolevels Selection")
         {
@@ -3087,6 +3115,7 @@ avtNek5000FileFormat::RegisterDataSelections(
             CombineElementLists(elemsForLevelJ, domainsToUse[i], true);
             if (domainsToUse[i].size() == 0)
                 noMatches = true;
+            (*selectionsApplied)[i] = true;
         }
     }
     visitTimer->StopTimer(t1, "Getting element lists for each selection");

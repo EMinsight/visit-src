@@ -37,6 +37,7 @@
 *****************************************************************************/
 
 #include <Engine.h>
+#include <EngineState.h>
 #include <Executors.h>
 
 #include <cerrno>
@@ -92,7 +93,7 @@
 #include <StackTimer.h>
 #include <Utility.h>
 #include <VisItDisplay.h>
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__APPLE__)
 # include <XDisplay.h>
 #endif
 
@@ -379,29 +380,7 @@ Engine::Engine() : viewerArgs()
 
     quitRPC = NULL;
     keepAliveRPC = NULL;
-    readRPC = NULL;
-    applyOperatorRPC = NULL;
-    makePlotRPC = NULL;
-    useNetworkRPC = NULL;
-    updatePlotAttsRPC = NULL;
-    pickRPC = NULL;
-    startPickRPC = NULL;
-    startQueryRPC = NULL;
-    executeRPC = NULL;
-    clearCacheRPC = NULL;
-    queryRPC = NULL;
-    queryParametersRPC = NULL;
-    releaseDataRPC = NULL;
-    openDatabaseRPC = NULL;
-    defineVirtualDatabaseRPC = NULL;
-    renderRPC = NULL;
-    setWinAnnotAttsRPC = NULL;
-    cloneNetworkRPC = NULL;
-    procInfoRPC = NULL;
-    simulationCommandRPC = NULL;
-    setEFileOpenOptionsRPC = NULL;
-    enginePropertiesRPC = NULL;
-    launchRPC = NULL;
+    enginestate = NULL;
 
 #if defined(PARALLEL) && defined(HAVE_ICET)
     useIceT = true;
@@ -466,33 +445,7 @@ Engine::~Engine()
 
     delete quitRPC;
     delete keepAliveRPC;
-    delete readRPC;
-    delete applyOperatorRPC;
-    delete makePlotRPC;
-    delete useNetworkRPC;
-    delete updatePlotAttsRPC;
-    delete pickRPC;
-    delete startPickRPC;
-    delete startQueryRPC;
-    delete executeRPC;
-    delete clearCacheRPC;
-    delete queryRPC;
-    delete queryParametersRPC;
-    delete releaseDataRPC;
-    delete openDatabaseRPC;
-    delete defineVirtualDatabaseRPC;
-    delete renderRPC;
-    delete setWinAnnotAttsRPC;
-    delete cloneNetworkRPC;
-    delete procInfoRPC;
-    delete simulationCommandRPC;
-    delete exportDatabaseRPC;
-    delete constructDataBinningRPC;
-    delete namedSelectionRPC;
-    delete setEFileOpenOptionsRPC;
-    delete enginePropertiesRPC;
-    delete launchRPC;
-
+    delete enginestate;
     delete viewer;
     delete viewerP;
 
@@ -638,7 +591,7 @@ Engine::Initialize(int *argc, char **argv[], bool sigs)
     //
     // Set a different new handler for the engine
     //
-#if !defined(_WIN32)
+#if !defined(_WIN32) 
     std::set_new_handler(Engine::NewHandler);
 #endif
 
@@ -1030,94 +983,43 @@ Engine::SetUpViewerInterface(int *argc, char **argv[])
     // Create some RPC objects and make Xfer observe them.
     quitRPC                         = new QuitRPC;
     keepAliveRPC                    = new KeepAliveRPC;
-    readRPC                         = new ReadRPC;
-    applyOperatorRPC                = new ApplyOperatorRPC;
-    makePlotRPC                     = new MakePlotRPC;
-    useNetworkRPC                   = new UseNetworkRPC;
-    updatePlotAttsRPC               = new UpdatePlotAttsRPC;
-    pickRPC                         = new PickRPC;
-    startPickRPC                    = new StartPickRPC;
-    startQueryRPC                   = new StartQueryRPC;
-    executeRPC                      = new ExecuteRPC;
-    clearCacheRPC                   = new ClearCacheRPC;
-    queryRPC                        = new QueryRPC;
-    queryParametersRPC              = new QueryParametersRPC;
-    releaseDataRPC                  = new ReleaseDataRPC;
-    openDatabaseRPC                 = new OpenDatabaseRPC;
-    defineVirtualDatabaseRPC        = new DefineVirtualDatabaseRPC;
-    renderRPC                       = new RenderRPC;
-    setWinAnnotAttsRPC              = new SetWinAnnotAttsRPC;
-    cloneNetworkRPC                 = new CloneNetworkRPC;
-    procInfoRPC                     = new ProcInfoRPC;
-    simulationCommandRPC            = new SimulationCommandRPC;
-    exportDatabaseRPC               = new ExportDatabaseRPC;
-    constructDataBinningRPC         = new ConstructDataBinningRPC;
-    namedSelectionRPC               = new NamedSelectionRPC;
-    setEFileOpenOptionsRPC          = new SetEFileOpenOptionsRPC;
-    enginePropertiesRPC             = new EnginePropertiesRPC;
-    launchRPC                       = new LaunchRPC;
-
+    enginestate                     = new EngineState();
     xfer->Add(quitRPC);
     xfer->Add(keepAliveRPC);
-    xfer->Add(readRPC);
-    xfer->Add(applyOperatorRPC);
-    xfer->Add(makePlotRPC);
-    xfer->Add(useNetworkRPC);
-    xfer->Add(updatePlotAttsRPC);
-    xfer->Add(pickRPC);
-    xfer->Add(startPickRPC);
-    xfer->Add(startQueryRPC);
-    xfer->Add(executeRPC);
-    xfer->Add(clearCacheRPC);
-    xfer->Add(queryRPC);
-    xfer->Add(queryParametersRPC);
-    xfer->Add(releaseDataRPC);
-    xfer->Add(openDatabaseRPC);
-    xfer->Add(defineVirtualDatabaseRPC);
-    xfer->Add(renderRPC);
-    xfer->Add(setWinAnnotAttsRPC);
-    xfer->Add(cloneNetworkRPC);
-    xfer->Add(procInfoRPC);
-    xfer->Add(simulationCommandRPC);
-    xfer->Add(exportDatabaseRPC);
-    xfer->Add(constructDataBinningRPC);
-    xfer->Add(namedSelectionRPC);
-    xfer->Add(setEFileOpenOptionsRPC);
-    xfer->Add(enginePropertiesRPC);
-    xfer->Add(launchRPC);
+    enginestate->SetupComponentRPCs(xfer);
 
     // Create an object to implement the RPCs
     rpcExecutors.push_back(new RPCExecutor<QuitRPC>(quitRPC));
     rpcExecutors.push_back(new RPCExecutor<KeepAliveRPC>(keepAliveRPC));
-    rpcExecutors.push_back(new RPCExecutor<ReadRPC>(readRPC));
-    rpcExecutors.push_back(new RPCExecutor<ApplyOperatorRPC>(applyOperatorRPC));
-    rpcExecutors.push_back(new RPCExecutor<PrepareOperatorRPC>(&applyOperatorRPC->GetPrepareOperatorRPC()));
-    rpcExecutors.push_back(new RPCExecutor<MakePlotRPC>(makePlotRPC));
-    rpcExecutors.push_back(new RPCExecutor<PreparePlotRPC>(&makePlotRPC->GetPreparePlotRPC()));
-    rpcExecutors.push_back(new RPCExecutor<UseNetworkRPC>(useNetworkRPC));
-    rpcExecutors.push_back(new RPCExecutor<UpdatePlotAttsRPC>(updatePlotAttsRPC));
-    rpcExecutors.push_back(new RPCExecutor<PrepareUpdatePlotAttsRPC>(&updatePlotAttsRPC->GetPrepareUpdatePlotAttsRPC()));
-    rpcExecutors.push_back(new RPCExecutor<PickRPC>(pickRPC));
-    rpcExecutors.push_back(new RPCExecutor<StartPickRPC>(startPickRPC));
-    rpcExecutors.push_back(new RPCExecutor<StartQueryRPC>(startQueryRPC));
-    rpcExecutors.push_back(new RPCExecutor<ExecuteRPC>(executeRPC));
-    rpcExecutors.push_back(new RPCExecutor<ClearCacheRPC>(clearCacheRPC));
-    rpcExecutors.push_back(new RPCExecutor<QueryRPC>(queryRPC));
-    rpcExecutors.push_back(new RPCExecutor<QueryParametersRPC>(queryParametersRPC));
-    rpcExecutors.push_back(new RPCExecutor<ReleaseDataRPC>(releaseDataRPC));
-    rpcExecutors.push_back(new RPCExecutor<OpenDatabaseRPC>(openDatabaseRPC));
-    rpcExecutors.push_back(new RPCExecutor<DefineVirtualDatabaseRPC>(defineVirtualDatabaseRPC));
-    rpcExecutors.push_back(new RPCExecutor<RenderRPC>(renderRPC));
-    rpcExecutors.push_back(new RPCExecutor<SetWinAnnotAttsRPC>(setWinAnnotAttsRPC));
-    rpcExecutors.push_back(new RPCExecutor<CloneNetworkRPC>(cloneNetworkRPC));
-    rpcExecutors.push_back(new RPCExecutor<ProcInfoRPC>(procInfoRPC));
-    rpcExecutors.push_back(new RPCExecutor<SimulationCommandRPC>(simulationCommandRPC));
-    rpcExecutors.push_back(new RPCExecutor<ExportDatabaseRPC>(exportDatabaseRPC));
-    rpcExecutors.push_back(new RPCExecutor<ConstructDataBinningRPC>(constructDataBinningRPC));
-    rpcExecutors.push_back(new RPCExecutor<NamedSelectionRPC>(namedSelectionRPC));
-    rpcExecutors.push_back(new RPCExecutor<SetEFileOpenOptionsRPC>(setEFileOpenOptionsRPC));
-    rpcExecutors.push_back(new RPCExecutor<EnginePropertiesRPC>(enginePropertiesRPC));
-    rpcExecutors.push_back(new RPCExecutor<LaunchRPC>(launchRPC));
+    rpcExecutors.push_back(new RPCExecutor<ReadRPC>(&enginestate->GetReadRPC()));
+    rpcExecutors.push_back(new RPCExecutor<ApplyOperatorRPC>(&enginestate->GetApplyOperatorRPC()));
+    rpcExecutors.push_back(new RPCExecutor<PrepareOperatorRPC>(&enginestate->GetApplyOperatorRPC().GetPrepareOperatorRPC()));
+    rpcExecutors.push_back(new RPCExecutor<MakePlotRPC>(&enginestate->GetMakePlotRPC()));
+    rpcExecutors.push_back(new RPCExecutor<PreparePlotRPC>(&enginestate->GetMakePlotRPC().GetPreparePlotRPC()));
+    rpcExecutors.push_back(new RPCExecutor<UseNetworkRPC>(&enginestate->GetUseNetworkRPC()));
+    rpcExecutors.push_back(new RPCExecutor<UpdatePlotAttsRPC>(&enginestate->GetUpdatePlotAttsRPC()));
+    rpcExecutors.push_back(new RPCExecutor<PrepareUpdatePlotAttsRPC>(&enginestate->GetUpdatePlotAttsRPC().GetPrepareUpdatePlotAttsRPC()));
+    rpcExecutors.push_back(new RPCExecutor<PickRPC>(&enginestate->GetPickRPC()));
+    rpcExecutors.push_back(new RPCExecutor<StartPickRPC>(&enginestate->GetStartPickRPC()));
+    rpcExecutors.push_back(new RPCExecutor<StartQueryRPC>(&enginestate->GetStartQueryRPC()));
+    rpcExecutors.push_back(new RPCExecutor<ExecuteRPC>(&enginestate->GetExecuteRPC()));
+    rpcExecutors.push_back(new RPCExecutor<ClearCacheRPC>(&enginestate->GetClearCacheRPC()));
+    rpcExecutors.push_back(new RPCExecutor<QueryRPC>(&enginestate->GetQueryRPC()));
+    rpcExecutors.push_back(new RPCExecutor<QueryParametersRPC>(&enginestate->GetQueryParametersRPC()));
+    rpcExecutors.push_back(new RPCExecutor<ReleaseDataRPC>(&enginestate->GetReleaseDataRPC()));
+    rpcExecutors.push_back(new RPCExecutor<OpenDatabaseRPC>(&enginestate->GetOpenDatabaseRPC()));
+    rpcExecutors.push_back(new RPCExecutor<DefineVirtualDatabaseRPC>(&enginestate->GetDefineVirtualDatabaseRPC()));
+    rpcExecutors.push_back(new RPCExecutor<RenderRPC>(&enginestate->GetRenderRPC()));
+    rpcExecutors.push_back(new RPCExecutor<SetWinAnnotAttsRPC>(&enginestate->GetSetWinAnnotAttsRPC()));
+    rpcExecutors.push_back(new RPCExecutor<CloneNetworkRPC>(&enginestate->GetCloneNetworkRPC()));
+    rpcExecutors.push_back(new RPCExecutor<ProcInfoRPC>(&enginestate->GetProcInfoRPC()));
+    rpcExecutors.push_back(new RPCExecutor<SimulationCommandRPC>(&enginestate->GetSimulationCommandRPC()));
+    rpcExecutors.push_back(new RPCExecutor<ExportDatabaseRPC>(&enginestate->GetExportDatabaseRPC()));
+    rpcExecutors.push_back(new RPCExecutor<ConstructDataBinningRPC>(&enginestate->GetConstructDataBinningRPC()));
+    rpcExecutors.push_back(new RPCExecutor<NamedSelectionRPC>(&enginestate->GetNamedSelectionRPC()));
+    rpcExecutors.push_back(new RPCExecutor<SetEFileOpenOptionsRPC>(&enginestate->GetSetEFileOpenOptionsRPC()));
+    rpcExecutors.push_back(new RPCExecutor<EnginePropertiesRPC>(&enginestate->GetEnginePropertiesRPC()));
+    rpcExecutors.push_back(new RPCExecutor<LaunchRPC>(&enginestate->GetLaunchRPC()));
   
     // Hook up the expression list as an observed object.
     Parser *p = new ExprParser(new avtExprNodeFactory());
@@ -1344,6 +1246,9 @@ Engine::ExtractViewerArguments(int *argc, char **argv[])
 //    I added the ability to use a gateway machine when connecting to a
 //    remote host.
 //
+//    Brad Whitlock, Tue Jun  5 17:20:36 PDT 2012
+//    Pass default machine profile to Open.
+//
 // ****************************************************************************
 
 bool
@@ -1363,14 +1268,7 @@ Engine::ReverseLaunchViewer(int *argc, char **argv[])
             viewer->AddArgument("-viewer");
             for(size_t j = 0; j < viewerArgs.size(); ++j)
                 viewer->AddArgument(viewerArgs[j]);
-            viewer->Open("localhost",              // host
-                         MachineProfile::MachineName, // client host determination
-                         "",                       // client host name
-                         false,                    // manual SSH port
-                         0,                        // ssh port
-                         false,                    // ssh tunnelling
-                         false,                    // use gateway
-                         "",                       // gateway host name
+            viewer->Open(MachineProfile::Default(),// default machine profile
                          1,                        // num read sockets
                          simulationPluginsEnabled ? 3 : 2); // num write sockets
         }
@@ -3499,7 +3397,11 @@ Engine::ResetTimeout(int timeout)
 //    Allow xfer's updates so we can send the data back to the viewer in
 //    case we're already responding to an update from the viewer.
 //
+//    Brad Whitlock, Mon Aug  6 12:07:59 PDT 2012
+//    Print the metadata we're sending.
+//
 // ****************************************************************************
+
 void
 Engine::PopulateSimulationMetaData(const std::string &db,
                                    const std::string &fmt)
@@ -3526,6 +3428,12 @@ Engine::PopulateSimulationMetaData(const std::string &db,
     // Send the metadata and SIL to the viewer
     if(!quitRPC->GetQuit())
     {
+        if (DebugStream::Level4())
+        {
+            debug4 << "Engine::PopulateSimulationMetaData: sending metadata to client:" << endl;
+            metaData->Print(DebugStream::Stream4());
+        }
+
         simxfer->SetUpdate(true);
         metaData->Notify();
         silAtts->SelectAll();
@@ -3551,7 +3459,14 @@ Engine::PopulateSimulationMetaData(const std::string &db,
 //    Skip this if there's not a filename -- it means we haven't had
 //    a chance to open the simulation file yet.
 //
+//    Brad Whitlock, Mon Aug  6 12:05:09 PDT 2012
+//    Re-add the database to the load balancer so it gets a new domain to
+//    processor mapping for the new time step. This is needed since in AMR,
+//    the domains can move randomly to different processors or there can be
+//    a different number of domains.
+//
 // ****************************************************************************
+
 void
 Engine::SimulationTimeStepChanged()
 {
@@ -3569,6 +3484,9 @@ Engine::SimulationTimeStepChanged()
 
     // Send new metadata to the viewer
     PopulateSimulationMetaData(filename, format);
+
+    // Force new io information into the load balancer.
+    lb->AddDatabase(filename, *database, 0);
 }
 
 // ****************************************************************************
@@ -3975,7 +3893,7 @@ Engine::SetupDisplay()
 #endif
     std::string X_Display = RuntimeSetting::lookups("x-display");
     std::string disp = display_format(X_Display, PAR_Rank(), display_num);
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__APPLE__)
     // Tell the display whether or not it should start X servers.  This must be
     // done before ::Initialize!
     XDisplay* xd = dynamic_cast<XDisplay*>(this->renderingDisplay);

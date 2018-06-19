@@ -788,6 +788,9 @@ avtDatabase::GetOutput(const char *var, int ts)
 //    Added logic to support presentGhostZoneTypes, which allows us to
 //    differentiate between ghost zones for boundaries & nesting.
 //
+//    Hank Childs, Tue Oct 23 14:43:37 PDT 2012
+//    Mark the zones and nodes as invalidated if selections were applied.
+//
 // ****************************************************************************
 
 void
@@ -834,10 +837,23 @@ avtDatabase::PopulateDataObjectInformation(avtDataObject_p &dob,
         atts.SetContainsOriginalNodes(mmd->containsOriginalNodes);
         atts.SetContainsGlobalZoneIds(mmd->containsGlobalZoneIds);
         atts.SetContainsGlobalNodeIds(mmd->containsGlobalNodeIds);
-        vector<bool> tmp = selectionsApplied;
-        atts.SetSelectionsApplied(tmp);
         validity.SetDisjointElements(mmd->disjointElements);
         atts.SetLevelsOfDetail(mmd->LODs);
+
+        vector<bool> tmp = selectionsApplied;
+        atts.SetSelectionsApplied(tmp);
+        bool oneSelectionApplied = false;
+        for (unsigned int i = 0 ; i < selectionsApplied.size() ; i++)
+            if (selectionsApplied[i])
+                oneSelectionApplied = true;
+        if (oneSelectionApplied)
+        {
+            // We need to set these as invalid, or else caching could kick in
+            // and we might end up using acceleration structures across
+            // pipeline executions that were no longer valid.
+            validity.InvalidateZones();
+            validity.InvalidateNodes();
+        }
 
         //
         // Note that we are using the spatial extents as both the spatial 
@@ -2257,6 +2273,10 @@ avtDatabase::NumStagesForFetch(avtDataRequest_p)
 //    Mark C. Miller, Thu Feb 12 11:33:59 PST 2009
 //    Removed std:: qualification on some STL classes due to use of using
 //    statements at top 
+//
+//    Kathleen Biagas, Mon Sep 24 18:32:43 MST 2012
+//    Check for ':' when determining if directory should be prepended.
+//
 // ****************************************************************************
 
 void
@@ -2296,8 +2316,8 @@ avtDatabase::GetFileListFromTextFile(const char *textfile,
         if (str_auto[0] != '\0' && str_auto[0] != '#')
         {
             ConvertSlashes(str_auto);
-
-            if (str_auto[0] == VISIT_SLASH_CHAR || str_auto[0] == '!')
+            if (str_auto[0] == VISIT_SLASH_CHAR || str_auto[0] == '!' ||
+                (str_auto_len > 2 && str_auto[1] == ':'))
             {
                 strcpy(str_with_dir, str_auto);
             }

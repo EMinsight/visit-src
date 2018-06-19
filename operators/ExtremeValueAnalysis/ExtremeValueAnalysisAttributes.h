@@ -60,12 +60,13 @@
 class ExtremeValueAnalysisAttributes : public AttributeSubject
 {
 public:
-    enum ComputeMaxes
+    enum AggregationType
     {
+        ANNUAL,
         MONTHLY,
-        YEARLY
+        SEASONAL
     };
-    enum Month
+    enum MonthType
     {
         January,
         February,
@@ -79,6 +80,13 @@ public:
         October,
         November,
         December
+    };
+    enum SeasonType
+    {
+        WINTER,
+        SPRING,
+        SUMMER,
+        FALL
     };
 
     // These constructors are for objects of this class
@@ -106,33 +114,40 @@ public:
 
     // Property selection methods
     virtual void SelectAll();
-    void SelectRCodeDir();
 
     // Property setting methods
-    void SetComputeMaxes(ComputeMaxes computeMaxes_);
-    void SetDisplayMonth(Month DisplayMonth_);
-    void SetRCodeDir(const std::string &RCodeDir_);
+    void SetAggregation(AggregationType aggregation_);
+    void SetDisplayMonth(MonthType displayMonth_);
+    void SetDisplaySeason(SeasonType displaySeason_);
+    void SetDumpData(bool dumpData_);
+    void SetDataScaling(double dataScaling_);
 
     // Property getting methods
-    ComputeMaxes      GetComputeMaxes() const;
-    Month             GetDisplayMonth() const;
-    const std::string &GetRCodeDir() const;
-          std::string &GetRCodeDir();
+    AggregationType GetAggregation() const;
+    MonthType GetDisplayMonth() const;
+    SeasonType GetDisplaySeason() const;
+    bool   GetDumpData() const;
+    double GetDataScaling() const;
 
     // Persistence methods
     virtual bool CreateNode(DataNode *node, bool completeSave, bool forceAdd);
     virtual void SetFromNode(DataNode *node);
 
     // Enum conversion functions
-    static std::string ComputeMaxes_ToString(ComputeMaxes);
-    static bool ComputeMaxes_FromString(const std::string &, ComputeMaxes &);
+    static std::string AggregationType_ToString(AggregationType);
+    static bool AggregationType_FromString(const std::string &, AggregationType &);
 protected:
-    static std::string ComputeMaxes_ToString(int);
+    static std::string AggregationType_ToString(int);
 public:
-    static std::string Month_ToString(Month);
-    static bool Month_FromString(const std::string &, Month &);
+    static std::string MonthType_ToString(MonthType);
+    static bool MonthType_FromString(const std::string &, MonthType &);
 protected:
-    static std::string Month_ToString(int);
+    static std::string MonthType_ToString(int);
+public:
+    static std::string SeasonType_ToString(SeasonType);
+    static bool SeasonType_FromString(const std::string &, SeasonType &);
+protected:
+    static std::string SeasonType_ToString(int);
 public:
 
     // Keyframing methods
@@ -144,21 +159,25 @@ public:
 
     // IDs that can be used to identify fields in case statements
     enum {
-        ID_computeMaxes = 0,
-        ID_DisplayMonth,
-        ID_RCodeDir,
+        ID_aggregation = 0,
+        ID_displayMonth,
+        ID_displaySeason,
+        ID_dumpData,
+        ID_dataScaling,
         ID__LAST
     };
 
 private:
-    int         computeMaxes;
-    int         DisplayMonth;
-    std::string RCodeDir;
+    int    aggregation;
+    int    displayMonth;
+    int    displaySeason;
+    bool   dumpData;
+    double dataScaling;
 
     // Static class format string for type map.
     static const char *TypeMapFormatString;
     static const private_tmfs_t TmfsStruct;
 };
-#define EXTREMEVALUEANALYSISATTRIBUTES_TMFS "iis"
+#define EXTREMEVALUEANALYSISATTRIBUTES_TMFS "iiibd"
 
 #endif

@@ -46,7 +46,7 @@
 #include <MRUCache.h>
 #include <AttributeSubject.h>
 #include <ConnectCallback.h>
-#include <MDServerProxy.h>
+#include <MDServerManager.h>
 #include <QualifiedFilename.h>
 #include <avtSIL.h>
 
@@ -216,16 +216,16 @@ class MessageAttributes;
 
 class GUI_API FileServerList : public AttributeSubject
 {
-    typedef struct
-    {
-        std::string    path;
-        MDServerProxy *server;
-    } ServerInfo;
+//    typedef struct
+//    {
+//        std::string    path;
+//        MDServerProxy *server;
+//    } ServerInfo;
 
     // The '50' sets the *initial* number of slots in the MRU cache. It can
     // always be increased or decreased with a call to numslots(int n).
     // Note that the cache itself knows how to delete its entries
-    typedef std::map<std::string, ServerInfo *> ServerMap;
+    //typedef std::map<std::string, ServerInfo *> ServerMap;
     typedef MRUCache<std::string, avtDatabaseMetaData*, MRUCache_Delete, 50> FileMetaDataMap;
     typedef MRUCache<std::string, avtSIL*, MRUCache_Delete, 50> SILMap;
 
@@ -250,6 +250,7 @@ public:
     void SetUseCurrentDirectory(bool val);
     void SetAutomaticFileGrouping(bool val);
     void SetSmartFileGrouping(bool val);
+    void SetShowDotFiles(bool val);
     void LoadPlugins();
     void SendKeepAlives();
 
@@ -275,12 +276,13 @@ public:
           std::string ExpandPath(const std::string &p);
           stringVector GetRecentHosts() const;
     const std::string &GetFilter() const;
-    const MDServerProxy::FileList &GetFileList() const;
+    const MDServerMethods::FileList &GetFileList() const;
     const QualifiedFilenameVector &GetAppliedFileList();
           QualifiedFilenameVector GetFilteredFileList();
     bool GetUseCurrentDirectory() const;
     bool GetAutomaticFileGrouping() const;
     bool GetSmartFileGrouping() const;
+    bool GetShowDotFiles() const;
 
     bool GetForceReadAllCyclesTimes() const;
     bool GetTreatAllDBsAsTimeVarying() const;
@@ -343,7 +345,8 @@ public:
         ID_useCurrentDirectoryFlag,
         ID_automaticFileGroupingFlag,
         ID_recentPathsFlag,
-        ID_smartFileGroupingFlag
+        ID_smartFileGroupingFlag,
+        ID_showDotFilesFlag
     };
 
 private:
@@ -378,9 +381,10 @@ private:
     bool automaticFileGroupingFlag; // attribute 7
     bool recentPathsFlag;           // attribute 8
     bool smartFileGroupingFlag;     // attribute 9
+    bool showDotFilesFlag;          // attribute 10
 
     // Information about the open md servers.
-    ServerMap   servers;
+//    ServerMap   servers;
     std::string      activeHost;
     bool        connectingServer;
     std::string      filter;
@@ -392,7 +396,7 @@ private:
     bool        createVectorMagnitudeExpressions;
 
     // The file list for the current host.
-    MDServerProxy::FileList fileList;
+    MDServerMethods::FileList fileList;
 
     // The applied file list
     QualifiedFilenameVector appliedFileList;

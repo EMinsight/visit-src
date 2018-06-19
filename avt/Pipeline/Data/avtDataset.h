@@ -167,6 +167,8 @@ class PIPELINE_API avtDataset : public avtDataObject
     friend                   class avtResampleExpression;
 #ifdef HAVE_LIB_R
     friend                   class  avtExtremeValueAnalysisFilter;
+    friend                   class  avtPeaksOverThresholdFilter;
+    friend                   class  avtModelBasedClusteringFilter;
 #endif
 
   public:
@@ -196,6 +198,7 @@ class PIPELINE_API avtDataset : public avtDataObject
     void                     RenumberDomainIDs(bool acrossAllProcs = true);
     virtual void             DebugDump(avtWebpage *, const char *);
 
+    std::string              GetDatasetAsString();
   protected:
     avtDataTree_p            dataTree;
 

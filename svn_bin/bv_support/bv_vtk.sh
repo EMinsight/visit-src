@@ -1,8 +1,10 @@
 function bv_vtk_initialize
 {
-export DO_VTK="yes"
-export ON_VTK="on"
-export FORCE_VTK="no"
+    export DO_VTK="yes"
+    export ON_VTK="on"
+    export FORCE_VTK="no"
+    export USE_SYSTEM_VTK="no"
+    add_extra_commandline_args "vtk" "alt-vtk-dir" 1 "Use alternate VTK (exp)"
 }
 
 function bv_vtk_enable
@@ -17,6 +19,14 @@ function bv_vtk_disable
 DO_VTK="no"
 ON_VTK="off"
 FORCE_VTK="no"
+}
+
+function bv_vtk_alt_vtk_dir
+{
+    bv_vtk_enable
+    USE_SYSTEM_VTK="yes"
+    SYSTEM_VTK_DIR="$1"
+    info "Using Alternate VTK: $SYSTEM_VTK_DIR"
 }
 
 function bv_vtk_depends_on
@@ -44,11 +54,11 @@ function bv_vtk_force
 
 function bv_vtk_info
 {
-export VTK_FILE=${VTK_FILE:-"visit-vtk-5.8.tar.gz"}
-export VTK_VERSION=${VTK_VERSION:-"5.8.0"}
-export VTK_BUILD_DIR=${VTK_BUILD_DIR:-"visit-vtk-5.8"}
+export VTK_FILE=${VTK_FILE:-"visit-vtk-5.8.0.a.tar.gz"}
+export VTK_VERSION=${VTK_VERSION:-"5.8.0.a"}
+export VTK_BUILD_DIR=${VTK_BUILD_DIR:-"visit-vtk-5.8.0.a"}
 export VTK_INSTALL_DIR=${VTK_INSTALL_DIR:-"vtk"}
-export VTK_MD5_CHECKSUM="ee14ea5a985555004c9a7084d88bea54"
+export VTK_MD5_CHECKSUM="6964a8d1e4e50d3a4a2d4fb39b900b05"
 export VTK_SHA256_CHECKSUM=""
 }
 
@@ -61,7 +71,7 @@ printf "%s%s\n" "VTK_BUILD_DIR=" "${VTK_BUILD_DIR}"
 
 function bv_vtk_print_usage
 {
-printf "\t\t%15s\n" "NOTE: not available for download from web" 
+printf "\t\t%15s\n" "NOTE: not available for download from web"
 printf "%-15s %s [%s]\n" "--vtk" "Build VTK" "built by default unless --no-thirdparty flag is used"
 }
 
@@ -71,15 +81,25 @@ function bv_vtk_host_profile
     echo "##" >> $HOSTCONF
     echo "## VTK" >> $HOSTCONF
     echo "##" >> $HOSTCONF
-    if [[ $DO_MANGLED_LIBRARIES == "yes" ]]; then
-        echo "VISIT_OPTION_DEFAULT(VISIT_MTK_DIR \${VISITHOME}/${VTK_INSTALL_DIR}/$VTK_VERSION/\${VISITARCH})" >> $HOSTCONF
+
+    if [[ "$USE_SYSTEM_VTK" == "yes" ]]; then
+            echo "VISIT_OPTION_DEFAULT(VISIT_VTK_DIR $SYSTEM_VTK_DIR)" >> $HOSTCONF
     else
-        echo "VISIT_OPTION_DEFAULT(VISIT_VTK_DIR \${VISITHOME}/${VTK_INSTALL_DIR}/$VTK_VERSION/\${VISITARCH})" >> $HOSTCONF
+        if [[ $DO_MANGLED_LIBRARIES == "yes" ]]; then
+            echo "VISIT_OPTION_DEFAULT(VISIT_MTK_DIR \${VISITHOME}/${VTK_INSTALL_DIR}/$VTK_VERSION/\${VISITARCH})" >> $HOSTCONF
+        else
+            echo "VISIT_OPTION_DEFAULT(VISIT_VTK_DIR \${VISITHOME}/${VTK_INSTALL_DIR}/$VTK_VERSION/\${VISITARCH})" >> $HOSTCONF
+        fi
     fi
 }
 
 function bv_vtk_initialize_vars
 {
+    #if [[ "$USE_SYSTEM_VTK" == "yes" ]]; then
+    #    if [[ "$DO_MESA" == "yes" || "$parallel" == "yes" ]]; then
+    #        error "System VTK with Custom MESA is not supported"
+    #    fi
+    #fi
     info "initalizing vtk vars"
     if [[ $DO_R == "yes" ]]; then
         VTK_INSTALL_DIR="vtk-r"
@@ -87,11 +107,15 @@ function bv_vtk_initialize_vars
     if [[ $DO_MANGLED_LIBRARIES == "yes" ]]; then
         VTK_INSTALL_DIR="mangled-$VTK_INSTALL_DIR"
     fi
+
+    if [[ "$DO_MESA" == "no" ]] ; then
+        VTK_VERSION="${VTK_VERSION}.no.mesa"
+    fi
 }
 
 function bv_vtk_ensure
 {
-    if [[ "$DO_VTK" == "yes" ]] ; then
+    if [[ "$DO_VTK" == "yes" && "$USE_SYSTEM_VTK" == "no" ]] ; then
         ensure_built_or_ready $VTK_INSTALL_DIR $VTK_VERSION $VTK_BUILD_DIR $VTK_FILE
         if [[ $? != 0 ]] ; then
             return 1
@@ -110,68 +134,16 @@ function bv_vtk_dry_run
 #                            Function 6, build_vtk                            #
 # *************************************************************************** #
 
-function apply_vtk_580_patch_2
+function apply_vtk_580a_patch
 {
-#apparently R enables this file to be compiled and causes vtk
-#to fail..
-patch -f -p0 <<\EOF
-*** visit-vtk-5.8/Charts/vtkOpenGLContextDevice2D.cxx   2012-02-29 16:38:47.599905018 -0800
---- visit-vtk-5.8/Charts/vtkOpenGLContextDevice2D_tmp.cxx   2012-02-29 16:33:33.699604797 -0800
-***************
-*** 44,49 ****
---- 44,50 ----
-  #include "vtkOpenGLRenderer.h"
-  #include "vtkOpenGLRenderWindow.h"
-  #include "vtkExtensionManager.h"
-+ #include "vtkOpenGLExtensionManager.h"
-  #include "vtkShaderProgram2.h"
-  #include "vtkgl.h"
-EOF
-}
-
-function apply_vtk_580_patch_1
-{
-    patch -f -p0 <<\EOF
-diff -c a/IO/CMakeLists.txt visit-vtk-5.8/IO/CMakeLists.txt
-*** a/IO/CMakeLists.txt
---- visit-vtk-5.8/IO/CMakeLists.txt
-***************
-*** 92,98 ****
-  vtkMoleculeReaderBase.cxx
-  vtkOBJReader.cxx
-  ${_VTK_OGGTHEORA_SOURCES}
-- vtkOpenFOAMReader.cxx
-  vtkOutputStream.cxx
-  vtkPDBReader.cxx
-  vtkPLOT3DReader.cxx
---- 92,97 ----
-EOF
-   if [[ $? != 0 ]] ; then
-        warn "Unable to apply patch 1 to VTK 5.8.0"
-        return 1
-   else
-        return 0
-   fi
-}
-
-
-function apply_vtk_580_patch
-{
-    apply_vtk_580_patch_1
-    if [[ $? != 0 ]] ; then
-        return 1
-    fi
-
-    apply_vtk_580_patch_2
-    if [[ $? != 0 ]] ; then
-        return 1
-    fi
+    # As of 11/4/2012 all patches were rolled into 5.8.0.a.
+    return 0
 }
 
 function apply_vtk_patch
 {
-    if [[ ${VTK_VERSION} == 5.8.0 ]] ; then
-        apply_vtk_580_patch
+    if [[ ${VTK_VERSION} == 5.8.0.a ]] ; then
+        apply_vtk_580a_patch
         if [[ $? != 0 ]] ; then
             return 1
         fi
@@ -245,6 +217,7 @@ function build_vtk
         fi
     fi
 
+    info "Configuring VTK . . ."
     VTK_PREFIX="VTK"
     if [[ $DO_MANGLED_LIBRARIES == "yes" ]]; then
         mangle_libraries $VTK_BUILD_DIR "mangled_$VTK_BUILD_DIR"
@@ -266,7 +239,7 @@ function build_vtk
         mkdir $VTK_BUILD_DIR
     fi
 
-    # 
+    #
     # Remove the CMakeCache.txt files ... existing files sometimes prevent
     # fields from getting overwritten properly.
     #
@@ -306,20 +279,19 @@ function build_vtk
     vopts="${vopts} -DBUILD_DOCUMENTATION:BOOL=OFF"
     vopts="${vopts} -D${VTK_PREFIX}_USE_NETCDF:BOOL=OFF"
     vopts="${vopts} -D${VTK_PREFIX}_USE_EXODUS:BOOL=OFF"
-
     vopts="${vopts} -D${VTK_PREFIX}_USE_TK:BOOL=OFF"
     vopts="${vopts} -D${VTK_PREFIX}_USE_64BIT_IDS:BOOL=ON"
+    vopts="${vopts} -D${VTK_PREFIX}_USE_INFOVIS:BOOL=ON"
     if test "$DO_R" = "yes" ; then
-        vopts="${vopts} -D${VTK_PREFIX}_USE_INFOVIS:BOOL=ON"
         vopts="${vopts} -D${VTK_PREFIX}_USE_GNU_R:BOOL=ON"
-        vopts="${vopts} -DR_COMMAND:PATH=$VISITDIR/R/$R_VERSION/$VISITARCH/bin/R"
-        vopts="${vopts} -D${VTK_PREFIX}_R_HOME:PATH=$VISITDIR/R/$R_VERSION/$VISITARCH/lib/R"
-        vopts="${vopts} -DR_INCLUDE_DIR:PATH=$VISITDIR/R/$R_VERSION/$VISITARCH/lib/R/include"
-        vopts="${vopts} -DR_LIBRARY_BASE:PATH=$VISITDIR/R/$R_VERSION/$VISITARCH/lib/R/lib/libR.${SO_EXT}"
-        vopts="${vopts} -DR_LIBRARY_LAPACK:PATH=$VISITDIR/R/$R_VERSION/$VISITARCH/lib/R/lib/libRlapack.${SO_EXT}"
-        vopts="${vopts} -DR_LIBRARY_BLAS:PATH=$VISITDIR/R/$R_VERSION/$VISITARCH/lib/R/lib/libRblas.${SO_EXT}"
+        vopts="${vopts} -DR_COMMAND:PATH=${R_INSTALL_DIR}/bin/R"
+        vopts="${vopts} -D${VTK_PREFIX}_R_HOME:PATH=${R_INSTALL_DIR}/lib/R"
+        vopts="${vopts} -DR_INCLUDE_DIR:PATH=${R_INSTALL_DIR}/lib/R/include"
+        vopts="${vopts} -DR_LIBRARY_BASE:PATH=${R_INSTALL_DIR}/lib/R/lib/libR.${SO_EXT}"
+        vopts="${vopts} -DR_LIBRARY_LAPACK:PATH=${R_INSTALL_DIR}/lib/R/lib/libRlapack.${SO_EXT}"
+        vopts="${vopts} -DR_LIBRARY_BLAS:PATH=${R_INSTALL_DIR}/lib/R/lib/libRblas.${SO_EXT}"
     else
-        vopts="${vopts} -D${VTK_PREFIX}_USE_INFOVIS:BOOL=OFF"
+        vopts="${vopts} -D${VTK_PREFIX}_USE_CHARTS:BOOL=OFF"
     fi
     vopts="${vopts} -D${VTK_PREFIX}_USE_METAIO:BOOL=OFF"
     vopts="${vopts} -D${VTK_PREFIX}_USE_PARALLEL:BOOL=OFF"
@@ -434,9 +406,9 @@ function build_vtk
         # following bourne shell script
         if [[ "$DO_MANGLED_LIBRARIES" == "yes" ]]; then
             #remove python since mangle vtk libraries does not support python (yet:TODO:Fix this)
-            VTK_LIB_NAMES="libMapReduceMPI libmpistubs libmtkCommon libmtkDICOMParser libmtkFiltering libmtkGenericFiltering libmtkGraphics libmtkHybrid libmtkIO libmtkImaging libmtkRendering libmtkVolumeRendering libmtkWidgets libmtkalglib libmtkexpat libmtkfreetype libmtkftgl libmtkjpeg libmtklibxml2 libmtkpng libmtkproj4 libmtksqlite libmtksys libmtktiff libmtkverdict libmtkzlib"
+            VTK_LIB_NAMES="libMapReduceMPI libmpistubs libmtkCommon libmtkDICOMParser libmtkFiltering libmtkGenericFiltering libmtkGeovis libmtkGraphics libmtkHybrid libmtkInfovis libmtkIO libmtkImaging libmtkRendering libmtkViews libmtkVolumeRendering libmtkWidgets libmtkalglib libmtkexpat libmtkfreetype libmtkftgl libmtkjpeg libmtklibxml2 libmtkpng libmtkproj4 libmtksqlite libmtksys libmtktiff libmtkverdict libmtkzlib"
         else
-            VTK_LIB_NAMES="libMapReduceMPI libmpistubs libvtkCommon libvtkCommonPythonD libvtkDICOMParser libvtkFiltering libvtkFilteringPythonD libvtkGenericFiltering libvtkGenericFilteringPythonD libvtkGraphics libvtkGraphicsPythonD libvtkHybrid libvtkHybridPythonD libvtkIO libvtkIOPythonD libvtkImaging libvtkImagingPythonD libvtkPythonCore libvtkRendering libvtkRenderingPythonD libvtkVolumeRendering libvtkVolumeRenderingPythonD libvtkWidgets libvtkWidgetsPythonD libvtkalglib libvtkexpat libvtkfreetype libvtkftgl libvtkjpeg libvtklibxml2 libvtkpng libvtkproj4 libvtksqlite libvtksys libvtktiff libvtkverdict libvtkzlib"
+            VTK_LIB_NAMES="libMapReduceMPI libmpistubs libvtkCommon libvtkCommonPythonD libvtkDICOMParser libvtkFiltering libvtkFilteringPythonD libvtkGenericFiltering libvtkGenericFilteringPythonD libvtkGeovis libGeovisPythonD libvtkGraphics libvtkGraphicsPythonD libvtkHybrid libvtkHybridPythonD libvtkInfovis libvtkInfovisPythonD libvtkIO libvtkIOPythonD libvtkImaging libvtkImagingPythonD libvtkPythonCore libvtkRendering libvtkRenderingPythonD libvtkViews libvtkViewsPythonD libvtkVolumeRendering libvtkVolumeRenderingPythonD libvtkWidgets libvtkWidgetsPythonD libvtkalglib libvtkexpat libvtkfreetype libvtkftgl libvtkjpeg libvtklibxml2 libvtkpng libvtkproj4 libvtksqlite libvtksys libvtktiff libvtkverdict libvtkzlib"
         fi
         for i in $VTK_LIB_NAMES
         do
@@ -478,9 +450,9 @@ function build_vtk
         done
 
         if [[ "$DO_MANGLED_LIBRARIES" == "yes" ]]; then
-            VTK_PYTHON_MOD_LIB_NAMES="mtkCommonPython.so mtkFilteringPython.so mtkGenericFilteringPython.so mtkGraphicsPython.so mtkHybridPython.so mtkIOPython.so mtkImagingPython.so mtkRenderingPython.so mtkVolumeRenderingPython.so"
+            VTK_PYTHON_MOD_LIB_NAMES="mtkCommonPython.so mtkFilteringPython.so mtkGenericFilteringPython.so mtkGeovisPython.so mtkGraphicsPython.so mtkHybridPython.so mtkInfovisPython.so mtkIOPython.so mtkImagingPython.so mtkRenderingPython.so mtkViewsPython.so mtkVolumeRenderingPython.so"
         else
-            VTK_PYTHON_MOD_LIB_NAMES="vtkCommonPython.so vtkFilteringPython.so vtkGenericFilteringPython.so vtkGraphicsPython.so vtkHybridPython.so vtkIOPython.so vtkImagingPython.so vtkRenderingPython.so vtkVolumeRenderingPython.so"
+            VTK_PYTHON_MOD_LIB_NAMES="vtkCommonPython.so vtkFilteringPython.so vtkGenericFilteringPython.so vtkGeovisPython.so vtkGraphicsPython.so vtkHybridPython.so vtkInfovisPython.so vtkIOPython.so vtkImagingPython.so vtkRenderingPython.so vtkViewsPython.so vtkVolumeRenderingPython.so"
         fi
         #
         # Fix vtk python wrapper module intall names.
@@ -496,9 +468,9 @@ function build_vtk
         # The vtk python module libs depend on the main vtk libs,
         # resolve these install names.
         #
-        
-        # The vtk python libs have install names that point to an abs path 
-        # below VTK_BUILD_DIR. 
+
+        # The vtk python libs have install names that point to an abs path
+        # below VTK_BUILD_DIR.
         # We should be in ${VTK_BUILD_DIR}, we just need its abs path
         VTK_BUILD_DIR_ABS=`pwd`
         info "VTK build directory absolute path: $VTK_BUILD_DIR_ABS"
@@ -527,13 +499,17 @@ function build_vtk
 function bv_vtk_is_enabled
 {
     if [[ $DO_VTK == "yes" ]]; then
-        return 1    
+        return 1
     fi
     return 0
 }
 
 function bv_vtk_is_installed
 {
+    if [[ "$USE_SYSTEM_VTK" == "yes" ]]; then
+        return 1
+    fi
+
     check_if_installed "$VTK_INSTALL_DIR" $VTK_VERSION
     if [[ $? == 0 ]] ; then
         return 1
@@ -547,7 +523,7 @@ function bv_vtk_build
     # Build VTK
     #
     cd "$START_DIR"
-    if [[ "$DO_VTK" == "yes" ]] ; then
+    if [[ "$DO_VTK" == "yes" && "$USE_SYSTEM_VTK" == "no" ]] ; then
         check_if_installed $VTK_INSTALL_DIR $VTK_VERSION
         if [[ $? == 0 ]] ; then
             info "Skipping VTK build.  VTK is already installed."

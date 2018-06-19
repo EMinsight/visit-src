@@ -62,10 +62,19 @@
 #include <ViewerState.h>
 #include <VisItException.h>
 #include <Xfer.h>
-
+#include <JSONNode.h>
 #include <snprintf.h>
 
 #include <cstring>
+#include <cstdlib>
+#ifdef _WIN32
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
+
+
+static void CloseSocket(int fd);
 
 // ****************************************************************************
 // Method: CreateViewerProxy 
@@ -458,6 +467,9 @@ ViewerProxy::AddArgument(const std::string &arg)
 //    I added the ability to use a gateway machine when connecting to a
 //    remote host.
 //
+//    Brad Whitlock, Tue Jun  5 16:09:54 PDT 2012
+//    Use simpler RemoteProcess::Open.
+//
 // ****************************************************************************
 
 void
@@ -465,6 +477,114 @@ ViewerProxy::Create(int *inputArgc, char ***inputArgv)
 {
     Create("visit", inputArgc, inputArgv);
 }
+
+bool ViewerProxy::ConnectToExistingViewer(const std::string& host, const int& port, const std::string& password)
+{
+
+    //Step 1: Check and see if connection can be made..
+    int testSocket = socket(AF_INET, SOCK_STREAM, 0);
+    if( testSocket < 0 )
+    {
+        std::cerr << "Socket not created (ERROR)" << std::endl;
+        return false;
+    }
+
+    std::cout << "connecting to host: " << host << " port " << port << std::endl;
+    struct sockaddr_in sin;
+    struct hostent *server = gethostbyname(host.c_str());
+    memset(&sin, 0, sizeof(sin));
+    memcpy(&(sin.sin_addr), server->h_addr, server->h_length);
+    sin.sin_family = AF_INET;
+    sin.sin_port = htons(port);
+
+    if (connect(testSocket,(struct sockaddr*) &sin,sizeof(sin)) < 0)
+    {
+        std::cerr << "Unable to connect to Viewer" << std::endl;
+        CloseSocket(testSocket);
+        return false;
+    }
+
+    //Step 2: Send password to verify that you should be added
+    std::ostringstream handshake;
+    handshake << "{ \"password\" : \"" << password << "\" }";
+
+#ifndef _WIN32
+    int nwrite = write(testSocket,handshake.str().c_str(),handshake.str().length());
+#else
+    int nwrite = _write(testSocket,handshake.str().c_str(),handshake.str().length());
+#endif
+    if(nwrite < 0)
+    {
+        std::cerr << "Error writing to Viewer" << std::endl;
+        CloseSocket(testSocket);
+        return false;
+    }
+
+    //Step 3: receive arguments to establish reverse connection
+
+    char buffer[1024];
+
+#ifndef _WIN32
+    int bytes = read(testSocket,buffer,1024);
+#else
+    int bytes = _read(testSocket,buffer,1024);
+#endif
+    buffer[bytes] = '\0';
+    //std::cout << "bytes read: " << bytes << " " << buffer << std::endl;
+
+    CloseSocket(testSocket);
+    //Step 4: reverse connect same as if it was originally intented..
+
+    //parse message and create new reverse connect
+
+    std::string message = buffer;
+
+    JSONNode node;
+    node.Parse(message);
+
+    stringVector args;
+
+    args.push_back("-v");
+    args.push_back(node.GetJsonObject()["version"].GetString());
+
+    args.push_back("-host");
+    args.push_back(node.GetJsonObject()["host"].GetString());
+
+    args.push_back("-port");
+    args.push_back(node.GetJsonObject()["port"].GetString());
+
+    args.push_back("-key");
+    args.push_back(node.GetJsonObject()["securityKey"].GetString());
+
+    args.push_back("-reverse_launch");
+
+    int inputArgc = args.size();
+
+    char** inputArgv = new char* [inputArgc+1];
+
+    for(int i = 0; i < args.size(); ++i)
+    {
+        inputArgv[i] = new char [args[i].length()+1];
+        strcpy(inputArgv[i],args[i].c_str());
+        inputArgv[i][args[i].length()] = '\0';
+    }
+
+    inputArgv[inputArgc] = NULL;
+
+    // Connect to the viewer process. Our command line arguments
+    // should contain  The viewer is executed using
+    // "visit -viewer".
+    //
+
+    viewerP = new ParentProcess;
+    viewerP->Connect(1, 1, &inputArgc, &inputArgv, true);
+
+    // Use viewerP's connections for xfer.
+    xfer->SetInputConnection(viewerP->GetWriteConnection());
+    xfer->SetOutputConnection(viewerP->GetReadConnection());
+    return true;
+}
+
 
 void
 ViewerProxy::Create(const char *visitProgram, int *inputArgc, char ***inputArgv)
@@ -475,6 +595,20 @@ ViewerProxy::Create(const char *visitProgram, int *inputArgc, char ***inputArgv)
     bool haveRL = false;
     bool haveKey = false;
     bool havePort = false;
+
+    //
+    // check whether client wants to add itself to existing viewer
+    // session
+    //
+    bool haveViewHost = false,
+         haveViewPort = false,
+         haveViewPassword = false;
+
+    std::string add_viewer_host = "";
+    int add_viewer_port = -1;
+    std::string add_viewer_password = "";
+
+
     if(inputArgc != 0 && inputArgv != 0)
     {
         int count = *inputArgc;
@@ -487,36 +621,68 @@ ViewerProxy::Create(const char *visitProgram, int *inputArgc, char ***inputArgv)
                 haveKey = true;
             else if(strcmp(arg[i], "-port") == 0)
                 havePort = true;
+            else if(strcmp(arg[i], "-viewer_host") == 0)
+            {
+                //TODO: handle command line args
+                add_viewer_host = arg[i+1];
+                haveViewHost = true;
+                ++i;
+            }
+            else if(strcmp(arg[i], "-viewer_port") == 0)
+            {
+                add_viewer_port = atoi(arg[i+1]);
+                haveViewPort = true;
+                ++i;
+            }
+            else if(strcmp(arg[i], "-viewer_password") == 0)
+            {
+                add_viewer_password = arg[i+1];
+                haveViewPassword = true;
+                ++i;
+            }
         }
     }
+    bool addNewClientToViewer = haveViewHost &&
+                                haveViewPort &&
+                                haveViewPassword;
     bool reverseLaunch = haveRL && haveKey && havePort;
 
     if(!reverseLaunch)
     {
-        //
-        // Create the viewer process.  The viewer is executed using
-        // "visit -viewer".
-        //
-        viewer = new RemoteProcess(std::string(visitProgram));
-        viewer->AddArgument(std::string("-viewer"));
+        if(!addNewClientToViewer)
+        {
+            //
+            // Create the viewer process.  The viewer is executed using
+            // "visit -viewer".
+            //
+            viewer = new RemoteProcess(std::string(visitProgram));
+            viewer->AddArgument(std::string("-viewer"));
 
-        //
-        // Add any extra arguments to the viewer before opening it.
-        //
-        for (int i = 0; i < argv.size(); ++i)
-            viewer->AddArgument(argv[i]);
+            //
+            // Add any extra arguments to the viewer before opening it.
+            //
+            for (size_t i = 0; i < argv.size(); ++i)
+                viewer->AddArgument(argv[i]);
 
-        //
-        // Open the viewer.
-        //
-        viewer->Open("localhost",
-                     MachineProfile::MachineName, "", 
-                     false, 0, false, false, "",
-                     1, 1);
+            //
+            // Open the viewer.
+            //
+            viewer->Open(MachineProfile::Default(), 1, 1);
 
-        // Use viewer's connections for xfer.
-        xfer->SetInputConnection(viewer->GetWriteConnection());
-        xfer->SetOutputConnection(viewer->GetReadConnection());
+            // Use viewer's connections for xfer.
+            xfer->SetInputConnection(viewer->GetWriteConnection());
+            xfer->SetOutputConnection(viewer->GetReadConnection());
+        }
+        else
+        {
+            std::cout << "Adding new client to viewer at :" << add_viewer_host << " "
+                      << add_viewer_port << std::endl;
+            if(!ConnectToExistingViewer(add_viewer_host,add_viewer_port,add_viewer_password))
+            {
+                EXCEPTION1(ImproperUseException, "ViewerProxy::Create called with invalid pre-existing Viewer information");
+
+            }
+        }
     }
     else
     {
@@ -680,7 +846,6 @@ ViewerProxy::InitializePlugins(PluginManager::PluginCategory t, const char *plug
 void
 ViewerProxy::LoadPlugins()
 {
-    int i;
     int nPlots = state->GetNumPlotStateObjects();
     int nOperators = state->GetNumOperatorStateObjects();
     if (nPlots > 0 || nOperators > 0)
@@ -700,7 +865,7 @@ ViewerProxy::LoadPlugins()
     // by the plugin attributes
     //
     PluginManagerAttributes *pluginManagerAttributes = state->GetPluginManagerAttributes();
-    for (i=0; i<pluginManagerAttributes->GetId().size(); i++)
+    for (size_t i=0; i<pluginManagerAttributes->GetId().size(); i++)
     {
         if (! pluginManagerAttributes->GetEnabled()[i]) // not enabled
         {
@@ -756,7 +921,7 @@ ViewerProxy::LoadPlugins()
     // Initialize the plot attribute state objects.
     //
     nPlots = plotPlugins->GetNEnabledPlugins();
-    for (i = 0; i < nPlots; ++i)
+    for (int i = 0; i < nPlots; ++i)
     {
         CommonPlotPluginInfo *info =
             plotPlugins->GetCommonPluginInfo(plotPlugins->GetEnabledID(i));
@@ -771,7 +936,7 @@ ViewerProxy::LoadPlugins()
     // Initialize the operator attribute state objects.
     //
     nOperators = operatorPlugins->GetNEnabledPlugins();
-    for (i = 0; i < nOperators; ++i)
+    for (int i = 0; i < nOperators; ++i)
     {
         CommonOperatorPluginInfo *info = 
             operatorPlugins->GetCommonPluginInfo(operatorPlugins->GetEnabledID(i));
@@ -1023,10 +1188,10 @@ ViewerProxy::MethodRequestHasRequiredInformation() const
         }
         else
         {
-            int sCount = 0; 
-            int dCount = 0;
-            int iCount = 0;
-            for(int i = 0; i < proto.size(); ++i)
+            size_t sCount = 0; 
+            size_t dCount = 0;
+            size_t iCount = 0;
+            for(size_t i = 0; i < proto.size(); ++i)
             {
                 if(proto[i] == 's')
                     ++sCount;
@@ -1087,3 +1252,28 @@ ViewerProxy::SetXferUpdate(bool val)
 {
     xfer->SetUpdate(val);
 }
+
+
+// ****************************************************************************
+//  Method:  CloseSocket
+//
+//  Purpose:
+//    Close a socket file descriptor.
+//
+//  Programmer:  Jeremy Meredith
+//  Creation:    May 24, 2007
+//
+// ****************************************************************************
+static void
+CloseSocket(int fd)
+{
+    if (fd < 0)
+        return;
+
+#if defined(_WIN32)
+    closesocket(fd);
+#else
+    close(fd);
+#endif
+}
+

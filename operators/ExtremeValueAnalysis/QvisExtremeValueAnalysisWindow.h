@@ -55,7 +55,6 @@ class QvisColorButton;
 class QvisLineStyleWidget;
 class QvisLineWidthWidget;
 class QvisVariableButton;
-class QComboBox;
 
 // ****************************************************************************
 // Class: QvisExtremeValueAnalysisWindow
@@ -87,17 +86,24 @@ class QvisExtremeValueAnalysisWindow : public QvisOperatorWindow
     void UpdateWindow(bool doAll);
     virtual void GetCurrentValues(int which_widget);
   private slots:
-    void computeMaxesChanged(int val);
-    void DisplayMonthChanged(int val);
-    void RCodeDirProcessText();
+    void aggregationChanged(int val);
+    void displayMonthChanged(int val);
+    void displaySeasonChanged(int val);
+    void dumpDataChanged(bool val);
+    void dataScalingProcessText();
   private:
-    QWidget      *computeMaxes;
-    QButtonGroup *computeMaxesButtonGroup;
-    QComboBox    *displayMonthType;
-    QLineEdit *RCodeDir;
-    QLabel *computeMaxesLabel;
-    QLabel *DisplayMonthLabel;
-    QLabel *RCodeDirLabel;
+    QWidget      *aggregation;
+    QButtonGroup *aggregationButtonGroup;
+    QWidget      *displayMonth;
+    QButtonGroup *displayMonthButtonGroup;
+    QWidget      *displaySeason;
+    QButtonGroup *displaySeasonButtonGroup;
+    QCheckBox *dumpData;
+    QLineEdit *dataScaling;
+    QLabel *aggregationLabel;
+    QLabel *displayMonthLabel;
+    QLabel *displaySeasonLabel;
+    QLabel *dataScalingLabel;
 
     ExtremeValueAnalysisAttributes *atts;
 };

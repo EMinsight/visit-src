@@ -1459,7 +1459,7 @@ avtCGNSFileFormat::GetMesh(int timestate, int domain, const char *meshname)
                 retval = GetCurvilinearMesh(timestate, base, zone, meshname, zsize, cell_dim, phys_dim);
                 break;
             case Unstructured:
-                retval = GetUnstructuredMesh(timestate, base, zone, meshname, zsize, phys_dim);
+                retval = GetUnstructuredMesh(timestate, base, zone, meshname, zsize, cell_dim, phys_dim);
                 break;
             }
         }
@@ -1767,7 +1767,7 @@ avtCGNSFileFormat::GetCurvilinearMesh(int timestate, int base, int zone, const c
 
 vtkDataSet *
 avtCGNSFileFormat::GetUnstructuredMesh(int timestate, int base, int zone, const char *meshname,
-    const cgsize_t *zsize, int phys_dim)
+    const cgsize_t *zsize, int cell_dim, int phys_dim)
 {
     const char *mName = "avtCGNSFileFormat::GetUnstructuredMesh: ";
     vtkDataSet *retval = 0;
@@ -1824,6 +1824,7 @@ avtCGNSFileFormat::GetUnstructuredMesh(int timestate, int base, int zone, const 
                 char sectionname[33];
                 ElementType_t et = ElementTypeNull;
                 cgsize_t start = 1, end = 1;
+                cgsize_t elementSizeInterior = 0;
                 int bound = 0, parent_flag = 0;
                 if(cg_section_read(GetFileHandle(), base, zone, sec, sectionname, &et,
                     &start, &end, &bound, &parent_flag) != CG_OK)
@@ -1837,6 +1838,10 @@ avtCGNSFileFormat::GetUnstructuredMesh(int timestate, int base, int zone, const 
                     debug4 << mName << "parent_flag = " << parent_flag << endl;
                     continue;
                 }
+                if(cell_dim == phys_dim)
+                    elementSizeInterior = (end-start+1)-bound;
+                else
+                    elementSizeInterior = (end-start+1);
 
                 cgsize_t eDataSize = 0;
                 if(cg_ElementDataSize(GetFileHandle(), base, zone, sec, &eDataSize) != CG_OK)
@@ -1865,6 +1870,7 @@ avtCGNSFileFormat::GetUnstructuredMesh(int timestate, int base, int zone, const 
                 debug4 << "section " << sec << ": elementType=";
                 PrintElementType(et);
                 debug4 << " start=" << start << " end=" << end << " bound=" << bound
+                       << " interior elements=" << elementSizeInterior
                        << " parent_flag=" << parent_flag << endl;
 
                 //
@@ -1872,7 +1878,7 @@ avtCGNSFileFormat::GetUnstructuredMesh(int timestate, int base, int zone, const 
                 //
                 vtkIdType verts[27];
                 const cgsize_t *elem = elements;
-                for(cgsize_t icell = 0; icell < (end-start+1); ++icell)
+                for(cgsize_t icell = 0; icell < elementSizeInterior; ++icell)
                 {
                     // If we're reading mixed elements then the element type 
                     // comes first.

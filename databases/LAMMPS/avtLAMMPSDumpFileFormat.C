@@ -547,6 +547,14 @@ avtLAMMPSDumpFileFormat::ReadTimeStep(int timestep)
 //    Jeremy Meredith, Tue Apr 27 14:41:11 EDT 2010
 //    The number of atoms can now vary per timestep.
 //
+//    Matthew Wheeler, Fri Aug 31 15:51:00 BST 2012
+//    Modified and rearranged the BOX BOUNDS code to ignore irrelevant trailing
+//    boundary style fields, so data is handled as in the LAMMPS documentation.
+//
+//    Satheesh Maheswaran, Fri Oct 19 13:52:00 BST 2012
+//    Added options for reading atom coordinates.  The reader can now handle
+//    options xu,yu,zu and xsu,ysu,zsu
+//
 // ****************************************************************************
 void
 avtLAMMPSDumpFileFormat::ReadAllMetaData()
@@ -574,19 +582,19 @@ avtLAMMPSDumpFileFormat::ReadAllMetaData()
             in.getline(buff,1000);
             cycles.push_back(strtol(buff, NULL, 10));
         }
-        else if (item == "BOX BOUNDS")
-        {
-            in >> xMin >> xMax;
-            in >> yMin >> yMax;
-            in >> zMin >> zMax;
-            in.getline(buff, 1000); // get rest of Z line
-        }
-        else if (item == "BOX BOUNDS xy xz yz")
+        else if (item.substr(0,19) == "BOX BOUNDS xy xz yz")
         {
             float xy, xz, yz;
             in >> xMin >> xMax >> xy;
             in >> yMin >> yMax >> xz;
             in >> zMin >> zMax >> yz;
+            in.getline(buff, 1000); // get rest of Z line
+        }
+        else if (item.substr(0,10) == "BOX BOUNDS")
+        {
+            in >> xMin >> xMax;
+            in >> yMin >> yMax;
+            in >> zMin >> zMax;
             in.getline(buff, 1000); // get rest of Z line
         }
         else if (item == "NUMBER OF ATOMS")
@@ -610,18 +618,21 @@ avtLAMMPSDumpFileFormat::ReadAllMetaData()
                         idIndex = varNames.size();
                     else if (varName == "type")
                         speciesIndex = varNames.size();
-                    else if (varName == "x" || varName == "xs")
+                    else if (varName == "x" || varName == "xs" || 
+                               varName == "xu" || varName == "xsu" )
                         xIndex = varNames.size();
-                    else if (varName == "y" || varName == "ys")
+                    else if (varName == "y" || varName == "ys" ||
+                               varName == "yu" || varName == "ysu" )
                         yIndex = varNames.size();
-                    else if (varName == "z" || varName == "zs")
+                    else if (varName == "z" || varName == "zs" ||
+                               varName == "zu" || varName == "zsu" )
                         zIndex = varNames.size();
 
-                    if (varName == "xs")
+                    if (varName == "xs" || "xsu")
                         xScaled = true;
-                    if (varName == "ys")
+                    if (varName == "ys" || "ysu")
                         yScaled = true;
-                    if (varName == "zs")
+                    if (varName == "zs" || "zsu")
                         zScaled = true;
 
                     varNames.push_back(varName);

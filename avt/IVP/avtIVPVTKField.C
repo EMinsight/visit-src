@@ -68,7 +68,7 @@
 // ****************************************************************************
 
 avtIVPVTKField::avtIVPVTKField( vtkDataSet* dataset, avtCellLocator* locator ) 
-    : ds(dataset), loc(locator), normalized(false)
+    : ds(dataset), loc(locator)
 {
     if( ds )
         ds->Register( NULL );
@@ -156,18 +156,16 @@ avtIVPVTKField::GetExtents( double extents[6] ) const
 //
 // ****************************************************************************
 
-bool
+avtIVPField::Result
 avtIVPVTKField::FindCell( const double& time, const avtVector& pos ) const
 {
-    if( pos != lastPos )
+    if (pos != lastPos)
     {
         lastPos  = pos;
-        
-        if( -1 == (lastCell = loc->FindCell( &pos.x, &lastWeights, false )) )
-            return false;
+        lastCell = loc->FindCell(&pos.x, &lastWeights, false);
     }       
 
-    return lastCell != -1;
+    return (lastCell != -1 ? OK : OUTSIDE_SPATIAL);
 }
 
 // ****************************************************************************
@@ -195,10 +193,10 @@ avtIVPVTKField::FindCell( const double& time, const avtVector& pos ) const
 avtIVPField::Result
 avtIVPVTKField::operator()( const double &t, const avtVector &p, avtVector &retV ) const
 {
-    if( !FindCell( t, p ) )
-        return( avtIVPSolverResult::OUTSIDE_DOMAIN );
-
-    return FindValue( velData, retV );
+    if (FindCell(t, p) != OK || !FindValue(velData, retV))
+        return OUTSIDE_SPATIAL;
+    
+    return OK;
 }
 
 // ****************************************************************************
@@ -212,19 +210,19 @@ avtIVPVTKField::operator()( const double &t, const avtVector &p, avtVector &retV
 //
 // ****************************************************************************
 
-avtIVPField::Result
-avtIVPVTKField::FindValue( vtkDataArray* vectorData, avtVector &vel ) const
+bool
+avtIVPVTKField::FindValue(vtkDataArray *vectorData, avtVector &vel) const
 {
     vel.x = vel.y = vel.z = 0.0;
 
-    if( velCellBased )
-        vectorData->GetTuple( lastCell, &vel.x );
+    if (velCellBased)
+        vectorData->GetTuple(lastCell, &vel.x);
     else
     {
         double tmp[3];
 
-        for( avtInterpolationWeights::const_iterator wi=lastWeights.begin();
-             wi!=lastWeights.end(); ++wi )
+        for (avtInterpolationWeights::const_iterator wi=lastWeights.begin();
+             wi!=lastWeights.end(); ++wi)
         {
             vectorData->GetTuple( wi->i, tmp );
 
@@ -234,15 +232,7 @@ avtIVPVTKField::FindValue( vtkDataArray* vectorData, avtVector &vel ) const
         }
     }
 
-    if( normalized )
-    {
-        double len = vel.length();
-
-        if( len )
-            vel /= len;
-    }
-
-    return( avtIVPSolverResult::OK );
+    return true;
 }
 
 
@@ -380,7 +370,7 @@ avtIVPVTKField::ComputeScalarVariable(unsigned char index,
     if( data == NULL )
         return 0.0;
 
-    if( !FindCell( t, pt ) )
+    if (FindCell(t, pt) != OK)
         return 0.0;
 
     double result = 0.0, tmp;
@@ -463,10 +453,10 @@ avtIVPVTKField::SetScalarVariable(unsigned char index, const std::string& name)
 //    
 // ****************************************************************************
 
-bool
+avtIVPField::Result
 avtIVPVTKField::IsInside( const double& t, const avtVector &pt ) const
 {
-    return loc->FindCell( &pt.x, NULL, true ) > 0;
+    return (loc->FindCell(&pt.x, NULL, true) > 0 ? OK : OUTSIDE_SPATIAL);
 }
 
 // ****************************************************************************
@@ -491,23 +481,6 @@ avtIVPVTKField::GetDimension() const
 {
     return 3;
 }  
-
-// ****************************************************************************
-//  Method: avtIVPVTKField::SetNormalized
-//
-//  Purpose:
-//      Sets field normalization.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   August 6, 2008
-//
-// ****************************************************************************
-
-void
-avtIVPVTKField::SetNormalized( bool v )
-{
-    normalized = v;
-}
 
 // ****************************************************************************
 //  Method: avtIVPVTKField::GetTimeRange

@@ -92,7 +92,7 @@ function configure_support_files
                     continue
                 fi
                 if [[ $choice == "curl" ]]; then
-                    tmp_curl=`curl -s ${webaddr}/|grep sh|grep li|sed s/.*bv_/bv_/g | sed -e s/\.sh.*/\.sh/g | sed -e s/.*href\=\"//g;`
+                    tmp_curl=`curl -s ${webaddr}/ | grep 'sh\|xml' | grep li|sed s/.*bv_/bv_/g | sed -e s/\.sh.*/\.sh/g | sed -e s/.*href\=\"//g;`
 
                     if [ $? != 0 ]; then 
                         continue
@@ -150,6 +150,15 @@ configure_support_files
 
 #import visit
 . $bv_PREFIX/bv_visit.sh
+
+#handle -h or --help arg early to avoid delays
+for arg in "$@";
+do
+    if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
+        usage
+        exit 2
+    fi
+done
 
 #These options can be read from a file..
 . $bv_PREFIX/bv_xml_parser.sh

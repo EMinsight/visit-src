@@ -88,6 +88,12 @@
 //    Kathleen Biagas, Tue Jul 26 12:36:11 PDT 2011
 //    Changed default nx,ny to 200 (per Eric).
 //
+//    Kathleen Biagas, Wed Oct 17 12:10:25 PDT 2012
+//    Added upVector.
+//
+//    Kathleen Biagas, Wed Oct 17 14:39:41 PDT 2012
+//    Added useSpecifiedUpVector.
+//
 // ****************************************************************************
 
 avtXRayImageQuery::avtXRayImageQuery():
@@ -97,6 +103,9 @@ avtXRayImageQuery::avtXRayImageQuery():
     origin[0] = 0.0;
     origin[1] = 0.0;
     origin[2] = 0.0;
+    upVector[0] = 0.0;
+    upVector[1] = 1.0;
+    upVector[2] = 0.0;
     theta  = 0.0;
     phi    = 0.0;
     width  = 1.0;
@@ -106,6 +115,7 @@ avtXRayImageQuery::avtXRayImageQuery():
     numPixels = nx * ny;
     divideEmisByAbsorb = false;
     outputType = 2; // png
+    useSpecifiedUpVector = true;
 }
 
 
@@ -133,6 +143,13 @@ avtXRayImageQuery::~avtXRayImageQuery()
 //  Programmer: Kathleen Biagas 
 //  Creation:   May 17, 2011
 //
+//  Modifications:
+//    Kathleen Biagas, Wed Oct 17 12:10:25 PDT 2012
+//    Added upVector.
+//
+//    Kathleen Biagas, Wed Oct 17 14:39:41 PDT 2012
+//    Added useSpecifiedUpVector.
+//
 // ****************************************************************************
 
 void
@@ -149,6 +166,14 @@ avtXRayImageQuery::SetInputParams(const MapNode &params)
             SetOrigin(params.GetEntry("origin")->AsDoubleVector());
         else if (params.GetEntry("origin")->TypeName() == "intVector")
             SetOrigin(params.GetEntry("origin")->AsIntVector());
+    }
+
+    if (params.HasEntry("up_vector"))
+    {
+        if (params.GetEntry("up_vector")->TypeName() == "doubleVector")
+            SetUpVector(params.GetEntry("up_vector")->AsDoubleVector());
+        else if (params.GetEntry("up_vector")->TypeName() == "intVector")
+            SetUpVector(params.GetEntry("up_vector")->AsIntVector());
     }
 
     if (params.HasEntry("theta"))
@@ -195,6 +220,13 @@ avtXRayImageQuery::SetInputParams(const MapNode &params)
             SetOutputType(params.GetEntry("output_type")->AsInt());
         else if (params.GetEntry("output_type")->TypeName() == "string")
             SetOutputType(params.GetEntry("output_type")->AsString());
+    }
+
+    // this is not a normal parameter, it is set by the cli when the query
+    // is called with the deprecated argument parsing.
+    if (params.HasEntry("useUpVector"))
+    {
+        useSpecifiedUpVector = params.GetEntry("useUpVector")->AsInt();
     }
 }
 
@@ -253,6 +285,36 @@ avtXRayImageQuery::SetOrigin(const intVector &_origin)
     origin[0] = (double)_origin[0];
     origin[1] = (double)_origin[1];
     origin[2] = (double)_origin[2];
+}
+
+
+// ****************************************************************************
+//  Method: avtXRayImageQuery::SetUpVector
+//
+//  Purpose:
+//    Set the up-vector of the image plane.
+//
+//  Programmer: Kathleen Biagas
+//  Creation:   October 17, 2012
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+void
+avtXRayImageQuery::SetUpVector(const doubleVector &_upvector)
+{
+    upVector[0] = _upvector[0];
+    upVector[1] = _upvector[1];
+    upVector[2] = _upvector[2];
+}
+
+void
+avtXRayImageQuery::SetUpVector(const intVector &_upvector)
+{
+    upVector[0] = (double)_upvector[0];
+    upVector[1] = (double)_upvector[1];
+    upVector[2] = (double)_upvector[2];
 }
 
 
@@ -489,6 +551,9 @@ avtXRayImageQuery::GetSecondaryVars(std::vector<std::string> &outVars)
 //    Eric Brugger, Mon May 14 10:35:27 PDT 2012
 //    I added the bov output type.
 //
+//    Kathleen Biagas, Wed Oct 17 14:41:28 PDT 2012
+//    Send upVector to avtXRayFilter.
+//
 // ****************************************************************************
 
 void
@@ -537,7 +602,11 @@ avtXRayImageQuery::Execute(avtDataTree_p tree)
     avtDataObject_p dob = termsrc.GetOutput();
 
     avtXRayFilter *filt = new avtXRayFilter;
-    filt->SetImageProperties(origin, theta, phi, width, height, nx, ny);
+    if (useSpecifiedUpVector)
+        filt->SetImageProperties(origin,upVector,theta,phi,width,height,nx,ny);
+    else 
+        filt->SetImageProperties(origin,NULL,theta,phi,width,height,nx,ny);
+
     filt->SetDivideEmisByAbsorb(divideEmisByAbsorb);
     filt->SetVariableNames(absVarName, emisVarName);
     filt->SetInput(dob);
@@ -839,6 +908,8 @@ avtXRayImageQuery::WriteBOVHeader(int iImage, int nx, int ny, char *type)
 //  Creation:   July 15, 2011
 //
 //  Modifications:
+//    Kathleen Biagas, Wed Oct 17 12:10:25 PDT 2012
+//    Added up_vector.
 //
 // ****************************************************************************
 
@@ -852,6 +923,12 @@ avtXRayImageQuery::GetDefaultInputParams(MapNode &params)
     o.push_back(0.0);
     o.push_back(0.0);
     params["origin"] = o;
+
+    doubleVector uv;
+    uv.push_back(0.0);
+    uv.push_back(1.0);
+    uv.push_back(0.0);
+    params["up_vector"] = uv;
 
     params["theta"] = 0.0;
     params["phi"] = 0.0;

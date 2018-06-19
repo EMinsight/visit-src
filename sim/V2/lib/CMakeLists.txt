@@ -35,6 +35,8 @@
 # DAMAGE.
 #
 # Modifications:
+#   Dirk Schubert (Allinea Software), Mon Oct 15, 2012
+#   Build symV2dyn only if VISIT_DDT is chosen.
 #
 #****************************************************************************/
 
@@ -75,12 +77,26 @@ ${CMAKE_CURRENT_SOURCE_DIR}
 ${VISIT_BINARY_DIR}/include
 )
 
-ADD_LIBRARY(simV2 ${LIBSIM_SOURCES})
+IF(VISIT_DDT)
+    # Allinea Software:
+    # Create a libsimV2.so shared library for the standard VisIt
+    # interface (normally provided by statically linking with libsimV2.a).
+    # -fvisibility is set to default (it is normally hidden).
+    # Preferred solution would be to tag each function to be exposed in
+    # the shared library individually instead of exposing everything,
+    # but this will do for now. Also provide debug info.
+    ADD_DEFINITIONS(-g -fvisibility=default)
+    ADD_LIBRARY(simV2dyn SHARED ${LIBSIM_SOURCES})
 
+    SET(LIBSIM_DYN simV2dyn)
+ENDIF(VISIT_DDT)
+
+ADD_LIBRARY(simV2 ${LIBSIM_SOURCES})
 ADD_LIBRARY(simV2f ${FORTRAN_LIBSIM_SOURCES})
 
-INSTALL(TARGETS simV2 simV2f
-    ARCHIVE DESTINATION ${VISIT_INSTALLED_VERSION}/libsim/V2/lib   
+INSTALL(TARGETS simV2 simV2f ${LIBSIM_DYN}
+    ARCHIVE DESTINATION ${VISIT_INSTALLED_VERSION}/libsim/V2/lib
+    LIBRARY DESTINATION ${VISIT_INSTALLED_VERSION}/libsim/V2/lib
     PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_WRITE GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
 )
 INSTALL(FILES 

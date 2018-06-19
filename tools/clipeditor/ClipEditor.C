@@ -57,6 +57,9 @@
 //    Jeremy Meredith, Tue Aug 29 16:13:43 EDT 2006
 //    Added Line and Vertex shapes.  Added copyright string.
 //
+//    Jeremy Meredith, Mon Jul  9 15:22:06 EDT 2012
+//    Added 5- thru 8-sided polygon shapes.
+//
 // ----------------------------------------------------------------------------
 
 #include "ClipEditor.h"
@@ -65,7 +68,11 @@
 #include "Viewer.h"
 
 #include <stdlib.h>
-#include <visitstream.h>
+#include <iostream>
+#include <fstream>
+#include <QKeyEvent>
+
+using namespace std;
 
 std::string copyright_str = 
 "/*****************************************************************************\n"
@@ -246,8 +253,8 @@ inline char StrToNodeWithConversion(const char *c)
 }
 
 ClipEditor::ClipEditor(const QString &st,
-                     QWidget *parent, const QString &name) :
-        QMainWindow(parent, name)
+                       QWidget *parent) :
+    QMainWindow(parent)
 {
     if (st.left(3) == "hex")
     {
@@ -299,6 +306,26 @@ ClipEditor::ClipEditor(const QString &st,
         ncases    = 2;
         shapetype = ST_VERTEX;
     }
+    else if (st == "poly5")
+    {
+        ncases    = 32;
+        shapetype = ST_POLY5;
+    }
+    else if (st == "poly6")
+    {
+        ncases    = 64;
+        shapetype = ST_POLY6;
+    }
+    else if (st == "poly7")
+    {
+        ncases    = 128;
+        shapetype = ST_POLY7;
+    }
+    else if (st == "poly8")
+    {
+        ncases    = 256;
+        shapetype = ST_POLY8;
+    }
     else
     {
         cerr << "Expected a valid shape type\n";
@@ -306,7 +333,7 @@ ClipEditor::ClipEditor(const QString &st,
     }
 
 
-    viewer = new Viewer(this, "Viewer Widget");
+    viewer = new Viewer(this);
     setCentralWidget(viewer);
     textMode = TM_MAIN;
     defaultcolor = 0;
@@ -399,7 +426,7 @@ ClipEditor::keyPressEvent(QKeyEvent *kev)
                 cerr << endl;
             }
         }
-        else if (kev->key() == Qt::Key_Prior)
+        else if (kev->key() == Qt::Key_PageUp)
         {
             int oldindex = caseindex;
             caseindex--;
@@ -423,7 +450,7 @@ ClipEditor::keyPressEvent(QKeyEvent *kev)
                 cerr << "No previous unique cases\n";
             }
         }
-        else if (kev->key() == Qt::Key_Next)
+        else if (kev->key() == Qt::Key_PageDown)
         {
             int oldindex = caseindex;
             caseindex++;
@@ -451,7 +478,7 @@ ClipEditor::keyPressEvent(QKeyEvent *kev)
         {
             if (datasets[caseindex]->copyOfDataset)
             {
-                cerr << "Read-only case!\n";
+                cerr << "This case is not unique; it is a copy and thus cannot be modified.\n";
             }
             else
             {
@@ -463,7 +490,7 @@ ClipEditor::keyPressEvent(QKeyEvent *kev)
         {
             if (datasets[caseindex]->copyOfDataset)
             {
-                cerr << "Read-only case!\n";
+                cerr << "This case is not unique; it is a copy and thus cannot be modified.\n";
             }
             else
             {
@@ -481,7 +508,7 @@ ClipEditor::keyPressEvent(QKeyEvent *kev)
         {
             if (datasets[caseindex]->copyOfDataset)
             {
-                cerr << "Read-only case!\n";
+                cerr << "This case is not unique; it is a copy and thus cannot be modified.\n";
             }
             else
             {
@@ -499,7 +526,7 @@ ClipEditor::keyPressEvent(QKeyEvent *kev)
         {
             if (datasets[caseindex]->copyOfDataset)
             {
-                cerr << "Read-only case!\n";
+                cerr << "This case is not unique; it is a copy and thus cannot be modified.\n";
             }
             else
             {
@@ -540,7 +567,7 @@ ClipEditor::keyPressEvent(QKeyEvent *kev)
         {
             if (datasets[caseindex]->copyOfDataset)
             {
-                cerr << "Read-only case!\n";
+                cerr << "This case is not unique; it is a copy and thus cannot be modified.\n";
             }
             else
             {
@@ -555,7 +582,7 @@ ClipEditor::keyPressEvent(QKeyEvent *kev)
         {
             if (datasets[caseindex]->copyOfDataset)
             {
-                cerr << "Read-only case!\n";
+                cerr << "This case is not unique; it is a copy and thus cannot be modified.\n";
             }
             else
             {
@@ -569,7 +596,7 @@ ClipEditor::keyPressEvent(QKeyEvent *kev)
         {
             if (datasets[caseindex]->copyOfDataset)
             {
-                cerr << "Read-only case!\n";
+                cerr << "This case is not unique; it is a copy and thus cannot be modified.\n";
             }
             else
             {
@@ -671,7 +698,7 @@ ClipEditor::keyPressEvent(QKeyEvent *kev)
             }
             else
             {
-                cerr << "Invalid shape type " << kev->text() << endl;
+                cerr << "Invalid shape type " << kev->text().toStdString() << endl;
             }
         }
         else if (addedpoints == -1)
@@ -721,7 +748,7 @@ ClipEditor::keyPressEvent(QKeyEvent *kev)
             }
             else
             {
-                cerr << "Invalid key " << kev->text() << endl;
+                cerr << "Invalid key " << kev->text().toStdString() << endl;
             }
 
             if (addedpoints == npts)
@@ -763,6 +790,10 @@ ClipEditor::LoadFromFile()
       case ST_TRIANGLE:lower="Tri"; upper="TRI"; break;
       case ST_LINE:    lower="Lin"; upper="LIN"; break;
       case ST_VERTEX:  lower="Vtx"; upper="VTX"; break;
+      case ST_POLY5:   lower="Poly5"; upper="POLY5"; break;
+      case ST_POLY6:   lower="Poly6"; upper="POLY6"; break;
+      case ST_POLY7:   lower="Poly7"; upper="POLY7"; break;
+      case ST_POLY8:   lower="Poly8"; upper="POLY8"; break;
       default: cerr << "Error\n"; break;
     }
     sprintf(fname, "ClipCases%s.C", lower);
@@ -998,6 +1029,10 @@ ClipEditor::SaveToFile()
       case ST_TRIANGLE:lower="Tri"; upper="TRI"; break;
       case ST_LINE:    lower="Lin"; upper="LIN"; break;
       case ST_VERTEX:  lower="Vtx"; upper="VTX"; break;
+      case ST_POLY5:   lower="Poly5"; upper="POLY5"; break;
+      case ST_POLY6:   lower="Poly6"; upper="POLY6"; break;
+      case ST_POLY7:   lower="Poly7"; upper="POLY7"; break;
+      case ST_POLY8:   lower="Poly8"; upper="POLY8"; break;
       default: cerr << "Error\n"; break;
     }
     sprintf(fname, "ClipCases%s.C", lower);

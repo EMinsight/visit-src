@@ -621,7 +621,7 @@ GUI_LogQtMessages(QtMsgType type, const char *msg)
 //
 // ****************************************************************************
 
-QvisGUIApplication::QvisGUIApplication(int &argc, char **argv) :
+QvisGUIApplication::QvisGUIApplication(int &argc, char **argv, ViewerProxy *proxy) :
     ConfigManager(), GUIBase(), windowNames(), message(), plotWindows(),
     operatorWindows(), otherWindows(), foregroundColor(), backgroundColor(),
     applicationStyle(), applicationLocale("default"), loadFile(), sessionFile(), 
@@ -703,9 +703,10 @@ QvisGUIApplication::QvisGUIApplication(int &argc, char **argv) :
     savedGUILocation[1] = 0;
 
     // Create the viewer, statusSubject, and fileServer for GUIBase.
-    SetViewerProxy(new ViewerProxy());
+    SetViewerProxy( proxy ? proxy : new ViewerProxy());
     statusSubject = new StatusSubject;
     fileServer = new FileServerList;
+    embeddedGUI = false;
 
     // Process any GUI arguments that should not be passed on to other programs.
     // This also has the effect of setting color/style attributes. This must
@@ -759,7 +760,18 @@ QvisGUIApplication::QvisGUIApplication(int &argc, char **argv) :
 
     debug1 << "QvisApplication::QvisApplication: -font " << qt_argv[argc+1] << endl;
     qInstallMsgHandler(GUI_LogQtMessages);
-    mainApp = new QvisApplication(qt_argc, qt_argv);
+
+    if(QApplication::instance()) //if application instance already exists..
+    {
+        mainApp = dynamic_cast<QApplication*>(QApplication::instance());
+        inheritedGUI = true;
+    }
+    else
+    {
+        mainApp = new QvisApplication(qt_argc, qt_argv);
+        inheritedGUI = false;
+    }
+
     SetWaitCursor();
     GetViewerState()->GetAppearanceAttributes()->SelectAll();
 
@@ -1018,7 +1030,8 @@ QvisGUIApplication::~QvisGUIApplication()
     delete fromViewer;
 
     // Delete the application
-    delete mainApp;
+    if(!inheritedGUI)
+        delete mainApp;
 
     // Delete the args for QT
     for (i = 0 ; i < qt_argc ; i++)
@@ -1065,7 +1078,7 @@ QvisGUIApplication::Init(int stage)
 // ****************************************************************************
 // Method: QvisGUIApplication::HeavyInitialization
 //
-// Purpose: 
+// Purpose:
 //   This method performs the heavy initialization for which we want progress
 //   to be displayed in the splashscreen. This includes launching the viewer
 //   and the mdserver.
@@ -1157,12 +1170,14 @@ QvisGUIApplication::HeavyInitialization()
         break;
     case 5:
         // Create the socket notifier and hook it up to the viewer.
-        fromViewer = new QSocketNotifier(
-            GetViewerProxy()->GetWriteConnection()->GetDescriptor(),
-            QSocketNotifier::Read);
-        connect(fromViewer, SIGNAL(activated(int)),
-                this, SLOT(ReadFromViewer(int)));
-
+        if(!inheritedGUI)
+        {
+            fromViewer = new QSocketNotifier(
+                GetViewerProxy()->GetWriteConnection()->GetDescriptor(),
+                QSocketNotifier::Read);
+            connect(fromViewer, SIGNAL(activated(int)),
+                    this, SLOT(ReadFromViewer(int)));
+        }
         SplashScreenProgress(tr("Starting metadata server..."), 32);
         visitTimer->StopTimer(timeid, "stage 5");
         break;
@@ -1170,7 +1185,8 @@ QvisGUIApplication::HeavyInitialization()
         // Initialize the file server. This connects the GUI to the mdserver
         // running on localhost.
 
-        fileServer->SetConnectCallback(StartMDServer, (void *)GetViewerProxy());
+        if(!inheritedGUI)
+            fileServer->SetConnectCallback(StartMDServer, (void *)GetViewerProxy());
         fileServer->Initialize();
         visitTimer->StopTimer(timeid, "stage 6 - Launching mdserver");
         break;
@@ -1204,6 +1220,7 @@ QvisGUIApplication::HeavyInitialization()
     case 12:
         // Load plugin info
         GetViewerProxy()->InitializePlugins(PluginManager::GUI);
+        if(inheritedGUI) LoadPlugins();
         visitTimer->StopTimer(timeid, "stage 12 - Loading plugin info");
         break;
     case 13:
@@ -1594,8 +1611,13 @@ QvisGUIApplication::FinalInitialization()
         allowSocketRead = false;
 
         // Show the main window and the viewer window.
-        mainWin->show();
-        ShowAllWindows();
+        // If inherited then let the derived class control
+        // how it wants to show all the windows
+        if(!inheritedGUI)
+        {
+            mainWin->show();
+            ShowAllWindows();
+        }
 
         // Indicate that future messages should go to windows and not
         // to the console.
@@ -1735,13 +1757,16 @@ QvisGUIApplication::FinalInitialization()
         Synchronize(INITIALIZE_SESSIONDIR_TAG);
 
         // If we have a crash recovery file, restore it?
-        if(sessionFile.isEmpty())
-            RestoreCrashRecoveryFile();
-        else
+        if(!inheritedGUI)
         {
-            debug1 << "The user wants to load a session file so blow away any "
-                      "crash recovery file that may be present." << endl;
-            RemoveCrashRecoveryFile(true);
+            if(sessionFile.isEmpty())
+                RestoreCrashRecoveryFile();
+            else
+            {
+                debug1 << "The user wants to load a session file so blow away any "
+                          "crash recovery file that may be present." << endl;
+                RemoveCrashRecoveryFile(true);
+            }
         }
         // Set the timer indicating that it's okay to save the crash 
         // recovery file.
@@ -1759,6 +1784,7 @@ QvisGUIApplication::FinalInitialization()
         visitTimer->StopTimer(stagedInit, "FinalInitialization");
         visitTimer->StopTimer(completeInit, "VisIt to be ready");
         moreInit = false;
+        emit VisItIsReady();
     }
 
     //
@@ -1949,11 +1975,14 @@ QvisGUIApplication::Quit()
         if(num_clients > 1)
         {
             // disconnect some slots so we don't keep getting the dialog.
-            disconnect(mainApp, SIGNAL(aboutToQuit()), 
-                       mainApp, SLOT(closeAllWindows()));
-            disconnect(mainApp, SIGNAL(lastWindowClosed()), 
-                       this, SLOT(Quit()));
-            
+            if(!inheritedGUI)
+            {
+                disconnect(mainApp, SIGNAL(aboutToQuit()),
+                           mainApp, SLOT(closeAllWindows()));
+                disconnect(mainApp, SIGNAL(lastWindowClosed()),
+                           this, SLOT(Quit()));
+            }
+
             // if the user does not have a visitrc file, or if we have 3 
             // or more clients ask user if they want to close all clients.
 
@@ -2240,6 +2269,12 @@ QvisGUIApplication::ProcessArguments(int &argc, char **argv)
         else if(current == std::string("-nosplash"))
         {
             showSplash = false;
+        }
+        else if(current == std::string("-pyuiembedded") ||
+                current == std::string("-uifile"))
+        {
+            showSplash = false;
+            embeddedGUI = true;
         }
         else if(current == std::string("-geometry"))
         {
@@ -2994,10 +3029,13 @@ QvisGUIApplication::CreateMainWindow()
 
     // Make it so the application terminates when the last
     // window is closed.
-    connect(mainApp, SIGNAL(aboutToQuit()), mainApp, SLOT(closeAllWindows()));
-    connect(mainApp, SIGNAL(lastWindowClosed()), this, SLOT(Quit()));
-    connect(mainApp, SIGNAL(hideApplication()), this, SLOT(NonSpontaneousIconifyWindows()));
-    connect(mainApp, SIGNAL(showApplication()), this, SLOT(DeIconifyWindows()));
+    if(!inheritedGUI)
+    {
+        connect(mainApp, SIGNAL(aboutToQuit()), mainApp, SLOT(closeAllWindows()));
+        connect(mainApp, SIGNAL(lastWindowClosed()), this, SLOT(Quit()));
+        connect(mainApp, SIGNAL(hideApplication()), this, SLOT(NonSpontaneousIconifyWindows()));
+        connect(mainApp, SIGNAL(showApplication()), this, SLOT(DeIconifyWindows()));
+    }
 
     // Create the main window. Note that the static attributes of
     // QvisWindowBase, which all windows use, are being set here through
@@ -3005,7 +3043,8 @@ QvisGUIApplication::CreateMainWindow()
     std::string title("VisIt ");
     title += VISIT_VERSION;
     mainWin = new QvisMainWindow(orientation, title.c_str());
-    connect(mainWin, SIGNAL(quit()), this, SLOT(Quit()));
+    if(!inheritedGUI)
+        connect(mainWin, SIGNAL(quit()), this, SLOT(Quit()));
     connect(mainWin, SIGNAL(saveSettings()), this, SLOT(SaveSettings()));
     connect(mainWin, SIGNAL(iconifyWindows(bool)), this, SLOT(IconifyWindows(bool)));
     connect(mainWin, SIGNAL(deIconifyWindows()), this, SLOT(DeIconifyWindows()));
@@ -3674,6 +3713,9 @@ QvisGUIApplication::CreateInitiallyVisibleWindows(DataNode *node)
                     // Ask for the initialized window so it will be created 
                     // and get initialized with the local and system settings.
                     GetInitializedWindowPointer(i);
+                    //inherited interface don't need to show up, especially if
+                    //it is embedded in another interface..
+                    if(embeddedGUI) GetInitializedWindowPointer(i)->hide();
                 }
             }
         }
@@ -7048,6 +7090,13 @@ QvisGUIApplication::UpdateMetaDataAttributes(Subject *subj, void *data)
 void
 QvisGUIApplication::HandleMetaDataUpdate()
 {
+    const char *mName = "QvisGUIApplication::HandleMetaDataUpdate: ";
+    if (DebugStream::Level4())
+    {
+        debug4 << mName << "Received new metadata from viewer:" << endl;
+        GetViewerState()->GetDatabaseMetaData()->Print(DebugStream::Stream4());
+    }
+
     // Poke the metadata into the file server
     fileServer->SetOpenFileMetaData(GetViewerState()->GetDatabaseMetaData(),
                                     GetStateForSource(fileServer->GetOpenFile()));
@@ -7411,7 +7460,6 @@ QvisGUIApplication::updateVisItCompleted(const QString &program)
             fprintf(f, "unsetenv VISITPLUGININST\n");
             fprintf(f, "unsetenv VISITHOME\n");
             fprintf(f, "unsetenv VISITARCHHOME\n");
-            fprintf(f, "unsetenv VISITHELPHOME\n");
             fprintf(f, "unsetenv LD_LIBRARY32_PATH\n");
             fprintf(f, "unsetenv LD_LIBRARYN32_PATH\n");
             fprintf(f, "unsetenv LD_LIBRARY64_PATH\n");
@@ -8279,7 +8327,10 @@ QvisGUIApplication::SaveMovieMain()
                 movieBase = "movie";
             movieBase = MakeCodeSlashes(movieBase);
             code += "    movie.movieBase = \"" + movieBase + "\"\n";
-            code += "    movie.screenCaptureImages = 0\n";
+            if (movieAtts->GetUseScreenCapture())
+                code += "    movie.screenCaptureImages = 1\n";
+            else
+                code += "    movie.screenCaptureImages = 0\n";
 
             // If we're using movie templates then give the name of the templates here.
             if(movieAtts->GetMovieType() == MovieAttributes::UsingTemplate)

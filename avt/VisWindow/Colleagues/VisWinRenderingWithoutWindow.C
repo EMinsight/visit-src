@@ -46,6 +46,29 @@
 #include <vtkRenderWindow.h>
 #include <vtkRenderWindowInteractor.h>
 
+#ifdef EXTERNAL_VTK_BUILD
+#if __APPLE__
+#include <vtkCocoaRenderWindow.h>
+#include "VisWinRenderingCocoaHideWindow.h"
+void UnMapWindow(vtkRenderWindow* v)
+{
+    vtkCocoaRenderWindow* vx=dynamic_cast<vtkCocoaRenderWindow*>(v);
+    if(vx) VisWinRenderingCocoa::HideRenderWindow(vx->GetRootWindow());
+}
+#elif __unix__
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#include <vtkXOpenGLRenderWindow.h>
+void UnMapWindow(vtkRenderWindow* v)
+{
+    vtkXOpenGLRenderWindow* vx = dynamic_cast<vtkXOpenGLRenderWindow*>(v);
+    if(vx) XUnmapWindow(vx->GetDisplayId(),vx->GetWindowId());
+}
+#else //TODO: Hide Window if using External VTK
+void UnMapWindow(vtkRenderWindow* v) { /*do nothing..*/  }
+#endif
+
+#endif
 
 // ****************************************************************************
 //  Method: VisWinRenderingWithoutWindow constructor
@@ -60,6 +83,13 @@
 //    Tom Fogal, Tue Nov 24 11:25:39 MST 2009
 //    Make sure to set offscreen before other initialization.
 //
+//    Kathleen Biagas, Wed Oct 31 17:29:26 PDT 2012
+//    'vtkWin32OpenGLRenderWindow' needs OffscreenRendering set, too.
+//
+//    Cyrus Harrison, Sat Nov  3 19:37:42 PDT 2012
+//    For osx w/o mesa, 'vtkCocoaRenderWindow' needs OffscreenRendering set, 
+//    as well.
+//
 // ****************************************************************************
 
 VisWinRenderingWithoutWindow::VisWinRenderingWithoutWindow(
@@ -73,7 +103,13 @@ VisWinRenderingWithoutWindow::VisWinRenderingWithoutWindow(
     // Mesa that we are getting, but we don't care.
     //
     renWin = vtkRenderWindow::New();
-    renWin->OffScreenRenderingOn();
+#ifdef EXTERNAL_VTK_BUILD
+    if(std::string(renWin->GetClassName()) == "vtkOSOpenGLRenderWindow")
+    if(std::string(renWin->GetClassName()) == "vtkWin32OpenGLRenderWindow")
+        renWin->OffScreenRenderingOn();
+#else
+        renWin->OffScreenRenderingOn();
+#endif
     InitializeRenderWindow(renWin);
 }
 
@@ -129,6 +165,11 @@ VisWinRenderingWithoutWindow::GetRenderWindow(void)
 //  Programmer: Tom Fogal
 //  Creation:   December 9th, 2009
 //
+//
+//  Modifications:
+//   Cyrus Harrison, Sat Nov  3 23:51:13 PDT 2012
+//   Force large window size for offscreen cocoa.
+//
 // ****************************************************************************
 
 void
@@ -138,8 +179,31 @@ VisWinRenderingWithoutWindow::RealizeRenderWindow(void)
   // way to *force* VTK to initialize in all cases.  The good news is that this
   // method is typically called before we've got data in the RW, so it
   // shouldn't be as heavy as it looks at first glance.
-  renWin->SetSize(300,300);
+  
+  //
+  // SetSize doesn't work as expected with vtkCocoaRenderWindow in 
+  // an offscreen setting.
+  // B/c of this we are forced to create a large window, the size of 
+  // which bounds our offscreen rendering.
+  //
+  if(std::string(renWin->GetClassName()) == "vtkCocoaRenderWindow")
+  {
+      //TODO: we may want to query to find the largest valid size
+      // OSX limits windows to 10Kx10K, however OpenGL contexts
+      // are limited further.
+      renWin->SetSize(4096,4096);
+      renWin->SetPosition(-10000,-10000);
+  }
+  else
+  {
+      renWin->SetSize(300,300);
+  }
   renWin->Render();
+
+#ifdef EXTERNAL_VTK_BUILD
+  std::string cname = renWin->GetClassName();
+  if(cname != "vtkOSOpenGLRenderWindow") UnMapWindow(renWin);
+#endif
 }
 
 // ****************************************************************************

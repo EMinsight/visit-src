@@ -59,51 +59,63 @@ import llnl.visit.Plugin;
 
 public class ExtremeValueAnalysisAttributes extends AttributeSubject implements Plugin
 {
-    private static int ExtremeValueAnalysisAttributes_numAdditionalAtts = 3;
+    private static int ExtremeValueAnalysisAttributes_numAdditionalAtts = 5;
 
     // Enum values
-    public final static int COMPUTEMAXES_MONTHLY = 0;
-    public final static int COMPUTEMAXES_YEARLY = 1;
+    public final static int AGGREGATIONTYPE_ANNUAL = 0;
+    public final static int AGGREGATIONTYPE_MONTHLY = 1;
+    public final static int AGGREGATIONTYPE_SEASONAL = 2;
 
-    public final static int MONTH_JANUARY = 0;
-    public final static int MONTH_FEBRUARY = 1;
-    public final static int MONTH_MARCH = 2;
-    public final static int MONTH_APRIL = 3;
-    public final static int MONTH_MAY = 4;
-    public final static int MONTH_JUNE = 5;
-    public final static int MONTH_JULY = 6;
-    public final static int MONTH_AUGUST = 7;
-    public final static int MONTH_SEPTEMBER = 8;
-    public final static int MONTH_OCTOBER = 9;
-    public final static int MONTH_NOVEMBER = 10;
-    public final static int MONTH_DECEMBER = 11;
+    public final static int MONTHTYPE_JANUARY = 0;
+    public final static int MONTHTYPE_FEBRUARY = 1;
+    public final static int MONTHTYPE_MARCH = 2;
+    public final static int MONTHTYPE_APRIL = 3;
+    public final static int MONTHTYPE_MAY = 4;
+    public final static int MONTHTYPE_JUNE = 5;
+    public final static int MONTHTYPE_JULY = 6;
+    public final static int MONTHTYPE_AUGUST = 7;
+    public final static int MONTHTYPE_SEPTEMBER = 8;
+    public final static int MONTHTYPE_OCTOBER = 9;
+    public final static int MONTHTYPE_NOVEMBER = 10;
+    public final static int MONTHTYPE_DECEMBER = 11;
+
+    public final static int SEASONTYPE_WINTER = 0;
+    public final static int SEASONTYPE_SPRING = 1;
+    public final static int SEASONTYPE_SUMMER = 2;
+    public final static int SEASONTYPE_FALL = 3;
 
 
     public ExtremeValueAnalysisAttributes()
     {
         super(ExtremeValueAnalysisAttributes_numAdditionalAtts);
 
-        computeMaxes = COMPUTEMAXES_YEARLY;
-        DisplayMonth = MONTH_JANUARY;
-        RCodeDir = new String("./");
+        aggregation = AGGREGATIONTYPE_MONTHLY;
+        displayMonth = MONTHTYPE_JANUARY;
+        displaySeason = SEASONTYPE_WINTER;
+        dumpData = false;
+        dataScaling = 1;
     }
 
     public ExtremeValueAnalysisAttributes(int nMoreFields)
     {
         super(ExtremeValueAnalysisAttributes_numAdditionalAtts + nMoreFields);
 
-        computeMaxes = COMPUTEMAXES_YEARLY;
-        DisplayMonth = MONTH_JANUARY;
-        RCodeDir = new String("./");
+        aggregation = AGGREGATIONTYPE_MONTHLY;
+        displayMonth = MONTHTYPE_JANUARY;
+        displaySeason = SEASONTYPE_WINTER;
+        dumpData = false;
+        dataScaling = 1;
     }
 
     public ExtremeValueAnalysisAttributes(ExtremeValueAnalysisAttributes obj)
     {
         super(ExtremeValueAnalysisAttributes_numAdditionalAtts);
 
-        computeMaxes = obj.computeMaxes;
-        DisplayMonth = obj.DisplayMonth;
-        RCodeDir = new String(obj.RCodeDir);
+        aggregation = obj.aggregation;
+        displayMonth = obj.displayMonth;
+        displaySeason = obj.displaySeason;
+        dumpData = obj.dumpData;
+        dataScaling = obj.dataScaling;
 
         SelectAll();
     }
@@ -121,47 +133,67 @@ public class ExtremeValueAnalysisAttributes extends AttributeSubject implements 
     public boolean equals(ExtremeValueAnalysisAttributes obj)
     {
         // Create the return value
-        return ((computeMaxes == obj.computeMaxes) &&
-                (DisplayMonth == obj.DisplayMonth) &&
-                (RCodeDir.equals(obj.RCodeDir)));
+        return ((aggregation == obj.aggregation) &&
+                (displayMonth == obj.displayMonth) &&
+                (displaySeason == obj.displaySeason) &&
+                (dumpData == obj.dumpData) &&
+                (dataScaling == obj.dataScaling));
     }
 
     public String GetName() { return "ExtremeValueAnalysis"; }
     public String GetVersion() { return "1.0"; }
 
     // Property setting methods
-    public void SetComputeMaxes(int computeMaxes_)
+    public void SetAggregation(int aggregation_)
     {
-        computeMaxes = computeMaxes_;
+        aggregation = aggregation_;
         Select(0);
     }
 
-    public void SetDisplayMonth(int DisplayMonth_)
+    public void SetDisplayMonth(int displayMonth_)
     {
-        DisplayMonth = DisplayMonth_;
+        displayMonth = displayMonth_;
         Select(1);
     }
 
-    public void SetRCodeDir(String RCodeDir_)
+    public void SetDisplaySeason(int displaySeason_)
     {
-        RCodeDir = RCodeDir_;
+        displaySeason = displaySeason_;
         Select(2);
     }
 
+    public void SetDumpData(boolean dumpData_)
+    {
+        dumpData = dumpData_;
+        Select(3);
+    }
+
+    public void SetDataScaling(double dataScaling_)
+    {
+        dataScaling = dataScaling_;
+        Select(4);
+    }
+
     // Property getting methods
-    public int    GetComputeMaxes() { return computeMaxes; }
-    public int    GetDisplayMonth() { return DisplayMonth; }
-    public String GetRCodeDir() { return RCodeDir; }
+    public int     GetAggregation() { return aggregation; }
+    public int     GetDisplayMonth() { return displayMonth; }
+    public int     GetDisplaySeason() { return displaySeason; }
+    public boolean GetDumpData() { return dumpData; }
+    public double  GetDataScaling() { return dataScaling; }
 
     // Write and read methods.
     public void WriteAtts(CommunicationBuffer buf)
     {
         if(WriteSelect(0, buf))
-            buf.WriteInt(computeMaxes);
+            buf.WriteInt(aggregation);
         if(WriteSelect(1, buf))
-            buf.WriteInt(DisplayMonth);
+            buf.WriteInt(displayMonth);
         if(WriteSelect(2, buf))
-            buf.WriteString(RCodeDir);
+            buf.WriteInt(displaySeason);
+        if(WriteSelect(3, buf))
+            buf.WriteBool(dumpData);
+        if(WriteSelect(4, buf))
+            buf.WriteDouble(dataScaling);
     }
 
     public void ReadAtts(int index, CommunicationBuffer buf)
@@ -169,13 +201,19 @@ public class ExtremeValueAnalysisAttributes extends AttributeSubject implements 
         switch(index)
         {
         case 0:
-            SetComputeMaxes(buf.ReadInt());
+            SetAggregation(buf.ReadInt());
             break;
         case 1:
             SetDisplayMonth(buf.ReadInt());
             break;
         case 2:
-            SetRCodeDir(buf.ReadString());
+            SetDisplaySeason(buf.ReadInt());
+            break;
+        case 3:
+            SetDumpData(buf.ReadBool());
+            break;
+        case 4:
+            SetDataScaling(buf.ReadDouble());
             break;
         }
     }
@@ -183,46 +221,61 @@ public class ExtremeValueAnalysisAttributes extends AttributeSubject implements 
     public String toString(String indent)
     {
         String str = new String();
-        str = str + indent + "computeMaxes = ";
-        if(computeMaxes == COMPUTEMAXES_MONTHLY)
-            str = str + "COMPUTEMAXES_MONTHLY";
-        if(computeMaxes == COMPUTEMAXES_YEARLY)
-            str = str + "COMPUTEMAXES_YEARLY";
+        str = str + indent + "aggregation = ";
+        if(aggregation == AGGREGATIONTYPE_ANNUAL)
+            str = str + "AGGREGATIONTYPE_ANNUAL";
+        if(aggregation == AGGREGATIONTYPE_MONTHLY)
+            str = str + "AGGREGATIONTYPE_MONTHLY";
+        if(aggregation == AGGREGATIONTYPE_SEASONAL)
+            str = str + "AGGREGATIONTYPE_SEASONAL";
         str = str + "\n";
-        str = str + indent + "DisplayMonth = ";
-        if(DisplayMonth == MONTH_JANUARY)
-            str = str + "MONTH_JANUARY";
-        if(DisplayMonth == MONTH_FEBRUARY)
-            str = str + "MONTH_FEBRUARY";
-        if(DisplayMonth == MONTH_MARCH)
-            str = str + "MONTH_MARCH";
-        if(DisplayMonth == MONTH_APRIL)
-            str = str + "MONTH_APRIL";
-        if(DisplayMonth == MONTH_MAY)
-            str = str + "MONTH_MAY";
-        if(DisplayMonth == MONTH_JUNE)
-            str = str + "MONTH_JUNE";
-        if(DisplayMonth == MONTH_JULY)
-            str = str + "MONTH_JULY";
-        if(DisplayMonth == MONTH_AUGUST)
-            str = str + "MONTH_AUGUST";
-        if(DisplayMonth == MONTH_SEPTEMBER)
-            str = str + "MONTH_SEPTEMBER";
-        if(DisplayMonth == MONTH_OCTOBER)
-            str = str + "MONTH_OCTOBER";
-        if(DisplayMonth == MONTH_NOVEMBER)
-            str = str + "MONTH_NOVEMBER";
-        if(DisplayMonth == MONTH_DECEMBER)
-            str = str + "MONTH_DECEMBER";
+        str = str + indent + "displayMonth = ";
+        if(displayMonth == MONTHTYPE_JANUARY)
+            str = str + "MONTHTYPE_JANUARY";
+        if(displayMonth == MONTHTYPE_FEBRUARY)
+            str = str + "MONTHTYPE_FEBRUARY";
+        if(displayMonth == MONTHTYPE_MARCH)
+            str = str + "MONTHTYPE_MARCH";
+        if(displayMonth == MONTHTYPE_APRIL)
+            str = str + "MONTHTYPE_APRIL";
+        if(displayMonth == MONTHTYPE_MAY)
+            str = str + "MONTHTYPE_MAY";
+        if(displayMonth == MONTHTYPE_JUNE)
+            str = str + "MONTHTYPE_JUNE";
+        if(displayMonth == MONTHTYPE_JULY)
+            str = str + "MONTHTYPE_JULY";
+        if(displayMonth == MONTHTYPE_AUGUST)
+            str = str + "MONTHTYPE_AUGUST";
+        if(displayMonth == MONTHTYPE_SEPTEMBER)
+            str = str + "MONTHTYPE_SEPTEMBER";
+        if(displayMonth == MONTHTYPE_OCTOBER)
+            str = str + "MONTHTYPE_OCTOBER";
+        if(displayMonth == MONTHTYPE_NOVEMBER)
+            str = str + "MONTHTYPE_NOVEMBER";
+        if(displayMonth == MONTHTYPE_DECEMBER)
+            str = str + "MONTHTYPE_DECEMBER";
         str = str + "\n";
-        str = str + stringToString("RCodeDir", RCodeDir, indent) + "\n";
+        str = str + indent + "displaySeason = ";
+        if(displaySeason == SEASONTYPE_WINTER)
+            str = str + "SEASONTYPE_WINTER";
+        if(displaySeason == SEASONTYPE_SPRING)
+            str = str + "SEASONTYPE_SPRING";
+        if(displaySeason == SEASONTYPE_SUMMER)
+            str = str + "SEASONTYPE_SUMMER";
+        if(displaySeason == SEASONTYPE_FALL)
+            str = str + "SEASONTYPE_FALL";
+        str = str + "\n";
+        str = str + boolToString("dumpData", dumpData, indent) + "\n";
+        str = str + doubleToString("dataScaling", dataScaling, indent) + "\n";
         return str;
     }
 
 
     // Attributes
-    private int    computeMaxes;
-    private int    DisplayMonth;
-    private String RCodeDir;
+    private int     aggregation;
+    private int     displayMonth;
+    private int     displaySeason;
+    private boolean dumpData;
+    private double  dataScaling;
 }
 

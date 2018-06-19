@@ -182,30 +182,38 @@ avtIVPVTKTimeVaryingField::GetExtents( double extents[6] ) const
 //
 // ****************************************************************************
 
-bool
+avtIVPField::Result
 avtIVPVTKTimeVaryingField::FindCell( const double& time, const avtVector& pos ) const
 {
+    bool inside[2] = {true, true};
     if( pos != lastPos )
     {
         lastPos  = pos;
         
-        if( -1 == (lastCell = loc->FindCell( &pos.x, &lastWeights, false )) )
-            return false;
+        lastCell = loc->FindCell(&pos.x, &lastWeights, false);
+        inside[0] = (lastCell != -1);
     }       
 
     if (t0 < t1)
     {
         if( time < t0 || time > t1 )
-            return false;
+            inside[1] = false;
     }
     else
     {
         // backwards integration
         if( time < t1 || time > t0 )
-            return false;
+            inside[1] = false;
     }
 
-    return lastCell != -1;
+    if (inside[0] && inside[1])
+        return OK;
+    else if (!inside[0] && !inside[1])
+        return OUTSIDE_BOTH;
+    else if (!inside[0])
+        return OUTSIDE_SPATIAL;
+    else
+        return OUTSIDE_TEMPORAL;
 }
 
 // ****************************************************************************
@@ -236,24 +244,11 @@ avtIVPVTKTimeVaryingField::FindCell( const double& time, const avtVector& pos ) 
 avtIVPField::Result
 avtIVPVTKTimeVaryingField::operator()( const double &t, const avtVector &p, avtVector &vel ) const
 {
-    if( !FindCell( t, p ) )
-        return( avtIVPSolverResult::OUTSIDE_DOMAIN );
-    bool outsideTimeFrame = false;
-    if (t0 < t1)
-    {
-        if( t < t0 || t > t1 )
-            outsideTimeFrame = true;
-    }
-    else
-    {
-        // backwards integration
-        if( t < t1 || t > t0 )
-            outsideTimeFrame = true;
-    }
-    if (outsideTimeFrame)
-        return( avtIVPSolverResult::OUTSIDE_TIME_FRAME );
+    Result res = FindCell(t, p);
+    if (res != OK)
+        return res;
 
-    if( velCellBased )
+    if (velCellBased)
     {
         double v0[3], v1[3];
 
@@ -284,7 +279,7 @@ avtIVPVTKTimeVaryingField::operator()( const double &t, const avtVector &p, avtV
         }
     }
 
-    return( avtIVPSolverResult::OK );
+    return OK;
 }
 
 // ****************************************************************************
@@ -429,7 +424,7 @@ avtIVPVTKTimeVaryingField::ComputeScalarVariable(unsigned char index,
     if( data0 == NULL )
         return 0.0;
 
-    if( !FindCell( t, pt ) )
+    if (FindCell(t, pt) != OK)
         return 0.0;
 
     double result = 0.0, tmp0, tmp1;
@@ -547,7 +542,7 @@ avtIVPVTKTimeVaryingField::SetScalarVariable(unsigned char index, const std::str
 //
 // ****************************************************************************
 
-bool
+avtIVPField::Result
 avtIVPVTKTimeVaryingField::IsInside( const double& t, const avtVector &pt ) const
 {
     return FindCell( t, pt );
@@ -575,22 +570,6 @@ avtIVPVTKTimeVaryingField::GetDimension() const
 {
     return 3;
 }  
-
-// ****************************************************************************
-//  Method: avtIVPVTKTimeVaryingField::SetNormalized
-//
-//  Purpose:
-//      Sets field normalization.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   August 6, 2008
-//
-// ****************************************************************************
-
-void
-avtIVPVTKTimeVaryingField::SetNormalized( bool v )
-{
-}
 
 // ****************************************************************************
 //  Method: avtIVPVTKTimeVaryingField::GetTimeRange

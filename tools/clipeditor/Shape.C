@@ -58,18 +58,23 @@
 //    Added Line and Vertex shapes.  Added error messages for default 
 //    cases in switch statements.
 //
+//    Jeremy Meredith, Mon Jul  9 15:22:06 EDT 2012
+//    Added 5- thru 8-sided polygon shapes.
+//
 // ----------------------------------------------------------------------------
 
 #include "Shape.h"
 #include "Vector.h"
-#include <qgl.h>
+#include <QGLWidget>
 #include "Font.h"
 #include "Transforms.h"
 
-#include "../../visit_vtk/lightweight/vtkTriangulationTables.C"
+#include "vtkTriangulationTables.C"
 #include "DataSet.h"
 
 using std::vector;
+using std::cerr;
+using std::endl;
 using std::swap;
 
 int  Shape::duplicateFacesRemoval = 0;
@@ -79,6 +84,11 @@ bool Shape::numbering = true;
 int triangleFaces[1][3] = {{0,1,2}};
 int quadFaces[1][4] = {{0,1,2,3}};
 int pixelFaces[1][4] = {{0,1,3,2}};
+
+int poly5TriFaces[3][3] = {{0,1,2},{0,2,3},{0,3,4}};
+int poly6TriFaces[4][3] = {{0,1,2},{0,2,3},{0,3,4},{0,4,5}};
+int poly7TriFaces[5][3] = {{0,1,2},{0,2,3},{0,3,4},{0,4,5},{0,5,6}};
+int poly8TriFaces[6][3] = {{0,1,2},{0,2,3},{0,3,4},{0,4,5},{0,5,6},{0,5,7}};
 
 void
 DrawFuzzyPoint(float x,float y,float z,float d)
@@ -103,6 +113,18 @@ DrawFuzzyPoint(float x,float y,float z,float d)
 
     glVertex3f(x-d, y+d, z+d);
     glVertex3f(x+d, y-d, z-d);
+}
+
+void
+Shape::GeneratePolygonCoords()
+{
+    for (int i=0; i<nverts; i++)
+    {
+        double theta = 2*M_PI * (double(i)-0.5)/double(nverts)  - M_PI/2.;
+        double x = cos(theta) * 1.5;
+        double y = sin(theta) * 1.5;
+        xc[i] = x;   yc[i] = y;   zc[i] = 0;
+    }
 }
 
 Shape::Shape(ShapeType st, int sc, DataSet *ds)
@@ -218,10 +240,7 @@ Shape::Shape(ShapeType st, int sc, DataSet *ds)
       case ST_QUAD:
         nverts = 4;
 
-        xc[0] = -1;        yc[0] =  -1;        zc[0] =  0;
-        xc[1] =  1;        yc[1] =  -1;        zc[1] =  0;
-        xc[2] =  1;        yc[2] =   1;        zc[2] =  0;
-        xc[3] = -1;        yc[3] =   1;        zc[3] =  0;
+        GeneratePolygonCoords();
 
         nedges = 4;
         edges = quadVerticesFromEdges;
@@ -254,9 +273,7 @@ Shape::Shape(ShapeType st, int sc, DataSet *ds)
       case ST_TRIANGLE:
         nverts = 3;
 
-        xc[0] = -1;        yc[0] =  -1;        zc[0] =  0;
-        xc[1] =  1;        yc[1] =  -1;        zc[1] =  0;
-        xc[2] =  0;        yc[2] =   1;        zc[2] =  0;
+        GeneratePolygonCoords();
 
         nedges = 3;
         edges = triVerticesFromEdges;
@@ -294,6 +311,66 @@ Shape::Shape(ShapeType st, int sc, DataSet *ds)
 
         ntris = 0;
         tris = NULL;
+
+        nquads = 0;
+        quads = NULL;
+        break;
+
+      case ST_POLY5:
+        nverts = 5;
+
+        GeneratePolygonCoords();
+
+        nedges = 5;
+        edges = poly5VerticesFromEdges;
+
+        ntris = 3;
+        tris = poly5TriFaces;
+
+        nquads = 0;
+        quads = NULL;
+        break;
+
+      case ST_POLY6:
+        nverts = 6;
+
+        GeneratePolygonCoords();
+
+        nedges = 6;
+        edges = poly6VerticesFromEdges;
+
+        ntris = 4;
+        tris = poly6TriFaces;
+
+        nquads = 0;
+        quads = NULL;
+        break;
+
+      case ST_POLY7:
+        nverts = 7;
+
+        GeneratePolygonCoords();
+
+        nedges = 7;
+        edges = poly7VerticesFromEdges;
+
+        ntris = 5;
+        tris = poly7TriFaces;
+
+        nquads = 0;
+        quads = NULL;
+        break;
+
+      case ST_POLY8:
+        nverts = 8;
+
+        GeneratePolygonCoords();
+
+        nedges = 8;
+        edges = poly8VerticesFromEdges;
+
+        ntris = 6;
+        tris = poly8TriFaces;
 
         nquads = 0;
         quads = NULL;
@@ -1037,6 +1114,86 @@ Shape::CheckCopyOf(Shape *s)
         }
         break;
 
+      case ST_POLY5:
+        ncases = 10;
+        for (i=0; i<ncases; i++)
+        {
+            bool okay = true;
+            for (int p=0; p<5; p++)
+            {
+                if (s->pointcase[p] !=
+                    this->pointcase[poly5Transforms[i].n[p]])
+                {
+                    okay = false;
+                }
+            }
+            if (okay)
+            {
+                return i;
+            }
+        }
+        break;
+
+      case ST_POLY6:
+        ncases = 12;
+        for (i=0; i<ncases; i++)
+        {
+            bool okay = true;
+            for (int p=0; p<6; p++)
+            {
+                if (s->pointcase[p] !=
+                    this->pointcase[poly6Transforms[i].n[p]])
+                {
+                    okay = false;
+                }
+            }
+            if (okay)
+            {
+                return i;
+            }
+        }
+        break;
+
+      case ST_POLY7:
+        ncases = 14;
+        for (i=0; i<ncases; i++)
+        {
+            bool okay = true;
+            for (int p=0; p<7; p++)
+            {
+                if (s->pointcase[p] !=
+                    this->pointcase[poly7Transforms[i].n[p]])
+                {
+                    okay = false;
+                }
+            }
+            if (okay)
+            {
+                return i;
+            }
+        }
+        break;
+
+      case ST_POLY8:
+        ncases = 16;
+        for (i=0; i<ncases; i++)
+        {
+            bool okay = true;
+            for (int p=0; p<8; p++)
+            {
+                if (s->pointcase[p] !=
+                    this->pointcase[poly8Transforms[i].n[p]])
+                {
+                    okay = false;
+                }
+            }
+            if (okay)
+            {
+                return i;
+            }
+        }
+        break;
+
       case ST_POINT:
         cerr << "Error\n";
         exit(1);
@@ -1067,7 +1224,7 @@ Shape::CheckCopyOf(Shape *s)
         break;
 
       default:
-        cerr << "Error\n";
+        cerr << "Error: unknown shape in Shape::CheckCopyOf\n";
         exit(1);
         break;
     }
@@ -1129,6 +1286,22 @@ Shape::Shape(Shape *copy, int xformID, Shape *parent, DataSet *ds)
         MakeCopyOf(copy, lineTransforms[xformID]);
         break;
 
+      case ST_POLY5:
+        MakeCopyOf(copy, poly5Transforms[xformID]);
+        break;
+
+      case ST_POLY6:
+        MakeCopyOf(copy, poly6Transforms[xformID]);
+        break;
+
+      case ST_POLY7:
+        MakeCopyOf(copy, poly7Transforms[xformID]);
+        break;
+
+      case ST_POLY8:
+        MakeCopyOf(copy, poly8Transforms[xformID]);
+        break;
+
       case ST_VERTEX:
         cerr << "Error: ST_VERTEX has no transformations.\n";
         exit(1);
@@ -1140,7 +1313,7 @@ Shape::Shape(Shape *copy, int xformID, Shape *parent, DataSet *ds)
         break;
 
       default:
-        cerr << "Error\n";
+        cerr << "Error: unknown shape type in Shape::Shape\n";
         exit(1);
         break;
     }
@@ -1149,191 +1322,3 @@ Shape::Shape(Shape *copy, int xformID, Shape *parent, DataSet *ds)
 }
 
 
-void
-Shape::MakeCopyOf(Shape *s, HexTransform &xform)
-{
-    for (int i=0; i<nverts; i++)
-    {
-        char c1 = s->parentNodes[i];
-        char c2 = c1;
-        if (c1 >= '0' && c1 <= '9')
-        {
-            c2 = xform.n[c1 - '0'] + '0';
-        }
-        else if (c1 >= 'a' && c1 <= 'l')
-        {
-            c2 = xform.e[c1 - 'a'];
-        }
-        parentNodes[i] = c2;
-    }
-    if (xform.f)
-        Invert();
-}
-
-void
-Shape::MakeCopyOf(Shape *s, VoxTransform &xform)
-{
-    for (int i=0; i<nverts; i++)
-    {
-        char c1 = s->parentNodes[i];
-        char c2 = c1;
-        if (c1 >= '0' && c1 <= '9')
-        {
-            c2 = xform.n[c1 - '0'] + '0';
-        }
-        else if (c1 >= 'a' && c1 <= 'l')
-        {
-            c2 = xform.e[c1 - 'a'];
-        }
-        parentNodes[i] = c2;
-    }
-    if (xform.f)
-        Invert();
-}
-
-void
-Shape::MakeCopyOf(Shape *s, WedgeTransform &xform)
-{
-    for (int i=0; i<nverts; i++)
-    {
-        char c1 = s->parentNodes[i];
-        char c2 = c1;
-        if (c1 >= '0' && c1 <= '9')
-        {
-            c2 = xform.n[c1 - '0'] + '0';
-        }
-        else if (c1 >= 'a' && c1 <= 'l')
-        {
-            c2 = xform.e[c1 - 'a'];
-        }
-        parentNodes[i] = c2;
-    }
-    if (xform.f)
-        Invert();
-}
-
-void
-Shape::MakeCopyOf(Shape *s, PyramidTransform &xform)
-{
-    for (int i=0; i<nverts; i++)
-    {
-        char c1 = s->parentNodes[i];
-        char c2 = c1;
-        if (c1 >= '0' && c1 <= '9')
-        {
-            c2 = xform.n[c1 - '0'] + '0';
-        }
-        else if (c1 >= 'a' && c1 <= 'l')
-        {
-            c2 = xform.e[c1 - 'a'];
-        }
-        parentNodes[i] = c2;
-    }
-    if (xform.f)
-        Invert();
-}
-
-void
-Shape::MakeCopyOf(Shape *s, TetTransform &xform)
-{
-    for (int i=0; i<nverts; i++)
-    {
-        char c1 = s->parentNodes[i];
-        char c2 = c1;
-        if (c1 >= '0' && c1 <= '9')
-        {
-            c2 = xform.n[c1 - '0'] + '0';
-        }
-        else if (c1 >= 'a' && c1 <= 'l')
-        {
-            c2 = xform.e[c1 - 'a'];
-        }
-        parentNodes[i] = c2;
-    }
-    if (xform.f)
-        Invert();
-}
-
-void
-Shape::MakeCopyOf(Shape *s, QuadTransform &xform)
-{
-    for (int i=0; i<nverts; i++)
-    {
-        char c1 = s->parentNodes[i];
-        char c2 = c1;
-        if (c1 >= '0' && c1 <= '9')
-        {
-            c2 = xform.n[c1 - '0'] + '0';
-        }
-        else if (c1 >= 'a' && c1 <= 'l')
-        {
-            c2 = xform.e[c1 - 'a'];
-        }
-        parentNodes[i] = c2;
-    }
-    if (xform.f)
-        Invert();
-}
-
-void
-Shape::MakeCopyOf(Shape *s, PixelTransform &xform)
-{
-    for (int i=0; i<nverts; i++)
-    {
-        char c1 = s->parentNodes[i];
-        char c2 = c1;
-        if (c1 >= '0' && c1 <= '9')
-        {
-            c2 = xform.n[c1 - '0'] + '0';
-        }
-        else if (c1 >= 'a' && c1 <= 'l')
-        {
-            c2 = xform.e[c1 - 'a'];
-        }
-        parentNodes[i] = c2;
-    }
-    if (xform.f)
-        Invert();
-}
-
-void
-Shape::MakeCopyOf(Shape *s, TriTransform &xform)
-{
-    for (int i=0; i<nverts; i++)
-    {
-        char c1 = s->parentNodes[i];
-        char c2 = c1;
-        if (c1 >= '0' && c1 <= '9')
-        {
-            c2 = xform.n[c1 - '0'] + '0';
-        }
-        else if (c1 >= 'a' && c1 <= 'l')
-        {
-            c2 = xform.e[c1 - 'a'];
-        }
-        parentNodes[i] = c2;
-    }
-    if (xform.f)
-        Invert();
-}
-
-void
-Shape::MakeCopyOf(Shape *s, LineTransform &xform)
-{
-    for (int i=0; i<nverts; i++)
-    {
-        char c1 = s->parentNodes[i];
-        char c2 = c1;
-        if (c1 >= '0' && c1 <= '9')
-        {
-            c2 = xform.n[c1 - '0'] + '0';
-        }
-        else if (c1 >= 'a' && c1 <= 'l')
-        {
-            c2 = xform.e[c1 - 'a'];
-        }
-        parentNodes[i] = c2;
-    }
-    if (xform.f)
-        Invert();
-}

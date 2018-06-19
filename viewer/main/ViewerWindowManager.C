@@ -71,6 +71,7 @@
 #include <SaveWindowAttributes.h>
 #include <SelectionList.h>
 #include <SelectionProperties.h>
+#include <StringHelpers.h>
 #include <ViewCurveAttributes.h>
 #include <View2DAttributes.h>
 #include <View3DAttributes.h>
@@ -97,6 +98,8 @@
 #include <PlotPluginInfo.h>
 #include <OperatorPluginInfo.h>
 #include <Line.h>
+#include <DDTManager.h>
+#include <DDTSession.h>
 
 #include <avtCallback.h>
 #include <avtDatabaseMetaData.h>
@@ -1677,6 +1680,10 @@ ViewerWindowManager::ChooseCenterOfRotation(int windowIndex,
 //    When doing screen proportions, get the size of the rendering area, not
 //    the size of the window.
 //
+//    Kathleen Biagas, Tue Sep 18 13:32:27 MST 2012
+//    On Windows, don't append fileBase and filename if filename already 
+//    contains a path.  Occurs with test-suite saves.
+//
 // ****************************************************************************
 
 void
@@ -1723,7 +1730,18 @@ ViewerWindowManager::SaveWindow(int windowIndex)
                            "use the name \"visit\" as the base for the files "
                            "to be saved."));
             }
-
+#ifdef WIN32
+            else
+            {
+                // need to check if our filename contains a path:
+                std::string f_base = std::string(StringHelpers::Basename(f.c_str()));
+                if (f_base != f)
+                {
+                    fileBase = std::string(StringHelpers::Dirname(f.c_str()));
+                    f = f_base;
+                }
+            }
+#endif
             if(fileBase[fileBase.size() - 1] == VISIT_SLASH_CHAR)
             {
                 if(f[0] == VISIT_SLASH_CHAR)
@@ -7663,6 +7681,13 @@ ViewerWindowManager::GetWindowInformation()
 //   Hank Childs, Sat Mar 13 18:46:54 PST 2010
 //   Remove reference to bounding box mode.
 //
+//   Jonathan Byrd (Allinea Software), Sun Dec 18, 2011
+//   Include the DDT connection status and whether simulation is
+//   ddtsim-based in the windowInfo
+//
+//   Jonathan Byrd (Allinea Software), Sun Dec 18, 2011
+//   Allow use of animation controls to control ddtsim-base simulations
+//
 // ****************************************************************************
 
 void
@@ -7686,7 +7711,15 @@ ViewerWindowManager::UpdateWindowInformation(int flags, int windowIndex)
             if(plotList->GetHostDatabaseName().size() < 1)
                 windowInfo->SetActiveSource("notset");
             else
+            {
                 windowInfo->SetActiveSource(plotList->GetHostDatabaseName());
+                // Not using DDTManager::isDDTSim() here, as for some reason at this
+                // point the EngineKey is not flagged as a simulation
+                windowInfo->SetDDTSim(DDTManager::isDatabaseDDTSim(win->GetPlotList()->GetDatabaseName().c_str()));
+            }
+
+            DDTSession *session = DDTManager::getInstance()->getSessionNC();
+            windowInfo->SetDDTConnected(session && session->connected());
         }
 
         //
@@ -7713,14 +7746,26 @@ ViewerWindowManager::UpdateWindowInformation(int flags, int windowIndex)
         {
             windowInfo->SetTimeSliderCurrentStates(timeSliderCurrentStates);
 
-            AnimationAttributes::AnimationMode m;
-            m = plotList->GetAnimationAttributes().GetAnimationMode();
-            if (m == AnimationAttributes::PlayMode)
-                windowInfo->SetAnimationMode(3);
-            else if (m == AnimationAttributes::ReversePlayMode)
-                windowInfo->SetAnimationMode(1);
+            if (DDTManager::isDDTSim(win))
+            {
+                const EngineKey &key = win->GetPlotList()->GetEngineKey();
+                const avtDatabaseMetaData *md = ViewerEngineManager::Instance()->GetSimulationMetaData(key);
+                if (md->GetSimInfo().GetMode()==avtSimulationInformation::Running)
+                    windowInfo->SetAnimationMode(3);
+                else
+                    windowInfo->SetAnimationMode(2);
+            }
             else
-                windowInfo->SetAnimationMode(2);
+            {
+                AnimationAttributes::AnimationMode m;
+                m = plotList->GetAnimationAttributes().GetAnimationMode();
+                if (m == AnimationAttributes::PlayMode)
+                    windowInfo->SetAnimationMode(3);
+                else if (m == AnimationAttributes::ReversePlayMode)
+                    windowInfo->SetAnimationMode(1);
+                else
+                    windowInfo->SetAnimationMode(2);
+            }
 
             // Update the client animation atts too.
             UpdateAnimationAtts();

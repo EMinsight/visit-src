@@ -60,6 +60,8 @@ LauncherProxy::LauncherProxy() : RemoteProxyBase("-vcl")
 {
     // Indicate that we want 2 write sockets from VCL.
     nWrite = 2;
+    state = new LauncherState();
+    methods = new LauncherMethods(state);
 }
 
 // ****************************************************************************
@@ -77,6 +79,8 @@ LauncherProxy::LauncherProxy() : RemoteProxyBase("-vcl")
 
 LauncherProxy::~LauncherProxy()
 {
+    delete state;
+    delete methods;
 }
 
 // ****************************************************************************
@@ -101,6 +105,35 @@ LauncherProxy::GetComponentName() const
 }
 
 // ****************************************************************************
+// Method: LauncherProxy::Create
+//
+// Purpose: 
+//   Create the engine.
+//
+// Arguments:
+//   profile             : The profile to use when launching the engine.
+//   connectCallback     : A callback function.
+//   connectCallbackData : Data for the callback function.
+//   createAsThoughLocal : Whether to create local arguments.
+//
+// Programmer: Brad Whitlock
+// Creation:   Wed Aug 15 11:21:21 PDT 2012
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+LauncherProxy::Create(const MachineProfile &profile, 
+    ConnectCallback *connectCallback, void *connectCallbackData,
+    bool createAsThoughLocal)
+{
+    RemoteProxyBase::Create(profile, 
+        connectCallback, connectCallbackData, createAsThoughLocal);
+    methods->SetRemoteProcess(component);
+}
+
+// ****************************************************************************
 // Method: LauncherProxy::SetupComponentRPCs
 //
 // Purpose: 
@@ -118,83 +151,8 @@ LauncherProxy::GetComponentName() const
 void
 LauncherProxy::SetupComponentRPCs()
 {
-    xfer.Add(&launchRPC);
-    xfer.Add(&connectSimRPC);
+    state->SetupComponentRPCs(&xfer);
 }
-
-// ****************************************************************************
-// Method: LauncherProxy::LaunchProcess
-//
-// Purpose: 
-//   This method tells the VisIt component launcher to launch a program
-//   that connects directly back to the component that launched the launcher.
-//
-// Arguments:
-//   programArgs : The program arguments.
-//
-// Programmer: Brad Whitlock
-// Creation:   Fri May 2 16:41:13 PST 2003
-//
-// Modifications:
-//    Jeremy Meredith, Thu May 24 10:27:55 EDT 2007
-//    When sending a launch command, if we're doing ssh port tunneling,
-//    map the local host/port to the remote one.
-//   
-//    Thomas R. Treadway, Mon Oct  8 13:27:42 PDT 2007
-//    Backing out SSH tunneling on Panther (MacOS X 10.3) 
-//   
-// ****************************************************************************
-
-void
-LauncherProxy::LaunchProcess(const stringVector &origProgramArgs)
-{
-    stringVector programArgs(origProgramArgs);
-
-    if (!GetPortTunnelMap().empty())
-    {
-        // If we're doing ssh tunneling, map the local host/port to the
-        // remote one.
-        bool success = ConvertArgsToTunneledValues(GetPortTunnelMap(),
-                                                   programArgs);
-        if (!success)
-        {
-            EXCEPTION1(VisItException, "Launcher needed to tunnel to a local "
-                       "port that wasn't in the port map.  The number of "
-                       "tunneled ports may need to be increased.");
-        }
-    }
-
-    launchRPC(programArgs);
-}
-
-// ****************************************************************************
-//  Method:  LauncherProxy::ConnectSimulation
-//
-//  Purpose:
-//    Connect to a running simulation
-//
-//  Arguments:
-//    programArgs : The program arguments.
-//    simHost     : The host where the simulation is running
-//    simPort     : The port where the simulation is listening
-//
-//  Programmer:  Jeremy Meredith
-//  Creation:    March 23, 2004
-//
-//  Modifications:
-//    Jeremy Meredith, Wed May 11 09:04:52 PDT 2005
-//    Added security key to simulation connection.
-//
-// ****************************************************************************
-
-void
-LauncherProxy::ConnectSimulation(const stringVector &programArgs,
-                                 const std::string &simHost, int simPort,
-                                 const std::string &simSecurityKey)
-{
-    connectSimRPC(programArgs, simHost, simPort, simSecurityKey);
-}
-
 
 // ****************************************************************************
 //  Method:  LauncherProxy::GetPortTunnelMap

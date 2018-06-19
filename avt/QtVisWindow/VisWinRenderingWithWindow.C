@@ -128,6 +128,10 @@ VisWinRenderingWithWindow::~VisWinRenderingWithWindow()
 //    Force a render on Windows so the new window will use the right background
 //    color.
 //
+//    Cyrus Harrison, Sat Sep  8 15:22:28 PDT 2012
+//    Force render on all platforms to make sure background is cleared at
+//    startup.
+//
 // ****************************************************************************
 
 void
@@ -138,13 +142,13 @@ VisWinRenderingWithWindow::RealizeRenderWindow(void)
     else
         renWin->show();
 
-#ifdef Q_WS_WIN
-    renWin->GetRenderWindow()->Render();
-#endif
 #ifdef Q_WS_X11
     if(ownRenderWindow)
         WindowMetrics::WaitForWindowManagerToGrabWindow(renWin);
 #endif
+
+    renWin->GetRenderWindow()->Render();
+
 }
 
 // ****************************************************************************
@@ -705,6 +709,9 @@ VisWinRenderingWithWindow::SetLargeIcons(bool val)
 //   Brad Whitlock, Fri May  9 14:22:17 PDT 2008
 //   Qt 4.
 //
+//   Jonathan Byrd (Allinea Software), Sun Dec 18, 2011
+//   Added the DDT_PICK mode
+//
 // ****************************************************************************
 
 void
@@ -716,7 +723,7 @@ VisWinRenderingWithWindow::SetCursorForMode(INTERACTION_MODE m)
     // Determine the new cursor index. The arrow cursor is 0 and the pick
     // cursor is 1.
     //
-    if(m == ZONE_PICK || m == NODE_PICK || m == SPREADSHEET_PICK)
+    if(m == ZONE_PICK || m == NODE_PICK || m == SPREADSHEET_PICK || m == DDT_PICK)
         newCursorIndex = 1;
     else
         newCursorIndex = 0;

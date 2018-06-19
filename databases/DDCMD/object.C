@@ -29,6 +29,7 @@ static OBJECT **object_list = NULL;
 int object_lineparse(char *, OBJECT *);
 OBJECTFILE object_fopen(const char *filename, const char *mode);
 void object_fclose(OBJECTFILE file);
+/* Mark C. Miller, Wed Aug 22 15:22:30 PDT 2012: Fixed leak of list. */
 void object_set(char *get, ... )
 {
     va_list ap;
@@ -40,9 +41,9 @@ void object_set(char *get, ... )
     while (string != NULL)
     {
         ptr = va_arg(ap, void **);
+        list = strdup((char *)ptr);
         if (strcmp(string, "files") == 0)
         {
-            list = strdup((char *)ptr);
             nfiles = 0;
             file = strtok(list, " ");
             while (file != NULL)
@@ -52,7 +53,9 @@ void object_set(char *get, ... )
             }
         }
         string = strtok(NULL, " ");
+        free(list);
     }
+    free(what);
     va_end(ap);
 }
 
@@ -86,9 +89,16 @@ int object_getv(OBJECT*object, char *name, void **pptr, int type)
     FIELD f;
     void *ptr;
     f = object_parse(object, name, type, NULL);
-    ptr = malloc(f.size);
-    memmove(ptr, f.v, f.size);
-    *pptr = (void *)ptr;
+    if (f.n > 0)
+    {
+        ptr = malloc(f.size);
+        memmove(ptr, f.v, f.size);
+        *pptr = (void *)ptr;
+    }
+    else
+    {
+        *pptr = (void *)NULL;
+    }
     return f.n;
 }
 
@@ -293,6 +303,7 @@ void object_compilevalue(OBJECT*object)
     if (object->valueptr) *object->valueptr = object->value;
 }
 
+/* Mark C. Miller, Wed Aug 22 15:27:25 PDT 2012: Fixed leak of name_save */
 FIELD object_parse(OBJECT*object, char *name, int type, char *dvalue)
 {
     static int lbuff = 0, msize = 0;
@@ -373,6 +384,9 @@ FIELD object_parse(OBJECT*object, char *name, int type, char *dvalue)
         if (found) break;
         ptr = strtok(NULL, ";");
     }
+
+    free(name_save);
+
     if (found == 0)
     {
         if (dvalue == NULL) error_action("Unable to locate ", name, " in object ", object->name, ERROR_IN("object_parse", ABORT));
@@ -499,6 +513,10 @@ FIELD object_parse(OBJECT*object, char *name, int type, char *dvalue)
             else
                 sep = " ";
             vptr = strtok_r(NULL, sep, &tail);
+        }
+        else
+        {
+            vptr = NULL;
         }
     }
     f.n = nv;

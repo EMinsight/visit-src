@@ -272,6 +272,10 @@ avtModelFitFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
     return in_ds;
 }
 
+//    Mark C. Miller, Wed Aug 22 19:57:54 PDT 2012
+//    Removed superfolous code allocating and initializing local variables,
+//    score_mins and score_maxs. Nothing in the function was using these
+//    variables.  
 void
 avtModelFitFilter::PostExecute()
 {  
@@ -284,13 +288,6 @@ avtModelFitFilter::PostExecute()
     intVector tup_match;
     doubleVector mins;
     doubleVector point;
-
-    double *score_mins, *score_maxs;
-    score_mins = (double *)malloc(sizeof(double)*num_relats);
-    score_maxs = (double *)malloc(sizeof(double)*num_relats);
-
-    for(int i = 0; i < num_relats; i++)
-    score_mins[i] = score_maxs[i] = -1;
 
     int tup_index, var_index;
     vtkDataArray *darray;
@@ -502,18 +499,18 @@ avtModelFitFilter::PostExecute()
                 else if (StatTuples[tup_index+j] == 'm')
                     Tuples[tup_index+j] = VS[varFinder]->min;
 
-                printf("Tuples[%d] before: %lf\n", tup_index+j, Tuples[tup_index+j]);
+                //printf("Tuples[%d] before: %lf\n", tup_index+j, Tuples[tup_index+j]);
                 Tuples[tup_index+j] = spaceConvert(Tuples[tup_index+j], varFinder, selectionType[i]);
-                printf("Tuples[%d] after: %lf\n", tup_index+j, Tuples[tup_index+j]);
+                //printf("Tuples[%d] after: %lf\n", tup_index+j, Tuples[tup_index+j]);
             }
             else if(inputSpace[i] != selectionType[i])
             {
-                printf("Tuples[%d] before: %lf\n", tup_index+j, Tuples[tup_index+j]);
+                //printf("Tuples[%d] before: %lf\n", tup_index+j, Tuples[tup_index+j]);
                 Tuples[tup_index+j] = convertToVariableSpace(Tuples[tup_index+j], varFinder, inputSpace[i]);
-                printf("Tuples[%d] after cTVS: %lf\n", tup_index+j, Tuples[tup_index+j]);
+                //printf("Tuples[%d] after cTVS: %lf\n", tup_index+j, Tuples[tup_index+j]);
                 Tuples[tup_index+j] = spaceConvert(Tuples[tup_index+j], varFinder, selectionType[i]);
-                printf("Tuples[%d] after SC: %lf\n", tup_index+j, Tuples[tup_index+j]);
-                printf("Used %lf for min, %lf for max\n", VS[varFinder]->min, VS[varFinder]->max);
+                //printf("Tuples[%d] after SC: %lf\n", tup_index+j, Tuples[tup_index+j]);
+                //printf("Used %lf for min, %lf for max\n", VS[varFinder]->min, VS[varFinder]->max);
             }
         }
     }

@@ -41,6 +41,13 @@
 #
 #   Brad Whitlock, Tue Jul 26 10:28:47 PDT 2011
 #   Add releases to skip list.
+#
+#   Brad Whitlock, Fri May 18 17:15:34 PDT 2012
+#   Add .rc and .in files to skip list.
+#
+#   Brad Whitlock, Wed Jun 13 13:57:01 PDT 2012
+#   Skip for qtssh files.
+#
 ##############################################################################
 REPOS="$1"
 TXN="$2"
@@ -92,7 +99,7 @@ while read fline; do
         *src/java/images/*|*src/tools/mpeg_encode/*)
             continue
             ;;
-        *src/tools/qtssh/remotecommand/*)
+        */tools/qtssh/*|*/tools/qtssh/windows/*)
             continue
             ;;
         *windowsbuild/projects*/*/*)
@@ -117,6 +124,12 @@ while read fline; do
             continue
             ;;
         *.bat)
+            continue
+            ;;
+        *.rc)
+            continue
+            ;;
+        *.in)
             continue
             ;;
         *docs/WebSite/*)

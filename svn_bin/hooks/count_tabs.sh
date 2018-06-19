@@ -68,6 +68,12 @@
 #   Eric Brugger, Tue Apr  5 11:36:22 PDT 2011
 #   Add releases to the skip list.
 #
+#   Brad Whitlock, Fri May 18 17:08:50 PDT 2012
+#   Don't mess with resource (.rc) files.
+#
+#   Brad Whitlock, Wed Jun 13 13:54:46 PDT 2012
+#   Skip qtssh directory.
+#
 ##############################################################################
 REPOS="$1"
 TXN="$2"
@@ -92,13 +98,16 @@ while read fline; do
     # Filter out other cases HandleCommonSkipCases doesn't catch
     #
     case $fname in
-        *.in|*.html|*.doc|*.odt|*.odm|*.nib|*/third_party_builtin/*|*/common/icons/*|*.vcproj|*.sln|*.cmake|*.tcl|*/windowsbuild/ThirdParty/*)
+        *.in|*.rc|*.html|*.doc|*.odt|*.odm|*.nib|*/third_party_builtin/*|*/common/icons/*|*.vcproj|*.sln|*.cmake|*.tcl|*/windowsbuild/ThirdParty/*)
             continue
             ;;
         */src/configure|*/src/aclocal.m4|*/bin/db_mktmpl)
             continue
             ;;
         */svn_bin/build_visit|*/svn_bin/bv_support/*)
+            continue
+            ;;
+        */tools/qtssh/*|*/tools/qtssh/windows/*)
             continue
             ;;
         *Makefile)

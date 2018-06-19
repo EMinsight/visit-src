@@ -65,6 +65,9 @@
 #   the case where VTK has been installed normally (with vtk-5.8 subdirs)
 #   and change how Python filters are located on Windows.
 #
+#   Cyrus Harrison, Tue Sep 25 12:09:39 PDT 2012
+#   Added Geoviz libs
+#
 #****************************************************************************/
 
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/ThirdPartyInstallLibrary.cmake)
@@ -75,11 +78,15 @@ INCLUDE(${VISIT_SOURCE_DIR}/CMake/ThirdPartyInstallLibrary.cmake)
 # We rely on FindVTK to set it to the right value.
 SET(VTK_USE_MANGLED_MESA OFF CACHE INTERNAL "Set a cache variable that FindVTK can override")
 
-IF(EXISTS ${VISIT_VTK_DIR}/lib/vtk-5.8)
-    SET(VTK_DIR ${VISIT_VTK_DIR}/lib/vtk-5.8)
-ELSE(EXISTS ${VISIT_VTK_DIR}/lib/vtk-5.8)
-    SET(VTK_DIR ${VISIT_VTK_DIR}/lib)
-ENDIF(EXISTS ${VISIT_VTK_DIR}/lib/vtk-5.8)
+IF(EXISTS ${VISIT_VTK_DIR}/VTKConfig.cmake)
+    SET(VTK_DIR ${VISIT_VTK_DIR})
+ELSE(EXISTS ${VISIT_VTK_DIR}/lib/vtk-5.10)
+    IF(EXISTS ${VISIT_VTK_DIR}/lib/vtk-5.8)
+        SET(VTK_DIR ${VISIT_VTK_DIR}/lib/vtk-5.8)
+    ELSE(EXISTS ${VISIT_VTK_DIR}/lib/vtk-5.8)
+        SET(VTK_DIR ${VISIT_VTK_DIR}/lib)
+    ENDIF(EXISTS ${VISIT_VTK_DIR}/lib/vtk-5.8)
+ENDIF(EXISTS ${VISIT_VTK_DIR}/VTKConfig.cmake)
 
 MESSAGE(STATUS "Checking for VTK in ${VTK_DIR}")
 INCLUDE(${CMAKE_ROOT}/Modules/FindVTK.cmake)
@@ -126,6 +133,8 @@ ELSE(VISIT_VTK_SKIP_INSTALL)
         vtkFilteringPythonD
         vtkGenericFiltering
         vtkGenericFilteringPythonD
+        vtkGeovis
+        vtkGeovisPythonD
         vtkGraphics
         vtkGraphicsPythonD
         vtkHybrid

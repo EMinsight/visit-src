@@ -425,17 +425,23 @@ avtFTLEFilter::GetInitialLocations()
         //add sample points by looping over in x,y,z
         for(int k = 0; k < global_resolution[2]; ++k)
         {
-            double zpcnt = ((double)k)/((double)global_resolution[2]-1);
+            double zpcnt = 0;
+            if (global_resolution[2] > 1)
+                zpcnt = ((double)k)/((double)global_resolution[2]-1);
             double z = global_bounds[4]*(1.0-zpcnt) + global_bounds[5]*zpcnt;
 
             for(int j = 0; j < global_resolution[1]; ++j)
             {
-                double ypcnt = ((double)j)/((double)global_resolution[1]-1);
+                double ypcnt = 0;
+                if (global_resolution[1] > 1)
+                    ypcnt = ((double)j)/((double)global_resolution[1]-1);
                 double y = global_bounds[2]*(1.0-ypcnt) + global_bounds[3]*ypcnt;
 
                 for(int i = 0; i < global_resolution[0]; ++i)
                 {
-                    double xpcnt = ((double)i)/((double)global_resolution[0]-1);
+                    double xpcnt = 0;
+                    if (global_resolution[0] > 1)
+                       xpcnt = ((double)i)/((double)global_resolution[0]-1);
                     double x = global_bounds[0]*(1.0-xpcnt) + global_bounds[1]*xpcnt;
 
                     size_t index = (global_resolution[1]*global_resolution[0]*k) + (global_resolution[0]*j)+i;
@@ -524,6 +530,12 @@ avtFTLEFilter::CreateIntegralCurve(const avtIVPSolver* model,
 //  Programmer: Hari Krishnan
 //  Creation:   December 5, 2011
 //
+//  Modifications:
+//
+//    Hank Childs, Fri Sep  7 15:47:12 PDT 2012
+//    Convert calculation to double precision, which prevents a "cliff" from
+//    too large epsilon associated with float.
+//
 // ****************************************************************************
 
 void avtFTLEFilter::ComputeFtle(vtkDataArray *jacobian[3],vtkDataArray *result)
@@ -542,34 +554,34 @@ void avtFTLEFilter::ComputeFtle(vtkDataArray *jacobian[3],vtkDataArray *result)
         //x,y,z components compute front,back
         avtVector dz(j0[2],j1[2],j2[2]);
 
-        //std::cout << dx << " " << dy << " " << dz << std::endl;
+        std::cout << dx << " " << dy << " " << dz << std::endl;
 
         //J*J^T
         //float a = dx.dot(dx), b = dx.dot(dy), c = dx.dot(dz);
         //float d = dy.dot(dy), e = dy.dot(dz), f = dz.dot(dz);
 
-        float a = dx.x*dx.x + dx.y*dx.y + dx.z*dx.z;
-        float b = dx.x*dy.x + dx.y*dy.y + dx.z*dy.z;
-        float c = dx.x*dz.x + dx.y*dz.y + dx.z*dz.z;
-        float d = dy.x*dy.x + dy.y*dy.y + dy.z*dy.z;
-        float e = dy.x*dz.x + dy.y*dz.y + dy.z*dz.z;
-        float f = dz.x*dz.x + dz.y*dz.y + dz.z*dz.z;
-        float x = ( a + d + f ) / 3.0f;
+        double a = dx.x*dx.x + dx.y*dx.y + dx.z*dx.z;
+        double b = dx.x*dy.x + dx.y*dy.y + dx.z*dy.z;
+        double c = dx.x*dz.x + dx.y*dz.y + dx.z*dz.z;
+        double d = dy.x*dy.x + dy.y*dy.y + dy.z*dy.z;
+        double e = dy.x*dz.x + dy.y*dz.y + dy.z*dz.z;
+        double f = dz.x*dz.x + dz.y*dz.y + dz.z*dz.z;
+        double x = ( a + d + f ) / 3.0f;
 
         a -= x;
         d -= x;
         f -= x;
 
-        float q = (a*d*f + b*e*c + c*b*e - c*d*c - e*e*a - f*b*b) / 2.0f;
-        float r = (a*a + b*b + c*c + b*b + d*d + e*e + c*c + e*e + f*f);
+        double q = (a*d*f + b*e*c + c*b*e - c*d*c - e*e*a - f*b*b) / 2.0f;
+        double r = (a*a + b*b + c*c + b*b + d*d + e*e + c*c + e*e + f*f);
         r /= 6.0f;
 
-        float D = (r*r*r - q*q);
-        float phi = 0.0f;
+        double D = (r*r*r - q*q);
+        double phi = 0.0f;
 
-        //std::cout << a << " " << b << " " << c << " " << d << " "
-        //          << e << " " << f << " " << x << " " << q << " " << r << std::endl;
-        if( D < std::numeric_limits<float>::epsilon())
+        std::cout << a << " " << b << " " << c << " " << d << " "
+                  << e << " " << f << " " << x << " " << q << " " << r << std::endl;
+        if( D < std::numeric_limits<double>::epsilon())
             phi = 0.0f;
         else
         {
@@ -579,14 +591,14 @@ void avtFTLEFilter::ComputeFtle(vtkDataArray *jacobian[3],vtkDataArray *result)
                 phi += 3.1415926536f;
         }
 
-        const float sqrt3 = sqrtf(3.0f);
-        const float sqrtr = sqrtf(r);
+        const double sqrt3 = sqrtf(3.0f);
+        const double sqrtr = sqrtf(r);
 
-        float sinphi = 0.0f, cosphi = 0.0f;
+        double sinphi = 0.0f, cosphi = 0.0f;
         sinphi = sinf(phi);
         cosphi = cosf(phi);
 
-        float lambda = 1.0f;
+        double lambda = 1.0f;
         lambda = std::max( lambda, x + 2.0f*sqrtr*cosphi );
         lambda = std::max( lambda, x - sqrtr*(cosphi + sqrt3*sinphi) );
         lambda = std::max( lambda, x - sqrtr*(cosphi - sqrt3*sinphi) );
@@ -594,9 +606,9 @@ void avtFTLEFilter::ComputeFtle(vtkDataArray *jacobian[3],vtkDataArray *result)
         //lambda = log( sqrtf( lambda ) ) + 0.000000001;
         //                    std::cout << "s: " << lambda << std::endl;
         lambda = log( sqrtf( lambda ) );
-        lambda /= (float) atts.GetIntegrationTime();
+        lambda /= (double) atts.GetIntegrationTime();
 
-        //                    std::cout << "lambda :" << lambda << std::endl;
+                            std::cout << "lambda :" << lambda << std::endl;
         result->SetTuple1(l,lambda);
     }
 }
@@ -878,6 +890,9 @@ void avtFTLEFilter::ComputeNativeDataSetResolution(std::vector<avtIntegralCurve*
 //  Programmer: Hari Krishnan
 //  Creation:   December 5, 2011
 //
+//    Mark C. Miller, Wed Aug 22 19:22:40 PDT 2012
+//    Fix leak of all_indices, index_counts, all_result, result_counts on 
+//    rank 0 (root).
 // ****************************************************************************
 
 void avtFTLEFilter::ComputeRectilinearDataResolution(std::vector<avtIntegralCurve*> &ics)
@@ -909,14 +924,14 @@ void avtFTLEFilter::ComputeRectilinearDataResolution(std::vector<avtIntegralCurv
         end_results[j+1] = end_point[1];
         end_results[j+2] = end_point[2];
     }
-    std::cout << PAR_Rank() << " total integral pts: " << ics.size() << std::endl;
+    //std::cout << PAR_Rank() << " total integral pts: " << ics.size() << std::endl;
 
-    std::flush(cout);
+    //std::flush(cout);
 
-    int* all_indices;
-    int* index_counts;
-    double* all_result;
-    int *result_counts;
+    int* all_indices = 0;
+    int* index_counts = 0;
+    double* all_result = 0;
+    int *result_counts = 0;
 
     Barrier();
 
@@ -927,7 +942,7 @@ void avtFTLEFilter::ComputeRectilinearDataResolution(std::vector<avtIntegralCurv
     //root should now have index into global structure and all matching end positions..
     if(PAR_Rank() != 0)
     {
-        std::cout << PAR_Rank() << " creating dummy output" << std::endl;
+        //std::cout << PAR_Rank() << " creating dummy output" << std::endl;
         avtDataTree* dummy = new avtDataTree();
         SetOutputDataTree(dummy);
     }
@@ -946,21 +961,27 @@ void avtFTLEFilter::ComputeRectilinearDataResolution(std::vector<avtIntegralCurv
         lxcoord->SetNumberOfTuples(global_resolution[0]);
         for (int i = 0 ; i < global_resolution[0] ; i++)
         {
-            double pcnt = ((double)i)/((double)global_resolution[0]-1);
+            double pcnt = 0;
+            if (global_resolution[0] > 1)
+                pcnt = ((double)i)/((double)global_resolution[0]-1);
             lxcoord->SetTuple1(i, global_bounds[0]*(1.0-pcnt) + global_bounds[1]*pcnt);
         }
 
         lycoord->SetNumberOfTuples(global_resolution[1]);
         for (int i = 0 ; i < global_resolution[1] ; i++)
         {
-            double pcnt = ((double)i)/((double)global_resolution[1]-1);
+            double pcnt = 0;
+            if (global_resolution[1] > 1)
+                pcnt = ((double)i)/((double)global_resolution[1]-1);
             lycoord->SetTuple1(i, global_bounds[2]*(1.0-pcnt) + global_bounds[3]*pcnt);
         }
 
         lzcoord->SetNumberOfTuples(global_resolution[2]);
         for (int i = 0 ; i < global_resolution[2] ; i++)
         {
-            double pcnt = ((double)i)/((double)global_resolution[2]-1);
+            double pcnt = 0;
+            if (global_resolution[2] > 1)
+                pcnt = ((double)i)/((double)global_resolution[2]-1);
             lzcoord->SetTuple1(i, global_bounds[4]*(1.0-pcnt) + global_bounds[5]*pcnt);
         }
 
@@ -976,9 +997,9 @@ void avtFTLEFilter::ComputeRectilinearDataResolution(std::vector<avtIntegralCurv
         //now global grid has been created..
         size_t leafSize = global_resolution[0]*global_resolution[1]*global_resolution[2];
 
-        std::cout << "final resolution: " << PAR_Rank() << " " << global_resolution[0] << " "
-                << global_resolution[1] << " "
-                << global_resolution[2] << std::endl;
+        //std::cout << "final resolution: " << PAR_Rank() << " " << global_resolution[0] << " "
+                //<< global_resolution[1] << " "
+                //<< global_resolution[2] << std::endl;
 
 
         vtkDataArray* jacobian[3];
@@ -997,17 +1018,23 @@ void avtFTLEFilter::ComputeRectilinearDataResolution(std::vector<avtIntegralCurv
         size_t l = 0;
         for(int k = 0; k < global_resolution[2]; ++k)
         {
-            double zpcnt = ((double)k)/((double)global_resolution[2]-1);
+            double zpcnt = 0;
+            if (global_resolution[2] > 1)
+                zpcnt = ((double)k)/((double)global_resolution[2]-1);
             double z = global_bounds[4]*(1.0-zpcnt) + global_bounds[5]*zpcnt;
 
             for(int j = 0; j < global_resolution[1]; ++j)
             {
-                double ypcnt = ((double)j)/((double)global_resolution[1]-1);
+                double ypcnt = 0;
+                if (global_resolution[1] > 1)
+                    ypcnt = ((double)j)/((double)global_resolution[1]-1);
                 double y = global_bounds[2]*(1.0-ypcnt) + global_bounds[3]*ypcnt;
 
                 for(int i = 0; i < global_resolution[0]; ++i)
                 {
-                    double xpcnt = ((double)i)/((double)global_resolution[0]-1);
+                    double xpcnt = 0;
+                    if (global_resolution[0] > 1)
+                        xpcnt = ((double)i)/((double)global_resolution[0]-1);
                     double x = global_bounds[0]*(1.0-xpcnt) + global_bounds[1]*xpcnt;
 
                     remapVector[l].set(x,y,z);
@@ -1028,7 +1055,7 @@ void avtFTLEFilter::ComputeRectilinearDataResolution(std::vector<avtIntegralCurv
             total += index_counts[i];
         }
 
-        std::cout << "total number integrated: " << total << std::endl;
+        //std::cout << "total number integrated: " << total << std::endl;
         for(int j = 0,k = 0; j < total; ++j, k += 3)
         {
             size_t index = all_indices[j];
@@ -1077,10 +1104,10 @@ void avtFTLEFilter::ComputeRectilinearDataResolution(std::vector<avtIntegralCurv
         //Store this dataset in Cache for next time..
         double bounds[6];
         rect_grid->GetBounds(bounds);
-        std::cout << "final size and bounds: " << PAR_Rank() << " " << leafSize << " "
-                << bounds[0] << " " << bounds[1] << " " << bounds[2]
-                << " " << bounds[3] << " " << bounds[4] << " "
-                << bounds[5] << std::endl;
+        //std::cout << "final size and bounds: " << PAR_Rank() << " " << leafSize << " "
+                //<< bounds[0] << " " << bounds[1] << " " << bounds[2]
+                //<< " " << bounds[3] << " " << bounds[4] << " "
+                //<< bounds[5] << std::endl;
 
         std::string str = CreateResampledCacheString();
         StoreArbitraryVTKObject(SPATIAL_DEPENDENCE | DATA_DEPENDENCE,
@@ -1091,7 +1118,7 @@ void avtFTLEFilter::ComputeRectilinearDataResolution(std::vector<avtIntegralCurv
         avtDataTree* dt = new avtDataTree(rect_grid,index);
         int x = 0;
         dt->GetAllLeaves(x);
-        std::cout << "total leaves:: " << x << std::endl;
+        //std::cout << "total leaves:: " << x << std::endl;
         SetOutputDataTree(dt);
 
         //set atts..
@@ -1102,6 +1129,11 @@ void avtFTLEFilter::ComputeRectilinearDataResolution(std::vector<avtIntegralCurv
         range[0] = minv;
         range[1] = maxv;
         e->Set(range);
+
+        if (all_indices) delete [] all_indices;
+        if (index_counts) delete [] index_counts;
+        if (all_result) delete [] all_result;
+        if (result_counts) delete [] result_counts;
     }
 }
 
@@ -1136,6 +1168,11 @@ avtFTLEFilter::CreateIntegralCurveOutput(std::vector<avtIntegralCurve*> &ics)
 //  Programmer: Hari Krishnan
 //  Creation:   December 5, 2011
 //
+//  Modifications:
+//
+//    Hank Childs, Jul  6 14:17:47 PDT 2012
+//    Set resolution for Z to be 1 for 2D meshes.
+//
 // ****************************************************************************
 
 void 
@@ -1145,6 +1182,14 @@ avtFTLEFilter::PreExecute(void)
     SetStreamlineAlgorithm(STREAMLINE_VISIT_SELECTS, 10, 3, 10);
 
     GetSpatialExtents(global_bounds);
+
+    if (GetInput()->GetInfo().GetAttributes().GetSpatialDimension() == 2)
+    {
+        // we set them to 0->1 earlier and GetSpatialExtents only sets the
+        // X and Y parts of the extents for 2D.
+        global_bounds[4] = 0;
+        global_bounds[5] = 0;
+    }
 
     if(!atts.GetUseDataSetStart())
     {
@@ -1166,6 +1211,8 @@ avtFTLEFilter::PreExecute(void)
     global_resolution[0] = res[0];
     global_resolution[1] = res[1];
     global_resolution[2] = res[2];
+    if (global_bounds[4] == global_bounds[5])
+        global_resolution[2] = 1;
     avtPICSFilter::PreExecute();
 }
 

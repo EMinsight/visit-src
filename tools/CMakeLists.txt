@@ -50,6 +50,9 @@
 #   Brad Whitlock, Thu Oct 20 12:38:14 PDT 2011
 #   Do not build writer when we're doing a static build.
 #
+#   Brad Whitlock, Wed May 23 17:10:05 PDT 2012
+#   Add usedataserver example program.
+#
 #****************************************************************************/
 
 MACRO(VISIT_TOOLS_ADD_FOLDER type)
@@ -74,6 +77,7 @@ ELSE(VISIT_DBIO_ONLY OR VISIT_ENGINE_ONLY OR VISIT_SERVER_COMPONENTS_ONLY)
     ENDIF(MILI_FOUND AND NOT WIN32)
     IF(NOT WIN32)
         ADD_SUBDIRECTORY(mcurvit)
+        ADD_SUBDIRECTORY(clipeditor)
     ENDIF(NOT WIN32)
     ADD_SUBDIRECTORY(mpeg2encode)
     IF(SILO_FOUND)
@@ -83,7 +87,9 @@ ELSE(VISIT_DBIO_ONLY OR VISIT_ENGINE_ONLY OR VISIT_SERVER_COMPONENTS_ONLY)
     IF(WIN32)
        ADD_SUBDIRECTORY(qtssh)
     ENDIF(WIN32)
+
     IF(VISIT_PYTHON_SCRIPTING AND NOT VISIT_STATIC)
+        ADD_SUBDIRECTORY(dataserver)
         ADD_SUBDIRECTORY(writer)
     ENDIF(VISIT_PYTHON_SCRIPTING AND NOT VISIT_STATIC)
     ADD_SUBDIRECTORY(xml)
@@ -100,7 +106,6 @@ ENDIF(VISIT_DBIO_ONLY OR VISIT_ENGINE_ONLY OR VISIT_SERVER_COMPONENTS_ONLY)
 # avt_do_add
 # avtprep
 # clidriver
-# clipeditor
 # curv3dprep
 # doxygenate
 # escan

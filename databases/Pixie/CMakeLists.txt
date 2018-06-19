@@ -16,12 +16,14 @@ SET(LIBM_SOURCES
 PixieMDServerPluginInfo.C
 ${COMMON_SOURCES}
 avtPixieFileFormat.C
+avtPixieOptions.C
 )
 
 SET(LIBE_SOURCES
 PixieEnginePluginInfo.C
 ${COMMON_SOURCES}
 avtPixieFileFormat.C
+avtPixieOptions.C
 )
 
 INCLUDE_DIRECTORIES(
@@ -50,9 +52,6 @@ ${VISIT_INCLUDE_DIR}/visit_vtk/lightweight
 ${VTK_INCLUDE_DIRS} 
 )
 
-IF(WIN32)
-  ADD_DEFINITIONS(-D_HDF5USEDLL_)
-ENDIF(WIN32)
 
 LINK_DIRECTORIES(${VISIT_LIBRARY_DIR} ${VTK_LIBRARY_DIRS} ${HDF5_LIBRARY_DIR} )
 

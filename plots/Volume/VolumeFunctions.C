@@ -327,6 +327,9 @@ VolumeSkewTransform(const VolumeAttributes &atts,
 //   Allen Harvey, Wed Jun  6 14:02:58 PDT 2012
 //   Change implementation so it looks up the proper array based on the name.
 //
+//   Brad Whitlock, Mon Aug 20 16:26:27 PDT 2012
+//   If no variable name was passed, return the active scalar.
+//
 // ****************************************************************************
 
 vtkDataArray *
@@ -334,10 +337,10 @@ VolumeGetScalar(vtkDataSet *ds, const char *name)
 {
     vtkPointData *pd = ds->GetPointData();
     vtkDataArray *data = NULL;
-    if(pd->GetNumberOfArrays() > 0)
-        data = pd->GetArray(0);
 
-    if (data != NULL)  
+    if(name == NULL)
+        data = pd->GetScalars();
+    else
     {
         //
         // The data is not set up as the active scalars.  Try to guess what
@@ -396,6 +399,10 @@ VolumeGetScalar(vtkDataSet *ds, const char *name)
 //    data scaling is now done in the engine so we can histogram it and not
 //    have to recalculate it for each render.
 //
+//    Brad Whitlock, Mon Aug 20 16:27:28 PDT 2012
+//    Pass NULL into VolumeGetScalar when we obtain the color variable so we
+//    can request the active scalar.
+//
 // ****************************************************************************
 
 bool
@@ -406,7 +413,7 @@ VolumeGetScalars(const VolumeAttributes &atts, vtkDataSet *ds,
     const char *ov = atts.GetOpacityVariable().c_str();
 
     vtkPointData *pd = ds->GetPointData();
-    data = VolumeGetScalar(ds, ov);
+    data = VolumeGetScalar(ds, NULL);
     if (data == NULL)
     {
         return false;
@@ -1287,8 +1294,8 @@ VolumeHistograms(const VolumeAttributes &atts,
         }
     }
 
-    // Go through the 2D histogram data and scale it to [.1,1.] so we can
-    // use the results as a decent GL texture.
+    // Go through the 2D histogram data, apply gamma correction to make things more visible,
+    // and scale it to [.1,1.] so we can use the results as a decent GL texture.
     if(hist2_max > 0.)
     {
         int hist_size2 = hist_size * hist_size;
@@ -1296,9 +1303,10 @@ VolumeHistograms(const VolumeAttributes &atts,
         for (int index = 0; index < hist_size2; ++index)
         {
             if(hist2[index] > 0.)
-                hist2[index] = hist2[index] * h_scale + 0.1;
+                hist2[index] = pow(hist2[index] * h_scale + 0.1,0.5); // gamma: v=(v*h+0.1)^0.5
         }
     }
+
     // Normalize the 1D histogram data.
     if(hist_max > 0.)
     {

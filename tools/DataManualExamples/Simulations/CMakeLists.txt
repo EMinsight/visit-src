@@ -58,6 +58,9 @@
 #   Brad Whitlock, Wed Jul 18 17:03:01 PDT 2012
 #   Added materialvar.c
 #
+#   Brad Whitlock, Mon Aug 13 11:37:49 PDT 2012
+#   Added multiblock.c
+#
 #****************************************************************************/
 
 INCLUDE_DIRECTORIES(
@@ -196,6 +199,7 @@ ENDFUNCTION(ADD_PARALLEL_FORTRAN_SIMV2_SIMULATION)
 ##
 ## Simulation targets
 ##
+ADD_SIMV2_SIMULATION(aresamr aresamr.c)
 
 ADD_SIMV2_SIMULATION(amr amr.c)
 ADD_FORTRAN_SIMV2_SIMULATION(famr famr.f)
@@ -217,6 +221,7 @@ ADD_SIMV2_SIMULATION(life life.c)
 ADD_PARALLEL_SIMV2_SIMULATION(life_par life.c)
 
 ADD_SIMV2_SIMULATION(mandelbrot mandelbrot.C patch.C)
+ADD_PARALLEL_SIMV2_SIMULATION(mandelbrot_par mandelbrot.C patch.C)
 
 ADD_SIMV2_SIMULATION(material material.c)
 ADD_FORTRAN_SIMV2_SIMULATION(fmaterial fmaterial.f)
@@ -225,6 +230,9 @@ ADD_SIMV2_SIMULATION(materialvar materialvar.c)
 
 ADD_SIMV2_SIMULATION(mesh mesh.c)
 ADD_FORTRAN_SIMV2_SIMULATION(fmesh fmesh.f)
+
+ADD_SIMV2_SIMULATION(multiblock multiblock.c)
+ADD_PARALLEL_SIMV2_SIMULATION(multiblock_par multiblock.c)
 
 ADD_SIMV2_SIMULATION(point point.c)
 ADD_FORTRAN_SIMV2_SIMULATION(fpoint fpoint.f)

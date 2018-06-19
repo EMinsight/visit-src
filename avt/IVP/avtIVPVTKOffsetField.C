@@ -131,15 +131,16 @@ avtIVPVTKOffsetField::SetNodeOffsets( const std::vector<avtVector>& offsets )
 //
 // ****************************************************************************
 
-avtIVPSolverResult::Result
-avtIVPVTKOffsetField::operator()( const double &t, const avtVector &pt, avtVector &retV ) const {
-  avtVector result = operator()(t, pt);
-  //TODO error handling
-  retV.x = result.x;
-  retV.y = result.y;
-  retV.z = result.z;
-
-  return avtIVPSolverResult::OK;
+avtIVPField::Result
+avtIVPVTKOffsetField::operator()( const double &t, const avtVector &pt, avtVector &retV ) const
+{
+    avtVector result = operator()(t, pt);
+    //TODO error handling
+    retV.x = result.x;
+    retV.y = result.y;
+    retV.z = result.z;
+    
+    return OK;
 }
 
 avtVector
@@ -150,7 +151,8 @@ avtIVPVTKOffsetField::operator()( const double &t, const avtVector &p ) const
     for ( size_t j = 0; j < 3; ++j )
     {
 
-        if( !FindCell( t, p ) ) {
+        if (FindCell(t, p) != OK)
+        {
             // ghost cells on the base mesh may be required to avoid this failure
             debug5 <<"avtIVPVTKOffsetField::operator() - UNABLE TO FIND CELL!" 
                    <<std::endl;
@@ -162,21 +164,23 @@ avtIVPVTKOffsetField::operator()( const double &t, const avtVector &p ) const
 
 
         avtVector displ2 = displ;
-        if( FindCell( t, pCorrected ) ) {
+        if (FindCell(t, pCorrected) != OK)
+        {
             // the displacement seen from the base target position may be 
             // a little different.
             displ2 = GetPositionCorrection( j );
         }
 
         pCorrected = p - 0.5*(displ2 + displ);
-        if( !FindCell( t, pCorrected ) ) {
+        if (FindCell(t, pCorrected) != OK)
+        {
             debug5 <<"avtIVPVTKOffsetField::operator() - UNABLE TO FIND CORRECTED CELL!" 
                    <<std::endl;
             return zeros;
         }        
 
         // velocity for this staggering
-        velocities[j] = FindValue( velData );
+        FindValue(velData, velocities[j]);
     }
 
     // compose the velocity, assuming each component is purely 
@@ -197,54 +201,31 @@ avtIVPVTKOffsetField::operator()( const double &t, const avtVector &p ) const
 //
 // ****************************************************************************
 
-avtIVPSolverResult::Result
-avtIVPVTKOffsetField::FindValue(vtkDataArray* vectorData, avtVector &vel) const
+bool
+avtIVPVTKOffsetField::FindValue(vtkDataArray *vectorData, avtVector &vel) const
 {
-  avtVector result = FindValue(vectorData);
-  vel.x = result.x;
-  vel.y = result.y;
-  vel.z = result.z;
-
-  return avtIVPSolverResult::OK;
-}
-
-avtVector
-avtIVPVTKOffsetField::FindValue( vtkDataArray* vectorData ) const
-{
-    avtVector vel( 0.0, 0.0, 0.0 );
-
-    if( velCellBased )
-        vectorData->GetTuple( lastCell, &vel.x );
+    if (velCellBased)
+        vectorData->GetTuple(lastCell, &vel.x);
     else
     {
         // nodal field components, may contain some offset
-
+        
         for ( size_t j = 0; j < 3; ++j )
         {
-            
             // interpolate
             double tmp[3];
-
+            
             for( avtInterpolationWeights::const_iterator wi=lastWeights.begin();
                  wi!=lastWeights.end(); ++wi )
             {
                 vectorData->GetTuple( wi->i, tmp );
-
+                
                 vel[j] += wi->w * tmp[j];
             }
-
         }
     }
 
-    if( normalized )
-    {
-        double len = vel.length();
-
-        if( len )
-            vel /= len;
-    }
-
-    return vel;
+    return true;
 }
 
 // ****************************************************************************

@@ -81,7 +81,7 @@ class ViewerStateBuffered;
 class ViewerWindow;
 class avtDatabaseMetaData;
 class avtDefaultPlotMetaData;
-
+class SharedDaemon;
 
 // ****************************************************************************
 //  Class: ViewerSubject
@@ -497,6 +497,10 @@ class avtDefaultPlotMetaData;
 //    Marc Durant, Thu Jan 12 12:36:00 MST 2012
 //    Added ToggleAllowPopup.
 //
+//    Jonathan Byrd (Allinea Software), Sun Dec 18 2011
+//    Added methods for connecting/disconnecting the viewer with DDT,
+///   and to instruct DDT to focus on a specific domain.
+//
 // ****************************************************************************
 
 class VIEWER_API ViewerSubject : public ViewerBase
@@ -541,6 +545,9 @@ public:
     // Callback function for opening processes via engine.
     static void OpenWithEngine(const std::string &remoteHost, 
                                const stringVector &args, void *data);
+
+    void AddNewViewerClientConnection(ViewerClientConnection* newClient);
+
 public slots:
     void ProcessFromParent();
 private:
@@ -705,6 +712,10 @@ private:
 
     void SetDefaultFileOpenOptions();
     void SetSuppressMessages();
+    void BroadcastAdvanced(AttributeSubject *subj);
+
+    void DDTFocus();
+    void DDTConnect();
         
 signals:
     void scheduleHeavyInitialization();
@@ -807,6 +818,7 @@ private:
     std::vector<std::string> engineParallelArguments;
     std::vector<std::string> unknownArguments;
     std::vector<std::string> clientArguments;
+    SharedDaemon             *shared_viewer_daemon;
 };
 
 #endif

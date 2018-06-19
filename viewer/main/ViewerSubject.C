@@ -151,6 +151,7 @@
 #include <WindowInformation.h>
 #include <PlotPluginManager.h>
 #include <OperatorPluginManager.h>
+#include <avtImageFileWriter.h>
 
 #include <QApplication>
 #include <QSocketNotifier>
@@ -163,6 +164,10 @@
 #include <avtColorTables.h>
 #include <avtDatabaseMetaData.h>
 #include <avtSimulationInformation.h>
+#include <SharedDaemon.h>
+
+#include <DDTManager.h>
+#include <DDTSession.h>
 
 #if !defined(_WIN32)
 #include <strings.h>
@@ -339,6 +344,12 @@ ViewerSubject::ViewerSubject() : ViewerBase(0),
     CreateState();
     viewerDelayedState = 0;
     viewerDelayedMethods = 0;
+
+    //
+    // Option for whether this Viewer will dynamically allow new clients
+    // activated from commandline
+    //
+    shared_viewer_daemon = NULL;
 }
 
 // ****************************************************************************
@@ -405,7 +416,27 @@ ViewerSubject::~ViewerSubject()
     delete inputConnection;
     delete viewerDelayedState;
     delete viewerDelayedMethods;
+    delete shared_viewer_daemon;
 }
+
+void
+ViewerSubject::AddNewViewerClientConnection(ViewerClientConnection* newClient)
+{
+
+    newClient->SetupSpecialOpcodeHandler(SpecialOpcodeCallback, (void *)this);
+
+    // Connect up the new client so we can handle its signals.
+    connect(newClient, SIGNAL(InputFromClient(ViewerClientConnection *, AttributeSubject *)),
+            this,      SLOT(AddInputToXfer(ViewerClientConnection *, AttributeSubject *)));
+    connect(newClient, SIGNAL(DisconnectClient(ViewerClientConnection *)),
+            this,      SLOT(DisconnectClient(ViewerClientConnection *)));
+
+    clients.push_back(newClient);
+    // Discover the client's information.
+    QTimer::singleShot(100, this, SLOT(DiscoverClientInformation()));
+}
+
+
 
 // ****************************************************************************
 //  Method: ViewerSubject::Connect
@@ -555,6 +586,9 @@ ViewerSubject::Initialize()
                 this, SLOT(HeavyInitialization()),
                 Qt::QueuedConnection);
     }
+
+    if(shared_viewer_daemon)
+        QTimer::singleShot(350,shared_viewer_daemon,SLOT(init()));
 
     visitTimer->StopTimer(timeid, "Total time setting up");
 }
@@ -1077,7 +1111,8 @@ ViewerSubject::HeavyInitialization()
         QTimer::singleShot(100, this, SLOT(DiscoverClientInformation()));
 
         // Open a database on startup.
-        QTimer::singleShot(100, this, SLOT(OpenDatabaseOnStartup()));
+        if(!WindowMetrics::EmbeddedWindowState())
+            QTimer::singleShot(100, this, SLOT(OpenDatabaseOnStartup()));
 
         // Open a script on startup.
         QTimer::singleShot(100, this, SLOT(OpenScriptOnStartup()));
@@ -1268,8 +1303,20 @@ ViewerSubject::DisconnectClient(ViewerClientConnection *client)
                << client->Name().toStdString() << ")." << endl;
         client->deleteLater();
 
+        // check to see if all other clients are remote, if they are then quit since
+        // all admin clients have quit
+        bool adminClient = false;
+        for(int i = 0; i < clients.size(); ++i)
+        {
+            if(!clients[i]->GetExternalClient())
+            {
+                adminClient = true;
+                break;
+            }
+        }
+
         // If we ever get down to no client connections, quit.
-        if(clients.size() < 1)
+        if(clients.size() < 1 || !adminClient)
         {
             Close();
         }
@@ -2037,7 +2084,8 @@ ViewerSubject::ProcessEvents()
 
     if (interruptionEnabled)
     {
-        qApp->processEvents(QEventLoop::AllEvents, 100);
+        if(!WindowMetrics::EmbeddedWindowState()) //if not embedded or pyside client
+            qApp->processEvents(QEventLoop::AllEvents, 100);
     }
 
     for(it = engineKeyToNotifier.begin(); it != engineKeyToNotifier.end(); ++it)
@@ -2601,6 +2649,9 @@ ViewerSubject::ProcessCommandLine(int argc, char **argv)
     // Read the config files.
     ReadConfigFiles(argc, argv);
 
+    int shared_daemon_port = -1;
+    std::string shared_daemon_password = "";
+
     //
     // Process the command line for the viewer.
     //
@@ -2833,6 +2884,13 @@ ViewerSubject::ProcessCommandLine(int argc, char **argv)
             RemoteProcess::DisablePTY();
             SetNowinMode(true);
         }
+        else if (strcmp(argv[i], "-pyuiembedded") == 0 ||
+                 strcmp(argv[i], "-uifile") == 0 ||
+                 strcmp(argv[i], "-pysideviewer") == 0 ||
+                 strcmp(argv[i], "-pysideclient") == 0)
+        {
+            WindowMetrics::SetEmbeddedWindowState(true);
+        }
         else if (strcmp(argv[i], "-manta") == 0)
         {
             avtCallback::SetMantaMode(true);
@@ -2953,6 +3011,28 @@ ViewerSubject::ProcessCommandLine(int argc, char **argv)
             ViewerFileServer::Instance()->AddFallbackFormatFromCL(argv[i+1]);
             ++i;
         }
+        else if (strcmp(argv[i], "-shared_port") == 0)
+        {
+            if ((i + 1 >= argc) || (!isdigit(*(argv[i+1]))))
+            {
+                cerr << "The -shared_port option must be followed by an "
+                        "integer(valid port) number." << endl;
+                continue;
+            }
+            shared_daemon_port = atoi(argv[i+1]);
+            ++i;
+        }
+        else if (strcmp(argv[i], "-shared_password") == 0)
+        {
+            if ((i + 1 >= argc))
+            {
+                cerr << "The -shared_password option must be followed by a "
+                        "string." << endl;
+                continue;
+            }
+            shared_daemon_password = argv[i+1];
+            ++i;
+        }
         else // Unknown argument -- add it to the list
         {
             clientArguments.push_back(argv[i]);
@@ -2962,6 +3042,19 @@ ViewerSubject::ProcessCommandLine(int argc, char **argv)
         // 20110318 VRS patch to lock in ssh tunneling
         ViewerServerManager::ForceSSHTunnelingForAllConnections();
 #endif
+    }
+
+    if(shared_daemon_port != -1 || shared_daemon_password.length() > 0)
+    {
+        if(shared_daemon_port == -1 || shared_daemon_password == "")
+        {
+             std::cerr << "Viewer Sharing not enabled port or password not set correctly"
+                 << std::endl;
+        }
+        else
+        {
+            shared_viewer_daemon = new SharedDaemon(this,shared_daemon_port,shared_daemon_password);
+        }
     }
 
     // Set the geometry based on the argument that was provided with
@@ -8049,6 +8142,12 @@ ViewerSubject::HandleViewerRPC()
 //    Marc Durant, Thu Jan 12 12:35:00 MST 2012
 //    Added ToggleAllowPopup
 //
+//    Jonathan Byrd (Allinea Software), Sun Dec 18, 2011
+//    Added DDTFocus and DDTConnect
+//
+//    Kathleen Biagas, Fri Oct 19 13:55:00 PDT 2012
+//    Reorderd DDT entries, made MaxRPC the last case before default.
+//  
 // ****************************************************************************
 
 void
@@ -8445,6 +8544,12 @@ ViewerSubject::HandleViewerRPCEx()
     case ViewerRPC::GetQueryParametersRPC:
         GetQueryParameters();
         break;
+    case ViewerRPC::DDTConnectRPC:
+        DDTConnect();
+        break;
+    case ViewerRPC::DDTFocusRPC:
+        DDTFocus();
+        break;
     case ViewerRPC::MaxRPC:
         break;
     default:
@@ -8474,6 +8579,106 @@ ViewerSubject::HandleViewerRPCEx()
            << " RPC." << endl;
 }
 
+void
+ViewerSubject::BroadcastAdvanced(AttributeSubject* subj)
+{
+
+    /// check if any clients have enabled advanced broadcasting before even
+    /// starting..
+    bool shouldBroadCastAdvanced = false;
+
+    for(int i = 0; i < clients.size(); ++i)
+    {
+        if(clients[i]->GetAdvancedRendering())
+        {
+            shouldBroadCastAdvanced = true;
+            break;
+        }
+    }
+
+    if(!shouldBroadCastAdvanced) return; 
+
+    /// if DrawPlots then send a Query for Advanced users..
+    //if(GetViewerState()->GetViewerRPC()->GetRPCType() == ViewerRPC::DrawPlotsRPC)
+    if(subj == GetViewerState()->GetView2DAttributes() || subj == GetViewerState()->GetView3DAttributes())
+    {
+        QueryAttributes* qatts = GetViewerState()->GetQueryAttributes();
+        ViewerWindowManager* manager = ViewerWindowManager::Instance();
+        stringVector defaultVars;
+
+        /// for now do screen capture, until all clients are stable
+        bool screenCapture = true;
+
+        for(int i = 0; i < manager->GetNumWindows(); ++i)
+        {
+            ViewerWindow* vwin = manager->GetWindow(i);
+
+            size_t len = 0;
+            const char* result = 0;
+
+            if(!screenCapture)
+            {
+                /// get dataset..
+                ViewerPlotList *plotList = vwin->GetPlotList();
+
+                for(int j = 0; j < plotList->GetNumPlots(); ++j)
+                {
+                    ViewerPlot* plot = plotList->GetPlot(i);
+                    avtDataObjectReader_p reader = plot->GetReader();
+                    if(reader->InputIsImage())
+                    {
+                        avtImage_p image = reader->GetImageOutput();
+                        result = avtImageFileWriter::WriteToByteArray(image->GetImage(),80,1,len);
+
+                        if(len > 0){
+                            QByteArray data(result,len);
+                            defaultVars.push_back(QString(data.toBase64()).toStdString());
+                        }
+                        /// free the memory
+                        delete [] result;
+                    }
+                    else if(reader->InputIsDataset())
+                    {
+                        avtDataset_p dataset = reader->GetDatasetOutput();
+                        std::string res = dataset->GetDatasetAsString();
+                        if(res.size() > 0)
+                            defaultVars.push_back(res);
+                    }
+                }
+            }
+            else
+            {
+                /// image
+                avtImage_p image = vwin->ScreenCapture();
+                /// convert to format..
+                result = avtImageFileWriter::WriteToByteArray(image->GetImage(),80,1,len);
+
+                if(len > 0){
+                    QByteArray data(result,len);
+                    defaultVars.push_back(QString(data.toBase64()).toStdString());
+                }
+                delete [] result;
+            }
+
+        }
+
+        if(defaultVars.size() > 0)
+        {
+            qatts->SetResultsMessage("ImageData");
+            qatts->SetResultsValue(0);
+            qatts->SetDefaultVars(defaultVars);
+
+            for(int i = 0; i < clients.size(); ++i)
+            {
+                if(clients[i]->GetAdvancedRendering())
+                    clients[i]->BroadcastToClient(qatts);
+            }
+            qatts->SetResultsMessage("");
+            qatts->SetResultsValue(0);
+            qatts->SetDefaultVars(stringVector());
+        }
+    }
+}
 // ****************************************************************************
 // Method: ViewerSubject::PostponeAction
 //
@@ -8748,6 +8953,8 @@ ViewerSubject::BroadcastToAllClients(void *data1, Subject *data2)
         AttributeSubject *subj = (AttributeSubject *)data2;
         for(int i = 0; i < This->clients.size(); ++i)
             This->clients[i]->BroadcastToClient(subj);
+
+        This->BroadcastAdvanced(subj);
     }
 }
 
@@ -9448,6 +9655,10 @@ ViewerSubject::ReadFromSimulationAndProcess(int socket)
 //   
 //    Mark C. Miller, Wed Jun 17 17:46:18 PDT 2009
 //    Replaced CATCHALL(...) with CATCHALL
+//
+//    Brad Whitlock, Mon Aug  6 12:12:22 PDT 2012
+//    Print the metadata we're sending to the client.
+//
 // ****************************************************************************
 
 void
@@ -9455,12 +9666,21 @@ ViewerSubject::HandleMetaDataUpdated(const string &host,
                                      const string &file,
                                      const avtDatabaseMetaData *md)
 {
+    const char *mName = "ViewerSubject::HandleMetaDataUpdated: ";
+
     TRY
     {
         // Handle MetaData updates
         ViewerFileServer *fs = ViewerFileServer::Instance();
 
         *GetViewerState()->GetDatabaseMetaData() = *md;
+        if (DebugStream::Level4())
+        {
+            debug4 << mName << "Received metadata from simulation "
+                   << host << ":" << file << endl;
+            GetViewerState()->GetDatabaseMetaData()->Print(DebugStream::Stream4());
+        }
+
         fs->SetSimulationMetaData(host, file, *GetViewerState()->GetDatabaseMetaData());
         // The file server will modify the metadata slightly; make sure
         // we picked up the new one.
@@ -9468,11 +9688,27 @@ ViewerSubject::HandleMetaDataUpdated(const string &host,
         ViewerWindowManager *wM=ViewerWindowManager::Instance();
         ViewerPlotList *plotList = wM->GetActiveWindow()->GetPlotList();
         plotList->UpdateExpressionList(false);
+
+        if (DebugStream::Level4())
+        {
+            debug4 << mName << "Sending metadata to the client: " << endl;
+            GetViewerState()->GetDatabaseMetaData()->Print(DebugStream::Stream4());
+        }
+
         GetViewerState()->GetDatabaseMetaData()->SelectAll();
         GetViewerState()->GetDatabaseMetaData()->Notify();
+
+        // If this is a DDTSim simulation, we may be using the animation controls to control
+        // the sim. Update the animation window information.
+        if (DDTManager::isDatabaseDDTSim(file) && DDTManager::isDDTSim(wM->GetActiveWindow()))
+        {
+            wM->UpdateWindowInformation(WINDOWINFO_ANIMATION, -1);
+            wM->UpdateActions();
+        }
     }
     CATCHALL
     {
+        debug1 << "Could not accept the new metadata from " << host << ":" << file << endl;
         ; // nothing
     }
     ENDTRY
@@ -11228,4 +11464,49 @@ ViewerSubject::OpenWithEngine(const std::string &remoteHost,
         dialog->setIgnoreHide(false);
 
     debug1 << mName << "end" << endl;
+}
+
+// ****************************************************************************
+// Method:  DDTConnect
+//
+// Purpose:
+//   Connects/disconnects the viewer with DDT
+//
+// Programmer:  Jonathan Byrd
+// Creation:    December 18, 2011
+//
+// ****************************************************************************
+
+void ViewerSubject::DDTConnect()
+{
+    const bool connect = (bool) GetViewerState()->GetViewerRPC()->GetIntArg1();
+
+    DDTManager* manager = DDTManager::getInstance();
+    DDTSession* ddt = manager->getSessionNC();
+    if (ddt!=NULL && ddt->connected())
+        manager->disconnect();
+    else if (ddt==NULL)
+        ddt = manager->makeConnection();
+}
+
+// ****************************************************************************
+// Method:  DDTFocus
+//
+// Purpose:
+//   Instructs DDT to focus on a specific domain
+//
+// Programmer:  Jonathan Byrd
+// Creation:    December 18, 2011
+//
+// ****************************************************************************
+
+void ViewerSubject::DDTFocus()
+{
+    const int domain = GetViewerState()->GetViewerRPC()->GetIntArg1();
+
+    DDTSession* ddt = DDTManager::getInstance()->getSession();
+    if (ddt!=NULL)
+        ddt->setFocusOnDomain(domain);
+    else
+        Error(tr("Cannot focus DDT on domain %0: failed to connect to DDT").arg(domain));
 }

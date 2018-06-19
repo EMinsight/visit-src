@@ -75,6 +75,60 @@
 using std::string;
 using std::vector;
 
+// ****************************************************************************
+// Method: PickRecord::PickRecord
+//
+// Purpose:
+//   This is the empty constructor for the PickRecord class.
+//
+// Programmer: Jonathan Byrd (Allinea Software)
+// Creation:   December 18, 2011
+//
+// Modifications:
+//
+// ****************************************************************************
+
+PickRecord::PickRecord() {
+    domain = -1;
+    simulation = "<none>";
+}
+
+// ****************************************************************************
+// Method: PickRecord::PickRecord
+//
+// Purpose:
+//   This is the constructor for the PickRecord class.
+//
+// Programmer: Jonathan Byrd (Allinea Software)
+// Creation:   December 18, 2011
+//
+// Modifications:
+//
+// ****************************************************************************
+
+PickRecord::PickRecord(int dom, std::string &sim) {
+    domain = dom;
+    simulation = sim;
+}
+
+// ****************************************************************************
+// Method: PickRecord::reset
+//
+// Purpose:
+//   This resets the PickRecord to 'empty' data not representing
+//   any domain for any tab.
+//
+// Programmer: Jonathan Byrd (Allinea Software)
+// Creation:   December 18, 2011
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void PickRecord::reset() {
+    domain = -1;
+    simulation = "<none>";
+}
 
 // ****************************************************************************
 // Method: QvisPickWindow::QvisPickWindow
@@ -255,6 +309,12 @@ QvisPickWindow::~QvisPickWindow()
 //   Kathleen Biagas, Thu Aug 25 09:58:00 PDT 2011
 //   Create separate tabs for display, time, and spreadsheet options.
 //
+//   Jonathan Byrd (Allinea Software), Sun Dec 18, 2011
+//   Added PickRecords array
+//
+//   Dirk Schubert (Allinea Software), Fri Oct 12, 2012
+//   Add "Focus DDT on Pick" button optionally (HAVE_DDT)
+//
 // ****************************************************************************
 
 void
@@ -272,6 +332,7 @@ QvisPickWindow::CreateWindowContents()
         vLayout->setSpacing(5);
         pages[i]->hide();
         infoLists[i]  = new QTextEdit(pages[i]);
+        pickRecords[i] = new PickRecord();
         vLayout->addWidget(infoLists[i]);
         infoLists[i]->setWordWrapMode(QTextOption::WordWrap);
         infoLists[i]->setReadOnly(true);
@@ -326,6 +387,14 @@ QvisPickWindow::CreateWindowContents()
     connect(autoShowCheckBox, SIGNAL(toggled(bool)),
             this, SLOT(autoShowToggled(bool)));
     gLayout->addWidget(autoShowCheckBox, 3, 0, 1, 4);
+
+#ifdef HAVE_DDT
+    QPushButton *focusPickInDDTButton =
+        new QPushButton(tr("Focus DDT on Pick"), central);
+    connect(focusPickInDDTButton, SIGNAL(clicked()),
+            this,SLOT(focusPickInDDTClicked()));
+    gLayout->addWidget(focusPickInDDTButton,3,2,1,2);
+#endif
 
     savePicksCheckBox = new QCheckBox(tr("Don't clear this window"), central);
     connect(savePicksCheckBox, SIGNAL(toggled(bool)),
@@ -950,6 +1019,10 @@ QvisPickWindow::UpdatePage()
         infoLists[nextPage]->clear();
         infoLists[nextPage]->setText(displayString.c_str());
 
+        // Record the domain belonging to this pick
+        pickRecords[nextPage]->domain = pickAtts->GetDomain();
+        pickRecords[nextPage]->simulation = pickAtts->GetDatabaseName();
+
         // Show the tab.
         resultsTabWidget->setCurrentIndex(nextPage);
         nextPage = (nextPage + 1) % userMaxPickTabs->value();
@@ -1286,6 +1359,7 @@ QvisPickWindow::ClearPages()
     {
         resultsTabWidget->setTabText(i, temp);
         infoLists[i]->clear();
+        pickRecords[i]->reset();
     }
     resultsTabWidget->setCurrentIndex(0);
 }
@@ -1873,6 +1947,7 @@ QvisPickWindow::ResizeTabs()
         {
             resultsTabWidget->setTabText(i, temp);
             infoLists[i]->clear();
+            pickRecords[i]->reset();
             resultsTabWidget->removeTab(i);
             pages[i]->hide();
         }
@@ -2211,6 +2286,9 @@ QvisPickWindow::optionsTabSelected(int index)
 //
 // Modifications:
 //
+//   Jonathan Byrd (Allinea Software) Sun Dec 18, 2011
+//   Added button to focus DDT on the domain of the current page's Pick.
+//
 // ****************************************************************************
 
 void
@@ -2235,6 +2313,9 @@ QvisPickWindow::ConnectPlotList(PlotList *pl)
 //
 // Modifications:
 //
+//   Jonathan Byrd, Sun Dec 18, 2011
+//   Record the domain for the Pick on the page that has been updated
+//
 // ****************************************************************************
 
 void
@@ -2246,3 +2327,24 @@ QvisPickWindow::SubjectRemoved(Subject *TheRemovedSubject)
         plotList = 0;
 }
 
+// ****************************************************************************
+// Method: QvisPickWindow::focusPickInDDTClicked
+//
+// Purpose:
+//   This is a Qt slot function that focus's the attached DDT on the
+//   domain of the currently selected pick
+//
+// Programmer: Jonathan Byrd (Allinea Software)
+// Creation:   December 18, 2011
+//
+// Modifications:
+//
+// ****************************************************************************
+void
+QvisPickWindow::focusPickInDDTClicked()
+{
+    int targetDomain = pickRecords[resultsTabWidget->currentIndex()]->domain;
+    string targetSim = pickRecords[resultsTabWidget->currentIndex()]->simulation;
+
+    GetViewerMethods()->DDTFocus(targetDomain);
+}

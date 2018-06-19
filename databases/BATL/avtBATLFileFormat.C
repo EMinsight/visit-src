@@ -224,7 +224,6 @@ avtBATLFileFormat::avtBATLFileFormat(const char *cfilename,
 
     showProcessors = opts->GetBool("Show generating processor instead of refinement level");
     newStyleCurves = opts->GetBool("Use new style curve generation");
-    addStructuredDomainBoundaries = opts->GetBool("Set up patch abutment information");
 
     // do HDF5 library initialization on consturction of first instance
     if (avtBATLFileFormat::objcnt == 0)
@@ -496,8 +495,7 @@ QsortiCoordSorter(const void *arg1, const void *arg2)
 //    Paul D. Stewart Mon Jul 16 2012
 //     Added logicalDimension and condensed things a bit.
 //   
-//    Paul D Stesart Jul 26, 2012
-//     Changed group origin to 0
+//    
 // ****************************************************************************
 
 void
@@ -533,7 +531,6 @@ avtBATLFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
             groupIds[i] = blocks[i].procnum;
             pieceNames[i] = tmpName;
         }
-
     }
     else
     {
@@ -602,6 +599,7 @@ avtBATLFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
                 smd->meshName = "mesh_blockandproc";
             else
                 smd->meshName = "amr_mesh";
+            
             smd->centering = AVT_ZONECENT;
             smd->hasUnits = true;
             smd->units = varUnits[v];
@@ -669,6 +667,7 @@ avtBATLFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
                     groupIds[i] = blocks[i].level;
                     pieceNames[i] = tmpName;
                 }
+
             }
 
             mortMesh->meshType = AVT_UNSTRUCTURED_MESH;
@@ -1660,15 +1659,13 @@ avtBATLFileFormat::ReadAllMetaData()
         EXCEPTION1(InvalidFilesException, filename.c_str());
     }
     debug5 << "ReadAllMetaData Marker 7" << endl;
-    if (numBlocks > 0)
-    {
+//     if (numBlocks > 0)
+//     {
         debug5 << "ReadAllMetaData Marker 8" << endl;
         ReadBlockExtents();
         debug5 << "ReadAllMetaData Marker 9" << endl;
         ReadRefinementLevels();
-        debug5 << "ReadAllMetaData Marker 10" << endl;
         ReadUnknownNames();
-        showUnits = true;
         ReadUnknownUnits();
         ReadAxisLabels();
         debug5 << "ReadAllMetaData Marker 12" << endl;
@@ -1705,7 +1702,7 @@ avtBATLFileFormat::ReadAllMetaData()
         debug5 << "ReadAllMetaData Marker 17" << endl;
 
         debug5 << "ReadAllMetaData Marker 20" << endl;
-    }
+//     }
     debug5 << "ReadAllMetaData Marker 21" << endl;
 }
 
@@ -1883,7 +1880,7 @@ void avtBATLFileFormat::ReadCoordinates()
             }
             else
             {
-                blocks[d].coords[d] = 0;
+                blocks[b].coords[d] = 0.0;
             }
         }
 
@@ -1961,8 +1958,8 @@ void avtBATLFileFormat::ReadBlockExtents()
             }
             else
             {
-                blocks[b].minSpatialExtents[d] = 0;
-                blocks[b].maxSpatialExtents[d] = 0;
+                blocks[b].minSpatialExtents[d] = 0.0;
+                blocks[b].maxSpatialExtents[d] = 0.0;
             }
         }
     }
@@ -2001,7 +1998,7 @@ void avtBATLFileFormat::ReadRefinementLevels()
     {
         for (int b=0; b<numBlocks; b++)
         {
-            blocks[b].level = 1;
+            blocks[b].level = 0;
         }
     }
     else
@@ -2352,8 +2349,7 @@ avtBATLFileFormat::ReadUnknownUnits()
 
     hid_t unt_raw_data_type = H5Dget_type(unitsId);
     int length = H5Tget_size(unt_raw_data_type);
-
-    int nvars = unt_dims[0];
+    int nvars =  unt_dims[0];
     char *unt_array = new char[nvars * length];
 
     H5Dread(unitsId, unt_raw_data_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, unt_array);
@@ -2431,12 +2427,12 @@ avtBATLFileFormat::ReadUnknownNames()
 
     hid_t unk_raw_data_type = H5Dget_type(unknownsId);
     int length = H5Tget_size(unk_raw_data_type);
-
     int nvars = unk_dims[0];
+
     char *unk_array = new char[nvars * length];
 
     H5Dread(unknownsId, unk_raw_data_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, unk_array);
-
+    
     varNames.resize(nvars);
     char *tmpstring = new char[length+1];
     for (int v=0; v<nvars; v++)
@@ -2633,6 +2629,7 @@ void avtBATLFileFormat::DetermineGlobalLogicalExtentsForAllBlocks()
 
         debug5 << "DetermineGlobalLogicalExtentsForAllBlocks Marker 1" << endl;
         debug5 << b << endl;
+
     }
     // Delete the raw array
     debug5 << "DetermineGlobalLogicalExtentsForAllBlocks Marker 6" << endl;
@@ -2687,6 +2684,8 @@ void avtBATLFileFormat::DetermineGlobalLogicalExtentsForAllBlocks()
 //    Paul D Stewart, Jul 26, 2012
 //     Cleaned up to reduce redundant code
 //
+//   Paul D Stewart, Aug 16, 2012
+//    Removed a -1 that didn't belong
 // ****************************************************************************
 
 void
@@ -2732,8 +2731,6 @@ avtBATLFileFormat::BuildDomainNesting()
         else
             rdb = new avtRectilinearDomainBoundaries(true);
 
-        debug5 << "BuildDomainNesting Marker 5" << endl;
-
         rdb->SetNumDomains(numBlocks);
         for (i = 0; i < numBlocks; i++)
         {
@@ -2744,20 +2741,26 @@ avtBATLFileFormat::BuildDomainNesting()
             logExts[3] = blocks[i].maxGlobalLogicalExtents[1];
             logExts[4] = blocks[i].minGlobalLogicalExtents[2];
             logExts[5] = blocks[i].maxGlobalLogicalExtents[2];
-            rdb->SetIndicesForAMRPatch(i, blocks[i].level - 1, logExts);
-
+            rdb->SetIndicesForAMRPatch(i, blocks[i].level, logExts);
         }
-        debug5 << "BuildDomainNesting Marker 6" << endl;
-
-        rdb->CalculateBoundaries();
+ //        this causes the engine to think it is out of memory when it is not on some datasets
+ //        rdb->CalculateBoundaries();
         debug5 << "BuildDomainNesting Marker 7" << endl;
 
         void_ref_ptr vrdb = void_ref_ptr(rdb,
                                          avtStructuredDomainBoundaries::Destruct);
         debug5 << "BuildDomainNesting Marker 8" << endl;
-
-        cache->CacheVoidRef("any_mesh", AUXILIARY_DATA_DOMAIN_BOUNDARY_INFORMATION,
+        
+        if (showProcessors)
+        {
+            cache->CacheVoidRef("mesh_blockandproc", AUXILIARY_DATA_DOMAIN_BOUNDARY_INFORMATION,
                             timestep, -1, vrdb);
+        }
+        else
+        {
+            cache->CacheVoidRef("amr_mesh", AUXILIARY_DATA_DOMAIN_BOUNDARY_INFORMATION,
+                            timestep, -1, vrdb);
+        }
         debug5 << "BuildDomainNesting Marker 9" << endl;
 
         visitTimer->StopTimer(t1, "BATL setting up domain boundaries");

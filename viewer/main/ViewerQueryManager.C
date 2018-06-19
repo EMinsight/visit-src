@@ -81,6 +81,9 @@
 #include <ViewerSubject.h>
 extern ViewerSubject *viewerSubject;
 
+#include <DDTSession.h>
+#include <DDTManager.h>
+
 #include <float.h>
 #include <math.h>
 #include <stdio.h>
@@ -1078,6 +1081,9 @@ ViewerQueryManager::GetQueryClientAtts()
 //    Brad Whitlock, Fri Aug 19 10:01:13 PDT 2011
 //    I changed the UpdateExpressions call on the engine manager.
 //
+//    Brad Whitlock, Mon Nov  5 12:04:27 PST 2012
+//    Check for NULL reader from the plot.
+//
 // ****************************************************************************
 
 void
@@ -1137,12 +1143,20 @@ ViewerQueryManager::DatabaseQuery(const MapNode &queryParams)
             const EngineKey   &engineKey = plot->GetEngineKey();
             int networkId = plot->GetNetworkID();
             avtDataObjectReader_p rdr = plot->GetReader();
-            avtDataObject_p dob = rdr->GetOutput();
-            bool isDyn = dob->GetInfo().GetValidity().AreWeStreaming();
-            if (isDyn)
+            if(*rdr != NULL)
             {
-                ViewerEngineManager::Instance()->StartQuery(engineKey, true,
-                                                            networkId);
+                avtDataObject_p dob = rdr->GetOutput();
+                bool isDyn = dob->GetInfo().GetValidity().AreWeStreaming();
+                if (isDyn)
+                {
+                    ViewerEngineManager::Instance()->StartQuery(engineKey, true,
+                                                                networkId);
+                    plot->ClearCurrentActor();
+                    clearedActor = true;
+                }
+            }
+            else
+            {
                 plot->ClearCurrentActor();
                 clearedActor = true;
             }
@@ -1348,12 +1362,15 @@ ViewerQueryManager::DatabaseQuery(const MapNode &queryParams)
             const EngineKey   &engineKey = plot->GetEngineKey();
             int networkId = plot->GetNetworkID();
             avtDataObjectReader_p rdr = plot->GetReader();
-            avtDataObject_p dob = rdr->GetOutput();
-            bool isDyn = dob->GetInfo().GetValidity().AreWeStreaming();
-            if (isDyn)
+            if(*rdr != NULL)
             {
-                ViewerEngineManager::Instance()->StartQuery(engineKey, false, 
-                                                            networkId);
+                avtDataObject_p dob = rdr->GetOutput();
+                bool isDyn = dob->GetInfo().GetValidity().AreWeStreaming();
+                if (isDyn)
+                {
+                    ViewerEngineManager::Instance()->StartQuery(engineKey, false, 
+                                                                networkId);
+                }
             }
         }
     }
@@ -2172,12 +2189,22 @@ ViewerQueryManager::ComputePick(PICK_POINT_INFO *ppi, const int dom,
                     d += plot->GetBlockOrigin();
                 // 
                 // Due to the nature of the glyphs, the pick type MUST match
-                // the variable centering.
+                // the variable centering.  Also, due to avtPickBy variants
+                // expecting the elementNumber to be what user expects, 
+                // account for cell or node origin.
                 // 
                 if (forCell)
+                {
+                    if (mmd != NULL)
+                        e += mmd->cellOrigin;
                     pickAtts->SetPickType(PickAttributes::DomainZone);
+                }
                 else 
+                {
+                    if (mmd != NULL)
+                        e += mmd->nodeOrigin;
                     pickAtts->SetPickType(PickAttributes::DomainNode);
+                }
             }
             else // PickByNode or PickByZone
             {
@@ -2681,51 +2708,67 @@ ViewerQueryManager::Pick(PICK_POINT_INFO *ppi, const int dom, const int el)
     PickAttributes::PickType oldPickType = pickAtts->GetPickType();
     if(ComputePick(ppi, dom, el))
     {
-        //
-        // Add a pick point to the window
-        //
-        if (pickAtts->GetShowPickLetter() && 
-            pickAtts->GetPickPoint()[0] != FLT_MAX)
+        // See if we are suppose to make DDT focus on the picked domain,
+        // instead of picking it directly
+        if (win->GetInteractionMode() == DDT_PICK)
         {
-            win->ValidateQuery(pickAtts, NULL);
-        } // else no valid position could be determined, data was transformed
+            const int targetDomain = pickAtts->GetDomain();
 
-        //
-        // Send pick attributes to the client.
-        //
-        string msg;
-        pickAtts->CreateOutputString(msg);
-        if ( pickAtts->GetPickPoint()[0] == FLT_MAX &&
-             pickAtts->GetPickType() != PickAttributes::CurveNode &&
-             pickAtts->GetPickType() != PickAttributes::CurveZone)
-        {
-            string append;
-            if (pickAtts->GetPickType() == PickAttributes::Zone  ||
-                pickAtts->GetPickType() == PickAttributes::DomainZone) 
-            {
-                append = "Mesh was transformed and chosen zone is not " 
-                       "part of transformed mesh.\nNo pick letter will " 
-                       "be displayed.";
-            }
-            else 
-            {
-                append = "Mesh was transformed and chosen node is not " 
-                       "part of transformed mesh.\nNo pick letter will " 
-                       "be displayed.";
-            }
-            msg += append;
+            DDTSession* ddt = DDTManager::getInstance()->getSession();
+            if (ddt!=NULL)
+                ddt->setFocusOnDomain(targetDomain);
+            else
+                Error(tr("Cannot focus on domain %0, unable to connect to DDT").arg(targetDomain));
         }
-        if (!suppressQueryOutput)
-            Message(msg.c_str(), false); 
-        UpdatePickAtts();
+        else
+        {
 
-        //
-        // If we are not reusing a pick letter, make the pick label ready for 
-        // the next pick point.
-        //
-        if (!pickAtts->GetReusePickLetter()) UpdateDesignator();
+            //
+            // Add a pick point to the window
+            //
+            if (pickAtts->GetShowPickLetter() && 
+                pickAtts->GetPickPoint()[0] != FLT_MAX)
+            {
+                win->ValidateQuery(pickAtts, NULL);
+            } // else no valid position could be determined, data was transformed
+            
+            //
+            // Send pick attributes to the client.
+            //
+            string msg;
+            pickAtts->CreateOutputString(msg);
+            if ( pickAtts->GetPickPoint()[0] == FLT_MAX &&
+                 pickAtts->GetPickType() != PickAttributes::CurveNode &&
+                 pickAtts->GetPickType() != PickAttributes::CurveZone)
+            {
+                string append;
+                if (pickAtts->GetPickType() == PickAttributes::Zone  ||
+                    pickAtts->GetPickType() == PickAttributes::DomainZone) 
+                {
+                    append = "Mesh was transformed and chosen zone is not " 
+                        "part of transformed mesh.\nNo pick letter will " 
+                        "be displayed.";
+                }
+                else 
+                {
+                    append = "Mesh was transformed and chosen node is not " 
+                        "part of transformed mesh.\nNo pick letter will " 
+                        "be displayed.";
+                }
+                msg += append;
+            }
+            if (!suppressQueryOutput)
+                Message(msg.c_str(), false); 
+            UpdatePickAtts();
+            
+            //
+            // If we are not reusing a pick letter, make the pick label ready for 
+            // the next pick point.
+            //
+            if (!pickAtts->GetReusePickLetter()) UpdateDesignator();
+        }
     }
-
+    
     //
     // In case it was changed in the process. (Mostly likely by picking
     // on a VectorPlot or a PointMesh.
@@ -3239,6 +3282,10 @@ ViewerQueryManager::HandlePickCache()
 //    Kathleen Biagas, Thu Jan 12 09:42:46 PST 2012
 //    If point query has time options, use them to set PickAtts.TimeOptions.
 //
+//    Kathleen Biagas, Thu Nov  8 12:25:45 PST 2012
+//    Ensure that Zone Center and Node Coords query performed when preserving
+//    coordinates for a time pick do not have 'do_time' set to true.
+//
 // ****************************************************************************
 
 void         
@@ -3390,6 +3437,7 @@ ViewerQueryManager::PointQuery(const MapNode &queryParams)
                 suppressQueryOutput = true;
                 MapNode dbQueryParams(queryParams);
                 dbQueryParams["query_name"] = "Zone Center";
+                dbQueryParams["do_time"] = 0;
 
                 DatabaseQuery(dbQueryParams);
 
@@ -3414,6 +3462,7 @@ ViewerQueryManager::PointQuery(const MapNode &queryParams)
 
                 MapNode dbQueryParams(queryParams);
                 dbQueryParams["query_name"] = "Node Coords";
+                dbQueryParams["do_time"] = 0;
                 DatabaseQuery(dbQueryParams);
 
                 doubleVector npt = queryClientAtts->GetResultsValue();

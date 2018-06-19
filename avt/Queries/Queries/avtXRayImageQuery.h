@@ -79,6 +79,13 @@
 //    Eric Brugger, Mon May 14 10:22:29 PDT 2012
 //    I added the bov output type.
 //
+//    Kathleen Biagas, Wed Oct 17 12:10:13 PDT 2012
+//    Added upVector.
+//
+//    Kathleen Biagas, Wed Oct 17 14:13:26 PDT 2012
+//    Added useSpecifiedUpVector, to allow support for old-style cli queries,
+//    where the upVector wasn't available.
+//
 // ****************************************************************************
 
 class QUERY_API avtXRayImageQuery : public avtDatasetQuery
@@ -98,6 +105,8 @@ class QUERY_API avtXRayImageQuery : public avtDatasetQuery
     void                      SetVariableNames(const stringVector &names);
     void                      SetOrigin(const doubleVector &_origin);
     void                      SetOrigin(const intVector &_origin);
+    void                      SetUpVector(const doubleVector &_upvector);
+    void                      SetUpVector(const intVector &_upvector);
     void                      SetTheta(const double &thetaInDegrees);
     void                      SetPhi(const double &phiInDegrees);
     void                      SetWidth(const double &size);
@@ -109,11 +118,13 @@ class QUERY_API avtXRayImageQuery : public avtDatasetQuery
 
   protected:
     double                    origin[3];
+    double                    upVector[3];
     double                    theta, phi;
     double                    width, height;
     int                       nx, ny;
     bool                      divideEmisByAbsorb;
     int                       outputType;
+    bool                      useSpecifiedUpVector;
 
     std::string               absVarName;  //e.g. "absorbtivity"
     std::string               emisVarName; //e.g. "emissivity"

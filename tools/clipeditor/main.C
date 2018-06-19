@@ -45,16 +45,21 @@
 //    Jeremy Meredith, Tue Aug 29 16:13:43 EDT 2006
 //    Added Line and Vertex shapes.  Added missing help text for other shapes.
 //
+//    Jeremy Meredith, Mon Jul  9 15:22:06 EDT 2012
+//    Added 5- thru 8-sided polygon shapes.
+//
 // ----------------------------------------------------------------------------
 
-#include <qapplication.h>
+#include <QtGui/QApplication>
 
-#include <qmainwindow.h>
+#include <QMainWindow>
 
-#include <visitstream.h>
+#include <iostream>
 #include <stdlib.h>
 
 #include "ClipEditor.h"
+
+using namespace std;
 
 int main(int argc, char *argv[])
 {
@@ -64,7 +69,7 @@ int main(int argc, char *argv[])
     if (argc != 2)
     {
         cerr << "Usage: " << argv[0] << " <shape>\n";
-        cerr << "   where <shape> = { hex, wedge, pyramid, tet }\n";
+        cerr << "   where <shape> = { hex, wdg, pyr, tet, qua, pix, tri, lin, vtx, poly5, poly6, poly7, poly8 }\n";
         exit(1);
     }
 
@@ -119,9 +124,7 @@ int main(int argc, char *argv[])
     cerr << "\n";
     cerr << "\n";
 
-    ClipEditor *editor = new ClipEditor(argv[1], NULL, "Viewer");
-
-    a->setMainWidget(editor);
+    ClipEditor *editor = new ClipEditor(argv[1], NULL);
 
     editor->show();
 

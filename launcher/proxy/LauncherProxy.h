@@ -41,8 +41,8 @@
 #include <visit-config.h>
 #include <vclproxy_exports.h>
 #include <RemoteProxyBase.h>
-#include <LaunchRPC.h>
-#include <ConnectSimRPC.h>
+#include <LauncherState.h>
+#include <LauncherMethods.h>
 #include <map>
 
 // ****************************************************************************
@@ -79,19 +79,21 @@ public:
 
     virtual std::string GetComponentName() const;
 
+    virtual void Create(const MachineProfile &profile, 
+                        ConnectCallback *connectCallback = 0, 
+                        void *connectCallbackData = 0,
+                        bool createAsThoughLocal = false);
+
     std::map<int,int> GetPortTunnelMap();
 
-    // RPCs to access functionality on the visit component launcher.
-    void LaunchProcess(const stringVector &programArgs);
-    void ConnectSimulation(const stringVector &programArgs,
-                           const std::string &simHost, int simPort,
-                           const std::string &simSecurityKey);
+    LauncherMethods *GetLauncherMethods() { return methods; }
+    LauncherState   *GetLauncherState() { return state; }
 
 protected:
     virtual void SetupComponentRPCs();
 private:
-    LaunchRPC     launchRPC;
-    ConnectSimRPC connectSimRPC;
+    LauncherMethods *methods;
+    LauncherState   *state;
 };
 
 #endif

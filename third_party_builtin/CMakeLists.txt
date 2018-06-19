@@ -36,6 +36,9 @@
 #
 # Modifications:
 #
+#  Cyrus Harrison, Tue Oct  9 15:44:53 PDT 2012
+#  Added tess2
+#
 #****************************************************************************/
 
 PROJECT(thirdparty_builtins)
@@ -43,6 +46,7 @@ PROJECT(thirdparty_builtins)
 ADD_SUBDIRECTORY(glew)
 ADD_SUBDIRECTORY(verdict)
 ADD_SUBDIRECTORY(bilib)
+ADD_SUBDIRECTORY(tess2)
 IF(VISIT_PARALLEL)
     ADD_SUBDIRECTORY(cognomen)
 ENDIF(VISIT_PARALLEL)

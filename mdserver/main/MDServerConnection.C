@@ -62,6 +62,8 @@
 #include <avtSIL.h>
 #include <SILAttributes.h>
 
+#include <MDServerState.h>
+
 #include <ChangeDirectoryRPC.h>
 #include <CreateGroupListRPC.h>
 #include <ChangeDirectoryRPCExecutor.h>
@@ -331,55 +333,31 @@ MDServerConnection::MDServerConnection(MDServerApplication *a, int *argc,
     // Create the RPCs
     quitRPC = new QuitRPC;
     keepAliveRPC = new KeepAliveRPC;
-    getDirectoryRPC = new GetDirectoryRPC;
-    changeDirectoryRPC = new ChangeDirectoryRPC;
-    getFileListRPC = new GetFileListRPC;
-    getMetaDataRPC = new GetMetaDataRPC;
-    getSILRPC = new GetSILRPC;
-    connectRPC = new ConnectRPC;
-    createGroupListRPC = new CreateGroupListRPC;
-    expandPathRPC = new ExpandPathRPC;
-    closeDatabaseRPC = new CloseDatabaseRPC;
-    loadPluginsRPC = new LoadPluginsRPC;
-    getPluginErrorsRPC = new GetPluginErrorsRPC;
-    getDBPluginInfoRPC = new GetDBPluginInfoRPC;
-    setMFileOpenOptionsRPC = new SetMFileOpenOptionsRPC;
+    mdstate = new MDServerState();
 
-    // Hook up the RPCs to the xfer object.
+//    // Hook up the RPCs to the xfer object.
     xfer->Add(quitRPC);
     xfer->Add(keepAliveRPC);
-    xfer->Add(getDirectoryRPC);
-    xfer->Add(changeDirectoryRPC);
-    xfer->Add(getFileListRPC);
-    xfer->Add(getMetaDataRPC);
-    xfer->Add(getSILRPC);
-    xfer->Add(connectRPC);
-    xfer->Add(createGroupListRPC);
-    xfer->Add(expandPathRPC);
-    xfer->Add(closeDatabaseRPC);
-    xfer->Add(loadPluginsRPC);
-    xfer->Add(getPluginErrorsRPC);
-    xfer->Add(getDBPluginInfoRPC);
-    xfer->Add(setMFileOpenOptionsRPC);
+    mdstate->SetupComponentRPCs(xfer);
 
     // Create the RPC Observers.
     quitExecutor = new QuitRPCExecutor(quitRPC);
     keepAliveExecutor = new KeepAliveRPCExecutor(keepAliveRPC);
-    getDirectoryExecutor = new GetDirectoryRPCExecutor(this, getDirectoryRPC);
+    getDirectoryExecutor = new GetDirectoryRPCExecutor(this, &mdstate->GetGetDirectoryRPC());
     changeDirectoryExecutor = 
-        new ChangeDirectoryRPCExecutor(this, changeDirectoryRPC);
-    getFileListExecutor = new GetFileListRPCExecutor(this, getFileListRPC);
-    getMetaDataExecutor = new GetMetaDataRPCExecutor(this, getMetaDataRPC);
-    getSILExecutor = new GetSILRPCExecutor(this, getSILRPC);
-    connectExecutor = new ConnectRPCExecutor(connectRPC);
-    createGroupListExecutor = new RPCExecutor<CreateGroupListRPC>(createGroupListRPC);
-    expandPathExecutor = new ExpandPathRPCExecutor(this, expandPathRPC);
-    closeDatabaseExecutor = new CloseDatabaseRPCExecutor(this, closeDatabaseRPC);
-    loadPluginsExecutor = new LoadPluginsRPCExecutor(this, loadPluginsRPC);
-    getPluginErrorsRPCExecutor = new GetPluginErrorsRPCExecutor(this, getPluginErrorsRPC);
-    getDBPluginInfoRPCExecutor = new GetDBPluginInfoRPCExecutor(this, getDBPluginInfoRPC);
+        new ChangeDirectoryRPCExecutor(this, &mdstate->GetChangeDirectoryRPC());
+    getFileListExecutor = new GetFileListRPCExecutor(this, &mdstate->GetGetFileListRPC());
+    getMetaDataExecutor = new GetMetaDataRPCExecutor(this, &mdstate->GetGetMetaDataRPC());
+    getSILExecutor = new GetSILRPCExecutor(this, &mdstate->GetGetSILRPC());
+    connectExecutor = new ConnectRPCExecutor(&mdstate->GetConnectRPC());
+    createGroupListExecutor = new RPCExecutor<CreateGroupListRPC>(&mdstate->GetCreateGroupListRPC());
+    expandPathExecutor = new ExpandPathRPCExecutor(this, &mdstate->GetExpandPathRPC());
+    closeDatabaseExecutor = new CloseDatabaseRPCExecutor(this, &mdstate->GetCloseDatabaseRPC());
+    loadPluginsExecutor = new LoadPluginsRPCExecutor(this, &mdstate->GetLoadPluginsRPC());
+    getPluginErrorsRPCExecutor = new GetPluginErrorsRPCExecutor(this, &mdstate->GetGetPluginErrorsRPC());
+    getDBPluginInfoRPCExecutor = new GetDBPluginInfoRPCExecutor(this, &mdstate->GetGetDBPluginInfoRPC());
     setMFileOpenOptionsRPCExecutor =
-        new SetMFileOpenOptionsRPCExecutor(this, setMFileOpenOptionsRPC);
+            new SetMFileOpenOptionsRPCExecutor(this, &mdstate->GetSetMFileOpenOptionsRPC());
 
     // Indicate that the file list is not valid since we have not read
     // one yet.
@@ -448,18 +426,7 @@ MDServerConnection::~MDServerConnection()
     // Delete the RPCs
     delete quitRPC;
     delete keepAliveRPC;
-    delete getDirectoryRPC;
-    delete changeDirectoryRPC;
-    delete getFileListRPC;
-    delete getMetaDataRPC;
-    delete getSILRPC;
-    delete connectRPC;
-    delete createGroupListRPC;
-    delete expandPathRPC;
-    delete closeDatabaseRPC;
-    delete loadPluginsRPC;
-    delete getPluginErrorsRPC;
-    delete setMFileOpenOptionsRPC;
+    delete mdstate;
 
     // Delete the database.
     if(currentDatabase)
@@ -1796,6 +1763,13 @@ MDServerConnection::FileMatchesFilterList(const std::string &fileName) const
 //   which extension is detected to make it easier to add additional
 //   extenstions.
 //
+//    Gunther H. Weber, Thu Aug  9 11:55:06 PDT 2012
+//    Allow files ending in .h5p and .h5block to be grouped.
+//
+//   Gunther H. Weber, Mon Mar  5 13:32:05 PST 2012
+//   Also consider compressed files ".gz",... when exculding file extensions
+//   from pattern matching. 
+//
 // ****************************************************************************
 
 bool
@@ -1807,11 +1781,18 @@ MDServerConnection::GetPattern(const std::string &file, std::string &p,
     for(i = 0; i < 256; ++i) pattern[i] = '\0';
 
     std::string searchstring;
+    const char *excludedCompressionTypeExtensions[] =
+    {
+        ".gz", ".bz2", 0
+    };
+    int excludedCompressionTypeExtensionIdx = -1; // -1 -> None
+
     const char *excludedFileTypeExtensions[] =
     {
-        ".h5", ".hdf5", ".vsh5", ".h5part", ".ch5", 0
+        ".h5", ".hdf5", ".vsh5", ".h5part", ".h5p", ".h5block", ".ch5", 0
     };
     int excludedFileTypeExtensionIdx = -1; // -1 -> None
+
     const char *excludedDimensionExtensions[] =
     {
         ".2d", ".2D", ".3d", ".3D", 0
@@ -1822,6 +1803,21 @@ MDServerConnection::GetPattern(const std::string &file, std::string &p,
     if(extraSmartFileGrouping)
     {
         int currExtIdx = 0;
+        while (excludedCompressionTypeExtensions[currExtIdx])
+        {
+            int extLen = strlen(excludedCompressionTypeExtensions[currExtIdx]);
+            if (searchstring.size() > extLen &&
+                searchstring.substr(
+                    searchstring.size()-extLen, searchstring.size()-1
+                                   ) == excludedCompressionTypeExtensions[currExtIdx])
+            {
+                searchstring = searchstring.substr(0, searchstring.size()-extLen);
+                excludedCompressionTypeExtensionIdx = currExtIdx;
+                break;
+            }
+            ++currExtIdx;
+        }
+        currExtIdx = 0;
         while (excludedFileTypeExtensions[currExtIdx])
         {
             int extLen = strlen(excludedFileTypeExtensions[currExtIdx]);
@@ -1902,6 +1898,9 @@ MDServerConnection::GetPattern(const std::string &file, std::string &p,
 
     if (excludedFileTypeExtensionIdx > 0)
         p += excludedFileTypeExtensions[excludedFileTypeExtensionIdx];
+
+    if (excludedCompressionTypeExtensionIdx > 0)
+        p += excludedCompressionTypeExtensions[excludedCompressionTypeExtensionIdx];
 
     return (ipat > 0);
 }

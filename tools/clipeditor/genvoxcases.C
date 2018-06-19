@@ -36,14 +36,15 @@
 *
 *****************************************************************************/
 
-#include <visitstream.h>
+#include <iostream>
+using namespace std;
 
 // ****************************************************************************
 //  File:  genvoxcases.cpp
 //
 //  Purpose:
 //    Generates the 48 transforms of a voxel.
-//    Points are 0-8, edges are A-L.
+//    Points are 0-7, edges are A-L.
 //
 //  Programmer:  Jeremy Meredith
 //  Creation:    June 24, 2004

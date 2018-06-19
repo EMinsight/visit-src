@@ -180,6 +180,13 @@ AdjustPercentToZeroCrossing(double p0[3], double p1[3],
         *percent = 1.0-t;
 }
 
+// ****************************************************************************
+// Modifications:
+//   Kathleen Biagas, Tue Aug 14 11:24:22 MST 2012
+//   Added precomputeClipScalars.
+//
+// ****************************************************************************
+
 vtkVisItClipper::FilterState::FilterState()
 { 
     this->CellList = NULL;
@@ -195,6 +202,7 @@ vtkVisItClipper::FilterState::FilterState()
     this->insideOut = false;
     this->useZeroCrossings = false;
     this->computeInsideAndOut = false;
+    this->precomputeClipScalars = true;
 }
 
 vtkVisItClipper::FilterState::~FilterState()
@@ -359,6 +367,25 @@ vtkVisItClipper::SetClipFunction(vtkImplicitFunction *func)
     }
 
     state.SetClipFunction(func);
+}
+
+// ****************************************************************************
+// Method:  vtkVisItClipper::SetClipScalars
+//
+//  Purpose:
+//    Sets a flag that when false, allows postponment of clipFunction 
+//    evaluation until stepping through cells.
+//
+// Modifications:
+//   Kathleen Biagas, Tue Aug 14 11:24:22 MST 2012
+//   Added precomputeClipScalars.
+//
+// ****************************************************************************
+
+void
+vtkVisItClipper::SetPrecomputeClipScalars(const bool v)
+{
+    state.precomputeClipScalars = v;
 }
 
 // ****************************************************************************
@@ -722,6 +749,13 @@ private:
 //   and ScalarAccess so we can get data from different meshes and precisions
 //   without if statements.
 //
+//   Jeremy Meredith, Mon Jul  9 16:53:41 EDT 2012
+//   Added support for 5- through 8-sided polygons.
+//
+//   Kathleen Biagas, Tue Aug 14 11:28:31 MST 2012 
+//   Added clipper argument, for access to the ModifyClip method.
+//   Evaluation clip function if precomputeClipScalars is false.
+//
 // ****************************************************************************
 
 template <typename Bridge, typename ScalarAccess>
@@ -729,7 +763,8 @@ void
 vtkVisItClipper_Algorithm(Bridge &bridge, ScalarAccess scalar,
     vtkVisItClipper::FilterState &state,
     vtkUnstructuredGrid *output,
-    vtkUnstructuredGrid *stuff_I_cant_clip)
+    vtkUnstructuredGrid *stuff_I_cant_clip,
+    vtkVisItClipper *clipper)
 {
     int t1 = visitTimer->StartTimer();
     vtkIdType nCells = bridge.GetNumberOfCells();
@@ -755,6 +790,7 @@ vtkVisItClipper_Algorithm(Bridge &bridge, ScalarAccess scalar,
     {
         // Get the cell details
         vtkIdType cellId = (state.CellList != NULL ? state.CellList[i] : i);
+        clipper->ModifyClip(cellId);
         int cellType = bridge.GetCellType(cellId);
         vtkIdType nCellPts = 0;
         vtkIdType *cellPts = bridge.GetCellPoints(cellId, nCellPts);
@@ -775,6 +811,14 @@ vtkVisItClipper_Algorithm(Bridge &bridge, ScalarAccess scalar,
             break;
 
           default:
+            // we now handle 5-8 sided polygons as well
+            if (cellType == VTK_POLYGON &&
+                nCellPts >= 5 && nCellPts <= 8)
+            {
+                break;
+            }
+
+            // everything else; defer for other clipper algorithm
             {
                 if (numIcantClip == 0)
                     stuff_I_cant_clip->GetCellData()->
@@ -794,7 +838,16 @@ vtkVisItClipper_Algorithm(Bridge &bridge, ScalarAccess scalar,
         double dist[max_pts];
         for (int j = nCellPts-1 ; j >= 0 ; j--)
         {
-            dist[j] = state.scalarCutoff - scalar.GetTuple1(cellPts[j]);
+            if (state.precomputeClipScalars)
+            {
+                dist[j] = state.scalarCutoff - scalar.GetTuple1(cellPts[j]);
+            }
+            else
+            {
+                double pt[3];
+                bridge.GetPoint(cellPts[j], pt);
+                dist[j] = -state.clipFunction->EvaluateFunction(pt[0],pt[1],pt[2]);
+            }
 
             if (dist[j] >= 0)
                 lookup_case++;
@@ -872,6 +925,35 @@ vtkVisItClipper_Algorithm(Bridge &bridge, ScalarAccess scalar,
             splitCase  = &clipShapesVtx[startIndex];
             numOutput  = numClipShapesVtx[lookup_case];
             vertices_from_edges = NULL;
+            break;
+          case VTK_POLYGON:
+            switch (nCellPts)
+            {
+              case 5:
+                startIndex = startClipShapesPoly5[lookup_case];
+                splitCase  = &clipShapesPoly5[startIndex];
+                numOutput  = numClipShapesPoly5[lookup_case];
+                vertices_from_edges = poly5VerticesFromEdges;
+                break;
+              case 6:
+                startIndex = startClipShapesPoly6[lookup_case];
+                splitCase  = &clipShapesPoly6[startIndex];
+                numOutput  = numClipShapesPoly6[lookup_case];
+                vertices_from_edges = poly6VerticesFromEdges;
+                break;
+              case 7:
+                startIndex = startClipShapesPoly7[lookup_case];
+                splitCase  = &clipShapesPoly7[startIndex];
+                numOutput  = numClipShapesPoly7[lookup_case];
+                vertices_from_edges = poly7VerticesFromEdges;
+                break;
+              case 8:
+                startIndex = startClipShapesPoly8[lookup_case];
+                splitCase  = &clipShapesPoly8[startIndex];
+                numOutput  = numClipShapesPoly8[lookup_case];
+                vertices_from_edges = poly8VerticesFromEdges;
+                break;
+            }
             break;
         }
 
@@ -1124,6 +1206,9 @@ vtkVisItClipper_Algorithm(Bridge &bridge, ScalarAccess scalar,
 // Creation:   Mon Mar 26 13:52:27 PDT 2012
 //
 // Modifications:
+//   Kathleen Biagas, Tue Aug 14 11:28:31 MST 2012 
+//   Added clipper argument, for access to the ModifyClip method.
+//   Only evaluate clip function if precomputeClipScalars is true.
 //   
 // ****************************************************************************
 
@@ -1132,42 +1217,49 @@ void
 vtkVisItClipper_RectExecute(Bridge bridge, const int *pt_dims,
     vtkVisItClipper::FilterState &state,
     vtkUnstructuredGrid *output,
-    vtkUnstructuredGrid *stuff_I_cant_clip)
+    vtkUnstructuredGrid *stuff_I_cant_clip,
+    vtkVisItClipper *clipper) 
 {
     if(state.clipFunction != NULL)
     {
         double *scalar = new double[bridge.GetNumberOfPoints()];
         vtkAccessor<double> scalarAccess(scalar);
         vtkIdType id = 0;
-        for (vtkIdType k=0; k<pt_dims[2]; k++)
+        if (state.precomputeClipScalars)
         {
-            for (vtkIdType j=0; j<pt_dims[1]; j++)
+            for (vtkIdType k=0; k<pt_dims[2]; k++)
             {
-                for (vtkIdType i=0; i<pt_dims[0]; i++, id++)
+                for (vtkIdType j=0; j<pt_dims[1]; j++)
                 {
-                    double pt[3];
-                    bridge.GetPoint(i,j,k,pt);
-                    scalar[id] = -state.clipFunction->EvaluateFunction(pt[0],pt[1],pt[2]);
+                    for (vtkIdType i=0; i<pt_dims[0]; i++, id++)
+                    {
+                        double pt[3];
+                        bridge.GetPoint(i,j,k,pt);
+                        scalar[id] = -state.clipFunction->EvaluateFunction(pt[0],pt[1],pt[2]);
+                    }
                 }
             }
         }
 
-        vtkVisItClipper_Algorithm(bridge, scalarAccess,
-                                  state, output, stuff_I_cant_clip);
+        vtkVisItClipper_Algorithm(bridge, scalarAccess, state, output, 
+            stuff_I_cant_clip, clipper);
         delete [] scalar;
     }
     else if(state.scalarArrayAsVTK != NULL)
     {
         int dt = state.scalarArrayAsVTK->GetDataType();
         if(dt == VTK_FLOAT)
-            vtkVisItClipper_Algorithm(bridge, vtkAccessor<float>(state.scalarArrayAsVTK),
-                                      state, output, stuff_I_cant_clip);
+            vtkVisItClipper_Algorithm(bridge, 
+                vtkAccessor<float>(state.scalarArrayAsVTK),
+                state, output, stuff_I_cant_clip, clipper);
         else if(dt == VTK_DOUBLE)
-            vtkVisItClipper_Algorithm(bridge, vtkAccessor<double>(state.scalarArrayAsVTK),
-                                      state, output, stuff_I_cant_clip);
+            vtkVisItClipper_Algorithm(bridge, 
+                vtkAccessor<double>(state.scalarArrayAsVTK),
+                state, output, stuff_I_cant_clip, clipper);
         else
-            vtkVisItClipper_Algorithm(bridge, vtkGeneralAccessor(state.scalarArrayAsVTK),
-                                      state, output, stuff_I_cant_clip);
+            vtkVisItClipper_Algorithm(bridge, 
+                vtkGeneralAccessor(state.scalarArrayAsVTK),
+                state, output, stuff_I_cant_clip, clipper);
     }
 }
 
@@ -1189,42 +1281,53 @@ vtkVisItClipper_RectExecute(Bridge bridge, const int *pt_dims,
 // Creation:   Mon Mar 26 13:52:27 PDT 2012
 //
 // Modifications:
+//   Kathleen Biagas, Tue Aug 14 11:28:31 MST 2012 
+//   Added clipper argument, for access to the ModifyClip method.
+//   Only evaluate clip function if precomputeClipScalars is true.
 //   
 // ****************************************************************************
+
 template <typename Bridge>
 void
 vtkVisItClipper_Execute(Bridge bridge,
     vtkVisItClipper::FilterState &state,
     vtkUnstructuredGrid *output,
-    vtkUnstructuredGrid *stuff_I_cant_clip)
+    vtkUnstructuredGrid *stuff_I_cant_clip,
+    vtkVisItClipper *clipper)
 {
     if(state.clipFunction != NULL)
     {
         vtkIdType nPts = bridge.GetNumberOfPoints();
         double *scalar = new double[nPts];
-        for (vtkIdType i=0; i < nPts; i++)
+        if (state.precomputeClipScalars)
         {
-            double pt[3];
-            bridge.GetPoint(i, pt);
-            scalar[i] = -state.clipFunction->EvaluateFunction(pt[0],pt[1],pt[2]);
+            for (vtkIdType i=0; i < nPts; i++)
+            {
+                double pt[3];
+                bridge.GetPoint(i, pt);
+                scalar[i] = -state.clipFunction->EvaluateFunction(pt[0],pt[1],pt[2]);
+            }
         }
 
         vtkVisItClipper_Algorithm(bridge, vtkAccessor<double>(scalar), 
-                                  state, output, stuff_I_cant_clip);
+                                  state, output, stuff_I_cant_clip, clipper);
         delete [] scalar;
     }
     else if(state.scalarArrayAsVTK != NULL)
     {
         int dt = state.scalarArrayAsVTK->GetDataType();
         if(dt == VTK_FLOAT)
-            vtkVisItClipper_Algorithm(bridge, vtkAccessor<float>(state.scalarArrayAsVTK),
-                                      state, output, stuff_I_cant_clip);
+            vtkVisItClipper_Algorithm(bridge, 
+                 vtkAccessor<float>(state.scalarArrayAsVTK),
+                 state, output, stuff_I_cant_clip, clipper);
         else if(dt == VTK_DOUBLE)
-            vtkVisItClipper_Algorithm(bridge, vtkAccessor<double>(state.scalarArrayAsVTK),
-                                      state, output, stuff_I_cant_clip);
+            vtkVisItClipper_Algorithm(bridge, 
+                 vtkAccessor<double>(state.scalarArrayAsVTK),
+                 state, output, stuff_I_cant_clip, clipper);
         else
-            vtkVisItClipper_Algorithm(bridge, vtkGeneralAccessor(state.scalarArrayAsVTK),
-                                      state, output, stuff_I_cant_clip);
+            vtkVisItClipper_Algorithm(bridge, 
+                 vtkGeneralAccessor(state.scalarArrayAsVTK),
+                  state, output, stuff_I_cant_clip, clipper);
     }
 }
 
@@ -1286,21 +1389,24 @@ vtkVisItClipper::Execute()
             bool same = (tx == ty) && (ty == tz);
             if(same && tx == VTK_FLOAT)
             {
-                ClipperBridgeRectilinearGrid<vtkRectPointAccessor<float> > bridge(rg, pt_dims, X, Y, Z);
+                ClipperBridgeRectilinearGrid<vtkRectPointAccessor<float> > 
+                    bridge(rg, pt_dims, X, Y, Z);
                 vtkVisItClipper_RectExecute(bridge, pt_dims, 
-                    this->state, output, stuff_I_cant_clip);
+                    this->state, output, stuff_I_cant_clip, this);
             }
             else if(same && tx == VTK_DOUBLE)
             {
-                ClipperBridgeRectilinearGrid<vtkRectPointAccessor<double> > bridge(rg, pt_dims, X, Y, Z);
+                ClipperBridgeRectilinearGrid<vtkRectPointAccessor<double> > 
+                    bridge(rg, pt_dims, X, Y, Z);
                 vtkVisItClipper_RectExecute(bridge, pt_dims, 
-                    this->state, output, stuff_I_cant_clip);
+                    this->state, output, stuff_I_cant_clip, this);
             }
             else
             {
-                ClipperBridgeRectilinearGrid<vtkGeneralRectPointAccessor> bridge(rg, pt_dims, X, Y, Z);
+                ClipperBridgeRectilinearGrid<vtkGeneralRectPointAccessor> 
+                    bridge(rg, pt_dims, X, Y, Z);
                 vtkVisItClipper_RectExecute(bridge, pt_dims, 
-                    this->state, output, stuff_I_cant_clip);
+                    this->state, output, stuff_I_cant_clip, this);
             }
         }
         else // do_type == VTK_STRUCTURED_GRID
@@ -1309,22 +1415,23 @@ vtkVisItClipper::Execute()
             sg->GetDimensions(pt_dims);
             if(sg->GetPoints()->GetDataType() == VTK_FLOAT)
             {
-                ClipperBridgeStructuredGrid<vtkPointAccessor<float> > bridge(sg);
-                vtkVisItClipper_Execute(bridge,  
-                    this->state, output, stuff_I_cant_clip);
+                ClipperBridgeStructuredGrid<vtkPointAccessor<float> > 
+                    bridge(sg);
+                vtkVisItClipper_Execute(bridge,  this->state, output, 
+                    stuff_I_cant_clip, this);
             }
             else if(sg->GetPoints()->GetDataType() == VTK_FLOAT)
             {
                 ClipperBridgeStructuredGrid<vtkPointAccessor<double> > bridge(sg);
-                vtkVisItClipper_Execute(bridge,  
-                    this->state, output, stuff_I_cant_clip);
+                vtkVisItClipper_Execute(bridge,  this->state, output, 
+                    stuff_I_cant_clip, this);
             }
 /* This case probably does not happen...
             else
             {
                 ClipperBridge<vtkGeneralPointAccessor> bridge(sg);
-                vtkVisItClipper_Execute(bridge, 
-                    this->state, output, stuff_I_cant_clip);
+                vtkVisItClipper_Execute(bridge, this->state, output,
+                    stuff_I_cant_clip, this);
             }
 */
         }
@@ -1343,21 +1450,21 @@ vtkVisItClipper::Execute()
         if(ug->GetPoints()->GetDataType() == VTK_FLOAT)
         {
             ClipperBridgeUnstructuredGrid<vtkPointAccessor<float> > bridge(ug);
-            vtkVisItClipper_Execute(bridge,
-                this->state, output, stuff_I_cant_clip);
+            vtkVisItClipper_Execute(bridge, this->state, output, 
+                stuff_I_cant_clip, this);
         }
         else if(ug->GetPoints()->GetDataType() == VTK_DOUBLE)
         {
             ClipperBridgeUnstructuredGrid<vtkPointAccessor<double> > bridge(ug);
-            vtkVisItClipper_Execute(bridge,
-                this->state, output, stuff_I_cant_clip);
+            vtkVisItClipper_Execute(bridge, this->state, output, 
+                stuff_I_cant_clip, this);
         }
 /* This case probably does not happen...
         else
         {
             ClipperBridgeUnstructuredGrid<vtkGeneralPointAccessor> bridge(ug);
-            vtkVisItClipper_UnstructuredExecute(bridge, 
-                this->state, output, stuff_I_cant_clip);
+            vtkVisItClipper_UnstructuredExecute(bridge, this->state, output, 
+                stuff_I_cant_clip, this);
         }
 */
 
@@ -1375,21 +1482,21 @@ vtkVisItClipper::Execute()
         if(pd->GetPoints()->GetDataType() == VTK_FLOAT)
         {
             ClipperBridgePolyData<vtkPointAccessor<float> > bridge(pd);
-            vtkVisItClipper_Execute(bridge,
-                this->state, output, stuff_I_cant_clip);
+            vtkVisItClipper_Execute(bridge, this->state, output, 
+                stuff_I_cant_clip, this);
         }
         else if(pd->GetPoints()->GetDataType() == VTK_DOUBLE)
         {
             ClipperBridgePolyData<vtkPointAccessor<double> > bridge(pd);
-            vtkVisItClipper_Execute(bridge,
-                this->state, output, stuff_I_cant_clip);
+            vtkVisItClipper_Execute(bridge, this->state, output, 
+                stuff_I_cant_clip, this);
         }
 /* This case probably does not happen...
         else
         {
             ClipperBridgePolyData<vtkGeneralPointAccessor> bridge(pd);
-            vtkVisItClipper_Execute(bridge, 
-                this->state, output, stuff_I_cant_clip);
+            vtkVisItClipper_Execute(bridge, this->state, output,
+                stuff_I_cant_clip, this);
         }
 */
 

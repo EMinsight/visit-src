@@ -136,6 +136,10 @@ class Connection;
 //    regular command line so we can better support gateway machines with
 //    SSH tunneling.
 //
+//    Brad Whitlock, Tue Jun  5 17:23:25 PDT 2012
+//    Change Open so it takes a MachineProfile instead of a bunch of separate
+//    options.
+//
 //    Brad Whitlock, Wed Jun 13 11:12:25 PDT 2012
 //    I added KillProcess.
 //
@@ -146,19 +150,12 @@ class COMM_API RemoteProcess
 public:
     RemoteProcess(const std::string &rProgram);
     virtual ~RemoteProcess();
-    virtual bool Open(const std::string &rHost,
-                      MachineProfile::ClientHostDetermination chd,
-                      const std::string &clientHostName,
-                      bool manualSSHPort,
-                      int sshPort,
-                      bool useTunneling,
-                      bool useGateway,
-                      const std::string &gatewayHost,
+    virtual bool Open(const MachineProfile &profile,
                       int numRead, int numWrite,
                       bool createAsThoughLocal = false);
     void WaitForTermination();
     void AddArgument(const std::string &arg);
-    void SetRemoteUserName(const std::string &rUserName);
+
     const std::string &GetLocalHostName() const;
     const std::string &GetLocalUserName() const;
     Connection *GetReadConnection(int i=0) const;
@@ -170,6 +167,7 @@ public:
     static void SetAuthenticationCallback(void (*)(const char *, const char *, int));
     static void SetChangeUserNameCallback(bool (*)(const std::string &,std::string&));
     static void DisablePTY();
+    static void SetCustomConnectionCallback(Connection* (*)(int, void *), void* cbData);
 protected:
     bool StartMakingConnection(const std::string &rHost, int numRead,
                                int numWrite);
@@ -179,17 +177,13 @@ protected:
     bool CallProgressCallback(int stage);
     bool HostIsLocal(const std::string &rHost) const;
     void CreatePortNumbers(int *local, int *remote, int *gateway, int nPorts) const;
-    void CreateSSHCommandLine(stringVector &args, const std::string &rHost,
-                              bool useGateway, const std::string &gatewayHost,
-                              bool manualSSHPort, int sshPort, bool useTunneling);
-    void CreateCommandLine(stringVector &args, const std::string &rHost,
-                           MachineProfile::ClientHostDetermination chd,
-                           const std::string &clientHostName,
-                           bool useTunneling, 
+    void CreateSSHCommandLine(stringVector &args, const MachineProfile &profile);
+    void CreateCommandLine(stringVector &args, const MachineProfile &profile, 
                            int numRead, int numWrite);
     virtual void Launch(const stringVector &);
     void LaunchLocal(const stringVector &);
-    void LaunchRemote(const std::string &host, const stringVector &);
+    void LaunchRemote(const std::string &host, const std::string &remoteUserName, 
+                      const stringVector &);
     void KillProcess();
 protected:
     int                      listenPortNum;
@@ -208,7 +202,7 @@ private:
 private:
     DESCRIPTOR               listenSocketNum;
     struct sockaddr_in       sin;
-    std::string              remoteHost, remoteProgram, remoteUserName;
+    std::string              remoteProgram;
     std::vector<std::string> argList;
     int                      remoteProgramPid;
     Connection             **readConnections, **writeConnections;
@@ -220,6 +214,8 @@ private:
     static void            (*getAuthentication)(const char *, const char *, int);
     static bool            (*changeUsername)(const std::string &, std::string&);
     static bool              disablePTY;
+    static Connection*     (*customConnectionCallback)(int,void*);
+    static void             *customConnectionCallbackData;
 };
 
 #endif

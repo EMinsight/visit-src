@@ -263,6 +263,9 @@ GetSystemConfigFile(const char *filename)
 //   In case VISITUSERHOME not set on Windows, try a few other things to
 //   fill it in.
 //
+//   Kathleen Biagas, Wed Nov 7 09:48:37 PDT 2012
+//   Remove version number from VISITUSERHOME on windows.
+//
 // ****************************************************************************
 
 std::string
@@ -284,7 +287,7 @@ GetUserVisItDirectory()
         if(SUCCEEDED(SHGetFolderPath(NULL, CSIDL_PERSONAL, NULL, 
                                  SHGFP_TYPE_CURRENT, szPath))) 
         {
-            SNPRINTF(visituserpath, MAX_PATH, "%s\\VisIt %s", szPath, VISIT_VERSION);
+            SNPRINTF(visituserpath, MAX_PATH, "%s\\VisIt", szPath);
             haveVISITUSERHOME = 1;
         }
 
@@ -439,7 +442,9 @@ GetSystemVisItHostsDirectory()
 // Creation:   Fri Apr 27 17:31:12 PDT 2012
 //
 // Modifications:
-//   
+//   Brad Whitlock, Fri Oct 12 16:36:02 PDT 2012
+//   Add help directory.
+//
 // ****************************************************************************
 
 std::string
@@ -454,6 +459,10 @@ GetVisItResourcesDirectory(VisItResourceDirectoryType t)
         retval += VISIT_SLASH_STRING;
         if(t == VISIT_RESOURCES_COLORTABLES)
             retval += "colortables";
+        else if(t == VISIT_RESOURCES_HELP)
+            retval += "help";
+        else if(t == VISIT_RESOURCES_HOSTS)
+            retval += "hosts";
         else if(t == VISIT_RESOURCES_TRANSLATIONS)
             retval += "translations";
         else if(t == VISIT_RESOURCES_MOVIETEMPLATES)
@@ -461,6 +470,33 @@ GetVisItResourcesDirectory(VisItResourceDirectoryType t)
     }
 
     return retval;
+}
+
+// ****************************************************************************
+// Method: GetVisItResourcesFile
+//
+// Purpose: 
+//   Gets the name of a file in the resources directory.
+//
+// Arguments:
+//   t        : The resource directory.
+//   filename : the name of the file.
+//
+// Returns:    The name of the file in the resources directory.
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Thu Sep  6 11:08:52 PDT 2012
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+std::string
+GetVisItResourcesFile(VisItResourceDirectoryType t, const std::string &filename)
+{
+    return (GetVisItResourcesDirectory(t) + VISIT_SLASH_STRING) + filename;
 }
 
 #if defined(_WIN32)

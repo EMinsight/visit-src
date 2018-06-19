@@ -82,6 +82,8 @@ class PixieCommonPluginInfo : public virtual CommonDatabasePluginInfo, public vi
     virtual DatabaseType              GetDatabaseType();
     virtual avtDatabase              *SetupDatabase(const char * const *list,
                                                     int nList, int nBlock);
+    virtual DBOptionsAttributes *GetReadOptions() const;
+    virtual DBOptionsAttributes *GetWriteOptions() const;
 };
 
 class PixieMDServerPluginInfo : public virtual MDServerDatabasePluginInfo, public virtual PixieCommonPluginInfo

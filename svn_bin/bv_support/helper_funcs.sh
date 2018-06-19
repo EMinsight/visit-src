@@ -1002,6 +1002,7 @@ function check_parallel
         #
         if [[ "$PAR_INCLUDE" == "" && "$PAR_LIBS" == "" && "$MPIWRAPPER" != "" ]] ; then
             export VISIT_MPI_COMPILER=$MPIWRAPPER
+            export PAR_COMPILER=$MPIWRAPPER
             info \
                 "Configuring with mpi compiler wrapper: $VISIT_MPI_COMPILER"
             return 0
@@ -1210,6 +1211,17 @@ function build_hostconf
     # needs about the third party libraries.
 
     export HOSTCONF="$(hostname).cmake"
+
+    if [[ "${VISIT_HOSTNAME}" != "" ]]; then
+        info "VISIT_HOSTNAME env variable found: Using ${VISIT_HOSTNAME}.cmake"
+        HOSTCONF="${VISIT_HOSTNAME}.cmake"
+    fi
+
+    if [[ "${EXTERNAL_HOSTNAME}" != "" ]]; then
+        info "External Hostname variable found: Using ${EXTERNAL_HOSTNAME}"
+        HOSTCONF="${EXTERNAL_HOSTNAME}"
+    fi
+
     info "Creating $HOSTCONF"
 
     # First line of config-site file provides a hint to the location
@@ -1246,6 +1258,10 @@ function build_hostconf
     else
         echo "VISIT_OPTION_DEFAULT(VISIT_C_FLAGS \"$CFLAGS\" TYPE STRING)" >> $HOSTCONF
         echo "VISIT_OPTION_DEFAULT(VISIT_CXX_FLAGS \"$CXXFLAGS\" TYPE STRING)" >> $HOSTCONF
+    fi
+
+    if [[ "${DO_JAVA}" == "yes" ]] ; then
+        echo "VISIT_OPTION_DEFAULT(VISIT_JAVA ON TYPE BOOL)" >> $HOSTCONF
     fi
 
     if [[ "$parallel" == "yes" ]] ; then

@@ -50,7 +50,7 @@
 
 #include <avtDatabaseMetaData.h>
 
-class gmvPolyhedralSplit;
+class avtPolyhedralSplit;
 
 // ****************************************************************************
 //  Class: avtGMVFileFormat
@@ -73,7 +73,7 @@ public:
     virtual double      GetTime(void);
 
     virtual const char    *GetType(void)   { return "GMV"; };
-    virtual void           FreeUpResources(void); 
+    virtual void           FreeUpResources(void);
 
     virtual void           ActivateTimestep(void);
 
@@ -82,7 +82,7 @@ public:
     virtual vtkDataArray  *GetVectorVar(int, const char *);
 
     virtual void          *GetAuxiliaryData(const char *var, int domain,
-                                            const char *type, void *args, 
+                                            const char *type, void *args,
                                             DestructorFunction &);
 protected:
     void ReadData();
@@ -93,7 +93,7 @@ protected:
         vtkDataSet         *dataset;
         vtkDataArray       *material;
         int                 materialCentering;
-        gmvPolyhedralSplit *polyhedralSplit;
+        avtPolyhedralSplit *polyhedralSplit;
     };
 
     // DATA MEMBERS

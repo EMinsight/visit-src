@@ -108,9 +108,9 @@ class IVP_API avtIVPVTKField: public avtIVPField
                                  const avtVector &pt,
                                  const avtVector &vel,
                                        avtVector &retV) const
-    { return( avtIVPSolverResult::TERMINATE ); };
+    { return FAIL; }
 
-    virtual Result    FindValue(vtkDataArray* vectorData, avtVector &vel) const;
+    virtual bool      FindValue(vtkDataArray* vectorData, avtVector &vel) const;
 
     virtual avtVector ConvertToCartesian(const avtVector& pt) const;
     virtual avtVector ConvertToCylindrical(const avtVector& pt) const;
@@ -124,25 +124,22 @@ class IVP_API avtIVPVTKField: public avtIVPField
     virtual void      SetScalarVariable( unsigned char index, 
                                          const std::string& name );
 
-    virtual bool      IsInside( const double& t, const avtVector &pt ) const;
-    unsigned int   GetDimension() const;
-    void           SetNormalized( bool v );
-
-    virtual void   GetExtents( double extents[6] ) const;
-    virtual void   GetTimeRange( double range[2] ) const;
+    virtual Result    IsInside( const double& t, const avtVector &pt ) const;
+    unsigned int      GetDimension() const;
+    virtual void      GetExtents( double extents[6] ) const;
+    virtual void      GetTimeRange( double range[2] ) const;
 
   protected:
 
-    bool FindCell( const double& t, const avtVector& p ) const;
+    Result             FindCell( const double& t, const avtVector& p ) const;
 
-    bool                   normalized;
-    vtkDataSet*            ds;
-    avtCellLocator*        loc;
+    vtkDataSet*        ds;
+    avtCellLocator*    loc;
 
-    vtkDataArray*          velData;
-    bool                   velCellBased;
-    vtkDataArray*          sclData[256];
-    bool                   sclCellBased[256];
+    vtkDataArray*      velData;
+    bool               velCellBased;
+    vtkDataArray*      sclData[256];
+    bool               sclCellBased[256];
 
     mutable avtVector               lastPos;
     mutable vtkIdType               lastCell;

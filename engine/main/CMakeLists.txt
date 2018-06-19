@@ -76,8 +76,10 @@ IF(VISIT_STATIC)
     SET(ENGINE_STATIC_SOURCES EngineStaticSymbolLocator.C)
 ENDIF(VISIT_STATIC)
 
-IF (NOT WIN32)
+IF (NOT WIN32 AND NOT APPLE)
     SET(LIBENGINE_SOURCES ${LIBENGINE_SOURCES} XDisplay.C)
+ENDIF (NOT WIN32 AND NOT APPLE)
+IF (NOT WIN32)
     # This keeps comm's exceptions visible when using -fvisibility=hidden
     ADD_DEFINITIONS(-DCOMM_EXPORTS)
 ENDIF (NOT WIN32)
@@ -170,10 +172,10 @@ TARGET_LINK_LIBRARIES(engine_ser_exe
     ${engine_ser_exe_EPlot_ser}
     engine_ser 
     visit_verdict 
-    vtkjpeg 
-    vtkpng 
-    vtkzlib 
-    vtkfreetype 
+    ${VTK_JPEG_LIBRARIES}
+    ${VTK_PNG_LIBRARIES}
+    ${VTK_ZLIB_LIBRARIES} 
+    ${VTK_FREETYPE_LIBRARIES}
     vtkftgl
     ${ALL_THIRDPARTY_IO_LIB}
     ${TCMALLOC_LIB}
@@ -250,10 +252,11 @@ IF(VISIT_PARALLEL)
         ${engine_par_exe_EPlot_par}
         engine_par 
         visit_verdict 
-        vtkjpeg 
-        vtkpng 
-        vtkzlib 
-        vtkfreetype 
+        ${VTK_JPEG_LIBRARIES}
+        ${VTK_PNG_LIBRARIES}
+        ${VTK_ZLIB_LIBRARIES}
+        ${Z_LIB}
+        ${VTK_FREETYPE_LIBRARIES}
         vtkftgl
         ${ALL_THIRDPARTY_IO_LIB}
         ${TCMALLOC_LIB}

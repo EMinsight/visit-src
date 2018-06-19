@@ -77,7 +77,7 @@
 // ****************************************************************************
 
 ViewerClientConnection::ViewerClientConnection(const ViewerState *s,
-    QObject *parent, const QString &n) : ViewerBase(parent),
+    QObject *parent, const QString &n,const bool _allState) : ViewerBase(parent),
     SimpleObserver(), name(n)
 {
     notifier = 0;
@@ -85,7 +85,7 @@ ViewerClientConnection::ViewerClientConnection(const ViewerState *s,
     remoteProcess = 0;
     parentProcess = 0;
     initialStateStage = 0;
-
+    allState = _allState;
     viewerState = new ViewerState(*s);
 
     // Hook Xfer up to the objects in the viewerState object.
@@ -97,6 +97,8 @@ ViewerClientConnection::ViewerClientConnection(const ViewerState *s,
     }
     xfer->CreateNewSpecialOpcode(); // animationStopOpcode
     xfer->CreateNewSpecialOpcode(); // iconifyOpcode
+    advancedRendering = false;
+    externalClient = false;
 }
 
 // ****************************************************************************
@@ -128,7 +130,7 @@ ViewerClientConnection::ViewerClientConnection(const ViewerState *s,
 
 ViewerClientConnection::ViewerClientConnection(ParentProcess *p,
     QSocketNotifier *sn, const ViewerState *s, QObject *parent,
-    const QString &n) : ViewerBase(parent), name(n)
+    const QString &n, const bool _allState) : ViewerBase(parent), name(n)
 {
     notifier = sn;
     if(notifier != 0)
@@ -137,7 +139,7 @@ ViewerClientConnection::ViewerClientConnection(ParentProcess *p,
                 this, SLOT(ReadFromClientAndProcess(int)));
     }
     ownsNotifier = false;
-
+    allState = _allState;
     remoteProcess = 0;
     parentProcess = p;
     initialStateStage = 0;
@@ -157,6 +159,7 @@ ViewerClientConnection::ViewerClientConnection(ParentProcess *p,
     }
     xfer->CreateNewSpecialOpcode(); // animationStopOpcode
     xfer->CreateNewSpecialOpcode(); // iconifyOpcode
+    advancedRendering = false;
 }
 
 // ****************************************************************************
@@ -230,6 +233,9 @@ ViewerClientConnection::~ViewerClientConnection()
 //   I added the ability to use a gateway machine when connecting to a
 //   remote host.
 //
+//   Brad Whitlock, Tue Jun  5 16:35:01 PDT 2012
+//   Pass MachineProfile::Default output to RemoteProcess.
+//
 // ****************************************************************************
 
 void
@@ -283,8 +289,7 @@ ViewerClientConnection::LaunchClient(const std::string &program,
 
     // Try opening the client.
     debug1 << mName << "Opening client connection." << endl;
-    remoteProcess->Open("localhost", MachineProfile::MachineName, "",
-                        false, 0, false, false, "", 1, 1);
+    remoteProcess->Open(MachineProfile::Default(), 1, 1);
 
     debug1 << mName << "Successfully opened client connection." << endl;
 
@@ -311,19 +316,21 @@ ViewerClientConnection::LaunchClient(const std::string &program,
 
 #ifdef _WIN32
     // Initiate sending state objects to the client.
-    initialStateStage = viewerState->FreelyExchangedState();
+    initialStateStage = allState ? 0 : viewerState->FreelyExchangedState();
     QTimer::singleShot(50, this, SLOT(sendInitialState()));
 #else
     // Send all of the state except for the first 7 state objects, which
     // are: ViewerRPC, PostponedRPC, syncAtts, messageAtts, statusAtts,
     // metaData, silAtts.
     debug1 << mName << "Sending state objects to client." << endl;
-    for(int i = viewerState->FreelyExchangedState(); 
+    for(int i = allState ? 0 : viewerState->FreelyExchangedState();
         i < viewerState->GetNumStateObjects(); ++i)
     {
         viewerState->GetStateObject(i)->SelectAll();
         SetUpdate(false);
+        if(allState) viewerState->GetStateObject(i)->SetSendMetaInformation(true);
         viewerState->GetStateObject(i)->Notify();
+        if(allState) viewerState->GetStateObject(i)->SetSendMetaInformation(false);
     }
 #endif
 
@@ -350,7 +357,9 @@ ViewerClientConnection::sendInitialState()
     // Send one state object.
     viewerState->GetStateObject(initialStateStage)->SelectAll();
     SetUpdate(false);
+    if(allState) viewerState->GetStateObject(initialStateStage)->SetSendMetaInformation(true);
     viewerState->GetStateObject(initialStateStage)->Notify();
+    if(allState) viewerState->GetStateObject(initialStateStage)->SetSendMetaInformation(false);
 
     // See if we should send another state object in a deferred manner.
     initialStateStage++;

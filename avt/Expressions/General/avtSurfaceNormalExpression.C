@@ -44,7 +44,6 @@
 
 #include <vtkCellData.h>
 #include <vtkDataSet.h>
-#include <vtkFloatArray.h>
 #include <vtkPointData.h>
 #include <vtkPolyData.h>
 #include <vtkRectilinearGrid.h>
@@ -108,6 +107,12 @@ avtSurfaceNormalExpression::~avtSurfaceNormalExpression()
 //    Hank Childs, Fri Sep 24 10:18:38 PDT 2010
 //    Add support for rectilinear grids.
 //
+//    Mark C. Miller, Wed Aug 22 09:29:42 PDT 2012
+//    Fixed leak of 'n' on early return due to EXCEPTION.
+//
+//    Mark C. Miller, Sat Aug 25 22:06:48 PDT 2012
+//    Changed leak fix and put n->Delete() both in exception block at at end
+//    of routine rather than ahead of arr->Register().
 // ****************************************************************************
 
 vtkDataArray *
@@ -149,13 +154,16 @@ avtSurfaceNormalExpression::DeriveVariable(vtkDataSet *in_ds)
     else
         arr = out->GetCellData()->GetNormals();
     
+
     if (arr == NULL)
     {
+        n->Delete();
         EXCEPTION2(ExpressionException, outputVariableName, 
                    "An internal error occurred where "
                    "the surface normals could not be calculated.  Please "
                    "contact a VisIt developer.");
     }
+
     arr->Register(NULL);
     n->Delete();
 

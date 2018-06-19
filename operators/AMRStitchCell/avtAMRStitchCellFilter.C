@@ -76,6 +76,7 @@
 #include <vtkUnstructuredGrid.h>
 
 #include <vtkDataSetWriter.h>
+#include <vtkVisItUtility.h>
 
 // ****************************************************************************
 //  Method: avtAMRStitchCellFilter constructor
@@ -196,6 +197,9 @@ avtAMRStitchCellFilter::ModifyContract(avtContract_p in_contract)
 //
 //  Modifications:
 //
+//    Gunther H. Weber, Wed Jul 18 17:29:30 PDT 2012
+//    Fixed memory error reported by valgrind
+//
 // ****************************************************************************
 
 void
@@ -243,6 +247,11 @@ avtAMRStitchCellFilter::PreExecute(void)
 
     // Get logical extents of root level
     size_t nLevels = domainNesting->GetNumberOfLevels();
+    if (nLevels == 0)
+         EXCEPTION1(ImproperUseException,
+                 "Data sets does not contain any levels (according to information "
+                 "in structured domain nesting.");
+
     logicalDomainBoundingBox.resize(nLevels);
     logicalDomainBoundingBox[0].resize(6);
     logicalDomainBoundingBox[0][0] = std::numeric_limits<int>::max();
@@ -277,13 +286,26 @@ avtAMRStitchCellFilter::PreExecute(void)
     for (size_t l=1; l<nLevels; ++l)
     {
         const std::vector<int>& refRatio = domainNesting->GetLevelRefinementRatios(l);
+        if (refRatio.size() != 3)
+            EXCEPTION1(ImproperUseException,
+                    "Refinement ratio provided by database via domain nesting is invalid. "
+                    "Expected a vector of length three.");
+
         logicalDomainBoundingBox[l].resize(6);
         logicalDomainBoundingBox[l][0] = refRatio[0] * logicalDomainBoundingBox[l-1][0];
         logicalDomainBoundingBox[l][1] = refRatio[1] * logicalDomainBoundingBox[l-1][1];
-        logicalDomainBoundingBox[l][2] = refRatio[2] * logicalDomainBoundingBox[l-1][2];
         logicalDomainBoundingBox[l][3] = refRatio[0] * (logicalDomainBoundingBox[l-1][3] + 1) - 1;
         logicalDomainBoundingBox[l][4] = refRatio[1] * (logicalDomainBoundingBox[l-1][4] + 1) - 1;
-        logicalDomainBoundingBox[l][5] = refRatio[2] * (logicalDomainBoundingBox[l-1][5] + 1) - 1;
+        if (topologicalDimension == 2)
+        {
+            logicalDomainBoundingBox[l][2] = 0;
+            logicalDomainBoundingBox[l][5] = 0;
+        }
+        else
+        {
+            logicalDomainBoundingBox[l][2] = refRatio[2] * logicalDomainBoundingBox[l-1][2];
+            logicalDomainBoundingBox[l][5] = refRatio[2] * (logicalDomainBoundingBox[l-1][5] + 1) - 1;
+        }
 
         debug5 << "avtAMRStitchCellFilter::PreExecute(): logicalDomainBoundingBox[" << l << "][6] = { ";
         debug5 << logicalDomainBoundingBox[l][0] << ", " << logicalDomainBoundingBox[l][1] << ", ";
@@ -896,6 +918,10 @@ avtAMRStitchCellFilter::UpdateDataObjectInfo(void)
 //  Programmer: Gunther H. Weber
 //  Creation:   Thu Jul 8 15:14:01 PST 2010
 //
+//  Modifications:
+//    Kathleen Biagas, Tue Oct 16 15:28:09 MST 2012
+//    Preserve Coordinate type.
+//
 // ****************************************************************************
 
 vtkDataSet *
@@ -905,7 +931,7 @@ avtAMRStitchCellFilter::CreateStitchCells(vtkRectilinearGrid *rgrid,
         const vtkIdType* refinedInSameLevelDomain)
 {
     // Create unstructured grid for stitch cells
-    vtkPoints *stitchCellPts = vtkPoints::New();
+    vtkPoints *stitchCellPts = vtkVisItUtility::NewPoints(rgrid);
     vtkUnstructuredGrid *stitchCellGrid = vtkUnstructuredGrid::New();
     vtkUnstructuredGrid *ugrid = vtkUnstructuredGrid::New();
     ugrid->SetPoints(stitchCellPts);
@@ -1611,6 +1637,10 @@ avtAMRStitchCellFilter::CreateStitchCells(vtkRectilinearGrid *rgrid,
 //  Programmer: Gunther H. Weber (based on Cyrus Harrison's DualMesh filter)
 //  Creation:   Thu Jul 8 15:14:01 PST 2010
 //
+//  Modifications:
+//    Kathleen Biagas, Tue Oct 16 13:27:01 MST 2012
+//    Preserve coordinate type.
+//
 // ****************************************************************************
 
 vtkDataSet *
@@ -1625,7 +1655,7 @@ avtAMRStitchCellFilter::CreateDualGrid(vtkRectilinearGrid  *rgrid, int domain,
     // dims[] corresponds to the number of samples of the dual grid.
     result->SetDimensions(dims);
 
-    vtkFloatArray *xCoords = vtkFloatArray::New();
+    vtkDataArray *xCoords = rgrid->GetXCoordinates()->NewInstance();
     for (int i = 0; i<dims[0]; ++i)
         xCoords->InsertNextTuple1(
                 domainOrigin[0] + (i + baseIdx[0] - ghostOffset[0] +  0.5) * cellSize[level][0]
@@ -1633,7 +1663,7 @@ avtAMRStitchCellFilter::CreateDualGrid(vtkRectilinearGrid  *rgrid, int domain,
     result->SetXCoordinates(xCoords);
     xCoords->Delete();
 
-    vtkFloatArray *yCoords = vtkFloatArray::New();
+    vtkDataArray *yCoords = rgrid->GetYCoordinates()->NewInstance();
     for (int j = 0; j<dims[1]; ++j)
         yCoords->InsertNextTuple1(
                 domainOrigin[1] + (j + baseIdx[1] - ghostOffset[1] +  0.5) * cellSize[level][1]
@@ -1643,7 +1673,7 @@ avtAMRStitchCellFilter::CreateDualGrid(vtkRectilinearGrid  *rgrid, int domain,
 
     if (topologicalDimension == 3)
     {
-        vtkFloatArray *zCoords = vtkFloatArray::New();
+        vtkDataArray *zCoords = rgrid->GetZCoordinates()->NewInstance();
         for (int k = 0; k<dims[2]; ++k)
             zCoords->InsertNextTuple1(
                     domainOrigin[2] + (k + baseIdx[2] - ghostOffset[2] +  0.5) * cellSize[level][2]
@@ -1844,13 +1874,13 @@ avtAMRStitchCellFilter::CreateDualGrid(vtkRectilinearGrid  *rgrid, int domain,
 vtkDataArray *
 avtAMRStitchCellFilter::ContractDual(vtkDataArray *coords)
 {
-    vtkFloatArray *res_coords = vtkFloatArray::New();
+    vtkDataArray *res_coords = coords->NewInstance();
 
     int npoints = coords->GetNumberOfTuples();
     for(int i=0;i< npoints - 1;i++)
     {
-        float curr = (coords->GetTuple1(i+1) + coords->GetTuple1(i)) / 2.0;
-        res_coords->InsertNextValue(curr);
+        double curr = (coords->GetTuple1(i+1) + coords->GetTuple1(i)) / 2.0;
+        res_coords->InsertNextTuple1(curr);
     }
     return res_coords;
 }

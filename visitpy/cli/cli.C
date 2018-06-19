@@ -192,6 +192,9 @@ extern "C" VISITCLI_API int Py_Main(int, char **);
 //    Brad Whitlock, Wed Jun 20 11:37:23 PDT 2012
 //    Added -minimized argument to minimize the cli window on Windows.
 //
+//    Kathleen Biagas, Thu May 24 19:20:19 MST 2012  
+//    Ensure runFile has path-separators properly escaped on Windows.
+//
 // ****************************************************************************
 
 int
@@ -201,12 +204,13 @@ main(int argc, char *argv[])
     int  debugLevel = 0;
     bool bufferDebug = false;
     bool verbose = false, s_found = false;
-    bool pyside_gui = false;
     bool pyside = false;
+    bool pyside_gui = false,pyside_viewer = false;
     char *runFile = 0, *loadFile = 0, tmpArg[512];
     char **argv2 = new char *[argc];
     char **argv_after_s = new char *[argc];
     int  argc2 = 0, argc_after_s = 0; 
+    char* uifile = 0;
 
 #ifdef IGNORE_HUPS
     signal(SIGHUP, SIG_IGN);
@@ -340,6 +344,18 @@ main(int argc, char *argv[])
         else if(strcmp(argv[i], "-pysideviewer") == 0)
         {
             pyside_gui = true;
+            pyside_viewer = true;
+        }
+        else if(strcmp(argv[i], "-pysideclient") == 0)
+        {
+            pyside_gui = true;
+        }
+        else if(strcmp(argv[i], "-uifile") == 0)
+        {
+            pyside_gui = true;
+            uifile = argv[i+1];
+            ++i;
+            argv2[argc2++] = "-uifile"; //pass it along to client
         }
         else if(strcmp(argv[i], "-dv") == 0)
         {
@@ -382,6 +398,19 @@ main(int argc, char *argv[])
             pyside_gui = false;
             pyside = true;
         }
+        if(pyside_gui && tmp == "-nowin")
+        {
+            std::cerr << "Error: Cannot create pyside client and nowin at the same time" 
+                      << std::endl;
+            return (0);
+        }
+
+        if(pyside_gui && tmp == "-defer")
+        {
+            std::cerr << "Warning: Cannot use pyside client and defer at the same time"
+                      << std::endl;
+            return (0);
+        }
     }
 
     TRY
@@ -405,15 +434,31 @@ main(int argc, char *argv[])
 
         PyRun_SimpleString((char*)"import visit");
 
+        // Initialize the VisIt module.
+        cli_initvisit(bufferDebug ? -debugLevel : debugLevel, verbose, argc2, argv2,
+                      argc_after_s, argv_after_s);
+
         if(pyside || pyside_gui)
         {
-            PyRun_SimpleString((char*)"from PySide.QtCore import *");
-            PyRun_SimpleString((char*)"from PySide.QtGui import *");
-            PyRun_SimpleString((char*)"from PySide.QtOpenGL import *");
-            PyRun_SimpleString((char*)"from PySide.QtUiTools import *");
-
-            PyRun_SimpleString((char*)"visit.pyside_support.SetupTimer()");
-            PyRun_SimpleString((char*)"visit.pyside_hook.SetHook()");
+            int error = 0;
+            if(!error) error |= PyRun_SimpleString((char*)"from PySide.QtCore import *");
+            if(!error) error |= PyRun_SimpleString((char*)"from PySide.QtGui import *");
+            if(!error) error |= PyRun_SimpleString((char*)"from PySide.QtOpenGL import *");
+            if(!error) error |= PyRun_SimpleString((char*)"from PySide.QtUiTools import *");
+            if(!error) error |= PyRun_SimpleString((char*)"import visit.pyside_support");
+            if(!error) error |= PyRun_SimpleString((char*)"import visit.pyside_hook");
+            
+            if(error) 
+            {
+                std::cerr   << "Error: Unable to initialize PySide components" 
+                            << std::endl;
+                return (0); 
+            }
+            else
+            {
+                PyRun_SimpleString((char*)"visit.pyside_support.SetupTimer()");
+                PyRun_SimpleString((char*)"visit.pyside_hook.SetHook()");
+            }
         }
 
         if(pyside_gui)
@@ -421,14 +466,35 @@ main(int argc, char *argv[])
             //pysideviewer needs to be executed before visit import
             //so that visit will use the window..
             // we will only have one instance, init it
-            PyRun_SimpleString((char*)"visit.pyside_viewer.PySideViewer.instance(sys.argv)");
+            int error = PyRun_SimpleString((char*)"import visit.pyside_gui");
+
+            if(error)
+            {
+                std::cerr   << "Error: Unable to initialize PySide GUI components" 
+                            << std::endl;
+                return (0);
+            }
+
+            PyRun_SimpleString((char*)"args = sys.argv");
+            if(uifile) //if external file then start VisIt in embedded mode
+                PyRun_SimpleString((char*)"args.append('-pyuiembedded')"); //default to embedded
+            PyRun_SimpleString((char*)"tmp = visit.pyside_gui.PySideGUI.instance(args)");
+            PyRun_SimpleString((char*)"visit.InitializeViewerProxy(tmp.GetViewerProxyPtr())");
             PyRun_SimpleString((char*)"from visit.pyside_support import GetRenderWindow");
             PyRun_SimpleString((char*)"from visit.pyside_support import GetRenderWindowIds");
+            PyRun_SimpleString((char*)"from visit.pyside_support import GetUIWindow");
+            PyRun_SimpleString((char*)"from visit.pyside_support import GetPlotWindow");
+            PyRun_SimpleString((char*)"from visit.pyside_support import GetOperatorWindow");
+            PyRun_SimpleString((char*)"from visit.pyside_support import GetOtherWindow");
+            PyRun_SimpleString((char*)"from visit.pyside_support import GetOtherWindowNames");
+
+            if(!uifile && !pyside_viewer)
+                PyRun_SimpleString((char*)"GetUIWindow().show()");
         }
 
         // Initialize the VisIt module.
-        cli_initvisit(bufferDebug ? -debugLevel : debugLevel, verbose, argc2, argv2,
-                      argc_after_s, argv_after_s);
+        //cli_initvisit(bufferDebug ? -debugLevel : debugLevel, verbose, argc2, argv2,
+        //              argc_after_s, argv_after_s);
 
         // setup source file and source stack variables
         PyRun_SimpleString((char*)"import os\n"
@@ -438,11 +504,9 @@ main(int argc, char *argv[])
 
 
         PyRun_SimpleString((char*)"visit.Launch()");
-        PyRun_SimpleString((char*)"visit.ShowAllWindows()");
+
         // reload symbols from visit, since they may have changed
         PyRun_SimpleString((char*)"from visit import *");
-        // import helper that lets us know if the pyside viewer is enabled
-        PyRun_SimpleString((char*)"from visit.pyside_support import IsPySideViewerEnabled");
 
         // If a visitrc file exists, execute it.
         std::string visitSystemRc(GetSystemVisItRCFile());
@@ -457,6 +521,13 @@ main(int argc, char *argv[])
         else if (VisItStat(visitSystemRc.c_str(), &s) == 0)
         {
             visitrc = visitSystemRc;
+        }
+
+        if(uifile && pyside_gui)
+        {
+            std::ostringstream pycmd;
+            pycmd << "visit.Source(\"" << uifile << "\")";
+            PyRun_SimpleString(pycmd.str().c_str());
         }
 
         if (visitrc.size())
@@ -492,7 +563,7 @@ main(int argc, char *argv[])
         {
             // add the script file's dir to the cli's sys.path
             std::string pycmd  = "import sys\n";
-            pycmd += "__visit_script_file__ = os.path.abspath('";
+            pycmd += "__visit_script_file__ = os.path.abspath(r'";
             pycmd +=  std::string(runFile) + "')\n";
             pycmd += "__visit_script_path__ = ";
             pycmd += "os.path.split(__visit_script_file__)[0]\n";
