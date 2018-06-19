@@ -1747,6 +1747,25 @@ VisWindow::Lower()
 }
 
 // ****************************************************************************
+// Method: VisWindow::ActivateWindow
+//
+// Purpose: 
+//   Activates the render window.
+//
+// Programmer: Gunther H. Weber
+// Creation:   Mon Jul 18 16:20:29 PDT 2011
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+VisWindow::ActivateWindow()
+{
+    rendering->ActivateWindow();
+}
+
+// ****************************************************************************
 // Method: VisWindow::Hide
 //
 // Purpose: 
@@ -1790,7 +1809,7 @@ VisWindow::IsVisible() const
 //  Method: VisWindow::SetSize
 //
 //  Purpose:
-//      Sets the size of the vis window.
+//      Sets the size of the renderable portion of the vis window.
 //
 //  Arguments:
 //      w       The desired width (in pixels) of the vis window.
@@ -1826,6 +1845,27 @@ void
 VisWindow::GetSize(int &w, int &h) const
 {
     rendering->GetSize(w, h);
+}
+
+// ****************************************************************************
+//  Method: VisWindow::SetWindowSize
+//
+//  Purpose:
+//      Sets the size of the vis window.
+//
+//  Arguments:
+//      w       The desired width (in pixels) of the vis window.
+//      h       The desired height (in pixels) of the vis window.
+//
+//  Programmer: Hank Childs
+//  Creation:   July 6, 2000
+//
+// ****************************************************************************
+
+void
+VisWindow::SetWindowSize(int w, int h)
+{
+    rendering->SetWindowSize(w, h);
 }
 
 // ****************************************************************************

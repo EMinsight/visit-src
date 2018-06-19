@@ -551,6 +551,9 @@ ViewerWindowManager::SetGeometry(const char *windowGeometry)
 //    Brad Whitlock, Thu Jan 13 22:56:32 PST 2011
 //    I applied Cyrus' suggested fix for copying the sources. Looks good.
 //
+//    Gunther H. Weber, Fri Jul 15 16:54:05 PDT 2011
+//    Make cloned window same size as original window.
+//
 // ****************************************************************************
 
 void
@@ -577,11 +580,15 @@ ViewerWindowManager::AddWindow(bool copyAtts)
         ViewerWindow *src = windows[activeWindow];
         if (copyAtts || clientAtts->GetCloneWindowOnFirstRef())
         {
+            int w, h;
+            src->GetWindowSize(w, h);
+            dest->SetWindowSize(w,h);
+
             dest->CopyGeneralAttributes(src);
             dest->CopyAnnotationAttributes(src);
             dest->CopyLightList(src);
             dest->CopyViewAttributes(src);
-        
+
             StringStringMap nameMap = dest->GetPlotList()->CopyFrom(src->
                 GetPlotList(), true);
             dest->GetActionManager()->CopyFrom(src->GetActionManager());
@@ -4504,6 +4511,10 @@ ViewerWindowManager::SetWindowLayout(const int windowLayout)
 //    Brad Whitlock, Fri Aug 13 16:38:06 PDT 2010
 //    Fix legend names.
 //
+//    Gunther H. Weber, Mon Jul 18 16:27:41 PDT 2011
+//    Activate window before raising it (otherwise MacOS will only
+//    raise the window briefly.
+//
 // ****************************************************************************
 
 void
@@ -4566,7 +4577,7 @@ ViewerWindowManager::SetActiveWindow(const int windowId)
             dest->GetPlotList()->CopyFrom(src->GetPlotList(), false);
         }
     }
-    
+
     referenced[winIndex] = true;
 
     //
@@ -4576,6 +4587,9 @@ ViewerWindowManager::SetActiveWindow(const int windowId)
 
     // Deiconify the activated window.
     windows[activeWindow]->DeIconify();
+ 
+    // Activate window in windowing system
+    windows[activeWindow]->ActivateWindow();
 
     // Raise the activated window.
     windows[activeWindow]->Raise();

@@ -190,9 +190,9 @@ QvisIndexSelectWindow::CreateWindowContents()
     // Set Up Min
     oneDMin = new QSpinBox(central);
     if( atts->GetXAbsMax() == -1 )
-      oneDMin->setRange(0,MAX_VAL);
+      oneDMin->setRange(0, MAX_VAL);
     else
-      oneDMin->setRange(0,atts->GetXAbsMax());
+      oneDMin->setRange(0, atts->GetXAbsMax());
     oneDMin->setSingleStep(1);
     connect(oneDMin, SIGNAL(valueChanged(int)),
              this, SLOT(oneDMinChanged(int)));
@@ -201,27 +201,31 @@ QvisIndexSelectWindow::CreateWindowContents()
     // Set Up Max
     oneDMax = new QSpinBox(central);
     oneDMax->setSingleStep(1);
+
     if( atts->GetXAbsMax() == -1 )
     {
-      oneDMax->setRange(-1,MAX_VAL);
+      oneDMax->setRange(-1, MAX_VAL);
       oneDMax->setSpecialValueText(tr("max"));
+      oneDMax->setValue(atts->GetXMax());
+      connect(oneDMax, SIGNAL(editingFinished()),
+              this, SLOT(oneDMaxChanged()));
     }
     else
     {
-      oneDMax->setRange(0,atts->GetXAbsMax());
+      oneDMax->setRange(0, atts->GetXAbsMax());
       oneDMax->setSpecialValueText(tr(""));
+      oneDMax->setValue(atts->GetXMax());
+      connect(oneDMax, SIGNAL(valueChanged(int)),
+              this, SLOT(oneDMaxChanged(int)));
     }
-    oneDMax->setValue(atts->GetXMax());
-    connect(oneDMax, SIGNAL(valueChanged(int)),
-             this, SLOT(oneDMaxChanged(int)));
     mainLayout->addWidget(oneDMax, row, 2);
 
     // Set Up Incr
     oneDIncr = new QSpinBox(central);
     if( atts->GetXAbsMax() == -1 )
-      oneDIncr->setRange(1,MAX_VAL);
+      oneDIncr->setRange(1, MAX_VAL);
     else
-      oneDIncr->setRange(1,atts->GetXAbsMax()+1);
+      oneDIncr->setRange(1, atts->GetXAbsMax()+1);
     oneDIncr->setSingleStep(1);
     connect(oneDIncr, SIGNAL(valueChanged(int)),
              this, SLOT(oneDIncrChanged(int)));
@@ -246,9 +250,9 @@ QvisIndexSelectWindow::CreateWindowContents()
     // Set Up Min
     twoDMin = new QSpinBox(central);
     if( atts->GetZAbsMax() == -1 )
-      twoDMin->setRange(0,MAX_VAL);
+      twoDMin->setRange(0, MAX_VAL);
     else
-      twoDMin->setRange(0,atts->GetYAbsMax());
+      twoDMin->setRange(0, atts->GetYAbsMax());
     twoDMin->setSingleStep(1);
     connect(twoDMin, SIGNAL(valueChanged(int)),
              this, SLOT(twoDMinChanged(int)));
@@ -259,17 +263,20 @@ QvisIndexSelectWindow::CreateWindowContents()
     twoDMax->setSingleStep(1);
     if( atts->GetZAbsMax() == -1 )
     {
-      twoDMax->setRange(-1,MAX_VAL);
+      twoDMax->setRange(-1, MAX_VAL);
       twoDMax->setSpecialValueText(tr("max"));
+      twoDMax->setValue(atts->GetYMax());
+      connect(twoDMax, SIGNAL(editingFinished()),
+              this, SLOT(twoDMaxChanged()));
     }
     else
     {
-      twoDMax->setRange(0,atts->GetYAbsMax());
+      twoDMax->setRange(0, atts->GetYAbsMax());
       twoDMax->setSpecialValueText(tr(""));
+      twoDMax->setValue(atts->GetYMax());
+      connect(twoDMax, SIGNAL(valueChanged(int)),
+              this, SLOT(twoDMaxChanged(int)));
     }
-    twoDMax->setValue(atts->GetYMax());
-    connect(twoDMax, SIGNAL(valueChanged(int)),
-             this, SLOT(twoDMaxChanged(int)));
     mainLayout->addWidget(twoDMax, row, 2);
 
     // Set Up Incr
@@ -302,9 +309,9 @@ QvisIndexSelectWindow::CreateWindowContents()
     // Set Up Min
     threeDMin = new QSpinBox(central);
     if( atts->GetZAbsMax() == -1 )
-      threeDMin->setRange(0,MAX_VAL);
+      threeDMin->setRange(0, MAX_VAL);
     else
-      threeDMin->setRange(0,atts->GetZAbsMax());
+      threeDMin->setRange(0, atts->GetZAbsMax());
     threeDMin->setSingleStep(1);
     connect(threeDMin, SIGNAL(valueChanged(int)),
              this, SLOT(threeDMinChanged(int)));
@@ -315,25 +322,28 @@ QvisIndexSelectWindow::CreateWindowContents()
     threeDMax->setSingleStep(1);
     if( atts->GetZAbsMax() == -1 )
     {
-      threeDMax->setRange(-1,MAX_VAL);
+      threeDMax->setRange(-1, MAX_VAL);
       threeDMax->setSpecialValueText(tr("max"));
+      threeDMax->setValue(atts->GetZMax());
+      connect(threeDMax, SIGNAL(editingFinished()),
+              this, SLOT(threeDMaxChanged()));
     }
     else
     {
-      threeDMax->setRange(0,atts->GetZAbsMax());
+      threeDMax->setRange(0, atts->GetZAbsMax());
       threeDMax->setSpecialValueText(tr(""));
+      threeDMax->setValue(atts->GetZMax());
+      connect(threeDMax, SIGNAL(valueChanged(int)),
+              this, SLOT(threeDMaxChanged(int)));
     }
-    threeDMax->setValue(atts->GetZMax());
-    connect(threeDMax, SIGNAL(valueChanged(int)),
-             this, SLOT(threeDMaxChanged(int)));
     mainLayout->addWidget(threeDMax, row, 2);
 
     // Set Up Incr
     threeDIncr = new QSpinBox(central);
     if( atts->GetZAbsMax() == -1 )
-      threeDIncr->setRange(1,MAX_VAL);
+      threeDIncr->setRange(1, MAX_VAL);
     else
-      threeDIncr->setRange(1,atts->GetZAbsMax()+1);
+      threeDIncr->setRange(1, atts->GetZAbsMax()+1);
     threeDIncr->setSingleStep(1);
     connect(threeDIncr, SIGNAL(valueChanged(int)),
              this, SLOT(threeDIncrChanged(int)));
@@ -442,7 +452,10 @@ QvisIndexSelectWindow::UpdateWindow(bool doAll)
             oneDMin->blockSignals(false);
 
             oneDMax->blockSignals(true);
-            oneDMax->setMinimum(atts->GetXMin());
+            if( atts->GetXAbsMax() != -1)
+              oneDMax->setMinimum(atts->GetXMin());
+            else
+              oneDMax->setMaximum(MAX_VAL);
             oneDMax->blockSignals(false);
             break;
           case IndexSelectAttributes::ID_xMax:
@@ -453,7 +466,7 @@ QvisIndexSelectWindow::UpdateWindow(bool doAll)
             oneDMax->blockSignals(false);
 
             oneDMin->blockSignals(true);
-            if( atts->GetXMax() == -1 )
+            if( atts->GetXMax() == -1 && atts->GetXAbsMax() == -1)
               oneDMin->setMaximum(MAX_VAL);
             else
               oneDMin->setMaximum(atts->GetXMax());
@@ -504,7 +517,10 @@ QvisIndexSelectWindow::UpdateWindow(bool doAll)
             twoDMin->blockSignals(false);
 
             twoDMax->blockSignals(true);
-            twoDMax->setMinimum(atts->GetYMin());
+            if( atts->GetYAbsMax() != -1)
+              twoDMax->setMinimum(atts->GetYMin());
+            else
+              twoDMax->setMaximum(MAX_VAL);
             twoDMax->blockSignals(false);
             break;
           case IndexSelectAttributes::ID_yMax:
@@ -515,7 +531,7 @@ QvisIndexSelectWindow::UpdateWindow(bool doAll)
             twoDMax->blockSignals(false);
 
             twoDMin->blockSignals(true);
-            if( atts->GetYMax() == -1 )
+            if( atts->GetYMax() == -1 && atts->GetYAbsMax() == -1)
               twoDMin->setMaximum(MAX_VAL);
             else
               twoDMin->setMaximum(atts->GetYMax());
@@ -566,7 +582,10 @@ QvisIndexSelectWindow::UpdateWindow(bool doAll)
             threeDMin->blockSignals(false);
 
             threeDMax->blockSignals(true);
-            threeDMax->setMinimum(atts->GetZMin());
+            if( atts->GetYAbsMax() != -1)
+              threeDMax->setMinimum(atts->GetZMin());
+            else
+              threeDMax->setMaximum(MAX_VAL);
             threeDMax->blockSignals(false);
             break;
           case IndexSelectAttributes::ID_zMax:
@@ -577,7 +596,7 @@ QvisIndexSelectWindow::UpdateWindow(bool doAll)
             threeDMax->blockSignals(false);
 
             threeDMin->blockSignals(true);
-            if( atts->GetZMax() == -1 )
+            if( atts->GetZMax() == -1 && atts->GetZAbsMax() == -1)
               threeDMin->setMaximum(MAX_VAL);
             else
               threeDMin->setMaximum(atts->GetZMax());

@@ -171,6 +171,7 @@ f_visit_internal_commandcallback(const char *cmd, const char *stringdata, void *
 #define F_VISITSETPARALLEL          F77_ID(visitsetparallel_,visitsetparallel,VISITSETPARALLEL)
 #define F_VISITSETPARALLELRANK      F77_ID(visitsetparallelrank_,visitsetparallelrank,VISITSETPARALLELRANK)
 #define F_VISITDETECTINPUT          F77_ID(visitdetectinput_,visitdetectinput,VISITDETECTINPUT)
+#define F_VISITDETECTINPUTWITHTIMEOUT F77_ID(visitdetectinputwithtimeout_,visitdetectinputwithtimeout,VISITDETECTINPUTWITHTIMEOUT)
 #define F_VISITATTEMPTCONNECTION    F77_ID(visitattemptconnection_,visitattemptconnection,VISITATTEMPTCONNECTION)
 #define F_VISITPROCESSENGINECOMMAND F77_ID(visitprocessenginecommand_,visitprocessenginecommand,VISITPROCESSENGINECOMMAND)
 #define F_VISITTIMESTEPCHANGED      F77_ID(visittimestepchanged_,visittimestepchanged,VISITTIMESTEPCHANGED)
@@ -382,6 +383,8 @@ F_VISITINITIALIZESIM(
  * Date:       Thu Mar 11 11:17:51 PST 2010
  *
  * Modifications:
+ *   Brad Whitlock, Tue Jul 19 09:18:40 PDT 2011
+ *   Set up parallel callbacks as suggested by Jens Henrik Goebbert.
  *
  *****************************************************************************/
 
@@ -389,6 +392,13 @@ FORTRAN
 F_VISITSETPARALLEL(int *val)
 {
     VisItSetParallel(*val);
+
+    if(*val)
+    {
+        VisItSetBroadcastIntFunction(f_visit_internal_broadcastintfunction);
+        VisItSetBroadcastStringFunction(f_visit_internal_broadcaststringfunction);
+    }
+
     return VISIT_OKAY;
 }
 
@@ -434,6 +444,30 @@ FORTRAN
 F_VISITDETECTINPUT(int *blocking, int *consoledesc)
 {
     return VisItDetectInput(*blocking, *consoledesc);
+}
+
+/******************************************************************************
+ * Function: F_VISITDETECTINPUTWITHTIMEOUT
+ *
+ * Purpose:   Allows FORTRAN to detect VisIt socket input and console input
+ *            with a timeout in micro secounds
+ *
+ * Arguments:
+ *   blocking    : Whether or not to block.
+ *   micsec      : timeout if blocking
+ *   consoledesc : The console file descriptor.
+ *
+ * Programmer: Jens Henrik Goebbert
+ * Date:       Wed Jul 20 11:17:51 PST 2011
+ *
+ * Modifications:
+ *
+ *****************************************************************************/
+
+FORTRAN
+F_VISITDETECTINPUTWITHTIMEOUT(int *blocking, int *micsec, int *consoledesc)
+{
+    return VisItDetectInputWithTimeout(*blocking, *micsec, *consoledesc);
 }
 
 /******************************************************************************

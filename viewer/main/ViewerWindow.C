@@ -565,7 +565,7 @@ ViewerWindow::GetWindowId() const
 //  Method: ViewerWindow::SetSize
 //
 //  Purpose: 
-//    Set the size of the window.
+//    Set the size of the renderable poriton of the window.
 //
 //  Arguments:
 //    width     The width of the window in pixels.
@@ -601,6 +601,27 @@ void
 ViewerWindow::GetSize(int &width, int &height)
 {
     visWindow->GetSize(width, height);
+}
+
+// ****************************************************************************
+// Method: ViewerWindow::SetWindowSize
+//
+// Purpose: 
+//   Set the size of the window.
+//
+// Arguments:
+//   width     The width of the window in pixels.
+//   height    The height of the window in pixels.
+//
+// Programmer: Gunther H. Weber
+// Creation:   Fri Jul 15 13:58:45 PDT 2011
+//
+// ****************************************************************************
+
+void
+ViewerWindow::SetWindowSize(int width, int height)
+{
+    visWindow->SetWindowSize(width, height);
 }
 
 // ****************************************************************************
@@ -3787,10 +3808,10 @@ ViewerWindow::Raise()
 }
 
 // ****************************************************************************
-// Method: ViewerWindow::Raise
+// Method: ViewerWindow::Lower
 //
 // Purpose: 
-//   Raises the window.
+//   Lowers the window.
 //
 // Programmer: Sean Ahern
 // Creation:   Mon May 20 13:27:10 PDT 2002
@@ -3801,6 +3822,23 @@ void
 ViewerWindow::Lower()
 {
     visWindow->Lower();
+}
+
+// ****************************************************************************
+// Method: ViewerWindow::ActivateWindow
+//
+// Purpose: 
+//   Activates the window.
+//
+// Programmer: Gunther H. Weber
+// Creation:   Mon Jul 18 16:22:41 PDT 2011
+//
+// ****************************************************************************
+
+void
+ViewerWindow::ActivateWindow()
+{
+    visWindow->ActivateWindow();
 }
 
 // ****************************************************************************
