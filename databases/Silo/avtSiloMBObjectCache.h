@@ -68,6 +68,7 @@ class avtSiloMBNameGenerator
 {
 public:
                  avtSiloMBNameGenerator(DBfile      *dbfile,
+                                        char const *objpath,
                                         int          nblocks,
                                         char       **names_lst,
                                         const char  *file_ns,
@@ -104,6 +105,7 @@ class avtSiloMBObjectCacheEntry
 {
 public:
                              avtSiloMBObjectCacheEntry(DBfile *dbfile,
+                                                       char const *objpath,
                                                        int     nblocks,
                                                        char  **names_lst,
                                                        const char *file_ns,
@@ -114,7 +116,6 @@ public:
                                 { return nameGen->NumberOfBlocks();}
     std::string             GenerateName(int idx) const
                                 { return nameGen->Name(idx);}
-
 private:
     avtSiloMBNameGenerator *nameGen;
 };
@@ -181,6 +182,7 @@ class avtSiloMultiMeshCacheEntry: public avtSiloMBObjectCacheEntry
 {
 public:
                  avtSiloMultiMeshCacheEntry(DBfile      *dbfile,
+                                            char const *objpath,
                                             DBmultimesh *mm);
     virtual     ~avtSiloMultiMeshCacheEntry();
     DBmultimesh *DataObject() {return obj;}
@@ -208,6 +210,7 @@ class avtSiloMultiVarCacheEntry: public avtSiloMBObjectCacheEntry
 {
 public:
                 avtSiloMultiVarCacheEntry(DBfile     *dbfile,
+                                          char const *objpath,
                                           DBmultivar *mv);
     virtual    ~avtSiloMultiVarCacheEntry();
     DBmultivar *DataObject() {return obj;}
@@ -234,6 +237,7 @@ class avtSiloMultiMatCacheEntry: public avtSiloMBObjectCacheEntry
 {
 public:
                  avtSiloMultiMatCacheEntry(DBfile     *dbfile,
+                                           char const *objpath,
                                            DBmultimat *mmat);
     virtual     ~avtSiloMultiMatCacheEntry();
     DBmultimat  *DataObject() {return obj;}
@@ -259,6 +263,7 @@ class avtSiloMultiSpecCacheEntry: public avtSiloMBObjectCacheEntry
 {
 public:
                        avtSiloMultiSpecCacheEntry(DBfile            *dbfile,
+                                                  char const *objpath,
                                                   DBmultimatspecies *mv);
     virtual           ~avtSiloMultiSpecCacheEntry();
     DBmultimatspecies *DataObject() {return obj;}

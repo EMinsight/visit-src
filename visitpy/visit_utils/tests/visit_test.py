@@ -57,3 +57,15 @@ def visit_test(fn):
         return None
     return run_fn
 
+
+def pyside_test(fn):
+    """
+    Decorator that skips tests that require visit if
+    we aren't running in the cli.
+    """
+    def run_fn(*args):
+        if "PySide.QtCore" in sys.modules.keys():
+            return fn(*args)
+        return None
+    return run_fn
+

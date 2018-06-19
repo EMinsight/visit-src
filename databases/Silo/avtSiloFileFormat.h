@@ -273,6 +273,10 @@ typedef struct _GroupInfo
 //    Removed RemapFacelistForPolyhedronZones since it did not use any class
 //    members and could therefore be defined as a static function in the .C
 //    file.
+//
+//    Cyrus Harrison, Wed Mar 13 09:55:42 PDT 2013
+//    Added useLocalDomainBoundries.
+//
 // ****************************************************************************
 
 class avtSiloFileFormat : public avtSTMDFileFormat
@@ -344,6 +348,7 @@ class avtSiloFileFormat : public avtSTMDFileFormat
 
     GroupInfo                       groupInfo;
     bool                            haveAmrGroupInfo;
+    bool                            useLocalDomainBoundries;
 
     std::map<std::string, std::map<int, std::vector<int>* > > arbMeshCellReMap;
     std::map<std::string, std::map<int, std::vector<int>* > > arbMeshNodeReMap;
@@ -497,16 +502,20 @@ class avtSiloFileFormat : public avtSTMDFileFormat
     void                  AddAnnotIntNodelistEnumerations(DBfile *dbfile, avtDatabaseMetaData *md,
                               std::string meshname, avtSiloMultiMeshCacheEntry *obj);
 
-    avtSiloMultiMeshCacheEntry *GetMultiMesh(const char *path, const char *name);
+    void GetMultiMesh(const char *path, const char *name,
+        avtSiloMultiMeshCacheEntry **mm_ent, bool *valid_var=0);
     avtSiloMultiMeshCacheEntry *QueryMultiMesh(const char *path, const char *name);
 
-    avtSiloMultiVarCacheEntry  *GetMultiVar(const char *path, const char *name);
+    void GetMultiVar(const char *path, const char *name,
+        avtSiloMultiVarCacheEntry **mv_ent, bool *valid_var=0);
     avtSiloMultiVarCacheEntry  *QueryMultiVar(const char *path, const char *name);
 
-    avtSiloMultiMatCacheEntry  *GetMultiMat(const char *path, const char *name);
+    void GetMultiMat(const char *path, const char *name,
+        avtSiloMultiMatCacheEntry **mm_ent, bool *valid_var=0);
     avtSiloMultiMatCacheEntry  *QueryMultiMat(const char *path, const char *name);
 
-    avtSiloMultiSpecCacheEntry *GetMultiSpec(const char *path, const char *name);
+    void GetMultiSpec(const char *path, const char *name,
+        avtSiloMultiSpecCacheEntry **ms_ent, bool *valid_var=0);
     avtSiloMultiSpecCacheEntry *QueryMultiSpec(const char *path, const char *name);
 
     void                        CheckForTimeVaryingMetadata(DBfile *toc);
