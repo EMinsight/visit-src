@@ -17,6 +17,8 @@ paraDISMDServerPluginInfo.C
 ${COMMON_SOURCES}
 avtparaDISFileFormat.C
 avtparaDISOptions.C
+parallelParaDIS.C
+Dumpfile.C
 paraDIS_lib/paradis.C
 paraDIS_lib/paradis_c_interface.C
 RC_c_lib/args.c
@@ -33,6 +35,8 @@ paraDISEnginePluginInfo.C
 ${COMMON_SOURCES}
 avtparaDISFileFormat.C
 avtparaDISOptions.C
+parallelParaDIS.C
+Dumpfile.C
 paraDIS_lib/paradis.C
 paraDIS_lib/paradis_c_interface.C
 RC_c_lib/args.c
@@ -103,3 +107,4 @@ ENDIF(VISIT_PARALLEL)
 VISIT_INSTALL_DATABASE_PLUGINS(${INSTALLTARGETS})
 VISIT_PLUGIN_TARGET_PREFIX(${INSTALLTARGETS})
 VISIT_PLUGIN_TARGET_FOLDER(databases ${INSTALLTARGETS})
+

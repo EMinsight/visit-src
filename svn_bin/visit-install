@@ -252,6 +252,15 @@
 #    Hari Krishnan, Fri Feb 18 16:27:56 PST 2011
 #    Add profiles for NICS @ UTK.
 #
+#    Eric Brugger, Tue Mar  1 16:37:38 PST 2011
+#    I modified the script so that it only changes the bank in the
+#    host profiles if the user specifies a bank with the "-b" option
+#    on the command line.
+#
+#    Eric Brugger, Fri Mar 18 16:32:26 PDT 2011
+#    I corrected a bug in some code that was setting file permissions
+#    on Mac OS X.
+#
 #-----------------------------------------------------------------------
 
 Compress=COMPRESS
@@ -674,9 +683,11 @@ elif [ "$config" = "anag" ]; then
 fi
 
 # Do the bank fixup
-for hostfile in `ls $dir/$version+/.visit/hosts`; do
-    sed -i -e "s/bdivp/${bank}/" $dir/$version+/.visit/hosts/$hostfile
-done
+if [ "$bank" != "false" ]; then
+    for hostfile in `ls $dir/$version+/.visit/hosts`; do
+        sed -i -e "s/bdivp/${bank}/" $dir/$version+/.visit/hosts/$hostfile
+    done
+fi
 
 #
 # If we're on MacOS X, then we want to create some small scripts that
@@ -738,7 +749,7 @@ if [ "$os" = "darwin" ]; then
     for arch in `ls "$dir"/$version+`; do
         if [ "$arch" != "bin" ]; then
             for app in `find "$dir"/$version+/$arch/bin -name "*.app" -print`; do
-                find "$dir"/$version+/$arch/bin/$app/Contents/MacOS -exec chmod $dir_permission {} \;
+                find $app/Contents/MacOS -exec chmod $dir_permission {} \;
             done
         fi
     done
