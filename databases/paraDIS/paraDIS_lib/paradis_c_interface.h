@@ -14,12 +14,14 @@ using boost::uint32_t;
 #ifdef __cplusplus
 extern "C" {
 #endif  
+  static uint32_t WRAPPED_NODE = -42424242; 
+  static uint32_t END_OF_NODELIST = 42424242; 
   /*! 
     purely for testing -- reduce the datamax by 0.5
   */ 
   void paraDIS_TestRestrictSubspace(void);
   
-  void paraDIS_init(void); 
+  void paraDIS_init(void *ds=NULL); 
   
   void paraDIS_close(void); 
 
@@ -28,8 +30,14 @@ extern "C" {
   void paraDIS_SetThreshold(double threshold); 
   
   void paraDIS_EnableDebugOutput(int truth); 
+
+  void paraDIS_EnableStatsOutput(int truth); 
+  
+  void paraDIS_EnableTagFileOutput(int truth); 
   
   void paraDIS_SetDataFile(const char *filename); 
+  
+  void paraDIS_SetOutputDir(const char *dir); 
   
   void paraDIS_Clear(void); 
   
@@ -57,6 +65,12 @@ extern "C" {
   
   int8_t paraDIS_GetNodeType(uint32_t nodenum);
 
+  int8_t paraDIS_NodeIsLoop(uint32_t nodenum); 
+    
+  int8_t paraDIS_NodeIsTypeM(uint32_t nodenum);
+    
+  int8_t paraDIS_NodeIsTypeN(uint32_t nodenum);
+ 
   int8_t paraDIS_GetNumNodeNeighbors(uint32_t nodenum);
 
   /*!
@@ -71,14 +85,35 @@ extern "C" {
   
   uint32_t paraDIS_GetNumArmSegments(void);
   
-  void paraDIS_printArmSegmentVerbose(uint32_t segnum);
-
   int32_t paraDIS_GetEndpointIndex(uint32_t segmentnum, int endpointnum);
-
+  
   int8_t paraDIS_GetSegmentBurgersType(uint32_t segmentnum);
   
+  int32_t paraDIS_GetSegmentSimulationIndex(uint32_t segmentnum);
+  
+  int32_t paraDIS_GetSegmentArmID(uint32_t segmentnum);
+  
+  int32_t paraDIS_GetSegmentMetaArmID(uint32_t segmentnum);
+  
+  int8_t paraDIS_GetSegmentMetaArmType(uint32_t metaArmNum);
+
   int8_t paraDIS_GetSegmentMNType(uint32_t segmentnum);
   
+  int8_t paraDIS_GetSegmentDuplicates(uint32_t segmentnum);
+
+  void paraDIS_EnableMetaArmSearch(void);
+
+  uint32_t paraDIS_GetNumMetaArms(void);
+
+  int32_t paraDIS_GetMetaArmID(uint32_t metaArmNum);
+
+  int8_t paraDIS_GetMetaArmType(uint32_t metaArmNum);
+
+  uint32_t paraDIS_GetMetaArmNumSegments(uint32_t metaArmNum, bool wrapEndpoints);
+
+  float *paraDIS_GetMetaArmPoints(uint32_t metaArmNum, bool wrapEndpoints); 
+
+  bool paraDIS_EndBuffCheck(float *bufp); 
 
 #ifdef __cplusplus
 } /* end extern "C" */ 

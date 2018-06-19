@@ -466,6 +466,9 @@ class JobSubmitter_salloc(JobSubmitter):
 #   Satheesh Maheswaran, Tue Jan 15 14:47:54 GMT 2013
 #   I added job name option to Slurm scheduler and mpirun launcher argument support 
 #
+#   Paul Selby, Thu May 16 12:06:30 BST 2013
+#   Use launchargs if supplied
+#
 ###############################################################################
 
 class JobSubmitter_sbatch(JobSubmitter):
@@ -491,6 +494,8 @@ class JobSubmitter_sbatch(JobSubmitter):
 
     def CreateCommand(self, args, debugger):
         parcmd = self.Executable()
+        if self.parallel.launchargs != None:
+           parcmd = parcmd + self.parallel.launchargs
         if self.parallel.partition != None:
            parcmd = parcmd + ["--partition=%s" % self.parallel.partition]
         if self.parallel.bank != None:
@@ -1825,6 +1830,9 @@ class MainLauncher(object):
     # Date: Fri May 25 10:48:41 PDT 2012
     #
     # Modifications:
+    #   Eric Brugger, Wed Jun 26 14:49:49 PDT 2013
+    #   I corrected a bug that incorrectly identified the machine architecture
+    #   on some Mac systems.
     #
     ############################################################################
 
@@ -1856,11 +1864,12 @@ class MainLauncher(object):
                     arch = arch + "-" + compiler
             supportedarches.append(arch)
         elif self.os == "darwin":
-            all_uname = string.split(self.uname("-a"))
-            version = [int(x) for x in string.split(all_uname[2], ".")]
+            mach = self.uname("-m")
+            release = self.uname("-r")
+            version = [int(x) for x in string.split(release, ".")]
             self.osver = version[0]
             if version[0] >= 11:
-                if all_uname[-1] == "x86_64":
+                if mach == "x86_64":
                     supportedarches.append("darwin-x86_64")
                     supportedarches.append("darwin-i386")
                 else:
@@ -2096,6 +2105,9 @@ class MainLauncher(object):
     #   Brad Whitlock, Tue Nov 27 10:13:42 PST 2012
     #   Set PYTHONHOME if we're running the cli.
     #
+    #   Kathleen Biagas, Mon Jul 15 11:31:27 PDT 2013
+    #   Unset QT_PLUGIN_PATH.
+    #
     ############################################################################
 
     def SetupEnvironment(self):
@@ -2140,7 +2152,7 @@ class MainLauncher(object):
             SETENV("VISITPLUGINDIR", self.visitplugins)
         else:
             if GETENV("VISITPLUGINDIRORIG") == "":
-                SETENV("VISITPLUGINDIR", GETENV("VISITPLUGINDIR"))
+                SETENV("VISITPLUGINDIRORIG", GETENV("VISITPLUGINDIR"))
             SETENV("VISITPLUGINDIR", self.joinpaths([GETENV("VISITPLUGINDIRORIG"), visitprivateplugins,self.visitplugins]))
 
         # If we are using a public version, or if any main plugin directory is
@@ -2169,6 +2181,9 @@ class MainLauncher(object):
         visitlibdir_python = os.path.join(self.visitlibdir, "python")
         if self.generalArgs.exe_name == "cli":
             SETENV("PYTHONHOME", visitlibdir_python)
+
+        # Unset QT_PLUGIN_PATH
+        UNSETENV("QT_PLUGIN_PATH")
 
         # Turn off trapping of floating point exceptions.
         SETENV("TRAP_FPE", "")
