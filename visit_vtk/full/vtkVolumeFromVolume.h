@@ -43,6 +43,7 @@
 #ifndef VTK_VOLUME_FROM_VOLUME_H
 #define VTK_VOLUME_FROM_VOLUME_H
 
+#include <visit_vtk_exports.h>
 #include <vtkDataSetFromVolume.h>
 #include <vtkCellType.h>
 
@@ -85,9 +86,12 @@ class vtkUnstructuredGrid;
 //    Made internal class definitions protected instead of private so
 //    we could usefully subclass this.
 //
+//    Jeremy Meredith, Thu Oct 28 10:26:45 EDT 2010
+//    Added external visibility macro to nested classes.
+//
 // ****************************************************************************
 
-class vtkVolumeFromVolume : public vtkDataSetFromVolume
+class VISIT_VTK_API vtkVolumeFromVolume : public vtkDataSetFromVolume
 {
 protected:
 class ShapeList
@@ -109,7 +113,7 @@ class ShapeList
     int            shapeSize;
 };
 
-class HexList : public ShapeList
+class VISIT_VTK_API  HexList : public ShapeList
 {
   public:
                    HexList();
@@ -118,7 +122,7 @@ class HexList : public ShapeList
     void           AddHex(int, int, int, int, int, int, int, int, int);
 };
 
-class WedgeList : public ShapeList
+class VISIT_VTK_API WedgeList : public ShapeList
 {
   public:
                    WedgeList();
@@ -127,7 +131,7 @@ class WedgeList : public ShapeList
     void           AddWedge(int, int, int, int, int, int, int);
 };
 
-class PyramidList : public ShapeList
+class VISIT_VTK_API PyramidList : public ShapeList
 {
   public:
                    PyramidList();
@@ -136,7 +140,7 @@ class PyramidList : public ShapeList
     void           AddPyramid(int, int, int, int, int, int);
 };
 
-class TetList : public ShapeList
+class VISIT_VTK_API TetList : public ShapeList
 {
   public:
                    TetList();
@@ -145,7 +149,7 @@ class TetList : public ShapeList
     void           AddTet(int, int, int, int, int);
 };
 
-class QuadList : public ShapeList
+class VISIT_VTK_API QuadList : public ShapeList
 {
   public:
                    QuadList();
@@ -154,7 +158,7 @@ class QuadList : public ShapeList
     void           AddQuad(int, int, int, int, int);
 };
 
-class TriList : public ShapeList
+class VISIT_VTK_API TriList : public ShapeList
 {
   public:
                    TriList();
@@ -163,7 +167,7 @@ class TriList : public ShapeList
     void           AddTri(int, int, int, int);
 };
 
-class LineList : public ShapeList
+class VISIT_VTK_API LineList : public ShapeList
 {
   public:
                    LineList();
@@ -172,7 +176,7 @@ class LineList : public ShapeList
     void           AddLine(int, int, int);
 };
 
-class VertexList : public ShapeList
+class VISIT_VTK_API VertexList : public ShapeList
 {
   public:
                    VertexList();
@@ -188,7 +192,7 @@ struct CentroidPointEntry
 };
 
 
-class CentroidPointList
+class VISIT_VTK_API CentroidPointList
 {
   public:
                    CentroidPointList();

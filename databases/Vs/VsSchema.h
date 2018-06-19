@@ -28,6 +28,7 @@ struct VsSchema {
   static std::string cellOffsetAtt; // Instead of offsetAtt
   static std::string indexOrderAtt; //component major/minor, index C/Fortran; compMinorC is default
   static std::string numSpatialDimsAtt;
+  static std::string numSpatialDimsAtt_deprecated;
   static std::string spatialIndicesAtt;
   static std::string labelsAtt;
   static std::string axisLabelsAtt;
@@ -46,11 +47,15 @@ struct VsSchema {
 
   struct Uniform {
     static std::string key;
-    static std::string deprecated_key;
+    static std::string key_deprecated;
     static std::string lowerBounds;
+    static std::string lowerBounds_deprecated;
     static std::string startCell;
+    static std::string startCell_deprecated;
     static std::string numCells;
+    static std::string numCells_deprecated;
     static std::string upperBounds;
+    static std::string upperBounds_deprecated;
   };
 
   struct Rectilinear {
@@ -101,6 +106,10 @@ struct VsSchema {
   static std::string timeAtt;
   static std::string stepAtt;
   static std::string timeGroupAtt;
+  
+  //run info
+  static std::string runInfoKey;
+  static std::string softwareAtt;
 };
 
 #endif

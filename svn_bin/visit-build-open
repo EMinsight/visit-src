@@ -47,6 +47,16 @@
 #   the 3rd party libs since the size difference isn't worth the
 #   extra build time IMHO.
 #
+#   Cyrus Harrison, Thu Oct 14 09:59:13 PDT 2010
+#   Added cyrush@llnl.gov to the email list & fixed problem with
+#   creating proper config-site.cmake on alastor.
+#
+#   Eric Brugger, Fri Nov  5 15:21:42 PDT 2010
+#   I replaced yana with aztec.
+#
+#   Eric Brugger, Fri Nov  5 16:06:28 PDT 2010
+#   I removed up.
+#
 #-----------------------------------------------------------------------
 
 test=no
@@ -76,14 +86,19 @@ case $user in
    whitlocb)
       emailName=whitlock2@llnl.gov
       ;;
+   harrison37)
+      emailName=cyrush@llnl.gov
+      ;;
+   cyrush)
+      emailName=cyrush@llnl.gov
+      ;;
 esac
 
 #
 # Parse the execute line, providing default values for error checking.
 #
 hoth=true
-up=true
-yana=true
+aztec=true
 alastor=false
 xchem=false
 euclid=true
@@ -101,8 +116,7 @@ do
    case $1 in
       -none)
          hoth=false
-         up=false
-         yana=false
+         aztec=false
          alastor=false
          xchem=false
          euclid=false
@@ -117,20 +131,12 @@ do
          hoth=true
          shift
          ;;
-      -up)
-         up=false
+      -aztec)
+         aztec=false
          shift
          ;;
-      +up)
-         up=true
-         shift
-         ;;
-      -yana)
-         yana=false
-         shift
-         ;;
-      +yana)
-         yana=true
+      +aztec)
+         aztec=true
          shift
          ;;
       -alastor)
@@ -180,8 +186,7 @@ then
    echo "Usage: [-none] [-<machine name>] -d <distribution>"
    echo "Valid machine names:"
    echo "    hoth (B-Div, Linux),"
-   echo "    up (LC, AIX),"
-   echo "    yana (LC, Linux, x86_64),"
+   echo "    aztec (LC, Linux, x86_64),"
    echo "    alastor (LC, Linux, x86_64),"
    echo "    xchem (HEAF, Linux),"
    echo "    euclid (LBNL, Linux, x86_64),"
@@ -251,121 +256,21 @@ then
 fi
 
 #
-# Build on up, both 32 and 64 bit versions.
+# Build on aztec.
 #
-rm -f up32
-cat <<EOF > up32
-#!/bin/sh
-PATH=/usr/local/bin:\$PATH
-if test ! -d /p/gup1/$user ; then
-   mkdir /p/gup1/$user
-fi
-if test ! -d /p/gup1/$user/up32 ; then
-   mkdir /p/gup1/$user/up32
-fi
-rm -rf /p/gup1/$user/up32/visitbuild
-mkdir /p/gup1/$user/up32/visitbuild
-mv up32_$dist.tar.gz /p/gup1/$user/up32/visitbuild/$dist.tar.gz
-cd /p/gup1/$user/up32/visitbuild
-gunzip -c $dist.tar.gz | tar xvf - > buildlog 2>&1
-cd $dist/src
-ver=\`cat VERSION\`
-ver2=\`echo \$ver | tr "." "_"\`
-OBJECT_MODE=32
-export OBJECT_MODE
-cp config-site/up041_32.cmake config-site/up041.cmake
-/usr/gapps/visit/cmake/2.8.0/aix_xlc_32/bin/cmake . -DCMAKE_BUILD_TYPE=Release -DVISIT_INSTALL_THIRD_PARTY=ON >> ../../buildlog 2>&1
-gmake -j 3 >> ../../buildlog 2>&1
-gmake -j 3 package >> ../../buildlog 2>&1
-mv visit\$ver2.ibm-aix-pwr.tar.gz ../..
-cd ../..
-echo "        build of visit on up"           > resultlog 2>&1
-echo "       ----------------------"          >> resultlog 2>&1
-echo ""                                       >> resultlog 2>&1
-ls -l                                         >> resultlog 2>&1
-echo ""                                       >> resultlog 2>&1
-echo "            32 bit build"               >> resultlog 2>&1
-echo ""                                       >> resultlog 2>&1
-echo "number of database plugins = "\`ls $dist/src/plugins/databases/libI* | wc -l\` >> resultlog 2>&1
-echo "number of operator plugins = "\`ls $dist/src/plugins/operators/libI* | wc -l\` >> resultlog 2>&1
-echo "number of plot plugins = "\`ls $dist/src/plugins/plots/libI* | wc -l\` >> resultlog 2>&1
-echo ""                                       >> resultlog 2>&1
-echo "The database plugins:"                  >> resultlog 2>&1
-ls $dist/src/plugins/databases/libI* | sed "s/$dist\/src\/plugins\/databases\/libI//" | sed "s/Database.so//" >> resultlog 2>&1
-mail  -s "VisIt build ($dist): up32" $emailName < resultlog
-EOF
-
-rm -f up64
-cat <<EOF > up64
-#!/bin/sh
-PATH=/usr/local/bin:\$PATH
-if test ! -d /p/gup1/$user ; then
-   mkdir /p/gup1/$user
-fi
-if test ! -d /p/gup1/$user/up64 ; then
-   mkdir /p/gup1/$user/up64
-fi
-rm -rf /p/gup1/$user/up64/visitbuild
-mkdir /p/gup1/$user/up64/visitbuild
-mv up64_$dist.tar.gz /p/gup1/$user/up64/visitbuild/$dist.tar.gz
-cd /p/gup1/$user/up64/visitbuild
-gunzip -c $dist.tar.gz | tar xvf - > buildlog 2>&1
-cd $dist/src
-ver=\`cat VERSION\`
-ver2=\`echo \$ver | tr "." "_"\`
-OBJECT_MODE=64
-export OBJECT_MODE
-/usr/gapps/visit/cmake/2.8.0/aix_xlc_64/bin/cmake . -DCMAKE_BUILD_TYPE=Release -DVISIT_INSTALL_THIRD_PARTY=ON >> ../../buildlog 2>&1
-gmake -j 3 >> ../../buildlog 2>&1
-gmake -j 3 package >> ../../buildlog 2>&1
-mv visit\$ver2.ibm-aix-pwr64.tar.gz ../..
-cd ../..
-echo "        build of visit on up"           > resultlog 2>&1
-echo "       ----------------------"          >> resultlog 2>&1
-echo ""                                       >> resultlog 2>&1
-ls -l                                         >> resultlog 2>&1
-echo ""                                       >> resultlog 2>&1
-echo "            64 bit build"               >> resultlog 2>&1
-echo ""                                       >> resultlog 2>&1
-echo "number of database plugins = "\`ls $dist/src/plugins/databases/libI* | wc -l\` >> resultlog 2>&1
-echo "number of operator plugins = "\`ls $dist/src/plugins/operators/libI* | wc -l\` >> resultlog 2>&1
-echo "number of plot plugins = "\`ls $dist/src/plugins/plots/libI* | wc -l\` >> resultlog 2>&1
-echo ""                                       >> resultlog 2>&1
-echo "The database plugins:"                  >> resultlog 2>&1
-ls $dist/src/plugins/databases/libI* | sed "s/$dist\/src\/plugins\/databases\/libI//" | sed "s/Database.so//" >> resultlog 2>&1
-mail  -s "VisIt build ($dist): up64" $emailName < resultlog
-EOF
-
-if [ $up = true ]
-then
-   if [ $test = no ]
-   then
-      echo "Building on up"
-      scp up32 up:up32_buildit
-      scp up64 up:up64_buildit
-      scp $dist.tar.gz up:up32_$dist.tar.gz
-      scp $dist.tar.gz up:up64_$dist.tar.gz
-      ssh up "chmod 750 up32_buildit;./up32_buildit" &
-      ssh up "chmod 750 up64_buildit;./up64_buildit" &
-   fi
-fi
-
-#
-# Build on yana.
-#
-rm -f yana
-cat <<EOF > yana
+rm -f aztec
+cat <<EOF > aztec
 #!/bin/sh
 if test ! -d /usr/tmp/$user ; then
    mkdir /usr/tmp/$user
 fi
-if test ! -d /usr/tmp/$user/yana ; then
-   mkdir /usr/tmp/$user/yana
+if test ! -d /usr/tmp/$user/aztec ; then
+   mkdir /usr/tmp/$user/aztec
 fi
-rm -rf /usr/tmp/$user/yana/visitbuild
-mkdir /usr/tmp/$user/yana/visitbuild
-mv yana_$dist.tar.gz /usr/tmp/$user/yana/visitbuild/$dist.tar.gz
-cd /usr/tmp/$user/yana/visitbuild
+rm -rf /usr/tmp/$user/aztec/visitbuild
+mkdir /usr/tmp/$user/aztec/visitbuild
+mv aztec_$dist.tar.gz /usr/tmp/$user/aztec/visitbuild/$dist.tar.gz
+cd /usr/tmp/$user/aztec/visitbuild
 gunzip -c $dist.tar.gz | tar xvf - > buildlog 2>&1
 cd $dist/src
 ver=\`cat VERSION\`
@@ -377,8 +282,8 @@ make -j 6 package >> ../../buildlog 2>&1
 mv visit\$ver2.linux-x86_64.tar.gz ../..
 cd ../..
 rm -f resultlog
-echo "        build of visit on yana"         > resultlog 2>&1
-echo "       ------------------------"        >> resultlog 2>&1
+echo "        build of visit on aztec"        > resultlog 2>&1
+echo "       -------------------------"       >> resultlog 2>&1
 echo ""                                       >> resultlog 2>&1
 ls -l                                         >> resultlog 2>&1
 echo ""                                       >> resultlog 2>&1
@@ -388,17 +293,17 @@ echo "number of plot plugins = "\`ls $dist/src/plugins/plots/libI* | wc -l\` >> 
 echo ""                                       >> resultlog 2>&1
 echo "The database plugins:"                  >> resultlog 2>&1
 ls $dist/src/plugins/databases/libI* | sed "s/$dist\/src\/plugins\/databases\/libI//" | sed "s/Database.so//" >> resultlog 2>&1
-mail  -s "VisIt build ($dist): yana" $emailName < resultlog
+mail  -s "VisIt build ($dist): aztec" $emailName < resultlog
 EOF
 
-if [ $yana = true ]
+if [ $aztec = true ]
 then
    if [ $test = no ]
    then
-      echo "Building on yana"
-      scp yana yana3:yana_buildit
-      scp $dist.tar.gz yana3:yana_$dist.tar.gz
-      ssh yana3 "chmod 750 yana_buildit;./yana_buildit" &
+      echo "Building on aztec"
+      scp aztec aztec3:aztec_buildit
+      scp $dist.tar.gz aztec3:aztec_$dist.tar.gz
+      ssh aztec3 "chmod 750 aztec_buildit;./aztec_buildit" &
    fi
 fi
 
@@ -423,7 +328,7 @@ cd $dist/src
 ver=\`cat VERSION\`
 ver2=\`echo \$ver | tr "." "_"\`
 export PATH=\$PATH:/usr/bin/X11
-ln -s yana1.conf config-site/\`hostname\`.conf
+cp config-site/aztec1.cmake config-site/\`hostname\`.cmake
 /usr/gapps/visit/cmake/2.8.0/linux-x86_64_gcc-4.1/bin/cmake . -DCMAKE_BUILD_TYPE=Release -DVISIT_INSTALL_THIRD_PARTY=ON >> ../../buildlog 2>&1
 make -j 12 >> ../../buildlog 2>&1
 make -j 12 package >> ../../buildlog 2>&1
@@ -627,5 +532,5 @@ fi
 #
 if [ $test = no ]
 then
-   rm -f hoth up32 up64 yana alastor xchem euclid ellipse
+   rm -f hoth aztec alastor xchem euclid ellipse
 fi

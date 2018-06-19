@@ -168,6 +168,11 @@ avtTecplotFileFormat::PushBackToken(const string &tok)
 //    Jeremy Meredith, Thu May 22 10:25:12 EDT 2008
 //    Support DOS format text files.
 //
+//    Jeremy Meredith, Tue Oct 26 17:23:53 EDT 2010
+//    Change the scanner to allow any of []()= as single-character
+//    tokens.  This allows us to parse some of the more complex patterns
+//    such as FOO=([4-6,8]=A,[5,12]=B).
+//
 // ****************************************************************************
 string
 avtTecplotFileFormat::GetNextToken()
@@ -204,9 +209,6 @@ avtTecplotFileFormat::GetNextToken()
             next_char == '\n' ||
             next_char == '\r' ||
             next_char == '\t' ||
-            next_char == '='  ||
-            next_char == '('  ||
-            next_char == ')'  ||
             next_char == ','))
     {
         if (next_char == '\n' || next_char == '\r')
@@ -250,6 +252,20 @@ avtTecplotFileFormat::GetNextToken()
             next_char_eof = true;
         }
     }
+    else if (next_char == '='  ||
+             next_char == '('  ||
+             next_char == ')'  ||
+             next_char == '['  ||
+             next_char == ']')
+    {
+        // simple one-character tokens
+        retval += next_char;
+        next_char = file.get();
+        if (!file)
+        {
+            next_char_eof = true;
+        }        
+    }
     else
     {
         // do a normal token
@@ -261,6 +277,8 @@ avtTecplotFileFormat::GetNextToken()
                 next_char != '='  &&
                 next_char != '('  &&
                 next_char != ')'  &&
+                next_char != '['  &&
+                next_char != ']'  &&
                 next_char != ','))
         {
             if (next_char >= 'a' && next_char <= 'z')
@@ -280,9 +298,6 @@ avtTecplotFileFormat::GetNextToken()
             next_char == '\n' ||
             next_char == '\r' ||
             next_char == '\t' ||
-            next_char == '='  ||
-            next_char == '('  ||
-            next_char == ')'  ||
             next_char == ','))
     {
         if (next_char == '\n' || next_char == '\r')
@@ -325,6 +340,9 @@ avtTecplotFileFormat::GetNextToken()
 //    Added support for cell-centered vars (through VARLOCATION).
 //    Renamed ParseNodes* to ParseArrays* to reflect this capability.
 //
+//    Jeremy Meredith, Tue Oct 26 17:13:39 EDT 2010
+//    Added support for comments.
+//
 // ****************************************************************************
 vtkPoints*
 avtTecplotFileFormat::ParseArraysPoint(int numNodes, int numElements)
@@ -363,7 +381,15 @@ avtTecplotFileFormat::ParseArraysPoint(int numNodes, int numElements)
             if (variableCellCentered[v] && doneWithCellCentered)
                 continue;
 
-            float val = atof(GetNextToken().c_str());
+            string tok = GetNextToken();
+            if (tok.length()>0 && tok[0]=='#')
+            {
+                while (!next_char_eol)
+                    tok = GetNextToken();
+                tok = GetNextToken();
+            }
+
+            float val = atof(tok.c_str());
             if (v==Xindex)
             {
                 pts[3*i + 0] = val;
@@ -406,6 +432,9 @@ avtTecplotFileFormat::ParseArraysPoint(int numNodes, int numElements)
 //    Added support for cell-centered vars (through VARLOCATION).
 //    Renamed ParseNodes* to ParseArrays* to reflect this capability.
 //
+//    Jeremy Meredith, Tue Oct 26 17:13:39 EDT 2010
+//    Added support for comments.
+//
 // ****************************************************************************
 vtkPoints*
 avtTecplotFileFormat::ParseArraysBlock(int numNodes, int numElements)
@@ -427,7 +456,17 @@ avtTecplotFileFormat::ParseArraysBlock(int numNodes, int numElements)
         scalars->SetNumberOfTuples(numVals);
         float *ptr = (float *) scalars->GetVoidPointer(0);
         for (int i=0; i<numVals; i++)
-            ptr[i] = atof(GetNextToken().c_str());
+        {
+            string tok = GetNextToken();
+            if (tok.length()>0 && tok[0]=='#')
+            {
+                while (!next_char_eol)
+                    tok = GetNextToken();
+                tok = GetNextToken();
+            }
+
+            ptr[i] = atof(tok.c_str());
+        }
         vars[allVariableNames[v]].push_back(scalars);
 
         if (v==Xindex)
@@ -476,6 +515,10 @@ avtTecplotFileFormat::ParseArraysBlock(int numNodes, int numElements)
 //    Jeremy Meredith, Fri Oct  9 16:22:40 EDT 2009
 //    Added new names for element types.
 //
+//    Jeremy Meredith, Tue Oct 26 11:03:35 EDT 2010
+//    Added a couple "FE" variants that were missing.
+//    Added support for comments.
+//
 // ****************************************************************************
 vtkUnstructuredGrid *
 avtTecplotFileFormat::ParseElements(int numElements, const string &elemType)
@@ -485,7 +528,7 @@ avtTecplotFileFormat::ParseElements(int numElements, const string &elemType)
     // construct the cell arrays
     int nelempts = -1;
     int idtype = -1;
-    if (elemType == "BRICK")
+    if (elemType == "BRICK" || elemType == "FEBRICK")
     {
         nelempts = 8;
         idtype = VTK_HEXAHEDRON;
@@ -509,7 +552,7 @@ avtTecplotFileFormat::ParseElements(int numElements, const string &elemType)
         idtype = VTK_TETRA;
         topologicalDimension = MAX(topologicalDimension, 3);
     }
-    else if (elemType == "POINT" || elemType == "")
+    else if (elemType == "POINT" || elemType == "FEPOINT" || elemType == "")
     {
         nelempts = 1;
         idtype = VTK_VERTEX;
@@ -541,7 +584,23 @@ avtTecplotFileFormat::ParseElements(int numElements, const string &elemType)
         *nl++ = nelempts;
         // 1-origin connectivity array
         for (int j=0; j<nelempts; j++)
-            *nl++ = idtype == VTK_VERTEX ?  c : atoi(GetNextToken().c_str())-1;
+        {
+            if (idtype == VTK_VERTEX)
+                *nl++ = c;
+            else
+            {
+                string tok = GetNextToken();
+                if (tok.length()>0 && tok[0]=='#')
+                {
+                    while (!next_char_eol)
+                        tok = GetNextToken();
+                    tok = GetNextToken();
+                }
+
+                int val = atoi(tok.c_str());
+                *nl++ = val - 1;
+            }
+        }
         
         *cl++ = offset;
         offset += nelempts+1;
@@ -851,6 +910,17 @@ avtTecplotFileFormat::ParsePOINT(int numI, int numJ, int numK)
 //    Allow the "$" which seems to appear alone on the last line of some
 //    ASCII tecplot files.
 //
+//    Jeremy Meredith, Mon Sep 27 16:03:56 EDT 2010
+//    Accept "NODES" and "ELEMENTS" as aliases for "N" and "E" in ZONE records.
+//
+//    Jeremy Meredith, Tue Oct 26 17:13:39 EDT 2010
+//    Don't be quite to restrictive about what constitutes an FE-style ZONE.
+//
+//    Jeremy Meredith, Tue Oct 26 17:26:00 EDT 2010
+//    The parser now returns parens, brackets, and equals as tokens.
+//    Added code to skip over these when needed.  Also added parsing
+//    support for complex version of VARLOCATION parameter.
+//
 // ****************************************************************************
 
 void
@@ -881,6 +951,7 @@ avtTecplotFileFormat::ReadFile()
         else if (tok == "TITLE")
         {
             // it's a title
+            GetNextToken(); // skip the equals sign
             title = GetNextToken();
         }
         else if (tok == "GEOMETRY")
@@ -926,6 +997,7 @@ avtTecplotFileFormat::ReadFile()
             int guessedZindex = -1;
 
             // variable lists
+            GetNextToken(); // skip the equals sign
             tok = GetNextToken();
             while (token_was_string)
             {
@@ -1051,7 +1123,9 @@ avtTecplotFileFormat::ReadFile()
                      tok != "J"  &&
                      tok != "K"  &&
                      tok != "N"  &&
+                     tok != "NODES"  &&
                      tok != "E"  &&
+                     tok != "ELEMENTS"  &&
                      tok != "ET" &&
                      tok != "F"  &&
                      tok != "ZONETYPE"  &&
@@ -1063,6 +1137,7 @@ avtTecplotFileFormat::ReadFile()
             {
                 if (tok == "T")
                 {
+                    GetNextToken(); // skip the equals sign
                     zoneTitle = GetNextToken();
                     if (!token_was_string)
                     {
@@ -1072,52 +1147,125 @@ avtTecplotFileFormat::ReadFile()
                 }
                 else if (tok == "I")
                 {
+                    GetNextToken(); // skip the equals sign
                     numI = atoi(GetNextToken().c_str());
                 }
                 else if (tok == "J")
                 {
+                    GetNextToken(); // skip the equals sign
                     numJ = atoi(GetNextToken().c_str());
                 }
                 else if (tok == "K")
                 {
+                    GetNextToken(); // skip the equals sign
                     numK = atoi(GetNextToken().c_str());
                 }
-                else if (tok == "N")
+                else if (tok == "N" || tok == "NODES")
                 {
+                    GetNextToken(); // skip the equals sign
                     numNodes = atoi(GetNextToken().c_str());
                 }
-                else if (tok == "E")
+                else if (tok == "E" || tok == "ELEMENTS")
                 {
+                    GetNextToken(); // skip the equals sign
                     numElements = atoi(GetNextToken().c_str());
                 }
                 else if (tok == "ET" || tok == "ZONETYPE")
                 {
+                    GetNextToken(); // skip the equals sign
                     elemType = GetNextToken();
                 }
                 else if (tok == "F" || tok == "DATAPACKING")
                 {
+                    GetNextToken(); // skip the equals sign
                     format = GetNextToken();
                 }
                 else if (tok == "SOLUTIONTIME")
                 {
+                    GetNextToken(); // skip the equals sign
                     solTime = strtod(GetNextToken().c_str(),0);
                 }
                 else if (tok == "VARLOCATION")
                 {
-                    string centering;
                     variableCellCentered.clear();
                     variableCellCentered.resize(numTotalVars, 0);
-                    for (int i=0; i<numTotalVars; i++)
+
+                    GetNextToken(); // skip the equals sign
+                    GetNextToken(); // skip the open paren
+
+                    string c;
+                    c = GetNextToken();
+                    if (c == "[")
                     {
-                        centering = GetNextToken();
-                        if (centering == "CELLCENTERED")
-                            variableCellCentered[i] = 1;
+                        // complex version
+                        // e.g. VARLOCATION=([2-3,5]=CELLCENTERED,[4]=NODAL)
+                        while (c != ")")
+                        {
+                            // c == "["
+                            vector<int> varindices;
+                            c = GetNextToken();
+                            while (c != "]")
+                            {
+                                string::size_type pos = c.find("-");
+                                if (pos != string::npos)
+                                {
+                                    // Okay, we got something like "4-6".
+                                    // Note, this scans as a single token
+                                    // because we haven't gone all-out on
+                                    // a scanner rewrite.  So just separate
+                                    // it into a "4 through 6" here.
+                                    // ALSO NOTE: THIS WILL NOT WORK
+                                    // WITH ANY WHITESPACE IN HERE.
+                                    // The examples don't have any, but
+                                    // the tecplot manual doesn't actually
+                                    // specify what's really allowed, so
+                                    // given past history, someone may
+                                    // eventually do something like that....
+                                    string first = c.substr(0,pos);
+                                    string last  = c.substr(pos+1);
+                                    int beg = atoi(first.c_str());
+                                    int end = atoi(last.c_str());
+                                    for (int ind=beg; ind<=end; ind++)
+                                        varindices.push_back(ind);
+                                }
+                                else
+                                {
+                                    varindices.push_back(atoi(c.c_str()));
+                                }
+                                c = GetNextToken();
+                            }
+                            GetNextToken(); // skip the equals sign
+                            c = GetNextToken(); // that's the centering keyword
+                            if (c == "CELLCENTERED")
+                            {
+                                for (int i=0; i<varindices.size(); i++)
+                                    variableCellCentered[varindices[i]-1] = 1;
+                            }
+                            
+                            // next....
+                            c = GetNextToken();
+                        }
+                    }
+                    else
+                    {
+                        // simple version
+                        // e.g. VARLOCATION=(NODAL,CELLCENTERED,CELLCENTERED)
+                        for (int i=0; i<numTotalVars; i++)
+                        {
+                            if (c == "CELLCENTERED")
+                                variableCellCentered[i] = 1;
+                            c = GetNextToken();
+                            // after the last var this picks up the close paren
+                        }
                     }
                 }
                 else if (tok == "DT")
                 {
+                    GetNextToken(); // skip the equals sign
+                    GetNextToken(); // skip the open paren
                     for (int i=0; i<numTotalVars; i++)
                         GetNextToken();
+                    GetNextToken(); // skip the close paren
                 }
                 else if (tok == "D")
                 {
@@ -1136,8 +1284,15 @@ avtTecplotFileFormat::ReadFile()
             // adding a zonetype which starts with FE
             // (e.g. "FETETRAHEDRON"), switch to an FE
             // parsing mode.   Ugh.
-            if (elemType.length() > 2 && elemType.substr(0,2) == "FE")
+
+            // Let's make this simple.  Any element type which
+            // is specified and is not "ORDERED" will be assumed
+            // to make this a finite-element style zone.
+            if (elemType.length() > 0 && elemType != "ORDERED")
             {
+                // Below we use the format type keyword to determine
+                // which style to use, so fix it up to conform to what
+                // we were originally expecting.
                 if (format == "POINT")
                     format = "FEPOINT";
                 if (format == "BLOCK")
@@ -1188,6 +1343,10 @@ avtTecplotFileFormat::ReadFile()
                     haveVectorExpr = (tok == "VECTOR");
                 }
                 else if(tokIndex == 1)
+                {
+                    // skip the equals sign
+                }
+                else if(tokIndex == 2)
                 {
                     if(haveVectorExpr)
                     {

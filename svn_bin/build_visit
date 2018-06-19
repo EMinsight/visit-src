@@ -945,6 +945,17 @@
 #
 #     Mark C. Miller, Mon Aug 30 17:57:47 PDT 2010
 #     Update ITAPS-FMDB tarball to something known to compile correctly.
+#
+#     Cyrus Harrison, Wed Oct 27 09:33:22 PDT 2010
+#     Added SVN_SOURCE_PATH, to allow us to tie a versioned build_visit
+#     release to a specific svn tag.
+#
+#     Eric Brugger, Tue Nov  2 14:06:10 PDT 2010
+#     I set the VisIt version number to 2.1.1.
+#
+# *****************************************************************************
+
+
 # *****************************************************************************
 #                                                                             #
 # *************************************************************************** #
@@ -1219,13 +1230,31 @@ if [[ "$CXX_COMPILER" == "g++" ]] ; then
 fi
 
 
-export SVN_ANON_ROOT_PATH="http://portal.nersc.gov/svn/visit/"
+export SVN_ANON_ROOT_PATH="http://portal.nersc.gov/svn/visit"
 # Setup svn path: use SVN_NERSC_NAME if set
 if test -z "$SVN_NERSC_NAME" ; then
     export SVN_REPO_ROOT_PATH="svn+ssh://svn.nersc.gov/svn/visit"
 else
     export SVN_REPO_ROOT_PATH="svn+ssh://$SVN_NERSC_NAME@svn.nersc.gov/svn/visit"
 fi
+
+############################################################################
+# Path of VisIt src directory in svn.
+# For trunk use "trunk/src"
+# For versioned build_visit releases change this to point to the proper
+# release tag.
+############################################################################
+
+####
+# Trunk:
+####
+#export SVN_SOURCE_PATH="trunk/src"
+
+###
+# Release:
+###
+export SVN_SOURCE_PATH="tags/2.1.1/src"
+
 
 if [[ "$OPSYS" != "Darwin" ]]; then
     WGET_MINOR_VERSION=$(wget --version| head -n 1|cut -d. -f 2)
@@ -1245,7 +1274,7 @@ if [[ "$VISIT_FILE" != "" ]] ; then
   USE_VISIT_FILE="yes"
   ON_USE_VISIT_FILE="on"
 fi
-export VISIT_VERSION=${VISIT_VERSION:-"2.1.0"}
+export VISIT_VERSION=${VISIT_VERSION:-"2.1.1"}
 export VISIT_FILE=${VISIT_FILE:-"visit${VISIT_VERSION}.tar.gz"}
 
 export VTK_FILE=${VTK_FILE:-"vtk-5.0.0g.tar.gz"}
@@ -1341,11 +1370,11 @@ export H5PART_FILE=${H5PART_FILE:-"H5Part-${H5PART_VERSION}.tar.gz"}
 export H5PART_COMPATIBILITY_VERSION=${H5PART_COMPATIBILITY_VERSION:-"1.6"}
 export H5PART_BUILD_DIR=${H5PART_BUILD_DIR:-"H5Part-${H5PART_VERSION}"}
 
-export FASTBIT_VERSION=${FASTBIT_VERSION:-"1.1.9"}
+export FASTBIT_VERSION=${FASTBIT_VERSION:-"1.0.9"}
 export FASTBIT_FILE=${FASTBIT_FILE:-"fastbit-ibis${FASTBIT_VERSION}.tar.gz"}
 # Note: last 2-digit field in URL changes with version.
-export FASTBIT_URL=${FASTBIT_URL:-"https://codeforge.lbl.gov/frs/download.php/186"}
-export FASTBIT_BUILD_DIR=${FASTBIT_BUILD_DIR:-"fastbit-ibis1.1.9"}
+export FASTBIT_URL=${FASTBIT_URL:-"https://codeforge.lbl.gov/frs/download.php/62"}
+export FASTBIT_BUILD_DIR=${FASTBIT_BUILD_DIR:-"fastbit-ibis1.0.9"}
 
 export MDSPLUS_VERSION=${MDSPLUS_VERSION:-"2.2"}
 export MDSPLUS_FILE=${MDSPLUS_FILE:-"mdsplus-${MDSPLUS_VERSION}-4.tar.gz"}
@@ -1986,15 +2015,15 @@ function check_visit_source_code
     # Check-out the latest svn sources, before building VisIt
     if [[ "$DO_SVN" == "yes" && "$USE_VISIT_FILE" == "no" ]] ; then
         if [[ -d src ]] ; then
-           info "Found VisIt SVN src directory, using that . . ."
+           info "Found existing VisIt SVN src directory, using that . . ."
         else
            # Print a dialog screen
-           info "SVN check-out of VisIt . . ."
+           info "SVN check-out of VisIt ($SVN_ROOT_PATH/$SVN_SOURCE_PATH) . . ."
            if [[ "$DO_REVISION" == "yes" && "$SVNREVISION" != "" ]] ; then
                svn co --quiet --non-interactive --revision "$SVNREVISION" \
-                  $SVN_ROOT_PATH/trunk/src
+                  $SVN_ROOT_PATH/$SVN_SOURCE_PATH
            else
-               svn co --quiet --non-interactive $SVN_ROOT_PATH/trunk/src
+               svn co --quiet --non-interactive $SVN_ROOT_PATH/$SVN_SOURCE_PATH
            fi
            if [[ $? != 0 ]] ; then
                warn "Unable to build VisIt.  SVN download failed."
@@ -2975,16 +3004,22 @@ function build_mesa
 
     info 
     
+    # Neither of these should be necessary, but we use them as a temporary
+    # workaround for a mesa issue.
+    if test `uname` = "Linux" ; then
+      HACK_FLAGS="-fPIC -DGLX_USE_TLS"
+    fi
     ./configure \
       CC="${C_COMPILER}" \
       CXX="${CXX_COMPILER}" \
-      CFLAGS="${CFLAGS} ${AIX_MESA_CFLAGS} -DUSE_MGL_NAMESPACE"     \
-      CXXFLAGS="${CXXFLAGS} -DUSE_MGL_NAMESPACE" \
+      CFLAGS="${CFLAGS} ${AIX_MESA_CFLAGS} -DUSE_MGL_NAMESPACE ${HACK_FLAGS}" \
+      CXXFLAGS="${CXXFLAGS} -DUSE_MGL_NAMESPACE ${HACK_FLAGS}" \
       --prefix=${PF}               \
       --without-demos              \
       --disable-gallium            \
       --with-driver=xlib           \
       --enable-gl-osmesa           \
+      --enable-glx-tls             \
       --disable-glw                \
       --disable-glu                \
       --disable-egl ${MESA_STATIC_DYNAMIC}
@@ -3033,14 +3068,15 @@ function build_mesa
     ./configure \
       CC="${C_COMPILER}" \
       CXX="${CXX_COMPILER}" \
-      CFLAGS="${CFLAGS} ${AIX_MESA_CFLAGS} -DUSE_MGL_NAMESPACE"     \
-      CXXFLAGS="${CXXFLAGS} -DUSE_MGL_NAMESPACE" \
+      CFLAGS="${CFLAGS} ${AIX_MESA_CFLAGS} -DUSE_MGL_NAMESPACE ${HACK_FLAGS}" \
+      CXXFLAGS="${CXXFLAGS} -DUSE_MGL_NAMESPACE ${HACK_FLAGS}" \
       --prefix=${PF}                    \
       --without-demos                   \
       --with-driver=osmesa              \
       --disable-gallium                 \
       --with-max-width=16384            \
       --with-max-height=16384           \
+      --enable-glx-tls                  \
       --disable-glw                     \
       ${DISABLE_GLU}                    \
       --disable-egl  ${MESA_STATIC_DYNAMIC}
@@ -9021,10 +9057,10 @@ usage () {
   printf "%-11s <%s> %s [%s]\n" "--makeflags" "flags" "Flags to 'make'" "$MAKE_OPT_FLAGS"
   printf "%s <%s> %s\n" "--svn" \
     "Obtain VisIt source code and third party libraries from the SVN server"
-  printf "\t%s\n" "    [svn co $SVN_REPO_ROOT_PATH/trunk/src]"
+  printf "\t%s\n" "    [svn co $SVN_REPO_ROOT_PATH/$SVN_SOURCE_PATH]"
   printf "%s <%s> %s\n" "--svn-anonymous" \
     "Obtain VisIt source code and third party libraries using the anonymous SVN mirror."
-  printf "\t%s\n" "    [svn co $SVN_ANON_ROOT_PATH/trunk/src]"
+  printf "\t%s\n" "    [svn co $SVN_ANON_ROOT_PATH/$SVN_SOURCE_PATH]"
   printf "%s <%s> %s\n" "--svn-revision" "revision" \
     "Specify the SVN revision of the VisIt source code and third party libraries to download.  Used in conjunction with --svn or --svn-anonymous."
   printf "%s <%s> %s [%s]\n" "--tarball" "file" "tarball to extract VisIt from" "$VISIT_FILE"

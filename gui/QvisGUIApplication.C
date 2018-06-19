@@ -664,6 +664,7 @@ QvisGUIApplication::QvisGUIApplication(int &argc, char **argv) :
     preshiftX = 0;
     preshiftY = 0;
     useWindowMetrics = true;
+    noViewerGeometry = true;
 
     // Default values.
     localOnly = false;
@@ -1581,6 +1582,9 @@ QvisGUIApplication::FinalInitialization()
     debug4 << "QvisGUIApplication::FinalInitialization: initStage="
            << initStage << endl;
 
+    // We use this to check if the gui is fully initialized.
+#define LAST_FINAL_INIT_STAGE 15
+
     switch(initStage)
     {
     case 0:
@@ -1746,7 +1750,6 @@ QvisGUIApplication::FinalInitialization()
     default:
         visitTimer->StopTimer(stagedInit, "FinalInitialization");
         visitTimer->StopTimer(completeInit, "VisIt to be ready");
-
         moreInit = false;
     }
 
@@ -1762,6 +1765,60 @@ QvisGUIApplication::FinalInitialization()
 }
 
 // ****************************************************************************
+// Method: QvisGUIApplication::IsFullyInitialized
+//
+// Purpose: 
+//   Returns whether the gui has been fully initialized.
+//
+// Programmer: Brad Whitlock
+// Creation:   Wed Oct  6 12:09:27 PDT 2010
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+bool
+QvisGUIApplication::IsFullyInitialized() const
+{
+    return initStage >= LAST_FINAL_INIT_STAGE;
+}
+
+// ****************************************************************************
+// Method: QvisGUIApplication::SetWindowArea
+//
+// Purpose: 
+//   Set the window area for the viewer.
+//
+// Arguments:
+//   x,y,w,h : The window area for the viewer.
+//
+// Returns:    
+//
+// Note:       We let the routine tell the viewer the window area if the gui
+//             is fully initialized or if there is no viewer geometry. This
+//             lets us rely on the viewer using the viewer geometry during
+//             setup if it was provided. If no viewer geometry was given then
+//             we allow the window area to be set. We also allow the window area
+//             to be set always if the gui is fully initialized, at which point
+//             we're probably changing orientation, etc.
+//
+// Programmer: Brad Whitlock
+// Creation:   Wed Oct  6 12:02:51 PDT 2010
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+QvisGUIApplication::SetWindowArea(int x, int y, int w, int h)
+{
+    if(IsFullyInitialized() || noViewerGeometry)
+    {
+        GetViewerMethods()->SetWindowArea(x, y, w, h);
+    }
+}
+
+// ****************************************************************************
 // Method: QvisGUIApplication::ShowAllWindows
 //
 // Purpose: 
@@ -1773,6 +1830,8 @@ QvisGUIApplication::FinalInitialization()
 // Creation:   Fri May  7 17:02:57 PDT 2010
 //
 // Modifications:
+//   Brad Whitlock, Wed Oct  6 12:14:21 PDT 2010
+//   I made it call SetWindowArea for this class.
 //   
 // ****************************************************************************
 
@@ -1783,7 +1842,7 @@ QvisGUIApplication::ShowAllWindows()
     int x, y, w, h;
     CalculateViewerArea(GetViewerState()->GetAppearanceAttributes()->GetOrientation(),
         x, y, w, h);
-    GetViewerMethods()->SetWindowArea(x, y, w, h);
+    SetWindowArea(x, y, w, h);
 
     // Tell the viewer to show its windows.
     GetViewerMethods()->ShowAllWindows();
@@ -1861,6 +1920,10 @@ QvisGUIApplication::Exec()
 //    Gunther H. Weber, Fri Apr 23 11:24:19 PDT 2010
 //    Check for system wide visitrc file in addition to user visitrc file.
 //
+//    Hank Childs, Fri Oct 29 14:46:15 PDT 2010
+//    Don't prompt the user for whether they want to exit if we launched
+//    the CLI ourselves.
+//
 // ****************************************************************************
 
 void
@@ -1886,7 +1949,14 @@ QvisGUIApplication::Quit()
             // if the user does not have a visitrc file, or if we have 3 
             // or more clients ask user if they want to close all clients.
 
-            if(!have_visitrc || num_clients > 2)
+            bool shouldPrompt = (num_clients >= 2 ? true : false);
+            if (have_visitrc)
+                shouldPrompt = false;
+            if (interpreter != NULL)  // the other client is a CLI we launched
+                shouldPrompt = false;
+            if (num_clients == 2 && interpreter != NULL)
+                closeAllClients = true;
+            if(shouldPrompt)
             {
                 if(QMessageBox::information(mainWin,
                 "VisIt", tr("There is more than 1 VisIt client connected to the "
@@ -2024,6 +2094,9 @@ QvisGUIApplication::Quit()
 //    Jeremy Meredith, Fri Mar 26 13:11:46 EDT 2010
 //    Allow for the -o command line option to take an optional ,<pluginID>
 //    suffix, e.g. "-o foobar,LAMMPS_1.0".
+//
+//    Brad Whitlock, Wed Oct  6 12:20:28 PDT 2010
+//    Detect whether the user wants -viewer_geometry.
 //
 // ****************************************************************************
 
@@ -2315,6 +2388,14 @@ QvisGUIApplication::ProcessArguments(int &argc, char **argv)
         {
             useWindowMetrics = false;
         }
+        else if(current == "-viewer_geometry")
+        {
+            // Detect whether -viewer_geometry was passed. We don't use it
+            // except that when it's present, we don't tell the viewer where
+            // to put its windows on startup.
+            noViewerGeometry = false;
+            ++i;
+        }
         else if(current == std::string("-launchengine"))
         {
             if(i + 1 < argc)
@@ -2446,7 +2527,9 @@ QvisGUIApplication::CustomizeAppearance(bool notify)
 // Creation:   Tue Jan 29 13:02:36 PST 2002
 //
 // Modifications:
-//   
+//   Brad Whitlock, Wed Oct  6 12:14:21 PDT 2010
+//   I made it call SetWindowArea for this class.
+//
 // ****************************************************************************
 
 void
@@ -2465,7 +2548,7 @@ QvisGUIApplication::SetOrientation(int orientation)
     //
     int x, y, w, h;
     CalculateViewerArea(orientation, x, y, w, h);
-    GetViewerMethods()->SetWindowArea(x, y, w, h);
+    SetWindowArea(x, y, w, h);
 }
 
 // ****************************************************************************
@@ -2891,6 +2974,9 @@ QvisGUIApplication::AddViewerSpaceArguments()
 //   Brad Whitlock, Thu Jan 31 12:33:17 PST 2008
 //   Connected new saveCrashRecoveryFile signal from Main window.
 //
+//   Brad Whitlock, Wed Sep 22 10:58:37 PDT 2010
+//   Just do PrintWindow.
+//
 // ****************************************************************************
 
 void
@@ -2920,7 +3006,6 @@ QvisGUIApplication::CreateMainWindow()
     connect(mainWin, SIGNAL(saveMovie()), this, SLOT(SaveMovie()));
     connect(mainWin, SIGNAL(setupCMFE()), this, SLOT(SetupCMFE()));
     connect(mainWin, SIGNAL(printWindow()), this, SLOT(PrintWindow()));
-    connect(mainWin, SIGNAL(activatePrintWindow()), this, SLOT(SetPrinterOptions()));
     
     connect(mainWin->GetPlotManager(), SIGNAL(activatePlotWindow(int)),
             this, SLOT(ActivatePlotWindow(int)));
@@ -4693,6 +4778,9 @@ QvisGUIApplication::RestoreSessionWithDifferentSources()
 //   Kathleen Bonnell, Tue Oct 28 08:18:06 PDT 2008
 //   Set 'restoringSession' flag.
 //
+//   Kathleen Bonnell, Tue Nov 1 14:28:57 PDT 2010
+//   Don't prepend 'VisItUserDir' to guifilename on Windows.
+//
 // ****************************************************************************
 
 void
@@ -4714,6 +4802,7 @@ QvisGUIApplication::RestoreSessionFile(const QString &s,
 
         // If the file could not be opened then try and prepend the
         // VisIt directory to it.
+#ifndef WIN32
         if(node == 0)
         {
             if(guifilename[0] != VISIT_SLASH_CHAR)
@@ -4726,6 +4815,7 @@ QvisGUIApplication::RestoreSessionFile(const QString &s,
                 node = ReadConfigFile(guifilename.c_str());
             }
         }
+#endif
 
         if(node)
         {
@@ -6423,10 +6513,11 @@ QvisGUIApplication::SaveWindow()
 }
 
 // ****************************************************************************
-// Method: QvisGUIApplication::SetPrinterOptions
+// Method: QvisGUIApplication::PrintWindow
 //
 // Purpose: 
-//   This is a Qt slot function that tells the viewer to set its print options.
+//   This is a Qt slot function that lets the user set print options and then
+//   it tells the viewer to print.
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Feb 20 12:40:41 PDT 2002
@@ -6460,10 +6551,14 @@ QvisGUIApplication::SaveWindow()
 //   Set the QPrinter's printer name into the printer attributes if there was
 //   no valid printer name. Print after the dialog is dismissed on Mac too.
 //
+//   Brad Whitlock, Wed Sep 22 10:59:27 PDT 2010
+//   I renamed this method to PrintWindow and I made all platforms print if
+//   the print dialog is accepted.
+//
 // ****************************************************************************
     
 void
-QvisGUIApplication::SetPrinterOptions()
+QvisGUIApplication::PrintWindow()
 {
     PrinterAttributes *p = GetViewerState()->GetPrinterAttributes();
 
@@ -6614,14 +6709,11 @@ QvisGUIApplication::SetPrinterOptions()
     else
     {
 #endif
-#if defined(Q_WS_MACX)
-        // Each time through on the Mac, clear out the printer's save to filename.
+        // Each time through, clear out the printer's save to filename.
         bool setupPrinter = true;
         p->SetOutputToFile(false);
         p->SetOutputToFileName("");
-#else
-        bool setupPrinter = false;
-#endif
+
         //
         // If we've never set up the printer options, set them up now using
         // Qt's printer object and printer dialog.
@@ -6664,44 +6756,18 @@ QvisGUIApplication::SetPrinterOptions()
             p->SetCreator("VisIt");
             printerObserver->SetUpdate(false);
             p->Notify();
-#if defined(WIN32) || defined(Q_WS_MACX)
+
             //
-            // Tell the viewer to print the image because Windows & Mac printer
-            // dialogs have the word "Print" to click when you're done setting
-            // options. This says to me that applications expect to print once
-            // the options are set.
+            // Tell the viewer to print the image. All print dialogs I've seen
+            // for Qt 4 have "Print" as the button that accepts the Print dialog.
+            // This says to me that applications expect to print once the options
+            // are set.
             //
             GetViewerMethods()->PrintWindow();
-#endif
         }
 #if defined(Q_WS_MACX) && !defined(VISIT_MAC_NO_CARBON)
     }
 #endif
-}
-
-// ****************************************************************************
-// Method: QvisGUIApplication::PrintWindow
-//
-// Purpose: 
-//   This is a Qt slot function that tells the viewer to print the window.
-//
-// Programmer: Brad Whitlock
-// Creation:   Wed Feb 20 12:41:13 PDT 2002
-//
-// Modifications:
-//   Brad Whitlock, Mon Aug 30 11:36:10 PDT 2010
-//   If no printer options have been set up yet then we should do 
-//   SetPrinterOptions.
-//
-// ****************************************************************************
-
-void
-QvisGUIApplication::PrintWindow()
-{
-    if(printer == 0)
-        SetPrinterOptions();
-    else
-        GetViewerMethods()->PrintWindow();
 }
 
 // ****************************************************************************
@@ -7922,12 +7988,16 @@ MakeCodeSlashes(const QString &s)
 // Programmer: Hank Childs
 // Creation:   August 1, 2010
 //
+// Modifications:
+//   Kathleen Bonnell, Tue Nov 2, 12:56:32 PDT 2010
+//   Removed unnecessary ';' from end of first 'if'.
+//
 // ****************************************************************************
 
 void
 QvisGUIApplication::SetupCMFE()
 {
-    if (setupCMFEWizard == NULL);
+    if (setupCMFEWizard == NULL)
         setupCMFEWizard = new QvisCMFEWizard(GetViewerState()->GetExpressionList(), 
                                              mainWin);
     setupCMFEWizard->SetGlobalAttributes(GetViewerState()->GetGlobalAttributes());

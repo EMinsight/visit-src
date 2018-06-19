@@ -657,6 +657,24 @@ $0 = shift @ARGV;
 #    Hank Childs, Tue Aug 31 19:55:04 PDT 2010
 #    Another change for longhorn.
 #
+#    Hank Childs, Fri Oct 15 21:00:34 PDT 2010
+#    Pass along the the bank name for Eureka.
+#
+#    Hank Childs (on behalf of Stefan Kerkemeier), Wed Oct 20 08:21:08 PDT 2010
+#    Fix problem with bsub internallauncher
+#
+#    Brad Whitlock, Thu Oct 28 10:45:11 PDT 2010
+#    Print VISIT_MESA_LIB as part of the norun environment so plots will work
+#    when we run in an mxterm.
+#
+#    Eric Brugger, Fri Oct 29 09:44:21 PDT 2010
+#    I modified the script so that it would properly launch VisIt in
+#    parallel on aztec and inca at LLNL. I removed some unnecessary hacks
+#    for launching on some LLNL machines.
+#
+#    Hank Childs, Sun Oct 31 22:43:25 CDT 2010
+#    Add support for ANL MCS nodes.
+#
 ###############################################################################
 
 use POSIX qw(ceil);
@@ -1822,14 +1840,14 @@ if ( $host =~ /^xchem.llnl.gov/ )
 }
 
 # ----
-# HACK for yana, alastor hopi @ LLNL
+# HACK for yana, alastor, hopi, aztec, inca  @ LLNL
 #
 # ----
 $UseTTC = 0;
-if ($host =~ /^yana\d+$/ or $host =~ /^alastor\d+$/ or $host =~ /^hopi\d+$/)
+if ($host =~ /^yana\d+$/ or $host =~ /^alastor\d+$/ or $host =~ /^hopi\d+$/ or
+    $host =~ /^aztec\d+$/ or $host =~ /^inca\d+$/)
 {
     $UseTTC = 1;
-    $ENV{LD_LIBRARY_PATH} = "/usr/local/tools/mvapich-gnu/lib/shared";
 }
 
 # ----
@@ -1840,18 +1858,6 @@ $UsePPN = 1;
 if ($host =~ /^graph\d+$/)
 {
     $UsePPN  = 0;
-    $ENV{LD_LIBRARY_PATH} = "/usr/local/tools/mvapich-gnu/lib/shared";
-}
-
-# ----
-# HACK for AMD Opteron clusters @ LLNL
-#
-# ----
-if ($host =~ /^atlas\d+$/ or $host =~ /^hera\d+$/ or $host =~ /^prism\d+$/ or
-    $host =~ /^zeus\d+$/ or $host =~ /^eos\d+$/ or $host =~ /^gauss\d+$/ or
-    $host =~ /^juno\d+$/ or $host =~ /^minos\d+$/ or $host =~ /^rhea\d+$/)
-{
-    $ENV{LD_LIBRARY_PATH} = "/usr/local/tools/mvapich-gnu/lib/shared";
 }
 
 # ----
@@ -1883,7 +1889,14 @@ if ( ($parallel) and $exe_name eq "engine" and (($host =~ /login1/) and ($matche
     }
     else
     {
-        $remotehost = "login1-mgmt.eureka";
+        if ( $domain eq "mcs.anl.gov" )
+        {
+            # Don't need to set remotehost.
+        }
+        else
+        {
+            $remotehost = "login1-mgmt.eureka";
+        }
     }
 }
 
@@ -2732,7 +2745,7 @@ if ($procs_set or ($parallel and $parlaunch_set))
         push @parcmd, "-q",  $part  if $part_set;
         push @parcmd, "-W" , $time  if $time_set;
         push @parcmd, $sublauncher;
-        push @parcmd, $sublaunchargs if $sublaunchargs_set;
+        push @parcmd, @sublaunchargs if $sublaunchargs_set;
         push @parcmd, @visitcmd;
         @printcmd = @parcmd;
         push @printcmd, ("\"".(pop @printcmd)."\"");
@@ -3051,6 +3064,7 @@ if ($procs_set or ($parallel and $parlaunch_set))
             push @printcmd, ("\"".(pop @printcmd)."\"");
             if ( $IsRunningOnEureka_ANL ) {
                @parcmd = "qsub";
+               push @parcmd, "-A",  $bank  if $bank_set;
                push @parcmd, "-n";
                push @parcmd, $nodes;
                push @parcmd, "-t";
@@ -3072,7 +3086,7 @@ if ($procs_set or ($parallel and $parlaunch_set))
     if ($printonly)
     {
         print STDERR "RUN USING: @parcmd\n\n";
-        PrintEnvironment();
+        PrintEnvironment($os);
         exit 0;
     }
     else
@@ -3087,7 +3101,7 @@ else
     {
         if ($security_key_set) { push @visitcmd, "-key", $security_key; }
         print STDERR "RUN USING: @visitcmd\n\n";
-        PrintEnvironment();
+        PrintEnvironment($os);
         exit 0;
     }
     elsif ($debug_totalview eq $exe_name)
@@ -3404,9 +3418,11 @@ sub RunComponent {
 }
 
 sub PrintEnvironment {
+    my $os = shift;
+    my $soext="so";
+    if ($os eq "darwin") { $soext="dylib"; }
     if ($envonly)
     {
-        my $os = shift;
         if($os eq "darwin")
         {
         # We use DYLD_LIBRARY_PATH on the Mac for libsim.
@@ -3418,6 +3434,7 @@ VISITARCHHOME=$ENV{VISITARCHHOME}
 VISITHELPHOME=$ENV{VISITHELPHOME}
 VISITULTRAHOME=$ENV{VISITULTRAHOME}
 VISITPLUGINDIR=$ENV{VISITPLUGINDIR}
+VISIT_MESA_LIB=$visitlibdir/libOSMesa.$soext
 PYTHONHOME=$ENV{PYTHONHOME}
 TRAP_FPE=$ENV{TRAP_FPE}
 MESA_GLX_FX=$ENV{MESA_GLX_FX}
@@ -3436,6 +3453,7 @@ VISITARCHHOME=$ENV{VISITARCHHOME}
 VISITHELPHOME=$ENV{VISITHELPHOME}
 VISITULTRAHOME=$ENV{VISITULTRAHOME}
 VISITPLUGINDIR=$ENV{VISITPLUGINDIR}
+VISIT_MESA_LIB=$visitlibdir/libOSMesa.$soext
 PYTHONHOME=$ENV{PYTHONHOME}
 TRAP_FPE=$ENV{TRAP_FPE}
 MESA_GLX_FX=$ENV{MESA_GLX_FX}
@@ -3455,6 +3473,7 @@ Be sure to set your environment variables:
     setenv VISITHELPHOME $ENV{VISITHELPHOME}
     setenv VISITULTRAHOME $ENV{VISITULTRAHOME}
     setenv VISITPLUGINDIR $ENV{VISITPLUGINDIR}
+    setenv VISIT_MESA_LIB $visitlibdir/libOSMesa.$soext
     setenv PYTHONHOME $ENV{PYTHONHOME}
     setenv TRAP_FPE $ENV{TRAP_FPE}
     setenv MESA_GLX_FX $ENV{MESA_GLX_FX}
@@ -3473,6 +3492,7 @@ Be sure to set your environment variables:
     VISITHELPHOME=$ENV{VISITHELPHOME}
     VISITULTRAHOME=$ENV{VISITULTRAHOME}
     VISITPLUGINDIR=$ENV{VISITPLUGINDIR}
+    VISIT_MESA_LIB=$visitlibdir/libOSMesa.$soext
     PYTHONHOME=$ENV{PYTHONHOME}
     TRAP_FPE=$ENV{TRAP_FPE}
     MESA_GLX_FX=$ENV{MESA_GLX_FX}

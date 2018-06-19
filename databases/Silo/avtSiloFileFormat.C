@@ -2451,7 +2451,7 @@ avtSiloFileFormat::ReadCSGmeshes(DBfile *dbfile,
 //
 // ****************************************************************************
 
-static int 
+static bool
 GetRestrictedMaterialIndices(const avtDatabaseMetaData *md, const char *const varname,
     const char *const meshname, const char *const *const region_pnames,
     vector<int>* restrictToMats)
@@ -2469,14 +2469,18 @@ GetRestrictedMaterialIndices(const avtDatabaseMetaData *md, const char *const va
 
     int i, j;
     bool regionNamesButMaterialNumbers = true;
+    debug3 << "For mat-restricted variable \"" << varname << "\"..." << endl;
     for (i = 0; region_pnames[i]; i++)
     {
+        debug3 << "    Looking for materials matching region_pname[" << i
+               << "] = \"" << region_pnames[i] << "\"..." << endl;
         int rnlen = strlen(region_pnames[i]);
         int rnspn = strspn(region_pnames[i], "0123456789");
         if (rnlen == rnspn) // Must be just a number
         {
             int regno = strtol(region_pnames[i], 0, 10);
             regionNamesButMaterialNumbers = false;
+            debug3 << "        Comparing using regno=" << regno << "..." << endl; 
             for (j = 0; j < mmd->numMaterials; j++)
             {
                 // The 'materialNames' Silo plugin creates are either
@@ -2484,25 +2488,46 @@ GetRestrictedMaterialIndices(const avtDatabaseMetaData *md, const char *const va
                 // strtol should convert the number part correctly.
                 errno = 0;
                 int matno = strtol(mmd->materialNames[j].c_str(), 0, 10);
+                debug3 << "            for \"" << mmd->materialNames[j]
+                       << "\" got matno=" << matno; 
                 if (errno == 0 && regno == matno)
+                {
+                    debug3 << " matched" << endl;
                     restrictToMats->push_back(j);
+                    break;
+                }
+                else
+                {
+                    debug3 << " DID NOT match" << endl;
+                }
             }
         }
         else // Not just a number (a name?)
         {
+            debug3 << "        Comparing using region name..." << endl;
             for (j = 0; j < mmd->numMaterials; j++)
             {
-                int mnlen = strlen(mmd->materialNames[j].c_str());
-                int mnspn = strspn(mmd->materialNames[j].c_str(), "0123456789");
-                if (mnlen == mnspn) // Must be just a number
+                int matno;
+                char matname[256];
+                int nmatches = sscanf(mmd->materialNames[j].c_str(), "%d %s", &matno, &matname);
+                debug3 << "            matno=" << matno << ", matname=\"" << matname << "\"";
+                if (nmatches == 1) // have matno only
                 {
+                    debug3 << " CANNOT match matno alone" << endl;
                     continue;
                 }
-                else // Not just a number (a name?)
+                else
                 {
-                    regionNamesButMaterialNumbers = false;
-                    if (strcmp(region_pnames[i], &(mmd->materialNames[j].c_str()[mnspn])))
+                    if (!strcmp(region_pnames[i], matname))
+                    {
+                        debug3 << " matched" << endl;
                         restrictToMats->push_back(j);
+                        break;
+                    }
+                    else
+                    {
+                        debug3 << " DID NOT match" << endl;
+                    }
                 }
             }
         }
@@ -2537,6 +2562,10 @@ GetRestrictedMaterialIndices(const avtDatabaseMetaData *md, const char *const va
 //    Mark C. Miller, Thu Jun 18 20:56:08 PDT 2009
 //    Replaced DBtoc* arg. with list of object names. Also added logic to
 //    handle freeing of multivar during exceptions.
+//
+//    Mark C. Miller, Wed Nov  3 09:24:48 PDT 2010
+//    Don't call GetRestrictedMaterialIndices on individual blocks if we
+//    already have 'em from the multi-block.
 // ****************************************************************************
 void
 avtSiloFileFormat::ReadMultivars(DBfile *dbfile,
@@ -2643,6 +2672,9 @@ avtSiloFileFormat::ReadMultivars(DBfile *dbfile,
                         }
                         centering = (uv->centering == DB_ZONECENT ? AVT_ZONECENT 
                                                                   : AVT_NODECENT);
+                        if (uv->region_pnames && !selectedMats.size())
+                            valid_var = GetRestrictedMaterialIndices(md, name_w_dir,
+                                meshname.c_str(), uv->region_pnames, &selectedMats);
                         nvals = uv->nvals;
                         treatAsASCII = (uv->ascii_labels);
                         if(uv->units != 0)
@@ -2661,6 +2693,9 @@ avtSiloFileFormat::ReadMultivars(DBfile *dbfile,
                         }
                         centering = (qv->align[0] == 0. ? AVT_NODECENT 
                                                         : AVT_ZONECENT);
+                        if (qv->region_pnames && !selectedMats.size())
+                            valid_var = GetRestrictedMaterialIndices(md, name_w_dir,
+                                meshname.c_str(), qv->region_pnames, &selectedMats);
                         nvals = qv->nvals;
                         treatAsASCII = (qv->ascii_labels);
                         if(qv->units != 0)
@@ -2678,6 +2713,9 @@ avtSiloFileFormat::ReadMultivars(DBfile *dbfile,
                             valid_var = false;
                             break;
                         }
+                        if (pv->region_pnames && !selectedMats.size())
+                            valid_var = GetRestrictedMaterialIndices(md, name_w_dir,
+                                meshname.c_str(), pv->region_pnames, &selectedMats);
                         nvals = pv->nvals;
                         treatAsASCII = (pv->ascii_labels);
                         if(pv->units != 0)
@@ -2698,6 +2736,9 @@ avtSiloFileFormat::ReadMultivars(DBfile *dbfile,
                             valid_var = false;
                             break;
                         }
+                        if (csgv->region_pnames && !selectedMats.size())
+                            valid_var = GetRestrictedMaterialIndices(md, name_w_dir,
+                                meshname.c_str(), csgv->region_pnames, &selectedMats);
                         nvals = csgv->nvals;
                         treatAsASCII = (csgv->ascii_labels);
                         if(csgv->units != 0)
@@ -2921,7 +2962,6 @@ avtSiloFileFormat::ReadUcdvars(DBfile *dbfile,
             if (uv->region_pnames)
                 valid_var = GetRestrictedMaterialIndices(md, name_w_dir,
                     meshname_w_dir, uv->region_pnames, &selectedMats);
-
             //
             // Get the dimension of the variable.
             //
@@ -4073,6 +4113,10 @@ avtSiloFileFormat::ReadDir(DBfile *dbfile, const char *dirname,
 //
 //    Mark C. Miller, Tue Jun 10 22:36:25 PDT 2008
 //    Added logic to pass along ignore extents bools.
+//
+//    Cyrus Harrison, Thu Sep 23 11:02:22 PDT 2010
+//    Added missing broadcast for 'haveAMRGroupInfo'.
+//
 // ****************************************************************************
 void
 avtSiloFileFormat::BroadcastGlobalInfo(avtDatabaseMetaData *metadata)
@@ -4156,7 +4200,7 @@ avtSiloFileFormat::BroadcastGlobalInfo(avtDatabaseMetaData *metadata)
     BroadcastInt(maxAnnotIntLists);
     if (maxAnnotIntLists > 0)
         avtScalarMetaData::BuildEnumNChooseRMap(maxAnnotIntLists, maxCoincidentNodelists, pascalsTriangleMap);
-    
+
     //
     // Broadcast Group Info
     //
@@ -4173,6 +4217,10 @@ avtSiloFileFormat::BroadcastGlobalInfo(avtDatabaseMetaData *metadata)
     ignore_extents = ignoreDataExtents;
     BroadcastInt(ignore_extents);
     ignoreDataExtents = ignore_extents;
+    int have_amr_group_info =haveAmrGroupInfo;
+    BroadcastInt(have_amr_group_info);
+    haveAmrGroupInfo = have_amr_group_info;
+
 #endif
 }
 

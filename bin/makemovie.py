@@ -421,6 +421,10 @@ def MovieClassSaveWindow():
 #    I changed it to instead use the explocit booleans we set during starttag,
 #    though a viable alternative would be to make dataName a stack of strings.
 #
+#    Brad Whitlock, Thu Oct 28 11:49:48 PDT 2010
+#    I added code to eliminate leading/trailing quotes from string data to
+#    work around a problem introduced in version 2.1.
+#
 ###############################################################################
 
 class EngineAttributesParser(XMLParser):
@@ -478,6 +482,15 @@ class EngineAttributesParser(XMLParser):
             for i in range(len(s)):
                 space = space + " "
             return s != space
+        def StripLeadingTrailingQuotes(s):
+            retval = s
+            if len(retval) > 0:
+                if retval[0] == '"':
+                    retval = retval[1:]
+            if len(retval) > 0:
+                if retval[-1] == '"':
+                    retval = retval[:-1]
+            return retval
         if (self.readingEngineProperties == 1 or self.readingMachineProfile)\
             and self.readingField == 1 and len(data) > 0:
             name = self.dataAtts["name"]
@@ -489,7 +502,7 @@ class EngineAttributesParser(XMLParser):
                 else:
                     value = 0
             elif type == "string":
-                value = data
+                value = StripLeadingTrailingQuotes(data)
             elif type == "stringVector":
                 fragments = string.split(data, "\"")
                 value = []
@@ -2309,6 +2322,7 @@ class MakeMovie:
                         tmpPY = os.path.abspath(name2)
                         # Try and stat the tmpPY file.
                         try:
+                            self.Debug(1, "Looking for template work file: %s" % tmpPY)
                             s = os.stat(tmpPY)
                             templatePY = tmpPY
                             fileFound = 1
@@ -2464,6 +2478,9 @@ class MakeMovie:
     #   Brad Whitlock, Fri Jan 22 15:50:39 PST 2010
     #   Lower bitrate a little for ffmpeg.
     #
+    #   Kathleen Bonnell, Tue Nov  2 12:20:11 PDT 2010 
+    #   Executable is mpeg2encode.exe on Windows (since CMake overhaul). 
+    # 
     ###########################################################################
 
     def EncodeMPEGMovie(self, moviename, imageFormatString, xres, yres):
@@ -2583,7 +2600,7 @@ class MakeMovie:
                 if (sys.platform != "win32"):
                     command = "visit -v %s -mpeg2encode %s %s" % (Version(), paramFile, absMovieName)
                 else:
-                    command = "mpeg2enc.exe "  + '"' + paramFile + '" "' + absMovieName + '"'
+                    command = "mpeg2encode.exe "  + '"' + paramFile + '" "' + absMovieName + '"'
                 self.Debug(1, command)
                 # Function to print the mpeg2encode output
                 def print_mpeg_line_cb(line, this):
