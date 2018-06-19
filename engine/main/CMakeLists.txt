@@ -50,6 +50,13 @@
 #    Brad Whitlock, Mon Dec 13 16:06:42 PST 2010
 #    I added CumulativeQueryNamedSelectionExtension.
 #
+#    Brad Whitlock, Fri May 18 16:09:34 PST 2012
+#    Use different resource file.
+#
+#    Kathleen Biagas, Thu Jun 21 15:19:02 MST 2012 
+#    Call ADD_TARGET_DEFINTIONS to add "HAVE_ICET", as the function deals
+#    correctly with a target already having some COMPILE_DEFINITIONS set.
+#
 #****************************************************************************/
 
 SET(LIBENGINE_SOURCES
@@ -152,7 +159,7 @@ avtpipeline_ser
 # engine_ser_exe_EOperator_ser = The list of operator libE libraries needed to link
 # engine_ser_exe_EPlot_ser = The list of plot libE libraries needed to link
 
-ADD_EXECUTABLE(engine_ser_exe ${VISIT_APPLICATION_STYLE} main.C ${ENGINE_STATIC_SOURCES} ${VISIT_WIN_ICON_RESOURCE})
+ADD_EXECUTABLE(engine_ser_exe ${VISIT_APPLICATION_STYLE} main.C ${ENGINE_STATIC_SOURCES} ${VISIT_ENGINE_SER_RESOURCE_FILE})
 SET_TARGET_PROPERTIES(engine_ser_exe PROPERTIES OUTPUT_NAME engine_ser)
 TARGET_LINK_LIBRARIES(engine_ser_exe 
     ${engine_ser_exe_IDatabase}
@@ -206,15 +213,7 @@ IF(VISIT_PARALLEL)
 
     # If we have Ice-T then add -DHAVE_ICET to the compilation flags.
     IF(ICET_FOUND)
-        GET_TARGET_PROPERTY(PAR_DEFS engine_par COMPILE_DEFINITIONS)
-        IF(PAR_DEFS MATCHES "NOTFOUND")
-            SET(PAR_DEFS "HAVE_ICET")
-        ELSE(PAR_DEFS MATCHES "NOTFOUND")
-            SET(PAR_DEFS "${PAR_DEFS} HAVE_ICET")
-        ENDIF(PAR_DEFS MATCHES "NOTFOUND")
-        SET_TARGET_PROPERTIES(engine_par PROPERTIES 
-            COMPILE_DEFINITIONS ${PAR_DEFS}
-        )
+        ADD_TARGET_DEFINITIONS(engine_par "HAVE_ICET")
         IF(APPLE)
             # We need to link with OpenGL on Mac when we have IceT.
             SET(ICET_OPENGL ${OPENGL_gl_LIBRARY})
@@ -239,7 +238,7 @@ IF(VISIT_PARALLEL)
         TARGET_LINK_LIBRARIES(link_mpi_libs ${VISIT_PARALLEL_LIBS})
     ENDIF(VISIT_NOLINK_MPI_WITH_LIBRARIES)
 
-    ADD_PARALLEL_EXECUTABLE(engine_par_exe ${VISIT_APPLICATION_STYLE} main.C ${ENGINE_STATIC_SOURCES} ${VISIT_WIN_ICON_RESOURCE})
+    ADD_PARALLEL_EXECUTABLE(engine_par_exe ${VISIT_APPLICATION_STYLE} main.C ${ENGINE_STATIC_SOURCES} ${VISIT_ENGINE_PAR_RESOURCE_FILE})
     SET_TARGET_PROPERTIES(engine_par_exe PROPERTIES OUTPUT_NAME engine_par)
 
     PARALLEL_EXECUTABLE_LINK_LIBRARIES(engine_par_exe

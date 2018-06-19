@@ -40,17 +40,17 @@ function bv_visit_info
     # release tag.
     ############################################################################
 
-    export VISIT_VERSION=${VISIT_VERSION:-"2.4.2"}
+    export VISIT_VERSION=${VISIT_VERSION:-"2.5.2"}
     
     ####
     # Trunk:
     ####
-    export SVN_SOURCE_PATH="trunk/src"
+    #export SVN_SOURCE_PATH="trunk/src"
 
     ###
     # Release:
     ###
-    #export SVN_SOURCE_PATH="tags/${VISIT_VERSION}/src"
+    export SVN_SOURCE_PATH="tags/${VISIT_VERSION}/src"
 }
 
 #print variables used by this module
@@ -184,6 +184,11 @@ function build_visit
     local VISIT_DIR="${VISIT_FILE%.tar*}/src"
     if [[ "$DO_SVN" == "yes" && "$USE_VISIT_FILE" == "no" ]] ; then
         VISIT_DIR="src" 
+    else
+        #visit2.5.0 needs a patch for ModelFit operator
+        if [[ "${VISIT_FILE%.tar*}" == "visit2.5.0" ]]; then
+            bv_patch_2_5_0
+        fi
     fi
     
     if [[ "$DO_MANGLED_LIBRARIES" == "yes" ]]; then
@@ -406,6 +411,21 @@ function bv_visit_is_installed
     return 0
 }
 
+function bv_patch_2_5_0
+{
+
+  if [[ -e visit2.5.0 ]]; then
+    info "apply patch to ModelFit operator"
+patch -f -p0 visit2.5.0/src/operators/ModelFit/CMakeLists.txt <<\EOF
+24d23
+< QT_WRAP_CPP(GModelFitOperator LIBG_SOURCES ${LIBG_MOC_SOURCES})
+94a94
+>     QT_WRAP_CPP(GModelFitOperator LIBG_SOURCES ${LIBG_MOC_SOURCES})
+EOF
+  fi
+
+}
+
 #the build command..
 function bv_visit_build
 {
@@ -446,11 +466,7 @@ function bv_visit_build
         # am treating the graphical and console interfaces differently.
         #
         if test "${GRAPHICAL}" = "yes" ; then
-            if [[ "$REDIRECT_ACTIVE" == "yes" ]] ; then
-                info_box_large "$FINISHED_MSG" 1>&3
-            else
-                info_box_large "$FINISHED_MSG"
-            fi
+            info_box_large "$FINISHED_MSG"
             log "Finished building VisIt."
             log
             log "You many now try to run VisIt by cd'ing into the"

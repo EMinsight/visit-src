@@ -82,6 +82,14 @@
 #   Cyrus Harrison, Mon Apr 16 14:20:20 PDT 2012
 #   Fix problem with PYTHON_EXECUTABLE detection.
 #
+#   Kathleen Biagas, Thu May 10 10:24:15 MST 2012
+#   Add windows-specific cases for PYTHON_ADD_DISTUTILS_SETUP, to correctly
+#   handle windows path and path-with-spaces issues. Don't change
+#   library output directory on widnows for PYTHON_ADD_HYBRID_MODULE.
+#
+#   Kathleen Biagas, Tue Jun 5 14:49:52 PDT 2012 
+#   Fix problem with setting of PYTHON_VERSION on windows. 
+#
 #****************************************************************************/
 
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/ThirdPartyInstallLibrary.cmake)
@@ -175,23 +183,23 @@ FOREACH(_CURRENT_VERSION 2.7 2.6 2.5 2.4 2.3 2.2 2.1 2.0 1.6 1.5)
     NO_SYSTEM_ENVIRONMENT_PATH)
 
   IF (PYTHON_LIBRARY AND PYTHON_INCLUDE_PATH)
-    IF(UNIX)
-        # The python library and include path could be for a path that does
-        # not match the version from _CURRENT_VERSION so let's match again
-        # against the detected filename.
-        GET_FILENAME_COMPONENT(PYLIB ${PYTHON_LIBRARY} NAME)
-        FOREACH(CV 2.7 2.6 2.5 2.4 2.3 2.2 2.1 2.0 1.6 1.5)
-            SET(curPYLIB "libpython${CV}.")
-            IF(${PYLIB} MATCHES ${curPYLIB})
-                SET(PYTHON_VERSION ${CV})
-                MESSAGE(STATUS "Python version: ${PYTHON_VERSION}")
-                BREAK()
-            ENDIF(${PYLIB} MATCHES ${curPYLIB})
-        ENDFOREACH(CV)
-    ELSE(UNIX)
-        SET(PYTHON_VERSION ${_CURRENT_VERSION})
-    ENDIF(UNIX)
-    BREAK()
+      # The python library and include path could be for a path that does
+      # not match the version from _CURRENT_VERSION so let's match again
+      # against the detected filename.
+      GET_FILENAME_COMPONENT(PYLIB ${PYTHON_LIBRARY} NAME)
+      FOREACH(CV 2.7 2.6 2.5 2.4 2.3 2.2 2.1 2.0 1.6 1.5)
+          SET(curPYLIB "libpython${CV}.")
+          IF(WIN32)
+              STRING(REPLACE "." "" CV2 ${CV})
+              SET(curPYLIB "python${CV2}.lib")
+          ENDIF(WIN32)
+          IF(${PYLIB} MATCHES ${curPYLIB})
+              SET(PYTHON_VERSION ${CV})
+              MESSAGE(STATUS "Python version: ${PYTHON_VERSION}")
+              BREAK()
+          ENDIF(${PYLIB} MATCHES ${curPYLIB})
+      ENDFOREACH(CV)
+      BREAK()
   ENDIF (PYTHON_LIBRARY AND PYTHON_INCLUDE_PATH)
 
 ENDFOREACH(_CURRENT_VERSION)
@@ -331,27 +339,56 @@ ENDFUNCTION(PYTHON_WRITE_MODULES_HEADER)
 
 FUNCTION(PYTHON_ADD_DISTUTILS_SETUP target_name dest_dir setup_file)
 MESSAGE(STATUS "Configuring python distutils setup: ${target_name}")
-add_custom_command(OUTPUT  ${CMAKE_CURRENT_BINARY_DIR}/build
-                   COMMAND ${PYTHON_EXECUTABLE} ${setup_file} -v
-                   build
-                   --build-base=${CMAKE_CURRENT_BINARY_DIR}/build
-                   install
-                   --install-purelib=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${dest_dir}
-                   DEPENDS  ${setup_file} ${ARGN}
-                   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+IF(NOT WIN32)
+    add_custom_command(OUTPUT  ${CMAKE_CURRENT_BINARY_DIR}/build
+            COMMAND ${PYTHON_EXECUTABLE} ${setup_file} -v
+            build
+            --build-base=${CMAKE_CURRENT_BINARY_DIR}/build
+            install
+            --install-purelib=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${dest_dir}
+            DEPENDS  ${setup_file} ${ARGN}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_custom_target(${target_name} ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/build)
-
-# also use distutils for the install ...
-INSTALL(CODE
+    add_custom_target(${target_name} ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/build)
+    # also use distutils for the install ...
+    INSTALL(CODE
         "
         EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                        COMMAND ${PYTHON_EXECUTABLE} ${setup_file} -v
-                                build   --build-base=${CMAKE_CURRENT_BINARY_DIR}/build_install
-                                install --install-purelib=\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/${dest_dir}
-                         OUTPUT_VARIABLE PY_DIST_UTILS_INSTALL_OUT)
+            COMMAND ${PYTHON_EXECUTABLE} ${setup_file} -v
+                build   --build-base=${CMAKE_CURRENT_BINARY_DIR}/build_install
+                install --install-purelib=\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/${dest_dir}
+            OUTPUT_VARIABLE PY_DIST_UTILS_INSTALL_OUT)
         MESSAGE(STATUS \"\${PY_DIST_UTILS_INSTALL_OUT}\")
         ")
+ELSE(NOT WIN32)
+
+    FILE(TO_NATIVE_PATH ${VISIT_LIBRARY_DIR} VLD_NATIVE)
+    STRING(REPLACE "\\" "\\\\" VLD_ESC_PATH "${VLD_NATIVE}")
+    FILE(TO_NATIVE_PATH ${CMAKE_CURRENT_BINARY_DIR} CCBD_NATIVE)
+    STRING(REPLACE "\\" "\\\\" CCBD_ESC_PATH "${CCBD_NATIVE}")
+
+    add_custom_command(OUTPUT  ${CMAKE_CURRENT_BINARY_DIR}/build
+            COMMAND ${PYTHON_EXECUTABLE} ${setup_file} -v
+            build
+            --build-base=${CMAKE_CURRENT_BINARY_DIR}/build
+            install
+            --install-purelib=${VLD_NATIVE}/${dest_dir}
+            DEPENDS  ${setup_file} ${ARGN}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+
+    add_custom_target(${target_name} ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/build)
+    # also use distutils for the install ...
+    FILE(TO_NATIVE_PATH ${VISIT_INSTALLED_VERSION_LIB} VIVL_NATIVE)
+    STRING(REPLACE "\\" "\\\\" VIVL_ESC_PATH "${VIVL_NATIVE}")
+    INSTALL(CODE
+       "
+       EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+           COMMAND ${PYTHON_EXECUTABLE} ${setup_file} -v
+           build   \"--build-base=${CCBD_ESC_PATH}\\\\build_install\"
+           install \"--install-purelib=${VIVL_ESC_PATH}\\\\${dest_dir}\")
+       MESSAGE(STATUS \"\${PY_DIST_UTILS_INSTALL_OUT}\")
+       ")
+ENDIF(NOT WIN32)
 
 
 ENDFUNCTION(PYTHON_ADD_DISTUTILS_SETUP)
@@ -363,8 +400,10 @@ FUNCTION(PYTHON_ADD_HYBRID_MODULE target_name dest_dir setup_file py_sources)
                                ${setup_file}
                                ${py_sources})
     PYTHON_ADD_MODULE(${target_name} ${ARGN})
-    SET_TARGET_PROPERTIES(${target_name} PROPERTIES
-                                         LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${dest_dir}/${target_name}/)
+    IF(NOT WIN32)
+        SET_TARGET_PROPERTIES(${target_name} PROPERTIES
+                                             LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${dest_dir}/${target_name}/)
+    ENDIF(NOT WIN32)
     ADD_DEPENDENCIES(${target_name} "${target_name}_py_setup")
     VISIT_INSTALL_TARGETS_RELATIVE(${dest_dir}/${target_name} ${target_name})
 
@@ -408,16 +447,20 @@ IF(PYTHONLIBS_FOUND AND NOT VISIT_PYTHON_SKIP_INSTALL)
 
             # Install the Python headers
             IF (NOT WIN32)
-                INSTALL(DIRECTORY ${PYTHON_INCLUDE_PATH}
-                  DESTINATION ${VISIT_INSTALLED_VERSION_INCLUDE}/python/include
-                  FILE_PERMISSIONS OWNER_READ OWNER_WRITE 
-                                   GROUP_READ GROUP_WRITE 
-                                   WORLD_READ
-                  DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE 
-                                        GROUP_READ GROUP_WRITE GROUP_EXECUTE 
-                                        WORLD_READ             WORLD_EXECUTE
-                  PATTERN ".svn" EXCLUDE
-                )
+                IF(VISIT_HEADERS_SKIP_INSTALL)
+                    MESSAGE(STATUS "Skipping python headers installation")
+                ELSE(VISIT_HEADERS_SKIP_INSTALL)
+                    INSTALL(DIRECTORY ${PYTHON_INCLUDE_PATH}
+                        DESTINATION ${VISIT_INSTALLED_VERSION_INCLUDE}/python/include
+                        FILE_PERMISSIONS OWNER_READ OWNER_WRITE 
+                                         GROUP_READ GROUP_WRITE 
+                                         WORLD_READ
+                        DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE 
+                                              GROUP_READ GROUP_WRITE GROUP_EXECUTE 
+                                              WORLD_READ             WORLD_EXECUTE
+                        PATTERN ".svn" EXCLUDE
+                        )
+                ENDIF(VISIT_HEADERS_SKIP_INSTALL)
                 #
                 # CDH:
                 # We also need to install the headers into lib/python dir
@@ -439,6 +482,9 @@ IF(PYTHONLIBS_FOUND AND NOT VISIT_PYTHON_SKIP_INSTALL)
                 # The WIN32 & NOT WIN32 cases seem almost the same here?
                 # The only diff I can see is the "*.h" glob is used?
                 # 
+                IF(VISIT_HEADERS_SKIP_INSTALL)
+                    MESSAGE(STATUS "Skipping python headers installation")
+                ELSE(VISIT_HEADERS_SKIP_INSTALL)
                 INSTALL(DIRECTORY ${PYTHON_INCLUDE_PATH}/
                     DESTINATION ${VISIT_INSTALLED_VERSION_INCLUDE}/python
                     FILE_PERMISSIONS OWNER_READ OWNER_WRITE 
@@ -450,6 +496,7 @@ IF(PYTHONLIBS_FOUND AND NOT VISIT_PYTHON_SKIP_INSTALL)
                     FILES_MATCHING PATTERN "*.h"
                     PATTERN ".svn" EXCLUDE
                 )
+                ENDIF(VISIT_HEADERS_SKIP_INSTALL)
                 #
                 # CDH:
                 # We also need to install the headers into lib/python dir

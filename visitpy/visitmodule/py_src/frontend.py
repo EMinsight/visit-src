@@ -44,7 +44,14 @@
 #
 #
 # Modifications:
+#  Brad Whitlock, Thu Jul 26 11:57:51 PDT 2012
+#  Explicitly load shared library dependencies when VisIt is installed on a 
+#  platform that needs that. That way we don't have to force the user to set
+#  LD_LIBRARY_PATH before running a system Python. 
 #
+#  Brad Whitlock, Thu Jul 26 15:05:16 PDT 2012
+#  Make "from visit import *" add the VisIt functions to the main namespace
+#  as was intended.
 #
 ###############################################################################
 
@@ -55,9 +62,13 @@ import imp
 
 from os.path import join as pjoin
 
-__all__ = ["Launch","AddArgument","SetDebugLevel","GetDebugLevel"]
+__all__ = ["Launch","LaunchNowin","AddArgument","SetDebugLevel","GetDebugLevel"]
 
 def Launch(vdir=None):
+    return VisItModuleState.launch(vdir)
+
+def LaunchNowin(vdir=None):
+    VisItModuleState.add_argument("-nowin")
     return VisItModuleState.launch(vdir)
 
 def AddArgument(arg):
@@ -94,18 +105,28 @@ class VisItModuleState(object):
             if not cls.debug_lvl is None:
                 mod.SetDebugLevel(str(cls.debug_lvl))
             vcmd = cls.__visit_cmd(vdir,[])
+            
             # this will add functions to the current
             # 'visit' module
             mod.Launch(vcmd)
-            # if visit does not exist in __main__, the
-            # user did an "from visit import *"
-            # we need to refresh the entries in __main__
+
+            # if SetDebugLevel exists in __main__, then the user did
+            # did "from visit import *". the Launch() added functions to
+            # the 'visit' module so we need to copy over the functions
+            # from the 'visit' module into __main__. We check for
+            # the SetDebugLevel function because it's in the frontend
+            # 'visit' module and because whichever way we import the 
+            # 'visit' module, there seems to be a 'visit' entry in
+            # __main__. 
             main_mod = __import__("__main__")
-            if not "visit" in main_mod.__dict__:
+            if "SetDebugLevel" in main_mod.__dict__.keys():
                 for k,v in mod.__dict__.items():
                     # avoid hidden module vars
                     if not k.startswith("__"):
                         main_mod.__dict__[k] = v
+                # Tell the VisIt module that it uses a local namespace,
+                # which helps it get command recording right.
+                mod.LocalNameSpace()
             launched = True
         except Exception, e:
             print "ERROR: %s" % e
@@ -114,6 +135,27 @@ class VisItModuleState(object):
     def __load_visitmodule(cls,mod_file):
         mod_path = os.path.split(mod_file)[0]
         mfile, mpath, mdes =  imp.find_module('visitmodule',[mod_path ])
+        # If VisIt is installed, preemptively try to dlopen the libraries 
+        # upon which the visitmodule depends. During package creation, VisIt
+        # libraries get their rpath stripped so the path to the various
+        # VisIt libraries is no longer known. Without setting LD_LIBRARY_PATH
+        # before running Python, the module import would fail. To avoid
+        # having to set that variable, we explicitly load the shared libraries
+        # we need (in the right order).
+        installed_on_afflicted_platform = False
+        for platform in ("linux-intel", "linux-x86_64"):
+            if platform in mod_path:
+                installed_on_afflicted_platform = True
+                break
+        if installed_on_afflicted_platform:
+            import ctypes
+            site_pkg = os.path.split(mod_path)[0]
+            libdir = os.path.split(site_pkg)[0]
+            ext = ".so"
+            libs = ("libvisitcommon","libavtdbatts","libviewerrpc","libviewerproxy","libvisitpy")
+            for lib in libs:
+                libfile = pjoin(libdir,lib + ext)
+                a = ctypes.cdll.LoadLibrary(libfile)
         res = None
         try:
             res = imp.load_module("visit", mfile, mpath, mdes)

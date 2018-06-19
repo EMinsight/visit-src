@@ -64,6 +64,7 @@
 #include <vtkPointData.h>
 #include <vtkPolyData.h>
 #include <vtkPolyDataReader.h>
+#include <vtkRectilinearGrid.h>
 #include <vtkStructuredGrid.h>
 #include <vtkUnsignedCharArray.h>
 #include <vtkUnstructuredGrid.h>
@@ -458,6 +459,10 @@ avtXRayFilter::SetDivideEmisByAbsorb(bool flag)
 //    Moved some code to ImageStripExecute, call a templatized version of the
 //    method for double-precision support.
 //
+//    Eric Brugger, Wed Jul 18 13:05:27 PDT 2012
+//    I corrected a bug where the filter would crash when running in parallel
+//    for some combinations of processor count and image size.
+// 
 // ****************************************************************************
 
 void
@@ -473,20 +478,20 @@ avtXRayFilter::Execute(void)
     pixelsForLastPass = ((numPixels % actualPixelsPerIteration) == 0) ?
         actualPixelsPerIteration : numPixels % actualPixelsPerIteration;
 
-    pixelsForFirstPassFirstProc = ((pixelsForFirstPass % PAR_Size()) == 0) ?
-        (pixelsForFirstPass / PAR_Size()) :
-        (pixelsForFirstPass / PAR_Size() + 1);
+    pixelsForFirstPassFirstProc = pixelsForFirstPass / PAR_Size();
+    while (PAR_Size() > 1 && (pixelsForFirstPassFirstProc + 1) * (PAR_Size() - 1) < pixelsForFirstPass)
+        pixelsForFirstPassFirstProc++;
     pixelsForFirstPassLastProc =
         ((pixelsForFirstPass % pixelsForFirstPassFirstProc) == 0) ?
         pixelsForFirstPassFirstProc :
-        pixelsForFirstPass % pixelsForFirstPassFirstProc;
-    pixelsForLastPassFirstProc = ((pixelsForLastPass % PAR_Size()) == 0) ?
-        (pixelsForLastPass / PAR_Size()) :
-        (pixelsForLastPass / PAR_Size() + 1);
+        pixelsForFirstPass - (pixelsForFirstPassFirstProc * (PAR_Size() - 1));
+    pixelsForLastPassFirstProc = pixelsForLastPass / PAR_Size();
+    while (PAR_Size() > 1 && (pixelsForLastPassFirstProc + 1) * (PAR_Size() - 1) < pixelsForLastPass)
+        pixelsForLastPassFirstProc++;
     pixelsForLastPassLastProc =
         ((pixelsForLastPass % pixelsForLastPassFirstProc) == 0) ?
         pixelsForLastPassFirstProc :
-        pixelsForLastPass % pixelsForLastPassFirstProc;
+        pixelsForLastPass - (pixelsForLastPassFirstProc * (PAR_Size() - 1));
 
     int numPasses = numPixels / actualPixelsPerIteration;
     if (numPixels % actualPixelsPerIteration != 0)
@@ -523,12 +528,21 @@ avtXRayFilter::Execute(void)
         linesForThisPass = pixelsForThisPass;
         linesForThisPassFirstProc = pixelsForThisPassFirstProc;
 
-        int pixelsForThisProc = ((pixelsForThisPass % PAR_Size()) == 0) ?
-            (pixelsForThisPass / PAR_Size()) :
-            (pixelsForThisPass / PAR_Size() + 1);
-        if (PAR_Rank() == PAR_Size() - 1)
-            if (pixelsForThisPass % pixelsForThisProc != 0)
-                pixelsForThisProc = pixelsForThisPass % pixelsForThisProc;
+        int pixelsForThisProc;
+        if (PAR_Rank() < PAR_Size() - 1)
+        {
+            if (iPass < numPasses - 1)
+                pixelsForThisProc = pixelsForFirstPassFirstProc;
+            else
+                pixelsForThisProc = pixelsForLastPassFirstProc;
+        }
+        else
+        {
+            if (iPass < numPasses - 1)
+                pixelsForThisProc = pixelsForFirstPassLastProc;
+            else
+                pixelsForThisProc = pixelsForLastPassLastProc;
+        }
 
         imageFragmentSizes[iPass] = pixelsForThisProc;
 
@@ -843,6 +857,9 @@ avtXRayFilter::PostExecute(void)
 //    Templatized this method, for double-precision support.  Added macros for
 //    retrieving cell points based on data type. (Fast paths for float/double).
 //
+//    Eric Brugger, Fri May 11 16:33:04 PDT 2012
+//    I added logic to handle rectilinear meshes.
+//
 // ****************************************************************************
 
 #define avtXRayFilter_GetCellPointsTypeMacro(ptype, n) \
@@ -943,7 +960,179 @@ avtXRayFilter::CartesianExecute(vtkDataSet *ds, int &nLinesPerDataset,
     double p6[3]={0., 0., 0.};
     double p7[3]={0., 0., 0.};
 
-    if (ds->GetDataObjectType() == VTK_STRUCTURED_GRID)
+    if (ds->GetDataObjectType() == VTK_RECTILINEAR_GRID)
+    {
+        vtkRectilinearGrid *rgrid = (vtkRectilinearGrid *) ds;
+        vtkDataArray *xCoords = rgrid->GetXCoordinates();
+        vtkDataArray *yCoords = rgrid->GetYCoordinates();
+        vtkDataArray *zCoords = rgrid->GetZCoordinates();
+
+        int ndims[3];
+        rgrid->GetDimensions(ndims);
+
+        int zdims[3];
+        zdims[0] = ndims[0] - 1;
+        zdims[1] = ndims[1] - 1;
+        zdims[2] = ndims[2] - 1;
+
+        int nx = zdims[0];
+        int ny = zdims[1];
+        int nz = zdims[2];
+        int nxy = nx * ny;
+
+        for (i = 0 ; i < linesForThisPass ; i++)
+        {
+            double pt1[3];
+            pt1[0] = lines[6*i];
+            pt1[1] = lines[6*i+2];
+            pt1[2] = lines[6*i+4];
+            double pt2[3];
+            pt2[0] = lines[6*i+1];
+            pt2[1] = lines[6*i+3];
+            pt2[2] = lines[6*i+5];
+            double dir[3];
+            dir[0] = pt2[0] - pt1[0];
+            dir[1] = pt2[1] - pt1[1];
+            dir[2] = pt2[2] - pt1[2];
+
+            vector<int> list;
+            tree.GetElementsList(pt1, dir, list);
+            int nCells = list.size();
+            if (nCells == 0)
+                continue;  // No intersection
+
+            double lineLength = sqrt((pt2[0]-pt1[0]) * (pt2[0]-pt1[0]) +
+                                     (pt2[1]-pt1[1]) * (pt2[1]-pt1[1]) +
+                                     (pt2[2]-pt1[2]) * (pt2[2]-pt1[2]));
+
+            for (j = 0 ; j < nCells ; j++)
+            {
+                //
+                // Determine the index into the look up table.
+                //
+                int iCell = list[j];
+
+                int iZ = iCell / nxy;
+                int iXY = iCell % nxy;
+                int iY = iXY / nx;
+                int iX = iXY % nx;
+
+                if (xCoords->GetDataType() == VTK_FLOAT)
+                {
+                    float *xpts = static_cast<float*>(xCoords->GetVoidPointer(0)); \
+                    float *ypts = static_cast<float*>(yCoords->GetVoidPointer(0)); \
+                    float *zpts = static_cast<float*>(zCoords->GetVoidPointer(0)); \
+                    p0[0] = xpts[iX];
+                    p0[1] = ypts[iY];
+                    p0[2] = zpts[iZ];
+                    p1[0] = xpts[iX+1];
+                    p1[1] = ypts[iY];
+                    p1[2] = zpts[iZ];
+                    p2[0] = xpts[iX+1];
+                    p2[1] = ypts[iY+1];
+                    p2[2] = zpts[iZ];
+                    p3[0] = xpts[iX];
+                    p3[1] = ypts[iY+1];
+                    p3[2] = zpts[iZ];
+                    p4[0] = xpts[iX];
+                    p4[1] = ypts[iY];
+                    p4[2] = zpts[iZ+1];
+                    p5[0] = xpts[iX+1];
+                    p5[1] = ypts[iY];
+                    p5[2] = zpts[iZ+1];
+                    p6[0] = xpts[iX+1];
+                    p6[1] = ypts[iY+1];
+                    p6[2] = zpts[iZ+1];
+                    p7[0] = xpts[iX];
+                    p7[1] = ypts[iY+1];
+                    p7[2] = zpts[iZ+1];
+                }
+                else if (xCoords->GetDataType() == VTK_DOUBLE)
+                {
+                    double *xpts = static_cast<double*>(xCoords->GetVoidPointer(0)); \
+                    double *ypts = static_cast<double*>(yCoords->GetVoidPointer(0)); \
+                    double *zpts = static_cast<double*>(zCoords->GetVoidPointer(0)); \
+                    p0[0] = xpts[iX];
+                    p0[1] = ypts[iY];
+                    p0[2] = zpts[iZ];
+                    p1[0] = xpts[iX+1];
+                    p1[1] = ypts[iY];
+                    p1[2] = zpts[iZ];
+                    p2[0] = xpts[iX+1];
+                    p2[1] = ypts[iY+1];
+                    p2[2] = zpts[iZ];
+                    p3[0] = xpts[iX];
+                    p3[1] = ypts[iY+1];
+                    p3[2] = zpts[iZ];
+                    p4[0] = xpts[iX];
+                    p4[1] = ypts[iY];
+                    p4[2] = zpts[iZ+1];
+                    p5[0] = xpts[iX+1];
+                    p5[1] = ypts[iY];
+                    p5[2] = zpts[iZ+1];
+                    p6[0] = xpts[iX+1];
+                    p6[1] = ypts[iY+1];
+                    p6[2] = zpts[iZ+1];
+                    p7[0] = xpts[iX];
+                    p7[1] = ypts[iY+1];
+                    p7[2] = zpts[iZ+1];
+                }
+                else
+                {
+                    p0[0] = xCoords->GetTuple1(iX);
+                    p0[1] = yCoords->GetTuple1(iY);
+                    p0[2] = zCoords->GetTuple1(iZ);
+                    p1[0] = xCoords->GetTuple1(iX+1);
+                    p1[1] = yCoords->GetTuple1(iY);
+                    p1[2] = zCoords->GetTuple1(iZ);
+                    p2[0] = xCoords->GetTuple1(iX+1);
+                    p2[1] = yCoords->GetTuple1(iY+1);
+                    p2[2] = zCoords->GetTuple1(iZ);
+                    p3[0] = xCoords->GetTuple1(iX);
+                    p3[1] = yCoords->GetTuple1(iY+1);
+                    p3[2] = zCoords->GetTuple1(iZ);
+                    p4[0] = xCoords->GetTuple1(iX);
+                    p4[1] = yCoords->GetTuple1(iY);
+                    p4[2] = zCoords->GetTuple1(iZ+1);
+                    p5[0] = xCoords->GetTuple1(iX+1);
+                    p5[1] = yCoords->GetTuple1(iY);
+                    p5[2] = zCoords->GetTuple1(iZ+1);
+                    p6[0] = xCoords->GetTuple1(iX+1);
+                    p6[1] = yCoords->GetTuple1(iY+1);
+                    p6[2] = zCoords->GetTuple1(iZ+1);
+                    p7[0] = xCoords->GetTuple1(iX);
+                    p7[1] = yCoords->GetTuple1(iY+1);
+                    p7[2] = zCoords->GetTuple1(iZ+1);
+                }
+
+                double t;
+                int nInter = 0;
+                double inter[6];
+
+                if (IntersectLineWithQuad(p0, p1, p2, p3, pt1, dir, t))
+                    inter[nInter++] = t;
+                if (IntersectLineWithQuad(p4, p7, p6, p5, pt1, dir, t))
+                    inter[nInter++] = t;
+                if (IntersectLineWithQuad(p0, p4, p5, p1, pt1, dir, t))
+                    inter[nInter++] = t;
+                if (IntersectLineWithQuad(p1, p5, p6, p2, pt1, dir, t))
+                    inter[nInter++] = t;
+                if (IntersectLineWithQuad(p2, p6, p7, p3, pt1, dir, t))
+                    inter[nInter++] = t;
+                if (IntersectLineWithQuad(p0, p3, p7, p4, pt1, dir, t))
+                    inter[nInter++] = t;
+
+                if (nInter == 2)
+                {
+                    cells_matched.push_back(iCell);
+                    dist.push_back(inter[0]*lineLength);
+                    dist.push_back(inter[1]*lineLength);
+                    line_id.push_back(i);
+                }
+            }
+        }
+    }
+    else if (ds->GetDataObjectType() == VTK_STRUCTURED_GRID)
     {
         vtkStructuredGrid *sgrid = (vtkStructuredGrid *) ds;
         vtkPoints *points = sgrid->GetPoints();
@@ -1551,6 +1740,7 @@ static int
 AssignToProc(int val, int linesPerProc)
 {
     int proc = val / linesPerProc;
+    if (proc > PAR_Size() - 1) proc = PAR_Size() - 1;
     return proc;
 }
 #endif

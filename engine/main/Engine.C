@@ -111,6 +111,7 @@
 #include <avtDataObjectToDatasetFilter.h>
 #include <avtVariableCache.h>
 #include <Environment.h>
+#include <avtStructuredDomainBoundaries.h>
 
 #include <string>
 using std::string;
@@ -340,8 +341,12 @@ protected:
 //    Brad Whitlock, Mon Oct 10 11:22:45 PDT 2011
 //    Added enginePropertiesRPC.
 //
-//   Dave Pugmire, Wed Apr 18 09:05:40 EDT 2012
-//   Add alarmEnabled flag. Setting alarm(0) is not disabling the alarm.
+//    Dave Pugmire, Wed Apr 18 09:05:40 EDT 2012
+//    Add alarmEnabled flag. Setting alarm(0) is not disabling the alarm.
+//
+//    Gunther H. Weber, Thu Jun 14 17:29:02 PDT 2012
+//    Add command line option to enable new ghost zone generation for
+//    AMRStitchCell operator.
 //
 // ****************************************************************************
 
@@ -2178,6 +2183,10 @@ Engine::ProcessCommandLine(int argc, char **argv)
         {
             LoadBalancer::SetScheme(LOAD_BALANCE_ABSOLUTE);
         }
+        else if (strcmp(argv[i], "-create-ghosts-for-t-intersections") == 0)
+        {
+            avtStructuredDomainBoundaries::SetCreateGhostsForTIntersections(true);
+        }
         else if (strcmp(argv[i], "-plugindir") == 0  && (i+1) < argc )
         {
             pluginDir = argv[i+1];
@@ -3490,7 +3499,11 @@ Engine::ResetTimeout(int timeout)
 //    Allow xfer's updates so we can send the data back to the viewer in
 //    case we're already responding to an update from the viewer.
 //
+//    Brad Whitlock, Mon Aug  6 12:07:59 PDT 2012
+//    Print the metadata we're sending.
+//
 // ****************************************************************************
+
 void
 Engine::PopulateSimulationMetaData(const std::string &db,
                                    const std::string &fmt)
@@ -3517,6 +3530,12 @@ Engine::PopulateSimulationMetaData(const std::string &db,
     // Send the metadata and SIL to the viewer
     if(!quitRPC->GetQuit())
     {
+        if (DebugStream::Level4())
+        {
+            debug4 << "Engine::PopulateSimulationMetaData: sending metadata to client:" << endl;
+            metaData->Print(DebugStream::Stream4());
+        }
+
         simxfer->SetUpdate(true);
         metaData->Notify();
         silAtts->SelectAll();
@@ -3542,7 +3561,14 @@ Engine::PopulateSimulationMetaData(const std::string &db,
 //    Skip this if there's not a filename -- it means we haven't had
 //    a chance to open the simulation file yet.
 //
+//    Brad Whitlock, Mon Aug  6 12:05:09 PDT 2012
+//    Re-add the database to the load balancer so it gets a new domain to
+//    processor mapping for the new time step. This is needed since in AMR,
+//    the domains can move randomly to different processors or there can be
+//    a different number of domains.
+//
 // ****************************************************************************
+
 void
 Engine::SimulationTimeStepChanged()
 {
@@ -3560,6 +3586,9 @@ Engine::SimulationTimeStepChanged()
 
     // Send new metadata to the viewer
     PopulateSimulationMetaData(filename, format);
+
+    // Force new io information into the load balancer.
+    lb->AddDatabase(filename, *database, 0);
 }
 
 // ****************************************************************************

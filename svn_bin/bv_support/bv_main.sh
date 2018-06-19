@@ -496,8 +496,9 @@ function enable_dependent_libraries
         do
             $"bv_${depend_lib}_is_enabled"
             if [[ $? == 0 ]]; then
-                echo "library ${depend_lib} was not set but another library depends on it, enabling it"
-                $"bv_${depend_lib}_enable"
+                error "ERROR: library ${depend_lib} was not set ${reqlibs[$bv_i]} depends on it, please enable"
+                #echo "library ${depend_lib} was not set but another library depends on it, enabling it"
+                #$"bv_${depend_lib}_enable"
             fi
         done
     done
@@ -521,6 +522,7 @@ function enable_dependent_libraries
         do
             $"bv_${depend_lib}_is_enabled"
             if [[ $? == 0 ]]; then
+                error "ERROR: library ${depend_lib} was not set ${optlibs[$bv_i]} depends on it, please enable"
                 echo "library ${depend_lib} was not set but another library depends on it, enabling it"
                 $"bv_${depend_lib}_enable"
             fi
@@ -1358,7 +1360,11 @@ if [[ "$DOWNLOAD_ONLY" == "no" ]] ; then
          fi
       else
          if [[ "$GRAPHICAL" == "yes" ]] ; then
-             $DLG --backtitle "$DLG_BACKTITLE" --yesno "The third party library location does not exist. Create it?" 0 0
+             if [[ "$REDIRECT_ACTIVE" == "yes" ]] ; then
+                 $DLG --backtitle "$DLG_BACKTITLE" --yesno "The third party library location does not exist. Create it?" 0 0 1>&3
+             else
+                 $DLG --backtitle "$DLG_BACKTITLE" --yesno "The third party library location does not exist. Create it?" 0 0
+             fi
              if [[ $? == 1 ]] ; then
                  error "The third party library location does not exist." \
                        "Bailing out."
@@ -1400,7 +1406,7 @@ initialize_module_variables
 # Later we will build Qt.  We are going to bypass their licensing agreement,
 # so echo it here.
 #
-if [[ "$USE_SYSTEM_QT" != "yes" && "$DO_QT" == "yes" ]]; then
+if [[ "$USE_SYSTEM_QT" != "yes" && "$DO_QT" == "yes" && "$DO_SERVER_COMPONENTS_ONLY" == "no" ]]; then
 
     check_if_installed "qt" $QT_VERSION
     if [[ $? == 0 ]] ; then

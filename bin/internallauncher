@@ -741,6 +741,38 @@ $0 = shift @ARGV;
 #    Brad Whitlock, Fri Mar 30 10:02:36 PDT 2012
 #    Remove purple and Q machine hacks. Add LSU's "philip" machine.
 #
+#    Eric Brugger, Thu May  3 10:31:06 PDT 2012
+#    I added a hack for hoth.
+#
+#    Gunther H. Weber, Mon May  7 11:36:25 PDT 2012
+#    Removed support/hack for retired Franklin # NERSC. Added support/hack for
+#    Carver at NERSC. Instead of hard coding different "mpirun" command on
+#    Euclid change PATH to include appropriate command.
+#
+#    Eric Brugger, Thu May 10 09:13:40 PDT 2012
+#    I corrected an error in the path to "mpirun" for Euclid. It was using
+#    openmpi 1.4.1, when it should use openmpi 1.4.4. I removed support
+#    for xchem.
+#
+#    Eric Brugger, Fri Jun  8 11:20:44 PDT 2012
+#    I modified the script so that the date portion of the temporary filename
+#    created for the batch script that launches a compute engine in the batch
+#    system can no longer have spaces.
+#
+#    Eric Brugger, Wed Jun 13 10:27:14 PDT 2012
+#    I modified the script to run the chaos 4 version if running on atlas,
+#    prism or rzthriller.
+#
+#    Eric Brugger, Wed Jul 18 12:17:44 PDT 2012
+#    I modified the script to run the chaos 4 version if running on rzbeast.
+#
+#    Hank Childs, Mon Jul 23 10:21:59 PDT 2012
+#    Change invocation of xterm, to deal with change in -e option in xterm
+#    V271 option.
+#
+#    Eric Brugger, Mon Jul 30 10:11:10 PDT 2012
+#    I modified the script to run the chaos 4 version if running on gremlin.
+#
 ###############################################################################
 
 use POSIX qw(ceil);
@@ -1789,61 +1821,8 @@ if ( ($parallel) and $exe_name eq "engine" and $host =~ /krakenpf/)
     }
 }
 
-
 # ----
-# HACK for franklin @ NERSC
-#
-# ----
-$IsRunningOnFranklinNERSC = 0;
-if ( $host =~ /^nid/ )
-{
-    $nodename=`/usr/syscom/nsg/bin/nodename`;
-    if ($nodename =~ /^franklin/ || $nodename =~ /^nid/)
-    {
-        $IsRunningOnFranklinNERSC = 1;
-        $ENV{LD_LIBRARY_PATH} = "/opt/gcc/4.4.4/snos/lib64";
-        if ($ENV{PATH} eq "")
-        {
-            $ENV{PATH} = "/opt/torque/2.3.4-200809011357/bin";
-        }
-        else
-        {
-            $ENV{PATH} = join ':' , ("$ENV{PATH}","/opt/torque/2.3.4-200809011357/bin");
-        }
-        if ($exe_name eq "gui")
-        {
-            print "The VisIt install on Franklin is provided for the purpose of running ";
-            print "the parallel remote visualization backend on Franklin or run scripts ";
-            print "via VisIt's Python Command Line Interface (CLI). If you need to run ";
-            print "VisIt's gui, please install VisIt $ver on your local workstation.\n\n";
-            print "For more information, see ";
-            print "http://www.nersc.gov/nusers/resources/software/apps/visualization/visit/visit_franklin_remote.php\n\n";
-            print "If you do not want to install VisIt on your local machine, run the ";
-            print "VisIt GUI on Euclid, and follow the instructions under \"Running a ";
-            print "remote compute engine on Franklin\" on the Web page above. (VisIt on ";
-            print "Euclid already is configured with a host profile for Franklin).\n\n";
-            print "Please note that you will achieve the best performance by running the ";
-            print "VisIt GUI on your local workstation and the remote compute engine on ";
-            print "Franklin (or any other NERSC machine with VisIt).\n\n";
-            print "If you would like to perform batch data analysis or visualization on ";
-            print "Franklin using VisIt\'s CLI, add the options \"-cli -nowin\" to your ";
-            print "command line. Please contact NERSC Analytics at consult@nersc.gov for ";
-            print "further help.\n\n";
-            print "For more information about running VisIt at NERSC:";
-            print "http://www.nersc.gov/nusers/resources/software/apps/visualization/visit/\n\n";
-            exit 1;
-        }
-        elsif (($exe_name eq "engine") and not $parallel)
-        {
-            print "The VisIt install on Franklin only supports running a parallel ";
-            print "engine on the compute nodes!\n";
-            exit 1;
-        }
-    }
-}
-
-# ----
-# HACK for hopper @ NERSC
+# HACK for Hopper @ NERSC
 #
 # ----
 $IsRunningOnHopperNERSC = 0;
@@ -1857,7 +1836,8 @@ if ($ENV{NERSC_HOST} eq "hopper")
     {
         if ((!$envonly) and ($exe_name eq "gui"))
         {
-            print "To run the VisIt GUI on Hopper, you need to run it on a MOM node!\n\n ";
+            print "Do not run the VisIt GUI on Hopper. Run it on you local ";
+            print "workstation (preferred/best performance) or Euclid!\n\n ";
             print "For more information about running VisIt at NERSC:";
             print "http://www.nersc.gov/nusers/resources/software/apps/visualization/visit/\n\n";
             exit 1;
@@ -1875,7 +1855,7 @@ if ($ENV{NERSC_HOST} eq "hopper")
             else
             {
                 print "The VisIt install on Hopper does not support running ";
-                print "a serial engine on the login nodes!\n";
+                print "a serial engine!\n";
                 exit 1;
             }
         }
@@ -1883,26 +1863,28 @@ if ($ENV{NERSC_HOST} eq "hopper")
 }
 
 # ----
-# HACK for euclid @ NERSC
+# HACK for Euclid @ NERSC
 #
 # ----
-$IsRunningOnEuclidNERSC = 0;
-if ( $host =~ /^euclid.nersc.gov/ )
+if ($host eq "euclid.nersc.gov")
 {
-    $IsRunningOnEuclidNERSC = 1;
+    $ENV{PATH} = join ':' ,
+        ("/usr/common/usg/openmpi/1.4.4/gnu/bin",
+         "$ENV{PATH}");
 }
 
 # ----
-# HACK for xchem @ LLNL
+# HACK for Carver @ NERSC
 #
 # ----
-$IsRunningOnXchemLLNL = 0;
-if ( $host =~ /^xchem.llnl.gov/ )
+$IsRunningOnCarverNERSC = 0;
+if ( $host =~ /^cvrsvc/ )
 {
-    $IsRunningOnXchemLLNL = 1;
-    $ENV{LD_LIBRARY_PATH} = join ':' ,
-        ("/opt/intel/cc/10.1.021/lib",
-         "/opt/llnl/mpich2_shared/ch3-ssm/lib");
+    $ENV{PATH} = join ':' ,
+        ("/usr/syscom/opt/torque/default/bin",
+         "/usr/common/usg/openmpi/1.4.5/gcc/bin",
+         "$ENV{PATH}");
+    $IsRunningOnCarverNERSC = 1;
 }
 
 # ----
@@ -1977,7 +1959,7 @@ if ( $host =~ /^ci-fe\d+$/ or $host =~ /^ci-login\d+$/ or
     {
         $IsRunningOnCieloLANL = 1;
         $ENV{LIBGL_ALWAYS_INDIRECT} = "1";
-        $ENV{LD_LIBRARY_PATH} = "/opt/cray/mpt/5.2.0/xt/gemini/mpich2-gnu/lib:/opt/gcc/mpc/0.8.1/lib:/opt/gcc/mpfr/2.4.2/lib:/opt/gcc/gmp/4.3.2/lib:/opt/gcc/4.5.2/snos/lib64:$ENV{LD_LIBRARY_PATH}";
+        $ENV{LD_LIBRARY_PATH} = "/opt/cray/mpt/5.4.2/xt/gemini/mpich2-gnu/46/lib:/opt/gcc/mpc/0.8.1/lib:/opt/gcc/mpfr/2.4.2/lib:/opt/gcc/gmp/4.3.2/lib:/opt/gcc/4.6.2/snos/lib64:/opt/cray/atp/1.4.1/lib:$ENV{LD_LIBRARY_PATH}";
     }
 }
 
@@ -2015,6 +1997,18 @@ if ( $host =~ /^philip\d+$/ )
         $ENV{LD_LIBRARY_PATH} = join ':' ,
                              ("$ENV{LD_LIBRARY_PATH}",
                               "/usr/local/compilers/GNU/gcc-4.3.2/lib64");
+    }
+}
+
+# ----
+# HACK for Hoth @ LLNL
+# ----
+if ( $host =~ /^hoth/ )
+{
+    chomp($domain = `hostname -d`);
+    if ( $domain eq "llnl.gov" )
+    {
+        $ENV{LIBGL_ALWAYS_INDIRECT} = "1";
     }
 }
 
@@ -2114,7 +2108,12 @@ for ($os) {
             push @supportedarchs, "linux-ia64";
         }
         elsif ($mach =~ /x86_64/) {
-            push @supportedarchs, "linux-x86_64";
+            if ($host =~ /^atlas/ || $host =~ /^prism/ || $host =~ /^rzthriller/ || $host =~ /^rzbeast/ || $host =~ /^gremlin/) {
+                push @supportedarchs, "linux-x86_64-chaos4";
+            }
+            else {
+                push @supportedarchs, "linux-x86_64";
+            }
         }
         elsif ($mach =~ /ppc64/) {
             if ($exe_name eq "engine" && $req_compiler eq "powerpc-bgp-linux-g++") {
@@ -2720,7 +2719,7 @@ if ($procs_set or ($parallel and $parlaunch_set))
         push @parcmd, @launchargs if $launchargs_set;
         push @parcmd, "-n", $procs if $procs_set;
         push @parcmd, "-N",  $nodes if $nodes_set;
-        if ( $IsRunningOnFranklinNERSC || $IsRunningOnJaguar_ORNL )
+        if ( $IsRunningOnJaguar_ORNL )
         {
             push @parcmd, "$visitbindir/env";
             push @parcmd, "LD_LIBRARY_PATH=$visitlibdir:$visitarchdir/system_libs";
@@ -2746,14 +2745,7 @@ if ($procs_set or ($parallel and $parlaunch_set))
     # mpirun
     elsif ($launch eq "mpirun")
     {
-        if ($IsRunningOnEuclidNERSC)
-        {
-            @parcmd = ("/usr/common/usg/openmpi/1.4.1/gnu/bin/mpirun");
-        }
-        else
-        {
-            @parcmd = ("mpirun");
-        }
+        @parcmd = ("mpirun");
         if ($debug_totalview eq $exe_name)
         {
             push @parcmd, "-tv";
@@ -3011,7 +3003,7 @@ if ($procs_set or ($parallel and $parlaunch_set))
             @mpicmd = "@visitcmd";
         }
 
-        chomp($tdate = `date | cut -c 12-19`);
+        chomp($tdate = `date | sed "s/ /-/g"`);
         chomp($tuser = `whoami`);
         $script_dir="/tmp";
         $tfilename = "$script_dir/visit.$tuser.$tdate";
@@ -3090,7 +3082,7 @@ if ($procs_set or ($parallel and $parlaunch_set))
         ($psubcmd, $sublauncher) = split /\W+/, substr($launch,4);
         $plauncher = substr($launch,0,4);
         $sublauncher = "" if (!defined $sublauncher);
-        chomp($tdate = `date | cut -c 12-19`);
+        chomp($tdate = `date | sed "s/ /-/g"`);
         chomp($tuser = `whoami`);
         $script_dir="/tmp";
         if ($IsRunningOnEureka_ANL)
@@ -3172,7 +3164,7 @@ if ($procs_set or ($parallel and $parlaunch_set))
                     $ppn = ceil($procs / $nodes);
                     push @mpicmd, "-N",  $ppn;
                 }
-                if ( $IsRunningOnFranklinNERSC || $IsRunningOnJaguar_ORNL )
+                if ( $IsRunningOnJaguar_ORNL )
                 {
                     push @mpicmd, "$visitbindir/env LD_LIBRARY_PATH=$visitlibdir:$visitarchdir/system_libs";
                 }
@@ -3345,6 +3337,28 @@ if ($procs_set or ($parallel and $parlaunch_set))
             push @parcmd, @newlaunchargs if $newlaunchargs_set;
             $nodes = $procs if (!$nodes_set);
             $ppn = ceil($procs / $nodes);
+
+            if ($IsRunningOnCarverNERSC)
+            { 
+                if ($part eq "reg_xlmem")
+                {
+                    # There is a limit of one node for reg_xlmem
+                    $nodes = 1;
+                    $ppn = $procs;
+                }
+                else
+                {
+                    # Even though Carver nodes may have a different number
+                    # of cores per nodes, this is a reasonable default for most
+                    # nodes. It is better to set nodes and cores manually in the
+                    # launch profile.
+                    if (!$nodes_set)
+                    {
+                        $nodes = ceil($procs / 8);
+                        $ppn = 8;
+                    }
+                }
+            }
             if ($IsRunningOnRanger_TACC)
             {
                 $thread_factor=16;
@@ -3368,15 +3382,12 @@ if ($procs_set or ($parallel and $parlaunch_set))
                 }
                 push @parcmd, "-pe", "${tacc_way}way", $tacc_procs;
             }
-            elsif ($IsRunningOnFranklinNERSC || $IsRunningOnHopperNERSC)
+            elsif ($IsRunningOnHopperNERSC)
             {
                 push @parcmd, "-d", "$cwd" if $wd_set;
-                if ($nodes_set) {
-                    if ($IsRunningOnFranklinNERSC) {
-                        $nprocpernode=4;
-                    } else {
-                        $nprocpernode=24;
-                    }
+                if ($nodes_set)
+                {
+                    $nprocpernode=24;
                     $nwidth=$nprocpernode*$nodes;
                     # If the number of nodes is set, we need to modify mppwidth to ensure
                     # allocation of the proper number of nodes. The number of nodes allocated
@@ -3785,7 +3796,8 @@ else
                     @visitcmd = ("xterm", "-title", "VisIt $exe_name$ver", "-e");
                 }
 
-                push @visitcmd, @tmpcmd;
+                $oneString=join(" ", @tmpcmd);
+                push @visitcmd, "$oneString";
             }
         }
 

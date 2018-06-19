@@ -51,6 +51,16 @@
 #   Brad Whitlock, Wed Feb  1 11:06:20 PST 2012
 #   Added domainbounds example.
 #
+#   Kathleen Biagas, Thu Jun 21 11:25:43 MST 2012 
+#   Use new ADD_TARGET_INCLUDE function to add includes to a target instead
+#   of setting them via compile flags.  
+#
+#   Brad Whitlock, Wed Jul 18 17:03:01 PDT 2012
+#   Added materialvar.c
+#
+#   Brad Whitlock, Mon Aug 13 11:37:49 PDT 2012
+#   Added multiblock.c
+#
 #****************************************************************************/
 
 INCLUDE_DIRECTORIES(
@@ -105,9 +115,8 @@ FUNCTION(ADD_SIMV1_SIMULATION target)
     ADD_EXECUTABLE(sim_${target} ${ARGN})
     SET_SIMULATION_PROPERTIES(${target})
     TARGET_LINK_LIBRARIES(sim_${target} sim ${EXTRA_SIM_LIBS})
-    ADD_TARGET_COMPILE_FLAGS(sim_${target}
-        -I${VISIT_SOURCE_DIR}/sim/V1/lib
-        -I${VISIT_SOURCE_DIR}/databases/SimV1
+    ADD_TARGET_INCLUDE(sim_${target} ${VISIT_SOURCE_DIR}/sim/V1/lib
+        ${VISIT_SOURCE_DIR}/databases/SimV1
     )
     ADD_EXPORT_DYNAMIC_LINK_FLAGS(${target})
 ENDFUNCTION(ADD_SIMV1_SIMULATION)
@@ -117,9 +126,8 @@ FUNCTION(ADD_FORTRAN_SIMV1_SIMULATION target)
         ADD_EXECUTABLE(sim_${target} ${ARGN} simulationexample.f)
         SET_SIMULATION_PROPERTIES(${target})
         TARGET_LINK_LIBRARIES(sim_${target} simf sim ${EXTRA_SIM_LIBS})
-        ADD_TARGET_COMPILE_FLAGS(sim_${target}
-            -I${VISIT_SOURCE_DIR}/sim/V1/lib
-            -I${VISIT_SOURCE_DIR}/databases/SimV1
+        ADD_TARGET_INCLUDE(sim_${target} ${VISIT_SOURCE_DIR}/sim/V1/lib
+            ${VISIT_SOURCE_DIR}/databases/SimV1
         )
         ADD_EXPORT_DYNAMIC_LINK_FLAGS(${target})
     ENDIF(VISIT_FORTRAN)
@@ -130,9 +138,8 @@ FUNCTION(ADD_PARALLEL_SIMV1_SIMULATION target)
     SET_SIMULATION_PROPERTIES(${target})
     SET_TARGET_PROPERTIES(sim_${target} PROPERTIES HAS_CXX ON)
     TARGET_LINK_LIBRARIES(sim_${target} sim ${EXTRA_SIM_LIBS})
-    ADD_TARGET_COMPILE_FLAGS(sim_${target}
-        -I${VISIT_SOURCE_DIR}/sim/V1/lib
-        -I${VISIT_SOURCE_DIR}/databases/SimV1
+    ADD_TARGET_INCLUDE(sim_${target} ${VISIT_SOURCE_DIR}/sim/V1/lib
+        ${VISIT_SOURCE_DIR}/databases/SimV1
     )
     ADD_EXPORT_DYNAMIC_LINK_FLAGS(${target})
 ENDFUNCTION(ADD_PARALLEL_SIMV1_SIMULATION)
@@ -142,9 +149,8 @@ FUNCTION(ADD_PARALLEL_FORTRAN_SIMV1_SIMULATION target)
         ADD_PARALLEL_FORTRAN_EXECUTABLE(sim_${target} ${ARGN} simulationexample.f)
         SET_SIMULATION_PROPERTIES(${target})
         TARGET_LINK_LIBRARIES(sim_${target} simf sim ${EXTRA_SIM_LIBS})
-        ADD_TARGET_COMPILE_FLAGS(sim_${target}
-            -I${VISIT_SOURCE_DIR}/sim/V1/lib
-            -I${VISIT_SOURCE_DIR}/databases/SimV1
+        ADD_TARGET_INCLUDE(sim_${target} ${VISIT_SOURCE_DIR}/sim/V1/lib
+            ${VISIT_SOURCE_DIR}/databases/SimV1
         )
         ADD_EXPORT_DYNAMIC_LINK_FLAGS(${target})
     ENDIF(VISIT_FORTRAN)
@@ -159,9 +165,7 @@ FUNCTION(ADD_SIMV2_SIMULATION target)
     SET_SIMULATION_PROPERTIES(${target})
     SET_TARGET_PROPERTIES(sim_${target} PROPERTIES HAS_CXX ON)
     TARGET_LINK_LIBRARIES(sim_${target} simV2 ${EXTRA_SIM_LIBS})
-    ADD_TARGET_COMPILE_FLAGS(sim_${target}
-        -I${VISIT_SOURCE_DIR}/sim/V2/lib
-    )
+    ADD_TARGET_INCLUDE(sim_${target} ${VISIT_SOURCE_DIR}/sim/V2/lib)
 ENDFUNCTION(ADD_SIMV2_SIMULATION)
 
 FUNCTION(ADD_FORTRAN_SIMV2_SIMULATION target)
@@ -169,36 +173,33 @@ FUNCTION(ADD_FORTRAN_SIMV2_SIMULATION target)
         ADD_EXECUTABLE(sim_${target} ${ARGN} simulationexamplev2.f)
         SET_SIMULATION_PROPERTIES(${target})
         TARGET_LINK_LIBRARIES(sim_${target} simV2f simV2 ${EXTRA_SIM_LIBS})
-        ADD_TARGET_COMPILE_FLAGS(sim_${target}
-            -I${VISIT_SOURCE_DIR}/sim/V2/lib
-        )
+        ADD_TARGET_INCLUDE(sim_${target} ${VISIT_SOURCE_DIR}/sim/V2/lib)
     ENDIF(VISIT_FORTRAN)
 ENDFUNCTION(ADD_FORTRAN_SIMV2_SIMULATION)
 
 FUNCTION(ADD_PARALLEL_SIMV2_SIMULATION target)
-    ADD_PARALLEL_EXECUTABLE(sim_${target} ${ARGN})
-    SET_SIMULATION_PROPERTIES(${target})
-    SET_TARGET_PROPERTIES(sim_${target} PROPERTIES HAS_CXX ON)
-    TARGET_LINK_LIBRARIES(sim_${target} simV2 ${EXTRA_SIM_LIBS})
-    ADD_TARGET_COMPILE_FLAGS(sim_${target}
-        -I${VISIT_SOURCE_DIR}/sim/V2/lib
-    )
+    IF(VISIT_PARALLEL)
+        ADD_PARALLEL_EXECUTABLE(sim_${target} ${ARGN})
+        SET_SIMULATION_PROPERTIES(${target})
+        SET_TARGET_PROPERTIES(sim_${target} PROPERTIES HAS_CXX ON)
+        TARGET_LINK_LIBRARIES(sim_${target} simV2 ${EXTRA_SIM_LIBS})
+        ADD_TARGET_INCLUDE(sim_${target} ${VISIT_SOURCE_DIR}/sim/V2/lib)
+    ENDIF(VISIT_PARALLEL)
 ENDFUNCTION(ADD_PARALLEL_SIMV2_SIMULATION)
 
 FUNCTION(ADD_PARALLEL_FORTRAN_SIMV2_SIMULATION target)
-    IF(VISIT_FORTRAN)
+    IF(VISIT_PARALLEL AND VISIT_FORTRAN)
         ADD_PARALLEL_FORTRAN_EXECUTABLE(sim_${target} ${ARGN} simulationexamplev2.f)
         SET_SIMULATION_PROPERTIES(${target})
         TARGET_LINK_LIBRARIES(sim_${target} simV2f simV2 ${EXTRA_SIM_LIBS})
-        ADD_TARGET_COMPILE_FLAGS(sim_${target}
-            -I${VISIT_SOURCE_DIR}/sim/V2/lib
-        )
-    ENDIF(VISIT_FORTRAN)
+        ADD_TARGET_INCLUDE(sim_${target} ${VISIT_SOURCE_DIR}/sim/V2/lib)
+    ENDIF(VISIT_PARALLEL AND VISIT_FORTRAN)
 ENDFUNCTION(ADD_PARALLEL_FORTRAN_SIMV2_SIMULATION)
 
 ##
 ## Simulation targets
 ##
+ADD_SIMV2_SIMULATION(aresamr aresamr.c)
 
 ADD_SIMV2_SIMULATION(amr amr.c)
 ADD_FORTRAN_SIMV2_SIMULATION(famr famr.f)
@@ -220,12 +221,18 @@ ADD_SIMV2_SIMULATION(life life.c)
 ADD_PARALLEL_SIMV2_SIMULATION(life_par life.c)
 
 ADD_SIMV2_SIMULATION(mandelbrot mandelbrot.C patch.C)
+ADD_PARALLEL_SIMV2_SIMULATION(mandelbrot_par mandelbrot.C patch.C)
 
 ADD_SIMV2_SIMULATION(material material.c)
 ADD_FORTRAN_SIMV2_SIMULATION(fmaterial fmaterial.f)
 
+ADD_SIMV2_SIMULATION(materialvar materialvar.c)
+
 ADD_SIMV2_SIMULATION(mesh mesh.c)
 ADD_FORTRAN_SIMV2_SIMULATION(fmesh fmesh.f)
+
+ADD_SIMV2_SIMULATION(multiblock multiblock.c)
+ADD_PARALLEL_SIMV2_SIMULATION(multiblock_par multiblock.c)
 
 ADD_SIMV2_SIMULATION(point point.c)
 ADD_FORTRAN_SIMV2_SIMULATION(fpoint fpoint.f)

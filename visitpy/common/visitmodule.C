@@ -102,6 +102,7 @@
 #include <FileOpenOptions.h>
 #include <GlobalAttributes.h>
 #include <GlobalLineoutAttributes.h>
+#include <HostProfileList.h>
 #include <InteractorAttributes.h>
 #include <KeyframeAttributes.h>
 #include <MeshManagementAttributes.h>
@@ -413,10 +414,12 @@ private:
 // VisIt module state flags and objects.
 //
 ViewerProxy                 *viewer = 0;
+bool                         localNameSpace = false;
 
 static PyObject             *visitModule = 0;
 static bool                  moduleInitialized = false;
 static bool                  keepGoing = true;
+static bool                  autoUpdate = false;
 static bool                  viewerInitiatedQuit = false;
 static bool                  viewerBlockingRead = false;
 #ifdef THREADS
@@ -433,7 +436,6 @@ static bool                  moduleVerbose = false;
 static ObserverToCallback   *pluginLoader = 0;
 static ObserverToCallback   *clientMethodObserver = 0;
 static ObserverToCallback   *stateLoggingObserver = 0;
-static bool                  localNameSpace = false;
 static bool                  interruptScript = false;
 static int                   syncCount = 1000;
 static PyObject             *VisItError;
@@ -464,6 +466,7 @@ typedef struct
 
 static std::map<std::string, AnnotationObjectRef> localObjectMap;
 
+static bool                  suppressQueryOutputState = false;
 // pickle related
 bool      pickleReady=false;
 PyObject *pickleDumps=NULL;
@@ -3176,6 +3179,7 @@ visit_DeleteExpression(PyObject *self, PyObject *args)
 //   Change string literals to const char*'s.
 //
 // ****************************************************************************
+STATIC PyObject *visit_SetMachineProfile(PyObject *self, PyObject *args);
 
 STATIC PyObject *
 OpenComponentHelper(PyObject *self, PyObject *args, bool openEngine)
@@ -3189,12 +3193,26 @@ OpenComponentHelper(PyObject *self, PyObject *args, bool openEngine)
             "\tE.g.: (\"-np\", \"2\"), not (\"-np\", 2)";
 
     const char  *hostName;
+    std::string machine_hostname;
     char  *arg1;
     stringVector argv;
 
     if (!PyArg_ParseTuple(args, "s", &hostName))
     {
-        if (!PyArg_ParseTuple(args, "ss", &hostName, &arg1))
+        PyObject* machine;
+        if (PyArg_ParseTuple(args, "O", &machine))
+        {
+            if(!PyMachineProfile_Check(machine))
+            {
+                VisItErrorFunc(OCEError);
+                return NULL;
+            }
+            visit_SetMachineProfile(self,args);
+            MachineProfile *mp = PyMachineProfile_FromPyObject(machine);
+            machine_hostname = mp->GetHost();
+            hostName = machine_hostname.c_str();
+        }
+        else if (!PyArg_ParseTuple(args, "ss", &hostName, &arg1))
         {
             PyObject *tuple;
             if (!PyArg_ParseTuple(args, "sO", &hostName, &tuple))
@@ -3496,6 +3514,12 @@ visit_AddPlot(PyObject *self, PyObject *args)
         GetViewerState()->GetGlobalAttributes()->Notify();
     MUTEX_UNLOCK();
 
+    if(autoUpdate)
+    {
+        MUTEX_LOCK();
+        GetViewerMethods()->DrawPlots();
+        MUTEX_UNLOCK();
+    }
     // Return the success value.
     return IntReturnValue(Synchronize());
 }
@@ -3584,6 +3608,12 @@ visit_AddOperator(PyObject *self, PyObject *args)
         GetViewerState()->GetGlobalAttributes()->Notify();
     MUTEX_UNLOCK();
 
+    if(autoUpdate)
+    {
+        MUTEX_LOCK();
+        GetViewerMethods()->DrawPlots();
+        MUTEX_UNLOCK();
+    }
     // Return the success value.
     return IntReturnValue(Synchronize());
 }
@@ -5259,6 +5289,220 @@ visit_GetAnnotationAttributes(PyObject *self, PyObject *args)
     // Copy the viewer proxy's annotation atts into the return data structure.
     *aa = *(GetViewerState()->GetAnnotationAttributes());
 
+    return retval;
+}
+
+// ****************************************************************************
+// Function: visit_GetMachineProfile
+//
+// Purpose:
+//   Gets the MachineProfile for a specific hostname
+//
+// Notes:
+//
+// Programmer: Hari Krishnan
+//
+// Modifications:
+//
+// ****************************************************************************
+
+STATIC PyObject *
+visit_GetMachineProfile(PyObject *self, PyObject *args)
+{
+    ENSURE_VIEWER_EXISTS();
+
+    char *hostName = 0;
+    if (!PyArg_ParseTuple(args, "s", &hostName))
+    {
+        return NULL;
+    }
+
+    PyObject *retval = PyMachineProfile_New();
+    MachineProfile *mp = PyMachineProfile_FromPyObject(retval);
+
+    MUTEX_LOCK();
+    std::string host = hostName;
+    HostProfileList* hpl = GetViewerState()->GetHostProfileList();
+    MachineProfile *ma = hpl->GetMachineProfileForHost(host);
+    if(ma) *mp = *ma;
+    MUTEX_UNLOCK();
+
+    if(!ma)
+    {
+        VisItErrorFunc("Invalid hostname to get Machine Profile");
+        return NULL;
+    }
+
+    return retval;
+}
+
+// ****************************************************************************
+// Function: visit_SetMachineProfile
+//
+// Purpose:
+//   Sets Machine Profile in HostProfileList. If hostname exist then the
+//   MachineProfile replaces the existing one, otherwise the machine profile is
+//   added to the list.
+//
+// Notes:
+//
+// Programmer: Hari Krishnan
+//
+// Modifications:
+//
+// ****************************************************************************
+
+STATIC PyObject *
+visit_SetMachineProfile(PyObject *self, PyObject *args)
+{
+    ENSURE_VIEWER_EXISTS();
+
+    PyObject *machine = NULL;
+
+    if (!PyArg_ParseTuple(args, "O",&machine))
+    {
+        return NULL;
+    }
+
+    if(!PyMachineProfile_Check(machine))
+    {
+        VisItErrorFunc("Argument is not a MachineProfile object");
+        return NULL;
+    }
+
+
+    MUTEX_LOCK();
+
+    HostProfileList* hpl = GetViewerState()->GetHostProfileList();
+
+    MachineProfile ma = *PyMachineProfile_FromPyObject(machine);
+    std::string hostName = ma.GetHost();
+
+    //MachineProfile *mp = hpl->GetMachineProfileForHost(host);
+    //remove host if it already exists and add a new one..
+    intVector rmhosts;
+    for(int i = 0; i < hpl->GetNumMachines(); ++i)
+    {
+        std::string name = hpl->GetMachines(i).GetHost();
+        if(name == hostName)
+            rmhosts.push_back(i);
+    }
+
+    for(int i = 0; i < rmhosts.size(); ++i)
+        hpl->RemoveMachines(rmhosts[rmhosts.size() - 1 - i]);
+
+    hpl->AddMachines(ma);
+    hpl->Notify();
+
+    MUTEX_UNLOCK();
+    return IntReturnValue(Synchronize());
+}
+
+
+// ****************************************************************************
+// Function: visit_AddMachineProfile
+//
+// Purpose:
+//   Same as SetMachineProfile, but makes more sense when
+//   overriding existing profile names
+//
+// Notes:
+//
+// Programmer: Hari Krishnan
+//
+// Modifications:
+//
+// ****************************************************************************
+
+STATIC PyObject *
+visit_AddMachineProfile(PyObject *self, PyObject *args)
+{
+    return visit_SetMachineProfile(self,args);
+}
+
+// ****************************************************************************
+// Function: visit_RemoveMachineProfile
+//
+// Purpose:
+//   Removes the machine profile from the HostProfileList
+//
+// Notes:
+//
+// Programmer: Hari Krishnan
+//
+// Modifications:
+//
+// ****************************************************************************
+
+STATIC PyObject *
+visit_RemoveMachineProfile(PyObject *self, PyObject *args)
+{
+    ENSURE_VIEWER_EXISTS();
+
+    const char* host;
+
+    if (!PyArg_ParseTuple(args, "s",&host))
+    {
+        VisItErrorFunc("Please enter machine's hostname");
+        return NULL;
+    }
+
+    MUTEX_LOCK();
+
+    HostProfileList* hpl = GetViewerState()->GetHostProfileList();
+    std::string hostName = host;
+
+    //MachineProfile *mp = hpl->GetMachineProfileForHost(host);
+    //remove host if it already exists and add a new one..
+    intVector rmhosts;
+    for(int i = 0; i < hpl->GetNumMachines(); ++i)
+    {
+        std::string name = hpl->GetMachines(i).GetHost();
+        if(name == hostName)
+            rmhosts.push_back(i);
+    }
+
+    for(int i = 0; i < rmhosts.size(); ++i)
+        hpl->RemoveMachines(rmhosts[rmhosts.size() - 1 - i]);
+    hpl->Notify();
+
+    MUTEX_UNLOCK();
+    return IntReturnValue(Synchronize());
+}
+
+// ****************************************************************************
+// Function: visit_GetMachineProfileNames
+//
+// Purpose:
+//   Returns all the hostnames in the HostProfileList
+//
+// Notes:
+//
+// Programmer: Hari Krishnan
+//
+// Modifications:
+//
+// ****************************************************************************
+
+STATIC PyObject *
+visit_GetMachineProfileNames(PyObject *self, PyObject *args)
+{
+    ENSURE_VIEWER_EXISTS();
+    NO_ARGUMENTS();
+
+    stringVector names;
+    MUTEX_LOCK();
+    HostProfileList* hpl = GetViewerState()->GetHostProfileList();
+    for(int i = 0; i < hpl->GetNumMachines(); ++i)
+        names.push_back(hpl->GetMachines(i).GetHost());
+    MUTEX_UNLOCK();
+
+    PyObject *retval = PyTuple_New(names.size());
+    for(int i = 0; i < names.size(); ++i)
+    {
+        PyObject *s = PyString_FromString(names[i].c_str());
+        PyTuple_SET_ITEM(retval, i, s);
+    }
     return retval;
 }
 
@@ -7176,6 +7420,12 @@ visit_ResetOperatorOptions(PyObject *self, PyObject *args)
         errorFlag = Synchronize();
     }
 
+    if(autoUpdate)
+    {
+        MUTEX_LOCK();
+        GetViewerMethods()->DrawPlots();
+        MUTEX_UNLOCK();
+    }
     // Return the success value.
     return IntReturnValue(errorFlag);
 }
@@ -7243,6 +7493,12 @@ visit_ResetPlotOptions(PyObject *self, PyObject *args)
         errorFlag = Synchronize();
     }
 
+    if(autoUpdate)
+    {
+        MUTEX_LOCK();
+        GetViewerMethods()->DrawPlots();
+        MUTEX_UNLOCK();
+    }
     // Return the success value.
     return IntReturnValue(errorFlag);
 }
@@ -7683,6 +7939,12 @@ visit_SetOperatorOptions(PyObject *self, PyObject *args)
     }
     MUTEX_UNLOCK();
 
+    if(autoUpdate)
+    {
+        MUTEX_LOCK();
+        GetViewerMethods()->DrawPlots();
+        MUTEX_UNLOCK();
+    }
     // Return the success value.
     return IntReturnValue(Synchronize());
 }
@@ -7754,6 +8016,12 @@ PromoteDemoteRemoveOperatorHelper(PyObject *self, PyObject *args, int option)
     }
     MUTEX_UNLOCK();
 
+    if(autoUpdate)
+    {
+        MUTEX_LOCK();
+        GetViewerMethods()->DrawPlots();
+        MUTEX_UNLOCK();
+    }
     // Return the success value.
     return IntReturnValue(Synchronize());
 }
@@ -8073,6 +8341,12 @@ visit_SetPlotOptions(PyObject *self, PyObject *args)
     }
     MUTEX_UNLOCK();
 
+    if(autoUpdate)
+    {
+        MUTEX_LOCK();
+        GetViewerMethods()->DrawPlots();
+        MUTEX_UNLOCK();
+    }
     // Return the success value.
     return IntReturnValue(Synchronize());
 }
@@ -8411,8 +8685,6 @@ STATIC PyObject *
 visit_GetPickOutputObject(PyObject *self, PyObject *args)
 {
     ENSURE_VIEWER_EXISTS();
-    NO_ARGUMENTS();
-
     PickAttributes *pa = GetViewerState()->GetPickAttributes();
     std::string pickOut;
     pa->CreateXMLString(pickOut);
@@ -10649,6 +10921,9 @@ visit_GetQueryParameters(PyObject *self, PyObject *args)
 //   Viewer.  Made this a deprecated method, in favor of one that uses
 //   python dictionary and/or named arguments.
 //
+//   E4ric Brugger, Mon May 14 10:51:24 PDT 2012
+//   I added the bov output type to the XRay Image query.
+//
 // ****************************************************************************
 
 STATIC PyObject*
@@ -10714,6 +10989,8 @@ visit_Query_deprecated(PyObject *self, PyObject *args)
                 arg1 = 3;
             else if (strcmp(imageType, "rawfloats") == 0)
                 arg1 = 4;
+            else if (strcmp(imageType, "bov") == 0)
+                arg1 = 5;
             params["output_type"] = arg1;
             params["divide_emis_by_absorb"] = arg2;
             params["origin"] = darg1;
@@ -11293,17 +11570,23 @@ visit_DefinePythonExpression(PyObject *self, PyObject *args, PyObject *kwargs)
 // Creation:   July 27, 2005
 //
 // Modifications:
+//    Kathleen Biagas, Thu Jun 14 16:07:34 MST 2012
+//    Only call the viewer method if the suppression isn't already turned on.
 //
 // ****************************************************************************
 
 STATIC PyObject *
 visit_SuppressQueryOutputOn(PyObject *self, PyObject *args)
 {
-    ENSURE_VIEWER_EXISTS();
-    NO_ARGUMENTS();
-    MUTEX_LOCK();
-        GetViewerMethods()->SuppressQueryOutput(true);
-    MUTEX_UNLOCK();
+    if (!suppressQueryOutputState)
+    {
+        ENSURE_VIEWER_EXISTS();
+        NO_ARGUMENTS();
+        MUTEX_LOCK();
+            suppressQueryOutputState = true;
+            GetViewerMethods()->SuppressQueryOutput(true);
+        MUTEX_UNLOCK();
+    }
     return IntReturnValue(Synchronize());
 }
 
@@ -11318,17 +11601,23 @@ visit_SuppressQueryOutputOn(PyObject *self, PyObject *args)
 // Creation:   July 27, 2005
 //
 // Modifications:
+//    Kathleen Biagas, Thu Jun 14 16:07:34 MST 2012
+//    Only call the viewer method if the suppression isn't already turned off.
 //
 // ****************************************************************************
 
 STATIC PyObject *
 visit_SuppressQueryOutputOff(PyObject *self, PyObject *args)
 {
-    ENSURE_VIEWER_EXISTS();
-    NO_ARGUMENTS();
-    MUTEX_LOCK();
-        GetViewerMethods()->SuppressQueryOutput(false);
-    MUTEX_UNLOCK();
+    if (suppressQueryOutputState)
+    {
+        ENSURE_VIEWER_EXISTS();
+        NO_ARGUMENTS();
+        MUTEX_LOCK();
+            suppressQueryOutputState = false;
+            GetViewerMethods()->SuppressQueryOutput(false);
+        MUTEX_UNLOCK();
+    }
     return IntReturnValue(Synchronize());
 }
 
@@ -11602,6 +11891,9 @@ visit_QueryOverTime(PyObject *self, PyObject *args, PyObject *kwargs)
 //   Made this a deprecated method, in favor of one that uses
 //   python dictionary and/or named arguments.
 //
+//    Kathleen Biagas, Thu Jun 14 16:08:45 PDT 2012
+//    Suppress query output and return the MapNode object instead of int.
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -11666,12 +11958,17 @@ visit_ZonePick_deprecated(PyObject *self, PyObject *args)
                      StringVectorToTupleString(vars).c_str());
             LogFile_Write(tmp);
         }
+        if (!suppressQueryOutputState)
+            GetViewerMethods()->SuppressQueryOutput(true);
         GetViewerMethods()->Query(params);
+        if (!suppressQueryOutputState)
+            GetViewerMethods()->SuppressQueryOutput(false);
 
     MUTEX_UNLOCK();
 
     // Return the success value.
-    return IntReturnValue(Synchronize());
+    Synchronize();
+    return visit_GetPickOutputObject(self, args);
 }
 
 
@@ -11685,6 +11982,10 @@ visit_ZonePick_deprecated(PyObject *self, PyObject *args)
 //
 // Programmer: Kathleen Biagas
 // Creation:   September 7, 2011
+//
+// Modifications:
+//    Kathleen Biagas, Thu Jun 14 16:08:45 PDT 2012
+//    Suppress query output and return the MapNode object instead of int.
 //
 // ****************************************************************************
 
@@ -11738,11 +12039,16 @@ visit_ZonePick(PyObject *self, PyObject *args, PyObject *kwargs)
     }
     pickParams["query_name"] = std::string("Pick");
     MUTEX_LOCK();
+        if (!suppressQueryOutputState)
+            GetViewerMethods()->SuppressQueryOutput(true);
         GetViewerMethods()->Query(pickParams);
+        if (!suppressQueryOutputState)
+            GetViewerMethods()->SuppressQueryOutput(false);
     MUTEX_UNLOCK();
 
     // Return the success value.
-    return IntReturnValue(Synchronize());
+    Synchronize();
+    return visit_GetPickOutputObject(self, args);
 }
 
 
@@ -11780,6 +12086,9 @@ visit_ZonePick(PyObject *self, PyObject *args, PyObject *kwargs)
 //   Kathleen Biagas, Wed Sep  7 07:39:35 PDT 2011
 //   Made this a deprecated method, in favor of one that uses
 //   python dictionary and/or named arguments.
+//
+//    Kathleen Biagas, Thu Jun 14 16:08:45 PDT 2012
+//    Suppress query output and return the MapNode object instead of int.
 //
 // ****************************************************************************
 
@@ -11844,11 +12153,16 @@ visit_NodePick_deprecated(PyObject *self, PyObject *args)
                      pt[2], StringVectorToTupleString(vars).c_str());
             LogFile_Write(tmp);
         }
+        if (!suppressQueryOutputState)
+            GetViewerMethods()->SuppressQueryOutput(true);
         GetViewerMethods()->Query(params);
+        if (!suppressQueryOutputState)
+            GetViewerMethods()->SuppressQueryOutput(false);
     MUTEX_UNLOCK();
 
     // Return the success value.
-    return IntReturnValue(Synchronize());
+    Synchronize();
+    return visit_GetPickOutputObject(self, args);
 }
 
 
@@ -11862,6 +12176,10 @@ visit_NodePick_deprecated(PyObject *self, PyObject *args)
 //
 // Programmer: Kathleen Biagas
 // Creation:   September 7, 2011
+//
+// Modifications:
+//    Kathleen Biagas, Thu Jun 14 16:08:45 PDT 2012
+//    Suppress query output and return the MapNode object instead of int.
 //
 // ****************************************************************************
 
@@ -11915,11 +12233,16 @@ visit_NodePick(PyObject *self, PyObject *args, PyObject *kwargs)
     }
     pickParams["query_name"] = std::string("Pick");
     MUTEX_LOCK();
+        if (!suppressQueryOutputState)
+            GetViewerMethods()->SuppressQueryOutput(true);
         GetViewerMethods()->Query(pickParams);
+        if (!suppressQueryOutputState)
+            GetViewerMethods()->SuppressQueryOutput(false);
     MUTEX_UNLOCK();
 
     // Return the success value.
-    return IntReturnValue(Synchronize());
+    Synchronize();
+    return visit_GetPickOutputObject(self, args);
 }
 
 // ****************************************************************************
@@ -12618,6 +12941,9 @@ ParseTimePickOptions(MapNode &pickParams)
 //   Made this a deprecated method, in favor of one that uses
 //   python dictionary and/or named arguments.
 //
+//    Kathleen Biagas, Thu Jun 14 16:08:45 PDT 2012
+//    Suppress query output and return the MapNode object instead of int.
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -12649,11 +12975,16 @@ visit_PickByZone_deprecated(PyObject *self, PyObject *args)
         params["vars"] = vars;
 
     MUTEX_LOCK();
+        if (!suppressQueryOutputState)
+            GetViewerMethods()->SuppressQueryOutput(true);
        GetViewerMethods()->Query(params);
+        if (!suppressQueryOutputState)
+            GetViewerMethods()->SuppressQueryOutput(false);
     MUTEX_UNLOCK();
 
     // Return the success value.
-    return IntReturnValue(Synchronize());
+    Synchronize();
+    return visit_GetPickOutputObject(self, args);
 }
 
 
@@ -12671,6 +13002,9 @@ visit_PickByZone_deprecated(PyObject *self, PyObject *args)
 // Modifications
 //   Kathleen Biagas, Thu Jan 12 09:51:02 PST 2012
 //   Added call to ParseTimePickOptions.
+//
+//    Kathleen Biagas, Thu Jun 14 16:08:45 PDT 2012
+//    Suppress query output and return the MapNode object instead of int.
 //
 // ****************************************************************************
 
@@ -12718,11 +13052,16 @@ visit_PickByZone(PyObject *self, PyObject *args, PyObject *kwargs)
     pickParams["pick_type"] = std::string("DomainZone");
     ParseTimePickOptions(pickParams);
     MUTEX_LOCK();
+        if (!suppressQueryOutputState)
+            GetViewerMethods()->SuppressQueryOutput(true);
         GetViewerMethods()->Query(pickParams);
+        if (!suppressQueryOutputState)
+            GetViewerMethods()->SuppressQueryOutput(false);
     MUTEX_UNLOCK();
 
     // Return the success value.
-    return IntReturnValue(Synchronize());
+    Synchronize();
+    return visit_GetPickOutputObject(self, args);
 }
 
 
@@ -12747,6 +13086,9 @@ visit_PickByZone(PyObject *self, PyObject *args, PyObject *kwargs)
 //   Kathleen Biagas, Wed Sep  7 07:39:35 PDT 2011
 //   Made this a deprecated method, in favor of one that uses
 //   python dictionary and/or named arguments.
+//
+//    Kathleen Biagas, Thu Jun 14 16:08:45 PDT 2012
+//    Suppress query output and return the MapNode object instead of int.
 //
 // ****************************************************************************
 
@@ -12774,11 +13116,16 @@ visit_PickByGlobalZone_deprecated(PyObject *self, PyObject *args)
         params["vars"] = vars;
 
     MUTEX_LOCK();
+        if (!suppressQueryOutputState)
+            GetViewerMethods()->SuppressQueryOutput(true);
        GetViewerMethods()->Query(params);
+        if (!suppressQueryOutputState)
+            GetViewerMethods()->SuppressQueryOutput(false);
     MUTEX_UNLOCK();
 
     // Return the success value.
-    return IntReturnValue(Synchronize());
+    Synchronize();
+    return visit_GetPickOutputObject(self, args);
 }
 
 
@@ -12796,6 +13143,9 @@ visit_PickByGlobalZone_deprecated(PyObject *self, PyObject *args)
 // Modifications
 //   Kathleen Biagas, Thu Jan 12 09:51:02 PST 2012
 //   Added call to ParseTimePickOptions.
+//
+//    Kathleen Biagas, Thu Jun 14 16:08:45 PDT 2012
+//    Suppress query output and return the MapNode object instead of int.
 //
 // ****************************************************************************
 
@@ -12844,11 +13194,16 @@ visit_PickByGlobalZone(PyObject *self, PyObject *args, PyObject *kwargs)
     pickParams["use_global_id"] = 1;
     ParseTimePickOptions(pickParams);
     MUTEX_LOCK();
+        if (!suppressQueryOutputState)
+            GetViewerMethods()->SuppressQueryOutput(true);
         GetViewerMethods()->Query(pickParams);
+        if (!suppressQueryOutputState)
+            GetViewerMethods()->SuppressQueryOutput(false);
     MUTEX_UNLOCK();
 
     // Return the success value.
-    return IntReturnValue(Synchronize());
+    Synchronize();
+    return visit_GetPickOutputObject(self, args);
 }
 
 
@@ -12879,6 +13234,9 @@ visit_PickByGlobalZone(PyObject *self, PyObject *args, PyObject *kwargs)
 //   Kathleen Biagas, Wed Sep  7 07:39:35 PDT 2011
 //   Made this a deprecated method, in favor of one that uses
 //   python dictionary and/or named arguments.
+//
+//    Kathleen Biagas, Thu Jun 14 16:08:45 PDT 2012
+//    Suppress query output and return the MapNode object instead of int.
 //
 // ****************************************************************************
 
@@ -12911,11 +13269,16 @@ visit_PickByNode_deprecated(PyObject *self, PyObject *args)
         params["vars"] = vars;
 
     MUTEX_LOCK();
+        if (!suppressQueryOutputState)
+            GetViewerMethods()->SuppressQueryOutput(true);
        GetViewerMethods()->Query(params);
+        if (!suppressQueryOutputState)
+            GetViewerMethods()->SuppressQueryOutput(false);
     MUTEX_UNLOCK();
 
     // Return the success value.
-    return IntReturnValue(Synchronize());
+    Synchronize();
+    return visit_GetPickOutputObject(self, args);
 }
 
 
@@ -12933,6 +13296,9 @@ visit_PickByNode_deprecated(PyObject *self, PyObject *args)
 // Modifications
 //   Kathleen Biagas, Thu Jan 12 09:51:02 PST 2012
 //   Added call to ParseTimePickOptions.
+//
+//    Kathleen Biagas, Thu Jun 14 16:08:45 PDT 2012
+//    Suppress query output and return the MapNode object instead of int.
 //
 // ****************************************************************************
 
@@ -12981,11 +13347,16 @@ visit_PickByNode(PyObject *self, PyObject *args, PyObject *kwargs)
 
     ParseTimePickOptions(pickParams);
     MUTEX_LOCK();
+        if (!suppressQueryOutputState)
+            GetViewerMethods()->SuppressQueryOutput(true);
         GetViewerMethods()->Query(pickParams);
+        if (!suppressQueryOutputState)
+            GetViewerMethods()->SuppressQueryOutput(false);
     MUTEX_UNLOCK();
 
     // Return the success value.
-    return IntReturnValue(Synchronize());
+    Synchronize();
+    return visit_GetPickOutputObject(self, args);
 }
 
 
@@ -13011,6 +13382,9 @@ visit_PickByNode(PyObject *self, PyObject *args, PyObject *kwargs)
 //   Kathleen Biagas, Wed Sep  7 07:39:35 PDT 2011
 //   Made this a deprecated method, in favor of one that uses
 //   python dictionary and/or named arguments.
+//
+//    Kathleen Biagas, Thu Jun 14 16:08:45 PDT 2012
+//    Suppress query output and return the MapNode object instead of int.
 //
 // ****************************************************************************
 
@@ -13039,11 +13413,16 @@ visit_PickByGlobalNode_deprecated(PyObject *self, PyObject *args)
         params["vars"] = vars;
 
     MUTEX_LOCK();
+        if (!suppressQueryOutputState)
+            GetViewerMethods()->SuppressQueryOutput(true);
        GetViewerMethods()->Query(params);
+        if (!suppressQueryOutputState)
+            GetViewerMethods()->SuppressQueryOutput(false);
     MUTEX_UNLOCK();
 
     // Return the success value.
-    return IntReturnValue(Synchronize());
+    Synchronize();
+    return visit_GetPickOutputObject(self, args);
 }
 
 
@@ -13061,6 +13440,9 @@ visit_PickByGlobalNode_deprecated(PyObject *self, PyObject *args)
 // Modifications
 //   Kathleen Biagas, Thu Jan 12 09:51:02 PST 2012
 //   Added call to ParseTimePickOptions.
+//
+//    Kathleen Biagas, Thu Jun 14 16:08:45 PDT 2012
+//    Suppress query output and return the MapNode object instead of int.
 //
 // ****************************************************************************
 
@@ -13109,11 +13491,16 @@ visit_PickByGlobalNode(PyObject *self, PyObject *args, PyObject *kwargs)
     pickParams["use_global_id"] = 1;
     ParseTimePickOptions(pickParams);
     MUTEX_LOCK();
+        if (!suppressQueryOutputState)
+            GetViewerMethods()->SuppressQueryOutput(true);
         GetViewerMethods()->Query(pickParams);
+        if (!suppressQueryOutputState)
+            GetViewerMethods()->SuppressQueryOutput(false);
     MUTEX_UNLOCK();
 
     // Return the success value.
-    return IntReturnValue(Synchronize());
+    Synchronize();
+    return visit_GetPickOutputObject(self, args);
 }
 
 
@@ -14302,6 +14689,40 @@ visit_SaveNamedSelection(PyObject *self, PyObject *args)
 }
 
 // ****************************************************************************
+// Function: visit_SetAutoUpdate
+//
+// Purpose:
+//   Tells the viewer to auto update when doing certain operations
+//   like adding and removing plots and operators
+//
+// Programmer: Brad Whitlock
+// Creation:   Wed Aug 11 16:05:26 PDT 2010
+//
+// Modifications:
+//
+// ****************************************************************************
+
+STATIC PyObject *
+visit_SetAutoUpdate(PyObject *self, PyObject *args)
+{
+    ENSURE_VIEWER_EXISTS();
+
+    int apply = 0;
+    if (!PyArg_ParseTuple(args, "i", &apply))
+       return NULL;
+
+    // Set the named selection auto apply mode.
+    MUTEX_LOCK();
+    autoUpdate = (apply != 0);
+    GetViewerState()->GetGlobalAttributes()->SetAutoUpdateFlag(autoUpdate);
+    GetViewerState()->GetGlobalAttributes()->Notify();
+    MUTEX_UNLOCK();
+
+    // Return the success value.
+    return IntReturnValue(Synchronize());
+}
+
+// ****************************************************************************
 // Function: visit_SetNamedSelectionAutoApply
 //
 // Purpose: 
@@ -15160,6 +15581,10 @@ visit_UserActionFinished(PyObject *self, PyObject *args)
 //    Brad Whitlock, Fri Feb  1 16:58:23 PST 2008
 //    Moved interpreter locking to functions that we can call elsewhere.
 //
+//    Brad Whitlock, Tue Jul 24 12:09:20 PDT 2012
+//    Handle macro recording client methods specially to cope with the module
+//    being imported into a regular Python.
+//
 // ****************************************************************************
 
 #if defined(_WIN32)
@@ -15190,13 +15615,28 @@ visit_exec_client_method(void *data)
     }
     else if(m->GetMethodName() == "Interpret")
     {
-        // Interpret all of the strings stored in the method arguments.
         const stringVector &code = m->GetStringArgs();
-        for(int i = 0; i < code.size(); ++i)
+
+        // Interpret all of the strings stored in the method arguments.
+        for(size_t i = 0; i < code.size(); ++i)
         {
-            int len = code[i].size() + 1;
-            char *buf = new char[len];
-            strcpy(buf, code[i].c_str());
+            char *buf = NULL;
+            // Handle ClientMethod specially if we're not in a local namespace.
+            if(strncmp(code[i].c_str(), "ClientMethod(", 13) == 0)
+            {
+                if(!localNameSpace)
+                {
+                    int len = code[i].size() + 6 + 1;
+                    buf = new char[len];
+                    SNPRINTF(buf, len, "visit.%s", code[i].c_str());
+                }
+            }
+            if(buf == NULL)
+            {
+                int len = code[i].size() + 1;
+                buf = new char[len];
+                strcpy(buf, code[i].c_str());
+            }
             PyRun_SimpleString(buf);
             delete [] buf;
         }
@@ -16015,6 +16455,14 @@ AddDefaultMethods()
     AddMethod("LoadUltra", visit_LoadUltra, visit_LoadUltra_doc);
     AddMethod("GetUltraScript", visit_GetUltraScript, visit_GetUltraScript_doc);
     AddMethod("SetUltraScript", visit_SetUltraScript, visit_SetUltraScript_doc);
+
+
+    AddMethod("AddMachineProfile", visit_AddMachineProfile,visit_AddMachineProfile_doc);
+    AddMethod("RemoveMachineProfile", visit_RemoveMachineProfile, visit_RemoveMachineProfile_doc);
+    AddMethod("SetMachineProfile", visit_SetMachineProfile, visit_SetMachineProfile_doc);
+    AddMethod("GetMachineProfile", visit_GetMachineProfile, visit_GetMachineProfile_doc);
+    AddMethod("GetMachineProfileNames", visit_GetMachineProfileNames, visit_GetMachineProfileNames_doc);
+
     AddMethod("MovePlotDatabaseKeyframe", visit_MovePlotDatabaseKeyframe,
                                            visit_MovePlotDatabaseKeyframe_doc);
     AddMethod("MovePlotKeyframe", visit_MovePlotKeyframe,
@@ -16137,6 +16585,8 @@ AddDefaultMethods()
                                         visit_SetMeshManagementAttributes_doc);
     AddMethod("SetNamedSelectionAutoApply", visit_SetNamedSelectionAutoApply,
               visit_SetNamedSelectionAutoApply_doc);
+    AddMethod("SetAutoUpdate", visit_SetAutoUpdate,
+              NULL);
     AddMethod("SetOperatorOptions", visit_SetOperatorOptions,
                                                  visit_SetOperatorOptions_doc);
     AddMethod("SetPickAttributes", visit_SetPickAttributes,
@@ -16362,6 +16812,9 @@ AddDefaultMethods()
 //   Brad Whitlock, Wed Mar  7 13:56:18 PST 2012
 //   Add Expression and ExpressionList.
 //
+//   Brad Whitlock, Wed Jun  6 13:36:36 PDT 2012
+//   Add KeyframeAttributes.
+//
 // ****************************************************************************
 
 static void
@@ -16383,6 +16836,7 @@ AddExtensions()
     ADD_EXTENSION(PyGaussianControlPoint_GetMethodTable);
     ADD_EXTENSION(PyGaussianControlPointList_GetMethodTable);
     ADD_EXTENSION(PyGlobalAttributes_GetMethodTable);
+    ADD_EXTENSION(PyKeyframeAttributes_GetMethodTable);
     ADD_EXTENSION(PyLaunchProfile_GetMethodTable);
     ADD_EXTENSION(PyMeshManagementAttributes_GetMethodTable);
     ADD_EXTENSION(PyMachineProfile_GetMethodTable);
@@ -16469,6 +16923,9 @@ AddExtensions()
 //   Brad Whitlock, Tue Dec 14 16:27:46 PST 2010
 //   Add PySelectionProperties.
 //
+//   Brad Whitlock, Wed Jun  6 13:35:46 PDT 2012
+//   Add KeyframeAttributes.
+//
 // ****************************************************************************
 
 static void
@@ -16481,6 +16938,7 @@ InitializeExtensions()
     PyExpression_StartUp(0, 0);
     PyExpressionList_StartUp(GetViewerState()->GetExpressionList(), 0);
     PyGlobalAttributes_StartUp(GetViewerState()->GetGlobalAttributes(), 0);
+    PyKeyframeAttributes_StartUp(GetViewerState()->GetKeyframeAttributes(), 0);
     PyLaunchProfile_StartUp(0, 0);
     PyMachineProfile_StartUp(0, 0);
     PyMaterialAttributes_StartUp(GetViewerState()->GetMaterialAttributes(), 0);
@@ -16531,6 +16989,9 @@ InitializeExtensions()
 //   Brad Whitlock, Tue Dec 14 16:28:11 PST 2010
 //   Add PySelectionProperties.
 //
+//   Brad Whitlock, Wed Jun  6 13:35:46 PDT 2012
+//   Add KeyframeAttributes.
+//
 // ****************************************************************************
 
 static void
@@ -16539,6 +17000,7 @@ CloseExtensions()
     PyAnimationAttributes_CloseDown();
     PyAnnotationAttributes_CloseDown();
     PyGlobalAttributes_CloseDown();
+    PyKeyframeAttributes_CloseDown();
     PyMaterialAttributes_CloseDown();
     PyMeshManagementAttributes_CloseDown();
     PyPickAttributes_CloseDown();
@@ -17182,7 +17644,7 @@ LaunchViewer(const char *visitProgram)
         //
         // Tell the windows to show themselves
         //
-        GetViewerMethods()->ShowAllWindows();
+        //GetViewerMethods()->ShowAllWindows();
 
         //
         // Set a flag indicating the viewer exists.

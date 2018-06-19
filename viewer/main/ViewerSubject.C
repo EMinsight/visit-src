@@ -133,6 +133,7 @@
 #include <ViewerObserverToSignal.h>
 #include <ViewerOperatorFactory.h>
 #include <ViewerPasswordWindow.h>
+#include <ViewerChangeUsernameWindow.h>
 #include <ViewerPlot.h>
 #include <ViewerPlotFactory.h>
 #include <ViewerPlotList.h>
@@ -816,6 +817,7 @@ ViewerSubject::ConnectObjectsAndHandlers()
     if (!GetViewerProperties()->GetNowin())
     {
         RemoteProcess::SetAuthenticationCallback(&ViewerPasswordWindow::authenticate);
+        RemoteProcess::SetChangeUserNameCallback(&ViewerChangeUsernameWindow::changeUsername);
     }
 #endif
 
@@ -2585,6 +2587,9 @@ ViewerSubject::ReadConfigFiles(int argc, char **argv)
 //    Add code to always force ssh tunneling of all data connections that
 //    is conditional on VISIT_FORCE_SSH_TUNNELING.
 //
+//    Carson Brownlee, Sun May  6 16:25:28 PDT 2012
+//    Add -manta argument.
+//
 // ****************************************************************************
 
 void
@@ -2827,6 +2832,10 @@ ViewerSubject::ProcessCommandLine(int argc, char **argv)
             InitVTKRendering::ForceMesa();
             RemoteProcess::DisablePTY();
             SetNowinMode(true);
+        }
+        else if (strcmp(argv[i], "-manta") == 0)
+        {
+            avtCallback::SetMantaMode(true);
         }
         else if (strcmp(argv[i], "-fullscreen") == 0)
         {
@@ -9439,6 +9448,10 @@ ViewerSubject::ReadFromSimulationAndProcess(int socket)
 //   
 //    Mark C. Miller, Wed Jun 17 17:46:18 PDT 2009
 //    Replaced CATCHALL(...) with CATCHALL
+//
+//    Brad Whitlock, Mon Aug  6 12:12:22 PDT 2012
+//    Print the metadata we're sending to the client.
+//
 // ****************************************************************************
 
 void
@@ -9446,12 +9459,21 @@ ViewerSubject::HandleMetaDataUpdated(const string &host,
                                      const string &file,
                                      const avtDatabaseMetaData *md)
 {
+    const char *mName = "ViewerSubject::HandleMetaDataUpdated: ";
+
     TRY
     {
         // Handle MetaData updates
         ViewerFileServer *fs = ViewerFileServer::Instance();
 
         *GetViewerState()->GetDatabaseMetaData() = *md;
+        if (DebugStream::Level4())
+        {
+            debug4 << mName << "Received metadata from simulation "
+                   << host << ":" << file << endl;
+            GetViewerState()->GetDatabaseMetaData()->Print(DebugStream::Stream4());
+        }
+
         fs->SetSimulationMetaData(host, file, *GetViewerState()->GetDatabaseMetaData());
         // The file server will modify the metadata slightly; make sure
         // we picked up the new one.
@@ -9459,11 +9481,19 @@ ViewerSubject::HandleMetaDataUpdated(const string &host,
         ViewerWindowManager *wM=ViewerWindowManager::Instance();
         ViewerPlotList *plotList = wM->GetActiveWindow()->GetPlotList();
         plotList->UpdateExpressionList(false);
+
+        if (DebugStream::Level4())
+        {
+            debug4 << mName << "Sending metadata to the client: " << endl;
+            GetViewerState()->GetDatabaseMetaData()->Print(DebugStream::Stream4());
+        }
+
         GetViewerState()->GetDatabaseMetaData()->SelectAll();
         GetViewerState()->GetDatabaseMetaData()->Notify();
     }
     CATCHALL
     {
+        debug1 << "Could not accept the new metadata from " << host << ":" << file << endl;
         ; // nothing
     }
     ENDTRY
@@ -9496,6 +9526,12 @@ ViewerSubject::HandleMetaDataUpdated(const string &host,
 //
 //    Mark C. Miller, Wed Jun 17 17:46:18 PDT 2009
 //    Replaced CATCHALL(...) with CATCHALL
+//
+//    Brad Whitlock, Wed Jul 11 11:00:29 PDT 2012
+//    Call UpdateSILRestriction on the plot list. That's like a replace in 
+//    that it will update the plot's SIL to match the new SIL but it does not
+//    clear the actor or cause the plot to reexecute.
+//
 // ****************************************************************************
 
 void
@@ -9503,6 +9539,8 @@ ViewerSubject::HandleSILAttsUpdated(const string &host,
                                     const string &file,
                                     const SILAttributes *sa)
 {
+    int nWindows = 0, *windowIndices = 0;
+
     TRY
     {
         // Handle SIL updates
@@ -9512,12 +9550,28 @@ ViewerSubject::HandleSILAttsUpdated(const string &host,
         fs->SetSimulationSILAtts(host, file, *GetViewerState()->GetSILAttributes());
         GetViewerState()->GetSILAttributes()->SelectAll();
         GetViewerState()->GetSILAttributes()->Notify();
+
+        // Replace the plots that use host:file in the plot list so they will get
+        // updated SIL restrictions, etc.
+        ViewerWindowManager *wMgr=ViewerWindowManager::Instance();
+        windowIndices = wMgr->GetWindowIndices(&nWindows);
+        EngineKey ek(host, file);
+        for(int i = 0; i < nWindows; ++i)
+        {
+            ViewerWindow *win = wMgr->GetWindow(windowIndices[i]);
+            ViewerPlotList *plist = win->GetPlotList();
+
+            plist->ClearDefaultSILRestrictions(host, file);
+            plist->UpdateSILRestriction(ek, file);
+        }
     }
     CATCHALL
     {
         ; // nothing
     }
     ENDTRY
+
+    delete [] windowIndices;
 }
 
 // ****************************************************************************

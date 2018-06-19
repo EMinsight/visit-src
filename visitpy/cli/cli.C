@@ -61,6 +61,7 @@
 #include <FileFunctions.h>
 #include <Utility.h>
 #include <InstallationFunctions.h>
+#include <StringHelpers.h>
 #include <VisItException.h>
 
 #include <string>
@@ -179,6 +180,17 @@ extern "C" VISITCLI_API int Py_Main(int, char **);
 //
 //    Cyrus Harrison, Thu Apr 12 17:33:16 PDT 2012
 //    Update to reflect changes made in visit python module revamp.
+//
+//    Kathleen Biagas, Fri May 4 14:05:27 PDT 2012  
+//    Use GetVisItLibraryDirectory to find lib location. 
+//    SetIsDevelopmentVersion when -dv encountered.
+//
+//    Kathleen Biagas, Thu May 24 19:20:19 MST 2012  
+//    Ensure visit's lib dir has path-separators properly escaped on Windows
+//    before being passed to the pjoin command.
+//
+//    Brad Whitlock, Wed Jun 20 11:37:23 PDT 2012
+//    Added -minimized argument to minimize the cli window on Windows.
 //
 // ****************************************************************************
 
@@ -329,6 +341,19 @@ main(int argc, char *argv[])
         {
             pyside_gui = true;
         }
+        else if(strcmp(argv[i], "-dv") == 0)
+        {
+            SetIsDevelopmentVersion(true);
+        }
+
+        else if(strcmp(argv[i], "-minimized") == 0)
+        {
+#ifdef WIN32
+            HWND console = GetConsoleWindow();
+            if(console != NULL)
+                ShowWindow(console, SW_MINIMIZE);
+#endif
+        }
         else
         {
             // Pass the array along to the visitmodule.
@@ -372,11 +397,10 @@ main(int argc, char *argv[])
         PyRun_SimpleString((char*)"from os.path import join as pjoin");
 
         // add lib to sys.path to pickup various dylibs.
-        std::string varchdir = GetVisItArchitectureDirectory();
-        std::string vlibdir  = varchdir + VISIT_SLASH_CHAR + "lib";
+        std::string vlibdir  = GetVisItLibraryDirectory(); 
         std::ostringstream oss;
 
-        oss << "sys.path.append(pjoin('" << vlibdir  <<"','site-packages'))";
+        oss << "sys.path.append(pjoin(r'" << vlibdir  <<"','site-packages'))";
         PyRun_SimpleString(oss.str().c_str());
 
         PyRun_SimpleString((char*)"import visit");
@@ -414,6 +438,7 @@ main(int argc, char *argv[])
 
 
         PyRun_SimpleString((char*)"visit.Launch()");
+        PyRun_SimpleString((char*)"visit.ShowAllWindows()");
         // reload symbols from visit, since they may have changed
         PyRun_SimpleString((char*)"from visit import *");
         // import helper that lets us know if the pyside viewer is enabled

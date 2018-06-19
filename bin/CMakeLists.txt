@@ -63,13 +63,19 @@
 #  I changed the installation location of visitdiff.py to the same location
 #  that makemovie.py and makemoviemain.py get installed.
 #
+#  Brad Whitlock, Tue May  1 12:01:49 PDT 2012
+#  I moved some directories up into resources.
+#
+#  Brad Whitlock, Fri May 18 16:09:34 PST 2012
+#  Use different resource file.
+#
 #****************************************************************************/
 
 #-----------------------------------------------------------------------------
 # Copy necessary bin files & directories to the build dir.
 #----------------------------------------------------------------------------
 
-SET(VISIT_BIN_DIRECTORIES movietemplates shaders)
+SET(VISIT_BIN_DIRECTORIES shaders)
 
 SET(VISIT_BIN_FILES
         Doxyfile
@@ -148,7 +154,7 @@ ELSE (NOT WIN32)
     #--------------------------------------------------------------------------
     INCLUDE_DIRECTORIES(${VISIT_COMMON_INCLUDES})
     LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY})
-    ADD_EXECUTABLE(visit_exe ${VISIT_APPLICATION_STYLE} visit.c ${VISIT_WIN_ICON_RESOURCE})
+    ADD_EXECUTABLE(visit_exe ${VISIT_APPLICATION_STYLE} visit.c ${VISIT_VISIT_RESOURCE_FILE})
     SET_TARGET_PROPERTIES(visit_exe PROPERTIES OUTPUT_NAME visit)
     SET_SOURCE_FILES_PROPERTIES(visit.c PROPERTIES LANGUAGE CXX)
     TARGET_LINK_LIBRARIES(visit_exe shlwapi)
@@ -177,14 +183,3 @@ ELSE (NOT WIN32)
     ENDFOREACH (CFG)
 ENDIF(NOT WIN32)
 
-
-INSTALL(DIRECTORY movietemplates
-    DESTINATION ${VISIT_INSTALLED_VERSION_BIN}
-    FILE_PERMISSIONS OWNER_READ OWNER_WRITE 
-                     GROUP_READ GROUP_WRITE 
-                     WORLD_READ
-    DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE 
-                          GROUP_READ GROUP_WRITE GROUP_EXECUTE 
-                          WORLD_READ             WORLD_EXECUTE
-    PATTERN ".svn" EXCLUDE
-)
