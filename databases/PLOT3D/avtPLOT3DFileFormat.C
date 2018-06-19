@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -592,25 +592,25 @@ avtPLOT3DFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
         Expression exp;
 
         exp.SetName("Free-stream mach number");
-        sprintf(def,"%lf",props->GetTuple1(0));
+        sprintf(def,"%f",props->GetTuple1(0));
         exp.SetDefinition(def);
         exp.SetType(Expression::Unknown);
         md->AddExpression(&exp);
 
         exp.SetName("Angle of attack");
-        sprintf(def,"%lf",props->GetTuple1(1));
+        sprintf(def,"%f",props->GetTuple1(1));
         exp.SetDefinition(def);
         exp.SetType(Expression::Unknown);
         md->AddExpression(&exp);
 
         exp.SetName("Reynold's number");
-        sprintf(def,"%lf",props->GetTuple1(2));
+        sprintf(def,"%f",props->GetTuple1(2));
         exp.SetDefinition(def);
         exp.SetType(Expression::Unknown);
         md->AddExpression(&exp);
 
         exp.SetName("Integration time");
-        sprintf(def,"%lf",props->GetTuple1(3));
+        sprintf(def,"%f",props->GetTuple1(3));
         exp.SetDefinition(def);
         exp.SetType(Expression::Unknown);
         md->AddExpression(&exp);

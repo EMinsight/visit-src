@@ -94,7 +94,7 @@ function bv_vtk_host_profile
     echo "## VTK" >> $HOSTCONF
     echo "##" >> $HOSTCONF
 
-    echo "SETUP_VTK_VERSION($VTK_VERSION)" >> $HOSTCONF
+    echo "SETUP_APP_VERSION(VTK $VTK_VERSION)" >> $HOSTCONF
     if [[ "$USE_SYSTEM_VTK" == "yes" ]]; then
             echo "VISIT_OPTION_DEFAULT(VISIT_VTK_DIR $SYSTEM_VTK_DIR)" >> $HOSTCONF
     else
@@ -169,6 +169,39 @@ EOF
     return 0;
 }
 
+function apply_vtk_610_patch
+{
+   patch -p0 << \EOF
+diff -c Rendering/OpenGL/vtkXOpenGLRenderWindow.cxx.orig Rendering/OpenGL/vtkXOpenGLRenderWindow.cxx
+*** Rendering/OpenGL/vtkXOpenGLRenderWindow.cxx.orig	2015-01-29 15:59:05.000000000 -0800
+--- Rendering/OpenGL/vtkXOpenGLRenderWindow.cxx	2015-01-29 16:00:02.000000000 -0800
+***************
+*** 27,33 ****
+  
+  // define GLX_GLXEXT_LEGACY to prevent glx.h to include glxext.h provided by
+  // the system
+! //#define GLX_GLXEXT_LEGACY
+  #include "GL/glx.h"
+  
+  #include "vtkgl.h"
+--- 27,33 ----
+  
+  // define GLX_GLXEXT_LEGACY to prevent glx.h to include glxext.h provided by
+  // the system
+! #define GLX_GLXEXT_LEGACY
+  #include "GL/glx.h"
+  
+  #include "vtkgl.h"
+
+EOF
+    if [[ $? != 0 ]] ; then
+      warn "vtk6 patch failed."
+      return 1
+    fi
+
+    return 0;
+}
+
 function apply_vtk_patch
 {
     if [[ ${VTK_VERSION} == 6.0.0 ]] ; then
@@ -182,6 +215,9 @@ function apply_vtk_patch
     
     if [[ ${VTK_VERSION} == 6.1.0 ]] ; then
         apply_vtk_600_patch
+        if [[ "$OPSYS" == "Linux" ]] ; then
+	   apply_vtk_610_patch
+        fi
         if [[ $? != 0 ]] ; then
             return 1
         fi

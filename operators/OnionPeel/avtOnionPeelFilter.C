@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -652,6 +652,13 @@ avtOnionPeelFilter::UpdateDataObjectInfo(void)
 //    Hank Childs, Mon Dec 14 16:43:16 PST 2009
 //    Update for new SIL interface.
 //
+//    Kathleen Biagas, Thu Feb 19 10:32:41 PST 2015
+//    Request ghost-nodes when using node for seed.
+//
+//    Kathleen Biagas, Thu Feb 19 14:07:04 PST 2015
+//    Be a bit more restrictive when deciding to request ghosts, and
+//    requst ghost cells when needed.
+//
 // ****************************************************************************
 
 avtContract_p
@@ -757,6 +764,20 @@ avtOnionPeelFilter::ModifyContract(avtContract_p spec)
         if (atts.GetSeedType() == OnionPeelAttributes::SeedNode)
             rv->GetDataRequest()->TurnNodeNumbersOn();
     }
+
+    if (groupCategory && atts.GetLogical())
+    {
+        if (atts.GetSeedType() == OnionPeelAttributes::SeedCell)
+        {
+            rv->GetDataRequest()->SetDesiredGhostDataType(GHOST_ZONE_DATA);
+        }
+        else if (rv->GetDataRequest()->GetDesiredGhostDataType() !=
+                  GHOST_ZONE_DATA)
+        {
+            rv->GetDataRequest()->SetDesiredGhostDataType(GHOST_NODE_DATA);
+        }
+    }
+
     return rv;
 }
 

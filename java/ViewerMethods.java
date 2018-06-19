@@ -1,6 +1,6 @@
 // ****************************************************************************
 //
-// Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
 // LLNL-CODE-442911
 // All rights reserved.
@@ -3435,6 +3435,36 @@ public class ViewerMethods
     {
         GetViewerState().GetViewerRPC().SetRPCType(ViewerRPC.VIEWERRPCTYPE_SETPRECISIONTYPERPC);
         GetViewerState().GetViewerRPC().SetIntArg1(flag);
+        GetViewerState().GetViewerRPC().Notify();
+        return Synchronize();
+    }
+
+    /**
+     * Sets the backend type used in the pipeline.
+     *
+     * @param flag  The requested backend type (0 = VTK, 1 = DAX, 2 = EAVL, 3 = PISTON)
+     * @return true on success; false otherwise.
+     */
+    public boolean SetBackendType(int flag)
+    {
+        GetViewerState().GetViewerRPC().SetRPCType(ViewerRPC.VIEWERRPCTYPE_SETBACKENDTYPERPC);
+        GetViewerState().GetViewerRPC().SetIntArg1(flag);
+        GetViewerState().GetViewerRPC().Notify();
+        return Synchronize();
+    }
+
+
+    /**
+     * Sets whether VisIt will automatically remove duplicate nodes from 
+     * fully disconnected unstructured grids.
+     *
+     * @param flag  true means that duplicate nodes will be removed
+     * @return true on success; false otherwise.
+     */
+    public boolean SetRemoveDuplciateNodes(boolean flag)
+    {
+        GetViewerState().GetViewerRPC().SetRPCType(ViewerRPC.VIEWERRPCTYPE_SETREMOVEDUPLICATENODESRPC);
+        GetViewerState().GetViewerRPC().SetBoolFlag(flag);
         GetViewerState().GetViewerRPC().Notify();
         return Synchronize();
     }

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -571,6 +571,7 @@ QvisIntegralCurveWindow::CreateIntegrationTab(QWidget *pageIntegration)
     fieldType->addItem(tr("M3D-C1 2D"));
     fieldType->addItem(tr("M3D-C1 3D"));
     fieldType->addItem(tr("Nek5000"));
+    fieldType->addItem(tr("Nektar++"));
     fieldType->addItem(tr("NIMROD"));
     connect(fieldType, SIGNAL(activated(int)),
             this, SLOT(fieldTypeChanged(int)));

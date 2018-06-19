@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -68,7 +68,8 @@ class avtICAlgorithm;
 #define PICS_FIELD_M3D_C1_2D 2
 #define PICS_FIELD_M3D_C1_3D 3
 #define PICS_FIELD_NEK5000   4
-#define PICS_FIELD_NIMROD    5
+#define PICS_FIELD_NEKTARPP  5
+#define PICS_FIELD_NIMROD    6
 
 #define PICS_INTEGRATE_EULER 0
 #define PICS_INTEGRATE_LEAPFROG 1
@@ -148,6 +149,9 @@ class avtICAlgorithm;
 //
 //   Dave Pugmire, Wed Jun  5 16:43:36 EDT 2013
 //   Code hardening. Better handling for rectilinear grid corner cases.
+//
+//   Dave Pugmire, Mon Dec 15 11:00:23 EST 2014
+//   Return number of steps taken.
 //
 // ****************************************************************************
 
@@ -277,7 +281,7 @@ class IVP_API avtPICSFilter :
     virtual void              ExamineContract(avtContract_p);
     virtual bool              CheckOnDemandViability(void);
 
-    void                      AdvectParticle(avtIntegralCurve *ic);
+    int                       AdvectParticle(avtIntegralCurve *ic);
     virtual vtkDataSet        *GetDomain(const BlockIDType &, const avtVector &);
     bool                      LoadNextTimeSlice();
     virtual int               GetTimeStep(double t) const;

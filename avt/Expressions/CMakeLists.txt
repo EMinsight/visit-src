@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -192,7 +192,8 @@ General/avtVariableSkewExpression.C
 General/avtVectorComposeExpression.C
 General/avtVectorDecomposeExpression.C
 General/avtViscousStressExpression.C
-General/avtZoneTypeExpression.C
+General/avtZoneTypeLabelExpression.C
+General/avtZoneTypeRankExpression.C
 )
 
 IF(VISIT_PYTHON_FILTERS)
