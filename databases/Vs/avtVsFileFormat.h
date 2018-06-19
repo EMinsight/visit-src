@@ -18,14 +18,13 @@
 #ifndef VS_FILE_FORMAT_H
 #define VS_FILE_FORMAT_H
 
-#include <vector>
-using std::vector;
-
-
 //#include <VsH5Reader.h>
 #include <avtSTMDFileFormat.h>
 #include <hdf5.h>
 #include <visit-hdf5.h>
+
+#include <string>
+#include <vector>
 
 // Forward references to minimize compilation
 class vtkDataSet;
@@ -56,9 +55,8 @@ class avtVsFileFormat: public avtSTMDFileFormat {
    * Construct a file reader from a data file.
    *
    * @param dfnm the name of the data file
-   * @param newStride The stride to use when loading data
    */
-  avtVsFileFormat(const char* dfnm, std::vector<int> settings);
+  avtVsFileFormat(const char*, DBOptionsAttributes *);
 
   /**
    * Destructor
@@ -74,12 +72,14 @@ class avtVsFileFormat: public avtSTMDFileFormat {
     return "Vs";
   };
 
+  virtual bool CanCacheVariable(const char *var);
+
   /**
    * Get the data selections
    *
    */
-  virtual void RegisterDataSelections( const vector<avtDataSelection_p> &sels,
-                                       vector<bool> *selectionsApplied );
+  virtual void RegisterDataSelections( const std::vector<avtDataSelection_p> &sels,
+                                       std::vector<bool> *selectionsApplied );
 
   /**
    * Process the data selections
@@ -124,7 +124,7 @@ class avtVsFileFormat: public avtSTMDFileFormat {
    * Deprecated 06.02.2011 in favor of GetCycle and GetTime
    * Marc Durant
    */
-  //virtual void UpdateCyclesAndTimes(avtDatabaseMetaData* md);
+  virtual void UpdateCyclesAndTimes(avtDatabaseMetaData* md);
   
   protected:
   /**
@@ -163,6 +163,9 @@ class avtVsFileFormat: public avtSTMDFileFormat {
   /** Ensure data has been read **/
   void LoadData();
 
+  bool processDataSelections;
+  bool haveReadWholeData;
+
   private:
   /**
    * A counter to track the number of avtVsFileFormat objects in existence
@@ -170,15 +173,18 @@ class avtVsFileFormat: public avtSTMDFileFormat {
   static int instanceCounter;
 
   /**
-   * A user-specified setting for the stride to use when loading data.
-   * Default is 1 on all axes.
+   * A registry of all objects found in the data file
    */
-  std::vector<int> stride;
-
   VsRegistry* registry;
 
-    vector<avtDataSelection_p> selList;
-    vector<bool>              *selsApplied;
+  /** Some stuff to keep track of data selections */
+  std::vector<avtDataSelection_p> selList;
+  std::vector<bool>              *selsApplied;
+
+  /**
+   * Maintain a list of curve names so we can classify expressions better
+   */
+  std::vector<std::string> curveNames;
 
   /**
    * Set the axis labels for a mesh.
@@ -190,12 +196,11 @@ class avtVsFileFormat: public avtSTMDFileFormat {
   /**
    * Create various meshes.
    */
-  vtkDataSet* getUniformMesh(VsUniformMesh*);
-  vtkDataSet* getUnstructuredMesh(VsUnstructuredMesh*);
-  vtkDataSet* getRectilinearMesh(VsRectilinearMesh*);
-  vtkDataSet* getStructuredMesh(VsStructuredMesh*);
-  vtkDataSet* getPointMesh(VsVariableWithMesh*);
-  vtkDataSet* getSplitPointMesh(VsUnstructuredMesh*);
+  vtkDataSet* getUniformMesh(VsUniformMesh*, bool, int*, int*, int*);
+  vtkDataSet* getRectilinearMesh(VsRectilinearMesh*, bool, int*, int*, int*);
+  vtkDataSet* getStructuredMesh(VsStructuredMesh*, bool, int*, int*, int*);
+  vtkDataSet* getUnstructuredMesh(VsUnstructuredMesh*, bool, int*, int*, int*);
+  vtkDataSet* getPointMesh(VsVariableWithMesh*, bool, int*, int*, int*);
   vtkDataSet* getCurve(int domain, const std::string& name);
 
   /**
@@ -208,10 +213,26 @@ class avtVsFileFormat: public avtSTMDFileFormat {
   void RegisterVars(avtDatabaseMetaData* md);
   void RegisterMdVars(avtDatabaseMetaData* md);
   void RegisterExpressions(avtDatabaseMetaData* md);
+
+  void GetSelectionBounds( int numTopologicalDims,
+                           std::vector<int> &numCells,
+                           std::vector<int> &gdims,
+                           int *mins,
+                           int *maxs,
+                           int *strides,
+                           bool haveDataSelections,
+                           bool isNodal = true );
+
+  bool GetParallelDecomp( int numTopologicalDims,
+                          std::vector<int> &dims,
+                          int *mins,
+                          int *maxs,
+                          int *strides,
+                          bool isNodal = true );
+
 #else
   avtVsFileFormat(const char* dfnm) : avtSTMDFileFormat(&dfnm, 1) {;};
 #endif
 };
 
 #endif
-

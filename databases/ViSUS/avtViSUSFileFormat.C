@@ -424,6 +424,9 @@ avtViSUSFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md,
 //    Mark C. Miller, Tue Aug 15 15:28:11 PDT 2006
 //    Moved DomainDecomp functions to avtDatabase
 //
+//    Eric Brugger, Fri Jul 22 14:23:17 PDT 2011
+//    I corrected some compilation errors.
+//
 // ****************************************************************************
 void
 avtViSUSFileFormat::SetupDomainAndZoneIndexing(int *outputZoneCounts,
@@ -438,6 +441,7 @@ avtViSUSFileFormat::SetupDomainAndZoneIndexing(int *outputZoneCounts,
 
     int firstInputZone[3];
     int lastInputZone[3];
+    int lastInputNode[3];
     int stepInputZones[3];
     for (int i = 0; i < 3; i++)
     {
@@ -451,6 +455,9 @@ avtViSUSFileFormat::SetupDomainAndZoneIndexing(int *outputZoneCounts,
     // and then composing together arriving at a single, logical
     // selection for whatever we can service here
     //
+    // Note the internal logical selection is ZONAL based where as the
+    // logical selection from the IndexSelect operator is NODAL based.
+    //
     avtLogicalSelection composedSel;
     for (int i = 0; i < selList.size(); i++)
     {
@@ -461,11 +468,36 @@ avtViSUSFileFormat::SetupDomainAndZoneIndexing(int *outputZoneCounts,
         else if (string(selList[i]->GetType()) == "Logical Data Selection")
         {
             avtLogicalSelection *sel = (avtLogicalSelection *) *(selList[i]);
-            int strides[3];
+
+            int mins[3], maxs[3], strides[3];
+
+            sel->GetStarts(mins);
+            sel->GetStops(maxs);
             sel->GetStrides(strides);
 
+            // The avtLogicalSelection from IndexSelect is nodal based
+            // internally the composed selection is zonal so substract
+            // 1 when appropriate.
+            for (int j = 0; j < 3; j++)
+            {
+              // Do not subtract if the max is zero as it will result
+              // in -1 which means maximum.
+
+              // Note with IndexSelect is possible to have the min and
+              // max be equal (i.e. a slice in a volume). ViSUS is
+              // zonal and does not allow a slice so check for that
+              // case.
+              if( maxs[i] > 0 && mins[i] != maxs[i] )
+                maxs[i] -= 1;
+            }
+
+            avtLogicalSelection newSel;
+            newSel.SetStarts(mins);
+            newSel.SetStops(maxs);
+            newSel.SetStrides(strides);
+
             // overrwrite method-scope arrays with the new indexing
-            composedSel.Compose(*sel);
+            composedSel.Compose(newSel);
             (*selsApplied)[i] = true;
         }
         else if (string(selList[i]->GetType()) == "Spatial Box Data Selection")
@@ -490,7 +522,7 @@ avtViSUSFileFormat::SetupDomainAndZoneIndexing(int *outputZoneCounts,
 
             avtLogicalSelection newSel;
             newSel.SetStarts(firstInputZone);
-            newSel.SetStops(lastInputZone);
+            newSel.SetStops(lastInputNode);
 
             composedSel.Compose(newSel);
             (*selsApplied)[i] = true;
@@ -517,7 +549,7 @@ avtViSUSFileFormat::SetupDomainAndZoneIndexing(int *outputZoneCounts,
             debug5 << "for dim " << j << " starts=" << starts[j] << ", stops=" << stops[j] << ", strides=" << strides[j] << endl;
             firstInputZone[j] = starts[j];
             if (stops[j] != -1)
-                lastInputZone[j] = stops[j];
+              lastInputZone[j] = stops[j];
             stepInputZones[j] = strides[j];
 
             if (stepInputZones[j] >= globalZoneCount[j])

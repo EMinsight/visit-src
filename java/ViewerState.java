@@ -61,6 +61,9 @@ import java.util.Vector;
 //   Brad Whitlock, Thu Aug 26 10:39:25 PDT 2010
 //   I added SelectionList.
 //
+//   Brad Whitlock, Mon Jun 20 15:10:20 PDT 2011
+//   I added SelectionProperties and SimulationUIValues.
+//
 // ****************************************************************************
 /**
  * ViewerState contains all of the state objects that make up the 
@@ -105,6 +108,9 @@ public class ViewerState
             Register(attsClientInformation);
         attsClientInformationList = new ClientInformationList();
             Register(attsClientInformationList);
+        attsSimulationUIValues = new SimulationUIValues();
+            Register(attsSimulationUIValues);
+
         attsPluginManagerAttributes = new PluginManagerAttributes();
             Register(attsPluginManagerAttributes);
         attsAppearanceAttributes = new AppearanceAttributes();
@@ -175,6 +181,8 @@ public class ViewerState
             Register(attsLogRPC);
         attsFileOpenOptions = new FileOpenOptions();
             Register(attsFileOpenOptions);
+        attsSelectionProperties = new SelectionProperties();
+            Register(attsSelectionProperties);
         attsSelectionList = new SelectionList();
             Register(attsSelectionList);
     }
@@ -195,6 +203,8 @@ public class ViewerState
     public ClientMethod              GetClientMethod() { return attsClientMethod; }
     public ClientInformation         GetClientInformation() { return attsClientInformation; }
     public ClientInformationList     GetClientInformationList() { return attsClientInformationList; }
+    public SimulationUIValues        GetSimulationUIValues() { return attsSimulationUIValues; }
+
     public PluginManagerAttributes   GetPluginManagerAttributes() { return attsPluginManagerAttributes; }
     public AppearanceAttributes      GetAppearanceAttributes() { return attsAppearanceAttributes; }
     public GlobalAttributes          GetGlobalAttributes() { return attsGlobalAttributes; }
@@ -230,6 +240,7 @@ public class ViewerState
     public MeshManagementAttributes  GetMeshManagementAttributes() { return attsMeshManagementAttributes; }
     public ViewerRPC                 GetLogRPC() { return attsLogRPC; }
     public FileOpenOptions           GetFileOpenOptions() { return attsFileOpenOptions; }
+    public SelectionProperties       GetSelectionProperties() { return attsSelectionProperties; }
     public SelectionList             GetSelectionList() { return attsSelectionList; }
 
     /**
@@ -358,6 +369,8 @@ public class ViewerState
     private ClientMethod             attsClientMethod;
     private ClientInformation        attsClientInformation;
     private ClientInformationList    attsClientInformationList;
+    private SimulationUIValues       attsSimulationUIValues;
+
     private PluginManagerAttributes  attsPluginManagerAttributes;
     private AppearanceAttributes     attsAppearanceAttributes;
     private GlobalAttributes         attsGlobalAttributes;
@@ -393,6 +406,7 @@ public class ViewerState
     private MeshManagementAttributes attsMeshManagementAttributes;
     private ViewerRPC                attsLogRPC;
     private FileOpenOptions          attsFileOpenOptions;
+    private SelectionProperties      attsSelectionProperties;
     private SelectionList            attsSelectionList;
 
     private Vector objVector;

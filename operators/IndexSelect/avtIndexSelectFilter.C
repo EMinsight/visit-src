@@ -72,6 +72,8 @@
 #include <InvalidVariableException.h>
 #include <snprintf.h>
 
+#include <string>
+#include <vector>
 
 // ****************************************************************************
 //  Method: avtIndexSelectFilter constructor
@@ -267,7 +269,7 @@ avtIndexSelectFilter::PrepareFilters(int groupIndices[3], int *amri)
     voi[0] = (minmax[0] - bi[0] < 0 ? 0 : minmax[0] - bi[0]);
     voi[1] = (minmax[1] < 0 ? 1000000   : minmax[1] - bi[0]);
     if (atts.GetDim() == IndexSelectAttributes::TwoD ||
-            atts.GetDim() == IndexSelectAttributes::ThreeD)
+        atts.GetDim() == IndexSelectAttributes::ThreeD)
     {
         voi[2] = (minmax[2] - bi[1] < 0 ? 0 : minmax[2] - bi[1]);
         voi[3] = (minmax[3] < 0 ? 1000000   : minmax[3] - bi[1]);
@@ -287,6 +289,7 @@ avtIndexSelectFilter::PrepareFilters(int groupIndices[3], int *amri)
         voi[4] = 0;
         voi[5] = 1000000;
     }
+
     curvilinearFilter->SetVOI(voi);
     rectilinearFilter->SetVOI(voi);
     int sampleRate[3];
@@ -422,8 +425,10 @@ avtIndexSelectFilter::ExecuteData(vtkDataSet *in_ds, int dom, std::string)
     {
         debug1 << "Bypassing IndexSelect operator because database plugin "
                   "claims to have applied the selection already" << endl;
+
+        out_ds = in_ds;
+
         successfullyExecuted = true;
-        return in_ds;
     }
     else if (GetInput()->GetInfo().GetValidity().GetZonesPreserved())
     {
@@ -821,8 +826,8 @@ avtIndexSelectFilter::ModifyContract(avtContract_p spec)
 
     if (!atts.GetUseWholeCollection() && !skipSILRestriction) 
     {
-        string category = atts.GetCategoryName();
-        string subset = atts.GetSubsetName();
+        std::string category = atts.GetCategoryName();
+        std::string subset = atts.GetSubsetName();
         avtSILRestriction_p silr = spec->GetDataRequest()->GetRestriction();
         avtSILRestriction_p old_values = new avtSILRestriction(silr);
         avtSILRestrictionTraverser trav(old_values);
@@ -897,8 +902,7 @@ avtIndexSelectFilter::ModifyContract(avtContract_p spec)
     {
         rv->GetDataRequest()->SetNeedStructuredIndices(true);
     }
-    else if (rv->GetDataRequest()->
-                                       MustDoMaterialInterfaceReconstruction())
+    else if (rv->GetDataRequest()->MustDoMaterialInterfaceReconstruction())
     {
         rv->GetDataRequest()->SetNeedStructuredIndices(true);
     }
@@ -943,20 +947,27 @@ avtIndexSelectFilter::ModifyContract(avtContract_p spec)
     vec[1] = atts.GetYMin();
     vec[2] = atts.GetZMin();
     sel->SetStarts(vec);
-    // avtLogicalSelection's stops are inclusive
+
+    // IndexSelect is nodal based and is inclusive. As such, the user
+    // can have the min == max. Which would give a slice from a volume.
+
+    // avtLogicalSelection's stops are nodal and are inclusive
     // also, we need to deal with using '-1' to mean 'max'
     if (atts.GetXMax() == -1)
         vec[0] = -1;
     else
-        vec[0] = atts.GetXMax()-1;
+        vec[0] = atts.GetXMax();
+
     if (atts.GetYMax() == -1)
         vec[1] = -1;
     else
-        vec[1] = atts.GetYMax()-1;
+        vec[1] = atts.GetYMax();
+
     if (atts.GetZMax() == -1)
         vec[2] = -1;
     else
-        vec[2] = atts.GetZMax()-1;
+        vec[2] = atts.GetZMax();
+
     sel->SetStops(vec);
     vec[0] = atts.GetXIncr();
     vec[1] = atts.GetYIncr();

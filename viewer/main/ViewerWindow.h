@@ -466,6 +466,12 @@ class ViewerToolbar;
 //    Brad Whitlock, Thu Aug 26 15:41:38 PDT 2010
 //    I added a force option to SetAnnotationAttributes.
 //
+//    Gunther H. Weber, Fri Jul 15 14:05:29 PDT 2011
+//    Added SetWindowSize.
+//
+//    Gunther H. Weber, Mon Jul 18 16:23:06 PDT 2011
+//    Added ActivateWindow.
+//
 // ****************************************************************************
 
 class VIEWER_API ViewerWindow : public ViewerBase
@@ -491,6 +497,7 @@ public:
 
     void SetSize(const int width, const int height);
     void GetSize(int &width, int &height);
+    void SetWindowSize(const int width, const int height);
     void GetWindowSize(int &width, int &height);
     void SetLocation(const int x, const int y);
     void GetLocation(int &x, int &y);
@@ -629,6 +636,7 @@ public:
     void Hide();
     void Raise();
     void Lower();
+    void ActivateWindow();
     bool GetRealized();
     void SetVisible(bool);
     bool IsVisible() const;

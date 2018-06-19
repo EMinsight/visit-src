@@ -715,6 +715,16 @@ $0 = shift @ARGV;
 #    Eric Brugger, Tue May 24 11:05:30 PDT 2011
 #    I added support for the aprun launch method.
 #
+#    Brad Whitlock, Thu Jun 16 09:07:40 PDT 2011
+#    Get the plugin version number from VISITPLUGINVERSION environment variable
+#    which is now set in frontendlauncher.
+#
+#    Brad Whitlock, Wed Jun 22 09:04:14 PDT 2011
+#    Allow 64-bit Mac to launch the 32-bit executable if it is present.
+#
+#    Hank Childs, Wed Aug  3 22:45:51 UTC 2011
+#    Add support for Eureka's new "login1" hostname.
+#
 ###############################################################################
 
 use POSIX qw(ceil);
@@ -1934,8 +1944,9 @@ if ( $host =~ /^up\d+$/ or $host =~ /^purple\d+$/)
 # HACK for Eureka @ Argonne
 # ----
 $IsRunningOnEureka_ANL = 0;
-if (($parallel) and $exe_name eq "engine" and ($host =~ /eureka/) and
-    ($host =~ /alcf/))
+if (($parallel) and $exe_name eq "engine" and 
+      ( (($host =~ /eureka/) and ($host =~ /alcf/)) 
+        or ($host =~ /login1/) ) )
 {
     chomp($domain   = `hostname -d`);
     if ( $domain eq "gadzooks.alcf.anl.gov" or $domain eq "mcs.anl.gov" or $domain eq "eureka.alcf.anl.gov")
@@ -2161,7 +2172,8 @@ for ($os) {
                         push @supportedarchs, "darwin-i386";
                     }
                     else {
-                        push @supportedarchs, "darwin-x86_64";
+                        # Prefer the 64-bit executable but back up to the 32-bit one.
+                        push @supportedarchs, "darwin-x86_64", "darwin-i386";
                     }
                 }
                 else {
@@ -2524,15 +2536,15 @@ if($os eq "darwin")
 # Set up plugin search paths in the correct order
 if ($IsRunningOnJaguar_ORNL)
 {
-    $visitprivateplugins = "/lustre/widow1/scratch/$ENV{USER}/.visit/$ver/$archdir/plugins";
+    $visitprivateplugins = "/lustre/widow1/scratch/$ENV{USER}/.visit/$ENV{VISITPLUGINVERSION}/$archdir/plugins";
     $visitprivateplugins_old = "/lustre/widow1/scratch/$ENV{USER}/.visit/$archdir/plugins";
 }
 else
 {
-    $visitprivateplugins = "$ENV{HOME}/.visit/$ver/$archdir/plugins";
+    $visitprivateplugins = "$ENV{HOME}/.visit/$ENV{VISITPLUGINVERSION}/$archdir/plugins";
     $visitprivateplugins_old = "$ENV{HOME}/.visit/$archdir/plugins";
 }
-if ($ver eq "")
+if ($ENV{VISITPLUGINVERSION} eq "")
 {
     $visitprivateplugins = $visitprivateplugins_old;
 }

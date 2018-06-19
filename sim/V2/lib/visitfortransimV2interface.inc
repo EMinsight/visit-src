@@ -20,6 +20,11 @@
 !     VisIt's data callback functions.
 !
 ! Modifications:
+!   Brad Whitlock, Fri Jul 22 09:47:01 PDT 2011
+!   Expose visitdetectinputwithtimeout
+!
+!   Brad Whitlock, Wed Jul 27 10:46:13 PDT 2011
+!   Add visitgetsockets.
 !
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
@@ -310,6 +315,11 @@
       external visitdetectinput
       integer  visitdetectinput
 
+! visitdetectinputwithtimeout(int blocking, int micsec, int consoledesc)
+!     returns int codes -5 through 3
+      external visitdetectinputwithtimeout
+      integer  visitdetectinputwithtimeout
+
 ! visitdisconnect()
       external visitdisconnect
       integer  visitdisconnect
@@ -325,6 +335,10 @@
 ! visitgetlasterror(string dest, int ldest)
       external visitgetlasterror
       integer  visitgetlasterror
+
+! visitgetsockets(int lsocket, int csocket)
+      external visitgetsockets
+      integer  visitgetsockets
 
 ! visitinitializesim(
 !    string name, int lname,

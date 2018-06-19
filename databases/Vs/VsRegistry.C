@@ -24,7 +24,7 @@
 VsRegistry::VsRegistry() {
   deletingObjects = false;
   timeValue = -1;
-  step = -1;
+  cycle = -1;
 }
 
 VsRegistry::~VsRegistry() {
@@ -169,17 +169,17 @@ void VsRegistry::loadTime(VsH5Group* group) {
     }
   }
 
-  //try to load a value for "step"
-  int foundStep = -1;
-  VsH5Attribute* stepAtt = group->getAttribute(VsSchema::stepAtt);
-  if (stepAtt) {
+  //try to load a value for "cycle"
+  int foundCycle = -1;
+  VsH5Attribute* cycleAtt = group->getAttribute(VsSchema::cycleAtt);
+  if (cycleAtt) {
     std::vector<int> in;
-    herr_t err = stepAtt->getIntVectorValue(&in);
+    herr_t err = cycleAtt->getIntVectorValue(&in);
     if (err < 0) {
-      VsLog::debugLog() <<"VsRegistry::loadTime(): Error " <<err <<" while trying to load step attribute." <<std::endl;
+      VsLog::debugLog() <<"VsRegistry::loadTime(): Error " <<err <<" while trying to load cycle attribute." <<std::endl;
     } else {
-      foundStep = in[0];
-      VsLog::debugLog() <<"VsRegistry::loadTime() - loaded step: " <<foundStep <<std::endl;
+      foundCycle = in[0];
+      VsLog::debugLog() <<"VsRegistry::loadTime() - loaded cycle: " <<foundCycle <<std::endl;
     }
   }
  
@@ -191,11 +191,11 @@ void VsRegistry::loadTime(VsH5Group* group) {
     timeValue = foundTime;
   }
   
-  if ((foundStep != -1) && hasStep() && (foundStep != getStep())) {
-    VsLog::warningLog() <<"VsRegistry::loadTime() - was asked to load step data again, but step data already exists." <<std::endl;
-    VsLog::warningLog() <<"VsRegistry::loadTime() - and is in conflict: " <<foundStep <<" vs " <<getStep() <<std::endl;
+  if ((foundCycle != -1) && hasCycle() && (foundCycle != getCycle())) {
+    VsLog::warningLog() <<"VsRegistry::loadTime() - was asked to load cycle data again, but cycle data already exists." <<std::endl;
+    VsLog::warningLog() <<"VsRegistry::loadTime() - and is in conflict: " <<foundCycle <<" vs " <<getCycle() <<std::endl;
   } else {
-    step = foundStep;
+    cycle = foundCycle;
   }
 }
 
@@ -899,19 +899,19 @@ int VsRegistry::numExpressions() {
   return allExpressions.size();
 }
 
-void VsRegistry::createComponents(bool useStride, std::vector<int> stride) {
+void VsRegistry::createComponents() {
   VsLog::debugLog() <<"VsRegistry::createComponents() - Entering" <<std::endl;
   
   std::map<std::string, VsMDVariable*>::const_iterator it;
   for (it = allMDVariables.begin(); it != allMDVariables.end(); ++it) {
     VsLog::debugLog() <<"VsRegistry::createComponents() - Creating components for MD Variable " <<it->first <<std::endl;
-    it->second->createComponents(useStride, stride);
+    it->second->createComponents();
   }
 
   std::map<std::string, VsVariable*>::const_iterator it2;
   for (it2 = allVariables.begin(); it2 != allVariables.end(); ++it2) {
     VsLog::debugLog() <<"VsRegistry::createComponents() - Creating components for Variable " <<it2->first <<std::endl;
-    it2->second->createComponents(useStride, stride);
+    it2->second->createComponents();
   }
 
   std::map<std::string, VsVariableWithMesh*>::const_iterator it3;

@@ -49,7 +49,7 @@
 
 #include <string>
 
-
+class avtEdgeLength;
 class avtRevolvedVolume;
 class avtVMetricArea;
 class avtVMetricVolume;
@@ -66,7 +66,11 @@ class vtkDataSet;
 //      volume as appropriate.
 //
 //  Programmer: Cyrus Harrison
-//  Creation:   February 8, 2007 
+//  Creation:   February 8, 2007
+//
+//  Modifications:
+//    Cyrus Harrison, Mon Jun  6 17:02:12 PDT 2011
+//    Added lengthFilter.
 //
 // ****************************************************************************
 
@@ -84,6 +88,7 @@ class QUERY_API avtConnComponentsWeightedVariableQuery
 
   protected:
 
+    avtEdgeLength                  *lengthFilter;
     avtRevolvedVolume              *revolvedVolumeFilter;
     avtVMetricArea                 *areaFilter;
     avtVMetricVolume               *volumeFilter;

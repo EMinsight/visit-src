@@ -12,11 +12,16 @@
 #include "VsUtils.h"
 #include "VsLog.h"
 
+#define __CLASS__ "VsMesh::"
+
+
 VsMDMesh::VsMDMesh(VsMesh* firstMesh, std::string mdMeshName):
   VsRegistryObject(firstMesh->registry) {
-  //Note: MD meshes do not have a path.  Their name is exactly what is declared in the "vsMD" attribute
-  //This is because an MD mesh may be made up of meshes in different paths, and we would have to choose one over the other.
-  //So, to avoid conflicts, we just use the name as given
+  //Note: MD meshes do not have a path.  Their name is exactly what is
+  //declared in the "vsMD" attribute This is because an MD mesh may be
+  //made up of meshes in different paths, and we would have to choose
+  //one over the other.  So, to avoid conflicts, we just use the name
+  //as given
   numSpatialDims = firstMesh->getNumSpatialDims();
   indexOrder = firstMesh->getIndexOrder();
   kind = firstMesh->getKind();
@@ -30,29 +35,41 @@ VsMDMesh::~VsMDMesh() {
 }
 
 void VsMDMesh::write()   {
-  VsLog::debugLog() << getFullName() <<std::endl;
-  VsLog::debugLog() << "    Index Order: " << indexOrder << std::endl;
-  VsLog::debugLog() << "    Spatial Dimensionality: " << numSpatialDims <<std::endl;
-  VsLog::debugLog() << "    Kind: " << kind <<std::endl;
-  VsLog::debugLog() << "    Blocks:" <<std::endl;
+  VsLog::debugLog() << __CLASS__ << __FUNCTION__ << "  " << __LINE__ << "  "
+                    << getFullName() << "  "
+                    << "Kind: " << kind << "  "
+                    << "Index Order: " << indexOrder << "  "
+                    << "NumSpatialDims: " << numSpatialDims << "  "
+                    << "Blocks:" << "  " << std::endl;
+
   for (unsigned int i = 0; i < blocks.size(); i++) {
-    VsLog::debugLog() << "      Block #" << i << " = " <<blocks[i]->getFullName() <<std::endl;
+    VsLog::debugLog() << "Block #" << i << " = " << blocks[i]->getFullName()
+                      << std::endl;
   }
 }
 
 bool VsMDMesh::addBlock(VsMesh* newBlock) {
   if (newBlock->getIndexOrder() != indexOrder) {
-    VsLog::debugLog() << "VsMDMesh rejected new block " + newBlock->getFullName() + " because indexOrder did not match - (" + newBlock->getIndexOrder() + " vs " + indexOrder + ")";
+    VsLog::debugLog() << __CLASS__ << __FUNCTION__ << "  " << __LINE__ << "  "
+                      << "Rejected new block " << newBlock->getFullName()
+                      << " because indexOrder did not match - ("
+                      << newBlock->getIndexOrder() << " vs "
+                      << indexOrder << ")" << std::endl;
     return false;
   }
   
   if (newBlock->getNumSpatialDims() != numSpatialDims) {
-    VsLog::debugLog() <<"VsMDMesh rejected new block " + newBlock->getFullName() + " because numSpatialDims did not match";
+  VsLog::debugLog() << __CLASS__ << __FUNCTION__ << "  " << __LINE__ << "  "
+                    << "Rejected new block " << newBlock->getFullName()
+                    << " because numSpatialDims did not match" << std::endl;
     return false;
   }
   
   if (newBlock->getKind() != kind) {
-    VsLog::debugLog() <<"VsMDMesh rejected new block " + newBlock->getFullName() + " because kind did not match (" + newBlock->getKind() + " vs " + kind + ")";
+    VsLog::debugLog() << __CLASS__ << __FUNCTION__ << "  " << __LINE__ << "  "
+                      << "Rejected new block " << newBlock->getFullName()
+                      << " because kind did not match (" << newBlock->getKind()
+                      << " vs " << kind << ")" << std::endl;
     return false;
   }
   
@@ -87,7 +104,8 @@ std::string VsMDMesh::getMeshKind()   {
 }
 
 bool VsMDMesh::isUniformMesh()   {
-  return ((kind == VsSchema::Uniform::key) || (kind == VsSchema::Uniform::key_deprecated));
+  return ((kind == VsSchema::Uniform::key) ||
+          (kind == VsSchema::Uniform::key_deprecated));
 }
 
 bool VsMDMesh::isRectilinearMesh()   {
@@ -107,8 +125,10 @@ int VsMDMesh::getNumSpatialDims()   {
 }
 
 std::string VsMDMesh::getFullName() {
-  //Note: MD meshes do not have a path.  Their name is exactly what is declared in the "vsMD" attribute                                                       
-  //This is because an MD mesh may be made up of meshes in different paths, and we would have to choose one over the other.                                   
-  //So, to avoid conflicts, we just use the name as given                                                                                                     
+  // Note: MD meshes do not have a path.  Their name is exactly what
+  // is declared in the "vsMD" attribute This is because an MD mesh
+  // may be made up of meshes in different paths, and we would have to
+  // choose one over the other.  So, to avoid conflicts, we just use
+  // the name as given
   return makeCanonicalName(name);
 }

@@ -83,7 +83,12 @@ avtparaDISFileFormat::avtparaDISFileFormat(const char *filename,
     mFilename(filename), mFormat(PARADIS_NO_FORMAT), 
     mParallelData(filename), mDumpfile(filename, rdatts) {
 
-  debug1 << "avtparaDISFileFormat;  development code" << endl;
+  if (mParallelData.ParseMetaDataFile()) {  
+     mFormat = PARADIS_PARALLEL_FORMAT;
+  } else if (mDumpfile.FileIsValid()) {
+    mFormat = PARADIS_DUMPFILE_FORMAT; 
+  }
+  debug1 << "avtparaDISFileFormat, filename="<<filename<<";  development code" << endl;
   return; 
 }
 
@@ -130,6 +135,7 @@ avtparaDISFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
 {
   debug1 << "starting populateDatabaseMetaData" << endl; 
   debug1 << "avtparaDISFileFormat version " << PARADIS_READER_VERSION_NUMBER << ", " << PARADIS_READER_VERSION_DATE << endl;
+  md->SetMustRepopulateOnStateChange(true); 
 
   // Create a "segments" mesh and a "nodes" mesh
   int nblocks = 1; /* This is for multi-domain, we are single-domain self-decomposing */ 
@@ -149,8 +155,8 @@ avtparaDISFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
   AddMeshToMetaData(md, meshname, meshtype, NULL, nblocks, block_origin,
                     spatial_dimension, topological_dimension);
   
-  md->SetMustRepopulateOnStateChange(true); 
-  if (mParallelData.ParseMetaDataFile()) {  
+  if (mFormat == PARADIS_PARALLEL_FORMAT) {
+    // mParallelData.ParseMetaDataFile()) {  
     debug1 << "populateDatabaseMetaData using the newer parallelizable data format... " << endl;
     /*!
       =======================================================
@@ -207,9 +213,8 @@ avtparaDISFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
     
     
     md->SetFormatCanDoDomainDecomposition(true);  
-    mFormat = PARADIS_PARALLEL_FORMAT; 
   } // end of parallel data format mesh creation 
-  else if (mDumpfile.FileIsValid()) { 
+  else if (mFormat == PARADIS_DUMPFILE_FORMAT) { // mDumpfile.FileIsValid()) { 
     debug1 << " populateDatabaseMetaData detected dumpfile-based dataset" << endl;  
 
 #ifdef PARALLEL
@@ -255,7 +260,7 @@ avtparaDISFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
     }
     
     md->SetFormatCanDoDomainDecomposition(true);  
-    mFormat = PARADIS_DUMPFILE_FORMAT; 
+    
 #endif
   } // end DumpFile format 
   else {
@@ -392,9 +397,9 @@ vtkDataSet *
 avtparaDISFileFormat::GetMesh(const char *meshname)
 {  
     
-  debug2 << "avtparaDISFileFormat::GetMesh("<<meshname<<")"<<endl;
+  debug2 << "avtparaDISFileFormat::GetMesh("<<meshname<<") from file "<<mFilename<<endl;
   vtkDataSet *mesh = NULL; 
-   
+    
   if (mFormat == PARADIS_DUMPFILE_FORMAT) {
     mesh = mDumpfile.GetMesh(meshname); 
   }  else {
@@ -403,6 +408,25 @@ avtparaDISFileFormat::GetMesh(const char *meshname)
   if (!mesh) {
     EXCEPTION1(VisItException, "Could not get mesh requested"); 
   }
+  /* DEBUG CODE 
+  int npts = mesh->GetNumberOfPoints();
+  double pvals[3];
+  double pvmax = -FLT_MAX;
+  double pvmin =  FLT_MAX;
+  for(int i=0;i<npts;i++)
+    {
+      mesh->GetPoint(i,pvals);
+      if(pvals[0]>  pvmax) pvmax= pvals[0];
+      if(pvals[1]>  pvmax) pvmax= pvals[1];
+      if(pvals[2]>  pvmax) pvmax= pvals[2];
+      if(pvals[0]<  pvmin) pvmin= pvals[0];
+      if(pvals[1]<  pvmin) pvmin= pvals[1];
+      if(pvals[2]<  pvmin) pvmin= pvals[2];
+    }
+  cout<<  "For " << mFilename << ", npts = " << npts << ", pv min&  max = "<<  pvmin<<  " "<<  pvmax<<endl;
+  cout<<  "plast = "<<  pvals[0]<<  " "<<  pvals[1]<<  " "<<
+    pvals[2]<<endl;
+  */ 
   return mesh;
 }
 

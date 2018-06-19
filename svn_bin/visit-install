@@ -266,6 +266,27 @@
 #    Eric Brugger, Mon May 16 14:46:53 PDT 2011
 #    I added host profiles for glory and redsky.
 #
+#    Eric Brugger, Fri Jun 24 09:23:13 PDT 2011
+#    I replaced several "find $dir -exec chgrp $group {} \;" commands
+#    with a single "chgrp -R $group $dir1 $dir2" command, since the
+#    find version is extremely slow on some systems.
+#
+#    Eric Brugger, Fri Jul  8 14:28:46 PDT 2011
+#    I modified the script to accept the version number in either the
+#    form X.Y.Z or X_Y_Z.
+#
+#    Jeremy Meredith, Tue Aug  9 14:41:28 EDT 2011
+#    Changed a redirection syntax to be a little more portable.
+#
+#    Eric Brugger, Wed Aug 24 09:15:39 PDT 2011
+#    I replaced the zeus host profile with rzzeus.
+#
+#    Eric Brugger, Wed Aug 24 10:20:22 PDT 2011
+#    I added host profiles for coastal.
+#
+#    Eric Brugger, Wed Sep  7 09:55:39 PDT 2011
+#    I replaced the alastor host profile with rzalastor.
+#
 #-----------------------------------------------------------------------
 
 Compress=COMPRESS
@@ -349,7 +370,7 @@ if [ "$beta" = "true" ]; then
    fi
 fi
 
-version="$1";
+version=`echo $1 | tr "_" "."`
 base=`echo visit$version | tr "." "_"`
 platform="$2"
 dir="$3"
@@ -374,7 +395,7 @@ if [ ! -e $fname1 ]; then
           echo "That is not what this script expects."
           echo "Please download the zipped distribution again."
       else
-          ls -1 $base.*.tar.* >& /dev/null
+          ls -1 $base.*.tar.* > /dev/null 2>&1
           if [ "$status" = "0" ]; then
               echo "You specified your distribution as $platform."
               echo "I could not locate that distribution."
@@ -644,6 +665,7 @@ if [ "$config" = "anl" ]; then
 elif [ "$config" = "llnl_closed" ]; then
    ln -s visit-config-llnl_closed.ini "$dir"/$version+/.visit/config
    cp "$dir"/$version+/.visit/allhosts/host_lanl_closed_cielo.xml   "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_llnl_closed_coastal.xml "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/.visit/allhosts/host_llnl_closed_eos.xml     "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/.visit/allhosts/host_llnl_closed_graph.xml   "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/.visit/allhosts/host_llnl_closed_inca.xml    "$dir"/$version+/.visit/hosts/
@@ -655,14 +677,14 @@ elif [ "$config" = "llnl_closed" ]; then
    cp "$dir"/$version+/.visit/allhosts/host_snl_closed_redrose.xml  "$dir"/$version+/.visit/hosts/
 elif [ "$config" = "llnl_open" ]; then
    ln -s visit-config-llnl_open.ini  "$dir"/$version+/.visit/config
-   cp "$dir"/$version+/.visit/allhosts/host_llnl_alastor.xml "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/.visit/allhosts/host_llnl_atlas.xml   "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/.visit/allhosts/host_llnl_aztec.xml   "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/.visit/allhosts/host_llnl_edge.xml    "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/.visit/allhosts/host_llnl_hera.xml    "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/.visit/allhosts/host_llnl_prism.xml   "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_llnl_rzalastor.xml "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_llnl_rzzeus.xml  "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/.visit/allhosts/host_llnl_sierra.xml  "$dir"/$version+/.visit/hosts/
-   cp "$dir"/$version+/.visit/allhosts/host_llnl_zeus.xml    "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/.visit/allhosts/host_slac_red.xml     "$dir"/$version+/.visit/hosts/
 elif [ "$config" = "nersc" ]; then
    cp "$dir"/$version+/.visit/allhosts/host_nersc_franklin.xml "$dir"/$version+/.visit/hosts/
@@ -775,9 +797,7 @@ fi
 # Set the group ownership properly
 #
 if [ "$group_ownership" != "none" ]; then
-    find "$dir"/bin -exec chgrp $group_ownership {} \;
-    find "$dir"/data -exec chgrp $group_ownership {} \;
-    find "$dir"/$version+ -exec chgrp $group_ownership {} \;
+    chgrp -R $group_ownership "$dir"/bin "$dir"/data "$dir"/$version+
 fi
 
 #

@@ -402,6 +402,49 @@
 #     I changed the script to use mesa 7.8.2 always, since even some linux
 #     platforms had problems building 7.10.2.
 #
+#     Mark C. Miller, Thu Jun 16 22:33:16 PDT 2011
+#     Fixed a number of cases where ITAPS related directory logic was not
+#     including 'itaps/$ITAPS_VERSION' to specify the path.
+#
+#     Eric Brugger, Fri Jun 17 13:19:14 PDT 2011
+#     I changed the visit version number to 2.3.0.
+#
+#     Eric Brugger, Tue Jul 19 08:51:29 PDT 2011
+#     I added some flags to the qt configure line that speeds up the compile.
+#     The changes were provided by Jens Henrik.
+#
+#     Eric Brugger, Wed Jul 20 11:36:38 PDT 2011
+#     I changed the visit version number to 2.3.1.
+#
+#     Eric Brugger, Thu Jul 21 08:25:52 PDT 2011
+#     I changed the display of the last message so that the entire message
+#     was visible when the script is run in graphical mode. The message was
+#     about 20 lines and only the last line was being displayed. I added an
+#     info_box_large function that displays many lines and then used that
+#     to display the last message.
+#
+#     Eric Brugger, Thu Jul 21 11:44:14 PDT 2011
+#     I changed the behavior of the script when the user specifies the third
+#     party library directory and the directory doesn't exist. It used to
+#     print an error message and exit, now it prompts the user to determine
+#     if it should create the directory and only exits with an error if the
+#     user indicates that the script shouldn't create the directory.
+#
+#     Eric Brugger, Fri Jul 22 09:18:05 PDT 2011
+#     With Jean Favre's help, I modified the script so that it would build
+#     VisIt on Ubuntu 11.04.
+#
+#     Jeremy Meredith, Tue Aug  9 17:19:55 EDT 2011
+#     Updated the subversion host/path.
+#
+#     Hank Childs, Mon Aug 29 11:07:26 PDT 2011
+#     More tricks for Ubuntu.
+#
+#     Eric Brugger, Mon Aug 29 14:42:36 PDT 2011
+#     I changed the visit version number to 2.3.2.
+#
+#     Mark C. Miller, Mon Aug 29 23:54:40 PDT 2011
+#     I fixed URL for where it obtains ITAPS-FMDB tarballs
 # *****************************************************************************
 
 
@@ -720,9 +763,9 @@ fi
 export SVN_ANON_ROOT_PATH="http://portal.nersc.gov/svn/visit"
 # Setup svn path: use SVN_NERSC_NAME if set
 if test -z "$SVN_NERSC_NAME" ; then
-    export SVN_REPO_ROOT_PATH="svn+ssh://svn.nersc.gov/svn/visit"
+    export SVN_REPO_ROOT_PATH="svn+ssh://portal-auth.nersc.gov/project/projectdirs/visit/svn/visit"
 else
-    export SVN_REPO_ROOT_PATH="svn+ssh://$SVN_NERSC_NAME@svn.nersc.gov/svn/visit"
+    export SVN_REPO_ROOT_PATH="svn+ssh://$SVN_NERSC_NAME@portal-auth.nersc.gov/project/projectdirs/visit/svn/visit"
 fi
 
 ############################################################################
@@ -732,17 +775,17 @@ fi
 # release tag.
 ############################################################################
 
-export VISIT_VERSION=${VISIT_VERSION:-"2.2.2"}
+export VISIT_VERSION=${VISIT_VERSION:-"2.3.2"}
 
 ####
 # Trunk:
 ####
-export SVN_SOURCE_PATH="trunk/src"
+#export SVN_SOURCE_PATH="trunk/src"
 
 ###
 # Release:
 ###
-#export SVN_SOURCE_PATH="tags/${VISIT_VERSION}/src"
+export SVN_SOURCE_PATH="tags/${VISIT_VERSION}/src"
 
 if [[ "$OPSYS" != "Darwin" ]]; then
     WGET_MINOR_VERSION=$(wget --version| head -n 1|cut -d. -f 2)
@@ -889,7 +932,7 @@ export ITAPS_MOAB_BUILD_DIR=${ITAPS_MOAB_BUILD_DIR:-"moab-4.0.1"}
 
 export ITAPS_FMDB_VERSION=${ITAPS_FMDB_VERSION:-"1.2"}
 export ITAPS_FMDB_FILE=${ITAPS_FMDB_FILE:-"FMDB-${ITAPS_FMDB_VERSION}.tar.gz"}
-export ITAPS_FMDB_URL=${ITAPS_FMDB_URL:-http://www.scorec.rpi.edu/FMDB/source}
+export ITAPS_FMDB_URL=${ITAPS_FMDB_URL:-https://redmine.scorec.rpi.edu/anonsvn/itaps/software/branches/1.2RC/release_distros/FMDB}
 export ITAPS_FMDB_BUILD_DIR=${ITAPS_FMDB_BUILD_DIR:-"${ITAPS_FMDB_FILE%.tar*}"}
 
 # CGM is an indirect dependency introduced by ITAPS_GRUMMP. No other part
@@ -939,6 +982,7 @@ export ICET_BUILD_DIR=${ICET_BUILD_DIR:-"IceT-1-0-0"}
 DLG="dialog"
 DLG_BACKTITLE="VisIt $VISIT_VERSION Build Process"
 DLG_HEIGHT="5"
+DLG_HEIGHT_TALL="25"
 DLG_WIDTH="60"
 DLG_WIDTH_WIDE="80"
 
@@ -993,6 +1037,9 @@ function warn
 # Programmer: Tom Fogal                                                       #
 # Date: Fri Oct  3 09:37:51 MDT 2008                                          #
 #                                                                             #
+# Modifications:                                                              #
+#    Jeremy Meredith, Fri Jul 22 10:36:20 EDT 2011                            #
+#    Added a little more text to help users.                                  #
 # *************************************************************************** #
 
 function error
@@ -1001,7 +1048,9 @@ function error
     if test "${LOG_FILE}" != "/dev/tty" ; then
         warn "Error in build process.  See ${LOG_FILE} for more information."\
              "If the error is unclear, please include ${LOG_FILE} in a "\
-             "message to the visit-users list." 
+             "message to the visit-users@ornl.gov list.  You will probably "\
+             "need to compress the ${LOG_FILE} using a program like gzip "\
+             "so it will fit within the size limits for email attachments."
     fi
     exit 1
 }
@@ -1027,7 +1076,7 @@ function info_box
 # *************************************************************************** #
 # Function: info                                                              #
 #                                                                             #
-# Purpose: Given an informative message to the user.                          #
+# Purpose: Give an informative message to the user.                           #
 #                                                                             #
 # Programmer: Tom Fogal                                                       #
 # Date: Fri Oct  3 09:41:50 MDT 2008                                          #
@@ -1053,6 +1102,24 @@ function info
         # write message to log as well
         log "$@"
     fi
+}
+
+# *************************************************************************** #
+# Function: info_box_large                                                    #
+#                                                                             #
+# Purpose: Show a large information box with a message.                       #
+#                                                                             #
+# Programmer: Eric Brugger,                                                   #
+# Date: Thu Jul 21 08:25:52 PDT 2011                                          #
+#                                                                             #
+# *************************************************************************** #
+
+function info_box_large
+{
+    if [[ "$GRAPHICAL" == "yes" ]] ; then
+        $DLG --backtitle "$DLG_BACKTITLE" --infobox "$1" $DLG_HEIGHT_TALL $DLG_WIDTH
+    fi
+    return 0
 }
 
 # *************************************************************************** #
@@ -1143,6 +1210,10 @@ function uncompress_untar
 #   Eric Brugger, Mon Jan 10 16:00:13 PST 2011                                #
 #   I made it always fall back to anonymous svn checkout.                     #
 #                                                                             #
+#   Eric Brugger, Tue Jul 19 10:19:50 PDT 2011                                #
+#   I made it use the anonymous svn site as the fallback download site        #
+#   instead of llnl's web site.                                               #
+#                                                                             #
 # *************************************************************************** #
 
 function download_file
@@ -1213,8 +1284,8 @@ function download_file
         rm -f $dfile
     fi
 
-    # Now try visit's 3rd_party.
-    try_download_file https://wci.llnl.gov/codes/visit/3rd_party/$dfile $dfile
+    # Now try the anonymous svn site with wget or curl.
+    try_download_file $SVN_ANON_ROOT_PATH/trunk/third_party/$dfile $dfile
     if [[ $? == 0 ]] ; then
         return 0
     fi
@@ -1741,19 +1812,25 @@ function check_optional_3rdparty
     fi
     
     if [[ "$DO_ITAPS" == "yes" ]] ; then
-        ensure_built_or_ready "itaps"/$ITAPS_VERSION $ITAPS_MOAB_VERSION $ITAPS_MOAB_BUILD_DIR  $ITAPS_MOAB_FILE $ITAPS_MOAB_URL
+        ensure_built_or_ready "itaps"/$ITAPS_VERSION/MOAB $ITAPS_MOAB_VERSION $ITAPS_MOAB_BUILD_DIR  $ITAPS_MOAB_FILE $ITAPS_MOAB_URL
         if [[ $? != 0 ]] ; then
             ANY_ERRORS="yes"
             DO_ITAPS="no"
             error "Unable to build ITAPS_MOAB.  ${ITAPS_MOAB_FILE} not found."
         fi
-        ensure_built_or_ready "itaps"/$ITAPS_VERSION $ITAPS_FMDB_VERSION $ITAPS_FMDB_BUILD_DIR  $ITAPS_FMDB_FILE $ITAPS_FMDB_URL
+        ensure_built_or_ready "itaps"/$ITAPS_VERSION/FMDB $ITAPS_FMDB_VERSION $ITAPS_FMDB_BUILD_DIR  $ITAPS_FMDB_FILE $ITAPS_FMDB_URL
         if [[ $? != 0 ]] ; then
             ANY_ERRORS="yes"
             DO_ITAPS="no"
             error "Unable to build ITAPS_FMDB.  ${ITAPS_FMDB_FILE} not found."
         fi
-        ensure_built_or_ready "itaps"/$ITAPS_VERSION $ITAPS_GRUMMP_VERSION $ITAPS_GRUMMP_BUILD_DIR  $ITAPS_GRUMMP_FILE $ITAPS_GRUMMP_URL
+        ensure_built_or_ready "itaps"/$ITAPS_VERSION/GRUMMP $ITAPS_GRUMMP_CGM_VERSION $ITAPS_GRUMMP_CGM_BUILD_DIR  $ITAPS_GRUMMP_CGM_FILE $ITAPS_GRUMMP_CGM_URL
+        if [[ $? != 0 ]] ; then
+            ANY_ERRORS="yes"
+            DO_ITAPS="no"
+            error "Unable to build ITAPS_GRUMMP_CGM.  ${ITAPS_GRUMMP_CGM_FILE} not found."
+        fi
+        ensure_built_or_ready "itaps"/$ITAPS_VERSION/GRUMMP $ITAPS_GRUMMP_VERSION $ITAPS_GRUMMP_BUILD_DIR  $ITAPS_GRUMMP_FILE $ITAPS_GRUMMP_URL
         if [[ $? != 0 ]] ; then
             ANY_ERRORS="yes"
             DO_ITAPS="no"
@@ -3290,6 +3367,11 @@ function build_qt
     qt_flags="${qt_flags} -no-libtiff"
     qt_flags="${qt_flags} -no-libjpeg"
     qt_flags="${qt_flags} -no-webkit"
+    qt_flags="${qt_flags} -nomake docs" 
+    qt_flags="${qt_flags} -nomake examples" 
+    qt_flags="${qt_flags} -nomake demos" 
+    qt_flags="${qt_flags} -opensource" 
+    qt_flags="${qt_flags} -confirm-license"
     if [[ ${QT_VERSION} == 4.6.1 ]] ; then
         qt_flags="${qt_flags} -no-javascript-jit"
         qt_flags="${qt_flags} -no-script"
@@ -3396,6 +3478,59 @@ function build_qt
 #                          Function 5, build_cmake                            #
 # *************************************************************************** #
 
+function apply_cmake_patch_1
+{
+   patch -p0 <<\EOF
+diff -c a/Modules/Platform/UnixPaths.cmake cmake-2.8.3/Modules/Platform/UnixPaths.cmake
+*** a/Modules/Platform/UnixPaths.cmake
+--- cmake-2.8.3/Modules/Platform/UnixPaths.cmake
+***************
+*** 67,72 ****
+--- 67,75 ----
+    /usr/pkg/lib
+    /opt/csw/lib /opt/lib
+    /usr/openwin/lib
++
++   # Ubuntu 11.04
++   /usr/lib/x86_64-linux-gnu
+    )
+
+  LIST(APPEND CMAKE_SYSTEM_PROGRAM_PATH
+***************
+*** 75,80 ****
+--- 78,86 ----
+
+  LIST(APPEND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES
+    /lib /usr/lib /usr/lib32 /usr/lib64
++
++   # Ubuntu 11.04
++   /usr/lib/x86_64-linux-gnu
+    )
+
+  LIST(APPEND CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES
+EOF
+   if [[ $? != 0 ]] ; then
+        warn "Unable to apply patch 1 to cmake."
+        return 1
+   else
+        return 0
+   fi
+}
+
+
+function apply_cmake_patch
+{
+   info "Patching CMake . . ."
+
+   apply_cmake_patch_1
+   if [[ $? != 0 ]] ; then
+      return 1
+   fi
+
+   return 0
+}
+
+
 function build_cmake
 {
     #
@@ -3406,6 +3541,22 @@ function build_cmake
     if [[ $untarred_cmake == -1 ]] ; then
        warn "Unable to prepare CMake build directory. Giving Up!"
        return 1
+    fi
+
+    #
+    # Patch cmake
+    #
+    apply_cmake_patch
+    if [[ $? != 0 ]] ; then
+       if [[ $untarred_cmake == 1 ]] ; then
+          warn "Giving up on CMake build because the patch failed."
+          return 1
+       else
+          warn "Patch failed, but continuing.  I believe that this script\n"\
+               "tried to apply a patch to an existing directory which had\n"\
+               "already been patched ... that is, that the patch is\n"\
+               "failing harmlessly on a second application."
+       fi
     fi
 
     #
@@ -7580,7 +7731,7 @@ function build_itaps_moab
     fi
     ./configure CXX="$CXX_COMPILER" CC="$C_COMPILER" \
         CFLAGS="$CFLAGS $C_OPT_FLAGS" CXXFLAGS="$CXXFLAGS $CXX_OPT_FLAGS" \
-        --prefix="$VISITDIR/itaps/MOAB/$ITAPS_MOAB_VERSION/$VISITARCH" \
+        --prefix="$VISITDIR/itaps/$ITAPS_VERSION/MOAB/$ITAPS_MOAB_VERSION/$VISITARCH" \
         --with-zlib \
         $WITHHDF5ARG "$WITHSZIPARG" "$WITHNETCDFARG"
     if [[ $? != 0 ]] ; then
@@ -7613,12 +7764,12 @@ function build_itaps_moab
         fi
         # To make it easier to package this build up, ensure we don't wind up
         # liking to shared libraries.
-        find $VISITDIR/itaps/MOAB/$ITAPS_MOAB_VERSION/$VISITARCH -name 'lib*.so*' -exec rm -f {} \;
+        find $VISITDIR/itaps/$ITAPS_VERSION/MOAB/$ITAPS_MOAB_VERSION/$VISITARCH -name 'lib*.so*' -exec rm -f {} \;
     fi
 
     if [[ "$DO_GROUP" == "yes" ]] ; then
-       chmod -R ug+w,a+rX "$VISITDIR/itaps/MOAB"
-       chgrp -R ${GROUP} "$VISITDIR/itaps/MOAB"
+       chmod -R ug+w,a+rX "$VISITDIR/itaps/$ITAPS_VERSION/MOAB"
+       chgrp -R ${GROUP} "$VISITDIR/itaps/$ITAPS_VERSION/MOAB"
     fi
     cd "$START_DIR"
     info "Done with ITAPS_MOAB"
@@ -7645,13 +7796,13 @@ function build_itaps_fmdb
     abs_itaps_fmdb_build_dir=$(pwd)
 
     if [[ ! -e GMI-1.0.tar.gz ]]; then
-        download_file GMI-1.0.tar.gz http://www.scorec.rpi.edu/FMDB/source
+        download_file GMI-1.0.tar.gz $ITAPS_FMDB_URL
         [[ $? -eq 0 ]] || { error "Unable to download GMI-1.0.tar.gz for ITAPS_FMDB" && return 1; }
     fi
     gunzip < GMI-1.0.tar.gz | tar xf -
     [[ $? -eq 0 ]] || { error "Unable to untar GMI-1.0.tar.gz for ITAPS_FMDB" && return 1; }
     if [[ ! -e SCUtil.tar.gz ]]; then
-        download_file SCUtil.tar.gz http://www.scorec.rpi.edu/FMDB/source
+        download_file SCUtil.tar.gz $ITAPS_FMDB_URL
         [[ $? -eq 0 ]] || { error "Unable to download SCUtil.tar.gz for ITAPS_FMDB" && return 1; }
     fi
     gunzip < SCUtil.tar.gz | tar xf -
@@ -7673,7 +7824,7 @@ function build_itaps_fmdb
         --with-fmdb=$abs_itaps_fmdb_build_dir \
         --with-scorecutil=$abs_itaps_fmdb_build_dir/SCUtil/SCORECUtil-0.1 \
         --with-iterators=$abs_itaps_fmdb_build_dir/SCUtil/siter \
-        --prefix="$VISITDIR/itaps/FMDB/$ITAPS_FMDB_VERSION/$VISITARCH"
+        --prefix="$VISITDIR/itaps/$ITAPS_VERSION/FMDB/$ITAPS_FMDB_VERSION/$VISITARCH"
     if [[ $? != 0 ]] ; then
        warn "ITAPS_FMBD configure failed.  Giving up"
        return 1
@@ -7702,10 +7853,10 @@ function build_itaps_fmdb
     pushd SCUtil/SCORECUtil-0.1 >/dev/null 2>&1
     ./configure CXX="$CXX_COMPILER" CC="$C_COMPILER" \
         CFLAGS="$CFLAGS $C_OPT_FLAGS" CXXFLAGS="$CXXFLAGS $CXX_OPT_FLAGS" \
-        --with-gmi=$VISITDIR/itaps/FMDB/$ITAPS_FMDB_VERSION/$VISITARCH \
+        --with-gmi=$VISITDIR/itaps/$ITAPS_VERSION/FMDB/$ITAPS_FMDB_VERSION/$VISITARCH \
         --with-fmdb=$abs_itaps_fmdb_build_dir \
         --with-iterators=$abs_itaps_fmdb_build_dir/SCUtil/siter \
-        --prefix="$VISITDIR/itaps/FMDB/$ITAPS_FMDB_VERSION/$VISITARCH"
+        --prefix="$VISITDIR/itaps/$ITAPS_VERSION/FMDB/$ITAPS_FMDB_VERSION/$VISITARCH"
     if [[ $? != 0 ]] ; then
        warn "ITAPS_FMBD configure failed.  Giving up"
        return 1
@@ -7733,10 +7884,10 @@ function build_itaps_fmdb
     info "Invoking command to configure ITAPS_FMDB"
     ./configure CXX="$CXX_COMPILER" CC="$C_COMPILER" \
         CFLAGS="$CFLAGS $C_OPT_FLAGS" CXXFLAGS="$CXXFLAGS $CXX_OPT_FLAGS" \
-        --with-scorecutil=$VISITDIR/itaps/FMDB/$ITAPS_FMDB_VERSION/$VISITARCH \
-        --with-gmi=$VISITDIR/itaps/FMDB/$ITAPS_FMDB_VERSION/$VISITARCH \
+        --with-scorecutil=$VISITDIR/itaps/$ITAPS_VERSION/FMDB/$ITAPS_FMDB_VERSION/$VISITARCH \
+        --with-gmi=$VISITDIR/itaps/$ITAPS_VERSION/FMDB/$ITAPS_FMDB_VERSION/$VISITARCH \
         --with-iterators=$abs_itaps_fmdb_build_dir/SCUtil/siter \
-        --prefix="$VISITDIR/itaps/FMDB/$ITAPS_FMDB_VERSION/$VISITARCH" \
+        --prefix="$VISITDIR/itaps/$ITAPS_VERSION/FMDB/$ITAPS_FMDB_VERSION/$VISITARCH" \
         --enable-imesh
     if [[ $? != 0 ]] ; then
        warn "ITAPS_FMBD configure failed.  Giving up"
@@ -7768,12 +7919,12 @@ function build_itaps_fmdb
         fi
         # To make it easier to package this build up, ensure we don't wind up
         # liking to shared libraries.
-        find $VISITDIR/itaps/FMDB/$ITAPS_FMDB_VERSION/$VISITARCH -name 'lib*.so*' -exec rm -f {} \;
+        find $VISITDIR/itaps/$ITAPS_VERSION/FMDB/$ITAPS_FMDB_VERSION/$VISITARCH -name 'lib*.so*' -exec rm -f {} \;
     fi
 
     if [[ "$DO_GROUP" == "yes" ]] ; then
-       chmod -R ug+w,a+rX "$VISITDIR/itaps/FMDB"
-       chgrp -R ${GROUP} "$VISITDIR/itaps/FMDB"
+       chmod -R ug+w,a+rX "$VISITDIR/itaps/$ITAPS_VERSION/FMDB"
+       chgrp -R ${GROUP} "$VISITDIR/itaps/$ITAPS_VERSION/FMDB"
     fi
     cd "$START_DIR"
     info "Done with ITAPS_FMDB"
@@ -7804,7 +7955,7 @@ function build_itaps_grummp
     info "Invoking command to configure ITAPS_GRUMMP_CGM"
     ./configure CXX="$CXX_COMPILER" CC="$C_COMPILER" \
         CFLAGS="$CFLAGS $C_OPT_FLAGS" CXXFLAGS="$CXXFLAGS $CXX_OPT_FLAGS" \
-        --prefix="$VISITDIR/itaps/GRUMMP/$ITAPS_GRUMMP_VERSION/$VISITARCH"
+        --prefix="$VISITDIR/itaps/$ITAPS_VERSION/GRUMMP/$ITAPS_GRUMMP_VERSION/$VISITARCH"
     if [[ $? != 0 ]] ; then
        warn "ITAPS_GRUMMP_CGM configure failed.  Giving up"
        return 1
@@ -7835,13 +7986,14 @@ function build_itaps_grummp
         fi
         # To make it easier to package this build up, ensure we don't wind up
         # liking to shared libraries.
-        find $VISITDIR/itaps/GRUMMP/$ITAPS_GRUMMP_VERSION/$VISITARCH -name 'lib*.so*' -exec rm -f {} \;
+        find $VISITDIR/itaps/$ITAPS_VERSION/GRUMMP/$ITAPS_GRUMMP_VERSION/$VISITARCH -name 'lib*.so*' -exec rm -f {} \;
     fi
 
     if [[ "$DO_GROUP" == "yes" ]] ; then
-       chmod -R ug+w,a+rX "$VISITDIR/itaps/GRUMMP"
-       chgrp -R ${GROUP} "$VISITDIR/itaps/GRUMMP"
+       chmod -R ug+w,a+rX "$VISITDIR/itaps/$ITAPS_VERSION/GRUMMP"
+       chgrp -R ${GROUP} "$VISITDIR/itaps/$ITAPS_VERSION/GRUMMP"
     fi
+    cd "$START_DIR"
     info "Done with ITAPS_GRUMMP_CGM"
 
     #
@@ -7862,8 +8014,8 @@ function build_itaps_grummp
     info "Invoking command to configure ITAPS_GRUMMP"
     ./configure CXX="$CXX_COMPILER" CC="$C_COMPILER" \
         CFLAGS="$CFLAGS $C_OPT_FLAGS" CXXFLAGS="$CXXFLAGS $CXX_OPT_FLAGS" \
-        --prefix="$VISITDIR/itaps/GRUMMP/$ITAPS_GRUMMP_VERSION/$VISITARCH" \
-        --with-CGM-path="$VISITDIR/itaps/GRUMMP/$ITAPS_GRUMMP_VERSION/$VISITARCH" \
+        --prefix="$VISITDIR/itaps/$ITAPS_VERSION/GRUMMP/$ITAPS_GRUMMP_VERSION/$VISITARCH" \
+        --with-CGM-path="$VISITDIR/itaps/$ITAPS_VERSION/GRUMMP/$ITAPS_GRUMMP_VERSION/$VISITARCH" \
         --enable-imesh
     if [[ $? != 0 ]] ; then
        warn "ITAPS_GRUMMP configure failed.  Giving up"
@@ -7895,12 +8047,12 @@ function build_itaps_grummp
         fi
         # To make it easier to package this build up, ensure we don't wind up
         # liking to shared libraries.
-        find $VISITDIR/itaps/GRUMMP/$ITAPS_GRUMMP_VERSION/$VISITARCH -name 'lib*.so*' -exec rm -f {} \;
+        find $VISITDIR/itaps/$ITAPS_VERSION/GRUMMP/$ITAPS_GRUMMP_VERSION/$VISITARCH -name 'lib*.so*' -exec rm -f {} \;
     fi
 
     if [[ "$DO_GROUP" == "yes" ]] ; then
-       chmod -R ug+w,a+rX "$VISITDIR/itaps/GRUMMP"
-       chgrp -R ${GROUP} "$VISITDIR/itaps/GRUMMP"
+       chmod -R ug+w,a+rX "$VISITDIR/itaps/$ITAPS_VERSION/GRUMMP"
+       chgrp -R ${GROUP} "$VISITDIR/itaps/$ITAPS_VERSION/GRUMMP"
     fi
     cd "$START_DIR"
     info "Done with ITAPS_GRUMMP"
@@ -8012,8 +8164,8 @@ function build_xdmf
     rm CML.*
     mv CMakeLists.txt CML.0
     H5DIR=$(echo "$VISITDIR/hdf5/$HDF5_VERSION/$VISITARCH" | sed "s/\//\\\\\//g")
-    sed "s/  hdf5/  hdf5  $H5DIR\/lib/g" CML.0 > CML.1
-    sed "s/H5Ipublic.h/H5Ipublic.h $H5DIR\/include/g" CML.1 > CMakeLists.txt
+    sed "s/  hdf5/  hdf5  $H5DIR\/lib NO_DEFAULT_PATH/g" CML.0 > CML.1
+    sed "s/H5Ipublic.h/H5Ipublic.h $H5DIR\/include NO_DEFAULT_PATH/g" CML.1 > CMakeLists.txt
 
     # Configure Xdmf
     info "Executing CMake on Xdmf"
@@ -8024,6 +8176,18 @@ function build_xdmf
         XDMF_SHARED_LIBS="ON"
         LIBEXT="${SO_EXT}"
     fi
+    if [[ "$OPSYS" == "Darwin" ]]; then
+        # Work around build problems on Mac.
+        XDMF_ZLIB_OPTIONS="-DXDMF_SYSTEM_ZLIB:BOOL=OFF"
+        cd Utilities/vtklibxml2
+        rm CML.*
+        mv CMakeLists.txt CML.0
+        sed "s/SET(LIBXML2_LIBS \"\")/SET(LIBXML2_LIBS \"vtkzlib\")/g" CML.0 > CML.1
+        sed "s/SET(WITH_MODULES 1)/SET(WITH_MODULES 0)/g" CML.1 > CMakeLists.txt
+        cd ../..
+    else
+        XDMF_ZLIB_OPTIONS="-DXDMF_SYSTEM_ZLIB:BOOL=ON"
+    fi
     ${CMAKE_BIN} -DCMAKE_INSTALL_PREFIX:PATH="$VISITDIR/Xdmf/${XDMF_VERSION}/${VISITARCH}"\
         -DCMAKE_BUILD_WITH_INSTALL_RPATH:BOOL=ON \
         -DBUILD_SHARED_LIBS:BOOL=${XDMF_SHARED_LIBS}\
@@ -8033,10 +8197,10 @@ function build_xdmf
         -DCMAKE_C_COMPILER:STRING=${C_COMPILER}\
         -DBUILD_TESTING:BOOL=OFF \
         -DXDMF_BUILD_MPI:BOOL=OFF \
-        -DXDMF_BUILD_UTILS:BOOL=OFF \
         -DXDMF_BUILD_VTK:BOOL=OFF \
+        -DXDMF_BUILD_UTILS:BOOL=OFF \
+        ${XDMF_ZLIB_OPTIONS}\
         -DXDMF_SYSTEM_HDF5:BOOL=ON \
-        -DXDMF_SYSTEM_ZLIB:BOOL=ON \
         .
 
     if [[ $? != 0 ]] ; then
@@ -8066,8 +8230,11 @@ function build_xdmf
     # Patch up the library names on Darwin
     if [[ "$DO_STATIC_BUILD" != "yes" && "$OPSYS" == "Darwin" ]]; then
         LIBDIR="$VISITDIR/Xdmf/${XDMF_VERSION}/${VISITARCH}/lib"
-        install_name_tool -change libvtklibxml2.dylib $LIBDIR/libvtklibxml2.dylib -id $LIBDIR/libXdmf.dylib $LIBDIR/libXdmf.dylib 
-        install_name_tool -id $LIBDIR/libvtklibxml2.dylib $LIBDIR/libvtklibxml2.dylib 
+        install_name_tool -change libvtklibxml2.dylib $LIBDIR/libvtklibxml2.dylib \
+                          -change libvtkzlib.dylib $VISITDIR/vtk/${VTK_VERSION}/${VISITARCH}/lib/libvtkzlib.dylib \
+                          -id $LIBDIR/libXdmf.dylib $LIBDIR/libXdmf.dylib 
+        install_name_tool -change libvtkzlib.dylib $VISITDIR/vtk/${VTK_VERSION}/${VISITARCH}/lib/libvtkzlib.dylib \
+                          -id $LIBDIR/libvtklibxml2.dylib $LIBDIR/libvtklibxml2.dylib 
     fi
 
     if [[ "$DO_GROUP" == "yes" ]] ; then
@@ -8283,6 +8450,9 @@ function build_ADIOS
 #                                                                             #
 # Kathleen Bonnell, Wed Feb 16 08:35:40 PST 2011                              #
 # Remove setting of CMAKE_BUILD_TYPE                                          #
+#                                                                             #
+# Kathleen Biagas, Mon Aug 8 08:12:37 MST 2011                                #
+# Use FILEPATH type for compilers, STRING type for libdep.                    # 
 # *************************************************************************** #
 
 function build_hostconf
@@ -8354,8 +8524,8 @@ function build_hostconf
     echo "##" >> $HOSTCONF
     echo "## Compiler flags." >> $HOSTCONF
     echo "##" >> $HOSTCONF
-    echo "VISIT_OPTION_DEFAULT(VISIT_C_COMPILER $C_COMPILER TYPE STRING)">> $HOSTCONF
-    echo "VISIT_OPTION_DEFAULT(VISIT_CXX_COMPILER $CXX_COMPILER TYPE STRING)" >> $HOSTCONF
+    echo "VISIT_OPTION_DEFAULT(VISIT_C_COMPILER $C_COMPILER TYPE FILEPATH)">> $HOSTCONF
+    echo "VISIT_OPTION_DEFAULT(VISIT_CXX_COMPILER $CXX_COMPILER TYPE FILEPATH)" >> $HOSTCONF
 
     if [[ "$USE_VISIBILITY_HIDDEN" == "yes" ]] ; then
         echo "VISIT_OPTION_DEFAULT(VISIT_C_FLAGS \"$CFLAGS -fvisibility=hidden\" TYPE STRING)" >> $HOSTCONF
@@ -8374,14 +8544,14 @@ function build_hostconf
         # we either set an mpi wrapper compiler in the host conf
         if [[ "$VISIT_MPI_COMPILER" != "" ]] ; then
             echo "## (configured w/ mpi compiler wrapper)" >> $HOSTCONF
-            echo "VISIT_OPTION_DEFAULT(VISIT_MPI_COMPILER $VISIT_MPI_COMPILER TYPE STRING)"  >> $HOSTCONF
+            echo "VISIT_OPTION_DEFAULT(VISIT_MPI_COMPILER $VISIT_MPI_COMPILER TYPE FILEPATH)"  >> $HOSTCONF
         else
             # or we just set the flags.
             echo "## (configued w/ user provided CXX (PAR_INCLUDE) & LDFLAGS (PAR_LIBS) flags)" \
              >> $HOSTCONF
             echo "VISIT_OPTION_DEFAULT(VISIT_MPI_CXX_FLAGS \"$PAR_INCLUDE\" TYPE STRING)"     >> $HOSTCONF
             echo "VISIT_OPTION_DEFAULT(VISIT_MPI_LD_FLAGS  \"$PAR_LINKER_FLAGS\" TYPE STRING)" >> $HOSTCONF
-            echo "VISIT_OPTION_DEFAULT(VISIT_MPI_LIBS        $PAR_LIBRARY_NAMES)" >> $HOSTCONF
+            echo "VISIT_OPTION_DEFAULT(VISIT_MPI_LIBS        $PAR_LIBRARY_NAMES TYPE STRING)" >> $HOSTCONF
         fi
     fi
 
@@ -8423,11 +8593,11 @@ function build_hostconf
         >> $HOSTCONF
         if [[ "$DO_SZIP" == "yes" ]] ; then
             echo \
-            "VISIT_OPTION_DEFAULT(VISIT_HDF4_LIBDEP \${VISITHOME}/szip/$SZIP_VERSION/\${VISITARCH}/lib sz \${VISITHOME}/vtk/$VTK_VERSION/\${VISITARCH}/lib vtkjpeg)" \
+            "VISIT_OPTION_DEFAULT(VISIT_HDF4_LIBDEP \${VISITHOME}/szip/$SZIP_VERSION/\${VISITARCH}/lib sz \${VISITHOME}/vtk/$VTK_VERSION/\${VISITARCH}/lib vtkjpeg TYPE STRING)" \
             >> $HOSTCONF
           else
             echo \
-            "VISIT_OPTION_DEFAULT(VISIT_HDF4_LIBDEP \${VISITHOME}/vtk/$VTK_VERSION/\${VISITARCH}/lib vtkjpeg)" \
+            "VISIT_OPTION_DEFAULT(VISIT_HDF4_LIBDEP \${VISITHOME}/vtk/$VTK_VERSION/\${VISITARCH}/lib vtkjpeg TYPE STRING)" \
             >> $HOSTCONF
         fi
         >> $HOSTCONF
@@ -8443,11 +8613,11 @@ function build_hostconf
         >> $HOSTCONF 
         if [[ "$DO_SZIP" == "yes" ]] ; then
             echo \
-            "VISIT_OPTION_DEFAULT(VISIT_HDF5_LIBDEP \${VISITHOME}/szip/$SZIP_VERSION/\${VISITARCH}/lib sz /usr/lib z)" \
+            "VISIT_OPTION_DEFAULT(VISIT_HDF5_LIBDEP \${VISITHOME}/szip/$SZIP_VERSION/\${VISITARCH}/lib sz /usr/lib z TYPE STRING)" \
             >> $HOSTCONF
         else
             echo \
-            "VISIT_OPTION_DEFAULT(VISIT_HDF5_LIBDEP /usr/lib z)" \
+            "VISIT_OPTION_DEFAULT(VISIT_HDF5_LIBDEP /usr/lib z TYPE STRING)" \
             >> $HOSTCONF
         fi
     fi
@@ -8462,7 +8632,7 @@ function build_hostconf
         >> $HOSTCONF
         if [[ "$DO_HDF5" == "yes" ]] ; then
             echo \
-            "VISIT_OPTION_DEFAULT(VISIT_NETCDF_LIBDEP HDF5_LIBRARY_DIR hdf5_hl HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP})" \
+            "VISIT_OPTION_DEFAULT(VISIT_NETCDF_LIBDEP HDF5_LIBRARY_DIR hdf5_hl HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP} TYPE STRING)" \
             >> $HOSTCONF
         fi
     fi
@@ -8518,7 +8688,7 @@ function build_hostconf
         >> $HOSTCONF
         if [[ "$DO_HDF5" == "yes" ]] ; then
             echo \
-            "VISIT_OPTION_DEFAULT(VISIT_CGNS_LIBDEP HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP})" \
+            "VISIT_OPTION_DEFAULT(VISIT_CGNS_LIBDEP HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP} TYPE STRING)" \
             >> $HOSTCONF
         fi
     fi
@@ -8532,7 +8702,7 @@ function build_hostconf
         "VISIT_OPTION_DEFAULT(VISIT_EXODUSII_DIR \${VISITHOME}/exodus/$EXODUS_VERSION/\${VISITARCH})" \
         >> $HOSTCONF
         echo \
-        "VISIT_OPTION_DEFAULT(VISIT_EXODUSII_LIBDEP NETCDF_LIBRARY_DIR netcdf \${VISIT_NETCDF_LIBDEP})" \
+        "VISIT_OPTION_DEFAULT(VISIT_EXODUSII_LIBDEP NETCDF_LIBRARY_DIR netcdf \${VISIT_NETCDF_LIBDEP} TYPE STRING)" \
         >> $HOSTCONF
     fi
 
@@ -8565,7 +8735,7 @@ function build_hostconf
         "VISIT_OPTION_DEFAULT(VISIT_H5PART_DIR \${VISITHOME}/h5part/$H5PART_VERSION/\${VISITARCH})" \
         >> $HOSTCONF
         echo \
-        "VISIT_OPTION_DEFAULT(VISIT_H5PART_LIBDEP HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP})" \
+        "VISIT_OPTION_DEFAULT(VISIT_H5PART_LIBDEP HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP} TYPE STRING)" \
         >> $HOSTCONF
 
     fi
@@ -8579,7 +8749,7 @@ function build_hostconf
         "VISIT_OPTION_DEFAULT(VISIT_MDSPLUS_DIR \${VISITHOME}/mdsplus/$MDSPLUS_VERSION/\${VISITARCH})" \
         >> $HOSTCONF
         echo \
-        "VISIT_OPTION_DEFAULT(VISIT_MDSPLUS_LIBDEP HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP})" \
+        "VISIT_OPTION_DEFAULT(VISIT_MDSPLUS_LIBDEP HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP} TYPE STRING)" \
         >> $HOSTCONF
 
     fi
@@ -8614,11 +8784,11 @@ function build_hostconf
         >> $HOSTCONF
         if [[ "$DO_HDF5" == "yes" ]] ; then
             echo \
-            "VISIT_OPTION_DEFAULT(VISIT_SILO_LIBDEP HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP})" \
+            "VISIT_OPTION_DEFAULT(VISIT_SILO_LIBDEP HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP} TYPE STRING)" \
             >> $HOSTCONF
         else
             echo \
-            "VISIT_OPTION_DEFAULT(VISIT_SILO_LIBDEP /usr/lib z)" \
+            "VISIT_OPTION_DEFAULT(VISIT_SILO_LIBDEP /usr/lib z TYPE STRING)" \
             >> $HOSTCONF
         fi
     fi
@@ -8642,7 +8812,7 @@ function build_hostconf
         "VISIT_OPTION_DEFAULT(VISIT_XDMF_DIR \${VISITHOME}/Xdmf/$XDMF_VERSION/\${VISITARCH})" \
         >> $HOSTCONF
         echo \
-        "VISIT_OPTION_DEFAULT(VISIT_XDMF_LIBDEP HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP})" \
+        "VISIT_OPTION_DEFAULT(VISIT_XDMF_LIBDEP HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP} TYPE STRING)" \
         >> $HOSTCONF
     fi
 
@@ -8671,29 +8841,29 @@ function build_hostconf
         echo "## ITAPS" >> $HOSTCONF
         echo "##" >> $HOSTCONF
         echo "## MOAB implementation" >> $HOSTCONF
-        echo "ITAPS_INCLUDE_DIRECTORIES(MOAB \${VISITHOME}/itaps/MOAB/$ITAPS_MOAB_VERSION/\${VISITARCH}/include)" \
+        echo "ITAPS_INCLUDE_DIRECTORIES(MOAB \${VISITHOME}/itaps/$ITAPS_VERSION/MOAB/$ITAPS_MOAB_VERSION/\${VISITARCH}/include)" \
         >> $HOSTCONF
         echo "ITAPS_FILE_PATTERNS(MOAB *.cub)" >> $HOSTCONF
         echo "ITAPS_LINK_LIBRARIES(MOAB iMesh MOAB hdf5 sz z netcdf_c++ netcdf vtkGraphics)" \
         >> $HOSTCONF
         echo "ITAPS_LINK_DIRECTORIES(MOAB " \
-             "\${VISITHOME}/itaps/MOAB/$ITAPS_MOAB_VERSION/\${VISITARCH}/lib " \
+             "\${VISITHOME}/itaps/$ITAPS_VERSION/MOAB/$ITAPS_MOAB_VERSION/\${VISITARCH}/lib " \
              "\${VISITHOME}/hdf5/${HDF5_VERSION}/\${VISITARCH}/lib " \
              "\${VISITHOME}/szip/${SZIP_VERSION}/\${VISITARCH}/lib " \
              "\${VISITHOME}/netcdf/${NETCDF_VERSION}/\${VISITARCH}/lib)" >> $HOSTCONF
         echo "## FMDB implementation" >> $HOSTCONF
-        echo "ITAPS_INCLUDE_DIRECTORIES(FMDB \${VISITHOME}/itaps/FMDB/$ITAPS_FMDB_VERSION/\${VISITARCH}/include)" \
+        echo "ITAPS_INCLUDE_DIRECTORIES(FMDB \${VISITHOME}/itaps/$ITAPS_VERSION/FMDB/$ITAPS_FMDB_VERSION/\${VISITARCH}/include)" \
         >> $HOSTCONF
         echo "ITAPS_FILE_PATTERNS(FMDB *.sms)" >> $HOSTCONF
         echo "ITAPS_LINK_LIBRARIES(FMDB FMDB SCORECModel SCORECUtil vtkGraphics)" >> $HOSTCONF
-        echo "ITAPS_LINK_DIRECTORIES(FMDB \${VISITHOME}/itaps/FMDB/$ITAPS_FMDB_VERSION/\${VISITARCH}/lib)" >> $HOSTCONF
+        echo "ITAPS_LINK_DIRECTORIES(FMDB \${VISITHOME}/itaps/$ITAPS_VERSION/FMDB/$ITAPS_FMDB_VERSION/\${VISITARCH}/lib)" >> $HOSTCONF
         echo "## GRUMMP implementation" >> $HOSTCONF
-        echo "ITAPS_INCLUDE_DIRECTORIES(GRUMMP \${VISITHOME}/itaps/GRUMMP/$ITAPS_GRUMMP_VERSION/\${VISITARCH}/include)" \
+        echo "ITAPS_INCLUDE_DIRECTORIES(GRUMMP \${VISITHOME}/itaps/$ITAPS_VERSION/GRUMMP/$ITAPS_GRUMMP_VERSION/\${VISITARCH}/include)" \
         >> $HOSTCONF
         echo "ITAPS_FILE_PATTERNS(GRUMMP *.bdry *.smesh *.vmesh)" >> $HOSTCONF
         echo "ITAPS_LINK_LIBRARIES(GRUMMP iMesh_GRUMMP GR_3D GR_surf GR_2D GR_geom GR_base SUMAAlog_lite OptMS vtkGraphics cgm dl)" \
         >> $HOSTCONF
-        echo "ITAPS_LINK_DIRECTORIES(GRUMMP \${VISITHOME}/itaps/GRUMMP/$ITAPS_GRUMMP_VERSION/\${VISITARCH}/lib)" \
+        echo "ITAPS_LINK_DIRECTORIES(GRUMMP \${VISITHOME}/itaps/$ITAPS_VERSION/GRUMMP/$ITAPS_GRUMMP_VERSION/\${VISITARCH}/lib)" \
         >> $HOSTCONF
     fi
 
@@ -8710,6 +8880,20 @@ function build_hostconf
         >> $HOSTCONF
     fi
     echo >> $HOSTCONF
+
+    #
+    # Patch for Ubuntu 11.04
+    #
+    if test -d "/usr/lib/x86_64-linux-gnu" ; then
+        numLibs=$(ls -1 /usr/lib/x86_64-linux-gnu | wc -l)
+        if (( $numLibs > 10 )) ; then
+           rm -f $HOSTCONF.tmp
+           cat $HOSTCONF | sed "s/\/usr\/lib/\/usr\/lib\/x86_64-linux-gnu/" > $HOSTCONF.tmp
+           rm $HOSTCONF
+           mv $HOSTCONF.tmp $HOSTCONF
+        fi
+    fi
+
     cd "$START_DIR"
     echo "Done creating $HOSTCONF"
     return 0
@@ -9813,8 +9997,32 @@ if [[ "$DOWNLOAD_ONLY" == "no" ]] ; then
                   "Bailing out."
          fi
       else
-         error "The location to install the third party libraries does not exist." \
-               "Bailing out"
+         if [[ "$GRAPHICAL" == "yes" ]] ; then
+             $DLG --backtitle "$DLG_BACKTITLE" --yesno "The third party library location does not exist. Create it?" 0 0
+             if [[ $? == 1 ]] ; then
+                 error "The third party library location does not exist." \
+                       "Bailing out."
+             else
+                 mkdir "$THIRD_PARTY_PATH"
+                 if [[ $? != 0 ]] ; then
+                    error "Unable to write files to the third party library location." \
+                          "Bailing out."
+                 fi
+             fi
+         else
+             info "The third party library location does not exist. Create it?"
+             read RESPONSE
+             if [[ "$RESPONSE" != "yes" ]] ; then
+                 error "The third party library location does not exist." \
+                       "Bailing out."
+             else
+                 mkdir "$THIRD_PARTY_PATH"
+                 if [[ $? != 0 ]] ; then
+                    error "Unable to write files to the third party library location." \
+                          "Bailing out."
+                 fi
+             fi
+         fi
       fi
    fi
 
@@ -10283,7 +10491,7 @@ cd "$START_DIR"
 if [[ "$DO_ITAPS" == "yes" ]] ; then
 
     # handle MOAB implementation of ITAPS
-    check_if_installed "itaps/MOAB" $ITAPS_MOAB_VERSION
+    check_if_installed "itaps/$ITAPS_VERSION/MOAB" $ITAPS_MOAB_VERSION
     if [[ $? == 0 ]] ; then
         info "Skipping ITAPS_MOAB build.  ITAPS_MOAB is already installed."
     else
@@ -10296,7 +10504,7 @@ if [[ "$DO_ITAPS" == "yes" ]] ; then
     fi
 
     # handle FMDB implementation of ITAPS
-    check_if_installed "itaps/FMDB" $ITAPS_FMDB_VERSION
+    check_if_installed "itaps/$ITAPS_VERSION/FMDB" $ITAPS_FMDB_VERSION
     if [[ $? == 0 ]] ; then
         info "Skipping ITAPS_FMDB build.  ITAPS_FMDB is already installed."
     else
@@ -10309,7 +10517,7 @@ if [[ "$DO_ITAPS" == "yes" ]] ; then
     fi
 
     # handle GRUMMP implementation ot ITAPS
-    check_if_installed "itaps/GRUMMP" $ITAPS_GRUMMP_VERSION
+    check_if_installed "itaps/$ITAPS_VERSION/GRUMMP" $ITAPS_GRUMMP_VERSION
     if [[ $? == 0 ]] ; then
         info "Skipping ITAPS_GRUMMP build.  ITAPS_GRUMMP is already installed."
     else
@@ -10397,31 +10605,70 @@ if [[ "$DO_VISIT" == "yes" ]] ; then
     if [[ $? != 0 ]] ; then
         error "Unable to build or install VisIt.  Bailing out."
     fi
-    info "Done building VisIt"
+
     if [[ "$DO_SVN" == "yes" && "$USE_VISIT_FILE" == "no" ]] ; then
-        info \
-        "You may now try to run VisIt by cd'ing into the src/bin"
+        VISIT_SRC_DIR="src"
     else
-        info \
-        "You may now try to run VisIt by cd'ing into the ${VISIT_FILE%.tar*}/src/bin"
+        VISIT_SRC_DIR="${VISIT_FILE%.tar*}/src"
     fi
-    info "directory and invoking \"visit\"."
-    info
-    info "To create a binary distribution tarball from this build, cd to"
-    if [[ "$DO_SVN" == "yes" && "$USE_VISIT_FILE" == "no" ]] ; then
-        info "${START_DIR}/src"
+
+FINISHED_MSG="Finished building VisIt.\n\n\
+You many now try to run VisIt by cd'ing into the \
+$VISIT_SRC_DIR/bin directory and invoking \"visit\".\n\n\
+To create a binary distribution tarball from this build, cd to \
+${START_DIR}/${VISIT_SRC_DIR}\n\
+then enter: \"make package\"\n\n\
+This will produce a tarball called visitVERSION.ARCH.tar.gz, where \
+VERSION is the version number, and ARCH is the OS architecure.\n\n\
+To install the above tarball in a directory called \"INSTALL_DIR_PATH\",\
+enter: svn_bin/visit-install VERSION ARCH INSTALL_DIR_PATH\n\n\
+If you run into problems, contact visit-users@ornl.gov."
+
+    #
+    # Output the message indicating that we are finished. I couldn't get
+    # the imbedded newlines in the FINISHED_MSG to display properly so I
+    # am treating the graphical and console interfaces differently.
+    #
+    if test "${GRAPHICAL}" = "yes" ; then
+        if [[ "$REDIRECT_ACTIVE" == "yes" ]] ; then
+            info_box_large "$FINISHED_MSG" 1>&3
+        else
+            info_box_large "$FINISHED_MSG"
+        fi
+        log "Finished building VisIt."
+        log
+        log "You many now try to run VisIt by cd'ing into the"
+        log "$VISIT_SRC_DIR/bin directory and invoking \"visit\""
+        log
+        log "To create a binary distribution tarball from this build, cd to"
+        log "${START_DIR}/${VISIT_SRC_DIR}"
+        log "then enter: \"make package\""
+        log
+        log "This will produce a tarball called visitVERSION.ARCH.tar.gz, where"
+        log "VERSION is the version number, and ARCH is the OS architecure."
+        log
+        log "To install the above tarball in a directory called \"INSTALL_DIR_PATH\""
+        log "enter: svn_bin/visit-install VERSION ARCH INSTALL_DIR_PATH"
+        log
+        log "If you run into problems, contact visit-users@ornl.gov."
     else
-        info "${START_DIR}/${VISIT_FILE%.tar*}/src"
+        info "Finished building VisIt."
+        info
+        info "You many now try to run VisIt by cd'ing into the"
+        info "$VISIT_SRC_DIR/bin directory and invoking \"visit\""
+        info
+        info "To create a binary distribution tarball from this build, cd to"
+        info "${START_DIR}/${VISIT_SRC_DIR}"
+        info "then enter: \"make package\""
+        info
+        info "This will produce a tarball called visitVERSION.ARCH.tar.gz, where"
+        info "VERSION is the version number, and ARCH is the OS architecure."
+        info
+        info "To install the above tarball in a directory called \"INSTALL_DIR_PATH\""
+        info "enter: svn_bin/visit-install VERSION ARCH INSTALL_DIR_PATH"
+        info
+        info "If you run into problems, contact visit-users@ornl.gov."
     fi
-    info "then enter: \"make package\""
-    info
-    info "This will produce a tarball called visitVERSION.ARCH.tar.gz, where"
-    info "VERSION is the version number, and ARCH is the OS architecure."
-    info
-    info "To install the above tarball in a directory called "INSTALL_DIR_PATH","
-    info "enter: svn_bin/visit-install VERSION ARCH INSTALL_DIR_PATH"
-    info
-    info "If you run into problems, contact visit-users@ornl.gov"
 else
     if [[ $ANY_ERRORS == "no" ]] ; then
         info "Finished!"

@@ -12,65 +12,100 @@
 #include "VsH5Attribute.h"
 #include "VsLog.h"
 
+#include <string>
+
+#define __CLASS__ "VsRectilinearMesh::"
+
+
 VsRectilinearMesh::VsRectilinearMesh(VsH5Group* group):VsMesh(group) {
-  
 }
+
 
 VsRectilinearMesh::~VsRectilinearMesh() {
 }
 
+
 hid_t VsRectilinearMesh::getDataType() {
 
   VsH5Dataset* axis0 = getAxisDataset(0);
-  if (axis0 == NULL) {
-    //ERROR!
+
+  if (!axis0) {
+    VsLog::errorLog() << __CLASS__ << __FUNCTION__ << "  " << __LINE__ << "  "
+                      << "Can't determine data type - no axis0 dataset?"
+                      << std::endl;
+
     return H5T_NATIVE_DOUBLE; //?
   }
+  
+  if (axis0 && axis0->getType() == H5T_NATIVE_DOUBLE)
+    return H5T_NATIVE_DOUBLE;
 
-  return axis0->getType();
+  VsH5Dataset* axis1 = getAxisDataset(1);
+  if (axis1 && axis1->getType() == H5T_NATIVE_DOUBLE)
+    return H5T_NATIVE_DOUBLE;
+
+  VsH5Dataset* axis2 = getAxisDataset(2);
+  if (axis2 && axis2->getType() == H5T_NATIVE_DOUBLE)
+    return H5T_NATIVE_DOUBLE;
+
+  return H5T_NATIVE_FLOAT;
 }
 
+
 VsRectilinearMesh* VsRectilinearMesh::buildRectilinearMesh(VsH5Group* group) {
+
   VsRectilinearMesh* newMesh = new VsRectilinearMesh(group);
   bool success = newMesh->initialize();
   
   if (success) {
-    VsLog::debugLog() <<"VsRectilinearMesh::buildRectilinearMesh() - returning success." <<std::endl;
+    VsLog::debugLog() << __CLASS__ << __FUNCTION__ << "  " << __LINE__ << "  "
+                      << "Returning success." << std::endl;
     return newMesh;
   }
   
   delete (newMesh);
   newMesh = NULL;
-  VsLog::debugLog() <<"VsRectilinearMesh::buildRectilinearMesh() - returning failure." <<std::endl;
+
+  VsLog::debugLog() << __CLASS__ << __FUNCTION__ << "  " << __LINE__ << "  "
+                    << "Returning NULL." << std::endl;
   return NULL;
 }
 
+
 bool VsRectilinearMesh::initialize() {
-  
-  //Rectilinear meshes are defined by a series of arrays
-  //Each array represents one spatial dimension
-  //i.e. numSpatialDims = number of arrays
+
+  // Rectilinear meshes are defined by a series of arrays. Each array
+  // represents one spatial dimension i.e. numSpatialDims = number of
+  // arrays.
   VsH5Dataset* axis0 = getAxisDataset(0);
   VsH5Dataset* axis1 = getAxisDataset(1);
   VsH5Dataset* axis2 = getAxisDataset(2);
+
   if (!axis0) {
-    VsLog::errorLog() <<"VsRectilinearMesh::initialize() - Can't determine spatial dimensionality - no axis0 dataset?" <<std::endl;
+    VsLog::errorLog()
+      << __CLASS__ << __FUNCTION__ << "  " << __LINE__ << "  "
+      << "Can't determine spatial dimensionality - no axis0 dataset?"
+      << std::endl;
+
     numSpatialDims = -1;
     return false;
   }
   
   numSpatialDims = 1;
   if (axis1) {
+    numSpatialDims = 2;
     if (axis2) {
       numSpatialDims = 3;
-    } else {
-      numSpatialDims = 2;
     }
   }
-  VsLog::debugLog() <<"VsRectilinearMesh::initialize() - Mesh has num spatial dims = " <<numSpatialDims <<std::endl;
+
+  VsLog::errorLog() << __CLASS__ << __FUNCTION__ << "  " << __LINE__ << "  "
+                    << "Mesh has num spatial dims = "
+                    << numSpatialDims << std::endl;
   
   return initializeRoot();
 }
+
 
 std::string VsRectilinearMesh::getAxisDatasetName(int axisNumber) {
   if ((axisNumber < 0) || (axisNumber > 2)) {
@@ -118,6 +153,7 @@ std::string VsRectilinearMesh::getAxisDatasetName(int axisNumber) {
   return axisName;
 }
 
+
 VsH5Dataset* VsRectilinearMesh::getAxisDataset(int axisNumber) {
   std::string axisDatasetName = getAxisDatasetName(axisNumber);
   if (axisDatasetName.empty()) {
@@ -129,49 +165,67 @@ VsH5Dataset* VsRectilinearMesh::getAxisDataset(int axisNumber) {
   return answer; //could be NULL
 }
 
+
 std::string VsRectilinearMesh::getKind() {
   return VsSchema::Rectilinear::key;
 }
 
-size_t VsRectilinearMesh::getMeshDims(std::vector<int>* dims, bool useStride, std::vector<int> stride) {
-  VsLog::debugLog() << "VsRectilinearMesh::getMeshDims() - Entering." << std::endl;
+
+void VsRectilinearMesh::getMeshDataDims(std::vector<int>& dims)
+{
+  VsLog::debugLog() << __CLASS__ << __FUNCTION__ << "  " << __LINE__ << "  "
+                    << "Entering." <<  std::endl;
   
-  //size of rectilinear mesh depends on the size of the component arrays
+  // The size of rectilinear mesh depends on the size of the component
+  // arrays.
   
-  //We require at least one axis
+  // Require at least one axis
   VsH5Dataset* axis0Data = getAxisDataset(0);
   if (!axis0Data) {
-    VsLog::debugLog() <<"VsRectilinearMesh::getMeshDims() - unable to find information for axis 0." <<std::endl;
-    VsLog::debugLog() <<"VsRectilinearMesh::getMeshDims() - returning 0." <<std::endl;
-    dims->resize(0);
-    return 0;
+    VsLog::debugLog() << __CLASS__ << __FUNCTION__ << "  " << __LINE__ << "  "
+                      << "Unable to find information for axis 0." << "  "
+                      << "Returning 0." << std::endl;
+    dims.resize(0);
+    return;
   }
-  dims->resize(1);
-  (*dims)[0] = axis0Data->getDims().front();
+
+  dims.resize(1);
+  dims[0] = axis0Data->getDims().front();
   
+  // If a first axis exists, check for a second axis
   VsH5Dataset* axis1Data = getAxisDataset(1);
   if (axis1Data == NULL) {
-    VsLog::debugLog() <<"VsRectilinearMesh::getMeshDims() - unable to find information for axis 1." <<std::endl;
-    dims->resize(1);
-  } else {
-    dims->resize(2);
-    (*dims)[1] = axis1Data->getDims().front();
-    
-    //If a second axis exists, check for a third axis
-    VsH5Dataset* axis2Data = getAxisDataset(2);
-    if (axis2Data == NULL) {
-      VsLog::debugLog() <<"VsRectilinearMesh::getMeshDims() - unable to find information for axis 2." <<std::endl;
-      dims->resize(2);
-    } else {
-      dims->resize(3);
-      (*dims)[2] = axis2Data->getDims().front();
-    }
+    VsLog::debugLog() << __CLASS__ << __FUNCTION__ << "  " << __LINE__ << "  "
+                      << "Unable to find information for axis 1." << std::endl;
+    return;
   }
+
+  dims.resize(2);
+  dims[1] = axis1Data->getDims().front();
   
-  size_t len = 1;
-  for (size_t i = 0; i < dims->size(); ++i)
-    len *= (*dims)[i];
+  // If a second axis exists, check for a third axis
+  VsH5Dataset* axis2Data = getAxisDataset(2);
+  if (axis2Data == NULL) {
+    VsLog::debugLog() << __CLASS__ << __FUNCTION__ << "  " << __LINE__ << "  "
+                      << "Unable to find information for axis 2." << std::endl;
+    return;
+  }
+
+  dims.resize(3);
+  dims[2] = axis2Data->getDims().front();
   
-  VsLog::debugLog() << "VsRectilinearMesh::getMeshDims(): Returning " <<len <<"." << std::endl;
-  return len;
+//   size_t len = 1;
+//   for (size_t i = 0; i < dims->size(); ++i)
+//     len *= (*dims)[i];
+  
+//     VsLog::debugLog() << __CLASS__ << __FUNCTION__ << "  " << __LINE__ << "  "
+//                       << "Returning " <<len <<"." <<  std::endl;
+//   return len;
+}
+
+
+void VsRectilinearMesh::getNumMeshDims(std::vector<int>& dims)
+{
+  // Simple case get the data dims and return;
+  getMeshDataDims( dims );
 }

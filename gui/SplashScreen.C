@@ -158,6 +158,12 @@
 //    Eric Brugger, Thu Mar 31 09:35:28 PDT 2011
 //    Changed the date on the splash screen.
 //
+//    Eric Brugger, Wed Jul 20 11:35:52 PDT 2011
+//    Changed the date on the splash screen.
+//
+//    Eric Brugger, Mon Aug 29 14:44:44 PDT 2011
+//    Changed the date on the splash screen to September 2011.
+//
 // ****************************************************************************
 
 SplashScreen::SplashScreen(bool cyclePictures) 
@@ -282,7 +288,7 @@ SplashScreen::SplashScreen(bool cyclePictures)
            << tr("October")
            << tr("November")
            << tr("December");
-    int currentMonth = 4;
+    int currentMonth = 9;
     lLayout->addWidget(new QLabel(versionText, this));
     lLayout->addWidget(new QLabel(months[currentMonth-1] + " 2011", this));
 

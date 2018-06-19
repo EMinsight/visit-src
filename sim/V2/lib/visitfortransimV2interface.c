@@ -162,31 +162,34 @@ f_visit_internal_commandcallback(const char *cmd, const char *stringdata, void *
  *****************************************************************************
  *****************************************************************************/
 
-#define F_VISITSETDIRECTORY         F77_ID(visitsetdirectory_,visitsetdirectory,VISITSETDIRECTORY)
-#define F_VISITSETOPTIONS           F77_ID(visitsetoptions_,visitsetoptions,VISITSETOPTIONS)
-#define F_VISITOPENTRACEFILE        F77_ID(visitopentracefile_,visitopentracefile,VISITOPENTRACEFILE)
-#define F_VISITCLOSETRACEFILE       F77_ID(visitclosetracefile_,visitclosetracefile,VISITCLOSETRACEFILE)
-#define F_VISITSETUPENV             F77_ID(visitsetupenv_,visitsetupenv,VISITSETUPENV)
-#define F_VISITINITIALIZESIM        F77_ID(visitinitializesim_,visitinitializesim,VISITINITIALIZESIM)
-#define F_VISITSETPARALLEL          F77_ID(visitsetparallel_,visitsetparallel,VISITSETPARALLEL)
-#define F_VISITSETPARALLELRANK      F77_ID(visitsetparallelrank_,visitsetparallelrank,VISITSETPARALLELRANK)
-#define F_VISITDETECTINPUT          F77_ID(visitdetectinput_,visitdetectinput,VISITDETECTINPUT)
 #define F_VISITATTEMPTCONNECTION    F77_ID(visitattemptconnection_,visitattemptconnection,VISITATTEMPTCONNECTION)
-#define F_VISITPROCESSENGINECOMMAND F77_ID(visitprocessenginecommand_,visitprocessenginecommand,VISITPROCESSENGINECOMMAND)
-#define F_VISITTIMESTEPCHANGED      F77_ID(visittimestepchanged_,visittimestepchanged,VISITTIMESTEPCHANGED)
-#define F_VISITUPDATEPLOTS          F77_ID(visitupdateplots_,visitupdateplots,VISITUPDATEPLOTS)
-#define F_VISITEXECUTECOMMAND       F77_ID(visitexecutecommand_,visitexecutecommand,VISITEXECUTECOMMAND)
-#define F_VISITDISCONNECT           F77_ID(visitdisconnect_,visitdisconnect,VISITDISCONNECT)
-#define F_VISITGETLASTERROR         F77_ID(visitgetlasterror_,visitgetlasterror,VISITGETLASTERROR)
-#define F_VISITISCONNECTED          F77_ID(visitisconnected_,visitisconnected,VISITISCONNECTED)
-#define F_VISITSYNCHRONIZE          F77_ID(visitsynchronize_,visitsynchronize,VISITSYNCHRONIZE)
-#define F_VISITENABLESYNCHRONIZE    F77_ID(visitenablesynchronize_,visitenablesynchronize,VISITENABLESYNCHRONIZE)
+#define F_VISITCLOSETRACEFILE       F77_ID(visitclosetracefile_,visitclosetracefile,VISITCLOSETRACEFILE)
 #define F_VISITDEBUG1               F77_ID(visitdebug1_,visitdebug1,VISITDEBUG1)
 #define F_VISITDEBUG2               F77_ID(visitdebug2_,visitdebug2,VISITDEBUG2)
 #define F_VISITDEBUG3               F77_ID(visitdebug3_,visitdebug3,VISITDEBUG3)
 #define F_VISITDEBUG4               F77_ID(visitdebug4_,visitdebug4,VISITDEBUG4)
 #define F_VISITDEBUG5               F77_ID(visitdebug5_,visitdebug5,VISITDEBUG5)
+#define F_VISITDETECTINPUT          F77_ID(visitdetectinput_,visitdetectinput,VISITDETECTINPUT)
+#define F_VISITDETECTINPUTWITHTIMEOUT F77_ID(visitdetectinputwithtimeout_,visitdetectinputwithtimeout,VISITDETECTINPUTWITHTIMEOUT)
+#define F_VISITDISCONNECT           F77_ID(visitdisconnect_,visitdisconnect,VISITDISCONNECT)
+#define F_VISITENABLESYNCHRONIZE    F77_ID(visitenablesynchronize_,visitenablesynchronize,VISITENABLESYNCHRONIZE)
+#define F_VISITEXECUTECOMMAND       F77_ID(visitexecutecommand_,visitexecutecommand,VISITEXECUTECOMMAND)
+#define F_VISITGETLASTERROR         F77_ID(visitgetlasterror_,visitgetlasterror,VISITGETLASTERROR)
+#define F_VISITGETSOCKETS           F77_ID(visitgetsockets_,visitgetsockets,VISITGETSOCKETS)
+#define F_VISITINITIALIZESIM        F77_ID(visitinitializesim_,visitinitializesim,VISITINITIALIZESIM)
+#define F_VISITISCONNECTED          F77_ID(visitisconnected_,visitisconnected,VISITISCONNECTED)
+#define F_VISITOPENTRACEFILE        F77_ID(visitopentracefile_,visitopentracefile,VISITOPENTRACEFILE)
+#define F_VISITPROCESSENGINECOMMAND F77_ID(visitprocessenginecommand_,visitprocessenginecommand,VISITPROCESSENGINECOMMAND)
 #define F_VISITSAVEWINDOW           F77_ID(visitsavewindow_,visitsavewindow,VISITSAVEWINDOW)
+#define F_VISITSETDIRECTORY         F77_ID(visitsetdirectory_,visitsetdirectory,VISITSETDIRECTORY)
+#define F_VISITSETOPTIONS           F77_ID(visitsetoptions_,visitsetoptions,VISITSETOPTIONS)
+#define F_VISITSETPARALLEL          F77_ID(visitsetparallel_,visitsetparallel,VISITSETPARALLEL)
+#define F_VISITSETPARALLELRANK      F77_ID(visitsetparallelrank_,visitsetparallelrank,VISITSETPARALLELRANK)
+#define F_VISITSETUPENV             F77_ID(visitsetupenv_,visitsetupenv,VISITSETUPENV)
+#define F_VISITSYNCHRONIZE          F77_ID(visitsynchronize_,visitsynchronize,VISITSYNCHRONIZE)
+#define F_VISITTIMESTEPCHANGED      F77_ID(visittimestepchanged_,visittimestepchanged,VISITTIMESTEPCHANGED)
+#define F_VISITUPDATEPLOTS          F77_ID(visitupdateplots_,visitupdateplots,VISITUPDATEPLOTS)
+
 
 /******************************************************************************
  * Function: F_VISITSETDIRECTORY
@@ -382,6 +385,8 @@ F_VISITINITIALIZESIM(
  * Date:       Thu Mar 11 11:17:51 PST 2010
  *
  * Modifications:
+ *   Brad Whitlock, Tue Jul 19 09:18:40 PDT 2011
+ *   Set up parallel callbacks as suggested by Jens Henrik Goebbert.
  *
  *****************************************************************************/
 
@@ -389,6 +394,13 @@ FORTRAN
 F_VISITSETPARALLEL(int *val)
 {
     VisItSetParallel(*val);
+
+    if(*val)
+    {
+        VisItSetBroadcastIntFunction(f_visit_internal_broadcastintfunction);
+        VisItSetBroadcastStringFunction(f_visit_internal_broadcaststringfunction);
+    }
+
     return VISIT_OKAY;
 }
 
@@ -434,6 +446,62 @@ FORTRAN
 F_VISITDETECTINPUT(int *blocking, int *consoledesc)
 {
     return VisItDetectInput(*blocking, *consoledesc);
+}
+
+/******************************************************************************
+ * Function: F_VISITDETECTINPUTWITHTIMEOUT
+ *
+ * Purpose:   Allows FORTRAN to detect VisIt socket input and console input
+ *            with a timeout in micro secounds
+ *
+ * Arguments:
+ *   blocking    : Whether or not to block.
+ *   micsec      : timeout if blocking
+ *   consoledesc : The console file descriptor.
+ *
+ * Programmer: Jens Henrik Goebbert
+ * Date:       Wed Jul 20 11:17:51 PST 2011
+ *
+ * Modifications:
+ *
+ *****************************************************************************/
+
+FORTRAN
+F_VISITDETECTINPUTWITHTIMEOUT(int *blocking, int *micsec, int *consoledesc)
+{
+    return VisItDetectInputWithTimeout(*blocking, *micsec, *consoledesc);
+}
+
+/******************************************************************************
+ * Function: F_VISITGETSOCKETS
+ *
+ * Purpose:   Allows FORTRAN to get at listen and client sockets
+ *
+ * Arguments:
+ *   lSocket : listen socket
+ *   cSocket : engine/client socket
+ *
+ * Programmer: Brad Whitlock
+ * Date:       Wed Jul 27 10:52:04 PDT 2011
+ *
+ * Modifications:
+ *
+ *****************************************************************************/
+
+FORTRAN
+F_VISITGETSOCKETS(int *lSocket, int *cSocket)
+{
+#ifdef _WIN32
+    int retval = VISIT_ERROR;
+    if(lSocket != NULL && cSocket == NULL)
+    {
+        *lSocket = *cSocket = -1;
+         retval = VISIT_OKAY;
+    }
+    return retval;
+#else
+    return VisItGetSockets(lSocket, cSocket);
+#endif
 }
 
 /******************************************************************************
@@ -676,7 +744,8 @@ F_VISITDEBUG1(const char *str, int *lstr)
 {
     char *f_str = NULL;
     COPY_FORTRAN_STRING(f_str, str, lstr);
-    VisItDebug1("%s", f_str);
+    if(f_str != NULL)
+        VisItDebug1("%s", f_str);
     FREE(f_str);
     return VISIT_OKAY;
 }
@@ -698,7 +767,8 @@ F_VISITDEBUG2(const char *str, int *lstr)
 {
     char *f_str = NULL;
     COPY_FORTRAN_STRING(f_str, str, lstr);
-    VisItDebug2("%s", f_str);
+    if(f_str != NULL)
+        VisItDebug2("%s", f_str);
     FREE(f_str);
     return VISIT_OKAY;
 }
@@ -720,7 +790,8 @@ F_VISITDEBUG3(const char *str, int *lstr)
 {
     char *f_str = NULL;
     COPY_FORTRAN_STRING(f_str, str, lstr);
-    VisItDebug3("%s", f_str);
+    if(f_str != NULL)
+        VisItDebug3("%s", f_str);
     FREE(f_str);
     return VISIT_OKAY;
 }
@@ -742,7 +813,8 @@ F_VISITDEBUG4(const char *str, int *lstr)
 {
     char *f_str = NULL;
     COPY_FORTRAN_STRING(f_str, str, lstr);
-    VisItDebug4("%s", f_str);
+    if(f_str != NULL)
+        VisItDebug4("%s", f_str);
     FREE(f_str);
     return VISIT_OKAY;
 }
@@ -764,7 +836,8 @@ F_VISITDEBUG5(const char *str, int *lstr)
 {
     char *f_str = NULL;
     COPY_FORTRAN_STRING(f_str, str, lstr);
-    VisItDebug5("%s", f_str);
+    if(f_str != NULL)
+        VisItDebug5("%s", f_str);
     FREE(f_str);
     return VISIT_OKAY;
 }

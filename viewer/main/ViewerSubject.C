@@ -54,6 +54,7 @@
 
 #include <AnimationAttributes.h>
 #include <AnnotationAttributes.h>
+#include <AnnotationObject.h>
 #include <AnnotationObjectList.h>
 #include <Appearance.h>
 #include <AppearanceAttributes.h>
@@ -104,6 +105,7 @@
 #include <SelectionSummary.h>
 #include <SILRestrictionAttributes.h>
 #include <SimulationCommand.h>
+#include <SimulationUIValues.h>
 #include <SingleAttributeConfigManager.h>
 #include <SocketConnection.h>
 #include <StatusAttributes.h>
@@ -6485,7 +6487,12 @@ ViewerSubject::SetDefaultAnnotationObjectList()
 // Creation:   Fri Nov 7 14:21:30 PST 2003
 //
 // Modifications:
-//   
+//   Brad Whitlock, Tue Jul 12 16:12:29 PDT 2011
+//   I changed this routine so we keep the legends from the current list and
+//   we add the default annotation object list to create list of objects that
+//   contains the legends and the defaults. This prevents us from losing the
+//   legends when we reset.
+//
 // ****************************************************************************
 
 void
@@ -6496,8 +6503,27 @@ ViewerSubject::ResetAnnotationObjectList()
 
     if(win != 0)
     {
+        AnnotationObjectList legendPlusDefault;
+
+        // Add the legends.
+        for(int i = 0; i < wMgr->GetAnnotationObjectList()->GetNumAnnotations(); ++i)
+        {
+            if(wMgr->GetAnnotationObjectList()->GetAnnotation(i).GetObjectType() ==
+               AnnotationObject::LegendAttributes)
+            {
+                legendPlusDefault.AddAnnotation(wMgr->GetAnnotationObjectList()->GetAnnotation(i));
+            }
+        }
+        // Add the defaults.
+        for(int i = 0; i < wMgr->GetDefaultAnnotationObjectList()->GetNumAnnotations(); ++i)
+            legendPlusDefault.AddAnnotation(wMgr->GetDefaultAnnotationObjectList()->GetAnnotation(i));
+
+        // We should add an optional bool array to CreateAnnotationObjectsFromList that
+        // lets us tell the routine whether to set the options for the newly created object.
+        // That would let us create annotation objects but not use the attributes we have 
+        // for them. The use case for that is resetting the legends to default values.
         win->DeleteAllAnnotationObjects();
-        win->CreateAnnotationObjectsFromList(*wMgr->GetDefaultAnnotationObjectList());
+        win->CreateAnnotationObjectsFromList(legendPlusDefault);
         wMgr->UpdateAnnotationObjectList();
     }
 }
@@ -9716,6 +9742,9 @@ ViewerSubject::DeferCommandFromSimulation(const EngineKey &key,
 //   Changed the interface to ReplaceDatabase to support option for only 
 //   replacing active plots.
 //
+//   Brad Whitlock, Sun Feb 27 21:12:17 PST 2011
+//   I added the SetUI command.
+//
 // ****************************************************************************
 
 void
@@ -9751,6 +9780,33 @@ ViewerSubject::HandleCommandFromSimulation(const EngineKey &key,
         std::string cmd("INTERNALSYNC");
         std::string args(command.substr(13, command.size()-1));
         ViewerEngineManager::Instance()->SendSimulationCommand(key, cmd, args);
+    }
+    else if(command.substr(0,5) == "SetUI")
+    {
+        stringVector s = SplitValues(command, ':');
+
+        // s[0] = SetUI
+        // s[1] = "i" or "s"
+        // s[2] = name
+        // s[3] = value
+        // s[4] = enabled
+
+        // Send the new values to the client so they can be used to update
+        // the custom sim window there.
+        GetViewerState()->GetSimulationUIValues()->SetHost(key.OriginalHostName());
+        GetViewerState()->GetSimulationUIValues()->SetSim(key.SimName());
+        GetViewerState()->GetSimulationUIValues()->SetName(s[2]);
+#if 0
+        if(s[1] == "i")
+        {
+            int ival = atoi(s[3].c_str());
+            GetState()->GetSimulationUIValues()->SetIvalue(ival);
+        }
+        else
+#endif
+            GetViewerState()->GetSimulationUIValues()->SetSvalue(s[3]);
+        GetViewerState()->GetSimulationUIValues()->SetEnabled(s[4] == "1");
+        GetViewerState()->GetSimulationUIValues()->Notify();
     }
 }
 
@@ -10608,7 +10664,8 @@ ViewerSubject::LoadNamedSelection()
 
             // Remove any selection that may already exist by this name.
             int index = wMgr->GetSelectionList()->GetSelection(selName);
-            wMgr->GetSelectionList()->RemoveSelections(index);
+            if(index >= 0)
+                wMgr->GetSelectionList()->RemoveSelections(index);
 
             // Add a new selection to the selection list. Just set the name so
             // it will not have an originating plot.
