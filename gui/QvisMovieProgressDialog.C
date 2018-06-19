@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,9 +37,9 @@
 *****************************************************************************/
 
 #include <QvisMovieProgressDialog.h>
-#include <QLayout>
-#include <QPixmap>
-#include <QPushButton>
+#include <qlayout.h>
+#include <qpixmap.h>
+#include <qpushbutton.h>
 
 #include <icons/moviereel.xpm>
 
@@ -63,42 +63,36 @@
 //   Brad Whitlock, Tue Apr  8 09:27:26 PDT 2008
 //   Support for internationalization.
 //   
-//   Cyrus Harrison, Tue Jul  1 09:14:16 PDT 2008
-//   Initial Qt4 Port.
-//
 // ****************************************************************************
 
-QvisMovieProgressDialog::QvisMovieProgressDialog(QWidget *parent) 
-: QDialog(parent)
+QvisMovieProgressDialog::QvisMovieProgressDialog(QWidget *parent,
+    const char *name) : QDialog(parent, name)
 {
     QVBoxLayout *topLayout = new QVBoxLayout(this);
     topLayout->setMargin(10);
     topLayout->setSpacing(5);
 
-    QHBoxLayout *labelLayout = new QHBoxLayout();
-    topLayout->addLayout(labelLayout);
+    QHBoxLayout *labelLayout = new QHBoxLayout(topLayout);
     labelLayout->setMargin(5);
     QPixmap moviereel(moviereel_xpm);
-    picture = new QLabel(this);
+    picture = new QLabel(this, "picture");
     picture->setPixmap(moviereel);
     picture->setMinimumWidth(moviereel.width());
     picture->setMinimumHeight(moviereel.height());
     labelLayout->addWidget(picture);
 
-    labelTextLabel = new QLabel(this);
+    labelTextLabel = new QLabel(this, "labelText");
     labelTextLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     labelTextLabel->setMinimumWidth(2 * moviereel.width());
     labelLayout->addWidget(labelTextLabel);
 
-    progressBar = new QProgressBar(this);
-    progressBar->setRange(0,100);
-    progressBar->setValue(0);
+    progressBar = new QProgressBar(100, this, "progress");
+    progressBar->setProgress(0);
     topLayout->addWidget(progressBar);
 
-    QHBoxLayout *btnLayout = new QHBoxLayout();
-    topLayout->addLayout(btnLayout);
+    QHBoxLayout *btnLayout = new QHBoxLayout(topLayout);
     btnLayout->addStretch(10);
-    cancelButton = new QPushButton(tr("Cancel"), this);
+    cancelButton = new QPushButton(tr("Cancel"), this, "cancel");
     connect(cancelButton, SIGNAL(clicked()),
             this, SLOT(cancelClicked()));
     btnLayout->addWidget(cancelButton);
@@ -134,18 +128,16 @@ QvisMovieProgressDialog::~QvisMovieProgressDialog()
 // Creation:   Mon Jun 20 16:28:18 PST 2005
 //
 // Modifications:
-//   Cyrus Harrison, Tue Jul  1 09:14:16 PDT 2008
-//   Initial Qt4 Port.
-//
+//   
 // ****************************************************************************
 
 void
 QvisMovieProgressDialog::setProgress(int val)
 {
-    progressBar->setValue(val);
+    progressBar->setProgress(val);
 
     // If we've reached the target, hide the dialog.
-    if(val == progressBar->maximum())
+    if(val == progressBar->totalSteps())
         hide();
 }
 

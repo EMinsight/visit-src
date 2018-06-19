@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -47,6 +47,7 @@ extern const char *visit_AddOperator_doc;
 extern const char *visit_AddPlot_doc;
 extern const char *visit_AddWindow_doc;
 extern const char *visit_AlterDatabaseCorrelation_doc;
+extern const char *visit_ApplyNamedSelection_doc;
 extern const char *visit_ChangeActivePlotsVar_doc;
 extern const char *visit_CheckForNewStates_doc;
 extern const char *visit_ChooseCenterOfRotation_doc;
@@ -63,11 +64,13 @@ extern const char *visit_ConstructDDF_doc;
 extern const char *visit_Copy_doc;
 extern const char *visit_CreateAnnotationObject_doc;
 extern const char *visit_CreateDatabaseCorrelation_doc;
+extern const char *visit_CreateNamedSelection_doc;
 extern const char *visit_DefineExpression_doc;
 extern const char *visit_DeIconifyAllWindows_doc;
 extern const char *visit_DeletePlots_doc;
 extern const char *visit_DeleteDatabaseCorrelation_doc;
 extern const char *visit_DeleteExpression_doc;
+extern const char *visit_DeleteNamedSelection_doc;
 extern const char *visit_DeletePlotDatabaseKeyframe_doc;
 extern const char *visit_DeletePlotKeyframe_doc;
 extern const char *visit_DeleteViewKeyframe_doc;
@@ -104,10 +107,10 @@ extern const char *visit_GetMaterialAttributes_doc;
 extern const char *visit_GetMeshManagementAttributes_doc;
 extern const char *visit_GetMaterials_doc;
 extern const char *visit_GetNumPlots_doc;
+extern const char *visit_GetOutputArray_doc;
 extern const char *visit_GetPickAttributes_doc;
 extern const char *visit_GetPickOutput_doc;
 extern const char *visit_GetPipelineCachingMode_doc;
-extern const char *visit_GetPlotInformation_doc;
 extern const char *visit_GetQueryOutput_doc;
 extern const char *visit_GetQueryOverTimeAttributes_doc;
 extern const char *visit_GetRenderingAttributes_doc;
@@ -119,10 +122,11 @@ extern const char *visit_HideActivePlots_doc;
 extern const char *visit_HideToolbars_doc;
 extern const char *visit_IconifyAllWindows_doc;
 extern const char *visit_InvertBackgroundColor_doc;
-extern const char *visit_LoadSaveAttribute_doc;
 extern const char *visit_Lineout_doc;
 extern const char *visit_List_doc;
 extern const char *visit_ListPlots_doc;
+extern const char *visit_LoadUltra_doc;
+extern const char *visit_LoadNamedSelection_doc;
 extern const char *visit_LongFileName_doc;
 extern const char *visit_MovePlotDatabaseKeyframe_doc;
 extern const char *visit_MovePlotKeyframe_doc;
@@ -165,7 +169,9 @@ extern const char *visit_ResetView_doc;
 extern const char *visit_ResizeWindow_doc;
 extern const char *visit_RestoreSession_doc;
 extern const char *visit_SaveSession_doc;
+extern const char *visit_SaveNamedSelection_doc;
 extern const char *visit_SaveWindow_doc;
+extern const char *visit_SendSimulationCommand_doc;
 extern const char *visit_SetActiveColorTable_doc;
 extern const char *visit_SetActivePlots_doc;
 extern const char *visit_SetActiveTimeSlider_doc;

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,11 +39,23 @@
 #ifndef QVIS_FILE_SELECTION_WINDOW_H
 #define QVIS_FILE_SELECTION_WINDOW_H
 #include <gui_exports.h>
-#include <QvisFileWindowBase.h>
+#include <vectortypes.h>
+#include <QvisDelayedWindowSimpleObserver.h>
+#include <QualifiedFilename.h>
+#include <maptypes.h>
 
 // Forward declarations.
+class FileServerList;
+class HostProfileList;
+class QCheckBox;
+class QCloseEvent;
+class QComboBox;
+class QLineEdit;
+class QListBox;
+class QListBoxItem;
+class QPixmap;
 class QPushButton;
-class QListWidget;
+class QvisRecentPathRemovalWindow;
 
 // ****************************************************************************
 // Class: QvisFileSelectionWindow
@@ -119,55 +131,99 @@ class QListWidget;
 //   Brad Whitlock, Wed Apr  9 10:29:50 PDT 2008
 //   Changed ctor args.
 //
-//   Brad Whitlock, Thu Jul 10 15:37:04 PDT 2008
-//   Changed inheritance and moved some methods to base class.
-//
 // ****************************************************************************
 
-class GUI_API QvisFileSelectionWindow : public QvisFileWindowBase
+class GUI_API QvisFileSelectionWindow : public QvisDelayedWindowSimpleObserver
 {
     Q_OBJECT
 public:
     QvisFileSelectionWindow(const QString &winCaption);
     virtual ~QvisFileSelectionWindow();
     virtual void CreateWindowContents();
+    virtual void SubjectRemoved(Subject *TheRemovedSubject);
+    virtual void ConnectSubjects(HostProfileList *hpl);
 signals:
     void selectedFilesChanged();
 public slots:
     virtual void show();
+    virtual void showMinimized();
+    virtual void showNormal();
     virtual void setEnabled(bool);
 protected:
+    virtual void closeEvent(QCloseEvent *);
     virtual void UpdateWindow(bool doAll);
-    virtual void UpdateWindowFromFiles(bool doAll);
+    void UpdateWindowFromFiles(bool doAll);
+    void UpdateHostComboBox();
 private:
     // Utility functions.
-    virtual void UpdateFileList();
-
+    void UpdateDirectoryList(void);
+    void UpdateFileList(void);
     void UpdateSelectedFileList(void);
     void UpdateRemoveFileButton(void);
     void UpdateSelectAllButton(void);
+    void UpdateComboBox(QComboBox *cb, const stringVector &s,
+                        const QString &activeItem);
+    bool AddFile(const QualifiedFilename &newFile);
+    void GetCurrentValues(bool allowPathChange);
+    bool ChangeHosts(void);
+    bool ChangePath(bool allowPathChange);
+    bool ChangeFilter(void);
+    void RemoveComboBoxItem(QComboBox *cb, const QString &remove);
+    void ActivateComboBoxItem(QComboBox *cb, const QString &newActive);
+    void HighlightComboBox(QComboBox *cb);
+    void GetDirectoryStrings(QString &curdir, QString &updir);
+    void GetVirtualDatabaseDefinitions(StringStringVectorMap &);
 
+    static bool ProgressCallback(void *data, int stage);
 private slots:
     void okClicked();
     void groupFiles();
     void cancelClicked();
+    void filterChanged();
+    void hostChanged(int);
+    void pathChanged(int);
+    void changeDirectory(QListBoxItem *);
     void selectFile();
-    void selectFileDblClick(QListWidgetItem *item);
+    void selectFileDblClick(QListBoxItem *item);
     void selectFileChanged();
-    void selectFileReturnPressed(QListWidgetItem *);
+    void selectFileReturnPressed(QListBoxItem *);
     void selectedFileSelectChanged();
     void selectAllFiles();
     void removeFile();
     void removeAllFiles();
-    void removeSelectedFiles(QListWidgetItem *);
+    void removeSelectedFiles(QListBoxItem *);
+    void refreshFiles();
+    void currentDir(bool val);
+    void fileGroupingChanged(int val);
 private:
+    FileServerList  *fs;
+    HostProfileList *profiles;
+
+    QComboBox       *hostComboBox;
+    QComboBox       *pathComboBox;
+    QLineEdit       *filterLineEdit;
+    QListBox        *directoryList;
+    QListBox        *fileList;
     QPushButton     *groupButton;
     QPushButton     *selectButton;
     QPushButton     *selectAllButton;
     QPushButton     *removeButton;
     QPushButton     *removeAllButton;
     QPushButton     *refreshButton;
-    QListWidget     *selectedFileList;
+    QListBox        *selectedFileList;
+    QCheckBox       *currentDirToggle;
+    QComboBox       *fileGroupingComboBox;
+    QPushButton     *recentPathRemovalButton;
+
+    QvisRecentPathRemovalWindow *recentPathsRemovalWindow;
+
+    QPixmap         *computerPixmap;
+    QPixmap         *folderPixmap;
+    QPixmap         *databasePixmap;
+
+    QualifiedFilenameVector intermediateFileList;
+    StringStringVectorMap   currentVirtualDatabaseDefinitions;
+    stringVector            invalidHosts;
 };
 
 #endif

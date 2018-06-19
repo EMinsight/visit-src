@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -59,6 +59,9 @@ class avtAnnotationColleague;
 //   Brad Whitlock, Tue Mar 20 10:10:34 PDT 2007
 //   Name the annotation objects.
 //
+//   Brad Whitlock, Mon Mar  2 14:17:08 PST 2009
+//   I added SetTimeScaleAndOffset.
+//
 // ****************************************************************************
 
 class VISWINDOW_API VisWinAnnotations : public VisWinColleague
@@ -101,10 +104,14 @@ public:
     void         SetAnnotationObjectOptions(const AnnotationObjectList &al);
     void         UpdateAnnotationObjectList(AnnotationObjectList &al);
     void         CreateAnnotationObjectsFromList(const AnnotationObjectList &al);
+
+    void         SetTimeScaleAndOffset(double,double);
 private:
     void UpdateLegends();
 
     std::vector<avtAnnotationColleague *> annotations;
+    double                                timeScale;
+    double                                timeOffset;
 
     // DO NOT USE avtActor_p BECAUSE WHEN WE CLEAR THE VECTOR, THE ACTORS GET 
     // DELETED AGAIN!

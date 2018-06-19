@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -45,7 +45,7 @@
 
 #include <avtIVPField.h>
 
-#include <vtkInterpolatedVelocityField.h>
+#include <vtkVisItInterpolatedVelocityField.h>
 
 #include <ivp_exports.h>
 
@@ -63,24 +63,40 @@
 //
 //  Modifications:
 //
+//   Dave Pugmire, Tue Mar 10 12:41:11 EDT 2009
+//   Added GetValidTimeRange function.
+//
+//   Hank Childs, Thu Apr  2 16:40:08 PDT 2009
+//   Use vtkVisItInterpolatedVelocityField, not vtktInterpolatedVelocityField.
+//
+//   Dave Pugmire, Mon Jun 8 2009, 11:44:01 EDT 2009
+//   Added ComputeScalarVariable, HasGhostZones and GetExtents methods.
+//
 // ****************************************************************************
 
 class IVP_API avtIVPVTKField: public avtIVPField
 {
   public:
-                   avtIVPVTKField( vtkInterpolatedVelocityField* velocity ); 
+                   avtIVPVTKField( vtkVisItInterpolatedVelocityField* velocity ); 
+                   avtIVPVTKField();
                    ~avtIVPVTKField();
 
     // avtIVPField interface
     avtVec         operator()(const double& t, const avtVecRef& x) const;
     double         ComputeVorticity(const double& t, const avtVecRef& x) const;
+    double         ComputeScalarVariable(const double& t, 
+                                         const avtVecRef& x) const;
+
     
     bool           IsInside( const double& t, const avtVecRef& x ) const;
     unsigned int   GetDimension() const;
     void           SetNormalized( bool v );
+    virtual bool   GetValidTimeRange(double range[]) const {return false;}
+    virtual bool   HasGhostZones() const;
+    virtual void   GetExtents(double *extents) const;
 
   protected:
-    vtkInterpolatedVelocityField   *iv;
+    vtkVisItInterpolatedVelocityField   *iv;
     bool           normalized;
     
 };

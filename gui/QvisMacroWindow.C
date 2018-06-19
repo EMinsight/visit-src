@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,10 +37,10 @@
 *****************************************************************************/
 
 #include <QvisMacroWindow.h>
-#include <QButtonGroup>
-#include <QLayout>
-#include <QGroupBox>
-#include <QPushButton>
+#include <qbuttongroup.h>
+#include <qlayout.h>
+#include <qgroupbox.h>
+#include <qpushbutton.h>
 
 #include <Utility.h>
 #include <DataNode.h>
@@ -87,6 +87,7 @@ QvisMacroWindow::QvisMacroWindow(const QString &captionString,
 
 QvisMacroWindow::~QvisMacroWindow()
 {
+    delete macroButtons;
 }
 
 // ****************************************************************************
@@ -102,15 +103,12 @@ QvisMacroWindow::~QvisMacroWindow()
 //   Brad Whitlock, Tue Apr  8 09:27:26 PDT 2008
 //   Support for internationalization.
 //
-//   Cyrus Harrison, Tue Jun 10 15:00:05 PDT 2008
-//   Initial Qt4 Port.
-//
 // ****************************************************************************
 
 void
 QvisMacroWindow::CreateWindowContents()
 { 
-    macroGroup = new QGroupBox(central);
+    macroGroup = new QGroupBox(central, "macroGroup");
     macroGroup->setTitle(tr("Macros"));
 //    macroGroup->setMinimumWidth(200);
 //    macroGroup->setMinimumHeight(100);
@@ -120,13 +118,12 @@ QvisMacroWindow::CreateWindowContents()
     innerMacroLayout->addSpacing(15);
 
     // Create the button layout.
-    buttonLayout = new QGridLayout();
-    innerMacroLayout->addLayout(buttonLayout);
+    buttonLayout = new QGridLayout(innerMacroLayout, 1, 3);
     buttonLayout->setSpacing(5);
 
     // Create the button group.
-    macroButtons = new QButtonGroup(macroGroup);
-    connect(macroButtons, SIGNAL(buttonClicked(int)),
+    macroButtons = new QButtonGroup(0, "macroButtons");
+    connect(macroButtons, SIGNAL(clicked(int)),
             this, SLOT(invokeMacro(int)));
 }
 
@@ -149,16 +146,14 @@ QvisMacroWindow::CreateWindowContents()
 // Creation:   Thu Jun 14 16:59:32 PST 2007
 //
 // Modifications:
-//   Cyrus Harrison, Tue Jun 10 15:00:05 PDT 2008
-//   Initial Qt4 Port.
-//
+//   
 // ****************************************************************************
 
 void
 QvisMacroWindow::invokeMacro(int index)
 {
-    QString invoke("ExecuteMacro(\"%1\")\n");
-    invoke = invoke.arg(macroButtons->button(index)->text());
+    QString invoke;
+    invoke.sprintf("ExecuteMacro(\"%s\")\n", macroButtons->find(index)->text().latin1());
     emit runCommand(invoke);
 }
 
@@ -176,28 +171,26 @@ QvisMacroWindow::invokeMacro(int index)
 // Creation:   Thu Jun 14 17:00:27 PST 2007
 //
 // Modifications:
-//   Cyrus Harrison, Tue Jun 10 15:00:05 PDT 2008
-//   Initial Qt4 Port.
-//
+//   
 // ****************************************************************************
 
 void
 QvisMacroWindow::addMacro(const QString &s)
 {
-    QPushButton *newMacro = new QPushButton(QIcon(QPixmap(macroexec_xpm)),
-         s, macroGroup);
+    QPushButton *newMacro = new QPushButton(QIconSet(QPixmap(macroexec_xpm)),
+         s, macroGroup, s.latin1());
 
     // Add the button to the layout.
-    int nbuttons = macroButtons->buttons().size();
-    int row = nbuttons / 3;
-    int col = nbuttons % 3;
+    int row = macroButtons->count() / 3;
+    int col = macroButtons->count() % 3;
     buttonLayout->addWidget(newMacro, row, col);
 
-    debug1 << "Added macro button \"" << s.toStdString() 
-           << "\" to grid at (" << row << ", " << col << ")\n";
+    debug1 << "Added macro button \"" << s.latin1() << "\" to grid at ("
+           << row << ", " << col << ")\n";
 
     // Add the button to the button group.
-    macroButtons->addButton(newMacro,nbuttons);
+    macroButtons->insert(newMacro);
+
     newMacro->show();
 
     // Update the layout so the button gets added to the window.
@@ -215,21 +208,19 @@ QvisMacroWindow::addMacro(const QString &s)
 // Creation:   Fri Jun 15 09:29:09 PDT 2007
 //
 // Modifications:
-//   Cyrus Harrison, Tue Jun 10 15:00:05 PDT 2008
-//   Initial Qt4 Port.
-//
+//   
 // ****************************************************************************
 
 void
 QvisMacroWindow::clearMacros()
 {
-    int n = macroButtons->buttons().size();
+    int n = macroButtons->count();
     for(int i = 0; i < n; ++i)
     {
-        QPushButton *btn = (QPushButton*)macroButtons->button(i);
+        QButton *btn = macroButtons->find(i);
         if(btn != 0)
         {
-            macroButtons->removeButton(btn);
+            macroButtons->remove(btn);
             delete btn;
         }
     }

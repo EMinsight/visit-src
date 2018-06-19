@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,10 +39,10 @@
 #include <ViewerMultipleAction.h>
 #include <ViewerActionManager.h>
 #include <ViewerWindow.h>
-#include <QAction>
-#include <QIcon>
-#include <QMenu>
-#include <QToolBar>
+#include <qaction.h>
+#include <qiconset.h>
+#include <qpopupmenu.h>
+#include <qtoolbar.h>
 
 #include <DebugStream.h>
 
@@ -65,22 +65,21 @@
 //
 // ****************************************************************************
 
-ViewerMultipleAction::ViewerMultipleAction(ViewerWindow *win) : 
-    ViewerActionBase(win), children(), text(), menuText(),
-    toolTip(), icon()
+ViewerMultipleAction::ViewerMultipleAction(ViewerWindow *win, const char *name) : 
+    ViewerActionBase(win, name), children()
 {
     iconSpecified = false;
     activeAction = 0;
     toggled = false;
     actionMenu = 0;
+    actionMenuId = -1;
     isExclusive = true;
 
     // Create a new QActionGroup and make it call our Activate method when
     // it is activated.
-    action = new QActionGroup(0);
-    action->setExclusive(true);
-    connect(action, SIGNAL(triggered(QAction*)),
-            this, SLOT(ActivateHelper(QAction*)));
+    QString n; n.sprintf("%s_action", name);
+    action = new QActionGroup(0, name);
+    action->setExclusive(false);
 }
 
 // ****************************************************************************
@@ -186,7 +185,7 @@ ViewerMultipleAction::ChoiceEnabled(int) const
 }
 
 // ****************************************************************************
-// Method: ViewerMultipleAction::ChoiceChecked
+// Method: ViewerMultipleAction::ChoiceToggled
 //
 // Purpose: 
 //   Returns whether or not the action should be enabled.
@@ -202,7 +201,7 @@ ViewerMultipleAction::ChoiceEnabled(int) const
 // ****************************************************************************
 
 bool
-ViewerMultipleAction::ChoiceChecked(int i) const
+ViewerMultipleAction::ChoiceToggled(int i) const
 {
     bool retval = false;
 
@@ -230,9 +229,6 @@ ViewerMultipleAction::ChoiceChecked(int i) const
 //   I changed the code to fix some problems with the toolbar buttons not
 //   updating correctly.
 //
-//   Brad Whitlock, Tue May 27 13:11:23 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
@@ -259,9 +255,9 @@ ViewerMultipleAction::Update()
         if(choiceShouldBeEnabled)
             ++enabledChildCount;
   
-        bool choiceShouldBeToggled = ChoiceChecked(i);
+        bool choiceShouldBeToggled = ChoiceToggled(i);
 
-        if(children[i]->isChecked() != choiceShouldBeToggled)
+        if(children[i]->isOn() != choiceShouldBeToggled)
         {
             bool toggled = false;
             if(isExclusive)
@@ -279,7 +275,7 @@ ViewerMultipleAction::Update()
                 toggled = choiceShouldBeToggled;
 
             children[i]->blockSignals(true);
-            children[i]->setChecked(toggled);
+            children[i]->setOn(toggled);
             children[i]->blockSignals(false);
         }
 
@@ -290,9 +286,10 @@ ViewerMultipleAction::Update()
     // Enable or disable the menu based on how many child actions were enabled.
     if(VisualEnabled())
     {
-        if(actionMenu->parentWidget() && actionMenu->parentWidget()->inherits("QMenu"))
+        if(actionMenu->parentWidget() && actionMenu->parentWidget()->inherits("QPopupMenu"))
         {
-            actionMenu->setEnabled(enabledChildCount>0);
+            QPopupMenu *popup = (QPopupMenu *)actionMenu->parentWidget();
+            popup->setItemEnabled(actionMenuId, enabledChildCount>0);
         }
     }
 
@@ -308,28 +305,103 @@ ViewerMultipleAction::SetAllText(const QString &text)
 }
 
 void
-ViewerMultipleAction::SetText(const QString &txt)
+ViewerMultipleAction::SetText(const QString &text)
 {
-    text = txt;
+    action->setText(text);
 }
 
 void
-ViewerMultipleAction::SetMenuText(const QString &txt)
+ViewerMultipleAction::SetMenuText(const QString &text)
 {
-    menuText = txt;
+    action->setMenuText(text);
 }
 
 void
-ViewerMultipleAction::SetToolTip(const QString &txt)
+ViewerMultipleAction::SetToolTip(const QString &text)
 {
-    toolTip = txt;
+    action->setToolTip(text);
 }
 
 void
-ViewerMultipleAction::SetIcon(const QIcon &i)
+ViewerMultipleAction::SetIconSet(const QIconSet &icons)
 {
     iconSpecified = true;
-    icon = i;
+    action->setIconSet(icons);
+}
+
+// ****************************************************************************
+// Method: ViewerMultipleAction::ConnectChildAction
+//
+// Purpose: 
+//   Connects a child action to one of the internal helper slots. This is done
+//   to make non-exclusive actions work.
+//
+// Arguments:
+//   newAction : the action to connect.
+//
+// Programmer: Brad Whitlock
+// Creation:   Wed Feb 5 17:08:54 PST 2003
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+ViewerMultipleAction::ConnectChildAction(QAction *newAction)
+{
+    // If the action is not exclusive then connect the new child action's
+    // activated signal to one of our helper slots.
+    if(!action->isExclusive())
+    {
+#define CONNECT_HELPER(I) connect(newAction, SIGNAL(activated()),\
+                                  this, SLOT(activate##I()))
+
+        if(children.size() == 0)
+            CONNECT_HELPER(0);
+        else if(children.size() == 1)
+            CONNECT_HELPER(1);
+        else if(children.size() == 2)
+            CONNECT_HELPER(2);
+        else if(children.size() == 3)
+            CONNECT_HELPER(3);
+        else if(children.size() == 4)
+            CONNECT_HELPER(4);
+        else if(children.size() == 5)
+            CONNECT_HELPER(5);
+        else if(children.size() == 6)
+            CONNECT_HELPER(6);
+        else if(children.size() == 7)
+            CONNECT_HELPER(7);
+        else if(children.size() == 8)
+            CONNECT_HELPER(8);
+        else if(children.size() == 9)
+            CONNECT_HELPER(9);
+        else if(children.size() == 10)
+            CONNECT_HELPER(10);
+        else if(children.size() == 11)
+            CONNECT_HELPER(11);
+        else if(children.size() == 12)
+            CONNECT_HELPER(12);
+        else if(children.size() == 13)
+            CONNECT_HELPER(13);
+        else if(children.size() == 14)
+            CONNECT_HELPER(14);
+        else if(children.size() == 15)
+            CONNECT_HELPER(15);
+        else if(children.size() == 16)
+            CONNECT_HELPER(16);
+        else if(children.size() == 17)
+            CONNECT_HELPER(17);
+        else if(children.size() == 18)
+            CONNECT_HELPER(18);
+        else if(children.size() == 19)
+            CONNECT_HELPER(19);
+        else
+        {
+            debug1 << "ViewerMultipleAction::ConnectChildAction: "
+                   << "Can't connect another action." << endl;
+        }
+    }
 }
 
 // ****************************************************************************
@@ -361,10 +433,12 @@ void
 ViewerMultipleAction::AddChoice(const QString &menuText)
 {
     // Create an action that is a child to this action group.
-    QAction *newAction = new QAction(action);
+    QAction *newAction = new QAction(action, menuText.ascii());
     newAction->setText(menuText);
+    newAction->setMenuText(menuText);
     newAction->setToolTip(menuText);
-    newAction->setCheckable(true);
+    newAction->setToggleAction(true);
+    ConnectChildAction(newAction);
 
     // Save the child pointer for later
     children.push_back(newAction);
@@ -392,9 +466,6 @@ ViewerMultipleAction::AddChoice(const QString &menuText)
 //   Brad Whitlock, Tue Apr 29 11:18:58 PDT 2008
 //   Use QString.
 //
-//   Brad Whitlock, Tue May 27 13:23:41 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
@@ -403,11 +474,13 @@ ViewerMultipleAction::AddChoice(const QString &menuText, const QString &toolTip,
                                 const QPixmap &large_icon)
 {
     // Create an action that is a child to this action group.
-    QAction *newAction = new QAction(action);
+    QAction *newAction = new QAction(action, menuText);
     newAction->setText(menuText);
+    newAction->setMenuText(menuText);
     newAction->setToolTip(toolTip);
-    newAction->setIcon(QIcon(large_icon));
-    newAction->setCheckable(true);
+    newAction->setIconSet(QIconSet(small_icon, large_icon));
+    newAction->setToggleAction(true);
+    ConnectChildAction(newAction);
 
     // Save the child pointer for later
     children.push_back(newAction);
@@ -435,9 +508,6 @@ ViewerMultipleAction::AddChoice(const QString &menuText, const QString &toolTip,
 //   Brad Whitlock, Tue Apr 29 11:19:24 PDT 2008
 //   Use QString.
 //
-//   Brad Whitlock, Tue May 27 13:24:16 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
@@ -445,11 +515,13 @@ ViewerMultipleAction::AddChoice(const QString &menuText, const QString &toolTip,
                                 const QPixmap &icon)
 {
     // Create an action that is a child to this action group.
-    QAction *newAction = new QAction(action);
+    QAction *newAction = new QAction(action, menuText);
     newAction->setText(menuText);
+    newAction->setMenuText(menuText);
     newAction->setToolTip(toolTip);
-    newAction->setIcon(QIcon(icon));
-    newAction->setCheckable(true);
+    newAction->setIconSet(QIconSet(icon));
+    newAction->setToggleAction(true);
+    ConnectChildAction(newAction);
 
     // Save the child pointer for later
     children.push_back(newAction);
@@ -477,7 +549,6 @@ void
 ViewerMultipleAction::SetExclusive(bool val)
 {
     isExclusive = val;
-    action->setExclusive(val);
 }
 
 // ****************************************************************************
@@ -493,22 +564,21 @@ ViewerMultipleAction::SetExclusive(bool val)
 // Creation:   Wed Feb 5 17:08:54 PST 2003
 //
 // Modifications:
-//   Brad Whitlock, Fri May 23 12:05:59 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
-ViewerMultipleAction::ConstructMenu(QMenu *menu)
+ViewerMultipleAction::ConstructMenu(QPopupMenu *menu)
 {
     // Create a new menu and add all of the actions to it.
-    if(iconSpecified)
-        actionMenu = menu->addMenu(icon, menuText);
-    else
-        actionMenu = menu->addMenu(menuText);
-
+    actionMenu = new QPopupMenu(menu, "ViewerMultipleAction");
     for(int i = 0; i < children.size(); ++i)
-        actionMenu->addAction(children[i]);
+        children[i]->addTo(actionMenu);
+    // Insert the new menu into the old menu.
+    if(iconSpecified)
+        actionMenuId = menu->insertItem(action->iconSet(), action->menuText(), actionMenu);
+    else
+        actionMenuId = menu->insertItem(action->menuText(), actionMenu);
 }
 
 // ****************************************************************************
@@ -528,15 +598,22 @@ ViewerMultipleAction::ConstructMenu(QMenu *menu)
 // ****************************************************************************
 
 void
-ViewerMultipleAction::RemoveFromMenu(QMenu *menu)
+ViewerMultipleAction::RemoveFromMenu(QPopupMenu *menu)
 {
-    if(actionMenu != 0)
+    // Look for the id in the menu.
+    bool hasId = false;
+    for(int i = 0; i < menu->count() && !hasId; ++i)
+        hasId = (menu->idAt(i) == actionMenuId);
+    
+    // If the action is in this menu, then remove it.
+    if(hasId && action->menuText() == menu->text(actionMenuId))
     {
         for(int i = 0; i < children.size(); ++i)
-            actionMenu->removeAction(children[i]);
-        delete actionMenu;
+            children[i]->removeFrom(actionMenu);
+
+        menu->removeItem(actionMenuId);
+        actionMenu = 0;
     }
-    actionMenu = 0;
 }
 
 // ****************************************************************************
@@ -555,9 +632,6 @@ ViewerMultipleAction::RemoveFromMenu(QMenu *menu)
 //   Brad Whitlock, Mon Jul 28 18:04:57 PST 2003
 //   Made sure the pointer to the toolbar was not NULL.
 //
-//   Brad Whitlock, Tue May 27 13:36:38 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
@@ -565,10 +639,7 @@ ViewerMultipleAction::ConstructToolbar(QToolBar *toolbar)
 {
     // simplest case
     if(toolbar)
-    {
-        for(int i = 0; i < action->actions().size(); ++i)
-            toolbar->addAction(action->actions().at(i));
-    }
+        action->addTo(toolbar);
 }
 
 // ****************************************************************************
@@ -586,20 +657,14 @@ ViewerMultipleAction::ConstructToolbar(QToolBar *toolbar)
 // Modifications:
 //   Brad Whitlock, Mon Jul 28 18:04:57 PST 2003
 //   Made sure the pointer to the toolbar was not NULL.
-//
-//   Brad Whitlock, Tue May 27 13:39:16 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
 ViewerMultipleAction::RemoveFromToolbar(QToolBar *toolbar)
 {
     if(toolbar)
-    {
-        for(int i = 0; i < action->actions().size(); ++i)
-            toolbar->removeAction(action->actions().at(i));
-    }
+        action->removeFrom(toolbar);
 }
 
 // ****************************************************************************
@@ -636,28 +701,42 @@ ViewerMultipleAction::UpdateConstruction()
 // Creation:   Wed Feb 5 17:08:54 PST 2003
 //
 // Modifications:
-//   Brad Whitlock, Tue Aug 5 23:05:34 PST 2008
-//   Changed the implementation.
-//
-//   Brad Whitlock, Fri Jan 9 15:07:35 PST 2009
-//   Added exception handling to prevent exceptions from being propagated into
-//   the Qt event loop.
-//
+//   
 // ****************************************************************************
 
 void
-ViewerMultipleAction::ActivateHelper(QAction *a)
+ViewerMultipleAction::ActivateHelper(int i)
 {
-    TRY
-    {
-        activeAction = action->actions().indexOf(a);
-        toggled = a->isChecked();
-        Activate();
-    }
-    CATCHALL(...)
-    {
-        ; // nothing
-    }
-    ENDTRY
+    activeAction = i;
+    toggled = children[i]->isOn();
+    Activate();
 }
+
+//
+// Qt slot functions
+//
+
+void ViewerMultipleAction::activate0(){ ActivateHelper(0); }
+void ViewerMultipleAction::activate1(){ ActivateHelper(1); }
+void ViewerMultipleAction::activate2(){ ActivateHelper(2); }
+void ViewerMultipleAction::activate3(){ ActivateHelper(3); }
+void ViewerMultipleAction::activate4(){ ActivateHelper(4); }
+void ViewerMultipleAction::activate5(){ ActivateHelper(5); }
+void ViewerMultipleAction::activate6(){ ActivateHelper(6); }
+void ViewerMultipleAction::activate7(){ ActivateHelper(7); }
+void ViewerMultipleAction::activate8(){ ActivateHelper(8); }
+void ViewerMultipleAction::activate9(){ ActivateHelper(9); }
+void ViewerMultipleAction::activate10(){ ActivateHelper(10); }
+void ViewerMultipleAction::activate11(){ ActivateHelper(11); }
+void ViewerMultipleAction::activate12(){ ActivateHelper(12); }
+void ViewerMultipleAction::activate13(){ ActivateHelper(13); }
+void ViewerMultipleAction::activate14(){ ActivateHelper(14); }
+void ViewerMultipleAction::activate15(){ ActivateHelper(15); }
+void ViewerMultipleAction::activate16(){ ActivateHelper(16); }
+void ViewerMultipleAction::activate17(){ ActivateHelper(17); }
+void ViewerMultipleAction::activate18(){ ActivateHelper(18); }
+void ViewerMultipleAction::activate19(){ ActivateHelper(19); }
+
+
+
 

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -41,22 +41,23 @@
 #include <DataNode.h>
 #include <DebugStream.h>
 #include <QvisHelpWindow.h>
-#include <QAction>
-#include <QDomDocument>
-#include <QFile>
-#include <QLayout>
-#include <QLineEdit>
-#include <QListWidget>
-#include <QMessageBox>
-#include <QPixmap>
-#include <QPushButton>
-#include <QSplitter>
-#include <QTabWidget>
-#include <QTextBrowser>
-#include <QToolBar>
-#include <QToolButton>
-#include <QTreeWidget>
-#include <QWidget>
+#include <QvisHelpListViewItem.h>
+#include <qaction.h>
+#include <qdom.h>
+#include <qfile.h>
+#include <qlayout.h>
+#include <qlineedit.h>
+#include <qlistbox.h>
+#include <qlistview.h>
+#include <qmessagebox.h>
+#include <qpixmap.h>
+#include <qpushbutton.h>
+#include <qsplitter.h>
+#include <qtabwidget.h>
+#include <qtextbrowser.h>
+#include <qtoolbar.h>
+#include <qtoolbutton.h>
+#include <qvbox.h>
 
 #include <string>
 
@@ -162,29 +163,27 @@ QvisHelpWindow::SetLocale(const QString &s)
 // Modifications:
 //   Brad Whitlock, Tue Apr  8 09:27:26 PDT 2008
 //   Support for internationalization.
-//
-//   Brad Whitlock, Wed Nov 19 15:51:04 PST 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
 QvisHelpWindow::CreateWindowContents()
 {
-    QIcon backIcon, forwardIcon, homeIcon, fontUpIcon, fontDownIcon;
+    QPixmap backIcon, forwardIcon, homeIcon, fontUpIcon, fontDownIcon;
 
     // Create some icons.
-    backIcon = QIcon(QPixmap(back_xpm));
-    forwardIcon = QIcon(QPixmap(forward_xpm));
-    closedBookIcon = QIcon(QPixmap(closedbook_xpm));
-    openBookIcon = QIcon(QPixmap(openbook_xpm));
-    helpIcon = QIcon(QPixmap(help_xpm));
-    homeIcon = QIcon(QPixmap(home_xpm));
-    fontUpIcon = QIcon(QPixmap(fontUp_xpm));
-    fontDownIcon = QIcon(QPixmap(fontDown_xpm));
+    backIcon = QPixmap(back_xpm);
+    forwardIcon = QPixmap(forward_xpm);
+    closedBookIcon = QPixmap(closedbook_xpm);
+    openBookIcon = QPixmap(openbook_xpm);
+    helpIcon = QPixmap(help_xpm);
+    homeIcon = QPixmap(home_xpm);
+    fontUpIcon = QPixmap(fontUp_xpm);
+    fontDownIcon = QPixmap(fontDown_xpm);
 
     // Create a toolbar
-    QToolBar *tb = addToolBar(tr("Help Navigation"));
+    QToolBar *tb = new QToolBar(this);
+    tb->setLabel(tr("Help Navigation"));
 
     // Create a splitter and add it to the layout.
     splitter = new QSplitter(central);
@@ -192,113 +191,132 @@ QvisHelpWindow::CreateWindowContents()
     topLayout->addWidget(splitter);
 
     // Create the tab widget
-    helpTabs = new QTabWidget(splitter);
+    helpTabs = new QTabWidget(splitter, "helpTabs");
     helpTabs->setMinimumWidth(200);
-    connect(helpTabs, SIGNAL(currentChanged(int)),
-            this, SLOT(activeTabChanged(int)));
+    connect(helpTabs, SIGNAL(currentChanged(QWidget *)),
+            this, SLOT(activeTabChanged(QWidget *)));
 
     // Create the Contents tab.
-    helpContents = new QTreeWidget(helpTabs);
-    helpContents->setHeaderLabel(tr("Contents"));
-    connect(helpContents, SIGNAL(itemClicked(QTreeWidgetItem *,int)),
-            this, SLOT(openHelp(QTreeWidgetItem *)));
-    connect(helpContents, SIGNAL(itemCollapsed(QTreeWidgetItem *)),
-            this, SLOT(topicCollapsed(QTreeWidgetItem *)));
-    connect(helpContents, SIGNAL(itemExpanded(QTreeWidgetItem *)),
-            this, SLOT(topicExpanded(QTreeWidgetItem *)));
+    helpContents = new QListView(helpTabs, "helpContents");
+    helpContents->addColumn(tr("Contents"));
+    helpContents->setSorting(-1);
+    connect(helpContents, SIGNAL(clicked(QListViewItem *)),
+            this, SLOT(openHelp(QListViewItem *)));
+    connect(helpContents, SIGNAL(collapsed(QListViewItem *)),
+            this, SLOT(topicCollapsed(QListViewItem *)));
+    connect(helpContents, SIGNAL(expanded(QListViewItem *)),
+            this, SLOT(topicExpanded(QListViewItem *)));
 
     helpTabs->addTab(helpContents, tr("&Contents"));
-    QAction *a = new QAction(this);
-    a->setShortcut(QKeySequence(Qt::Key_Alt, Qt::Key_C));
-    connect(a, SIGNAL(triggered(bool)), this, SLOT(activateContentsTab()));
+    QAction *a = new QAction(this, "Contents");
+    a->setAccel(ALT + Key_C);
+    connect(a, SIGNAL(activated()), this, SLOT(activateContentsTab()));
 
     // Create the Index tab.
-    helpIndexTab = new QWidget(helpTabs);
-    QVBoxLayout *helpIndexLayout = new QVBoxLayout(helpIndexTab);
-    helpIndexLayout->setSpacing(5);
-    helpIndexLayout->setMargin(5);
+    helpIndexTab = new QVBox(helpTabs, "helpIndex");
+    helpIndexTab->setSpacing(5);
+    helpIndexTab->setMargin(5);
     helpTabs->addTab(helpIndexTab, tr("&Index"));
-    a = new QAction(this);
-    a->setShortcut(QKeySequence(Qt::Key_Alt, Qt::Key_I));
-    connect(a, SIGNAL(triggered(bool)), this, SLOT(activateIndexTab()));
+    a = new QAction(this, "Index");
+    a->setAccel(ALT + Key_I);
+    connect(a, SIGNAL(activated()), this, SLOT(activateIndexTab()));
 
     // Index widgets.
-    helpIndexText = new QLineEdit(helpIndexTab);
+    helpIndexText = new QLineEdit(helpIndexTab, "helpIndexText");
     connect(helpIndexText, SIGNAL(textChanged(const QString &)),
             this, SLOT(lookForIndexTopic(const QString &)));
-    helpIndexLayout->addWidget(helpIndexText);
-    helpIndex = new QListWidget(helpIndexTab);
-    connect(helpIndex, SIGNAL(itemSelectionChanged()),
+    helpIndex = new QListBox(helpIndexTab, "helpIndex");
+    helpIndex->setSelectionMode(QListBox::Single);
+    connect(helpIndex, SIGNAL(selectionChanged()),
             this, SLOT(displayIndexTopic()));
-    helpIndexLayout->addWidget(helpIndex);
 
     // Create the Bookmark tab.
-    helpBookmarksTab = new QWidget(helpTabs);
-    QVBoxLayout *helpBookmarksLayout = new QVBoxLayout(helpBookmarksTab);
-    helpBookmarksLayout->setSpacing(10);
-    helpBookmarksLayout->setMargin(5);
+    helpBookmarksTab = new QVBox(helpTabs, "helpBookmarks");
+    helpBookmarksTab->setSpacing(10);
+    helpBookmarksTab->setMargin(5);
     helpTabs->addTab(helpBookmarksTab, tr("&Bookmarks"));
-    a = new QAction(this);
-    a->setShortcut(QKeySequence(Qt::Key_Alt, Qt::Key_B));
-    connect(a, SIGNAL(triggered(bool)), this, SLOT(activateBookmarkTab()));
+    a = new QAction(this, "Bookmarks");
+    a->setAccel(ALT + Key_B);
+    connect(a, SIGNAL(activated()), this, SLOT(activateBookmarkTab()));
 
-    QWidget *bookmarkHBox = new QWidget(helpBookmarksTab);
-    QHBoxLayout *bookmarkHBoxLayout = new QHBoxLayout(bookmarkHBox);
-    bookmarkHBoxLayout->setSpacing(20);
-    bookmarkHBoxLayout->setMargin(0);
-    helpBookmarksLayout->addWidget(bookmarkHBox);
-    addBookmarkButton = new QPushButton(tr("Add"), bookmarkHBox);
-    bookmarkHBoxLayout->addWidget(addBookmarkButton);
+    QHBox *bookmarkHBox = new QHBox(helpBookmarksTab, "helpBookmarks");
+    bookmarkHBox->setSpacing(20);
+    addBookmarkButton = new QPushButton(tr("Add"), bookmarkHBox,
+        "addBookmarkButton");
     connect(addBookmarkButton, SIGNAL(clicked()),
             this, SLOT(addBookmark()));
-    removeBookmarkButton = new QPushButton(tr("Remove"), bookmarkHBox);
-    bookmarkHBoxLayout->addWidget(removeBookmarkButton);
+    removeBookmarkButton = new QPushButton(tr("Remove"), bookmarkHBox,
+        "removeBookmarkButton");
     connect(removeBookmarkButton, SIGNAL(clicked()),
             this, SLOT(removeBookmark()));
-    helpBookMarks = new QListWidget(helpBookmarksTab);
-    helpBookmarksLayout->addWidget(helpBookMarks);
-    connect(helpBookMarks, SIGNAL(itemSelectionChanged()),
+    helpBookMarks = new QListBox(helpBookmarksTab, "helpIndex");
+    helpBookMarks->setSelectionMode(QListBox::Single);
+    connect(helpBookMarks, SIGNAL(selectionChanged()),
             this, SLOT(displayBookmarkTopic()));
 
     // Create the text browser
-    helpBrowser = new QTextBrowser(splitter);
+    helpBrowser = new QTextBrowser(splitter, "helpBrowser");
     helpBrowser->setMinimumWidth(300);
     QFont f(helpBrowser->font());
     f.setBold(false);
     helpBrowser->setFont(f);
-    connect(helpBrowser, SIGNAL(anchorClicked(const QUrl &)),
-            helpBrowser, SLOT(setSource(const QUrl &)));
 
-    QAction *backAction = tb->addAction(QIcon(backIcon), tr("Back"), 
-        helpBrowser, SLOT(backward()));
-    backAction->setShortcut(QKeySequence(Qt::Key_Control, Qt::Key_Left));
+#if QT_VERSION >= 300
+    connect(helpBrowser, SIGNAL(linkClicked(const QString &)),
+            helpBrowser, SLOT(setSource(const QString &)));
+#endif
+
+    QToolButton *backButton = new QToolButton(QIconSet(backIcon), tr("Back"),
+        tr("Back"), helpBrowser, SLOT(backward()), tb, "backButton");
+    backButton->setAccel(CTRL + Key_Prior);
+    backButton->setUsesBigPixmap(true);
+    backButton->setUsesTextLabel(true);
     connect(helpBrowser, SIGNAL(backwardAvailable(bool)),
-            backAction, SLOT(setEnabled(bool)));
+            backButton, SLOT(setEnabled(bool)));
 
-    QAction *forwardAction = tb->addAction(QIcon(forwardIcon), tr("Forward"), 
-        helpBrowser, SLOT(forward()));
-    forwardAction->setShortcut(QKeySequence(Qt::Key_Control, Qt::Key_Right));
-    connect(helpBrowser, SIGNAL(forwardAvailable(bool)),
-            forwardAction, SLOT(setEnabled(bool)));
+    tb->addSeparator();
 
-    QAction *homeAction = tb->addAction(QIcon(homeIcon), tr("Home"), 
-        helpBrowser, SLOT(home()));
-    homeAction->setShortcut(QKeySequence(Qt::Key_Control, Qt::Key_Home));
+    QToolButton *forwardButton = new QToolButton(QIconSet(forwardIcon), tr("Forward"),
+        tr("Forward"), helpBrowser, SLOT(forward()), tb, "forwardButton");
+    forwardButton->setAccel(CTRL + Key_Next);
+    forwardButton->setUsesBigPixmap(true);
+    forwardButton->setUsesTextLabel(true);
+    connect(helpBrowser, SIGNAL(backwardAvailable(bool)),
+            forwardButton, SLOT(setEnabled(bool)));
+
+    tb->addSeparator();
+
+    QToolButton *homeButton = new QToolButton(QIconSet(homeIcon), tr("Home"),
+        tr("Home"), this, SLOT(displayHome()), tb, "homeButton");
+    homeButton->setAccel(CTRL + Key_Home);
+    homeButton->setUsesBigPixmap(true);
+    homeButton->setUsesTextLabel(true);
+
+    tb->addSeparator();
 
     // buttons to change the font size.
-    QAction *upFontAction = tb->addAction(QIcon(fontUpIcon), tr("Larger font"), 
-        this, SLOT(increaseFontSize()));
+    QToolButton *upFont = new QToolButton(QIconSet(fontUpIcon),tr("Larger font"),
+        tr("Larger font"), this, SLOT(increaseFontSize()), tb, "upFont");
+    upFont->setUsesTextLabel(true);
+    upFont->setUsesBigPixmap(true);
 
-    QAction *downFontAction = tb->addAction(QIcon(fontDownIcon), tr("Smaller font"), 
-        this, SLOT(decreaseFontSize()));
+    tb->addSeparator();
 
-    QAction *addBookmarkAction = tb->addAction(QIcon(openBookIcon), tr("Add bookmark"), 
-        this, SLOT(addBookmark()));
+    QToolButton *downFont = new QToolButton(QIconSet(fontDownIcon),tr("Smaller font"),
+        tr("Smaller font"), this, SLOT(decreaseFontSize()), tb, "downFont");
+    downFont->setUsesTextLabel(true);
+    downFont->setUsesBigPixmap(true);
+
+    tb->addSeparator();
+
+    QToolButton *addBookmarkTB = new QToolButton(QIconSet(openBookIcon),tr("Add Bookmark"),
+        tr("Add Bookmark"), this, SLOT(addBookmark()), tb, "addBookmarkTB");
+    addBookmarkTB->setUsesTextLabel(true);
+    addBookmarkTB->setUsesBigPixmap(true);
 
     // Create the Dismiss button
-    QHBoxLayout *buttonLayout = new QHBoxLayout(0);
-    topLayout->addLayout(buttonLayout);
-    QPushButton *dismissButton = new QPushButton(tr("Dismiss"), central);
+    QHBoxLayout *buttonLayout = new QHBoxLayout(topLayout);
+    QPushButton *dismissButton = new QPushButton(tr("Dismiss"), central, "dismissButton");
     connect(dismissButton, SIGNAL(clicked()), this, SLOT(hide()));
     buttonLayout->addStretch(10);
     buttonLayout->addWidget(dismissButton);
@@ -309,7 +327,12 @@ QvisHelpWindow::CreateWindowContents()
 
     // Show the appropriate page based on the activeTab setting.
     helpTabs->blockSignals(true);
-    helpTabs->setCurrentIndex(activeTab);
+    if(activeTab == 0)
+        helpTabs->showPage(helpContents);
+    else if(activeTab == 1)
+        helpTabs->showPage(helpIndexTab);
+    else
+        helpTabs->showPage(helpBookmarksTab);
     helpTabs->blockSignals(false);
 }
 
@@ -378,9 +401,6 @@ QvisHelpWindow::ReleaseNotesFile() const
 //   Brad Whitlock, Mon Apr 21 15:06:00 PDT 2008
 //   Changed how we find the release notes file.
 //
-//   Brad Whitlock, Thu Jun 19 16:39:30 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
@@ -388,57 +408,21 @@ QvisHelpWindow::LoadHelp(const QString &fileName)
 {
     helpContents->blockSignals(true);
 
-    // Create a root node for the VisIt home page.
-    QTreeWidgetItem *homePage = new QTreeWidgetItem(
-        helpContents, 0);
-    homePage->setText(0, tr("VisIt home page"));
-    homePage->setData(0, Qt::UserRole, QVariant("home.html"));
-    homePage->setIcon(0, helpIcon);
-
-    QTreeWidgetItem *releaseNotes = new QTreeWidgetItem(
-        helpContents, 0);
-    releaseNotes->setText(0, tr("Release Notes"));
-    releaseNotes->setData(0, Qt::UserRole, QVariant(ReleaseNotesFile()));
-    releaseNotes->setIcon(0, helpIcon);
-
-    QTreeWidgetItem *argsPage = new QTreeWidgetItem(
-        helpContents, 0);
-    argsPage->setText(0, tr("Command line arguments"));
-    argsPage->setData(0, Qt::UserRole, QVariant("args.html"));
-    argsPage->setIcon(0, helpIcon);
-
-    QTreeWidgetItem *faqPage = new QTreeWidgetItem(
-        helpContents, 0);
-    faqPage->setText(0, tr("Frequently asked questions"));
-    faqPage->setData(0, Qt::UserRole, QVariant("faq.html"));
-    faqPage->setIcon(0, helpIcon);
-
-    QTreeWidgetItem *copyrightPage = new QTreeWidgetItem(
-        helpContents, 0);
-    copyrightPage->setText(0, tr("Copyright"));
-    copyrightPage->setData(0, Qt::UserRole, QVariant("copyright.html"));
-    copyrightPage->setIcon(0, helpIcon);
-
-    QTreeWidgetItem *contribPage = new QTreeWidgetItem(
-        helpContents);
-    contribPage->setText(0, tr("VisIt Contributors"));
-    contribPage->setData(0, Qt::UserRole, QVariant("contributors.html"));
-    contribPage->setIcon(0, helpIcon);
-
     // Read the XML file and create the DOM tree. Then use the tree to
     // build the User manual content.
     bool noHelp = false;
     QFile helpIndexFile(fileName);
-    if(helpIndexFile.open(QIODevice::ReadOnly))
+    if(helpIndexFile.open(IO_ReadOnly))
     {
         QDomDocument domTree;
         if(domTree.setContent(&helpIndexFile))
         {
             // Create a root node for the User's manual.
-            QTreeWidgetItem *UMrootItem = new QTreeWidgetItem(helpContents);
-            UMrootItem->setIcon(0, openBookIcon);
+            QvisHelpListViewItem *UMrootItem = new QvisHelpListViewItem(
+                helpContents, 0);
             UMrootItem->setText(0, tr("VisIt User's Manual"));
-            UMrootItem->setData(0, Qt::UserRole, QVariant("list0000.html"));
+            UMrootItem->setDocument("list0000.html");
+            UMrootItem->setPixmap(0, openBookIcon);
 
             // Create the tree view out of the DOM
             QDomElement root = domTree.documentElement();
@@ -455,7 +439,7 @@ QvisHelpWindow::LoadHelp(const QString &fileName)
             }
 
             // Make the root node open by default.
-            helpContents->expandItem(UMrootItem);
+            helpContents->setOpen(UMrootItem, true);
         }
         else
             noHelp = true;
@@ -472,10 +456,47 @@ QvisHelpWindow::LoadHelp(const QString &fileName)
                   "No online help will be available.\n";
     }
 
+    QvisHelpListViewItem *contribPage = new QvisHelpListViewItem(
+        helpContents, 0);
+    contribPage->setText(0, tr("VisIt Contributors"));
+    contribPage->setDocument("contributors.html");
+    contribPage->setPixmap(0, helpIcon);
+
+    QvisHelpListViewItem *copyrightPage = new QvisHelpListViewItem(
+        helpContents, 0);
+    copyrightPage->setText(0, tr("Copyright"));
+    copyrightPage->setDocument("copyright.html");
+    copyrightPage->setPixmap(0, helpIcon);
+
+    QvisHelpListViewItem *faqPage = new QvisHelpListViewItem(
+        helpContents, 0);
+    faqPage->setText(0, tr("Frequently asked questions"));
+    faqPage->setDocument("faq.html");
+    faqPage->setPixmap(0, helpIcon);
+
+    QvisHelpListViewItem *argsPage = new QvisHelpListViewItem(
+        helpContents, 0);
+    argsPage->setText(0, tr("Command line arguments"));
+    argsPage->setDocument("args.html");
+    argsPage->setPixmap(0, helpIcon);
+
+    QvisHelpListViewItem *releaseNotes = new QvisHelpListViewItem(
+        helpContents, 0);
+    releaseNotes->setText(0, tr("Release Notes"));
+    releaseNotes->setDocument(ReleaseNotesFile());
+    releaseNotes->setPixmap(0, helpIcon);
+
+    // Create a root node for the VisIt home page.
+    QvisHelpListViewItem *homePage = new QvisHelpListViewItem(
+        helpContents, 0);
+    homePage->setText(0, tr("VisIt home page"));
+    homePage->setDocument("home.html");
+    homePage->setPixmap(0, helpIcon);
+
     helpContents->blockSignals(false);
 
     // Make the VisIt home page selected by default.
-    homePage->setSelected(true);
+    helpContents->setSelected(homePage, true);
 
     // Build the index.
     BuildIndex();
@@ -501,16 +522,14 @@ QvisHelpWindow::LoadHelp(const QString &fileName)
 // Creation:   Fri Jul 12 12:59:15 PDT 2002
 //
 // Modifications:
-//   Brad Whitlock, Thu Jun 19 16:20:28 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
-QvisHelpWindow::BuildContents(QTreeWidgetItem *parentItem,
+QvisHelpWindow::BuildContents(QListViewItem *parentItem,
     const QDomElement &parentElement)
 {
-    QTreeWidgetItem *thisItem = 0;
+    QvisHelpListViewItem *thisItem = 0;
     QDomNode node = parentElement.firstChild();
     while(!node.isNull())
     {
@@ -518,12 +537,12 @@ QvisHelpWindow::BuildContents(QTreeWidgetItem *parentItem,
         {
             // add a new list view item for the outline
             if(parentItem == 0)
-                thisItem = new QTreeWidgetItem(helpContents);
+                thisItem = new QvisHelpListViewItem(helpContents, thisItem);
             else
-                thisItem = new QTreeWidgetItem(parentItem);
+                thisItem = new QvisHelpListViewItem(parentItem, thisItem);
         
             thisItem->setText(0, node.toElement().attribute("topic"));
-            thisItem->setData(0, Qt::UserRole, node.toElement().attribute("doc"));
+            thisItem->setDocument(node.toElement().attribute("doc"));
 
             // Add the topic to the index.
             AddToIndex(node.toElement().attribute("topic"),
@@ -533,9 +552,9 @@ QvisHelpWindow::BuildContents(QTreeWidgetItem *parentItem,
             BuildContents(thisItem, node.toElement());
 
             if(thisItem->childCount() > 0)
-                thisItem->setIcon(0, closedBookIcon);
+                thisItem->setPixmap(0, closedBookIcon);
             else
-                thisItem->setIcon(0, helpIcon);
+                thisItem->setPixmap(0, helpIcon);
         }
 
         node = node.nextSibling();
@@ -558,9 +577,6 @@ QvisHelpWindow::BuildContents(QTreeWidgetItem *parentItem,
 //   Brad Whitlock, Tue Apr  8 09:27:26 PDT 2008
 //   Support for internationalization.
 //
-//   Brad Whitlock, Thu Jun 19 16:45:54 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
@@ -579,7 +595,7 @@ QvisHelpWindow::BuildIndex()
     IndexMap::ConstIterator it;
     for(it = index.begin(); it != index.end(); ++it)
     {
-         helpIndex->addItem(it.key());
+         helpIndex->insertItem(it.key());
     }
     helpIndex->blockSignals(false);
 }
@@ -598,9 +614,7 @@ QvisHelpWindow::BuildIndex()
 // Creation:   Fri Jul 12 13:01:25 PST 2002
 //
 // Modifications:
-//   Brad Whitlock, Thu Jun 19 16:47:37 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
@@ -631,7 +645,7 @@ QvisHelpWindow::AddToIndex(const QString &topic, const QString &doc)
     if(filteredString.length() > 1)
     {
         // Make sure the first character is upper case.
-        filteredString = filteredString.left(1).toUpper() +
+        filteredString = filteredString.left(1).upper() +
                          filteredString.right(filteredString.length() - 1);
 
         // Insert the item into the index.
@@ -640,7 +654,7 @@ QvisHelpWindow::AddToIndex(const QString &topic, const QString &doc)
         {
             QString key(filteredString);
             if(j > 0)
-                key = QString("%1 (%2)").arg(filteredString).arg(j+1);
+                key.sprintf("%s (%d)", filteredString.latin1(), j+1);
 
             IndexMap::ConstIterator it = index.find(key);
             if(it == index.end())
@@ -671,14 +685,14 @@ QvisHelpWindow::BuildBookmarks()
     IndexMap::ConstIterator it = bookmarks.begin();
     for(; it != bookmarks.end(); ++it)
     {
-        helpBookMarks->addItem(it.key());
+        helpBookMarks->insertItem(it.key());
     }
 
     if(helpBookMarks->count() > 0)
     {
          helpBookMarks->blockSignals(true);
          helpBookMarks->setCurrentItem(0);
-//         helpBookMarks->ensureCurrentVisible();
+         helpBookMarks->ensureCurrentVisible();
          helpBookMarks->blockSignals(false);
     }
 }
@@ -696,9 +710,7 @@ QvisHelpWindow::BuildBookmarks()
 // Creation:   Fri Jul 12 13:16:59 PST 2002
 //
 // Modifications:
-//   Brad Whitlock, Thu Jun 19 15:20:40 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
@@ -709,7 +721,7 @@ QvisHelpWindow::CreateNode(DataNode *parentNode)
 
     if(saveWindowDefaults)
     {
-        DataNode *node = parentNode->GetNode(windowTitle().toStdString());
+        DataNode *node = parentNode->GetNode(caption().latin1());
 
         // Save the current tab.
         node->AddNode(new DataNode("activeTab", activeTab));
@@ -722,11 +734,11 @@ QvisHelpWindow::CreateNode(DataNode *parentNode)
             // Create a node for the bookmark.
             QString bmName;
             bmName.sprintf("Bookmark%d", i);
-            DataNode *bmNode = new DataNode(bmName.toStdString());
+            DataNode *bmNode = new DataNode(bmName.latin1());
 
             // Add the topic and the doc to the bookmark node.
-            bmNode->AddNode(new DataNode("topic", std::string(it.key().toStdString())));
-            bmNode->AddNode(new DataNode("doc", std::string(it.value().toStdString())));
+            bmNode->AddNode(new DataNode("topic", std::string(it.key().latin1())));
+            bmNode->AddNode(new DataNode("doc", std::string(it.data().latin1())));
 
             node->AddNode(bmNode);
         }
@@ -747,15 +759,13 @@ QvisHelpWindow::CreateNode(DataNode *parentNode)
 // Creation:   Fri Jul 12 13:16:54 PST 2002
 //
 // Modifications:
-//   Brad Whitlock, Thu Jun 19 15:20:46 PDT 2008
-//   Qt 4.
-//  
+//   
 // ****************************************************************************
 
 void
 QvisHelpWindow::SetFromNode(DataNode *parentNode, const int *borders)
 {
-    DataNode *winNode = parentNode->GetNode(windowTitle().toStdString());
+    DataNode *winNode = parentNode->GetNode(std::string(caption().latin1()));
     if(winNode == 0)
         return;
 
@@ -775,7 +785,7 @@ QvisHelpWindow::SetFromNode(DataNode *parentNode, const int *borders)
     {
         QString bmName;
         bmName.sprintf("Bookmark%d", i);
-        DataNode *bmNode = winNode->GetNode(bmName.toStdString());
+        DataNode *bmNode = winNode->GetNode(bmName.latin1());
         bmFound = (bmNode != 0);
         if(bmFound)
         {
@@ -812,24 +822,22 @@ QvisHelpWindow::SetFromNode(DataNode *parentNode, const int *borders)
 // Creation:   Fri Jul 12 14:43:57 PST 2002
 //
 // Modifications:
-//   Brad Whitlock, Thu Jun 19 16:50:58 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 QString
 QvisHelpWindow::TopicFromDoc(const QString &doc)
 {
-
     QString retval;
 
     // Search all of the roots.
-    QTreeWidgetItem *root = (QTreeWidgetItem *)helpContents->invisibleRootItem();
+    QvisHelpListViewItem *root = (QvisHelpListViewItem *)helpContents->firstChild();
     bool found = false;
-    for(int i = 0; i < root->childCount() && !found; ++i)
+    while(root != 0 && !found)
     {
         // Search the tree for the topic.
-        found = TopicFromDocHelper(retval, doc, root->child(i));
+        found = TopicFromDocHelper(retval, doc, root);
+        root = (QvisHelpListViewItem *)root->nextSibling();
     }
 
     return retval;
@@ -853,28 +861,27 @@ QvisHelpWindow::TopicFromDoc(const QString &doc)
 // Creation:   Fri Jul 12 14:44:40 PST 2002
 //
 // Modifications:
-//   Brad Whitlock, Thu Jun 19 16:17:13 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 bool
 QvisHelpWindow::TopicFromDocHelper(QString &str, const QString &doc,
-    QTreeWidgetItem *item)
+    QvisHelpListViewItem *item)
 {
     bool retval = false;
 
-    if(item->data(0,Qt::UserRole).toString() == doc)
+    if(item->document() == doc)
     {
         retval = true;
         str = item->text(0);
     }
     else if(item->childCount() > 0)
     {
+        QListViewItem *child = item->firstChild();
         for(int i = 0; i < item->childCount() && !retval; ++i)
         {
-            QTreeWidgetItem *child = item->child(i);
-            retval = TopicFromDocHelper(str, doc, child);
+            retval = TopicFromDocHelper(str, doc, (QvisHelpListViewItem *)child);
+            child = child->nextSibling();
         }
     }
 
@@ -952,8 +959,8 @@ QvisHelpWindow::show()
 
         // Set the proportions for each panel.
         int sum = 0;
-        QList<int> newSizes, sizes = splitter->sizes();
-        QList<int>::ConstIterator it = sizes.begin();
+        QValueList<int> newSizes, sizes = splitter->sizes();
+        QValueList<int>::ConstIterator it = sizes.begin();
         while(it != sizes.end())
         {
             sum += (*it);
@@ -988,14 +995,13 @@ QvisHelpWindow::show()
 // Creation:   Fri Jul 12 13:02:34 PST 2002
 //
 // Modifications:
-//   Brad Whitlock, Wed Nov 19 15:51:37 PST 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
-QvisHelpWindow::activeTabChanged(int index)
+QvisHelpWindow::activeTabChanged(QWidget *)
 {
+    int index = helpTabs->currentPageIndex();
     if(index == 1)
     {
         helpIndexText->blockSignals(true);
@@ -1008,19 +1014,19 @@ QvisHelpWindow::activeTabChanged(int index)
 void
 QvisHelpWindow::activateContentsTab()
 {
-    helpTabs->setCurrentIndex(0);
+    helpTabs->setCurrentPage(0);
 }
 
 void
 QvisHelpWindow::activateIndexTab()
 {
-    helpTabs->setCurrentIndex(1);
+    helpTabs->setCurrentPage(1);
 }
 
 void
 QvisHelpWindow::activateBookmarkTab()
 {
-    helpTabs->setCurrentIndex(2);
+    helpTabs->setCurrentPage(2);
 }
 
 // ****************************************************************************
@@ -1037,22 +1043,20 @@ QvisHelpWindow::activateBookmarkTab()
 // Creation:   Fri Jul 12 13:03:00 PST 2002
 //
 // Modifications:
-//   Brad Whitlock, Thu Jun 19 16:27:10 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
-QvisHelpWindow::openHelp(QTreeWidgetItem *item)
+QvisHelpWindow::openHelp(QListViewItem *item)
 {
     if(item)
     {
-        QString document(item->data(0, Qt::UserRole).toString());
+        QvisHelpListViewItem *item2 = (QvisHelpListViewItem *)item;
 
-        if(!document.isEmpty())
-            displayPage(document);
+        if(item2->document() != QString::null)
+            displayPage(item2->document());
         else
-            displayTitle(item->text(0));
+            displayTitle(item2->text(0));
     }
 }
 
@@ -1071,27 +1075,25 @@ QvisHelpWindow::openHelp(QTreeWidgetItem *item)
 // Creation:   Fri Jul 12 13:03:00 PST 2002
 //
 // Modifications:
-//   Brad Whitlock, Thu Jun 19 16:29:18 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
-QvisHelpWindow::topicExpanded(QTreeWidgetItem *item)
+QvisHelpWindow::topicExpanded(QListViewItem *item)
 {
     if(item->childCount() > 0)
-        item->setIcon(0, openBookIcon);
+        item->setPixmap(0, openBookIcon);
 
-    QString document(item->data(0, Qt::UserRole).toString());
-    if(!document.isEmpty())
+    QvisHelpListViewItem *item2 = (QvisHelpListViewItem *)item;
+    if(item2->document() != QString::null)
     {
-        if(document != helpFile)
-            displayPage(document);
+        if(item2->document() != helpFile)
+            displayPage(item2->document());
     }
     else
-        displayTitle(item->text(0));
+        displayTitle(item2->text(0));
 
-    item->setSelected(true);
+    helpContents->setSelected(item, true);
 }
 
 // ****************************************************************************
@@ -1109,27 +1111,25 @@ QvisHelpWindow::topicExpanded(QTreeWidgetItem *item)
 // Creation:   Fri Jul 12 13:03:00 PST 2002
 //
 // Modifications:
-//   Brad Whitlock, Thu Jun 19 16:29:33 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
-QvisHelpWindow::topicCollapsed(QTreeWidgetItem *item)
+QvisHelpWindow::topicCollapsed(QListViewItem *item)
 {
     if(item->childCount() > 0)
-        item->setIcon(0, closedBookIcon);
+        item->setPixmap(0, closedBookIcon);
 
-    QString document(item->data(0, Qt::UserRole).toString());
-    if(!document.isEmpty())
+    QvisHelpListViewItem *item2 = (QvisHelpListViewItem *)item;
+    if(item2->document() != QString::null)
     {
-        if(document != helpFile)
-            displayPage(document);
+        if(item2->document() != helpFile)
+            displayPage(item2->document());        
     }
     else
-        displayTitle(item->text(0));
+        displayTitle(item2->text(0));
 
-    item->setSelected(true);
+    helpContents->setSelected(item, true);
 }
 
 // ****************************************************************************
@@ -1385,38 +1385,36 @@ QvisHelpWindow::displayPage(const QString &page, bool reload)
 // Creation:   Thu Feb 17 12:08:08 PDT 2005
 //
 // Modifications:
-//   Brad Whitlock, Thu Jun 19 16:58:05 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
 QvisHelpWindow::synchronizeContents(const QString &page)
 {
     // Update the contents so the right page is highlighted.
-    QTreeWidgetItemIterator it(helpContents);
-    while(*it)
+    QListViewItemIterator it(helpContents);
+    for( ; it.current(); ++it)
     {
-        QString document((*it)->data(0, Qt::UserRole).toString());
-        if(document == page)
+        QvisHelpListViewItem *item =
+            (QvisHelpListViewItem *)it.current();
+        if(item->document() == page)
         {
             // Open up all of the parents until we arrive at
             // the top.
             helpContents->blockSignals(true);
-            for(QTreeWidgetItem *p = (*it)->parent();
+            for(QListViewItem *p = it.current()->parent();
                 p != 0; p = p->parent())
             {
-                helpContents->expandItem(p);
+                p->setOpen(true);
                 if(p->childCount() > 0)
-                    p->setIcon(0, openBookIcon);
+                    p->setPixmap(0, openBookIcon);
             }
-            helpContents->setCurrentItem(*it);
-            (*it)->setSelected(true);
-//            helpContents->ensureItemVisible(it.current());
+            helpContents->setCurrentItem(it.current());
+            helpContents->setSelected(it.current(), true);
+            helpContents->ensureItemVisible(it.current());
             helpContents->blockSignals(false);
             break;
         }
-        ++it;
     }
 }
 
@@ -1436,9 +1434,6 @@ QvisHelpWindow::synchronizeContents(const QString &page)
 //   Kathleen Bonnell, Wed Jun 27 12:42:47 PDT 2007 
 //   Removed Q_WS_WIN specific code.
 //
-//   Brad Whitlock, Thu Jun 19 15:09:21 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
@@ -1447,6 +1442,16 @@ QvisHelpWindow::increaseFontSize()
     QFont f(helpBrowser->font());
     f.setPointSize(f.pointSize()+1);
     helpBrowser->setFont(f);
+#if QT_VERSION < 300
+    helpBrowser->setUpdatesEnabled(false);
+    helpBrowser->blockSignals(true);
+    QString source(helpBrowser->source());
+    helpBrowser->setSource("blank.html");
+    helpBrowser->setSource(source);
+    helpBrowser->blockSignals(false);
+    helpBrowser->setUpdatesEnabled(true);
+    helpBrowser->repaint();
+#endif
 }
 
 // ****************************************************************************
@@ -1465,9 +1470,6 @@ QvisHelpWindow::increaseFontSize()
 //   Kathleen Bonnell, Wed Jun 27 12:42:47 PDT 2007 
 //   Removed Q_WS_WIN specific code.
 //
-//   Brad Whitlock, Thu Jun 19 15:09:33 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
@@ -1479,6 +1481,16 @@ QvisHelpWindow::decreaseFontSize()
     {
         f.setPointSize(ptSize);
         helpBrowser->setFont(f);
+#if QT_VERSION < 300
+        helpBrowser->setUpdatesEnabled(false);
+        helpBrowser->blockSignals(true);
+        QString source(helpBrowser->source());
+        helpBrowser->setSource("blank.html");
+        helpBrowser->setSource(source);
+        helpBrowser->blockSignals(false);
+        helpBrowser->setUpdatesEnabled(true);
+        helpBrowser->repaint();
+#endif
     }
 }
 
@@ -1496,22 +1508,19 @@ QvisHelpWindow::decreaseFontSize()
 //   Brad Whitlock, Thu Feb 17 12:09:32 PDT 2005
 //   Added code to synchronize the help contents.
 //
-//   Brad Whitlock, Thu Jun 19 15:24:05 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
 QvisHelpWindow::displayIndexTopic()
 {
-    IndexMap::ConstIterator it = index.find(helpIndex->currentItem()->text());
+    IndexMap::ConstIterator it = index.find(helpIndex->currentText());
     if(it != index.end())
     {
         helpIndexText->blockSignals(true);
-        helpIndexText->setText(helpIndex->currentItem()->text());
+        helpIndexText->setText(helpIndex->currentText());
         helpIndexText->blockSignals(false);
-        displayPage(it.value());
-        synchronizeContents(it.value());
+        displayPage(it.data());
+        synchronizeContents(it.data());
     }
 }
 
@@ -1533,9 +1542,6 @@ QvisHelpWindow::displayIndexTopic()
 //   Brad Whitlock, Thu Feb 17 12:10:06 PDT 2005
 //   Added code to synchronize contents.
 //
-//   Brad Whitlock, Thu Jun 19 15:24:13 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
@@ -1546,12 +1552,12 @@ QvisHelpWindow::lookForIndexTopic(const QString &topic)
 
     // Search through the helpIndex widget for a suitable match to the
     // topic that was typed.
-    QString key(topic.toUpper());
+    QString key(topic.upper());
     bool matchFound = false;
     size_t i;
     for(i = 0; i < helpIndex->count() && !matchFound; ++i)
     {
-         QString title = helpIndex->item(i)->text().toUpper();
+         QString title = helpIndex->text(i).upper();
          if(key.length() < title.length())
              matchFound = (title.left(key.length()) == key);
          else if(key == title)
@@ -1564,16 +1570,16 @@ QvisHelpWindow::lookForIndexTopic(const QString &topic)
     {
          // Select the right item in the helpIndex widget
          helpIndex->blockSignals(true);
-         helpIndex->setCurrentRow(i - 1);
-//         helpIndex->ensureCurrentVisible();
+         helpIndex->setCurrentItem(i - 1);
+         helpIndex->ensureCurrentVisible();
          helpIndex->blockSignals(false);
 
          // Try and display a help page for the topic.
-         IndexMap::ConstIterator it = index.find(helpIndex->currentItem()->text());
+         IndexMap::ConstIterator it = index.find(helpIndex->currentText());
          if(it != index.end())
          {
-             displayPage(it.value());
-             synchronizeContents(it.value());
+             displayPage(it.data());
+             synchronizeContents(it.data());
          }
     }
 }
@@ -1594,19 +1600,16 @@ QvisHelpWindow::lookForIndexTopic(const QString &topic)
 //   Brad Whitlock, Thu Feb 17 12:10:42 PDT 2005
 //   Added code to synchronize the contents.
 //
-//   Brad Whitlock, Thu Jun 19 15:29:48 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
 QvisHelpWindow::displayBookmarkTopic()
 {
-    IndexMap::ConstIterator it = bookmarks.find(helpBookMarks->currentItem()->text());
+    IndexMap::ConstIterator it = bookmarks.find(helpBookMarks->currentText());
     if(it != bookmarks.end())
     {
-        displayPage(it.value());
-        synchronizeContents(it.value());
+        displayPage(it.data());
+        synchronizeContents(it.data());
     }
 }
 
@@ -1623,9 +1626,6 @@ QvisHelpWindow::displayBookmarkTopic()
 //   Brad Whitlock, Tue Apr  8 09:27:26 PDT 2008
 //   Support for internationalization.
 //   
-//   Brad Whitlock, Thu Jun 19 15:30:47 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
@@ -1645,9 +1645,9 @@ QvisHelpWindow::addBookmark()
 
                  // Add it to the bookmark widget.
                  helpBookMarks->blockSignals(true);
-                 helpBookMarks->addItem(helpTopic);
-                 helpBookMarks->setCurrentRow(helpBookMarks->count() - 1);
-//                 helpBookMarks->ensureCurrentVisible();
+                 helpBookMarks->insertItem(helpTopic);
+                 helpBookMarks->setCurrentItem(helpBookMarks->count() - 1);
+                 helpBookMarks->ensureCurrentVisible();
                  helpBookMarks->blockSignals(false);
 
                  // Set the enabled state of the button.
@@ -1680,9 +1680,6 @@ QvisHelpWindow::addBookmark()
 //   removed the code to set the active bookmark since it did not match the
 //   page that was displayed.
 //
-//   Brad Whitlock, Thu Jun 19 15:31:31 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
@@ -1690,14 +1687,13 @@ QvisHelpWindow::removeBookmark()
 {
     if(bookmarks.count() > 0)
     {
-        QString removeTopic(helpBookMarks->currentItem()->text());
+        QString removeTopic(helpBookMarks->currentText());
         IndexMap::Iterator it = bookmarks.find(removeTopic);
         if(it != bookmarks.end())
         {
-            int item = helpBookMarks->currentRow();
+            int item = helpBookMarks->currentItem();
             helpBookMarks->blockSignals(true);
-            QListWidgetItem *ptr = helpBookMarks->takeItem(item);
-            delete ptr;
+            helpBookMarks->removeItem(item);
             helpBookMarks->blockSignals(false);
 
             // Remove the bookmark from the list.

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -45,8 +45,8 @@
 #include <DatabaseCorrelationList.h>
 #include <DebugStream.h>
 
-#include <QIcon>
-#include <QPixmap>
+#include <qiconset.h>
+#include <qpixmap.h>
 
 // Include icons
 #include <animationreversestep.xpm>
@@ -61,12 +61,12 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 TimeSliderReverseStepAction::TimeSliderReverseStepAction(ViewerWindow *win) :
-    ViewerAction(win)
+    ViewerAction(win, "ReverseStep")
 {
     SetAllText(tr("Reverse step"));
     SetToolTip(tr("Step back one frame"));
     if (!win->GetNoWinMode())
-        SetIcon(QIcon(QPixmap(animationreversestep_xpm)));
+        SetIconSet(QIconSet(QPixmap(animationreversestep_xpm)));
 }
 
 void
@@ -85,7 +85,7 @@ TimeSliderReverseStepAction::Enabled() const
 ///////////////////////////////////////////////////////////////////////////////
 
 AnimationReversePlayAction::AnimationReversePlayAction(ViewerWindow *win) :
-    ViewerToggleAction(win)
+    ViewerToggleAction(win, "ReversePlay")
 {
     SetAllText(tr("Reverse play"));
     SetToolTip(tr("Play animation in reverse"));
@@ -107,16 +107,16 @@ AnimationReversePlayAction::Enabled() const
 }
 
 bool
-AnimationReversePlayAction::Checked() const
+AnimationReversePlayAction::Toggled() const
 {
-    return (window->GetPlotList()->GetAnimationAttributes().GetAnimationMode() ==
-            AnimationAttributes::ReversePlayMode);
+    return (window->GetPlotList()->GetAnimationMode() ==
+            ViewerPlotList::ReversePlayMode);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
 AnimationStopAction::AnimationStopAction(ViewerWindow *win) :
-    ViewerToggleAction(win)
+    ViewerToggleAction(win, "Stop")
 {
     SetAllText(tr("Stop"));
     SetToolTip(tr("Stop animation"));
@@ -138,16 +138,16 @@ AnimationStopAction::Enabled() const
 }
 
 bool
-AnimationStopAction::Checked() const
+AnimationStopAction::Toggled() const
 {
-    return (window->GetPlotList()->GetAnimationAttributes().GetAnimationMode() ==
-            AnimationAttributes::StopMode);
+    return (window->GetPlotList()->GetAnimationMode() ==
+            ViewerPlotList::StopMode);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
 AnimationPlayAction::AnimationPlayAction(ViewerWindow *win) :
-    ViewerToggleAction(win)
+    ViewerToggleAction(win, "Play")
 {
     SetAllText(tr("Play"));
     SetToolTip(tr("Play animation"));
@@ -169,21 +169,21 @@ AnimationPlayAction::Enabled() const
 }
 
 bool
-AnimationPlayAction::Checked() const
+AnimationPlayAction::Toggled() const
 {
-    return (window->GetPlotList()->GetAnimationAttributes().GetAnimationMode() ==
-            AnimationAttributes::PlayMode);
+    return (window->GetPlotList()->GetAnimationMode() ==
+            ViewerPlotList::PlayMode);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
 TimeSliderForwardStepAction::TimeSliderForwardStepAction(ViewerWindow *win) :
-    ViewerAction(win)
+    ViewerAction(win, "ForwardStep")
 {
     SetAllText(tr("Forward step"));
     SetToolTip(tr("Step forward one frame"));
     if (!win->GetNoWinMode())
-        SetIcon(QIcon(QPixmap(animationforwardstep_xpm)));
+        SetIconSet(QIconSet(QPixmap(animationforwardstep_xpm)));
 }
 
 void
@@ -202,7 +202,7 @@ TimeSliderForwardStepAction::Enabled() const
 ///////////////////////////////////////////////////////////////////////////////
 
 AnimationSetNFramesAction::AnimationSetNFramesAction(ViewerWindow *win) :
-    ViewerAction(win)
+    ViewerAction(win, "AnimationSetNFramesAction")
 {
     DisableVisual();
 }
@@ -232,7 +232,7 @@ AnimationSetNFramesAction::Execute()
 ///////////////////////////////////////////////////////////////////////////////
 
 SetTimeSliderStateAction::SetTimeSliderStateAction(ViewerWindow *win) :
-    ViewerAction(win)
+    ViewerAction(win, "SetTimeSliderStateAction")
 {
     DisableVisual();
 }
@@ -246,7 +246,7 @@ SetTimeSliderStateAction::Execute()
 ///////////////////////////////////////////////////////////////////////////////
 
 SetActiveTimeSliderAction::SetActiveTimeSliderAction(ViewerWindow *win) :
-    ViewerAction(win)
+    ViewerAction(win, "SetActiveTimeSliderAction")
 {
     DisableVisual();
 }

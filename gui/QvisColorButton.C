@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -38,14 +38,11 @@
 
 #include <QvisColorButton.h>
 #include <QvisColorSelectionWidget.h>
-#include <QApplication>
-#include <QBrush>
-#include <QDesktopWidget>
-#include <QPainter>
-#include <QPaintEvent>
-#include <QMenu>
-#include <QStyle>
-#include <QStyleOption>
+#include <qapplication.h>
+#include <qbrush.h>
+#include <qpainter.h>
+#include <qpopupmenu.h>
+#include <qstyle.h>
 
 // Static members.
 QvisColorSelectionWidget *QvisColorButton::popup = 0;
@@ -77,22 +74,17 @@ QvisColorButton::ColorButtonVector QvisColorButton::buttons;
 //   I made the popup menu have no parent since when it had a parent, it
 //   had some strange behaviors.
 //
-//   Brad Whitlock, Tue Jun  3 15:28:53 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
-QvisColorButton::QvisColorButton(QWidget *parent, const void *data) :
-    QAbstractButton(parent), color(255, 0, 0)
+QvisColorButton::QvisColorButton(QWidget *parent, const char *name,
+    const void *data) : QButton(parent, name), color(255, 0, 0)
 {
-    setMaximumWidth(50);
-
     // Initialize the user data.
     userData = data;
 
     // Create the button's color selection popup menu.
     if(popup == 0)
-        popup = new QvisColorSelectionWidget(0, Qt::Popup);
+        popup = new QvisColorSelectionWidget(0, "popup", WType_Popup);
     buttons.push_back(this);
 
     // Make the popup active when this button is clicked.
@@ -180,38 +172,6 @@ QvisColorButton::getUserData() const
 }
 
 // ****************************************************************************
-// Method: QvisColorButton::paintEvent
-//
-// Purpose: 
-//   Draws the button.
-//
-// Arguments:
-//   e : The paint event.
-//
-// Returns:    
-//
-// Note:       
-//
-// Programmer: Brad Whitlock
-// Creation:   Tue Jun  3 15:40:23 PDT 2008
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-void
-QvisColorButton::paintEvent(QPaintEvent *e)
-{
-    QPainter paint(this);
-    if(!e->region().isEmpty())
-    {
-        paint.setClipRegion(e->region());
-        paint.setClipping(true);
-    }
-    drawButton(&paint);
-}
-
-// ****************************************************************************
 // Method: QvisColorButton::drawButton
 //
 // Purpose: 
@@ -230,9 +190,6 @@ QvisColorButton::paintEvent(QPaintEvent *e)
 //   Brad Whitlock, Fri Mar 8 16:45:36 PST 2002
 //   Updated style support.
 //
-//   Brad Whitlock, Tue Jun  3 15:29:19 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
@@ -245,7 +202,7 @@ QvisColorButton::drawButton(QPainter *paint)
     int Y2 = 0 + height() - 1;
 
     // Draw the highlight
-    paint->setPen(QPen(palette().color(QPalette::Light)));
+    paint->setPen(QPen(colorGroup().light()));
     for(i = 0; i < 2; ++i)
     {
         paint->drawLine(QPoint(X + i, Y + i), QPoint(X + i, Y2 - i));
@@ -253,7 +210,7 @@ QvisColorButton::drawButton(QPainter *paint)
     }
 
     // Draw the shadow
-    paint->setPen(QPen(palette().color(QPalette::Dark)));
+    paint->setPen(QPen(colorGroup().dark()));
     for(i = 0; i < 2; ++i)
     {
         paint->drawLine(QPoint(X + i + 1, Y2 - i), QPoint(X2, Y2 - i));
@@ -267,11 +224,12 @@ QvisColorButton::drawButton(QPainter *paint)
     if(hasFocus())
     {
         QRect r(4, 4, width() - 8, height() - 8);
-        QStyleOption so;
-        so.initFrom(this);
-        style()->drawPrimitive(QStyle::PE_FrameFocusRect, 
-                               &so,
-                               paint);
+#if QT_VERSION >= 300
+        style().drawPrimitive(QStyle::PE_FocusRect, paint, r, colorGroup(),
+                              QStyle::Style_HasFocus);
+#else
+        style().drawFocusRect(paint, r, colorGroup());
+#endif
     }
 }
 
@@ -293,9 +251,6 @@ QvisColorButton::drawButton(QPainter *paint)
 //   Modified the code so it uses a checkerboard brush when the widget
 //   is disabled.
 //
-//   Brad Whitlock, Tue Jun  3 15:46:52 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
@@ -304,7 +259,7 @@ QvisColorButton::drawButtonLabel(QPainter *paint)
     QBrush brush(color);
 
     if(!isEnabled())
-        brush.setStyle(Qt::Dense5Pattern);
+        brush.setStyle(QBrush::Dense5Pattern);
 
     // Draw the color area.
     QRect r(2, 2, width() - 4, height() - 4);

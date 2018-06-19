@@ -1,6 +1,6 @@
 #ifndef VIEWER_BASE_H
 #define VIEWER_BASE_H
-#include <QObject>
+#include <qobject.h>
 #include <viewer_exports.h>
 
 class ViewerMethods;
@@ -26,9 +26,6 @@ class OperatorPluginManager;
 //   Brad Whitlock, Tue Apr 29 11:11:04 PDT 2008
 //   Converted most messaging to QString.
 //
-//   Brad Whitlock, Fri May  9 14:34:56 PDT 2008
-//   Qt 4.
-//
 //   Brad Whitlock, Tue Jun 24 14:33:17 PDT 2008
 //   Added methods to return the plugin managers.
 //
@@ -37,7 +34,7 @@ class OperatorPluginManager;
 class VIEWER_API ViewerBase : public QObject
 {
 public:
-    ViewerBase(QObject *parent = 0);
+    ViewerBase(QObject *parent = 0, const char *name = 0);
     virtual ~ViewerBase();
 
     // Methods to get pointers to the client state and the methods.

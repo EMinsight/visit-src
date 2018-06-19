@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -38,14 +38,12 @@
 
 #include <stdio.h>
 #include <QvisAnimationWindow.h>
-#include <QButtonGroup>
-#include <QLabel>
-#include <QLayout>
-#include <QCheckBox>
-#include <QRadioButton>
-#include <QSlider>
-#include <QSpinBox>
-
+#include <qbuttongroup.h>
+#include <qlabel.h>
+#include <qlayout.h>
+#include <qcheckbox.h>
+#include <qradiobutton.h>
+#include <qslider.h>
 #include <AnimationAttributes.h>
 #include <ViewerProxy.h>
 
@@ -91,14 +89,11 @@ QvisAnimationWindow::QvisAnimationWindow(AnimationAttributes *subj,
 //   Brad Whitlock, Tue Oct 7 09:38:31 PDT 2003
 //   Deleted playbackModeButtonGroup since it has no parent.
 //
-//   Cyrus Harrison, Wed Aug 27 08:28:22 PDT 2008
-//   Set parent for playbackModeButtonGroup, so we dont have to explicitly
-//   clean it up.
-//
 // ****************************************************************************
 
 QvisAnimationWindow::~QvisAnimationWindow()
 {
+    delete playbackModeButtonGroup;
 }
 
 // ****************************************************************************
@@ -120,74 +115,56 @@ QvisAnimationWindow::~QvisAnimationWindow()
 //   Brad Whitlock, Tue Apr  8 09:27:26 PDT 2008
 //   Support for internationalization.
 //
-//   Brad Whitlock, Fri May 30 09:51:44 PDT 2008
-//   Qt 4.
-//
-//   Brad Whitlock, Wed Dec 10 16:31:13 PST 2008
-//   I added animation increment.
-//
 // ****************************************************************************
 
 void
 QvisAnimationWindow::CreateWindowContents()
 {
     // Create a grid layout.
-    QGridLayout *animLayout = new QGridLayout(0);
-    topLayout->addLayout(animLayout);
+    QGridLayout *animLayout = new QGridLayout(topLayout, 6, 4);
+    animLayout->setSpacing(5);
 
     // Create the check box for pipeline caching.
     pipelineCachingToggle = new QCheckBox(tr("Cache animation for faster playback"),
-        central);
+        central, "pipelineCachingToggle");
     connect(pipelineCachingToggle, SIGNAL(toggled(bool)),
             this, SLOT(pipelineCachingToggled(bool)));
-    animLayout->addWidget(pipelineCachingToggle, 0, 0, 1, 4);
+    animLayout->addMultiCellWidget(pipelineCachingToggle, 0, 0, 0, 3);
 
     // Add the animation style controls.
-    QLabel *styleLabel = new QLabel(tr("Animation playback"), central);
-    animLayout->addWidget(styleLabel, 1, 0, 1, 4);
-    playbackModeButtonGroup = new QButtonGroup(central);
+    QLabel *styleLabel = new QLabel(tr("Animation playback"), central, "styleLabel");
+    animLayout->addMultiCellWidget(styleLabel, 1, 1, 0, 3);
+    playbackModeButtonGroup = new QButtonGroup(0, "playbackModeButtonGroup");
     QRadioButton *rb = new QRadioButton(tr("Looping"), central);
-    playbackModeButtonGroup->addButton(rb, 0);
+    playbackModeButtonGroup->insert(rb);
     animLayout->addWidget(rb, 2, 1);
     rb = new QRadioButton(tr("Play once"), central);
-    playbackModeButtonGroup->addButton(rb, 1);
+    playbackModeButtonGroup->insert(rb);
     animLayout->addWidget(rb, 2, 2);
     rb = new QRadioButton(tr("Swing"), central);
-    playbackModeButtonGroup->addButton(rb, 2);
+    playbackModeButtonGroup->insert(rb);
     animLayout->addWidget(rb, 2, 3);
-    connect(playbackModeButtonGroup, SIGNAL(buttonClicked(int)),
+    connect(playbackModeButtonGroup, SIGNAL(clicked(int)),
             this, SLOT(playbackModeChanged(int)));
 
-    // The animation increment
-    animationIncrement = new QSpinBox(central);
-    animationIncrement->setMinimum(1);
-    animationIncrement->setMaximum(100);
-    connect(animationIncrement, SIGNAL(valueChanged(int)),
-            this, SLOT(incrementChanged(int)));
-    animLayout->addWidget(animationIncrement, 3, 2, 1, 1);
-
-    QLabel *incrLabel = new QLabel(tr("Animation increment"), central);
-    incrLabel->setBuddy(animationIncrement);
-    animLayout->addWidget(incrLabel, 3, 0, 1, 2);
-
     // Create the slider and some labels.
-    timeoutSlider = new QSlider(Qt::Horizontal, central);
-    timeoutSlider->setTickPosition(QSlider::TicksBelow);
+    timeoutSlider = new QSlider(Qt::Horizontal, central, "timeoutSlider");
+    timeoutSlider->setTickmarks(QSlider::Below);
     timeoutSlider->setTracking(false);
     timeoutSlider->setRange(1, SLOWEST_TIMEOUT - 1);
     timeoutSlider->setPageStep(100);
     connect(timeoutSlider, SIGNAL(valueChanged(int)),
             this, SLOT(timeoutChanged(int)));
-    animLayout->addWidget(timeoutSlider, 5, 0, 1, 4);
-    QLabel *speedLabel = new QLabel(tr("Animation speed"), central);
-    speedLabel->setBuddy(timeoutSlider);
-    animLayout->addWidget(speedLabel, 4, 0, 1, 4);
+    animLayout->addMultiCellWidget(timeoutSlider, 4, 4, 0, 3);
+    QLabel *speedLabel = new QLabel(timeoutSlider, tr("Animation speed"),
+        central, "speedLabel");
+    animLayout->addMultiCellWidget(speedLabel, 3, 3, 0, 3);
 
     // Create the slower and faster labels.
-    QLabel *slowerLabel = new QLabel(tr("slower"), central);
-    animLayout->addWidget(slowerLabel, 6, 0, 1, 2);
-    QLabel *fasterLabel = new QLabel(tr("faster"), central);
-    animLayout->addWidget(fasterLabel, 6, 3, Qt::AlignRight);
+    QLabel *slowerLabel = new QLabel(tr("slower"), central, "speedLabel");
+    animLayout->addMultiCellWidget(slowerLabel, 5, 5, 0, 1);
+    QLabel *fasterLabel = new QLabel(tr("faster"), central, "speedLabel");
+    animLayout->addWidget(fasterLabel, 5, 3, Qt::AlignRight);
 }
 
 // ****************************************************************************
@@ -209,20 +186,12 @@ QvisAnimationWindow::CreateWindowContents()
 //   Brad Whitlock, Mon Oct 6 16:24:09 PST 2003
 //   Added the animation style button group.
 //
-//   Brad Whitlock, Fri May 30 10:07:44 PDT 2008
-//   Qt 4.
-//
-//   Brad Whitlock, Wed Dec 10 16:35:46 PST 2008
-//   I added animation increment.
-//
 // ****************************************************************************
 
 void
 QvisAnimationWindow::UpdateWindow(bool doAll)
 {
     AnimationAttributes *atts = (AnimationAttributes *)subject;
-    QAbstractButton *btn = 0;
-    int index = 0;
 
     for(int i = 0; i < atts->NumAttributes(); ++i)
     {
@@ -236,21 +205,14 @@ QvisAnimationWindow::UpdateWindow(bool doAll)
             pipelineCachingToggle->setChecked(atts->GetPipelineCachingMode());
             pipelineCachingToggle->blockSignals(false);
             break;
-        case AnimationAttributes::ID_frameIncrement:
-            animationIncrement->blockSignals(true);
-            animationIncrement->setValue(atts->GetFrameIncrement());
-            animationIncrement->blockSignals(false);
-            break;
         case AnimationAttributes::ID_timeout:
             timeoutSlider->blockSignals(true);
             timeoutSlider->setValue(SLOWEST_TIMEOUT - atts->GetTimeout());
             timeoutSlider->blockSignals(false);
             break;
         case AnimationAttributes::ID_playbackMode:
-            index = int(atts->GetPlaybackMode());
-            btn = playbackModeButtonGroup->button(index);
             playbackModeButtonGroup->blockSignals(true);
-            btn->setChecked(true);
+            playbackModeButtonGroup->setButton(int(atts->GetPlaybackMode()));
             playbackModeButtonGroup->blockSignals(false);
             break;
         }
@@ -350,30 +312,6 @@ void
 QvisAnimationWindow::playbackModeChanged(int val)
 {
     animationAtts->SetPlaybackMode((AnimationAttributes::PlaybackMode)val);
-    SetUpdate(false);
-    Apply();
-}
-
-// ****************************************************************************
-// Method: QvisAnimationWindow::incrementChanged
-//
-// Purpose: 
-//   This a Qt slot function that is called when the animation increment changes.
-//
-// Arguments:
-//   val : The new animation increment.
-//
-// Programmer: Brad Whitlock
-// Creation:   Wed Dec 10 16:37:43 PST 2008
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-void
-QvisAnimationWindow::incrementChanged(int val)
-{
-    animationAtts->SetFrameIncrement(val);
     SetUpdate(false);
     Apply();
 }

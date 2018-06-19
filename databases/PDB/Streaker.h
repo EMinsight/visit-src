@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -66,6 +66,16 @@ class vtkFloatArray;
 //   Brad Whitlock, Tue Dec  2 15:53:13 PST 2008
 //   Added GetAuxiliaryData so we can return materials.
 //
+//   Brad Whitlock, Wed Feb 25 16:07:32 PST 2009
+//   I added x_scale and x_translate to the StreakInfo. I also added support
+//   for different kinds of log scaling.
+//
+//   Brad Whitlock, Tue May  5 16:22:56 PDT 2009
+//   I added support for setting the streak plot centering.
+//
+//   Brad Whitlock, Wed May 13 13:21:57 PDT 2009
+//   I added z_scale, z_translate.
+//
 // ****************************************************************************
 
 class Streaker
@@ -86,6 +96,8 @@ public:
                                    const PDBFileObjectVector &pdb);
     void FreeUpResources();
 private:
+    typedef enum {LOGTYPE_NONE, LOGTYPE_LOG, LOGTYPE_LOG10} logtype;
+
     struct StreakInfo
     {
         StreakInfo();
@@ -95,14 +107,20 @@ private:
         std::string zvar;
 
         bool        hasMaterial;
+        bool        cellCentered;
+        bool        matchSilo;
 
         int         slice;
         int         sliceIndex;
         int         hsize;
         bool        integrate;
-        bool        log;
+        logtype     log;
+        float       x_scale;
+        float       x_translate;
         float       y_scale;
         float       y_translate;
+        float       z_scale;
+        float       z_translate;
 
         vtkDataSet *dataset;
     };

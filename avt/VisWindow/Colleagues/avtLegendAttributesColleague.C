@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -55,7 +55,6 @@
 #define LEGEND_ORIENTATION0    3
 #define LEGEND_ORIENTATION1    4
 #define LEGEND_DRAW_TITLE      5
-#define LEGEND_DRAW_MINMAX     6
 
 //
 // Helper functions to get bits out of the annotation attributes.
@@ -90,9 +89,6 @@ SetBool(AnnotationObject &annot, int bit, bool val)
 //
 // Modifications:
 //   
-//    Hank Childs, Fri Jan 23 15:31:06 PST 2009
-//    Add support for draw min/max.
-//
 // ****************************************************************************
 
 avtLegendAttributesColleague::avtLegendAttributesColleague(VisWindowColleagueProxy &m) 
@@ -105,7 +101,6 @@ avtLegendAttributesColleague::avtLegendAttributesColleague(VisWindowColleaguePro
     SetBool(atts, LEGEND_ORIENTATION0,    false);
     SetBool(atts, LEGEND_ORIENTATION1,    false);
     SetBool(atts, LEGEND_DRAW_TITLE,      true);
-    SetBool(atts, LEGEND_DRAW_MINMAX,     true);
 
     // Set the format string for the legend into the text.
     stringVector text;
@@ -339,10 +334,6 @@ avtLegendAttributesColleague::ManageLayout(avtLegend_p legend) const
 //   Dave Bremer, Wed Oct 15 16:37:37 PDT 2008
 //   I set the orientation first now, because it will affect the 
 //   call to legend->GetLegendSize()
-//
-//   Hank Childs, Fri Jan 23 15:35:46 PST 2009
-//   Add support for drawing the min/max.
-//
 // ****************************************************************************
 
 void
@@ -405,9 +396,6 @@ avtLegendAttributesColleague::CustomizeLegend(avtLegend_p legend)
 
     // Set whether the labels are drawn.
     legend->SetLabelVisibility(GetBool(atts, LEGEND_DRAW_LABELS));
-
-    // Set whether the labels are drawn.
-    legend->SetMinMaxVisibility(GetBool(atts, LEGEND_DRAW_MINMAX));
 
     // Set the format string used for numbers.
     if(atts.GetText().size() > 0)

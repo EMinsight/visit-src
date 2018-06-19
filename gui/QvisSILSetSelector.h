@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -40,7 +40,7 @@
 #define QVIS_SIL_SET_SELECTOR_H
 
 #include <gui_exports.h>
-#include <QWidget>
+#include <qwidget.h>
 #include <SimpleObserver.h>
 #include <GUIBase.h>
 #include <vectortypes.h>
@@ -62,10 +62,7 @@ class SILRestrictionAttributes;
 //   Kathleen Bonnell, Thu Jun 14 12:18:47 PDT 2007
 //   Added userCategory, userSubset, so that options stored in sesisonfiles
 //   can be restored.
-//
-//   Brad Whitlock, Fri Jul 18 08:35:26 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 class GUI_API QvisSILSetSelector : public QWidget, 
@@ -74,7 +71,7 @@ class GUI_API QvisSILSetSelector : public QWidget,
 {
     Q_OBJECT
   public:
-    QvisSILSetSelector(QWidget *parent,
+    QvisSILSetSelector(QWidget *parent , const char *name ,
             SILRestrictionAttributes *, intVector &);
     virtual ~QvisSILSetSelector();
 

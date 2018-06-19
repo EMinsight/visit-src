@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -124,6 +124,12 @@ class DBOptionsAttributes;
 //    Hank Childs, Sun Jan 25 15:38:50 PST 2009
 //    Improve support for ghost data.
 //
+//    Gunther H. Weber, Wed Jun 10 18:25:34 PDT 2009
+//    Added support for particle data in Chombo files
+//
+//    Gunther H. Weber, Tue Sep 15 11:25:21 PDT 2009
+//    Added support for 3D mappings for 2D files
+//
 // ****************************************************************************
 
 class avtChomboFileFormat : public avtSTMDFileFormat
@@ -155,6 +161,8 @@ class avtChomboFileFormat : public avtSTMDFileFormat
     hid_t                  file_handle;
     std::vector<std::string>  varnames;
     int                    nMaterials;
+    bool                   hasParticles;
+    std::vector<std::string>  particleVarnames;
     double                 dtime;
     int                    cycle;
     //int                    max_level;
@@ -170,6 +178,8 @@ class avtChomboFileFormat : public avtSTMDFileFormat
     bool                   enableOnlyRootLevel;
     bool                   enableOnlyExplicitMaterials;
     bool                   checkForMappingFile;
+    bool                   mappingFileExists;
+    bool                   mappingIs3D;
 
     std::vector<int>       lowProbI;
     std::vector<int>       hiProbI;

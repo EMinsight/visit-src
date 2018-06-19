@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -82,9 +82,6 @@
 //    Hank Childs, Wed Aug 27 11:11:28 PDT 2008
 //    Initialize spatial coordinates array.
 //
-//    Hank Childs, Wed Dec 24 11:22:43 PST 2008
-//    Remove reference to ProportionSpaceToZBufferSpace data member.
-//
 // ****************************************************************************
 
 avtMassVoxelExtractor::avtMassVoxelExtractor(int w, int h, int d,
@@ -95,6 +92,7 @@ avtMassVoxelExtractor::avtMassVoxelExtractor(int w, int h, int d,
     pretendGridsAreInWorldSpace = false;
     aspect = 1;
     view_to_world_transform = vtkMatrix4x4::New();
+    ProportionSpaceToZBufferSpace = new float[depth];
     X = NULL;
     Y = NULL;
     Z = NULL;
@@ -126,14 +124,12 @@ avtMassVoxelExtractor::avtMassVoxelExtractor(int w, int h, int d,
 //    Hank Childs, Wed Aug 27 11:10:51 PDT 2008
 //    Delete the spatial coordinate arrays.
 //
-//    Hank Childs, Wed Dec 24 11:22:43 PST 2008
-//    Remove reference to ProportionSpaceToZBufferSpace data member.
-//
 // ****************************************************************************
 
 avtMassVoxelExtractor::~avtMassVoxelExtractor()
 {
     view_to_world_transform->Delete();
+    delete [] ProportionSpaceToZBufferSpace;
     delete [] prop_buffer;
     delete [] ind_buffer;
     delete [] valid_sample;
@@ -295,9 +291,6 @@ avtMassVoxelExtractor::Extract(vtkRectilinearGrid *rgrid,
 //    Added an ability to extract voxels using the world-space version
 //    even when they're really in image space.
 //
-//    Hank Childs, Wed Dec 24 11:22:43 PST 2008
-//    No longer calculate deprecated data member ProportionSpaceToZBufferSpace.
-//
 // ****************************************************************************
 
 void
@@ -363,6 +356,98 @@ avtMassVoxelExtractor::SetGridsAreInWorldSpace(bool val, const avtViewInfo &v,
         vtkMatrix4x4::Invert(mat, view_to_world_transform);
     }
     cam->Delete();
+
+    //
+    // When we are casting a ray, we sample along the segment that the
+    // ray makes when intersecting it with the near and far planes of the
+    // view frustum.  The temptation is to sample at even intervals along
+    // this segment.  Unfortunately, our alternative, unstructured 
+    // volume renderer does its sampling in Z-buffer space.  In addition,
+    // when comparing with opaque images, it is more convenient to have
+    // samples be done in even intervals in Z-buffer space.
+    //
+    // So: we are going to do the sampling in even intervals in Z-buffer
+    // space (as opposed to world space).  When incrementing over a segment
+    // it would be too costly to calculate all of the increments in
+    // Z-buffer space.  So instead we will calculate them here once and
+    // use them repeatedly when we do our sampling.
+    //
+    // So here's the gameplan:
+    // For a sample K, we are going to want to know what proportion (in
+    // world space) to move along the segment to be at position K/N in
+    // Z-buffer space along the sample.  Concretely, if we wanted to
+    // find sample 125/250 in Z-buffer space, that may map to proportion 
+    // 0.8 in world space along the segment.  So S[125] = 0.8.
+    //
+    // Fortunately, there is a nice property of the projection matrix
+    // here.  You can calculate S[K] for one ray, and it will apply to all
+    // rays.  I intend to add a derivation showing this.  It was one my
+    // whiteboard at one time.  :)
+    // 
+    float view_near[4];
+    float world_near[4];
+    view_near[0] = 0;
+    view_near[1] = 0;
+    view_near[2] = cur_clip_range[0];
+    view_near[3] = 1.;
+
+    view_to_world_transform->MultiplyPoint(view_near, world_near);
+    if (world_near[3] != 0)
+    {
+        world_near[0] /= world_near[3];
+        world_near[1] /= world_near[3];
+        world_near[2] /= world_near[3];
+    }
+
+    float view_far[4];
+    float world_far[4];
+    view_far[0] = 0;
+    view_far[1] = 0;
+    view_far[2] = cur_clip_range[1];
+    view_far[3] = 1.;
+
+    view_to_world_transform->MultiplyPoint(view_far, world_far);
+    if (world_far[3] != 0)
+    {
+        world_far[0] /= world_far[3];
+        world_far[1] /= world_far[3];
+        world_far[2] /= world_far[3];
+    }
+
+    float diff[3];
+    diff[0] = world_far[0] - world_near[0];
+    diff[1] = world_far[1] - world_near[1];
+    diff[2] = world_far[2] - world_near[2];
+    float total_dist = 
+        sqrt(diff[0]*diff[0] + diff[1]*diff[1] + diff[2]*diff[2]);
+ 
+    for (int i = 0 ; i < depth ; i++)
+    {
+        float view_i[4];
+        view_i[0] = 0;
+        view_i[1] = 0;
+        view_i[2] = cur_clip_range[0] + 
+            (cur_clip_range[1] - cur_clip_range[0])*
+            (float(i)/(depth-1.));
+        view_i[3] = 1.;
+  
+        float world_i[4];
+        view_to_world_transform->MultiplyPoint(view_i, world_i);
+        if (world_i[3] != 0)
+        {
+            world_i[0] /= world_i[3];
+            world_i[1] /= world_i[3];
+            world_i[2] /= world_i[3];
+        }
+    
+        diff[0] = world_i[0] - world_near[0];
+        diff[1] = world_i[1] - world_near[1];
+        diff[2] = world_i[2] - world_near[2];
+        float dist = 
+            sqrt(diff[0]*diff[0] + diff[1]*diff[1] + diff[2]*diff[2]);
+ 
+        ProportionSpaceToZBufferSpace[i] = dist / total_dist;
+    }
 }
 
 
@@ -371,7 +456,7 @@ avtMassVoxelExtractor::SetGridsAreInWorldSpace(bool val, const avtViewInfo &v,
 //
 //  Purpose:
 //      Extracts a grid that has already been put into world space.  This case
-//      typically corresponds to resampling.
+//      typically corresponds to ray casting.
 //
 //  Programmer: Hank Childs
 //  Creation:   November 19, 2004
@@ -612,9 +697,6 @@ avtMassVoxelExtractor::RegisterGrid(vtkRectilinearGrid *rgrid,
 //    Jeremy Meredith, Fri Feb  9 14:00:51 EST 2007
 //    Flip back across the x axis if pretendGridsAreInWorldSpace is set.
 //
-//    Hank Childs, Fri Jan  9 14:07:49 PST 2009
-//    Add support for jittering.
-//
 // ****************************************************************************
 
 void
@@ -658,22 +740,6 @@ avtMassVoxelExtractor::GetSegment(int w, int h, float *origin, float *terminus)
         terminus[0] /= terminus[3];
         terminus[1] /= terminus[3];
         terminus[2] /= terminus[3];
-    }
-
-    if (jitter)
-    {
-        int reliable_random_number = (13*w*h + 14*w*w + 79*h*h + 247*w + 779*h)%513;
-        double jitter = (1.0/depth) * ((reliable_random_number-256) / (256.0));
-        double dir[3];
-        dir[0] = (terminus[0] - origin[0])*jitter;
-        dir[1] = (terminus[1] - origin[1])*jitter;
-        dir[2] = (terminus[2] - origin[2])*jitter;
-        origin[0] += dir[0];
-        origin[1] += dir[1];
-        origin[2] += dir[2];
-        terminus[0] += dir[0];
-        terminus[1] += dir[1];
-        terminus[2] += dir[2];
     }
 }
 
@@ -856,16 +922,6 @@ avtMassVoxelExtractor::GridOnPlusSideOfPlane(const float *origin,
 //    Fix bugs with the origin or the terminus of the segment being inside 
 //    the volume.
 //
-//    Hank Childs, Wed Dec 24 11:21:57 PST 2008
-//    Change the logic for perspective projections to account for w-buffering
-//    (that is, even sampling in space).
-//
-//    Hank Childs, Wed Dec 31 09:08:50 PST 2008
-//    For the case where the segment intersects the volume one time, return
-//    that the entire segment should be examined, as it is probably more
-//    likely that we have floating point error than we have intersected a
-//    corner of the data set.
-//
 // ****************************************************************************
 
 bool
@@ -992,6 +1048,8 @@ avtMassVoxelExtractor::FindSegmentIntersections(const float *origin,
 
     if (num_hits == 0)
         return false;
+    if (num_hits == 1) // hit one corner of dataset.
+        return false;
 
     //
     // We are expecting exactly two hits.  If we don't get that, then
@@ -1018,11 +1076,64 @@ avtMassVoxelExtractor::FindSegmentIntersections(const float *origin,
         // Dataset past far clipping plane -- no intersection.
         return false;
 
-    // This is the correct calculation whether we are using orthographic or
-    // perspective projection ... because with perspective we are using
-    // w-buffering.
-    start = (int) floor(depth*hits[0]);
-    end   = (int) ceil(depth*hits[1]);
+    if (view.orthographic)
+    {
+        start = (int) floor(depth*hits[0]);
+        end   = (int) ceil(depth*hits[1]);
+    }
+    else
+    {
+        //
+        // The values here are proportions along a line segment.  That is not
+        // what we want.  What we really want is depth in Z.  So convert our
+        // proportions to a depth value.
+        //
+        // So the projection matrix for angle A, near plane n, and far plane f
+        // is:
+        // cot (A/2)   0      0      0
+        //     0   cot(A/2)   0      0
+        //     0       0   f+n/f-n   -1
+        //     0       0   2fn/f-n   0
+        // 
+        // So we can map our proportion to a value of Z (in world space) and
+        // then apply the projection matrix to get its mapping into Z-buffer
+        // space. 
+        //
+        // If we are proportion t along a segment, then our mapping into Z is
+        // Z=-(near + t*(far - near)).
+        // 
+        // Then multiplying (X, Y, Z, 1)
+        // gives:
+        //   (-,-,Z*f+n/f-n + 2fn/f-n, -Z)
+        //
+        // Normalizing by W gives:
+        // Z-buffer = Z*f+n/f-n + 2fn/f-n.
+        //
+        float f = cur_clip_range[1];
+        float n = cur_clip_range[0];
+        float zs = -(n +hits[0]*(f-n));
+        float ze = -(n +hits[1]*(f-n));
+        float term1 = (f+n)/(f-n);
+        float term2 = (2*f*n)/(f-n);
+        float s1 = (zs*term1 + term2) / -zs;
+        float e1 = (ze*term1 + term2) / -ze;
+    
+        //
+        // This will the near plane to 1 and the far plane to -1.  We actually 
+        // want the near plane to be at 0 and the far plane at 1, so do an 
+        // additional mapping.
+        //
+        float s = 1. - (s1+1)/2.;
+        float e = 1. - (e1+1)/2.;
+
+        //
+        // Now convert to integers so that we can do our sampling at regular
+        // intervals.
+        //
+        start = (int) floor(s*depth);
+        end = (int) ceil(e*depth);
+    }
+
     if (start < 0)
         start = 0;
     if (end > depth)
@@ -1196,10 +1307,6 @@ static inline int FindMatch(const float *A, const float &a, const int &nA)
 //    Fix bug that ultimately led to UMR where sampling occurred along 
 //    invalid values.
 //
-//    Hank Childs, Wed Dec 24 11:22:43 PST 2008
-//    No longer use the ProportionSpaceToZBufferSpace data member, as we now 
-//    do our sampling in even intervals (wbuffer).
-//
 // ****************************************************************************
 
 void
@@ -1234,10 +1341,9 @@ avtMassVoxelExtractor::SampleAlongSegment(const float *origin,
         float *dProp = prop_buffer + 3*i;
         valid_sample[i] = false;
 
-        float proportion = ((float)i)/((float)depth);
-        pt[0] = origin[0] + proportion*x_dist;
-        pt[1] = origin[1] + proportion*y_dist;
-        pt[2] = origin[2] + proportion*z_dist;
+        pt[0] = origin[0] + ProportionSpaceToZBufferSpace[i]*x_dist;
+        pt[1] = origin[1] + ProportionSpaceToZBufferSpace[i]*y_dist;
+        pt[2] = origin[2] + ProportionSpaceToZBufferSpace[i]*z_dist;
 
         ind[0] = -1;
         ind[1] = -1;
@@ -1443,6 +1549,10 @@ inline int FindIndex(const float &pt, const int &last_hit, const int &n,
 //    Hank Childs, Thu Aug 28 10:52:32 PDT 2008
 //    Make sure we only sample the variables that were requested.
 //
+//    Hank Childs, Sun Nov  1 14:32:46 CST 2009
+//    Fix bug where ghost data could cause an extra sample to be put in the
+//    avtVolume, with that sample's data be uninitialized memory.
+//
 // ****************************************************************************
 
 void
@@ -1593,7 +1703,7 @@ avtMassVoxelExtractor::ExtractImageSpaceGrid(vtkRectilinearGrid *rgrid,
                         if (count > 0)
                         {
                             avtRay *ray = volume->GetRay(i, j);
-                            ray->SetSamples(firstZ, k, tmpSampleList);
+                            ray->SetSamples(firstZ, k-1, tmpSampleList);
                         }
                         firstZ = -1;
                         count = 0;

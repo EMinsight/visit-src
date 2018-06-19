@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -75,14 +75,14 @@ public:
 
     // Property selection methods
     virtual void SelectAll();
-    void SelectData();
+    void SelectOutputArray();
 
     // Property setting methods
-    void SetData(const MapNode &data_);
+    void SetOutputArray(const doubleVector &outputArray_);
 
     // Property getting methods
-    const MapNode &GetData() const;
-          MapNode &GetData();
+    const doubleVector &GetOutputArray() const;
+          doubleVector &GetOutputArray();
 
 
     // Keyframing methods
@@ -94,15 +94,14 @@ public:
     // User-defined methods
     void PrintSelf(ostream &os);
     void Reset();
-    void Merge(const PlotInfoAttributes &obj);
 
     // IDs that can be used to identify fields in case statements
     enum {
-        ID_data = 0
+        ID_outputArray = 0
     };
 
 private:
-    MapNode data;
+    doubleVector outputArray;
 
     // Static class format string for type map.
     static const char *TypeMapFormatString;

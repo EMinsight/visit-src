@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,8 +39,9 @@
 #ifndef FIELD_H
 #define FIELD_H
 
+#include <qstring.h>
+#include <visitstream.h>
 #include <stdio.h>
-#include <QTextStream>
 #include "Enum.h"
 #include "XMLParserUtil.h"
 #include "CodeFile.h"
@@ -135,10 +136,9 @@ class Field
 
     int               index;
     CodeFile         *codeFile;
-
   public:
     Field(const QString &t, const QString &n, const QString &l) 
-        : type(t), name(n), label(l)
+        : type(t), name(n), label(l) 
     {
         codeFile = NULL;
         internal = false;
@@ -147,7 +147,7 @@ class Field
         if (label.isNull())
             label = name;
         Name = name;
-        Name[0] = Name[0].toUpper();
+        Name[0] = Name[0].upper();
         length = 1;
         isArray  = (type.right(5) == "Array");
         isVector = (type.right(6) == "Vector");
@@ -206,14 +206,14 @@ class Field
         initcode.clear();
 
         // s contains a string with various targets and init codes.
-        QStringList lines(value.split("\n"));
+        QStringList lines(QStringList::split("\n", value));
         QString currentTarget("xml2atts");
         QString currentInit;
         for(size_t i = 0; i < lines.size(); ++i)
         {
             if(lines[i].left(7) == QString("Target:"))
             {
-                QString target = lines[i].mid(7).trimmed();
+                QString target = lines[i].mid(7).stripWhiteSpace();
                 if(!currentInit.isEmpty())
                 {
                     initcode[currentTarget] = currentInit;
@@ -235,7 +235,7 @@ class Field
     virtual QString GetCPPName(bool subtypename=false, const QString &classname="") = 0;
     virtual void SetAttrib(const QString &a, const QString &v)
     {
-        cOut << "unknown attribute " << a << " for type " << type << Endl;
+        cout << "unknown attribute " << a << " for type " << type << endl;
     }
     void SetEnabler(Field *f)
     {
@@ -261,29 +261,28 @@ class Field
     {
         accessType = AccessPrivate;
     }
-    virtual void Print(QTextStream &out)
+    virtual void Print(ostream &out)
     {
         char s[1000];
         char s1[1000];
-        sprintf(s1,"[%s]", type.toStdString().c_str());
-        sprintf(s, "        Field %-15s: %-15s  (\"%s\")", s1, name.toStdString().c_str(), label.toStdString().c_str());
-        out << s << Endl;
-
+        sprintf(s1,"[%s]", type.latin1());
+        sprintf(s, "        Field %-15s: %-15s  (\"%s\")", s1, name.latin1(), label.latin1());
+        out << s << endl;
         if (internal)
-            cOut << "            (INTERNAL)" << Endl;
+            cout << "            (INTERNAL)" << endl;
         if (accessType == AccessPublic)
-            cOut << "            (PUBLIC)" << Endl;
+            cout << "            (PUBLIC)" << endl;
         else if (accessType == AccessProtected)
-            cOut << "            (PROTECTED)" << Endl;
+            cout << "            (PROTECTED)" << endl;
         if (enabler)
         {
-            cOut << "            enabled when " << enabler->name << " equals ";
-            cOut << enableval[0];
+            cout << "            enabled when " << enabler->name << " equals ";
+            cout << enableval[0];
             for (size_t i=1; i<enableval.size(); i++)
             {
-                cOut << " or " << enableval[i];
+                cout << " or " << enableval[i];
             }
-            cOut << Endl;
+            cout << endl;
         }
     }
 
@@ -306,7 +305,7 @@ class Field
         return retval;
     }
 
-    void PrintCode(QTextStream &out, const QString &cName, int part, const QString &generatorName = QString::null)
+    void PrintCode(ostream &out, const QString &cName, int part, const QString &generatorName = QString::null)
     {
         QStringList targets, prefix, postfix;
         if(codeFile!=NULL && codeFile->GetCode(cName, targets, prefix, postfix))
@@ -323,7 +322,7 @@ class Field
         }
     }
 
-    bool PrintInit(QTextStream &out, const QString &generatorName = QString::null) const
+    bool PrintInit(ostream &out, const QString &generatorName = QString::null) const
     {
         // Look through the map for the init code that is for the generatorName 
         // that was passed.
@@ -340,7 +339,7 @@ class Field
     }
 
     void
-    WriteMethodComment(QTextStream &out, const QString &className,
+    WriteMethodComment(ostream &out, const QString &className,
         const QString &methodName, const QString &purposeString,
         const QString &generatorName) const
     {
@@ -401,7 +400,7 @@ class Int : public virtual Field
         else
             Field::SetAttrib(a,v);
     }
-    virtual void Print(QTextStream &out)
+    virtual void Print(ostream &out)
     {
         Field::Print(out);
         if (valueSet)
@@ -445,7 +444,7 @@ class IntArray : public virtual Field
         val[ix] = s.toInt();
         valueSet = true;
     }
-    virtual void Print(QTextStream &out)
+    virtual void Print(ostream &out)
     {
         Field::Print(out);
         if (valueSet)
@@ -489,7 +488,7 @@ class IntVector : public virtual Field
         val.push_back(s.toInt());
         valueSet = true;
     }
-    virtual void Print(QTextStream &out)
+    virtual void Print(ostream &out)
     {
         Field::Print(out);
         if (valueSet)
@@ -529,7 +528,7 @@ class Bool : public virtual Field
         val = Text2Bool(s);
         valueSet = true;
     }
-    virtual void Print(QTextStream &out)
+    virtual void Print(ostream &out)
     {
         Field::Print(out);
         if (valueSet)
@@ -565,7 +564,7 @@ class Float : public virtual Field
         val = s.toFloat();
         valueSet = true;
     }
-    virtual void Print(QTextStream &out)
+    virtual void Print(ostream &out)
     {
         Field::Print(out);
         if (valueSet)
@@ -605,7 +604,7 @@ class FloatArray : public virtual Field
         val[ix] = s.toFloat();
         valueSet = true;
     }
-    virtual void Print(QTextStream &out)
+    virtual void Print(ostream &out)
     {
         Field::Print(out);
         if (valueSet)
@@ -645,7 +644,7 @@ class Double : public virtual Field
         val = s.toDouble();
         valueSet = true;
     }
-    virtual void Print(QTextStream &out)
+    virtual void Print(ostream &out)
     {
         Field::Print(out);
         if (valueSet)
@@ -685,7 +684,7 @@ class DoubleArray : public virtual Field
         val[ix] = s.toDouble();
         valueSet = true;
     }
-    virtual void Print(QTextStream &out)
+    virtual void Print(ostream &out)
     {
         Field::Print(out);
         if (valueSet)
@@ -729,10 +728,10 @@ class DoubleVector : public virtual Field
         // can't use toDouble -- some versions of Qt disallow exponents beyond
         // single precision range.
         //val.push_back(s.toDouble());
-        val.push_back(atof(s.toStdString().c_str()));
+        val.push_back(atof(s.latin1()));
         valueSet = true;
     }
-    virtual void Print(QTextStream &out)
+    virtual void Print(ostream &out)
     {
         Field::Print(out);
         if (valueSet)
@@ -772,7 +771,7 @@ class UChar : public virtual Field
         val = s.toInt();
         valueSet = true;
     }
-    virtual void Print(QTextStream &out)
+    virtual void Print(ostream &out)
     {
         Field::Print(out);
         if (valueSet)
@@ -812,7 +811,7 @@ class UCharArray : public virtual Field
         val[ix] = s.toInt();
         valueSet = true;
     }
-    virtual void Print(QTextStream &out)
+    virtual void Print(ostream &out)
     {
         Field::Print(out);
         if (valueSet)
@@ -859,7 +858,7 @@ class UCharVector : public virtual Field
         val.push_back(i);
         valueSet = true;
     }
-    virtual void Print(QTextStream &out)
+    virtual void Print(ostream &out)
     {
         Field::Print(out);
         if (valueSet)
@@ -899,7 +898,7 @@ class String : public virtual Field
         val = s;
         valueSet = true;
     }
-    virtual void Print(QTextStream &out)
+    virtual void Print(ostream &out)
     {
         Field::Print(out);
         if (valueSet)
@@ -939,7 +938,7 @@ class StringVector : public virtual Field
         val.push_back(s);
         valueSet = true;
     }
-    virtual void Print(QTextStream &out)
+    virtual void Print(ostream &out)
     {
         Field::Print(out);
         if (valueSet)
@@ -975,7 +974,7 @@ class ColorTable : public virtual Field
         val = s;
         valueSet = true;
     }
-    virtual void Print(QTextStream &out)
+    virtual void Print(ostream &out)
     {
         Field::Print(out);
         if (valueSet)
@@ -1011,7 +1010,7 @@ class Color : public virtual Field
         val[ix] = s.toInt();
         valueSet = true;
     }
-    virtual void Print(QTextStream &out)
+    virtual void Print(ostream &out)
     {
         Field::Print(out);
         if (valueSet)
@@ -1053,7 +1052,7 @@ class Opacity : public virtual Field
         val = s.toFloat();
         valueSet = true;
     }
-    virtual void Print(QTextStream &out)
+    virtual void Print(ostream &out)
     {
         Field::Print(out);
         if (valueSet)
@@ -1089,7 +1088,7 @@ class LineStyle : public virtual Field
         val = s.toInt();
         valueSet = true;
     }
-    virtual void Print(QTextStream &out)
+    virtual void Print(ostream &out)
     {
         Field::Print(out);
         if (valueSet)
@@ -1125,7 +1124,7 @@ class LineWidth : public virtual Field
         val = s.toInt();
         valueSet = true;
     }
-    virtual void Print(QTextStream &out)
+    virtual void Print(ostream &out)
     {
         Field::Print(out);
         if (valueSet)
@@ -1177,11 +1176,11 @@ class VariableName : public virtual Field
         {
             if(v.length() != 11)
             {
-                cOut << "The vartypes attribute must be 11 characters long!" << Endl;
+                cout << "The vartypes attribute must be 11 characters long!" << endl;
             }
             else
             {
-                const char *val = v.toStdString().c_str();
+                const char *val = v.latin1();
                 int m = 1;
                 varTypes = 0;
                 for(size_t i = 0; i < v.length(); ++i)
@@ -1189,16 +1188,16 @@ class VariableName : public virtual Field
                     if(val[i] == '1')
                         varTypes |= m;
                     else if(val[i] != '0')
-                        cOut << "Bad character in vartypes attribute!" << Endl;
+                        cout << "Bad character in vartypes attribute!" << endl;
                     m = m << 1;
                 }
             }
         }
         else
-            cOut << "unknown attribute " << a << " for type " << type << Endl;
+            cout << "unknown attribute " << a << " for type " << type << endl;
     }
 
-    virtual void Print(QTextStream &out)
+    virtual void Print(ostream &out)
     {
         Field::Print(out);
         if (valueSet)
@@ -1229,7 +1228,7 @@ class Att : public virtual Field
     {
         attType = t;
         AttType = t;
-        AttType[0] = AttType[0].toUpper();
+        AttType[0] = AttType[0].upper();
     };
     virtual QString GetSubtype()
     {
@@ -1239,7 +1238,7 @@ class Att : public virtual Field
     {
         attType = t;
         AttType = t;
-        AttType[0] = AttType[0].toUpper();
+        AttType[0] = AttType[0].upper();
     }
     virtual QString GetCPPName(bool, const QString &) 
     {
@@ -1247,9 +1246,9 @@ class Att : public virtual Field
     }
     virtual void SetValue(const QString &s, int = 0)
     {
-        throw QString("Cannot set value %1 for att type").arg(s);
+        throw QString().sprintf("Cannot set value %s for att type", s.latin1());
     }
-    virtual void Print(QTextStream &out)
+    virtual void Print(ostream &out)
     {
         Field::Print(out);
         out << "            subtype: " << attType << endl;
@@ -1275,7 +1274,7 @@ class AttVector : public virtual Field
     {
         attType = t;
         AttType = t;
-        AttType[0] = AttType[0].toUpper();
+        AttType[0] = AttType[0].upper();
     };
     virtual QString GetSubtype()
     {
@@ -1285,7 +1284,7 @@ class AttVector : public virtual Field
     {
         attType = t;
         AttType = t;
-        AttType[0] = AttType[0].toUpper();
+        AttType[0] = AttType[0].upper();
     }
     virtual QString GetCPPName(bool, const QString &) 
     {
@@ -1293,9 +1292,9 @@ class AttVector : public virtual Field
     }
     virtual void SetValue(const QString &s, int = 0)
     {
-        throw QString("Cannot set value %1 for attVector type").arg(s);
+        throw QString().sprintf("Cannot set value %s for attVector type", s.latin1());
     }
-    virtual void Print(QTextStream &out)
+    virtual void Print(ostream &out)
     {
         Field::Print(out);
         out << "            subtype: " << attType << endl;
@@ -1349,7 +1348,7 @@ class Enum : public virtual Field
             throw QString("")+"Unknown value for field '"+name+"' of type enum "+enumType->type+": "+s;
         valueSet = true;
     }
-    virtual void Print(QTextStream &out)
+    virtual void Print(ostream &out)
     {
         Field::Print(out);
         out << "            subtype: " << enumType->type << endl;
@@ -1397,7 +1396,7 @@ class Enum : public virtual Field
         }\
         return retval;\
     }\
-    virtual void Print(QTextStream &out)\
+    virtual void Print(ostream &out)\
     {\
         Field::Print(out);\
         if (valueSet)\
@@ -1676,7 +1675,7 @@ class ScaleMode : public virtual Field
         val = s.toInt();
         valueSet = true;
     }
-    virtual void Print(QTextStream &out)
+    virtual void Print(ostream &out)
     {
         Field::Print(out);
         if (valueSet)
@@ -1728,7 +1727,7 @@ class FieldFactory
                               const QString &label)
     {
         Field *f = NULL;
-        if      (type.isNull())          throw QString("Field %1 was specified with no type.").arg(name);
+        if      (type.isNull())          throw QString().sprintf("Field %s was specified with no type.",name.latin1());
         else if (type == "int")          f = new Int(name,label);
         else if (type == "intArray")     f = new IntArray(length,name,label);
         else if (type == "intVector")    f = new IntVector(name,label);
@@ -1765,7 +1764,7 @@ class FieldFactory
         else if (type == "LoadBalanceScheme") f = new LoadBalanceSchemeField(name, label);
 
         if (!f)
-            throw QString("FieldFactory: unknown type for field %1: %2").arg(name).arg(type);
+            throw QString().sprintf("FieldFactory: unknown type for field %s: %s",name.latin1(),type.latin1());
 
         return f;
     }

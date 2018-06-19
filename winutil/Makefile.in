@@ -1,4 +1,4 @@
-#                         Copyright (c) 2000 - 2008
+#                         Copyright (c) 2000 - 2009
 #                  Lawrence Livermore National Security, LLC
 #            Produced at the Lawrence Livermore National Laboratory
 #                              LLNL-CODE-400124
@@ -60,12 +60,6 @@
 #    Brad Whitlock, Tue Apr 29 10:07:41 PDT 2008
 #    Added UnicodeHelper.
 #
-#    Brad Whitlock, Fri May  9 13:32:54 PDT 2008
-#    Qt 4.
-#
-#    Brad Whitlock, Wed Nov 26 11:19:34 PDT 2008
-#    I added Appearance.C
-#
 ##############################################################################
 
 ##
@@ -74,9 +68,8 @@
 @SET_MAKE@
 @VARIABLES@
 
-CXXFLAGS=-I. -I../include/visit -I../include $(QT_CXXFLAGS) @CXXFLAGS@
+CXXFLAGS=-I. -I../include/visit -I../include @QT_CXXFLAGS@ @CXXFLAGS@
 CPPFLAGS=-I. @CPPFLAGS@
-LDFLAGS=$(LDFLAGSORIG) $(QT_LDFLAGS)
 
 ##
 ## Files...
@@ -85,14 +78,14 @@ HDRMOC = QvisColorTableButton.h \
          QvisVariableButton.h \
          QvisVariableButtonHelper.h \
          QvisVariablePopupMenu.h
-HDR=Appearance.h VariableMenuPopulator.h WindowMetrics.h UnicodeHelper.h ${HDRMOC}
+HDR=VariableMenuPopulator.h WindowMetrics.h UnicodeHelper.h ${HDRMOC}
 SRC=${HDR:.h=.C}
 SRCMOC=${HDRMOC:.h=_moc.C}
 OBJMOC=${SRCMOC:.C=.o}
 OBJ=$(SRC:.C=.o) ${OBJMOC}
 
 LIB=libwinutil
-LIBS=-ldbatts -lstate -lcomm -lmisc -lavtexceptions -lutility -lexpr -lparser $(QT_CORE_LIB) $(QT_GUI_LIB)
+LIBS=-lqt -ldbatts -lstate -lcomm -lmisc -lavtexceptions -lutility -lexpr -lparser
 
 ##
 ## Standard targets...

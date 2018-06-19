@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,12 +39,11 @@
 #ifndef QVIS_COLORTABLE_BUTTON_H
 #define QVIS_COLORTABLE_BUTTON_H
 #include <winutil_exports.h>
-#include <QPushButton>
+#include <vector>
+#include <qpushbutton.h>
 
 // Forward declarations.
-class QAction;
-class QActionGroup;
-class QMenu;
+class QPopupMenu;
 
 // ****************************************************************************
 // Class: QvisColorTableButton
@@ -65,9 +64,6 @@ class QMenu;
 //   Brad Whitlock, Tue Feb 20 11:47:37 PDT 2007
 //   Changed API.
 //
-//   Brad Whitlock, Fri May  9 11:20:10 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 class WINUTIL_API QvisColorTableButton : public QPushButton
@@ -76,7 +72,7 @@ class WINUTIL_API QvisColorTableButton : public QPushButton
 
     typedef std::vector<QvisColorTableButton *> ColorTableButtonVector;
 public:
-    QvisColorTableButton(QWidget *parent);
+    QvisColorTableButton(QWidget *parent, const char *name = 0);
     virtual ~QvisColorTableButton();
     virtual QSize sizeHint() const;
     virtual QSizePolicy sizePolicy () const;
@@ -93,7 +89,7 @@ signals:
     void selectedColorTable(bool useDefault, const QString &ctName);
 private slots:
     void popupPressed();
-    void colorTableSelected(QAction *);
+    void colorTableSelected(int index);
 private:
     static int  getColorTableIndex(const QString &ctName);
     static void regeneratePopupMenu();
@@ -101,8 +97,7 @@ private:
     QString                        colorTable;
 
     static int                     numInstances;
-    static QMenu                  *colorTableMenu;
-    static QActionGroup           *colorTableMenuActionGroup;
+    static QPopupMenu             *colorTablePopup;
     static bool                    popupHasEntries;
     static ColorTableButtonVector  buttons;
 

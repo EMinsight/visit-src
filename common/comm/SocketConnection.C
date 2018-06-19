@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,8 +37,10 @@
 *****************************************************************************/
 
 #include <SocketConnection.h>
+#include <visit-config.h>
 #if defined(_WIN32)
 #include <winsock2.h>
+#include <win32commhelpers.h>
 #else
 #include <strings.h>             // bzero by way of FD_ZERO
 #include <sys/socket.h>
@@ -46,7 +48,9 @@
 #include <unistd.h>
 #include <signal.h>
 #endif
+#ifdef HAVE_SELECT
 #include <SysCall.h>
+#endif
 #include <LostConnectionException.h>
 
 // ****************************************************************************
@@ -137,6 +141,12 @@ SocketConnection::Fill()
     unsigned char tmp[1000];
 #if defined(_WIN32)
     int amountRead = recv(descriptor, (char FAR *)tmp, 1000, 0);
+    if(amountRead == SOCKET_ERROR)
+    {
+        LogWindowsSocketError("SocketConnection", "Fill");
+        if(WSAGetLastError() == WSAEWOULDBLOCK)
+            return -1;
+    }
 #else
     int amountRead = recv(descriptor, (void *)tmp, 1000, 0);
 #endif
@@ -463,11 +473,15 @@ SocketConnection::DirectWrite(const unsigned char *buf, long ntotal)
 //    Tom Fogal, Sat Feb 16 15:47:15 EST 2008
 //    Restart the system call if it gets interrupted.
 //
+//    Brad Whitlock, Thu Jun 11 15:14:50 PST 2009
+//    Don't call select if we don't have it.
+//
 // ****************************************************************************
 
 bool
 SocketConnection::NeedsRead(bool blocking) const
 {
+#ifdef HAVE_SELECT
     // Set up a file descriptor set that only consists of the descriptor
     // used by this connection.
     fd_set readSet;
@@ -493,4 +507,8 @@ SocketConnection::NeedsRead(bool blocking) const
     }
 
     return (ret > 0);
+#else
+    // Assume that read will block for input.
+    return true;
+#endif
 }

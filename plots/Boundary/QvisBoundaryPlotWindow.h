@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -45,9 +45,9 @@ class QButtonGroup;
 class QCheckBox;
 class QGroupBox;
 class QLabel;
+class QListBox;
 class QSlider;
 class QvisColorButton;
-class QvisColorSwatchListWidget;
 class QvisColorTableButton;
 class QvisLineStyleWidget;
 class QvisLineWidthWidget;
@@ -95,7 +95,6 @@ protected:
     void SetMultipleColorWidgets(int index);
     void UpdateMultipleArea();
     void UpdateItem(int i);
-    bool CompareItem(int i, const QString &name, const QColor &c) const;
     void GetCurrentValues(int which_widget);
 private slots:
     void lineStyleChanged(int newStyle);
@@ -131,7 +130,7 @@ private:
     QvisColorButton        *singleColor;
     QvisOpacitySlider      *singleColorOpacity;
     QLabel                 *multipleColorLabel;
-    QvisColorSwatchListWidget *multipleColorList;
+    QListBox               *multipleColorList;
     QvisColorButton        *multipleColor;
     QvisOpacitySlider      *multipleColorOpacity;
     QvisColorTableButton   *colorTableButton;

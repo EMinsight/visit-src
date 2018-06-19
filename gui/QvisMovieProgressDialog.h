@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -38,9 +38,9 @@
 
 #ifndef QVIS_MOVIE_PROGRESS_DIALOG_H
 #define QVIS_MOVIE_PROGRESS_DIALOG_H
-#include <QDialog>
-#include <QLabel>
-#include <QProgressBar>
+#include <qdialog.h>
+#include <qlabel.h>
+#include <qprogressbar.h>
 
 class QPushButton;
 
@@ -56,26 +56,24 @@ class QPushButton;
 // Creation:   Mon Jun 20 15:07:09 PST 2005
 //
 // Modifications:
-//   Cyrus Harrison, Tue Jul  1 09:14:16 PDT 2008
-//   Initial Qt4 Port.
-//
+//   
 // ****************************************************************************
 
 class QvisMovieProgressDialog : public QDialog
 {
     Q_OBJECT
 public:
-    QvisMovieProgressDialog(QWidget *parent = 0);
+    QvisMovieProgressDialog(QWidget *parent = 0, const char *name = 0);
     virtual ~QvisMovieProgressDialog();
 
     void setLabelText(const QString &t) { labelTextLabel->setText(t); }
     QString labelText() const           { return labelTextLabel->text(); }
 
     void setProgress(int val);
-    int  progress() const               { return progressBar->value(); }
+    int  progress() const               { return progressBar->progress(); }
 
-    void setTotalSteps(int val)         { progressBar->setMaximum(val); }
-    int  totalSteps() const             { return progressBar->maximum(); }
+    void setTotalSteps(int val)         { progressBar->setTotalSteps(val); }
+    int  totalSteps() const             { return progressBar->totalSteps(); }
 signals:
     void cancelled();
 private slots:

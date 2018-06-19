@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -49,8 +49,8 @@ class QLineEdit;
 class QSpinBox;
 class QVBox;
 class QButtonGroup;
-class QListWidget;
-class QListWidgetItem;
+class QListBox;
+class QListBoxItem;
 class QvisColorTableButton;
 class QvisOpacitySlider;
 class QvisColorButton;
@@ -69,9 +69,7 @@ class QvisLineWidthWidget;
 // Creation:   Thu Jul 17 15:33:35 PST 2003
 //
 // Modifications:
-//   Cyrus Harrison, Thu Aug 21 16:11:16 PDT 2008
-//   Qt4 Port.
-//
+//   
 // ****************************************************************************
 
 class QvisRemoveCellsWindow : public QvisOperatorWindow
@@ -94,22 +92,20 @@ class QvisRemoveCellsWindow : public QvisOperatorWindow
     void addButtonClicked();
     void removeButtonClicked();
     void changeButtonClicked();
-    void selectionChanged(int);
+    void listSelected(int index);
   private:
-    void    ParseEntryString(const QString &str,int &cell, int &domain);
-    QString CreateEntryString(int cell, int domain);
-    void    GetCurrentCell(int &cell,int &domain);
-        
     QLineEdit *cell;
     QLineEdit *domain;
 
-    QListWidget  *cellList;
+    QListBox  *cellList;
 
     QPushButton *addButton;
     QPushButton *removeButton;
     QPushButton *changeButton;
 
     RemoveCellsAttributes *atts;
+
+    bool buildingList;
 };
 
 

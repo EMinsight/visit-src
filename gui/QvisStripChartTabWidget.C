@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -36,18 +36,17 @@
 *
 *****************************************************************************/
 
-#include <QvisStripChartTabWidget.h>
-#include <math.h>
-
-#include <QFont>
-#include <QLabel>
-#include <QLayout>
-#include <QPen>
-#include <QScrollArea>
-#include <QTimer>
-
-#include <QvisStripChart.h>
+#include "QvisStripChartTabWidget.h"
+#include "QvisStripChart.h"
 #include <SimWidgetNames.h>
+#include <qtimer.h>
+#include <qlabel.h>
+#include <math.h>
+#include <qpen.h>
+#include <qfont.h>
+#include <qscrollview.h>
+#include <qlayout.h>
+#include <qsignal.h>
 
 // ****************************************************************************
 // Method: VisItSimStripChart::VisItSimStripChart
@@ -72,15 +71,12 @@
 //    Shelly Prevost Thu Oct 18 16:47:10 PDT 2007
 //    set the scroll area all the way to the left where the data will 
 //    first be drawn.
-//
-//    Brad Whitlock, Tue Jul  8 10:09:06 PDT 2008
-//    Qt 4.
-//
+//   
 // ****************************************************************************
 
 
-QvisStripChartTabWidget::QvisStripChartTabWidget(QWidget *parent, QObject *mgr, int winX, int winY)
-    : QTabWidget(parent)
+QvisStripChartTabWidget::QvisStripChartTabWidget( QWidget *parent, const char *name,QObject *mgr, int winX, int winY)
+    : QTabWidget( parent, name, WStaticContents )
 {
     // initialize vector array with strip chart data. This keeps all the associated data
     // together. It also make sure that the number of strip chart widgets is consistant.
@@ -93,24 +89,25 @@ QvisStripChartTabWidget::QvisStripChartTabWidget(QWidget *parent, QObject *mgr, 
     // create the strip charts
     for (size_t i =0; i< SC_Info.size(); i++) 
     {
-        stripCharts[SC_Info[i].getIndex()] = new VisItSimStripChart(this,winX,winY);
-        QScrollArea *sc = new QScrollArea(this);
-        sc->setWidget(stripCharts[SC_Info[i].getIndex()]);
-        sc->setWidgetResizable(true);
-
+        stripCharts[SC_Info[i].getIndex()] = new VisItSimStripChart(this,SC_Info[i].getName().ascii(),winX,winY);
+        QScrollView *sc = new QScrollView(this,"StripChartScrollWindow");
+        sc->addChild(stripCharts[SC_Info[i].getIndex()]);
+        sc->setCaption(tr("VisIt Strip Chart"));
         // move the scroll area all the way to the right. That is where the 
         // data will start to be drawn.
-        sc->ensureVisible(winX, winY/2);
+        sc->center( winX, winY/2.0);
+        sc->show();
+        sc->updateContents();
         SC_Info[i].setScrollView(sc);
-        addTab(sc, SC_Info[i].getName());
+        addTab ( sc, stripCharts[SC_Info[i].getIndex()]->name() );
     }   
 
     // default to the first strip chart as current
     currentStripChart = 0;
 
-    connect ( this, SIGNAL(currentChanged(int)), this, SLOT(updateCurrentTabData()));
+    connect ( this, SIGNAL ( currentChanged(QWidget *)), this, SLOT( updateCurrentTabData()));
     if ( mgr != NULL)
-        connect ( this, SIGNAL(currentChanged(int)), mgr, SLOT(updateCurrentTabData()));
+        connect ( this, SIGNAL ( currentChanged(QWidget *)), mgr, SLOT( updateCurrentTabData()));
 
 
 }
@@ -147,17 +144,15 @@ QvisStripChartTabWidget::~QvisStripChartTabWidget()
 // Creation:   Mon Oct 15 14:27:29 PDT 2007
 //
 // Modifications:
-//   Brad Whitlock, Tue Jul  8 10:56:00 PDT 2008
-//   Qt 4.
-//
+//  
+//   
 // ****************************************************************************
-
 void 
 QvisStripChartTabWidget::updateCurrentTabData()
 {
    // every time the tab ( strip chart ) is changed you have to 
    // update all the information needed to update the ui in VisIt
-    currentStripChart = currentIndex();
+    currentStripChart = currentPageIndex();
     stripCharts[currentStripChart]->getMinMaxData( minData, maxData);
     stripCharts[currentStripChart]->getOutOfBandLimits( minYLimit, maxYLimit);
     enabled = stripCharts[currentStripChart]->getEnable();
@@ -178,7 +173,7 @@ QvisStripChartTabWidget::updateCurrentTabData()
 //  
 //   
 // ****************************************************************************
-int QvisStripChartTabWidget::getCurrentPageIndex() const
+int QvisStripChartTabWidget::getCurrentPageIndex()
 {
     return currentStripChart;
 }
@@ -193,13 +188,12 @@ int QvisStripChartTabWidget::getCurrentPageIndex() const
 // Creation:   Mon Oct 15 14:27:29 PDT 2007
 //
 // Modifications:
-//  Brad Whitlock, Tue Jul  8 10:57:13 PDT 2008
-//  Qt 4.
+//  
 //   
 // ****************************************************************************    
 QWidget *QvisStripChartTabWidget::getCurrentStripChart()
 {
-    return widget(currentIndex());
+    return currentPage();
 }
 
 // ****************************************************************************
@@ -216,13 +210,12 @@ QWidget *QvisStripChartTabWidget::getCurrentStripChart()
 // Creation:   Mon Oct 15 14:27:29 PDT 2007
 //
 // Modifications:
-//  Brad Whitlock, Tue Jul  8 10:58:23 PDT 2008
-//  Qt 4.
+//  
 //   
 // ****************************************************************************    
-void QvisStripChartTabWidget::setTabLabel(int tabIndex, const QString &newLabel)
+void QvisStripChartTabWidget::setTabLabel(int tabIndex, QString newLabel )
 {
-    setTabText(tabIndex, newLabel);
+    changeTab( page(tabIndex), newLabel);
 }   
 
 // ****************************************************************************
@@ -242,17 +235,16 @@ void QvisStripChartTabWidget::setTabLabel(int tabIndex, const QString &newLabel)
 // Creation:   Oct. 27, 2006
 //
 // Modifications:
-//  Brad Whitlock, Tue Jul  8 10:59:40 PDT 2008
-//  Qt 4.
+//  
 //   
 // ****************************************************************************
 
-int QvisStripChartTabWidget::nameToIndex(const QString &SC_Name) const
+int QvisStripChartTabWidget::nameToIndex(QString SC_Name)
 {
     int ST_Index = -1;
     for (size_t i = 0; i < SC_Info.size(); i++)
     {
-        if (SC_Name == tabText(i))
+        if (SC_Name == stripCharts[i]->name())
             ST_Index = i;
     }      
    return ST_Index;
@@ -279,7 +271,7 @@ int QvisStripChartTabWidget::nameToIndex(const QString &SC_Name) const
 // ****************************************************************************
 
 int
-QvisStripChartTabWidget::nameToTabIndex(const QString &Tab_Name) const
+QvisStripChartTabWidget::nameToTabIndex(QString Tab_Name)
 {
     for (size_t i = 0; i < SC_Info.size(); i++)
     {
@@ -308,7 +300,7 @@ QvisStripChartTabWidget::nameToTabIndex(const QString &Tab_Name) const
 //   
 // ****************************************************************************
 bool 
-QvisStripChartTabWidget::isStripChartWidget(const QString &name) const
+QvisStripChartTabWidget::isStripChartWidget( QString name )
 {
     int ST_Index = nameToIndex(name);
     if (ST_Index >= 0 )
@@ -335,7 +327,7 @@ QvisStripChartTabWidget::isStripChartWidget(const QString &name) const
 //   
 // ****************************************************************************
 bool 
-QvisStripChartTabWidget::isStripChartTabLabel(const QString &name) const
+QvisStripChartTabWidget::isStripChartTabLabel( QString name )
 {
     int ST_Index = nameToTabIndex(name);
     if (ST_Index >= 0 )
@@ -362,7 +354,7 @@ QvisStripChartTabWidget::isStripChartTabLabel(const QString &name) const
 //   
 // ****************************************************************************
 void 
-QvisStripChartTabWidget::setEnable(const QString &name, bool enable )
+QvisStripChartTabWidget::setEnable( QString name, bool enable )
 {
     int ST_Index = nameToIndex(name);
     if (ST_Index >= 0 )
@@ -387,7 +379,7 @@ QvisStripChartTabWidget::setEnable(const QString &name, bool enable )
 //   
 // ****************************************************************************
 bool 
-QvisStripChartTabWidget::getEnable(const QString &name) const
+QvisStripChartTabWidget::getEnable( QString name )
 {
     int ST_Index = nameToIndex(name);
     if (ST_Index >= 0 )
@@ -494,7 +486,7 @@ QvisStripChartTabWidget::getEnableLogScale()
 //   
 // ****************************************************************************
 bool 
-QvisStripChartTabWidget::addDataPoint(const QString &name, double x, double y)
+QvisStripChartTabWidget::addDataPoint( QString name,double x, double y)
 {
     bool outOfBounds = TRUE;
     int ST_Index = nameToIndex(name);
@@ -524,7 +516,7 @@ QvisStripChartTabWidget::addDataPoint(const QString &name, double x, double y)
 //   
 // ****************************************************************************
 void 
-QvisStripChartTabWidget::update(const QString &name)
+QvisStripChartTabWidget::update(QString name)
 {
     int ST_Index = nameToIndex(name);
     if (ST_Index >= 0 )
@@ -550,7 +542,7 @@ QvisStripChartTabWidget::update(const QString &name)
 //   
 // ****************************************************************************
 void 
-QvisStripChartTabWidget::getMinMaxData(const QString &name, double &minY, double &maxY)
+QvisStripChartTabWidget::getMinMaxData( QString name, double &minY, double &maxY)
 {
     
     int ST_Index = nameToIndex(name);
@@ -600,7 +592,7 @@ QvisStripChartTabWidget::getMinMaxData( double &minY, double &maxY)
 //   
 // ****************************************************************************
 void 
-QvisStripChartTabWidget::enableOutOfBandLimits(const QString &name, bool enabled)
+QvisStripChartTabWidget::enableOutOfBandLimits(QString name, bool enabled)
 {
     int ST_Index = nameToIndex(name);
     if (ST_Index >= 0 )
@@ -650,7 +642,7 @@ QvisStripChartTabWidget::enableOutOfBandLimits(bool enabled)
 //  
 //   
 // ****************************************************************************
-void QvisStripChartTabWidget::setOutOfBandLimits(const QString &name,double min, double max)
+void QvisStripChartTabWidget::setOutOfBandLimits(QString name,double min, double max)
 {
     int ST_Index = nameToIndex(name);
     if (ST_Index >= 0 )   stripCharts[ST_Index]->setOutOfBandLimits(min,max);

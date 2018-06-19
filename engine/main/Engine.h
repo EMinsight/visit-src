@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -49,6 +49,7 @@ class ExecuteRPC;
 class ExportDatabaseRPC;
 class KeepAliveRPC;
 class MakePlotRPC;
+class NamedSelectionRPC;
 class OpenDatabaseRPC;
 class PickRPC;
 class QueryRPC;
@@ -181,9 +182,15 @@ class Xfer;
 //    Tom Fogal, Mon Aug 11 11:39:07 EDT 2008
 //    Instance variable to store how many X servers we should start up.
 //
+//    Hank Childs, Thu Jan 29 11:12:04 PST 2009
+//    Add data member namedSelectionRPC.
+//
 //    Tom Fogal, Mon Sep  1 12:47:57 EDT 2008
 //    Instance variable to store what kind of display we'll render with, and
 //    made SetupDisplay a method.
+//
+//    Brad Whitlock, Thu Apr 23 12:08:17 PDT 2009
+//    I added simulationPluginsEnabled.
 //
 // ****************************************************************************
 
@@ -200,6 +207,7 @@ class Engine
     void            SetUpViewerInterface(int *argc, char **argv[]);
 
     // Needed for simulations
+    void            EnableSimulationPlugins();
     void            PopulateSimulationMetaData(const std::string &db,
                                                const std::string &fmt);
     void            SimulationTimeStepChanged();
@@ -277,6 +285,7 @@ class Engine
     // Here's the network manager!
     NetworkManager    *netmgr;
     std::string        pluginDir;
+    bool               simulationPluginsEnabled;
 
     // The connection
     Connection        *vtkConnection;
@@ -331,6 +340,7 @@ class Engine
     SimulationCommandRPC     *simulationCommandRPC;
     ExportDatabaseRPC        *exportDatabaseRPC;
     ConstructDDFRPC          *constructDDFRPC;
+    NamedSelectionRPC        *namedSelectionRPC;
     SetEFileOpenOptionsRPC   *setEFileOpenOptionsRPC;
 
     // The metadata, filename, format, control data for a simulation

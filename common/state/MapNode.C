@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,9 +37,7 @@
 *****************************************************************************/
 
 #include <MapNode.h>
-#include <Connection.h>
 #include <visitstream.h>
-
 using namespace std;
 
 // ****************************************************************************
@@ -96,25 +94,17 @@ MapNode::~MapNode()
 //  Programmer:  Cyrus Harrison
 //  Creation:    December 14, 2007
 //
-//  Modifications:
-//    Brad Whitlock, Mon Jan 12 10:50:14 PST 2009
-//    Clear out the entries node before calling Variant::SetValue.
-//
 // ****************************************************************************
-
 MapNode &
 MapNode::operator=(const MapNode &node)
 {
-    // copy entries
+    // copy entires
     if(this != &node)
     {
         if(node.entries.size() > 0)
             entries = node.entries;
         else
-        {
-            entries.clear();
             Variant::SetValue(node);
-        }
     }
     return *this;
 }
@@ -324,25 +314,6 @@ MapNode::GetEntryNames(stringVector &result) const
         result.push_back(itr->first);
 }
 
-// ****************************************************************************
-// Method: MapNode::Reset
-//
-// Purpose: 
-//   Reset the mapnode.
-//
-// Programmer: Brad Whitlock
-// Creation:   Fri Jan  9 10:14:09 PST 2009
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-void
-MapNode::Reset()
-{
-    entries.clear();
-    Variant::Reset();
-}
 
 // ****************************************************************************
 //  Method:  MapNode::ToXML
@@ -432,271 +403,5 @@ MapNode::SetValue(const XMLNode &node)
     }
 }
 
-// ****************************************************************************
-// Method: MapNode::operator ==
-//
-// Purpose: 
-//   Compares 2 MapNode objects.
-//
-// Arguments:
-//   obj  : The object to compare.
-//
-// Returns:    True if the objects are equal; false otherwise.
-//
-// Note:       
-//
-// Programmer: Brad Whitlock
-// Creation:   Tue Jan  6 15:33:24 PST 2009
-//
-// Modifications:
-//   
-// ****************************************************************************
 
-bool
-MapNode::operator ==(const MapNode &obj) const
-{
-    if(Type() != obj.Type())
-        return false;
 
-    bool equal = false;
-    if(Type() == EMPTY_TYPE)
-    {
-        // Compare sizes
-        if(entries.size() != obj.entries.size())
-            return false;
-
-        // Compare keys and values
-        std::map<std::string,MapNode>::const_iterator it1 = entries.begin();
-        std::map<std::string,MapNode>::const_iterator it2 = obj.entries.begin();
-        for(; it1 != entries.end(); ++it1, ++it2)
-        {
-            // Compare keys. If they don't sort the same in the map then the
-            // maps are different.
-            if(it1->first != it2->first)
-                return false;
-        
-            // recurse
-            if(!(it1->second == it2->second))
-                return false;
-        }
-
-        equal = true;
-    }
-    else
-    {
-        equal = Variant::operator==(obj);
-    }
-
-    return equal;
-}
-
-// ****************************************************************************
-// Method: MapNode::CalculateMessageSize
-//
-// Purpose: 
-//   Calculates the size of the message needed to store the serialized MapNode.
-//
-// Arguments:
-//   conn : The connection doing the writing.
-//
-// Returns:    The message size.
-//
-// Note:       
-//
-// Programmer: Brad Whitlock
-// Creation:   Tue Jan  6 15:35:48 PST 2009
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-int
-MapNode::CalculateMessageSize(Connection &conn) const
-{
-    int messageSize = conn.IntSize(conn.DEST);
-
-    if(Type() == EMPTY_TYPE)
-    {
-        messageSize += conn.IntSize(conn.DEST);
-
-        map<string,MapNode>::const_iterator itr;
-        for(itr = entries.begin(); itr != entries.end(); ++itr)
-        {
-            messageSize += conn.CharSize(conn.DEST) * (itr->first.size() + 1);
-            messageSize += itr->second.CalculateMessageSize(conn);
-        }
-    }
-    else
-        messageSize += Variant::CalculateMessageSize(conn);
-
-    return messageSize;
-}
-
-// ****************************************************************************
-// Method: MapNode::Write
-//
-// Purpose: 
-//   Write a MapNode to a Connection.
-//
-// Arguments:
-//   conn : The connection to use for writing.
-//
-// Programmer: Brad Whitlock
-// Creation:   Tue Jan  6 15:36:19 PST 2009
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-void
-MapNode::Write(Connection &conn) const
-{
-    conn.WriteInt(Type());
-
-    if(Type() == EMPTY_TYPE)
-    {
-        // Write the number of entries
-        conn.WriteInt(entries.size());
-
-        map<string,MapNode>::const_iterator itr;
-        for(itr = entries.begin(); itr != entries.end(); ++itr)
-        {
-            // Write the name of the item
-            conn.WriteString(itr->first);
-
-            // Write the item data.
-            itr->second.Write(conn);
-        }
-    }
-    else
-    {
-        Variant::Write(conn);
-    }
-}
-
-// ****************************************************************************
-// Method: MapNode::Read
-//
-// Purpose: 
-//   Reads the MapNode from the connection.
-//
-// Arguments:
-//   conn : The connection to use for reading,.
-//
-// Programmer: Brad Whitlock
-// Creation:   Tue Jan  6 15:36:46 PST 2009
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-void
-MapNode::Read(Connection &conn)
-{
-    entries.clear();
-
-    // Read the data type
-    int dt;
-    conn.ReadInt(&dt);
-    Init(dt);
-
-    if(dt == EMPTY_TYPE)
-    {
-        int nEntries = 0;
-        conn.ReadInt(&nEntries);
-
-        for(int i = 0; i < nEntries; ++i)
-        {
-            // Read the name of the item
-            string name;
-            conn.ReadString(name);
-
-            // Implicitly create the item and read its data.
-            entries[name].Read(conn);
-        }
-    }
-    else
-    {
-        Variant::Read(conn);
-    }
-}
-
-// ****************************************************************************
-// Method: MapNode::Merge
-//
-// Purpose: 
-//   This method merges 2 MapNodes together so that missing fields from one
-//   MapNode will get added to this MapNode.
-//
-// Arguments:
-//   obj  : The MapNode to add to this MapNode.
-//
-// Returns:    
-//
-// Note:       
-//
-// Programmer: Brad Whitlock
-// Creation:   Fri Jan 16 12:01:50 PST 2009
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-void
-MapNode::Merge(const MapNode &obj)
-{
-    if(this->operator ==(obj))
-        return;
-
-    if(Type() == EMPTY_TYPE)
-    { 
-        if(obj.Type() == EMPTY_TYPE)
-        {
-            map<string,MapNode>::const_iterator itr, itr2;
-            for(itr = obj.entries.begin(); itr != obj.entries.end(); ++itr)
-            {
-                itr2 = entries.find(itr->first);
-                if(itr2 == entries.end())
-                {
-                    // This object does not have the key we looked for so
-                    // let's add the missing key/value pair.
-                    entries[itr->first] = itr->second;
-                }
-                else
-                {
-                    entries[itr->first].Merge(itr->second);
-                }
-            }
-        }
-        else
-        {
-            entries[TypeName()] = obj;
-        }
-    }
-    else
-    {
-        if(obj.Type() == EMPTY_TYPE)
-        {
-            // This is a variant and that is a mapnode
-            MapNode obj2(obj);
-            obj2.Merge(*this);
-            *this = obj2;
-        }
-        else
-        {
-            // Both are variants. Combine into a MapNode
-            MapNode merged;
-            if(Type() == obj.Type())
-            {
-                merged[TypeName() + "0"] = *this;
-                merged[obj.TypeName() + "1"] = obj;
-            }
-            else
-            {
-                merged[TypeName()] = *this;
-                merged[obj.TypeName()] = obj;
-            }
-            *this = merged;
-        }
-    }
-}

@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400142
+// LLNL-CODE-400124
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -73,6 +73,7 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
     public final static int COLORINGMETHOD_COLORBYLENGTH = 3;
     public final static int COLORINGMETHOD_COLORBYTIME = 4;
     public final static int COLORINGMETHOD_COLORBYSEEDPOINTID = 5;
+    public final static int COLORINGMETHOD_COLORBYVARIABLE = 6;
 
     public final static int DISPLAYMETHOD_LINES = 0;
     public final static int DISPLAYMETHOD_TUBES = 1;
@@ -84,18 +85,19 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
 
     public final static int TERMINATIONTYPE_DISTANCE = 0;
     public final static int TERMINATIONTYPE_TIME = 1;
-
-    public final static int INTEGRATIONTYPE_DORMANDPRINCE = 0;
-    public final static int INTEGRATIONTYPE_ADAMSBASHFORTH = 1;
+    public final static int TERMINATIONTYPE_STEP = 2;
 
     public final static int STREAMLINEALGORITHMTYPE_LOADONDEMAND = 0;
     public final static int STREAMLINEALGORITHMTYPE_PARALLELSTATICDOMAINS = 1;
     public final static int STREAMLINEALGORITHMTYPE_MASTERSLAVE = 2;
 
+    public final static int INTEGRATIONTYPE_DORMANDPRINCE = 0;
+    public final static int INTEGRATIONTYPE_ADAMSBASHFORTH = 1;
+
 
     public StreamlineAttributes()
     {
-        super(32);
+        super(35);
 
         sourceType = SOURCETYPE_SPECIFIEDPOINT;
         maxStepLength = 0.1;
@@ -156,11 +158,14 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         streamlineAlgorithmType = STREAMLINEALGORITHMTYPE_PARALLELSTATICDOMAINS;
         maxStreamlineProcessCount = 10;
         maxDomainCacheSize = 3;
+        workGroupSize = 32;
+        pathlines = false;
+        coloringVariable = new String("");
     }
 
     public StreamlineAttributes(StreamlineAttributes obj)
     {
-        super(32);
+        super(35);
 
         int i;
 
@@ -227,6 +232,9 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         streamlineAlgorithmType = obj.streamlineAlgorithmType;
         maxStreamlineProcessCount = obj.maxStreamlineProcessCount;
         maxDomainCacheSize = obj.maxDomainCacheSize;
+        workGroupSize = obj.workGroupSize;
+        pathlines = obj.pathlines;
+        coloringVariable = new String(obj.coloringVariable);
 
         SelectAll();
     }
@@ -307,7 +315,10 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
                 (integrationType == obj.integrationType) &&
                 (streamlineAlgorithmType == obj.streamlineAlgorithmType) &&
                 (maxStreamlineProcessCount == obj.maxStreamlineProcessCount) &&
-                (maxDomainCacheSize == obj.maxDomainCacheSize));
+                (maxDomainCacheSize == obj.maxDomainCacheSize) &&
+                (workGroupSize == obj.workGroupSize) &&
+                (pathlines == obj.pathlines) &&
+                (coloringVariable.equals(obj.coloringVariable)));
     }
 
     public String GetName() { return "Streamline"; }
@@ -577,6 +588,24 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         Select(31);
     }
 
+    public void SetWorkGroupSize(int workGroupSize_)
+    {
+        workGroupSize = workGroupSize_;
+        Select(32);
+    }
+
+    public void SetPathlines(boolean pathlines_)
+    {
+        pathlines = pathlines_;
+        Select(33);
+    }
+
+    public void SetColoringVariable(String coloringVariable_)
+    {
+        coloringVariable = coloringVariable_;
+        Select(34);
+    }
+
     // Property getting methods
     public int            GetSourceType() { return sourceType; }
     public double         GetMaxStepLength() { return maxStepLength; }
@@ -610,6 +639,9 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
     public int            GetStreamlineAlgorithmType() { return streamlineAlgorithmType; }
     public int            GetMaxStreamlineProcessCount() { return maxStreamlineProcessCount; }
     public int            GetMaxDomainCacheSize() { return maxDomainCacheSize; }
+    public int            GetWorkGroupSize() { return workGroupSize; }
+    public boolean        GetPathlines() { return pathlines; }
+    public String         GetColoringVariable() { return coloringVariable; }
 
     // Write and read methods.
     public void WriteAtts(CommunicationBuffer buf)
@@ -678,6 +710,12 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
             buf.WriteInt(maxStreamlineProcessCount);
         if(WriteSelect(31, buf))
             buf.WriteInt(maxDomainCacheSize);
+        if(WriteSelect(32, buf))
+            buf.WriteInt(workGroupSize);
+        if(WriteSelect(33, buf))
+            buf.WriteBool(pathlines);
+        if(WriteSelect(34, buf))
+            buf.WriteString(coloringVariable);
     }
 
     public void ReadAtts(int n, CommunicationBuffer buf)
@@ -784,6 +822,15 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
             case 31:
                 SetMaxDomainCacheSize(buf.ReadInt());
                 break;
+            case 32:
+                SetWorkGroupSize(buf.ReadInt());
+                break;
+            case 33:
+                SetPathlines(buf.ReadBool());
+                break;
+            case 34:
+                SetColoringVariable(buf.ReadString());
+                break;
             }
         }
     }
@@ -841,6 +888,8 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
             str = str + "COLORINGMETHOD_COLORBYTIME";
         if(coloringMethod == COLORINGMETHOD_COLORBYSEEDPOINTID)
             str = str + "COLORINGMETHOD_COLORBYSEEDPOINTID";
+        if(coloringMethod == COLORINGMETHOD_COLORBYVARIABLE)
+            str = str + "COLORINGMETHOD_COLORBYVARIABLE";
         str = str + "\n";
         str = str + stringToString("colorTableName", colorTableName, indent) + "\n";
         str = str + indent + "singleColor = {" + singleColor.Red() + ", " + singleColor.Green() + ", " + singleColor.Blue() + ", " + singleColor.Alpha() + "}\n";
@@ -861,6 +910,8 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
             str = str + "TERMINATIONTYPE_DISTANCE";
         if(terminationType == TERMINATIONTYPE_TIME)
             str = str + "TERMINATIONTYPE_TIME";
+        if(terminationType == TERMINATIONTYPE_STEP)
+            str = str + "TERMINATIONTYPE_STEP";
         str = str + "\n";
         str = str + indent + "integrationType = ";
         if(integrationType == INTEGRATIONTYPE_DORMANDPRINCE)
@@ -878,6 +929,9 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         str = str + "\n";
         str = str + intToString("maxStreamlineProcessCount", maxStreamlineProcessCount, indent) + "\n";
         str = str + intToString("maxDomainCacheSize", maxDomainCacheSize, indent) + "\n";
+        str = str + intToString("workGroupSize", workGroupSize, indent) + "\n";
+        str = str + boolToString("pathlines", pathlines, indent) + "\n";
+        str = str + stringToString("coloringVariable", coloringVariable, indent) + "\n";
         return str;
     }
 
@@ -915,5 +969,8 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
     private int            streamlineAlgorithmType;
     private int            maxStreamlineProcessCount;
     private int            maxDomainCacheSize;
+    private int            workGroupSize;
+    private boolean        pathlines;
+    private String         coloringVariable;
 }
 

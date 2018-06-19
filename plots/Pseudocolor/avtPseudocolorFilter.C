@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -153,6 +153,9 @@ avtPseudocolorFilter::UpdateDataObjectInfo(void)
 //    Verify the existence of a valid variable before attempting to retrieve
 //    its centering.
 //
+//    Kathleen Bonnell, Tue Jul 14 13:42:37 PDT 2009
+//    Added test for MayRequireNodes for turning Node numbers on.
+//
 // ****************************************************************************
 
 avtContract_p
@@ -179,7 +182,8 @@ avtPseudocolorFilter::ModifyContract(avtContract_p contract)
     }
 
 
-    if (contract->GetDataRequest()->MayRequireZones())
+    if (contract->GetDataRequest()->MayRequireZones() ||
+        contract->GetDataRequest()->MayRequireNodes())
     {
         keepNodeZone = true;
         if (data.ValidActiveVariable())

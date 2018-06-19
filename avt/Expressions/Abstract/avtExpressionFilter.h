@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -53,6 +53,7 @@
 class     vtkDataArray;
 class     ArgsExpr;
 class     ExprPipelineState;
+class     ExprNode;
 
 
 // ****************************************************************************
@@ -111,6 +112,12 @@ class     ExprPipelineState;
 //    Sean Ahern, Wed Sep 10 12:21:41 EDT 2008
 //    Added a target centering.
 //
+//    Kathleen Bonnell, Thu Apr 16 09:50:56 PDT 2009
+//    Added GetOutputVariableName.
+//
+//    Kathleen Bonnell, Fri May  8 13:44:16 PDT 2009
+//    Added method GetNumericVal (moved from avtCylindricalRadiusExpression.h.
+//
 // ****************************************************************************
 
 class EXPRESSION_API avtExpressionFilter : virtual public 
@@ -131,6 +138,11 @@ class EXPRESSION_API avtExpressionFilter : virtual public
     static vtkDataArray    *Recenter(vtkDataSet*, vtkDataArray*,
                                      avtCentering, std::string name,
                                      avtCentering targCent = AVT_UNKNOWN_CENT);
+
+    const char              *GetOutputVariableName() 
+                                 { return outputVariableName; }
+
+    bool                     GetNumericVal(ExprNode *, double &res);
 
   protected:
     char                    *outputVariableName;

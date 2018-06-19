@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -74,9 +74,6 @@
 //   Mark Blair, Wed Oct 25 15:12:55 PDT 2006
 //   Added GetPlotInfoAtts.
 //
-//   Brad Whitlock, Wed Jan  7 14:51:13 PST 2009
-//   Removed GetPlotListIndex, GetPlotInfoAtts.
-//
 // ****************************************************************************
 
 class VISWINDOW_API VisWindowToolProxy : public VisWindowProtectionProxy
@@ -119,6 +116,12 @@ class VISWINDOW_API VisWindowToolProxy : public VisWindowProtectionProxy
 
     bool                HasPlots(){ return ProxiedHasPlots(); };
     
+    int                 GetPlotListIndex(const char *plotName)
+                                  { return ProxiedGetPlotListIndex(plotName); };
+                                  
+    const PlotInfoAttributes *GetPlotInfoAtts(const char *plotName)
+                                  { return ProxiedGetPlotInfoAtts(plotName); };
+
     void                Render()  { ProxiedRender(); };
 
     void                RecalculateRenderOrder()

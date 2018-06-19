@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -35,21 +35,20 @@
 * DAMAGE.
 *
 *****************************************************************************/
-#include "XMLEditStd.h"
+
 #include "XMLEditConstants.h"
 
 #include <XMLDocument.h>
 #include <Attribute.h>
-#include <QLabel>
-#include <QLayout>
-#include <QTreeView>
-#include <QTextEdit>
-#include <QPushButton>
-#include <QRadioButton>
-#include <QLineEdit>
-#include <QButtonGroup>
-#include <QCheckBox>
-#include <QListWidget>
+#include <qlabel.h>
+#include <qlayout.h>
+#include <qlistbox.h>
+#include <qmultilineedit.h>
+#include <qpushbutton.h>
+#include <qradiobutton.h>
+#include <qlineedit.h>
+#include <qbuttongroup.h>
+#include <qcheckbox.h>
 
 // ****************************************************************************
 //  Constructor:  XMLEditConstants::XMLEditConstants
@@ -61,19 +60,16 @@
 //    Brad Whitlock, Thu Mar 6 16:11:47 PST 2008
 //    Added targets.
 //
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
-XMLEditConstants::XMLEditConstants(QWidget *p)
-    : QFrame(p)
+XMLEditConstants::XMLEditConstants(QWidget *p, const QString &n)
+    : QFrame(p, n)
 {
     QHBoxLayout *hLayout = new QHBoxLayout(this);
-    setLayout(hLayout);
-    
-    QGridLayout *listLayout = new QGridLayout();
-    constantlist = new QListWidget(this);
-    listLayout->addWidget(constantlist, 0,0, 1,2);
+
+    QGridLayout *listLayout = new QGridLayout(hLayout, 2,2, 5);
+
+    constantlist = new QListBox(this);
+    listLayout->addMultiCellWidget(constantlist, 0,0, 0,1);
 
     newButton = new QPushButton(tr("New"), this);
     listLayout->addWidget(newButton, 1,0);
@@ -81,11 +77,9 @@ XMLEditConstants::XMLEditConstants(QWidget *p)
     delButton = new QPushButton(tr("Del"), this);
     listLayout->addWidget(delButton, 1,1);
 
-    hLayout->addLayout(listLayout);
     hLayout->addSpacing(10);
 
-    QGridLayout *topLayout = new QGridLayout();
-    
+    QGridLayout *topLayout = new QGridLayout(hLayout, 6,2, 5);
     int row = 0;
 
     topLayout->addWidget(new QLabel(tr("Target"), this), row, 0);
@@ -99,7 +93,7 @@ XMLEditConstants::XMLEditConstants(QWidget *p)
     row++;
 
     member = new QCheckBox(tr("Class member"), this);
-    topLayout->addWidget(member, row,0, 1,2);
+    topLayout->addMultiCellWidget(member, row,row, 0,1);
     row++;
 
     topLayout->addWidget(new QLabel(tr("Declaration"), this), row, 0);
@@ -110,19 +104,17 @@ XMLEditConstants::XMLEditConstants(QWidget *p)
     topLayout->addWidget(new QLabel(tr("Definition"), this), row, 0);
     row++;
 
-    definition = new QTextEdit(this);
+    definition = new QMultiLineEdit(this);
     QFont monospaced("Courier");
     definition->setFont(monospaced);
-    definition->setWordWrapMode(QTextOption::NoWrap);
-    topLayout->addWidget(definition, row,0, 1,2);
+    definition->setWordWrap(QTextEdit::NoWrap);
+    topLayout->addMultiCellWidget(definition, row,row, 0,1);
     row++;
 
-    topLayout->setRowMinimumHeight(row, 20);
+    topLayout->addRowSpacing(row, 20);
     row++;
 
-    hLayout->addLayout(topLayout);
-    
-    connect(constantlist, SIGNAL(currentRowChanged(int)),
+    connect(constantlist, SIGNAL(selectionChanged()),
             this, SLOT(UpdateWindowSingleItem()));
     connect(target, SIGNAL(textChanged(const QString&)),
             this, SLOT(targetTextChanged(const QString&)));
@@ -183,9 +175,6 @@ XMLEditConstants::CountConstants(const QString &name) const
 //    Brad Whitlock, Thu Mar 6 16:12:45 PST 2008
 //    Added targets.
 //
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 void
 XMLEditConstants::UpdateWindowContents()
@@ -198,11 +187,12 @@ XMLEditConstants::UpdateWindowContents()
     {
         if(CountConstants(a->constants[i]->name) > 1)
         { 
-            QString id = QString("%1 [%2]").arg(a->constants[i]->name).arg(a->constants[i]->target);
-            constantlist->addItem(id);
+           QString id; id.sprintf("%s [%s]", a->constants[i]->name.latin1(),
+               a->constants[i]->target.latin1());
+            constantlist->insertItem(id);
         }
         else
-            constantlist->addItem(a->constants[i]->name);
+            constantlist->insertItem(a->constants[i]->name);
     }
 
     BlockAllSignals(false);
@@ -222,14 +212,11 @@ XMLEditConstants::UpdateWindowContents()
 //    Brad Whitlock, Thu Mar 6 16:12:45 PST 2008
 //    Added targets.
 //
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 void
 XMLEditConstants::UpdateWindowSensitivity()
 {
-    bool active = constantlist->currentRow() != -1;
+    bool active = constantlist->currentItem() != -1;
 
     delButton->setEnabled(constantlist->count() > 0);
     target->setEnabled(active);
@@ -252,9 +239,6 @@ XMLEditConstants::UpdateWindowSensitivity()
 //    Brad Whitlock, Thu Mar 6 16:12:45 PST 2008
 //    Added targets.
 //
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 void
 XMLEditConstants::UpdateWindowSingleItem()
@@ -262,7 +246,7 @@ XMLEditConstants::UpdateWindowSingleItem()
     BlockAllSignals(true);
 
     Attribute *a = xmldoc->attribute;
-    int index = constantlist->currentRow();
+    int index = constantlist->currentItem();
 
     if (index == -1)
     {
@@ -330,20 +314,17 @@ XMLEditConstants::BlockAllSignals(bool block)
 //    Brad Whitlock, Thu Mar 6 16:12:45 PST 2008
 //    Added targets.
 //
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 void
 XMLEditConstants::nameTextChanged(const QString &text)
 {
     Attribute *a = xmldoc->attribute;
-    int index = constantlist->currentRow();
+    int index = constantlist->currentItem();
     if (index == -1)
         return;
     Constant *c = a->constants[index];
 
-    QString newname = text.trimmed();
+    QString newname = text.stripWhiteSpace();
     c->name = newname;
     if(CountConstants(newname) > 1)
     {
@@ -352,7 +333,7 @@ XMLEditConstants::nameTextChanged(const QString &text)
         newname += "]";
     }
     BlockAllSignals(true);
-    constantlist->item(index)->setText(text);
+    constantlist->changeItem(text, index);
     BlockAllSignals(false);
 }
 
@@ -362,16 +343,12 @@ XMLEditConstants::nameTextChanged(const QString &text)
 //  Programmer:  Brad Whitlock
 //  Creation:    Thu Mar 6 15:56:05 PST 2008
 //
-//  Modifications:
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 void
 XMLEditConstants::targetTextChanged(const QString &text)
 {
     Attribute *a = xmldoc->attribute;
-    int index = constantlist->currentRow();
+    int index = constantlist->currentItem();
     if (index == -1)
         return;
     Constant *c = a->constants[index];
@@ -386,16 +363,12 @@ XMLEditConstants::targetTextChanged(const QString &text)
 //  Programmer:  Jeremy Meredith
 //  Creation:    October 17, 2002
 //
-//  Modifications:
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 void
 XMLEditConstants::memberChanged()
 {
     Attribute *a = xmldoc->attribute;
-    int index = constantlist->currentRow();
+    int index = constantlist->currentItem();
     if (index == -1)
         return;
     Constant *c = a->constants[index];
@@ -409,16 +382,12 @@ XMLEditConstants::memberChanged()
 //  Programmer:  Jeremy Meredith
 //  Creation:    October 17, 2002
 //
-//  Modifications:
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 void
 XMLEditConstants::declarationTextChanged(const QString &text)
 {
     Attribute *a = xmldoc->attribute;
-    int index = constantlist->currentRow();
+    int index = constantlist->currentItem();
     if (index == -1)
         return;
     Constant *c = a->constants[index];
@@ -432,21 +401,17 @@ XMLEditConstants::declarationTextChanged(const QString &text)
 //  Programmer:  Jeremy Meredith
 //  Creation:    October 17, 2002
 //
-//  Modifications:
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 void
 XMLEditConstants::definitionChanged()
 {
     Attribute *a = xmldoc->attribute;
-    int index = constantlist->currentRow();
+    int index = constantlist->currentItem();
     if (index == -1)
         return;
     Constant *c = a->constants[index];
 
-    c->def = definition->toPlainText();
+    c->def = definition->text();
 }
 
 // ****************************************************************************
@@ -458,9 +423,6 @@ XMLEditConstants::definitionChanged()
 //  Modifications:
 //    Brad Whitlock, Thu Mar 6 16:17:13 PST 2008
 //    Added xml2atts target.
-//
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
 //
 // ****************************************************************************
 void
@@ -476,7 +438,7 @@ XMLEditConstants::constantlistNew()
         newname = tr("unnamed%1").arg(newid);
         for (size_t i=0; i<constantlist->count() && okay; i++)
         {
-            if (constantlist->item(i)->text() == newname)
+            if (constantlist->text(i) == newname)
                 okay = false;
         }
         if (!okay)
@@ -489,9 +451,9 @@ XMLEditConstants::constantlistNew()
     UpdateWindowContents();
     for (size_t i=0; i<constantlist->count(); i++)
     {
-        if (constantlist->item(i)->text() == newname)
+        if (constantlist->text(i) == newname)
         {
-            constantlist->setCurrentRow(i);
+            constantlist->setCurrentItem(i);
             UpdateWindowSingleItem();
         }
     }
@@ -503,16 +465,12 @@ XMLEditConstants::constantlistNew()
 //  Programmer:  Jeremy Meredith
 //  Creation:    October 17, 2002
 //
-//  Modifications:
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 void
 XMLEditConstants::constantlistDel()
 {
     Attribute *a = xmldoc->attribute;
-    int index = constantlist->currentRow();
+    int index = constantlist->currentItem();
 
     if (index == -1)
         return;
@@ -532,5 +490,5 @@ XMLEditConstants::constantlistDel()
 
     if (index >= constantlist->count())
         index = constantlist->count()-1;
-    constantlist->setCurrentRow(index);
+    constantlist->setCurrentItem(index);
 }

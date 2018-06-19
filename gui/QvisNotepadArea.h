@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,14 +39,13 @@
 #ifndef QVIS_NOTEPAD_AREA
 #define QVIS_NOTEPAD_AREA
 #include <gui_exports.h>
-#include <QWidget>
-#include <QSizePolicy>
-#include <QMap>
+#include <qvbox.h>
+#include <qsizepolicy.h>
+#include <qmap.h>
 
 // forward declarations
 class QvisPostableWindow;
 class QTabWidget;
-class QVBoxLayout;
 
 // ****************************************************************************
 // Class: QvisNotepadArea
@@ -67,35 +66,31 @@ class QVBoxLayout;
 //   Changed an internal data structure and removed the method to handle
 //   paletteChange events since I found a better way to do it.
 //
-//   Brad Whitlock, Fri Jun  6 09:36:11 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
-class GUI_API QvisNotepadArea : public QWidget
+class GUI_API QvisNotepadArea : public QVBox
 {
     Q_OBJECT
 
     typedef struct
     {
-        QWidget     *parent;
-        QVBoxLayout *parentLayout;
-        bool         parentIsScrollView;
-        int          minWidth;
-        int          minHeight;
+        QWidget *parent;
+        bool     parentIsScrollView;
+        int      minWidth;
+        int      minHeight;
     } PostedInfo;
 
     typedef QMap<QWidget*, PostedInfo> PostedInfoLookup;
 public:
-    QvisNotepadArea(QWidget *parent = 0);
+    QvisNotepadArea(QWidget *parent = 0, const char *name = 0);
     virtual ~QvisNotepadArea();
     void showPage(QvisPostableWindow *pw);
     void postWindow(QvisPostableWindow *pw);
 private:
-    int               numPosted;
+    int              numPosted;
     QTabWidget       *tabs;
     QWidget          *empty;
-    PostedInfoLookup  postedLookup;
+    PostedInfoLookup postedLookup;
 };
 
 #endif

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -54,6 +54,8 @@
 #include <MaterialAttributes.h>
 #include <MeshManagementAttributes.h>
 #include <avtExpressionEvaluatorFilter.h>
+#include <avtNamedSelectionFilter.h>
+#include <avtNamedSelectionManager.h>
 #include <ImproperUseException.h>
 #include <InvalidVariableException.h>
 #include <DatabaseException.h>
@@ -61,6 +63,7 @@
 #include <avtPluginFilter.h>
 #include <OperatorPluginManager.h>
 #include <OperatorPluginInfo.h>
+#include <AnnotationObject.h>
 #include <AnnotationObjectList.h>
 #include <AnnotationAttributes.h>
 #include <PickAttributes.h>
@@ -89,6 +92,7 @@
 #include <avtParallel.h>
 #include <avtPickByNodeQuery.h>
 #include <avtPickByZoneQuery.h>
+#include <avtTransparencyActor.h>
 #include <avtZonePickQuery.h>
 #include <avtCurvePickQuery.h>
 #include <avtSoftwareShader.h>
@@ -824,10 +828,6 @@ NetworkManager::GetDBFromCache(const string &filename, int time,
 //
 //    Mark C. Miller, Tue Jun 10 22:36:25 PDT 2008
 //    Added support for ignoring bad extents from dbs.
-//
-//    Hank Childs, Fri Jan 16 15:30:15 PST 2009
-//    Store the variable with the working network.
-//
 // ****************************************************************************
 
 void
@@ -858,7 +858,6 @@ NetworkManager::StartNetwork(const string &format,
                                       fileMayHaveUnloadedPlugin,
                                       ignoreExtents);
     workingNet->SetNetDB(netDB);
-    workingNet->SetVariable(leaf);
     netDB->SetDBInfo(filename, leaf, time);
 
     // Put an ExpressionEvaluatorFilter right after the netDB to handle
@@ -1302,10 +1301,44 @@ NetworkManager::MakePlot(const string &plotName, const string &pluginID,
 //
 //    Gunther H. Weber, Thu Apr 12 11:00:57 PDT 2007
 //    Added missing space to debug message
+//
+//    Hank Childs, Mon Apr  6 13:06:22 PDT 2009
+//    Add support for sending named selection info to all filters.
+//
 // ****************************************************************************
 int
 NetworkManager::EndNetwork(int windowID)
 {
+    std::map<std::string, std::string>::iterator it;
+    for (it = namedSelectionsToApply.begin() ; 
+         it != namedSelectionsToApply.end() ; it++)
+    {
+        if ((it)->first == workingNet->GetPlotName())
+        {
+            avtNamedSelectionFilter *f = new avtNamedSelectionFilter();
+            f->SetSelectionName(it->second);
+            NetnodeFilter *filt = new NetnodeFilter(f, "NamedSelection");
+            Netnode *n = workingNetnodeList.back();
+            workingNetnodeList.pop_back();
+            filt->GetInputNodes().push_back(n);
+
+            // Push the ExpressionEvaluator onto the working list.
+            workingNetnodeList.push_back(filt);
+
+            workingNet->AddNode(filt);
+
+            std::vector<Netnode *> netnodes = workingNet->GetNodeList();
+            for (int i = 0 ; i < netnodes.size() ; i++)
+            {
+                avtFilter *filt = netnodes[i]->GetFilter();
+                if (filt == NULL)
+                    continue;
+                filt->RegisterNamedSelection(it->second);
+            }
+            workingNet->GetPlot()->RegisterNamedSelection(it->second);
+        }
+    }
+
     // Checking to see if the network has been built successfully.
     if (workingNetnodeList.size() != 1)
     {
@@ -1382,11 +1415,7 @@ NetworkManager::CancelNetwork(void)
 //    Mark C. Miller, Tue Jan  4 10:23:19 PST 2005
 //    Changed workingNet->GetID to workingNet->GetNetID
 //
-//    Hank Childs, Fri Jan 16 14:39:33 PST 2009
-//    Set the proper database info when calling UseNetwork.
-//
 // ****************************************************************************
-
 void
 NetworkManager::UseNetwork(int id)
 {
@@ -1414,11 +1443,6 @@ NetworkManager::UseNetwork(int id)
     }
  
     workingNet = networkCache[id];
-    NetnodeDB *db = workingNet->GetNetDB();
-    int time = workingNet->GetTime();
-    std::string filename = db->GetFilename();
-    std::string var = workingNet->GetVariable();
-    db->SetDBInfo(filename, var, time);
     int pipelineIndex = workingNet->GetContract()->GetPipelineIndex();
     loadBalancer->ResetPipeline(pipelineIndex);
 
@@ -1853,6 +1877,8 @@ NetworkManager::UpdatePlotAtts(int id, const AttributeGroup *atts)
 //    are streaming, not about whether we are doing dynamic load balancing.
 //    And the two are no longer synonymous.
 //
+//    Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//    Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 
 avtDataObjectWriter_p
@@ -1913,7 +1939,7 @@ NetworkManager::GetOutput(bool respondWithNullData, bool calledForRender,
         // return it
         CATCH_RETURN2(1, writer);
     }
-    CATCHALL(...)
+    CATCHALL
     {
         // Zero out the workingNet to ensure that the exception doesn't
         // cause a crash next time we try to build a network.  Remember
@@ -2136,8 +2162,19 @@ NetworkManager::NeedZBufferToCompositeEvenIn2D(const intVector plotIds)
 //    compositing step if they do.  This prevents the volume plot from
 //    having swathes of faded image data.
 //
-//    Hank Childs, Fri Nov 14 09:32:03 PST 2008
-//    Add a bunch of timings statements.
+//    Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//    Replaced CATCHALL(...) with CATCHALL.
+//
+//    Tom Fogal,  Wed Jul 22 10:50:58 MDT 2009
+//    Invalidate the cache earlier, to make sure we don't use cached values
+//    from the last rendering.  (trunk backport)
+//
+//    Tom Fogal, Fri May 29 20:50:23 MDT 2009 (Wed Jul 22 10:54:47 MDT 2009)
+//    Remove transparency cache invalidation from here ... (backport)
+//
+//    Tom Fogal, Wed Jul 22 15:29:43 MDT 2009
+//    Make sure to call *our* render methods.  Allows derived classes to fall
+//    back on this class, even if it overrides rendering methods.
 //
 // ****************************************************************************
 
@@ -2159,9 +2196,7 @@ NetworkManager::Render(intVector plotIds, bool getZBuffer, int annotMode,
         avtDataObjectWriter_p writer;
         this->StartTimer(); /* stopped in RenderCleanup */
 
-        int t1 = visitTimer->StartTimer();
         this->RenderSetup(plotIds, getZBuffer, annotMode, windowID, leftEye);
-        visitTimer->StopTimer(t1, "Render setup");
 
         // scalable threshold test (the 0.5 is to add some hysteresus to avoid 
         // the misfortune of oscillating switching of modes around the
@@ -2186,7 +2221,7 @@ NetworkManager::Render(intVector plotIds, bool getZBuffer, int annotMode,
         // FIRST PASS - Opaque only
         // ************************************************************
 
-        avtImage_p theImage = this->RenderGeometry();
+        avtImage_p theImage = NetworkManager::RenderGeometry();
 
         CallProgressCallback("NetworkManager", "Compositing", 0, 1);
 
@@ -2195,7 +2230,6 @@ NetworkManager::Render(intVector plotIds, bool getZBuffer, int annotMode,
         if (dump_renders)
             DumpImage(theImage, "before_OpaqueComposite");
 
-        int t1A = visitTimer->StartTimer();
         avtWholeImageCompositer *imageCompositer;
         imageCompositer = MakeCompositer(
                  viswin->GetWindowMode() == WINMODE_3D,
@@ -2217,7 +2251,6 @@ NetworkManager::Render(intVector plotIds, bool getZBuffer, int annotMode,
         theImage->GetSize(&imageCols, &imageRows);
         imageCompositer->SetOutputImageSize(imageRows, imageCols);
         imageCompositer->AddImageInput(theImage, 0, 0);
-        visitTimer->StopTimer(t1A, "Setting up background image");
 
         //
         // Parallel composite (via 1 stage `pipeline')
@@ -2231,7 +2264,6 @@ NetworkManager::Render(intVector plotIds, bool getZBuffer, int annotMode,
         // have the right image and everybody else will have a plain white BG.
         if(OnlyRootNodeHasData(theImage))
         {
-            int t1B = visitTimer->StartTimer();
             debug3 << "Data are not decomposed.  Skipping opaque composite."
                    << std::endl;
             // Sometimes the other processors need the image too, e.g. in
@@ -2246,13 +2278,10 @@ NetworkManager::Render(intVector plotIds, bool getZBuffer, int annotMode,
                                src_node);
             }
             CopyTo(compositedImageAsDataObject, theImage);
-            visitTimer->StopTimer(t1B, "Broadcasting image");
         }
         else
         {
-            int t1B = visitTimer->StartTimer();
             imageCompositer->Execute();
-            visitTimer->StopTimer(t1B, "Image compositer execute");
             compositedImageAsDataObject = imageCompositer->GetOutput();
         }
 
@@ -2271,13 +2300,11 @@ NetworkManager::Render(intVector plotIds, bool getZBuffer, int annotMode,
 
         if (this->MemoMultipass(viswin))
         {
-            int t1C = visitTimer->StartTimer();
             avtImage_p tmp_img;
             CopyTo(tmp_img, compositedImageAsDataObject);
 
             compositedImageAsDataObject =
-                this->RenderTranslucent(windowID, tmp_img);
-            visitTimer->StopTimer(t1C, "Translucent rendering");
+                NetworkManager::RenderTranslucent(windowID, tmp_img);
         }
 
         //
@@ -2285,9 +2312,7 @@ NetworkManager::Render(intVector plotIds, bool getZBuffer, int annotMode,
         //
         if (this->Shadowing(windowID))
         {
-            int t1D = visitTimer->StartTimer();
             this->RenderShadows(windowID, compositedImageAsDataObject);
-            visitTimer->StopTimer(t1D, "Adding shadows");
         }
 
         //
@@ -2295,19 +2320,15 @@ NetworkManager::Render(intVector plotIds, bool getZBuffer, int annotMode,
         //
         if (this->DepthCueing(windowID))
         {
-            int t1E = visitTimer->StartTimer();
             this->RenderDepthCues(windowID, compositedImageAsDataObject);
-            visitTimer->StopTimer(t1E, "Adding depth cues");
         }
 
         //
         // If the engine is doing more than just 3D annotations,
         // post-process the composited image.
         //
-        int t1F = visitTimer->StartTimer();
         this->RenderPostProcess(imageBasedPlots, compositedImageAsDataObject,
                                 windowID);
-        visitTimer->StopTimer(t1F, "Render postprocessing step (often volume rendering)");
 
         writer = compositedImageAsDataObject->InstantiateWriter();
         writer->SetInput(compositedImageAsDataObject);
@@ -2322,7 +2343,7 @@ NetworkManager::Render(intVector plotIds, bool getZBuffer, int annotMode,
         // return it
         CATCH_RETURN2(1, writer);
     }
-    CATCHALL(...)
+    CATCHALL
     {
         // rethrow
         RETHROW;
@@ -2670,6 +2691,10 @@ NetworkManager::UpdateVisualCues(int windowID)
 //    Brad Whitlock, Mon Jan 28 10:46:25 PDT 2008
 //    Changed for new AnnotationAttributes.
 //
+//    Brad Whitlock, Fri Jul 17 10:10:44 PDT 2009
+//    Added code to make sure that 3D text annotations are drawn when we
+//    want 3D annotations to be drawn.
+//
 // ****************************************************************************
 
 void
@@ -2721,6 +2746,15 @@ NetworkManager::SetAnnotationAttributes(const AnnotationAttributes &atts,
               newAtts.GetAxes3D().SetTriadFlag(false);
               newAtts.GetAxes2D().SetVisible(false);
               viswin->DeleteAllAnnotationObjects();
+              { // Add back in the 3D annotation objects.
+                  AnnotationObjectList aolist2;
+                  for(int aIndex = 0; aIndex < aolist.GetNumAnnotations(); ++aIndex)
+                  {
+                      if(aolist[aIndex].GetObjectType() == AnnotationObject::Text3D)
+                          aolist2.AddAnnotation(aolist[aIndex]);
+                  }
+                  viswin->CreateAnnotationObjectsFromList(aolist2);
+              }
               break;
 
           case 2: // all annotations
@@ -2975,6 +3009,8 @@ NetworkManager::StopQueryMode(void)
 //    Add else statement to make Klocwork happy.  Also make sure we don't
 //    delete already freed memory during error condition.
 //
+//    Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//    Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
  
 void
@@ -3240,7 +3276,7 @@ NetworkManager::Pick(const int id, const int winId, PickAttributes *pa)
         }
         visitTimer->DumpTimings();
     }
-    CATCHALL( ... )
+    CATCHALL
     {
         if (lQ != NULL)
             delete lQ;
@@ -3328,6 +3364,8 @@ NetworkManager::Pick(const int id, const int winId, PickAttributes *pa)
 //    Hank Childs, Fri Feb 15 13:13:21 PST 2008
 //    Prevent possible problem of freeing freed memory during error condition.
 //
+//    Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//    Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 
 void
@@ -3435,7 +3473,7 @@ NetworkManager::Query(const std::vector<int> &ids, QueryAttributes *qa)
         }
         visitTimer->DumpTimings();
     }
-    CATCHALL( ... )
+    CATCHALL
     {
         if (query != NULL)
             delete query;
@@ -3443,6 +3481,155 @@ NetworkManager::Query(const std::vector<int> &ids, QueryAttributes *qa)
     }
     ENDTRY
 }
+
+
+// ****************************************************************************
+//  Method:  NetworkManager::CreateNamedSelection
+//
+//  Purpose:
+//      Creates a named selection from a plot.
+//
+//  Arguments:
+//    id         The network to use.
+//    selName    The name of the selection.
+//
+//  Programmer:  Hank Childs
+//  Creation:    January 30, 2009
+//
+// ****************************************************************************
+
+void
+NetworkManager::CreateNamedSelection(int id, const std::string &selName)
+{
+    if (id >= networkCache.size())
+    {
+        debug1 << "Internal error:  asked to use network ID (" << id 
+               << ") >= num saved networks ("
+               << networkCache.size() << ")" << endl;
+        EXCEPTION0(ImproperUseException);
+    }
+ 
+    if (networkCache[id] == NULL)
+    {
+        debug1 << "Asked to construct a named selection from a network "
+               << "that has already been cleared." << endl;
+        EXCEPTION0(ImproperUseException);
+    }
+
+    if (id != networkCache[id]->GetNetID())
+    {
+        debug1 << "Internal error: network at position[" << id << "] "
+               << "does not have same id (" << networkCache[id]->GetNetID()
+               << ")" << endl;
+        EXCEPTION0(ImproperUseException);
+    }
+
+    avtDataObject_p dob = 
+        networkCache[id]->GetPlot()->GetIntermediateDataObject();
+
+    if (*dob == NULL)
+    {
+        debug1 << "Could not find a valid data set to create a named "
+               << "selection from" << endl;
+        EXCEPTION0(NoInputException);
+    }
+
+    avtNamedSelectionManager *nsm = avtNamedSelectionManager::GetInstance();
+    nsm->CreateNamedSelection(dob, selName);
+}
+
+
+// ****************************************************************************
+//  Method:  NetworkManager::ApplyNamedSelection
+//
+//  Purpose:
+//      Applies a named selection to a plot.
+//
+//  Arguments:
+//    ids        The networks to use.
+//    selName    The name of the selection.
+//
+//  Programmer:  Hank Childs
+//  Creation:    January 30, 2009
+//
+// ****************************************************************************
+
+void
+NetworkManager::ApplyNamedSelection(const std::vector<std::string> &ids, 
+                                     const std::string &selName)
+{
+    for (int i = 0 ; i < ids.size() ; i++)
+    {
+        namedSelectionsToApply[ids[i]] = selName;
+    }
+}
+
+
+// ****************************************************************************
+//  Method:  NetworkManager::DeleteNamedSelection
+//
+//  Purpose:
+//      Deletes a named selection.
+//
+//  Arguments:
+//    selName    The name of the selection.
+//
+//  Programmer:  Hank Childs
+//  Creation:    January 30, 2009
+//
+// ****************************************************************************
+
+void
+NetworkManager::DeleteNamedSelection(const std::string &selName)
+{
+    avtNamedSelectionManager *nsm = avtNamedSelectionManager::GetInstance();
+    nsm->DeleteNamedSelection(selName);
+}
+
+
+// ****************************************************************************
+//  Method:  NetworkManager::LoadNamedSelection
+//
+//  Purpose:
+//      Loads a named selection.
+//
+//  Arguments:
+//    selName    The name of the selection.
+//
+//  Programmer:  Hank Childs
+//  Creation:    January 30, 2009
+//
+// ****************************************************************************
+
+void
+NetworkManager::LoadNamedSelection(const std::string &selName)
+{
+    avtNamedSelectionManager *nsm = avtNamedSelectionManager::GetInstance();
+    nsm->LoadNamedSelection(selName);
+}
+
+
+// ****************************************************************************
+//  Method:  NetworkManager::SaveNamedSelection
+//
+//  Purpose:
+//      Saves a named selection.
+//
+//  Arguments:
+//    selName    The name of the selection.
+//
+//  Programmer:  Hank Childs
+//  Creation:    January 30, 2009
+//
+// ****************************************************************************
+
+void
+NetworkManager::SaveNamedSelection(const std::string &selName)
+{
+    avtNamedSelectionManager *nsm = avtNamedSelectionManager::GetInstance();
+    nsm->SaveNamedSelection(selName);
+}
+
 
 // ****************************************************************************
 //  Method:  NetworkManager::ConstructDDF
@@ -4817,6 +5004,8 @@ NetworkManager::SetUpWindowContents(int windowID, const intVector &plotIds,
     }
 
     // see if there are any non-mesh plots in the list
+    // If there's both mesh and non-mesh plots, we don't make the mesh opaque
+    // (since it'd block other plots).
     bool hasNonMeshPlots = HasNonMeshPlots(plotIds);
 
     // see if we need the z-buffer to composite correctly in 2D.
@@ -5028,6 +5217,18 @@ NetworkManager::SetUpWindowContents(int windowID, const intVector &plotIds,
 //    When initializing state, make sure to erase whatever memoization we had
 //    from the last frame.
 //
+//    Tom Fogal, Mon May 25 18:36:19 MDT 2009
+//    Force transparency calculation here, so the value we get cached for later
+//    rendering.  This prevents us from doing global comm while doing the
+//    rendering proper.
+//
+//    Tom Fogal, Tue May 26 15:45:43 MDT 2009
+//    Minor touchups to debug statements.
+//
+//    Tom Fogal, Fri May 29 20:50:23 MDT 2009
+//    ... and move it (transparency cache invalidation) to here.
+//    Secondly, don't invalidate it twice!
+//
 // ****************************************************************************
 
 void
@@ -5055,6 +5256,12 @@ NetworkManager::RenderSetup(intVector& plotIds, bool getZBuffer,
     std::vector<int>& plotsCurrentlyInWindow =
         viswinInfo.plotsCurrentlyInWindow;
     VisWindow *viswin = viswinInfo.viswin;
+
+    { // Make sure transparency gets recalculated.
+        debug5 << "Invalidating transparency cache." << std::endl;
+        avtTransparencyActor* trans = viswin->GetTransparencyActor();
+        trans->InvalidateTransparencyCache();
+    }
 
     this->r_mgmt.needToSetUpWindowContents = false;
     this->r_mgmt.cellCounts = new int[2 * plotIds.size()];
@@ -5096,9 +5303,7 @@ NetworkManager::RenderSetup(intVector& plotIds, bool getZBuffer,
 
     if(this->r_mgmt.needToSetUpWindowContents)
     {
-        int t1 = visitTimer->StartTimer();
         this->SetUpWindowContents(windowID, plotIds, forceViewerExecute);
-        visitTimer->StopTimer(t1, "Setting up window contents");
         plotsCurrentlyInWindow = plotIds;
     }
 
@@ -5237,6 +5442,15 @@ NetworkManager::RenderSetup(intVector& plotIds, bool getZBuffer,
         (viswin->GetWindowMode() == WINMODE_2D) ||
         (viswin->GetWindowMode() == WINMODE_CURVE) ||
         (viswin->GetWindowMode() == WINMODE_AXISARRAY);
+
+    { // Force transparency calculation early here, to ensure it gets cached.
+        debug5 << "Forcing early calculation of transparency..." << std::endl;
+        avtTransparencyActor* trans = viswin->GetTransparencyActor();
+        bool t = trans->TransparenciesExist();
+        debug3 << "Early transparency calculation says there "
+               << (t ? "is" : "is not")
+               << " some transparent geometry." << std::endl;
+    }
 }
 
 // ****************************************************************************
@@ -5897,9 +6111,6 @@ NetworkManager::RenderDepthCues(int windowID,
 //    Tom Fogal, Wed Jul  2 15:09:47 EDT 2008
 //    Avoid VisWindow lookup if not in `2'nd annotation mode.
 //
-//    Hank Childs, Fri Nov 14 09:32:54 PST 2008
-//    Add a bunch of timings statements.
-//
 // ****************************************************************************
 
 void
@@ -5919,11 +6130,8 @@ NetworkManager::RenderPostProcess(std::vector<avtPlot_p>& image_plots,
             plot != image_plots.end();
             ++plot)
         {
-            int t1 = visitTimer->StartTimer();
             avtImage_p newImage = (*plot)->ImageExecute(compositedImage,
                                                         windowAttributes);
-            visitTimer->StopTimer(t1, 
-                         "Image Execute method (often volume rendering)");
             compositedImage = newImage;
         }
         CopyTo(input_as_dob, compositedImage);
@@ -5936,7 +6144,6 @@ NetworkManager::RenderPostProcess(std::vector<avtPlot_p>& image_plots,
     if (this->r_mgmt.annotMode==2)
 #endif
     {
-        int t2 = visitTimer->StartTimer();
         VisWindow *viswin = viswinMap.find(windowID)->second.viswin;
         avtImage_p compositedImage;
         CopyTo(compositedImage, input_as_dob);
@@ -5945,6 +6152,5 @@ NetworkManager::RenderPostProcess(std::vector<avtPlot_p>& image_plots,
                                              this->r_mgmt.viewportedMode,
                                              this->r_mgmt.getZBuffer);
         CopyTo(input_as_dob, postProcessedImage);
-        visitTimer->StopTimer(t2, "VisWindow::PostProcessScreenCapture");
     }
 }

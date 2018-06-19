@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -36,20 +36,19 @@
 *
 *****************************************************************************/
 
-#include "XMLEditStd.h"
 #include "XMLEditCode.h"
 
 #include <XMLDocument.h>
 #include <Attribute.h>
-#include <QLabel>
-#include <QLayout>
-#include <qlistwidget.h>
-#include <QTextEdit>
-#include <QPushButton>
-#include <QRadioButton>
-#include <QLineEdit>
-#include <QButtonGroup>
-#include <QCheckBox>
+#include <qlabel.h>
+#include <qlayout.h>
+#include <qlistbox.h>
+#include <qmultilineedit.h>
+#include <qpushbutton.h>
+#include <qradiobutton.h>
+#include <qlineedit.h>
+#include <qbuttongroup.h>
+#include <qcheckbox.h>
 
 // ****************************************************************************
 //  Constructor:  XMLEditCode::XMLEditCode
@@ -61,19 +60,16 @@
 //    Brad Whitlock, Thu Mar 6 16:00:56 PST 2008
 //    Added support for target.
 //
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
-XMLEditCode::XMLEditCode(QWidget *p)
-    : QFrame(p)
+XMLEditCode::XMLEditCode(QWidget *p, const QString &n)
+    : QFrame(p, n)
 {
     QHBoxLayout *hLayout = new QHBoxLayout(this);
 
-    QGridLayout *listLayout = new QGridLayout();
+    QGridLayout *listLayout = new QGridLayout(hLayout, 2,2, 5);
 
-    codelist = new QListWidget(this);
-    listLayout->addWidget(codelist, 0,0, 1,2);
+    codelist = new QListBox(this);
+    listLayout->addMultiCellWidget(codelist, 0,0, 0,1);
 
     newButton = new QPushButton(tr("New"), this);
     listLayout->addWidget(newButton, 1,0);
@@ -81,10 +77,9 @@ XMLEditCode::XMLEditCode(QWidget *p)
     delButton = new QPushButton(tr("Del"), this);
     listLayout->addWidget(delButton, 1,1);
 
-    hLayout->addLayout(listLayout);
     hLayout->addSpacing(10);
 
-    QGridLayout *topLayout = new QGridLayout();
+    QGridLayout *topLayout = new QGridLayout(hLayout, 6,2, 5);
     int row = 0;
 
     topLayout->addWidget(new QLabel(tr("Target"), this), row, 0);
@@ -102,26 +97,25 @@ XMLEditCode::XMLEditCode(QWidget *p)
 
     QFont monospaced("Courier");
 
-    prefix = new QTextEdit(this);
+    prefix = new QMultiLineEdit(this);
     prefix->setFont(monospaced);
-    prefix->setWordWrapMode(QTextOption::NoWrap);
-    topLayout->addWidget(prefix, row,0, 1,2);
+    prefix->setWordWrap(QTextEdit::NoWrap);
+    topLayout->addMultiCellWidget(prefix, row,row, 0,1);
     row++;
 
     topLayout->addWidget(new QLabel(tr("Postfix"), this), row, 0);
     row++;
 
-    postfix = new QTextEdit(this);
+    postfix = new QMultiLineEdit(this);
     postfix->setFont(monospaced);
-    postfix->setWordWrapMode(QTextOption::NoWrap);
-    topLayout->addWidget(postfix, row,0, 1,2);
+    postfix->setWordWrap(QTextEdit::NoWrap);
+    topLayout->addMultiCellWidget(postfix, row,row, 0,1);
     row++;
 
-    topLayout->setRowMinimumHeight(row, 20);
+    topLayout->addRowSpacing(row, 20);
     row++;
-    hLayout->addLayout(topLayout);
 
-    connect(codelist, SIGNAL(currentRowChanged(int)),
+    connect(codelist, SIGNAL(selectionChanged()),
             this, SLOT(UpdateWindowSingleItem()));
     connect(target, SIGNAL(textChanged(const QString&)),
             this, SLOT(targetTextChanged(const QString&)));
@@ -180,9 +174,6 @@ XMLEditCode::CountCodes(const QString &name) const
 //    Brad Whitlock, Thu Mar 6 16:01:50 PST 2008
 //    Added target.
 //
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 void
 XMLEditCode::UpdateWindowContents()
@@ -195,11 +186,12 @@ XMLEditCode::UpdateWindowContents()
     {
         if(CountCodes(a->codes[i]->name) > 1)
         { 
-           QString id = QString("%1 [%2]").arg(a->codes[i]->name).arg(a->codes[i]->target);
-            codelist->addItem(id);
+           QString id; id.sprintf("%s [%s]", a->codes[i]->name.latin1(),
+               a->codes[i]->target.latin1());
+            codelist->insertItem(id);
         }
         else
-            codelist->addItem(a->codes[i]->name);
+            codelist->insertItem(a->codes[i]->name);
     }
 
     BlockAllSignals(false);
@@ -219,14 +211,11 @@ XMLEditCode::UpdateWindowContents()
 //    Brad Whitlock, Thu Mar 6 16:04:06 PST 2008
 //    Added target.
 //
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 void
 XMLEditCode::UpdateWindowSensitivity()
 {
-    bool active = codelist->currentRow() != -1;
+    bool active = codelist->currentItem() != -1;
 
     delButton->setEnabled(codelist->count() > 0);
     target->setEnabled(active);
@@ -248,9 +237,6 @@ XMLEditCode::UpdateWindowSensitivity()
 //    Brad Whitlock, Thu Mar 6 16:05:54 PST 2008
 //    Added target.
 //
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 void
 XMLEditCode::UpdateWindowSingleItem()
@@ -258,7 +244,7 @@ XMLEditCode::UpdateWindowSingleItem()
     BlockAllSignals(true);
 
     Attribute *a = xmldoc->attribute;
-    int index = codelist->currentRow();
+    int index = codelist->currentItem();
 
     if (index == -1)
     {
@@ -319,21 +305,17 @@ XMLEditCode::BlockAllSignals(bool block)
 //  Programmer:  Jeremy Meredith
 //  Creation:    October 17, 2002
 //
-//  Modifications:
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 void
 XMLEditCode::nameTextChanged(const QString &text)
 {
     Attribute *a = xmldoc->attribute;
-    int index = codelist->currentRow();
+    int index = codelist->currentItem();
     if (index == -1)
         return;
     Code *c = a->codes[index];
 
-    QString newname = text.trimmed();
+    QString newname = text.stripWhiteSpace();
     c->name = newname;
     if(CountCodes(newname) > 1)
     {
@@ -342,7 +324,7 @@ XMLEditCode::nameTextChanged(const QString &text)
         newname += "]";
     }
     BlockAllSignals(true);
-    codelist->item(index)->setText(text);
+    codelist->changeItem(text, index);
     BlockAllSignals(false);
 }
 
@@ -352,17 +334,12 @@ XMLEditCode::nameTextChanged(const QString &text)
 //  Programmer:  Brad Whitlock
 //  Creation:    Thu Mar 6 15:56:05 PST 2008
 //
-//  Modifications:
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
-
 // ****************************************************************************
 void
 XMLEditCode::targetTextChanged(const QString &text)
 {
     Attribute *a = xmldoc->attribute;
-    int index = codelist->currentRow();
+    int index = codelist->currentItem();
     if (index == -1)
         return;
     Code *c = a->codes[index];
@@ -377,22 +354,17 @@ XMLEditCode::targetTextChanged(const QString &text)
 //  Programmer:  Jeremy Meredith
 //  Creation:    October 17, 2002
 //
-//  Modifications:
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
-
 // ****************************************************************************
 void
 XMLEditCode::prefixChanged()
 {
     Attribute *a = xmldoc->attribute;
-    int index = codelist->currentRow();
+    int index = codelist->currentItem();
     if (index == -1)
         return;
     Code *c = a->codes[index];
 
-    c->prefix = prefix->toPlainText();
+    c->prefix = prefix->text();
 }
 
 // ****************************************************************************
@@ -401,22 +373,17 @@ XMLEditCode::prefixChanged()
 //  Programmer:  Jeremy Meredith
 //  Creation:    October 17, 2002
 //
-//  Modifications:
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
-
 // ****************************************************************************
 void
 XMLEditCode::postfixChanged()
 {
     Attribute *a = xmldoc->attribute;
-    int index = codelist->currentRow();
+    int index = codelist->currentItem();
     if (index == -1)
         return;
     Code *c = a->codes[index];
 
-    c->postfix = postfix->toPlainText();
+    c->postfix = postfix->text();
 }
 
 // ****************************************************************************
@@ -429,10 +396,6 @@ XMLEditCode::postfixChanged()
 //    Brad Whitlock, Thu Mar 6 16:07:22 PST 2008
 //    Added default target of xml2atts.
 //
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
-
 // ****************************************************************************
 void
 XMLEditCode::codelistNew()
@@ -447,7 +410,7 @@ XMLEditCode::codelistNew()
         newname = tr("unnamed%1").arg(newid);
         for (size_t i=0; i<codelist->count() && okay; i++)
         {
-            if (codelist->item(i)->text() == newname)
+            if (codelist->text(i) == newname)
                 okay = false;
         }
         if (!okay)
@@ -460,9 +423,9 @@ XMLEditCode::codelistNew()
     UpdateWindowContents();
     for (size_t i=0; i<codelist->count(); i++)
     {
-        if (codelist->item(i)->text() == newname)
+        if (codelist->text(i) == newname)
         {
-            codelist->setCurrentRow(i);
+            codelist->setCurrentItem(i);
             UpdateWindowSingleItem();
         }
     }
@@ -474,17 +437,12 @@ XMLEditCode::codelistNew()
 //  Programmer:  Jeremy Meredith
 //  Creation:    October 17, 2002
 //
-//  Modifications:
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
-
 // ****************************************************************************
 void
 XMLEditCode::codelistDel()
 {
     Attribute *a = xmldoc->attribute;
-    int index = codelist->currentRow();
+    int index = codelist->currentItem();
 
     if (index == -1)
         return;
@@ -504,5 +462,5 @@ XMLEditCode::codelistDel()
 
     if (index >= codelist->count())
         index = codelist->count()-1;
-    codelist->setCurrentRow(index);
+    codelist->setCurrentItem(index);
 }

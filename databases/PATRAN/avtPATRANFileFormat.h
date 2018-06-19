@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -57,6 +57,8 @@
 //  Creation:   Thu Jul 28 13:51:07 PST 2005
 //
 //  Modifications:
+//    Brad Whitlock, Mon Jun  8 10:12:39 PDT 2009
+//    I added properties array to hold cell data.
 //
 // ****************************************************************************
 
@@ -96,6 +98,7 @@ protected:
     vtkDataSet            *meshDS;
     vtkDataArray          *elementMats;
     vtkDataArray          *elementIds;
+    vtkDataArray          *properties[5];
     std::string            title;
 
     int                   *componentList;

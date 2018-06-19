@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -285,8 +285,14 @@ class avtToolInterface;
 //    Brad Whitlock, Tue Apr 29 15:34:48 PDT 2008
 //    Added GetMenuName.
 //
-//    Brad Whitlock, Wed Jan  7 15:32:49 PST 2009
-//    Added UpdatePlotInformation and removed GetPlotInfoAtts.
+//    Kathleen Bonnell, Tue Mar  3 15:03:19 PST 2009
+//    Renamed CanDoLogViewScaling to PermitsLogViewScaling.
+//
+//    Hank Childs, Tue Jul 14 14:28:36 PDT 2009
+//    Added methods and data member for named selections.
+//
+//    Eric Brugger, Fri Feb 12 15:28:11 PST 2010
+//    Added SetNumPlotsCreated.
 //
 // ****************************************************************************
 
@@ -349,6 +355,8 @@ class VIEWER_API ViewerPlot : public ViewerBase
     avtSILRestriction_p GetSILRestriction() const;
     const avtDatabaseMetaData *GetMetaData() const;
     ExpressionList GetExpressions() const;
+    void SetNamedSelection(const std::string &s) { namedSelection = s; };
+    const std::string &GetNamedSelection(void) { return namedSelection; };
 
     //
     // Returns the database state that the plot currently displays.
@@ -485,10 +493,11 @@ class VIEWER_API ViewerPlot : public ViewerBase
     void UpdateDataExtents();
     bool SetFullFrameScaling(bool, double *);
 
-    void UpdatePlotInformation() const;
-
+    const PlotInfoAttributes *GetPlotInfoAtts(void);
     void SetScaleMode(ScaleMode ds, ScaleMode rs, WINDOW_MODE wm);
-    bool CanDoLogViewScaling(WINDOW_MODE wm);
+    bool PermitsLogViewScaling(WINDOW_MODE wm);
+
+    static void SetNumPlotsCreated(int);
 
   protected:
     void CopyHelper(const ViewerPlot &);
@@ -529,6 +538,7 @@ class VIEWER_API ViewerPlot : public ViewerBase
     AttributeSubjectMap    *databaseAtts;
     DatabaseAttributes     *curDatabaseAtts;
     avtSILRestriction_p     silr;
+    std::string             namedSelection;
     avtExtentType           spatialExtentsType;
 
     double                  bgColor[3];

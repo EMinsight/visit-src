@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,13 +37,13 @@
 *****************************************************************************/
 
 #include <QvisEngineWindow.h>
-#include <QLabel>
-#include <QLayout>
-#include <QProgressBar>
-#include <QPushButton>
-#include <QComboBox>
-#include <QGroupBox>
-#include <QMessageBox>
+#include <qlabel.h>
+#include <qlayout.h>
+#include <qprogressbar.h>
+#include <qpushbutton.h>
+#include <qcombobox.h>
+#include <qgroupbox.h>
+#include <qmessagebox.h>
 
 #include <EngineList.h>
 #include <StatusAttributes.h>
@@ -90,23 +90,18 @@ QvisEngineWindow::QvisEngineWindow(EngineList *engineList,
 // Creation:   Wed May 2 16:31:22 PST 2001
 //
 // Modifications:
-//   Cyrus Harrison, Tue Jun 24 11:15:28 PDT 2008
-//   Initial Qt4 Port.
-//
+//   
 // ****************************************************************************
 
 QvisEngineWindow::~QvisEngineWindow()
 {
     // Delete the status attributes in the status map.
-    
-    QMapIterator<QString, StatusAttributes*> itr(statusMap);
-    
-    while(itr.hasNext())
+    EngineStatusMap::Iterator pos;
+    for(pos = statusMap.begin(); pos != statusMap.end(); ++pos)
     {
-        itr.next();
-        delete itr.value();
+        delete pos.data();
     }
-    
+
     // Detach from the status atts if they are still around.
     if(statusAtts)
         statusAtts->Detach(this);
@@ -140,9 +135,6 @@ QvisEngineWindow::~QvisEngineWindow()
 //    consistent with the simulation window and so it takes less vertical
 //    space.
 //
-//    Cyrus Harrison, Tue Jun 24 11:15:28 PDT 2008
-//    Initial Qt4 Port.
-//
 // ****************************************************************************
 
 void
@@ -150,71 +142,71 @@ QvisEngineWindow::CreateWindowContents()
 {
     isCreated = true;
 
-    QGridLayout *grid1 = new QGridLayout();
-    topLayout->addLayout(grid1);
-    grid1->setColumnStretch(1, 10);
+    QGridLayout *grid1 = new QGridLayout(topLayout, 2, 2);
+    grid1->setColStretch(1, 10);
 
-    engineCombo = new QComboBox(central);
+    engineCombo = new QComboBox(central, "engineCombo");
     connect(engineCombo, SIGNAL(activated(int)), this, SLOT(selectEngine(int)));
     grid1->addWidget(engineCombo, 0, 1);
-    engineLabel = new QLabel(tr("Engine:"), central);
+    engineLabel = new QLabel(engineCombo, tr("Engine:"), central, "engineLabel");
     grid1->addWidget(engineLabel, 0, 0);
 
     // Create the widgets needed to show the engine information.
-    engineInfo = new QGroupBox(central);
+    engineInfo = new QGroupBox(central, "activeGroup");
     engineInfo->setTitle(tr("Engine Information"));
     topLayout->addWidget(engineInfo);
     QVBoxLayout *infoTopLayout = new QVBoxLayout(engineInfo);
+    infoTopLayout->setMargin(10);
+    infoTopLayout->addSpacing(15);
+    QGridLayout *infoLayout = new QGridLayout(infoTopLayout, 3, 2);
+    infoLayout->setSpacing(5);
 
-    QGridLayout *infoLayout = new QGridLayout();
-    infoTopLayout->addLayout(infoLayout);
-
-    engineNP = new QLabel(engineInfo);
+    engineNP = new QLabel(engineInfo, "engineNP");
     infoLayout->addWidget(engineNP, 0, 1);
-    QLabel *engineNPLabel = new QLabel(tr("Number of processors:"),engineInfo);
+    QLabel *engineNPLabel = new QLabel(engineNP, tr("Number of processors:"),
+        engineInfo, "engineNPLabel");
     infoLayout->addWidget(engineNPLabel, 0, 0);
 
-    engineNN = new QLabel(engineInfo);
+    engineNN = new QLabel(engineInfo, "engineNN");
     infoLayout->addWidget(engineNN, 1, 1);
-    QLabel *engineNNLabel = new QLabel(tr("Number of nodes:"),engineInfo);
+    QLabel *engineNNLabel = new QLabel(engineNN, tr("Number of nodes:"),
+        engineInfo, "engineNNLabel");
     infoLayout->addWidget(engineNNLabel, 1, 0);
 
-    engineLB = new QLabel(engineInfo);
+    engineLB = new QLabel(engineInfo, "engineLB");
     infoLayout->addWidget(engineLB, 2, 1);
-    QLabel *engineLBLabel = new QLabel(tr("Load balancing:"),engineInfo);
+    QLabel *engineLBLabel = new QLabel(engineLB, tr("Load balancing:"),
+        engineInfo, "engineNPLabel");
     infoLayout->addWidget(engineLBLabel, 2, 0);
 
     // Create the status bars.
-    totalStatusLabel = new QLabel(tr("Total status:"), central);
+    totalStatusLabel = new QLabel(tr("Total status:"), central, "totalStatusLabel");
     topLayout->addWidget(totalStatusLabel);
 
-    totalProgressBar = new QProgressBar(central);
-    totalProgressBar->setMinimum(0);
-    totalProgressBar->setMaximum(100);
+    totalProgressBar = new QProgressBar(central, "totalProgressBar");
+    totalProgressBar->setTotalSteps(100);
     topLayout->addWidget(totalProgressBar);
 
-    stageStatusLabel = new QLabel(tr("Stage status:"), central);
+    stageStatusLabel = new QLabel(tr("Stage status:"), central, "stageStatusLabel");
     topLayout->addWidget(stageStatusLabel);
 
-    stageProgressBar = new QProgressBar(central);
-    stageProgressBar->setMinimum(0);
-    stageProgressBar->setMaximum(100);
+    stageProgressBar = new QProgressBar(central, "stageProgressBar");
+    stageProgressBar->setTotalSteps(100);
     topLayout->addWidget(stageProgressBar);
 
-    QHBoxLayout *buttonLayout1 = new QHBoxLayout();
-    topLayout->addLayout(buttonLayout1);
-    
-    interruptEngineButton = new QPushButton(tr("Interrupt"), central);
+    QHBoxLayout *buttonLayout1 = new QHBoxLayout(topLayout);
+    buttonLayout1->setSpacing(10);
+    interruptEngineButton = new QPushButton(tr("Interrupt"), central, "interruptEngineButton");
     connect(interruptEngineButton, SIGNAL(clicked()), this, SLOT(interruptEngine()));
     interruptEngineButton->setEnabled(false);
     buttonLayout1->addWidget(interruptEngineButton);
 
-    clearCacheButton = new QPushButton(tr("Clear cache"), central);
+    clearCacheButton = new QPushButton(tr("Clear cache"), central, "clearCacheButton");
     connect(clearCacheButton, SIGNAL(clicked()), this, SLOT(clearCache()));
     clearCacheButton->setEnabled(false);
     buttonLayout1->addWidget(clearCacheButton);
 
-    closeEngineButton = new QPushButton(tr("Close engine"), central);
+    closeEngineButton = new QPushButton(tr("Close engine"), central, "closeEngineButton");
     connect(closeEngineButton, SIGNAL(clicked()), this, SLOT(closeEngine()));
     closeEngineButton->setEnabled(false);
     buttonLayout1->addWidget(closeEngineButton);
@@ -305,9 +297,6 @@ QvisEngineWindow::SubjectRemoved(Subject *TheRemovedSubject)
 //   Brad Whitlock, Tue Apr  8 09:27:26 PDT 2008
 //   Support for internationalization.
 //
-//    Cyrus Harrison, Tue Jun 24 11:15:28 PDT 2008
-//    Initial Qt4 Port.
-//
 // ****************************************************************************
 
 void
@@ -327,17 +316,17 @@ QvisEngineWindow::UpdateWindow(bool doAll)
             QString temp(host[i].c_str());
             if (!sim[i].empty())
             {
-                int lastSlashPos = QString(sim[i].c_str()).lastIndexOf('/');
+                int lastSlashPos = QString(sim[i].c_str()).findRev('/');
                 QString newsim(sim[i].substr(lastSlashPos+1).c_str());
-                int lastDotPos =  newsim.lastIndexOf('.');
-                int firstDotPos =  newsim.indexOf('.');
+                int lastDotPos =  newsim.findRev('.');
+                int firstDotPos =  newsim.find('.');
 
                 QString name = newsim.mid(firstDotPos+1,
                                           lastDotPos-firstDotPos-1);
 
                 temp = name + tr(" on ") + QString(host[i].c_str());
             }
-            engineCombo->addItem(temp);
+            engineCombo->insertItem(temp);
 
             if(temp == activeEngine)
                 current = i;
@@ -349,7 +338,7 @@ QvisEngineWindow::UpdateWindow(bool doAll)
             if(engineCombo->count() > 0)
             {
                 current = 0;
-                engineCombo->setCurrentIndex(0);
+                engineCombo->setCurrentItem(0);
                 if (sim[0]=="")
                     activeEngine = QString().sprintf("%s",host[0].c_str());
                 else
@@ -369,7 +358,7 @@ QvisEngineWindow::UpdateWindow(bool doAll)
         }
         else
         {
-            engineCombo->setCurrentIndex(current);
+            engineCombo->setCurrentItem(current);
         }
         engineCombo->blockSignals(false);
 
@@ -489,19 +478,16 @@ QvisEngineWindow::UpdateInformation(int index)
 //    Brad Whitlock, Tue Apr 29 10:45:23 PDT 2008
 //    Support for internationalization.
 //
-//    Cyrus Harrison, Tue Jun 24 11:15:28 PDT 2008
-//    Initial Qt4 Port.
-//
 // ****************************************************************************
 
 void
 QvisEngineWindow::UpdateStatusArea()
 {
-    
-    if(!statusMap.contains(activeEngine))
+    EngineStatusMap::Iterator pos;
+    if((pos = statusMap.find(activeEngine)) == statusMap.end())
         return;
-        
-    StatusAttributes *s = statusMap[activeEngine];
+
+    StatusAttributes *s = pos.data();
     if(s->GetClearStatus())
     {
         s->SetStatusMessage("");
@@ -539,8 +525,8 @@ QvisEngineWindow::UpdateStatusArea()
         }
 
         // Set the progress bar percent done.
-        totalProgressBar->setValue(total);
-        stageProgressBar->setValue(s->GetPercent());
+        totalProgressBar->setProgress(total);
+        stageProgressBar->setProgress(s->GetPercent());
     }
 }
 
@@ -612,20 +598,19 @@ QvisEngineWindow::AddStatusEntry(const QString &key)
 // Creation:   Wed May 2 16:35:50 PST 2001
 //
 // Modifications:
-//    Cyrus Harrison, Tue Jun 24 11:15:28 PDT 2008
-//    Initial Qt4 Port.
-//
+//   
 // ****************************************************************************
 
 void
 QvisEngineWindow::RemoveStatusEntry(const QString &key)
 {
     // If the entry is not in the map, return.
-    if(!statusMap.contains(key))
-        return;    
+    EngineStatusMap::Iterator pos;
+    if((pos = statusMap.find(key)) == statusMap.end())
+        return;
 
     // Delete the status attributes that are in the map.
-    delete statusMap[key];
+    delete pos.data();
     // Remove the key from the map.
     statusMap.remove(key);
 }
@@ -644,10 +629,7 @@ QvisEngineWindow::RemoveStatusEntry(const QString &key)
 // Creation:   Wed May 2 16:36:43 PST 2001
 //
 // Modifications:
-//    Cyrus Harrison, Tue Jun 24 11:15:28 PDT 2008
-//    Initial Qt4 Port.
-//
-//
+//   
 // ****************************************************************************
 
 void
@@ -655,11 +637,11 @@ QvisEngineWindow::UpdateStatusEntry(const QString &key)
 {
     // If the sender is in the status map, copy the status into the map entry.
     // If the sender is not in the map, add it.
-    QMapIterator<QString, StatusAttributes*> itr(statusMap);
-    
-    if(statusMap.contains(activeEngine))
+    EngineStatusMap::Iterator pos;
+    if((pos = statusMap.find(activeEngine)) != statusMap.end())
     {
-        *statusMap[activeEngine] = *statusAtts;
+        // Copy the status attributes.
+        *(pos.data()) = *statusAtts;
     }
     else
         AddStatusEntry(key);
@@ -687,15 +669,12 @@ QvisEngineWindow::UpdateStatusEntry(const QString &key)
 //   Brad Whitlock, Tue Apr  8 09:27:26 PDT 2008
 //   Support for internationalization.
 //
-//   Cyrus Harrison, Tue Jun 24 11:15:28 PDT 2008
-//   Initial Qt4 Port.
-//
 // ****************************************************************************
 
 void
 QvisEngineWindow::closeEngine()
 {
-    int index = engineCombo->currentIndex();
+    int index = engineCombo->currentItem();
     if (index < 0)
         return;
 
@@ -742,15 +721,12 @@ QvisEngineWindow::closeEngine()
 //    Jeremy Meredith, Tue Mar 30 09:34:33 PST 2004
 //    I added support for simulations.
 //   
-//    Cyrus Harrison, Tue Jun 24 11:15:28 PDT 2008
-//    Initial Qt4 Port.
-//
 // ****************************************************************************
 
 void
 QvisEngineWindow::interruptEngine()
 {
-    int index = engineCombo->currentIndex();
+    int index = engineCombo->currentItem();
     if (index < 0)
         return;
     string host = engines->GetEngines()[index];
@@ -773,15 +749,12 @@ QvisEngineWindow::interruptEngine()
 //    Jeremy Meredith, Tue Mar 30 09:34:33 PST 2004
 //    I added support for simulations.
 //
-//    Cyrus Harrison, Tue Jun 24 11:15:28 PDT 2008
-//    Initial Qt4 Port.
-//
 // ****************************************************************************
 
 void
 QvisEngineWindow::clearCache()
 {
-    int index = engineCombo->currentIndex();
+    int index = engineCombo->currentItem();
     if (index < 0)
         return;
     string host = engines->GetEngines()[index];

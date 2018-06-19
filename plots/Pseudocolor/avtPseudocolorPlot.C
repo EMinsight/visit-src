@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -87,18 +87,22 @@
 //    Kathleen Bonnell, Fri Nov 12 11:25:23 PST 2004
 //    Replaced avtPointGlyphMapper with avtVariablePointGlyphMapper. 
 //
-//    Hank Childs, Tue Nov 18 11:58:46 PST 2008
-//    Remove the "NoOp" filter, which was almost certainly checked in by
-//    mistake.  (It was replacing the compact tree filter, and was causing
-//    performance degradation.)
-//
 // ****************************************************************************
+
+#include <avtCompactTreeFilter.h>
+
+class avtNoOpFilter : public avtCompactTreeFilter
+{
+     virtual void Execute(void) { SetOutputDataTree(GetInputDataTree()); };
+};
+
 
 avtPseudocolorPlot::avtPseudocolorPlot()
 {
     varLegend = new avtVariableLegend;
     varLegend->SetTitle("Pseudocolor");
     glyphMapper = new avtVariablePointGlyphMapper;
+compactTreeFilter = new avtNoOpFilter;
 
     colorsInitialized = false;
     topoDim = 3;
@@ -501,9 +505,6 @@ avtPseudocolorPlot::NeedZBufferToCompositeEvenIn2D(void)
 //    I made the pointSize in the atts be used for to set the point size for
 //    points, which is not the same as what's used for Box, Axis, Icosahedra.
 //
-//    Jeremy Meredith, Wed Nov 26 11:28:24 EST 2008
-//    Added line style/width control.
-//
 // ****************************************************************************
 
 void
@@ -531,8 +532,6 @@ avtPseudocolorPlot::SetAtts(const AttributeGroup *a)
         SetColorTable(atts.GetColorTableName().c_str());
     }
 
-    glyphMapper->SetLineWidth(Int2LineWidth(atts.GetLineWidth()));
-    glyphMapper->SetLineStyle(Int2LineStyle(atts.GetLineStyle()));
     glyphMapper->SetScale(atts.GetPointSize());
     if (atts.GetPointSizeVarEnabled() &&
         atts.GetPointSizeVar() != "" &&

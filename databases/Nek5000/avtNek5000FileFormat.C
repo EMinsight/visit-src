@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -57,17 +57,14 @@
 #include <vtkFloatArray.h>
 #include <vtkIdTypeArray.h>
 #include <vtkRectilinearGrid.h>
-#include <vtkStructuredGrid.h>
 #include <vtkUnsignedCharArray.h>
 #include <vtkUnstructuredGrid.h>
 
 #include <avtDatabaseMetaData.h>
 #include <avtDatabase.h>
 #include <avtIntervalTree.h>
-#include <avtIsolevelsSelection.h>
 #include <avtNekDomainBoundaries.h>
 #include <avtParallel.h>
-#include <avtPlaneSelection.h>
 #include <avtSpatialBoxSelection.h>
 #include <avtVariableCache.h>
 #include <snprintf.h>
@@ -190,16 +187,12 @@ typedef __int64 int64_t;
 // ****************************************************************************
 // Example of a metadata input file
 //
-// NEK3D
-// version: 1.0
 // filetemplate: example.fld%02d  
 // firsttimestep: 2                 # first dump here: example.fld02
 // numtimesteps: 3                  # number of dumps
 // type: binary                     # ascii or binary
 //
 // 
-// NEK3D
-// version: 1.0
 // filetemplate: example%02d.f%04d  
 // firsttimestep: 2                 # first dump here: example??.f0002
 // numtimesteps: 3                  # number of dumps
@@ -263,6 +256,10 @@ typedef __int64 int64_t;
 //
 //    Dave Bremer, Mon Aug 11 13:53:18 PDT 2008
 //    Brought in a change from Stefan Kerkemeier to change default init values.
+//
+//    Eric Brugger, Thu Nov 12 17:20:03 PST 2009
+//    Removed the data member version since it is no longer used.
+//
 // ****************************************************************************
 
 avtNek5000FileFormat::avtNek5000FileFormat(const char *filename)
@@ -270,7 +267,6 @@ avtNek5000FileFormat::avtNek5000FileFormat(const char *filename)
 {
     int t0 = visitTimer->StartTimer();
 
-    version = "";
     bSwapEndian = false;
     fileTemplate = "";
     iFirstTimestep = 1;
@@ -338,6 +334,11 @@ avtNek5000FileFormat::avtNek5000FileFormat(const char *filename)
 //    directories from the parallel file header, allowing users to skip
 //    the "numoutputdirs:" tag in the .nek file.
 //
+//    Eric Brugger, Thu Nov 12 17:20:03 PST 2009
+//    Removed the requirement that the file start with "NEK3D" and "version:
+//    1.0".  They are still recognized so that they will not produce an error
+//    if present.
+//
 // ****************************************************************************
 
 void           
@@ -347,34 +348,6 @@ avtNek5000FileFormat::ParseMetaDataFile(const char *filename)
     char buf[2048];
     ifstream  f(filename);
     int ii;
-
-    // Verify that the 'magic' and version number are right
-    f >> tag;
-    while (tag[0] == '#')
-    {
-        f.getline(buf, 2048);
-        f >> tag;
-    }
-    if (STREQUAL("NEK3D", tag.c_str()) != 0)
-    {
-        EXCEPTION1(InvalidDBTypeException, "Not a Nek5000 file." );
-    }
-    f >> tag;
-    while (tag[0] == '#')
-    {
-        f.getline(buf, 2048);
-        f >> tag;
-    }
-    f >> version;
-    if (STREQUAL("version:", tag.c_str()) != 0)
-    {
-        EXCEPTION1(InvalidDBTypeException, "Not a Nek5000 file." );
-    }
-    if (version != "1.0")
-    {
-        EXCEPTION1(InvalidDBTypeException, 
-                   "Only Nek5000 version 1.0 is supported." );
-    }
 
     // Process a tag at a time until all lines have been read
     while (f.good())
@@ -459,6 +432,17 @@ avtNek5000FileFormat::ParseMetaDataFile(const char *filename)
             if (iNumOutputDirs > 1)
                 bParFormat = true;
         }
+        else if (STREQUAL("NEK3D", tag.c_str()) != 0)
+        {
+            //This is an obsolete tag, ignore it.
+        }
+        else if (STREQUAL("version:", tag.c_str()) != 0)
+        {
+            //This is an obsolete tag, ignore it, skipping the version number
+            //as well.
+            std::string version;
+            f >> version;
+        }
         else
         {
             SNPRINTF(buf, 2048, "Error parsing file.  Unknown tag %s", tag.c_str());
@@ -521,7 +505,7 @@ avtNek5000FileFormat::ParseMetaDataFile(const char *filename)
 //  Programmer: David Bremer
 //  Creation:   Wed Feb  6 19:12:55 PST 2008
 //
-//  Modified:
+//  Modifications:
 //    Dave Bremer, Thu Mar 20 11:28:05 PDT 2008
 //    Use the GetFileName method.
 //
@@ -734,7 +718,6 @@ avtNek5000FileFormat::ParseNekFileHeader()
 //  Programmer: David Bremer
 //  Creation:   Mon Aug 11 13:53:18 PDT 2008
 //
-//  Modified:
 // ****************************************************************************
 
 void avtNek5000FileFormat::ParseFieldTags(ifstream &f)
@@ -795,7 +778,7 @@ void avtNek5000FileFormat::ParseFieldTags(ifstream &f)
 //  Programmer: David Bremer
 //  Creation:   Wed Feb  6 19:12:55 PST 2008
 //
-//  Modified:
+//  Modifications:
 //    Dave Bremer, Thu Mar 20 11:28:05 PDT 2008
 //    Use the GetFileName method.  Changed sprintf to SNPRINTF.
 //
@@ -973,6 +956,12 @@ avtNek5000FileFormat::ReadBlockLocations()
 //    Hank Childs, Wed Jan  7 18:24:01 CST 2009
 //    Clear out the cache.
 //
+//    Tom Fogal, Sat Feb  7 17:32:20 EST 2009
+//    Fix the iterator declaration.
+//
+//    Hank Childs, Fri Apr  3 15:35:15 CDT 2009
+//    Fix memory problem.
+//
 // ****************************************************************************
 
 avtNek5000FileFormat::~avtNek5000FileFormat()
@@ -989,15 +978,15 @@ avtNek5000FileFormat::~avtNek5000FileFormat()
         aBlocksPerFile = NULL;
     }
 
-    std::map<PointerKey, float *>::iterator it;
+    std::map<PointerKey, float *, KeyCompare>::iterator it;
     for (it = cachedData.begin() ; it != cachedData.end() ; it++)
         delete [] it->second;
     std::map<int, avtIntervalTree *>::iterator it2;
     for (it2 = boundingBoxes.begin() ; it2 != boundingBoxes.end() ; it2++)
-        delete [] it2->second;
-    std::map<PointerKey, avtIntervalTree *>::iterator it3;
+        delete it2->second;
+    std::map<PointerKey, avtIntervalTree *, KeyCompare>::iterator it3;
     for (it3 = dataExtents.begin() ; it3 != dataExtents.end() ; it3++)
-        delete [] it3->second;
+        delete it3->second;
 }
 
 
@@ -1351,6 +1340,9 @@ avtNek5000FileFormat::GetMesh(int /* timestate */, int domain, const char * /*me
 //    Hank Childs, Thu Dec 18 10:54:27 CST 2008
 //    Refactored method to only serve up points.
 //
+//    Hank Childs, Fri May  8 11:49:17 PDT 2009
+//    Fix bug with reading ASCII data.
+//
 // ****************************************************************************
 
 float *
@@ -1461,6 +1453,7 @@ avtNek5000FileFormat::ReadPoints(int element, int timestep)
     }
     else
     {
+        float *pts_tmp = pts;
         for (ii = 0 ; ii < nPts ; ii++)
         {
             fseek(fdMesh, (int64_t)iAsciiMeshFileStart + 
@@ -1468,14 +1461,14 @@ avtNek5000FileFormat::ReadPoints(int element, int timestep)
                           (int64_t)ii*iAsciiMeshFileLineLen, SEEK_SET);
             if (iDim == 3)
             {
-                fscanf(fdMesh, " %f %f %f", pts, pts+1, pts+2);
+                fscanf(fdMesh, " %f %f %f", pts_tmp, pts_tmp+1, pts_tmp+2);
             }
             else
             {
-                fscanf(fdMesh, " %f %f", pts, pts+1);
-                pts[2] = 0.0f;
+                fscanf(fdMesh, " %f %f", pts_tmp, pts_tmp+1);
+                pts_tmp[2] = 0.0f;
             }
-            pts += 3;
+            pts_tmp += 3;
         }
     }
     return pts;
@@ -1611,6 +1604,9 @@ avtNek5000FileFormat::GetVar(int timestep, int domain, const char *varname)
 //    Change argument to GetFileName, as it now takes the time slice 
 //    corresponding to the VisIt time index, not the Nek time index.
 //
+//    Hank Childs, Fri May  8 11:47:27 PDT 2009
+//    Fix bug with reading ASCII files.
+//
 // ****************************************************************************
 
 float *
@@ -1700,14 +1696,15 @@ avtNek5000FileFormat::ReadVar(int timestate, int element, const char *varname)
     }
     else
     {
+        float *var_tmp = var;
         for (ii = 0 ; ii < nPts ; ii++)
         {
             fseek(fdVar, (int64_t)iAsciiCurrFileStart + 
                          (int64_t)element*iAsciiCurrFileLineLen*nPts + 
                          (int64_t)ii*iAsciiCurrFileLineLen + 
                          (int64_t)iAsciiOffset, SEEK_SET);
-            fscanf(fdVar, " %f", var);
-            var++;
+            fscanf(fdVar, " %f", var_tmp);
+            var_tmp++;
         }
     }
 
@@ -1840,6 +1837,9 @@ avtNek5000FileFormat::GetVectorVar(int timestep, int domain, const char *varname
 //    Change argument to GetFileName, as it now takes the time slice 
 //    corresponding to the VisIt time index, not the Nek time index.
 //
+//    Hank Childs, Fri May  8 11:47:55 PDT 2009
+//    Fix bug with reading ASCII data.
+//
 // ****************************************************************************
 
 float *
@@ -1949,6 +1949,7 @@ avtNek5000FileFormat::ReadVelocity(int timestate, int element)
     }
     else
     {
+        float *var_tmp = var;
         for (ii = 0 ; ii < nPts ; ii++)
         {
             fseek(fdVar, (int64_t)iAsciiCurrFileStart + 
@@ -1957,14 +1958,14 @@ avtNek5000FileFormat::ReadVelocity(int timestate, int element)
                          (int64_t)iAsciiOffset, SEEK_SET);
             if (iDim == 3)
             {
-                fscanf(fdVar, " %f %f %f", var, var+1, var+2);
+                fscanf(fdVar, " %f %f %f", var_tmp, var_tmp+1, var_tmp+2);
             }
             else
             {
-                fscanf(fdVar, " %f %f", var, var+1);
-                var[2] = 0.0f;
+                fscanf(fdVar, " %f %f", var_tmp, var_tmp+1);
+                var_tmp[2] = 0.0f;
             }
-            var += 3;
+            var_tmp += 3;
         }
     }
 
@@ -2109,6 +2110,13 @@ avtNek5000FileFormat::GetFileName(int rawTimestep, int pardir, char *outFileName
 //    Hank Childs, Mon Jan 12 18:09:54 CST 2009
 //    Overhauled method to only read the current time slice.
 //
+//    Hank Childs, Wed Feb  4 15:40:22 CST 2009
+//    Always indicate that there is a mesh at time 0.
+//
+//    Hank Childs, Fri Jun 12 16:43:51 PDT 2009
+//    Add workaround for bug reported by Stefan Kerkemeier, where timestep
+//    0 is not getting reported correctly.
+//
 // ****************************************************************************
 
 void
@@ -2119,11 +2127,20 @@ avtNek5000FileFormat::UpdateCyclesAndTimes()
         aTimes.resize(iNumTimesteps);
         aCycles.resize(iNumTimesteps);
         iTimestepsWithMesh.resize(iNumTimesteps, false);
+        iTimestepsWithMesh[0] = true;
         readTimeInfoFor.resize(iNumTimesteps, false);
     }
 
     if (readTimeInfoFor[curTimestep] == true)
+    {
+        // avtMTMDFileFormatInterface tramples on this.  Fight back.
+        metadata->SetTime(curTimestep, aTimes[curTimestep]);
+        metadata->SetTimeIsAccurate(true, curTimestep);
+        metadata->SetCycle(curTimestep, aCycles[curTimestep]);
+        metadata->SetCycleIsAccurate(true, curTimestep);
+
         return;
+    }
 
     ifstream f;
     char dummy[64];
@@ -2886,6 +2903,15 @@ avtNek5000FileFormat::GetDataExtentsIntervalTree(int timestep, const char *var)
 //  Programmer: Hank Childs
 //  Creation:   December 18, 2008
 //
+//  Modifications:
+//
+//    Hank Childs, Sun Mar 22 14:40:49 CDT 2009
+//    Add support for point selections.
+//
+//    Hank Childs, Sat Apr  4 00:24:21 CDT 2009
+//    Add support for the case where we are streaming data in parallel and
+//    we can't rely on other processors to help out.
+//
 // ****************************************************************************
 
 void
@@ -2924,47 +2950,6 @@ avtNek5000FileFormat::RegisterDataSelections(
             if (domainsToUse[i].size() == 0)
                 noMatches = true;
         }
-        if (string(selList[i]->GetType()) == "Plane Selection")
-        {
-            avtPlaneSelection *sel = (avtPlaneSelection *) *(selList[i]);
-
-            double normal[3], origin[3];
-            sel->GetNormal(normal);
-            sel->GetOrigin(origin);
-            avtIntervalTree *itree = 
-                              GetBoundingBoxIntervalTree(timestepToUseForMesh);
-            if (itree == NULL)
-                continue;
-
-            double D = normal[0]*origin[0] + normal[1]*origin[1] +
-                     normal[2]*origin[2];
-            itree->GetElementsList(normal, D, domainsToUse[i]);
-            if (domainsToUse[i].size() == 0)
-                noMatches = true;
-        }
-        if (string(selList[i]->GetType()) == "Isolevels Selection")
-        {
-            avtIsolevelsSelection *sel = (avtIsolevelsSelection*)*(selList[i]);
-
-            std::string var = sel->GetVariable();
-            std::vector<double> isolevels = sel->GetIsolevels();
-
-            avtIntervalTree *itree = 
-                              GetDataExtentsIntervalTree(curTimestep, 
-                                                         var.c_str());
-            if (itree == NULL)
-                continue;
-
-            double eqn[1] = { 1. };
-            std::vector<std::vector<int> > elemsForLevelJ(isolevels.size());
-            for (int j = 0 ; j < isolevels.size() ; j++)
-            {
-                itree->GetElementsList(eqn, isolevels[j], elemsForLevelJ[j]);
-            }
-            CombineElementLists(elemsForLevelJ, domainsToUse[i], true);
-            if (domainsToUse[i].size() == 0)
-                noMatches = true;
-        }
     }
     visitTimer->StopTimer(t1, "Getting element lists for each selection");
 
@@ -3000,9 +2985,12 @@ avtNek5000FileFormat::RegisterDataSelections(
     int nelements = (useAllElements ? iNumBlocks : finalElementList.size());
     int elements_per_proc = nelements / nprocs;
     int one_extra_until = nelements % nprocs;
-    int my_num_elements = elements_per_proc + (rank < one_extra_until ? 1 : 0);
-    int my_start = elements_per_proc*rank + (rank < one_extra_until ? rank : one_extra_until);
-    int my_end = my_start + my_num_elements;
+
+    int my_num_elements, my_start, my_end;
+    my_num_elements = elements_per_proc + (rank < one_extra_until ? 1 : 0);
+    my_start = elements_per_proc*rank + (rank < one_extra_until ? rank : one_extra_until);
+    my_end = my_start + my_num_elements;
+
     myElementList.resize(my_num_elements);
     for (i = my_start ; i < my_end ; i++)
     {
@@ -3104,12 +3092,15 @@ avtNek5000FileFormat::CombineElementLists(
 //    Hank Childs, Wed Jan  7 16:54:58 CST 2009
 //    Delete cached data when we go to a new time slice.
 //
+//    Tom Fogal, Sat Feb  7 17:33:06 EST 2009
+//    Fix the iterator declaration.
+//
 // ****************************************************************************
 
 void
 avtNek5000FileFormat::ActivateTimestep(int ts)
 {
-    std::map<PointerKey, float *>::iterator it;
+    std::map<PointerKey, float *, KeyCompare>::iterator it;
     std::map<PointerKey, float *, KeyCompare> new_cachedData;
     for (it = cachedData.begin() ; it != cachedData.end() ; it++)
     {
@@ -3120,7 +3111,7 @@ avtNek5000FileFormat::ActivateTimestep(int ts)
     }
     cachedData = new_cachedData;
 
-    std::map<PointerKey, avtIntervalTree *>::iterator it2;
+    std::map<PointerKey, avtIntervalTree *, KeyCompare>::iterator it2;
     std::map<PointerKey, avtIntervalTree *, KeyCompare> new_dataExtents;
     for (it2 = dataExtents.begin() ; it2 != dataExtents.end() ; it2++)
     {

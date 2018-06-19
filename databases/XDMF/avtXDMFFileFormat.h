@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -147,6 +147,7 @@ class MeshInfo
     int               *ghostOffsets;
     DataItem          *topologyData;
     DataItem          *meshData[3];
+    double             time;
 };
 
 class VarInfo
@@ -262,6 +263,8 @@ class avtXDMFFileFormat : public avtSTMDFileFormat
     virtual const char    *GetType(void)   { return "XDMF"; };
     virtual void           FreeUpResources(void); 
 
+    double                 GetTime();
+
     virtual vtkDataSet    *GetMesh(int, const char *);
     virtual vtkDataArray  *GetVar(int, const char *);
     virtual vtkDataArray  *GetVectorVar(int, const char *);
@@ -294,6 +297,7 @@ class avtXDMFFileFormat : public avtSTMDFileFormat
     DataItem              *ParseDataItem();
     void                   ParseTopology(string &, string &, string &,
                                string &, string &, DataItem **);
+    void                   ParseTime(string &);
     void                   ParseGeometry(string &, int &, DataItem **);
     VarInfo               *ParseAttribute(int, int, const string &);
     void                   ParseGridInformation(string &, string &);

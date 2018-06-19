@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,7 +39,8 @@
 #ifndef INCLUDE_H
 #define INCLUDE_H
 
-#include <QTextStream>
+#include <qstring.h>
+#include <visitstream.h>
 
 // ****************************************************************************
 //  Class:  Include
@@ -66,17 +67,16 @@ class Include
     Include(const QString &d, bool q, const QString &t) : destination(d), quoted(q), target(t)
     {
         if (d != "header" && d != "source")
-            throw QString("Bad destination file '%1' for include.").arg(d);
+            throw QString().sprintf("Bad destination file '%s' for include.",d.latin1());
     }
     void SetInclude(const QString &i)
     {
         include = i;
     }
-    void Print(QTextStream &out, const QString &generatorName = QString::null)
+    void Print(ostream &out, const QString &generatorName = QString::null)
     {
         if(generatorName.isEmpty() || generatorName == target)
-            out << "        Include: (" << target << ") "
-                << include << endl;
+            out << "        Include: (" << target << ") " << include << endl;
     }
 };
 

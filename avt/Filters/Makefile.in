@@ -1,4 +1,4 @@
-#                         Copyright (c) 2000 - 2008
+#                         Copyright (c) 2000 - 2009
 #                  Lawrence Livermore National Security, LLC
 #            Produced at the Lawrence Livermore National Laboratory
 #                              LLNL-CODE-400124
@@ -102,6 +102,15 @@
 #    Hank Childs, Tue Dec  2 13:41:08 PST 2008
 #    Add the avtStreamlinePolyDataFilter.
 #
+#    Hank Childs, Mon Feb  2 16:42:03 PST 2009
+#    Added avtNamedSelectionFilter.
+#
+#    Dave Pugmire, Tue Feb  3 10:56:45 EST 2009
+#    Add the streamline algorithm code.
+#
+#    Brad Whitlock, Fri Aug 28 11:31:24 PDT 2009
+#    I added avtLineToPolylineFilter.C
+#
 ##############################################################################
 
 ##
@@ -131,21 +140,29 @@ SRC=\
  avtImageCompositer.C \
  avtLinearTransformFilter.C \
  avtLineScanFilter.C \
+ avtLineToPolylineFilter.C \
  avtLineoutFilter.C \
  avtMassVoxelExtractor.C \
+ avtMasterSlaveSLAlgorithm.C \
  avtMeshLogFilter.C \
+ avtNamedSelectionFilter.C \
+ avtParDomSLAlgorithm.C \
+ avtParSLAlgorithm.C \
  avtPointToGlyphFilter.C \
  avtRayCompositer.C \
  avtRayTracer.C \
  avtResampleFilter.C \
+ avtSLAlgorithm.C \
  avtSamplePointCommunicator.C \
  avtSamplePointExtractor.C \
  avtSamplePointToSurfaceFilter.C \
+ avtSerialSLAlgorithm.C \
  avtShiftCenteringFilter.C \
  avtSimilarityTransformFilter.C \
  avtSmoothPolyDataFilter.C \
  avtStreamlineFilter.C \
  avtStreamlinePolyDataFilter.C \
+ avtStreamlineWrapper.C \
  avtSummationFilter.C \
  avtSurfaceFilter.C \
  avtTiledImageCompositor.C \

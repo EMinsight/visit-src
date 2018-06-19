@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -38,7 +38,7 @@
 
 #include <ViewerWindow.h>
 #include <ViewerToggleAction.h>
-#include <QAction>
+#include <qaction.h>
 
 // ****************************************************************************
 // Method: ViewerToggleAction::ViewerToggleAction
@@ -62,8 +62,8 @@
 //   
 // ****************************************************************************
 
-ViewerToggleAction::ViewerToggleAction(ViewerWindow *win) : 
-    ViewerAction(win)
+ViewerToggleAction::ViewerToggleAction(ViewerWindow *win, const char *name) : 
+    ViewerAction(win, name)
 {
     toggled = false;
     regularIcon = 0;
@@ -126,7 +126,7 @@ ViewerToggleAction::SetIcons(const QPixmap &p1, const QPixmap &p2)
     {
         toggledIcon = new QPixmap(p1);
         regularIcon = new QPixmap(p2);
-        SetIcon(QIcon(*regularIcon));
+        SetIconSet(QIconSet(*regularIcon));
     }
 }
 
@@ -152,7 +152,7 @@ ViewerToggleAction::SetIcons(const QPixmap &p1, const QPixmap &p2)
 void
 ViewerToggleAction::PreExecute()
 {
-    toggled = Checked();
+    toggled = Toggled();
 }
 
 // ****************************************************************************
@@ -168,9 +168,6 @@ ViewerToggleAction::PreExecute()
 //   Kathleen Bonnell, Thu May 15 11:52:56 PDT 2003
 //   Check for valid icons before attempting to set them.
 // 
-//   Brad Whitlock, Tue May 27 14:19:15 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
@@ -182,22 +179,22 @@ ViewerToggleAction::Update()
         action->setEnabled(actionShouldBeEnabled);
 
     // Update the action's toggled state if it is a toggle action.
-    if(action->isCheckable())
+    if(action->isToggleAction())
     {
-        bool actionShouldBeToggled = Checked();
+        bool actionShouldBeToggled = Toggled();
         if(toggled != actionShouldBeToggled)
         {
             // Set the appropriate icon into the action.
             if (!window->GetNoWinMode() &&
-                !action->icon().isNull())
+                !action->iconSet().pixmap().isNull())
             {
                 if(actionShouldBeToggled)
-                    SetIcon(QIcon(*toggledIcon));
+                    SetIconSet(QIconSet(*toggledIcon));
                 else
-                    SetIcon(QIcon(*regularIcon));
+                    SetIconSet(QIconSet(*regularIcon));
             }
             action->blockSignals(true);
-            action->setChecked(actionShouldBeToggled);
+            action->setOn(actionShouldBeToggled);
             action->blockSignals(false);
         }
         toggled = actionShouldBeToggled;

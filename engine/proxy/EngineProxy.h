@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -55,6 +55,7 @@
 #include <DefineVirtualDatabaseRPC.h>
 #include <ExportDatabaseRPC.h>
 #include <MakePlotRPC.h>
+#include <NamedSelectionRPC.h>
 #include <OpenDatabaseRPC.h>
 #include <PickRPC.h>
 #include <ProcInfoRPC.h>
@@ -303,6 +304,10 @@ class ExportDBAttributes;
 //
 //    Mark C. Miller, Tue Jun 10 15:57:15 PDT 2008
 //    Added support for ignoring extents during ReadDataObject/OpenDatabase
+//
+//    Hank Childs, Wed Jan 28 15:57:02 PST 2009
+//    Add support for named selections.
+//
 // ****************************************************************************
 
 class ENGINE_PROXY_API EngineProxy : public RemoteProxyBase
@@ -397,6 +402,12 @@ public:
     void                     ExportDatabase(int, const ExportDBAttributes *);
     void                     ConstructDDF(int, const ConstructDDFAttributes *);
 
+    void                     ApplyNamedSelection(const std::vector<std::string> &ids, 
+                                                 const std::string selName);
+    void                     CreateNamedSelection(int id, const std::string selName);
+    void                     DeleteNamedSelection(const std::string selName);
+    void                     LoadNamedSelection(const std::string selName);
+    void                     SaveNamedSelection(const std::string selName);
     void                     ReleaseData(const int);
     void                     CloneNetwork(const int,
                                           const QueryOverTimeAttributes *);
@@ -442,6 +453,7 @@ private:
     SimulationCommandRPC     simulationCommandRPC;
     ExportDatabaseRPC        exportDatabaseRPC;
     ConstructDDFRPC          constructDDFRPC;
+    NamedSelectionRPC        namedSelectionRPC;
     SetEFileOpenOptionsRPC   setEFileOpenOptionsRPC;
 
     // For indicating status.

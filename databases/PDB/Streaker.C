@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -71,11 +71,15 @@
 //   Brad Whitlock, Tue Dec  2 16:11:54 PST 2008
 //   I added material vars.
 //
+//   Brad Whitlock, Wed Feb 25 16:11:10 PST 2009
+//   I added x_scale, x_translate. I changed log's type too.
+//
 // ****************************************************************************
 
 Streaker::StreakInfo::StreakInfo() : xvar(), yvar(), zvar(), hasMaterial(false),
-    slice(0), sliceIndex(0), hsize(0), dataset(0), integrate(false),
-    log(false), y_scale(1.), y_translate(0.)
+    cellCentered(true), matchSilo(false), slice(0), sliceIndex(0), hsize(0), dataset(0), integrate(false),
+    log(Streaker::LOGTYPE_NONE), x_scale(1.), x_translate(0.), y_scale(1.), y_translate(0.),
+    z_scale(1.), z_translate(0.)
 {
 }
 
@@ -165,7 +169,15 @@ Streaker::FreeUpResources()
 // Creation:   Wed Nov 12 13:41:37 PST 2008
 //
 // Modifications:
-//   
+//   Brad Whitlock, Wed Feb 25 16:11:10 PST 2009
+//   I added x_scale, x_translate.
+//
+//   Brad Whitlock, Tue May  5 16:28:35 PDT 2009
+//   I added cellcentered and nodecentered commands.
+//
+//   Brad Whitlock, Tue May 26 13:45:40 PDT 2009
+//   I added the "matchsilo" option.
+//
 // ****************************************************************************
 
 void
@@ -184,6 +196,8 @@ Streaker::ReadStreakFile(const std::string &filename, PDBFileObject *pdb)
 
     // process the file.
     char  line[1024];
+    bool  cellCentered = true;
+    bool  matchSilo = false;
     for(int lineIndex = 0; !ifile.eof(); ++lineIndex)
     {
         // Get the line
@@ -191,9 +205,16 @@ Streaker::ReadStreakFile(const std::string &filename, PDBFileObject *pdb)
 
         if(line[0] == '#')
             continue;
+        else if(strncmp(line, "cellcentered", 12) == 0 ||
+                strncmp(line, "zonecentered", 12) == 0)
+            cellCentered = true;
+        else if(strncmp(line, "nodecentered", 12) == 0)
+            cellCentered = false;
+        else if(strncmp(line, "matchsilo", 9) == 0)
+            matchSilo = true;
         else if(strncmp(line, "streakplot", 10) == 0)
         {
-            bool invalidStreak = false;
+            bool invalidStreak = true;
             char varname[100];
             char xvar[100];
             char yvar[100];
@@ -205,9 +226,34 @@ Streaker::ReadStreakFile(const std::string &filename, PDBFileObject *pdb)
             const char *ptr = line + 10;
             int ci;
             StreakInfo s;
-            if(sscanf(ptr, "%s %s %s %s %s %d %g %g %s %s", 
+            if(sscanf(ptr, "%s %s %s %s %s %d %g %g %g %g %g %g %s %s", 
+                      varname, xvar, yvar, zvar, cs, &ci,
+                      &s.x_scale, &s.x_translate, &s.y_scale, &s.y_translate,
+                      &s.z_scale, &s.z_translate, integrate, log) == 14)
+            {
+                invalidStreak = false;
+            }
+            else if(sscanf(ptr, "%s %s %s %s %s %d %g %g %g %g %s %s", 
+                      varname, xvar, yvar, zvar, cs, &ci,
+                      &s.x_scale, &s.x_translate, &s.y_scale, &s.y_translate,
+                      integrate, log) == 12)
+            {
+                invalidStreak = false;
+            }
+            else if(sscanf(ptr, "%s %s %s %s %s %d %g %g %s %s", 
                       varname, xvar, yvar, zvar, cs, &ci,
                       &s.y_scale, &s.y_translate, integrate, log) == 10)
+            {
+              
+                invalidStreak = false;
+            }
+
+            if(invalidStreak)
+            {
+                debug4 << "Streak file has an invalid line " << lineIndex << endl;
+                cerr << "Streak file has an invalid line " << lineIndex << endl;
+            }
+            else
             {
                 s.xvar = xvar;
                 s.yvar = yvar;
@@ -229,20 +275,23 @@ Streaker::ReadStreakFile(const std::string &filename, PDBFileObject *pdb)
                 s.integrate = (strcmp(integrate, "on") == 0 ||
                                strcmp(integrate, "On") == 0 ||
                                strcmp(integrate, "ON") == 0);
-                s.log       = (strcmp(log, "on") == 0 ||
-                               strcmp(log, "On") == 0 ||
-                               strcmp(log, "ON") == 0);
-            }
-            else
-                invalidStreak = true;
 
-            if(invalidStreak)
-            {
-                debug4 << "Streak file has an invalid line " << lineIndex << endl;
-                cerr << "Streak file has an invalid line " << lineIndex << endl;
-            }
-            else
+                if(strcmp(log, "on") == 0 ||
+                   strcmp(log, "On") == 0 ||
+                   strcmp(log, "ON") == 0 ||
+                   strcmp(log, "log") == 0)
+                {
+                    s.log = LOGTYPE_LOG;
+                }
+                else if(strcmp(log, "log10") == 0)
+                    s.log = LOGTYPE_LOG10;
+                else
+                    s.log = LOGTYPE_NONE;
+                s.cellCentered = cellCentered;
+                s.matchSilo = matchSilo;
+
                 AddStreak(varname, s, pdb);
+            }
         }       
     }
 }
@@ -393,7 +442,9 @@ invalid:
 // Creation:   Tue Dec  2 16:38:01 PST 2008
 //
 // Modifications:
-//   
+//   Brad Whitlock, Wed Apr  1 11:18:07 PDT 2009
+//   I removed a pointer increment that caused an ABR.
+//
 // ****************************************************************************
 
 bool
@@ -455,7 +506,7 @@ Streaker::FindMaterial(PDBFileObject *pdb, int *zDimensions, int zDims)
             {
                 int mat = *ptr++;
                 if(mat > 0)
-                    mats.insert(*ptr++);
+                    mats.insert(mat);
             }
             delete [] ireg;
 
@@ -512,6 +563,18 @@ Streaker::FindMaterial(PDBFileObject *pdb, int *zDimensions, int zDims)
 //   Brad Whitlock, Tue Dec  2 16:52:24 PST 2008
 //   Added material support.
 //
+//   Brad Whitlock, Wed Feb 25 16:06:40 PST 2009
+//   Changed to use log10.
+//
+//   Brad Whitlock, Thu Apr  2 16:37:08 PDT 2009
+//   Added cell-centered data support.
+//
+//   Brad Whitlock, Tue May  5 16:25:02 PDT 2009
+//   I made cell-centering support be dynamic instead of compiled in.
+//
+//   Brad Whitlock, Thu May  7 16:58:42 PDT 2009
+//   I set the cell and node origins to 1.
+//
 // ****************************************************************************
 
 void
@@ -529,19 +592,21 @@ Streaker::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
         mmd->topologicalDimension = 2;
         mmd->xLabel = it->second.xvar;
         if(it->second.integrate && it->second.log)
-            mmd->yLabel = std::string("log(integrated ") + it->second.yvar + std::string(")");
+            mmd->yLabel = std::string("log10(integrated ") + it->second.yvar + std::string(")");
         else if(it->second.integrate)
             mmd->yLabel = std::string("integrated ") +  it->second.yvar;
         else if(it->second.log)
-            mmd->yLabel = std::string("log(") +  it->second.yvar + std::string(")");
+            mmd->yLabel = std::string("log10(") +  it->second.yvar + std::string(")");
         else
             mmd->yLabel = it->second.yvar;
+        mmd->cellOrigin = 1;
+        mmd->nodeOrigin = 1;
         md->Add(mmd);
 
         avtScalarMetaData *smd = new avtScalarMetaData;
         smd->name = it->first;
         smd->meshName = meshName;
-        smd->centering = AVT_NODECENT;
+        smd->centering = it->second.cellCentered ? AVT_ZONECENT : AVT_NODECENT;
         md->Add(smd);
 
         // Add a material for this streak plot if its ireg matched the size of zvar.
@@ -640,7 +705,11 @@ Streaker::GetVar(const std::string &var, const PDBFileObjectVector &pdb)
 
     // Look up the variable in the node data.
     vtkDataSet *ds = pos->second.dataset;
-    vtkDataArray *arr = ds->GetPointData()->GetArray(var.c_str());
+    vtkDataArray *arr = 0;
+    if(pos->second.cellCentered)
+        arr = ds->GetCellData()->GetArray(var.c_str());
+    else 
+        arr = ds->GetPointData()->GetArray(var.c_str());
     if(arr != 0)
         arr->Register(NULL);
 
@@ -744,6 +813,11 @@ StoreValues(float *dest, const T * const src, int ti, const int * const sdims,
 // Creation:   Wed Nov 12 13:50:02 PST 2008
 //
 // Modifications:
+//   Eric Brugger, Wed Aug  5 15:15:01 PDT 2009
+//   I replaced a call to free_mem with delete to avoid a run time link error
+//   when using the intel compiler.  An alternative fix would have been to
+//   include the header file that defines the function, but I thought this
+//   was a better solution since it wasn't used anywhere else in the file.
 //   
 // ****************************************************************************
 
@@ -798,7 +872,7 @@ Streaker::AssembleData(const std::string &var, int *sdims, int slice, int sliceI
                 debug4 << "Unsupported type" << endl;
 
             free_void_mem(val, t);
-            free_mem(dims);
+            delete [] dims;
         }
 
         // Close the file so we don't get too many files open.
@@ -806,6 +880,124 @@ Streaker::AssembleData(const std::string &var, int *sdims, int slice, int sliceI
     }
 
     return arr;
+}
+
+// ****************************************************************************
+// Method: TransposeArray
+//
+// Purpose: 
+//   Transposes the data array in I,J.
+//
+// Arguments:
+//   arr  : The data array to transpose.
+//   dims : The dimensions of the data array.
+//
+// Returns:    
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Tue May 26 14:02:16 PDT 2009
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+static vtkDataArray *
+TransposeArray(vtkDataArray *arr, const int *dims)
+{
+    vtkDataArray *newarr = arr->NewInstance();
+    newarr->SetNumberOfComponents(arr->GetNumberOfComponents());
+    newarr->SetNumberOfTuples(arr->GetNumberOfTuples());
+    newarr->SetName(arr->GetName());
+    for(int j = 0; j < dims[1]; ++j)
+        for(int i = 0; i < dims[0]; ++i)
+        {
+            int dest_index = j * dims[0] + i;
+            int src_index = i * dims[1] + j;
+            newarr->SetTuple(dest_index, arr->GetTuple(src_index));
+        }
+    return newarr;
+}
+
+// ****************************************************************************
+// Method: TransposeIJ
+//
+// Purpose: 
+//   Transposes a structured grid in I,J.
+//
+// Arguments: 
+//   grid : The grid to transpose.
+//
+// Returns:    A new grid that has been transposed.
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Tue May 26 13:57:32 PDT 2009
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+static vtkStructuredGrid *
+TransposeIJ(vtkStructuredGrid *grid)
+{
+    int dims[3];
+    grid->GetDimensions(dims);
+    int newdims[3];
+    newdims[0] = dims[1]; // Swap I,J dimensions
+    newdims[1] = dims[0];
+    newdims[2] = dims[2];
+
+    int i, j;
+    vtkPoints *points = vtkPoints::New();
+    points->SetNumberOfPoints(grid->GetPoints()->GetNumberOfPoints());
+    float *coords_dest = (float *)points->GetVoidPointer(0);
+    float *coords_src = (float *)grid->GetPoints()->GetVoidPointer(0);
+    // Transpose points when copying into the new points
+    for(j = 0; j < newdims[1]; ++j)
+        for(i = 0; i < newdims[0]; ++i)
+        {
+            int dest_index = (j * newdims[0] + i) * 3;
+            int src_index = (i * newdims[1] + j) * 3;
+            coords_dest[dest_index + 0]  = coords_src[src_index + 0];
+            coords_dest[dest_index + 1]  = coords_src[src_index + 1];
+            coords_dest[dest_index + 2]  = coords_src[src_index + 2];
+        }
+
+    vtkStructuredGrid *sgrid = vtkStructuredGrid::New();
+    sgrid->SetPoints(points);
+    points->Delete();
+    sgrid->SetDimensions(newdims);
+
+    // Now create transposed copies of the cell arrays.
+    int celldims[3];
+    celldims[0] = newdims[0] - 1;
+    celldims[1] = newdims[1] - 1;
+    celldims[2] = 1;
+    vtkDataArray *scalars = grid->GetCellData()->GetScalars();
+    for(i = 0; i < grid->GetCellData()->GetNumberOfArrays(); ++i)
+    {
+        vtkDataArray *arr = TransposeArray(grid->GetCellData()->GetArray(i), celldims);
+        if(grid->GetCellData()->GetArray(i) == scalars)
+            sgrid->GetCellData()->SetScalars(arr);
+        else
+            sgrid->GetCellData()->AddArray(arr);
+    }
+
+    // Now create transposed copies of the cell arrays.
+    scalars = grid->GetPointData()->GetScalars();
+    for(i = 0; i < grid->GetPointData()->GetNumberOfArrays(); ++i)
+    {
+        vtkDataArray *arr = TransposeArray(grid->GetPointData()->GetArray(i), newdims);
+        if(grid->GetPointData()->GetArray(i) == scalars)
+            sgrid->GetPointData()->SetScalars(arr);
+        else
+            sgrid->GetPointData()->AddArray(arr);
+    }
+
+    return sgrid;
 }
 
 // ****************************************************************************
@@ -830,6 +1022,18 @@ Streaker::AssembleData(const std::string &var, int *sdims, int slice, int sliceI
 // Modifications:
 //   Brad Whitlock, Wed Dec  3 14:02:10 PST 2008
 //   Added material support.
+//
+//   Brad Whitlock, Wed Feb 25 16:14:33 PST 2009
+//   I added x_scale and x_translate. I also added support for different logs.
+//
+//   Brad Whitlock, Tue May  5 16:27:54 PDT 2009
+//   Do the centering dynamically.
+//
+//   Brad Whitlock, Wed May 13 13:41:33 PDT 2009
+//   I added z_scale, z_translate.
+//
+//   Brad Whitlock, Tue May 26 13:47:39 PDT 2009
+//   I added matchSilo support.
 //
 // ****************************************************************************
 
@@ -881,14 +1085,20 @@ Streaker::ConstructDataset(const std::string &var, const StreakInfo &s, const PD
         for(int j = 0; j < sdims[1]; ++j)
             for(int i = 0; i < sdims[0]; ++i)
             {
+                double xval = times[i];
+                xval *= s.x_scale;
+                xval += s.x_translate;
+
                 ysum[i] += (double)*yc++;
                 double yval = ysum[i];
                 yval *= s.y_scale;
                 yval += s.y_translate;
-                if(s.log)
+                if(s.log == LOGTYPE_LOG)
                     yval = log((yval > 0.) ? yval : 1.e-9);
+                else if(s.log == LOGTYPE_LOG10)
+                    yval = log10((yval > 0.) ? yval : 1.e-9);
 
-                *coords++ = (float)times[i];
+                *coords++ = (float)xval;
                 *coords++ = (float)yval;
                 *coords++ = 0.;
             }
@@ -899,13 +1109,19 @@ Streaker::ConstructDataset(const std::string &var, const StreakInfo &s, const PD
         for(int j = 0; j < sdims[1]; ++j)
             for(int i = 0; i < sdims[0]; ++i)
             {
+                double xval = times[i];
+                xval *= s.x_scale;
+                xval += s.x_translate;
+
                 double yval = (double)*yc++;
                 yval *= s.y_scale;
                 yval += s.y_translate;
-                if(s.log)
+                if(s.log == LOGTYPE_LOG)
                     yval = log((yval > 0.) ? yval : 1.e-9);
+                else if(s.log == LOGTYPE_LOG10)
+                    yval = log10((yval > 0.) ? yval : 1.e-9);
 
-                *coords++ = (float)times[i];
+                *coords++ = (float)xval;
                 *coords++ = (float)yval;
                 *coords++ = 0.;
             }
@@ -916,9 +1132,39 @@ Streaker::ConstructDataset(const std::string &var, const StreakInfo &s, const PD
     points->Delete();
     sgrid->SetDimensions(sdims);
 
-    // Add the zvar array to the dataset.
-    zvar->SetName(var.c_str());
-    sgrid->GetPointData()->AddArray(zvar);
+    // Transform zvar.
+    float *zarr = (float *)zvar->GetVoidPointer(0);
+    for(int i = 0; i < zvar->GetNumberOfTuples(); ++i)
+        zarr[i] = zarr[i] * s.z_scale + s.z_translate;
+
+    if(s.cellCentered)
+    {
+        // Create a cell-centered version of zvar. We can ignore the first row of
+        // data since it's no good.
+        vtkFloatArray *cvar = vtkFloatArray::New();
+        int cx = sdims[0] - 1;
+        int cy = sdims[1] - 1;
+        cvar->SetNumberOfTuples(cx * cy);
+        float *dest = (float *)cvar->GetVoidPointer(0);
+        float *f = (float *)zvar->GetVoidPointer(0);
+        for(int j = 0; j < cy; ++j)
+        {
+            float *src = f + ((j+1) * sdims[0]);
+            for(int i = 0; i < cx; ++i)
+                *dest++ = *src++;
+        }
+        zvar->Delete();
+
+        // Add the cvar array to the dataset.
+        cvar->SetName(var.c_str());
+        sgrid->GetCellData()->AddArray(cvar);
+    }
+    else
+    {
+        // Add the zvar array to the dataset.
+        zvar->SetName(var.c_str());
+        sgrid->GetPointData()->AddArray(zvar);
+    }
 
     // Assemble the vtkDataArray for the matvar if this streak plot has a material.
     if(s.hasMaterial)
@@ -956,6 +1202,14 @@ Streaker::ConstructDataset(const std::string &var, const StreakInfo &s, const PD
 
     // cleanup
     yvar->Delete();
+
+    // Transpose I,J if the data should match Silo.
+    if(s.matchSilo)
+    {
+        vtkStructuredGrid *ds = TransposeIJ(sgrid);
+        sgrid->Delete();
+        sgrid = ds;
+    }
 
     return sgrid;
 }

@@ -38,7 +38,7 @@
 #ifndef QVIS_PARALLEL_COORDINATES_WIDGET_H
 #define QVIS_PARALLEL_COORDINATES_WIDGET_H
 
-#include <QWidget>
+#include <qwidget.h>
 
 #include <vectortypes.h>
 
@@ -72,23 +72,21 @@
 // Notes: initial implementation taken from Mark Blair's ParallelAxis plot.
 //
 // Modifications:
-//    Cyrus Harrison, Mon Jul 21 08:33:47 PDT 2008
-//    Initial Qt4 Port. 
-//
+//   
 // ****************************************************************************
 
 class QvisParallelCoordinatesWidget : public QWidget
 {
     Q_OBJECT
 public:
-    QvisParallelCoordinatesWidget(QWidget *parent);
+    QvisParallelCoordinatesWidget(QWidget *parent, const char *name=0);
 
     virtual     ~QvisParallelCoordinatesWidget();
     virtual      QSize sizeHint() const;
     virtual      QSizePolicy sizePolicy() const;
     
     void         setNumberOfAxes(int axisCount_);
-    void         setAxisTitles(const stringVector&);
+    void         setAxisTitles(const std::string axisTitles_[]);
     void         redrawAllAxes(bool rightAxisNamed);
 
 public slots:
@@ -103,26 +101,26 @@ protected:
     void         deleteBackingPixmap();
 
     QPixmap      *pixmap;
-    bool          pixmapDirty;
-    int           animationProgress;        // Might be useful eventually to
-    bool          animationCountPositive;   // axis currently being selected.
+    bool         pixmapDirty;
+    int          animationProgress;        // Might be useful eventually to
+    bool         animationCountPositive;   // axis currently being selected.
     
-    int           axisCount;
-    bool          namedRightAxis;
-    stringVector  axisTitles;
+    int          axisCount;
+    bool         namedRightAxis;
+    stringVector axisTitles;
 
 private:
-    void          drawAxes(QPainter *painter);
-    void          drawAxisTitles(QPainter *painter);
-    void          drawDataCurves(QPainter *painter);
+    void         drawAxes(QPainter *painter);
+    void         drawAxisTitles(QPainter *painter);
+    void         drawDataCurves(QPainter *painter);
 
-    int           axisBottomY;
-    int           axisTopY;
+    int          axisBottomY;
+    int          axisTopY;
     
-    intVector     axesXPos;
-    intVector     ticksYPos;
-    intVector     dashesTopYPos;
-    intVector     dashesBotYPos;
+    intVector    axesXPos;
+    intVector    ticksYPos;
+    intVector    dashesTopYPos;
+    intVector    dashesBotYPos;
 };
 
 #endif

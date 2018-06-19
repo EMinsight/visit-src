@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -106,8 +106,16 @@ class ViewerState;
 //   Brad Whitlock, Thu Jul 24 09:18:11 PDT 2008
 //   Added time state argument to OverlayDatabase.
 //
-//   Brad Whitlock, Wed Jan 14 13:59:09 PST 2009
-//   I removed UpdatePlotInfoAtts.
+//   Hank Childs, Wed Jan 28 14:28:59 PST 2009
+//   Added support for named selection methods.
+//
+//   Gunther H. Weber, Mon Apr  6 19:03:03 PDT 2009
+//   Added arguments for host name and simulation name to methods for loading
+//   and saving named selections. 
+//
+//    Cyrus Harrison, Tue Apr 14 13:35:54 PDT 2009
+//    Added argument to ReplaceDatabase to  allow replace of only active 
+//    plots.
 //
 // ****************************************************************************
 
@@ -151,7 +159,8 @@ public:
     void ActivateDatabase(const std::string &database);
     void CheckForNewStates(const std::string &database);
     void ReOpenDatabase(const std::string &database, bool forceClose = true);
-    void ReplaceDatabase(const std::string &database, int timeState = 0);
+    void ReplaceDatabase(const std::string &database, int timeState = 0, 
+                         bool onlyReplaceActive = false);
     void OverlayDatabase(const std::string &database, int timeState = 0);
     void RequestMetaData(const std::string &database, int ts = -1);
     void ClearCache(const std::string &hostName, const std::string &simName);
@@ -172,6 +181,15 @@ public:
     void CloseComputeEngine(const std::string &hostName, const std::string &simName);
     void InterruptComputeEngine(const std::string &hostName, const std::string &simName);
 
+    void ApplyNamedSelection(const std::string &selName);
+    void CreateNamedSelection(const std::string &selName);
+    void DeleteNamedSelection(const std::string &selName);
+    void LoadNamedSelection(const std::string &selName,
+                            const std::string &hostName,
+                            const std::string &simName);
+    void SaveNamedSelection(const std::string &selName,
+                            const std::string &hostName,
+                            const std::string &simName);
     void AnimationSetNFrames(int nFrames);
     void AnimationPlay();
     void AnimationReversePlay();
@@ -368,6 +386,8 @@ public:
     void OpenClient(const std::string &clientName, 
                     const std::string &program,
                     const stringVector &args);
+
+    void UpdatePlotInfoAtts(int winId=-1, int plotId=-1);
 
 private:
     ViewerState *state;

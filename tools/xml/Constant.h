@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,7 +39,7 @@
 #ifndef CONSTANT_H
 #define CONSTANT_H
 
-#include <QTextStream>
+#include <qstring.h>
 
 // ****************************************************************************
 //  Class:  Constant
@@ -53,9 +53,6 @@
 //  Modifications:
 //    Brad Whitlock, Thu Feb 28 09:39:49 PDT 2008
 //    Added target.
-//
-//    Brad Whitlock, Thu May  8 11:31:21 PDT 2008
-//    Qt 4. Use QTextSTream.
 //
 // ****************************************************************************
 class Constant
@@ -72,7 +69,7 @@ class Constant
         : name(n), decl(dc), def(df), member(m), target(t)
     {
     }
-    void Print(QTextStream &out, const QString &generatorName = QString::null)
+    void Print(ostream &out, const QString &generatorName = QString::null)
     {
         if(generatorName.isEmpty() || generatorName == target)
             out << "        Constant: (" << target << ") " << decl << endl;

@@ -2,9 +2,9 @@
 #define QVIS_COMPOSITE_TRANSITION_H
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,7 +37,7 @@
 * DAMAGE.
 *
 *****************************************************************************/
-#include <QGroupBox>
+#include <qgroupbox.h>
 
 class QCheckBox;
 class QSpinBox;
@@ -54,16 +54,14 @@ class QSpinBox;
 // Creation:   Mon Oct 16 11:35:55 PDT 2006
 //
 // Modifications:
-//   Brad Whitlock, Tue Oct  7 09:22:35 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 class QvisCompositeTransition : public QGroupBox
 {
     Q_OBJECT
 public:
-    QvisCompositeTransition(const QPixmap &, QWidget *parent);
+    QvisCompositeTransition(const QPixmap &, QWidget *parent, const char *name);
     virtual ~QvisCompositeTransition();
 
     void setNFrames(int);
@@ -73,7 +71,7 @@ public:
     bool getReverse() const;
 
 private:
-    QSpinBox  *nFrames;
+    QSpinBox *nFrames;
     QCheckBox *reverseCheckbox;
 };
 

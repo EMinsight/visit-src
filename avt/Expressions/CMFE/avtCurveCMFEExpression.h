@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,7 +37,7 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                           avtCurveCMFEExpression.h                         //
+//                          avtCurveCMFEExpression.h                         //
 // ************************************************************************* //
 
 #ifndef AVT_CURVE_CMFE_EXPRESSION_H
@@ -46,9 +46,7 @@
 #include <avtCMFEExpression.h>
 
 class     vtkDataArray;
-class     ArgsExpr;
-class     ExprPipelineState;
-class     ConstExpr;
+class     vtkRectilinearGrid;
 
 // ****************************************************************************
 //  Class: avtCurveCMFEExpression
@@ -60,6 +58,8 @@ class     ConstExpr;
 //  Creation:   November 18, 2008 
 //
 //  Modifications:
+//    Kathleen Bonnell, Tue Feb 24 11:47:56 PST 2009
+//    Added methods HasDupX, RemoveDuplicateX, and MergeCurvesToSameXInterval.
 //
 // ****************************************************************************
 
@@ -80,9 +80,15 @@ class EXPRESSION_API avtCurveCMFEExpression : public avtCMFEExpression
                                           const std::string &,
                                           const std::string &);
     virtual bool              UseIdenticalSIL(void) { return true; };
+
+  private:
+
+    bool                      HasDupX(vtkRectilinearGrid *);
+    vtkRectilinearGrid       *RemoveDuplicateX(vtkRectilinearGrid *);
+    vtkRectilinearGrid       *MergeCurvesToSameXIntervals(vtkRectilinearGrid *,
+                                                   vtkRectilinearGrid *,
+                                                   const std::string &);
 };
 
 
 #endif
-
-

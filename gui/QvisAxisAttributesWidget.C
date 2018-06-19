@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,13 +37,13 @@
 *****************************************************************************/
 #include <QvisAxisAttributesWidget.h>
 
-#include <QCheckBox>
-#include <QGroupBox>
-#include <QLabel>
-#include <QLayout>
-#include <QLineEdit>
-#include <QSpinBox>
-#include <QTimer>
+#include <qcheckbox.h>
+#include <qgroupbox.h>
+#include <qlabel.h>
+#include <qlayout.h>
+#include <qlineedit.h>
+#include <qspinbox.h>
+#include <qtimer.h>
 
 #include <QNarrowLineEdit.h>
 #include <QvisFontAttributesWidget.h>
@@ -72,184 +72,177 @@
 //   Brad Whitlock, Tue Apr  8 09:27:26 PDT 2008
 //   Support for internationalization.
 //
-//   Brad Whitlock, Thu Jun 26 13:33:59 PDT 2008
-//   Qt 4.
-//
 //   Kathleen Bonnell, Mon Sep 22 18:37:29 PDT 2008 
 //   Allow labelScaling values to be negative. 
-//
-//   Jeremy Meredith, Fri Jan 16 11:12:48 EST 2009
-//   Allow clients to not expose the "ShowGrid" and custom title/units settings
 //
 // ****************************************************************************
 
 QvisAxisAttributesWidget::QvisAxisAttributesWidget(QWidget *parent, 
-    bool tickEnabled, bool titleEnabled,
-    bool showGridEnabled, bool customTitleAndUnitsEnabled) :
-    QWidget(parent), GUIBase(), atts()
+    const char *name, bool tickEnabled, bool titleEnabled) :
+    QVBox(parent, name), GUIBase(), atts()
 {
     autoScaling = true;
     autoTickMarks = true;
-    QVBoxLayout *vbLayout = new QVBoxLayout(this);
-    vbLayout->setMargin(5);
-    vbLayout->setSpacing(10);
+    setMargin(5);
+    setSpacing(5);
 
     //
     // Create the title group
     //
-    titleGroup = new QGroupBox(this);
+    titleGroup = new QGroupBox(this, "titleGroup");
     titleGroup->setTitle(tr("Title"));
-    vbLayout->addWidget(titleGroup);
     if(titleEnabled)
     {
+#if QT_VERSION >= 0x030300
         titleGroup->setCheckable(true);
         connect(titleGroup, SIGNAL(toggled(bool)),
                 this, SLOT(titleToggled(bool)));
+#endif
     }
+    QVBoxLayout *tInnerLayout = new QVBoxLayout(titleGroup);
+    tInnerLayout->setMargin(10);
+    tInnerLayout->addSpacing(15);
+    tInnerLayout->setSpacing(10);
     int row = 0;
-    QGridLayout *tLayout = new QGridLayout(titleGroup);
+    QGridLayout *tLayout = new QGridLayout(tInnerLayout, 4, 2);
     tLayout->setSpacing(5);
-    customTitleToggle = new QCheckBox(tr("Custom title"), titleGroup);
+    customTitleToggle = new QCheckBox(tr("Custom title"), titleGroup,
+        "customTitleToggle");
     connect(customTitleToggle, SIGNAL(toggled(bool)),
             this, SLOT(customTitleToggled(bool)));
     tLayout->addWidget(customTitleToggle, row, 0);
-    customTitle = new QLineEdit(titleGroup);
+    customTitle = new QLineEdit(titleGroup, "customTitle");
     connect(customTitle, SIGNAL(returnPressed()),
             this, SLOT(Apply()));
     tLayout->addWidget(customTitle, row, 1);
     ++row;
-    if (!customTitleAndUnitsEnabled)
-    {
-        customTitleToggle->hide();
-        customTitle->hide();
-    }
 
-    customUnitsToggle = new QCheckBox(tr("Custom Units"), titleGroup);
+    customUnitsToggle = new QCheckBox(tr("Custom Units"), titleGroup,
+        "customUnitsToggle");
     connect(customUnitsToggle, SIGNAL(toggled(bool)),
             this, SLOT(customUnitsToggled(bool)));
     tLayout->addWidget(customUnitsToggle, row, 0);
-    customUnits = new QLineEdit(titleGroup);
+    customUnits = new QLineEdit(titleGroup, "customUnits");
     connect(customUnits, SIGNAL(returnPressed()),
             this, SLOT(Apply()));
     tLayout->addWidget(customUnits, row, 1);
     ++row;
-    if (!customTitleAndUnitsEnabled)
-    {
-        customUnitsToggle->hide();
-        customUnits->hide();
-    }
 
-    QFrame *titleSep = new QFrame(titleGroup);
+    QFrame *titleSep = new QFrame(titleGroup, "labelSep");
     titleSep->setFrameStyle(QFrame::HLine + QFrame::Sunken);
-    tLayout->addWidget(titleSep, row, 0, 1, 2);
+    tLayout->addMultiCellWidget(titleSep, row, row, 0, 1);
     ++row;
 
-    titleFont = new QvisFontAttributesWidget(titleGroup);
+    titleFont = new QvisFontAttributesWidget(titleGroup, "titleFont");
 #ifdef DISABLE_TEXT_OPACITY
     titleFont->disableOpacity();
 #endif
     connect(titleFont, SIGNAL(fontChanged(const FontAttributes &)),
             this, SLOT(titleFontChanged(const FontAttributes &)));
-    tLayout->addWidget(titleFont, row, 0, 1, 2);
+    tLayout->addMultiCellWidget(titleFont, row, row, 0, 1);
 
     //
     // Create the label group
     //
     row = 0;
-    labelGroup = new QGroupBox(this);
-    vbLayout->addWidget(labelGroup);
+    labelGroup = new QGroupBox(this, "labelGroup");
     labelGroup->setTitle(tr("Labels"));
+#if QT_VERSION >= 0x030300
     labelGroup->setCheckable(true);
     connect(labelGroup, SIGNAL(toggled(bool)),
             this, SLOT(labelToggled(bool)));
-    QGridLayout *lLayout = new QGridLayout(labelGroup);
+#endif
+    QVBoxLayout *lInnerLayout = new QVBoxLayout(labelGroup);
+    lInnerLayout->setMargin(10);
+    lInnerLayout->addSpacing(15);
+    lInnerLayout->setSpacing(10);
+    QGridLayout *lLayout = new QGridLayout(lInnerLayout, 3, 2);
     lLayout->setSpacing(5);
-    lLayout->setColumnStretch(1, 10);
+    lLayout->setColStretch(1, 10);
 
-    labelScaling = new QSpinBox(labelGroup);
-    labelScaling->setMinimum(-300);
-    labelScaling->setMaximum(300);
+    labelScaling = new QSpinBox(-300, 300, 1, labelGroup, "labelScaling");
     connect(labelScaling, SIGNAL(valueChanged(int)),
             this, SLOT(labelScalingChanged(int)));
-    labelScalingLabel = new QLabel(tr("Scaling (x10^?)"), labelGroup);
-    labelScalingLabel->setBuddy(labelScaling);
+    labelScalingLabel = new QLabel(labelScaling, tr("Scaling (x10^?)"), 
+        labelGroup, "labelScalingLabel");
     lLayout->addWidget(labelScalingLabel, row, 0);
     lLayout->addWidget(labelScaling, row, 1);
     ++row;
 
-    QFrame *labelSep = new QFrame(labelGroup);
+    QFrame *labelSep = new QFrame(labelGroup, "labelSep");
     labelSep->setFrameStyle(QFrame::HLine + QFrame::Sunken);
-    lLayout->addWidget(labelSep, row, 0, 1, 2);
+    lLayout->addMultiCellWidget(labelSep, row, row, 0, 1);
     ++row;
 
-    labelFont = new QvisFontAttributesWidget(labelGroup);
+    labelFont = new QvisFontAttributesWidget(labelGroup, "labelFont");
 #ifdef DISABLE_TEXT_OPACITY
     labelFont->disableOpacity();
 #endif
     connect(labelFont, SIGNAL(fontChanged(const FontAttributes &)),
             this, SLOT(labelFontChanged(const FontAttributes &)));
-    lLayout->addWidget(labelFont, row, 0, 1, 2);
+    lLayout->addMultiCellWidget(labelFont, row, row, 0, 1);
 
     //
     // Create the tick group
     //
     row = 0;
-    tickGroup = new QGroupBox(this);
-    vbLayout->addWidget(tickGroup);
+    tickGroup = new QGroupBox(this, "tickGroup");
     tickGroup->setTitle(tr("Tick marks"));
     if(tickEnabled)
     {
+#if QT_VERSION >= 0x030300
         tickGroup->setCheckable(true);
         connect(tickGroup, SIGNAL(toggled(bool)),
                 this, SLOT(tickToggled(bool)));
+#endif
     }
-    QGridLayout *tgLayout = new QGridLayout(tickGroup);
+    QVBoxLayout *tgInnerLayout = new QVBoxLayout(tickGroup);
+    tgInnerLayout->setMargin(10);
+    tgInnerLayout->addSpacing(15);
+    tgInnerLayout->setSpacing(10);
+    QGridLayout *tgLayout = new QGridLayout(tgInnerLayout, 4, 2);
     tgLayout->setSpacing(5);
 
-    majorMinimum = new QNarrowLineEdit(tickGroup);
+    majorMinimum = new QNarrowLineEdit(tickGroup, "majorMinimum");
     connect(majorMinimum, SIGNAL(returnPressed()),
             this, SLOT(Apply()));
     tgLayout->addWidget(majorMinimum, row, 1);
-    majorMinimumLabel = new QLabel(tr("Major minimum"), tickGroup);
-    majorMinimumLabel->setBuddy(majorMinimum);
+    majorMinimumLabel = new QLabel(majorMinimum, tr("Major minimum"), 
+        tickGroup, "majorMinimumLabel");
     tgLayout->addWidget(majorMinimumLabel, row, 0);
     ++row;
 
-    majorMaximum = new QNarrowLineEdit(tickGroup);
+    majorMaximum = new QNarrowLineEdit(tickGroup, "majorMaximum");
     connect(majorMaximum, SIGNAL(returnPressed()),
             this, SLOT(Apply()));
     tgLayout->addWidget(majorMaximum, row, 1);
-    majorMaximumLabel = new QLabel(tr("Major maximum"), tickGroup);
-    majorMaximumLabel->setBuddy(majorMaximum);
+    majorMaximumLabel = new QLabel(majorMaximum, tr("Major maximum"), 
+        tickGroup, "majorMaximumLabel");
     tgLayout->addWidget(majorMaximumLabel, row, 0);
     ++row;
 
-    minorSpacing = new QNarrowLineEdit(tickGroup);
+    minorSpacing = new QNarrowLineEdit(tickGroup, "minorSpacing");
     connect(minorSpacing, SIGNAL(returnPressed()),
             this, SLOT(Apply()));
     tgLayout->addWidget(minorSpacing, row, 1);
-    minorSpacingLabel = new QLabel(tr("Minor spacing"), tickGroup);
-    minorSpacingLabel->setBuddy(minorSpacing);
+    minorSpacingLabel = new QLabel(minorSpacing, tr("Minor spacing"), 
+        tickGroup, "minorSpacingLabel");
     tgLayout->addWidget(minorSpacingLabel, row, 0);
     ++row;
 
-    majorSpacing = new QNarrowLineEdit(tickGroup);
+    majorSpacing = new QNarrowLineEdit(tickGroup, "majorSpacing");
     connect(majorSpacing, SIGNAL(returnPressed()),
             this, SLOT(Apply()));
     tgLayout->addWidget(majorSpacing, row, 1);
-    majorSpacingLabel = new QLabel(tr("Major spacing"), tickGroup);
-    majorSpacingLabel->setBuddy(majorSpacing);
+    majorSpacingLabel = new QLabel(majorSpacing, tr("Major spacing"), 
+        tickGroup, "majorSpacingLabel");
     tgLayout->addWidget(majorSpacingLabel, row, 0);
     ++row;
 
     // Add the grid check box.
-    grid = new QCheckBox(tr("Show grid"), this);
+    grid = new QCheckBox(tr("Show grid"), this, "grid");
     connect(grid, SIGNAL(toggled(bool)),
             this, SLOT(gridToggled(bool)));
-    vbLayout->addWidget(grid);
-    vbLayout->addStretch(100);
-    if (!showGridEnabled)
-        grid->hide();
 }
 
 // ****************************************************************************
@@ -512,9 +505,9 @@ QvisAxisAttributesWidget::GetCurrentValues(AxisAttributes &aa,
         if(doAll || which_widget == AxisTitles::ID_font)
             atts.GetTitle().SetFont(titleFont->getFontAttributes());
         if(doAll || which_widget == AxisTitles::ID_title)
-            atts.GetTitle().SetTitle(customTitle->displayText().toStdString());
+            atts.GetTitle().SetTitle(customTitle->displayText().latin1());
         if(doAll || which_widget == AxisTitles::ID_units)
-            atts.GetTitle().SetUnits(customUnits->displayText().toStdString());
+            atts.GetTitle().SetUnits(customUnits->displayText().latin1());
     }
 
     // Do the label group
@@ -583,7 +576,7 @@ QvisAxisAttributesWidget::GetCurrentValues(AxisAttributes &aa,
 bool
 QvisAxisAttributesWidget::GetDouble(double &val, QLineEdit *le, const QString &name)
 {
-    QString temp(le->displayText().simplified());
+    QString temp(le->displayText().simplifyWhiteSpace());
     bool okay = !temp.isEmpty();
     if(okay)
     {
@@ -622,8 +615,6 @@ QvisAxisAttributesWidget::GetDouble(double &val, QLineEdit *le, const QString &n
 void
 QvisAxisAttributesWidget::ForceSpinBoxUpdate(QSpinBox *sb)
 {
-// No longer needed...
-#if 0
     // Block signals.
     sb->blockSignals(true);
 
@@ -638,7 +629,6 @@ QvisAxisAttributesWidget::ForceSpinBoxUpdate(QSpinBox *sb)
 
     // Let the spinbox emit signals again.
     sb->blockSignals(false);
-#endif
 }
 
 //

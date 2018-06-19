@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -85,6 +85,10 @@ class EngineDatabasePluginInfo;
 //    Brad Whitlock, Tue Jun 24 11:11:24 PDT 2008
 //    Removed singleton characteristics.
 //
+//    Brad Whitlock, Wed Jun 17 10:24:46 PDT 2009
+//    I added arguments to Initialize and I overrode the new BroadcastGeneralInfo
+//    method.
+//
 // ****************************************************************************
 
 class PLUGIN_API DatabasePluginManager : public PluginManager
@@ -93,8 +97,11 @@ class PLUGIN_API DatabasePluginManager : public PluginManager
                                     DatabasePluginManager();
     virtual                        ~DatabasePluginManager();
 
-    void                            Initialize(const PluginCategory, bool parallel=false,
-                                               const char *pluginDir=0);
+    void                            Initialize(const PluginCategory,
+                                               bool parallel=false,
+                                               const char *pluginDir=0,
+                                               bool readInfo = true,
+                                               PluginBroadcaster *broadcaster=0);
 
     virtual void                    ReloadPlugins();
 
@@ -113,6 +120,8 @@ class PLUGIN_API DatabasePluginManager : public PluginManager
     virtual void                    LoadEnginePluginInfo();
 
     virtual void                    FreeCommonPluginInfo();
+
+    virtual void                    BroadcastGeneralInfo(PluginBroadcaster *);
 
     // arrays containing all plugins (appends the ones in PluginManager.C)
     std::vector<bool>                       haswriter;

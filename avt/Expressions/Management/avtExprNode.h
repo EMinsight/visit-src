@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -147,6 +147,15 @@ class EXPRESSION_API avtFunctionExpr : public avtExprNode, public FunctionExpr
     virtual void CreateFilters(ExprPipelineState *);
   private:
     avtExpressionFilter *CreateFilters(std::string);
+
+    avtExpressionFilter *CreateMeshQualityFilters(const std::string &) const;
+    avtExpressionFilter *CreateMeshFilters(const std::string &) const;
+    avtExpressionFilter *CreateImageProcessingFilters(const std::string &) const;
+    avtExpressionFilter *CreateMaterialFilters(const std::string &) const;
+    avtExpressionFilter *CreateCMFEFilters(const std::string &) const;
+    avtExpressionFilter *CreateConditionalFilters(const std::string &) const;
+    avtExpressionFilter *CreateMathFilters(const std::string &) const;
+    avtExpressionFilter *CreateVectorMatrixFilters(const std::string &) const;
 };
 
 class EXPRESSION_API avtVarExpr : public avtExprNode, public VarExpr

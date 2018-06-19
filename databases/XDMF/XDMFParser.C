@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -118,6 +118,10 @@ XDMFParser::~XDMFParser()
 //  Programmer: Eric Brugger
 //  Creation:   Wed Nov 14 10:32:54 PDT 2007
 //
+//  Modifications:
+//    Eric Brugger, Tue Sep 29 12:38:08 PDT 2009
+//    Added initialization of offset, ibuf and lbuf.
+//
 // ****************************************************************************
 
 void
@@ -127,7 +131,10 @@ XDMFParser::SetInputFileName(const char *filename)
     strcpy(fname, filename);
 
     file = fopen(filename, "r");
-
+ 
+    offset = 0;
+    ibuf = 0;
+    lbuf = 0;
     endOfFile = false;
 }
 
@@ -140,6 +147,11 @@ XDMFParser::SetInputFileName(const char *filename)
 //
 //  Programmer: Eric Brugger
 //  Creation:   Wed Nov 14 10:32:54 PDT 2007
+//
+//  Modifications:
+//    Eric Brugger, Fri Apr 24 08:20:39 PDT 2009
+//    I modified the routine to store the elementName in all upper case
+//    letters.
 //
 // ****************************************************************************
 
@@ -266,12 +278,12 @@ XDMFParser::GetNextElement()
             // Process the name.
             //
             char *cptr = &elementName[0];
-            *cptr++ = *chr;
+            *cptr++ = toupper(*chr);
             chr = GetChar();
 
             while (NAME_CHAR)
             {
-                *cptr++ = *chr;
+                *cptr++ = toupper(*chr);
                 chr = GetChar();
             }
             *cptr = '\0';
@@ -321,12 +333,12 @@ XDMFParser::GetNextElement()
             // Process the name.
             //
             char *cptr = &elementName[0];
-            *cptr++ = *chr;
+            *cptr++ = toupper(*chr);
             chr = GetChar();
 
             while (NAME_CHAR)
             {
-                *cptr++ = *chr;
+                *cptr++ = toupper(*chr);
                 chr = GetChar();
             }
             *cptr = '\0';
@@ -451,6 +463,11 @@ XDMFParser::GetElementName() const
 //  Programmer: Eric Brugger
 //  Creation:   Wed Nov 14 10:32:54 PDT 2007
 //
+//  Modifications:
+//    Eric Brugger, Fri Apr 24 08:20:39 PDT 2009
+//    I modified the routine to store the attributeName in all upper case
+//    letters.
+//
 // ****************************************************************************
 
 bool
@@ -503,12 +520,12 @@ XDMFParser::GetNextAttribute()
         // Process the attribute name.
         //
         char *cptr = &attributeName[0];
-        *cptr++ = *chr;
+        *cptr++ = toupper(*chr);
         chr = GetChar();
 
         while (NAME_CHAR)
         {
-            *cptr++ = *chr;
+            *cptr++ = toupper(*chr);
             chr = GetChar();
         }
         *cptr = '\0';
@@ -636,6 +653,26 @@ XDMFParser::GetAttributeName() const
 const char *
 XDMFParser::GetAttributeValue() const
 {
+    return attributeValue;
+}
+
+
+// ****************************************************************************
+//  Method: XDMFParser::GetAttributeValueAsUpper
+//
+//  Purpose:
+//      Return the value of the current attribute in all upper case letters.
+//
+//  Programmer: Eric Brugger
+//  Creation:   Fri Apr 24 08:20:39 PDT 2009
+//
+// ****************************************************************************
+
+const char *
+XDMFParser::GetAttributeValueAsUpper()
+{
+    for (int i = 0; attributeValue[i] != 0; i++)
+        attributeValue[i] = toupper(attributeValue[i]);
     return attributeValue;
 }
 

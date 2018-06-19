@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -57,7 +57,7 @@
 #include <ViewerWindowManagerAttributes.h>
 #include <DataNode.h>
 
-#include <QAction>
+#include <qaction.h>
 
 // ****************************************************************************
 // Class: EnableToolbarAction
@@ -80,7 +80,7 @@ class EnableToolbarAction : public ViewerMultipleAction
 {
 public:
     EnableToolbarAction(ViewerWindow *win) :
-        ViewerMultipleAction(win)
+        ViewerMultipleAction(win, "Enable toolbars")
     {
         SetAllText(tr("Toolbars"));
         SetToolTip(tr("Enable toolbars"));
@@ -109,7 +109,7 @@ public:
                                          args.GetBoolFlag());
     }
 
-    virtual bool ChoiceChecked(int i) const
+    virtual bool ChoiceToggled(int i) const
     {
         ViewerActionManager *actionMgr = window->GetActionManager();
         return actionMgr->GetActionGroupEnabled(i);
@@ -141,7 +141,7 @@ public:
 class HideToolbarsAction : public ViewerAction
 {
 public:
-    HideToolbarsAction(ViewerWindow *win) : ViewerAction(win)
+    HideToolbarsAction(ViewerWindow *win) : ViewerAction(win, "HideToolbarsAction")
     {
         SetAllText(tr("Hide toolbars"));
     }
@@ -186,7 +186,8 @@ public:
 class HideToolbarsForAllWindowsAction : public ViewerAction
 {
 public:
-    HideToolbarsForAllWindowsAction(ViewerWindow *win) : ViewerAction(win)
+    HideToolbarsForAllWindowsAction(ViewerWindow *win) : ViewerAction(win,
+        "HideToolbarsForAllWindowsAction")
     {
         SetAllText(tr("Hide toolbars (all windows)"));
     }
@@ -227,7 +228,7 @@ public:
 class ShowToolbarsAction : public ViewerAction
 {
 public:
-    ShowToolbarsAction(ViewerWindow *win) : ViewerAction(win)
+    ShowToolbarsAction(ViewerWindow *win) : ViewerAction(win, "ShowToolbarsAction")
     {
         SetAllText(tr("Show toolbars"));
     }
@@ -272,7 +273,8 @@ public:
 class ShowToolbarsForAllWindowsAction : public ViewerAction
 {
 public:
-    ShowToolbarsForAllWindowsAction(ViewerWindow *win) : ViewerAction(win)
+    ShowToolbarsForAllWindowsAction(ViewerWindow *win) : ViewerAction(win,
+        "ShowToolbarsForAllWindowsAction")
     {
         SetAllText(tr("Show toolbars (all windows)"));
     }
@@ -309,15 +311,13 @@ public:
 //   Brad Whitlock, Tue Apr 29 11:56:57 PDT 2008
 //   Added tr()
 //
-//   Brad Whitlock, Fri May 23 10:26:52 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 class SetToolbarIconSizeAction : public ViewerToggleAction
 {
 public:
-    SetToolbarIconSizeAction(ViewerWindow *win) : ViewerToggleAction(win)
+    SetToolbarIconSizeAction(ViewerWindow *win) : ViewerToggleAction(win,
+        "SetToolbarIconSizeAction")
     {
         SetAllText(tr("Use large icons (all windows)"));
         toggled = !windowMgr->UsesLargeIcons();
@@ -345,29 +345,29 @@ public:
             action->setEnabled(actionShouldBeEnabled);
 
         // Update the action's toggled state if it is a toggle action.
-        if(action->isCheckable())
+        if(action->isToggleAction())
         {
-            bool actionShouldBeToggled = Checked();
+            bool actionShouldBeToggled = Toggled();
             if(toggled != actionShouldBeToggled)
             {
                 // Set the appropriate icon into the action.
                 if (!window->GetNoWinMode() &&
-                    !action->icon().isNull())
+                    !action->iconSet().pixmap().isNull())
                 {
                     if(actionShouldBeToggled)
-                        SetIcon(QIcon(*toggledIcon));
+                        SetIconSet(QIconSet(*toggledIcon));
                     else
-                        SetIcon(QIcon(*regularIcon));
+                        SetIconSet(QIconSet(*regularIcon));
                 }
                 action->blockSignals(true);
-                action->setChecked(actionShouldBeToggled);
+                action->setOn(actionShouldBeToggled);
                 action->blockSignals(false);
             }
             toggled = actionShouldBeToggled;
         }
     }
 
-    virtual bool Checked() const { return windowMgr->UsesLargeIcons(); }
+    virtual bool Toggled() { return windowMgr->UsesLargeIcons(); }
 
     virtual bool AllowInToolbar() const { return false; }
 };
@@ -438,14 +438,11 @@ public:
 //   Jeremy Meredith, Fri Feb 15 13:15:03 EST 2008
 //   Added ToggleLockTimeAction.
 //
-//   Brad Whitlock, Fri May 23 10:29:46 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 
 ViewerActionManager::ViewerActionManager(ViewerWindow *win) : 
-    ViewerBase(0), actionGroups()
+    ViewerBase(0, "ViewerActionManager"), actionGroups()
 {
     // Create an action array large enough to contain all of the actions.
     actions = new ViewerActionBase *[(int)ViewerRPC::MaxRPC];
@@ -744,11 +741,10 @@ ViewerActionManager::RealizeActionGroups(bool toolbarsVisible, bool largeIcons)
  
             if(action->CanHaveOwnToolbar())
             {
-                std::string actionName(action->GetName());
-                ActionGroup newGroup(actionName);
+                ActionGroup newGroup(action->GetName());
                 newGroup.AddAction(ActionIndex(i));
                 AddActionGroup(newGroup);
-                win->GetToolbar()->AddAction(actionName, action);
+                win->GetToolbar()->AddAction(action->GetName(), action);
             }
             else if(actionInNGroups[i] == 0 && action->AllowInToolbar())
             {
@@ -828,9 +824,6 @@ ViewerActionManager::RealizeActionGroups(bool toolbarsVisible, bool largeIcons)
 //   Brad Whitlock, Mon Mar 3 08:24:01 PDT 2003
 //   Fixed multiple i declaration.
 //
-//   Brad Whitlock, Fri May 23 10:35:27 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
@@ -888,11 +881,10 @@ ViewerActionManager::UpdateActionConstruction(ViewerActionBase *action)
                 if(actions[i] == action)
                     break;
 
-            std::string actionName(action->GetName());
-            ActionGroup newGroup(actionName);
+            ActionGroup newGroup(action->GetName());
             newGroup.AddAction(ActionIndex(i));
             AddActionGroup(newGroup);
-            win->GetToolbar()->AddAction(actionName, action);
+            win->GetToolbar()->AddAction(action->GetName(), action);
         }
         else if(numMemberships == 0)
             win->GetToolbar()->AddAction("general", action);

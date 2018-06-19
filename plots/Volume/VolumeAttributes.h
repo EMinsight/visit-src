@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -68,8 +68,7 @@ public:
         Texture3D,
         RayCasting,
         RayCastingIntegration,
-        SLIVR,
-        Tuvok
+        SLIVR
     };
     enum GradientType
     {
@@ -107,7 +106,7 @@ public:
     void SelectOpacityControlPoints();
     void SelectOpacityVariable();
     void SelectFreeformOpacity();
-    void SelectTransferFunction2DWidgets();
+    void SelectTransferFunctionWidgetList();
 
     // Property setting methods
     void SetLegendFlag(bool legendFlag_);
@@ -169,8 +168,8 @@ public:
     double                         GetSkewFactor() const;
     SamplingType                   GetSampling() const;
     float                          GetRendererSamples() const;
-    const AttributeGroupVector     &GetTransferFunction2DWidgets() const;
-          AttributeGroupVector     &GetTransferFunction2DWidgets();
+    const AttributeGroupVector     &GetTransferFunctionWidgetList() const;
+          AttributeGroupVector     &GetTransferFunctionWidgetList();
     int                            GetTransferFunctionDim() const;
 
     // Persistence methods
@@ -179,12 +178,12 @@ public:
 
 
     // Attributegroup convenience methods
-    void AddTransferFunction2DWidgets(const TransferFunctionWidget &);
-    void ClearTransferFunction2DWidgets();
-    void RemoveTransferFunction2DWidgets(int i);
-    int  GetNumTransferFunction2DWidgets() const;
-    TransferFunctionWidget &GetTransferFunction2DWidgets(int i);
-    const TransferFunctionWidget &GetTransferFunction2DWidgets(int i) const;
+    void AddTransferFunctionWidgetList(const TransferFunctionWidget &);
+    void ClearTransferFunctionWidgetLists();
+    void RemoveTransferFunctionWidgetList(int i);
+    int  GetNumTransferFunctionWidgetLists() const;
+    TransferFunctionWidget &GetTransferFunctionWidgetList(int i);
+    const TransferFunctionWidget &GetTransferFunctionWidgetList(int i) const;
 
     TransferFunctionWidget &operator [] (int i);
     const TransferFunctionWidget &operator [] (int i) const;
@@ -258,7 +257,7 @@ public:
         ID_skewFactor,
         ID_sampling,
         ID_rendererSamples,
-        ID_transferFunction2DWidgets,
+        ID_TransferFunctionWidgetList,
         ID_transferFunctionDim
     };
 
@@ -291,7 +290,7 @@ private:
     double                   skewFactor;
     int                      sampling;
     float                    rendererSamples;
-    AttributeGroupVector     transferFunction2DWidgets;
+    AttributeGroupVector     TransferFunctionWidgetList;
     int                      transferFunctionDim;
 
     // Static class format string for type map.

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -68,8 +68,9 @@ class     avtSpecies;
 
 class     DBOptionsAttributes;
 
-typedef struct
+typedef struct _GroupInfo
 {
+    _GroupInfo() : haveGroups(false), ndomains(0), numgroups(0) {}
     bool                haveGroups;
     int                 ndomains;
     int                 numgroups;
@@ -208,6 +209,30 @@ typedef struct
 //
 //    Mark C. Miller, Tue Dec 23 22:14:30 PST 2008
 //    Added support for ANNOTATION_INT nodelists (special case)
+//
+//    Mark C. Miller, Wed Mar  4 08:54:57 PST 2009
+//    Added tri-state variables to better manage ignoring of extents. 
+//
+//    Mark C. Miller, Wed Mar  4 13:39:58 PST 2009
+//    Backed out preceding change. It had backwards compatibility problems.
+//
+//    Mark C. Miller, Mon Mar 16 23:33:32 PDT 2009
+//    Removed usingOldExtents. Moved logic for 'old' extents interface to
+//    CommonPluginInfo where old (obsolete) options can be merged with current
+//    interface.
+//
+//    Mark C. Miller, Thu Jun 18 20:54:17 PDT 2009
+//    Replaced DBtoc* arg to ReadXXX functions with list of names of objects
+//    to process. Added RemoveMultixxx functions to help manage cached
+//    multi-objects in presence of exceptions.
+//
+//    Mark C. Miller, Thu Oct 29 15:15:37 PDT 2009
+//    Removed arbMeshZoneRangesToSkip. Added HandleGlobalZoneIds. Adjusted
+//    interface to ReadInConnectivity.
+//
+//    Mark C. Miller, Wed Jan 27 13:13:20 PST 2010
+//    Added an extra level of indirection to the arbMeshXXXRemap maps to
+//    make sure they work for multi-block case.
 // ****************************************************************************
 
 class avtSiloFileFormat : public avtSTMDFileFormat
@@ -275,7 +300,8 @@ class avtSiloFileFormat : public avtSTMDFileFormat
 
     GroupInfo                       groupInfo;
 
-    map<string, vector<int> >       arbMeshZoneRangesToSkip;
+    map<string, map<int, vector<int>* > >      arbMeshCellReMap;
+    map<string, map<int, vector<int>* > >      arbMeshNodeReMap;
 
     vector<avtDataSelection_p>      selList;
     vector<bool>                   *selsApplied;
@@ -292,13 +318,32 @@ class avtSiloFileFormat : public avtSTMDFileFormat
     DBfile               *OpenFile(int, bool skipGlobalInfo = false);
     DBfile               *OpenFile(const char *, bool skipGlobalInfo = false);
     virtual void          CloseFile(int);
-    void                  ReadDir(DBfile *,const char *,avtDatabaseMetaData *);
+
+    void                  ReadDir(DBfile*,const char*,avtDatabaseMetaData*);
+    void                  ReadTopDirStuff(DBfile*,const char*,avtDatabaseMetaData*,char**);
+    void                  ReadMultimeshes(DBfile*,int,char**,const char*,avtDatabaseMetaData*);
+    void                  ReadQuadmeshes(DBfile*,int,char**,const char*,avtDatabaseMetaData*);
+    void                  ReadUcdmeshes(DBfile*,int,char**,const char*,avtDatabaseMetaData*);
+    void                  ReadPointmeshes(DBfile*,int,char**,const char*,avtDatabaseMetaData*);
+    void                  ReadCurves(DBfile*,int,char**,const char*,avtDatabaseMetaData*);
+    void                  ReadCSGmeshes(DBfile*,int,char**,const char*,avtDatabaseMetaData*);
+    void                  ReadMultivars(DBfile*,int,char**,const char*,avtDatabaseMetaData*);
+    void                  ReadQuadvars(DBfile*,int,char**,const char*,avtDatabaseMetaData*);
+    void                  ReadUcdvars(DBfile*,int,char**,const char*,avtDatabaseMetaData*);
+    void                  ReadPointvars(DBfile*,int,char**,const char*,avtDatabaseMetaData*);
+    void                  ReadCSGvars(DBfile*,int,char**,const char*,avtDatabaseMetaData*);
+    void                  ReadMaterials(DBfile*,int,char**,const char*,avtDatabaseMetaData*);
+    void                  ReadMultimats(DBfile*,int,char**,const char*,avtDatabaseMetaData*);
+    void                  ReadSpecies(DBfile*,int,char**,const char*,avtDatabaseMetaData*);
+    void                  ReadMultispecies(DBfile*,int,char**,const char*,avtDatabaseMetaData*);
+    void                  ReadDefvars(DBfile*,int,char**,const char*,avtDatabaseMetaData*);
+
     void                  DoRootDirectoryWork(avtDatabaseMetaData*);
     void                  BroadcastGlobalInfo(avtDatabaseMetaData*);
-    void                  StoreMultimeshInfo(const char *const dirname, int which_mm,
+    void                  StoreMultimeshInfo(const char *const dirname,
                                              const char *const name_w_dir,
                                              int meshnum, const DBmultimesh *const mm);
-    void                  AddCSGMultimesh(const char *const dirname, int which_mm,
+    void                  AddCSGMultimesh(const char *const dirname,
                                           const char *const multimesh_name,
                                           avtDatabaseMetaData *md,
                                           const DBmultimesh *const mm, DBfile *dbfile);
@@ -326,9 +371,12 @@ class avtSiloFileFormat : public avtSTMDFileFormat
     vtkDataSet           *GetCurve(DBfile *, const char *);
     vtkDataSet           *GetUnstructuredMesh(DBfile *, const char *,
                                               int, const char *);
+    void                  HandleGlobalZoneIds(const char *, int, int*, int);
     void                  ReadInConnectivity(vtkUnstructuredGrid *,
                                              DBzonelist *, int,
-                                             vector<int>&);
+                                             const char *,int);
+    void                  ReadInArbConnectivity(const char *, vtkUnstructuredGrid*,
+                                                DBucdmesh*,int);
     avtMeshType           FindDecomposedMeshType(DBfile *dbfile);
     void                  GetConnectivityAndGroupInformation(DBfile *, bool = false);
     void                  GetConnectivityAndGroupInformationFromFile(DBfile *,
@@ -386,12 +434,16 @@ class avtSiloFileFormat : public avtSTMDFileFormat
 
     DBmultimesh          *GetMultimesh(const char *path, const char *name);
     DBmultimesh          *QueryMultimesh(const char *path, const char *name);
+    void                  RemoveMultimesh(DBmultimesh *mm);
     DBmultivar           *GetMultivar(const char *path, const char *name);
     DBmultivar           *QueryMultivar(const char *path, const char *name);
+    void                  RemoveMultivar(DBmultivar *mv);
     DBmultimat           *GetMultimat(const char *path, const char *name);
     DBmultimat           *QueryMultimat(const char *path, const char *name);
+    void                  RemoveMultimat(DBmultimat *mm);
     DBmultimatspecies    *GetMultimatspec(const char *path, const char *name);
     DBmultimatspecies    *QueryMultimatspec(const char *path, const char *name);
+    void                  RemoveMultimatspec(DBmultimatspecies *ms);
 };
 
 

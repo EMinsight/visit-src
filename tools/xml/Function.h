@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,7 +39,8 @@
 #ifndef FUNCTION_H
 #define FUNCTION_H
 
-#include <QTextStream>
+#include <qstring.h>
+#include <visitstream.h>
 
 // ****************************************************************************
 //  Class:  Function
@@ -64,9 +65,6 @@
 //    Brad Whitlock, Fri Apr 25 11:13:20 PDT 2008
 //    Added accessType
 //
-//    Brad Whitlock, Thu May  8 11:35:41 PDT 2008
-//    Qt 4. Use QTextStream.
-//
 // ****************************************************************************
 class Function
 {
@@ -88,7 +86,7 @@ class Function
     {
         usedThisFunction = false;
     }
-    void Print(QTextStream &out, const QString &generatorName = QString::null)
+    void Print(ostream &out, const QString &generatorName = QString::null)
     {
         if(generatorName.isEmpty() || generatorName == target)
         {

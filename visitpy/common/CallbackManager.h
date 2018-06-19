@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,6 +37,7 @@
 *****************************************************************************/
 #ifndef CALLBACK_MANAGER_H
 #define CALLBACK_MANAGER_H
+#include <Python.h>
 #include <map>
 #include <vector>
 #include <string>
@@ -45,7 +46,6 @@
 
 #include <SimpleObserver.h>
 #include <ObserverToCallback.h>
-#include <Python.h>
 
 class AttributeSubject;
 class Threading;
@@ -71,6 +71,10 @@ typedef bool (AddWorkCallback)(Subject *, void *data);
 // Modifications:
 //   Brad Whitlock, Wed Feb  6 10:27:51 PST 2008
 //   Added support for callback data.
+//
+//   Hank Childs, Mon Jan 18 21:38:53 PST 2010
+//   Added method IsWorking on behalf of Tila Ochatta, Huy Vo, and Claudio
+//   Silva.  (For VisTrails.)
 //
 // ****************************************************************************
 
@@ -128,6 +132,8 @@ public:
 
     void WorkAllowed();
     void Work();
+    bool IsWorking();
+
 private:
     bool RegisterCallback(Subject *, PyObject *, PyObject *);
     void StartWork();

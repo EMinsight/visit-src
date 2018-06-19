@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -55,6 +55,9 @@
 //
 //  Modifications:
 //
+//    Hank Childs, Mon Apr  6 13:05:35 PDT 2009
+//    Add support for getting direct access to filters.
+//
 // ****************************************************************************
 class Netnode
 {
@@ -62,6 +65,7 @@ public:
     virtual ~Netnode(void) {};
     virtual avtDataObject_p GetOutput(void) = 0;
     virtual void ReleaseData() = 0;
+    virtual avtFilter *GetFilter(void) { return NULL; };
 };
 
 // ****************************************************************************
@@ -135,6 +139,7 @@ public:
     std::vector<Netnode*>& GetInputNodes(void) { return inputNodes; };
     virtual avtDataObject_p GetOutput(void);
     void ReleaseData();
+    virtual avtFilter *GetFilter(void) { return *filter; };
 
 protected:
     ref_ptr<avtFilter>          filter;

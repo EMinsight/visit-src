@@ -1,21 +1,25 @@
                          Building VisIt on MacOS X
                          =========================
 
-This document describes how to build VisIt on MacOS X under at least 10.4.x 
-on Intel and 10.3.9 on PPC. 
+This document describes how to build VisIt on MacOS X under at least
+10.4.x on Intel and 10.3.9 on PPC.  Do note that *building* under OS
+X 10.6 ("Snow Leopard") is not supported in the VisIt 1.12 release
+series.  Binaries built on earlier versions of Mac OS X should still
+run fine on Snow Leopard, however.
 
 build_visit
   The recomended method for building VisIt on MacOS X is to use the 
   build_visit script available at:
-    http://www.llnl.gov/VisIt/1.11.2/build_visit 
+    http://www.llnl.gov/VisIt/1.12.2/build_visit 
   Note: you may need to restore the execute permissions after downloading
   with, chmod +x build_visit
   Using build_visit a basic build for the Mac can be initiated with:
-     ./build_visit -z
+     ./build_visit --console
   The above command will download the required VisIt and 3rd party source code,
   configuring, and building it all using your C++ compiler. The full-blown
   version of VisIt (same as the binary distribution minus Mili) use:
-    ./build_visit -45bcefgnrwz 
+    ./build_visit --hdf4 --hdf5 --boxlib --cgns --exodus --cfitsio --gdal \
+      --netcdf --h5part --python --console
   Some users are more comfortable with a GUI interface. The build_visit script
   optionally uses dialog, a script-interpreter which providing a set of curses
   widgets, similar to the what is used in Linux kernel configuration. Dialog
@@ -58,10 +62,10 @@ Universal binary
   Building of a universal install target requires 2 independent builds of VisIt
   and its supporting libraries. The PowerPC Mac be running at least MacOS
   X10.3.9, and the Intel Mac running MacOS X10.4.x (Tiger). Each build is put
-  into a binary distribution tarball (e.g., visit1_11_2.darwin-ppc.tar.gz or
-  visit1_11_2.darwin-i386.tar.gz) by the clearcase_bin/visit-bin-dist step.
+  into a binary distribution tarball (e.g., visit1_12_2.darwin-ppc.tar.gz or
+  visit1_12_2.darwin-i386.tar.gz) by the clearcase_bin/visit-bin-dist step.
   Each of these tarballs can be installed in a executable distributions,
-  see: http://www/visit/1.11.2/INSTALL_NOTES.
+  see: http://visit.llnl.gov/1.12.2/INSTALL_NOTES.
 
 Build Notes (if you still want to do it by hand)
   VisIt relies on several external libraries which must be built and installed
@@ -77,17 +81,17 @@ Build Notes (if you still want to do it by hand)
                    http://www.llnl.gov/visit/3rd_party/Mesalib-6.4.2.tar.gz
     Python   2.5      Scripting Language    http://www.python.org
                    http://www.llnl.gov/visit/3rd_party/Python-2.5.tar.gz
-    Qt       4.4.3    GUI Toolkit           http://www.trolltech.com
-                   http://www.llnl.gov/visit/3rd_party/qt-mac-opensource-4.4.3.tar.gz
+    Qt       3.3.8    GUI Toolkit           http://www.trolltech.com
+                   http://www.llnl.gov/visit/3rd_partyqt-/mac-free-3.3.8.tar.gz
     VTK      5.0.0c   Visualization Toolkit http://www.vtk.org
                    http://www.llnl.gov/visit/3rd_party/vtk-5.0.0c.tar.gz
     cmake    2.4.5    Make file generation  http://www.cmake.org
                    http://www.llnl.gov/visit/3rd_party/cmake-2.4.5.tar.gz
-    Silo     4.5.1    File I/O library       
-                   http://www.llnl.gov/visit/3rd_party/silo060605.sh
     
     Optional Version  Description           For More Information
     ======== =======  ===========           ====================
+    Silo     4.7      File I/O library       
+                   https://wci.llnl.gov/codes/silo/silo-4.7/silo-4.7.tar.gz
     Boxlib   2.5      An AMR I/O library    
                    http://www.llnl.gov/visit/3rd_party/boxlib.tar.rz
     CFITSIO  3006     File I/O library       
@@ -383,22 +387,39 @@ directory.
 export MACOSX_DEPLOYMENT_TARGET=10.3
 
 ==============================================================================
-Building Qt 4 frameworks
+Building Qt library
 ==============================================================================
 
-Qt 4 builds as a set of frameworks.
+Qt actually builds as a prebound dynamic library but we need to make sure
+that it sets an install_name that is relative to our VisIt executables. The
+Qt-4.x version promises to support universal builds, until then you'll
+need to build twice then lipo to combine the two build.
 
 # Unzip the Qt source
-tar zxf qt-mac-opensource-4.4.3.tar.gz
-cd qt-mac-opensource-4.4.3
+tar zxf qt-mac-free-3.3.8.tar.gz
+cd qt-mac-free-3.3.8
 
-# Build Qt 4
-./configure --prefix=$VISITPATH/qt -make libs -make tools -fast -no-separate-debug-info -no-qt3support -no-dbus -no-sql-mysql -no-sql-sqlite 
+#
+export QTDIR=$(pwd)
+export DYLD_LIBRARY_PATH=$QTDIR/lib:$DYLD_LIBRARY_PATH
+./configure -thread -platform macx-g++ --prefix=$VISITPATH/qt
 make
 
-# Install Qt 4
+# Install headers Qt
 make install
-cd ..
+
+# Change the dynamic install names
+cd lib
+rm libqt.dylib
+cp libqt-mt.3.3.8.dylib libqt.dylib
+install_name_tool -id @executable_path/../lib/libqt.dylib libqt.dylib
+rm libqui.dylib
+cp libqui.1.0.0.dylib libqui.dylib
+install_name_tool -change libqt-mt.3.dylib @executable_path/../lib/libqt.dylib \
+libqui.dylib
+install_name_tool -id @executable_path/../lib/libqui.dylib libqui.dylib
+cp libqt.dylib libqui.dylib $VISITPATH/qt/lib
+cd ../..
 
 ==============================================================================
 Building Mesa 
@@ -1231,8 +1252,8 @@ for HDF5. I needed to do a machine merge in order to get a universal binary,
 because the endianness and word size is determined in configure.
 
 # Build silo source into an archive library
-sh silo060605.sh
-cd silo060605
+gunzip < silo-4.7.tar.gz | tar xvf -
+cd silo-4.7
 #
 
 # Need to fake-out dependency tracking.
@@ -1253,8 +1274,8 @@ chmod +x configure
 ./configure --prefix=$VISITPATH/silo CFLAGS="-O2 -fno-common" \
 CXXFLAGS="-O2 -fno-common" \
 LDFLAGS="-Wl,-headerpad_max_install_names,-undefined,dynamic_lookup" \
---disable-sdx --disable-browser --without-readline \
---without-exodus --without-python --with-hdf5=$HDF5INCLUDE,$HDF5LIB
+--disable-browser --without-readline \
+--without-python --with-hdf5=$HDF5INCLUDE,$HDF5LIB
 
 # Compile the needed subroutines. Force make to ignore errors from
 # archive creation, it should get us to where we want to be.
@@ -1263,7 +1284,7 @@ make -i
 gcc -dynamiclib -o libsilo.dylib silo/*/*.o \
 -Wl,-headerpad_max_install_names,\
 -install_name,@executable_path/../lib/libsilo.dylib,\
--compatibility_version,4.5,-current_version,4.5.1 \
+-compatibility_version,4.7,-current_version,4.7 \
 -L$HDF5LIB -lhdf5 -lsz -lz
 
 # Install headers. Ignore archive creation errors.
@@ -1284,7 +1305,11 @@ I needed to do a machine merge in order to get a universal binary.
 # Build Boxlib.
 #
 # Boxlib requires a Fortran compiler, skip the Boxlib building if you
-# don't have access to a Fortran compiler
+# don't have access to a Fortran compiler.
+# Do note that the 3D version of BoxLib appears to have issues on the
+# Mac.  The build seems okay but 3D BoxLib files do not load on some
+# Mac systems.  The exact issue is not known, but the VisIt team would
+# welcome contributions to address the problem.
 
 tar -zxf boxlib.tar.gz
 cd CCSEApps/BoxLib
@@ -1462,8 +1487,8 @@ More information about building VisIt follows after that.
 #
 # Unzipping VisIt's source code distribution
 #
-tar zxf visit1.11.0.tar.gz
-cd visit1.11.0/src
+tar zxf visit070702.tar.gz
+cd visit070702/src
 
 #
 # HDF5 and Silo

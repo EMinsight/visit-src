@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -127,9 +127,6 @@ class  avtRayFunction;
 //    Have this class set up custom sample point arbitrators, since it has
 //    the most knowledge.
 //
-//    Hank Childs, Fri Jan  9 14:09:57 PST 2009
-//    Add support for jittering.
-//
 // ****************************************************************************
 
 class AVTFILTERS_API avtSamplePointExtractor 
@@ -154,7 +151,6 @@ class AVTFILTERS_API avtSamplePointExtractor
 
     void                      Set3DMode(bool m) { modeIs3D = m; };
     void                      SetKernelBasedSampling(bool);
-    void                      SetJittering(bool);
 
     void                      SetUpArbitrator(std::string &name, bool min);
 
@@ -183,7 +179,6 @@ class AVTFILTERS_API avtSamplePointExtractor
     avtWedgeExtractor        *wedgeExtractor;
 
     bool                      sendCells;
-    bool                      jitter;
     avtRayFunction           *rayfoo;
 
     bool                      rectilinearGridsAreInWorldSpace;

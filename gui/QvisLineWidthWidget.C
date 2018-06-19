@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,10 +39,10 @@
 #include <stdio.h>
 
 #include <QvisLineWidthWidget.h>
-#include <QComboBox>
-#include <QLayout>
-#include <QPixmap>
-#include <QPixmapCache>
+#include <qcombobox.h>
+#include <qlayout.h>
+#include <qpixmap.h>
+#include <qpixmapcache.h>
 
 // Some static pixmap data.
 const char *QvisLineWidthWidget::style1[] = {
@@ -303,13 +303,11 @@ char QvisLineWidthWidget::augmentedForeground[15];
 //   Kathleen Bonnell, Tue Dec  3 16:14:25 PST 2002 
 //   Added more pixmaps for larger line widths. 
 //
-//   Brad Whitlock, Tue Jun  3 13:38:02 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
-QvisLineWidthWidget::QvisLineWidthWidget(int width_, QWidget *parent) : 
-    QWidget(parent)
+QvisLineWidthWidget::QvisLineWidthWidget(int width_, QWidget *parent,
+                                         const char *name) : 
+                                         QWidget(parent, name)
 {
     // Create some pixmaps and store them in the application global
     // pixmap cache.
@@ -396,20 +394,19 @@ QvisLineWidthWidget::QvisLineWidthWidget(int width_, QWidget *parent) :
 
     // Create the combo box and add the pixmaps to it.
     QHBoxLayout *topLayout = new QHBoxLayout(this);
-    topLayout->setMargin(0);
-    topLayout->setSpacing(0);
-    lineWidthComboBox = new QComboBox(this);
-    lineWidthComboBox->addItem(QIcon(style1Pixmap),"1");
-    lineWidthComboBox->addItem(QIcon(style2Pixmap),"2");
-    lineWidthComboBox->addItem(QIcon(style3Pixmap),"3");
-    lineWidthComboBox->addItem(QIcon(style4Pixmap),"4");
-    lineWidthComboBox->addItem(QIcon(style5Pixmap),"5");
-    lineWidthComboBox->addItem(QIcon(style6Pixmap),"6");
-    lineWidthComboBox->addItem(QIcon(style7Pixmap),"7");
-    lineWidthComboBox->addItem(QIcon(style8Pixmap),"8");
-    lineWidthComboBox->addItem(QIcon(style9Pixmap),"9");
-    lineWidthComboBox->addItem(QIcon(style10Pixmap),"10");
-    lineWidthComboBox->setCurrentIndex(width_);
+    lineWidthComboBox = new QComboBox(false, this, "lineWidthComboBox");
+    lineWidthComboBox->insertItem(style1Pixmap);
+    lineWidthComboBox->insertItem(style2Pixmap);
+    lineWidthComboBox->insertItem(style3Pixmap);
+    lineWidthComboBox->insertItem(style4Pixmap);
+    lineWidthComboBox->insertItem(style5Pixmap);
+    lineWidthComboBox->insertItem(style6Pixmap);
+    lineWidthComboBox->insertItem(style7Pixmap);
+    lineWidthComboBox->insertItem(style8Pixmap);
+    lineWidthComboBox->insertItem(style9Pixmap);
+    lineWidthComboBox->insertItem(style10Pixmap);
+    lineWidthComboBox->setBackgroundMode(PaletteBackground);
+    lineWidthComboBox->setCurrentItem(width_);
     topLayout->addWidget(lineWidthComboBox);
     connect(lineWidthComboBox, SIGNAL(activated(int)),
             this, SIGNAL(lineWidthChanged(int)));
@@ -481,7 +478,7 @@ QvisLineWidthWidget::SetLineWidth(int width_)
         return;
 
     lineWidthComboBox->blockSignals(true);
-    lineWidthComboBox->setCurrentIndex(width_);
+    lineWidthComboBox->setCurrentItem(width_);
     lineWidthComboBox->blockSignals(false);
 
     // If signals are not blocked, emit the LineWidthChanged signal.
@@ -511,7 +508,7 @@ QvisLineWidthWidget::SetLineWidth(int width_)
 int
 QvisLineWidthWidget::GetLineWidth() const
 {
-    return lineWidthComboBox->currentIndex();
+    return lineWidthComboBox->currentItem();
 }
 
 // ****************************************************************************
@@ -528,8 +525,6 @@ QvisLineWidthWidget::GetLineWidth() const
 // Creation:   Fri Dec 1 16:29:56 PST 2000
 //
 // Modifications:
-//   Brad Whitlock, Tue Jun  3 10:45:50 PDT 2008
-//   Qt 4.
 //   
 // ****************************************************************************
 
@@ -539,10 +534,9 @@ QvisLineWidthWidget::AugmentPixmap(const char *xpm[])
     for(int i = 0; i < 21; ++i)
         augmentedData[i] = (char *)xpm[i];
 
-    QColor foreground(palette().color(QPalette::Text));
-
     // Turn the third element into the foreground color.
     sprintf(augmentedForeground, ". c #%02x%02x%02x", 
-            foreground.red(), foreground.green(),
-            foreground.blue());
+            foregroundColor().red(), foregroundColor().green(),
+            foregroundColor().blue());
+    augmentedData[2] = augmentedForeground;
 }

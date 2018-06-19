@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -41,13 +41,16 @@
 #include <PoincareAttributes.h>
 #include <ViewerProxy.h>
 
-#include <QCheckBox>
-#include <QLabel>
-#include <QLayout>
-#include <QLineEdit>
-#include <QSpinBox>
-#include <QButtonGroup>
-#include <QRadioButton>
+#include <qcheckbox.h>
+#include <qcombobox.h>
+#include <qlabel.h>
+#include <qlayout.h>
+#include <qlineedit.h>
+#include <qspinbox.h>
+#include <qvbox.h>
+#include <qbuttongroup.h>
+#include <qradiobutton.h>
+#include <qtabwidget.h>
 #include <QvisColorTableButton.h>
 #include <QvisOpacitySlider.h>
 #include <QvisColorButton.h>
@@ -119,184 +122,378 @@ QvisPoincarePlotWindow::~QvisPoincarePlotWindow()
 // Creation:   omitted
 //
 // Modifications:
+//    Jeremy Meredith, Tue Apr 14 16:16:56 EDT 2009
+//    Reworked and reorganized to make more usable.
+//
+//    Dave Pugmire, Fri Apr 17 11:32:40 EDT 2009
+//    GUI reorganization.
+//
+//    Dave Pugmire, Tue Apr 28 09:26:06 EDT 2009
+//    GUI reorganization.
+//
+//    Dave Pugmire, Tue Aug 11 10:33:05 EDT 2009
+//    Add number of intersections termination criterion
+//
+//    Dave Pugmire, Tue Aug 18 09:10:49 EDT 2009
+//    Disable the gui for intersection plane.
 //   
 // ****************************************************************************
 
 void
 QvisPoincarePlotWindow::CreateWindowContents()
 {
-    QGridLayout *mainLayout = new QGridLayout(0);
-    topLayout->addLayout(mainLayout);
+    QGridLayout *mainLayout = new QGridLayout(topLayout, 1,1,  10, "mainLayout");
 
-    terminationLabel = new QLabel(tr("Termination"), central);
-    mainLayout->addWidget(terminationLabel,0,0);
-    termination = new QLineEdit(central);
-    connect(termination, SIGNAL(returnPressed()),
-            this, SLOT(terminationProcessText()));
-    mainLayout->addWidget(termination, 0,1);
+    QTabWidget *tabs = new QTabWidget(central, "tabs");
+    mainLayout->addMultiCellWidget(tabs, 1,1, 1,1);
+    int row;
 
-    terminationTypeLabel = new QLabel(tr("Termination Type"), central);
-    mainLayout->addWidget(terminationTypeLabel,1,0);
-    terminationType = new QWidget(central);
-    terminationTypeButtonGroup= new QButtonGroup(terminationType);
-    QHBoxLayout *terminationTypeLayout = new QHBoxLayout(terminationType);
-    terminationTypeLayout->setMargin(0);
-    terminationTypeLayout->setSpacing(10);
-    QRadioButton *terminationTypeTerminationTypeDistance = new QRadioButton(tr("Distance"), terminationType);
-    terminationTypeButtonGroup->addButton(terminationTypeTerminationTypeDistance,0);
-    terminationTypeLayout->addWidget(terminationTypeTerminationTypeDistance);
-    QRadioButton *terminationTypeTerminationTypeTime = new QRadioButton(tr("Time"), terminationType);
-    terminationTypeButtonGroup->addButton(terminationTypeTerminationTypeTime,1);
-    terminationTypeLayout->addWidget(terminationTypeTerminationTypeTime);
-    connect(terminationTypeButtonGroup, SIGNAL(buttonClicked(int)),
-            this, SLOT(terminationTypeChanged(int)));
-    mainLayout->addWidget(terminationType, 1,1);
+    // tab for source options
+    QFrame *streamlineTab = new QFrame(tabs);
+    QGridLayout *streamlineLayout = new QGridLayout(streamlineTab, 30, 2, 5);
+    tabs->addTab(streamlineTab, "Streamlines");
+    row = 0;
 
-    streamlineSourceLabel = new QLabel(tr("Streamline Source"), central);
-    mainLayout->addWidget(streamlineSourceLabel,2,0);
-    streamlineSource = new QWidget(central);
-    streamlineSourceButtonGroup= new QButtonGroup(streamlineSource);
-    QHBoxLayout *streamlineSourceLayout = new QHBoxLayout(streamlineSource);
-    streamlineSourceLayout->setMargin(0);
-    streamlineSourceLayout->setSpacing(10);
-    QRadioButton *streamlineSourceSourceTypePointSource = new QRadioButton(tr("PointSource"), streamlineSource);
-    streamlineSourceButtonGroup->addButton(streamlineSourceSourceTypePointSource,0);
-    streamlineSourceLayout->addWidget(streamlineSourceSourceTypePointSource);
-    QRadioButton *streamlineSourceSourceTypeLineSource = new QRadioButton(tr("LineSource"), streamlineSource);
-    streamlineSourceButtonGroup->addButton(streamlineSourceSourceTypeLineSource,1);
-    streamlineSourceLayout->addWidget(streamlineSourceSourceTypeLineSource);
-    QRadioButton *streamlineSourceSourceTypePlaneSource = new QRadioButton(tr("PlaneSource"), streamlineSource);
-    streamlineSourceButtonGroup->addButton(streamlineSourceSourceTypePlaneSource,2);
-    streamlineSourceLayout->addWidget(streamlineSourceSourceTypePlaneSource);
-    connect(streamlineSourceButtonGroup, SIGNAL(buttonClicked(int)),
-            this, SLOT(streamlineSourceChanged(int)));
-    mainLayout->addWidget(streamlineSource, 2,1);
+    minPuncturesLabel =
+      new QLabel(tr("Minimum Punctures"), streamlineTab, "minPunctureLabel");
+    streamlineLayout->addWidget(minPuncturesLabel,row,0);
 
-    showStreamlines = new QCheckBox(tr("Show Streamlines"), central);
-    connect(showStreamlines, SIGNAL(toggled(bool)),
-            this, SLOT(showStreamlinesChanged(bool)));
-    mainLayout->addWidget(showStreamlines, 3,0);
+    minPunctures = new QLineEdit(streamlineTab, "puncturesMin");
+    connect(minPunctures, SIGNAL(returnPressed()),
+            this, SLOT(minPuncturesProcessText()));
+    streamlineLayout->addWidget(minPunctures,row,1);
+    row++;
 
-    showPoints = new QCheckBox(tr("Show Points"), central);
-    connect(showPoints, SIGNAL(toggled(bool)),
-            this, SLOT(showPointsChanged(bool)));
-    mainLayout->addWidget(showPoints, 4,0);
+    maxPuncturesLabel =
+      new QLabel(tr("Maximum Punctures"), streamlineTab, "maxPunctureLabel");
+    streamlineLayout->addWidget(maxPuncturesLabel,row,0);
 
-    pointDensityLabel = new QLabel(tr("Point Density"), central);
-    mainLayout->addWidget(pointDensityLabel,5,0);
-    pointDensity = new QLineEdit(central);
-    connect(pointDensity, SIGNAL(returnPressed()),
-            this, SLOT(pointDensityProcessText()));
-    mainLayout->addWidget(pointDensity, 5,1);
+    maxPunctures = new QLineEdit(streamlineTab, "puncturesMax");
+    connect(maxPunctures, SIGNAL(returnPressed()),
+            this, SLOT(maxPuncturesProcessText()));
+    streamlineLayout->addWidget(maxPunctures,row,1);
+    row++;
 
-    sourceRadiusLabel = new QLabel(tr("Source Radius"), central);
-    mainLayout->addWidget(sourceRadiusLabel,6,0);
-    sourceRadius = new QLineEdit(central);
-    connect(sourceRadius, SIGNAL(returnPressed()),
-            this, SLOT(sourceRadiusProcessText()));
-    mainLayout->addWidget(sourceRadius, 6,1);
+    // Create the source type combo box.
+    sourceTypeLabel = new QLabel(tr("Streamline Source"), streamlineTab, "sourceTypeLabel");
+    streamlineLayout->addWidget(sourceTypeLabel,row,0);
 
-    pointSourceLabel = new QLabel(tr("Point Source"), central);
-    mainLayout->addWidget(pointSourceLabel,7,0);
-    pointSource = new QLineEdit(central);
+    sourceType = new QComboBox(streamlineTab, "sourceType");
+    sourceType->insertItem(tr("Point"));
+    sourceType->insertItem(tr("Line"));
+    sourceType->insertItem(tr("Plane"));
+    connect(sourceType, SIGNAL(activated(int)),
+            this, SLOT(sourceTypeChanged(int)));
+    streamlineLayout->addWidget(sourceType, row,1);
+    row++;
+
+    // Create a group box for the source attributes.
+    QGroupBox *pageSource = new QGroupBox(streamlineTab, "pageSource");
+    sourceAtts = pageSource;
+    sourceAtts->setTitle(tr("Point"));
+    streamlineLayout->addMultiCellWidget(pageSource, row,row, 0,1);
+    QVBoxLayout *svLayout = new QVBoxLayout(pageSource, 10, 2);
+    svLayout->addSpacing(10);
+    QGridLayout *sLayout = new QGridLayout(svLayout, 16, 2);
+    sLayout->setMargin(10);
+    row++;
+
+    // Create the widgets that specify a point source.
+    pointSource = new QLineEdit(pageSource, "pointSource");
     connect(pointSource, SIGNAL(returnPressed()),
             this, SLOT(pointSourceProcessText()));
-    mainLayout->addWidget(pointSource, 7,1);
+    pointSourceLabel = new QLabel(pointSource, tr("Location"), pageSource, "pointSourceLabel");
+    sLayout->addWidget(pointSourceLabel, 3, 0);
+    sLayout->addWidget(pointSource, 3,1);
 
-    lineSourceStartLabel = new QLabel(tr("Line Point Start"), central);
-    mainLayout->addWidget(lineSourceStartLabel,8,0);
-    lineSourceStart = new QLineEdit(central);
-    connect(lineSourceStart, SIGNAL(returnPressed()),
-            this, SLOT(lineSourceStartProcessText()));
-    mainLayout->addWidget(lineSourceStart, 8,1);
+    // Create the widgets that specify a line source.
+    lineStart = new QLineEdit(pageSource, "lineStart");
+    connect(lineStart, SIGNAL(returnPressed()),
+            this, SLOT(lineStartProcessText()));
+    lineStartLabel = new QLabel(lineStart, tr("Start"), pageSource, "lineStartLabel");
+    sLayout->addWidget(lineStartLabel,4,0);
+    sLayout->addWidget(lineStart, 4,1);
 
-    lineSourceEndLabel = new QLabel(tr("Line Point End"), central);
-    mainLayout->addWidget(lineSourceEndLabel,9,0);
-    lineSourceEnd = new QLineEdit(central);
-    connect(lineSourceEnd, SIGNAL(returnPressed()),
-            this, SLOT(lineSourceEndProcessText()));
-    mainLayout->addWidget(lineSourceEnd, 9,1);
+    lineEnd = new QLineEdit(pageSource, "lineEnd");
+    connect(lineEnd, SIGNAL(returnPressed()),
+            this, SLOT(lineEndProcessText()));
+    lineEndLabel = new QLabel(lineEnd, tr("End"), pageSource, "lineEndLabel");
+    sLayout->addWidget(lineEndLabel,5,0);
+    sLayout->addWidget(lineEnd, 5,1);
 
-    planeSourcePointLabel = new QLabel(tr("Plane Source Point"), central);
-    mainLayout->addWidget(planeSourcePointLabel,10,0);
-    planeSourcePoint = new QLineEdit(central);
-    connect(planeSourcePoint, SIGNAL(returnPressed()),
-            this, SLOT(planeSourcePointProcessText()));
-    mainLayout->addWidget(planeSourcePoint, 10,1);
+    pointDensityLabel = new QLabel(tr("Point density"), streamlineTab, "pointDensityLabel");
+    streamlineLayout->addWidget(pointDensityLabel,row,0);
+    pointDensity = new QSpinBox(2, 1000, 1, streamlineTab, "pointDensity");
+    connect(pointDensity, SIGNAL(valueChanged(int)), 
+            this, SLOT(pointDensityChanged(int)));
+    streamlineLayout->addWidget(pointDensity,row,1);
+    row++;
 
-    planeSourceNormalLabel = new QLabel(tr("Plane Source Normal"), central);
-    mainLayout->addWidget(planeSourceNormalLabel,11,0);
-    planeSourceNormal = new QLineEdit(central);
-    connect(planeSourceNormal, SIGNAL(returnPressed()),
-            this, SLOT(planeSourceNormalProcessText()));
-    mainLayout->addWidget(planeSourceNormal, 11,1);
 
-    planeSourceUpVecLabel = new QLabel(tr("Plane Source Up Vec"), central);
-    mainLayout->addWidget(planeSourceUpVecLabel,12,0);
-    planeSourceUpVec = new QLineEdit(central);
-    connect(planeSourceUpVec, SIGNAL(returnPressed()),
-            this, SLOT(planeSourceUpVecProcessText()));
-    mainLayout->addWidget(planeSourceUpVec, 12,1);
+    integrationTypeLabel = new QLabel(tr("Integrator"), streamlineTab, "integrationTypeLabel");
+    streamlineLayout->addWidget(integrationTypeLabel,row,0);
+    integrationType = new QComboBox(streamlineTab, "integrationType");
+    integrationType->insertItem(tr("Dormand-Prince (Runge-Kutta)"));
+    integrationType->insertItem(tr("Adams-Bashforth (Multi-step)"));
+    integrationType->insertItem(tr("M3D C1 Integrator via Newton's Method"));
+    connect(integrationType, SIGNAL(activated(int)),
+            this, SLOT(integrationTypeChanged(int)));
+    streamlineLayout->addWidget(integrationType,row,1);
+    row++;
 
-    clipPlaneOriginLabel = new QLabel(tr("Clip Plane Origin"), central);
-    mainLayout->addWidget(clipPlaneOriginLabel,13,0);
-    clipPlaneOrigin = new QLineEdit(central);
-    connect(clipPlaneOrigin, SIGNAL(returnPressed()),
-            this, SLOT(clipPlaneOriginProcessText()));
-    mainLayout->addWidget(clipPlaneOrigin, 13,1);
-
-    clipPlaneNormalLabel = new QLabel(tr("Clip Plane Normal"), central);
-    mainLayout->addWidget(clipPlaneNormalLabel,14,0);
-    clipPlaneNormal = new QLineEdit(central);
-    connect(clipPlaneNormal, SIGNAL(returnPressed()),
-            this, SLOT(clipPlaneNormalProcessText()));
-    mainLayout->addWidget(clipPlaneNormal, 14,1);
-
-    colorTableNameLabel = new QLabel(tr("Color table"), central);
-    mainLayout->addWidget(colorTableNameLabel,15,0);
-    colorTableName = new QvisColorTableButton(central);
-    connect(colorTableName, SIGNAL(selectedColorTable(bool, const QString&)),
-            this, SLOT(colorTableNameChanged(bool, const QString&)));
-    mainLayout->addWidget(colorTableName, 15,1);
-
-    singleColorLabel = new QLabel(tr("Single color"), central);
-    mainLayout->addWidget(singleColorLabel,16,0);
-    singleColor = new QvisColorButton(central);
-    connect(singleColor, SIGNAL(selectedColor(const QColor&)),
-            this, SLOT(singleColorChanged(const QColor&)));
-    mainLayout->addWidget(singleColor, 16,1);
-
-    legendFlag = new QCheckBox(tr("Legend"), central);
-    connect(legendFlag, SIGNAL(toggled(bool)),
-            this, SLOT(legendFlagChanged(bool)));
-    mainLayout->addWidget(legendFlag, 17,0);
-
-    lightingFlag = new QCheckBox(tr("Lighting"), central);
-    connect(lightingFlag, SIGNAL(toggled(bool)),
-            this, SLOT(lightingFlagChanged(bool)));
-    mainLayout->addWidget(lightingFlag, 18,0);
-
-    relTolLabel = new QLabel(tr("rel. tolerance"), central);
-    mainLayout->addWidget(relTolLabel,19,0);
-    relTol = new QLineEdit(central);
-    connect(relTol, SIGNAL(returnPressed()),
-            this, SLOT(relTolProcessText()));
-    mainLayout->addWidget(relTol, 19,1);
-
-    absTolLabel = new QLabel(tr("abs. tolerance"), central);
-    mainLayout->addWidget(absTolLabel,20,0);
-    absTol = new QLineEdit(central);
-    connect(absTol, SIGNAL(returnPressed()),
-            this, SLOT(absTolProcessText()));
-    mainLayout->addWidget(absTol, 20,1);
-
-    maxStepLengthLabel = new QLabel(tr("maximum step length"), central);
-    mainLayout->addWidget(maxStepLengthLabel,21,0);
-    maxStepLength = new QLineEdit(central);
+    maxStepLengthLabel = new QLabel(tr("Maximum step length"), streamlineTab, "maxStepLengthLabel");
+    streamlineLayout->addWidget(maxStepLengthLabel,row,0);
+    maxStepLength = new QLineEdit(streamlineTab, "maxStepLength");
     connect(maxStepLength, SIGNAL(returnPressed()),
             this, SLOT(maxStepLengthProcessText()));
-    mainLayout->addWidget(maxStepLength, 21,1);
+    streamlineLayout->addWidget(maxStepLength,row,1);
+    row++;
 
+    relTolLabel = new QLabel(tr("Relative tolerance"), streamlineTab, "relTolLabel");
+    streamlineLayout->addWidget(relTolLabel,row,0);
+    relTol = new QLineEdit(streamlineTab, "relTol");
+    connect(relTol, SIGNAL(returnPressed()),
+            this, SLOT(relTolProcessText()));
+    streamlineLayout->addWidget(relTol,row,1);
+    row++;
+
+    absTolLabel = new QLabel(tr("Absolute tolerance"), streamlineTab, "absTolLabel");
+    streamlineLayout->addWidget(absTolLabel,row,0);
+    absTol = new QLineEdit(streamlineTab, "absTol");
+    connect(absTol, SIGNAL(returnPressed()),
+            this, SLOT(absTolProcessText()));
+    streamlineLayout->addWidget(absTol,row,1);
+    row++;
+
+    // tab for analysis options
+    QFrame *analysisTab = new QFrame(tabs);
+    QGridLayout *analysisLayout = new QGridLayout(analysisTab, 30, 2, 5);
+    tabs->addTab(analysisTab, "Analysis");
+    row = 0;
+
+    MaxToroidalWindingLabel = new QLabel(tr("Max toroidal winding"), analysisTab, "MaxToroidalWindingLabel");
+    analysisLayout->addWidget(MaxToroidalWindingLabel,row,0);
+    MaxToroidalWinding = new QSpinBox(1,10000, 1, analysisTab, "MaxToroidalWinding");
+    connect(MaxToroidalWinding, SIGNAL(valueChanged(int)),
+            this, SLOT(maxToroidalWindingSizeChanged(int)));
+    analysisLayout->addWidget(MaxToroidalWinding,row,1);
+    row++;
+
+    OverrideToroidalWindingLabel = new QLabel(tr("OverrideToroidalWinding"), analysisTab, "OverrideToroidalWindingLabel");
+    analysisLayout->addWidget(OverrideToroidalWindingLabel,row,0);
+    OverrideToroidalWinding = new QLineEdit(analysisTab, "OverrideToroidalWinding");
+    connect(OverrideToroidalWinding, SIGNAL(returnPressed()),
+            this, SLOT(overrideToroidalWindingProcessText()));
+    analysisLayout->addWidget(OverrideToroidalWinding,row,1);
+    row++;
+
+    HitRateLabel = new QLabel(tr("HitRate"), analysisTab, "HitRateLabel");
+    analysisLayout->addWidget(HitRateLabel,row,0);
+    HitRate = new QLineEdit(analysisTab, "HitRate");
+    connect(HitRate, SIGNAL(returnPressed()),
+            this, SLOT(hitRateProcessText()));
+    analysisLayout->addWidget(HitRate,row,1);
+    row++;
+
+    AdjustPlaneLabel = new QLabel(tr("AdjustPlane"), analysisTab, "AdjustPlaneLabel");
+    analysisLayout->addWidget(AdjustPlaneLabel,row,0);
+    AdjustPlane = new QLineEdit(analysisTab, "AdjustPlane");
+    connect(AdjustPlane, SIGNAL(returnPressed()),
+            this, SLOT(adjustPlaneProcessText()));
+    analysisLayout->addWidget(AdjustPlane,row,1);
+    row++;
+
+    OverlapsLabel = new QLabel(tr("Overlaps"), analysisTab, "OverlapsLabel");
+    analysisLayout->addWidget(OverlapsLabel,row,0);
+    Overlaps = new QButtonGroup(analysisTab, "Overlaps");
+    Overlaps->setFrameStyle(QFrame::NoFrame);
+    QHBoxLayout *OverlapsLayout = new QHBoxLayout(Overlaps);
+    OverlapsLayout->setSpacing(10);
+    QRadioButton *OverlapsOverlapTypeRaw = new QRadioButton(tr("Raw"), Overlaps);
+    OverlapsLayout->addWidget(OverlapsOverlapTypeRaw);
+    QRadioButton *OverlapsOverlapTypeRemove = new QRadioButton(tr("Remove"), Overlaps);
+    OverlapsLayout->addWidget(OverlapsOverlapTypeRemove);
+    QRadioButton *OverlapsOverlapTypeMerge = new QRadioButton(tr("Merge"), Overlaps);
+    OverlapsLayout->addWidget(OverlapsOverlapTypeMerge);
+    QRadioButton *OverlapsOverlapTypeSmooth = new QRadioButton(tr("Smooth"), Overlaps);
+    OverlapsLayout->addWidget(OverlapsOverlapTypeSmooth);
+    connect(Overlaps, SIGNAL(clicked(int)),
+            this, SLOT(overlapsChanged(int)));
+    analysisLayout->addWidget(Overlaps,row,1);
+    row++;
+
+    // tab for display options
+    QFrame *displayTab = new QFrame(tabs);
+    QGridLayout *displayLayout = new QGridLayout(displayTab, 30, 4, 1);
+    tabs->addTab(displayTab, "Display");
+    row = 0;
+
+    // Create the display type and planes
+    typeGrp = new QGroupBox(displayTab, "typeGrp");
+    typeGrp->setTitle(tr("Display") );
+    displayLayout->addMultiCellWidget(typeGrp, row,row+1,0,2);
+    row += 2;
+
+    QVBoxLayout *typeAVLayout = new QVBoxLayout(typeGrp);
+    typeAVLayout->setMargin(10);
+    typeAVLayout->addSpacing(15);
+    QGridLayout *typeGLayout = new QGridLayout(typeAVLayout, 2, 2);
+    typeGLayout->setSpacing(10);
+    typeGLayout->setColStretch(1, 10);
+
+
+    DisplayTypeLabel =
+      new QLabel(tr("Display type"), typeGrp, "DisplayTypeLabel");
+    typeGLayout->addWidget(DisplayTypeLabel, 0, 0);
+    
+    DisplayType = new QComboBox(typeGrp, "DisplayType");
+    DisplayType->insertItem(tr("Curves"),0);
+    DisplayType->insertItem(tr("Surfaces"),1);
+    connect(DisplayType, SIGNAL(activated(int)),
+            this, SLOT(displayTypeChanged(int)));
+    typeGLayout->addWidget(DisplayType, 0, 1);
+
+    NumberPlanesLabel =
+      new QLabel(tr("Number of planes"), typeGrp, "NumberPlanesLabel");
+    typeGLayout->addWidget(NumberPlanesLabel, 1, 0);
+    NumberPlanes = new QSpinBox(1,10000, 1, typeGrp, "NumberPlanes");
+    connect(NumberPlanes, SIGNAL(valueChanged(int)),
+            this, SLOT(numberPlanesSizeChanged(int)));
+    typeGLayout->addWidget(NumberPlanes, 1, 1);
+
+    int maxWidth = fontMetrics().width("1.0000000000");
+
+    // Create the max toggle and line edit
+    limitsGrp = new QGroupBox(displayTab, "limitsGrp");
+    limitsGrp->setTitle(tr("Limits") );
+    displayLayout->addMultiCellWidget(limitsGrp, row,row+1,0,2);
+    row += 2;
+
+    QVBoxLayout *limitsAVLayout = new QVBoxLayout(limitsGrp);
+    limitsAVLayout->setMargin(10);
+    limitsAVLayout->addSpacing(15);
+    QGridLayout *limitsGLayout = new QGridLayout(limitsAVLayout, 1, 4);
+    limitsGLayout->setSpacing(10);
+    limitsGLayout->setColStretch(1,10);
+
+    minToggle = new QCheckBox(tr("Min"), limitsGrp, "minToggle");
+    limitsGLayout->addWidget(minToggle, 0, 0);
+    connect(minToggle, SIGNAL(toggled(bool)),
+            this, SLOT(minToggled(bool)));
+    minLineEdit = new QLineEdit(limitsGrp, "minLineEdit");
+    minLineEdit->setMaximumWidth(maxWidth);
+
+    connect(minLineEdit, SIGNAL(returnPressed()),
+            this, SLOT(processMinLimitText())); 
+    limitsGLayout->addWidget(minLineEdit, 0, 1);
+
+    maxToggle = new QCheckBox(tr("Max"), limitsGrp, "maxToggle");
+    limitsGLayout->addWidget(maxToggle, 0, 2);
+    connect(maxToggle, SIGNAL(toggled(bool)),
+            this, SLOT(maxToggled(bool)));
+    maxLineEdit = new QLineEdit(limitsGrp, "maxLineEdit");
+    maxLineEdit->setMaximumWidth(maxWidth);
+    connect(maxLineEdit, SIGNAL(returnPressed()),
+            this, SLOT(processMaxLimitText())); 
+    limitsGLayout->addWidget(maxLineEdit, 0, 3);
+
+    //Coloring options.
+    colorGrp = new QGroupBox(displayTab, "colorGrp");
+    colorGrp->setTitle(tr("Color") );
+    displayLayout->addMultiCellWidget(colorGrp, row,row+1,0,2);
+    row += 2;
+
+    QVBoxLayout *colorVLayout = new QVBoxLayout(colorGrp);
+    colorVLayout->setMargin(10);
+    colorVLayout->addSpacing(15);
+    QGridLayout *colorGLayout = new QGridLayout(colorVLayout, 3, 2);
+    colorGLayout->setSpacing(10);
+    colorGLayout->setColStretch(2, 1000);
+
+    colorModeButtons = new QButtonGroup(0, "colorModeButtons");
+    connect(colorModeButtons, SIGNAL(clicked(int)),
+            this, SLOT(colorModeChanged(int)));
+
+    QRadioButton *rb = new QRadioButton(tr("Single"), colorGrp, "singleColor");
+    colorModeButtons->insert(rb);
+    colorGLayout->addWidget(rb, 0, 0);
+
+    singleColor = new QvisColorButton(colorGrp, "singleColorWidget");
+    colorGLayout->addWidget(singleColor, 0, 1);
+    connect(singleColor, SIGNAL(selectedColor(const QColor&)),
+            this, SLOT(singleColorChanged(const QColor&)));
+
+    rb = new QRadioButton(tr("Color table"), colorGrp, "colorTable");
+    colorModeButtons->insert(rb);
+    colorGLayout->addWidget(rb, 1, 0);
+    
+    colorTableName = new QvisColorTableButton(colorGrp, "colorTableName");
+    connect(colorTableName, SIGNAL(selectedColorTable(bool, const QString&)),
+            this, SLOT(colorTableNameChanged(bool, const QString&)));
+    colorGLayout->addWidget(colorTableName, 1, 1);
+
+    ColorByLabel = new QLabel(tr("Color by"), colorGrp, "colorByLabel");
+    colorGLayout->addWidget(ColorByLabel, 2, 0, Qt::AlignRight);
+
+    ColorBy = new QComboBox(colorGrp, "ColorStyle");
+    ColorBy->insertItem(tr("OriginalValue"));
+    ColorBy->insertItem(tr("InputOrder"));
+    ColorBy->insertItem(tr("PointIndex"));
+    ColorBy->insertItem(tr("Plane"));
+    ColorBy->insertItem(tr("WindingOrder"));
+    ColorBy->insertItem(tr("WindingPointOrder"));
+    ColorBy->insertItem(tr("ToroidalWindings"));
+    ColorBy->insertItem(tr("PoloidalWindings"));
+    ColorBy->insertItem(tr("SafetyFactor"));
+    ColorBy->insertItem(tr("Confidence"));
+    ColorBy->insertItem(tr("RidgelineVariance"));
+    connect(ColorBy, SIGNAL(activated(int)),
+            this, SLOT(colorByChanged(int)));
+    colorGLayout->addWidget(ColorBy,2,1);
+
+    // Viewing options
+    optionsGrp = new QGroupBox(displayTab, "optionsGrp");
+    optionsGrp->setTitle(tr("Options") );
+    displayLayout->addMultiCellWidget(optionsGrp, row,row+1,0,2);
+    row += 2;
+
+    QVBoxLayout *optionsAVLayout = new QVBoxLayout(optionsGrp);
+    optionsAVLayout->setMargin(10);
+    optionsAVLayout->addSpacing(15);
+    QGridLayout *optionsGLayout = new QGridLayout(optionsAVLayout, 1, 6);
+    optionsGLayout->setSpacing(10);
+    optionsGLayout->setColStretch(1,10);
+
+    showIslands = new QCheckBox(tr("Show Islands Only"), optionsGrp, "showIslands");
+    connect(showIslands, SIGNAL(toggled(bool)),
+            this, SLOT(showIslandsChanged(bool)));
+    optionsGLayout->addWidget(showIslands,0,0);
+
+    showLines = new QCheckBox(tr("Show Lines"), optionsGrp, "showLines");
+    connect(showLines, SIGNAL(toggled(bool)),
+            this, SLOT(showLinesChanged(bool)));
+    optionsGLayout->addWidget(showLines,0,1);
+
+    showPoints = new QCheckBox(tr("Show Points"), optionsGrp, "showPoints");
+    connect(showPoints, SIGNAL(toggled(bool)),
+            this, SLOT(showPointsChanged(bool)));
+    optionsGLayout->addWidget(showPoints,0,2);
+
+    verboseFlag = new QCheckBox(tr("Verbose"), optionsGrp, "verboseFlag");
+    connect(verboseFlag, SIGNAL(toggled(bool)),
+            this, SLOT(verboseFlagChanged(bool)));
+    optionsGLayout->addWidget(verboseFlag,0,3);
+
+    legendFlag = new QCheckBox(tr("Legend"), optionsGrp, "legendFlag");
+    connect(legendFlag, SIGNAL(toggled(bool)),
+            this, SLOT(legendFlagChanged(bool)));
+    optionsGLayout->addWidget(legendFlag,0,4);
+
+    lightingFlag = new QCheckBox(tr("Lighting"), optionsGrp, "lightingFlag");
+    connect(lightingFlag, SIGNAL(toggled(bool)),
+            this, SLOT(lightingFlagChanged(bool)));
+    optionsGLayout->addWidget(lightingFlag,0,5);
+    row++;
 }
 
 
@@ -312,12 +509,25 @@ QvisPoincarePlotWindow::CreateWindowContents()
 // Creation:   omitted
 //
 // Modifications:
+//    Jeremy Meredith, Tue Apr 14 16:16:56 EDT 2009
+//    Reworked and reorganized to make more usable.
+//
+//    Dave Pugmire, Fri Apr 17 11:32:40 EDT 2009
+//    GUI reorganization.
+//
+//    Dave Pugmire, Tue Apr 28 09:26:06 EDT 2009
+//    GUI reorganization.
+//
+//    Dave Pugmire, Wed May 27 15:03:42 EDT 2009
+//    Add blockSignals around min/max line edits.
 //   
 // ****************************************************************************
 
 void
 QvisPoincarePlotWindow::UpdateWindow(bool doAll)
 {
+    QString temp;
+    double r;
 
     for(int i = 0; i < atts->NumAttributes(); ++i)
     {
@@ -329,173 +539,261 @@ QvisPoincarePlotWindow::UpdateWindow(bool doAll)
             }
         }
 
+        const double         *dptr;
+        const float          *fptr;
+        const int            *iptr;
+        const char           *cptr;
+        const unsigned char  *uptr;
+        const string         *sptr;
+        QColor                tempcolor;
         switch(i)
         {
-          case PoincareAttributes::ID_termination:
-            termination->setText(DoubleToQString(atts->GetTermination()));
+          case PoincareAttributes::ID_minPunctures:
+            minPunctures->blockSignals(true);
+            temp.setNum(atts->GetMinPunctures());
+            minPunctures->setText(temp);
+            minPunctures->blockSignals(false);
             break;
-          case PoincareAttributes::ID_terminationType:
-            terminationTypeButtonGroup->blockSignals(true);
-            if(terminationTypeButtonGroup->button((int)atts->GetTerminationType()) != 0)
-                terminationTypeButtonGroup->button((int)atts->GetTerminationType())->setChecked(true);
-            terminationTypeButtonGroup->blockSignals(false);
+          case PoincareAttributes::ID_maxPunctures:
+            maxPunctures->blockSignals(true);
+            temp.setNum(atts->GetMaxPunctures());
+            maxPunctures->setText(temp);
+            maxPunctures->blockSignals(false);
             break;
-          case PoincareAttributes::ID_streamlineSource:
-            if (atts->GetStreamlineSource() == PoincareAttributes::LineSource || atts->GetStreamlineSource() == PoincareAttributes::PlaneSource)
+
+          case PoincareAttributes::ID_sourceType:
+            if (atts->GetSourceType() == PoincareAttributes::SpecifiedPoint)
             {
-                pointDensity->setEnabled(true);
-                if(pointDensityLabel)
-                    pointDensityLabel->setEnabled(true);
-            }
-            else
-            {
-                pointDensity->setEnabled(false);
-                if(pointDensityLabel)
-                    pointDensityLabel->setEnabled(false);
-            }
-            if (atts->GetStreamlineSource() == PoincareAttributes::PlaneSource)
-            {
-                sourceRadius->setEnabled(true);
-                if(sourceRadiusLabel)
-                    sourceRadiusLabel->setEnabled(true);
-            }
-            else
-            {
-                sourceRadius->setEnabled(false);
-                if(sourceRadiusLabel)
-                    sourceRadiusLabel->setEnabled(false);
-            }
-            if (atts->GetStreamlineSource() == PoincareAttributes::PointSource)
-            {
+                sourceAtts->setTitle(tr("Point"));
                 pointSource->setEnabled(true);
                 if(pointSourceLabel)
                     pointSourceLabel->setEnabled(true);
+                pointSource->show();
+                pointSourceLabel->show();
             }
             else
             {
                 pointSource->setEnabled(false);
                 if(pointSourceLabel)
                     pointSourceLabel->setEnabled(false);
+                pointSource->hide();
+                pointSourceLabel->hide();
             }
-            if (atts->GetStreamlineSource() == PoincareAttributes::LineSource)
+
+            if (atts->GetSourceType() == PoincareAttributes::SpecifiedLine)
             {
-                lineSourceStart->setEnabled(true);
-                if(lineSourceStartLabel)
-                    lineSourceStartLabel->setEnabled(true);
+                sourceAtts->setTitle(tr("Line"));
+                lineStart->setEnabled(true);
+                if(lineStartLabel)
+                    lineStartLabel->setEnabled(true);
+                lineEnd->setEnabled(true);
+                if(lineEndLabel)
+                    lineEndLabel->setEnabled(true);
+                lineStart->show();
+                lineStartLabel->show();
+                lineEnd->show();
+                lineEndLabel->show();
+
+                pointDensity->setEnabled(true);
+                if(pointDensityLabel)
+                    pointDensityLabel->setEnabled(true);
             }
             else
             {
-                lineSourceStart->setEnabled(false);
-                if(lineSourceStartLabel)
-                    lineSourceStartLabel->setEnabled(false);
+                lineStart->setEnabled(false);
+                if(lineStartLabel)
+                    lineStartLabel->setEnabled(false);
+                lineEnd->setEnabled(false);
+                if(lineEndLabel)
+                    lineEndLabel->setEnabled(false);
+                lineStart->hide();
+                lineStartLabel->hide();
+                lineEnd->hide();
+                lineEndLabel->hide();
+
+                pointDensity->setEnabled(false);
+                if(pointDensityLabel)
+                    pointDensityLabel->setEnabled(false);
             }
-            if (atts->GetStreamlineSource() == PoincareAttributes::LineSource)
-            {
-                lineSourceEnd->setEnabled(true);
-                if(lineSourceEndLabel)
-                    lineSourceEndLabel->setEnabled(true);
-            }
-            else
-            {
-                lineSourceEnd->setEnabled(false);
-                if(lineSourceEndLabel)
-                    lineSourceEndLabel->setEnabled(false);
-            }
-            if (atts->GetStreamlineSource() == PoincareAttributes::PlaneSource)
-            {
-                planeSourcePoint->setEnabled(true);
-                if(planeSourcePointLabel)
-                    planeSourcePointLabel->setEnabled(true);
-            }
-            else
-            {
-                planeSourcePoint->setEnabled(false);
-                if(planeSourcePointLabel)
-                    planeSourcePointLabel->setEnabled(false);
-            }
-            if (atts->GetStreamlineSource() == PoincareAttributes::PlaneSource)
-            {
-                planeSourceNormal->setEnabled(true);
-                if(planeSourceNormalLabel)
-                    planeSourceNormalLabel->setEnabled(true);
-            }
-            else
-            {
-                planeSourceNormal->setEnabled(false);
-                if(planeSourceNormalLabel)
-                    planeSourceNormalLabel->setEnabled(false);
-            }
-            if (atts->GetStreamlineSource() == PoincareAttributes::PlaneSource)
-            {
-                planeSourceUpVec->setEnabled(true);
-                if(planeSourceUpVecLabel)
-                    planeSourceUpVecLabel->setEnabled(true);
-            }
-            else
-            {
-                planeSourceUpVec->setEnabled(false);
-                if(planeSourceUpVecLabel)
-                    planeSourceUpVecLabel->setEnabled(false);
-            }
-            streamlineSourceButtonGroup->blockSignals(true);
-            if(streamlineSourceButtonGroup->button((int)atts->GetStreamlineSource()) != 0)
-                streamlineSourceButtonGroup->button((int)atts->GetStreamlineSource())->setChecked(true);
-            streamlineSourceButtonGroup->blockSignals(false);
+            sourceType->blockSignals(true);
+            sourceType->setCurrentItem(atts->GetSourceType());
+            sourceType->blockSignals(false);
             break;
-          case PoincareAttributes::ID_showStreamlines:
-            showStreamlines->blockSignals(true);
-            showStreamlines->setChecked(atts->GetShowStreamlines());
-            showStreamlines->blockSignals(false);
+          case PoincareAttributes::ID_pointSource:
+            dptr = atts->GetPointSource();
+            temp.sprintf("%g %g %g", dptr[0], dptr[1], dptr[2]);
+            pointSource->blockSignals(true);
+            pointSource->setText(temp);
+            pointSource->blockSignals(false);
+            break;
+          case PoincareAttributes::ID_lineStart:
+            dptr = atts->GetLineStart();
+            temp.sprintf("%g %g %g", dptr[0], dptr[1], dptr[2]);
+            lineStart->blockSignals(true);
+            lineStart->setText(temp);
+            lineStart->blockSignals(false);
+            break;
+          case PoincareAttributes::ID_lineEnd:
+            dptr = atts->GetLineEnd();
+            temp.sprintf("%g %g %g", dptr[0], dptr[1], dptr[2]);
+            lineEnd->blockSignals(true);
+            lineEnd->setText(temp);
+            lineEnd->blockSignals(false);
+            break;
+          case PoincareAttributes::ID_pointDensity:
+            pointDensity->blockSignals(true);
+            pointDensity->setValue(atts->GetPointDensity());
+            pointDensity->blockSignals(false);
+            break;
+
+
+
+          case PoincareAttributes::ID_integrationType:
+            integrationType->blockSignals(true);
+            integrationType->setCurrentItem(atts->GetIntegrationType());
+            integrationType->blockSignals(false);
+            break;
+          case PoincareAttributes::ID_maxStepLength:
+            maxStepLength->blockSignals(true);
+            temp.setNum(atts->GetMaxStepLength());
+            maxStepLength->setText(temp);
+            maxStepLength->blockSignals(false);
+            break;
+          case PoincareAttributes::ID_relTol:
+            relTol->blockSignals(true);
+            temp.setNum(atts->GetRelTol());
+            relTol->setText(temp);
+            relTol->blockSignals(false);
+            break;
+          case PoincareAttributes::ID_absTol:
+            absTol->blockSignals(true);
+            temp.setNum(atts->GetAbsTol());
+            absTol->setText(temp);
+            absTol->blockSignals(false);
+            break;
+
+
+          case PoincareAttributes::ID_maxToroidalWinding:
+            MaxToroidalWinding->blockSignals(true);
+            MaxToroidalWinding->setValue(atts->GetMaxToroidalWinding());
+            MaxToroidalWinding->blockSignals(false);
+            break;
+          case PoincareAttributes::ID_overrideToroidalWinding:
+            OverrideToroidalWinding->blockSignals(true);
+            temp.sprintf("%d", atts->GetOverrideToroidalWinding());
+            OverrideToroidalWinding->setText(temp);
+            OverrideToroidalWinding->blockSignals(false);
+            break;
+          case PoincareAttributes::ID_hitRate:
+            HitRate->blockSignals(true);
+            temp.setNum(atts->GetHitRate());
+            HitRate->setText(temp);
+            HitRate->blockSignals(false);
+            break;
+          case PoincareAttributes::ID_adjustPlane:
+            AdjustPlane->blockSignals(true);
+            temp.sprintf("%d", atts->GetAdjustPlane());
+            AdjustPlane->setText(temp);
+            AdjustPlane->blockSignals(false);
+            break;
+          case PoincareAttributes::ID_overlaps:
+            Overlaps->blockSignals(true);
+            Overlaps->setButton(atts->GetOverlaps());
+            Overlaps->blockSignals(false);
+            break;
+
+
+          case PoincareAttributes::ID_showCurves:
+            DisplayType->blockSignals(true);
+            DisplayType->setCurrentItem(atts->GetShowCurves());
+            DisplayType->blockSignals(false);
+            break;
+
+          case PoincareAttributes::ID_numberPlanes:
+            NumberPlanes->blockSignals(true);
+            NumberPlanes->setValue(atts->GetNumberPlanes());
+            NumberPlanes->blockSignals(false);
+            break;
+
+          case PoincareAttributes::ID_colorType:
+            colorModeButtons->blockSignals(true);
+            colorModeButtons->setButton(atts->GetColorType());
+
+            if (atts->GetColorType() == PoincareAttributes::ColorBySingleColor)
+            {
+                singleColor->setEnabled(true);
+                ColorBy->setEnabled(false);
+                colorTableName->setEnabled(false);
+                ColorByLabel->setEnabled(false);
+            }
+            else if (atts->GetColorType() == PoincareAttributes::ColorByColorTable)
+            {
+                singleColor->setEnabled(false);
+                ColorBy->setEnabled(true);
+                colorTableName->setEnabled(true);
+                ColorByLabel->setEnabled(true);
+            }
+            colorModeButtons->blockSignals(false);
+            break;
+          case PoincareAttributes::ID_singleColor:
+            tempcolor = QColor(atts->GetSingleColor().Red(),
+                               atts->GetSingleColor().Green(),
+                               atts->GetSingleColor().Blue());
+            singleColor->blockSignals(true);
+            singleColor->setButtonColor(tempcolor);
+            singleColor->blockSignals(false);
+            break;
+          case PoincareAttributes::ID_colorTableName:
+            colorTableName->blockSignals(true);
+            colorTableName->setColorTable(atts->GetColorTableName().c_str());
+            colorTableName->blockSignals(false);
+            break;
+
+          case PoincareAttributes::ID_min:
+            temp.setNum(atts->GetMin());
+            minLineEdit->blockSignals(true);
+            minLineEdit->setText(temp);
+            minLineEdit->blockSignals(false);
+            break;
+          case PoincareAttributes::ID_max:
+            temp.setNum(atts->GetMax());
+            maxLineEdit->blockSignals(true);
+            maxLineEdit->setText(temp);
+            maxLineEdit->blockSignals(false);
+            break;
+          case PoincareAttributes::ID_minFlag:
+            minToggle->blockSignals(true);
+            minToggle->setChecked(atts->GetMinFlag());
+            minLineEdit->setEnabled(atts->GetMinFlag());
+            minToggle->blockSignals(false);
+            break;
+          case PoincareAttributes::ID_maxFlag:
+            maxToggle->blockSignals(true);
+            maxToggle->setChecked(atts->GetMaxFlag());
+            maxLineEdit->setEnabled(atts->GetMaxFlag());
+            maxToggle->blockSignals(false);
+            break;
+
+
+          case PoincareAttributes::ID_showIslands:
+            showIslands->blockSignals(true);
+            showIslands->setChecked(atts->GetShowIslands());
+            showIslands->blockSignals(false);
+            break;
+          case PoincareAttributes::ID_showLines:
+            showLines->blockSignals(true);
+            showLines->setChecked(atts->GetShowLines());
+            showLines->blockSignals(false);
             break;
           case PoincareAttributes::ID_showPoints:
             showPoints->blockSignals(true);
             showPoints->setChecked(atts->GetShowPoints());
             showPoints->blockSignals(false);
             break;
-          case PoincareAttributes::ID_pointDensity:
-            pointDensity->setText(IntToQString(atts->GetPointDensity()));
-            break;
-          case PoincareAttributes::ID_sourceRadius:
-            sourceRadius->setText(DoubleToQString(atts->GetSourceRadius()));
-            break;
-          case PoincareAttributes::ID_pointSource:
-            pointSource->setText(DoublesToQString(atts->GetPointSource(), 3));
-            break;
-          case PoincareAttributes::ID_lineSourceStart:
-            lineSourceStart->setText(DoublesToQString(atts->GetLineSourceStart(), 3));
-            break;
-          case PoincareAttributes::ID_lineSourceEnd:
-            lineSourceEnd->setText(DoublesToQString(atts->GetLineSourceEnd(), 3));
-            break;
-          case PoincareAttributes::ID_planeSourcePoint:
-            planeSourcePoint->setText(DoublesToQString(atts->GetPlaneSourcePoint(), 3));
-            break;
-          case PoincareAttributes::ID_planeSourceNormal:
-            planeSourceNormal->setText(DoublesToQString(atts->GetPlaneSourceNormal(), 3));
-            break;
-          case PoincareAttributes::ID_planeSourceUpVec:
-            planeSourceUpVec->setText(DoublesToQString(atts->GetPlaneSourceUpVec(), 3));
-            break;
-          case PoincareAttributes::ID_clipPlaneOrigin:
-            clipPlaneOrigin->setText(DoublesToQString(atts->GetClipPlaneOrigin(), 3));
-            break;
-          case PoincareAttributes::ID_clipPlaneNormal:
-            clipPlaneNormal->setText(DoublesToQString(atts->GetClipPlaneNormal(), 3));
-            break;
-          case PoincareAttributes::ID_colorTableName:
-            colorTableName->blockSignals(true);
-            colorTableName->setColorTable(QString(atts->GetColorTableName().c_str()));
-            colorTableName->blockSignals(false);
-            break;
-          case PoincareAttributes::ID_singleColor:
-            { // new scope
-                QColor tempcolor = QColor(atts->GetSingleColor().Red(),
-                                          atts->GetSingleColor().Green(),
-                                          atts->GetSingleColor().Blue());
-                singleColor->blockSignals(true);
-                singleColor->setButtonColor(tempcolor);
-                singleColor->blockSignals(false);
-            }
+          case PoincareAttributes::ID_verboseFlag:
+            verboseFlag->blockSignals(true);
+            verboseFlag->setChecked(atts->GetVerboseFlag());
+            verboseFlag->blockSignals(false);
             break;
           case PoincareAttributes::ID_legendFlag:
             legendFlag->blockSignals(true);
@@ -506,15 +804,6 @@ QvisPoincarePlotWindow::UpdateWindow(bool doAll)
             lightingFlag->blockSignals(true);
             lightingFlag->setChecked(atts->GetLightingFlag());
             lightingFlag->blockSignals(false);
-            break;
-          case PoincareAttributes::ID_relTol:
-            relTol->setText(DoubleToQString(atts->GetRelTol()));
-            break;
-          case PoincareAttributes::ID_absTol:
-            absTol->setText(DoubleToQString(atts->GetAbsTol()));
-            break;
-          case PoincareAttributes::ID_maxStepLength:
-            maxStepLength->setText(DoubleToQString(atts->GetMaxStepLength()));
             break;
         }
     }
@@ -533,178 +822,185 @@ QvisPoincarePlotWindow::UpdateWindow(bool doAll)
 // Creation:   omitted
 //
 // Modifications:
+//    Jeremy Meredith, Tue Apr 14 16:16:56 EDT 2009
+//    Reworked and reorganized to make more usable.
 //   
 // ****************************************************************************
 
 void
 QvisPoincarePlotWindow::GetCurrentValues(int which_widget)
 {
-    bool doAll = (which_widget == -1);
+    bool okay, doAll = (which_widget == -1);
+    QString msg, temp;
 
-    // Do termination
-    if(which_widget == PoincareAttributes::ID_termination || doAll)
+    // Do minPunctures
+    if(which_widget == PoincareAttributes::ID_minPunctures || doAll)
     {
-        double val;
-        if(LineEditGetDouble(termination, val))
-            atts->SetTermination(val);
-        else
+        temp = minPunctures->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("Termination"),
-                DoubleToQString(atts->GetTermination()));
-            atts->SetTermination(atts->GetTermination());
+            double val = temp.toDouble(&okay);
+            if(okay)
+                atts->SetMinPunctures(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of minPunctures was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetMinPunctures());
+            Message(msg);
+            atts->SetMinPunctures(atts->GetMinPunctures());
         }
     }
 
-    // Do pointDensity
-    if(which_widget == PoincareAttributes::ID_pointDensity || doAll)
+    // Do maxPunctures
+    if(which_widget == PoincareAttributes::ID_maxPunctures || doAll)
     {
-        int val;
-        if(LineEditGetInt(pointDensity, val))
-            atts->SetPointDensity(val);
-        else
+        temp = maxPunctures->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("Point Density"),
-                IntToQString(atts->GetPointDensity()));
-            atts->SetPointDensity(atts->GetPointDensity());
+            double val = temp.toDouble(&okay);
+            if(okay)
+                atts->SetMaxPunctures(val);
         }
-    }
 
-    // Do sourceRadius
-    if(which_widget == PoincareAttributes::ID_sourceRadius || doAll)
-    {
-        double val;
-        if(LineEditGetDouble(sourceRadius, val))
-            atts->SetSourceRadius(val);
-        else
+        if(!okay)
         {
-            ResettingError(tr("Source Radius"),
-                DoubleToQString(atts->GetSourceRadius()));
-            atts->SetSourceRadius(atts->GetSourceRadius());
+            msg = tr("The value of maxPunctures was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetMaxPunctures());
+            Message(msg);
+            atts->SetMaxPunctures(atts->GetMaxPunctures());
         }
     }
 
     // Do pointSource
     if(which_widget == PoincareAttributes::ID_pointSource || doAll)
     {
-        double val[3];
-        if(LineEditGetDoubles(pointSource, val, 3))
-            atts->SetPointSource(val);
-        else
+        temp = pointSource->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("Point Source"),
-                DoublesToQString(atts->GetPointSource(),3));
+            double val[3];
+            if((okay = (sscanf(temp.latin1(), "%lg %lg %lg", &val[0], &val[1], &val[2]) == 3)) == true)
+                atts->SetPointSource(val);
+        }
+
+        if(!okay)
+        {
+            const double *val = atts->GetPointSource();
+            QString num; num.sprintf("<%g %g %g>", 
+                val[0], val[1], val[2]);
+            msg = tr("The value of pointSource was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(num);
+            Message(msg);
             atts->SetPointSource(atts->GetPointSource());
         }
     }
 
-    // Do lineSourceStart
-    if(which_widget == PoincareAttributes::ID_lineSourceStart || doAll)
+    // Do lineStart
+    if(which_widget == PoincareAttributes::ID_lineStart || doAll)
     {
-        double val[3];
-        if(LineEditGetDoubles(lineSourceStart, val, 3))
-            atts->SetLineSourceStart(val);
-        else
+        temp = lineStart->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("Line Point Start"),
-                DoublesToQString(atts->GetLineSourceStart(),3));
-            atts->SetLineSourceStart(atts->GetLineSourceStart());
+            double val[3];
+            if((okay = (sscanf(temp.latin1(), "%lg %lg %lg", &val[0], &val[1], &val[2]) == 3)) == true)
+                atts->SetLineStart(val);
+        }
+
+        if(!okay)
+        {
+            const double *val = atts->GetLineStart();
+            QString num; num.sprintf("<%g %g %g>", 
+                val[0], val[1], val[2]);
+            msg = tr("The value of lineStart was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(num);
+            Message(msg);
+            atts->SetLineStart(atts->GetLineStart());
         }
     }
 
-    // Do lineSourceEnd
-    if(which_widget == PoincareAttributes::ID_lineSourceEnd || doAll)
+    // Do lineEnd
+    if(which_widget == PoincareAttributes::ID_lineEnd || doAll)
     {
-        double val[3];
-        if(LineEditGetDoubles(lineSourceEnd, val, 3))
-            atts->SetLineSourceEnd(val);
-        else
+        temp = lineEnd->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("Line Point End"),
-                DoublesToQString(atts->GetLineSourceEnd(),3));
-            atts->SetLineSourceEnd(atts->GetLineSourceEnd());
+            double val[3];
+            if((okay = (sscanf(temp.latin1(), "%lg %lg %lg", &val[0], &val[1], &val[2]) == 3)) == true)
+                atts->SetLineEnd(val);
+        }
+
+        if(!okay)
+        {
+            const double *val = atts->GetLineEnd();
+            QString num; num.sprintf("<%g %g %g>", 
+                val[0], val[1], val[2]);
+            msg = tr("The value of lineEnd was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(num);
+            Message(msg);
+            atts->SetLineEnd(atts->GetLineEnd());
         }
     }
 
-    // Do planeSourcePoint
-    if(which_widget == PoincareAttributes::ID_planeSourcePoint || doAll)
+    // Do pointDensity
+    if(which_widget == PoincareAttributes::ID_pointDensity || doAll)
     {
-        double val[3];
-        if(LineEditGetDoubles(planeSourcePoint, val, 3))
-            atts->SetPlaneSourcePoint(val);
-        else
-        {
-            ResettingError(tr("Plane Source Point"),
-                DoublesToQString(atts->GetPlaneSourcePoint(),3));
-            atts->SetPlaneSourcePoint(atts->GetPlaneSourcePoint());
-        }
+        // This can only be an integer, so no error checking is needed.
+        int val = pointDensity->value();
+        if (val >= 2)
+            atts->SetPointDensity(val);
     }
 
-    // Do planeSourceNormal
-    if(which_widget == PoincareAttributes::ID_planeSourceNormal || doAll)
+    // Do maxStepLength
+    if(which_widget == PoincareAttributes::ID_maxStepLength || doAll)
     {
-        double val[3];
-        if(LineEditGetDoubles(planeSourceNormal, val, 3))
-            atts->SetPlaneSourceNormal(val);
-        else
+        temp = maxStepLength->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("Plane Source Normal"),
-                DoublesToQString(atts->GetPlaneSourceNormal(),3));
-            atts->SetPlaneSourceNormal(atts->GetPlaneSourceNormal());
+            double val = temp.toDouble(&okay);
+            if(okay)
+                atts->SetMaxStepLength(val);
         }
-    }
 
-    // Do planeSourceUpVec
-    if(which_widget == PoincareAttributes::ID_planeSourceUpVec || doAll)
-    {
-        double val[3];
-        if(LineEditGetDoubles(planeSourceUpVec, val, 3))
-            atts->SetPlaneSourceUpVec(val);
-        else
+        if(!okay)
         {
-            ResettingError(tr("Plane Source Up Vec"),
-                DoublesToQString(atts->GetPlaneSourceUpVec(),3));
-            atts->SetPlaneSourceUpVec(atts->GetPlaneSourceUpVec());
-        }
-    }
-
-    // Do clipPlaneOrigin
-    if(which_widget == PoincareAttributes::ID_clipPlaneOrigin || doAll)
-    {
-        double val[3];
-        if(LineEditGetDoubles(clipPlaneOrigin, val, 3))
-            atts->SetClipPlaneOrigin(val);
-        else
-        {
-            ResettingError(tr("Clip Plane Origin"),
-                DoublesToQString(atts->GetClipPlaneOrigin(),3));
-            atts->SetClipPlaneOrigin(atts->GetClipPlaneOrigin());
-        }
-    }
-
-    // Do clipPlaneNormal
-    if(which_widget == PoincareAttributes::ID_clipPlaneNormal || doAll)
-    {
-        double val[3];
-        if(LineEditGetDoubles(clipPlaneNormal, val, 3))
-            atts->SetClipPlaneNormal(val);
-        else
-        {
-            ResettingError(tr("Clip Plane Normal"),
-                DoublesToQString(atts->GetClipPlaneNormal(),3));
-            atts->SetClipPlaneNormal(atts->GetClipPlaneNormal());
+            msg = tr("The value of maxStepLength was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetMaxStepLength());
+            Message(msg);
+            atts->SetMaxStepLength(atts->GetMaxStepLength());
         }
     }
 
     // Do relTol
     if(which_widget == PoincareAttributes::ID_relTol || doAll)
     {
-        double val;
-        if(LineEditGetDouble(relTol, val))
-            atts->SetRelTol(val);
-        else
+        temp = relTol->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("rel. tolerance"),
-                DoubleToQString(atts->GetRelTol()));
+            double val = temp.toDouble(&okay);
+            if(okay)
+                atts->SetRelTol(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of relTol was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetRelTol());
+            Message(msg);
             atts->SetRelTol(atts->GetRelTol());
         }
     }
@@ -712,31 +1008,166 @@ QvisPoincarePlotWindow::GetCurrentValues(int which_widget)
     // Do absTol
     if(which_widget == PoincareAttributes::ID_absTol || doAll)
     {
-        double val;
-        if(LineEditGetDouble(absTol, val))
-            atts->SetAbsTol(val);
-        else
+        temp = absTol->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("abs. tolerance"),
-                DoubleToQString(atts->GetAbsTol()));
+            double val = temp.toDouble(&okay);
+            if(okay)
+                atts->SetAbsTol(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of absTol was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetAbsTol());
+            Message(msg);
             atts->SetAbsTol(atts->GetAbsTol());
         }
     }
 
-    // Do maxStepLength
-    if(which_widget == PoincareAttributes::ID_maxStepLength || doAll)
+    // Do MaxToroidalWinding
+    if(which_widget == PoincareAttributes::ID_maxToroidalWinding || doAll)
     {
-        double val;
-        if(LineEditGetDouble(maxStepLength, val))
-            atts->SetMaxStepLength(val);
+        int val = MaxToroidalWinding->value();
+        if (val >= 1)
+            atts->SetMaxToroidalWinding(val);
         else
         {
-            ResettingError(tr("maximum step length"),
-                DoubleToQString(atts->GetMaxStepLength()));
-            atts->SetMaxStepLength(atts->GetMaxStepLength());
+            msg = tr("The value of MaxToroidalWinding was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetMaxToroidalWinding());
+            Message(msg);
+            atts->SetMaxToroidalWinding(atts->GetMaxToroidalWinding());
         }
     }
 
+    // Do OverrideToroidalWinding
+    if(which_widget == PoincareAttributes::ID_overrideToroidalWinding || doAll)
+    {
+        temp = OverrideToroidalWinding->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
+        {
+            int val = temp.toInt(&okay);
+            if(okay)
+                atts->SetOverrideToroidalWinding(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of OverrideToroidalWinding was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetOverrideToroidalWinding());
+            Message(msg);
+            atts->SetOverrideToroidalWinding(atts->GetOverrideToroidalWinding());
+        }
+    }
+
+    // Do HitRate
+    if(which_widget == PoincareAttributes::ID_hitRate || doAll)
+    {
+        temp = HitRate->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
+        {
+            double val = temp.toDouble(&okay);
+            if(okay)
+                atts->SetHitRate(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of HitRate was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetHitRate());
+            Message(msg);
+            atts->SetHitRate(atts->GetHitRate());
+        }
+    }
+
+    // Do AdjustPlane
+    if(which_widget == PoincareAttributes::ID_adjustPlane || doAll)
+    {
+        temp = AdjustPlane->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
+        {
+            int val = temp.toInt(&okay);
+            if(okay)
+                atts->SetAdjustPlane(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of AdjustPlane was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetAdjustPlane());
+            Message(msg);
+            atts->SetAdjustPlane(atts->GetAdjustPlane());
+        }
+    }
+
+    // Do NumberPlanes
+    if(which_widget == PoincareAttributes::ID_numberPlanes || doAll)
+    {
+        int val = NumberPlanes->value();
+        if (val >= 1)
+            atts->SetNumberPlanes(val);
+        else
+        {
+            msg = tr("The value of NumberPlanes was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetNumberPlanes());
+            Message(msg);
+            atts->SetNumberPlanes(atts->GetNumberPlanes());
+        }
+    }
+
+    //Min
+    if(which_widget == PoincareAttributes::ID_min || doAll)
+    {
+        temp = minLineEdit->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
+        {
+            double val = temp.toDouble(&okay);
+            if(okay)
+                atts->SetMin(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of Min was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetMin());
+            Message(msg);
+            atts->SetMin(atts->GetMin());
+        }
+    }
+
+    //Max
+    if(which_widget == PoincareAttributes::ID_max || doAll)
+    {
+        temp = maxLineEdit->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
+        {
+            double val = temp.toDouble(&okay);
+            if(okay)
+                atts->SetMax(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of Max was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetMax());
+            Message(msg);
+            atts->SetMax(atts->GetMax());
+        }
+    }
 }
 
 
@@ -844,69 +1275,30 @@ QvisPoincarePlotWindow::reset()
 
 
 void
-QvisPoincarePlotWindow::terminationProcessText()
+QvisPoincarePlotWindow::minPuncturesProcessText()
 {
-    GetCurrentValues(PoincareAttributes::ID_termination);
+    GetCurrentValues(PoincareAttributes::ID_minPunctures);
     Apply();
 }
 
 
 void
-QvisPoincarePlotWindow::terminationTypeChanged(int val)
+QvisPoincarePlotWindow::maxPuncturesProcessText()
 {
-    if(val != atts->GetTerminationType())
+    GetCurrentValues(PoincareAttributes::ID_maxPunctures);
+    Apply();
+}
+
+
+void
+QvisPoincarePlotWindow::sourceTypeChanged(int val)
+{
+    if(val != atts->GetSourceType())
     {
-        atts->SetTerminationType(PoincareAttributes::TerminationType(val));
-        SetUpdate(false);
+        atts->SetSourceType(PoincareAttributes::SourceType(val));
         Apply();
     }
 }
-
-
-void
-QvisPoincarePlotWindow::streamlineSourceChanged(int val)
-{
-    if(val != atts->GetStreamlineSource())
-    {
-        atts->SetStreamlineSource(PoincareAttributes::SourceType(val));
-        Apply();
-    }
-}
-
-
-void
-QvisPoincarePlotWindow::showStreamlinesChanged(bool val)
-{
-    atts->SetShowStreamlines(val);
-    SetUpdate(false);
-    Apply();
-}
-
-
-void
-QvisPoincarePlotWindow::showPointsChanged(bool val)
-{
-    atts->SetShowPoints(val);
-    SetUpdate(false);
-    Apply();
-}
-
-
-void
-QvisPoincarePlotWindow::pointDensityProcessText()
-{
-    GetCurrentValues(PoincareAttributes::ID_pointDensity);
-    Apply();
-}
-
-
-void
-QvisPoincarePlotWindow::sourceRadiusProcessText()
-{
-    GetCurrentValues(PoincareAttributes::ID_sourceRadius);
-    Apply();
-}
-
 
 void
 QvisPoincarePlotWindow::pointSourceProcessText()
@@ -917,97 +1309,39 @@ QvisPoincarePlotWindow::pointSourceProcessText()
 
 
 void
-QvisPoincarePlotWindow::lineSourceStartProcessText()
+QvisPoincarePlotWindow::lineStartProcessText()
 {
-    GetCurrentValues(PoincareAttributes::ID_lineSourceStart);
+    GetCurrentValues(PoincareAttributes::ID_lineStart);
     Apply();
 }
 
 
 void
-QvisPoincarePlotWindow::lineSourceEndProcessText()
+QvisPoincarePlotWindow::lineEndProcessText()
 {
-    GetCurrentValues(PoincareAttributes::ID_lineSourceEnd);
+    GetCurrentValues(PoincareAttributes::ID_lineEnd);
     Apply();
 }
+
+void
+QvisPoincarePlotWindow::pointDensityChanged(int val)
+{
+    atts->SetPointDensity(val);
+    Apply();
+}
+
 
 
 void
-QvisPoincarePlotWindow::planeSourcePointProcessText()
+QvisPoincarePlotWindow::integrationTypeChanged(int val)
 {
-    GetCurrentValues(PoincareAttributes::ID_planeSourcePoint);
-    Apply();
+    if(val != atts->GetIntegrationType())
+    {
+        atts->SetIntegrationType(PoincareAttributes::IntegrationType(val));
+        SetUpdate(false);
+        Apply();
+    }
 }
-
-
-void
-QvisPoincarePlotWindow::planeSourceNormalProcessText()
-{
-    GetCurrentValues(PoincareAttributes::ID_planeSourceNormal);
-    Apply();
-}
-
-
-void
-QvisPoincarePlotWindow::planeSourceUpVecProcessText()
-{
-    GetCurrentValues(PoincareAttributes::ID_planeSourceUpVec);
-    Apply();
-}
-
-
-void
-QvisPoincarePlotWindow::clipPlaneOriginProcessText()
-{
-    GetCurrentValues(PoincareAttributes::ID_clipPlaneOrigin);
-    Apply();
-}
-
-
-void
-QvisPoincarePlotWindow::clipPlaneNormalProcessText()
-{
-    GetCurrentValues(PoincareAttributes::ID_clipPlaneNormal);
-    Apply();
-}
-
-
-void
-QvisPoincarePlotWindow::colorTableNameChanged(bool useDefault, const QString &ctName)
-{
-    atts->SetColorTableName(ctName.toStdString());
-    SetUpdate(false);
-    Apply();
-}
-
-
-void
-QvisPoincarePlotWindow::singleColorChanged(const QColor &color)
-{
-    ColorAttribute temp(color.red(), color.green(), color.blue());
-    atts->SetSingleColor(temp);
-    SetUpdate(false);
-    Apply();
-}
-
-
-void
-QvisPoincarePlotWindow::legendFlagChanged(bool val)
-{
-    atts->SetLegendFlag(val);
-    SetUpdate(false);
-    Apply();
-}
-
-
-void
-QvisPoincarePlotWindow::lightingFlagChanged(bool val)
-{
-    atts->SetLightingFlag(val);
-    SetUpdate(false);
-    Apply();
-}
-
 
 void
 QvisPoincarePlotWindow::relTolProcessText()
@@ -1015,7 +1349,6 @@ QvisPoincarePlotWindow::relTolProcessText()
     GetCurrentValues(PoincareAttributes::ID_relTol);
     Apply();
 }
-
 
 void
 QvisPoincarePlotWindow::absTolProcessText()
@@ -1026,10 +1359,229 @@ QvisPoincarePlotWindow::absTolProcessText()
 
 
 void
+QvisPoincarePlotWindow::maxToroidalWindingSizeChanged(int val)
+{
+    atts->SetMaxToroidalWinding(val);
+    Apply();
+}
+
+void
+QvisPoincarePlotWindow::overrideToroidalWindingProcessText()
+{
+    GetCurrentValues(PoincareAttributes::ID_overrideToroidalWinding);
+    Apply();
+}
+
+void
+QvisPoincarePlotWindow::hitRateProcessText()
+{
+    GetCurrentValues(PoincareAttributes::ID_hitRate);
+    Apply();
+}
+
+void
+QvisPoincarePlotWindow::adjustPlaneProcessText()
+{
+    GetCurrentValues(PoincareAttributes::ID_adjustPlane);
+    Apply();
+}
+
+
+void
+QvisPoincarePlotWindow::overlapsChanged(int val)
+{
+    if(val != atts->GetOverlaps())
+    {
+        atts->SetOverlaps(PoincareAttributes::OverlapType(val));
+        SetUpdate(false);
+        Apply();
+    }
+}
+
+
+void
+QvisPoincarePlotWindow::displayTypeChanged(int val)
+{
+    if(val != atts->GetShowCurves())
+    {
+        atts->SetShowCurves(PoincareAttributes::ShowMeshType(val));
+        SetUpdate(false);
+        Apply();
+    }
+}
+
+void
+QvisPoincarePlotWindow::numberPlanesSizeChanged(int val)
+{
+    atts->SetNumberPlanes(val);
+    Apply();
+}
+
+
+void
+QvisPoincarePlotWindow::processMinLimitText()
+{
+    GetCurrentValues(PoincareAttributes::ID_min);
+    Apply();
+
+    QString temp, msg;
+    temp = minLineEdit->displayText().stripWhiteSpace();
+    bool okay = !temp.isEmpty();
+    if(okay)
+    {
+        double val = temp.toDouble(&okay);
+        if(okay)
+            atts->SetMin(val);
+    }
+
+    if(!okay)
+    {
+        msg = tr("The minimum value was invalid. "
+                 "Resetting to the last good value of %1.").
+            arg(atts->GetMin());
+        Message(msg);
+
+        atts->SetMin(atts->GetMin());
+    }
+    cout<<"min= "<<atts->GetMin()<<endl;
+    Apply();
+}
+
+void
+QvisPoincarePlotWindow::processMaxLimitText()
+{
+    GetCurrentValues(PoincareAttributes::ID_max);
+    Apply();
+
+
+    QString temp, msg;
+    
+    temp = maxLineEdit->displayText().stripWhiteSpace();
+    bool okay = !temp.isEmpty();
+    if(okay)
+    {
+        double val = temp.toDouble(&okay);
+        if(okay)
+            atts->SetMax(val);
+    }
+
+    if(!okay)
+    {
+        msg = tr("The maximum value was invalid. "
+                 "Resetting to the last good value of %1.").
+            arg(atts->GetMax());
+        Message(msg);
+
+        atts->SetMax(atts->GetMax());
+    }
+    cout<<"max= "<<atts->GetMax()<<endl;
+    Apply();
+}
+
+void
+QvisPoincarePlotWindow::minToggled(bool val)
+{
+    atts->SetMinFlag(val);
+    Apply();
+}
+
+void
+QvisPoincarePlotWindow::maxToggled(bool val)
+{
+    atts->SetMaxFlag(val);
+    Apply();
+}
+
+
+void
+QvisPoincarePlotWindow::colorModeChanged(int val)
+{
+    if(val == 0)
+        atts->SetColorType(PoincareAttributes::ColorBySingleColor);
+    else if(val == 1)
+        atts->SetColorType(PoincareAttributes::ColorByColorTable);
+    Apply();
+}
+
+void
+QvisPoincarePlotWindow::singleColorChanged(const QColor &color)
+{
+    ColorAttribute temp(color.red(), color.green(), color.blue());
+    atts->SetSingleColor(temp);
+    SetUpdate(false);
+    Apply();
+}
+
+void
+QvisPoincarePlotWindow::colorTableNameChanged(bool useDefault, const QString &ctName)
+{
+    atts->SetColorTableName(ctName.latin1());
+    SetUpdate(false);
+    Apply();
+}
+
+void
+QvisPoincarePlotWindow::colorByChanged(int val)
+{
+    if(val != atts->GetColorBy())
+    {
+        atts->SetColorBy(PoincareAttributes::ColorBy(val));
+        Apply();
+    }
+}
+
+
+void
+QvisPoincarePlotWindow::showIslandsChanged(bool val)
+{
+    atts->SetShowIslands(val);
+    SetUpdate(false);
+    Apply();
+}
+
+void
+QvisPoincarePlotWindow::showLinesChanged(bool val)
+{
+    atts->SetShowLines(val);
+    SetUpdate(false);
+    Apply();
+}
+
+void
+QvisPoincarePlotWindow::showPointsChanged(bool val)
+{
+    atts->SetShowPoints(val);
+    SetUpdate(false);
+    Apply();
+}
+
+void
+QvisPoincarePlotWindow::verboseFlagChanged(bool val)
+{
+    atts->SetVerboseFlag(val);
+    SetUpdate(false);
+    Apply();
+}
+
+void
+QvisPoincarePlotWindow::legendFlagChanged(bool val)
+{
+    atts->SetLegendFlag(val);
+    SetUpdate(false);
+    Apply();
+}
+
+void
+QvisPoincarePlotWindow::lightingFlagChanged(bool val)
+{
+    atts->SetLightingFlag(val);
+    SetUpdate(false);
+    Apply();
+}
+
+void
 QvisPoincarePlotWindow::maxStepLengthProcessText()
 {
     GetCurrentValues(PoincareAttributes::ID_maxStepLength);
     Apply();
 }
-
-

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -41,7 +41,7 @@
 // ************************************************************************* //
 
 #include <avtStreamlinePolyDataFilter.h>
-
+#include "avtStreamlineWrapper.h"
 #include <vtkAppendPolyData.h>
 #include <vtkCellArray.h>
 #include <vtkCleanPolyData.h>
@@ -77,13 +77,16 @@
 //   Dave Pugmire, Tue Dec 23 13:52:42 EST 2008
 //   Removed ReportStatistics from this method.
 //
+//   Dave Pugmire, Tue Feb  3 11:00:54 EST 2009
+//   Changed debugs.
+//
 // ****************************************************************************
 
 void
 avtStreamlinePolyDataFilter::CreateStreamlineOutput(
                                    vector<avtStreamlineWrapper *> &streamlines)
 {
-    debug1 << "::CreateStreamlineOutput " << streamlines.size() << endl;
+    debug5 << "::CreateStreamlineOutput " << streamlines.size() << endl;
 
     bool doTubes = displayMethod == STREAMLINE_DISPLAY_TUBES;
     bool doRibbons  = displayMethod == STREAMLINE_DISPLAY_RIBBONS;
@@ -97,10 +100,7 @@ avtStreamlinePolyDataFilter::CreateStreamlineOutput(
     {
         avtStreamlineWrapper *slSeg = (avtStreamlineWrapper *) streamlines[i];
         vector<float> thetas;
-        vtkPolyData *pd = slSeg->GetVTKPolyData(dataSpatialDimension,
-                                                coloringMethod, displayMethod,
-                                                thetas);
-        debug1<<"Done w/ GetVTKPolyData\n";
+        vtkPolyData *pd = GetVTKPolyData(slSeg->sl, slSeg->id, thetas);
         
         if (pd == NULL)
             continue;
@@ -247,4 +247,111 @@ avtStreamlinePolyDataFilter::CreateStreamlineOutput(
     SetOutputDataTree(dt);
 }
 
+
+// ****************************************************************************
+//  Method: avtStreamlinePolyDataFilter::GetVTKPolyData
+//
+//  Purpose:
+//      Converts the avtStreamline into a VTK poly data object.
+//
+//  Programmer: Dave Pugmire
+//  Creation:   June 16, 2008
+//
+//  Modifications:
+//
+//   Dave Pugmire, Wed Aug 13 14:11:04 EST 2008
+//   Step derivative is not giving the right answer. So, use the velEnd vector
+//   for coloring by speed.
+//
+//   Dave Pugmire, Fri Aug 22 14:47:11 EST 2008
+//   Add new coloring methods, length, time and ID.
+//
+//   Dave Pugmire, Mon Feb  2 14:39:35 EST 2009
+//   Moved this method from avtStreamlineWrapper to avtStreamlinePolyDataFilter.
+//
+//   Dave Pugmire, Mon Jun 8 2009, 11:44:01 EDT 2009
+//   Handle color by variable.
+//
+// ****************************************************************************
+
+vtkPolyData *
+avtStreamlinePolyDataFilter::GetVTKPolyData(avtStreamline *sl,
+                                            int id,
+                                            vector<float> &thetas)
+{
+    if (sl == NULL || sl->size() == 0)
+        return NULL;
+
+    vtkPoints *points = vtkPoints::New();
+    vtkCellArray *cells = vtkCellArray::New();
+    vtkFloatArray *scalars = vtkFloatArray::New();
+    
+    cells->InsertNextCell(sl->size());
+    scalars->Allocate(sl->size());
+    avtStreamline::iterator siter;
+    
+    unsigned int i = 0;
+    float val = 0.0, theta = 0.0;
+    debug5<<"Create vtkPolyData\n";
+    for(siter = sl->begin(); siter != sl->end(); ++siter, i++)
+    {
+        debug5<<i<<": "<< (*siter)->front()<<endl;
+        points->InsertPoint(i, (*siter)->front()[0], (*siter)->front()[1], 
+                            (dataSpatialDimension > 2 ? (*siter)->front()[2] : 0.0));
+        cells->InsertCellPoint(i);
+
+        avtIVPStep *step = (*siter);
+
+        // Set the color-by scalar.
+        if (coloringMethod == STREAMLINE_COLOR_SPEED)
+        {
+            val = step->speed;
+        }
+        else if (coloringMethod == STREAMLINE_COLOR_VARIABLE)
+        {
+            val = step->scalarValue;
+        }
+        else if (coloringMethod == STREAMLINE_COLOR_VORTICITY)
+        {
+            double dT = (step->tEnd - step->tStart);
+            val = step->vorticity * dT;
+        }
+        else if (coloringMethod ==  STREAMLINE_COLOR_ARCLENGTH)
+        {
+            val += step->length();
+        }
+        else if (coloringMethod ==  STREAMLINE_COLOR_TIME)
+        {
+            val = step->tEnd;
+        }
+        else if (coloringMethod ==  STREAMLINE_COLOR_ID)
+        {
+            val = (float)id;
+        }
+        
+        //Ribbon display, record the angle.
+        if (displayMethod == STREAMLINE_DISPLAY_RIBBONS)
+        {
+            double dT = (step->tEnd - step->tStart);
+            float scaledVort = step->vorticity * dT;
+            theta += scaledVort;
+            thetas.push_back(theta);
+        }
+        
+        scalars->InsertTuple1(i, val);
+    }
+    
+    //Create the polydata.
+    vtkPolyData *pd = vtkPolyData::New();
+    pd->SetPoints(points);
+    pd->SetLines(cells);
+    scalars->SetName("colorVar");
+    pd->GetPointData()->SetScalars(scalars);
+
+    points->Delete();
+    cells->Delete();
+    scalars->Delete();
+
+    return pd;
+}
 

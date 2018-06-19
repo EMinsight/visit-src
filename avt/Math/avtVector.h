@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -38,8 +38,21 @@
 
 #ifndef VECTOR_H
 #define VECTOR_H
+
+#include <visit-config.h>
+#include <math.h>
 #include <math_exports.h>
 #include <visitstream.h>
+
+#ifdef DBIO_ONLY 
+#define STUB_VOID {}
+#define STUB_OSTR {return ostr;}
+#define STUB_STR {return "";}
+#else
+#define STUB_VOID
+#define STUB_OSTR
+#define STUB_STR
+#endif
 
 // ****************************************************************************
 //  Class:  avtVector
@@ -57,6 +70,10 @@
 //
 //    Dave Pugmire, Mon Nov 17 12:05:04 EST 2008
 //    Added operators == != and methods dot, cross, length2 and length.
+//
+//    Kathleen Bonnell, Mon Apr 20 10:38:22 MST 2009 
+//    Added MATH_API in front of operator<< for compilation on windows when
+//    other classes attempt to use the method.
 //
 // ****************************************************************************
 class MATH_API avtVector
@@ -109,17 +126,18 @@ class MATH_API avtVector
     double length() const;
 
     // friends
-    friend ostream& operator<<(ostream&,const avtVector&);
+    MATH_API friend ostream& operator<<(ostream& ostr,const avtVector&) STUB_OSTR;
 
     // input/output
-    const char *getAsText();
-    void        setAsText(const char*);
+    const char *getAsText() STUB_STR;
+    void        setAsText(const char*) STUB_VOID;
   private:
     char text[256];
 };
 
-#include <math.h>
-#include <visitstream.h>
+#undef STUB_VOID
+#undef STUB_OSTR
+#undef STUB_STR
 
 inline 
 avtVector::avtVector()
@@ -200,6 +218,12 @@ avtVector::operator-=(const avtVector &r)
 
 // scalar multiplication/division
 
+// Allows for double * avtVector so that everything doesn't have to be
+// avtVector * double
+inline avtVector operator*(const double s, const avtVector& v) {
+  return v*s;
+}
+
 inline avtVector
 avtVector::operator*(const double &s) const
 {
@@ -258,6 +282,10 @@ avtVector::cross(const avtVector &r) const
     return v;
 }
 
+inline avtVector Cross(const avtVector& v0, const avtVector& v1) {
+  return v0.cross(v1);
+}
+
 // dot product
 inline double
 avtVector::operator*(const avtVector &r) const
@@ -269,6 +297,10 @@ inline double
 avtVector::dot(const avtVector &r) const
 {
     return x*r.x + y*r.y + z*r.z;
+}
+
+inline double Dot(const avtVector& v0, const avtVector& v1) {
+  return v0.dot(v1);
 }
 
 // 2-norm

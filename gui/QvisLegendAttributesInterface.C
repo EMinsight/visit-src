@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,15 +37,15 @@
 *****************************************************************************/
 
 #include <QvisLegendAttributesInterface.h>
-#include <QButtonGroup>
-#include <QCheckBox>
-#include <QComboBox>
-#include <QFrame>
-#include <QLabel>
-#include <QLayout>
-#include <QLineEdit>
-#include <QRadioButton>
-#include <QSpinBox>
+#include <qbuttongroup.h>
+#include <qcheckbox.h>
+#include <qcombobox.h>
+#include <qframe.h>
+#include <qlabel.h>
+#include <qlayout.h>
+#include <qlineedit.h>
+#include <qradiobutton.h>
+#include <qspinbox.h>
 #include <QNarrowLineEdit.h>
 #include <QvisColorButton.h>
 #include <QvisOpacitySlider.h>
@@ -71,7 +71,6 @@
 #define LEGEND_ORIENTATION0    3
 #define LEGEND_ORIENTATION1    4
 #define LEGEND_DRAW_TITLE      5
-#define LEGEND_DRAW_MINMAX     6
 
 // ****************************************************************************
 // Method: QvisLegendAttributesInterface::QvisLegendAttributesInterface
@@ -93,180 +92,173 @@
 //   Brad Whitlock, Tue Apr  8 09:27:26 PDT 2008
 //   Support for internationalization.
 //
-//   Brad Whitlock, Mon Jul 21 10:21:37 PDT 2008
-//   Qt 4.
-//
-//   Dave Bremer, Wed Oct  8 11:36:27 PDT 2008
-//   Added orientationComboBox
-//
-//   Hank Childs, Fri Jan 23 15:19:56 PST 2009
-//   Add support for drawMinmax.
+//    Dave Bremer, Wed Oct  8 11:36:27 PDT 2008
+//    Added orientationComboBox
 //
 // ****************************************************************************
 
-QvisLegendAttributesInterface::QvisLegendAttributesInterface(QWidget *parent) :
-    QvisAnnotationObjectInterface(parent)
+QvisLegendAttributesInterface::QvisLegendAttributesInterface(QWidget *parent,
+    const char *name) : QvisAnnotationObjectInterface(parent, name)
 {
     // Set the title of the group box.
     this->setTitle(GetName());
 
     int row = 0;
-    QGridLayout *cLayout = new QGridLayout(0);
-    topLayout->addLayout(cLayout);
+    QGridLayout *cLayout = new QGridLayout(topLayout, 12, 4);
     cLayout->setSpacing(10);
 
     // Add controls for the layout management.
-    manageLayout = new QCheckBox(tr("Let VisIt manage legend position"), this);
+    manageLayout = new QCheckBox(tr("Let VisIt manage legend position"), this, "manageLayout");
     connect(manageLayout, SIGNAL(toggled(bool)),
             this, SLOT(layoutChanged(bool)));
-    cLayout->addWidget(manageLayout, row, 0, 1, 4);
+    cLayout->addMultiCellWidget(manageLayout, row, row, 0, 3);
     ++row;
 
     // Add controls for the position
-    positionEdit = new QvisScreenPositionEdit(this);
+    positionEdit = new QvisScreenPositionEdit(this, "positionEdit");
     connect(positionEdit, SIGNAL(screenPositionChanged(double, double)),
             this, SLOT(positionChanged(double, double)));
-    cLayout->addWidget(positionEdit, row, 1, 1, 3);
-    positionLabel = new QLabel(tr("Legend position"), this);
+    cLayout->addMultiCellWidget(positionEdit, row, row, 1, 3);
+    positionLabel = new QLabel(positionEdit, tr("Legend position"), this);
     cLayout->addWidget(positionLabel, row, 0);
     ++row;
 
     // Add controls for position2
-    widthSpinBox = new QSpinBox(this);
-    widthSpinBox->setMinimum(1);
-    widthSpinBox->setMaximum(int(WIDTH_HEIGHT_PRECISION * 5));
+    widthSpinBox = new QSpinBox(1, int(WIDTH_HEIGHT_PRECISION * 5), 1, this, "widthSpinBox");
     widthSpinBox->setSuffix("%");
     widthSpinBox->setButtonSymbols(QSpinBox::PlusMinus);
     connect(widthSpinBox, SIGNAL(valueChanged(int)),
             this, SLOT(widthChanged(int)));
     cLayout->addWidget(widthSpinBox, row, 1);
-    cLayout->addWidget(new QLabel(tr("X-scale"), this), row, 0);
+    cLayout->addWidget(new QLabel(widthSpinBox, tr("X-scale"),
+        this), row, 0);
 
-    heightSpinBox = new QSpinBox(this);
-    heightSpinBox->setMinimum(1);
-    heightSpinBox->setMaximum(int(WIDTH_HEIGHT_PRECISION * 5));
+    heightSpinBox = new QSpinBox(1, int(WIDTH_HEIGHT_PRECISION * 5), 1, this, "heightSpinBox");
     heightSpinBox->setSuffix("%");
     heightSpinBox->setButtonSymbols(QSpinBox::PlusMinus);
     connect(heightSpinBox, SIGNAL(valueChanged(int)),
             this, SLOT(heightChanged(int)));
     cLayout->addWidget(heightSpinBox, row, 3);
-    cLayout->addWidget(new QLabel(tr("Y-scale"), this), row, 2);
+    cLayout->addWidget(new QLabel(widthSpinBox, tr("Y-scale"),
+        this), row, 2);
     ++row;
 
     // Add controls to set the orientation
-    orientationComboBox = new QComboBox(this);
-    orientationComboBox->addItem(tr("Vertical, Text on Right"));
-    orientationComboBox->addItem(tr("Vertical, Text on Left"));
-    orientationComboBox->addItem(tr("Horizontal, Text on Top"));
-    orientationComboBox->addItem(tr("Horizontal, Text on Bottom"));
+    orientationComboBox = new QComboBox(this, "orientationComboBox");
+    orientationComboBox->insertItem("Vertical, Text on Right",   0);
+    orientationComboBox->insertItem("Vertical, Text on Left",    1);
+    orientationComboBox->insertItem("Horizontal, Text on Top",   2);
+    orientationComboBox->insertItem("Horizontal, Text on Bottom",3);
     orientationComboBox->setEditable(false);
     connect(orientationComboBox, SIGNAL(activated(int)),
             this, SLOT(orientationChanged(int)));
-    cLayout->addWidget(orientationComboBox, row, 1, 1, 3);
+    cLayout->addMultiCellWidget(orientationComboBox, row, row, 1, 3);
     cLayout->addWidget(new QLabel(tr("Orientation"), this), row, 0);
     ++row;
 
-    QFrame *splitter1 = new QFrame(this);
+    QFrame *splitter1 = new QFrame(this, "splitter");
     splitter1->setFrameStyle(QFrame::HLine + QFrame::Raised);
-    cLayout->addWidget(splitter1, row, 0, 1, 4);
+    cLayout->addMultiCellWidget(splitter1, row, row, 0, 3);  
     ++row;
 
     // Add controls for the text color.
-    drawBoundingBoxCheckBox = new QCheckBox(tr("Bounding box"), this);
+    drawBoundingBoxCheckBox = new QCheckBox(tr("Bounding box"), this,
+        "drawBoundingBoxCheckBox");
     connect(drawBoundingBoxCheckBox, SIGNAL(toggled(bool)),
             this, SLOT(drawBoundingBoxToggled(bool)));
     cLayout->addWidget(drawBoundingBoxCheckBox, row, 0);
 
-    boundingBoxColorButton = new QvisColorButton(this);
+    boundingBoxColorButton = new QvisColorButton(this, "boundingBoxColorButton");
     connect(boundingBoxColorButton, SIGNAL(selectedColor(const QColor &)),
             this, SLOT(boundingBoxColorChanged(const QColor &)));
     cLayout->addWidget(boundingBoxColorButton, row, 1);
-    boundingBoxOpacity = new QvisOpacitySlider(0, 255, 10, 0, this);
+    boundingBoxOpacity = new QvisOpacitySlider(0, 255, 10, 0, this,
+        "boundingBoxOpacity");
     connect(boundingBoxOpacity, SIGNAL(valueChanged(int)),
             this, SLOT(boundingBoxOpacityChanged(int)));
-    cLayout->addWidget(boundingBoxOpacity, row, 2, 1, 2);
+    cLayout->addMultiCellWidget(boundingBoxOpacity, row, row, 2, 3);
     ++row;
 
     // Turn off pieces of the legend.
-    drawTitleCheckBox = new QCheckBox(tr("Draw title"), this);
+    drawTitleCheckBox = new QCheckBox(tr("Draw title"), this, "drawTitleCheckBox");
     connect(drawTitleCheckBox, SIGNAL(toggled(bool)),
             this, SLOT(drawTitleToggled(bool)));
     cLayout->addWidget(drawTitleCheckBox, row, 0);
-    drawLabelsCheckBox = new QCheckBox(tr("Draw labels"), this);
+    drawLabelsCheckBox = new QCheckBox(tr("Draw labels"), this, "drawLabelsCheckBox");
     connect(drawLabelsCheckBox, SIGNAL(toggled(bool)),
             this, SLOT(drawLabelsToggled(bool)));
-    cLayout->addWidget(drawLabelsCheckBox, row, 1);
-    drawMinmaxCheckBox = new QCheckBox(tr("Draw min/max"), this);
-    connect(drawMinmaxCheckBox, SIGNAL(toggled(bool)),
-            this, SLOT(drawMinmaxToggled(bool)));
-    cLayout->addWidget(drawMinmaxCheckBox, row, 2, 1, 2);
+    cLayout->addMultiCellWidget(drawLabelsCheckBox, row, row, 1, 3);
     ++row;
 
-    QFrame *splitter2 = new QFrame(this);
+    QFrame *splitter2 = new QFrame(this, "splitter");
     splitter2->setFrameStyle(QFrame::HLine + QFrame::Raised);
-    cLayout->addWidget(splitter2, row, 0, 1, 4);
+    cLayout->addMultiCellWidget(splitter2, row, row, 0, 3);  
     ++row;
 
     // Add controls for the text color.
-    textColorButton = new QvisColorButton(this);
+    textColorButton = new QvisColorButton(this, "textColorButton");
     connect(textColorButton, SIGNAL(selectedColor(const QColor &)),
             this, SLOT(textColorChanged(const QColor &)));
-    textColorLabel = new QLabel(tr("Text color"), this);
+    textColorLabel = new QLabel(textColorButton, tr("Text color"), this);
     cLayout->addWidget(textColorLabel, row, 2, Qt::AlignLeft);
     cLayout->addWidget(textColorButton, row, 3);
 #ifdef TEXT_OPACITY_SUPPORTED
-    textColorOpacity = new QvisOpacitySlider(0, 255, 10, 0, this);
+    textColorOpacity = new QvisOpacitySlider(0, 255, 10, 0, this,
+        "textColorOpacity");
     connect(textColorOpacity, SIGNAL(valueChanged(int)),
             this, SLOT(textOpacityChanged(int)));
-    cLayout->addWidget(textColorOpacity, row, 2, 1, 2);
+    cLayout->addMultiCellWidget(textColorOpacity, row, row, 2, 3);
     ++row;
 #endif
 
     // Added a use foreground toggle
-    useForegroundColorCheckBox = new QCheckBox(tr("Use foreground color"), this);
+    useForegroundColorCheckBox = new QCheckBox(tr("Use foreground color"), this,
+        "useForegroundColorCheckBox");
     connect(useForegroundColorCheckBox, SIGNAL(toggled(bool)),
             this, SLOT(useForegroundColorToggled(bool)));
-    cLayout->addWidget(useForegroundColorCheckBox, row, 0, 1, 2);
+    cLayout->addMultiCellWidget(useForegroundColorCheckBox, row, row, 0, 1);
     ++row;
 
     // Add controls for text format string.
-    formatString = new QNarrowLineEdit(this);
+    formatString = new QNarrowLineEdit(this, "formatString");
     connect(formatString, SIGNAL(returnPressed()),
             this, SLOT(textChanged()));
     cLayout->addWidget(formatString, row, 3);
-    cLayout->addWidget(new QLabel(tr("Number format"), this), row, 2);
+    cLayout->addWidget(new QLabel(formatString, tr("Number format"),
+        this), row, 2);
     // Add control for text font height
-    fontHeight = new QNarrowLineEdit(this);
+    fontHeight = new QNarrowLineEdit(this, "fontHeight");
     connect(fontHeight, SIGNAL(returnPressed()),
             this, SLOT(fontHeightChanged()));
     cLayout->addWidget(fontHeight, row, 1);
-    cLayout->addWidget(new QLabel(tr("Font height"), this), row, 0);
+    cLayout->addWidget(new QLabel(fontHeight, tr("Font height"),
+        this), row, 0);
     ++row;
 
     // Add controls to set the font family.
-    fontFamilyComboBox = new QComboBox(this);
-    fontFamilyComboBox->addItem(tr("Arial"));
-    fontFamilyComboBox->addItem(tr("Courier"));
-    fontFamilyComboBox->addItem(tr("Times"));
+    fontFamilyComboBox = new QComboBox(this, "fontFamilyComboBox");
+    fontFamilyComboBox->insertItem("Arial", 0);
+    fontFamilyComboBox->insertItem("Courier", 1);
+    fontFamilyComboBox->insertItem("Times", 2);
     fontFamilyComboBox->setEditable(false);
     connect(fontFamilyComboBox, SIGNAL(activated(int)),
             this, SLOT(fontFamilyChanged(int)));
-    cLayout->addWidget(fontFamilyComboBox, row, 1, 1, 3);
+    cLayout->addMultiCellWidget(fontFamilyComboBox, row, row, 1, 3);
     cLayout->addWidget(new QLabel(tr("Font family"), this), row, 0);
     ++row;
 
     // Add controls for font properties.
-    boldCheckBox = new QCheckBox(tr("Bold"), this);
+    boldCheckBox = new QCheckBox(tr("Bold"), this, "boldCheckBox");
     connect(boldCheckBox, SIGNAL(toggled(bool)),
             this, SLOT(boldToggled(bool)));
     cLayout->addWidget(boldCheckBox, row, 0);
 
-    italicCheckBox = new QCheckBox(tr("Italic"), this);
+    italicCheckBox = new QCheckBox(tr("Italic"), this, "italicCheckBox");
     connect(italicCheckBox, SIGNAL(toggled(bool)),
             this, SLOT(italicToggled(bool)));
     cLayout->addWidget(italicCheckBox, row, 1);
 
-    shadowCheckBox = new QCheckBox(tr("Shadow"), this);
+    shadowCheckBox = new QCheckBox(tr("Shadow"), this, "shadowCheckBox");
     connect(shadowCheckBox, SIGNAL(toggled(bool)),
             this, SLOT(shadowToggled(bool)));
     cLayout->addWidget(shadowCheckBox, row, 2);
@@ -308,9 +300,6 @@ QvisLegendAttributesInterface::~QvisLegendAttributesInterface()
 // Modifications:
 //   Brad Whitlock, Tue Jun 24 12:05:53 PDT 2008
 //   Get the plugin managers from the viewer proxy.
-//
-//   Brad Whitlock, Mon Jul 21 10:29:13 PDT 2008
-//   Qt 4.
 //
 // ****************************************************************************
 
@@ -354,7 +343,7 @@ QvisLegendAttributesInterface::GetMenuText(const AnnotationObject &annot) const
     }
 
     if(!match)
-        retval = QString("%1 - %2").arg(GetName()).arg(annot.GetObjectName().c_str());
+        retval.sprintf("%s - %s", GetName().latin1(), annot.GetObjectName().c_str());
 
     return retval;
 }
@@ -389,17 +378,8 @@ QvisLegendAttributesInterface::SetBool(int bit, bool val)
 //   Brad Whitlock, Mon Mar 26 12:01:37 PDT 2007
 //   Added checkbox for turning off title.
 //
-//   Brad Whitlock, Mon Jul 21 10:30:12 PDT 2008
-//   Qt 4.
-//
 //   Dave Bremer, Wed Oct  8 11:36:27 PDT 2008
 //   Added orientationComboBox update
-//
-//   Brad Whitlock, Fri Oct 17 10:20:16 PDT 2008
-//   Qt 4.
-//
-//   Hank Childs, Fri Jan 23 15:22:49 PST 2009
-//   Add support for drawMinmax.
 //
 // ****************************************************************************
 
@@ -434,16 +414,16 @@ QvisLegendAttributesInterface::UpdateControls()
     if (GetBool(LEGEND_ORIENTATION0))
     {
         if (GetBool(LEGEND_ORIENTATION1))
-            orientationComboBox->setCurrentIndex(3);
+            orientationComboBox->setCurrentItem(3);
         else
-            orientationComboBox->setCurrentIndex(2);
+            orientationComboBox->setCurrentItem(2);
     }
     else
     {
         if (GetBool(LEGEND_ORIENTATION1))
-            orientationComboBox->setCurrentIndex(1);
+            orientationComboBox->setCurrentItem(1);
         else
-            orientationComboBox->setCurrentIndex(0);
+            orientationComboBox->setCurrentItem(0);
     }
     orientationComboBox->blockSignals(false);
 
@@ -500,11 +480,6 @@ QvisLegendAttributesInterface::UpdateControls()
     drawLabelsCheckBox->setChecked(GetBool(LEGEND_DRAW_LABELS));
     drawLabelsCheckBox->blockSignals(false);
 
-    // Set the "draw labels" box.
-    drawMinmaxCheckBox->blockSignals(true);
-    drawMinmaxCheckBox->setChecked(GetBool(LEGEND_DRAW_MINMAX));
-    drawMinmaxCheckBox->blockSignals(false);
-
     // Set the font height
     fontHeight->setText(QString().sprintf("%g", annot->GetDoubleAttribute1()));
 
@@ -515,7 +490,7 @@ QvisLegendAttributesInterface::UpdateControls()
 
     // Set the font family
     fontFamilyComboBox->blockSignals(true);
-    fontFamilyComboBox->setCurrentIndex(int(annot->GetFontFamily()));
+    fontFamilyComboBox->setCurrentItem(int(annot->GetFontFamily()));
     fontFamilyComboBox->blockSignals(false);
 
     // Set the bold check box.
@@ -583,7 +558,7 @@ QvisLegendAttributesInterface::GetCurrentValues(int which_widget)
         else
         {
             stringVector sv;
-            sv.push_back(formatString->text().toStdString());
+            sv.push_back(formatString->text().latin1());
             annot->SetText(sv);
         }
     }
@@ -947,27 +922,6 @@ void
 QvisLegendAttributesInterface::drawLabelsToggled(bool val)
 {
     SetBool(LEGEND_DRAW_LABELS, val);
-    SetUpdate(false);
-    Apply();
-}
-
-// ****************************************************************************
-// Method: QvisLegendAttributesInterface::drawMinmaxToggled
-//
-// Purpose: 
-//   Called when the draw min/max checkbox is toggled.
-//
-// Programmer: Hank Childs
-// Creation:   January 23, 2009
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-void
-QvisLegendAttributesInterface::drawMinmaxToggled(bool val)
-{
-    SetBool(LEGEND_DRAW_MINMAX, val);
     SetUpdate(false);
     Apply();
 }

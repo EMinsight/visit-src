@@ -734,6 +734,7 @@ class MakeMovie:
         self.log = 0
         self.debug_real = [0,0,0,0,0]
         self.emailAddresses = ""
+        self.engineRestartInterval = 1000000
 
         # Compute engine properties.
         self.useSessionEngineInformation = 1
@@ -817,6 +818,9 @@ class MakeMovie:
     #
     #   Brad Whitlock, Mon Apr  7 13:25:22 PDT 2008
     #   Added a -noffmpeg flag.
+    #
+    #   Eric Brugger, Tue Jun 16 15:12:46 PDT 2009
+    #   Added -enginerestartinterval flag.
     #
     ###########################################################################
 
@@ -934,6 +938,10 @@ class MakeMovie:
         print ""
         print "    -noffmpeg          Don't use ffmpeg for the mpeg encoder even if it"
         print "                       is available."
+        print ""
+        print "    -enginerestartinterval number Restarts the compute engine after"
+        print "                                  the specified number of images are"
+        print "                                  generated."
         print ""
         print "Parallel arguments:"
         print "    -np   <# procs>    The number of processors to use."
@@ -1196,7 +1204,10 @@ class MakeMovie:
     #   changed how stereo works.
     #
     #   Brad Whitlock, Mon Apr  7 13:26:40 PDT 2008
-    #   Added -noffmpeg
+    #   Added -noffmpeg.
+    #
+    #   Eric Brugger, Tue Jun 16 15:12:46 PDT 2009
+    #   Added -enginerestartinterval flag.
     #
     ###########################################################################
 
@@ -1399,6 +1410,19 @@ class MakeMovie:
                     sys.exit(-1)
             elif(commandLine[i] == "-noffmpeg"):
                 self.ffmpegForMPEG = 0
+            elif(commandLine[i] == "-enginerestartinterval"):
+                if((i+1) < len(commandLine)):
+                    try:
+                        self.engineRestartInterval = int(commandLine[i+1])
+                        if(self.engineRestartInterval < 0):
+                            self.engineRestartInterval = 0
+                    except ValueError:
+                        self.engineRestartInterval = 1000000
+                        print "A bad value was provided for engine restart interval. Using an engine restart interval of 1000000."
+                    i = i + 1
+                else:
+                    self.PrintUsage()
+                    sys.exit(-1)
 
             #
             # Parallel engine options.
@@ -2000,6 +2024,8 @@ class MakeMovie:
     # Date:       Mon May 9 17:52:22 PST 2005
     #
     # Modifications:
+    #   Eric Brugger, Tue Jun 16 15:12:46 PDT 2009
+    #   Added -enginerestartinterval flag.
     #
     ###########################################################################
     def IterateAndSaveFrames(self):
@@ -2030,6 +2056,7 @@ class MakeMovie:
         drawThePlots = 0
         nTotalFrames = self.frameEnd - self.frameStart + 1
         lastProgress = -1
+        framesGenerated = 0
         while(i <= self.frameEnd):
             t = float(i - self.frameStart) / float(nTotalFrames);
             progress = int(t * self.percentAllocationFrameGen * 100.)
@@ -2061,6 +2088,11 @@ class MakeMovie:
 
             self.numFrames = self.numFrames + 1
             i = i + self.frameStep
+
+            framesGenerated = framesGenerated + 1
+            if (framesGenerated >= self.engineRestartInterval):
+                CloseComputeEngine()
+                framesGenerated = 0
 
         # Restore the old rendering attributes.
         SetRenderingAttributes(old_ra)
@@ -2406,6 +2438,12 @@ class MakeMovie:
     #   Brad Whitlock, Mon Apr  7 13:30:21 PDT 2008
     #   Added support for the ffmpeg encoder in case the user has it installed.
     #
+    #   Hank Childs, Thu Jul  9 08:29:10 PDT 2009
+    #   Incorporate fixes for new ffmpeg syntax from "Max"/iprmaster.
+    #
+    #   Brad Whitlock, Fri Jan 22 15:50:39 PST 2010
+    #   Lower bitrate a little for ffmpeg.
+    #
     ###########################################################################
 
     def EncodeMPEGMovie(self, moviename, imageFormatString, xres, yres):
@@ -2449,9 +2487,12 @@ class MakeMovie:
 
             absMovieName = self.outputDir + self.slash + moviename
             if self.ffmpegForMPEG:
+                # MPEG1 bit rate is really capped at about 100M due to 1000x1000x30x3 limits.
+                if bitrate > 100000000:
+                    bitrate = 100000000
                 # Use the user's ffmpeg encoder program.
                 framePattern = self.tmpDir+self.slash+linkbase+"%04d"+formatExt
-                command = "ffmpeg -f image2 -i %s -mbd rd -flags +4mv+trell+aic -flags qprd -bf 2 -cmp 2 -g 25 -pass 1 -y -b %s %s\n" % (framePattern, bitrate, absMovieName)
+                command = "ffmpeg -f image2 -i %s -mbd rd -flags +mv4+aic -trellis 1 -flags qprd -bf 2 -cmp 2 -g 25 -pass 1 -y -b %s %s\n" % (framePattern, bitrate, absMovieName)
                 def print_ffmpeg_line_cb(line, this):
                     print line
                     this.Debug(5, line)

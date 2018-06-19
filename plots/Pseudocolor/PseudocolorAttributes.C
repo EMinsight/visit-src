@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -191,7 +191,7 @@ PseudocolorAttributes::PointType_FromString(const std::string &s, PseudocolorAtt
 }
 
 // Type map format string
-const char *PseudocolorAttributes::TypeMapFormatString = "bbbbiiidddiddsibsiii";
+const char *PseudocolorAttributes::TypeMapFormatString = "bbbbiiidddiddsibsi";
 
 // ****************************************************************************
 // Method: PseudocolorAttributes::PseudocolorAttributes
@@ -228,8 +228,6 @@ PseudocolorAttributes::PseudocolorAttributes() :
     smoothingLevel = 0;
     pointSizeVarEnabled = false;
     pointSizePixels = 2;
-    lineStyle = 0;
-    lineWidth = 0;
 }
 
 // ****************************************************************************
@@ -268,8 +266,6 @@ PseudocolorAttributes::PseudocolorAttributes(const PseudocolorAttributes &obj) :
     pointSizeVarEnabled = obj.pointSizeVarEnabled;
     pointSizeVar = obj.pointSizeVar;
     pointSizePixels = obj.pointSizePixels;
-    lineStyle = obj.lineStyle;
-    lineWidth = obj.lineWidth;
 
     SelectAll();
 }
@@ -331,8 +327,6 @@ PseudocolorAttributes::operator = (const PseudocolorAttributes &obj)
     pointSizeVarEnabled = obj.pointSizeVarEnabled;
     pointSizeVar = obj.pointSizeVar;
     pointSizePixels = obj.pointSizePixels;
-    lineStyle = obj.lineStyle;
-    lineWidth = obj.lineWidth;
 
     SelectAll();
     return *this;
@@ -374,9 +368,7 @@ PseudocolorAttributes::operator == (const PseudocolorAttributes &obj) const
             (smoothingLevel == obj.smoothingLevel) &&
             (pointSizeVarEnabled == obj.pointSizeVarEnabled) &&
             (pointSizeVar == obj.pointSizeVar) &&
-            (pointSizePixels == obj.pointSizePixels) &&
-            (lineStyle == obj.lineStyle) &&
-            (lineWidth == obj.lineWidth));
+            (pointSizePixels == obj.pointSizePixels));
 }
 
 // ****************************************************************************
@@ -538,8 +530,6 @@ PseudocolorAttributes::SelectAll()
     Select(ID_pointSizeVarEnabled, (void *)&pointSizeVarEnabled);
     Select(ID_pointSizeVar,        (void *)&pointSizeVar);
     Select(ID_pointSizePixels,     (void *)&pointSizePixels);
-    Select(ID_lineStyle,           (void *)&lineStyle);
-    Select(ID_lineWidth,           (void *)&lineWidth);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -680,18 +670,6 @@ PseudocolorAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool 
         node->AddNode(new DataNode("pointSizePixels", pointSizePixels));
     }
 
-    if(completeSave || !FieldsEqual(ID_lineStyle, &defaultObject))
-    {
-        addToParent = true;
-        node->AddNode(new DataNode("lineStyle", lineStyle));
-    }
-
-    if(completeSave || !FieldsEqual(ID_lineWidth, &defaultObject))
-    {
-        addToParent = true;
-        node->AddNode(new DataNode("lineWidth", lineWidth));
-    }
-
 
     // Add the node to the parent node.
     if(addToParent || forceAdd)
@@ -820,10 +798,6 @@ PseudocolorAttributes::SetFromNode(DataNode *parentNode)
         SetPointSizeVar(node->AsString());
     if((node = searchNode->GetNode("pointSizePixels")) != 0)
         SetPointSizePixels(node->AsInt());
-    if((node = searchNode->GetNode("lineStyle")) != 0)
-        SetLineStyle(node->AsInt());
-    if((node = searchNode->GetNode("lineWidth")) != 0)
-        SetLineWidth(node->AsInt());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -956,20 +930,6 @@ PseudocolorAttributes::SetPointSizePixels(int pointSizePixels_)
     Select(ID_pointSizePixels, (void *)&pointSizePixels);
 }
 
-void
-PseudocolorAttributes::SetLineStyle(int lineStyle_)
-{
-    lineStyle = lineStyle_;
-    Select(ID_lineStyle, (void *)&lineStyle);
-}
-
-void
-PseudocolorAttributes::SetLineWidth(int lineWidth_)
-{
-    lineWidth = lineWidth_;
-    Select(ID_lineWidth, (void *)&lineWidth);
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 // Get property methods
 ///////////////////////////////////////////////////////////////////////////////
@@ -1094,18 +1054,6 @@ PseudocolorAttributes::GetPointSizePixels() const
     return pointSizePixels;
 }
 
-int
-PseudocolorAttributes::GetLineStyle() const
-{
-    return lineStyle;
-}
-
-int
-PseudocolorAttributes::GetLineWidth() const
-{
-    return lineWidth;
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 // Select property methods
 ///////////////////////////////////////////////////////////////////////////////
@@ -1164,8 +1112,6 @@ PseudocolorAttributes::GetFieldName(int index) const
     case ID_pointSizeVarEnabled: return "pointSizeVarEnabled";
     case ID_pointSizeVar:        return "pointSizeVar";
     case ID_pointSizePixels:     return "pointSizePixels";
-    case ID_lineStyle:           return "lineStyle";
-    case ID_lineWidth:           return "lineWidth";
     default:  return "invalid index";
     }
 }
@@ -1208,8 +1154,6 @@ PseudocolorAttributes::GetFieldType(int index) const
     case ID_pointSizeVarEnabled: return FieldType_bool;
     case ID_pointSizeVar:        return FieldType_variablename;
     case ID_pointSizePixels:     return FieldType_int;
-    case ID_lineStyle:           return FieldType_linestyle;
-    case ID_lineWidth:           return FieldType_linewidth;
     default:  return FieldType_unknown;
     }
 }
@@ -1252,8 +1196,6 @@ PseudocolorAttributes::GetFieldTypeName(int index) const
     case ID_pointSizeVarEnabled: return "bool";
     case ID_pointSizeVar:        return "variablename";
     case ID_pointSizePixels:     return "int";
-    case ID_lineStyle:           return "linestyle";
-    case ID_lineWidth:           return "linewidth";
     default:  return "invalid index";
     }
 }
@@ -1368,16 +1310,6 @@ PseudocolorAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
     case ID_pointSizePixels:
         {  // new scope
         retval = (pointSizePixels == obj.pointSizePixels);
-        }
-        break;
-    case ID_lineStyle:
-        {  // new scope
-        retval = (lineStyle == obj.lineStyle);
-        }
-        break;
-    case ID_lineWidth:
-        {  // new scope
-        retval = (lineWidth == obj.lineWidth);
         }
         break;
     default: retval = false;

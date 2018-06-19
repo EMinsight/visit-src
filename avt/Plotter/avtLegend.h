@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -92,10 +92,6 @@ class  vtkRenderer;
 //
 //    Dave Bremer, Wed Oct  8 11:36:27 PDT 2008
 //    Added orientation member
-//
-//    Hank Childs, Fri Jan 23 15:36:35 PST 2009
-//    Added min/max member.
-//
 // ****************************************************************************
 
 class PLOTTER_API  avtLegend
@@ -126,8 +122,6 @@ class PLOTTER_API  avtLegend
     virtual bool                  GetTitleVisibility() const;
     virtual void                  SetLabelVisibility(bool);
     virtual bool                  GetLabelVisibility() const;
-    virtual void                  SetMinMaxVisibility(bool);
-    virtual bool                  GetMinMaxVisibility() const;
     virtual void                  SetNumberFormat(const char *);
 
     virtual void                  SetLegendScale(double xScale, double yScale);

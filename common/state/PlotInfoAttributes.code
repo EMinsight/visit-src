@@ -4,8 +4,15 @@ Definition:
 void
 PlotInfoAttributes::PrintSelf(ostream &os)
 {
-    os << "Data:\n" ;
-    os << data.ToXML(); 
+    os << "\nOutputArray:  " ;
+    if (outputArray.size() == 0)
+        os << "Not Set.";
+    else 
+    {
+        for (size_t i = 0; i < outputArray.size(); i++)
+            os << outputArray[i] << "  ";
+    }
+    os << "\n";
 }
 
 
@@ -15,19 +22,7 @@ Definition:
 void
 PlotInfoAttributes::Reset()
 {
-    data.Reset();
-    SelectData();
-}
-
-
-Function: Merge
-Declaration: void Merge(const PlotInfoAttributes &obj);
-Definition:
-void
-PlotInfoAttributes::Merge(const PlotInfoAttributes &obj)
-{
-    data.Merge(obj.GetData());
-    SelectData();
+    outputArray.clear();
 }
 
 

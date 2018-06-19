@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -250,6 +250,8 @@ ViewerFileServer::~ViewerFileServer()
 //   Brad Whitlock, Fri Dec 27 14:47:54 PST 2002
 //   I added debugging information.
 //
+//   Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//   Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 
 void
@@ -268,7 +270,7 @@ ViewerFileServer::CloseServers()
             // Tell the server to quit.
             pos->second->proxy->Close();
         }
-        CATCHALL(...)
+        CATCHALL
         {
             debug1 << "Caught an exception while closing the server."
                    << endl;
@@ -620,10 +622,11 @@ ViewerFileServer::GetMetaDataForState(const std::string &host,
 //   Kathleen Bonnell, Thu Aug 14 16:13:41 PDT 2008 
 //   Added call to SendFileOpenOptions after StartServer.
 //
-//   Hank Childs, Wed Dec  3 10:56:10 PST 2008
-//   Fix typo in generating error message for opening bad file when running
-//   client-server.
+//   Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//   Replaced CATCHALL(...) with CATCHALL.
 //
+//   Mark C. Miller, Mon Jun 22 15:16:05 PDT 2009
+//   Replaced typo of '%`' with '%1' in in an arg to QObject::tr().
 // ****************************************************************************
 
 const avtDatabaseMetaData *
@@ -751,7 +754,7 @@ ViewerFileServer::GetMetaDataHelper(const std::string &host,
                     StartServer(host, startArgs);
                     SendFileOpenOptions(host);
                 }
-                CATCHALL(...)
+                CATCHALL
                 {
                     tryAgain = false;
                 }
@@ -950,6 +953,8 @@ ViewerFileServer::GetSILForState(const std::string &host,
 //   Kathleen Bonnell, Thu Aug 14 16:13:41 PDT 2008 
 //   Added call to SendFileOpenOptions after StartServer.
 //
+//   Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//   Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 
 const avtSIL *
@@ -1035,7 +1040,7 @@ ViewerFileServer::GetSILHelper(const std::string &host, const std::string &db,
                     StartServer(host, startArgs);
                     SendFileOpenOptions(host);
                 }
-                CATCHALL(...)
+                CATCHALL
                 {
                     tryAgain = false;
                 }
@@ -1120,6 +1125,8 @@ ViewerFileServer::ExpandDatabaseName(std::string &hostDBName,
 //   Kathleen Bonnell, Thu Aug 14 16:13:41 PDT 2008 
 //   Added call to SendFileOpenOptions after StartServer.
 //
+//   Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//   Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 
 std::string
@@ -1169,7 +1176,7 @@ ViewerFileServer::ExpandedFileName(const std::string &host,
                         StartServer(host, startArgs);
                         SendFileOpenOptions(host);
                     }
-                    CATCHALL(...)
+                    CATCHALL
                     {
                         tryAgain = false;
                     }
@@ -1342,6 +1349,8 @@ ViewerFileServer::StartServer(const std::string &host)
 //    Moved UpdateDBPluginInfo and setting of default file open options to
 //    SendFileOpenOptions, and call that method after this one completes. 
 //
+//    Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//    Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 
 void
@@ -1495,8 +1504,7 @@ ViewerFileServer::StartServer(const std::string &host, const stringVector &args)
             "connect to %1 then contact visit-users@ornl.gov and provide "
             "information about how you are trying to connect. Be sure to "
             "include the VisIt version and platform on which you are "
-            "running.");
-        msg.replace("%1", host.c_str());
+            "running.").arg(host.c_str());
         Error(msg);
 
         delete newServer;
@@ -1518,7 +1526,7 @@ ViewerFileServer::StartServer(const std::string &host, const stringVector &args)
         // Re-throw the exception.
         RETHROW;
     }
-    CATCHALL(...)
+    CATCHALL
     {
         delete newServer;
         delete dialog;
@@ -1612,6 +1620,8 @@ ViewerFileServer::NoFaultStartServer(const std::string &host)
 //   Kathleen Bonnell, Thu Aug 14 16:13:41 PDT 2008 
 //   Added call to SendFileOpenOptions after StartServer.
 //
+//   Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//   Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 
 void
@@ -1626,7 +1636,7 @@ ViewerFileServer::NoFaultStartServer(const std::string &host,
             StartServer(host, args);
             SendFileOpenOptions(host);
         }
-        CATCHALL(...)
+        CATCHALL
         {
             // Do nothing.
         }
@@ -1679,6 +1689,8 @@ ViewerFileServer::CloseServer(const std::string &host, bool close)
 //
 // Modifications:
 //   
+//   Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//   Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 
 void
@@ -1694,7 +1706,7 @@ ViewerFileServer::SendKeepAlives()
             pos->second->proxy->SendKeepAlive();
             ++pos;
         }
-        CATCHALL(...)
+        CATCHALL
         {
             debug2 << "Could not send keep alive signal to mdserver on "
                    << pos->first.c_str() << " so that mdserver will be closed."
@@ -1917,6 +1929,8 @@ ViewerFileServer::ConnectServer(const std::string &mdServerHost,
 //   Brad Whitlock, Tue Jul 29 11:40:07 PDT 2003
 //   Changed interface to ParentProcess::Connect.
 //
+//   Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//   Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 
 void
@@ -1939,7 +1953,7 @@ ViewerFileServer::TerminateConnectionRequest(const stringVector &args, int failC
         // Connect back to the process.
         killer.Connect(1, 1, &argc, &argv, true, failCode);
     }
-    CATCHALL(...)
+    CATCHALL
     {
         // We know that we're going to get here, but no action is required.
     }
@@ -2817,6 +2831,9 @@ ViewerFileServer::CreateNode(DataNode *parentNode,
 //   I rewrote the method to handle creation of database correlations 
 //   using replacement sources.
 //
+//   Brad Whitlock, Fri Oct 23 16:11:33 PDT 2009
+//   I added code to remove all metadata, SILs, and database correlations.
+//
 // ****************************************************************************
 
 void
@@ -2824,6 +2841,24 @@ ViewerFileServer::SetFromNode(DataNode *parentNode,
     const std::map<std::string,std::string> &sourceToDB,
     const std::string &configVersion)
 {
+    // Clear out all of the metadata, SILs, and correlations.
+    debug4 << "Clearing all stored metadata, SILs, and correlations." << endl;
+    FileMetaDataMap::iterator fpos;
+    for(fpos = fileMetaData.begin(); fpos != fileMetaData.end(); ++fpos)
+    {
+        // Delete the metadata
+        delete fpos->second;
+    }
+    fileMetaData.clear();
+    FileSILMap::iterator fpos2;
+    for (fpos2 = fileSIL.begin() ; fpos2 != fileSIL.end() ; fpos2++)
+    {
+        // Delete the SIL
+        delete fpos2->second;
+    }
+    fileSIL.clear();
+    databaseCorrelationList->ClearCorrelations();
+
     DataNode *cLNode = parentNode->GetNode("DatabaseCorrelationList");
     if(cLNode != 0)
     {

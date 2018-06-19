@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -71,6 +71,12 @@ using std::vector;
 //    do that without also taking a big performance hit of having to open all
 //    the subfiles in a multi-file Silo file. So, we make it the user's 
 //    responsibility to turn on this functionality via a read option.
+//
+//    Mark C. Miller, Wed Mar  4 08:56:57 PST 2009
+//    Made controls for ignoring extents tri-state.
+//
+//    Mark C. Miller, Tue Mar 17 21:06:16 PDT 2009
+//    Undid previous change because it breaks compatibility of the 1.11 RC.
 // ****************************************************************************
 
 DBOptionsAttributes *

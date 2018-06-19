@@ -1,4 +1,4 @@
-#                         Copyright (c) 2000 - 2008
+#                         Copyright (c) 2000 - 2009
 #                  Lawrence Livermore National Security, LLC
 #            Produced at the Lawrence Livermore National Laboratory
 #                              LLNL-CODE-400124
@@ -328,6 +328,28 @@
 #   Hank Childs, Mon Jan  5 12:09:16 CST 2009
 #   Add Nek5000 reader.
 #
+#   Hank Childs, Tue Jan 27 08:45:57 PST 2009
+#   Added FastBit category.
+#
+#   Hank Childs, Tue Jan 27 10:36:10 PST 2009
+#   Added Prabhat's HDF_UC reader.
+#
+#   Hank Childs, Sun Mar 22 14:45:21 CDT 2009
+#   Remove Nek3D target ... reader is in the process of becoming deprecated.
+#
+#   Jeremy Meredith, Mon May 11 17:14:29 EDT 2009
+#   Adding LAMMPS backport from trunk.
+#
+#   Dave Pugmire, Wed Jun  3 13:56:09 EDT 2009
+#   Added PlasmaState reader.
+#
+#   Eric Brugger, Thu Sep  3 08:36:01 PDT 2009
+#   Added the paraDIS and paraDIS_tecplot readers.
+#
+#   Hank Childs, Wed Nov  4 11:19:20 PST 2009
+#   Added Vs (VizSchema) plugin on behalf of Marc Durant and Sveta
+#   Shesharina of Tech-X.
+#
 ##############################################################################
 
 @SET_MAKE@
@@ -349,19 +371,22 @@ HDF5_TARGET= \
 	GTC \
 	H5Nimrod \
 	M3D \
+	M3DC1 \
 	PFLOTRAN \
 	Pixie \
 	SAMRAI \
 	Tetrad \
 	UNIC \
+	Vs \
 	XDMF
 
 MILI=Mili
 SILO_TARGET=Silo SAMI Vista
-PDB_TARGET=Cale KullLite PDB
-NETCDF=NETCDF S3D
+PDB=Cale KullLite PDB
+NETCDF=NETCDF S3D PlasmaState
 VISUS=ViSUS
 H5PART=H5Part
+FASTBIT=HDF_UC
 CCMIO=CCM
 SIMULATION=SimV1 SimV1Writer
 
@@ -390,15 +415,17 @@ REQUIRED=\
  GGCM \
  Fluent \
  Image \
+ LAMMPS \
  Lines \
  MFIX \
  Miranda \
  MM5 \
  NASTRAN \
- Nek3D \
  Nek5000 \
  OpenFOAM \
  OVERFLOW \
+ paraDIS \
+ paraDIS_tecplot \
  PATRAN \
  PLOT2D \
  PLOT3D \
@@ -425,7 +452,7 @@ REQUIRED=\
 # The following is a minimal subset of the OPTIONAL/REQUIRED plugins
 MINIMAL=Curve2D RAW VTK
 
-THIRDPARTY_DEPENDENT=@EXODUS@ @HDF4@ @HDF5_TARGET@ @SILO_TARGET@ @PDB_TARGET@ @MILI@ @BOXLIB2D@ @BOXLIB3D@ @VISUS@ @NETCDF@ @CGNS@ @GDAL@ @CFITSIO@ @ITAPS_C@ @H5PART@ @CCMIO@ @SIMULATION@
+THIRDPARTY_DEPENDENT=@EXODUS@ @HDF4@ @HDF5_TARGET@ @SILO_TARGET@ @PDB@ @MILI@ @BOXLIB2D@ @BOXLIB3D@ @VISUS@ @NETCDF@ @CGNS@ @GDAL@ @CFITSIO@ @ITAPS_C@ @H5PART@ @CCMIO@ @SIMULATION@ @FASTBIT@
 
 SUBDIRS=@DB_BUILD_DIRS@
 ALLSUBDIRS=$(REQUIRED) $(THIRDPARTY_DEPENDENT) $(SAMPLES) $(OPTIONAL)
@@ -447,6 +474,9 @@ dirmakefiles_old:
 dirmakefiles:
 	@files=""; for dir in $(ALLSUBDIRS); do if test -d $$dir; then files="$$files $$dir/$${dir}.xml"; fi; done; \
         ../bin/xml2makefile -noprint -clobber -outputtoinputdir $$files
+
+dirmakefiles_dbio_only:
+	for dir in $(ALLSUBDIRS); do if test -d $$dir; then (cd $$dir && ../../bin/db_xml2makefile $${dir}.xml) || exit 1; fi; done
 
 clean:
 	-$(RM) $(LIB)

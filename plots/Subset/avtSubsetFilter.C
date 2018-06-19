@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -132,6 +132,13 @@ avtSubsetFilter::SetPlotAtts(const SubsetAttributes *atts)
 //    Kathleen Bonnell, Mon Sep  8 13:43:30 PDT 2003 
 //    Add test for No cells for early termination. 
 //    
+//    Jeremy Meredith, Mon Feb 23 17:35:12 EST 2009
+//    If the label isn't a proper subset label, don't error out with
+//    a null return value.  Instead, assume we're doing something like
+//    a subset plot of a Mesh variable, fall through to the single
+//    chunk case, and if it's a NULL label, use the label from the plot
+//    attributes.  This fixes subset plots of materials.
+//
 // ****************************************************************************
 
 avtDataTree_p
@@ -150,23 +157,10 @@ avtSubsetFilter::ExecuteDataTree(vtkDataSet *in_ds, int domain, string label)
     vtkDataArray *subsetArray = in_ds->GetCellData()->GetArray("avtSubsets");
 
     bool splitMats = plotAtts.GetDrawInternal();
-    if (subsetArray && !splitMats)
+    if (subsetArray &&
+        !splitMats &&
+        label.find(";") != string::npos)
     {
-        if (label.find(";") == string::npos)
-        {
-            debug1 << "POSSIBLE ERROR CONDITION:  " << endl;
-            debug1 << "    avtSubsetFilter encountered a label ("
-                   << label.c_str() << ")" << endl;
-            debug1 << "    that cannot be parsed correctly.  This can happen "
-                   << "if" << endl;
-            debug1 << "    another filter has over-written the subset labels "
-                   << "in" << endl;
-            debug1 << "    its output data tree.  avtSubsetFilter is returning"
-                   << endl;
-            debug1 << "    an empty data tree." << endl;
-            avtDataTree_p rv = new avtDataTree();
-            return rv;
-        }
         //
         // Break up the dataset into a collection of datasets, one
         // per subset.
@@ -291,7 +285,19 @@ avtSubsetFilter::ExecuteDataTree(vtkDataSet *in_ds, int domain, string label)
         // The dataset represents a single subset, so just turn it into
         // a data tree.
         //
-        labels.push_back(label);
+
+        if (plotAtts.GetSubsetType() == SubsetAttributes::Mesh &&
+            plotAtts.GetSubsetNames().size() > 0)
+        {
+            // A Subset plot of a mesh doesn't give us a good label.
+            // It's like a material plot, but we use the label from
+            // the plot attributes instead.  Handle that case here.
+            labels.push_back(plotAtts.GetSubsetNames()[0]);
+        }
+        else
+        {
+            labels.push_back(label);
+        }
 
         out_ds = new vtkDataSet *[1];
         out_ds[0] = in_ds;
@@ -375,6 +381,9 @@ avtSubsetFilter::UpdateDataObjectInfo(void)
 //    Tell the contract that we want simplified nesting representations
 //    when possible.
 //
+//    Kathleen Bonnell, Tue Jul 14 13:42:37 PDT 2009
+//    Added test for MayRequireNodes for turning Node numbers on.
+//
 // ****************************************************************************
 
 avtContract_p
@@ -407,7 +416,8 @@ avtSubsetFilter::ModifyContract(avtContract_p spec)
         }
 
         avtDataAttributes &data = GetInput()->GetInfo().GetAttributes();
-        if (spec->GetDataRequest()->MayRequireZones())
+        if (spec->GetDataRequest()->MayRequireZones() ||
+            spec->GetDataRequest()->MayRequireNodes())
         {
             keepNodeZone = true;
             spec->GetDataRequest()->TurnNodeNumbersOn();

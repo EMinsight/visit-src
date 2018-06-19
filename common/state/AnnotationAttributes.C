@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -154,7 +154,7 @@ AnnotationAttributes::PathExpansionMode_FromString(const std::string &s, Annotat
 }
 
 // Type map format string
-const char *AnnotationAttributes::TypeMapFormatString = "aababaibaaiaaisiia";
+const char *AnnotationAttributes::TypeMapFormatString = "aababaiddbaaiaaisii";
 
 // ****************************************************************************
 // Method: AnnotationAttributes::AnnotationAttributes
@@ -179,6 +179,8 @@ AnnotationAttributes::AnnotationAttributes() :
     userInfoFlag = true;
     databaseInfoFlag = true;
     databaseInfoExpansionMode = File;
+    databaseInfoTimeScale = 1;
+    databaseInfoTimeOffset = 0;
     legendInfoFlag = true;
     gradientBackgroundStyle = Radial;
     backgroundMode = Solid;
@@ -211,6 +213,8 @@ AnnotationAttributes::AnnotationAttributes(const AnnotationAttributes &obj) :
     databaseInfoFlag = obj.databaseInfoFlag;
     databaseInfoFont = obj.databaseInfoFont;
     databaseInfoExpansionMode = obj.databaseInfoExpansionMode;
+    databaseInfoTimeScale = obj.databaseInfoTimeScale;
+    databaseInfoTimeOffset = obj.databaseInfoTimeOffset;
     legendInfoFlag = obj.legendInfoFlag;
     backgroundColor = obj.backgroundColor;
     foregroundColor = obj.foregroundColor;
@@ -221,7 +225,6 @@ AnnotationAttributes::AnnotationAttributes(const AnnotationAttributes &obj) :
     backgroundImage = obj.backgroundImage;
     imageRepeatX = obj.imageRepeatX;
     imageRepeatY = obj.imageRepeatY;
-    axesArray = obj.axesArray;
 
     SelectAll();
 }
@@ -272,6 +275,8 @@ AnnotationAttributes::operator = (const AnnotationAttributes &obj)
     databaseInfoFlag = obj.databaseInfoFlag;
     databaseInfoFont = obj.databaseInfoFont;
     databaseInfoExpansionMode = obj.databaseInfoExpansionMode;
+    databaseInfoTimeScale = obj.databaseInfoTimeScale;
+    databaseInfoTimeOffset = obj.databaseInfoTimeOffset;
     legendInfoFlag = obj.legendInfoFlag;
     backgroundColor = obj.backgroundColor;
     foregroundColor = obj.foregroundColor;
@@ -282,7 +287,6 @@ AnnotationAttributes::operator = (const AnnotationAttributes &obj)
     backgroundImage = obj.backgroundImage;
     imageRepeatX = obj.imageRepeatX;
     imageRepeatY = obj.imageRepeatY;
-    axesArray = obj.axesArray;
 
     SelectAll();
     return *this;
@@ -314,6 +318,8 @@ AnnotationAttributes::operator == (const AnnotationAttributes &obj) const
             (databaseInfoFlag == obj.databaseInfoFlag) &&
             (databaseInfoFont == obj.databaseInfoFont) &&
             (databaseInfoExpansionMode == obj.databaseInfoExpansionMode) &&
+            (databaseInfoTimeScale == obj.databaseInfoTimeScale) &&
+            (databaseInfoTimeOffset == obj.databaseInfoTimeOffset) &&
             (legendInfoFlag == obj.legendInfoFlag) &&
             (backgroundColor == obj.backgroundColor) &&
             (foregroundColor == obj.foregroundColor) &&
@@ -323,8 +329,7 @@ AnnotationAttributes::operator == (const AnnotationAttributes &obj) const
             (backgroundMode == obj.backgroundMode) &&
             (backgroundImage == obj.backgroundImage) &&
             (imageRepeatX == obj.imageRepeatX) &&
-            (imageRepeatY == obj.imageRepeatY) &&
-            (axesArray == obj.axesArray));
+            (imageRepeatY == obj.imageRepeatY));
 }
 
 // ****************************************************************************
@@ -475,6 +480,8 @@ AnnotationAttributes::SelectAll()
     Select(ID_databaseInfoFlag,          (void *)&databaseInfoFlag);
     Select(ID_databaseInfoFont,          (void *)&databaseInfoFont);
     Select(ID_databaseInfoExpansionMode, (void *)&databaseInfoExpansionMode);
+    Select(ID_databaseInfoTimeScale,     (void *)&databaseInfoTimeScale);
+    Select(ID_databaseInfoTimeOffset,    (void *)&databaseInfoTimeOffset);
     Select(ID_legendInfoFlag,            (void *)&legendInfoFlag);
     Select(ID_backgroundColor,           (void *)&backgroundColor);
     Select(ID_foregroundColor,           (void *)&foregroundColor);
@@ -485,7 +492,6 @@ AnnotationAttributes::SelectAll()
     Select(ID_backgroundImage,           (void *)&backgroundImage);
     Select(ID_imageRepeatX,              (void *)&imageRepeatX);
     Select(ID_imageRepeatY,              (void *)&imageRepeatY);
-    Select(ID_axesArray,                 (void *)&axesArray);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -584,6 +590,18 @@ AnnotationAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool f
         node->AddNode(new DataNode("databaseInfoExpansionMode", PathExpansionMode_ToString(databaseInfoExpansionMode)));
     }
 
+    if(completeSave || !FieldsEqual(ID_databaseInfoTimeScale, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("databaseInfoTimeScale", databaseInfoTimeScale));
+    }
+
+    if(completeSave || !FieldsEqual(ID_databaseInfoTimeOffset, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("databaseInfoTimeOffset", databaseInfoTimeOffset));
+    }
+
     if(completeSave || !FieldsEqual(ID_legendInfoFlag, &defaultObject))
     {
         addToParent = true;
@@ -652,18 +670,6 @@ AnnotationAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool f
         node->AddNode(new DataNode("imageRepeatY", imageRepeatY));
     }
 
-    if(completeSave || !FieldsEqual(ID_axesArray, &defaultObject))
-    {
-        DataNode *axesArrayNode = new DataNode("axesArray");
-        if(axesArray.CreateNode(axesArrayNode, completeSave, false))
-        {
-            addToParent = true;
-            node->AddNode(axesArrayNode);
-        }
-        else
-            delete axesArrayNode;
-    }
-
 
     // Add the node to the parent node.
     if(addToParent || forceAdd)
@@ -728,6 +734,10 @@ AnnotationAttributes::SetFromNode(DataNode *parentNode)
                 SetDatabaseInfoExpansionMode(value);
         }
     }
+    if((node = searchNode->GetNode("databaseInfoTimeScale")) != 0)
+        SetDatabaseInfoTimeScale(node->AsDouble());
+    if((node = searchNode->GetNode("databaseInfoTimeOffset")) != 0)
+        SetDatabaseInfoTimeOffset(node->AsDouble());
     if((node = searchNode->GetNode("legendInfoFlag")) != 0)
         SetLegendInfoFlag(node->AsBool());
     if((node = searchNode->GetNode("backgroundColor")) != 0)
@@ -776,8 +786,6 @@ AnnotationAttributes::SetFromNode(DataNode *parentNode)
         SetImageRepeatX(node->AsInt());
     if((node = searchNode->GetNode("imageRepeatY")) != 0)
         SetImageRepeatY(node->AsInt());
-    if((node = searchNode->GetNode("axesArray")) != 0)
-        axesArray.SetFromNode(node);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -831,6 +839,20 @@ AnnotationAttributes::SetDatabaseInfoExpansionMode(AnnotationAttributes::PathExp
 {
     databaseInfoExpansionMode = databaseInfoExpansionMode_;
     Select(ID_databaseInfoExpansionMode, (void *)&databaseInfoExpansionMode);
+}
+
+void
+AnnotationAttributes::SetDatabaseInfoTimeScale(double databaseInfoTimeScale_)
+{
+    databaseInfoTimeScale = databaseInfoTimeScale_;
+    Select(ID_databaseInfoTimeScale, (void *)&databaseInfoTimeScale);
+}
+
+void
+AnnotationAttributes::SetDatabaseInfoTimeOffset(double databaseInfoTimeOffset_)
+{
+    databaseInfoTimeOffset = databaseInfoTimeOffset_;
+    Select(ID_databaseInfoTimeOffset, (void *)&databaseInfoTimeOffset);
 }
 
 void
@@ -903,13 +925,6 @@ AnnotationAttributes::SetImageRepeatY(int imageRepeatY_)
     Select(ID_imageRepeatY, (void *)&imageRepeatY);
 }
 
-void
-AnnotationAttributes::SetAxesArray(const AxesArray &axesArray_)
-{
-    axesArray = axesArray_;
-    Select(ID_axesArray, (void *)&axesArray);
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 // Get property methods
 ///////////////////////////////////////////////////////////////////////////////
@@ -978,6 +993,18 @@ AnnotationAttributes::PathExpansionMode
 AnnotationAttributes::GetDatabaseInfoExpansionMode() const
 {
     return PathExpansionMode(databaseInfoExpansionMode);
+}
+
+double
+AnnotationAttributes::GetDatabaseInfoTimeScale() const
+{
+    return databaseInfoTimeScale;
+}
+
+double
+AnnotationAttributes::GetDatabaseInfoTimeOffset() const
+{
+    return databaseInfoTimeOffset;
 }
 
 bool
@@ -1070,18 +1097,6 @@ AnnotationAttributes::GetImageRepeatY() const
     return imageRepeatY;
 }
 
-const AxesArray &
-AnnotationAttributes::GetAxesArray() const
-{
-    return axesArray;
-}
-
-AxesArray &
-AnnotationAttributes::GetAxesArray()
-{
-    return axesArray;
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 // Select property methods
 ///////////////////////////////////////////////////////////////////////////////
@@ -1140,12 +1155,6 @@ AnnotationAttributes::SelectBackgroundImage()
     Select(ID_backgroundImage, (void *)&backgroundImage);
 }
 
-void
-AnnotationAttributes::SelectAxesArray()
-{
-    Select(ID_axesArray, (void *)&axesArray);
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 // Keyframing methods
 ///////////////////////////////////////////////////////////////////////////////
@@ -1177,6 +1186,8 @@ AnnotationAttributes::GetFieldName(int index) const
     case ID_databaseInfoFlag:          return "databaseInfoFlag";
     case ID_databaseInfoFont:          return "databaseInfoFont";
     case ID_databaseInfoExpansionMode: return "databaseInfoExpansionMode";
+    case ID_databaseInfoTimeScale:     return "databaseInfoTimeScale";
+    case ID_databaseInfoTimeOffset:    return "databaseInfoTimeOffset";
     case ID_legendInfoFlag:            return "legendInfoFlag";
     case ID_backgroundColor:           return "backgroundColor";
     case ID_foregroundColor:           return "foregroundColor";
@@ -1187,7 +1198,6 @@ AnnotationAttributes::GetFieldName(int index) const
     case ID_backgroundImage:           return "backgroundImage";
     case ID_imageRepeatX:              return "imageRepeatX";
     case ID_imageRepeatY:              return "imageRepeatY";
-    case ID_axesArray:                 return "axesArray";
     default:  return "invalid index";
     }
 }
@@ -1219,6 +1229,8 @@ AnnotationAttributes::GetFieldType(int index) const
     case ID_databaseInfoFlag:          return FieldType_bool;
     case ID_databaseInfoFont:          return FieldType_att;
     case ID_databaseInfoExpansionMode: return FieldType_enum;
+    case ID_databaseInfoTimeScale:     return FieldType_double;
+    case ID_databaseInfoTimeOffset:    return FieldType_double;
     case ID_legendInfoFlag:            return FieldType_bool;
     case ID_backgroundColor:           return FieldType_color;
     case ID_foregroundColor:           return FieldType_color;
@@ -1229,7 +1241,6 @@ AnnotationAttributes::GetFieldType(int index) const
     case ID_backgroundImage:           return FieldType_string;
     case ID_imageRepeatX:              return FieldType_int;
     case ID_imageRepeatY:              return FieldType_int;
-    case ID_axesArray:                 return FieldType_att;
     default:  return FieldType_unknown;
     }
 }
@@ -1261,6 +1272,8 @@ AnnotationAttributes::GetFieldTypeName(int index) const
     case ID_databaseInfoFlag:          return "bool";
     case ID_databaseInfoFont:          return "att";
     case ID_databaseInfoExpansionMode: return "enum";
+    case ID_databaseInfoTimeScale:     return "double";
+    case ID_databaseInfoTimeOffset:    return "double";
     case ID_legendInfoFlag:            return "bool";
     case ID_backgroundColor:           return "color";
     case ID_foregroundColor:           return "color";
@@ -1271,7 +1284,6 @@ AnnotationAttributes::GetFieldTypeName(int index) const
     case ID_backgroundImage:           return "string";
     case ID_imageRepeatX:              return "int";
     case ID_imageRepeatY:              return "int";
-    case ID_axesArray:                 return "att";
     default:  return "invalid index";
     }
 }
@@ -1333,6 +1345,16 @@ AnnotationAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (databaseInfoExpansionMode == obj.databaseInfoExpansionMode);
         }
         break;
+    case ID_databaseInfoTimeScale:
+        {  // new scope
+        retval = (databaseInfoTimeScale == obj.databaseInfoTimeScale);
+        }
+        break;
+    case ID_databaseInfoTimeOffset:
+        {  // new scope
+        retval = (databaseInfoTimeOffset == obj.databaseInfoTimeOffset);
+        }
+        break;
     case ID_legendInfoFlag:
         {  // new scope
         retval = (legendInfoFlag == obj.legendInfoFlag);
@@ -1381,11 +1403,6 @@ AnnotationAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
     case ID_imageRepeatY:
         {  // new scope
         retval = (imageRepeatY == obj.imageRepeatY);
-        }
-        break;
-    case ID_axesArray:
-        {  // new scope
-        retval = (axesArray == obj.axesArray);
         }
         break;
     default: retval = false;

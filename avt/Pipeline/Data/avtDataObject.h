@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -87,6 +87,9 @@ class     avtWebpage;
 //    Define private copy constructor and assignment operator to prevent
 //    accidental use of default, bitwise copy implementations.
 //
+//    Hank Childs, Mon Feb  2 09:26:16 PST 2009
+//    Added data member for the contract from a previous execution.
+//
 // ****************************************************************************
 
 class PIPELINE_API avtDataObject
@@ -120,6 +123,8 @@ class PIPELINE_API avtDataObject
     void                             SetTransientStatus(bool b)
                                                             { transient = b; };
     bool                             IsTransient(void) { return transient; };
+    avtContract_p                    GetContractFromPreviousExecution(void)
+                                         { return contractFromPrevExecution; };
 
     virtual void                     DebugDump(avtWebpage *, const char *);
 
@@ -133,6 +138,8 @@ class PIPELINE_API avtDataObject
     // "intermediate data object" of a plot, which must not be deleted, 
     // because we need it for queries.
     bool                             transient;
+
+    avtContract_p                    contractFromPrevExecution;
 
     virtual void                     DerivedCopy(avtDataObject *);
     virtual void                     DerivedMerge(avtDataObject *);

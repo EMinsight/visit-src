@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -45,16 +45,28 @@
 #include <snprintf.h>
 #include <ViewerSubject.h>
 
-#include <QDesktopWidget>
-#include <QFile>
-#include <QLocale>
-#include <QTimer>
-#include <QTranslator>
+#if QT_VERSION < 300
+// If we're using less than Qt 3.0, include the style headers.
+#include <qmotifstyle.h>
+#include <qcdestyle.h>
+#include <qwindowsstyle.h>
+#include <qplatinumstyle.h>
+#if QT_VERSION >= 230
+#include <qsgistyle.h>
+#endif
+#endif
+
+#include <qfile.h>
+#if QT_VERSION >= 0x030300
+#include <qlocale.h>
+#endif
+#include <qtimer.h>
+#include <qtranslator.h>
+#include <qwidgetlist.h>
 
 #include <AnimationAttributes.h>
 #include <AnnotationAttributes.h>
 #include <AnnotationObjectList.h>
-#include <Appearance.h>
 #include <AppearanceAttributes.h>
 #include <ClientMethod.h>
 #include <ClientInformation.h>
@@ -137,8 +149,8 @@
 #include <PlotPluginManager.h>
 #include <OperatorPluginManager.h>
 
-#include <QApplication>
-#include <QSocketNotifier>
+#include <qapplication.h>
+#include <qsocketnotifier.h>
 #include <QvisColorTableButton.h>
 #include <DebugStream.h>
 #include <TimingsManager.h>
@@ -220,15 +232,12 @@ using std::string;
 //    Brad Whitlock, Thu Apr 10 09:49:27 PDT 2008
 //    Added applicationLocale.
 //
-//    Brad Whitlock, Fri May  9 14:39:09 PDT 2008
-//    Qt 4.
-//
 //    Brad Whitlock, Thu Aug 14 09:57:59 PDT 2008
 //    Removed mainApp, Added call to CreateState.
 //
 // ****************************************************************************
 
-ViewerSubject::ViewerSubject() : ViewerBase(0), 
+ViewerSubject::ViewerSubject() : ViewerBase(0, "ViewerSubject"), 
     interpretCommands(), xfer(), clients(),
     borders(), shift(), preshift(), geometry(),
     engineParallelArguments(), unknownArguments(), clientArguments(),
@@ -450,9 +459,7 @@ ViewerSubject::Connect(int *argc, char ***argv)
 // Creation:   Thu Aug 14 10:04:24 PDT 2008
 //
 // Modifications:
-//   Brad Whitlock, Wed Nov 26 11:39:27 PDT 2008
-//   Get the current appearance attributes
-//
+//   
 // ****************************************************************************
 
 void
@@ -460,6 +467,7 @@ ViewerSubject::Initialize()
 {
     int timeid = visitTimer->StartTimer();
 
+#if QT_VERSION >= 0x030300
     // Make VisIt translation aware.
     QTranslator *translator = new QTranslator(0);
 #if defined(_WIN32)
@@ -472,24 +480,21 @@ ViewerSubject::Initialize()
     if(applicationLocale == "default")
         applicationLocale = QLocale::system().name();
     QString transFile(QString("visit_") + applicationLocale);
-    debug1 << "Trying to load translator file: " << (transPath + transFile).toStdString() << endl;
+    debug1 << "Trying to load translator file: " << (transPath + transFile).ascii() << endl;
     if(translator->load(transFile, transPath))
     {
         qApp->installTranslator(translator);
-        debug1 << "Loaded translation " << (transPath + transFile).toStdString() << endl;
+        debug1 << "Loaded translation " << (transPath + transFile).ascii() << endl;
     }
     else
     {
         debug1 << "Could not load translation." << endl;
         delete translator;
     }
+#endif
 
     // Customize the colors and fonts.
-    if (!ViewerWindow::GetNoWinMode())
-    {
-        GetAppearance(qApp, GetViewerState()->GetAppearanceAttributes());
-        CustomizeAppearance();
-    }
+    CustomizeAppearance();
 
     //
     // Set up the Xfer object.
@@ -692,9 +697,6 @@ ViewerSubject::ConnectXfer()
 //   try to use 127.0.0.1 whenever possible, this is the way to
 //   get the externally visible hostname.
 //
-//   Brad Whitlock, Fri May  9 14:51:37 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
@@ -709,7 +711,7 @@ ViewerSubject::ConnectObjectsAndHandlers()
         {
             checkParent = new QSocketNotifier(
                 parent->GetWriteConnection()->GetDescriptor(),
-                QSocketNotifier::Read, this);
+                QSocketNotifier::Read);
             connect(checkParent, SIGNAL(activated(int)),
                     this, SLOT(ReadFromParentAndProcess(int)));
         }
@@ -769,7 +771,7 @@ ViewerSubject::ConnectObjectsAndHandlers()
     // signal to all of the remote processes. This will keep their connections
     // alive.
     //
-    keepAliveTimer = new QTimer(this);
+    keepAliveTimer = new QTimer(this, "keepAliveTimer");
     connect(keepAliveTimer, SIGNAL(timeout()),
             this, SLOT(SendKeepAlives()));
     keepAliveTimer->start(5 * 60 * 1000);
@@ -1045,35 +1047,24 @@ ViewerSubject::HeavyInitialization()
 // Creation:   Fri Aug 22 11:48:31 PDT 2008
 //
 // Modifications:
-//   Brad Whitlock, Fri Jan 9 14:25:04 PST 2009
-//   Added exception handling to make sure that exceptions do not escape
-//   back into the Qt event loop.
 //   
 // ****************************************************************************
 
 void
 ViewerSubject::CreateViewerDelayedState()
 {
-    TRY
-    {
-        // Create an internal ViewerState that we'll use for the ViewerMethods 
-        // object. We use a buffered version so all of the input from the viewer
-        // methods and state will be buffered into the central input for the
-        // xfer object. This should cause all commands to be buffered until they
-        // can be safely executed. For example, this prevents us from executing
-        // commands via ViewerMethods while the engine is executing.
-        viewerDelayedState = new ViewerStateBuffered(GetViewerState());
-        connect(viewerDelayedState, SIGNAL(InputFromClient(ViewerClientConnection *, AttributeSubject *)),
-                this,                SLOT(AddInputToXfer(ViewerClientConnection *, AttributeSubject *)));
-        // Override the base class's ViewerMethods object, if it exists, with one that
-        // uses the buffered state.
-        viewerDelayedMethods = new ViewerMethods(viewerDelayedState->GetState());
-    }
-    CATCHALL(...)
-    {
-        ; // nothing
-    }
-    ENDTRY
+    // Create an internal ViewerState that we'll use for the ViewerMethods 
+    // object. We use a buffered version so all of the input from the viewer
+    // methods and state will be buffered into the central input for the
+    // xfer object. This should cause all commands to be buffered until they
+    // can be safely executed. For example, this prevents us from executing
+    // commands via ViewerMethods while the engine is executing.
+    viewerDelayedState = new ViewerStateBuffered(GetViewerState());
+    connect(viewerDelayedState, SIGNAL(InputFromClient(ViewerClientConnection *, AttributeSubject *)),
+            this,                SLOT(AddInputToXfer(ViewerClientConnection *, AttributeSubject *)));
+    // Override the base class's ViewerMethods object, if it exists, with one that
+    // uses the buffered state.
+    viewerDelayedMethods = new ViewerMethods(viewerDelayedState->GetState());
 }
 
 // ****************************************************************************
@@ -1126,48 +1117,36 @@ ViewerSubject::GetViewerDelayedMethods()
 //   Brad Whitlock, Mon Feb 12 11:59:15 PDT 2007
 //   Made it use ViewerState.
 //
-//   Brad Whitlock, Fri Jan 9 14:25:04 PST 2009
-//   Added exception handling to make sure that exceptions do not escape
-//   back into the Qt event loop.
-//
 // ****************************************************************************
 
 void
 ViewerSubject::AddInputToXfer(ViewerClientConnection *client,
     AttributeSubject *subj)
 {
-    TRY
-    {
-        // Write the state object into the buffered input so we can process it
-        // later.
-        Connection *input = xfer.GetBufferedInputConnection();
-        input->WriteInt(subj->GetGuido());
-        int sz = subj->CalculateMessageSize(*input);
-        input->WriteInt(sz);
-        subj->Write(*input);
+    // Write the state object into the buffered input so we can process it
+    // later.
+    Connection *input = xfer.GetBufferedInputConnection();
+    input->WriteInt(subj->GetGuido());
+    int sz = subj->CalculateMessageSize(*input);
+    input->WriteInt(sz);
+    subj->Write(*input);
 
-        // In the meantime, to prevent problems with state inconsistency between
-        // clients, send the state object to all but the client that sent the
-        // state object if the state object is one that we can freely send. Note
-        // that we don't send ViewerRPC, postponedAction, syncAtts, messageAtts,
-        // statusAtts, metaData, silAtts.
-        if(subj->GetGuido() >= GetViewerState()->FreelyExchangedState())
+    // In the meantime, to prevent problems with state inconsistency between
+    // clients, send the state object to all but the client that sent the
+    // state object if the state object is one that we can freely send. Note
+    // that we don't send ViewerRPC, postponedAction, syncAtts, messageAtts,
+    // statusAtts, metaData, silAtts.
+    if(subj->GetGuido() >= GetViewerState()->FreelyExchangedState())
+    {
+        for(int i = 0; i < clients.size(); ++i)
         {
-            for(int i = 0; i < clients.size(); ++i)
-            {
-                if(clients[i] != client)
-                    clients[i]->BroadcastToClient(subj);
-            }
+            if(clients[i] != client)
+                clients[i]->BroadcastToClient(subj);
         }
+    }
 
-        // Schedule the input to be processed by the main event loop.
-        QTimer::singleShot(10, this, SLOT(ProcessFromParent()));
-    }
-    CATCHALL(...)
-    {
-        ; // nothing
-    }
-    ENDTRY
+    // Schedule the input to be processed by the main event loop.
+    QTimer::singleShot(10, this, SLOT(ProcessFromParent()));
 }
 
 // ****************************************************************************
@@ -1183,48 +1162,35 @@ ViewerSubject::AddInputToXfer(ViewerClientConnection *client,
 // Creation:   Mon May 2 16:39:12 PST 2005
 //
 // Modifications:
-//   Brad Whitlock, Fri Jan 9 14:03:58 PST 2009
-//   I added code to catch VisItException since we should not allow it to
-//   escape from a Qt slot.
 //   
 // ****************************************************************************
 
 void
 ViewerSubject::DisconnectClient(ViewerClientConnection *client)
 {
-    TRY
+    ViewerClientConnectionVector::iterator pos = std::find(clients.begin(),
+        clients.end(), client);
+    if(pos != clients.end())
+        clients.erase(pos);
+
+    disconnect(client, SIGNAL(InputFromClient(ViewerClientConnection *, AttributeSubject *)),
+               this, SLOT(AddInputToXfer(ViewerClientConnection *, AttributeSubject *)));
+    disconnect(client, SIGNAL(DisconnectClient(ViewerClientConnection *)),
+               this, SLOT(DisconnectClient(ViewerClientConnection *)));
+
+    debug1 << "VisIt's viewer lost a connection to one of its clients ("
+           << client->name() << ")." << endl;
+    client->deleteLater();
+
+    // If we ever get down to no client connections, quit.
+    if(clients.size() < 1)
+        Close();
+    else
     {
-        ViewerClientConnectionVector::iterator pos = std::find(clients.begin(),
-            clients.end(), client);
-        if(pos != clients.end())
-            clients.erase(pos);
-
-        disconnect(client, SIGNAL(InputFromClient(ViewerClientConnection *, AttributeSubject *)),
-                   this, SLOT(AddInputToXfer(ViewerClientConnection *, AttributeSubject *)));
-        disconnect(client, SIGNAL(DisconnectClient(ViewerClientConnection *)),
-                   this, SLOT(DisconnectClient(ViewerClientConnection *)));
-
-        debug1 << "VisIt's viewer lost a connection to one of its clients ("
-               << client->Name().toStdString() << ")." << endl;
-        client->deleteLater();
-
-        // If we ever get down to no client connections, quit.
-        if(clients.size() < 1)
-        {
-            Close();
-        }
-        else
-        {
-            // We have at least one client so we should discover the client's
-            // information.
-            QTimer::singleShot(100, this, SLOT(DiscoverClientInformation()));
-        }
+        // We have at least one client so we should discover the client's
+        // information.
+        QTimer::singleShot(100, this, SLOT(DiscoverClientInformation()));
     }
-    CATCHALL(...)
-    {
-        ; // nothing
-    }
-    ENDTRY
 }
 
 // ****************************************************************************
@@ -1376,9 +1342,6 @@ ViewerSubject::InitializePluginManagers()
 //   Brad Whitlock, Mon Feb 12 12:04:49 PDT 2007
 //   Changed how plots are registered with ViewerState.
 //
-//   Brad Whitlock, Thu Jan  8 10:18:16 PST 2009
-//   I made sure that the plot info attrbutes also get registered with xfer.
-//
 // ****************************************************************************
 
 void
@@ -1415,10 +1378,8 @@ ViewerSubject::LoadPlotPlugins()
 
         if (attr != 0)
         {
+            xfer.Add(attr);
             GetViewerState()->RegisterPlotAttributes(attr);
-
-            xfer.Add(GetViewerState()->GetPlotAttributes(i));
-            xfer.Add(GetViewerState()->GetPlotInformation(i));
         }
 
         if (defaultAttr != 0)
@@ -1605,9 +1566,7 @@ ViewerSubject::ProcessConfigFileSettings()
 // Creation:   Tue Jun 17 15:20:20 PST 2003
 //
 // Modifications:
-//   Brad Whitlock, Fri Jan 9 14:22:56 PST 2009
-//   I removed DisconnectWindow.
-//
+//   
 // ****************************************************************************
 
 void
@@ -1623,6 +1582,8 @@ ViewerSubject::AddInitialWindows()
         // Connect
         connect(windowManager, SIGNAL(createWindow(ViewerWindow *)),
                 this, SLOT(ConnectWindow(ViewerWindow *)));
+        connect(windowManager, SIGNAL(deleteWindow(ViewerWindow *)),
+                this, SLOT(DisconnectWindow(ViewerWindow *)));
 
         // Initialize the area that will be used to place the windows.
         InitializeWorkArea();
@@ -1701,65 +1662,53 @@ ViewerSubject::LaunchEngineOnStartup()
 //   Brad Whitlock, Wed Feb 13 14:06:56 PST 2008
 //   Added configVersion to the calls to SetFromNode.
 //
-//   Brad Whitlock, Fri Jan 9 14:25:04 PST 2009
-//   Added exception handling to make sure that exceptions do not escape
-//   back into the Qt event loop.
-//
 // ****************************************************************************
 
 void
 ViewerSubject::DelayedProcessSettings()
 {
     const char *mName = "ViewerSubject::DelayedProcessSettings: ";
-    TRY
+    if(localSettings != 0)
     {
-        if(localSettings != 0)
+        // Get the VisIt node.
+        DataNode *visitRoot = localSettings->GetNode("VisIt");
+        if(visitRoot == 0)
         {
-            // Get the VisIt node.
-            DataNode *visitRoot = localSettings->GetNode("VisIt");
-            if(visitRoot == 0)
-            {
-                debug1 << mName << "Can't read VisIt node." << endl;
-                return;
-            }
-
-            // Get the viewer node.
-            DataNode *viewerNode = visitRoot->GetNode("VIEWER");
-            if(viewerNode == 0)
-            {
-                debug1 << mName << "Can't read VisIt node." << endl;
-                return;
-            }
-
-            // Get the ViewerSubject node
-            DataNode *searchNode = viewerNode->GetNode("ViewerSubject");
-            if(searchNode == 0)
-            {
-                debug1 << mName << "Can't read ViewerSubject node." << endl;
-                return;
-            }
-
-            // Get the version
-            std::string configVersion(VERSION);
-            DataNode *version = visitRoot->GetNode("Version");
-            if(version != 0)
-                configVersion = version->AsString();
-
-            // Let the important objects read their settings.
-            std::map<std::string, std::string> empty;
-            ViewerFileServer::Instance()->SetFromNode(searchNode, empty, configVersion);
-            ViewerWindowManager::Instance()->SetFromNode(searchNode, empty, configVersion);
-            ViewerQueryManager::Instance()->SetFromNode(searchNode, configVersion);
-            ViewerEngineManager::Instance()->SetFromNode(searchNode, configVersion);
-
-            delete localSettings;  localSettings = 0;
+            debug1 << mName << "Can't read VisIt node." << endl;
+            return;
         }
+
+        // Get the viewer node.
+        DataNode *viewerNode = visitRoot->GetNode("VIEWER");
+        if(viewerNode == 0)
+        {
+            debug1 << mName << "Can't read VisIt node." << endl;
+            return;
+        }
+
+        // Get the ViewerSubject node
+        DataNode *searchNode = viewerNode->GetNode("ViewerSubject");
+        if(searchNode == 0)
+        {
+            debug1 << mName << "Can't read ViewerSubject node." << endl;
+            return;
+        }
+
+        // Get the version
+        std::string configVersion(VERSION);
+        DataNode *version = visitRoot->GetNode("Version");
+        if(version != 0)
+            configVersion = version->AsString();
+
+        // Let the important objects read their settings.
+        std::map<std::string, std::string> empty;
+        ViewerFileServer::Instance()->SetFromNode(searchNode, empty, configVersion);
+        ViewerWindowManager::Instance()->SetFromNode(searchNode, empty, configVersion);
+        ViewerQueryManager::Instance()->SetFromNode(searchNode, configVersion);
+        ViewerEngineManager::Instance()->SetFromNode(searchNode, configVersion);
+
+        delete localSettings;  localSettings = 0;
     }
-    CATCHALL(...)
-    {
-        ; // nothing
-    }
-    ENDTRY
 }
 
 // ****************************************************************************
@@ -1807,21 +1756,33 @@ ViewerSubject::ProcessEventsCB(void *cbData)
 //   Brad Whitlock, Tue Sep 9 15:38:10 PST 2003
 //   I increased the amount of time that we can use to process events.
 //
-//   Brad Whitlock, Fri May  9 14:47:32 PDT 2008
-//   Qt 4.
-//
 //   Brad Whitlock, Thu Aug 14 09:56:41 PDT 2008
 //   Use qApp.
+//
+//   Brad Whitlock, Tue Apr 28 19:14:23 PST 2009
+//   I disabled the simulation socket notifiers since we don't want them to
+//   be enabled while processing events since this method is a callback for
+//   when we're reading from the simulation. If the socket notifiers are
+//   allowed to operate then it disrupts the synchronous send/recv's that
+//   we're using to communicate with the simulation. This caused the simulation
+//   connection to disconnect on Windows.
 //
 // ****************************************************************************
 
 void
 ViewerSubject::ProcessEvents()
 {
+    std::map<EngineKey,QSocketNotifier*>::iterator it;
+    for(it = engineKeyToNotifier.begin(); it != engineKeyToNotifier.end(); ++it)
+        it->second->setEnabled(false);
+
     if (interruptionEnabled)
     {
-        qApp->processEvents(QEventLoop::AllEvents, 100);
+         qApp->processEvents(100);
     }
+
+    for(it = engineKeyToNotifier.begin(); it != engineKeyToNotifier.end(); ++it)
+        it->second->setEnabled(true);
 }
 
 // ****************************************************************************
@@ -1871,7 +1832,7 @@ ViewerSubject::InitializeWorkArea()
         }
         if (geometry.size() == 0)
         {
-            if (!smallWindow)
+            if (smallWindow)
                 geometry = "1024x1024";
             else
                 geometry = "512x512";
@@ -2011,23 +1972,131 @@ ViewerSubject::InitializeWorkArea()
 //   Brad Whitlock, Mon Mar 19 16:30:42 PST 2007
 //   Added font changing.
 //
-//   Brad Whitlock, Fri May  9 14:48:31 PDT 2008
-//   Qt 4.
-//
 //   Brad Whitlock, Thu Aug 14 09:56:54 PDT 2008
 //   Use qApp.
-//
-//   Brad Whitlock, Wed Nov 26 11:35:10 PDT 2008
-//   Use a new function from winutil since it does a better job.
 //
 // ****************************************************************************
 
 void
 ViewerSubject::CustomizeAppearance()
 {
-    if (!ViewerWindow::GetNoWinMode())
+    const char *mName = "ViewerSubject::CustomizeAppearance: ";
+
+    //
+    // Set the style and inform the widgets.
+    //
+#if QT_VERSION < 300
+    if (GetViewerState()->GetAppearanceAttributes()->GetStyle() == "cde")
+        qApp->setStyle(new QCDEStyle);
+    else if (GetViewerState()->GetAppearanceAttributes()->GetStyle() == "windows")
+        qApp->setStyle(new QWindowsStyle);
+    else if (GetViewerState()->GetAppearanceAttributes()->GetStyle() == "platinum")
+        qApp->setStyle(new QPlatinumStyle);
+#if QT_VERSION >= 230
+    else if (GetViewerState()->GetAppearanceAttributes()->GetStyle() == "sgi")
+        qApp->setStyle(new QSGIStyle);
+#endif
+    else
+        qApp->setStyle(new QMotifStyle);
+#else
+    debug1 << mName << "Setting the application style to: "
+           << GetViewerState()->GetAppearanceAttributes()->GetStyle().c_str()
+           << endl;
+    // Set the style via the style name.
+    qApp->setStyle(GetViewerState()->GetAppearanceAttributes()->GetStyle().c_str());
+#endif
+
+    QFont font;
+    bool okay = true;
+    if(GetViewerState()->GetAppearanceAttributes()->GetFontName().size() > 0 &&
+       GetViewerState()->GetAppearanceAttributes()->GetFontName()[0] == '-')
     {
-        SetAppearance(qApp, GetViewerState()->GetAppearanceAttributes());
+        // It's probably an XLFD
+        font = QFont(GetViewerState()->GetAppearanceAttributes()->GetFontName().c_str());
+        debug1 << mName << "The font looks like XLFD: "
+               << GetViewerState()->GetAppearanceAttributes()->GetFontName().c_str() << endl;
+    }
+    else
+        okay = font.fromString(GetViewerState()->GetAppearanceAttributes()->GetFontName().c_str());
+        
+    if(okay)
+    {
+        debug1 << mName << "Font okay. name=" << font.toString().latin1() << endl;
+        qApp->setFont(font, true);
+
+        // Force the font change on all top level widgets.
+        QWidgetList *list = QApplication::topLevelWidgets();
+        QWidgetListIt it(*list);
+        QWidget * w;
+        while ( (w=it.current()) != 0 )
+        {   // for each top level widget...
+            ++it;
+            w->setFont(font);
+        }
+        delete list;
+    }
+    else
+    {
+        debug1 << mName << "Font NOT okay. name=" << font.toString().latin1() << endl;
+    }
+
+    //
+    // Set the colors and inform the widgets.
+    //
+    if(GetViewerState()->GetAppearanceAttributes()->GetStyle() != "aqua" &&
+       GetViewerState()->GetAppearanceAttributes()->GetStyle() != "macintosh")
+    {
+        debug1 << mName << "Setting foreground and background color" << endl;
+        QColor bg(GetViewerState()->GetAppearanceAttributes()->GetBackground().c_str());
+        QColor fg(GetViewerState()->GetAppearanceAttributes()->GetForeground().c_str());
+        QColor btn(bg);
+
+        // Put the converted RGB format color into the appearance attributes.
+        char tmp[20];
+        SNPRINTF(tmp, 20, "#%02x%02x%02x", bg.red(), bg.green(), bg.blue());
+        GetViewerState()->GetAppearanceAttributes()->SetBackground(tmp);
+        SNPRINTF(tmp, 20, "#%02x%02x%02x", fg.red(), fg.green(), fg.blue());
+        GetViewerState()->GetAppearanceAttributes()->SetForeground(tmp);
+
+        int h,s,v;
+        fg.hsv(&h,&s,&v);
+        QColor base = Qt::white;
+        bool bright_mode = false;
+        if (v >= 255 - 50)
+        {
+            base = btn.dark(150);
+            bright_mode = TRUE;
+        }
+
+        QColorGroup cg(fg, btn, btn.light(),
+                       btn.dark(), btn.dark(150), fg, Qt::white, base, bg);
+        if (bright_mode)
+        {
+            cg.setColor(QColorGroup::HighlightedText, base );
+            cg.setColor(QColorGroup::Highlight, Qt::white );
+        }
+        else
+        {
+            cg.setColor(QColorGroup::HighlightedText, Qt::white );
+            cg.setColor(QColorGroup::Highlight, Qt::darkBlue );
+        }
+        QColor disabled((fg.red()+btn.red())/2,
+                        (fg.green()+btn.green())/2,
+                        (fg.blue()+btn.blue())/2);
+        QColorGroup dcg(disabled, btn, btn.light( 125 ), btn.dark(), btn.dark(150),
+                        disabled, Qt::white, Qt::white, bg );
+        if (bright_mode)
+        {
+            dcg.setColor(QColorGroup::HighlightedText, base);
+            dcg.setColor(QColorGroup::Highlight, Qt::white);
+        }
+        else
+        {
+            dcg.setColor(QColorGroup::HighlightedText, Qt::white);
+            dcg.setColor(QColorGroup::Highlight, Qt::darkBlue);
+        }
+        QPalette pal(cg, dcg, cg);
+        qApp->setPalette(pal, true);
     }
 }
 
@@ -2320,11 +2389,6 @@ ViewerSubject::ReadConfigFiles(int argc, char **argv)
 //    Brad Whitlock, Wed Aug 13 10:31:38 PDT 2008
 //    Moved the code to read the config files to here.
 //
-//    Jeremy Meredith, Wed Dec  3 16:00:10 EST 2008
-//    Allow the -sshtunneling argument to be passed to the viewer as a
-//    convenience.  This will even override whatever the setting is in
-//    a selected host profile.
-//
 // ****************************************************************************
 
 void
@@ -2483,20 +2547,20 @@ debug1 << "Processing option " << i << " " << argv[i] << endl;
                      << endl;
                 continue;
             }
-            if (
+            if (strcmp(argv[i + 1], "motif") == 0 ||
+               strcmp(argv[i + 1], "cde") == 0 ||
+               strcmp(argv[i + 1], "windows") == 0 ||
+               strcmp(argv[i + 1], "platinum") == 0
+#if QT_VERSION >= 230
+               || strcmp(argv[i + 1], "sgi") == 0
+#endif
+#if QT_VERSION >= 300
 #ifdef QT_WS_MACX
-                strcmp(argv[i + 1], "macintosh") == 0 ||
+               || strcmp(argv[i + 1], "aqua") == 0
+               || strcmp(argv[i + 1], "macintosh") == 0
 #endif
-#ifdef QT_WS_WIN
-                strcmp(argv[i + 1], "windowsxp") == 0 ||
-                strcmp(argv[i + 1], "windowsvista") == 0 ||
 #endif
-                strcmp(argv[i + 1], "windows") == 0 ||
-                strcmp(argv[i + 1], "motif") == 0 ||
-                strcmp(argv[i + 1], "cde") == 0 ||
-                strcmp(argv[i + 1], "plastique") == 0 ||
-                strcmp(argv[i + 1], "cleanlooks") == 0
-               )
+                     )
             {
                 clientArguments.push_back(argv[i]);
                 clientArguments.push_back(argv[i+1]);
@@ -2622,12 +2686,8 @@ debug1 << "Processing option " << i << " " << argv[i] << endl;
         }
         else if(strcmp(argv[i], "-nowindowmetrics") == 0)
         {
-            debug1 << "Handling -nowindowmetrics" << endl;
+debug1 << "Handling -nowindowmetrics" << endl;
             useWindowMetrics = false;
-        }
-        else if(strcmp(argv[i], "-sshtunneling") == 0)
-        {
-            ViewerServerManager::ForceSSHTunnelingForAllConnections();
         }
         else // Unknown argument -- add it to the list
         {
@@ -2794,6 +2854,10 @@ ViewerSubject::CreateNode(DataNode *parentNode, bool detailed)
 //   Brad Whitlock, Wed Feb 13 14:08:18 PST 2008
 //   Added configVersion argument.
 //
+//   Brad Whitlock, Mon Oct 26 15:45:27 PDT 2009
+//   I added code to clear the caches of all engines since they could contain
+//   metadata that we want to reread as part of restoring the session file.
+//
 // ****************************************************************************
 
 bool
@@ -2814,6 +2878,7 @@ ViewerSubject::SetFromNode(DataNode *parentNode,
     fatalError = ViewerWindowManager::Instance()->SessionContainsErrors(vsNode);
     if(!fatalError)
     {
+        ViewerEngineManager::Instance()->ClearCacheForAllEngines();
         ViewerFileServer::Instance()->SetFromNode(vsNode, sourceToDB, configVersion);
         ViewerWindowManager::Instance()->SetFromNode(vsNode, sourceToDB, configVersion);
         ViewerQueryManager::Instance()->SetFromNode(vsNode, configVersion);
@@ -3768,9 +3833,6 @@ ViewerSubject::CreateAttributesDataNode(const avtDefaultPlotMetaData *dp) const
 //    Hank Childs, Tue Feb 19 10:28:15 PST 2008
 //    Fix bug introduced by Klocwork fix.
 //
-//    Brad Whitlock, Fri May  9 14:52:00 PDT 2008
-//    Qt 4.
-//
 //    Cyrus Harrison,  Mon Aug  4 16:21:04 PDT 2008
 //    Moved set of active host database until after we have obtained valid
 //    meta data. 
@@ -3937,7 +3999,7 @@ ViewerSubject::OpenDatabaseHelper(const std::string &entireDBName,
             {
                 int sock = vem->GetWriteSocket(ek);
                 QSocketNotifier *sn = new QSocketNotifier(sock,
-                    QSocketNotifier::Read, this);
+                    QSocketNotifier::Read, this, "originalNotifier");
 
                 simulationSocketToKey[sock] = ek;
 
@@ -4256,6 +4318,9 @@ ViewerSubject::CheckForNewStates()
 //   Made it use the generic integer argument for forceClose so as to not be
 //   misleading.
 //
+//    Cyrus Harrison, Tue Apr 14 13:35:54 PDT 2009
+//    Changed the interface to ViewerPlotList::ReplaceDatabase.
+//
 // ****************************************************************************
 
 void
@@ -4376,7 +4441,7 @@ ViewerSubject::ReOpenDatabase()
     // specified database.
     //
     ViewerWindowManager::Instance()->ReplaceDatabase(key, db, reOpenState,
-                                                     false, true);
+                                                     false, true, false);
 }
 
 // ****************************************************************************
@@ -4439,13 +4504,17 @@ ViewerSubject::ReOpenDatabase()
 //   I added code to make sure that the active window is still compatible
 //   with other time-locked windows after the database was replaced.
 //
+//    Cyrus Harrison, Tue Apr 14 13:35:54 PDT 2009
+//    Changed the interface to ViewerPlotList::ReplaceDatabase.
+//
 // ****************************************************************************
 
 void
 ViewerSubject::ReplaceDatabase()
 {
     debug4 << "ReplaceDatabase: db=" << GetViewerState()->GetViewerRPC()->GetDatabase().c_str()
-           << ", time=" << GetViewerState()->GetViewerRPC()->GetIntArg1() << endl;
+           << ", time=" << GetViewerState()->GetViewerRPC()->GetIntArg1() 
+           << ", onlyReplaceActive=" << GetViewerState()->GetViewerRPC()->GetIntArg2() << endl;
 
     //
     // If the replace is merely changing the timestate, then turn on
@@ -4463,9 +4532,11 @@ ViewerSubject::ReplaceDatabase()
     // First open the database.
     //
     int timeState = GetViewerState()->GetViewerRPC()->GetIntArg1();
+    
     timeState = OpenDatabaseHelper(GetViewerState()->GetViewerRPC()->GetDatabase(), timeState,
                                    false, false);
 
+    bool onlyReplaceActive = (bool) GetViewerState()->GetViewerRPC()->GetIntArg2();
     //
     // Now perform the database replacement.
     //
@@ -4474,7 +4545,8 @@ ViewerSubject::ReplaceDatabase()
                               plotList->GetDatabaseName(),
                               timeState,
                               true,
-                              false);
+                              false,
+                              onlyReplaceActive);
 
     //
     // If the current window is time-locked then we have to make sure that
@@ -5731,9 +5803,7 @@ ViewerSubject::ImportEntireStateWithDifferentSources()
 // Creation:   Thu Jan 31 12:06:32 PST 2008
 //
 // Modifications:
-//   Brad Whitlock, Fri May  9 14:54:53 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
@@ -5751,7 +5821,7 @@ ViewerSubject::RemoveCrashRecoveryFile() const
     if(cr.exists())
     {
         debug1 << "Removing crash recovery file: "
-               << filename.toStdString() << endl;
+               << cr.name().latin1() << endl;
         cr.remove();
     }
 }
@@ -6783,12 +6853,16 @@ ViewerSubject::LineQuery()
 //    rescheduling the method to run again and were losing the sync. When the
 //    sync was not being sent back to the CLI, it hung. VisIt00005692.
 //
+//    Brad Whitlock, Mon Nov  9 11:51:49 PST 2009
+//    Don't process messages while the engine is launching.
+//
 // ****************************************************************************
 
 void
 ViewerSubject::ProcessFromParent()
 {
-    if(ViewerEngineManager::Instance()->InExecute())
+    if(ViewerEngineManager::Instance()->InExecute() ||
+       ViewerEngineManager::Instance()->InLaunch())
     {
         debug1 << "The viewer engine manager is busy processing a request "
                   "so we should not process input from the client. Let's "
@@ -6819,10 +6893,10 @@ ViewerSubject::ProcessFromParent()
             xfer.Process();
             processingFromParent = false;
         }
-        CATCHALL(...)
+        CATCH(VisItException)
         {
             processingFromParent = false;
-            // Consume the exception.
+            RETHROW;
         }
         ENDTRY
     }
@@ -7002,169 +7076,163 @@ ViewerSubject::EnableSocketSignals()
 //    Brad Whitlock, Thu Jan 24 09:45:18 PST 2008
 //    Added simcmd to handle deferred simulation commands.
 //
-//    Brad Whitlock, Fri Jan 9 14:47:07 PST 2009
-//    Added exception handling code so exceptions cannot get back into the
-//    Qt event loop.
+//    Brad Whitlock, Mon Nov  9 11:47:17 PST 2009
+//    Don't process commands during an engine launch.
 //
 // ****************************************************************************
 
 void
 ViewerSubject::ProcessRendererMessage()
 {
-    TRY
-    {
-        char msg[512];
+    char msg[512];
 
 #ifdef VIEWER_MT
-        //
-        // Read from the message pipe.
-        //
-        int n = read(messagePipe[0], msg, 512);
-        if (n < 0 && n >= 512)
-        {
-            cerr << "Error getting the message sent to the master.\n";
-            CATCH_RETURN(1);
-        }
-        msg[n] = '\0';
-        messageBuffer->AddString(msg);
+    //
+    // Read from the message pipe.
+    //
+    int n = read(messagePipe[0], msg, 512);
+    if (n < 0 && n >= 512)
+    {
+        cerr << "Error getting the message sent to the master.\n";
+        return;
+    }
+    msg[n] = '\0';
+    messageBuffer->AddString(msg);
 #endif
 
+
+    //
+    // Add the string to the message buffer and then process messages
+    // from it until there aren't any left.
+    //
+    while (messageBuffer->ReadMessage(msg) > 0)
+    {
         //
-        // Add the string to the message buffer and then process messages
-        // from it until there aren't any left.
+        // Parse and process the message.
         //
-        while (messageBuffer->ReadMessage(msg) > 0)
+        if (strncmp(msg, "updateWindow", 12) == 0)
         {
-            //
-            // Parse and process the message.
-            //
-            if (strncmp(msg, "updateWindow", 12) == 0)
-            {
-                ViewerWindow *window=0;
-    
-                int  offset = 15;  // = strlen("updateWindow 0x");
-                sscanf (&msg[offset], "%p", &window);
-    
-                window->EnableUpdates();
-            }
-            else if (strncmp(msg, "redrawWindow", 12) == 0)
-            {
-                ViewerWindow *window=0;
-    
-                int  offset = 15;  // = strlen("redrawWindow 0x");
-                sscanf (&msg[offset], "%p", &window);
-    
-                window->RedrawWindow();
-            }
-            //
-            // If the engine manager is executing, return early but tell the
-            // event loop to try to process the message again later.
-            //
-            else if(ViewerEngineManager::Instance()->InExecute() ||
-                    launchingComponent)
-            {
-                // Add the message back into the buffer.
-                messageBuffer->AddString(msg);
-                QTimer::singleShot(400, this, SLOT(ProcessRendererMessage()));
-                CATCH_RETURN(1);
-            }
-            else if (strncmp(msg, "deleteWindow", 12) == 0)
-            {
-                ViewerWindow *window=0;
-    
-                int  offset = 15;  // = strlen("deleteWindow 0x");
-                sscanf (&msg[offset], "%p", &window);
-    
-                // Tell the viewer window manager to delete the window.
-                ViewerWindowManager::Instance()->DeleteWindow(window);
-                ViewerWindowManager::Instance()->UpdateActions();
-            }
-            else if (strncmp(msg, "activateTool", 12) == 0)
-            {
-                ViewerWindow *window = 0;
-                int toolId = 0;
-                int offset = 15;  // = strlen("activateTool 0x");
-                sscanf (&msg[offset], "%p %d", &window, &toolId);
+            ViewerWindow *window=0;
 
-                // Tell the viewer window manager to delete the window.
-                window->SetToolEnabled(toolId, true);
-                ViewerWindowManager::Instance()->UpdateActions();
-            }
-            else if (strncmp(msg, "setInteractionMode", 18) == 0)
-            {
-                ViewerWindow *window = 0;
-                int windowMode = 0;
-                int offset = 21;  // = strlen("setInteractionMode 0x");
-                sscanf (&msg[offset], "%p %d", &window, &windowMode);
+            int  offset = 15;  // = strlen("updateWindow 0x");
+            sscanf (&msg[offset], "%p", &window);
 
-                // Tell the window to set its interaction mode.
-                window->SetInteractionMode(INTERACTION_MODE(windowMode));
-                ViewerWindowManager::Instance()->UpdateActions();
-            }
-            else if (strncmp(msg, "updateFrame", 11) == 0)
-            {
-                ViewerWindow *window = 0;
+            window->EnableUpdates();
+        }
+        else if (strncmp(msg, "redrawWindow", 12) == 0)
+        {
+            ViewerWindow *window=0;
 
-                int offset = 14;  // = strlen("updateFrame 0x");
-                sscanf (&msg[offset], "%p", &window);
+            int  offset = 15;  // = strlen("redrawWindow 0x");
+            sscanf (&msg[offset], "%p", &window);
 
-                // Tell the window's animation to update.
-                window->GetPlotList()->UpdateFrame();
-                ViewerWindowManager::Instance()->UpdateActions();
-            }
-            else if (strncmp(msg, "setScalableRenderingMode", 24) == 0)
-            {
-                ViewerWindow *window = 0;
-                int iMode = 0;
-                int offset = 27;  // = strlen("setScalableRenderingMode 0x");
-                sscanf (&msg[offset], "%p %d", &window, &iMode);
-                bool newMode = (iMode==1?true:false);
+            window->RedrawWindow();
+        }
+        //
+        // If the engine manager is executing, return early but tell the
+        // event loop to try to process the message again later.
+        //
+        else if(ViewerEngineManager::Instance()->InExecute() ||
+                ViewerEngineManager::Instance()->InLaunch() ||
+                launchingComponent)
+        {
+            // Add the message back into the buffer.
+            messageBuffer->AddString(msg);
+            QTimer::singleShot(400, this, SLOT(ProcessRendererMessage()));
+            return;
+        }
+        else if (strncmp(msg, "deleteWindow", 12) == 0)
+        {
+            ViewerWindow *window=0;
 
-                // Tell the window to change scalable rendering modes, if necessary 
-                if (window->GetScalableRendering() != newMode)
-                    window->ChangeScalableRenderingMode(newMode);
-            }
-            else if (strncmp(msg, "finishLineout", 13) == 0)
-            {
-                ViewerQueryManager::Instance()->FinishLineout(); 
-            }
-            else if (strncmp(msg, "finishLineQuery", 15) == 0)
-            {
-                ViewerQueryManager::Instance()->FinishLineQuery(); 
-                ClearStatus();
-            }
-            else if (strncmp(msg, "Sync", 4) == 0)
-            {
-                int tag = 0; 
-                int offset = 5; // strlen("Sync ");
-                sscanf (&msg[offset], "%d",  &tag);
-                syncObserver->SetUpdate(false);
+            int  offset = 15;  // = strlen("deleteWindow 0x");
+            sscanf (&msg[offset], "%p", &window);
 
-                // Send the sync to all clients.
-                GetViewerState()->GetSyncAttributes()->SetSyncTag(tag);
-                GetViewerState()->GetSyncAttributes()->Notify();
-            }
-            else if (strncmp(msg, "updateAOL", 9) == 0)
+            // Tell the viewer window manager to delete the window.
+            ViewerWindowManager::Instance()->DeleteWindow(window);
+            ViewerWindowManager::Instance()->UpdateActions();
+        }
+        else if (strncmp(msg, "activateTool", 12) == 0)
+        {
+            ViewerWindow *window = 0;
+            int toolId = 0;
+            int offset = 15;  // = strlen("activateTool 0x");
+            sscanf (&msg[offset], "%p %d", &window, &toolId);
+
+            // Tell the viewer window manager to delete the window.
+            window->SetToolEnabled(toolId, true);
+            ViewerWindowManager::Instance()->UpdateActions();
+        }
+        else if (strncmp(msg, "setInteractionMode", 18) == 0)
+        {
+            ViewerWindow *window = 0;
+            int windowMode = 0;
+            int offset = 21;  // = strlen("setInteractionMode 0x");
+            sscanf (&msg[offset], "%p %d", &window, &windowMode);
+
+            // Tell the window to set its interaction mode.
+            window->SetInteractionMode(INTERACTION_MODE(windowMode));
+            ViewerWindowManager::Instance()->UpdateActions();
+        }
+        else if (strncmp(msg, "updateFrame", 11) == 0)
+        {
+            ViewerWindow *window = 0;
+
+            int offset = 14;  // = strlen("updateFrame 0x");
+            sscanf (&msg[offset], "%p", &window);
+
+            // Tell the window's animation to update.
+            window->GetPlotList()->UpdateFrame();
+            ViewerWindowManager::Instance()->UpdateActions();
+        }
+        else if (strncmp(msg, "setScalableRenderingMode", 24) == 0)
+        {
+            ViewerWindow *window = 0;
+            int iMode = 0;
+            int offset = 27;  // = strlen("setScalableRenderingMode 0x");
+            sscanf (&msg[offset], "%p %d", &window, &iMode);
+            bool newMode = (iMode==1?true:false);
+
+            // Tell the window to change scalable rendering modes, if necessary 
+            if (window->GetScalableRendering() != newMode)
+                window->ChangeScalableRenderingMode(newMode);
+        }
+        else if (strncmp(msg, "finishLineout", 13) == 0)
+        {
+            ViewerQueryManager::Instance()->FinishLineout(); 
+        }
+        else if (strncmp(msg, "finishLineQuery", 15) == 0)
+        {
+            ViewerQueryManager::Instance()->FinishLineQuery(); 
+            ClearStatus();
+        }
+        else if (strncmp(msg, "Sync", 4) == 0)
+        {
+            int tag = 0; 
+            int offset = 5; // strlen("Sync ");
+            sscanf (&msg[offset], "%d",  &tag);
+            syncObserver->SetUpdate(false);
+
+            // Send the sync to all clients.
+            GetViewerState()->GetSyncAttributes()->SetSyncTag(tag);
+            GetViewerState()->GetSyncAttributes()->Notify();
+        }
+        else if (strncmp(msg, "updateAOL", 9) == 0)
+        {
+            ViewerWindowManager::Instance()->UpdateAnnotationObjectList();
+        }
+        else if (strncmp(msg, "simcmd", 6) == 0)
+        {
+            DeferredCommandFromSimulation *simCmd = 0;
+            int offset = 7;  // = strlen("simcmd ");
+            sscanf (&msg[offset], "%p", &simCmd);
+            if(simCmd != 0)
             {
-                ViewerWindowManager::Instance()->UpdateAnnotationObjectList();
-            }
-            else if (strncmp(msg, "simcmd", 6) == 0)
-            {
-                DeferredCommandFromSimulation *simCmd = 0;
-                int offset = 7;  // = strlen("simcmd ");
-                sscanf (&msg[offset], "%p", &simCmd);
-                if(simCmd != 0)
-                {
-                    HandleCommandFromSimulation(simCmd->key, simCmd->db, simCmd->command);
-                    delete simCmd;
-                }
+                HandleCommandFromSimulation(simCmd->key, simCmd->db, simCmd->command);
+                delete simCmd;
             }
         }
     }
-    CATCHALL(...)
-    {
-    }
-    ENDTRY
 }
 
 // ****************************************************************************
@@ -7253,9 +7321,6 @@ ViewerSubject::EndLaunchProgress()
 //   It should be safe to do this because the dialog's timer is constantly
 //   generating new events to process.
 //
-//   Brad Whitlock, Fri May  9 14:50:23 PDT 2008
-//   Qt 4.
-//
 //   Brad Whitlock, Thu Oct  9 13:23:27 PDT 2008
 //   Don't perform dialog operations if the dialog does not exist.
 //
@@ -7286,7 +7351,7 @@ ViewerSubject::LaunchProgressCB(void *d, int stage)
     {
         if (windowsShowing)
         {
-            qApp->processEvents(QEventLoop::AllEvents, 50);
+            qApp->processOneEvent();
             retval = !dialog->getCancelled();
         }
     }
@@ -7326,75 +7391,39 @@ ViewerSubject::LaunchProgressCB(void *d, int stage)
 //   Mark C. Miller, Mon Dec 13 15:59:26 PST 2004
 //   Subsumed meaning of InRender in InExecute
 //
-//   Brad Whitlock, Fri Jan 9 14:50:31 PST 2009
-//   Added exception handling code to prevent exceptions from being thrown
-//   back into the Qt event loop.
+//   Brad Whitlock, Mon Nov  9 11:49:32 PST 2009
+//   Don't send keep alives during an engine launch (this flag more broadly
+//   applies to don't do it during the engine chooser or during launch).
 //
 // ****************************************************************************
 
 void
 ViewerSubject::SendKeepAlives()
 {
-    TRY
+    if(launchingComponent || 
+       ViewerEngineManager::Instance()->InExecute() ||
+       ViewerEngineManager::Instance()->InLaunch())
     {
-        if(launchingComponent || ViewerEngineManager::Instance()->InExecute())
-        {
-            // We're launching a component so we don't want to send keep alive
-            // signals right now but try again in 20 seconds.
-            QTimer::singleShot(20 * 1000, this, SLOT(SendKeepAlives()));
-        }
-        else
-        {
-            Status(tr("Sending keep alive signals..."));
-            ViewerFileServer::Instance()->SendKeepAlives();
-            ViewerEngineManager::Instance()->SendKeepAlives();
-            ViewerServerManager::SendKeepAlivesToLaunchers();
-            ClearStatus();
-        }
+        // We're launching a component so we don't want to send keep alive
+        // signals right now but try again in 20 seconds.
+        QTimer::singleShot(20 * 1000, this, SLOT(SendKeepAlives()));
     }
-    CATCHALL(...)
+    else
     {
-        ; // nothing
+        Status(tr("Sending keep alive signals..."));
+        ViewerFileServer::Instance()->SendKeepAlives();
+        ViewerEngineManager::Instance()->SendKeepAlives();
+        ViewerServerManager::SendKeepAlivesToLaunchers();
+        ClearStatus();
     }
-    ENDTRY
 }
 
 // ****************************************************************************
-// Method: ViewerSubject::HandleViewerRPC
-//
-// Purpose: 
-//    This is a Qt slot function that handles RPC's for the
-//    ViewerSubject class.
-//
-// Note:       No exceptions are allowed to be propagated back to the Qt 
-//             event loop.
-//
-// Programmer: Brad Whitlock
-// Creation:   Fri Jan 9 14:56:49 PST 2009
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-void
-ViewerSubject::HandleViewerRPC()
-{
-    TRY
-    {
-        HandleViewerRPCEx();
-    }
-    CATCHALL(...)
-    {
-        ; // nothing
-    }
-    ENDTRY
-}
-
-// ****************************************************************************
-//  Method: ViewerSubject::HandleViewerRPCEx
+//  Method: ViewerSubject::HandleViewerRPC
 //
 //  Purpose: 
-//    Handles RPC's for the ViewerSubject class.
+//    This is a Qt slot function that handles RPC's for the
+//    ViewerSubject class.
 //
 //  Arguments:
 //    rpc       A pointer to the ViewerRPC that should be executed.
@@ -7529,13 +7558,13 @@ ViewerSubject::HandleViewerRPC()
 //    Cyrus Harrison, Thu Feb 21 16:12:44 PST 2008
 //    Add SetSuppressMessages
 //
-//    Brad Whitlock, Wed Jan 14 13:58:02 PST 2009
-//    I removed UpdatePlotInfoAtts.
+//    Hank Childs, Wed Jan 28 14:51:03 PST 2009
+//    Added support for named selections.
 //
 // ****************************************************************************
 
 void
-ViewerSubject::HandleViewerRPCEx()
+ViewerSubject::HandleViewerRPC()
 {
     //
     // Get a pointer to the active window's action manager.
@@ -7883,6 +7912,9 @@ ViewerSubject::HandleViewerRPCEx()
     case ViewerRPC::ConstructDDFRPC:
         ConstructDDF();
         break;
+    case ViewerRPC::UpdatePlotInfoAttsRPC:
+        UpdatePlotInfoAtts();
+        break;
     case ViewerRPC::RequestMetaDataRPC:
         HandleRequestMetaData();
         break;
@@ -7903,6 +7935,21 @@ ViewerSubject::HandleViewerRPCEx()
         break;
     case ViewerRPC::SetSuppressMessagesRPC:
         SetSuppressMessages();
+        break;
+    case ViewerRPC::ApplyNamedSelectionRPC:
+        ApplyNamedSelection();
+        break;
+    case ViewerRPC::CreateNamedSelectionRPC:
+        CreateNamedSelection();
+        break;
+    case ViewerRPC::DeleteNamedSelectionRPC:
+        DeleteNamedSelection();
+        break;
+    case ViewerRPC::LoadNamedSelectionRPC:
+        LoadNamedSelection();
+        break;
+    case ViewerRPC::SaveNamedSelectionRPC:
+        SaveNamedSelection();
         break;
     case ViewerRPC::MaxRPC:
         break;
@@ -7985,8 +8032,7 @@ ViewerSubject::PostponeAction(ViewerActionBase *action)
     // Add the postponed input to the xfer object so it can be executed later.
     AddInputToXfer(0, GetViewerState()->GetPostponedAction());
 
-    debug4 << "Postponing execution of  "
-           << action->GetName().c_str()
+    debug4 << "Postponing execution of  " << action->GetName()
            << " action." << endl;
 }
 
@@ -8014,78 +8060,67 @@ ViewerSubject::PostponeAction(ViewerActionBase *action)
 //   Brad Whitlock, Mon Feb 12 17:04:45 PST 2007
 //   Made it use ViewerState.
 //
-//   Brad Whitlock, Fri Jan 9 14:25:04 PST 2009
-//   Added exception handling to make sure that exceptions do not escape
-//   back into the Qt event loop.
-//
 // ****************************************************************************
 
 void
 ViewerSubject::HandlePostponedAction()
 {
-    TRY
+    ViewerWindowManager *wM = ViewerWindowManager::Instance();
+    int index = GetViewerState()->GetPostponedAction()->GetWindow();
+    ViewerRPC::ViewerRPCType t = GetViewerState()->GetPostponedAction()->
+        GetRPC().GetRPCType();
+    const char *tName = ViewerRPC::ViewerRPCType_ToString(t).c_str();
+    ViewerWindow *win = wM->GetWindow(index);
+    if(win != 0)
     {
-        ViewerWindowManager *wM = ViewerWindowManager::Instance();
-        int index = GetViewerState()->GetPostponedAction()->GetWindow();
-        ViewerRPC::ViewerRPCType t = GetViewerState()->GetPostponedAction()->
-            GetRPC().GetRPCType();
-        const char *tName = ViewerRPC::ViewerRPCType_ToString(t).c_str();
-        ViewerWindow *win = wM->GetWindow(index);
-        if(win != 0)
+        ViewerActionManager *actionMgr = win->GetActionManager();
+
+        debug1 << "Handling postponed action "
+               << tName << " for window " << (win->GetWindowId()+1) << "."
+               << endl;
+
+        // Tell the clients that state logging should be turned off. By state
+        // logging, I mean all freely exchanged state objects except for the
+        // logRPC, which should be logged when received unless it is a
+        // SetStateLoggingRPC.
+        //
+        GetViewerState()->GetLogRPC()->SetRPCType(ViewerRPC::SetStateLoggingRPC);
+        GetViewerState()->GetLogRPC()->SetBoolFlag(false);
+        BroadcastToAllClients((void*)this, GetViewerState()->GetLogRPC());
+        // Tell the logging client to log a change to set the window to the
+        // window that originated the RPC.
+        if(win != wM->GetActiveWindow())
         {
-            ViewerActionManager *actionMgr = win->GetActionManager();
-
-            debug1 << "Handling postponed action "
-                   << tName << " for window " << (win->GetWindowId()+1) << "."
-                   << endl;
-
-            // Tell the clients that state logging should be turned off. By state
-            // logging, I mean all freely exchanged state objects except for the
-            // logRPC, which should be logged when received unless it is a
-            // SetStateLoggingRPC.
-            //
-            GetViewerState()->GetLogRPC()->SetRPCType(ViewerRPC::SetStateLoggingRPC);
-            GetViewerState()->GetLogRPC()->SetBoolFlag(false);
-            BroadcastToAllClients((void*)this, GetViewerState()->GetLogRPC());
-            // Tell the logging client to log a change to set the window to the
-            // window that originated the RPC.
-            if(win != wM->GetActiveWindow())
-            {
-                GetViewerState()->GetLogRPC()->SetRPCType(ViewerRPC::SetActiveWindowRPC);
-                GetViewerState()->GetLogRPC()->SetWindowId(win->GetWindowId()+1);
-                BroadcastToAllClients((void*)this, GetViewerState()->GetLogRPC());
-            }
-            GetViewerState()->GetLogRPC()->CopyAttributes(&GetViewerState()->
-                GetPostponedAction()->GetRPC());
-            BroadcastToAllClients((void*)this, GetViewerState()->GetLogRPC());
-
-            // Handle the action.
-            actionMgr->HandleAction(GetViewerState()->GetPostponedAction()->GetRPC());
-
-            // Tell the logging client to log a change to set the window back to
-            // The current active window.
-            if(win != wM->GetActiveWindow())
-            {
-                GetViewerState()->GetLogRPC()->SetRPCType(ViewerRPC::SetActiveWindowRPC);
-                GetViewerState()->GetLogRPC()->SetWindowId(wM->GetActiveWindow()->GetWindowId()+1);
-                BroadcastToAllClients((void*)this, GetViewerState()->GetLogRPC());
-            }
-            // Tell the clients that it's okay to start logging again.
-            GetViewerState()->GetLogRPC()->SetRPCType(ViewerRPC::SetStateLoggingRPC);
-            GetViewerState()->GetLogRPC()->SetBoolFlag(true);
+            GetViewerState()->GetLogRPC()->SetRPCType(ViewerRPC::SetActiveWindowRPC);
+            GetViewerState()->GetLogRPC()->SetWindowId(win->GetWindowId()+1);
             BroadcastToAllClients((void*)this, GetViewerState()->GetLogRPC());
         }
-        else
+        GetViewerState()->GetLogRPC()->CopyAttributes(&GetViewerState()->
+            GetPostponedAction()->GetRPC());
+        BroadcastToAllClients((void*)this, GetViewerState()->GetLogRPC());
+
+
+        // Handle the action.
+        actionMgr->HandleAction(GetViewerState()->GetPostponedAction()->GetRPC());
+
+        // Tell the logging client to log a change to set the window back to
+        // The current active window.
+        if(win != wM->GetActiveWindow())
         {
-            debug1 << "Could not handle postponed action "
-                   << tName << " because its window is gone." << endl;
+            GetViewerState()->GetLogRPC()->SetRPCType(ViewerRPC::SetActiveWindowRPC);
+            GetViewerState()->GetLogRPC()->SetWindowId(wM->GetActiveWindow()->GetWindowId()+1);
+            BroadcastToAllClients((void*)this, GetViewerState()->GetLogRPC());
         }
+        // Tell the clients that it's okay to start logging again.
+        GetViewerState()->GetLogRPC()->SetRPCType(ViewerRPC::SetStateLoggingRPC);
+        GetViewerState()->GetLogRPC()->SetBoolFlag(true);
+        BroadcastToAllClients((void*)this, GetViewerState()->GetLogRPC());
     }
-    CATCHALL(...)
+    else
     {
-        ; // nothing
+        debug1 << "Could not handle postponed action "
+               << tName << " because its window is gone." << endl;
     }
-    ENDTRY
 }
 
 // ****************************************************************************
@@ -8225,27 +8260,15 @@ ViewerSubject::BroadcastToAllClients(void *data1, Subject *data2)
 //   Defer sending the syncAtts back by creating a MessageRendererThread,
 //   at Brad's suggestion to help alleviate synchronization problems found
 //   with the CLI (through regression tests).
-//
-//   Brad Whitlock, Fri Jan 9 14:25:04 PST 2009
-//   Added exception handling to make sure that exceptions do not escape
-//   back into the Qt event loop.
-//
+//   
 // ****************************************************************************
 
 void
 ViewerSubject::HandleSync()
 {
-    TRY
-    {
-        char msg[100];
-        SNPRINTF(msg, 100, "Sync %d;", GetViewerState()->GetSyncAttributes()->GetSyncTag());
-        MessageRendererThread(msg);
-    }
-    CATCHALL(...)
-    {
-        ; // nothing
-    }
-    ENDTRY
+    char msg[100];
+    SNPRINTF(msg, 100, "Sync %d;", GetViewerState()->GetSyncAttributes()->GetSyncTag());
+    MessageRendererThread(msg);
 }
 
 // ****************************************************************************
@@ -8262,38 +8285,26 @@ ViewerSubject::HandleSync()
 //   Brad Whitlock, Mon Feb 12 16:37:46 PST 2007
 //   Made it use ViewerState.
 //
-//   Brad Whitlock, Fri Jan 9 14:25:04 PST 2009
-//   Added exception handling to make sure that exceptions do not escape
-//   back into the Qt event loop.
-//
 // ****************************************************************************
 
 void
 ViewerSubject::HandleClientMethod()
 {
-    TRY
+    if(GetViewerState()->GetClientMethod()->GetMethodName() == "_QueryClientInformation")
     {
-        if(GetViewerState()->GetClientMethod()->GetMethodName() == "_QueryClientInformation")
-        {
-            debug1 << "One of the clients is coded such that it sends the"
-                      " _QueryClientInformation method back to the viewer. "
-                      "We're preventing that situation because it causes an "
-                      "infinite loop." << endl;
-        }
-        else
-        {
-            debug1 << "Broadcasting client method: "
-                   << GetViewerState()->GetClientMethod()->GetMethodName().c_str() << " to all "
-                   << clients.size() << " client(s)." << endl;
+        debug1 << "One of the clients is coded such that it sends the"
+                  " _QueryClientInformation method back to the viewer. "
+                  "We're preventing that situation because it causes an "
+                  "infinite loop." << endl;
+    }
+    else
+    {
+        debug1 << "Broadcasting client method: "
+               << GetViewerState()->GetClientMethod()->GetMethodName().c_str() << " to all "
+               << clients.size() << " client(s)." << endl;
     
-            BroadcastToAllClients((void *)this, GetViewerState()->GetClientMethod());
-        }
+        BroadcastToAllClients((void *)this, GetViewerState()->GetClientMethod());
     }
-    CATCHALL(...)
-    {
-        ; // nothing
-    }
-    ENDTRY
 }
 
 // ****************************************************************************
@@ -8316,53 +8327,41 @@ ViewerSubject::HandleClientMethod()
 //   Added code to send pending interpret commands if we have an interpreter
 //   and commands to process.
 //
-//   Brad Whitlock, Fri Jan 9 14:25:04 PST 2009
-//   Added exception handling to make sure that exceptions do not escape
-//   back into the Qt event loop.
-//
 // ****************************************************************************
 
 void
 ViewerSubject::HandleClientInformation()
 {
-    TRY
+    debug5 << "Received client information. Sending new client information "
+              "list to all clients." << endl;
+    GetViewerState()->GetClientInformationList()->AddClients(
+        *GetViewerState()->GetClientInformation());
+
+    // Print the client information list to the debug logs.
+    for(int i = 0; i < GetViewerState()->GetClientInformationList()->GetNumClients(); ++i)
     {
-        debug5 << "Received client information. Sending new client information "
-                  "list to all clients." << endl;
-        GetViewerState()->GetClientInformationList()->AddClients(
-            *GetViewerState()->GetClientInformation());
-
-        // Print the client information list to the debug logs.
-        for(int i = 0; i < GetViewerState()->GetClientInformationList()->GetNumClients(); ++i)
+        const ClientInformation &client = GetViewerState()->GetClientInformationList()->operator[](i);
+        debug3 << "client["<< i << "] = " << client.GetClientName().c_str()
+               << endl;
+        debug3 << "methods:" << endl;
+        for(int j = 0; j < client.GetMethodNames().size(); ++j)
         {
-            const ClientInformation &client = GetViewerState()->GetClientInformationList()->operator[](i);
-            debug3 << "client["<< i << "] = " << client.GetClientName().c_str()
-                   << endl;
-            debug3 << "methods:" << endl;
-            for(int j = 0; j < client.GetMethodNames().size(); ++j)
-            {
-                debug3 << "\t" << client.GetMethod(j).c_str() << "("
-                       << client.GetMethodPrototype(j).c_str() << ")" << endl;
-            }
-            debug3 << endl;
+            debug3 << "\t" << client.GetMethod(j).c_str() << "("
+                   << client.GetMethodPrototype(j).c_str() << ")" << endl;
         }
-
-        BroadcastToAllClients((void *)this, GetViewerState()->GetClientInformationList());
-
-        // If we just received client method information from the cli then try and 
-        // interpret any commands that we've stored up.
-        if(HasInterpreter() && interpretCommands.size() > 0)
-        {
-            // Interpret the stored up commands.
-            debug4 << "Interpreting stored up commands." << endl;
-            InterpretCommands("\n");
-        }
+        debug3 << endl;
     }
-    CATCHALL(...)
+
+    BroadcastToAllClients((void *)this, GetViewerState()->GetClientInformationList());
+
+    // If we just received client method information from the cli then try and 
+    // interpret any commands that we've stored up.
+    if(HasInterpreter() && interpretCommands.size() > 0)
     {
-        ; // nothing
+        // Interpret the stored up commands.
+        debug4 << "Interpreting stored up commands." << endl;
+        InterpretCommands("\n");
     }
-    ENDTRY
 }
 
 // ****************************************************************************
@@ -8382,10 +8381,6 @@ ViewerSubject::HandleClientInformation()
 //   Brad Whitlock, Tue Mar 13 11:42:29 PDT 2007
 //   Updated due to code generation changes.
 //
-//   Brad Whitlock, Fri Jan 9 14:03:58 PST 2009
-//   I added code to catch VisItException since we should not allow it to
-//   escape from a Qt slot.
-//
 // ****************************************************************************
 
 void
@@ -8393,21 +8388,13 @@ ViewerSubject::DiscoverClientInformation()
 {
     debug1 << "DiscoverClientInformation: clear the client information list "
               "and send _QueryClientInformation to all clients. " << endl;
-    TRY
-    {
-        // Clear out what we know about the clients.
-        GetViewerState()->GetClientInformationList()->ClearClients();
+    // Clear out what we know about the clients.
+    GetViewerState()->GetClientInformationList()->ClearClients();
 
-        // Ask the current set of clients to tell us about themselves.
-        GetViewerState()->GetClientMethod()->SetMethodName("_QueryClientInformation");
-        GetViewerState()->GetClientMethod()->ClearArgs();
-        BroadcastToAllClients((void *)this, GetViewerState()->GetClientMethod());
-    }
-    CATCHALL(...)
-    {
-        ; // nothing
-    }
-    ENDTRY
+    // Ask the current set of clients to tell us about themselves.
+    GetViewerState()->GetClientMethod()->SetMethodName("_QueryClientInformation");
+    GetViewerState()->GetClientMethod()->ClearArgs();
+    BroadcastToAllClients((void *)this, GetViewerState()->GetClientMethod());
 }
 
 // ****************************************************************************
@@ -8427,25 +8414,39 @@ ViewerSubject::DiscoverClientInformation()
 //    Brad Whitlock, Wed Jan 29 14:12:55 PST 2003
 //    I removed the old coding.
 //
-//    Brad Whitlock, Fri Jan 9 14:25:04 PST 2009
-//    Added exception handling to make sure that exceptions do not escape
-//    back into the Qt event loop.
-//
 // ****************************************************************************
 
 void
 ViewerSubject::ConnectWindow(ViewerWindow *win)
 {
-    TRY
-    {
-        win->GetActionManager()->EnableActions(ViewerWindowManager::Instance()->GetWindowAtts());
-    }
-    CATCHALL(...)
-    {
-        ; // nothing
-    }
-    ENDTRY
+    win->GetActionManager()->EnableActions(ViewerWindowManager::Instance()->GetWindowAtts());
 }
+
+// ****************************************************************************
+//  Method: ViewerSubject::DisonnectWindow
+//
+//  Purpose: 
+//    This is a Qt slot function that is called when a window is deleted. Its
+//    job is to disconnect the deleted window's signals from ViewerSubject's
+//    slots.
+//
+//  Arguments:
+//    win       A pointer to the window that's being deleted.
+//
+//  Programmer: Brad Whitlock
+//  Creation:   Mon Nov 27 14:17:58 PST 2000
+//
+//  Modifications:
+//    Brad Whitlock, Wed Feb 5 11:06:05 PDT 2003
+//    I removed the code to disconnect signals.
+//
+// ****************************************************************************
+
+void
+ViewerSubject::DisconnectWindow(ViewerWindow *win)
+{
+}
+
 
 // ****************************************************************************
 //  Method: ViewerSubject::SetGlobalLineoutAttributes
@@ -8805,10 +8806,6 @@ ViewerSubject::OpenClient()
 //    Brad Whitlock, Thu Jan 25 14:20:24 PST 2007
 //    Added engineCommandObserver.
 //
-//    Brad Whitlock, Fri Jan 9 14:25:04 PST 2009
-//    Added exception handling to make sure that exceptions do not escape
-//    back into the Qt event loop.
-//
 // ****************************************************************************
 
 void
@@ -8837,10 +8834,6 @@ ViewerSubject::ReadFromSimulationAndProcess(int socket)
         engineSILAttsObserver.erase(ek);
         engineCommandObserver.erase(ek);
         engineKeyToNotifier.erase(ek);
-    }
-    CATCHALL(...)
-    {
-        ; // nothing
     }
     ENDTRY
 }
@@ -8873,10 +8866,6 @@ ViewerSubject::ReadFromSimulationAndProcess(int socket)
 //    Update the expression list.  Expressions from the sim won't work without
 //    this.
 //
-//    Brad Whitlock, Fri Jan 9 14:25:04 PST 2009
-//    Added exception handling to make sure that exceptions do not escape
-//    back into the Qt event loop.
-//   
 // ****************************************************************************
 
 void
@@ -8884,27 +8873,19 @@ ViewerSubject::HandleMetaDataUpdated(const string &host,
                                      const string &file,
                                      const avtDatabaseMetaData *md)
 {
-    TRY
-    {
-        // Handle MetaData updates
-        ViewerFileServer *fs = ViewerFileServer::Instance();
+    // Handle MetaData updates
+    ViewerFileServer *fs = ViewerFileServer::Instance();
 
-        *GetViewerState()->GetDatabaseMetaData() = *md;
-        fs->SetSimulationMetaData(host, file, *GetViewerState()->GetDatabaseMetaData());
-        // The file server will modify the metadata slightly; make sure
-        // we picked up the new one.
-        *GetViewerState()->GetDatabaseMetaData() = *fs->GetMetaData(host, file);
-        ViewerWindowManager *wM=ViewerWindowManager::Instance();
-        ViewerPlotList *plotList = wM->GetActiveWindow()->GetPlotList();
-        plotList->UpdateExpressionList(false);
-        GetViewerState()->GetDatabaseMetaData()->SelectAll();
-        GetViewerState()->GetDatabaseMetaData()->Notify();
-    }
-    CATCHALL(...)
-    {
-        ; // nothing
-    }
-    ENDTRY
+    *GetViewerState()->GetDatabaseMetaData() = *md;
+    fs->SetSimulationMetaData(host, file, *GetViewerState()->GetDatabaseMetaData());
+    // The file server will modify the metadata slightly; make sure
+    // we picked up the new one.
+    *GetViewerState()->GetDatabaseMetaData() = *fs->GetMetaData(host, file);
+    ViewerWindowManager *wM=ViewerWindowManager::Instance();
+    ViewerPlotList *plotList = wM->GetActiveWindow()->GetPlotList();
+    plotList->UpdateExpressionList(false);
+    GetViewerState()->GetDatabaseMetaData()->SelectAll();
+    GetViewerState()->GetDatabaseMetaData()->Notify();
 }
 
 
@@ -8928,10 +8909,6 @@ ViewerSubject::HandleMetaDataUpdated(const string &host,
 //    Brad Whitlock, Mon Feb 12 17:01:12 PST 2007
 //    I made it use ViewerState.
 //
-//    Brad Whitlock, Fri Jan 9 14:25:04 PST 2009
-//    Added exception handling to make sure that exceptions do not escape
-//    back into the Qt event loop.
-//
 // ****************************************************************************
 
 void
@@ -8939,21 +8916,13 @@ ViewerSubject::HandleSILAttsUpdated(const string &host,
                                     const string &file,
                                     const SILAttributes *sa)
 {
-    TRY
-    {
-        // Handle SIL updates
-        ViewerFileServer *fs = ViewerFileServer::Instance();
+    // Handle SIL updates
+    ViewerFileServer *fs = ViewerFileServer::Instance();
 
-        *GetViewerState()->GetSILAttributes() = *sa;
-        fs->SetSimulationSILAtts(host, file, *GetViewerState()->GetSILAttributes());
-        GetViewerState()->GetSILAttributes()->SelectAll();
-        GetViewerState()->GetSILAttributes()->Notify();
-    }
-    CATCHALL(...)
-    {
-        ; // nothing
-    }
-    ENDTRY
+    *GetViewerState()->GetSILAttributes() = *sa;
+    fs->SetSimulationSILAtts(host, file, *GetViewerState()->GetSILAttributes());
+    GetViewerState()->GetSILAttributes()->SelectAll();
+    GetViewerState()->GetSILAttributes()->Notify();
 }
 
 // ****************************************************************************
@@ -8968,48 +8937,37 @@ ViewerSubject::HandleSILAttsUpdated(const string &host,
 // Creation:   Tue Feb 20 11:56:19 PDT 2007
 //
 // Modifications:
-//   Brad Whitlock, Fri Jan 9 14:25:04 PST 2009
-//   Added exception handling to make sure that exceptions do not escape
-//   back into the Qt event loop.
 //   
 // ****************************************************************************
 
 void
 ViewerSubject::HandleColorTable()
 {
-    TRY
+    ColorTableAttributes *colorAtts = GetViewerState()->GetColorTableAttributes();
+
+    // For when we have pixmaps later, here are the rules...
+    // 1. if just #0 is ever selected, we're adding/deleting colortables.
+    // 2. If just #1 is selected , we're modifying a color table.
+    // 3. If just #2 is selected, we're changing the default colormap. This is
+    //    only of concern if I decide to show what the default is in a widget.
+
+    // If the names or the color table attributes are changing, then we
+    // have to update the widget.
+    if(colorAtts->IsSelected(0) || colorAtts->IsSelected(1))
     {
-        ColorTableAttributes *colorAtts = GetViewerState()->GetColorTableAttributes();
+        // Clear all of the color tables.
+        QvisColorTableButton::clearAllColorTables();
 
-        // For when we have pixmaps later, here are the rules...
-        // 1. if just #0 is ever selected, we're adding/deleting colortables.
-        // 2. If just #1 is selected , we're modifying a color table.
-        // 3. If just #2 is selected, we're changing the default colormap. This is
-        //    only of concern if I decide to show what the default is in a widget.
-
-        // If the names or the color table attributes are changing, then we
-        // have to update the widget.
-        if(colorAtts->IsSelected(0) || colorAtts->IsSelected(1))
+        int nNames = colorAtts->GetNames().size();
+        const stringVector &names = colorAtts->GetNames();
+        for(int i = 0; i < nNames; ++i)
         {
-            // Clear all of the color tables.
-            QvisColorTableButton::clearAllColorTables();
-
-            int nNames = colorAtts->GetNames().size();
-            const stringVector &names = colorAtts->GetNames();
-            for(int i = 0; i < nNames; ++i)
-            {
-                QvisColorTableButton::addColorTable(names[i].c_str());
-            }
-
-            // Update all of the QvisColorTableButton widgets.
-            QvisColorTableButton::updateColorTableButtons();
+            QvisColorTableButton::addColorTable(names[i].c_str());
         }
+
+        // Update all of the QvisColorTableButton widgets.
+        QvisColorTableButton::updateColorTableButtons();
     }
-    CATCHALL(...)
-    {
-        ; // nothing
-    }
-    ENDTRY
 }
 
 // ****************************************************************************
@@ -9031,9 +8989,6 @@ ViewerSubject::HandleColorTable()
 // Creation:   Thu Jan 24 09:40:58 PST 2008
 //
 // Modifications:
-//   Brad Whitlock, Fri Jan 9 14:25:04 PST 2009
-//   Added exception handling to make sure that exceptions do not escape
-//   back into the Qt event loop.
 //   
 // ****************************************************************************
 
@@ -9041,29 +8996,21 @@ void
 ViewerSubject::DeferCommandFromSimulation(const EngineKey &key, 
     const std::string &db, const std::string &command)
 {
-    TRY
-    {
-        debug1 << "DeferCommandFromSimulation: key=" << key.ID().c_str()
-               << ", db=" << db.c_str() << ", command=\"" << command.c_str() << "\""
-               << endl;
+    debug1 << "DeferCommandFromSimulation: key=" << key.ID().c_str()
+           << ", db=" << db.c_str() << ", command=\"" << command.c_str() << "\""
+           << endl;
 
-        // Save the arguments for later.
-        DeferredCommandFromSimulation *simCmd = new DeferredCommandFromSimulation;
-        simCmd->key = key;
-        simCmd->db = db;
-        simCmd->command = command;
+    // Save the arguments for later.
+    DeferredCommandFromSimulation *simCmd = new DeferredCommandFromSimulation;
+    simCmd->key = key;
+    simCmd->db = db;
+    simCmd->command = command;
 
-        // Send a message to process the simulation command from the top level
-        // of the event loop.
-        char msg[200];
-        SNPRINTF(msg, 200, "simcmd %p;", (void*)simCmd);
-        MessageRendererThread(msg);
-    }
-    CATCHALL(...)
-    {
-        ; // nothing
-    }
-    ENDTRY
+    // Send a message to process the simulation command from the top level
+    // of the event loop.
+    char msg[200];
+    SNPRINTF(msg, 200, "simcmd %p;", (void*)simCmd);
+    MessageRendererThread(msg);
 }
 
 // ****************************************************************************
@@ -9085,6 +9032,9 @@ ViewerSubject::DeferCommandFromSimulation(const EngineKey &key,
 //   Brad Whitlock, Mon Jun 11 11:55:03 PDT 2007
 //   Made it use the InterpretCommands method.
 //
+//    Cyrus Harrison, Tue Apr 14 13:35:54 PDT 2009
+//    Changed the interface to ViewerPlotList::ReplaceDatabase.
+//
 // ****************************************************************************
 
 void
@@ -9099,7 +9049,8 @@ ViewerSubject::HandleCommandFromSimulation(const EngineKey &key,
     {
         // The simulation told us that it wants us to update all of the plots 
         // that use it as a source.
-        ViewerWindowManager::Instance()->ReplaceDatabase(key, db, 0, false, true);
+        ViewerWindowManager::Instance()->ReplaceDatabase(key, db, 0, false, true,
+                                                         false);
     }
     else if(command.substr(0,10) == "Interpret:")
     {
@@ -9377,6 +9328,72 @@ ViewerSubject::ResizeWindow()
         GetViewerState()->GetViewerRPC()->GetIntArg2());
 }
 
+
+// ****************************************************************************
+// Method: ViewerSubject::UpdatePlotInfoAtts
+//
+// Purpose: 
+//   Retrieve appropriate PlotInfoAttributes.
+//
+// Programmer: Kathleen Bonnell
+// Creation:   June 20, 2006 
+//
+// Modifications:
+//   Brad Whitlock, Mon Feb 12 12:12:43 PDT 2007
+//   I made it use ViewerState.
+//
+// ****************************************************************************
+
+void
+ViewerSubject::UpdatePlotInfoAtts()
+{
+    int winId = GetViewerState()->GetViewerRPC()->GetWindowId() -1;
+    int plotId = GetViewerState()->GetViewerRPC()->GetIntArg1();
+    ViewerWindow *win = NULL;
+    GetViewerState()->GetPlotInfoAttributes()->Reset();
+
+    if (winId < 0)
+    {
+        win = ViewerWindowManager::Instance()->GetActiveWindow();
+    }
+    else 
+    {
+        win = ViewerWindowManager::Instance()->GetWindow(winId);
+    }
+    if (win != NULL)
+    {
+        ViewerPlotList *plist = win->GetPlotList();
+        if (plotId < 0)
+        {
+            intVector ids;
+            plist->GetActivePlotIDs(ids);
+            if (ids.size() > 0)
+                plotId = ids[0];
+        }
+        if (plotId >= 0)
+        {
+            ViewerPlot *plot = plist->GetPlot(plotId);
+            if (plot != NULL)
+            {
+                const PlotInfoAttributes *current = plot->GetPlotInfoAtts();
+                if (current != NULL)
+                {
+                    *GetViewerState()->GetPlotInfoAttributes() = *current;
+                }
+            }
+            else
+            {
+                Warning(tr("Invalid PlotId"));
+            }
+        }
+    }
+    else
+    {
+        Warning(tr("Invalid WindowId"));
+    }
+    GetViewerState()->GetPlotInfoAttributes()->Notify();
+}
+
 // ****************************************************************************
 //  Method:  ViewerSubject::SetCreateMeshQualityExpressions
 //
@@ -9433,6 +9450,298 @@ ViewerSubject::SetCreateVectorMagnitudeExpressions()
     wM->SetCreateVectorMagnitudeExpressions(
         GetViewerState()->GetViewerRPC()->GetIntArg1());
 }
+
+// ****************************************************************************
+//  Method:  ViewerSubject::ApplyNamedSelection()
+//
+//  Purpose: Handle a ApplyNamedSelection RPC
+//
+//  Programmer:  Hank Childs
+//  Creation:    January 28, 2009
+//
+//  Modifications:
+//
+//    Hank Childs, Tue Jul 14 14:03:58 PDT 2009
+//    Tell the plot about its named selection.
+//    
+// ****************************************************************************
+
+void
+ViewerSubject::ApplyNamedSelection()
+{
+    int   i;
+
+    std::string selName = GetViewerState()->GetViewerRPC()->GetStringArg1();
+
+    //
+    // Perform the RPC.
+    //
+    ViewerWindow *win = ViewerWindowManager::Instance()->GetActiveWindow();
+    ViewerPlotList *plist = win->GetPlotList();
+    intVector plotIDs;
+    plist->GetActivePlotIDs(plotIDs, false);
+    if (plotIDs.size() <= 0)
+    {
+        Error(tr("To apply a named selection, you must have an active"
+                 " plot.  No named selection was applied."));
+        return;
+    }
+    std::vector<std::string> plotNames;
+    for (i = 0 ; i < plotIDs.size() ; i++)
+    {
+        plotNames.push_back(plist->GetPlot(plotIDs[i])->GetPlotName());
+    }
+    ViewerPlot *plot = plist->GetPlot(plotIDs[0]);
+    int networkId = plot->GetNetworkID();
+    plot->SetNamedSelection(selName);
+    const EngineKey   &engineKey = plot->GetEngineKey();
+    for (int i = 1 ; i < plotIDs.size() ; i++)
+    {
+        ViewerPlot *plot = plist->GetPlot(plotIDs[i]);
+        const EngineKey   &engineKey2 = plot->GetEngineKey();
+        if (engineKey2 != engineKey)
+        {
+            Error(tr("All plots involving a named selection must come from"
+                 " the same engine.  No named selection was applied."));
+        }
+    }
+        
+    TRY
+    {
+        if (ViewerEngineManager::Instance()->ApplyNamedSelection(engineKey, 
+                                                      plotNames, selName))
+        {
+            // Only force a redraw if we have active, non-hidden, realized
+            // plots.
+            vector<int> plotIDs2;
+            plist->GetActivePlotIDs(plotIDs2, true);
+            if (plotIDs2.size() > 0)
+            {
+                GetViewerMethods()->ClearWindow(false);
+                GetViewerMethods()->DrawPlots(false);
+            }
+            Message(tr("Applied named selection"));
+        }
+        else
+        {
+            Error(tr("Unable to apply named selection"));
+        }
+    }
+    CATCH2(VisItException, e)
+    {
+        char message[1024];
+        SNPRINTF(message, 1024, "(%s): %s\n", e.GetExceptionType().c_str(),
+                                             e.Message().c_str());
+        Error(message);
+    }
+    ENDTRY
+}
+
+
+// ****************************************************************************
+//  Method:  ViewerSubject::CreateNamedSelection()
+//
+//  Purpose: Handle a CreateNamedSelection RPC
+//
+//  Programmer:  Hank Childs
+//  Creation:    January 28, 2009
+//
+// ****************************************************************************
+
+void
+ViewerSubject::CreateNamedSelection()
+{
+    std::string selName = GetViewerState()->GetViewerRPC()->GetStringArg1();
+
+    //
+    // Perform the RPC.
+    //
+    ViewerWindow *win = ViewerWindowManager::Instance()->GetActiveWindow();
+    ViewerPlotList *plist = win->GetPlotList();
+    intVector plotIDs;
+    plist->GetActivePlotIDs(plotIDs);
+    if (plotIDs.size() <= 0)
+    {
+        Error(tr("To create a named selection, you must have an active"
+                 " plot.  No named selection was created."));
+        return;
+    }
+    if (plotIDs.size() > 1)
+    {
+        Error(tr("You can only have one active plot when creating a named"
+                 " selection.  No named selection was created."));
+        return;
+    }
+    ViewerPlot *plot = plist->GetPlot(plotIDs[0]);
+    int networkId = plot->GetNetworkID();
+    const EngineKey   &engineKey = plot->GetEngineKey();
+        
+    TRY
+    {
+        if (ViewerEngineManager::Instance()->CreateNamedSelection(engineKey, 
+                                                      networkId, selName))
+        {
+            Message(tr("Created named selection"));
+        }
+        else
+        {
+            Error(tr("Unable to create named selection"));
+        }
+    }
+    CATCH2(VisItException, e)
+    {
+        char message[1024];
+        SNPRINTF(message, 1024, "(%s): %s\n", e.GetExceptionType().c_str(),
+                                             e.Message().c_str());
+        Error(message);
+    }
+    ENDTRY
+}
+
+
+// ****************************************************************************
+//  Method:  ViewerSubject::DeleteNamedSelection()
+//
+//  Purpose: Handle a DeleteNamedSelection RPC
+//
+//  Programmer:  Hank Childs
+//  Creation:    January 28, 2009
+//
+// ****************************************************************************
+
+void
+ViewerSubject::DeleteNamedSelection()
+{
+    //
+    // Get the rpc arguments.
+    //
+    std::string selName = GetViewerState()->GetViewerRPC()->GetStringArg1();
+
+    const std::string &hostName = GetViewerState()->GetViewerRPC()->GetProgramHost();
+    const std::string &simName  = GetViewerState()->GetViewerRPC()->GetProgramSim();
+
+    EngineKey engineKey(hostName, simName);
+
+    //
+    // Perform the RPC.
+    //
+    TRY
+    {
+        if (ViewerEngineManager::Instance()->DeleteNamedSelection(engineKey, selName))
+        {
+            Message(tr("Deleted named selection"));
+        }
+        else
+        {
+            Error(tr("Unable to delete named selection"));
+        }
+    }
+    CATCH2(VisItException, e)
+    {
+        char message[1024];
+        SNPRINTF(message, 1024, "(%s): %s\n", e.GetExceptionType().c_str(),
+                                             e.Message().c_str());
+        Error(message);
+    }
+    ENDTRY
+}
+
+
+// ****************************************************************************
+//  Method:  ViewerSubject::LoadNamedSelection()
+//
+//  Purpose: Handle a LoadNamedSelection RPC
+//
+//  Programmer:  Hank Childs
+//  Creation:    January 28, 2009
+//
+// ****************************************************************************
+
+void
+ViewerSubject::LoadNamedSelection()
+{
+    //
+    // Get the rpc arguments.
+    //
+    std::string selName = GetViewerState()->GetViewerRPC()->GetStringArg1();
+
+    const std::string &hostName = GetViewerState()->GetViewerRPC()->GetProgramHost();
+    const std::string &simName  = GetViewerState()->GetViewerRPC()->GetProgramSim();
+
+    EngineKey engineKey(hostName, simName);
+
+    //
+    // Perform the RPC.
+    //
+    TRY
+    {
+        if (ViewerEngineManager::Instance()->LoadNamedSelection(engineKey, selName))
+        {
+            Message(tr("Loaded named selection"));
+        }
+        else
+        {
+            Error(tr("Unable to load named selection"));
+        }
+    }
+    CATCH2(VisItException, e)
+    {
+        char message[1024];
+        SNPRINTF(message, 1024, "(%s): %s\n", e.GetExceptionType().c_str(),
+                                             e.Message().c_str());
+        Error(message);
+    }
+    ENDTRY
+}
+
+
+// ****************************************************************************
+//  Method:  ViewerSubject::SaveNamedSelection()
+//
+//  Purpose: Handle a SaveNamedSelection RPC
+//
+//  Programmer:  Hank Childs
+//  Creation:    January 28, 2009
+//
+// ****************************************************************************
+
+void
+ViewerSubject::SaveNamedSelection()
+{
+    //
+    // Get the rpc arguments.
+    //
+    std::string selName = GetViewerState()->GetViewerRPC()->GetStringArg1();
+
+    const std::string &hostName = GetViewerState()->GetViewerRPC()->GetProgramHost();
+    const std::string &simName  = GetViewerState()->GetViewerRPC()->GetProgramSim();
+
+    EngineKey engineKey(hostName, simName);
+
+    //
+    // Perform the RPC.
+    //
+    TRY
+    {
+        if (ViewerEngineManager::Instance()->SaveNamedSelection(engineKey, selName))
+        {
+            Message(tr("Saved named selection"));
+        }
+        else
+        {
+            Error(tr("Unable to save named selection"));
+        }
+    }
+    CATCH2(VisItException, e)
+    {
+        char message[1024];
+        SNPRINTF(message, 1024, "(%s): %s\n", e.GetExceptionType().c_str(),
+                                             e.Message().c_str());
+        Error(message);
+    }
+    ENDTRY
+}
+
 
 // ****************************************************************************
 //  Method:  ViewerSubject::SetSuppressMessages()

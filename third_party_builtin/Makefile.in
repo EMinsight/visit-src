@@ -1,4 +1,4 @@
-#                         Copyright (c) 2000 - 2008
+#                         Copyright (c) 2000 - 2009
 #                  Lawrence Livermore National Security, LLC
 #            Produced at the Lawrence Livermore National Laboratory
 #                              LLNL-CODE-400124
@@ -54,15 +54,31 @@
 #   Tom Fogal, Sun Jul 27 13:33:23 EDT 2008
 #   Added cognomen.
 #
+#   Brad Whitlock, Wed Jun 3 15:43:54 PST 2009
+#   I added engine only build options.
+#
 ##############################################################################
 
 @SET_MAKE@
 @VARIABLES@
 @DIRTARGETS@
 
-SUBDIRS=@BUILD_MESA_STUB@ @BUILD_ZLIB@ @BUILD_GLEW@ @BUILD_BILIB@ \
-    @BUILD_SLIVR@ @BUILD_COGNOMEN@ @BUILD_TUVOK@ bow
-ALLSUBDIRS=mesa_stub zlib glew bilib slivr bow cognomen Tuvok
+SUBDIRS_DBIO_ONLY=@BUILD_BILIB@ bow
+ALLSUBDIRS_DBIO_ONLY=@BUILD_BILIB@ bow
+
+SUBDIRS_ENGINE_ONLY=@BUILD_ZLIB@ @BUILD_GLEW@ @BUILD_BILIB@ \
+    @BUILD_SLIVR@ @BUILD_COGNOMEN@ bow 
+ALLSUBDIRS_ENGINE_ONLY=zlib glew bilib slivr bow cognomen 
+
+SUBDIRS_SERVER_COMPONENTS_ONLY=$(SUBDIRS_ENGINE_ONLY)
+ALLSUBDIRS_SERVER_COMPONENTS_ONLY=$(ALLSUBDIRS_ENGINE_ONLY)
+
+SUBDIRS_STD=@BUILD_MESA_STUB@ @BUILD_ZLIB@ @BUILD_GLEW@ @BUILD_BILIB@ \
+    @BUILD_SLIVR@ @BUILD_COGNOMEN@ bow 
+ALLSUBDIRS_STD=mesa_stub zlib glew bilib slivr bow cognomen 
+
+SUBDIRS=@SUBDIRS@
+ALLSUBDIRS=@ALLSUBDIRS@
 
 message:
 	@echo

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -60,6 +60,7 @@
 #include <avtCommonDataFunctions.h>
 
 #include <ParsingExprList.h>
+#include <ExprNode.h>
 
 #include <DebugStream.h>
 #include <ExpressionException.h>
@@ -641,6 +642,11 @@ avtExpressionFilter::GetVariableDimension(void)
 //      Added a target centering.  Defaults to toggling if not set
 //      (AVT_UNKNOWN_CENT).
 //
+//      Jeremy Meredith, Tue Apr 28 13:42:56 EDT 2009
+//      If we're doing a no-op, add one to the reference count.  Callers
+//      assume they own the result.
+//      Also, add support for "recentering" singletons (also a no-op).
+//
 // ****************************************************************************
 
 vtkDataArray *
@@ -662,6 +668,7 @@ avtExpressionFilter::Recenter(vtkDataSet *ds, vtkDataArray *arr,
     if (currCent == targCent)
     {
         // Nothing to do.  Return the original array.
+        arr->Register(NULL);
         return arr;
     }
 
@@ -670,6 +677,12 @@ avtExpressionFilter::Recenter(vtkDataSet *ds, vtkDataArray *arr,
     {
         if (ds2->GetNumberOfPoints() != arr->GetNumberOfTuples())
         {
+            if (arr->GetNumberOfTuples() == 1)
+            {
+                // okay, it's a singleton; no recentering necessary
+                arr->Register(NULL);
+                return arr;
+            }
             EXCEPTION2(ExpressionException, name, "Asked to re-center a nodal "
                        "variable that is not nodal.");
         }
@@ -694,6 +707,12 @@ avtExpressionFilter::Recenter(vtkDataSet *ds, vtkDataArray *arr,
     {
         if (ds2->GetNumberOfCells() != arr->GetNumberOfTuples())
         {
+            if (arr->GetNumberOfTuples() == 1)
+            {
+                // okay, it's a singleton; no recentering necessary
+                arr->Register(NULL);
+                return arr;
+            }
             EXCEPTION2(ExpressionException, name, "Asked to re-center a zonal "
                        "variable that is not zonal.");
         }
@@ -785,4 +804,45 @@ avtExpressionFilter::DetermineVariableType(std::string &varname)
     return AVT_UNKNOWN_TYPE;
 }
 
+// ****************************************************************************
+//  Method: avtCylindricalRadiusExpression::avtCylindricalRadiusExpression
+//
+//  Purpose:
+//      Parses optional arguments. 
+//      Helper to obtain a constant floating point value from an expression 
+//      node. Handles IntegerConst, FloatConst, and Unary Minus 
+//      (with either IntegerConst, FloatConst as a child node)
+//
+//  Programmer:   Cyrus Harrison 
+//  Creation:     April 4, 2008
+//
+// ****************************************************************************
+
+bool
+avtExpressionFilter::GetNumericVal(ExprNode *node, double &val)
+{
+    bool ok = false;
+    val = 0;
+    string n_type = node->GetTypeName();
+    if ( n_type == "FloatConst")
+    {
+        val = dynamic_cast<FloatConstExpr*>(node)->GetValue();
+        ok = true;
+    }
+    else if (n_type == "IntegerConst")
+    {
+        val = dynamic_cast<IntegerConstExpr*>(node)->GetValue();
+        ok = true;
+    }
+    else if (n_type == "Unary")
+    {
+        ExprNode *child = dynamic_cast<UnaryExpr*>(node)->GetExpr();
+        if(GetNumericVal(child,val))
+        {
+            val *=-1;
+            ok = true;
+        }
+    }
+    return ok;
+}
 

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -55,7 +55,7 @@ class QComboBox;
 class QGroupBox;
 class QLabel;
 class QLineEdit;
-class QListWidget;
+class QListBox;
 class QSlider;
 class QSpinBox;
 class QvisSpectrumBar;
@@ -92,10 +92,6 @@ class QvisColorGridWidget;
 //
 //   Brad Whitlock, Wed Apr  9 11:58:57 PDT 2008
 //   QString for caption, shortName.
-//
-//   Jeremy Meredith, Wed Dec 31 15:27:54 EST 2008
-//   Added support for showing hints such as the color index or an
-//   element name (if we're working with an atomic color table).
 //
 // ****************************************************************************
 
@@ -153,7 +149,6 @@ private slots:
     void deleteColorTable();
     void exportColorTable();
     void highlightColorTable(int index);
-    void showIndexHintsToggled(bool val);
 private:
     ColorTableAttributes     *colorAtts;
     int                      colorCycle;
@@ -175,7 +170,7 @@ private:
     QPushButton              *deleteButton;
     QPushButton              *exportButton;
     QLineEdit                *nameLineEdit;
-    QListWidget                 *nameListBox;
+    QListBox                 *nameListBox;
 
     QGroupBox                *colorWidgetGroup;
 
@@ -189,7 +184,6 @@ private:
 //    QPushButton              *addPointButton;
 //    QPushButton              *rmPointButton;
     QPushButton              *alignPointButton;
-    QCheckBox                *showIndexHintsCheckBox;
 
     QvisColorGridWidget      *discreteColors;
     QLabel                   *componentLabels[3];

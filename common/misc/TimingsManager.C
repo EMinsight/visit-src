@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -173,6 +173,9 @@ TimingsManager::TimeSinceInit()
 //    Mark C. Miller, Tue Aug 15 20:20:58 PDT 2006
 //    Eliminated numTimings
 //
+//    Hank Childs, Sat Apr 11 23:41:27 CDT 2009
+//    Initialize neverOutput.
+//
 // ****************************************************************************
 
 TimingsManager::TimingsManager()
@@ -182,6 +185,7 @@ TimingsManager::TimingsManager()
     numCurrentTimings = 0;
     enabled           = false;
     withholdOutput    = false;
+    neverOutput       = false;
     outputAllTimings  = false;
 }
 
@@ -375,6 +379,26 @@ TimingsManager::WithholdOutput(bool v)
 
 
 // ****************************************************************************
+//  Method: TimingsManager::NeverOutput
+//
+//  Purpose:
+//      Tells the timings manager to never output the timings.  This allows
+//      it to not save strings, which helps with memory footprint when there
+//      are a huge number of pipeline updates.
+//
+//  Programmer: Hank Childs
+//  Creation:   April 11, 2009
+//
+// ****************************************************************************
+
+void
+TimingsManager::NeverOutput(bool v)
+{
+    neverOutput = v;
+}
+
+
+// ****************************************************************************
 //  Method: TimingsManager::OutputAllTimings
 //
 //  Purpose:
@@ -466,9 +490,9 @@ TimingsManager::StartTimer(bool forced)
     }
     else if (rv > usedEntry.size())
     {
-	debug1 << "TimingsManager::StartTimer: Cannot start timer. "
-	       << "Returning -1 as if timing was disabled." << std::endl;
-	return -1;
+        debug1 << "TimingsManager::StartTimer: Cannot start timer. "
+               << "Returning -1 as if timing was disabled." << std::endl;
+        return -1;
     }
     else
     {
@@ -520,6 +544,9 @@ TimingsManager::StartTimer(bool forced)
 //    Make sure we use a SNPRINTF instead of a sprintf, so we don't blow the
 //    stack.
 //
+//    Hank Childs, Sat Apr 11 23:41:27 CDT 2009
+//    Don't save the outcomes if neverOutput is true.
+//
 // ****************************************************************************
 
 double
@@ -532,9 +559,10 @@ TimingsManager::StopTimer(int index, const std::string &summary, bool forced)
         if (index >= 0 && index < usedEntry.size())
             usedEntry[index] = false;
         t = PlatformStopTimer(index);
-        times.push_back(t);
+        if (!neverOutput)
+            times.push_back(t);
         numCurrentTimings -= 1;
-        if (enabled)
+        if (enabled && !neverOutput)
         {
             char indented[2048];
             SNPRINTF(indented, 2048, "%*s%s", 3*numCurrentTimings, 
@@ -546,6 +574,39 @@ TimingsManager::StopTimer(int index, const std::string &summary, bool forced)
     return t;
 }
 
+
+// ****************************************************************************
+//  Method: TimingsManager::LookupTimer
+//
+//  Purpose:
+//      Lookup timer value.
+//
+//  Programmer: Dave Pugmire
+//  Creation:   Feb 23, 2009
+//
+// ****************************************************************************
+
+double
+TimingsManager::LookupTimer(const std::string &nm)
+{
+    double val = 0.0;
+
+    if (enabled)
+    {
+        int numT = times.size();
+        debug1<<"numT= "<<numT<<endl;
+        for (int i = 0 ; i < numT ; i++)
+        {
+            debug1<<i<<": "<<summaries[i]<<endl;
+            if (summaries[i].find(nm,0) != std::string::npos)
+            {
+                val += times[i];
+            }
+        }
+    }
+
+    return val;
+}
 
 // ****************************************************************************
 //  Method: TimingsManager::DumpTimings
@@ -566,6 +627,12 @@ TimingsManager::StopTimer(int index, const std::string &summary, bool forced)
 //    Mark C. Miller, Wed Aug  2 19:58:44 PDT 2006
 //    Added test for emtpy filename. Added missing call to close ofile
 //
+//    Dave Pugmire, Wed Apr 15 08:36:39 EDT 2009
+//    Force fixed mode output for floating point numbers.
+//
+//    Hank Childs, Fri May  8 15:19:23 PDT 2009
+//    Add support for "neverOutput".
+//
 // ****************************************************************************
 
 void
@@ -577,6 +644,8 @@ TimingsManager::DumpTimings(void)
     if (!enabled)
         return;
     if (withholdOutput && !outputAllTimings)
+        return;
+    if (neverOutput)
         return;
     if (filename == "")
     {
@@ -611,6 +680,7 @@ TimingsManager::DumpTimings(void)
     }
     else
     {
+        ofile<<std::fixed;
         DumpTimings(ofile);
         ofile.close();
     }
@@ -668,6 +738,9 @@ TimingsManager::StopAllUnstoppedTimers()
 //    made those handles "dangling pointers".  So the timing information
 //    was frequently wrong.
 //
+//    Hank Childs, Fri May  8 15:19:23 PDT 2009
+//    Add support for "neverOutput".
+//
 // ****************************************************************************
 
 void
@@ -681,6 +754,8 @@ TimingsManager::DumpTimings(ostream &out)
         return;
     }
     if (withholdOutput && !outputAllTimings)
+        return;
+    if (neverOutput)
         return;
 
     int numT = times.size();

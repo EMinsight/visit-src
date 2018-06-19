@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -119,6 +119,12 @@
 //    Overhauled the handling of the "values" array, since it has been
 //    mis-used for over a year and been giving incorrect results.
 //
+//    Dave Pugmire, Mon Feb 23 13:29:49 EST 2009
+//    Added LookupTimer.
+//    
+//    Hank Childs, Sat Apr 11 23:41:27 CDT 2009
+//    Add mode for NoOutputs.
+//
 // ****************************************************************************
 
 class MISC_API TimingsManager
@@ -140,6 +146,7 @@ class MISC_API TimingsManager
 
     int                        StartTimer(bool force=false);
     double                     StopTimer(int, const std::string &, bool force=false);
+    double                     LookupTimer(const std::string &);
 
     static double              DiffTime();
 
@@ -147,6 +154,7 @@ class MISC_API TimingsManager
     void                       DumpTimings(ostream &);
 
     void                       WithholdOutput(bool);
+    void                       NeverOutput(bool);
     void                       OutputAllTimings();
 
   protected:
@@ -155,6 +163,7 @@ class MISC_API TimingsManager
     int                        numCurrentTimings;
     bool                       enabled;
     bool                       withholdOutput;
+    bool                       neverOutput;
     bool                       outputAllTimings;
 
     std::vector<double>        times;

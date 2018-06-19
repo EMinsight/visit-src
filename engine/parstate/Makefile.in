@@ -1,4 +1,4 @@
-#                         Copyright (c) 2000 - 2008
+#                         Copyright (c) 2000 - 2009
 #                  Lawrence Livermore National Security, LLC
 #            Produced at the Lawrence Livermore National Laboratory
 #                              LLNL-CODE-400124
@@ -88,7 +88,7 @@
 @MPI_CC@
 @MPI_CXX@
 
-CPPFLAGS=-I. -I../../include/visit @ENGINE_CPPFLAGS@ @CPPFLAGS@
+CPPFLAGS=-I. -I../../include -I../../include/visit @ENGINE_CPPFLAGS@ @CPPFLAGS@
 
 ##
 ## Files...

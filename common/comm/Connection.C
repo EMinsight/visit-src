@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -195,28 +195,6 @@ Connection::WriteDouble(double val)
         Append((unsigned char *)&val, SIZEOF_DOUBLE);
 }
 
-// ****************************************************************************
-// Method: Connection::WriteString
-//
-// Purpose: 
-//   Write a string to the connection.
-//
-// Arguments:
-//   s : The string to write.
-//
-// Programmer: Brad Whitlock
-// Creation:   Tue Jan  6 15:47:23 PST 2009
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-void
-Connection::WriteString(const std::string &s)
-{
-    Append((unsigned char *)s.c_str(), s.size() + 1);
-}
-
 // *******************************************************************
 // Method: Connection::ReadInt
 //
@@ -360,36 +338,6 @@ Connection::ReadDouble(double *d)
 #else
 #pragma error "Unsupported double size"
 #endif
-}
-
-// ****************************************************************************
-// Method: Connection::ReadString
-//
-// Purpose: 
-//   Reads a null-terminated string from the connection.
-//
-// Arguments:
-//   s : The string to return.
-//
-// Programmer: Brad Whitlock
-// Creation:   Tue Jan  6 15:50:51 PST 2009
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-void
-Connection::ReadString(std::string &s)
-{
-    s.erase();
-    char c;
-    do
-    {
-        ReadChar((unsigned char *)&c);
-        if(c != '\0')
-            s += char(c);
-    }
-    while(c != '\0');
 }
 
 // *******************************************************************

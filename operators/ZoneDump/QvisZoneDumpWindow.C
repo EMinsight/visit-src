@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -41,14 +41,14 @@
 #include <ZoneDumpAttributes.h>
 #include <ViewerProxy.h>
 
-#include <QCheckBox>
-#include <QLabel>
-#include <QLayout>
-#include <QLineEdit>
-#include <QSpinBox>
-#include <QWidget>
-#include <QButtonGroup>
-#include <QRadioButton>
+#include <qcheckbox.h>
+#include <qlabel.h>
+#include <qlayout.h>
+#include <qlineedit.h>
+#include <qspinbox.h>
+#include <qvbox.h>
+#include <qbuttongroup.h>
+#include <qradiobutton.h>
 #include <QvisColorTableButton.h>
 #include <QvisOpacitySlider.h>
 #include <QvisColorButton.h>
@@ -119,52 +119,48 @@ QvisZoneDumpWindow::~QvisZoneDumpWindow()
 //    Brad Whitlock, Thu Apr 24 15:47:48 PDT 2008
 //    Added tr()'s
 //
-//    Cyrus Harrison, Tue Aug 19 08:13:21 PDT 2008
-//    Qt4 Port.
-// 
 // ****************************************************************************
 
 void
 QvisZoneDumpWindow::CreateWindowContents()
 {
-    QGridLayout *mainLayout = new QGridLayout();
-    topLayout->addLayout(mainLayout);
+    QGridLayout *mainLayout = new QGridLayout(topLayout, 5,2,  10, "mainLayout");
 
 
-    variableLabel = new QLabel(tr("Dump Variable"), central);
+    variableLabel = new QLabel(tr("Dump Variable"), central, "variableLabel");
     mainLayout->addWidget(variableLabel,0,0);
     int variableMask = QvisVariableButton::Scalars;
-    variable = new QvisVariableButton(true, true, true, variableMask, central);
+    variable = new QvisVariableButton(true, true, true, variableMask, central, "variable");
     connect(variable, SIGNAL(activated(const QString&)),
             this, SLOT(variableChanged(const QString&)));
     mainLayout->addWidget(variable, 0,1);
 
-    QLabel *range_label = new QLabel(tr("Dump Zones in Range:"), central);
-    mainLayout->addWidget(range_label, 1,0,1,2);
+    QLabel *range_label = new QLabel(tr("Dump Zones in Range:"), central, "range_label");
+    mainLayout->addMultiCellWidget(range_label, 1,1,0,1);
 
-    lowerBoundLabel = new QLabel(tr("Lower Bound"), central);
+    lowerBoundLabel = new QLabel(tr("Lower Bound"), central, "lowerBoundLabel");
     mainLayout->addWidget(lowerBoundLabel,2,0);
-    lowerBound = new QLineEdit(central);
+    lowerBound = new QLineEdit(central, "lowerBound");
     connect(lowerBound, SIGNAL(returnPressed()),
             this, SLOT(lowerBoundProcessText()));
     mainLayout->addWidget(lowerBound, 2,1);
 
-    upperBoundLabel = new QLabel(tr("Upper Bound"), central);
+    upperBoundLabel = new QLabel(tr("Upper Bound"), central, "upperBoundLabel");
     mainLayout->addWidget(upperBoundLabel,3,0);
-    upperBound = new QLineEdit(central);
+    upperBound = new QLineEdit(central, "upperBound");
     connect(upperBound, SIGNAL(returnPressed()),
             this, SLOT(upperBoundProcessText()));
     mainLayout->addWidget(upperBound, 3,1);
 
-    outputFileLabel = new QLabel(tr("Output File"), central);
+    outputFileLabel = new QLabel(tr("Output File"), central, "outputFileLabel");
     mainLayout->addWidget(outputFileLabel,4,0);
-    outputFile = new QLineEdit(central);
+    outputFile = new QLineEdit(central, "outputFile");
     connect(outputFile, SIGNAL(returnPressed()),
             this, SLOT(outputFileProcessText()));
     mainLayout->addWidget(outputFile, 4,1);
 
     enabledLabel = NULL;
-    enabled = new QCheckBox(tr("Dump Enabled"), central);
+    enabled = new QCheckBox(tr("Dump Enabled"), central, "enabled");
     connect(enabled, SIGNAL(toggled(bool)),
             this, SLOT(enabledChanged(bool)));
     mainLayout->addWidget(enabled, 5,0);
@@ -259,76 +255,102 @@ QvisZoneDumpWindow::UpdateWindow(bool doAll)
 //    Cyrus Harrison, Wed Apr  4 08:15:28 PDT 2007
 //    Added support for min and max options
 //
-//    Cyrus Harrison, Tue Aug 19 08:13:21 PDT 2008
-//    Qt4 Port.
-//
 // ****************************************************************************
 
 void
 QvisZoneDumpWindow::GetCurrentValues(int which_widget)
 {
     bool okay, doAll = (which_widget == -1);
-    QString temp;
+    QString msg, temp;
+
+    // Do variable
+    if(which_widget == 0 || doAll)
+    {
+        // Nothing for variable
+    }
 
     // Do lowerBound
-    if(which_widget == ZoneDumpAttributes::ID_lowerBound || doAll)
+    if(which_widget == 1 || doAll)
     {
-        temp = lowerBound->displayText().simplified();
-        if (temp == QString("min"))
+        temp = lowerBound->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            atts->SetLowerBound(-1e+37);
-        }
-        else
-        {
-            double val;
-            if(LineEditGetDouble(lowerBound, val))
-                atts->SetLowerBound(val);
+            if (temp.latin1() == QString("min"))
+            {
+                atts->SetLowerBound(-1e+37);
+            }
             else
             {
-                ResettingError(tr("Lower Bound"),
-                    DoubleToQString(atts->GetLowerBound()));
-                atts->SetLowerBound(atts->GetLowerBound());
+                double val = temp.toDouble(&okay);
+                if(okay)
+                    atts->SetLowerBound(val);
             }
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of lowerBound was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetLowerBound());
+            Message(msg);
+            atts->SetLowerBound(atts->GetLowerBound());
         }
     }
 
     // Do upperBound
-    if(which_widget == ZoneDumpAttributes::ID_upperBound|| doAll)
+    if(which_widget == 2 || doAll)
     {
-        temp = upperBound->displayText().simplified();
-        if (temp == QString("max"))
+        temp = upperBound->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            atts->SetUpperBound(+1e+37);
-        }
-        else
-        {
-            double val;
-            if(LineEditGetDouble(upperBound, val))
-                atts->SetUpperBound(val);
+            if (temp.latin1() == QString("max"))
+            {
+                atts->SetUpperBound(+1e+37);
+            }
             else
             {
-                ResettingError(tr("Upper Bound"),
-                    DoubleToQString(atts->GetUpperBound()));
-                atts->SetUpperBound(atts->GetUpperBound());
+                double val = temp.toDouble(&okay);
+                if(okay)
+                    atts->SetUpperBound(val);
             }
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of upperBound was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetUpperBound());
+            Message(msg);
+            atts->SetUpperBound(atts->GetUpperBound());
         }
     }
 
     // Do outputFile
-    if(which_widget == ZoneDumpAttributes::ID_outputFile || doAll)
+    if(which_widget == 3 || doAll)
     {
         temp = outputFile->displayText();
         okay = !temp.isEmpty();
         if(okay)
         {
-            atts->SetOutputFile(temp.toStdString());
+            atts->SetOutputFile(temp.latin1());
         }
-        else if(!okay)
+
+        if(!okay)
         {
-            ResettingError(tr("Output File "),
-                           atts->GetOutputFile().c_str());
+            msg = tr("The value of outputFile was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetOutputFile().c_str());
+            Message(msg);
             atts->SetOutputFile(atts->GetOutputFile());
         }
+    }
+
+    // Do enabled
+    if(which_widget == 4 || doAll)
+    {
+        // Nothing for enabled
     }
 
 }
@@ -342,7 +364,7 @@ QvisZoneDumpWindow::GetCurrentValues(int which_widget)
 void
 QvisZoneDumpWindow::variableChanged(const QString &varName)
 {
-    atts->SetVariable(varName.toStdString());
+    atts->SetVariable(varName.latin1());
     SetUpdate(false);
     Apply();
 }
@@ -351,7 +373,7 @@ QvisZoneDumpWindow::variableChanged(const QString &varName)
 void
 QvisZoneDumpWindow::lowerBoundProcessText()
 {
-    GetCurrentValues(ZoneDumpAttributes::ID_lowerBound);
+    GetCurrentValues(1);
     Apply();
 }
 
@@ -359,7 +381,7 @@ QvisZoneDumpWindow::lowerBoundProcessText()
 void
 QvisZoneDumpWindow::upperBoundProcessText()
 {
-    GetCurrentValues(ZoneDumpAttributes::ID_upperBound);
+    GetCurrentValues(2);
     Apply();
 }
 
@@ -367,7 +389,7 @@ QvisZoneDumpWindow::upperBoundProcessText()
 void
 QvisZoneDumpWindow::outputFileProcessText()
 {
-    GetCurrentValues(ZoneDumpAttributes::ID_outputFile);
+    GetCurrentValues(3);
     Apply();
 }
 

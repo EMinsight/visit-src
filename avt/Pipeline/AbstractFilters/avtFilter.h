@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -107,6 +107,12 @@ class     avtWebpage;
 //    Cyrus Harrison, Wed Feb 13 10:19:20 PST 2008
 //    Removed debug dump flag b/c this is now handled by avtDebugDumpOptions.
 //
+//    Hank Childs, Mon Feb 23 13:20:07 PST 2009
+//    Added support for named selections.
+//
+//    Hank Childs, Mon Apr  6 12:58:50 PDT 2009
+//    Add another method for handling named selections.
+//
 // ****************************************************************************
 
 class PIPELINE_API avtFilter
@@ -130,6 +136,13 @@ class PIPELINE_API avtFilter
     virtual avtQueryableSource         *GetQueryableSource(void);
     avtContract_p                       GetGeneralContract(void);
     virtual void                        ReleaseData(void);
+
+    virtual avtNamedSelection          *CreateNamedSelection(avtContract_p,
+                                                             const std::string &);
+    // This method is needed for filters that bypass the pipeline to talk
+    // directly to the database and also need to know what named selections
+    // are being used.
+    virtual void                        RegisterNamedSelection(const std::string &) {;};
 
   protected:
     bool                                modified;

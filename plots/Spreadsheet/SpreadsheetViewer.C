@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -40,33 +40,29 @@
 #include <float.h>
 #include <cassert>
 
-#include <QApplication>
-#include <QButtonGroup>
-#include <QCheckBox>
-#include <QClipboard>
-#include <QComboBox>
-#include <QFile>
-#include <QFileDialog>
-#include <QFrame>
-#include <QGroupBox>
-#include <QLabel>
-#include <QLayout>
-#include <QLineEdit>
-#include <QListWidget>
-#include <QMenu>
-#include <QMenuBar>
-#include <QMessageBox>
-#include <QPushButton>
-#include <QRadioButton>
-#include <QSlider>
-#include <QTabWidget>
-#include <QTextStream>
-#include <QTimer>
-#include <QWidget>
+#include <qapplication.h>
+#include <qbuttongroup.h>
+#include <qcheckbox.h>
+#include <qclipboard.h>
+#include <qcombobox.h>
+#include <qfile.h>
+#include <qfiledialog.h>
+#include <qframe.h>
+#include <qhbox.h>
+#include <qlabel.h>
+#include <qlayout.h>
+#include <qlineedit.h>
+#include <qlistbox.h>
+#include <qmenubar.h>
+#include <qmessagebox.h>
+#include <qpushbutton.h>
+#include <qpopupmenu.h>
+#include <qradiobutton.h>
+#include <qslider.h>
 #include <SpreadsheetTable.h>
-
-// Need these?
-#include <QCloseEvent>
+#include <qtabwidget.h>
+#include <qtextstream.h>
+#include <qtimer.h>
 
 #include <QvisColorTableButton.h>
 #include <QvisVariableButton.h>
@@ -75,9 +71,11 @@
 #include <PlotList.h>
 #include <Plot.h>
 
+#include <SpreadsheetCurveViewer.h>
 #include <SpreadsheetTable.h>
 #include <SpreadsheetTabWidget.h>
 #include <avtLookupTable.h>
+#include <avtDatabaseMetaData.h>
 
 #include <vtkCellData.h>
 #include <vtkDataArray.h>
@@ -140,14 +138,11 @@
 //   Brad Whitlock, Wed Apr 23 11:12:31 PDT 2008
 //   Added tr()'s
 //
-//   Brad Whitlock, Mon Aug 11 16:13:52 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
-SpreadsheetViewer::SpreadsheetViewer(ViewerPlot *p, QWidget *parent) :
-    QMainWindow(parent), Observer((Subject*)p->GetPlotAtts()), 
-    cachedAtts(), menuPopulator()
+SpreadsheetViewer::SpreadsheetViewer(ViewerPlot *p, QWidget *parent, 
+    const char *name) : QMainWindow(parent, name),
+    Observer((Subject*)p->GetPlotAtts()), cachedAtts(), menuPopulator()
 {
     // Initialize members.
     input = 0;
@@ -162,39 +157,36 @@ SpreadsheetViewer::SpreadsheetViewer(ViewerPlot *p, QWidget *parent) :
     sliding = false;
 
     // Create widgets.
-    setWindowTitle(tr("Spreadsheet"));
+    setCaption(tr("Spreadsheet"));
 
-    QFrame *top = new QFrame(this);
+    QFrame *top = new QFrame(this, "vbox");
     setCentralWidget(top);
     QVBoxLayout *topLayout = new QVBoxLayout(top);
     topLayout->setSpacing(5);
     topLayout->setMargin(10);
 #ifdef Q_WS_MAC
-    QWidget *menuContainer = new QWidget(top);
-    QHBoxLayout *menuLayout = new QHBoxLayout(menuContainer);
+    QHBox *menuContainer = new QHBox(top, "menuContainer");
     topLayout->addWidget(menuContainer);
 #endif
-    QHBoxLayout *layout = new QHBoxLayout(0);
-    topLayout->addLayout(layout);
+    QHBoxLayout *layout = new QHBoxLayout(topLayout);
     layout->setSpacing(5);
 
     //
     // 3D controls
     //
-    controls3D = new QGroupBox(tr("3D"), top);
+    controls3D = new QGroupBox(tr("3D"), top, "controls3D");
     layout->addWidget(controls3D, 10);
     QVBoxLayout *inner3D = new QVBoxLayout(controls3D);
     inner3D->addSpacing(10);
     inner3D->setMargin(10);
-    QGridLayout *layout3D = new QGridLayout(0);
-    inner3D->addLayout(layout3D);
+    QGridLayout *layout3D = new QGridLayout(inner3D, 2, 3);
     layout3D->setSpacing(5);
     inner3D->addStretch(1);
 
-    kLabel = new QLabel("k [1,1]", controls3D);
+    kLabel = new QLabel("k [1,1]", controls3D, "kLabel");
     layout3D->addWidget(kLabel, 0, 0);
 
-    kSlider = new QSlider(controls3D);
+    kSlider = new QSlider(controls3D, "kSlider");
     kSlider->setOrientation(Qt::Horizontal);
     kSlider->setPageStep(1);
     connect(kSlider, SIGNAL(valueChanged(int)),
@@ -204,50 +196,47 @@ SpreadsheetViewer::SpreadsheetViewer(ViewerPlot *p, QWidget *parent) :
     connect(kSlider, SIGNAL(sliderReleased()),
             this, SLOT(sliderReleased()));
 
-    layout3D->addWidget(kSlider, 0, 1, 1, 2);
+    layout3D->addMultiCellWidget(kSlider, 0, 0, 1, 2);
 
-    normalLabel = new QLabel(tr("Normal"), controls3D);
+    normalLabel = new QLabel(tr("Normal"), controls3D, "normalLabel");
     layout3D->addWidget(normalLabel, 1, 0);
 
-    normalButtonGroup = new QButtonGroup (0);
-    connect(normalButtonGroup, SIGNAL(buttonClicked(int)),
+    normalButtonGroup = new QButtonGroup (0, "normalButtonGroup");
+    connect(normalButtonGroup, SIGNAL(clicked(int)),
             this, SLOT(normalChanged(int)));
-    normalRadioButtons = new QWidget(controls3D);
-    QHBoxLayout *nLayout = new QHBoxLayout(normalRadioButtons);
-    nLayout->setMargin(0);
+    normalRadioButtons = new QHBox(controls3D, "normalRadioButtons");
     layout3D->addWidget(normalRadioButtons, 1, 1);
-    QRadioButton *rb = new QRadioButton(tr("X"), normalRadioButtons);
-    normalButtonGroup->addButton(rb, 0);
-    nLayout->addWidget(rb);
-    rb = new QRadioButton(tr("Y"), normalRadioButtons);
-    normalButtonGroup->addButton(rb, 1);
-    nLayout->addWidget(rb);
-    rb = new QRadioButton(tr("Z"), normalRadioButtons);
-    normalButtonGroup->addButton(rb, 2);
-    nLayout->addWidget(rb);
-    nLayout->setStretchFactor(rb, 5);
+    normalButtonGroup->insert(new QRadioButton(tr("X"), normalRadioButtons, "rb0"), 0);
+    normalButtonGroup->insert(new QRadioButton(tr("Y"), normalRadioButtons, "rb1"), 1);
+    QRadioButton *rb = new QRadioButton(tr("Z"), normalRadioButtons, "rb2");
+    normalButtonGroup->insert(rb, 2);
+    normalRadioButtons->setStretchFactor(rb, 5);
 
     //
     // Display controls
     //
-    QGroupBox *display = new QGroupBox(tr("Display"), top);
+    QGroupBox *display = new QGroupBox(tr("Display"), top, "display");
     layout->addWidget(display);
-    QGridLayout *layoutDisplay = new QGridLayout(display);
+    QVBoxLayout *innerDisplay = new QVBoxLayout(display);
+    innerDisplay->addSpacing(10);
+    innerDisplay->setMargin(10);
+    QGridLayout *layoutDisplay = new QGridLayout(innerDisplay, 3, 2);
+    layoutDisplay->setSpacing(5);
 
-    formatLabel = new QLabel(tr("Format"), display);
+    formatLabel = new QLabel(tr("Format"), display, "formatLabel");
     layoutDisplay->addWidget(formatLabel, 0, 0);
-    formatLineEdit = new QLineEdit(display);
+    formatLineEdit = new QLineEdit(display, "formatLineEdit");
     connect(formatLineEdit, SIGNAL(returnPressed()),
             this, SLOT(formatChanged()));
     layoutDisplay->addWidget(formatLineEdit, 0, 1);
 
-    colorTableCheckBox = new QCheckBox(tr("Color"), display);
+    colorTableCheckBox = new QCheckBox(tr("Color"), display, "colorTableCheckBox");
     connect(colorTableCheckBox, SIGNAL(toggled(bool)),
             this, SLOT(colorTableCheckBoxToggled(bool)));
     layoutDisplay->addWidget(colorTableCheckBox, 1, 0);
 
     // Just a push button for now. It will be a color table button later.
-    colorTableButton = new QvisColorTableButton(display);
+    colorTableButton = new QvisColorTableButton(display, "colorTableButton");
     connect(colorTableButton, SIGNAL(selectedColorTable(bool, const QString &)),
             this, SLOT(selectedColorTable(bool, const QString &)));
     layoutDisplay->addWidget(colorTableButton, 1, 1);
@@ -255,31 +244,30 @@ SpreadsheetViewer::SpreadsheetViewer(ViewerPlot *p, QWidget *parent) :
     //
     // Show in viswindow controls
     //
-    QGroupBox *show = new QGroupBox(tr("Show in visualization window"), top);
+    QGroupBox *show = new QGroupBox(1, Qt::Vertical, tr("Show in visualization window"), top, "show");
     topLayout->addWidget(show);
-    QHBoxLayout *sLayout = new QHBoxLayout(show);
-    tracerCheckBox = new QCheckBox(tr("Tracer plane"), show);
-    sLayout->addWidget(tracerCheckBox);
+    tracerCheckBox = new QCheckBox(tr("Tracer plane"), show, "tracerCheckBox");
     connect(tracerCheckBox, SIGNAL(toggled(bool)),
             this, SLOT(tracerCheckBoxToggled(bool)));
-    patchOutlineCheckBox = new QCheckBox(tr("Patch outline"), show);
-    sLayout->addWidget(patchOutlineCheckBox);
+    patchOutlineCheckBox = new QCheckBox(tr("Patch outline"), show, "patchOutline");
     connect(patchOutlineCheckBox, SIGNAL(toggled(bool)),
             this, SLOT(outlineCheckBoxToggled(bool)));
-    currentCellOutlineCheckBox = new QCheckBox(tr("Current cell outline"), show);
-    sLayout->addWidget(currentCellOutlineCheckBox);
+    currentCellOutlineCheckBox = new QCheckBox(tr("Current cell outline"), show, "currentCellOutline");
     connect(currentCellOutlineCheckBox, SIGNAL(toggled(bool)),
             this, SLOT(showCurrentCellOutlineCheckBoxToggled(bool)));
 
     //
     // Tables
     //
-    zTabs = new SpreadsheetTabWidget(top);
+    zTabs = new SpreadsheetTabWidget(top, "zTabs");
     topLayout->addWidget(zTabs, 10);
     nTables = 1;
     nTablesForSlider = 1;
     tables = new SpreadsheetTable*[1];
-    tables[0] = new SpreadsheetTable(0);
+    tables[0] = new SpreadsheetTable(0, "table");
+    tables[0]->setNumRows(20);
+    tables[0]->setNumCols(20);
+    tables[0]->setReadOnly(true);
     tables[0]->setLUT(colorLUT);
     QFont spreadsheetFont;
     if (spreadsheetFont.fromString(plotAtts->GetSpreadsheetFont().c_str()))
@@ -288,76 +276,75 @@ SpreadsheetViewer::SpreadsheetViewer(ViewerPlot *p, QWidget *parent) :
     connect(tables[0], SIGNAL(selectionChanged()),
             this, SLOT(tableSelectionChanged()));
     zTabs->addTab(tables[0], "k=1");
-    connect(zTabs, SIGNAL(currentChanged(int)),
-            this, SLOT(tabChanged(int)));
+    connect(zTabs, SIGNAL(currentChanged(QWidget*)),
+            this, SLOT(tabChanged(QWidget*)));
 
     //
     // Variables and min,max buttons
     //
-    QGridLayout *varLayout = new QGridLayout(0);
-    topLayout->addLayout(varLayout);
+    QGridLayout *varLayout = new QGridLayout(topLayout, 2, 3);
     varLayout->setSpacing(5);
-    varLayout->setColumnStretch(1, 5);
-    varLayout->setColumnStretch(2, 5);
-    varLabel = new QLabel(tr("Variable"), top);
+    varLayout->setColStretch(1, 5);
+    varLayout->setColStretch(2, 5);
+    varLabel = new QLabel(tr("Variable"), top, "varLabel");
     varLayout->addWidget(varLabel, 0, 0);
     // Have to display metadata -- the list of variables.
     varButton = new QvisVariableButton(false, false, true, 
-        QvisVariableButton::Scalars, top);
+        QvisVariableButton::Scalars, top, "varComboBox");
     connect(varButton, SIGNAL(activated(const QString &)),
             this, SLOT(changedVariable(const QString &)));
-    varLayout->addWidget(varButton, 0, 1, 1, 2);
+    varLayout->addMultiCellWidget(varButton, 0, 0, 1, 2);    
 
     // min, max buttons
-    minButton = new QPushButton(tr("Min = "), top);
+    minButton = new QPushButton(tr("Min = "), top, "minButton");
     connect(minButton, SIGNAL(clicked()),
             this, SLOT(minClicked()));
-    varLayout->addWidget(minButton, 1,1);
+    varLayout->addMultiCellWidget(minButton, 1,1,1,1);
 
-    maxButton = new QPushButton(tr("Max = "), top);
+    maxButton = new QPushButton(tr("Max = "), top, "maxButton");
     connect(maxButton, SIGNAL(clicked()),
             this, SLOT(maxClicked()));
-    varLayout->addWidget(maxButton, 1,2);
+    varLayout->addMultiCellWidget(maxButton, 1,1,2,2);
 
 
     //
     // Do the main menu.
     //
-    fileMenu = new QMenu(tr("&File"), this);
+    filePopup = new QPopupMenu(this);
 #ifdef Q_WS_MAC
-    QPushButton *fileButton = new QPushButton(tr("&File"), menuContainer);
-    menuLayout->addWidget(fileButton);
-    fileButton->setMenu(fileMenu);
+    QPushButton *fileButton = new QPushButton(tr("&File"), menuContainer, "fileButton");
+    fileButton->setPopup(filePopup);
 #else
-    menuBar()->addMenu(fileMenu);
+    saveMenuId = menuBar()->insertItem(tr("&File"), filePopup);
 #endif
-    fileMenu_SaveText = fileMenu->addAction(tr("Save as text . . ."), this, SLOT(saveAsText()), Qt::CTRL+Qt::Key_S);
+    saveMenu_SaveTextId = filePopup->insertItem(tr("Save as text . . ."), this, SLOT(saveAsText()), CTRL+Key_S);
 
-    editMenu = new QMenu(tr("&Edit"), this);
+    editPopup = new QPopupMenu(this);
 #ifdef Q_WS_MAC
-    QPushButton *editButton = new QPushButton(tr("&Edit"), menuContainer);
-    menuLayout->addWidget(editButton);
-    editButton->setMenu(editMenu);
+    QPushButton *editButton = new QPushButton(tr("&Edit"), menuContainer, "editButton");
+    editButton->setPopup(editPopup);
 #else
-    menuBar()->addMenu(editMenu);
+    editMenuId = menuBar()->insertItem(tr("&Edit"), editPopup);
 #endif
-    editMenu_Copy = editMenu->addAction(tr("&Copy"), this, SLOT(copySelectionToClipboard()), Qt::CTRL+Qt::Key_C);
-    editMenu->addSeparator();
-    editMenu->addAction(tr("Select &All"), this, SLOT(selectAll()), Qt::CTRL+Qt::Key_A);
-    editMenu->addAction(tr("Select &None"), this, SLOT(selectNone()), Qt::CTRL+Qt::Key_N);
+    editMenu_CopyId = editPopup->insertItem(tr("&Copy"), this, SLOT(copySelectionToClipboard()), CTRL+Key_C);
+    editPopup->insertSeparator();
+    editPopup->insertItem(tr("Select &All"), this, SLOT(selectAll()), CTRL+Key_A);
+    editPopup->insertItem(tr("Select &None"), this, SLOT(selectNone()), CTRL+Key_N);
 
-    operationsMenu = new QMenu(tr("&Operations"), this);
+    operationsPopup = new QPopupMenu(this);
 #ifdef Q_WS_MAC
-    opButton = new QPushButton(tr("&Operations"), menuContainer);
-    menuLayout->addWidget(opButton);
-    opButton->setMenu(operationsMenu);
-    opButton->setEnabled(false);
+    QPushButton *opButton = new QPushButton(tr("&Operations"), menuContainer, "opButton");
+    opButton->setPopup(operationsPopup);
 #else
-    menuBar()->addMenu(operationsMenu);
+    operationMenuId = menuBar()->insertItem(tr("&Operations"), operationsPopup);
 #endif
-    operationsMenu->addAction(tr("Sum"), this, SLOT(operationSum()));
-    operationsMenu->addAction(tr("Average"), this, SLOT(operationAverage()));
-    updateMenuEnabledState(0);
+    operationsPopup->insertItem(tr("Sum"), this, SLOT(operationSum()));
+    operationsPopup->insertItem(tr("Average"), this, SLOT(operationAverage()));
+    operationsPopup->insertItem(tr("Create curve: row vs. coordinate 0"), this, SLOT(operationCurveX0()));
+    operationsPopup->insertItem(tr("Create curve: row vs. coordinate 1"), this, SLOT(operationCurveX1()));
+    operationsPopup->insertItem(tr("Create curve: column vs. coordinate 0"), this, SLOT(operationCurveY0()));
+    operationsPopup->insertItem(tr("Create curve: column vs. coordinate 1"), this, SLOT(operationCurveY1()));
+    updateMenuEnabledState(tables[0]);
 }
 
 // ****************************************************************************
@@ -441,9 +428,6 @@ SpreadsheetViewer::setAllowRender(bool val)
 //   Brad Whitlock, Wed Apr 23 11:13:35 PDT 2008
 //   Added tr().
 //
-//   Brad Whitlock, Tue Aug 26 15:33:42 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
@@ -482,7 +466,7 @@ SpreadsheetViewer::render(vtkDataSet *ds)
             if (plotAtts->GetSliceIndex() < nTables)
             {
                 zTabs->blockSignals(true);
-                zTabs->setCurrentIndex(plotAtts->GetSliceIndex());
+                zTabs->showPage(tables[plotAtts->GetSliceIndex()]);
                 zTabs->blockSignals(false);
             }
 
@@ -502,7 +486,7 @@ SpreadsheetViewer::render(vtkDataSet *ds)
         QString caption = tr("Spreadsheet - %1: %2").
             arg(plot->GetVariableName().c_str()).
             arg(plotAtts->GetSubsetName().c_str());
-        setWindowTitle(caption);
+        setCaption(caption);
 
         // Set the variable in the variable button based on the plot's
         // active variable.
@@ -512,7 +496,7 @@ SpreadsheetViewer::render(vtkDataSet *ds)
         varButton->blockSignals(false);
 
         // Update the menu enabled state.
-        updateMenuEnabledState(zTabs->currentIndex());
+        updateMenuEnabledState((QTable *)zTabs->currentPage());
     }
 }
 
@@ -618,9 +602,7 @@ SpreadsheetViewer::closeEvent(QCloseEvent *e)
 // Creation:   Tue Feb 20 14:03:20 PST 2007
 //
 // Modifications:
-//   Brad Whitlock, Tue Aug 26 16:00:36 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 bool
@@ -637,8 +619,9 @@ SpreadsheetViewer::setColorTable(const char *ctName)
     if(colorTableChanged)
     {
         // Send a paint event to the currently visible page so its cells update
-        if(zTabs->currentWidget() != 0)
-            zTabs->currentWidget()->update();
+        QTable *page = (QTable*)zTabs->currentPage();
+        if(page != 0)
+            page->updateContents();
     }
 
     return colorTableChanged;
@@ -657,7 +640,9 @@ SpreadsheetViewer::setColorTable(const char *ctName)
 // Creation:   Mon Sep 10 15:05:01 PDT 2007
 //
 // Modifications:
-//   
+//   Brad Whitlock, Thu May 21 14:52:11 PDT 2009
+//   I changed the test since current pick is now an int.
+//
 // ****************************************************************************
 
 bool
@@ -675,9 +660,11 @@ SpreadsheetViewer::PickPointsChanged() const
     }
     else
     {
-        if (cachedAtts.GetCurrentPick()[0] != plotAtts->GetCurrentPick()[0] ||
-            cachedAtts.GetCurrentPick()[1] != plotAtts->GetCurrentPick()[1] ||
-            cachedAtts.GetCurrentPick()[2] != plotAtts->GetCurrentPick()[2])
+        if (cachedAtts.GetCurrentPick() != plotAtts->GetCurrentPick())
+        {
+            changed = true;
+        }
+        if (cachedAtts.GetCurrentPickType() != plotAtts->GetCurrentPickType())
         {
             changed = true;
         }
@@ -721,9 +708,6 @@ SpreadsheetViewer::PickPointsChanged() const
 //
 //   Gunther H. Weber, Wed Nov 28 15:20:58 PST 2007
 //   Added toggle for showing current cell outline
-//
-//   Brad Whitlock, Tue Aug 26 15:38:24 PDT 2008
-//   Qt 4.
 //
 // ****************************************************************************
 
@@ -788,7 +772,7 @@ SpreadsheetViewer::Update(Subject *)
             break;
         case SpreadsheetAttributes::ID_normal:
             normalButtonGroup->blockSignals(true);
-            normalButtonGroup->button(plotAtts->GetNormal())->setChecked(true);
+            normalButtonGroup->setButton(plotAtts->GetNormal());
             normalButtonGroup->blockSignals(false);
 
             // If we've changed normals then we need to update the spreadsheet.
@@ -802,11 +786,10 @@ SpreadsheetViewer::Update(Subject *)
 #endif
             break;
         case SpreadsheetAttributes::ID_currentPick:
+        case SpreadsheetAttributes::ID_currentPickType:
         case SpreadsheetAttributes::ID_currentPickValid:
         case SpreadsheetAttributes::ID_pastPicks:
             // Check to see if the pick points changed.
-            pickPt.clear();
-            cellId.clear();
             needsPickUpdate |= PickPointsChanged();
             break;
         case SpreadsheetAttributes::ID_spreadsheetFont:
@@ -854,8 +837,8 @@ SpreadsheetViewer::Update(Subject *)
             tables[i]->setFormatString(plotAtts->GetFormatString().c_str());
 
             // Send a paint event to the currently visible page so its cells update
-            if(tables[i] == zTabs->currentWidget())
-                 tables[i]->update();
+            if(tables[i] == zTabs->currentPage())
+                 tables[i]->updateContents();
         }
 
         // Update the min/max buttons.
@@ -883,7 +866,7 @@ SpreadsheetViewer::Update(Subject *)
         if(plotAtts->GetSliceIndex() < nTables)
         {
             zTabs->blockSignals(true);
-            zTabs->setCurrentIndex(plotAtts->GetSliceIndex());
+            zTabs->showPage(tables[plotAtts->GetSliceIndex()]);
             zTabs->blockSignals(false);
         }
    
@@ -951,8 +934,52 @@ SpreadsheetViewer::updateSpreadsheet()
     colorLUT->GetLookupTable()->Build();
 
     // Send a paint event to the currently visible page so its cells update
-    if(zTabs->currentIndex() != -1)
-        zTabs->currentWidget()->update();
+    QTable *page = (QTable *)zTabs->currentPage();
+    if(page != 0)
+        page->updateContents();
+}
+
+// ****************************************************************************
+// Method: SpreadsheetViewer::GetBaseIndexFromMetaData
+//
+// Purpose: 
+//   Set the base_index from the plot's metadata.
+//
+// Arguments:
+//   base_index : The base_index array to set.
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri May  8 09:13:33 PDT 2009
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+SpreadsheetViewer::GetBaseIndexFromMetaData(int *base_index) const
+{
+    int base = 0;
+    const char *mName = "SpreadsheetViewer::GetBaseIndexFromMetaData: ";
+
+    const avtDatabaseMetaData *md = plot->GetMetaData();
+    if(md != 0)
+    {
+        const avtMeshMetaData *mmd = md->GetMesh(plot->GetMeshName());
+        if(mmd != 0)
+        {
+            if(plot->GetVariableCentering() == AVT_NODECENT)
+                base = mmd->nodeOrigin;
+            else
+                base = mmd->cellOrigin;
+        }
+    }
+    base_index[0] = base;
+    base_index[1] = base;
+    base_index[2] = base;
+    debug5 << mName << "From metadata, base_index = {"
+           << base_index[0] << ", "
+           << base_index[1] << ", "
+           << base_index[2] << "}\n";
 }
 
 // ****************************************************************************
@@ -974,6 +1001,10 @@ SpreadsheetViewer::updateSpreadsheet()
 //
 //   Gunther H. Weber, Wed Oct 17 16:28:11 PDT 2007
 //   Adapt base index if data set has real dims field data
+//
+//   Brad Whitlock, Fri May  8 09:09:29 PDT 2009
+//   Set the mesh's base index differently if there are no base_index or 
+//   realDims field data arrays. We use the mesh's cell and node origins.
 //
 // ****************************************************************************
 
@@ -1036,6 +1067,10 @@ SpreadsheetViewer::displayStructuredGrid(int meshDims[3])
     }
     else
         debug5 << mName << "No real dims" << endl;
+
+    // Use the mesh's cellOrigin and nodeOrigin.
+    if(baseIndex == 0 && realDims == 0)
+        GetBaseIndexFromMetaData(base_index);
 
     if(arr != 0)
     {
@@ -1110,6 +1145,9 @@ SpreadsheetViewer::displayStructuredGrid(int meshDims[3])
 // Creation:   Tue Feb 20 14:12:11 PST 2007
 //
 // Modifications:
+//   Brad Whitlock, Fri May  8 09:09:29 PDT 2009
+//   Set the mesh's base index differently if there is no base_index  
+//   field data array. We use the mesh's cell and node origins.
 //   
 // ****************************************************************************
 
@@ -1131,6 +1169,8 @@ SpreadsheetViewer::displayUnstructuredGrid()
         base_index[1] = (int)baseIndex->GetTuple1(1);
         base_index[2] = (int)baseIndex->GetTuple1(2);
     }
+    else
+        GetBaseIndexFromMetaData(base_index);
 
     vtkDataArray *arr = input->GetPointData()->GetScalars();
     if(arr != 0)
@@ -1198,13 +1238,13 @@ SpreadsheetViewer::displayUnstructuredGrid()
 
 #define END_MINMAX \
         QString fmt, tmp;\
-        fmt = tr("Min = ") + QString(plotAtts->GetFormatString().c_str());\
-        tmp.sprintf(fmt.toStdString().c_str(), minValue);\
+        fmt = QString("Min = ") + QString(plotAtts->GetFormatString().c_str());\
+        tmp.sprintf(fmt.latin1(), minValue);\
         minButton->setText(tmp);\
         minButton->setEnabled(true);\
         debug5 << mName << "min=" << minValue << ", minCell=[" << minCell[0] << "," << minCell[1] << "," << minCell[2] << "]" << endl;\
-        fmt = tr("Max = ") + QString(plotAtts->GetFormatString().c_str());\
-        tmp.sprintf(fmt.toStdString().c_str(), maxValue);\
+        fmt = QString("Max = ") + QString(plotAtts->GetFormatString().c_str());\
+        tmp.sprintf(fmt.latin1(), maxValue);\
         maxButton->setText(tmp);\
         maxButton->setEnabled(true);\
         debug5 << mName << "max=" << maxValue << ", maxCell=[" << maxCell[0] << "," << maxCell[1] << "," << maxCell[2] << "]" << endl;
@@ -1225,9 +1265,7 @@ SpreadsheetViewer::displayUnstructuredGrid()
 // Creation:   Tue Feb 20 14:12:46 PST 2007
 //
 // Modifications:
-//   Brad Whitlock, Thu Aug 28 14:09:58 PDT 2008
-//   Fixed a bug with Y slicing.
-//
+//   
 // ****************************************************************************
 
 void
@@ -1292,19 +1330,18 @@ SpreadsheetViewer::calculateMinMaxCells(int meshDims[3],
             BEGIN_MINMAX
             for(int k = 0; k < dims[2]; ++k)
             {
-                int col = k;//dims[2]-1-k;
+                int col = dims[2]-1-k;
                 for(int j = 0; j < dims[1]; ++j)
                 {
                     for(int i = 0; i < dims[0]; ++i, ++index)
                     {
-                        int row = dims[0]-1-i;
                         // If the data has ghost zones then skip ghosts so they
                         // don't mess up min/max calculations.
                         if(ghostZones != 0 && ghostZones[index] != 0)
                             continue;
 
                         double *val = arr->GetTuple(index);
-                        EVAL_MINMAX(j, row, col /*k*/)
+                        EVAL_MINMAX(j, i, col /*k*/)
                     }
                 }
             }
@@ -1401,9 +1438,6 @@ SpreadsheetViewer::updateMinMaxButtons()
 //   Brad Whitlock, Wed Apr 23 11:26:17 PDT 2008
 //   Set nTablesForSlider.
 //
-//   Brad Whitlock, Tue Aug 26 15:31:41 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
@@ -1432,7 +1466,7 @@ SpreadsheetViewer::setNumberOfTabs(int nt, int base, bool structured)
             else
             {
                 QString name; name.sprintf("%d", i);
-                t[i] = new SpreadsheetTable(0);
+                t[i] = new SpreadsheetTable(0, name.latin1());
                 t[i]->setUpdatesEnabled(false);
                 t[i]->setLUT(colorLUT);
                 QFont spreadsheetFont;
@@ -1440,7 +1474,7 @@ SpreadsheetViewer::setNumberOfTabs(int nt, int base, bool structured)
                     t[i]->setFont(spreadsheetFont);
                 connect(t[i], SIGNAL(selectionChanged()),
                         this, SLOT(tableSelectionChanged()));
-                zTabs->addTab(t[i],"");
+                zTabs->addTab(t[i], name);
             }
         }
         nTables = ntabs;
@@ -1458,7 +1492,7 @@ SpreadsheetViewer::setNumberOfTabs(int nt, int base, bool structured)
                 t[i] = tables[i];
             else
             {
-                zTabs->removeTab(zTabs->count()-1);
+                zTabs->removePage(tables[i]);
                 disconnect(tables[i], SIGNAL(selectionChanged()),
                            this, SLOT(tableSelectionChanged()));
                 delete tables[i];
@@ -1483,14 +1517,14 @@ SpreadsheetViewer::setNumberOfTabs(int nt, int base, bool structured)
     {
         QString name;
         if(!structured)
-            name = tr("Unstructured");
+            name.sprintf(tr("Unstructured"));
         else if(plotAtts->GetNormal() == SpreadsheetAttributes::X)
             name.sprintf("i=%d", i+base+offset);
         else if(plotAtts->GetNormal() == SpreadsheetAttributes::Y)
             name.sprintf("j=%d", i+base+offset);
         else
             name.sprintf("k=%d", i+base+offset);
-        zTabs->setTabText(i, name);
+        zTabs->setTabLabel(tables[i], name);
     }
     zTabs->blockSignals(false);
 
@@ -1501,8 +1535,8 @@ SpreadsheetViewer::setNumberOfTabs(int nt, int base, bool structured)
     if(updateSlider)
     {
         kSlider->blockSignals(true);
-        kSlider->setMinimum(0);
-        kSlider->setMaximum(ntabs - 1);
+        kSlider->setMinValue(0);
+        kSlider->setMaxValue(ntabs - 1);
         kSlider->blockSignals(false);
     }
 }
@@ -1520,6 +1554,9 @@ SpreadsheetViewer::setNumberOfTabs(int nt, int base, bool structured)
 //   Brad Whitlock, Wed Apr 23 11:17:21 PDT 2008
 //   Made the labels work better on the Mac where we have only a single
 //   tab in the window.
+//
+//   Brad Whitlock, Fri May  8 09:16:45 PDT 2009
+//   Get a base index from the metadata.
 //
 // ****************************************************************************
 
@@ -1542,13 +1579,14 @@ SpreadsheetViewer::updateSliderLabel()
             base_index[0] = (int)baseIndex->GetTuple1(0);
             base_index[1] = (int)baseIndex->GetTuple1(1);
             base_index[2] = (int)baseIndex->GetTuple1(2);
-            debug5 << mName << "base_index = {"
-                 << base_index[0] << ", "
-                 << base_index[1] << ", "
-                 << base_index[2] << "}\n";
         }
         else
-            debug5 << mName << "No base index" << endl;
+            GetBaseIndexFromMetaData(base_index);
+
+        debug5 << mName << "base_index = {"
+               << base_index[0] << ", "
+               << base_index[1] << ", "
+               << base_index[2] << "}\n";
     }
 
     QString kl;
@@ -1581,9 +1619,7 @@ SpreadsheetViewer::updateSliderLabel()
 // Creation:   Tue Feb 20 14:15:26 PST 2007
 //
 // Modifications:
-//   Brad Whitlock, Tue Aug 26 15:54:05 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
@@ -1596,8 +1632,9 @@ SpreadsheetViewer::clear()
         tables[k]->clearDataArray();
 
     // Update the visible table.
-    if(zTabs->currentIndex() != -1)
-        zTabs->currentWidget()->update();
+    QTable *page = (QTable *)zTabs->currentPage();
+    if(page != 0)
+        page->updateContents();
 
     minButton->setEnabled(false);
     maxButton->setEnabled(false);
@@ -1620,30 +1657,99 @@ SpreadsheetViewer::clear()
 //   Brad Whitlock, Tue Apr 22 10:26:54 PDT 2008
 //   Don't set the enabled state for the operation menu on the Mac.
 //
-//   Brad Whitlock, Tue Aug 26 15:28:00 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
-SpreadsheetViewer::updateMenuEnabledState(int tableIndex)
+SpreadsheetViewer::updateMenuEnabledState(QTable *table)
 {
     //
     // If the sender is the current page then update the menus based on
     // whether it has any selections.
     //
-    if(zTabs->currentIndex() == tableIndex)
+    if(zTabs->currentPage() == table)
     {
-        QTableView *table = (QTableView *)zTabs->currentWidget();
-        bool enabled = table->selectionModel()->hasSelection();
+        bool enabled = table->numSelections() > 0;
 
-        fileMenu_SaveText->setEnabled(enabled);
-        editMenu_Copy->setEnabled(enabled);
+        filePopup->setItemEnabled(saveMenu_SaveTextId, enabled);
+        editPopup->setItemEnabled(editMenu_CopyId, enabled);
 #ifndef Q_WS_MAC
-        operationsMenu->setEnabled(enabled);
-#else
-        opButton->setEnabled(enabled);
+        menuBar()->setItemEnabled(operationMenuId, enabled);
 #endif
+    }
+}
+
+// ****************************************************************************
+// Method: SpreadsheetViewer::GetPickIJK
+//
+// Purpose: 
+//   Determine the IJK from the pick element.
+//
+// Arguments:
+//   pickId   : The pick element.
+//   pickType : 0 == zone, otherwise, node pick.
+//   ijk      : The return ijk values.
+//   
+// Returns:    
+//
+// Programmer: Brad Whitlock
+// Creation:   Tue May 26 11:05:30 PDT 2009
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+SpreadsheetViewer::GetPickIJK(int pickId, int pickType, int *ijk) const
+{
+    ijk[0] = ijk[1] = ijk[2] = -1;
+    int dims[3];
+    if(input->IsA("vtkStructuredGrid"))
+    {
+        vtkStructuredGrid *sgrid = (vtkStructuredGrid *)input;
+        sgrid->GetDimensions(dims);
+        if(pickType == 0) // zone pick
+        {
+            dims[0]--;
+            dims[1]--;
+            dims[2]--;
+        }
+        int base_index[3] = {0,0,0};
+        GetBaseIndexFromMetaData(base_index);
+        int id = pickId - base_index[0];
+        int K = id / (dims[1] * dims[0]);
+        int offset = id - (K * (dims[1] * dims[0]));
+        int J = offset / dims[0];
+        int I = offset % dims[0];
+        ijk[0] = I;
+        ijk[1] = J;
+        ijk[2] = K;
+    }
+    else if(input->IsA("vtkRectilinearGrid"))
+    {
+        vtkRectilinearGrid *rgrid = (vtkRectilinearGrid *)input;
+        rgrid->GetDimensions(dims);
+        if(pickType == 0) // zone pick
+        {
+            dims[0]--;
+            dims[1]--;
+            dims[2]--;
+        }
+        int base_index[3] = {0,0,0};
+        GetBaseIndexFromMetaData(base_index);
+        int id = pickId - base_index[0];
+        int K = id / (dims[1] * dims[0]);
+        int offset = id - (K * (dims[1] * dims[0]));
+        int J = offset / dims[0];
+        int I = offset % dims[0];
+        ijk[0] = I;
+        ijk[1] = J;
+        ijk[2] = K;
+    }
+    else
+    {
+        ijk[0] = pickId;
+        ijk[1] = 0;
+        ijk[2] = 0;
     }
 }
 
@@ -1664,10 +1770,12 @@ SpreadsheetViewer::updateMenuEnabledState(int tableIndex)
 // Creation:   Mon Sep 10 15:05:01 PDT 2007
 //
 // Modifications:
-//   
 //   Hank Childs, Sun Oct 28 21:48:23 PST 2007
 //   Account for layers of ghost zones when calculating indices.
-//   
+//
+//   Brad Whitlock, Tue May 26 11:10:04 PDT 2009
+//   Calculate the ijk indices directly from the pick element.
+//
 // ****************************************************************************
 
 bool
@@ -1712,20 +1820,17 @@ SpreadsheetViewer::moveSliceToCurrentPick()
         if (sliceAxis != -1)
         {
             int ijk[3];
-
+#ifdef OLD_PICK_INDICES
+            // This is how we used to do it -- for reference in case the new way has flaws.
             double *currentPick = plotAtts->GetCurrentPick();
             int cellId = GetCell(currentPick[0], currentPick[1], currentPick[2]);
-
             vtkVisItUtility::GetLogicalIndices(input, true, cellId, ijk, false, false);
+#else
+            GetPickIJK(plotAtts->GetCurrentPick(), plotAtts->GetCurrentPickType(), ijk);
+#endif
             debug5 << mName << "ijk=" << ijk[0] << " " << ijk[1] << " " << ijk[2] << std::endl;
 
-            if (ijk[0] == -1)
-            {
-                debug1 << mName << "Cannot compute logical index for cell ";
-                debug1 << cellId << std::endl;
-            }
-            // ... Select appropriate slice
-            else if (ijk[0] != -1)
+            if (ijk[0] != -1)
             {
                 // If the slice index is not the current slice index then
                 // change the current slice index to match that of the pick.
@@ -1764,8 +1869,8 @@ SpreadsheetViewer::moveSliceToCurrentPick()
 //   Hank Childs, Sun Oct 28 21:48:23 PST 2007
 //   Account for layers of ghost zones when calculating indices.
 //
-//   Brad Whitlock, Thu Aug 28 13:53:57 PDT 2008
-//   Qt 4.
+//   Brad Whitlock, Thu May 21 15:03:49 PDT 2009
+//   I changed the indexing.
 //
 // ****************************************************************************
 
@@ -1780,8 +1885,9 @@ SpreadsheetViewer::selectPickPoints()
     debug5 << mName << "Clearing old pick selections." << std::endl;
     for(int t = 0; t < nTables; ++t)
     {
-        tables[t]->selectionModel()->clear();
+        tables[t]->setCurrentCell(-1,-1);
         tables[t]->clearSelectedCellLabels();
+        tables[t]->clearSelection(true);
     }
 
     // ... Calculate position (slice, row, column) of current pick
@@ -1815,18 +1921,13 @@ SpreadsheetViewer::selectPickPoints()
         if (sliceAxis != -1)
         {
             int ijk[3];
-
-            double *currentPick = plotAtts->GetCurrentPick();
-            int cellId = GetCell(currentPick[0], currentPick[1], currentPick[2]);
-
-            vtkVisItUtility::GetLogicalIndices(input, true, cellId, ijk, false, false);
+            GetPickIJK(plotAtts->GetCurrentPick(), plotAtts->GetCurrentPickType(), ijk);
 
             debug5 << mName << "CP: ijk=" << ijk[0] << " " << ijk[1] << " " << ijk[2] << std::endl;
 
             if (ijk[0] == -1)
             {
                 debug1 << mName << "Cannot compute logical index for cell ";
-                debug1 << cellId << std::endl;
             }
             // ... Select current cell in table
 #ifndef SINGLE_TAB_WINDOW
@@ -1844,31 +1945,28 @@ SpreadsheetViewer::selectPickPoints()
 #endif
                 int col = ijk[columnAxis];
                 // Convert logical index row to spreadsheet row
-                int row = tables[activeTable]->model()->rowCount() - ijk[rowAxis] - 1;
+                int row = tables[activeTable]->numRows() - ijk[rowAxis] - 1;
 
                 // Select the new cell in the active table.
                 debug1 << mName << "Selecting current cell (" << row << ", "
                        << col << ")" << std::endl;
-
-                // Select the new cell.
-                QModelIndex index(tables[activeTable]->model()->index(row, col));
-                tables[activeTable]->selectionModel()->clear();
-                tables[activeTable]->selectionModel()->select(index, QItemSelectionModel::Select);
-                tables[activeTable]->scrollTo(index);
-                tables[activeTable]->addSelectedCellLabel(row, col, plotAtts->GetCurrentPickLetter().c_str());
+                QTableSelection sel;
+                sel.init(row, col);
+                sel.expandTo(row, col);
+                tables[activeTable]->addSelection(sel);
+                tables[activeTable]->ensureCellVisible(row, col);
+                tables[activeTable]->addSelectedCellLabel(row, col, plotAtts->GetCurrentPickLetter());
 
 #ifndef SINGLE_TAB_WINDOW
                 debug1 << mName << "Setting current cell (" << row << ", " << col << ")"
-                       << std::endl; 
-                QModelIndex id = tables[activeTable]->model()->index(row, col);
-                tables[activeTable]->selectionModel()->setCurrentIndex(id, QItemSelectionModel::ClearAndSelect);
+                       << std::endl;
+                tables[activeTable]->setCurrentCell(row, col);
 #else
                 if (ijk[sliceAxis] == plotAtts->GetSliceIndex())
                 {
                     debug1 << mName << "Setting current cell (" << row << ", " << col << ")"
                            << std::endl;
-                    QModelIndex id = tables[activeTable]->model()->index(row, col);
-                    tables[activeTable]->selectionModel()->setCurrentIndex(id, QItemSelectionModel::ClearAndSelect);
+                    tables[activeTable]->setCurrentCell(row, col);
                 }
                 else
                 {
@@ -1880,12 +1978,11 @@ SpreadsheetViewer::selectPickPoints()
             // Now, go through the old picks 
             const vector<double>& pastPicks = plotAtts->GetPastPicks();
             const vector<string>& pastPickLetters = plotAtts->GetPastPickLetters();
-            int numOldPicks = pastPicks.size() / 3;
+            int numOldPicks = pastPicks.size() / 2;
             int old_ijk[3];
             for (int i = 0 ; i < numOldPicks ; i++)
             {
-                int cellId = GetCell(pastPicks[3*i], pastPicks[3*i+1], pastPicks[3*i+2]);
-                vtkVisItUtility::GetLogicalIndices(input, true, cellId, old_ijk, false, false);
+                GetPickIJK(pastPicks[2*i], pastPicks[2*i+1], old_ijk);
 
                 // If old pick is same cell as current pick then skip it
                 if (old_ijk[0] == ijk[0] && old_ijk[1] == ijk[1] && old_ijk[2] == ijk[2])
@@ -1895,7 +1992,7 @@ SpreadsheetViewer::selectPickPoints()
 
 #ifdef SINGLE_TAB_WINDOW
                 // Get row and column of old pick
-                int oldRow = tables[0]->model()->rowCount() - old_ijk[rowAxis] - 1;
+                int oldRow = tables[0]->numRows() - old_ijk[rowAxis] - 1;
                 int oldCol = old_ijk[columnAxis];
 
                 // If old pick is in same slice as current pick -> highlight it
@@ -1903,15 +2000,15 @@ SpreadsheetViewer::selectPickPoints()
                 {
                     debug1 << mName << "Highlight cell (" << oldRow << ", "
                         << oldCol << ") in single slice" << endl;
-                    QModelIndex index(tables[0]->model()->index(oldRow, oldCol));
-                    tables[0]->selectionModel()->select(index, QItemSelectionModel::Select);
-                    tables[0]->selectionModel()->setCurrentIndex(index, QItemSelectionModel::Select);
-                    tables[0]->scrollTo(index);
-                    tables[0]->addSelectedCellLabel(oldRow, oldCol, pastPickLetters[i].c_str());
+                    QTableSelection sel;
+                    sel.init(oldRow, oldCol);
+                    sel.expandTo(oldRow, oldCol);
+                    tables[0]->addSelection(sel);
+                    tables[0]->addSelectedCellLabel(oldRow, oldCol, pastPickLetters[i]);
                 }
 #else
                 // Get row and column of old pick
-                int oldRow = tables[old_ijk[sliceAxis]]->model()->rowCount() - old_ijk[rowAxis] - 1;
+                int oldRow = tables[old_ijk[sliceAxis]]->numRows() - old_ijk[rowAxis] - 1;
                 int oldCol = old_ijk[columnAxis];
 
                 // In multi-tab mode highlight selections in all tables
@@ -1919,12 +2016,11 @@ SpreadsheetViewer::selectPickPoints()
                 {
                     debug1 << mName << "Highlight cell (" << oldRow << ", "
                            << oldCol << ") in table " << old_ijk[sliceAxis] << endl;
-                    SpreadsheetTable *table = tables[old_ijk[sliceAxis]];
-                    QModelIndex index(table->model()->index(oldRow, oldCol));
-                    table->selectionModel()->select(index, QItemSelectionModel::Select);
-                    table->selectionModel()->setCurrentIndex(index, QItemSelectionModel::Select);
-                    table->scrollTo(index);
-                    table->addSelectedCellLabel(oldRow, oldCol, pastPickLetters[i].c_str());
+                    QTableSelection sel;
+                    sel.init(oldRow, oldCol);
+                    sel.expandTo(oldRow, oldCol);
+                    tables[old_ijk[sliceAxis]]->addSelection(sel);
+                    tables[old_ijk[sliceAxis]]->addSelectedCellLabel(oldRow, oldCol, pastPickLetters[i]);
                 }
 #endif
             }
@@ -1958,7 +2054,7 @@ void
 SpreadsheetViewer::formatChanged()
 {
     // Set the attributes and notify the viewer about the changes
-    std::string formatString(formatLineEdit->text().toStdString());
+    std::string formatString(formatLineEdit->text().latin1());
     plotAtts->SetFormatString(formatString);
     plotAtts->Notify();
 }
@@ -1980,10 +2076,7 @@ SpreadsheetViewer::formatChanged()
 // Modifications:
 //   Brad Whitlock, Wed Jun 6 17:24:26 PST 2007
 //   Support using a single tab of values.
-//
-//   Brad Whitlock, Tue Aug 26 15:52:50 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
@@ -2000,11 +2093,11 @@ SpreadsheetViewer::sliderChanged(int slice)
         postNotify();
 
         zTabs->blockSignals(true);
-        zTabs->setCurrentIndex(tabIndex);
+        zTabs->showPage(tables[tabIndex]);
         zTabs->blockSignals(false);
 
         updateSliderLabel();
-        updateMenuEnabledState(tabIndex);
+        updateMenuEnabledState(tables[tabIndex]);
     }
 }
 
@@ -2066,32 +2159,34 @@ SpreadsheetViewer::sliderReleased()
 //   right spreadshset page is visible.
 //
 // Arguments:
-//   index : The new slice value.
+//   val : The new slice value.
 //
 // Programmer: Brad Whitlock
 // Creation:   Tue Feb 20 14:16:44 PST 2007
 //
 // Modifications:
-//   Brad Whitlock, Tue Aug 26 15:53:01 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
-SpreadsheetViewer::tabChanged(int index)
+SpreadsheetViewer::tabChanged(QWidget *tab)
 {
-    if(nTables > 1 && isVisible() && index >= 0)
+    if(nTables > 1 && isVisible())
     {
-        SetUpdate(false);
-        plotAtts->SetSliceIndex(index);
-        plotAtts->Notify();
+        int index = zTabs->indexOf(tab);
+        if(index >= 0)
+        {
+            SetUpdate(false);
+            plotAtts->SetSliceIndex(index);
+            plotAtts->Notify();
 
-        kSlider->blockSignals(true);
-        kSlider->setValue(index);
-        kSlider->blockSignals(false);
+            kSlider->blockSignals(true);
+            kSlider->setValue(index);
+            kSlider->blockSignals(false);
 
-        updateSliderLabel();
-        updateMenuEnabledState(index);
+            updateSliderLabel();
+            updateMenuEnabledState(tables[index]);
+        }
     }
 }
 
@@ -2228,10 +2323,7 @@ SpreadsheetViewer::showCurrentCellOutlineCheckBoxToggled(bool val)
 // Modifications:
 //   Brad Whitlock, Wed Jun 6 17:24:26 PST 2007
 //   Support using a single tab of values.
-//
-//   Brad Whitlock, Wed Aug 27 15:49:42 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
@@ -2246,14 +2338,18 @@ SpreadsheetViewer::minClicked()
     {
         // Show the page and don't block signals so we are sure to also
         // update the kSlider via the tabShanged slot
-        zTabs->setCurrentIndex(minCell[0]);
+        zTabs->showPage(tables[minCell[0]]);
+
+        // Remove the selections that may be on the table.
+        for(int i = 0; i < tables[minCell[0]]->numSelections(); ++i)
+            tables[minCell[0]]->removeSelection(i);
 
         // Select the new cell.
-        SpreadsheetTable *table = tables[minCell[0]];
-        QModelIndex index(table->model()->index(minCell[1], minCell[2]));
-        table->selectionModel()->clear();
-        table->selectionModel()->select(index, QItemSelectionModel::Select);
-        table->scrollTo(index);
+        QTableSelection sel;
+        sel.init(minCell[1], minCell[2]);
+        sel.expandTo(minCell[1], minCell[2]);
+        tables[minCell[0]]->addSelection(sel);
+        tables[minCell[0]]->ensureCellVisible(minCell[1], minCell[2]);
     }
 #else
     if(minCell[0] != -1 && minCell[1] != -1 && minCell[2] != -1)
@@ -2262,12 +2358,16 @@ SpreadsheetViewer::minClicked()
         plotAtts->SetSliceIndex(minCell[0]);
         plotAtts->Notify();
 
+        // Remove the selections that may be on the table.
+        for(int i = 0; i < tables[0]->numSelections(); ++i)
+            tables[0]->removeSelection(i);
+
         // Select the new cell.
-        SpreadsheetTable *table = tables[0];
-        QModelIndex index(table->model()->index(minCell[1], minCell[2]));
-        table->selectionModel()->clear();
-        table->selectionModel()->select(index, QItemSelectionModel::Select);
-        table->scrollTo(index);
+        QTableSelection sel;
+        sel.init(minCell[1], minCell[2]);
+        sel.expandTo(minCell[1], minCell[2]);
+        tables[0]->addSelection(sel);
+        tables[0]->ensureCellVisible(minCell[1], minCell[2]);
     }
 #endif
 }
@@ -2285,32 +2385,33 @@ SpreadsheetViewer::minClicked()
 // Modifications:
 //   Brad Whitlock, Wed Jun 6 17:24:26 PST 2007
 //   Support using a single tab of values.
-//
-//   Brad Whitlock, Wed Aug 27 16:15:32 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
 SpreadsheetViewer::maxClicked()
 {
-    // maxCell[0] = The index of the table that contains min
-    // maxCell[1] = The row of the table that contains min
-    // maxCell[2] = The column of the table that contains min
+    // maxCell[0] = The index of the table that contains max
+    // maxCell[1] = The row of the table that contains max
+    // maxCell[2] = The column of the table that contains max
 #ifndef SINGLE_TAB_WINDOW
     if(maxCell[0] != -1 && maxCell[1] != -1 && maxCell[2] != -1 &&
        maxCell[0] < nTables)
     {
         // Show the page and don't block signals so we are sure to also
         // update the kSlider via the tabShanged slot
-        zTabs->setCurrentIndex(maxCell[0]);
+        zTabs->showPage(tables[maxCell[0]]);
+
+        // Remove the selections that may be on the table.
+        for(int i = 0; i < tables[maxCell[0]]->numSelections(); ++i)
+            tables[maxCell[0]]->removeSelection(i);
 
         // Select the new cell.
-        SpreadsheetTable *table = tables[maxCell[0]];
-        QModelIndex index(table->model()->index(maxCell[1], maxCell[2]));
-        table->selectionModel()->clear();
-        table->selectionModel()->select(index, QItemSelectionModel::Select);
-        table->scrollTo(index);
+        QTableSelection sel;
+        sel.init(maxCell[1], maxCell[2]);
+        sel.expandTo(maxCell[1], maxCell[2]);
+        tables[maxCell[0]]->addSelection(sel);
+        tables[maxCell[0]]->ensureCellVisible(maxCell[1], maxCell[2]);
     }
 #else
     if(maxCell[0] != -1 && maxCell[1] != -1 && maxCell[2] != -1)
@@ -2319,12 +2420,16 @@ SpreadsheetViewer::maxClicked()
         plotAtts->SetSliceIndex(maxCell[0]);
         plotAtts->Notify();
 
+        // Remove the selections that may be on the table.
+        for(int i = 0; i < tables[0]->numSelections(); ++i)
+            tables[0]->removeSelection(i);
+
         // Select the new cell.
-        SpreadsheetTable *table = tables[0];
-        QModelIndex index(table->model()->index(maxCell[1], maxCell[2]));
-        table->selectionModel()->clear();
-        table->selectionModel()->select(index, QItemSelectionModel::Select);
-        table->scrollTo(index);
+        QTableSelection sel;
+        sel.init(maxCell[1], maxCell[2]);
+        sel.expandTo(maxCell[1], maxCell[2]);
+        tables[0]->addSelection(sel);
+        tables[0]->ensureCellVisible(maxCell[1], maxCell[2]);
     }
 #endif
 }
@@ -2395,7 +2500,7 @@ void
 SpreadsheetViewer::selectedColorTable(bool, const QString &ctName)
 {
     // Set the color table in the attributes.
-    plotAtts->SetColorTableName(ctName.toStdString());
+    plotAtts->SetColorTableName(ctName.latin1());
     plotAtts->Notify();
 }
 
@@ -2424,7 +2529,7 @@ SpreadsheetViewer::changedVariable(const QString &newVar)
 
     // Change the plot variable. May need to have this encoded into
     // the xfer object to avoid possible reentrancy problems.
-    plot->GetViewerMethods()->ChangeActivePlotsVar(newVar.toStdString());
+    plot->GetViewerMethods()->ChangeActivePlotsVar(newVar.latin1());
 }
 
 // ****************************************************************************
@@ -2440,9 +2545,6 @@ SpreadsheetViewer::changedVariable(const QString &newVar)
 //   Brad Whitlock, Wed Apr 23 11:28:00 PDT 2008
 //   Support for internationalization.
 //
-//   Brad Whitlock, Tue Aug 26 16:03:11 PDT 2008
-//   Qt 4.
-//
 //   Brad Whitlock, Thu Oct  9 14:12:35 PDT 2008
 //   Added a message about the vertical ordering being different.
 //
@@ -2454,18 +2556,18 @@ SpreadsheetViewer::saveAsText()
     if(nTables > 0)
     {
         // Get the name of the file that the user wants to save
-        QString fileName = QFileDialog::getSaveFileName(this, tr("Save as"), 
-            tr("selection.txt"), tr("Text (*.txt)"));
+        QString fileName = QFileDialog::getSaveFileName(tr("selection.txt"),
+            tr("Text (*.txt)"));
 
         // If the user chose to save a file, write it out.
         if(!fileName.isNull())
         {
-            SpreadsheetTable *t = (SpreadsheetTable *)zTabs->currentWidget();
+            SpreadsheetTable *t = (SpreadsheetTable *)zTabs->currentPage();
             QString txt(t->selectedCellsAsText());
 
             // Save the text to a file.
             QFile file(fileName);
-            if(file.open(QIODevice::WriteOnly))
+            if(file.open(IO_WriteOnly))
             {
                 QTextStream stream( &file );
                 stream << tr("* Note that the vertical ordering of this file's "
@@ -2477,7 +2579,7 @@ SpreadsheetViewer::saveAsText()
             else
             {
                 QString err(tr("Could not write %1.").arg(fileName));
-                plot->Error(err.toStdString().c_str());
+                plot->Error(err.latin1());
             }
         }
     }
@@ -2502,7 +2604,7 @@ SpreadsheetViewer::copySelectionToClipboard()
 {
     if(nTables > 0)
     {
-        SpreadsheetTable *t = (SpreadsheetTable *)zTabs->currentWidget();
+        SpreadsheetTable *t = (SpreadsheetTable *)zTabs->currentPage();
 
         // Copy the text to the clipbard.
         QClipboard *cb = QApplication::clipboard();
@@ -2528,7 +2630,7 @@ SpreadsheetViewer::selectAll()
 {
     if(nTables > 0)
     {
-        SpreadsheetTable *t = (SpreadsheetTable *)zTabs->currentWidget();
+        SpreadsheetTable *t = (SpreadsheetTable *)zTabs->currentPage();
         t->selectAll();
     }
 }
@@ -2551,7 +2653,7 @@ SpreadsheetViewer::selectNone()
 {
     if(nTables > 0)
     {
-        SpreadsheetTable *t = (SpreadsheetTable *)zTabs->currentWidget();
+        SpreadsheetTable *t = (SpreadsheetTable *)zTabs->currentPage();
         t->selectNone();
     }
 }
@@ -2577,7 +2679,7 @@ SpreadsheetViewer::operationSum()
 {
     if(nTables > 0)
     {
-        SpreadsheetTable *t = (SpreadsheetTable *)zTabs->currentWidget();
+        SpreadsheetTable *t = (SpreadsheetTable *)zTabs->currentPage();
         double sum = t->selectedCellsSum();
         QString sumStr;
         sumStr.sprintf(plotAtts->GetFormatString().c_str(), sum);
@@ -2607,13 +2709,264 @@ SpreadsheetViewer::operationAverage()
 {
     if(nTables > 0)
     {
-        SpreadsheetTable *t = (SpreadsheetTable *)zTabs->currentWidget();
+        SpreadsheetTable *t = (SpreadsheetTable *)zTabs->currentPage();
         double avg = t->selectedCellsAverage();
         QString avgStr;
         avgStr.sprintf(plotAtts->GetFormatString().c_str(), avg);
         QString msg(tr("The average value of the selected cells is: %1.").arg(avgStr));
         QMessageBox::information(this, "Average results", msg, QMessageBox::Ok);
     }
+}
+
+// ****************************************************************************
+// Method: SpreadsheetViewer::GetDataVsCoordinate
+//
+// Purpose: 
+//   Extract data and make a curve.
+//
+// Arguments:
+//
+// Returns:    
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri May  8 16:53:13 PDT 2009
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+bool
+SpreadsheetViewer::GetDataVsCoordinate(double *curve, const vtkIdType *indices, 
+    int nvals, int coord) const
+{
+    const char *mName = "SpreadsheetViewer::GetDataVsCoordinate: ";
+
+    // Get the variable and the variable dims from the dataset.
+    vtkDataArray *arr = input->GetPointData()->GetScalars();
+    bool cellCentered = false;
+    if(arr != 0)
+    {
+        debug5 << mName << "node centered scalars" << endl;
+    }
+    else if((arr = input->GetCellData()->GetScalars()) != 0)
+    {
+        cellCentered = true;
+        debug5 << mName << "cell centered scalars" << endl;
+    }
+    else
+        return false;
+
+    int comp = 0;
+    if(coord == 0)
+    {
+        if(plotAtts->GetNormal() == SpreadsheetAttributes::X)
+            comp = 2;
+        else if(plotAtts->GetNormal() == SpreadsheetAttributes::Y)
+            comp = 0;
+        else if(plotAtts->GetNormal() == SpreadsheetAttributes::Z)
+            comp = 0;
+    }
+    else
+    {
+        if(plotAtts->GetNormal() == SpreadsheetAttributes::X)
+            comp = 1;
+        else if(plotAtts->GetNormal() == SpreadsheetAttributes::Y)
+            comp = 2;
+        else if(plotAtts->GetNormal() == SpreadsheetAttributes::Z)
+            comp = 1;
+    }
+
+    bool retval = false;
+    if(input->IsA("vtkRectilinearGrid"))
+    {
+        vtkRectilinearGrid *rgrid = (vtkRectilinearGrid *)input;
+        if(comp == 0)
+        {
+            for(int k = 0; k < nvals; ++k)
+            {
+                curve[k*2  ] = rgrid->GetXCoordinates()->GetTuple1(k);
+                curve[k*2+1] = arr->GetTuple1(indices[k]);
+            }
+        }
+        else if(comp == 1)
+        {
+            for(int i = 0; i < nvals; ++i)
+            {
+                curve[i*2  ] = rgrid->GetYCoordinates()->GetTuple1(i);
+                curve[i*2+1] = arr->GetTuple1(indices[i]);
+            }
+        }
+        else if(comp == 2)
+        {
+            for(int i = 0; i < nvals; ++i)
+            {
+                curve[i*2  ] = rgrid->GetZCoordinates()->GetTuple1(i);
+                curve[i*2+1] = arr->GetTuple1(indices[i]);
+            }
+        }
+        retval = true;
+    }
+    else if(input->IsA("vtkStructuredGrid"))
+    {
+        vtkStructuredGrid *sgrid = (vtkStructuredGrid *)input;
+        if(cellCentered)
+        {
+            int dims[3], cdims[3];
+            sgrid->GetDimensions(dims);
+            cdims[0] = dims[0]-1;
+            cdims[1] = dims[1]-1;
+            cdims[2] = (dims[2] > 1) ? (dims[2]-1) : dims[2];
+
+            for(int i = 0; i < nvals; ++i)
+            {
+                // Turn cell indices[i] into a cell I,J,K
+                int K = indices[i] / (cdims[0]*cdims[1]);
+                int I2 = indices[i] - (K * (cdims[0]*cdims[1]));
+                int J = I2 / cdims[0];
+                int I = I2 % cdims[0];
+
+                // Turn cell I,J,K into node index
+                vtkIdType nodeId = K*dims[1]*dims[0] + J*dims[0] + I;
+
+                curve[i*2  ] = sgrid->GetPoint(nodeId)[comp];
+                curve[i*2+1] = arr->GetTuple1(indices[i]); 
+            }
+        }
+        else
+        {
+            for(int i = 0; i < nvals; ++i)
+            {
+                curve[i*2  ] = sgrid->GetPoint(indices[i])[comp];
+                curve[i*2+1] = arr->GetTuple1(indices[i]);
+            }
+        }
+        retval = true;
+    }
+
+    return retval;
+}
+
+// ****************************************************************************
+// Method: SpreadsheetViewer::DisplayCurve
+//
+// Purpose: 
+//   Display curve data in a new window.
+//
+// Arguments:
+//   vals : The values to display.
+//   nvals : The number of values.
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri May  8 16:52:44 PDT 2009
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+SpreadsheetViewer::DisplayCurve(const double *vals, int nvals)
+{
+    SpreadsheetCurveViewer *v = new SpreadsheetCurveViewer(plot, this);
+    v->setData(vals, nvals);
+    v->show();
+}
+
+// ****************************************************************************
+// Method: SpreadsheetViewer::operationCurveX
+//
+// Purpose: 
+//   Extract a row of data, match it with the X values and make a curve.
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri May  8 16:52:04 PDT 2009
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+SpreadsheetViewer::operationCurveX(int coordIndex)
+{
+    if(nTables > 0)
+    {
+        // These indices are indices into the arr array.
+        SpreadsheetTable *t = (SpreadsheetTable *)zTabs->currentPage();
+        int nvals = 0;
+        vtkIdType *indices = t->selectedRowIndices(nvals);
+        if(nvals > 0)
+        {
+            double *curve = new double[nvals * 2];
+            if(GetDataVsCoordinate(curve, indices, nvals, coordIndex))
+            {
+                DisplayCurve(curve, nvals);
+            }
+
+            delete [] curve;
+            delete [] indices;
+        }
+    }
+}
+
+void
+SpreadsheetViewer::operationCurveX0()
+{
+    operationCurveX(0);
+}
+
+void
+SpreadsheetViewer::operationCurveX1()
+{
+    operationCurveX(1);
+}
+
+// ****************************************************************************
+// Method: SpreadsheetViewer::operationCurveY
+//
+// Purpose: 
+//   Extract a column of data, match it with the X values and make a curve.
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri May  8 16:52:04 PDT 2009
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+SpreadsheetViewer::operationCurveY(int coordIndex)
+{
+    if(nTables > 0)
+    {
+        // These indices are indices into the arr array.
+        SpreadsheetTable *t = (SpreadsheetTable *)zTabs->currentPage();
+        int nvals = 0;
+        vtkIdType *indices = t->selectedColumnIndices(nvals);
+        if(nvals > 0)
+        {
+            double *curve = new double[nvals * 2];
+            if(GetDataVsCoordinate(curve, indices, nvals, coordIndex))
+            {
+                DisplayCurve(curve, nvals);
+            }
+
+            delete [] curve;
+            delete [] indices;
+        }
+    }
+}
+
+void
+SpreadsheetViewer::operationCurveY0()
+{
+    operationCurveY(0);
+}
+
+void
+SpreadsheetViewer::operationCurveY1()
+{
+    operationCurveY(1);
 }
 
 // ****************************************************************************
@@ -2627,93 +2980,11 @@ SpreadsheetViewer::operationAverage()
 // Creation:   Thu Feb 22 13:27:01 PST 2007
 //
 // Modifications:
-//   Brad Whitlock, Wed Aug 27 11:16:34 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
 SpreadsheetViewer::tableSelectionChanged()
 {
-    updateMenuEnabledState(zTabs->indexOf((QWidget *)sender()));
+    updateMenuEnabledState((QTable *)sender());
 }
-
-// ****************************************************************************
-// Method: SpreadsheetViewer::GetCell
-//
-// Purpose: 
-//     Given a pick location, this determines which cell the pick location lies
-//     in.
-//
-// Arguments:
-//     X       The x location of the pick.
-//     Y       The y location of the pick.
-//     Z       The z location of the pick.
-//
-// Returns:    The index of the cell that was picked.  <0 for errors.
-//
-// Programmer: Hank Childs
-// Creation:   September 4, 2007
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-int
-SpreadsheetViewer::GetCell(double X, double Y, double Z)
-{
-    int  i;
-    int  cell = -1;
-
-    if (input == NULL)
-        return -1;
-
-    double pt[3] = { X, Y, Z };
-
-    int prevPicks = cellId.size();
-    for (i = 0 ; i < prevPicks ; i++)
-    {
-        if (pickPt[3*i] == X && pickPt[3*i+1] == Y && pickPt[3*i+2] == Z)
-            return cellId[i];
-    }
-
-    if (input->GetDataObjectType() == VTK_RECTILINEAR_GRID)
-    {
-        vtkRectilinearGrid *rgrid = (vtkRectilinearGrid *) input;
-        int ijk[3];
-        bool success =
-                 vtkVisItUtility::ComputeStructuredCoordinates(rgrid, pt, ijk);
-        if (!success)
-            return -1;
-        int dims[3];
-        rgrid->GetDimensions(dims);
-        cell = ijk[2]*(dims[0]-1)*(dims[1]-1) + ijk[1]*(dims[0]-1) + ijk[0];
-    }
-    else
-    {
-        vtkVisItCellLocator *loc = vtkVisItCellLocator::New();
-        loc->SetDataSet(input);
-        loc->BuildLocator();
-       
-        int subId = 0;
-        double cp[3] = {0., 0., 0.};
-        int foundCell;
-        double dist;
-        int success = loc->FindClosestPointWithinRadius(pt, FLT_MAX, cp,
-                                                   foundCell, subId, dist);
-        loc->Delete();
-
-        if (foundCell < 0)
-            cell = -1;
-        else
-            cell = foundCell;
-    }
-
-    pickPt.push_back(X);
-    pickPt.push_back(Y);
-    pickPt.push_back(Z);
-    cellId.push_back(cell);
-
-    return cell;
-}
-

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,7 +37,7 @@
 *****************************************************************************/
 #ifndef XMLEDIT_CODESELECTION_DIALOG_H
 #define XMLEDIT_CODESELECTION_DIALOG_H
-#include <QDialog>
+#include <qdialog.h>
 #include <XMLToolIds.h>
 
 class QCheckBox;
@@ -59,7 +59,7 @@ class XMLEditCodeSelectionDialog : public QDialog
 {
     Q_OBJECT
 public:
-    XMLEditCodeSelectionDialog(QWidget *parent);
+    XMLEditCodeSelectionDialog(QWidget *parent, const char *name = 0);
     virtual ~XMLEditCodeSelectionDialog();
 
     static bool selectTools(const QString &caption, bool *useTools, 

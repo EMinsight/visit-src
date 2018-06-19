@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -55,6 +55,7 @@ using std::vector;
 
 class avtMeshMetaData;
 class DBOptionsAttributes;
+class vtkCellData;
 
 // ****************************************************************************
 //  Class: avtITAPS_CWriter
@@ -68,6 +69,12 @@ class DBOptionsAttributes;
 //  Modifications:
 //    Mark C. Miller, Wed Jan 14 17:54:21 PST 2009
 //    Added some bools to control behavior of output to iMesh 
+//
+//    Mark C. Miller, Tue Apr 21 15:53:42 PDT 2009
+//    Added storage for spatial and topoligical dimension of mesh.
+//
+//    Mark C. Miller, Wed May 20 09:56:36 PDT 2009
+//    Added WriteMaterial method
 // ****************************************************************************
 
 class avtITAPS_CWriter : public virtual avtDatabaseWriter
@@ -88,7 +95,13 @@ class avtITAPS_CWriter : public virtual avtDatabaseWriter
     virtual void   WriteChunk(vtkDataSet *, int);
     virtual void   CloseFile(void);
 
-    enum iMesh_EntityTopology VTKZoneTypeToITAPS_CZoneType(int);
+    virtual void   WriteMaterial(vtkCellData *cd, int chunk,
+                       iMesh_Instance itapsMesh,
+                       iBase_EntitySetHandle rootSet,
+                       iBase_EntitySetHandle chunkSet,
+                       iBase_EntityHandle *clHdls);
+
+    enum iMesh_EntityTopology VTKZoneTypeToITAPS_MOABZoneType(int);
 
   private:
     string         stem;
@@ -99,6 +112,8 @@ class avtITAPS_CWriter : public virtual avtDatabaseWriter
     bool           addFacesFor3DEnts;
     bool           preventDupsToiMesh;
     int            nblocks;
+    int            spatialDim;
+    int            topoDim;
 };
 
 #endif

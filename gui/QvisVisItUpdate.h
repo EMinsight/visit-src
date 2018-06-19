@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,13 +39,12 @@
 #ifndef QVIS_VISIT_UPDATE_H
 #define QVIS_VISIT_UPDATE_H
 #include <GUIBase.h>
-#include <QObject>
-#include <QStringList>
-#include <QByteArray>
-#include <QProcess>
+#include <qobject.h>
+#include <qstringlist.h>
+#include <QvisFtp.h>
 
+class QProcess;
 class QUrlInfo;
-class QvisDownloader;
 
 // ****************************************************************************
 // Class: QvisVisItUpdate
@@ -70,16 +69,13 @@ class QvisDownloader;
 //   Added keyword `public' for inheritance of GUIBase.  This addresses
 //   compiler warning on xlC.
 //
-//   Brad Whitlock, Thu Oct  2 10:45:14 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 class QvisVisItUpdate : public QObject, public GUIBase
 {
     Q_OBJECT
 public:
-    QvisVisItUpdate(QObject *parent = 0);
+    QvisVisItUpdate(QObject *parent = 0, const char *name = 0);
     virtual ~QvisVisItUpdate();
 
 public slots:
@@ -89,33 +85,36 @@ signals:
     void installationComplete(const QString &);
 private slots:
     void initiateStage();
-    void doneSubmittingRunInfo(bool);
-    void determineNewVersion(bool error);
-    void downloadDone(bool error);
-    void getRequiredFiles();
-    void reportDownloadProgress(int done, int total);
+    void initiateDownload();
+    void ftp_commandStarted();
+    void ftp_commandFinished();
+    void ftp_done(bool);
+    void ftp_stateChanged(int);
+    void ftp_listInfo(const QUrlInfo &);
+    void ftp_reportDownloadProgress(int,int);
+
     void readInstallerStdout();
     void readInstallerStderr();
-    void emitInstallationComplete(int);
+    void emitInstallationComplete();
 private:
-    QString runInformationString() const;
+    void    provideLogin();
     void    nextStage();
+    QString latestDirectory() const;
     QString localTempDirectory() const;
     QString getInstallationDir() const;
+    void    getRequiredFiles();
     void    installVisIt();
     void    cleanUp();
-    QString remoteToLocalName(const QString &remote) const;
 
-    QvisDownloader *downloader;
-    QProcess       *installProcess;
-    int             stage;
-    QString         distName;
-    QString         configName;
-    QString         bankName;
-    QString         latestVersion;
-    QStringList     files;
-    QStringList     downloads;
-    QByteArray      bytes;
+    QvisFtp     *ftp;
+    QProcess    *installProcess;
+    int          stage;
+    QString      distName;
+    QString      configName;
+    QString      bankName;
+    QString      latestVersion;
+    QStringList  files;
+    QStringList  downloads;
 };
 
 #endif

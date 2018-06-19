@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -49,7 +49,9 @@ Consider the leaveDomains SLs and the balancing at the same time.
  **/
 
 #include <avtStreamlineFilter.h>
-
+#include "avtSerialSLAlgorithm.h"
+#include "avtParDomSLAlgorithm.h"
+#include "avtMasterSlaveSLAlgorithm.h"
 #include <math.h>
 #include <visitstream.h>
 
@@ -58,9 +60,9 @@ Consider the leaveDomains SLs and the balancing at the same time.
 #include <vtkCellData.h>
 #include <vtkDataSet.h>
 #include <vtkFloatArray.h>
-#include <vtkInterpolatedVelocityField.h>
 #include <vtkLineSource.h>
 #include <vtkPlaneSource.h>
+#include <vtkPlane.h>
 #include <vtkPoints.h>
 #include <vtkPointData.h>
 #include <vtkPolyData.h>
@@ -70,14 +72,21 @@ Consider the leaveDomains SLs and the balancing at the same time.
 #include <vtkGlyph3D.h>
 
 #include <vtkVisItCellLocator.h>
+#include <vtkVisItInterpolatedVelocityField.h>
 
+#include <avtCallback.h>
+#include <avtDatabase.h>
+#include <avtDatabaseMetaData.h>
 #include <avtDataset.h>
 #include <avtDataTree.h>
 #include <avtDatasetExaminer.h>
 #include <avtExtents.h>
 #include <avtIVPVTKField.h>
+#include <avtIVPVTKTimeVaryingField.h>
 #include <avtIVPDopri5.h>
 #include <avtIVPAdamsBashforth.h>
+#include <avtIVPM3DC1Integrator.h>
+#include <avtIVPM3DC1Field.h>
 #include <avtIntervalTree.h>
 #include <avtMetaData.h>
 #include <avtParallel.h>
@@ -87,9 +96,12 @@ Consider the leaveDomains SLs and the balancing at the same time.
 #include <DebugStream.h>
 #include <MemStream.h>
 #include <TimingsManager.h>
+#include <InvalidFilesException.h>
 #include <Expression.h>
 #include <ExpressionList.h>
 #include <ParsingExprList.h>
+#include <VisItStreamUtil.h>
+#include <snprintf.h>
 
 #ifdef PARALLEL
 #include <time.h> // needed for nanosleep
@@ -97,534 +109,6 @@ Consider the leaveDomains SLs and the balancing at the same time.
 #endif
 
 #define INIT_POINT(p, a, b, c) (p)[0] = a; (p)[1] = b; (p)[2] = c;
-
-static const int STREAMLINE_TAG = 420000;
-static const int STATUS_TAG  = 420001;
-static const int DOMAIN_TAG = 420002;
-static const int MAX_SLMSG_SZ = 10*1024*1024;
-
-static const int MSG_STATUS = 420003;
-static const int MSG_DONE = 420004;
-static const int MSG_BALANCE = 420005;
-static const int MSG_SEND_SL = 420005;
-static const int MSG_LOAD_DOMAIN = 420006;
-static const int MSG_SEND_SL_HINT = 420007;
-static const int MSG_FORCE_SEND_STATUS = 420008;
-
-
-// ****************************************************************************
-//  Method: avtStreamlineWrapper constructor
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 16, 2008
-//
-//  Modifications:
-//   Dave Pugmire, Wed Aug 20 10:37:24 EST 2008
-//   Initialize some previously unitialized member data.
-//
-//   Dave Pugmire, Fri Aug 22 14:47:11 EST 2008
-//   Add a seed point id attribute to each streamline.
-//
-// ****************************************************************************
-
-avtStreamlineWrapper::avtStreamlineWrapper()
-{
-    status = UNSET;
-    domain = -1;
-    numTimesCommunicated = 0;
-    sl = NULL;
-    dir = FWD;
-    maxCnt = sum= numDomainsVisited = 0;
-    id = -1;
-}
-
-
-// ****************************************************************************
-//  Method: avtStreamlineWrapper constructor
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 16, 2008
-//
-//  Modifications:
-//   Dave Pugmire, Wed Aug 20 10:37:24 EST 2008
-//   Initialize some previously unitialized member data.
-//
-//   Dave Pugmire, Fri Aug 22 14:47:11 EST 2008
-//   Add a seed point id attribute to each streamline.
-//
-// ****************************************************************************
-
-avtStreamlineWrapper::avtStreamlineWrapper(avtStreamline *s, Dir slDir, int ID)
-{
-    sl = s;
-    status = UNSET;
-    domain = -1;
-    dir = slDir;
-    numTimesCommunicated = 0;
-    maxCnt = sum= numDomainsVisited = 0;
-    id = ID;
-}
-
-
-// ****************************************************************************
-//  Method: avtStreamlineWrapper destructor
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 16, 2008
-//
-// ****************************************************************************
-
-avtStreamlineWrapper::~avtStreamlineWrapper()
-{
-    if (sl)
-        delete sl;
-}
-
-
-// ****************************************************************************
-//  Method: avtStreamlineWrapper::Debug
-//
-//  Purpose:
-//      Outputs debug information.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 16, 2008
-//
-//  Modifications:
-//   Dave Pugmire, Wed Aug 13 14:11:04 EST 2008
-//   Print out how many steps have been taken.
-//
-// ****************************************************************************
-
-void
-avtStreamlineWrapper::Debug()
-{
-    debug1 << "avtStreamlineWrapper::Debug()\n";
-
-    avtVec ends[2];
-    sl->PtEnds(ends[0], ends[1]);
-    if (dir == FWD)
-        debug1<<"******seed: ["<<ends[1].values()[0]<<", "
-              <<ends[1].values()[1]<<", "<<ends[1].values()[2]<<"]";
-    else
-        debug1<<"******seed: ["<<ends[0].values()[0]<<", "
-              <<ends[0].values()[1]<<", "<<ends[0].values()[2]<<"]";
-
-    debug1<<" Dom= [ "<<domain<<", ";
-    for (int i = 0; i < seedPtDomainList.size(); i++)
-        debug1<<seedPtDomainList[i]<<", ";
-    debug1<<"] ";
-    debug1<< " steps= "<<sl->size()<<endl;
-}
-
-
-// ****************************************************************************
-//  Method: avtStreamlineWrapper::Serialize
-//
-//  Purpose:
-//      Serializes into a byte stream.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 16, 2008
-//
-//  Modifications:
-//   Dave Pugmire, Fri Aug 22 14:47:11 EST 2008
-//   Add a seed point id attribute to each streamline.
-//
-// ****************************************************************************
-
-void
-avtStreamlineWrapper::Serialize(MemStream::Mode mode, MemStream &buff, 
-                                avtIVPSolver *solver)
-{
-    //debug1 << "avtStreamlineWrapper::Serialize. sz= "<<buff.buffLen()<< endl;
-
-    buff.io(mode, dir);
-    buff.io(mode, id);
-    buff.io(mode, domain);
-    buff.io(mode, status);
-    buff.io(mode, numTimesCommunicated);
-    buff.io(mode, domainVisitCnts);
-    if (mode == MemStream::READ)
-    {
-        if (sl)
-            delete sl;
-        sl = new avtStreamline;
-    }
-    sl->Serialize(mode, buff, solver);
-    //debug1 << "DONE: avtStreamlineWrapper::Serialize. sz= "<< buff.buffLen()
-    //       << endl;
-}
-
-
-// ****************************************************************************
-//  Method: avtStreamlineWrapper::GetVTKPolyData
-//
-//  Purpose:
-//      Converts the data into a VTK poly data object.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 16, 2008
-//
-//  Modifications:
-//
-//   Dave Pugmire, Wed Aug 13 14:11:04 EST 2008
-//   Step derivative is not giving the right answer. So, use the velEnd vector
-//   for coloring by speed.
-//
-//   Dave Pugmire, Fri Aug 22 14:47:11 EST 2008
-//   Add new coloring methods, length, time and ID.
-//
-// ****************************************************************************
-
-vtkPolyData *
-avtStreamlineWrapper::GetVTKPolyData(int spatialDim, int coloringMethod, 
-                                     int displayMethod, vector<float> &thetas)
-{
-    if (sl == NULL || sl->size() == 0)
-        return NULL;
-
-    vtkPoints *points = vtkPoints::New();
-    vtkCellArray *cells = vtkCellArray::New();
-    vtkFloatArray *scalars = vtkFloatArray::New();
-    
-    cells->InsertNextCell(sl->size());
-    scalars->Allocate(sl->size());
-    avtStreamline::iterator siter;
-    
-    unsigned int i = 0;
-    float val = 0.0, theta = 0.0;
-    debug1<<"Create vtkPolyData\n";
-    for(siter = sl->begin(); siter != sl->end(); ++siter, i++)
-    {
-        debug1<<i<<": "<< (*siter)->front()<<endl;
-        points->InsertPoint(i, (*siter)->front()[0], (*siter)->front()[1], 
-                            (spatialDim > 2 ? (*siter)->front()[2] : 0.0));
-        cells->InsertCellPoint(i);
-
-        avtIVPStep *step = (*siter);
-
-        // Set the speed/vorticity.
-        if (coloringMethod == STREAMLINE_COLOR_SPEED)
-        {
-            avtVec deriv = step->velEnd;
-            val = deriv.values()[0]*deriv.values()[0] 
-                + deriv.values()[1]*deriv.values()[1];
-            if (spatialDim == 3)
-                val += deriv.values()[2]*deriv.values()[2];
-            val = sqrt(val);
-        }
-        else if (coloringMethod ==  STREAMLINE_COLOR_ARCLENGTH)
-        {
-            val += step->length();
-        }
-        else if (coloringMethod ==  STREAMLINE_COLOR_TIME)
-        {
-            val = step->tEnd;
-        }
-        else if (coloringMethod ==  STREAMLINE_COLOR_ID)
-        {
-            val = (float)id;
-        }
-        
-        if (coloringMethod == STREAMLINE_COLOR_VORTICITY || 
-            displayMethod == STREAMLINE_DISPLAY_RIBBONS)
-        {
-            double dT = (step->tEnd - step->tStart);
-            float scaledVort = step->vorticity * dT;
-            theta += scaledVort;
-            thetas.push_back(theta);
-            if (coloringMethod == STREAMLINE_COLOR_VORTICITY)
-                val = scaledVort;
-        }
-        
-        scalars->InsertTuple1(i, val);
-    }
-    
-    //Create the polydata.
-    vtkPolyData *pd = vtkPolyData::New();
-    pd->SetPoints(points);
-    pd->SetLines(cells);
-    scalars->SetName("colorVar");
-    pd->GetPointData()->SetScalars(scalars);
-
-    points->Delete();
-    cells->Delete();
-    scalars->Delete();
-
-    return pd;
-}
-
-
-// ****************************************************************************
-//  Method: avtStreamlineWrapper::GetStartPoint
-//
-//  Purpose:
-//      Gets the starting point.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 16, 2008
-//
-// ****************************************************************************
-
-void
-avtStreamlineWrapper::GetStartPoint(pt3d &pt)
-{
-    avtVec p = sl->PtStart();
-    
-    pt.xyz[0] = p.values()[0];
-    pt.xyz[1] = p.values()[1];
-    pt.xyz[2] = p.values()[2];
-}
-
-
-// ****************************************************************************
-//  Method: avtStreamlineWrapper::GetEndPoint
-//
-//  Purpose:
-//      Gets the ending point.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 16, 2008
-//
-// ****************************************************************************
-
-void
-avtStreamlineWrapper::GetEndPoint(pt3d &pt)
-{
-    avtVec ptBwd(0,0,0), ptFwd(0,0,0);
-    
-    sl->PtEnds(ptBwd, ptFwd);
-    if (dir == FWD)
-    {
-        pt.xyz[0] = ptFwd.values()[0];
-        pt.xyz[1] = ptFwd.values()[1];
-        pt.xyz[2] = ptFwd.values()[2];
-    }
-    else
-    {
-        pt.xyz[0] = ptBwd.values()[0];
-        pt.xyz[1] = ptBwd.values()[1];
-        pt.xyz[2] = ptBwd.values()[2];
-    }
-    
-    //debug1<<"avtStreamlineWrapper::GetEndPoint() = ["<<pt.xyz[0]<<" "
-    //      <<pt.xyz[1]<<" "<<pt.xyz[2]<<"]"<<endl;
-}
-
-
-// ****************************************************************************
-//  Method: avtStreamlineWrapper::UpdateDomainCount
-//
-//  Purpose:
-//      Updates the domain count.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 16, 2008
-//
-// ****************************************************************************
-
-void
-avtStreamlineWrapper::UpdateDomainCount(int dom)
-{
-    if (dom+1 > domainVisitCnts.size())
-        domainVisitCnts.resize(dom+1, 0);
-
-    domainVisitCnts[dom]++; 
-}
-
-
-// ****************************************************************************
-//  Method: avtStreamlineWrapper::ComputeStatistics
-//
-//  Purpose:
-//      Computes statistics on the number of domains visited.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 16, 2008
-//
-// ****************************************************************************
-
-void
-avtStreamlineWrapper::ComputeStatistics()
-{
-    maxCnt = 0;
-    sum = 0;
-    numDomainsVisited = 0;
-    for (int i = 0; i < domainVisitCnts.size(); i++)
-    {
-        int cnt = domainVisitCnts[i];
-        if (cnt > maxCnt)
-            maxCnt = cnt;
-        if (cnt > 0)
-            numDomainsVisited++;
-        sum += cnt;
-    }
-}
-
-// ****************************************************************************
-//  Method: SlaveInfo::SlaveInfo
-//
-//  Purpose:
-//      Slave information class.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   January 15, 2009
-//
-// ****************************************************************************
-
-SlaveInfo::SlaveInfo( int r, int nDomains )
-{
-    justUpdated = false;
-    balance = 0.0;
-    canGive = canAccept = slCount = slLoadedCount = slOOBCount = 0;
-    domLoadedCount = 0;
-    domainCnt.resize(nDomains, 0);
-    domainLoaded.resize(nDomains, false);
-    rank = r;
-}
-
-// ****************************************************************************
-//  Method: SlaveInfo::AddSL
-//
-//  Purpose:
-//      Slave information class.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   January 15, 2009
-//
-// ****************************************************************************
-
-void SlaveInfo::AddSL( int slDomain)
-{
-    //We assume that it will get loaded..
-    domainLoaded[slDomain] = true;
-    domainCnt[slDomain]++;
-    slCount++;
-    slLoadedCount++;
-    justUpdated = false;
-}
-
-// ****************************************************************************
-//  Method: SlaveInfo::RemoveSL
-//
-//  Purpose:
-//      Slave information class.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   January 15, 2009
-//
-// ****************************************************************************
-    
-void SlaveInfo::RemoveSL( int dom )
-{
-    domainCnt[dom]--;
-    //We assume that it will get loaded..
-    slCount--;
-    if (domainLoaded[dom])
-        slLoadedCount--;
-    else
-        slOOBCount--;
-    justUpdated = false;
-}
-
-
-// ****************************************************************************
-//  Method: SlaveInfo::Update
-//
-//  Purpose:
-//      Slave information class.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   January 15, 2009
-//
-// ****************************************************************************
-
-void SlaveInfo::Update( vector<int> &status, bool debug )
-{
-    justUpdated = (status[0] != 0);
-    if (status[0] == 0)
-    {
-        if (debug)
-            Debug();
-        return;
-    }
-    status[0] = 0;
-    
-    slCount = 0;
-    slLoadedCount = 0;
-    slOOBCount = 0;
-    domLoadedCount = 0;
-    for (int i = 0; i < domainLoaded.size(); i++)
-    {
-        int cnt = status[i+1];
-        if (cnt == 0)
-        {
-            domainCnt[i] = 0;
-            domainLoaded[i] = false;
-        }
-        else if (cnt > 0)
-        {
-            cnt -= 1;  //1 means domain is loaded, slCnt = 1+
-            domainCnt[i] = cnt;
-            domainLoaded[i] = true;
-            slCount += cnt;
-            slLoadedCount += cnt;
-        }
-        else
-        {
-            domainCnt[i] = -cnt;
-            domainLoaded[i] = false;
-            slCount += (-cnt);
-            slOOBCount += (-cnt);
-        }
-    }
-    for (int i = 0; i < domainLoaded.size(); i++)
-        domLoadedCount += (domainLoaded[i] ? 1 : 0);
-    
-    if (debug)
-        Debug();
-}
-
-// ****************************************************************************
-//  Method: SlaveInfo::Debug
-//
-//  Purpose:
-//      Slave information class.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   January 15, 2009
-//
-// ****************************************************************************
-
-void SlaveInfo::Debug()
-{
-    bool slacker = (slLoadedCount == 0);
-    debug1<<setw(2)<<rank;
-    debug1<<": "<<setw(3)<<slCount<<" ("<<setw(3)<<slLoadedCount<<", "<<setw(3)<<slOOBCount<<") [";
-    for (int i = 0; i < domainCnt.size(); i++)
-    {
-        int N = 0;
-        int cnt = domainCnt[i];
-        if (domainLoaded[i])
-            N = (cnt > 0 ? cnt+1 : 1);
-        else
-            N = -cnt;
-        
-        debug1<<setw(4)<<N<<" ";
-    }
-    debug1<<"] ("<<domLoadedCount<<")";
-    debug1<< (slacker ? "S" : " ");
-    if (justUpdated)
-    {
-        debug1<<" ***";
-        if (slLoadedCount == 0)
-            debug1<<" SLACKER: "<<rank;
-        else
-            debug1<<" UPDATE: "<<rank;              
-    }
-    debug1<<endl;
-}
 
 // ****************************************************************************
 //  Method: avtStreamlineFilter constructor
@@ -660,13 +144,40 @@ void SlaveInfo::Debug()
 //   Dave Pugmire, Thu Dec 18 13:24:23 EST 2008
 //   Add 3 point density vars.
 //
+//   Dave Pugmire, Mon Feb 23, 09:11:34 EST 2009
+//   Added termination by number of steps.
+//
+//   Dave Pugmire, Mon Feb 23 13:38:49 EST 2009
+//   Initialize the initial domain load count and timer.
+//
+//   Dave Pugmire (on behalf of Hank Childs), Tue Feb 24 09:39:17 EST 2009
+//   Initial implemenation of pathlines.
+//
+//   Dave Pugmire, Tue Mar 10 12:41:11 EDT 2009
+//   Generalized domain to include domain/time. Pathine cleanup.
+//
+//   Hank Childs, Sun Mar 22 11:30:40 CDT 2009
+//   Initialize specifyPoint.
+//
+//   Dave Pugmire, Tue Mar 31 17:01:17 EDT 2009
+//   Initialize seedTimeStep0 and seedTime0.
+//
+//   Dave Pugmire, Tue Aug 11 10:25:45 EDT 2009
+//   Add new termination criterion: Number of intersections with an object.
+//
 // ****************************************************************************
 
 avtStreamlineFilter::avtStreamlineFilter()
 {
-    normalizedVecExprName = "";
+    doPathlines = false;
+    seedTimeStep0 = 0;
+    seedTime0 = 0.0;
+    pathlineNextTimeVar = "__pathlineNextTimeVar__";
+    pathlineVar = "";
+    avtSLAlgorithm *slAlgo = NULL;
+
     maxStepLength = 0.;
-    terminationType = STREAMLINE_TERMINATE_DISTANCE;
+    terminationType = avtIVPSolver::TIME;
     termination = 100.;
     showStart = true;
     radius = 0.125;
@@ -676,11 +187,11 @@ avtStreamlineFilter::avtStreamlineFilter()
     coloringMethod = STREAMLINE_COLOR_SPEED;
     displayMethod = STREAMLINE_DISPLAY_LINES;
     streamlineDirection = VTK_INTEGRATE_FORWARD;
-    integrationType = STREAMLINE_INTEGRATE_DORLAND_PRINCE;
+    integrationType = STREAMLINE_INTEGRATE_DORMAND_PRINCE;
     relTol = 1e-7;
     absTol = 0;
-    haveGhostZones = false;
     intervalTree = NULL;
+    specifyPoint = false;
     solver = NULL;
     dataSpatialDimension = 3;
 
@@ -700,6 +211,10 @@ avtStreamlineFilter::avtStreamlineFilter()
     INIT_POINT(boxExtents, 0., 1., 0.);
     INIT_POINT(boxExtents+3, 1., 0., 1.);
     useWholeBox = false;
+    InitialIOTime = 0.0;
+    InitialDomLoads = 0;
+    activeTimeStep = -1;
+    intersectObj = NULL;
 }
 
 
@@ -719,13 +234,22 @@ avtStreamlineFilter::avtStreamlineFilter()
 //    Hank Childs, Fri Aug 22 09:41:02 PDT 2008
 //    Move deletion of solver to PostExecute.
 //
+//   Dave Pugmire, Tue Mar 10 12:41:11 EDT 2009
+//   Generalized domain to include domain/time. Pathine cleanup.
+//
+//   Dave Pugmire, Tue Aug 11 10:25:45 EDT 2009
+//   Add new termination criterion: Number of intersections with an object.
+//
 // ****************************************************************************
 
 avtStreamlineFilter::~avtStreamlineFilter()
 {
-    std::map<int, vtkVisItCellLocator*>::const_iterator it;
+    std::map<DomainType, vtkVisItCellLocator*>::const_iterator it;
     for ( it = domainToCellLocatorMap.begin(); it != domainToCellLocatorMap.end(); it++ )
         it->second->Delete();
+
+    if (intersectObj)
+        intersectObj->Delete();
 }
 
 // ****************************************************************************
@@ -736,6 +260,11 @@ avtStreamlineFilter::~avtStreamlineFilter()
 //
 //  Programmer: Dave Pugmire
 //  Creation:   June 23, 2008
+//
+//  Modifications:
+//
+//   Dave Pugmire, Tue Mar 10 12:41:11 EDT 2009
+//   Generalized domain to include domain/time. Pathine cleanup.
 //
 // ****************************************************************************
 
@@ -749,7 +278,9 @@ avtStreamlineFilter::ComputeRankList(const vector<int> &domList,
     for (int i = 0; i < domList.size(); i++)
     {
         int dom = domList[i];
-        int proc = DomainToRank(dom);
+        DomainType d(dom, 0);
+        // TODO: Should this be DomainType d(dom, activeTimeStep); instead?
+        int proc = DomainToRank(d);
         r.push_back(proc);
     }
 
@@ -784,19 +315,30 @@ avtStreamlineFilter::ComputeRankList(const vector<int> &domList,
 //  Programmer: Dave Pugmire
 //  Creation:   June 23, 2008
 //
+//  Modifications:
+//
+//   Dave Pugmire, Tue Mar 10 12:41:11 EDT 2009
+//   Generalized domain to include domain/time. Pathine cleanup.
+//
 // ****************************************************************************
 
 void
 avtStreamlineFilter::SetDomain(avtStreamlineWrapper *slSeg)
 {
-    pt3d endPt;
-    slSeg->GetEndPoint(endPt);
-    
-    slSeg->seedPtDomainList.resize(0);
-    intervalTree->GetElementsListFromRange(endPt.xyz, endPt.xyz, 
-                                           slSeg->seedPtDomainList);
+    avtVector endPt;
+    double t;
+    slSeg->GetEndPoint(endPt, t);
+    double xyz[3] = {endPt.x, endPt.y, endPt.z};
 
-    slSeg->domain = -1;
+    int timeStep = GetTimeStep(t);
+
+    slSeg->seedPtDomainList.resize(0);
+    vector<int> doms;
+    intervalTree->GetElementsListFromRange(xyz, xyz, doms);
+    debug5<<"SetDomain(): pt= "<<endPt<<" T= "<<t<<" step= "<<timeStep<<" domCandidates: "<<doms<<endl;
+    for (int i = 0; i < doms.size(); i++)
+        slSeg->seedPtDomainList.push_back(DomainType(doms[i], timeStep));
+    slSeg->domain = DomainType(-1,0);
     // 1 domain, easy.
     if (slSeg->seedPtDomainList.size() == 1)
         slSeg->domain = slSeg->seedPtDomainList[0];
@@ -806,11 +348,11 @@ avtStreamlineFilter::SetDomain(avtStreamlineWrapper *slSeg)
     else if (slSeg->seedPtDomainList.size() > 1)
     {
         // See if the point is contained in a domain owned by "me".
-        vector<int> newDomList;
+        vector<DomainType> newDomList;
         bool foundOwner = false;
         for (int i = 0; i < slSeg->seedPtDomainList.size(); i++)
         {
-            int dom = slSeg->seedPtDomainList[i];
+            DomainType dom = slSeg->seedPtDomainList[i];
             if (OwnDomain(dom))
             {
                 // If point is inside domain, we are done.
@@ -837,6 +379,7 @@ avtStreamlineFilter::SetDomain(avtStreamlineWrapper *slSeg)
     
     if (slSeg->seedPtDomainList.size() == 1)
         slSeg->domain = slSeg->seedPtDomainList[0];
+    debug5<<"SetDomain: "<<slSeg->domain<<endl;
     /*
     debug1<<"::SetDomain() pt=["<<endPt.xyz[0]<<" "<<endPt.xyz[1]
           <<" "<<endPt.xyz[2]<<"] in domains: ";
@@ -857,28 +400,110 @@ avtStreamlineFilter::SetDomain(avtStreamlineWrapper *slSeg)
 //  Programmer: Dave Pugmire
 //  Creation:   June 16, 2008
 //
+//  Modifications:
+//
+//   Dave Pugmire, Tue Mar 10 12:41:11 EDT 2009
+//   Generalized domain to include domain/time. Pathine cleanup.
+//
+//   Dave Pugmire, Mon Mar 16 15:05:14 EDT 2009
+//   Make DomainType a const reference.
+//
+//   Hank Childs, Sun Mar 22 13:31:08 CDT 2009
+//   Add support for getting the "domain" by using a point.
+//
 // ****************************************************************************
 
 vtkDataSet *
-avtStreamlineFilter::GetDomain(int domain)
+avtStreamlineFilter::GetDomain(const DomainType &domain,
+                               double X, double Y, double Z)
 {
-    int timerHandle = visitTimer->StartTimer();
-    if (! DomainLoaded(domain))
-        numDomainsLoaded++;
-
+    //debug5<<"avtStreamlineFilter::GetDomain("<<domain<<" "<<X<<" "<<Y<<" "<<Z<<");"<<endl;
     vtkDataSet *ds = NULL;
 
+    //debug5<<"OperatingOnDemand() = "<<OperatingOnDemand()<<endl;
+
     if (OperatingOnDemand())
-        ds = avtDatasetOnDemandFilter::GetDomain(domain);
+    {
+        if (specifyPoint)
+        {
+            ds = avtDatasetOnDemandFilter::GetDataAroundPoint(X,Y,Z,
+                                                              domain.timeStep);
+        }
+        else
+        {
+            ds = avtDatasetOnDemandFilter::GetDomain(domain.domain,
+                                                     domain.timeStep);
+        }
+    }
     else
-        ds = dataSets[domain];
+    {
+        /*
+        if (domain.timeStep != curTimeSlice)
+        {
+            debug5<<"::GetDomain()  Loading: "<<domain<<endl;
+            avtContract_p new_contract = new avtContract(lastContract);
+            new_contract->GetDataRequest()->SetTimestep(domain.timeStep);
+            GetInput()->Update(new_contract);
+            GetAllDatasetsArgs ds_list;
+            bool dummy = false;
+            GetInputDataTree()->Traverse(CGetAllDatasets, (void*)&ds_list, dummy);
+
+            dataSets.resize(numDomains,NULL);
+            for (int i = 0; i < ds_list.domains.size(); i++)
+            {
+                vtkDataSet *ds = ds_list.datasets[i];
+                ds->Register(NULL);
+                dataSets[ ds_list.domains[i] ] = ds;
+            }
+
+            curTimeSlice = domain.timeStep;
+        }
+        */
+        ds = dataSets[domain.domain];
+
+    }
     
-    debug2<<"GetDomain("<<domain<<") = "<<ds<<endl;
-    
-    IOTime += visitTimer->StopTimer(timerHandle, "GetDomain()");
     return ds;
 }
 
+// ****************************************************************************
+//  Method: avtStreamlineFilter::GetTimeStep
+//
+//  Purpose:
+//      Determine the time step from a t value.
+//
+//  Programmer: Dave Pugmire
+//  Creation:   March 4, 2009
+//
+//  Modifications:
+//    Gunther H. Weber, Thu Apr  2 10:59:47 PDT 2009
+//    Return activeTimeStep obtained from contract instead of 0 when doing
+//    streamlines.
+//
+// ****************************************************************************
+
+int
+avtStreamlineFilter::GetTimeStep(double &t) const
+{
+    if (doPathlines)
+    {
+        for (int i = 0; i < domainTimeIntervals.size(); i++)
+        {
+            debug5<<" T= "<<t<<" in ["<<domainTimeIntervals[i][0]<<", "<<domainTimeIntervals[i][1]<<"] ?"<<endl;
+            if (t >= domainTimeIntervals[i][0] &&
+                t < (domainTimeIntervals[i][1]))
+            {
+                return i;
+            }
+        }
+        //EXCEPTION0(ImproperUseException);
+        return -1;
+    }
+    else
+    {
+        return activeTimeStep;
+    }
+}
 
 // ****************************************************************************
 //  Method: avtStreamlineFilter::DomainLoaded
@@ -889,17 +514,22 @@ avtStreamlineFilter::GetDomain(int domain)
 //  Programmer: Dave Pugmire
 //  Creation:   June 16, 2008
 //
+//  Modifications:
+//
+//   Dave Pugmire, Tue Mar 10 12:41:11 EDT 2009
+//   Generalized domain to include domain/time. Pathine cleanup.
+//
 // ****************************************************************************
 
 bool
-avtStreamlineFilter::DomainLoaded(int domain) const
+avtStreamlineFilter::DomainLoaded(DomainType &domain) const
 {
     //debug1<< "avtStreamlineFilter::DomainLoaded("<<domain<<");\n";
 #ifdef PARALLEL
     if (OperatingOnDemand())
-        return avtDatasetOnDemandFilter::DomainLoaded(domain);
+        return avtDatasetOnDemandFilter::DomainLoaded(domain.domain, domain.timeStep);
 
-    return rank == domainToRank[domain];
+    return PAR_Rank() == domainToRank[domain.domain];
 #endif
     
     return true;
@@ -980,14 +610,80 @@ avtStreamlineFilter::SetIntegrationType(int type)
 //
 //   Dave Pugmire, Tue Aug 19 17:13:04EST 2008
 //   Remove accurate distance calculate option.
+//
+//   Dave Pugmire, Mon Feb 23, 09:11:34 EST 2009
+//   Added termination by number of steps.
 //   
 // ****************************************************************************
 
 void
 avtStreamlineFilter::SetTermination(int type, double term)
 {
-    terminationType = type;
+    terminationType = avtIVPSolver::TIME;
+    
+    if (type == STREAMLINE_TERMINATE_DISTANCE)
+        terminationType = avtIVPSolver::DISTANCE;
+    else if (type == STREAMLINE_TERMINATE_TIME)
+        terminationType = avtIVPSolver::TIME;
+    else if (type == STREAMLINE_TERMINATE_STEPS)
+        terminationType = avtIVPSolver::STEPS;
+    else if (type == STREAMLINE_TERMINATE_INTERSECTIONS)
+        terminationType = avtIVPSolver::INTERSECTIONS;
+
     termination = term;
+}
+
+// ****************************************************************************
+// Method: avtStreamlineFilter::SetIntersectionObject
+//
+// Purpose: 
+//   Sets the intersection object.
+//
+// Arguments:
+//   obj : Intersection object.
+//
+// Programmer: Dave Pugmire
+// Creation:   11 August 2009
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+avtStreamlineFilter::SetIntersectionObject(vtkObject *obj)
+{
+    if (obj)
+    {
+        intersectObj = obj;
+        intersectObj->Register(NULL);
+    }
+}
+
+// ****************************************************************************
+// Method: avtStreamlineFilter::SetPathlines
+//
+// Purpose: 
+//   Turns pathlines on and off.
+//
+// Arguments:
+//   algo : Type of algorithm
+//   maxCnt : maximum number of streamlines to process before distributing.
+//
+// Programmer: Dave Pugmire
+// Creation:   Thu Mar  5 09:51:00 EST 2009
+//
+// Modifications:
+//
+//   Dave Pugmire, Tue Mar 31 17:01:17 EDT 2009
+//   Initialize seedTime0.
+//
+// ****************************************************************************
+
+void
+avtStreamlineFilter::SetPathlines(bool pathlines, double time0)
+{
+    doPathlines = pathlines;
+    seedTime0 = time0;
 }
 
 
@@ -1004,14 +700,23 @@ avtStreamlineFilter::SetTermination(int type, double term)
 // Programmer: Dave Pugmire
 // Creation:   Thu Jul 31 12:46:32 EDT 2008
 //
+// Modifications:
+//
+//   Dave Pugmire, Thu Feb  5 12:23:33 EST 2009
+//   Add workGroupSize for masterSlave algorithm.
+//
 // ****************************************************************************
 
 void
-avtStreamlineFilter::SetStreamlineAlgorithm(int algo, int maxCnt, int domCache)
+avtStreamlineFilter::SetStreamlineAlgorithm(int algo,
+                                            int maxCnt,
+                                            int domCache,
+                                            int workGrpSz)
 {
     method = algo;
     maxCount = maxCnt;
     cacheQLen = domCache;
+    workGroupSz = workGrpSz;
 }
 
 
@@ -1054,13 +759,17 @@ avtStreamlineFilter::SetTolerances(double reltol, double abstol)
 // Creation:   Wed Dec 22 12:41:08 PDT 2004
 //
 // Modifications:
+//
+//   Dave Pugmire, Mon Jun 8 2009, 11:44:01 EDT 2009
+//   Added color by secondary variable.
 //   
 // ****************************************************************************
 
 void
-avtStreamlineFilter::SetColoringMethod(int m)
+avtStreamlineFilter::SetColoringMethod(int m, const string &var)
 {
     coloringMethod = m;
+    coloringVariable = var;
 }
 
 
@@ -1248,6 +957,56 @@ avtStreamlineFilter::SetBoxSource(double E[6])
 
 
 // ****************************************************************************
+// Method: avtStreamlineFilter::SeedInfoString
+//
+// Purpose: 
+//   Get info string on seeds.
+//
+// Arguments:
+//   
+//
+// Programmer: Dave Pugmire
+// Creation:   Fri Apr  3 09:18:03 EDT 2009
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+std::string
+avtStreamlineFilter::SeedInfoString() const
+{
+    char buff[256];
+    if (sourceType == STREAMLINE_SOURCE_POINT)
+        sprintf(buff, "Point [%g %g %g]", 
+                pointSource[0], pointSource[1], pointSource[2]);
+    else if (sourceType == STREAMLINE_SOURCE_LINE)
+        sprintf(buff, "Line [%g %g %g] [%g %g %g] D: %d", 
+                lineStart[0], lineStart[1], lineStart[2],
+                lineEnd[0], lineEnd[1], lineEnd[2], pointDensity1);
+    else if (sourceType == STREAMLINE_SOURCE_PLANE)
+        sprintf(buff, "Plane O[%g %g %g] N[%g %g %g] R: %g D: %d %d",
+                planeOrigin[0], planeOrigin[1], planeOrigin[2],
+                planeNormal[0], planeNormal[1], planeNormal[2],
+                planeRadius, pointDensity1, pointDensity2);
+    else if (sourceType == STREAMLINE_SOURCE_SPHERE)
+        sprintf(buff, "Sphere [%g %g %g] %g D: %d %d",
+                sphereOrigin[0],sphereOrigin[1],sphereOrigin[2],
+                sphereRadius, pointDensity1, pointDensity2);
+    else if (sourceType == STREAMLINE_SOURCE_BOX)
+        sprintf(buff, "Box [%g %g] [%g %g] [%g %g] D: %d %d %d",
+                boxExtents[0], boxExtents[1],
+                boxExtents[2], boxExtents[3],
+                boxExtents[4], boxExtents[5],
+                pointDensity1, pointDensity2, pointDensity3);
+    else
+        sprintf(buff, "%s", "UNKNOWN");
+    
+    string str = buff;
+    return str;
+}
+
+
+// ****************************************************************************
 // Method: avtStreamlineFilter::SetShowStart
 //
 // Purpose: 
@@ -1414,537 +1173,68 @@ avtStreamlineFilter::CheckOnDemandViability(void)
 //   Dave Pugmire, Thu Dec 18 13:24:23 EST 2008
 //   Add MasterSlave method.
 //
+//   Dave Pugmire, Mon Feb 23 13:38:49 EST 2009
+//   Initialize the initial domain load count and timer.
+//
+//   Dave Pugmire, Tue Aug 18 09:10:49 EDT 2009
+//   Add ability to restart integration of streamlines.
+//
 // ****************************************************************************
 
 void
 avtStreamlineFilter::Execute(void)
 {
-    debug1 << "********************avtStreamlineFilter::Execute(void)\n";
-    int executeFunc = visitTimer->StartTimer();
-    int wallTimer = visitTimer->StartTimer();
-
     Initialize();
-
     vector<avtStreamlineWrapper *> seedpoints;
-
     GetSeedPoints(seedpoints);
     numSeedPts = seedpoints.size();
 
+    SetMaxQueueLength(cacheQLen);
 
 #ifdef PARALLEL
-    SetMaxQueueLength(cacheQLen);
-
     if (method == STREAMLINE_STAGED_LOAD_ONDEMAND)
-        StagedLoadOnDemand(seedpoints);
+        slAlgo = new avtSerialSLAlgorithm(this);
     else if (method == STREAMLINE_PARALLEL_STATIC_DOMAINS)
-        ParallelBalancedStaticDomains(seedpoints, true, MAX_CNT);   
+        slAlgo = new avtParDomSLAlgorithm(this, maxCount);
     else if (method == STREAMLINE_MASTER_SLAVE)
-        MasterSlave(seedpoints);
-
-    //    else if (method == STATIC_DOMAINS)
-    //        ParallelBalancedStaticDomains(seedpoints, false);
-    //    else if (method == BALANCED_STATIC_DOMAINS)
-    //        ParallelBalancedStaticDomains(seedpoints, false, MAX_CNT);
-    //else if (method == ASYNC_BALANCED_STATIC_DOMAINS)
-    //        ParallelBalancedStaticDomains(seedpoints, true, MAX_CNT);
-    //    else if (method == BALANCED_LOAD_ONDEMAND)
-    //        ParallelBalancedLoadOnDemand(seedpoints, loadFactor, MAX_CNT, 
-    //                                     maxCount);
-    //    else if (method == ASYNC_BALANCED_LOAD_ONDEMAND)
-    //        ParallelBalancedStaticDomains(seedpoints, true, MAX_CNT, true);
+    {
+        slAlgo = avtMasterSlaveSLAlgorithm::Create(this,
+                                                   maxCount,
+                                                   PAR_Rank(),
+                                                   PAR_Size(),
+                                                   workGroupSz);
+    }
 #else
-    SetMaxQueueLength(cacheQLen);
-    StagedLoadOnDemand(seedpoints);
+    slAlgo = new avtSerialSLAlgorithm(this);
 #endif
+
+    InitialIOTime = visitTimer->LookupTimer("Reading dataset");
     
-    totalTime = visitTimer->StopTimer(executeFunc, 
-                                      "avtStreamlineFilter::Execute()");
-    wallTime = visitTimer->StopTimer(wallTimer, "Execute");
+    slAlgo->Initialize(seedpoints);
+    slAlgo->Execute();
 
-    //FinalizeStatistics();
-    //ReportTimings();
+    while (ContinueExecute())
+    {
+        slAlgo->ResetStreamlinesForContinueExecute();
+        slAlgo->Execute();
+    }
+    
+    slAlgo->PostExecute();
 
+    delete slAlgo;
+    
     delete intervalTree;
     intervalTree = NULL;
 }
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::InitStatistics
-//
-//  Purpose:
-//      Initialize code to collect statistics.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 23, 2008
-//
-// Modifications:
-//
-//   Dave Pugmire, Thu Dec 18 13:24:23 EST 2008
-//   Add busyloop and sleep statistics.
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::InitStatistics()
-{
-    // counts.
-    numDomainsLoaded = 0;
-    numSLCommunicated = 0;
-    numStatusCommunicated = 0;
-    numIntegrationSteps = 0;
-    numIterations = 0;
-    numBusyLoopIterations = 0;
-    numBytesSent = 0;
-    
-    //timers.
-    integrationTime = 0.0;
-    communicationTime = 0.0;
-    IOTime = 0.0;
-    gatherTime1 = 0.0;
-    gatherTime2 = 0.0;
-    asyncSLTime = 0.0;
-    asyncTermTime = 0.0;
-    asyncSendCleanupTime = 0.0;
-    totalTime = 0.0;
-    sortTime = 0.0;
-    sleepTime = 0.0;
-}
-
-static void
-computeMeanStdDev( int nProcs, int rank, float val, float &mean, float &stdDev )
-{
-    mean = 0.0;
-    stdDev = 0.0;
-    
-#ifdef PARALLEL
-    float *input = new float[nProcs], *output = new float[nProcs];
-
-    for (int i = 0; i < nProcs; i++)
-        input[i] = 0.0;
-    input[rank] = val;
-    
-    SumFloatArrayAcrossAllProcessors(input, output, nProcs);
-    mean = output[0];
-    for (int i = 1; i < nProcs; i++)
-        mean += output[i];
-    mean /= (float)nProcs;
-
-    float sum = 0.0;
-    for (int i = 0; i < nProcs; i++)
-    {
-        float x = output[i] - mean;
-        sum += x*x;
-    }
-    sum /= (float)nProcs;
-    stdDev = sqrt(sum);
-
-    delete [] input;
-    delete [] output;
-#endif
-}
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::ComputeStatistics
-//
-//  Purpose:
-//      Compute statistics over a value.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   Dec 12, 2008
-//
-// Modifications:
-//
-//   Dave Pugmire, Thu Dec 18 13:24:23 EST 2008
-//   Overhaul how statistics are computed. Add mean and std deviation.
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::ComputeStatistics( float val,
-                                        SLStatistics &stats,
-                                        bool skipMaster)
-{
-    stats.min = val;
-    stats.max = val;
-    stats.mean = val;
-    stats.sigma = 0.0;
-    stats.total = val;
-    stats.value = val;
-#ifdef PARALLEL
-    float *input = new float[nProcs], *output = new float[nProcs];
-
-    for (int i = 0; i < nProcs; i++)
-        input[i] = 0.0;
-    input[rank] = val;
-    
-    SumFloatArrayAcrossAllProcessors(input, output, nProcs);
-    
-    stats.total = 0.0;
-    for (int i = 0; i < nProcs; i++)
-        stats.total += output[i];
-    if (skipMaster)
-    {
-        stats.total -= output[0];
-        stats.mean = stats.total / (float)(nProcs-1);
-    }
-    else
-        stats.mean = stats.total / (float)nProcs;
-
-    float sum = 0.0;
-    for (int i = 0; i < nProcs; i++)
-    {
-        if (skipMaster && i == 0)
-            continue;
-        float x = output[i] - stats.mean;
-        sum += (x*x);
-    }
-    if (skipMaster)
-        sum /= (float)(nProcs-1);
-    else
-        sum /= (float)nProcs;
-    stats.sigma = sqrt(sum);
-
-    vector<float> arr(nProcs,0.0);
-    for (int i = 0; i < nProcs; i++)
-        arr[i] = output[i];
-    
-    sort(arr.begin(), arr.end());
-    stats.min = arr[0];
-    
-    if (skipMaster)
-        stats.min = arr[1];
-    stats.max = arr[arr.size()-1];
-
-    debug1<<"[";
-    for(int i=0; i<nProcs; i++) debug1<<output[i]<<" ";
-    debug1<<"]\n";
-    debug1<<"Stats: "<<stats.min<<", "<<stats.max<<", "<<stats.mean<<", "<<setw(10)<<setprecision(6)<<stats.sigma<<" T: "<<stats.total<<endl;
-
-    delete [] input;
-    delete [] output;
-#endif
-}
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::FinalizeStatistics
-//
-//  Purpose:
-//      Finalize calculation of statistics.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 23, 2008
-//
-// Modifications:
-//
-//   Dave Pugmire, Thu Dec 18 13:24:23 EST 2008
-//   Handle additional statistics.
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::FinalizeStatistics()
-{
-    totalNumDomainsLoaded = numDomainsLoaded;
-    totalNumSLCommunicated = numSLCommunicated;
-    totalNumStatusCommunicated = numStatusCommunicated;
-    totalNumIntegrationSteps = numIntegrationSteps;
-    totalNumIterations = numIterations;
-    totalNumBusyLoopIterations = numBusyLoopIterations;
-    totalNumBytesSent = numBytesSent;
-
-    //Timing statistics.
-    ComputeStatistics(totalTime, totalTimeStats);
-    debug1<<"INT TIME\n";
-    ComputeStatistics(integrationTime, integrationTimeStats, (method==STREAMLINE_MASTER_SLAVE));
-    debug1<<"IO TIME\n";
-    ComputeStatistics(IOTime,IOTimeStats, (method==STREAMLINE_MASTER_SLAVE));
-    ComputeStatistics(communicationTime, commTimeStats);
-    ComputeStatistics(sleepTime, sleepTimeStats,(method==STREAMLINE_MASTER_SLAVE));
-    ComputeStatistics(sortTime, sortTimeStats);
-
-    //Operation statistics.
-    debug1<<"LOAD DOM\n";
-    ComputeStatistics((float)numDomainsLoaded, loadDomStats, (method==STREAMLINE_MASTER_SLAVE));
-    ComputeStatistics((float)numSLCommunicated, slCommStats);
-    ComputeStatistics((float)numStatusCommunicated, statusCommStats);
-
-    ComputeStatistics((float)numIterations, iterationStats);
-    debug1<<"INT STEPS\n";
-    ComputeStatistics((float)numIntegrationSteps, intStepStats,  (method==STREAMLINE_MASTER_SLAVE));
-    ComputeStatistics((float)numBusyLoopIterations, busyLoopStats);
-    ComputeStatistics((float)numBytesSent, bytesSentStats);
-}
-
-
-// ****************************************************************************
-//  Function: ToString
-//
-//  Purpose:
-//      Convert arguments to a string.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 16, 2008
-//
-// Modifications:
-//
-//   Dave Pugmire, Thu Dec 18 13:24:23 EST 2008
-//   Add masterslave algorithm.
-//   
-// ****************************************************************************
-
-static string
-ToString(int method, int maxCount, double loadFactor, double underWorkedFactor, int balanceNumToSend)
-{
-    string str;
-    char buf[1024];
-    if (method ==  STREAMLINE_STAGED_LOAD_ONDEMAND)
-        sprintf(buf, "StagedLoadOnDemand");
-    else if (method == STREAMLINE_PARALLEL_STATIC_DOMAINS)
-        sprintf(buf, "ASYNC_BalancedStatic:\n\tmaxCnt = %d", maxCount);
-    else if (method == STREAMLINE_MASTER_SLAVE)
-        sprintf(buf, "Master_Slave:\n\tmaxCnt = %d", maxCount);
-    
-    str = buf;
-    return str;
-}
-
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::ReportTimings
-//
-//  Purpose:
-//      Output timings to a stream.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   April 4, 2008
-// Modifications:
-//
-//   Dave Pugmire, Thu Dec 18 13:24:23 EST 2008
-//   Overhaul how timings are reported.
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::ReportTimings(ostream &os)
-{
-    os << endl << endl;
-    os << "Method = " 
-       << ToString(method, maxCount, loadFactor, 
-                   underWorkedFactor, balanceNumToSend)<<endl;
-
-    os << "NumPts = " << numSeedPts << " NCPUs = " << PAR_Size() 
-       << " nDomains = " << numDomains << " domainQLen = " << cacheQLen << endl;
-
-    os << "****** Total stats:" << endl;
-    //Domains loaded.
-    os <<"Dom Loaded   = " <<setw(6)<< (int)loadDomStats.total
-       <<" mMA ["<<(int)loadDomStats.min<<", "
-       <<(int)loadDomStats.max<<", "
-       <<loadDomStats.mean<<"]"
-       <<" s= "<<loadDomStats.sigma
-       <<" : dom/SL = "<<(float)loadDomStats.total / (float)numSeedPts<<endl;
-    
-    //SL Comm
-    os << "SL Comm      = " <<setw(6)<< (int)slCommStats.total
-       << " mMA ["<<(int)slCommStats.min<<", "
-       <<(int)slCommStats.max<<", "
-       <<slCommStats.mean<<"]"
-       <<" s= "<<slCommStats.sigma
-       <<" : comm / SL = "<< slCommStats.total / (float)numSeedPts<<endl;
-
-    //Status
-    os << "Status Comm  = " <<setw(6)<< statusCommStats.total
-       << " mMA ["<<statusCommStats.min<<", "
-       <<statusCommStats.max<<", "
-       <<statusCommStats.mean<<"]"
-       <<" s= "<<statusCommStats.sigma
-       <<" : comm / SL = " 
-       << (float)statusCommStats.total / (float)numSeedPts <<endl;
-  
-    os <<"Integrate    = " <<setw(6)<< intStepStats.total
-       <<" mMA ["<<(int)intStepStats.min<<", "
-       <<(int)intStepStats.max<<", "
-       <<intStepStats.mean<<"]"
-       <<" s= "<<intStepStats.sigma
-       << " mMA ["<<100.0*intStepStats.min/intStepStats.total
-       << ", "<<100.0*intStepStats.max/intStepStats.total
-       <<", "<<100.0*intStepStats.mean/intStepStats.total<<" %]"
-       <<" s= "<<100.0*intStepStats.sigma/intStepStats.total<<" %"
-       <<" intg / SL = " 
-       <<(float)intStepStats.total / (float)numSeedPts <<endl;
-
-    os <<"Iters        = " <<setw(6)<< iterationStats.total
-       <<" mMA ["<<(int)iterationStats.min<<", "
-       <<(int)iterationStats.max<<", "
-       <<(float)iterationStats.mean<<"]"
-       <<" s= "<<iterationStats.sigma
-       <<" : it / SL = " << (float)totalNumIterations / (float)numSeedPts 
-       << endl;
-    os << "Busy Loop    = " <<setw(6)<< busyLoopStats.total
-       << " mMA ["<<(int)busyLoopStats.min<<", "<<(int)busyLoopStats.max
-       << ", "<<busyLoopStats.mean<<"]"
-       << " s= "<<busyLoopStats.sigma
-       <<" : it / SL = " << (float)busyLoopStats.total / (float)numSeedPts 
-       << endl;
-    float nKBSent = (float)bytesSentStats.total/(1024.0);
-    os <<"N KBSent     = " <<setw(6)<<(int)nKBSent
-       <<" mMA ["<<bytesSentStats.min/1024.0<<", "
-       <<bytesSentStats.max/1024.0<<", "
-       <<bytesSentStats.mean/1024.0<<"] "
-       <<" s= "<<bytesSentStats.sigma/1024.0
-       <<" kb / sl = "<<nKBSent / (float)numSeedPts <<endl;
-    os << "SingleSLComm: Max = " <<totalMaxSLCommunications<<endl;
-    
-    os << "****** Total timings:" << endl;
-    os << "WallTime : " << wallTime << endl;
-    
-
-    os <<"TotalTime: " << totalTimeStats.total
-       <<" mMA ["<<totalTimeStats.min<<", "
-       <<totalTimeStats.max<<", "
-       <<totalTimeStats.mean<<"]"
-       <<" s= "<<totalTimeStats.sigma
-       <<" : T / SL = "
-       << totalTimeStats.total / (float)numSeedPts << endl;
-    os <<"TotalIntg: " << integrationTimeStats.total
-       <<" = "<<100.0*(integrationTimeStats.total/totalTimeStats.total) << " %"
-       <<" mMA ["<<integrationTimeStats.min<<", "
-       <<integrationTimeStats.max<<", "
-       <<integrationTimeStats.mean<<"]"
-       <<" s= "<<integrationTimeStats.sigma
-       << " : T / SL = " << integrationTimeStats.total / (float)numSeedPts << endl;
-
-    os <<"TotalIO  : " << IOTimeStats.total
-       <<" = "<<100.0*(IOTimeStats.total/totalTimeStats.total) << " %"
-       <<" mMA ["<<IOTimeStats.min<<", "
-       <<IOTimeStats.max<<", "
-       <<IOTimeStats.mean<<"]"
-       <<" s= "<<IOTimeStats.sigma
-       <<" : T / SL = "<< IOTimeStats.total / (float)numSeedPts << endl;
-    os << "TotalComm: " << commTimeStats.total
-       << " = "<<100.0*(commTimeStats.total/totalTimeStats.total) << " %"
-       <<" mMA ["<<commTimeStats.min<<", "
-       <<commTimeStats.max<<", "
-       <<commTimeStats.mean<<"]"
-       <<" s= "<<commTimeStats.sigma
-       <<" : T / SL = "<< commTimeStats.total / (float)numSeedPts << endl;
-
-    os << "TotalSort: " << sortTimeStats.total
-       <<" = "<<100.0*(sortTimeStats.total/totalTimeStats.total) << " %" 
-       << " : T / SL = " << sortTimeStats.total / (float)numSeedPts << endl;
-    
-    os << "TotalSleep: " << sleepTimeStats.total << " = " 
-       << 100.0*(sleepTimeStats.total/totalTimeStats.total) << " % "
-       << "mMA ["<<sleepTimeStats.min<<", "
-       <<sleepTimeStats.max<<", "
-       <<sleepTimeStats.mean<<"]"
-       <<" s= "<<sleepTimeStats.sigma
-       << " : T / SL = " << sleepTimeStats.total / (float)numSeedPts << endl;
-
-    float extraTime = totalTimeStats.total - integrationTimeStats.total - IOTimeStats.total
-                    - commTimeStats.total - sortTimeStats.total - sleepTimeStats.total;
-
-    os << "ExtraTime: " <<extraTime<<" : [ " 
-       << 100.0*(extraTime/totalTimeStats.total)<<" %]"<<endl;
-    os << endl;
-
-    os << "Per process timings"<<endl;
-    os << "NDomainsLoaded  = " << loadDomStats.value << " ";
-    os << "NSLCommunications = " << slCommStats.value << " ";
-    os << "NStatComms = " << statusCommStats.value << " ";
-    os << "SingleSLCommunication: Max = "<< maxSLCommunications << endl;
-    nKBSent = (float)bytesSentStats.value / (1024.0);
-    os << "NKBytesSent = " << nKBSent << " ";
-    os << "NIntegrations = " << intStepStats.value;
-    os << " ["<<100.0*intStepStats.value/intStepStats.total<<"%]"<<endl;
-    os << "NIterations = " << iterationStats.value << " ";
-    os << "NBusyLoopIterations = " << busyLoopStats.value << endl;
-    os << "TotalTime = " << totalTimeStats.value << ", ";
-    os << "Comm: " << commTimeStats.value << " [" 
-       << 100.0 * (commTimeStats.value/totalTimeStats.value)  << "]%, ";
-    os << "IO: " << IOTime << " [" << 100.0 * (IOTimeStats.value/totalTimeStats.value)  << "]%, ";
-    os << "****Int: " << integrationTimeStats.value << " [" 
-       << 100.0 * (integrationTimeStats.value/totalTimeStats.value) << "]% ";
-    os << "Sleep: " << sleepTimeStats.value << " [" 
-       << 100.0 * (sleepTimeStats.value/totalTimeStats.value) << "]% ";
-    os << endl;
-    
-    extraTime = totalTimeStats.value - commTimeStats.value - IOTimeStats.value 
-              - integrationTimeStats.value - sortTimeStats.value - sleepTimeStats.value;
-    os << "ExtraTime: " << extraTime << " [" << 100.0*extraTime/totalTimeStats.value 
-       <<" %]" << endl;
-    os << endl;
-}
-
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::ReportTimings
-//
-//  Purpose:
-//      Set up a file and output timings to it.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 16, 2008
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::ReportTimings()
-{
-    char f[128];
-    sprintf(f, "timings%03d.txt", PAR_Rank());
-    ofstream os;
-    os.open(f, ios::out);
-
-    ReportTimings(os);
-    os.close();
-    if (PAR_Rank() == 0)
-        ReportTimings(cout);
-}
-    
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::ReportStatistics
-//
-//  Purpose:
-//      Report statistics about number of domains per processor.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 16, 2008
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::ReportStatistics(
-                                   vector<avtStreamlineWrapper *> &streamlines)
-{
-    debug1 << "Streamline statistics: "<<streamlines.size()<<endl;
-    maxSLCommunications = 0;
-    int domainVisitCnt = 0;
-    
-    for (int i = 0; i < streamlines.size(); i++)
-    {
-        avtStreamlineWrapper *slSeg = streamlines[i];
-        if (slSeg->numTimesCommunicated > maxSLCommunications)
-            maxSLCommunications = slSeg->numTimesCommunicated;
-        
-        slSeg->ComputeStatistics();
-        domainVisitCnt += slSeg->numDomainsVisited;
-    }
-    
-    float avgDomainsPerSL = (float)domainVisitCnt / (float)streamlines.size();
-    debug1 << "average domains per SL: " << avgDomainsPerSL << endl;
-}
-
 
 // ****************************************************************************
 //  Method: avtStreamlineFilter::Initialize
 //
 //  Modifications:
 //
-//    Hank Childs, Mon Jul 21 13:09:13 PDT 2008
-//    Remove the "area code" from the initialization so it will compile on
-//    my box.
+//   Hank Childs, Mon Jul 21 13:09:13 PDT 2008
+//   Remove the "area code" from the initialization so it will compile on
+//   my box.
 //
 //   Dave Pugmire, Wed Aug 13 14:11:04 EST 2008
 //   Add dataSpatialDimension
@@ -1955,33 +1245,75 @@ avtStreamlineFilter::ReportStatistics(
 //   Hank Childs, Tue Jan 20 13:06:33 CST 2009
 //   Add support for file formats that do their own domain decomposition.
 //
+//   Dave Pugmire, Mon Feb 23 13:38:49 EST 2009
+//   Initialize the initial domain load count and timer.
+//
+//   Dave Pugmire, Tue Mar 10 12:41:11 EDT 2009
+//   Generalized domain to include domain/time. Pathine cleanup.
+//
+//   Hank Childs, Mon Mar 23 11:02:55 CDT 2009
+//   Add handling for the case where we load data on demand using point
+//   selections.
+//
+//   Dave Pugmire, Tue Mar 31 17:01:17 EDT 2009
+//   Set seedTimeStep0 from input time value.
+//
+//   Dave Pugmire, Thu Apr  2 10:59:42 EDT 2009
+//   Properly bound seedTime0 search.
+//
+//   Gunther H. Weber, Fri Apr  3 16:01:48 PDT 2009
+//   Initialize seedTimeStep0 even when streamlines are computed since
+//   otherwise seed points get created for the wrong time step. 
+//
+//   Gunther H. Weber, Mon Apr  6 19:19:31 PDT 2009
+//   Initialize seedTime0 for streamline mode. 
+//
 // ****************************************************************************
 
 void
 avtStreamlineFilter::Initialize()
 {
-    InitStatistics();
+    //MOVE TO ALGO. InitStatistics();
     dataSpatialDimension = GetInput()->GetInfo().GetAttributes().GetSpatialDimension();
-
-    int timerHandle = visitTimer->StartTimer();
 
     // Get/Compute the interval tree.
     avtIntervalTree *it_tmp = GetMetaData()->GetSpatialExtents();
+    bool dontUseIntervalTree = false;
     if (GetInput()->GetInfo().GetAttributes().GetDynamicDomainDecomposition())
     {
         // The reader returns an interval tree with one domain (for everything).
         // This is not what we want.  So forget about this one, as we will be 
         // better off calculating one.
-        it_tmp = NULL;
+        dontUseIntervalTree = true;
     }
-    if (it_tmp == NULL)
+    if (it_tmp == NULL || dontUseIntervalTree)
     {
         if (OperatingOnDemand())
         {
-            // It should be there, or else we would have precluded 
-            // OnDemand processing in the method CheckOnDemandViability.
-            // Basically, this should never happen, so throw an exception.
-            EXCEPTION0(ImproperUseException);
+            if (GetInput()->GetInfo().GetAttributes().GetDynamicDomainDecomposition())
+            {
+                // We are going to assume that the format that operates on
+                // demand can accept hints about where the data lies and return
+                // that data.
+                // (This was previously an exception, so we haven't taken too
+                //  far of a step backwards with this assumption.)
+                debug1 << "This file format reader does dynamic decomposition." << endl;
+                debug1 << "We are assuming it can handle hints about what data "
+                       << "to read." << endl;
+                specifyPoint = true;
+
+                // Use the dummy interval tree, so we have something that fits
+                // the existing interface.
+                // Make a copy so it doesn't get deleted out from underneath us.
+                intervalTree = new avtIntervalTree(it_tmp);
+            }
+            else
+            {
+                // It should be there, or else we would have precluded 
+                // OnDemand processing in the method CheckOnDemandViability.
+                // Basically, this should never happen, so throw an exception.
+                EXCEPTION0(ImproperUseException);
+            }
         }
         else 
             intervalTree = GetTypedInput()->CalculateSpatialIntervalTree();
@@ -1998,9 +1330,9 @@ avtStreamlineFilter::Initialize()
     dataSets.resize(numDomains,NULL);
 
 #ifdef PARALLEL
-    rank = PAR_Rank();
-    nProcs = PAR_Size();
-    statusMsgSz = numDomains+2;
+    int rank = PAR_Rank();
+    int nProcs = PAR_Size();
+    //MOVE TO ALGO statusMsgSz = numDomains+2;
 #endif
     
     // Assign domains to processors, if needed.
@@ -2029,7 +1361,6 @@ avtStreamlineFilter::Initialize()
         GetAllDatasetsArgs ds_list;
         bool dummy = false;
         GetInputDataTree()->Traverse(CGetAllDatasets, (void*)&ds_list, dummy);
-        numDomainsLoaded += ds_list.domains.size();
 
         // Set and communicate all the domains.
 #ifdef PARALLEL
@@ -2045,6 +1376,7 @@ avtStreamlineFilter::Initialize()
             ds->Register(NULL);
             dataSets[ ds_list.domains[i] ] = ds;
         }
+        InitialDomLoads = ds_list.domains.size();
     }
 
 #ifdef PARALLEL
@@ -2058,16 +1390,73 @@ avtStreamlineFilter::Initialize()
     cacheQLen = numDomains;
 #endif
 
-    IOTime += visitTimer->StopTimer(timerHandle, "GetDomain()");
-
-    /*
-    debug1<< "Domain/Data setup:\n";
+    debug5<< "Domain/Data setup:\n";
     for (int i = 0; i < numDomains; i++)
-        debug1<<i<<": rank= "<< domainToRank[i]<<" ds= "<<dataSets[i]<<endl;
-    */
+        debug5<<i<<": rank= "<< domainToRank[i]<<" ds= "<<dataSets[i]<<endl;
 
     // Some methods need random number generator.
-    srand(2776724); //My childhood phone number...
+    srand(2776724);
+
+    numTimeSteps = 1;
+    if (doPathlines)
+    {
+        std::string db = GetInput()->GetInfo().GetAttributes().GetFullDBName();
+        ref_ptr<avtDatabase> dbp = avtCallback::GetDatabase(db, 0, NULL);
+        if (*dbp == NULL)
+            EXCEPTION1(InvalidFilesException, db.c_str());
+        avtDatabaseMetaData *md = dbp->GetMetaData(0);
+        debug5<<"Times: [";
+        for (int i = 0; i < md->GetTimes().size()-1; i++)
+        {
+            vector<double> intv(2);
+            intv[0] = md->GetTimes()[i];
+            intv[1] = md->GetTimes()[i+1];
+            if (intv[0] == intv[1])
+            {
+                intv[0] = (double)i;
+                intv[1] = (double)i+1;
+            }
+            domainTimeIntervals.push_back(intv);
+            debug5<<" ("<<intv[0]<<", "<<intv[1]<<")";
+        }
+        debug5<<"]"<<endl;
+        
+        numTimeSteps = domainTimeIntervals.size();
+        if (numTimeSteps == 1)
+            doPathlines = false;
+
+#if 0
+        seedTimeStep0 = activeTimeStep;
+        seedTime0 = md->GetTimes()[activeTimeStep];
+#else
+        if (doPathlines)
+        {
+            seedTimeStep0 = -1;
+            for (int i = 0; i < domainTimeIntervals.size(); i++)
+                if (seedTime0 >= domainTimeIntervals[i][0] &&
+                    seedTime0 < domainTimeIntervals[i][1])
+                {
+                    seedTimeStep0 = i;
+                    break;
+                }
+            
+            if (seedTimeStep0 == -1)
+                EXCEPTION1(ImproperUseException, "Invalid pathline time value.");
+        }
+#endif
+    }
+    else
+    {
+        // Wee need to set seedTimeStep0 even for streamlines since it is used
+        // as time for the streamline seeds.
+        std::string db = GetInput()->GetInfo().GetAttributes().GetFullDBName();
+        ref_ptr<avtDatabase> dbp = avtCallback::GetDatabase(db, 0, NULL);
+        if (*dbp == NULL)
+            EXCEPTION1(InvalidFilesException, db.c_str());
+        avtDatabaseMetaData *md = dbp->GetMetaData(0);
+        seedTime0 = md->GetTimes()[activeTimeStep];
+        seedTimeStep0 = activeTimeStep;
+    }
 }
 
 
@@ -2090,46 +1479,82 @@ avtStreamlineFilter::Initialize()
 //   full check. Otherwise, points in ghost zones are reported as inside the
 //   domain.
 //
+//   Dave Pugmire, Tue Mar 10 12:41:11 EDT 2009
+//   Generalized domain to include domain/time. Pathine cleanup.
+//
+//   Dave Pugmire, Mon Mar 23 18:33:10 EDT 2009
+//   Make changes for point decomposed domain databases.
+//
+//   Hank Childs, Tue Mar 31 12:43:05 CDT 2009
+//   Early return for 0 cells.
+//
+//   Hank Childs, Fri Apr  3 13:51:30 CDT 2009
+//   Fixed a problem where on demand with point-based lookups could not
+//   support multiple seedpoints.
+//
 // ****************************************************************************
 
 bool
-avtStreamlineFilter::PointInDomain(pt3d &pt, int domain)
+avtStreamlineFilter::PointInDomain(avtVector &pt, DomainType &domain)
 {
-    //debug1<< "avtStreamlineFilter::PointInDomain(["<<pt.xyz[0]<<" "
-    //      <<pt.xyz[1]<<" "<<pt.xyz[2]<<"], dom= "<<domain<<");\n";
-    vtkDataSet *ds = GetDomain(domain);
+    debug5<< "avtStreamlineFilter::PointInDomain("<<pt<<", dom= "<<domain<<") = ";
+    vtkDataSet *ds = GetDomain(domain, pt.x, pt.y, pt.z);
 
     if (ds == NULL)
     {
+        debug5<<"Get DS failed for domain= "<<domain<<endl;
         EXCEPTION0(ImproperUseException);
         return false;
     }
+
+    if (ds->GetNumberOfCells() == 0)
+        return false;
 
     // If it's rectilinear, we can do bbox test...
     if (ds->GetDataObjectType() == VTK_RECTILINEAR_GRID)
     {
         double bbox[6];
-        intervalTree->GetElementExtents(domain, bbox);
-        //debug1<<"[ "<<bbox[0]<<" "<<bbox[1]<<" ] [ "<<bbox[2]<<" "<<bbox[3]<<" ] [ "<<bbox[4]<<" "<<bbox[5]<<" ]"<<endl;
-        if (pt.xyz[0] < bbox[0] || pt.xyz[0] > bbox[1] ||
-            pt.xyz[1] < bbox[2] || pt.xyz[1] > bbox[3])
+        intervalTree->GetElementExtents(domain.domain, bbox);
+        //debug5<<"[ "<<bbox[0]<<" "<<bbox[1]<<" ] [ "<<bbox[2]<<" "<<bbox[3]<<" ] [ "<<bbox[4]<<" "<<bbox[5]<<" ]"<<endl;
+        if (pt.x < bbox[0] || pt.x > bbox[1] ||
+            pt.y < bbox[2] || pt.y > bbox[3])
         {
+            //debug5<<"FALSE bboxXY"<<endl;
             return false;
         }
         
         if(dataSpatialDimension == 3 &&
-           (pt.xyz[2] < bbox[4] || pt.xyz[2] > bbox[5]))
+           (pt.z < bbox[4] || pt.z > bbox[5]))
         {
+            //debug5<<"FALSE bboxZ"<<endl;
             return false;
         }
 
         //If we don't have ghost zones, then we can rest assured that the
         //point is in this domain. For ghost zones, we have to check cells.
         if (ds->GetCellData()->GetArray("avtGhostZones") == NULL)
+        {
+            //debug5<<"TRUE noGhosts"<<endl;
             return true;
+        }
     }
 
     vtkVisItCellLocator *cellLocator = domainToCellLocatorMap[domain];
+    if ( cellLocator != NULL && specifyPoint )
+    {
+        double bbox[6];
+        cellLocator->GetDataSet()->GetBounds(bbox);
+        if (pt.x < bbox[0] || pt.x > bbox[1] || pt.y < bbox[2] || pt.y > bbox[3] ||
+            pt.z < bbox[4] || pt.z > bbox[5])
+        {
+            // We are getting data in a point based way and the point changed
+            // and now we have a new "domain 0".  Remove the locator for the
+            // old one.
+            cellLocator->SetDataSet(NULL);
+            cellLocator->Delete();
+            cellLocator = NULL;
+        }
+    }
     if ( cellLocator == NULL )
     {
         cellLocator = vtkVisItCellLocator::New();
@@ -2140,13 +1565,16 @@ avtStreamlineFilter::PointInDomain(pt3d &pt, int domain)
     }
 
     double rad = 1e-6, dist=0.0;
-    double p[3] = {pt.xyz[0],pt.xyz[1],pt.xyz[2]}, resPt[3]={0.0,0.0,0.0};
+    double p[3] = {pt.x, pt.y, pt.z}, resPt[3]={0.0,0.0,0.0};
     int foundCell = -1, subId = 0;
     int success = cellLocator->FindClosestPointWithinRadius(p, rad, resPt, 
-                                                       foundCell, subId, dist);
-    debug1<< "suc = "<<success<<" dist = "<<dist<<" resPt= ["<<resPt[0]
-          <<" "<<resPt[1]<<" "<<resPt[2]<<"]\n\n";
+                                                            foundCell, subId, dist);
 
+    debug5<<(success?"TRUE":"FALSE")<<" cellLocator"<<endl;
+    if (success)
+        debug5<< "suc = "<<success<<" dist = "<<dist<<" resPt= ["<<resPt[0]
+              <<" "<<resPt[1]<<" "<<resPt[2]<<"] subId= "<<subId<<" foundCell= "<<foundCell<<endl;
+    
     return (success == 1 ? true : false);
 }
 
@@ -2160,15 +1588,20 @@ avtStreamlineFilter::PointInDomain(pt3d &pt, int domain)
 //  Programmer: Dave Pugmire
 //  Creation:   June 16, 2008
 //
+//  Modifications:
+//
+//   Dave Pugmire, Tue Mar 10 12:41:11 EDT 2009
+//   Generalized domain to include domain/time. Pathine cleanup.
+//
 // ****************************************************************************
 
 bool
-avtStreamlineFilter::OwnDomain(int domain)
+avtStreamlineFilter::OwnDomain(DomainType &domain)
 {
 #ifdef PARALLEL
     if (OperatingOnDemand())
         return true;
-    return rank == DomainToRank(domain);
+    return PAR_Rank() == DomainToRank(domain);
 #else
     return true;
 #endif
@@ -2247,4353 +1680,22 @@ avtStreamlineFilter::ComputeDomainToRankMapping()
 }
 
 int
-avtStreamlineFilter::DomainToRank(int domain)
+avtStreamlineFilter::DomainToRank(DomainType &domain)
 {
     // First time through, compute the mapping.
     if (domainToRank.size() == 0)
         ComputeDomainToRankMapping();
 
-    if (domain < 0 || domain >= domainToRank.size())
+    if (domain.domain < 0 || domain.domain >= domainToRank.size())
         EXCEPTION1(ImproperUseException, "Domain out of range.");
     
     //debug1<<"avtStreamlineFilter::DomainToRank("<<domain<<") = "<<domainToRank[domain]<<endl;
 
-    return domainToRank[domain];
+    if (doPathlines && domain.timeStep != 0)
+        EXCEPTION1(ImproperUseException, "Fix DomainToRank for time slices.");
+
+    return domainToRank[domain.domain];
 }
-
-#if 0
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::AsynchronousParallelStaticDomains
-//
-//  Purpose:
-//      Calculates a streamline with ParallelStaticDomains algorithm.
-//      Each processor owns a fixed set of domains. When a streamline exists a
-//      domain owned by the current processor, it is communicated to the 
-//      processor that owns the domain.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   March 4, 2008
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::AsynchronousParallelStaticDomains(
-                                              std::vector<pt3d> &allSeedpoints)
-{
-    debug1 << "avtStreamlineFilter::AsynchronousParallelStaticDomains()"<<endl;
-#ifdef PARALLEL
-    debug1 << "Seedpoint cnt = " << allSeedpoints.size() << endl;
-
-    //Get "my" seed points.
-    vector<avtStreamlineWrapper *> streamlines;
-    for (int i = 0; i < allSeedpoints.size(); i++)
-    {
-        vector<int> dl;
-        intervalTree->GetElementsListFromRange(allSeedpoints[i].values(), 
-                                               allSeedpoints[i].values(), dl);
-        if (dl.size() > 0 && OwnDomain(dl[0]))
-        {
-            avtStreamlineWrapper *slSeg = 
-                                new avtStreamlineWrapper(allSeedpoints[i], i);
-            streamlines.push_back(slSeg);
-        }
-    }
-    debug1 << "My seedpoints: " << streamlines.size() << endl;
-
-    // MPI communications
-    const int StreamlineXferReqTag = 42000;
-    const int StreamlinesTerminatedTag = 420001;
-#ifdef LONG_PROTOCOL
-    const int StreamlineTagStart = 42003;
-#endif
-    
-    // Post non-blocking receives
-    int terminateMsgBuffer[1]; // Number of streamlines that terminated
-#ifdef LONG_PROTOCOL
-    int streamlineXferReqMsgBuffer[2]; // Size of streamline in bytes 
-                                       // and tag of actual streamline send
-#else
-    const int maxStreamlineMemSize = 10*1024*1024;
-    unsigned char *streamlineXferBuffer = 
-                                       new unsigned char[maxStreamlineMemSize];
-#endif
-    MPI_Request terminateRecvRequest;
-    MPI_Irecv(static_cast<void*>(terminateMsgBuffer), 1, MPI_INT, 
-              MPI_ANY_SOURCE, StreamlinesTerminatedTag, VISIT_MPI_COMM, 
-              &terminateRecvRequest);
-    MPI_Request xferReqRecvRequest;
-#ifdef LONG_PROTOCOL
-    MPI_Irecv(static_cast<void*>(streamlineXferReqMsgBuffer), 2, MPI_INT, 
-              MPI_ANY_SOURCE, StreamlineXferReqTag, VISIT_MPI_COMM, 
-              &xferReqRecvRequest);
-#else
-    MPI_Irecv(static_cast<void*>(streamlineXferBuffer), maxStreamlineMemSize,
-              MPI_CHAR, MPI_ANY_SOURCE, StreamlineXferReqTag, VISIT_MPI_COMM, 
-              &xferReqRecvRequest);
-#endif
-
-    std::map<MPI_Request, unsigned char*> requestToBufferMap;
-
-    // Keep working while there is work to do.
-    int numActiveStreamlines = allSeedpoints.size();
-    int numTerminatedSinceLastBroadcast = 0;
-
-    while (numActiveStreamlines)
-    {
-        debug1 << "There are " << numActiveStreamlines 
-               << " streamlines active. I have " << streamlines.size()
-               << " streamlines." << std::endl;
-        for (int i = 0; i < streamlines.size(); i++)
-        {
-            avtStreamlineWrapper *slSeg = streamlines[i];
-            //debug1 << i << ": Integrate seedPt " << slSeg->seedPt.xyz[0]<<" "
-            //       << slSeg->seedPt.xyz[1] <<" "<<slSeg->seedPt.xyz[2]<<endl;
-            IntegrateStreamline(slSeg, false);
-            debug1 << "Back from IntegrateStreamline. Pts = : " 
-                   << slSeg->slpts.size();
-
-            // After integration, streamline is either terminated, 
-            // or needs a new domain.
-            if (slSeg->status == TERMINATE)
-            {
-                debug1 << " -> Terminated." << std::endl;
-                terminatedStreamlines.push_back(slSeg);
-                numTerminatedSinceLastBroadcast++;
-            }
-            else if (slSeg->status == OUTOFBOUND)
-            {
-                int communicationTimer = visitTimer->StartTimer();
-                int domainOwner = DomainToRank(slSeg->domain);
-                debug1 << "-> Exit -> Pass to " << slSeg->domain << " rank = " 
-                       << domainOwner << endl;
-                int slSegSize = slSeg->NumBytesToSerialize();
-#ifdef LONG_PROTOCOL
-                int xferMsg[2] = { StreamlineTagStart + slSeg->uniqueTag, 
-                                   slSegSize }; 
-                unsigned char *mpiMsg = new unsigned char[sizeof(xferMsg)];
-                memcpy(mpiMsg, xferMsg, sizeof(xferMsg));
-                // Send the xfer request
-                MPI_Request  reqId;
-                //debug1 << "Sending xfer request {" << xferMsg[0] << ", " 
-                //       << xferMsg[1] << "}" << std::endl;
-                MPI_Isend(static_cast<void*>(mpiMsg), 2, MPI_INT, domainOwner, 
-                          StreamlineXferReqTag, VISIT_MPI_COMM, &reqId);
-                requestToBufferMap[reqId] = mpiMsg;
-
-                // Send the actual streamline
-                mpiMsg = new unsigned char[slSegSize];
-                slSeg->Serialize(mpiMsg);
-
-                //debug1 << "Sending streamline with tag " 
-                //       << StreamlineTagStart + slSeg->uniqueTag << std::endl;
-                MPI_Isend(static_cast<void*>(mpiMsg), slSegSize, MPI_CHAR, 
-                          domainOwner, StreamlineTagStart + slSeg->uniqueTag, 
-                          VISIT_MPI_COMM, &reqId);
-                requestToBufferMap[reqId] = mpiMsg;
-#else
-                if (slSegSize <= maxStreamlineMemSize)
-                {
-                    unsigned char *mpiMsg = new unsigned char[slSegSize];
-                    slSeg->Serialize(mpiMsg);
-                    MPI_Request  reqId;
-                    MPI_Isend(static_cast<void*>(mpiMsg), slSegSize, MPI_CHAR, 
-                              domainOwner, StreamlineXferReqTag, 
-                              VISIT_MPI_COMM, &reqId);
-                    requestToBufferMap[reqId] = mpiMsg;
-                }
-                else
-                {
-                    std::cerr << "********************* Streamline too large "
-                      << " to transfer. Terminating prematurely." << std::endl;
-                    debug1 << "********************* Streamline too large to "
-                      << "transfer. Terminating prematurely." << std::endl;
-                    terminatedStreamlines.push_back(slSeg);
-                    numTerminatedSinceLastBroadcast++;
-                }
-#endif
-                communicationTime += visitTimer->StopTimer(communicationTimer, 
-                                                    "StreamlineCommunication");
-            }
-        }
-
-        // All streamlines processed. Empty the list.
-        streamlines.resize(0);
-
-        // Broadcast number of terminated streamlines since last broadcast
-        int communicationTimer = visitTimer->StartTimer();
-
-        // There seems to be no-nonblocking broadcast in MPI-1
-        if (numTerminatedSinceLastBroadcast)
-        {
-            debug1 << "Sending notification that " 
-                   << numTerminatedSinceLastBroadcast 
-                   << " streamlines terminated to processor ";
-            for (int procNo=0; procNo < PAR_Size(); ++procNo)
-            {
-                if (procNo != PAR_Rank()) // Do not send to ourselves
-                {
-                    debug1 << procNo << " ";
-                    unsigned char *mpiMsg = new unsigned char[sizeof(int)];
-                    memcpy(mpiMsg, &numTerminatedSinceLastBroadcast, 
-                           sizeof(int));
-                    MPI_Request reqId;
-                    MPI_Isend(static_cast<void*>(mpiMsg), 1, MPI_INT, procNo, 
-                              StreamlinesTerminatedTag, VISIT_MPI_COMM, &reqId);
-                    requestToBufferMap[reqId] = mpiMsg;
-                }
-            }
-            numActiveStreamlines -= numTerminatedSinceLastBroadcast;
-            debug1 << std::endl << "Updating own active streamline counter. "
-                   << "There are " << numActiveStreamlines 
-                   << " remaining streamlines." << std::endl;
-            numTerminatedSinceLastBroadcast = 0;
-        }
-
-        // Wait for messages: new work & status updates
-        // ... get all pending requests
-        int numPending = requestToBufferMap.size() + 2; // all send requests +
-                                                        // two receive requests
-        MPI_Request *mpiRequests = new MPI_Request[numPending];
-        MPI_Request *mpiRequestsSave = new MPI_Request[numPending];
-        int currPending = 0;
-        mpiRequests[currPending] = mpiRequestsSave[currPending] 
-                     = terminateRecvRequest; ++currPending;
-        mpiRequests[currPending] = mpiRequestsSave[currPending] 
-                     = xferReqRecvRequest; ++currPending;
-        for (std::map<MPI_Request, unsigned char*>::const_iterator it =
-                  requestToBufferMap.begin()
-             ; it != requestToBufferMap.end(); ++it)
-        {
-            mpiRequests[currPending] = mpiRequestsSave[currPending] 
-                    = it->first; ++currPending;
-        }
-
-        // ... wait for some to finish
-        int idx;
-        MPI_Status status;
-        int *indices = new int[numPending];
-        MPI_Status *statuses = new MPI_Status[numPending];
-        int numFinished;
-        MPI_Waitsome(numPending, mpiRequests, &numFinished, indices, statuses);
-
-        //debug1 << "There are " << numFinished << " finished MPI requests."
-        //       << std::endl;
-
-        for (int i = 0; i < numFinished; ++i)
-        {
-            int idx = indices[i];
-            //debug1 << "Handling " << i << " (Source=" 
-            //       << statuses[i].MPI_SOURCE << " Tag=" 
-            //       << statuses[i].MPI_TAG << " Error= " 
-            //       <<statuses[i].MPI_ERROR << ") ReqId = " 
-            //       << mpiRequestsSave[idx] << std::endl;
-
-            // ... handle the message
-            if (idx == 0)
-            {
-                // Handle terminate message
-                debug1 << i << ": Received notification that " 
-                       << terminateMsgBuffer[0] 
-                       << " streamlines terminated. (Source=" 
-                       << statuses[i].MPI_SOURCE << " Tag=" 
-                       << statuses[i].MPI_TAG << " Error= " 
-                       << statuses[i].MPI_ERROR << ") ReqId="  
-                       << mpiRequestsSave[idx] << std::endl;
-                numActiveStreamlines -= terminateMsgBuffer[0];
-                debug1 << "There are " << numActiveStreamlines 
-                       << " remaining active streamlines." << std::endl;
-                // Post new receive
-                MPI_Irecv(static_cast<void*>(terminateMsgBuffer), 1, MPI_INT,
-                          MPI_ANY_SOURCE, StreamlinesTerminatedTag, 
-                          VISIT_MPI_COMM, &terminateRecvRequest);
-            }
-            else if(idx == 1)
-            {
-#ifdef LONG_PROTOCOL
-                // Handle streamline transfer
-                debug1 << i << ": Received request to transfer a streamline "
-                       << " with tag " << streamlineXferReqMsgBuffer[0]  
-                       << " ." << std::endl;
-                unsigned char *buffer = 
-                              new unsigned char[streamlineXferReqMsgBuffer[1]];
-
-                // Receive streamline
-                MPI_Recv(static_cast<void*>(buffer), 
-                         streamlineXferReqMsgBuffer[1],MPI_CHAR,MPI_ANY_SOURCE,
-                         streamlineXferReqMsgBuffer[0], VISIT_MPI_COMM, 
-                         MPI_STATUS_IGNORE);
-                // ... and add it to our work load
-                avtStreamlineWrapper *slSeg = new avtStreamlineWrapper;
-                streamlines.push_back(slSeg);
-                slSeg->UnSerialize(buffer);
-
-                // Post new receive for exchange
-                MPI_Irecv(static_cast<void*>(streamlineXferReqMsgBuffer), 2, 
-                          MPI_INT, MPI_ANY_SOURCE, StreamlineXferReqTag, 
-                          VISIT_MPI_COMM, &xferReqRecvRequest);
-#else
-                debug1 << i << ": Received new streamline from processor " 
-                       << statuses[i].MPI_SOURCE << std::endl;
-                avtStreamlineWrapper *slSeg = new avtStreamlineWrapper;
-                streamlines.push_back(slSeg);
-                slSeg->UnSerialize(streamlineXferBuffer);
-
-                // Post new receive for exchange
-                MPI_Irecv(static_cast<void*>(streamlineXferBuffer), 
-                          maxStreamlineMemSize, MPI_CHAR, MPI_ANY_SOURCE,
-                          StreamlineXferReqTag, VISIT_MPI_COMM, 
-                          &xferReqRecvRequest);
-#endif
-            }
-            else
-            {
-                // Handle finished send -> free buffer
-                //debug1 << i << ": Freeing buffer for finished send." 
-                //       << std::endl;
-                std::map<MPI_Request, unsigned char*>::iterator it =
-                                 requestToBufferMap.find(mpiRequestsSave[idx]);
-                if (it != requestToBufferMap.end())
-                {
-                    delete[] it->second;
-                    requestToBufferMap.erase(it);
-                    //debug1 << "Freed." << std::endl;
-                }
-                else
-                    debug1 << "Unknown send operation finished!" << std::endl;
-            }
-        }
-
-        delete[] indices;
-        delete[] mpiRequests;
-        delete[] mpiRequestsSave;
-        
-        communicationTime += visitTimer->StopTimer(communicationTimer, 
-                                                    "StreamlineCommunication");
-    }
-        
-    int communicationTimer = visitTimer->StartTimer();
-    // Cancel pending receives
-    MPI_Cancel(&terminateRecvRequest);
-    MPI_Cancel(&xferReqRecvRequest);
-
-    // Wait for pending sends and free buffers
-    if (requestToBufferMap.size())
-    {
-        debug1 << "Waiting for pending sends." << std::endl;
-        int numPending = requestToBufferMap.size();
-        MPI_Request *mpiRequests = new MPI_Request[numPending];
-        int currPending = 0;
-        for (std::map<MPI_Request, unsigned char*>::const_iterator it = 
-              requestToBufferMap.begin(); it != requestToBufferMap.end(); ++it)
-            mpiRequests[currPending++] = it->first;
-        MPI_Waitall(numPending, mpiRequests, MPI_STATUSES_IGNORE);
-        debug1 << "Freeing send buffers." << std::endl;
-        for (std::map<MPI_Request, unsigned char*>::const_iterator it = 
-              requestToBufferMap.begin(); it != requestToBufferMap.end(); ++it)
-            delete[] it->second;
-    }
-    communicationTime += visitTimer->StopTimer(communicationTimer, 
-                                                    "StreamlineCommunication");
-
-    // Create output
-    debug1 << "Make output: " << terminatedStreamlines.size() << endl;
-    CreateStreamlineOutput(terminatedStreamlines);
-    ReportStatistics(terminatedStreamlines);
-
-    for (int i = 0; i < terminatedStreamlines.size(); i++)
-    {
-        avtStreamlineWrapper *slSeg = terminatedStreamlines[i];
-        delete slSeg;
-    }
-#endif
-}
-#endif
-
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::AsyncExchangeStreamlines
-//
-//  Purpose:
-//      Exchange streamlines asynchronously.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 16, 2008
-// Modifications:
-//
-//   Dave Pugmire, Thu Dec 18 13:24:23 EST 2008
-//   Add early terminations flag.
-//
-// ****************************************************************************
-
-bool
-avtStreamlineFilter::AsyncExchangeStreamlines(
-                       std::vector<avtStreamlineWrapper *> &streamlines,
-                       std::vector< std::vector< avtStreamlineWrapper *> > 
-                                                         &distributeStreamlines,
-                       int &earlyTerminations )
-{
-    bool newStreamlines = false;
-    earlyTerminations = 0;
-#ifdef PARALLEL
-    int communicationTimer = visitTimer->StartTimer();    
-    // Do the SL sends.
-    for (int i = 0; i < nProcs; i++)
-    { 
-        vector<avtStreamlineWrapper *> &sl = distributeStreamlines[i];
-        
-        if (i != rank)
-            AsyncSendSLs(i, sl);
-        else // Pass them to myself....
-        {
-            for (int j = 0; j < sl.size(); j++)
-                streamlines.push_back(sl[j]);
-        }
-        sl.resize(0);
-    }
-
-    // See if there are any recieves....
-    int numNewSLs = AsyncRecvStreamlines(streamlines, earlyTerminations);
-    newStreamlines = (numNewSLs > 0);
-
-    //Cleanup after the sends.
-    for (int p = 0; p < nProcs; p++)
-    {
-        if (p != rank)
-        {
-            for (int s = 0; s < distributeStreamlines[p].size(); s++)
-                delete distributeStreamlines[p][s];
-        }
-        distributeStreamlines[p].resize(0);
-    }
-
-    communicationTime += visitTimer->StopTimer(communicationTimer, 
-                                               "StreamlineCommunication");    
-#endif
-    return newStreamlines;
-}
-
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::AsyncExchangeStatus
-//
-//  Purpose:
-//      Notify other processors of status (for use when doing asynchronous
-//      processing).
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 16, 2008
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::AsyncExchangeStatus(int numTerminated, 
-                                         int &otherTerminates,
-                                         bool recvBalanceInfo, 
-                                         bool sendBalanceInfo,
-                                         int slCount)
-{
-#ifdef PARALLEL
-    // Send the terminations.
-    if (numTerminated > 0 || sendBalanceInfo)
-        AsyncSendStatus(numTerminated, sendBalanceInfo, slCount);
-    
-    AsyncRecvStatus(otherTerminates, recvBalanceInfo);
-#endif
-}
-
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::StaticDomainExchangeStreamlines
-//
-//  Purpose:
-//      Exchange streamlines when doing static processing.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 16, 2008
-//
-// ****************************************************************************
-
-bool
-avtStreamlineFilter::StaticDomainExchangeStreamlines(
-                          std::vector<avtStreamlineWrapper *> &streamlines,
-                          std::vector< std::vector< avtStreamlineWrapper *> > 
-                                                        &distributeStreamlines)
-{
-    bool done = true;
-
-#if 0
-#ifdef PARALLEL
-    int *cnts = new int[nProcs], *slCount = new int[nProcs*nProcs],
-        *gatherSz = new int[nProcs*nProcs];
-
-    //We have integrated everything on this domain. Compute exchange vector.
-    //debug1 << "Exchange counts\n";
-    for (int i = 0; i < nProcs; i++)
-    {
-        cnts[i] = distributeStreamlines[i].size();
-        //debug1 << i << ": " << cnts[i] << endl;
-        for (int j = 0; j < nProcs; j++)
-            slCount[i*nProcs+j] = 0;
-    }
-    int gather = visitTimer->StartTimer();
-    MPI_Allgather(cnts, nProcs, MPI_INT, slCount, nProcs, MPI_INT, 
-                  VISIT_MPI_COMM);
-    gatherTime1 += visitTimer->StopTimer(gather, "MPI_Allgather_1");
-
-    
-    /*
-    debug1 << "slCount:\n";
-    for (int i = 0; i < nProcs; i++)
-    {
-        for (int j = 0; j < nProcs; j++)
-        debug1 << slCount[i*nProcs+j] << " ";
-        debug1 << endl;
-    }
-    */
-    
-    //We are done if nobody has any streamlines to exchange.
-    for (int i = 0; i < nProcs*nProcs; i++)
-        if (slCount[i] > 0)
-        {
-            //debug1 << "Not done! "<< i << " cnt is " << slCount[i] << endl;
-            done = false;
-            break;
-        }
-    
-    //debug1 << "Done = " << done << endl;
-    if (! done)
-    {
-        // Not done, so compute the size of all our streamlines to pass around.
-        for (int i = 0; i < nProcs; i++)
-        {
-            int sz = 0;
-            for (int s = 0; s < distributeStreamlines[i].size(); s++)
-                sz += distributeStreamlines[i][s]->NumBytesToSerialize();
-
-            cnts[i] = sz;
-            //debug1 << i << ": " << cnts[i] << endl;
-            for (int j = 0; j < nProcs; j++)
-                gatherSz[i*nProcs+j] = 0;
-        }
-        
-        //debug1 << "Communicate sizes... \n";
-        MPI_Allgather(cnts, nProcs, MPI_INT, gatherSz, nProcs, MPI_INT,
-                      VISIT_MPI_COMM);
-
-        //Do the sends.
-        vector<avtStreamlineWrapper *> sentSL;
-        vector< unsigned char *> sendBuffers;
-        std::vector<MPI_Request> sendReq;
-        int tag = 200;
-
-        // Do the sends.
-        for (int i = 0; i < nProcs; i++)
-        {
-            //debug1 << "I have " << distributeStreamlines[i].size() 
-            //       << " for " << i << endl;
-            if (distributeStreamlines[i].size() == 0)
-                continue;
-
-            if (i == rank) // Send it to "me"
-            {
-                //debug1 << "  Send " << distributeStreamlines[i].size() 
-                //       << " to me.\n";
-                for (int j = 0; j < distributeStreamlines[i].size(); j++)
-                {
-                    avtStreamlineWrapper *slSeg = distributeStreamlines[i][j];
-                    streamlines.push_back(slSeg);
-                }
-            }
-            else
-            {
-                // Send streamline batch to each processor.
-                unsigned char *buff = new unsigned char[ cnts[i] ];
-                int nBytes = 0;
-                sendBuffers.push_back(buff);
-                //debug1 << "buff = [" << (void *)buff << "]\n";
-                
-                for (int j = 0; j < distributeStreamlines[i].size(); j++)
-                {
-                    avtStreamlineWrapper *slSeg = distributeStreamlines[i][j];
-                    slSeg->numTimesCommunicated++;
-                    int len = slSeg->Serialize(&buff[nBytes]);
-                    //debug1<< j<<": size = " << len << endl;
-                    nBytes += len;
-                    delete slSeg;
-                    
-                    numSLCommunicated++;
-                }
-
-                //Send this packet of streamlines off.
-                MPI_Request req;
-                //debug1 << "  Send " << rank << " ==["<< cnts[i] << "]==> " 
-                //       << i << endl;
-                MPI_Isend(buff, cnts[i], MPI_CHAR, i,tag,VISIT_MPI_COMM, &req);
-                numBytesSent += cnts[i];
-                sendReq.push_back(req);
-            }
-            distributeStreamlines[i].resize(0);
-        }
-
-        // Do the receives.
-        for (int i = 0; i < nProcs; i++)
-        {
-            int numRecv = slCount[i*nProcs+rank];
-            if (i == rank || numRecv == 0)
-                continue;
-            
-            MPI_Status stat;
-            int recvSz = gatherSz[i*nProcs+rank];
-            
-            //debug1 << "Recv " << i << " == " << numRecv << " ["<< recvSz 
-            //       << "]==> " << rank << endl;
-            unsigned char *buff = new unsigned char[ recvSz ];
-            MPI_Recv(buff, recvSz, MPI_CHAR, i, tag, VISIT_MPI_COMM, &stat);
-            
-            int offset = 0;
-            for (int j = 0; j < numRecv; j++)
-            {
-                avtStreamlineWrapper *slSeg = new avtStreamlineWrapper;
-                streamlines.push_back(slSeg);
-                int len = slSeg->UnSerialize(&buff[offset], solver);
-                //debug1<< j<<": size = " << len << endl;
-                offset += len;
-                //slSeg->Debug();
-            }
-        }
-        
-        // Wait for all the sends to finish.
-        if (sendReq.size() > 0)
-        {
-            vector<MPI_Status> stats(sendReq.size());
-            MPI_Waitall(sendReq.size(), &sendReq[0], &stats[0]);
-        }
-
-        //All done, clean up.
-        for (int i = 0; i < sendBuffers.size(); i++)
-        {
-            unsigned char *bf = sendBuffers[i];
-            delete [] bf;
-        }
-    }
-
-
-    delete [] cnts;
-    delete [] slCount;
-    delete [] gatherSz;
-    //debug1 << "All DONE!\n";
-#endif
-#endif
-    return done;
-}
-
-#if 0
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::OLD_ParallelBalancedStaticDomains
-//
-//  Purpose:
-//      Calculates a streamline with ParallelStaticDomains algorithm.
-//      Each processor owns a fixed set of domains. However, communication is 
-//      done more frequently to try and avoid processor idle time. When a 
-//      streamline exists on a domain owned by the current processor, it is 
-//      communicated to the processor that owns the domain.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   March 17, 2008
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::OLD_ParallelBalancedStaticDomains(std::vector<pt3d> &allSeedpoints,
-                                                       BalanceType balance,
-                                                       int maxPts,
-                                                       int divFactor)
-{
-    debug1 << "avtStreamlineFilter::ParallelBalancedStaticDomains()\n";
-#ifdef PARALLEL
-    cout << "Seedpoint cnt = " << allSeedpoints.size() << endl;
-
-    //Get "my" seed points.
-    vector<avtStreamlineWrapper *> streamlines;
-    for (int i = 0; i < allSeedpoints.size(); i++)
-    {
-        vector<int> dl;
-        intervalTree->GetElementsListFromRange(allSeedpoints[i].values(), 
-                                               allSeedpoints[i].values(), dl);
-        //double x=allSeedpoints[i].xyz[0],y=allSeedpoints[i].xyz[1],
-        //       z=allSeedpoints[i].xyz[2];
-        //debug1 << "Seed pt " << i << ": [" << x << " " << y << " " << z 
-        //       << "] in domain " << dl[0] << " owned by " 
-        //       << DomainToRank(dl[0]) << ". Domain count = " << dl.size() 
-        //       << endl;
-        if (dl.size() > 0 && OwnDomain(dl[0]))
-        {
-            avtStreamlineWrapper *slSeg = 
-                                    new avtStreamlineWrapper(allSeedpoints[i]);
-            streamlines.push_back(slSeg);
-            //debug1 << "Seed pt: " << slSeg->seedPt.xyz[0] << " " 
-            //  << slSeg->seedPt.xyz[1] << " " << slSeg->seedPt.xyz[2] << endl;
-        }
-    }
-    debug1 << "My seedpoints: " << streamlines.size() << endl;
-
-    vector< vector< avtStreamlineWrapper *> > distributeStreamlines;
-    distributeStreamlines.resize(nProcs);
-    int *cnts = new int[nProcs], *gather = new int[nProcs*nProcs];
-    
-    // Keep working while there is work to do.
-    int cnt = 0;
-    while (true)
-    {
-        cnt++;
-        debug1 << "Iteration = " << cnt << ". My SL count = "
-               << streamlines.size() << endl;
-
-        // Determine balancing, if any.
-        int imax = streamlines.size();
-        if (balance == MAX_CNT && (imax > maxPts && maxPts > 0))
-            imax = maxPts;
-        else if (balance == MAX_PCT && (imax > maxPts && divFactor > 1))
-        {
-            imax = imax / divFactor;
-            if (imax == 0)
-                imax = 1;
-        }
-        else if (balance == NO_BALANCE)
-        {
-            //Nothing.
-        }
-
-        // Start integrating streamlines!
-        for (int i = 0; i < imax; i++)
-        {
-            avtStreamlineWrapper *slSeg = streamlines[i];
-            debug1 << i << ": Integrate seedPt " << slSeg->seedPt.xyz[0]<< " "
-                   <<slSeg->seedPt.xyz[1] << " " << slSeg->seedPt.xyz[2]<<endl;
-            IntegrateStreamline(slSeg, false);
-            debug1 << "Back from IntegrateStreamline. Pts = : " 
-                   << slSeg->slpts.size() << endl;
-
-            // After integration, streamline is either terminated, 
-            // or needs a new domain.
-            if (slSeg->status == TERMINATE)
-            {
-                debug1 << ".....Terminated.\n";
-                terminatedStreamlines.push_back(slSeg);
-            }
-            else if (slSeg->status == OUTOFBOUND)
-            {
-                int domainOwner = DomainToRank(slSeg->domain);
-                debug1 << ".....Exit Pass to " << slSeg->domain << " rank = " 
-                       << domainOwner << endl;
-                distributeStreamlines[domainOwner].push_back(slSeg);
-            }
-        }
-
-        // Do the communication step.
-        int communicationTimer = visitTimer->StartTimer();
-
-        // For unprocessed streamlines, pass them to myself.
-        if (streamlines.size()-imax > 0)
-            debug1 << "   Defer count: " << streamlines.size()-imax << endl;
-        for (int i = imax; i < streamlines.size(); i++)
-        {
-            avtStreamlineWrapper *slSeg = streamlines[i];
-            distributeStreamlines[rank].push_back(slSeg);
-        }
-        
-        // All streamlines processed. empty the list.
-        streamlines.resize(0);
-
-        bool done = StaticDomainExchangeStreamlines(streamlines, 
-                                                    distributeStreamlines);
-        communicationTime += visitTimer->StopTimer(communicationTimer, 
-                                                    "StreamlineCommunication");
-        
-        if (done)
-            break;
-    }
-
-    debug1 << "Make output: " << terminatedStreamlines.size() << endl;
-    CreateStreamlineOutput(terminatedStreamlines);
-    ReportStatistics(terminatedStreamlines);
-
-    delete [] cnts;
-    delete [] gather;
-    for (int i = 0; i < terminatedStreamlines.size(); i++)
-    {
-        avtStreamlineWrapper *slSeg = 
-                             (avtStreamlineWrapper *) terminatedStreamlines[i];
-        delete slSeg;
-    }
-#endif
-}
-#endif
-
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::AsyncStaticDomains
-//
-//  Purpose:
-//      Do asynchronous processing with a static domain decomposition.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 16, 2008
-//
-//  Modifications:
-//
-//   Dave Pugmire, Fri Aug 22 14:47:11 EST 2008
-//   Memory leak fix.
-//
-//   Dave Pugmire, Thu Dec 18 13:24:23 EST 2008
-//   Add early terminations flag.
-//
-//   Dave Pugmire, Tue Dec 23 13:52:42 EST 2008
-//   Moved ReportStatistics to this method.
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::AsyncStaticDomains(
-                            std::vector<avtStreamlineWrapper *> &allSeedpoints)
-{
-    debug1<<"avtStreamlineFilter::AsyncStaticDomains()\n";
-
-#ifdef PARALLEL
-    int totalNumActiveStreamlines = allSeedpoints.size();
-
-    allSLCounts.resize(nProcs,0);
-    //Get "my" seed points.
-    vector<avtStreamlineWrapper *> streamlines, terminatedStreamlines;
-    int numTerminated = 0;
-
-    for (int i = 0; i < allSeedpoints.size(); i++)
-    {
-        avtStreamlineWrapper *slSeg = allSeedpoints[i];
-        pt3d endPt;
-        slSeg->GetEndPoint(endPt);
-        if (OwnDomain(slSeg->domain))
-        {
-            if (PointInDomain(endPt, slSeg->domain))
-                streamlines.push_back(slSeg);
-            else
-            {
-                numTerminated++;
-                delete slSeg;
-            }
-        }
-        else
-            delete slSeg;
-    }
-    
-    debug1<< "I have "<<streamlines.size()<<" pts. Early termination= "
-          <<numTerminated<<endl;
-    
-    // Pre-load all "my" domains.
-    for (int i = 0; i < numDomains; i++)
-        if (rank == DomainToRank(i))
-            GetDomain(i);
-
-    // Init asynchronous stuff.
-    InitRequests();
-    terminationSends.resize(nProcs,-1);
-     
-    // Keep working while there is work to do.
-    bool newStreamlines = false;
-    vector< vector< avtStreamlineWrapper *> > distributeStreamlines(nProcs);
-
-    if (numTerminated > 0)
-    {
-        totalNumActiveStreamlines -= numTerminated;
-        int otherTerminates = 0;
-        AsyncExchangeStatus(numTerminated, otherTerminates, false, false,
-                            streamlines.size());
-        totalNumActiveStreamlines -= otherTerminates;
-        numTerminated = 0;
-    }
-
-    int SLIntegrationCnt = 0;
-    while (totalNumActiveStreamlines > 0)
-    {
-        debug1 << "Iteration = " << numIterations << ". My SL count = "
-               << streamlines.size() << ". Total cnt = " 
-               << totalNumActiveStreamlines << endl;
-
-        bool domainSetChanged = false, streamlineSetChanged = false;
-        int currSLCount = streamlines.size();
-
-        // Determine balancing, if any.
-        int imax = streamlines.size();
-        if ((imax > maxCount && maxCount > 0))
-            imax = maxCount;
-
-        // Start integrating streamlines!
-        debug1 << "for(i = 0, " << imax << ")\n";
-        for (int i = 0; i < imax; i++)
-        {
-            avtStreamlineWrapper *slSeg = streamlines[i];
-            debug1 << i <<": Integrate seedPt. Dom= " << slSeg->domain 
-                   << " Status = "<<slSeg->status<<endl;
-            IntegrateStreamline(slSeg);
-
-            SLIntegrationCnt++;
-            debug1<< "BACK FROM ISL. status = " << slSeg->status << endl;
-            // After integration, streamline is either terminated, or needs 
-            // a new domain.
-            if (slSeg->status == avtStreamlineWrapper::TERMINATE)
-            {
-                debug1 << "TERMINATED.\n";
-                terminatedStreamlines.push_back(slSeg);
-                numTerminated++;
-                totalNumActiveStreamlines--;
-                streamlineSetChanged = true;
-            }
-            else if (slSeg->status == avtStreamlineWrapper::OUTOFBOUNDS)
-            {
-                debug1<<"OUT of bounds.... Figure out what to do.\n";
-                //slSeg->Debug();
-                
-                MemStream buff;
-                slSeg->Serialize(MemStream::WRITE, buff, solver);
-                bool deleteSLSeg = true;
-                
-                for (int i = 0; i < slSeg->seedPtDomainList.size(); i++)
-                {
-                    int domRank = DomainToRank(slSeg->seedPtDomainList[i]);
-                    if (domRank == rank)
-                    {
-                        distributeStreamlines[ rank ].push_back(slSeg);
-                        deleteSLSeg = false;
-                    }
-                    else
-                    {
-                        streamlineSetChanged = true;
-                        avtStreamlineWrapper *newSeg = new avtStreamlineWrapper;
-                        buff.rewind();
-                        newSeg->Serialize(MemStream::READ, buff, solver);
-                        newSeg->domain = slSeg->seedPtDomainList[i];
-                        distributeStreamlines[ domRank ].push_back(newSeg);
-                    }
-                }
-                if ( deleteSLSeg )
-                    delete slSeg;
-            }
-        }
-
-        bool integratedStreamlines = false;
-        if (imax > 0)
-        {
-            numIterations++;
-            integratedStreamlines = true;
-        }
-
-        //At this point, everything between 0 and imax has been processed.
-        // Pass everything else to myself.
-        if (streamlines.size() > 0)
-        {
-            for (int i = imax; i < streamlines.size(); i++)
-                distributeStreamlines[rank].push_back(streamlines[i]);
-            streamlines.resize(0);
-        }
-
-        bool justFinished = (imax>0 && distributeStreamlines[rank].size()==0);
-        //debug1 << "justFinished = " << justFinished << " imax = "<<imax
-        //       << " SLSz = " << distributeStreamlines[rank].size()
-        //       << " nTerm = " << numTerminated<<endl;
-        
-        // Communication....
-        int communicationTimer = visitTimer->StartTimer();
-        // Pass streamlines that have exited my domains.
-        int earlyTerminates;
-        bool newStreamlines = AsyncExchangeStreamlines(streamlines, 
-                                                       distributeStreamlines,
-                                                       earlyTerminates);
-        if (newStreamlines)
-            streamlineSetChanged = true;
-            
-        //Send/Recv status.
-        int otherTerminates = 0;
-        AsyncExchangeStatus(numTerminated, otherTerminates, false, false,
-                            streamlines.size());
-        totalNumActiveStreamlines -= otherTerminates;
-        numTerminated = 0;
-
-        communicationTime += visitTimer->StopTimer(communicationTimer, 
-                                                   "Communication");
-
-        int timer = visitTimer->StartTimer();
-        // If we have new streamlines, sort them on the domain.
-        if (streamlineSetChanged)
-            SortStreamlines(streamlines);
-        sortTime += visitTimer->StopTimer(timer, "Sorting");
-    }
-
-    CleanupAsynchronous();
-    debug1 << "Make output: " << terminatedStreamlines.size() << endl;
-    
-    CreateStreamlineOutput(terminatedStreamlines);
-    ReportStatistics(terminatedStreamlines);
-
-    for (int i = 0; i < terminatedStreamlines.size(); i++)
-        delete terminatedStreamlines[i];
-#endif
-}
-
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::ParallelBalancedStaticDomains
-//
-//  Purpose:
-//      Calculates a streamline with ParallelStaticDomains algorithm.
-//      Each processor owns a fixed set of domains. However, communication is 
-//      done more frequently to try and avoid processor idle time. When a 
-//      streamline exists a domain owned by the current processor, it is 
-//      communicated to the processor that owns the domain.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   March 17, 2008
-//
-// ****************************************************************************
-
-//DRP
-void
-avtStreamlineFilter::ParallelBalancedStaticDomains(
-                           std::vector<avtStreamlineWrapper *> &allSeedpoints,
-                           bool asynchronous, BalanceType balance,
-                           bool loadOnDemand)
-{
-    return AsyncStaticDomains(allSeedpoints);
-
-#if 0
-    debug1 << "avtStreamlineFilter::ParallelBalancedStaticDomains()\n";
-#ifdef PARALLEL
-    int totalNumActiveStreamlines = allSeedpoints.size();
-
-    allSLCounts.resize(nProcs,0);
-    //Get "my" seed points.
-    vector<avtStreamlineWrapper *> streamlines;
-    for (int i = 0; i < allSeedpoints.size(); i++)
-    {
-        avtStreamlineWrapper *slSeg = allSeedpoints[i];
-        SetDomain(slSeg);
-        
-        for (int j = 0; j < slSeg->seedPtDomainList.size(); j++)
-        {
-            int dom = slSeg->seedPtDomainList[j];
-            if (OwnDomain(dom))
-            {
-                pt3d endPt;
-                slSeg->GetEndPoint(endPt);
-                
-                if (PointInDomain(endPt, dom))
-                    streamlines.push_back(slSeg);
-            }
-        }
-    }
-
-    // Pre-load all "my" domains.
-    for (int i = 0; i < numDomains; i++)
-        if (rank == DomainToRank(i))
-            GetDomain(i);
-
-    // Init asynchronous stuff.
-    if (asynchronous)
-    {
-        InitRequests();
-        terminationSends.resize(nProcs,-1);
-        if (loadOnDemand)
-        {
-            // Initialize the domainsLoaded array to the static assignemnt.
-            domainsLoaded.resize(nProcs);
-            for (int i = 0; i < nProcs; i++)
-            {
-                domainsLoaded[i].resize(numDomains);
-                for (int j = 0; j < numDomains; j++)
-                    domainsLoaded[i][j] = (DomainToRank(j) == i);
-            }
-            for (int i = 0; i < nProcs; i++)
-            {
-                debug1 << i<<": [ ";
-                for (int j = 0; j < numDomains; j++)
-                {
-                    debug1 << " " << domainsLoaded[i][j];
-                }
-                debug1 << " ]\n";
-            }
-        }
-    }
-
-     
-    // Keep working while there is work to do.
-    int numTerminated = 0, SLIntegrationCnt = 0;
-    bool newStreamlines = false;
-    vector< vector< avtStreamlineWrapper *> > distributeStreamlines(nProcs);
-
-    numIterations = 0;
-    while (totalNumActiveStreamlines > 0)
-    {
-        debug1 << "Iteration = " << numIterations << ". My SL count = " 
-               << streamlines.size() << ". Total cnt = " 
-               << totalNumActiveStreamlines << endl;
-
-        bool domainSetChanged = false, streamlineSetChanged = false;
-        int currSLCount = streamlines.size();
-
-        // Determine balancing, if any.
-        int imax = streamlines.size();
-        if (balance == MAX_CNT && (imax > maxCount && maxCount > 0))
-            imax = maxCount;
-        /*
-        else if (balance == MAX_PCT && (imax > maxPts && divFactor > 1))
-        {
-            imax = imax / divFactor;
-            if (imax == 0)
-                imax = 1;
-        }
-        */
-        else if (balance == NO_BALANCE)
-        {
-            //Nothing.
-        }
-
-
-        // Start integrating streamlines!
-        debug1 << "for(i = 0, " << imax << ")\n";
-        for (int i = 0; i < imax; i++)
-        {
-            avtStreamlineWrapper *slSeg = streamlines[i];
-            //debug1 << i << ": Integrate seedPt " << slSeg->seedPt.xyz[0]
-            //       << " "<< slSeg->seedPt.xyz[1] << " " 
-            //       << slSeg->seedPt.xyz[2]<<endl;
-            if (loadOnDemand)
-            {
-                if (!DomainLoaded(slSeg->domain))
-                    domainSetChanged = true;
-                GetDomain(slSeg->domain);
-            }
-            
-            debug1 << i <<": Integrate seedPt. Dom= " << slSeg->domain 
-                   << " Status = "<<slSeg->status<<endl;
-
-            IntegrateStreamline(slSeg);
-            //FIX THIS
-            EXCEPTION0(ImproperUseException);
-            SLIntegrationCnt++;
-            
-            debug1<< "BACK FROM ISL. status = " << slSeg->status << endl;
-            // After integration, streamline is either terminated, 
-            // or needs a new domain.
-            if (slSeg->status == avtStreamlineWrapper::TERMINATE)
-            {
-                debug1 << "TERMINATED.\n";
-                terminatedStreamlines.push_back(slSeg);
-                numTerminated++;
-                totalNumActiveStreamlines--;
-                streamlineSetChanged = true;
-            }
-            else if (slSeg->status == avtStreamlineWrapper::OUTOFBOUNDS)
-            {
-                // Handle this case.... (pass it to ourselves....)
-                if (loadOnDemand)
-                    EXCEPTION0(ImproperUseException);
-                
-                vector<int> ranks, doms;
-                ComputeRankList(slSeg->seedPtDomainList, ranks, doms);
-                for (int i = 0; i < ranks.size(); i++)
-                {
-                    slSeg->domain = doms[i];
-                    distributeStreamlines[ ranks[i] ].push_back(slSeg);
-                    if (ranks[i] != rank)
-                        streamlineSetChanged = true;
-                }
-            }
-        }
-
-        bool integratedStreamlines = false;
-        if (imax > 0)
-        {
-            numIterations++;
-            integratedStreamlines = true;
-        }
-
-        //At this point, everything between 0 and imax has been processed.
-        // Pass everything else to myself.
-        if (streamlines.size() > 0)
-        {
-            for (int i = imax; i < streamlines.size(); i++)
-                distributeStreamlines[rank].push_back(streamlines[i]);
-            streamlines.resize(0);
-        }
-        bool justFinished = (imax>0 && distributeStreamlines[rank].size() == 0);
-        debug1 << "justFinished = " << justFinished << " imax = "<<imax
-               << " SLSz = " << distributeStreamlines[rank].size()
-               << " nTerm = " << numTerminated<<endl;
-        
-        // Communication....
-        int communicationTimer = visitTimer->StartTimer();
-        if (asynchronous)
-        {
-            // Pass streamlines that have exited my domains.
-            int earlyTerminates;
-            bool newStreamlines = AsyncExchangeStreamlines(streamlines, 
-                                                          distributeStreamlines,
-                                                           earlyTerminates);
-            if (newStreamlines)
-                streamlineSetChanged = true;
-            
-            //Send/Recv status.
-            int otherTerminates = 0;
-
-            bool sendBalance = false;
-            debug1 << "domainSetChanged = " << domainSetChanged 
-                   << " SLSetChanged = " << streamlineSetChanged << endl;
-            
-            if (loadOnDemand && (domainSetChanged || streamlineSetChanged))
-                sendBalance = true;
-            
-            int numTermToSend = 0;//numTerminated;
-            sendBalance = false;
-            if (justFinished)
-            {
-                numTermToSend = numTerminated;
-                if (loadOnDemand)
-                    sendBalance = true;
-            }
-            AsyncExchangeStatus(numTermToSend, otherTerminates, loadOnDemand, 
-                                sendBalance, streamlines.size());
-            if (justFinished)
-                numTerminated = 0;
-            totalNumActiveStreamlines -= otherTerminates;
-
-            if (loadOnDemand && totalNumActiveStreamlines > 0)
-            {
-                allSLCounts[rank] = streamlines.size();
-                AsyncFigureOutBalancing(streamlines);
-            }
-
-            CheckPendingSendRequests();
-        }
-        else
-        {
-            bool done = StaticDomainExchangeStreamlines(streamlines, 
-                                                        distributeStreamlines);
-            if (done)
-                totalNumActiveStreamlines = 0;
-        }
-        communicationTime += visitTimer->StopTimer(communicationTimer, 
-                                                   "Communication");
-
-        //Cleanup any streamlines we have sent....
-        for (int p = 0; p < nProcs; p++)
-        {
-            if (p != rank)
-            {
-                for (int s = 0; s < distributeStreamlines[p].size(); s++)
-                    delete distributeStreamlines[p][s];
-            }
-            distributeStreamlines[p].resize(0);
-        }
-
-        int timer = visitTimer->StartTimer();
-        // If we have new streamlines, sort them on the domain.
-        if ((loadOnDemand && (streamlineSetChanged || domainSetChanged)) ||
-             (!loadOnDemand && (numDomains/nProcs > 1)))
-            SortStreamlines(streamlines);
-        sortTime += visitTimer->StopTimer(timer, "Sorting");
-    }
-
-    debug1 << "All done!\n";
-    //All done.
-    if (asynchronous)
-        CleanupAsynchronous();
-
-    debug1 << "Make output: " << terminatedStreamlines.size() << endl;
-    
-    CreateStreamlineOutput(terminatedStreamlines);
-    ReportStatistics(terminatedStreamlines);
-
-    for (int i = 0; i < terminatedStreamlines.size(); i++)
-        delete terminatedStreamlines[i];
-#endif
-#endif
-
-}
-
-
-// ****************************************************************************
-//  Function: slDomainCompare
-//
-//  Purpose:
-//      Contain the domains between to streamline wrappers.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 16, 2008
-//
-// ****************************************************************************
-
-vector<int> *domainArrayPtr = NULL;
-
-bool slDomainCompare(const avtStreamlineWrapper *slA, 
-                     const avtStreamlineWrapper *slB)
-{
-    if (slA->domain == slB->domain)
-        return false;
-    
-    // We want to sort such that the higher counts are before lower counts.
-    int cntA = (*domainArrayPtr)[ slA->domain ];
-    int cntB = (*domainArrayPtr)[ slB->domain ];
-
-    if (cntA > cntB)
-        return true;
-    else if (cntA == cntB && (slA->domain < slB->domain))
-        return true;
-    
-    return false;
-}
-
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::SortStreamlines
-//
-//  Purpose:
-//      Sort streamlines based on the domains they span.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 16, 2008
-//
-//  Modifications:
-//
-//   Dave Pugmire, Fri Aug 22 14:47:11 EST 2008
-//   Fix memory leak. domainCnt not delete if allSameDomain is true.
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::SortStreamlines(
-                              std::vector<avtStreamlineWrapper *> &streamlines)
-{
-    debug1 << "SortStreamlines(" << streamlines.size() << ");\n";
-    // No point in sorting two or fewer elements.
-    if (streamlines.size() <= 2)
-        return;
-    
-    bool sameDomain = true;
-    
-    vector<int> *domainCnt = new vector<int>(numDomains,0);
-    int domain = -1;
-    bool allSameDomain = true;
-    for (int i = 0; i < streamlines.size(); i++)
-    {
-        avtStreamlineWrapper *slSeg = (avtStreamlineWrapper *)streamlines[i];
-        if (i == 0)
-            domain = slSeg->domain;
-        if (domain != slSeg->domain)
-            allSameDomain = false;
-        
-        (*domainCnt)[slSeg->domain]  = (*domainCnt)[slSeg->domain] + 1;
-    }
-    
-    if (allSameDomain)
-    {
-        delete domainCnt;
-        return;
-    }
-    
-    domainArrayPtr = domainCnt;
-    std::sort(streamlines.begin(), streamlines.end(), slDomainCompare);
-    domainArrayPtr = NULL;
-    delete domainCnt;
-}
-
-typedef struct
-{
-    int rank;
-    int numStreamlines, extraCapacity;
-    int *domains;
-    float balance;
-} busyInfo;
-
-int busyInfoCompare(const void *a, const void *b)
-{
-    const busyInfo *aa = (const busyInfo *)a;
-    const busyInfo *bb = (const busyInfo *)b;
-    if (aa->numStreamlines > bb->numStreamlines)
-        return -1;
-    if (aa->numStreamlines < bb->numStreamlines)
-        return 1;
-    return 0;
-}
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::AsyncFigureOutBalancing
-//
-//  Purpose:
-//      Figure out how to do load balancing when we are doing asynchronous 
-//      processing.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 16, 2008
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::AsyncFigureOutBalancing(
-                             std::vector<avtStreamlineWrapper *> &streamlines)
-{
-#ifdef PARALLEL
-    debug1 << "AsyncFigureOutBalancing()\n";
-    PrintLoadBalanceInfo();
-    
-    // If SL count not above threshold, don't send.
-    int N = 2;
-    if (streamlines.size() < N*maxCount)
-        return;
-
-    int totalNumSLs = 0;
-    for (int i = 0; i < nProcs; i++)
-        totalNumSLs += allSLCounts[i];
-
-    // If SL count is zero, return.
-    if (totalNumSLs == 0)
-        return;
-
-    // Compute load balancing information for all processors.
-    vector<float> loadBalanceVec;
-    vector<int> canAccept;
-    canAccept.resize(nProcs);
-    loadBalanceVec.resize(nProcs);
-    
-    float perfectBalance = (float)totalNumSLs / (float)nProcs;
-    for (int i = 0; i < nProcs; i++)
-    {
-        loadBalanceVec[i] = (float)allSLCounts[i] / perfectBalance;
-        if (allSLCounts[i] < (int)perfectBalance)
-            canAccept[i] = (int)perfectBalance - allSLCounts[i];
-        else
-            canAccept[i] = 0;
-    }
-
-    // I'm not overworked, continue.
-    if (loadBalanceVec[rank] < loadFactor)
-        return;
-
-    // I am overworked.
-    debug1 << "I am overworked.\n";
-    for (int i = 0; i < nProcs; i++)
-        debug1<<"canAccept: " << i << " = " << canAccept[i] << endl;
-
-    // Determine which domain to send out.
-    // These are sorted, so just pick the last streamline.
-    int domain = streamlines[ streamlines.size()-1]->domain;
-
-    // Find candidates.
-    vector<int> slackers, slackersWithDomain;
-    vector<int> slackersWithDomainSLCount;
-    bool SLsSent = false;
-    for (int i = 0; i < nProcs; i++)
-    {
-        if (i != rank && loadBalanceVec[i] < underWorkedFactor)
-        {
-            slackers.push_back(i);
-            if (domainsLoaded[i][domain])
-            {
-                slackersWithDomain.push_back(i);
-                slackersWithDomainSLCount.push_back(allSLCounts[i]);
-            }
-        }
-    }
-    
-    // If nobody is under-worked, quit.
-    if (slackers.size() == 0)
-        return;
-
-    debug1 << "Try to send from domain= " << domain << " slackerSz = " 
-           << slackers.size() << " slackersWDom = " 
-           << slackersWithDomain.size() << endl;
-
-    int target = -1;
-    // Nobody has this domain, so randomly pick someone.
-    if (slackersWithDomain.size() > 0)
-    {
-        float r = (float)rand() / (float)RAND_MAX;
-        int idx = (int)((r * (slackersWithDomain.size()-1)) + 0.5);
-        target = slackersWithDomain[idx];
-        debug1 << "DOMAIN: Offload to " << target << endl;
-    }
-    else
-    {
-        // Nobody has the domain, randomly select someone...
-        float r = (float)rand() / (float)RAND_MAX;
-        int idx = (int)((r * (slackers.size()-1)) + 0.5);
-        target = slackers[idx];
-        debug1 << "RANDOM: Offload to " << target << endl;
-    }
-
-
-    vector<avtStreamlineWrapper *> send;
-    // If -1, send everything to create balance.
-    int numToSend;
-    if (balanceNumToSend == -1)
-    {
-        int numToPerfectBalance = streamlines.size() - (int)perfectBalance;
-        if (numToPerfectBalance > canAccept[target])
-            numToSend = canAccept[target];
-        else
-            numToSend = numToPerfectBalance;
-    }
-    else
-        numToSend = balanceNumToSend;
-    
-    // Find up to "numToSend" SLs from the same domain.
-    for (int i = 0; i < numToSend; i++)
-    {
-        avtStreamlineWrapper *slSeg = streamlines[ streamlines.size()-1 - i];
-        if (slSeg->domain != domain)
-            break;
-        send.push_back(slSeg);
-    }
-    numToSend = send.size();
-
-    debug1 << "Offloading "<<numToSend<<" SLs (dom= "<<domain<<") to " 
-           << target << endl;
-    //Update the arrays with the stuff we just sent.
-    domainsLoaded[target][domain] = 1;
-    allSLCounts[target] += send.size();
-
-    AsyncSendSLs(target, send);
-    streamlines.resize(streamlines.size() - send.size());
-
-#endif
-}
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::FigureOutBalancing
-//
-//  Purpose:
-//      Figure out how to do load balancing.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 16, 2008
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::FigureOutBalancing(
-                             std::vector<avtStreamlineWrapper *> &streamlines, 
-                             float loadFactor)
-{
-#ifdef PARALLEL
-    debug1 << "avtStreamlineFilter::FigureOutBalancing()\n";
-    if (loadFactor < 1.0)
-        loadFactor = 1.0;
-
-    // Figure out how busy I am. Streamline count.
-    int numStreamlines = streamlines.size();
-    
-    // Get my loaded domains.
-    vector<int> myLoadedDomains, domainList(numDomains,0);
-    GetLoadedDomains(myLoadedDomains);
-    for (int i = 0; i < myLoadedDomains.size(); i++)
-        domainList[ myLoadedDomains[i] ] = 1;
-
-    // Everyone communicates their status to everyone else.
-    int buf = numStreamlines;
-
-    int *busyVec = new int[nProcs];
-    int *allProcDomains = new int[nProcs*numDomains];
-    int gather = visitTimer->StartTimer();
-    MPI_Allgather(&numStreamlines, 1, MPI_INT, busyVec, 1, MPI_INT, 
-                  VISIT_MPI_COMM);
-    MPI_Allgather(&domainList[0], numDomains, MPI_INT, allProcDomains, 
-                  numDomains, MPI_INT, VISIT_MPI_COMM);
-    gatherTime2 += visitTimer->StopTimer(gather, "MPI_Allgather_2");
-
-    int totalNumStreamlines = 0;
-    for (int i = 0; i < nProcs; i++)
-        totalNumStreamlines += busyVec[i];
-        
-    float perfectBalance = (float) totalNumStreamlines / (float)nProcs;
-    float *balanceVec = new float[nProcs];
-    for (int i = 0; i < nProcs; i++)
-        balanceVec[i] = (float) busyVec[i] / perfectBalance;
-
-    // Balance if someone is above some threshold.....
-    bool needsBalancing = false;
-    for (int i = 0; i < nProcs; i++)
-        if (balanceVec[i] > loadFactor)
-        {
-            needsBalancing = true;
-            break;
-        }
-
-    needsBalancing = true;
-    if (needsBalancing)
-    {
-        busyInfo *info = new busyInfo[nProcs];
-        
-        // Build a table of information, then sort it.
-        // Heavily loaded procs at the front of the list, 
-        // lightly loaded at the back.
-        for (int i = 0; i < nProcs; i++)
-        {
-            info[i].rank = i;
-            info[i].numStreamlines = busyVec[i];
-            //NOTE: negative extraCapacity means we are over the perfect 
-            //      balance.
-            info[i].extraCapacity = (int)perfectBalance 
-                                     -  info[i].numStreamlines;
-            info[i].balance = (float)busyVec[i] / perfectBalance;
-            info[i].domains = new int[numDomains];
-            for (int j = 0; j < numDomains; j++)
-                info[i].domains[j] = allProcDomains[i*nProcs +j];
-        }
-        qsort(info, nProcs, sizeof(busyInfo), busyInfoCompare);
-        
-        for (int i = 0; i < nProcs; i++)
-        {
-            debug1 << "Rank = " << setw(2) << info[i].rank << " DOM = ";
-            debug1 << "**[ ";
-            for (int j = 0; j < numDomains; j++)
-                debug1 << info[i].domains[j] << " ";
-            debug1 << " ]** : nSL = " << setw(4) << info[i].numStreamlines 
-                   << " cap = " << setw(4) << info[i].extraCapacity 
-                   << " bal = " << info[i].balance << endl;
-        }
-
-        // Exchange streamlines: Busy give stuff to the lightly loaded.
-        // Start indexing from both ends. Make sure we don't cross!
-        for (int i = 0; i < nProcs; i++)
-        {
-            // Quit if we no more balancing needs to happen.
-            if (info[i].balance < loadFactor)
-                break;
-            
-            int getRidOf = -info[i].extraCapacity;
-            
-            for (int j=nProcs-1; j > i; j--)
-            {
-                if (info[j].extraCapacity > 0)
-                {
-                    int avail = info[j].extraCapacity;
-                    int numToExchange = getRidOf;
-                    if (numToExchange > avail)
-                        numToExchange = avail;
-                    info[j].extraCapacity -= numToExchange;
-
-                    debug1 << info[i].rank << " == [" << numToExchange 
-                           << "] ==> " << info[j].rank << endl;
-                    if (numToExchange > 0)
-                        SendStreamlinesTo(numToExchange, info[i].rank, 
-                                          info[j].rank, streamlines);
-
-                    getRidOf -= numToExchange;
-                    if (getRidOf == 0)
-                        break;
-                }
-            }
-        }
-        
-        delete [] info;
-    }
-
-    delete [] balanceVec;
-    delete [] busyVec;
-    delete [] allProcDomains;
-#endif
-
-}
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::InitRequests
-//
-//  Purpose:
-//      Initialize the request buffers.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 16, 2008
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::InitRequests()
-{
-#ifdef PARALLEL
-    
-    statusRecvRequests.resize(nProcs, MPI_REQUEST_NULL);
-    slRecvRequests.resize(nProcs, MPI_REQUEST_NULL);
-
-    for (int i = 0; i < nProcs; i++)
-    {
-        if (i != rank)
-        {
-            PostRecvStatusReq(i);
-            PostRecvSLReq(i);
-        }
-    }
-
-#endif
-}
-
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::CleanupAsynchronous
-//
-//  Purpose:
-//      Claenup the buffers used when doing asynchronous processing.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 16, 2008
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::CleanupAsynchronous()
-{
-#ifdef PARALLEL
-    debug1 << "CleanupAsynchronous()\n";
-
-    for (int i = 0; i < statusRecvRequests.size(); i++)
-    {
-        MPI_Request req = statusRecvRequests[i];
-        if (req != MPI_REQUEST_NULL)
-            MPI_Cancel(&req);
-    } 
-
-    for (int i = 0; i < slRecvRequests.size(); i++)
-    {
-        MPI_Request req = slRecvRequests[i];
-        if (req != MPI_REQUEST_NULL)
-            MPI_Cancel(&req);
-    }
-
-    // Cleanup recv buffers.
-    std::map<MPI_Request, unsigned char*>::const_iterator it;
-    for (it = recvSLBufferMap.begin(); it != recvSLBufferMap.end(); ++it)
-        if (it->second)
-            delete[] it->second;
-
-    std::map<MPI_Request, int*>::const_iterator itt;
-    for (itt = recvIntBufferMap.begin(); itt != recvIntBufferMap.end(); ++itt)
-        if (itt->second)
-            delete[] itt->second;
-    
-    debug1 << "DONE CleanupAsynchronous()\n";
-#endif
-}
-
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::CheckPendingSendRequests
-//
-//  Purpose:
-//      Check to see if there are any pending send requests.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 16, 2008
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::CheckPendingSendRequests()
-{
-#ifdef PARALLEL
-    debug2 << "CheckPendingSendRequests();\n";
-    //int timer = visitTimer->StartTimer();
-
-    if (sendSLBufferMap.size() > 0)
-    {
-        vector<MPI_Request> req, copy;
-
-        int notCompleted = 0;
-        std::map<MPI_Request, unsigned char*>::const_iterator it;
-        for (it = sendSLBufferMap.begin(); it != sendSLBufferMap.end(); ++it)
-        {
-            if (it->first != MPI_REQUEST_NULL && it->second != NULL)
-            {
-                req.push_back(it->first);
-                copy.push_back(it->first);
-            }
-            else
-                notCompleted++;
-        }
-
-        debug2 << "\tCheckPendingSendRequests() SL completed = "<<req.size()
-               <<" not completed: "<<notCompleted<<endl;
-
-        if (req.size() > 0)
-        {
-            // See if any sends have completed. Delete buffers if they have.
-            int num = 0, *indices = new int[req.size()];
-            MPI_Status *status = new MPI_Status[req.size()];
-            MPI_Testsome(req.size(), &req[0], &num, indices, status);
-            
-            for (int i = 0; i < num; i++)
-            {
-                int idx = indices[i];
-                MPI_Request r = copy[idx];
-                unsigned char *buff = sendSLBufferMap[r];
-                debug2 << "\tidx = " << idx << " r = " << r << " buff = " 
-                       << (void *)buff << endl;
-                if (buff)
-                    delete [] buff;
-                debug2 << "Delete done!\n";
-                sendSLBufferMap[r] = NULL;
-            }
-            
-            delete [] indices;
-            delete [] status;
-        }
-    }
-
-    if (sendIntBufferMap.size() > 0)
-    {
-        vector<MPI_Request> req, copy;
-        std::map<MPI_Request, int*>::const_iterator it;
-        int notCompleted = 0;
-
-        for (it = sendIntBufferMap.begin(); it != sendIntBufferMap.end(); ++it)
-        {
-            if (it->first != MPI_REQUEST_NULL && it->second != NULL)
-            {
-                req.push_back(it->first);
-                copy.push_back(it->first);
-            }
-            notCompleted++;
-        }
-
-        debug2 << "\tCheckPendingSendRequests() INT completed = "<<req.size()
-               <<" not completed: "<<notCompleted<<endl;
-        
-        if (req.size() > 0)
-        {
-            // See if any sends have completed. Delete buffers if they have.
-            int num = 0, *indices = new int[req.size()];
-            MPI_Status *status = new MPI_Status[req.size()];
-            MPI_Testsome(req.size(), &req[0], &num, indices, status);
-            
-            for (int i = 0; i < num; i++)
-            {
-                int idx = indices[i];
-                MPI_Request r = copy[idx];
-                int *buff = sendIntBufferMap[r];
-                debug2 << "\tidx = " << idx << " r = " << r << " buff = " 
-                       << (void *)buff << endl;
-                if (buff)
-                    delete [] buff;
-                sendIntBufferMap[r] = NULL;
-            }
-            
-            delete [] indices;
-            delete [] status;
-        }
-    }
-
-    //asyncSendCleanupTime += visitTimer->StopTimer(timer, 
-    //                                              "CheckPendingSendRequests");
-    debug2 << "DONE  CheckPendingSendRequests()\n";
-#endif
-}
-
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::PostRecvStatusReq
-//
-//  Purpose:
-//      Receives status requests.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 16, 2008
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::PostRecvStatusReq(int proc)
-{
-#ifdef PARALLEL
-    MPI_Request req;
-    int *buff = new int[statusMsgSz];
-    MPI_Irecv(buff, statusMsgSz, MPI_INT, proc, STATUS_TAG, VISIT_MPI_COMM, 
-              &req);
-    //debug1 << "Post Statusrecv for req = " << req << " from " << proc<<endl;
-    statusRecvRequests[proc] = req;
-    recvIntBufferMap[req] = buff;
-#endif
-}
-
-void
-avtStreamlineFilter::PostRecvSLReq(int proc)
-{
-#ifdef PARALLEL
-    MPI_Request req;
-    unsigned char *buff = new unsigned char[ MAX_SLMSG_SZ ];
-    int err = MPI_Irecv(buff, MAX_SLMSG_SZ, MPI_CHAR, proc, STREAMLINE_TAG, 
-                        VISIT_MPI_COMM, &req);
-    debug2<<err<<" = MPI_Irecv(buff, "<<MAX_SLMSG_SZ<<", MPI_CHAR, "<<proc
-          <<", "<<STREAMLINE_TAG<<", "<<req<<");\n";
-    slRecvRequests[proc] = req;
-    recvSLBufferMap[req] = buff;
-#endif
-}
-
-int
-avtStreamlineFilter::AsyncRecvStreamlines(
-                                          std::vector<avtStreamlineWrapper *> &streamlines,
-                                          int &earlyTerminations )
-{
-    int slCount = 0;
-    earlyTerminations = 0;
-
-#ifdef PARALLEL
-    //int timer = visitTimer->StartTimer();
-    //debug1 << "AsyncRecvStreamlines(slCnt = " << streamlines.size() << ");\n";
-
-    while (true)
-    {
-        int nReq = slRecvRequests.size();
-        MPI_Status *status = new MPI_Status[nReq];
-        int *indices = new int[nReq];
-        int num = 0, err;
-
-        std::vector<MPI_Request> copy;
-        for (int i = 0; i < slRecvRequests.size(); i++)
-            copy.push_back(slRecvRequests[i]);
-
-        err = MPI_Testsome(nReq, &copy[0], &num, indices, status);
-        //debug1<<"MPI_Testsome(nReq= "<<nReq<<"); err= "<<err<<endl;
-
-        if (num > 0)
-        {
-            for (int i = 0; i < num; i++)
-            {
-                int idx = indices[i];
-                
-                MPI_Request req = slRecvRequests[idx];
-                if (req == MPI_REQUEST_NULL)
-                    continue;
-                
-                unsigned char *msg = recvSLBufferMap[req];
-                if (msg == NULL)
-                    continue;
-        
-                MemStream buff(MAX_SLMSG_SZ, msg);
-                delete [] msg;
-
-                size_t numSLs;
-                buff.read(numSLs);
-                //debug1 << "Recv " << numSLs << " from " << idx << endl;
-
-                vector<avtStreamlineWrapper *> recvSLs;
-                for (int j = 0; j < numSLs; j++)
-                {
-                    //debug1 << "Unserialize : " << j << endl;
-                    avtStreamlineWrapper *slSeg = new avtStreamlineWrapper;
-                    slSeg->Serialize(MemStream::READ, buff, solver);
-                    recvSLs.push_back(slSeg);
-                }
-
-                // Make sure the streamline is one one of my domains.
-                for (int j = 0; j < recvSLs.size(); j++)
-                {
-                    avtStreamlineWrapper *slSeg = recvSLs[j];
-
-                    pt3d pt;
-                    slSeg->GetEndPoint(pt);
-                    //slSeg->Debug();
-
-                    if (PointInDomain(pt, slSeg->domain))
-                    {
-                        //debug1<<"It's a keeper\n";
-                        streamlines.push_back(slSeg);
-                        slCount++;
-                    }
-                    else
-                    {
-                        // Point not in domain.
-                        delete slSeg;
-                        //debug1<<"Throw it back!\n";
-                        earlyTerminations++;
-                    }
-                }
-                
-                recvSLBufferMap[req] = NULL;
-            }
-
-            for (int i = 0; i < num; i++)
-                PostRecvSLReq(indices[i]);
-        }
-
-        delete [] status;
-        delete [] indices;
-        
-        if (num == 0)
-            break;
-    }
-
-    //debug1 << "DONE: AsyncRecvStreamlines(slCnt = " << streamlines.size() 
-    //       << ");\n";
-    //asyncSLTime += visitTimer->StopTimer(timer, "AsyncRecvStreamlines");
-#endif
-    
-    return slCount;
-}
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::AsyncRecvs
-//
-//  Purpose:
-//      Receive streamlines in an asynchronous setting.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 16, 2008
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::AsyncRecvs(
-                    std::vector<avtStreamlineWrapper *> &streamlines, 
-                    bool blockingWait, int *numSLs, int *numTerm)
-{
-#ifdef PARALLEL
-    /*
-    debug1 << "AsyncRecvs(" << blockingWait << ")\n";
-
-    *numSLs = 0;
-    *numTerm = 0;
-    int nTReq = statusRecvRequests.size();
-    int nSReq = slRecvRequests.size();
-    int nReq = nTReq + nSReq;
-
-    std::vector<MPI_Request> copy;
-    for (int i = 0; i < statusRecvRequests.size(); i++)
-        copy.push_back(statusRecvRequests[i]);
-    
-    for (int i = 0; i < slRecvRequests.size(); i++)
-        copy.push_back(slRecvRequests[i]);
-
-    MPI_Status *status = new MPI_Status[nReq];
-    int *indices = new int[nReq];
-    int num = 0, err;
-
-    if (blockingWait)
-        err = MPI_Waitsome(nReq, &copy[0], &num, indices, status);
-    else
-        err = MPI_Testsome(nReq, &copy[0], &num, indices, status);
-
-    debug1 << "AsyncRecvs(): Done waiting " << num << endl;
-    if (num == 0)
-        return;
-
-    for (int i = 0; i < num; i++)
-    {
-        int idx = indices[i];
-        // It's a terminate request...
-        if (idx < nTReq)
-        {
-            MPI_Request req = terminateRecvRequests[idx];
-            if (req == MPI_REQUEST_NULL)
-                continue;
-            int *buff = recvIntBufferMap[req];
-            if (buff == NULL)
-                continue;
-            
-            *numTerm += buff[0];
-
-            // Mark this guy as "not busy".
-            terminationSends[idx] = buff[0];
-
-            delete [] buff;
-            recvIntBufferMap[req] = NULL;
-            PostRecvStatusReq(idx);
-        }
-        // Its a streamline.
-        else
-        {
-            idx -= nTReq;
-            MPI_Request req = slRecvRequests[idx];
-            if (req == MPI_REQUEST_NULL)
-                continue;
-            
-            unsigned char *buff = recvSLBufferMap[req];
-            if (buff == NULL)
-                continue;
-
-            int num = 0, offset = 0;
-            memcpy(&num, buff, sizeof(int));
-            //debug1 << "Recv " << numSLs << " from " << idx << endl;
-            offset += sizeof(int);
-
-            for (int j = 0; j < num; j++)
-            {
-                avtStreamlineWrapper *slSeg = new avtStreamlineWrapper;
-                int len  = slSeg->UnSerialize(&buff[offset]);
-                offset += len;
-                streamlines.push_back(slSeg);
-            }
-            *numSLs += num;
-            delete [] buff;
-            recvSLBufferMap[req] = NULL;
-
-            PostRecvSLReq(idx);
-        }
-    }
-
-    delete [] status;
-    delete [] indices;
-    */
-#endif
-}
-
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::AsyncRecvStatus
-//
-//  Purpose:
-//      Report status about asynchronous receives.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 16, 2008
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::AsyncRecvStatus(int &numTerminated, bool balanceInfo)
-{
-    numTerminated = 0;
-#ifdef PARALLEL
-    //debug1 << "AsyncRecvStatus()\n";
-    //int timer = visitTimer->StartTimer();
-
-    // Keep processing until there are no more terminations to recieve.
-    while (true)
-    {
-        int nReq = statusRecvRequests.size();
-        MPI_Status *status = new MPI_Status[nReq];
-        int *indices = new int[nReq];
-        int num = 0, err;
-
-        std::vector<MPI_Request> copy;
-        for (int i = 0; i < statusRecvRequests.size(); i++)
-            copy.push_back(statusRecvRequests[i]);
-
-        //debug1<< "MPI_Testsome("<<status<<" "<<indices<<" .....\n";
-        err = MPI_Testsome(nReq, &copy[0], &num, indices, status);
-        //debug1<< "MPI_Testsome returned. err = "<<err<<" num= "<<num<<endl;
-        if (num > 0)
-        {
-            //debug1<<"MPI_Testsome() num = "<<num<<endl;
-            for (int i = 0; i < num; i++)
-            {
-                int idx = indices[i];
-                //debug1 << "idx = " << idx << endl;
-                
-                MPI_Request req = statusRecvRequests[idx];
-                if (req == MPI_REQUEST_NULL)
-                    continue;
-                
-                int *buff = recvIntBufferMap[req];
-                /*
-                debug1 << "Process the terminate msg: req = " <<req 
-                       << " buff= "<< buff[0] << endl;
-                */
-                if (buff == NULL)
-                    continue;
-                
-                numTerminated += buff[0];
-                
-                if (balanceInfo)
-                {
-                    allSLCounts[idx] = buff[1];
-                    for (int j = 0; j < numDomains; j++)
-                        domainsLoaded[idx][j] = 0;
-                    
-                    for (int j = 0; j < numDomains; j++)
-                    {
-                        int dom = buff[2+j];
-                        if (dom == -1)
-                            break;
-                        domainsLoaded[idx][dom] = 1;
-                    }
-                }
-                
-                delete [] buff;
-                recvIntBufferMap[req] = NULL;
-            }
-        
-            for (int i = 0; i < num; i++)
-                PostRecvStatusReq(indices[i]);
-        }
-            
-        delete [] status;
-        delete [] indices;
-        if (num == 0)
-            break;
-    }
-
-    //debug1 << "DONE AsyncRecvStatus() Terminated: "<<numTerminated<<endl;
-    //asyncTermTime += visitTimer->StopTimer(timer, "AsyncRecvTerminate");
-#endif
-}
-
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::PrintLoadBalanceInfo
-//
-//  Purpose:
-//      Print information about the load balance.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 16, 2008
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::PrintLoadBalanceInfo()
-{
-#ifdef PARALLEL
-    int nSLs = 0;
-    for (int i = 0; i < nProcs; i++)
-        nSLs += allSLCounts[i];
-    
-    float perfectBalance = (float)nSLs / (float)nProcs;
-    debug1 << "Perfect balance = " << perfectBalance << endl;
-    for (int i = 0; i < nProcs; i++)
-    {
-        int domCnt = 0;
-        for (int j = 0; j < numDomains; j++)
-            domCnt += domainsLoaded[i][j];
-
-        float lf = (float) allSLCounts[i] / perfectBalance;
-        char str[64];
-        sprintf(str, "%6.3f", lf);
-        debug1 << setw(3)<<i<<": SL= "<<setw(4)<<allSLCounts[i]<<" LF= "
-               <<str<< " ";
-        debug1 << "[ ";
-        for (int j = 0; j < numDomains; j++)
-            debug1 << domainsLoaded[i][j] << " ";
-        debug1 << "] CNT= " << domCnt << endl;
-    }
-#endif
-}
-
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::AsyncSendStatus
-//
-//  Purpose:
-//      Report status about asynchronous sends.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 16, 2008
-//
-// Modifications:
-//
-//   Dave Pugmire, Thu Dec 18 13:24:23 EST 2008
-//   Use statusMsgSz member data.
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::AsyncSendStatus(int numTerm, bool sendBalanceInfo, int slCount)
-{
-#ifdef PARALLEL
-    debug1 << "AsyncSendStatus(" << numTerm << ", " <<sendBalanceInfo<<", "
-           <<slCount<<");\n";
-    //        if (numTerm == 0)
-    //            return;
-
-    //int timer = visitTimer->StartTimer();
-
-    //Do an asynch broadcast to everyone.
-    vector<int> domainList;
-    if (sendBalanceInfo)
-    {
-        for (int i = 0; i < numDomains; i++)
-            if (DomainLoaded(i))
-                domainList.push_back(i);
-        
-        //Marker for end of domain list.
-        domainList.push_back(-1);
-    }
-    
-    /*
-    debug1 << "AsyncSendStatus: [";
-    debug1 << numTerm << ", ";
-    if (sendBalanceInfo)
-    {
-        debug1 << slCount << ", ";
-        for (int i = 0; i < numDomains; i++)
-            debug1 << DomainLoaded(i) << ", ";
-    }
-    debug1 << "]\n";
-    */
-
-    for (int i = 0; i < nProcs; i++)
-    {
-        if (i != rank)
-        {
-            MPI_Request req;
-            int *msg;
-            if (sendBalanceInfo)
-            {
-                msg = new int[statusMsgSz];
-                msg[0] = numTerm;
-                msg[1] = slCount;
-                for (int j = 0; j < domainList.size(); j++)
-                    msg[2+j] = domainList[j];
-                /*
-                for (int j = 0; j < numDomains; j++)
-                    msg[2 +j] = DomainLoaded(j);
-                MPI_Isend(msg, (numDomains+2), MPI_INT, i, STATUS_TAG, 
-                          VISIT_MPI_COMM, &req);
-                */
-                
-                MPI_Isend(msg, (domainList.size()+2), MPI_INT, i, STATUS_TAG, 
-                          VISIT_MPI_COMM, &req);
-                numBytesSent += (sizeof(int) * (numDomains+2));
-            }
-            else
-            {
-                msg = new int;
-                msg[0] = numTerm;
-                MPI_Isend(msg, 1, MPI_INT, i, STATUS_TAG, VISIT_MPI_COMM,&req);
-                numBytesSent += (sizeof(int));
-            }
-
-            //debug1 << "MPI_Isend("<<msg[0]<< ", 1, MPI_INT, "<<i
-            //       <<", TERMINATE_TAG, VISIT_MPI_COMM, &req); REQ = " 
-            //       << req << endl;
-            sendIntBufferMap[req] = msg;
-            numStatusCommunicated++;
-        }
-    }
-    
-    debug1 << "DONE: AsyncSendStatus(" << numTerm << ", " <<sendBalanceInfo
-           <<", "<<slCount<<");\n";
-    //asyncTermTime += visitTimer->StopTimer(timer, "AsyncSendTerminate");
-#endif
-}
-
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::AsyncSendSL
-//
-//  Purpose:
-//      Send a streamline in an asynchronous setting.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 16, 2008
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::AsyncSendSL(int receiver, avtStreamlineWrapper *slSeg)
-{
-#ifdef PARALLEL
-    //int timer = visitTimer->StartTimer();
-
-    debug1 << "AsyncSendSL(int receiver, avtStreamlineWrapper *slSeg)\n";
-    MPI_Request req;
-
-    MemStream buff;
-    size_t one = 1;
-    buff.write(one);
-    slSeg->numTimesCommunicated++;
-    slSeg->Serialize(MemStream::WRITE, buff, solver);
-    numSLCommunicated++;
-
-    size_t sz = buff.buffLen();
-    unsigned char *msg = new unsigned char[sz];
-    memcpy(msg, buff.buff(), sz);
-
-    MPI_Isend(msg, sz, MPI_CHAR, receiver, STREAMLINE_TAG,VISIT_MPI_COMM,&req);
-    numBytesSent += sz;
-    sendSLBufferMap[req] = msg;
-
-    debug1 << "DONE  AsyncSendSL(int receiver, avtStreamlineWrapper *slSeg) "
-           << "sz = " << sz << endl << endl;
-
-    //asyncSLTime += visitTimer->StopTimer(timer, "AsyncSendSL");
-#endif
-}
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::AsyncSendSLs
-//
-//  Purpose:
-//      Send multiple streamlines in an asynchronous setting.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 16, 2008
-//
-//  Modifications:
-//
-//   Dave Pugmire, Fri Aug 22 14:47:11 EST 2008
-//   Memory leak fix.
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::AsyncSendSLs(int receiver, 
-                              const std::vector<avtStreamlineWrapper*> &slSegs)
-{
-#ifdef PARALLEL
-    int numSL = slSegs.size();
-    if (numSL == 0)
-        return;
-
-    //int timer = visitTimer->StartTimer();
-    //debug1 << "AsyncSendSLs(recv= " << receiver << ", numSLs= " 
-    //       << numSL << ");\n";
-    MemStream buff;
-
-    size_t szz = slSegs.size();
-    buff.write(&szz, 1);
-    for (int i = 0; i < slSegs.size(); i++)
-    {
-        avtStreamlineWrapper *slSeg = slSegs[i];
-        slSeg->numTimesCommunicated++;
-        slSeg->Serialize(MemStream::WRITE, buff, solver);
-        delete slSeg;
-        
-        numSLCommunicated++;
-    }
-
-    // Break it up into multiple messages if needed.
-    if (buff.buffLen() > MAX_SLMSG_SZ)
-    {
-        cerr << "SL msg too big!\n";
-        return;
-    }
-
-    size_t sz = buff.buffLen();
-    unsigned char *msg = new unsigned char[sz];
-    memcpy(msg, buff.buff(), sz);
-
-    /*
-    //See how it compresses.
-    unsigned long len = sz, resLen = sz;
-    unsigned char *dest = new unsigned char[sz];
-    compress(dest, &resLen, msg, sz);
-    double ratio = (double)len/(double)resLen;
-    debug1<< "Compression: len= " << sz << " --> " << resLen << " = " 
-          <<ratio << endl;
-    */
-    
-    MPI_Request req;
-    int err = MPI_Isend(msg, sz, MPI_CHAR, receiver, STREAMLINE_TAG, VISIT_MPI_COMM, &req);
-    //debug1<<err<<" = MPI_Isend(msg, "<<sz<<", MPI_CHAR, "<<receiver<<", "
-    //      <<STREAMLINE_TAG<<", req= "<<req<<");\n";
-    numBytesSent += sz;
-    sendSLBufferMap[req] = msg;
-
-    //debug1 << "DONE AsyncSendSLs()"<< endl;
-    //asyncSLTime += visitTimer->StopTimer(timer, "AsyncSendSL");
-#endif
-}
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::SendStreamlinesTo
-//
-//  Purpose:
-//      A function that manages many streamline sends.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 16, 2008
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::SendStreamlinesTo(int num,
-                             int sender, int receiver,
-                             std::vector<avtStreamlineWrapper *> &streamlines)
-{
-#ifdef PARALLEL
-#if 0
-    int szTag = 1, buffTag = 2;
-    int slEndIdx = streamlines.size() - 1;
-
-    if (rank == sender)
-    {
-        int sz = 0;
-        vector<avtStreamlineWrapper *> sentSL;
-        for (int k = 0; k < num; k++, slEndIdx--)
-        {
-            avtStreamlineWrapper *slSeg = streamlines[slEndIdx];
-            sz += slSeg->NumBytesToSerialize();
-            sentSL.push_back(slSeg);
-        }
-        
-        std::vector<MPI_Request> sendReq;
-        MPI_Request req;
-        MPI_Isend(&sz, 1, MPI_INT, receiver, szTag, VISIT_MPI_COMM, &req);
-        numBytesSent += sizeof(int);
-        sendReq.push_back(req);
-        
-        unsigned char *buff = new unsigned char[sz];
-        int nBytes = 0;
-        for (int k = 0; k < sentSL.size(); k++)
-        {
-            avtStreamlineWrapper *slSeg = sentSL[k];
-            slSeg->numTimesCommunicated++;
-            int len = slSeg->Serialize(&buff[nBytes]);
-            nBytes += len;
-            delete slSeg;
-        }
-        
-        //debug1 << "  Send " << rank << " ==["<< sz << "]==> " << i << endl;
-        MPI_Isend(buff, sz, MPI_CHAR, receiver, buffTag, VISIT_MPI_COMM, &req);
-        numBytesSent += sz;
-        sendReq.push_back(req);
-        
-        vector<MPI_Status> stats(sendReq.size());
-        MPI_Waitall(sendReq.size(), &sendReq[0], &stats[0]);
-        streamlines.resize(slEndIdx+1);
-        delete [] buff;
-
-        numSLCommunicated += num;
-    }
-
-    else if (rank == receiver)
-    {
-        int sz = 0;
-        MPI_Status stat;
-        MPI_Recv(&sz, 1, MPI_INT, sender, szTag, VISIT_MPI_COMM, &stat);
-
-        unsigned char *buff = new unsigned char[sz];
-        MPI_Recv(buff, sz, MPI_CHAR, sender, buffTag, VISIT_MPI_COMM, &stat);
-                
-        int offset = 0;
-        for (int k = 0; k < num; k++)
-        {
-            avtStreamlineWrapper *slSeg = new avtStreamlineWrapper;
-            int len = slSeg->UnSerialize(&buff[offset], solver);
-            offset += len;
-            streamlines.push_back(slSeg);
-        }
-        delete [] buff;
-    }
-#endif
-#endif
-}
-
-
-#if 0
-// ****************************************************************************
-//  Method: avtStreamlineFilter::ParallelBalancedLoadOnDemand
-//
-//  Purpose:
-//      Calculates a streamline with ParallelStaticDomains algorithm.
-//      Each processor owns a fixed set of domains. However, communication is
-//      done more frequently to try and avoid processor idle time. When a 
-//      streamline exists a domain owned by the current processor, it is 
-//      communicated to the processor that owns the domain.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   March 17, 2008
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::ParallelBalancedLoadOnDemand(
-                                        std::vector<pt3d> &allSeedpoints,
-                                        float loadFactor, BalanceType balance,
-                                        int maxPts, int divFactor)
-{
-    debug1 << "avtStreamlineFilter::ParallelBalancedLoadOnDemand()\n";
-#ifdef PARALLEL
-    cout << "Seedpoint cnt = " << allSeedpoints.size() << endl;
-
-    // Load "my" statically determined domains. (Relax this later).
-    for (int i = 0; i < numDomains; i++)
-        if (DomainToRank(i) == rank)
-            GetDomain(i);
-
-    //Get "my" seed points.
-    vector<avtStreamlineWrapper *> streamlines;
-    for (int i = 0; i < allSeedpoints.size(); i++)
-    {
-        vector<int> dl;
-        intervalTree->GetElementsListFromRange(allSeedpoints[i].values(), 
-                                               allSeedpoints[i].values(), dl);
-        //double x=allSeedpoints[i].xyz[0],y=allSeedpoints[i].xyz[1],
-        //       z=allSeedpoints[i].xyz[2];
-        //debug1 << "Seed pt " << i << ": [" << x << " " << y << " " << z 
-        //       << "] in domain " << dl[0] << " owned by " 
-        //       << DomainToRank(dl[0]) << ". Domain count = " << dl.size() 
-        //       << endl;
-        if (dl.size() > 0 && OwnDomain(dl[0]))
-        {
-            avtStreamlineWrapper *slSeg = 
-                                    new avtStreamlineWrapper(allSeedpoints[i]);
-            streamlines.push_back(slSeg);
-            //debug1 << "Seed pt: " << slSeg->seedPt.xyz[0] << " " 
-            //       << slSeg->seedPt.xyz[1] << " " << slSeg->seedPt.xyz[2] 
-            //       << endl;
-        }
-    }
-    debug1 << "My seedpoints: " << streamlines.size() << endl;
-
-    vector< vector< avtStreamlineWrapper *> > distributeStreamlines;
-    distributeStreamlines.resize(nProcs);
-    int *cnts = new int[nProcs], *gather = new int[nProcs*nProcs];
-    
-    // Keep working while there is work to do.
-    numIterations = 0;
-    while (true)
-    {
-        debug1 << "Iteration = " << numIterations << ". My SL count = " 
-               << streamlines.size() << endl;
-        
-        FigureOutBalancing(streamlines, loadFactor);
-
-        int imax = streamlines.size();
-        if (balance == MAX_CNT && (imax > maxPts && maxPts > 0))
-            imax = maxPts;
-        else if (balance == MAX_PCT && (imax > maxPts && divFactor > 1))
-        {
-            imax = imax / divFactor;
-            if (imax == 0)
-                imax = 1;
-        }
-        else if (balance == NO_BALANCE)
-        {
-            //Nothing.
-        }
-
-        
-        debug1 << " **** for (int i = 0; i < " << imax << "; i++)\n";
-        for (int i = 0; i < imax; i++)
-        {
-            avtStreamlineWrapper *slSeg = streamlines[i];
-            //debug1 << i << ": Integrate seedPt " << slSeg->seedPt.xyz[0]
-            //       << " "<< slSeg->seedPt.xyz[1] << " " 
-            //       << slSeg->seedPt.xyz[2]<<endl;
-
-            //Load on demand: Make sure we have "this" domain.
-            GetDomain(slSeg->domain);
-            IntegrateStreamline(slSeg);
-            //FIX THIS
-            EXCEPTION0(ImproperUseException);
-
-            // After integration, streamline is either terminated, 
-            // or needs a new domain.
-            if (slSeg->status == TERMINATE)
-            {
-                terminatedStreamlines.push_back(slSeg);
-                //debug1 << ".....Terimanted.\n";
-            }
-            else if (slSeg->status == OUTOFBOUND)
-            {
-                int domainOwner = DomainToRank(slSeg->domain);
-                distributeStreamlines[domainOwner].push_back(slSeg);
-                //debug1 << ".....Exit Pass to " << slSeg->domain << " rank = "
-                //       << DomainToRank(slSeg->domain) << endl;
-            }
-        }
-        if (imax > 0)
-            numIterations++;
-
-        int communicationTimer = visitTimer->StartTimer();
-
-        // For unprocessed streamlines, pass them to myself.
-        if (streamlines.size()-imax > 0)
-            debug1 << "   Defer count: " << streamlines.size()-imax << endl;
-        for (int i = imax; i < streamlines.size(); i++)
-        {
-            avtStreamlineWrapper *slSeg = streamlines[i];
-            distributeStreamlines[rank].push_back(slSeg);
-        }
-        
-        // All streamlines processed. empty the list.
-        streamlines.resize(0);
-
-        bool done = StaticDomainExchangeStreamlines(streamlines, 
-                                                    distributeStreamlines);
-        communicationTime += visitTimer->StopTimer(communicationTimer, 
-                                                   "StreamlineCommunication");
-        if (done)
-            break;
-    }
-
-    debug1 << "Make output: " << terminatedStreamlines.size() << endl;
-    CreateStreamlineOutput(terminatedStreamlines);
-    ReportStatistics(terminatedStreamlines);
-
-    delete [] cnts;
-    delete [] gather;
-
-    for (int i = 0; i < terminatedStreamlines.size(); i++)
-    {
-        avtStreamlineWrapper *slSeg = 
-                             (avtStreamlineWrapper *) terminatedStreamlines[i];
-        delete slSeg;
-    }
-#endif
-}
-#endif
-
-// ****************************************************************************
-//  Function: FindNextDomain
-//
-//  Purpose:
-//      Find the next domain for a streamline,
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 16, 2008
-//
-// ****************************************************************************
-
-static int
-FindNextDomain(const vector<avtStreamlineWrapper *> &streamlines, 
-               int numDomains)
-{
-    vector<int> domainCnt(numDomains, 0);
-    for (int i = 0; i < streamlines.size(); i++)
-    {       
-        avtStreamlineWrapper *slSeg = streamlines[i];
-        if (slSeg)
-        {
-            int cnt = domainCnt[slSeg->domain];
-            domainCnt[slSeg->domain] = cnt+1;
-        }
-    }
-
-    //Find the domain w/ dominant count.
-    int maxDom = 0, maxCnt = domainCnt[0];
-    for (int i = 1; i < domainCnt.size(); i++)
-        if (domainCnt[i] > maxCnt)
-        {
-            maxCnt = domainCnt[i];
-            maxDom = i;
-        }
-    return maxDom;
-}
-
-
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::StagedLoadOnDemand
-//
-//  Purpose:
-//      Calculates a streamline with StagedLoadOnDemand algorithm.
-//      This is similar to the above LoadOnDemand algorithm.
-//      The difference, is that it integrates all the seed points in loaded
-//      domains. Once it has done that, it determines what domain to load next,
-//      then continues.
-//
-//      This is accomplished with three lists, terminated (complete 
-//      streamlines), active (streamlines in a loaded domain), inactive 
-//      (streamlines in an UNloaded domain).
-//      streamlines are moved from list to list until all streamlines are in 
-//      the terminated list.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   March 4, 2008
-//
-//  Modifications:
-//
-//   Dave Pugmire, Wed Aug 13 14:11:04 EST 2008
-//   Bug fix. If the seed is not found in any domains, put it in the terminated
-//   streamlines array.
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::StagedLoadOnDemand(
-                               std::vector<avtStreamlineWrapper *> &seedpoints)
-{
-    int numSeedPoints = seedpoints.size();
-    int i0 = 0, i1 = numSeedPoints;
-    
-#ifdef PARALLEL
-    int nPts = numSeedPoints/nProcs;
-    i0 = rank * nPts;
-    i1 = i0 + nPts;
-    // Last processor will get the slack.
-    if (rank == nProcs-1)
-        i1 = numSeedPoints;
-    debug1 << "I have seed points: " << i0 << " to " << i1 
-           << " out of a total of " << numSeedPoints << endl;
-    debug1 << "I am " << PAR_Rank() << ". Total NProcs = " << PAR_Size()<<endl;
-    //cout << "I am " << PAR_Rank() << ". Total NProcs = " << PAR_Size() << endl;
-#endif
-
-    numSeedPoints = i1-i0;
-    debug1<< "Now, we have " << numSeedPoints << " seed points and "
-          << numDomains << " domains.\n";
-
-    //Get all the streamlines.
-    vector<avtStreamlineWrapper *> inactiveStreamlines, terminatedStreamlines;
-
-    for (int i = i0; i < i1; i++)
-    {
-        avtStreamlineWrapper *slSeg = seedpoints[i];
-        pt3d endPt;
-        slSeg->GetEndPoint(endPt);
-        debug1<<"Check pt: "<<slSeg->domain<<endl;
-        if (PointInDomain(endPt, slSeg->domain))
-        {
-            inactiveStreamlines.push_back(slSeg);
-            debug1<<"Keeper\n";
-        }
-        else
-        {
-            debug1<<"TOSS IT\n";
-            delete slSeg;
-        }
-    }
-
-    numSeedPoints = inactiveStreamlines.size();
-
-    while (terminatedStreamlines.size() < numSeedPoints)
-    {
-        debug1<<"********************\nwhile ("<<terminatedStreamlines.size()
-              <<" < "<<numSeedPoints<<") {...}\n";
-
-        // Get a set of activeStreamlines.
-        vector<avtStreamlineWrapper *> activeStreamlines, outOfBounds;
-        for (int i = 0; i < inactiveStreamlines.size(); i++)
-        {
-            avtStreamlineWrapper *slSeg = inactiveStreamlines[i];
-            debug1<<"StagedLOD:: slSeg->domain = "<<slSeg->domain<<" loaded= "
-                  << DomainLoaded(slSeg->domain)<<endl;
-
-            if (slSeg->domain == -1)
-                terminatedStreamlines.push_back(slSeg);
-            else if (DomainLoaded(slSeg->domain))
-                activeStreamlines.push_back(slSeg);
-            else
-                outOfBounds.push_back(slSeg);
-        }
-
-        // Integrate all the active streamlines.
-        debug1<<"Integrate active streamlines. sz= "<<activeStreamlines.size()<<". Inact "<<inactiveStreamlines.size()<<endl;
-        if (activeStreamlines.size() > 0)
-        {
-            //Integrate the active streamlines.
-            for (int i = 0; i < activeStreamlines.size(); i++)
-            {
-                avtStreamlineWrapper *slSeg = activeStreamlines[i];
-                
-                IntegrateStreamline(slSeg);
-
-                if (slSeg->status == avtStreamlineWrapper::TERMINATE)
-                    terminatedStreamlines.push_back(slSeg);
-                else
-                {
-                    pt3d endPt;
-                    slSeg->GetEndPoint(endPt);
-                    bool InDomain = false;
-                    for (int j = 0; j < slSeg->seedPtDomainList.size(); j++)
-                    {
-                        if (PointInDomain(endPt, slSeg->seedPtDomainList[j]))
-                        {
-                            slSeg->domain = slSeg->seedPtDomainList[j];
-                            outOfBounds.push_back(slSeg);
-                            InDomain = true;
-                            break;
-                        }
-                    }
-                    if ( !InDomain )
-                        terminatedStreamlines.push_back(slSeg);
-                }
-            }
-        }
-        else
-        {
-            // Nothing left in this domain, find the next domain to load.
-            int dom = FindNextDomain(outOfBounds, numDomains);
-            debug1<< "Find the next domain: OOB.size() = "
-                  <<outOfBounds.size()<<" pickDom= " << dom << endl;
-            
-            if (dom >= 0)
-                GetDomain(dom);
-        }
-
-        //Copy the outOfBounds streamlines to the inactive array.
-        inactiveStreamlines.resize(outOfBounds.size());
-        for (int i = 0; i < outOfBounds.size(); i++)
-            inactiveStreamlines[i] = outOfBounds[i];
-    }
-
-    // All done, make the output.
-    CreateStreamlineOutput(terminatedStreamlines);
-    ReportStatistics(terminatedStreamlines);
-    for (int i = 0; i < terminatedStreamlines.size(); i++)
-    {
-        avtStreamlineWrapper *slSeg = 
-                             (avtStreamlineWrapper *) terminatedStreamlines[i];
-        delete slSeg;
-    }
-}
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::AsyncSendStatus2
-//
-//  Purpose:
-//      Report status about asynchronous sends.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   Dec 18, 2008
-//
-// Modifications:
-//
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::AsyncSendStatus2(int master,
-                                      int numTerminated,
-                                      std::vector<int> &status)
-{
-#ifdef PARALLEL
-    int communicationTimer = visitTimer->StartTimer();
-    
-    debug1<<"AsyncSendStatus2( "<<numTerminated<<endl;
-    int *msg = new int[statusMsgSz];
-    
-    MPI_Request req;
-    msg[0] = MSG_STATUS;
-    msg[1] = numTerminated;
-    for (int i = 0; i < status.size(); i++)
-        msg[2+i] = status[i];
-        
-    MPI_Isend(msg, statusMsgSz, MPI_INT, master, STATUS_TAG, VISIT_MPI_COMM, &req);
-    numBytesSent += (sizeof(int) *statusMsgSz);
-    numStatusCommunicated++;
-    sendIntBufferMap[req] = msg;
-    
-    communicationTime += visitTimer->StopTimer(communicationTimer, 
-                                               "StreamlineCommunication");        
-#endif
-}
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::AsyncSendStatus2
-//
-//  Purpose:
-//      Report status about asynchronous sends.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   Dec 18, 2008
-//
-// Modifications:
-//
-//
-// ****************************************************************************
-
-bool
-avtStreamlineFilter::AsyncRecvStatus2(int &numTerminated,
-                                      std::vector< std::vector<int> > &slaveStatus)
-{
-    //debug1<<"AsyncRecvStatus2()\n";
-
-    bool newStatus = false;
-    numTerminated = 0;
-#ifdef PARALLEL
-
-    int communicationTimer = visitTimer->StartTimer();
-    
-    while (true)
-    {
-        int nReq = statusRecvRequests.size();
-        MPI_Status *status = new MPI_Status[nReq];
-        int *indices = new int[nReq];
-        int num = 0, err;
-
-        std::vector<MPI_Request> copy;
-        for (int i = 0; i < statusRecvRequests.size(); i++)
-            copy.push_back(statusRecvRequests[i]);
-
-        //debug1<< "MPI_Testsome("<<status<<" "<<indices<<" .....\n";
-        err = MPI_Testsome(nReq, &copy[0], &num, indices, status);
-        //debug1<< "MPI_Testsome returned. err = "<<err<<" num= "<<num<<endl;
-        if (num > 0)
-        {
-            newStatus = true;
-            //debug1<<"MPI_Testsome() num = "<<num<<endl;
-            for (int i = 0; i < num; i++)
-            {
-                int idx = indices[i];
-                //debug1 << "idx = " << idx << endl;
-                
-                MPI_Request req = statusRecvRequests[idx];
-                if (req == MPI_REQUEST_NULL)
-                    continue;
-                
-                int *buff = recvIntBufferMap[req];
-                /*
-                debug1 << "Process the terminate msg: req = " <<req 
-                       << " buff= "<< buff[0] << endl;
-                */
-                if (buff == NULL)
-                    continue;
-                
-                int msgType = buff[0];
-                numTerminated += buff[1];
-                slaveStatus[idx][0] = 1; //Mark it as new.
-
-                //Set status
-                //debug1<<"Status from "<<idx<<" [";
-                for (int j = 0; j < numDomains; j++)
-                {
-                    slaveStatus[idx][j+1] = buff[2+j];
-                    //debug1<<slaveStatus[idx][j+1]<<" ";
-                }
-                //debug1<<"]\n";
-                
-                delete [] buff;
-                recvIntBufferMap[req] = NULL;
-            }
-        
-            for (int i = 0; i < num; i++)
-                PostRecvStatusReq(indices[i]);
-        }
-            
-        delete [] status;
-        delete [] indices;
-        if (num == 0)
-            break;
-    }
-    
-    communicationTime += visitTimer->StopTimer(communicationTimer, 
-                                               "StreamlineCommunication");        
-#endif
-    return newStatus;
-}
-
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::AsyncRecvMasterMsg
-//
-//  Purpose:
-//      Receive messages from the master.
-//
-//  
-//
-//  Programmer: Dave Pugmire
-//  Creation:   Dec 18, 2008
-//
-//  Modifications:
-//
-//
-//   Dave Pugmire, Thu Jan 15 12:01:30 EST 2009
-//   New message type, MSG_SEND_SL_HINT, MSG_FORCE_SEND_STATUS
-//
-// ****************************************************************************
-
-bool
-avtStreamlineFilter::AsyncRecvMasterMsg(vector< vector<int> > &msgs)
-{
-    debug2<<"AsyncRecvMasterMsg()\n";
-    bool done = false;
-
-#ifdef PARALLEL
-    int communicationTimer = visitTimer->StartTimer();
-    
-    while (true)
-    {
-        int nReq = statusRecvRequests.size();
-        MPI_Status *status = new MPI_Status[nReq];
-        int *indices = new int[nReq];
-        int num = 0, err;
-
-        std::vector<MPI_Request> copy;
-        for (int i = 0; i < statusRecvRequests.size(); i++)
-            copy.push_back(statusRecvRequests[i]);
-
-        //debug2<< "MPI_Testsome("<<status<<" "<<indices<<" .....\n";
-        err = MPI_Testsome(nReq, &copy[0], &num, indices, status);
-        //debug2<< "MPI_Testsome returned. err = "<<err<<" num= "<<num<<endl;
-        if (num > 0)
-        {
-            //debug2<<"MPI_Testsome() num = "<<num<<endl;
-            for (int i = 0; i < num; i++)
-            {
-                int idx = indices[i];
-                //debug2 << "idx = " << idx << endl;
-                
-                MPI_Request req = statusRecvRequests[idx];
-                if (req == MPI_REQUEST_NULL)
-                    continue;
-                
-                int *buff = recvIntBufferMap[req];
-                /*
-                debug2 << "Process the terminate msg: req = " <<req 
-                       << " buff= "<< buff[0] << endl;
-                */
-                if (buff == NULL)
-                    continue;
-                
-                int msgType = buff[0];
-                if (msgType == MSG_DONE)
-                    done = true;
-                else if (msgType == MSG_LOAD_DOMAIN)
-                {
-                    vector<int> msg;
-                    msg.push_back(msgType);
-                    msg.push_back(buff[1]);
-                    msgs.push_back(msg);
-                }
-                else if (msgType == MSG_SEND_SL)
-                {
-                    vector<int> msg;
-                    msg.push_back(msgType);
-                    msg.push_back(buff[1]); //dst
-                    msg.push_back(buff[2]); //dom
-                    msg.push_back(buff[3]); //num
-                    msgs.push_back(msg);
-                }
-                else if (msgType == MSG_SEND_SL_HINT)
-                {
-                    vector<int> msg;
-                    msg.push_back(msgType);
-                    msg.push_back(buff[1]); //dst
-                    //Turn the domain list into a domain true/false vector.
-                    for (int i = 0; i < numDomains; i++)
-                        msg.push_back(0);
-                    
-                    //If domain list is empty, then allow any domain to be sent.
-                    if (buff[2] == -1)
-                    {
-                        for (int i = 0; i < numDomains; i++)
-                            msg[2+i] = 1;
-                    }
-                    else
-                    {
-                        for (int i = 0; i < numDomains; i++)
-                        {
-                            int d = buff[2+i];
-                            if (d != -1)
-                                msg[2+d] = 1;
-                            else
-                                break;
-                        }
-                    }
-                    
-                    msgs.push_back(msg);
-                }
-                else if (msgType == MSG_FORCE_SEND_STATUS)
-                {
-                    vector<int> msg;
-                    msg.push_back(msgType);
-                    msgs.push_back(msg);
-                }
-                /*
-                else if (msgType == MSG_BALANCE)
-                {
-                    //Send num SLs from domain dom to process dst.
-                    int dst = buff[1];
-                    int dom = buff[2];
-                    int num = buff[3];
-                    bool addIt = true;
-                    for (int j = 0; j < balanceInfo[dom].size(); j++)
-                        if (balanceInfo[dom][j] == dst)
-                        {
-                            addIt = false;
-                            break;
-                        }
-                    
-                    if (addIt)
-                    {
-                        balanceInfo[dom].push_back(dst);
-                        balanceInfo[dom].push_back(num);
-                    }
-                }
-                */
-                
-                delete [] buff;
-                recvIntBufferMap[req] = NULL;
-            }
-        
-            for (int i = 0; i < num; i++)
-                PostRecvStatusReq(indices[i]);
-        }
-            
-        delete [] status;
-        delete [] indices;
-        if (num == 0)
-            break;
-    }
-    communicationTime += visitTimer->StopTimer(communicationTimer,
-                                               "StreamlineCommunication");
-#endif
-    return done;
-}
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::AsyncSendSlaveMsgs
-//
-//  Purpose:
-//      Send messages to slave processes.
-//
-//  
-//
-//  Programmer: Dave Pugmire
-//  Creation:   Dec 18, 2008
-//
-//  Modifications:
-//
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::AsyncSendSlaveMsgs(int dst, int msg, std::vector<int> &info)
-{
-#ifdef PARALLEL
-    int communicationTimer = visitTimer->StartTimer();
-    
-    int *buff = new int[statusMsgSz];
-    
-    MPI_Request req;
-    buff[0] = msg;
-    for (int j = 0; j < info.size(); j++)
-        buff[1+j] = info[j];
-        
-    MPI_Isend(buff, statusMsgSz, MPI_INT, dst, STATUS_TAG, VISIT_MPI_COMM, &req);
-    numBytesSent += (sizeof(int) *statusMsgSz);
-    numStatusCommunicated++;
-    sendIntBufferMap[req] = buff;
-    communicationTime += visitTimer->StopTimer(communicationTimer, 
-                                               "StreamlineCommunication");
-#endif
-}
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::AsyncSendSlaveMsgs
-//
-//  Purpose:
-//      Send messages to slave processes.
-//
-//  
-//
-//  Programmer: Dave Pugmire
-//  Creation:   Dec 18, 2008
-//
-//  Modifications:
-//
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::AsyncSendSlaveMsgs(int msg, std::vector<int> &info)
-{
-#ifdef PARALLEL
-    debug2<<"AsyncSendSlaveMsgs()\n";
-
-    for (int i = 1; i < nProcs; i++)
-        AsyncSendSlaveMsgs(i, msg, info);
-
-#endif
-}
-
-static bool domCntCompare( const int *a, const int *b) { return a[1] > b[1]; }
-
-static const int NO_SORT = 0;
-static const int RANDOM_SORT = 1;
-static const int LOAD_SORT = 2;
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::FindSlackers
-//
-//  Purpose:
-//      Find slaves who have no work to do.
-//
-//  
-//
-//  Programmer: Dave Pugmire
-//  Creation:   Dec 18, 2008
-//
-//  Modifications:
-//
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::FindSlackers(std::vector<int> &slackers,
-                                  int oobFactor,
-                                  int SortMethod,
-                                  bool checkJustUpdated)
-{
-#ifdef PARALLEL
-    
-    slackers.resize(0);
-    for (int i = 1; i < slaveInfo.size(); i++)
-        if (slaveInfo[i].slLoadedCount == 0 ||
-            slaveInfo[i].justUpdated && checkJustUpdated)
-        {
-            if ( oobFactor != -1 &&
-                 slaveInfo[i].slOOBCount > 0 &&
-                 slaveInfo[i].slOOBCount < oobFactor)
-                slackers.push_back(i);
-            else
-                slackers.push_back(i);          
-        }
-
-    if (SortMethod == RANDOM_SORT)
-        random_shuffle(slackers.begin(), slackers.end());
-    else if (SortMethod == LOAD_SORT)
-    {
-    }
-    
-#endif
-}
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::UpdateStatus
-//
-//  Purpose:
-//      Update status given new slave info.
-//
-//  
-//
-//  Programmer: Dave Pugmire
-//  Creation:   Dec 18, 2008
-//
-//  Modifications:
-//
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::UpdateStatus( vector<avtStreamlineWrapper *> &streamlines,
-                                   vector<vector<int> > &status)
-{
-#ifdef PARALLEL
-    for (int i = 0; i < numDomains; i++)
-    {
-        slDomCnts[i] = 0;
-        domLoaded[i] = 0;
-    }
-    for ( int i = 0; i < streamlines.size(); i++)
-        slDomCnts[streamlines[i]->domain] ++;
-
-    for (int i = 1; i < nProcs; i++)
-        slaveInfo[i].Update(status[i]);
-
-
-    for (int i = 1; i < slaveInfo.size(); i++)
-        for ( int d = 0; d < numDomains; d++)
-            if (slaveInfo[i].domainLoaded[d])
-                domLoaded[d]++;
-
-#endif
-}
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::PrintStatus
-//
-//  Purpose:
-//      Print status of slave information.
-//
-//  
-//
-//  Programmer: Dave Pugmire
-//  Creation:   Dec 18, 2008
-//
-//  Modifications:
-//
-//
-// ****************************************************************************
-
-void avtStreamlineFilter::PrintStatus()
-{
-#ifdef PARALLEL
-    debug1<<"DOM:               [";
-    for ( int i = 0; i < numDomains; i++)
-        debug1<<setw(4)<<i<<" ";
-    debug1<<"]\n";
-    debug1<<"Master:            [";
-    for ( int i = 0; i < numDomains; i++)
-        debug1<<setw(4)<<slDomCnts[i]<<" ";
-    debug1<<"]\n";
-    
-    for (int i = 1; i < nProcs; i++)
-        slaveInfo[i].Debug();
-    debug1<<"DCounts:           [";
-    for ( int i = 0; i < numDomains; i++)
-        debug1<<setw(4)<<domLoaded[i]<<" ";
-    debug1<<"]\n";
-
-    vector<int> slaveSLs(numDomains,0);
-    for (int i = 1; i < nProcs; i++)
-        for (int j = 0; j < numDomains; j++)
-            slaveSLs[j] += slaveInfo[i].domainCnt[j];
-    debug1<<"SCounts:           [";
-    int cnt = 0;
-    for ( int i = 0; i < numDomains; i++)
-    {
-        debug1<<setw(4)<<slaveSLs[i]<<" ";
-        cnt += slaveSLs[i];
-    }
-    debug1<<"] ("<<cnt<<")"<<endl;
-    debug1<<endl;
-#endif
-}
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::Case1
-//
-//  Purpose:
-//      Case1 of masterslave algorithm. Give SLs to slaves who have domain
-//      loaded.
-//
-//  
-//
-//  Programmer: Dave Pugmire
-//  Creation:   Dec 18, 2008
-//
-//  Modifications:
-//
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::Case1( vector<avtStreamlineWrapper *> &streamlines )
-{
-#ifdef PARALLEL
-    if (streamlines.size() == 0)
-        return;
-    
-    vector<int> slackers;
-    FindSlackers(slackers, -1, RANDOM_SORT);
-    
-    vector< vector< avtStreamlineWrapper *> > distributeStreamlines(nProcs);
-    bool streamlinesToSend = false;
-    
-    for (int i = 0; i < slackers.size(); i++)
-    {
-        if (streamlines.size() == 0)
-            break;
-        
-        int cnt = 0;
-        vector<avtStreamlineWrapper *> tmp;
-
-        int slackerRank = slaveInfo[slackers[i]].rank;
-        for (int j = 0; j < streamlines.size(); j++)
-        {
-            avtStreamlineWrapper *slSeg = streamlines[j];
-            if (slaveInfo[slackerRank].domainLoaded[slSeg->domain] && cnt < maxCount)
-            {
-                distributeStreamlines[slackerRank].push_back(slSeg);
-                slaveInfo[slackerRank].AddSL(slSeg->domain);
-                cnt++;
-            }
-            else
-                tmp.push_back(slSeg);
-        }
-
-        if (cnt > 0)
-        {
-            streamlinesToSend = true;
-            streamlines.resize(0);
-            for (int j = 0; j < tmp.size(); j++)
-                streamlines.push_back(tmp[j]);
-
-            if (distributeStreamlines[slackerRank].size() > 0)
-            {
-                debug1<<"Case 1: "<<slackerRank<<" Send "<<cnt<<" SLs [";
-                for (int j = 0; j < distributeStreamlines[slackerRank].size(); j++)
-                    debug1<<distributeStreamlines[slackerRank][j]->domain<<" ";
-                debug1<<"]\n";
-            }
-        }
-    }
-
-    if (streamlinesToSend)
-    {
-        int earlyTerminations;
-        AsyncExchangeStreamlines(streamlines, 
-                                 distributeStreamlines,
-                                 earlyTerminations);
-        if (earlyTerminations != 0)
-            EXCEPTION0(ImproperUseException);
-    }
-#endif
-}
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::Case2
-//
-//  Purpose:
-//      Case2 of masterslave algorithm. Give SLs to slaves and force domain
-//      loads.
-//
-//  
-//
-//  Programmer: Dave Pugmire
-//  Creation:   Dec 18, 2008
-//
-//  Modifications:
-//
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::Case2( vector<avtStreamlineWrapper *> &streamlines )
-{
-#ifdef PARALLEL
-    if (streamlines.size() == 0)
-        return;
-    
-    vector<int> slackers;
-    FindSlackers(slackers, -1, RANDOM_SORT);
-    
-    vector< vector< avtStreamlineWrapper *> > distributeStreamlines(nProcs);
-    bool streamlinesToSend = false;
-
-    for (int s = 0; s < slackers.size(); s++)
-    {
-        if (streamlines.size() == 0)
-            break;
-        
-        int slackerRank = slaveInfo[slackers[s]].rank;
-    
-        vector<int*> domCnts;
-        for (int i = 0; i < slDomCnts.size(); i++)
-            if (slDomCnts[i] > 0)
-            {
-                int *entry = new int[2];
-                entry[0] = i;
-                entry[1] = slDomCnts[i];
-                domCnts.push_back(entry);
-            }
-
-        if (slDomCnts.size() == 0)
-            continue;
-
-        //Sort on SL count per domain.
-        sort(domCnts.begin(),domCnts.end(), domCntCompare);
-        if (false)
-        {
-            debug1<<"SL sort: [";
-            for (int i = 0; i < domCnts.size(); i++)
-                debug1<<domCnts[i][0]<<" "<<domCnts[i][1]<<", ";
-            debug1<<"]\n";
-        }
-
-        int domToLoad = -1;
-        for (int i = 0; i < domCnts.size(); i++)
-        {
-            bool anyLoaded = false;
-            for (int j = 1; j < slaveInfo.size(); j++)
-                if (slaveInfo[j].domainLoaded[domCnts[i][0]])
-                    anyLoaded = true;
-            if (!anyLoaded)
-            {
-                domToLoad = domCnts[i][0];
-                break;
-            }
-        }
-
-        if (domToLoad == -1)
-        {
-            random_shuffle(domCnts.begin(), domCnts.end());
-            domToLoad = domCnts[0][0];
-            //debug1<<"All doms loaded. Random pick: "<<domToLoad<<endl;
-        }
-
-        int cnt = 0;
-        vector<avtStreamlineWrapper *> tmp;
-        for (int i = 0; i < streamlines.size(); i++)
-        {
-            avtStreamlineWrapper *slSeg = streamlines[i];
-            if (slSeg->domain == domToLoad && cnt < maxCount)
-            {
-                distributeStreamlines[slackerRank].push_back(slSeg);
-                slaveInfo[slackerRank].AddSL(slSeg->domain);
-                cnt++;
-            }
-            else
-                tmp.push_back(slSeg);
-        }
-        
-        for (int i = 0; i < domCnts.size(); i++)
-            delete domCnts[i];
-
-        if (cnt > 0)
-        {
-            streamlinesToSend = true;
-            streamlines.resize(0);
-            for (int j = 0; j < tmp.size(); j++)
-                streamlines.push_back(tmp[j]);
-            
-            if (distributeStreamlines[slackerRank].size() > 0)
-            {
-                debug1<<"Case 2: "<<slackerRank<<" Send "<<cnt<<" SLs [";
-                for (int j = 0; j < distributeStreamlines[slackerRank].size(); j++)
-                    debug1<<distributeStreamlines[slackerRank][j]->domain<<" ";
-                debug1<<"]\n";
-            }
-        }
-    }
-
-    if (streamlinesToSend)
-    {
-        int earlyTerminations;
-        AsyncExchangeStreamlines(streamlines, 
-                                 distributeStreamlines,
-                                 earlyTerminations);
-        if (earlyTerminations != 0)
-            EXCEPTION0(ImproperUseException);
-    }    
-    
-#endif
-}
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::Case3
-//
-//  Purpose:
-//      Case3 of masterslave algorithm. Send SLs to slaves with domain loaded.
-//  
-//
-//  Programmer: Dave Pugmire
-//  Creation:   Dec 18, 2008
-//
-//  Modifications:
-//
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::Case3( vector<avtStreamlineWrapper *> &streamlines,
-                            int overloadFactor,
-                            int NDomainFactor)
-{
-#ifdef PARALLEL
-    vector<int> slackers;
-    FindSlackers(slackers, NDomainFactor, RANDOM_SORT);
-
-    vector<int> sender, recv, dom;
-    for (int i = 0; i < slackers.size(); i++)
-    {
-        int slackerRank = slackers[i];
-        //debug1<<"Case 3: slackerRank="<<slackerRank<<endl;
-        
-        for (int d = 0; d < numDomains; d++)
-        {
-            vector<int> domPartner;
-            if ( !slaveInfo[slackerRank].domainLoaded[d] &&
-                 slaveInfo[slackerRank].domainCnt[d] > 0)
-            {
-                //debug1<<"   dom= "<<d<<endl;
-                // Find a partner who has the domain and has fewer than overloadFactor SLs.
-                for (int j = 1; j < nProcs; j++)
-                {
-                    if (j != slackerRank && slaveInfo[j].domainLoaded[d] &&
-                        slaveInfo[j].slCount < overloadFactor)
-                    {
-                        //debug1<<"      partner= "<<j<<endl;
-                        domPartner.push_back(j);
-                    }
-                }
-            }
-            
-            if (domPartner.size() > 0)
-            {
-                //debug1<<"domPartner: [";
-                //for(int k=0; k<domPartner.size(); k++) debug1<<domPartner[k]<<" ";
-                //debug1<<"]\n";
-                
-                random_shuffle(domPartner.begin(), domPartner.end());
-                
-                //debug1<<"random sort: [";
-                //for(int k=0; k<domPartner.size(); k++) debug1<<domPartner[k]<<" ";
-                //debug1<<"]\n";                
-                for (int j = 0; j < domPartner.size(); j++)
-                {
-                    sender.push_back(slackerRank);
-                    recv.push_back(domPartner[j]);
-                    dom.push_back(d);
-                    
-                }
-            }
-        }
-    }
-
-    int maxSLsToSend = 5*maxCount;
-    int maxDestSLs = overloadFactor;
-
-    // Send messages out.
-    for (int i = 0; i < sender.size(); i++)
-    {
-        SlaveInfo &recvSlave = slaveInfo[recv[i]];
-        SlaveInfo &sendSlave = slaveInfo[sender[i]];
-        int d = dom[i];
-
-        int n = sendSlave.domainCnt[d];
-        if (n > maxSLsToSend)
-            n = maxSLsToSend;
-
-        //Dest already has enough work.
-        if (recvSlave.slCount > maxDestSLs)
-            continue;
-    
-        // Cap it.
-        if (recvSlave.slCount + n > maxDestSLs)
-            n = maxDestSLs - recvSlave.slCount;
-
-        vector<int> msg;
-        msg.push_back(recvSlave.rank);
-        msg.push_back(d);
-        msg.push_back(n);
-        
-        for (int i = 0; i < n; i++)
-        {
-            recvSlave.AddSL(d);
-            sendSlave.RemoveSL(d);
-        }
-
-        if (n > 0)
-        {
-            debug1<<"Case 3: "<<sendSlave.rank<<" ==["<<n<<"]==> "<<recvSlave.rank<<"  d= "<<d;
-            debug1<<" ***   "<<recvSlave.rank<<" now has "<<recvSlave.slCount<<" cap= "<<maxDestSLs<<endl;
-            AsyncSendSlaveMsgs(sendSlave.rank, MSG_SEND_SL, msg);
-        }
-    }
-    
-#endif
-}
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::Case4
-//
-//  Purpose:
-//      Case4 of masterslave algorithm. Tell slave to load domain.
-//  
-//
-//  Programmer: Dave Pugmire
-//  Creation:   Dec 18, 2008
-//
-//  Modifications:
-//
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::Case4( vector<avtStreamlineWrapper *> &streamlines,
-                            int oobThreshold)
-{
-#ifdef PARALLEL
-    vector<int> slackers;
-    for (int i = 1; i < nProcs; i++)
-        if (slaveInfo[i].slLoadedCount == 0 && slaveInfo[i].slOOBCount >= oobThreshold)
-            slackers.push_back(i);
-    random_shuffle(slackers.begin(), slackers.end());
-
-    //debug1<<"Case 4- nSlackers= "<<slackers.size()<<endl;
-    for (int i = 0; i < slackers.size(); i++)
-    {
-        int idx = slackers[i];
-        vector<int> info(1);
-        int domToLoad = -1, maxCnt=-1;
-        for (int j = 0; j < slaveInfo[idx].domainCnt.size(); j++)
-        {
-            if (slaveInfo[idx].domainCnt[j] > 0 && slaveInfo[idx].domainCnt[j] > maxCnt)
-            {
-                domToLoad = j;
-                maxCnt = slaveInfo[idx].domainCnt[j];
-            }
-        }
-        
-        if (domToLoad != -1)
-        {
-            info[0] = domToLoad;
-            AsyncSendSlaveMsgs(idx, MSG_LOAD_DOMAIN, info);
-            debug1<<"Case 4: "<<idx<<" load dom= "<<domToLoad<<" oobThreshold: "<<oobThreshold<<endl;
-            slaveInfo[idx].domainLoaded[domToLoad] = true;
-            slaveInfo[idx].slLoadedCount += slaveInfo[idx].domainCnt[domToLoad];
-            slaveInfo[idx].slOOBCount -= slaveInfo[idx].domainCnt[domToLoad];
-        }
-    }
-    
-#endif
-}
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::Case5
-//
-//  Purpose:
-//      Case5 of masterslave algorithm. Advise slave to send SLs to other slave.
-//  
-//
-//  Programmer: Dave Pugmire
-//  Creation:   Dec 18, 2008
-//
-//  Modifications:
-//
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::Case5(int overworkThreshold, bool domainCheck)
-{
-#ifdef PARALLEL
-    vector<int> slackers, overWorked;
-    //Get folks with too much work to do.
-    for (int i = 1; i < nProcs; i++)
-        if (slaveInfo[i].slLoadedCount > overworkThreshold)
-            overWorked.push_back(i);
-    random_shuffle(overWorked.begin(), overWorked.end());
-    if (overWorked.size() == 0)
-        return;
-
-    //Get slackers with no work and no unloaded domains.
-    for (int i = 1; i < nProcs; i++)
-        if (!slaveInfo[i].justUpdated && slaveInfo[i].slCount == 0)
-            slackers.push_back(i);
-    random_shuffle(slackers.begin(), slackers.end());
-    if (slackers.size() == 0)
-        return;
-
-    debug1<<"C5: dc= "<<domainCheck<<endl;
-    debug1<<"Slackers: ";
-    for (int i = 0; i < slackers.size(); i++)
-        debug1<<slackers[i]<<" ";
-    debug1<<endl;
-    debug1<<"Overworked: ";
-    for (int i = 0; i < overWorked.size(); i++)
-        debug1<<overWorked[i]<<" ";
-    debug1<<endl;
-
-    int sender = -1, recv = -1, dom = -1;
-    // Find the first send w/
-    if (domainCheck)
-    {
-        for (int w = 0; w < overWorked.size(); w++)
-        {
-            for (int s = 0; s < slackers.size(); s++)
-            {
-                for (int d = 0; d < numDomains; d++)
-                {
-                    if (slaveInfo[overWorked[w]].domainCnt[d] > 0 &&
-                        slaveInfo[slackers[s]].domainLoaded[d])
-                    {
-                        sender = overWorked[w];
-                        recv = slackers[s];
-                        dom = d;
-                    }
-                }
-            }
-        }
-    }
-    else
-    {
-        sender = overWorked[0];
-        recv = slackers[0];
-        //Assign something for the 'dom'
-        for (int i = 0; i < slaveInfo[sender].domainLoaded.size(); i++)
-            if (slaveInfo[sender].domainLoaded[i])
-            {
-                dom = i;
-                break;
-            }
-        debug1<<"Take the first choice. dom= "<<dom<<endl;
-    }
-
-    //Nobody to send....
-    if (sender == -1 || recv == -1)
-    {
-        debug1<<"... No matches.\n";
-        return;
-    }
-
-    // Tell overWorked: Send SLs to slacker.
-    vector<int> info(1);
-    info[0] = recv;
-    if (domainCheck)
-    {
-        for ( int i = 0; i < numDomains; i++)
-            if (slaveInfo[recv].domainLoaded[i])
-                info.push_back(i);
-        info.push_back(-1);
-    }
-    else
-        info.push_back(-1);
-
-    debug1<<"Case 5: "<<sender<<" ==[";
-    for (int i = 1; i < info.size()-1; i++) debug1<<info[i]<<" ";
-    debug1<<"] ==> "<<recv<<endl;
-    AsyncSendSlaveMsgs(sender, MSG_SEND_SL_HINT, info);
-
-    // Update status. We're not sure which domains will be sent.
-    // We need to update status with something, so use 'dom'.
-    for (int i = 0; i < maxCount; i++)
-    {
-        slaveInfo[recv].AddSL(dom);
-        if (slaveInfo[sender].domainCnt[dom] > 0)
-            slaveInfo[sender].RemoveSL(dom);
-    }
-#endif
-}
-
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::MasterSlave
-//
-//  Purpose:
-//      Master slave algorithm
-//
-//  Programmer: Dave Pugmire
-//  Creation:   November 17, 2008
-//
-//  Modifications:
-//
-//    Mark C. Miller, Sat Dec 20 01:09:55 PST 2008
-//    Replaced calls to usleep() with nanosleep().
-//
-//   Dave Pugmire, Thu Jan 15 12:01:30 EST 2009
-//   Added case5
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::MasterSlave(std::vector<avtStreamlineWrapper *> &seedpoints)
-{
-#ifdef PARALLEL
-    int numSeedPoints = seedpoints.size();
-    int totalNumActiveStreamlines = numSeedPoints;
-    bool doSleeping = true;
-    int MSleep = 500, SSleep = 1000;
-    
-    debug1<<"MasterSlave() slCount= "<<numSeedPoints<<endl;
-
-    vector< vector< avtStreamlineWrapper *> > distributeStreamlines(nProcs);
-    vector<avtStreamlineWrapper *> streamlines, terminatedStreamlines;
-
-    int nSlaves = nProcs-1;
-    statusMsgSz = numDomains+1+1;
-    SortStreamlines(seedpoints);
-    
-    //Initialize async stuff.
-    InitRequests();
-    
-    //Master.
-    if ( PAR_Rank() == 0 )
-    {
-        //Master owns all the SLs.
-        for (int i = 0; i < seedpoints.size(); i++)
-            streamlines.push_back(seedpoints[i]);
-        
-        vector< vector<int> > status(nProcs);
-        for ( int i = 0; i < nProcs; i++)
-        {
-            status[i].resize(numDomains+1,0);
-            slaveInfo.push_back(SlaveInfo(i, numDomains));
-        }
-        slDomCnts.resize(numDomains,0);
-        domLoaded.resize(numDomains,0);
-        
-        Barrier();
-        
-        while (totalNumActiveStreamlines > 0)
-        {
-            numIterations++;
-            
-            int terminates = 0;
-            bool newStatus = AsyncRecvStatus2(terminates, status);
-            totalNumActiveStreamlines -= terminates;
-
-            if (newStatus)
-            {
-                debug1<<"Master: New status\n";
-                UpdateStatus(streamlines, status);
-                PrintStatus();
-
-                Case4(streamlines, 3*maxCount);
-                Case1(streamlines);
-                Case4(streamlines, 1*maxCount);
-                
-                Case2(streamlines);
-                int case3OverloadFactor = 10*maxCount, case3NDomainFactor = 3*maxCount;         
-                Case3(streamlines,case3OverloadFactor, case3NDomainFactor);
-                Case4(streamlines, 0);
-                
-                Case5(2*maxCount, true);
-                Case5(2*maxCount, false);
-
-                UpdateStatus(streamlines, status);
-                debug1<<endl<<"Post-Mortem"<<endl;
-                PrintStatus();
-            }
-            else
-            {
-                debug1<<"Nothing to do: "<<totalNumActiveStreamlines<<endl;
-                int sleepTimer = visitTimer->StartTimer();              
-                if (doSleeping)
-                {
-                    struct timespec ts = {0, MSleep*1000};
-                    nanosleep(&ts, 0);
-                }
-
-                sleepTime += visitTimer->StopTimer(sleepTimer, "SleepTimer");           
-            }
-        }
-        vector<int> info;
-        AsyncSendSlaveMsgs(MSG_DONE, info);
-    }
-    
-    // Slave
-    else
-    {
-        vector<avtStreamlineWrapper *> streamlines, terminated;
-
-        int myMaster = 0;
-        vector<int> status(numDomains,0), prevStatus(numDomains,0);
-        for (int i = 0; i < numDomains; i++)
-            status[i] = prevStatus[i] = DomainLoaded(i);
-        
-        // Send initial status.
-        debug1<<"Slave: Send initial status.\n";
-        AsyncSendStatus2(myMaster, 0, status);
-
-        //Pause till everyone has sent initial update. Otherwise, master will
-        //begin with not all the information needed.....
-        Barrier();
-        
-        vector< vector<int> > msgs;
-        bool done = false;
-        int terminates = 0;
-        int sleepCounter = 0;
-
-        while (!done)
-        {
-            bool statusChanged = false;
-            sleepCounter++;
-
-            for (int i = 0; i < streamlines.size(); i++)
-            {
-                debug1<<"Integrate "<<i<<" of "<<streamlines.size()<<endl;
-                // Process each streamline.
-                avtStreamlineWrapper *slSeg = streamlines[i];
-                if (slSeg != NULL && DomainLoaded(slSeg->domain))
-                {
-                    numIterations++;
-                    IntegrateStreamline(slSeg);
-                    if (slSeg->status == avtStreamlineWrapper::TERMINATE)
-                    {
-                        terminatedStreamlines.push_back(slSeg);
-                        streamlines[i] = NULL;
-                        terminates++;
-                        sleepCounter = 0;
-                    }
-                }
-                statusChanged = HandleSlaveMessages(msgs, streamlines,
-                                                    done, terminates,
-                                                    MSG_SEND_SL_HINT);
-                if (statusChanged)
-                    break;
-            }
-                
-            //Update array....
-            vector<avtStreamlineWrapper *> tmp;
-            for (int i = 0; i < streamlines.size(); i++)
-                if(streamlines[i] != NULL)
-                    tmp.push_back(streamlines[i]);
-            streamlines.resize(tmp.size());
-            for (int i = 0; i < tmp.size(); i++)
-                streamlines[i] = tmp[i];
-                
-            if (HandleSlaveMessages(msgs, streamlines, done, terminates))
-                statusChanged = true;
-            msgs.resize(0); 
-
-            // Get any new streamlines.
-            int earlyTerminations;
-            bool newStreamlines = AsyncExchangeStreamlines(streamlines, 
-                                                           distributeStreamlines,
-                                                           earlyTerminations);
-            terminates += earlyTerminations;
-                
-            // See if I get a pink slip....
-            bool workToDo = false;
-            for (int i = 0; !workToDo && i < streamlines.size(); i++)
-                if (DomainLoaded(streamlines[i]->domain))
-                    workToDo = true;
-            
-            if (!workToDo)
-            {
-                //Update status to master.
-                for (int i = 0; i < numDomains; i++)
-                    status[i] = (DomainLoaded(i) ? 1 : 0);
-            
-                for (int i = 0; i < streamlines.size(); i++)
-                {
-                    avtStreamlineWrapper *slSeg = streamlines[i];
-                    if (! DomainLoaded(slSeg->domain))
-                        status[slSeg->domain] --;
-                    else
-                        status[slSeg->domain] ++;
-                }
-                debug1<<"Out of work: status= [";
-                for (int i = 0; i < status.size(); i++)
-                    debug1<<status[i]<<" ";
-                debug1<<"]\n";
-
-                for(int i = 0; !statusChanged && i < status.size(); i++)
-                    statusChanged = (prevStatus[i] != status[i]);
-            
-                for(int i = 0; i < status.size(); i++)
-                    prevStatus[i] = status[i];
-
-                //statusChanged = true;
-                if (statusChanged || terminates > 0)
-                {
-                    debug1<<"Slave: sc= "<<statusChanged<<" term= "<<terminates<<endl;
-                    AsyncSendStatus2(myMaster, terminates, status);
-                    terminates = 0;
-                }
-                
-                //If we haven't done anything for a while, sleep....
-                int sleepTimer = visitTimer->StartTimer();
-                if (doSleeping && sleepCounter > 20)
-                {
-                    debug1<<"Sleep for a spell\n";
-                    struct timespec ts = {0, SSleep * 1000};
-                    nanosleep(&ts, 0);
-                    sleepCounter = 0;
-                }
-                sleepTime += visitTimer->StopTimer(sleepTimer, "SleepTimer");
-            }
-        }
-    }
-    
-    debug1<<rank<<": I am done: "<<terminatedStreamlines.size()<<endl;
-    // All done, make the output.
-    CreateStreamlineOutput(terminatedStreamlines);
-    ReportStatistics(terminatedStreamlines);
-
-    for (int i = 0; i < terminatedStreamlines.size(); i++)
-    {
-        avtStreamlineWrapper *slSeg = 
-                             (avtStreamlineWrapper *) terminatedStreamlines[i];
-        delete slSeg;
-    }
-    CleanupAsynchronous();
-#endif
-}
-
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::HandleSlaveMessages
-//
-//  Purpose:
-//      Handle slave to slave communication.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   January 15, 2009
-//
-// ****************************************************************************
-
-bool
-avtStreamlineFilter::HandleSlaveMessages(vector<vector<int> > &msgs,
-                                         vector<avtStreamlineWrapper *> &streamlines,
-                                         bool &done,
-                                         int &terminates,
-                                         int msgSelect)
-{
-    bool val = false;
-#ifdef PARALLEL
-    done = AsyncRecvMasterMsg(msgs);
-    CheckPendingSendRequests();
-
-    if (done)
-        return true;
-
-    debug1<<"<<HandleSlaveMessages() sl= "<<streamlines.size()<<endl;
-    vector< vector< avtStreamlineWrapper *> > distributeStreamlines(nProcs);
-    bool sendSLs = false;
-    
-    for (int i = 0; i < msgs.size(); i++)
-    {
-        if (msgSelect != -1 && msgSelect != msgs[i][0])
-            continue;
-        
-        if (msgs[i][0] == MSG_SEND_SL_HINT)
-        {
-            int dst = msgs[i][1];
-
-            int slcount = 0;
-            for (int j = 0; j < streamlines.size(); j++)
-                if (streamlines[j] != NULL)
-                    slcount++;
-            
-            // Only send if we have enough SLs.
-            bool shipSLs = (slcount > 2*maxCount);
-
-            if (shipSLs)
-            {
-                vector<int> doms;
-                for (int j = 2; j < msgs[i].size(); j++)
-                    doms.push_back(msgs[i][j]);
-
-                int cnt = 0;
-                vector<avtStreamlineWrapper *> tmp;
-                for (int j = 0; j < streamlines.size(); j++)
-                {
-                    avtStreamlineWrapper *slSeg = streamlines[j];
-                    if (slSeg != NULL && doms[slSeg->domain] == 1 && cnt < maxCount)
-                    {
-                        distributeStreamlines[dst].push_back(slSeg);
-                        cnt++;
-                        sendSLs = true;
-                        shipSLs = true;
-                    }
-                    else
-                        tmp.push_back(slSeg);
-                }
-                debug1<<"  "<<"Case5: Send "<<cnt<<" to "<<dst<<". I have "<<slcount<<endl;
-            
-                //Fix the streamlines array.
-                streamlines.resize(0);
-                for ( int j = 0; j < tmp.size(); j++)
-                    streamlines.push_back(tmp[j]);
-            
-                debug1<<"  Shipping "<<cnt<<" to "<<dst<<endl;
-            }
-            
-            val = true;
-            msgs[i][0] = -1;
-
-
-            //We couldn't satisfy this request, so, tell the dst to resend status to master.
-            if (shipSLs == false)
-            {
-                debug1<<"Case5: FAIL. SEND FORCE STATUS. I have: "<<slcount<<endl;
-                vector<int> info;
-                AsyncSendSlaveMsgs(dst, MSG_FORCE_SEND_STATUS, info);
-            }
-        }
-        
-        else if (msgs[i][0] == MSG_LOAD_DOMAIN)
-        {
-            debug1<<"  S: Loading domain= "<<msgs[i][1]<<endl;
-            for (int j = 0; j < streamlines.size(); j++)
-                if (streamlines[j]->domain == msgs[i][1])
-                    break;
-            
-            GetDomain(msgs[i][1]);
-            msgs[i][0] = -1;
-            val = true;
-        }
-                
-        else if (msgs[i][0] == MSG_SEND_SL)
-        {
-            int dst = msgs[i][1];
-            int dom = msgs[i][2];
-            int num = msgs[i][3];
-            debug1<<"  S: SendSL: ["<<dom<<"] ==> "<<dst<<endl;
-            vector<avtStreamlineWrapper *> tmp;
-            for (int j = 0; j < streamlines.size(); j++)
-            {
-                avtStreamlineWrapper *slSeg = streamlines[j];
-                if (slSeg == NULL)
-                    continue;
-                if (slSeg->domain == dom && distributeStreamlines[dst].size() < num)
-                {
-                    distributeStreamlines[dst].push_back(slSeg);
-                    sendSLs = true;
-                }
-                else
-                    tmp.push_back(slSeg);
-            }
-
-            streamlines.resize(0);
-            for ( int j = 0; j < tmp.size(); j++)
-                streamlines.push_back(tmp[j]);
-            
-            val = true;
-            msgs[i][0] = -1;
-        }
-        else if (msgs[i][0] == MSG_FORCE_SEND_STATUS)
-        {
-            debug1<<"RECV FORCE STATUS\n";
-            msgs[i][0] = -1;
-            val = true;
-        }
-    }
-
-    if (sendSLs)
-    {
-        int earlyTerminates;
-        bool newStreamlines = AsyncExchangeStreamlines(streamlines, 
-                                                       distributeStreamlines,
-                                                       earlyTerminates);
-        terminates += earlyTerminates;
-    }
-
-    debug1<<">>HandleSlaveMessages() sl= "<<streamlines.size()<<endl;
-    
-#endif
-    return val;
-}
-
-// ****************************************************************************
-//  Method: avtStreamlineFilter::IntegrateStreamline
-//
-//  Purpose:
-//      The toplevel routine that actually integrates a streamline.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   June 16, 2008
-//
-//  Modifications:
-//
-//   Dave Pugmire, Wed Aug 13 14:11:04 EST 2008
-//   Pass domain extents into integration for ghost zone handling.
-//
-//   Hank Childs, Tue Aug 19 14:41:44 PDT 2008
-//   Make sure we initialize the bounds, especially if we are in 2D.
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::IntegrateStreamline(avtStreamlineWrapper *slSeg, int maxSteps)
-{
-    debug2 << "\navtStreamlineFilter::IntegrateStreamline(dom= "
-           << slSeg->domain<<")\n";
-
-    slSeg->status = avtStreamlineWrapper::UNSET;
-    //Get the required domain.
-    vtkDataSet *ds = GetDomain(slSeg->domain);
-    if (ds == NULL)
-    {
-        slSeg->status = avtStreamlineWrapper::TERMINATE;
-    }
-    else
-    {
-        // Integrate over this domain.
-        slSeg->UpdateDomainCount(slSeg->domain);
-
-        int integrationTimer = visitTimer->StartTimer();
-        double extents[6] = { 0.,0., 0.,0., 0.,0. };
-        intervalTree->GetElementExtents(slSeg->domain, extents);
-        avtIVPSolver::Result result = IntegrateDomain(slSeg, ds, extents, maxSteps);
-        integrationTime += visitTimer->StopTimer(integrationTimer, 
-                                                 "StreamlineIntegration");
-        numIntegrationSteps++;
-
-        debug2<<"Back from SLINT\n";
-        //SL exited this domain.
-        if (slSeg->status == avtStreamlineWrapper::OUTOFBOUNDS)
-        {
-            SetDomain(slSeg);
-        }
-        //SL terminates.
-        else
-        {
-            slSeg->status = avtStreamlineWrapper::TERMINATE;
-            slSeg->domain = -1;
-        }
-    }
-    
-    debug2 << "   IntegrateStreamline DONE: status = " << (slSeg->status==avtStreamlineWrapper::TERMINATE ? "TERMINATE" : "OOB")
-           << " domCnt= "<<slSeg->seedPtDomainList.size()<<endl;
-}
-
 
 // ****************************************************************************
 //  Method: avtStreamlineFilter::IntegrateDomain
@@ -6615,6 +1717,41 @@ avtStreamlineFilter::IntegrateStreamline(avtStreamlineWrapper *slSeg, int maxSte
 //   Dave Pugmire, Tue Aug 19 17:13:04EST 2008
 //   Remove accurate distance calculate option.
 //
+//   Dave Pugmire, Mon Feb 23, 09:11:34 EST 2009
+//   Added termination by number of steps. Cleanup of other term types. 
+//
+//   Dave Pugmire (on behalf of Hank Childs), Tue Feb 24 09:39:17 EST 2009
+//   Initial implemenation of pathlines.
+//
+//   Dave Pugmire, Tue Mar 10 12:41:11 EDT 2009
+//   Generalized domain to include domain/time. Pathine cleanup.
+//
+//   Dave Pugmire, Tue Mar 31 17:01:17 EDT 2009
+//   Fix memory leak.
+//
+//   Hank Childs, Thu Apr  2 17:58:09 CDT 2009
+//   Do our own interpolation.  The previous one we used was too buggy for ugrids.
+//
+//   Hank Childs, Mon Apr  6 19:05:08 PDT 2009
+//   Change the estimation of the extents to be the size of the current 
+//   domain (not the whole problem).  This will make the leap size better.
+//
+//   Hank Childs, Tue Apr  7 08:52:59 CDT 2009
+//   Use a single vtkVisItInterpolatedVelocity for pathlines, which means
+//   that cell locations are done once, not twice.
+//
+//   Dave Pugmire, Mon Jun 8 2009, 11:44:01 EDT 2009
+//   Added color by secondary variable. Remove vorticity/ghostzones flags.
+//
+//   Dave Pugmire, Tue Aug 11 10:25:45 EDT 2009
+//   Add new termination criterion: Number of intersections with an object.
+//
+//   Dave Pugmire, Tue Aug 18 09:10:49 EDT 2009
+//   Add ability to restart integration of streamlines.
+//
+//   Dave Pugmire, Tue Nov  3 09:15:41 EST 2009
+//   Bug fix. Out-of-bounds SLs were being set to terminated.
+//
 // ****************************************************************************
 
 avtIVPSolver::Result
@@ -6624,75 +1761,221 @@ avtStreamlineFilter::IntegrateDomain(avtStreamlineWrapper *slSeg,
                                      int maxSteps )
 {
     avtDataAttributes &a = GetInput()->GetInfo().GetAttributes();
-    haveGhostZones = (a.GetContainsGhostZones()==AVT_NO_GHOSTS ? false : true);
 
-    debug2<< "avtStreamlineFilter::IntegrateDomain(dom= "
-          <<slSeg->domain<<") HGZ = "<<haveGhostZones <<endl;
+    debug5<<"avtStreamlineFilter::IntegrateDom(id= "<<slSeg->id<<" dom= "<<slSeg->domain<<")"<<endl;
 
     // prepare streamline integration ingredients
-    vtkInterpolatedVelocityField* velocity=vtkInterpolatedVelocityField::New();
+    vtkVisItInterpolatedVelocityField* velocity1 = vtkVisItInterpolatedVelocityField::New();
+    if (doPathlines)
+    {
+        // Our expression will be the active variable, so reset it.
+        if (ds->GetPointData()->GetArray(pathlineVar.c_str()) != NULL)
+            ds->GetPointData()->SetActiveVectors(pathlineVar.c_str());
+        if (ds->GetCellData()->GetArray(pathlineVar.c_str()) != NULL)
+            ds->GetCellData()->SetActiveVectors(pathlineVar.c_str());
+    }
     
     // See if we have cell cenetered data...
-    vtkCellDataToPointData *cellToPt = NULL;
+    vtkCellDataToPointData *cellToPt1 = NULL;
     if (ds->GetPointData()->GetVectors() == NULL)
     {
-        cellToPt = vtkCellDataToPointData::New();
+        cellToPt1 = vtkCellDataToPointData::New();
         
-        cellToPt->SetInput(ds);
-        cellToPt->Update();
-        velocity->AddDataSet(cellToPt->GetOutput());
+        cellToPt1->SetInput(ds);
+        cellToPt1->Update();
+        velocity1->SetDataSet(cellToPt1->GetOutput());
     }
     else
-        velocity->AddDataSet(ds);
-    
-    velocity->CachingOn();
-    avtIVPVTKField field(velocity);
-    bool timeMode = (terminationType==STREAMLINE_TERMINATE_TIME);
-    double end = termination;
-    if (slSeg->dir == avtStreamlineWrapper::BWD)
-        end = - end;
-    
-    //slSeg->Debug();
-    bool doVorticity = ((coloringMethod == STREAMLINE_COLOR_VORTICITY)
-                        || (displayMethod == STREAMLINE_DISPLAY_RIBBONS));
-    avtIVPSolver::Result result = slSeg->sl->Advance(&field,
-                                                     timeMode,
-                                                     end,
-                                                     maxSteps,
-                                                     doVorticity,
-                                                     haveGhostZones,
-                                                     extents);
-    //slSeg->Debug();
+        velocity1->SetDataSet(ds);
 
+    if (coloringMethod == STREAMLINE_COLOR_VARIABLE)
+        ds->GetPointData()->SetActiveScalars(coloringVariable.c_str());
+    
+    double t1, t2;
+    if (doPathlines)
+    {
+        velocity1->SetDoPathlines(true);
+        velocity1->SetNextTimeName(pathlineNextTimeVar);
+        
+        std::string db = GetInput()->GetInfo().GetAttributes().GetFullDBName();
+        ref_ptr<avtDatabase> dbp = avtCallback::GetDatabase(db, 0, NULL);
+        if (*dbp == NULL)
+            EXCEPTION1(InvalidFilesException, db.c_str());
+        
+        avtDatabaseMetaData *md = dbp->GetMetaData(slSeg->domain.timeStep,
+                                                   false,false, false);
+        t1 = md->GetTimes()[slSeg->domain.timeStep];
+        t2 = md->GetTimes()[slSeg->domain.timeStep+1];
+        if (t1 == t2)
+        {
+            t1 = (double)slSeg->domain.timeStep;
+            t2 = (double)(slSeg->domain.timeStep+1);
+        }
+        velocity1->SetCurrentTime(t1);
+        velocity1->SetNextTime(t2);
+    }
+
+    //slSeg->Debug();
+    int numSteps = slSeg->sl->size();
+    avtIVPSolver::Result result;
+
+    // When restarting a streamline one step is always taken. To avoid
+    // this unneed step check to see if the termination criteria was
+    // previously met.
+    debug5<<"IntegrateDomain: slSeg->terminated= "<<slSeg->terminated<<endl;
+    if( ! slSeg->terminated )
+    {
+        if (intersectObj)
+            slSeg->sl->SetIntersectionObject(intersectObj);
+
+        if (doPathlines)
+        {
+            avtIVPVTKTimeVaryingField field(velocity1, t1, t2);
+            result = slSeg->sl->Advance(&field,
+                                        slSeg->terminationType,
+                                        slSeg->termination);
+        }
+        else
+        {
+          if (integrationType == STREAMLINE_INTEGRATE_M3D_C1_INTEGRATOR) {
+            avtIVPM3DC1Field field(velocity1);
+            result = slSeg->sl->Advance(&field,
+                                        slSeg->terminationType,
+                                        slSeg->termination);
+          } else {
+            avtIVPVTKField field(velocity1);
+            result = slSeg->sl->Advance(&field,
+                                        slSeg->terminationType,
+                                        slSeg->termination);
+          }
+        }
+        
+        // Termination criteria was met.
+        slSeg->terminated = (result == avtIVPSolver::TERMINATE);
+        debug5<<"Advance:= "<<result<<endl;
+        debug5<<"IntegrateDomain: slSeg->terminated= "<<slSeg->terminated<<endl;
+        
+    }
+    else
+        result = avtIVPSolver::TERMINATE;
+
+    numSteps = slSeg->sl->size() - numSteps;
+    //slSeg->Debug();
     if (result == avtIVPSolver::OUTSIDE_DOMAIN)
     {
         slSeg->status = avtStreamlineWrapper::OUTOFBOUNDS;
-        int oldDomain = slSeg->domain;
+        DomainType oldDomain = slSeg->domain;
 
         //Set the new domain.
         SetDomain(slSeg);
-
-        // See if we are really done.
-        if (slSeg->seedPtDomainList.size() == 0 ||
-             (slSeg->seedPtDomainList.size() == 1 && 
-             (slSeg->domain == oldDomain || slSeg->domain == -1)))
+        
+        // Not in any domains.
+        if (slSeg->seedPtDomainList.size() == 0)
         {
-            debug2<<"TERMINATE: sz= "<<slSeg->seedPtDomainList.size()<<" dom= "
-                  <<slSeg->domain<<" oldDom= "<<oldDomain<<endl;
-            //slSeg->Debug();
             slSeg->status = avtStreamlineWrapper::TERMINATE;
+        }
+
+        // We are in the same domain.
+        else if (slSeg->seedPtDomainList.size() == 1)
+        {
+            // pathline terminates if timestep is out of bounds.
+            if (doPathlines && slSeg->domain.timeStep == -1)
+            {
+                slSeg->status = avtStreamlineWrapper::TERMINATE;
+            }
+
+            if (slSeg->domain == oldDomain && numSteps == 0)
+            {
+                slSeg->status = avtStreamlineWrapper::TERMINATE;
+            }
+            else
+            {
+                slSeg->status = avtStreamlineWrapper::OUTOFBOUNDS;
+            }
+        }
+        else
+        {
+            //slSeg->status = avtStreamlineWrapper::TERMINATE;
         }
     }
     else
+    {
         slSeg->status = avtStreamlineWrapper::TERMINATE;
+    }
     
-    velocity->Delete();
-    if (cellToPt)
-        cellToPt->Delete();
-
+    velocity1->Delete();
+    if (cellToPt1)
+        cellToPt1->Delete();
+    
+    debug5<<"::IntegrateDomain() id= "<<slSeg->id<<" dom= "<<slSeg->domain<<" result= "<<result<<endl;
     return result;
 }
 
+
+// ****************************************************************************
+//  Method: avtStreamlineFilter::IntegrateStreamline
+//
+//  Purpose:
+//      The toplevel routine that actually integrates a streamline.
+//
+//  Programmer: Dave Pugmire
+//  Creation:   June 16, 2008
+//
+//  Modifications:
+//
+//   Dave Pugmire, Wed Aug 13 14:11:04 EST 2008
+//   Pass domain extents into integration for ghost zone handling.
+//
+//   Hank Childs, Tue Aug 19 14:41:44 PDT 2008
+//   Make sure we initialize the bounds, especially if we are in 2D.
+//
+//   Dave Pugmire, Mon Mar 23 18:33:10 EDT 2009
+//   Make changes for point decomposed domain databases.
+//
+// ****************************************************************************
+
+void
+avtStreamlineFilter::IntegrateStreamline(avtStreamlineWrapper *slSeg, int maxSteps)
+{
+    slSeg->status = avtStreamlineWrapper::UNSET;
+    
+    //Get the required domain.
+    avtVector pt;
+    slSeg->GetEndPoint(pt);
+    vtkDataSet *ds = GetDomain(slSeg->domain, pt.x, pt.y, pt.z);
+
+    debug5 << "avtStreamlineFilter::IntegrateStreamline("<<pt<<" "<<slSeg->domain<<")"<<endl;
+
+    if (ds == NULL)
+    {
+        slSeg->status = avtStreamlineWrapper::TERMINATE;
+    }
+    else
+    {
+        // Integrate over this domain.
+        slSeg->UpdateDomainCount(slSeg->domain);
+
+        double extents[6] = { 0.,0., 0.,0., 0.,0. };
+        intervalTree->GetElementExtents(slSeg->domain.domain, extents);
+        avtIVPSolver::Result result = IntegrateDomain(slSeg, ds, extents, maxSteps);
+        debug5<<"ISL: result= "<<result<<endl;
+
+        //SL exited this domain.
+        if (slSeg->status == avtStreamlineWrapper::OUTOFBOUNDS)
+        {
+            debug5<<"OOB: call set domain\n";
+            SetDomain(slSeg);
+        }
+        //SL terminates.
+        else
+        {
+            debug5<<"Terminate!\n";
+            slSeg->status = avtStreamlineWrapper::TERMINATE;
+        }
+    }
+    
+    debug5 << "IntegrateStreamline DONE: status = "<<slSeg->status<<" doms= "<<slSeg->seedPtDomainList<<endl;
+}
 
 // ****************************************************************************
 // Method: avtStreamlineFilter::SetZToZero
@@ -6757,7 +2040,7 @@ avtStreamlineFilter::PreExecute(void)
     avtDatasetOnDemandFilter::PreExecute();
 
     // Create the solver. --Get from user prefs.
-    if (integrationType == STREAMLINE_INTEGRATE_DORLAND_PRINCE)
+    if (integrationType == STREAMLINE_INTEGRATE_DORMAND_PRINCE)
     {
         solver = new avtIVPDopri5;
         solver->SetMaximumStepSize(maxStepLength);
@@ -6766,6 +2049,12 @@ avtStreamlineFilter::PreExecute(void)
     else if (integrationType == STREAMLINE_INTEGRATE_ADAMS_BASHFORTH)
     {
         solver = new avtIVPAdamsBashforth;
+        solver->SetMaximumStepSize(maxStepLength);
+        solver->SetTolerances(relTol, absTol);
+    }
+    else if (integrationType == STREAMLINE_INTEGRATE_M3D_C1_INTEGRATOR)
+    {
+        solver = new avtIVPM3DC1Integrator;
         solver->SetMaximumStepSize(maxStepLength);
         solver->SetTolerances(relTol, absTol);
     }
@@ -6860,7 +2149,7 @@ avtStreamlineFilter::UpdateDataObjectInfo(void)
 
 typedef struct
 {
-    pt3d pt;
+    avtVector pt;
     int domain, id;
 } seedPtDomain;
 
@@ -6914,18 +2203,37 @@ randMinus1_1()
 //   Dave Pugmire, Thu Dec 18 13:24:23 EST 2008
 //   Add 3 point density vars.
 //
+//   Dave Pugmire, Tue Mar 10 12:41:11 EDT 2009
+//   Generalized domain to include domain/time. Pathine cleanup.
+//
+//   Dave Pugmire, Tue Mar 31 17:01:17 EDT 2009
+//   Initialize time step in domain and start time of streamlines.
+//
+//   Hank Childs, Mon Apr  6 17:42:55 PDT 2009
+//   Change seedTimeStep0 to seedTime0 (integers were mistakenly being
+//   send in as doubles).
+//
+//   Dave Pugmire, Mon Jun 8 2009, 11:44:01 EDT 2009
+//   Set what scalars to compute on the avtStreamline object.
+//
+//   Dave Pugmire, Tue Aug 18 09:10:49 EDT 2009
+//   Add ability to restart integration of streamlines.
+//
+//   Dave Pugmire, Tue Nov  3 09:15:41 EST 2009
+//   Bug fix. Seed points with multiple domains need to be given a separate ID.
+//
 // ****************************************************************************
 
 void
 avtStreamlineFilter::GetSeedPoints(std::vector<avtStreamlineWrapper *> &pts)
 {
-    std::vector<pt3d> candidatePts;
+    std::vector<avtVector> candidatePts;
 
     // Add seed points based on the source.
     if(sourceType == STREAMLINE_SOURCE_POINT)
     {
         double z0 = (dataSpatialDimension > 2) ? pointSource[2] : 0.0;
-        pt3d pt(pointSource[0], pointSource[1], z0);
+        avtVector pt(pointSource[0], pointSource[1], z0);
         candidatePts.push_back(pt);
     }
 
@@ -6942,7 +2250,7 @@ avtStreamlineFilter::GetSeedPoints(std::vector<avtStreamlineWrapper *> &pts)
         for (int i = 0; i< line->GetOutput()->GetNumberOfPoints(); i++)
         {
             double *pt = line->GetOutput()->GetPoint(i);
-            pt3d p(pt[0], pt[1], pt[2]);
+            avtVector p(pt[0], pt[1], pt[2]);
             candidatePts.push_back(p);
         }
         line->Delete();
@@ -6958,7 +2266,7 @@ avtStreamlineFilter::GetSeedPoints(std::vector<avtStreamlineWrapper *> &pts)
         U.normalize();
         N.normalize();
         if(dataSpatialDimension <= 2)
-           N = avtVector(0.,0.,1.);
+            N = avtVector(0.,0.,1.);
         // Determine the right vector.
         avtVector R(U % N);
         R.normalize();
@@ -6975,7 +2283,7 @@ avtStreamlineFilter::GetSeedPoints(std::vector<avtStreamlineWrapper *> &pts)
         for (int i = 0; i< plane->GetOutput()->GetNumberOfPoints(); i++)
         {
             double *pt = plane->GetOutput()->GetPoint(i);
-            pt3d p(pt[0], pt[1], pt[2]);
+            avtVector p(pt[0], pt[1], pt[2]);
             candidatePts.push_back(p);
         }
         plane->Delete();
@@ -6996,7 +2304,7 @@ avtStreamlineFilter::GetSeedPoints(std::vector<avtStreamlineWrapper *> &pts)
         for (int i = 0; i < sphere->GetOutput()->GetNumberOfPoints(); i++)
         {
             double *pt = sphere->GetOutput()->GetPoint(i);
-            pt3d p(pt[0], pt[1], pt[2]);
+            avtVector p(pt[0], pt[1], pt[2]);
             candidatePts.push_back(p);
         }
         sphere->Delete();
@@ -7057,7 +2365,7 @@ avtStreamlineFilter::GetSeedPoints(std::vector<avtStreamlineWrapper *> &pts)
                 {
                     float X = (float(i) / float(pointDensity1)) * dX 
                             + boxExtents[0];
-                    pt3d p(X,Y,Z);
+                    avtVector p(X,Y,Z);
                     candidatePts.push_back(p);
                 }
             }
@@ -7076,35 +2384,34 @@ avtStreamlineFilter::GetSeedPoints(std::vector<avtStreamlineWrapper *> &pts)
     double dZ = dataRange[5]-dataRange[4];
     double minRange = std::min(dX, std::min(dY,dZ));
 
+    int ID = 0;
     for (int i = 0; i < candidatePts.size(); i++)
     {
         vector<int> dl;
         seedPtDomain pd;
-        intervalTree->GetElementsListFromRange(candidatePts[i].xyz, 
-                                               candidatePts[i].xyz, dl);
+        double xyz[3] = {candidatePts[i].x,candidatePts[i].y,candidatePts[i].z};
+        intervalTree->GetElementsListFromRange(xyz,xyz, dl);
 
-        //cout<<i<<": "<<candidatePts[i].xyz[0]<<" "<<candidatePts[i].xyz[1]<<" "<<candidatePts[i].xyz[2]<<" dl= "<<dl.size()<<endl;
+        //cout<<i<<": "<<candidatePts[i].x<<" "<<candidatePts[i].y<<" "<<candidatePts[i].z<<" dl= "<<dl.size()<<endl;
         // seed in no domains, try to wiggle it into a DS.
         if (dl.size() == 0)
         {
             //Try to wiggle it by 0.5% of the dataset size.
-            double offset[3], wiggle[3] = {dX*0.005, dY*0.005, dZ*0.005};
+            double wiggle[3] = {dX*0.005, dY*0.005, dZ*0.005};
             bool foundGoodPt = false;
             for ( int w = 0; w < 100; w++ )
             {
-                pt3d wigglePt(candidatePts[i].xyz[0]+wiggle[0]*randMinus1_1(),
-                              candidatePts[i].xyz[1]+wiggle[1]*randMinus1_1(),
-                              candidatePts[i].xyz[2]+wiggle[2]*randMinus1_1());
+                double wigglePt[3] = {(candidatePts[i].x+wiggle[0]*randMinus1_1(),
+                                       candidatePts[i].y+wiggle[1]*randMinus1_1(),
+                                       candidatePts[i].z+wiggle[2]*randMinus1_1())};
                 
                 vector<int> dl2;
-                intervalTree->GetElementsListFromRange(wigglePt.xyz, wigglePt.xyz, dl2);
+                intervalTree->GetElementsListFromRange(wigglePt, wigglePt, dl2);
                 //cout<<"Wiggle it: "<<i<<": "<<wigglePt.values()[0]<<" "<<wigglePt.values()[1]<<" "<<wigglePt.values()[2];
                 //cout<<" domain cnt: "<<dl2.size()<<endl;
                 if ( dl2.size() > 0 )
                 {
-                    candidatePts[i].xyz[0] = wigglePt.xyz[0];
-                    candidatePts[i].xyz[1] = wigglePt.xyz[1];
-                    candidatePts[i].xyz[2] = wigglePt.xyz[2];
+                    candidatePts[i] = wigglePt;
                     dl.resize(0);
                     for ( int j = 0; j < dl2.size(); j++ )
                         dl.push_back(dl2[j]);
@@ -7120,52 +2427,75 @@ avtStreamlineFilter::GetSeedPoints(std::vector<avtStreamlineWrapper *> &pts)
                 continue;
         }
 
-        debug1<<"Candidate pt: "<<i<<" ["<<candidatePts[i].xyz[0]<<", "
-              <<candidatePts[i].xyz[1]<<", "<<candidatePts[i].xyz[2];
-        debug1<<" dom =[";
-        for (int j = 0; j < dl.size();j++)
-            debug1<<dl[j]<<", ";
-        debug1<<"]\n";
-        
+        debug5<<"Candidate pt: "<<i<<" "<<candidatePts[i];
+        debug5<<" id= "<<i<<" dom ="<<dl<<endl;
+
         // Add seed for each domain/pt. At this point, we don't know where 
         // the pt belongs....
         for (int j = 0; j < dl.size(); j++)
         {
             pd.pt = candidatePts[i];
             pd.domain = dl[j];
-            pd.id = i;
+            pd.id = ID;
             ptDom.push_back(pd);
+            ID++;
         }
     }
     
     // Now, sort the ptDom.
     qsort(&ptDom[0], ptDom.size(), sizeof(seedPtDomain), comparePtDom);
 
+    avtStreamline::ScalarValueType scalarVal = avtStreamline::NONE;
+    if (coloringMethod == STREAMLINE_COLOR_SPEED)
+        scalarVal = avtStreamline::SPEED;
+    else if (coloringMethod == STREAMLINE_COLOR_VORTICITY)
+        scalarVal = avtStreamline::VORTICITY;
+    else if (coloringMethod == STREAMLINE_COLOR_VARIABLE)
+        scalarVal = avtStreamline::SCALAR_VARIABLE;
+
+    if (displayMethod == STREAMLINE_DISPLAY_RIBBONS)
+        scalarVal = (avtStreamline::ScalarValueType)(scalarVal | avtStreamline::VORTICITY);
+    
     for (int i = 0; i < ptDom.size(); i++)
     {
-        avtVec pt(ptDom[i].pt.xyz[0], ptDom[i].pt.xyz[1], ptDom[i].pt.xyz[2]);
-        
+        avtVec pt(ptDom[i].pt.x, ptDom[i].pt.y, ptDom[i].pt.z);
+
         if (streamlineDirection == VTK_INTEGRATE_FORWARD ||
              streamlineDirection == VTK_INTEGRATE_BOTH_DIRECTIONS)
         {
-            avtStreamline *sl = new avtStreamline(solver, 0.0, pt);
+            avtStreamline *sl = new avtStreamline(solver, seedTime0, pt);
+            sl->SetScalarValueType(scalarVal);
+
             avtStreamlineWrapper *slSeg;
             slSeg = new avtStreamlineWrapper(sl,
                                              avtStreamlineWrapper::FWD,
                                              ptDom[i].id);
-            slSeg->domain = ptDom[i].domain;
+            slSeg->domain.domain = ptDom[i].domain;
+            slSeg->domain.timeStep = seedTimeStep0;
+            slSeg->termination = termination;
+            slSeg->terminationType = terminationType;
+            debug5<<"Create seed: id= "<<ptDom[i].id<<" pt= "<<ptDom[i].pt<<" dom= "<<ptDom[i].domain<<endl;
             pts.push_back(slSeg);
         }
         
         if (streamlineDirection == VTK_INTEGRATE_BACKWARD ||
              streamlineDirection == VTK_INTEGRATE_BOTH_DIRECTIONS)
         {
-            avtStreamline *sl = new avtStreamline(solver, 0.0, pt);
+            avtStreamline *sl = new avtStreamline(solver, seedTime0, pt);
+            sl->SetScalarValueType(scalarVal);
+
+            int id = ptDom[i].id;
+            if (streamlineDirection == VTK_INTEGRATE_BOTH_DIRECTIONS)
+                id += ptDom.size();
+            
             avtStreamlineWrapper *slSeg;
             slSeg = new avtStreamlineWrapper(sl, 
-                                             avtStreamlineWrapper::BWD,
-                                             ptDom[i].id);
+                                             avtStreamlineWrapper::BWD, id);
             slSeg->domain = ptDom[i].domain;
+            slSeg->domain.timeStep = seedTimeStep0;
+            slSeg->termination = -termination;
+            slSeg->terminationType = terminationType;
+            debug5<<"Create seed: id= "<<ptDom[i].id<<" pt= "<<ptDom[i].pt<<" dom= "<<ptDom[i].domain<<endl;
             pts.push_back(slSeg);
         }
     }
@@ -7243,21 +2573,49 @@ avtStreamlineFilter::StartSphere(float val, double pt[3])
 //   Dave Pugmire, Tue Aug 19 17:13:04EST 2008
 //   Remove accurate distance calculate option.
 //
+//   Dave Pugmire (on behalf of Hank Childs), Tue Feb 24 09:39:17 EST 2009
+//   Initial implemenation of pathlines.  
+//
+//   Dave Pugmire, Tue Mar 10 12:41:11 EDT 2009
+//   Generalized domain to include domain/time. Pathine cleanup.
+//
 // ****************************************************************************
 
 avtContract_p
 avtStreamlineFilter::ModifyContract(avtContract_p in_contract)
 {
+    //See if we can set pathlines.
+    if (doPathlines)
+    {
+        std::string db = GetInput()->GetInfo().GetAttributes().GetFullDBName();
+        ref_ptr<avtDatabase> dbp = avtCallback::GetDatabase(db, 0, NULL);
+        if (*dbp == NULL)
+            EXCEPTION1(InvalidFilesException, db.c_str());
+        avtDatabaseMetaData *md = dbp->GetMetaData(0);
+        if (md->GetTimes().size() == 1)
+            doPathlines = false;
+    }
+
+    lastContract = in_contract;
+
     avtDataRequest_p in_dr = in_contract->GetDataRequest();
     avtDataRequest_p out_dr = NULL;
 
-    if (strcmp(in_dr->GetVariable(), "colorVar") == 0)
+    if (strcmp(in_dr->GetVariable(), "colorVar") == 0 || doPathlines)
     {
         // The avtStreamlinePlot requested "colorVar", so remove that from the
         // contract now.
         out_dr = new avtDataRequest(in_dr,in_dr->GetOriginalVariable());
     }
 
+    if (coloringMethod == STREAMLINE_COLOR_VARIABLE)
+        out_dr->AddSecondaryVariable(coloringVariable.c_str());
+
+    if (doPathlines)
+    {
+        out_dr->AddSecondaryVariable(pathlineNextTimeVar.c_str());
+        pathlineVar = in_dr->GetOriginalVariable();
+    }
     avtContract_p out_contract;
     if ( *out_dr )
         out_contract = new avtContract(in_contract, out_dr);
@@ -7267,7 +2625,76 @@ avtStreamlineFilter::ModifyContract(avtContract_p in_contract)
     //out_contract->GetDataRequest()->SetDesiredGhostDataType(NO_GHOST_DATA);
     out_contract->GetDataRequest()->SetDesiredGhostDataType(GHOST_ZONE_DATA);
 
+    if (doPathlines)
+    {
+        bool needExpr = true;
+        ExpressionList *elist = ParsingExprList::Instance()->GetList();
+
+        for (int i = 0; i < elist->GetNumExpressions(); i++)
+        {
+            if (elist->GetExpressions(i).GetName() == pathlineNextTimeVar)
+            {
+                needExpr = false;
+                break;
+            }
+        }
+        if (needExpr)
+        {
+
+            pathlineVar = out_dr->GetVariable(); // HANK: ASSUMPTION
+            std::string meshname = out_dr->GetVariable(); // Can reuse varname here.
+            Expression *e = new Expression();
+            e->SetName(pathlineNextTimeVar);
+            char defn[1024];
+            SNPRINTF(defn, 1024, "conn_cmfe(<[1]id:%s>, %s)", pathlineVar.c_str(), meshname.c_str());
+            e->SetDefinition(defn);
+            e->SetType(Expression::VectorMeshVar);
+            elist->AddExpressions(*e);
+            delete e;
+        }
+    }
+
     return avtDatasetOnDemandFilter::ModifyContract(out_contract);
 }
 
+// ****************************************************************************
+//  Method: avtStreamlineFilter::ExamineContract
+//
+//  Purpose:
+//      Retrieve active time step from current contract.
+//
+//  Programmer: Gunther H. Weber
+//  Creation:   April 2, 2009
+//
+//  Modifications:
+//
+// ****************************************************************************
 
+void
+avtStreamlineFilter::ExamineContract(avtContract_p in_contract)
+{
+    avtDatasetOnDemandFilter::ExamineContract(in_contract);
+    activeTimeStep = in_contract->GetDataRequest()->GetTimestep();
+}
+
+
+// ****************************************************************************
+//  Method: avtStreamlineFilter::GetTerminatedStreamlines
+//
+//  Purpose:
+//      Return list of terminated streamlines.
+//
+//  Programmer: Dave Pugmire
+//  Creation:   Mon Aug 17 09:23:32 EDT 2009
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+void
+avtStreamlineFilter::GetTerminatedStreamlines(vector<avtStreamlineWrapper *> &sls)
+{
+    sls.resize(0);
+    if (slAlgo)
+        slAlgo->GetTerminatedSLs(sls);
+}

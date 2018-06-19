@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -79,7 +79,6 @@ class VisWinAnnotations;
 class VisWinAxes;
 class VisWinAxes3D;
 class VisWinAxesArray;
-class VisWinAxesParallel;
 class VisWinBackground;
 class VisWinColleague;
 class VisWinFrame;
@@ -397,14 +396,8 @@ class VisitInteractor;
 //    Tom Fogal, Sun Jul 27 01:21:06 EDT 2008
 //    Add interface for ScreenRender.
 //
-//    Eric Brugger, Tue Dec  9 14:30:53 PST 2008
-//    Added the AxisParallel window mode.
-//
-//    Brad Whitlock, Wed Jan  7 14:46:25 PST 2009
-//    I removed plot info atts since we can get that information elsewhere.
-//
-//    Hank Childs, Wed Jan 14 18:33:27 CST 2009
-//    Added GetCaptureRegion.
+//    Tom Fogal, Mon May 25 18:21:24 MDT 2009
+//    Added GetTransparencyActor, so clients may invalidate the cache.
 //
 // ****************************************************************************
 
@@ -418,6 +411,8 @@ public:
     void                 AddPlot(avtActor_p &);
     void                 RemovePlot(avtActor_p &);
     void                 ClearPlots(void);
+    int                  GetPlotListIndex(const char *plotName);
+    const PlotInfoAttributes *GetPlotInfoAtts(const char *plotName);
 
     void                 SetBounds(const double [6]);
     void                 GetBounds(double [6]) const;
@@ -441,7 +436,6 @@ public:
     void                 SetSize(int, int);
     void                 GetSize(int &, int &) const;
     void                 GetWindowSize(int &, int &) const;
-    void                 GetCaptureRegion(int &, int &, int &, int &, bool);
     void                 SetLocation(int, int);
     void                 GetLocation(int &, int &) const;
 
@@ -627,6 +621,7 @@ public:
     void                 ResumeTranslucentGeometry();
 
     bool                 TransparenciesExist(void);
+    avtTransparencyActor* GetTransparencyActor();
 
     void                 GlyphPick(const double*, const double*, int&, int&, 
                                    bool&, const bool = false);
@@ -646,7 +641,6 @@ protected:
     VisWinAxes3D                      *axes3D;
     VisWinFrame                       *frame;
     VisWinAxesArray                   *axesArray;
-    VisWinAxesParallel                *axesParallel;
     VisWinInteractions                *interactions;
     VisWinLegends                     *legends;
     VisWinLighting                    *lighting;
@@ -706,12 +700,10 @@ protected:
     void                 Start3DMode();
     void                 StartCurveMode();
     void                 StartAxisArrayMode();
-    void                 StartAxisParallelMode();
     void                 Stop2DMode();
     void                 Stop3DMode();
     void                 StopCurveMode();
     void                 StopAxisArrayMode();
-    void                 StopAxisParallelMode();
     void                 UpdatePlotList(std::vector<avtActor_p> &);
 
     void                 HasPlots(bool);
@@ -736,7 +728,6 @@ protected:
     void                 UpdateAxes2D(void);
     void                 UpdateAxes3D(void);
     void                 UpdateAxesArray(void);
-    void                 UpdateAxesParallel(void);
     void                 UpdateTextAnnotations(void);
 
     void                 MotionBegin(void);

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -69,7 +69,7 @@ class GUI_API QvisText3DInterface : public QvisAnnotationObjectInterface
 {
     Q_OBJECT
 public:
-    QvisText3DInterface(QWidget *parent);
+    QvisText3DInterface(QWidget *parent, const char *name = 0);
     virtual ~QvisText3DInterface();
 
     virtual QString GetName() const { return "3D Text"; }

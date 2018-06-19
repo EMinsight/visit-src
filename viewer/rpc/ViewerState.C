@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -414,9 +414,7 @@ ViewerState::Register(AttributeSubject *obj, bool owns, bool partialSend)
 // Creation:   Fri Feb 23 11:46:13 PDT 2007
 //
 // Modifications:
-//   Brad Whitlock, Wed Jan  7 15:00:58 PST 2009
-//   I added a plot info attributes for each plot that gets registered.
-//
+//   
 // ****************************************************************************
 
 AttributeSubject *
@@ -428,14 +426,6 @@ ViewerState::RegisterPlotAttributes(AttributeSubject *obj)
     rec.partialSend = true;
     rec.objPurpose = PlotState;
     objVector.push_back(rec);
-
-    ObjectRecord rec2;
-    rec2.object = new PlotInfoAttributes;
-    rec2.owns = true;
-    rec2.partialSend = false;
-    rec2.objPurpose = PlotInformation;
-    objVector.push_back(rec2);
-
     nPlots++;
     return obj;
 }
@@ -503,42 +493,6 @@ ViewerState::GetPlotAttributes(int n) const
         {
             if(count == n)
                 return objVector[i].object;
-            ++count;
-        }
-    }
-    return 0;
-}
-
-// ****************************************************************************
-// Method: ViewerState::GetPlotAttributes
-//
-// Purpose: 
-//   Get the n'th plot information object.
-//
-// Arguments:
-//   n : The index of the plot in the order they were registered.
-//
-// Returns:    The pointer to the plot information state object.
-//
-// Note:       
-//
-// Programmer: Brad Whitlock
-// Creation:   Fri Feb 23 11:47:43 PDT 2007
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-PlotInfoAttributes *
-ViewerState::GetPlotInformation(int n) const
-{
-    int count = 0;
-    for(int i = 0; i < objVector.size(); ++i)
-    {
-        if(objVector[i].objPurpose == PlotInformation)
-        {
-            if(count == n)
-                return (PlotInfoAttributes *)objVector[i].object;
             ++count;
         }
     }

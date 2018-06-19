@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -60,7 +60,10 @@ class vtkTimeSliderActor;
 // Modifications:
 //   Kathleen Bonnell, Thu Jan 13 08:39:30 PST 2005
 //   Added timeFormatString and another char* arg to SetText.
-//   
+//
+//   Brad Whitlock, Mon Mar  2 14:21:17 PST 2009
+//   Added SetTimeScaleAndOffset.
+//
 // ****************************************************************************
 
 class VISWINDOW_API avtTimeSliderColleague : public avtAnnotationColleague
@@ -72,6 +75,8 @@ public:
     virtual void AddToRenderer();
     virtual void RemoveFromRenderer();
     virtual void Hide();
+
+    virtual void SetTimeScaleAndOffset(double,double);
 
     virtual std::string TypeName() const { return "TimeSlider"; }
 
@@ -85,6 +90,7 @@ public:
     virtual void NoPlots(void);
     virtual void SetFrameAndState(int, int, int, int, int, int, int);
     virtual void UpdatePlotList(std::vector<avtActor_p> &lst);
+
 private:
     bool ShouldBeAddedToRenderer() const;
     void SetText(const char *text, const char *format);
@@ -100,6 +106,8 @@ private:
     int                timeDisplayMode;
 
     double             currentTime;
+    double             timeScale;
+    double             timeOffset;
     bool               useForegroundForTextColor;
     bool               addedToRenderer;
     ColorAttribute     textColor;

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -40,7 +40,7 @@
 #define QVIS_HOST_PROFILE_WINDOW_H
 #include <gui_exports.h>
 #include <QvisPostableWindowObserver.h>
-#include <QMap>
+#include <qmap.h>
 
 // Forward declrations
 class HostProfileList;
@@ -52,8 +52,8 @@ class QGroupBox;
 class QLabel;
 class QComboBox;
 class QTabWidget;
-class QListWidget;
-class QListWidgetItem;
+class QListBox;
+class QListBoxItem;
 class QCheckBox;
 class QButtonGroup;
 class QRadioButton;
@@ -142,8 +142,8 @@ class QRadioButton;
 //    Dave Bremer, Wed Apr 16 17:54:14 PDT 2008
 //    Added fields for commands to run pre and post the mpi command.
 //
-//    Cyrus Harrison, Tue Jun 24 11:15:28 PDT 2008
-//    Initial Qt4 Port.
+//    Hank Childs, Thu May  7 19:05:36 PDT 2009
+//    Added field for host nickname.
 //
 // ****************************************************************************
 
@@ -151,6 +151,7 @@ class GUI_API QvisHostProfileWindow : public QvisPostableWindowObserver
 {
     Q_OBJECT
 
+    typedef QMap<QString, QListBox*> HostTabMap;
 public:
     QvisHostProfileWindow(HostProfileList *profiles, 
                           const QString &caption = QString::null,
@@ -171,8 +172,8 @@ private slots:
     void deleteProfile();
     void apply();
 
-    void activateProfile(QListWidgetItem *item);
-    void pageTurned(int);
+    void activateProfile(QListBoxItem *item);
+    void pageTurned(QWidget *);
     void processProfileNameText(const QString &name);
     void processEngineArgumentsText(const QString &);
     void processPartitionNameText(const QString &);
@@ -204,6 +205,7 @@ private slots:
     void loadBalancingChanged(int);
     void hostNameChanged(const QString &host);
     void hostAliasesChanged(const QString &host);
+    void hostNicknameChanged(const QString &host);
     void userNameChanged(const QString &username);
     void toggleSSHPort(bool);
     void sshPortChanged(const QString &port);
@@ -221,11 +223,10 @@ private:
     QWidget *CreateAdvancedTab(QWidget *parent);
     QWidget *CreateHardwareAccelerationTab(QWidget *parent);
     QWidget *CreateNetworkingTab(QWidget *parent);
-    
-    QMap<QString, QListWidget*>   hostTabMap;
-    
+
     QTabWidget   *hostTabs;
-    QListWidget  *emptyListBox;
+    QListBox     *emptyListBox;
+    HostTabMap   hostTabMap;
 
     QTabWidget   *optionsTabs;
     QPushButton  *newButton;
@@ -238,6 +239,8 @@ private:
     QComboBox    *hostName;
     QLabel       *hostAliasesLabel;
     QLineEdit    *hostAliases;
+    QLabel       *hostNicknameLabel;
+    QLineEdit    *hostNickname;
     QLabel       *userNameLabel;
     QLineEdit    *userName;
     QLabel       *numProcLabel;

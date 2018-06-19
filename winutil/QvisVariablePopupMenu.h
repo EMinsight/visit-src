@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,10 +39,7 @@
 #ifndef QVIS_VARIABLE_POPUP_MENU_H
 #define QVIS_VARIABLE_POPUP_MENU_H
 #include <winutil_exports.h>
-
-#include <QAction>
-#include <QActionGroup>
-#include <QMenu>
+#include <qpopupmenu.h>
 
 // ****************************************************************************
 // Class: QvisVariablePopupMenu
@@ -61,31 +58,24 @@
 //   Brad Whitlock, Mon Mar 17 15:12:48 PST 2003
 //   I changed the API.
 //
-//   Brad Whitlock, Fri May  9 10:29:44 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
-class WINUTIL_API QvisVariablePopupMenu : public QMenu
+class WINUTIL_API QvisVariablePopupMenu : public QPopupMenu
 {
     Q_OBJECT
 public:
-    QvisVariablePopupMenu(int plotType_, QWidget *parent);
+    QvisVariablePopupMenu(int plotType_, QWidget *parent, const char *name);
     virtual ~QvisVariablePopupMenu();
     int getPlotType() const { return plotType; };
     void setPlotType(int p) { plotType = p; };
     void setVarPath(const QString &str) { varPath = str; };
-
-    QAction *addVar(const QString &, bool valid = true);
-    int count() const;
 signals:
     void activated(int plotType_, const QString &varName);
 private slots:
-    void caughtTriggered(QAction *);
+    void activatedCaught(int index);
 private:
-    QActionGroup *actions;
-    QString       varPath;
-    int           plotType;
+    QString varPath;
+    int     plotType;
 };
 
 #endif

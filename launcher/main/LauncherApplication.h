@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -82,6 +82,9 @@
 //   Brad Whitlock, Wed Nov 21 10:34:14 PST 2007
 //   Added support for forwarding child process output to the client.
 //
+//   Brad Whitlock, Mon Apr 27 16:25:34 PST 2009
+//   I changed the code so we can tunnel simulation data connections.
+//
 // ****************************************************************************
 
 class LauncherApplication
@@ -107,7 +110,7 @@ protected:
     void TerminateConnectionRequest(int, char **);
 #else
     void TerminateConnectionRequest(int, char **);
-    void SetupGatewaySocketBridgeIfNeeded(stringVector &launchArgs);
+    void SetupGatewaySocketBridgeIfNeeded(stringVector &launchArgs, bool);
 #endif
     static void AlarmHandler(int);
     static void DeadChildHandler(int);

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -49,7 +49,6 @@
 #include <avtViewInfo.h>
 
 class   avtRayFunction;
-class   vtkMatrix4x4;
 
 
 // ****************************************************************************
@@ -88,9 +87,6 @@ class   vtkMatrix4x4;
 //
 //    Jeremy Meredith, Thu Feb 15 11:44:28 EST 2007
 //    Added support for rectilinear grids with an inherent transform.
-//
-//    Hank Childs, Wed Dec 24 14:17:03 PST 2008
-//    Add method TightenClippingPlanes.
 //
 // ****************************************************************************
 
@@ -138,12 +134,10 @@ class AVTFILTERS_API avtRayTracer : public avtDatasetToImageFilter
     avtImage_p            opaqueImage;
 
     virtual void          Execute(void);
-    virtual avtContract_p ModifyContract(avtContract_p);
+    virtual avtContract_p
+                          ModifyContract(avtContract_p);
     static int            GetNumberOfDivisions(int, int, int);
     virtual bool          FilterUnderstandsTransformedRectMesh();
-    void                  TightenClippingPlanes(const avtViewInfo &view,
-                                                vtkMatrix4x4 *,
-                                                double &, double &);
 };
 
 

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -47,7 +47,6 @@ class AnimationAttributes;
 class QButtonGroup;
 class QCheckBox;
 class QSlider;
-class QSpinBox;
 
 // ****************************************************************************
 // Class: QvisAnimationWindow
@@ -67,9 +66,6 @@ class QSpinBox;
 //
 //   Brad Whitlock, Wed Apr  9 10:59:35 PDT 2008
 //   QString for caption, shortName.
-//
-//   Brad Whitlock, Wed Dec 10 16:29:45 PST 2008
-//   I added a spinbox for animation frame increment.
 //
 // ****************************************************************************
 
@@ -91,14 +87,12 @@ private slots:
     void pipelineCachingToggled(bool val);
     void playbackModeChanged(int val);
     void timeoutChanged(int);
-    void incrementChanged(int);
 private:
     AnimationAttributes *animationAtts;
 
     QCheckBox    *pipelineCachingToggle;
     QSlider      *timeoutSlider;
     QButtonGroup *playbackModeButtonGroup;
-    QSpinBox     *animationIncrement;
 };
 
 #endif

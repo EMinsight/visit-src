@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -40,7 +40,7 @@
 #include <DataNode.h>
 
 // Type map format string
-const char *PlotInfoAttributes::TypeMapFormatString = "m";
+const char *PlotInfoAttributes::TypeMapFormatString = "d*";
 
 // ****************************************************************************
 // Method: PlotInfoAttributes::PlotInfoAttributes
@@ -80,7 +80,7 @@ PlotInfoAttributes::PlotInfoAttributes() :
 PlotInfoAttributes::PlotInfoAttributes(const PlotInfoAttributes &obj) : 
     AttributeSubject(PlotInfoAttributes::TypeMapFormatString)
 {
-    data = obj.data;
+    outputArray = obj.outputArray;
 
     SelectAll();
 }
@@ -124,11 +124,9 @@ PlotInfoAttributes&
 PlotInfoAttributes::operator = (const PlotInfoAttributes &obj)
 {
     if (this == &obj) return *this;
+    outputArray = obj.outputArray;
 
-    data = obj.data;
- 
     SelectAll();
-
     return *this;
 }
 
@@ -151,7 +149,7 @@ bool
 PlotInfoAttributes::operator == (const PlotInfoAttributes &obj) const
 {
     // Create the return value
-    return ((data == obj.data));
+    return ((outputArray == obj.outputArray));
 }
 
 // ****************************************************************************
@@ -218,7 +216,7 @@ PlotInfoAttributes::CopyAttributes(const AttributeGroup *atts)
         return false;
 
     // Call assignment operator.
-    PlotInfoAttributes *tmp = (PlotInfoAttributes *)atts;
+    const PlotInfoAttributes *tmp = (const PlotInfoAttributes *)atts;
     *this = *tmp;
 
     return true;
@@ -295,7 +293,7 @@ PlotInfoAttributes::NewInstance(bool copy) const
 void
 PlotInfoAttributes::SelectAll()
 {
-    Select(ID_data, (void *)&data);
+    Select(ID_outputArray, (void *)&outputArray);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -303,26 +301,26 @@ PlotInfoAttributes::SelectAll()
 ///////////////////////////////////////////////////////////////////////////////
 
 void
-PlotInfoAttributes::SetData(const MapNode &data_)
+PlotInfoAttributes::SetOutputArray(const doubleVector &outputArray_)
 {
-    data = data_;
-    Select(ID_data, (void *)&data);
+    outputArray = outputArray_;
+    Select(ID_outputArray, (void *)&outputArray);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // Get property methods
 ///////////////////////////////////////////////////////////////////////////////
 
-const MapNode &
-PlotInfoAttributes::GetData() const
+const doubleVector &
+PlotInfoAttributes::GetOutputArray() const
 {
-    return data;
+    return outputArray;
 }
 
-MapNode &
-PlotInfoAttributes::GetData()
+doubleVector &
+PlotInfoAttributes::GetOutputArray()
 {
-    return data;
+    return outputArray;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -330,9 +328,9 @@ PlotInfoAttributes::GetData()
 ///////////////////////////////////////////////////////////////////////////////
 
 void
-PlotInfoAttributes::SelectData()
+PlotInfoAttributes::SelectOutputArray()
 {
-    Select(ID_data, (void *)&data);
+    Select(ID_outputArray, (void *)&outputArray);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -359,7 +357,7 @@ PlotInfoAttributes::GetFieldName(int index) const
 {
     switch (index)
     {
-    case ID_data: return "data";
+    case ID_outputArray: return "outputArray";
     default:  return "invalid index";
     }
 }
@@ -384,7 +382,7 @@ PlotInfoAttributes::GetFieldType(int index) const
 {
     switch (index)
     {
-    case ID_data: return FieldType_MapNode;
+    case ID_outputArray: return FieldType_doubleVector;
     default:  return FieldType_unknown;
     }
 }
@@ -409,7 +407,7 @@ PlotInfoAttributes::GetFieldTypeName(int index) const
 {
     switch (index)
     {
-    case ID_data: return "MapNode";
+    case ID_outputArray: return "doubleVector";
     default:  return "invalid index";
     }
 }
@@ -436,9 +434,9 @@ PlotInfoAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
     bool retval = false;
     switch (index_)
     {
-    case ID_data:
+    case ID_outputArray:
         {  // new scope
-        retval = (data == obj.data);
+        retval = (outputArray == obj.outputArray);
         }
         break;
     default: retval = false;
@@ -454,21 +452,20 @@ PlotInfoAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
 void
 PlotInfoAttributes::PrintSelf(ostream &os)
 {
-    os << "Data:\n" ;
-    os << data.ToXML(); 
+    os << "\nOutputArray:  " ;
+    if (outputArray.size() == 0)
+        os << "Not Set.";
+    else 
+    {
+        for (size_t i = 0; i < outputArray.size(); i++)
+            os << outputArray[i] << "  ";
+    }
+    os << "\n";
 }
 
 void
 PlotInfoAttributes::Reset()
 {
-    data.Reset();
-    SelectData();
-}
-
-void
-PlotInfoAttributes::Merge(const PlotInfoAttributes &obj)
-{
-    data.Merge(obj.GetData());
-    SelectData();
+    outputArray.clear();
 }
 

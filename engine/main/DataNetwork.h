@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -108,9 +108,6 @@
 //    Kathleen Bonnell, Fri Sep 28 08:34:36 PDT 2007
 //    Added optional bool arg to GetActor to force rexecution. 
 //
-//    Hank Childs, Fri Jan 16 14:37:33 PST 2009
-//    Add a variable field.
-//
 // ****************************************************************************
 class DataNetwork
 {
@@ -130,7 +127,6 @@ public:
     avtDataObject_p GetOutput(void) { return terminalNode->GetOutput(); };
     void SetDataSpec(avtDataRequest_p s) {dataRequest = s;};
     void SetTime(int time_) {time = time_;};
-    void SetVariable(const std::string &v) {var = v;};
 
     virtual void ReleaseData(void);
 
@@ -148,7 +144,6 @@ public:
     void SetNetDB(NetnodeDB *d) { netdb = d; };
     NetnodeDB* GetNetDB(void) { return netdb; };
     virtual int GetTime() {return time;};
-    const std::string &GetVariable() {return var;};
     std::string &GetPlottype(void) { return plottype; };
     std::string &GetPlotName(void) { return plotName; };
     std::vector<Netnode*>       &GetNodeList(void) { return nodeList; }; 
@@ -158,17 +153,16 @@ protected:
     int                         wid;
     Netnode                    *terminalNode;
     std::vector<Netnode*>       nodeList;
-    avtDataRequest_p      dataRequest;
+    avtDataRequest_p            dataRequest;
     avtDataObjectWriter_p       writer;
     avtActor_p                  plotActor;
     double                      bgColor[3];
     double                      fgColor[3];
-    avtContract_p  contract;
+    avtContract_p               contract;
     NetnodeDB*                  netdb;
     avtPlot_p                   plot;
     std::string                 plottype;
     std::string                 plotName;
-    std::string                 var;
     int                         time;
     bool                        clone;
 };

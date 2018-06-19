@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -45,7 +45,6 @@
 #include <Axes3D.h>
 #include <FontAttributes.h>
 #include <ColorAttribute.h>
-#include <AxesArray.h>
 
 // ****************************************************************************
 // Class: AnnotationAttributes
@@ -113,7 +112,6 @@ public:
     void SelectGradientColor1();
     void SelectGradientColor2();
     void SelectBackgroundImage();
-    void SelectAxesArray();
 
     // Property setting methods
     void SetAxes2D(const Axes2D &axes2D_);
@@ -123,6 +121,8 @@ public:
     void SetDatabaseInfoFlag(bool databaseInfoFlag_);
     void SetDatabaseInfoFont(const FontAttributes &databaseInfoFont_);
     void SetDatabaseInfoExpansionMode(PathExpansionMode databaseInfoExpansionMode_);
+    void SetDatabaseInfoTimeScale(double databaseInfoTimeScale_);
+    void SetDatabaseInfoTimeOffset(double databaseInfoTimeOffset_);
     void SetLegendInfoFlag(bool legendInfoFlag_);
     void SetBackgroundColor(const ColorAttribute &backgroundColor_);
     void SetForegroundColor(const ColorAttribute &foregroundColor_);
@@ -133,7 +133,6 @@ public:
     void SetBackgroundImage(const std::string &backgroundImage_);
     void SetImageRepeatX(int imageRepeatX_);
     void SetImageRepeatY(int imageRepeatY_);
-    void SetAxesArray(const AxesArray &axesArray_);
 
     // Property getting methods
     const Axes2D         &GetAxes2D() const;
@@ -147,6 +146,8 @@ public:
     const FontAttributes &GetDatabaseInfoFont() const;
           FontAttributes &GetDatabaseInfoFont();
     PathExpansionMode    GetDatabaseInfoExpansionMode() const;
+    double               GetDatabaseInfoTimeScale() const;
+    double               GetDatabaseInfoTimeOffset() const;
     bool                 GetLegendInfoFlag() const;
     const ColorAttribute &GetBackgroundColor() const;
           ColorAttribute &GetBackgroundColor();
@@ -162,8 +163,6 @@ public:
           std::string    &GetBackgroundImage();
     int                  GetImageRepeatX() const;
     int                  GetImageRepeatY() const;
-    const AxesArray      &GetAxesArray() const;
-          AxesArray      &GetAxesArray();
 
     // Persistence methods
     virtual bool CreateNode(DataNode *node, bool completeSave, bool forceAdd);
@@ -205,6 +204,8 @@ public:
         ID_databaseInfoFlag,
         ID_databaseInfoFont,
         ID_databaseInfoExpansionMode,
+        ID_databaseInfoTimeScale,
+        ID_databaseInfoTimeOffset,
         ID_legendInfoFlag,
         ID_backgroundColor,
         ID_foregroundColor,
@@ -214,8 +215,7 @@ public:
         ID_backgroundMode,
         ID_backgroundImage,
         ID_imageRepeatX,
-        ID_imageRepeatY,
-        ID_axesArray
+        ID_imageRepeatY
     };
 
 private:
@@ -226,6 +226,8 @@ private:
     bool           databaseInfoFlag;
     FontAttributes databaseInfoFont;
     int            databaseInfoExpansionMode;
+    double         databaseInfoTimeScale;
+    double         databaseInfoTimeOffset;
     bool           legendInfoFlag;
     ColorAttribute backgroundColor;
     ColorAttribute foregroundColor;
@@ -236,7 +238,6 @@ private:
     std::string    backgroundImage;
     int            imageRepeatX;
     int            imageRepeatY;
-    AxesArray      axesArray;
 
     // Static class format string for type map.
     static const char *TypeMapFormatString;

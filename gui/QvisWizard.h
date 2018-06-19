@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -38,7 +38,7 @@
 
 #ifndef QVIS_WIZARD_H
 #define QVIS_WIZARD_H
-#include <QWizard>
+#include <qwizard.h>
 #include <GUIBase.h>
 #include <gui_exports.h>
 
@@ -56,16 +56,14 @@ class AttributeSubject;
 // Creation:   Tue Dec 14 09:36:43 PDT 2004
 //
 // Modifications:
-//   Cyrus Harrison, Tue Jun 10 09:20:47 PDT 2008
-//   Initial Qt4 Port.
-//
+//   
 // ****************************************************************************
 
 class GUI_API QvisWizard : public QWizard, public GUIBase
 {
     Q_OBJECT
 public:
-    QvisWizard(AttributeSubject *subj, QWidget *parent);
+    QvisWizard(AttributeSubject *subj, QWidget *parent, const char *name = 0);
     virtual ~QvisWizard();
     virtual void SendAttributes();
     bool UpdateAttributes();

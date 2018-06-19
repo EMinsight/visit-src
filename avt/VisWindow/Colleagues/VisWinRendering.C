@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -50,6 +50,7 @@
 #include <vtkRenderWindow.h>
 #include <vtkRenderWindowInteractor.h>
 #include <vtkInteractorStyle.h>
+#include <vtkToolkits.h>
 
 #include <RenderingAttributes.h>
 
@@ -65,6 +66,7 @@
 
 // HACK HACK
 #include <GL/gl.h>
+#ifdef VTK_USE_MANGLED_MESA
 extern "C" {
 #if defined(_WIN32)
 // On Windows, we get these functions from a DLL so we have to have
@@ -76,6 +78,7 @@ void mglDepthMask(GLboolean);
 void mglColorMask(GLboolean,GLboolean,GLboolean,GLboolean);
 #endif
 }
+#endif
 
 static void RemoveCullers(vtkRenderer *);
 
@@ -364,9 +367,6 @@ VisWinRendering::GetForeground(void)
 //    Jeremy Meredith, Thu Jan 31 14:41:50 EST 2008
 //    Added new AxisArray window mode.
 //
-//    Eric Brugger, Tue Dec  9 14:19:59 PST 2008
-//    Added the AxisParallel window mode.
-//
 // ****************************************************************************
 
 void
@@ -374,8 +374,7 @@ VisWinRendering::SetViewport(double vl, double vb, double vr, double vt)
 {
     if (mediator.GetMode() == WINMODE_2D ||
         mediator.GetMode() == WINMODE_CURVE ||
-        mediator.GetMode() == WINMODE_AXISARRAY ||
-        mediator.GetMode() == WINMODE_AXISPARALLEL)
+        mediator.GetMode() == WINMODE_AXISARRAY)
     {
         canvas->SetViewport(vl, vb, vr, vt);
         canvas->ComputeAspect();
@@ -569,59 +568,6 @@ VisWinRendering::StartAxisArrayMode(void)
 
 void
 VisWinRendering::StopAxisArrayMode(void)
-{
-    //
-    // We made the canvas' viewport when we entered 2D mode.  Make it be the
-    // whole screen again.
-    //
-    canvas->SetViewport(0., 0., 1., 1.);
-    canvas->ComputeAspect();
-}
-
-// ****************************************************************************
-//  Method: VisWinRendering::StartAxisParallelMode
-//
-//  Purpose:
-//      Puts the rendering module in AxisParallel mode.  This means that the 
-//      camera should have orthographic projection.
-//
-//  Programmer: Eric Brugger
-//  Creation:   December 9, 2008
-//
-//  Modifications:
-//
-// ****************************************************************************
-
-void
-VisWinRendering::StartAxisParallelMode(void)
-{
-    //
-    // The canvas should now be snapped to a smaller viewport.
-    //
-    double vport[4];
-    mediator.GetViewport(vport);
-    canvas->SetViewport(vport);
-    canvas->ComputeAspect();
-}
-
-
-// ****************************************************************************
-//  Method: VisWinRendering::StopAxisParallelMode
-//
-//  Purpose:
-//      Takes the rendering module out of AxisParallel mode.  This means that
-//      the camera should be put in perspective projection mode if it was in
-//      that mode previously.
-//
-//  Programmer: Eric Brugger
-//  Creation:   December 9, 2008
-//
-//  Modifications:
-//
-// ****************************************************************************
-
-void
-VisWinRendering::StopAxisParallelMode(void)
 {
     //
     // We made the canvas' viewport when we entered 2D mode.  Make it be the
@@ -884,9 +830,6 @@ VisWinRendering::Realize(void)
 //     Jeremy Meredith, Thu Jan 31 14:41:50 EST 2008
 //     Added new AxisArray window mode.
 //
-//     Eric Brugger, Tue Dec  9 14:19:59 PST 2008
-//     Added the AxisParallel window mode.
-//
 // ****************************************************************************
 void
 VisWinRendering::GetCaptureRegion(int& r0, int& c0, int& w, int& h,
@@ -919,13 +862,6 @@ VisWinRendering::GetCaptureRegion(int& r0, int& c0, int& w, int& h,
             haveViewport = true;
         }
         else if (mediator.GetMode() == WINMODE_AXISARRAY)
-        {
-            VisWindow *vw = mediator;
-            avtViewAxisArray v = vw->GetViewAxisArray();
-            v.GetViewport(viewPort);
-            haveViewport = true;
-        }
-        else if (mediator.GetMode() == WINMODE_AXISPARALLEL)
         {
             VisWindow *vw = mediator;
             avtViewAxisArray v = vw->GetViewAxisArray();
@@ -995,7 +931,11 @@ VisWinRendering::GetCaptureRegion(int& r0, int& c0, int& w, int& h,
 //    Hank Childs, Wed Mar  1 11:26:15 PST 2006
 //    Add some exception handling.
 //
+//    Brad Whitlock, Wed Jun 10 12:26:48 PDT 2009
+//    Don't use mgl functions unless we have mangled mesa.
+//
 // ****************************************************************************
+
 void
 VisWinRendering::ScreenRender(bool doViewportOnly, bool doCanvasZBufferToo,
                               bool doOpaque, bool doTranslucent,
@@ -1041,6 +981,7 @@ VisWinRendering::ScreenRender(bool doViewportOnly, bool doCanvasZBufferToo,
         // data.  Unless I override vtkRenderWindow, vtkOpenGLRenderWindow,
         // vtkXOpenGLRenderWindow, vtkWin32OpenGLRenderWindow,
         // vtkMesaRenderWindow, vtkXMesaRenderWindow, and so on....
+#ifdef VTK_USE_MANGLED_MESA
         if (renWin->IsA("vtkMesaRenderWindow"))
         {
             mglDepthMask(GL_FALSE);
@@ -1053,6 +994,7 @@ VisWinRendering::ScreenRender(bool doViewportOnly, bool doCanvasZBufferToo,
         }
         else
         {
+#endif
             glDepthMask(GL_FALSE);
             renWin->SetPixelData(r0,c0,w-1,h-1,rgbbuf,renWin->GetDoubleBuffer());
             glDepthMask(GL_TRUE);
@@ -1060,7 +1002,9 @@ VisWinRendering::ScreenRender(bool doViewportOnly, bool doCanvasZBufferToo,
             glColorMask(GL_FALSE,GL_FALSE,GL_FALSE,GL_FALSE);
             renWin->SetZbufferData(r0,c0,w-1,h-1,zbuf);
             glColorMask(GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE);
+#ifdef VTK_USE_MANGLED_MESA
         }
+#endif
     }
 
     //
@@ -1247,9 +1191,6 @@ VisWinRendering::ScreenReadback(bool doViewportOnly, bool doCanvasZBufferToo)
 //    Mark C. Miller, Wed Oct  6 17:50:23 PDT 2004
 //    Added args for viewport only and keeping zbuffer
 //
-//    Hank Childs, Wed Jan 14 17:45:06 CST 2009
-//    Beef up debug message in error condition.
-//
 // ****************************************************************************
 
 avtImage_p
@@ -1270,9 +1211,6 @@ VisWinRendering::PostProcessScreenCapture(avtImage_p capturedImage,
     capturedImage->GetSize(&iw, &ih);
     if ((iw != w) || (ih != h))
     {
-        debug1 << "Error condition in screen capture save window" << endl;
-        debug1 << "Captured image is " << iw << "x" << ih << endl;
-        debug1 << "But we believe it should be " << w << "x" << h << endl;
         EXCEPTION1(ImproperUseException, "size of image passed for "
             "PostProcessScreenCapture does not match vtkRenderWindow size");
     }

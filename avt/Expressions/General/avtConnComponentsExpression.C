@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -1386,10 +1386,6 @@ avtConnComponentsExpression::UnionFind::Find(int label)
 //  Programmer: Cyrus Harrison
 //  Creation:   January  23, 2007
 //
-//  Modifications:
-//    Cyrus Harrison, Thu Dec 18 16:14:19 PST 2008
-//    Fixed typo with the first rank test.
-//
 // ****************************************************************************
 void
 avtConnComponentsExpression::UnionFind::Union(int label_x, int label_y)
@@ -1404,7 +1400,7 @@ avtConnComponentsExpression::UnionFind::Union(int label_x, int label_y)
     int find_y = Find(label_y);
 
     // set parent based on which has higher rank
-    if(ranks[find_x] > ranks[find_y])
+    if(ranks[find_x] > ranks[find_x])
     {
         parents[find_y] = find_x;
     }

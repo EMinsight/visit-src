@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,8 +39,8 @@
 #ifndef XML_PARSER_UTIL_H
 #define XML_PARSER_UTIL_H
 
-#include <QTextStream>
-
+#include <qstring.h>
+#include <visitstream.h>
 #include <vector>
 using std::vector;
 
@@ -70,7 +70,7 @@ class UniqueStringList
         if (!found)
             strings.push_back(s);
     }
-    void Write(QTextStream &out)
+    void Write(ostream &out)
     {
         for (size_t i=0; i<strings.size(); i++)
         {
@@ -84,7 +84,7 @@ SplitValues(const QString &buff)
 {
     vector<QString> output;
     
-    buff.trimmed();
+    buff.stripWhiteSpace();
     QString tmp="";
     int len = buff.length();
     for (int i=0; i<len; i++)
@@ -142,12 +142,12 @@ JoinValues(const vector<QString> &strs, QString &j)
 inline bool
 Text2Bool(const QString &s)
 {
-    if (s.toLower() == "true" || s.toLower() == "t" || s.toLower() == "yes")
+    if (s.lower() == "true" || s.lower() == "t" || s.lower() == "yes")
         return true;
-    else if (s.toLower() == "false" || s.toLower() == "f" || s.toLower() == "no")
+    else if (s.lower() == "false" || s.lower() == "f" || s.lower() == "no")
         return false;
 
-    throw QString("bad value '%1' for bool").arg(s);
+    throw QString().sprintf("bad value '%s' for bool",s.latin1());
 }
 
 inline QString
@@ -221,14 +221,14 @@ FileBase(const QString &buff)
 // ****************************************************************************
 
 inline void
-StartOpenTag(QTextStream &out, const QString &tag, QString &indent)
+StartOpenTag(ostream &out, const QString &tag, QString &indent)
 {
     indent += "  ";
     out << indent << "<" << tag;
 }
 
 inline void
-WriteTagAttr(QTextStream &out, const QString &attr, const QString &value)
+WriteTagAttr(ostream &out, const QString &attr, const QString &value)
 {
     if (! value.isNull())
     {
@@ -237,42 +237,41 @@ WriteTagAttr(QTextStream &out, const QString &attr, const QString &value)
 }
 
 inline void
-FinishOpenTag(QTextStream &out)
+FinishOpenTag(ostream &out)
 {
     out << ">\n";
 }
 
 inline void
-WriteOpenTag(QTextStream &out, const QString &tag, QString &indent)
+WriteOpenTag(ostream &out, const QString &tag, QString &indent)
 {
     indent += "  ";
     out << indent << "<" << tag << ">\n";
 }
 
 inline void
-WriteCloseTag(QTextStream &out, const QString &tag, QString &indent)
+WriteCloseTag(ostream &out, const QString &tag, QString &indent)
 {
     out << indent << "</" << tag << ">" << endl;
     indent = indent.left(indent.length()-2);
 }
 
 inline void
-WriteValues(QTextStream &out, const vector<QString> &values, QString &indent)
+WriteValues(ostream &out, const vector<QString> &values, QString &indent)
 {
     indent += "  ";
     for (size_t i=0; i<values.size(); i++)
     {
-        QString s(indent + values[i]);
-        out << s << endl;
+        out << indent << values[i] << endl;
     }
     indent = indent.left(indent.length()-2);
 }
 
 inline void
-WriteValue(QTextStream &out, const QString &value, QString &indent)
+WriteValue(ostream &out, const QString &value, QString &indent)
 {
     indent += "  ";
-    out << (indent + value) << endl;
+    out << indent << value << endl;
     indent = indent.left(indent.length()-2);
 }
 

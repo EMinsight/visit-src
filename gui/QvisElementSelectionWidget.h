@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,7 +39,7 @@
 #ifndef QVIS_ELEMENT_SELECTION_WIDGET_H
 #define QVIS_ELEMENT_SELECTION_WIDGET_H
 #include <gui_exports.h>
-#include <QWidget>
+#include <qwidget.h>
 #include <vector>
 
 // Forward declarations.
@@ -65,16 +65,14 @@ class QvisPeriodicTableWidget;
 //    Added support for hinting some elements to the user, e.g. to highlight
 //    the elements that are actually in the database.
 //
-//    Brad Whitlock, Tue Jun  3 14:44:16 PDT 2008
-//    Qt 4.
-//
 // ****************************************************************************
 
 class GUI_API QvisElementSelectionWidget : public QWidget
 {
     Q_OBJECT
   public:
-    QvisElementSelectionWidget(QWidget *parent = 0, Qt::WindowFlags f = 0);
+    QvisElementSelectionWidget(QWidget *parent = 0, const char *name = 0,
+                               WFlags f = 0);
     virtual ~QvisElementSelectionWidget();
     virtual QSize sizeHint() const;
 

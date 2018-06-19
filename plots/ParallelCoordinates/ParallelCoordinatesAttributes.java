@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400142
+// LLNL-CODE-400124
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -62,9 +62,15 @@ import llnl.visit.ColorAttribute;
 
 public class ParallelCoordinatesAttributes extends AttributeSubject implements Plugin
 {
+    // Enum values
+    public final static int FOCUSRENDERING_INDIVIDUALLINES = 0;
+    public final static int FOCUSRENDERING_BINSOFCONSTANTCOLOR = 1;
+    public final static int FOCUSRENDERING_BINSCOLOREDBYPOPULATION = 2;
+
+
     public ParallelCoordinatesAttributes()
     {
-        super(12);
+        super(15);
 
         scalarAxisNames = new Vector();
         visualAxisNames = new Vector();
@@ -78,11 +84,14 @@ public class ParallelCoordinatesAttributes extends AttributeSubject implements P
         contextColor = new ColorAttribute(0, 220, 0);
         drawLinesOnlyIfExtentsOn = true;
         unifyAxisExtents = false;
+        linesNumPartitions = 512;
+        focusGamma = 4f;
+        drawFocusAs = FOCUSRENDERING_BINSOFCONSTANTCOLOR;
     }
 
     public ParallelCoordinatesAttributes(ParallelCoordinatesAttributes obj)
     {
-        super(12);
+        super(15);
 
         int i;
 
@@ -116,6 +125,9 @@ public class ParallelCoordinatesAttributes extends AttributeSubject implements P
         contextColor = new ColorAttribute(obj.contextColor);
         drawLinesOnlyIfExtentsOn = obj.drawLinesOnlyIfExtentsOn;
         unifyAxisExtents = obj.unifyAxisExtents;
+        linesNumPartitions = obj.linesNumPartitions;
+        focusGamma = obj.focusGamma;
+        drawFocusAs = obj.drawFocusAs;
 
         SelectAll();
     }
@@ -172,7 +184,10 @@ public class ParallelCoordinatesAttributes extends AttributeSubject implements P
                 (contextNumPartitions == obj.contextNumPartitions) &&
                 (contextColor == obj.contextColor) &&
                 (drawLinesOnlyIfExtentsOn == obj.drawLinesOnlyIfExtentsOn) &&
-                (unifyAxisExtents == obj.unifyAxisExtents));
+                (unifyAxisExtents == obj.unifyAxisExtents) &&
+                (linesNumPartitions == obj.linesNumPartitions) &&
+                (focusGamma == obj.focusGamma) &&
+                (drawFocusAs == obj.drawFocusAs));
     }
 
     public String GetName() { return "ParallelCoordinates"; }
@@ -251,6 +266,24 @@ public class ParallelCoordinatesAttributes extends AttributeSubject implements P
         Select(11);
     }
 
+    public void SetLinesNumPartitions(int linesNumPartitions_)
+    {
+        linesNumPartitions = linesNumPartitions_;
+        Select(12);
+    }
+
+    public void SetFocusGamma(float focusGamma_)
+    {
+        focusGamma = focusGamma_;
+        Select(13);
+    }
+
+    public void SetDrawFocusAs(int drawFocusAs_)
+    {
+        drawFocusAs = drawFocusAs_;
+        Select(14);
+    }
+
     // Property getting methods
     public Vector         GetScalarAxisNames() { return scalarAxisNames; }
     public Vector         GetVisualAxisNames() { return visualAxisNames; }
@@ -264,6 +297,9 @@ public class ParallelCoordinatesAttributes extends AttributeSubject implements P
     public ColorAttribute GetContextColor() { return contextColor; }
     public boolean        GetDrawLinesOnlyIfExtentsOn() { return drawLinesOnlyIfExtentsOn; }
     public boolean        GetUnifyAxisExtents() { return unifyAxisExtents; }
+    public int            GetLinesNumPartitions() { return linesNumPartitions; }
+    public float          GetFocusGamma() { return focusGamma; }
+    public int            GetDrawFocusAs() { return drawFocusAs; }
 
     // Write and read methods.
     public void WriteAtts(CommunicationBuffer buf)
@@ -292,6 +328,12 @@ public class ParallelCoordinatesAttributes extends AttributeSubject implements P
             buf.WriteBool(drawLinesOnlyIfExtentsOn);
         if(WriteSelect(11, buf))
             buf.WriteBool(unifyAxisExtents);
+        if(WriteSelect(12, buf))
+            buf.WriteInt(linesNumPartitions);
+        if(WriteSelect(13, buf))
+            buf.WriteFloat(focusGamma);
+        if(WriteSelect(14, buf))
+            buf.WriteInt(drawFocusAs);
     }
 
     public void ReadAtts(int n, CommunicationBuffer buf)
@@ -339,6 +381,15 @@ public class ParallelCoordinatesAttributes extends AttributeSubject implements P
             case 11:
                 SetUnifyAxisExtents(buf.ReadBool());
                 break;
+            case 12:
+                SetLinesNumPartitions(buf.ReadInt());
+                break;
+            case 13:
+                SetFocusGamma(buf.ReadFloat());
+                break;
+            case 14:
+                SetDrawFocusAs(buf.ReadInt());
+                break;
             }
         }
     }
@@ -358,6 +409,16 @@ public class ParallelCoordinatesAttributes extends AttributeSubject implements P
         str = str + indent + "contextColor = {" + contextColor.Red() + ", " + contextColor.Green() + ", " + contextColor.Blue() + ", " + contextColor.Alpha() + "}\n";
         str = str + boolToString("drawLinesOnlyIfExtentsOn", drawLinesOnlyIfExtentsOn, indent) + "\n";
         str = str + boolToString("unifyAxisExtents", unifyAxisExtents, indent) + "\n";
+        str = str + intToString("linesNumPartitions", linesNumPartitions, indent) + "\n";
+        str = str + floatToString("focusGamma", focusGamma, indent) + "\n";
+        str = str + indent + "drawFocusAs = ";
+        if(drawFocusAs == FOCUSRENDERING_INDIVIDUALLINES)
+            str = str + "FOCUSRENDERING_INDIVIDUALLINES";
+        if(drawFocusAs == FOCUSRENDERING_BINSOFCONSTANTCOLOR)
+            str = str + "FOCUSRENDERING_BINSOFCONSTANTCOLOR";
+        if(drawFocusAs == FOCUSRENDERING_BINSCOLOREDBYPOPULATION)
+            str = str + "FOCUSRENDERING_BINSCOLOREDBYPOPULATION";
+        str = str + "\n";
         return str;
     }
 
@@ -375,5 +436,8 @@ public class ParallelCoordinatesAttributes extends AttributeSubject implements P
     private ColorAttribute contextColor;
     private boolean        drawLinesOnlyIfExtentsOn;
     private boolean        unifyAxisExtents;
+    private int            linesNumPartitions;
+    private float          focusGamma;
+    private int            drawFocusAs;
 }
 

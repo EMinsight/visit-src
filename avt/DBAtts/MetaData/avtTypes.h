@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -122,11 +122,10 @@ enum avtMeshCoordType
 
 enum SetState
 {
-    NoneUsed            = 0,
-    SomeUsed,          /* 1 */
-    AllUsed,           /* 2 */
-    SomeUsedOtherProc, /* 3 */
-    AllUsedOtherProc   /* 4 */
+    NoneUsed          = 0,
+    SomeUsed,        /* 1 */
+    AllUsed,         /* 2 */
+    AllUsedOtherProc /* 3 */
 }; 
 
 
@@ -146,6 +145,8 @@ typedef std::vector<std::string> MaterialList;
 
 DBATTS_API extern const char * AUXILIARY_DATA_DATA_EXTENTS;
 DBATTS_API extern const char * AUXILIARY_DATA_EXTERNAL_FACELIST;
+DBATTS_API extern const char * AUXILIARY_DATA_HISTOGRAM;
+DBATTS_API extern const char * AUXILIARY_DATA_IDENTIFIERS;
 DBATTS_API extern const char * AUXILIARY_DATA_MATERIAL;
 DBATTS_API extern const char * AUXILIARY_DATA_POST_GHOST_MATERIAL;
 DBATTS_API extern const char * AUXILIARY_DATA_SPECIES;

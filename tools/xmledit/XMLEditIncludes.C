@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -35,21 +35,21 @@
 * DAMAGE.
 *
 *****************************************************************************/
-#include "XMLEditStd.h"
+
 #include "XMLEditIncludes.h"
 
 #include <XMLDocument.h>
 #include <Include.h>
 #include <Attribute.h>
-#include <QLabel>
-#include <QLayout>
-#include <qlistwidget.h>
-#include <QTextEdit>
-#include <QPushButton>
-#include <QRadioButton>
-#include <QLineEdit>
-#include <QButtonGroup>
-#include <QCheckBox>
+#include <qlabel.h>
+#include <qlayout.h>
+#include <qlistbox.h>
+#include <qmultilineedit.h>
+#include <qpushbutton.h>
+#include <qradiobutton.h>
+#include <qlineedit.h>
+#include <qbuttongroup.h>
+#include <qcheckbox.h>
 
 // ****************************************************************************
 //  Constructor:  XMLEditIncludes::XMLEditIncludes
@@ -61,19 +61,16 @@
 //    Brad Whitlock, Thu Mar 6 16:21:32 PST 2008
 //    Added target.
 //
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
-XMLEditIncludes::XMLEditIncludes(QWidget *p)
-    : QFrame(p)
+XMLEditIncludes::XMLEditIncludes(QWidget *p, const QString &n)
+    : QFrame(p, n)
 {
     QHBoxLayout *hLayout = new QHBoxLayout(this);
 
-    QGridLayout *listLayout = new QGridLayout();
+    QGridLayout *listLayout = new QGridLayout(hLayout, 2,2, 5);
 
-    includelist = new QListWidget(this);
-    listLayout->addWidget(includelist, 0,0, 1,2);
+    includelist = new QListBox(this);
+    listLayout->addMultiCellWidget(includelist, 0,0, 0,1);
 
     newButton = new QPushButton(tr("New"), this);
     listLayout->addWidget(newButton, 1,0);
@@ -81,33 +78,26 @@ XMLEditIncludes::XMLEditIncludes(QWidget *p)
     delButton = new QPushButton(tr("Del"), this);
     listLayout->addWidget(delButton, 1,1);
 
-    hLayout->addLayout(listLayout);
     hLayout->addSpacing(10);
 
-    QGridLayout *topLayout = new QGridLayout();
-    
-    topLayout->setColumnMinimumWidth(1, 20);
+    QGridLayout *topLayout = new QGridLayout(hLayout, 5,2, 5);
+    topLayout->addColSpacing(1, 20);
     int row = 0;
 
-    fileGroup = new QButtonGroup(this);
-    
+    fileGroup = new QButtonGroup();
     CButton = new QRadioButton(tr("Source (.C) file"), this);
     HButton = new QRadioButton(tr("Header (.h) file"), this);
-    CButton->setChecked(true);
-    fileGroup->addButton(CButton,0);
-    fileGroup->addButton(HButton,1);
-    
+    fileGroup->insert(CButton);
+    fileGroup->insert(HButton);
     topLayout->addWidget(CButton, row, 0);
     topLayout->addWidget(HButton, row, 1);
     row++;
 
-    quotedGroup    = new QButtonGroup(this);
-    quotesButton   = new QRadioButton(tr("Use quotes \"\""), this);
+    quotedGroup = new QButtonGroup();
+    quotesButton = new QRadioButton(tr("Use quotes \"\""), this);
     bracketsButton = new QRadioButton(tr("Use angle brackets <>"), this);
-    quotesButton->setChecked(true);
-    quotedGroup->addButton(quotesButton,0);
-    quotedGroup->addButton(bracketsButton,1);
-    
+    quotedGroup->insert(quotesButton);
+    quotedGroup->insert(bracketsButton);
     topLayout->addWidget(quotesButton, row, 0);
     topLayout->addWidget(bracketsButton, row, 1);
     row++;
@@ -124,17 +114,15 @@ XMLEditIncludes::XMLEditIncludes(QWidget *p)
 
     topLayout->setRowStretch(row, 100);
     row++;
-    
-    hLayout->addLayout(topLayout);
 
-    connect(includelist, SIGNAL(currentRowChanged(int)),
+    connect(includelist, SIGNAL(selectionChanged()),
             this, SLOT(UpdateWindowSingleItem()));
 
-    connect(includelist, SIGNAL(currentRowChanged(int)),
+    connect(includelist, SIGNAL(selectionChanged()),
             this, SLOT(UpdateWindowSingleItem()));
-    connect(fileGroup, SIGNAL(buttonClicked(int)),
+    connect(fileGroup, SIGNAL(clicked(int)),
             this, SLOT(fileGroupChanged(int)));
-    connect(quotedGroup, SIGNAL(buttonClicked(int)),
+    connect(quotedGroup, SIGNAL(clicked(int)),
             this, SLOT(quotedGroupChanged(int)));
     connect(file, SIGNAL(textChanged(const QString&)),
             this, SLOT(includeTextChanged(const QString&)));
@@ -189,9 +177,6 @@ XMLEditIncludes::CountIncludes(const QString &name) const
 //    Brad Whitlock, Thu Mar 6 16:21:32 PST 2008
 //    Added target.
 //
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 void
 XMLEditIncludes::UpdateWindowContents()
@@ -203,11 +188,12 @@ XMLEditIncludes::UpdateWindowContents()
     {
         if(CountIncludes(a->includes[i]->include) > 1)
         { 
-            QString id = QString("%1 [%2]").arg(a->includes[i]->include).arg(a->includes[i]->target);
-            includelist->addItem(id);
+            QString id; id.sprintf("%s [%s]", a->includes[i]->include.latin1(),
+               a->includes[i]->target.latin1());
+            includelist->insertItem(id);
         }
         else
-            includelist->addItem(a->includes[i]->include);
+            includelist->insertItem(a->includes[i]->include);
     }
 
     BlockAllSignals(false);
@@ -231,7 +217,7 @@ XMLEditIncludes::UpdateWindowContents()
 void
 XMLEditIncludes::UpdateWindowSensitivity()
 {
-    bool active = includelist->currentRow() != -1;
+    bool active = includelist->currentItem() != -1;
 
     delButton->setEnabled(includelist->count() > 0);
     target->setEnabled(active);
@@ -258,9 +244,6 @@ XMLEditIncludes::UpdateWindowSensitivity()
 //    Brad Whitlock, Thu Mar 6 16:21:32 PST 2008
 //    Added target.
 //
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 
 void
@@ -269,22 +252,22 @@ XMLEditIncludes::UpdateWindowSingleItem()
     BlockAllSignals(true);
 
     Attribute *a = xmldoc->attribute;
-    int index = includelist->currentRow();
+    int index = includelist->currentItem();
 
     if (index == -1)
     {
         target->setText("");
         file->setText("");
-        //fileGroup->setButton(-1);
-        //quotedGroup->setButton(-1);
+        fileGroup->setButton(-1);
+        quotedGroup->setButton(-1);
     }
     else
     {
         Include *n = a->includes[index];
         target->setText(n->target);
         file->setText(n->include);
-        //fileGroup->setButton((n->destination == "source") ? 0 : 1);
-        //quotedGroup->setButton(n->quoted ? 0 : 1);
+        fileGroup->setButton((n->destination == "source") ? 0 : 1);
+        quotedGroup->setButton(n->quoted ? 0 : 1);
     }
 
     UpdateWindowSensitivity();
@@ -332,20 +315,17 @@ XMLEditIncludes::BlockAllSignals(bool block)
 //    Brad Whitlock, Thu Mar 6 16:21:32 PST 2008
 //    Added target.
 //
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 void
 XMLEditIncludes::includeTextChanged(const QString &text)
 {
     Attribute *a = xmldoc->attribute;
-    int index = includelist->currentRow();
+    int index = includelist->currentItem();
     if (index == -1)
         return;
     Include *n = a->includes[index];
 
-    QString newinclude = text.trimmed();
+    QString newinclude = text.stripWhiteSpace();
     n->include = newinclude;
     if(CountIncludes(newinclude) > 1)
     {
@@ -354,7 +334,7 @@ XMLEditIncludes::includeTextChanged(const QString &text)
         newinclude += "]";
     }
     BlockAllSignals(true);
-    includelist->item(index)->setText(newinclude);
+    includelist->changeItem(newinclude, index);
     BlockAllSignals(false);
 }
 
@@ -364,16 +344,12 @@ XMLEditIncludes::includeTextChanged(const QString &text)
 //  Programmer:  Brad Whitlock
 //  Creation:    Thu Mar 6 15:56:05 PST 2008
 //
-//  Modifications:
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 void
 XMLEditIncludes::targetTextChanged(const QString &text)
 {
     Attribute *a = xmldoc->attribute;
-    int index = includelist->currentRow();
+    int index = includelist->currentItem();
     if (index == -1)
         return;
     Include *n = a->includes[index];
@@ -388,16 +364,12 @@ XMLEditIncludes::targetTextChanged(const QString &text)
 //  Programmer:  Jeremy Meredith
 //  Creation:    October 17, 2002
 //
-//  Modifications:
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 void
 XMLEditIncludes::fileGroupChanged(int fg)
 {
     Attribute *a = xmldoc->attribute;
-    int index = includelist->currentRow();
+    int index = includelist->currentItem();
     if (index == -1)
         return;
     Include *n = a->includes[index];
@@ -415,16 +387,13 @@ XMLEditIncludes::fileGroupChanged(int fg)
 //    Brad Whitlock, Tue May 20 12:09:36 PDT 2003
 //    I fixed a bug that had quoted vs angle brackets backwards.
 //
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 
 void
 XMLEditIncludes::quotedGroupChanged(int qg)
 {
     Attribute *a = xmldoc->attribute;
-    int index = includelist->currentRow();
+    int index = includelist->currentItem();
     if (index == -1)
         return;
     Include *n = a->includes[index];
@@ -442,9 +411,6 @@ XMLEditIncludes::quotedGroupChanged(int qg)
 //    Brad Whitlock, Thu Mar 6 16:28:33 PST 2008
 //    Added default target.
 //
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 void
 XMLEditIncludes::includelistNew()
@@ -459,7 +425,7 @@ XMLEditIncludes::includelistNew()
         newname.sprintf("unnamed%d", newid);
         for (size_t i=0; i<includelist->count() && okay; i++)
         {
-            if (includelist->item(i)->text() == newname)
+            if (includelist->text(i) == newname)
                 okay = false;
         }
         if (!okay)
@@ -473,9 +439,9 @@ XMLEditIncludes::includelistNew()
     UpdateWindowContents();
     for (size_t i=0; i<includelist->count(); i++)
     {
-        if (includelist->item(i)->text() == newname)
+        if (includelist->text(i) == newname)
         {
-            includelist->setCurrentRow(i);
+            includelist->setCurrentItem(i);
             UpdateWindowSingleItem();
         }
     }
@@ -487,16 +453,12 @@ XMLEditIncludes::includelistNew()
 //  Programmer:  Jeremy Meredith
 //  Creation:    October 17, 2002
 //
-//  Modifications:
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 void
 XMLEditIncludes::includelistDel()
 {
     Attribute *a = xmldoc->attribute;
-    int index = includelist->currentRow();
+    int index = includelist->currentItem();
 
     if (index == -1)
         return;
@@ -516,5 +478,5 @@ XMLEditIncludes::includelistDel()
 
     if (index >= includelist->count())
         index = includelist->count()-1;
-    includelist->setCurrentRow(index);
+    includelist->setCurrentItem(index);
 }

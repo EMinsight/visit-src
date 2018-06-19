@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -63,17 +63,14 @@ class QvisScreenPositionEdit;
 // Modifications:
 //   Kathleen Bonnell, Thu Jan 13 08:39:30 PST 2005
 //   Added timeFormatLinEdit and timeFormatChanged slot.
-//
-//   Brad Whitlock, Fri Jul 18 16:20:40 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 class GUI_API QvisTimeSliderInterface : public QvisAnnotationObjectInterface
 {
     Q_OBJECT
 public:
-    QvisTimeSliderInterface(QWidget *parent);
+    QvisTimeSliderInterface(QWidget *parent, const char *name = 0);
     virtual ~QvisTimeSliderInterface();
 
     virtual QString GetName() const { return "Time slider"; }

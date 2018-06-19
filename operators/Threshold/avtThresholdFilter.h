@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -42,6 +42,7 @@
 
 #ifndef AVT_Threshold_FILTER_H
 #define AVT_Threshold_FILTER_H
+
 #include <map>
 #include <string>
 
@@ -85,6 +86,9 @@ class     vtkDataSet;
 //    Sean Ahern (Markus Glatter), Tue Sep 25 10:14:26 EDT 2007
 //    Keep around a mapping of data selections and variable names.
 //
+//    Hank Childs, Mon Feb 23 11:54:22 PST 2009
+//    Added CreateNamedSelection.
+//
 // ****************************************************************************
 
 class avtThresholdFilter : public avtPluginStructuredChunkDataTreeIterator
@@ -101,13 +105,16 @@ class avtThresholdFilter : public avtPluginStructuredChunkDataTreeIterator
     virtual void          SetAtts(const AttributeGroup*);
     virtual bool          Equivalent(const AttributeGroup*);
 
+    virtual avtNamedSelection *
+                          CreateNamedSelection(avtContract_p c,
+                                               const std::string &);
+
   protected:
     ThresholdAttributes   atts;
     std::string           activeVarName;
     std::map<std::string,int> selIDs;
 
-    virtual avtContract_p
-                          ModifyContract(avtContract_p);
+    virtual avtContract_p ModifyContract(avtContract_p);
 
     virtual vtkDataSet   *ProcessOneChunk(vtkDataSet *, int, std::string,bool);
     virtual void          GetAssignments(vtkDataSet *, const int *,
@@ -120,3 +127,5 @@ class avtThresholdFilter : public avtPluginStructuredChunkDataTreeIterator
 
 
 #endif
+
+

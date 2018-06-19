@@ -1,10 +1,10 @@
-#ifndef QVIS_DIALOG_LINE_EDIT_H
-#define QVIS_DIALOG_LINE_EDIT_H
+#ifndef QVIS_DIRECTORY_LINE_EDIT_H
+#define QVIS_DIRECTORY_LINE_EDIT_H
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,7 +37,7 @@
 * DAMAGE.
 *
 *****************************************************************************/
-#include <QWidget>
+#include <qhbox.h>
 #include <gui_exports.h>
 
 class QLineEdit;
@@ -58,12 +58,9 @@ class QPushButton;
 //   Brad Whitlock, Fri Mar 16 15:01:10 PST 2007
 //   Renamed the class and added the ChooseFont option.
 //
-//   Brad Whitlock, Thu Jun 19 11:23:38 PDT 2008
-//   QT 4.
-//
 // ****************************************************************************
 
-class GUI_API QvisDialogLineEdit : public QWidget
+class GUI_API QvisDialogLineEdit : public QHBox
 {
     Q_OBJECT
 public:
@@ -74,7 +71,7 @@ public:
         ChooseFont
     } DialogMode;
 
-    QvisDialogLineEdit(QWidget *parent);
+    QvisDialogLineEdit(QWidget *parent, const char *name);
     virtual ~QvisDialogLineEdit();
 
     void setText(const QString &);
@@ -89,7 +86,7 @@ signals:
     void returnPressed();
     void textChanged(const QString &);
 protected:
-    virtual void changeEvent(QEvent *);
+    void fontChange(const QFont &oldFont);
 private slots:
     void pushButtonClicked();
 private:

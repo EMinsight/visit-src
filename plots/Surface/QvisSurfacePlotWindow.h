@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -127,33 +127,28 @@ private slots:
 private:
     int                     plotType;
     SurfaceAttributes      *surfaceAtts;
-
-    // Surface controls
-    QGroupBox              *surfaceGroup;
+    QLabel                 *lineStyleLabel;
+    QvisLineStyleWidget    *lineStyle;
+    QLabel                 *lineWidthLabel;
+    QvisLineWidthWidget    *lineWidth;
+    QCheckBox              *legendToggle;
+    QCheckBox              *lightingToggle;
+    QButtonGroup           *scalingButtons;
+    QCheckBox              *surfaceToggle;
+    QCheckBox              *wireframeToggle;
+    QGroupBox              *colorModeGroup;
     QButtonGroup           *colorModeButtons;
     QvisColorButton        *surfaceColor;
-    QvisColorTableButton   *colorTableButton;
-
-    // Wireframe controls
-    QGroupBox              *wireframeGroup;
-    QvisLineStyleWidget    *lineStyle;
-    QvisLineWidthWidget    *lineWidth;
     QvisColorButton        *wireframeColor;
-
-    // Scale controls
-    QButtonGroup           *scalingButtons;
-    QLabel                 *skewLabel;
-    QLineEdit              *skewLineEdit;
-
-    // Limits controls
+    QLabel                 *wireframeLabel;
     QComboBox              *limitsSelect;
     QCheckBox              *minToggle;
     QLineEdit              *minLineEdit;
     QCheckBox              *maxToggle;
     QLineEdit              *maxLineEdit;
-
-    QCheckBox              *legendToggle;
-    QCheckBox              *lightingToggle;
+    QLabel                 *skewLabel;
+    QLineEdit              *skewLineEdit;
+    QvisColorTableButton   *colorTableButton;
 };
 
 #endif

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -1313,6 +1313,44 @@ void vtkCSGGrid::AddZones(int nzones, const int *const zoneIds)
         gridZones[i] = zoneIds[i];
 
     numZones = nzones;
+}
+
+//----------------------------------------------------------------------------
+// Programmer: Mark C. Miller, Tue Feb 17 17:54:04 PST 2009
+//
+// Modifications:
+//    Mark C. Miller, Tue Feb 17 20:38:14 PST 2009
+//    Fixed bug where NUM_QCOEFFS multiplier was missing from loop over
+//    boundaries.
+//----------------------------------------------------------------------------
+bool vtkCSGGrid::operator==(const vtkCSGGrid &grid) const
+{
+    int i;
+
+    if (numBoundaries != grid.numBoundaries ||
+        numRegions != grid.numRegions ||
+        numZones != grid.numZones)
+        return false;
+
+    for (i = 0; i < numZones; i++)
+    {
+        if (gridZones[i] != grid.gridZones[i])
+            return false;
+    }
+    for (i = 0; i < numRegions; i++)
+    {
+        if (regTypeFlags[i] != grid.regTypeFlags[i] ||
+            leftIds[i] != grid.leftIds[i] ||
+            rightIds[i] != grid.rightIds[i])
+            return false;
+    }
+    for (i = 0; i < NUM_QCOEFFS * numBoundaries; i++)
+    {
+        if (gridBoundaries[i] != grid.gridBoundaries[i])
+            return false;
+    }
+
+    return true;
 }
 
 //----------------------------------------------------------------------------

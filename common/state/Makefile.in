@@ -1,4 +1,4 @@
-#                         Copyright (c) 2000 - 2008
+#                         Copyright (c) 2000 - 2009
 #                  Lawrence Livermore National Security, LLC
 #            Produced at the Lawrence Livermore National Laboratory
 #                              LLNL-CODE-400124
@@ -287,16 +287,6 @@
 #    Removed ExtentsAttributes.  The Extents tool functionality has been
 #    subsumed by the Axis Restriction tool (and Parallel Coordinates plot).
 #
-#    Jeremy Meredith, Tue Nov 18 16:01:50 EST 2008
-#    Added AxesArray.
-#
-#    Hank Childs, Wed Dec 31 13:41:48 PST 2008
-#    Rename ResampleAttributes as InternalResampleAttributes.
-#
-#    Jeremy Meredith, Fri Jan  2 17:20:52 EST 2009
-#    Added SingleAttributeConfigManager.  This class simplifies
-#    reading/writing single attribute groups.
-#
 ##############################################################################
 
 ##
@@ -321,7 +311,6 @@ SRC=    AnimationAttributes.C \
         AttributeSubjectMap.C \
         Axes2D.C \
         Axes3D.C \
-        AxesArray.C \
         AxisAttributes.C \
         AxisLabels.C \
         AxisRestrictionAttributes.C \
@@ -360,7 +349,6 @@ SRC=    AnimationAttributes.C \
         HostProfile.C \
         HostProfileList.C \
         InteractorAttributes.C \
-        InternalResampleAttributes.C \
         KeepAliveRPC.C \
         KeyframeAttributes.C \
         LightAttributes.C \
@@ -392,6 +380,7 @@ SRC=    AnimationAttributes.C \
         QueryOverTimeAttributes.C \
         QuitRPC.C \
         RenderingAttributes.C \
+        ResampleAttributes.C \
         SaveWindowAttributes.C \
         SILArrayAttributes.C \
         SILAttributes.C \
@@ -400,7 +389,6 @@ SRC=    AnimationAttributes.C \
         SimilarityTransformAttributes.C \
         SimpleObserver.C \
         SimulationCommand.C \
-        SingleAttributeConfigManager.C \
         SphereAttributes.C \
         StatusAttributes.C \
         Subject.C \

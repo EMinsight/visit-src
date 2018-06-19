@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -70,18 +70,15 @@ class ViewerState;
 //   Brad Whitlock, Mon Feb 12 17:56:51 PST 2007
 //   Changed base class.
 //
-//   Brad Whitlock, Fri May  9 14:42:00 PDT 2008
-//   Added name since Qt 4 does not have it.
-//
 // ****************************************************************************
 
 class ViewerClientConnection : public ViewerBase, public SimpleObserver
 {
     Q_OBJECT
 public:
-    ViewerClientConnection(const ViewerState *, QObject *parent, const QString &name);
+    ViewerClientConnection(const ViewerState *, QObject *parent, const char *name=0);
     ViewerClientConnection(ParentProcess *, QSocketNotifier *, const ViewerState *,
-                           QObject *parent, const QString &name);
+                           QObject *parent, const char *name=0);
     virtual ~ViewerClientConnection();
 
     void LaunchClient(const std::string &program,
@@ -97,8 +94,6 @@ public:
 
     virtual void Update(Subject *);
 
-    const QString &Name() const;
-
     static const int FreelyExchangedState;
 signals:
     void DisconnectClient(ViewerClientConnection *);
@@ -106,7 +101,6 @@ signals:
 private slots:
     void ReadFromClientAndProcess(int);
 private:
-    QString            name;
     Xfer              *xfer;
     QSocketNotifier   *notifier;
     RemoteProcess     *remoteProcess;

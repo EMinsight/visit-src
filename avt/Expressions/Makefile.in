@@ -1,4 +1,4 @@
-#                         Copyright (c) 2000 - 2008
+#                         Copyright (c) 2000 - 2009
 #                  Lawrence Livermore National Security, LLC
 #            Produced at the Lawrence Livermore National Laboratory
 #                              LLNL-CODE-400124
@@ -229,8 +229,11 @@
 #   Kathleen Bonnell, Tue Nov 18 08:01:45 PST 2008
 #   Added avtCurveCMFEExpression.
 #
-#   Hank Childs, Mon Dec 29 11:52:35 PST 2008
-#   Added avtDominantMaterialExpression.
+#   Kathleen Bonnell, Mon Apr 27 17:00:55 PDT 2009
+#   Added avtCoshExpression, avtSinhExpression, avtTanhExpression.
+#
+#   Brad Whitlock, Tue Jun 2 10:14:37 PDT 2009
+#   I split up avtExprNode into several files to speed compilation on xlC.
 #
 ##############################################################################
 
@@ -304,11 +307,12 @@ General_src= \
   General/avtConnComponentsExpression.C \
   General/avtConstantFunctionExpression.C \
   General/avtCurlExpression.C \
+  General/avtCurveExpression.C \
+  General/avtCurveDomainExpression.C \
   General/avtDataIdExpression.C \
   General/avtDegreeExpression.C \
   General/avtDivergenceExpression.C \
   General/avtDistanceToBestFitLineExpression.C \
-  General/avtDominantMaterialExpression.C \
   General/avtExpressionComponentMacro.C \
   General/avtExternalNodeExpression.C \
   General/avtGradientExpression.C \
@@ -354,6 +358,14 @@ Management_src= \
   Management/avtConstantCreatorExpression.C \
   Management/avtExprNode.C \
   Management/avtExprNodeFactory.C \
+  Management/avtFunctionExpr_CreateCMFEFilters.C \
+  Management/avtFunctionExpr_CreateConditionalFilters.C \
+  Management/avtFunctionExpr_CreateImageProcessingFilters.C \
+  Management/avtFunctionExpr_CreateMaterialFilters.C \
+  Management/avtFunctionExpr_CreateMathFilters.C \
+  Management/avtFunctionExpr_CreateMeshFilters.C \
+  Management/avtFunctionExpr_CreateMeshQualityFilters.C \
+  Management/avtFunctionExpr_CreateVectorMatrixFilters.C \
   Management/ExprPipelineState.C \
   Management/avtTimeExpression.C 
 
@@ -372,6 +384,7 @@ Math_src= \
   Math/avtBinarySubtractExpression.C \
   Math/avtCeilingExpression.C \
   Math/avtCosExpression.C \
+  Math/avtCoshExpression.C \
   Math/avtCylindricalCoordinatesExpression.C \
   Math/avtCylindricalRadiusExpression.C \
   Math/avtDegreeToRadianExpression.C \
@@ -388,9 +401,11 @@ Math_src= \
   Math/avtRadianToDegreeExpression.C \
   Math/avtRoundExpression.C \
   Math/avtSinExpression.C \
+  Math/avtSinhExpression.C \
   Math/avtSquareExpression.C \
   Math/avtSquareRootExpression.C \
   Math/avtTanExpression.C \
+  Math/avtTanhExpression.C \
   Math/avtTraceExpression.C \
   Math/avtUnaryMinusExpression.C \
   Math/avtVectorCrossProductExpression.C

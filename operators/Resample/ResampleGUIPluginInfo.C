@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -41,8 +41,8 @@
 // ************************************************************************* //
 
 #include <ResamplePluginInfo.h>
-#include <ResampleAttributes.h>
-#include <QApplication>
+#include <ResamplePluginAttributes.h>
+#include <qapplication.h>
 #include <QvisResampleWindow.h>
 
 #if defined(__APPLE__)
@@ -106,7 +106,7 @@ QvisPostableWindowObserver *
 ResampleGUIPluginInfo::CreatePluginWindow(int type, AttributeSubject *attr,
     const QString &caption, const QString &shortName, QvisNotepadArea *notepad)
 {
-    return new QvisResampleWindow(type, (ResampleAttributes *)attr,
+    return new QvisResampleWindow(type, (ResamplePluginAttributes *)attr,
         caption, shortName, notepad);
 }
 

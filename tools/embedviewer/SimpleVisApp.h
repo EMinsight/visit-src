@@ -1,11 +1,11 @@
 #ifndef SIMPLE_VIS_APP_H
 #define SIMPLE_VIS_APP_H
-#include <QMainWindow>
+#include <qmainwindow.h>
 
 class VisItViewer;
 
 class QLabel;
-class QListWidget;
+class QListBox;
 class QButtonGroup;
 class QSpinBox;
 class QWidget;
@@ -48,7 +48,7 @@ private:
     void resetWindow();
 
     QLabel            *scalarLabel;
-    QListWidget          *variables;
+    QListBox          *variables;
     QWidget           *plotTypeWidget;
     QButtonGroup      *plotType;
     QWidget           *contourWidget;

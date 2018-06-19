@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,22 +37,21 @@
 *****************************************************************************/
 
 #include <QvisPlotManagerWidget.h>
-#include <QApplication>
-#include <QCheckBox>
-#include <QComboBox>
-#include <QCursor>
-#include <QIcon>
-#include <QLabel>
-#include <QLayout>
-#include <QListWidget>
-#include <QMap>
-#include <QMenu>
-#include <QMenuBar>
-#include <QMessageBox>
-#include <QPixmapCache>
-#include <QPushButton>
-#include <QTreeWidget>
-#include <QWidget>
+#include <qapplication.h>
+#include <qcheckbox.h>
+#include <qcombobox.h>
+#include <qcursor.h>
+#include <qiconset.h>
+#include <qlabel.h>
+#include <qlayout.h>
+#include <qlistbox.h>
+#include <qmap.h>
+#include <qmenubar.h>
+#include <qpixmapcache.h>
+#include <qpopupmenu.h>
+#include <qpushbutton.h>
+#include <qvbox.h>
+#include <qmessagebox.h>
 
 #include <ViewerProxy.h>
 #include <PlotList.h>
@@ -167,22 +166,19 @@ using std::vector;
 //   Gunther H. Weber, Fri Feb 29 15:38:57 PST 2008
 //   Fixed Qt warning caused by previous change.
 //
-//   Cyrus Harrison, Thu Jul  3 09:16:15 PDT 2008
-//   Initial Qt4 Port.
-//
-//   Brad Whitlock, Tue Sep  9 10:40:33 PDT 2008
-//   Removed metaData and pluginAtts since they were not used.
-//
 // ****************************************************************************
 
-QvisPlotManagerWidget::QvisPlotManagerWidget(QMenuBar *menuBar,QWidget *parent) 
-: QWidget(parent), GUIBase(), SimpleObserver(), menuPopulator(), 
-  varMenuPopulator(), plotPlugins(), operatorPlugins()
+QvisPlotManagerWidget::QvisPlotManagerWidget(QMenuBar *menuBar,
+    QWidget *parent, const char *name) : QWidget(parent, name), GUIBase(),
+    SimpleObserver(), menuPopulator(), varMenuPopulator(), plotPlugins(),
+    operatorPlugins()
 {
+    metaData = 0;
     plotList = 0;
     globalAtts = 0;
     windowInfo = 0;
     exprList = 0;
+    pluginAtts = 0;
 
     pluginsLoaded = false;
     updatePlotVariableMenuEnabledState = false;
@@ -194,58 +190,50 @@ QvisPlotManagerWidget::QvisPlotManagerWidget(QMenuBar *menuBar,QWidget *parent)
 
     QVBoxLayout *veryTopLayout = new QVBoxLayout(this);
     veryTopLayout->setSpacing(5);
-    veryTopLayout->setMargin(0);
-    topLayout = new QGridLayout();
-    veryTopLayout->addLayout(topLayout);
+    topLayout = new QGridLayout(veryTopLayout, 4, 4);
     topLayout->setSpacing(5);
-    topLayout->setMargin(0);
 
     // Create the source combobox.
-    sourceComboBox = new QComboBox(this);
+    sourceComboBox = new QComboBox(this, "sourceComboBox");
     sourceComboBox->hide();
     connect(sourceComboBox, SIGNAL(activated(int)),
             this, SLOT(sourceChanged(int)));
-    sourceLabel = new QLabel(tr("Source"), this);
+    sourceLabel = new QLabel(sourceComboBox, tr("Source"), this, "sourceLabel");
     sourceLabel->hide();
     topLayout->addWidget(sourceLabel, 0, 0);
-    topLayout->addWidget(sourceComboBox, 0, 1, 1, 3);
+    topLayout->addMultiCellWidget(sourceComboBox, 0, 0, 1, 3);
 
-    activePlots = new QLabel(tr("Active plots"), this);
+    activePlots = new QLabel(tr("Active plots"), this, "activePlots");
     topLayout->addWidget(activePlots, 1, 0);
 
     // Create the hide/show button.
-    hideButton = new QPushButton(tr("Hide/Show"), this);
+    hideButton = new QPushButton(tr("Hide/Show"), this, "hideButton");
     hideButton->setEnabled(false);
     connect(hideButton, SIGNAL(clicked()), this, SLOT(hidePlots()));
     topLayout->addWidget(hideButton, 1, 1);
 
     // Create the delete button.
-    deleteButton = new QPushButton(tr("Delete"), this);
+    deleteButton = new QPushButton(tr("Delete"), this, "deleteButton");
     deleteButton->setEnabled(false);
     connect(deleteButton, SIGNAL(clicked()), this, SLOT(deletePlots()));
     topLayout->addWidget(deleteButton, 1, 2);
 
     // Create the draw button.
-    drawButton = new QPushButton(tr("Draw"), this);
+    drawButton = new QPushButton(tr("Draw"), this, "drawButton");
     drawButton->setEnabled(false);
     connect(drawButton, SIGNAL(clicked()), this, SLOT(drawPlots()));
     topLayout->addWidget(drawButton, 1, 3);
 
     // Create the plot list box.
-    plotListBox = new QvisPlotListBox(this);
-    plotListBox->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    plotListBox = new QvisPlotListBox(this, "plotListBox");
+    plotListBox->setSelectionMode(QListBox::Extended);
     plotListBox->setMinimumHeight(fontMetrics().boundingRect("X").height() * 6);
-    
-    connect(plotListBox, SIGNAL(itemSelectionChanged()),
+    connect(plotListBox, SIGNAL(selectionChanged()),
             this, SLOT(setActivePlots()));
-    connect(plotListBox, SIGNAL(itemExpansionChanged()),
-            this, SLOT(setActivePlots())); 
-
     connect(plotListBox, SIGNAL(activatePlotWindow(int)),
             this, SIGNAL(activatePlotWindow(int)));
     connect(plotListBox, SIGNAL(activateOperatorWindow(int)),
             this, SIGNAL(activateOperatorWindow(int)));
-
     connect(plotListBox, SIGNAL(activateSubsetWindow()),
             this, SIGNAL(activateSubsetWindow()));
     connect(plotListBox, SIGNAL(promoteOperator(int)),
@@ -254,6 +242,7 @@ QvisPlotManagerWidget::QvisPlotManagerWidget(QMenuBar *menuBar,QWidget *parent)
             this, SLOT(demoteOperator(int)));
     connect(plotListBox, SIGNAL(removeOperator(int)),
             this, SLOT(removeOperator(int)));
+
 
     connect(plotListBox, SIGNAL(hideThisPlot()),
             this, SLOT(hideThisPlot()));
@@ -271,34 +260,38 @@ QvisPlotManagerWidget::QvisPlotManagerWidget(QMenuBar *menuBar,QWidget *parent)
             this, SLOT(redrawThisPlot()));
     connect(plotListBox, SIGNAL(disconnectThisPlot()),
             this, SLOT(disconnectThisPlot()));
-    topLayout->addWidget(plotListBox, 2, 0, 1, 4);
+	    
+    topLayout->addMultiCellWidget(plotListBox, 2, 2, 0, 3);
 
-    QWidget *applyOpsAndSelection = new QWidget(this);
-    QHBoxLayout *applyLayout = new QHBoxLayout(applyOpsAndSelection);
-    applyLayout->setMargin(0);
-#if defined(__APPLE__)
-    topLayout->addWidget(applyOpsAndSelection, 3, 0, 1, 4);
-#else
-    topLayout->addWidget(applyOpsAndSelection, 4, 0, 1, 4);
-#endif
+    QHBoxLayout *applyLayout = new QHBoxLayout(0, 0, 0, "applyLayout");
+    veryTopLayout->addLayout(applyLayout);
+
+    // Begin label text
+    QLabel *applyText1 = new QLabel(tr("Apply "), this);
+    applyLayout->addWidget(applyText1);
+
     // Create the "Apply operator to all plots" toggle.
-    applyOperatorToggle = new QCheckBox(tr("Apply operators"), applyOpsAndSelection);
+    applyOperatorToggle = new QCheckBox(this, "applyOperatorToggle");
     connect(applyOperatorToggle, SIGNAL(toggled(bool)),
             this, SLOT(applyOperatorToggled(bool)));
     applyLayout->addWidget(applyOperatorToggle);
-    applyLayout->addWidget(new QLabel("/", applyOpsAndSelection));
+
+    QLabel *applyText2 = new QLabel(tr("operators") + QString("/"), this);
+    applyLayout->addWidget(applyText2);
 
     // Create the "Apply selection to all plots" toggle.
-    applySelectionToggle = new QCheckBox(tr("selection to all plots"), this);
+    applySelectionToggle = new QCheckBox(this, "applySelectionToggle");
     connect(applySelectionToggle, SIGNAL(toggled(bool)),
             this, SLOT(applySelectionToggled(bool)));
     applyLayout->addWidget(applySelectionToggle);
+
+    // End label text
+    QLabel *applyText3 = new QLabel(tr("selection to all plots"), this);
+    applyLayout->addWidget(applyText3);
     applyLayout->addStretch(1);
 
     // Create the plot and operator menus. Note that they will be empty until
     // they are populated by the main application.
-    operatorRemoveLastAct = 0;
-    operatorRemoveAllAct = 0;
     CreateMenus(menuBar);
 }
 
@@ -321,18 +314,12 @@ QvisPlotManagerWidget::QvisPlotManagerWidget(QMenuBar *menuBar,QWidget *parent)
 //   Jeremy Meredith, Tue Aug 24 16:21:00 PDT 2004
 //   Made it observe metadata directly so it knows when to update things.
 //
-//   Brad Whitlock, Tue Sep  9 10:40:33 PDT 2008
-//   Removed metaData and pluginAtts since they were not used.
-//
-//   Hank Childs, Thu Dec  4 10:19:11 PST 2008
-//   Commit fix for memory leak contributed by David Camp of UC Davis.
-//
 // ****************************************************************************
 
 QvisPlotManagerWidget::~QvisPlotManagerWidget()
 {
-    for (int i = 0 ; i < plotPlugins.size() ; i++)
-        DestroyPlotMenuItem(i);
+    if(metaData)
+        metaData->Detach(this);
 
     if(plotList)
         plotList->Detach(this);
@@ -345,6 +332,9 @@ QvisPlotManagerWidget::~QvisPlotManagerWidget()
 
     if(exprList)
         exprList->Detach(this);
+
+    if(pluginAtts)
+        pluginAtts->Detach(this);
 
     if(windowInfo)
         windowInfo->Detach(this);
@@ -451,9 +441,6 @@ QvisPlotManagerWidget::SetSourceVisible(bool val)
 //   Brad Whitlock, Tue Apr  8 15:26:49 PDT 2008
 //   Support for internationalization.
 //
-//   Cyrus Harrison, Thu Jul  3 09:16:15 PDT 2008
-//   Initial Qt4 Port.
-//
 // ****************************************************************************
 
 void
@@ -467,67 +454,67 @@ QvisPlotManagerWidget::CreateMenus(QMenuBar *menuBar)
     // run along the top of the screen instead of being part of each window.
     plotMenuBar = menuBar;
 #else
-    plotMenuBar = new QMenuBar(this);
-    topLayout->addWidget(plotMenuBar, 3, 0, 1, 4);
+    plotMenuBar = new QMenuBar(this, "plotMenu");
+    topLayout->addMultiCellWidget(plotMenuBar, 3, 3, 0, 3);
 #endif
 
     // Create the Plot menu. Each time we highlight a plot, we
     // update the current plot type.
-    plotMenu = new QMenu(tr("Plots"),plotMenuBar);
+    plotMenu = new QPopupMenu(plotMenuBar);
 
     // Add the whole "Plots" menu to the menu bar.
-    plotMenuAct = plotMenuBar->addMenu(plotMenu);
-    plotMenuAct->setEnabled(false);
+    plotMenuId = plotMenuBar->insertItem( tr("Plots"), plotMenu );
+    plotMenuBar->setItemEnabled(plotMenuId, false);
 
     //
     // Create the operator menu.
     //
-    operatorMenu = new QMenu(tr("Operators"),plotMenuBar);
-    connect(operatorMenu, SIGNAL(triggered(QAction*)),
-            this, SLOT(operatorAction(QAction *)));   
-    operatorMenuAct = plotMenuBar->addMenu(operatorMenu);
-    operatorMenuAct->setEnabled(false);
+    operatorMenu = new QPopupMenu(plotMenuBar);
+    connect(operatorMenu, SIGNAL(activated(int)), this, SLOT(operatorAction(int)));
+    QPixmap removeLast(removelastoperator_xpm);
+    QIconSet removeLastIcon(removeLast);
+    QPixmap removeAll(removealloperators_xpm);
+    QIconSet removeAllIcon(removeAll);
+    operatorMenu->insertSeparator();
+    operatorMenu->insertItem(removeLast, tr("Remove last"), REMOVE_LAST_OPERATOR_ID);
+    operatorMenu->insertItem(removeAll, tr("Remove all"), REMOVE_ALL_OPERATORS_ID);
+    operatorMenuId = plotMenuBar->insertItem( tr("Operators"), operatorMenu );
+    plotMenuBar->setItemEnabled(operatorMenuId, false);
 
     //
     // Create the Plot attributes menu.
     //
-    
-    QString mname;
+    plotAttsMenu = new QPopupMenu( plotMenuBar );
+    connect(plotAttsMenu, SIGNAL(activated(int)),
+            this, SIGNAL(activatePlotWindow(int)));
+    plotAttsMenuId = plotMenuBar->insertItem(
 #ifdef __APPLE__
-    mname = tr("Plot Attributes"),
+        tr("Plot Attributes"),
 #else
-    mname = tr("PlotAtts"),
-#endif    
-    
-    plotAttsMenu = new QMenu(mname, plotMenuBar );
-    
-    connect(plotAttsMenu, SIGNAL(triggered(QAction *)),
-            this, SLOT(activatePlotWindow(QAction *)));
-    
-    plotAttsMenuAct = plotMenuBar->addMenu(plotAttsMenu);
-    plotAttsMenuAct->setEnabled(false);
-    //plotMenuBar->setItemEnabled(plotAttsMenuId, false);
+        tr("PlotAtts"),
+#endif
+        plotAttsMenu);
+    plotMenuBar->setItemEnabled(plotAttsMenuId, false);
 
     //
     // Create the Operator attributes menu.
     //
+    operatorAttsMenu = new QPopupMenu( plotMenuBar );
+    connect(operatorAttsMenu, SIGNAL(activated(int)),
+            this, SIGNAL(activateOperatorWindow(int)));
+    operatorAttsMenuId = plotMenuBar->insertItem(
 #ifdef __APPLE__
-    mname = tr("Operator Attributes"),
+        tr("Operator Attributes"),
 #else
-    mname = tr("OpAtts"),
+        tr("OpAtts"),
 #endif
-    
-    operatorAttsMenu = new QMenu(mname, plotMenuBar );
-    connect(operatorAttsMenu, SIGNAL(triggered(QAction *)),
-            this, SLOT(activateOperatorWindow(QAction *)));
-    operatorAttsMenuAct = plotMenuBar->addMenu( operatorAttsMenu );
-    operatorAttsMenuAct->setEnabled(false);
-    //plotMenuBar->setItemEnabled(operatorAttsMenuId, false);
+        operatorAttsMenu );
+    plotMenuBar->setItemEnabled(operatorAttsMenuId, false);
 
     //
     // Create an empty variable menu.
     //
-    plotMenuBar->addSeparator();
+    plotMenuBar->insertSeparator();
     CreateVariableMenu();
 }
 
@@ -547,23 +534,18 @@ QvisPlotManagerWidget::CreateMenus(QMenuBar *menuBar)
 // Creation:   Thu Dec 20 12:13:16 PST 2007
 //
 // Modifications:
-//   Cyrus Harrison, Thu Jul  3 09:16:15 PDT 2008
-//   Initial Qt4 Port.
-//
+//   
 // ****************************************************************************
 
 void
 QvisPlotManagerWidget::CreateVariableMenu()
 {
     // Add an empty variable menu to the plot menu bar
-    // need to be able to set the name! tr("Variables")
-    varMenu = new QvisVariablePopupMenu(-1, 0);
-    varMenu->setTitle(tr("Variables"));
-
+    varMenu = new QvisVariablePopupMenu(-1, 0, "varMenu");
     connect(varMenu, SIGNAL(activated(int, const QString &)),
             this, SLOT(changeVariable(int, const QString &)));
-    varMenuAct = plotMenuBar->addMenu(varMenu);
-    varMenuAct->setEnabled(false);
+    varMenuId = plotMenuBar->insertItem( tr("Variables"), varMenu);
+    plotMenuBar->setItemEnabled(varMenuId, false);
 }
 
 // ****************************************************************************
@@ -582,15 +564,7 @@ QvisPlotManagerWidget::CreateVariableMenu()
 // Creation:   Thu Dec 20 12:13:04 PST 2007
 //
 // Modifications:
-//   Cyrus Harrison, Thu Jul  3 09:16:15 PDT 2008
-//   Initial Qt4 Port.
-//
-//   Cyrus Harrison, Thu Jul  3 09:16:15 PDT 2008
-//   Initial Qt4 Port.
-//
-//   Cyrus Harrison, Thu Dec  4 09:13:50 PST 2008
-//   Removed unnecssary todo comment.
-//
+//   
 // ****************************************************************************
 
 void
@@ -599,12 +573,14 @@ QvisPlotManagerWidget::DestroyVariableMenu()
     if(varMenu)
     {
         // Remove the variable menu from the plot menu bar
-        plotMenuBar->removeAction(varMenuAct);
+        plotMenuBar->removeItem(varMenuId);
 
         // Delete the variable menu.
+        disconnect(varMenu, SIGNAL(activated(int, const QString &)),
+                   this, SLOT(changeVariable(int, const QString &)));
         delete varMenu;
         varMenu = 0;
-        varMenuAct = 0;
+        varMenuId = -1;
     }
 }
 
@@ -680,15 +656,13 @@ QvisPlotManagerWidget::DestroyVariableMenu()
 //   Split "Apply operators and selections ..." checkbox into an apply
 //   operators and an apply selection checkbox.
 //
-//   Brad Whitlock, Tue Sep  9 10:40:33 PDT 2008
-//   Removed metaData and pluginAtts since they were not used.
-//
 // ****************************************************************************
 
 void
 QvisPlotManagerWidget::Update(Subject *TheChangedSubject)
 {
-    if(plotList == 0 || fileServer == 0 || globalAtts == 0 || windowInfo == 0)
+    if(plotList == 0 || fileServer == 0 || globalAtts == 0 ||
+       pluginAtts == 0 || windowInfo == 0 || metaData == 0)
     {
         return;
     }
@@ -828,6 +802,10 @@ QvisPlotManagerWidget::Update(Subject *TheChangedSubject)
             }
         }
     }
+    else if(TheChangedSubject == pluginAtts)
+    {
+        // do nothing yet -- JSM 9/5/01
+    }
 
     // Update the enabled state for the menu bar.
     UpdatePlotAndOperatorMenuEnabledState();
@@ -870,9 +848,6 @@ QvisPlotManagerWidget::Update(Subject *TheChangedSubject)
 //   Brad Whitlock, Wed Jul 28 17:44:19 PST 2004
 //   I added code to make sure that the prefixes are taken into account when
 //   setting generating the items in the list box.
-//
-//   Brad Whitlock, Tue Sep 30 15:00:28 PDT 2008
-//   Qt 4.
 //
 // ****************************************************************************
 
@@ -919,15 +894,10 @@ QvisPlotManagerWidget::UpdatePlotList()
             // Create a new plot item in the list.
             QvisPlotListBoxItem *newPlot = new QvisPlotListBoxItem(prefix,
                 current);
-            // Store "this" in the item's data so the delegate can callback into it.
-            qulonglong addr = (qulonglong)(void*)newPlot;
-            newPlot->setData(Qt::UserRole, QVariant(addr));
-
-            plotListBox->addItem(newPlot);
-            plotListBox->item(i)->setSelected(current.GetActiveFlag());
+            plotListBox->insertItem(newPlot);
+            plotListBox->setSelected(i, current.GetActiveFlag());
             if(current.GetActiveFlag())
                 plotListBox->setCurrentItem(newPlot);
-
 #ifdef DEBUG_PRINT
             qDebug("Plot[%d]={active=%d, hidden=%d, state=%d, dbName=%s, var=%s}",
                    i,
@@ -945,7 +915,7 @@ QvisPlotManagerWidget::UpdatePlotList()
         {
             // Create a constant reference to the current plot.
             const Plot &current = plotList->operator[](i);
-            plotListBox->item(i)->setSelected(current.GetActiveFlag());
+            plotListBox->setSelected(i, current.GetActiveFlag());
         } // end for
         plotListBox->blockSignals(false);        
     }
@@ -1019,14 +989,14 @@ QvisPlotManagerWidget::UpdateSourceList(bool updateActiveSourceOnly)
         simplifier.GetSimplifiedNames(shortSources);
         sourceComboBox->clear();
         for(i = 0; i < shortSources.size(); ++i)
-            sourceComboBox->addItem(shortSources[i].c_str());
+            sourceComboBox->insertItem(shortSources[i].c_str());
     }
 
     //
     // Set the current item.
     //
-    if(sourceIndex != -1 && sourceIndex != sourceComboBox->currentIndex())
-        sourceComboBox->setCurrentIndex(sourceIndex);
+    if(sourceIndex != -1 && sourceIndex != sourceComboBox->currentItem())
+        sourceComboBox->setCurrentItem(sourceIndex);
 
     sourceComboBox->blockSignals(false);
 
@@ -1118,9 +1088,6 @@ QvisPlotManagerWidget::UpdateHideDeleteDrawButtonsEnabledState() const
 //   Brad Whitlock, Fri Apr 25 10:19:43 PDT 2008
 //   I made plotName be a QString so we can internationalize the plot names.
 //
-//   Cyrus Harrison, Thu Jul  3 09:16:15 PDT 2008
-//   Initial Qt4 Port.
-//
 // ****************************************************************************
 
 void
@@ -1133,22 +1100,20 @@ QvisPlotManagerWidget::AddPlotType(const QString &plotName, const int varTypes,
     entry.varMenu = 0;
     entry.varTypes = varTypes;
     entry.varMask = 1;
-    entry.action = 0;
+    entry.id = -1;
 
     if(iconData)
     {
         QPixmap iconPixmap(iconData);
-        QPixmapCache::insert(plotName, iconPixmap);
-        entry.icon = QIcon(iconPixmap);
+        entry.icon = QIconSet(iconPixmap);
 
         // Add the plot type to the plot attributes list.
-        plotAttsMenu->addAction(entry.icon, entry.menuName);
+        plotAttsMenu->insertItem(entry.icon, entry.menuName, plotAttsMenu->count());
     }
     else
     {
         // Add the plot type to the plot attributes list.
-        //plotAttsMenu->insertItem(entry.menuName, plotAttsMenu->count());
-        plotAttsMenu->addAction(entry.menuName);
+        plotAttsMenu->insertItem(entry.menuName, plotAttsMenu->count());
     }
 
     // Add the plot plugin information to the plugin list.
@@ -1208,25 +1173,32 @@ QvisPlotManagerWidget::DestroyPlotMenuItem(int index)
 // Creation:   Thu Dec 20 12:03:16 PST 2007
 //
 // Modifications:
-//   Cyrus Harrison, Thu Jul  3 09:16:15 PDT 2008
-//   Initial Qt4 Port.
-//
+//   
 // ****************************************************************************
 
 void
 QvisPlotManagerWidget::CreatePlotMenuItem(int index)
 {
     PluginEntry &entry = plotPlugins[index];
-   
-    entry.varMenu = new QvisVariablePopupMenu(index, 0);
-    entry.varMenu->setTitle(entry.pluginName);
-    if(!entry.icon.isNull())
-        entry.varMenu->setIcon(entry.icon);   
+
+    // Create the plot variable sub-menu.
+    entry.varMenu = new QvisVariablePopupMenu(index, 0, entry.pluginName.latin1());
     connect(entry.varMenu, SIGNAL(activated(int, const QString &)),
             this, SLOT(addPlotHelper(int, const QString &)));
-   
-    entry.action = plotMenu->addMenu(entry.varMenu);
-    entry.action->setEnabled(false);
+
+    // Add the plot to the plot variable menu.
+    if(!entry.icon.isNull())
+    {
+        entry.id = plotMenu->insertItem(entry.icon, entry.pluginName, entry.varMenu,
+                                        index);
+    }
+    else
+    {
+        // Add the plot type to the plot menu.
+        entry.id = plotMenu->insertItem(entry.pluginName, entry.varMenu, index);
+    }
+
+    plotMenu->setItemEnabled(entry.id, false);
 }
 
 // ****************************************************************************
@@ -1262,9 +1234,6 @@ QvisPlotManagerWidget::CreatePlotMenuItem(int index)
 //   Brad Whitlock, Fri Apr 25 10:20:31 PDT 2008
 //   Made operatorName be a QString so we can internationalize the operator names.
 //
-//   Cyrus Harrison, Thu Jul  3 09:16:15 PDT 2008
-//   Initial Qt4 Port.
-//
 // ****************************************************************************
 
 void
@@ -1272,7 +1241,7 @@ QvisPlotManagerWidget::AddOperatorType(const QString &operatorName,
     const int varTypes, const int varMask, bool userSelectable,
     const char **iconData)
 {
-    //int id = operatorMenu->count() - 3;
+    int id = operatorMenu->count() - 3;
 
     // Add the operator plugin information to the operator plugin list.
     PluginEntry entry;
@@ -1286,59 +1255,25 @@ QvisPlotManagerWidget::AddOperatorType(const QString &operatorName,
     {
         // Add the operator type to the operator menu.
         QPixmap  iconPixmap(iconData);
-        QPixmapCache::insert(operatorName, iconPixmap);
-        QIcon icon(iconPixmap);
+        QIconSet icon(iconPixmap);
 
         // Create the sub-menus.
-        entry.action = operatorMenu->addAction(icon, entry.pluginName);
+        entry.id = operatorMenu->insertItem(icon, entry.pluginName, id, id);
 
         // Add the operator type to the operator attributes list.
-        operatorAttsMenu->addAction(icon, entry.menuName);
+        operatorAttsMenu->insertItem(icon, entry.menuName, operatorAttsMenu->count());
     }
     else
     {
         // Create the sub-menus.
-        entry.action = operatorMenu->addAction(entry.pluginName);
+        entry.id = operatorMenu->insertItem(entry.pluginName, id, id);
 
         // Add the operator type to the operator attributes list.
-        operatorAttsMenu->addAction(entry.menuName);
+        operatorAttsMenu->insertItem(entry.menuName, operatorAttsMenu->count());
     }
 
     operatorPlugins.push_back(entry);
-    entry.action->setEnabled(userSelectable);
-}
-
-// ****************************************************************************
-// Method: QvisPlotManagerWidget::FinishAddingOperators
-//
-// Purpose: 
-//   Adds some menu options to the operator menu.
-//
-// Arguments:
-//
-// Returns:    
-//
-// Note:       
-//
-// Programmer: Brad Whitlock
-// Creation:   Wed Jul  9 13:35:18 PDT 2008
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-void
-QvisPlotManagerWidget::FinishAddingOperators()
-{
-    if(operatorRemoveLastAct == 0)
-    {
-        QPixmap removeLast(removelastoperator_xpm);
-        QPixmap removeAll(removealloperators_xpm);
-
-        operatorMenu->addSeparator();    
-        operatorRemoveLastAct = operatorMenu->addAction(QIcon(removeLast), tr("Remove last"));
-        operatorRemoveAllAct  = operatorMenu->addAction(QIcon(removeAll), tr("Remove all"));
-    }
+    operatorMenu->setItemEnabled(entry.id, userSelectable);
 }
 
 // ****************************************************************************
@@ -1357,17 +1292,15 @@ QvisPlotManagerWidget::FinishAddingOperators()
 //   Brad Whitlock, Thu Mar 20 12:16:08 PDT 2003
 //   I prevented the menus from being enabled if there are no plugins.
 //
-//   Cyrus Harrison, Thu Jul  3 09:16:15 PDT 2008
-//   Initial Qt4 Port.
-//
 // ****************************************************************************
 
 void
 QvisPlotManagerWidget::EnablePluginMenus()
 {
     pluginsLoaded = true;
-    plotAttsMenuAct->setEnabled(plotAttsMenu->actions().count() > 0 );
-    operatorAttsMenuAct->setEnabled(operatorAttsMenu->actions().count() > 0 );
+    plotMenuBar->setItemEnabled(plotAttsMenuId, plotAttsMenu->count() > 0);
+    plotMenuBar->setItemEnabled(operatorAttsMenuId, operatorAttsMenu->count() > 0);
+    plotMenuBar->update();
 }
 
 // ****************************************************************************
@@ -1561,7 +1494,7 @@ QvisPlotManagerWidget::UpdatePlotVariableMenu()
                 this, SLOT(addPlotHelper(int, const QString &)));
             this->maxVarCount = (varCount > this->maxVarCount) ? varCount : this->maxVarCount;
             bool hasEntries = (varCount > 0);
-            plotMenu->actions()[i]->setEnabled(hasEntries);
+            plotMenu->setItemEnabled(i, hasEntries);
         }
         visitTimer->StopTimer(id, "Updating menus");
 
@@ -1615,9 +1548,6 @@ QvisPlotManagerWidget::UpdatePlotVariableMenu()
 //   Brad Whitlock, Fri Apr 15 09:20:00 PDT 2005
 //   I removed code to disable the widgets when the engine is executing.
 //
-//   Cyrus Harrison, Thu Jul  3 09:16:15 PDT 2008
-//   Initial Qt4 Port.
-//
 // ****************************************************************************
 
 void
@@ -1627,11 +1557,11 @@ QvisPlotManagerWidget::UpdatePlotAndOperatorMenuEnabledState()
     // These values will be used to set the enabled state for the items in
     // the plot and operator menu.
     //
-    bool plotMenuEnabled = plotMenuAct->isEnabled();
-    bool plotAttsMenuEnabled = plotAttsMenuAct->isEnabled();
-    bool operatorMenuEnabled = operatorMenuAct->isEnabled();
-    bool operatorAttsMenuEnabled = operatorAttsMenuAct->isEnabled();
-    bool varMenuEnabled = varMenuAct->isEnabled();
+    bool plotMenuEnabled = plotMenuBar->isItemEnabled(plotMenuId);
+    bool plotAttsMenuEnabled = plotMenuBar->isItemEnabled(plotAttsMenuId);
+    bool operatorMenuEnabled = plotMenuBar->isItemEnabled(operatorMenuId);
+    bool operatorAttsMenuEnabled = plotMenuBar->isItemEnabled(operatorAttsMenuId);
+    bool varMenuEnabled = plotMenuBar->isItemEnabled(varMenuId);
 
     if(pluginsLoaded)
     {
@@ -1642,14 +1572,13 @@ QvisPlotManagerWidget::UpdatePlotAndOperatorMenuEnabledState()
         bool somePlotMenusEnabled = false;
         for(i = 0; i < plotPlugins.size(); ++i)
             somePlotMenusEnabled |= (plotPlugins[i].varMenu->count() > 0);
-        
+
         bool someOperatorMenusEnabled = false;
-        
-        foreach(QAction *action,operatorMenu->actions())
-            someOperatorMenusEnabled |= action->isEnabled();        
-        
-        bool haveAvailablePlots = plotAttsMenu->actions().count() > 0;
-        bool haveAvailableOperators = operatorAttsMenu->actions().count() > 0;
+        for(i = 0; i < operatorMenu->count(); ++i)
+            someOperatorMenusEnabled |= operatorMenu->isItemEnabled(i);
+
+        bool haveAvailablePlots = plotAttsMenu->count() > 0;
+        bool haveAvailableOperators = operatorAttsMenu->count() > 0;
         bool haveOpenFile = !fileServer->GetOpenFile().Empty();
 
         plotMenuEnabled = haveAvailablePlots &&
@@ -1668,39 +1597,39 @@ QvisPlotManagerWidget::UpdatePlotAndOperatorMenuEnabledState()
     bool different = false;
     if(this->updatePlotVariableMenuEnabledState)
     {
-        different = plotMenuAct->isEnabled() != plotMenuEnabled;
+        different = plotMenuBar->isItemEnabled(plotMenuId) != plotMenuEnabled;
         if(different)
-            plotMenuAct->setEnabled(plotMenuEnabled);
+            plotMenuBar->setItemEnabled(plotMenuId, plotMenuEnabled);
         needUpdate |= different;
     }
 
     if(this->updateOperatorMenuEnabledState)
     {
-        different = operatorMenuAct->isEnabled() != operatorMenuEnabled;
+        different = plotMenuBar->isItemEnabled(operatorMenuId) != operatorMenuEnabled;
         if(different)
-            operatorMenuAct->setEnabled(operatorMenuEnabled);
+            plotMenuBar->setItemEnabled(operatorMenuId, operatorMenuEnabled);
         needUpdate |= different;
     }
 
     if(this->updateVariableMenuEnabledState)
     {
-        different = varMenuAct->isEnabled() != varMenuEnabled;
+        different = plotMenuBar->isItemEnabled(varMenuId) != varMenuEnabled;
         if(different)
-            varMenuAct->setEnabled(varMenuEnabled);
+            plotMenuBar->setItemEnabled(varMenuId, varMenuEnabled);
         needUpdate |= different;
     }
 
-    different = operatorAttsMenuAct->isEnabled() != operatorAttsMenuEnabled;
+    different = plotMenuBar->isItemEnabled(operatorAttsMenuId) != operatorAttsMenuEnabled;
     if(different)
     {
-        operatorAttsMenuAct->setEnabled(operatorAttsMenuEnabled);
+        plotMenuBar->setItemEnabled(operatorAttsMenuId, operatorAttsMenuEnabled);
         needUpdate |= different;
     }
 
-    different = plotAttsMenuAct->isEnabled() != plotAttsMenuEnabled;
+    different = plotMenuBar->isItemEnabled(plotAttsMenuId) != plotAttsMenuEnabled;
     if(different)
     {
-        plotAttsMenuAct->setEnabled(plotAttsMenuEnabled);
+        plotMenuBar->setItemEnabled(plotAttsMenuId, plotAttsMenuEnabled);
         needUpdate |= different;
     }
 
@@ -1866,6 +1795,8 @@ QvisPlotManagerWidget::SubjectRemoved(Subject *TheRemovedSubject)
         plotList = 0;
     else if(TheRemovedSubject == globalAtts)
         globalAtts = 0;
+    else if(TheRemovedSubject == pluginAtts)
+        pluginAtts = 0;
     else if(TheRemovedSubject == exprList)
         exprList = 0;
     else if(TheRemovedSubject == windowInfo)
@@ -1904,10 +1835,24 @@ QvisPlotManagerWidget::ConnectGlobalAttributes(GlobalAttributes *ga)
 }
 
 void
+QvisPlotManagerWidget::ConnectPluginManagerAttributes(PluginManagerAttributes *pa)
+{
+    pluginAtts = pa;
+    pluginAtts->Attach(this);
+}
+
+void
 QvisPlotManagerWidget::ConnectWindowInformation(WindowInformation *wi)
 {
     windowInfo = wi;
     windowInfo->Attach(this);
+}
+
+void
+QvisPlotManagerWidget::ConnectDatabaseMetaData(avtDatabaseMetaData *md)
+{
+    metaData = md;
+    metaData->Attach(this);
 }
 
 // ****************************************************************************
@@ -1926,9 +1871,6 @@ QvisPlotManagerWidget::ConnectWindowInformation(WindowInformation *wi)
 //   Brad Whitlock, Thu Apr 10 15:59:22 PST 2003
 //   I made it emit the activatePlotWindow signal directly.
 //
-//   Cyrus Harrison, Thu Jul  3 09:16:15 PDT 2008
-//   Initial Qt4 Port.
-//
 // ****************************************************************************
 
 void
@@ -1939,10 +1881,10 @@ QvisPlotManagerWidget::keyReleaseEvent(QKeyEvent *key)
     else if(key->key() == Qt::Key_Enter || key->key() == Qt::Key_Return)
     {
         // Activate the windows for all of the selected plots.
-        int top = qMax(plotListBox->count(), plotList->GetNumPlots());
+        int top = QMAX(plotListBox->count(), plotList->GetNumPlots());
         for(int i = 0; i < top; ++i)
         {
-            if(plotListBox->item(i)->isSelected())
+            if(plotListBox->isSelected(i))
             {
                 int plotType = plotList->GetPlots(i).GetPlotType();
                 emit activatePlotWindow(plotType);
@@ -2071,9 +2013,6 @@ QvisPlotManagerWidget::drawPlots()
 //   I removed code to open a database in the file server since we now do
 //   not want the open database to change when we select active plots.
 //
-//   Cyrus Harrison, Thu Jul  3 09:16:15 PDT 2008
-//   Initial Qt4 Port.
-//
 // ****************************************************************************
 
 void
@@ -2091,7 +2030,7 @@ QvisPlotManagerWidget::setActivePlots()
     //
     for(i = 0; i < plotListBox->count(); ++i)
     {
-        if(plotListBox->item(i)->isSelected())
+        if(plotListBox->isSelected(i))
         {
             newPlotSelection.push_back(i);
 
@@ -2209,51 +2148,6 @@ QvisPlotManagerWidget::removeOperator(int operatorIndex)
 }
 
 // ****************************************************************************
-// Method: QvisPlotManagerWidget::activatePlotWindow
-//
-// Purpose: 
-//   This is a Qt slot function called when the plot window is changed.
-//
-// Arguments:
-//   action: The menu item that was clicked.
-//
-// Programmer: Cyrus Harrison
-// Creation:   Tue Jul  8 13:38:08 PDT 2008
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-void
-QvisPlotManagerWidget::activatePlotWindow(QAction *action)
-{
-    emit activatePlotWindow(plotAttsMenu->actions().indexOf(action));
-}
-
-// ****************************************************************************
-// Method: QvisPlotManagerWidget::activateOperatorWindow
-//
-// Purpose: 
-//   This is a Qt slot function called when the operator window is changed.
-//
-// Arguments:
-//   action: The menu item that was clicked.
-//
-// Programmer: Cyrus Harrison
-// Creation:   Tue Jul  8 13:38:08 PDT 2008
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-void
-QvisPlotManagerWidget::activateOperatorWindow(QAction *action)
-{
-    emit activateOperatorWindow(operatorAttsMenu->actions().indexOf(action));
-}
-
-
-// ****************************************************************************
 // Method: QvisPlotManagerWidget::changeVariable
 //
 // Purpose: 
@@ -2280,7 +2174,7 @@ QvisPlotManagerWidget::changeVariable(int, const QString &varName)
 {
     // Tell the viewer to change the variables of the selected
     // plots to a new variable.
-    GetViewerMethods()->ChangeActivePlotsVar(varName.toStdString());
+    GetViewerMethods()->ChangeActivePlotsVar(varName.latin1());
 }
 
 // ****************************************************************************
@@ -2340,22 +2234,17 @@ QvisPlotManagerWidget::addPlotHelper(int plotType, const QString &varName)
 //   Brad Whitlock, Tue Dec 14 09:13:26 PDT 2004
 //   I removed the code to add an operator and made it emit a signal instead.
 //
-//   Cyrus Harrison, Tue Jul  8 13:26:04 PDT 2008
-//   Initial Qt4 Port.
-//
 // ****************************************************************************
 
 void
-QvisPlotManagerWidget::operatorAction(QAction *action)
+QvisPlotManagerWidget::operatorAction(int index)
 {
-    if(action == operatorRemoveLastAct)
+    if(index == REMOVE_LAST_OPERATOR_ID)
         GetViewerMethods()->RemoveLastOperator();
-    else if(action == operatorRemoveAllAct)
+    else if(index == REMOVE_ALL_OPERATORS_ID)
         GetViewerMethods()->RemoveAllOperators();
     else
-    {
-        emit addOperator(operatorMenu->actions().indexOf(action));
-    }
+        emit addOperator(index);
 }
 
 // ****************************************************************************
@@ -2552,9 +2441,7 @@ QvisPlotManagerWidget::copyThisPlot()
 // Creation:   Thurs July 12, 2007
 //
 // Modifications:
-//   Cyrus Harrison, Thu Jul  3 09:16:15 PDT 2008
-//   Initial Qt4 Port.
-//
+//   
 // ****************************************************************************
 void
 QvisPlotManagerWidget::copyToWinThisPlot()
@@ -2564,17 +2451,25 @@ QvisPlotManagerWidget::copyToWinThisPlot()
                               QMessageBox::Cancel | QMessageBox::Default);
     
     // add in a pop-up menu to allow user to select target window:
-    win1Act = new QAction(tr("Window 1"), 0);
+#if QT_VERSION >= 0x030300
+    win1Act = new QAction(tr("Window 1"), 0, this);
+#else
+    win1Act = new QAction(tr("Window 1"), tr("Window 1"), QKeySequence(), this);
+#endif
     win1Act->setStatusTip(tr("Copy Plot to Window 1"));
     connect( win1Act, SIGNAL(toggled(bool)), this, SIGNAL(CopyPlotToWin(1)));
-    
-    win2Act = new QAction(tr("Window 2"), 0);
+
+#if QT_VERSION >= 0x030300
+    win2Act = new QAction(tr("Window 2"), 0, this);
+#else
+    win2Act = new QAction(tr("Window 2"), tr("Window 2"), QKeySequence(), this);
+#endif
     win2Act->setStatusTip(tr("Copy Plot to Window 2"));
     connect( win2Act, SIGNAL(toggled(bool)), this, SIGNAL(copyPlotToWin(2)));
 
-    WindowChoiceMenu = new QMenu(this);
-    WindowChoiceMenu->addAction(win1Act);
-    WindowChoiceMenu->addAction(win2Act);
+    WindowChoiceMenu = new QPopupMenu(this);
+    win1Act->addTo( WindowChoiceMenu );
+    win2Act->addTo( WindowChoiceMenu );
     
 }
 
@@ -2672,7 +2567,7 @@ QvisPlotManagerWidget::setActivePlot()
     //
     for(i = 0; i < plotListBox->count(); ++i)
     {
-        if(plotListBox->item(i)->isSelected())
+        if(plotListBox->isSelected(i))
         {
             newPlotSelection.push_back(i);
 

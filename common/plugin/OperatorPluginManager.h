@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -102,6 +102,9 @@ class ScriptingOperatorPluginInfo;
 //    Brad Whitlock, Tue Jun 24 10:48:11 PDT 2008
 //    Removed singleton characteristics.
 //
+//    Brad Whitlock, Wed Jun 17 10:24:46 PDT 2009
+//    I added arguments to Initialize.
+//
 // ****************************************************************************
 
 class PLUGIN_API OperatorPluginManager : public PluginManager
@@ -112,7 +115,9 @@ class PLUGIN_API OperatorPluginManager : public PluginManager
 
     void                            Initialize(const PluginCategory pluginCategory,
                                                bool parallel=false,
-                                               const char *pluginDir = 0);
+                                               const char *pluginDir = 0,
+                                               bool readInfo = true,
+                                               PluginBroadcaster *broadcaster=0);
 
     virtual void                    ReloadPlugins();
 

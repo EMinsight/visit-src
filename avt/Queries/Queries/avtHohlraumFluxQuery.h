@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -58,6 +58,15 @@
 //  Programmer: David Bremer
 //  Creation:   November 17, 2006
 //
+//  Modifications:
+//
+//    Brad Whitlock, Fri Apr 17 09:38:35 PDT 2009
+//    I added a PreExecute method.
+//
+//    Eric Brugger, Fri May  8 08:57:33 PDT 2009
+//    I added a flag which has the query optionally use the emissivity divided
+//    by the absorbtivity in place of the emissivity.
+//
 // ****************************************************************************
 
 class QUERY_API avtHohlraumFluxQuery : public avtLineScanQuery
@@ -75,11 +84,13 @@ class QUERY_API avtHohlraumFluxQuery : public avtLineScanQuery
     void                      SetRayCenter(float x, float y, float z);
     void                      SetRadius(float r);
     void                      SetThetaPhi(float thetaInDegrees, float phiInDegrees);
+    void                      SetDivideEmisByAbsorb(bool flag);
 
   protected:
     float                     rayCenter[3];
     float                     radius;
     float                     theta, phi;
+    bool                      divideEmisByAbsorb;
 
     std::string               absVarName;  //e.g. "absorbtivity"
     std::string               emisVarName; //e.g. "emissivity"
@@ -106,6 +117,7 @@ class QUERY_API avtHohlraumFluxQuery : public avtLineScanQuery
 
   private:
     virtual void              ExecuteLineScan(vtkPolyData *pd);
+    virtual void              PreExecute(void);
     virtual void              PostExecute(void);
 };
 

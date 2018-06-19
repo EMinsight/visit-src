@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -36,13 +36,13 @@
 *
 *****************************************************************************/
 #include "XMLEditCodeGeneratorWindow.h"
-#include <QDir>
-#include <QFontMetrics>
-#include <QLayout>
-#include <QProcess>
-#include <QPushButton>
-#include <QTextEdit>
-#include <QTimer>
+#include <qdir.h>
+#include <qfontmetrics.h>
+#include <qlayout.h>
+#include <qprocess.h>
+#include <qpushbutton.h>
+#include <qtextedit.h>
+#include <qtimer.h>
 
 // ****************************************************************************
 // Method: XMLEditCodeGeneratorWindow::XMLEditCodeGeneratorWindow
@@ -60,13 +60,11 @@
 // Creation:   Fri Mar 7 16:21:46 PST 2008
 //
 // Modifications:
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 2008
-//    First pass at porting to Qt 4.4.0
-//
+//   
 // ****************************************************************************
 
-XMLEditCodeGeneratorWindow::XMLEditCodeGeneratorWindow(QWidget *parent) 
-: QMainWindow(parent), xmlFile()
+XMLEditCodeGeneratorWindow::XMLEditCodeGeneratorWindow(QWidget *parent,
+    const char *name) : QMainWindow(parent, name), xmlFile()
 {
     toolIndex = 0;
     currentProcess = 0;
@@ -75,24 +73,21 @@ XMLEditCodeGeneratorWindow::XMLEditCodeGeneratorWindow(QWidget *parent)
 
     QWidget *central = new QWidget(this);
     setCentralWidget(central);
-    
     QVBoxLayout *topLayout = new QVBoxLayout(central);
     topLayout->setSpacing(10);
     topLayout->setMargin(10);
 
-    outputText = new QTextEdit(central);
-    outputText->setWordWrapMode(QTextOption::NoWrap);
+    outputText = new QTextEdit(central, "outputText");
+    outputText->setWordWrap(QTextEdit::NoWrap);
     outputText->setMinimumWidth(fontMetrics().width("X") * 70);
     outputText->setMinimumHeight(fontMetrics().lineSpacing() * 25);
     topLayout->addWidget(outputText, 10);
 
-    QHBoxLayout *buttonLayout = new QHBoxLayout();
+    QHBoxLayout *buttonLayout = new QHBoxLayout(topLayout);
     buttonLayout->addStretch(10);
 
-    QPushButton *dismiss = new QPushButton(tr("Dismiss"), central);
+    QPushButton *dismiss = new QPushButton(tr("Dismiss"), central, "dismiss");
     buttonLayout->addWidget(dismiss);
-    topLayout->addLayout(buttonLayout);
-    
     connect(dismiss, SIGNAL(clicked()), this, SLOT(hide()));
 }
 
@@ -179,9 +174,7 @@ PathToVisIt()
 // Creation:   Fri Mar 7 16:22:52 PST 2008
 //
 // Modifications:
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 2008
-//    First pass at porting to Qt 4.4.0
-//
+//   
 // ****************************************************************************
 
 void
@@ -201,46 +194,44 @@ XMLEditCodeGeneratorWindow::generateOne()
     if(useTools[toolIndex])
     {
         // Create a new process.
-        currentProcess = new QProcess(this);
+        currentProcess = new QProcess(this, xmlTools[toolIndex]);
         QString xmlTool(PathToVisIt() + xmlTools[toolIndex]);
-        
-        QStringList arguments;
-        arguments << "-clobber";
-        
+        currentProcess->addArgument(xmlTool);
+        currentProcess->addArgument("-clobber");
 #if defined(WIN32)
         if(toolIndex == ID_XML2MAKEFILE)
-            arguments << "-version7";
+            currentProcess->addArgument("-version7");
 #endif
-        arguments << xmlFile;
+        currentProcess->addArgument(xmlFile);
 
         // Set the process's working directory.
         QDir d(xmlFile);
-        QString fullName(d.filePath(d.absolutePath()));
-        int slash = fullName.lastIndexOf("/");
+        QString fullName(d.filePath(d.absPath()));
+        int slash = fullName.findRev("/");
         if(slash == -1)
-            slash = fullName.lastIndexOf("\\");
+            slash = fullName.findRev("\\");
         if(slash != -1)
         {
             QString dirName(fullName.left(slash));
-            currentProcess->setWorkingDirectory(dirName);
+            currentProcess->setWorkingDirectory(QDir(dirName));
         }
 
-        connect(currentProcess, SIGNAL(readyReadStandardOutput()), 
+        connect(currentProcess, SIGNAL(readyReadStdout()), 
                 this, SLOT(readProcessStdout()));
-        connect(currentProcess, SIGNAL(readyReadStandardError()), 
+        connect(currentProcess, SIGNAL(readyReadStderr()), 
                 this, SLOT(readProcessStderr()));
         if(toolIndex < ID_XML2AVT)
         {
-            connect(currentProcess, SIGNAL(finished(int, QProcess::ExitStatus)),
+            connect(currentProcess, SIGNAL(processExited()),
                     this, SLOT(generateOne()));
         }
         else
         {
-            connect(currentProcess, SIGNAL(finished(int, QProcess::ExitStatus)),
+            connect(currentProcess, SIGNAL(processExited()),
                     this, SLOT(cleanupProcess()));
         }
         // Run the process.
-        currentProcess->start(xmlTool,arguments);
+        currentProcess->start();
 
         toolIndex++;
     }
@@ -263,19 +254,19 @@ XMLEditCodeGeneratorWindow::generateOne()
 // Creation:   Fri Mar 7 16:23:30 PST 2008
 //
 // Modifications:
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
+//   
 // ****************************************************************************
 
 void
 XMLEditCodeGeneratorWindow::readProcessStdout()
 {
     // The process has some data to read.
-    // set the channel to standard out, and read
-    currentProcess->setReadChannel(QProcess::StandardOutput);
-    QByteArray res = currentProcess->readAll();
-    outputText->append(QString(res));
+    while(currentProcess->canReadLineStdout())
+    {
+        QString s(currentProcess->readLineStdout());
+        outputText->insert(s + "\n");
+        outputText->scrollToBottom();
+    }
 }
 
 // ****************************************************************************
@@ -288,19 +279,19 @@ XMLEditCodeGeneratorWindow::readProcessStdout()
 // Creation:   Fri Mar 7 16:23:30 PST 2008
 //
 // Modifications:
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
+//   
 // ****************************************************************************
 
 void
 XMLEditCodeGeneratorWindow::readProcessStderr()
 {
     // The process has some data to read.
-    // set the channel to standard err, and read
-    currentProcess->setReadChannel(QProcess::StandardError);
-    QByteArray res = currentProcess->readAll();
-    outputText->append(QString(res));
+    while(currentProcess->canReadLineStderr())
+    {
+        QString s(currentProcess->readLineStderr());
+        outputText->insert(s + "\n");
+        outputText->scrollToBottom();
+    }
 }
 
 // ****************************************************************************
@@ -313,9 +304,7 @@ XMLEditCodeGeneratorWindow::readProcessStderr()
 // Creation:   Fri Mar 7 16:23:58 PST 2008
 //
 // Modifications:
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
+//   
 // ****************************************************************************
 
 void
@@ -323,8 +312,8 @@ XMLEditCodeGeneratorWindow::cleanupProcess()
 {
     if(currentProcess != 0)
     {
-        if(currentProcess->state() == QProcess::Running)
-            currentProcess->terminate();
+        if(currentProcess->isRunning())
+            currentProcess->tryTerminate();
         delete currentProcess;
         currentProcess = 0;
     }

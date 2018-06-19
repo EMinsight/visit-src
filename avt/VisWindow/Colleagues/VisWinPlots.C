@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -626,6 +626,69 @@ VisWinPlots::ClearPlots(void)
         VisWindow *vw = mediator;
         vw->EnableUpdates();
     }
+}
+
+
+// ****************************************************************************
+//  Method: VisWinPlots::GetPlotListIndex
+//
+//  Purpose: If the vis window has a particular plot identified by name, return
+//           that plot's index in the window's list of active plots.  If not,
+//           return -1.
+//
+//  Arguments:
+//      plotName : Name of the plot being queried
+//
+//  Programmer: Mark Blair
+//  Creation:   Wed Aug 30 14:09:00 PDT 2006
+//
+// ****************************************************************************
+
+int
+VisWinPlots::GetPlotListIndex(const char *plotName)
+{
+    int plotIndex;
+
+    for (plotIndex = 0; plotIndex < plots.size(); plotIndex++)
+    {
+        if (strcmp(plots[plotIndex]->GetTypeName(), plotName) == 0) break;
+    }
+    
+    if (plotIndex >= plots.size()) plotIndex = -1;
+    
+    return plotIndex;
+}
+
+
+// ****************************************************************************
+//  Method: VisWinPlots::GetPlotInfoAtts
+//
+//  Purpose: If plot identified by name is among the plots for this VisWindow,
+//           returns pointer to any attributes that were pushed by that plot.
+//           Returns NULL if no such plot exists or if no attributes were
+//           pushed by the plot.
+//
+//  Arguments:
+//      plotName : Name (type name) of the plot being queried
+//
+//  Programmer: Mark Blair
+//  Creation:   Wed Oct 25 15:12:55 PDT 2006
+//
+// ****************************************************************************
+
+const PlotInfoAttributes *
+VisWinPlots::GetPlotInfoAtts(const char *plotName)
+{
+    int plotIndex;
+
+    for (plotIndex = 0; plotIndex < plots.size(); plotIndex++)
+    {
+        if (strcmp(plots[plotIndex]->GetTypeName(), plotName) == 0) break;
+    }
+    
+    if (plotIndex >= plots.size()) return NULL;
+    
+    return plots[plotIndex]->GetBehavior()->GetPlotInfoAtts();
 }
 
 
@@ -1947,7 +2010,22 @@ VisWinPlots::TransparenciesExist()
     return transparencyActor->TransparenciesExist();
 }
 
+// ****************************************************************************
+//  Method: VisWinPlots::GetTransparencyActor
+//
+//  Purpose:
+//    Gives the transparency actor used when sorting geometry.
+//
+//  Programmer: Tom Fogal
+//  Creation:   May 25, 2009
+//
+// ****************************************************************************
 
+avtTransparencyActor *
+VisWinPlots::GetTransparencyActor()
+{
+    return transparencyActor;
+}
 
 // ****************************************************************************
 //  Method: VisWinPlots::SuspendOpaqueGeometry

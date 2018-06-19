@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -71,7 +71,6 @@
 #include <ViewerPlotList.h>
 #include <GlobalLineoutAttributes.h>
 #include <ViewerQueryManager.h>
-#include <ViewerState.h>
 #include <ViewerSubject.h>
 #include <ViewerWindowManager.h>
 
@@ -94,6 +93,13 @@ extern ViewerSubject *viewerSubject;   // FIX_ME This is a hack.
 //
 #define min(x,y) ((x) < (y) ? (x) : (y))
 #define max(x,y) ((x) > (y) ? (x) : (y))
+
+#if 1
+// temp
+#include <qmainwindow.h>
+#include <qtable.h>
+#endif
+
 
 //
 // This is a static member of ViewerPlot.
@@ -190,9 +196,6 @@ int ViewerPlot::numPlotsCreated = 0;
 //    Jeremy Meredith, Tue Feb 19 14:23:59 EST 2008
 //    Added explicit storage for meshname.
 //
-//    Brad Whitlock, Fri May  9 14:38:03 PDT 2008
-//    Qt 4.
-//
 // ****************************************************************************
 
 ViewerPlot::ViewerPlot(const int type_,ViewerPlotPluginInfo *viewerPluginInfo_,
@@ -203,7 +206,7 @@ ViewerPlot::ViewerPlot(const int type_,ViewerPlotPluginInfo *viewerPluginInfo_,
     const int nStates,      // The number of total database states
     const int cacheIndex_,  // The initial active cache index
     const int nCacheEntries // The number of cache entries.
-    ) : ViewerBase(0), 
+    ) : ViewerBase(0,"ViewerPlot"), 
         engineKey(ek_), hostName(hostName_), databaseName(databaseName_),
         variableName(variableName_)
 {
@@ -2525,8 +2528,7 @@ ViewerPlot::SetOperatorAttsFromClient(const int type)
             "Please make one of the %1 operators be the active operator by "
             "expanding the plot and clicking one of its %1 operators so "
             "VisIt will apply the operator settings to the correct %1 "
-            "operator.");
-        msg.replace("%1", operators[firstIndex]->GetMenuName());
+            "operator.").arg(operators[firstIndex]->GetMenuName());
         Warning(msg);
     }
     else if(firstIndex != -1)
@@ -2867,6 +2869,9 @@ ViewerPlot::GetReader() const
 //    Kathleen Bonnell, Wed May  9 17:27:40 PDT 2007 
 //    Retrieve the correct ScaleMode before setting it in avtPlot. 
 //
+//    Kathleen Bonnell, Tue Mar  3 10:18:50 PST 2009
+//    CanDo*ViewScaling now retrieved from viewerPluginInfo, not plot.
+//
 // ****************************************************************************
 
 void
@@ -3045,13 +3050,13 @@ ViewerPlot::CreateActor(bool createNew,
     plotList[cacheIndex]->SetForegroundColor(fgColor);
     plotList[cacheIndex]->SetIndex(networkID);
     plotList[cacheIndex]->SetCurrentSILRestriction(silr);
-    if (plotList[cacheIndex]->CanDoCurveViewScaling())
+    if (viewerPluginInfo->PermitsCurveViewScaling())
     {
         viewerPlotList->GetScaleMode(xScaleMode, yScaleMode, WINMODE_CURVE);
         plotList[cacheIndex]->SetScaleMode(xScaleMode, yScaleMode, WINMODE_CURVE);
     }
     else if (2 == GetSpatialDimension() && 
-             plotList[cacheIndex]->CanDo2DViewScaling())
+             viewerPluginInfo->Permits2DViewScaling())
     {
         viewerPlotList->GetScaleMode(xScaleMode, yScaleMode, WINMODE_2D);
         plotList[cacheIndex]->SetScaleMode(xScaleMode, yScaleMode, WINMODE_2D);
@@ -3590,6 +3595,9 @@ ViewerPlot::SetSpatialExtentsType(avtExtentType extsType)
 //    Brad Whitlock, Wed Mar 21 22:43:18 PST 2007
 //    Pass GetPlotName to MakePlot.
 //
+//    Hank Childs, Tue Jul 14 14:28:36 PDT 2009
+//    Add support for named selections.
+//
 // ****************************************************************************
 
 bool
@@ -3604,6 +3612,16 @@ ViewerPlot::ExecuteEngineRPC()
 
     ViewerEngineManager *engineMgr = ViewerEngineManager::Instance();
     plotAtts->GetAtts(cacheIndex, curPlotAtts);
+
+    // If there is a named selection, we need to tell the engine before the
+    // plot is created.
+    if (namedSelection != "")
+    {
+        std::vector<std::string> ids;
+        ids.push_back(GetPlotName());
+        engineMgr->ApplyNamedSelection(engineKey, ids, namedSelection);
+    }
+
     bool successful;
     if (viewerPlotList->GetMaintainDataMode())
     {
@@ -4523,6 +4541,9 @@ ViewerPlot::CheckCache(const int i0, const int i1, const bool force)
 //   Brad Whitlock, Mon Apr 5 11:38:14 PDT 2004
 //   I changed the names of certain fields that are saved out.
 //
+//   Hank Childs, Tue Jul 14 11:22:58 PDT 2009
+//   Added support for named selections.
+//
 // ****************************************************************************
 
 void
@@ -4602,6 +4623,7 @@ ViewerPlot::CreateNode(DataNode *parentNode)
     CompactSILRestrictionAttributes *csilr = silr->MakeCompactAttributes();
     csilr->CreateNode(plotNode, false, true);
     delete csilr;
+    plotNode->AddNode(new DataNode("namedSelection", namedSelection));
 }
 
 // ****************************************************************************
@@ -4624,6 +4646,9 @@ ViewerPlot::CreateNode(DataNode *parentNode)
 //
 //   Brad Whitlock, Mon Apr 5 11:41:57 PDT 2004
 //   I changed the name of certain fields.
+//
+//   Hank Childs, Tue Jul 14 11:22:58 PDT 2009
+//   Added support for named selections.
 //
 // ****************************************************************************
 
@@ -4789,6 +4814,8 @@ ViewerPlot::SetFromNode(DataNode *parentNode, const std::string &configVersion)
         }
         ENDTRY
     }
+    if((node = plotNode->GetNode("namedSelection")) != 0)
+        SetNamedSelection(node->AsString());
 }
 
 // ****************************************************************************
@@ -4935,6 +4962,9 @@ ViewerPlot::SessionContainsErrors(DataNode *parentNode)
 //   Brad Whitlock, Mon Mar 19 18:14:18 PST 2007
 //   Made it set the plot's name.
 //
+//   Kathleen Bonnell, Mon Feb  9 17:35:58 PST 2009
+//   Made it set the operators' names, via AddOperator call.
+//
 // ****************************************************************************
 
 void
@@ -4971,7 +5001,8 @@ ViewerPlot::InitializePlot(Plot &plot) const
     // Set the operators that are applied to the plot
     for (int op_index = 0; op_index < GetNOperators(); ++op_index)
     {
-        plot.AddOperator(GetOperator(op_index)->GetType());
+        plot.AddOperator(GetOperator(op_index)->GetType(), 
+                         GetOperator(op_index)->GetName());
     }
     plot.SetActiveOperator(activeOperatorIndex);
 }
@@ -5233,44 +5264,23 @@ ViewerPlot::GetMeshType() const
         return AVT_UNKNOWN_MESH;
 }
 
+
 // ****************************************************************************
-// Method: ViewerPlotList::UpdatePlotInformation
+//  Method: ViewerPlot::GetPlotInfoAtts
 //
-// Purpose: 
-//   Send the plot information back to the client.
+//  Purpose: Return the PlotInfoAttributes for this plot. 
 //
-// Programmer: Brad Whitlock
-// Creation:   Thu Jan  8 15:05:14 PST 2009
+//  Programmer: Kathleen Bonnell 
+//  Creation:   June 20, 2006 
 //
-// Modifications:
-//   
+//  Modifications:
+//
 // ****************************************************************************
 
-void
-ViewerPlot::UpdatePlotInformation() const
+const PlotInfoAttributes *
+ViewerPlot::GetPlotInfoAtts() 
 {
-    // Let's send the plot info atts too if they are different.
-    PlotInfoAttributes *info = GetViewerState()->GetPlotInformation(GetType());
-    if(info != 0)
-    {
-        bool sendEmpty = false;
-        if(*plotList[cacheIndex] != 0)
-        {
-            if(*info != (*plotList[cacheIndex])->GetPlotInformation())
-            {
-                *info = (*plotList[cacheIndex])->GetPlotInformation();
-                info->Notify(); 
-            }
-        }
-        else
-            sendEmpty = true;
-
-        if(sendEmpty)
-        {
-            info->Reset();
-            info->Notify();
-        }
-    }
+    return (*plotList[cacheIndex])->GetPlotInfoAtts();
 }
 
 // ****************************************************************************
@@ -5448,31 +5458,20 @@ ViewerPlot::AlternateDisplayUpdatePlotAttributes()
 // Creation:   Fri Feb 23 15:15:52 PST 2007
 //
 // Modifications:
-//   Brad Whitlock, Fri Jan 9 15:07:35 PST 2009
-//   Added exception handling to prevent exceptions from being propagated into
-//   the Qt event loop.
 //   
 // ****************************************************************************
 
 void
 ViewerPlot::emitAlternateDisplayChangedPlotAttributes()
 {
-    TRY
-    {
-        // Make sure that the current plot attributes get put into the plotAtts.
-        updateFromAlternateDisplay = true;
-        SetPlotAtts(curPlotAtts);
-        updateFromAlternateDisplay = false;
+    // Make sure that the current plot attributes get put into the plotAtts.
+    updateFromAlternateDisplay = true;
+    SetPlotAtts(curPlotAtts);
+    updateFromAlternateDisplay = false;
 
-        // Tell ViewerSubject that the plot atts changed so it can make the plot be the
-        // active plot and have it send the updated plot attributes to the clients.
-        emit AlternateDisplayChangedPlotAttributes(this);
-    }
-    CATCHALL(...)
-    {
-        ; // nothing
-    }
-    ENDTRY
+    // Tell ViewerSubject that the plot atts changed so it can make the plot be the
+    // active plot and have it send the updated plot attributes to the clients.
+    emit AlternateDisplayChangedPlotAttributes(this);
 }
 
 // ****************************************************************************
@@ -5537,11 +5536,23 @@ ViewerPlot::AlternateDisplayAllowClientUpdates() const
 //   Kathleen Bonnell, Wed May  9 17:27:40 PDT 2007 
 //   Added WINDOW_MODE arg. 
 //
+//   Kathleen Bonnell, Tue Mar  3 10:20:56 PST 2009
+//   Only set scaling if appropriate to do so.
+//
 // ****************************************************************************
 
 void
 ViewerPlot::SetScaleMode(ScaleMode ds, ScaleMode rs, WINDOW_MODE wm)
 {
+    if (wm != WINMODE_CURVE && wm != WINMODE_2D)
+        return;
+
+    else if (wm == WINMODE_CURVE && !viewerPluginInfo->PermitsCurveViewScaling())
+        return;
+
+    else if (wm == WINMODE_2D && !viewerPluginInfo->Permits2DViewScaling())
+        return;
+
     xScaleMode = ds;
     yScaleMode = rs;
 
@@ -5569,7 +5580,7 @@ ViewerPlot::SetScaleMode(ScaleMode ds, ScaleMode rs, WINDOW_MODE wm)
 
 
 // ****************************************************************************
-// Method: ViewerPlot::CanDoLogViewScaling
+// Method: ViewerPlot::PermitsLogViewScaling
 //
 // Purpose: 
 //   Returns whether or not this plot supports log view scaling.
@@ -5581,27 +5592,27 @@ ViewerPlot::SetScaleMode(ScaleMode ds, ScaleMode rs, WINDOW_MODE wm)
 // Creation:   May 11, 2007
 //
 // Modifications:
-//  
+//    Kathleen Bonnell, Tue Mar  3 10:18:50 PST 2009
+//    Renamed to PermitsLogViewScaling, retrieve plot's flag from 
+//    viewerPluginInfo, not plot
+//
 // ****************************************************************************
 
 bool 
-ViewerPlot::CanDoLogViewScaling(WINDOW_MODE wm)
+ViewerPlot::PermitsLogViewScaling(WINDOW_MODE wm)
 {
     bool rv = false;
 
-    if (*plotList[cacheIndex] != NULL)
+    switch (wm)
     {
-        switch (wm)
-        {
-            case WINMODE_CURVE:
-                rv = plotList[cacheIndex]->CanDoCurveViewScaling();
-                break;
-            case WINMODE_2D:
-                rv = plotList[cacheIndex]->CanDo2DViewScaling();
-                break;
-            default:
-                break;
-        }
+        case WINMODE_CURVE:
+            rv = viewerPluginInfo->PermitsCurveViewScaling();
+            break;
+        case WINMODE_2D:
+            rv = viewerPluginInfo->Permits2DViewScaling();
+            break;
+        default:
+            break;
     }
     return rv;
 }
@@ -5635,3 +5646,21 @@ ViewerPlot::AdaptsToAnyWindowMode(void)
 }
 
 
+// ****************************************************************************
+// Method: ViewerPlot::SetNumPlotsCreated
+//
+// Purpose: 
+//   Set the number of plots created.
+//
+// Programmer: Eric Brugger
+// Creation:   February 12, 2010
+//
+// Modifications:
+//  
+// ****************************************************************************
+
+void
+ViewerPlot::SetNumPlotsCreated(int n)
+{
+    numPlotsCreated = n;
+}

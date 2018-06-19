@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -67,7 +67,6 @@ class QvisScribbleOpacityBar;
 class QvisSpectrumBar;
 class QvisVariableButton;
 class QvisCMap2Widget;
-class TransferFunction2D;
 typedef int WidgetID;
 
 // ****************************************************************************
@@ -134,13 +133,6 @@ typedef int WidgetID;
 //    this, we get weird memory errors when deleting the window when
 //    SLIVR is enabled.
 //
-//    Josh Stratton, Wed Dec 17 12:30:01 MST 2008
-//    Added handles for Tuvok's controls
-//
-//    Brad Whitlock, Thu Dec 18 15:23:06 PST 2008
-//    I reorganized the window a little and added methods for dealing with
-//    histogram data.
-//
 // ****************************************************************************
 
 class QvisVolumePlotWindow : public QvisPostableWindowObserver
@@ -159,27 +151,20 @@ public slots:
     virtual void reset();
 protected:
     void UpdateWindow(bool doAll);
-    void UpdateHistogram();
     void UpdateColorControlPoints();
     void UpdateGaussianControlPoints();
     void UpdateFreeform();
-    void Update2DTransferFunction();
     void Apply(bool ignore = false);
     void GetCurrentValues(int which_widget);
     void CopyGaussianOpacitiesToFreeForm();
     void SetResampleTargetSliderFromAtts();
     void SetRendererSamplesSliderFromAtts();
-    QWidget *Create1DTransferFunctionGroup(int);
-    QWidget *Create2DTransferFunctionGroup();
-    void CreateColorGroup(QWidget *, QVBoxLayout *, int);
-    void CreateOpacityGroup(QWidget *, QVBoxLayout *, int);
-    void CreateOptions(int);
 private slots:
     void addControlPoint();
     void removeControlPoint();
     void alignControlPoints();
     void controlPointMoved(int index, float position);
-    void popupColorSelect(int index, const QPoint &);
+    void popupColorSelect(int index);
     void selectedColor(const QColor &color);
     void interactionModeChanged(int index);
     void showColorsInAlphaWidgetToggled(bool);
@@ -222,8 +207,8 @@ private:
     int                      colorCycle;
     bool                     showColorsInAlphaWidget;
 
-    // 1D transfer function widgets
-    QWidget                  *tfParent1D;
+    // Widgets and layouts.
+    QvisCMap2Widget          *transferFunc2D;
     QGroupBox                *colorWidgetGroup;
     QCheckBox                *smoothCheckBox;
     QCheckBox                *equalCheckBox;
@@ -233,9 +218,6 @@ private:
     QLineEdit                *colorMin;
     QCheckBox                *colorMaxToggle;
     QLineEdit                *colorMax;
-    QComboBox                *scaling;
-    QLabel                   *skewLabel;
-    QLineEdit                *skewLineEdit;
     QvisVariableButton       *opacityVariable;
     QCheckBox                *opacityMinToggle;
     QLineEdit                *opacityMin;
@@ -256,12 +238,6 @@ private:
     QPushButton              *oneButton;
     QPushButton              *smoothButton;
     QvisOpacitySlider        *attenuationSlider;
-
-    // 2D transfer function widgets
-    QWidget                  *tfParent2D;
-    QvisCMap2Widget          *transferFunc2D;
-
-    // General widgets
     QCheckBox                *legendToggle;
     QCheckBox                *lightingToggle;
     QCheckBox                *softwareToggle;
@@ -270,12 +246,12 @@ private:
     QButtonGroup             *gradientButtonGroup;
     QButtonGroup             *samplingButtonGroup;
     QButtonGroup             *transferFunctionGroup;
-    QRadioButton             *oneDimButton;
-    QRadioButton             *twoDimButton;
     QRadioButton             *rasterizationButton;
     QRadioButton             *kernelButton;
     QRadioButton             *centeredDiffButton;
     QRadioButton             *sobelButton;
+    QRadioButton             *oneDimButton;
+    QRadioButton             *twoDimButton;
     QLabel                   *resampleTargetLabel;
     QLineEdit                *resampleTarget;
     QSlider                  *resampleTargetSlider;
@@ -283,6 +259,9 @@ private:
     QLineEdit                *num3DSlices;
     QLabel                   *samplesPerRayLabel;
     QLineEdit                *samplesPerRay;
+    QButtonGroup             *scalingButtons;
+    QLabel                   *skewLabel;
+    QLineEdit                *skewLineEdit;
     QLabel                   *rendererSamplesLabel;
     QSlider                  *rendererSamplesSlider;
     QLineEdit                *rendererSamples;

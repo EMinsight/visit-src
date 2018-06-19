@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -74,6 +74,8 @@ class vtkUnstructuredGrid;
 //    Added support for cell-centered vars (through VARLOCATION).
 //    Renamed ParseNodes* to ParseArrays* to reflect this capability.
 //
+//    Mark C. Miller, Tue Jan 12 17:35:54 PST 2010
+//    Added solTime data member and GetTime() method.
 // ****************************************************************************
 
 class avtTecplotFileFormat : public avtSTMDFileFormat
@@ -88,6 +90,8 @@ class avtTecplotFileFormat : public avtSTMDFileFormat
     virtual vtkDataSet    *GetMesh(int, const char *);
     virtual vtkDataArray  *GetVar(int, const char *);
     virtual vtkDataArray  *GetVectorVar(int, const char *);
+
+    double                 GetTime() { return solTime;} ;
 
   protected:
     std::string GetNextToken();
@@ -118,6 +122,7 @@ class avtTecplotFileFormat : public avtSTMDFileFormat
     int Zindex;
     int spatialDimension;
     int topologicalDimension;
+    double solTime;
 
     std::string title;
     int                       numTotalVars;
@@ -135,6 +140,8 @@ class avtTecplotFileFormat : public avtSTMDFileFormat
     std::map<std::string, std::vector<vtkFloatArray*> > vars;
 
     virtual void           PopulateDatabaseMetaData(avtDatabaseMetaData *);
+
+    avtMeshType            DetermineAVTMeshType() const;
 };
 
 

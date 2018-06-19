@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -40,33 +40,30 @@
 #define QVIS_SIMULATION_WINDOW_H
 #include <gui_exports.h>
 #include <QvisPostableWindowObserver.h>
-#include <QMap>
+#include <qmap.h>
 #include <avtDatabaseMetaData.h>
 
 
 // Forward declarations.
-class QCheckBox;
-class QColor;
+class EngineList;
 class QComboBox;
-class QGridLayout;
 class QGroupBox;
-class QHBoxLayout;
 class QLabel;
-class QLineEdit;
 class QProgressBar;
 class QPushButton;
-class QScrollArea;
-class QSpinBox;
-class QString;
-class QTreeWidget;
-
-class QvisSimulationCommandWindow;
-class QvisSimulationMessageWindow;
-class QvisStripChartMgr;
-class QvisUiLoader;
-
-class EngineList;
 class StatusAttributes;
+class QLineEdit;
+class QListView;
+class QString;
+class QSpinBox;
+class QCheckBox;
+class QGridLayout;
+class QScrollView;
+class QColor;
+        
+class QHBoxLayout;
+class QvisStripChartMgr;
+
 class avtSimulationCommandSpecification;
 
 // ****************************************************************************
@@ -125,21 +122,32 @@ private:
     QString GetUIFileDirectory() const;
     QString GetUIFile() const;
     void ViewerSendCMD ( int simIndex, QString cmd);
-    QColor getColor(const QString &color) const;
+    QColor *getColor(const QString color);
 private slots:
     void closeEngine();
     void interruptEngine();
     void selectEngine(int index);
     void clearCache();
     void showCommandWindow();
-    void executePushButtonCommand(const QString &cmd);
-    void executeEnableTimeRange(const QString &cmd);
-    void executeStartCommand(const QString &cmd);
-    void executeStopCommand(const QString &cmd);
-    void executeStepCommand(const QString &cmd);
+    void executeSimCommand();
+    void executePushButtonCommand(int);
+    void executePushButtonCommand0();
+    void executePushButtonCommand1();
+    void executePushButtonCommand2();
+    void executePushButtonCommand3();
+    void executePushButtonCommand4();
+    void executePushButtonCommand5();
+    void executePushButtonCommand6();
+    void executePushButtonCommand7();
+    void executePushButtonCommand8();
+    void executeEnableTimeRange();
+    void executeSpinBoxStartCommand();
+    void executeSpinBoxStopCommand();
+    void executeSpinBoxStepCommand();
     void zoomOut();
     void zoomIn();
     void focus();
+    void postStripChartWindow();
     
 private:
     EngineList           *engines;
@@ -152,18 +160,27 @@ private:
     SimulationMetaDataMap metadataMap;
 
     QComboBox          *simCombo;
-    QTreeWidget        *simInfo;
+    QListView          *simInfo;
     QLabel             *simulationMode;
     QProgressBar       *totalProgressBar;
+    QHBoxLayout        *progressLayout;
+    QHBoxLayout        *progressLayout2;
+    QLineEdit          *startCycle;
+    QLineEdit          *stopCycle;
+    QLineEdit          *stepCycle;
+    QCheckBox          *enableTimeRange;
+    QLabel             *startLabel;
+    QLabel             *stopLabel;
+    QLabel             *stepLabel;
     QPushButton        *interruptEngineButton;
     QPushButton        *closeEngineButton;
     QPushButton        *clearCacheButton;
+    QLineEdit          *simCommandEdit;
     QWidget            *DynamicCommandsWin;
-    QvisUiLoader       *uiLoader;
+    QPushButton        *cmdButtons[9];
     QMap<int,int>      simulationToEngineListMap;
     QvisStripChartMgr  *stripCharts;
-    QvisSimulationMessageWindow *simMessages;
-    QvisSimulationCommandWindow *simCommands;
+    
 };
 
 #endif

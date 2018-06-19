@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -75,9 +75,6 @@
 //   Brad Whitlock, Wed Apr  9 10:48:01 PDT 2008
 //   QString for caption and shortName.
 //
-//   Jeremy Meredith, Fri Jan  2 17:12:56 EST 2009
-//   Added support for Load/Save on this window's sole subject.
-//
 // ****************************************************************************
 
 class GUI_API QvisPostableWindowObserver : public QvisPostableWindowSimpleObserver
@@ -88,7 +85,7 @@ public:
                                const QString &caption = QString::null,
                                const QString &shortName = QString::null,
                                QvisNotepadArea *notepad = 0,
-                               int buttonCombo = AllExtraButtonsAndLoadSave,
+                               int buttonCombo = AllExtraButtons,
                                bool stretch = true);
     virtual ~QvisPostableWindowObserver();
 
@@ -96,8 +93,6 @@ public:
 
 public slots:
     virtual void apply();
-    virtual void loadSubject();
-    virtual void saveSubject();
 protected:
     virtual void CreateWindowContents() = 0;
     Subject *subject;

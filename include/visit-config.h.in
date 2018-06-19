@@ -1,5 +1,8 @@
 /* include/visit-config.h.in.  Generated from configure.in by autoheader.  */
 
+/* Define if this is a database I/O only build */
+#undef DBIO_ONLY
+
 /* Define if you have the boost interval template library. */
 #undef HAVE_BILIB
 
@@ -48,9 +51,6 @@
 /* Define if you have the netcdf library. */
 #undef HAVE_LIBNETCDF
 
-/* Define if you have pdb. */
-#undef HAVE_LIBPDB
-
 /* Define if you have silo. */
 #undef HAVE_LIBSILO
 
@@ -72,7 +72,13 @@
 /* Define if you have the netcdf header. */
 #undef HAVE_NETCDF_H
 
-/* Define to 1 if you have the `select' function. */
+/* Define if you are using PDB proper instead of PDB lite. */
+#undef HAVE_PDB_PROPER
+
+/* Define if you have pyparsing. */
+#undef HAVE_PYPARSING
+
+/* Define if we want to use select function. */
 #undef HAVE_SELECT
 
 /* Define to 1 if you have the `setenv' function. */
@@ -220,11 +226,14 @@
 /* Define USE_PTY if we want to use PTYs. */
 #undef USE_PTY
 
-/* Define to enable Tuvok-based code */
-#undef USE_TUVOK
-
 /* VisIt version */
 #undef VERSION
+
+/* Enable use of mangled Mesa classes in VisIt. */
+#undef VISIT_USE_MANGLED_MESA
+
+/* Define if we want to use VisIt's no-spin BCast. */
+#undef VISIT_USE_NOSPIN_BCAST
 
 /* Define to 1 if your processor stores words with the most significant byte
    first (like Motorola and SPARC, unlike Intel and VAX). */

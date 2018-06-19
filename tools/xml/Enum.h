@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,8 +39,8 @@
 #ifndef ENUM_H
 #define ENUM_H
 
-#include <QTextStream>
-
+#include <qstring.h>
+#include <visitstream.h>
 #include <vector>
 using std::vector;
 
@@ -60,8 +60,8 @@ using std::vector;
 //    Eric Brugger, Mon Jul 26 15:00:00 PDT 2004
 //    I changed cout to out references in the Print method.
 //
-//    Brad Whitlock, Thu May  8 11:31:42 PDT 2008
-//    Qt 4. Use QTextStream.
+//    Jeremy Meredith, Thu Aug  7 14:56:48 EDT 2008
+//    Use %ld for size_t values.
 //
 // ****************************************************************************
 class EnumType
@@ -79,7 +79,7 @@ class EnumType
             }
         }
         if (!e)
-            throw QString("unknown enum subtype '%1'").arg(s);
+            throw QString().sprintf("unknown enum subtype '%s'",s.latin1());
         return e;
     }
   public:
@@ -96,10 +96,10 @@ class EnumType
     const QString& GetValue(size_t index)
     {
         if (index < 0  ||  index >= values.size())
-            throw QString("tried to access out-of-bounds enum type %1").arg(index);
+            throw QString().sprintf("tried to access out-of-bounds enum type %ld",index);
         return values[index];
     }
-    void Print(QTextStream &out)
+    void Print(ostream &out)
     {
         out << "Enum: " << type << endl;
         for (size_t i=0; i<values.size(); i++)

@@ -1,4 +1,4 @@
-#                         Copyright (c) 2000 - 2008
+#                         Copyright (c) 2000 - 2009
 #                  Lawrence Livermore National Security, LLC
 #            Produced at the Lawrence Livermore National Laboratory
 #                              LLNL-CODE-400124
@@ -209,6 +209,13 @@
 #    Cyrus Harrison, Thu May  8 13:37:06 PDT 2008
 #    Added DualMesh operator. 
 #
+#    Hank Childs, Mon Feb 23 21:32:27 PST 2009
+#    Add PersistentParticles operator, which was primarily implemented by
+#    Oliver Ruebel.
+#
+#    Eric Brugger, Mon Jun  8 14:51:25 PDT 2009
+#    Added the TriangulateRegularPoints operator.
+#
 ##############################################################################
 
 @SET_MAKE@
@@ -216,16 +223,15 @@
 all: message
 	for dir in $(SUBDIRS); do (cd $$dir && $(MAKE) $@) || exit 1; done
 
-SILO_TARGET=SiloDump
-
-OPTIONAL=Context ConnCompReduce MetricThreshold RemoveCells @SILO_TARGET@ \
+OPTIONAL=Context ConnCompReduce MetricThreshold RemoveCells SiloDump \
          SubdivideQuads SurfCompPrep 
 
 REQUIRED=BoundaryOp Box Clip Cone CoordSwap CracksClipper CreateBonds Cylinder \
          Decimate DeferExpression Displace DualMesh Elevate ExternalSurface \
-         IndexSelect InverseGhostZone Isosurface Isovolume Lineout Merge OnionPeel \
-         PDF Project Reflect Replicate Resample Revolve Slice Smooth \
-         SphereSlice ThreeSlice Threshold Transform Tube ZoneDump
+         IndexSelect InverseGhostZone Isosurface Isovolume Lineout Merge \
+         OnionPeel PDF PersistentParticles Project Reflect Replicate Resample \
+         Revolve Slice Smooth SphereSlice ThreeSlice Threshold Transform \
+         TriangulateRegularPoints Tube ZoneDump
 
 # The following is a minimal subset of the OPTIONAL/REQUIRED plugins
 MINIMAL=Lineout Slice Threshold

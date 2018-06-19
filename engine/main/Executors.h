@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -71,6 +71,7 @@
 #include <ExportDatabaseRPC.h>
 #include <KeepAliveRPC.h>
 #include <MakePlotRPC.h>
+#include <NamedSelectionRPC.h>
 #include <OpenDatabaseRPC.h>
 #include <PickRPC.h>
 #include <ProcInfoRPC.h>
@@ -1306,6 +1307,8 @@ RPCExecutor<OpenDatabaseRPC>::Execute(OpenDatabaseRPC *rpc)
 //    Brad Whitlock, Tue Jun 24 16:02:35 PDT 2008
 //    Changed how the database plugin manager is accessed.
 //
+//    Mark C. Miller, Wed Jun 17 16:10:59 PDT 2009
+//    Added logic to send replies and catch exceptions.
 // ****************************************************************************
 template<>
 void
@@ -1322,15 +1325,26 @@ RPCExecutor<DefineVirtualDatabaseRPC>::Execute(DefineVirtualDatabaseRPC *rpc)
            << endl;
     for (int i = 0; i < rpc->GetDatabaseFiles().size(); ++i)
         debug5 << "file["<<i<<"]="<<rpc->GetDatabaseFiles()[i].c_str() << endl;
-    netmgr->GetDatabasePluginManager()->PluginAvailable(rpc->GetFileFormat());
 
-    avtDatabaseFactory::SetCreateMeshQualityExpressions(
-                            rpc->GetCreateMeshQualityExpressions()); 
-    avtDatabaseFactory::SetCreateTimeDerivativeExpressions(
-                            rpc->GetCreateTimeDerivativeExpressions()); 
+    TRY
+    {
+        netmgr->GetDatabasePluginManager()->PluginAvailable(rpc->GetFileFormat());
 
-    netmgr->DefineDB(rpc->GetDatabaseName(), rpc->GetDatabasePath(),
-                rpc->GetDatabaseFiles(), rpc->GetTime(), rpc->GetFileFormat());
+        avtDatabaseFactory::SetCreateMeshQualityExpressions(
+            rpc->GetCreateMeshQualityExpressions()); 
+        avtDatabaseFactory::SetCreateTimeDerivativeExpressions(
+            rpc->GetCreateTimeDerivativeExpressions()); 
+
+        netmgr->DefineDB(rpc->GetDatabaseName(), rpc->GetDatabasePath(),
+            rpc->GetDatabaseFiles(), rpc->GetTime(), rpc->GetFileFormat());
+
+        rpc->SendReply();
+    }
+    CATCH2(VisItException, e)
+    {
+        rpc->SendError(e.Message(), e.GetExceptionType());
+    }
+    ENDTRY
 }
 
 // ****************************************************************************
@@ -1503,6 +1517,71 @@ RPCExecutor<SimulationCommandRPC>::Execute(SimulationCommandRPC *rpc)
         rpc->SendError(e.Message(), e.GetExceptionType());
     }
     ENDTRY
+}
+
+// ****************************************************************************
+//  Method:  RPCExecutor<NamedSelectionRPC>::Execute
+//
+//  Purpose:
+//      Handles a NamedSelection RPC.
+//
+//  Programmer:  Hank Childs
+//  Creation:    January 29, 2009
+//
+//  Modifications:
+//    Kathleen Bonnell, Wed Mar 25 15:35:32 MST 2009
+//    Renamed NamedSelectionRPC enum names to compile on windows.
+//
+// ****************************************************************************
+template<>
+void
+RPCExecutor<NamedSelectionRPC>::Execute(NamedSelectionRPC *rpc)
+{
+    Engine *engine = Engine::Instance();
+    NetworkManager *netmgr = engine->GetNetMgr();
+
+    debug2 << "Executing NamedSelectionRPC." << endl;
+
+    avtDataObjectSource::RegisterProgressCallback(NULL, NULL);
+    LoadBalancer::RegisterProgressCallback(NULL, NULL);
+    avtOriginatingSource::RegisterInitializeProgressCallback(NULL, NULL);
+    avtCallback::RegisterWarningCallback(Engine::EngineWarningCallback, (void*)rpc);
+    TRY
+    {
+        NamedSelectionRPC::NamedSelectionType t = rpc->GetNamedSelectionType();
+        switch (t)
+        {
+          case NamedSelectionRPC::NS_APPLY:
+            netmgr->ApplyNamedSelection(rpc->GetPlotNames(), rpc->GetSelectionName());
+            break;
+          case NamedSelectionRPC::NS_CREATE:
+            netmgr->CreateNamedSelection(rpc->GetPlotID(), rpc->GetSelectionName());
+            break;
+          case NamedSelectionRPC::NS_DELETE:
+            netmgr->DeleteNamedSelection(rpc->GetSelectionName());
+            break;
+          case NamedSelectionRPC::NS_LOAD:
+            netmgr->LoadNamedSelection(rpc->GetSelectionName());
+            break;
+          case NamedSelectionRPC::NS_SAVE:
+            netmgr->SaveNamedSelection(rpc->GetSelectionName());
+            break;
+        }
+        rpc->SendReply();
+    }
+    CATCH2(VisItException, e)
+    {
+        rpc->SendError(e.Message(), e.GetExceptionType());
+    }
+    ENDTRY
+
+    avtDataObjectSource::RegisterProgressCallback(
+                               Engine::EngineUpdateProgressCallback, NULL);
+    LoadBalancer::RegisterProgressCallback(
+                               Engine::EngineUpdateProgressCallback, NULL);
+    avtOriginatingSource::RegisterInitializeProgressCallback(
+                               Engine::EngineInitializeProgressCallback, NULL);
+    avtCallback::RegisterWarningCallback(Engine::EngineWarningCallback, NULL);
 }
 
 // ****************************************************************************

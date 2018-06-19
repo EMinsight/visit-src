@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -56,8 +56,10 @@
 
 #include <avtCallback.h>
 #include <avtDataAttributes.h>
+#include <avtIdentifierSelection.h>
 #include <avtIntervalTree.h>
 #include <avtMetaData.h>
+#include <avtNamedSelection.h>
 #include <avtStructuredMeshChunker.h>
 #include <avtDataRangeSelection.h>
 
@@ -1081,3 +1083,67 @@ avtThresholdFilter::ModifyContract(avtContract_p in_spec)
 
     return outSpec;
 }
+
+
+// ****************************************************************************
+//  Method: avtThresholdFilter::CreateNamedSelection
+//
+//  Purpose:
+//      Creates a named selection.  This will only do something useful if
+//      the upstream database can return an ID list when given a selection.
+//
+//  Programmer: Hank Childs
+//  Creation:   February 23, 2009
+//
+//  Modifications:
+//  
+//    Gunther H. Weber, Mon Apr 27 20:41:18 PDT 2009
+//    Fix a crash due to deleting a reference we don't own. (Analogous to
+//    a fix Hank did on Mon Apr 6 17:13:58 PDT 2009 in 
+//    avtParallelCoordinatesFilter::CreateDBAcceleratedNamedSelection 
+//
+// ****************************************************************************
+
+avtNamedSelection *
+avtThresholdFilter::CreateNamedSelection(avtContract_p c, const std::string &s)
+{
+    if (! GetInput()->GetInfo().GetValidity().GetZonesPreserved())
+    {
+        // Zones have been removed upstream, so the direct-to-database query
+        // will be invalid.  Give up.
+        return NULL;
+    }
+
+    std::vector<avtDataSelection *> drs;
+
+    const stringVector curListedVars = atts.GetListedVarNames();
+    doubleVector curLowerBounds = atts.GetLowerBounds();
+    doubleVector curUpperBounds = atts.GetUpperBounds();
+    double lowerBound, upperBound;
+
+    for (int listedVarNum = 0; listedVarNum < curListedVars.size(); listedVarNum++)
+    {
+        lowerBound = curLowerBounds[listedVarNum];
+        upperBound = curUpperBounds[listedVarNum];
+
+        std::string var = curListedVars[listedVarNum];
+        avtDataRangeSelection *sel = new avtDataRangeSelection(var, lowerBound, 
+                                                               upperBound);
+        drs.push_back(sel);
+    }
+
+    avtIdentifierSelection *ids = GetMetaData()->GetIdentifiers(drs);
+    avtNamedSelection *rv = NULL;
+    if (ids != NULL)
+        rv = new avtFloatingPointIdNamedSelection(s, ids->GetIdentifiers());
+    // Don't delete ids, since it is being cached at the DB level and we don't
+    // own this reference.
+    // delete ids;
+
+    for (int i = 0 ; i < drs.size() ; i++)
+        delete drs[i];
+
+    return rv;
+}
+
+

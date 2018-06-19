@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -41,13 +41,14 @@
 #include <DualMeshAttributes.h>
 #include <ViewerProxy.h>
 
-#include <QCheckBox>
-#include <QLabel>
-#include <QLayout>
-#include <QLineEdit>
-#include <QSpinBox>
-#include <QButtonGroup>
-#include <QRadioButton>
+#include <qcheckbox.h>
+#include <qlabel.h>
+#include <qlayout.h>
+#include <qlineedit.h>
+#include <qspinbox.h>
+#include <qvbox.h>
+#include <qbuttongroup.h>
+#include <qradiobutton.h>
 #include <QvisColorTableButton.h>
 #include <QvisOpacitySlider.h>
 #include <QvisColorButton.h>
@@ -118,36 +119,33 @@ QvisDualMeshWindow::~QvisDualMeshWindow()
 // Creation:   omitted
 //
 // Modifications:
-//   Cyrus Harrison, on Aug 18 20:13:20 PDT 2008
-//   Qt4 Port - Autogen + Changed labels of radio buttons.   
+//
+//   Cyrus Harrison, Thu May  8 08:50:55 PDT 2008
+//   Changed text labels for conversion mode radio buttons. 
 //
 // ****************************************************************************
 
 void
 QvisDualMeshWindow::CreateWindowContents()
 {
-    QGridLayout *mainLayout = new QGridLayout(0);
-    topLayout->addLayout(mainLayout);
+    QGridLayout *mainLayout = new QGridLayout(topLayout, 1,2,  10, "mainLayout");
 
-    modeLabel = new QLabel(tr("Conversion Mode:"), central);
+
+    modeLabel = new QLabel(tr("Conversion Mode:"), central, "modeLabel");
     mainLayout->addWidget(modeLabel,0,0);
-    QWidget *modeWidget = new QWidget(central);
-    mode = new QButtonGroup(modeWidget);
-    QHBoxLayout *modeLayout = new QHBoxLayout(modeWidget);
-    modeLayout->setMargin(0);
+    mode = new QButtonGroup(central, "mode");
+    mode->setFrameStyle(QFrame::NoFrame);
+    QHBoxLayout *modeLayout = new QHBoxLayout(mode);
     modeLayout->setSpacing(10);
-    QRadioButton *modeConversionModeAuto = new QRadioButton(tr("Auto"), modeWidget);
-    mode->addButton(modeConversionModeAuto,0);
-    modeLayout->addWidget(modeConversionModeAuto);
-    QRadioButton *modeConversionModeNodesToZones = new QRadioButton(tr("Nodes to Zones"), modeWidget);
-    mode->addButton(modeConversionModeNodesToZones,1);
-    modeLayout->addWidget(modeConversionModeNodesToZones);
-    QRadioButton *modeConversionModeZonesToNodes = new QRadioButton(tr("Zones to Nodes"), modeWidget);
-    mode->addButton(modeConversionModeZonesToNodes,2);
-    modeLayout->addWidget(modeConversionModeZonesToNodes);
-    connect(mode, SIGNAL(buttonClicked(int)),
+    QRadioButton *modeConversionAuto = new QRadioButton(tr("Auto"), mode);
+    modeLayout->addWidget(modeConversionAuto);
+    QRadioButton *modeConversionNodalToZonal = new QRadioButton(tr("Nodes To Zones"), mode);
+    modeLayout->addWidget(modeConversionNodalToZonal);
+    QRadioButton *modeConversionZonalToNodal = new QRadioButton(tr("Zones To Nodes"), mode);
+    modeLayout->addWidget(modeConversionZonalToNodal);
+    connect(mode, SIGNAL(clicked(int)),
             this, SLOT(modeChanged(int)));
-    mainLayout->addWidget(modeWidget, 0,1);
+    mainLayout->addWidget(mode, 0,1);
 
 }
 
@@ -170,6 +168,8 @@ QvisDualMeshWindow::CreateWindowContents()
 void
 QvisDualMeshWindow::UpdateWindow(bool doAll)
 {
+    QString temp;
+    double r;
 
     for(int i = 0; i < atts->NumAttributes(); ++i)
     {
@@ -181,12 +181,18 @@ QvisDualMeshWindow::UpdateWindow(bool doAll)
             }
         }
 
+        const double         *dptr;
+        const float          *fptr;
+        const int            *iptr;
+        const char           *cptr;
+        const unsigned char  *uptr;
+        const string         *sptr;
+        QColor                tempcolor;
         switch(i)
         {
           case DualMeshAttributes::ID_mode:
             mode->blockSignals(true);
-            if(mode->button((int)atts->GetMode()) != 0)
-                mode->button((int)atts->GetMode())->setChecked(true);
+            mode->setButton(atts->GetMode());
             mode->blockSignals(false);
             break;
         }
@@ -212,6 +218,9 @@ QvisDualMeshWindow::UpdateWindow(bool doAll)
 void
 QvisDualMeshWindow::GetCurrentValues(int which_widget)
 {
+    bool okay, doAll = (which_widget == -1);
+    QString msg, temp;
+
 }
 
 

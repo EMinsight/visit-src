@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -41,17 +41,13 @@
 #include <ThresholdAttributes.h>
 #include <ViewerProxy.h>
 
-#include <QTableWidget>
-#include <QTableWidgetItem>
-#include <QHeaderView>
-#include <QComboBox>
-#include <QGroupBox>
-#include <QLabel>
-#include <QLayout>
-#include <QWidget>
-#include <QButtonGroup>
-#include <QPushButton>
-#include <QRadioButton>
+#include <qtable.h>
+#include <qlabel.h>
+#include <qlayout.h>
+#include <qvbox.h>
+#include <qbuttongroup.h>
+#include <qpushbutton.h>
+#include <qradiobutton.h>
 #include <QvisVariableButton.h>
 
 #include <stdio.h>
@@ -154,74 +150,75 @@ QvisThresholdWindow::~QvisThresholdWindow()
 //   Brad Whitlock, Thu Apr 24 15:58:32 PDT 2008
 //   Added tr()'s
 //
-//   Cyrus Harrison, Thu Aug 21 08:45:29 PDT 2008
-//   Qt4 Port.
-//
 // ****************************************************************************
 
 void
 QvisThresholdWindow::CreateWindowContents()
 {
-    QGroupBox *threshVarsBox = new QGroupBox(central);
+    static unsigned char leftArrow[8] =
+        { 0x00, 0x01, 0x07, 0x1f, 0x7f, 0x1f, 0x07, 0x01 };
+    static unsigned char rightArrow[8] =
+        { 0x00, 0x80, 0xe0, 0xf8, 0xfe, 0xf8, 0xe0, 0x80 };
+
+    QGroupBox *threshVarsBox = new QGroupBox(central, "threshVarsBox");
     threshVarsBox->setTitle(tr("For individual threshold variables"));
     topLayout->addWidget(threshVarsBox);
 
-    QGridLayout *threshVarsLayout = new QGridLayout(threshVarsBox);
-    threshVars = new QTableWidget(threshVarsBox);
-    
-    threshVarsLayout->addWidget(threshVars, 1, 0, 1, 2);
+    QGridLayout *threshVarsLayout = new QGridLayout(threshVarsBox, 2, 4, 15, 5);
 
-    threshVars->setSelectionMode(QAbstractItemView::SingleSelection);
-    threshVars->setColumnCount(4);
+    threshVarsLayout->addRowSpacing(0, 15);
+
+    threshVarsList = new QTable(0, 4, threshVarsBox, "threshVarsList");
+    threshVarsLayout->addMultiCellWidget(threshVarsList, 1, 1, 0, 1);
+
+    threshVarsList->setSelectionMode(QTable::Single);
+    threshVarsList->setLeftMargin(0);
+    threshVarsList->setColumnReadOnly(0, true);
+    threshVarsList->setColumnWidth(0, 170);
+    threshVarsList->setColumnWidth(1, 110);
+    threshVarsList->setColumnWidth(2, 110);
+    threshVarsList->setColumnWidth(3, 110);
+
+    QStringList columnLabels;
+    columnLabels << tr("Variable") << tr("Lower bound") << tr("Upper bound") << tr("Show zone if");
+    threshVarsList->setColumnLabels(columnLabels);
     
-    QStringList hzHeaderLbls;
-    hzHeaderLbls << tr("Variable") 
-                 << tr("Lower bound") 
-                 << tr("Upper bound") 
-                 << tr("Show zone if");
-    threshVars->setHorizontalHeaderLabels(hzHeaderLbls);
-    threshVars->verticalHeader()->hide();
-    
-    QvisVariableButton *addVarToList = new QvisVariableButton(false, 
-                                                              true,
-                                                              true,
-                                   QvisVariableButton::Scalars, threshVarsBox);
+    threshVarsLayout->addRowSpacing(2, 10);
+
+    QvisVariableButton *addVarToList = new QvisVariableButton(false, true, true,
+        QvisVariableButton::Scalars, threshVarsBox, "addVarToList");
     addVarToList->setText(tr("Add variable"));
     addVarToList->setChangeTextOnVariableChange(false);
     connect(addVarToList, SIGNAL(activated(const QString &)),
             this, SLOT(variableAddedToList(const QString &)));
     threshVarsLayout->addWidget(addVarToList, 3, 0);
-    
     QPushButton *deleteSelectedVar = new QPushButton(
-        QString(tr("Delete selected variable")), threshVarsBox);
+        QString(tr("Delete selected variable")), threshVarsBox, "deleteSelectedVar");
     connect(deleteSelectedVar, SIGNAL(clicked()),
         this, SLOT(selectedVariableDeleted()));
     threshVarsLayout->addWidget(deleteSelectedVar, 3, 1);
 
-    QGroupBox *forAllVarsBox = new QGroupBox(tr("For all threshold variables"),central);
+    QGroupBox *forAllVarsBox = new QGroupBox(central, "forAllVarsBox");
+    forAllVarsBox->setTitle(tr("For all threshold variables"));
     topLayout->addWidget(forAllVarsBox);
 
-    QGridLayout *forAllVarsLayout = new QGridLayout(forAllVarsBox);
+    QGridLayout *forAllVarsLayout = new QGridLayout(forAllVarsBox, 6, 2, 15, 5);
 
-    forAllVarsLayout->addWidget(new QLabel(tr("Output mesh is"), 
-                                forAllVarsBox), 1, 0, 1, 2);
-    
-    outputMeshType = new QButtonGroup(forAllVarsBox);
-    QWidget *outputMeshWidget = new QWidget(forAllVarsBox);
-    
-    QHBoxLayout *outputMeshWidgetLayout = new QHBoxLayout(outputMeshWidget);
-    
+    forAllVarsLayout->addRowSpacing(0, 15);
+
+    forAllVarsLayout->addMultiCellWidget(new QLabel(tr("Output mesh is"),
+        forAllVarsBox, "outputMeshLabel"), 1, 1, 0, 1);
+    outputMeshType = new QButtonGroup(forAllVarsBox, "outputMeshType");
+    outputMeshType->setFrameStyle(QFrame::NoFrame);
+    QHBoxLayout *outputMeshTypeLayout = new QHBoxLayout(outputMeshType, 0, 10);
     QRadioButton *zonesFromInput =
-        new QRadioButton(tr("Zones from input"), outputMeshWidget);
-    outputMeshType->addButton(zonesFromInput,0);
-    outputMeshWidgetLayout->addWidget(zonesFromInput);
-    QRadioButton *pointMesh = new QRadioButton(tr("Point mesh"), outputMeshWidget);
-    outputMeshType->addButton(pointMesh,1);
-    outputMeshWidgetLayout->addWidget(pointMesh);
-    
-    connect(outputMeshType, SIGNAL(buttonClicked(int)),
+        new QRadioButton(tr("Zones from input"), outputMeshType);
+    outputMeshTypeLayout->addWidget(zonesFromInput);
+    QRadioButton *pointMesh = new QRadioButton(tr("Point mesh"), outputMeshType);
+    outputMeshTypeLayout->addWidget(pointMesh);
+    connect(outputMeshType, SIGNAL(clicked(int)),
             this, SLOT(outputMeshTypeChanged(int)));
-    forAllVarsLayout->addWidget(outputMeshWidget, 1, 2, 1, 3);
+    forAllVarsLayout->addMultiCellWidget(outputMeshType, 1, 1, 2, 5);
 }
 
 
@@ -278,9 +275,6 @@ QvisThresholdWindow::CreateWindowContents()
 //   Mark Blair, Tue Apr 17 16:24:42 PDT 2007
 //   Rewritten to support new Threshold GUI.
 //
-//   Cyrus Harrison, Thu Aug 21 08:45:29 PDT 2008
-//   Qt4 Port.
-//
 // ****************************************************************************
 
 void
@@ -288,6 +282,7 @@ QvisThresholdWindow::UpdateWindow(bool doAll)
 {
     intVector curZonePortions;
     doubleVector curBounds;
+    QComboTableItem *zoneShowSelector;
     int varNum;
     QString fieldString;
 
@@ -297,30 +292,35 @@ QvisThresholdWindow::UpdateWindow(bool doAll)
     {
         switch (attIndex)
         {
-            case ThresholdAttributes::ID_outputMeshType:
-                outputMeshType->button((int)atts->GetOutputMeshType())
-                                                          ->setChecked(true);
+            case 0:  // outputMeshType
+                outputMeshType->setButton((int)atts->GetOutputMeshType());
 
                 break;
 
-            case ThresholdAttributes::ID_listedVarNames:
+            case 1:  // listedVarNames
                 PopulateThresholdVariablesList();
 
                 break;
-            case ThresholdAttributes::ID_zonePortions: 
-                curZonePortions = atts->GetZonePortions();
-                QComboBox *cbox;
-                for (varNum = 0; varNum < curZonePortions.size(); varNum++ )
-                {
-                    cbox=(QComboBox*)threshVars->cellWidget(varNum,3);
-                    cbox->setCurrentIndex(curZonePortions[varNum]);
-                }
-                
-                SetZoneIncludeSelectEnabled(atts->GetOutputMeshType() == 
-                                             ThresholdAttributes::InputZones);
+
+            case 2:  // shownVarPosition
                 break;
 
-            case ThresholdAttributes::ID_lowerBounds:
+            case 3:  // zonePortions
+                curZonePortions = atts->GetZonePortions();
+                
+                for (varNum = 0; varNum < curZonePortions.size(); varNum++ )
+                {
+                    zoneShowSelector =
+                       (QComboTableItem *)threshVarsList->item(varNum, 3);
+                    zoneShowSelector->setCurrentItem(curZonePortions[varNum]);
+                }
+                
+                threshVarsList->setColumnReadOnly(3,
+                    (atts->GetOutputMeshType() != ThresholdAttributes::InputZones));
+                
+                break;
+
+            case 4:  // lowerBounds
                 curBounds = atts->GetLowerBounds();
                 
                 for (varNum = 0; varNum < curBounds.size(); varNum++ )
@@ -330,12 +330,12 @@ QvisThresholdWindow::UpdateWindow(bool doAll)
                     else
                         fieldString.setNum(curBounds[varNum]);
 
-                    threshVars->item(varNum, 1)->setText(fieldString);
+                    threshVarsList->setText(varNum, 1, fieldString);
                 }
 
                 break;
 
-            case ThresholdAttributes::ID_upperBounds:
+            case 5:  // upperBounds
                 curBounds = atts->GetUpperBounds();
                 
                 for (varNum = 0; varNum < curBounds.size(); varNum++ )
@@ -345,9 +345,15 @@ QvisThresholdWindow::UpdateWindow(bool doAll)
                     else
                         fieldString.setNum(curBounds[varNum]);
 
-                    threshVars->item(varNum, 2)->setText(fieldString);
+                    threshVarsList->setText(varNum, 2, fieldString);
                 }
 
+                break;
+                
+            case 6:   // defaultVarName
+                break;
+                
+            case 7:   // defaultVarIsScalar
                 break;
         }
     }
@@ -393,9 +399,6 @@ QvisThresholdWindow::UpdateWindow(bool doAll)
 //   Brad Whitlock, Thu Apr 24 16:00:33 PDT 2008
 //   Added tr()'s
 //
-//   Cyrus Harrison, Thu Aug 21 08:45:29 PDT 2008
-//   Qt4 Port.
-//
 // ****************************************************************************
 
 void
@@ -408,7 +411,7 @@ QvisThresholdWindow::GetCurrentValues(int which_widget)
     doubleVector curUpperBounds;
     intVector    curZonePortions;
 
-    if (threshVars->rowCount() != guiFullVarNames.size()) // Just in case
+    if (threshVarsList->numRows() != guiFullVarNames.size()) // Just in case
     {
         debug3 << "QTW/GCV/1: Threshold GUI out of sync with internal data."
                << endl;
@@ -423,7 +426,7 @@ QvisThresholdWindow::GetCurrentValues(int which_widget)
         atts->SetUpperBounds(curUpperBounds);
         atts->SetZonePortions(curZonePortions);
         
-        threshVars->setRowCount(0);
+        threshVarsList->setNumRows(0);
         AddNewRowToVariablesList(QString("default"));
 
         guiFullVarNames.clear();
@@ -432,19 +435,20 @@ QvisThresholdWindow::GetCurrentValues(int which_widget)
         return;
     }
 
-    int listRowCount = threshVars->rowCount();
+    int listRowCount = threshVarsList->numRows();
     bool valueIsValid;
     double lowerBound, upperBound, bound;
     QString lowerBoundText, upperBoundText, errMsg;
+    QComboTableItem *zoneShowSelector;
     
     for (int rowNum = 0; rowNum < listRowCount; rowNum++ )
     {
         curVarNames.push_back(guiFullVarNames[rowNum]);
         
-        lowerBoundText = threshVars->item(rowNum,1)->text().simplified();
-        upperBoundText = threshVars->item(rowNum,2)->text().simplified();
+        lowerBoundText = threshVarsList->text(rowNum,1).simplifyWhiteSpace();
+        upperBoundText = threshVarsList->text(rowNum,2).simplifyWhiteSpace();
         
-        if (lowerBoundText == QString(tr("min"))) lowerBound = -1e+37;
+        if (lowerBoundText == QString("min")) lowerBound = -1e+37;
         else
         {
             valueIsValid = !lowerBoundText.isEmpty();
@@ -458,7 +462,7 @@ QvisThresholdWindow::GetCurrentValues(int which_widget)
             }
         }
 
-        if (upperBoundText == QString(tr("max"))) upperBound = +1e+37;
+        if (upperBoundText == QString("max")) upperBound = +1e+37;
         else
         {
             valueIsValid = !upperBoundText.isEmpty();
@@ -482,8 +486,8 @@ QvisThresholdWindow::GetCurrentValues(int which_widget)
         curLowerBounds.push_back(lowerBound);
         curUpperBounds.push_back(upperBound);
         
-        QComboBox *cbox = (QComboBox*)threshVars->cellWidget(rowNum, 3);
-        curZonePortions.push_back(cbox->currentIndex());
+        zoneShowSelector = (QComboTableItem *)threshVarsList->item(rowNum, 3);
+        curZonePortions.push_back(zoneShowSelector->currentItem());
     }
     
     atts->SetListedVarNames(curVarNames);
@@ -503,15 +507,12 @@ QvisThresholdWindow::GetCurrentValues(int which_widget)
 //   linking error on AIX. Note: to avoid this in the future do not directly
 //   assign or compare a std::string instance to a QString object, use c_str().
 //
-//   Cyrus Harrison, Thu Aug 21 08:45:29 PDT 2008
-//   Qt4 Port.
-//
 // ****************************************************************************
 
 void
 QvisThresholdWindow::variableAddedToList(const QString &variableToAdd)
 {
-    if (threshVars->rowCount() != guiFullVarNames.size())
+    if (threshVarsList->numRows() != guiFullVarNames.size())
     {
         debug3 << "QTW/vATL/1: Threshold GUI out of sync with internal data."
                << endl;
@@ -523,17 +524,19 @@ QvisThresholdWindow::variableAddedToList(const QString &variableToAdd)
         if (QString(guiFullVarNames[varNum].c_str()) == variableToAdd) return;
     }
     
-    QString vname = PrepareVariableNameText(variableToAdd, 20);
-    AddNewRowToVariablesList(QString(vname));
+    char listVarText[21];
     
-    guiFullVarNames.push_back(variableToAdd.toStdString());
+    MakeDisplayableVariableNameText(listVarText, variableToAdd.ascii(), 20);
+    AddNewRowToVariablesList(QString(listVarText));
+    
+    guiFullVarNames.push_back(variableToAdd.ascii());
 }
 
 
 void
 QvisThresholdWindow::selectedVariableDeleted()
 {
-    if (threshVars->rowCount() != guiFullVarNames.size())
+    if (threshVarsList->numRows() != guiFullVarNames.size())
     {
         debug3 << "QTW/sVD/1: Threshold GUI out of sync with internal data."
                << endl;
@@ -543,9 +546,9 @@ QvisThresholdWindow::selectedVariableDeleted()
     if (guiFullVarNames.size() == 0)
         return;
         
-    int selectedVarNum = threshVars->currentRow();
+    int selectedVarNum = threshVarsList->currentRow();
 
-    threshVars->removeRow(selectedVarNum);
+    threshVarsList->removeRow(selectedVarNum);
 
     guiFullVarNames.erase(guiFullVarNames.begin() + selectedVarNum);
 }
@@ -559,8 +562,8 @@ QvisThresholdWindow::outputMeshTypeChanged(int buttonID)
 
     if (newOutputMeshType != atts->GetOutputMeshType())
     {
-        SetZoneIncludeSelectEnabled(newOutputMeshType == 
-                                       ThresholdAttributes::InputZones);
+        threshVarsList->setColumnReadOnly(3,
+            (newOutputMeshType != ThresholdAttributes::InputZones));
         atts->SetOutputMeshType(newOutputMeshType);
     }
 }
@@ -569,7 +572,7 @@ QvisThresholdWindow::outputMeshTypeChanged(int buttonID)
 void
 QvisThresholdWindow::apply()
 {
-    threshVars->setCurrentCell(threshVars->currentRow(), 0);
+    threshVarsList->setCurrentCell(threshVarsList->currentRow(), 0);
     QvisOperatorWindow::apply();
 }
 
@@ -600,7 +603,7 @@ QvisThresholdWindow::PopulateThresholdVariablesList()
     
     char listVarText[21];
     
-    if (threshVars->rowCount() != guiVarCount)
+    if (threshVarsList->numRows() != guiVarCount)
     {
         debug3 << "QTW/PTVL/1: Threshold GUI out of sync with internal data."
                << endl;
@@ -620,7 +623,7 @@ QvisThresholdWindow::PopulateThresholdVariablesList()
             guiVarNum++;
         else
         {
-            threshVars->removeRow(guiVarNum);
+            threshVarsList->removeRow(guiVarNum);
             guiFullVarNames.erase(guiFullVarNames.begin() + guiVarNum);
 
             guiVarCount--;
@@ -638,9 +641,8 @@ QvisThresholdWindow::PopulateThresholdVariablesList()
         
         if (guiVarNum >= guiVarCount)   // guiVarCount is NOT incremented.
         {
-            QString vname = PrepareVariableNameText(QString(curVarName.c_str()),
-                                                    20);
-            AddNewRowToVariablesList(vname);
+            MakeDisplayableVariableNameText(listVarText, curVarName, 20);
+            AddNewRowToVariablesList(QString(listVarText));
 
             guiFullVarNames.push_back(curVarName);
         }
@@ -661,34 +663,28 @@ QvisThresholdWindow::PopulateThresholdVariablesList()
 //   Brad Whitlock, Thu Apr 24 16:01:11 PDT 2008
 //   Added tr()'s
 //
-//   Cyrus Harrison, Thu Aug 21 08:45:29 PDT 2008
-//   Qt4 Port.
-//
 // ****************************************************************************
 
 void
-QvisThresholdWindow::AddNewRowToVariablesList(const QString &variableName)
+QvisThresholdWindow::AddNewRowToVariablesList(const QString &listVarName)
 {
-    int nrows = threshVars->rowCount();
+    int listRowCount = threshVarsList->numRows();
 
-    threshVars->setRowCount(nrows + 1);
+    threshVarsList->setNumRows(listRowCount + 1);
 
+    threshVarsList->setText(listRowCount, 0, listVarName);
+    threshVarsList->setText(listRowCount, 1, QString("min"));
+    threshVarsList->setText(listRowCount, 2, QString("max"));
+
+    QComboTableItem *zoneShowSelector;
+    QStringList zoneShowLabels;
+    zoneShowLabels << tr("All in range") << tr("Part in range");
     
-    QTableWidgetItem *name_item = new QTableWidgetItem(variableName);
-    name_item->setFlags(Qt::ItemIsSelectable);
-    threshVars->setItem(nrows,0,name_item);
-    threshVars->setItem(nrows,1,new QTableWidgetItem(tr("min")));
-    threshVars->setItem(nrows,2,new QTableWidgetItem(tr("max")));
+    zoneShowSelector = new QComboTableItem(threshVarsList, zoneShowLabels);
+    zoneShowSelector->setCurrentItem(1);
+    threshVarsList->setItem(listRowCount, 3, zoneShowSelector);
     
-    QComboBox *cbox = new QComboBox();
-    cbox->addItem(tr("All in range"));
-    cbox->addItem(tr("Part in range"));
-    cbox->setCurrentIndex(1);
-    threshVars->setCellWidget(nrows,3,cbox);
-    threshVars->resizeColumnToContents(0);
-    threshVars->resizeColumnToContents(1);
-    threshVars->resizeColumnToContents(2);
-    SetTableWidth();
+    if (listRowCount == 0) threshVarsList->setCurrentCell(0, 0);
 }
 
 
@@ -702,59 +698,25 @@ QvisThresholdWindow::AddNewRowToVariablesList(const QString &variableName)
 //  Creation:   Tue Apr 10 17:59:47 PDT 2007
 //
 //  Modifications:
-//   Cyrus Harrison, Thu Aug 21 08:45:29 PDT 2008
-//   Qt4 Port.
+//
+//    Hank Childs, Wed Oct 24 09:19:10 PDT 2007
+//    Fix array overwrite.
 //
 // *****************************************************************************
 
-QString
-QvisThresholdWindow::PrepareVariableNameText(const QString &variableName,
-                                             int maxDisplayChars)
+void QvisThresholdWindow::MakeDisplayableVariableNameText(
+    char displayVarText[], const std::string &variableName, int maxDisplayChars)
 {
-    QString res(variableName);
-    if(res.size() > maxDisplayChars)
-        res = res.left(maxDisplayChars-4) + ".." +  res.right(2);
-    return res;
-}
-
-// *****************************************************************************
-//  Method: QvisThresholdWindow::SetZoneIncludeSelectEnabled
-//
-//  Purpose: Helper to enable/disable editing of the zone inclusion combo boxes.
-//
-//  Programmer: Cyrus Harrison
-//  Creation:   Wed Aug 20 16:04:36 PDT 2008
-//
-//  Modifications:
-//
-// *****************************************************************************
-
-void
-QvisThresholdWindow::SetZoneIncludeSelectEnabled(bool val)
-{
-    int nrows = threshVars->rowCount();
-    for(int i=0; i<nrows;i++)
-        threshVars->cellWidget(i,3)->setEnabled(val);
-}
-
-// *****************************************************************************
-//  Method: QvisThresholdWindow::SetTableWidth
-//
-//  Purpose: Helper to enable/disable editing of the zone inclusion combo boxes.
-//
-//  Programmer: Cyrus Harrison
-//  Creation:   Thu Aug 21 09:26:06 PDT 2008
-//
-//  Modifications:
-//
-// *****************************************************************************
-
-void
-QvisThresholdWindow::SetTableWidth()
-{
-    int width = 4;
-    for(int i=0; i<4; i++)
-        width += threshVars->columnWidth(i);
-    threshVars->setMinimumWidth(width);
-        
+    int rawVarNameLen;
+    char rawVarName[121];
+    
+    strncpy(rawVarName, variableName.c_str(), 120);
+    
+    if ((rawVarNameLen = strlen(rawVarName)) <= maxDisplayChars)
+        strcpy(displayVarText, rawVarName);
+    else
+    {
+        rawVarName[maxDisplayChars-4] = '\0';
+        sprintf(displayVarText,"%s..%s",rawVarName,&rawVarName[rawVarNameLen-2]);
+    }
 }

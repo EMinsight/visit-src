@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,13 +39,12 @@
 #ifndef QVIS_POSTABLE_WINDOW
 #define QVIS_POSTABLE_WINDOW
 #include <gui_exports.h>
-#include <QString>
+#include <qstring.h>
 #include <QvisWindowBase.h>
 
 class DataNode;
 class QvisNotepadArea;
 class QPushButton;
-class QVBoxLayout;
 class QVBoxLayout;
 
 // ****************************************************************************
@@ -81,8 +80,8 @@ class QVBoxLayout;
 //   Brad Whitlock, Wed Apr  9 10:50:05 PDT 2008
 //   QString for caption and shortName.
 //
-//   Brad Whitlock, Fri May 30 09:59:10 PDT 2008
-//   Qt 4.
+//   Brad Whitlock, Thu Jul 23 16:14:30 PDT 2009
+//   I added SetAddStretch and SetDismissEnabled.
 //
 // ****************************************************************************
 
@@ -104,19 +103,20 @@ public:
     virtual void SetFromNode(DataNode *, const int *borders);
 
     static void  SetPostEnabled(bool);
+    void         SetDismissEnabled(bool);
+    void         SetAddStretch(bool);
 protected:
     virtual void UpdateWindow(bool doAll);
 public slots:
     virtual void raise();
     virtual void show();
     virtual void hide();
-protected slots:
     virtual void post();
     virtual void unpost();
 protected:
     bool               isCreated;
     bool               isPosted;
-    bool               addLayoutStretch;
+    bool               addStretch;
     QString            shortCaption;
     QWidget            *central;
     QVBoxLayout        *topLayout;

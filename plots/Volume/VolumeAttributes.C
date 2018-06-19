@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -48,21 +48,20 @@
 
 static const char *Renderer_strings[] = {
 "Splatting", "Texture3D", "RayCasting", 
-"RayCastingIntegration", "SLIVR", "Tuvok"
-};
+"RayCastingIntegration", "SLIVR"};
 
 std::string
 VolumeAttributes::Renderer_ToString(VolumeAttributes::Renderer t)
 {
     int index = int(t);
-    if(index < 0 || index >= 6) index = 0;
+    if(index < 0 || index >= 5) index = 0;
     return Renderer_strings[index];
 }
 
 std::string
 VolumeAttributes::Renderer_ToString(int t)
 {
-    int index = (t < 0 || t >= 6) ? 0 : t;
+    int index = (t < 0 || t >= 5) ? 0 : t;
     return Renderer_strings[index];
 }
 
@@ -70,7 +69,7 @@ bool
 VolumeAttributes::Renderer_FromString(const std::string &s, VolumeAttributes::Renderer &val)
 {
     val = VolumeAttributes::Splatting;
-    for(int i = 0; i < 6; ++i)
+    for(int i = 0; i < 5; ++i)
     {
         if(s == Renderer_strings[i])
         {
@@ -240,7 +239,7 @@ VolumeAttributes::VolumeAttributes() :
     skewFactor = 1;
     sampling = Rasterization;
     rendererSamples = 3;
-    transferFunctionDim = 1;
+    transferFunctionDim = 0;
 }
 
 // ****************************************************************************
@@ -291,19 +290,19 @@ VolumeAttributes::VolumeAttributes(const VolumeAttributes &obj) :
     skewFactor = obj.skewFactor;
     sampling = obj.sampling;
     rendererSamples = obj.rendererSamples;
-    // *** Copy the transferFunction2DWidgets field ***
+    // *** Copy the TransferFunctionWidgetList field ***
     // Delete the AttributeGroup objects and clear the vector.
-    for(pos = transferFunction2DWidgets.begin(); pos != transferFunction2DWidgets.end(); ++pos)
+    for(pos = TransferFunctionWidgetList.begin(); pos != TransferFunctionWidgetList.end(); ++pos)
         delete *pos;
-    transferFunction2DWidgets.clear();
-    if(obj.transferFunction2DWidgets.size() > 0)
-        transferFunction2DWidgets.reserve(obj.transferFunction2DWidgets.size());
-    // Duplicate the transferFunction2DWidgets from obj.
-    for(pos = obj.transferFunction2DWidgets.begin(); pos != obj.transferFunction2DWidgets.end(); ++pos)
+    TransferFunctionWidgetList.clear();
+    if(obj.TransferFunctionWidgetList.size() > 0)
+        TransferFunctionWidgetList.reserve(obj.TransferFunctionWidgetList.size());
+    // Duplicate the TransferFunctionWidgetList from obj.
+    for(pos = obj.TransferFunctionWidgetList.begin(); pos != obj.TransferFunctionWidgetList.end(); ++pos)
     {
         TransferFunctionWidget *oldTransferFunctionWidget = (TransferFunctionWidget *)(*pos);
         TransferFunctionWidget *newTransferFunctionWidget = new TransferFunctionWidget(*oldTransferFunctionWidget);
-        transferFunction2DWidgets.push_back(newTransferFunctionWidget);
+        TransferFunctionWidgetList.push_back(newTransferFunctionWidget);
     }
 
     transferFunctionDim = obj.transferFunctionDim;
@@ -330,8 +329,8 @@ VolumeAttributes::~VolumeAttributes()
 {
     AttributeGroupVector::iterator pos;
 
-    // Destroy the transferFunction2DWidgets field.
-    for(pos = transferFunction2DWidgets.begin(); pos != transferFunction2DWidgets.end(); ++pos)
+    // Destroy the TransferFunctionWidgetList field.
+    for(pos = TransferFunctionWidgetList.begin(); pos != TransferFunctionWidgetList.end(); ++pos)
         delete *pos;
 }
 
@@ -384,19 +383,19 @@ VolumeAttributes::operator = (const VolumeAttributes &obj)
     skewFactor = obj.skewFactor;
     sampling = obj.sampling;
     rendererSamples = obj.rendererSamples;
-    // *** Copy the transferFunction2DWidgets field ***
+    // *** Copy the TransferFunctionWidgetList field ***
     // Delete the AttributeGroup objects and clear the vector.
-    for(pos = transferFunction2DWidgets.begin(); pos != transferFunction2DWidgets.end(); ++pos)
+    for(pos = TransferFunctionWidgetList.begin(); pos != TransferFunctionWidgetList.end(); ++pos)
         delete *pos;
-    transferFunction2DWidgets.clear();
-    if(obj.transferFunction2DWidgets.size() > 0)
-        transferFunction2DWidgets.reserve(obj.transferFunction2DWidgets.size());
-    // Duplicate the transferFunction2DWidgets from obj.
-    for(pos = obj.transferFunction2DWidgets.begin(); pos != obj.transferFunction2DWidgets.end(); ++pos)
+    TransferFunctionWidgetList.clear();
+    if(obj.TransferFunctionWidgetList.size() > 0)
+        TransferFunctionWidgetList.reserve(obj.TransferFunctionWidgetList.size());
+    // Duplicate the TransferFunctionWidgetList from obj.
+    for(pos = obj.TransferFunctionWidgetList.begin(); pos != obj.TransferFunctionWidgetList.end(); ++pos)
     {
         TransferFunctionWidget *oldTransferFunctionWidget = (TransferFunctionWidget *)(*pos);
         TransferFunctionWidget *newTransferFunctionWidget = new TransferFunctionWidget(*oldTransferFunctionWidget);
-        transferFunction2DWidgets.push_back(newTransferFunctionWidget);
+        TransferFunctionWidgetList.push_back(newTransferFunctionWidget);
     }
 
     transferFunctionDim = obj.transferFunctionDim;
@@ -428,13 +427,13 @@ VolumeAttributes::operator == (const VolumeAttributes &obj) const
     for(int i = 0; i < 256 && freeformOpacity_equal; ++i)
         freeformOpacity_equal = (freeformOpacity[i] == obj.freeformOpacity[i]);
 
-    bool transferFunction2DWidgets_equal = (obj.transferFunction2DWidgets.size() == transferFunction2DWidgets.size());
-    for(size_t i = 0; (i < transferFunction2DWidgets.size()) && transferFunction2DWidgets_equal; ++i)
+    bool TransferFunctionWidgetList_equal = (obj.TransferFunctionWidgetList.size() == TransferFunctionWidgetList.size());
+    for(size_t i = 0; (i < TransferFunctionWidgetList.size()) && TransferFunctionWidgetList_equal; ++i)
     {
         // Make references to TransferFunctionWidget from AttributeGroup *.
-        const TransferFunctionWidget &transferFunction2DWidgets1 = *((const TransferFunctionWidget *)(transferFunction2DWidgets[i]));
-        const TransferFunctionWidget &transferFunction2DWidgets2 = *((const TransferFunctionWidget *)(obj.transferFunction2DWidgets[i]));
-        transferFunction2DWidgets_equal = (transferFunction2DWidgets1 == transferFunction2DWidgets2);
+        const TransferFunctionWidget &TransferFunctionWidgetList1 = *((const TransferFunctionWidget *)(TransferFunctionWidgetList[i]));
+        const TransferFunctionWidget &TransferFunctionWidgetList2 = *((const TransferFunctionWidget *)(obj.TransferFunctionWidgetList[i]));
+        TransferFunctionWidgetList_equal = (TransferFunctionWidgetList1 == TransferFunctionWidgetList2);
     }
 
     // Create the return value
@@ -464,7 +463,7 @@ VolumeAttributes::operator == (const VolumeAttributes &obj) const
             (skewFactor == obj.skewFactor) &&
             (sampling == obj.sampling) &&
             (rendererSamples == obj.rendererSamples) &&
-            transferFunction2DWidgets_equal &&
+            TransferFunctionWidgetList_equal &&
             (transferFunctionDim == obj.transferFunctionDim));
 }
 
@@ -609,34 +608,34 @@ VolumeAttributes::NewInstance(bool copy) const
 void
 VolumeAttributes::SelectAll()
 {
-    Select(ID_legendFlag,                (void *)&legendFlag);
-    Select(ID_lightingFlag,              (void *)&lightingFlag);
-    Select(ID_colorControlPoints,        (void *)&colorControlPoints);
-    Select(ID_opacityAttenuation,        (void *)&opacityAttenuation);
-    Select(ID_freeformFlag,              (void *)&freeformFlag);
-    Select(ID_opacityControlPoints,      (void *)&opacityControlPoints);
-    Select(ID_resampleTarget,            (void *)&resampleTarget);
-    Select(ID_opacityVariable,           (void *)&opacityVariable);
-    Select(ID_freeformOpacity,           (void *)freeformOpacity, 256);
-    Select(ID_useColorVarMin,            (void *)&useColorVarMin);
-    Select(ID_colorVarMin,               (void *)&colorVarMin);
-    Select(ID_useColorVarMax,            (void *)&useColorVarMax);
-    Select(ID_colorVarMax,               (void *)&colorVarMax);
-    Select(ID_useOpacityVarMin,          (void *)&useOpacityVarMin);
-    Select(ID_opacityVarMin,             (void *)&opacityVarMin);
-    Select(ID_useOpacityVarMax,          (void *)&useOpacityVarMax);
-    Select(ID_opacityVarMax,             (void *)&opacityVarMax);
-    Select(ID_smoothData,                (void *)&smoothData);
-    Select(ID_samplesPerRay,             (void *)&samplesPerRay);
-    Select(ID_rendererType,              (void *)&rendererType);
-    Select(ID_gradientType,              (void *)&gradientType);
-    Select(ID_num3DSlices,               (void *)&num3DSlices);
-    Select(ID_scaling,                   (void *)&scaling);
-    Select(ID_skewFactor,                (void *)&skewFactor);
-    Select(ID_sampling,                  (void *)&sampling);
-    Select(ID_rendererSamples,           (void *)&rendererSamples);
-    Select(ID_transferFunction2DWidgets, (void *)&transferFunction2DWidgets);
-    Select(ID_transferFunctionDim,       (void *)&transferFunctionDim);
+    Select(ID_legendFlag,                 (void *)&legendFlag);
+    Select(ID_lightingFlag,               (void *)&lightingFlag);
+    Select(ID_colorControlPoints,         (void *)&colorControlPoints);
+    Select(ID_opacityAttenuation,         (void *)&opacityAttenuation);
+    Select(ID_freeformFlag,               (void *)&freeformFlag);
+    Select(ID_opacityControlPoints,       (void *)&opacityControlPoints);
+    Select(ID_resampleTarget,             (void *)&resampleTarget);
+    Select(ID_opacityVariable,            (void *)&opacityVariable);
+    Select(ID_freeformOpacity,            (void *)freeformOpacity, 256);
+    Select(ID_useColorVarMin,             (void *)&useColorVarMin);
+    Select(ID_colorVarMin,                (void *)&colorVarMin);
+    Select(ID_useColorVarMax,             (void *)&useColorVarMax);
+    Select(ID_colorVarMax,                (void *)&colorVarMax);
+    Select(ID_useOpacityVarMin,           (void *)&useOpacityVarMin);
+    Select(ID_opacityVarMin,              (void *)&opacityVarMin);
+    Select(ID_useOpacityVarMax,           (void *)&useOpacityVarMax);
+    Select(ID_opacityVarMax,              (void *)&opacityVarMax);
+    Select(ID_smoothData,                 (void *)&smoothData);
+    Select(ID_samplesPerRay,              (void *)&samplesPerRay);
+    Select(ID_rendererType,               (void *)&rendererType);
+    Select(ID_gradientType,               (void *)&gradientType);
+    Select(ID_num3DSlices,                (void *)&num3DSlices);
+    Select(ID_scaling,                    (void *)&scaling);
+    Select(ID_skewFactor,                 (void *)&skewFactor);
+    Select(ID_sampling,                   (void *)&sampling);
+    Select(ID_rendererSamples,            (void *)&rendererSamples);
+    Select(ID_TransferFunctionWidgetList, (void *)&TransferFunctionWidgetList);
+    Select(ID_transferFunctionDim,        (void *)&transferFunctionDim);
 }
 
 // ****************************************************************************
@@ -858,11 +857,11 @@ VolumeAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool force
         node->AddNode(new DataNode("rendererSamples", rendererSamples));
     }
 
-    if(completeSave || !FieldsEqual(ID_transferFunction2DWidgets, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_TransferFunctionWidgetList, &defaultObject))
     {
         addToParent = true;
-        for(size_t i = 0; i < transferFunction2DWidgets.size(); ++i)
-            transferFunction2DWidgets[i]->CreateNode(node, completeSave, true);
+        for(size_t i = 0; i < TransferFunctionWidgetList.size(); ++i)
+            TransferFunctionWidgetList[i]->CreateNode(node, completeSave, true);
     }
 
     if(completeSave || !FieldsEqual(ID_transferFunctionDim, &defaultObject))
@@ -952,7 +951,7 @@ VolumeAttributes::SetFromNode(DataNode *parentNode)
         if(node->GetNodeType() == INT_NODE)
         {
             int ival = node->AsInt();
-            if(ival >= 0 && ival < 6)
+            if(ival >= 0 && ival < 5)
                 SetRendererType(Renderer(ival));
         }
         else if(node->GetNodeType() == STRING_NODE)
@@ -1017,7 +1016,7 @@ VolumeAttributes::SetFromNode(DataNode *parentNode)
     if((node = searchNode->GetNode("rendererSamples")) != 0)
         SetRendererSamples(node->AsFloat());
     // Clear all the TransferFunctionWidgets.
-    ClearTransferFunction2DWidgets();
+    ClearTransferFunctionWidgetLists();
 
     // Go through all of the children and construct a new
     // TransferFunctionWidget for each one of them.
@@ -1030,7 +1029,7 @@ VolumeAttributes::SetFromNode(DataNode *parentNode)
             {
                 TransferFunctionWidget temp;
                 temp.SetFromNode(children[i]);
-                AddTransferFunction2DWidgets(temp);
+                AddTransferFunctionWidgetList(temp);
             }
         }
     }
@@ -1185,8 +1184,6 @@ VolumeAttributes::SetRendererType(VolumeAttributes::Renderer rendererType_)
 {
     rendererType = rendererType_;
     Select(ID_rendererType, (void *)&rendererType);
-    if(rendererType != SLIVR && transferFunctionDim > 1)
-        SetTransferFunctionDim(1);
 }
 
 void
@@ -1234,10 +1231,7 @@ VolumeAttributes::SetRendererSamples(float rendererSamples_)
 void
 VolumeAttributes::SetTransferFunctionDim(int transferFunctionDim_)
 {
-    int d = transferFunctionDim_;
-    if(d < 1 || d > 2 || rendererType != SLIVR)
-        d = 1;
-    transferFunctionDim = d;
+    transferFunctionDim = transferFunctionDim_;
     Select(ID_transferFunctionDim, (void *)&transferFunctionDim);
 }
 
@@ -1426,15 +1420,15 @@ VolumeAttributes::GetRendererSamples() const
 }
 
 const AttributeGroupVector &
-VolumeAttributes::GetTransferFunction2DWidgets() const
+VolumeAttributes::GetTransferFunctionWidgetList() const
 {
-    return transferFunction2DWidgets;
+    return TransferFunctionWidgetList;
 }
 
 AttributeGroupVector &
-VolumeAttributes::GetTransferFunction2DWidgets()
+VolumeAttributes::GetTransferFunctionWidgetList()
 {
-    return transferFunction2DWidgets;
+    return TransferFunctionWidgetList;
 }
 
 int
@@ -1472,9 +1466,9 @@ VolumeAttributes::SelectFreeformOpacity()
 }
 
 void
-VolumeAttributes::SelectTransferFunction2DWidgets()
+VolumeAttributes::SelectTransferFunctionWidgetList()
 {
-    Select(ID_transferFunction2DWidgets, (void *)&transferFunction2DWidgets);
+    Select(ID_TransferFunctionWidgetList, (void *)&TransferFunctionWidgetList);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1482,7 +1476,7 @@ VolumeAttributes::SelectTransferFunction2DWidgets()
 ///////////////////////////////////////////////////////////////////////////////
 
 // ****************************************************************************
-// Method: VolumeAttributes::AddTransferFunction2DWidgets
+// Method: VolumeAttributes::AddTransferFunctionWidgetList
 //
 // Purpose: 
 //   This class contains the plot attributes for the volume plot.
@@ -1497,17 +1491,17 @@ VolumeAttributes::SelectTransferFunction2DWidgets()
 // ****************************************************************************
 
 void
-VolumeAttributes::AddTransferFunction2DWidgets(const TransferFunctionWidget &obj)
+VolumeAttributes::AddTransferFunctionWidgetList(const TransferFunctionWidget &obj)
 {
     TransferFunctionWidget *newTransferFunctionWidget = new TransferFunctionWidget(obj);
-    transferFunction2DWidgets.push_back(newTransferFunctionWidget);
+    TransferFunctionWidgetList.push_back(newTransferFunctionWidget);
 
     // Indicate that things have changed by selecting it.
-    Select(ID_transferFunction2DWidgets, (void *)&transferFunction2DWidgets);
+    Select(ID_TransferFunctionWidgetList, (void *)&TransferFunctionWidgetList);
 }
 
 // ****************************************************************************
-// Method: VolumeAttributes::ClearTransferFunction2DWidgets
+// Method: VolumeAttributes::ClearTransferFunctionWidgetLists
 //
 // Purpose: 
 //   This class contains the plot attributes for the volume plot.
@@ -1522,20 +1516,20 @@ VolumeAttributes::AddTransferFunction2DWidgets(const TransferFunctionWidget &obj
 // ****************************************************************************
 
 void
-VolumeAttributes::ClearTransferFunction2DWidgets()
+VolumeAttributes::ClearTransferFunctionWidgetLists()
 {
     AttributeGroupVector::iterator pos;
 
-    for(pos = transferFunction2DWidgets.begin(); pos != transferFunction2DWidgets.end(); ++pos)
+    for(pos = TransferFunctionWidgetList.begin(); pos != TransferFunctionWidgetList.end(); ++pos)
         delete *pos;
-    transferFunction2DWidgets.clear();
+    TransferFunctionWidgetList.clear();
 
     // Indicate that things have changed by selecting the list.
-    Select(ID_transferFunction2DWidgets, (void *)&transferFunction2DWidgets);
+    Select(ID_TransferFunctionWidgetList, (void *)&TransferFunctionWidgetList);
 }
 
 // ****************************************************************************
-// Method: VolumeAttributes::RemoveTransferFunction2DWidgets
+// Method: VolumeAttributes::RemoveTransferFunctionWidgetList
 //
 // Purpose: 
 //   This class contains the plot attributes for the volume plot.
@@ -1550,27 +1544,27 @@ VolumeAttributes::ClearTransferFunction2DWidgets()
 // ****************************************************************************
 
 void
-VolumeAttributes::RemoveTransferFunction2DWidgets(int index)
+VolumeAttributes::RemoveTransferFunctionWidgetList(int index)
 {
-    AttributeGroupVector::iterator pos = transferFunction2DWidgets.begin();
+    AttributeGroupVector::iterator pos = TransferFunctionWidgetList.begin();
 
     // Iterate through the vector "index" times. 
     for(int i = 0; i < index; ++i)
-        if(pos != transferFunction2DWidgets.end()) ++pos;
+        if(pos != TransferFunctionWidgetList.end()) ++pos;
 
     // If pos is still a valid iterator, remove that element.
-    if(pos != transferFunction2DWidgets.end())
+    if(pos != TransferFunctionWidgetList.end())
     {
         delete *pos;
-        transferFunction2DWidgets.erase(pos);
+        TransferFunctionWidgetList.erase(pos);
     }
 
     // Indicate that things have changed by selecting the list.
-    Select(ID_transferFunction2DWidgets, (void *)&transferFunction2DWidgets);
+    Select(ID_TransferFunctionWidgetList, (void *)&TransferFunctionWidgetList);
 }
 
 // ****************************************************************************
-// Method: VolumeAttributes::GetNumTransferFunction2DWidgets
+// Method: VolumeAttributes::GetNumTransferFunctionWidgetLists
 //
 // Purpose: 
 //   This class contains the plot attributes for the volume plot.
@@ -1585,13 +1579,13 @@ VolumeAttributes::RemoveTransferFunction2DWidgets(int index)
 // ****************************************************************************
 
 int
-VolumeAttributes::GetNumTransferFunction2DWidgets() const
+VolumeAttributes::GetNumTransferFunctionWidgetLists() const
 {
-    return transferFunction2DWidgets.size();
+    return TransferFunctionWidgetList.size();
 }
 
 // ****************************************************************************
-// Method: VolumeAttributes::GetTransferFunction2DWidgets
+// Method: VolumeAttributes::GetTransferFunctionWidgetList
 //
 // Purpose: 
 //   This class contains the plot attributes for the volume plot.
@@ -1606,13 +1600,13 @@ VolumeAttributes::GetNumTransferFunction2DWidgets() const
 // ****************************************************************************
 
 TransferFunctionWidget &
-VolumeAttributes::GetTransferFunction2DWidgets(int i)
+VolumeAttributes::GetTransferFunctionWidgetList(int i)
 {
-    return *((TransferFunctionWidget *)transferFunction2DWidgets[i]);
+    return *((TransferFunctionWidget *)TransferFunctionWidgetList[i]);
 }
 
 // ****************************************************************************
-// Method: VolumeAttributes::GetTransferFunction2DWidgets
+// Method: VolumeAttributes::GetTransferFunctionWidgetList
 //
 // Purpose: 
 //   This class contains the plot attributes for the volume plot.
@@ -1627,9 +1621,9 @@ VolumeAttributes::GetTransferFunction2DWidgets(int i)
 // ****************************************************************************
 
 const TransferFunctionWidget &
-VolumeAttributes::GetTransferFunction2DWidgets(int i) const
+VolumeAttributes::GetTransferFunctionWidgetList(int i) const
 {
-    return *((TransferFunctionWidget *)transferFunction2DWidgets[i]);
+    return *((TransferFunctionWidget *)TransferFunctionWidgetList[i]);
 }
 
 // ****************************************************************************
@@ -1650,7 +1644,7 @@ VolumeAttributes::GetTransferFunction2DWidgets(int i) const
 TransferFunctionWidget &
 VolumeAttributes::operator [] (int i)
 {
-    return *((TransferFunctionWidget *)transferFunction2DWidgets[i]);
+    return *((TransferFunctionWidget *)TransferFunctionWidgetList[i]);
 }
 
 // ****************************************************************************
@@ -1671,7 +1665,7 @@ VolumeAttributes::operator [] (int i)
 const TransferFunctionWidget &
 VolumeAttributes::operator [] (int i) const
 {
-    return *((TransferFunctionWidget *)transferFunction2DWidgets[i]);
+    return *((TransferFunctionWidget *)TransferFunctionWidgetList[i]);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1698,34 +1692,34 @@ VolumeAttributes::GetFieldName(int index) const
 {
     switch (index)
     {
-    case ID_legendFlag:                return "legendFlag";
-    case ID_lightingFlag:              return "lightingFlag";
-    case ID_colorControlPoints:        return "colorControlPoints";
-    case ID_opacityAttenuation:        return "opacityAttenuation";
-    case ID_freeformFlag:              return "freeformFlag";
-    case ID_opacityControlPoints:      return "opacityControlPoints";
-    case ID_resampleTarget:            return "resampleTarget";
-    case ID_opacityVariable:           return "opacityVariable";
-    case ID_freeformOpacity:           return "freeformOpacity";
-    case ID_useColorVarMin:            return "useColorVarMin";
-    case ID_colorVarMin:               return "colorVarMin";
-    case ID_useColorVarMax:            return "useColorVarMax";
-    case ID_colorVarMax:               return "colorVarMax";
-    case ID_useOpacityVarMin:          return "useOpacityVarMin";
-    case ID_opacityVarMin:             return "opacityVarMin";
-    case ID_useOpacityVarMax:          return "useOpacityVarMax";
-    case ID_opacityVarMax:             return "opacityVarMax";
-    case ID_smoothData:                return "smoothData";
-    case ID_samplesPerRay:             return "samplesPerRay";
-    case ID_rendererType:              return "rendererType";
-    case ID_gradientType:              return "gradientType";
-    case ID_num3DSlices:               return "num3DSlices";
-    case ID_scaling:                   return "scaling";
-    case ID_skewFactor:                return "skewFactor";
-    case ID_sampling:                  return "sampling";
-    case ID_rendererSamples:           return "rendererSamples";
-    case ID_transferFunction2DWidgets: return "transferFunction2DWidgets";
-    case ID_transferFunctionDim:       return "transferFunctionDim";
+    case ID_legendFlag:                 return "legendFlag";
+    case ID_lightingFlag:               return "lightingFlag";
+    case ID_colorControlPoints:         return "colorControlPoints";
+    case ID_opacityAttenuation:         return "opacityAttenuation";
+    case ID_freeformFlag:               return "freeformFlag";
+    case ID_opacityControlPoints:       return "opacityControlPoints";
+    case ID_resampleTarget:             return "resampleTarget";
+    case ID_opacityVariable:            return "opacityVariable";
+    case ID_freeformOpacity:            return "freeformOpacity";
+    case ID_useColorVarMin:             return "useColorVarMin";
+    case ID_colorVarMin:                return "colorVarMin";
+    case ID_useColorVarMax:             return "useColorVarMax";
+    case ID_colorVarMax:                return "colorVarMax";
+    case ID_useOpacityVarMin:           return "useOpacityVarMin";
+    case ID_opacityVarMin:              return "opacityVarMin";
+    case ID_useOpacityVarMax:           return "useOpacityVarMax";
+    case ID_opacityVarMax:              return "opacityVarMax";
+    case ID_smoothData:                 return "smoothData";
+    case ID_samplesPerRay:              return "samplesPerRay";
+    case ID_rendererType:               return "rendererType";
+    case ID_gradientType:               return "gradientType";
+    case ID_num3DSlices:                return "num3DSlices";
+    case ID_scaling:                    return "scaling";
+    case ID_skewFactor:                 return "skewFactor";
+    case ID_sampling:                   return "sampling";
+    case ID_rendererSamples:            return "rendererSamples";
+    case ID_TransferFunctionWidgetList: return "TransferFunctionWidgetList";
+    case ID_transferFunctionDim:        return "transferFunctionDim";
     default:  return "invalid index";
     }
 }
@@ -1750,34 +1744,34 @@ VolumeAttributes::GetFieldType(int index) const
 {
     switch (index)
     {
-    case ID_legendFlag:                return FieldType_bool;
-    case ID_lightingFlag:              return FieldType_bool;
-    case ID_colorControlPoints:        return FieldType_att;
-    case ID_opacityAttenuation:        return FieldType_float;
-    case ID_freeformFlag:              return FieldType_bool;
-    case ID_opacityControlPoints:      return FieldType_att;
-    case ID_resampleTarget:            return FieldType_int;
-    case ID_opacityVariable:           return FieldType_variablename;
-    case ID_freeformOpacity:           return FieldType_ucharArray;
-    case ID_useColorVarMin:            return FieldType_bool;
-    case ID_colorVarMin:               return FieldType_float;
-    case ID_useColorVarMax:            return FieldType_bool;
-    case ID_colorVarMax:               return FieldType_float;
-    case ID_useOpacityVarMin:          return FieldType_bool;
-    case ID_opacityVarMin:             return FieldType_float;
-    case ID_useOpacityVarMax:          return FieldType_bool;
-    case ID_opacityVarMax:             return FieldType_float;
-    case ID_smoothData:                return FieldType_bool;
-    case ID_samplesPerRay:             return FieldType_int;
-    case ID_rendererType:              return FieldType_enum;
-    case ID_gradientType:              return FieldType_enum;
-    case ID_num3DSlices:               return FieldType_int;
-    case ID_scaling:                   return FieldType_enum;
-    case ID_skewFactor:                return FieldType_double;
-    case ID_sampling:                  return FieldType_enum;
-    case ID_rendererSamples:           return FieldType_float;
-    case ID_transferFunction2DWidgets: return FieldType_attVector;
-    case ID_transferFunctionDim:       return FieldType_int;
+    case ID_legendFlag:                 return FieldType_bool;
+    case ID_lightingFlag:               return FieldType_bool;
+    case ID_colorControlPoints:         return FieldType_att;
+    case ID_opacityAttenuation:         return FieldType_float;
+    case ID_freeformFlag:               return FieldType_bool;
+    case ID_opacityControlPoints:       return FieldType_att;
+    case ID_resampleTarget:             return FieldType_int;
+    case ID_opacityVariable:            return FieldType_variablename;
+    case ID_freeformOpacity:            return FieldType_ucharArray;
+    case ID_useColorVarMin:             return FieldType_bool;
+    case ID_colorVarMin:                return FieldType_float;
+    case ID_useColorVarMax:             return FieldType_bool;
+    case ID_colorVarMax:                return FieldType_float;
+    case ID_useOpacityVarMin:           return FieldType_bool;
+    case ID_opacityVarMin:              return FieldType_float;
+    case ID_useOpacityVarMax:           return FieldType_bool;
+    case ID_opacityVarMax:              return FieldType_float;
+    case ID_smoothData:                 return FieldType_bool;
+    case ID_samplesPerRay:              return FieldType_int;
+    case ID_rendererType:               return FieldType_enum;
+    case ID_gradientType:               return FieldType_enum;
+    case ID_num3DSlices:                return FieldType_int;
+    case ID_scaling:                    return FieldType_enum;
+    case ID_skewFactor:                 return FieldType_double;
+    case ID_sampling:                   return FieldType_enum;
+    case ID_rendererSamples:            return FieldType_float;
+    case ID_TransferFunctionWidgetList: return FieldType_attVector;
+    case ID_transferFunctionDim:        return FieldType_int;
     default:  return FieldType_unknown;
     }
 }
@@ -1802,34 +1796,34 @@ VolumeAttributes::GetFieldTypeName(int index) const
 {
     switch (index)
     {
-    case ID_legendFlag:                return "bool";
-    case ID_lightingFlag:              return "bool";
-    case ID_colorControlPoints:        return "att";
-    case ID_opacityAttenuation:        return "float";
-    case ID_freeformFlag:              return "bool";
-    case ID_opacityControlPoints:      return "att";
-    case ID_resampleTarget:            return "int";
-    case ID_opacityVariable:           return "variablename";
-    case ID_freeformOpacity:           return "ucharArray";
-    case ID_useColorVarMin:            return "bool";
-    case ID_colorVarMin:               return "float";
-    case ID_useColorVarMax:            return "bool";
-    case ID_colorVarMax:               return "float";
-    case ID_useOpacityVarMin:          return "bool";
-    case ID_opacityVarMin:             return "float";
-    case ID_useOpacityVarMax:          return "bool";
-    case ID_opacityVarMax:             return "float";
-    case ID_smoothData:                return "bool";
-    case ID_samplesPerRay:             return "int";
-    case ID_rendererType:              return "enum";
-    case ID_gradientType:              return "enum";
-    case ID_num3DSlices:               return "int";
-    case ID_scaling:                   return "enum";
-    case ID_skewFactor:                return "double";
-    case ID_sampling:                  return "enum";
-    case ID_rendererSamples:           return "float";
-    case ID_transferFunction2DWidgets: return "attVector";
-    case ID_transferFunctionDim:       return "int";
+    case ID_legendFlag:                 return "bool";
+    case ID_lightingFlag:               return "bool";
+    case ID_colorControlPoints:         return "att";
+    case ID_opacityAttenuation:         return "float";
+    case ID_freeformFlag:               return "bool";
+    case ID_opacityControlPoints:       return "att";
+    case ID_resampleTarget:             return "int";
+    case ID_opacityVariable:            return "variablename";
+    case ID_freeformOpacity:            return "ucharArray";
+    case ID_useColorVarMin:             return "bool";
+    case ID_colorVarMin:                return "float";
+    case ID_useColorVarMax:             return "bool";
+    case ID_colorVarMax:                return "float";
+    case ID_useOpacityVarMin:           return "bool";
+    case ID_opacityVarMin:              return "float";
+    case ID_useOpacityVarMax:           return "bool";
+    case ID_opacityVarMax:              return "float";
+    case ID_smoothData:                 return "bool";
+    case ID_samplesPerRay:              return "int";
+    case ID_rendererType:               return "enum";
+    case ID_gradientType:               return "enum";
+    case ID_num3DSlices:                return "int";
+    case ID_scaling:                    return "enum";
+    case ID_skewFactor:                 return "double";
+    case ID_sampling:                   return "enum";
+    case ID_rendererSamples:            return "float";
+    case ID_TransferFunctionWidgetList: return "attVector";
+    case ID_transferFunctionDim:        return "int";
     default:  return "invalid index";
     }
 }
@@ -1991,18 +1985,18 @@ VolumeAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (rendererSamples == obj.rendererSamples);
         }
         break;
-    case ID_transferFunction2DWidgets:
+    case ID_TransferFunctionWidgetList:
         {  // new scope
-        bool transferFunction2DWidgets_equal = (obj.transferFunction2DWidgets.size() == transferFunction2DWidgets.size());
-        for(size_t i = 0; (i < transferFunction2DWidgets.size()) && transferFunction2DWidgets_equal; ++i)
+        bool TransferFunctionWidgetList_equal = (obj.TransferFunctionWidgetList.size() == TransferFunctionWidgetList.size());
+        for(size_t i = 0; (i < TransferFunctionWidgetList.size()) && TransferFunctionWidgetList_equal; ++i)
         {
             // Make references to TransferFunctionWidget from AttributeGroup *.
-            const TransferFunctionWidget &transferFunction2DWidgets1 = *((const TransferFunctionWidget *)(transferFunction2DWidgets[i]));
-            const TransferFunctionWidget &transferFunction2DWidgets2 = *((const TransferFunctionWidget *)(obj.transferFunction2DWidgets[i]));
-            transferFunction2DWidgets_equal = (transferFunction2DWidgets1 == transferFunction2DWidgets2);
+            const TransferFunctionWidget &TransferFunctionWidgetList1 = *((const TransferFunctionWidget *)(TransferFunctionWidgetList[i]));
+            const TransferFunctionWidget &TransferFunctionWidgetList2 = *((const TransferFunctionWidget *)(obj.TransferFunctionWidgetList[i]));
+            TransferFunctionWidgetList_equal = (TransferFunctionWidgetList1 == TransferFunctionWidgetList2);
         }
 
-        retval = transferFunction2DWidgets_equal;
+        retval = TransferFunctionWidgetList_equal;
         }
         break;
     case ID_transferFunctionDim:
@@ -2041,73 +2035,26 @@ VolumeAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
 //    Kathleen Bonnell, Thu Mar  3 09:27:40 PST 2005
 //    Recalculate if scaling or skewFactor changed for RayCasting.
 //
-//    Brad Whitlock, Tue Dec 23 16:58:42 PST 2008
-//    Recalculate more often with a HW renderer mode so we can recalculate
-//    the histogram.
-//
 // ****************************************************************************
-
 bool
 VolumeAttributes::ChangesRequireRecalculation(const VolumeAttributes &obj) const
 {
     if (opacityVariable != obj.opacityVariable)
         return true;
-
     if (resampleTarget != obj.resampleTarget)
         return true;
+    if (rendererType != obj.rendererType)
+        return true;
+    if (smoothData != obj.smoothData)
+        return true;
 
-    if (rendererType == VolumeAttributes::RayCasting ||
-        rendererType == VolumeAttributes::RayCastingIntegration)
+    if (rendererType == VolumeAttributes::RayCasting)
     {
-        // We're in software mode. Any change to the renderer type requires
-        // a reexecute.
-        if(rendererType != obj.rendererType)
-            return true;
-
         if (scaling != obj.scaling)
             return true;
         if (scaling == VolumeAttributes::Skew && skewFactor != obj.skewFactor)
             return true;
     }
-    else
-    {
-        // We're in hardware mode now but if we're transitioning to software
-        // then we need to reexecute. Transferring between any of the hardware
-        // modes does not require a reexecute.
-        if(obj.rendererType == VolumeAttributes::RayCasting ||
-           obj.rendererType == VolumeAttributes::RayCastingIntegration)
-        {
-            return true;
-        }
-
-        // We need to reexecute on the engine for thse changes in HW mode.
-
-        if(useColorVarMin != obj.useColorVarMin)
-            return true;
-        if(colorVarMin != obj.colorVarMin)
-            return true;
-        if(useColorVarMax != obj.useColorVarMax)
-            return true;
-        if(colorVarMax != obj.colorVarMax)
-            return true;
-        if(useOpacityVarMin != obj.useOpacityVarMin)
-            return true;
-        if(opacityVarMin != obj.opacityVarMin)
-            return true;
-        if(useOpacityVarMax != obj.useOpacityVarMax)
-            return true;
-        if(opacityVarMax != obj.opacityVarMax)
-            return true;
-        if(gradientType != obj.gradientType)
-            return true;
-        if(scaling != obj.scaling)
-            return true;
-        if(skewFactor != obj.skewFactor)
-            return true;
-    }
-
-    if (smoothData != obj.smoothData)
-        return true;
 
     return false;
 }
@@ -2416,9 +2363,7 @@ VolumeAttributes::AnyNonTransferFunctionMembersAreDifferent(const VolumeAttribut
            i == ID_opacityAttenuation || 
            i == ID_freeformFlag || 
            i == ID_opacityControlPoints ||
-           i == ID_freeformOpacity ||
-           i == ID_transferFunction2DWidgets ||
-           i == ID_transferFunctionDim)
+           i == ID_freeformOpacity)
         {
             continue;
         }

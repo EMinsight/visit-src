@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -606,9 +606,6 @@ VisitHotPointInteractor::StartCurveMode(INTERACTION_MODE mode)
 //   Gunther H. Weber, Wed Mar 19 16:10:11 PDT 2008
 //   Added SPREADSHEET_PICK 
 //
-//   Eric Brugger, Tue Dec  9 16:32:45 PST 2008
-//   Added code to set the axis orientation for the navigateAxisArray.
-//
 // ****************************************************************************
 void
 VisitHotPointInteractor::StartAxisArrayMode(INTERACTION_MODE mode)
@@ -629,7 +626,6 @@ VisitHotPointInteractor::StartAxisArrayMode(INTERACTION_MODE mode)
         {
             navigateAxisArray = new NavigateAxisArray(proxy);
         }
-        navigateAxisArray->SetAxisOrientation(NavigateAxisArray::Vertical);
         newInteractor = navigateAxisArray;
         break;
       case ZOOM:
@@ -642,75 +638,6 @@ VisitHotPointInteractor::StartAxisArrayMode(INTERACTION_MODE mode)
       case ZONE_PICK:
       case NODE_PICK:
       case SPREADSHEET_PICK:
-        if (pick == NULL)
-        {
-            pick = new Pick(proxy);
-        }
-        newInteractor = pick;
-        break;
-    }
-
-    if (newInteractor == NULL)
-    {
-        //
-        // We have an invalid navigation mode or an invalid window mode.
-        //
-        EXCEPTION1(BadInteractorException, mode);
-    }
-
-    //
-    // No reason to set the interactor again if it is the same one.
-    //
-    if (newInteractor != currentInteractor)
-        SetInteractor(newInteractor);
-}
-
-// ****************************************************************************
-//  Method:  VisitHotPointInteractor::StartAxisParallelMode
-//
-//  Purpose:
-//    Sets up the interactors for AxisParallel window mode.
-//
-//  Arguments:
-//    mode       the interaction mode
-//
-//  Programmer:  Eric Brugger
-//  Creation:    December 9, 2008
-//
-//  Modifications:
-//
-// ****************************************************************************
-void
-VisitHotPointInteractor::StartAxisParallelMode(INTERACTION_MODE mode)
-{
-    if (!proxy.HasPlots())
-    {
-        return;
-    }
-
-    VisitInteractor  *newInteractor  = NULL;
-    switch(mode)
-    {
-      case LINEOUT:
-      // We don't have a lineout or zoom interaction.
-      // Fall through to navigation mode.
-      case NAVIGATE:
-        if (navigateAxisArray == NULL)
-        {
-            navigateAxisArray = new NavigateAxisArray(proxy);
-        }
-        navigateAxisArray->SetAxisOrientation(NavigateAxisArray::Horizontal);
-        newInteractor = navigateAxisArray;
-        break;
-      case ZOOM:
-        if(zoomAxisArray == NULL)
-        {
-            zoomAxisArray = new ZoomAxisArray(proxy);
-        }
-        newInteractor = zoomAxisArray;
-        break;
-      case ZONE_PICK:
-      case NODE_PICK:
         if (pick == NULL)
         {
             pick = new Pick(proxy);
@@ -798,23 +725,6 @@ VisitHotPointInteractor::StopCurveMode()
 
 void
 VisitHotPointInteractor::StopAxisArrayMode()
-{
-    SetNullInteractor();
-}
-
-// ****************************************************************************
-// Method: VisitHotPointInteractor::StopAxisParallelMode
-//
-// Purpose: 
-//   Ends AxisParallel interaction mode.
-//
-// Programmer: Eric Brugger
-// Creation:   December 9, 2008
-//
-// ****************************************************************************
-
-void
-VisitHotPointInteractor::StopAxisParallelMode()
 {
     SetNullInteractor();
 }

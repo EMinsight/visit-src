@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -679,6 +679,103 @@ SumIntArrayAcrossAllProcessors(int *inArray, int *outArray, int nArray)
 
 
 // ****************************************************************************
+//  Function: SumLongLongArrayAcrossAllProcessors
+//
+//  Purpose:
+//      Sums an array of long longs across all processors.
+//
+//  Arguments:
+//      inArray    The input.
+//      outArray   The sums of the inArrays across all processors.
+//      nArray     The number of entries in inArray/outArray.
+//
+//  Programmer:    Jeremy Meredith
+//  Creation:      February 22, 2008
+//
+//  Modifications:
+//    Mark C. Miller, Tue Jan 27 18:34:41 PST 2009
+//    MPI_Type_get_extent is only in MPI-2. Likewise for
+//    MPI_UNSIGNED_LONG_LONG. So, I made the first check conditional
+//    on MPI_UNSIGNED_LONG_LONG being defined.
+//
+//    Gunther H. Weber, Mon Apr  6 20:50:50 PDT 2009
+//    Check whether MPI_INTEGER8 defined even if MPI_UNSIGNED_LONG_LONG
+//    is defined.
+// 
+//    Brad Whitlock, Mon Apr 20 12:06:25 PDT 2009
+//    Check MPI_VERSION and MPI_SUBVERSION before using MPI_Type_get_extent.
+//
+// ****************************************************************************
+
+void
+SumLongLongArrayAcrossAllProcessors(VISIT_LONG_LONG *inArray,
+                                    VISIT_LONG_LONG *outArray, int nArray)
+{
+#ifdef PARALLEL
+    MPI_Datatype datatype = MPI_LONG_LONG;
+    // On at least one mpi implementation (mpich2-1.0.5, Linux-x86-64),
+    // MPI_LONG_LONG blatantly fails.  But for some reason INTEGER8 works.
+    // Luckily we can tell this by checking the datatype size of the type.
+    // We'll try a few different ones, and if none work, just do it slowly
+    // using a single-precision int.
+#if (MPI_VERSION >= 2) || ((MPI_VERSION == 1) && (MPI_SUBVERSION > 2))
+    MPI_Aint lb,e;
+    MPI_Type_get_extent(datatype, &lb, &e);
+#if defined(MPI_UNSIGNED_LONG_LONG)
+    if (e != sizeof(VISIT_LONG_LONG))
+    {
+        datatype = MPI_UNSIGNED_LONG_LONG;
+        MPI_Type_get_extent(datatype, &lb, &e);
+    }
+#endif
+#if defined(MPI_INTEGER8)  // ... may only be MPI-2.
+    if (e != sizeof(VISIT_LONG_LONG))
+    {
+        datatype = MPI_INTEGER8;
+        MPI_Type_get_extent(datatype, &lb, &e);
+    }
+#endif
+#else
+    MPI_Aint e;
+    MPI_Type_extent(datatype, &e);
+#if defined(MPI_UNSIGNED_LONG_LONG)
+    if (e != sizeof(VISIT_LONG_LONG))
+    {
+        datatype = MPI_UNSIGNED_LONG_LONG;
+        MPI_Type_extent(datatype, &e);
+    }
+#endif
+#endif
+
+    if (e == sizeof(VISIT_LONG_LONG))
+    {
+        MPI_Allreduce(inArray, outArray, nArray, datatype, MPI_SUM,
+                      VISIT_MPI_COMM);
+    }
+    else
+    {
+        // This is pathetic, but I don't have a better idea.
+        int *tmpInArray = new int[nArray];
+        int *tmpOutArray = new int[nArray];
+        for (int i=0; i<nArray; i++)
+            tmpInArray[i] = inArray[i];
+        MPI_Allreduce(tmpInArray, tmpOutArray, nArray, MPI_INT, MPI_SUM,
+                      VISIT_MPI_COMM);
+        for (int i=0; i<nArray; i++)
+            outArray[i] = tmpOutArray[i];
+        delete [] tmpInArray;
+        delete [] tmpOutArray;
+    }
+#else
+    for (int i = 0 ; i < nArray ; i++)
+    {
+        outArray[i] = inArray[i];
+    }
+#endif
+}
+
+
+// ****************************************************************************
 //  Function: SumDoubleArrayAcrossAllProcessors
 //
 //  Purpose:
@@ -1030,6 +1127,49 @@ void BroadcastInt(int &i)
 }
 
 // ****************************************************************************
+//  Function:  BroadcastIntVector
+//
+//  Purpose:
+//    Broadcast a vector<int> from processor 0 to all other processors
+//
+//  Arguments:
+//    vi         the vector<int>
+//    myrank     the rank of this process
+//
+//  Programmer:  Jeremy Meredith
+//  Creation:    July 15, 2003
+//
+//  Modifications:
+//
+//    Mark C. Miller, Mon Jan 22 22:09:01 PST 2007
+//    Changed MPI_COMM_WORLD to VISIT_MPI_COMM
+//
+//    Tom Fogal, Mon May 25 16:05:23 MDT 2009
+//    Added a check for empty vectors.
+//
+// ****************************************************************************
+void BroadcastIntVector(vector<int> &vi, int myrank)
+{
+#ifdef PARALLEL
+    int len;
+    if (myrank==0)
+        len = vi.size();
+    MPI_Bcast(&len, 1, MPI_INT, 0, VISIT_MPI_COMM);
+    if (myrank!=0)
+        vi.resize(len);
+
+    if(len == 0)
+    {
+        debug1 << "Don't know how to broadcast empty vector!  "
+               << "Bailing out early." << std::endl;
+        return;
+    }
+
+    MPI_Bcast(&vi[0], len, MPI_INT, 0, VISIT_MPI_COMM);
+#endif
+}
+
+// ****************************************************************************
 //  Function:  BroadcastBool
 //
 //  Purpose: Broadcast a bool from processor 0 to all other processors
@@ -1049,34 +1189,44 @@ void BroadcastBool(bool &b)
 }
 
 // ****************************************************************************
-//  Function:  BroadcastIntVector
+//  Function:  BroadcastBoolVector
 //
 //  Purpose:
-//    Broadcast a vector<int> from processor 0 to all other processors
+//    Broadcast a vector<bool> from processor 0 to all other processors
 //
 //  Arguments:
-//    vi         the vector<int>
+//    vi         the vector<bool>
 //    myrank     the rank of this process
 //
-//  Programmer:  Jeremy Meredith
-//  Creation:    July 15, 2003
+//  Programmer:  Brad Whitlock
+//  Creation:    Thu Jun 18 12:02:26 PDT 2009
 //
 //  Modifications:
 //
-//    Mark C. Miller, Mon Jan 22 22:09:01 PST 2007
-//    Changed MPI_COMM_WORLD to VISIT_MPI_COMM
 // ****************************************************************************
-void BroadcastIntVector(vector<int> &vi, int myrank)
+void BroadcastBoolVector(vector<bool> &vb, int myrank)
 {
 #ifdef PARALLEL
     int len;
     if (myrank==0)
-        len = vi.size();
+        len = vb.size();   
     MPI_Bcast(&len, 1, MPI_INT, 0, VISIT_MPI_COMM);
     if (myrank!=0)
-        vi.resize(len);
+        vb.resize(len);
 
-    MPI_Bcast(&vi[0], len, MPI_INT, 0, VISIT_MPI_COMM);
+    std::vector<unsigned char> v;
+    v.resize(len);
+    if (myrank==0)
+    {
+        for (size_t i = 0; i < vb.size(); ++i)
+            v[i] = vb[i] ? 1 : 0;
+    }
+    MPI_Bcast(&v[0], len, MPI_UNSIGNED_CHAR, 0, VISIT_MPI_COMM);
+    if (myrank!=0)
+    {
+        for (size_t i = 0; i < vb.size(); ++i)
+            vb[i] = v[i]==1;
+    }
 #endif
 }
 
@@ -1122,6 +1272,9 @@ void BroadcastDouble(double &i)
 //    Hank Childs, Thu Jun 23 14:02:03 PDT 2005
 //    Change type of "myrank" to be int.  Too much cut-n-paste previously.
 //
+//    Tom Fogal, Mon May 25 16:06:09 MDT 2009
+//    Added check to make sure we don't try to broadcast an empty vector.
+//
 // ****************************************************************************
 void BroadcastDoubleVector(vector<double> &vi, int myrank)
 {
@@ -1132,6 +1285,14 @@ void BroadcastDoubleVector(vector<double> &vi, int myrank)
     MPI_Bcast(&len, 1, MPI_INT, 0, VISIT_MPI_COMM);
     if (myrank!=0)
         vi.resize(len);
+
+    if(len == 0)
+    {
+        debug1 << "Don't know how to broadcast empty vector!  "
+               << "Bailing out early." << std::endl;
+        return;
+    }
+
 
     MPI_Bcast(&vi[0], len, MPI_DOUBLE, 0, VISIT_MPI_COMM);
 #endif
@@ -1198,6 +1359,10 @@ void BroadcastString(string &s, int myrank)
 //
 //    Mark C. Miller, Mon Jan 22 22:09:01 PST 2007
 //    Changed MPI_COMM_WORLD to VISIT_MPI_COMM
+//
+//    Tom Fogal, Mon May 25 15:53:31 MDT 2009
+//    Added a check for empty string vectors.
+//
 // ****************************************************************************
 void BroadcastStringVector(vector<string> &vs, int myrank)
 {
@@ -1207,7 +1372,15 @@ void BroadcastStringVector(vector<string> &vs, int myrank)
     int len;
     if (myrank==0)
         len = vs.size();
+
     MPI_Bcast(&len, 1, MPI_INT, 0, VISIT_MPI_COMM);
+
+    if(len == 0)
+    {
+        debug1 << "Don't know how to broadcast empty vector!  "
+               << "Bailing out early." << std::endl;
+        return;
+    }
 
     vector<int> lens(len);
     if (myrank == 0)
@@ -1272,6 +1445,10 @@ void BroadcastStringVector(vector<string> &vs, int myrank)
 //
 //    Mark C. Miller, Mon Jan 22 22:09:01 PST 2007
 //    Changed MPI_COMM_WORLD to VISIT_MPI_COMM
+//
+//    Tom Fogal, Mon May 25 16:07:08 MDT 2009
+//    Added check to make sure we don't try to broadcast an empty vector.
+//
 // ****************************************************************************
 void BroadcastStringVectorVector(vector< vector<string> > &vvs, int myrank)
 {
@@ -1282,6 +1459,13 @@ void BroadcastStringVectorVector(vector< vector<string> > &vvs, int myrank)
     MPI_Bcast(&len, 1, MPI_INT, 0, VISIT_MPI_COMM);
     if (myrank!=0)
         vvs.resize(len);
+
+    if(len == 0)
+    {
+        debug1 << "Don't know how to broadcast empty vector!  "
+               << "Bailing out early." << std::endl;
+        return;
+    }
 
     for (int i=0; i<len; i++)
     {
@@ -1363,6 +1547,79 @@ bool GetListToRootProc(std::vector<std::string> &vars, int total)
     return true;
 }
 
+
+// ****************************************************************************
+//  Function: CollectIntArraysOnRootProc
+//
+//  Purpose:
+//      Collects a collection of arrays from all the processors on the root
+//      process.  The arrays can be of different sizes.  The receiveBuf and
+//      receiveCounts are allocated in this routine and must be deleted by
+//      the caller.
+//
+//  Programmer: Eric Brugger
+//  Creation:   June 22, 2009
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+void
+CollectIntArraysOnRootProc(int *&receiveBuf, int *&receiveCounts,
+    int *sendBuf, int sendCount)
+{
+#ifdef PARALLEL
+    int rank = PAR_Rank();
+    int nProc = PAR_Size();
+
+    // Determine the receive counts.
+    receiveCounts = NULL;
+    if (rank == 0)
+    {
+        receiveCounts = new int[nProc];
+    }
+    MPI_Gather(&sendCount, 1, MPI_INT, receiveCounts, 1, MPI_INT,
+               0, VISIT_MPI_COMM);
+
+    // Determine the processor offsets.
+    int *procOffset = NULL;
+    if (rank == 0)
+    {
+        procOffset = new int[nProc];
+        procOffset[0] = 0;
+        for (int i = 1; i < nProc; i++)
+            procOffset[i] = procOffset[i-1] + receiveCounts[i-1];
+    }
+
+    // Allocate the receive buffer.
+    receiveBuf = NULL;
+    if (rank == 0)
+    {
+        // Determine the size of the receive buffer.
+        int nReceiveBuf = 0;
+        for (int i  = 0 ; i < nProc; i++)
+            nReceiveBuf += receiveCounts[i];
+
+        // Allocate it.
+        receiveBuf = new int[nReceiveBuf];
+    }
+
+    MPI_Gatherv(sendBuf, sendCount, MPI_INT, receiveBuf,
+                receiveCounts, procOffset, MPI_INT, 0, VISIT_MPI_COMM);
+
+    if (rank == 0)
+    {
+        delete [] procOffset;
+    }
+#else
+    receiveCounts = new int[1];
+    receiveCounts[0] = sendCount;
+
+    receiveBuf = new int[sendCount];
+    for (int i = 0; i < sendCount; i++)
+        receiveBuf[i] = sendBuf[i];
+#endif
+}
 
 // ****************************************************************************
 //  Function: GetUniqueMessageTag

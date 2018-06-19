@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -50,6 +50,7 @@ class QvisColorButton;
 class QvisPointControl;
 class Subject;
 class MeshAttributes;
+class QvisOpacitySlider;
 
 // ****************************************************************************
 // Class: QvisMeshPlotWindow
@@ -93,9 +94,6 @@ class MeshAttributes;
 //   Brad Whitlock, Wed Jul 20 14:23:58 PST 2005
 //   Added a new slot to handle a new signal from QvisPointControl.
 //
-//   Cyrus Harrison, Fri Jul 18 14:44:51 PDT 2008
-//   Initial Qt4 Port. 
-//
 // ****************************************************************************
 
 class QvisMeshPlotWindow : public QvisPostableWindowObserver
@@ -136,6 +134,8 @@ private slots:
     void pointSizeVarToggled(bool);
     void pointSizeVarChanged(const QString &);
 
+    void changedOpacity(int opacity, const void *);
+
 private:
     int                     plotType;
     MeshAttributes         *meshAtts;
@@ -148,15 +148,17 @@ private:
     QCheckBox              *outlineOnlyToggle;
     QLabel                 *errorToleranceLabel;
     QLineEdit              *errorToleranceLineEdit;
-    QButtonGroup           *opaqueModeGroup;
+    QButtonGroup           *opaqueMode;
     QCheckBox              *legendToggle;
     QCheckBox              *showInternalToggle;
     QLabel                 *opaqueColorLabel;
     QvisColorButton        *opaqueColor;
     QCheckBox              *backgroundToggle;
     QCheckBox              *foregroundToggle;
-    QButtonGroup           *smoothingLevelGroup;
+    QButtonGroup           *smoothingLevelButtons;
     QvisPointControl       *pointControl;
+    QLabel                *opacityLabel;
+    QvisOpacitySlider     *opacitySlider;
 };
 
 #endif

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -43,7 +43,7 @@
 #include <Observer.h>
 
 class QLabel;
-class QTextEdit;
+class QMultiLineEdit;
 
 // *******************************************************************
 // Class: QvisMessageWindow
@@ -65,9 +65,6 @@ class QTextEdit;
 //   Brad Whitlock, Wed Apr  9 10:54:00 PDT 2008
 //   QString for captionString.
 //
-//   Brad Whitlock, Fri May 30 14:27:35 PDT 2008
-//   Qt 4.
-//
 // *******************************************************************
 
 class GUI_API QvisMessageWindow : public QvisWindowBase, public Observer
@@ -81,9 +78,9 @@ public:
 private slots:
     void doHide();
 private:
-    QLabel    *severityLabel;
-    QTextEdit *messageText;
-    bool       preserveInformation;
+    QLabel         *severityLabel;
+    QMultiLineEdit *messageText;
+    bool            preserveInformation;
 };
 
 #endif

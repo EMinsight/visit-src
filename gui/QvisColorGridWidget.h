@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,7 +39,7 @@
 #ifndef QVIS_COLOR_GRID_WIDGET_H
 #define QVIS_COLOR_GRID_WIDGET_H
 #include <gui_exports.h>
-#include <QWidget>
+#include <qwidget.h>
 #include <QvisGridWidget.h>
 
 class QPixmap;
@@ -72,20 +72,14 @@ class QPainter;
 //   Jeremy Meredith, Fri Aug 11 16:49:48 EDT 2006
 //   Refactored most of this class to a new base QvisGridWidget.
 //
-//   Brad Whitlock, Tue Jun  3 10:26:51 PDT 2008
-//   Qt 4.
-//
-//   Jeremy Meredith, Wed Dec 31 15:27:54 EST 2008
-//   Added support for showing hints such as the color index or an
-//   element name (if we're working with an atomic color table).
-//
 // ****************************************************************************
 
 class GUI_API QvisColorGridWidget : public QvisGridWidget
 {
     Q_OBJECT
 public:
-    QvisColorGridWidget(QWidget *parent = 0, Qt::WindowFlags f = 0);
+    QvisColorGridWidget(QWidget *parent = 0, const char *name = 0,
+                        WFlags f = 0);
     virtual ~QvisColorGridWidget();
 
     void setSelectedColor(const QColor &c);
@@ -96,7 +90,6 @@ public:
     bool   containsColor(const QColor &color) const;
     void   setPaletteColor(const QColor &c, int index);
     virtual void drawItem(QPainter &paint, int index);
-    void   setShowIndexHints(bool val);
 
 signals:
     void selectedColor(const QColor &c);
@@ -109,7 +102,6 @@ protected:
 
     virtual void emitSelection();
 private:
-    bool     showIndexHints;
     QColor  *paletteColors;
 };
 

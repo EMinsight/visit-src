@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -65,17 +65,13 @@ class QvisScreenPositionEdit;
 //    Dave Bremer, Wed Oct  8 11:36:27 PDT 2008
 //    Added orientationComboBox
 //   
-//    Hank Childs, Fri Jan 23 15:19:28 PST 2009
-//    Add support for whether or not to draw the "min/max" portion of the
-//    legend.
-//
 // ****************************************************************************
 
 class GUI_API QvisLegendAttributesInterface : public QvisAnnotationObjectInterface
 {
     Q_OBJECT
 public:
-    QvisLegendAttributesInterface(QWidget *parent);
+    QvisLegendAttributesInterface(QWidget *parent, const char *name = 0);
     virtual ~QvisLegendAttributesInterface();
 
     virtual QString GetName() const { return "Legend"; }
@@ -105,7 +101,6 @@ private slots:
     void shadowToggled(bool);
     void useForegroundColorToggled(bool);
     void drawLabelsToggled(bool);
-    void drawMinmaxToggled(bool);
     void drawBoundingBoxToggled(bool);
     void boundingBoxColorChanged(const QColor &);
     void boundingBoxOpacityChanged(int);
@@ -129,7 +124,6 @@ private:
     QCheckBox              *useForegroundColorCheckBox;
 
     QCheckBox              *drawLabelsCheckBox;
-    QCheckBox              *drawMinmaxCheckBox;
     QCheckBox              *drawTitleCheckBox;
 
     QCheckBox              *drawBoundingBoxCheckBox;

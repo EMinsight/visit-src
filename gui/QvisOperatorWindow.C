@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -38,7 +38,7 @@
 
 #include <QvisOperatorWindow.h>
 #include <QvisNotepadArea.h>
-#include <QMessageBox>
+#include <qmessagebox.h>
 
 #include <GlobalAttributes.h>
 #include <OperatorPluginInfo.h>
@@ -69,15 +69,12 @@
 //   Brad Whitlock, Wed Apr  9 12:48:10 PDT 2008
 //   QString for caption, shortName.
 //
-//   Jeremy Meredith, Fri Jan  2 17:18:13 EST 2009
-//   Added Load and Save button support.
-//
 // ****************************************************************************
 
 QvisOperatorWindow::QvisOperatorWindow(const int type, Subject *subj,
     const QString &caption, const QString &shortName, QvisNotepadArea *notepad,
     bool stretch) : QvisPostableWindowObserver(subj, caption, shortName,
-    notepad, QvisPostableWindowObserver::AllExtraButtonsAndLoadSave, stretch)
+    notepad, QvisPostableWindowObserver::AllExtraButtons, stretch)
 {
     operatorType = type;
 }
@@ -191,9 +188,6 @@ QvisOperatorWindow::GetCurrentValues(int)
 //   Brad Whitlock, Tue Apr  8 09:27:26 PDT 2008
 //   Support for internationalization.
 //
-//   Cyrus Harrison, Tue Jul  8 14:34:17 PDT 2008
-//   Initial Qt4 Port.
-//
 // ****************************************************************************
 
 void
@@ -254,29 +248,10 @@ QvisOperatorWindow::SetOperatorOptions()
                 if(s != 0)
                     delete s;
 
-                QMessageBox msgBox;
-                msgBox.setWindowTitle("VisIt");
-                msgBox.setText(msg);
-                QPushButton *yesButton    = msgBox.addButton(QMessageBox::Yes);
-                QPushButton *noButton     = msgBox.addButton(QMessageBox::No);
-                QPushButton *yesAllButton = msgBox.addButton(tr("Yes, Do not prompt again"),
-                                                             QMessageBox::ActionRole);
-                
-                msgBox.exec();
-                QPushButton *clicked = (QPushButton*)msgBox.clickedButton();
-                if ( clicked == yesButton) 
-                {
-                    // connect
-                    button = 0;
-                }
-                else if (clicked == noButton) 
-                {
-                    button = 1;
-                }
-                else if (clicked == yesAllButton) 
-                {
-                    button = 2;
-                }
+                // Ask the user if he really wants to close the engine.
+                button = QMessageBox::warning(this, "VisIt",
+                    msg.latin1(), tr("Yes"), tr("No"), tr("Yes, Do not prompt again"),
+                    0, 1 );
             }
 
             if(button == 0)

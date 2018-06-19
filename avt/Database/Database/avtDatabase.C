@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -751,9 +751,8 @@ avtDatabase::GetOutput(const char *var, int ts)
 //    Hank Childs, Fri Feb 15 16:19:02 PST 2008
 //    Fix possible buffer overwrite.
 //
-//    Hank Childs, Tue Jan 20 10:36:40 PST 2009
-//    Initialize data member for whether or not the file format does its own
-//    domain decomposition.
+//    Jeremy Meredith, Tue Jun  2 16:25:01 EDT 2009
+//    Added support for unit cell origin (previously assumed to be 0,0,0);
 //
 // ****************************************************************************
 
@@ -772,12 +771,10 @@ avtDatabase::PopulateDataObjectInformation(avtDataObject_p &dob,
     atts.SetFullDBName(fullDBName);
     avtDataValidity   &validity = dob->GetInfo().GetValidity();
 
-    avtDatabaseMetaData *md = GetMetaData(ts);
-    atts.SetDynamicDomainDecomposition(md->GetFormatCanDoDomainDecomposition());
-    string mesh = md->MeshForVar(var);
-    const avtMeshMetaData *mmd = md->GetMesh(mesh);
+    string mesh = GetMetaData(ts)->MeshForVar(var);
+    const avtMeshMetaData *mmd = GetMetaData(ts)->GetMesh(mesh);
     bool haveSetTrueSpatialExtents = false;
-    atts.SetNumStates(md->GetNumStates());
+    atts.SetNumStates(GetMetaData(ts)->GetNumStates());
     if (mmd != NULL)
     {
         atts.SetCellOrigin(mmd->cellOrigin);
@@ -824,6 +821,7 @@ avtDatabase::PopulateDataObjectInformation(avtDataObject_p &dob,
         atts.SetMeshCoordType(mmd->meshCoordType);
         atts.SetNodesAreCritical(mmd->nodesAreCritical);
         atts.SetUnitCellVectors(mmd->unitCellVectors);
+        atts.SetUnitCellOrigin(mmd->unitCellOrigin);
         if (mmd->rectilinearGridHasTransform)
         {
             atts.SetRectilinearGridHasTransform(true);

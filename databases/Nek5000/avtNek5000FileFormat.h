@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -49,8 +49,10 @@
 #include <vector>
 
 class     avtIntervalTree;
+#if 0
 class     avtIsolevelsSelection;
 class     avtPlaneSelection;
+#endif
 class     avtSpatialBoxSelection;
 
 
@@ -126,6 +128,9 @@ class KeyCompare {
 //    Hank Childs, Mon Jan 12 13:13:10 CST 2009
 //    Add data member for what time slice we've read time info for.
 //
+//    Eric Brugger, Thu Nov 12 17:18:29 PST 2009
+//    Removed the version data member since it is no longer used.
+//
 // ****************************************************************************
 
 class avtNek5000FileFormat : public avtMTMDFileFormat
@@ -164,7 +169,6 @@ class avtNek5000FileFormat : public avtMTMDFileFormat
   protected:
     // This info is embedded in the .nek3d text file 
     // originally specified by Dave Bremer
-    std::string          version;
     std::string          fileTemplate;
     int                  iFirstTimestep;
     int                  iNumTimesteps;

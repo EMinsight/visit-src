@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -57,13 +57,10 @@
 //   Brad Whitlock, Wed Apr  9 10:31:03 PDT 2008
 //   Changed ctor args.
 //
-//    Cyrus Harrison, Tue Jun 24 11:15:28 PDT 2008
-//    Initial Qt4 Port.
-//
 // **************************************************************************** 
 
 QvisDelayedWindowSimpleObserver::QvisDelayedWindowSimpleObserver(
-    const QString &caption, Qt::WindowFlags f) : QvisDelayedWindow(caption, f),
+    const QString &caption, WFlags f) : QvisDelayedWindow(caption, f),
     SimpleObserver()
 {
     selectedSubject = 0;

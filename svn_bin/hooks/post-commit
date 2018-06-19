@@ -2,7 +2,6 @@
 # This follows the same idea as the `pre-commit' script, but is meant to be run
 # after the commit is accepted/completed/finalized.  This would be a good place
 # to inform a buildbot to start an automated build, for example.
-#
 
 REPOS="$1"
 REV="$2"
@@ -10,20 +9,9 @@ REV="$2"
 #
 # Set some env variables used by the scripts
 #
-source ${REPOS}/hooks/hook_common.sh
+source ${REPOS}/hooks/hook_vars.sh
 
-#
-# Check that we have valid input parameters
-#
-if test -z "${REPOS}"; then
-    log "Repository path not set in $0."
-    exit 1
-fi
-if test -z "${REV}"; then
-    log "Revision number not set in $0."
-    exit 1
-fi
-
+hadError=0
 function run_sh()
 {
    SCRIPT="$@"

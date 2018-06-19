@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,12 +37,12 @@
 *****************************************************************************/
 #include <QvisSequenceTransition.h>
 #include <QvisColorButton.h>
-#include <QButtonGroup>
-#include <QFrame>
-#include <QLabel>
-#include <QLayout>
-#include <QRadioButton>
-#include <QSpinBox>
+#include <qbuttongroup.h>
+#include <qframe.h>
+#include <qlabel.h>
+#include <qlayout.h>
+#include <qradiobutton.h>
+#include <qspinbox.h>
 
 // ****************************************************************************
 // Method: QvisSequenceTransition::QvisSequenceTransition
@@ -62,94 +62,87 @@
 //   Brad Whitlock, Tue Apr  8 16:29:55 PDT 2008
 //   Support for internationalization.
 //   
-//   Brad Whitlock, Tue Oct  7 09:28:24 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 QvisSequenceTransition::QvisSequenceTransition(const QPixmap &pix,
-    QWidget *parent) : QGroupBox(parent)
+    QWidget *parent, const char *name)
 {
     QVBoxLayout *innerLayout = new QVBoxLayout(this);
     innerLayout->setMargin(10);
     innerLayout->addSpacing(15);
-    QHBoxLayout *hLayout = new QHBoxLayout(0);
-    innerLayout->addLayout(hLayout);
+    QHBoxLayout *hLayout = new QHBoxLayout(innerLayout);
     hLayout->setSpacing(15);
 
     // Left controls.
-    QGridLayout *leftLayout = new QGridLayout(0);
-    hLayout->addLayout(leftLayout);
+    QGridLayout *leftLayout = new QGridLayout(hLayout, 3, 4);
     leftLayout->setSpacing(5);
-    leftLayout->addWidget(
-        new QLabel(tr("Transition from"),this), 0, 0, 1, 2);
-    leftLayout->addWidget(new QLabel("    ", this), 1, 0);
+    leftLayout->addMultiCellWidget(
+        new QLabel(tr("Transition from"), this, "FromLabel"), 0, 0, 0, 2);
+    leftLayout->addWidget(new QLabel("    ", this, "spacer1"), 1, 0);
 
-    bg1 = new QButtonGroup(this);
-    connect(bg1, SIGNAL(buttonClicked(int)),
+    bg1 = new QButtonGroup(0, "bg1");
+    connect(bg1, SIGNAL(clicked(int)),
             this, SLOT(bg1Clicked(int)));
-    QRadioButton *rb = new QRadioButton(tr("Frames"), this);
-    bg1->addButton(rb, 0);
+    QRadioButton *rb = new QRadioButton(tr("Frames"), this, "bg1r0");
+    bg1->insert(rb, 0);
     leftLayout->addWidget(rb, 1, 1);
-    rb = new QRadioButton(tr("Color"), this);
-    bg1->addButton(rb, 1);
+    rb = new QRadioButton(tr("Color"), this, "bg1r1");
+    bg1->insert(rb, 1);
     leftLayout->addWidget(rb, 2, 1);
-    colorButton1 = new QvisColorButton(this);
+    colorButton1 = new QvisColorButton(this, "colorButton1");
     leftLayout->addWidget(colorButton1, 2, 2);
 
     // Add the pixmap here.
-    QFrame *vf1 = new QFrame(this);
+    QFrame *vf1 = new QFrame(this, "vf1");
     vf1->setFrameStyle(QFrame::VLine | QFrame::Sunken);
     hLayout->addWidget(vf1);
     hLayout->addSpacing(10);
-    QLabel *pixLabel = new QLabel(this);
+    QLabel *pixLabel = new QLabel(this, "pixLabel");
     pixLabel->setPixmap(pix);
     hLayout->addWidget(pixLabel);
     hLayout->addSpacing(10);
-    QFrame *vf2 = new QFrame(this);
+    QFrame *vf2 = new QFrame(this, "vf2");
     vf2->setFrameStyle(QFrame::VLine | QFrame::Sunken);
     hLayout->addWidget(vf2);
 
     // Right controls
-    QGridLayout *rightLayout = new QGridLayout(0);
-    hLayout->addLayout(rightLayout);
+    QGridLayout *rightLayout = new QGridLayout(hLayout, 3, 4);
     rightLayout->setSpacing(5);
-    rightLayout->addWidget(
-        new QLabel(tr("Transition to"), this), 0, 0, 1, 2);
-    rightLayout->addWidget(new QLabel("    ", this), 1, 0);
+    rightLayout->addMultiCellWidget(
+        new QLabel(tr("Transition to"), this, "ToLabel"), 0, 0, 0, 2);
+    rightLayout->addWidget(new QLabel("    ", this, "spacer2"), 1, 0);
 
-    bg2 = new QButtonGroup(this);
-    connect(bg2, SIGNAL(buttonClicked(int)),
+    bg2 = new QButtonGroup(0, "bg2");
+    connect(bg2, SIGNAL(clicked(int)),
             this, SLOT(bg2Clicked(int)));
-    rb = new QRadioButton(tr("Frames"), this);
-    bg2->addButton(rb, 0);
+    rb = new QRadioButton(tr("Frames"), this, "bg2r0");
+    bg2->insert(rb, 0);
     rightLayout->addWidget(rb, 1, 1);
-    rb = new QRadioButton(tr("Color"), this);
-    bg2->addButton(rb, 1);
+    rb = new QRadioButton(tr("Color"), this, "bg2r2");
+    bg2->insert(rb, 1);
     rightLayout->addWidget(rb, 2, 1);
-    colorButton2 = new QvisColorButton(this);
+    colorButton2 = new QvisColorButton(this, "colorButton2");
     rightLayout->addWidget(colorButton2, 2, 2);
     hLayout->addStretch(5);
 
     // Number of frames controls.
     innerLayout->addSpacing(15);
-    QHBoxLayout *frameLayout = new QHBoxLayout(0);
-    innerLayout->addLayout(frameLayout);
+    QHBoxLayout *frameLayout = new QHBoxLayout(innerLayout);
     frameLayout->setSpacing(5);
-    nFrames = new QSpinBox(this);
-    nFrames->setMinimum(1);
+    nFrames = new QSpinBox(this, "nFrames");
+    nFrames->setMinValue(1);
     nFrames->setValue(10);
     frameLayout->addWidget(
-        new QLabel(tr("Number of transition frames"), this));
+        new QLabel(tr("Number of transition frames"), this, "nFramesLabel"));
     frameLayout->addWidget(nFrames);
     frameLayout->addStretch(10);
 
     innerLayout->addStretch(10);
 
     // Set some default values.
-    bg1->button(0)->setChecked(true);
+    bg1->setButton(0);
     colorButton1->setEnabled(false);
-    bg2->button(0)->setChecked(true);
+    bg2->setButton(0);
     colorButton2->setEnabled(false);
 }
 
@@ -168,6 +161,8 @@ QvisSequenceTransition::QvisSequenceTransition(const QPixmap &pix,
 
 QvisSequenceTransition::~QvisSequenceTransition()
 {
+    delete bg1;
+    delete bg2;
 }
 
 //
@@ -177,7 +172,7 @@ QvisSequenceTransition::~QvisSequenceTransition()
 void
 QvisSequenceTransition::getFromTransition(bool &frames, QColor &color) const
 {
-    frames = (bg1->checkedId() == 0);
+    frames = (bg1->id(bg1->selected()) == 0);
     color = colorButton1->buttonColor();
 }
 
@@ -185,7 +180,7 @@ void
 QvisSequenceTransition::setFromTransition(bool frames,  const QColor &color)
 {
     bg1->blockSignals(true);
-    bg1->button(frames?0:1)->setChecked(true);
+    bg1->setButton(frames?0:1);
     bg1->blockSignals(false);
 
     colorButton1->setEnabled(!frames);
@@ -195,7 +190,7 @@ QvisSequenceTransition::setFromTransition(bool frames,  const QColor &color)
 void
 QvisSequenceTransition::getToTransition(bool &frames, QColor &color) const
 {
-    frames = (bg2->checkedId() == 0);
+    frames = (bg2->id(bg2->selected()) == 0);
     color = colorButton2->buttonColor();
 }
 
@@ -203,7 +198,7 @@ void
 QvisSequenceTransition::setToTransition(bool frames,  const QColor &color)
 {
     bg2->blockSignals(true);
-    bg2->button(frames?0:1)->setChecked(true);
+    bg2->setButton(frames?0:1);
     bg2->blockSignals(false);
 
     colorButton2->setEnabled(!frames);

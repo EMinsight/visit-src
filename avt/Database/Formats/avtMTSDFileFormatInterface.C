@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -47,7 +47,6 @@
 #include <avtDatabaseMetaData.h>
 #include <avtIOInformation.h>
 #include <avtMTSDFileFormat.h>
-#include <avtParallel.h>
 
 #include <BadIndexException.h>
 #include <DebugStream.h>
@@ -134,11 +133,6 @@ avtMTSDFileFormatInterface::~avtMTSDFileFormatInterface()
 //  Progrmamer: Hank Childs
 //  Creation:   October 8, 2001
 //
-//  Modifications:
-//
-//    Hank Childs, Mon Jan 26 09:13:53 PST 2009
-//    Add support for readers that do their own domain decomposition.
-//
 // ****************************************************************************
 
 vtkDataSet *
@@ -146,11 +140,7 @@ avtMTSDFileFormatInterface::GetMesh(int ts, int dom, const char *mesh)
 {
     if (dom < 0 || dom >= nDomains)
     {
-        if (dom == PAR_Rank())
-            // Format is doing its own domain decomposition.
-            dom = 0;
-        else
-            EXCEPTION2(BadIndexException, dom, nDomains);
+        EXCEPTION2(BadIndexException, dom, nDomains);
     }
 
     return domains[dom]->GetMesh(ts, mesh);
@@ -174,12 +164,8 @@ avtMTSDFileFormatInterface::GetMesh(int ts, int dom, const char *mesh)
 //  Creation:   October 8, 2001
 //
 //  Modifications:
-//
 //    Kathleen Bonnell, Fri Feb  8 11:03:49 PST 2002
 //    vtkScalars has been deprecated in VTK 4.0, use vtkDataArray instead.
-//
-//    Hank Childs, Mon Jan 26 09:13:53 PST 2009
-//    Add support for readers that do their own domain decomposition.
 //
 // ****************************************************************************
 
@@ -188,11 +174,7 @@ avtMTSDFileFormatInterface::GetVar(int ts, int dom, const char *var)
 {
     if (dom < 0 || dom >= nDomains)
     {
-        if (dom == PAR_Rank())
-            // Format is doing its own domain decomposition.
-            dom = 0;
-        else
-            EXCEPTION2(BadIndexException, dom, nDomains);
+        EXCEPTION2(BadIndexException, dom, nDomains);
     }
 
     return domains[dom]->GetVar(ts, var);
@@ -216,12 +198,8 @@ avtMTSDFileFormatInterface::GetVar(int ts, int dom, const char *var)
 //  Creation:   October 8, 2001
 //
 //  Modifications:
-//
 //    Kathleen Bonnell, Fri Feb  8 11:03:49 PST 2002
 //    vtkVectors has been deprecated in VTK 4.0, use vtkDataArray instead.
-//
-//    Hank Childs, Mon Jan 26 09:13:53 PST 2009
-//    Add support for readers that do their own domain decomposition.
 //
 // ****************************************************************************
 
@@ -230,11 +208,7 @@ avtMTSDFileFormatInterface::GetVectorVar(int ts, int dom, const char *var)
 {
     if (dom < 0 || dom >= nDomains)
     {
-        if (dom == PAR_Rank())
-            // Format is doing its own domain decomposition.
-            dom = 0;
-        else
-            EXCEPTION2(BadIndexException, dom, nDomains);
+        EXCEPTION2(BadIndexException, dom, nDomains);
     }
 
     return domains[dom]->GetVectorVar(ts, var);
@@ -261,8 +235,8 @@ avtMTSDFileFormatInterface::GetVectorVar(int ts, int dom, const char *var)
 //
 //  Modifications:
 //
-//    Hank Childs, Mon Jan 26 09:13:53 PST 2009
-//    Add support for readers that do their own domain decomposition.
+//    Hank Childs, Tue Jan 27 11:08:46 PST 2009
+//    Change behavior with requesting meta data for all domains.
 //
 // ****************************************************************************
 
@@ -274,17 +248,19 @@ avtMTSDFileFormatInterface::GetAuxiliaryData(const char *var, int ts, int dom,
     {
         debug5 << "Auxiliary data was requested of multiple timestep, "
                << "single domain file format.  Since the data was requested "
-               << "for all domains, returning NULL." << endl;
-        return NULL;
+               << "for all domains, requesting it of the first domain" << endl;
+        if (domains[0] != NULL)
+            return domains[0]->GetAuxiliaryData(var, ts, type, args, df);
+        else
+        {
+            debug5 << "REVERSAL: domains[0] is NULL!  Returning NULL" << endl;
+            return NULL;
+        }
     }
 
     if (dom < 0 || dom >= nDomains)
     {
-        if (dom == PAR_Rank())
-            // Format is doing its own domain decomposition.
-            dom = 0;
-        else
-            EXCEPTION2(BadIndexException, dom, nDomains);
+        EXCEPTION2(BadIndexException, dom, nDomains);
     }
 
     return domains[dom]->GetAuxiliaryData(var, ts, type, args, df);

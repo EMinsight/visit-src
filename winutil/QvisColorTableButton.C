@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,19 +37,16 @@
 *****************************************************************************/
 
 #include <QvisColorTableButton.h>
-#include <QAction>
-#include <QActionGroup>
-#include <QApplication>
-#include <QDesktopWidget>
-#include <QMenu>
+#include <qpopupmenu.h>
+#include <qapplication.h>
+#include <qtooltip.h>
 
 //
 // Static members.
 //
 
-int           QvisColorTableButton::numInstances = 0;
-QMenu        *QvisColorTableButton::colorTableMenu = 0;
-QActionGroup *QvisColorTableButton::colorTableMenuActionGroup = 0;
+int         QvisColorTableButton::numInstances = 0;
+QPopupMenu *QvisColorTableButton::colorTablePopup = 0;
 QvisColorTableButton::ColorTableButtonVector QvisColorTableButton::buttons;
 int         QvisColorTableButton::numColorTableNames = 0;
 QString    *QvisColorTableButton::colorTableNames = 0;
@@ -72,25 +69,20 @@ bool        QvisColorTableButton::popupHasEntries = false;
 //   Brad Whitlock, Thu Feb 14 13:38:42 PST 2002
 //   Added code to count the number of instances.
 //
-//   Brad Whitlock, Fri May  9 11:23:57 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
-QvisColorTableButton::QvisColorTableButton(QWidget *parent) :
-    QPushButton(parent), colorTable("Default")
+QvisColorTableButton::QvisColorTableButton(QWidget *parent, const char *name) :
+    QPushButton(parent,name), colorTable("Default")
 {
     // Increase the instance count.
     ++numInstances;
 
     // Create the button's color table popup menu.
-    if(colorTableMenu == 0)
+    if(colorTablePopup == 0)
     {
-        colorTableMenuActionGroup = new QActionGroup(0);
-
-        colorTableMenu = new QMenu(0);
-        colorTableMenuActionGroup->addAction(colorTableMenu->addAction("Default"));
-        colorTableMenu->addSeparator();
+        colorTablePopup = new QPopupMenu;
+        colorTablePopup->insertItem("Default", 0);
+        colorTablePopup->insertSeparator();
     }
     buttons.push_back(this);
 
@@ -143,18 +135,12 @@ QvisColorTableButton::~QvisColorTableButton()
 
     if(numInstances == 0)
     {
-        if(colorTableMenuActionGroup != 0)
-        {
-            delete colorTableMenuActionGroup;
-            colorTableMenuActionGroup = 0;
-        }
-
         // Delete the popup menu if it exists because it will not be deleted
         // unless we do it since it is a parentless widget.
-        if(colorTableMenu != 0)
+        if(colorTablePopup != 0)
         {
-            delete colorTableMenu;
-            colorTableMenu = 0;
+            delete colorTablePopup;
+            colorTablePopup = 0;
         }
 
         // Delete the color table names.
@@ -185,7 +171,7 @@ QvisColorTableButton::~QvisColorTableButton()
 QSize
 QvisColorTableButton::sizeHint() const
 {
-     return QSize(125, 40).expandedTo(QApplication::globalStrut());
+     return QSize(125, 25);
 }
 
 // ****************************************************************************
@@ -229,7 +215,7 @@ QvisColorTableButton::useDefaultColorTable()
 {
     colorTable = QString("Default");
     setText(colorTable);
-    setToolTip(colorTable);
+    QToolTip::add(this, colorTable);
 }
 
 // ****************************************************************************
@@ -260,13 +246,13 @@ QvisColorTableButton::setColorTable(const QString &ctName)
     {
         colorTable = ctName;
         setText(colorTable);
-        setToolTip(colorTable);
+        QToolTip::add(this, colorTable);
     }
     else
     {
         QString def("Default");
         setText(def);
-        setToolTip(def);
+        QToolTip::add(this, def);
     }
 }
 
@@ -312,7 +298,7 @@ QvisColorTableButton::getColorTable() const
 void
 QvisColorTableButton::popupPressed()
 {
-    if(isDown() && colorTableMenu)
+    if(isDown() && colorTablePopup)
     {
         // If the popup menu does not have anything in it, fill it up.
         if(!popupHasEntries)
@@ -326,17 +312,17 @@ QvisColorTableButton::popupPressed()
         // Disconnect all other color table buttons.
         for(size_t i = 0; i < buttons.size(); ++i)
         {
-            disconnect(colorTableMenuActionGroup, SIGNAL(triggered(QAction *)),
-                       buttons[i], SLOT(colorTableSelected(QAction *)));
+            disconnect(colorTablePopup, SIGNAL(activated(int)),
+                       buttons[i], SLOT(colorTableSelected(int)));
         }
 
         // Connect this colorbutton to the popup menu.
-        connect(colorTableMenuActionGroup, SIGNAL(triggered(QAction *)),
-                this, SLOT(colorTableSelected(QAction *)));
+        connect(colorTablePopup, SIGNAL(activated(int)),
+                this, SLOT(colorTableSelected(int)));
 
         // Figure out a good place to popup the menu.
-        int menuW = colorTableMenu->sizeHint().width();
-        int menuH = colorTableMenu->sizeHint().height();
+        int menuW = colorTablePopup->sizeHint().width();
+        int menuH = colorTablePopup->sizeHint().height();
         int menuX = buttonMiddle.x();
         int menuY = buttonMiddle.y() - (menuH >> 1);
 
@@ -353,7 +339,7 @@ QvisColorTableButton::popupPressed()
            menuY -= ((menuY + menuH) - QApplication::desktop()->height());
 
         // Show the popup menu.         
-        colorTableMenu->exec(QPoint(menuX, menuY));
+        colorTablePopup->exec(QPoint(menuX, menuY));
         setDown(FALSE);
     }
 }
@@ -375,29 +361,24 @@ QvisColorTableButton::popupPressed()
 // Modifications:
 //   Brad Whitlock, Tue Jan 17 11:41:44 PDT 2006
 //   Added a tooltip so long color table names can be put in a tooltip.
-//
-//   Brad Whitlock, Fri May  9 11:39:40 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
-QvisColorTableButton::colorTableSelected(QAction *action)
+QvisColorTableButton::colorTableSelected(int index)
 {
-    int index = colorTableMenuActionGroup->actions().indexOf(action);
-
     if(index == 0)
     {
         QString def("Default");
         emit selectedColorTable(true, def);
         setText(def);
-        setToolTip(def);
+        QToolTip::add(this, def);
     }
-    else
+    else if(index < numColorTableNames + 2)
     {
-        emit selectedColorTable(false, colorTableNames[index - 1]);
-        setText(colorTableNames[index-1]);
-        setToolTip(colorTableNames[index-1]);
+        emit selectedColorTable(false, colorTableNames[index-2]);
+        setText(colorTableNames[index-2]);
+        QToolTip::add(this, colorTableNames[index-2]);
     }
 }
 
@@ -538,26 +519,20 @@ QvisColorTableButton::getColorTableIndex(const QString &ctName)
 // Creation:   Sat Jun 16 20:16:34 PST 2001
 //
 // Modifications:
-//   Brad Whitlock, Fri May  9 11:21:28 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
 QvisColorTableButton::regeneratePopupMenu()
 {
     // Remove all items and add the default.
-    QList<QAction*> actions = colorTableMenuActionGroup->actions();
-    for(int i = 0; i < actions.count(); ++i)
-        colorTableMenuActionGroup->removeAction(actions[i]);
-    colorTableMenu->clear();
-
-    colorTableMenuActionGroup->addAction(colorTableMenu->addAction("Default"));
-    colorTableMenu->addSeparator();
+    colorTablePopup->clear();
+    colorTablePopup->insertItem("Default", 0);
+    colorTablePopup->insertSeparator();
     
     // Add an item for each color table.
     for(int i = 0; i < numColorTableNames; ++i)
-        colorTableMenuActionGroup->addAction(colorTableMenu->addAction(colorTableNames[i]));
+        colorTablePopup->insertItem(colorTableNames[i], i + 2);
 
     // Indicate that we've added choices to the menu.
     popupHasEntries = true;

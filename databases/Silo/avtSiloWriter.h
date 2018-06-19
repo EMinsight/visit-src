@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -56,6 +56,7 @@ using std::string;
 using std::vector;
 
 class vtkCellData;
+class vtkDataSetAttributes;
 class vtkPointData;
 class vtkPolyData;
 class vtkRectilinearGrid;
@@ -99,6 +100,18 @@ class DBOptionsAttributes;
 //
 //    Mark C. Miller, Thu Jul 31 18:06:08 PDT 2008
 //    Added option to write all data to a single file 
+//
+//    Brad Whitlock, Fri Mar 6 15:30:16 PST 2009
+//    I added helper functions so we can share code when writing variables.
+//    I also added code to export expressions.
+//
+//    Brad Whitlock, Tue May 19 12:22:38 PDT 2009
+//    I added an argument to WriteUcdvars.
+//
+//    Eric Brugger, Mon Jun 22 16:35:47 PDT 2009
+//    I modified the writer to handle the case where the meshes in a
+//    multimesh or multivar were not all of the same type.
+//
 // ****************************************************************************
 
 class
@@ -115,7 +128,8 @@ avtSiloWriter : public virtual avtDatabaseWriter
     string         matname;
     int            nblocks;
     int            driver;
-    avtMeshType    meshtype;
+    int            nmeshes;
+    int           *meshtypes;
     DBoptlist     *optlist;
     bool           singleFile;
 
@@ -142,9 +156,10 @@ avtSiloWriter : public virtual avtDatabaseWriter
     virtual void   WriteChunk(vtkDataSet *, int);
     virtual void   CloseFile(void);
 
-    void           ConstructMultimesh(DBfile *dbfile, const avtMeshMetaData *);
+    void           ConstructMultimesh(DBfile *dbfile, const avtMeshMetaData *,
+                                      int *);
     void           ConstructMultivar(DBfile *dbfile, const string &,
-                                     const avtMeshMetaData *);
+                                     const avtMeshMetaData *, int *);
     void           ConstructMultimat(DBfile *dbfile, const string &,
                                      const avtMeshMetaData *);
     void           ConstructChunkOptlist(const avtDatabaseMetaData *);
@@ -154,11 +169,19 @@ avtSiloWriter : public virtual avtDatabaseWriter
     void           WriteRectilinearMesh(DBfile *, vtkRectilinearGrid *, int);
     void           WriteUnstructuredMesh(DBfile *, vtkUnstructuredGrid *, int);
 
-    void           WriteUcdvars(DBfile *, vtkPointData *, vtkCellData *, bool=false);
+    void           WriteUcdvars(DBfile *, vtkPointData *, vtkCellData *, bool,
+                                const unsigned char *);
     void           WriteQuadvars(DBfile *, vtkPointData *, vtkCellData *,
                                     int, int *);
     void           WriteMaterials(DBfile *, vtkCellData *, int);
     int            VTKZoneTypeToSiloZoneType(int);
+    void           WriteUcdvarsHelper(DBfile *dbfile, vtkDataSetAttributes *ds, 
+                                      bool isPointMesh, int centering,
+                                      const unsigned char *gz);
+    void           WriteQuadvarsHelper(DBfile *dbfile, vtkDataSetAttributes *ds,
+                                       int ndims, int *dims, int centering);
+
+    void           WriteExpressions(DBfile *dbfile);
 };
 
 

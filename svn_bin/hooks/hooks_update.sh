@@ -7,27 +7,36 @@
 # Programmer: Mark C. Miller
 # Created:    Mon Apr  7 18:16:51 PDT 2008
 #
-# Modifications:
-#
-#   Mark C. Miller, Tue Dec  9 23:13:19 PST 2008
-#   Changed name of hook_vars file to hook_common as it includes more than
-#   variable definitions now. Replaced refs to commands via ${<VARNAME>}
-#   method to just the commands themselves.
-#
 ##############################################################################
 
 REPOS="$1"
 REV=$2
 
-hookCommonFile=""
+hadError=0
+function log()
+{
+    hadError=1
+    echo $@ 1>&2
+}
+
+if test -z "${REPOS}"; then
+    log "Repository path not set in $0."
+    exit 1
+fi
+if test -z "${REV}"; then
+    log "Revision number not set in $0."
+    exit 1
+fi
+
+hookVarsFile=""
 preCommitFile=""
 postCommitFile=""
 hookFiles=""
-files=`svnlook changed -r ${REV} ${REPOS} | awk '{print $2}'`
+files=`${SVNLOOK} changed -r ${REV} ${REPOS} | ${AWK} '{print $2}'`
 for f in ${files} ; do
     case ${f} in
-        *src/svn_bin/hooks/hook_common.sh)
-	    hookCommonFile=$f
+        *src/svn_bin/hooks/hook_vars.sh)
+	    hookVarsFile=$f
             ;;
         *src/svn_bin/hooks/pre-commit)
 	    preCommitFile=$f
@@ -47,21 +56,21 @@ done
 set +o noclobber
 
 #
-# Handle the hook_common file specially. It can effect everything
+# Handle the hook variables file specially. It can effect everything
 # else, so do it first.
 #
-if test -n "$hookCommonFile"; then
-    log "Installing updated hook_common file"
-    svnlook cat -r $REV $REPOS $hookCommonFile > $REPOS/hooks/hook_common.sh
-    chgrp $VISIT_GROUP_NAME $REPOS/hooks/hook_common.sh
-    chmod 770 $REPOS/hooks/hook_common.sh
+if test -n "$hookVarsFile"; then
+    log "Installing updated hook variables"
+    ${SVNLOOK} cat -r $REV $REPOS $hookVarsFile > $REPOS/hooks/hook_vars.sh
+    ${CHGRP} $VISIT_GROUP_NAME $REPOS/hooks/hook_vars.sh
+    ${CHMOD} 770 $REPOS/hooks/hook_vars.sh
 fi
 
 #
 # Re-Install any committed (or UN-install any removed) hooks 
 #
 for f in $preCommitFile $postCommitFile ${hookFiles} ; do
-    bf=`basename $f`
+    bf=`${BASENAME} $f`
 
     #
     # If we don't already have this hook installed, make sure
@@ -76,7 +85,7 @@ for f in $preCommitFile $postCommitFile ${hookFiles} ; do
     #
     # Install the file (or at least try to)
     #
-    svnlook cat -r $REV $REPOS $f > $REPOS/hooks/$bf
+    ${SVNLOOK} cat -r $REV $REPOS $f > $REPOS/hooks/$bf
 
     #
     # If the file exists and is non-zero size, it has been added/modified
@@ -86,11 +95,11 @@ for f in $preCommitFile $postCommitFile ${hookFiles} ; do
     #
     if test -s $REPOS/hooks/$bf; then
         log "Installing hook script $bf to $REPOS/hooks/$bf"
-        chgrp $VISIT_GROUP_NAME $REPOS/hooks/$bf 1>/dev/null 2>&1
-        chmod 770 $REPOS/hooks/$bf 1>/dev/null 2>&1
+        ${CHGRP} $VISIT_GROUP_NAME $REPOS/hooks/$bf 1>/dev/null 2>&1
+        ${CHMOD} 770 $REPOS/hooks/$bf 1>/dev/null 2>&1
     else
 	log "UN-installing hook script $bf from $REPOS/hooks/$bf"
-        rm -f $REPOS/hooks/$bf 1>/dev/null 2>&1
+        ${RM} -f $REPOS/hooks/$bf 1>/dev/null 2>&1
     fi
 
 done

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -395,6 +395,9 @@ typedef void   (*ProgressCallback)(void *, const char *, const char *,int,int);
 //    Hank Childs, Wed Aug 13 10:14:21 PDT 2008
 //    Added NeedZBufferToCompositeEvenIn2D.
 //
+//    Hank Childs, Fri Jan 30 09:09:33 PST 2009
+//    Added methods for named selections.
+//
 // ****************************************************************************
 
 class NetworkManager
@@ -495,6 +498,12 @@ class NetworkManager
     void          ExportDatabase(const int, ExportDBAttributes *);
     void          ConstructDDF(const int, ConstructDDFAttributes *);
     avtDDF       *GetDDF(const char *);
+    void          ApplyNamedSelection(const std::vector<std::string> &, 
+                                      const std::string &);
+    void          CreateNamedSelection(int, const std::string &);
+    void          DeleteNamedSelection(const std::string &);
+    void          LoadNamedSelection(const std::string &);
+    void          SaveNamedSelection(const std::string &);
 
     void          CloneNetwork(const int id);
     void          AddQueryOverTimeFilter(QueryOverTimeAttributes *,
@@ -576,6 +585,8 @@ class NetworkManager
 
     std::vector<Netnode*>       workingNetnodeList;
     std::vector<std::string>    nameStack;
+
+    std::map<std::string, std::string> namedSelectionsToApply;
 
     int                         uniqueNetworkId;
     bool                        requireOriginalCells;

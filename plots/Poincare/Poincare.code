@@ -10,6 +10,9 @@ Definition:
 // Programmer: Dave Pugmire
 // Creation:   Tues Oct 21 14:22:17 EDT 2008
 //
+// Modifications:
+//    Jeremy Meredith, Wed Apr  8 16:48:05 EDT 2009
+//    Initial steps to unification with streamline attributes.
 // ****************************************************************************
 
 bool
@@ -32,23 +35,15 @@ PoincareAttributes::CopyAttributes(const AttributeGroup *atts)
     else if(atts->TypeName() == "Line")
     {
         const Line *line = (const Line *)atts;
-        SetLineSourceStart(line->GetPoint1());
-        SetLineSourceEnd(line->GetPoint2());
-        retval = true;
-    }
-    else if(atts->TypeName() == "PlaneAttributes")
-    {
-        const PlaneAttributes *plane = (const PlaneAttributes *)atts;
-        SetPlaneSourcePoint(plane->GetOrigin());
-        SetPlaneSourceNormal(plane->GetNormal());
-        SetPlaneSourceUpVec(plane->GetUpAxis());
+        SetLineStart(line->GetPoint1());
+        SetLineEnd(line->GetPoint2());
         retval = true;
     }
     return retval;
 }
 
 Function: CreateCompatible
-Declaration: AttributeSubject *CreateCompatible(const std::string &tname) const
+Declaration: AttributeSubject *CreateCompatible(const std::string &tname) const;
 Definition:
 // ****************************************************************************
 // Method: PoincareAttributes::CreateCompatible
@@ -59,6 +54,9 @@ Definition:
 // Programmer: Dave Pugmire
 // Creation:   Tues Oct 21 14:22:17 EDT 2008
 //
+// Modifications:
+//    Jeremy Meredith, Wed Apr  8 16:48:05 EDT 2009
+//    Initial steps to unification with streamline attributes.
 // ****************************************************************************
 
 AttributeSubject *
@@ -78,18 +76,120 @@ PoincareAttributes::CreateCompatible(const std::string &tname) const
     else if (tname == "Line")
     {
         Line *l = new Line;
-        l->SetPoint1(GetLineSourceStart());
-        l->SetPoint2(GetLineSourceEnd());
+        l->SetPoint1(GetLineStart());
+        l->SetPoint2(GetLineEnd());
         retval = l;
     }
-    else if (tname == "PlaneAttributes")
-    {
-        PlaneAttributes *p = new PlaneAttributes;
-        p->SetOrigin(GetPlaneSourcePoint());
-        p->SetNormal(GetPlaneSourceNormal());
-        p->SetUpAxis(GetPlaneSourceUpVec());
-        retval = p;
-    }
     return retval;
+}
+
+Function: ChangesRequireRecalculation
+Declaration: bool ChangesRequireRecalculation(const PoincareAttributes &obj) const;
+Definition:
+// ****************************************************************************
+// Method: PoincareAttributes::ChangesRequireRecalculation
+//
+// Purpose: 
+//   Determine if attribute changes require recalculation.
+//
+// Programmer: Dave Pugmire
+// Creation:   Tues Oct 21 14:22:17 EDT 2008
+//
+// Modifications:
+//
+// ****************************************************************************
+
+bool
+PoincareAttributes::ChangesRequireRecalculation(const PoincareAttributes &obj) const
+{
+    return StreamlineAttsRequireRecalculation(obj) ||
+           PoincareAttsRequireRecalculation(obj);
+}
+
+Function: StreamlineAttsRequireRecalculation
+Declaration: bool StreamlineAttsRequireRecalculation(const PoincareAttributes &obj) const;
+Definition:
+// ****************************************************************************
+// Method: PoincareAttributes::StreamlineAttsRequireRecalculation
+//
+// Purpose: 
+//   Determine if streamline attribute changes require recalculation.
+//
+// Programmer: Dave Pugmire
+// Creation:   Tues Oct 21 14:22:17 EDT 2008
+//
+// Modifications:
+//
+// ****************************************************************************
+
+#define PDIF(p1,p2,i) ((p1)[i] != (p2)[i])
+#define POINT_DIFFERS(p1,p2) (PDIF(p1,p2,0) || PDIF(p1,p2,1) || PDIF(p1,p2,2))
+
+bool
+PoincareAttributes::StreamlineAttsRequireRecalculation(const PoincareAttributes &obj) const
+{
+    // If we're in point source mode and the points differ, sourcePointsDiffer
+    // evaluates to true.
+    bool sourcePointsDiffer = ((sourceType == SpecifiedPoint) &&
+                               POINT_DIFFERS(pointSource, obj.pointSource));
+
+    // If we're in line source mode and the line differs, sourceLineDiffers
+    // evaluates to true.
+    bool sourceLineDiffers = ((sourceType == SpecifiedLine) &&
+                              (POINT_DIFFERS(lineStart, obj.lineStart) ||
+                               POINT_DIFFERS(lineEnd, obj.lineEnd)));
+    
+    // Other things need to be true before we start paying attention to
+    // point density.
+    bool densityMatters = ((sourceType == SpecifiedLine) &&
+			   (pointDensity != obj.pointDensity));
+
+    return (minPunctures != obj.minPunctures ||
+	    maxPunctures != obj.maxPunctures ||
+	    sourcePointsDiffer ||
+	    sourceLineDiffers ||
+	    densityMatters ||
+
+	    sourceType != obj.sourceType ||
+	    integrationType != obj.integrationType ||
+	    maxStepLength != obj.maxStepLength ||
+	    relTol != obj.relTol ||
+	    absTol != obj.absTol);
+}
+
+Function: PoincareAttsRequireRecalculation
+Declaration: bool PoincareAttsRequireRecalculation(const PoincareAttributes &obj) const;
+Definition:
+// ****************************************************************************
+// Method: PoincareAttributes::PoincareAttsRequireRecalculation
+//
+// Purpose: 
+//   Determine if poincare attribute changes require recalculation.
+//
+// Programmer: Dave Pugmire
+// Creation:   Tues Oct 21 14:22:17 EDT 2008
+//
+// Modifications:
+//
+// ****************************************************************************
+
+bool
+PoincareAttributes::PoincareAttsRequireRecalculation(const PoincareAttributes &obj) const
+{
+    return maxToroidalWinding != obj.maxToroidalWinding ||
+           overrideToroidalWinding != obj.overrideToroidalWinding ||
+           hitRate != obj.hitRate ||
+           adjustPlane != obj.adjustPlane ||
+           overlaps != obj.overlaps ||
+
+           showCurves != obj.showCurves ||
+           numberPlanes != obj.numberPlanes ||
+
+           colorBy != obj.colorBy ||
+
+           showIslands != obj.showIslands ||
+           showLines != obj.showLines ||
+           showPoints != obj.showPoints ||
+           verboseFlag != obj.verboseFlag;
 }
 

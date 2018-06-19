@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -38,11 +38,10 @@
 
 #include <QvisScatterWidget.h>
 #include <math.h>
-
-#include <QPainter>
-#include <QPaintEvent>
-#include <QPixmap>
-#include <QTimer>
+#include <qdrawutil.h>
+#include <qpainter.h>
+#include <qpixmap.h>
+#include <qtimer.h>
 
 #include <mini3D.h>
 
@@ -89,16 +88,12 @@ m3d_complex_element QvisScatterWidget::arrow;
 // Creation:   Mon Dec 13 14:17:50 PST 2004
 //
 // Modifications:
-//   Brad Whitlock, Fri Aug  8 09:45:34 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
-QvisScatterWidget::QvisScatterWidget(QWidget *parent) : 
-    QWidget(parent), renderer(250,250)
+QvisScatterWidget::QvisScatterWidget(QWidget *parent, const char *name) : 
+    QWidget(parent, name), renderer(250,250)
 {
-    setSizePolicy(QSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed));
-
     pixmap = 0;
     pixmapDirty = true;
     rendererCreated = false;
@@ -110,7 +105,6 @@ QvisScatterWidget::QvisScatterWidget(QWidget *parent) :
             this, SLOT(handleTimer()));
     animationProgress = 0;
     animationCountPositive = true;
-    allowAnimation = false;
 
     threeD = false;
     highlightedAxis = true;
@@ -155,7 +149,7 @@ QvisScatterWidget::sizeHint() const
 {
     return QSize(250,250);
 }
-#if 0
+
 // ****************************************************************************
 // Method: QvisScatterWidget::sizePolicy
 //
@@ -176,7 +170,6 @@ QvisScatterWidget::sizePolicy() const
 {
     return QSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
 }
-#endif
 
 // ****************************************************************************
 // Method: QvisScatterWidget::setThreeD
@@ -280,9 +273,7 @@ QvisScatterWidget::setColoredPoints(bool val)
 // Creation:   Mon Dec 13 14:36:17 PST 2004
 //
 // Modifications:
-//   Brad Whitlock, Fri Aug  8 13:58:28 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
@@ -290,12 +281,11 @@ QvisScatterWidget::createSharedElements()
 {
     if(!sharedElementsCreated)
     {
-        QColor bg(palette().color(QPalette::Background));
         initializeSphere(sphere, SPHERE_XDIM, SPHERE_YDIM,
                          SPHERE_RAD,
-                         float(bg.red()) / 255.,
-                         float(bg.green()) / 255.,
-                         float(bg.blue()) / 255.);
+                         float(colorGroup().background().red()) / 255.,
+                         float(colorGroup().background().green()) / 255.,
+                         float(colorGroup().background().blue()) / 255.);
         initializeArrow();
 
         sharedElementsCreated = true;
@@ -357,7 +347,7 @@ QvisScatterWidget::redrawScene(QPainter *painter)
 
     // Fill in black and draw a beveled border.
     QBrush b(QColor(0,0,0));
-    qDrawShadePanel(painter, 0, 0, width(), height(), palette(), true,
+    qDrawShadePanel(painter, 0, 0, width(), height(), colorGroup(), true,
                     2, &b);
 
     if(threeD)
@@ -611,21 +601,13 @@ QvisScatterWidget::drawSpherePoints()
 // Creation:   Mon Dec 13 14:39:10 PST 2004
 //
 // Modifications:
-//   Brad Whitlock, Fri Aug  8 13:59:22 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
 QvisScatterWidget::paintEvent(QPaintEvent *e)
 {
     bool clipByRegion = true;
-
-#if 0
-    // Activate the timer if we have not already done so.
-    if(allowAnimation && highlightedAxis && !timer->isActive())
-        timer->start(ANIMATION_TIMEOUT);
-#endif
 
     // Draw the scene into the backing pixmap.
     bool needsPaint = pixmapDirty;
@@ -638,13 +620,14 @@ QvisScatterWidget::paintEvent(QPaintEvent *e)
     {
         QPainter pixpaint(pixmap);
         redrawScene(&pixpaint);
+        setBackgroundPixmap(*pixmap);
         clipByRegion = false;
         pixmapDirty = false;
     }
 
     // Blit the pixmap to the screen.
     QPainter paint(this);
-    if(clipByRegion && !e->region().isEmpty())
+    if(clipByRegion && !e->region().isEmpty() && !e->region().isNull())
         paint.setClipRegion(e->region());
     paint.drawPixmap(QPoint(0,0), *pixmap);
 }
@@ -672,36 +655,6 @@ QvisScatterWidget::resizeEvent(QResizeEvent *e)
     renderer.resize(e->size().width(), e->size().height());
 }
 
-// ****************************************************************************
-// Method: QvisScatterWidget::setAllowAnimation
-//
-// Purpose: 
-//   Sets whether animation is currently allowed.
-//
-// Arguments:
-//   val : True if animation is allowed, false otherwise.
-//
-// Returns:    
-//
-// Note:       
-//
-// Programmer: Brad Whitlock
-// Creation:   Mon Aug 11 09:41:03 PDT 2008
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-void
-QvisScatterWidget::setAllowAnimation(bool val)
-{
-    allowAnimation = val;
-    if(timer->isActive() && !allowAnimation)
-        timer->stop();
-    if(allowAnimation && highlightedAxis && !timer->isActive())
-        timer->start(ANIMATION_TIMEOUT);
-}
-
 //
 // Qt slot functions
 //
@@ -724,9 +677,7 @@ QvisScatterWidget::show()
 {
     QWidget::show();
     if(highlightedAxis)
-    {
         timer->start(ANIMATION_TIMEOUT);
-    }
 }
 
 // ****************************************************************************

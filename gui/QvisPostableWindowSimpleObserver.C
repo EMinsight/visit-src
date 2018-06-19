@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,10 +37,10 @@
 *****************************************************************************/
 
 #include <QvisPostableWindowSimpleObserver.h>
-#include <QLayout>
-#include <QMessageBox>
-#include <QPushButton>
-#include <QScrollArea>
+#include <qlayout.h>
+#include <qmessagebox.h>
+#include <qpushbutton.h>
+#include <qscrollview.h>
 
 #include <GlobalAttributes.h>
 #include <ViewerProxy.h>
@@ -51,10 +51,6 @@ const int QvisPostableWindowSimpleObserver::ApplyButton       = 1;
 const int QvisPostableWindowSimpleObserver::MakeDefaultButton = 2;
 const int QvisPostableWindowSimpleObserver::ResetButton       = 4;
 const int QvisPostableWindowSimpleObserver::AllExtraButtons   = 7;
-
-const int QvisPostableWindowSimpleObserver::LoadButton                 = 8;
-const int QvisPostableWindowSimpleObserver::SaveButton                 = 16;
-const int QvisPostableWindowSimpleObserver::AllExtraButtonsAndLoadSave = 31;
 
 // ****************************************************************************
 // Method: QvisPostableWindowSimpleObserver::QvisPostableWindowSimpleObserver
@@ -206,13 +202,6 @@ QvisPostableWindowSimpleObserver::SelectedSubject()
 //   Brad Whitlock, Tue Apr  8 15:26:49 PDT 2008
 //   Support for internationalization.
 //
-//   Brad Whitlock, Fri Jun  6 10:50:39 PDT 2008
-//   Qt 4.
-//
-//   Jeremy Meredith, Fri Jan  2 17:05:57 EST 2009
-//   Added Load/Save button support.  Put them in between the
-//   Make Default and Reset buttons for now.
-//
 // ****************************************************************************
 
 void
@@ -230,27 +219,24 @@ QvisPostableWindowSimpleObserver::CreateEntireWindow()
         central = new QWidget( this );
         setCentralWidget( central );
         topCentral = central;
-        topLayout = new QVBoxLayout(central);
-        topLayout->setMargin(10);
+        topLayout = new QVBoxLayout(central, 10);
         vLayout = topLayout;
     }
     else
     {
         topCentral = new QWidget(this);
-        vLayout = new QVBoxLayout(topCentral);
-        vLayout->setMargin(10);
+        vLayout = new QVBoxLayout(topCentral, 10);
         vLayout->setSpacing(5);
         setCentralWidget( topCentral );
         
-        QScrollArea *sv = new QScrollArea(topCentral);
-        sv->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-        sv->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-        sv->setWidgetResizable(true);
-        central = new QWidget(0);
-        sv->setWidget(central);
+        QScrollView *sv = new QScrollView(topCentral);
+        sv->setHScrollBarMode(QScrollView::Auto);
+        sv->setVScrollBarMode(QScrollView::Auto);
+        sv->setResizePolicy(QScrollView::AutoOneFit);
+        central = new QWidget(sv->viewport());
+        sv->addChild(central);
         vLayout->addWidget(sv);
-        topLayout = new QVBoxLayout(central);
-        topLayout->setMargin(10);
+        topLayout = new QVBoxLayout(central, 10);
     }
 
     // Call the Sub-class's CreateWindowContents function to create the
@@ -259,43 +245,31 @@ QvisPostableWindowSimpleObserver::CreateEntireWindow()
 
     // Create a button layout and the buttons.
     vLayout->addSpacing(10);
-    QGridLayout *buttonLayout = new QGridLayout(0);
-    vLayout->addLayout(buttonLayout);
-    buttonLayout->setColumnStretch(1, 50);
+    int nrows = ((buttonCombination & MakeDefaultButton) ||
+                 (buttonCombination & ResetButton)) ? 2 : 1;
+    QGridLayout *buttonLayout = new QGridLayout(vLayout, nrows, 4);
+    buttonLayout->setColStretch(1, 50);
 
     // Create the extra buttons if necessary.
     if(buttonCombination & MakeDefaultButton)
     {
         QPushButton *makeDefaultButton = new QPushButton(tr("Make default"),
-            topCentral);
+            topCentral, "makeDefaultButton");
         connect(makeDefaultButton, SIGNAL(clicked()),
                 this, SLOT(makeDefaultHelper()));
         buttonLayout->addWidget(makeDefaultButton, 0, 0);
     }
     if(buttonCombination & ResetButton)
     {
-        QPushButton *resetButton = new QPushButton(tr("Reset"), topCentral);
+        QPushButton *resetButton = new QPushButton(tr("Reset"), topCentral,
+                                                   "resetButton");
         connect(resetButton, SIGNAL(clicked()), this, SLOT(reset()));
-        buttonLayout->addWidget(resetButton, 0, 4);
+        buttonLayout->addWidget(resetButton, 0, 3);
     }
-
-    if(buttonCombination & LoadButton)
-    {
-        QPushButton *loadButton = new QPushButton(tr("Load"),
-            topCentral);
-        connect(loadButton, SIGNAL(clicked()), this, SLOT(loadSubject()));
-        buttonLayout->addWidget(loadButton, 0, 2);
-    }
-    if(buttonCombination & SaveButton)
-    {
-        QPushButton *saveButton = new QPushButton(tr("Save"), topCentral);
-        connect(saveButton, SIGNAL(clicked()), this, SLOT(saveSubject()));
-        buttonLayout->addWidget(saveButton, 0, 3);
-    }
-
     if(buttonCombination & ApplyButton)
     {
-        QPushButton *applyButton = new QPushButton(tr("Apply"), topCentral);
+        QPushButton *applyButton = new QPushButton(tr("Apply"), topCentral,
+            "applyButton");
         connect(applyButton, SIGNAL(clicked()), this, SLOT(apply()));
         buttonLayout->addWidget(applyButton, 1, 0);
     }
@@ -303,10 +277,10 @@ QvisPostableWindowSimpleObserver::CreateEntireWindow()
     {
         // Add a little space to try and make up for the absence of the
         // grid layout.
-        buttonLayout->setColumnStretch(1, 50);
+        buttonLayout->addColSpacing(1, 50);
     }
 
-    postButton = new QPushButton(tr("Post"), topCentral);
+    postButton = new QPushButton(tr("Post"), topCentral, "postButton");
     // Make the window post itself when the post button is clicked.
     if(notepad)
     {
@@ -315,10 +289,11 @@ QvisPostableWindowSimpleObserver::CreateEntireWindow()
     }
     else
         postButton->setEnabled(false);
-    buttonLayout->addWidget(postButton, 1, 3);
-    QPushButton *dismissButton = new QPushButton(tr("Dismiss"), topCentral);
+    buttonLayout->addWidget(postButton, 1, 2);
+    QPushButton *dismissButton = new QPushButton(tr("Dismiss"), topCentral,
+        "dismissButton");
     connect(dismissButton, SIGNAL(clicked()), this, SLOT(hide()));
-    buttonLayout->addWidget(dismissButton, 1, 4);
+    buttonLayout->addWidget(dismissButton, 1, 3);
     if(notepad != 0 && stretchWindow)
         vLayout->addStretch(0);
 
@@ -435,46 +410,6 @@ QvisPostableWindowSimpleObserver::makeDefault()
 
 void
 QvisPostableWindowSimpleObserver::reset()
-{
-    // override in derived class.
-}
-
-// ****************************************************************************
-//  Method:  QvisPostableWindowSimpleObserver::loadSubject
-//
-//  Purpose:
-//    Load the window's subject from a file.  This is empty
-//    because this derived class doesn't have a sole subject.
-//
-//  Arguments:
-//    none
-//
-//  Programmer:  Jeremy Meredith
-//  Creation:    January  2, 2009
-//
-// ****************************************************************************
-void
-QvisPostableWindowSimpleObserver::loadSubject()
-{
-    // override in derived class.
-}
-
-// ****************************************************************************
-//  Method:  QvisPostableWindowSimpleObserver::saveSubject
-//
-//  Purpose:
-//    Save the window's subject to a file.  This is empty
-//    because this derived class doesn't have a sole subject.
-//
-//  Arguments:
-//    none
-//
-//  Programmer:  Jeremy Meredith
-//  Creation:    January  2, 2009
-//
-// ****************************************************************************
-void
-QvisPostableWindowSimpleObserver::saveSubject()
 {
     // override in derived class.
 }

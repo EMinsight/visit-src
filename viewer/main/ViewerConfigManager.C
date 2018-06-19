@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -75,13 +75,10 @@
 //    Brad Whitlock, Mon Feb 12 18:02:12 PST 2007
 //    Made it use ViewerBase.
 //
-//    Brad Whitlock, Fri May 23 11:09:47 PDT 2008
-//    Removed name on ViewerBase.
-//
 // ****************************************************************************
 
-ViewerConfigManager::ViewerConfigManager(ViewerSubject *vs) : ViewerBase(0),
-    ConfigManager()
+ViewerConfigManager::ViewerConfigManager(ViewerSubject *vs) : 
+    ViewerBase(0, "ViewerConfigManager"), ConfigManager()
 {
     parent = vs;
     writeDetail = false;

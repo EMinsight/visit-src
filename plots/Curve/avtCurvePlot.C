@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -48,8 +48,12 @@
 #include <avtSurfaceAndWireframeRenderer.h> 
 #include <avtWarpFilter.h>
 
+#include <vtkToolkits.h>
+
 #include <avtCallback.h>
+#ifdef VTK_USE_MANGLED_MESA
 #include <avtMesaCurveRenderer.h>
+#endif
 #include <avtOpenGLCurveRenderer.h>
 
 #include <LineAttributes.h>
@@ -81,6 +85,9 @@
 //    Brad Whitlock, Mon Nov 20 10:16:08 PDT 2006
 //    Changed to a curve renderer.
 //
+//    Brad Whitlock, Wed Jun 10 14:06:34 PST 2009
+//    I made Mesa support be conditional.
+//
 // ****************************************************************************
 
 avtCurvePlot::avtCurvePlot()
@@ -90,9 +97,11 @@ avtCurvePlot::avtCurvePlot()
 
     CurveFilter = new avtCurveFilter();
     WarpFilter = new avtWarpFilter();
+#ifdef VTK_USE_MANGLED_MESA
     if (avtCallback::GetSoftwareRendering())
         renderer = new avtMesaCurveRenderer;
     else
+#endif
         renderer = new avtOpenGLCurveRenderer;
     avtCustomRenderer_p ren;
     CopyTo(ren, renderer);
@@ -349,6 +358,10 @@ avtCurvePlot::CustomizeBehavior(void)
 //    Brad Whitlock, Mon Nov 20 10:17:14 PDT 2006
 //    Changed so it uses a curve renderer.
 //
+//    Kathleen Bonnell, Thu May  7 17:56:28 PDT 2009
+//    Advertise window-mode here, since it never changes and may need
+//    to be known before plot executes.
+//
 // ****************************************************************************
 
 void
@@ -378,6 +391,7 @@ avtCurvePlot::SetAtts(const AttributeGroup *a)
     decoMapper->SetLabelVisibility(atts.GetShowLabels());
 
     renderer->SetAtts(atts);
+    behavior->GetInfo().GetAttributes().SetWindowMode(WINMODE_CURVE);
 }
 
 // ****************************************************************************

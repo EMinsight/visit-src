@@ -1,4 +1,4 @@
-#                         Copyright (c) 2000 - 2008
+#                         Copyright (c) 2000 - 2009
 #                  Lawrence Livermore National Security, LLC
 #            Produced at the Lawrence Livermore National Laboratory
 #                              LLNL-CODE-400124
@@ -87,13 +87,11 @@
 #    Brad Whitlock, Mon Aug 18 10:54:43 PDT 2008
 #    Added embedviewer directory.
 #
-#    Mark C. Miller, Wed Nov 19 19:09:31 PST 2008
-#    Removed 'silex' from SUBDIRS variable but kept actual silex directory
-#    around for a while. This essentially removes it from builds but makes
-#    it possible for people to easily build it if for some reasone they
-#    still want to build this version. In fact, they should really be using
-#    the silex in Silo distro as that has been kept up to date with various
-#    changes to Silo library.
+#    Mark C. Miller, Wed May 13 14:34:17 PDT 2009
+#    Moved some silo dependent dirs to SILO_TARGET
+#
+#    Brad Whitlock, Wed Jun 3 15:47:33 PST 2009
+#    I added an engine-only build option.
 #
 ##############################################################################
 
@@ -106,12 +104,20 @@ MILI=makemili
 OPTIONAL=avtprep classwriter doxygenate embedviewer windowmaker \
 	 escan mpeg_encode clidriver DataManualExamples clipeditor
 
-SILO_TARGET=curv3dprep
+SILO_TARGET=curv3dprep silex
 
-SUBDIRS=imagetools annotations convert @SILO_TARGET@ embedviewer @MILI@ mpeg2encode \
-        protocol surfcomp writer xml xmledit
+SUBDIRS_DBIO_ONLY=convert
+SUBDIRS_ENGINE_ONLY=xml
+SUBDIRS_SERVER_COMPONENTS_ONLY=xml
+SUBDIRS_STD=imagetools annotations convert embedviewer @MILI@ mpeg2encode protocol \
+        surfcomp writer xml xmledit @SILO_TARGET@
 
-ALLSUBDIRS=$(SUBDIRS) $(MILI) $(OPTIONAL)
+ALLSUBDIRS_DBIO_ONLY=$(SUBDIRS_DBIO_ONLY)
+ALLSUBDIRS_ENGINE_ONLY=$(SUBDIRS_ENGINE_ONLY)
+ALLSUBDIRS_STD=$(SUBDIRS_STD) $(MILI) $(OPTIONAL)
+
+SUBDIRS=@SUBDIRS@
+ALLSUBDIRS=@ALLSUBDIRS@
 
 message:
 	@echo

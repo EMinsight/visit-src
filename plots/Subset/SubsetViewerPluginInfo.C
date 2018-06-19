@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -400,6 +400,11 @@ SubsetViewerPluginInfo::XPMIconData() const
 //    Allowed meshes to pass through with a single category, even though
 //    they are not a subset variable.
 //
+//    Jeremy Meredith, Mon Feb 23 17:43:55 EST 2009
+//    Created a new subset type for meshes and used that.  (Apparently
+//    I had left the type as EnumScalar before, which didn't cause any
+//    problems at the time, but is obviously not quite correct.)
+//
 // ****************************************************************************
 #include <stdio.h>
 
@@ -448,7 +453,6 @@ SubsetViewerPluginInfo::PrivateSetPlotAtts(AttributeSubject *atts,
     stringVector::const_iterator pos;
     set<int> groupSet;
     vector<int> gIDS;
-    int i;
     char temp[512];
 
     // 
@@ -463,7 +467,7 @@ SubsetViewerPluginInfo::PrivateSetPlotAtts(AttributeSubject *atts,
           defaultAtts->SetSubsetType(SubsetAttributes::Domain);
           if (mesh->blockNames.empty())
           {
-              for (i = 0; i < mesh->numBlocks; i++)
+              for (int i = 0; i < mesh->numBlocks; i++)
               { 
                   sprintf(temp, "%d", i+mesh->blockOrigin);
                   sv.push_back(temp);
@@ -483,7 +487,7 @@ SubsetViewerPluginInfo::PrivateSetPlotAtts(AttributeSubject *atts,
           debug5 << "Variable for subset plot is a group Mesh." << endl; 
           subsetAtts->SetSubsetType(SubsetAttributes::Group);
           defaultAtts->SetSubsetType(SubsetAttributes::Group);
-          for (i = 0; i < mesh->groupIds.size(); i++)
+          for (size_t i = 0; i < mesh->groupIds.size(); i++)
           {
               if (groupSet.count(mesh->groupIds[i]) == 0)
               {
@@ -491,7 +495,7 @@ SubsetViewerPluginInfo::PrivateSetPlotAtts(AttributeSubject *atts,
                   gIDS.push_back(mesh->groupIds[i]);
               }
           }
-          for (i = 0; i < gIDS.size(); i++)
+          for (size_t i = 0; i < gIDS.size(); i++)
           {
               sprintf(temp, "%d", gIDS[i]);
               sv.push_back(temp);
@@ -532,8 +536,8 @@ SubsetViewerPluginInfo::PrivateSetPlotAtts(AttributeSubject *atts,
           if (vn == meshName)
           {
               debug5 << "Variable for subset plot is a mesh."<<endl; 
-              subsetAtts->SetSubsetType(SubsetAttributes::EnumScalar);
-              defaultAtts->SetSubsetType(SubsetAttributes::EnumScalar);
+              subsetAtts->SetSubsetType(SubsetAttributes::Mesh);
+              defaultAtts->SetSubsetType(SubsetAttributes::Mesh);
               sprintf(temp, "Whole mesh (%s)", vn.c_str());
               sv.push_back(temp);
           }
@@ -552,7 +556,7 @@ SubsetViewerPluginInfo::PrivateSetPlotAtts(AttributeSubject *atts,
     if(ct->IsDiscrete(ct->GetDefaultDiscreteColorTable()))
     {
         // The CT is discrete, get its color color control points.
-        for(int i = 0; i < sv.size(); ++i)
+        for(size_t i = 0; i < sv.size(); ++i)
         {
             unsigned char rgb[3] = {0,0,0};
             ct->GetControlPointColor(ct->GetDefaultDiscreteColorTable(), i, rgb);
@@ -569,7 +573,7 @@ SubsetViewerPluginInfo::PrivateSetPlotAtts(AttributeSubject *atts,
             ct->GetDefaultDiscreteColorTable(), sv.size());
         if(rgb)
         {
-            for(int i = 0; i < sv.size(); ++i)
+            for(size_t i = 0; i < sv.size(); ++i)
             {
                 ca[i].SetRed(int(rgb[i*3]));
                 ca[i].SetGreen(int(rgb[i*3+1]));

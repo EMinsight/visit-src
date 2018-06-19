@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -70,6 +70,9 @@ class     avtSpreadsheetMapper;
 //    Hank Childs, Fri Feb  1 13:16:26 PST 2008
 //    Define UtilizeRenderingFilters.
 //
+//    Kathleen Bonnell, Tue Mar  3 13:37:13 PST 2009
+//    Removed CanDo2DViewScaling (moved into Viewer PluginInfo)
+//
 // ****************************************************************************
 
 class avtSpreadsheetPlot : public avtVolumeDataPlot
@@ -85,7 +88,6 @@ class avtSpreadsheetPlot : public avtVolumeDataPlot
     virtual void                SetAtts(const AttributeGroup*);
     virtual bool                SetColorTable(const char *ctName);
     virtual bool                SetForegroundColor(const double *fg);
-    virtual bool                CanDo2DViewScaling(void) { return false;}
 
   protected:
     SpreadsheetAttributes       atts;

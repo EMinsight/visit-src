@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -50,7 +50,6 @@ extern bool DeleteAnnotationObjectHelper(AnnotationObject *);
 #define LEGEND_ORIENTATION0    3
 #define LEGEND_ORIENTATION1    4
 #define LEGEND_DRAW_TITLE      5
-#define LEGEND_DRAW_MINMAX     6
 
 //
 // Helper functions to get bits out of the annotation attributes.
@@ -623,7 +622,6 @@ SETGET_FLAG(ManagePosition,  LEGEND_MANAGE_POSITION)
 SETGET_FLAG(DrawBoundingBox, LEGEND_DRAW_BOX)
 SETGET_FLAG(DrawLabels,      LEGEND_DRAW_LABELS)
 SETGET_FLAG(DrawTitle,       LEGEND_DRAW_TITLE)
-SETGET_FLAG(DrawMinMax,      LEGEND_DRAW_MINMAX)
 
 
 static PyObject *
@@ -751,8 +749,6 @@ static struct PyMethodDef LegendAttributesObject_methods[] = {
     {"GetDrawTitle", LegendAttributesObject_GetDrawTitle, METH_VARARGS},
     {"SetOrientation", LegendAttributesObject_SetOrientation, METH_VARARGS},
     {"GetOrientation", LegendAttributesObject_GetOrientation, METH_VARARGS},
-    {"SetDrawMinMax", LegendAttributesObject_SetDrawMinMax, METH_VARARGS},
-    {"GetDrawMinMax", LegendAttributesObject_GetDrawMinMax, METH_VARARGS},
     {"Delete", LegendAttributesObject_Delete, METH_VARARGS},
     {NULL, NULL}
 };
@@ -822,8 +818,6 @@ LegendAttributesObject_getattr(PyObject *self, char *name)
         return LegendAttributesObject_GetDrawLabels(self, NULL);
     if(strcmp(name, "drawTitle") == 0)
         return LegendAttributesObject_GetDrawTitle(self, NULL);
-    if(strcmp(name, "drawMinMax") == 0)
-        return LegendAttributesObject_GetDrawMinMax(self, NULL);
 
     if(strcmp(name, "orientation") == 0)
         return LegendAttributesObject_GetOrientation(self, NULL);
@@ -883,8 +877,6 @@ LegendAttributesObject_setattr(PyObject *self, char *name, PyObject *args)
         retval = (LegendAttributesObject_SetDrawLabels(self, tuple) != NULL);
     else if(strcmp(name, "drawTitle") == 0)
         retval = (LegendAttributesObject_SetDrawTitle(self, tuple) != NULL);
-    else if(strcmp(name, "drawMinMax") == 0)
-        retval = (LegendAttributesObject_SetDrawMinMax(self, tuple) != NULL);
     else if(strcmp(name, "orientation") == 0)
         retval = (LegendAttributesObject_SetOrientation(self, tuple) != NULL);
 
@@ -954,9 +946,6 @@ LegendAttributesObject_print(PyObject *v, FILE *fp, int flags)
 
     fprintf(fp, "drawTitle = %d\n", 
         GetBool(obj->data, LEGEND_DRAW_TITLE)?1:0);
-
-    fprintf(fp, "drawMinMax = %d\n", 
-        GetBool(obj->data, LEGEND_DRAW_MINMAX)?1:0);
 
     const char *orientationNames = "VerticalRight, VerticalLeft, HorizontalTop, HorizontalBottom";
     if (!GetBool(obj->data, LEGEND_ORIENTATION0))

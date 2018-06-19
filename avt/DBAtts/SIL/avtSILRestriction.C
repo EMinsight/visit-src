@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -55,7 +55,7 @@
 #include <InvalidVariableException.h>
 #include <TimingsManager.h>
 
-#define STATE_INDEX(S) (((S)==SomeUsed)?1:(((S)==AllUsed)?2:((S)==SomeUsedOtherProc?3:((S)==AllUsedOtherProc?4:0))))
+#define STATE_INDEX(S) (((S)==SomeUsed)?1:(((S)==AllUsed)?2:((S)==AllUsedOtherProc?3:0)))
 
 using  std::string;
 using  std::vector;
@@ -284,9 +284,6 @@ avtSILRestriction::avtSILRestriction(const SILRestrictionAttributes &silatts)
 //    Brad Whitlock, Wed Apr 14 12:04:11 PDT 2004
 //    Fixed for Windows.
 //
-//    Hank Childs, Sat Nov 15 18:02:46 CST 2008
-//    Add special case for when all sets are on.
-//
 // ****************************************************************************
 
 avtSILRestriction::avtSILRestriction(avtSIL *sil,
@@ -337,42 +334,34 @@ avtSILRestriction::avtSILRestriction(avtSIL *sil,
 
     if (topSet == -1)
     {
-        debug1 << "Was not able to match up " << topSetName.c_str() 
-               << " with any of the existing top sets." << endl;
+        debug1 << "Was not able to match up " << topSetName.c_str() << " with any of "
+               << "the existing top sets." << endl;
         EXCEPTION0(ImproperUseException);
     }
 
-    if (wholesList.size() == 1 && silatts.GetTopSetIsAllOn())
+    vector<int> leaves;
+    GetSubsets(topSet, leaves);
+
+    if (leaves.size() == useIt.size())
     {
-        TurnOnAll();
+        const SetState states[3] = {NoneUsed, SomeUsed, AllUsed};
+        for (i = 0 ; i < leaves.size() ; i++)
+        {
+            int index = (int) useIt[i];
+            useSet[leaves[i]] = states[index];
+        }
     }
     else
     {
-        vector<int> leaves;
-        GetSubsets(topSet, leaves);
-    
-        if (leaves.size() == useIt.size())
+        debug1 << "The SIL from the compact SIL attributes is of a different "
+               << "size than the one on this component" << endl;
+        debug1 << "Turning on all sets (what else to do?)" << endl;
+        for (i = 0 ; i < leaves.size() ; i++)
         {
-            const SetState states[5] = {NoneUsed, SomeUsed, AllUsed, 
-                                        SomeUsedOtherProc, AllUsedOtherProc};
-            for (i = 0 ; i < leaves.size() ; i++)
-            {
-                int index = (int) useIt[i];
-                useSet[leaves[i]] = states[index];
-            }
-        }
-        else
-        {
-            debug1 << "The SIL from the compact SIL attributes is of a "
-                   << "different size than the one on this component" << endl;
-            debug1 << "Turning on all sets (what else to do?)" << endl;
-            for (i = 0 ; i < leaves.size() ; i++)
-            {
-                useSet[leaves[i]] = AllUsed;
-            }
+            useSet[leaves[i]] = AllUsed;
         }
     }
-    
+
     suspendCorrectnessChecking = false;
 }
 
@@ -588,6 +577,8 @@ avtSILRestriction::SetTopSet(const char *meshname)
 //
 // Modifications:
 //   
+//    Mark C. Miller, Wed Feb 25 17:10:12 PST 2009
+//    Fix error in indexing used to examine useSet state of material sets
 // ****************************************************************************
 
 SetState
@@ -610,13 +601,14 @@ avtSILRestriction::EnsureRestrictionCorrectness()
         avtSILCollection_p coll = GetSILCollection(mapsOut[i]);
         if (coll->GetRole() == SIL_MATERIAL)
         {
-            // check if only some are used
-            if (useSet[mapsOut[i]] == SomeUsed)
-                some_mats = true;
+            const vector<int> &matSetList = coll->GetSubsetList();
+            for (int j = 0 ; j < matSetList.size() && ! some_mats ; j++)
+                if( useSet[matSetList[j]] == SomeUsed)
+                    some_mats = true;
         }
     }
     
-    if (some_mats)
+    if(some_mats)
     {
         // b/c this case only happens when some mats are selected, we
         // do not have to worry about changing the result of "res"
@@ -666,10 +658,6 @@ avtSILRestriction::EnsureRestrictionCorrectness()
 //
 //    Dave Bremer, Mon Feb  4 17:23:52 PST 2008
 //    Added an early-out test that can avoid creating a SIL on demand.
-//
-//    Hank Childs, Mon Dec  1 15:27:59 PST 2008
-//    Add support for SomeUsedOtherProc.
-//
 // ****************************************************************************
 
 SetState
@@ -700,9 +688,7 @@ avtSILRestriction::EnsureRestrictionCorrectness(int setId)
     {
         int NoneUsedCount = 0;
         int SomeUsedCount = 0;
-        int SomeUsedOtherProcCount = 0;
         int AllUsedCount = 0;
-        int AllUsedOtherProcCount = 0;
 
         // Loop through each collection and each set coming out of that
         // collection.
@@ -725,10 +711,6 @@ avtSILRestriction::EnsureRestrictionCorrectness(int setId)
                         ++NoneUsedCount;
                     else if(s == SomeUsed)
                         ++SomeUsedCount;
-                    else if(s == SomeUsedOtherProc)
-                        ++SomeUsedOtherProcCount;
-                    else if(s == AllUsedOtherProc)
-                        ++AllUsedOtherProcCount;
                     else
                         ++AllUsedCount;
                 }
@@ -740,10 +722,6 @@ avtSILRestriction::EnsureRestrictionCorrectness(int setId)
                     ++NoneUsedCount;
                 else if(s == SomeUsed)
                     ++SomeUsedCount;
-                else if(s == SomeUsedOtherProc)
-                    ++SomeUsedOtherProcCount;
-                else if(s == AllUsedOtherProc)
-                    ++AllUsedOtherProcCount;
                 else
                     ++AllUsedCount;
             }
@@ -754,19 +732,11 @@ avtSILRestriction::EnsureRestrictionCorrectness(int setId)
             retval = SomeUsed;
         else if(NoneUsedCount != 0 && AllUsedCount != 0)
             retval = SomeUsed;
-        else if(NoneUsedCount != 0 && AllUsedOtherProcCount != 0)
-            retval = SomeUsedOtherProc;
-        else if(SomeUsedCount != 0 && SomeUsedOtherProcCount != 0)
-            retval = SomeUsed;
-        else if(SomeUsedCount == 0 && SomeUsedOtherProcCount != 0)
-            retval = SomeUsedOtherProc;
-        else if(AllUsedOtherProcCount != 0)
-            retval = AllUsedOtherProc;
         else if(AllUsedCount != 0)
             retval = AllUsed;
         else if(NoneUsedCount != 0)
             retval = NoneUsed;
-        else 
+        else
             retval = SomeUsed;
 
         // Set the state based the results of the children.
@@ -1074,10 +1044,7 @@ avtSILRestriction::Intersect(avtSILRestriction_p silr)
 //  Modifications:
 //
 //    Hank Childs, Fri Nov 14 08:13:58 PST 2003
-//    Account for AllUsedOtherProc designation.
-//
-//    Hank Childs, Mon Dec  1 15:27:59 PST 2008
-//    Add support for SomeUsedOtherProc.
+//    Account for AllUsedOnOtherProc designation.
 //
 // ****************************************************************************
 
@@ -1095,16 +1062,16 @@ avtSILRestriction::FastIntersect(avtSILRestriction_p silr)
     // determine most values. We then call EnsureRestrictionCorrectness to
     // figure out the cases that we're not sure about.
     //
-    SetState states[] = {NoneUsed, NoneUsed, NoneUsed, NoneUsed, NoneUsed,
-                         NoneUsed, SomeUsed, SomeUsed, SomeUsedOtherProc, AllUsedOtherProc,
-                         NoneUsed, SomeUsed, AllUsed, SomeUsedOtherProc, AllUsedOtherProc,
-                         NoneUsed, SomeUsedOtherProc, SomeUsedOtherProc, SomeUsedOtherProc,
-                         NoneUsed, SomeUsedOtherProc, AllUsedOtherProc, SomeUsedOtherProc, AllUsedOtherProc };
+    SetState states[] = {NoneUsed, NoneUsed, NoneUsed, NoneUsed,
+                         NoneUsed, SomeUsed, SomeUsed, AllUsedOtherProc,
+                         NoneUsed, SomeUsed, AllUsed,  AllUsedOtherProc,
+                         NoneUsed, AllUsedOtherProc, AllUsedOtherProc,
+                                                            AllUsedOtherProc };
 
     const int nsets = useSet.size();
     for (int i = 0 ; i < nsets ; i++)
     {
-        int index = (STATE_INDEX(useSet[i]) * 5) +
+        int index = (STATE_INDEX(useSet[i]) * 4) +
                      STATE_INDEX(silr->useSet[i]);
         useSet[i] = states[index];
     }
@@ -1139,9 +1106,6 @@ avtSILRestriction::FastIntersect(avtSILRestriction_p silr)
 //    Cyrus Harrison, Tue Oct 28 14:00:39 PDT 2008
 //    Changed to call higher level EnsureRestrictionCorrectness().
 //
-//    Hank Childs, Mon Dec  1 15:27:59 PST 2008
-//    Add support for SomeUsedOtherProc.
-//
 // ****************************************************************************
 
 void
@@ -1158,10 +1122,11 @@ avtSILRestriction::Union(avtSILRestriction_p silr)
     // determine most values. We then call EnsureRestrictionCorrectness to
     // figure out the cases that we're not sure about.
     //
-    SetState states[] = {NoneUsed, SomeUsed, AllUsed, SomeUsedOtherProc, AllUsedOtherProc,
-                         SomeUsed, SomeUsed, AllUsed, SomeUsedOtherProc, AllUsedOtherProc,
-                         AllUsed, AllUsed, AllUsed, AllUsed, AllUsedOtherProc,
-                         AllUsedOtherProc, AllUsedOtherProc, AllUsedOtherProc, AllUsedOtherProc, AllUsedOtherProc };
+    SetState states[] = {NoneUsed, SomeUsed, AllUsed, AllUsedOtherProc,
+                         SomeUsed, SomeUsed, AllUsed, SomeUsed /* ? */,
+                         AllUsed, AllUsed, AllUsed, AllUsed,
+                         AllUsedOtherProc, SomeUsed, AllUsed,
+                                                            AllUsedOtherProc };
 
     for (int i = 0 ; i < useSet.size() ; i++)
     {
@@ -1267,9 +1232,6 @@ avtSILRestriction::RestrictDomainsForLoadBalance(const vector<int> &domains)
 //    added to tag sets with AllUsedOtherProc. For certain, this fixes problems
 //    with Enumeration selections (ticket 8742).
 //
-//    Hank Childs, Mon Dec  1 15:27:59 PST 2008
-//    Add support for SomeUsedOtherProc.
-//
 // ****************************************************************************
 
 void
@@ -1361,10 +1323,10 @@ avtSILRestriction::RestrictDomains(const vector<int> &domains,
             {
                 if (forLoadBalance)
                 {
-                    if (useSet[setsToTurnOff[j]] == SomeUsed) 
-                        useSet[setsToTurnOff[j]] = SomeUsedOtherProc;
-                    else if (useSet[setsToTurnOff[j]] == AllUsed) 
+                    if (useSet[setsToTurnOff[j]] != NoneUsed) 
                         useSet[setsToTurnOff[j]] = AllUsedOtherProc;
+                    else
+                        useSet[setsToTurnOff[j]] = NoneUsed;
                 }
                 else
                 {
@@ -1407,7 +1369,6 @@ avtSILRestriction::RestrictDomains(const vector<int> &domains,
         }
     }
 
-    EnsureRestrictionCorrectness();
     visitTimer->StopTimer(timingsHandle, "Restricting the domain list");
 }
 
@@ -1474,9 +1435,6 @@ avtSILRestriction::MakeAttributes(void) const
 //    top set by name, not index, since meshes may come and go from timestep
 //    to timestep.
 //
-//    Hank Childs, Sat Nov 15 18:02:46 CST 2008
-//    If all of the sets are on, then just set a flag and return early.
-//
 // ****************************************************************************
 
 CompactSILRestrictionAttributes *
@@ -1485,12 +1443,6 @@ avtSILRestriction::MakeCompactAttributes(void) const
     CompactSILRestrictionAttributes *rv = new CompactSILRestrictionAttributes;
 
     rv->SetTopSet(GetSILSet(topSet)->GetName());
-    if (useSet[topSet] == AllUsed && wholesList.size() == 1)
-    {
-        rv->SetTopSetIsAllOn(true);
-        return rv;
-    }
-
     vector<int> leaves;
     GetSubsets(topSet, leaves);
     vector<unsigned char> iUseSet;
@@ -1522,12 +1474,8 @@ avtSILRestriction::MakeCompactAttributes(void) const
 //    Dramatically reduced the sets being printed out, because of new matrix
 //    format.
 //
-//    Mark C. Miller, September 23, 2003, 
-//    Added per-set info for state of each set's selection
-//
-//    Hank Childs, Mon Dec  1 15:31:30 PST 2008
-//    Added some new stateNames.  Print was crashing before this, because
-//    a stateName was missing (out-of-bounds array access error).
+//    Mark C. Miller, 23Sep03, added per-set info for state of each set's
+//    selection
 //
 // ****************************************************************************
 
@@ -1535,8 +1483,7 @@ void
 avtSILRestriction::Print(ostream &out) const
 {
     // make labels for state of each set
-    static const char *stateNames[5] = {"NoneUsed", "SomeUsed", "AllUsed",
-                                        "SomeUsedOtherProc", "AllUsedOtherProc"};
+    static const char *stateNames[3] = {"NoneUsed", "SomeUsed", "AllUsed"};
 
     std::vector< std::string > perSetInfo, dummyInfo;
     for (int i = 0 ; i < useSet.size() ; i++)

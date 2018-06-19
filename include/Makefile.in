@@ -1,4 +1,4 @@
-#                         Copyright (c) 2000 - 2008
+#                         Copyright (c) 2000 - 2009
 #                  Lawrence Livermore National Security, LLC
 #            Produced at the Lawrence Livermore National Laboratory
 #                              LLNL-CODE-400124
@@ -75,13 +75,13 @@ incqt:
 	fi
 
 clean:
-	$(RM) python vtk mesa qt glew
 
 distclean:
-	$(RM) python vtk mesa qt glew Makefile
+	$(RM) python vtk mesa qt Makefile
 
 install:
 install_bin:
 install_lib:
 install_dirs:
 
+.NO_WINK_IN: python vtk mesa qt

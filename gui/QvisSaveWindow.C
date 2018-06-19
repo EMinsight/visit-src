@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -38,18 +38,18 @@
 
 #include <stdio.h> // for sscanf
 
-#include <QCheckBox>
-#include <QComboBox>
-#include <QFileDialog>
-#include <QGroupBox>
-#include <QWidget>
-#include <QLabel>
-#include <QLayout>
-#include <QLineEdit>
-#include <QPushButton>
-#include <QSlider>
-#include <QButtonGroup>
-#include <QRadioButton>
+#include <qcheckbox.h>
+#include <qcombobox.h>
+#include <qfiledialog.h>
+#include <qgroupbox.h>
+#include <qhbox.h>
+#include <qlabel.h>
+#include <qlayout.h>
+#include <qlineedit.h>
+#include <qpushbutton.h>
+#include <qslider.h>
+#include <qbuttongroup.h>
+#include <qradiobutton.h>
 
 #include <QvisSaveWindow.h>
 #include <SaveWindowAttributes.h>
@@ -171,135 +171,133 @@ QvisSaveWindow::~QvisSaveWindow()
 //   Brad Whitlock, Tue Apr  8 16:29:55 PDT 2008
 //   Support for internationalization.
 //
-//   Cyrus Harrison, Tue Jun 24 11:15:28 PDT 2008
-//   Initial Qt4 Port.
-//
 // ****************************************************************************
 
 void
 QvisSaveWindow::CreateWindowContents()
 {
     // Create a group box for the file information.
-    QGroupBox *infoBox = new QGroupBox(central);
+    QGroupBox *infoBox = new QGroupBox(central, "infoBox");
     infoBox->setTitle(tr("File information"));
     topLayout->addWidget(infoBox);
 
-    QGridLayout *infoLayout = new QGridLayout(infoBox);
-
+    QGridLayout *infoLayout = new QGridLayout(infoBox, 9, 2);
+    infoLayout->setMargin(10);
+    infoLayout->setSpacing(5);
+    infoLayout->addRowSpacing(0, 10);
+    
     outputToCurrentDirectoryCheckBox = new QCheckBox(tr("Output files to current directory"),
-                                                     infoBox);
+        infoBox, "outputToCurrentDirectoryCheckBox");
     connect(outputToCurrentDirectoryCheckBox, SIGNAL(toggled(bool)),
             this, SLOT(outputToCurrentDirectoryToggled(bool)));
-    infoLayout->addWidget(outputToCurrentDirectoryCheckBox, 1, 0, 1, 2);
+    infoLayout->addMultiCellWidget(outputToCurrentDirectoryCheckBox, 1, 1, 0, 1);
 
-    outputDirectoryLabel    = new QLabel(tr("Output directory"), infoBox);
-    infoLayout->addWidget(outputDirectoryLabel, 2, 0, 1, 2);
-    
-    QHBoxLayout *outputDirectoryLayout = new QHBoxLayout();
-    outputDirectoryLineEdit     = new QLineEdit(infoBox);
-    outputDirectorySelectButton = new QPushButton("...", infoBox);
-    
-    outputDirectoryLayout->addWidget(outputDirectoryLineEdit);
-    outputDirectoryLayout->addWidget(outputDirectorySelectButton);
-    
+    QHBox *outputDirectoryParent = new QHBox(infoBox, "outputDirectoryParent");
+    outputDirectoryLabel = new QLabel(tr("Output directory"),
+        infoBox, "outputDirectoryLabel");
+    outputDirectoryLineEdit = new QLineEdit(outputDirectoryParent,
+        "outputDirectoryLineEdit");
     connect(outputDirectoryLineEdit, SIGNAL(returnPressed()),
             this, SLOT(processOutputDirectoryText()));
-
-
+    outputDirectorySelectButton = new QPushButton("...", outputDirectoryParent,
+        "outputSelectButton");
 #ifndef Q_WS_MACX
     outputDirectorySelectButton->setMaximumWidth(
          fontMetrics().boundingRect("...").width() + 6);
 #endif
     outputDirectorySelectButton->setSizePolicy(QSizePolicy(QSizePolicy::Fixed,
-                                               QSizePolicy::Minimum));
-
+         QSizePolicy::Minimum));
     connect(outputDirectorySelectButton, SIGNAL(clicked()),
             this, SLOT(selectOutputDirectory()));
+    outputDirectoryParent->setSpacing(0);
+    outputDirectoryParent->setStretchFactor(outputDirectoryLineEdit, 100);
+    outputDirectoryLabel->setBuddy(outputDirectoryParent);
+    infoLayout->addMultiCellWidget(outputDirectoryLabel, 2, 2, 0, 1);
+    infoLayout->addMultiCellWidget(outputDirectoryParent, 3, 3, 0, 1);
     
-    outputDirectoryLayout->setSpacing(0);
-    
-
-    infoLayout->addLayout(outputDirectoryLayout, 3, 0, 1, 2);
-    
-    filenameLineEdit = new QLineEdit(infoBox);
+    filenameLineEdit = new QLineEdit(infoBox, "filenameLineEdit");
     connect(filenameLineEdit, SIGNAL(returnPressed()), this, SLOT(processFilenameText()));
-    QLabel *filenameLabel = new QLabel(tr("Filename"), infoBox);
+    QLabel *filenameLabel = new QLabel(filenameLineEdit, tr("Filename"), infoBox, "filenameLabel");
     infoLayout->addWidget(filenameLabel, 4, 0);
     infoLayout->addWidget(filenameLineEdit, 4, 1);
 
-    fileFormatComboBox = new QComboBox(infoBox);
-    fileFormatComboBox->addItem("bmp");
-    fileFormatComboBox->addItem("curve");
-    fileFormatComboBox->addItem("jpeg");
-    fileFormatComboBox->addItem("obj");
-    fileFormatComboBox->addItem("png");
-    fileFormatComboBox->addItem("postscript");
-    fileFormatComboBox->addItem("pov");
-    fileFormatComboBox->addItem("ppm");
-    fileFormatComboBox->addItem("rgb");
-    fileFormatComboBox->addItem("stl");
-    fileFormatComboBox->addItem("tiff");
-    fileFormatComboBox->addItem("ultra");
-    fileFormatComboBox->addItem("vtk");
+    fileFormatComboBox = new QComboBox(false, infoBox, "fileFormatComboBox");
+    fileFormatComboBox->insertItem("bmp");
+    fileFormatComboBox->insertItem("curve");
+    fileFormatComboBox->insertItem("jpeg");
+    fileFormatComboBox->insertItem("obj");
+    fileFormatComboBox->insertItem("png");
+    fileFormatComboBox->insertItem("postscript");
+    fileFormatComboBox->insertItem("pov");
+    fileFormatComboBox->insertItem("ppm");
+    fileFormatComboBox->insertItem("rgb");
+    fileFormatComboBox->insertItem("stl");
+    fileFormatComboBox->insertItem("tiff");
+    fileFormatComboBox->insertItem("ultra");
+    fileFormatComboBox->insertItem("vtk");
     connect(fileFormatComboBox, SIGNAL(activated(int)),
            this, SLOT(fileFormatChanged(int)));
-    QLabel *formatLabel = new QLabel(tr("File type"),infoBox);
+    QLabel *formatLabel = new QLabel(fileFormatComboBox, tr("File type"),
+                                     infoBox, "formatLabel");
     infoLayout->addWidget(formatLabel, 5, 0);
     infoLayout->addWidget(fileFormatComboBox, 5, 1);
 
     // The quality slider.
-    qualitySlider = new QSlider(Qt::Horizontal, infoBox);
-    qualitySlider->setMinimum(0);
-    qualitySlider->setMaximum(100);
-    
+    qualitySlider = new QSlider(Qt::Horizontal, infoBox, "qualitySlider");
+    qualitySlider->setMinValue(0);
+    qualitySlider->setMaxValue(100);
     connect(qualitySlider, SIGNAL(valueChanged(int)),
             this, SLOT(qualityChanged(int)));
     infoLayout->addWidget(qualitySlider, 6, 1);
-    qualityLabel = new QLabel(tr("Quality"),infoBox);
+    qualityLabel = new QLabel(qualitySlider, tr("Quality"),
+                              infoBox, "qualityLabel");
     infoLayout->addWidget(qualityLabel, 6, 0);
 
     // The progressive toggle.
-    progressiveCheckBox = new QCheckBox(tr("Progressive"), infoBox);
+    progressiveCheckBox = new QCheckBox(tr("Progressive"), infoBox, "progressiveCheckBox");
     connect(progressiveCheckBox, SIGNAL(toggled(bool)),
             this, SLOT(progressiveToggled(bool)));
     infoLayout->addWidget(progressiveCheckBox, 7, 1, Qt::AlignRight);
 
-    QHBoxLayout *compressionLayout = new QHBoxLayout();
-    
-    compressionTypeLabel = new QLabel(tr("Compression type"),infoBox);
-    compressionTypeComboBox = new QComboBox(infoBox);
-    compressionTypeComboBox->addItem(tr("None"));
-    compressionTypeComboBox->addItem(tr("PackBits"));
-    compressionTypeComboBox->addItem(tr("JPEG"));
-    compressionTypeComboBox->addItem(tr("Deflate"));
-    //compressionTypeComboBox->addItem("LZW");
-    compressionLayout->addWidget(compressionTypeLabel);
-    compressionLayout->addWidget(compressionTypeComboBox);
-    
+    QHBox *compressionParent = new QHBox(infoBox, "compressionParent");
+    compressionTypeLabel = new QLabel(tr("Compression type"),
+                                     compressionParent, "compressionLabel");
+    compressionTypeComboBox = new QComboBox(false, compressionParent, "compressionTypeComboBox");
+    compressionTypeComboBox->insertItem(tr("None"));
+    compressionTypeComboBox->insertItem(tr("PackBits"));
+    compressionTypeComboBox->insertItem(tr("JPEG"));
+    compressionTypeComboBox->insertItem(tr("Deflate"));
+    //compressionTypeComboBox->insertItem("LZW");
     connect(compressionTypeComboBox, SIGNAL(activated(int)),
-            this, SLOT(compressionTypeChanged(int)));
+           this, SLOT(compressionTypeChanged(int)));
     compressionTypeLabel->setBuddy(compressionTypeComboBox);
-    infoLayout->addLayout(compressionLayout, 8,0, 1,2);
+    infoLayout->addMultiCellWidget(compressionParent, 8,8, 0,1);
 
     // Create a group box for the image resolution.
-    resolutionBox = new QGroupBox(central);
+    resolutionBox = new QGroupBox(central, "resolutionBox");
     resolutionBox->setTitle(tr("Resolution"));
     topLayout->addWidget(resolutionBox);
 
-    QGridLayout *resolutionLayout = new QGridLayout(resolutionBox);
+    QGridLayout *resolutionLayout = new QGridLayout(resolutionBox, 5, 4);
+    resolutionLayout->setMargin(10);
+    resolutionLayout->setSpacing(5);
+    resolutionLayout->addRowSpacing(0, 10);
 
-    resConstraintButtonGroup = new QButtonGroup(resolutionBox);
+    resConstraintButtonGroup = new QButtonGroup(NULL, "resConstraintButtonGroup");
     screenResButton   = new QRadioButton(tr("Screen ratio"),             
-                                         resolutionBox);
+                                         resolutionBox, 
+                                         "screenResButton");
     oneToOneResButton = new QRadioButton(tr("1:1 aspect ratio"),         
-                                         resolutionBox);
+                                         resolutionBox, 
+                                         "oneToOneResButton");
     noResButton       = new QRadioButton(tr("No resolution constraint"), 
-                                         resolutionBox);
+                                         resolutionBox, 
+                                         "noResButton");
     screenResButton->setChecked(true);
 
-    resConstraintButtonGroup->addButton(screenResButton,0);
-    resConstraintButtonGroup->addButton(oneToOneResButton,1);
-    resConstraintButtonGroup->addButton(noResButton,2);
+    resConstraintButtonGroup->insert(screenResButton);
+    resConstraintButtonGroup->insert(oneToOneResButton);
+    resConstraintButtonGroup->insert(noResButton);
 
     connect(screenResButton, SIGNAL(toggled(bool)),
             this, SLOT(resConstraintToggled(bool)));
@@ -308,72 +306,68 @@ QvisSaveWindow::CreateWindowContents()
     connect(noResButton, SIGNAL(toggled(bool)),
             this, SLOT(resConstraintToggled(bool)));
 
-    resolutionLayout->addWidget(screenResButton,   1, 0, 1, 4);
-    resolutionLayout->addWidget(oneToOneResButton, 2, 0, 1, 4);
-    resolutionLayout->addWidget(noResButton,       3, 0, 1, 4);
+    resolutionLayout->addMultiCellWidget(screenResButton,   1, 1, 0, 3);
+    resolutionLayout->addMultiCellWidget(oneToOneResButton, 2, 2, 0, 3);
+    resolutionLayout->addMultiCellWidget(noResButton,       3, 3, 0, 3);
 
     // Create the width lineedit and label.
-    widthLineEdit = new QLineEdit(resolutionBox);
+    widthLineEdit = new QLineEdit(resolutionBox, "widthLineEdit");
     connect(widthLineEdit, SIGNAL(returnPressed()),
             this, SLOT(processWidthText()));
-    QLabel *widthLabel = new QLabel(tr("Width"), resolutionBox);
+    QLabel *widthLabel = new QLabel(widthLineEdit, tr("Width"), resolutionBox, "widthLabel");
     resolutionLayout->addWidget(widthLabel, 4, 0);
     resolutionLayout->addWidget(widthLineEdit, 4, 1);
 
     // Create the height lineedit and label.
-    heightLineEdit = new QLineEdit(resolutionBox);
+    heightLineEdit = new QLineEdit(resolutionBox, "heightLineEdit");
     connect(heightLineEdit, SIGNAL(returnPressed()),
             this, SLOT(processHeightText()));
-    QLabel *heightLabel = new QLabel(tr("Height"), resolutionBox);
+    QLabel *heightLabel = new QLabel(heightLineEdit, tr("Height"), resolutionBox, "heightLabel");
     resolutionLayout->addWidget(heightLabel, 4, 2);
     resolutionLayout->addWidget(heightLineEdit, 4, 3);
 
     // The family toggle.
-    QGridLayout *toggleLayout = new QGridLayout();
-    topLayout->addLayout(toggleLayout);
-    //toggleLayout->setSpacing(5);
-    
-    familyCheckBox = new QCheckBox(tr("Family"), central);
+    QGridLayout *toggleLayout = new QGridLayout(topLayout, 2, 3);
+    toggleLayout->setSpacing(5);
+    familyCheckBox = new QCheckBox(tr("Family"), central, "familyCheckBox");
     connect(familyCheckBox, SIGNAL(toggled(bool)),
             this, SLOT(familyToggled(bool)));
     toggleLayout->addWidget(familyCheckBox, 0, 0);
 
     // The screen capture toggle.
-    screenCaptureCheckBox = new QCheckBox(tr("Screen capture"), central);
+    screenCaptureCheckBox = new QCheckBox(tr("Screen capture"), central, "screenCaptureCheckBox");
     connect(screenCaptureCheckBox, SIGNAL(toggled(bool)),
             this, SLOT(screenCaptureToggled(bool)));
     toggleLayout->addWidget(screenCaptureCheckBox, 0, 1);
 
     // The tiled toggle.
-    saveTiledCheckBox = new QCheckBox(tr("Save tiled"), central);
+    saveTiledCheckBox = new QCheckBox(tr("Save tiled"), central, "saveTiledCheckBox");
     connect(saveTiledCheckBox, SIGNAL(toggled(bool)),
             this, SLOT(saveTiledToggled(bool)));
     toggleLayout->addWidget(saveTiledCheckBox, 0, 2);
 
     // The binary toggle.
-    binaryCheckBox = new QCheckBox(tr("Binary"), central);
+    binaryCheckBox = new QCheckBox(tr("Binary"), central, "binaryCheckBox");
     connect(binaryCheckBox, SIGNAL(toggled(bool)),
             this, SLOT(binaryToggled(bool)));
     toggleLayout->addWidget(binaryCheckBox, 1, 0);
 
     // The stereo toggle.
-    stereoCheckBox = new QCheckBox(tr("Stereo"), central);
+    stereoCheckBox = new QCheckBox(tr("Stereo"), central, "stereoCheckBox");
     connect(stereoCheckBox, SIGNAL(toggled(bool)),
             this, SLOT(stereoToggled(bool)));
     toggleLayout->addWidget(stereoCheckBox, 1, 1);
 
     // The stereo toggle.
-    forceMergeCheckBox = new QCheckBox(tr("Force parallel merge"), central);
+    forceMergeCheckBox = new QCheckBox(tr("Force parallel merge"), central, "forceMergeCheckBox");
     connect(forceMergeCheckBox, SIGNAL(toggled(bool)),
             this, SLOT(forceMergeToggled(bool)));
     toggleLayout->addWidget(forceMergeCheckBox, 1, 2);
 
     // The save button.
-    QHBoxLayout *saveButtonLayout = new QHBoxLayout();
-    topLayout->addLayout(saveButtonLayout);
-    
-    //saveButtonLayout->setSpacing(5);
-    QPushButton *saveButton = new QPushButton(tr("Save"), central);
+    QHBoxLayout *saveButtonLayout = new QHBoxLayout(topLayout);
+    saveButtonLayout->setSpacing(5);
+    QPushButton *saveButton = new QPushButton(tr("Save"), central, "saveButton");
     connect(saveButton, SIGNAL(clicked()),
             this, SLOT(saveButtonClicked()));
     saveButtonLayout->addWidget(saveButton);
@@ -434,9 +428,6 @@ QvisSaveWindow::CreateWindowContents()
 //   Brad Whitlock, Mon Dec 17 10:38:20 PST 2007
 //   Made it use ids.
 //
-//    Cyrus Harrison, Tue Jun 24 11:15:28 PDT 2008
-//    Initial Qt4 Port.
-//
 // ****************************************************************************
 
 void
@@ -476,7 +467,7 @@ QvisSaveWindow::UpdateWindow(bool doAll)
             break;
         case SaveWindowAttributes::ID_format:
             fileFormatComboBox->blockSignals(true);
-            fileFormatComboBox->setCurrentIndex(saveWindowAtts->GetFormat());
+            fileFormatComboBox->setCurrentItem(saveWindowAtts->GetFormat());
             fileFormatComboBox->blockSignals(false);
 
             qualityLabel->setEnabled(saveWindowAtts->GetFormat() ==
@@ -556,7 +547,7 @@ QvisSaveWindow::UpdateWindow(bool doAll)
             break;
         case SaveWindowAttributes::ID_compression:
             compressionTypeComboBox->blockSignals(true);
-            compressionTypeComboBox->setCurrentIndex(saveWindowAtts->GetCompression());
+            compressionTypeComboBox->setCurrentItem(saveWindowAtts->GetCompression());
             compressionTypeComboBox->blockSignals(false);
             break;
         case SaveWindowAttributes::ID_forceMerge:
@@ -601,11 +592,9 @@ QvisSaveWindow::UpdateWindow(bool doAll)
     // Make sure that the height text field is not enabled when we're saving
     // a tiled image.
     bool shouldBeEnabled = !saveWindowAtts->GetSaveTiled();
-    if (noResButton->isEnabled() != shouldBeEnabled)
+    if (resConstraintButtonGroup->isEnabled() != shouldBeEnabled)
     {
-        noResButton->setEnabled(shouldBeEnabled);
-        oneToOneResButton->setEnabled(shouldBeEnabled);
-        screenResButton->setEnabled(shouldBeEnabled);
+        resConstraintButtonGroup->setEnabled(shouldBeEnabled);
         heightLineEdit->setEnabled(shouldBeEnabled);
     }
 
@@ -657,9 +646,6 @@ QvisSaveWindow::UpdateWindow(bool doAll)
 //   Brad Whitlock, Tue Apr  8 16:29:55 PDT 2008
 //   Support for internationalization.
 //
-//   Cyrus Harrison, Tue Jun 24 11:15:28 PDT 2008
-//   Initial Qt4 Port.
-//
 //   Jeremy Meredith, Tue Jun 24 12:27:54 EDT 2008
 //   Use the actual OSMesa size limit for the window limit.
 //
@@ -674,11 +660,11 @@ QvisSaveWindow::GetCurrentValues(int which_widget)
     // Do the host name
     if(which_widget == SaveWindowAttributes::ID_outputDirectory || doAll)
     {
-        temp = outputDirectoryLineEdit->displayText().simplified();
+        temp = outputDirectoryLineEdit->displayText().simplifyWhiteSpace();
         okay = !temp.isEmpty();
         if(okay)
         {
-            saveWindowAtts->SetOutputDirectory(temp.toStdString());
+            saveWindowAtts->SetOutputDirectory(temp.latin1());
         }
         else
         {
@@ -693,11 +679,11 @@ QvisSaveWindow::GetCurrentValues(int which_widget)
     // Do the file name
     if(which_widget == SaveWindowAttributes::ID_fileName || doAll)
     {
-        temp = filenameLineEdit->displayText().simplified();
+        temp = filenameLineEdit->displayText().simplifyWhiteSpace();
         okay = !temp.isEmpty();
         if(okay)
         {
-            saveWindowAtts->SetFileName(temp.toStdString());
+            saveWindowAtts->SetFileName(temp.latin1());
         }
         else
         {
@@ -713,12 +699,12 @@ QvisSaveWindow::GetCurrentValues(int which_widget)
     bool setWidth = false;
     if(which_widget == SaveWindowAttributes::ID_width || doAll)
     {
-        temp = widthLineEdit->displayText().simplified();
+        temp = widthLineEdit->displayText().simplifyWhiteSpace();
         okay = !temp.isEmpty();
         if(okay)
         {
             int w;
-            okay = (sscanf(temp.toStdString().c_str(), "%d", &w) == 1);
+            okay = (sscanf(temp.latin1(), "%d", &w) == 1);
             if(okay)
             {
                 okay = (w <= OSMESA_SIZE_LIMIT);
@@ -745,12 +731,12 @@ QvisSaveWindow::GetCurrentValues(int which_widget)
     bool setHeight = false;
     if(which_widget == SaveWindowAttributes::ID_height || doAll)
     {
-        temp = heightLineEdit->displayText().simplified();
+        temp = heightLineEdit->displayText().simplifyWhiteSpace();
         okay = !temp.isEmpty();
         if(okay)
         {
             int h;
-            okay = (sscanf(temp.toStdString().c_str(), "%d", &h) == 1);
+            okay = (sscanf(temp.latin1(), "%d", &h) == 1);
             if(okay)
             {
                 okay = (h <= OSMESA_SIZE_LIMIT);
@@ -1013,10 +999,6 @@ QvisSaveWindow::compressionTypeChanged(int index)
 // Programmer: Dave Bremer
 // Creation:   Thu Sep 27 19:35:42 PDT 2007
 //
-// Modifications:
-//    Cyrus Harrison, Tue Jun 24 11:15:28 PDT 2008
-//    Initial Qt4 Port.
-//
 // ****************************************************************************
 
 void
@@ -1026,12 +1008,12 @@ QvisSaveWindow::resConstraintToggled(bool val)
     if (!val)
         return;
 
-    if (noResButton->isChecked())
+    if (noResButton->isOn())
     {
         saveWindowAtts->SetResConstraint(SaveWindowAttributes::NoConstraint);
         heightLineEdit->setEnabled(true);
     }
-    else if (oneToOneResButton->isChecked())
+    else if (oneToOneResButton->isOn())
     {
         saveWindowAtts->SetResConstraint(SaveWindowAttributes::EqualWidthHeight);
         heightLineEdit->setEnabled(false);
@@ -1041,7 +1023,7 @@ QvisSaveWindow::resConstraintToggled(bool val)
         temp.sprintf("%d", saveWindowAtts->GetHeight());
         heightLineEdit->setText(temp);
     }
-    else if (screenResButton->isChecked())
+    else if (screenResButton->isOn())
     {
         saveWindowAtts->SetResConstraint(SaveWindowAttributes::ScreenProportions);
         heightLineEdit->setEnabled(false);
@@ -1311,9 +1293,6 @@ QvisSaveWindow::saveWindow()
 //   Brad Whitlock, Tue Apr  8 16:29:55 PDT 2008
 //   Support for internationalization.
 //
-//    Cyrus Harrison, Tue Jun 24 11:15:28 PDT 2008
-//    Initial Qt4 Port.
-//
 // ****************************************************************************
 
 void
@@ -1323,8 +1302,8 @@ QvisSaveWindow::selectOutputDirectory()
     // Try and get a directory using a file dialog.
     //
     QString initialDir(saveWindowAtts->GetOutputDirectory().c_str());
-    QString dirName = QFileDialog::getExistingDirectory(this,
-       tr("Select output directory"),initialDir,QFileDialog::ShowDirsOnly);
+    QString dirName = QFileDialog::getExistingDirectory(initialDir, this,
+        "getDirectoryDialog", tr("Select output directory"));
 
     //
     // If a directory was chosen, use it as the output directory.

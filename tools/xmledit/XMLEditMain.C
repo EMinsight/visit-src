@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -42,13 +42,8 @@
 #include <visitstream.h>
 #include <stdlib.h>
 
-#include <QFileDialog>
-
-#include <QString>
-#include <QTextStream>
-QTextStream cOut(stdout), cErr(stderr);
-QString Endl("\n");
-
+#include <qfiledialog.h>
+#include <qstring.h>
 
 #ifndef __APPLE__
 #include <qwindowsstyle.h>
@@ -68,9 +63,6 @@ QString Endl("\n");
 //    I prevented the style from being set on MacOS X so it looks like a
 //    native Mac application.
 //
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 
 int
@@ -78,14 +70,18 @@ main( int argc, char **argv )
 {
     QApplication::setColorSpec(QApplication::ManyColor);
     QApplication *a = new QApplication(argc, argv);
+#ifndef __APPLE__
+    a->setStyle(new QWindowsStyle);
+#endif
     XMLEdit *w;
     if (argc > 1)
-        w = new XMLEdit(argv[1], NULL);
+        w = new XMLEdit(argv[1], NULL, "XML Editor");
     else
     {
-        w = new XMLEdit("untitled.xml", NULL);
+        w = new XMLEdit("untitled.xml", NULL, "XML Editor");
     }
 
+    a->setMainWidget(w);
     w->show();
 
     try
@@ -99,7 +95,7 @@ main( int argc, char **argv )
     }
     catch (const QString &s)
     {
-        cerr << "ERROR: " << s.toStdString() << endl;
+        cerr << "ERROR: " << s << endl;
         exit(-1);
     }
 }

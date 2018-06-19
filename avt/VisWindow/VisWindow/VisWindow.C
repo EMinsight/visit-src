@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -76,7 +76,6 @@
 #include <VisWinAxes.h>
 #include <VisWinAxes3D.h>
 #include <VisWinAxesArray.h>
-#include <VisWinAxesParallel.h>
 #include <VisWinBackground.h>
 #include <VisWinFrame.h>
 #include <VisWinInteractions.h>
@@ -239,9 +238,6 @@ VisWindow::VisWindow(bool callInit)
 //    plot, and the functionality has been accomodated in a new window
 //    modality supporting the correct style annotations.
 //
-//    Eric Brugger, Tue Dec  9 14:33:57 PST 2008
-//    Added the AxisParallel window mode.
-//
 // ****************************************************************************
 
 void
@@ -324,9 +320,6 @@ VisWindow::Initialize(VisWinRendering *ren)
 
     axesArray    = new VisWinAxesArray(colleagueProxy);
     AddColleague(axesArray);
-
-    axesParallel = new VisWinAxesParallel(colleagueProxy);
-    AddColleague(axesParallel);
 
     windowBackground = new VisWinBackground(colleagueProxy);
     AddColleague(windowBackground);
@@ -506,9 +499,6 @@ VisWindow::~VisWindow()
 //    Jeremy Meredith, Thu Jan 31 14:41:50 EST 2008
 //    Added new AxisArray window mode.
 //
-//    Eric Brugger, Tue Dec  9 14:33:57 PST 2008
-//    Added the AxisParallel window mode.
-//
 // ****************************************************************************
 
 void
@@ -567,9 +557,6 @@ VisWindow::AddColleague(VisWinColleague *col)
         break;
       case WINMODE_AXISARRAY:
         col->StartAxisArrayMode();
-        break;
-      case WINMODE_AXISPARALLEL:
-        col->StartAxisParallelMode();
         break;
       case WINMODE_NONE:
       default:
@@ -941,9 +928,6 @@ VisWindow::UpdatePlotList(vector<avtActor_p> &lst)
 //    Jeremy Meredith, Thu Jan 31 14:41:50 EST 2008
 //    Added new AxisArray window mode.
 //
-//    Eric Brugger, Tue Dec  9 14:33:57 PST 2008
-//    Added the AxisParallel window mode.
-//
 // ****************************************************************************
 
 void
@@ -984,9 +968,6 @@ VisWindow::ChangeMode(WINDOW_MODE newMode)
       case WINMODE_AXISARRAY:
         StopAxisArrayMode();
         break;
-      case WINMODE_AXISPARALLEL:
-        StopAxisParallelMode();
-        break;
       case WINMODE_NONE:
         break;
       default:
@@ -1019,9 +1000,6 @@ VisWindow::ChangeMode(WINDOW_MODE newMode)
             break;
           case WINMODE_AXISARRAY:
             StartAxisArrayMode();
-            break;
-          case WINMODE_AXISPARALLEL:
-            StartAxisParallelMode();
             break;
           default:
             { EXCEPTION1(BadWindowModeException, mode); }
@@ -1174,34 +1152,6 @@ VisWindow::StartAxisArrayMode(void)
 
 
 // ****************************************************************************
-//  Method: VisWindow::StartAxisParallelMode
-//
-//  Purpose:
-//      Has all of its modules start AxisParallel mode.
-//
-//  Programmer: Eric Brugger
-//  Creation:   December 9, 2008
-//
-// ****************************************************************************
-
-void
-VisWindow::StartAxisParallelMode(void)
-{
-    //
-    // Update the view.  In the future this should probably go into
-    // VisWinView's StartAxisParallelMode, but for now we will do it here.
-    //
-    UpdateView();
-
-    std::vector< VisWinColleague * >::iterator it;
-    for (it = colleagues.begin() ; it != colleagues.end() ; it++)
-    {
-        (*it)->StartAxisParallelMode();
-    }
-}
-
-
-// ****************************************************************************
 //  Method: VisWindow::Stop2DMode
 //
 //  Purpose:
@@ -1283,27 +1233,6 @@ VisWindow::StopAxisArrayMode(void)
     for (it = colleagues.begin() ; it != colleagues.end() ; it++)
     {
         (*it)->StopAxisArrayMode();
-    }
-}
-
-// ****************************************************************************
-//  Method: VisWindow::StopAxisParallelMode
-//
-//  Purpose:
-//      Has all of its modules stop AxisParallel mode.
-//
-//  Programmer: Eric Brugger
-//  Creation:   December 9, 2008
-//
-// ****************************************************************************
-
-void
-VisWindow::StopAxisParallelMode(void)
-{
-    std::vector< VisWinColleague * >::iterator it;
-    for (it = colleagues.begin() ; it != colleagues.end() ; it++)
-    {
-        (*it)->StopAxisParallelMode();
     }
 }
 
@@ -1808,31 +1737,6 @@ VisWindow::GetWindowSize(int &w, int &h) const
 }
 
 // ****************************************************************************
-// Method: VisWindow::GetCaptureRegion
-//
-// Purpose: 
-//   Returns the capture region ... basically the window size in 3D and the
-//   viewport size (and offset in the larger window) in 2D.
-//
-// Arguments:
-//   wo : A reference to an int that is used to return the width offset.
-//   ho : A reference to an int that is used to return the height offset.
-//   w : A reference to an int that is used to return the window width.
-//   h : A reference to an int that is used to return the window height.
-//   vo : Whether or not this is for a viewported view.
-//
-// Programmer: Hank Childs
-// Creation:   January 14, 2008
-//
-// ****************************************************************************
-
-void
-VisWindow::GetCaptureRegion(int &wo, int &ho, int &w, int &h, bool vo)
-{
-    rendering->GetCaptureRegion(wo, ho, w, h, vo);
-}
-
-// ****************************************************************************
 //  Method: VisWindow::SetLocation
 //
 //  Purpose:
@@ -2211,6 +2115,45 @@ void
 VisWindow::ClearPlots(void)
 {
     plots->ClearPlots();
+}
+
+
+// ****************************************************************************
+//  Method: VisWindow::GetPlotListIndex
+//
+//  Purpose: If plot identified by name is among the plots for this VisWindow,
+//           returns that plot's index in the window's list of active plots.
+//           Otherwise returns -1.
+//
+//  Programmer: Mark Blair
+//  Creation:   Wed Aug 30 14:09:00 PDT 2006
+//
+// ****************************************************************************
+
+int
+VisWindow::GetPlotListIndex(const char *plotName)
+{
+    return plots->GetPlotListIndex(plotName);
+}
+
+
+// ****************************************************************************
+//  Method: VisWindow::GetPlotInfoAtts
+//
+//  Purpose: If plot identified by name is among the plots for this VisWindow,
+//           returns pointer to any attributes that were pushed by that plot.
+//           Returns NULL if no such plot exists or if no attributes were
+//           pushed by the plot.
+//
+//  Programmer: Mark Blair
+//  Creation:   Wed Oct 25 15:12:55 PDT 2006
+//
+// ****************************************************************************
+
+const PlotInfoAttributes *
+VisWindow::GetPlotInfoAtts(const char *plotName)
+{
+    return plots->GetPlotInfoAtts(plotName);
 }
 
 
@@ -2755,6 +2698,7 @@ VisWindow::GetViewAxisArray(void) const
 }
 
 
+
 // ****************************************************************************
 //  Method: VisWindow::GetWindowMode
 //
@@ -2902,9 +2846,6 @@ VisWindow::Render(void)
 //    These have been supplanted by the ParallelCoordinates plot, which
 //    handles viewports and axes with a new high-dimensional window modality.
 //
-//    Eric Brugger, Tue Dec  9 14:33:57 PST 2008
-//    Added the AxisParallel window mode.
-//
 // *****************************************************************************
 
 void
@@ -2964,22 +2905,6 @@ VisWindow::UpdateView()
         Render();
     }
     else if (mode == WINMODE_AXISARRAY)
-    {
-        avtViewInfo viewInfo;
-        int *size=rendering->GetFirstRenderer()->GetSize();
-        if (viewAxisArray.viewport[0] != viewportLeft ||
-            viewAxisArray.viewport[1] != viewportRight ||
-            viewAxisArray.viewport[2] != viewportBottom ||
-            viewAxisArray.viewport[3] != viewportTop)
-        {
-            SetViewport(viewAxisArray.viewport[0], viewAxisArray.viewport[2],
-                        viewAxisArray.viewport[1], viewAxisArray.viewport[3]);
-        }
-        viewAxisArray.SetViewInfoFromView(viewInfo, size);
-        FullFrameOn(viewAxisArray.GetScaleFactor(size), 1);
-        view->SetViewInfo(viewInfo);
-    }
-    else if (mode == WINMODE_AXISPARALLEL)
     {
         avtViewInfo viewInfo;
         int *size=rendering->GetFirstRenderer()->GetSize();
@@ -3469,9 +3394,6 @@ VisWindow::SetShowCallback(VisCallback *cb, void *data)
 //   Jeremy Meredith, Thu Jan 31 14:41:50 EST 2008
 //   Added new AxisArray window mode.
 //
-//   Eric Brugger, Tue Dec  9 14:33:57 PST 2008
-//   Added the AxisParallel window mode.
-//
 // ****************************************************************************
 
 void
@@ -3510,7 +3432,6 @@ VisWindow::SetAnnotationAtts(const AnnotationAttributes *atts)
         UpdateAxes2D();
         UpdateAxes3D();
         UpdateAxesArray();
-        UpdateAxesParallel();
         UpdateTextAnnotations();
 
         // Re-render the window.
@@ -4063,115 +3984,11 @@ VisWindow::UpdateAxes2D()
 //  Programmer:  Jeremy Meredith
 //  Creation:    January 31, 2008
 //
-//  Modifications:
-//    Jeremy Meredith, Tue Nov 18 16:02:50 EST 2008
-//    Populated with new axesarray settings.
-//
-//    Eric Brugger, Tue Jan 20 12:10:53 PST 2009
-//    Removed the setting of the grid visibility since it doesn't make sense.
-//
 // ****************************************************************************
 void
 VisWindow::UpdateAxesArray()
 {
-    const AxesArray &atts = annotationAtts.GetAxesArray();
-
-    // visibility
-    axesArray->SetVisibility(atts.GetVisible());
-
-    // labels
-    int label = atts.GetAxes().GetLabel().GetVisible() ? 1 : 0;
-    axesArray->SetLabelVisibility(label);
-    axesArray->SetLabelScaling(atts.GetAutoSetScaling(), 
-                               atts.GetAxes().GetLabel().GetScaling());
-
-    // title
-    axesArray->SetTitleVisibility(atts.GetAxes().GetTitle().GetVisible());
-
-    // ticks
-    axesArray->SetTickVisibility(atts.GetTicksVisible(), label);
-    axesArray->SetAutoSetTicks(atts.GetAutoSetTicks());
-    axesArray->SetMajorTickMinimum(atts.GetAxes().GetTickMarks().GetMajorMinimum());
-    axesArray->SetMajorTickMaximum(atts.GetAxes().GetTickMarks().GetMajorMaximum());
-    axesArray->SetMajorTickSpacing(atts.GetAxes().GetTickMarks().GetMajorSpacing());
-    axesArray->SetMinorTickSpacing(atts.GetAxes().GetTickMarks().GetMinorSpacing());
-
-    // font size
-    axesArray->SetLabelFontHeight(atts.GetAxes().GetLabel().GetFont().GetScale()*0.02);
-    axesArray->SetTitleFontHeight(atts.GetAxes().GetTitle().GetFont().GetScale()*0.02);
-
-    // line width
-    axesArray->SetLineWidth(LineWidth2Int(Int2LineWidth(atts.GetLineWidth())));
-
-    // text attributes
-    VisWinTextAttributes titleAtts, labelAtts;
-    titleAtts = FontAttributes_To_VisWinTextAttributes(
-                       atts.GetAxes().GetTitle().GetFont());
-    labelAtts = FontAttributes_To_VisWinTextAttributes(
-                       atts.GetAxes().GetLabel().GetFont());
-    axesArray->SetTitleTextAttributes(titleAtts);
-    axesArray->SetLabelTextAttributes(labelAtts);
-}
-
-
-// ****************************************************************************
-//  Method:  VisWindow::UpdateAxesParallel
-//
-//  Purpose:
-//    Update necessary aspects of the VisWinAxesParallel
-//
-//  Arguments:
-//    none
-//
-//  Programmer:  Eric Brugger
-//  Creation:    December 9, 2008
-//
-//  Modifications:
-//    Eric Brugger, Tue Jan 20 12:10:53 PST 2009
-//    I finished implementing this routine.
-//
-// ****************************************************************************
-void
-VisWindow::UpdateAxesParallel()
-{
-    const AxesArray &atts = annotationAtts.GetAxesArray();
-
-    // visibility
-    axesParallel->SetVisibility(atts.GetVisible());
-
-    // labels
-    int label = atts.GetAxes().GetLabel().GetVisible() ? 1 : 0;
-    axesParallel->SetLabelVisibility(label);
-    axesParallel->SetLabelScaling(atts.GetAutoSetScaling(), 
-                                  atts.GetAxes().GetLabel().GetScaling());
-
-    // title
-    axesParallel->SetTitleVisibility(atts.GetAxes().GetTitle().GetVisible());
-
-    // ticks
-    axesParallel->SetTickVisibility(atts.GetTicksVisible(), label);
-    axesParallel->SetAutoSetTicks(atts.GetAutoSetTicks());
-    axesParallel->SetMajorTickMinimum(atts.GetAxes().GetTickMarks().GetMajorMinimum());
-    axesParallel->SetMajorTickMaximum(atts.GetAxes().GetTickMarks().GetMajorMaximum());
-    axesParallel->SetMajorTickSpacing(atts.GetAxes().GetTickMarks().GetMajorSpacing());
-    axesParallel->SetMinorTickSpacing(atts.GetAxes().GetTickMarks().GetMinorSpacing());
-
-    // font size
-    axesParallel->SetLabelFontHeight(atts.GetAxes().GetLabel().GetFont().GetScale()*0.02);
-    axesParallel->SetTitleFontHeight(atts.GetAxes().GetTitle().GetFont().GetScale()*0.02);
-
-    // line width
-    axesParallel->SetLineWidth(LineWidth2Int(Int2LineWidth(atts.GetLineWidth())));
-
-    // text attributes
-    VisWinTextAttributes titleAtts, labelAtts;
-    titleAtts = FontAttributes_To_VisWinTextAttributes(
-                       atts.GetAxes().GetTitle().GetFont());
-    labelAtts = FontAttributes_To_VisWinTextAttributes(
-                       atts.GetAxes().GetLabel().GetFont());
-    axesParallel->SetTitleTextAttributes(titleAtts);
-    axesParallel->SetLabelTextAttributes(labelAtts);
-    // SetLabelScaling has 3 args not 2.
+    axesArray->SetVisibility(true);
 }
 
 
@@ -4344,6 +4161,9 @@ VisWindow::UpdateAxes3D()
 //   Added code to set the text attributes for the database and the user 
 //   information.
 //
+//   Brad Whitlock, Mon Mar  2 14:07:57 PST 2009
+//   I added time scale and offset.
+//
 // ****************************************************************************
 
 void
@@ -4358,9 +4178,14 @@ VisWindow::UpdateTextAnnotations()
     legends->SetVisibility(annotationAtts.GetDatabaseInfoFlag(),
                            annotationAtts.GetDatabaseInfoExpansionMode(),
                            annotationAtts.GetLegendInfoFlag());
+    legends->SetTimeScaleAndOffset(annotationAtts.GetDatabaseInfoTimeScale(),
+                                   annotationAtts.GetDatabaseInfoTimeOffset());
     const FontAttributes &fa2 = annotationAtts.GetDatabaseInfoFont();
     legends->SetDatabaseInfoTextAttributes(
         FontAttributes_To_VisWinTextAttributes(fa2));
+
+    annotations->SetTimeScaleAndOffset(annotationAtts.GetDatabaseInfoTimeScale(),
+                                       annotationAtts.GetDatabaseInfoTimeOffset());
 
     plots->TriggerPlotListUpdate();
 }
@@ -5063,9 +4888,6 @@ VisWindow::QueryIsValid(const VisualCueInfo *pickCue, const VisualCueInfo *lineC
 //    Jeremy Meredith, Thu Jan 31 14:41:50 EST 2008
 //    Added new AxisArray window mode.
 //
-//    Eric Brugger, Tue Dec  9 14:33:57 PST 2008
-//    Added the AxisParallel window mode.
-//
 // ****************************************************************************
 
 void
@@ -5084,12 +4906,6 @@ VisWindow::GetScaleFactorAndType(double &s, int &t)
         s = viewCurve.GetScaleFactor(size);
     }
     else if (mode == WINMODE_AXISARRAY)
-    {
-        int *size=rendering->GetFirstRenderer()->GetSize();
-
-        s = viewAxisArray.GetScaleFactor(size);
-    }
-    else if (mode == WINMODE_AXISPARALLEL)
     {
         int *size=rendering->GetFirstRenderer()->GetSize();
 
@@ -6016,9 +5832,6 @@ VisWindow::FullFrameOn(const double scale, const int type)
 //    Jeremy Meredith, Thu Jan 31 14:41:50 EST 2008
 //    Added new AxisArray window mode (always fullframe).
 //
-//    Eric Brugger, Tue Dec  9 14:33:57 PST 2008
-//    Added the AxisParallel window mode.
-//
 // ****************************************************************************
 
 bool
@@ -6026,8 +5839,7 @@ VisWindow::GetFullFrameMode()
 {
     if ((mode == WINMODE_2D && view2D.fullFrame) ||
         (mode == WINMODE_CURVE) ||
-        (mode == WINMODE_AXISARRAY) ||
-        (mode == WINMODE_AXISPARALLEL))
+        (mode == WINMODE_AXISARRAY))
         return true;
     else 
         return false; 
@@ -6050,6 +5862,24 @@ bool
 VisWindow::TransparenciesExist()
 {
     return plots->TransparenciesExist();
+}
+
+// ****************************************************************************
+// Method: VisWindow::GetTransparencyActor
+//
+// Purpose:
+//   Grabs the active transparency actor.
+//
+// Programmer: Tom Fogal
+// Creation:   May 25, 2009
+//
+// Modifications:
+//
+// ****************************************************************************
+avtTransparencyActor *
+VisWindow::GetTransparencyActor()
+{
+    return plots->GetTransparencyActor();
 }
 
 

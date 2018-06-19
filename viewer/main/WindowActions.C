@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -44,8 +44,8 @@
 #include <PlotPluginManager.h>
 #include <OperatorPluginManager.h>
 
-#include <QIcon>
-#include <QPixmap>
+#include <qiconset.h>
+#include <qpixmap.h>
 
 // Include the icons
 #include <newwindow.xpm>
@@ -98,12 +98,12 @@
 // ****************************************************************************
 
 AddWindowAction::AddWindowAction(ViewerWindow *win) :
-    ViewerAction(win)
+    ViewerAction(win, "AddWindowAction")
 {
     SetAllText(tr("Add new window"));
     SetMenuText(tr("Add"));
     if (!win->GetNoWinMode())
-        SetIcon(QIcon(QPixmap(newwindow_xpm)));
+        SetIconSet(QIconSet(QPixmap(newwindow_xpm)));
 }
 
 // ****************************************************************************
@@ -144,12 +144,12 @@ AddWindowAction::Execute()
 // ****************************************************************************
 
 CloneWindowAction::CloneWindowAction(ViewerWindow *win) :
-    ViewerAction(win)
+    ViewerAction(win, "CloneWindowAction")
 {
     SetAllText(tr("Clone window"));
     SetMenuText(tr("Clone"));
     if (!win->GetNoWinMode())
-        SetIcon(QIcon(QPixmap(copymenu_xpm)));
+        SetIconSet(QIconSet(QPixmap(copymenu_xpm)));
 }
 
 // ****************************************************************************
@@ -194,12 +194,12 @@ CloneWindowAction::Execute()
 // ****************************************************************************
 
 DeleteWindowAction::DeleteWindowAction(ViewerWindow *win) :
-    ViewerAction(win)
+    ViewerAction(win, "DeleteWindowAction")
 {
     SetAllText(tr("Delete window"));
     SetMenuText(tr("Delete"));
     if (!win->GetNoWinMode())
-        SetIcon(QIcon(QPixmap(deletewindow_xpm)));
+        SetIconSet(QIconSet(QPixmap(deletewindow_xpm)));
 }
 
 // ****************************************************************************
@@ -268,11 +268,11 @@ DeleteWindowAction::Update()
 // ****************************************************************************
 
 ClearWindowAction::ClearWindowAction(ViewerWindow *win) :
-    ViewerAction(win)
+    ViewerAction(win, "ClearWindowAction")
 {
     SetAllText(tr("Clear plots"));
     if (!win->GetNoWinMode())
-        SetIcon(QIcon(QPixmap(clearwindow_xpm)));
+        SetIconSet(QIconSet(QPixmap(clearwindow_xpm)));
 }
 
 // ****************************************************************************
@@ -336,7 +336,7 @@ ClearWindowAction::Enabled() const
 // ****************************************************************************
 
 ClearAllWindowsAction::ClearAllWindowsAction(ViewerWindow *win) :
-    ViewerAction(win)
+    ViewerAction(win, "ClearAllWindowsAction")
 {
     SetAllText(tr("Clear all windows"));
 }
@@ -379,7 +379,7 @@ ClearAllWindowsAction::Execute()
 // ****************************************************************************
 
 ClearPickPointsAction::ClearPickPointsAction(ViewerWindow *win) :
-    ViewerAction(win)
+    ViewerAction(win, "ClearPickPointsAction")
 {
     SetAllText(tr("Clear pick points"));
 }
@@ -445,7 +445,7 @@ ClearPickPointsAction::Enabled() const
 // ****************************************************************************
 
 ClearReferenceLinesAction::ClearReferenceLinesAction(ViewerWindow *win) :
-    ViewerAction(win)
+    ViewerAction(win, "ClearReferenceLinesAction")
 {
     SetAllText(tr("Clear reference lines"));
 }
@@ -514,7 +514,7 @@ ClearReferenceLinesAction::Enabled() const
 // ****************************************************************************
 
 SetActiveWindowAction::SetActiveWindowAction(ViewerWindow *win) :
-    ViewerToggleAction(win)
+    ViewerToggleAction(win, "Active window")
 {
     SetAllText(tr("Make active"));
     SetToolTip(tr("Make window active"));
@@ -564,7 +564,7 @@ SetActiveWindowAction::Execute()
 }
 
 // ****************************************************************************
-// Method: SetActiveWindowAction::Checked
+// Method: SetActiveWindowAction::Toggled
 //
 // Purpose: 
 //   Returns whether or not the action is toggled.
@@ -579,7 +579,7 @@ SetActiveWindowAction::Execute()
 // ****************************************************************************
 
 bool
-SetActiveWindowAction::Checked() const
+SetActiveWindowAction::Toggled() const
 {
     // This action should be toggled if it belongs to the active window.
     return (window == windowMgr->GetActiveWindow()); 
@@ -604,7 +604,7 @@ SetActiveWindowAction::Checked() const
 // ****************************************************************************
 
 ToggleSpinModeAction::ToggleSpinModeAction(ViewerWindow *win) :
-    ViewerToggleAction(win)
+    ViewerToggleAction(win, "Spin mode")
 {
     SetAllText(tr("Spin"));
     SetToolTip(tr("Toggle spin mode"));
@@ -655,7 +655,7 @@ ToggleSpinModeAction::Enabled() const
 }
 
 // ****************************************************************************
-// Method: ToggleSpinModeAction::Checked
+// Method: ToggleSpinModeAction::Toggled
 //
 // Purpose: 
 //   Returns if the window is in spin mode and the action should be toggled.
@@ -670,7 +670,7 @@ ToggleSpinModeAction::Enabled() const
 // ****************************************************************************
 
 bool
-ToggleSpinModeAction::Checked() const
+ToggleSpinModeAction::Toggled() const
 {
     return window->GetSpinMode();
 }
@@ -694,7 +694,7 @@ ToggleSpinModeAction::Checked() const
 // ****************************************************************************
 
 ToggleBoundingBoxModeAction::ToggleBoundingBoxModeAction(ViewerWindow *win) :
-    ViewerToggleAction(win)
+    ViewerToggleAction(win, "ToggleBoundingBoxModeAction")
 {
     SetAllText(tr("Navigate bbox"));
     SetToolTip(tr("Toggle bounding box navigation"));
@@ -745,7 +745,7 @@ ToggleBoundingBoxModeAction::Enabled() const
 }
 
 // ****************************************************************************
-// Method: ToggleBoundingBoxModeAction::Checked
+// Method: ToggleBoundingBoxModeAction::Toggled
 //
 // Purpose: 
 //   Returns whether the action should be toggled.
@@ -760,7 +760,7 @@ ToggleBoundingBoxModeAction::Enabled() const
 // ****************************************************************************
 
 bool
-ToggleBoundingBoxModeAction::Checked() const
+ToggleBoundingBoxModeAction::Toggled() const
 {
     return window->GetBoundingBoxMode();
 }
@@ -786,12 +786,12 @@ ToggleBoundingBoxModeAction::Checked() const
 // ****************************************************************************
 
 SetWindowLayoutAction::SetWindowLayoutAction(ViewerWindow *win) :
-    ViewerMultipleAction(win)
+    ViewerMultipleAction(win, "Window layout")
 {
     SetAllText(tr("Layout"));
     SetToolTip(tr("Set window layout"));
     if (!win->GetNoWinMode())
-        SetIcon(QIcon(QPixmap(layout2x2_xpm)));
+        SetIconSet(QIconSet(QPixmap(layout2x2_xpm)));
     SetExclusive(true);
 
     if (!win->GetNoWinMode())
@@ -873,7 +873,7 @@ SetWindowLayoutAction::Execute(int)
 }
 
 // ****************************************************************************
-// Method: SetWindowLayoutAction::ChoiceChecked
+// Method: SetWindowLayoutAction::ChoiceToggled
 //
 // Purpose: 
 //   Returns if the i'th choice should be toggled.
@@ -893,7 +893,7 @@ SetWindowLayoutAction::Execute(int)
 // ****************************************************************************
 
 bool
-SetWindowLayoutAction::ChoiceChecked(int i) const
+SetWindowLayoutAction::ChoiceToggled(int i) const
 {
     bool retval;
 
@@ -941,12 +941,12 @@ SetWindowLayoutAction::ChoiceChecked(int i) const
 // ****************************************************************************
 
 InvertBackgroundAction::InvertBackgroundAction(ViewerWindow *win) :
-    ViewerAction(win)
+    ViewerAction(win, "Invert background")
 {
     SetAllText(tr("Invert background"));
     SetToolTip(tr("Swap background and foreground colors"));
     if (!win->GetNoWinMode())
-        SetIcon(QIcon(QPixmap(invertbackground_xpm)));
+        SetIconSet(QIconSet(QPixmap(invertbackground_xpm)));
 }
 
 // ****************************************************************************
@@ -994,7 +994,7 @@ InvertBackgroundAction::Execute()
 // ****************************************************************************
 
 SetWindowModeAction::SetWindowModeAction(ViewerWindow *win) :
-    ViewerMultipleAction(win)
+    ViewerMultipleAction(win, "Mode")
 {
     SetAllText(tr("Mode"));
     SetToolTip(tr("Set window mode"));
@@ -1166,15 +1166,14 @@ SetWindowModeAction::ChoiceEnabled(int i) const
     }
     else if(i == 5) // spreadsheet pick
     {
-        retval = (window->GetWindowMode() != WINMODE_AXISARRAY &&
-                  GetPlotPluginManager()->PluginAvailable("Spreadsheet_1.0"));
+        retval = (window->GetWindowMode() != WINMODE_AXISARRAY);
     }
 
     return retval;
 }
 
 // ****************************************************************************
-// Method: SetWindowModeAction::ChoiceChecked
+// Method: SetWindowModeAction::ChoiceToggled
 //
 // Purpose: 
 //   Returns when the i'th choice is toggled.
@@ -1192,7 +1191,7 @@ SetWindowModeAction::ChoiceEnabled(int i) const
 // ****************************************************************************
 
 bool
-SetWindowModeAction::ChoiceChecked(int i) const
+SetWindowModeAction::ChoiceToggled(int i) const
 {
     bool val = (window->GetInteractionMode() == (INTERACTION_MODE)i);
     return val;
@@ -1226,7 +1225,7 @@ SetWindowModeAction::ChoiceChecked(int i) const
 // ****************************************************************************
 
 EnableToolAction::EnableToolAction(ViewerWindow *win) :
-    ViewerMultipleAction(win)
+    ViewerMultipleAction(win, "Tools")
 {
     SetAllText(tr("Tools"));
     SetExclusive(false);
@@ -1348,7 +1347,7 @@ EnableToolAction::ChoiceEnabled(int i) const
 }
 
 // ****************************************************************************
-// Method: EnableToolAction::ChoiceChecked
+// Method: EnableToolAction::ChoiceToggled
 //
 // Purpose: 
 //   Returns when the i'th choice should be toggled.
@@ -1366,7 +1365,7 @@ EnableToolAction::ChoiceEnabled(int i) const
 // ****************************************************************************
 
 bool
-EnableToolAction::ChoiceChecked(int i) const
+EnableToolAction::ChoiceToggled(int i) const
 {
     return window->GetToolEnabled(i);
 }

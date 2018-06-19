@@ -222,7 +222,23 @@ Definition:
 //    visualAxisNames (though visualnames not matching will not force
 //    recalculation.)
 //
-
+//    Jeremy Meredith, Tue Mar  4 18:17:13 EST 2008
+//    Added linesNumPartitions.
+//
+//    Jeremy Meredith, Fri Mar  7 11:43:37 EST 2008
+//    Added named selection and time iteration fields.
+//
+//    Jeremy Meredith, Thu Mar 27 16:38:18 EDT 2008
+//    Allow user to force into the mode using individual data point lines
+//    for the focus instead of using a histogram.
+//
+//    Jeremy Meredith, Wed Feb 25 16:55:12 EST 2009
+//    Port to trunk.  Removed time iteration (for now) and
+//    named selections (since they are done differently now).
+//
+//    Jeremy Meredith, Fri Apr 24 15:36:05 EDT 2009
+//    Changed focus drawing method to be an enum.  Added focus gamma.
+//
 // ****************************************************************************
 bool
 ParallelCoordinatesAttributes::ChangesRequireRecalculation(
@@ -231,12 +247,16 @@ ParallelCoordinatesAttributes::ChangesRequireRecalculation(
     if (extentMinima != obj.extentMinima ||
         extentMaxima != obj.extentMaxima ||
         drawLines != obj.drawLines ||
+        linesNumPartitions != obj.linesNumPartitions ||
         drawContext != obj.drawContext ||
         drawLinesOnlyIfExtentsOn != obj.drawLinesOnlyIfExtentsOn ||
         contextNumPartitions != obj.contextNumPartitions ||
         contextGamma != obj.contextGamma ||
+        focusGamma != obj.focusGamma ||
         scalarAxisNames != obj.scalarAxisNames ||
-        unifyAxisExtents != obj.unifyAxisExtents)
+        unifyAxisExtents != obj.unifyAxisExtents ||
+        drawFocusAs != obj.drawFocusAs
+        )
     {
         return true;
     }
@@ -368,7 +388,6 @@ ParallelCoordinatesAttributes::CreateCompatible(const std::string &tname) const
     return retval;
 }
 
-
 Function: ResetAxes
 Declaration: void ResetAxes();
 Definition:
@@ -407,7 +426,7 @@ Function: ParallelCoordinatesGUIPluginInfo::CreatePluginWizard
 Declaration: QvisWizard *ParallelCoordinatesGUIPluginInfo::CreatePluginWizard(...);
 Definition:
 // ****************************************************************************
-// Method:ParallelCoordinatesGUIPluginInfo::CreatePluginWizard
+// Method: ScatterGUIPluginInfo::CreatePluginWizard
 //
 // Purpose:
 //   Creates a ParallelCoordinates plot wizard and returns a pointer to it.
@@ -433,9 +452,6 @@ Definition:
 //    you'll have the wrong number of axes defined in the plot attributes.
 //    As such, I extended the wizard to support a "no-op" mode.
 //   
-//    Cyrus Harrison, Mon Jul 21 08:33:47 PDT 2008
-//    Initial Qt4 Port. 
-//
 // ****************************************************************************
 #include <QvisParallelCoordinatesPlotWizard.h>
 #include <Expression.h>
@@ -445,7 +461,7 @@ Definition:
 QvisWizard *
 ParallelCoordinatesGUIPluginInfo::CreatePluginWizard(AttributeSubject *attr,
     QWidget *parent, const std::string &varName, const avtDatabaseMetaData *md,
-    const ExpressionList *expList)
+    const ExpressionList *expList, const char *name)
 {
     bool doNothing = false;
     if (md->GetScalar(varName) == NULL)
@@ -468,7 +484,7 @@ ParallelCoordinatesGUIPluginInfo::CreatePluginWizard(AttributeSubject *attr,
     }
 
     return (new QvisParallelCoordinatesPlotWizard(attr, parent, varName,
-                                                  doNothing));
+                                                  doNothing, name));
 }
 
 Function: ParallelCoordinatesViewerPluginInfo::InitializePlotAtts
@@ -591,4 +607,12 @@ ParallelCoordinatesViewerPluginInfo::InitializePlotAtts(
     *(ParallelCoordinatesAttributes*)atts = *defaultAtts;
 }
 
+Function: ParallelCoordinatesViewerPluginInfo::Permits2DViewScaling
+Declaration: virtual bool Permits2DViewScaling() const;
+Definition:
+bool
+ParallelCoordinatesViewerPluginInfo::Permits2DViewScaling() const
+{
+    return false;
+}
 

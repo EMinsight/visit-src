@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -38,20 +38,19 @@
 
 #include <QvisColorTableWindow.h>
 #include <ColorTableAttributes.h>
-#include <QApplication>
-#include <QButtonGroup>
-#include <QLayout>
-#include <QPushButton>
-#include <QCheckBox>
-#include <QComboBox>
-#include <QGroupBox>
-#include <QLabel>
-#include <QLineEdit>
-#include <QListWidget>
-#include <QRadioButton>
-#include <QSlider>
-#include <QSpinBox>
-#include <QDesktopWidget>
+#include <qapplication.h>
+#include <qbuttongroup.h>
+#include <qlayout.h>
+#include <qpushbutton.h>
+#include <qcheckbox.h>
+#include <qcombobox.h>
+#include <qgroupbox.h>
+#include <qlabel.h>
+#include <qlineedit.h>
+#include <qlistbox.h>
+#include <qradiobutton.h>
+#include <qslider.h>
+#include <qspinbox.h>
 
 #include <QvisSpectrumBar.h>
 #include <QvisColorSelectionWidget.h>
@@ -60,7 +59,6 @@
 #include <ColorControlPointList.h>
 #include <DataNode.h>
 #include <ViewerProxy.h>
-
 
 // Defines. Make these part of ColorTableAttributes sometime.
 #define DEFAULT_DISCRETE_COLS    6
@@ -110,7 +108,6 @@ QvisColorTableWindow::QvisColorTableWindow(
     colorAtts = colorAtts_;
     colorCycle = 0;
     sliding = false;
-    colorSelect = 0;
     colorTableTypeGroup = 0;
 }
 
@@ -132,7 +129,7 @@ QvisColorTableWindow::QvisColorTableWindow(
 QvisColorTableWindow::~QvisColorTableWindow()
 {
     colorAtts = 0;
-    delete colorSelect;
+    delete colorTableTypeGroup;
 }
 
 // ****************************************************************************
@@ -164,131 +161,134 @@ QvisColorTableWindow::~QvisColorTableWindow()
 //   Brad Whitlock, Tue Apr  8 09:27:26 PDT 2008
 //   Support for internationalization.
 //
-//   Cyrus Harrison, Tue Jun 10 10:04:26 PDT 20
-//   Initial Qt4 Port.
-//
-//   Jeremy Meredith, Wed Dec 31 16:11:50 EST 2008
-//   Added show index hints checkbox for discrete color tables.
-//
 // ****************************************************************************
 
 void
 QvisColorTableWindow::CreateWindowContents()
 {
     // Create the widgets needed to set the active color tables.
-    topLayout->setMargin(2);
-    activeGroup = new QGroupBox(central);
+    activeGroup = new QGroupBox(central, "activeGroup");
     activeGroup->setTitle(tr("Active color table"));
     topLayout->addWidget(activeGroup, 5);
 
     QVBoxLayout *innerActiveTopLayout = new QVBoxLayout(activeGroup);
-    QGridLayout *innerActiveLayout = new QGridLayout();
-    innerActiveTopLayout->addLayout(innerActiveLayout);
-    innerActiveLayout->setColumnMinimumWidth(1, 10);
+    innerActiveTopLayout->setMargin(10);
+    innerActiveTopLayout->addSpacing(15);
+    QGridLayout *innerActiveLayout = new QGridLayout(innerActiveTopLayout, 2, 2);
+    innerActiveLayout->setSpacing(10);
+    innerActiveLayout->setColStretch(1, 10);
 
-    activeContinuous = new QComboBox(activeGroup);
+    activeContinuous = new QComboBox(activeGroup, "activeContinuous");
     connect(activeContinuous, SIGNAL(activated(const QString &)),
             this, SLOT(setActiveContinuous(const QString &)));
     innerActiveLayout->addWidget(activeContinuous, 0, 1);
-    activeContinuousLabel = new QLabel(tr("Continuous"),activeGroup);
+    activeContinuousLabel = new QLabel(activeContinuous, tr("Continuous"),
+        activeGroup, "activeContinuousLabel");
     innerActiveLayout->addWidget(activeContinuousLabel, 0, 0);
 
-    activeDiscrete = new QComboBox(activeGroup);
+    activeDiscrete = new QComboBox(activeGroup, "activeDiscrete");
     connect(activeDiscrete, SIGNAL(activated(const QString &)),
             this, SLOT(setActiveDiscrete(const QString &)));
     innerActiveLayout->addWidget(activeDiscrete, 1, 1);
-    activeDiscreteLabel = new QLabel(tr("Discrete"),activeGroup);
+    activeDiscreteLabel = new QLabel(activeDiscrete, tr("Discrete"),
+        activeGroup, "activeDiscreteLabel");
     innerActiveLayout->addWidget(activeDiscreteLabel, 1, 0);
 
 
     // Create the widget group that contains all of the color table
     // management stuff.
-    colorTableWidgetGroup = new QGroupBox(central);
+    colorTableWidgetGroup = new QGroupBox(central, "colorTableWidgetGroup");
     colorTableWidgetGroup->setTitle(tr("Manager"));
     topLayout->addWidget(colorTableWidgetGroup,5);
     QVBoxLayout *innerColorTableLayout = new QVBoxLayout(colorTableWidgetGroup);
-    
-    // Create the color management widgets.
-    QGridLayout *mgLayout = new QGridLayout();
-    innerColorTableLayout->addLayout(mgLayout);
+    innerColorTableLayout->setMargin(10);
+    innerColorTableLayout->addSpacing(15);
 
-    newButton = new QPushButton(tr("New"), colorTableWidgetGroup);
+    // Create the color management widgets.
+    QGridLayout *mgLayout = new QGridLayout(innerColorTableLayout, 4, 2);
+    mgLayout->setSpacing(5);
+
+    newButton = new QPushButton(tr("New"), colorTableWidgetGroup, "newButton");
     connect(newButton, SIGNAL(clicked()), this, SLOT(addColorTable()));
     mgLayout->addWidget(newButton, 0, 0);
 
-    deleteButton = new QPushButton(tr("Delete"), colorTableWidgetGroup);
+    deleteButton = new QPushButton(tr("Delete"), colorTableWidgetGroup, "deleteButton");
     connect(deleteButton, SIGNAL(clicked()), this, SLOT(deleteColorTable()));
     mgLayout->addWidget(deleteButton, 1, 0);
 
-    exportButton = new QPushButton(tr("Export"), colorTableWidgetGroup);
+    exportButton = new QPushButton(tr("Export"), colorTableWidgetGroup, "exportButton");
     connect(exportButton, SIGNAL(clicked()), this, SLOT(exportColorTable()));
     mgLayout->addWidget(exportButton, 2, 0);
 
-    nameListBox = new QListWidget(colorTableWidgetGroup);
+    nameListBox = new QListBox(colorTableWidgetGroup, "nameListBox");
     nameListBox->setMinimumHeight(100);
-    connect(nameListBox, SIGNAL(currentRowChanged(int)),
+    connect(nameListBox, SIGNAL(highlighted(int)),
             this, SLOT(highlightColorTable(int)));
-    mgLayout->addWidget(nameListBox, 0, 1, 3, 1);
+    mgLayout->addMultiCellWidget(nameListBox, 0, 2, 1, 1);
 
-    QLabel *colorTableName = new QLabel(tr("Name"), colorTableWidgetGroup);
+    QLabel *colorTableName = new QLabel(tr("Name"), colorTableWidgetGroup, "colorTableName");
     mgLayout->addWidget(colorTableName, 3, 0, Qt::AlignRight);
-    nameLineEdit = new QLineEdit(colorTableWidgetGroup);
+    nameLineEdit = new QLineEdit(colorTableWidgetGroup, "nameLineEdit");
     mgLayout->addWidget(nameLineEdit, 3, 1);
 
     // Add the group box that will contain the color-related widgets.
-    colorWidgetGroup = new QGroupBox(central);
+    colorWidgetGroup = new QGroupBox(central, "colorWidgetGroup");
     colorWidgetGroup->setTitle(tr("Editor"));
     topLayout->addWidget(colorWidgetGroup, 100);
     QVBoxLayout *innerColorLayout = new QVBoxLayout(colorWidgetGroup);
-    
+    innerColorLayout->setMargin(5);
+    innerColorLayout->addSpacing(15);
+
     // Create controls to set the number of colors in the color table.
-    QGridLayout *colorInfoLayout = new QGridLayout();
-    innerColorLayout->addLayout(colorInfoLayout);
-    colorNumColors = new QSpinBox(colorWidgetGroup);
-    colorNumColors->setRange(2,200);
-    colorNumColors->setSingleStep(1);
+    QGridLayout *colorInfoLayout = new QGridLayout(innerColorLayout, 2, 3);
+    colorInfoLayout->setSpacing(5);
+    colorInfoLayout->setMargin(5);
+    colorNumColors = new QSpinBox(2, 200, 1, colorWidgetGroup, "colorNumColors");
     connect(colorNumColors, SIGNAL(valueChanged(int)),
             this, SLOT(resizeColorTable(int)));
-    colorInfoLayout->addWidget(colorNumColors, 0, 1, 1, 2);
-    colorInfoLayout->addWidget(new QLabel(tr("Number of colors"),
-                                          colorWidgetGroup), 0, 0);
+    colorInfoLayout->addMultiCellWidget(colorNumColors, 0, 0, 1, 2);
+    colorInfoLayout->addWidget(new QLabel(colorNumColors, tr("Number of colors"),
+        colorWidgetGroup), 0, 0);
 
     // Create radio buttons to convert the color table between color table types.
-    colorInfoLayout->addWidget(new QLabel(tr("Color table type")), 1, 0);
-    colorTableTypeGroup = new QButtonGroup(colorWidgetGroup);
-    QRadioButton *rb = new QRadioButton(tr("Continuous"),colorWidgetGroup);
-    colorTableTypeGroup->addButton(rb,0);
+    colorInfoLayout->addWidget(new QLabel(tr("Color table type"), colorWidgetGroup), 1, 0);
+    colorTableTypeGroup = new QButtonGroup(0, "colorTableTypeGroup");
+    QRadioButton *rb = new QRadioButton(tr("Continuous"), colorWidgetGroup);
+    colorTableTypeGroup->insert(rb);
     colorInfoLayout->addWidget(rb, 1, 1);
-    rb = new QRadioButton(tr("Discrete"),colorWidgetGroup);
-    colorTableTypeGroup->addButton(rb,1);
+    rb = new QRadioButton(tr("Discrete"), colorWidgetGroup);
+    colorTableTypeGroup->insert(rb);
     colorInfoLayout->addWidget(rb, 1, 2);
-    connect(colorTableTypeGroup, SIGNAL(buttonClicked(int)),
+    connect(colorTableTypeGroup, SIGNAL(clicked(int)),
             this, SLOT(setColorTableType(int)));
-    
+    innerColorLayout->addSpacing(5);
 
     // Create the buttons that help manipulate the spectrum bar.
-    QHBoxLayout *seLayout = new QHBoxLayout();
-    innerColorLayout->addLayout(seLayout);
-    
-    alignPointButton = new QPushButton(tr("Align"), colorWidgetGroup);
+    QHBoxLayout *seLayout = new QHBoxLayout(innerColorLayout);
+    seLayout->setSpacing(5);
+    seLayout->addSpacing(5);
+
+    alignPointButton = new QPushButton(tr("Align"), colorWidgetGroup, "alignPointButton");
     connect(alignPointButton, SIGNAL(clicked()),
             this, SLOT(alignControlPoints()));
     seLayout->addWidget(alignPointButton);
+    seLayout->addSpacing(5);
     seLayout->addStretch(10);
 
-    smoothCheckBox = new QCheckBox(tr("Smooth"), colorWidgetGroup);
+    smoothCheckBox = new QCheckBox(tr("Smooth"), colorWidgetGroup, "smoothCheckbox");
     smoothCheckBox->setChecked(true);
     connect(smoothCheckBox, SIGNAL(toggled(bool)),
             this, SLOT(smoothToggled(bool)));
     seLayout->addWidget(smoothCheckBox);
 
-    equalCheckBox = new QCheckBox(tr("Equal"), colorWidgetGroup);
+    equalCheckBox = new QCheckBox(tr("Equal"), colorWidgetGroup, "equalCheckbox");
     connect(equalCheckBox, SIGNAL(toggled(bool)),
             this, SLOT(equalSpacingToggled(bool)));
     seLayout->addWidget(equalCheckBox);
+    topLayout->addSpacing(5);
 
     // Create the spectrum bar.
-    spectrumBar = new QvisSpectrumBar(colorWidgetGroup);
+    spectrumBar = new QvisSpectrumBar(colorWidgetGroup, "spectrumBar");
     spectrumBar->setMinimumHeight(100);
     spectrumBar->addControlPoint(QColor(255,0,0),   0.);
     spectrumBar->addControlPoint(QColor(255,255,0), 0.25);
@@ -302,10 +302,12 @@ QvisColorTableWindow::CreateWindowContents()
     connect(spectrumBar, SIGNAL(activeControlPointChanged(int)),
             this, SLOT(activateContinuousColor(int)));
 
+    innerColorLayout->addSpacing(5);
     innerColorLayout->addWidget(spectrumBar, 100);
 
     // Create the discrete color table widgets.
-    discreteColors = new QvisColorGridWidget(colorWidgetGroup);
+    discreteColors = new QvisColorGridWidget(colorWidgetGroup, "discreteColors");
+    discreteColors->setBackgroundMode(NoBackground);
     QColor *tmpColors = new QColor[DEFAULT_DISCRETE_NCOLORS];
     for(int i = 0; i < DEFAULT_DISCRETE_NCOLORS; ++i)
     {
@@ -314,7 +316,6 @@ QvisColorTableWindow::CreateWindowContents()
     }
     discreteColors->setPaletteColors(tmpColors, DEFAULT_DISCRETE_NCOLORS, DEFAULT_DISCRETE_COLS);
     discreteColors->setFrame(false);
-    discreteColors->setShowIndexHints(false);
     discreteColors->setBoxSize(16);
     discreteColors->setBoxPadding(8);
     discreteColors->setSelectedIndex(0);
@@ -325,17 +326,10 @@ QvisColorTableWindow::CreateWindowContents()
     delete [] tmpColors;
     innerColorLayout->addWidget(discreteColors, 100);
 
-    // Add a check box for index hinting
-    showIndexHintsCheckBox = new QCheckBox(tr("Show index hints"), colorWidgetGroup);
-    showIndexHintsCheckBox->setChecked(false);
-    connect(showIndexHintsCheckBox, SIGNAL(toggled(bool)),
-            this, SLOT(showIndexHintsToggled(bool)));
-    innerColorLayout->addWidget(showIndexHintsCheckBox);
-
-
     // Create the discrete color table sliders, text fields.
-    QGridLayout *discreteLayout = new QGridLayout();
-    innerColorLayout->addLayout(discreteLayout);
+    QGridLayout *discreteLayout = new QGridLayout(innerColorLayout, 3, 3);
+    discreteLayout->setSpacing(5);
+    discreteLayout->setMargin(5);
     QString cnames[3];
     cnames[0] = tr("Red");
     cnames[1] = tr("Green");
@@ -344,22 +338,16 @@ QvisColorTableWindow::CreateWindowContents()
     {
         QString n;
         n.sprintf("componentSliders[%d]", j);
-        componentSliders[j] = new QSlider(Qt::Horizontal,colorWidgetGroup);
-        componentSliders[j]->setRange(0, 255);
-        componentSliders[j]->setPageStep(10);
-        componentSliders[j]->setValue(0);
-        
+        componentSliders[j] = new QSlider(0, 255, 10, 0, Qt::Horizontal,
+            colorWidgetGroup, n.ascii());
         discreteLayout->addWidget(componentSliders[j], j, 1);
 
         n.sprintf("componentLabels[%d]", j);
-        componentLabels[j] = new QLabel(cnames[j], colorWidgetGroup);
+        componentLabels[j] = new QLabel(componentSliders[j], cnames[j], colorWidgetGroup, n.ascii());
         discreteLayout->addWidget(componentLabels[j], j, 0);
 
         n.sprintf("discreteLineEdits[%d]", j);
-        componentSpinBoxes[j] = new QSpinBox(colorWidgetGroup);
-        componentSpinBoxes[j]->setRange(0,255);
-        componentSpinBoxes[j]->setSingleStep(1);
-
+        componentSpinBoxes[j] = new QSpinBox(0, 255, 1, colorWidgetGroup, n.ascii());
 
         // Hook up some signals and slots
         if(j == 0)
@@ -393,7 +381,7 @@ QvisColorTableWindow::CreateWindowContents()
     innerColorLayout->addStretch(5);
 
     // Create the color selection widget.
-    colorSelect = new QvisColorSelectionWidget(NULL,Qt::Popup);
+    colorSelect = new QvisColorSelectionWidget(this, "colorSelect", WType_Popup);
     connect(colorSelect, SIGNAL(selectedColor(const QColor &)),
             this, SLOT(selectedColor(const QColor &)));
 }
@@ -411,9 +399,7 @@ QvisColorTableWindow::CreateWindowContents()
 // Creation:   Mon Mar 6 09:18:09 PDT 2006
 //
 // Modifications:
-//   Cyrus Harrison, Tue Jun 10 10:04:26 PDT 20
-//   Initial Qt4 Port.
-//
+//   
 // ****************************************************************************
 
 void
@@ -426,10 +412,10 @@ QvisColorTableWindow::CreateNode(DataNode *parentNode)
        !currentColorTable.isEmpty() &&
        currentColorTable != "none")
     {
-        DataNode *node = parentNode->GetNode(windowTitle().toStdString());
+        DataNode *node = parentNode->GetNode(std::string(caption().latin1()));
 
         // Save the current color table.
-        std::string ct(currentColorTable.toStdString());
+        std::string ct(currentColorTable.latin1());
         node->AddNode(new DataNode("currentColorTable", ct));
     }
 }
@@ -444,15 +430,13 @@ QvisColorTableWindow::CreateNode(DataNode *parentNode)
 // Creation:   Mon Mar 6 09:18:41 PDT 2006
 //
 // Modifications:
-//   Cyrus Harrison, Tue Jun 10 10:04:26 PDT 20
-//   Initial Qt4 Port.
-//
+//   
 // ****************************************************************************
 
 void
 QvisColorTableWindow::SetFromNode(DataNode *parentNode, const int *borders)
 {
-    DataNode *winNode = parentNode->GetNode(windowTitle().toStdString());
+    DataNode *winNode = parentNode->GetNode(std::string(caption().latin1()));
     if(winNode == 0)
         return;
 
@@ -497,12 +481,6 @@ QvisColorTableWindow::SetFromNode(DataNode *parentNode, const int *borders)
 //   Brad Whitlock, Fri Dec 14 16:59:58 PST 2007
 //   Made it use ids.
 //
-//   Cyrus Harrison, Tue Jun 10 10:04:26 PDT 20
-//   Initial Qt4 Port.
-//
-//   Jeremy Meredith, Wed Dec 31 16:01:40 EST 2008
-//   Avoid use of temporaries that was referencing freed memory.
-//
 // ****************************************************************************
 
 void
@@ -519,8 +497,8 @@ QvisColorTableWindow::UpdateWindow(bool doAll)
     //
     int nct = 3;
     bool invalidCt = true;
-    QString ctNames[4];
-    ctNames[0] = currentColorTable;
+    const char *ctNames[4] = {0,0,0,0};
+    ctNames[0] = currentColorTable.latin1();
     ctNames[1] = colorAtts->GetActiveContinuous().c_str();
     ctNames[2] = colorAtts->GetActiveDiscrete().c_str();
     if(colorAtts->GetNames().size() > 0)
@@ -530,9 +508,9 @@ QvisColorTableWindow::UpdateWindow(bool doAll)
     }
     for(int c = 0; c < nct && invalidCt; ++c)
     {
-        if(colorAtts->GetColorTableIndex(ctNames[c].toStdString()) != -1)
+        if(colorAtts->GetColorTableIndex(ctNames[c]) != -1)
         {
-            currentColorTable = ctNames[c];
+            currentColorTable = QString(ctNames[c]);
             invalidCt = false;
         }
         else
@@ -603,12 +581,6 @@ QvisColorTableWindow::UpdateWindow(bool doAll)
 //   Brad Whitlock, Wed Feb 26 11:04:52 PDT 2003
 //   I changed the widgets for discrete color tables.
 //
-//   Cyrus Harrison, Tue Jun 10 10:04:26 PDT 20
-//   Initial Qt4 Port.
-//
-//   Jeremy Meredith, Wed Dec 31 16:11:50 EST 2008
-//   Added show index hints checkbox for discrete color tables.
-//
 // ****************************************************************************
 
 void
@@ -627,7 +599,6 @@ QvisColorTableWindow::UpdateEditor()
             alignPointButton->hide();
 
             discreteColors->show();
-            showIndexHintsCheckBox->show();
         }
         else
         {
@@ -639,11 +610,10 @@ QvisColorTableWindow::UpdateEditor()
             alignPointButton->show();
 
             discreteColors->hide();
-            showIndexHintsCheckBox->hide();
         }
 
         colorTableTypeGroup->blockSignals(true);
-        colorTableTypeGroup->button(ccpl->GetDiscreteFlag()?1:0)->setChecked(true);
+        colorTableTypeGroup->setButton(ccpl->GetDiscreteFlag()?1:0);
         colorTableTypeGroup->blockSignals(false);
 
         colorNumColors->blockSignals(true);
@@ -666,9 +636,6 @@ QvisColorTableWindow::UpdateEditor()
 //   Brad Whitlock, Wed Nov 20 16:41:22 PST 2002
 //   I changed the code so it uses currentColorTable.
 //
-//   Cyrus Harrison, Tue Jun 10 10:04:26 PDT 20
-//   Initial Qt4 Port.
-//
 // ****************************************************************************
 
 void
@@ -690,20 +657,22 @@ QvisColorTableWindow::UpdateNames()
     for(i = 0; i < colorAtts->GetNumColorTables(); ++i)
     {
         QString item(colorAtts->GetNames()[i].c_str());
-        nameListBox->addItem(item);
-        activeContinuous->addItem(item);
-        activeDiscrete->addItem(item);
+        nameListBox->insertItem(item);
+        activeContinuous->insertItem(item);
+        activeDiscrete->insertItem(item);
         if(item == activeContinuousName)
-            activeContinuous->setCurrentIndex(i);
+            activeContinuous->setCurrentItem(i);
         if(item == activeDiscreteName)
-            activeDiscrete->setCurrentIndex(i);
+            activeDiscrete->setCurrentItem(i);
     }
 
     // Select the active color table.
-    int index = colorAtts->GetColorTableIndex(currentColorTable.toStdString());
+    int index = colorAtts->GetColorTableIndex(currentColorTable.latin1());
     if(index >= 0)
     {
-        nameListBox->setCurrentRow(index);
+        nameListBox->setCurrentItem(index);
+        nameListBox->ensureCurrentVisible();
+
         // Set the text of the active color table into the name line edit.
         nameLineEdit->setText(QString(colorAtts->GetNames()[index].c_str()));
     }
@@ -736,7 +705,7 @@ QvisColorTableWindow::UpdateNames()
 const ColorControlPointList *
 QvisColorTableWindow::GetActiveColorControlPoints() const
 {
-    return colorAtts->GetColorControlPoints(currentColorTable.toStdString());
+    return colorAtts->GetColorControlPoints(currentColorTable.latin1());
 }
 
 // ****************************************************************************
@@ -759,7 +728,7 @@ QvisColorTableWindow::GetActiveColorControlPoints() const
 ColorControlPointList *
 QvisColorTableWindow::GetActiveColorControlPoints()
 {
-    return (ColorControlPointList *)colorAtts->GetColorControlPoints(currentColorTable.toStdString());
+    return (ColorControlPointList *)colorAtts->GetColorControlPoints(currentColorTable.latin1());
 }
 
 // ****************************************************************************
@@ -928,7 +897,7 @@ QvisColorTableWindow::UpdateDiscreteSettings()
         {
             SetUpdate(false);
             colorAtts->Notify();
-            GetViewerMethods()->UpdateColorTable(currentColorTable.toStdString());
+            GetViewerMethods()->UpdateColorTable(currentColorTable.latin1());
         }
     }
 }
@@ -1215,7 +1184,7 @@ QvisColorTableWindow::GetCurrentValues(int which_widget)
     // color table in the state object, set it into the state object.
     if(which_widget == 1 || which_widget == -1)
     {
-        QString temp = nameLineEdit->displayText().simplified();
+        QString temp = nameLineEdit->displayText().simplifyWhiteSpace();
         bool okay = !temp.isEmpty();
         if(okay)
         {
@@ -1247,7 +1216,7 @@ QvisColorTableWindow::Apply(bool ignore)
         colorAtts->Notify();
 
         // Make the viewer update the plots that use the specified colortable.
-        GetViewerMethods()->UpdateColorTable(currentColorTable.toStdString());
+        GetViewerMethods()->UpdateColorTable(currentColorTable.latin1());
     }
     else
         colorAtts->Notify();
@@ -1459,26 +1428,6 @@ QvisColorTableWindow::smoothToggled(bool)
 }
 
 // ****************************************************************************
-// Method: QvisColorTableWindow::showIndexHintsToggled
-//
-// Purpose: 
-//   This is a Qt slot function that is called when the window's 
-//   show index hints toggle is clicked.
-//
-// Programmer: Jeremy Meredith
-// Creation:   December 31, 2008
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-void
-QvisColorTableWindow::showIndexHintsToggled(bool val)
-{
-    discreteColors->setShowIndexHints(val);
-}
-
-// ****************************************************************************
 // Method: QvisColorTableWindow::equalSpacingToggled
 //
 // Purpose: 
@@ -1535,14 +1484,14 @@ QvisColorTableWindow::addColorTable()
     // Get the name of the new colortable. This stores a new name into
     // the currentColorTable variable.
     GetCurrentValues(1);
-    if(colorAtts->GetColorTableIndex(currentColorTable.toStdString()) < 0)
+    if(colorAtts->GetColorTableIndex(currentColorTable.latin1()) < 0)
     {
         // Add the new colortable to colorAtts.
         if(ccpl)
         {
             // Copy the active color table into the new color table.
             ColorControlPointList cpts(*ccpl);
-            colorAtts->AddColorTable(currentColorTable.toStdString(), cpts);
+            colorAtts->AddColorTable(currentColorTable.latin1(), cpts);
         }
         else
         {
@@ -1557,7 +1506,7 @@ QvisColorTableWindow::addColorTable()
             cpts.SetSmoothingFlag(true);
             cpts.SetEqualSpacingFlag(false);
             cpts.SetDiscreteFlag(false);
-            colorAtts->AddColorTable(currentColorTable.toStdString(), cpts);
+            colorAtts->AddColorTable(currentColorTable.latin1(), cpts);
         }
 
         // Tell all of the observers to update.
@@ -1584,9 +1533,7 @@ QvisColorTableWindow::addColorTable()
 // Creation:   Sat Jun 16 20:03:26 PST 2001
 //
 // Modifications:
-//   Cyrus Harrison, Tue Jun 10 10:04:26 PDT 20
-//   Initial Qt4 Port.
-//
+//   
 // ****************************************************************************
 
 void
@@ -1594,7 +1541,7 @@ QvisColorTableWindow::deleteColorTable()
 {
     // Get the index of the currently selected color table and tell the viewer
     // to remove it from the list of color tables.
-    int index = nameListBox->currentRow();
+    int index = nameListBox->currentItem();
     if(index >= 0 && index < colorAtts->GetNumColorTables())
     {
         std::string ctName(colorAtts->GetNames()[index]);
@@ -1883,7 +1830,7 @@ QvisColorTableWindow::sliderReleased()
 void
 QvisColorTableWindow::setActiveContinuous(const QString &ct)
 {
-    colorAtts->SetActiveContinuous(ct.toStdString());
+    colorAtts->SetActiveContinuous(ct.latin1());
     Apply();
 }
 
@@ -1906,7 +1853,7 @@ QvisColorTableWindow::setActiveContinuous(const QString &ct)
 void
 QvisColorTableWindow::setActiveDiscrete(const QString &ct)
 {
-    colorAtts->SetActiveDiscrete(ct.toStdString());
+    colorAtts->SetActiveDiscrete(ct.latin1());
     Apply();
 }
 
@@ -2036,5 +1983,5 @@ QvisColorTableWindow::resizeColorTable(int size)
 void
 QvisColorTableWindow::exportColorTable()
 {
-    GetViewerMethods()->ExportColorTable(currentColorTable.toStdString());
+    GetViewerMethods()->ExportColorTable(currentColorTable.latin1());
 }

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -47,12 +47,10 @@
 #include <visit-config.h>
 
 #include <vtkImageData.h>
-#include <vtkMatrix4x4.h>
 
 #include <avtCommonDataFunctions.h>
 #include <avtDataset.h>
 #include <avtDatasetExaminer.h>
-#include <avtExtents.h>
 #include <avtImage.h>
 #include <avtImagePartition.h>
 #include <avtIntervalTree.h>
@@ -351,21 +349,6 @@ avtRayTracer::GetNumberOfDivisions(int screenX, int screenY, int screenZ)
 //    have data, since that is now handled by the avtSamplePointExtractor's
 //    base class.
 //
-//    Hank Childs, Wed Dec 24 09:46:56 PST 2008
-//    Add code to convert the z-buffer of the background to the w-buffer.
-//    This is being done so the samples lie more evenly.
-//
-//    Hank Childs, Wed Dec 24 14:16:04 PST 2008
-//    Automatically tighten the clipping planes so we utilize our samples
-//    more effectively.
-//
-//    Hank Childs, Fri Jan  9 14:17:10 PST 2009
-//    Have each ray be randomly jittered forward or backwards along its
-//    direction.
-//
-//    Hank Childs, Tue Jan 13 14:26:44 PST 2009
-//    Fix oversight where parallel volume rendering was not being jittered.
-//
 // ****************************************************************************
 
 void
@@ -387,19 +370,6 @@ avtRayTracer::Execute(void)
     {
         aspect = (double)screen[0] / (double)screen[1];
     }
-
-    double scale[3] = {1,1,1};
-    vtkMatrix4x4 *transform = vtkMatrix4x4::New();
-    avtWorldSpaceToImageSpaceTransform::CalculateTransform(view, transform, 
-                                                           scale, aspect);
-    double newNearPlane, newFarPlane, oldNearPlane, oldFarPlane;
-    TightenClippingPlanes(view, transform, newNearPlane, newFarPlane);
-    oldNearPlane = view.nearPlane;
-    oldFarPlane  = view.farPlane;
-    view.nearPlane = newNearPlane;
-    view.farPlane  = newFarPlane;
-    transform->Delete();
-
     avtWorldSpaceToImageSpaceTransform trans(view, aspect);
     trans.SetInput(GetInput());
 
@@ -409,7 +379,6 @@ avtRayTracer::Execute(void)
     avtSamplePointExtractor extractor(screen[0], screen[1], samplesPerRay);
     extractor.SetKernelBasedSampling(kernelBasedSampling);
     extractor.RegisterRayFunction(rayfoo);
-    extractor.SetJittering(true);
     extractor.SetInput(trans.GetOutput());
 
     //
@@ -438,7 +407,6 @@ avtRayTracer::Execute(void)
     //
     avtSamplePointCommunicator sampleCommunicator;
     sampleCommunicator.SetInput(extractor.GetOutput());
-    sampleCommunicator.SetJittering(true);
 
     samples = sampleCommunicator.GetOutput();
 #endif
@@ -453,38 +421,6 @@ avtRayTracer::Execute(void)
     if (*opaqueImage != NULL)
     {
         rc.InsertOpaqueImage(opaqueImage);
-        bool convertToWBuffer = !view.orthographic;
-        if (convertToWBuffer)
-        {
-            float *opaqueImageZB  = opaqueImage->GetImage().GetZBuffer();
-            const int numpixels = screen[0]*screen[1];
-            for (int p = 0 ; p < numpixels ; p++)
-            {
-                // We want the value to be between -1 and 1.
-                double val = 2*opaqueImageZB[p]-1.0;
-
-                // Map to actual distance from camera.
-                val = (-2*oldFarPlane*oldNearPlane)
-                         / ( (val*(oldFarPlane-oldNearPlane)) -
-                             (oldFarPlane+oldNearPlane) );
-
-                // Now normalize based on near and far.
-                val = (val - newNearPlane) / (newFarPlane-newNearPlane);
-                opaqueImageZB[p] = val;
-            }
-        }
-        else // orthographic and need to adjust for tightened clipping planes
-        {
-            float *opaqueImageZB  = opaqueImage->GetImage().GetZBuffer();
-            const int numpixels = screen[0]*screen[1];
-            for (int p = 0 ; p < numpixels ; p++)
-            {
-                double val = oldNearPlane + 
-                             (oldFarPlane-oldNearPlane)*opaqueImageZB[p];
-                opaqueImageZB[p] = (val-newNearPlane) 
-                                 / (newFarPlane-newNearPlane);
-            }
-        }
     }
     rc.SetInput(samples);
     avtImage_p image = rc.GetTypedOutput();
@@ -784,162 +720,3 @@ avtRayTracer::FilterUnderstandsTransformedRectMesh()
     // like the sample point extractor report this correctly.
     return true;
 }
-
-
-// ****************************************************************************
-//   Method: avtRayTracer::TightenClippingPlanes
-//
-//   Purpose:
-//       Tightens the clipping planes, so that more samples fall within
-//       the view frustum.
-//
-//   Notes:      This code was originally in
-//               avtWorldSpaceToImageSpaceTransform::PreExecute.
-//
-//   Programmer: Hank Childs
-//   Creation:   December 24, 2008
-//
-// ****************************************************************************
-
-void
-avtRayTracer::TightenClippingPlanes(const avtViewInfo &view,
-                                    vtkMatrix4x4 *transform,
-                                    double &newNearPlane, double &newFarPlane)
-{
-    newNearPlane = view.nearPlane;
-    newFarPlane  = view.farPlane;
-
-    double dbounds[6];
-    avtDataAttributes &datts = GetInput()->GetInfo().GetAttributes();
-    avtExtents *exts = datts.GetEffectiveSpatialExtents();
-    if (exts->HasExtents())
-    {
-        exts->CopyTo(dbounds);
-    }
-    else
-    {
-        GetSpatialExtents(dbounds);
-    }
-
-    //
-    // Multiply our current transform by each of the points in the bounding
-    // box, keeping track of the furthest and closest point.
-    //
-    double nearest     =  1.;
-    int    nearestInd  = -1;
-    double farthest    =  0.;
-    int    farthestInd = -1;
-    for (int i = 0 ; i < 8 ; i++)
-    {
-        double pt[4];
-        pt[0] = (i & 1 ? dbounds[1] : dbounds[0]);
-        pt[1] = (i & 2 ? dbounds[3] : dbounds[2]);
-        pt[2] = (i & 4 ? dbounds[5] : dbounds[4]);
-        pt[3] = 1.;
-        
-        double outpt[4];
-        transform->MultiplyPoint(pt, outpt);
-
-        if (outpt[3] != 0.)
-            outpt[2] /= outpt[3];
-        if (! view.orthographic)
-            outpt[2] *= -1; // this works, but ???
-        if (outpt[2] > farthest)
-        {
-            farthestInd = i;
-            farthest    = outpt[2];
-        }
-        if (outpt[2] < nearest)
-        {
-            nearestInd = i;
-            nearest    = outpt[2];
-        }
-    }
-
-    bool resetNearest = true;
-    if (nearestInd == -1 || nearest <= 0.)
-    {
-        resetNearest = false;
-    }
-
-    double vecFromCameraToPlaneX = view.focus[0] - view.camera[0];
-    double vecFromCameraToPlaneY = view.focus[1] - view.camera[1];
-    double vecFromCameraToPlaneZ = view.focus[2] - view.camera[2];
-    double vecMag = (vecFromCameraToPlaneX*vecFromCameraToPlaneX)
-                  + (vecFromCameraToPlaneY*vecFromCameraToPlaneY)
-                  + (vecFromCameraToPlaneZ*vecFromCameraToPlaneZ);
-    vecMag = sqrt(vecMag);
-
-    if (resetNearest)
-    {
-        double X = (nearestInd & 1 ? dbounds[1] : dbounds[0]);
-        double Y = (nearestInd & 2 ? dbounds[3] : dbounds[2]);
-        double Z = (nearestInd & 4 ? dbounds[5] : dbounds[4]);
-
-        //
-        // My best attempt at explaining what is going on is below is the
-        // "farthest" case.
-        //
-        double vecFromCameraToNearestX = X - view.camera[0];
-        double vecFromCameraToNearestY = Y - view.camera[1];
-        double vecFromCameraToNearestZ = Z - view.camera[2];
-
-        double dot = vecFromCameraToPlaneX*vecFromCameraToNearestX
-                   + vecFromCameraToPlaneY*vecFromCameraToNearestY
-                   + vecFromCameraToPlaneZ*vecFromCameraToNearestZ;
-
-        double newNearest = dot / vecMag;
-        newNearest = newNearest - (view.farPlane-newNearest)*0.01; // fudge
-        if (newNearest > view.nearPlane)
-        {
-            newNearPlane = newNearest;
-        }
-    }
-
-    bool resetFarthest = true;
-    if (farthestInd == -1 || farthest >= 1.)
-    {
-        resetFarthest = false;
-    }
-
-    if (resetFarthest)
-    {
-        double X = (farthestInd & 1 ? dbounds[1] : dbounds[0]);
-        double Y = (farthestInd & 2 ? dbounds[3] : dbounds[2]);
-        double Z = (farthestInd & 4 ? dbounds[5] : dbounds[4]);
-
-        double vecFromCameraToFarthestX = X - view.camera[0];
-        double vecFromCameraToFarthestY = Y - view.camera[1];
-        double vecFromCameraToFarthestZ = Z - view.camera[2];
-
-        //
-        // We are now constructing the dot product of our two vectors.  Note
-        // That this will give us cosine of their angles times the magnitude
-        // of the camera-to-plane vector times the magnitude of the
-        // camera-to-farthest vector.  We want the magnitude of a new vector,
-        // the camera-to-closest-point-on-plane-vector.  That vector will
-        // lie along the same vector as the camera-to-plane and it forms
-        // a triangle with the camera-to-farthest-vector.  Then we have the
-        // same angle between them and we can re-use the cosine we calculate.
-        //
-        double dot = vecFromCameraToPlaneX*vecFromCameraToFarthestX
-                   + vecFromCameraToPlaneY*vecFromCameraToFarthestY
-                   + vecFromCameraToPlaneZ*vecFromCameraToFarthestZ;
-
-        //
-        // dot = cos X * mag(A) * mag(B)
-        // We know cos X = mag(C) / mag(A)   C = adjacent, A = hyp.
-        // Then mag(C) = cos X * mag(A).
-        // So mag(C) = dot / mag(B).
-        //
-        double newFarthest = dot / vecMag;
-
-        newFarthest = newFarthest + (newFarthest-view.nearPlane)*0.01; // fudge
-        if (newFarthest < view.farPlane)
-        {
-            newFarPlane = newFarthest;
-        }
-    }
-}
-
-

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -287,9 +287,13 @@ vtkConnectedTubeFilter::PointSequenceList::InitTraversal()
 //  Creation:    November  1, 2002
 //
 //  Modifications:
-//
 //    Rich Cook and Hank Childs, Thu Oct  2 16:32:55 PDT 2008
 //    Added support for loops.
+//
+//    Eric Brugger, Tue Dec 29 16:35:34 PST 2009
+//    I modified the logic that looks for loops to only consider points
+//    that have 2 neighbors.  Previously it would have considered points
+//    with no neighbors, which caused it to reference uninitialized memory.
 //
 // ****************************************************************************
 bool
@@ -299,7 +303,8 @@ vtkConnectedTubeFilter::PointSequenceList::GetNextSequence(PointSequence &seq)
     for (; index < len; index++)
     {
         // if numneighbors is 1, then this is a start point
-        if ((lookforloops || numneighbors[index] == 1) && !visited[index])
+        if (((lookforloops && numneighbors[index] == 2) ||
+              numneighbors[index] == 1) && !visited[index])
         {
             int current = index;
             int previous = -1;

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -53,8 +53,8 @@ class QGroupBox;
 class QLabel;
 class QTabWidget;
 class QVBox;
-class QTreeWidget;
-class QTreeWidgetItem;
+class QListView;
+class QListViewItem;
 class QCheckListItem;
 class QPushButton;
 
@@ -81,9 +81,6 @@ class QPushButton;
 //
 //    Brad Whitlock, Wed Apr  9 11:03:33 PDT 2008
 //    QString for caption, shortName.
-//
-//    Cyrus Harrison, Tue Jun 24 11:15:28 PDT 2008
-//    Initial Qt4 Port.
 //
 // ****************************************************************************
 
@@ -112,9 +109,9 @@ protected:
     void Apply(bool dontIgnore = false);
 private slots:
     virtual void apply();
-    void tabSelected(int);
+    void tabSelected(const QString &tabLabel);
     void databaseOptionsSetButtonClicked();
-    void databaseSelectedItemChanged(QTreeWidgetItem*,QTreeWidgetItem*);
+    void databaseSelectedItemChanged(QListViewItem*);
     void selectAllReadersButtonClicked();
     void unSelectAllReadersButtonClicked();
 private:
@@ -122,22 +119,22 @@ private:
     FileOpenOptions         *fileOpenOptions;
 
     QTabWidget      *tabs;
-    QWidget         *pagePlots;
-    QTreeWidget     *listPlots;
-    QWidget         *pageOperators;
-    QTreeWidget     *listOperators;
-    QWidget         *pageDatabases;
-    QTreeWidget     *listDatabases;
+    QVBox           *pagePlots;
+    QListView       *listPlots;
+    QVBox           *pageOperators;
+    QListView       *listOperators;
+    QVBox           *pageDatabases;
+    QListView       *listDatabases;
     QPushButton     *databaseOptionsSetButton;
-    QPushButton     *selectAllReadersButton;
-    QPushButton     *unSelectAllReadersButton;
+    QPushButton *selectAllReadersButton;
+    QPushButton *unSelectAllReadersButton;
 
-    std::vector<QTreeWidgetItem*>  plotItems;
-    std::vector<std::string>       plotIDs;
-    std::vector<QTreeWidgetItem*>  operatorItems;
-    std::vector<std::string>       operatorIDs;
-    std::vector<QTreeWidgetItem*>  databaseItems;
-    std::vector<int>               databaseIndexes;
+    std::vector<QCheckListItem*> plotItems;
+    std::vector<std::string>     plotIDs;
+    std::vector<QCheckListItem*> operatorItems;
+    std::vector<std::string>     operatorIDs;
+    std::vector<QCheckListItem*>  databaseItems;
+    std::vector<int>             databaseIndexes;
 
     int             activeTab;
     bool            pluginsInitialized;

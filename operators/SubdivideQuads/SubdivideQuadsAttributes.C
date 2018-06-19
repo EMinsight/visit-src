@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -58,13 +58,13 @@ const char *SubdivideQuadsAttributes::TypeMapFormatString = "dibbs";
 // ****************************************************************************
 
 SubdivideQuadsAttributes::SubdivideQuadsAttributes() : 
-    AttributeSubject(SubdivideQuadsAttributes::TypeMapFormatString),
-    variable("default")
+    AttributeSubject(SubdivideQuadsAttributes::TypeMapFormatString)
 {
     threshold = 0.500002;
     maxSubdivs = 4;
     fanOutPoints = true;
     doTriangles = false;
+    variable = "default";
 }
 
 // ****************************************************************************
@@ -571,7 +571,7 @@ SubdivideQuadsAttributes::GetFieldType(int index) const
     case ID_maxSubdivs:   return FieldType_int;
     case ID_fanOutPoints: return FieldType_bool;
     case ID_doTriangles:  return FieldType_bool;
-    case ID_variable:     return FieldType_variablename;
+    case ID_variable:     return FieldType_string;
     default:  return FieldType_unknown;
     }
 }
@@ -600,7 +600,7 @@ SubdivideQuadsAttributes::GetFieldTypeName(int index) const
     case ID_maxSubdivs:   return "int";
     case ID_fanOutPoints: return "bool";
     case ID_doTriangles:  return "bool";
-    case ID_variable:     return "variablename";
+    case ID_variable:     return "string";
     default:  return "invalid index";
     }
 }

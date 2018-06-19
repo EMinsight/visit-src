@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,12 +39,12 @@
 #ifndef QVIS_ELEMENT_BUTTON_H
 #define QVIS_ELEMENT_BUTTON_H
 #include <gui_exports.h>
-#include <QColor>
-#include <QPushButton>
+#include <qcolor.h>
+#include <qpushbutton.h>
 #include <vector>
 
 class QPainter;
-class QMenu;
+class QPopupMenu;
 class QvisPeriodicTableWidget;
 class QvisElementSelectionWidget;
 
@@ -73,9 +73,6 @@ class QvisElementSelectionWidget;
 //    Added support for hinting some elements to the user, e.g. to highlight
 //    the elements that are actually in the database.
 //
-//    Brad Whitlock, Tue Jun  3 14:43:22 PDT 2008
-//    Qt 4.
-//
 // ****************************************************************************
 
 class GUI_API QvisElementButton : public QPushButton
@@ -84,7 +81,8 @@ class GUI_API QvisElementButton : public QPushButton
 
     typedef std::vector<QvisElementButton *> ElementButtonVector;
 public:
-    QvisElementButton(QWidget *parent = 0, const void *userData = 0);
+    QvisElementButton(QWidget *parent = 0, const char *name = 0,
+                    const void *userData = 0);
     virtual ~QvisElementButton();
     virtual QSize sizeHint() const;
     virtual QSizePolicy sizePolicy () const;

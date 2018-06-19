@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -38,23 +38,21 @@
 
 #include <QvisBoundaryPlotWindow.h>
 
-#include <QButtonGroup>
-#include <QCheckBox>
-#include <QComboBox>
-#include <QGroupBox>
-#include <QItemDelegate>
-#include <QLabel>
-#include <QLayout>
-#include <QListWidget>
-#include <QPainter>
-#include <QPixmap>
-#include <QPixmapCache>
-#include <QPushButton>
-#include <QRadioButton>
-#include <QSlider>
+#include <qbuttongroup.h>
+#include <qcheckbox.h>
+#include <qcombobox.h>
+#include <qgroupbox.h>
+#include <qlabel.h>
+#include <qlayout.h>
+#include <qlistbox.h>
+#include <qpainter.h>
+#include <qpixmap.h>
+#include <qpixmapcache.h>
+#include <qpushbutton.h>
+#include <qradiobutton.h>
+#include <qslider.h>
 
 #include <QvisColorButton.h>
-#include <QvisColorSwatchListWidget.h>
 #include <QvisColorTableButton.h>
 #include <QvisLineStyleWidget.h>
 #include <QvisLineWidthWidget.h>
@@ -62,6 +60,78 @@
 #include <QvisPointControl.h>
 #include <BoundaryAttributes.h>
 #include <ViewerProxy.h>
+
+// ****************************************************************************
+// Class: QListBoxTextWithColor
+//
+// Purpose:
+//   This class is the type of item that we put into the listbox. It is 
+//   mostly just a stock QListBoxText except that the paint() method draws
+//   a square of color to the left of the name.
+//
+// Notes:      
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri Feb 1 09:46:11 PDT 2002
+//
+// Modifications:
+//   Brad Whitlock, Mon Dec 2 09:17:10 PDT 2002
+//   Made it look different when it is disabled.
+//
+// ****************************************************************************
+
+class QListBoxTextWithColor : public QListBoxText
+{
+public:
+    QListBoxTextWithColor(QListBox *listbox, const QString &text,
+        const QColor &c) : QListBoxText(listbox, text)
+    {
+        C = c;
+    }
+
+    virtual ~QListBoxTextWithColor() { };
+    void setText(const QString &str) { QListBoxItem::setText(str); };
+    void setColor(const QColor &c)   { C = c; };
+    const QColor &color() const      { return C; };
+
+    void paint(QPainter *painter)
+    {
+        QFontMetrics fm = painter->fontMetrics();
+        QRect r(fm.boundingRect("XX"));
+        QBrush brush(C);
+        QPen oldPen(painter->pen()), newPen(listBox()->colorGroup().text());
+
+        if(!listBox()->isEnabled())
+        {
+            brush.setStyle(QBrush::Dense5Pattern);
+            painter->fillRect(QRect(0, 0, listBox()->visibleWidth(), height(listBox())),
+                QBrush(listBox()->colorGroup().base()));
+        }
+        else
+        {
+            if(selected())
+            {
+                newPen = QPen(listBox()->colorGroup().highlightedText());
+                painter->fillRect(QRect(0, 0, listBox()->visibleWidth(), height(listBox())),
+                    QBrush(listBox()->colorGroup().highlight()));
+            }
+            else
+            {
+                painter->fillRect(QRect(0, 0, listBox()->visibleWidth(), height(listBox())),
+                    QBrush(listBox()->colorGroup().base()));
+            }
+        }
+        int fontY = fm.ascent() + fm.leading()/2;
+        painter->fillRect(QRect(4, fontY-1, r.width(), height(listBox()) - 2*fontY), brush);
+        painter->setPen(newPen);
+        painter->drawText(r.width()+8, fontY, text());
+        painter->setPen(oldPen);
+    }
+
+protected:
+    QColor C;
+};
+
 
 // ****************************************************************************
 // Method: QvisBoundaryPlotWindow::QvisBoundaryPlotWindow
@@ -75,8 +145,6 @@
 //  Note:  taken almost verbatim from the Subset plot
 //
 // Modifications:
-//    Jeremy Meredith, Fri Jan  2 17:26:04 EST 2009
-//    Added Load/Save buttons.  (Other plot windows get this by default.)
 //   
 // ****************************************************************************
 
@@ -84,7 +152,7 @@ QvisBoundaryPlotWindow::QvisBoundaryPlotWindow(const int type,
     BoundaryAttributes *boundaryAtts_, const QString &caption,
     const QString &shortName, QvisNotepadArea *notepad) :
     QvisPostableWindowObserver(boundaryAtts_, caption, shortName, notepad,
-                               QvisPostableWindowObserver::AllExtraButtonsAndLoadSave,
+                               QvisPostableWindowObserver::AllExtraButtons,
                                false)
 {
     plotType     = type;
@@ -93,7 +161,6 @@ QvisBoundaryPlotWindow::QvisBoundaryPlotWindow(const int type,
     // Initialize widgets that we'll have to delete manually. These are
     // parentless widgets.
     colorModeButtons = 0;
-    smoothingLevelButtons = 0;
 }
 
 // ****************************************************************************
@@ -115,6 +182,8 @@ QvisBoundaryPlotWindow::~QvisBoundaryPlotWindow()
 {
     boundaryAtts = 0;
 
+    // no parents, delete them manually.
+    delete colorModeButtons;
 }
 
 // ****************************************************************************
@@ -137,62 +206,61 @@ QvisBoundaryPlotWindow::~QvisBoundaryPlotWindow()
 //   Brad Whitlock, Tue Apr 22 16:24:27 PDT 2008
 //   Added tr()'s.
 //
-//   Brad Whitlock, Thu Jul 17 11:35:40 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
 QvisBoundaryPlotWindow::CreateWindowContents()
 {
-    QHBoxLayout *lineLayout = new QHBoxLayout(0);
-    lineLayout->setMargin(0);
-    topLayout->addLayout(lineLayout);
+    QGridLayout *checkBoxLayout = new QGridLayout(topLayout, 2, 4, 10);
 
     // Create the lineSyle widget.
-    lineStyle = new QvisLineStyleWidget(0, central);
+    lineStyle = new QvisLineStyleWidget(0, central, "lineStyle");
+    checkBoxLayout->addWidget(lineStyle, 1, 1);
     connect(lineStyle, SIGNAL(lineStyleChanged(int)),
             this, SLOT(lineStyleChanged(int)));
-    lineStyleLabel = new QLabel(tr("Line style"), central);
-    lineStyleLabel->setBuddy(lineStyle);
-    lineLayout->addWidget(lineStyleLabel);
-    lineLayout->addWidget(lineStyle);
+    lineStyleLabel = new QLabel(lineStyle, tr("Line style"),
+                                central, "lineStyleLabel");
+    checkBoxLayout->addWidget(lineStyleLabel, 1, 0);
 
     // Create the lineSyle widget.
-    lineWidth = new QvisLineWidthWidget(0, central);
+    lineWidth = new QvisLineWidthWidget(0, central, "lineWidth");
+    checkBoxLayout->addWidget(lineWidth, 1, 3);
     connect(lineWidth, SIGNAL(lineWidthChanged(int)),
             this, SLOT(lineWidthChanged(int)));
-    lineWidthLabel = new QLabel(tr("Line width"), central);
-    lineWidthLabel->setBuddy(lineWidth);
-    lineLayout->addWidget(lineWidthLabel);
-    lineLayout->addWidget(lineWidth);
+    lineWidthLabel = new QLabel(lineWidth, tr("Line width"),
+                                central, "lineWidthLabel");
+    checkBoxLayout->addWidget(lineWidthLabel, 1, 2);
 
     // Create the boundary color group box.
-    boundaryColorGroup = new QGroupBox(central);
+    boundaryColorGroup = new QGroupBox(central, "boundaryColorGroup");
     boundaryColorGroup->setTitle(tr("Boundary colors"));
     topLayout->addWidget(boundaryColorGroup);
+    QVBoxLayout *innerLayout = new QVBoxLayout(boundaryColorGroup);
+    innerLayout->setMargin(10);
+    innerLayout->addSpacing(15);
 
     // Create the mode buttons that determine if the window is in single
     // or multiple color mode.
-    colorModeButtons = new QButtonGroup(boundaryColorGroup);
-    connect(colorModeButtons, SIGNAL(buttonClicked(int)),
+    colorModeButtons = new QButtonGroup(0, "colorModeButtons");
+    connect(colorModeButtons, SIGNAL(clicked(int)),
             this, SLOT(colorModeChanged(int)));
-    QGridLayout *colorLayout = new QGridLayout(boundaryColorGroup);
+    QGridLayout *colorLayout = new QGridLayout(innerLayout, 5, 3);
     colorLayout->setSpacing(10);
-    colorLayout->setMargin(5);
-    colorLayout->setColumnStretch(2, 1000);
-    QRadioButton *rb = new QRadioButton(tr("Color table"), boundaryColorGroup);
-    colorModeButtons->addButton(rb, 0);
+    colorLayout->setColStretch(2, 1000);
+    QRadioButton *rb = new QRadioButton(tr("Color table"), boundaryColorGroup,
+        "colorTable");
+    colorModeButtons->insert(rb);
     colorLayout->addWidget(rb, 1, 0);
-    rb = new QRadioButton(tr("Single"), boundaryColorGroup);
-    colorModeButtons->addButton(rb, 1);
+    rb = new QRadioButton(tr("Single"), boundaryColorGroup, "singleColor");
+    colorModeButtons->insert(rb);
     colorLayout->addWidget(rb, 2, 0);
-    rb = new QRadioButton(tr("Multiple"), boundaryColorGroup);
-    colorModeButtons->addButton(rb, 2);
+    rb = new QRadioButton(tr("Multiple"), boundaryColorGroup, "multipleColor");
+    colorModeButtons->insert(rb);
     colorLayout->addWidget(rb, 3, 0);
 
     // Create the single color button.
-    singleColor = new QvisColorButton(boundaryColorGroup);
+    singleColor = new QvisColorButton(boundaryColorGroup,
+        "singleColorButton");
     singleColor->setButtonColor(QColor(255, 0, 0));
     connect(singleColor, SIGNAL(selectedColor(const QColor &)),
             this, SLOT(singleColorChanged(const QColor &)));
@@ -200,7 +268,7 @@ QvisBoundaryPlotWindow::CreateWindowContents()
 
     // Create the single color opacity.
     singleColorOpacity = new QvisOpacitySlider(0, 255, 25, 255,
-        boundaryColorGroup, NULL);
+        boundaryColorGroup, "singleColorOpacity", NULL);
     singleColorOpacity->setTickInterval(64);
     singleColorOpacity->setGradientColor(QColor(0, 0, 0));
     connect(singleColorOpacity, SIGNAL(valueChanged(int)),
@@ -208,57 +276,56 @@ QvisBoundaryPlotWindow::CreateWindowContents()
     colorLayout->addWidget(singleColorOpacity, 2, 2);
 
     // Try adding the multiple color button.
-    multipleColor = new QvisColorButton(boundaryColorGroup);
+    multipleColor = new QvisColorButton(boundaryColorGroup,
+        "multipleColor");
     connect(multipleColor, SIGNAL(selectedColor(const QColor &)),
             this, SLOT(multipleColorChanged(const QColor &)));
     colorLayout->addWidget(multipleColor, 3, 1);
 
     // Create the multiple color opacity.
     multipleColorOpacity = new QvisOpacitySlider(0, 255, 25, 255,
-        boundaryColorGroup, NULL);
+        boundaryColorGroup, "multipleColorOpacity", NULL);
     multipleColorOpacity->setTickInterval(64);
     multipleColorOpacity->setGradientColor(QColor(0, 0, 0));
     connect(multipleColorOpacity, SIGNAL(valueChanged(int)),
             this, SLOT(multipleColorOpacityChanged(int)));
     colorLayout->addWidget(multipleColorOpacity, 3, 2);
 
-    // Create the multiple color list widget.
-    multipleColorList = new QvisColorSwatchListWidget(boundaryColorGroup);
+    // Create the multiple color listbox.
+    multipleColorList = new QListBox(boundaryColorGroup, "multipleColorList");
     multipleColorList->setMinimumHeight(100);
-    connect(multipleColorList, SIGNAL(itemSelectionChanged()),
+    multipleColorList->setSelectionMode(QListBox::Extended);
+    connect(multipleColorList, SIGNAL(selectionChanged()),
             this, SLOT(boundarySelectionChanged()));
-    colorLayout->addWidget(multipleColorList, 4, 1, 1, 2);
-    multipleColorLabel = new QLabel(tr("Boundaries"), boundaryColorGroup);
-    multipleColorLabel->setBuddy(multipleColorList);
+    colorLayout->addMultiCellWidget(multipleColorList, 4, 4, 1, 2);
+    multipleColorLabel = new QLabel(multipleColorList, tr("Boundaries"),
+        boundaryColorGroup, "multipleColorLabel");
     colorLayout->addWidget(multipleColorLabel, 4, 0, Qt::AlignRight);
 
     // Create the color table widget
-    colorTableButton = new QvisColorTableButton(boundaryColorGroup);
+    colorTableButton = new QvisColorTableButton(boundaryColorGroup, "colorTableButton");
     connect(colorTableButton, SIGNAL(selectedColorTable(bool, const QString &)),
             this, SLOT(colorTableClicked(bool, const QString &)));
-    colorLayout->addWidget(colorTableButton, 1, 1, 1, 2, Qt::AlignLeft | Qt::AlignVCenter);
+    colorLayout->addMultiCellWidget(colorTableButton, 1, 1, 1, 2, AlignLeft | AlignVCenter);
 
     // Create the overall opacity.
-    QHBoxLayout *opLayout = new QHBoxLayout(0);
-    opLayout->setMargin(0);
+    QGridLayout *opLayout = new QGridLayout(topLayout, 5, 2);
     opLayout->setSpacing(5);
-    topLayout->addLayout(opLayout);
     overallOpacity = new QvisOpacitySlider(0, 255, 25, 255, central, 
-                     NULL);
+                    "overallOpacity", NULL);
     overallOpacity->setTickInterval(64);
     overallOpacity->setGradientColor(QColor(0, 0, 0));
     connect(overallOpacity, SIGNAL(valueChanged(int)),
             this, SLOT(overallOpacityChanged(int)));
+    opLayout->addWidget(overallOpacity, 0, 1);
 
-    QLabel *overallOpacityLabel = new QLabel(tr("Opacity"), central);
-    overallOpacityLabel->setBuddy(overallOpacity);
-    overallOpacityLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-    opLayout->addWidget(overallOpacityLabel);
-    opLayout->addWidget(overallOpacity);
-    opLayout->setStretchFactor(overallOpacity, 10);
+    QLabel *overallOpacityLabel = new QLabel(overallOpacity, tr("Opacity"), 
+                                      central, "overallOpacityLabel"); 
+    overallOpacityLabel->setAlignment(AlignLeft | AlignVCenter);
+    opLayout->addWidget(overallOpacityLabel, 0, 0);
 
     // Create the point control 
-    pointControl = new QvisPointControl(central);
+    pointControl = new QvisPointControl(central, "pointControl");
     connect(pointControl, SIGNAL(pointSizeChanged(double)),
             this, SLOT(pointSizeChanged(double)));
     connect(pointControl, SIGNAL(pointSizePixelsChanged(int)),
@@ -269,39 +336,38 @@ QvisBoundaryPlotWindow::CreateWindowContents()
             this, SLOT(pointSizeVarToggled(bool)));
     connect(pointControl, SIGNAL(pointTypeChanged(int)),
             this, SLOT(pointTypeChanged(int)));
-    topLayout->addWidget(pointControl);
+    opLayout->addMultiCellWidget(pointControl, 1, 1, 0, 1);
  
     // Create the legend toggle
-    legendCheckBox = new QCheckBox(tr("Legend"), central);
+    legendCheckBox = new QCheckBox(tr("Legend"), central, "legendToggle");
     connect(legendCheckBox, SIGNAL(toggled(bool)),
             this, SLOT(legendToggled(bool)));
-    topLayout->addWidget(legendCheckBox);
+    opLayout->addWidget(legendCheckBox, 2, 0);
 
     // Create the wireframe toggle
-    wireframeCheckBox = new QCheckBox(tr("Wireframe"), central);
+    wireframeCheckBox = new QCheckBox(tr("Wireframe"), central, "wireframeCheckBox");
     connect(wireframeCheckBox, SIGNAL(toggled(bool)),
             this, SLOT(wireframeToggled(bool)));
-    topLayout->addWidget(wireframeCheckBox);
+    opLayout->addWidget(wireframeCheckBox, 3, 0);
 
     // Create the smoothing level buttons
-    smoothingLevelButtons = new QButtonGroup(central);
-    connect(smoothingLevelButtons, SIGNAL(buttonClicked(int)),
+    smoothingLevelButtons = new QButtonGroup(0, "smoothingButtons");
+    connect(smoothingLevelButtons, SIGNAL(clicked(int)),
             this, SLOT(smoothingLevelChanged(int)));
-    QGridLayout *smoothingLayout = new QGridLayout(0);
-    smoothingLayout->setMargin(0);
-    topLayout->addLayout(smoothingLayout);
+    QGridLayout *smoothingLayout = new QGridLayout(1, 5);
     smoothingLayout->setSpacing(10);
-    smoothingLayout->setColumnStretch(4, 100);
-    smoothingLayout->addWidget(new QLabel(tr("Geometry smoothing"), central), 0, 0);
-    rb = new QRadioButton(tr("None"), central);
-    smoothingLevelButtons->addButton(rb, 0);
+    smoothingLayout->setColStretch(4, 1000);
+    smoothingLayout->addWidget(new QLabel(tr("Geometry smoothing"), central), 0,0);
+    rb = new QRadioButton(tr("None"), central, "NoSmoothing");
+    smoothingLevelButtons->insert(rb);
     smoothingLayout->addWidget(rb, 0, 1);
-    rb = new QRadioButton(tr("Fast"), central);
-    smoothingLevelButtons->addButton(rb, 1);
+    rb = new QRadioButton(tr("Fast"), central, "LowSmoothing");
+    smoothingLevelButtons->insert(rb);
     smoothingLayout->addWidget(rb, 0, 2);
-    rb = new QRadioButton(tr("High"), central);
-    smoothingLevelButtons->addButton(rb, 2);
+    rb = new QRadioButton(tr("High"), central, "HighSmoothing");
+    smoothingLevelButtons->insert(rb);
     smoothingLayout->addWidget(rb, 0, 3);
+    opLayout->addMultiCellLayout(smoothingLayout, 4,4 , 0,1);
 }
 
 // ****************************************************************************
@@ -336,9 +402,6 @@ QvisBoundaryPlotWindow::CreateWindowContents()
 //   Hank Childs, Thu Jun  8 13:41:24 PDT 2006
 //   Fix compiler warning for casting.
 //
-//   Brad Whitlock, Thu Jul 17 11:43:27 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
@@ -360,36 +423,36 @@ QvisBoundaryPlotWindow::UpdateWindow(bool doAll)
 
         switch(i)
         {
-        case BoundaryAttributes::ID_colorType:
+        case 0: // colorType
             if(boundaryAtts->GetColorType() == BoundaryAttributes::ColorBySingleColor) 
-                colorModeButtons->button(1)->setChecked(true);
+                colorModeButtons->setButton(1);
             else if(boundaryAtts->GetColorType() == BoundaryAttributes::ColorByMultipleColors) 
-                colorModeButtons->button(2)->setChecked(true);
+                colorModeButtons->setButton(2);
             else
-                colorModeButtons->button(0)->setChecked(true);
+                colorModeButtons->setButton(0);
             break;
-        case BoundaryAttributes::ID_colorTableName:
+        case 1: // colorTableName
             colorTableButton->setColorTable(boundaryAtts->GetColorTableName().c_str());
             break;
-        case BoundaryAttributes::ID_filledFlag:
+        case 2: // filledFlag
             // nothing anymore
             break;
-        case BoundaryAttributes::ID_legendFlag:
+        case 3: // legendFlag
             legendCheckBox->blockSignals(true);
             legendCheckBox->setChecked(boundaryAtts->GetLegendFlag());
             legendCheckBox->blockSignals(false);
             break;
-        case BoundaryAttributes::ID_lineStyle:
+        case 4: // lineStyle
             lineStyle->blockSignals(true);
             lineStyle->SetLineStyle(boundaryAtts->GetLineStyle());
             lineStyle->blockSignals(false);
             break;
-        case BoundaryAttributes::ID_lineWidth:
+        case 5: // lineWidth
             lineWidth->blockSignals(true);
             lineWidth->SetLineWidth(boundaryAtts->GetLineWidth());
             lineWidth->blockSignals(false);
             break;
-        case BoundaryAttributes::ID_singleColor:
+        case 6: // singleColor
             { // new scope
             QColor temp(boundaryAtts->GetSingleColor().Red(),
                         boundaryAtts->GetSingleColor().Green(),
@@ -404,52 +467,52 @@ QvisBoundaryPlotWindow::UpdateWindow(bool doAll)
             singleColorOpacity->blockSignals(false);
             }
             break;
-        case BoundaryAttributes::ID_multiColor:
+        case 7: // multiColor
             updateMultiple = true;
             break;
-        case BoundaryAttributes::ID_boundaryNames:
+        case 8: // boundaryNames
             updateMultiple = true;
             break;
-        case BoundaryAttributes::ID_boundaryType:
+        case 9: // needDomainLabels
             break;
-        case BoundaryAttributes::ID_opacity:
+        case 10: // opacity
             overallOpacity->blockSignals(true);
             overallOpacity->setValue((int)(boundaryAtts->GetOpacity() * 255.f));
             overallOpacity->blockSignals(false);
             break;
-        case BoundaryAttributes::ID_wireframe:
+        case 11: // wireframe
             wireframeCheckBox->blockSignals(true);
             wireframeCheckBox->setChecked(boundaryAtts->GetWireframe());
             wireframeCheckBox->blockSignals(false);
             break;
-        case BoundaryAttributes::ID_smoothingLevel:
+        case 12: // smoothingLevel
             smoothingLevelButtons->blockSignals(true);
-            smoothingLevelButtons->button(boundaryAtts->GetSmoothingLevel())->setChecked(true);
+            smoothingLevelButtons->setButton(boundaryAtts->GetSmoothingLevel());
             smoothingLevelButtons->blockSignals(false);
             break;
-        case BoundaryAttributes::ID_pointSize:
+        case 13: // pointSize
             pointControl->blockSignals(true);
             pointControl->SetPointSize(boundaryAtts->GetPointSize());
             pointControl->blockSignals(false);
             break;
-        case BoundaryAttributes::ID_pointType:
+        case 14: // pointType
             pointControl->blockSignals(true);
             pointControl->SetPointType(boundaryAtts->GetPointType());
             pointControl->blockSignals(false);
             break;
-        case BoundaryAttributes::ID_pointSizeVarEnabled:
+        case 15: // pointSizeVarEnabled
             pointControl->blockSignals(true);
             pointControl->SetPointSizeVarChecked(
                           boundaryAtts->GetPointSizeVarEnabled());
             pointControl->blockSignals(false);
             break;
-        case BoundaryAttributes::ID_pointSizeVar:
+        case 16: // pointSizeVar
             pointControl->blockSignals(true);
             temp = QString(boundaryAtts->GetPointSizeVar().c_str());
             pointControl->SetPointSizeVar(temp);
             pointControl->blockSignals(false);
             break;
-        case BoundaryAttributes::ID_pointSizePixels:
+        case 17: // pointSizePixels
             pointControl->blockSignals(true);
             pointControl->SetPointSizePixels(boundaryAtts->GetPointSizePixels());
             pointControl->blockSignals(false);
@@ -491,8 +554,6 @@ QvisBoundaryPlotWindow::UpdateWindow(bool doAll)
 //  Note:  taken almost verbatim from the Subset plot
 //
 // Modifications:
-//   Brad Whitlock, Thu Jul 17 12:12:45 PDT 2008
-//   Qt 4.
 //
 // ****************************************************************************
 
@@ -503,7 +564,7 @@ QvisBoundaryPlotWindow::UpdateMultipleArea()
     intVector selectedBoundaries;
     bool update = true;
     int i;
-    QListWidgetItem *item;
+    QListBoxTextWithColor *item;
 
     multipleColorList->blockSignals(true);
 
@@ -512,7 +573,7 @@ QvisBoundaryPlotWindow::UpdateMultipleArea()
     //
     for(i = 0; i < multipleColorList->count(); ++i)
     {
-        if(multipleColorList->item(i)->isSelected())
+        if(multipleColorList->isSelected(i))
             selectedBoundaries.push_back(i);
     }
 
@@ -525,23 +586,30 @@ QvisBoundaryPlotWindow::UpdateMultipleArea()
         bool same = true;
         for(i = 0; i < matNames.size() && same; ++i)
         {
+            item = (QListBoxTextWithColor *)multipleColorList->item(i);
             ColorAttribute c(boundaryAtts->GetMultiColor()[i]);
-            
-            same &= CompareItem(i, QString(matNames[i].c_str()),
-                                   QColor(c.Red(), c.Green(), c.Blue()));
+            same &= (item->text() == QString(matNames[i].c_str()) &&
+                     item->color() == QColor(c.Red(), c.Green(), c.Blue()));
         }
 
         // If the strings are not the same then modifiy the widgets.
         if(!same)
         {
+            int topItem = multipleColorList->topItem();
             for(i = 0; i < matNames.size(); ++i)
                 UpdateItem(i);
+
+            // Make sure the current item is still visible.
+            if(topItem > 0)
+                multipleColorList->setTopItem(topItem);
         }
         else
             update = false;
     }
     else if(matNames.size() > multipleColorList->count())
     {
+        int topItem = multipleColorList->topItem();
+
         // Set all of the existing names.
         for(i = 0; i < multipleColorList->count(); ++i)
             UpdateItem(i);
@@ -552,11 +620,18 @@ QvisBoundaryPlotWindow::UpdateMultipleArea()
             QString        itemText(matNames[i].c_str());
             ColorAttribute c(boundaryAtts->GetMultiColor()[i]);
             QColor         itemColor(c.Red(), c.Green(), c.Blue());
-            multipleColorList->addItem(matNames[i].c_str(), itemColor);
+
+            item = new QListBoxTextWithColor(multipleColorList, itemText,
+                                             itemColor);
         }
+        // Make sure the current item is still visible.
+        if(topItem > 0)
+            multipleColorList->setTopItem(topItem);
     }
     else // if(matNames.size() < multipleColorList->count())
     {
+        int topItem = multipleColorList->topItem();
+
         // Set all of the existing names.
         for(i = 0; i < matNames.size(); ++i)
             UpdateItem(i);
@@ -565,9 +640,14 @@ QvisBoundaryPlotWindow::UpdateMultipleArea()
         int numEntries = multipleColorList->count();
         for(i = matNames.size(); i < numEntries; ++i)
         {
-            QListWidgetItem *item = multipleColorList->takeItem(multipleColorList->count() - 1);
-            if(item != 0)
-                delete item;
+            multipleColorList->removeItem(multipleColorList->count() - 1);
+        }
+
+        if(multipleColorList->count() > 0)
+        {
+            if(topItem > multipleColorList->count())
+                topItem = 0;
+            multipleColorList->setTopItem(topItem);
         }
     }
 
@@ -582,12 +662,11 @@ QvisBoundaryPlotWindow::UpdateMultipleArea()
         {
             if(selectedBoundaries[i] < multipleColorList->count())
             {
-                item = multipleColorList->item(selectedBoundaries[i]);
-                item->setSelected(true);
+                multipleColorList->setSelected(selectedBoundaries[i], true);
                 if(first)
                 {
                     first = false;
-                    multipleColorList->setCurrentItem(item);
+                    multipleColorList->setCurrentItem(selectedBoundaries[i]);
                 }
                 noneSelected = false;
             }
@@ -597,11 +676,23 @@ QvisBoundaryPlotWindow::UpdateMultipleArea()
         // is more than one boundary selected then update the listbox to cover
         // the case where we have to update the color for more than one
         // listboxitem.
-        if(noneSelected && multipleColorList->count() > 0)
+        if(noneSelected)
         {
-            item = multipleColorList->item(0);
-            item->setSelected(true);
-            multipleColorList->setCurrentItem(item);
+            multipleColorList->setSelected(0, true);
+            multipleColorList->setCurrentItem(0);
+        }
+        else// if(selectedBoundaries.size() > 1) // remove check
+        {
+#define LISTBOX_UPDATE_KLUDGE
+#ifdef LISTBOX_UPDATE_KLUDGE
+            // Force the listbox to redraw itself and *all* of its listbox items.
+            multipleColorList->resize(multipleColorList->width(),
+                                      multipleColorList->height()+1);
+            multipleColorList->resize(multipleColorList->width(),
+                                      multipleColorList->height()-1);
+#else
+            multipleColorList->update();
+#endif
         }
     }
 
@@ -613,7 +704,7 @@ QvisBoundaryPlotWindow::UpdateMultipleArea()
     {
         int selectedIndex = (selectedBoundaries.size() > 0) ?
             selectedBoundaries[0] : 0;
-        // Make sure that the selected index is in the range of visible colors.
+        // Make sure that the selected index is in the range of visitble colors.
         if(selectedIndex >= matNames.size())
             selectedIndex = 0;
 
@@ -621,34 +712,6 @@ QvisBoundaryPlotWindow::UpdateMultipleArea()
     }
 
     multipleColorList->blockSignals(false);
-}
-
-// ****************************************************************************
-// Method: QvisBoundaryPlotWindow::CompareItem
-//
-// Purpose: 
-//   Compares an item against a name and a color.
-//
-// Arguments:
-//
-// Returns:    
-//
-// Note:       
-//
-// Programmer: Brad Whitlock
-// Creation:   Thu Jul 17 11:54:42 PDT 2008
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-bool
-QvisBoundaryPlotWindow::CompareItem(int i, const QString &name, 
-    const QColor &c) const
-{
-    QString itemName(multipleColorList->text(i));
-    QColor  itemColor(multipleColorList->color(i));
-    return  itemName == name && itemColor == c;
 }
 
 // ****************************************************************************
@@ -666,17 +729,20 @@ QvisBoundaryPlotWindow::CompareItem(int i, const QString &name,
 //  Note:  taken almost verbatim from the Subset plot
 //
 // Modifications:
-//   Brad Whitlock, Thu Jul 17 12:10:40 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
 QvisBoundaryPlotWindow::UpdateItem(int i)
 {
-    multipleColorList->setText(i, boundaryAtts->GetBoundaryNames()[i].c_str());
-    ColorAttribute c(boundaryAtts->GetMultiColor()[i]);
-    multipleColorList->setColor(i, QColor(c.Red(), c.Green(), c.Blue()));
+    QListBoxTextWithColor *item;
+    item = (QListBoxTextWithColor *)multipleColorList->item(i);
+    if(item)
+    {
+        item->setText(boundaryAtts->GetBoundaryNames()[i].c_str());
+        ColorAttribute c(boundaryAtts->GetMultiColor()[i]);
+        item->setColor(QColor(c.Red(), c.Green(), c.Blue()));
+    }
 }
 
 // ****************************************************************************
@@ -1040,8 +1106,6 @@ QvisBoundaryPlotWindow::singleColorOpacityChanged(int opacity)
 //  Note:  taken almost verbatim from the Subset plot
 //
 // Modifications:
-//   Brad Whitlock, Thu Jul 17 13:50:59 PDT 2008
-//   Qt 4.
 //
 // ****************************************************************************
 
@@ -1049,11 +1113,11 @@ void
 QvisBoundaryPlotWindow::multipleColorChanged(const QColor &color)
 {
     // If any boundaries are selected, change their colors.
-    if(multipleColorList->currentItem() != 0)
+    if(multipleColorList->currentItem() != -1)
     {
         for(int i = 0; i < multipleColorList->count(); ++i)
         {
-            if(multipleColorList->item(i)->isSelected() &&
+            if(multipleColorList->isSelected(i) &&
                (i < boundaryAtts->GetMultiColor().GetNumColors()))
             {
                 boundaryAtts->GetMultiColor()[i].SetRgb(color.red(),
@@ -1084,8 +1148,6 @@ QvisBoundaryPlotWindow::multipleColorChanged(const QColor &color)
 //  Note:  taken almost verbatim from the Subset plot
 //
 // Modifications:
-//   Brad Whitlock, Thu Jul 17 13:51:42 PDT 2008
-//   Qt 4.
 //
 // ****************************************************************************
 
@@ -1093,11 +1155,11 @@ void
 QvisBoundaryPlotWindow::multipleColorOpacityChanged(int opacity)
 {
     // If any boundaries are selected, change their opacities.
-    if(multipleColorList->currentItem() != 0)
+    if(multipleColorList->currentItem() != -1)
     {
         for(int i = 0; i < multipleColorList->count(); ++i)
         {
-            if(multipleColorList->item(i)->isSelected() &&
+            if(multipleColorList->isSelected(i) &&
                (i < boundaryAtts->GetMultiColor().GetNumColors()))
             {
                 boundaryAtts->GetMultiColor()[i].SetAlpha(opacity);
@@ -1122,9 +1184,7 @@ QvisBoundaryPlotWindow::multipleColorOpacityChanged(int opacity)
 //  Note:  taken almost verbatim from the Subset plot
 //
 // Modifications:
-//   Brad Whitlock, Thu Jul 17 13:52:02 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
@@ -1134,7 +1194,7 @@ QvisBoundaryPlotWindow::boundarySelectionChanged()
     int index = -1;
     for(int i = 0; i < multipleColorList->count(); ++i)
     {
-        if(multipleColorList->item(i)->isSelected())
+        if(multipleColorList->isSelected(i))
         {
             index = i;
             break;
@@ -1224,7 +1284,7 @@ QvisBoundaryPlotWindow::smoothingLevelChanged(int level)
 void
 QvisBoundaryPlotWindow::colorTableClicked(bool useDefault, const QString &ctName)
 {
-    boundaryAtts->SetColorTableName(ctName.toStdString());
+    boundaryAtts->SetColorTableName(ctName.latin1());
     Apply();
 }
 
@@ -1258,7 +1318,7 @@ QvisBoundaryPlotWindow::GetCurrentValues(int which_widget)
     {
         boundaryAtts->SetPointSize(pointControl->GetPointSize());
         boundaryAtts->SetPointSizePixels(pointControl->GetPointSizePixels());
-        boundaryAtts->SetPointSizeVar(pointControl->GetPointSizeVar().toStdString());
+        boundaryAtts->SetPointSizeVar(pointControl->GetPointSizeVar().latin1());
     }
 }
 
@@ -1329,7 +1389,7 @@ QvisBoundaryPlotWindow::pointSizeVarToggled(bool val)
 void
 QvisBoundaryPlotWindow::pointSizeVarChanged(const QString &var)
 {
-    boundaryAtts->SetPointSizeVar(var.toStdString()); 
+    boundaryAtts->SetPointSizeVar(var.latin1()); 
     Apply();
 }
 

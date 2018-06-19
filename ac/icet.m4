@@ -60,66 +60,43 @@ dnl    Tom Fogal, Mon Aug  4 10:52:41 EDT 2008
 dnl    Don't force USE_MGL_NAMESPACE; not required, and may do strange things
 dnl    in the HW rendering case.
 dnl
-dnl    Tom Fogal, Fri Dec  5 09:14:33 MST 2008
-dnl    Add the ICET_ENABLE variable as a synonym for --enable-icet.
-dnl    Make sure there is always a message about IceT status.
+dnl    Brad Whitlock, Tue Jun 23 15:23:02 PST 2009
+dnl    Use EXE_LDFLAGS if they are set so we can link on platforms that require
+dnl    special flags to make an executable. This variable is used for special
+dnl    linking flags that get an executable to link with shared libraries and
+dnl    is needed on some platforms. I also changed a check so it uses $MPI_LIBS
+dnl    if it is set, reverting to -lmpi when $MPI_LIBS is not set.
 dnl
-dnl    Tom Fogal, Mon Dec 15 15:14:50 MST 2008
-dnl    Small cleanups.  Try to use AS_IF instead of if, etc.
-dnl
-dnl    Tom Fogal, Tue Dec 16 19:53:23 MST 2008
-dnl    Fix test for enabling IceT via host confs.
 
 dnl provide --enable-icet and --with-icet-(include|lib)dir=... options.  These
 dnl values will be picked up later by the AX_CHECK_ICET macro.
 AC_DEFUN([AX_ICET_OPTIONS], [
 AC_ARG_ENABLE([icet],
     [AS_HELP_STRING([--enable-icet],
-                    [Use the ICE-T parallel image compositor])]
+        [Use the ICE-T parallel image compositor])]
 )
-dnl Default to `no' if they aren't set.
-AS_IF([test -z "${DEFAULT_ICET_INCLUDE}"], [DEFAULT_ICET_INCLUDE="no"])
-AS_IF([test -z "${DEFAULT_ICET_LIB}"],     [DEFAULT_ICET_LIB="no"])
 
 dnl `with' options to specify header/library locations.
 AC_ARG_WITH([icet-includedir],
     [AS_HELP_STRING([--with-icet-includedir=/path],
         [Directory where ICE-T include files can be found.])],
     [with_icet_includedir=$withval],
-    [with_icet_includedir=$DEFAULT_ICET_INCLUDE]
+    [with_icet_includedir=no]
 )
 AC_ARG_WITH([icet-libdir],
     [AS_HELP_STRING([--with-icet-libdir=/path],
         [Directory where ICE-T libraries can be found.])],
     [with_icet_libdir=$withval],
-    [with_icet_libdir=$DEFAULT_ICET_LIB]
+    [with_icet_libdir=no]
 )
-
-AC_MSG_CHECKING([if IceT should be used])
-
-# Allow enabling IceT through a config site variable.
-AS_IF([test -n "${ICET_ENABLE}" -o "x${DEFAULT_ICET_INCLUDE}" != "xno"],
-    [enable_icet="yes"],
-    [enable_icet="no"]
-)
-
-# Check to make sure they aren't doing something weird.
-AS_IF([test "x${enable_icet}" = "yes" -a \
-        \( -z "${UseParallel}" -o "x${UseParallel}" = "xno" \)],
-    [
-    AC_MSG_ERROR([IceT usage requested, but you're not doing a parallel
-build. IceT requires '--enable-parallel' to be specified.])
-    ]
-)
-
-AC_MSG_RESULT([$enable_icet])
-
-]) dnl end of AX_ICET_OPTIONS.
 
 ICET_LIBS=
 ax_ICET_LIB=
 ax_ICET_LIB_MPI=
 ax_ICET_LIB_STRATEGIES=
+
+])
+
 dnl Make sure we can find/use the IceT libary specified.
 dnl You can set ICET_INCLUDEDIR and ICET_LIBDIR to setup paths sans
 dnl ./configure's --with-icet options, but (if specified) --with-icet options
@@ -139,6 +116,13 @@ AS_IF([test "x$enable_icet" != "xno"],
         AC_LANG_PUSH([C++])
         ax_save_LDFLAGS="${LDFLAGS}"
         ax_save_CXXFLAGS="${CXXFLAGS}"
+
+        dnl On some platforms, we need to pass special flags to link an exe
+        dnl against shared libraries. IceT or Mesa could be shared libraries
+        dnl so we need to set our LDFLAGS temporarily.
+        AS_IF([test -n "${EXE_LDFLAGS}"],
+            [LDFLAGS="${LDFLAGS} ${EXE_LDFLAGS}"]
+        )
 
         dnl Did they specify --with-icet options?  If they didn't, default to
         dnl use anything they might have had in the environment.
@@ -180,14 +164,23 @@ some custom LDFLAGS?])],
             dnl
             dnl That's the long way of saying `don't use AX_CHECK_ICET until
             dnl you've checked for / setup Mesa'.
-            [-L$MESA_DIR/lib $MESA_LIBS $X_LIBS -lXext -lm $PTHREAD_LIB]
+            [-L$MESA_DIR/lib $MESA_LIBS -lm]
         )
+
+        dnl Detect MPI first from our MPI_LIBS variable, which is commonly
+        dnl set in most config-site files. If we don't have it, revert to
+        dnl using -lmpi
+        AS_IF([test -n "${MPI_LIBS}"],
+           [ICET_MPI_LIBS="${MPI_LIBS}"],
+           [ICET_MPI_LIBS="-lmpi"]
+        )
+
         AC_CHECK_LIB([icet_mpi], [icetCreateMPICommunicator],
             [ax_ICET_LIB_MPI="-licet_mpi"],
             [AC_MSG_FAILURE([
 --enable-icet was given, but I could not use IceT's MPI wrappers.  Perhaps you
 need to set some custom LDFLAGS?])],
-            [-L$MESA_DIR/lib $MESA_LIBS $X_LIBS -lXext -lm $PTHREAD_LIB -licet $MPI_LIBS]
+            [-L$MESA_DIR/lib $MESA_LIBS -lm -licet ${ICET_MPI_LIBS}]
         )
         dnl This is tricky.  We test to make sure it works, but really I don't
         dnl think any of the functions in this library are designed to be
@@ -200,15 +193,15 @@ need to set some custom LDFLAGS?])],
 might mean the library was updated and VisIt's IceT test simply needs to be
 updated, or it might mean your IceT install is not quite right.  You may need
 to set some custom LDFLAGS.])],
-            [-L$MESA_DIR/lib $MESA_LIBS $X_LIBS -lXext -lm $PTHREAD_LIB -licet $MPI_LIBS]
+            [-L$MESA_DIR/lib $MESA_LIBS -lm -licet ${ICET_MPI_LIBS}]
         )
         ICET_LIBS="${ax_ICET_LIB} ${ax_ICET_LIB_MPI} ${ax_ICET_LIB_STRATEGIES}"
         PARALLEL_CPPFLAGS="${PARALLEL_CPPFLAGS} -I${ICET_INCLUDEDIR}"
         AC_SUBST(ICET_CXXFLAGS)
         AC_SUBST(ICET_LDFLAGS)
         AC_SUBST(ICET_LIBS)
-        LDFLAGS="${ax_save_LDFLAGS}"
-        CXXFLAGS="${ax_save_CXXFLAGS}"
+        LDFLAGS=${ax_save_LDFLAGS}
+        CXXFLAGS=${ax_save_CXXFLAGS}
         AC_LANG_POP([C++])
         ax_have_icet=1
     ],

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -41,8 +41,8 @@
 // ************************************************************************* //
 
 #include <ResamplePluginInfo.h>
-#include <QApplication>
-#include <ResampleAttributes.h>
+#include <qapplication.h>
+#include <ResamplePluginAttributes.h>
 
 #if defined(__APPLE__)
 #define GetViewerInfo Resample_GetViewerInfo
@@ -67,8 +67,8 @@ extern "C" ViewerOperatorPluginInfo* GetViewerInfo()
 //
 // Storage for static data elements.
 //
-ResampleAttributes *ResampleViewerPluginInfo::clientAtts = NULL;
-ResampleAttributes *ResampleViewerPluginInfo::defaultAtts = NULL;
+ResamplePluginAttributes *ResampleViewerPluginInfo::clientAtts = NULL;
+ResamplePluginAttributes *ResampleViewerPluginInfo::defaultAtts = NULL;
 
 // ****************************************************************************
 //  Method:  ResampleViewerPluginInfo::InitializeGlobalObjects
@@ -83,8 +83,8 @@ ResampleAttributes *ResampleViewerPluginInfo::defaultAtts = NULL;
 void
 ResampleViewerPluginInfo::InitializeGlobalObjects()
 {
-    ResampleViewerPluginInfo::clientAtts  = new ResampleAttributes;
-    ResampleViewerPluginInfo::defaultAtts = new ResampleAttributes;
+    ResampleViewerPluginInfo::clientAtts  = new ResamplePluginAttributes;
+    ResampleViewerPluginInfo::defaultAtts = new ResamplePluginAttributes;
 }
 
 // ****************************************************************************
@@ -142,7 +142,7 @@ ResampleViewerPluginInfo::GetDefaultAtts()
 void
 ResampleViewerPluginInfo::SetClientAtts(AttributeSubject *atts)
 {
-    *clientAtts = *(ResampleAttributes *)atts;
+    *clientAtts = *(ResamplePluginAttributes *)atts;
     clientAtts->Notify();
 }
 
@@ -163,7 +163,7 @@ ResampleViewerPluginInfo::SetClientAtts(AttributeSubject *atts)
 void
 ResampleViewerPluginInfo::GetClientAtts(AttributeSubject *atts)
 {
-    *(ResampleAttributes *)atts = *clientAtts;
+    *(ResamplePluginAttributes *)atts = *clientAtts;
 }
 
 // ****************************************************************************
@@ -189,9 +189,9 @@ ResampleViewerPluginInfo::InitializeOperatorAtts(AttributeSubject *atts,
                                               const bool fromDefault)
 {
     if (fromDefault)
-        *(ResampleAttributes*)atts = *defaultAtts;
+        *(ResamplePluginAttributes*)atts = *defaultAtts;
     else
-        *(ResampleAttributes*)atts = *clientAtts;
+        *(ResamplePluginAttributes*)atts = *clientAtts;
 }
 // ****************************************************************************
 //  Method: ResampleViewerPluginInfo::GetMenuName

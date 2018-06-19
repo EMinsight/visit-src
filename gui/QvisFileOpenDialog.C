@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -36,9 +36,9 @@
 *
 *****************************************************************************/
 #include <QvisFileOpenDialog.h>
-#include <QApplication>
-#include <QPointer>
-#include <QTimer>
+#include <qapplication.h>
+#include <qtimer.h>
+#include <qwidgetlist.h>
 
 #include <ViewerProxy.h>
 #include <FileServerList.h>
@@ -275,7 +275,7 @@ void
 QvisFileOpenDialog::changeThePath()
 {
     // Set the host and path to that of the initial file.
-    QualifiedFilename f(filename.toStdString());
+    QualifiedFilename f(filename.latin1());
     bool retry_loop = false;
     int nTries = 0;
     QString msg;
@@ -356,29 +356,24 @@ QvisFileOpenDialog::exec()
     return -1;
     }
 
-    bool deleteOnClose = testAttribute(Qt::WA_DeleteOnClose);
-    setAttribute(Qt::WA_DeleteOnClose, false);
+    bool destructiveClose = testWFlags( WDestructiveClose );
+    clearWFlags( WDestructiveClose );
 
-    bool wasShowModal = testAttribute(Qt::WA_ShowModal);
-    setAttribute(Qt::WA_ShowModal, true);
-    setResult(0);
+    bool wasShowModal = testWFlags( WShowModal );
+    setWFlags( WShowModal );
+    setResult( Rejected );
 
     show();
 
     in_loop = TRUE;
-    QEventLoop eventLoop;
-    connect(this, SIGNAL(quitloop()),
-            &eventLoop, SLOT(quit()));
-    QPointer<QvisFileOpenDialog> guard = this;
-    (void) eventLoop.exec();
-    if (guard.isNull())
-        return Rejected;
+    qApp->enter_loop();
 
-    setAttribute(Qt::WA_ShowModal, wasShowModal);
+    if ( !wasShowModal )
+    clearWFlags( WShowModal );
 
     int res = result();
 
-    if ( deleteOnClose )
+    if ( destructiveClose )
     delete this;
 
     return res;
@@ -401,9 +396,23 @@ QvisFileOpenDialog::exec()
 void
 QvisFileOpenDialog::done( int r )
 {
+    if(in_loop)
+    {
+        in_loop = false;
+        qApp->exit_loop();
+    }
+
     hide();
-    setResult(r);
-    emit quitloop();
+    setResult( r );
+
+    // emulate QWidget::close()
+    bool isMain = qApp->mainWidget() == this;
+    if ( isMain )
+    qApp->quit();
+    else if ( testWFlags(WDestructiveClose) ) {
+    clearWFlags(WDestructiveClose);
+    deleteLater();
+    }
 }
 
 void

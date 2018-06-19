@@ -785,21 +785,12 @@ dnl    Eric Brugger, Fri Apr 18 13:13:11 PDT 2008
 dnl    Added HDF5_EXEC to allow the data directory to conditionally run
 dnl    HDF5 based programs that create HDF5 data files.
 dnl
-dnl    Brad Whitlock, Thu May 15 17:09:22 PDT 2008
-dnl    Inital pass at Qt 4.4.0 Port 
-dnl 
-dnl    Cyrus Harrison, Thu May 15 17:09:22 PDT 2008
-dnl    Removed QtDbus Library (not needed, and not supported on all platforms)
-dnl
 dnl    Tom Fogal, Sun Jun  8 14:56:22 EDT 2008
 dnl    Added macro to check for ICE-T.
 dnl
 dnl    Hank Childs, Fri Jun 13 15:05:02 PDT 2008
 dnl    Add support for tcmalloc from google-perftools.
 dnl
-dnl    Cyrus Harrison, Thu Jul  3 08:36:36 PDT 2008
-dnl    Added QtDesigner Library
-dnl 
 dnl    Tom Fogal, Thu Jun 19 13:46:15 EDT 2008
 dnl    Moved ac macro file to its own subdirectory, and appropriately use
 dnl    aclocal.m4 to include it (instead of here).
@@ -852,9 +843,6 @@ dnl    Tom Fogal, Fri Sep 19 11:24:08 MDT 2008
 dnl    Define variables of filenames for SLIVR, to decide which parts to
 dnl    conditionally compile.
 dnl
-dnl    Cyrus Harrison, Tue Sep 30 15:39:33 PDT 2008
-dnl    Removed Qt WebKit & XMLPatterns b/c they do not build on AIX.
-dnl    
 dnl    Mark C. Miller, Thu Oct  9 18:07:17 PDT 2008
 dnl    Wrapped AC_TRY_COMPILE attempts on Silo with PUSH/POP LANG C++. This
 dnl    should be harmless for installations of Silo that DO NOT include the
@@ -885,9 +873,6 @@ dnl    Eric Brugger, Wed Oct 22 16:10:34 PDT 2008
 dnl    Added DATA_EXE_LDFLAGS, which is used in the data directory to set
 dnl    the rpath to $ORIGIN/../src/lib on linux systems.
 dnl 
-dnl    Mark C. Miller, Tue Dec  2 11:47:01 PST 2008
-dnl    Removed silex
-dnl
 dnl    Brad Whitlock, Tue Dec  2 11:32:06 PST 2008
 dnl    I set VISITWRAPPER_RPATH if --prefix is specified and we're on Linux
 dnl    so we can set -rpath LDFLAGS that let the visit engine wrapper libraries
@@ -897,16 +882,32 @@ dnl    client simulation. It also prevents the sim writers from having to do
 dnl    very bad things such as using a specific VisIt rpath when linking
 dnl    their codes.
 dnl
-dnl    Hank Childs, Fri Dec 12 16:18:34 PST 2008
-dnl    Move Ice-T to later in the script so that it can benefit from correct
-dnl    definitions of X11 libs and Pthreads.
+dnl    Hank Childs, Fri Feb 22 15:57:11 PST 2008
+dnl    Add FastBit.
 dnl
-dnl    Josh Stratton, Tue Dec 16 11:03:21 MST 2008
-dnl    Added Tuvok the the 3rd-party builtin libraries
+dnl    Mark C. Miller, Mon Mar  2 17:25:10 PST 2009
+dnl    Added logic to itaps-impl option to add -D${impl_name} to CXXFLAGS
 dnl
-dnl    Mark C. Miller, Sat Dec 20 07:38:09 PST 2008
-dnl    Added logic to specify itaps impl in CPPFLAGS when building itaps
-dnl    plugin.
+dnl    Gunther H. Weber, Fri Apr 17 13:22:44 PDT 2009
+dnl    Do not add "-lrt" for FastBit on MacOS (Darwin machines)
+dnl    Do not change H5PART_LIBDIR in FastBit config.
+dnl    
+dnl    Kathleen Bonnell, Thu Feb 19 13:06:43 PST 2009
+dnl    Added test for PyParsing.
+dnl
+dnl    Brad Whitlock, Thu Jun 11 15:31:48 PST 2009
+dnl    I've made many changes, including: --enable-engine-only, 
+dnl    --enable-server-components-only, --disable-select, --disable-nospin-bcast.
+dnl    These are aimed at getting VisIt to build on BlueGene/P. I made some
+dnl    changes to icet.m4 as well.
+dnl
+dnl    Gunther H. Weber, Wed Jul 22 13:42:01 PDT 2009
+dnl    Link to tcmalloc_minimal instead of regular version to avoid additional
+dnl    dependencies (e.g. unwind) on 64-bit machines.   
+dnl
+dnl    Gunther H. Weber, Tue Sep 22 15:58:11 PDT 2009
+dnl    Allow Qt version 3.3.8b (Ubuntu)
+dnl
 dnl --------------------------------------------------------------------------
 
 dnl
@@ -1031,6 +1032,66 @@ fi
 # Check for platform specific flags.
 #
 AC_SUBST(PLATFORM_CPPFLAGS)
+
+#
+# Setup default standard dir targets. These can get overridden
+# for specific types of builds like dbio-only.
+#
+SUBDIRS="$""(SUBDIRS_STD)"
+ALLSUBDIRS="$""(ALLSUBDIRS_STD)"
+SRC="$""(SRC_STD)"
+BUILD_DBIO_ONLY=""
+AC_SUBST(SUBDIRS)
+AC_SUBST(ALLSUBDIRS)
+AC_SUBST(SRC)
+AC_SUBST(BUILD_DBIO_ONLY)
+if test "$UNAME" = "Darwin"; then
+    # Skip the check because it uses an incompatible xargs argument.
+    CHECK_MAKE_AND_ENV_VARS=""
+else
+    CHECK_MAKE_AND_ENV_VARS="check-make-and-env-vars"
+fi
+AC_SUBST(CHECK_MAKE_AND_ENV_VARS)
+
+#
+# Check for database-only build. Disable a slew of things if so.
+#
+enable_scripting=yes
+AC_ARG_ENABLE(dbio-only,
+   AC_HELP_STRING([--enable-dbio-only], [build only the components necessary to support database I/O]))
+if test "$enable_dbio_only" = yes; then
+    enable_scripting=no
+    AC_DEFINE(DBIO_ONLY, [1], [Define if this is a database I/O only build])
+    NON_DBIO_SERLIBS=""
+    NON_DBIO_PARLIBS=""
+else
+    NON_DBIO_SERLIBS="$""(NON_DBIO_SERLIBS)"
+    NON_DBIO_PARLIBS="$""(NON_DBIO_PARLIBS)"
+fi
+AC_SUBST(NON_DBIO_SERLIBS)
+AC_SUBST(NON_DBIO_PARLIBS)
+
+#
+# Check for engine-only build. Disable clients,etc. Just build the engine.
+#
+AC_ARG_ENABLE(engine-only,
+   AC_HELP_STRING([--enable-engine-only], [build only the compute engine]))
+if test "$enable_engine_only" = yes && test "$enable_dbio_only" = yes; then
+   AC_MSG_ERROR([--enable-dbio-only is not compatible with --enable-engine-only])
+fi
+
+#
+# Check for server-components-only build. Disable clients,etc. Just build the engine,mdserver,vcl.
+#
+AC_ARG_ENABLE(server-components-only,
+   AC_HELP_STRING([--enable-server-components-only], [build only the server components (engine,mdserver,vcl)]))
+if test "$enable_server_components_only" = yes && test "$enable_dbio_only" = yes; then
+   AC_MSG_ERROR([--enable-server-components-only is not compatible with --enable-engine-only])
+fi
+if test "$enable_server_components_only" = yes && test "$enable_engine_only" = yes; then
+   AC_MSG_WARN([--enable-server-components-only overrides --enable-engine-only])
+   enable_engine_only=no
+fi
 
 #
 # Check for CMake
@@ -1200,11 +1261,17 @@ AC_SUBST(LIBCOGNOMEN, $ax_lib_cog)
 # Set up some Mesa variables.
 #
 AC_MSG_CHECKING(for Mesa)
+MESA_LIBGL="MesaGL"
 if test -n "$MESA"; then
    AC_MSG_RESULT(found)
    MESA_DIR=$MESA
    MESA_INCLUDE="-I$""(TOPDIR)/include/mesa"
-   MESA_LIBS="-lOSMesa -lMesaGL"
+   if test -e $MESA/lib/libGL.so ; then
+       MESA_LIBS="-lOSMesa -lGL"
+       MESA_LIBGL="GL"
+   else
+       MESA_LIBS="-lOSMesa -lMesaGL"
+   fi
 else
    AC_MSG_RESULT(not found)
    MESA_DIR=""
@@ -1214,6 +1281,7 @@ fi
 AC_SUBST(MESA_DIR)
 AC_SUBST(MESA_INCLUDE)
 AC_SUBST(MESA_LIBS)
+AC_SUBST(MESA_LIBGL)
 
 #
 # Check to see if we should use the mesa stub library in the viewer.
@@ -1223,7 +1291,7 @@ AC_ARG_ENABLE(viewer-mesa-stub,
    [  --enable-viewer-mesa-stub     use the mesa stub library in the viewer],
    UseViewerMesaStub=$enableval, UseViewerMesaStub=yes)
 
-if test "$UseViewerMesaStub" = "yes"; then
+if test "$UseViewerMesaStub" = "yes" && test ! "$enable_engine_only" = yes && test ! "$enable_server_components_only" = yes ; then
    AC_MSG_RESULT(enabled)
    VIEWER_MESA_STUB_CPPFLAGS="-DMESA_STUB"
    VIEWER_MESA_LIBS="-lMesaStub"
@@ -1237,6 +1305,22 @@ fi
 AC_SUBST(VIEWER_MESA_STUB_CPPFLAGS)
 AC_SUBST(VIEWER_MESA_LIBS)
 AC_SUBST(BUILD_MESA_STUB)
+
+dnl
+dnl IceT check.
+dnl
+AX_ICET_OPTIONS
+if test "x$UseParallel" == "xno" -a "x$enable_icet" == "xyes" ; then
+	AC_MSG_ERROR([
+IceT usage requested, but you're not doing a parallel build.  IceT requires
+'--enable-parallel' to be specified.])
+elif test "x$UseParallel" == "xyes" -a "x$enable_icet" == "xyes" ; then
+	AX_CHECK_ICET
+fi
+dnl Always needed: this sets up the object files we'll build, and should
+dnl therefore be called even if IceT is disabled! (to explicitly set it to
+dnl nothing).
+AX_VISIT_ICET
 
 #
 # The check for OpenGL can be disabled with `--disable-ogl'.
@@ -1274,6 +1358,9 @@ AC_LANG_C
 # Set up some VTK variables.
 #
 AC_MSG_CHECKING(for VTK)
+MESA_OBJ=""
+SERMESA_OBJ=""
+PARMESA_OBJ=""
 if test -n "$VTK"; then
     AC_MSG_RESULT(found)
     VTK_DIR=$VTK
@@ -1284,6 +1371,16 @@ if test -n "$VTK"; then
         VTK_LIGHTWEIGHT_LIBS=$VTK_LIBS
     else
         VTK_LIGHTWEIGHT_LIBS="-lvtkCommon -lvtkFiltering -lvtkzlib -lvtkexpat -lvtksys"
+    fi
+
+    # Determine whether VTK was built with mangled Mesa support. If it wasn't
+    # then there is code in VisIt that we do not want to compile.
+    useMangledMesa=`grep "define VTK_USE_MANGLED_MESA" $VTK/vtkToolkits.h`
+    if test -n "$useMangledMesa" ; then
+        AC_DEFINE(VISIT_USE_MANGLED_MESA, [1], [Enable use of mangled Mesa classes in VisIt.])
+        MESA_OBJ="$""(MESA_OBJ)"
+        SERMESA_OBJ="$""(SERMESA_OBJ)"
+        PARMESA_OBJ="$""(PARMESA_OBJ)"
     fi
 else
     AC_MSG_RESULT(not found)
@@ -1296,18 +1393,9 @@ AC_SUBST(VTK_DIR)
 AC_SUBST(VTK_INCLUDES)
 AC_SUBST(VTK_LIBS)
 AC_SUBST(VTK_LIGHTWEIGHT_LIBS)
-
-#
-# Check for the common directory
-#
-AC_MSG_CHECKING(for common)
-if test -d common; then
-    AC_MSG_RESULT(found)
-    COMMON="common"
-else
-    AC_MSG_RESULT(not found)
-    COMMON=""
-fi
+AC_SUBST(MESA_OBJ)
+AC_SUBST(SERMESA_OBJ)
+AC_SUBST(PARMESA_OBJ)
 
 #
 # Check for the avtprep directory
@@ -1336,8 +1424,19 @@ AC_MSG_CHECKING(for convert)
 if test -d tools/convert; then
     AC_MSG_RESULT(found)
     CONVERT_SER="$""(tmpbin)/visitconvert_ser"
+    if test "$UNAME" = "Darwin"; then
+        CONVERT_SER_LITE=""
+    else
+        CONVERT_SER_LITE="$""(tmpbin)/visitconvert_ser_lite"
+    fi
+
     if test -n "$PARALLEL"; then
         CONVERT_PAR="$""(tmpbin)/visitconvert_par"
+        if test "$UNAME" = "Darwin"; then
+            CONVERT_PAR_LITE=""
+        else
+            CONVERT_PAR_LITE="$""(tmpbin)/visitconvert_par_lite"
+        fi
     else
         CONVERT_PAR=""
     fi
@@ -1345,9 +1444,13 @@ else
     AC_MSG_RESULT(not found)
     CONVERT_SER=""
     CONVERT_PAR=""
+    CONVERT_SER_LITE=""
+    CONVERT_PAR_LITE=""
 fi
 AC_SUBST(CONVERT_SER)
 AC_SUBST(CONVERT_PAR)
+AC_SUBST(CONVERT_SER_LITE)
+AC_SUBST(CONVERT_PAR_LITE)
 
 #
 #
@@ -1405,15 +1508,9 @@ AC_SUBST(ENGINELIBSER)
 AC_SUBST(ENGINELIBPAR)
 
 #
-# Check to see if the mdserver was enabled.
+# The mdserver is enabled unless we're doing an engine-only build.
 #
-AC_MSG_CHECKING(if mdserver is enabled)
-AC_ARG_ENABLE(mdserver,
-              [  --disable-mdserver      build without mdserver],
-              UseMDSERVER="$enable_mdserver", UseMDSERVER=yes)
-if test "$UseMDSERVER" = "yes"; then
-    AC_MSG_RESULT(yes)
-
+if test ! "$enable_engine_only" = yes; then
     dnl
     dnl Check for the mdserver directory
     dnl
@@ -1428,7 +1525,6 @@ if test "$UseMDSERVER" = "yes"; then
         METADATA_SERVER=""
     fi
 else
-    AC_MSG_RESULT(no)
     METADATA_SERVER=""
 fi
 AC_SUBST(METADATA_SERVER)
@@ -1442,7 +1538,7 @@ AC_MSG_CHECKING(if scripting features are enabled)
 AC_ARG_ENABLE(scripting,
               [  --disable-scripting     build without CLI Python scripting capability],
               UseScripting="$enable_scripting", UseScripting=yes)
-if test "X$UseScripting" = "Xyes"; then
+if test "X$UseScripting" = "Xyes" && test ! "$enable_engine_only" = yes && test ! "$enable_server_components_only" = yes; then
     AC_MSG_RESULT(yes)
     enable_scripting=yes
 
@@ -1480,13 +1576,10 @@ AC_SUBST(PY_BUILD_VISITMODULE)
 
 
 dnl
-dnl Check for the viewer directory
+dnl The viewer is enabled unless we're doing an engine-only or server-components-only build.
 dnl
-AC_MSG_CHECKING(for viewer)
-if test -d viewer; then
-    AC_MSG_RESULT(found)
+if test ! "$enable_engine_only" = yes && test ! "$enable_server_components_only" = yes; then
     VIEWER="viewer"
-    VISWINDOW="VisWindow"
     VIEWERLIB="$""(VDSO)"
     VIEWEROBJ="$""(VOBJ)"
     # The private source can go into the executable on all UNIX versions
@@ -1498,27 +1591,26 @@ if test -d viewer; then
         VIEWERLIB_SRC="$""(PUBLIC_SRC)"
         VIEWEREXE_SRC="$""(MAINSRC) $""(PRIVATE_SRC) $""(SRCMOC)"
     fi
+    ENGINEPROXYDIR="proxy"
 else
     VIEWER=""
-    VISWINDOW=""
     VIEWERLIB=""
     VIEWEROBJ=""
     VIEWERLIB_SRC=""
     VIEWEREXE_SRC=""
+    ENGINEPROXYDIR=""
 fi
 AC_SUBST(VIEWER)
-AC_SUBST(VISWINDOW)
 AC_SUBST(VIEWERLIB)
 AC_SUBST(VIEWEROBJ)
 AC_SUBST(VIEWERLIB_SRC)
 AC_SUBST(VIEWEREXE_SRC)
+AC_SUBST(ENGINEPROXYDIR)
 
 dnl
-dnl Gui checking is enabled, look for the gui directory.
+dnl The gui is enabled unless we're doing an engine-only or server-components-only build.
 dnl
-AC_MSG_CHECKING(for gui)
-if test -d gui; then
-    AC_MSG_RESULT(found)
+if test ! "$enable_engine_only" = yes && test ! "$enable_server_components_only" = yes; then
     GUI="gui"
     GUILIB="$""(GDSO)"
     GUIOBJ="$""(GOBJ)"
@@ -1528,7 +1620,6 @@ if test -d gui; then
         GUIFRAMEWORKS=""
     fi
 else
-    AC_MSG_RESULT(not found)
     GUI=""
     GUILIB=""
     GUIOBJ=""
@@ -1868,6 +1959,14 @@ if test $emptycxxflags = "yes"; then
     fi
 fi
 
+# Give the option of using a different C++ compiler for xml2makefile since we
+# might want to give the local C++ compiler to generate a local tool, even if
+# we're cross-compiling
+if test -z "$XML2MAKEFILE_CXX"; then
+    XML2MAKEFILE_CXX="$""(CXX)"
+fi
+AC_SUBST(XML2MAKEFILE_CXX)
+
 # Check to see if we're running clearmake.
 # If we are, set the build verbosity to 0 so that output won't mess up the rest
 # of "configure".
@@ -2014,11 +2113,6 @@ AC_TRY_COMPILE([#include <sys/types.h>
 AC_CHECK_LIB(m, main)
 
 #
-# Check if the user wants to use Tuvok
-#
-AX_TUVOK
-
-#
 # Handle zlib. By default, we try to find a zlib because VisIt can
 # use compression when shipping data between engine and viewer. 
 # Since zlib may not be available everywhere, we also support it
@@ -2053,6 +2147,11 @@ case $withval in
                 ZLIB_LIB="-lz"
                 AC_DEFINE(HAVE_ZLIB_H,1)
             fi
+        else
+            # have_zlib_h is empty so use the builtin version.
+            BUILD_ZLIB=zlib
+            ZLIB_LIB="-lz"
+            AC_DEFINE(HAVE_ZLIB_H,1)
         fi
         ;;
     builtin)
@@ -2221,22 +2320,40 @@ AC_SUBST(EXODUS_FLAGS)
 #
 # See of --with-pdb was specified. Use PDB lite otherwise.
 #
-VAC_ARG_WITH3RD(pdb)
-if test -z "$PDB_LIB"; then
-    AC_MSG_CHECKING(for PDB lite (e.g Silo))
-    if test -n "$SILO_LIB"; then
-        PDB_INCLUDE="$SILO_INCLUDE"
-        PDB_LIB="$SILO_LIB"
-        PDB_TARGET="$""(PDB_TARGET)"
-        AC_MSG_RESULT(yes)
-        AC_SUBST(PDB_INCLUDE)
-        AC_SUBST(PDB_LIB)
-        AC_SUBST(PDB_TARGET)
-    fi
+AC_MSG_CHECKING(for PDB)
+PDB=""
+PDB_FLAGS=""
+PDB_LIBS=""
+PDB_EXEC=""
+AC_ARG_WITH(pdb,
+	    [  --with-pdb=INC-DIR,LIB-DIR      Location of PDB header and library],
+           pdb_specified="yes",
+           pdb_specified="no"
+           )
+if test "$pdb_specified" = "yes"; then
+   if test "$withval" != "no"; then
+      PDB_FLAGS="-I`echo $withval |cut -f1 -d,`"
+      PDB_LIBS="-L`echo $withval |cut -f2 -d, -s` -lpdb -lscore -lpml"
+      PDB="$""(PDB)"
+      PDB_EXEC="$""(PDBEXEC)"
+      AC_DEFINE(HAVE_PDB_PROPER, [1], [Define if you are using PDB proper instead of PDB lite.])
+      AC_MSG_RESULT(using PDB proper)
+   fi
 else
-    PDB_LIB="$PDB_LIB -lpdb -lscore -lpml"
-    AC_SUBST(PDB_LIB)
+   if test -n "$SILO_LIB"; then
+       PDB_FLAGS="$SILO_INCLUDE"
+       PDB_LIBS="$SILO_LIB"
+       PDB="$""(PDB)"
+       PDB_EXEC="$""(PDBEXEC)"
+       AC_MSG_RESULT(using PDB lite)
+   else
+       AC_MSG_RESULT(no)
+   fi
 fi
+AC_SUBST(PDB)
+AC_SUBST(PDB_FLAGS)
+AC_SUBST(PDB_LIBS)
+AC_SUBST(PDB_EXEC)
 
 #
 # Look for Mili.
@@ -2291,12 +2408,12 @@ AC_ARG_WITH(google_perftools,
 if test "$google_perftools_specified" = "yes"; then
    if test "$withval" != "no"; then
       TCMALLOC_DIR=`echo $withval | cut -f1 -d' '`
-      TCMALLOC_LIB="-ltcmalloc"
+      TCMALLOC_LIB="-ltcmalloc_minimal"
    fi
 else
    if test "$DEFAULT_TCMALLOC_DIR" != "" ; then
       TCMALLOC_DIR=$DEFAULT_TCMALLOC_DIR
-      TCMALLOC_LIB="-ltcmalloc"
+      TCMALLOC_LIB="-ltcmalloc_minimal"
    fi
 fi
 if test "$TCMALLOC_LIB" != "" ; then
@@ -2498,6 +2615,54 @@ AC_SUBST(H5PART)
 AC_SUBST(H5PART_INCLUDE)
 AC_SUBST(H5PART_LIB)
 AC_SUBST(H5PART_LIBDIR)
+
+#
+# Look for FastBit
+#
+AC_MSG_CHECKING(for FastBit)
+FASTBIT=""
+FASTBIT_INCLUDE=""
+FASTBIT_LIB=""
+FASTBIT_LIBDIR=""
+AC_ARG_WITH(fastbit,
+            [  --with-fastbit=INC-DIR,LIB-DIR       Location of FastBit headers and library],
+           fastbit_specified="yes",
+           fastbit_specified="no",
+           )
+if test "$fastbit_specified" = "yes"; then
+   if test "$withval" != "no"; then
+      FASTBIT_INCLUDE="-I`echo $withval |cut -f1 -d,`"
+      FASTBIT_LIB="-L`echo $withval |cut -f2 -d, -s`"
+      FASTBIT_LIBDIR="`echo $withval |cut -f2 -d, -s`"
+   fi
+else
+   if test "$DEFAULT_FASTBIT_INCLUDE" != "" ; then
+      FASTBIT_INCLUDE="-I$DEFAULT_FASTBIT_INCLUDE $FASTBIT_INCLUDE"
+   fi
+   if test "$DEFAULT_FASTBIT_LIB" != "" ; then
+      if test "$UNAME" = "Darwin"; then
+         # On Darwin librt does not exist
+         FASTBIT_LIB="-L$DEFAULT_FASTBIT_LIB -lfastbit"
+      else
+         # At least on Linux we need librt for fastbit
+         FASTBIT_LIB="-L$DEFAULT_FASTBIT_LIB -lfastbit -lrt"
+      fi
+   fi
+fi
+if test "$FASTBIT_LIB" != "" ; then
+   if test "$FASTBIT_INCLUDE" != "" ; then
+      FASTBIT="$""(FASTBIT)"
+      AC_MSG_RESULT(yes)
+   else
+      AC_MSG_RESULT(no)
+   fi
+else
+   AC_MSG_RESULT(no)
+fi
+AC_SUBST(FASTBIT)
+AC_SUBST(FASTBIT_INCLUDE)
+AC_SUBST(FASTBIT_LIB)
+AC_SUBST(FASTBIT_LIBDIR)
 
 #
 # Look for ViSUS 
@@ -2818,23 +2983,20 @@ if test -n "$with_itaps_impls" && test with_itaps_impls != "no"; then
         sed -i -e "s/ITAPS_C/${impl_name}/g" databases/$impl_name/*
 
         #
-        # Fix contents of the .xml file. Note that if the ITAPS_C.xml file
-        # ever gets re-generated, then it probably WILL NOT get formatted
-        # exactly how the following sed commands want it with, for example,
-        # <CXXFLAGS> and </CXXFLAGS> on the same line.
+        # Fix contents of the .xml file 
         #
         sed -i -e "s%<Extensions>\(.*\)</Extensions>%<Extensions>${impl_exts}</Extensions>%" databases/$impl_name/$impl_name.xml
-        sed -i -e "s%<CXXFLAGS>\(.*\)</CXXFLAGS>%<CXXFLAGS>-D${impl_name} $\(ITAPS_C${itaps_impl_id}_INCLUDE\)</CXXFLAGS>%" databases/$impl_name/$impl_name.xml
-        sed -i -e "s%<LIBS>\(.*\)</LIBS>%<LIBS>$\(ITAPS_C${itaps_impl_id}_LIB\)</LIBS>%" databases/$impl_name/$impl_name.xml
+        sed -i -e "s%<CXXFLAGS>\(.*\)</CXXFLAGS>%<CXXFLAGS>-D${impl_name} $\(ITAPS_C${itaps_impl_id}_INCLUDE)</CXXFLAGS>%" databases/$impl_name/$impl_name.xml
+        sed -i -e "s%<LIBS>\(.*\)</LIBS>%<LIBS>$\(ITAPS_C${itaps_impl_id}_LIB)</LIBS>%" databases/$impl_name/$impl_name.xml
 
         #
         # Fix the extensions in the PluginInfo.C file
         #
-
-        sed -i -e "/defaultExtensions.push_back/d" databases/$impl_name/${impl_name}PluginInfo.C
+        sed -i -e "s%defaultExtensions.push_back(\(.*\));%defaultExtensions.push_back(\"itaps_foo\");%" databases/$impl_name/${impl_name}PluginInfo.C
         for ext in $impl_exts; do
-            sed -i -e "/return defaultExtensions;/i \ \ \ \ defaultExtensions.push_back(\"${ext}\");" databases/$impl_name/${impl_name}PluginInfo.C
+            sed -i -e "1,/defaultExtensions.push_back/s%defaultExtensions.push_back(\"itaps_foo\");%defaultExtensions.push_back(\"${ext}\");%" databases/$impl_name/${impl_name}PluginInfo.C
         done
+        sed -i -e "/defaultExtensions.push_back(\"itaps_foo\");/d" databases/$impl_name/${impl_name}PluginInfo.C
 
         #
         # Make a warning file
@@ -2980,6 +3142,14 @@ ENGINE_CPPFLAGS="$ENGINE_CPPFLAGS $VTK_INCLUDES"
 AC_SUBST(ENGINE_CPPFLAGS)
 
 #
+# Add Some include paths to the SiloObjVtkDB's CPPFLAGS.
+#
+SILOOBJVTK_CPPFLAGS="$SILOOBJVTK_CPPFLAGS $VTK_INCLUDES"
+SILOOBJVTK_CPPFLAGS="$SILOOBJVTK_CPPFLAGS -I$""(TOPDIR)/include/visit"
+SILOOBJVTK_CPPFLAGS="$SILOOBJVTK_CPPFLAGS $SILO_INCLUDE"
+AC_SUBST(SILOOBJVTK_CPPFLAGS)
+
+#
 # Add some include paths to the preprocessor's includes CPPFLAGS.
 # Also add the parallel source files when building in parallel.
 #
@@ -3002,192 +3172,113 @@ VISIT_VTK_CPPFLAGS="$VISIT_VTK_CPPFLAGS $VTK_INCLUDES -I$""(TOPDIR)/include/visi
 AC_SUBST(VISIT_VTK_CPPFLAGS)
 AC_SUBST(VISIT_VTK_LDFLAGS)
 
-dnl
-dnl Add some include paths to the viewer includes.
-dnl
-VIEWER_CPPFLAGS="$VIEWER_CPPFLAGS $VTK_INCLUDES"
-VIEWER_CPPFLAGS="$VIEWER_CPPFLAGS $SILO_INCLUDE"
-AC_SUBST(VIEWER_CPPFLAGS)
+#
+# Check to see if we can compile with Gui support. If we can't then
+# make sure no windowing system stuff gets in.
+#
+if test ! "$enable_dbio_only" = yes; then
+    dnl
+    dnl Add some include paths to the viewer includes.
+    dnl
+    VIEWER_CPPFLAGS="$VIEWER_CPPFLAGS $VTK_INCLUDES"
+    VIEWER_CPPFLAGS="$VIEWER_CPPFLAGS $SILO_INCLUDE"
+    AC_SUBST(VIEWER_CPPFLAGS)
 
-dnl
-dnl Looking for a supported version of Qt.
-dnl
-if test -z "$QT_BIN" || test -z "$QT_INCLUDE" || test -z "$QT_LIB"; then
-   AC_MSG_ERROR([The QT_BIN, QT_INCLUDE and QT_LIB environment variables must be set in order to find Qt])
-fi
-AC_MSG_CHECKING(for supported Qt version)
-QtVersion=""
-QtVersion2=""
-consumeCount=-1
-toks=`$QT_BIN/qmake --version`
-for tok in $toks; do
-    if test "$tok" == "Qt"; then
-        consumeCount=2
+    dnl
+    dnl Looking for a supported version of Qt.
+    dnl
+    if test -z "$QT_BIN" || test -z "$QT_INCLUDE" || test -z "$QT_LIB"; then
+       AC_MSG_ERROR([The QT_BIN, QT_INCLUDE and QT_LIB environment variables must be set in order to find Qt])
     fi
-    if test $consumeCount == 0; then
-        QtVersion2=$tok
-        break
+    AC_MSG_CHECKING(for supported Qt version)
+    QtVersion=""
+    QtGlobalInc="$QT_INCLUDE/qglobal.h"
+
+    if test -f $QtGlobalInc; then
+        ## Check for supported versions of Qt.
+	for ver in  3.3.0  3.3.1  3.3.2  3.3.3  3.3.4 3.3.7 3.3.8 3.3.8b \
+                    3.2.0  3.2.1  3.2.2  3.2.3 \
+                    3.1.2  3.1.1  3.1.0 \
+                    3.0.4  3.0.3  3.0.2  3.0.1  3.0.0 \
+                    ; do
+            QtVer=`grep \"$ver\" $QtGlobalInc`
+            if test -n "$QtVer"; then
+                QtVersion=$ver
+                break
+            fi
+        done
+    fi
+
+    if test -z "$QtVersion"; then
+        AC_MSG_ERROR([  Sorry, but you need Qt version 3.0 or higher to compile VisIt. ])
     else
-        consumeCount=$((consumeCount-1))
+        AC_MSG_RESULT(Qt $QtVersion in $QT_INCLUDE)
     fi
-done
 
-## Check for supported versions of Qt.
-for ver in  4.4.0 4.4.1 4.4.2 4.4.3 4.4.4 4.4.5 \
-            4.5.0 4.5.1 4.5.2 4.5.3 4.5.4 4.5.5 \
-            4.6.0 4.6.1 4.6.2 4.6.3 4.6.4 4.6.5 ; do
-   if test "$QtVersion2" == "$ver"; then
-       QtVersion=$ver
-       break
-   fi
-done
+    if test -f $QT_LIB/libqt-mt.so -o -f $QT_LIB/libqt-mt.dylib; then
+	AC_MSG_RESULT(Linking to libqt-mt)
+	LIBQT=libqt-mt
+    	QT_LIBS=-lqt-mt
+    else
+	AC_MSG_RESULT(Linking to libqt)
+	LIBQT=libqt
+    	QT_LIBS=-lqt
+    fi
 
-if test -z "$QtVersion"; then
-    AC_MSG_ERROR([  Sorry, but you need Qt version 4.4.0 or higher to compile VisIt. ])
+    AC_SUBST(QT_BIN)
+    AC_SUBST(QT_INCLUDE)
+    AC_SUBST(QT_LIB)
+    AC_SUBST(LIBQT)
+    AC_SUBST(QT_LIBS)
+    QUI_LIBS=-lqui
+    AC_SUBST(QUI_LIBS)
+    QT_LDFLAGS=""
+    AC_SUBST(QT_LDFLAGS)
+    QT_STATICLDFLAGS=-L$QT_LIB
+    AC_SUBST(QT_STATICLDFLAGS)
+    if test "$UNAME" = "Darwin"; then
+        QTMAC_FLAGS="-DMACOSX_102"
+    fi
+    QT_CXXFLAGS="-I$""(TOPDIR)/include/qt $QT_CXXFLAGS $QTMAC_FLAGS"
+    AC_SUBST(QT_CXXFLAGS)
+    QT_MOC="$""(TOPDIR)/bin/moc"
+    AC_SUBST(QT_MOC)
 else
-    AC_MSG_RESULT(Qt $QtVersion in $QT_INCLUDE)
+    dnl We are building with ONLY off-screen graphics support. That
+    dnl means no X.
+    X_LIBS=""
+    AC_SUBST(X_LIBS)
+    X_CPPFLAGS=""
+    AC_SUBST(X_CPPFLAGS)
+    QT_BIN=""
+    AC_SUBST(QT_BIN)
+    QT_INCLUDE=""
+    AC_SUBST(QT_INCLUDE)
+    QT_LIB=""
+    AC_SUBST(QT_LIB)
+    QT_LIBS=""
+    AC_SUBST(QT_LIBS)
+    QUI_LIBS=""
+    AC_SUBST(QUI_LIBS)
+    QT_LDFLAGS=""
+    AC_SUBST(QT_LDFLAGS)
+    QT_CXXFLAGS=""
+    AC_SUBST(QT_CXXFLAGS)
+    QT_MOC=""
+    AC_SUBST(QT_MOC)
 fi
-
-# Set the Qt bin,include,lib directories
-AC_SUBST(QT_BIN)
-AC_SUBST(QT_INCLUDE)
-AC_SUBST(QT_LIB)
-
-# Set platform-specific options
-if test "$UNAME" = "Darwin"; then
-    QT_LDFLAGS="-F$""(TOPDIR)/lib -L$""(TOPDIR)/lib"
-
-    QT_CORE=QtCore.framework
-    QT_CORE_LIB="-framework QtCore"
-    
-    QT_GUI=QtGui.framework
-    QT_GUI_LIB="-framework QtGui"
-
-    QT_DESIGNER=QtDesigner.framework
-    QT_DESIGNER_LIB="-framework QtDesigner"
-
-    QT_HELP=QtHelp.framework
-    QT_HELP_LIB="-framework QtHelp"
-
-    QT_CLUCENE=libQtCLucene.
-    QT_CLUCENE_LIB="-lQtCLucene"
-
-    QT_NETWORK=QtNetwork.framework
-    QT_NETWORK_LIB="-framework QtNetwork"
-
-    QT_OPENGL=QtOpenGL.framework
-    QT_OPENGL_LIB="-framework QtOpenGL"
-
-    QT_SCRIPT=QtScript.framework
-    QT_SCRIPT_LIB="-framework QtScript"
-
-    QT_SQL=QtSql.framework
-    QT_SQL_LIB="-framework QtSql"
-
-    QT_SVG=QtSvg.framework
-    QT_SVG_LIB="-framework QtSvg"
-
-    QT_TEST=QtTest.framework
-    QT_TEST_LIB="-framework QtTest"
-
-    QT_XML=QtXml.framework
-    QT_XML_LIB="-framework QtXml"
-
-else 
-    QT_LDFLAGS="-L$""(TOPDIR)/lib"
-
-    QT_CORE=libQtCore.so
-    QT_CORE_LIB=-lQtCore
-
-    QT_GUI=libQtGui.so
-    QT_GUI_LIB=-lQtGui
-
-    QT_DESIGNER=libQtDesigner.so
-    QT_DESIGNER_LIB=-lQtDesigner
-    
-    QT_HELP=libQtHelp.so
-    QT_HELP_LIB=-lQtHelp
-
-    QT_CLUCENE=libQtCLucene.so
-    QT_CLUCENE_LIB=-lQtCLucene
-
-    QT_NETWORK=libQtNetwork.so
-    QT_NETWORK_LIB=-lQtNetwork
-
-    QT_OPENGL=libQtOpenGL.so
-    QT_OPENGL_LIB=-lQtOpenGL
-
-    QT_SCRIPT=libQtScript.so
-    QT_SCRIPT_LIB=-lQtScript
-
-    QT_SQL=libQtSql.so
-    QT_SQL_LIB=-lQtSql
-
-    QT_SVG=libQtSvg.so
-    QT_SVG_LIB=-lQtSvg
-
-    QT_TEST=libQtTest.so
-    QT_TEST_LIB=-lQtTest
-
-    QT_XML=libQtXml.so
-    QT_XML_LIB=-lQtXml
-
-fi
-AC_SUBST(QT_LDFLAGS)
-
-# Qt libraries
-QT_LIBS="$""(QT_CORE_LIB) $""(QT_GUI_LIB) $""(QT_DESIGNER_LIB) $""(QT_HELP_LIB) $""(QT_CLUCENE_LIB) $""(QT_NETWORK_LIB) $""(QT_OPENGL_LIB) $""(QT_SCRIPT_LIB) $""(QT_SQL_LIB) $""(QT_SVG_LIB) $""(QT_TEST_LIB) $""(QT_XML_LIB)"
-AC_SUBST(QT_LIBS)
-AC_SUBST(QT_CORE)
-AC_SUBST(QT_CORE_LIB)
-AC_SUBST(QT_DESIGNER)
-AC_SUBST(QT_DESIGNER_LIB)
-AC_SUBST(QT_GUI)
-AC_SUBST(QT_GUI_LIB)
-AC_SUBST(QT_HELP)
-AC_SUBST(QT_HELP_LIB)
-AC_SUBST(QT_CLUCENE)
-AC_SUBST(QT_CLUCENE_LIB)
-AC_SUBST(QT_NETWORK)
-AC_SUBST(QT_NETWORK_LIB)
-AC_SUBST(QT_OPENGL)
-AC_SUBST(QT_OPENGL_LIB)
-AC_SUBST(QT_SCRIPT)
-AC_SUBST(QT_SCRIPT_LIB)
-AC_SUBST(QT_SQL)
-AC_SUBST(QT_SQL_LIB)
-AC_SUBST(QT_SVG)
-AC_SUBST(QT_SVG_LIB)
-AC_SUBST(QT_TEST)
-AC_SUBST(QT_TEST_LIB)
-AC_SUBST(QT_XML)
-AC_SUBST(QT_XML_LIB)
-
-# UI library
-QT_QUI=libQtUiTools.a
-QT_QUI_LIB=-lQtUiTools
-AC_SUBST(QT_QUI)
-AC_SUBST(QT_QUI_LIB)
-
-# Include path
-QT_CXXFLAGS="-I$""(TOPDIR)/include/qt -I$""(TOPDIR)/include/qt/Qt -I$""(TOPDIR)/include/qt/QtCore -I$""(TOPDIR)/include/qt/QtGui -I$""(TOPDIR)/include/qt/QtDesigner -I$""(TOPDIR)/include/qt/QtHelp -I$""(TOPDIR)/include/qt/QtNetwork -I$""(TOPDIR)/include/qt/QtOpenGL -I$""(TOPDIR)/include/qt/QtScript -I$""(TOPDIR)/include/qt/QtSvg -I$""(TOPDIR)/include/qt/QtUiTools -I$""(TOPDIR)/include/qt/QtXml"
-AC_SUBST(QT_CXXFLAGS)
-
-# Path to moc
-QT_MOC="$""(TOPDIR)/bin/moc"
-AC_SUBST(QT_MOC)
 
 #
 # Only enable VTKQT if we're building the viewer. 
 #
-if test -n "$VIEWER"; then
+if test ! "$enable_dbio_only" = yes && test ! "$enable_engine_only" = yes && test ! "$enable_server_components_only" = yes; then
    VTKQT_CPPFLAGS="-I$""(TOPDIR)/vtkqt"
    VTKQT="vtkqt"
    #
    # TEMP HACK FOR BUILDING ON MacOS X.
    #
    if test "$UNAME" = "Darwin"; then
-      VTKQT_LIBS="-lvtkqt $""(QT_LDFLAGS) $""(QT_CORE_LIB) $""(QT_GUI_LIB) $""(QT_OPENGL_LIB)"
+      VTKQT_LIBS="-lvtkqt $QT_LIBS"
    else
       VTKQT_LIBS=""
    fi
@@ -3254,10 +3345,13 @@ fi
 #
 if test "$no_x" != "yes"; then
     AC_CHECK_LIB(X11,  main, X_LIBS="-lX11 -lXt $X_LIBS"         ,,$X_LIBS)
+    X_CPPFLAGS="-DHAVE_XLIB"
 else
     X_LIBS=""
+    X_CPPFLAGS=""
 fi
 AC_SUBST(X_LIBS)
+AC_SUBST(X_CPPFLAGS)
 
 #
 # Look for pthreads. If they are present then define a flag
@@ -3294,22 +3388,6 @@ AC_SUBST(PTHREAD_LIB)
 AC_SUBST(PTHREAD_CXXFLAGS)
 
 
-dnl
-dnl IceT check.
-dnl
-AX_ICET_OPTIONS
-if test "x$UseParallel" == "xno" -a "x$enable_icet" == "xyes" ; then
-	AC_MSG_ERROR([
-IceT usage requested, but you're not doing a parallel build.  IceT requires
-'--enable-parallel' to be specified.])
-elif test "x$UseParallel" == "xyes" -a "x$enable_icet" == "xyes" ; then
-	AX_CHECK_ICET
-fi
-dnl Always needed: this sets up the object files we'll build, and should
-dnl therefore be called even if IceT is disabled! (to explicitly set it to
-dnl nothing).
-AX_VISIT_ICET
-
 #
 # Do a check to determine the actual limit of an OSMesa
 # window size.  Unfortunately, this must be done using
@@ -3326,7 +3404,7 @@ if test "$UNAME" = "Linux"; then
 else
     LDFLAGS="-L$MESA/lib $LDFLAGS"
 fi
-LIBS="-lOSMesa -lMesaGL $GL_LIBS $X_LIBS $PTHREAD_LIB"
+LIBS="$MESA_LIBS $GL_LIBS $X_LIBS $PTHREAD_LIB"
 OSMESA_SIZE_LIMIT="4096"
 AC_TRY_RUN([
         #include <fstream>
@@ -3387,6 +3465,14 @@ if test "$enable_scripting" = "yes"; then
             PY_CXXFLAGS="-Wno-long-double -I$PY_INCLUDEDIR"
             ;;
     esac
+
+    AC_MSG_CHECKING(for PyParsing)
+    if test -r "$PYDIR/lib/$PYVERSION/site-packages/pyparsing.pyc" ; then
+        AC_MSG_RESULT(yes)
+        AC_DEFINE(HAVE_PYPARSING, [1], [Define if you have pyparsing.])
+    else
+        AC_MSG_RESULT(no)
+    fi   
 else
     PYDIR=""
     PYVERSION=""
@@ -3428,19 +3514,36 @@ this might have happened.]
 AC_TYPE_UID_T
 
 #
-# If tflops_override is 'no' then do the following checks.
+# Check to see if we want to use VisIt's no-spin Bcast function. We want to use it
+# unless the user gave --disable-nospin-bcast
 #
-if test 'no' = $tflops_override; then
-    dnl
-    dnl Check for library functions.  If we don't have one, we can't continue.
-    dnl
-    AC_CHECK_FUNCS(select div strerror,
-                   ,
-                   AC_MSG_ERROR([$0 wasn't able to find a necessary library
-                                function (see above).])
-                  )
+AC_ARG_ENABLE(nospin-bcast,
+              [  --disable-nospin-bcast           Use straight MPI_BCast instead of VisIt's no-spin BCast for getting commands from rank 0],
+              UseNoSpinBCast="$enable_nospin_bcast",UseNoSpinBCast=yes)
+if test "$UseNoSpinBCast" == "yes" ; then
+    AC_DEFINE(VISIT_USE_NOSPIN_BCAST, [1], [Define if we want to use VisIt's no-spin BCast.])
 fi
 
+#
+# Check to see if we want to use the select() function. We want to use it
+# unless the user gave --disable-select
+#
+AC_ARG_ENABLE(select,
+              [  --disable-select           build without using the select function],
+              UseSelect="$enable_select",UseSelect=yes)
+if test "$UseSelect" == "yes" ; then
+    SELECT_FUNCTION="select"
+    AC_DEFINE(HAVE_SELECT, [1], [Define if we want to use select function.])
+fi
+
+#
+# Check for library functions.  If we don't have one, we can't continue.
+#
+AC_CHECK_FUNCS($SELECT_FUNCTION div strerror,
+               ,
+               AC_MSG_ERROR([$0 wasn't able to find a necessary library
+                            function (see above).])
+              )
 
 #
 # Figure out how to create shared libraries
@@ -3648,6 +3751,7 @@ AC_SUBST(ENGINEWRAPPAR)
 # these libraries are statically linked into the database plugins 
 # and on MacOS X they are dynamically linked.
 #
+CREATE_SILO_LINK=""
 CREATE_MILI_LINK=""
 CREATE_HDF4_LINK=""
 CREATE_NETCDF_LINK=""
@@ -3658,9 +3762,13 @@ CREATE_BOXLIB2D_LINK=""
 CREATE_BOXLIB3D_LINK=""
 CREATE_CFITSIO_LINK=""
 CREATE_H5PART_LINK=""
+CREATE_FASTBIT_LINK=""
 CREATE_CCMIO_LINK=""
 case $UNAME in
   Darwin)
+    if test "$SILO_LIB" != "" ; then
+        CREATE_SILO_LINK="create_silo_link"
+    fi
     if test "$MILI_LIBS" != "" ; then
         CREATE_MILI_LINK="create_mili_link"
     fi
@@ -3691,11 +3799,15 @@ case $UNAME in
     if test "$H5PART_LIB" != "" ; then
         CREATE_H5PART_LINK="create_h5part_link"
     fi
+    if test "$FASTBIT_LIB" != "" ; then
+        CREATE_FASTBIT_LINK="create_fastbit_link"
+    fi
     if test "$CCMIO_LIBS" != "" ; then
         CREATE_CCMIO_LINK="create_ccmio_link"
     fi
   ;;
 esac
+AC_SUBST(CREATE_SILO_LINK)
 AC_SUBST(CREATE_MILI_LINK)
 AC_SUBST(CREATE_HDF4_LINK)
 AC_SUBST(CREATE_NETCDF_LINK)
@@ -3706,6 +3818,7 @@ AC_SUBST(CREATE_BOXLIB2D_LINK)
 AC_SUBST(CREATE_BOXLIB3D_LINK)
 AC_SUBST(CREATE_CFITSIO_LINK)
 AC_SUBST(CREATE_H5PART_LINK)
+AC_SUBST(CREATE_FASTBIT_LINK)
 AC_SUBST(CREATE_CCMIO_LINK)
 AC_SUBST(VAC_CV_LIBDIR_CREATE_LINKS)
 AC_SUBST(VAC_CV_LIBDIR_DESTROY_LINKS)
@@ -3871,11 +3984,7 @@ else
     MDSERVER_FILES=""
 fi
 
-if test -n "$GUI"; then
-    GUI_FILES="gui/Makefile"
-else
-    GUI_FILES=""
-fi
+GUI_FILES="gui/Makefile"
 
 if test -n "$HELP"; then
     HELP_FILES="help/Makefile"
@@ -3939,6 +4048,7 @@ TOOLS_FILES="tools/Makefile
              tools/mpeg2encode/Makefile
              tools/mpeg_encode/Makefile
              tools/protocol/Makefile
+             tools/silex/Makefile
              tools/surfcomp/Makefile
              tools/windowmaker/Makefile 
              tools/writer/Makefile 
@@ -3947,7 +4057,8 @@ TOOLS_FILES="tools/Makefile
 VISIT_VTK_FILES="visit_vtk/Makefile
                  visit_vtk/lightweight/Makefile
                  visit_vtk/full/Makefile
-                 visit_vtk/parallel/Makefile"
+                 visit_vtk/parallel/Makefile
+                 visit_vtk/rendering/Makefile"
 COMPONENT_FILES="avt/Makefile
                  avt/DBAtts/Makefile
                  avt/DDF/Makefile
@@ -3995,8 +4106,7 @@ THIRD_PARTY_BUILTIN_FILES="third_party_builtin/Makefile
                            third_party_builtin/slivr/slivr/Makefile
                            third_party_builtin/slivr/teem/Makefile
                            third_party_builtin/bow/Makefile
-                           third_party_builtin/cognomen/Makefile
-                           third_party_builtin/Tuvok/Makefile"
+                           third_party_builtin/cognomen/Makefile"
 
 if test "$enable_scripting" = "yes"; then
     VISITPY_FILES="visitpy/Makefile
@@ -4017,6 +4127,122 @@ LAUNCHER_FILES="launcher/Makefile
                 launcher/rpc/Makefile
                 launcher/proxy/Makefile
                 launcher/main/Makefile"
+
+dnl
+dnl Disable many things if we're doing a dbio only build
+dnl
+if test "$enable_dbio_only" = yes; then
+    CONVERT_SER=""
+    CONVERT_PAR=""
+    SUBDIRS="$""(SUBDIRS_DBIO_ONLY)"
+    ALLSUBDIRS="$""(ALLSUBDIRS_DBIO_ONLY)"
+    SRC="$""(SRC_DBIO_ONLY)"
+    BUILD_DBIO_ONLY="$""(BUILD_DBIO_ONLY)"
+    MDSERVERLIB="$""(MDSO)"
+    MDSERVEROBJ="$""(MOBJ)"
+    ENGINELIBSER="$""(ESERDSO)"
+    ENGINELIBPAR="$""(EPARDSO)"
+    GUI_FILES=""
+    HELP_FILES=""
+    WINUTIL_FILES=""
+    VIEWER_FILES=""
+    ENGINE_FILES=""
+    MDSERVER_FILES=""
+    LAUNCHER_FILES=""
+    VTKQT_FILES=""
+    PLOT_FILES=""
+    OPERATOR_FILES=""
+    VISITPY_FILES=""
+    SIMULATION=""
+    SIMULATION_PROTOTYPE_FILES=""
+    CQSCORE_FILES=""
+    JAVA_FILES=""
+    THIRD_PARTY_BUILTIN_FILES="
+        third_party_builtin/Makefile
+        third_party_builtin/bilib/Makefile
+        third_party_builtin/bow/Makefile"
+    TOOLS_FILES="
+        tools/Makefile
+        tools/convert/Makefile
+        bin/topdir"
+    VISIT_VTK_FILES="
+        visit_vtk/Makefile
+        visit_vtk/lightweight/Makefile
+        visit_vtk/full/Makefile"
+    COMPONENT_FILES="
+        avt/Makefile
+        avt/DBAtts/Makefile
+        avt/Database/Makefile
+        avt/Pipeline/Makefile"
+fi
+if test "$enable_engine_only" = yes; then
+    CONVERT_SER=""
+    CONVERT_PAR=""
+    SUBDIRS="$""(SUBDIRS_ENGINE_ONLY)"
+    ALLSUBDIRS="$""(ALLSUBDIRS_ENGINE_ONLY)"
+#    SRC="$""(SRC_ENGINE_ONLY)"
+    GUI_FILES=""
+    HELP_FILES=""
+    WINUTIL_FILES=""
+    VIEWER_FILES=""
+    MDSERVER_FILES=""
+    LAUNCHER_FILES=""
+    VTKQT_FILES=""
+    VISITPY_FILES=""
+    CQSCORE_FILES=""
+    JAVA_FILES=""
+    TOOLS_FILES=""
+    COMPONENT_FILES="avt/Makefile
+                 avt/DBAtts/Makefile
+                 avt/DDF/Makefile
+                 avt/Database/Makefile
+                 avt/Expressions/Makefile
+                 avt/FileWriter/Makefile
+                 avt/Filters/Makefile
+                 avt/IVP/Makefile
+                 avt/Math/Makefile
+                 avt/MIR/Makefile
+                 avt/Pipeline/Makefile
+                 avt/Plotter/Makefile
+                 avt/Preprocessor/Makefile
+                 avt/Queries/Makefile
+                 avt/Shapelets/Makefile
+                 avt/View/Makefile
+                 avt/VisWindow/Makefile"
+fi
+if test "$enable_server_components_only" = yes; then
+    CONVERT_SER=""
+    CONVERT_PAR=""
+    SUBDIRS="$""(SUBDIRS_SERVER_COMPONENTS_ONLY)"
+    ALLSUBDIRS="$""(ALLSUBDIRS_SERVER_COMPONENTS_ONLY)"
+#    SRC="$""(SRC_SERVER_COMPONENTS_ONLY)"
+    GUI_FILES=""
+    HELP_FILES=""
+    WINUTIL_FILES=""
+    VIEWER_FILES=""
+    VTKQT_FILES=""
+    VISITPY_FILES=""
+    CQSCORE_FILES=""
+    JAVA_FILES=""
+    TOOLS_FILES=""
+    COMPONENT_FILES="avt/Makefile
+                 avt/DBAtts/Makefile
+                 avt/DDF/Makefile
+                 avt/Database/Makefile
+                 avt/Expressions/Makefile
+                 avt/FileWriter/Makefile
+                 avt/Filters/Makefile
+                 avt/IVP/Makefile
+                 avt/Math/Makefile
+                 avt/MIR/Makefile
+                 avt/Pipeline/Makefile
+                 avt/Plotter/Makefile
+                 avt/Preprocessor/Makefile
+                 avt/Queries/Makefile
+                 avt/Shapelets/Makefile
+                 avt/View/Makefile
+                 avt/VisWindow/Makefile"
+fi
 
 AC_OUTPUT($STANDARD_FILES
           $GUI_FILES
@@ -4062,17 +4288,23 @@ fi
 (cd include   && ${MAKE-make})
 (cd lib       && ${MAKE-make})
 (cd bin       && ${MAKE-make})
-rm -f $TOPDIR/exe/xml2makefile
-(cd tools/xml && ${MAKE-make} $TOPDIR/exe/xml2makefile)
+if test ! "$enable_dbio_only" = yes; then
+    rm -f $TOPDIR/exe/xml2makefile
+    (cd tools/xml && ${MAKE-make} $TOPDIR/exe/xml2makefile)
+fi
 
 # If we 're on a Darwin system, make bundles for the gui and the viewer.
 if test "$UNAME" = "Darwin";  then
     svn_bin/makebundles
 fi
 
-(cd plots     && ${MAKE-make} dirmakefiles)
-(cd operators && ${MAKE-make} dirmakefiles)
-(cd databases && ${MAKE-make} dirmakefiles)
+if test ! "$enable_dbio_only" = yes; then
+    (cd plots     && ${MAKE-make} dirmakefiles)
+    (cd operators && ${MAKE-make} dirmakefiles)
+    (cd databases && ${MAKE-make} dirmakefiles)
+else
+    (cd databases && ${MAKE-make} dirmakefiles_dbio_only)
+fi
 if test -n "$JAVA_TARGET"; then
 (cd java      && ${MAKE-make} version)
 fi

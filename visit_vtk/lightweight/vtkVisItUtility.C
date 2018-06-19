@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -1078,12 +1078,17 @@ vtkVisItUtility::Create1DRGrid(int nXCoords, int type)
 //  Programmer: Kathleen Bonnell 
 //  Creation:   August 14, 2006
 //
+//  Modifications:
+//    Kathleen Bonnell, Thu Jun 11 08:21:51 PDT 2009
+//    Added optional tolerance argument.
 // ****************************************************************************
 
 bool 
-vtkVisItUtility::PointsEqual(double pt1[3], double pt2[3])
+vtkVisItUtility::PointsEqual(double pt1[3], double pt2[3], const double *_eps)
 {
     double eps = 1e-6;
+    if (_eps != NULL && *_eps < eps)
+        eps = *_eps;
     bool e1 = false, e2 = false, e3 = false;
     if ((pt1[0] > pt2[0] - eps) && (pt1[0] < pt2[0]+eps))
         e1 = true;

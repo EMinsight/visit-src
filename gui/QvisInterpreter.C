@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,8 +37,8 @@
 *****************************************************************************/
 
 #include <QvisInterpreter.h>
-#include <QApplication>
-#include <QTimer>
+#include <qapplication.h>
+#include <qtimer.h>
 #include <vectortypes.h>
 #include <ViewerProxy.h>
 #include <ClientMethod.h>
@@ -57,13 +57,11 @@
 // Creation:   Mon May 9 10:00:08 PDT 2005
 //
 // Modifications:
-//   Brad Whitlock, Fri May 30 15:41:41 PDT 2008
-//   Removed name.
-//
+//   
 // ****************************************************************************
 
-QvisInterpreter::QvisInterpreter(QObject *parent) :
-    QObject(parent), GUIBase(), pendingCommands()
+QvisInterpreter::QvisInterpreter(QObject *parent, const char *name) :
+    QObject(parent, name), GUIBase(), pendingCommands()
 {
 }
 
@@ -107,7 +105,7 @@ QvisInterpreter::~QvisInterpreter()
 void
 QvisInterpreter::Interpret(const QString &s)
 {
-    std::string code(s.toStdString());
+    std::string code(s.latin1());
 
     // Add the code to the pending commands.
     if(code.size() > 0)

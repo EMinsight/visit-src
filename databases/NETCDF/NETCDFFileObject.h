@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -57,9 +57,12 @@ typedef enum {NO_TYPE, CHARARRAY_TYPE, UCHARARRAY_TYPE, SHORTARRAY_TYPE,
 // Creation:   Fri Aug 12 10:07:08 PDT 2005
 //
 // Modifications:
-//   
 //   Mark C. Miller, Tue Aug 15 15:28:11 PDT 2006
 //   Added method for partial read to support on-the-fly domain decomp
+//
+//   Brad Whitlock, Tue Oct 27 14:28:08 PDT 2009
+//   Added GetDimensionInfo method.
+//
 // ****************************************************************************
 
 class NETCDFFileObject
@@ -92,6 +95,8 @@ public:
     bool ReadVariableIntoAsFloat(const char *varname, float *arr);
 
     bool GetVarId(const char *name, int *varid);
+
+    bool GetDimensionInfo(const char *dName, size_t *size);
 
     void HandleError(int status) const;
     void PrintFileContents(ostream &os);

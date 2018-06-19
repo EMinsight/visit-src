@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -41,6 +41,9 @@
 #include <LauncherApplication.h>
 #include <ConnectionGroup.h>
 #include <SocketConnection.h>
+#include <Utility.h>
+#include <vectortypes.h>
+
 #if defined(PANTHERHACK)
 // Broken on Panther
 #else
@@ -359,9 +362,9 @@ LauncherApplication::Execute(int *argc, char **argv[])
 // Creation:   Fri May 2 17:29:41 PST 2003
 //
 // Modifications:
-//    Jeremy Meredith, Thu May 24 11:25:31 EDT 2007
-//    Added detection of the SSH tunneling argument.  This is how
-//    the client tells us the SSH port forwarding is in effect.
+//   Jeremy Meredith, Thu May 24 11:25:31 EDT 2007
+//   Added detection of the SSH tunneling argument.  This is how
+//   the client tells us the SSH port forwarding is in effect.
 //   
 // ****************************************************************************
 
@@ -738,12 +741,17 @@ LauncherApplication::ProcessInput()
 //    Thomas R. Treadway, Mon Oct  8 13:27:42 PDT 2007
 //    Backing out SSH tunneling on Panther (MacOS X 10.3)
 //
+//    Brad Whitlock, Mon Apr 27 16:31:23 PST 2009
+//    I changed the routine so the check for setting up the bridge is passed
+//    in rather than calculated in here from launch arguments.
+//
 // ****************************************************************************
 #if defined(PANTHERHACK)
 // Broken on Panther
 #else
 void
-LauncherApplication::SetupGatewaySocketBridgeIfNeeded(stringVector &launchArgs)
+LauncherApplication::SetupGatewaySocketBridgeIfNeeded(stringVector &launchArgs, 
+    bool doBridge)
 {
     const char *mName="LauncherApplication::SetupGatewaySocketBridgeIfNeeded: ";
 
@@ -752,23 +760,13 @@ LauncherApplication::SetupGatewaySocketBridgeIfNeeded(stringVector &launchArgs)
 
     debug5 << mName << "SSH Tunneling was enabled\n";
 
-    // Detect if we're launching a parallel engine
-    bool launching_parallel = false;
-    bool launching_engine   = false;
+    // Get the port and host.
     int  oldlocalport       = -1;
     int  portargument       = -1;
     int  hostargument       = -1;
     for (size_t i=0; i<launchArgs.size(); i++)
     {
-        if (launchArgs[i] == "-np" || launchArgs[i] == "-par")
-        {
-            launching_parallel = true;
-        }
-        else if (launchArgs[i] == "-engine")
-        {
-            launching_engine = true;
-        }
-        else if (i<launchArgs.size()-1 && launchArgs[i] == "-port")
+        if (i<launchArgs.size()-1 && launchArgs[i] == "-port")
         {
             oldlocalport = atoi(launchArgs[i+1].c_str());
             portargument = i+1;
@@ -779,7 +777,7 @@ LauncherApplication::SetupGatewaySocketBridgeIfNeeded(stringVector &launchArgs)
         }
     }
 
-    if (launching_parallel && launching_engine)
+    if (doBridge && portargument != -1 && hostargument != -1)
     {
         debug5 << mName << "Parallel Engine launch detected; "
                << "Setting up gateway port bridge.\n";
@@ -872,6 +870,10 @@ LauncherApplication::SetupGatewaySocketBridgeIfNeeded(stringVector &launchArgs)
 //   I added support for forwarding child process stdout to VCL through a pipe
 //   so we can forward that output to the client.
 //
+//   Brad Whitlock, Mon Apr 27 16:31:23 PST 2009
+//   I moved the testing for parallel & engine up to here so I can call
+//   SetupGatewaySocketBridgeIfNeeded when I need to connect to simulations.
+//
 // ****************************************************************************
 
 void
@@ -891,7 +893,21 @@ LauncherApplication::LaunchProcess(const stringVector &origLaunchArgs)
 #if defined(PANTHERHACK)
 // Broken on Panther
 #else
-    SetupGatewaySocketBridgeIfNeeded(launchArgs);
+    bool launching_parallel = false;
+    bool launching_engine = false;
+    for (size_t i=0; i<launchArgs.size(); i++)
+    {
+        if (launchArgs[i] == "-np" || launchArgs[i] == "-par")
+        {
+            launching_parallel = true;
+        }
+        else if (launchArgs[i] == "-engine")
+        {
+            launching_engine = true;
+        }
+    }
+    bool doBridge = launching_parallel && launching_engine;
+    SetupGatewaySocketBridgeIfNeeded(launchArgs, doBridge);
 #endif
 
     std::string remoteProgram(launchArgs[0]);
@@ -996,6 +1012,65 @@ LauncherApplication::LaunchProcess(const stringVector &origLaunchArgs)
 }
 
 // ****************************************************************************
+// Method: GetSSHClient
+//
+// Purpose: 
+//   Gets the SSH_CLIENT variable if it exists.
+//
+// Arguments:
+//   sshClient : The return variable.
+//
+// Returns:    True on success; false on failure.
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri Apr 24 15:21:18 PDT 2009
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+bool
+GetSSHClient(std::string &sshClient)
+{
+    bool retval = false;
+    const char *s = NULL;
+    if((s = getenv("SSH_CLIENT")) != NULL)
+    {
+        stringVector sv = SplitValues(s, ' ');
+        if(sv.size() > 0)
+        {
+            retval = true;
+            sshClient = sv[0];
+        }
+    }
+    else if((s = getenv("SSH2_CLIENT")) != NULL)
+    {
+        stringVector sv = SplitValues(s, ' ');
+        if(sv.size() > 0)
+        {
+            retval = true;
+            sshClient = sv[0];
+        }
+    }
+    else if((s = getenv("SSH_CONNECTION")) != NULL)
+    {
+        stringVector sv = SplitValues(s, ' ');
+        if(sv.size() > 0)
+        {
+            retval = true;
+            sshClient = sv[0];
+        }
+    }
+    else
+    {
+        debug1 << "None of the SSH environment variables were set!" << endl;
+    }
+    return retval;
+}
+
+// ****************************************************************************
 //  Method:  LauncherApplication::ConnectSimulation
 //
 //  Purpose:
@@ -1019,15 +1094,68 @@ LauncherApplication::LaunchProcess(const stringVector &origLaunchArgs)
 //    Hank Childs, Fri Jun  9 15:53:20 PDT 2006
 //    Replace sprintf(tmp, "") with strcpy(tmp, "") to remove compiler warning.
 //
+//    Brad Whitlock, Fri Apr 24 15:21:58 PDT 2009
+//    I fixed "parse from ssh_client" for simulations.
+//
+//    Brad Whitlock, Mon Apr 27 16:31:23 PST 2009
+//    I added support for SSH tunnelling.
+//
 // ****************************************************************************
+
 void
-LauncherApplication::ConnectSimulation(const stringVector &launchArgs,
+LauncherApplication::ConnectSimulation(const stringVector &origLaunchArgs,
                                        const std::string &simHost, int simPort,
                                        const std::string &simSecurityKey)
 {
+    const char *mName = "LauncherApplication::ConnectSimulation: ";
     int                s;
     struct hostent     *hp;
     struct sockaddr_in server;
+    stringVector       launchArgs;
+    size_t             i;
+
+    debug1 << mName << "origLaunchArgs={";
+    for(int i = 0; i < origLaunchArgs.size(); ++i)
+        debug1 << origLaunchArgs[i] << " ";
+    debug1 << "}" << endl;
+    debug1 << "simHost=" << simHost << endl;
+    debug1 << "simPort=" << simPort << endl;
+    debug1 << "simSecurityKey=" << simSecurityKey << endl;
+
+    //
+    // Convert -guesshost to -host XXXX
+    //
+    for (size_t i=0; i<origLaunchArgs.size(); i++)
+    {
+        if(origLaunchArgs[i] == "-guesshost")
+        {
+            // replace -guesshost with -host XXXX
+            std::string sshClient;
+            if(GetSSHClient(sshClient))
+            {
+                launchArgs.push_back("-host");
+                launchArgs.push_back(sshClient);
+            }
+        }
+        else        
+            launchArgs.push_back(origLaunchArgs[i]);
+    }
+
+    debug1 << mName << "AFTER -guesshost conversion: launchArgs={";
+    for(int i = 0; i < launchArgs.size(); ++i)
+        debug1 << launchArgs[i] << " ";
+    debug1 << "}" << endl;
+
+    // Set up an extra indirection if we're tunneling and 
+    // launching a parallel engine.  SSH port forwarding
+    // is typically restricted to forwarding from localhost
+    // which doesn't work if we're on a compute node.
+    SetupGatewaySocketBridgeIfNeeded(launchArgs, true);
+
+    debug1 << mName << "AFTER Socket Bridge: launchArgs={";
+    for(int i = 0; i < launchArgs.size(); ++i)
+        debug1 << launchArgs[i] << " ";
+    debug1 << "}" << endl;
 
     //
     // Get the simulation host information
@@ -1161,6 +1289,8 @@ LauncherApplication::ConnectSimulation(const stringVector &launchArgs,
 //   Brad Whitlock, Tue Jul 29 11:39:03 PDT 2003
 //   Changed interface to ParentProcess::Connect.
 //
+//   Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//   Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 
 void
@@ -1177,7 +1307,7 @@ LauncherApplication::TerminateConnectionRequest(int argc, char *argv[])
         // Connect back to the process and say that we could not connect.
         killer.Connect(1, 1, &argc, &argv, true, 3);
     }
-    CATCHALL(...)
+    CATCHALL
     {
         // We know that we're going to get here, but no action is required.
     }

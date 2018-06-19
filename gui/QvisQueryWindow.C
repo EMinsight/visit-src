@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -38,21 +38,20 @@
 
 #include <stdio.h>
 #include <QvisQueryWindow.h>
-#include <QButtonGroup>
-#include <QComboBox>
-#include <QCheckBox>
-#include <QDir>
-#include <QFileDialog>
-#include <QGroupBox>
-#include <QLabel>
-#include <QLineEdit>
-#include <QLayout>
-#include <QListWidget>
-#include <QTextEdit>
-#include <QPushButton>
-#include <QRadioButton>
-#include <QStringList>
-#include <QTextStream>
+#include <qbuttongroup.h>
+#include <qcombobox.h>
+#include <qcheckbox.h>
+#include <qdir.h>
+#include <qfiledialog.h>
+#include <qgroupbox.h>
+#include <qlabel.h>
+#include <qlineedit.h>
+#include <qlayout.h>
+#include <qlistbox.h>
+#include <qmultilineedit.h>
+#include <qpushbutton.h>
+#include <qradiobutton.h>
+#include <qstringlist.h>
 
 #include <QueryAttributes.h>
 #include <PickAttributes.h>
@@ -197,138 +196,161 @@ QvisQueryWindow::~QvisQueryWindow()
 //   Brad Whitlock, Tue Apr  8 15:44:16 PDT 2008
 //   Support for internationalization.
 //
-//   Cyrus Harrison, Tue Jun 24 16:21:00 PDT 2008
-//   Initial Qt4 Port.
-//
 //   Kathleen Bonnell, Tue Jun 24 11:18:13 PDT 2008
 //   Added varsButton, varsLineEdit.
+//
+//   Eric Brugger, Mon May 11 13:48:58 PDT 2009
+//   Corrected the layout of some of the widgets in the arguments panel so
+//   that the fourth text line isn't clobbered by the variable controls.
 //
 // ****************************************************************************
 
 void
 QvisQueryWindow::CreateWindowContents()
 {
-    QHBoxLayout *hLayout = new QHBoxLayout();
-    topLayout->addLayout(hLayout);
-    QVBoxLayout *vLayout= new QVBoxLayout();
-    hLayout->addLayout(vLayout);
+    QHBoxLayout *hLayout = new QHBoxLayout(topLayout);
+    QVBoxLayout *vLayout = new QVBoxLayout(hLayout);
 
     // Create the display mode
-    displayMode = new QComboBox(central);
-    displayMode->addItem(tr("All"));
+    displayMode = new QComboBox(central, "displayMode");
+    displayMode->insertItem(tr("All"), 0);
     for (int i = 0 ; i < QueryList::NumGroups ; i++)
     {
-        QString groupName(QueryList::Groups_ToString((QueryList::Groups)i).c_str());
-
-        // if the groupName ends in "Related", replace with "-related"
-        if(groupName.indexOf("Related") ==  groupName.size() - QString("Related").size())
-            groupName.replace("Related","-related");
-        displayMode->addItem(groupName);
+        string groupName = QueryList::Groups_ToString((QueryList::Groups) i);
+        const char *str = groupName.c_str();
+        int len = strlen(str);
+        int related_len = strlen("Related");
+        if (len > related_len)
+        {
+            if (strncmp(str + len - related_len, "Related", related_len) == 0)
+            {
+                char buff[1024];
+                strcpy(buff, str);
+                char *overwrite = buff + len - related_len;
+                strcpy(overwrite, "-related");
+                displayMode->insertItem(buff, i+1);
+            }
+            else
+            {
+                displayMode->insertItem(str, i+1);
+            }
+        }
     }
-
-    displayMode->addItem(tr("All queries-over-time"), QueryList::NumGroups+1);
+    displayMode->insertItem(tr("All queries-over-time"), 
+                            QueryList::NumGroups+1);
     connect(displayMode, SIGNAL(activated(int)),
             this, SLOT(displayModeChanged(int)));
     
-    vLayout->addWidget(new QLabel(tr("Display "), central));
+    vLayout->addWidget(new QLabel(displayMode, tr("Display "), central, 
+                       "displayLabel"));
     vLayout->addWidget(displayMode);
 
+
     // Create the query list.
-    queryList = new QListWidget(central);
-    
-    connect(queryList, SIGNAL(currentRowChanged(int)),
+    queryList = new QListBox(central, "queryList");
+    queryList->setSelectionMode(QListBox::Single);
+    connect(queryList, SIGNAL(selectionChanged()),
             this, SLOT(selectQuery()));
-    QLabel *queryLabel = new QLabel(tr("Queries"), central);
+    QLabel *queryLabel = new QLabel(queryList, tr("Queries"), central,
+                                    "queryLabel");
     vLayout->addWidget(queryLabel);
     vLayout->addWidget(queryList);
 
     // Create the argument panel with its several text fields.
-    argPanel = new QGroupBox(central);
+    argPanel = new QGroupBox(central, "argPanel");
     argPanel->setTitle(tr("Query parameters"));
-
+    argPanel->setMargin(10);
     hLayout->addWidget(argPanel);
     QVBoxLayout *gLayout = new QVBoxLayout(argPanel);
-    QGridLayout *sLayout = new QGridLayout();
-    sLayout->setMargin(0);
-    gLayout->addLayout(sLayout);
-
+    gLayout->addSpacing(15);
+    QGridLayout *sLayout = new QGridLayout(gLayout, 8, 2);
+    sLayout->setMargin(10);
+    sLayout->setSpacing(5);
+//    sLayout->addRowSpacing(0, 15);
     for(int i = 0; i < 4; ++i)
     {
         QString name1, name2;
         name1.sprintf("queryArgLabel%02d", i);
         name2.sprintf("queryArgText%02d", i);
-        textFields[i] = new QLineEdit(name2,argPanel);
+        textFields[i] = new QLineEdit(argPanel, name2.ascii());
         connect(textFields[i], SIGNAL(returnPressed()),
                 this, SLOT(handleText()));
         textFields[i]->hide();
         sLayout->addWidget(textFields[i], i+1, 1);
-        labels[i] = new QLabel(name1,argPanel);
+        labels[i] = new QLabel(argPanel, name1.ascii());
         labels[i]->hide();
         sLayout->addWidget(labels[i], i+1, 0);
     }
     varsButton = new QvisVariableButton(true, false, true, queryVarTypes,
-                                        argPanel);
+                                        argPanel, "varsButton");
     varsButton->setText(tr("Variables"));
     varsButton->setChangeTextOnVariableChange(false);
     varsButton->hide();
     connect(varsButton, SIGNAL(activated(const QString &)),
             this, SLOT(addVariable(const QString &)));
-    sLayout->addWidget(varsButton, 4, 0);
+    sLayout->addWidget(varsButton, 5, 0);
 
-    varsLineEdit = new QLineEdit(argPanel);
+    varsLineEdit = new QLineEdit(argPanel, "varsLineEdit");
     varsLineEdit->setText("default"); 
     varsLineEdit->hide();
     connect(varsLineEdit, SIGNAL(returnPressed()),
             this, SLOT(handleText()));
-    sLayout->addWidget(varsLineEdit, 4, 1);
+    sLayout->addMultiCellWidget(varsLineEdit, 5, 5, 1, 3);
   
-    useGlobal = new QCheckBox(tr("Use Global Id"), argPanel);
+    useGlobal = new QCheckBox(tr("Use Global Id"), argPanel, "useGlobal");
     connect(useGlobal, SIGNAL(toggled(bool)), this, 
             SLOT(useGlobalToggled(bool)));
     useGlobal->hide();
-    sLayout->addWidget(useGlobal, 5, 0, 1, 2);
+    sLayout->addMultiCellWidget(useGlobal, 6, 6, 0, 1);
   
     // Add the data options radio button group to the argument panel.
-    dataOpts = new QButtonGroup(argPanel);
-    QRadioButton *origData = new QRadioButton(tr("Original Data"), argPanel);
-    dataOpts->addButton(origData,0);
-    sLayout->addWidget(origData, 6, 0);
-    QRadioButton *actualData = new QRadioButton(tr("Actual Data"), argPanel);
-    dataOpts->addButton(actualData,1);
-    dataOpts->button(0)->setChecked(true);
-    sLayout->addWidget(actualData, 7, 0);
+    dataOpts = new QButtonGroup(0, "dataOpts");
+    QRadioButton *origData = new QRadioButton(tr("Original Data"), 
+                                              argPanel, "origData");
+    dataOpts->insert(origData);
+    sLayout->addWidget(origData, 7, 0);
+    QRadioButton *actualData = new QRadioButton(tr("Actual Data"), 
+                                                argPanel, "actualData");
+    dataOpts->insert(actualData);
+    dataOpts->setButton(0);
+    sLayout->addWidget(actualData, 8, 0);
 
     // Add the time button to the argument panel.
     gLayout->addStretch(10);
-    QHBoxLayout *tbLayout = new QHBoxLayout();
-    gLayout->addLayout(tbLayout);
+    QHBoxLayout *tbLayout = new QHBoxLayout(gLayout);
     tbLayout->addStretch(5);
-    timeQueryButton = new QPushButton(tr("Time Curve"), argPanel);
+    timeQueryButton = new QPushButton(tr("Time Curve"), 
+                                      argPanel, "timeQueryButton");
     connect(timeQueryButton, SIGNAL(clicked()),
             this, SLOT(timeApply()));
     tbLayout->addWidget(timeQueryButton);
     tbLayout->addStretch(5);
-    gLayout->addStretch(5);
+    gLayout->addSpacing(10);
 
     // Add the query button to the argument panel.
-    QHBoxLayout *qbLayout = new QHBoxLayout();
-    gLayout->addLayout(qbLayout);
-    queryButton = new QPushButton(tr("Query"), argPanel);
+    gLayout->addStretch(10);
+    QHBoxLayout *qbLayout = new QHBoxLayout(gLayout);
+    qbLayout->addStretch(5);
+    queryButton = new QPushButton(tr("Query"), argPanel, "queryButton");
     connect(queryButton, SIGNAL(clicked()),
             this, SLOT(apply()));
     qbLayout->addWidget(queryButton);
+    qbLayout->addStretch(5);
+    gLayout->addSpacing(10);
 
     
-    QWidget     *resultTitle = new QWidget(central);
+    QWidget     *resultTitle = new QWidget(central,"resultTitle");
     QHBoxLayout *resTitleLayout = new QHBoxLayout(resultTitle);
     
     // Create the results list.
-    resultText = new QTextEdit(central);
+    resultText = new QMultiLineEdit(central, "resultText");
     resultText->setReadOnly(true);
-    QLabel *resultLabel = new QLabel(tr("Query results"), resultTitle);
+    QLabel *resultLabel = new QLabel(tr("Query results"), 
+                                     resultTitle, "resultLabel");
     
-    QLabel *floatFormatLabel = new QLabel(tr("Float Format:"), resultTitle);
-    floatFormatText = new QLineEdit("%g",resultTitle);
+    QLabel *floatFormatLabel = new QLabel(tr("Float Format:"),
+                                          resultTitle, "floatFormatLabel");
+    floatFormatText = new QLineEdit("%g",resultTitle,"floatFormatText");
     
     resTitleLayout->addWidget(resultLabel);
     resTitleLayout->addStretch(5);
@@ -358,9 +380,6 @@ QvisQueryWindow::CreateWindowContents()
 //   Brad Whitlock, Tue Apr  8 15:26:49 PDT 2008
 //   Support for internationalization.
 //
-//   Cyrus Harrison, Tue Jun 24 16:21:00 PDT 2008
-//   Initial Qt4 Port.
-//
 // ****************************************************************************
 
 void
@@ -373,7 +392,7 @@ QvisQueryWindow::CreateEntireWindow()
     // Create the central widget and the top layout.
     central = new QWidget( this );
     setCentralWidget( central );
-    topLayout = new QVBoxLayout(central);
+    topLayout = new QVBoxLayout(central, 10);
 
     // Call the Sub-class's CreateWindowContents function to create the
     // internal parts of the window.
@@ -381,23 +400,25 @@ QvisQueryWindow::CreateEntireWindow()
 
     // Create a button layout and the buttons.
     topLayout->addSpacing(10);
-    QHBoxLayout *buttonLayout = new QHBoxLayout();
-    topLayout->addLayout(buttonLayout);
-    QPushButton *clearResultsButton = new QPushButton(tr("Clear results"), central);
+    QHBoxLayout *buttonLayout = new QHBoxLayout(topLayout);
+    QPushButton *clearResultsButton = new QPushButton(tr("Clear results"), 
+            central, "clearResultsButton");
     connect(clearResultsButton, SIGNAL(clicked()),
             this, SLOT(clearResultText()));
     buttonLayout->addWidget(clearResultsButton);
 
-    QPushButton *saveResultsButton = new QPushButton(tr("Save results as") + QString("..."), central);
+    QPushButton *saveResultsButton = new QPushButton(tr("Save results as") + 
+            QString("..."), central, "saveResultsButton");
     connect(saveResultsButton, SIGNAL(clicked()),
             this, SLOT(saveResultText()));
     buttonLayout->addWidget(saveResultsButton);
     
     buttonLayout->addStretch();
 
-    postButton = new QPushButton(tr("Post"), central);
+    postButton = new QPushButton(tr("Post"), central, "postButton");
     buttonLayout->addWidget(postButton);
-    QPushButton *dismissButton = new QPushButton(tr("Dismiss"), central);
+    QPushButton *dismissButton = new QPushButton(tr("Dismiss"), central,
+        "dismissButton");
     buttonLayout->addWidget(dismissButton);
     if(stretchWindow)
         topLayout->addStretch(0);
@@ -523,9 +544,6 @@ QvisQueryWindow::UpdateTimeQueryButton()
 //   Brad Whitlock, Tue Apr  8 15:26:49 PDT 2008
 //   Support for internationalization.
 //
-//   Cyrus Harrison, Tue Jun 24 16:21:00 PDT 2008
-//   Initial Qt4 Port.
-//
 // ****************************************************************************
 
 void
@@ -538,11 +556,9 @@ QvisQueryWindow::UpdateQueryList()
 
     // Add the arguments to the query list.
     queryList->blockSignals(true);
-    QString queryName;
-    if(queryList->currentItem())
-        queryName = queryList->currentItem()->text();
+    QString queryName = queryList->currentText();
     int selectedIndex = -1;
-    int selectedFunction = displayMode->currentIndex() -1;
+    int selectedFunction = displayMode->currentItem() -1;
     queryList->clear();
     int i;
     for(i = 0; i < names.size(); ++i)
@@ -551,20 +567,20 @@ QvisQueryWindow::UpdateQueryList()
             continue;
         if (displayMode->currentText() == tr("All"))
         {
-            queryList->addItem(QString(names[i].c_str()));
+            queryList->insertItem(QString(names[i].c_str()));
         }
         else if (displayMode->currentText() == tr("All queries-over-time") &&
                  mode[i] != QueryList::QueryOnly)
         {
-            queryList->addItem(QString(names[i].c_str()));
+            queryList->insertItem(QString(names[i].c_str()));
         }
         else if (groups[i] == selectedFunction)
         {
-            queryList->addItem(QString(names[i].c_str()));
+            queryList->insertItem(QString(names[i].c_str()));
         }
     }
-    queryList->setSortingEnabled(true);
 
+    queryList->sort();
 
     // Now that query names are in the list, set the selection.
     bool listEnabled = false;
@@ -574,16 +590,16 @@ QvisQueryWindow::UpdateQueryList()
         selectedIndex = 0;
         for (i = 0; i < queryList->count(); i++)
         {
-            if (queryList->item(i)->text() == queryName)
+            if (queryList->text(i) == queryName)
             {
                 selectedIndex = i;
                 break;
             }
         }
 
-        queryList->setCurrentRow(selectedIndex);
-        queryList->item(selectedIndex)->setSelected(true);
-        UpdateArgumentPanel(queryList->currentItem()->text());
+        queryList->setCurrentItem(selectedIndex);
+        queryList->setSelected(selectedIndex, true);
+        UpdateArgumentPanel(queryList->currentText());
     }
 
     queryList->setEnabled(listEnabled);
@@ -610,9 +626,6 @@ QvisQueryWindow::UpdateQueryList()
 //   Brad Whitlock, Fri May 9 17:27:05 PST 2003
 //   I made it append the query results to the existing text.
 //
-//   Cyrus Harrison, Tue Jun 24 16:21:00 PDT 2008
-//   Initial Qt4 Port.
-//
 // ****************************************************************************
 
 void
@@ -622,16 +635,15 @@ QvisQueryWindow::UpdateResults(bool)
     {
         string str;
         pickAtts->CreateOutputString(str);
-        resultText->append(str.c_str());
-        resultText->moveCursor(QTextCursor::Up,QTextCursor::MoveAnchor);
-        //resultText->setCursorPosition(resultText->numLines() - 1, 0);
+        resultText->insertLine(str.c_str());
+        resultText->setCursorPosition(resultText->numLines() - 1, 0);
     }
     else if (SelectedSubject() == queryAtts)
     {
         string str;
         str = queryAtts->GetResultsMessage();
-        resultText->append(str.c_str());
-        resultText->moveCursor(QTextCursor::Up,QTextCursor::MoveAnchor);
+        resultText->insertLine(str.c_str());
+        resultText->setCursorPosition(resultText->numLines() - 1, 0);
     }
 }
 
@@ -716,14 +728,16 @@ QvisQueryWindow::UpdateResults(bool)
 //   Brad Whitlock, Tue Apr  8 15:26:49 PDT 2008
 //   Support for internationalization.
 //
-//   Cyrus Harrison, Tue Jun 24 16:21:00 PDT 2008
-//   Initial Qt4 Port.
-//
 //   Kathleen Bonnell, Tue Jun 24 11:18:13 PDT 2008
 //   Queries that require variables now use varsButton and varsLineEdit.
 //
 //   Kathleen Bonnell, Tue Jun 24 13:38:45 PDT 2008 
 //   Limit the variables for Hohlraum Flux to Scalars and Arrays.
+//
+//   Eric Brugger, Mon May 11 13:48:58 PDT 2009
+//   I added an argument to the hohlraum flux query that indicates if the
+//   emissivity divided by the absorbtivity should be used in place of the
+//   emissivity.
 //
 // ****************************************************************************
 
@@ -737,14 +751,14 @@ QvisQueryWindow::UpdateArgumentPanel(const QString &qname)
     int index = -1;
     for (int i = 0; i < names.size(); i++)
     {
-        if (string(qname.toStdString()) == names[i])
+        if (string(qname.latin1()) == names[i])
         {
             index = i;
             break;
         }
     }
     // reset a few defaults
-    dataOpts->button(0)->setChecked(true);
+    dataOpts->setButton(0);
     useGlobal->setChecked(0);
     labels[0]->setEnabled(true);
     textFields[0]->setEnabled(true);
@@ -860,13 +874,17 @@ QvisQueryWindow::UpdateArgumentPanel(const QString &qname)
             textFields[0]->setText("100");
             showWidgets[0] = true;
 
-            labels[1]->setText(tr("Ray Center"));
-            textFields[1]->setText("0 0 0");
+            labels[1]->setText(tr("Divide Emis by Absorb"));
+            textFields[1]->setText("0");
             showWidgets[1] = true;
 
-            labels[2]->setText(tr("Radius, Theta, Phi"));
-            textFields[2]->setText("1 0 0");
+            labels[2]->setText(tr("Ray Center"));
+            textFields[2]->setText("0 0 0");
             showWidgets[2] = true;
+
+            labels[3]->setText(tr("Radius, Theta, Phi"));
+            textFields[3]->setText("1 0 0");
+            showWidgets[3] = true;
         }
         else if (winT == QueryList::ConnCompSummary)
         {
@@ -922,13 +940,13 @@ QvisQueryWindow::UpdateArgumentPanel(const QString &qname)
 
         if (showDataOptions)
         {
-            dataOpts->button(0)->show();
-            dataOpts->button(1)->show();
+            dataOpts->find(0)->show();
+            dataOpts->find(1)->show();
         }
         else
         {
-            dataOpts->button(0)->hide();
-            dataOpts->button(1)->hide();
+            dataOpts->find(0)->hide();
+            dataOpts->find(1)->hide();
         }
 
         if (showTime)
@@ -1076,12 +1094,15 @@ QvisQueryWindow::ConnectPlotList(PlotList *pl)
 //   Brad Whitlock, Tue Apr  8 15:26:49 PDT 2008
 //   Support for internationalization.
 //
-//   Cyrus Harrison, Tue Jun 24 16:21:00 PDT 2008
-//   Initial Qt4 Port.
-//
 //   Cyrus Harrison, Sat Oct 18 21:33:18 PDT 2008
 //   Fixed parsing error for Connected Components Summary Query, caused by 
 //   migration of GetVars to a new text field widget. 
+//
+//   Eric Brugger, Mon May 11 13:48:58 PDT 2009
+//   I added an argument to the hohlraum flux query that indicates if the
+//   emissivity divided by the absorbtivity should be used in place of the
+//   emissivity.  I also corrected the parsing of the hohlraum flux query
+//   since it was broken.
 //
 // ****************************************************************************
 
@@ -1089,7 +1110,7 @@ void
 QvisQueryWindow::Apply(bool ignore, bool doTime)
 {
     string format = floatFormatText
-                         ->displayText().simplified().toStdString();
+                         ->displayText().simplifyWhiteSpace().latin1();
     
     if(!StringHelpers::ValidatePrintfFormatString(format.c_str(),
                                                   "float","EOA"))
@@ -1102,16 +1123,16 @@ QvisQueryWindow::Apply(bool ignore, bool doTime)
     
     if(AutoUpdate() || ignore)
     {
-        int useActualData = dataOpts->id(dataOpts->checkedButton());
+        int useActualData = dataOpts->id(dataOpts->selected());
         const stringVector &names = queries->GetNames();
         const intVector &types = queries->GetTypes();
         const intVector &winType = queries->GetWinType();
 
-        QString currentText = queryList->currentItem()->text();
+        QString currentText = queryList->currentText();
         int index = -1;
         for (int i = 0; i < names.size(); i++)
         {
-           if (currentText.toStdString() == names[i])
+           if (string(currentText.latin1()) == names[i])
            {
                index = i;
                break;
@@ -1297,43 +1318,42 @@ QvisQueryWindow::Apply(bool ignore, bool doTime)
                     noErrors = false;
 
                 int nLines=0;
-                if(!GetNumber(1, &nLines))
+                if(!GetNumber(0, &nLines))
+                    noErrors = false;
+
+                int divideEmisByAbsorb=0;
+                if(!GetNumber(1, &divideEmisByAbsorb))
                     noErrors = false;
 
                 doubleVector pos(3);
-                if (!GetVars(v))
-                    noErrors = false;
-                if (v.size() != 3)
+                if(!GetPoint(2, tr("Ray Center"), p0))
                     noErrors = false;
                 if (noErrors)
                 {
-                    pos[0] = atof(v[0].c_str());
-                    pos[1] = atof(v[1].c_str());
-                    pos[2] = atof(v[2].c_str());
+                    pos[0] = p0[0];
+                    pos[1] = p0[1];
+                    pos[2] = p0[2];
                 }
 
                 doubleVector radiusThetaPhi(3);
-                v.resize(0);
-                if (!GetVars(v))
-                    noErrors = false;
-
-                if (v.size() != 3)
+                if(!GetPoint(3, tr("Radius, Theta, Phi"), p0))
                     noErrors = false;
                 if (noErrors)
                 {
-                    radiusThetaPhi[0] = atof(v[0].c_str());
-                    radiusThetaPhi[1] = atof(v[1].c_str());
-                    radiusThetaPhi[2] = atof(v[2].c_str());
+                    radiusThetaPhi[0] = p0[0];
+                    radiusThetaPhi[1] = p0[1];
+                    radiusThetaPhi[2] = p0[2];
                 }
                 if (noErrors)
                     GetViewerMethods()->DatabaseQuery(names[index], vars, 
-                        doTime, nLines, 0, true, pos, radiusThetaPhi);
+                        doTime, nLines, divideEmisByAbsorb, true, pos,
+                        radiusThetaPhi);
             }
             else if (winT == QueryList::ConnCompSummary)
             {
                 // get from textFields[0] (this used to be hooked up to GetVars ...)
                 stringVector v;
-                v.push_back(textFields[0]->text().simplified().toStdString());
+                v.push_back(textFields[0]->text().stripWhiteSpace().latin1());
                 if(v[0]=="")
                     noErrors = false;
                 if (noErrors)
@@ -1356,7 +1376,7 @@ QvisQueryWindow::Apply(bool ignore, bool doTime)
                     noErrors = false;
 
                 ofqs = textFields[2]->displayText();
-                ofile = ofqs.simplified().toStdString();
+                ofile = ofqs.simplifyWhiteSpace().latin1();
                 if(ofile == "[skip]")
                     vars.push_back("");
                 else
@@ -1405,9 +1425,6 @@ QvisQueryWindow::Apply(bool ignore, bool doTime)
 //   Brad Whitlock, Tue Apr  8 15:26:49 PDT 2008
 //   Support for internationalization.
 //
-//   Cyrus Harrison, Tue Jun 24 16:21:00 PDT 2008
-//   Initial Qt4 Port.
-//
 // ****************************************************************************
 
 bool
@@ -1417,12 +1434,12 @@ QvisQueryWindow::GetPoint(int index, const QString &pname, double pt[3])
 
     if(index >= 0 && index < 4)
     {
-        QString temp(textFields[index]->displayText().simplified());
+        QString temp(textFields[index]->displayText().simplifyWhiteSpace());
         okay = !temp.isEmpty();
         if(okay)
         {
             pt[2] = 0.;
-            int numScanned = sscanf(temp.toStdString().c_str(), "%lg %lg %lg",
+            int numScanned = sscanf(temp.latin1(), "%lg %lg %lg",
                         &pt[0], &pt[1], &pt[2]);
             okay = (numScanned == 2 || numScanned == 3);
             if(!okay)
@@ -1454,9 +1471,7 @@ QvisQueryWindow::GetPoint(int index, const QString &pname, double pt[3])
 // Creation:   Mon Sep 9 17:54:53 PST 2002
 //
 // Modifications:
-//   Cyrus Harrison, Tue Jun 24 16:21:00 PDT 2008
-//   Initial Qt4 Port.
-//
+//   
 // ****************************************************************************
 
 bool
@@ -1466,11 +1481,11 @@ QvisQueryWindow::GetNumber(int index, int *num)
 
     if(index >= 0 && index < 4)
     {
-        QString temp(textFields[index]->displayText().simplified());
+        QString temp(textFields[index]->displayText().simplifyWhiteSpace());
         okay = !temp.isEmpty();
         if(okay)
         {
-            okay = (sscanf(temp.toStdString().c_str(), "%d", num) == 1);
+            okay = (sscanf(temp.latin1(), "%d", num) == 1);
         }
     }
 
@@ -1492,10 +1507,6 @@ QvisQueryWindow::GetNumber(int index, int *num)
 // Programmer: Hank Childs
 // Creation:   July 10, 2006
 //
-// Modifications:
-//   Cyrus Harrison, Tue Jun 24 16:21:00 PDT 2008
-//   Initial Qt4 Port.
-//
 // ****************************************************************************
 
 bool
@@ -1505,12 +1516,12 @@ QvisQueryWindow::GetFloatingPointNumber(int index, double *num)
 
     if(index >= 0 && index < 4)
     {
-        QString temp(textFields[index]->displayText().simplified());
+        QString temp(textFields[index]->displayText().simplifyWhiteSpace());
         okay = !temp.isEmpty();
         if(okay)
         {
             float tmp;
-            okay = (sscanf(temp.toStdString().c_str(), "%g", &tmp) == 1);
+            okay = (sscanf(temp.latin1(), "%g", &tmp) == 1);
             *num = tmp;
         }
     }
@@ -1540,9 +1551,6 @@ QvisQueryWindow::GetFloatingPointNumber(int index, double *num)
 //   Brad Whitlock, Tue Apr  8 15:26:49 PDT 2008
 //   Support for internationalization.
 //
-//   Cyrus Harrison, Tue Jun 24 16:21:00 PDT 2008
-//   Initial Qt4 Port.
-//
 //   Kathleen Bonnell, Tue Jun 24 11:18:13 PDT 2008
 //   Reworked to retrieve vars from varsLineEdit. Removed 'index' arg.
 //
@@ -1553,16 +1561,16 @@ QvisQueryWindow::GetVars(stringVector &vars)
 {
     bool okay = false;
 
-    QString temp(varsLineEdit->displayText().trimmed());
+    QString temp(varsLineEdit->displayText().simplifyWhiteSpace());
 
     // Split the variable list using the spaces.
-    QStringList sList(temp.split(" "));
+    QStringList sList(QStringList::split(" ", temp));
 
     QStringList::Iterator it;
  
     for (it = sList.begin(); it != sList.end(); ++it)
     {
-        vars.push_back((*it).toStdString());
+        vars.push_back((*it).latin1());
     }
     okay = !vars.empty();
     if(!okay)
@@ -1628,17 +1636,14 @@ QvisQueryWindow::timeApply()
 //   Changed argument to UpdateArgumentPaenl from index to qname -- 
 //   because queryList box may have fewer items than all queries. 
 //   
-//   Cyrus Harrison, Tue Jun 24 16:21:00 PDT 2008
-//   Initial Qt4 Port.
-//
 // ****************************************************************************
 
 void
 QvisQueryWindow::selectQuery()
 {
-    int index = queryList->currentRow();
+    int index = queryList->currentItem();
     if(index >= 0)
-        UpdateArgumentPanel(queryList->currentItem()->text());
+        UpdateArgumentPanel(queryList->currentText());
 }
 
 // ****************************************************************************
@@ -1735,27 +1740,11 @@ QvisQueryWindow::useGlobalToggled(bool val)
 //   Brad Whitlock, Tue Apr  8 15:26:49 PDT 2008
 //   Support for internationalization.
 //   
-//   Cyrus Harrison, Tue Jun 24 16:21:00 PDT 2008
-//   Initial Qt4 Port.
-//
-//   Cyrus Harrison, Thu Dec  4 09:38:44 PST 2008
-//   Added default file support to the save as dialog.
-//   Skip file save if no results are available. 
-//
 // ****************************************************************************
 
 void
 QvisQueryWindow::saveResultText()
 {
-    // make sure there are results to save!
-    
-    QString result_txt( resultText->toPlainText() );
-    if ( result_txt.length() == 0 )
-    {
-        Error(tr("There are currently no query results to save."));
-        return;
-    }
-
     QString saveExtension(".txt");
 
     // Create the name of a VisIt save file to use.
@@ -1770,27 +1759,27 @@ QvisQueryWindow::saveResultText()
 
     // Get the name of the file that the user saved.
     QString sFilter(QString("VisIt ") + tr("save") + QString(" (*") + saveExtension + ")");
-    
-    QString fileName = QFileDialog::getSaveFileName(this,
-                                                    tr("Save Query Results As"),
-                                                    defaultFile,
-                                                    sFilter);
-    // If the user choose to save a file, write the query result text
+    QString fileName = QFileDialog::getSaveFileName(defaultFile, sFilter);
+
+    // If the user chose to save a file, write the query result text
     // to that file.
     if(!fileName.isNull())
     {
         ++saveCount;
-        
         QFile file( fileName );
-        if ( file.open(QIODevice::WriteOnly | QIODevice::Text) )
+        if ( file.open(IO_WriteOnly) )
         {
             QTextStream stream( &file );
-            stream << result_txt + "\n";
+            QString txt( resultText->text() );
+            if ( txt.length() > 0 )
+                stream << txt;
+            else
+                file.remove();
         
             file.close();
         }
         else
-            Error(tr("VisIt could not save the query results "
+            Error(tr("VisIt could not save the query results"
                      "to the selected file"));
         
     }

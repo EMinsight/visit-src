@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -47,7 +47,10 @@
 
 #include <avtContract.h>
 
+class     avtDataSelection;
 class     avtFacelist;
+class     avtHistogramSpecification;
+class     avtIdentifierSelection;
 class     avtIntervalTree;
 class     avtMaterial;
 class     avtMixedVariable;
@@ -109,6 +112,9 @@ class     avtOriginatingSource;
 //    Cyrus Harrison, Wed Feb 20 09:14:15 PST 2008
 //    Added post ghost option to GetMaterial & GetMixedVar
 //
+//    Hank Childs, Tue Jan 27 11:11:30 PST 2009
+//    Added code to get histogram specifications and identifiers.
+//
 // ****************************************************************************
 
 class PIPELINE_API avtMetaData
@@ -119,6 +125,8 @@ class PIPELINE_API avtMetaData
 
     avtIntervalTree             *GetDataExtents(const char *var = NULL);
     avtIntervalTree             *GetSpatialExtents(const char *var = NULL);
+    bool                         GetHistogram(avtHistogramSpecification *);
+    avtIdentifierSelection      *GetIdentifiers(std::vector<avtDataSelection *>);
 
     avtFacelist                 *GetExternalFacelist(int);
     avtMaterial                 *GetMaterial(int, int = -1, bool = false);

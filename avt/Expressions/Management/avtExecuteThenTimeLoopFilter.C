@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -43,7 +43,9 @@
 #include <avtExecuteThenTimeLoopFilter.h>
 
 #include <avtCallback.h>
+#include <avtDataAttributes.h>
 #include <avtExpressionEvaluatorFilter.h>
+#include <avtExtents.h>
 #include <avtOriginatingSource.h>
 
 #include <DebugStream.h>
@@ -119,9 +121,9 @@ avtExecuteThenTimeLoopFilter::FinalizeTimeLoop()
     {
         stride = 1;
     }
-    if (startTime >= endTime)
+    if (startTime > endTime)
     {
-        std::string msg("Start time must be smaller than end time for " );
+        std::string msg("Start time must be smaller than or equal to the end time for " );
         msg += GetType();
         msg += ".\n";
         EXCEPTION1(ImproperUseException, msg);
@@ -129,10 +131,10 @@ avtExecuteThenTimeLoopFilter::FinalizeTimeLoop()
 
     nFrames = (int) ceil((((float)endTime -startTime))/(float)stride) + 1; 
 
-    if (nFrames <= 1)
+    if (nFrames < 1)
     {
         std::string msg(GetType());
-        msg = msg +  " requires more than 1 frame, please correct start " + 
+        msg = msg +  " requires at least 1 frame, please correct start " + 
                "and end times and try again.";
         EXCEPTION1(ImproperUseException, msg);
     }
@@ -165,11 +167,29 @@ avtExecuteThenTimeLoopFilter::FinalizeTimeLoop()
 //  Programmer: Hank Childs
 //  Creation:   January 24, 2008
 //
+//  Modifications:
+//
+//    Hank Childs, Mon Feb 23 19:20:14 PST 2009
+//    Use the contract from the original execution.
+//
+//    Hank Childs, Tue Jan  5 13:14:37 PST 2010
+//    Merge in the extents from each time slice.
+//
+//    Hank Childs, Wed Jan  6 16:13:00 PST 2010
+//    Only merge the extents if they have the same dimension.
+//
 // ****************************************************************************
 
 void
 avtExecuteThenTimeLoopFilter::Execute(void)
 {
+    if (*origContract == NULL)
+    {
+        // You're derived type reimplemented ModifyContract and you need to
+        // make it call SetContract.
+        EXCEPTION0(ImproperUseException);
+    }
+
     FinalizeTimeLoop();
     int i;
 
@@ -181,20 +201,40 @@ avtExecuteThenTimeLoopFilter::Execute(void)
         avtExpressionEvaluatorFilter eef;
         eef.SetInput(src->GetOutput());
 
-        avtContract_p spec = 
-                new avtContract(GetGeneralContract());
+        avtContract_p contract = new avtContract(origContract);
         int currentTime = (i < endTime ? i : endTime);
         debug5 << "Execute-then-time-loop-filter updating with time slice #" 
                << currentTime << endl;
-        spec->GetDataRequest()->SetTimestep(currentTime);
+        contract->GetDataRequest()->SetTimestep(currentTime);
 
-        avtContract_p spec2 = ModifyContract(spec);
-        eef.Update(spec2);
+        eef.Update(contract);
 
         // Friend status plus reference points leads to some extra contortions here.
         avtDataset *ds = *(eef.GetTypedOutput());
         avtDataTree_p tree = ds->GetDataTree();
         Iterate(currentTime, tree);
+
+        // Merge the extents
+        avtDataAttributes &outAtts = GetOutput()->GetInfo().GetAttributes();
+        avtDataAttributes &inAtts = ds->GetInfo().GetAttributes();
+        if (outAtts.GetSpatialDimension() == inAtts.GetSpatialDimension())
+        {
+            outAtts.GetTrueSpatialExtents()->Merge(*(inAtts.GetTrueSpatialExtents()));
+            outAtts.GetCumulativeTrueSpatialExtents()->Merge(*(inAtts.GetCumulativeTrueSpatialExtents()));
+            outAtts.GetEffectiveSpatialExtents()->Merge(*(inAtts.GetEffectiveSpatialExtents()));
+            outAtts.GetCurrentSpatialExtents()->Merge(*(inAtts.GetCurrentSpatialExtents()));
+            outAtts.GetCumulativeCurrentSpatialExtents()->Merge(*(inAtts.GetCumulativeCurrentSpatialExtents()));
+        }
+    
+        for (int j = 0 ; j < outAtts.GetNumberOfVariables() ; j++)
+        {
+            const char *vname = outAtts.GetVariableName(j).c_str();
+            outAtts.GetTrueDataExtents(vname)->Merge(*(inAtts.GetTrueDataExtents(vname)));
+            outAtts.GetCumulativeTrueDataExtents(vname)->Merge(*(inAtts.GetCumulativeTrueDataExtents(vname)));
+            outAtts.GetEffectiveDataExtents(vname)->Merge(*(inAtts.GetEffectiveDataExtents(vname)));
+            outAtts.GetCurrentDataExtents(vname)->Merge(*(inAtts.GetCurrentDataExtents(vname)));
+            outAtts.GetCumulativeCurrentDataExtents(vname)->Merge(*(inAtts.GetCumulativeCurrentDataExtents(vname)));
+        }
 
         avtCallback::ResetTimeout(5*60);
     } 

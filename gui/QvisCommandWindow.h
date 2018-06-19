@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -70,9 +70,6 @@ class QVBox;
 //   Brad Whitlock, Wed Apr  9 11:35:25 PDT 2008
 //   QString for captionString, shortName.
 //
-//   Cyrus Harrison, Tue Jun 10 15:00:05 PDT 2008
-//   Initial Qt4 Port.
-//
 // ****************************************************************************
 
 class QvisCommandWindow : public QvisPostableWindow
@@ -135,7 +132,7 @@ private:
     QCheckBox       *macroAppendCheckBox;
     QComboBox       *macroStorageComboBox;
 
-    QWidget         *macroTab;
+    QVBox           *macroTab;
     QTextEdit       *macroLineEdit;
     QPushButton     *macroUpdateButton;
     QPushButton     *macroClearButton;

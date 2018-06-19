@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -51,6 +51,7 @@ class QSpinBox;
 class QvisColorTableButton;
 class QvisColorButton;
 class QvisLineWidthWidget;
+class QvisVariableButton;
 class StreamlineAttributes;
 
 // ****************************************************************************
@@ -84,6 +85,21 @@ class StreamlineAttributes;
 //   Dave Pugmire, Tue Aug 19 17:18:03 EST 2008
 //   Removed the accurate distance calculation option.
 //
+//   Dave Pugmire, Thu Feb  5 12:20:15 EST 2009
+//   Added workGroupSize for the masterSlave algorithm.
+//
+//   Dave Pugmire, Mon Feb 23, 09:11:34 EST 2009
+//   Added number of steps as a termination criterion.
+//
+//   Dave Pugmire, Tue Mar 10 12:41:11 EDT 2009
+//   Add pathline GUI.
+//    
+//   Jeremy Meredith, Wed Apr  8 16:49:07 EDT 2009
+//   Back-port recent stuff to Qt3.
+//
+//   Dave Pugmire, Wed Jun 10 16:26:25 EDT 2009
+//   Add color by variable.
+//
 // ****************************************************************************
 
 class QvisStreamlinePlotWindow : public QvisPostableWindowObserver
@@ -110,6 +126,7 @@ class QvisStreamlinePlotWindow : public QvisPostableWindowObserver
     void UpdateSourceAttributes();
     void UpdateAlgorithmAttributes();
     void UpdateIntegrationAttributes();
+    void UpdateTerminationType();
   private slots:
     void sourceTypeChanged(int val);
     void termTypeChanged(int val);
@@ -132,6 +149,7 @@ class QvisStreamlinePlotWindow : public QvisPostableWindowObserver
     void pointDensityChanged(int val);
     void maxSLCountChanged(int val);
     void maxDomainCacheChanged(int val);
+    void workGroupSizeChanged(int val);
     void displayMethodChanged(int val);
     void showStartChanged(bool val);
     void radiusProcessText();
@@ -141,7 +159,9 @@ class QvisStreamlinePlotWindow : public QvisPostableWindowObserver
     void singleColorChanged(const QColor &color);
     void legendFlagChanged(bool val);
     void lightingFlagChanged(bool val);
+    void pathlineFlagChanged(bool val);
     void useWholeBoxChanged(bool val);
+    void coloringVariableChanged(const QString &var);
     void boxExtentsProcessText();
   private:
     int plotType;
@@ -190,6 +210,7 @@ class QvisStreamlinePlotWindow : public QvisPostableWindowObserver
     QLabel    *singleColorLabel;
     QCheckBox *legendFlag;
     QCheckBox *lightingFlag;
+    QCheckBox *pathlineFlag;
     QComboBox *termType;
     QComboBox *integrationType;
     QLabel    *slAlgoLabel;
@@ -198,6 +219,10 @@ class QvisStreamlinePlotWindow : public QvisPostableWindowObserver
     QSpinBox  *maxSLCount;
     QLabel    *maxDomainCacheLabel;
     QSpinBox  *maxDomainCache;
+    QLabel    *workGroupSizeLabel;
+    QSpinBox  *workGroupSize;
+    QvisVariableButton *var;
+    QLabel    *varLabel;
 
     StreamlineAttributes *streamAtts;
 };

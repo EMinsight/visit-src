@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,7 +39,7 @@
 #ifndef QVIS_PERIODIC_TABLE_WIDGET_H
 #define QVIS_PERIODIC_TABLE_WIDGET_H
 #include <gui_exports.h>
-#include <QWidget>
+#include <qwidget.h>
 #include <QvisGridWidget.h>
 #include <vector>
 
@@ -62,16 +62,14 @@ class QPainter;
 //    Added support for hinting some elements to the user, e.g. to highlight
 //    the elements that are actually in the database.
 //
-//    Brad Whitlock, Tue Jun  3 14:21:26 PDT 2008
-//    QT 4.
-//
 // ****************************************************************************
 
 class GUI_API QvisPeriodicTableWidget : public QvisGridWidget
 {
     Q_OBJECT
 public:
-    QvisPeriodicTableWidget(QWidget *parent = 0, Qt::WindowFlags f = 0);
+    QvisPeriodicTableWidget(QWidget *parent = 0, const char *name = 0,
+                        WFlags f = 0);
     virtual ~QvisPeriodicTableWidget();
 
     void setSelectedElement(int e);
@@ -85,8 +83,8 @@ protected:
     virtual void drawItem(QPainter &paint, int index);
 
 private:
-    int  indexToElement(int) const;
-    virtual bool isValidIndex(int) const;
+    int  indexToElement(int);
+    virtual bool isValidIndex(int);
     virtual void emitSelection();
 
     bool *hintedElements;

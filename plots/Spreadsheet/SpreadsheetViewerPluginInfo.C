@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -191,6 +191,12 @@ SpreadsheetViewerPluginInfo::ProvidesLegend() const
     return false;
 }
 
+bool
+SpreadsheetViewerPluginInfo::Permits2DViewScaling() const
+{
+    return false;
+}
+
 // ****************************************************************************
 // Method: SpreadsheetViewerPluginInfo::InitializePlotAtts
 //
@@ -350,9 +356,7 @@ SpreadsheetViewerPluginInfo::XPMIconData() const
 // Creation:   Wed Feb 21 10:53:23 PDT 2007
 //
 // Modifications:
-//   Brad Whitlock, Mon Aug 11 16:24:41 PDT 2008
-//   Removed name argument from SpreadsheetViewer constructor.
-//
+//   
 // ****************************************************************************
 #include <SpreadsheetViewer.h>
 #include <avtCallback.h>
@@ -364,7 +368,7 @@ SpreadsheetViewerPluginInfo::AlternateDisplayCreate(ViewerPlot *plot)
     if(!avtCallback::GetNowinMode())
     {
         // We're not in nowin mode so create the spreadsheet viewer.
-        SpreadsheetViewer *win = new SpreadsheetViewer(plot, 0);
+        SpreadsheetViewer *win = new SpreadsheetViewer(plot, 0, "SpreadsheetViewer");
         dpy = (void *)win;
     }
 
@@ -568,7 +572,7 @@ SpreadsheetViewerPluginInfo::PrivateSetPlotAtts(AttributeSubject *atts,
     avtSILRestriction_p silr = plot->GetSILRestriction();
     avtSILSet_p current = silr->GetSILSet(silr->GetTopSet());
     const std::vector<int> &mapsOut = current->GetMapsOut();
-    for(int j = 0; j < mapsOut.size() && !validName; ++j)
+    for(size_t j = 0; j < mapsOut.size() && !validName; ++j)
     {
         int cIndex = mapsOut[j];
         avtSILCollection_p collection = silr->GetSILCollection(cIndex);
@@ -576,7 +580,7 @@ SpreadsheetViewerPluginInfo::PrivateSetPlotAtts(AttributeSubject *atts,
         {
             const std::vector<int> &setIds = collection->GetSubsetList();
             nSets = setIds.size();
-            for(int si = 0; si < setIds.size() && !validName; ++si)
+            for(size_t si = 0; si < setIds.size() && !validName; ++si)
             {
                 if(!firstNameSet)
                 {

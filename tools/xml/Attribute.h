@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,8 +39,6 @@
 #ifndef ATTRIBUTE_H
 #define ATTRIBUTE_H
 #include <set>
-#include <QFile>
-#include <QTextStream>
 #include "AttributeBase.h"
 #include "Field.h"
 
@@ -96,12 +94,6 @@
 //    Brad Whitlock, Fri Apr 25 11:57:45 PDT 2008
 //    Added different access types for functions.
 //
-//    Brad Whitlock, Thu May  8 11:15:30 PDT 2008
-//    Qt 4. Use QTextStream.
-//
-//    Cyrus Harrison, Mon Sep 29 08:42:39 PDT 2008
-//    Fixed attempt to open the code file twice. 
-//
 // ****************************************************************************
 
 class Attribute : public AttributeBase
@@ -122,7 +114,7 @@ class Attribute : public AttributeBase
         fields.clear();
     }
 
-    virtual void Print(QTextStream &out)
+    virtual void Print(ostream &out)
     {
         size_t i;
         out << "    Attribute: " << name << " (" << purpose << ")" << endl;
@@ -136,7 +128,7 @@ class Attribute : public AttributeBase
             constants[i]->Print(out);
     }
 
-    void SaveXML(QTextStream &out, QString indent)
+    void SaveXML(ostream &out, QString indent)
     {
         StartOpenTag(out, "Attribute", indent);
         WriteTagAttr(out, "name", name);
@@ -277,13 +269,9 @@ class Attribute : public AttributeBase
         if (!codeFile)
             return;
 
-        QFile *f = new QFile(codeFile->FileName());
-        if (!f->open(QIODevice::WriteOnly | QIODevice::Text))
-        {
-            delete f;
+        ofstream out(codeFile->FileName(), ios::out);
+        if (!out)
             throw "Could not open code file for saving\n";
-        }
-        QTextStream out(f);
 
         size_t i;
         QString currentTarget = "xml2atts";
@@ -366,8 +354,7 @@ class Attribute : public AttributeBase
                 out << endl;
         }
 
-        f->close();
-        delete f;
+        out.close();
     }
 };
 

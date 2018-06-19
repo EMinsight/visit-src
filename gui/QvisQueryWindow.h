@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -52,8 +52,8 @@ class QComboBox;
 class QGroupBox;
 class QLabel;
 class QLineEdit;
-class QListWidget;
-class QTextEdit;
+class QListBox;
+class QMultiLineEdit;
 class QPushButton;
 class QueryList;
 class QvisVariableButton;
@@ -165,10 +165,10 @@ private:
     PlotList        *plotList;
 
     QComboBox       *displayMode;
-    QListWidget        *queryList;
+    QListBox        *queryList;
     QPushButton     *queryButton;
     QPushButton     *timeQueryButton;
-    QTextEdit  *resultText;
+    QMultiLineEdit  *resultText;
     QGroupBox       *argPanel;
     QLabel          *labels[4];
     QLineEdit       *textFields[4];

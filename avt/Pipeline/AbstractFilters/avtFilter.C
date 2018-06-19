@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -268,6 +268,7 @@ avtFilter::Update(avtContract_p contract)
             if (debug_dump)
                 DumpDataObject(GetInput(), "input");
             numInExecute++;
+
             PreExecute();
             Execute();
             PostExecute();
@@ -1449,3 +1450,31 @@ avtFilter::FilterUnderstandsTransformedRectMesh(void)
     // truly correct behavior.
     return false;
 }
+
+
+// ****************************************************************************
+//  Method: avtFilter::CreateNamedSelection
+//
+//  Purpose:
+//      Walk upstream until you find a filter that can create a named selection
+//
+//  Programmer: Hank Childs
+//  Creation:   February 23, 2009
+//
+// ****************************************************************************
+
+avtNamedSelection *
+avtFilter::CreateNamedSelection(avtContract_p c, const std::string &selname)
+{
+    //
+    // If this filter removes zones and it hasn't defined anything about 
+    // named selections, then we are in trouble and have to give up.
+    //
+    if (GetInput()->GetInfo().GetValidity().GetZonesPreserved() != 
+        GetOutput()->GetInfo().GetValidity().GetZonesPreserved())
+        return NULL;
+ 
+    return GetInput()->GetSource()->CreateNamedSelection(c, selname);
+}
+
+

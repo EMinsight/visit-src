@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -1038,6 +1038,8 @@ avtCGNSFileFormat::AddReferenceStateExpressions(avtDatabaseMetaData *md,
 //   Totally rewrote to support reading data from multiple bases. It's more
 //   modular too.
 //
+//   Mark C. Miller, Mon Sep 21 14:17:47 PDT 2009
+//   Adding missing calls to actually set the times/cycles in the metadata.
 // ****************************************************************************
 
 void
@@ -1049,7 +1051,11 @@ avtCGNSFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md,
     // Read the times if we have not read them yet.
     ReadTimes();
     md->SetTimesAreAccurate(cgnsTimesAccurate);    
+    if (cgnsTimesAccurate)
+        md->SetTimes(times);
     md->SetCyclesAreAccurate(cgnsCyclesAccurate);    
+    if (cgnsCyclesAccurate)
+        md->SetCycles(cycles);
 
     // Get the title
     char *refstate = 0;

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -180,6 +180,9 @@ const int INTERRUPT_MESSAGE_TAG = GetUniqueStaticMessageTag();
 //    Tom Fogal, Mon Sep  1 12:48:36 EDT 2008
 //    Initialize the display for rendering.
 //
+//    Brad Whitlock, Thu Apr 23 12:05:16 PDT 2009
+//    Disable simulation plugins by default.
+//
 // ****************************************************************************
 
 Engine::Engine()
@@ -199,6 +202,7 @@ Engine::Engine()
     silAtts = NULL;
     commandFromSim = NULL;
     pluginDir = "";
+    simulationPluginsEnabled = false;
 
     quitRPC = NULL;
     keepAliveRPC = NULL;
@@ -293,7 +297,7 @@ Engine::~Engine()
     delete renderingDisplay;
 
     // Delete the network manager last since it deletes plugin managers
-    // and out RPC's may need to call plugin AttributeSubject destructors.
+    // and our RPC's may need to call plugin AttributeSubject destructors.
     // We can't seem to do that reliably on Linux once plugins have been
     // unloaded.
     delete netmgr;
@@ -461,15 +465,12 @@ Engine::Initialize(int *argc, char **argv[], bool sigs)
 //    It must be done, otherwise in the X case we'll leave stale displays
 //    around.
 //
-//    Hank Childs, Tue Dec  2 10:04:37 PST 2008
-//    Remove unmatched StartTimer call.  (The resulting timing can't be 
-//    dumped anyways.)
-//
 // ****************************************************************************
-
 void
 Engine::Finalize(void)
 {
+    visitTimer->StartTimer();
+
     delete this->renderingDisplay;
     // Now null it out; in case the destructor actually *does* get called.
     this->renderingDisplay = NULL;
@@ -477,6 +478,83 @@ Engine::Finalize(void)
     VisItInit::Finalize();
 }
 
+// ****************************************************************************
+// Method: Engine::EnableSimulationPlugins
+//
+// Purpose: 
+//   Allow the engine to use simulation plugins in addition to engine plugins.
+//
+// Note:       This method needs to be called before SetUpViewerInterface.
+//
+// Programmer: Brad Whitlock
+// Creation:   Thu Apr 23 12:08:27 PDT 2009
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+Engine::EnableSimulationPlugins()
+{
+    simulationPluginsEnabled = true;
+}
+
+#ifdef PARALLEL
+#include <PluginBroadcaster.h>
+
+// ****************************************************************************
+// Class: PAR_PluginBroadcaster
+//
+// Purpose: 
+//   This object helps the plugin managers broadcast information about libI
+//   plugins to other processors. This can save 1000's of processors reading
+//   ~200 libI files at the same time.
+//
+// Arguments:
+//   ids      : The plugin ids.
+//   names    : The plugin names.
+//   versions : The plugin versions.
+//   libfiles : The names of the plugin files.
+//   enabled  : Whether the plugins are enabled
+//
+// Returns:    
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Wed Jun 17 13:16:20 PDT 2009
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+class PAR_PluginBroadcaster : public PluginBroadcaster
+{
+public:
+    PAR_PluginBroadcaster() : PluginBroadcaster()
+    {
+    }
+
+    virtual ~PAR_PluginBroadcaster()
+    {
+    }
+
+    virtual void BroadcastStringVector(stringVector &v)
+    {
+        ::BroadcastStringVector(v, PAR_Rank());
+    }
+
+    virtual void BroadcastBoolVector(boolVector &v)
+    {
+        ::BroadcastBoolVector(v, PAR_Rank());
+    }
+
+    virtual void BroadcastStringVectorVector(std::vector<std::vector<std::string> > &v)
+    {
+        ::BroadcastStringVectorVector(v, PAR_Rank());
+    }
+};
+#endif
 
 // ****************************************************************************
 //  Method:  Engine::SetUpViewerInterface
@@ -581,6 +659,19 @@ Engine::Finalize(void)
 //    Tom Fogal, Mon Sep  1 14:19:45 EDT 2008
 //    Removed an assert.
 //
+//    Hank Childs, Thu Jan 29 11:15:16 PST 2009
+//    Add NamedSelectionRPC.
+//
+//    Brad Whitlock, Thu Apr 23 12:11:35 PDT 2009
+//    Differentiate between simulation and engine plugins.
+//
+//    Brad Whitlock, Wed Jun 17 13:23:58 PDT 2009
+//    I passed an instance of PAR_PluginBroadcaster to the plugin managers 
+//    so they could skip reading libI plugins for most processors in parallel.
+//    Rank 0 reads the libI plugins and then shares their information with 
+//    other processors over MPI. I also added timing information for loading
+//    plugins in parallel.
+//
 // ****************************************************************************
 
 void
@@ -635,20 +726,39 @@ Engine::SetUpViewerInterface(int *argc, char **argv[])
     //
     // Initialize the plugin managers.
     //
+    int pluginsTotal = visitTimer->StartTimer();
     if(pluginDir.size() > 0)
     {
         netmgr->GetPlotPluginManager()->SetPluginDir(pluginDir.c_str());
         netmgr->GetOperatorPluginManager()->SetPluginDir(pluginDir.c_str());
         netmgr->GetDatabasePluginManager()->SetPluginDir(pluginDir.c_str());
     }
+    PluginManager::PluginCategory pCat = simulationPluginsEnabled ? 
+        PluginManager::Simulation : PluginManager::Engine;
 #ifdef PARALLEL
-    netmgr->GetPlotPluginManager()->Initialize(PlotPluginManager::Engine, true);
-    netmgr->GetOperatorPluginManager()->Initialize(OperatorPluginManager::Engine, true);
-    netmgr->GetDatabasePluginManager()->Initialize(DatabasePluginManager::Engine, true);
+    bool readInfo = PAR_UIProcess();
+    PAR_PluginBroadcaster broadcaster;
+    int pluginInit = visitTimer->StartTimer();
+    netmgr->GetPlotPluginManager()->Initialize(pCat, true, NULL, 
+                                               readInfo, 
+                                               &broadcaster);
+    visitTimer->StopTimer(pluginInit, "Loading plot plugin info");
+
+    pluginInit = visitTimer->StartTimer();
+    netmgr->GetOperatorPluginManager()->Initialize(pCat, true, NULL, 
+                                               readInfo, 
+                                               &broadcaster);
+    visitTimer->StopTimer(pluginInit, "Loading operator plugin info");
+
+    pluginInit = visitTimer->StartTimer();
+    netmgr->GetDatabasePluginManager()->Initialize(pCat, true, NULL, 
+                                               readInfo, 
+                                               &broadcaster);
+    visitTimer->StopTimer(pluginInit, "Loading database plugin info");
 #else
-    netmgr->GetPlotPluginManager()->Initialize(PlotPluginManager::Engine, false);
-    netmgr->GetOperatorPluginManager()->Initialize(OperatorPluginManager::Engine, false);
-    netmgr->GetDatabasePluginManager()->Initialize(DatabasePluginManager::Engine, false);
+    netmgr->GetPlotPluginManager()->Initialize(pCat, false);
+    netmgr->GetOperatorPluginManager()->Initialize(pCat, false);
+    netmgr->GetDatabasePluginManager()->Initialize(pCat, false);
 #endif    
     //
     // Load plugins
@@ -656,6 +766,7 @@ Engine::SetUpViewerInterface(int *argc, char **argv[])
     netmgr->GetPlotPluginManager()->LoadPluginsOnDemand();
     netmgr->GetOperatorPluginManager()->LoadPluginsOnDemand();
     netmgr->GetDatabasePluginManager()->LoadPluginsOnDemand();
+    visitTimer->StopTimer(pluginsTotal, "Setting up plugins.");
 
 #if !defined(_WIN32)
     // Set up the alarm signal handler.
@@ -688,6 +799,7 @@ Engine::SetUpViewerInterface(int *argc, char **argv[])
     simulationCommandRPC            = new SimulationCommandRPC;
     exportDatabaseRPC               = new ExportDatabaseRPC;
     constructDDFRPC                 = new ConstructDDFRPC;
+    namedSelectionRPC               = new NamedSelectionRPC;
     setEFileOpenOptionsRPC          = new SetEFileOpenOptionsRPC;
 
     xfer->Add(quitRPC);
@@ -713,6 +825,7 @@ Engine::SetUpViewerInterface(int *argc, char **argv[])
     xfer->Add(simulationCommandRPC);
     xfer->Add(exportDatabaseRPC);
     xfer->Add(constructDDFRPC);
+    xfer->Add(namedSelectionRPC);
     xfer->Add(setEFileOpenOptionsRPC);
 
     // Create an object to implement the RPCs
@@ -742,6 +855,7 @@ Engine::SetUpViewerInterface(int *argc, char **argv[])
     rpcExecutors.push_back(new RPCExecutor<SimulationCommandRPC>(simulationCommandRPC));
     rpcExecutors.push_back(new RPCExecutor<ExportDatabaseRPC>(exportDatabaseRPC));
     rpcExecutors.push_back(new RPCExecutor<ConstructDDFRPC>(constructDDFRPC));
+    rpcExecutors.push_back(new RPCExecutor<NamedSelectionRPC>(namedSelectionRPC));
     rpcExecutors.push_back(new RPCExecutor<SetEFileOpenOptionsRPC>(setEFileOpenOptionsRPC));
 
     // Hook up the expression list as an observed object.
@@ -951,6 +1065,15 @@ Engine::ConnectViewer(int *argc, char **argv[])
 //    Make sure quitRPC is properly communicated to all processors; prevents
 //    runaway engines.
 //
+//    Tom Fogal, Wed May 27 14:07:19 MDT 2009
+//    Removed a duplicate debug statement.
+//
+//    Brad Whitlock, Fri Jun 19 09:05:31 PDT 2009
+//    I rewrote the code for receiving the command to other processors.
+//    Instead of receiving 1..N 1K size messages per command, with N being 
+//    more common, we now receive 1 size message and then we receive the 
+//    entire command at once.
+//
 // ****************************************************************************
 
 void
@@ -990,23 +1113,33 @@ Engine::PAR_EventLoop()
             debug5 << "Resetting idle timeout to " << idleTimeoutMins << " minutes." << endl;
             ResetTimeout(idleTimeoutMins * 60);
 
-            // Get state information from the UI process.
-            MPIXfer::VisIt_MPI_Bcast((void *)&par_buf, 1,
-                PAR_STATEBUFFER, 0, VISIT_MPI_COMM);
+            // Get the next message length.
+            int msgLength = 0;
+            MPIXfer::VisIt_MPI_Bcast((void *)&msgLength, 1, MPI_INT,
+                                     0, VISIT_MPI_COMM);
+
+            // Read the incoming message. Use regular MPI_Bcast since this
+            // message is guaranteed to come right after the other one.
+#ifdef VISIT_BLUE_GENE_P
+            // Make the buffer be 32-byte aligned
+            unsigned char *buf = 0;
+            posix_memalign((void **)&buf, 32, msgLength);
+#else
+            unsigned char *buf = (unsigned char*)malloc(msgLength * sizeof(unsigned char));
+#endif
+            MPI_Bcast((void *)buf, msgLength, MPI_UNSIGNED_CHAR, 0, VISIT_MPI_COMM);
+            par_conn.Append(buf, msgLength);
+            free(buf);
 
             // We have work to do, so reset the alarm.
             idleTimeoutEnabled = false;
             debug5 << "Resetting execution timeout to " << executionTimeoutMins << " minutes." << endl;
             ResetTimeout(executionTimeoutMins * 60);
 
-            // Add the state information to the connection.
-            par_conn.Append((unsigned char *)par_buf.buffer, par_buf.nbytes);
-
             // Process the state information.
             xfer->Process();
 
             idleTimeoutEnabled = true;
-            debug5 << "Resetting idle timeout to " << idleTimeoutMins << " minutes." << endl;
             ResetTimeout(idleTimeoutMins * 60);
         }
     }
@@ -1031,7 +1164,12 @@ Engine::PAR_EventLoop()
 //
 //    Mark C. Miller, Tue Feb 13 16:24:58 PST 2007
 //    Replaced MPI_Bcast with MPIXfer::VisIt_MPI_Bcast
+//
+//    Brad Whitlock, Tue Nov  3 10:58:23 PST 2009
+//    I changed the messaging style so libsim works again.
+//
 // ****************************************************************************
+
 void
 Engine::PAR_ProcessInput()
 {    
@@ -1041,9 +1179,17 @@ Engine::PAR_ProcessInput()
     }
     else
     {
-        MPIXfer::VisIt_MPI_Bcast((void *)&par_buf, 1,
-            PAR_STATEBUFFER, 0, VISIT_MPI_COMM);
-        par_conn.Append((unsigned char *)par_buf.buffer, par_buf.nbytes);
+        int msgLength = 0;
+        MPIXfer::VisIt_MPI_Bcast((void *)&msgLength, 1, MPI_INT,
+                                 0, VISIT_MPI_COMM);
+
+        char *buf = new char[msgLength];
+        MPI_Bcast((void *)buf, msgLength, MPI_UNSIGNED_CHAR,
+                  0, VISIT_MPI_COMM);
+
+        par_conn.Append((unsigned char *)buf, msgLength);
+        delete [] buf;
+
         xfer->Process();
     }
 }
@@ -1093,6 +1239,9 @@ Engine::PAR_ProcessInput()
 //    Sean Ahern, Wed Dec 12 12:04:15 EST 2007
 //    Made a distinction between the execution and the idle timeouts.
 //
+//    Brad Whitlock, Thu Jun 11 15:12:36 PST 2009
+//    I disabled the call to NeedsRead when we don't have select().
+//
 // ****************************************************************************
 
 bool
@@ -1114,8 +1263,10 @@ Engine::EventLoop()
         // Block until the connection needs to be read. Then process its
         // new input.
         //
+#ifdef HAVE_SELECT
         if (xfer->GetInputConnection()->NeedsRead(true))
         {
+#endif
             TRY
             {
                 // We've got some work to do.  Reset the alarm.
@@ -1137,7 +1288,9 @@ Engine::EventLoop()
                 errFlag = true;
             }
             ENDTRY
+#ifdef HAVE_SELECT
         }
+#endif
     }
 
     return errFlag;
@@ -1285,6 +1438,9 @@ Engine::ProcessInput()
 //    Tom Fogal, Mon Aug 11 11:40:57 EDT 2008
 //    Add `n-gpus-per-node' command line parameter.
 //
+//    Hank Childs, Sat Apr 11 23:41:27 CDT 2009
+//    Added -never-output-timings flag.
+//
 // ****************************************************************************
 
 void
@@ -1351,6 +1507,8 @@ Engine::ProcessCommandLine(int argc, char **argv)
         }
         else if (strcmp(argv[i], "-withhold-timing-output") == 0)
             visitTimer->WithholdOutput(true);
+        else if (strcmp(argv[i], "-never-output-timings") == 0)
+            visitTimer->NeverOutput(true);
         else if (strcmp(argv[i], "-timeout") == 0)
         {
             if (i+1 < argc)
@@ -1503,6 +1661,9 @@ Engine::ProcessCommandLine(int argc, char **argv)
 //    Mark C. Miller, Wed Jul  7 11:42:09 PDT 2004
 //    Made it PAR_Exit() in parallel and call VisItInit::Finalize()
 //
+//    Hank Childs, Fri Apr 24 07:30:48 CDT 2009
+//    Also print out timeout statement to cerr if in parallel.
+//
 // ****************************************************************************
 
 void
@@ -1511,16 +1672,31 @@ Engine::AlarmHandler(int signal)
     Engine *e = Engine::Instance();
     if (e->overrideTimeoutEnabled == true)
     {
+        if (PAR_Size() > 1)
+        {
+            cerr << PAR_Rank() << ": ENGINE exited due to an inactivity timeout of "
+                << e->overrideTimeoutMins << " minutes.  Timeout was set through a callback. (Alarm received)" << endl;
+        }
         debug1 << "ENGINE exited due to an inactivity timeout of "
             << e->overrideTimeoutMins << " minutes.  Timeout was set through a callback. (Alarm received)" << endl;
     } else
     {
         if (e->idleTimeoutEnabled == true)
         {
+            if (PAR_Size() > 1)
+            {
+                cerr << PAR_Rank() << ": ENGINE exited due to an idle inactivity timeout of "
+                    << e->idleTimeoutMins << " minutes. (Alarm received)" << endl;
+            }
             debug1 << "ENGINE exited due to an idle inactivity timeout of "
                 << e->idleTimeoutMins << " minutes. (Alarm received)" << endl;
         } else
         {
+            if (PAR_Size() > 1)
+            {
+                cerr << PAR_Rank() << ": ENGINE exited due to an execution timeout of "
+                    << e->executionTimeoutMins << " minutes. (Alarm received)" << endl;
+            }
             debug1 << "ENGINE exited due to an execution timeout of "
                 << e->executionTimeoutMins << " minutes. (Alarm received)" << endl;
         }
@@ -1645,6 +1821,215 @@ WriteByteStreamToSocket(NonBlockingRPC *rpc, Connection *vtkConnection,
     visitTimer->StopTimer(writeData, info);
 }
 
+#ifdef PARALLEL
+// ****************************************************************************
+//  Function SwapAndMergeWriterOutputs
+//
+//  Purpose:
+//      Swaps avtDataObjects between this processor and another and
+//      Merges it into this processor's data object.
+//
+//  Programmer: Mark C. Miller (borrowed from avtDataObjectInformation)
+//  Creation:   June 25, 2009 
+//
+//  Modifications:
+//
+//    Mark C. Miller, Tue Jun 30 18:04:47 PDT 2009
+//    Moved communication related to cell counting and determining if
+//    scalable threshold is exceeded from a separate MPI_Allreduce in
+//    WriteData() to be 'in band' with this swap and merge operation.
+//    The paired processors ALWAYS communicate string size and cell count
+//    info in the first sendrecv. However, they may or may NOT engage in the
+//    2nd sendrecv of the data depending on cell count.
+// ****************************************************************************
+static void
+SwapAndMergeClonedWriterOutputs(avtDataObject_p dob,
+    int *reducedCellCount, int scalableThreshold, bool sendDataAnyway,
+    int swapWithProc, int mpiSwapLenTag, int mpiSwapStrTag)
+{
+
+   MPI_Status mpiStatus;
+   char *srcStr, *dstStr;
+   int   srcLen,  dstLen;
+   int   srcCnt = *reducedCellCount,  dstCnt;
+
+   // serialize the data object information into a string
+   avtDataObjectString srcDobStr;
+   avtDataObjectWriter *dobwrtr = dob->InstantiateWriter();
+   dobwrtr->SetInput(dob);
+   dobwrtr->Write(srcDobStr);
+   srcDobStr.GetWholeString(srcStr, srcLen);
+
+   // swap string lengths and cell counts
+   int srcTmp[2] = {srcLen, srcCnt};
+   int dstTmp[2];
+   MPI_Sendrecv(&srcTmp, 2, MPI_INT, swapWithProc, mpiSwapLenTag,
+                &dstTmp, 2, MPI_INT, swapWithProc, mpiSwapLenTag,
+                VISIT_MPI_COMM, &mpiStatus);
+
+   dstLen = dstTmp[0];
+   dstCnt = dstTmp[1];
+
+    // If dstCnt already at INT_MAX, it is the 'special' case I think for
+    // volume rendering. Set it in the output (srcCnt) 
+    if (dstCnt == INT_MAX)
+        srcCnt = INT_MAX;
+
+    // If dstCnt is at INT_MAX-1, it is an 'ordinary' overflow condition.
+    // Again, set it in the output (srcCnt)
+    if (dstCnt == INT_MAX-1)
+    {
+        if (srcCnt != INT_MAX)
+            srcCnt = INT_MAX-1;
+    }
+
+    //
+    // If we get here, we have real cell count summation work to do.
+    //
+    if (srcCnt < INT_MAX-1)
+    {
+        // First check for possible 'ordinary' overflow in that both inputs could
+        // be valid (e.g. non-INT_MAX) integers but their sum is out of range. If
+        // that is the case, we use the value 'INT_MAX-1' to represent it because
+        // the value INT_MAX is used for some special purpose for volume rendering.
+        double tmp = (double) srcCnt + (double) dstCnt;
+        if (tmp >= INT_MAX-1)
+            srcCnt = INT_MAX-1;
+        else
+            srcCnt = srcCnt + dstCnt;
+    }
+
+    //
+    // At this point, srcCnt contains either a valid summation of the cell counts
+    // from both the src and dst processors OR one of the special values, INT_MAX
+    // or INT_MAX-1. We only need to do the data exchange if the cell count is
+    // below threshold OR we're being asked to send data regardless (the metadata
+    // case where we send basically the data tree--labels and domain ids--without
+    // the actual data).
+    //
+
+    if ((srcCnt < scalableThreshold) || sendDataAnyway)
+    {
+        dstStr = new char [dstLen];
+
+        // swap strings
+        MPI_Sendrecv(srcStr, srcLen, MPI_CHAR, swapWithProc, mpiSwapStrTag,
+                     dstStr, dstLen, MPI_CHAR, swapWithProc, mpiSwapStrTag,
+                     VISIT_MPI_COMM, &mpiStatus);
+
+        avtDataObjectReader *avtreader = new avtDataObjectReader;
+        avtreader->Read(dstLen, dstStr);
+        avtDataObject_p destdob = avtreader->GetOutput();
+
+        // We can't tell the reader to read (Update) unless we tell it
+        // what we want it to read.  Fortunately, we can just ask it
+        // for a general specification.
+        avtOriginatingSource *src = destdob->GetOriginatingSource();
+        avtContract_p spec = src->GetGeneralContract();
+        destdob->Update(spec);
+
+        // Do what we came here for.
+        dob->Merge(*destdob);
+
+        // The data object reader will delete the dstStr string we allocated above.
+        delete avtreader;
+    }
+
+   *reducedCellCount = srcCnt;
+
+}
+
+// ****************************************************************************
+//  Function ParallelMergeWriterOutputs
+//
+//  Purpose:
+//      Performs a tree-like sequence of swap and merge operations. At each
+//      iteration through the loop, the entire communicator of processors is
+//      divided into groups which are known to have merged results. One processor
+//      in each even numbered group is paired with one processor in each odd
+//      numbered group and vice versa. As long as the processor identified to
+//      swap with is in the range of the communicator, the avtDataObject
+//      is swapped and merged between these pairs of processors. The group
+//      size is doubled and the process of pairing and swapping is repeated.
+//      This continues until the group size equals or exceeds the communicator
+//      size. At this point, one or two processors has merged results that include
+//      the influence of every other processor even if they did not explicitly
+//      communicate with each other. In all cases, one of those includes
+//      processor 0.
+//
+//  Programmer: Mark C. Miller (copied from avtDataObjectInformation)
+//  Creation:   June 25, 2009
+//
+//  Modifications:
+//
+//    Mark C. Miller, Sat Jun 27 07:45:17 PDT 2009
+//    Added simple status reporting
+//
+//    Mark C. Miller, Tue Jun 30 18:04:18 PDT 2009
+//    Added args for reducedCellCount, scalableThreshold and sendDataAnyway.
+// ****************************************************************************
+
+static void
+ParallelMergeClonedWriterOutputs(avtDataObject_p dob,
+    int lenTag, int strTag,
+    int *reducedCellCount, int scalableThreshold,
+    bool sendDataAnyway, NonBlockingRPC *rpc)
+{
+    int groupSize = 1;
+    int myRank, commSize;
+
+    MPI_Comm_size(VISIT_MPI_COMM, &commSize);
+    MPI_Comm_rank(VISIT_MPI_COMM, &myRank);
+
+    //
+    // Determine number of times we'll iterate up the tree
+    //
+    int ntree = 0;
+    while (groupSize < commSize)
+    {
+        groupSize <<= 1;
+        ntree++;
+    }
+    
+    // walk up the communication tree, swapping and merging data
+    int n = 1;
+    groupSize = 1;
+    while (groupSize < commSize)
+    {
+        int swapWithProc = -1;
+        int myGroupNum = myRank / groupSize;
+        int myGroupIdx = myRank % groupSize;
+
+        // determine processor to swap with
+        if (myGroupNum % 2)   // myGroupNum is odd
+            swapWithProc = (myGroupNum - 1) * groupSize + myGroupIdx;
+        else                  // myGroupNum is even
+            swapWithProc = (myGroupNum + 1) * groupSize + myGroupIdx;
+
+        // only do the swap between 0th processors in each group AND only
+        // if the processor to swap with is in range of communicator
+        if ((myGroupIdx == 0) && (0 <= swapWithProc) && (swapWithProc < commSize))
+        {
+            SwapAndMergeClonedWriterOutputs(dob, reducedCellCount,
+                scalableThreshold, sendDataAnyway, swapWithProc, lenTag, strTag);
+        }
+
+        //
+        // Only the root will have non-zero rpc.
+        //
+        if (rpc)
+        {
+            rpc->SendStatus((int) (100. * float(n)/float(ntree)),
+                rpc->GetCurStageNum(),
+                "Synchronizing",
+                rpc->GetMaxStageNum());
+        }
+ 
+        n++;
+        groupSize <<= 1;
+    }
+}
+#endif
 
 // ****************************************************************************
 // Function: WriteData
@@ -1786,6 +2171,45 @@ WriteByteStreamToSocket(NonBlockingRPC *rpc, Connection *vtkConnection,
 //
 //    Mark C. Miller, Tue Jun 10 15:57:15 PDT 2008
 //    Cast first arg of SendStatus to int explicitly
+//
+//    Mark C. Miller, Thu Jun 25 18:31:23 PDT 2009
+//    Adjusted communication algorithm to eliminate point-to-point approach.
+//    Replaced loop of p2p interactions with two collective operations; an
+//    all reduce sum operation on the cell count being careful to take into
+//    account possible INT_MAX values in the sumands; a tree-based swap
+//    and merge algorithm to merge the data objects. An alternative to the
+//    tree-based approach is a gatherv to the root. However, a problem with
+//    the gatherv approach is that it cannot concurrently perform merges 
+//    with communication. So, after the gatherv completes, the root proc
+//    winds up with COMM_SIZE strings that it still needs to a) convert
+//    back to data objects and b) merge together. Care was taken to ensure
+//    all other logic with respect to SR mode thresholds and INT_MAX special
+//    case for volume rendering was upheld.
+//
+//    Mark C. Miller, Fri Jun 26 18:52:34 PDT 2009
+//    Replaced '+=' assignment to currentCellCount from reducedCurrentCellCount
+//    to just '=' assignment. This is correct because the reduced value has
+//    already been summed.
+//
+//    Mark C. Miller, Fri Jun 26 18:59:00 PDT 2009
+//    Removed extraneous debug statements
+//
+//    Mark C. Miller, Sat Jun 27 07:56:29 PDT 2009
+//    Passed rpc to ParallelMerge function so it could report a simple
+//    status.
+//
+//    Mark C. Miller, Tue Jun 30 17:53:44 PDT 2009
+//    Replaced initial MPI_Allreduce and its user-defined MPI_Op function
+//    with the same communication 'in-band' with the tree of SwapAndMerge
+//    operations. This required re-introduction of the finalizing MPI_Bcast
+//    to ensure all processors had common values for cell count and whether
+//    the scalable threshold was exceeded. But a collective call after the
+//    data merge and send to viewer I felt was much less harmless than one
+//    before any data merging can even start.
+//
+//    Tom Fogal, Tue Jul 21 17:11:47 MDT 2009
+//    Debug statements.
+//
 // ****************************************************************************
 void
 Engine::WriteData(NonBlockingRPC *rpc, avtDataObjectWriter_p &writer,
@@ -1798,12 +2222,8 @@ Engine::WriteData(NonBlockingRPC *rpc, avtDataObjectWriter_p &writer,
 #ifdef PARALLEL
 
     static const bool polysOnly = true;
-
-    // set up MPI message tags
-    int mpiCellCountTag   = GetUniqueMessageTag();
-    int mpiSendDataTag    = GetUniqueMessageTag();
-    int mpiDataObjSizeTag = GetUniqueMessageTag();
-    int mpiDataObjDataTag = GetUniqueMessageTag();
+    int mpiSwapLenTag   = GetUniqueMessageTag();
+    int mpiSwapStrTag   = GetUniqueMessageTag();
 
     //
     // When respond with null is true, this routine still has an obligation
@@ -1853,81 +2273,27 @@ Engine::WriteData(NonBlockingRPC *rpc, avtDataObjectWriter_p &writer,
             // while we merge other proc's output into the cloned dob
             ui_dob = ui_dob->Clone();
 
-            for (int i=1; i<PAR_Size(); i++)
+            int reducedCurrentCellCount = currentCellCount;
+            ParallelMergeClonedWriterOutputs(ui_dob, mpiSwapLenTag, mpiSwapStrTag,
+                &reducedCurrentCellCount, scalableThreshold, sendDataAnyway, rpc);
+
+            if (currentTotalGlobalCellCount == INT_MAX ||
+                currentCellCount == INT_MAX ||
+                reducedCurrentCellCount == INT_MAX ||
+                reducedCurrentCellCount == INT_MAX-1 || // 'ordinary' overflow
+                currentTotalGlobalCellCount + reducedCurrentCellCount > scalableThreshold)
             {
-                MPI_Status stat;
-                int size, proc_i_localCellCount;
-
-                int shouldGetData = 1;
-                int mpiSource = MPI_ANY_SOURCE; 
-
-                // recv the "num cells I have" message from any proc
-                MPI_Recv(&proc_i_localCellCount, 1, MPI_INT, MPI_ANY_SOURCE,
-                    mpiCellCountTag, VISIT_MPI_COMM, &stat);
-
-                mpiSource = stat.MPI_SOURCE;
-
-                debug5 << "received the \"num cells I have\" (=" << proc_i_localCellCount
-                       << ") message from processor " << mpiSource << endl;
-
-                // accumulate this processors cell count in the total for this network
-                if (currentCellCount != INT_MAX)
-                    currentCellCount += proc_i_localCellCount;
-
-                // test if we've exceeded the scalable threshold
-                if (currentTotalGlobalCellCount == INT_MAX ||
-                    currentCellCount == INT_MAX ||
-                    (currentTotalGlobalCellCount + currentCellCount 
-                          > scalableThreshold))
+                if (!thresholdExceeded)
                 {
-                    if (!thresholdExceeded)
-                        debug5 << "exceeded scalable threshold of " << scalableThreshold << endl;
-                    shouldGetData = sendDataAnyway;
-                    thresholdExceeded = true; 
+                    debug5 << "Exceeded scalable threshold of " << scalableThreshold << endl;
+                    if (reducedCurrentCellCount == INT_MAX-1)
+                        debug5 << "This was due to 'oridinary' overflow in summing cell counts" << endl;
                 }
-
-                // tell source processor whether or not to send data with
-                // the "should send data" message
-                MPI_Send(&shouldGetData, 1, MPI_INT, mpiSource, 
-                    mpiSendDataTag, VISIT_MPI_COMM);
-                debug5 << "told processor " << mpiSource << (shouldGetData==1?" to":" NOT to")
-                       << " send data" << endl;
-
-                if (shouldGetData)
-                {
-                    MPI_Recv(&size, 1, MPI_INT, mpiSource, 
-                             mpiDataObjSizeTag, VISIT_MPI_COMM, &stat);
-                    debug5 << "receiving size=" << size << endl;
-
-                    debug5 << "receiving " << size << " bytes from MPI_SOURCE "
-                           << mpiSource << endl;
-
-                    char *str = new char[size];
-                    MPI_Recv(str, size, MPI_CHAR, mpiSource, 
-                             mpiDataObjDataTag, VISIT_MPI_COMM, &stat);
-                    debug5 << "receiving data" << endl;
-    
-                    // The data object reader will delete the string.
-                    avtDataObjectReader *avtreader = new avtDataObjectReader;
-                    avtreader->Read(size, str);
-                    avtDataObject_p proc_i_dob = avtreader->GetOutput();
-
-                    // We can't tell the reader to read (Update) unless we tell it
-                    // what we want it to read.  Fortunately, we can just ask it
-                    // for a general specification.
-                    avtOriginatingSource *src = proc_i_dob->GetOriginatingSource();
-                    avtContract_p spec
-                        = src->GetGeneralContract();
-                    proc_i_dob->Update(spec);
-
-                    ui_dob->Merge(*proc_i_dob);
-                    delete avtreader;
-                }
-
-                rpc->SendStatus((int) (100. * float(i)/float(PAR_Size())),
-                                rpc->GetCurStageNum(),
-                                "Synchronizing",
-                                rpc->GetMaxStageNum());
+                thresholdExceeded = true;
+            }
+            else
+            {
+                currentCellCount = reducedCurrentCellCount;
             }
         }
         visitTimer->StopTimer(collectData, "Collecting data");
@@ -1946,6 +2312,7 @@ Engine::WriteData(NonBlockingRPC *rpc, avtDataObjectWriter_p &writer,
             if (thresholdExceeded && !sendDataAnyway)
             {
                 // dummy a null data object message to send to viewer
+                debug2 << "Sending back null dataset message." << std::endl;
                 avtNullData_p nullData = new avtNullData(NULL,AVT_NULL_DATASET_MSG);
                 CopyTo(ui_dob, nullData);
             }
@@ -1971,6 +2338,7 @@ Engine::WriteData(NonBlockingRPC *rpc, avtDataObjectWriter_p &writer,
         }
         else
         {
+            debug1 << "Sending error: " << v.GetErrorMessage() << std::endl;
             rpc->SendError(v.GetErrorMessage());
         }
 
@@ -1981,15 +2349,6 @@ Engine::WriteData(NonBlockingRPC *rpc, avtDataObjectWriter_p &writer,
     {
         if (writer->MustMergeParallelStreams())
         {
-            char *str;
-            int   size;
-            avtDataObjectString do_str;
-            writer->Write(do_str);
-            do_str.GetWholeString(str, size);
-
-            int shouldSendData = 1;
-            MPI_Status stat;
-
             // send the "num cells I have" message to proc 0
             int numCells;
             if (cellCountMultiplier > INT_MAX/2.)
@@ -1998,24 +2357,24 @@ Engine::WriteData(NonBlockingRPC *rpc, avtDataObjectWriter_p &writer,
                 numCells = (int) 
                              (writer->GetInput()->GetNumberOfCells(polysOnly) *
                                                       cellCountMultiplier);
-            debug5 << "sending \"num cells I have\" message (=" << numCells << ")" << endl;
-            MPI_Send(&numCells, 1, MPI_INT, 0, mpiCellCountTag, VISIT_MPI_COMM);
 
-            // recv the "should send data" message from proc 0
-            MPI_Recv(&shouldSendData, 1, MPI_INT, 0, mpiSendDataTag, VISIT_MPI_COMM, &stat);
+            int reducedCurrentCellCount = numCells;
+            avtDataObject_p dob = writer->GetInput();
+            dob = dob->Clone();
+            ParallelMergeClonedWriterOutputs(dob, mpiSwapLenTag, mpiSwapStrTag,
+                &reducedCurrentCellCount, scalableThreshold, sendDataAnyway, 0);
 
-            if (shouldSendData)
+            if (currentTotalGlobalCellCount == INT_MAX ||
+                numCells == INT_MAX ||
+                reducedCurrentCellCount == INT_MAX ||
+                reducedCurrentCellCount == INT_MAX-1 || // 'ordinary' overflow
+                currentTotalGlobalCellCount + reducedCurrentCellCount > scalableThreshold)
             {
-               debug5 << "sending size=" << size << endl; 
-               MPI_Send(&size, 1, MPI_INT, 0, mpiDataObjSizeTag, VISIT_MPI_COMM);
-               debug5 << "sending " << size << " bytes to proc 0" << endl;
-               debug5 << "sending data" << endl; 
-               MPI_Send(str, size, MPI_CHAR, 0, mpiDataObjDataTag, VISIT_MPI_COMM);
+                thresholdExceeded = true;
             }
             else
             {
-                debug5 << "not sending data to proc 0 because the scalable"
-                       << "threshold has been exceeded." << endl;
+                currentCellCount = reducedCurrentCellCount;
             }
         }
         else
@@ -2153,12 +2512,16 @@ Engine::SendKeepAliveReply()
 //
 //    Mark C. Miller, Mon Jan 22 22:09:01 PST 2007
 //    Changed MPI_COMM_WORLD to VISIT_MPI_COMM
+//
+//    Brad Whitlock, Thu Jun 11 15:08:46 PST 2009
+//    I disabled this code if we don't have select().
+//
 // ****************************************************************************
 
 bool
 Engine::EngineAbortCallbackParallel(void *data, bool informSlaves)
 {
-
+#ifdef HAVE_SELECT
 #ifdef PARALLEL
     MPIXfer *xfer = (MPIXfer*)data;
 #else
@@ -2203,6 +2566,9 @@ Engine::EngineAbortCallbackParallel(void *data, bool informSlaves)
         xfer->SendInterruption(INTERRUPT_MESSAGE_TAG);
 #endif
     return abort;
+#else
+    return false;
+#endif
 }
 
 // ****************************************************************************
@@ -2764,6 +3130,9 @@ Engine::GetProcessAttributes()
 //    Tom Fogal, Mon Sep  1 12:54:29 EDT 2008
 //    Change to a method from a static function, and delegate to VisItDisplay.
 //
+//    Tom Fogal, Sun Mar  8 00:25:52 MST 2009
+//    Allow a HW context even in serial mode.
+//
 // ****************************************************************************
 
 void
@@ -2795,6 +3164,12 @@ Engine::SetupDisplay()
                 this->renderingDisplay = Display::Create(Display::D_X);
             }
         }
+    }
+#else
+    if(this->nDisplays > 0)
+    {
+        this->renderingDisplay = Display::Create(Display::D_X);
+        display = 0;
     }
 #endif
     if(this->renderingDisplay == NULL)

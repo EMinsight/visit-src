@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -42,15 +42,15 @@
 #include <ViewerProxy.h>
 #include <DataNode.h>
 
-#include <QCheckBox>
-#include <QComboBox>
-#include <QGroupBox>
-#include <QLabel>
-#include <QLayout>
-#include <QLineEdit>
-#include <QSpinBox>
-#include <QTabWidget>
-#include <QToolTip>
+#include <qcheckbox.h>
+#include <qcombobox.h>
+#include <qgroupbox.h>
+#include <qlabel.h>
+#include <qlayout.h>
+#include <qlineedit.h>
+#include <qspinbox.h>
+#include <qtabwidget.h>
+#include <qtooltip.h>
 #include <QvisColorTableButton.h>
 #include <QvisColorButton.h>
 #include <QvisLineWidthWidget.h>
@@ -126,9 +126,6 @@ QvisStreamlinePlotWindow::~QvisStreamlinePlotWindow()
 //   Dave Pugmire, Mon Aug 4 2:49:38 EDT 2008
 //   Added termination, algorithm and integration options.
 //
-//   Brad Whitlock, Wed Aug  6 10:20:49 PDT 2008
-//   Qt 4.
-//
 //   Dave Pugmire, Wed Aug 6 15:16:23 EST 2008
 //   Add accurate distance calculate option.
 //
@@ -147,368 +144,383 @@ QvisStreamlinePlotWindow::~QvisStreamlinePlotWindow()
 //   Dave Pugmire, Tue Oct 7 08:17:22 EDT 2008
 //   Changed 'Termination Criteria' to 'Termination Criterion'
 //
+//   Dave Pugmire, Thu Feb  5 12:20:15 EST 2009
+//   Added workGroupSize for the masterSlave algorithm.
+//
+//   Dave Pugmire, Mon Feb 23, 09:11:34 EST 2009
+//   Added number of steps as a termination criterion.
+//
+//   Dave Pugmire, Tue Mar 10 12:41:11 EDT 2009
+//   Add pathline GUI.
+//    
+//   Jeremy Meredith, Wed Apr  8 14:40:48 EDT 2009
+//   Backported recent additons to Qt3.
+//
+//   Dave Pugmire, Wed Jun 10 16:26:25 EDT 2009
+//   Add color by variable.
+//
 // ****************************************************************************
 
 void
 QvisStreamlinePlotWindow::CreateWindowContents()
 {
-    QGridLayout *mainLayout = new QGridLayout(0);
-    topLayout->addLayout(mainLayout);
-    mainLayout->setMargin(0);
+    QGridLayout *mainLayout = new QGridLayout(topLayout, 6, 3, 10, "mainLayout");
 
     // Create the maximum time text field.
-    mainLayout->addWidget(new QLabel(tr("Termination criteria"), central),0,0);
-    termType = new QComboBox(central);
-    termType->addItem(tr("Distance"));
-    termType->addItem(tr("Time"));
+    mainLayout->addWidget(new QLabel(tr("Termination Criterion"), central, "terminationLabel"),0,0);
+    termType = new QComboBox(central, "termType");
+    termType->insertItem(tr("Distance"));
+    termType->insertItem(tr("Time"));
+    termType->insertItem(tr("Number of Steps"));
     connect(termType, SIGNAL(activated(int)),
             this, SLOT(termTypeChanged(int)));
     mainLayout->addWidget(termType, 1,0);
 
-    termination = new QLineEdit(central);
+    termination = new QLineEdit(central, "termination");
     connect(termination, SIGNAL(returnPressed()),
             this, SLOT(terminationProcessText()));
     mainLayout->addWidget(termination, 1,1);
 
     //Create the direction of integration.
-    mainLayout->addWidget(new QLabel(tr("Streamline direction"), central),3,0);
-    directionType = new QComboBox(central);
-    directionType->addItem(tr("Forward"));
-    directionType->addItem(tr("Backward"));
-    directionType->addItem(tr("Both"));
+    mainLayout->addWidget(new QLabel(tr("Streamline direction"), central, "streamlineDirectionLabel"),3,0);
+    directionType = new QComboBox(central, "directionType");
+    directionType->insertItem(tr("Forward"));
+    directionType->insertItem(tr("Backward"));
+    directionType->insertItem(tr("Both"));
     connect(directionType, SIGNAL(activated(int)),
             this, SLOT(directionTypeChanged(int)));
     mainLayout->addWidget(directionType, 3,1);
 
-    // Add some space....
-    mainLayout->addWidget(new QLabel(tr(""), central),4,0);
+    /*
+    pathlineFlag = new QCheckBox(tr("Pathlines"), central);
+    connect(pathlineFlag, SIGNAL(toggled(bool)),
+            this, SLOT(pathlineFlagChanged(bool)));
+    mainLayout->addWidget(pathlineFlag, 4,0);
+    */
 
     //
     // Create a tab widget so we can split source type and appearance.
     //
-    QTabWidget *tabs = new QTabWidget(central);
-    mainLayout->addWidget(tabs, 5, 0, 1, 2);
+    QTabWidget *tabs = new QTabWidget(central, "tabs");
+    mainLayout->addMultiCellWidget(tabs, 5,5,0,1);
 
     //
     // Create a tab for the streamline source widgets.
     //
-    QWidget *topPageSource = new QWidget(central);
+    QGroupBox *topPageSource = new QGroupBox(central, "topPageSource");
+    topPageSource->setFrameStyle(QFrame::NoFrame);
     tabs->addTab(topPageSource, tr("Source"));
-    QGridLayout *hLayout = new QGridLayout(topPageSource);
-    hLayout->setMargin(10);
-    hLayout->setColumnStretch(1,10);
+    QVBoxLayout *topSourceLayout = new QVBoxLayout(topPageSource);
+    topSourceLayout->setMargin(10);
+    topSourceLayout->setSpacing(5);
 
     // Create the source type combo box.
-    hLayout->addWidget(new QLabel(tr("Source type"), topPageSource), 0,0);
-    sourceType = new QComboBox(topPageSource);
-    sourceType->addItem(tr("Point"));
-    sourceType->addItem(tr("Line"));
-    sourceType->addItem(tr("Plane"));
-    sourceType->addItem(tr("Sphere"));
-    sourceType->addItem(tr("Box"));
+    QGridLayout *hLayout = new QGridLayout(topSourceLayout,2,2,10);
+    hLayout->addWidget(new QLabel(tr("Source type"), topPageSource, "sourceTypeLabel"), 0,0);
+    sourceType = new QComboBox(topPageSource, "sourceType");
+    sourceType->insertItem(tr("Point"));
+    sourceType->insertItem(tr("Line"));
+    sourceType->insertItem(tr("Plane"));
+    sourceType->insertItem(tr("Sphere"));
+    sourceType->insertItem(tr("Box"));
     connect(sourceType, SIGNAL(activated(int)),
             this, SLOT(sourceTypeChanged(int)));
     hLayout->addWidget(sourceType, 0,1);
+    topSourceLayout->addSpacing(5);
 
     //
     // Create the widget that lets the user set the point density.
     //
-    hLayout->addWidget(new QLabel(tr("Point density"), topPageSource), 1,0);
-    pointDensity = new QSpinBox(topPageSource);
-    pointDensity->setMinimum(1);
-    pointDensity->setMaximum(1000);
+    hLayout->addWidget(new QLabel(tr("Point density"), topPageSource, "pointDensityLabel"), 1,0);
+    pointDensity = new QSpinBox(1, 1000, 1, topPageSource, "pointDensity");
     connect(pointDensity, SIGNAL(valueChanged(int)), 
             this, SLOT(pointDensityChanged(int)));
     hLayout->addWidget(pointDensity,1,1);
 
     // Create a group box for the source attributes.
-    QGroupBox *pageSource = new QGroupBox(topPageSource);
+    QGroupBox *pageSource = new QGroupBox(topPageSource, "pageSource");
     sourceAtts = pageSource;
     sourceAtts->setTitle(tr("Point"));
-    hLayout->addWidget(pageSource,2,0,1,2);
-    QVBoxLayout *sTopLayout = new QVBoxLayout(pageSource);
-    QGridLayout *sLayout = new QGridLayout(0);
-    sTopLayout->addLayout(sLayout);
-    sTopLayout->addStretch(10);
-    sLayout->setSpacing(5);
-    sLayout->setMargin(0);
+    topSourceLayout->addWidget(pageSource);
+    topSourceLayout->addStretch(5);
+    QVBoxLayout *svLayout = new QVBoxLayout(pageSource, 10, 2);
+    svLayout->addSpacing(10);
+    QGridLayout *sLayout = new QGridLayout(svLayout, 16, 2);
+    sLayout->setMargin(10);
 
     // Create the widgets that specify a point source.
-    pointSource = new QLineEdit(pageSource);
+    pointSource = new QLineEdit(pageSource, "pointSource");
     connect(pointSource, SIGNAL(returnPressed()),
             this, SLOT(pointSourceProcessText()));
-    pointSourceLabel = new QLabel(tr("Location"), pageSource);
-    pointSourceLabel->setBuddy(pointSource);
+    pointSourceLabel = new QLabel(pointSource, tr("Location"), pageSource, "pointSourceLabel");
     sLayout->addWidget(pointSourceLabel, 3, 0);
     sLayout->addWidget(pointSource, 3,1);
 
     // Create the widgets that specify a line source.
-    lineStart = new QLineEdit(pageSource);
+    lineStart = new QLineEdit(pageSource, "lineStart");
     connect(lineStart, SIGNAL(returnPressed()),
             this, SLOT(lineStartProcessText()));
-    lineStartLabel = new QLabel(tr("Start"), pageSource);
-    lineStartLabel->setBuddy(lineStart);
+    lineStartLabel = new QLabel(lineStart, tr("Start"), pageSource, "lineStartLabel");
     sLayout->addWidget(lineStartLabel,4,0);
     sLayout->addWidget(lineStart, 4,1);
 
-    lineEnd = new QLineEdit(pageSource);
+    lineEnd = new QLineEdit(pageSource, "lineEnd");
     connect(lineEnd, SIGNAL(returnPressed()),
             this, SLOT(lineEndProcessText()));
-    lineEndLabel = new QLabel(tr("End"), pageSource);
-    lineEndLabel->setBuddy(lineEnd);
+    lineEndLabel = new QLabel(lineEnd, tr("End"), pageSource, "lineEndLabel");
     sLayout->addWidget(lineEndLabel,5,0);
     sLayout->addWidget(lineEnd, 5,1);
 
     // Create the widgets that specify a plane source.
-    planeOrigin = new QLineEdit(pageSource);
+    planeOrigin = new QLineEdit(pageSource, "planeOrigin");
     connect(planeOrigin, SIGNAL(returnPressed()),
             this, SLOT(planeOriginProcessText()));
-    planeOriginLabel = new QLabel(tr("Origin"), pageSource);
-    planeOriginLabel->setBuddy(planeOrigin);
+    planeOriginLabel = new QLabel(planeOrigin, tr("Origin"), pageSource, "planeOriginLabel");
     sLayout->addWidget(planeOriginLabel,6,0);
     sLayout->addWidget(planeOrigin, 6,1);
 
-    planeNormal = new QLineEdit(pageSource);
+    planeNormal = new QLineEdit(pageSource, "planeNormal");
     connect(planeNormal, SIGNAL(returnPressed()),
             this, SLOT(planeNormalProcessText()));
-    planeNormalLabel = new QLabel(tr("Normal"), pageSource);
-    planeNormalLabel->setBuddy(planeNormal);
+    planeNormalLabel = new QLabel(planeNormal, tr("Normal"), pageSource, "planeNormalLabel");
     sLayout->addWidget(planeNormalLabel,7,0);
     sLayout->addWidget(planeNormal, 7,1);
 
-    planeUpAxis = new QLineEdit(pageSource);
+    planeUpAxis = new QLineEdit(pageSource, "planeUpAxis");
     connect(planeUpAxis, SIGNAL(returnPressed()),
             this, SLOT(planeUpAxisProcessText()));
-    planeUpAxisLabel = new QLabel(tr("Up axis"), pageSource);
-    planeUpAxisLabel->setBuddy(planeUpAxis);
+    planeUpAxisLabel = new QLabel(planeUpAxis, tr("Up axis"), pageSource, "planeUpAxisLabel");
     sLayout->addWidget(planeUpAxisLabel,8,0);
     sLayout->addWidget(planeUpAxis, 8,1);
 
-    planeRadius = new QLineEdit(pageSource);
+    planeRadius = new QLineEdit(pageSource, "planeRadius");
     connect(planeRadius, SIGNAL(returnPressed()),
             this, SLOT(planeRadiusProcessText()));
-    planeRadiusLabel = new QLabel(tr("Radius"), pageSource);
-    planeRadiusLabel->setBuddy(planeRadius);
+    planeRadiusLabel = new QLabel(planeRadius, tr("Radius"), pageSource, "planeRadiusLabel");
     sLayout->addWidget(planeRadiusLabel,9,0);
     sLayout->addWidget(planeRadius, 9,1);
 
     // Create the widgets that specify a sphere source.
-    sphereOrigin = new QLineEdit(pageSource);
+    sphereOrigin = new QLineEdit(pageSource, "sphereOrigin");
     connect(sphereOrigin, SIGNAL(returnPressed()),
             this, SLOT(sphereOriginProcessText()));
-    sphereOriginLabel = new QLabel(tr("Origin"), pageSource);
-    sphereOriginLabel->setBuddy(sphereOrigin);
+    sphereOriginLabel = new QLabel(sphereOrigin, tr("Origin"), pageSource, "sphereOriginLabel");
     sLayout->addWidget(sphereOriginLabel,10,0);
     sLayout->addWidget(sphereOrigin, 10,1);
 
-    sphereRadius = new QLineEdit(pageSource);
+    sphereRadius = new QLineEdit(pageSource, "sphereRadius");
     connect(sphereRadius, SIGNAL(returnPressed()),
             this, SLOT(sphereRadiusProcessText()));
-    sphereRadiusLabel = new QLabel(tr("Radius"), pageSource);
-    sphereRadiusLabel->setBuddy(sphereRadius);
+    sphereRadiusLabel = new QLabel(sphereRadius, tr("Radius"), pageSource, "sphereRadiusLabel");
     sLayout->addWidget(sphereRadiusLabel,11,0);
     sLayout->addWidget(sphereRadius, 11,1);
 
     // Create the widgets that specify a box source
-    useWholeBox = new QCheckBox(tr("Whole data set"), pageSource);
+    useWholeBox = new QCheckBox(tr("Whole data set"), 
+                                pageSource, "useWholeBox");
     connect(useWholeBox, SIGNAL(toggled(bool)),
             this, SLOT(useWholeBoxChanged(bool)));
     sLayout->addWidget(useWholeBox, 12, 0);
 
-    boxExtents[0] = new QLineEdit(pageSource);
+    boxExtents[0] = new QLineEdit(pageSource, "boxExtents[0]");
     connect(boxExtents[0], SIGNAL(returnPressed()),
             this, SLOT(boxExtentsProcessText()));
-    boxExtentsLabel[0] = new QLabel(tr("X Extents"), pageSource);
-    boxExtentsLabel[0]->setBuddy(boxExtents[0]);
+    boxExtentsLabel[0] = new QLabel(boxExtents[0], tr("X Extents"), pageSource, "boxExtentsLabel[0]");
     sLayout->addWidget(boxExtentsLabel[0], 13, 0);
     sLayout->addWidget(boxExtents[0], 13, 1);
-    boxExtents[1] = new QLineEdit(pageSource);
+    boxExtents[1] = new QLineEdit(pageSource, "boxExtents[1]");
     connect(boxExtents[1], SIGNAL(returnPressed()),
             this, SLOT(boxExtentsProcessText()));
-    boxExtentsLabel[1] = new QLabel(tr("Y Extents"), pageSource);
-    boxExtentsLabel[1]->setBuddy(boxExtents[1]);
+    boxExtentsLabel[1] = new QLabel(boxExtents[1], tr("Y Extents"), pageSource, "boxExtentsLabel[1]");
     sLayout->addWidget(boxExtentsLabel[1], 14, 0);
     sLayout->addWidget(boxExtents[1], 14, 1);
-    boxExtents[2] = new QLineEdit(pageSource);
+    boxExtents[2] = new QLineEdit(pageSource, "boxExtents[2]");
     connect(boxExtents[2], SIGNAL(returnPressed()),
             this, SLOT(boxExtentsProcessText()));
-    boxExtentsLabel[2] = new QLabel(tr("Z Extents"), pageSource);
-    boxExtentsLabel[2]->setBuddy(boxExtents[2]);
+    boxExtentsLabel[2] = new QLabel(boxExtents[2], tr("Z Extents"), pageSource, "boxExtentsLabel[2]");
     sLayout->addWidget(boxExtentsLabel[2], 15, 0);
     sLayout->addWidget(boxExtents[2], 15, 1);
 
     //
     // Create appearance-related widgets.
     //
-    QWidget *pageAppearance = new QWidget(central);
+    QGroupBox *pageAppearance = new QGroupBox(central, "pageAppearance");
+    pageAppearance->setFrameStyle(QFrame::NoFrame);
     tabs->addTab(pageAppearance, tr("Appearance"));
-    QGridLayout *aLayout = new QGridLayout(pageAppearance);
+    QGridLayout *aLayout = new QGridLayout(pageAppearance, 10, 2);
     aLayout->setMargin(10);
     aLayout->setSpacing(5);
 
     // Create widgets that help determine the appearance of the streamlines.
-    displayMethod = new QComboBox(pageAppearance);
-    displayMethod->addItem(tr("Lines"), 0);
-    displayMethod->addItem(tr("Tubes"), 1);
-    displayMethod->addItem(tr("Ribbons"), 2);
+    displayMethod = new QComboBox(pageAppearance, "displayMethod");
+    displayMethod->insertItem(tr("Lines"), 0);
+    displayMethod->insertItem(tr("Tubes"), 1);
+    displayMethod->insertItem(tr("Ribbons"), 2);
     connect(displayMethod, SIGNAL(activated(int)),
             this, SLOT(displayMethodChanged(int)));
-    aLayout->addWidget(new QLabel(tr("Display as"), pageAppearance), 0,0);
+    aLayout->addWidget(new QLabel(displayMethod, tr("Display as"),
+        pageAppearance, "displayMethodLabel"), 0,0);
     aLayout->addWidget(displayMethod, 0,1);
 
-    showStart = new QCheckBox(tr("Show start"), pageAppearance);
+    showStart = new QCheckBox(tr("Show start"), pageAppearance, "showStart");
     connect(showStart, SIGNAL(toggled(bool)),
             this, SLOT(showStartChanged(bool)));
     aLayout->addWidget(showStart, 1,1);
 
-    radius = new QLineEdit(pageAppearance);
+    radius = new QLineEdit(pageAppearance, "radius");
     connect(radius, SIGNAL(returnPressed()),
             this, SLOT(radiusProcessText()));
-    radiusLabel = new QLabel(tr("Radius"), pageAppearance);
-    radiusLabel->setBuddy(radius);
-    radiusLabel->setToolTip(tr("Radius used for tubes and ribbons."));
+    radiusLabel = new QLabel(radius, tr("Radius"), pageAppearance, "radiusLabel");
+    QToolTip::add(radiusLabel, tr("Radius used for tubes and ribbons."));
     aLayout->addWidget(radiusLabel,2,0);
     aLayout->addWidget(radius, 2,1);
 
-    lineWidth = new QvisLineWidthWidget(0, pageAppearance);
+    lineWidth = new QvisLineWidthWidget(0, pageAppearance, "lineWidth");
     connect(lineWidth, SIGNAL(lineWidthChanged(int)),
             this, SLOT(lineWidthChanged(int)));
-    lineWidthLabel = new QLabel(tr("Line width"), pageAppearance);
-    lineWidthLabel->setBuddy(lineWidth);
+    lineWidthLabel = new QLabel(lineWidth, tr("Line width"), pageAppearance, "lineWidthLabel");
     aLayout->addWidget(lineWidthLabel,3,0);
     aLayout->addWidget(lineWidth, 3,1);
 
-    coloringMethod = new QComboBox(pageAppearance);
-    coloringMethod->addItem(tr("Solid"),0);
-    coloringMethod->addItem(tr("Speed"),1);
-    coloringMethod->addItem(tr("Vorticity magnitude"),2);
-    coloringMethod->addItem(tr("Arc length"),3);
-    coloringMethod->addItem(tr("Time"),4);
-    coloringMethod->addItem(tr("Seed point ID"),5);
+    coloringMethod = new QComboBox(pageAppearance, "coloringMethod");
+    coloringMethod->insertItem(tr("Solid"),0);
+    coloringMethod->insertItem(tr("Speed"),1);
+    coloringMethod->insertItem(tr("Vorticity magnitude"),2);
+    coloringMethod->insertItem(tr("Arc length"),3);
+    coloringMethod->insertItem(tr("Time"),4);
+    coloringMethod->insertItem(tr("Seed point ID"),5);
+    coloringMethod->insertItem(tr("Variable"),6);
     connect(coloringMethod, SIGNAL(activated(int)),
             this, SLOT(coloringMethodChanged(int)));
-    aLayout->addWidget(new QLabel(tr("Color by"), pageAppearance), 4,0);
+    aLayout->addWidget(new QLabel(coloringMethod, tr("Color by"), 
+        pageAppearance, "colorbylabel"), 4,0);
     aLayout->addWidget(coloringMethod, 4,1);
 
-    colorTableName = new QvisColorTableButton(pageAppearance);
+    varLabel = new QLabel(lineWidth, tr("Color Variable"), pageAppearance, "varLabel");
+    var = new QvisVariableButton(false, true, true, QvisVariableButton::Scalars,
+                                 pageAppearance, "varLabel");
+    aLayout->addWidget(varLabel,5,0);
+    aLayout->addWidget(var,5,1);
+    connect(var, SIGNAL(activated(const QString &)),
+            this, SLOT(coloringVariableChanged(const QString&)));
+
+    colorTableName = new QvisColorTableButton(pageAppearance, "colorTableName");
     connect(colorTableName, SIGNAL(selectedColorTable(bool, const QString&)),
             this, SLOT(colorTableNameChanged(bool, const QString&)));
-    colorTableNameLabel = new QLabel(tr("Color table"), pageAppearance);
-    colorTableNameLabel->setBuddy(colorTableName);
-    aLayout->addWidget(colorTableNameLabel,5,0);
-    aLayout->addWidget(colorTableName, 5,1, Qt::AlignLeft);
+    colorTableNameLabel = new QLabel(colorTableName, tr("Color table"), pageAppearance, "colorTableNameLabel");
+    aLayout->addWidget(colorTableNameLabel,6,0);
+    aLayout->addWidget(colorTableName, 6,1, Qt::AlignLeft);
 
-    singleColor = new QvisColorButton(pageAppearance);
+    singleColor = new QvisColorButton(pageAppearance, "singleColor");
     connect(singleColor, SIGNAL(selectedColor(const QColor&)),
             this, SLOT(singleColorChanged(const QColor&)));
-    singleColorLabel = new QLabel(tr("Single color"), pageAppearance);
-    singleColorLabel->setBuddy(singleColor);
-    aLayout->addWidget(singleColorLabel,6,0);
-    aLayout->addWidget(singleColor, 6,1, Qt::AlignLeft);
-
-#if 0
-// This is unfinished. A) you would not declare the widget locally and B) there's no varChanged slot.
-    QvisVariableButton *var = new QvisVariableButton(true, true, true,
-                                                     QvisVariableButton::Scalars, pageAppearance);
-    connect(var, SIGNAL(activated(const QString &)),
-            this, SLOT(varChanged(const QString&)));
-    aLayout->addWidget(var,7,0);
-#endif
+    singleColorLabel = new QLabel(singleColor, tr("Single color"), pageAppearance, "singleColorLabel");
+    aLayout->addWidget(singleColorLabel,7,0);
+    aLayout->addWidget(singleColor, 7,1, Qt::AlignLeft);
 
     //
     // Create advanced widgets.
     //
-    QWidget *pageAdvanced = new QWidget(central);
+    QGroupBox *pageAdvanced = new QGroupBox(central, "pageAdvanced");
+    pageAdvanced->setFrameStyle(QFrame::NoFrame);
     tabs->addTab(pageAdvanced, tr("Advanced"));
-    QGridLayout *advGLayout = new QGridLayout(pageAdvanced);
-    advGLayout->setMargin(5);
+    QGridLayout *advGLayout = new QGridLayout(pageAdvanced, 4, 4);
+    advGLayout->setMargin(10);
     advGLayout->setSpacing(5);
 
-    QGroupBox *algoGrp = new QGroupBox(pageAdvanced);
-    algoGrp->setTitle(tr("Parallel streamline options"));
-    advGLayout->addWidget(algoGrp, 0, 0, 1, 4);
-
+    QGroupBox *algoGrp = new QGroupBox(pageAdvanced, "algoGrp");
+    algoGrp->setTitle(tr("Parallel streamline options") );
+    
     // Algorithm group.
-    QGridLayout *algoGLayout = new QGridLayout(algoGrp);
+    advGLayout->addMultiCellWidget( algoGrp, 0,0,0,3);
+    QVBoxLayout *algoAVLayout = new QVBoxLayout( algoGrp );
+    algoAVLayout->setMargin(10);
+    algoAVLayout->addSpacing(15);
+    QGridLayout *algoGLayout = new QGridLayout( algoAVLayout, 10, 2 );
     algoGLayout->setSpacing(10);
-    algoGLayout->setColumnStretch(1,10);
+    algoGLayout->setColStretch(1,10);
 
-    slAlgoLabel = new QLabel(tr("Parallelize across"), algoGrp);
-    slAlgo = new QComboBox(algoGrp);
-    slAlgo->addItem(tr("Streamlines"));
-    slAlgo->addItem(tr("Domains"));
-    slAlgo->addItem(tr("Streamlines and Domains"));
+    slAlgoLabel = new QLabel(tr("Parallelize across:"), algoGrp, "slAlgoLabel");
+    slAlgo = new QComboBox(algoGrp, "slAlgo");
+    slAlgo->insertItem(tr("Streamlines"));
+    slAlgo->insertItem(tr("Domains"));
     connect(slAlgo, SIGNAL(activated(int)),
             this, SLOT(streamlineAlgorithmChanged(int)));
     algoGLayout->addWidget( slAlgoLabel, 1,0);
     algoGLayout->addWidget( slAlgo, 1,1);
     
-    maxSLCountLabel = new QLabel(tr("Communication threshold"), algoGrp);
-    maxSLCount = new QSpinBox(algoGrp);
-    maxSLCount->setMinimum(1);
-    maxSLCount->setMaximum(100000);
+    maxSLCountLabel = new QLabel(tr("Communication threshold"), algoGrp, "slMaxCountLabel");
+    maxSLCount = new QSpinBox(1, 100000, 1, algoGrp, "slMaxCount");
     connect(maxSLCount, SIGNAL(valueChanged(int)), 
             this, SLOT(maxSLCountChanged(int)));
     algoGLayout->addWidget( maxSLCountLabel, 2,0);
     algoGLayout->addWidget( maxSLCount,2,1);
 
-    maxDomainCacheLabel = new QLabel(tr("Domain cache size"), algoGrp);
-    maxDomainCache = new QSpinBox(algoGrp);
-    maxDomainCache->setMinimum(1);
-    maxDomainCache->setMaximum(100000);
+    maxDomainCacheLabel = new QLabel(tr("Domain cache size"), algoGrp, "maxDomainCacheLabel");
+    maxDomainCache = new QSpinBox(1, 100000, 1, algoGrp, "maxDomainCache");
     connect(maxDomainCache, SIGNAL(valueChanged(int)),
             this, SLOT(maxDomainCacheChanged(int)));
     algoGLayout->addWidget( maxDomainCacheLabel, 3,0);
     algoGLayout->addWidget( maxDomainCache, 3,1);
 
+    workGroupSizeLabel = new QLabel(tr("Work group size"), algoGrp);
+    workGroupSize = new QSpinBox(2, 100000, 1, algoGrp);
+    connect(workGroupSize, SIGNAL(valueChanged(int)),
+            this, SLOT(workGroupSizeChanged(int)));
+    algoGLayout->addWidget( workGroupSizeLabel, 4,0);
+    algoGLayout->addWidget( workGroupSize, 4,1);
+
     // Integrator group.
-    QGroupBox *intGrp = new QGroupBox(pageAdvanced);
+    QGroupBox *intGrp = new QGroupBox(pageAdvanced, "intGrp");
     intGrp->setTitle(tr("Integration method") );
 
-    advGLayout->addWidget(intGrp, 1, 0, 1, 4);
-    QGridLayout *intGLayout = new QGridLayout(intGrp);
+    advGLayout->addMultiCellWidget( intGrp, 1,1,0,3);
+    QVBoxLayout *intAVLayout = new QVBoxLayout( intGrp );
+    intAVLayout->setMargin(10);
+    intAVLayout->addSpacing(15);
+    QGridLayout *intGLayout = new QGridLayout( intAVLayout, 4, 2 );
     intGLayout->setSpacing(10);
-    intGLayout->setColumnStretch(1,10);
+    intGLayout->setColStretch(1,10);
 
-    intGLayout->addWidget( new QLabel(tr("Integrator"), intGrp), 0,0);
-    integrationType = new QComboBox(intGrp);
-    integrationType->addItem(tr("Dormand-Prince (Runge-Kutta)"));
-    integrationType->addItem(tr("Adams-Bashforth (Multi-step)"));
+    intGLayout->addWidget( new QLabel(tr("Integrator"), intGrp, "integratorLabel"), 0,0);
+    integrationType = new QComboBox(intGrp, "integrationType");
+    integrationType->insertItem(tr("Dormand-Prince (Runge-Kutta)"));
+    integrationType->insertItem(tr("Adams-Bashforth (Multi-step)"));
     connect(integrationType, SIGNAL(activated(int)),
             this, SLOT(integrationTypeChanged(int)));
     intGLayout->addWidget(integrationType, 0,1);
     
     // Create the step length text field.
-    maxStepLengthLabel = new QLabel(tr("Maximum step length"), intGrp);
-    maxStepLength = new QLineEdit(intGrp);
+    maxStepLengthLabel = new QLabel(tr("Maximum step length"), intGrp, "maxStepLengthLabel");
+    maxStepLength = new QLineEdit(intGrp, "maxStepLength");
     connect(maxStepLength, SIGNAL(returnPressed()),
             this, SLOT(maxStepLengthProcessText()));
     intGLayout->addWidget(maxStepLengthLabel, 1,0);
     intGLayout->addWidget(maxStepLength, 1,1);
 
     // Create the absolute tolerance text field.
-    absTolLabel = new QLabel(tr("Absolute tolerance"), intGrp);
-    absTol = new QLineEdit(intGrp);
+    absTolLabel = new QLabel(tr("Absolute tolerance"), intGrp, "absTolLabel");
+    absTol = new QLineEdit(intGrp, "absTol");
     connect(absTol, SIGNAL(returnPressed()),
             this, SLOT(absTolProcessText()));
     intGLayout->addWidget(absTolLabel, 2,0);
     intGLayout->addWidget(absTol, 2,1);
 
     // Create the relative tolerance text field.
-    relTolLabel = new QLabel(tr("Relative tolerance"), intGrp);
-    relTol = new QLineEdit(intGrp);
+    relTolLabel = new QLabel(tr("Relative tolerance"), intGrp, "relTolLabel");
+    relTol = new QLineEdit(intGrp, "relTol");
     connect(relTol, SIGNAL(returnPressed()),
             this, SLOT(relTolProcessText()));
     intGLayout->addWidget(relTolLabel, 3,0);
     intGLayout->addWidget(relTol, 3,1);
 
 
-    legendFlag = new QCheckBox(tr("Legend"), central);
+    legendFlag = new QCheckBox(tr("Legend"), central, "legendFlag");
     connect(legendFlag, SIGNAL(toggled(bool)),
             this, SLOT(legendFlagChanged(bool)));
     mainLayout->addWidget(legendFlag, 6,0);
 
-    lightingFlag = new QCheckBox(tr("Lighting"), central);
+    lightingFlag = new QCheckBox(tr("Lighting"), central, "lightingFlag");
     connect(lightingFlag, SIGNAL(toggled(bool)),
             this, SLOT(lightingFlagChanged(bool)));
     mainLayout->addWidget(lightingFlag, 6,1);
@@ -529,9 +541,7 @@ QvisStreamlinePlotWindow::CreateWindowContents()
 // Creation:   Mon Jan 3 11:24:24 PDT 2005
 //
 // Modifications:
-//   Brad Whitlock, Wed Aug  6 10:38:36 PDT 2008
-//   Compensate for 2.0.0 version changes.
-//
+//   
 // ****************************************************************************
 
 void
@@ -547,8 +557,7 @@ QvisStreamlinePlotWindow::ProcessOldVersions(DataNode *parentNode,
 
     // Remove height/width information if the config file is older than
     // 1.4.1 since this window changed size quite a bit in version 1.4.1.
-    if (StreamlineAttributes::VersionLessThan(configVersion, "1.4.1") ||
-        StreamlineAttributes::VersionLessThan(configVersion, "2.0.0"))
+    if (StreamlineAttributes::VersionLessThan(configVersion, "1.4.1"))
     {
         searchNode->RemoveNode("width");
         searchNode->RemoveNode("height");
@@ -578,9 +587,6 @@ QvisStreamlinePlotWindow::ProcessOldVersions(DataNode *parentNode,
 //   Dave Pugmire, Thu Nov 15 12:09:08 EST 2007
 //   Add streamline direction option.
 //
-//   Brad Whitlock, Wed Aug  6 10:39:12 PDT 2008
-//   Qt 4.
-//
 //   Dave Pugmire, Wed Aug 6 15:16:23 EDT 2008
 //   Add accurate distance calculate option.
 //
@@ -589,6 +595,12 @@ QvisStreamlinePlotWindow::ProcessOldVersions(DataNode *parentNode,
 //
 //   Dave Pugmire, Tue Aug 19 17:18:03 EST 2008
 //   Removed the accurate distance calculation option.
+//
+//   Dave Pugmire, Thu Feb  5 12:20:15 EST 2009
+//   Added workGroupSize for the masterSlave algorithm.
+//
+//   Jeremy Meredith, Wed Apr  8 14:45:49 EDT 2009
+//   Backported recent additons to Qt3.
 //
 // ****************************************************************************
 
@@ -615,7 +627,7 @@ QvisStreamlinePlotWindow::UpdateWindow(bool doAll)
             UpdateSourceAttributes();
 
             sourceType->blockSignals(true);
-            sourceType->setCurrentIndex(streamAtts->GetSourceType());
+            sourceType->setCurrentItem(streamAtts->GetSourceType());
             sourceType->blockSignals(false);
             break;
         case StreamlineAttributes::ID_maxStepLength:
@@ -627,38 +639,58 @@ QvisStreamlinePlotWindow::UpdateWindow(bool doAll)
             termination->setText(temp);
             break;
         case StreamlineAttributes::ID_pointSource:
-            pointSource->setText(DoublesToQString(streamAtts->GetPointSource(),3));
+            dptr = streamAtts->GetPointSource();
+            temp.sprintf("%g %g %g", dptr[0], dptr[1], dptr[2]);
+            pointSource->setText(temp);
             break;
         case StreamlineAttributes::ID_lineStart:
-            lineStart->setText(DoublesToQString(streamAtts->GetLineStart(),3));
+            dptr = streamAtts->GetLineStart();
+            temp.sprintf("%g %g %g", dptr[0], dptr[1], dptr[2]);
+            lineStart->setText(temp);
             break;
         case StreamlineAttributes::ID_lineEnd:
-            lineEnd->setText(DoublesToQString(streamAtts->GetLineEnd(),3));
+            dptr = streamAtts->GetLineEnd();
+            temp.sprintf("%g %g %g", dptr[0], dptr[1], dptr[2]);
+            lineEnd->setText(temp);
             break;
         case StreamlineAttributes::ID_planeOrigin:
-            planeOrigin->setText(DoublesToQString(streamAtts->GetPlaneOrigin(),3));
+            dptr = streamAtts->GetPlaneOrigin();
+            temp.sprintf("%g %g %g", dptr[0], dptr[1], dptr[2]);
+            planeOrigin->setText(temp);
             break;
         case StreamlineAttributes::ID_planeNormal:
-            planeNormal->setText(DoublesToQString(streamAtts->GetPlaneNormal(),3));
+            dptr = streamAtts->GetPlaneNormal();
+            temp.sprintf("%g %g %g", dptr[0], dptr[1], dptr[2]);
+            planeNormal->setText(temp);
             break;
         case StreamlineAttributes::ID_planeUpAxis:
-            planeUpAxis->setText(DoublesToQString(streamAtts->GetPlaneUpAxis(),3));
+            dptr = streamAtts->GetPlaneUpAxis();
+            temp.sprintf("%g %g %g", dptr[0], dptr[1], dptr[2]);
+            planeUpAxis->setText(temp);
             break;
         case StreamlineAttributes::ID_planeRadius:
             temp.setNum(streamAtts->GetPlaneRadius());
             planeRadius->setText(temp);
             break;
         case StreamlineAttributes::ID_sphereOrigin:
-            sphereOrigin->setText(DoublesToQString(streamAtts->GetSphereOrigin(),3));
+            dptr = streamAtts->GetSphereOrigin();
+            temp.sprintf("%g %g %g", dptr[0], dptr[1], dptr[2]);
+            sphereOrigin->setText(temp);
             break;
         case StreamlineAttributes::ID_sphereRadius:
             temp.setNum(streamAtts->GetSphereRadius());
             sphereRadius->setText(temp);
             break;
         case StreamlineAttributes::ID_boxExtents:
-            boxExtents[0]->setText(DoublesToQString(streamAtts->GetBoxExtents(),2));
-            boxExtents[1]->setText(DoublesToQString(streamAtts->GetBoxExtents()+2,2));
-            boxExtents[2]->setText(DoublesToQString(streamAtts->GetBoxExtents()+4,2));
+            temp.sprintf("%g %g", streamAtts->GetBoxExtents()[0],
+                streamAtts->GetBoxExtents()[1]);
+            boxExtents[0]->setText(temp);
+            temp.sprintf("%g %g", streamAtts->GetBoxExtents()[2],
+                streamAtts->GetBoxExtents()[3]);
+            boxExtents[1]->setText(temp);
+            temp.sprintf("%g %g", streamAtts->GetBoxExtents()[4],
+                streamAtts->GetBoxExtents()[5]);
+            boxExtents[2]->setText(temp);
             break;
         case StreamlineAttributes::ID_useWholeBox:
             useWholeBox->blockSignals(true);
@@ -702,7 +734,7 @@ QvisStreamlinePlotWindow::UpdateWindow(bool doAll)
             lineWidthLabel->setEnabled(showLines);
 
             displayMethod->blockSignals(true);
-            displayMethod->setCurrentIndex(int(streamAtts->GetDisplayMethod()));
+            displayMethod->setCurrentItem(int(streamAtts->GetDisplayMethod()));
             displayMethod->blockSignals(false);
             }
             break;
@@ -729,8 +761,24 @@ QvisStreamlinePlotWindow::UpdateWindow(bool doAll)
             singleColorLabel->setEnabled(!needCT);
 
             coloringMethod->blockSignals(true);
-            coloringMethod->setCurrentIndex(int(streamAtts->GetColoringMethod()));
+            coloringMethod->setCurrentItem(int(streamAtts->GetColoringMethod()));
             coloringMethod->blockSignals(false);
+
+            if (streamAtts->GetColoringMethod() == StreamlineAttributes::ColorByVariable)
+            {
+                varLabel->setEnabled(true);
+                var->setEnabled(true);
+                varLabel->show();
+                var->show();
+            }
+            else
+            {
+                varLabel->setEnabled(false);
+                var->setEnabled(false);
+                varLabel->hide();
+                var->hide();
+            }
+
             }
             break;
         case StreamlineAttributes::ID_colorTableName:
@@ -754,7 +802,7 @@ QvisStreamlinePlotWindow::UpdateWindow(bool doAll)
             break;
         case StreamlineAttributes::ID_StreamlineDirection:
             directionType->blockSignals(true);
-            directionType->setCurrentIndex(int(streamAtts->GetStreamlineDirection()) );
+            directionType->setCurrentItem( int(streamAtts->GetStreamlineDirection()) );
             directionType->blockSignals(false);
             break;
         case StreamlineAttributes::ID_relTol:
@@ -766,35 +814,54 @@ QvisStreamlinePlotWindow::UpdateWindow(bool doAll)
             absTol->setText(temp);
             break;
         case StreamlineAttributes::ID_terminationType:
+            UpdateTerminationType();
             termType->blockSignals(true);
-            termType->setCurrentIndex( int(streamAtts->GetTerminationType()) );
+            termType->setCurrentItem( int(streamAtts->GetTerminationType()) );
             termType->blockSignals(false);
             break;
+
         case StreamlineAttributes::ID_integrationType:
             // Update lots of widget visibility and enabled states.
             UpdateIntegrationAttributes();
 
             integrationType->blockSignals(true);
-            integrationType->setCurrentIndex(streamAtts->GetIntegrationType());
+            integrationType->setCurrentItem(streamAtts->GetIntegrationType());
             integrationType->blockSignals(false);
             break;
+
         case StreamlineAttributes::ID_streamlineAlgorithmType:
             // Update lots of widget visibility and enabled states.
             UpdateAlgorithmAttributes();
 
             slAlgo->blockSignals(true);
-            slAlgo->setCurrentIndex(streamAtts->GetStreamlineAlgorithmType());
+            slAlgo->setCurrentItem(streamAtts->GetStreamlineAlgorithmType());
             slAlgo->blockSignals(false);
             break;
+
         case StreamlineAttributes::ID_maxStreamlineProcessCount:
             maxSLCount->blockSignals(true);
             maxSLCount->setValue(streamAtts->GetMaxStreamlineProcessCount());
             maxSLCount->blockSignals(false);
             break;
+
         case StreamlineAttributes::ID_maxDomainCacheSize:
             maxDomainCache->blockSignals(true);
             maxDomainCache->setValue(streamAtts->GetMaxDomainCacheSize());
             maxDomainCache->blockSignals(false);
+            break;
+
+        case StreamlineAttributes::ID_workGroupSize:
+            workGroupSize->blockSignals(true);
+            workGroupSize->setValue(streamAtts->GetWorkGroupSize());
+            workGroupSize->blockSignals(false);
+            break;
+
+        case StreamlineAttributes::ID_pathlines:
+          /*
+            pathlineFlag->blockSignals(true);
+            pathlineFlag->setChecked(streamAtts->GetPathlines());
+            pathlineFlag->blockSignals(false);
+          */
             break;
         }
     }
@@ -1009,6 +1076,37 @@ QvisStreamlinePlotWindow::UpdateIntegrationAttributes()
 }
 
 // ****************************************************************************
+// Method: QvisStreamlinePlotWindow::UpdateTerminationType
+//
+// Purpose: 
+//   Updates the widgets for the various termination types.
+//
+// Programmer: Dave Pugmire
+// Creation:   Thu Feb 19 12:35:38 EST 2008
+//
+//    Jeremy Meredith, Wed Apr  8 14:45:24 EDT 2009
+//    Backported recent additons to Qt3.
+//
+// ****************************************************************************
+
+void
+QvisStreamlinePlotWindow::UpdateTerminationType()
+{
+  /*
+    if (streamAtts->GetTerminationType() == StreamlineAttributes::Time ||
+        streamAtts->GetTerminationType() == StreamlineAttributes::Distance)
+      {
+        //termination->SetPrecision(5);
+      }
+    else
+      {
+      streamAtts->SetTermination( (int)streamAtts->GetTermination());
+      }
+  */
+}
+
+
+// ****************************************************************************
 // Method: QvisStreamlinePlotWindow::UpdateAlgorithmAttributes
 //
 // Purpose: 
@@ -1016,6 +1114,15 @@ QvisStreamlinePlotWindow::UpdateIntegrationAttributes()
 //
 // Programmer: Dave Pugmire
 // Creation:   Fri Aug 1 16:41:38 EDT 2008
+//
+//
+// Modifications:
+//
+//   Dave Pugmire, Thu Feb  5 12:20:15 EST 2009
+//   Added workGroupSize for the masterSlave algorithm.
+//
+//   Jeremy Meredith, Wed Apr  8 14:46:35 EDT 2009
+//   Backported recent additons to Qt3.
 //
 // ****************************************************************************
 
@@ -1025,12 +1132,14 @@ QvisStreamlinePlotWindow::UpdateAlgorithmAttributes()
     bool useLoadOnDemand = streamAtts->GetStreamlineAlgorithmType() == StreamlineAttributes::LoadOnDemand;
     bool useStaticDomains = streamAtts->GetStreamlineAlgorithmType() == StreamlineAttributes::ParallelStaticDomains;
     bool useMasterSlave = streamAtts->GetStreamlineAlgorithmType() == StreamlineAttributes::MasterSlave;
-    
+
     //Turn off everything.
     maxDomainCacheLabel->hide();
     maxDomainCache->hide();
     maxSLCountLabel->hide();
     maxSLCount->hide();
+    workGroupSizeLabel->hide();
+    workGroupSize->hide();
 
     if ( useLoadOnDemand )
     {
@@ -1048,6 +1157,8 @@ QvisStreamlinePlotWindow::UpdateAlgorithmAttributes()
         maxDomainCache->show();
         maxSLCountLabel->show();
         maxSLCount->show();
+        workGroupSizeLabel->show();
+        workGroupSize->show();
     }
 }
 
@@ -1077,8 +1188,11 @@ QvisStreamlinePlotWindow::UpdateAlgorithmAttributes()
 //   Dave Pugmire, Mon Aug 4 2:49:38 EDT 2008
 //   Added termination, algorithm and integration options.
 //
-//   Brad Whitlock, Wed Aug  6 15:34:13 PDT 2008
-//   Use new methods.
+//   Dave Pugmire, Thu Feb  5 12:20:15 EST 2009
+//   Added workGroupSize for the masterSlave algorithm.
+//
+//   Jeremy Meredith, Wed Apr  8 14:47:36 EDT 2009
+//   Backported recent additons to Qt3.
 //
 // ****************************************************************************
 
@@ -1091,13 +1205,21 @@ QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
     // Do stepLength
     if(which_widget == StreamlineAttributes::ID_maxStepLength || doAll)
     {
-        double val;
-        if(LineEditGetDouble(maxStepLength, val))
-            streamAtts->SetMaxStepLength(val);
-        else
+        temp = maxStepLength->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("step length"),
-                DoubleToQString(streamAtts->GetMaxStepLength()));
+            double val = temp.toDouble(&okay);
+            if(okay)
+                streamAtts->SetMaxStepLength(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of stepLength was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(streamAtts->GetMaxStepLength());
+            Message(msg);
             streamAtts->SetMaxStepLength(streamAtts->GetMaxStepLength());
         }
     }
@@ -1105,13 +1227,21 @@ QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
     // Do termination
     if(which_widget == StreamlineAttributes::ID_termination || doAll)
     {
-        double val;
-        if(LineEditGetDouble(termination, val))
-            streamAtts->SetTermination(val);
-        else
+        temp = termination->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("termination"),
-                DoubleToQString(streamAtts->GetTermination()));
+            double val = temp.toDouble(&okay);
+            if(okay)
+                streamAtts->SetTermination(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of termination was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(streamAtts->GetTermination());
+            Message(msg);
             streamAtts->SetTermination(streamAtts->GetTermination());
         }
     }
@@ -1119,13 +1249,20 @@ QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
     // Do relTol
     if(which_widget == StreamlineAttributes::ID_relTol || doAll)
     {
-        double val;
-        if(LineEditGetDouble(relTol, val))
-            streamAtts->SetRelTol(val);
-        else
+        temp = relTol->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("relative tolerance"),
-                DoubleToQString(streamAtts->GetRelTol()));
+            double val = temp.toDouble(&okay);
+            streamAtts->SetRelTol(val);
+        }
+
+        if(!okay)
+        {
+            msg.sprintf("The value of relTol was invalid. "
+                "Resetting to the last good value of %g.",
+                streamAtts->GetRelTol());
+            Message(msg);
             streamAtts->SetRelTol(streamAtts->GetRelTol());
         }
     }
@@ -1133,13 +1270,20 @@ QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
     // Do absTol
     if(which_widget == StreamlineAttributes::ID_absTol || doAll)
     {
-        double val;
-        if(LineEditGetDouble(absTol, val))
-            streamAtts->SetAbsTol(val);
-        else
+        temp = absTol->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("absolute tolerance"),
-                DoubleToQString(streamAtts->GetAbsTol()));
+            double val = temp.toDouble(&okay);
+            streamAtts->SetAbsTol(val);
+        }
+
+        if(!okay)
+        {
+            msg.sprintf("The value of absTol was invalid. "
+                "Resetting to the last good value of %g.",
+                streamAtts->GetAbsTol());
+            Message(msg);
             streamAtts->SetAbsTol(streamAtts->GetAbsTol());
         }
     }
@@ -1147,13 +1291,23 @@ QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
     // Do pointSource
     if(which_widget == StreamlineAttributes::ID_pointSource || doAll)
     {
-        double val[3];
-        if(LineEditGetDoubles(pointSource, val, 3))
-            streamAtts->SetPointSource(val);
-        else
+        temp = pointSource->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("point source"),
-                DoublesToQString(streamAtts->GetPointSource(), 3));
+            double val[3];
+            if((okay = (sscanf(temp.latin1(), "%lg %lg %lg", &val[0], &val[1], &val[2]) == 3)) == true)
+                streamAtts->SetPointSource(val);
+        }
+
+        if(!okay)
+        {
+            const double *val = streamAtts->GetPointSource();
+            QString values; values.sprintf("<%g %g %g>", val[0], val[1], val[2]);
+            msg = tr("The value of pointSource was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(values);
+            Message(msg);
             streamAtts->SetPointSource(streamAtts->GetPointSource());
         }
     }
@@ -1161,13 +1315,23 @@ QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
     // Do lineStart
     if(which_widget == StreamlineAttributes::ID_lineStart || doAll)
     {
-        double val[3];
-        if(LineEditGetDoubles(lineStart, val, 3))
-            streamAtts->SetLineStart(val);
-        else
+        temp = lineStart->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("line start"),
-                DoublesToQString(streamAtts->GetLineStart(), 3));
+            double val[3];
+            if((okay = (sscanf(temp.latin1(), "%lg %lg %lg", &val[0], &val[1], &val[2]) == 3)) == true)
+                streamAtts->SetLineStart(val);
+        }
+
+        if(!okay)
+        {
+            const double *val = streamAtts->GetLineStart();
+            QString values; values.sprintf("<%g %g %g>", val[0], val[1], val[2]);
+            msg = tr("The value of lineStart was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(values);
+            Message(msg);
             streamAtts->SetLineStart(streamAtts->GetLineStart());
         }
     }
@@ -1175,13 +1339,23 @@ QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
     // Do lineEnd
     if(which_widget == StreamlineAttributes::ID_lineEnd || doAll)
     {
-        double val[3];
-        if(LineEditGetDoubles(lineEnd, val, 3))
-            streamAtts->SetLineEnd(val);
-        else
+        temp = lineEnd->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("line end"),
-                DoublesToQString(streamAtts->GetLineEnd(), 3));
+            double val[3];
+            if((okay = (sscanf(temp.latin1(), "%lg %lg %lg", &val[0], &val[1], &val[2]) == 3)) == true)
+                streamAtts->SetLineEnd(val);
+        }
+
+        if(!okay)
+        {
+            const double *val = streamAtts->GetLineEnd();
+            QString values; values.sprintf("<%g %g %g>", val[0], val[1], val[2]);
+            msg = tr("The value of lineEnd was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(values);
+            Message(msg);
             streamAtts->SetLineEnd(streamAtts->GetLineEnd());
         }
     }
@@ -1189,13 +1363,23 @@ QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
     // Do planeOrigin
     if(which_widget == StreamlineAttributes::ID_planeOrigin || doAll)
     {
-        double val[3];
-        if(LineEditGetDoubles(planeOrigin, val, 3))
-            streamAtts->SetPlaneOrigin(val);
-        else
+        temp = planeOrigin->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("plane origin"),
-                DoublesToQString(streamAtts->GetPlaneOrigin(), 3));
+            double val[3];
+            if((okay = (sscanf(temp.latin1(), "%lg %lg %lg", &val[0], &val[1], &val[2]) == 3)) == true)
+                streamAtts->SetPlaneOrigin(val);
+        }
+
+        if(!okay)
+        {
+            const double *val = streamAtts->GetPlaneOrigin();
+            QString values; values.sprintf("<%g %g %g>", val[0], val[1], val[2]);
+            msg = tr("The value of planeOrigin was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(values);
+            Message(msg);
             streamAtts->SetPlaneOrigin(streamAtts->GetPlaneOrigin());
         }
     }
@@ -1203,13 +1387,23 @@ QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
     // Do planeNormal
     if(which_widget == StreamlineAttributes::ID_planeNormal || doAll)
     {
-        double val[3];
-        if(LineEditGetDoubles(planeNormal, val, 3))
-            streamAtts->SetPlaneNormal(val);
-        else
+        temp = planeNormal->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("plane normal"),
-                DoublesToQString(streamAtts->GetPlaneNormal(), 3));
+            double val[3];
+            if((okay = (sscanf(temp.latin1(), "%lg %lg %lg", &val[0], &val[1], &val[2]) == 3)) == true)
+                streamAtts->SetPlaneNormal(val);
+        }
+
+        if(!okay)
+        {
+            const double *val = streamAtts->GetPlaneNormal();
+            QString values; values.sprintf("<%g %g %g>", val[0], val[1], val[2]);
+            msg = tr("The value of planeNormal was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(values);
+            Message(msg);
             streamAtts->SetPlaneNormal(streamAtts->GetPlaneNormal());
         }
     }
@@ -1217,13 +1411,23 @@ QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
     // Do planeUpAxis
     if(which_widget == StreamlineAttributes::ID_planeUpAxis || doAll)
     {
-        double val[3];
-        if(LineEditGetDoubles(planeUpAxis, val, 3))
-            streamAtts->SetPlaneUpAxis(val);
-        else
+        temp = planeUpAxis->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("plane up axis"),
-                DoublesToQString(streamAtts->GetPlaneUpAxis(), 3));
+            double val[3];
+            if((okay = (sscanf(temp.latin1(), "%lg %lg %lg", &val[0], &val[1], &val[2]) == 3)) == true)
+                streamAtts->SetPlaneUpAxis(val);
+        }
+
+        if(!okay)
+        {
+            const double *val = streamAtts->GetPlaneUpAxis();
+            QString values; values.sprintf("<%g %g %g>", val[0], val[1], val[2]);
+            msg = tr("The value of planeUpAxis was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(values);
+            Message(msg);
             streamAtts->SetPlaneUpAxis(streamAtts->GetPlaneUpAxis());
         }
     }
@@ -1231,13 +1435,21 @@ QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
     // Do planeRadius
     if(which_widget == StreamlineAttributes::ID_planeRadius || doAll)
     {
-        double val;
-        if(LineEditGetDouble(planeRadius, val))
-            streamAtts->SetPlaneRadius(val);
-        else
+        temp = planeRadius->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("plane radius"),
-                DoubleToQString(streamAtts->GetPlaneRadius()));
+            double val = temp.toDouble(&okay);
+            if(okay)
+                streamAtts->SetPlaneRadius(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of planeRadius was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(streamAtts->GetPlaneRadius());
+            Message(msg);
             streamAtts->SetPlaneRadius(streamAtts->GetPlaneRadius());
         }
     }
@@ -1245,13 +1457,23 @@ QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
     // Do sphereOrigin
     if(which_widget == StreamlineAttributes::ID_sphereOrigin || doAll)
     {
-        double val[3];
-        if(LineEditGetDoubles(sphereOrigin, val, 3))
-            streamAtts->SetSphereOrigin(val);
-        else
+        temp = sphereOrigin->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("sphere origin"),
-                DoublesToQString(streamAtts->GetSphereOrigin(), 3));
+            double val[3];
+            if((okay = (sscanf(temp.latin1(), "%lg %lg %lg", &val[0], &val[1], &val[2]) == 3)) == true)
+                streamAtts->SetSphereOrigin(val);
+        }
+
+        if(!okay)
+        {
+            const double *val = streamAtts->GetSphereOrigin();
+            QString values; values.sprintf("<%g %g %g>", val[0], val[1], val[2]);
+            msg = tr("The value of sphereOrigin was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(values);
+            Message(msg);
             streamAtts->SetSphereOrigin(streamAtts->GetSphereOrigin());
         }
     }
@@ -1259,13 +1481,21 @@ QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
     // Do sphereRadius
     if(which_widget == StreamlineAttributes::ID_sphereRadius || doAll)
     {
-        double val;
-        if(LineEditGetDouble(sphereRadius, val))
-            streamAtts->SetSphereRadius(val);
-        else
+        temp = sphereRadius->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("sphere radius"),
-                DoubleToQString(streamAtts->GetSphereRadius()));
+            double val = temp.toDouble(&okay);
+            if(okay)
+                streamAtts->SetSphereRadius(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of sphereRadius was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(streamAtts->GetSphereRadius());
+            Message(msg);
             streamAtts->SetSphereRadius(streamAtts->GetSphereRadius());
         }
     }
@@ -1277,8 +1507,14 @@ QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
         bool allOkay = true;
         for(int i = 0; i < 3; ++i)
         {
-            if(!LineEditGetDoubles(boxExtents[i], &d[i*2], 2))
-                allOkay = false;
+            temp = boxExtents[i]->displayText().simplifyWhiteSpace();
+            okay = !temp.isEmpty();
+            if(okay)
+            {
+                okay = (sscanf(temp.latin1(), "%lg %lg", &d[i*2], &d[i*2+1]) == 2);
+            }
+
+            allOkay &= okay;
         }
 
         if(!allOkay)
@@ -1303,13 +1539,20 @@ QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
     // Do radius
     if(which_widget == StreamlineAttributes::ID_radius || doAll)
     {
-        double val;
-        if(LineEditGetDouble(radius, val))
-            streamAtts->SetRadius(val);
-        else
+        temp = radius->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("tube radius"),
-                DoubleToQString(streamAtts->GetRadius()));
+            double val = temp.toDouble(&okay);
+            streamAtts->SetRadius(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of radius was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(streamAtts->GetRadius());
+            Message(msg);
             streamAtts->SetRadius(streamAtts->GetRadius());
         }
     }
@@ -1321,6 +1564,15 @@ QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
         int val = maxSLCount->value();
         if (val >= 1)
             streamAtts->SetMaxStreamlineProcessCount(val);
+    }
+
+    // workGroupSize
+    if (which_widget == StreamlineAttributes::ID_workGroupSize || doAll)
+    {
+        // This can only be an integer, so no error checking is needed.
+        int val = workGroupSize->value();
+        if (val >= 2)
+            streamAtts->SetWorkGroupSize(val);
     }
 }
 
@@ -1472,77 +1724,77 @@ QvisStreamlinePlotWindow::streamlineAlgorithmChanged(int val)
 void
 QvisStreamlinePlotWindow::maxStepLengthProcessText()
 {
-    GetCurrentValues(StreamlineAttributes::ID_maxStepLength);
+    GetCurrentValues(1);
     Apply();
 }
 
 void
 QvisStreamlinePlotWindow::terminationProcessText()
 {
-    GetCurrentValues(StreamlineAttributes::ID_termination);
+    GetCurrentValues(2);
     Apply();
 }
 
 void
 QvisStreamlinePlotWindow::relTolProcessText()
 {
-    GetCurrentValues(StreamlineAttributes::ID_relTol);
+    GetCurrentValues(25);
     Apply();
 }
 
 void
 QvisStreamlinePlotWindow::lineStartProcessText()
 {
-    GetCurrentValues(StreamlineAttributes::ID_lineStart);
+    GetCurrentValues(4);
     Apply();
 }
 
 void
 QvisStreamlinePlotWindow::lineEndProcessText()
 {
-    GetCurrentValues(StreamlineAttributes::ID_lineEnd);
+    GetCurrentValues(5);
     Apply();
 }
 
 void
 QvisStreamlinePlotWindow::planeOriginProcessText()
 {
-    GetCurrentValues(StreamlineAttributes::ID_planeOrigin);
+    GetCurrentValues(6);
     Apply();
 }
 
 void
 QvisStreamlinePlotWindow::planeNormalProcessText()
 {
-    GetCurrentValues(StreamlineAttributes::ID_planeNormal);
+    GetCurrentValues(7);
     Apply();
 }
 
 void
 QvisStreamlinePlotWindow::planeUpAxisProcessText()
 {
-    GetCurrentValues(StreamlineAttributes::ID_planeUpAxis);
+    GetCurrentValues(8);
     Apply();
 }
 
 void
 QvisStreamlinePlotWindow::planeRadiusProcessText()
 {
-    GetCurrentValues(StreamlineAttributes::ID_planeRadius);
+    GetCurrentValues(9);
     Apply();
 }
 
 void
 QvisStreamlinePlotWindow::sphereOriginProcessText()
 {
-    GetCurrentValues(StreamlineAttributes::ID_sphereOrigin);
+    GetCurrentValues(10);
     Apply();
 }
 
 void
 QvisStreamlinePlotWindow::sphereRadiusProcessText()
 {
-    GetCurrentValues(StreamlineAttributes::ID_sphereRadius);
+    GetCurrentValues(11);
     Apply();
 }
 
@@ -1568,6 +1820,13 @@ QvisStreamlinePlotWindow::maxDomainCacheChanged(int val)
 }
 
 void
+QvisStreamlinePlotWindow::workGroupSizeChanged(int val)
+{
+    streamAtts->SetWorkGroupSize(val);
+    Apply();
+}
+
+void
 QvisStreamlinePlotWindow::displayMethodChanged(int val)
 {
     streamAtts->SetDisplayMethod((StreamlineAttributes::DisplayMethod)val);
@@ -1585,7 +1844,7 @@ QvisStreamlinePlotWindow::showStartChanged(bool val)
 void
 QvisStreamlinePlotWindow::radiusProcessText()
 {
-    GetCurrentValues(StreamlineAttributes::ID_radius);
+    GetCurrentValues(17);
     Apply();
 }
 
@@ -1600,7 +1859,7 @@ QvisStreamlinePlotWindow::useWholeBoxChanged(bool val)
 void
 QvisStreamlinePlotWindow::boxExtentsProcessText()
 {
-    GetCurrentValues(StreamlineAttributes::ID_boxExtents);
+    GetCurrentValues(12);
     Apply();
 }
 
@@ -1620,9 +1879,16 @@ QvisStreamlinePlotWindow::coloringMethodChanged(int val)
 }
 
 void
+QvisStreamlinePlotWindow::coloringVariableChanged(const QString &var)
+{
+    streamAtts->SetColoringVariable(var.latin1());
+    Apply();
+}
+
+void
 QvisStreamlinePlotWindow::colorTableNameChanged(bool useDefault, const QString &ctName)
 {
-    streamAtts->SetColorTableName(ctName.toStdString());
+    streamAtts->SetColorTableName(ctName.latin1());
     SetUpdate(false);
     Apply();
 }
@@ -1653,16 +1919,24 @@ QvisStreamlinePlotWindow::lightingFlagChanged(bool val)
 }
 
 void
+QvisStreamlinePlotWindow::pathlineFlagChanged(bool val)
+{
+    streamAtts->SetPathlines(val);
+    SetUpdate(false);
+    Apply();
+}
+
+void
 QvisStreamlinePlotWindow::absTolProcessText()
 {
-    GetCurrentValues(StreamlineAttributes::ID_absTol);
+    GetCurrentValues(26);
     Apply();
 }
 
 void
 QvisStreamlinePlotWindow::pointSourceProcessText()
 {
-    GetCurrentValues(StreamlineAttributes::ID_pointSource);
+    GetCurrentValues(5);
     Apply();
 }
 

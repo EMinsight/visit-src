@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -49,12 +49,15 @@
 #include <vtkRectilinearGrid.h>
 #include <vtkRenderer.h>
 #include <vtkRenderWindow.h>
+#include <vtkToolkits.h>
 #include <math.h>
 #include <float.h>
 
 #include <avtCallback.h>
 #include <avtOpenGLMoleculeRenderer.h>
+#ifdef VTK_USE_MANGLED_MESA
 #include <avtMesaMoleculeRenderer.h>
+#endif
 
 #include <ImproperUseException.h>
 #include <InvalidLimitsException.h>
@@ -163,6 +166,9 @@ avtMoleculeRenderer::New(void)
 //    Brad Whitlock, Fri Apr 7 11:36:04 PDT 2006
 //    Pass window size to the renderer implementation.
 //
+//    Brad Whitlock, Wed Jun 10 14:08:34 PST 2009
+//    I made Mesa support be conditional.
+//
 // ****************************************************************************
 
 void
@@ -173,14 +179,12 @@ avtMoleculeRenderer::Render(vtkDataSet *ds)
         if (rendererImplementation)
             delete rendererImplementation;
 
+#ifdef VTK_USE_MANGLED_MESA
         if (avtCallback::GetNowinMode())
-        {
             rendererImplementation = new avtMesaMoleculeRenderer;
-        }
         else
-        { 
+#endif
             rendererImplementation = new avtOpenGLMoleculeRenderer;
-        }
         currentRendererIsValid = true;
 
         rendererImplementation->SetLevelsLUT(levelsLUT);

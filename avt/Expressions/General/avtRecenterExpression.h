@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -67,6 +67,10 @@
 //    Sean Ahern, Wed Sep 10 12:01:43 EDT 2008
 //    Added optional argument to specify explicit centering.
 //
+//    Jeremy Meredith, Tue Apr 28 13:52:59 EDT 2009
+//    Add singleton support, now that the base avtExpressionFilter class'
+//    Recenter method also supports singletons.
+//
 // ****************************************************************************
 
 class EXPRESSION_API avtRecenterExpression : public avtSingleInputExpressionFilter
@@ -89,6 +93,7 @@ class EXPRESSION_API avtRecenterExpression : public avtSingleInputExpressionFilt
     virtual vtkDataArray     *DeriveVariable(vtkDataSet *);
     virtual bool              IsPointVariable(void);
     virtual int               GetVariableDimension(void);
+    virtual bool              CanHandleSingletonConstants(void) {return true;}
 
     RecenterType              recenterMode;
 };

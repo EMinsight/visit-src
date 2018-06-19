@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,7 +37,6 @@
 *****************************************************************************/
 #ifndef GENERATOR_BASE_H
 #define GENERATOR_BASE_H
-#include <QTextStream>
 #include <AttributeBase.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -94,11 +93,11 @@ public:
     {
         return AttributeBase::HasFunction(f, generatorName);
     }
-    void PrintFunction(QTextStream &out, const QString &f) const
+    void PrintFunction(ostream &out, const QString &f) const
     {
         AttributeBase::PrintFunction(out, f, generatorName);
     }
-    void DeleteFunction(QTextStream &out, const QString &f)
+    void DeleteFunction(ostream &out, const QString &f)
     {
         AttributeBase::DeleteFunction(out, f, generatorName);
     }
@@ -107,7 +106,7 @@ public:
     {
         return AttributeBase::HasCode(cName, part, generatorName);
     }
-    void PrintCode(QTextStream &out, const QString &cName, int part) const
+    void PrintCode(ostream &out, const QString &cName, int part) const
     {
         AttributeBase::PrintCode(out, cName, part, generatorName);
     }
@@ -132,7 +131,7 @@ public:
     }
 
     void
-    WriteMethodComment(QTextStream &out, const QString &className,
+    WriteMethodComment(ostream &out, const QString &className,
                        const QString &methodName, const QString &purposeString) const
     {
         out << "// ****************************************************************************" << endl;
@@ -153,7 +152,7 @@ public:
     }
 
     void
-    WriteClassComment(QTextStream &h, const QString &purposeString) const
+    WriteClassComment(ostream &h, const QString &purposeString) const
     {
         h << "// ****************************************************************************" << endl;
         h << "// Class: " << name << endl;
@@ -173,7 +172,7 @@ public:
     }
 
     void
-    WriteClassComment(QTextStream &h, const QString &cName, const QString &purposeString) const
+    WriteClassComment(ostream &h, const QString &cName, const QString &purposeString) const
     {
         h << "// ****************************************************************************" << endl;
         h << "// Class: " << cName << endl;

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,7 +37,7 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                              avtBase10LogExpression.h                         //
+//                          avtBase10LogExpression.h                         //
 // ************************************************************************* //
 
 #ifndef AVT_BASE10LOG_FILTER_H
@@ -47,6 +47,8 @@
 #include <avtUnaryMathExpression.h>
 
 class     vtkDataArray;
+class     ArgsExpr;
+class     ExprPipelineState;
 
 
 // ****************************************************************************
@@ -67,21 +69,29 @@ class     vtkDataArray;
 //    Moved inlined constructor and destructor definitions to .C files
 //    because certain compilers have problems with them.
 //
+//    Kathleen Bonnell, Fri May  8 13:21:18 PDT 2009
+//    Added defaultErrorValue, useDefaultOnError, and ProcessArguments.
+//
 // ****************************************************************************
 
 class EXPRESSION_API avtBase10LogExpression : public avtUnaryMathExpression
 {
   public:
-                              avtBase10LogExpression();
-    virtual                  ~avtBase10LogExpression();
+                           avtBase10LogExpression();
+    virtual               ~avtBase10LogExpression();
 
-    virtual const char       *GetType(void)   { return "avtBase10LogExpression"; };
-    virtual const char       *GetDescription(void) 
-                                   { return "Calculating base 10 logarithm"; };
+    virtual const char    *GetType(void)   { return "avtBase10LogExpression"; };
+    virtual const char    *GetDescription(void) 
+                                { return "Calculating base 10 logarithm"; };
+
+    virtual void           ProcessArguments(ArgsExpr *, ExprPipelineState *);
 
   protected:
-    virtual void              DoOperation(vtkDataArray *in, vtkDataArray *out,
-                                          int ncomponents, int ntuples);
+    virtual void           DoOperation(vtkDataArray *in, vtkDataArray *out,
+                                       int ncomponents, int ntuples);
+
+    double                 defaultErrorValue;
+    bool                   useDefaultOnError;
 };
 
 

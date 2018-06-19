@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -36,9 +36,8 @@
 *
 *****************************************************************************/
 
-#ifndef GENERATE_PROJECTFILE_H
+#ifndef GENERATE_PROJECTIFLE_H
 #define GENERATE_PROJECTFILE_H
-#include <QTextStream>
 
 #include "Field.h"
 #include <visit-config.h> // for the plugin extension.
@@ -47,9 +46,6 @@
 #include <windows.h>
 #include <shlobj.h>
 #include <shlwapi.h>
-#include <iostream>
-//using std::cerr;
-//using std::endl;
 #endif
 
 // ****************************************************************************
@@ -131,12 +127,6 @@
 //    Kathleen Bonnell, Tue Aug 19 10:28:23 PDT 2008 
 //    Modified how moc files are handled.
 //
-//    Brad Whitlock, Tue Nov 18 16:16:37 PST 2008
-//    Qt 4.
-//
-//    Kathleen Bonnell, Wed Dec 17 15:23:05 MST 2008
-//    Change qt includes/libs to match QT 4.
-//
 // ****************************************************************************
 
 class ProjectFileGeneratorPlugin : public Plugin
@@ -150,7 +140,7 @@ class ProjectFileGeneratorPlugin : public Plugin
     {
     }
 
-    void Print(QTextStream &out)
+    void Print(ostream &out)
     {
         out << "Plugin: " << name << " (\"" << label << "\", type=" << type
             << ") -- version " << version << endl;
@@ -166,7 +156,6 @@ protected:
     QString binBase;
     QString libBase;
     QString visitIncludes;
-    QString qtBase; 
     QString tpIncludes;
     QString tpLibs;
     QString tpLibDir;
@@ -215,8 +204,8 @@ protected:
         regkey.sprintf("VISIT%s", VERSION);
         if (*keyval == NULL)
             *keyval = new unsigned char[500];
-        if(RegOpenKeyEx(which_root, regkey.toStdString().c_str(), 0, 
-                        KEY_QUERY_VALUE, &hkey) == ERROR_SUCCESS)
+        if(RegOpenKeyEx(which_root, regkey.latin1(), 0, KEY_QUERY_VALUE, &hkey)
+               == ERROR_SUCCESS)
         {
             DWORD keyType, strSize = 500;
             if(RegQueryValueEx(hkey, key, NULL, &keyType, *keyval, &strSize) 
@@ -248,76 +237,76 @@ protected:
         {
             for (size_t i = 0; i < libs.size(); ++i)
             {
-                if (libs[i].indexOf("BOXLIB2D", 0, Qt::CaseInsensitive) > 0)
+                if (libs[i].contains("BOXLIB2D", false) > 0)
                 {
                     tplibs += " boxlib2D.lib";
                     tppreprocs += ";BL_SPACEDIM=2;BL_FORT_USE_UPPERCASE";
                 }
-                else if (libs[i].indexOf("BOXLIB3D", 0, Qt::CaseInsensitive) > 0)
+                else if (libs[i].contains("BOXLIB3D", false) > 0)
                 {
                     tplibs += " boxlib3D.lib";
                     tppreprocs += ";BL_SPACEDIM=3;BL_FORT_USE_UPPERCASE";
                 }
-                else if (libs[i].indexOf("CCMIO", 0, Qt::CaseInsensitive) > 0)
+                else if (libs[i].contains("CCMIO", false) > 0)
                 {
                     tplibs += " ccmio.lib";
                 }
-                else if (libs[i].indexOf("CFITSIO", 0, Qt::CaseInsensitive) > 0)
+                else if (libs[i].contains("CFITSIO", false) > 0)
                 {
                     tplibs += " cfitsio.lib";
                     tppreprocs += ";_HDF5USEDLL_";
                 }
-                else if (libs[i].indexOf("CGNS", 0, Qt::CaseInsensitive) > 0)
+                else if (libs[i].contains("CGNS", false) > 0)
                 {
                     tplibs += " cgnslib.lib";
                 }
-                else if (libs[i].indexOf("EXODUS", 0, Qt::CaseInsensitive) > 0)
+                else if (libs[i].contains("EXODUS", false) > 0)
                 {
                     tplibs += " exodusII.lib";
                 }
-                else if (libs[i].indexOf("GDAL", 0, Qt::CaseInsensitive) > 0)
+                else if (libs[i].contains("GDAL", false) > 0)
                 {
                     tplibs += " gdal_i.lib";
                 }
-                else if (libs[i].indexOf("HDF4", 0, Qt::CaseInsensitive) > 0)
+                else if (libs[i].contains("HDF4", false) > 0)
                 {
                     tplibs += " hd421m.lib hm421m.lib";
                     tppreprocs += ";_MFHDFLIB_;_HDFLIB_";
                 }
-                else if (libs[i].indexOf("HDF5", 0, Qt::CaseInsensitive) > 0)
+                else if (libs[i].contains("HDF5", false) > 0)
                 {
                     tplibs += " hdf5dll.lib";
                     tppreprocs += ";_HDF5USEDLL_";
                 }
-                else if (libs[i].indexOf("H5PART", 0, Qt::CaseInsensitive) > 0)
+                else if (libs[i].contains("H5PART", false) > 0)
                 {
                     tplibs += " h5part13.lib";
                 }
-                else if (libs[i].indexOf("NETCDF_CXX", 0, Qt::CaseInsensitive) > 0)
+                else if (libs[i].contains("NETCDF_CXX", false) > 0)
                 {
                     tplibs += " netcdf_c++.lib";
                 }
-                else if (libs[i].indexOf("NETCDF", 0, Qt::CaseInsensitive) > 0)
+                else if (libs[i].contains("NETCDF", false) > 0)
                 {
                     tplibs += " netcdf.lib";
                 }
-                else if (libs[i].indexOf("PDB", 0, Qt::CaseInsensitive) > 0)
+                else if (libs[i].contains("PDB", false) > 0)
                 {
                     tplibs += " silohdf5.lib";
                 }
-                else if (libs[i].indexOf("SILO", 0, Qt::CaseInsensitive) > 0)
+                else if (libs[i].contains("SILO", false) > 0)
                 {
                     tplibs += " silohdf5.lib";
                 }
-                else if (libs[i].indexOf("ZLIB", 0, Qt::CaseInsensitive) > 0)
+                else if (libs[i].contains("ZLIB", false) > 0)
                 {
                     tplibs += " zlib1.lib";
                 }
-                else if (libs[i].indexOf("GLEW", 0, Qt::CaseInsensitive) > 0)
+                else if (libs[i].contains("GLEW", false) > 0)
                 {
                     tplibs += " glew32.lib";
                 }
-                else if (libs[i].indexOf("GL_LIBS", 0, Qt::CaseInsensitive) > 0)
+                else if (libs[i].contains("GL_LIBS", false) > 0)
                 {
                     tplibs += " opengl32.lib MesaGL32.lib";
                     tpincs = tpincs + baseInclude + "Mesa";
@@ -328,7 +317,7 @@ protected:
         {
             for (size_t i = 0; i < ldflags.size(); ++i)
             {
-                if (ldflags[i].indexOf("lz", 0, Qt::CaseInsensitive) > 0)
+                if (ldflags[i].contains("lz", false) > 0)
                 {
                     tplibs += " vtkzlib.lib";
                 }
@@ -338,61 +327,61 @@ protected:
         {
             for (size_t i = 0; i < cxxflags.size(); ++i)
             {
-                if (cxxflags[i].indexOf("BOXLIB2D", 0, Qt::CaseInsensitive) > 0)
+                if (cxxflags[i].contains("BOXLIB2D", false) > 0)
                 {
                     tpincs = tpincs + baseInclude + "boxlib";
                 }
-                else if (cxxflags[i].indexOf("BOXLIB3D", 0, Qt::CaseInsensitive) > 0)
+                else if (cxxflags[i].contains("BOXLIB3D", false) > 0)
                 {
                     tpincs = tpincs + baseInclude + "boxlib";
                 }
-                else if (cxxflags[i].indexOf("CCMIO", 0, Qt::CaseInsensitive) > 0)
+                else if (cxxflags[i].contains("CCMIO", false) > 0)
                 {
                     tpincs = tpincs + baseInclude; 
                     tpincs = tpincs + baseInclude + "libccmio";
                 }
-                else if (cxxflags[i].indexOf("CFITSIO", 0, Qt::CaseInsensitive) > 0)
+                else if (cxxflags[i].contains("CFITSIO", false) > 0)
                 {
                     tpincs = tpincs + baseInclude + "cfitsio";
                 }
-                else if (cxxflags[i].indexOf("CGNS", 0, Qt::CaseInsensitive) > 0)
+                else if (cxxflags[i].contains("CGNS", false) > 0)
                 {
                     tpincs = tpincs + baseInclude + "cgns";
                 }
-                else if (cxxflags[i].indexOf("EXODUS", 0, Qt::CaseInsensitive) > 0)
+                else if (cxxflags[i].contains("EXODUS", false) > 0)
                 {
                     tpincs = tpincs + baseInclude + "exodusII";
                     tpincs = tpincs + baseInclude + "netcdf";
                 }
-                else if (cxxflags[i].indexOf("GDAL", 0, Qt::CaseInsensitive) > 0)
+                else if (cxxflags[i].contains("GDAL", false) > 0)
                 {
                     tpincs = tpincs + baseInclude + "gdal";
                 }
-                else if (cxxflags[i].indexOf("HDF4", 0, Qt::CaseInsensitive) > 0)
+                else if (cxxflags[i].contains("HDF4", false) > 0)
                 {
                     tpincs = tpincs + baseInclude + "hdf4";
                 }
-                else if (cxxflags[i].indexOf("HDF5", 0, Qt::CaseInsensitive) > 0)
+                else if (cxxflags[i].contains("HDF5", false) > 0)
                 {
                     tpincs = tpincs + baseInclude + "hdf5";
                 }
-                else if (cxxflags[i].indexOf("H5PART", 0, Qt::CaseInsensitive) > 0)
+                else if (cxxflags[i].contains("H5PART", false) > 0)
                 {
                     tpincs = tpincs + baseInclude + "h5part";
                 }
-                else if (cxxflags[i].indexOf("NETCDF", 0, Qt::CaseInsensitive) > 0)
+                else if (cxxflags[i].contains("NETCDF", false) > 0)
                 {
                     tpincs = tpincs + baseInclude + "netcdf";
                 }
-                else if (cxxflags[i].indexOf("PDB", 0, Qt::CaseInsensitive) > 0)
+                else if (cxxflags[i].contains("PDB", false) > 0)
                 {
                     tpincs = tpincs + baseInclude + "silo";
                 }
-                else if (cxxflags[i].indexOf("SILO", 0, Qt::CaseInsensitive) > 0)
+                else if (cxxflags[i].contains("SILO", false) > 0)
                 {
                     tpincs = tpincs + baseInclude + "silo";
                 }
-                else if (cxxflags[i].indexOf("GLEW", 0, Qt::CaseInsensitive) > 0)
+                else if (cxxflags[i].contains("GLEW", false) > 0)
                 {
                     tpincs = tpincs + baseInclude + "glew";
                     tppreprocs += ";HAVE_LIBGLEW";
@@ -408,8 +397,7 @@ protected:
         withinDevDir = false;
         if (!publicVisIt)
         {
-            if (fullCurrentDir.contains(QString(projectDir), 
-                                        Qt::CaseInsensitive) > 0)
+            if (fullCurrentDir.contains(projectDir, false) > 0)
             {
                 withinDevDir = true;
             }
@@ -510,7 +498,7 @@ protected:
          
         if (retval.length() > 0)
         {
-            if (fullVisItDir.contains(retval, Qt::CaseInsensitive) > 0)
+            if (fullVisItDir.contains(retval, false) > 0)
                 publicVisIt = false;
             else
                 publicVisIt = true;
@@ -552,7 +540,7 @@ protected:
 #include <GenerateVC8.h>
 
 
-    void WriteProject_TOP_LEVEL(QTextStream &out, bool version7)
+    void WriteProject_TOP_LEVEL(ostream &out, bool version7)
     {
         if(version7)
             WriteProject_TOP_LEVEL_Version7(out);
@@ -560,7 +548,7 @@ protected:
             WriteProject_TOP_LEVEL_Version8(out);
     }
 
-    void WriteProjectSolution(QTextStream &out, const vector<QString> &projects, 
+    void WriteProjectSolution(ostream &out, const vector<QString> &projects, 
                                bool version7)
     {
         if(version7)
@@ -568,7 +556,7 @@ protected:
         else
             WriteProjectSolution_Version8(out, projects);
     }
-    void WriteProjectHelper(QTextStream &out, const QString &pluginType, 
+    void WriteProjectHelper(ostream &out, const QString &pluginType, 
              char pluginComponent, const QString &exports, const QString &libs,
              const vector<QString> &srcFiles, bool version7)
     {
@@ -577,7 +565,7 @@ protected:
                            srcFiles, version7, hdrFiles, mocFiles);
     }
 
-    void WriteProjectHelper(QTextStream &out, const QString &pluginType, 
+    void WriteProjectHelper(ostream &out, const QString &pluginType, 
              char pluginComponent, const QString &exports, const QString &libs,
              const vector<QString> &srcFiles, bool version7, const vector<QString> &hdrFiles, const vector<QString> &mocFiles)
     {
@@ -593,7 +581,7 @@ protected:
      ************************ BEGIN PLOT PROJECT CODING ************************
      **************************************************************************/
 
-    void WritePlotProject_I(QTextStream &out, bool version7)
+    void WritePlotProject_I(ostream &out, bool version7)
     {
         vector<QString> srcFiles;
         srcFiles.push_back(name + "PluginInfo.C");
@@ -602,7 +590,7 @@ protected:
             "plugin.lib", srcFiles, version7);
     }
 
-    void WritePlotProject_E(QTextStream &out, bool version7)
+    void WritePlotProject_E(ostream &out, bool version7)
     {
         vector<QString> srcFiles;
         srcFiles.push_back(name + "PluginInfo.C");
@@ -624,7 +612,7 @@ protected:
             srcFiles, version7);
     }
 
-    void WritePlotProject_G(QTextStream &out, bool version7)
+    void WritePlotProject_G(ostream &out, bool version7)
     {
         vector<QString> srcFiles, hdrFiles, mocFiles;
         srcFiles.push_back(name + "PluginInfo.C");
@@ -667,7 +655,7 @@ protected:
             "viewerrpc.lib winutil.lib", srcFiles, version7, hdrFiles, mocFiles);
     }
 
-    void WritePlotProject_S(QTextStream &out, const QString &addLibs, bool version7)
+    void WritePlotProject_S(ostream &out, const QString &addLibs, bool version7)
     {
         vector<QString> srcFiles;
         srcFiles.push_back(name + "PluginInfo.C");
@@ -685,7 +673,7 @@ protected:
             addLibs, srcFiles, version7);
     }
 
-    void WritePlotProject_V(QTextStream &out, bool version7)
+    void WritePlotProject_V(ostream &out, bool version7)
     {
         vector<QString> srcFiles;
         srcFiles.push_back(name + "PluginInfo.C");
@@ -720,7 +708,7 @@ protected:
             srcFiles, version7);
     }
 
-    void WritePlotProjects(QFile * (*openCB)(const QString &), 
+    void WritePlotProjects(bool (*openCB)(ofstream &, const QString &), 
                            bool version7)
     {
         QString projectExtension(".vcproj");
@@ -745,13 +733,12 @@ protected:
         QString pluginTopProject(projectDir + name + projectExtension);
         QString workspace(projectDir + name + workSpaceExtension);
 
-        cOut << "Plot projects saved to " << projectDir << Endl;
+        cout << "Plot projects saved to " << projectDir << endl;
 
         // Write the I project
-        QFile *f = 0;
-        if((f = openCB(IProject)) != 0)
+        ofstream out;
+        if(openCB(out, IProject))
         {
-            QTextStream out(f);
             visitIncludes = pluginBase + "\\common\\misc;" +
                             pluginBase + "\\common\\plugin;"  +
                             pluginBase + "\\common\\state;"  +
@@ -760,13 +747,12 @@ protected:
             tpLibs = "";
             tpLibDir = "";
             WritePlotProject_I(out, version7);
-            f->close();
+            out.close();
         }
 
         // Write the E project
-        if((f = openCB(EProject)) != 0)
+        if(openCB(out, EProject))
         {
-            QTextStream out(f);
             visitIncludes = pluginBase + "\\avt\\Database\\Database;" +
                             pluginBase + "\\avt\\DBAtts\\MetaData;" +
                             pluginBase + "\\avt\\DBAtts\\SIL;" +
@@ -796,13 +782,12 @@ protected:
             ThirdParty(tpLibs, tpIncludes, tpPreProc, version7);
             tpLibDir = "";
             WritePlotProject_E(out, version7);
-            f->close();
+            out.close();
         }
 
         // Write the G project
-        if((f = openCB(GProject)) != 0)
+        if(openCB(out, GProject))
         {
-            QTextStream out(f);
             visitIncludes = pluginBase + "\\avt\\DBAtts\\MetaData;" +
                             pluginBase + "\\avt\\DBAtts\\SIL;" +
                             pluginBase + "\\common\\Exceptions\\Pipeline;"  +
@@ -814,26 +799,16 @@ protected:
                             pluginBase + "\\viewer\\proxy;" +
                             pluginBase + "\\viewer\\rpc;" +
                             pluginBase + "\\winutil"; 
-            if (version7)
-            {
-                qtBase = "..\\..\\include\\qt";
-                tpIncludes = qtBase + ";" +
-                             qtBase + "\\QtCore;" + 
-                             qtBase + "\\QtGui;" ;
-            }
-            else
-            {
-                tpIncludes = "";
-            }
-            tpLibs = " QtCore4.lib QtGui4.lib";
+            tpIncludes = "$(QTDIR)\\include";
+            tpLibs = " $(QTLIB)";
+            tpLibDir = "$(QTDIR)\\lib";
             WritePlotProject_G(out, version7);
-            f->close();
+            out.close();
         }
 
         // Write the S project
-        if((f = openCB(SProject)) != 0)
+        if(openCB(out, SProject))
         {
-            QTextStream out(f);
             visitIncludes = pluginBase + "\\common\\misc;" +
                             pluginBase + "\\common\\plugin;" +
                             pluginBase + "\\common\\state;" +
@@ -844,13 +819,12 @@ protected:
             tpLibDir = "";
             QString addLibs = "state.lib misc.lib plugin.lib";
             WritePlotProject_S(out, addLibs, version7);
-            f->close();
+            out.close();
         }
 
         // Write the V project
-        if((f = openCB(VProject)) != 0)
+        if(openCB(out, VProject))
         {
-            QTextStream out(f);
             visitIncludes = pluginBase + "\\avt\\Database\\Database;" +
                             pluginBase + "\\avt\\DBAtts\\MetaData;" +
                             pluginBase + "\\avt\\DBAtts\\SIL;" +
@@ -885,31 +859,25 @@ protected:
             ThirdParty(tpLibs, tpIncludes, tpPreProc, version7);
             if (tpIncludes.length() > 0)
                 tpIncludes += ";";
-            if (version7)
-            {
-                qtBase = "..\\..\\include\\qt";
-                tpIncludes += (qtBase + ";" +
-                             qtBase + "\\QtCore;" );
-            }
-            tpLibs += " QtCore4.lib";
+            tpIncludes += "$(QTDIR)\\include";
+            tpLibs += " $(QTLIB)";
+            tpLibDir = "$(QTDIR)\\lib";
             WritePlotProject_V(out, version7);
-            f->close();
+            out.close();
         }
 
         // Write the top level project
-        if((f = openCB(pluginTopProject)) != 0)
+        if(openCB(out, pluginTopProject))
         {
-            QTextStream out(f);
             WriteProject_TOP_LEVEL(out, version7);
-            f->close();
+            out.close();
         }
 
         // Write the plugin solution.
         if (!withinDevDir)
         {
-            if((f = openCB(workspace)) != 0)
+            if(openCB(out, workspace))
             {
-                QTextStream out(f);
                 vector<QString> projects;
                 projects.push_back(name);
                 projects.push_back(name + "I");
@@ -930,7 +898,7 @@ protected:
      ********************** BEGIN OPERATOR PROJECT CODING **********************
      **************************************************************************/
 
-    void WriteOperatorProject_I(QTextStream &out, bool version7)
+    void WriteOperatorProject_I(ostream &out, bool version7)
     {
         vector<QString> srcFiles;
         srcFiles.push_back(name + "PluginInfo.C");
@@ -939,7 +907,7 @@ protected:
             "plugin.lib", srcFiles, version7);
     }
 
-    void WriteOperatorProject_E(QTextStream &out, bool version7)
+    void WriteOperatorProject_E(ostream &out, bool version7)
     {
         vector<QString> srcFiles;
         srcFiles.push_back(name + "PluginInfo.C");
@@ -960,7 +928,7 @@ protected:
             srcFiles, version7);
     }
 
-    void WriteOperatorProject_G(QTextStream &out, bool version7)
+    void WriteOperatorProject_G(ostream &out, bool version7)
     {
         vector<QString> srcFiles, hdrFiles, mocFiles;
         srcFiles.push_back(name + "PluginInfo.C");
@@ -1010,7 +978,7 @@ protected:
             "viewerrpc.lib", srcFiles, version7, hdrFiles, mocFiles);
     }
 
-    void WriteOperatorProject_S(QTextStream &out, bool version7)
+    void WriteOperatorProject_S(ostream &out, bool version7)
     {
         vector<QString> srcFiles;
         srcFiles.push_back(name + "PluginInfo.C");
@@ -1028,7 +996,7 @@ protected:
             "state.lib misc.lib plugin.lib", srcFiles, version7);
     }
 
-    void WriteOperatorProject_V(QTextStream &out, bool version7)
+    void WriteOperatorProject_V(ostream &out, bool version7)
     {
         vector<QString> srcFiles;
         srcFiles.push_back(name + "PluginInfo.C");
@@ -1062,7 +1030,7 @@ protected:
             srcFiles, version7);
     }
 
-    void WriteOperatorProjects(QFile *(*openCB)(const QString &), 
+    void WriteOperatorProjects(bool (*openCB)(ofstream &, const QString &), 
                                bool version7)
     {
         QString projectExtension(".vcproj");
@@ -1086,13 +1054,12 @@ protected:
         QString pluginTopProject(projectDir + name + projectExtension);
         QString workspace(projectDir + name + workSpaceExtension);
 
-        cOut << "Operator projects saved to " << projectDir << Endl;
+        cout << "Operator projects saved to " << projectDir << endl;
 
         // Write the I project
-        QFile *f = 0;
-        if((f = openCB(IProject)) != 0)
+        ofstream out;
+        if(openCB(out, IProject))
         {
-            QTextStream out(f);
             visitIncludes = pluginBase + "\\avt\\Math;" +
                             pluginBase + "\\common\\misc;" +
                             pluginBase + "\\common\\plugin;" +
@@ -1102,13 +1069,12 @@ protected:
             tpLibs ="";
             tpLibDir ="";
             WriteOperatorProject_I(out, version7);
-            f->close();
+            out.close();
         }
 
         // Write the E project
-        if((f = openCB(EProject)) != 0)
+        if(openCB(out, EProject))
         {
-            QTextStream out(f);
             visitIncludes = pluginBase + "\\avt\\Database\\Database;" +
                             pluginBase + "\\avt\\DBAtts\\MetaData;" +
                             pluginBase + "\\avt\\DBAtts\\SIL;" +
@@ -1140,13 +1106,12 @@ protected:
             ThirdParty(tpLibs, tpIncludes, tpPreProc, version7);
             tpLibDir ="";
             WriteOperatorProject_E(out, version7);
-            f->close();
+            out.close();
         }
 
         // Write the G project
-        if((f = openCB(GProject)) != 0)
+        if(openCB(out, GProject))
         {
-            QTextStream out(f);
             visitIncludes = pluginBase + "\\avt\\DBAtts\\MetaData;" +
                             pluginBase + "\\avt\\DBAtts\\SIL;" +
                             pluginBase + "\\avt\\Math;" +
@@ -1163,22 +1128,16 @@ protected:
                             pluginBase + "\\viewer\\proxy;" +
                             pluginBase + "\\viewer\\rpc;" +
                             pluginBase + "\\winutil" ;
-            if (version7)
-            {
-                qtBase = "..\\..\\include\\qt";
-                tpIncludes = qtBase + ";" +
-                             qtBase + "\\QtCore;" + 
-                             qtBase + "\\QtGui;" ;
-            }
-            tpLibs = " QtCore4.lib QtGui4.lib";
+            tpIncludes ="$(QTDIR)\\include";
+            tpLibs =" $(QTLIB)";
+            tpLibDir ="$(QTDIR)\\lib";
             WriteOperatorProject_G(out, version7);
-            f->close();
+            out.close();
         }
 
         // Write the S project
-        if((f = openCB(SProject)) != 0)
+        if(openCB(out, SProject))
         {
-            QTextStream out(f);
             visitIncludes = pluginBase + "\\avt\\Math;" +
                             pluginBase + "\\common\\misc;" +
                             pluginBase + "\\common\\plugin;" +
@@ -1188,13 +1147,12 @@ protected:
             tpLibs ="";
             tpLibDir ="";
             WriteOperatorProject_S(out, version7);
-            f->close();
+            out.close();
         }
 
         // Write the V project
-        if((f = openCB(VProject)) != 0)
+        if(openCB(out, VProject))
         {
-            QTextStream out(f);
             visitIncludes = pluginBase + "\\avt\\Database\\Database;" +
                             pluginBase + "\\avt\\DBAtts\\MetaData;" + 
                             pluginBase + "\\avt\\DBAtts\\SIL;" + 
@@ -1229,31 +1187,25 @@ protected:
             ThirdParty(tpLibs, tpIncludes, tpPreProc, version7);
             if (tpIncludes.length() > 0)
                 tpIncludes += ";";
-            if (version7)
-            {
-                qtBase = "..\\..\\include\\qt";
-                tpIncludes += (qtBase + ";" +
-                             qtBase + "\\QtCore;") ;
-            }
-            tpLibs += " QtCore4.lib QtGui4.lib";
+            tpIncludes += "$(QTDIR)\\include";
+            tpLibs += " $(QTLIB)";
+            tpLibDir = "$(QTDIR)\\lib";
             WriteOperatorProject_V(out, version7);
-            f->close();
+            out.close();
         }
 
         // Write the top level project
-        if((f = openCB(pluginTopProject)) != 0)
+        if(openCB(out, pluginTopProject))
         {
-            QTextStream out(f);
             WriteProject_TOP_LEVEL(out, version7);
-            f->close();
+            out.close();
         }
 
         // Write the plugin solution.
         if (!withinDevDir)
         {
-            if((f = openCB(workspace)) != 0)
+            if(openCB(out, workspace))
             {
-                QTextStream out(f);
                 vector<QString> projects;
                 projects.push_back(name);
                 projects.push_back(name + "I");
@@ -1262,7 +1214,6 @@ protected:
                 projects.push_back(name + "S");
                 projects.push_back(name + "V");
                 WriteProjectSolution(out, projects, version7);
-                f->close();
             }
         }
     }
@@ -1275,7 +1226,7 @@ protected:
      ********************** BEGIN DATABASE PROJECT CODING **********************
      **************************************************************************/
 
-    void WriteDatabaseProject(QTextStream &out, char pluginComponent, 
+    void WriteDatabaseProject(ostream &out, char pluginComponent, 
                               bool version7, const QString &libs)
     {
         vector<QString> srcFiles;
@@ -1351,7 +1302,7 @@ protected:
                     libs, tplibs, tpincs, tppreproc);
     }
 
-    void WriteDatabaseProjects(QFile *(*openCB)(const QString &), 
+    void WriteDatabaseProjects(bool (*openCB)(ofstream &, const QString &), 
                                bool version7)
     {
         QString projectExtension(".vcproj");
@@ -1375,48 +1326,43 @@ protected:
         QString pluginTopProject(projectDir + name + projectExtension);
         QString workspace(projectDir + name + workSpaceExtension);
 
-        cOut << "Database projects saved to " << projectDir << Endl;
+        cout << "Database projects saved to " << projectDir << endl;
 
         // Write the I project
-        QFile *f = 0;
-        if((f = openCB(IProject)) != 0)
+        ofstream out;
+        if(openCB(out, IProject))
         {
-            QTextStream out(f);
             WriteDatabaseProject(out, 'I', version7, baseLibs);
-            f->close();
+            out.close();
         }
 
         baseLibs += " utility.lib";
         // Write the E project
-        if((f = openCB(EProject)) != 0)
+        if(openCB(out, EProject))
         {
-            QTextStream out(f);
             WriteDatabaseProject(out, 'E', version7, baseLibs);
-            f->close();
+            out.close();
         }
 
         // Write the M project
-        if((f = openCB(MProject)) != 0)
+        if(openCB(out, MProject))
         {
-            QTextStream out(f);
             WriteDatabaseProject(out, 'M', version7, baseLibs);
-            f->close();
+            out.close();
         }
 
         // Write the top level project
-        if((f = openCB(pluginTopProject)) != 0)
+        if(openCB(out, pluginTopProject))
         {
-            QTextStream out(f);
             WriteProject_TOP_LEVEL(out, version7);
-            f->close();
+            out.close();
         }
 
         if (publicVisIt)
         {
             // Write the plugin solution.
-            if((f = openCB(workspace)) != 0)
+            if(openCB(out, workspace))
             {
-                QTextStream out(f);
                 vector<QString> projects;
                 projects.push_back(name);
                 projects.push_back(name + "I");
@@ -1432,7 +1378,7 @@ protected:
      **************************************************************************/
 public:
 
-    void WriteProjectFiles(QFile* (*openCB)(const QString &), 
+    void WriteProjectFiles(bool (*openCB)(ofstream &, const QString &), 
                            bool version7)
     {
         preproc = "WIN32;_WINDOWS;_USRDLL;_USE_MATH_DEFINES";

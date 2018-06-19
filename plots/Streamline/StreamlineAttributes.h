@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -75,7 +75,8 @@ public:
         ColorByVorticity,
         ColorByLength,
         ColorByTime,
-        ColorBySeedPointID
+        ColorBySeedPointID,
+        ColorByVariable
     };
     enum DisplayMethod
     {
@@ -92,18 +93,19 @@ public:
     enum TerminationType
     {
         Distance,
-        Time
-    };
-    enum IntegrationType
-    {
-        DormandPrince,
-        AdamsBashforth
+        Time,
+        Step
     };
     enum StreamlineAlgorithmType
     {
         LoadOnDemand,
         ParallelStaticDomains,
         MasterSlave
+    };
+    enum IntegrationType
+    {
+        DormandPrince,
+        AdamsBashforth
     };
 
     StreamlineAttributes();
@@ -131,6 +133,7 @@ public:
     void SelectBoxExtents();
     void SelectColorTableName();
     void SelectSingleColor();
+    void SelectColoringVariable();
 
     // Property setting methods
     void SetSourceType(SourceType sourceType_);
@@ -165,6 +168,9 @@ public:
     void SetStreamlineAlgorithmType(StreamlineAlgorithmType streamlineAlgorithmType_);
     void SetMaxStreamlineProcessCount(int maxStreamlineProcessCount_);
     void SetMaxDomainCacheSize(int maxDomainCacheSize_);
+    void SetWorkGroupSize(int workGroupSize_);
+    void SetPathlines(bool pathlines_);
+    void SetColoringVariable(const std::string &coloringVariable_);
 
     // Property getting methods
     SourceType           GetSourceType() const;
@@ -209,6 +215,10 @@ public:
     StreamlineAlgorithmType GetStreamlineAlgorithmType() const;
     int                  GetMaxStreamlineProcessCount() const;
     int                  GetMaxDomainCacheSize() const;
+    int                  GetWorkGroupSize() const;
+    bool                 GetPathlines() const;
+    const std::string    &GetColoringVariable() const;
+          std::string    &GetColoringVariable();
 
     // Persistence methods
     virtual bool CreateNode(DataNode *node, bool completeSave, bool forceAdd);
@@ -240,15 +250,15 @@ public:
 protected:
     static std::string TerminationType_ToString(int);
 public:
-    static std::string IntegrationType_ToString(IntegrationType);
-    static bool IntegrationType_FromString(const std::string &, IntegrationType &);
-protected:
-    static std::string IntegrationType_ToString(int);
-public:
     static std::string StreamlineAlgorithmType_ToString(StreamlineAlgorithmType);
     static bool StreamlineAlgorithmType_FromString(const std::string &, StreamlineAlgorithmType &);
 protected:
     static std::string StreamlineAlgorithmType_ToString(int);
+public:
+    static std::string IntegrationType_ToString(IntegrationType);
+    static bool IntegrationType_FromString(const std::string &, IntegrationType &);
+protected:
+    static std::string IntegrationType_ToString(int);
 public:
 
     // Keyframing methods
@@ -293,7 +303,10 @@ public:
         ID_integrationType,
         ID_streamlineAlgorithmType,
         ID_maxStreamlineProcessCount,
-        ID_maxDomainCacheSize
+        ID_maxDomainCacheSize,
+        ID_workGroupSize,
+        ID_pathlines,
+        ID_coloringVariable
     };
 
 private:
@@ -329,6 +342,9 @@ private:
     int            streamlineAlgorithmType;
     int            maxStreamlineProcessCount;
     int            maxDomainCacheSize;
+    int            workGroupSize;
+    bool           pathlines;
+    std::string    coloringVariable;
 
     // Static class format string for type map.
     static const char *TypeMapFormatString;

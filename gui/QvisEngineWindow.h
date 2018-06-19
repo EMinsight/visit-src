@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -40,7 +40,7 @@
 #define ENGINE_WINDOW_H
 #include <gui_exports.h>
 #include <QvisPostableWindowObserver.h>
-#include <QMap>
+#include <qmap.h>
 
 // Forward declarations.
 class EngineList;
@@ -80,15 +80,13 @@ class StatusAttributes;
 //    Brad Whitlock, Wed Apr  9 11:00:33 PDT 2008
 //    QString for caption, shortName.
 //
-//    Cyrus Harrison, Tue Jun 24 11:15:28 PDT 2008
-//    Initial Qt4 Port.
-//
 // ****************************************************************************
 
 class GUI_API QvisEngineWindow : public QvisPostableWindowObserver
 {
     Q_OBJECT
 
+    typedef QMap<QString, StatusAttributes*> EngineStatusMap;
 public:
     QvisEngineWindow(EngineList *engineList,
                      const QString &caption = QString::null,
@@ -113,12 +111,12 @@ private slots:
     void selectEngine(int index);
     void clearCache();
 private:
-    QMap<QString, StatusAttributes*>   statusMap;
     EngineList       *engines;
     StatusAttributes *statusAtts;
     Subject          *caller;
     QString           activeEngine;
-    
+    EngineStatusMap   statusMap;
+
     QLabel           *engineLabel;
     QComboBox        *engineCombo;
     QGroupBox        *engineInfo;

@@ -13,19 +13,6 @@
 #
 # Programmer: Mark C. Miller
 # Date:       Tue Oct  7 10:01:50 PDT 2008
-# 
-# Modifications:
-#
-#   Mark C. Miller, Mon Oct 27 22:05:58 PDT 2008
-#   Fixed some bugs due to typos introduced by cut-paste-modify errors.
-#   Changed domain rank compuation to average zone area (or volume in 3D)
-#   instead of whole domain. Changed algorithm using spatial extents for
-#   computing overlap candidates to use <= instead of just < operator.
-#   Note that there is still an issue with assigning domains to levels when
-#   some coarse domains have no children while other coarse domains have
-#   children. The algorithm needs to be modified to first assign domains
-#   with children to levels and then assign UNassigned domains which are
-#   neighbors of assigned domains to the same level.
 #
 ##############################################################################
 import string, re, sys, copy
@@ -230,8 +217,6 @@ for d in silr.SetsInCategory("domains"):
 
     # Get this domain's logical extents by doing a node-pick
     # on the highest numbered node
-    Query("NumZones","actual")
-    zoneCount = int(GetQueryOutputValue())
     Query("NumNodes","actual")
     v = int(GetQueryOutputValue())
     print "Domain %d, nodeId %d"%(d, v-1)
@@ -261,10 +246,10 @@ for d in silr.SetsInCategory("domains"):
 
     if meshDim == 2:
         Query("2D area")
-        rank = float(GetQueryOutputValue()/zoneCount)
+        rank = float(GetQueryOutputValue())
     else:
         Query("Volume")
-        rank = float(GetQueryOutputValue()/zoneCount)
+        rank = float(GetQueryOutputValue())
     domRankMap.append((nDomId,rank))
     print "Rank = %f"%rank
 
@@ -327,12 +312,12 @@ for d1 in domRankOrder:
 	# we can skip it.
 	#
         exts2 = spatExtents[d2]
-	if exts1[1] <= exts2[0] or \
-	   exts2[1] <= exts1[0] or \
-	   exts1[3] <= exts2[2] or \
-	   exts2[3] <= exts1[2] or (meshDim == 3 and \
-	  (exts1[5] <= exts2[4] or \
-	   exts2[5] <= exts1[4])):
+	if exts1[1] < exts2[0] or \
+	   exts2[1] < exts1[0] or \
+	   exts1[3] < exts2[2] or \
+	   exts2[3] < exts1[2] or (meshDim == 3 and \
+	  (exts1[5] < exts2[4] or \
+	   exts2[5] < exts1[4])):
 	   continue
 
         #
@@ -458,12 +443,13 @@ if not MeshIsRectilinear(meshName):
 	    silr.TurnOffSet(n2vDomId(d))
         print ""
 
-    print "**********************************************************"
-    print "**********************************************************"
-    print "Candidate descendants as modifed by pos_cmfe overlap tests"
-    print "**********************************************************"
-    print "**********************************************************"
-    PrintDescendantsLists(domDescendants)
+
+print "**********************************************************"
+print "**********************************************************"
+print "Candidate descendants as modifed by pos_cmfe overlap tests"
+print "**********************************************************"
+print "**********************************************************"
+PrintDescendantsLists(domDescendants)
 
 def IsADeepDescendantOf(dDom, pDom, depth):
     global domDescendants
@@ -553,13 +539,13 @@ def ComputeRectilinearRatios():
         for dc in dChildList:
             dSizeX = (spatExtents[d][1] - spatExtents[d][0]) / logSizes[d][0]
             dSizeY = (spatExtents[d][3] - spatExtents[d][2]) / logSizes[d][1]
-            dcSizeX = (spatExtents[dc][1] - spatExtents[dc][0]) / logSizes[dc][0]
-            dcSizeY = (spatExtents[dc][3] - spatExtents[dc][2]) / logSizes[dc][1]
+            dcSizeX = (spatExtents[dc][1] - spatExtents[d][0]) / logSizes[dc][0]
+            dcSizeY = (spatExtents[dc][3] - spatExtents[d][2]) / logSizes[dc][1]
             ratioX = int(round(dSizeX / dcSizeX))
             ratioY = int(round(dSizeY / dcSizeY))
             if meshDim == 3:
                 dSizeZ = (spatExtents[d][5] - spatExtents[d][4]) / logSizes[d][2]
-                dcSizeZ = (spatExtents[dc][5] - spatExtents[dc][4]) / logSizes[dc][2]
+                dcSizeZ = (spatExtents[dc][5] - spatExtents[d][4]) / logSizes[dc][2]
                 ratioZ = int(round(dSizeZ / dcSizeZ))
                 ratios.append((ratioX, ratioY, ratioZ))
             else:
@@ -749,8 +735,8 @@ def ComputeDomainBoundaryPointSets(nDomId):
     else:
         pSets.append(set([cPoints[2],cPoints[3],cPoints[6],cPoints[7]])) # N
         pSets.append(set([cPoints[0],cPoints[1],cPoints[4],cPoints[5]])) # S
-        pSets.append(set([cPoints[1],cPoints[3],cPoints[5],cPoints[7]])) # E
-        pSets.append(set([cPoints[0],cPoints[2],cPoints[4],cPoints[6]])) # W
+        pSets.append(set([cPoints[1],cPoints[3],cPoints[5],cPoints[6]])) # E
+        pSets.append(set([cPoints[0],cPoints[2],cPoints[4],cPoints[7]])) # W
         pSets.append(set([cPoints[4],cPoints[5],cPoints[6],cPoints[7]])) # F
         pSets.append(set([cPoints[0],cPoints[1],cPoints[2],cPoints[3]])) # B
 
@@ -829,10 +815,10 @@ if len(highestDoms) > 1:
 		infoJ[2][2] = domI
 
             if meshDim == 3:
-	        FrontI = infoI[1][4]
-		BackI  = infoI[1][5]
-		FrontJ = infoJ[1][4]
-		BackJ  = infoJ[1][5]
+	        FrontI = infoI[2][4]
+		BackI  = infoI[2][5]
+		FrontJ = infoJ[2][4]
+		BackJ  = infoJ[2][5]
 
 		if FrontI == BackJ:
 		    infoI[2][4] = domJ

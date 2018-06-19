@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,10 +37,8 @@
 *****************************************************************************/
 
 #include <QvisPostableWindowObserver.h>
-#include <QPushButton>
-#include <QLayout>
-#include <QFileDialog>
-#include <SingleAttributeConfigManager.h>
+#include <qpushbutton.h>
+#include <qlayout.h>
 
 #include <AttributeSubject.h>
 
@@ -151,72 +149,3 @@ QvisPostableWindowObserver::apply()
     }
 }
 
-// ****************************************************************************
-//  Method:  QvisPostableWindowObserver::loadSubject
-//
-//  Purpose:
-//    Loads the window's subject from an XML file.
-//
-//  Arguments:
-//    none
-//
-//  Programmer:  Jeremy Meredith
-//  Creation:    January  2, 2009
-//
-// ****************************************************************************
-
-void
-QvisPostableWindowObserver::loadSubject()
-{
-    if (!subject)
-        return;
-
-    QString filename = QFileDialog::getOpenFileName(this,
-                                                    tr("Open Attribute XML"),
-                                                    NULL,
-                                                    tr("XML Files (*.xml);;"
-                                                       "All files (*)"));
-    if (filename.isNull())
-        return;
-    
-    AttributeSubject *as = (AttributeSubject *)subject;
-    SingleAttributeConfigManager mgr(as);
-    mgr.Import(filename.toStdString());
-    as->SelectAll();
-    as->Notify();
-}
-
-// ****************************************************************************
-//  Method:  QvisPostableWindowObserver::saveSubject
-//
-//  Purpose:
-//    Save the window's subject to an XML file.
-//
-//  Arguments:
-//    none
-//
-//  Programmer:  Jeremy Meredith
-//  Creation:    January  2, 2009
-//
-// ****************************************************************************
-
-void
-QvisPostableWindowObserver::saveSubject()
-{
-    if (!subject)
-        return;
-
-    QString filename = QFileDialog::getSaveFileName(this,
-                                                    tr("Save Attribute XML"),
-                                                    NULL,
-                                                    tr("XML Files (*.xml)"));
-    if (filename.isNull())
-        return;
-
-    if (filename.indexOf('.') == -1)
-        filename += ".xml";
-
-    AttributeSubject *as = (AttributeSubject *)subject;
-    SingleAttributeConfigManager mgr(as);
-    mgr.Export(filename.toStdString());
-}

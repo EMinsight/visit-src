@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -38,11 +38,13 @@
 #ifndef SPREADSHEET_VIEWER_H
 #define SPREADSHEET_VIEWER_H
 
-#include <QMainWindow>
+#include <qmainwindow.h>
 #include <Observer.h>
 #include <SpreadsheetAttributes.h>
 #include <VariableMenuPopulator.h>
 #include <vector>
+
+#include <vtkDataSet.h>
 
 class QButtonGroup;
 class QCheckBox;
@@ -51,9 +53,9 @@ class QGroupBox;
 class QHBox;
 class QLabel;
 class QLineEdit;
-class QListWidget;
+class QListBox;
 class QPushButton;
-class QMenu;
+class QPopupMenu;
 class QSlider;
 class QTable;
 class QTabWidget;
@@ -67,7 +69,6 @@ class SpreadsheetTabWidget;
 class avtLookupTable;
 
 class ViewerPlot;
-class vtkDataSet;
 
 // ****************************************************************************
 // Class: SpreadsheetViewer
@@ -93,8 +94,8 @@ class vtkDataSet;
 //   Gunther H. Weber, Wed Nov 28 15:20:13 PST 2007
 //   Added toggle for current cell outline
 //
-//   Brad Whitlock, Thu Aug 28 14:41:18 PDT 2008
-//   Qt 4.
+//   Brad Whitlock, Tue May 26 11:09:08 PDT 2009
+//   I added lineout operations.
 //
 // ****************************************************************************
 
@@ -102,7 +103,7 @@ class SpreadsheetViewer : public QMainWindow, public Observer
 {
     Q_OBJECT
 public:
-    SpreadsheetViewer(ViewerPlot *p, QWidget *parent = 0);
+    SpreadsheetViewer(ViewerPlot *p, QWidget *parent = 0, const char *name = 0);
     virtual ~SpreadsheetViewer();
 
     void setAllowRender(bool);
@@ -119,7 +120,7 @@ private slots:
     void sliderChanged(int);
     void sliderPressed();
     void sliderReleased();
-    void tabChanged(int);
+    void tabChanged(QWidget *);
     void minClicked();
     void maxClicked();
     void colorTableCheckBoxToggled(bool);
@@ -139,7 +140,12 @@ private slots:
     void selectNone();
     void operationSum();
     void operationAverage();
-
+    void operationCurveX(int);
+    void operationCurveY(int);
+    void operationCurveX0();
+    void operationCurveY0();
+    void operationCurveX1();
+    void operationCurveY1();
 private:
     void updateSpreadsheet();
     bool moveSliceToCurrentPick();
@@ -154,9 +160,14 @@ private:
     void updateMinMaxButtons();
     void updateSliderLabel();
     void updateVariableMenus();
-    void updateMenuEnabledState(int);
+    void updateMenuEnabledState(QTable *);
     int  GetCell(double, double, double);
     bool PickPointsChanged() const;
+    void GetBaseIndexFromMetaData(int *base_index) const;
+    void GetPickIJK(int pickId, int pickType, int *ijk) const;
+
+    void DisplayCurve(const double *vals, int nvals);
+    bool GetDataVsCoordinate(double *curve, const vtkIdType *, int nvals, int coord) const;
 
     // Cached plot attributes that are used to see if the Qt display needs
     // to update when the Update() method is called.
@@ -198,7 +209,7 @@ private:
     QCheckBox            *currentCellOutlineCheckBox;
     QLabel               *normalLabel;
     QButtonGroup         *normalButtonGroup;
-    QWidget              *normalRadioButtons;
+    QHBox                *normalRadioButtons;
 
     // Widgets that we'll use all the time.
     SpreadsheetTabWidget *zTabs;
@@ -219,18 +230,14 @@ private:
     QPushButton          *maxButton;
 
     // Menu related members.
-    QMenu                *fileMenu;
-    QMenu                *editMenu;
-#ifdef Q_WS_MAC
-    QPushButton          *opButton;
-#endif
-    QMenu                *operationsMenu;
-    QAction              *fileMenu_SaveText;
-    QAction              *editMenu_Copy;
-
-    // A cache for previous picks, to prevent cell lookups again.
-    std::vector<double>   pickPt;
-    std::vector<int>      cellId;
+    QPopupMenu           *filePopup;
+    QPopupMenu           *editPopup;
+    QPopupMenu           *operationsPopup;
+    int                   saveMenuId;
+    int                   saveMenu_SaveTextId;
+    int                   editMenuId;
+    int                   editMenu_CopyId;
+    int                   operationMenuId;
 };
 
 #endif

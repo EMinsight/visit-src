@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -42,7 +42,7 @@
 #include <QvisOperatorWindow.h>
 #include <ThresholdAttributes.h>
 
-class QTableWidget;
+class QTable;
 class QLabel;
 class QButtonGroup;
 class QvisVariableButton;
@@ -90,9 +90,6 @@ class QvisVariableButton;
 //   Mark Blair, Tue Apr 17 16:24:42 PDT 2007
 //   Rewritten to support new Threshold GUI.
 //
-//   Cyrus Harrison, Thu Aug 21 08:45:29 PDT 2008
-//   Qt4 Port.
-//
 // ****************************************************************************
 
 class QvisThresholdWindow : public QvisOperatorWindow
@@ -120,17 +117,20 @@ private slots:
 
 private:
     void                PopulateThresholdVariablesList();
-    void                AddNewRowToVariablesList(const QString &variableName);
-    QString             PrepareVariableNameText(const QString &variableName,
-                                                int maxDisplayChars);
-    void                SetZoneIncludeSelectEnabled(bool val);
-    void                SetTableWidth();
-    
+    void                AddNewRowToVariablesList(const QString &listVarName);
+    void                MakeDisplayableVariableNameText(char displayVarText[],
+                            const std::string &variableName, int maxDisplayChars);
+
     ThresholdAttributes *atts;
 
-    QTableWidget        *threshVars;
+    QTable              *threshVarsList;
+/* debug 041907
+    QvisVariableButton  *addVarToList;
+    QPushButton         *deleteSelectedVar;
+*/
     QButtonGroup        *outputMeshType;
-     stringVector        guiFullVarNames;
+    
+    stringVector        guiFullVarNames;
 };
 
 #endif

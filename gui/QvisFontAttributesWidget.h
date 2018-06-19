@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,7 +37,7 @@
 *****************************************************************************/
 #ifndef QVIS_FONT_ATTRIBUTES_WIDGET_H
 #define QVIS_FONT_ATTRIBUTES_WIDGET_H
-#include <QFrame>
+#include <qframe.h>
 #include <FontAttributes.h>
 
 class QCheckBox;
@@ -61,16 +61,13 @@ class QvisOpacitySlider;
 //   Brad Whitlock, Wed Mar 26 14:56:16 PDT 2008
 //   Changed fontHeight to fontScale. Added disableOpacity.
 //
-//   Brad Whitlock, Thu Jun  5 16:05:23 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 class QvisFontAttributesWidget : public QFrame
 {
     Q_OBJECT
 public:
-    QvisFontAttributesWidget(QWidget *parent);
+    QvisFontAttributesWidget(QWidget *parent, const char *name=0);
     virtual ~QvisFontAttributesWidget();
 
     void setFontAttributes(const FontAttributes &);

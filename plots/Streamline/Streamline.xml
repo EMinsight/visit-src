@@ -19,6 +19,7 @@
         ColorByLength
         ColorByTime
         ColorBySeedPointID
+        ColorByVariable
       </Enum>
       <Enum name="DisplayMethod">
         Lines
@@ -33,15 +34,16 @@
       <Enum name="TerminationType">
         Distance
         Time
-      </Enum>
-      <Enum name="IntegrationType">
-        DormandPrince
-        AdamsBashforth
+        Step
       </Enum>
       <Enum name="StreamlineAlgorithmType">
         LoadOnDemand
         ParallelStaticDomains
         MasterSlave
+      </Enum>
+      <Enum name="IntegrationType">
+        DormandPrince
+        AdamsBashforth
       </Enum>
       <Field name="sourceType" label="Source" type="enum" subtype="SourceType">
         SpecifiedPoint
@@ -104,7 +106,7 @@
       <Field name="useWholeBox" label="Use Whole Box" type="bool" enabler="sourceType:SpecifiedBox">
         true
       </Field>
-      <Field name="pointDensity" label="Point density" type="int">
+      <Field name="pointDensity" label="Point density" type="int" enabler="sourceType:SpecifiedLine,SpecifiedPlane">
         2
       </Field>
       <Field name="displayMethod" label="Display method" type="enum" subtype="DisplayMethod">
@@ -146,10 +148,10 @@
       <Field name="absTol" label="abs. tolerance" type="double">
         0.000010
       </Field>
-      <Field name="terminationType" label="unnamed1" type="enum" subtype="TerminationType">
+      <Field name="terminationType" label="Termination Type" type="enum" subtype="TerminationType">
         Distance
       </Field>
-      <Field name="integrationType" label="Integration type" type="enum" subtype="IntegrationType">
+      <Field name="integrationType" label="Integrator" type="enum" subtype="IntegrationType">
         DormandPrince
       </Field>
       <Field name="streamlineAlgorithmType" label="Streamline algorithm type" type="enum" subtype="StreamlineAlgorithmType">
@@ -160,6 +162,14 @@
       </Field>
       <Field name="maxDomainCacheSize" label="Max domain cache" type="int">
         3
+      </Field>
+      <Field name="workGroupSize" label="Work group size" type="int">
+        32
+      </Field>
+      <Field name="pathlines" label="Do pathlines" type="bool">
+        false
+      </Field>
+      <Field name="coloringVariable" label="unnamed1" type="string">
       </Field>
       <Function name="CopyAttributes" user="false" member="true">
       </Function>

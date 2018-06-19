@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -348,6 +348,8 @@ avtCMFEExpression::ProcessArguments(ArgsExpr *args,
 //    Hank Childs, Thu Apr 10 16:10:33 PDT 2008
 //    Make sure that consistent ghost levels are requested.
 //
+//    Mark C. Miller, Wed Jun 17 14:23:25 PDT 2009
+//    Replaced CATCH(...) with CATCHALL
 // ****************************************************************************
 
 void
@@ -423,7 +425,7 @@ avtCMFEExpression::Execute()
     {
         dob->Update(spec);
     }
-    CATCH(...)
+    CATCHALL
     {
         //
         // Now switch back #1 and #2

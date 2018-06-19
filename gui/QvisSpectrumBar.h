@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,7 +39,7 @@
 #ifndef QVIS_SPECTRUM_BAR_H
 #define QVIS_SPECTRUM_BAR_H
 #include <gui_exports.h>
-#include <QWidget>
+#include <qwidget.h>
 
 // Forward declarations.
 class ControlPointList;
@@ -69,9 +69,6 @@ class QTimer;
 //   widget's pixmaps into a single pixmap so I can set it as the widget's
 //   background to reduce flicker.
 //
-//   Brad Whitlock, Mon Jun  2 10:47:34 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 class GUI_API QvisSpectrumBar : public QWidget
@@ -83,7 +80,7 @@ public:
                   VerticalLeft,
                   VerticalRight} ControlOrientation;
 
-    QvisSpectrumBar(QWidget *parent);
+    QvisSpectrumBar(QWidget *parent, const char *name = 0);
     virtual ~QvisSpectrumBar();
     virtual QSize sizeHint() const;
     virtual QSizePolicy sizePolicy() const;
@@ -123,6 +120,7 @@ signals:
     void   controlPointRemoved(int index, const QColor &c, float position);
 protected:
     virtual void keyPressEvent(QKeyEvent *e);
+    virtual void keyReleaseEvent(QKeyEvent *e);
     virtual void mousePressEvent(QMouseEvent *e);
     virtual void mouseMoveEvent(QMouseEvent *e);
     virtual void mouseReleaseEvent(QMouseEvent *e);
@@ -133,25 +131,28 @@ protected:
     QPoint controlPointLocation(int index) const;
     void   updateControlPoints();
     void   colorSelected(int index);
-    void   drawControls(QPainter &);
-    void   drawControlPoint(QPainter &paint, const QBrush &top,
+    void   deletePixmap();
+    void   drawControls();
+    void   drawControlPoint(QPainter *paint, const QBrush &top,
                             const QBrush &bottom, const QBrush &fore,
                             const QColor &sel, const QColor &cpt, int x, int y,
                             int w, int h, int shadow_thick,
                             ControlOrientation orient,
                             bool selected);
-    void   drawBox(QPainter &paint, const QRect &r, const QColor &light,
+    void   drawBox(QPainter *paint, const QRect &r, const QColor &light,
                    const QColor &dark, int lw = 2);
-    void   drawArrow(QPainter &p, bool down, int x, int y, int w, int h,
-                     const QPalette &pal);
+    void   drawArrow(QPainter *p, bool down, int x, int y, int w, int h,
+                     const QColorGroup &g);
 
-    void   drawSpectrum(QPainter &);
+    void   drawSpectrum();
+    void   updateEntireWidget();
 
     void   moveControlPoint(int changeType);
     void   moveControlPointRedraw(int index, float pos, bool redrawSpectrum);
 private slots:
     void   handlePaging();
 private:
+    QPixmap            *pixmap;
     QTimer             *timer;
 
     ControlOrientation orientation;
@@ -165,6 +166,7 @@ private:
     bool               b_continuousUpdate;
     bool               b_suppressUpdates;
     int                paging_mode;
+    bool               shiftApplied;
 
     ControlPointList   *controlPoints;
 };

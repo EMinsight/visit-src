@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -70,9 +70,6 @@
 //   Brad Whitlock, Wed Apr  9 10:49:01 PDT 2008
 //   QString for caption and shortName.
 //
-//   Jeremy Meredith, Fri Jan  2 17:05:57 EST 2009
-//   Added Load/Save button support.
-//
 // ****************************************************************************
 
 class GUI_API QvisPostableWindowSimpleObserver : public QvisPostableWindow, public SimpleObserver
@@ -83,10 +80,7 @@ public:
     static const int ApplyButton;
     static const int MakeDefaultButton;
     static const int ResetButton;
-    static const int SaveButton;
-    static const int LoadButton;
     static const int AllExtraButtons;
-    static const int AllExtraButtonsAndLoadSave;
 
     QvisPostableWindowSimpleObserver(const QString &caption = QString::null,
                                      const QString &shortName = QString::null,
@@ -104,8 +98,6 @@ public slots:
     virtual void apply();
     virtual void makeDefault();
     virtual void reset();
-    virtual void loadSubject();
-    virtual void saveSubject();
 protected slots:
     void makeDefaultHelper();
 protected:

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -45,7 +45,11 @@
 
 #include <avtIVPSolver.h>
 #include <MemStream.h>
+#include <string>
 #include <list>
+#include <avtVector.h>
+
+class vtkObject;
 
 // ****************************************************************************
 //  Class: avtStreamline
@@ -90,36 +94,52 @@
 //    Added maxSteps argument to Advance() to optionally control how many
 //    integration steps are taken.
 //
+//    Dave Pugmire, Mon Feb 23, 09:11:34 EST 2009
+//    Reworked the termination code. Added a type enum and value. Made num steps
+//    a termination criterion. Code cleanup: We no longer need fwd/bwd solvers.
+//    Removed the plane intersection code.
+//
+//   Dave Pugmire, Mon Jun 8 2009, 11:44:01 EDT 2009
+//   Removed the wantVorticity, extents and ghostzone flags. Extents and ghost
+//   zones are handled by the vtkDataSet itself. The wantVorticity was replaced
+//   with a scalarValueType which can be 'or'-d together to specify what to
+//   compute.
+//
+//   Dave Pugmire, Tue Aug 11 10:25:45 EDT 2009
+//   Add new termination criterion: Number of intersections with an object.
+//
+//   Dave Pugmire, Tue Aug 18 08:47:40 EDT 2009
+//   Don't record intersection points, just count them.
+//
+//   Dave Pugmire, Thu Sep 24 13:52:59 EDT 2009
+//   Option to serialize steps.
+//
 // ****************************************************************************
 
 class IVP_API avtStreamline
 {
   public:
+    enum ScalarValueType {NONE=0, SPEED=1, VORTICITY=2, SCALAR_VARIABLE=4};
+
     typedef std::list<avtIVPStep*>::const_iterator iterator;
+    avtStreamline(const avtIVPSolver* model, const double& t_start, 
+                  const avtVec& p_start, int ID=-1);
+    avtStreamline();
+    ~avtStreamline();
 
-              avtStreamline(const avtIVPSolver* model, const double& t_start, 
-                            const avtVec& p_start, int ID=-1);
-              avtStreamline();
-              ~avtStreamline();
-
-    //Set, for instance, a plane for doing poincare plots ??
-    void      UnsetIntersectPlane();
-    void      SetIntersectPlane(const avtVec &pt, const avtVec &norm);
-   
     avtIVPSolver::Result Advance(const avtIVPField* field,
-                                 bool timeMode,
-                                 double end,
-                                 int  maxSteps=-1,
-                                 bool vorticity=false,
-                                 bool haveGhostZones=false,
-                                 double *extents=NULL);
+                                 avtIVPSolver::TerminateType termType,
+                                 double end);
 
+    void      SetScalarValueType(ScalarValueType t) {scalarValueType = t;}
+    void      SetIntersectionObject(vtkObject *obj);
+    
     // Min/Max T of integrated streamlines.
     double    TMin() const;
     double    TMax() const;
 
     avtVec    PtStart() const { return _p0; }
-    void      PtEnds( avtVec &pBwd, avtVec &pFwd ) const;
+    void      PtEnd(avtVec &end);
     double    TStart() const { return _t0; }
 
     bool      IsForward() const { return true; }
@@ -134,7 +154,8 @@ class IVP_API avtStreamline
     void      Debug() const;
     
     void      Serialize(MemStream::Mode mode, MemStream &buff, 
-                        avtIVPSolver *solver);
+                        avtIVPSolver *solver,
+                        bool serializeSteps=false);
 
   protected:
     avtStreamline( const avtStreamline& );
@@ -142,37 +163,37 @@ class IVP_API avtStreamline
     
     avtIVPSolver::Result DoAdvance(avtIVPSolver* ivp,
                                    const avtIVPField* field,
-                                   double tEnd,
-                                   double dEnd,
-                                   bool timeMode,
-                                   int maxSteps=-1,
-                                   bool haveGhostZones=false,
-                                   double *extents=NULL);
+                                   avtIVPSolver::TerminateType termType,
+                                   double end);
 
-    void      HandleGhostZones(avtIVPSolver* ivp, bool haveGhostZones,
-                               double *extents);
+    void      HandleGhostZones(bool forward, double *extents);
+    void      HandleIntersections(bool forward,
+                                  avtIVPStep *step,
+                                  avtIVPSolver::TerminateType termType,
+                                  double end,
+                                  avtIVPSolver::Result *result);
+    bool      IntersectPlane(const avtVec &p0, const avtVec &p1);
 
+  public:
     // Integration steps.
-    //std::list<const avtIVPStep*> _steps;
     std::list<avtIVPStep*> _steps;
+  protected:
+
+    // Intersection points.
+    bool intersectionsSet;
+    int numIntersections;
+    double     intersectPlaneEq[4];
 
     // Initial T and seed point.
     double _t0;
     avtVec _p0;
     
-    bool wantVorticity;
+    ScalarValueType    scalarValueType;
 
-    // Solvers.
-    avtIVPSolver*       _ivp_fwd;
-    avtIVPSolver*       _ivp_bwd;
+    // Solver.
+    avtIVPSolver*       _ivpSolver;
 
   public:
-    bool intersectPlaneSet;
-    double planeEq[4];
-    avtVec intersectPlanePt, intersectPlaneNorm;
-    std::vector<avtVec> intersectPts;
-    void IntersectWithPlane( avtIVPStep *step0, avtIVPStep *step1 );
-
     //Bookeeping
     int id;
 };

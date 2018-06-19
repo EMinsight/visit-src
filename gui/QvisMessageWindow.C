@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -43,11 +43,11 @@
 #include <TimingsManager.h> // for DELTA_TOA_THIS_LINE
 #include <UnicodeHelper.h>
 
-#include <QApplication>
-#include <QLabel>
-#include <QLayout>
-#include <QPushButton>
-#include <QTextEdit>
+#include <qapplication.h>
+#include <qlabel.h>
+#include <qmultilineedit.h>
+#include <qlayout.h>
+#include <qpushbutton.h>
 
 // *************************************************************************************
 // Method: QvisMessageWindow::QvisMessageWindow
@@ -79,9 +79,6 @@
 //   Brad Whitlock, Tue Apr  8 09:27:26 PDT 2008
 //   Support for internationalization.
 //
-//   Brad Whitlock, Fri May 30 14:28:01 PDT 2008
-//   Qt 4.
-//
 // *************************************************************************************
 
 QvisMessageWindow::QvisMessageWindow(MessageAttributes *msgAttr,
@@ -93,31 +90,28 @@ QvisMessageWindow::QvisMessageWindow(MessageAttributes *msgAttr,
     // Create the central widget and the top layout.
     QWidget *central = new QWidget( this );
     setCentralWidget( central );
-    QVBoxLayout *topLayout = new QVBoxLayout(central);
-    topLayout->setMargin(10);
+    QVBoxLayout *topLayout = new QVBoxLayout(central, 10);
 
     // Create a multi line edit to display the message text.
-    messageText = new QTextEdit(central);
-    messageText->setWordWrapMode(QTextOption::WordWrap);
+    messageText = new QMultiLineEdit( central, "outputText" );
+    messageText->setWordWrap( QMultiLineEdit::WidgetWidth );
     messageText->setReadOnly(true);
     messageText->setMinimumWidth(3 * fontMetrics().width("Closed the compute "
         "engine on host sunburn.llnl.gov.  ") / 2);
     messageText->setMinimumHeight(8 * fontMetrics().lineSpacing());
-    severityLabel = new QLabel(tr("Message"), central);
-    severityLabel->setBuddy(messageText);
+    severityLabel = new QLabel(messageText, tr("Message"), central, "Severity Label");
     QFont f("helvetica", 18);
     f.setBold(true);
-    severityLabel->setFont(f);
+    severityLabel->setFont( f );
     topLayout->addWidget(severityLabel);
     topLayout->addSpacing(10);
     topLayout->addWidget(messageText);
     topLayout->addSpacing(10);
 
-    QHBoxLayout *buttonLayout = new QHBoxLayout(0);
-    topLayout->addLayout(buttonLayout);
+    QHBoxLayout *buttonLayout = new QHBoxLayout(topLayout);
 
     // Create a button to hide the window.
-    QPushButton *dismissButton = new QPushButton(tr("Dismiss"), central);
+    QPushButton *dismissButton = new QPushButton(tr("Dismiss"), central, "dismiss");
     buttonLayout->addStretch(10);
     buttonLayout->addWidget(dismissButton);
     connect(dismissButton, SIGNAL(clicked()), this, SLOT(doHide()));
@@ -215,9 +209,9 @@ QvisMessageWindow::Update(Subject *)
                 severity = oldSeverity;
 
             // catenate new message onto old 
-            msgText = messageText->toPlainText();
+            msgText = messageText->text();
             QString newMsgText = MessageAttributes_GetText(*ma);
-            if (msgText.indexOf(newMsgText) == -1)
+            if (msgText.find(newMsgText) == -1)
             {
                 msgText += "\n\n";
                 msgText += tr("Shortly thereafter, the following occured...");

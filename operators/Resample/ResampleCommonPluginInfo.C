@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -41,7 +41,7 @@
 // ************************************************************************* //
 
 #include <ResamplePluginInfo.h>
-#include <ResampleAttributes.h>
+#include <ResamplePluginAttributes.h>
 
 // ****************************************************************************
 //  Method: ResampleCommonPluginInfo::AllocAttributes
@@ -59,7 +59,7 @@
 AttributeSubject *
 ResampleCommonPluginInfo::AllocAttributes()
 {
-    return new ResampleAttributes;
+    return new ResamplePluginAttributes;
 }
 
 // ****************************************************************************
@@ -81,5 +81,5 @@ void
 ResampleCommonPluginInfo::CopyAttributes(AttributeSubject *to,
     AttributeSubject *from)
 {
-    *((ResampleAttributes *) to) = *((ResampleAttributes *) from);
+    *((ResamplePluginAttributes *) to) = *((ResamplePluginAttributes *) from);
 }

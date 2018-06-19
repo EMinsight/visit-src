@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -43,10 +43,11 @@
 #ifndef PLUGIN_MANAGER_H
 #define PLUGIN_MANAGER_H
 #include <plugin_exports.h>
-#include <string>
-#include <vector>
+#include <vectortypes.h>
 #include <map>
 #include <utility>
+
+class PluginBroadcaster;
 
 // ****************************************************************************
 //  Class: PluginManager
@@ -95,6 +96,15 @@
 //    Made SetPluginDir be a public function so we can change the directory if
 //    we need to.
 //
+//    Brad Whitlock, Thu Apr 23 11:36:20 PDT 2009
+//    I added Simulation to the plugin categories, which will be a superset
+//    of Engine.
+//
+//    Brad Whitlock, Wed Jun 17 10:10:20 PDT 2009
+//    I added a callback for ReadPluginInfo so we can enable an optimization
+//    that lets non-rank 0 processes not call it in parallel, saving a lot of
+//    file system accesses.
+//
 // ****************************************************************************
 
 class PLUGIN_API PluginManager
@@ -107,8 +117,10 @@ class PLUGIN_API PluginManager
         Viewer,
         Engine,
         MDServer,
-        Scripting
+        Scripting,
+        Simulation
     };
+
   public:
     virtual ~PluginManager();
 
@@ -142,7 +154,10 @@ class PLUGIN_API PluginManager
 
   protected:
                                     PluginManager(const std::string&);
+    void                            ObtainPluginInfo(bool, PluginBroadcaster *);
     void                            ReadPluginInfo();
+    virtual void                    BroadcastGeneralInfo(PluginBroadcaster *);
+
     void                            ReadPluginDir(std::vector<
                                                    std::vector<
                                                     std::pair<std::string,

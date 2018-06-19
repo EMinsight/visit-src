@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,8 +37,8 @@
 *****************************************************************************/
 #ifndef VIEWERRPC_CALLBACKS_H
 #define VIEWERRPC_CALLBACKS_H
-#include <ViewerRPC.h>
 #include <Python.h>
+#include <ViewerRPC.h>
 
 // ****************************************************************************
 // Class: ViewerRPCCallbacks

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -36,8 +36,7 @@
 *
 *****************************************************************************/
 
-#include <QMessageBox>
-#include <QTimer>
+#include <qmessagebox.h>
 
 #include <QvisPlotListBox.h>
 #include <QvisPlotListBoxItem.h>
@@ -47,68 +46,6 @@
 #include <GUIBase.h>
 #include <QvisPlotManagerWidget.h>
 
-#include <QItemDelegate>
-#include <QPainter>
-#include <QvisPlotListBoxItem.h>
-
-// ****************************************************************************
-// Class: QPlotDelegate
-//
-// Purpose:
-//   This delegate serves as a bridge to QvisPlotListBoxItem and we have it
-//   so key height and paint methods on the item get called.
-//
-// Notes:      
-//
-// Programmer: Brad Whitlock
-// Creation:   Tue Sep 30 14:49:08 PDT 2008
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-class QPlotDelegate : public QItemDelegate
-{
-public:
-    QPlotDelegate(QObject *parent) : QItemDelegate(parent)
-    {
-    }
-
-    virtual ~QPlotDelegate()
-    {
-    }
-
-    virtual void paint(QPainter *painter, const QStyleOptionViewItem &option, 
-                       const QModelIndex &index) const
-    {
-        qulonglong addr = index.data(Qt::UserRole).toULongLong();
-        QvisPlotListBoxItem *currentItem = (QvisPlotListBoxItem*)addr;
-
-        if(currentItem != 0)
-        {
-            QRect r(currentItem->listWidget()->visualItemRect(currentItem));
-            painter->save();
-            painter->translate(QPoint(r.x(), r.y()));
-            currentItem->paint(painter);
-            painter->restore();
-        }
-    }
-
-    virtual QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const
-    {
-        qulonglong addr = index.data(Qt::UserRole).toULongLong();
-        QvisPlotListBoxItem *currentItem = (QvisPlotListBoxItem*)addr;
-
-        QSize size(QItemDelegate::sizeHint(option, index));
-        if(currentItem != 0)
-        {
-            int h = currentItem->height(currentItem->listWidget());
-            size.setHeight(h);
-        }
-
-        return size;
-    }
-};
 
 // ****************************************************************************
 // Method: QvisPlotListBox::QvisPlotListBox
@@ -122,7 +59,7 @@ public:
 //   f      : window flags.
 //
 // Notes:
-//   This is a QListWidget widget with a new version of the doubleClicked
+//   This is a QListBox widget with a new version of the doubleClicked
 //   signal that can also send the point that was doubled-clicked.
 //
 // Programmer: Brad Whitlock
@@ -135,15 +72,12 @@ public:
 //   Ellen Tarwater, Mon, June25, 2007
 //   Added in the context menu set-up.
 //
-//   Brad Whitlock, Fri May 30 15:44:43 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
-QvisPlotListBox::QvisPlotListBox(QWidget *parent) : QListWidget(parent)
+QvisPlotListBox::QvisPlotListBox(QWidget *parent, const char *name, WFlags f) :
+    QListBox(parent, name, f)
 {
     contextMenuCreateActions();
-    setItemDelegate(new QPlotDelegate(this));
 }
 
 // ****************************************************************************
@@ -165,7 +99,7 @@ QvisPlotListBox::~QvisPlotListBox()
 }
 
 // ****************************************************************************
-// Method: QvisPlotListBox::mousePressEvent
+// Method: QvisPlotListBox::viewportMousePressEvent
 //
 // Purpose: 
 //   This event handler is called when the user releases the mouse in the
@@ -179,23 +113,22 @@ QvisPlotListBox::~QvisPlotListBox()
 // Creation:   Wed Apr 9 12:52:59 PDT 2003
 //
 // Modifications:
-//   Brad Whitlock, Fri May 30 16:05:33 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
-QvisPlotListBox::mousePressEvent(QMouseEvent *e)
+QvisPlotListBox::viewportMousePressEvent(QMouseEvent *e)
 {
-    clickHandler(e->pos(), e->button() == Qt::RightButton, false);
-    QListWidget::mousePressEvent(e);
+    QPoint p(viewportToContents(e->pos()));
+    clickHandler(p, e->button() == Qt::RightButton, false);
+    QListBox::viewportMousePressEvent(e);
 }
 
 // ****************************************************************************
-// Method: QvisPlotListBox::mouseDoubleClickEvent
+// Method: QvisPlotListBox::viewportMouseDoubleClickEvent
 //
 // Purpose: 
-//   This is an internal method of QListWidget that was re-implemented
+//   This is an internal method of QListBox that was re-implemented
 //   for this class.
 //
 // Arguments:
@@ -209,11 +142,11 @@ QvisPlotListBox::mousePressEvent(QMouseEvent *e)
 // ****************************************************************************
 
 void
-QvisPlotListBox::mouseDoubleClickEvent(QMouseEvent *e)
+QvisPlotListBox::viewportMouseDoubleClickEvent(QMouseEvent *e)
 {
-    QPoint p = e->pos();
+    QPoint p(viewportToContents(e->pos()));
     clickHandler(p, e->button() == Qt::RightButton, true);
-    QListWidget::mouseDoubleClickEvent (e);
+    QListBox::viewportMouseDoubleClickEvent(e);
 }
 
 // ****************************************************************************
@@ -232,11 +165,6 @@ QvisPlotListBox::mouseDoubleClickEvent(QMouseEvent *e)
 // Modifications:
 //   Brad Whitlock, Tue Nov 20 14:34:44 PST 2007
 //   Fixed plot expansion.
-//
-//   Brad Whitlock, Fri May 30 15:57:35 PDT 2008
-//   Qt 4. Emit itemExpansionChanged so we can record the item expansion in the
-//   plot list. Also call reset() to invalidate the model so the items get
-//   drawn properly (e.g. the background gets cleared).
 //
 //   Sean Ahern, Thu Aug 21 14:32:54 EDT 2008
 //   Fixed deleting operators on non-selected plots.
@@ -257,14 +185,17 @@ QvisPlotListBox::clickHandler(const QPoint &clickLocation, bool rightClick,
     // Walk through all of the items, checking if we've clicked in each one.
     for (size_t i = 0; i < count(); ++i)
     {
-        QListWidgetItem *current = item(i);
+        QListBoxItem *current = item(i);
         QvisPlotListBoxItem *item2 = (QvisPlotListBoxItem *)current;
-        int h = visualItemRect(current).height();
+        int h = current->height(this);
+
         if (clickLocation.y() >= y && clickLocation.y() < (y + h))
         {
+            // We've clicked in the item.
+
             // If the item is not selected, select it.
             blockSignals(false);
-            current->setSelected(true);
+            setSelected(current, true);
             blockSignals(bs);
 
             // Reduce the y location of the click location to be local to the
@@ -280,7 +211,7 @@ QvisPlotListBox::clickHandler(const QPoint &clickLocation, bool rightClick,
         else
         {
             blockSignals(false);
-            current->setSelected(false);
+            setSelected(current, false);
             blockSignals(bs);
         }
         heightSum += h;
@@ -290,8 +221,7 @@ QvisPlotListBox::clickHandler(const QPoint &clickLocation, bool rightClick,
     switch(action)
     {
     case 0: // expand clicked
-        emit itemExpansionChanged();
-        reset();
+        triggerUpdate(true);
         break;
     case 1: // subset clicked
          emit activateSubsetWindow();
@@ -312,9 +242,9 @@ QvisPlotListBox::clickHandler(const QPoint &clickLocation, bool rightClick,
          emit removeOperator(opId);
         break;
     default:
-        if(rightClick)
+        if (rightClick)
         {
-            emit itemSelectionChanged();
+            emit selectionChanged();
         }
         else
             emitted = false;
@@ -427,7 +357,7 @@ QvisPlotListBox::NeedsToBeRegenerated(const PlotList *pl,
             const Plot &currentPlot = lbi->GetPlot();
 
             // See if the prefixes are different.
-            if(prefixes[i] != std::string(lbi->GetPrefix().toStdString()))
+            if(prefixes[i] != std::string(lbi->GetPrefix().latin1()))
                  return true;
 
             // See if the plots are different
@@ -516,15 +446,8 @@ QvisPlotListBox::NeedToUpdateSelection(const PlotList *pl) const
 //
 //   Ellen Tarwater, Thurs, Dec 27, 2007
 //   Commenting out CopyToWin option... incomplete.
-//
-//   Brad Whitlock, Fri May 30 15:49:57 PDT 2008
-//   Qt 4.
-//
-//   Cyrus Harrison, Tue Jul  8 13:38:08 PDT 2008
-//   Initial Qt4 Port. 
-//
+//   
 // ****************************************************************************
-
 void
 QvisPlotListBox::contextMenuCreateActions()
 {
@@ -533,53 +456,59 @@ QvisPlotListBox::contextMenuCreateActions()
      //  - need to get the max # of wins for copyToWin...
      // const int maxNwins = 10;
      // int selectWindow[maxNwins];
-     
-     hideShowAct = new QAction(tr("&Hide/Show"), this);
+#if QT_VERSION >= 0x030300
+#define MAKE_ACTION(A,B,C) QAction(A,B,C)
+#else
+#define MAKE_ACTION(A,B,C) QAction(A, A, QKeySequence(), C, B)
+#endif
+
+     hideShowAct = new MAKE_ACTION(tr("&Hide/Show"), 0, this);
      hideShowAct->setStatusTip(tr("Hide or Show this plot"));
-     hideShowAct->setCheckable(true);
+     hideShowAct->setToggleAction(true);
      connect( hideShowAct, SIGNAL(toggled(bool)), this, SIGNAL(hideThisPlot()));
      
-     deleteAct = new QAction(tr("Delete"), this);
+     deleteAct = new MAKE_ACTION(tr("Delete"), 0, this);
      deleteAct->setStatusTip(tr("Delete this plot"));
-     connect( deleteAct, SIGNAL(triggered()), this, SIGNAL(deleteThisPlot()));
+     connect( deleteAct, SIGNAL(activated()), this, SIGNAL(deleteThisPlot()));
           
-     drawAct = new QAction(tr("Draw"), this);
+     drawAct = new MAKE_ACTION(tr("Draw"), 0, this);
      drawAct->setStatusTip(tr("Draw this plot"));
-     connect( drawAct, SIGNAL(triggered()), this, SIGNAL(drawThisPlot()));    
+     connect( drawAct, SIGNAL(activated()), this, SIGNAL(drawThisPlot()));    
 
-     clearAct = new QAction(tr("Clear"), this);
+     clearAct = new MAKE_ACTION(tr("Clear"), 0, this);
      clearAct->setStatusTip(tr("Clear this plot"));
-     connect( clearAct, SIGNAL(triggered()), this, SIGNAL(clearThisPlot()));    
+     connect( clearAct, SIGNAL(activated()), this, SIGNAL(clearThisPlot()));    
 
-     redrawAct = new QAction(tr("Redraw"), this);
+     redrawAct = new MAKE_ACTION(tr("Redraw"), 0, this);
      redrawAct->setStatusTip(tr("Redraw this plot"));
-     connect( redrawAct, SIGNAL(triggered()), this, SIGNAL(redrawThisPlot()));  
+     connect( redrawAct, SIGNAL(activated()), this, SIGNAL(redrawThisPlot()));  
      
-     copyAct = new QAction(tr("Copy"), this);
+     copyAct = new MAKE_ACTION(tr("Copy"), 0, this);
      copyAct->setStatusTip(tr("Copy this plot"));
-     connect( copyAct, SIGNAL(triggered()), this, SIGNAL(copyThisPlot()));  
+     connect( copyAct, SIGNAL(activated()), this, SIGNAL(copyThisPlot()));  
        
      // build the menu
-     plotContextMenu = new QMenu(this);
-     plotContextMenu->addAction(hideShowAct);
-     plotContextMenu->addAction(deleteAct);
-     plotContextMenu->addAction(drawAct);
-     plotContextMenu->addSeparator();
-     plotContextMenu->addAction(clearAct);
-     plotContextMenu->addAction(redrawAct);
-     plotContextMenu->addSeparator();
-     plotContextMenu->addAction(copyAct);
+     plotContextMenu = new QPopupMenu(this);
+     hideItem = hideShowAct->addTo( plotContextMenu );
+     deleteItem = deleteAct->addTo( plotContextMenu );
+     drawAct->addTo( plotContextMenu );
+     plotContextMenu->insertSeparator();
+     clearAct->addTo( plotContextMenu );
+     redrawAct->addTo( plotContextMenu );  
+     plotContextMenu->insertSeparator();
+     copyAct->addTo( plotContextMenu );
+    
     
 // copy to window incomplete!!!!! Commented out below...
-     copyToWinAct = new QAction(tr("Copy To Window"), 0);
+     copyToWinAct = new MAKE_ACTION(tr("Copy To Window"), 0, this);
      copyToWinAct->setStatusTip(tr("Copy this plot to different window"));
-     connect( copyToWinAct, SIGNAL(triggered()), this, SIGNAL(copyToWinThisPlot()));    
-     win1Act = new QAction(tr("Window 1"), 0);
-     win2Act = new QAction(tr("Window 2"), 0);
+     connect( copyToWinAct, SIGNAL(activated()), this, SIGNAL(copyToWinThisPlot()));    
+     win1Act = new MAKE_ACTION(tr("Window 1"), 0, this);
+     win2Act = new MAKE_ACTION(tr("Window 2"), 0, this);
      win1Act->setStatusTip(tr("Copy this plot to different window"));
      win2Act->setStatusTip(tr("Copy this plot to different window"));
-     connect( win1Act, SIGNAL(triggered()), this, SIGNAL(copyToWinThisPlot()));    
-     connect( win2Act, SIGNAL(triggered()), this, SIGNAL(copyToWinThisPlot()));    
+     connect( win1Act, SIGNAL(activated()), this, SIGNAL(copyToWinThisPlot()));    
+     connect( win2Act, SIGNAL(activated()), this, SIGNAL(copyToWinThisPlot()));    
 
     // adding a popup menu to the copyToWin option:
     // how many windows are open? hard-coding to 3 while debugging...
@@ -589,19 +518,21 @@ QvisPlotListBox::contextMenuCreateActions()
 //        selectWindow[i] = -1;
 //    }
     
-//    copyWinSubMenu = new QMenu(this);
+//    copyWinSubMenu = new QPopupMenu(this);
 //    win1Act->addTo(copyWinSubMenu);
 //    win2Act->addTo(copyWinSubMenu);
 //    plotContextMenu->insertItem(tr("Copy To Window"), copyWinSubMenu);
 
-     plotContextMenu->addSeparator();
+     plotContextMenu->insertSeparator();
     
      // Now, for the "Disconnect From TimeSlider" option:
-     disconnectAct = new QAction(tr("Disconnect From time slider"), this);
+     disconnectAct = new MAKE_ACTION(tr("Disconnect From TimeSlider"), 0, this);
      disconnectAct->setStatusTip(tr("Disconnect this plot from time slider"));
-     disconnectAct->setCheckable(true);
+     disconnectAct->setToggleAction(true);
      connect( disconnectAct, SIGNAL(toggled(bool)), this, SIGNAL(disconnectThisPlot()));
-     plotContextMenu->addAction(disconnectAct);   
+     disconnectAct->addTo( plotContextMenu );
+    
+    
 }
 
 // ****************************************************************************
@@ -620,10 +551,7 @@ QvisPlotListBox::contextMenuCreateActions()
 // Modifications:
 //    Ellen Tarwater December 28, 2007
 //    disabling menu items if no plots active
-//
-//    Brad Whitlock, Fri May 30 15:59:13 PDT 2008
-//    Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
@@ -667,7 +595,7 @@ QvisPlotListBox::contextMenuEvent(QContextMenuEvent *e)
     
     plotContextMenu->exec( e->globalPos() );
     
-    QListWidget::contextMenuEvent(e);
+    QListBox::viewportContextMenuEvent(e);
 }
 
 

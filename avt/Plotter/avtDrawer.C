@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -46,7 +46,6 @@
 
 #include <vtkCamera.h>
 #include <vtkImageData.h>
-//#include <vtkMesaRenderWindow.h>
 #include <vtkRenderer.h>
 #include <vtkRenderWindow.h>
 #include <vtkWindowToImageFilter.h>
@@ -182,8 +181,6 @@ avtDrawer::Execute(void)
     vtkCamera *camera = ren->GetActiveCamera();
     viewInfo.SetCameraFromView(camera);
 
-//    vtkMesaRenderWindow *win = vtkMesaRenderWindow::New();
-//    win->SetOffScreenRendering(1);
     vtkRenderWindow *win = vtkRenderWindow::New();
     win->SetSize(windowSize);
     win->AddRenderer(ren);

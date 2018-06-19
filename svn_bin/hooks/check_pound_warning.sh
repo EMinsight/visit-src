@@ -6,46 +6,56 @@
 # Programmer: Mark C. Miller
 # Created:    May 20, 2008 
 #
-# Modifications:
-#   Mark C. Miller, Tue Dec  9 00:19:04 PST 2008
-#   Obtain list of changed files via FLIST ($3) argument and loop
-#   over them via 'read' sh builtin method.
-#
-#   Mark C. Miller, Tue Dec  9 23:11:58 PST 2008
-#   Re-factored most of skipping logic to CanHandleCommonSkipCases.
-#   Adjusted main file loop to accomodate fact that FLIST file now contains
-#   file status chars as well as file names.
 ##############################################################################
 REPOS="$1"
 TXN="$2"
-FLIST="$3"
 
-while read fline; do
+function log()
+{
+    echo "$@" 1>&2
+}
+
+if [ -z "${REPOS}" ]; then
+    log "Repository path not given, bailing out."
+    exit 1
+fi
+if [ -z "${TXN}" ]; then
+    log "Transaction ID not given, bailing out."
+    exit 1
+fi
+
+files=`${SVNLOOK} changed -t $TXN $REPOS | ${AWK} '{print $2}'`
+for f in ${files} ; do
 
     #
-    # Get file 'svnlook' status and name
+    # Only do this check for files svn thinks are 'text' files
     #
-    fstat=`echo $fline | tr -s ' ' | cut -d' ' -f1`
-    fname=`echo $fline | tr -s ' ' | cut -d' ' -f2`
-
-    #
-    # Skip common cases of deletions, dirs, non-text files
-    #
-    if `HandleCommonSkipCases $fstat $fname`; then
-        continue
+    hasMimeTypeProp=`${SVNLOOK} proplist -t $TXN $REPOS $f | grep mime-type`
+    if test -n "$hasMimeTypeProp"; then
+        mimeTypeProp=`${SVNLOOK} propget -t $TXN $REPOS svn:mime-type $f`
+        if test -n "$mimeTypeProp"; then
+            if test -z "`echo $mimeTypeProp | grep ^text/`"; then
+                continue
+            fi
+        fi
     fi
 
-    svnlook cat -t $TXN $REPOS $fname | grep -q '^#warning' 1>/dev/null 2>&1
+    # check if the file we're trying to commit is empty (a deletion?) 
+    commitFileLineCount=`${SVNLOOK} cat -t $TXN $REPOS $f | wc -l`
+    if test $commitFileLineCount -le 0; then
+        continue;
+    fi
+
+    ${SVNLOOK} cat -t $TXN $REPOS $f | grep -q '^#warning' 1>/dev/null 2>&1
     commitFileHasPoundWarnings=$?
 
-    # If the file we're committing has #warnings, reject it
+    # If the file we're committing has ctrl chars, reject it
     if test $commitFileHasPoundWarnings -eq 0; then
-        log "File \"$fname\" appears to contain '#warning' compilation directives."
+        log "File \"$f\" appears to contain '#warning' compilation directives."
         log "Please remove them before committing."
         exit 1
     fi
-
-done < $FLIST
+done
 
 # all is well!
 exit 0

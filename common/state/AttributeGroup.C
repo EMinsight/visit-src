@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -40,7 +40,6 @@
 #include <EqualVal.h>
 #include <Interpolator.h>
 #include <Connection.h>
-#include <MapNode.h>
 
 #include <cstdlib>
 #include <cstring>
@@ -82,8 +81,6 @@ static const unsigned char msgTypeVectorString         = 0x19;
 static const unsigned char msgTypeVectorAttributeGroup = 0x1a;
 static const unsigned char msgTypeVectorBool           = 0x1b;
 
-static const unsigned char msgTypeMapNode              = 0x1c;
-
 #if 0
 // These are uesful for creating debugging output. Ordinarily, these
 // are not needed so they are ifdef'd out.
@@ -93,7 +90,7 @@ static const char *typeNames[] = {
 "ListChar", "ListUnsignedChar", "ListInt", "ListLong", "ListFloat", 
 "ListDouble", "ListString", "ListAttributeGroup", "ListBool",
 "VectorChar", "VectorUnsignedChar", "VectorInt", "VectorLong", "VectorFloat",
-"VectorDouble", "VectorString", "VectorAttributeGroup", "VectorBool", "MapNode"
+"VectorDouble", "VectorString", "VectorAttributeGroup", "VectorBool",
 };
 #endif
 
@@ -119,8 +116,6 @@ static const char *typeNames[] = {
 //                  d = double,         D = list of double
 //                  a = AttributeGroup, A = list of AttributeGroup
 //                  b = bool,           B = list of bool
-//                  m = mapnode
-//
 // Returns:    
 //
 // Note:       
@@ -270,9 +265,6 @@ AttributeGroup::CopyAttributes(const AttributeGroup *atts)
 //    Kathleen Bonnell, Thu Mar 22 16:43:38 PDT 2007 
 //    Added scalemode type. 
 //
-//    Brad Whitlock, Tue Jan  6 14:04:08 PST 2009
-//    Added MapNode.
-//
 // ****************************************************************************
  
 void
@@ -386,14 +378,6 @@ AttributeGroup::InterpolateConst(const AttributeGroup *atts1,
           case FieldType_scalemode:
             ConstInterp<int>::InterpScalar(addrOut,addr1,addr2,f);
             break;
-          case FieldType_MapNode:
-            {
-                // No interpolation
-                MapNode *dest = (MapNode *)addrOut;
-                const MapNode *src = (const MapNode *)addr1;
-                *dest = *src;
-            }
-            break;
           default:
             cerr << "UNKNOWN TYPE IN AttributeGroup::InterpolateConst\n";
             break;
@@ -434,9 +418,6 @@ AttributeGroup::InterpolateConst(const AttributeGroup *atts1,
 //
 //    Kathleen Bonnell, Thu Mar 22 16:43:38 PDT 2007 
 //    Added scalemode type. 
-//
-//    Brad Whitlock, Tue Jan  6 13:58:42 PST 2009
-//    Added MapNode.
 //
 // ****************************************************************************
  
@@ -554,14 +535,6 @@ AttributeGroup::InterpolateLinear(const AttributeGroup *atts1,
           case FieldType_scalemode:
             ConstInterp<int>::InterpScalar(addrOut,addr1,addr2,f);
             break;
-          case FieldType_MapNode:
-            {
-                // No interpolation
-                MapNode *dest = (MapNode *)addrOut;
-                const MapNode *src = (const MapNode *)addr1;
-                *dest = *src;
-            }
-            break;
           default:
             cerr << "UNKNOWN TYPE IN AttributeGroup::InterpolateLinear\n";
             break;
@@ -592,9 +565,6 @@ AttributeGroup::InterpolateLinear(const AttributeGroup *atts1,
 //
 //    Hank Childs, Mon Oct  8 13:44:09 PDT 2007
 //    Make sure the method works for nested attribute groups.
-//
-//    Brad Whitlock, Tue Jan  6 13:49:46 PST 2009
-//    Added MapNode support.
 //
 // ****************************************************************************
 
@@ -722,10 +692,6 @@ AttributeGroup::EqualTo(const AttributeGroup *atts) const
             if (!(EqualVal<int>::EqualScalar(addr1,addr2)))
                return false;
             break;
-          case FieldType_MapNode:
-            if (!(EqualVal<MapNode>::EqualScalar(addr1,addr2)))
-               return false;
-            break;
           default:
             cerr << "UNKNOWN TYPE IN AttributeGroup::EqualTo\n";
             return false;
@@ -778,10 +744,7 @@ AttributeGroup::TypeName() const
 // Modifications:
 //    Jeremy Meredith, Mon Feb 26 16:03:02 PST 2001
 //    Added unsigned chars.
-//
-//    Brad Whitlock, Tue Jan  6 13:46:42 PST 2009
-//    I added MapNode support.
-//
+//   
 // ****************************************************************************
 
 void
@@ -811,7 +774,10 @@ AttributeGroup::WriteType(Connection &conn, AttributeGroup::typeInfo &info)
         { // new scope
           // Write a std::string to the connection
           std::string *sptr = (std::string *)(info.address);
-          conn.WriteString(*sptr);
+
+          for(size_t i = 0; i < sptr->size(); ++i)
+              conn.WriteChar(sptr->at(i));
+          conn.WriteChar(0);
         }
         break;
     case msgTypeAttributeGroup:
@@ -889,7 +855,11 @@ AttributeGroup::WriteType(Connection &conn, AttributeGroup::typeInfo &info)
           std::string *sptr = (std::string *)(info.address);
           conn.WriteInt(info.length);
           for(int i = 0; i < info.length; ++i)
-              conn.WriteString(sptr[i]);
+          {
+              for(size_t j = 0; j < sptr[i].size(); ++j)
+                  conn.WriteChar(sptr[i].at(j));
+              conn.WriteChar(0);
+          }
         }
         break;
     case msgTypeListAttributeGroup:
@@ -1000,7 +970,11 @@ AttributeGroup::WriteType(Connection &conn, AttributeGroup::typeInfo &info)
           conn.WriteInt(vs->size());
           // Write the strings out as C strings.
           for(spos = vs->begin(); spos != vs->end(); ++spos)
-              conn.WriteString(*spos);
+          {
+              for(size_t i = 0; i < spos->size(); ++i)
+                  conn.WriteChar(spos->at(i));
+              conn.WriteChar(0);
+          }
         }
         break;
     case msgTypeVectorAttributeGroup:
@@ -1015,13 +989,6 @@ AttributeGroup::WriteType(Connection &conn, AttributeGroup::typeInfo &info)
               (*apos)->Write(conn);
           }
         }
-        break;
-    case msgTypeMapNode:
-        { // new scope
-          MapNode *m = (MapNode *)(info.address);
-          m->Write(conn); 
-        }
-        break;
     case msgTypeNone:
     default:
         ; // nothing.
@@ -1056,9 +1023,6 @@ AttributeGroup::WriteType(Connection &conn, AttributeGroup::typeInfo &info)
 //   Changed code for AttributeGroupVectors so it calls a virtual destructor
 //   instead of the base class's destructor. This fixes a memory leak.
 //
-//   Brad Whitlock, Tue Jan  6 13:46:01 PST 2009
-//   I added MapNode support.
-//
 // ****************************************************************************
 
 void
@@ -1090,7 +1054,16 @@ AttributeGroup::ReadType(Connection &conn, int attrId, AttributeGroup::typeInfo 
         { // new scope
           unsigned char c;
           std::string *sptr = (std::string *)(info.address);
-          conn.ReadString(*sptr);
+          sptr->erase();
+
+          // Read characters until there is a null-terminator.
+          do
+          {
+              conn.ReadChar(&c);
+              if(c != '\0')
+                  *sptr += char(c);
+          }
+          while(c != '\0');
         }
         break;
     case msgTypeAttributeGroup:
@@ -1169,7 +1142,19 @@ AttributeGroup::ReadType(Connection &conn, int attrId, AttributeGroup::typeInfo 
 
           conn.ReadInt(&(info.length));
           for(i = 0; i < info.length; ++i)
-              conn.ReadString(sptr[i]);
+          {
+              unsigned char c = 'a';
+              sptr[i].erase();
+
+              // Read characters until there is a null-terminator.
+              do
+              {
+                  conn.ReadChar(&c);
+                  if(c != '\0')
+                      sptr[i] += char(c);
+              }
+              while(c != '\0');
+          }
         }
         break;
     case msgTypeListAttributeGroup:
@@ -1345,8 +1330,17 @@ AttributeGroup::ReadType(Connection &conn, int attrId, AttributeGroup::typeInfo 
           // Read the elements
           for(i = vecLen; i > 0; --i)
           {
-              std::string str;
-              conn.ReadString(str);
+              unsigned char c;
+              std::string   str;
+
+              // Read characters until there is a null-terminator.
+              do
+              {
+                  conn.ReadChar(&c);
+                  if(c != '\0')
+                      str += char(c);
+              }
+              while(c != '\0');
 
               // Add the string to the list.
               vs->push_back(str);
@@ -1375,12 +1369,6 @@ AttributeGroup::ReadType(Connection &conn, int attrId, AttributeGroup::typeInfo 
               new_ag->Read(conn);
               va->push_back(new_ag);
           }
-        }
-        break;
-    case msgTypeMapNode:
-        { // new scope
-          MapNode *m = (MapNode *)(info.address);
-          m->Read(conn); 
         }
         break;
     case msgTypeNone:
@@ -1858,9 +1846,6 @@ AttributeGroup::NumAttributesSelected() const
 //   Brad Whitlock, Mon Aug 28 18:32:00 PST 2000
 //   I added a forgotten case for the AttributeGroupVector.
 //
-//   Brad Whitlock, Tue Jan  6 13:43:33 PST 2009
-//   I added MapNode support.
-//
 // ****************************************************************************
 
 int
@@ -2042,12 +2027,6 @@ AttributeGroup::CalculateMessageSize(Connection &conn)
                 }
             }
                 break;
-            case msgTypeMapNode:
-            { // new scope
-                const MapNode *m = (const MapNode *)(pos->address);
-                messageSize += m->CalculateMessageSize(conn);
-            }
-                break;
             case msgTypeNone:
             default:
                 ; // nothing.
@@ -2220,12 +2199,6 @@ AttributeGroup::DeclareVectorString()
     typeMap.push_back(msgTypeVectorString);
 }
 
-void
-AttributeGroup::DeclareMapNode()
-{
-    typeMap.push_back(msgTypeMapNode);
-}
-
 // ****************************************************************************
 // Method: AttributeGroup::CreateTypeMap
 //
@@ -2246,9 +2219,6 @@ AttributeGroup::DeclareMapNode()
 //
 //   Hank Childs, Fri Jan 28 15:36:03 PST 2005
 //   Use exception macros.
-//
-//   Brad Whitlock, Tue Jan  6 13:31:50 PST 2009
-//   Added MapNode support.
 //
 // ****************************************************************************
 
@@ -2375,9 +2345,6 @@ AttributeGroup::CreateTypeMap(const char *formatString)
             case 'B':
                 DeclareListBool();
                 break;
-            case 'm':
-                DeclareMapNode();
-                break;
             default:
                 EXCEPTION0(BadDeclareFormatString);
             }
@@ -2466,9 +2433,7 @@ AttributeGroup::GetFieldType(int index) const
 // Creation:   Fri Dec  7 15:58:47 PST 2007
 //
 // Modifications:
-//   Brad Whitlock, Tue Jan  6 13:33:52 PST 2009
-//   Added MapNode.
-//
+//   
 // ****************************************************************************
 
 std::string
@@ -2477,8 +2442,7 @@ AttributeGroup::GetFieldTypeName(int index) const
     static const char *fieldTypeNames[] = {
     "none", "char", "unsigned char", "int", "long", "float", "double", "string", "att", "bool",
     "char[%d]", "unsigned char[%d]", "int[%d]", "long[%d]", "float[%d]", "double[%d]", "string[%d]", "att", "bool[%d]",
-    "charVector", "unsignedCharVector", "intVector", "longVector", "floatVector", "doubleVector", "stringVector", "attVector", "boolVector",
-    "MapNode"
+    "charVector", "unsignedCharVector", "intVector", "longVector", "floatVector", "doubleVector", "stringVector", "attVector", "boolVector"
     };
     std::string retval("<UNKNOWN type>");
     if(index >= 0 && index < typeMap.size())
@@ -2561,9 +2525,6 @@ static int indentLevel = 0;
 //
 //   Brad Whitlock, Thu Feb 24 16:05:29 PST 2005
 //   Fixed for win32.
-//
-//   Brad Whitlock, Tue Jan  6 13:36:07 PST 2009
-//   Added MapNode.
 //
 // ****************************************************************************
 
@@ -2804,11 +2765,6 @@ operator << (ostream& os, const AttributeGroup& atts)
                     os << *apos; 
             }
             break;
-        case msgTypeMapNode:
-            {   const MapNode *m = (const MapNode *)(pos->address);
-                os << m->ToXML();
-            }
-            break;
         case msgTypeNone:
         default:
             ; // nothing.
@@ -2919,8 +2875,6 @@ SET_VALUE_BODY(doubleVector,        msgTypeVectorDouble);
 SET_VALUE_BODY(stringVector,        msgTypeVectorString);
 SET_VALUE_BODY(boolVector,          msgTypeVectorBool);
 
-SET_VALUE_BODY(MapNode,             msgTypeMapNode);
-
 //
 // Define the GetValue method bodies.
 //
@@ -2984,5 +2938,3 @@ GET_VALUE_BODY(floatVector,         msgTypeVectorFloat);
 GET_VALUE_BODY(doubleVector,        msgTypeVectorDouble);
 GET_VALUE_BODY(stringVector,        msgTypeVectorString);
 GET_VALUE_BODY(boolVector,          msgTypeVectorBool);
-
-GET_VALUE_BODY(MapNode,             msgTypeMapNode);

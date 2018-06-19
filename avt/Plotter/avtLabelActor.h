@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -64,9 +64,6 @@ class vtkRenderer;
 //    Kathleen Bonnell, Fri Jul 19 08:39:04 PDT 2002
 //    Add ComputeScaleFactor.
 //
-//    Eric Brugger, Tue Dec  9 16:16:49 PST 2008
-//    Added the ability to display a marker instead of a text string.
-//
 // ****************************************************************************
 
 class PLOTTER_API avtLabelActor
@@ -84,7 +81,6 @@ class PLOTTER_API avtLabelActor
     const double *     GetAttachmentPoint() { return attach; };
     void               SetScale(double);
     void               SetDesignator(const char *l);
-    void               SetMarker(const int index);
     void               SetForegroundColor(double fgr, double fgg, double fgb);
     void               SetForegroundColor(double fg[3]);
     void               Shift(const double vec[3]);

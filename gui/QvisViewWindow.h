@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -46,6 +46,7 @@ class DataNode;
 class QButtonGroup;
 class QCheckBox;
 class QComboBox;
+class QGroupBox;
 class QLabel;
 class QLineEdit;
 class QRadioButton;
@@ -123,9 +124,6 @@ class QPushButton;
 //
 //   Brad Whitlock, Wed Apr  9 11:02:38 PDT 2008
 //   QString for caption, shortName.
-//
-//   Cyrus Harrison, Thu Dec 18 09:36:57 PST 2008
-//   Changed argument for tabSelected slot to an integer for Qt4.
 //
 // ****************************************************************************
 
@@ -208,7 +206,7 @@ private slots:
     void resetView();
     void recenterView();
     void undoView();
-    void tabSelected(int);
+    void tabSelected(const QString &);
 private:
     void ParseViewCommands(const char *str);
     void Pan(double panx, double pany);
@@ -227,7 +225,8 @@ private:
     bool                activeTabSetBySlot;
 
     // Curve widgets
-    QWidget      *pageCurve;
+    QVBox        *pageCurve;
+    QGroupBox    *viewCurveGroup;
     QLineEdit    *viewportCurveLineEdit;
     QLineEdit    *domainCurveLineEdit;
     QLineEdit    *rangeCurveLineEdit;
@@ -241,7 +240,8 @@ private:
     QRadioButton *rangeLog;
 
     // 2d widgets
-    QWidget      *page2D;
+    QVBox        *page2D;
+    QGroupBox    *view2DGroup;
     QLineEdit    *viewportLineEdit;
     QLineEdit    *windowLineEdit;
     QLabel       *fullFrameLabel;
@@ -259,7 +259,8 @@ private:
     QRadioButton *yLog;
 
     // 3d widgets
-    QWidget     *page3D;
+    QVBox       *page3D;
+    QGroupBox   *view3DGroup;
     QLineEdit   *normalLineEdit;
     QLineEdit   *focusLineEdit;
     QLineEdit   *upvectorLineEdit;
@@ -275,7 +276,8 @@ private:
     QComboBox   *alignComboBox;
 
     // AxisArray widgets
-    QWidget      *pageAxisArray;
+    QVBox        *pageAxisArray;
+    QGroupBox    *viewAxisArrayGroup;
     QLineEdit    *viewportAxisArrayLineEdit;
     QLineEdit    *domainAxisArrayLineEdit;
     QLineEdit    *rangeAxisArrayLineEdit;
@@ -287,7 +289,7 @@ private:
     QCheckBox   *lockedViewToggle;
     QCheckBox   *copyViewFromCameraToggle;
     QPushButton *makeViewKeyframeButton;
-    QWidget     *pageAdvanced;
+    QVBox       *pageAdvanced;
     QCheckBox   *centerToggle;
     QLineEdit   *centerLineEdit;
 };

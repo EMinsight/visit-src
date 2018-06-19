@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -106,9 +106,6 @@ class QLineEdit;
 //   Brad Whitlock, Wed Apr  9 11:51:19 PDT 2008
 //   QString for caption, shortName.
 //
-//   Brad Whitlock, Thu Jun 19 12:14:23 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 class GUI_API QvisRenderingWindow : public QvisPostableWindowSimpleObserver
@@ -154,39 +151,33 @@ private slots:
     void depthCueingEndChanged();
     void colorTexturingToggled(bool);
 private:
-    QWidget *CreateBasicPage();
-    QWidget *CreateAdvancedPage();
-    QWidget *CreateInformationPage();
-
     RenderingAttributes *renderAtts;
     WindowInformation   *windowInfo;
 
-    // Basic controls
-    QCheckBox         *antialiasingToggle;
-    QButtonGroup      *objectRepresentation;
-    QButtonGroup      *dlMode;
-    QCheckBox         *stereoToggle;
-    QButtonGroup      *stereoType;
-    QRadioButton      *redblue;
-    QRadioButton      *interlace;
-    QRadioButton      *crystalEyes;
-    QRadioButton      *redgreen;
-    QCheckBox         *renderNotifyToggle;
+    // Controls
+    QCheckBox    *antialiasingToggle;
+    QButtonGroup *objectRepresentation;
+    QButtonGroup *dlMode;
+    QCheckBox    *stereoToggle;
+    QButtonGroup *stereoType;
+    QRadioButton *redblue;
+    QRadioButton *interlace;
+    QRadioButton *crystalEyes;
+    QRadioButton *redgreen;
+    QCheckBox    *renderNotifyToggle;
+    QButtonGroup *scalrenActivationMode;
+    QRadioButton *scalrenAuto;
+    QRadioButton *scalrenAlways;
+    QRadioButton *scalrenNever;
+    QLabel       *scalrenGeometryLabel;
+    QSpinBox     *scalrenAutoThreshold;
+    QLabel       *scalrenCompressLabel;
+    QButtonGroup *scalrenCompressMode;
     QCheckBox         *specularToggle;
     QLabel            *specularStrengthLabel;
     QvisOpacitySlider *specularStrengthSlider;
     QLabel            *specularPowerLabel;
     QvisOpacitySlider *specularPowerSlider;
-
-    // Advanced controls
-    QButtonGroup      *scalrenActivationMode;
-    QRadioButton      *scalrenAuto;
-    QRadioButton      *scalrenAlways;
-    QRadioButton      *scalrenNever;
-    QLabel            *scalrenGeometryLabel;
-    QSpinBox          *scalrenAutoThreshold;
-    QLabel            *scalrenCompressLabel;
-    QButtonGroup      *scalrenCompressMode;
     QCheckBox         *shadowToggle;
     QLabel            *shadowStrengthLabel;
     QvisOpacitySlider *shadowStrengthSlider;
@@ -195,16 +186,16 @@ private:
     QLineEdit         *depthCueingStartEdit;
     QLabel            *depthCueingEndLabel;
     QLineEdit         *depthCueingEndEdit;
-    QCheckBox         *colorTexturingToggle;
+    QCheckBox    *colorTexturingToggle;
 
     // Labels to display renderer information.
-    QLabel            *scalrenUsingLabel;
-    QLabel            *fpsLabel;
-    QLabel            *fpsMinLabel;
-    QLabel            *fpsAvgLabel;
-    QLabel            *fpsMaxLabel;
-    QLabel            *approxNumPrimitives;
-    QLabel            *extents[6];
+    QLabel       *scalrenUsingLabel;
+    QLabel       *fpsLabel;
+    QLabel       *fpsMinLabel;
+    QLabel       *fpsAvgLabel;
+    QLabel       *fpsMaxLabel;
+    QLabel       *approxNumPrimitives;
+    QLabel       *extents[6];
 };
 
 #endif

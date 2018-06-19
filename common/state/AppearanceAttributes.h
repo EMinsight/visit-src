@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -79,26 +79,15 @@ public:
     void SelectForeground();
     void SelectFontName();
     void SelectStyle();
-    void SelectDefaultForeground();
-    void SelectDefaultBackground();
-    void SelectDefaultFontName();
-    void SelectDefaultStyle();
 
     // Property setting methods
-    void SetUseSystemDefault(bool useSystemDefault_);
     void SetBackground(const std::string &background_);
     void SetForeground(const std::string &foreground_);
     void SetFontName(const std::string &fontName_);
     void SetStyle(const std::string &style_);
     void SetOrientation(int orientation_);
-    void SetDefaultForeground(const std::string &defaultForeground_);
-    void SetDefaultBackground(const std::string &defaultBackground_);
-    void SetDefaultFontName(const std::string &defaultFontName_);
-    void SetDefaultStyle(const std::string &defaultStyle_);
-    void SetDefaultOrientation(int defaultOrientation_);
 
     // Property getting methods
-    bool              GetUseSystemDefault() const;
     const std::string &GetBackground() const;
           std::string &GetBackground();
     const std::string &GetForeground() const;
@@ -108,15 +97,6 @@ public:
     const std::string &GetStyle() const;
           std::string &GetStyle();
     int               GetOrientation() const;
-    const std::string &GetDefaultForeground() const;
-          std::string &GetDefaultForeground();
-    const std::string &GetDefaultBackground() const;
-          std::string &GetDefaultBackground();
-    const std::string &GetDefaultFontName() const;
-          std::string &GetDefaultFontName();
-    const std::string &GetDefaultStyle() const;
-          std::string &GetDefaultStyle();
-    int               GetDefaultOrientation() const;
 
     // Persistence methods
     virtual bool CreateNode(DataNode *node, bool completeSave, bool forceAdd);
@@ -134,31 +114,19 @@ public:
 
     // IDs that can be used to identify fields in case statements
     enum {
-        ID_useSystemDefault = 0,
-        ID_background,
+        ID_background = 0,
         ID_foreground,
         ID_fontName,
         ID_style,
-        ID_orientation,
-        ID_defaultForeground,
-        ID_defaultBackground,
-        ID_defaultFontName,
-        ID_defaultStyle,
-        ID_defaultOrientation
+        ID_orientation
     };
 
 private:
-    bool        useSystemDefault;
     std::string background;
     std::string foreground;
     std::string fontName;
     std::string style;
     int         orientation;
-    std::string defaultForeground;
-    std::string defaultBackground;
-    std::string defaultFontName;
-    std::string defaultStyle;
-    int         defaultOrientation;
 
     // Static class format string for type map.
     static const char *TypeMapFormatString;

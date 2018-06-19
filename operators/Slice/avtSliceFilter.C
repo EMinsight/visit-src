@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -64,7 +64,6 @@
 #include <avtIntervalTree.h>
 #include <avtMetaData.h>
 #include <avtParallel.h>
-#include <avtPlaneSelection.h>
 #include <avtSpatialBoxSelection.h>
 #include <avtOriginatingSource.h>
 
@@ -448,9 +447,6 @@ avtSliceFilter::Equivalent(const AttributeGroup *a)
 //    Making streaming be always disabled, because of the collective communication
 //    in PreExecute.
 //
-//    Hank Childs, Mon Jan  5 15:41:16 CST 2009
-//    Add a data selection.
-//
 // ****************************************************************************
 
 avtContract_p
@@ -551,7 +547,6 @@ avtSliceFilter::ModifyContract(avtContract_p contract)
     //
     if (! GetInput()->GetInfo().GetValidity().GetSpatialMetaDataPreserved())
         return rv;
-
     avtIntervalTree *it = GetMetaData()->GetSpatialExtents();
     if (it == NULL)
     {
@@ -589,16 +584,6 @@ avtSliceFilter::ModifyContract(avtContract_p contract)
         vector<int> domains;
         it->GetElementsList(normal, tmpD, domains);
         rv->GetDataRequest()->GetRestriction()->RestrictDomains(domains);
-
-        //
-        // Tell the file format reader that we will be slicing,
-        // in case it can limit its reads to only the domains/elements that
-        // intersect the plane.
-        //
-        avtPlaneSelection *sel = new avtPlaneSelection;
-        sel->SetNormal(normal);
-        sel->SetOrigin(origin);
-        rv->GetDataRequest()->AddDataSelection(sel);
     }
 
     return rv;
@@ -1314,7 +1299,6 @@ avtSliceFilter::CanIntersectPlane(vtkDataSet *in_ds)
 // Modifications:
 //    Dave Pugmire, Mon Oct 22 10:25:42 EDT 2007
 //    Normal is cached, so use that value instead.
-
 //
 // ****************************************************************************
 
@@ -1378,6 +1362,9 @@ avtSliceFilter::OutputCanBeRectilinear(vtkRectilinearGrid *rg)
 //
 //    Dave Pugmire, Mon Oct 22 10:25:42 EDT 2007
 //    Normal is cached, so use that value instead.
+//
+//    Jeremy Meredith & Hank Childs, Sun Nov  1 15:15:40 PST 2009
+//    Transform the vector data when projecting to 2D.
 //
 // ****************************************************************************
 
@@ -1762,6 +1749,78 @@ avtSliceFilter::RectilinearToRectilinearSlice(vtkRectilinearGrid *rg)
             }
     }
 
+    //
+    // Convert vectors to 2D if necessary
+    //
+    if (project)
+    {
+        int numCellArrays = output->GetCellData()->GetNumberOfArrays();
+        int numPtArrays   = output->GetPointData()->GetNumberOfArrays();
+        for (int a = numCellArrays+numPtArrays-1 ; a>=0 ; a--)
+        {
+            vtkDataSetAttributes *dsa = NULL;
+            if ((a<numCellArrays))
+                dsa = output->GetCellData();
+            else
+                dsa = output->GetPointData();
+            int idx = ((a<numCellArrays) ? a : a-numCellArrays);
+            vtkDataArray *arr = dsa->GetArray(idx);
+            if (arr == NULL || arr->GetNumberOfComponents() != 3)
+                continue;
+            vtkDataArray *outArray = 
+                          vtkDataArray::CreateDataArray(arr->GetDataType());
+            outArray->SetName(arr->GetName());
+            outArray->SetNumberOfComponents(3);
+            int nTups = arr->GetNumberOfTuples();
+            outArray->SetNumberOfTuples(nTups);
+            double oldtup[3], newtup[3] = {0,0,0};
+            for (int v = 0 ; v < nTups ; v++)
+            {
+                arr->GetTuple(v, oldtup);
+                if      (normal[0] != 0    &&   up[1] == 1) // x slice, y up
+                {
+                    newtup[0] = oldtup[2];
+                    newtup[1] = oldtup[1];
+                }
+                else if (normal[0] != 0    &&   up[2] == 1) // x slice, z up
+                {
+                    newtup[0] = oldtup[1];
+                    newtup[1] = oldtup[2];
+                }
+                else if (normal[1] != 0    &&   up[0] == 1) // y slice, x up
+                {
+                    newtup[0] = oldtup[2];
+                    newtup[1] = oldtup[0];
+                }
+                else if (normal[1] != 0    &&   up[2] == 1) // y slice, z up
+                {
+                    newtup[0] = oldtup[0];
+                    newtup[1] = oldtup[2];
+                }
+                else if (normal[2] != 0    &&   up[0] == 1) // z slice, x up
+                {
+                    newtup[0] = oldtup[1];
+                    newtup[1] = oldtup[0];
+                }
+                else if (normal[2] != 0    &&   up[1] == 1) // z slice, y up
+                {
+                    newtup[0] = oldtup[0];
+                    newtup[1] = oldtup[1];
+                }
+                else
+                {
+                    EXCEPTION0(ImproperUseException);
+                }
+                outArray->SetTuple(v, newtup);
+            }
+            bool isActiveVector = (dsa->GetVectors() == arr);
+            dsa->RemoveArray(arr->GetName());
+            dsa->AddArray(outArray);
+            outArray->Delete();
+            if (isActiveVector)
+               dsa->SetActiveVectors(outArray->GetName());
+        }
+    }
     delete [] X;
     delete [] Y;
     delete [] Z;

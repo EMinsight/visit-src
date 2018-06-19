@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -117,6 +117,12 @@ struct PARSER_API ParseElem
 //    really a parse element, because there's not really a lhs other than
 //    START, which doesn't make much sense.  Instead, we just store it in
 //    a new data member, which is more direct and more clear.
+//
+//    Tom Fogal, Wed Apr 29 15:36:42 MDT 2009
+//    Check for empty `elems' so we don't deref an empty vector.
+//
+//    Kathleen Bonnell, Tue May  5 17:23:42 PDT 2009
+//    Revert GetParseTree changes back to Jeremy's fix from Nov 17, 2008.
 //
 // ****************************************************************************
 class PARSER_API Parser

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,7 +39,7 @@
 #ifndef QVIS_POINT_CONTROLS_H
 #define QVIS_POINT_CONTROLS_H
 #include <gui_exports.h>
-#include <QWidget>
+#include <qwidget.h>
 
 class QCheckBox;
 class QComboBox;
@@ -70,9 +70,6 @@ class QvisVariableButton;
 //   Brad Whitlock, Thu Aug 25 09:29:56 PDT 2005
 //   I changed the point size from a button group to a combo box.
 //
-//   Cyrus Harrison, Tue Jul  8 09:58:45 PDT 2008
-//   Initial Qt4 Port
-//
 // ****************************************************************************
 
 class GUI_API QvisPointControl : public QWidget
@@ -80,7 +77,7 @@ class GUI_API QvisPointControl : public QWidget
     Q_OBJECT
 
 public:
-    QvisPointControl(QWidget * parent=0);
+    QvisPointControl(QWidget * parent=0, const char * name=0);
     ~QvisPointControl();
 
     void SetPointSize(double);

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -35,7 +35,7 @@
 * DAMAGE.
 *
 *****************************************************************************/
-#include "XMLEditStd.h"
+
 #include "XMLEditPlugin.h"
 
 #include <XMLDocument.h>
@@ -84,25 +84,19 @@
 //    Brad Whitlock, Fri Mar 7 10:35:57 PDT 2008
 //    Reorganized some widgets.
 //
-//   Cyrus Harrison, Thu May 15 15:04:20 PDT 2008
-//   Ported to Qt 4.4
-//
 // ****************************************************************************
 
-XMLEditPlugin::XMLEditPlugin(QWidget *p)
-    : QFrame(p)
+XMLEditPlugin::XMLEditPlugin(QWidget *p, const QString &n)
+    : QFrame(p, n)
 {
-    QGridLayout *topLayout = new QGridLayout(this);
-    setLayout(topLayout);
+    QGridLayout *topLayout = new QGridLayout(this, 15,2, 5);
     int row = 0;
 
-    attpluginGroup = new QButtonGroup(this);
+    attpluginGroup = new QButtonGroup();
     QRadioButton *pluginButton = new QRadioButton(tr("Plugin"), this);
     QRadioButton *attButton    = new QRadioButton(tr("Attribute only"), this);
-    pluginButton->setChecked(true);
-    attpluginGroup->addButton(pluginButton,0);
-    attpluginGroup->addButton(attButton,1);
-    
+    attpluginGroup->insert(pluginButton);
+    attpluginGroup->insert(attButton);
     topLayout->addWidget(pluginButton, row, 0);
     topLayout->addWidget(attButton,    row, 1);
     row++;
@@ -111,27 +105,27 @@ XMLEditPlugin::XMLEditPlugin(QWidget *p)
     // General plugin attributes
     //
     int pRow = 0;
-    pluginGroup = new QGroupBox(this);
+    pluginGroup = new QGroupBox(this, "pluginGroup");
     pluginGroup->setTitle(tr("General Plugin attributes"));
-    topLayout->addWidget(pluginGroup, row, 0, 1 , 4);
+    topLayout->addMultiCellWidget(pluginGroup, row, row, 0, 4);
     ++row;
     QVBoxLayout *innerPluginLayout = new QVBoxLayout(pluginGroup);
     innerPluginLayout->setMargin(10);
-   
-    QGridLayout *pluginLayout = new QGridLayout;
+    innerPluginLayout->addSpacing(15);
+    QGridLayout *pluginLayout = new QGridLayout(innerPluginLayout, 3, 6);
     pluginLayout->setSpacing(5);
 
     pluginType = new QComboBox(pluginGroup);
-    pluginType->addItem("");
-    pluginType->addItem(tr("Plot"));
-    pluginType->addItem(tr("Operator"));
-    pluginType->addItem(tr("Database"));
+    pluginType->insertItem("");
+    pluginType->insertItem(tr("Plot"));
+    pluginType->insertItem(tr("Operator"));
+    pluginType->insertItem(tr("Database"));
     pluginLayout->addWidget(new QLabel(tr("Plugin type"), pluginGroup), pRow, 0);
     pluginLayout->addWidget(pluginType, pRow, 1);
 
     enabledByDefault = new QCheckBox(tr("Plugin is enabled by default"), pluginGroup);
     enabledByDefault->setChecked(true);
-    pluginLayout->addWidget(enabledByDefault, pRow, 4, 1, 2);
+    pluginLayout->addMultiCellWidget(enabledByDefault, pRow, pRow, 4, 5);
     pRow++;
 
     name = new QLineEdit(pluginGroup);
@@ -152,26 +146,26 @@ XMLEditPlugin::XMLEditPlugin(QWidget *p)
     pluginLayout->addWidget(hasIcon, pRow, 0);
     iconFile = new QLineEdit(pluginGroup);
     iconFile->setEnabled(false);
-    pluginLayout->addWidget(iconFile, pRow,1, 1,5);
+    pluginLayout->addMultiCellWidget(iconFile, pRow,pRow, 1,5);
     pRow++;
-    innerPluginLayout->addLayout(pluginLayout);
-    
+
     //
     // Plot plugin attributes
     //
-    plotPluginGroup = new QGroupBox(this);
+    plotPluginGroup = new QGroupBox(this, "plotPluginGroup");
     plotPluginGroup->setTitle(tr("Plot Plugin attributes"));
-    topLayout->addWidget(plotPluginGroup, row, 0, 1, 4);
+    topLayout->addMultiCellWidget(plotPluginGroup, row, row, 0, 4);
     ++row;
     QVBoxLayout *innerPlotPluginLayout = new QVBoxLayout(plotPluginGroup);
     innerPlotPluginLayout->setMargin(10);
-    QGridLayout *plotPluginLayout = new QGridLayout;
+    innerPlotPluginLayout->addSpacing(15);
+    QGridLayout *plotPluginLayout = new QGridLayout(innerPlotPluginLayout, 4, 6);
     plotPluginLayout->setSpacing(5);
     int plRow = 0;
 
-    plotPluginLayout->addWidget(
+    plotPluginLayout->addMultiCellWidget(
         new QLabel(tr("Variable types accepted by the plot"), plotPluginGroup),
-        plRow,0, 1,5);
+        plRow,plRow, 0,5);
     ++plRow;
 
     varTypeMesh            = new QCheckBox(tr("Mesh"), plotPluginGroup);
@@ -201,27 +195,28 @@ XMLEditPlugin::XMLEditPlugin(QWidget *p)
     plotPluginLayout->addWidget(varTypeArray, plRow, 4);
     //plotPluginLayout->addWidget(, plRow, 5);
     ++plRow;
-    innerPlotPluginLayout->addLayout(plotPluginLayout);
+
     //
     // Database plugin attributes
     //
-    dbPluginGroup = new QGroupBox(this);
+    dbPluginGroup = new QGroupBox(this, "dbPluginGroup");
     dbPluginGroup->setTitle(tr("Database Plugin attributes"));
-    topLayout->addWidget(dbPluginGroup, row, 0, 1, 4);
+    topLayout->addMultiCellWidget(dbPluginGroup, row, row, 0, 4);
     ++row;
     QVBoxLayout *innerdbPluginLayout = new QVBoxLayout(dbPluginGroup);
     innerdbPluginLayout->setMargin(10);
-    QGridLayout *dbPluginLayout = new QGridLayout;
+    innerdbPluginLayout->addSpacing(15);
+    QGridLayout *dbPluginLayout = new QGridLayout(innerdbPluginLayout, 6, 4);
     dbPluginLayout->setSpacing(5);
     int dbRow = 0;
 
     dbType = new QComboBox(dbPluginGroup);
-    dbType->addItem("");
-    dbType->addItem(tr("STSD - Generic single time single domain"));
-    dbType->addItem(tr("MTSD - Generic multi  time single domain"));
-    dbType->addItem(tr("STMD - Generic single time multi  domain"));
-    dbType->addItem(tr("MTMD - Generic multi  time multi  domain"));
-    dbType->addItem(tr("Custom - Fully customized database type"));
+    dbType->insertItem("");
+    dbType->insertItem(tr("STSD - Generic single time single domain"));
+    dbType->insertItem(tr("MTSD - Generic multi  time single domain"));
+    dbType->insertItem(tr("STMD - Generic single time multi  domain"));
+    dbType->insertItem(tr("MTMD - Generic multi  time multi  domain"));
+    dbType->insertItem(tr("Custom - Fully customized database type"));
     dbPluginLayout->addWidget(new QLabel("Database type", dbPluginGroup), dbRow, 0);
     dbPluginLayout->addWidget(dbType, dbRow, 1);
     dbRow++;
@@ -233,34 +228,30 @@ XMLEditPlugin::XMLEditPlugin(QWidget *p)
 
     hasWriter = new QCheckBox(tr("File format can also write data"), dbPluginGroup);
     hasWriter->setChecked(false);
-    dbPluginLayout->addWidget(hasWriter, dbRow,0, 1,2);
+    dbPluginLayout->addMultiCellWidget(hasWriter, dbRow,dbRow, 0,1);
     dbRow++;
 
     hasOptions = new QCheckBox(tr("File format provides options for reading or writing data."), dbPluginGroup);
     hasOptions->setChecked(false);
-    dbPluginLayout->addWidget(hasOptions, dbRow,0, 1,2);
+    dbPluginLayout->addMultiCellWidget(hasOptions, dbRow,dbRow, 0,1);
     dbRow++;
 
     specifiedFilenames = new QCheckBox(tr("Format uses explicit filenames"), dbPluginGroup);
     specifiedFilenames->setChecked(false);
-    dbPluginLayout->addWidget(specifiedFilenames, dbRow,0,1,2);
+    dbPluginLayout->addMultiCellWidget(specifiedFilenames, dbRow,dbRow, 0,1);
     dbRow++;
 
     dbPluginLayout->addWidget(new QLabel(tr("Filenames"), dbPluginGroup), dbRow, 0);
     filenames = new QLineEdit(dbPluginGroup);
     dbPluginLayout->addWidget(filenames, dbRow,1);
     dbRow++;
-    
-    innerdbPluginLayout->addLayout(dbPluginLayout);
-    
+
     topLayout->setRowStretch(row, 100);
     row++;
 
-    
-    
     xmldoc = NULL;
 
-    connect(attpluginGroup, SIGNAL(buttonClicked(int)),
+    connect(attpluginGroup, SIGNAL(clicked(int)),
             this, SLOT(attpluginGroupChanged(int)));
     connect(name, SIGNAL(textChanged(const QString &)),
             this,  SLOT(nameTextChanged(const QString &)));
@@ -343,9 +334,6 @@ XMLEditPlugin::XMLEditPlugin(QWidget *p)
 //    Hank Childs, Thu Jan 10 13:56:32 PST 2008
 //    Added the ability to have a plugin only open explicit filenames.
 //
-//   Cyrus Harrison, Thu May 15 15:04:20 PDT 2008
-//   Ported to Qt 4.4
-//
 // ****************************************************************************
 
 void
@@ -355,7 +343,7 @@ XMLEditPlugin::UpdateWindowContents()
 
     if (xmldoc->docType == "Plugin")
     {
-        attpluginGroup->button(0)->setChecked(true);
+        attpluginGroup->setButton(0);
         name->setText(xmldoc->plugin->name);
         label->setText(xmldoc->plugin->label);
         version->setText(xmldoc->plugin->version);
@@ -372,14 +360,14 @@ XMLEditPlugin::UpdateWindowContents()
         varTypeArray->setChecked(false);
         enabledByDefault->setChecked(xmldoc->plugin->enabledByDefault);
 
-        dbType->setCurrentIndex(0);
+        dbType->setCurrentItem(0);
         extensions->setText("");
         filenames->setText("");
         if (xmldoc->plugin->type == "plot")
         {
             iconFile->setText(xmldoc->plugin->iconFile);
             hasIcon->setChecked(xmldoc->plugin->iconFile.length() > 0);
-            pluginType->setCurrentIndex(1);
+            pluginType->setCurrentItem(1);
             vector<QString> types = SplitValues(xmldoc->plugin->vartype);
             for (size_t i=0; i<types.size(); i++)
             {
@@ -411,7 +399,7 @@ XMLEditPlugin::UpdateWindowContents()
         {
             iconFile->setText(xmldoc->plugin->iconFile);
             hasIcon->setChecked(xmldoc->plugin->iconFile.length() > 0);
-            pluginType->setCurrentIndex(2);
+            pluginType->setCurrentItem(2);
         }
         else if (xmldoc->plugin->type == "database")
         {
@@ -421,19 +409,19 @@ XMLEditPlugin::UpdateWindowContents()
             hasOptions->setChecked(xmldoc->plugin->hasoptions);
             specifiedFilenames->setChecked(xmldoc->plugin->specifiedFilenames);
 
-            pluginType->setCurrentIndex(3);
+            pluginType->setCurrentItem(3);
             extensions->setText(JoinValues(xmldoc->plugin->extensions, ' '));
             filenames->setText(JoinValues(xmldoc->plugin->filenames, ' '));
             if      (xmldoc->plugin->dbtype == "STSD")
-                dbType->setCurrentIndex(1);
+                dbType->setCurrentItem(1);
             else if (xmldoc->plugin->dbtype == "MTSD")
-                dbType->setCurrentIndex(2);
+                dbType->setCurrentItem(2);
             else if (xmldoc->plugin->dbtype == "STMD")
-                dbType->setCurrentIndex(3);
+                dbType->setCurrentItem(3);
             else if (xmldoc->plugin->dbtype == "MTMD")
-                dbType->setCurrentIndex(4);
+                dbType->setCurrentItem(4);
             else if (xmldoc->plugin->dbtype == "Custom")
-                dbType->setCurrentIndex(5);
+                dbType->setCurrentItem(5);
         }
         else
         {
@@ -443,12 +431,12 @@ XMLEditPlugin::UpdateWindowContents()
             hasOptions->setChecked(false);
             specifiedFilenames->setChecked(false);
             enabledByDefault->setChecked(true);
-            pluginType->setCurrentIndex(0);
+            pluginType->setCurrentItem(0);
         }
     }
     else
     {
-        attpluginGroup->button(1)->setChecked(true);
+        attpluginGroup->setButton(1);
         name->setText(xmldoc->attribute->name);
         label->setText("");
         version->setText("");
@@ -468,8 +456,8 @@ XMLEditPlugin::UpdateWindowContents()
         hasWriter->setChecked(false);
         hasOptions->setChecked(false);
         specifiedFilenames->setChecked(false);
-        pluginType->setCurrentIndex(0);
-        dbType->setCurrentIndex(0);
+        pluginType->setCurrentItem(0);
+        dbType->setCurrentItem(0);
         extensions->setText("");
         filenames->setText("");
         enabledByDefault->setChecked(true);

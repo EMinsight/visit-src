@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -87,3 +87,5 @@ DEFSTUB(void, vtkCSGGrid, DiscretizeSpace2, (int,int,int,double,double,double,do
 DEFSTUB(void, vtkCSGGrid, DiscretizeSpace3, (int,int,int,double,double,double,double,double,double,double,double), /*void*/);
 DEFSTUB(void, vtkCSGGrid, DiscretizeSurfaces, (int,double,double,double,double,double,double,double), /*void*/);
 DEFSTUB(void, vtkCSGGrid, DiscretizeSpace, (int,double,double,double,double,double,double,double), /*void*/);
+DEFSTUB(bool, vtkCSGGrid, operator==, (const vtkCSGGrid&) const, false);
+DEFSTUB(void*, vtkCSGGrid, New, (), 0);

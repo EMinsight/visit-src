@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400142
+// LLNL-CODE-400124
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -61,132 +61,133 @@ import llnl.visit.ColorAttribute;
 public class PoincareAttributes extends AttributeSubject implements Plugin
 {
     // Enum values
-    public final static int COLORINGMETHOD_SOLID = 0;
-    public final static int COLORINGMETHOD_COLORBYSPEED = 1;
-    public final static int COLORINGMETHOD_COLORBYVORTICITY = 2;
-    public final static int COLORINGMETHOD_COLORBYLENGTH = 3;
-    public final static int COLORINGMETHOD_COLORBYTIME = 4;
-    public final static int COLORINGMETHOD_COLORBYSEEDPOINTID = 5;
+    public final static int SOURCETYPE_SPECIFIEDPOINT = 0;
+    public final static int SOURCETYPE_SPECIFIEDLINE = 1;
 
-    public final static int TERMINATIONTYPE_DISTANCE = 0;
-    public final static int TERMINATIONTYPE_TIME = 1;
+    public final static int INTEGRATIONTYPE_DORMANDPRINCE = 0;
+    public final static int INTEGRATIONTYPE_ADAMSBASHFORTH = 1;
 
-    public final static int SOURCETYPE_POINTSOURCE = 0;
-    public final static int SOURCETYPE_LINESOURCE = 1;
-    public final static int SOURCETYPE_PLANESOURCE = 2;
+    public final static int OVERLAPTYPE_RAW = 0;
+    public final static int OVERLAPTYPE_REMOVE = 1;
+    public final static int OVERLAPTYPE_MERGE = 2;
+    public final static int OVERLAPTYPE_SMOOTH = 3;
+
+    public final static int SHOWMESHTYPE_CURVES = 0;
+    public final static int SHOWMESHTYPE_SURFACES = 1;
+
+    public final static int COLORINGMETHOD_COLORBYSINGLECOLOR = 0;
+    public final static int COLORINGMETHOD_COLORBYCOLORTABLE = 1;
+
+    public final static int COLORBY_ORIGINALVALUE = 0;
+    public final static int COLORBY_INPUTORDER = 1;
+    public final static int COLORBY_POINTINDEX = 2;
+    public final static int COLORBY_PLANE = 3;
+    public final static int COLORBY_WINDINGORDER = 4;
+    public final static int COLORBY_WINDINGPOINTORDER = 5;
+    public final static int COLORBY_TOROIDALWINDINGS = 6;
+    public final static int COLORBY_POLOIDALWINDINGS = 7;
+    public final static int COLORBY_SAFETYFACTOR = 8;
+    public final static int COLORBY_CONFIDENCE = 9;
+    public final static int COLORBY_RIDGELINEVARIANCE = 10;
 
 
     public PoincareAttributes()
     {
-        super(22);
+        super(32);
 
-        termination = 10;
-        terminationType = TERMINATIONTYPE_TIME;
-            showStreamlines = true;
-        showPoints = true;
-        pointDensity = 1;
-        sourceRadius = 1;
+        minPunctures = 10;
+        maxPunctures = 100;
+        sourceType = SOURCETYPE_SPECIFIEDPOINT;
         pointSource = new double[3];
         pointSource[0] = 0;
         pointSource[1] = 0;
         pointSource[2] = 0;
-        lineSourceStart = new double[3];
-        lineSourceStart[0] = 0;
-        lineSourceStart[1] = 0;
-        lineSourceStart[2] = 0;
-        lineSourceEnd = new double[3];
-        lineSourceEnd[0] = 1;
-        lineSourceEnd[1] = 0;
-        lineSourceEnd[2] = 0;
-        planeSourcePoint = new double[3];
-        planeSourcePoint[0] = 0;
-        planeSourcePoint[1] = 0;
-        planeSourcePoint[2] = 0;
-        planeSourceNormal = new double[3];
-        planeSourceNormal[0] = 0;
-        planeSourceNormal[1] = 0;
-        planeSourceNormal[2] = 1;
-        planeSourceUpVec = new double[3];
-        planeSourceUpVec[0] = 0;
-        planeSourceUpVec[1] = 1;
-        planeSourceUpVec[2] = 0;
-        clipPlaneOrigin = new double[3];
-        clipPlaneOrigin[0] = 0;
-        clipPlaneOrigin[1] = 0;
-        clipPlaneOrigin[2] = 0;
-        clipPlaneNormal = new double[3];
-        clipPlaneNormal[0] = 0;
-        clipPlaneNormal[1] = 0;
-        clipPlaneNormal[2] = 1;
-        colorTableName = new String("Default");
-        singleColor = new ColorAttribute(0, 0, 0);
-        legendFlag = true;
-        lightingFlag = true;
+        lineStart = new double[3];
+        lineStart[0] = 0;
+        lineStart[1] = 0;
+        lineStart[2] = 0;
+        lineEnd = new double[3];
+        lineEnd[0] = 1;
+        lineEnd[1] = 0;
+        lineEnd[2] = 0;
+        pointDensity = 1;
+        integrationType = INTEGRATIONTYPE_ADAMSBASHFORTH;
+        maxStepLength = 0.1;
         relTol = 0.0001;
         absTol = 1e-05;
-        maxStepLength = 0.1;
+        maxToroidalWinding = 30;
+        overrideToroidalWinding = 0;
+        hitRate = 0.9;
+        adjustPlane = -1;
+        overlaps = OVERLAPTYPE_REMOVE;
+        showCurves = SHOWMESHTYPE_CURVES;
+        numberPlanes = 1;
+        min = 0;
+        max = 0;
+        minFlag = false;
+        maxFlag = false;
+        colorType = COLORINGMETHOD_COLORBYSINGLECOLOR;
+        singleColor = new ColorAttribute(0, 0, 0);
+        colorTableName = new String("Default");
+        colorBy = COLORBY_SAFETYFACTOR;
+        showIslands = false;
+        showLines = true;
+        showPoints = false;
+        verboseFlag = true;
+        legendFlag = true;
+        lightingFlag = true;
     }
 
     public PoincareAttributes(PoincareAttributes obj)
     {
-        super(22);
+        super(32);
 
         int i;
 
-        termination = obj.termination;
-        terminationType = obj.terminationType;
-        streamlineSource = obj.streamlineSource;
-        showStreamlines = obj.showStreamlines;
-        showPoints = obj.showPoints;
-        pointDensity = obj.pointDensity;
-        sourceRadius = obj.sourceRadius;
+        minPunctures = obj.minPunctures;
+        maxPunctures = obj.maxPunctures;
+        sourceType = obj.sourceType;
         pointSource = new double[3];
         pointSource[0] = obj.pointSource[0];
         pointSource[1] = obj.pointSource[1];
         pointSource[2] = obj.pointSource[2];
 
-        lineSourceStart = new double[3];
-        lineSourceStart[0] = obj.lineSourceStart[0];
-        lineSourceStart[1] = obj.lineSourceStart[1];
-        lineSourceStart[2] = obj.lineSourceStart[2];
+        lineStart = new double[3];
+        lineStart[0] = obj.lineStart[0];
+        lineStart[1] = obj.lineStart[1];
+        lineStart[2] = obj.lineStart[2];
 
-        lineSourceEnd = new double[3];
-        lineSourceEnd[0] = obj.lineSourceEnd[0];
-        lineSourceEnd[1] = obj.lineSourceEnd[1];
-        lineSourceEnd[2] = obj.lineSourceEnd[2];
+        lineEnd = new double[3];
+        lineEnd[0] = obj.lineEnd[0];
+        lineEnd[1] = obj.lineEnd[1];
+        lineEnd[2] = obj.lineEnd[2];
 
-        planeSourcePoint = new double[3];
-        planeSourcePoint[0] = obj.planeSourcePoint[0];
-        planeSourcePoint[1] = obj.planeSourcePoint[1];
-        planeSourcePoint[2] = obj.planeSourcePoint[2];
-
-        planeSourceNormal = new double[3];
-        planeSourceNormal[0] = obj.planeSourceNormal[0];
-        planeSourceNormal[1] = obj.planeSourceNormal[1];
-        planeSourceNormal[2] = obj.planeSourceNormal[2];
-
-        planeSourceUpVec = new double[3];
-        planeSourceUpVec[0] = obj.planeSourceUpVec[0];
-        planeSourceUpVec[1] = obj.planeSourceUpVec[1];
-        planeSourceUpVec[2] = obj.planeSourceUpVec[2];
-
-        clipPlaneOrigin = new double[3];
-        clipPlaneOrigin[0] = obj.clipPlaneOrigin[0];
-        clipPlaneOrigin[1] = obj.clipPlaneOrigin[1];
-        clipPlaneOrigin[2] = obj.clipPlaneOrigin[2];
-
-        clipPlaneNormal = new double[3];
-        clipPlaneNormal[0] = obj.clipPlaneNormal[0];
-        clipPlaneNormal[1] = obj.clipPlaneNormal[1];
-        clipPlaneNormal[2] = obj.clipPlaneNormal[2];
-
-        colorTableName = new String(obj.colorTableName);
-        singleColor = new ColorAttribute(obj.singleColor);
-        legendFlag = obj.legendFlag;
-        lightingFlag = obj.lightingFlag;
+        pointDensity = obj.pointDensity;
+        integrationType = obj.integrationType;
+        maxStepLength = obj.maxStepLength;
         relTol = obj.relTol;
         absTol = obj.absTol;
-        maxStepLength = obj.maxStepLength;
+        maxToroidalWinding = obj.maxToroidalWinding;
+        overrideToroidalWinding = obj.overrideToroidalWinding;
+        hitRate = obj.hitRate;
+        adjustPlane = obj.adjustPlane;
+        overlaps = obj.overlaps;
+        showCurves = obj.showCurves;
+        numberPlanes = obj.numberPlanes;
+        min = obj.min;
+        max = obj.max;
+        minFlag = obj.minFlag;
+        maxFlag = obj.maxFlag;
+        colorType = obj.colorType;
+        singleColor = new ColorAttribute(obj.singleColor);
+        colorTableName = new String(obj.colorTableName);
+        colorBy = obj.colorBy;
+        showIslands = obj.showIslands;
+        showLines = obj.showLines;
+        showPoints = obj.showPoints;
+        verboseFlag = obj.verboseFlag;
+        legendFlag = obj.legendFlag;
+        lightingFlag = obj.lightingFlag;
 
         SelectAll();
     }
@@ -200,110 +201,71 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         for(i = 0; i < 3 && pointSource_equal; ++i)
             pointSource_equal = (pointSource[i] == obj.pointSource[i]);
 
-        // Compare the lineSourceStart arrays.
-        boolean lineSourceStart_equal = true;
-        for(i = 0; i < 3 && lineSourceStart_equal; ++i)
-            lineSourceStart_equal = (lineSourceStart[i] == obj.lineSourceStart[i]);
+        // Compare the lineStart arrays.
+        boolean lineStart_equal = true;
+        for(i = 0; i < 3 && lineStart_equal; ++i)
+            lineStart_equal = (lineStart[i] == obj.lineStart[i]);
 
-        // Compare the lineSourceEnd arrays.
-        boolean lineSourceEnd_equal = true;
-        for(i = 0; i < 3 && lineSourceEnd_equal; ++i)
-            lineSourceEnd_equal = (lineSourceEnd[i] == obj.lineSourceEnd[i]);
-
-        // Compare the planeSourcePoint arrays.
-        boolean planeSourcePoint_equal = true;
-        for(i = 0; i < 3 && planeSourcePoint_equal; ++i)
-            planeSourcePoint_equal = (planeSourcePoint[i] == obj.planeSourcePoint[i]);
-
-        // Compare the planeSourceNormal arrays.
-        boolean planeSourceNormal_equal = true;
-        for(i = 0; i < 3 && planeSourceNormal_equal; ++i)
-            planeSourceNormal_equal = (planeSourceNormal[i] == obj.planeSourceNormal[i]);
-
-        // Compare the planeSourceUpVec arrays.
-        boolean planeSourceUpVec_equal = true;
-        for(i = 0; i < 3 && planeSourceUpVec_equal; ++i)
-            planeSourceUpVec_equal = (planeSourceUpVec[i] == obj.planeSourceUpVec[i]);
-
-        // Compare the clipPlaneOrigin arrays.
-        boolean clipPlaneOrigin_equal = true;
-        for(i = 0; i < 3 && clipPlaneOrigin_equal; ++i)
-            clipPlaneOrigin_equal = (clipPlaneOrigin[i] == obj.clipPlaneOrigin[i]);
-
-        // Compare the clipPlaneNormal arrays.
-        boolean clipPlaneNormal_equal = true;
-        for(i = 0; i < 3 && clipPlaneNormal_equal; ++i)
-            clipPlaneNormal_equal = (clipPlaneNormal[i] == obj.clipPlaneNormal[i]);
+        // Compare the lineEnd arrays.
+        boolean lineEnd_equal = true;
+        for(i = 0; i < 3 && lineEnd_equal; ++i)
+            lineEnd_equal = (lineEnd[i] == obj.lineEnd[i]);
 
         // Create the return value
-        return ((termination == obj.termination) &&
-                (terminationType == obj.terminationType) &&
-                (streamlineSource == obj.streamlineSource) &&
-                (showStreamlines == obj.showStreamlines) &&
-                (showPoints == obj.showPoints) &&
-                (pointDensity == obj.pointDensity) &&
-                (sourceRadius == obj.sourceRadius) &&
+        return ((minPunctures == obj.minPunctures) &&
+                (maxPunctures == obj.maxPunctures) &&
+                (sourceType == obj.sourceType) &&
                 pointSource_equal &&
-                lineSourceStart_equal &&
-                lineSourceEnd_equal &&
-                planeSourcePoint_equal &&
-                planeSourceNormal_equal &&
-                planeSourceUpVec_equal &&
-                clipPlaneOrigin_equal &&
-                clipPlaneNormal_equal &&
-                (colorTableName.equals(obj.colorTableName)) &&
-                (singleColor == obj.singleColor) &&
-                (legendFlag == obj.legendFlag) &&
-                (lightingFlag == obj.lightingFlag) &&
+                lineStart_equal &&
+                lineEnd_equal &&
+                (pointDensity == obj.pointDensity) &&
+                (integrationType == obj.integrationType) &&
+                (maxStepLength == obj.maxStepLength) &&
                 (relTol == obj.relTol) &&
                 (absTol == obj.absTol) &&
-                (maxStepLength == obj.maxStepLength));
+                (maxToroidalWinding == obj.maxToroidalWinding) &&
+                (overrideToroidalWinding == obj.overrideToroidalWinding) &&
+                (hitRate == obj.hitRate) &&
+                (adjustPlane == obj.adjustPlane) &&
+                (overlaps == obj.overlaps) &&
+                (showCurves == obj.showCurves) &&
+                (numberPlanes == obj.numberPlanes) &&
+                (min == obj.min) &&
+                (max == obj.max) &&
+                (minFlag == obj.minFlag) &&
+                (maxFlag == obj.maxFlag) &&
+                (colorType == obj.colorType) &&
+                (singleColor == obj.singleColor) &&
+                (colorTableName.equals(obj.colorTableName)) &&
+                (colorBy == obj.colorBy) &&
+                (showIslands == obj.showIslands) &&
+                (showLines == obj.showLines) &&
+                (showPoints == obj.showPoints) &&
+                (verboseFlag == obj.verboseFlag) &&
+                (legendFlag == obj.legendFlag) &&
+                (lightingFlag == obj.lightingFlag));
     }
 
     public String GetName() { return "Poincare"; }
-    public String GetVersion() { return "1.0"; }
+    public String GetVersion() { return "2.0"; }
 
     // Property setting methods
-    public void SetTermination(double termination_)
+    public void SetMinPunctures(double minPunctures_)
     {
-        termination = termination_;
+        minPunctures = minPunctures_;
         Select(0);
     }
 
-    public void SetTerminationType(int terminationType_)
+    public void SetMaxPunctures(double maxPunctures_)
     {
-        terminationType = terminationType_;
+        maxPunctures = maxPunctures_;
         Select(1);
     }
 
-    public void SetStreamlineSource(int streamlineSource_)
+    public void SetSourceType(int sourceType_)
     {
-        streamlineSource = streamlineSource_;
+        sourceType = sourceType_;
         Select(2);
-    }
-
-    public void SetShowStreamlines(boolean showStreamlines_)
-    {
-        showStreamlines = showStreamlines_;
-        Select(3);
-    }
-
-    public void SetShowPoints(boolean showPoints_)
-    {
-        showPoints = showPoints_;
-        Select(4);
-    }
-
-    public void SetPointDensity(int pointDensity_)
-    {
-        pointDensity = pointDensity_;
-        Select(5);
-    }
-
-    public void SetSourceRadius(double sourceRadius_)
-    {
-        sourceRadius = sourceRadius_;
-        Select(6);
     }
 
     public void SetPointSource(double[] pointSource_)
@@ -311,7 +273,7 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         pointSource[0] = pointSource_[0];
         pointSource[1] = pointSource_[1];
         pointSource[2] = pointSource_[2];
-        Select(7);
+        Select(3);
     }
 
     public void SetPointSource(double e0, double e1, double e2)
@@ -319,234 +281,298 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         pointSource[0] = e0;
         pointSource[1] = e1;
         pointSource[2] = e2;
+        Select(3);
+    }
+
+    public void SetLineStart(double[] lineStart_)
+    {
+        lineStart[0] = lineStart_[0];
+        lineStart[1] = lineStart_[1];
+        lineStart[2] = lineStart_[2];
+        Select(4);
+    }
+
+    public void SetLineStart(double e0, double e1, double e2)
+    {
+        lineStart[0] = e0;
+        lineStart[1] = e1;
+        lineStart[2] = e2;
+        Select(4);
+    }
+
+    public void SetLineEnd(double[] lineEnd_)
+    {
+        lineEnd[0] = lineEnd_[0];
+        lineEnd[1] = lineEnd_[1];
+        lineEnd[2] = lineEnd_[2];
+        Select(5);
+    }
+
+    public void SetLineEnd(double e0, double e1, double e2)
+    {
+        lineEnd[0] = e0;
+        lineEnd[1] = e1;
+        lineEnd[2] = e2;
+        Select(5);
+    }
+
+    public void SetPointDensity(int pointDensity_)
+    {
+        pointDensity = pointDensity_;
+        Select(6);
+    }
+
+    public void SetIntegrationType(int integrationType_)
+    {
+        integrationType = integrationType_;
         Select(7);
-    }
-
-    public void SetLineSourceStart(double[] lineSourceStart_)
-    {
-        lineSourceStart[0] = lineSourceStart_[0];
-        lineSourceStart[1] = lineSourceStart_[1];
-        lineSourceStart[2] = lineSourceStart_[2];
-        Select(8);
-    }
-
-    public void SetLineSourceStart(double e0, double e1, double e2)
-    {
-        lineSourceStart[0] = e0;
-        lineSourceStart[1] = e1;
-        lineSourceStart[2] = e2;
-        Select(8);
-    }
-
-    public void SetLineSourceEnd(double[] lineSourceEnd_)
-    {
-        lineSourceEnd[0] = lineSourceEnd_[0];
-        lineSourceEnd[1] = lineSourceEnd_[1];
-        lineSourceEnd[2] = lineSourceEnd_[2];
-        Select(9);
-    }
-
-    public void SetLineSourceEnd(double e0, double e1, double e2)
-    {
-        lineSourceEnd[0] = e0;
-        lineSourceEnd[1] = e1;
-        lineSourceEnd[2] = e2;
-        Select(9);
-    }
-
-    public void SetPlaneSourcePoint(double[] planeSourcePoint_)
-    {
-        planeSourcePoint[0] = planeSourcePoint_[0];
-        planeSourcePoint[1] = planeSourcePoint_[1];
-        planeSourcePoint[2] = planeSourcePoint_[2];
-        Select(10);
-    }
-
-    public void SetPlaneSourcePoint(double e0, double e1, double e2)
-    {
-        planeSourcePoint[0] = e0;
-        planeSourcePoint[1] = e1;
-        planeSourcePoint[2] = e2;
-        Select(10);
-    }
-
-    public void SetPlaneSourceNormal(double[] planeSourceNormal_)
-    {
-        planeSourceNormal[0] = planeSourceNormal_[0];
-        planeSourceNormal[1] = planeSourceNormal_[1];
-        planeSourceNormal[2] = planeSourceNormal_[2];
-        Select(11);
-    }
-
-    public void SetPlaneSourceNormal(double e0, double e1, double e2)
-    {
-        planeSourceNormal[0] = e0;
-        planeSourceNormal[1] = e1;
-        planeSourceNormal[2] = e2;
-        Select(11);
-    }
-
-    public void SetPlaneSourceUpVec(double[] planeSourceUpVec_)
-    {
-        planeSourceUpVec[0] = planeSourceUpVec_[0];
-        planeSourceUpVec[1] = planeSourceUpVec_[1];
-        planeSourceUpVec[2] = planeSourceUpVec_[2];
-        Select(12);
-    }
-
-    public void SetPlaneSourceUpVec(double e0, double e1, double e2)
-    {
-        planeSourceUpVec[0] = e0;
-        planeSourceUpVec[1] = e1;
-        planeSourceUpVec[2] = e2;
-        Select(12);
-    }
-
-    public void SetClipPlaneOrigin(double[] clipPlaneOrigin_)
-    {
-        clipPlaneOrigin[0] = clipPlaneOrigin_[0];
-        clipPlaneOrigin[1] = clipPlaneOrigin_[1];
-        clipPlaneOrigin[2] = clipPlaneOrigin_[2];
-        Select(13);
-    }
-
-    public void SetClipPlaneOrigin(double e0, double e1, double e2)
-    {
-        clipPlaneOrigin[0] = e0;
-        clipPlaneOrigin[1] = e1;
-        clipPlaneOrigin[2] = e2;
-        Select(13);
-    }
-
-    public void SetClipPlaneNormal(double[] clipPlaneNormal_)
-    {
-        clipPlaneNormal[0] = clipPlaneNormal_[0];
-        clipPlaneNormal[1] = clipPlaneNormal_[1];
-        clipPlaneNormal[2] = clipPlaneNormal_[2];
-        Select(14);
-    }
-
-    public void SetClipPlaneNormal(double e0, double e1, double e2)
-    {
-        clipPlaneNormal[0] = e0;
-        clipPlaneNormal[1] = e1;
-        clipPlaneNormal[2] = e2;
-        Select(14);
-    }
-
-    public void SetColorTableName(String colorTableName_)
-    {
-        colorTableName = colorTableName_;
-        Select(15);
-    }
-
-    public void SetSingleColor(ColorAttribute singleColor_)
-    {
-        singleColor = singleColor_;
-        Select(16);
-    }
-
-    public void SetLegendFlag(boolean legendFlag_)
-    {
-        legendFlag = legendFlag_;
-        Select(17);
-    }
-
-    public void SetLightingFlag(boolean lightingFlag_)
-    {
-        lightingFlag = lightingFlag_;
-        Select(18);
-    }
-
-    public void SetRelTol(double relTol_)
-    {
-        relTol = relTol_;
-        Select(19);
-    }
-
-    public void SetAbsTol(double absTol_)
-    {
-        absTol = absTol_;
-        Select(20);
     }
 
     public void SetMaxStepLength(double maxStepLength_)
     {
         maxStepLength = maxStepLength_;
+        Select(8);
+    }
+
+    public void SetRelTol(double relTol_)
+    {
+        relTol = relTol_;
+        Select(9);
+    }
+
+    public void SetAbsTol(double absTol_)
+    {
+        absTol = absTol_;
+        Select(10);
+    }
+
+    public void SetMaxToroidalWinding(int maxToroidalWinding_)
+    {
+        maxToroidalWinding = maxToroidalWinding_;
+        Select(11);
+    }
+
+    public void SetOverrideToroidalWinding(int overrideToroidalWinding_)
+    {
+        overrideToroidalWinding = overrideToroidalWinding_;
+        Select(12);
+    }
+
+    public void SetHitRate(double hitRate_)
+    {
+        hitRate = hitRate_;
+        Select(13);
+    }
+
+    public void SetAdjustPlane(int adjustPlane_)
+    {
+        adjustPlane = adjustPlane_;
+        Select(14);
+    }
+
+    public void SetOverlaps(int overlaps_)
+    {
+        overlaps = overlaps_;
+        Select(15);
+    }
+
+    public void SetShowCurves(int showCurves_)
+    {
+        showCurves = showCurves_;
+        Select(16);
+    }
+
+    public void SetNumberPlanes(int numberPlanes_)
+    {
+        numberPlanes = numberPlanes_;
+        Select(17);
+    }
+
+    public void SetMin(double min_)
+    {
+        min = min_;
+        Select(18);
+    }
+
+    public void SetMax(double max_)
+    {
+        max = max_;
+        Select(19);
+    }
+
+    public void SetMinFlag(boolean minFlag_)
+    {
+        minFlag = minFlag_;
+        Select(20);
+    }
+
+    public void SetMaxFlag(boolean maxFlag_)
+    {
+        maxFlag = maxFlag_;
         Select(21);
     }
 
+    public void SetColorType(int colorType_)
+    {
+        colorType = colorType_;
+        Select(22);
+    }
+
+    public void SetSingleColor(ColorAttribute singleColor_)
+    {
+        singleColor = singleColor_;
+        Select(23);
+    }
+
+    public void SetColorTableName(String colorTableName_)
+    {
+        colorTableName = colorTableName_;
+        Select(24);
+    }
+
+    public void SetColorBy(int colorBy_)
+    {
+        colorBy = colorBy_;
+        Select(25);
+    }
+
+    public void SetShowIslands(boolean showIslands_)
+    {
+        showIslands = showIslands_;
+        Select(26);
+    }
+
+    public void SetShowLines(boolean showLines_)
+    {
+        showLines = showLines_;
+        Select(27);
+    }
+
+    public void SetShowPoints(boolean showPoints_)
+    {
+        showPoints = showPoints_;
+        Select(28);
+    }
+
+    public void SetVerboseFlag(boolean verboseFlag_)
+    {
+        verboseFlag = verboseFlag_;
+        Select(29);
+    }
+
+    public void SetLegendFlag(boolean legendFlag_)
+    {
+        legendFlag = legendFlag_;
+        Select(30);
+    }
+
+    public void SetLightingFlag(boolean lightingFlag_)
+    {
+        lightingFlag = lightingFlag_;
+        Select(31);
+    }
+
     // Property getting methods
-    public double         GetTermination() { return termination; }
-    public int            GetTerminationType() { return terminationType; }
-    public int            GetStreamlineSource() { return streamlineSource; }
-    public boolean        GetShowStreamlines() { return showStreamlines; }
-    public boolean        GetShowPoints() { return showPoints; }
-    public int            GetPointDensity() { return pointDensity; }
-    public double         GetSourceRadius() { return sourceRadius; }
+    public double         GetMinPunctures() { return minPunctures; }
+    public double         GetMaxPunctures() { return maxPunctures; }
+    public int            GetSourceType() { return sourceType; }
     public double[]       GetPointSource() { return pointSource; }
-    public double[]       GetLineSourceStart() { return lineSourceStart; }
-    public double[]       GetLineSourceEnd() { return lineSourceEnd; }
-    public double[]       GetPlaneSourcePoint() { return planeSourcePoint; }
-    public double[]       GetPlaneSourceNormal() { return planeSourceNormal; }
-    public double[]       GetPlaneSourceUpVec() { return planeSourceUpVec; }
-    public double[]       GetClipPlaneOrigin() { return clipPlaneOrigin; }
-    public double[]       GetClipPlaneNormal() { return clipPlaneNormal; }
-    public String         GetColorTableName() { return colorTableName; }
-    public ColorAttribute GetSingleColor() { return singleColor; }
-    public boolean        GetLegendFlag() { return legendFlag; }
-    public boolean        GetLightingFlag() { return lightingFlag; }
+    public double[]       GetLineStart() { return lineStart; }
+    public double[]       GetLineEnd() { return lineEnd; }
+    public int            GetPointDensity() { return pointDensity; }
+    public int            GetIntegrationType() { return integrationType; }
+    public double         GetMaxStepLength() { return maxStepLength; }
     public double         GetRelTol() { return relTol; }
     public double         GetAbsTol() { return absTol; }
-    public double         GetMaxStepLength() { return maxStepLength; }
+    public int            GetMaxToroidalWinding() { return maxToroidalWinding; }
+    public int            GetOverrideToroidalWinding() { return overrideToroidalWinding; }
+    public double         GetHitRate() { return hitRate; }
+    public int            GetAdjustPlane() { return adjustPlane; }
+    public int            GetOverlaps() { return overlaps; }
+    public int            GetShowCurves() { return showCurves; }
+    public int            GetNumberPlanes() { return numberPlanes; }
+    public double         GetMin() { return min; }
+    public double         GetMax() { return max; }
+    public boolean        GetMinFlag() { return minFlag; }
+    public boolean        GetMaxFlag() { return maxFlag; }
+    public int            GetColorType() { return colorType; }
+    public ColorAttribute GetSingleColor() { return singleColor; }
+    public String         GetColorTableName() { return colorTableName; }
+    public int            GetColorBy() { return colorBy; }
+    public boolean        GetShowIslands() { return showIslands; }
+    public boolean        GetShowLines() { return showLines; }
+    public boolean        GetShowPoints() { return showPoints; }
+    public boolean        GetVerboseFlag() { return verboseFlag; }
+    public boolean        GetLegendFlag() { return legendFlag; }
+    public boolean        GetLightingFlag() { return lightingFlag; }
 
     // Write and read methods.
     public void WriteAtts(CommunicationBuffer buf)
     {
         if(WriteSelect(0, buf))
-            buf.WriteDouble(termination);
+            buf.WriteDouble(minPunctures);
         if(WriteSelect(1, buf))
-            buf.WriteInt(terminationType);
+            buf.WriteDouble(maxPunctures);
         if(WriteSelect(2, buf))
-            buf.WriteInt(streamlineSource);
+            buf.WriteInt(sourceType);
         if(WriteSelect(3, buf))
-            buf.WriteBool(showStreamlines);
-        if(WriteSelect(4, buf))
-            buf.WriteBool(showPoints);
-        if(WriteSelect(5, buf))
-            buf.WriteInt(pointDensity);
-        if(WriteSelect(6, buf))
-            buf.WriteDouble(sourceRadius);
-        if(WriteSelect(7, buf))
             buf.WriteDoubleArray(pointSource);
+        if(WriteSelect(4, buf))
+            buf.WriteDoubleArray(lineStart);
+        if(WriteSelect(5, buf))
+            buf.WriteDoubleArray(lineEnd);
+        if(WriteSelect(6, buf))
+            buf.WriteInt(pointDensity);
+        if(WriteSelect(7, buf))
+            buf.WriteInt(integrationType);
         if(WriteSelect(8, buf))
-            buf.WriteDoubleArray(lineSourceStart);
-        if(WriteSelect(9, buf))
-            buf.WriteDoubleArray(lineSourceEnd);
-        if(WriteSelect(10, buf))
-            buf.WriteDoubleArray(planeSourcePoint);
-        if(WriteSelect(11, buf))
-            buf.WriteDoubleArray(planeSourceNormal);
-        if(WriteSelect(12, buf))
-            buf.WriteDoubleArray(planeSourceUpVec);
-        if(WriteSelect(13, buf))
-            buf.WriteDoubleArray(clipPlaneOrigin);
-        if(WriteSelect(14, buf))
-            buf.WriteDoubleArray(clipPlaneNormal);
-        if(WriteSelect(15, buf))
-            buf.WriteString(colorTableName);
-        if(WriteSelect(16, buf))
-            singleColor.Write(buf);
-        if(WriteSelect(17, buf))
-            buf.WriteBool(legendFlag);
-        if(WriteSelect(18, buf))
-            buf.WriteBool(lightingFlag);
-        if(WriteSelect(19, buf))
-            buf.WriteDouble(relTol);
-        if(WriteSelect(20, buf))
-            buf.WriteDouble(absTol);
-        if(WriteSelect(21, buf))
             buf.WriteDouble(maxStepLength);
+        if(WriteSelect(9, buf))
+            buf.WriteDouble(relTol);
+        if(WriteSelect(10, buf))
+            buf.WriteDouble(absTol);
+        if(WriteSelect(11, buf))
+            buf.WriteInt(maxToroidalWinding);
+        if(WriteSelect(12, buf))
+            buf.WriteInt(overrideToroidalWinding);
+        if(WriteSelect(13, buf))
+            buf.WriteDouble(hitRate);
+        if(WriteSelect(14, buf))
+            buf.WriteInt(adjustPlane);
+        if(WriteSelect(15, buf))
+            buf.WriteInt(overlaps);
+        if(WriteSelect(16, buf))
+            buf.WriteInt(showCurves);
+        if(WriteSelect(17, buf))
+            buf.WriteInt(numberPlanes);
+        if(WriteSelect(18, buf))
+            buf.WriteDouble(min);
+        if(WriteSelect(19, buf))
+            buf.WriteDouble(max);
+        if(WriteSelect(20, buf))
+            buf.WriteBool(minFlag);
+        if(WriteSelect(21, buf))
+            buf.WriteBool(maxFlag);
+        if(WriteSelect(22, buf))
+            buf.WriteInt(colorType);
+        if(WriteSelect(23, buf))
+            singleColor.Write(buf);
+        if(WriteSelect(24, buf))
+            buf.WriteString(colorTableName);
+        if(WriteSelect(25, buf))
+            buf.WriteInt(colorBy);
+        if(WriteSelect(26, buf))
+            buf.WriteBool(showIslands);
+        if(WriteSelect(27, buf))
+            buf.WriteBool(showLines);
+        if(WriteSelect(28, buf))
+            buf.WriteBool(showPoints);
+        if(WriteSelect(29, buf))
+            buf.WriteBool(verboseFlag);
+        if(WriteSelect(30, buf))
+            buf.WriteBool(legendFlag);
+        if(WriteSelect(31, buf))
+            buf.WriteBool(lightingFlag);
     }
 
     public void ReadAtts(int n, CommunicationBuffer buf)
@@ -557,71 +583,101 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
             switch(index)
             {
             case 0:
-                SetTermination(buf.ReadDouble());
+                SetMinPunctures(buf.ReadDouble());
                 break;
             case 1:
-                SetTerminationType(buf.ReadInt());
+                SetMaxPunctures(buf.ReadDouble());
                 break;
             case 2:
-                SetStreamlineSource(buf.ReadInt());
+                SetSourceType(buf.ReadInt());
                 break;
             case 3:
-                SetShowStreamlines(buf.ReadBool());
-                break;
-            case 4:
-                SetShowPoints(buf.ReadBool());
-                break;
-            case 5:
-                SetPointDensity(buf.ReadInt());
-                break;
-            case 6:
-                SetSourceRadius(buf.ReadDouble());
-                break;
-            case 7:
                 SetPointSource(buf.ReadDoubleArray());
                 break;
+            case 4:
+                SetLineStart(buf.ReadDoubleArray());
+                break;
+            case 5:
+                SetLineEnd(buf.ReadDoubleArray());
+                break;
+            case 6:
+                SetPointDensity(buf.ReadInt());
+                break;
+            case 7:
+                SetIntegrationType(buf.ReadInt());
+                break;
             case 8:
-                SetLineSourceStart(buf.ReadDoubleArray());
+                SetMaxStepLength(buf.ReadDouble());
                 break;
             case 9:
-                SetLineSourceEnd(buf.ReadDoubleArray());
-                break;
-            case 10:
-                SetPlaneSourcePoint(buf.ReadDoubleArray());
-                break;
-            case 11:
-                SetPlaneSourceNormal(buf.ReadDoubleArray());
-                break;
-            case 12:
-                SetPlaneSourceUpVec(buf.ReadDoubleArray());
-                break;
-            case 13:
-                SetClipPlaneOrigin(buf.ReadDoubleArray());
-                break;
-            case 14:
-                SetClipPlaneNormal(buf.ReadDoubleArray());
-                break;
-            case 15:
-                SetColorTableName(buf.ReadString());
-                break;
-            case 16:
-                singleColor.Read(buf);
-                Select(16);
-                break;
-            case 17:
-                SetLegendFlag(buf.ReadBool());
-                break;
-            case 18:
-                SetLightingFlag(buf.ReadBool());
-                break;
-            case 19:
                 SetRelTol(buf.ReadDouble());
                 break;
-            case 20:
+            case 10:
                 SetAbsTol(buf.ReadDouble());
                 break;
+            case 11:
+                SetMaxToroidalWinding(buf.ReadInt());
+                break;
+            case 12:
+                SetOverrideToroidalWinding(buf.ReadInt());
+                break;
+            case 13:
+                SetHitRate(buf.ReadDouble());
+                break;
+            case 14:
+                SetAdjustPlane(buf.ReadInt());
+                break;
+            case 15:
+                SetOverlaps(buf.ReadInt());
+                break;
+            case 16:
+                SetShowCurves(buf.ReadInt());
+                break;
+            case 17:
+                SetNumberPlanes(buf.ReadInt());
+                break;
+            case 18:
+                SetMin(buf.ReadDouble());
+                break;
+            case 19:
+                SetMax(buf.ReadDouble());
+                break;
+            case 20:
+                SetMinFlag(buf.ReadBool());
+                break;
             case 21:
-                SetMaxStepLength(buf.ReadDouble());
+                SetMaxFlag(buf.ReadBool());
+                break;
+            case 22:
+                SetColorType(buf.ReadInt());
+                break;
+            case 23:
+                singleColor.Read(buf);
+                Select(23);
+                break;
+            case 24:
+                SetColorTableName(buf.ReadString());
+                break;
+            case 25:
+                SetColorBy(buf.ReadInt());
+                break;
+            case 26:
+                SetShowIslands(buf.ReadBool());
+                break;
+            case 27:
+                SetShowLines(buf.ReadBool());
+                break;
+            case 28:
+                SetShowPoints(buf.ReadBool());
+                break;
+            case 29:
+                SetVerboseFlag(buf.ReadBool());
+                break;
+            case 30:
+                SetLegendFlag(buf.ReadBool());
+                break;
+            case 31:
+                SetLightingFlag(buf.ReadBool());
                 break;
             }
         }
@@ -630,66 +686,126 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
     public String toString(String indent)
     {
         String str = new String();
-        str = str + doubleToString("termination", termination, indent) + "\n";
-        str = str + indent + "terminationType = ";
-        if(terminationType == TERMINATIONTYPE_DISTANCE)
-            str = str + "TERMINATIONTYPE_DISTANCE";
-        if(terminationType == TERMINATIONTYPE_TIME)
-            str = str + "TERMINATIONTYPE_TIME";
+        str = str + doubleToString("minPunctures", minPunctures, indent) + "\n";
+        str = str + doubleToString("maxPunctures", maxPunctures, indent) + "\n";
+        str = str + indent + "sourceType = ";
+        if(sourceType == SOURCETYPE_SPECIFIEDPOINT)
+            str = str + "SOURCETYPE_SPECIFIEDPOINT";
+        if(sourceType == SOURCETYPE_SPECIFIEDLINE)
+            str = str + "SOURCETYPE_SPECIFIEDLINE";
         str = str + "\n";
-        str = str + indent + "streamlineSource = ";
-        if(streamlineSource == SOURCETYPE_POINTSOURCE)
-            str = str + "SOURCETYPE_POINTSOURCE";
-        if(streamlineSource == SOURCETYPE_LINESOURCE)
-            str = str + "SOURCETYPE_LINESOURCE";
-        if(streamlineSource == SOURCETYPE_PLANESOURCE)
-            str = str + "SOURCETYPE_PLANESOURCE";
-        str = str + "\n";
-        str = str + boolToString("showStreamlines", showStreamlines, indent) + "\n";
-        str = str + boolToString("showPoints", showPoints, indent) + "\n";
-        str = str + intToString("pointDensity", pointDensity, indent) + "\n";
-        str = str + doubleToString("sourceRadius", sourceRadius, indent) + "\n";
         str = str + doubleArrayToString("pointSource", pointSource, indent) + "\n";
-        str = str + doubleArrayToString("lineSourceStart", lineSourceStart, indent) + "\n";
-        str = str + doubleArrayToString("lineSourceEnd", lineSourceEnd, indent) + "\n";
-        str = str + doubleArrayToString("planeSourcePoint", planeSourcePoint, indent) + "\n";
-        str = str + doubleArrayToString("planeSourceNormal", planeSourceNormal, indent) + "\n";
-        str = str + doubleArrayToString("planeSourceUpVec", planeSourceUpVec, indent) + "\n";
-        str = str + doubleArrayToString("clipPlaneOrigin", clipPlaneOrigin, indent) + "\n";
-        str = str + doubleArrayToString("clipPlaneNormal", clipPlaneNormal, indent) + "\n";
-        str = str + stringToString("colorTableName", colorTableName, indent) + "\n";
-        str = str + indent + "singleColor = {" + singleColor.Red() + ", " + singleColor.Green() + ", " + singleColor.Blue() + ", " + singleColor.Alpha() + "}\n";
-        str = str + boolToString("legendFlag", legendFlag, indent) + "\n";
-        str = str + boolToString("lightingFlag", lightingFlag, indent) + "\n";
+        str = str + doubleArrayToString("lineStart", lineStart, indent) + "\n";
+        str = str + doubleArrayToString("lineEnd", lineEnd, indent) + "\n";
+        str = str + intToString("pointDensity", pointDensity, indent) + "\n";
+        str = str + indent + "integrationType = ";
+        if(integrationType == INTEGRATIONTYPE_DORMANDPRINCE)
+            str = str + "INTEGRATIONTYPE_DORMANDPRINCE";
+        if(integrationType == INTEGRATIONTYPE_ADAMSBASHFORTH)
+            str = str + "INTEGRATIONTYPE_ADAMSBASHFORTH";
+        str = str + "\n";
+        str = str + doubleToString("maxStepLength", maxStepLength, indent) + "\n";
         str = str + doubleToString("relTol", relTol, indent) + "\n";
         str = str + doubleToString("absTol", absTol, indent) + "\n";
-        str = str + doubleToString("maxStepLength", maxStepLength, indent) + "\n";
+        str = str + intToString("maxToroidalWinding", maxToroidalWinding, indent) + "\n";
+        str = str + intToString("overrideToroidalWinding", overrideToroidalWinding, indent) + "\n";
+        str = str + doubleToString("hitRate", hitRate, indent) + "\n";
+        str = str + intToString("adjustPlane", adjustPlane, indent) + "\n";
+        str = str + indent + "overlaps = ";
+        if(overlaps == OVERLAPTYPE_RAW)
+            str = str + "OVERLAPTYPE_RAW";
+        if(overlaps == OVERLAPTYPE_REMOVE)
+            str = str + "OVERLAPTYPE_REMOVE";
+        if(overlaps == OVERLAPTYPE_MERGE)
+            str = str + "OVERLAPTYPE_MERGE";
+        if(overlaps == OVERLAPTYPE_SMOOTH)
+            str = str + "OVERLAPTYPE_SMOOTH";
+        str = str + "\n";
+        str = str + indent + "showCurves = ";
+        if(showCurves == SHOWMESHTYPE_CURVES)
+            str = str + "SHOWMESHTYPE_CURVES";
+        if(showCurves == SHOWMESHTYPE_SURFACES)
+            str = str + "SHOWMESHTYPE_SURFACES";
+        str = str + "\n";
+        str = str + intToString("numberPlanes", numberPlanes, indent) + "\n";
+        str = str + doubleToString("min", min, indent) + "\n";
+        str = str + doubleToString("max", max, indent) + "\n";
+        str = str + boolToString("minFlag", minFlag, indent) + "\n";
+        str = str + boolToString("maxFlag", maxFlag, indent) + "\n";
+        str = str + indent + "colorType = ";
+        if(colorType == COLORINGMETHOD_COLORBYSINGLECOLOR)
+            str = str + "COLORINGMETHOD_COLORBYSINGLECOLOR";
+        if(colorType == COLORINGMETHOD_COLORBYCOLORTABLE)
+            str = str + "COLORINGMETHOD_COLORBYCOLORTABLE";
+        str = str + "\n";
+        str = str + indent + "singleColor = {" + singleColor.Red() + ", " + singleColor.Green() + ", " + singleColor.Blue() + ", " + singleColor.Alpha() + "}\n";
+        str = str + stringToString("colorTableName", colorTableName, indent) + "\n";
+        str = str + indent + "colorBy = ";
+        if(colorBy == COLORBY_ORIGINALVALUE)
+            str = str + "COLORBY_ORIGINALVALUE";
+        if(colorBy == COLORBY_INPUTORDER)
+            str = str + "COLORBY_INPUTORDER";
+        if(colorBy == COLORBY_POINTINDEX)
+            str = str + "COLORBY_POINTINDEX";
+        if(colorBy == COLORBY_PLANE)
+            str = str + "COLORBY_PLANE";
+        if(colorBy == COLORBY_WINDINGORDER)
+            str = str + "COLORBY_WINDINGORDER";
+        if(colorBy == COLORBY_WINDINGPOINTORDER)
+            str = str + "COLORBY_WINDINGPOINTORDER";
+        if(colorBy == COLORBY_TOROIDALWINDINGS)
+            str = str + "COLORBY_TOROIDALWINDINGS";
+        if(colorBy == COLORBY_POLOIDALWINDINGS)
+            str = str + "COLORBY_POLOIDALWINDINGS";
+        if(colorBy == COLORBY_SAFETYFACTOR)
+            str = str + "COLORBY_SAFETYFACTOR";
+        if(colorBy == COLORBY_CONFIDENCE)
+            str = str + "COLORBY_CONFIDENCE";
+        if(colorBy == COLORBY_RIDGELINEVARIANCE)
+            str = str + "COLORBY_RIDGELINEVARIANCE";
+        str = str + "\n";
+        str = str + boolToString("showIslands", showIslands, indent) + "\n";
+        str = str + boolToString("showLines", showLines, indent) + "\n";
+        str = str + boolToString("showPoints", showPoints, indent) + "\n";
+        str = str + boolToString("verboseFlag", verboseFlag, indent) + "\n";
+        str = str + boolToString("legendFlag", legendFlag, indent) + "\n";
+        str = str + boolToString("lightingFlag", lightingFlag, indent) + "\n";
         return str;
     }
 
 
     // Attributes
-    private double         termination;
-    private int            terminationType;
-    private int            streamlineSource;
-    private boolean        showStreamlines;
-    private boolean        showPoints;
-    private int            pointDensity;
-    private double         sourceRadius;
+    private double         minPunctures;
+    private double         maxPunctures;
+    private int            sourceType;
     private double[]       pointSource;
-    private double[]       lineSourceStart;
-    private double[]       lineSourceEnd;
-    private double[]       planeSourcePoint;
-    private double[]       planeSourceNormal;
-    private double[]       planeSourceUpVec;
-    private double[]       clipPlaneOrigin;
-    private double[]       clipPlaneNormal;
-    private String         colorTableName;
-    private ColorAttribute singleColor;
-    private boolean        legendFlag;
-    private boolean        lightingFlag;
+    private double[]       lineStart;
+    private double[]       lineEnd;
+    private int            pointDensity;
+    private int            integrationType;
+    private double         maxStepLength;
     private double         relTol;
     private double         absTol;
-    private double         maxStepLength;
+    private int            maxToroidalWinding;
+    private int            overrideToroidalWinding;
+    private double         hitRate;
+    private int            adjustPlane;
+    private int            overlaps;
+    private int            showCurves;
+    private int            numberPlanes;
+    private double         min;
+    private double         max;
+    private boolean        minFlag;
+    private boolean        maxFlag;
+    private int            colorType;
+    private ColorAttribute singleColor;
+    private String         colorTableName;
+    private int            colorBy;
+    private boolean        showIslands;
+    private boolean        showLines;
+    private boolean        showPoints;
+    private boolean        verboseFlag;
+    private boolean        legendFlag;
+    private boolean        lightingFlag;
 }
 

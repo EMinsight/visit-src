@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -45,10 +45,12 @@
 class PoincareAttributes;
 class QLabel;
 class QCheckBox;
+class QGroupBox;
 class QLineEdit;
 class QSpinBox;
 class QVBox;
 class QButtonGroup;
+class QComboBox;
 class QvisColorTableButton;
 class QvisOpacitySlider;
 class QvisColorButton;
@@ -68,6 +70,17 @@ class QvisVariableButton;
 // Creation:   omitted
 //
 // Modifications:
+//    Jeremy Meredith, Tue Apr 14 16:16:56 EDT 2009
+//    Reworked and reorganized to make more usable.
+//
+//    Dave Pugmire, Fri Apr 17 11:32:40 EDT 2009
+//    GUI reorganization.
+//
+//    Dave Pugmire, Tue Apr 28 09:26:06 EDT 2009
+//    GUI reorganization.
+//
+//    Dave Pugmire, Tue Aug 11 10:33:05 EDT 2009
+//    Add number of intersections termination criterion
 //   
 // ****************************************************************************
 
@@ -91,72 +104,125 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     void GetCurrentValues(int which_widget);
     void Apply(bool ignore = false);
   private slots:
-    void terminationProcessText();
-    void terminationTypeChanged(int val);
-    void streamlineSourceChanged(int val);
-    void showStreamlinesChanged(bool val);
-    void showPointsChanged(bool val);
-    void pointDensityProcessText();
-    void sourceRadiusProcessText();
+    void minPuncturesProcessText();
+    void maxPuncturesProcessText();
+
+    void sourceTypeChanged(int val);
     void pointSourceProcessText();
-    void lineSourceStartProcessText();
-    void lineSourceEndProcessText();
-    void planeSourcePointProcessText();
-    void planeSourceNormalProcessText();
-    void planeSourceUpVecProcessText();
-    void clipPlaneOriginProcessText();
-    void clipPlaneNormalProcessText();
-    void colorTableNameChanged(bool useDefault, const QString &ctName);
-    void singleColorChanged(const QColor &color);
-    void legendFlagChanged(bool val);
-    void lightingFlagChanged(bool val);
+    void lineStartProcessText();
+    void lineEndProcessText();
+    void pointDensityChanged(int val);
+
+    void integrationTypeChanged(int val);
+    void maxStepLengthProcessText();
     void relTolProcessText();
     void absTolProcessText();
-    void maxStepLengthProcessText();
+
+
+    void maxToroidalWindingSizeChanged(int val);
+    void overrideToroidalWindingProcessText();
+    void hitRateProcessText();
+    void displayTypeChanged(int val);
+    void adjustPlaneProcessText();
+    void overlapsChanged(int val);
+
+    void numberPlanesSizeChanged(int val);
+    void colorByChanged(int val);
+    void singleColorChanged(const QColor &color);
+    void colorTableNameChanged(bool useDefault, const QString &ctName);
+    void colorModeChanged(int val);
+
+    void minToggled(bool on);
+    void maxToggled(bool on);
+    void processMaxLimitText();
+    void processMinLimitText();
+
+    void showIslandsChanged(bool val);
+    void showLinesChanged(bool val);
+    void showPointsChanged(bool val);
+
+    void verboseFlagChanged(bool val);
+    void legendFlagChanged(bool val);
+    void lightingFlagChanged(bool val);
   private:
     int plotType;
-    QLineEdit *termination;
-    QWidget      *terminationType;
-    QButtonGroup *terminationTypeButtonGroup;
-    QWidget      *streamlineSource;
-    QButtonGroup *streamlineSourceButtonGroup;
-    QCheckBox *showStreamlines;
-    QCheckBox *showPoints;
-    QLineEdit *pointDensity;
-    QLineEdit *sourceRadius;
+
+    // streamline options
+    QLineEdit *minPunctures;
+    QLineEdit *maxPunctures;
+
+    QComboBox *sourceType;
+    QGroupBox *sourceAtts;
     QLineEdit *pointSource;
-    QLineEdit *lineSourceStart;
-    QLineEdit *lineSourceEnd;
-    QLineEdit *planeSourcePoint;
-    QLineEdit *planeSourceNormal;
-    QLineEdit *planeSourceUpVec;
-    QLineEdit *clipPlaneOrigin;
-    QLineEdit *clipPlaneNormal;
-    QvisColorTableButton *colorTableName;
-    QvisColorButton *singleColor;
-    QCheckBox *legendFlag;
-    QCheckBox *lightingFlag;
+    QLineEdit *lineStart;
+    QLineEdit *lineEnd;
+    QSpinBox  *pointDensity;
+
+    QComboBox *integrationType;
+    QLineEdit *maxStepLength;
     QLineEdit *relTol;
     QLineEdit *absTol;
-    QLineEdit *maxStepLength;
-    QLabel *terminationLabel;
-    QLabel *terminationTypeLabel;
-    QLabel *streamlineSourceLabel;
-    QLabel *pointDensityLabel;
-    QLabel *sourceRadiusLabel;
+
+    // poincare options
+    QSpinBox *MaxToroidalWinding;
+    QLineEdit *OverrideToroidalWinding;
+    QLineEdit *HitRate;
+    QLineEdit *AdjustPlane;
+    QButtonGroup *Overlaps;
+
+
+    // display options
+    QGroupBox *typeGrp;
+    QGroupBox *limitsGrp;
+    QGroupBox *colorGrp;
+    QGroupBox *optionsGrp;
+
+    QComboBox *DisplayType;
+    QSpinBox *NumberPlanes;
+
+    QButtonGroup *colorModeButtons;
+    QvisColorTableButton *colorTableName;
+    QvisColorButton *singleColor;
+    QComboBox *ColorBy;
+
+    QCheckBox *minToggle;
+    QCheckBox *maxToggle;
+    QLineEdit *maxLineEdit;
+    QLineEdit *minLineEdit;
+
+    QCheckBox *showIslands;
+    QCheckBox *showLines;
+    QCheckBox *showPoints;
+    QCheckBox *verboseFlag;
+    QCheckBox *legendFlag;
+    QCheckBox *lightingFlag;
+
+    // labels
+    QLabel *minPuncturesLabel;
+    QLabel *maxPuncturesLabel;
+    QLabel *sourceTypeLabel;
+
     QLabel *pointSourceLabel;
-    QLabel *lineSourceStartLabel;
-    QLabel *lineSourceEndLabel;
-    QLabel *planeSourcePointLabel;
-    QLabel *planeSourceNormalLabel;
-    QLabel *planeSourceUpVecLabel;
-    QLabel *clipPlaneOriginLabel;
-    QLabel *clipPlaneNormalLabel;
-    QLabel *colorTableNameLabel;
-    QLabel *singleColorLabel;
+    QLabel *lineStartLabel;
+    QLabel *lineEndLabel;
+    QLabel *pointDensityLabel;
+
+
+    QLabel *integrationTypeLabel;
+    QLabel *maxStepLengthLabel;
     QLabel *relTolLabel;
     QLabel *absTolLabel;
-    QLabel *maxStepLengthLabel;
+
+    QLabel *MaxToroidalWindingLabel;
+    QLabel *OverrideToroidalWindingLabel;
+    QLabel *HitRateLabel;
+    QLabel *AdjustPlaneLabel;
+    QLabel *OverlapsLabel;
+
+    QLabel *DisplayTypeLabel;
+    QLabel *NumberPlanesLabel;
+    QLabel *ColorStyleLabel;
+    QLabel *ColorByLabel;
 
     PoincareAttributes *atts;
 };

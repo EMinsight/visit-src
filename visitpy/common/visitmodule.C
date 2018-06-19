@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -77,7 +77,6 @@
 #include <DebugStream.h>
 #include <StringHelpers.h>
 #include <Logging.h>
-#include <SingleAttributeConfigManager.h>
 
 //
 // State object include files.
@@ -427,6 +426,7 @@ static std::map<std::string, PyObject*> macroFunctions;
 static CallbackManager      *callbackMgr = NULL;
 static ViewerRPCCallbacks   *rpcCallbacks = NULL;
 
+static std::string ultraScriptFile = "";
 typedef struct
 {
     AnnotationObject *object;
@@ -6732,6 +6732,9 @@ visit_EnableTool(PyObject *self, PyObject *args)
 //   Brad Whitlock, Tue Jun 24 12:20:37 PDT 2008
 //   Get the plugin manager via the viewer proxy.
 //
+//   Cyrus Harrison, Thu Jul 23 12:22:05 PDT 2009
+//   Clear error after unsucessful tuple parse.
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -6741,7 +6744,10 @@ visit_ListPlots(PyObject *self, PyObject *args)
 
     int stringOnly = 0;
     if (!PyArg_ParseTuple(args, "i", &stringOnly))
+    {
         stringOnly = 0;
+        PyErr_Clear();
+    }
 
     MUTEX_LOCK();
     //
@@ -8134,59 +8140,66 @@ visit_GetQueryOutputObject(PyObject *self, PyObject *args)
 }
 
 
+
 // ****************************************************************************
-// Method: visit_GetPlotInformation
+// Function: visit_GetOutputArray
 //
-// Purpose: 
-//   Returns a dictionary of information created from the first active plot's
-//   plot info attributes.
+// Purpose:
+//   Returns the output array for the active plot.
 //
-// Arguments:
+// Notes:      
 //
-// Returns:    
-//
-// Note:       
-//
-// Programmer: Brad Whitlock
-// Creation:   Wed Jan  7 10:23:43 PST 2009
+// Programmer: Kathleen Bonnell 
+// Creation:   June 20, 2006 
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
-visit_GetPlotInformation(PyObject *self, PyObject *args)
+visit_GetOutputArray(PyObject *self, PyObject *args)
 {
     ENSURE_VIEWER_EXISTS();
 
-    // Synchronize to make sure all plot info atts have arrived.
-    Synchronize();
-
-    PyObject *retval = 0;
-    MUTEX_LOCK();
-        int plotType = -1;
-        // Get the active plot's type if we can.
-        const PlotList *pL = GetViewerState()->GetPlotList();
-        for(int i = 0; i < pL->GetNumPlots(); ++i)
+    int winId = -1;
+    int plotId = -1;
+    if (!PyArg_ParseTuple(args, "i", &plotId))
+    {
+        if (!PyArg_ParseTuple(args, "ii", &plotId, &winId))
         {
-            const Plot &p = pL->GetPlots(i);
-            if(p.GetActiveFlag())
-            {
-                plotType = p.GetPlotType(); 
-                break;
-            }
         }
-
-        PlotInfoAttributes *info = GetViewerState()->GetPlotInformation(plotType);
-        if(info != 0)
-            retval = PyMapNode_Wrap(info->GetData());
+        PyErr_Clear();
+    }
+    PyObject *retval;
+    MUTEX_LOCK();
+        GetViewerMethods()->UpdatePlotInfoAtts(plotId, winId);
+    MUTEX_UNLOCK();
+    // Wait until viewer has finished updating the plot Info atts
+    int error = Synchronize();
+    // Retrieve the update plot info atts.
+    PlotInfoAttributes *pia = GetViewerState()->GetPlotInfoAttributes();
+    if (pia == NULL)
+    {
+        retval = PyString_FromString("Plot did not define an output array."); 
+    }
+    else
+    {
+        doubleVector vals = pia->GetOutputArray();
+        if (vals.size() == 0)
+          retval = PyString_FromString("Plot did not define an output array." );
         else
         {
-            retval = Py_None;
-            Py_INCREF(retval);
+            PyObject *tuple = PyTuple_New(vals.size());
+            for(int j = 0; j < vals.size(); ++j)
+            {
+                PyObject *item = PyFloat_FromDouble(vals[j]);
+                if(item == NULL)
+                    continue;
+                PyTuple_SET_ITEM(tuple, j, item);
+            }
+            retval = tuple;
         }
-    MUTEX_UNLOCK();
-
+    }
     return retval;
 }
 
@@ -9508,117 +9521,6 @@ visit_GetPipelineCachingMode(PyObject *self, PyObject *args)
 }
 
 // ****************************************************************************
-//  Method:  visit_LoadAttribute
-//
-//  Purpose:
-//    Loads a single attribute from an XML file.
-//
-//  Note:  this is not exactly type-safe!  We make some attempt to check
-//         that the name of its type ends in "Attributes", but if that's
-//         not a sufficiently strict check, it can crash.  That check is
-//         also not quite right, because not all AttributeSubjects end
-//         in "Attributes", but since all the plot and operator ones do,
-//         it's not too bad.
-//
-//  Programmer:  Jeremy Meredith
-//  Creation:    January  5, 2009
-//
-// ****************************************************************************
-
-// We don't have a python abstraction of a generic attribute
-// subject, but they all follow this pattern, so we'll fake it.
-struct GenericAttributeSubjectObject
-{
-    PyObject_HEAD
-    AttributeSubject *data;
-    bool  owns;
-};
-
-STATIC PyObject *
-visit_LoadAttribute(PyObject *self, PyObject *args)
-{
-    char *filename;
-    PyObject *attobj;
-    if (!PyArg_ParseTuple(args, "sO", &filename, &attobj))
-        return NULL;
-
-    const char *objtypename = attobj->ob_type->tp_name;
-    if (strlen(objtypename) <= 10 ||
-        strcmp(objtypename+(strlen(objtypename)-10), "Attributes") != 0)
-    {
-        VisItErrorFunc("Unceremoniously refusing to load into an object "
-                       "whose type name does not end in 'Attributes'.  "
-                       "If this check is incorrect, please contact a "
-                       "developer.");
-        return NULL;
-        
-    }
-
-    AttributeSubject *as =
-        reinterpret_cast<GenericAttributeSubjectObject*>(attobj)->data;
-
-    if (!as || !filename)
-        return NULL;
-        
-    SingleAttributeConfigManager mgr(as);
-    mgr.Import(filename);
-    as->SelectAll();
-    as->Notify();
-
-    return IntReturnValue(Synchronize());
-}
-
-// ****************************************************************************
-//  Method:  visit_LoadAttribute
-//
-//  Purpose:
-//    Loads a single attribute from an XML file.
-//
-//  Note:  this is not exactly type-safe!  We make some attempt to check
-//         that the name of its type ends in "Attributes", but if that's
-//         not a sufficiently strict check, it can crash.  That check is
-//         also not quite right, because not all AttributeSubjects end
-//         in "Attributes", but since all the plot and operator ones do,
-//         it's not too bad.
-//
-//  Programmer:  Jeremy Meredith
-//  Creation:    January  5, 2009
-//
-// ****************************************************************************
-
-STATIC PyObject *
-visit_SaveAttribute(PyObject *self, PyObject *args)
-{
-    char *filename;
-    PyObject *attobj;
-    if (!PyArg_ParseTuple(args, "sO", &filename, &attobj))
-        return NULL;
-
-    const char *objtypename = attobj->ob_type->tp_name;
-    if (strlen(objtypename) <= 10 ||
-        strcmp(objtypename+(strlen(objtypename)-10), "Attributes") != 0)
-    {
-        VisItErrorFunc("Unceremoniously refusing to load into an object "
-                       "whose type name does not end in 'Attributes'.  "
-                       "If this check is incorrect, please contact a "
-                       "developer.");
-        return NULL;
-        
-    }
-
-    AttributeSubject *as =
-        reinterpret_cast<GenericAttributeSubjectObject*>(attobj)->data;
-
-    if (!as || !filename)
-        return NULL;
-        
-    SingleAttributeConfigManager mgr(as);
-    mgr.Export(filename);
-
-    return IntReturnValue(Synchronize());
-}
-
-// ****************************************************************************
 // Function: visit_SetLight
 //
 // Purpose: 
@@ -10156,6 +10058,11 @@ visit_WriteConfigFile(PyObject *self, PyObject *args)
 //   Cyrus Harrison, Thu Jan  3 11:42:16 PST 2008
 //   Another stab at fixing the parsing conflict. 
 //
+//   Eric Brugger, Mon May 11 12:06:33 PDT 2009
+//   I added parsing that would allow the Hohlraum flux query to take an
+//   optional second integer value that would control if it used the emissivity
+//   divided by the absortivity in place of the emissivity.
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -10170,10 +10077,22 @@ visit_Query(PyObject *self, PyObject *args)
     
     bool parse_success = false;
     
-    parse_success = PyArg_ParseTuple(args, "sidddddd|O", &queryName, &arg1,
+    parse_success = PyArg_ParseTuple(args, "siidddddd|O", &queryName,
+                                     &arg1, &arg2,
                                      &(darg1[0]), &(darg1[1]), &(darg1[2]),
                                      &(darg2[0]), &(darg2[1]), &(darg2[2]),
                                      &tuple);
+    if(!parse_success)
+    {
+        PyErr_Clear();
+        darg1.resize(3);
+        darg2.resize(3);
+        parse_success = PyArg_ParseTuple(args, "sidddddd|O", &queryName, &arg1,
+                                         &(darg1[0]), &(darg1[1]), &(darg1[2]),
+                                         &(darg2[0]), &(darg2[1]), &(darg2[2]),
+                                         &tuple);
+    }
+
     if(!parse_success)
     {
         PyErr_Clear();
@@ -12282,6 +12201,301 @@ visit_SetDefaultMeshManagementAttributes(PyObject *self, PyObject *args)
 }
 
 // ****************************************************************************
+// Function: visit_ApplyNamedSelection
+//
+// Purpose: 
+//   Tells the viewer to apply a named selection to the current plot.
+//
+// Programmer: Hank Childs
+// Creation:   January 28, 2009
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+STATIC PyObject *
+visit_ApplyNamedSelection(PyObject *self, PyObject *args)
+{
+    ENSURE_VIEWER_EXISTS();
+
+    char *selName;
+    if (!PyArg_ParseTuple(args, "s", &selName))
+       return NULL;
+
+    // Activate the database.
+    MUTEX_LOCK();
+        GetViewerMethods()->ApplyNamedSelection(selName);
+    MUTEX_UNLOCK();
+
+    // Return the success value.
+    return IntReturnValue(Synchronize());
+}
+
+// ****************************************************************************
+// Function: visit_CreateNamedSelection
+//
+// Purpose: 
+//   Tells the viewer to make a named selection out of the elements in the
+//   current plot.
+//
+// Programmer: Hank Childs
+// Creation:   January 28, 2009
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+STATIC PyObject *
+visit_CreateNamedSelection(PyObject *self, PyObject *args)
+{
+    ENSURE_VIEWER_EXISTS();
+
+    char *selName;
+    if (!PyArg_ParseTuple(args, "s", &selName))
+       return NULL;
+
+    // Activate the database.
+    MUTEX_LOCK();
+        GetViewerMethods()->CreateNamedSelection(selName);
+    MUTEX_UNLOCK();
+
+    // Return the success value.
+    return IntReturnValue(Synchronize());
+}
+
+// ****************************************************************************
+// Function: visit_DeleteNamedSelection
+//
+// Purpose: 
+//   Tells the viewer to delete a named selection.
+//
+// Programmer: Hank Childs
+// Creation:   January 28, 2009
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+STATIC PyObject *
+visit_DeleteNamedSelection(PyObject *self, PyObject *args)
+{
+    ENSURE_VIEWER_EXISTS();
+
+    char *selName;
+    if (!PyArg_ParseTuple(args, "s", &selName))
+       return NULL;
+
+    // Activate the database.
+    MUTEX_LOCK();
+        GetViewerMethods()->DeleteNamedSelection(selName);
+    MUTEX_UNLOCK();
+
+    // Return the success value.
+    return IntReturnValue(Synchronize());
+}
+
+// ****************************************************************************
+// Function: visit_LoadNamedSelection
+//
+// Purpose: 
+//   Tells the viewer to load a named selection from a file.
+//
+// Programmer: Hank Childs
+// Creation:   January 28, 2009
+//
+// Modifications:
+//    Gunther H. Weber, Mon Apr  6 18:55:15 PDT 2009
+//    Pass engine and simulation name to LoadNamedSelection RPC.
+//   
+// ****************************************************************************
+
+STATIC PyObject *
+visit_LoadNamedSelection(PyObject *self, PyObject *args)
+{
+    ENSURE_VIEWER_EXISTS();
+
+    char *selName;
+    bool useFirstEngine = false;
+    bool useFirstSimulation = false;
+    const char *engineName = 0;
+    const char *simulationName = 0;
+
+    if (!PyArg_ParseTuple(args, "sss", &selName, &engineName, &simulationName))
+    {
+        if (!PyArg_ParseTuple(args, "ss", &selName, &engineName))
+        {
+            if (!PyArg_ParseTuple(args, "s", &selName))
+                return NULL;
+
+            PyErr_Clear();
+            // Indicate that we want to close the first engine in the list.
+            useFirstEngine = true;
+        }
+        else
+        {
+            PyErr_Clear();
+            // Indicate that we want to close the first simulation on that host
+            useFirstSimulation = true;
+        }
+    }
+
+
+    // Activate the database.
+    MUTEX_LOCK();
+        if(useFirstEngine)
+        {
+            const stringVector &engines = GetViewerState()->GetEngineList()->GetEngines();
+            const stringVector &sims = GetViewerState()->GetEngineList()->GetSimulationName();
+            if(engines.size() > 0)
+            {
+                engineName = engines[0].c_str();
+                simulationName = sims[0].c_str();
+            }
+        }
+        else if (useFirstSimulation)
+        {
+            const stringVector &engines = GetViewerState()->GetEngineList()->GetEngines();
+            const stringVector &sims = GetViewerState()->GetEngineList()->GetSimulationName();
+            for (int i=0; i<engines.size(); i++)
+            {
+                if (engines[i] == engineName)
+                {
+                    simulationName = sims[i].c_str();
+                    break;
+                }
+            }
+        }
+
+        if (engineName != 0 && simulationName != 0)
+            GetViewerMethods()->LoadNamedSelection(selName, engineName, simulationName);
+    MUTEX_UNLOCK();
+
+    // Return the success value.
+    return IntReturnValue(Synchronize());
+}
+
+// ****************************************************************************
+// Function: visit_SaveNamedSelection
+//
+// Purpose: 
+//   Tells the viewer to save the named selection to a file.
+//
+// Programmer: Hank Childs
+// Creation:   January 28, 2009
+//
+// Modifications:
+//    Gunther H. Weber, Mon Apr  6 18:55:15 PDT 2009
+//    Pass engine and simulation name to SaveNamedSelection RPC.
+//
+// ****************************************************************************
+
+STATIC PyObject *
+visit_SaveNamedSelection(PyObject *self, PyObject *args)
+{
+    ENSURE_VIEWER_EXISTS();
+
+    char *selName;
+    bool useFirstEngine = false;
+    bool useFirstSimulation = false;
+    const char *engineName = 0;
+    const char *simulationName = 0;
+
+    if (!PyArg_ParseTuple(args, "sss", &selName, &engineName, &simulationName))
+    {
+        if (!PyArg_ParseTuple(args, "ss", &selName, &engineName))
+        {
+            if (!PyArg_ParseTuple(args, "s", &selName))
+                return NULL;
+
+            PyErr_Clear();
+            // Indicate that we want to close the first engine in the list.
+            useFirstEngine = true;
+        }
+        else
+        {
+            PyErr_Clear();
+            // Indicate that we want to close the first simulation on that host
+            useFirstSimulation = true;
+        }
+    }
+
+    // Activate the database.
+    MUTEX_LOCK();
+        if(useFirstEngine)
+        {
+            const stringVector &engines = GetViewerState()->GetEngineList()->GetEngines();
+            const stringVector &sims = GetViewerState()->GetEngineList()->GetSimulationName();
+            if(engines.size() > 0)
+            {
+                engineName = engines[0].c_str();
+                simulationName = sims[0].c_str();
+            }
+        }
+        else if (useFirstSimulation)
+        {
+            const stringVector &engines = GetViewerState()->GetEngineList()->GetEngines();
+            const stringVector &sims = GetViewerState()->GetEngineList()->GetSimulationName();
+            for (int i=0; i<engines.size(); i++)
+            {
+                if (engines[i] == engineName)
+                {
+                    simulationName = sims[i].c_str();
+                    break;
+                }
+            }
+        }
+
+        if (engineName != 0 && simulationName != 0)
+            GetViewerMethods()->SaveNamedSelection(selName, engineName, simulationName);
+    MUTEX_UNLOCK();
+
+    // Return the success value.
+    return IntReturnValue(Synchronize());
+}
+
+// ****************************************************************************
+// Function: visit_SendSimulationCommand
+//
+// Purpose:
+//   Tells the viewer to send a command to the simulation
+//
+// Notes:      
+//
+// Programmer: Cihan Altinay
+// Creation:   October 28, 2009
+//
+// Modifications:
+//
+// ****************************************************************************
+
+STATIC PyObject *
+visit_SendSimulationCommand(PyObject *self, PyObject *args)
+{
+    ENSURE_VIEWER_EXISTS();
+
+    const char *hostName = 0;
+    const char *simulationName = 0;
+    const char *command = 0;
+    const char *argument = 0;
+    if (!PyArg_ParseTuple(args, "ssss", &hostName, &simulationName, &command, &argument))
+    {
+        if (!PyArg_ParseTuple(args, "sss", &hostName, &simulationName, &command))
+            return NULL;
+        PyErr_Clear();
+    }
+
+    MUTEX_LOCK();
+         if (argument != 0)
+             GetViewerMethods()->SendSimulationCommand(hostName, simulationName, command, argument);
+         else
+             GetViewerMethods()->SendSimulationCommand(hostName, simulationName, command);
+    MUTEX_UNLOCK();
+
+    // Return the success value.
+    return IntReturnValue(Synchronize());
+}
+
+// ****************************************************************************
 // Function: visit_Argv
 //
 // Purpose: 
@@ -12311,6 +12525,60 @@ visit_Argv(PyObject *self, PyObject *args)
 
     return retval;
 }
+
+
+// ****************************************************************************
+// Function: visit_LoadUltra
+//
+// Purpose: Load the ultra command wrapper, which runs until 'quit' is entered.
+//
+// Programmer: Kathleen Bonnell 
+// Creation:   November 19, 2008
+//
+// Modifications:
+//   
+// ****************************************************************************
+STATIC PyObject *
+visit_SetUltraScript(PyObject *self, PyObject *args)
+{
+    char *sname = NULL;
+    if (!PyArg_ParseTuple(args, "s", &sname))
+    {
+        PyErr_Clear();
+        ultraScriptFile = ""; 
+    }
+    else
+    {
+        ultraScriptFile = sname; 
+    }
+    return PyInt_FromLong(1);
+}
+
+STATIC PyObject *
+visit_GetUltraScript(PyObject *self, PyObject *args)
+{
+    return PyString_FromString(ultraScriptFile.c_str());
+}
+
+STATIC PyObject *
+visit_LoadUltra(PyObject *self, PyObject *args)
+{
+#ifdef HAVE_PYPARSING
+    NO_ARGUMENTS();
+          
+    string parserFile = string(getenv("VISITULTRAHOME")) + 
+                        string("/ultraparse.py");
+
+    PyObject *argTuple = PyTuple_New(1);
+    PyTuple_SetItem(argTuple, 0, PyString_FromString(parserFile.c_str()));
+    visit_Source(self, argTuple);
+    return PyInt_FromLong(1);
+#else
+    VisItErrorFunc("LoadUltra requires PyParsing to be installed in pythons site-packages.");
+    return NULL;
+#endif
+}
+
 
 // ****************************************************************************
 // Function: PopulateMethodArgs
@@ -12838,6 +13106,28 @@ visit_RegisterCallback(PyObject *, PyObject *args)
     }
 
     return PyLong_FromLong(1L);
+}
+
+// ****************************************************************************
+// Function: visit_UserActionFinished
+//
+// Purpose: 
+//   Returns all arguments after the -s script.py argument.
+//
+// Programmer: Tilo Ochotta
+// Creation:   Tue May 26 14:10:12 MST 2009
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+STATIC PyObject *
+visit_UserActionFinished(PyObject *self, PyObject *args)
+{
+    NO_ARGUMENTS();
+    ENSURE_CALLBACK_MANAGER_EXISTS();
+
+    return PyLong_FromLong(long(!callbackMgr->IsWorking()));
 }
 
 // ****************************************************************************
@@ -13430,8 +13720,15 @@ AddMethod(const char *methodName, PyObject *(cb)(PyObject *, PyObject *),
 //   Brad Whitlock, Fri Feb 15 11:21:24 PST 2008
 //   Added GetPlotOptions, GetOperatorOptions.
 //
-//   Jeremy Meredith, Mon Jan  5 10:21:05 EST 2009
-//   Added LoadAttribute, SaveAttribute
+//   Hank Childs, Wed Jan 28 10:42:28 PST 2009
+//   Add calls for named selections.
+//
+//   Kathleen Bonnell, Mon Feb  9 17:41:02 PST 2009
+//   Added LoadUltra.
+//
+//   Hank Childs, Mon Jan 18 21:35:17 PST 2010
+//   Added method UserActionFinished, on behalf of Tila Ochatta, Huy Vo,
+//   and Claudio Silva.
 //
 // ****************************************************************************
 
@@ -13464,6 +13761,8 @@ AddDefaultMethods()
     AddMethod("AddWindow",  visit_AddWindow, visit_AddWindow_doc);
     AddMethod("AlterDatabaseCorrelation", visit_AlterDatabaseCorrelation, 
                                            visit_AlterDatabaseCorrelation_doc);
+    AddMethod("ApplyNamedSelection", visit_ApplyNamedSelection,
+                                           visit_ApplyNamedSelection_doc);
     AddMethod("AnimationSetNFrames", visit_AnimationSetNFrames, NULL);
     AddMethod("ChangeActivePlotsVar", visit_ChangeActivePlotsVar, 
                                                visit_ChangeActivePlotsVar_doc);
@@ -13498,6 +13797,8 @@ AddDefaultMethods()
                                              visit_CreateAnnotationObject_doc);
     AddMethod("CreateDatabaseCorrelation", visit_CreateDatabaseCorrelation,
                                           visit_CreateDatabaseCorrelation_doc);
+    AddMethod("CreateNamedSelection", visit_CreateNamedSelection,
+                                           visit_CreateNamedSelection_doc);
     AddMethod("DefineArrayExpression", visit_DefineArrayExpression,
                                                visit_DefineExpression_doc);
     AddMethod("DefineCurveExpression", visit_DefineCurveExpression,
@@ -13523,6 +13824,8 @@ AddDefaultMethods()
     AddMethod("DeleteActivePlots", visit_DeleteActivePlots,
                                                         visit_DeletePlots_doc);
     AddMethod("DeleteAllPlots", visit_DeleteAllPlots,visit_DeletePlots_doc);
+    AddMethod("DeleteNamedSelection", visit_DeleteNamedSelection,
+                                           visit_DeleteNamedSelection_doc);
     AddMethod("DeletePlotDatabaseKeyframe", visit_DeletePlotDatabaseKeyframe,
                                          visit_DeletePlotDatabaseKeyframe_doc);
     AddMethod("DeletePlotKeyframe", visit_DeletePlotKeyframe,
@@ -13592,8 +13895,8 @@ AddDefaultMethods()
     AddMethod("GetQueryOutputObject", visit_GetQueryOutputObject,
                                                      visit_GetQueryOutput_doc);
     
-    AddMethod("GetPlotInformation", visit_GetPlotInformation,
-                                                     visit_GetPlotInformation_doc);
+    AddMethod("GetOutputArray", visit_GetOutputArray,
+                                                     visit_GetOutputArray_doc);
     AddMethod("GetRenderingAttributes", visit_GetRenderingAttributes,
                                              visit_GetRenderingAttributes_doc);
     AddMethod("GetQueryOverTimeAttributes", visit_GetQueryOverTimeAttributes,
@@ -13608,6 +13911,11 @@ AddDefaultMethods()
     AddMethod("InvertBackgroundColor", visit_InvertBackgroundColor,
                                               visit_InvertBackgroundColor_doc);
     AddMethod("Lineout", visit_Lineout, visit_Lineout_doc);
+    AddMethod("LoadNamedSelection", visit_LoadNamedSelection,
+                                           visit_LoadNamedSelection_doc);
+    AddMethod("LoadUltra", visit_LoadUltra, visit_LoadUltra_doc);
+    AddMethod("GetUltraScript", visit_GetUltraScript, NULL /*DOCUMENT ME */);
+    AddMethod("SetUltraScript", visit_SetUltraScript, NULL /*DOCUMENT ME */);
     AddMethod("MovePlotDatabaseKeyframe", visit_MovePlotDatabaseKeyframe,
                                            visit_MovePlotDatabaseKeyframe_doc);
     AddMethod("MovePlotKeyframe", visit_MovePlotKeyframe,
@@ -13665,7 +13973,10 @@ AddDefaultMethods()
               visit_RestoreSessionWithDifferentSources,
               visit_RestoreSession_doc);
     AddMethod("SaveSession", visit_SaveSession, visit_SaveSession_doc);
+    AddMethod("SaveNamedSelection", visit_SaveNamedSelection,
+                                           visit_SaveNamedSelection_doc);
     AddMethod("SaveWindow", visit_SaveWindow, visit_SaveWindow_doc);
+    AddMethod("SendSimulationCommand", visit_SendSimulationCommand,visit_SendSimulationCommand_doc);
     AddMethod("SetActivePlots", visit_SetActivePlots,visit_SetActivePlots_doc);
     AddMethod("SetActiveTimeSlider", visit_SetActiveTimeSlider, 
                                                 visit_SetActiveTimeSlider_doc);
@@ -13785,6 +14096,7 @@ AddDefaultMethods()
                                                          visit_ToggleMode_doc);
     AddMethod("ToggleSpinMode", visit_ToggleSpinMode, visit_ToggleMode_doc);
     AddMethod("UndoView",  visit_UndoView, visit_UndoView_doc);
+    AddMethod("UserActionFinished",visit_UserActionFinished,NULL);
     AddMethod("RedoView",  visit_RedoView, visit_RedoView_doc);
     AddMethod("WriteConfigFile",  visit_WriteConfigFile, 
                                                     visit_WriteConfigFile_doc);
@@ -13834,9 +14146,6 @@ AddDefaultMethods()
     AddMethod("GetCallbackNames", visit_GetCallbackNames, visit_GetCallbackNames_doc);
     AddMethod("RegisterCallback", visit_RegisterCallback, visit_RegisterCallback_doc);
     AddMethod("GetCallbackArgumentCount", visit_GetCallbackArgumentCount, NULL/*DOCUMENT ME*/);
-
-    AddMethod("LoadAttribute", visit_LoadAttribute, visit_LoadSaveAttribute_doc);
-    AddMethod("SaveAttribute", visit_SaveAttribute, visit_LoadSaveAttribute_doc);
 
     //
     // Lighting

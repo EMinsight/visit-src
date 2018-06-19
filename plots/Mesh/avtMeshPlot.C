@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -355,6 +355,9 @@ avtMeshPlot::SetCellCountMultiplierForSRThreshold(const avtDataObject_p dob)
 //    I made the pointSize in the atts be used for to set the point size for
 //    points, which is not the same as what's used for Box, Axis, Icosahedra.
 //
+//    Jeremy Meredith, Fri Feb 20 17:25:49 EST 2009
+//    Added per-plot alpha support.
+//
 // ****************************************************************************
 
 void
@@ -412,6 +415,15 @@ avtMeshPlot::SetAtts(const AttributeGroup *a)
     }
     glyphMapper->SetGlyphType((int)atts.GetPointType());
     SetPointGlyphSize();
+
+    //
+    // Do the opacity stuff
+    //
+    double opacity = atts.GetOpacity();
+    property->SetOpacity(opacity);
+    behavior->SetRenderOrder((atts.GetOpacity() < 1.0) ?
+                             ABSOLUTELY_LAST : DOES_NOT_MATTER);
+    behavior->SetAntialiasedRenderOrder(ABSOLUTELY_LAST);
 }
 
 
@@ -912,6 +924,9 @@ avtMeshPlot::ApplyRenderingTransformation(avtDataObject_p input)
 //    Brad Whitlock, Thu Jul 21 15:27:40 PST 2005
 //    Added SetPointGlyphSize.
 //
+//    Jeremy Meredith, Fri Feb 20 17:26:05 EST 2009
+//    Added per-plot alpha support.
+//
 // ****************************************************************************
 
 void
@@ -922,7 +937,8 @@ avtMeshPlot::CustomizeBehavior(void)
 
     behavior->SetLegend(varLegendRefPtr);
     behavior->SetShiftFactor(0.5);
-    behavior->SetRenderOrder(DOES_NOT_MATTER);
+    behavior->SetRenderOrder((atts.GetOpacity() < 1.0) ?
+                             ABSOLUTELY_LAST : DOES_NOT_MATTER);
     behavior->SetAntialiasedRenderOrder(ABSOLUTELY_LAST);
 }
 

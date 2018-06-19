@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -129,10 +129,6 @@ avtSourceFromAVTDataset::~avtSourceFromAVTDataset()
 //    Hank Childs, Fri Nov 30 16:47:33 PST 2007
 //    Add timing information.
 //
-//    Hank Childs, Tue Jan 20 12:58:48 CST 2009
-//    Do not try to prune away domains if we are doing dynamic domain 
-//    decomposition.
-//
 // ****************************************************************************
 
 bool
@@ -140,12 +136,6 @@ avtSourceFromAVTDataset::FetchDataset(avtDataRequest_p spec,
                                       avtDataTree_p &outtree)
 {
     int timingsHandle = visitTimer->StartTimer();
-
-    if (GetOutput()->GetInfo().GetAttributes().GetDynamicDomainDecomposition())
-    {
-        outtree = tree;
-        return false;
-    }
 
     vector<int> list;
     if (spec->GetSIL().useRestriction)

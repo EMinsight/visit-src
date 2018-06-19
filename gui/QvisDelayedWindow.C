@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -36,7 +36,7 @@
 *
 *****************************************************************************/
 
-#include <QLayout>
+#include <qlayout.h>
 #include <QvisDelayedWindow.h>
 
 // ****************************************************************************
@@ -61,12 +61,9 @@
 //   Brad Whitlock, Wed Apr  9 10:31:45 PDT 2008
 //   Changed ctor args.
 //
-//   Brad Whitlock, Thu Jun 19 14:14:27 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
-QvisDelayedWindow::QvisDelayedWindow(const QString &captionString, Qt::WindowFlags f) : 
+QvisDelayedWindow::QvisDelayedWindow(const QString &captionString, WFlags f) : 
     QvisWindowBase(captionString, f)
 {
     isCreated = false;
@@ -220,9 +217,6 @@ QvisDelayedWindow::GetCentralWidget()
 //   Brad Whitlock, Fri Feb 15 11:34:31 PDT 2002
 //   Added an early return if the window exists.
 //
-//   Brad Whitlock, Thu Jun 19 14:15:13 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
@@ -233,10 +227,9 @@ QvisDelayedWindow::CreateEntireWindow()
         return;
 
     // Create the central widget and the top layout.
-    central = new QWidget(this);
-    setCentralWidget(central);
-    topLayout = new QVBoxLayout(central);
-    topLayout->setSpacing(10);
+    central = new QWidget( this );
+    setCentralWidget( central );
+    topLayout = new QVBoxLayout(central, 10);
 
     // Call the Sub-class's CreateWindowContents function to create the
     // internal parts of the window.

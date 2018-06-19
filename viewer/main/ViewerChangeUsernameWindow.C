@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -41,11 +41,11 @@
 
 #include <vector>
 
-#include <QLayout>
-#include <QLineEdit>
-#include <QPushButton>
-#include <QLabel>
-#include <QTimer>
+#include <qlayout.h>
+#include <qlineedit.h>
+#include <qpushbutton.h>
+#include <qlabel.h>
+#include <qtimer.h>
 
 #include <HostProfile.h>
 #include <HostProfileList.h>
@@ -71,21 +71,15 @@ ViewerChangeUsernameWindow *ViewerChangeUsernameWindow::instance = NULL;
 //    Brad Whitlock, Tue Apr 29 11:58:00 PDT 2008
 //    Added tr()'s
 //
-//    Brad Whitlock, Fri May 23 10:47:52 PDT 2008
-//    Qt 4.
-//
 // ****************************************************************************
 
-ViewerChangeUsernameWindow::ViewerChangeUsernameWindow(QWidget *parent)
-    : QDialog(parent)
+ViewerChangeUsernameWindow::ViewerChangeUsernameWindow(QWidget *parent, const char *name)
+    : QDialog(parent, name, true)
 {
-    setModal(true);
-
     QVBoxLayout *layout = new QVBoxLayout(this);
     layout->setMargin(10);
 
-    QHBoxLayout *l2 = new QHBoxLayout;
-    layout->addLayout(l2);
+    QHBoxLayout *l2 = new QHBoxLayout(layout);
     l2->setSpacing(5);
     label = new QLabel(tr("Username for localhost: "), this);
     l2->addWidget(label);
@@ -95,14 +89,13 @@ ViewerChangeUsernameWindow::ViewerChangeUsernameWindow(QWidget *parent)
     connect(usernameedit, SIGNAL(returnPressed()), this, SLOT(accept()));
     layout->addSpacing(20);
 
-    QHBoxLayout *l3 = new QHBoxLayout;
-    layout->addLayout(l3);
-    QPushButton *okay = new QPushButton(tr("Confirm username"), this);
+    QHBoxLayout *l3 = new QHBoxLayout(layout);
+    QPushButton *okay = new QPushButton(tr("Confirm username"), this, "OK");
     connect(okay, SIGNAL(clicked()), this, SLOT(accept()));
     l3->addWidget(okay);
     l3->addStretch(10);
 
-    QPushButton *cancel = new QPushButton(tr("Cancel"), this);
+    QPushButton *cancel = new QPushButton(tr("Cancel"), this, "Cancel");
     connect(cancel, SIGNAL(clicked()), this, SLOT(reject()));
     l3->addWidget(cancel);
 }
@@ -133,14 +126,14 @@ ViewerChangeUsernameWindow::~ViewerChangeUsernameWindow()
 //
 // ****************************************************************************
 
-std::string
+const char *
 ViewerChangeUsernameWindow::getUsername()
 {
     // if never instantiated, no user name has been set here
     if (!instance)
         return NULL;
 
-    return instance->usernameedit->text().toStdString();
+    return instance->usernameedit->text().latin1();
 }
 
 // ****************************************************************************
@@ -162,28 +155,25 @@ ViewerChangeUsernameWindow::getUsername()
 //   Brad Whitlock, Tue Apr 29 11:58:35 PDT 2008
 //   Added tr()'s
 //
-//   Brad Whitlock, Fri May 23 11:03:20 PDT 2008
-//   Use std::string, Qt 4.
-//
 // ****************************************************************************
 
 bool
-ViewerChangeUsernameWindow::changeUsername(const std::string &host)
+ViewerChangeUsernameWindow::changeUsername(const char *host)
 {
     HostProfileList *profiles = ViewerServerManager::GetClientAtts();
 
     if(!instance)
         instance = new ViewerChangeUsernameWindow();
 
-    instance->setWindowTitle(tr("Choose new username"));
+    instance->setCaption(tr("Choose new username"));
 
     // Set the username prompt.
-    QString labelText(tr("New username for %1: ").arg(host.c_str()));
+    QString labelText(tr("New username for %1: ").arg(host));
     instance->label->setText(labelText);
 
     // Make the username window be the active window.
-    instance->activateWindow();
-    instance->raise();
+    instance->topLevelWidget()->setActiveWindow();
+    instance->topLevelWidget()->raise();
 
     // Clear the username.
     instance->usernameedit->clear();
@@ -205,8 +195,8 @@ ViewerChangeUsernameWindow::changeUsername(const std::string &host)
     {
         // Accepted; hit return or Okay.
         
-        std::string new_username(instance->usernameedit->text().toStdString());
-        if (new_username.size() == 0)
+        const char *new_username = instance->usernameedit->text().latin1();
+        if (new_username == NULL || new_username[0] == '\0')
             return false;
        
         // Let this convenience function do things like looking up the fully

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -43,7 +43,7 @@
 class DatabaseCorrelation;
 class QComboBox;
 class QLineEdit;
-class QListWidget;
+class QListBox;
 class QPushButton;
 
 // ****************************************************************************
@@ -85,16 +85,16 @@ protected slots:
 protected:
     void CreateWidgets(const DatabaseCorrelation &correlation);
     void UpdateAddRemoveButtonsEnabledState();
-    int  SelectedCount(const QListWidget *) const;
-    void TransferItems(QListWidget *srcLB, QListWidget *destLB);
+    int  SelectedCount(const QListBox *) const;
+    void TransferItems(QListBox *srcLB, QListBox *destLB);
 
     static int   instanceCount;
     bool         createMode;
 
     // Widgets and layout
     QLineEdit    *correlationNameLineEdit;
-    QListWidget     *sourcesListBox;
-    QListWidget     *correlatedSourcesListBox;
+    QListBox     *sourcesListBox;
+    QListBox     *correlatedSourcesListBox;
     QPushButton  *addButton;
     QPushButton  *removeButton;
     QComboBox    *correlationMethodComboBox;

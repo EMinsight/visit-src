@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -41,15 +41,14 @@
 #include <InteractorAttributes.h>
 #include <ViewerProxy.h>
 
-#include <QCheckBox>
-#include <QLabel>
-#include <QLayout>
-#include <QLineEdit>
-#include <QSpinBox>
-#include <QWidget>
-#include <QButtonGroup>
-#include <QRadioButton>
-#include <QGroupBox>
+#include <qcheckbox.h>
+#include <qlabel.h>
+#include <qlayout.h>
+#include <qlineedit.h>
+#include <qspinbox.h>
+#include <qvbox.h>
+#include <qbuttongroup.h>
+#include <qradiobutton.h>
 #include <QvisColorTableButton.h>
 #include <QvisOpacitySlider.h>
 #include <QvisColorButton.h>
@@ -73,11 +72,6 @@ using std::string;
 //   Brad Whitlock, Wed Apr  9 11:32:04 PDT 2008
 //   QString for caption, shortName.
 //
-//   Jeremy Meredith, Fri Jan  2 17:20:03 EST 2009
-//   The base class postable window observer now defaults
-//   to having load/save buttons, but to be consistent with
-//   most control windows, we don't want them here.
-//
 // ****************************************************************************
 
 QvisInteractorWindow::QvisInteractorWindow(
@@ -85,8 +79,7 @@ QvisInteractorWindow::QvisInteractorWindow(
                          const QString &caption,
                          const QString &shortName,
                          QvisNotepadArea *notepad)
-    : QvisPostableWindowObserver(subj, caption, shortName, notepad,
-                                 QvisPostableWindowObserver::AllExtraButtons)
+    : QvisPostableWindowObserver(subj, caption, shortName, notepad)
 {
     atts = subj;
 }
@@ -102,9 +95,7 @@ QvisInteractorWindow::QvisInteractorWindow(
 // Creation:   Mon Aug 16 15:29:28 PST 2004
 //
 // Modifications:
-//   Cyrus Harrison, Tue Jun 24 08:39:21 PDT
-//   Initial Qt4 Port.
-//
+//   
 // ****************************************************************************
 
 QvisInteractorWindow::~QvisInteractorWindow()
@@ -137,72 +128,80 @@ QvisInteractorWindow::~QvisInteractorWindow()
 //   Brad Whitlock, Tue Apr  8 09:27:26 PDT 2008
 //   Support for internationalization.
 //
-//   Cyrus Harrison, Tue Jun 24 08:39:21 PDT
-//   Initial Qt4 Port.
-//
 // ****************************************************************************
 
 void
 QvisInteractorWindow::CreateWindowContents()
 {
 
-    QGroupBox *zoomGroup = new QGroupBox(central);
+    QGroupBox *zoomGroup = new QGroupBox(central, "zoomGroup");
     zoomGroup->setTitle(tr("Zoom interaction:"));
     topLayout->addWidget(zoomGroup);
 
     QVBoxLayout *zoomVBoxLayout = new QVBoxLayout(zoomGroup);
+    zoomVBoxLayout->addSpacing(10);
 
-    QGridLayout *zoomGridLayout = new QGridLayout();
-    zoomVBoxLayout->addLayout(zoomGridLayout);
-    
-    showGuidelines = new QCheckBox(tr("Show Guidelines"), zoomGroup);
+    QGridLayout *zoomGridLayout = new QGridLayout(zoomVBoxLayout, 3, 2);
+    zoomVBoxLayout->setSpacing(5);
+    zoomGridLayout->setMargin(10);
+
+    showGuidelines = new QCheckBox(tr("Show Guidelines"), zoomGroup, "showGuidelines");
     connect(showGuidelines, SIGNAL(toggled(bool)),
             this, SLOT(showGuidelinesChanged(bool)));
     zoomGridLayout->addWidget(showGuidelines, 1,0);
 
-    clampSquare = new QCheckBox(tr("Clamp to Square"), zoomGroup);
+    clampSquare = new QCheckBox(tr("Clamp to Square"), zoomGroup, "clampSquare");
     connect(clampSquare, SIGNAL(toggled(bool)),
             this, SLOT(clampSquareChanged(bool)));
     zoomGridLayout->addWidget(clampSquare, 2,0);
 
-    fillViewportOnZoom = new QCheckBox(tr("Fill viewport on zoom"), zoomGroup);
+    fillViewportOnZoom = new QCheckBox(tr("Fill viewport on zoom"), zoomGroup, "fillViewportOnZoom");
     connect(fillViewportOnZoom, SIGNAL(toggled(bool)),
             this, SLOT(fillViewportOnZoomChanged(bool)));
     zoomGridLayout->addWidget(fillViewportOnZoom, 3,0);
 
-    QGroupBox *navigationGroup = new QGroupBox(central);
+    QGroupBox *navigationGroup = new QGroupBox(central, "navigationGroup");
     navigationGroup->setTitle(tr("Navigation mode:"));
     topLayout->addWidget(navigationGroup);
 
     QVBoxLayout *navigationVBoxLayout = new QVBoxLayout(navigationGroup);
+    navigationVBoxLayout->addSpacing(10);
 
-    QGridLayout *navigationLayout = new QGridLayout();
-    navigationVBoxLayout->addLayout(navigationLayout);
+    QGridLayout *navigationLayout = new QGridLayout(navigationVBoxLayout,
+                                                    1, 3);
+    navigationLayout->setSpacing(5);
+    navigationLayout->setMargin(10);
 
-    navigationMode = new QButtonGroup(navigationGroup);
-    connect(navigationMode, SIGNAL(buttonClicked(int)),
+    navigationMode = new QButtonGroup(0, "navigationMode");
+    connect(navigationMode, SIGNAL(clicked(int)),
             this, SLOT(navigationModeChanged(int)));
-    QRadioButton *trackball = new QRadioButton(tr("Trackball"), navigationGroup);
-    navigationMode->addButton(trackball,0);
+    QRadioButton *trackball = new QRadioButton(tr("Trackball"), navigationGroup,
+                                               "Trackball");
+    navigationMode->insert(trackball);
     navigationLayout->addWidget(trackball, 1, 1);
-    QRadioButton *dolly = new QRadioButton(tr("Dolly"), navigationGroup);
-    navigationMode->addButton(dolly,1);
+    QRadioButton *dolly = new QRadioButton(tr("Dolly"), navigationGroup,
+                                           "Dolly");
+    navigationMode->insert(dolly);
     navigationLayout->addWidget(dolly, 1, 2);
-    QRadioButton *flythrough = new QRadioButton(tr("Flythrough"), navigationGroup);
-    navigationMode->addButton(flythrough,2);
+    QRadioButton *flythrough = new QRadioButton(tr("Flythrough"), navigationGroup,
+                                                "Flythrough");
+    navigationMode->insert(flythrough);
     navigationLayout->addWidget(flythrough, 1, 3);
 
 
-    QGroupBox *axisGroup = new QGroupBox(central);
+    QGroupBox *axisGroup = new QGroupBox(central, "axisGroup");
     axisGroup->setTitle(tr("Axis Array interaction:"));
     topLayout->addWidget(axisGroup);
 
     QVBoxLayout *axisVBoxLayout = new QVBoxLayout(axisGroup);
+    axisVBoxLayout->addSpacing(10);
 
-    QGridLayout *axisGridLayout = new QGridLayout();
-    axisVBoxLayout->addLayout(axisGridLayout);
-    
-    axisSnap = new QCheckBox(tr("Snap to horizontal grid"),axisGroup);
+    QGridLayout *axisGridLayout = new QGridLayout(axisVBoxLayout, 1, 2);
+    axisVBoxLayout->setSpacing(5);
+    axisGridLayout->setMargin(10);
+
+    axisSnap = new QCheckBox(tr("Snap to horizontal grid"),
+                             axisGroup, "axisSnap");
     connect(axisSnap, SIGNAL(toggled(bool)),
             this, SLOT(axisSnapChanged(bool)));
     axisGridLayout->addWidget(axisSnap, 1,0);
@@ -234,9 +233,6 @@ QvisInteractorWindow::CreateWindowContents()
 //   Jeremy Meredith, Thu Feb  7 17:51:32 EST 2008
 //   Added snap-to-horizontal grid support for axis array mode navigation.
 //
-//   Cyrus Harrison, Tue Jun 24 08:39:21 PDT
-//   Initial Qt4 Port.
-//
 // ****************************************************************************
 
 void
@@ -265,11 +261,11 @@ QvisInteractorWindow::UpdateWindow(bool doAll)
             break;
           case InteractorAttributes::ID_navigationMode:
             if (atts->GetNavigationMode() == InteractorAttributes::Trackball)
-                navigationMode->button(0)->setChecked(true);
+                navigationMode->setButton(0);
             else if (atts->GetNavigationMode() == InteractorAttributes::Dolly)
-                navigationMode->button(1)->setChecked(true);
+                navigationMode->setButton(1);
             else
-                navigationMode->button(2)->setChecked(true);
+                navigationMode->setButton(2);
             break;
           case InteractorAttributes::ID_axisArraySnap:
             axisSnap->setChecked(atts->GetAxisArraySnap());

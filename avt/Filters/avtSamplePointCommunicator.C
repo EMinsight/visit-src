@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -70,10 +70,6 @@
 //
 //    Mark C. Miller, Mon Jan 22 22:09:01 PST 2007
 //    Changed MPI_COMM_WORLD to VISIT_MPI_COMM
-//
-//    Hank Childs, Tue Jan 13 14:27:39 PST 2009
-//    Initialize jittering.
-//
 // ****************************************************************************
 
 avtSamplePointCommunicator::avtSamplePointCommunicator()
@@ -85,7 +81,6 @@ avtSamplePointCommunicator::avtSamplePointCommunicator()
     numProcs = 1; myRank = 0;
 #endif
     imagePartition = NULL;
-    jittering = false;
 }
 
 
@@ -165,9 +160,6 @@ avtSamplePointCommunicator::SetImagePartition(avtImagePartition *ip)
 //    Hank Childs, Thu May 31 22:40:47 PDT 2007
 //    Do not tell the output how many variables there will be ... the base
 //    class now does that.
-//
-//    Hank Childs, Tue Jan 13 14:28:28 PST 2009
-//    Tell the output cell list whether or not it should jitter.
 //
 // ****************************************************************************
 
@@ -306,7 +298,6 @@ avtSamplePointCommunicator::Execute(void)
     // Extract the sample points from the new cells.
     //
     avtCellList *outcl = GetTypedOutput()->GetCellList();
-    outcl->SetJittering(jittering);
     outcl->Restrict(outMinWidth, outMaxWidth, outMinHeight, outMaxHeight);
     outcl->ExtractCells(in_cells_msgs, in_cells_count, numProcs, outvolume);
     UpdateProgress(currentStage++, nProgressStages);

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -75,14 +75,11 @@
 //    Brad Whitlock, Mon Feb 12 17:50:29 PST 2007
 //    Added ViewerBase base class.
 //
-//    Brad Whitlock, Fri May  9 14:37:00 PDT 2008
-//    Qt 4.
-//
 // ****************************************************************************
 
 ViewerOperator::ViewerOperator(const int type_, 
     ViewerOperatorPluginInfo *viewerPluginInfo_,
-    ViewerPlot *plot_, const bool fromDefault) : ViewerBase(0)
+    ViewerPlot *plot_, const bool fromDefault) : ViewerBase(0, "ViewerOperator")
 {
     type              = type_;
     viewerPluginInfo  = viewerPluginInfo_;

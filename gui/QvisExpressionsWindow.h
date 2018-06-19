@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -50,9 +50,9 @@ class QPushButton;
 class QCheckBox;
 class QGroupBox;
 class QLineEdit;
-class QTextEdit;
+class QMultiLineEdit;
 class QLabel;
-class QListWidget;
+class QListBox;
 class QComboBox;
 class QvisVariableButton;
 
@@ -78,9 +78,6 @@ class QvisVariableButton;
 //
 //    Brad Whitlock, Wed Apr  9 10:55:20 PDT 2008
 //    QString for caption, shortName.
-//
-//    Cyrus Harrison, Wed Jun 11 13:49:19 PDT 2008
-//    Initial Qt4 Port.
 //
 // ****************************************************************************
 
@@ -110,7 +107,7 @@ class GUI_API QvisExpressionsWindow : public QvisPostableWindowObserver
     void    typeChanged(int);
     void    notHiddenChanged();
     void    displayAllVarsChanged();
-    void    insertFunction(QAction *);
+    void    insertFunction(int);
     void    insertVariable(const QString &);
 
     void    UpdateWindowSingleItem();
@@ -118,7 +115,7 @@ class GUI_API QvisExpressionsWindow : public QvisPostableWindowObserver
 
   private:
     // Widgets and layouts.
-    QListWidget        *exprListBox;
+    QListBox           *exprListBox;
 
     QLabel             *nameEditLabel;
     QLabel             *definitionEditLabel;
@@ -127,20 +124,20 @@ class GUI_API QvisExpressionsWindow : public QvisPostableWindowObserver
     QLineEdit          *nameEdit;
     QComboBox          *typeList;
     QCheckBox          *notHidden;
-    QTextEdit          *definitionEdit;
+    QMultiLineEdit     *definitionEdit;
 
     QPushButton        *newButton;
     QPushButton        *delButton;
 
     QPushButton        *insertFunctionButton;
-    QMenu              *insertFunctionMenu;
+    QPopupMenu         *insertFunctionMenu;
     QvisVariableButton *insertVariableButton;
 
     QCheckBox          *displayAllVars;
 
     // State information
-    ExpressionList     *exprList;
-    std::map<int,int>  indexMap;
+    ExpressionList *exprList;
+    std::map<int,int> indexMap;
 };
 
 #endif

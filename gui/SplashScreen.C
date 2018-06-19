@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,17 +37,16 @@
 *****************************************************************************/
 
 #include <SplashScreen.h>
-#include <QApplication>
-#include <QFont>
-#include <QLabel>
-#include <QLayout>
-#include <QPushButton>
-#include <QDateTime>
-#include <QTimer>
-#include <QProgressBar>
-#include <QPainter>
-#include <QPixmap>
-#include <QDesktopWidget>
+#include <qapplication.h>
+#include <qfont.h>
+#include <qlabel.h>
+#include <qlayout.h>
+#include <qpushbutton.h>
+#include <qdatetime.h>
+#include <qtimer.h>
+#include <qprogressbar.h>
+#include <qpainter.h>
+#include <qpixmap.h>
 #include <visit-config.h>   // For version number, svn revision
 #include <Utility.h>
 
@@ -133,9 +132,6 @@
 //    Eric Brugger, Thu Apr 10 16:26:43 PDT 2008
 //    Changed the date on the splash screen.
 //
-//    Cyrus Harrison, Tue Jul  1 10:33:10 PDT 2008
-//    Initial Qt4 Port.
-//
 //    Eric Brugger, Fri Aug  8 13:01:47 PDT 2008
 //    Changed the date on the splash screen.
 //
@@ -145,25 +141,30 @@
 //    Eric Brugger, Mon Dec 29 15:08:57 PST 2008
 //    Changed the date on the splash screen.
 //
+//    Eric Brugger, Tue Mar 17 15:36:27 PDT 2009
+//    Changed the date on the splash screen.
+//
 // ****************************************************************************
 
-SplashScreen::SplashScreen(bool cyclePictures) 
-: QFrame(0, Qt::FramelessWindowHint)
-{
+SplashScreen::SplashScreen(bool cyclePictures, const char *name) :
+    QFrame(0, name,
+           WStyle_Customize | WStyle_NoBorderEx
 #ifdef Q_WS_MACX
-    setWindowModality(Qt::WindowModal);
-#endif    
-    
+           | WShowModal
+#endif
+          )
+{
     splashMode = true;
 
     // If the window manager is dumb enough to put decorations on this
     // window, at least put a reasonable title on it.
     QString caption(tr("VisIt %1 splash screen").arg(VERSION));
-    setWindowTitle(caption);
+    setCaption(caption);
 
     // Set up a box to put the picture in
     setFrameStyle(QFrame::Panel | QFrame::Raised);
     setLineWidth(4);
+    setMargin(10);
 
     topLayout = new QVBoxLayout(this);
     topLayout->setSpacing(5);
@@ -222,7 +223,7 @@ SplashScreen::SplashScreen(bool cyclePictures)
             font.setItalic(false);
             int x = 250;
             int y = pictures[i].height() - 8;
-            painter.setPen(Qt::black);
+            painter.setPen(black);
             painter.drawText(int(x / scale), int(y / scale), ver);
         }
     }
@@ -230,67 +231,46 @@ SplashScreen::SplashScreen(bool cyclePictures)
     // Set the picture on the window
     pictureLabel = new QLabel(this);
     pictureLabel->setPixmap(pictures[curPicture]);
-    topLayout->addWidget(pictureLabel, 0, Qt::AlignCenter);
+    pictureLabel->setBackgroundMode(NoBackground);
+    topLayout->addWidget(pictureLabel, 0, AlignCenter);
 
-    QHBoxLayout *lrLayout = new QHBoxLayout();
-    topLayout->addLayout(lrLayout);
-    
-    lLayout = new QVBoxLayout();
-    rLayout = new QVBoxLayout();
+    QHBoxLayout *lrLayout = new QHBoxLayout(topLayout);
+    lLayout = new QVBoxLayout(lrLayout);
+    rLayout = new QVBoxLayout(lrLayout);
     rLayout->addStretch(1);
-    
-    lrLayout->addLayout(lLayout);
-    lrLayout->addLayout(rLayout );
-    
 
-    QString C("(c) 2000-2008 LLNS. ");
+    QString C("(c) 2000-2010 LLNS. ");
     C += tr("All Rights Reserved");
     C += ".";
-    lLayout->addWidget(new QLabel(C, this));
+    lLayout->addWidget(new QLabel(C, this, "(C)"));
 
     QString versionText;
     versionText.sprintf("VisIt %s, ", VERSION);
     versionText += tr("svn revision");
     versionText += " ";
     versionText += SVN_REVISION;
-    // Create a lookup of month names so the internationalization
-    // files don't have to change.
-    QStringList months;
-    months << tr("January")
-           << tr("February")
-           << tr("March")
-           << tr("April")
-           << tr("May")
-           << tr("June")
-           << tr("July")
-           << tr("August")
-           << tr("September")
-           << tr("October")
-           << tr("November")
-           << tr("December");
-    int currentMonth = 1;
-    lLayout->addWidget(new QLabel(versionText, this));
-    lLayout->addWidget(new QLabel(months[currentMonth-1] + " 2009", this));
+    lLayout->addWidget(new QLabel(versionText, this, "versionText"));
+    lLayout->addWidget(new QLabel(tr("January 2010"), this, "dateCompiled"));
 
     copyrightButton = 0;
     contributorButton = 0;
     dismissButton = 0;
 
-    QFrame *splitter1 = new QFrame(this);
+    QFrame *splitter1 = new QFrame(this, "splitter1");
     splitter1->setFrameStyle(QFrame::HLine + QFrame::Raised);
     topLayout->addWidget(splitter1);
 
     // Put in a label for text
     text = new QLabel(this);
     text->setText(tr("Starting VisIt..."));
-    topLayout->addWidget(text, 0, Qt::AlignLeft);
+    topLayout->addWidget(text, 0, AlignLeft);
     topLayout->addSpacing(5);
 
     // Add a progress bar
     progress = new QProgressBar(this);
-    progress->setValue(0);
+    progress->setProgress(0);
     progress->setMinimumWidth(pictures[curPicture].width());
-    topLayout->addWidget(progress, 0, Qt::AlignLeft);
+    topLayout->addWidget(progress, 0, AlignLeft);
     topLayout->addSpacing(5);
 }
 
@@ -324,9 +304,6 @@ SplashScreen::~SplashScreen()
 //   Brad Whitlock, Tue Apr  8 16:29:55 PDT 2008
 //   Support for internationalization.
 //   
-//   Cyrus Harrison, Tue Jul  1 10:33:10 PDT 2008
-//   Initial Qt4 Port.
-//
 // ****************************************************************************
 
 void
@@ -335,7 +312,7 @@ SplashScreen::CreateAboutButtons()
     // Add a copyright button
     if(copyrightButton == 0)
     {
-        copyrightButton = new QPushButton(tr("Copyright..."));
+        copyrightButton = new QPushButton(tr("Copyright..."), this, "copyrightButton");
         connect(copyrightButton, SIGNAL(clicked()),
                 this, SLOT(emitShowCopyright()));
         rLayout->addWidget(copyrightButton, Qt::AlignRight);
@@ -344,7 +321,7 @@ SplashScreen::CreateAboutButtons()
     // Add a contributor button.
     if(contributorButton == 0)
     {
-        contributorButton = new QPushButton(tr("Contributors..."));
+        contributorButton = new QPushButton(tr("Contributors..."), this, "contributorButton");
         connect(contributorButton, SIGNAL(clicked()),
                 this, SLOT(emitShowContributors()));
         rLayout->addWidget(contributorButton, Qt::AlignRight);
@@ -354,10 +331,10 @@ SplashScreen::CreateAboutButtons()
     // Add a dismiss button
     if(dismissButton == 0)
     {
-        dismissButton = new QPushButton(tr("Dismiss"));
+        dismissButton = new QPushButton(tr("Dismiss"), this, "dismissButton");
         connect(dismissButton, SIGNAL(clicked()),
                 this, SLOT(hide()));
-        topLayout->addWidget(dismissButton, 0, Qt::AlignCenter);
+        topLayout->addWidget(dismissButton, 0, AlignCenter);
         topLayout->addSpacing(5);
     }
 }
@@ -429,16 +406,13 @@ SplashScreen::hide()
 //   Brad Whitlock, Wed Apr  9 10:26:34 PDT 2008
 //   Use QString instead of const char *.
 //
-//   Cyrus Harrison, Tue Jul  1 10:33:10 PDT 2008
-//   Initial Qt4 Port.
-//
 // ****************************************************************************
 
 void
 SplashScreen::Progress(const QString &msg, int percent)
 {
     text->setText(msg);
-    progress->setValue(percent);
+    progress->setProgress(percent);
 }
 
 // ****************************************************************************

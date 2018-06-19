@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -82,6 +82,10 @@
 // approach has more difficulty. So, we take the former approach and treat
 // the word "point" in vtkDataSet's interface as "boundary" in vtkCSGGrid's
 // interface.
+//
+// Modifications:
+//    Mark C. Miller, Tue Feb 17 17:54:34 PST 2009
+//    Added operator==
 
 // .SECTION See Also
 // vtkImplicitFunction, vtkQuadric, vtkUnstructuredGrid, vtkDataSet
@@ -282,13 +286,9 @@ public:
   void AddRegions(int nregions, const int *const lids, const int *const rids,
                   const int *const typeflags,
                   int lxforms, const double *const xforms);
-#if 0
-  void AddRegions(int nregions, const int *const lids, const int *const rids,
-                  const int *const typeflags,
-                  int lxforms, const float *const xforms);
-#endif
-
   void AddZones(int nzones, const int *const zoneIds);
+
+  bool operator==(const vtkCSGGrid &) const;
 
 protected:
   vtkCSGGrid();

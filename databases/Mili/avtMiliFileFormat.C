@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -147,6 +147,10 @@ avtMiliFileFormat::IssueWarning(const char *msg, int key)
 //
 //    Mark C. Miller, Mon Jul 18 13:41:13 PDT 2005
 //    Added initialization of structures having to do with free nodes mesh
+//
+//    Kathleen Bonnell, Wed Aug 5 17:44:22 PDT 2009 
+//    Test for windows-style slashes when scanning filename.
+//     
 // ****************************************************************************
 
 avtMiliFileFormat::avtMiliFileFormat(const char *fname)
@@ -249,13 +253,13 @@ avtMiliFileFormat::avtMiliFileFormat(const char *fname)
     for ( p_c = fname ; *p_c != '\0'; p_c++ );
  
     /* Scan backward to last non-slash character. */
-    for ( p_c--; *p_c == '/' && p_c != fname; p_c-- );
+    for ( p_c--; (*p_c == '/' || *p_c == '\\') && p_c != fname; p_c-- );
     p_root_end = p_c;
  
     /* Scan backward to last slash character preceding last non-slash char. */
-    for ( ; *p_c != '/' && p_c != fname; p_c-- );
+    for ( ; (*p_c != '/' && *p_c != '\\') && p_c != fname; p_c-- );
  
-    p_root_start = ( *p_c == '/' ) ? p_c + 1 : p_c;
+    p_root_start = ( *p_c == '/' || *p_c == '\\' ) ? p_c + 1 : p_c;
  
     /* Generate the path argument to mc_open(). */
     if ( p_root_start == fname )
@@ -861,13 +865,17 @@ avtMiliFileFormat::GetMesh(int ts, int dom, const char *mesh)
 //    Mark C. Miller, Wed Nov 15 01:46:16 PST 2006
 //    Changed names of free_node variables from 'xxx_free_nodes' to
 //    'free_nodes/xxx' to put them in a submenu in GUI.
+//
+//    Kathleen Bonnell, Thur Mar 26 08:14:54 MST 2009
+//    Made 'p' const for compiling on windows.
+// 
 // ****************************************************************************
 
 int
 avtMiliFileFormat::GetVariableIndex(const char *varname)
 {
     string tmpname = varname;
-    char *p = strstr(varname, free_nodes_str);
+    const char *p = strstr(varname, free_nodes_str);
 
     if (p)
         tmpname = string(varname, free_nodes_strlen+1,
@@ -902,13 +910,17 @@ avtMiliFileFormat::GetVariableIndex(const char *varname)
 //    Mark C. Miller, Wed Nov 15 01:46:16 PST 2006
 //    Changed names of free_node variables from 'xxx_free_nodes' to
 //    'free_nodes/xxx' to put them in a submenu in GUI.
+//
+//    Kathleen Bonnell, Thur Mar 26 08:14:54 MST 2009
+//    Made 'p' const for compiling on windows.
+// 
 // ****************************************************************************
 
 int
 avtMiliFileFormat::GetVariableIndex(const char *varname, int mesh_id)
 {
     string tmpname = varname;
-    char *p = strstr(varname, free_nodes_str);
+    const char *p = strstr(varname, free_nodes_str);
 
     if (p)
         tmpname = string(varname, free_nodes_strlen+1,

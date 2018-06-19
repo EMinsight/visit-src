@@ -2,9 +2,9 @@
 #define QVIS_SESSION_SOURCE_CHANGER_H
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,11 +37,11 @@
 * DAMAGE.
 *
 *****************************************************************************/
-#include <QWidget>
+#include <qframe.h>
 #include <vectortypes.h>
 #include <map>
 
-class QListWidget;
+class QListBox;
 class QvisDialogLineEdit;
 
 // ****************************************************************************
@@ -59,16 +59,14 @@ class QvisDialogLineEdit;
 // Creation:   Mon Nov 13 10:57:19 PDT 2006
 //
 // Modifications:
-//   Cyrus Harrison, Tue Jul  1 09:14:16 PDT 2008
-//   Initial Qt4 Port.
-//
+//   
 // ****************************************************************************
 
-class QvisSessionSourceChanger : public QWidget
+class QvisSessionSourceChanger : public QFrame
 {
     Q_OBJECT
 public:
-    QvisSessionSourceChanger(QWidget *parent);
+    QvisSessionSourceChanger(QWidget *parent, const char *name=0);
     virtual ~QvisSessionSourceChanger();
 
     void setSources(const stringVector &keys, const stringVector &values,
@@ -82,9 +80,9 @@ private slots:
 private:
     void updateControls(int ci);
 
-    QListWidget        *sourceList;
+    QListBox           *sourceList;
     QvisDialogLineEdit *fileLineEdit;
-    QListWidget        *useList;
+    QListBox           *useList;
 
     stringVector sourceIds;
     stringVector sources;

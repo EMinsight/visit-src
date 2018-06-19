@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -49,12 +49,11 @@
 // Creation:   Thu Dec 9 16:35:42 PST 2004
 //
 // Modifications:
-//   Brad Whitlock, Fri May  9 13:31:33 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
-QvisVariableButtonHelper::QvisVariableButtonHelper(QObject *parent) : QObject(parent)
+QvisVariableButtonHelper::QvisVariableButtonHelper(QObject *parent,
+    const char *name) : QObject(parent, name)
 {
     btn = 0;
 }

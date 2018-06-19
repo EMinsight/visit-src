@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -91,9 +91,6 @@
 //    on the object we are constructing here before all state variables have
 //    been initialized.
 //
-//    Hank Childs, Fri Jan 23 15:39:46 PST 2009
-//    Initialize minmaxVisibility.
-//
 // ****************************************************************************
 
 avtVariableLegend::avtVariableLegend()
@@ -116,7 +113,6 @@ avtVariableLegend::avtVariableLegend()
     rangeVisibility = 1;
     titleVisibility = true;
     labelVisibility = true;
-    minmaxVisibility = true;
 
     //
     // Set the legend to also point to sBar, so the base methods will work
@@ -169,9 +165,6 @@ avtVariableLegend::avtVariableLegend()
 //    Brad Whitlock, Wed Mar 21 23:55:51 PST 2007
 //    Initialize scale and other members.
 //
-//    Hank Childs, Fri Jan 23 15:40:11 PST 2009
-//    Initialize minmaxVisibility.
-//
 // ****************************************************************************
 
 avtVariableLegend::avtVariableLegend(int)
@@ -187,7 +180,6 @@ avtVariableLegend::avtVariableLegend(int)
     barVisibility = 1;
     rangeVisibility = 1;
     labelVisibility = true;
-    minmaxVisibility = true;
     titleVisibility = true;
 }
 
@@ -247,9 +239,6 @@ avtVariableLegend::~avtVariableLegend()
 //    Dave Bremer, Wed Oct  8 11:36:27 PDT 2008
 //    Adjust computed size based on orientation.
 //
-//    Hank Childs, Fri Jan 23 15:56:30 PST 2009
-//    Add support for user setting min/max visibility.
-//
 // ****************************************************************************
 
 void
@@ -281,7 +270,7 @@ avtVariableLegend::GetLegendSize(double, double &w, double &h)
         if (varName != NULL)      nLines += 1.0;
         if (varUnits != NULL)     nLines += 1.0;
         if (message != NULL)      nLines += 1.0;
-        if (rangeVisibility && minmaxVisibility)      nLines += 2.5;
+        if (rangeVisibility)      nLines += 2.5;
 
         h = nLines * fontHeight * scale[1];
     }
@@ -379,50 +368,6 @@ avtVariableLegend::GetLabelVisibility() const
 }
 
 // ****************************************************************************
-// Method: avtVariableLegend::SetMinMaxVisibility
-//
-// Purpose: 
-//   Sets whether the min/max is visible.
-//
-// Arguments:
-//   val : True if min/max is to be visible.
-//
-// Programmer: Hank Childs
-// Creation:   January 23, 2009
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-void
-avtVariableLegend::SetMinMaxVisibility(bool val)
-{
-    minmaxVisibility = val;
-    sBar->SetRangeVisibility(minmaxVisibility && rangeVisibility);
-}
-
-// ****************************************************************************
-// Method: avtVariableLegend::GetMinMaxVisibility
-//
-// Purpose: 
-//   Returns whether min/max is visible.
-//
-// Returns:    Whether min/max is visible.
-//
-// Programmer: Hank Childs
-// Creation:   January 23, 2009
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-bool
-avtVariableLegend::GetMinMaxVisibility() const
-{
-    return minmaxVisibility;
-}
-
-// ****************************************************************************
 // Method: avtVariableLegend::SetNumberFormat
 //
 // Purpose: 
@@ -436,9 +381,6 @@ avtVariableLegend::GetMinMaxVisibility() const
 //
 // Modifications:
 //   
-//    Hank Childs, Fri Jan 23 16:25:24 PST 2009
-//    Re-enable usage of number format for range string.
-//
 // ****************************************************************************
 
 void
@@ -447,10 +389,14 @@ avtVariableLegend::SetNumberFormat(const char *fmt)
     // Set the label format.
     sBar->SetLabelFormat(fmt);
 
+//
+// Note: Code in the vertical scalar bar actor prevents this format string
+//       from being used at present.
+//
     // Use the format in the min/max range label.
     char rangeFormat[200];
     SNPRINTF(rangeFormat, 200, "Max: %s\nMin: %s", fmt, fmt);
-    sBar->SetRangeFormat(rangeFormat);
+    //sBar->SetRangeFormat(rangeFormat);
 }
 
 // ****************************************************************************
@@ -772,18 +718,13 @@ avtVariableLegend::SetLookupTable(vtkLookupTable *LUT)
 //  Programmer: Eric Brugger
 //  Creation:   July 15, 2003
 //
-//  Modifications:
-//
-//    Hank Childs, Fri Jan 23 15:53:59 PST 2009
-//    Incorporate user request through minmax visibility.
-//
 // ****************************************************************************
 
 void
 avtVariableLegend::SetVarRangeVisibility(const int val )
 {
     rangeVisibility = val;
-    sBar->SetRangeVisibility(rangeVisibility && minmaxVisibility);
+    sBar->SetRangeVisibility(val);
 }
 
 

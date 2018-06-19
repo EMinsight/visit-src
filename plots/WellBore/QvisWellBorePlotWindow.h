@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -49,8 +49,8 @@ class QComboBox;
 class QGroupBox;
 class QLabel;
 class QLineEdit;
-class QListWidget;
-class QTextEdit;
+class QListBox;
+class QMultiLineEdit;
 class QvisColorButton;
 class QvisColorManagerWidget;
 class QvisColorTableButton;
@@ -132,13 +132,13 @@ class QvisWellBorePlotWindow : public QvisPostableWindowObserver
 
     QPushButton            *readWellBoresButton;
     QPushButton            *writeWellBoresButton;
-    QListWidget               *wellListBox;
+    QListBox               *wellListBox;
     QPushButton            *newWellButton;
     QPushButton            *deleteWellButton;
     QLabel                 *wellNameLabel;
     QLineEdit              *wellName;
     QLabel                 *wellDefinitionLabel;
-    QTextEdit              *wellDefinition;
+    QMultiLineEdit         *wellDefinition;
     QGroupBox              *wellColorGroup;
     QButtonGroup           *colorModeButtons;
     QvisColorButton        *singleColor;

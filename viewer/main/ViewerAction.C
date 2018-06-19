@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,10 +37,10 @@
 *****************************************************************************/
 
 #include <ViewerAction.h>
-#include <QAction>
-#include <QIcon>
-#include <QMenu>
-#include <QToolBar>
+#include <qaction.h>
+#include <qiconset.h>
+#include <qpopupmenu.h>
+#include <qtoolbar.h>
 
 // ****************************************************************************
 // Method: ViewerAction::ViewerAction
@@ -56,19 +56,20 @@
 // Creation:   Wed Feb 5 17:02:55 PST 2003
 //
 // Modifications:
-//   Brad Whitlock, Thu May 22 14:57:42 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
-ViewerAction::ViewerAction(ViewerWindow *win) : 
-    ViewerActionBase(win)
+ViewerAction::ViewerAction(ViewerWindow *win, const char *name) : 
+    ViewerActionBase(win, name)
 {
     // Create a new QAction and make it call our Activate method when
     // it is activated.
-    action = new QAction(0);
-    connect(action, SIGNAL(triggered()),
+    QString n; n.sprintf("%s_action", name);
+    action = new QAction(0, name);
+    connect(action, SIGNAL(activated()),
             this, SLOT(Activate()));
+    connect(action, SIGNAL(toggled(bool)),
+            this, SLOT(HandleToggle(bool)));
 }
 
 // ****************************************************************************
@@ -120,9 +121,7 @@ ViewerAction::Setup()
 // Creation:   Wed Feb 5 17:03:29 PST 2003
 //
 // Modifications:
-//   Brad Whitlock, Thu May 22 15:02:25 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
   
 void
@@ -134,13 +133,13 @@ ViewerAction::Update()
         action->setEnabled(actionShouldBeEnabled);
 
     // Update the action's toggled state if it is a toggle action.
-    if(action->isCheckable())
+    if(action->isToggleAction())
     {
-        bool actionShouldBeChecked = Checked();
-        if(action->isChecked() != actionShouldBeChecked)
+        bool actionShouldBeToggled = Toggled();
+        if(action->isOn() != actionShouldBeToggled)
         {
             action->blockSignals(true);
-            action->setChecked(actionShouldBeChecked);
+            action->setOn(actionShouldBeToggled);
             action->blockSignals(false);
         }
     }
@@ -163,7 +162,7 @@ ViewerAction::SetText(const QString &text)
 void
 ViewerAction::SetMenuText(const QString &text)
 {
-    action->setText(text);
+    action->setMenuText(text);
 }
 
 void
@@ -173,15 +172,15 @@ ViewerAction::SetToolTip(const QString &text)
 }
 
 void
-ViewerAction::SetIcon(const QIcon &icon)
+ViewerAction::SetIconSet(const QIconSet &icons)
 {
-    action->setIcon(icon);
+    action->setIconSet(icons);
 }
 
 void
 ViewerAction::SetToggleAction(bool val)
 {
-    action->setCheckable(val);
+    action->setToggleAction(val);
 }
 
 // ****************************************************************************
@@ -197,16 +196,14 @@ ViewerAction::SetToggleAction(bool val)
 // Creation:   Wed Feb 5 17:03:29 PST 2003
 //
 // Modifications:
-//   Brad Whitlock, Fri May 23 10:24:05 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
-ViewerAction::ConstructMenu(QMenu *menu)
+ViewerAction::ConstructMenu(QPopupMenu *menu)
 {
     // simplest case
-    menu->addAction(action);
+    action->addTo(menu);
 }
 
 // ****************************************************************************
@@ -222,16 +219,14 @@ ViewerAction::ConstructMenu(QMenu *menu)
 // Creation:   Tue Feb 25 10:04:41 PDT 2003
 //
 // Modifications:
-//   Brad Whitlock, Fri May 23 10:24:05 PDT 2008
-//   Qt 4.
 //   
 // ****************************************************************************
 
 void
-ViewerAction::RemoveFromMenu(QMenu *menu)
+ViewerAction::RemoveFromMenu(QPopupMenu *menu)
 {
     // simplest case
-    menu->removeAction(action);
+    action->removeFrom(menu);
 }
 
 // ****************************************************************************
@@ -251,17 +246,14 @@ ViewerAction::RemoveFromMenu(QMenu *menu)
 //   I added code to prevent actions that have no icons from being added
 //   to the toolbar.
 //
-//   Brad Whitlock, Thu May 22 15:00:39 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
 ViewerAction::ConstructToolbar(QToolBar *toolbar)
 {
     // simplest case
-    if(!action->icon().isNull())
-        toolbar->addAction(action);
+    if(!action->iconSet().pixmap().isNull())
+        action->addTo(toolbar);
 }
 
 // ****************************************************************************
@@ -281,15 +273,30 @@ ViewerAction::ConstructToolbar(QToolBar *toolbar)
 //   I added code to prevent actions that have no icons from being added
 //   to the toolbar.
 //
-//   Brad Whitlock, Thu May 22 15:00:27 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
 ViewerAction::RemoveFromToolbar(QToolBar *toolbar)
 {
     // simplest case
-    if(!action->icon().isNull())
-        toolbar->removeAction(action);
+    if(!action->iconSet().pixmap().isNull())
+        action->removeFrom(toolbar);
+}
+
+// ****************************************************************************
+// Method: ViewerAction::HandleToggle
+//
+// Purpose: 
+//   Called when the button is toggled.
+//
+// Programmer: Brad Whitlock
+// Creation:   Wed Feb 5 17:03:29 PST 2003
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+ViewerAction::HandleToggle(bool)
+{
 }

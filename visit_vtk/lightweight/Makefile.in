@@ -1,4 +1,4 @@
-#                         Copyright (c) 2000 - 2008
+#                         Copyright (c) 2000 - 2009
 #                  Lawrence Livermore National Security, LLC
 #            Produced at the Lawrence Livermore National Laboratory
 #                              LLNL-CODE-400124
@@ -61,6 +61,9 @@
 #    Thomas R. Treadway, Fri Jul 27 15:06:53 PDT 2007
 #    Added Mesa libraries to link.
 #
+#    Gunther H. Weber, Fri Apr  3 17:24:22 PDT 2009
+#    Added vtkVisItCellLocator from "full".
+#
 ##############################################################################
 
 ##
@@ -91,6 +94,7 @@ SRC=InitVTKNoGraphics.C \
     vtkTriangulationTables.C \
     vtkUnstructuredGridBoundaryFilter.C \
     vtkUnstructuredGridFacelistFilter.C \
+    vtkVisItCellLocator.C \
     vtkVisItPointLocator.C \
     vtkVisItUtility.C 
 

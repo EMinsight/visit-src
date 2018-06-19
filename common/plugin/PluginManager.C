@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -41,17 +41,20 @@
 // ************************************************************************* //
 
 #include <PluginManager.h>
+#include <visit-config.h>
+
+#include <algorithm>
+#include <cstdlib>
+#include <string>
+#include <map>
+#include <vector>
+
 #include <DebugStream.h>
 #include <InvalidDirectoryException.h>
 #include <InvalidPluginException.h>
 #include <Utility.h>
-#include <visit-config.h>
+#include <PluginBroadcaster.h>
 #include <visitstream.h>
-#include <stdlib.h>
-#include <string>
-#include <vector>
-#include <map>
-#include <algorithm>
 
 #if __APPLE__
 #include <AvailabilityMacros.h>
@@ -599,6 +602,12 @@ PluginManager::GetPluginList(vector<pair<string,string> > &libs)
 //    Kathleen Bonnell, Wed May 21 08:12:16 PDT 2008 
 //    Fix libs indexing when searching for match.
 //
+//    Brad Whitlock, Thu Apr 23 11:55:41 PDT 2009
+//    Ignore any SimV plugin if we're not in the engine and not a simulation.
+//
+//    Eric Brugger, Wed Sep  2 08:06:13 PDT 2009
+//    I corrected a typo in a debug log message.
+//
 // ****************************************************************************
 
 void
@@ -632,7 +641,15 @@ PluginManager::ReadPluginInfo()
           case Scripting: str = string("libS") + filename.substr(4); break;
           case Viewer:    str = string("libV") + filename.substr(4); break;
           case MDServer:  str = string("libM") + filename.substr(4); break;
-          case Engine:    str = string("libE") +
+          case Engine:    if(filename.substr(0,8) == "libISimV")
+                          {
+                              debug1 << "Skipping plugin " << filename
+                                     << " because it is a simulation plugin."
+                                     << endl;
+                              continue;
+                          }
+                          // Fall through to Simulation
+          case Simulation:str = string("libE") +
                           filename.substr(4, filename.length() - 4 - ext.size())
                           + (parallel ? string("_par") : string("_ser"))
                           + ext;
@@ -694,7 +711,7 @@ PluginManager::ReadPluginInfo()
         }
     }
 
-    debug1 << "Succesfully loaded info about " 
+    debug1 << "Successfully loaded info about " 
            << ids.size() << " " << managerName.c_str() << " plugins.\n";
 
     if (pluginsWithWrongVersion.size() != 0)
@@ -759,6 +776,94 @@ PluginManager::ReadPluginInfo()
          debug1 << "Going to print the following message to the user: " << endl;
          debug1 << pluginInitErrors;
     }
+}
+
+// ****************************************************************************
+// Method: PluginManager::BroadcastGeneralInfo
+//
+// Purpose: 
+//   This method broadcasts the general libI information to other processors
+//   using a PluginBroadcaster object.
+//
+// Arguments:
+//   broadcaster : The broadcaster to use.
+//
+// Programmer: Brad Whitlock
+// Creation:   Thu Jun 18 11:22:52 PDT 2009
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+PluginManager::BroadcastGeneralInfo(PluginBroadcaster *broadcaster)
+{
+    broadcaster->BroadcastStringVector(ids);
+    broadcaster->BroadcastStringVector(names);
+    broadcaster->BroadcastStringVector(versions);
+    broadcaster->BroadcastStringVector(libfiles);
+    broadcaster->BroadcastBoolVector(enabled);
+}
+
+// ****************************************************************************
+// Method: PluginManager::ObtainPluginInfo
+//
+// Purpose: 
+//   This method gets the plugin info by calling ReadPluginInfo or from the
+//   rpiCallback function.
+//
+// Arguments:
+//   readInfo    : Whether to read the plugin info directly.
+//   broadcaster : The broadcaster to use for sending plugin info to other procs.
+//
+// Returns:    
+//
+// Note:       In most cases, ReadPluginInfo will be called. However, in parallel
+//             we can install a callback function lets us share the plugin info
+//             read by processor 0 with the other processors via broadcasts.
+//
+// Programmer: Brad Whitlock
+// Creation:   Wed Jun 17 10:15:11 PDT 2009
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+PluginManager::ObtainPluginInfo(bool readInfo, PluginBroadcaster *broadcaster)
+{
+    if(readInfo || broadcaster == 0)
+        ReadPluginInfo();
+
+    if(broadcaster != 0)
+    {
+        BroadcastGeneralInfo(broadcaster);
+
+        // If we used the broadcaster to populate ids, names, etc. then that would
+        // not have set up the appropriate items in allindexmap. Do that now.
+        if(allindexmap.size() == 0)
+        {
+            for(size_t i = 0; i < ids.size(); ++i)
+                allindexmap[ids[i]] = i;
+        }
+
+        debug5 << "Shared information about " << ids.size() << " " << managerName
+               << " plugins." << endl;
+    }
+
+#if 0
+    // Keep this for debugging
+    for(size_t i = 0; i < ids.size(); ++i)
+    {
+        debug1 << "plugin " << i << ":\n";
+        debug1 << "\tid      = " << ids[i] << endl;
+        debug1 << "\tname    = " << names[i] << endl;
+        debug1 << "\tversion = " << versions[i] << endl;
+        debug1 << "\tlibfile = " << libfiles[i] << endl;
+        debug1 << "\tenabled = " << (enabled[i] ? "true" : "false") << endl;
+        debug1 << "\tallindexmap[id] = " << allindexmap[ids[i]] << endl;
+    }
+#endif
 }
 
 // ****************************************************************************
@@ -851,6 +956,12 @@ PluginManager::LoadSinglePluginNow(const std::string& id)
 //    Mark C. Miller, Mon Aug  6 13:36:16 PDT 2007
 //    Changed return value to bool to indicate if it actually loaded
 //    the plugin.
+//
+//    Brad Whitlock, Thu Apr 23 11:56:46 PDT 2009
+//    Added Simulation case.
+//
+//    Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//    Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 
 bool
@@ -877,7 +988,7 @@ PluginManager::LoadSinglePlugin(int index)
     {
         PluginOpen(libfiles[index]);
     }
-    CATCHALL(...)
+    CATCHALL
     {
         if (category==GUI || category==Viewer)
         {
@@ -914,6 +1025,9 @@ PluginManager::LoadSinglePlugin(int index)
         LoadMDServerPluginInfo();
         break;
       case Engine:
+        LoadEnginePluginInfo();
+        break;
+      case Simulation:
         LoadEnginePluginInfo();
         break;
       case Scripting:
@@ -1138,6 +1252,32 @@ PluginManager::GetPluginInitializationErrors()
 ///////////////////////////////////////////////////////////////////////////////
 
 // ****************************************************************************
+// Method: AddUniquePluginDir
+//
+// Purpose: 
+//   Adds a plugin directory to the pluginDirs vector if it has not been added
+//   yet. This prevents a plugin directory from being added more than once
+//   as can happen when the user provides a redundant -plugindir command line
+//   option.
+//
+// Arguments:
+//   path : The path to add.
+//
+// Programmer: Brad Whitlock
+// Creation:   Wed Jun 17 16:26:31 PDT 2009
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+AddUniquePluginDir(stringVector &pluginDirs, const std::string &path)
+{
+    if(std::find(pluginDirs.begin(), pluginDirs.end(), path) == pluginDirs.end())
+        pluginDirs.push_back(path);
+}
+
+// ****************************************************************************
 // Method: PluginManager::SetPluginDir
 //
 // Purpose: 
@@ -1167,6 +1307,9 @@ PluginManager::GetPluginInitializationErrors()
 //    Modified path-parsing for Windows.  ';' is the only valid separator
 //    between paths since ':' could indicate a drive.
 //
+//    Brad Whitlock, Wed Jun 17 16:28:14 PDT 2009
+//    I made it use AddUniquePluginDir so we don't add a path multiple times.
+//
 // ****************************************************************************
 
 void
@@ -1191,8 +1334,8 @@ PluginManager::SetPluginDir(const char *PluginDir)
                 {
                     PathAppend(tmp, "LLNL");
                     PathAppend(tmp, "VisIt");
-                    pluginDirs.push_back(string(tmp) + SLASH_STRING + 
-                                         managerName + "s");
+                    AddUniquePluginDir(pluginDirs, string(tmp) + SLASH_STRING + 
+                                       managerName + "s");
                     delete [] tmp;
                     return;
                 }
@@ -1237,7 +1380,7 @@ PluginManager::SetPluginDir(const char *PluginDir)
         }
         if (!dir.empty())
         {
-           pluginDirs.push_back(string(dir) + SLASH_STRING + managerName + "s");
+            AddUniquePluginDir(pluginDirs, string(dir) + SLASH_STRING + managerName + "s");
         }
         dir = "";
         if (*c)

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -353,6 +353,9 @@ avtFilledBoundaryFilter::UpdateDataObjectInfo(void)
 //    size var secondary variable needs to be added to the pipeline, and
 //    whether or not we need to keep Node and Zone numbers around. 
 //
+//    Kathleen Bonnell, Tue Jul 14 13:42:37 PDT 2009
+//    Added test for MayRequireNodes for turning Node numbers on.
+//
 // ****************************************************************************
 
 avtContract_p
@@ -389,7 +392,8 @@ avtFilledBoundaryFilter::ModifyContract(avtContract_p spec)
         }
 
         avtDataAttributes &data = GetInput()->GetInfo().GetAttributes();
-        if (spec->GetDataRequest()->MayRequireZones())
+        if (spec->GetDataRequest()->MayRequireZones() ||
+            spec->GetDataRequest()->MayRequireNodes())
         {
             keepNodeZone = true;
             spec->GetDataRequest()->TurnNodeNumbersOn();

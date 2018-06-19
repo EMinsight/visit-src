@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,7 +37,7 @@
 *****************************************************************************/
 #ifndef XMLEDIT_CODEGENERATOR_WINDOW_H
 #define XMLEDIT_CODEGENERATOR_WINDOW_H
-#include <QMainWindow>
+#include <qmainwindow.h>
 #include <XMLToolIds.h>
 class QProcess;
 class QTextEdit;
@@ -55,9 +55,7 @@ class QTextEdit;
 // Creation:   Fri Mar 7 16:27:04 PST 2008
 //
 // Modifications:
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
+//   
 // ****************************************************************************
 
 class XMLEditCodeGeneratorWindow : public QMainWindow
@@ -65,7 +63,7 @@ class XMLEditCodeGeneratorWindow : public QMainWindow
     Q_OBJECT
 public:
 
-    XMLEditCodeGeneratorWindow(QWidget *parent);
+    XMLEditCodeGeneratorWindow(QWidget *parent, const char *name);
     virtual ~XMLEditCodeGeneratorWindow();
 
     void GenerateCode(const QString &, const bool tools[ID_XML_MAX]);

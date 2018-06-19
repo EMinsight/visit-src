@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -46,8 +46,6 @@
 #include <Expression.h>
 #include <ExpressionList.h>
 #include <ParsingExprList.h>
-
-#include <vtkSkew.h>
 
 #include <avtCommonDataFunctions.h>
 #include <avtCompositeRF.h>
@@ -247,7 +245,27 @@ avtVolumeFilter::Execute(void)
 //    Hank Childs, Mon Jan 26 11:44:40 PST 2009
 //    Make sure the min and max for log and skew are set right.
 //
+//    Hank Childs, Wed Aug 19 18:24:46 PDT 2009
+//    Lighting queues should be taken from the gradient of the opacity var,
+//    not the color var.
+//
 // ****************************************************************************
+
+
+template <class T>
+inline T
+vtkSkewValue(T val, T min, T max, T factor)
+{ 
+    if (factor <= 0 || factor == 1. || min == max) 
+        return val;
+
+    T range = max - min; 
+    T k = range / (factor - 1.); 
+    T t = (val - min) / range;
+    T rv =  k * ((T)exp(t * (T)log(factor)) -1.) + min;
+    return rv;
+}
+
 
 avtImage_p
 avtVolumeFilter::RenderImage(avtImage_p opaque_image,
@@ -350,7 +368,10 @@ avtVolumeFilter::RenderImage(avtImage_p opaque_image,
     int gradIndex = -1;
     int count = 0;
     char gradName[128];
-    SNPRINTF(gradName, 128, "_%s_gradient", primaryVariable);
+    const char *gradvar = atts.GetOpacityVariable().c_str();
+    if (strcmp(gradvar, "default") == 0)
+        gradvar = primaryVariable;
+    SNPRINTF(gradName, 128, "_%s_gradient", gradvar);
     
     for (int i = 0 ; i < vl.nvars ; i++)
     {
@@ -699,8 +720,9 @@ CreateViewInfoFromViewAttributes(avtViewInfo &vi, const View3DAttributes &view)
 //    Sean Ahern, Wed Sep 10 13:04:41 EDT 2008
 //    Refined the recenter so that it always asks for nodal centering.
 //
-//    Hank Childs, Fri Jan  9 17:01:39 PST 2009
-//    Use the fast gradient as we don't care as much about accuracy.
+//    Hank Childs, Wed Aug 19 18:24:46 PDT 2009
+//    Lighting queues should be taken from the gradient of the opacity var,
+//    not the color var.
 //
 // ****************************************************************************
 
@@ -781,16 +803,19 @@ avtVolumeFilter::ModifyContract(avtContract_p contract)
     if (atts.GetLightingFlag())
     {
         char exprName[128];
-        SNPRINTF(exprName, 128, "_%s_gradient", primaryVariable);
+        const char *gradvar = atts.GetOpacityVariable().c_str();
+        if (strcmp(gradvar, "default") == 0)
+            gradvar = primaryVariable;
+
+        SNPRINTF(exprName, 128, "_%s_gradient", gradvar);
         char exprDef[512];
         if (atts.GetSmoothData())
         {
-            SNPRINTF(exprDef, 512, "gradient(recenter(<%s>, \"nodal\"), \"fast\")", 
-                                   primaryVariable);
+            SNPRINTF(exprDef, 512, "gradient(recenter(<%s>, \"nodal\"))", gradvar);
         }
         else
         {
-            SNPRINTF(exprDef, 512, "gradient(<%s>, \"fast\")", primaryVariable);
+            SNPRINTF(exprDef, 512, "gradient(<%s>)", gradvar);
         }
         ExpressionList *elist = ParsingExprList::Instance()->GetList();
 

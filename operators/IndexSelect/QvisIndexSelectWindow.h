@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -70,9 +70,6 @@ class QvisSILSetSelector;
 //   Added QvisSILSetSelector, removed domainIndex, groupIndex.
 //   Changed whichData buttongroup to useWholeCollection checkbox.
 // 
-//   Cyrus Harrison, Tue Aug 19 16:23:19 PDT 2008
-//   Qt4 Port. 
-//
 // ****************************************************************************
 
 class QvisIndexSelectWindow : public QvisOperatorWindow
@@ -106,19 +103,19 @@ class QvisIndexSelectWindow : public QvisOperatorWindow
   private:
     QButtonGroup *dim;
 
-    QWidget      *oneDWidget;
+    QGroupBox    *oneDWidgetGroup;
     QLabel       *oneDLabel;
     QSpinBox     *oneDMin;
     QSpinBox     *oneDMax;
     QSpinBox     *oneDIncr;
 
-    QWidget      *twoDWidget;
+    QGroupBox    *twoDWidgetGroup;
     QLabel       *twoDLabel;
     QSpinBox     *twoDMin;
     QSpinBox     *twoDMax;
     QSpinBox     *twoDIncr;
 
-    QWidget      *threeDWidget;
+    QGroupBox    *threeDWidgetGroup;
     QLabel       *threeDLabel;
     QSpinBox     *threeDMin;
     QSpinBox     *threeDMax;

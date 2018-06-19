@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -63,9 +63,6 @@ class     avtDatasetSink;
 //    Kathleen Bonnell, Thu Oct 14 17:19:01 PDT 2004
 //    Added method 'AverageYValsForDuplicateX'.
 //
-//    Kathleen Bonnell, Mon Nov 17 15:48:09 PST 2008
-//    Moved PutOnSameXIntervals and AverageYValsForDuplicateX to Utility.C 
-//
 // ****************************************************************************
 
 class QUERY_API avtCurveComparisonQuery : public avtMultipleInputQuery
@@ -85,6 +82,17 @@ class QUERY_API avtCurveComparisonQuery : public avtMultipleInputQuery
                                             const float *x2, const float *y2) 
                                     = 0;
     virtual std::string       CreateMessage(double) = 0;
+
+    void                      PutOnSameXIntervals(int, const float *, 
+                                 const float *, int, const float *,
+                                 const float *, std::vector<float> &,
+                                 std::vector<float> &, std::vector<float> &);
+    void                      AverageYValsForDuplicateX(int n, 
+                                                        const float *x, 
+                                                        const float *y, 
+                                                        vector<float> &X, 
+                                                        vector<float> &Y);
+ 
 };
 
 

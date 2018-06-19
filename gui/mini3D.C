@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -41,8 +41,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <QPainter>
-#include <QColor>
+#include <qpainter.h>
+#include <qcolor.h>
 
 #include <visitstream.h>
 
@@ -377,11 +377,10 @@ m3d_element::getId() const
 QColor
 m3d_element::get_pixel_color(const color *c)
 {
-    int r = int(qMax(qMin(c->r,1.f),0.f) * 255.f);
-    int g = int(qMax(qMin(c->g,1.f),0.f) * 255.f);
-    int b = int(qMax(qMin(c->b,1.f),0.f) * 255.f);
-
-    return QColor(r,g,b);
+    QColor retval(int(QMAX(QMIN(c->r,1),0) * 255),
+                  int(QMAX(QMIN(c->g,1),0) * 255),
+                  int(QMAX(QMIN(c->b,1),0) * 255));
+    return retval;
 }
 
 QPainter *
@@ -751,15 +750,12 @@ m3d_tri_c::addToRenderer(m3d_renderer &renderer, color C,
 //   Hank Childs, Thu Jun  8 14:14:58 PDT 2006
 //   Fix compiler warning for casting.
 //
-//   Brad Whitlock, Thu Jun  5 16:26:13 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
 m3d_tri_c::draw(m3d_renderer &renderer)
 {
-    QPolygon tri(3);
+    QPointArray tri(3);
 
     tri.setPoint(0, (int) v[0].x, (int) v[0].y);
     tri.setPoint(1, (int) v[1].x, (int) v[1].y);
@@ -767,11 +763,11 @@ m3d_tri_c::draw(m3d_renderer &renderer)
 
     QColor triColor(get_pixel_color(&c));
     QBrush b(triColor);
-    b.setStyle(Qt::SolidPattern);
+    b.setStyle(QBrush::SolidPattern);
     QPainter *p = painter(renderer);
     p->setBrush(b);
     p->setPen(QPen(triColor));
-    p->drawPolygon(tri);
+    p->drawPolygon(tri, true);
     setDrawn(true);
 }
 
@@ -958,15 +954,12 @@ m3d_tri_n::addToRenderer(m3d_renderer &renderer, color C,
 //   Hank Childs, Thu Jun  8 14:14:58 PDT 2006
 //   Fix compiler warning for casting.
 //
-//   Brad Whitlock, Thu Jun  5 16:26:49 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
 m3d_tri_n::draw(m3d_renderer &renderer)
 {
-    QPolygon tri(3);
+    QPointArray tri(3);
 
     tri.setPoint(0, (int) v[0].x, (int) v[0].y);
     tri.setPoint(1, (int) v[1].x, (int) v[1].y);
@@ -974,11 +967,11 @@ m3d_tri_n::draw(m3d_renderer &renderer)
 
     QColor triColor(get_pixel_color(&lit_color));
     QBrush b(triColor);
-    b.setStyle(Qt::SolidPattern);
+    b.setStyle(QBrush::SolidPattern);
     QPainter *p = painter(renderer);
     p->setBrush(b);
     p->setPen(QPen(triColor));
-    p->drawPolygon(tri);
+    p->drawPolygon(tri, true);
     setDrawn(true);
 }
 
@@ -1602,8 +1595,8 @@ m3d_renderer::m3d_renderer(int w, int h)
     width = w;
     height = h;
 
-    device.m[0][0] = (float)qMin(width,height)/2.;
-    device.m[1][1] =-(float)qMin(width,height)/2.;
+    device.m[0][0] = (float)QMIN(width,height)/2.;
+    device.m[1][1] =-(float)QMIN(width,height)/2.;
     device.m[0][3] = (float)width/2.;
     device.m[1][3] = (float)height/2.;
 
@@ -1659,8 +1652,8 @@ m3d_renderer::resize(int w, int h)
     width = w;
     height = h;
 
-    device.m[0][0] = (float)qMin(width,height)/2.;
-    device.m[1][1] =-(float)qMin(width,height)/2.;
+    device.m[0][0] = (float)QMIN(width,height)/2.;
+    device.m[1][1] =-(float)QMIN(width,height)/2.;
     device.m[0][3] = (float)width/2.;
     device.m[1][3] = (float)height/2.;
 }
@@ -2549,7 +2542,7 @@ m3du_create_trackball_matrix(float p1x, float p1y, float p2x, float p2y)
 
    /* Figure how much to rotate around that axis.        */
    t = vec_norm(vec_sub(p2, p1));
-   t = qMin(qMax(t, -1.0), 1.0);
+   t = QMIN(QMAX(t, -1.0), 1.0);
    phi = 2.0*asin(t/(2.0*RADIUS));
 
    axis = vec_scale(axis, sin(phi/2.0));

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -46,7 +46,6 @@
 #include <ViewerBase.h>
 #include <avtTypes.h>
 #include <avtSILRestriction.h>
-#include <AnimationAttributes.h>
 #include <EngineKey.h>
 #include <string>
 #include <map>
@@ -289,12 +288,22 @@ typedef std::map<std::string, int> StringIntMap;
 //    Added a returnDefault bool argument to GetDefaultSILRestriction. Removed
 //    followsTime from the ViewerPlotListElement because it's not necessary.
 //    Added inheritSILRestriction bool argument to AddPlot.
+//   
+//    Hank Childs, Mon Feb  2 16:02:04 PST 2009
+//    Added argument to GetActivePlotIDs.
 //
-//    Brad Whitlock, Wed Dec 10 14:52:46 PST 2008
-//    I made it use an animation attributes object.
+//    Kathleen Bonnell, Tue Mar  3 15:03:19 PST 2009
+//    Renamed CanDoLogViewScaling to PermitsLogViewScaling.
 //
-//    Brad Whitlock, Thu Jan  8 15:08:33 PST 2009
-//    I added methods to help deal with the plot information.
+//    Cyrus Harrison, Tue Apr 14 13:34:15 PDT 2009
+//    Modified ReplaceDatabase to add option for replacing only active plots.
+//
+//    Brad Whitlock, Mon Oct 26 15:44:55 PDT 2009
+//    I added DeleteAllPlots and I added a default argument to DeleteActivePlots.
+//
+//    Eric Brugger, Fri Feb 12 15:34:07 PST 2010
+//    I added maxPlotNumber, which is used to tell the ViewerPlot what
+//    number to use to start numbering plots from.
 //
 // ****************************************************************************
 
@@ -312,6 +321,9 @@ class VIEWER_API ViewerPlotList : public ViewerBase
 {
     Q_OBJECT
 public:
+    typedef enum {PlayMode, StopMode, ReversePlayMode} AnimationMode;
+    typedef enum {Looping, PlayOnce, Swing}            PlaybackMode;
+
     ViewerPlotList(ViewerWindow *const viewerWindow);
     virtual ~ViewerPlotList();
 
@@ -335,9 +347,10 @@ public:
     void BackwardStep();
     void SetTimeSliderState(int state);
     void UpdateFrame(bool updatePlotStates = true);
-
-    void SetAnimationAttributes(const AnimationAttributes &);
-    const AnimationAttributes &GetAnimationAttributes() const;
+    void SetAnimationMode(AnimationMode);
+    AnimationMode GetAnimationMode() const;
+    void SetPlaybackMode(PlaybackMode);
+    PlaybackMode GetPlaybackMode() const;
 
     void ActivateSource(const std::string &database, const EngineKey &ek);
     void SetHostDatabaseName(const std::string &database);
@@ -381,7 +394,8 @@ public:
     void ClearPlots(bool clearAll = true);
     void ClearActors();
     void TransmutePlots(bool turningOffScalableRendering);
-    void DeleteActivePlots();
+    void DeleteActivePlots(bool doUpdates = true);
+    void DeleteAllPlots(bool doUpdates);
 
     int  FindCompatiblePlot(ViewerPlot *);
 
@@ -393,7 +407,8 @@ public:
     void SetPlotAtts(const int plotType);
     void SetPlotOperatorAtts(const int operatorType, bool applyToAll = false);
     void ReplaceDatabase(const EngineKey &ek, const std::string &database,
-                         int timeState, bool setTimeState, bool onlyReplaceSame);
+                         int timeState, bool setTimeState, bool onlyReplaceSame,
+                         bool onlyReplaceActive);
     void OverlayDatabase(const EngineKey &ek,
                          const std::string &database, int timeState);
 
@@ -418,7 +433,6 @@ public:
 
     bool NotActivePlotList() const;
     void UpdatePlotAtts(bool=true) const;
-    void UpdatePlotInformation() const;
     void GetPlotAtts(std::vector<std::string> &plotNames,
                      std::vector<const char*> &pluginIDsList,
                      std::vector<EngineKey> &engineKeysList,
@@ -441,6 +455,8 @@ public:
     void HandleTool(const avtToolInterface &ti, bool applyToAll = false);
     bool InitializeTool(avtToolInterface &ti);
 
+    void SetPipelineCaching(bool);
+    bool GetPipelineCaching() const;
     void ClearPipelines();
 
     void StartPick(const bool, const bool);
@@ -448,7 +464,7 @@ public:
     void ResetNetworkIds(const EngineKey &key);
     std::string GetVarName();
     ViewerPlot *GetPlot(const int id) const;
-    void GetActivePlotIDs(intVector &) const;
+    void GetActivePlotIDs(intVector &, bool onlyRealizedAndUnhidden = true) const;
 
     int GetWindowId() const;
 
@@ -468,7 +484,7 @@ public:
 
     void SetScaleMode(ScaleMode ds, ScaleMode rs, WINDOW_MODE);
     void GetScaleMode(ScaleMode &ds, ScaleMode &rs, WINDOW_MODE);
-    bool CanDoLogViewScaling(WINDOW_MODE);
+    bool PermitsLogViewScaling(WINDOW_MODE);
 
   protected:
     bool        AskForCorrelationPermission(const stringVector &dbs) const;
@@ -506,9 +522,8 @@ public:
 
     std::string            activeTimeSlider;
     StringIntMap           timeSliders;
-    AnimationAttributes    animationAtts;
-//    AnimationMode          animationMode;
-//    PlaybackMode           playbackMode;
+    AnimationMode          animationMode;
+    PlaybackMode           playbackMode;
 
     ScaleMode              xScaleMode;
     ScaleMode              yScaleMode;
@@ -518,6 +533,8 @@ public:
     bool                   nKeyframesWasUserSet;
     int                    nKeyframes;
 
+    bool                   pipelineCaching;
+
     ViewerPlotListElement *plots;
     int                    nPlots;
     int                    nPlotsAlloc;
@@ -526,6 +543,8 @@ public:
     double                 bgColor[3];
     double                 fgColor[3];
     avtExtentType          spatialExtentsType;
+
+    static int             maxPlotNumber;
 
     void                   CanMeshPlotBeOpaque();
     void                   GetMeshVarNameForActivePlots(

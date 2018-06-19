@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,8 +39,8 @@
 #ifndef XMLEDIT_H
 #define XMLEDIT_H
 
-#include <QMainWindow>
-#include <QString>
+#include <qmainwindow.h>
+#include <qstring.h>
 
 class QTabWidget;
 class XMLDocument;
@@ -69,15 +69,12 @@ class XMLEditCodeGeneratorWindow;
 //    Brad Whitlock, Fri Mar 7 15:02:37 PST 2008
 //    Added code generation window.
 //
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 class XMLEdit : public QMainWindow
 {
     Q_OBJECT
   public:
-    XMLEdit(const QString &file, QWidget *p);
+    XMLEdit(const QString &file, QWidget *p, const QString &n);
     void OpenFile(const QString &file);
     void SaveFile(const QString &file);
   public slots:
@@ -85,7 +82,7 @@ class XMLEdit : public QMainWindow
     void open();
     void save();
     void saveAs();
-    void updateTab(int tab);
+    void updateTab(QWidget *tab);
     void generateCode();
   private:
     QString  filename;

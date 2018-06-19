@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -180,15 +180,6 @@ avtApplyEnumerationExpression::DeriveVariable(vtkDataSet *in_ds)
 //
 //  Programmer:   Jeremy Meredith
 //  Creation:     February 13, 2008
-//
-//  Modifications:
-//    Jeremy Meredith, Mon Dec 15 12:52:34 EST 2008
-//    Account for negative values in the enumeration list.
-//
-//    Jeremy Meredith, Mon Dec 15 14:31:42 EST 2008
-//    Moved the accounting for unary minus into the parser itself, so
-//    I removed the check for it in here.  The new fix/optimization
-//    should apply to all expressions now.
 //
 // ****************************************************************************
 

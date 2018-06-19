@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -159,9 +159,9 @@ ScatterGUIPluginInfo::CreatePluginWindow(int type, AttributeSubject *attr,
 QvisWizard *
 ScatterGUIPluginInfo::CreatePluginWizard(AttributeSubject *attr,
     QWidget *parent, const std::string &varName, const avtDatabaseMetaData *md,
-    const ExpressionList *expList)
+    const ExpressionList *expList, const char *name)
 {
-    return new QvisScatterPlotWizard(attr, parent);
+    return new QvisScatterPlotWizard(attr, parent, name);
 }
 
 

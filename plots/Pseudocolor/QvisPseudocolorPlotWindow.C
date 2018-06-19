@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -36,15 +36,15 @@
 *
 *****************************************************************************/
 
-#include <QWidget> 
-#include <QLayout> 
-#include <QPushButton> 
-#include <QRadioButton>
-#include <QButtonGroup>
-#include <QLabel>
-#include <QCheckBox>
-#include <QComboBox> 
-#include <QLineEdit>
+#include <qgrid.h> 
+#include <qlayout.h> 
+#include <qpushbutton.h> 
+#include <qradiobutton.h>
+#include <qbuttongroup.h>
+#include <qlabel.h>
+#include <qcheckbox.h>
+#include <qcombobox.h> 
+#include <qlineedit.h>
 
 #include <QvisPseudocolorPlotWindow.h>
 #include <PseudocolorAttributes.h>
@@ -52,8 +52,6 @@
 #include <QvisOpacitySlider.h>
 #include <QvisColorTableButton.h>
 #include <QvisPointControl.h>
-#include <QvisLineStyleWidget.h>
-#include <QvisLineWidthWidget.h>
 
 // ****************************************************************************
 // Method: QvisPseudocolorPlotWindow::QvisPseudocolorPlotWindow
@@ -83,9 +81,6 @@ QvisPseudocolorPlotWindow::QvisPseudocolorPlotWindow(const int type,
 {
     plotType = type;
     pcAtts   = _pcAtts;
-    centeringButtons = 0;
-    scalingButtons = 0;
-    smoothingLevelButtons = 0;
 }
 
 // ****************************************************************************
@@ -162,14 +157,8 @@ QvisPseudocolorPlotWindow::~QvisPseudocolorPlotWindow()
 //   Brad Whitlock, Wed Apr 23 10:16:57 PDT 2008
 //   Added tr()'s
 //
-//   Brad Whitlock, Tue May 27 14:52:08 PDT 2008
-//   Qt 4.
-//
 //   Dave Pugmire, Wed Oct 29 16:00:48 EDT 2008
 //   Swap the min/max in the gui.
-//
-//   Jeremy Meredith, Wed Nov 26 11:28:24 EST 2008
-//   Added line style/width controls.
 //
 // ****************************************************************************
 
@@ -177,91 +166,66 @@ void
 QvisPseudocolorPlotWindow::CreateWindowContents()
 {
     //
-    // Create the line style/width buttons
-    //
-    QHBoxLayout *lineLayout = new QHBoxLayout(0);
-    lineLayout->setMargin(0);
-    topLayout->addLayout(lineLayout);
-
-    // Create the lineSyle widget.
-    lineStyle = new QvisLineStyleWidget(0, central);
-    connect(lineStyle, SIGNAL(lineStyleChanged(int)),
-            this, SLOT(lineStyleChanged(int)));
-    lineStyleLabel = new QLabel(tr("Line style"), central);
-    lineStyleLabel->setBuddy(lineStyle);
-    lineLayout->addWidget(lineStyleLabel);
-    lineLayout->addWidget(lineStyle);
-
-    // Create the lineSyle widget.
-    lineWidth = new QvisLineWidthWidget(0, central);
-    connect(lineWidth, SIGNAL(lineWidthChanged(int)),
-            this, SLOT(lineWidthChanged(int)));
-    lineWidthLabel = new QLabel(tr("Line width"), central);
-    lineWidthLabel->setBuddy(lineWidth);
-    lineLayout->addWidget(lineWidthLabel);
-    lineLayout->addWidget(lineWidth);
-
-    //
     // Create the centering radio buttons
     //
-    QHBoxLayout *centeringLayout = new QHBoxLayout(0);
-    centeringLayout->setMargin(0);
-    topLayout->addLayout(centeringLayout);
+    QHBoxLayout *centeringLayout = new QHBoxLayout(topLayout);
 
     // Create a group of radio buttons
-    centeringButtons = new QButtonGroup(central);
-    QLabel *centeringLabel = new QLabel(tr("Centering"), central);
+    centeringButtons = new QButtonGroup( central, "radioGroup" );
+    centeringButtons->setFrameStyle(QFrame::NoFrame);
+    QLabel *centeringLabel = new QLabel(centeringButtons, tr("Centering"),
+        central, "centerLabel");
     centeringLayout->addWidget(centeringLabel);
     
+    // Create a layout for the radio buttons
+    QHBoxLayout *centeringButtonLayout = new QHBoxLayout(centeringButtons);
+    centeringButtonLayout->setSpacing(10);
     // Create the radio buttons
-    QRadioButton *rb= new QRadioButton(tr("Natural"), central );
-    rb->setChecked(true);
-    centeringButtons->addButton(rb, 0);
-    centeringLayout->addWidget(rb);
-    rb = new QRadioButton(tr("Nodal"), central );
-    centeringLayout->addWidget(rb);
-    centeringButtons->addButton(rb, 1);
-    rb = new QRadioButton(tr("Zonal"), central );
-    centeringLayout->addWidget(rb);
-    centeringButtons->addButton(rb, 2);
+    QRadioButton *rb= new QRadioButton(tr("Natural"), centeringButtons );
+    rb->setChecked( TRUE );
+    centeringButtonLayout->addWidget(rb);
+    rb = new QRadioButton(tr("Nodal"), centeringButtons );
+    centeringButtonLayout->addWidget(rb);
+    rb = new QRadioButton(tr("Zonal"), centeringButtons );
+    centeringButtonLayout->addWidget(rb);
+    centeringLayout->addWidget( centeringButtons );
     centeringLayout->addStretch(0);
     // Each time a radio button is clicked, call the centeringClicked slot.
-    connect(centeringButtons, SIGNAL(buttonClicked(int)),
+    connect(centeringButtons, SIGNAL(clicked(int)),
             this, SLOT(centeringClicked(int)));
     
     //
     // Create the Limits stuff
     //
-    QGridLayout *limitsLayout = new QGridLayout(0);
-    limitsLayout->setMargin(0);
-    topLayout->addLayout(limitsLayout);
+    QGridLayout *limitsLayout = new QGridLayout(topLayout, 3, 3);
 
-    limitsSelect = new QComboBox(central);
-    limitsSelect->addItem(tr("Use Original Data"));
-    limitsSelect->addItem(tr("Use Current Plot"));
+    limitsSelect = new QComboBox(false, central, "limitsSelect");
+    limitsSelect->insertItem(tr("Use Original Data"));
+    limitsSelect->insertItem(tr("Use Current Plot"));
     connect(limitsSelect, SIGNAL(activated(int)),
             this, SLOT(limitsSelectChanged(int))); 
-    QLabel *limitsLabel = new QLabel(tr("Limits"), central);
-    limitsLabel->setBuddy(limitsSelect);
+    QLabel *limitsLabel = new QLabel(limitsSelect, tr("Limits"), 
+                                     central, "limitsLabel");
     limitsLayout->addWidget(limitsLabel, 0, 0);
-    limitsLayout->addWidget(limitsSelect, 0, 1, 1, 2, Qt::AlignLeft);
+    limitsLayout->addMultiCellWidget(limitsSelect, 0, 0, 1, 2, AlignLeft);
+
 
     // Create the max toggle and line edit
-    maxToggle = new QCheckBox(tr("Maximum"), central);
+    maxToggle = new QCheckBox(tr("Max"), central, "maxToggle");
     limitsLayout->addWidget(maxToggle, 1, 1);
     connect(maxToggle, SIGNAL(toggled(bool)),
             this, SLOT(maxToggled(bool)));
-    maxLineEdit = new QLineEdit(central);
+    maxLineEdit = new QLineEdit(central, "maxLineEdit");
     connect(maxLineEdit, SIGNAL(returnPressed()),
             this, SLOT(processMaxLimitText())); 
     limitsLayout->addWidget(maxLineEdit, 1, 2);
 
     // Create the min toggle and line edit
-    minToggle = new QCheckBox(tr("Minimum"), central);
+    minToggle = new QCheckBox(tr("Min"), central, "minToggle");
     limitsLayout->addWidget(minToggle, 2, 1);
     connect(minToggle, SIGNAL(toggled(bool)),
             this, SLOT(minToggled(bool)));
-    minLineEdit = new QLineEdit(central);
+    minLineEdit = new QLineEdit(central, "minLineEdit");
     connect(minLineEdit, SIGNAL(returnPressed()),
             this, SLOT(processMinLimitText())); 
     limitsLayout->addWidget(minLineEdit, 2, 2);
@@ -269,49 +233,48 @@ QvisPseudocolorPlotWindow::CreateWindowContents()
     //
     // Create the scale radio buttons
     //
-    QHBoxLayout *scaleLayout = new QHBoxLayout(0);
-    scaleLayout->setMargin(0);
-    topLayout->addLayout(scaleLayout);
+    QHBoxLayout *scaleLayout = new QHBoxLayout(topLayout);
 
     // Create a group of radio buttons
-    scalingButtons = new QButtonGroup(central);
-    QLabel *scaleLabel = new QLabel(tr("Scale"), central);
+    scalingButtons = new QButtonGroup( central, "scaleRadioGroup" );
+    scalingButtons->setFrameStyle(QFrame::NoFrame);
+    QLabel *scaleLabel = new QLabel(scalingButtons, tr("Scale"), central,
+        "scaleLabel");
     scaleLayout->addWidget(scaleLabel);
     
-    rb = new QRadioButton(tr("Linear"), central);
-    rb->setChecked(true);
-    scalingButtons->addButton(rb, 0);
-    scaleLayout->addWidget(rb);
-    rb = new QRadioButton(tr("Log"), central);
-    scalingButtons->addButton(rb, 1);
-    scaleLayout->addWidget(rb);
-    rb = new QRadioButton(tr("Skew"), central);
-    scalingButtons->addButton(rb, 2);
-    scaleLayout->addWidget(rb);
+    QHBoxLayout *scaleButtonsLayout = new QHBoxLayout(scalingButtons);
+    scaleButtonsLayout->setSpacing(10);
+    rb = new QRadioButton(tr("Linear"), scalingButtons );
+    rb->setChecked( TRUE );
+    scaleButtonsLayout->addWidget(rb);
+    rb = new QRadioButton( scalingButtons );
+    rb->setText( tr("Log") );
+    scaleButtonsLayout->addWidget(rb);
+    rb = new QRadioButton( scalingButtons );
+    rb->setText( tr("Skew") );
+    scaleButtonsLayout->addWidget(rb);
+    scaleLayout->addWidget( scalingButtons );
     scaleLayout->addStretch(0);
     // Each time a radio button is clicked, call the scalelicked slot.
-    connect(scalingButtons, SIGNAL(buttonClicked(int)),
+    connect(scalingButtons, SIGNAL(clicked(int)),
             this, SLOT(scaleClicked(int)));
 
     //
     // Create the rest of the window in a grid layout.
     //
-    QGridLayout *gLayout = new QGridLayout(0);
-    gLayout->setMargin(0);
-    topLayout->addLayout(gLayout);
+    QGridLayout *gLayout = new QGridLayout(topLayout, 6, 2);
 
     // Create the skew factor line edit    
-    skewLineEdit = new QLineEdit(central);
+    skewLineEdit = new QLineEdit(central, "skewLineEdit");
     connect(skewLineEdit, SIGNAL(returnPressed()),
             this, SLOT(processSkewText())); 
     gLayout->addWidget(skewLineEdit, 0, 1);
-    skewLabel = new QLabel(tr("Skew factor"), central);
-    skewLabel->setBuddy(skewLineEdit);
-    skewLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    skewLabel = new QLabel(skewLineEdit, tr("Skew factor"), central, "skewFactor");
+    skewLabel->setAlignment(AlignRight | AlignVCenter);
     gLayout->addWidget(skewLabel, 0, 0);
 
     // Create the point control
-    pointControl = new QvisPointControl(central);
+    pointControl = new QvisPointControl(central, "pointControl");
     connect(pointControl, SIGNAL(pointSizeChanged(double)),
             this, SLOT(pointSizeChanged(double)));
     connect(pointControl, SIGNAL(pointSizePixelsChanged(int)),
@@ -322,64 +285,64 @@ QvisPseudocolorPlotWindow::CreateWindowContents()
             this, SLOT(pointSizeVarToggled(bool)));
     connect(pointControl, SIGNAL(pointTypeChanged(int)),
             this, SLOT(pointTypeChanged(int)));
-    gLayout->addWidget(pointControl, 1, 0, 1, 2);
+    gLayout->addMultiCellWidget(pointControl, 1, 1, 0, 1);
  
     //
     // Create the opacity slider
     //
-    opacitySlider = new QvisOpacitySlider(0, 255, 25, 255, central);
+    opacitySlider = new QvisOpacitySlider(0, 255, 25, 255, central, 
+                    "opacitySlider", NULL);
     opacitySlider->setTickInterval(64);
     opacitySlider->setGradientColor(QColor(0, 0, 0));
     connect(opacitySlider, SIGNAL(valueChanged(int, const void*)),
             this, SLOT(changedOpacity(int, const void*)));
     gLayout->addWidget(opacitySlider, 2, 1);
 
-    QLabel *opacityLabel = new QLabel(tr("Opacity"), central);
-    opacityLabel->setBuddy(opacitySlider);
-    opacityLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    QLabel *opacityLabel = new QLabel(opacitySlider, tr("Opacity"), 
+                                      central, "opacityLabel"); 
+    opacityLabel->setAlignment(AlignRight | AlignVCenter);
     gLayout->addWidget(opacityLabel, 2, 0);
 
     // Create the color table widgets
-    colorTableButton = new QvisColorTableButton(central);
+    colorTableButton = new QvisColorTableButton(central, "colorTableButton");
     connect(colorTableButton, SIGNAL(selectedColorTable(bool, const QString &)),
             this, SLOT(colorTableClicked(bool, const QString &)));
-    gLayout->addWidget(colorTableButton, 3, 1, Qt::AlignLeft | Qt::AlignVCenter);
-    QLabel *colorTableLabel = new QLabel(tr("Color table"), central);
-    colorTableLabel->setBuddy(colorTableButton);
-    colorTableLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    gLayout->addWidget(colorTableButton, 3, 1, AlignLeft | AlignVCenter);
+    QLabel *colorTableLabel = new QLabel(colorTableButton, tr("Color table"),
+                                         central, "colorTableLabel");
+    colorTableLabel->setAlignment(AlignRight | AlignVCenter);
     gLayout->addWidget(colorTableLabel, 3, 0);
 
     // Create the legend toggle
-    legendToggle = new QCheckBox(tr("Legend"), central);
+    legendToggle = new QCheckBox(tr("Legend"), central, "legendToggle");
     connect(legendToggle, SIGNAL(toggled(bool)),
             this, SLOT(legendToggled(bool)));
     gLayout->addWidget(legendToggle, 4, 0);
 
     // Create the lighting toggle
-    lightingToggle = new QCheckBox(tr("Lighting"), central);
+    lightingToggle = new QCheckBox(tr("Lighting"), central, "lightingToggle");
     connect(lightingToggle, SIGNAL(toggled(bool)),
             this, SLOT(lightingToggled(bool)));
     gLayout->addWidget(lightingToggle, 4, 1);
 
     // Create the smoothing level buttons
-    smoothingLevelButtons = new QButtonGroup(central);
-    connect(smoothingLevelButtons, SIGNAL(buttonClicked(int)),
+    smoothingLevelButtons = new QButtonGroup(0, "smoothingButtons");
+    connect(smoothingLevelButtons, SIGNAL(clicked(int)),
             this, SLOT(smoothingLevelChanged(int)));
-    QGridLayout *smoothingLayout = new QGridLayout(0);
-    smoothingLayout->setMargin(0);
+    QGridLayout *smoothingLayout = new QGridLayout(1, 5);
     smoothingLayout->setSpacing(10);
-    smoothingLayout->setColumnStretch(4, 1000);
+    smoothingLayout->setColStretch(4, 1000);
     smoothingLayout->addWidget(new QLabel(tr("Geometry smoothing"), central), 0,0);
-    rb = new QRadioButton(tr("None"), central);
-    smoothingLevelButtons->addButton(rb, 0);
+    rb = new QRadioButton(tr("None"), central, "NoSmoothing");
+    smoothingLevelButtons->insert(rb);
     smoothingLayout->addWidget(rb, 0, 1);
-    rb = new QRadioButton(tr("Fast"), central);
-    smoothingLevelButtons->addButton(rb, 1);
+    rb = new QRadioButton(tr("Fast"), central, "LowSmoothing");
+    smoothingLevelButtons->insert(rb);
     smoothingLayout->addWidget(rb, 0, 2);
-    rb = new QRadioButton(tr("High"), central);
-    smoothingLevelButtons->addButton(rb, 2);
+    rb = new QRadioButton(tr("High"), central, "HighSmoothing");
+    smoothingLevelButtons->insert(rb);
     smoothingLayout->addWidget(rb, 0, 3);
-    gLayout->addLayout(smoothingLayout, 5,0, 1,2);
+    gLayout->addMultiCellLayout(smoothingLayout, 5,5 , 0,1);
 }
 
 // ****************************************************************************
@@ -443,12 +406,6 @@ QvisPseudocolorPlotWindow::CreateWindowContents()
 //   Mark C. Miller, Mon Dec  6 13:30:51 PST 2004
 //   Fixed SGI compiler error with string conversion to QString
 //
-//   Brad Whitlock, Thu Jun 26 16:58:00 PDT 2008
-//   Qt 4.
-//
-//   Jeremy Meredith, Wed Nov 26 11:28:24 EST 2008
-//   Added line style/width controls.
-//
 // ****************************************************************************
 
 void
@@ -469,7 +426,7 @@ QvisPseudocolorPlotWindow::UpdateWindow(bool doAll)
 
         switch(i)
         {
-        case PseudocolorAttributes::ID_legendFlag:
+        case 0: // legendFlag
             // Disconnect the slot before setting the toggle and
             // reconnect it after. This prevents multiple updates.
             disconnect(legendToggle, SIGNAL(toggled(bool)),
@@ -478,7 +435,7 @@ QvisPseudocolorPlotWindow::UpdateWindow(bool doAll)
             connect(legendToggle, SIGNAL(toggled(bool)),
                     this, SLOT(legendToggled(bool)));
             break;
-        case PseudocolorAttributes::ID_lightingFlag:
+        case 1: // lightingFlag
             // Disconnect the slot before setting the toggle and
             // reconnect it after. This prevents multiple updates.
             disconnect(lightingToggle, SIGNAL(toggled(bool)),
@@ -487,7 +444,7 @@ QvisPseudocolorPlotWindow::UpdateWindow(bool doAll)
             connect(lightingToggle, SIGNAL(toggled(bool)),
                     this, SLOT(lightingToggled(bool)));
             break;
-        case PseudocolorAttributes::ID_minFlag:
+        case 2: // minFlag
             // Disconnect the slot before setting the toggle and
             // reconnect it after. This prevents multiple updates.
             disconnect(minToggle, SIGNAL(toggled(bool)),
@@ -497,7 +454,7 @@ QvisPseudocolorPlotWindow::UpdateWindow(bool doAll)
             connect(minToggle, SIGNAL(toggled(bool)),
                     this, SLOT(minToggled(bool)));
             break;
-        case PseudocolorAttributes::ID_maxFlag:
+        case 3: // maxFlag
             // Disconnect the slot before setting the toggle and
             // reconnect it after. This prevents multiple updates.
             disconnect(maxToggle, SIGNAL(toggled(bool)),
@@ -507,85 +464,71 @@ QvisPseudocolorPlotWindow::UpdateWindow(bool doAll)
             connect(maxToggle, SIGNAL(toggled(bool)),
                     this, SLOT(maxToggled(bool)));
             break;
-        case PseudocolorAttributes::ID_centering:
-            centeringButtons->blockSignals(true);
-            centeringButtons->button(pcAtts->GetCentering())->setChecked(true);
-            centeringButtons->blockSignals(false);
+        case 4: // centering
+            centeringButtons->setButton(pcAtts->GetCentering());
             break;
-        case PseudocolorAttributes::ID_scaling:
-            scalingButtons->blockSignals(true);
-            scalingButtons->button(pcAtts->GetScaling())->setChecked(true);
-            scalingButtons->blockSignals(false);
+        case 5: // scaling
+            scalingButtons->setButton(pcAtts->GetScaling());
             skewLineEdit->setEnabled(pcAtts->GetScaling() ==
                 PseudocolorAttributes::Skew);
             skewLabel->setEnabled(pcAtts->GetScaling() ==
                 PseudocolorAttributes::Skew);
             break;
-        case PseudocolorAttributes::ID_limitsMode:
+        case 6: // limitsMode
             limitsSelect->blockSignals(true);
-            limitsSelect->setCurrentIndex(pcAtts->GetLimitsMode());
+            limitsSelect->setCurrentItem(pcAtts->GetLimitsMode());
             limitsSelect->blockSignals(false);
             break;
-        case PseudocolorAttributes::ID_min:
+        case 7: // min
             temp.setNum(pcAtts->GetMin());
             minLineEdit->setText(temp);
             break;
-        case PseudocolorAttributes::ID_max:
+        case 8: // max
             temp.setNum(pcAtts->GetMax());
             maxLineEdit->setText(temp);
             break;
-        case PseudocolorAttributes::ID_pointSize:
+        case 9: // pointSize
             pointControl->blockSignals(true);
             pointControl->SetPointSize(pcAtts->GetPointSize());
             pointControl->blockSignals(false);
             break;
-        case PseudocolorAttributes::ID_pointType:
+        case 10: // pointType
             pointControl->blockSignals(true);
             pointControl->SetPointType(pcAtts->GetPointType());
             pointControl->blockSignals(false);
             break;
-        case PseudocolorAttributes::ID_skewFactor:
+        case 11: // skewFactor
             temp.setNum(pcAtts->GetSkewFactor());
             skewLineEdit->setText(temp);
             break;
-        case PseudocolorAttributes::ID_opacity:
+        case 12: // opacity
             opacitySlider->blockSignals(true);
             opacitySlider->setValue(int((float)pcAtts->GetOpacity() * 255.f));
             opacitySlider->blockSignals(false);
             break;
-        case PseudocolorAttributes::ID_colorTableName:
+        case 13: // colorTableName
             colorTableButton->setColorTable(pcAtts->GetColorTableName().c_str());
             break;
-        case PseudocolorAttributes::ID_smoothingLevel:
+        case 14: // smoothingLevel
             smoothingLevelButtons->blockSignals(true);
-            smoothingLevelButtons->button(pcAtts->GetSmoothingLevel())->setChecked(true);
+            smoothingLevelButtons->setButton(pcAtts->GetSmoothingLevel());
             smoothingLevelButtons->blockSignals(false);
             break;
-        case PseudocolorAttributes::ID_pointSizeVarEnabled:
+        case 15: // pointSizeVarEnabled
             pointControl->blockSignals(true);
             pointControl->SetPointSizeVarChecked(pcAtts->GetPointSizeVarEnabled());
             pointControl->blockSignals(false);
             break;
-        case PseudocolorAttributes::ID_pointSizeVar:
+        case 16: // pointSizeVar
             pointControl->blockSignals(true);
             temp = QString(pcAtts->GetPointSizeVar().c_str());
             pointControl->SetPointSizeVar(temp);
             pointControl->blockSignals(false);
             break;
-        case PseudocolorAttributes::ID_pointSizePixels:
+        case 17: // pointSizePixels
             pointControl->blockSignals(true);
             pointControl->SetPointSizePixels(pcAtts->GetPointSizePixels());
             pointControl->blockSignals(false);
-            break;
-        case PseudocolorAttributes::ID_lineStyle:
-            lineStyle->blockSignals(true);
-            lineStyle->SetLineStyle(pcAtts->GetLineStyle());
-            lineStyle->blockSignals(false);
-            break;
-        case PseudocolorAttributes::ID_lineWidth:
-            lineWidth->blockSignals(true);
-            lineWidth->SetLineWidth(pcAtts->GetLineWidth());
-            lineWidth->blockSignals(false);
             break;
         }
     } // end for
@@ -617,52 +560,76 @@ QvisPseudocolorPlotWindow::UpdateWindow(bool doAll)
 //   Brad Whitlock, Wed Apr 23 10:20:14 PDT 2008
 //   Support for internationalization.
 //
-//   Brad Whitlock, Wed Jul  9 14:52:14 PDT 2008
-//   Use helper methods.
-//
 // ****************************************************************************
 
 void
 QvisPseudocolorPlotWindow::GetCurrentValues(int which_widget)
 {
-    bool doAll = (which_widget == -1);
+    bool okay, doAll = (which_widget == -1);
     QString msg, temp;
 
     // Do the minimum value.
-    if(which_widget == PseudocolorAttributes::ID_min || doAll)
+    if(which_widget == 0 || doAll)
     {
-        double val;
-        if(LineEditGetDouble(minLineEdit, val))
-            pcAtts->SetMin(val);
-        else
+        temp = minLineEdit->displayText().stripWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("minimum value"), DoubleToQString(pcAtts->GetMin()));
+            double val = temp.toDouble(&okay);
+            if(okay)
+                pcAtts->SetMin(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The minimum value was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(pcAtts->GetMin());
+            Message(msg);
             pcAtts->SetMin(pcAtts->GetMin());
         }
     }
 
     // Do the maximum value
-    if(which_widget == PseudocolorAttributes::ID_max || doAll)
+    if(which_widget == 1 || doAll)
     {
-        double val;
-        if(LineEditGetDouble(maxLineEdit, val))
-            pcAtts->SetMax(val);
-        else
+        temp = maxLineEdit->displayText().stripWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("maximum value"), DoubleToQString(pcAtts->GetMax()));
+            double val = temp.toDouble(&okay);
+            if(okay)
+                pcAtts->SetMax(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The maximum value was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(pcAtts->GetMax());
+            Message(msg);
             pcAtts->SetMax(pcAtts->GetMax());
         }
     }
 
     // Do the skew factor value
-    if(which_widget == PseudocolorAttributes::ID_skewFactor || doAll)
+    if(which_widget == 2 || doAll)
     {
-        double val;
-        if(LineEditGetDouble(skewLineEdit, val))
-            pcAtts->SetSkewFactor(val);
-        else
+        temp = skewLineEdit->displayText().stripWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("maximum value"), DoubleToQString(pcAtts->GetSkewFactor()));
+            double val = temp.toDouble(&okay);
+            if(okay)
+                pcAtts->SetSkewFactor(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The skew factor was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(pcAtts->GetSkewFactor());
+            Message(msg);
             pcAtts->SetSkewFactor(pcAtts->GetSkewFactor());
         }
     }
@@ -672,7 +639,7 @@ QvisPseudocolorPlotWindow::GetCurrentValues(int which_widget)
     {
         pcAtts->SetPointSize(pointControl->GetPointSize());
         pcAtts->SetPointSizePixels(pointControl->GetPointSizePixels());
-        pcAtts->SetPointSizeVar(pointControl->GetPointSizeVar().toStdString());
+        pcAtts->SetPointSizeVar(pointControl->GetPointSizeVar().latin1());
     }
 }
 
@@ -780,14 +747,14 @@ QvisPseudocolorPlotWindow::limitsSelectChanged(int mode)
 void
 QvisPseudocolorPlotWindow::processMinLimitText()
 {
-    GetCurrentValues(PseudocolorAttributes::ID_min);
+    GetCurrentValues(0);
     Apply();
 }
 
 void
 QvisPseudocolorPlotWindow::processMaxLimitText()
 {
-    GetCurrentValues(PseudocolorAttributes::ID_max);
+    GetCurrentValues(1);
     Apply();
 }
 
@@ -822,7 +789,7 @@ QvisPseudocolorPlotWindow::lightingToggled(bool val)
 void
 QvisPseudocolorPlotWindow::processSkewText()
 {
-    GetCurrentValues(PseudocolorAttributes::ID_skewFactor);
+    GetCurrentValues(2);
     Apply();
 }
 
@@ -855,7 +822,7 @@ void
 QvisPseudocolorPlotWindow::colorTableClicked(bool useDefault,
     const QString &ctName)
 {
-    pcAtts->SetColorTableName(ctName.toStdString());
+    pcAtts->SetColorTableName(ctName.latin1());
     Apply();
 }
 
@@ -991,56 +958,8 @@ QvisPseudocolorPlotWindow::pointSizePixelsChanged(int size)
 void
 QvisPseudocolorPlotWindow::pointSizeVarChanged(const QString &var)
 {
-    pcAtts->SetPointSizeVar(var.toStdString());
+    pcAtts->SetPointSizeVar(var.latin1());
     Apply();
 }
 
-
-// ****************************************************************************
-// Method: QvisContourPlotWindow::lineStyleChanged
-//
-// Purpose: 
-//   This is a Qt slot function that is called when the window's
-//   line style is changed.
-//
-// Arguments:
-//   newStyle : The new line style.
-//
-// Programmer: Jeremy Meredith
-// Creation:   November 26, 2008
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-void
-QvisPseudocolorPlotWindow::lineStyleChanged(int newStyle)
-{
-    pcAtts->SetLineStyle(newStyle);
-    Apply();
-}
-
-// ****************************************************************************
-// Method: QvisContourPlotWindow::lineWidthChanged
-//
-// Purpose: 
-//   This is a Qt slot function that is called when the window's
-//   line width widget is changed.
-//
-// Arguments:
-//   newWidth : The new line width.
-//
-// Programmer: Jeremy Meredith
-// Creation:   November 26, 2008
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-void
-QvisPseudocolorPlotWindow::lineWidthChanged(int newWidth)
-{
-    pcAtts->SetLineWidth(newWidth);
-    Apply();
-}
 

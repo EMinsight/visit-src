@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -112,10 +112,6 @@ Viewer_LogQtMessages(QtMsgType type, const char *msg)
 //    the identical version.  It's necessary for new viewer-apps but
 //    might confuse VisIt-proper's smart versioning.
 //
-//    Brad Whitlock, Wed Nov 19 13:47:22 PST 2008
-//    Prevent Qt from getting the -geometry flag since it messes up the
-//    viswin's initial size on X11 with Qt 4.
-//
 // ****************************************************************************
 
 int
@@ -151,20 +147,14 @@ main(int argc, char *argv[])
         // Create the QApplication. This sets the qApp pointer.
         //
         char **argv2 = new char *[argc + 3];
-        int real_argc = 0;
+        int argc2 = argc + 2;
         for(int i = 0; i < argc; ++i)
-        {
-            if(strcmp(argv[i], "-geometry") == 0)
-                ++i;
-            else
-                argv2[real_argc++] = argv[i];
-        }
-        argv2[real_argc] = (char*)"-font";
-        argv2[real_argc+1] = (char*)viewer.State()->GetAppearanceAttributes()->GetFontName().c_str();
-        argv2[real_argc+2] = NULL;
-        debug1 << "Viewer using font: " << argv2[real_argc+1] << endl;
+            argv2[i] = argv[i];
+        argv2[argc] = (char*)"-font";
+        argv2[argc+1] = (char*)viewer.State()->GetAppearanceAttributes()->GetFontName().c_str();
+        argv2[argc+2] = NULL;
+        debug1 << "Viewer using font: " << argv2[argc+1] << endl;
         qInstallMsgHandler(Viewer_LogQtMessages);
-        int argc2 = real_argc + 2;
         QApplication *mainApp = new QApplication(argc2, argv2, !viewer.GetNowinMode());
 
         //

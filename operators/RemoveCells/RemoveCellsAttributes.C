@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -40,7 +40,7 @@
 #include <DataNode.h>
 
 // Type map format string
-const char *RemoveCellsAttributes::TypeMapFormatString = "i*i*";
+const char *RemoveCellsAttributes::TypeMapFormatString = "iii*i*";
 
 // ****************************************************************************
 // Method: RemoveCellsAttributes::RemoveCellsAttributes
@@ -60,6 +60,8 @@ const char *RemoveCellsAttributes::TypeMapFormatString = "i*i*";
 RemoveCellsAttributes::RemoveCellsAttributes() : 
     AttributeSubject(RemoveCellsAttributes::TypeMapFormatString)
 {
+    cell = 0;
+    domain = 0;
 }
 
 // ****************************************************************************
@@ -80,6 +82,8 @@ RemoveCellsAttributes::RemoveCellsAttributes() :
 RemoveCellsAttributes::RemoveCellsAttributes(const RemoveCellsAttributes &obj) : 
     AttributeSubject(RemoveCellsAttributes::TypeMapFormatString)
 {
+    cell = obj.cell;
+    domain = obj.domain;
     cellList = obj.cellList;
     domainList = obj.domainList;
 
@@ -125,6 +129,8 @@ RemoveCellsAttributes&
 RemoveCellsAttributes::operator = (const RemoveCellsAttributes &obj)
 {
     if (this == &obj) return *this;
+    cell = obj.cell;
+    domain = obj.domain;
     cellList = obj.cellList;
     domainList = obj.domainList;
 
@@ -151,7 +157,9 @@ bool
 RemoveCellsAttributes::operator == (const RemoveCellsAttributes &obj) const
 {
     // Create the return value
-    return ((cellList == obj.cellList) &&
+    return ((cell == obj.cell) &&
+            (domain == obj.domain) &&
+            (cellList == obj.cellList) &&
             (domainList == obj.domainList));
 }
 
@@ -296,6 +304,8 @@ RemoveCellsAttributes::NewInstance(bool copy) const
 void
 RemoveCellsAttributes::SelectAll()
 {
+    Select(ID_cell,       (void *)&cell);
+    Select(ID_domain,     (void *)&domain);
     Select(ID_cellList,   (void *)&cellList);
     Select(ID_domainList, (void *)&domainList);
 }
@@ -329,6 +339,18 @@ RemoveCellsAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool 
     bool addToParent = false;
     // Create a node for RemoveCellsAttributes.
     DataNode *node = new DataNode("RemoveCellsAttributes");
+
+    if(completeSave || !FieldsEqual(ID_cell, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("cell", cell));
+    }
+
+    if(completeSave || !FieldsEqual(ID_domain, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("domain", domain));
+    }
 
     if(completeSave || !FieldsEqual(ID_cellList, &defaultObject))
     {
@@ -378,6 +400,10 @@ RemoveCellsAttributes::SetFromNode(DataNode *parentNode)
         return;
 
     DataNode *node;
+    if((node = searchNode->GetNode("cell")) != 0)
+        SetCell(node->AsInt());
+    if((node = searchNode->GetNode("domain")) != 0)
+        SetDomain(node->AsInt());
     if((node = searchNode->GetNode("cellList")) != 0)
         SetCellList(node->AsIntVector());
     if((node = searchNode->GetNode("domainList")) != 0)
@@ -387,6 +413,20 @@ RemoveCellsAttributes::SetFromNode(DataNode *parentNode)
 ///////////////////////////////////////////////////////////////////////////////
 // Set property methods
 ///////////////////////////////////////////////////////////////////////////////
+
+void
+RemoveCellsAttributes::SetCell(int cell_)
+{
+    cell = cell_;
+    Select(ID_cell, (void *)&cell);
+}
+
+void
+RemoveCellsAttributes::SetDomain(int domain_)
+{
+    domain = domain_;
+    Select(ID_domain, (void *)&domain);
+}
 
 void
 RemoveCellsAttributes::SetCellList(const intVector &cellList_)
@@ -405,6 +445,18 @@ RemoveCellsAttributes::SetDomainList(const intVector &domainList_)
 ///////////////////////////////////////////////////////////////////////////////
 // Get property methods
 ///////////////////////////////////////////////////////////////////////////////
+
+int
+RemoveCellsAttributes::GetCell() const
+{
+    return cell;
+}
+
+int
+RemoveCellsAttributes::GetDomain() const
+{
+    return domain;
+}
 
 const intVector &
 RemoveCellsAttributes::GetCellList() const
@@ -470,6 +522,8 @@ RemoveCellsAttributes::GetFieldName(int index) const
 {
     switch (index)
     {
+    case ID_cell:       return "cell";
+    case ID_domain:     return "domain";
     case ID_cellList:   return "cellList";
     case ID_domainList: return "domainList";
     default:  return "invalid index";
@@ -496,6 +550,8 @@ RemoveCellsAttributes::GetFieldType(int index) const
 {
     switch (index)
     {
+    case ID_cell:       return FieldType_int;
+    case ID_domain:     return FieldType_int;
     case ID_cellList:   return FieldType_intVector;
     case ID_domainList: return FieldType_intVector;
     default:  return FieldType_unknown;
@@ -522,6 +578,8 @@ RemoveCellsAttributes::GetFieldTypeName(int index) const
 {
     switch (index)
     {
+    case ID_cell:       return "int";
+    case ID_domain:     return "int";
     case ID_cellList:   return "intVector";
     case ID_domainList: return "intVector";
     default:  return "invalid index";
@@ -550,6 +608,16 @@ RemoveCellsAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
     bool retval = false;
     switch (index_)
     {
+    case ID_cell:
+        {  // new scope
+        retval = (cell == obj.cell);
+        }
+        break;
+    case ID_domain:
+        {  // new scope
+        retval = (domain == obj.domain);
+        }
+        break;
     case ID_cellList:
         {  // new scope
         retval = (cellList == obj.cellList);

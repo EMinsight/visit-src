@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -44,7 +44,7 @@
 
 #include <vtkFloatArray.h>
 #include <vtkPolyData.h>
-#include <vtkSTLReader.h>
+#include <vtkVisItSTLReader.h>
 
 #include <DebugStream.h>
 #include <ImproperUseException.h>
@@ -108,6 +108,10 @@ avtSTLFileFormat::~avtSTLFileFormat()
 //    Kathleen Bonnell, Wed May 17 14:03:29 PDT 2006
 //    Remove call to SetSource(NULL), as it now removes information necessary
 //    to the dataset.
+//
+//    Brad Whitlock, Thu Apr  2 16:15:31 PDT 2009
+//    I renamed the STL reader to vtkVisItSTLReader to avoid crashes on Mac.
+//
 // ****************************************************************************
 
 void
@@ -128,7 +132,7 @@ avtSTLFileFormat::ReadInDataset(void)
     //
     // Create a file reader and set our dataset to be its output.
     //
-    vtkSTLReader *reader = vtkSTLReader::New();
+    vtkVisItSTLReader *reader = vtkVisItSTLReader::New();
     reader->SetFileName(filename);
     dataset = reader->GetOutput();
     dataset->Register(NULL);

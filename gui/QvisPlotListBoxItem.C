@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -42,14 +42,13 @@
 #include <QualifiedFilename.h>
 #include <ViewerProxy.h>
 
-#include <QIcon>
-#include <QPainter>
-#include <QPixmapCache>
+#include <qiconset.h>
+#include <qpainter.h>
+#include <qpixmapcache.h>
 
 #include <icons/subset.xpm>
 
-#define YICON_SPACING  3
-#define ITEM_ICON_SIZE 20
+#define YICON_SPACING 3
 
 //
 // Statics
@@ -79,18 +78,15 @@ QPixmap *QvisPlotListBoxItem::subsetIcon = 0;
 //   Brad Whitlock, Tue Jun 24 12:14:48 PDT 2008
 //   Get the plugin managers from the viewer proxy.
 //
-//   Cyrus Harrison, Mon Jul  7 13:39:58 PDT 2008
-//   Initial Qt4 Port.
-//
-//   Cyrus Harrison, Thu Dec  4 08:28:50 PST 2008
-//   Removed unnecessary todo comment. 
-//
 // ****************************************************************************
 
 QvisPlotListBoxItem::QvisPlotListBoxItem(const QString &prefix_, const Plot &p)
-    : QListWidgetItem(), plot(p), prefix(prefix_), clickable()
+    : QListBoxItem(), plot(p), prefix(prefix_), clickable()
 {
     addClickableRects = true;
+
+    // Tell the listbox that we'll use custom highlighting.
+    setCustomHighlighting(true);
 
     // Set the string that we'll use when the item is not expanded.
     setText(GetDisplayString(plot, prefix));
@@ -138,8 +134,8 @@ QvisPlotListBoxItem::QvisPlotListBoxItem(const QString &prefix_, const Plot &p)
             GetOperatorPixmap(operatorIndex, operatorIcons[i]);
 
             // Find the maximum pixmap width and height.
-            maxIconWidth  = qMax(maxIconWidth, operatorIcons[i].width());
-            maxIconHeight = qMax(maxIconHeight, operatorIcons[i].height());
+            maxIconWidth  = QMAX(maxIconWidth, operatorIcons[i].width());
+            maxIconHeight = QMAX(maxIconHeight, operatorIcons[i].height());
         }
     }
     else
@@ -196,24 +192,30 @@ QvisPlotListBoxItem::~QvisPlotListBoxItem()
 //   Brad Whitlock, Wed May 7 19:09:18 PST 2003
 //   I fixed it so it looks okay on Windows.
 //
-//   Cyrus Harrison, Mon Jul  7 13:39:58 PDT 2008
-//   Initial Qt4 Port.
-//
 // ****************************************************************************
 
 int
-QvisPlotListBoxItem::height(const QListWidget *lb) const
+QvisPlotListBoxItem::height(const QListBox *lb) const
 {
+#if 0
+    int h = lb ? lb->fontMetrics().lineSpacing() + 3 : 0;
+
+    if(h < subsetIcon->width())
+        h = subsetIcon->width() + 3;
+    if(h < subsetIcon->height())
+        h = subsetIcon->height() + 3;
+#else
     int h = lb ? lb->fontMetrics().lineSpacing() : 0;
     if(h < subsetIcon->width())
         h = subsetIcon->width() + 2;
     if(h < subsetIcon->height())
         h = subsetIcon->height() + 2;
     h += 3;
+#endif
 
     if(isExpanded())
     {
-        int lineHeight = qMax(maxIconHeight, lb->fontMetrics().lineSpacing());
+        int lineHeight = QMAX(maxIconHeight, lb->fontMetrics().lineSpacing());
         h += ((lineHeight + YICON_SPACING) * (plot.GetNumOperators() + 1) + YICON_SPACING);
     }
 
@@ -237,7 +239,7 @@ QvisPlotListBoxItem::height(const QListWidget *lb) const
 // ****************************************************************************
 
 int
-QvisPlotListBoxItem::width(const QListWidget *lb) const
+QvisPlotListBoxItem::width(const QListBox *lb) const
 {
     return lb ? lb->fontMetrics().width(text()) + 6 : 0;
 }
@@ -270,9 +272,6 @@ QvisPlotListBoxItem::width(const QListWidget *lb) const
 //   Brad Whitlock, Thu Aug 21 17:45:49 PST 2003
 //   I changed how the brush is created so it looks better on MacOS X.
 //
-//   Cyrus Harrison, Mon Jul  7 13:39:58 PDT 2008
-//   Initial Qt4 Port.
-//
 // ****************************************************************************
 
 void QvisPlotListBoxItem::paint(QPainter *painter)
@@ -282,7 +281,7 @@ void QvisPlotListBoxItem::paint(QPainter *painter)
 
     int x = 0;
 
-    maxIconHeight = qMax(maxIconHeight, fm.lineSpacing());
+    maxIconHeight = QMAX(maxIconHeight, fm.lineSpacing());
 
     // Draw the button background for the expand button and the subset button.
     int bw = fm.lineSpacing();
@@ -291,20 +290,20 @@ void QvisPlotListBoxItem::paint(QPainter *painter)
     if(bw < subsetIcon->height())
         bw = subsetIcon->height() + 2;
     int d = (bw + 2 - fm.ascent()) / 2;
-    if(!isSelected())
+    if(!selected())
     {
         painter->fillRect(0, 0, (bw << 1) + 3, bw + 1,
-                          listWidget()->palette().brush(QPalette::Background));
+                          listBox()->colorGroup().brush(QColorGroup::Background));
     }
     else
     {
         // Draw the selection rectangle for the plot on the database line.
-        painter->fillRect(0, 0, listWidget()->width(), bw + 3, //fm.lineSpacing() + 3,
-                          listWidget()->palette().brush(QPalette::Highlight));
+        painter->fillRect(0, 0, listBox()->width(), bw + 3, //fm.lineSpacing() + 3,
+                          listBox()->colorGroup().brush(QColorGroup::Highlight));
     }
 
     // Create the points for the expanded button.
-    QPolygon tri(3);
+    QPointArray tri(3);
     if(isExpanded())
     {
         tri.setPoint(0, int(bw * 0.15f) + 1, int(bw * 0.4f) + 1);
@@ -319,19 +318,19 @@ void QvisPlotListBoxItem::paint(QPainter *painter)
     }
 
     // Set the pen color for the arrow
-    if(isSelected())
+    if(selected())
     {
-        painter->setPen(listWidget()->palette().highlightedText().color());
-        painter->setBrush(listWidget()->palette().brush(QPalette::HighlightedText));
+        painter->setPen(listBox()->colorGroup().highlightedText());
+        painter->setBrush(listBox()->colorGroup().brush(QColorGroup::HighlightedText));
     }
     else
     {
-        painter->setPen(listWidget()->palette().text().color());
-        painter->setBrush(listWidget()->palette().brush(QPalette::Text));
+        painter->setPen(listBox()->colorGroup().text());
+        painter->setBrush(listBox()->colorGroup().brush(QColorGroup::Text));
     }
 
     // Draw the expanded button
-    painter->drawPolygon(tri);
+    painter->drawPolygon(tri, true);
 
     // Create some points of reference.
     int x0 = 0;
@@ -348,31 +347,31 @@ void QvisPlotListBoxItem::paint(QPainter *painter)
     painter->drawPixmap(x3 + 1, y0 + 1, *subsetIcon);
 
     // Draw the button outlines.
-    if(!isSelected())
+    if(!selected())
     {
-        painter->setPen(listWidget()->palette().dark().color());
+        painter->setPen(listBox()->colorGroup().dark());
         painter->drawLine(x0, y1, x4, y1);
         painter->drawLine(x1, y1, x1, y0);
         painter->drawLine(x4, y1, x4, y0);
     }
 
-    if(isSelected())
+    if(selected())
     {
-        painter->setPen(listWidget()->palette().highlightedText().color());
+        painter->setPen(listBox()->colorGroup().highlightedText());
         painter->drawLine(x2, y2, x2, y0);
         painter->drawLine(x5, y2, x5, y0);
     }
     else
     {
-        painter->setPen(listWidget()->palette().shadow().color());
+        painter->setPen(listBox()->colorGroup().shadow());
         painter->drawLine(x0, y2, x5, y2);
         painter->drawLine(x2, y2, x2, y0);
         painter->drawLine(x5, y2, x5, y0);
     }
 
-    if(!isSelected())
+    if(!selected())
     {
-        painter->setPen(listWidget()->palette().light().color());
+        painter->setPen(listBox()->colorGroup().light());
         painter->drawLine(x0, y0, x1, y0);
         painter->drawLine(x0, y0, x0, y1);
         painter->drawLine(x3, y0, x4, y0);
@@ -383,7 +382,7 @@ void QvisPlotListBoxItem::paint(QPainter *painter)
     x += x5 + 3;
 
     // Set the text color in the painter.
-    setTextPen(painter, isSelected());
+    setTextPen(painter, selected());
 
     //
     // If the item is expanded, we have lots of special drawing to do.
@@ -430,9 +429,9 @@ void QvisPlotListBoxItem::paint(QPainter *painter)
                 // Draw a selection rectangle for the operator
                 painter->fillRect(iconX - YICON_SPACING,
                                   iconY - YICON_SPACING,
-                                  listWidget()->width(),
+                                  listBox()->width(),
                                   maxIconHeight + 2 * YICON_SPACING,
-                                  listWidget()->palette().highlight());
+                                  listBox()->colorGroup().highlight());
             }
 
             // Set the text color in the painter.
@@ -451,7 +450,7 @@ void QvisPlotListBoxItem::paint(QPainter *painter)
             // Figure out where the text should go.
             QRect textSize(fm.boundingRect(operatorNames[i]));
             int textHeight = textSize.height();
-            maxTextWidth = qMax(maxTextWidth, textSize.width());
+            maxTextWidth = QMAX(maxTextWidth, textSize.width());
             int textdY = (maxIconHeight - textHeight) / 2;
             int thisTextY = iconY + textHeight + textdY;
             painter->drawText(textX, thisTextY, operatorNames[i]);
@@ -472,7 +471,7 @@ void QvisPlotListBoxItem::paint(QPainter *painter)
         }
         QRect textSize(fm.boundingRect(plotName));
         int textHeight = textSize.height();
-        maxTextWidth = qMax(maxTextWidth, textSize.width());
+        maxTextWidth = QMAX(maxTextWidth, textSize.width());
         int textdY = (maxIconHeight - textHeight) / 2;
         int thisTextY = iconY + textHeight + textdY;
         setTextPen(painter, false);
@@ -485,15 +484,14 @@ void QvisPlotListBoxItem::paint(QPainter *painter)
             painter->drawText(textX, thisTextY, plotName);
         // Make the text and icon clickable.
         QRect textRect(iconX, iconY,
-                       listWidget()->width(), maxIconHeight);
+                       listBox()->width(), maxIconHeight);
         AddClickableRectangle(plot.GetPlotType(), textRect, PlotAttributes);
 
         //
         // Draw the tree lines.
         //
-        painter->save();
         QPen dotPen;
-        dotPen.setColor(listWidget()->palette().text().color());
+        dotPen.setColor(listBox()->colorGroup().text());
         dotPen.setWidth(2);
         painter->setPen(dotPen);
 
@@ -517,7 +515,6 @@ void QvisPlotListBoxItem::paint(QPainter *painter)
             painter->drawLine(expandX, lineY, textX - 3, lineY);
         else
             painter->drawLine(expandX, lineY, iconX - 3, lineY);
-        painter->restore();
 
         //
         // Draw the up and down boxes.
@@ -525,7 +522,7 @@ void QvisPlotListBoxItem::paint(QPainter *painter)
         iconY = expandY + YICON_SPACING;
         int buttonX = textX + maxTextWidth + 10;
         int buttonY = iconY + maxIconHeight / 2;
-        int buttonSize = maxIconHeight * 8 / 10; //textHeight * 7 / 5;
+        int buttonSize = textHeight * 7 / 5;
         for(i = 0; i < plot.GetNumOperators(); ++i)
         {
             if(plot.GetNumOperators() > 1)
@@ -572,7 +569,7 @@ void QvisPlotListBoxItem::paint(QPainter *painter)
         {
             QRect operatorRect(iconX - YICON_SPACING,
                                iconY - YICON_SPACING,
-                               listWidget()->width(),
+                               listBox()->width(),
                                maxIconHeight + 2 * YICON_SPACING);
             AddClickableRectangle(i, operatorRect, ActiveOperator);
             iconY += (maxIconHeight + YICON_SPACING);
@@ -602,9 +599,7 @@ void QvisPlotListBoxItem::paint(QPainter *painter)
 // Creation:   Fri Apr 11 12:57:12 PDT 2003
 //
 // Modifications:
-//   Cyrus Harrison, Mon Jul  7 13:39:58 PDT 2008
-//   Initial Qt4 Port.
-//
+//   
 // ****************************************************************************
 
 void
@@ -619,9 +614,9 @@ QvisPlotListBoxItem::setTextPen(QPainter *painter, bool highlightText) const
     else if(plot.GetStateType() == Plot::Error)
         painter->setPen(Qt::red);
     else if(highlightText)
-        painter->setPen(listWidget()->palette().highlightedText().color());
+        painter->setPen(listBox()->colorGroup().highlightedText());
     else
-        painter->setPen(listWidget()->palette().text().color());
+        painter->setPen(listBox()->colorGroup().text());
 }
 
 // ****************************************************************************
@@ -641,9 +636,6 @@ QvisPlotListBoxItem::setTextPen(QPainter *painter, bool highlightText) const
 //   Brad Whitlock, Fri Aug 22 09:19:17 PDT 2003
 //   I changed how the brush is selected so it looks good on MacOS X.
 //
-//   Cyrus Harrison, Mon Jul  7 13:39:58 PDT 2008
-//   Initial Qt4 Port.
-//
 // ****************************************************************************
 
 void
@@ -651,20 +643,20 @@ QvisPlotListBoxItem::drawButtonSurface(QPainter *painter, const QRect &r) const
 {
     // Draw the button background.
     painter->fillRect(r.x() + 1, r.y() + 1, r.width() - 3, r.height() - 3,
-                      listWidget()->palette().brush(QPalette::Background));
+                      listBox()->colorGroup().brush(QColorGroup::Background));
 
     // Draw the highlights.
     int x0 = r.x();
     int x1 = r.x() + r.width() - 1;
     int y0 = r.y();
     int y1 = r.y() + r.height() - 1;
-    painter->setPen(listWidget()->palette().shadow().color());
+    painter->setPen(listBox()->colorGroup().shadow());
     painter->drawLine(x0, y1, x1, y1);
     painter->drawLine(x1, y1, x1, y0);
-    painter->setPen(listWidget()->palette().dark().color());
+    painter->setPen(listBox()->colorGroup().dark());
     painter->drawLine(x0 + 1, y1 - 1, x1 - 1, y1 - 1);
     painter->drawLine(x1 - 1, y1 - 2, x1 - 1, y0 + 1);
-    painter->setPen(listWidget()->palette().light().color());
+    painter->setPen(listBox()->colorGroup().light());
     painter->drawLine(x0, y0, x1 - 1, y0);
     painter->drawLine(x0, y0, x0, y1 - 1);
 }
@@ -684,50 +676,39 @@ QvisPlotListBoxItem::drawButtonSurface(QPainter *painter, const QRect &r) const
 // Creation:   Thu Apr 10 15:28:56 PST 2003
 //
 // Modifications:
-//   Cyrus Harrison, Mon Jul  7 13:39:58 PDT 2008
-//   Initial Qt4 Port.
-//
+//   
 // ****************************************************************************
 
 void
 QvisPlotListBoxItem::drawUpDownButton(QPainter *painter, const QRect &r, 
     bool up) const
 {
-    painter->save();
-
     // Draw the button surface.
     drawButtonSurface(painter, r);
 
     // Create the points for the arrow.
+    int x = r.x() + 1;
+    int y = r.y() + 1;
     int w = r.width() - 3;
-    int center = w / 2;
-    int dx0 = (r.width() - 3) - center;
-    int dx1 = center - 2;
-    int d = qMin(dx0, dx1);
     int h = r.height() - 3;
-    QPolygon tri(3);
-    int y = r.y() + (h - (d+1))/2;
+    QPointArray tri(3);
     if(up)
     {
-        int x = r.x() + center + 2;
-        tri.setPoint(0, x, y);
-        tri.setPoint(1, x-d, y+d);
-        tri.setPoint(2, x+d, y+d);        
+        tri.setPoint(0, x+int(w * 0.15f), y+int(h * 0.65f));
+        tri.setPoint(1, x+int(w * 0.5f),  y+int(h * 0.3f));
+        tri.setPoint(2, x+int(w * 0.85f), y+int(h * 0.65f));
     }
     else
     {
-        int x = r.x() + center + 2;
-        tri.setPoint(0, x, y+d+1);
-        tri.setPoint(1, x+d, y+1);
-        tri.setPoint(2, x-d, y+1);
+        tri.setPoint(0, x+int(w * 0.15f), y+int(h * 0.4f));
+        tri.setPoint(1, x+int(w * 0.5f),  y+int(h * 0.75f));
+        tri.setPoint(2, x+int(w * 0.85f), y+int(h * 0.4f));
     }
 
     // Draw the arrow
-    painter->setPen(listWidget()->palette().color(QPalette::Text));
-    painter->setBrush(listWidget()->palette().text());
-    painter->setRenderHint(QPainter::Antialiasing, true);
-    painter->drawPolygon(tri);
-    painter->restore();
+    painter->setPen(listBox()->colorGroup().text());
+    painter->setBrush(QBrush(listBox()->colorGroup().text()));
+    painter->drawPolygon(tri, true);
 }
 
 // ****************************************************************************
@@ -744,30 +725,23 @@ QvisPlotListBoxItem::drawUpDownButton(QPainter *painter, const QRect &r,
 // Creation:   Thu Apr 10 15:30:26 PST 2003
 //
 // Modifications:
-//   Brad Whitlock, Tue Sep 30 15:27:54 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
 QvisPlotListBoxItem::drawDeleteButton(QPainter *painter, const QRect &r) const
 {
-    painter->save();
-
     // Draw the button surface.
     drawButtonSurface(painter, r);
 
     // Draw a red arrow
     QPen pen(Qt::red);
-    pen.setWidth(1);
+    pen.setWidth(2);
     painter->setPen(pen);
-    painter->setRenderHint(QPainter::Antialiasing, true);
     painter->drawLine(r.x() + 3, r.y() + 3,
                       r.x() + r.width() - 4, r.y() + r.height() - 4);
     painter->drawLine(r.x() + 3, r.y() + r.height() - 4,
                       r.x() + r.width() - 4, r.y() + 3);
-
-    painter->restore();
 }
 
 // ****************************************************************************
@@ -794,16 +768,13 @@ QvisPlotListBoxItem::drawDeleteButton(QPainter *painter, const QRect &r) const
 //   Brad Whitlock, Wed Jun 18 13:00:04 PST 2003
 //   I made single clicking work for the Subset button.
 //
-//   Cyrus Harrison, Mon Jul  7 13:39:58 PDT 2008
-//   Initial Qt4 Port.
-//
 // ****************************************************************************
 
 int
 QvisPlotListBoxItem::clicked(const QPoint &pos, bool doubleClicked, int &id)
 {
     // Draw the button background for the expand button and the subset button.
-    int bw = listWidget()->fontMetrics().lineSpacing();
+    int bw = listBox()->fontMetrics().lineSpacing();
     if(bw < subsetIcon->width())
         bw = subsetIcon->width() + 2;
     if(bw < subsetIcon->height())
@@ -927,9 +898,6 @@ QvisPlotListBoxItem::AddClickableRectangle(int id, const QRect &r,
 //   Brad Whitlock, Tue Jun 24 12:15:26 PDT 2008
 //   Get the plugin manager from the viewer proxy.
 //
-//   Cyrus Harrison, Mon Jul  7 13:39:58 PDT 2008
-//   Initial Qt4 Port.
-//
 // ****************************************************************************
 
 void
@@ -944,8 +912,8 @@ QvisPlotListBoxItem::GetOperatorPixmap(int operatorType, QPixmap &pm)
     {
         if(info->XPMIconData())
         {
-            QIcon icon(QPixmap(info->XPMIconData()));
-            pm = icon.pixmap(ITEM_ICON_SIZE, QIcon::Normal);
+            QIconSet icon(QPixmap(info->XPMIconData()));
+            pm = icon.pixmap(QIconSet::Small, QIconSet::Normal);
             QPixmapCache::insert(key, pm);
         }
     }
@@ -968,9 +936,6 @@ QvisPlotListBoxItem::GetOperatorPixmap(int operatorType, QPixmap &pm)
 //   Brad Whitlock, Tue Jun 24 12:15:26 PDT 2008
 //   Get the plugin manager from the viewer proxy.
 //  
-//   Cyrus Harrison, Mon Jul  7 13:39:58 PDT 2008
-//   Initial Qt4 Port.
-//
 // ****************************************************************************
 
 void
@@ -985,8 +950,8 @@ QvisPlotListBoxItem::GetPlotPixmap(int plotType, QPixmap &pm)
     {
         if(info->XPMIconData())
         {
-            QIcon icon(QPixmap(info->XPMIconData()));
-            pm = icon.pixmap(ITEM_ICON_SIZE, QIcon::Normal);
+            QIconSet icon(QPixmap(info->XPMIconData()));
+            pm = icon.pixmap(QIconSet::Small, QIconSet::Normal);
             QPixmapCache::insert(key, pm);
         }
     }

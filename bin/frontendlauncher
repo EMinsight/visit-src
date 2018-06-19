@@ -65,9 +65,23 @@ exec perl -x $0 ${1+"$@"};
 #    Sean Ahern, Mon Aug  4 10:55:39 EDT 2008
 #    Changed how we run perl.
 #
-#    Jeremy Meredith, Thu Dec 18 15:18:10 EST 2008
-#    Quote the $visitdir string by adding backslashes to special
-#    characters before passing it into a regular expression.
+#    Mark C. Miller, Tue Jul  7 18:00:34 PDT 2009
+#    Added logic to avoid backtick pwd if possible. That is causing problems
+#    on LLNL systems when ANY lscratch filesystem happens to be down and
+#    the user may be starting VisIt from ANOTHER lscratch filesystem.
+#
+#    Mark C. Miller, Wed Jul  8 16:52:17 PDT 2009
+#    Alter fix applied above for pwd to use getcwd() instead of $ENV{PWD}.
+#
+#    Jeremy Meredith, Wed Jan  6 11:30:14 EST 2010
+#    If user specified all three components of a non-beta version with -v,
+#    (e.g. -v 1.12.0), then we assume they meant to use -forceversion and
+#    add that value for them.
+#
+#    Eric Brugger, Fri Jan 22 15:08:37 PST 2010
+#    I modified the script to only pass -forceversion if the program it
+#    was launching was visit.  This is the only program that needs it and
+#    other programs do not accept it, such as mpeg2encode.
 #
 ###############################################################################
 
@@ -77,13 +91,19 @@ exec perl -x $0 ${1+"$@"};
 # -----------------------------------------------------------------------------
 
 # Set a secure and reasonable path
+
+use Cwd;
+
 $ENV{PATH} = join ':' , ("$ENV{PATH}","/bin","/usr/bin","/usr/sbin",
                          "/usr/local/bin", "/usr/bsd","/usr/ucb" );
 
 # set base directory
 chomp( $progname= `basename $0`);
 chomp( $progdir = `dirname $0` );
-chomp( $cwd     = `pwd`        );
+chomp( $cwd     = getcwd()    );
+if (!$cwd) {
+    chomp( $cwd     = `pwd`        );
+}
 
 # check if we are called via a symbolic link to visit
 $link = readlink($0);
@@ -149,7 +169,6 @@ while (scalar(@ARGV) > 0) {
         $forceversion  = shift; $forceversion_set  = 1;
         die "The '-forceversion' argument requires a value.\n"
           if (!defined $forceversion);
-        push @visitargs, "-forceversion", $forceversion;
     }
     elsif ($arg eq "-beta")
     {
@@ -220,6 +239,10 @@ if ($forceversion_set)
 {
     $ver_set = 1;
     $ver = $forceversion;
+    if ($progname eq "visit")
+    {
+        push @visitargs, "-forceversion", $forceversion;
+    }
 }
 elsif ($ver_set)
 {
@@ -235,6 +258,12 @@ elsif ($ver_set)
         ($ver_minor = $ver) =~ s/^\d+\.(\d+)\.\d+$/$1/;
         ($ver_patch = $ver) =~ s/^\d+\.\d+\.(\d+)$/$1/;
         ($ver_beta  = -1);
+        print STDERR "WARNING: full patchlevel was specified with -v.\n";
+        print STDERR "Assuming '-forceversion $ver' was intended.\n";
+        if ($progname eq "visit")
+        {
+            push @visitargs, "-forceversion", $ver;
+        }
     } elsif (grep /^\d+\.\d+b$/, $ver) {
         # e.g. -v 1.7b
         ($ver_major = $ver) =~ s/^(\d+)\.\d+b$/$1/;
@@ -292,9 +321,8 @@ if (-d "$visitdir/exe")
 else
 {
     # look for the version-specific visit script to determine viable versions
-    $visitdirquoted = quote_string($visitdir);
-    @exe = <$visitdirquoted/*/bin/internallauncher>;
-    @exeversions = map {m|^$visitdirquoted/(.*?)/|; $_ = $1;} @exe;
+    @exe = <$visitdir/*/bin/internallauncher>;
+    @exeversions = map {m|^$visitdir/(.*?)/|; $_ = $1;} @exe;
     $current_version = readlink("$visitdir/current");
     $beta_version    = readlink("$visitdir/beta");
 
@@ -410,14 +438,3 @@ $ENV{VISITDIR}     = $visitdir;
 # -----------------------------------------------------------------------------
 @visitcmd = ("${visitdir}/bin/internallauncher", @visitargs);
 exec @visitcmd or die "Can't execute visit launcher script: $!\n";
-
-
-# -----------------------------------------------------------------------------
-#                          Helper functions
-# -----------------------------------------------------------------------------
-sub quote_string
-{
-    my ($str) = @_;
-    $str =~ s/([\+\{\}\(\)])/\\$1/g;
-    return $str;
-}

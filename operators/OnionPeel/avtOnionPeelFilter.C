@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -63,6 +63,7 @@
 #include <InvalidSetException.h>
 #include <LogicalIndexException.h>
 #include <DebugStream.h>
+#include <CompactSILRestrictionAttributes.h>
 #include <vtkVisItUtility.h>
 
 #include <avtCallback.h>
@@ -600,7 +601,6 @@ avtOnionPeelFilter::UpdateDataObjectInfo(void)
 //    Small tweak to guard against a case in which the RealMapsOut are 
 //    requested from an avtSILSet, but the set goes out of scope and its maps
 //    out are deleted before this method is done using them.
-//
 // ****************************************************************************
 
 avtContract_p

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -38,19 +38,29 @@
 
 #ifndef QVISKEYFRAMEWINDOW_H
 #define QVISKEYFRAMEWINDOW_H
+
 #include <gui_exports.h>
 #include <QvisPostableWindowSimpleObserver.h>
 #include <AttributeSubject.h>
+#include <vector>
+#include <map>
 
 class KeyframeAttributes;
-class PlotList;
 class WindowInformation;
-
+class QLabel;
 class QCheckBox;
 class QLineEdit;
-class QTreeView;
+class QSpinBox;
+class QVBox;
+class QButtonGroup;
+class QPopupMenu;
 
-class KeyframeDataModel;
+
+class KFListView;
+class KFListViewItem;
+class KFTimeSlider;
+class Plot;
+class PlotList;
 
 // ****************************************************************************
 //  Class:  QvisKeyframeWindow
@@ -81,57 +91,70 @@ class KeyframeDataModel;
 //    Brad Whitlock, Wed Apr  9 11:09:07 PDT 2008
 //    QString for caption, shortName.
 //
-//    Brad Whitlock, Thu Oct 23 15:02:53 PDT 2008
-//    Rewrote for Qt 4.
-//
 // ****************************************************************************
 
 class GUI_API QvisKeyframeWindow : public QvisPostableWindowSimpleObserver
 {
     Q_OBJECT
-public:
+  public:
     QvisKeyframeWindow(KeyframeAttributes *subj,
                        const QString &caption = QString::null,
                        const QString &shortName = QString::null,
                        QvisNotepadArea *notepad = 0);
     virtual ~QvisKeyframeWindow();
-
     virtual void CreateWindowContents();
-    virtual void SubjectRemoved(Subject*);
+    virtual void ConnectAttributes(AttributeSubject *subj, const char *name=NULL);
+    virtual void ConnectPlotAttributes(AttributeSubject *subj, int index);
+    virtual void ConnectWindowInformation(WindowInformation *subj);
+    virtual void ConnectPlotList(PlotList *subj);
+    virtual void UpdateWindowInformation();
+    virtual void UpdatePlotList();
+    void SubjectRemoved(Subject*);
 
-    void ConnectWindowInformation(WindowInformation *subj);
-    void ConnectPlotList(PlotList *subj);
-public slots:
+  public slots:
     virtual void apply();
-protected:
+    void timeChanged(int);
+    void newSelection();
+    void stateKFClicked();
+
+  protected:
     void UpdateWindow(bool doAll);
-    void UpdateWindowInformation();
+    void UpdateWindowSensitivity();
     void GetCurrentValues(int which_widget);
     void Apply(bool ignore = false);
-
+    KFListViewItem *AddSubjectToWindow(AttributeSubject*,
+                                       const char* =NULL,
+                                       KFListViewItem* =NULL);
+    KFListViewItem *AddPlotToWindow(AttributeSubject*, const char*,
+                                    KFListViewItem*);
     int GetCurrentFrame() const;
 
-private slots:
+  private slots:
     void nFramesProcessText();
     void keyframeEnabledToggled(bool);
     void userSetNFrames(const QString &);
-    void newSelection();
-    void stateKFClicked();
-    void addViewKeyframe();
-    void useViewKFClicked(bool);
-private:
-    QLineEdit   *nFrames;
-    QCheckBox   *keyframeEnabledCheck;
-    QLineEdit   *dbStateLineEdit;
+  private:
+    QLineEdit *nFrames;
+    QCheckBox *snapToFrameCheck;
+    QCheckBox *keyframeEnabledCheck;
+    QLineEdit *dbStateLineEdit;
     QPushButton *dbStateButton;
-    QPushButton *viewButton;
-    QTreeView   *kv;
-    QCheckBox   *useViewKeyframes;
 
-    WindowInformation  *windowInfo;
-    PlotList           *plotList;
+    KFListView   *lv;
+    KFTimeSlider *ts;
+
+    WindowInformation *windowInfo;
+    PlotList *plotList;
+    std::map<int, KFListViewItem*> plotMap;
+    std::map<int, AttributeSubject*> plotAtts;
+    KFListViewItem *viewItem;
+
     KeyframeAttributes *kfAtts;
-    KeyframeDataModel  *model;
+
+    std::vector<AttributeSubject*> atts;
+    std::map<AttributeSubject*, std::string> nameMap;
+    std::map<AttributeSubject*, KFListViewItem*> itemMap;
+    std::vector<KFListViewItem*> fileItems;
 };
 
 

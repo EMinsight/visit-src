@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -38,7 +38,7 @@
 
 #include <ViewerClientConnection.h>
 
-#include <QSocketNotifier>
+#include <qsocketnotifier.h>
 #include <AttributeSubject.h>
 #include <ExistingRemoteProcess.h>
 #include <LostConnectionException.h>
@@ -69,14 +69,11 @@
 //   Brad Whitlock, Mon Feb 12 17:57:18 PST 2007
 //   Changed base class.
 //
-//   Brad Whitlock, Fri May  9 14:42:50 PDT 2008
-//   Added name.
-//
 // ****************************************************************************
 
 ViewerClientConnection::ViewerClientConnection(const ViewerState *s,
-    QObject *parent, const QString &n) : ViewerBase(parent),
-    SimpleObserver(), name(n)
+    QObject *parent, const char *name) : ViewerBase(parent, name),
+    SimpleObserver()
 {
     notifier = 0;
     ownsNotifier = false;
@@ -107,7 +104,7 @@ ViewerClientConnection::ViewerClientConnection(const ViewerState *s,
 //   sn     : The socket notifier to be used by this object.
 //   s      : The viewer state to be used by this object.
 //   parent : The object's parent.
-//   n      : The name of the object.
+//   name   : The name of the object.
 //
 // Note:       We use this constructor to repackage some existing objects
 //             that we use to set up the connection to the original client
@@ -125,7 +122,7 @@ ViewerClientConnection::ViewerClientConnection(const ViewerState *s,
 
 ViewerClientConnection::ViewerClientConnection(ParentProcess *p,
     QSocketNotifier *sn, const ViewerState *s, QObject *parent,
-    const QString &n) : ViewerBase(parent), name(n)
+    const char *name) : ViewerBase(parent, name)
 {
     notifier = sn;
     if(notifier != 0)
@@ -175,6 +172,13 @@ ViewerClientConnection::ViewerClientConnection(ParentProcess *p,
 
 ViewerClientConnection::~ViewerClientConnection()
 {
+    // Disconnect the socket notifier since it will not necessarily
+    // be freed by this object.
+    if(notifier != 0)
+    {
+        disconnect(notifier, SIGNAL(activated(int)),
+                   this, SLOT(ReadFromClientAndProcess(int)));
+    }
     if(ownsNotifier)
         delete notifier;
 
@@ -207,12 +211,10 @@ ViewerClientConnection::~ViewerClientConnection()
 // Programmer: Brad Whitlock
 // Creation:   Tue May 31 13:41:13 PST 2005
 //
-// Modifications:   
-//   Jeremy Meredith, Thu May 24 10:35:14 EDT 2007
-//   Added SSH tunneling option to RemoteProcess::Open, and set it to false.
-//
-//   Brad Whitlock, Fri May 23 11:08:53 PDT 2008
-//   Qt 4.
+// Modifications:
+//   
+//    Jeremy Meredith, Thu May 24 10:35:14 EDT 2007
+//    Added SSH tunneling option to RemoteProcess::Open, and set it to false.
 //
 // ****************************************************************************
 
@@ -298,7 +300,8 @@ ViewerClientConnection::LaunchClient(const std::string &program,
         {
             debug1 << mName << "Creating socket notifier to listen to client."
                    << endl;
-            notifier = new QSocketNotifier(desc, QSocketNotifier::Read, 0);
+            notifier = new QSocketNotifier(desc, QSocketNotifier::Read,
+                0, "notifier");
             connect(notifier, SIGNAL(activated(int)),
                     this, SLOT(ReadFromClientAndProcess(int)));
             ownsNotifier = true;
@@ -466,9 +469,6 @@ ViewerClientConnection::BroadcastToClient(AttributeSubject *src)
 // Creation:   Tue May 31 13:46:34 PST 2005
 //
 // Modifications:
-//    Brad Whitlock, Fri Jan 9 14:47:07 PST 2009
-//    Added exception handling code so exceptions cannot get back into the
-//    Qt event loop.
 //   
 // ****************************************************************************
 
@@ -490,31 +490,15 @@ ViewerClientConnection::ReadFromClientAndProcess(int)
         // Emit a signal so the viewer can delete this dead connection.
         emit DisconnectClient(this);
     }
-    CATCHALL(...)
-    {
-        ; // nothing
-    }
     ENDTRY
 }
 
-// ****************************************************************************
-// Method: ViewerClientConnection::Name
-//
-// Purpose: 
-//   Return the name of the client.
-//
-// Programmer: Brad Whitlock
-// Creation:   Fri May  9 14:44:06 PDT 2008
-//
-// Modifications:
-//   
-// ****************************************************************************
 
-const QString &
-ViewerClientConnection::Name() const
-{
-    return name;
-}
+
+
+
+
+
 
 
 

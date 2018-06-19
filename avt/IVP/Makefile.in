@@ -1,4 +1,4 @@
-#                         Copyright (c) 2000 - 2008
+#                         Copyright (c) 2000 - 2009
 #                  Lawrence Livermore National Security, LLC
 #            Produced at the Lawrence Livermore National Laboratory
 #                              LLNL-CODE-400124
@@ -47,7 +47,7 @@
 ##
 ## Files...
 ##
-SRC=avtIVPDopri5.C avtIVPSolver.C avtIVPVTKField.C avtStreamline.C MemStream.C avtIVPAdamsBashforth.C
+SRC=avtIVPDopri5.C avtIVPSolver.C avtIVPVTKField.C avtIVPM3DC1Field.C avtStreamline.C MemStream.C avtIVPAdamsBashforth.C avtIVPVTKTimeVaryingField.C avtIVPM3DC1Integrator.C
 
 CPPFLAGS=@COMPONENT_CPPFLAGS@ @CPPFLAGS@
 

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -89,21 +89,21 @@ StreamlineAttributes::SourceType_FromString(const std::string &s, StreamlineAttr
 
 static const char *ColoringMethod_strings[] = {
 "Solid", "ColorBySpeed", "ColorByVorticity", 
-"ColorByLength", "ColorByTime", "ColorBySeedPointID"
-};
+"ColorByLength", "ColorByTime", "ColorBySeedPointID", 
+"ColorByVariable"};
 
 std::string
 StreamlineAttributes::ColoringMethod_ToString(StreamlineAttributes::ColoringMethod t)
 {
     int index = int(t);
-    if(index < 0 || index >= 6) index = 0;
+    if(index < 0 || index >= 7) index = 0;
     return ColoringMethod_strings[index];
 }
 
 std::string
 StreamlineAttributes::ColoringMethod_ToString(int t)
 {
-    int index = (t < 0 || t >= 6) ? 0 : t;
+    int index = (t < 0 || t >= 7) ? 0 : t;
     return ColoringMethod_strings[index];
 }
 
@@ -111,7 +111,7 @@ bool
 StreamlineAttributes::ColoringMethod_FromString(const std::string &s, StreamlineAttributes::ColoringMethod &val)
 {
     val = StreamlineAttributes::Solid;
-    for(int i = 0; i < 6; ++i)
+    for(int i = 0; i < 7; ++i)
     {
         if(s == ColoringMethod_strings[i])
         {
@@ -203,20 +203,21 @@ StreamlineAttributes::IntegrationDirection_FromString(const std::string &s, Stre
 //
 
 static const char *TerminationType_strings[] = {
-"Distance", "Time"};
+"Distance", "Time", "Step"
+};
 
 std::string
 StreamlineAttributes::TerminationType_ToString(StreamlineAttributes::TerminationType t)
 {
     int index = int(t);
-    if(index < 0 || index >= 2) index = 0;
+    if(index < 0 || index >= 3) index = 0;
     return TerminationType_strings[index];
 }
 
 std::string
 StreamlineAttributes::TerminationType_ToString(int t)
 {
-    int index = (t < 0 || t >= 2) ? 0 : t;
+    int index = (t < 0 || t >= 3) ? 0 : t;
     return TerminationType_strings[index];
 }
 
@@ -224,48 +225,11 @@ bool
 StreamlineAttributes::TerminationType_FromString(const std::string &s, StreamlineAttributes::TerminationType &val)
 {
     val = StreamlineAttributes::Distance;
-    for(int i = 0; i < 2; ++i)
+    for(int i = 0; i < 3; ++i)
     {
         if(s == TerminationType_strings[i])
         {
             val = (TerminationType)i;
-            return true;
-        }
-    }
-    return false;
-}
-
-//
-// Enum conversion methods for StreamlineAttributes::IntegrationType
-//
-
-static const char *IntegrationType_strings[] = {
-"DormandPrince", "AdamsBashforth"};
-
-std::string
-StreamlineAttributes::IntegrationType_ToString(StreamlineAttributes::IntegrationType t)
-{
-    int index = int(t);
-    if(index < 0 || index >= 2) index = 0;
-    return IntegrationType_strings[index];
-}
-
-std::string
-StreamlineAttributes::IntegrationType_ToString(int t)
-{
-    int index = (t < 0 || t >= 2) ? 0 : t;
-    return IntegrationType_strings[index];
-}
-
-bool
-StreamlineAttributes::IntegrationType_FromString(const std::string &s, StreamlineAttributes::IntegrationType &val)
-{
-    val = StreamlineAttributes::DormandPrince;
-    for(int i = 0; i < 2; ++i)
-    {
-        if(s == IntegrationType_strings[i])
-        {
-            val = (IntegrationType)i;
             return true;
         }
     }
@@ -310,8 +274,45 @@ StreamlineAttributes::StreamlineAlgorithmType_FromString(const std::string &s, S
     return false;
 }
 
+//
+// Enum conversion methods for StreamlineAttributes::IntegrationType
+//
+
+static const char *IntegrationType_strings[] = {
+"DormandPrince", "AdamsBashforth"};
+
+std::string
+StreamlineAttributes::IntegrationType_ToString(StreamlineAttributes::IntegrationType t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 2) index = 0;
+    return IntegrationType_strings[index];
+}
+
+std::string
+StreamlineAttributes::IntegrationType_ToString(int t)
+{
+    int index = (t < 0 || t >= 2) ? 0 : t;
+    return IntegrationType_strings[index];
+}
+
+bool
+StreamlineAttributes::IntegrationType_FromString(const std::string &s, StreamlineAttributes::IntegrationType &val)
+{
+    val = StreamlineAttributes::DormandPrince;
+    for(int i = 0; i < 2; ++i)
+    {
+        if(s == IntegrationType_strings[i])
+        {
+            val = (IntegrationType)i;
+            return true;
+        }
+    }
+    return false;
+}
+
 // Type map format string
-const char *StreamlineAttributes::TypeMapFormatString = "iddDDDDDDdDdDbiibdiisabbiddiiiii";
+const char *StreamlineAttributes::TypeMapFormatString = "iddDDDDDDdDdDbiibdiisabbiddiiiiiibs";
 
 // ****************************************************************************
 // Method: StreamlineAttributes::StreamlineAttributes
@@ -381,6 +382,8 @@ StreamlineAttributes::StreamlineAttributes() :
     streamlineAlgorithmType = ParallelStaticDomains;
     maxStreamlineProcessCount = 10;
     maxDomainCacheSize = 3;
+    workGroupSize = 32;
+    pathlines = false;
 }
 
 // ****************************************************************************
@@ -457,6 +460,9 @@ StreamlineAttributes::StreamlineAttributes(const StreamlineAttributes &obj) :
     streamlineAlgorithmType = obj.streamlineAlgorithmType;
     maxStreamlineProcessCount = obj.maxStreamlineProcessCount;
     maxDomainCacheSize = obj.maxDomainCacheSize;
+    workGroupSize = obj.workGroupSize;
+    pathlines = obj.pathlines;
+    coloringVariable = obj.coloringVariable;
 
     SelectAll();
 }
@@ -556,6 +562,9 @@ StreamlineAttributes::operator = (const StreamlineAttributes &obj)
     streamlineAlgorithmType = obj.streamlineAlgorithmType;
     maxStreamlineProcessCount = obj.maxStreamlineProcessCount;
     maxDomainCacheSize = obj.maxDomainCacheSize;
+    workGroupSize = obj.workGroupSize;
+    pathlines = obj.pathlines;
+    coloringVariable = obj.coloringVariable;
 
     SelectAll();
     return *this;
@@ -651,7 +660,10 @@ StreamlineAttributes::operator == (const StreamlineAttributes &obj) const
             (integrationType == obj.integrationType) &&
             (streamlineAlgorithmType == obj.streamlineAlgorithmType) &&
             (maxStreamlineProcessCount == obj.maxStreamlineProcessCount) &&
-            (maxDomainCacheSize == obj.maxDomainCacheSize));
+            (maxDomainCacheSize == obj.maxDomainCacheSize) &&
+            (workGroupSize == obj.workGroupSize) &&
+            (pathlines == obj.pathlines) &&
+            (coloringVariable == obj.coloringVariable));
 }
 
 // ****************************************************************************
@@ -926,6 +938,9 @@ StreamlineAttributes::SelectAll()
     Select(ID_streamlineAlgorithmType,   (void *)&streamlineAlgorithmType);
     Select(ID_maxStreamlineProcessCount, (void *)&maxStreamlineProcessCount);
     Select(ID_maxDomainCacheSize,        (void *)&maxDomainCacheSize);
+    Select(ID_workGroupSize,             (void *)&workGroupSize);
+    Select(ID_pathlines,                 (void *)&pathlines);
+    Select(ID_coloringVariable,          (void *)&coloringVariable);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1152,6 +1167,24 @@ StreamlineAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool f
         node->AddNode(new DataNode("maxDomainCacheSize", maxDomainCacheSize));
     }
 
+    if(completeSave || !FieldsEqual(ID_workGroupSize, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("workGroupSize", workGroupSize));
+    }
+
+    if(completeSave || !FieldsEqual(ID_pathlines, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("pathlines", pathlines));
+    }
+
+    if(completeSave || !FieldsEqual(ID_coloringVariable, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("coloringVariable", coloringVariable));
+    }
+
 
     // Add the node to the parent node.
     if(addToParent || forceAdd)
@@ -1260,7 +1293,7 @@ StreamlineAttributes::SetFromNode(DataNode *parentNode)
         if(node->GetNodeType() == INT_NODE)
         {
             int ival = node->AsInt();
-            if(ival >= 0 && ival < 6)
+            if(ival >= 0 && ival < 7)
                 SetColoringMethod(ColoringMethod(ival));
         }
         else if(node->GetNodeType() == STRING_NODE)
@@ -1304,7 +1337,7 @@ StreamlineAttributes::SetFromNode(DataNode *parentNode)
         if(node->GetNodeType() == INT_NODE)
         {
             int ival = node->AsInt();
-            if(ival >= 0 && ival < 2)
+            if(ival >= 0 && ival < 3)
                 SetTerminationType(TerminationType(ival));
         }
         else if(node->GetNodeType() == STRING_NODE)
@@ -1350,6 +1383,12 @@ StreamlineAttributes::SetFromNode(DataNode *parentNode)
         SetMaxStreamlineProcessCount(node->AsInt());
     if((node = searchNode->GetNode("maxDomainCacheSize")) != 0)
         SetMaxDomainCacheSize(node->AsInt());
+    if((node = searchNode->GetNode("workGroupSize")) != 0)
+        SetWorkGroupSize(node->AsInt());
+    if((node = searchNode->GetNode("pathlines")) != 0)
+        SetPathlines(node->AsBool());
+    if((node = searchNode->GetNode("coloringVariable")) != 0)
+        SetColoringVariable(node->AsString());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1593,6 +1632,27 @@ StreamlineAttributes::SetMaxDomainCacheSize(int maxDomainCacheSize_)
 {
     maxDomainCacheSize = maxDomainCacheSize_;
     Select(ID_maxDomainCacheSize, (void *)&maxDomainCacheSize);
+}
+
+void
+StreamlineAttributes::SetWorkGroupSize(int workGroupSize_)
+{
+    workGroupSize = workGroupSize_;
+    Select(ID_workGroupSize, (void *)&workGroupSize);
+}
+
+void
+StreamlineAttributes::SetPathlines(bool pathlines_)
+{
+    pathlines = pathlines_;
+    Select(ID_pathlines, (void *)&pathlines);
+}
+
+void
+StreamlineAttributes::SetColoringVariable(const std::string &coloringVariable_)
+{
+    coloringVariable = coloringVariable_;
+    Select(ID_coloringVariable, (void *)&coloringVariable);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1851,6 +1911,30 @@ StreamlineAttributes::GetMaxDomainCacheSize() const
     return maxDomainCacheSize;
 }
 
+int
+StreamlineAttributes::GetWorkGroupSize() const
+{
+    return workGroupSize;
+}
+
+bool
+StreamlineAttributes::GetPathlines() const
+{
+    return pathlines;
+}
+
+const std::string &
+StreamlineAttributes::GetColoringVariable() const
+{
+    return coloringVariable;
+}
+
+std::string &
+StreamlineAttributes::GetColoringVariable()
+{
+    return coloringVariable;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Select property methods
 ///////////////////////////////////////////////////////////////////////////////
@@ -1915,6 +1999,12 @@ StreamlineAttributes::SelectSingleColor()
     Select(ID_singleColor, (void *)&singleColor);
 }
 
+void
+StreamlineAttributes::SelectColoringVariable()
+{
+    Select(ID_coloringVariable, (void *)&coloringVariable);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Keyframing methods
 ///////////////////////////////////////////////////////////////////////////////
@@ -1971,6 +2061,9 @@ StreamlineAttributes::GetFieldName(int index) const
     case ID_streamlineAlgorithmType:   return "streamlineAlgorithmType";
     case ID_maxStreamlineProcessCount: return "maxStreamlineProcessCount";
     case ID_maxDomainCacheSize:        return "maxDomainCacheSize";
+    case ID_workGroupSize:             return "workGroupSize";
+    case ID_pathlines:                 return "pathlines";
+    case ID_coloringVariable:          return "coloringVariable";
     default:  return "invalid index";
     }
 }
@@ -2027,6 +2120,9 @@ StreamlineAttributes::GetFieldType(int index) const
     case ID_streamlineAlgorithmType:   return FieldType_enum;
     case ID_maxStreamlineProcessCount: return FieldType_int;
     case ID_maxDomainCacheSize:        return FieldType_int;
+    case ID_workGroupSize:             return FieldType_int;
+    case ID_pathlines:                 return FieldType_bool;
+    case ID_coloringVariable:          return FieldType_string;
     default:  return FieldType_unknown;
     }
 }
@@ -2083,6 +2179,9 @@ StreamlineAttributes::GetFieldTypeName(int index) const
     case ID_streamlineAlgorithmType:   return "enum";
     case ID_maxStreamlineProcessCount: return "int";
     case ID_maxDomainCacheSize:        return "int";
+    case ID_workGroupSize:             return "int";
+    case ID_pathlines:                 return "bool";
+    case ID_coloringVariable:          return "string";
     default:  return "invalid index";
     }
 }
@@ -2309,6 +2408,21 @@ StreamlineAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (maxDomainCacheSize == obj.maxDomainCacheSize);
         }
         break;
+    case ID_workGroupSize:
+        {  // new scope
+        retval = (workGroupSize == obj.workGroupSize);
+        }
+        break;
+    case ID_pathlines:
+        {  // new scope
+        retval = (pathlines == obj.pathlines);
+        }
+        break;
+    case ID_coloringVariable:
+        {  // new scope
+        retval = (coloringVariable == obj.coloringVariable);
+        }
+        break;
     default: retval = false;
     }
 
@@ -2372,7 +2486,7 @@ StreamlineAttributes::ChangesRequireRecalculation(const StreamlineAttributes &ob
        (POINT_DIFFERS(sphereOrigin, obj.sphereOrigin) ||
         (sphereRadius != obj.sphereRadius)));
 
-    // If we're in box source mode and the box differs, boxSourceDiffers
+    // If we're in box source mode and the box differs, boxDiffers
     // evaluates to true.
     bool boxSourceDiffers = (sourceType == SpecifiedBox) &&
         (POINT_DIFFERS(boxExtents, obj.boxExtents) ||
@@ -2400,6 +2514,7 @@ StreamlineAttributes::ChangesRequireRecalculation(const StreamlineAttributes &ob
            (relTol != obj.relTol) ||
            (absTol != obj.absTol) ||
            (coloringMethod != obj.coloringMethod && obj.coloringMethod != Solid) ||
+           (coloringVariable != obj.coloringVariable) ||
            sourcePointsDiffer ||
            sourceLineDiffers ||
            sourcePlaneDiffers ||

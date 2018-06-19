@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -44,6 +44,7 @@
 class QButtonGroup;
 class QCheckBox;
 class QComboBox;
+class QGroupBox;
 class QLabel;
 class QLineEdit;
 class QvisColorButton;
@@ -88,9 +89,6 @@ class VectorAttributes;
 //   Jeremy Meredith, Tue Jul  8 15:11:19 EDT 2008
 //   Added ability to limit vectors to come from original cell only
 //   (useful for material-selected vector plots).
-//
-//   Brad Whitlock, Tue Jul 29 11:07:34 PDT 2008
-//   Qt 4.
 //
 // ****************************************************************************
 
@@ -145,28 +143,26 @@ private:
     int                  plotType;
     VectorAttributes     *vectorAtts;
 
-    QWidget              *styleGroup;
     QButtonGroup         *lineStemButtonGroup; 
+    QGroupBox            *styleGroupBox;
     QCheckBox            *highQualityToggle;
+
     QvisLineStyleWidget  *lineStyle;
     QvisLineWidthWidget  *lineWidth;
     QLabel               *lineStyleLabel;
     QLabel               *lineWidthLabel;
     QLineEdit            *stemWidthEdit;
     QLabel               *stemWidthLabel;
-
-    QWidget              *colorGroup;
+    QGroupBox            *colorGroupBox;
     QvisColorButton      *vectorColor;
     QButtonGroup         *colorButtonGroup; 
     QvisColorTableButton *colorTableButton;
-
-    QWidget              *scaleGroup;    
+    QGroupBox            *scaleGroupBox;    
     QLineEdit            *scaleLineEdit;
     QCheckBox            *scaleByMagnitudeToggle;
     QCheckBox            *autoScaleToggle;
     QLineEdit            *headSizeLineEdit;
-
-    QWidget              *reduceGroup;
+    QGroupBox            *reduceGroupBox;
     QButtonGroup         *reduceButtonGroup;
     QLineEdit            *nVectorsLineEdit;
     QLineEdit            *strideLineEdit;
@@ -174,13 +170,13 @@ private:
     QCheckBox            *drawHeadToggle;
     QButtonGroup         *originButtonGroup;
 
-    QWidget              *limitsGroup;
-    QCheckBox            *minToggle;
-    QCheckBox            *maxToggle;
-    QComboBox            *limitsSelect;
-    QLineEdit            *maxLineEdit;
-    QLineEdit            *minLineEdit;
-    QCheckBox            *limitToOrigToggle;
+    QGroupBox             *limitsGroupBox;
+    QCheckBox             *minToggle;
+    QCheckBox             *maxToggle;
+    QComboBox             *limitsSelect;
+    QLineEdit             *maxLineEdit;
+    QLineEdit             *minLineEdit;
+    QCheckBox             *limitToOrigToggle;
 };
 
 #endif

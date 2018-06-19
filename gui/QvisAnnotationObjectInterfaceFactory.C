@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,7 +37,6 @@
 *****************************************************************************/
 
 #include <QvisAnnotationObjectInterfaceFactory.h>
-
 #include <QvisImageAnnotationInterface.h>
 #include <QvisLegendAttributesInterface.h>
 #include <QvisLine2DInterface.h>
@@ -143,16 +142,16 @@ QvisAnnotationObjectInterfaceFactory::CreateInterface(
     switch(i)
     {
     case AnnotationObject::Text2D:
-        retval = new QvisText2DInterface(parent);
+        retval = new QvisText2DInterface(parent, "text2DInterface");
         break;
     case AnnotationObject::Text3D:
-        retval = new QvisText3DInterface(parent);
+        retval = new QvisText3DInterface(parent, "text3DInterface");
         break;
     case AnnotationObject::TimeSlider:
-        retval = new QvisTimeSliderInterface(parent);
+        retval = new QvisTimeSliderInterface(parent, "timeSliderInterface");
         break;
     case AnnotationObject::Line2D:
-        retval = new QvisLine2DInterface(parent);
+        retval = new QvisLine2DInterface(parent, "line2DInterface");
         break;
     case AnnotationObject::Arrow2D:
         // Nothing yet
@@ -164,10 +163,10 @@ QvisAnnotationObjectInterfaceFactory::CreateInterface(
         // Nothing yet
         break;
     case AnnotationObject::Image:
-        retval = new QvisImageAnnotationInterface(parent);
+        retval = new QvisImageAnnotationInterface(parent, "imageAnnotationInterface");
         break;
     case AnnotationObject::LegendAttributes:
-        retval = new QvisLegendAttributesInterface(parent);
+        retval = new QvisLegendAttributesInterface(parent, "legendAttributesInterface");
         break;
     default:
         debug1 << "QvisAnnotationObjectInterfaceFactory::CreateInterface:"

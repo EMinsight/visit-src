@@ -2,9 +2,9 @@
 #define QVIS_SEQUENCE_TRANSITION_H
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,7 +37,7 @@
 * DAMAGE.
 *
 *****************************************************************************/
-#include <QGroupBox>
+#include <qgroupbox.h>
 
 class QvisColorButton;
 class QButtonGroup;
@@ -55,16 +55,14 @@ class QSpinBox;
 // Creation:   Thu Oct 12 15:11:36 PST 2006
 //
 // Modifications:
-//   Brad Whitlock, Tue Oct  7 09:27:48 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 class QvisSequenceTransition : public QGroupBox
 {
     Q_OBJECT
 public:
-    QvisSequenceTransition(const QPixmap &, QWidget *parent);
+    QvisSequenceTransition(const QPixmap &, QWidget *parent, const char *name);
     virtual ~QvisSequenceTransition();
 
     void getFromTransition(bool &frames, QColor &color) const;

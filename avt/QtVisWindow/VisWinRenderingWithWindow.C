@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -50,7 +50,9 @@
 #include <WindowMetrics.h>
 #endif
 
-#include <QCursor>
+#if QT_VERSION >= 300
+#include <qcursor.h>
+#endif
 
 // ****************************************************************************
 //  Method: VisWinRenderingWithWindow constructor
@@ -557,10 +559,6 @@ VisWinRenderingWithWindow::SetLargeIcons(bool val)
 //
 //   Gunther H. Weber, Wed Mar 19 16:10:11 PDT 2008
 //   Added SPREADSHEET_PICK 
-//
-//   Brad Whitlock, Fri May  9 14:22:17 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
@@ -584,16 +582,29 @@ VisWinRenderingWithWindow::SetCursorForMode(INTERACTION_MODE m)
     {
         cursorIndex = newCursorIndex;
 
+#if QT_VERSION >= 300
         switch(cursorIndex)
         {
         default:
         case 0:
-            renWin->setCursor(QCursor(Qt::ArrowCursor));
+            renWin->setCursor(QCursor::ArrowCursor);
             break;
         case 1:
-            renWin->setCursor(QCursor(Qt::CrossCursor));
+            renWin->setCursor(QCursor::CrossCursor);
             break;
         }
+#else
+        switch(cursorIndex)
+        {
+        default:
+        case 0:
+            renWin->setCursor(ArrowCursor);
+            break;
+        case 1:
+            renWin->setCursor(CrossCursor);
+            break;
+        }
+#endif
     }
 }
 

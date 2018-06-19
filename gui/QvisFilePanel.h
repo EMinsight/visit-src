@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,7 +39,7 @@
 #ifndef QVIS_FILE_PANEL
 #define QVIS_FILE_PANEL
 #include <gui_exports.h>
-#include <QWidget>
+#include <qwidget.h>
 #include <SimpleObserver.h>
 #include <GUIBase.h>
 #include <QualifiedFilename.h>
@@ -49,13 +49,14 @@
 // Forward declarations.
 class QComboBox;
 class QLabel;
-class QTreeWidget;
-class QTreeWidgetItem;
+class QListView;
+class QListViewItem;
 class QPushButton;
 class QLineEdit;
 class QPixmap;
+class QPopupMenu;
 class QvisAnimationSlider;
-class QvisFilePanelItem;
+class QvisListViewFileItem;
 class QvisVCRControl;
 
 class avtDatabaseMetaData;
@@ -143,18 +144,16 @@ class ViewerProxy;
 //   Brad Whitlock, Mon Jun 27 14:54:27 PST 2005
 //   Added updateOpenButtonState
 //
-//   Brad Whitlock, Fri May 30 14:23:14 PDT 2008
-//   Qt 4.
-// 
-//   Cyrus Harrison, Tue Jul  1 16:04:25 PDT 2008
-//   Initial Qt4 Port.
-// 
 //   Brad Whitlock, Thu Jul 24 09:17:05 PDT 2008
 //   Made it possible to overlay a file at a given state.
 //
 //   Cyrus Harrison, Fri Aug  1 09:06:03 PDT 2008
 //   Added SetTimeFieldText() helper to make sure long time values remain 
 //   visible.
+//
+//    Cyrus Harrison, Tue Apr 14 13:35:54 PDT 2009
+//    Added right click popup menu w/ file options including new 
+//    "Replace Selected" option, which only replaces active plots.
 //
 // ****************************************************************************
 
@@ -188,7 +187,7 @@ class GUI_API QvisFilePanel : public QWidget, public SimpleObserver, public GUIB
             FileDisplayInformationMap;
 
 public:
-    QvisFilePanel(QWidget *parent = 0);
+    QvisFilePanel(QWidget *parent = 0, const char *name = 0);
     virtual ~QvisFilePanel();
     virtual void Update(Subject *);
     virtual void SubjectRemoved(Subject *);
@@ -216,18 +215,20 @@ private:
     void UpdateTimeFieldText(int timeState);
     void SetTimeFieldText(const QString &text);
     void UpdateAnimationControlsEnabledState();
+    bool CheckIfReplaceIsValid();
     bool UpdateReplaceButtonEnabledState();
-    void UpdateOpenButtonState(QvisFilePanelItem *fileItem);
+    void UpdateOpenButtonState(QvisListViewFileItem *fileItem);
 
     bool OpenFile(const QualifiedFilename &filename, int timeState,
                   bool reOpen);
-    void ReplaceFile(const QualifiedFilename &filename, int timeState=0);
+    void ReplaceFile(const QualifiedFilename &filename, int timeState=0, 
+                     bool onlyReplaceActive = false);
     void OverlayFile(const QualifiedFilename &filename, int timeState=0);
 
     void ExpandDatabases();
-    void ExpandDatabaseItem(QvisFilePanelItem *item);
-    void ExpandDatabaseItemUsingMetaData(QvisFilePanelItem *item);
-    void ExpandDatabaseItemUsingVirtualDBDefinition(QvisFilePanelItem *item);
+    void ExpandDatabaseItem(QvisListViewFileItem *item);
+    void ExpandDatabaseItemUsingMetaData(QvisListViewFileItem *item);
+    void ExpandDatabaseItemUsingVirtualDBDefinition(QvisListViewFileItem *item);
     void RemoveExpandedFile(const QualifiedFilename &filename);
     void SetFileExpanded(const QualifiedFilename &filename, bool);
     bool FileIsExpanded(const QualifiedFilename &filename) const;
@@ -254,18 +255,26 @@ private slots:
     void sliderChange(int val);
     void processTimeText();
 
-    void fileCollapsed(QTreeWidgetItem *);
-    void fileExpanded(QTreeWidgetItem *);
-    void highlightFile(QTreeWidgetItem *);
+    void fileCollapsed(QListViewItem *);
+    void fileExpanded(QListViewItem *);
+    void highlightFile(QListViewItem *);
     void openFile();
-    void openFileDblClick(QTreeWidgetItem *);
+    void openFileDblClick(QListViewItem *);
     void replaceFile();
+    void replaceActivePlots();
     void overlayFile();
+    void closeFile();
+    void updateHeaderWidth();
+    void updateHeaderWidthForLongName();
     void internalUpdateFileList();
+
+    void showFilePopup(QListViewItem *,const QPoint &,int);
+    void onFilePopupClick(int);
+
 private:
     bool                     showSelectedFiles;
 
-    QTreeWidget              *fileTree;
+    QListView                *fileListView;
     QComboBox                *activeTimeSlider;
     QLabel                   *activeTimeSliderLabel;
     QPushButton              *openButton;
@@ -277,7 +286,8 @@ private:
     QPixmap                  *computerPixmap;
     QPixmap                  *databasePixmap;
     QPixmap                  *folderPixmap;
-
+    QPopupMenu               *filePopupMenu;
+    
     WindowInformation        *windowInfo;
 
     bool                      allowFileSelectionChange;

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -38,17 +38,14 @@
 
 #ifndef QVIS_VARIABLE_BUTTON_H
 #define QVIS_VARIABLE_BUTTON_H
-#include <QPushButton>
+#include <qpushbutton.h>
+#include <qobjectlist.h>
 #include <string>
 #include <winutil_exports.h>
 
-#ifdef DESIGNER_PLUGIN
-class QMenu;
-#else
 class QvisVariableButtonHelper;
 class QvisVariablePopupMenu;
 class VariableMenuPopulator;
-#endif
 
 // ****************************************************************************
 // Class: QvisVariableButton
@@ -80,20 +77,8 @@ class VariableMenuPopulator;
 //   Brad Whitlock, Thu Dec 20 12:42:30 PST 2007
 //   Added methods to delete menu items.
 //
-//   Brad Whitlock, Fri May  9 12:04:07 PDT 2008
-//   Qt 4.
-//
 //   Kathleen Bonnell, Tue Jun 24 11:18:13 PDT 2008 
 //   Move setVarTypes implementation to C file. 
-//
-//   Brad Whitlock, Fri Jul 18 10:19:03 PDT 2008
-//   Made activeSourceInfo and plotSourceInfo get allocated from the heap
-//   so their destructors are called before the Qt library has completed
-//   deleting its objects on exit. This prevents a crash with Qt 4.
-//
-//   Brad Whitlock, Thu Oct 16 14:50:21 PDT 2008
-//   Added support for a stripped down version that can stand in for the 
-//   real thing in designer.
 //
 // ****************************************************************************
 
@@ -103,12 +88,10 @@ class WINUTIL_API QvisVariableButton : public QPushButton
     Q_PROPERTY(int varTypes READ getVarTypes WRITE setVarTypes )
     Q_PROPERTY(QString variable READ getVariable WRITE setVariable )
     Q_PROPERTY(QString defaultVariable READ getDefaultVariable WRITE setDefaultVariable )
-    Q_PROPERTY(bool addExpr READ getAddExpr WRITE setAddExpr )
-    Q_PROPERTY(bool addDefault READ getAddDefault WRITE setAddDefault )
 public:
-    QvisVariableButton(QWidget *parent);
+    QvisVariableButton(QWidget *parent, const char *name = 0);
     QvisVariableButton(bool addDefault_, bool addExpr_, bool usePlot,
-        int mask, QWidget *parent);
+        int mask, QWidget *parent, const char *name = 0);
     virtual ~QvisVariableButton();
 
     virtual void setText(const QString &);
@@ -118,25 +101,18 @@ public:
     int  getVarTypes() const { return varTypes; }
     void setVarTypes(int t);
 
-    bool getAddExpr() const;
-    void setAddExpr(bool);
-
-    bool getAddDefault() const;
-    void setAddDefault(bool);
-
     const QString &getVariable() const;
     void setVariable(const QString &t);
 
     void setChangeTextOnVariableChange(bool);
 
-#ifndef DESIGNER_PLUGIN
     //
     // Static methods that are used in connection with all variable menus.
     //
     static void UpdateActiveSourceButtons(VariableMenuPopulator *pop);
     static void UpdatePlotSourceButtons(VariableMenuPopulator *pop);
     static void ConnectExpressionCreation(QObject *, const char *);
-#endif
+
     //
     // Const values for which menus to show. Or them together to get
     // multiple variable menus in the button.
@@ -162,10 +138,7 @@ private slots:
     void deferredDisconnectMenu();
 private:
     void UpdateMenu();
-    void InitializeCategoryNames();
-#ifdef DESIGNER_PLUGIN
-    QMenu                    *menu;
-#else
+
     struct VariablePopupInfo
     {
         VariablePopupInfo();
@@ -182,15 +155,11 @@ private:
         QvisVariablePopupMenu    **varMenus;
     };
 
-    static QList<QObject*>    instances;
-    static VariablePopupInfo *activeSourceInfo;
-    static VariablePopupInfo *plotSourceInfo;
+    static QObjectList        instances;
+    static VariablePopupInfo  activeSourceInfo;
+    static VariablePopupInfo  plotSourceInfo;
     static QObject           *expressionCreator;
     static const char        *expressionSlot;
-
-    QvisVariablePopupMenu    *menu;
-#endif
-    static QStringList       *categoryMenuNames;
 
     bool                      addDefault;
     bool                      addExpr;
@@ -199,6 +168,7 @@ private:
     int                       varTypes;
     QString                   variable;
     QString                   defaultVariable;
+    QvisVariablePopupMenu    *menu;
 };
 
 #endif

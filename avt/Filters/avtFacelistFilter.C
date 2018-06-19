@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -267,6 +267,11 @@ avtFacelistFilter::SetCreateEdgeListFor2DDatasets(bool val)
 //    Hank Childs, Thu Dec 28 09:10:40 PST 2006
 //    Renamed method to ExecuteDataTree. 
 //
+//    Jeremy Meredith, Mon Nov  9 13:06:08 EST 2009
+//    Add a test to see if we have a lower-topo-dimension domain than
+//    was advertised in the contract.  (This can come up if you have
+//    a data set with different topological dimensions in different domains.)
+//
 // ****************************************************************************
 
 avtDataTree_p
@@ -296,6 +301,25 @@ avtFacelistFilter::ExecuteDataTree(vtkDataSet *in_ds, int domain,
         }
         in_ds->GetCellData()->AddArray(cells);
         cells->Delete();
+    }
+
+    // We currently don't have a topological dimension on a per-domain
+    // basis, so let's try to check in little more detail to be sure.....
+    if (in_ds->GetDataObjectType() == VTK_STRUCTURED_GRID)
+    {
+        vtkStructuredGrid *sgrid = (vtkStructuredGrid *) in_ds;
+        int dims[3];
+        sgrid->GetDimensions(dims);
+        if ((dims[0] == 1 && dims[1] == 1) ||
+            (dims[0] == 1 && dims[2] == 1) ||
+            (dims[1] == 1 && dims[2] == 1))
+        {
+            tDim = 1;
+        }
+        else if (dims[0] == 1 || dims[1] == 1 || dims[2] == 1)
+        {
+            tDim = 2;
+        }
     }
 
     vtkDataSet *out_ds = NULL;
@@ -758,9 +782,6 @@ avtFacelistFilter::Take3DFaces(vtkDataSet *in_ds, int domain,std::string label)
 //    Change memory management, since inheritance from SIMODataTreeIterator,
 //    means that we can no longer access "ManageMemory".
 //
-//    Hank Childs, Wed Dec 10 10:03:46 PST 2008
-//    Add support for quadratic elements.
-//
 // ****************************************************************************
 
 vtkDataSet *
@@ -882,38 +903,13 @@ avtFacelistFilter::Take2DFaces(vtkDataSet *in_ds)
         vtkUnstructuredGrid *ug = (vtkUnstructuredGrid *) in_ds;
         int ncells = ug->GetNumberOfCells();
         out_ds->Allocate(ncells);
-        vtkIdList *idlist     = vtkIdList::New();
-        vtkIdList *idlist_cor = vtkIdList::New();
+        vtkIdList *idlist = vtkIdList::New();
         for (int i = 0 ; i < ncells ; i++)
         {
             ug->GetCellPoints(i, idlist);
-            vtkIdList *idlist_to_use = idlist;
-            int cellType = ug->GetCellType(i);
-            // We really should be triangulating these...
-            if (cellType == VTK_QUADRATIC_TRIANGLE)
-            {
-                idlist_cor->SetNumberOfIds(3);
-                idlist_cor->SetId(0, idlist->GetId(0));
-                idlist_cor->SetId(1, idlist->GetId(1));
-                idlist_cor->SetId(2, idlist->GetId(2));
-                idlist_to_use = idlist_cor;
-                cellType = VTK_TRIANGLE; 
-            }
-            else if (cellType == VTK_QUADRATIC_QUAD)
-            {
-                idlist_cor->SetNumberOfIds(4);
-                idlist_cor->SetId(0, idlist->GetId(0));
-                idlist_cor->SetId(1, idlist->GetId(1));
-                idlist_cor->SetId(2, idlist->GetId(2));
-                idlist_cor->SetId(3, idlist->GetId(3));
-                idlist_to_use = idlist_cor;
-                cellType = VTK_QUAD; 
-            }
-
-            out_ds->InsertNextCell(cellType, idlist_to_use);
+            out_ds->InsertNextCell(ug->GetCellType(i), idlist);
         }
         idlist->Delete();
-        idlist_cor->Delete();
     }
 
     return out_ds;

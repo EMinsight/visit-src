@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -41,6 +41,7 @@
 // ************************************************************************* //
 
 #include <avtGenericDatabase.h>
+#include <visit-config.h>
 #include <algorithm>
 #include <float.h>
 
@@ -97,8 +98,10 @@
 #include <avtUnstructuredPointBoundaries.h>
 #include <PickAttributes.h>
 #include <PickVarInfo.h>
+#ifndef DBIO_ONLY
 #include <TetMIR.h>
 #include <ZooMIR.h>
+#endif
 
 #include <DebugStream.h>
 #include <BadDomainException.h>
@@ -448,8 +451,18 @@ avtGenericDatabase::SetCycleTimeInDatabaseMetaData(avtDatabaseMetaData *md, int 
 //    Hank Childs, Mon Sep 15 16:28:51 PST 2008
 //    Manage memory for non-cachable vars.
 //
-//    Hank Childs, Tue Jan 20 16:33:40 CST 2009
-//    Add a stage for "waiting for all processors to finish I/O".
+//    Tom Fogal, Sun May  3 19:50:37 MDT 2009
+//    Don't do any ghost calculations when there are no domains.
+//
+//    Tom Fogal, Mon May  4 17:38:17 MDT 2009
+//    Make sure all processors agree about whether or not they should
+//    synchronize ghost and nesting information.  This replaces the `blind
+//    skip' logic used previously.
+//
+//    Hank Childs, Mon Jul 20 07:37:23 PDT 2009
+//    Only apply the collective test for simplified nesting if that field is
+//    in the contract.  Also, disable the collective test if we are doing
+//    on demand streaming.
 //
 // ****************************************************************************
 
@@ -595,8 +608,6 @@ avtGenericDatabase::GetOutput(avtDataRequest_p spec,
     int t1 = visitTimer->StartTimer();
     if (canDoCollectiveCommunication)
     {
-        const char *progressStr="Waiting for all processors to finish I/O";
-        src->DatabaseProgress(0, 0, progressStr);
         //
         // If any processor decides to do material selection, they all should
         // If any processor had an error, they all should return
@@ -607,7 +618,6 @@ avtGenericDatabase::GetOutput(avtDataRequest_p spec,
         MPI_Allreduce(tmp, rtmp, 2, MPI_INT, MPI_MAX, VISIT_MPI_COMM);
         shouldDoMatSelect = bool(rtmp[0]);
         hadError = bool(rtmp[1]);
-        src->DatabaseProgress(1, 0, progressStr);
     }
     visitTimer->StopTimer(t1, "Waiting for all processors to catch up");
 #endif
@@ -649,8 +659,19 @@ avtGenericDatabase::GetOutput(avtDataRequest_p spec,
                 alreadyDidGhosts     = true;
                 didSimplifiedNesting = true;
             }
+
         }
         visitTimer->StopTimer(t0, "Creating simplified nesting rep.");
+        // Figure out the nesting globally to make sure all processors will
+        // synchronously communicate (or not) later.
+        // Stuff them into ints first.  MPI_MAX isn't defined on MPI_BOOLs.
+        if (canDoCollectiveCommunication)
+        {
+            alreadyDidNesting = static_cast<bool>
+                (UnifyMaximumValue(static_cast<int>(alreadyDidNesting)));
+            alreadyDidGhosts = static_cast<bool>
+                (UnifyMaximumValue(static_cast<int>(alreadyDidGhosts)));
+        }
     }
 
     //
@@ -738,7 +759,7 @@ avtGenericDatabase::GetOutput(avtDataRequest_p spec,
     {
         int t0 = visitTimer->StartTimer();
         ApplyGhostForDomainNesting(datasetCollection, domains, allDomains, spec,
-                               canDoCollectiveCommunication);
+                                   canDoCollectiveCommunication);
         visitTimer->StopTimer(t0, "Doing ghost nesting");
     }
 
@@ -1872,6 +1893,7 @@ avtGenericDatabase::GetArrayVarDataset(const char *varname, int ts,
 //
 //    Mark C. Miller, Wed Nov 16 10:46:36 PST 2005
 //    Replaced data type args with data specification 
+//
 // ****************************************************************************
 
 vtkDataSet *
@@ -2814,9 +2836,6 @@ avtGenericDatabase::GetLabelVariable(const char *varname, int ts, int domain,
 //    Disconnect the data set source, so we have less VTK objects lying
 //    around, waiting for garbage collection.
 //
-//    Hank Childs, Mon Dec 15 18:22:54 CST 2008
-//    Add domain information when we cache.
-//
 // ****************************************************************************
 
 vtkDataSet *
@@ -2919,7 +2938,7 @@ avtGenericDatabase::GetMesh(const char *meshname, int ts, int domain,
     vtkDataSet *rv = (vtkDataSet *) mesh->NewInstance();
     rv->CopyStructure(mesh);
     if (Interface->CanCacheVariable(real_meshname))
-        cache.AddObjectPointerPair(rv, mesh, domain);
+        cache.AddObjectPointerPair(rv, mesh);
 
     //
     // There are some mesh variables that we want to copy over -- namely
@@ -2998,6 +3017,10 @@ avtGenericDatabase::GetMesh(const char *meshname, int ts, int domain,
 //
 //    Mark C. Miller, Tue Jun 10 22:36:25 PDT 2008
 //    Added support for ignoring bad extents from dbs.
+//
+//    Hank Childs, Tue Jan 27 11:03:49 PST 2009
+//    Don't use cached meta data when it comes to identifiers.
+//
 // ****************************************************************************
 
 void
@@ -3059,7 +3082,9 @@ avtGenericDatabase::GetAuxiliaryData(avtDataRequest_p spec,
         // for "all" (= -1) timesteps.  Examples of "all" timesteps entities
         // are global node ids where the nodes do not change over time.
         //
-        void_ref_ptr vr = cache.GetVoidRef(var, type, ts, domains[i]);
+        void_ref_ptr vr;
+        if (strcmp(type, AUXILIARY_DATA_IDENTIFIERS) != 0)
+            vr = cache.GetVoidRef(var, type, ts, domains[i]);
         if (*vr == NULL)
         {
             vr = cache.GetVoidRef(var, type, -1, domains[i]);
@@ -3470,6 +3495,7 @@ avtGenericDatabase::MaterialSelect(vtkDataSet *ds, avtMaterial *mat,
                         bool &notAllCellsSubdivided,
                         bool reUseMIR)
 {
+#ifndef DBIO_ONLY
     if (ds == NULL)
     {
         char msg[128];
@@ -3734,6 +3760,9 @@ avtGenericDatabase::MaterialSelect(vtkDataSet *ds, avtMaterial *mat,
     delete [] out_ds;
 
     return outDT;
+#else
+    return 0;
+#endif
 }
 
 
@@ -4214,8 +4243,10 @@ avtGenericDatabase::SpeciesSelect(avtDatasetCollection &dsc,
 
             avtMixedVariable *mixVarOut = NULL;
             vtkDataArray     *scalarOut = NULL;
+#ifndef DBIO_ONLY
             MIR::SpeciesSelect(specList, mat, species, arr, mixvar, 
                                scalarOut, mixVarOut);
+#endif
             ds->GetCellData()->RemoveArray(var.c_str());
             ds->GetCellData()->AddArray(scalarOut);
             if (activeVar)
@@ -4332,6 +4363,8 @@ avtGenericDatabase::GetMIR(int domain, const char *varname, int timestep,
                            bool &notAllCellsSubdivided, bool reUseMIR,
                            avtMaterial *&mat_to_use)
 {
+    void_ref_ptr vr = void_ref_ptr();
+#ifndef DBIO_ONLY
     mat_to_use = mat;
 
     char cacheLbl[1000];
@@ -4351,7 +4384,6 @@ avtGenericDatabase::GetMIR(int domain, const char *varname, int timestep,
     avtDatabaseMetaData *md = GetMetaData(timestep);
     string meshname = md->MeshForVar(varname);
     string matname  = md->MaterialOnMesh(meshname);
-    void_ref_ptr vr = void_ref_ptr();
     if (reUseMIR)
     {
         vr = cache.GetVoidRef(matname.c_str(), cacheLbl, timestep, domain);
@@ -4420,6 +4452,7 @@ avtGenericDatabase::GetMIR(int domain, const char *varname, int timestep,
     MIR *rv = (MIR *) *vr;
     subdivisionOccurred   = rv->SubdivisionOccurred();
     notAllCellsSubdivided = rv->NotAllCellsSubdivided();
+#endif
     return vr;
 }
 
@@ -4702,12 +4735,6 @@ avtGenericDatabase::ActivateTimestep(int stateIndex)
 //    Cyrus Harrison, Tue Feb 12 14:54:34 PST 2008
 //    Added support for caching post ghost material & mixed var objects. 
 //
-//    Hank Childs, Tue Jan 20 13:01:52 CST 2009
-//    If we are doing dynamic domain decomposition, then give each processor's
-//    domain a domain ID that matches the processor's rank.  The streamline
-//    algorithm (for example) assumes that all of the domains have different
-//    IDs.
-//    
 // ****************************************************************************
 
 void
@@ -4819,8 +4846,6 @@ avtGenericDatabase::ReadDataset(avtDatasetCollection &ds, intVector &domains,
         if (!doSelect || !Interface->PerformsMaterialSelection())
         {
             // We know we want the dataset as a whole
-            if (md->GetFormatCanDoDomainDecomposition())
-                domains[i] = PAR_Rank();
             debug4 << "Generic database instructing get for var = " 
                    << var << ", timestep = " << ts << " domain = "
                    << domains[i] << endl;
@@ -5357,6 +5382,13 @@ avtGenericDatabase::CommunicateGhosts(avtGhostDataType ghostType,
 //    expects.  If we already have ghost zones, we might want the domain
 //    boundary information just to understand how the domains abut.
 //
+//    Cyrus Harrison, Mon Apr 20 14:47:50 PDT 2009
+//    I used Eric's workaround from CommunicateGhostZonesFromDomainBoundaries
+//    to make sure we check the confirmity of the proper domain. When a file
+//    reader does its own on the fly decomposition, the domain get labeled
+//    0 on every processor - the appropriate domain id is this processor's
+//    MPI rank.
+//
 // ****************************************************************************
 
 avtDomainBoundaries *
@@ -5384,6 +5416,21 @@ avtGenericDatabase::GetDomainBoundaryInformation(avtDatasetCollection &ds,
     if (dbi == NULL)
         return NULL;
 
+    int ts = spec->GetTimestep();
+    avtDatabaseMetaData *md = GetMetaData(ts);
+
+    //
+    // If the file format reader can do its own domain decomposition
+    // and there is one domain then change it to the rank so that
+    // things work properly.  The convention is that when the reader
+    // is doing its own decomposition, all the processors have domain
+    // zero.  The value gets reset at the end of this method.
+    //
+    if (md->GetFormatCanDoDomainDecomposition() && doms.size() == 1)
+    {
+        doms[0] = PAR_Rank();
+    }
+
     //
     // Make sure that this mesh is the mesh we have boundary information
     // for.
@@ -5407,6 +5454,15 @@ avtGenericDatabase::GetDomainBoundaryInformation(avtDatasetCollection &ds,
             dbi = NULL;
         }
     }
+
+    //
+    // Restore the doms array.
+    //
+    if (md->GetFormatCanDoDomainDecomposition() && doms.size() == 1)
+    {
+        doms[0] = 0;
+    }
+
 
     return dbi;
 }
@@ -5544,6 +5600,12 @@ avtGenericDatabase::CommunicateGhostZonesFromDomainBoundariesFromFile(
 //    Fixed a problem where a material name could be requested on mesh 
 //    with no materials - resulting in an error.
 //
+//    Eric Brugger, Fri Mar 13 16:57:08 PDT 2009
+//    I corrected a problem where this routine didn't handle the case
+//    where the file reader did its own on the fly decomposition.  In this
+//    case all the processors would have domain 0, which caused problems.
+//    Now it temporarily sets the domain number to the processor rank.
+//
 // ****************************************************************************
 
 bool
@@ -5571,6 +5633,18 @@ avtGenericDatabase::CommunicateGhostZonesFromDomainBoundaries(
     
     bool post_ghost = spec->NeedPostGhostMaterialInfo();
     
+    //
+    // If the file format reader can do its own domain decomposition
+    // and there is one domain then change it to the rank so that
+    // things work properly.  The convention is that when the reader
+    // is doing its own decomposition, all the processors have domain
+    // zero.  The value gets reset at the end of this method.
+    //
+    if (md->GetFormatCanDoDomainDecomposition() && doms.size() == 1)
+    {
+        doms[0] = PAR_Rank();
+    }
+
     // Setup materials
     int anymats    = false;
     int allmats    = true; 
@@ -6070,6 +6144,14 @@ avtGenericDatabase::CommunicateGhostZonesFromDomainBoundaries(
     }
 
     src->DatabaseProgress(1, 0, progressString);
+
+    //
+    // Restore the doms array.
+    //
+    if (md->GetFormatCanDoDomainDecomposition() && doms.size() == 1)
+    {
+        doms[0] = 0;
+    }
 
     visitTimer->StopTimer(t1, "Actual communication of ghost zones");
     return true;
@@ -8241,13 +8323,6 @@ avtGenericDatabase::CreateStructuredIndices(avtDatasetCollection &dsc,
 //    Hank Childs, Thu Feb  8 09:26:19 PST 2007
 //    Add a stage for the transform manager ... it is always called.
 //
-//    Hank Childs, Mon Dec  1 15:39:54 PST 2008
-//    No longer add a stage for material select.  For big SILs, getting this
-//    information just takes too long.
-//
-//    Hank Childs, Tue Jan 20 16:25:23 CST 2009
-//    Add a stage for parallel I/O.
-//
 // ****************************************************************************
 
 int
@@ -8261,22 +8336,17 @@ avtGenericDatabase::NumStagesForFetch(avtDataRequest_p spec)
 
     avtSILRestriction_p silr = spec->GetRestriction();
     avtSILRestrictionTraverser trav(silr);
-
+    intVector domains;
+    trav.GetDomainList(domains);
+    
     //
     // Determine if there will be a material selection phase.
     //
     bool needMatSel = false;
     
     needMatSel |= spec->MustDoMaterialInterfaceReconstruction();
-    // Note from HRC: it is just not worth it to get this right.  The 
-    // traversal takes time and that time only is going to make our stage
-    // numbering more accurate.
-    //if (!needMatSel)
-    if (0)
+    if (!needMatSel)
     {
-        intVector domains;
-        trav.GetDomainList(domains);
-    
         for (int i = 0 ; i < domains.size() ; i++)
         {
             bool needMatSelForThisDom;
@@ -8288,12 +8358,6 @@ avtGenericDatabase::NumStagesForFetch(avtDataRequest_p spec)
             }
         }
     }
-
-    // 
-    // Barrier for parallel I/O to catch up.
-    //
-    if (PAR_Size() > 1)
-        numStages += 1;
 
     //
     // Some file formats do their own selection.  They have a combined stage,

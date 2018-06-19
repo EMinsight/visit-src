@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -405,6 +405,10 @@ typedef struct {
 //    Kathleen Bonnell, Thu Mar  6 09:21:02 PST 2008 
 //    Made return type of SetPlotFollowsTime be 'void'.
 //
+//    Cyrus Harrison, Tue Apr 14 13:35:54 PDT 2009
+//    Changed the interface to ReplaceDatabase, adding option to replace
+//    only active plots.
+//
 // ****************************************************************************
 
 class VIEWER_API ViewerWindowManager : public ViewerBase
@@ -557,7 +561,8 @@ class VIEWER_API ViewerWindowManager : public ViewerBase
                          const std::string &database,
                          int timeState,
                          bool setTimeState,
-                         bool onlyReplaceSame);
+                         bool onlyReplaceSame,
+                         bool onlyReplaceActive);
     void CheckForNewStates(const std::string &hostDatabase);
     void CreateDatabaseCorrelation(const std::string &name,
                                    const stringVector &dbs,
@@ -630,7 +635,7 @@ class VIEWER_API ViewerWindowManager : public ViewerBase
                                  bool screenCapture, bool leftEye);
     avtImage_p CreateTiledImage(int width, int height, bool leftEye);
     avtDataset_p GetDataset(int windowIndex, bool&);
-    bool AskForCorrelationPermission(const QString &, const QString &,
+    bool AskForCorrelationPermission(const char *, const char *,
                                      const stringVector &dbs) const;
     DatabaseCorrelation *CreateMultiWindowCorrelationHelper(const stringVector &dbs);
     static void ToolCallback(const avtToolInterface &);

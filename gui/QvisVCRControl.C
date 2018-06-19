@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,8 +37,8 @@
 *****************************************************************************/
 
 #include <stdio.h>
-#include <QPushButton>
-#include <QLayout>
+#include <qpushbutton.h>
+#include <qlayout.h>
 #include <QvisVCRControl.h>
 
 //#define DEBUG_VCR
@@ -376,12 +376,10 @@ char QvisVCRControl::augmentedForeground[15];
 //   Jeremy Meredith, Fri Aug 22 14:15:21 PDT 2003
 //   Made it respond to mousedown (press()) events instead of click() events.
 //
-//   Brad Whitlock, Tue Jun  3 13:44:42 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
-QvisVCRControl::QvisVCRControl(QWidget *parent) : QWidget(parent)
+QvisVCRControl::QvisVCRControl(QWidget *parent, const char *name) :
+    QWidget(parent, name)
 {
     // Make the stop button active.
     activeButton = 2;
@@ -400,7 +398,6 @@ QvisVCRControl::QvisVCRControl(QWidget *parent) : QWidget(parent)
 
     // Create the top layout.
     QHBoxLayout *topLayout = new QHBoxLayout(this);
-    topLayout->setMargin(0);
 #if defined(Q_WS_MACX)
     topLayout->setSpacing(1);
 #else
@@ -408,26 +405,26 @@ QvisVCRControl::QvisVCRControl(QWidget *parent) : QWidget(parent)
 #endif
 
     // Create the buttons and add the pixmaps to them.
-    buttons[0] = new QPushButton(this);
-    buttons[0]->setIcon(QIcon(p1));
+    buttons[0] = new QPushButton(this, "wreverse");
+    buttons[0]->setPixmap(p1);
 
-    buttons[1] = new QPushButton(this);
-    buttons[1]->setIcon(QIcon(p2));
-    buttons[1]->setCheckable(true);
+    buttons[1] = new QPushButton(this, "wrewind");
+    buttons[1]->setPixmap(p2);
+//    buttons[1]->setToggleButton(true);
     buttons[1]->setDown(false);
 
-    buttons[2] = new QPushButton(this);
-    buttons[2]->setIcon(QIcon(p3));
-    buttons[2]->setCheckable(true);
+    buttons[2] = new QPushButton(this, "wstop");
+    buttons[2]->setPixmap(p3);
+//    buttons[2]->setToggleButton(true);
     buttons[2]->setDown(true);
 
-    buttons[3] = new QPushButton(this);
-    buttons[3]->setIcon(QIcon(p4));
-    buttons[3]->setCheckable(true);
+    buttons[3] = new QPushButton(this, "wplay");
+    buttons[3]->setPixmap(p4);
+//    buttons[3]->setToggleButton(true);
     buttons[3]->setDown(false);
 
-    buttons[4] = new QPushButton(this);
-    buttons[4]->setIcon(QIcon(p5));
+    buttons[4] = new QPushButton(this, "wadvance");
+    buttons[4]->setPixmap(p5);
 
     // Connect the buttons' "pressed" signals to the appropriate VCR
     // clicked slot.
@@ -518,9 +515,7 @@ QvisVCRControl::SetActiveButton(int btn)
 // Creation:   Fri Dec 1 16:29:56 PST 2000
 //
 // Modifications:
-//   Brad Whitlock, Tue Jun  3 13:47:35 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
@@ -529,12 +524,10 @@ QvisVCRControl::AugmentPixmap(const char *xpm[])
     for(int i = 0; i < 27; ++i)
         augmentedData[i] = (char *)xpm[i];
 
-    QColor foreground(palette().color(QPalette::Text));
-
     // Turn the third element into the foreground color.
     sprintf(augmentedForeground, "X c #%02x%02x%02x", 
-            foreground.red(), foreground.green(),
-            foreground.blue());
+            foregroundColor().red(), foregroundColor().green(),
+            foregroundColor().blue());
     augmentedData[2] = augmentedForeground;
 }
 
@@ -555,9 +548,6 @@ QvisVCRControl::AugmentPixmap(const char *xpm[])
 //   Brad Whitlock, Thu Feb 27 12:25:53 PDT 2003
 //   Changed the code to try and reduce number of draws required.
 //
-//   Brad Whitlock, Tue Jun  3 14:02:23 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
@@ -573,15 +563,6 @@ QvisVCRControl::b0_clicked()
         buttons[activeButton]->setDown(true);
     }
 
-    buttons[1]->blockSignals(true);
-    buttons[1]->setChecked(false);
-    buttons[1]->blockSignals(false);
-    buttons[2]->blockSignals(true);
-    buttons[2]->setChecked(true);
-    buttons[2]->blockSignals(false);
-    buttons[3]->blockSignals(true);
-    buttons[3]->setChecked(false);
-    buttons[3]->blockSignals(false);
 #ifdef DEBUG_VCR
     qDebug("prevFrame()");
 #endif
@@ -599,8 +580,6 @@ QvisVCRControl::b0_clicked()
 // Creation:   Wed Jul 12 13:33:47 PST 2000
 //
 // Modifications:
-//   Brad Whitlock, Tue Jun  3 14:02:23 PDT 2008
-//   Qt 4.
 //   
 // ****************************************************************************
 
@@ -620,13 +599,6 @@ QvisVCRControl::b1_clicked()
     }
     else if(!buttons[activeButton]->isDown())
         buttons[activeButton]->setDown(true);
-
-    buttons[2]->blockSignals(true);
-    buttons[2]->setChecked(false);
-    buttons[2]->blockSignals(false);
-    buttons[3]->blockSignals(true);
-    buttons[3]->setChecked(false);
-    buttons[3]->blockSignals(false);
 }
 
 // ****************************************************************************
@@ -646,11 +618,7 @@ QvisVCRControl::b1_clicked()
 //   Brad Whitlock, Thu Feb 27 12:20:44 PDT 2003
 //   I made the button be toggled.
 //
-//   Brad Whitlock, Tue Jun  3 14:02:23 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
-
 void
 QvisVCRControl::b2_clicked()
 {
@@ -667,13 +635,6 @@ QvisVCRControl::b2_clicked()
     }
     else if(!buttons[activeButton]->isDown())
         buttons[activeButton]->setDown(true);
-
-    buttons[1]->blockSignals(true);
-    buttons[1]->setChecked(false);
-    buttons[1]->blockSignals(false);
-    buttons[3]->blockSignals(true);
-    buttons[3]->setChecked(false);
-    buttons[3]->blockSignals(false);
 }
 
 // ****************************************************************************
@@ -689,9 +650,6 @@ QvisVCRControl::b2_clicked()
 // Modifications:
 //   Brad Whitlock, Thu Feb 27 12:30:10 PDT 2003
 //   I changed how the buttons work.
-//
-//   Brad Whitlock, Tue Jun  3 14:02:23 PDT 2008
-//   Qt 4.
 //
 // ****************************************************************************
 
@@ -711,13 +669,6 @@ QvisVCRControl::b3_clicked()
     }
     else if(!buttons[activeButton]->isDown())
         buttons[activeButton]->setDown(true);
-
-    buttons[1]->blockSignals(true);
-    buttons[1]->setChecked(false);
-    buttons[1]->blockSignals(false);
-    buttons[2]->blockSignals(true);
-    buttons[2]->setChecked(false);
-    buttons[2]->blockSignals(false);
 }
 
 // ****************************************************************************
@@ -737,9 +688,6 @@ QvisVCRControl::b3_clicked()
 //   Brad Whitlock, Thu Feb 27 12:30:10 PDT 2003
 //   I changed how the buttons work.
 //
-//   Brad Whitlock, Tue Jun  3 14:02:23 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
@@ -754,15 +702,6 @@ QvisVCRControl::b4_clicked()
         buttons[activeButton]->setDown(true);
     }
 
-    buttons[1]->blockSignals(true);
-    buttons[1]->setChecked(false);
-    buttons[1]->blockSignals(false);
-    buttons[2]->blockSignals(true);
-    buttons[2]->setChecked(true);
-    buttons[2]->blockSignals(false);
-    buttons[3]->blockSignals(true);
-    buttons[3]->setChecked(false);
-    buttons[3]->blockSignals(false);
 #ifdef DEBUG_VCR
     qDebug("nextFrame()");
 #endif

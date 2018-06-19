@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -36,7 +36,70 @@
 *
 *****************************************************************************/
 #include <SpreadsheetTabWidget.h>
-#include <QTabBar>
+#include <qcursor.h>
+#include <qtabbar.h>
+#include <qstyle.h>
+
+// ****************************************************************************
+// Class: HighlightTabBar
+//
+// Purpose:
+//   Subclass of QTabBar that can draw its text label in its parent's 
+//   highlight color.
+//
+// Notes:      The paintLabel guts were taken from QTabBar source in Qt and
+//             simplified for this class.
+//
+// Programmer: Brad Whitlock
+// Creation:   Thu Feb 22 09:43:28 PDT 2007
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+class HighlightTabBar : public QTabBar
+{
+public:
+    HighlightTabBar(QWidget *parent, const char *name) : QTabBar(parent, name)
+    {
+    }
+
+    virtual ~HighlightTabBar()
+    {
+    }
+protected:
+    virtual void paintLabel(QPainter* p, const QRect& br,
+                            QTab* t, bool has_focus ) const
+    {
+        QRect r = br;
+        bool selected = currentTab() == t->identifier();
+
+        QStyle::SFlags flags = QStyle::Style_Default;
+
+        if (isEnabled() && t->isEnabled())
+            flags |= QStyle::Style_Enabled;
+        if (has_focus)
+            flags |= QStyle::Style_HasFocus;
+        if ( selected )
+            flags |= QStyle::Style_Selected;
+
+        if(t->rect().contains(mapFromGlobal(QCursor::pos())))
+            flags |= QStyle::Style_MouseOver;
+
+        // Change the text color based on whether the tab is selected.
+        QColorGroup cg(colorGroup());
+        if(selected)
+        {
+            SpreadsheetTabWidget *tw = (SpreadsheetTabWidget *)parent();
+            if(tw != 0)
+                cg.setColor(QColorGroup::Foreground, tw->highlightColor());
+        }
+
+        style().drawControl( QStyle::CE_TabBarLabel, p, this, r,
+             t->isEnabled() ? cg : palette().disabled(),
+             flags, QStyleOption(t) );
+    }
+};
 
 // ****************************************************************************
 // Method: SpreadsheetTabWidget::SpreadsheetTabWidget
@@ -55,16 +118,14 @@
 // Creation:   Thu Feb 22 09:45:05 PDT 2007
 //
 // Modifications:
-//   Brad Whitlock, Tue Aug 26 15:24:22 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
-SpreadsheetTabWidget::SpreadsheetTabWidget(QWidget *parent) : QTabWidget(parent)
+SpreadsheetTabWidget::SpreadsheetTabWidget(QWidget *parent, const char *name) : 
+        QTabWidget(parent, name)
 {
-    highlight = palette().color(QPalette::Text);
-    connect(tabBar(), SIGNAL(currentChanged(int)),
-            this, SLOT(changeTabColors(int)));
+    setTabBar(new HighlightTabBar(this, "highlight"));
+    highlight = colorGroup().foreground();
 }
 
 // ****************************************************************************
@@ -97,9 +158,7 @@ SpreadsheetTabWidget::~SpreadsheetTabWidget()
 // Creation:   Thu Feb 22 09:46:41 PDT 2007
 //
 // Modifications:
-//   Brad Whitlock, Thu Aug 28 14:40:48 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
@@ -108,7 +167,7 @@ SpreadsheetTabWidget::setHighlightColor(const QColor &c)
     if(highlight != c)
     {
         highlight = c;
-        changeTabColors(currentIndex());
+        tabBar()->update();
     }
 }
 
@@ -131,40 +190,4 @@ const QColor &
 SpreadsheetTabWidget::highlightColor() const
 {
     return highlight;
-}
-
-//
-// Qt slots
-//
-
-// ****************************************************************************
-// Method: SpreadsheetWidget::changeTabColors
-//
-// Purpose: 
-//   Sets the tab's highlight color when the active tab changes.
-//
-// Arguments:
-//   index : The index of the new active tab.
-//
-// Returns:    
-//
-// Note:       
-//
-// Programmer: Brad Whitlock
-// Creation:   Wed Aug 27 14:17:05 PDT 2008
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-void
-SpreadsheetTabWidget::changeTabColors(int index)
-{
-    for(int i = 0; i < tabBar()->count(); ++i)
-    {
-        if(i == index)
-            tabBar()->setTabTextColor(i, highlight);
-        else
-            tabBar()->setTabTextColor(i, palette().color(QPalette::Text));
-    }
 }

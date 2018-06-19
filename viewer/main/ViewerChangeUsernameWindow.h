@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -40,9 +40,7 @@
 #define VIEWERCHANGEUSERNAMEWINDOW_H
 
 #include <visit-config.h>
-#include <QDialog>
-
-#include <string>
+#include <qdialog.h>
 
 // Forward declarations
 class QLineEdit;
@@ -61,20 +59,17 @@ class QLabel;
 //    Kathleen Bonnell, Wed Feb 13 14:05:03 PST 2008
 //    Added static getUsername method.
 //
-//    Brad Whitlock, Fri May 23 10:36:48 PDT 2008
-//    Qt 4.
-//
 // ****************************************************************************
 
 class ViewerChangeUsernameWindow : public QDialog
 {
     Q_OBJECT
   public:
-    ViewerChangeUsernameWindow(QWidget *parent = 0);
+    ViewerChangeUsernameWindow(QWidget *parent=NULL, const char *name=NULL);
     ~ViewerChangeUsernameWindow();
 
-    static bool changeUsername(const std::string &hostname);
-    static std::string getUsername(void);
+    static bool changeUsername(const char *hostname);
+    static const char* getUsername(void);
 
   private:
     QLineEdit *usernameedit;

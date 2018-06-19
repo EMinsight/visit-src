@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -42,13 +42,13 @@
 #include <ViewerProxy.h>
 #include <FileServerList.h>
 
-#include <QButtonGroup>
-#include <QCheckBox>
-#include <QGroupBox>
-#include <QLabel>
-#include <QLayout>
-#include <QRadioButton>
-#include <QSpinBox>
+#include <qbuttongroup.h>
+#include <qcheckbox.h>
+#include <qgroupbox.h>
+#include <qlabel.h>
+#include <qlayout.h>
+#include <qradiobutton.h>
+#include <qspinbox.h>
 
 // ****************************************************************************
 // Method: QvisPreferencesWindow::QvisPreferencesWindow
@@ -119,6 +119,7 @@ QvisPreferencesWindow::QvisPreferencesWindow(
 
 QvisPreferencesWindow::~QvisPreferencesWindow()
 {
+    delete timeStateDisplayMode;
     if (atts)
         atts->Detach(this);
 }
@@ -168,43 +169,44 @@ QvisPreferencesWindow::~QvisPreferencesWindow()
 //   Brad Whitlock, Tue Apr  8 15:26:49 PDT 2008
 //   Support for internationalization.
 //
-//   Cyrus Harrison, Tue Jun 10 10:04:26 PDT 20
-//   Initial Qt4 Port.
-//
 //   Mark C. Miller, Tue Jun 10 22:36:25 PDT 2008
 //   Added support for ignoring bad extents from dbs. 
-//
 // ****************************************************************************
 
 void
 QvisPreferencesWindow::CreateWindowContents()
 {
     cloneWindowOnFirstRefToggle =
-        new QCheckBox(tr("Clone window on first reference"),central);
+        new QCheckBox(tr("Clone window on first reference"),
+                      central, "cloneWindowOnFirstRefToggle");
     connect(cloneWindowOnFirstRefToggle, SIGNAL(toggled(bool)),
             this, SLOT(cloneWindowOnFirstRefToggled(bool)));
     topLayout->addWidget(cloneWindowOnFirstRefToggle);
 
     postWindowsWhenShownToggle =
-        new QCheckBox(tr("Post windows when shown"),central);
+        new QCheckBox(tr("Post windows when shown"),
+                      central, "postWindowsWhenShownToggle");
     connect(postWindowsWhenShownToggle, SIGNAL(toggled(bool)),
             this, SLOT(postWindowsWhenShownToggled(bool)));
     topLayout->addWidget(postWindowsWhenShownToggle);
 
     makeDefaultConfirmToggle =
-        new QCheckBox(tr("Prompt before setting default attributes"),central);
+        new QCheckBox(tr("Prompt before setting default attributes"),
+                      central, "makeDefaultConfirmToggle");
     connect(makeDefaultConfirmToggle, SIGNAL(toggled(bool)),
             this, SLOT(makeDefaultConfirmToggled(bool)));
     topLayout->addWidget(makeDefaultConfirmToggle);
 
     automaticallyApplyOperatorToggle =
-        new QCheckBox(tr("Prompt before applying new operator"),central);
+        new QCheckBox(tr("Prompt before applying new operator"),
+                      central, "automaticallyApplyOperatorToggle");
     connect(automaticallyApplyOperatorToggle, SIGNAL(toggled(bool)),
             this, SLOT(automaticallyApplyOperatorToggled(bool)));
     topLayout->addWidget(automaticallyApplyOperatorToggle);
 
     newPlotsInheritSILRestrictionToggle =
-        new QCheckBox(tr("New plots inherit SIL restriction"),central);
+        new QCheckBox(tr("New plots inherit SIL restriction"),
+                      central, "newPlotsInheritSILRestrictionToggle");
     connect(newPlotsInheritSILRestrictionToggle, SIGNAL(toggled(bool)),
             this, SLOT(newPlotsInheritSILRestrictionToggled(bool)));
     topLayout->addWidget(newPlotsInheritSILRestrictionToggle);
@@ -212,45 +214,54 @@ QvisPreferencesWindow::CreateWindowContents()
     //
     // Create group box for database controls.
     //
-    QGroupBox *dbControlsGroup = new QGroupBox(central);
+    QGroupBox *dbControlsGroup = new QGroupBox(central, "dbControlsGroup");
     dbControlsGroup->setTitle(tr("Databases"));
     topLayout->addWidget(dbControlsGroup, 5);
-    QVBoxLayout *dbOptionsLayout = new QVBoxLayout(dbControlsGroup);
-    dbOptionsLayout->setSpacing(7);
+    QVBoxLayout *dbInnerTopLayout = new QVBoxLayout(dbControlsGroup);
+    dbInnerTopLayout->setMargin(10);
+    dbInnerTopLayout->addSpacing(15);
+    dbInnerTopLayout->setSpacing(10);
+    QVBoxLayout *dbOptionsLayout = new QVBoxLayout(dbInnerTopLayout);
+    dbOptionsLayout->setSpacing(5);
 
     tryHarderCyclesTimesToggle =
-        new QCheckBox(tr("Try harder to get accurate cycles/times"),dbControlsGroup);
+        new QCheckBox(tr("Try harder to get accurate cycles/times"),
+                      dbControlsGroup, "tryHarderCyclesTimesToggle");
     connect(tryHarderCyclesTimesToggle, SIGNAL(toggled(bool)),
             this, SLOT(tryHarderCyclesTimesToggled(bool)));
     dbOptionsLayout->addWidget(tryHarderCyclesTimesToggle);
 
     ignoreDbExtentsToggle =
         new QCheckBox(tr("Ignore database extents (may degrade performance)"),
-                      dbControlsGroup);
+                      dbControlsGroup, "ignoreDbExtentsToggle");
     connect(ignoreDbExtentsToggle, SIGNAL(toggled(bool)),
             this, SLOT(ignoreDbExtentsToggled(bool)));
     dbOptionsLayout->addWidget(ignoreDbExtentsToggle);
 
     treatAllDBsAsTimeVaryingToggle =
-        new QCheckBox(tr("Treat all databases as time-varying"),dbControlsGroup);
+        new QCheckBox(tr("Treat all databases as time-varying"),
+                      dbControlsGroup, "treatAllDBsAsTimeVaryingToggle");
     connect(treatAllDBsAsTimeVaryingToggle, SIGNAL(toggled(bool)),
             this, SLOT(treatAllDBsAsTimeVaryingToggled(bool)));
     dbOptionsLayout->addWidget(treatAllDBsAsTimeVaryingToggle);
 
     createMeshQualityToggle =
-        new QCheckBox(tr("Automatically create mesh quality expressions"),dbControlsGroup);
+        new QCheckBox(tr("Automatically create mesh quality expressions"),
+                      dbControlsGroup, "createMeshQualityToggle");
     connect(createMeshQualityToggle, SIGNAL(toggled(bool)),
             this, SLOT(createMeshQualityToggled(bool)));
     dbOptionsLayout->addWidget(createMeshQualityToggle);
 
     createTimeDerivativeToggle =
-        new QCheckBox(tr("Automatically create time derivative expressions"),dbControlsGroup);
+        new QCheckBox(tr("Automatically create time derivative expressions"),
+                      dbControlsGroup, "createTimeDerivativeToggle");
     connect(createTimeDerivativeToggle, SIGNAL(toggled(bool)),
             this, SLOT(createTimeDerivativeToggled(bool)));
     dbOptionsLayout->addWidget(createTimeDerivativeToggle);
     
     createVectorMagnitudeToggle =
-        new QCheckBox(tr("Automatically create vector magnitude expressions"),dbControlsGroup);
+        new QCheckBox(tr("Automatically create vector magnitude expressions"),
+                      dbControlsGroup, "createVectorMagnitudeToggle ");
     connect(createVectorMagnitudeToggle, SIGNAL(toggled(bool)),
             this, SLOT(createVectorMagnitudeToggled(bool)));
     dbOptionsLayout->addWidget(createVectorMagnitudeToggle);
@@ -258,22 +269,26 @@ QvisPreferencesWindow::CreateWindowContents()
     //
     // Create group box for session file controls.
     //
-    QGroupBox *sessionControlsGroup = new QGroupBox(central);
+    QGroupBox *sessionControlsGroup = new QGroupBox(central, "sessionControlsGroup");
     sessionControlsGroup->setTitle(tr("Session files"));
     topLayout->addWidget(sessionControlsGroup, 5);
-    QVBoxLayout *sessionOptionsLayout = new QVBoxLayout(sessionControlsGroup);
-    sessionOptionsLayout->setSpacing(7);
+    QVBoxLayout *sessionInnerTopLayout = new QVBoxLayout(sessionControlsGroup);
+    sessionInnerTopLayout->setMargin(10);
+    sessionInnerTopLayout->addSpacing(15);
+    sessionInnerTopLayout->setSpacing(10);
+    QVBoxLayout *sessionOptionsLayout = new QVBoxLayout(sessionInnerTopLayout);
+    sessionOptionsLayout->setSpacing(5);
 
     userDirForSessionFilesToggle =
         new QCheckBox(tr("User directory is default location for session files"),
-                      sessionControlsGroup);
+                      sessionControlsGroup, "userDirForSessionFilesToggle");
     connect(userDirForSessionFilesToggle, SIGNAL(toggled(bool)),
             this, SLOT(userDirForSessionFilesToggled(bool)));
     sessionOptionsLayout->addWidget(userDirForSessionFilesToggle);
 
     saveCrashRecoveryFileToggle =
         new QCheckBox(tr("Periodically save a crash recovery file"),
-                      sessionControlsGroup);
+                      sessionControlsGroup, "saveCrashRecoveryFileToggle");
     connect(saveCrashRecoveryFileToggle, SIGNAL(toggled(bool)),
             this, SLOT(saveCrashRecoveryFileToggled(bool)));
     sessionOptionsLayout->addWidget(saveCrashRecoveryFileToggle);
@@ -281,56 +296,61 @@ QvisPreferencesWindow::CreateWindowContents()
     //
     // Create group box for time controls.
     //
-    QGroupBox *filePanelControlsGroup = new QGroupBox(central);
+    QGroupBox *filePanelControlsGroup = new QGroupBox(central, "filePanelControlsGroup");
     filePanelControlsGroup->setTitle(tr("File panel properties"));
     topLayout->addWidget(filePanelControlsGroup, 5);
-    QGridLayout *tsModeLayout = new QGridLayout(filePanelControlsGroup);
-    tsModeLayout->setSpacing(7);
+    QVBoxLayout *innerTopLayout = new QVBoxLayout(filePanelControlsGroup);
+    innerTopLayout->setMargin(10);
+    innerTopLayout->addSpacing(15);
+    innerTopLayout->setSpacing(10);
+    QGridLayout *tsModeLayout = new QGridLayout(innerTopLayout, 5, 3);
+    tsModeLayout->setSpacing(5);
 
     //
     // Widgets that let you control the file panel.
     //
     selectedFilesToggle = new QCheckBox(tr("Show selected files"),
-                                        filePanelControlsGroup);
+        filePanelControlsGroup, "selectedFilesToggle");
     selectedFilesToggle->setChecked(showSelFiles);
     connect(selectedFilesToggle, SIGNAL(toggled(bool)),
             this, SLOT(selectedFilesToggled(bool)));
-    tsModeLayout->addWidget(selectedFilesToggle, 0, 0, 1, 4);
+    tsModeLayout->addMultiCellWidget(selectedFilesToggle, 0, 0, 0, 3);
 
     allowFileSelectionChangeToggle = new QCheckBox(
-        tr("Automatically highlight open file"), filePanelControlsGroup);
+        tr("Automatically highlight open file"), filePanelControlsGroup,
+        "allowFileSelectionChangeToggle");
     allowFileSelectionChangeToggle->setChecked(allowFileSelChange);
     connect(allowFileSelectionChangeToggle, SIGNAL(toggled(bool)),
             this, SLOT(allowFileSelectionChangeToggled(bool)));
-    tsModeLayout->addWidget(allowFileSelectionChangeToggle, 1, 0, 1, 4);
+    tsModeLayout->addMultiCellWidget(allowFileSelectionChangeToggle,
+        1, 1, 0, 3);
 
     //
     // Create radio button controls to let us change the timestate display mode.
     //
-    tsModeLayout->addWidget(new QLabel(tr("Display time using:"),
-        filePanelControlsGroup), 2, 0, 1, 3);
-    timeStateDisplayMode = new QButtonGroup(filePanelControlsGroup);
-    QRadioButton *rb = new QRadioButton(tr("Cycles"),filePanelControlsGroup);
-    timeStateDisplayMode->addButton(rb,0);
+    tsModeLayout->addMultiCellWidget(new QLabel(tr("Display time using:"),
+        filePanelControlsGroup), 2, 2, 0, 2);
+    timeStateDisplayMode = new QButtonGroup(0, "timeStateDisplayMode");
+    QRadioButton *rb = new QRadioButton(tr("Cycles"), filePanelControlsGroup);
+    timeStateDisplayMode->insert(rb);
     tsModeLayout->addWidget(rb, 3, 0);
-    rb = new QRadioButton(tr("Times"),filePanelControlsGroup);
-    timeStateDisplayMode->addButton(rb,1);
+    rb = new QRadioButton(tr("Times"), filePanelControlsGroup);
+    timeStateDisplayMode->insert(rb);
     tsModeLayout->addWidget(rb, 3, 1);
-    rb = new QRadioButton(tr("Cycles and times"),filePanelControlsGroup);
-    timeStateDisplayMode->addButton(rb,2);
+    rb = new QRadioButton(tr("Cycles and times"), filePanelControlsGroup);
+    timeStateDisplayMode->insert(rb);
     tsModeLayout->addWidget(rb, 3, 2);
-    timeStateDisplayMode->button(int(tsFormat.GetDisplayMode()))->setChecked(true);
-    connect(timeStateDisplayMode, SIGNAL(buttonClicked(int)),
+    timeStateDisplayMode->setButton(int(tsFormat.GetDisplayMode()));
+    connect(timeStateDisplayMode, SIGNAL(clicked(int)),
             this, SLOT(handleTimeStateDisplayModeChange(int)));
 
     //
     // Create widgets that let you set the time format.
     //
-    tsModeLayout->addWidget(new QLabel(tr("Number of significant digits")),
-                            4, 0, 1, 2);
-    timeStateNDigits = new QSpinBox(filePanelControlsGroup);
-    timeStateNDigits->setRange(1,16);
-    timeStateNDigits->setSingleStep(1);
+    tsModeLayout->addMultiCellWidget(
+        new QLabel(tr("Number of significant digits"), filePanelControlsGroup),
+        4, 4, 0, 1);
+    timeStateNDigits = new QSpinBox(1, 16, 1, filePanelControlsGroup, "timeStateNDigits");
     timeStateNDigits->setValue(tsFormat.GetPrecision());
     connect(timeStateNDigits, SIGNAL(valueChanged(int)),
             this, SLOT(timeStateNDigitsChanged(int)));
@@ -583,9 +603,7 @@ QvisPreferencesWindow::UpdateWindow(bool doAll)
 // Creation:   Mon Oct 13 17:05:17 PST 2003
 //
 // Modifications:
-//   Cyrus Harrison, Tue Jun 10 10:04:26 PDT 2008
-//   Initial Qt4 Port. 
-//
+//   
 // ****************************************************************************
 
 void
@@ -595,7 +613,7 @@ QvisPreferencesWindow::SetTimeStateFormat(const TimeFormat &fmt)
     if(timeStateDisplayMode != 0 && timeStateNDigits != 0)
     {
         timeStateDisplayMode->blockSignals(true);
-        timeStateDisplayMode->button(int(tsFormat.GetDisplayMode()))->setChecked(true);
+        timeStateDisplayMode->setButton(int(tsFormat.GetDisplayMode()));
         timeStateDisplayMode->blockSignals(false);
 
         timeStateNDigits->blockSignals(true);

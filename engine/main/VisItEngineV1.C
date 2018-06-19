@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -86,6 +86,9 @@
 //    Brad Whitlock, Thu Jan 25 15:08:59 PST 2007
 //    Added new functions.
 //
+//    Brad Whitlock, Thu Apr 23 12:09:11 PDT 2009
+//    Enable simulation plugins in the engine.
+//
 // ****************************************************************************
 
 void *get_engine()
@@ -95,6 +98,8 @@ void *get_engine()
     if ( visitTimer == NULL)
         TimingsManager::Initialize( "Simulation");
     Engine *engine = Engine::Instance();
+    if(engine != NULL)
+        engine->EnableSimulationPlugins();
     return (void*)engine;
 }
 
@@ -149,7 +154,7 @@ int process_input(void *e)
     {
         debug1 << "Caught a damn VisIt exception: " << e.Message() << endl;
     }
-    CATCHALL (...)
+    CATCHALL
     {
         // Unknown processing error!  Ignoring....
         CATCH_RETURN2(1, 1);

@@ -54,24 +54,8 @@
 #    Mark C. Miller, Thu Sep 11 10:12:53 PDT 2008
 #    Added extra chmod/chgrp for top-level date dir when 'posting' results.
 #
-#    Mark C. Miller, Thu Oct 23 09:27:46 PDT 2008
-#    Fixed problem getting uncleaned file count correctly.
-#    Fixed cd to data dir during clean
-#
-#    Mark C. Miller, Thu Oct 23 09:50:31 PDT 2008
-#    Found and fixed another issue handling output from wc correctly.
-#
-#    Mark C. Miller, Fri Dec 12 08:14:28 PST 2008
-#    Added code to check for common case of /project/projectdir being down.
-#
-#    Mark C. Miller, Fri Dec 19 10:38:15 PST 2008
-#    Changed directory where data is posted to /project/projectdir/visit/www
-#
-#    Mark C. Miller, Thu Jan 22 11:49:50 PST 2009
-#    Added visus to skip list, removed tabs.
-#
-#    Mark C. Miller, Thu Jan 22 16:44:32 PST 2009
-#    Removed some silo tests from the skip list
+#    Mark C. Miller, Wed Jun 17 14:57:12 PDT 2009
+#    Changed URL in email to specify portal.nersc.gov
 # ----------------------------------------------------------------------------
 dateTag=`date +%y%b%d`
 svnHost=svn.nersc.gov
@@ -90,11 +74,11 @@ logrecipients="miller86@llnl.gov childs3@llnl.gov jsmeredith@ornl.gov"
 eqzero() {
     if test "$1" = "0"; then
         echo 0
-        return
+	return
     fi
     if test -z "$1"; then
         echo 0
-        return
+	return
     fi
     echo 1
 }
@@ -102,11 +86,11 @@ eqzero() {
 nezero() {
     if test "$1" != "0"; then
         echo 0
-        return
+	return
     fi
     if test -n "$1"; then
         echo 0
-        return
+	return
     fi
     echo 1
 }
@@ -159,17 +143,17 @@ checkAndHandleError() {
     # at the end of a run
     emailSubject=$shortSubject
     if test -n "`echo $handlerBehavior | grep flush`"; then
-        if test `wc -l $errorLogFile | tr -s ' ' | sed -e 's/^ //' | cut -d' ' -f1` -eq 0; then
+        if test `wc -l $errorLogFile | tr -s ' ' | cut -d' ' -f2` -eq 0; then
             return
-        else
-            emailSubject="Message(s) from VisIt's Automatic Test Run"
-        fi
+	else
+	    emailSubject="Message(s) from VisIt's Automatic Test Run"
+	fi
     fi
 
     # put logfile contents in an email and send it
     rm -rf mailmsg
     cat > mailmsg << EOF
-From: visit-developers@ornl.gov 
+From: visit@llnl.gov 
 Subject: $subjectLeader $emailSubject
 This email was generated from VisIt's Automatic Test Run
 
@@ -218,12 +202,12 @@ do
          ;;
       -force)
          skipIfNoChanges=0;
-         shift
-         ;;
+	 shift
+	 ;;
       -changed)
          scriptWasChanged=1;
-         shift
-         ;;
+	 shift
+	 ;;
       -help)
          optError=1
          shift
@@ -243,11 +227,6 @@ if test $optError -eq 1; then
     echo "        -force            force a test even if no files have changed since last run."
     echo "        -changed          Used to tell this script to issue the 'changed' log message."
     exit 1
-fi
-
-# check that /projectdir is actually there. Sometimes it is down for maint.
-if test ! -d /project/projectdirs/visit; then
-    checkAndHandleError 1 fatal "/project/projectdirs/visit is down"
 fi
 
 # check connectivity to nersc
@@ -325,14 +304,14 @@ cd ../src
 gmake clean 1>> ../make_clean.out 2>&1
 rm -f uncleaned_files_log.txt
 find . -name .svn -prune -false -o -name '*.so' -o -name '*.o' -o -name '*_moc.[Ch]' -o -name 'moc_*.[Ch]' 1> uncleaned_files_log.txt
-uncleanedFilesCount=`wc -l uncleaned_files_log.txt | tr -s ' ' | sed -e 's/^ //' | cut -d' ' -f1`
+uncleanedFilesCount=`wc -l uncleaned_files_log.txt | tr -s ' ' | cut -d' ' -f2`
 checkAndHandleError $uncleanedFilesCount warning "make clean left files; removing manually" uncleaned_files_log.txt
 if test -n "$uncleanedFilesCount" -a $uncleanedFilesCount -ne 0; then
     cat uncleaned_files_log.txt | tr -s ' ' | cut -d' ' -f2 | xargs -n 1 rm -f
 fi
 
 # test 'make distclean' acts as expected
-cd ../data
+cd data
 gmake distclean 1> ../make_distclean.out 2>&1
 cd ../src
 make distclean 1>> ../make_distclean.out 2>&1
@@ -343,9 +322,9 @@ find . -name .svn -prune -false -o -name '*.d' -o -name '.depend' -o -name '.par
 # It also includes some special grep filtering for special cases of some
 # Makefiles that aren't easy for distclean to clean
 find . -name .svn -prune -false -o \( -name 'Makefile' -exec test -e \{\}.in \; \) -print | grep -v ./avt/Preprocessor/Makefile\\\|./tools/windowmaker/Makefile\\\|./tools/prep/Makefile\\\|./sim/examples/Makefile\\\|./common/siloobj/Makefile\\\|./common/siloobj_vtk_db/Makefile\\\|./cqscore/Makefile 1>> undistcleaned_files_log.txt
-undistcleanedFilesCount=`wc -l undistcleaned_files_log.txt | tr -s ' ' | sed -e 's/^ //' | cut -d' ' -f1`
+undistcleanedFilesCount=`wc -l undistcleaned_files_log.txt | tr -s ' ' | cut -d' ' -f2`
 checkAndHandleError $undistcleanedFilesCount warning "make distclean left files; removing manually" undistcleaned_files_log.txt
-if test -n "$undistcleanedFilesCount" -a $undistcleanedFilesCount -ne 0; then
+if test -n "$undistcleanedFilesCount" -a test $undistcleanedFilesCount -ne 0; then
     cat undistcleaned_files_log.txt | tr -s ' ' | cut -d' ' -f2 | xargs -n 1 rm -f
 fi
 
@@ -382,31 +361,31 @@ skipList_dueTo_parallelRendering="\
           davinci,scalable,parallel:tests/databases/chgcar.py:chgcar_11"
 
 skipList_dueTo_temporaryBugs="\
-          davinci,scalable,parallel:tests/databases/defer_expr.py \
-          davinci,parallel:tests/databases/defer_expr.py \
-          davinci,serial:tests/databases/defer_expr.py \
-          davinci,scalable,parallel:tests/databases/netcdf.py:netcdf_1_00,netcdf_1_02 \
-          davinci,scalable,parallel:tests/operators/transform.py:ops_transform05 \
-          davinci,serial:tests/rendering/scalable.py:scalable_01,scalable_02,scalable_03,scalable_04,scalable_05 \
-          davinci,parallel:tests/rendering/scalable.py:scalable_01,scalable_02,scalable_03,scalable_04,scalable_05 \
-          davinci,scalable,parallel:tests/rendering/scalable.py:scalable_01,scalable_02,scalable_03,scalable_04,scalable_05"
+	  davinci,scalable,parallel:tests/databases/defer_expr.py \
+	  davinci,parallel:tests/databases/defer_expr.py \
+	  davinci,serial:tests/databases/defer_expr.py \
+	  davinci,scalable,parallel:tests/databases/netcdf.py:netcdf_1_00,netcdf_1_02 \
+	  davinci,scalable,parallel:tests/operators/transform.py:ops_transform05 \
+	  davinci,serial:tests/rendering/scalable.py:scalable_01,scalable_02,scalable_03,scalable_04,scalable_05 \
+	  davinci,parallel:tests/rendering/scalable.py:scalable_01,scalable_02,scalable_03,scalable_04,scalable_05 \
+	  davinci,scalable,parallel:tests/rendering/scalable.py:scalable_01,scalable_02,scalable_03,scalable_04,scalable_05"
 
 skipList_for_Davinci="\
+	  davinci,serial:tests/databases/silo.py:silo_20,silo_21 \
+	  davinci,parallel:tests/databases/silo.py:silo_20,silo_21 \
+	  davinci,scalable,parallel:tests/databases/silo.py:silo_20,silo_21 \
           davinci,serial:tests/meshtype/csg.py:csg_02 \
           davinci,parallel:tests/meshtype/csg.py:csg_02 \
           davinci,scalable,parallel:tests/meshtype/csg.py:csg_02 \
-          davinci,serial:tests/databases/itaps.py \
-          davinci,parallel:tests/databases/itaps.py \
-          davinci,scalable,parallel:tests/databases/itaps.py \
-          davinci,serial:tests/databases/vista.py \
-          davinci,parallel:tests/databases/vista.py \
-          davinci,scalable,parallel:tests/databases/vista.py \
+	  davinci,serial:tests/databases/itaps.py \
+	  davinci,parallel:tests/databases/itaps.py \
+	  davinci,scalable,parallel:tests/databases/itaps.py \
+	  davinci,serial:tests/databases/vista.py \
+	  davinci,parallel:tests/databases/vista.py \
+	  davinci,scalable,parallel:tests/databases/vista.py \
           davinci,serial:tests/hybrid/lineout.py:Lineout2d_output_15 \
           davinci,parallel:tests/hybrid/lineout.py:Lineout2d_output_15 \
-          davinci,scalable,parallel:tests/hybrid/lineout.py:Lineout2d_output_15 \
-          davinci,serial:tests/databases/visus.py \
-          davinci,parallel:tests/databases/visus.py \
-          davinci,scalable,parallel:tests/databases/visus.py"
+          davinci,scalable,parallel:tests/hybrid/lineout.py:Lineout2d_output_15"
           
 skipList="$skipList_dueTo_clientServer $skipList_dueTo_parallelRendering $skipList_dueTo_temporaryBugs $skipList_for_Davinci"
 
@@ -433,7 +412,7 @@ for m in $modes; do
     rm -f short_summary
     touch short_summary
     echo "Failed results should be obtainable on davinci.nersc.gov" >> short_summary
-    echo "file:///project/projectdirs/visit/www/${dateTag}/${theMode}/index.html" >> short_summary
+    echo "http://portal.nersc.gov/project/visit/${dateTag}/${theMode}/index.html" >> short_summary
     grep 'category\|failed' summary >> short_summary
     checkAndHandleError $curerror warning "test mode $m failed" short_summary 
 
@@ -477,12 +456,12 @@ for m in $modes; do
         done < short_summary
 
         # 'post' the results by copying to public directory
-        mkdir /project/projectdirs/visit/www/${dateTag} 1>/dev/null 2>&1
-        chgrp visit /project/projectdirs/visit/www/${dateTag}
-        chmod g+rwX,o+rX /project/projectdirs/visit/www/${dateTag}
-        cp -r html_$dateTag /project/projectdirs/visit/www/${dateTag}/${theMode}
-        chgrp -R visit /project/projectdirs/visit/www/${dateTag}/${theMode}
-        chmod -R g+rwX,o+rX /project/projectdirs/visit/www/${dateTag}/${theMode}
+        mkdir /project/projectdirs/visit/public_html/${dateTag} 1>/dev/null 2>&1
+        chgrp visit /project/projectdirs/visit/public_html/${dateTag}
+        chmod g+rwX,o-rwX /project/projectdirs/visit/public_html/${dateTag}
+        cp -r html_$dateTag /project/projectdirs/visit/public_html/${dateTag}/${theMode}
+        chgrp -R visit /project/projectdirs/visit/public_html/${dateTag}/${theMode}
+        chmod -R g+rwX,o-rwX /project/projectdirs/visit/public_html/${dateTag}/${theMode}
         rm -rf html_$dateTag
 
         # update top-level index.html file
@@ -496,7 +475,7 @@ for m in $modes; do
         echo "   <td><b>Result</b></td>" >> index.html
         echo "</tr>" >> index.html
 
-        ls -1t /project/projectdirs/visit/www/*/*/index.html | while read testLine; do
+        ls -1t /project/projectdirs/visit/public_html/*/*/index.html | while read testLine; do
 
             theMode=`echo $testLine | cut -d'/' -f7 | cut -d'_' -f2-`
             theRelDir=`echo $testLine | cut -d'/' -f6-`
@@ -526,7 +505,7 @@ for m in $modes; do
 
         echo "</table>" >> index.html
         echo "</html>" >> index.html
-        cp index.html /project/projectdirs/visit/www/.
+        cp index.html /project/projectdirs/visit/public_html/.
 
     fi
 

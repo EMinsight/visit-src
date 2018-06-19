@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -40,16 +40,13 @@
 #define VIEWER_MULTIPLE_ACTION_H
 #include <viewer_exports.h>
 #include <ViewerActionBase.h>
-
-#include <QIcon>
-#include <QPixmap>
-#include <QString>
-
+#include <qpixmap.h>
 #include <vector>
 
 class QAction;
 class QActionGroup;
-class QMenu;
+class QIconSet;
+class QPopupMenu;
 class QToolBar;
 
 // ****************************************************************************
@@ -74,9 +71,6 @@ class QToolBar;
 //   Brad Whitlock, Tue Apr 29 11:16:17 PDT 2008
 //   Converted to QString for menu items.
 //
-//   Brad Whitlock, Thu May 22 13:44:11 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 class VIEWER_API ViewerMultipleAction : public ViewerActionBase
@@ -85,7 +79,7 @@ class VIEWER_API ViewerMultipleAction : public ViewerActionBase
 
     typedef std::vector<QAction *> ActionPointerVector;
 public:
-    ViewerMultipleAction(ViewerWindow *win);
+    ViewerMultipleAction(ViewerWindow *win, const char *name = 0);
     virtual ~ViewerMultipleAction();
     
     virtual void Setup();
@@ -96,11 +90,11 @@ public:
 
     virtual bool Enabled() const;
     virtual bool ChoiceEnabled(int i) const;
-    virtual bool ChoiceChecked(int i) const;
+    virtual bool ChoiceToggled(int i) const;
 
     // Methods to add the action to the menu and toolbar.
-    virtual void ConstructMenu(QMenu *menu);
-    virtual void RemoveFromMenu(QMenu *menu);
+    virtual void ConstructMenu(QPopupMenu *menu);
+    virtual void RemoveFromMenu(QPopupMenu *menu);
     virtual void ConstructToolbar(QToolBar *toolbar);
     virtual void RemoveFromToolbar(QToolBar *toolbar);
     virtual void UpdateConstruction();
@@ -110,7 +104,7 @@ public:
     virtual void SetText(const QString &text);
     virtual void SetMenuText(const QString &text);
     virtual void SetToolTip(const QString &text);
-    virtual void SetIcon(const QIcon &icon);
+    virtual void SetIconSet(const QIconSet &icons);
 
     virtual void AddChoice(const QString &menuText);
     virtual void AddChoice(const QString &menuText, const QString &toolTip, const
@@ -121,17 +115,38 @@ public:
 
     virtual void SetExclusive(bool val);
 protected slots:
-    void ActivateHelper(QAction*);
+    // Helper slots for when the choices are not exclusive.
+    void activate0();
+    void activate1();
+    void activate2();
+    void activate3();
+    void activate4();
+    void activate5();
+    void activate6();
+    void activate7();
+    void activate8();
+    void activate9();
+    void activate10();
+    void activate11();
+    void activate12();
+    void activate13();
+    void activate14();
+    void activate15();
+    void activate16();
+    void activate17();
+    void activate18();
+    void activate19();
+
 protected:
+    void ConnectChildAction(QAction *newAction);
+    void ActivateHelper(int i);
+
     bool                 iconSpecified;
     int                  activeAction;
     bool                 toggled;
-    QString              text;
-    QString              menuText;
-    QString              toolTip;
-    QIcon                icon;
     QActionGroup        *action;
-    QMenu               *actionMenu;
+    QPopupMenu          *actionMenu;
+    int                  actionMenuId;
     bool                 isExclusive;
     ActionPointerVector  children;
 };

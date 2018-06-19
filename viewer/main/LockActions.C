@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -66,7 +66,7 @@
 // ****************************************************************************
 
 ToggleLockViewAction::ToggleLockViewAction(ViewerWindow *win) :
-    ViewerToggleAction(win)
+    ViewerToggleAction(win, "ToggleLockViewAction")
 {
     SetAllText(tr("Lock view"));
     if (!win->GetNoWinMode())
@@ -88,7 +88,7 @@ ToggleLockViewAction::Enabled() const
 }
 
 bool
-ToggleLockViewAction::Checked() const
+ToggleLockViewAction::Toggled() const
 {
     return window->GetViewIsLocked();
 }
@@ -112,7 +112,7 @@ ToggleLockViewAction::Checked() const
 // ****************************************************************************
 
 ToggleLockTimeAction::ToggleLockTimeAction(ViewerWindow *win) :
-    ViewerToggleAction(win)
+    ViewerToggleAction(win, "ToggleLockTimeAction")
 {
     SetAllText(tr("Lock time"));
     if (!win->GetNoWinMode())
@@ -126,7 +126,7 @@ ToggleLockTimeAction::Execute()
 }
 
 bool
-ToggleLockTimeAction::Checked() const
+ToggleLockTimeAction::Toggled() const
 {
     return window->GetTimeLock();
 }
@@ -150,7 +150,7 @@ ToggleLockTimeAction::Checked() const
 // ****************************************************************************
 
 ToggleLockToolAction::ToggleLockToolAction(ViewerWindow *win) :
-    ViewerToggleAction(win)
+    ViewerToggleAction(win, "ToggleLockToolAction")
 {
     SetAllText(tr("Lock tools"));
     if (!win->GetNoWinMode())
@@ -164,7 +164,7 @@ ToggleLockToolAction::Execute()
 }
 
 bool
-ToggleLockToolAction::Checked() const
+ToggleLockToolAction::Toggled() const
 {
     return window->GetToolLock();
 }
@@ -188,7 +188,7 @@ ToggleLockToolAction::Checked() const
 // ****************************************************************************
 
 TurnOffAllLocksAction::TurnOffAllLocksAction(ViewerWindow *win) :
-    ViewerAction(win)
+    ViewerAction(win, "TurnOffAllLocksAction")
 {
     SetAllText(tr("Unlock everything"));
 }

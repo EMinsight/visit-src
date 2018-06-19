@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -43,7 +43,7 @@
 #ifndef AVT_EXECUTE_THEN_TIME_LOOP_FILTER_H
 #define AVT_EXECUTE_THEN_TIME_LOOP_FILTER_H
 
-#include <pipeline_exports.h>
+#include <expression_exports.h>
 
 #include <vectortypes.h>
 
@@ -72,9 +72,17 @@
 //  Programmer: Hank Childs
 //  Creation:   January 24, 2008
 //
+//  Modifications:
+//
+//    Hank Childs, Mon Feb 23 19:19:41 PST 2009
+//    Added infrastructure for using the contract for the first execution.
+//
+//    Kathleen Bonnell, Thu Mar 26 08:13:26 MST 2009 
+//    Changed API from PIPELINE to EXPRESSION.
+//
 // ****************************************************************************
 
-class PIPELINE_API avtExecuteThenTimeLoopFilter 
+class EXPRESSION_API avtExecuteThenTimeLoopFilter 
     : virtual public avtDatasetToDatasetFilter
 {
   public:
@@ -99,12 +107,18 @@ class PIPELINE_API avtExecuteThenTimeLoopFilter
     virtual void                        Finalize(void) = 0;
 
     void                                FinalizeTimeLoop(void);
+    virtual avtContract_p               ModifyContract(avtContract_p c)
+                                           { SetContract(c); return c; };
+
+    void                                SetContract(avtContract_p c)
+                                               { origContract = c; };
   private:
     int                                 startTime;
     int                                 endTime;
     int                                 stride;
     int                                 nFrames;
     int                                 actualEnd;
+    avtContract_p                       origContract;
 };
 
 

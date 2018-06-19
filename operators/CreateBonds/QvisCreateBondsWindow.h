@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -45,7 +45,6 @@
 class CreateBondsAttributes;
 class QLabel;
 class QCheckBox;
-class QGroupBox;
 class QLineEdit;
 class QSpinBox;
 class QVBox;
@@ -57,10 +56,10 @@ class QvisLineStyleWidget;
 class QvisLineWidthWidget;
 class QvisVariableButton;
 class QPushButton;
-class QListWidget;
+class QListBox;
 class QComboBox;
-class QTreeWidget;
-class QTreeWidgetItem;
+class QListView;
+class QListViewItem;
 class QvisElementButton;
 
 // ****************************************************************************
@@ -79,9 +78,6 @@ class QvisElementButton;
 //    Added support for wildcards for atomic numbers.  Necessitated
 //    adding an up/down button (since order is now significant).
 //   
-//    Cyrus Harrison, Wed Aug 20 08:27:03 PDT 2008
-//    Qt4 Port.
-//
 // ****************************************************************************
 
 class QvisCreateBondsWindow : public QvisOperatorWindow
@@ -98,14 +94,15 @@ class QvisCreateBondsWindow : public QvisOperatorWindow
   protected:
     void UpdateWindow(bool doAll);
     virtual void GetCurrentValues(int which_widget);
+    int  GetItemIndex(QListViewItem*);
     int  GetListLength();
   private slots:
     void UpdateWindowSingleItem();
     void elementVariableChanged(const QString &varName);
-    void bondsTreeNew();
-    void bondsTreeDel();
-    void bondsTreeUp();
-    void bondsTreeDown();
+    void bondsListNew();
+    void bondsListDel();
+    void bondsListUp();
+    void bondsListDown();
     void minDistTextChanged(const QString&);
     void maxDistTextChanged(const QString&);
     void minDistReturnPressed();
@@ -114,25 +111,25 @@ class QvisCreateBondsWindow : public QvisOperatorWindow
     void firstElementChanged(int);
     void secondElementChanged(int);
   private:
-    QvisVariableButton    *elementVariable;
-    QLabel                *elementVariableLabel;
+    QvisVariableButton *elementVariable;
+    QLabel *elementVariableLabel;
 
-    QLineEdit             *maxBonds;
-    QLabel                *maxBondsLabel;
+    QLineEdit *maxBonds;
+    QLabel    *maxBondsLabel;
 
-    QPushButton           *newButton;
-    QPushButton           *delButton;
+    QPushButton     *newButton;
+    QPushButton     *delButton;
 
-    QPushButton           *upButton;
-    QPushButton           *downButton;
+    QPushButton     *upButton;
+    QPushButton     *downButton;
 
-    QTreeWidget           *bondsTree;
+    QListView       *bondsList;
     CreateBondsAttributes *atts;
 
-    QvisElementButton     *firstElement;
-    QvisElementButton     *secondElement;
-    QLineEdit             *minDist;
-    QLineEdit             *maxDist;
+    QvisElementButton *firstElement;
+    QvisElementButton *secondElement;
+    QLineEdit         *minDist;
+    QLineEdit         *maxDist;
 };
 
 

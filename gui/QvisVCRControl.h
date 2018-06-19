@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,7 +39,7 @@
 #ifndef QVIS_VCR_CONTROLS_H
 #define QVIS_VCR_CONTROLS_H
 #include <gui_exports.h>
-#include <QWidget>
+#include <qwidget.h>
 
 class QPushButton;
 
@@ -64,16 +64,13 @@ class QPushButton;
 //   Added a method to change the pixmap strings. It is used before the
 //   pixmaps are created.
 //
-//   Brad Whitlock, Tue Jun  3 13:44:14 PDT 2008
-//   Qt 4.
-//
 // *******************************************************************
 
 class GUI_API QvisVCRControl : public QWidget
 {
     Q_OBJECT
 public:
-    QvisVCRControl(QWidget * parent=0);
+    QvisVCRControl(QWidget * parent=0, const char * name=0);
     ~QvisVCRControl();
     void SetActiveButton(int btn);
 signals:

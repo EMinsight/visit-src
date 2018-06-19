@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,7 +39,7 @@
 #include <visit-config.h>
 #include <snprintf.h>
 
-#include <QSocketNotifier>
+#include <qsocketnotifier.h>
 
 #include <ViewerServerManager.h>
 #include <Connection.h>
@@ -57,6 +57,7 @@
 
 #include <DebugStream.h>
 #include <avtCallback.h>
+#include <Utility.h>
 
 //
 // Global variables.
@@ -72,7 +73,6 @@ std::string ViewerServerManager::localHost("localhost");
 stringVector ViewerServerManager::arguments;
 ViewerServerManager::LauncherMap ViewerServerManager::launchers;
 void * ViewerServerManager::cbData[2] = {0,0};
-bool ViewerServerManager::sshTunnelingForcedOn = false;
 
 // ****************************************************************************
 // Method: ViewerServerManager::ViewerServerManager
@@ -89,7 +89,7 @@ bool ViewerServerManager::sshTunnelingForcedOn = false;
 //
 // ****************************************************************************
 
-ViewerServerManager::ViewerServerManager() : ViewerBase(0)
+ViewerServerManager::ViewerServerManager() : ViewerBase(0, "ViewerServerManager")
 {
 }
 
@@ -393,9 +393,6 @@ ViewerServerManager::GetSSHPortOptions(const std::string &host,
 //    Thomas R. Treadway, Mon Oct  8 13:27:42 PDT 2007
 //    Backing out SSH tunneling on Panther (MacOS X 10.3)
 //   
-//    Jeremy Meredith, Wed Dec  3 16:48:35 EST 2008
-//    Allowed commandline override forcing-on of SSH tunneling.
-//
 // ****************************************************************************
 
 void
@@ -408,24 +405,17 @@ ViewerServerManager::GetSSHTunnelOptions(const std::string &host,
     //
 #if defined(PANTHERHACK)
 // Broken on Panther
-    tunnelSSH = false;
+        tunnelSSH = false;
 #else
-    if (sshTunnelingForcedOn)
+    const HostProfile *profile =
+         clientAtts->FindMatchingProfileForHost(host.c_str());
+    if(profile != 0)
     {
-        tunnelSSH = true;
+        tunnelSSH = profile->GetTunnelSSH();
     }
     else
     {
-        const HostProfile *profile =
-            clientAtts->FindMatchingProfileForHost(host.c_str());
-        if(profile != 0)
-        {
-            tunnelSSH = profile->GetTunnelSSH();
-        }
-        else
-        {
-            tunnelSSH = false;
-        }
+        tunnelSSH = false;
     }
 #endif
 }
@@ -533,9 +523,6 @@ ViewerServerManager::AddArguments(RemoteProxyBase *component,
 //   I made the timeout be zero on MacOS X. This can be undone later when
 //   VisIt launches faster there.
 //
-//   Brad Whitlock, Tue May 27 15:54:41 PDT 2008
-//   VisIt is fast on Intel Macs so make the timeout be non-zero.
-//
 // ****************************************************************************
 
 ViewerConnectionProgressDialog *
@@ -549,8 +536,13 @@ ViewerServerManager::SetupConnectionProgressWindow(RemoteProxyBase *component,
     //
     if(!avtCallback::GetNowinMode())
     {
+#if defined(__APPLE__)
+        // Make the timeout on MacOS X be zero since it takes so long to
+        // launch an engine. This at least gives the user something to look at.
+        int timeout = 0;
+#else
         int timeout = (component->Parallel() || !HostIsLocalHost(host)) ? 0 : 4000;
-
+#endif
         // Create a new connection dialog.
         dialog = new ViewerConnectionProgressDialog(
             component->GetComponentName().c_str(),
@@ -612,6 +604,8 @@ ViewerServerManager::CloseLaunchers()
 //   Brad Whitlock, Wed Nov 21 15:01:35 PST 2007
 //   Changed map storage type.
 //
+//   Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//   Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 
 void
@@ -627,7 +621,7 @@ ViewerServerManager::SendKeepAlivesToLaunchers()
             pos->second.launcher->SendKeepAlive();
             ++pos;
         }
-        CATCHALL(...)
+        CATCHALL
         {
             debug2 << "Could not send keep alive signal to launcher on "
                    << pos->first.c_str() << " so that launcher will be closed."
@@ -753,7 +747,7 @@ ViewerServerManager::StartLauncher(const std::string &host,
             // Create a socket notifier for the launcher's data socket so
             // we can read remote console output as it is forwarded.
             launchers[host].notifier = new ViewerConnectionPrinter(
-                 newLauncher->GetWriteConnection(1));
+                 newLauncher->GetWriteConnection(1), "launcher_notifier");
 
             // Set the dialog's information back to the previous values.
             if(dialog)
@@ -931,7 +925,8 @@ ViewerServerManager::SimConnectThroughLauncher(const std::string &remoteHost,
             // progress window.
             typedef struct {
                 string h; int p; string k;
-                 ViewerConnectionProgressDialog *d;} SimData;
+                ViewerConnectionProgressDialog *d;
+                bool tunnel;} SimData;
             SimData *simData = (SimData*)data;
 
             // Search the args list and see if we've supplied the path to
@@ -954,7 +949,12 @@ ViewerServerManager::SimConnectThroughLauncher(const std::string &remoteHost,
                 cancelled = true;
             else
             {
-                launchers[remoteHost].launcher->ConnectSimulation(args,
+                // If we're doing SSH tunneling, change the arguments here.
+                stringVector args2(args);
+                if(simData->tunnel)
+                    ConvertArgsToTunneledValues(GetPortTunnelMap(remoteHost), args2);
+
+                launchers[remoteHost].launcher->ConnectSimulation(args2,
                     simData->h, simData->p, simData->k);
 
                 // Indicate success.
@@ -1051,8 +1051,8 @@ ViewerServerManager::GetPortTunnelMap(const std::string &host)
 //   
 // ****************************************************************************
 
-ViewerConnectionPrinter::ViewerConnectionPrinter(Connection *c) : 
-    QSocketNotifier(c->GetDescriptor(), QSocketNotifier::Read, 0)
+ViewerConnectionPrinter::ViewerConnectionPrinter(Connection *c, const char *name) : 
+    QSocketNotifier(c->GetDescriptor(), QSocketNotifier::Read, 0, name)
 {
     conn = c;
     connect(this, SIGNAL(activated(int)),
@@ -1087,9 +1087,7 @@ ViewerConnectionPrinter::~ViewerConnectionPrinter()
 // Creation:   Wed Nov 21 15:23:52 PST 2007
 //
 // Modifications:
-//   Brad Whitlock, Fri Jan 9 15:13:01 PST 2009
-//   Catch the rest of the possible exceptions.
-//
+//   
 // ****************************************************************************
 
 void
@@ -1113,31 +1111,5 @@ ViewerConnectionPrinter::HandleRead(int)
     {
         debug1 << "Lost connection in ViewerConnectionPrinter::HandleRead" << endl;
     }
-    CATCHALL(...)
-    {
-        ; // nothing
-    }
     ENDTRY
-}
-
-// ****************************************************************************
-//  Method:  ViewerServerManager::ForceSSHTunnelingForAllConnections
-//
-//  Purpose:
-//    Force SSH tunnelling for all connections.  This allows a more
-//    convenient way to initiate SSH tunneling on the command line, as
-//    this will override values in the host profiles.
-//
-//  Arguments:
-//    
-//
-//  Programmer:  Jeremy Meredith
-//  Creation:    December  3, 2008
-//
-// ****************************************************************************
-
-void 
-ViewerServerManager::ForceSSHTunnelingForAllConnections()
-{
-    sshTunnelingForcedOn = true;
 }

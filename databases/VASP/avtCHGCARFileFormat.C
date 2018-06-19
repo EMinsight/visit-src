@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -167,6 +167,9 @@ avtCHGCARFileFormat::FreeUpResources(void)
 //    Added a special case where axis-aligned unit cell vectors
 //    construct a *true* rectilinear grid, not a transformed one.
 //
+//    Jeremy Meredith, Wed Mar 11 10:45:25 EDT 2009
+//    Added cycles.
+//
 // ****************************************************************************
 
 void
@@ -228,6 +231,12 @@ avtCHGCARFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
     md->Add(mmd);
 
     AddScalarVarToMetaData(md, "charge", "mesh", AVT_NODECENT);
+
+    vector<int> cycles;
+    for (int i=0; i<ntimesteps; i++)
+        cycles.push_back(i);
+    md->SetCycles(cycles);
+    md->SetCyclesAreAccurate(true);
 }
 
 

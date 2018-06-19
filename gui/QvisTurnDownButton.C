@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,9 +37,8 @@
 *****************************************************************************/
 
 #include <QvisTurnDownButton.h>
-#include <QPainter>
-#include <QStyle>
-#include <QStyleOptionHeader>
+#include <qpainter.h>
+#include <qstyle.h>
 
 // ****************************************************************************
 // Method: QvisTurnDownButton::QvisTurnDownButton
@@ -55,13 +54,11 @@
 // Creation:   Tue Dec 2 13:57:16 PST 2003
 //
 // Modifications:
-//   Brad Whitlock, Tue Jun  3 16:13:20 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
-QvisTurnDownButton::QvisTurnDownButton(QWidget *parent) : 
-    QPushButton(parent)
+QvisTurnDownButton::QvisTurnDownButton(QWidget *parent, const char *name) : 
+    QPushButton(parent, name)
 {
     setSizePolicy(QSizePolicy(QSizePolicy::Fixed, QSizePolicy::Minimum));
 }
@@ -99,21 +96,29 @@ QvisTurnDownButton::~QvisTurnDownButton()
 //   Brad Whitlock, Mon Mar 6 14:52:07 PST 2006
 //   Added Qt 3 implementation.
 //
-//   Brad Whitlock, Tue Jun  3 16:24:44 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
-QvisTurnDownButton::paintEvent(QPaintEvent *e)
+QvisTurnDownButton::drawButtonLabel(QPainter *painter)
 {
-    QPushButton::paintEvent(e);
+    int x = 0;
+    int y = 0;
+    int w = width();
+    int h = height();
 
-    QPainter paint(this);
-    QPolygon tri(3);
-    tri.setPoint(0, width()/2, height()*2/3);
-    tri.setPoint(1, width()-4, height()*1/3);
-    tri.setPoint(2, 4, height()*1/3);
-    paint.setBrush(palette().text());
-    paint.drawConvexPolygon(tri);
+    if(style().inherits("QMotifStyle"))
+    {
+        x = y = 2;
+        w -= 4;
+        h -= 4;
+    }
+
+#if QT_VERSION >= 300
+    QRect r(x,y,w,h);
+    style().drawPrimitive(QStyle::PE_ArrowDown, painter, r, colorGroup(), QStyle::Style_Enabled);    
+#else
+    style().drawArrow(painter, Qt::DownArrow, isDown(),
+         x, y, w, h,
+         colorGroup(), isEnabled());
+#endif
 }

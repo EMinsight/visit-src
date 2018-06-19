@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -105,6 +105,9 @@ class     vtkParallelImageSpaceRedistributor;
 //    Jeremy Meredith, Thu Oct 21 12:09:00 PDT 2004
 //    Renamed the parallel filter.
 //
+//    Tom Fogal, Mon May 25 14:03:14 MDT 2009
+//    Added caching for transparency calculation.
+//
 // ****************************************************************************
 
 class PLOTTER_API avtTransparencyActor
@@ -134,6 +137,9 @@ class PLOTTER_API avtTransparencyActor
 
     bool                             TransparenciesExist(void);
     bool                             TransparenciesMightExist(void) const;
+    void                             InvalidateTransparencyCache() {
+                                         cachedTransparencies = false;
+                                     }
 
     void                             AddToRenderer(vtkRenderer *);
     void                             RemoveFromRenderer(vtkRenderer *);
@@ -151,7 +157,7 @@ class PLOTTER_API avtTransparencyActor
     std::vector<std::vector <vtkDataSetMapper *> >   mappers;
     std::vector<std::vector <vtkActor *> >           actors;
 
-    std::map<int,double>                              inputsOpacities;
+    std::map<int,double>                             inputsOpacities;
 
     std::vector<std::vector <vtkPolyData *> >        preparedDataset;
 
@@ -172,12 +178,11 @@ class PLOTTER_API avtTransparencyActor
     vtkMatrix4x4                                    *lastCamera;
 
     bool                                             renderingSuspended;
+    bool                                             transparenciesExist;
+    bool                                             cachedTransparencies;
 
     void                                             SetUpActor(void);
     void                                             PrepareDataset(int, int);
+    void                                             DetermineTransparencies();
 };
-
-
 #endif
-
-    

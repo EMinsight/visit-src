@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -77,10 +77,14 @@ public:
     void SelectDomainList();
 
     // Property setting methods
+    void SetCell(int cell_);
+    void SetDomain(int domain_);
     void SetCellList(const intVector &cellList_);
     void SetDomainList(const intVector &domainList_);
 
     // Property getting methods
+    int             GetCell() const;
+    int             GetDomain() const;
     const intVector &GetCellList() const;
           intVector &GetCellList();
     const intVector &GetDomainList() const;
@@ -100,11 +104,15 @@ public:
 
     // IDs that can be used to identify fields in case statements
     enum {
-        ID_cellList = 0,
+        ID_cell = 0,
+        ID_domain,
+        ID_cellList,
         ID_domainList
     };
 
 private:
+    int       cell;
+    int       domain;
     intVector cellList;
     intVector domainList;
 

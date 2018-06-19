@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,7 +39,7 @@
 #ifndef XMLEDITFIELDS_H
 #define XMLEDITFIELDS_H
 
-#include <QFrame>
+#include <qframe.h>
 
 class XMLDocument;
 class QButtonGroup;
@@ -49,8 +49,9 @@ class QNarrowLineEdit;
 class QButtonGroup;
 class QComboBox;
 class QCheckBox;
-class QListWidget;
+class QListBox;
 class QTextEdit;
+class QMultiLineEdit;
 class QPushButton;
 
 // ****************************************************************************
@@ -69,16 +70,13 @@ class QPushButton;
 //    Brad Whitlock, Wed Feb 28 18:41:56 PST 2007
 //    Added public/private
 //
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 
 class XMLEditFields : public QFrame
 {
     Q_OBJECT
   public:
-    XMLEditFields(QWidget *p);
+    XMLEditFields(QWidget *p, const QString &n);
     void SetDocument(XMLDocument *doc) { xmldoc = doc; }
     void BlockAllSignals(bool);
   public slots:
@@ -113,7 +111,7 @@ class XMLEditFields : public QFrame
     QPushButton     *upButton;
     QPushButton     *downButton;
 
-    QListWidget     *fieldlist;
+    QListBox        *fieldlist;
     QLineEdit       *name;
     QLineEdit       *label;
     QComboBox       *type;
@@ -124,11 +122,10 @@ class XMLEditFields : public QFrame
     QCheckBox       *internal;
     QCheckBox       *ignoreeq;
     QButtonGroup    *access;
-    QGroupBox       *accessGroup;
     QGroupBox       *variableNameGroup;
     QButtonGroup    *varNameButtons;
     QCheckBox       *init;
-    QTextEdit       *values;
+    QMultiLineEdit  *values;
 };
 
 #endif

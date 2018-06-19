@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -754,7 +754,7 @@ avtBehavior::GetDataExtents(double &dmin, double &dmax)
 
 
 // ****************************************************************************
-//  Method: avtBehavior::GetPlotInformation
+//  Method: avtBehavior::GetPlotInfoAtts
 //
 //  Purpose:
 //
@@ -764,13 +764,11 @@ avtBehavior::GetDataExtents(double &dmin, double &dmax)
 //  Creation:   June 20, 2006 
 //
 //  Modifications:
-//    Brad Whitlock, Wed Jan  7 14:27:47 PST 2009
-//    I changed the method name and return a reference.
 //
 // ****************************************************************************
 
-const PlotInfoAttributes &
-avtBehavior::GetPlotInformation() const
+const PlotInfoAttributes *
+avtBehavior::GetPlotInfoAtts() 
 {
-    return info.GetAttributes().GetPlotInformation();
+    return info.GetAttributes().GetPlotInfoAtts();
 }

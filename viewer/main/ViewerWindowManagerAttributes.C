@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -1097,16 +1097,6 @@ ViewerWindowManagerAttributes::ProcessOldVersions(DataNode *parentNode,
     if(VersionLessThan(configVersion, "1.9.0"))
     {
         AddAction(actionNode, "Plots", ViewerRPC::SetPlotFollowsTimeRPC);
-        AddAction(actionNode, "Lock", ViewerRPC::ToggleLockToolsRPC);
-        AddAction(actionNode, "Lock", ViewerRPC::TurnOffAllLocksRPC);
-    }
-
-    // Add actions that are new in 1.10.0
-    if(VersionLessThan(configVersion, "1.10.0"))
-    {
-        // Make sure to add the "lock tools" button to the Lock group.
-        RemoveActionFromNode(actionNode, "Lock", "ToggleLockToolsRPC");
-        RemoveActionFromNode(actionNode, "Lock", "TurnOffAllLocksRPC");
         AddAction(actionNode, "Lock", ViewerRPC::ToggleLockToolsRPC);
         AddAction(actionNode, "Lock", ViewerRPC::TurnOffAllLocksRPC);
     }

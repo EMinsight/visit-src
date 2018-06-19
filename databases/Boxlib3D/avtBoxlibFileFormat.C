@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -995,6 +995,9 @@ avtBoxlibFileFormat::ReadHeader(void)
 //    also need this functionality and it makes sense to have a single
 //    place where we do this).
 //
+//    Hank Childs, Fri Oct 23 09:53:07 PDT 2009
+//    Fix gap between patches caused by floating point precision.
+//
 // ****************************************************************************
 
 vtkDataSet *
@@ -1023,10 +1026,12 @@ avtBoxlibFileFormat::CreateGrid(double lo[BL_SPACEDIM], double hi[BL_SPACEDIM], 
     float *ptr = xcoord->GetPointer(0);
     for (i = 0; i < steps[0]; ++i)
         ptr[i] = (lo[0] + i * delta[0]);
+    ptr[steps[0]-1] = hi[0];
 
     ptr = ycoord->GetPointer(0);
     for (i = 0; i < steps[1]; ++i)
         ptr[i] = (lo[1] + i * delta[1]);
+    ptr[steps[1]-1] = hi[1];
 
     ptr = zcoord->GetPointer(0);
 #if BL_SPACEDIM==2
@@ -1034,6 +1039,7 @@ avtBoxlibFileFormat::CreateGrid(double lo[BL_SPACEDIM], double hi[BL_SPACEDIM], 
 #elif BL_SPACEDIM==3
     for (i = 0; i < steps[2]; ++i)
         ptr[i] = (lo[2] + i * delta[2]);
+    ptr[steps[2]-1] = hi[2];
 #endif
 
     rg->SetXCoordinates(xcoord);
@@ -1931,6 +1937,12 @@ avtBoxlibFileFormat::GetAuxiliaryData(const char *var, int dom,
 //    Hank Childs, Tue Feb  5 16:37:58 PST 2008
 //    Fix memory leaks.
 //
+//    Kathleen Bonnell, Wed Aug 5 12:01 PDT 2009 
+//    Fix crash on windows -- cast std::vectors to pointers before passing
+//    as args to avtMaterial, so can catch the case where the vector is empty
+//    and therefore pass NULL, because attempting to  dereference an empty 
+//    vector's 0'th item crashes on windows.
+//
 // ****************************************************************************
     
 void *
@@ -2033,10 +2045,26 @@ avtBoxlibFileFormat::GetMaterial(const char *var, int patch,
     }
 
     int mixed_size = mix_zone.size();
-    avtMaterial * mat = new avtMaterial(nMaterials, mnames, nCells,
-                                        &(material_list[0]), mixed_size,
-                                        &(mix_mat[0]), &(mix_next[0]),
-                                        &(mix_zone[0]), &(mix_vf[0]));
+
+    // get pointers to pass to avtMaterial
+    int *ml = NULL, *mixm = NULL, *mixn = NULL, *mixz = NULL;
+    float *mixv = NULL;
+
+    if (material_list.size() > 0)
+        ml = &(material_list[0]);
+    if (mix_mat.size() > 0)
+        mixm = &(mix_mat[0]);
+    if (mix_mat.size() > 0)
+        mixm = &(mix_mat[0]);
+    if (mix_next.size() > 0)
+        mixn = &(mix_next[0]);
+    if (mix_zone.size() > 0)
+        mixz = &(mix_zone[0]);
+    if (mix_vf.size() > 0)
+        mixv = &(mix_vf[0]);
+
+    avtMaterial * mat = new avtMaterial(nMaterials, mnames, nCells, ml, 
+                                        mixed_size, mixm, mixn, mixz, mixv);
      
     df = avtMaterial::Destruct;
     return (void*) mat;

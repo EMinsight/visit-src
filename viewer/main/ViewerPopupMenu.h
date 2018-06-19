@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -43,8 +43,7 @@
 #include <map>
 
 // Forward declares.
-class QAction;
-class QMenu;
+class QPopupMenu;
 class ViewerActionBase;
 class ViewerWindow;
 
@@ -61,9 +60,6 @@ class ViewerWindow;
 //   Brad Whitlock, Tue Feb 25 10:09:39 PDT 2003
 //   I added RemoveAction.
 //
-//   Brad Whitlock, Tue May 27 14:10:57 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 class VIEWER_API ViewerPopupMenu
@@ -72,12 +68,12 @@ class VIEWER_API ViewerPopupMenu
     {
         SubMenuInfo();
         SubMenuInfo(const SubMenuInfo &);
-        SubMenuInfo(QMenu *, QAction *);
+        SubMenuInfo(QPopupMenu *, int);
         virtual ~SubMenuInfo();
         void operator = (const SubMenuInfo &);
 
-        QMenu   *menu;
-        QAction *action;
+        QPopupMenu *menu;
+        int         menuId;
     };
 
     typedef std::map<std::string, SubMenuInfo> MenuMap;
@@ -95,9 +91,9 @@ public:
     void EnableMenu(const std::string &menuName);
     void DisableMenu(const std::string &menuName);
 private:
-    QMenu   *CreateMenu(const std::string &name);
+    QPopupMenu   *CreateMenu(const std::string &name);
 
-    QMenu   *popup;
+    QPopupMenu   *popup;
     ViewerWindow *window;
     MenuMap       menus;
 };

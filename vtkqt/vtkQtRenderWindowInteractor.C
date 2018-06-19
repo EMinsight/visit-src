@@ -41,13 +41,12 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   
   =========================================================================*/
-#include <QtCore>
-#include <QCursor>
-#include <QMouseEvent>
 
 #include "vtkQtRenderWindowInteractor.h"
 #include <ctype.h>
 #include <visitstream.h>
+
+#include <qcursor.h>
 
 #include <vtkCommand.h>
 
@@ -73,7 +72,10 @@ void vtkQtRenderWindowInteractor::Start() {
       vtkErrorMacro(<<"No QApplication defined!");
       return;
     }
-    qApp->exec();
+    if (!qApp->mainWidget()) {
+      qApp->setMainWidget(qtRenWin);
+      qApp->exec();
+    }
 }
 
 // GetSize calling sequence changed by LLNL to fit VTK interface change.
@@ -96,8 +98,6 @@ void vtkQtRenderWindowInteractor::PrintSelf(ostream&os, vtkIndent indent) {
 //  Brad Whitlock, Mon Mar 13 15:38:12 PST 2006
 //  I added support for alt and alt+shift keys.
 //
-//  Brad Whitlock, Fri May  9 09:59:32 PDT 2008
-//  Qt 4.
 void vtkQtRenderWindowInteractor::mousePressEvent(QMouseEvent *me) {
     if (!Enabled)
       return;
@@ -107,14 +107,14 @@ void vtkQtRenderWindowInteractor::mousePressEvent(QMouseEvent *me) {
     Size[1] = size[1];
 
     int ctrl = 0, shift = 0;
-    if (me->modifiers() & Qt::ControlModifier)
+    if (me->state() & Qt::ControlButton)
       ctrl = 1;
-    if (me->modifiers() & Qt::ShiftModifier)
+    if (me->state() & Qt::ShiftButton)
       shift = 1;
     // Set the alt and altshift flags.
-    alt = (me->modifiers() & Qt::AltModifier);
-    if(me->modifiers() & Qt::AltModifier &&
-       me->modifiers() & Qt::ShiftModifier)
+    alt = (me->state() & Qt::AltButton);
+    if(me->state() & Qt::AltButton &&
+       me->state() & Qt::ShiftButton)
     {
         altshift = true;
         shift = 0; 
@@ -128,7 +128,7 @@ void vtkQtRenderWindowInteractor::mousePressEvent(QMouseEvent *me) {
 
     SetEventInformation(xp, yp, ctrl, shift);
     switch (me->button()) {
-    case Qt::LeftButton:
+    case QEvent::LeftButton:
       if(altshift)
           InvokeEvent(vtkCommand::MiddleButtonPressEvent, NULL);
       else if(alt)
@@ -136,10 +136,10 @@ void vtkQtRenderWindowInteractor::mousePressEvent(QMouseEvent *me) {
       else
           InvokeEvent(vtkCommand::LeftButtonPressEvent, NULL);
       break;
-    case Qt::MidButton:
+    case QEvent::MidButton:
       InvokeEvent(vtkCommand::MiddleButtonPressEvent, NULL); 
       break;
-    case Qt::RightButton:
+    case QEvent::RightButton:
       InvokeEvent(vtkCommand::RightButtonPressEvent, NULL); 
       break;
     default:
@@ -162,9 +162,9 @@ void vtkQtRenderWindowInteractor::mouseReleaseEvent(QMouseEvent *me) {
     Size[1] = size[1];
 
     int ctrl = 0, shift = 0;
-    if (me->modifiers() & Qt::ControlModifier)
+    if (me->state() & Qt::ControlButton)
       ctrl = 1;
-    if (me->modifiers() & Qt::ShiftModifier)
+    if (me->state() & Qt::ShiftButton)
       shift = 1;
     // Set the alt and altshift flags.
     if(altshift)
@@ -175,7 +175,7 @@ void vtkQtRenderWindowInteractor::mouseReleaseEvent(QMouseEvent *me) {
 
     SetEventInformation(xp, yp, ctrl, shift);
     switch (me->button()) {
-    case Qt::LeftButton:
+    case QEvent::LeftButton:
       if(altshift)
           InvokeEvent(vtkCommand::MiddleButtonReleaseEvent);
       else if(alt)
@@ -183,10 +183,10 @@ void vtkQtRenderWindowInteractor::mouseReleaseEvent(QMouseEvent *me) {
       else
           InvokeEvent(vtkCommand::LeftButtonReleaseEvent);
       break;
-    case Qt::MidButton:
+    case QEvent::MidButton:
       InvokeEvent(vtkCommand::MiddleButtonReleaseEvent);
       break;
-    case Qt::RightButton:
+    case QEvent::RightButton:
       InvokeEvent(vtkCommand::RightButtonReleaseEvent);
       break;
     default:
@@ -246,14 +246,14 @@ void vtkQtRenderWindowInteractor::keyPressEvent(QKeyEvent *ke) {
     Size[0] = size[0];
     Size[1] = size[1];
     int ctrl = 0, shift = 0;
-    if (ke->modifiers() & Qt::ControlModifier)
+    if (ke->state() & Qt::ControlButton)
       ctrl = 1;
-    if (ke->modifiers() & Qt::ShiftModifier)
+    if (ke->state() & Qt::ShiftButton)
       shift = 1;
     // Set the alt and altshift flags.
-    alt = (ke->modifiers() & Qt::AltModifier);
-    if(ke->modifiers() & Qt::AltModifier &&
-       ke->modifiers() & Qt::ShiftModifier)
+    alt = (ke->state() & Qt::AltButton);
+    if(ke->state() & Qt::AltButton &&
+       ke->state() & Qt::ShiftButton)
     {
         altshift = true;
         shift = 0;
@@ -269,7 +269,7 @@ void vtkQtRenderWindowInteractor::keyPressEvent(QKeyEvent *ke) {
     SetEventInformation(xp, yp, 0, 0);
     InvokeEvent(vtkCommand::MouseMoveEvent, NULL);
    
-    SetEventInformation(xp, yp, ctrl, shift, tolower(ke->key()), 1);
+    SetEventInformation(xp, yp, ctrl, shift, tolower(ke->ascii()), 1);
     InvokeEvent(vtkCommand::KeyPressEvent, NULL);
     InvokeEvent(vtkCommand::CharEvent, NULL);
 }

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -35,23 +35,23 @@
 * DAMAGE.
 *
 *****************************************************************************/
-#include "XMLEditStd.h"
+
 #include "XMLEditFunctions.h"
 
 #include <XMLDocument.h>
 #include <Function.h>
 #include <Attribute.h>
 
-#include <QComboBox>
-#include <QLabel>
-#include <QLayout>
-#include <QListWidget>
-#include <QTextEdit>
-#include <QPushButton>
-#include <QRadioButton>
-#include <QLineEdit>
-#include <QButtonGroup>
-#include <QCheckBox>
+#include <qcombobox.h>
+#include <qlabel.h>
+#include <qlayout.h>
+#include <qlistbox.h>
+#include <qmultilineedit.h>
+#include <qpushbutton.h>
+#include <qradiobutton.h>
+#include <qlineedit.h>
+#include <qbuttongroup.h>
+#include <qcheckbox.h>
 
 // ****************************************************************************
 //  Constructor:  XMLEditFunctions::XMLEditFunctions
@@ -66,29 +66,26 @@
 //    Brad Whitlock, Mon Apr 28 15:59:56 PDT 2008
 //    Added access, tr()'s.
 //
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 2008
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
-XMLEditFunctions::XMLEditFunctions(QWidget *p)
-    : QFrame(p)
+XMLEditFunctions::XMLEditFunctions(QWidget *p, const QString &n)
+    : QFrame(p, n)
 {
     QHBoxLayout *hLayout = new QHBoxLayout(this);
 
-    QGridLayout *listLayout = new QGridLayout();
+    QGridLayout *listLayout = new QGridLayout(hLayout, 2,2, 5);
 
-    functionlist = new QListWidget(this);
-    listLayout->addWidget(functionlist, 0,0, 1,2);
+    functionlist = new QListBox(this);
+    listLayout->addMultiCellWidget(functionlist, 0,0, 0,1);
 
     newButton = new QPushButton(tr("New"), this);
     listLayout->addWidget(newButton, 1,0);
 
     delButton = new QPushButton(tr("Del"), this);
     listLayout->addWidget(delButton, 1,1);
-    hLayout->addLayout(listLayout);
+
     hLayout->addSpacing(10);
 
-    QGridLayout *topLayout = new QGridLayout();
+    QGridLayout *topLayout = new QGridLayout(hLayout, 7,2, 5);
     int row = 0;
 
     topLayout->addWidget(new QLabel(tr("Target"), this), row, 0);
@@ -101,28 +98,24 @@ XMLEditFunctions::XMLEditFunctions(QWidget *p)
     topLayout->addWidget(name, row, 1);
     row++;
 
-    typeGroup = new QButtonGroup(this);
-    
+    typeGroup = new QButtonGroup();
     newFunctionButton    = new QRadioButton(tr("New function"), this);
     replaceBuiltinButton = new QRadioButton(tr("Replaces builtin"), this);
-    newFunctionButton->setChecked(true);
-    
-    typeGroup->addButton(newFunctionButton,0);
-    typeGroup->addButton(replaceBuiltinButton,1);
-    
+    typeGroup->insert(newFunctionButton);
+    typeGroup->insert(replaceBuiltinButton);
     topLayout->addWidget(newFunctionButton,    row, 0);
     topLayout->addWidget(replaceBuiltinButton, row, 1);
     row++;
 
     member = new QCheckBox(tr("Class member"), this);
-    topLayout->addWidget(member, row,0,1,2);
+    topLayout->addMultiCellWidget(member, row,row, 0,1);
     row++;
 
     accessLabel = new QLabel(tr("Access"), this);
     access = new QComboBox(this);
-    access->addItem(tr("private"));
-    access->addItem(tr("protected"));
-    access->addItem(tr("public"));
+    access->insertItem(tr("private"));
+    access->insertItem(tr("protected"));
+    access->insertItem(tr("public"));
     topLayout->addWidget(accessLabel, row, 0);
     topLayout->addWidget(access,      row, 1);
     row++;
@@ -135,23 +128,24 @@ XMLEditFunctions::XMLEditFunctions(QWidget *p)
     topLayout->addWidget(new QLabel("Definition", this), row, 0);
     row++;
 
-    definition = new QTextEdit(this);
+    definition = new QMultiLineEdit(this);
     QFont monospaced("Courier");
     definition->setFont(monospaced);
-    definition->setWordWrapMode(QTextOption::NoWrap);
-    topLayout->addWidget(definition, row,0, 1,2);
+    definition->setWordWrap(QTextEdit::NoWrap);
+    topLayout->addMultiCellWidget(definition, row,row, 0,1);
     row++;
 
-    topLayout->setRowMinimumHeight(row, 20);
+    topLayout->addRowSpacing(row, 20);
     row++;
-    
-    hLayout->addLayout(topLayout);
-    
-    connect(functionlist, SIGNAL(currentRowChanged(int)),
+
+    connect(functionlist, SIGNAL(selectionChanged()),
+            this, SLOT(UpdateWindowSingleItem()));
+
+    connect(functionlist, SIGNAL(selectionChanged()),
             this, SLOT(UpdateWindowSingleItem()));
     connect(name, SIGNAL(textChanged(const QString&)),
             this, SLOT(nameTextChanged(const QString&)));
-    connect(typeGroup, SIGNAL(buttonClicked(int)),
+    connect(typeGroup, SIGNAL(clicked(int)),
             this, SLOT(typeGroupChanged(int)));
     connect(member, SIGNAL(clicked()),
             this, SLOT(memberChanged()));
@@ -212,9 +206,6 @@ XMLEditFunctions::CountFunctions(const QString &name) const
 //    Brad Whitlock, Thu Mar 6 15:49:31 PST 2008
 //    Added support for multiple targets.
 //
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 2008
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 void
 XMLEditFunctions::UpdateWindowContents()
@@ -227,12 +218,13 @@ XMLEditFunctions::UpdateWindowContents()
     {
         if(CountFunctions(a->functions[i]->name) > 1)
         {
-            QString id = QString("%1 [%2]").arg(a->functions[i]->name).arg(a->functions[i]->target);
-            functionlist->addItem(id);
+            QString id; id.sprintf("%s [%s]", a->functions[i]->name.latin1(),
+               a->functions[i]->target.latin1());
+            functionlist->insertItem(id);
         }
         else
         {
-            functionlist->addItem(a->functions[i]->name);
+            functionlist->insertItem(a->functions[i]->name);
         }
     }
 
@@ -255,14 +247,11 @@ XMLEditFunctions::UpdateWindowContents()
 //  Brad Whitlock, Mon Apr 28 16:07:57 PDT 2008
 //  Added access.
 //
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 2008
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 void
 XMLEditFunctions::UpdateWindowSensitivity()
 {
-    bool active = functionlist->currentRow() != -1;
+    bool active = functionlist->currentItem() != -1;
 
     delButton->setEnabled(functionlist->count() > 0);
     name->setEnabled(active);
@@ -274,7 +263,7 @@ XMLEditFunctions::UpdateWindowSensitivity()
     member->setEnabled(active);
 
     bool accessActive = active;
-    int index = functionlist->currentRow();
+    int index = functionlist->currentItem();
     if (index != -1)
     {
         Attribute *a = xmldoc->attribute;
@@ -301,9 +290,6 @@ XMLEditFunctions::UpdateWindowSensitivity()
 //    Brad Whitlock, Mon Apr 28 16:08:06 PDT 2008
 //    Added access.
 //
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 2008
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 void
 XMLEditFunctions::UpdateWindowSingleItem()
@@ -311,28 +297,28 @@ XMLEditFunctions::UpdateWindowSingleItem()
     BlockAllSignals(true);
 
     Attribute *a = xmldoc->attribute;
-    int index = functionlist->currentRow();
+    int index = functionlist->currentItem();
 
     if (index == -1)
     {
         name->setText("");
-        typeGroup->button(0)->setChecked(false);
+        typeGroup->setButton(-1);
         member->setChecked(false);
         target->setText("");
         declaration->setText("");
         definition->setText("");
-        access->setCurrentIndex(0);
+        access->setCurrentItem(0);
     }
     else
     {
         Function *f = a->functions[index];
         name->setText(f->name);
-        typeGroup->button(f->user ? 0 : 1)->setChecked(true);
+        typeGroup->setButton(f->user ? 0 : 1);
         target->setText(f->target);
         declaration->setText(f->decl);
         definition->setText(f->def);
         member->setChecked(f->member);
-        access->setCurrentIndex((int)f->accessType);
+        access->setCurrentItem((int)f->accessType);
     }
 
     UpdateWindowSensitivity();
@@ -388,20 +374,17 @@ XMLEditFunctions::BlockAllSignals(bool block)
 //    Brad Whitlock, Thu Mar 6 15:55:17 PST 2008
 //    Added support for multiple targets.
 //
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 2008
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 void
 XMLEditFunctions::nameTextChanged(const QString &text)
 {
     Attribute *a = xmldoc->attribute;
-    int index = functionlist->currentRow();
+    int index = functionlist->currentItem();
     if (index == -1)
         return;
     Function *f = a->functions[index];
 
-    QString newname = text.trimmed();
+    QString newname = text.stripWhiteSpace();
     f->name = newname;
     if(CountFunctions(newname) > 1)
     {
@@ -410,7 +393,7 @@ XMLEditFunctions::nameTextChanged(const QString &text)
         newname += "]";
     }
     BlockAllSignals(true);
-    functionlist->item(index)->setText(newname);
+    functionlist->changeItem(newname, index);
     BlockAllSignals(false);
 }
 
@@ -420,16 +403,12 @@ XMLEditFunctions::nameTextChanged(const QString &text)
 //  Programmer:  Jeremy Meredith
 //  Creation:    October 17, 2002
 //
-//  Modifications:
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 2008
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 void
 XMLEditFunctions::typeGroupChanged(int tg)
 {
     Attribute *a = xmldoc->attribute;
-    int index = functionlist->currentRow();
+    int index = functionlist->currentItem();
     if (index == -1)
         return;
     Function *f = a->functions[index];
@@ -443,16 +422,12 @@ XMLEditFunctions::typeGroupChanged(int tg)
 //  Programmer:  Jeremy Meredith
 //  Creation:    October 17, 2002
 //
-//  Modifications:
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 2008
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 void
 XMLEditFunctions::memberChanged()
 {
     Attribute *a = xmldoc->attribute;
-    int index = functionlist->currentRow();
+    int index = functionlist->currentItem();
     if (index == -1)
         return;
     Function *f = a->functions[index];
@@ -466,16 +441,12 @@ XMLEditFunctions::memberChanged()
 //  Programmer:  Brad Whitlock
 //  Creation:    Thu Mar 6 15:56:05 PST 2008
 //
-//  Modifications:
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 2008
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 void
 XMLEditFunctions::targetTextChanged(const QString &text)
 {
     Attribute *a = xmldoc->attribute;
-    int index = functionlist->currentRow();
+    int index = functionlist->currentItem();
     if (index == -1)
         return;
     Function *f = a->functions[index];
@@ -490,16 +461,12 @@ XMLEditFunctions::targetTextChanged(const QString &text)
 //  Programmer:  Jeremy Meredith
 //  Creation:    October 17, 2002
 //
-//  Modifications:
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 2008
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 void
 XMLEditFunctions::declarationTextChanged(const QString &text)
 {
     Attribute *a = xmldoc->attribute;
-    int index = functionlist->currentRow();
+    int index = functionlist->currentItem();
     if (index == -1)
         return;
     Function *f = a->functions[index];
@@ -513,21 +480,17 @@ XMLEditFunctions::declarationTextChanged(const QString &text)
 //  Programmer:  Jeremy Meredith
 //  Creation:    October 17, 2002
 //
-//  Modifications:
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 2008
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 void
 XMLEditFunctions::definitionChanged()
 {
     Attribute *a = xmldoc->attribute;
-    int index = functionlist->currentRow();
+    int index = functionlist->currentItem();
     if (index == -1)
         return;
     Function *f = a->functions[index];
 
-    f->def = definition->toPlainText();
+    f->def = definition->text();
 }
 
 // ****************************************************************************
@@ -543,9 +506,6 @@ XMLEditFunctions::definitionChanged()
 //    Brad Whitlock, Mon Apr 28 16:11:51 PDT 2008
 //    Added tr().
 //
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 2008
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 void
 XMLEditFunctions::functionlistNew()
@@ -560,7 +520,7 @@ XMLEditFunctions::functionlistNew()
         newname = tr("unnamed%1").arg(newid);
         for (size_t i=0; i<functionlist->count() && okay; i++)
         {
-            if (functionlist->item(i)->text() == newname)
+            if (functionlist->text(i) == newname)
                 okay = false;
         }
         if (!okay)
@@ -573,9 +533,9 @@ XMLEditFunctions::functionlistNew()
     UpdateWindowContents();
     for (size_t i=0; i<functionlist->count(); i++)
     {
-        if (functionlist->item(i)->text() == newname)
+        if (functionlist->text(i) == newname)
         {
-            functionlist->setCurrentRow(i);
+            functionlist->setCurrentItem(i);
             UpdateWindowSingleItem();
         }
     }
@@ -587,16 +547,12 @@ XMLEditFunctions::functionlistNew()
 //  Programmer:  Jeremy Meredith
 //  Creation:    October 17, 2002
 //
-//  Modifications:
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 2008
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 void
 XMLEditFunctions::functionlistDel()
 {
     Attribute *a = xmldoc->attribute;
-    int index = functionlist->currentRow();
+    int index = functionlist->currentItem();
 
     if (index == -1)
         return;
@@ -616,25 +572,14 @@ XMLEditFunctions::functionlistDel()
 
     if (index >= functionlist->count())
         index = functionlist->count()-1;
-    functionlist->setCurrentRow(index);
+    functionlist->setCurrentItem(index);
 }
 
-// ****************************************************************************
-//  Method:  XMLEditFunctions::accessChanged
-//
-//  Programmer:  ?
-//  Creation:    ?
-//
-//  Modifications:
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 2008
-//    First pass at porting to Qt 4.4.0
-//
-// ****************************************************************************
 void
 XMLEditFunctions::accessChanged(int val)
 {
     Attribute *a = xmldoc->attribute;
-    int index = functionlist->currentRow();
+    int index = functionlist->currentItem();
     if (index == -1)
         return;
     Function *f = a->functions[index];

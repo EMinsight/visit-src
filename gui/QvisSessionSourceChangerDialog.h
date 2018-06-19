@@ -2,9 +2,9 @@
 #define QVIS_SESSION_SOURCE_CHANGER_DIALOG_H
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,7 +37,7 @@
 * DAMAGE.
 *
 *****************************************************************************/
-#include <QDialog>
+#include <qdialog.h>
 #include <QvisSessionSourceChanger.h>
 
 // ****************************************************************************
@@ -53,16 +53,14 @@
 // Creation:   Tue Nov 14 15:27:03 PST 2006
 //
 // Modifications:
-//   Cyrus Harrison, Tue Jul  1 09:14:16 PDT 2008
-//   Initial Qt4 Port.
-//
+//   
 // ****************************************************************************
 
 class QvisSessionSourceChangerDialog : public QDialog
 {
     Q_OBJECT
 public:
-    QvisSessionSourceChangerDialog(QWidget *parent);
+    QvisSessionSourceChangerDialog(QWidget *parent, const char *name=0);
     virtual ~QvisSessionSourceChangerDialog();
 
     void setSources(const stringVector &keys, const stringVector &values,

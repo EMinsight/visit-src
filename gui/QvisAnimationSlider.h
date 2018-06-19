@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -38,7 +38,7 @@
 
 #ifndef QVIS_ANIMATION_SLIDER_H
 #define QVIS_ANIMATION_SLIDER_H
-#include <QSlider>
+#include <qslider.h>
 
 // ****************************************************************************
 // Class: QvisAnimationSlider
@@ -53,17 +53,15 @@
 // Creation:   Tue Dec 30 14:26:22 PST 2003
 //
 // Modifications:
-//   Brad Whitlock, Fri May 30 09:48:45 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 class QvisAnimationSlider : public QSlider
 {
     Q_OBJECT
 public:
-    QvisAnimationSlider(Qt::Orientation, QWidget *parent = 0);
-    QvisAnimationSlider(QWidget *parent = 0);
+    QvisAnimationSlider(Orientation, QWidget *parent = 0, const char *name = 0);
+    QvisAnimationSlider(QWidget *parent = 0, const char *name = 0);
     virtual ~QvisAnimationSlider();
 
     bool sliderIsDown() const { return the_sliderIsDown; };

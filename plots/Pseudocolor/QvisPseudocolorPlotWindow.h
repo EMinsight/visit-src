@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -48,8 +48,6 @@ class QLabel;
 class QvisOpacitySlider;
 class QvisColorTableButton;
 class QvisPointControl;
-class QvisLineStyleWidget;
-class QvisLineWidthWidget;
 
 class Subject;
 class PseudocolorAttributes;
@@ -96,9 +94,6 @@ class PseudocolorAttributes;
 //   Brad Whitlock, Wed Jul 20 14:23:58 PST 2005
 //   Added a new slot to handle a new signal from QvisPointControl.
 //
-//   Jeremy Meredith, Wed Nov 26 11:28:24 EST 2008
-//   Added line style/width controls.
-//
 // ****************************************************************************
 
 class QvisPseudocolorPlotWindow : public QvisPostableWindowObserver
@@ -140,9 +135,6 @@ private slots:
     void pointSizeVarToggled(bool on);
     void pointSizeVarChanged(const QString &);
 
-    void lineStyleChanged(int newStyle);
-    void lineWidthChanged(int newWidth);
-
 private:
     int                   plotType;
     PseudocolorAttributes *pcAtts;
@@ -161,10 +153,6 @@ private:
     QvisColorTableButton  *colorTableButton;
     QButtonGroup          *smoothingLevelButtons;
     QvisPointControl      *pointControl;
-    QLabel                *lineStyleLabel;
-    QvisLineStyleWidget   *lineStyle;
-    QLabel                *lineWidthLabel;
-    QvisLineWidthWidget   *lineWidth;
 };
 
 #endif

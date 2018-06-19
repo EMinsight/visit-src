@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -45,6 +45,8 @@
 
 const char *AUXILIARY_DATA_DATA_EXTENTS = "DATA_EXTENTS";
 const char *AUXILIARY_DATA_EXTERNAL_FACELIST = "EXTERNAL_FACELIST";
+const char *AUXILIARY_DATA_HISTOGRAM = "HISTOGRAM";
+const char *AUXILIARY_DATA_IDENTIFIERS = "IDENTIFIERS";
 const char *AUXILIARY_DATA_MATERIAL = "MATERIAL";
 const char *AUXILIARY_DATA_POST_GHOST_MATERIAL = "POST_GHOST_MATERIAL";
 const char *AUXILIARY_DATA_SPECIES = "SPECIES";

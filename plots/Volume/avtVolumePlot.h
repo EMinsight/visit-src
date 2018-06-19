@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -58,7 +58,6 @@ class avtLookupTable;
 class avtShiftCenteringFilter;
 class avtUserDefinedMapper;
 class avtVolumeFilter;
-class avtLowerResolutionVolumeFilter;
 class avtResampleFilter;
 
 
@@ -104,9 +103,8 @@ class avtResampleFilter;
 //    Remove definition of "CanCacheWriterExternally", as it was leading to
 //    unnecessary pipeline re-executions.
 //
-//    Brad Whitlock, Mon Dec 15 15:58:08 PST 2008
-//    I added a new avtLowerResolutionVolumeFilter that works on the 
-//    resampled data.
+//    Kathleen Bonnell, Tue Mar  3 13:37:13 PST 2009
+//    Removed CanDo2DViewScaling (moved into Viewer PluginInfo)
 //
 // ****************************************************************************
 
@@ -130,21 +128,19 @@ avtVolumePlot : public avtVolumeDataPlot
                                                      const WindowAttributes &);
     virtual bool        Equivalent(const AttributeGroup *);
 
-    virtual bool        CanDo2DViewScaling(void) { return false; }
     virtual bool        UtilizeRenderingFilters(void) { return false; };
 
   protected:
-    VolumeAttributes                atts;
-    avtLowerResolutionVolumeFilter *volumeFilter;
-    avtVolumeFilter                *volumeImageFilter;
-    avtResampleFilter              *resampleFilter;
-    avtShiftCenteringFilter        *shiftCentering;
-    avtVolumeRenderer_p             renderer;
-    avtUserDefinedMapper           *mapper;
-    avtLookupTable                 *avtLUT;
+    VolumeAttributes         atts;
+    avtVolumeFilter         *volumeFilter;
+    avtResampleFilter       *resampleFilter;
+    avtShiftCenteringFilter *shiftCentering;
+    avtVolumeRenderer_p      renderer;
+    avtUserDefinedMapper    *mapper;
+    avtLookupTable          *avtLUT;
 
-    avtVolumeVariableLegend        *varLegend;
-    avtLegend_p                     varLegendRefPtr;
+    avtVolumeVariableLegend *varLegend;
+    avtLegend_p              varLegendRefPtr;
 
     virtual avtMapper       *GetMapper(void);
     virtual avtDataObject_p  ApplyOperators(avtDataObject_p);
@@ -152,7 +148,8 @@ avtVolumePlot : public avtVolumeDataPlot
     virtual void             CustomizeBehavior(void);
     virtual avtLegend_p      GetLegend(void) { return varLegendRefPtr; };
     void                     SetLegendOpacities();
-    virtual avtContract_p    EnhanceSpecification(avtContract_p);
+    virtual avtContract_p
+                             EnhanceSpecification(avtContract_p);
 };
 
 

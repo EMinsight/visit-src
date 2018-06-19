@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -380,6 +380,8 @@ LoadBalancer::CheckDynamicLoadBalancing(avtContract_p input)
 //    Check here to see if we should do DBPLUGIN_DYNAMIC, rather than
 //    setting it as a global.
 //    
+//    Mark C. Miller, Wed Jun 17 14:25:59 PDT 2009
+//    Replaced CATCH(...) with CATCHALL.
 // ****************************************************************************
 
 LoadBalanceScheme
@@ -403,7 +405,7 @@ LoadBalancer::DetermineAppropriateScheme(avtContract_p input)
     {
         meshName = md->MeshForVar(data->GetVariable());
     }
-    CATCH(...)
+    CATCHALL
     {
         // Probably a CMFE.
         return scheme;

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -45,6 +45,7 @@
 #include <avtParallel.h>
 #include <avtSoftwareShader.h>
 #include <avtSourceFromImage.h>
+#include <avtTransparencyActor.h>
 #include <DebugStream.h>
 #include <Engine.h>
 #include <snprintf.h>
@@ -138,13 +139,25 @@ lerp(in value, in imin, in imax, out omin, out omax)
 //    lerp the IceT buffer onto the range [0,1] as we convert.  This seems to
 //    be what the rest of VisIt expects.
 //
+//    Tom Fogal, Fri May 29 20:32:50 MDT 2009
+//    Query the correct depth max from IceT.
+//
 // ****************************************************************************
 static float *
 utofv(const unsigned int * const src, size_t n_elem)
 {
     float *res = new float[n_elem];
+    unsigned int depth_max;
+    {
+      // IceT gives an unsigned int, but the accessor function only accepts
+      // GLint.  We'll grab the latter and rely on a conversion to get the
+      // correct type.
+      GLint far_depth;
+      icetGetIntegerv(ICET_ABSOLUTE_FAR_DEPTH, &far_depth);
+      depth_max = far_depth;
+    }
     for(size_t i=0; i < n_elem; ++i) {
-        res[i] = lerp(src[i], 0U,UINT_MAX, 0.0f,1.0f);
+        res[i] = lerp(src[i], 0U,depth_max, 0.0f,1.0f);
     }
     return res;
 }
@@ -253,16 +266,17 @@ IceTNetworkManager::TileLayout(size_t width, size_t height) const
 //    Use MemoMultipass; this fixes a bug which occurs when IceT calls our
 //    render function multiple times on a subset of nodes.
 //
-//    Hank Childs, Thu Jan 15 11:07:53 CST 2009
-//    Changed GetSize call to GetCaptureRegion, since that works for 2D.
+//    Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//    Replaced CATCHALL(...) with CATCHALL.
+//
+//    Tom Fogal, Tue Jul 21 19:20:40 MDT 2009
+//    Fall back to the NetworkManager when we find transparency.
 //
 // ****************************************************************************
-
 avtDataObjectWriter_p
 IceTNetworkManager::Render(intVector networkIds, bool getZBuffer,
                            int annotMode, int windowID, bool leftEye)
 {
-    int t0 = visitTimer->StartTimer();
     DataNetwork *origWorkingNet = workingNet;
 
     EngineVisWinInfo &viswinInfo = viswinMap[windowID];
@@ -274,6 +288,20 @@ IceTNetworkManager::Render(intVector networkIds, bool getZBuffer,
     {
         this->StartTimer();
         this->RenderSetup(networkIds, getZBuffer, annotMode, windowID, leftEye);
+
+        // We can't easily figure out a compositing order, which IceT requires
+        // in order to properly composite transparent geometry.  Thus if there
+        // is some transparency, fallback to our parent implementation.
+        avtTransparencyActor* trans = viswin->GetTransparencyActor();
+        if(trans->TransparenciesExist() || this->MemoMultipass(viswin))
+        {
+            debug2 << "Encountered transparency: falling back to old "
+                      "SR / compositing routines." << std::endl;
+            CATCH_RETURN2(1, NetworkManager::Render(networkIds, getZBuffer,
+                                                    annotMode, windowID,
+                                                    leftEye));
+        }
+
         bool needZB = !imageBasedPlots.empty() ||
                       this->Shadowing(windowID)  ||
                       this->DepthCueing(windowID);
@@ -333,13 +361,8 @@ IceTNetworkManager::Render(intVector networkIds, bool getZBuffer,
                << " primitives.  Balanced speedup = "
                << RenderBalance(viswin->GetNumPrimitives()) << "x" << endl;
 
-        int width, height, width_start, height_start;
-        // This basically gets the width and the height.
-        // The distinction is for 2D rendering, where we only want the
-        // width and the height of the viewport.
-        viswin->GetCaptureRegion(width_start, height_start, width, height,
-                                 this->r_mgmt.viewportedMode);
-        
+        int width, height;
+        viswin->GetSize(width, height);
         this->TileLayout(width, height);
 
         CallInitializeProgressCallback(this->RenderingStages(windowID));
@@ -392,14 +415,13 @@ IceTNetworkManager::Render(intVector networkIds, bool getZBuffer,
 
         CATCH_RETURN2(1, writer);
     }
-    CATCHALL(...)
+    CATCHALL
     {
         RETHROW;
     }
     ENDTRY
 
     workingNet = origWorkingNet;
-    visitTimer->StopTimer(t0, "Ice-T Render");
 }
 
 // ****************************************************************************
@@ -548,28 +570,17 @@ IceTNetworkManager::RenderTranslucent(int windowID, const avtImage_p& input)
 //    Tom Fogal, Mon Sep  1 14:21:46 EDT 2008
 //    Removed asserts / dependence on NDEBUG.
 //
-//    Hank Childs, Mon Dec 29 18:24:05 CST 2008
-//    Make an image have 3 components, not 4, since 3 is better supported
-//    throughout VisIt (including saving TIFFs).
-//
-//    Hank Childs, Thu Jan 15 11:07:53 CST 2009
-//    Changed GetSize call to GetCaptureRegion, since that works for 2D.
-//
 // ****************************************************************************
 avtImage_p
-IceTNetworkManager::Readback(VisWindow * const viswin,
+IceTNetworkManager::Readback(const VisWindow * const viswin,
                              bool readZ) const
 {
     GLboolean have_image;
 
     ICET(icetGetBooleanv(ICET_COLOR_BUFFER_VALID, &have_image));
 
-    int width=-42, height=-42, width_start, height_start;
-    // This basically gets the width and the height.
-    // The distinction is for 2D rendering, where we only want the
-    // width and the height of the viewport.
-    viswin->GetCaptureRegion(width_start, height_start, width, height,
-                             this->r_mgmt.viewportedMode);
+    int width=-42, height=-42;
+    viswin->GetSize(width, height);
 
     GLubyte *pixels = NULL;
     GLuint *depth = NULL;
@@ -606,19 +617,11 @@ IceTNetworkManager::Readback(VisWindow * const viswin,
     // components and reallocate the data; unfortunately this means we do an
     // allocate in NewImage and then immediately throw it away when doing an
     // allocate here.
-    image->SetNumberOfScalarComponents(3);
+    image->SetNumberOfScalarComponents(4);
     image->AllocateScalars();
     {
-        unsigned char *img_pix = (unsigned char *) image->GetScalarPointer();
-        const int numPix = width*height;
-        for (int i = 0 ; i < numPix ; i++)
-        {
-            *img_pix++ = *pixels++;
-            *img_pix++ = *pixels++;
-            *img_pix++ = *pixels++;
-            pixels++; // Alpha
-        }
-        //memcpy(img_pix, pixels, width*height*4);
+        void *img_pix = image->GetScalarPointer();
+        memcpy(img_pix, pixels, width*height*4);
     }
     float *visit_depth_buffer = NULL;
 
@@ -654,24 +657,14 @@ IceTNetworkManager::Readback(VisWindow * const viswin,
 //  Programmer: Tom Fogal
 //  Creation:   July 14, 2008
 //
-//  Modifications:
-//
-//    Hank Childs, Thu Jan 15 11:07:53 CST 2009
-//    Changed GetSize call to GetCaptureRegion, since that works for 2D.
-//
 // ****************************************************************************
 void
 IceTNetworkManager::StopTimer(int windowID)
 {
     char msg[1024];
-    VisWindow *viswin = this->viswinMap.find(windowID)->second.viswin;
-    GLubyte *pixels = NULL;
-    int rows,cols, width_start, height_start;
-    // This basically gets the width and the height.
-    // The distinction is for 2D rendering, where we only want the
-    // width and the height of the viewport.
-    viswin->GetCaptureRegion(width_start, height_start, rows,cols,
-                             this->r_mgmt.viewportedMode);
+    const VisWindow *viswin = this->viswinMap.find(windowID)->second.viswin;
+    int rows,cols;
+    viswin->GetSize(rows, cols);
 
     SNPRINTF(msg, 1023, "IceTNM::Render %d cells %d pixels",
              GetTotalGlobalCellCounts(windowID), rows*cols);

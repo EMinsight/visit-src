@@ -36,7 +36,7 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                            avtParallelCoordinatesPlot.h                          //
+//                         avtParallelCoordinatesPlot.h                      //
 // ************************************************************************* //
 
 #ifndef AVT_PARALLEL_COORDINATES_PLOT_H
@@ -44,8 +44,8 @@
 
 #include <avtPlot.h>
 #include <ParallelCoordinatesAttributes.h>
+#include <avtParallelCoordinatesFilter.h>
 
-class avtParallelCoordinatesFilter;
 class avtLevelsMapper;
 class avtLookupTable;
 
@@ -66,6 +66,12 @@ class avtLookupTable;
 //
 //  Modifications:
 //
+//    Kathleen Bonnell, Tue Mar  3 13:37:13 PST 2009
+//    Removed CanDo2DViewScaling (moved into Viewer PluginInfo)
+//
+//    Hank Childs, Mon Apr  6 14:09:41 PDT 2009
+//    Reimplement RegisterNamedSelection.
+//
 // ****************************************************************************
 
 class avtParallelCoordinatesPlot : public avtSurfaceDataPlot
@@ -80,7 +86,9 @@ public:
 
     virtual void             SetAtts(const AttributeGroup*);
     virtual void             ReleaseData(void);
-    virtual bool             CanDo2DViewScaling(void) { return false;}
+
+    virtual void             RegisterNamedSelection(const std::string &s)
+                                { namedSelections.push_back(s); };
 
 protected:
     avtParallelCoordinatesFilter   *parAxisFilter;
@@ -89,6 +97,7 @@ protected:
     avtLookupTable          *avtLUT;
     ParallelCoordinatesAttributes  atts;
     double                   bgColor[3];
+    std::vector<std::string> namedSelections;
 
     virtual avtMapper       *GetMapper(void);
     virtual avtDataObject_p  ApplyOperators(avtDataObject_p);

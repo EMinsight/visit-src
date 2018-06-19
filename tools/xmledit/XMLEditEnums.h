@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,15 +39,15 @@
 #ifndef XMLEDITENUMS_H
 #define XMLEDITENUMS_H
 
-#include <QFrame>
+#include <qframe.h>
 
 class XMLDocument;
 class QLineEdit;
 class QButtonGroup;
 class QComboBox;
 class QCheckBox;
-class QListWidget;
-class QTextEdit;
+class QListBox;
+class QMultiLineEdit;
 class QPushButton;
 
 // ****************************************************************************
@@ -59,16 +59,12 @@ class QPushButton;
 //  Programmer:  Jeremy Meredith
 //  Creation:    October 17, 2002
 //
-// Modifications:
-//   Cyrus Harrison, Thu May 15 15:04:20 PDT 2008
-//   Ported to Qt 4.4
-//
 // ****************************************************************************
 class XMLEditEnums : public QFrame
 {
     Q_OBJECT
   public:
-    XMLEditEnums(QWidget *p);
+    XMLEditEnums(QWidget *p, const QString &n);
     void SetDocument(XMLDocument *doc) { xmldoc = doc; }
     void BlockAllSignals(bool);
   public slots:
@@ -87,9 +83,9 @@ class XMLEditEnums : public QFrame
     QPushButton     *newButton;
     QPushButton     *delButton;
 
-    QListWidget     *enumlist;
+    QListBox        *enumlist;
     QLineEdit       *name;
-    QTextEdit       *valuelist;
+    QMultiLineEdit  *valuelist;
 };
 
 #endif

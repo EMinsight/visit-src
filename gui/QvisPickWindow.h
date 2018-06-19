@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -47,11 +47,10 @@
 class QCheckBox;
 class QComboBox;
 class QLineEdit;
-class QTextEdit;
+class QMultiLineEdit;
 class QSpinBox;
 class QTabWidget;
-class QTextEdit;
-
+class QVBox;
 class QvisVariableButton;
 class PickAttributes;
 
@@ -86,7 +85,7 @@ class PickAttributes;
 //   Added the autoShow flag and CreateNode and SetFromNode methods.
 //
 //   Brad Whitlock, Tue Sep 9 09:02:03 PDT 2003
-//   I made it use QTextEdit instead of QListWidget.
+//   I made it use QMultiLineEdit instead of QListBox.
 //
 //   Kathleen Bonnell, Wed Sep 10 08:02:02 PDT 2003 
 //   Added the savePicks checkbox. Remove AddInformation, no longer necessary.
@@ -208,8 +207,8 @@ private:
     QString             lastLetter;
 
     QTabWidget         *tabWidget;
-    QWidget            *pages[MAX_PICK_TABS];
-    QTextEdit          *infoLists[MAX_PICK_TABS];
+    QVBox              *pages[MAX_PICK_TABS];
+    QMultiLineEdit     *infoLists[MAX_PICK_TABS];
     QCheckBox          *displayIncEls;
     QCheckBox          *nodeId;
     QCheckBox          *nodeDomLog;

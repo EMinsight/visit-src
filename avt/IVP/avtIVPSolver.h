@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -87,6 +87,16 @@ struct avtIVPStateHelper;
 //
 //    Hank Childs, Tue Aug 19 15:34:14 PDT 2008
 //    Make sure that velStart and velEnd are appropriately sized.
+//    
+//    Dave Pugmire, Mon Feb 23, 09:11:34 EST 2009
+//    Reworked the termination code. Added a type enum and value. Made num steps
+//    a termination criterion.
+//
+//    Dave Pugmire, Mon Jun 8 2009, 11:44:01 EDT 2009
+//    Added ComputeSpeed, ComputeScalarVariable and associated member data.
+//
+//   Dave Pugmire, Thu Sep 24 13:52:59 EDT 2009
+//   Added a copy constructor.
 //
 // ****************************************************************************
 
@@ -94,9 +104,24 @@ class IVP_API avtIVPStep: public avtBezierSegment
 {
 public:
     avtIVPStep() : avtBezierSegment()
-                  { tStart = tEnd = vorticity = 0.0; 
-                    velStart = avtVec(0.,0.,0.); velEnd = avtVec(0.,0.,0.); }
+    { tStart = tEnd = scalarValue = 0.0; speed = 0.0; vorticity = 0.0;
+      velStart = avtVec(0.,0.,0.); velEnd = avtVec(0.,0.,0.); }
+
+    avtIVPStep(const avtIVPStep &s) : avtBezierSegment(s),
+                                      tStart(s.tStart),tEnd(s.tEnd), scalarValue(s.scalarValue),
+                                      speed(s.speed), vorticity(s.vorticity),
+                                      velStart(s.velStart), velEnd(s.velEnd)
+    {
+    }
     
+    void   ComputeSpeed(const avtIVPField *field)
+    {
+        speed = velEnd.length();
+    }
+    void   ComputeScalarVariable(const avtIVPField *field)
+    {
+        scalarValue = field->ComputeScalarVariable(tEnd, lastV());
+    }
     void   ComputeVorticity(const avtIVPField *field)
     {
         double tMid = tStart + (tEnd-tStart)/2.0;
@@ -105,13 +130,15 @@ public:
         if ( field->IsInside( tMid, pt ) )
             vorticity = field->ComputeVorticity( tMid, pt );
     }
-
-    void     Serialize(MemStream::Mode mode, MemStream &buff)
+    
+    void   Serialize(MemStream::Mode mode, MemStream &buff)
     {
         //debug1 << "avtIVPStep::Serialize()\n";
         buff.io( mode, tStart );
         buff.io( mode, tEnd );
+        buff.io( mode, speed );
         buff.io( mode, vorticity );
+        buff.io( mode, scalarValue );
         buff.io( mode, velStart );
         buff.io( mode, velEnd );
         
@@ -128,7 +155,7 @@ public:
     
     double tStart, tEnd;
     avtVec velStart, velEnd;
-    double vorticity;
+    double speed, vorticity, scalarValue;
 };
 
 
@@ -237,7 +264,10 @@ class avtIVPState
 //    Added OnExitDomain method.
 //
 //    Dave Pugmire, Tue Aug 19, 17:38:03 EDT 2008
-//    Chagned how distanced based termination is computed.
+//    Changned how distanced based termination is computed.
+//
+//   Dave Pugmire, Tue Nov  3 09:15:41 EST 2009
+//   Add operator<< for enums.
 //
 // ****************************************************************************
 
@@ -247,19 +277,27 @@ class avtIVPSolver
     enum Result
     {
         OK,
+        TERMINATE,
         OUTSIDE_DOMAIN,
         STEPSIZE_UNDERFLOW,
         STIFFNESS_DETECTED,
         UNSPECIFIED_ERROR,
     };
+    enum TerminateType
+    {
+        TIME,
+        DISTANCE,
+        STEPS,
+	INTERSECTIONS
+    };
     
     virtual void    Reset(const double& t_start, const avtVecRef& y_start) = 0;
 
-    virtual Result  Step(const avtIVPField* field, 
-                         const bool &timeMode,
-                         const double& t_max, 
-                         const double& d_max,
+    virtual Result  Step(const avtIVPField* field,
+                         const TerminateType &termType,
+                         const double &end,
                          avtIVPStep* ivpstep = 0 ) = 0;
+
     virtual void    OnExitDomain() {}
     virtual avtVec  GetCurrentY() const = 0;
     virtual double  GetCurrentT() const = 0;
@@ -283,6 +321,37 @@ class avtIVPSolver
 protected:
     virtual void    AcceptStateVisitor(avtIVPStateHelper& sv) = 0;
 };
+
+
+inline std::ostream& operator<<( std::ostream& out, const avtIVPSolver::Result &res )
+{
+    switch (res)
+    {
+      case avtIVPSolver::OK:  out<<"OK"; break;
+      case avtIVPSolver::TERMINATE: out<<"TERMINATE"; break;
+      case avtIVPSolver::OUTSIDE_DOMAIN: out<<"OUTSIDE_DOMAIN"; break;
+      case avtIVPSolver::STEPSIZE_UNDERFLOW: out<<"STEPSIZE_UNDERFLOW"; break;
+      case avtIVPSolver::STIFFNESS_DETECTED: out<<"STIFFNESS_DETECTED"; break;
+      case avtIVPSolver::UNSPECIFIED_ERROR: out<<"UNSPECIFIED_ERROR"; break;
+      default:
+        out<<"UNKNOWN_RESULT"; break;
+    }
+    return out;
+}
+
+inline std::ostream& operator<<( std::ostream& out, const avtIVPSolver::TerminateType &term )
+{
+    switch (term)
+    {
+      case avtIVPSolver::TIME:  out<<"TIME"; break;
+      case avtIVPSolver::DISTANCE: out<<"DISTANCE"; break;
+      case avtIVPSolver::STEPS: out<<"STEPS"; break;
+      case avtIVPSolver::INTERSECTIONS: out<<"INTERSECTIONS"; break;
+      default:
+        out<<"UNKNOWN_TERMINATION"; break;
+    }
+    return out;
+}
 
 #endif
 

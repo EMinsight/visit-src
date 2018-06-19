@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -42,7 +42,7 @@
 #include <Observer.h>
 #include <DebugStream.h>
 
-#include <QTimer>
+#include <qtimer.h>
 
 // ****************************************************************************
 // Class: CancelledObserver
@@ -97,13 +97,12 @@ public:
 // Creation:   Thu Oct 27 16:23:13 PST 2005
 //
 // Modifications:
-//   Cyrus Harrison, Tue Jul  1 09:14:16 PDT 2008
-//   Initial Qt4 Port.
-//
+//   
 // ****************************************************************************
 
-QvisSessionFileDatabaseLoader::QvisSessionFileDatabaseLoader(QObject *parent) 
-:  QObject(parent), GUIBase(), databases(), cancelledObserver(), sessionFile()
+QvisSessionFileDatabaseLoader::QvisSessionFileDatabaseLoader(QObject *parent, const char *name) :
+    QObject(parent, name), GUIBase(), databases(), cancelledObserver(),
+    sessionFile()
 {
     index = 0;
     cancelledObserver = 0;
@@ -226,7 +225,7 @@ QvisSessionFileDatabaseLoader::ProcessFile()
             else
             {
                 debug1 << mName << "telling VisIt that it can load the "
-                          "session file: " << sessionFile.toStdString() << endl;
+                          "session file: " << sessionFile.latin1() << endl;
                 
                 emit complete(sessionFile);
                 emit complete(sessionFile, databases);

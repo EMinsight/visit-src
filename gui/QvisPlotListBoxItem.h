@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,7 +39,7 @@
 #ifndef QVIS_PLOT_LISTBOX_ITEM_H
 #define QVIS_PLOT_LISTBOX_ITEM_H
 #include <gui_exports.h>
-#include <QListWidget>
+#include <qlistbox.h>
 #include <GUIBase.h>
 #include <Plot.h>
 #include <vector>
@@ -48,7 +48,7 @@
 // Class: QvisPlotListBoxItem
 //
 // Purpose:
-//   This is a list item that can be inserted into a QListWidget. The
+//   This is a list item that can be inserted into a QListBox. The
 //   PlotList that is displayed in the GUI is made of these.
 //
 // Notes:      
@@ -72,7 +72,7 @@
 //
 // ****************************************************************************
     
-class GUI_API QvisPlotListBoxItem : public QListWidgetItem, private GUIBase
+class GUI_API QvisPlotListBoxItem : public QListBoxItem, private GUIBase
 {
 public:
     typedef enum {
@@ -106,8 +106,8 @@ public:
     QvisPlotListBoxItem(const QString &prefix, const Plot &plot);
    ~QvisPlotListBoxItem();
 
-    int    height(const QListWidget *) const;
-    int    width(const QListWidget *)  const;
+    int    height(const QListBox *) const;
+    int    width(const QListBox *)  const;
 
     int    clicked(const QPoint &p, bool dc, int &id);
     bool   isExpanded() const;
@@ -116,7 +116,7 @@ public:
     const Plot &GetPlot() const { return plot; };
     Plot &GetPlot() { return plot; };
     const QString &GetPrefix() const { return prefix; };
-
+protected:
     void paint(QPainter *);
 private:
     QString GetDisplayString(const Plot &plot, const QString &prefix);

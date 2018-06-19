@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -47,7 +47,7 @@
 
 #include <avtDatasetToDatasetFilter.h>
 
-#include <InternalResampleAttributes.h>
+#include <ResampleAttributes.h>
 
 
 // ****************************************************************************
@@ -76,9 +76,6 @@
 //    Hank Childs, Fri Jun  1 16:17:51 PDT 2007
 //    Added support for cell-centered output.
 //
-//    Hank Childs, Wed Dec 31 13:45:03 PST 2008
-//    Change name of attributes from ResampleAtts to InternalResampleAtts.
-//
 // ****************************************************************************
 
 class AVTFILTERS_API avtResampleFilter : public avtDatasetToDatasetFilter
@@ -96,7 +93,7 @@ class AVTFILTERS_API avtResampleFilter : public avtDatasetToDatasetFilter
                                 { cellCenteredOutput = doIt; };
 
   protected:
-    InternalResampleAttributes atts;
+    ResampleAttributes    atts;
     char                 *primaryVariable;
     int                   selID;
     bool                  cellCenteredOutput;

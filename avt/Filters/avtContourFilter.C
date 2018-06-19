@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -59,7 +59,6 @@
 
 #include <avtExtents.h>
 #include <avtIntervalTree.h>
-#include <avtIsolevelsSelection.h>
 #include <avtMetaData.h>
 
 #include <DebugStream.h>
@@ -234,29 +233,28 @@ avtContourFilter::~avtContourFilter()
 //    are streaming, not about whether we are doing dynamic load balancing.
 //    And the two are no longer synonymous.
 //
-//    Hank Childs, Fri Nov 14 09:05:04 PST 2008
-//    Make sure ghost data is not requested if we ultimately want ghost nodes.
-//
-//    Hank Childs, Mon Jan  5 15:18:09 CST 2009
-//    Add a data selection.
+//    Eric Brugger, Fri Jul 24 10:59:44 PDT 2009
+//    Added the variable name to the call to GetMetaData()->GetDataExtents()
+//    so that it would get the correct interval tree.  This fix was provided
+//    Hank Childs.
 //
 // ****************************************************************************
 
 avtContract_p
-avtContourFilter::ModifyContract(avtContract_p in_contract)
+avtContourFilter::ModifyContract(avtContract_p in_spec)
 {
     int  i, j;
 
-    avtContract_p contract = new avtContract(in_contract);
+    avtContract_p spec = new avtContract(in_spec);
+
+    if (GetInput()->GetInfo().GetAttributes().GetTopologicalDimension() == 3)
+        spec->GetDataRequest()->SetNeedValidFaceConnectivity(true);
 
     const char *varname = NULL;
     if (atts.GetVariable() != "default")
         varname = atts.GetVariable().c_str();
     else 
-        varname = contract->GetDataRequest()->GetVariable();
-
-    if (GetInput()->GetInfo().GetAttributes().GetTopologicalDimension() == 3)
-        contract->GetDataRequest()->SetNeedValidFaceConnectivity(true);
+        varname = spec->GetDataRequest()->GetVariable();
 
     //
     // We will need the ghost zones so that we can interpolate along domain
@@ -268,14 +266,12 @@ avtContourFilter::ModifyContract(avtContract_p in_contract)
         in_atts.GetCentering(varname) == AVT_NODECENT)
         skipGhost = true;
     if (!skipGhost)
-        contract->GetDataRequest()->SetDesiredGhostDataType(GHOST_ZONE_DATA);
-    else if (contract->GetDataRequest()->GetDesiredGhostDataType() == GHOST_NODE_DATA)
-        contract->GetDataRequest()->SetDesiredGhostDataType(NO_GHOST_DATA);
+        spec->GetDataRequest()->SetDesiredGhostDataType(GHOST_ZONE_DATA);
 
     //
     // Get the interval tree of data extents.
     //
-    avtIntervalTree *it = GetMetaData()->GetDataExtents();
+    avtIntervalTree *it = GetMetaData()->GetDataExtents(varname);
     if (it != NULL && it->GetDimension() != 1)
     {
         debug1 << "The interval tree returned for the contour variable "
@@ -307,26 +303,16 @@ avtContourFilter::ModifyContract(avtContract_p in_contract)
             SetIsoValues(extents[0], extents[1]);
         else
         {
-            contract->NoStreaming();
-            return contract;
+            spec->NoStreaming();
+            return spec;
         }
     }
-
-    //
-    // Tell the file format reader that we will be extracting isolevels,
-    // in case it can limit its reads to only the domains/elements that
-    // cross the isolevel.
-    //
-    avtIsolevelsSelection *sel = new avtIsolevelsSelection;
-    sel->SetVariable(varname);
-    sel->SetIsolevels(isoValues);
-    contract->GetDataRequest()->AddDataSelection(sel);
 
     if (it == NULL)
     {
         debug5 << "Cannot use interval tree for contour filter, no "
                << "interval tree exists." << endl;
-        return contract;
+        return spec;
     }
 
     //
@@ -374,9 +360,9 @@ avtContourFilter::ModifyContract(avtContract_p in_contract)
         if (useList[i])
             list.push_back(i);
 
-    contract->GetDataRequest()->GetRestriction()->RestrictDomains(list);
+    spec->GetDataRequest()->GetRestriction()->RestrictDomains(list);
 
-    return contract;
+    return spec;
 }
 
 
@@ -573,12 +559,6 @@ avtContourFilter::PreExecute(void)
 //    Switch to our own version of the cd2pd filter, since it has
 //    optimizations for structured data.
 //
-//    Hank Childs, Fri Nov 14 09:03:58 PST 2008
-//    Remove ghost nodes, as they will make a bad picture.
-//
-//    Hank Childs, Wed Jan  7 16:03:29 CST 2009
-//    Only use a scalar tree if we have multiple isolevels.
-//
 // ****************************************************************************
 
 avtDataTree_p 
@@ -655,18 +635,14 @@ avtContourFilter::ExecuteDataTree(vtkDataSet *in_ds, int domain, string label)
     // which could lead to a divide-by-0 when calculating progress.
     //
     int nLevels = isoValues.size();
-    bool useScalarTree = (nLevels > 1);
     int total = 4*nLevels+2;
     UpdateProgress(current_node*total + nLevels+1, total*nnodes);
 
     vtkVisItScalarTree *tree = vtkVisItScalarTree::New();
-    if (useScalarTree)
-    {
-         tree->SetDataSet(toBeContoured);
-         int id0 = visitTimer->StartTimer();
-         tree->BuildTree();
-         visitTimer->StopTimer(id0, "Building scalar tree");
-    }
+    tree->SetDataSet(toBeContoured);
+    int id0 = visitTimer->StartTimer();
+    tree->BuildTree();
+    visitTimer->StopTimer(id0, "Building scalar tree");
 
     UpdateProgress(current_node*total + 2*nLevels+2, total*nnodes);
 
@@ -679,24 +655,18 @@ avtContourFilter::ExecuteDataTree(vtkDataSet *in_ds, int domain, string label)
     for (i = 0 ; i < isoValues.size() ; i++)
     {
         std::vector<int> list;
-        if (useScalarTree)
-        {
-            int id1 = visitTimer->StartTimer();
-            tree->GetCellList(isoValues[i], list);
-            visitTimer->StopTimer(id1, "Getting cell list");
-        }
+        int id1 = visitTimer->StartTimer();
+        tree->GetCellList(isoValues[i], list);
+        visitTimer->StopTimer(id1, "Getting cell list");
         int id2 = visitTimer->StartTimer();
         cf->SetIsovalue(isoValues[i]);
         int *list2 = NULL;
-        if (useScalarTree)
-        {
-            int emptylist[1] = { 0 };
-            if (list.size() <= 0)
-                list2 = emptylist;
-            else
-                list2 = &(list[0]);
-            cf->SetCellList(list2, list.size());
-         }
+        int emptylist[1] = { 0 };
+        if (list.size() <= 0)
+            list2 = emptylist;
+        else
+            list2 = &(list[0]);
+        cf->SetCellList(list2, list.size());
 
         output->Update();
         if (output->GetNumberOfCells() == 0)
@@ -706,7 +676,6 @@ avtContourFilter::ExecuteDataTree(vtkDataSet *in_ds, int domain, string label)
             out_ds[i] = vtkPolyData::New();
             out_ds[i]->ShallowCopy(output);
 	    out_ds[i]->GetFieldData()->ShallowCopy(in_ds->GetFieldData());
-            out_ds[i]->GetPointData()->RemoveArray("avtGhostNodes");
         }
         visitTimer->StopTimer(id2, "Calculating isosurface");
         UpdateProgress(current_node*total + 2*nLevels+2+2*i, total*nnodes);

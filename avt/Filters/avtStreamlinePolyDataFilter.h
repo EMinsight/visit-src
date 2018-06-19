@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -61,6 +61,9 @@
 // Programmer: Hank Childs (refactoring) / Dave Pugmire (actual code)
 // Creation:   December 2, 2008
 //
+//   Dave Pugmire, Mon Feb  2 14:39:35 EST 2009
+//   Moved GetVTKPolyData from avtStreamlineWrapper to here.
+//
 // ****************************************************************************
 
 class AVTFILTERS_API avtStreamlinePolyDataFilter : public avtStreamlineFilter
@@ -70,6 +73,9 @@ class AVTFILTERS_API avtStreamlinePolyDataFilter : public avtStreamlineFilter
     virtual                  ~avtStreamlinePolyDataFilter() {;};
 
   protected:
+    vtkPolyData*              GetVTKPolyData(avtStreamline *sl,
+                                             int id,
+                                             std::vector<float> &thetas);
     void                      CreateStreamlineOutput( 
                                  vector<avtStreamlineWrapper *> &streamlines );
 };

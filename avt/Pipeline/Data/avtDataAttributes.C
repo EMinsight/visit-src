@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -164,9 +164,12 @@ using     std::sort;
 //    Hank Childs, Tue Jan 20 12:03:05 CST 2009
 //    Initialize dynamicDomainDecomposition.
 //
+//    Jeremy Meredith, Tue Jun  2 16:25:01 EDT 2009
+//    Added support for unit cell origin (previously assumed to be 0,0,0);
+//
 // ****************************************************************************
 
-avtDataAttributes::avtDataAttributes() : plotInfoAtts()
+avtDataAttributes::avtDataAttributes()
 {
     trueSpatial               = NULL;
     cumulativeTrueSpatial     = NULL;
@@ -232,6 +235,7 @@ avtDataAttributes::avtDataAttributes() : plotInfoAtts()
             unitCellVectors[i*3+j] = (i==j) ? 1.0 : 0.0;
         }
     }
+    unitCellOrigin[0] = unitCellOrigin[1] = unitCellOrigin[2] = 0.0;
     for (int m=0; m<4; m++)
     {
         for (int n=0; n<4; n++)
@@ -240,6 +244,7 @@ avtDataAttributes::avtDataAttributes() : plotInfoAtts()
         }
     }
     rectilinearGridHasTransform = false;
+    plotInfoAtts = NULL;
 }
 
 
@@ -291,9 +296,6 @@ avtDataAttributes::~avtDataAttributes()
 //
 //    Jeremy Meredith, Thu Feb  7 17:52:59 EST 2008
 //    Added component extents for array variables.
-//
-//    Brad Whitlock, Wed Jan  7 14:04:25 PST 2009
-//    plotInfoAtts is no longer a pointer so no special treatment is needed.
 //
 // ****************************************************************************
 
@@ -371,6 +373,11 @@ avtDataAttributes::DestructSelf(void)
     {
         delete transform;
         transform = NULL;
+    }
+    if (plotInfoAtts != NULL)
+    {
+        delete plotInfoAtts;
+        plotInfoAtts = NULL;
     }
 }
 
@@ -461,11 +468,11 @@ avtDataAttributes::DestructSelf(void)
 //    Jeremy Meredith, Thu Feb  7 17:52:59 EST 2008
 //    Added component extents for array variables.
 //
-//    Eric Brugger, Tue Dec  9 16:19:10 PST 2008
-//    Added the AxisParallel window mode.
-//
 //    Hank Childs, Tue Jan 20 12:03:05 CST 2009
 //    Added dynamicDomainDecomposition.
+//
+//    Jeremy Meredith, Tue Jun  2 16:25:01 EDT 2009
+//    Added support for unit cell origin (previously assumed to be 0,0,0);
 //
 // ****************************************************************************
 
@@ -554,9 +561,6 @@ avtDataAttributes::Print(ostream &out)
         break;
       case WINMODE_AXISARRAY:
         out << "The window mode is axis-array" << endl;
-        break;
-      case WINMODE_AXISPARALLEL:
-        out << "The window mode is axis-parallel" << endl;
         break;
       case WINMODE_NONE:
         out << "The window mode is none" << endl;
@@ -803,6 +807,10 @@ avtDataAttributes::Print(ostream &out)
             << unitCellVectors[i*3+1] << " "
             << unitCellVectors[i*3+2] << endl;
     }
+    out << "Unit cell origin is "
+        << unitCellOrigin[0] << " "
+        << unitCellOrigin[1] << " "
+        << unitCellOrigin[2] << endl;
 
     out << "Rectilinear grids "
         << (rectilinearGridHasTransform ? "do" : "do not")
@@ -821,7 +829,10 @@ avtDataAttributes::Print(ostream &out)
     }
 
     out << "PlotInfoAttributes: ";
-    plotInfoAtts.PrintSelf(out);
+    if (plotInfoAtts == NULL)
+        out << "Not Set";
+    else 
+        plotInfoAtts->PrintSelf(out);
     out << endl;
 }
 
@@ -951,11 +962,11 @@ avtDataAttributes::Print(ostream &out)
 //    Jeremy Meredith, Thu Feb  7 17:52:59 EST 2008
 //    Added component extents for array variables.
 //
-//    Brad Whitlock, Wed Jan  7 14:05:50 PST 2009
-//    I changed how plotInfoAtts gets copied.
-//
 //    Hank Childs, Tue Jan 20 12:03:05 CST 2009
 //    Added dynamicDomainDecomposition.
+//
+//    Jeremy Meredith, Tue Jun  2 16:25:01 EDT 2009
+//    Added support for unit cell origin (previously assumed to be 0,0,0);
 //
 // ****************************************************************************
 
@@ -1053,10 +1064,12 @@ avtDataAttributes::Copy(const avtDataAttributes &di)
     nodesAreCritical = di.nodesAreCritical;
     for (int j=0; j<9; j++)
         unitCellVectors[j] = di.unitCellVectors[j];
+    for (int j=0; j<3; j++)
+        unitCellOrigin[j] = di.unitCellOrigin[j];
     rectilinearGridHasTransform = di.rectilinearGridHasTransform;
     for (int k=0; k<16; k++)
         rectilinearGridTransform[k] = di.rectilinearGridTransform[k];
-    plotInfoAtts = di.plotInfoAtts;
+    SetPlotInfoAtts(di.plotInfoAtts);
 }
 
 
@@ -1186,9 +1199,6 @@ avtDataAttributes::Copy(const avtDataAttributes &di)
 //
 //    Jeremy Meredith, Thu Feb  7 17:52:59 EST 2008
 //    Added component extents for array variables.
-//
-//    Brad Whitlock, Wed Jan  7 14:06:31 PST 2009
-//    I changed how plotInfoAtts is handled.
 //
 // ****************************************************************************
 
@@ -1443,7 +1453,7 @@ avtDataAttributes::Merge(const avtDataAttributes &da,
     mirOccurred |= da.mirOccurred;
     canUseOrigZones &= da.canUseOrigZones;
     origElementsRequiredForPick |= da.origElementsRequiredForPick;
-    plotInfoAtts.Merge(da.plotInfoAtts);
+    SetPlotInfoAtts(da.plotInfoAtts);
 
     // there's no good answer for unitCellVectors or rectilinearGridTransform
 }
@@ -2634,6 +2644,9 @@ avtDataAttributes::SetDynamicDomainDecomposition(bool ddd)
 //    Hank Childs, Tue Jan 20 12:03:05 CST 2009
 //    Added dynamicDomainDecomposition.
 //
+//    Jeremy Meredith, Tue Jun  2 16:25:01 EDT 2009
+//    Added support for unit cell origin (previously assumed to be 0,0,0);
+//
 // ****************************************************************************
 
 void
@@ -2773,6 +2786,9 @@ avtDataAttributes::Write(avtDataObjectString &str,
 
     for (i = 0; i < 9 ; i++)
         wrtr->WriteDouble(str, unitCellVectors[i]);
+
+    for (i = 0; i < 3 ; i++)
+        wrtr->WriteDouble(str, unitCellOrigin[i]);
 
     for (i = 0; i < 16 ; i++)
         wrtr->WriteDouble(str, rectilinearGridTransform[i]);
@@ -2923,6 +2939,9 @@ avtDataAttributes::Write(avtDataObjectString &str,
 //
 //    Hank Childs, Tue Jan 20 12:03:05 CST 2009
 //    Added dynamicDomainDecomposition.
+//
+//    Jeremy Meredith, Tue Jun  2 16:25:01 EDT 2009
+//    Added support for unit cell origin (previously assumed to be 0,0,0);
 //
 // ****************************************************************************
 
@@ -3269,6 +3288,13 @@ avtDataAttributes::Read(char *input)
         memcpy(&dtmp, input, sizeof(double));
         input += sizeof(double); size += sizeof(double);
         unitCellVectors[i] = dtmp;
+    }
+
+    for (i = 0; i < 3 ; i++)
+    {
+        memcpy(&dtmp, input, sizeof(double));
+        input += sizeof(double); size += sizeof(double);
+        unitCellOrigin[i] = dtmp;
     }
 
     for (i = 0; i < 16 ; i++)
@@ -4622,16 +4648,13 @@ avtDataAttributes::TransformSpatialExtents(avtDataAttributes &outAtts,
 //    Kathleen Bonnell, Mon Nov 27 12:21:47 PST 2006
 //    Removed PlotInfoAtts specific code, call WriteAtts on writer instead.
 //
-//    Brad Whitlock, Wed Jan  7 14:08:14 PST 2009
-//    plotInfoAtts is no longer a pointer.
-//
 // ****************************************************************************
 
 void
 avtDataAttributes::WritePlotInfoAtts(avtDataObjectString &str,
                                      const avtDataObjectWriter *wrtr)
 {
-    wrtr->WriteAtts(str, &plotInfoAtts);
+    wrtr->WriteAtts(str, plotInfoAtts);
 }
 
 
@@ -4651,9 +4674,6 @@ avtDataAttributes::WritePlotInfoAtts(avtDataObjectString &str,
 //    Kathleen Bonnell, Mon Nov 27 12:32:24 PST 2006
 //    Correctly delete plotInfoAtts.
 //
-//    Brad Whitlock, Wed Jan  7 14:08:14 PST 2009
-//    plotInfoAtts is no longer a pointer. I simplified the code.
-//
 // ****************************************************************************
 
 int
@@ -4666,43 +4686,71 @@ avtDataAttributes::ReadPlotInfoAtts(char *input)
 
     if (piaSize == 0)
     {
-        // Clear out the plot info atts.
-        plotInfoAtts = PlotInfoAttributes();
+        if (plotInfoAtts != NULL)
+        {
+            delete plotInfoAtts;
+            plotInfoAtts = NULL;
+        }
         return size;
     }
+    if (plotInfoAtts == NULL)
+    {
+        plotInfoAtts = new PlotInfoAttributes();
+    }
+    unsigned char *b = new unsigned char[piaSize];
+    for (int i = 0; i < piaSize; i++)
+    {
+        b[i] = (unsigned char)input[i];
+    }
+    input += piaSize;
+    size += piaSize;
 
     BufferConnection buf;
-    buf.Append((unsigned char *)input, piaSize);
-    plotInfoAtts.Read(buf);
-
-    size += piaSize;
+    buf.Append(b, piaSize);
+    plotInfoAtts->Read(buf);
+    delete [] b;
 
     return size;
 }
 
+
 // ****************************************************************************
-// Method: avtDataAttributes::AddPlotInformation
+//  Method: avtDataAttributes::SetPlotInfoAtts
 //
-// Purpose: 
-//   Adds new information to the plot information.
+//  Purpose:
+//    Sets the PlotInfoAtts according to the passed argument.
 //
-// Arguments:
-//   key  : The name that will be used to access the data.
-//   info : The new information that we're storing.
+//  Arguments:
+//    pia       The new plotInfoAtts.
 //
-// Programmer: Brad Whitlock
-// Creation:   Wed Jan  7 14:17:18 PST 2009
+//  Programmer: Kathleen Bonnell
+//  Creation:   June 20, 2006
 //
-// Modifications:
-//   
+//  Modifications:
+//    Kathleen Bonnell, Mon Nov 27 12:32:24 PST 2006
+//    Delete plotInfoAtts if necessary when pia is NULL.
+//
 // ****************************************************************************
 
 void
-avtDataAttributes::AddPlotInformation(const std::string &key,
-    const MapNode &info)
+avtDataAttributes::SetPlotInfoAtts(const PlotInfoAttributes *pia)
 {
-    plotInfoAtts.GetData()[key] = info;
+    if (pia == NULL)
+    {
+        if (plotInfoAtts != NULL)
+        {
+            delete plotInfoAtts;
+            plotInfoAtts = NULL;
+        }
+        return;
+    }
+    if (plotInfoAtts == NULL)
+    {
+        plotInfoAtts = new PlotInfoAttributes();
+    }
+    *plotInfoAtts = *pia;
 }
+
 
 // ****************************************************************************
 //  Method: avtDataAttributes::DebugDump
@@ -4833,8 +4881,6 @@ avtDataAttributes::DebugDump(avtWebpage *webpage)
                             YesOrNo(canUseOrigZones));
     webpage->AddTableEntry2("Are the original elements required for pick?",
                             YesOrNo(origElementsRequiredForPick));
-    webpage->AddTableEntry2("Is the file format reader doing domain decomposition?",
-                            YesOrNo(dynamicDomainDecomposition));
     switch (meshCoordType)
     {
       case AVT_XY:

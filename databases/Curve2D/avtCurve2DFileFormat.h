@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -78,6 +78,10 @@ class     vtkRectilinearGrid;
 //
 //    Mark C. Miller, Tue Oct 31 20:33:29 PST 2006
 //    Added VALID_XVALUE token to support "zone-centered" curves
+//
+//    Kathleen Bonnell, Tue Jan 20 11:02:57 PST 2009
+//    Added spatialExtents. 
+//
 // ****************************************************************************
 
 typedef enum
@@ -112,6 +116,7 @@ class avtCurve2DFileFormat : public avtSTSDFileFormat
 
     std::vector<vtkRectilinearGrid *> curves;
     std::vector<std::string>   curveNames;
+    std::vector<double>        spatialExtents;
     std::vector<double>        dataExtents;
     double                     curveTime;
     int                        curveCycle;

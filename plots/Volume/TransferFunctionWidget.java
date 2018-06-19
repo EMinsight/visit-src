@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400142
+// LLNL-CODE-400124
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -65,34 +65,23 @@ public class TransferFunctionWidget extends AttributeSubject
 
     public TransferFunctionWidget()
     {
-        super(4);
+        super(3);
 
-        Type = WIDGETTYPE_RECTANGLE;
-        Name = new String("unnamed");
-        BaseColor = new float[4];
-        BaseColor[0] = 1f;
-        BaseColor[1] = 1f;
-        BaseColor[2] = 1f;
-        BaseColor[3] = 1f;
+            BaseColor = new float[4];
+        for (int i = 0; i < BaseColor.length; ++i)
+            BaseColor[i] = 0f;
         Position = new float[8];
-        Position[0] = 0f;
-        Position[1] = 0f;
-        Position[2] = 0f;
-        Position[3] = 0f;
-        Position[4] = 0f;
-        Position[5] = 0f;
-        Position[6] = 0f;
-        Position[7] = 0f;
+        for (int i = 0; i < Position.length; ++i)
+            Position[i] = 0f;
     }
 
     public TransferFunctionWidget(TransferFunctionWidget obj)
     {
-        super(4);
+        super(3);
 
         int i;
 
         Type = obj.Type;
-        Name = new String(obj.Name);
         BaseColor = new float[4];
         for(i = 0; i < obj.BaseColor.length; ++i)
             BaseColor[i] = obj.BaseColor[i];
@@ -121,7 +110,6 @@ public class TransferFunctionWidget extends AttributeSubject
 
         // Create the return value
         return ((Type == obj.Type) &&
-                (Name.equals(obj.Name)) &&
                 BaseColor_equal &&
                 Position_equal);
     }
@@ -133,19 +121,13 @@ public class TransferFunctionWidget extends AttributeSubject
         Select(0);
     }
 
-    public void SetName(String Name_)
-    {
-        Name = Name_;
-        Select(1);
-    }
-
     public void SetBaseColor(float[] BaseColor_)
     {
         BaseColor[0] = BaseColor_[0];
         BaseColor[1] = BaseColor_[1];
         BaseColor[2] = BaseColor_[2];
         BaseColor[3] = BaseColor_[3];
-        Select(2);
+        Select(1);
     }
 
     public void SetBaseColor(float e0, float e1, float e2, float e3)
@@ -154,19 +136,18 @@ public class TransferFunctionWidget extends AttributeSubject
         BaseColor[1] = e1;
         BaseColor[2] = e2;
         BaseColor[3] = e3;
-        Select(2);
+        Select(1);
     }
 
     public void SetPosition(float[] Position_)
     {
         for(int i = 0; i < 8; ++i)
              Position[i] = Position_[i];
-        Select(3);
+        Select(2);
     }
 
     // Property getting methods
     public int     GetType() { return Type; }
-    public String  GetName() { return Name; }
     public float[] GetBaseColor() { return BaseColor; }
     public float[] GetPosition() { return Position; }
 
@@ -176,10 +157,8 @@ public class TransferFunctionWidget extends AttributeSubject
         if(WriteSelect(0, buf))
             buf.WriteInt(Type);
         if(WriteSelect(1, buf))
-            buf.WriteString(Name);
-        if(WriteSelect(2, buf))
             buf.WriteFloatArray(BaseColor);
-        if(WriteSelect(3, buf))
+        if(WriteSelect(2, buf))
             buf.WriteFloatArray(Position);
     }
 
@@ -194,12 +173,9 @@ public class TransferFunctionWidget extends AttributeSubject
                 SetType(buf.ReadInt());
                 break;
             case 1:
-                SetName(buf.ReadString());
-                break;
-            case 2:
                 SetBaseColor(buf.ReadFloatArray());
                 break;
-            case 3:
+            case 2:
                 SetPosition(buf.ReadFloatArray());
                 break;
             }
@@ -219,7 +195,6 @@ public class TransferFunctionWidget extends AttributeSubject
         if(Type == WIDGETTYPE_ELLIPSOID)
             str = str + "WIDGETTYPE_ELLIPSOID";
         str = str + "\n";
-        str = str + stringToString("Name", Name, indent) + "\n";
         str = str + floatArrayToString("BaseColor", BaseColor, indent) + "\n";
         str = str + floatArrayToString("Position", Position, indent) + "\n";
         return str;
@@ -228,7 +203,6 @@ public class TransferFunctionWidget extends AttributeSubject
 
     // Attributes
     private int     Type;
-    private String  Name;
     private float[] BaseColor;
     private float[] Position;
 }

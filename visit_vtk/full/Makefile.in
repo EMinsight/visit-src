@@ -1,4 +1,4 @@
-#                         Copyright (c) 2000 - 2008
+#                         Copyright (c) 2000 - 2009
 #                  Lawrence Livermore National Security, LLC
 #            Produced at the Lawrence Livermore National Laboratory
 #                              LLNL-CODE-400124
@@ -306,6 +306,12 @@
 #    Jeremy Meredith, Tue Oct 14 15:16:00 EDT 2008
 #    Added vtkRectilinearLinesNoDataFilter.
 #
+#    Hank Childs, Thu Apr  2 17:54:09 CDT 2009
+#    Added vtkVisItInterpolatedVelocityField.
+#
+#    Gunther H. Weber, Fri Apr  3 17:24:22 PDT 2009
+#    Moved vtkVisItCellLocator to "lightweight".
+#
 ##############################################################################
 
 ##
@@ -317,70 +323,40 @@
 ##
 ## Files...
 ##
-OPENGL_SRC=vtkVisItOpenGLPolyDataMapper.C \
-    vtkOpenGLRectilinearGridMapper.C \
-    vtkOpenGLStructuredGridMapper.C \
-    vtkOpenGLTexturedBackgroundMapper.C \
-    vtkVisItOpenGLTexture.C
-
-MESA_SRC=vtkOSMesaRenderWindow.C \
-    vtkMesaRectilinearGridMapper.C \
-    vtkMesaStructuredGridMapper.C \
-    vtkMesaTexturedBackgroundMapper.C \
-    vtkVisItMesaPolyDataMapper.C
-
-SRC=InitVTK.C \
-    vtkAxisDepthSort.C \
-    vtkBackgroundActor.C \
+SRC= vtkAxisDepthSort.C \
     vtkConnectedTubeFilter.C \
     vtkCSGGrid.C \
-    vtkDashedXorGridMapper2D.C \
     vtkDataSetRemoveGhostCells.C \
     vtkDisjointCubesFacelistFilter.C \
-    vtkLineLegend.C \
     vtkLineoutFilter.C \
     vtkLinesFromOriginalCells.C \
-    vtkMultiFontVectorText.C \
     vtkOBJWriter.C \
     vtkOnionPeelFilter.C \
     vtkPolyDataOnionPeelFilter.C \
     vtkPPMWriter.C \
     vtkRGBWriter.C \
     vtkRectilinearGridFacelistFilter.C \
-    vtkRectilinearGridMapper.C \
     vtkRectilinearLinesNoDataFilter.C \
-    vtkRubberBandMapper2D.C \
     vtkSkewLookupTable.C \
     vtkSlicer.C \
     vtkStructuredGridFacelistFilter.C \
-    vtkStructuredGridMapper.C \
     vtkSurfaceFilter.C \
     vtkSurfaceFromVolume.C \
     vtkTensorReduceFilter.C \
-    vtkTexturedBackgroundActor.C \
-    vtkTimeSliderActor.C \
-    vtkTriad2D.C \
     vtkUniqueFeatureEdges.C \
     vtkUnstructuredGridRelevantPointsFilter.C \
-    vtkVectorFontCharacterData.C \
     vtkVectorGlyph.C \
     vtkVectorReduceFilter.C \
     vtkVertexFilter.C \
-    vtkVerticalScalarBarActor.C \
-    vtkVerticalScalarBarWithOpacityActor.C \
-    vtkVisItAxisActor.C \
-    vtkVisItAxisActor2D.C \
     vtkVisItCellDataToPointData.C \
-    vtkVisItCellLocator.C \
     vtkVisItClipper.C \
     vtkVisItContourFilter.C \
-    vtkVisItCubeAxesActor.C \
     vtkVisItCutter.C \
-    vtkVisItDataSetMapper.C \
     vtkVisItExtractGrid.C \
     vtkVisItExtractRectilinearGrid.C \
     vtkVisItFeatureEdges.C \
     vtkVisItGlyph3D.C \
+    vtkVisItInterpolatedVelocityField.C \
     vtkVisItProbeFilter.C \
     vtkVisItPolyDataNormals.C \
     vtkVisItRectilinearGrid.C \
@@ -393,13 +369,12 @@ SRC=InitVTK.C \
     vtkVisItTIFFWriter.C \
     vtkVolumeFromVolume.C
 
-
 CPPFLAGS=-I$(TOPDIR)/include @VISIT_VTK_CPPFLAGS@ @CPPFLAGS@ @ANNOTATION_FLAGS@ -I../../include -I. $(GLEW_INCLUDE)
 
-OBJ=$(SRC:.C=.o) $(OPENGL_OBJ) $(MESA_OBJ)
+OBJ=$(SRC:.C=.o)
 LIB=libvisit_vtk
-LIBS_FOR_MACOSX_PREBINDING=$(MESA_LIBS) $(GL_LIBS) -framework Carbon
-LIBS=-lmisc -lavtexceptions -llightweight_visit_vtk $(GLEW_LIBS) $(VTK_LIBS) $(LIBS_FOR_MACOSX_PREBINDING) $(X_LIBS)
+LIBS_FOR_MACOSX_PREBINDING=-framework Carbon
+LIBS=-lmisc -lavtexceptions -llightweight_visit_vtk $(VTK_LIBS) $(LIBS_FOR_MACOSX_PREBINDING)
 
 
 ##

@@ -1,8 +1,8 @@
 // ****************************************************************************
 //
-// Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400142
+// LLNL-CODE-400124
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -79,8 +79,8 @@ class Xfer implements SimpleObserver, Runnable
 {
     public Xfer()
     {
-        subjects = new AttributeSubject[200];
-        for(int i = 0; i < 200; ++i)
+        subjects = new AttributeSubject[100];
+        for(int i = 0; i < 100; ++i)
             subjects[i] = null;
         nSubjects = 0;
 
@@ -219,7 +219,7 @@ class Xfer implements SimpleObserver, Runnable
         while(ReadHeader())
         {
 //            if(opcode < nSubjects)
-            if(opcode < 200 && subjects[opcode] != null)
+            if(opcode < 100 && subjects[opcode] != null)
             {
                  PrintMessage("Xfer::Process: "+
                               "class="+subjects[opcode].GetClassName()+

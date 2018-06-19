@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -36,9 +36,12 @@
 *
 *****************************************************************************/
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <errno.h>
+#include <cerrno>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <map>
+#include <set>
 
 #if defined(_WIN32)
 #include <process.h>
@@ -69,8 +72,6 @@
 
 #include <DebugStream.h>
 #include <snprintf.h>
-#include <map>
-#include <set>
 
 #ifdef HAVE_THREADS
 #if !defined(_WIN32)
@@ -1246,6 +1247,12 @@ RemoteProcess::WaitForTermination()
 //   Kathleen Bonnell, Tue Sep 9 15:16:47 PDT 2008 
 //   Fixed windows extra-lookup loop to correctly use hostent members.
 //
+//   Brad Whitlock, Wed Aug 26 10:10:16 PDT 2009
+//   I changed the windows extra-lookup loop so it uses a copy of the hostent
+//   because making calls to gethostbyaddr was causing the hostent to be
+//   overwritten with new values and we were walking off the end of an array
+//   and causing a seg fault.
+//
 // ****************************************************************************
 
 bool
@@ -1304,12 +1311,12 @@ RemoteProcess::StartMakingConnection(const std::string &rHost, int numRead,
     struct hostent *localHostEnt = gethostbyname(localHostStr);
     if (localHostEnt == NULL)
     {
-	// Ok, using the host's name returned from gethostname()
-	// did not work. So, lets fall back to 'localhost'
+        // Ok, using the host's name returned from gethostname()
+        // did not work. So, lets fall back to 'localhost'
         strcpy(localHostStr,"localhost");
         localHostEnt = gethostbyname(localHostStr);
-	if (localHostEnt == NULL)
-	{
+        if (localHostEnt == NULL)
+        {
 #if defined(_WIN32)
             LogWindowsSocketError(mName, "gethostbyname,2");
 #endif
@@ -1332,6 +1339,12 @@ RemoteProcess::StartMakingConnection(const std::string &rHost, int numRead,
                << "Make sure that we have the correct name for localhost by "
                << "iterating through the localHostEnt and calling "
                << "gethostbyaddr." << endl;
+
+        // Make a copy of the hostent since subsequent calls to gethostbyaddr
+        // will blow away its contents and that means we'd walk off the end
+        // of the h_addr_list array.
+        localHostEnt = CopyHostent(localHostEnt);
+
         for(int i = 0; localHostEnt->h_addr_list[i] != 0; ++i)
         {
             struct hostent *h = NULL;
@@ -1347,6 +1360,8 @@ RemoteProcess::StartMakingConnection(const std::string &rHost, int numRead,
             else
                 LogWindowsSocketError(mName, "gethostbyaddr");
         }
+
+        FreeHostent(localHostEnt);
     }
 #endif
 
@@ -1429,6 +1444,8 @@ RemoteProcess::StartMakingConnection(const std::string &rHost, int numRead,
 //   Brad Whitlock, Tue Jan 17 14:15:14 PST 2006
 //   Added debug logging.
 //
+//   Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//   Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 
 void
@@ -1481,7 +1498,7 @@ RemoteProcess::FinishMakingConnection(int numRead, int numWrite)
         debug5 << mName << "Exchanging type representations" << endl;
         ExchangeTypeRepresentations();
     }
-    CATCHALL(...)
+    CATCHALL
     {
         // Call the progress callback and tell it to end.
         CallProgressCallback(2);

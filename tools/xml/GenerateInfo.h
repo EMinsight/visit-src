@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,7 +39,6 @@
 #ifndef GENERATE_INFO_H
 #define GENERATE_INFO_H
 
-#include <QTextStream>
 #include "Field.h"
 #include "Plugin.h"
 
@@ -168,15 +167,11 @@
 //   added support for putting user functions in the .code file and having 
 //   them take effect here.
 //
-//   Cyrus Harrison, Tue Jul 22 10:27:10 PDT 2008
-//   Removed name argument to CreatePluginWizard.
-//
 //   Cyrus Harrison, Thu Sep 18 13:39:40 PDT 2008
 //   Changed code generation to include const qualifers for database info.
 //
-//   Jeremy Meredith, Wed Nov 19 15:48:21 EST 2008
-//   Account for NULL attributes for when an XML file is missing attributes
-//   (e.g. a database plugin).
+//   Kathleen Bonnell, Tue Mar  3 10:41:17 PST 2009
+//   Added Permits2DViewScaling & PermitsCurveViewScaling to Viewer plot Info.
 //
 // ****************************************************************************
 
@@ -200,7 +195,7 @@ class InfoGeneratorPlugin : public Plugin
     GetClassName(const QString &qual) const
     {
         QString retval("none");
-        int loc = qual.indexOf("::");
+        int loc = qual.find("::");
         if(loc != -1)
         {
             retval = qual.left(loc);
@@ -209,11 +204,8 @@ class InfoGeneratorPlugin : public Plugin
     }
 
     // Returns true if we're replacing a required built-in function and write the definition.
-    bool ReplaceBuiltin(QTextStream &c, const QString &funcName)
+    bool ReplaceBuiltin(ostream &c, const QString &funcName)
     {
-        if (!atts)
-            return false;
-
         bool retval = false;
         for (unsigned int n=0; n<atts->functions.size(); n++)
         {
@@ -234,9 +226,6 @@ class InfoGeneratorPlugin : public Plugin
     // Returns true if we're going to override an optional base-class method.
     bool OverrideBuiltin(const QString &qualifiedFunctionName) const
     {
-        if (!atts)
-            return false;
-
         for (unsigned int i=0; i<atts->functions.size(); i++)
         {
             if (atts->functions[i]->name == qualifiedFunctionName &&
@@ -252,11 +241,8 @@ class InfoGeneratorPlugin : public Plugin
     }
 
     // Write the named method override definition.
-    void WriteOverrideDefinition(QTextStream &c, const QString &qualifiedFunctionName) const
+    void WriteOverrideDefinition(ostream &c, const QString &qualifiedFunctionName) const
     {
-        if (!atts)
-            return;
-
         for (unsigned int i=0; i<atts->functions.size(); i++)
         {
             if (atts->functions[i]->name == qualifiedFunctionName &&
@@ -270,11 +256,8 @@ class InfoGeneratorPlugin : public Plugin
         }
     }
 
-    void WriteUserDefinedFunctions(QTextStream &h, const QString &infoClass, bool writeDecl)
+    void WriteUserDefinedFunctions(ostream &h, const QString &infoClass, bool writeDecl)
     {
-        if (!atts)
-            return;
-
         std::vector<int> publicFuncs, protectedFuncs, privateFuncs;
         for (unsigned int i=0; i<atts->functions.size(); i++)
         {
@@ -347,17 +330,17 @@ class InfoGeneratorPlugin : public Plugin
         }
     }
 
-    void WriteInfoHeader(QTextStream &h)
+    void WriteInfoHeader(ostream &h)
     {
         if (type=="operator")
         {
-            h << copyright_str << endl;
+            h << copyright_str.c_str() << endl;
             h << "// ************************************************************************* //" << endl;
             h << "//  File: "<<name<<"PluginInfo.h" << endl;
             h << "// ************************************************************************* //" << endl;
             h << endl;
-            h << "#ifndef "<<name.toUpper()<<"_PLUGIN_INFO_H" << endl;
-            h << "#define "<<name.toUpper()<<"_PLUGIN_INFO_H" << endl;
+            h << "#ifndef "<<name.upper()<<"_PLUGIN_INFO_H" << endl;
+            h << "#define "<<name.upper()<<"_PLUGIN_INFO_H" << endl;
             h << "#include <OperatorPluginInfo.h>" << endl;
             h << "#include <operator_plugin_exports.h>" << endl;
             h << endl;
@@ -403,7 +386,7 @@ class InfoGeneratorPlugin : public Plugin
             if(OverrideBuiltin(infoName + "::CreatePluginWizard"))
             {
                 h << "   virtual QvisWizard *CreatePluginWizard(AttributeSubject *attr," << endl;
-                h << "        QWidget *parent);" << endl;
+                h << "        QWidget *parent, const char *name =0);" << endl;
             }
             if(iconFile.length() > 0)
                 h << "    virtual const char **XPMIconData() const;" << endl;
@@ -473,13 +456,13 @@ class InfoGeneratorPlugin : public Plugin
         }
         else if (type=="plot")
         {
-            h << copyright_str << endl;
+            h << copyright_str.c_str() << endl;
             h << "// ************************************************************************* //" << endl;
             h << "//                               "<<name<<"PluginInfo.h                            //" << endl;
             h << "// ************************************************************************* //" << endl;
             h << endl;
-            h << "#ifndef "<<name.toUpper()<<"_PLUGIN_INFO_H" << endl;
-            h << "#define "<<name.toUpper()<<"_PLUGIN_INFO_H" << endl;
+            h << "#ifndef "<<name.upper()<<"_PLUGIN_INFO_H" << endl;
+            h << "#define "<<name.upper()<<"_PLUGIN_INFO_H" << endl;
             h << "#include <PlotPluginInfo.h>" << endl;
             h << "#include <plot_plugin_exports.h>" << endl;
             h << endl;
@@ -533,7 +516,7 @@ class InfoGeneratorPlugin : public Plugin
             {
                 h << "    virtual QvisWizard *CreatePluginWizard(AttributeSubject *attr, QWidget *parent," << endl;
                 h << "        const std::string &varName, const avtDatabaseMetaData *md," << endl;
-                h << "        const ExpressionList *expList); " << endl;
+                h << "        const ExpressionList *expList, const char *name =0); " << endl;
             }
             if(iconFile.length() > 0)
                 h << "    virtual const char **XPMIconData() const;" << endl;
@@ -553,6 +536,10 @@ class InfoGeneratorPlugin : public Plugin
             h << endl;
             if(OverrideBuiltin(infoName + "::ProvidesLegend"))
                 h << "    virtual bool ProvidesLegend() const;" << endl;
+            if(OverrideBuiltin(infoName + "::PermitsCurveViewScaling"))
+                h << "    virtual bool PermitsCurveViewScaling() const;" << endl;
+            if(OverrideBuiltin(infoName + "::Permits2DViewScaling"))
+                h << "    virtual bool Permits2DViewScaling() const;" << endl;
             h << "    virtual void InitializePlotAtts(AttributeSubject *atts, ViewerPlot *);" << endl;
             if(OverrideBuiltin(infoName + "::ReInitializePlotAtts"))
                 h << "    virtual void ReInitializePlotAtts(AttributeSubject *atts, ViewerPlot *);" << endl;
@@ -608,13 +595,13 @@ class InfoGeneratorPlugin : public Plugin
         }
         else if (type=="database")
         {
-            h << copyright_str << endl;
+            h << copyright_str.c_str() << endl;
             h << "// ****************************************************************************" << endl;
             h << "//                               "<<name<<"PluginInfo.h" << endl;
             h << "// ****************************************************************************" << endl;
             h << "" << endl;
-            h << "#ifndef "<<name.toUpper()<<"_PLUGIN_INFO_H" << endl;
-            h << "#define "<<name.toUpper()<<"_PLUGIN_INFO_H" << endl;
+            h << "#ifndef "<<name.upper()<<"_PLUGIN_INFO_H" << endl;
+            h << "#define "<<name.upper()<<"_PLUGIN_INFO_H" << endl;
             h << "#include <DatabasePluginInfo.h>" << endl;
             h << "#include <database_plugin_exports.h>" << endl;
             h << "" << endl;
@@ -684,7 +671,7 @@ class InfoGeneratorPlugin : public Plugin
             h << "#endif" << endl;
         }
     }
-    void AddVersion(QTextStream &c)
+    void AddVersion(ostream &c)
     {
         c << "#include <visit-config.h>" << endl;
         c << "#if defined(__APPLE__)" << endl;
@@ -694,15 +681,15 @@ class InfoGeneratorPlugin : public Plugin
         c << "#endif" << endl;
         c << endl;
     }
-    void AddMacOSXMacro(QTextStream &c, const char *infoType)
+    void AddMacOSXMacro(ostream &c, const char *infoType)
     {
         c << "#if defined(__APPLE__)" << endl;
         c << "#define Get" << infoType << "Info " << name << "_Get" << infoType << "Info" << endl;
         c << "#endif" << endl << endl;
     }
-    void WriteInfoSource(QTextStream &c)
+    void WriteInfoSource(ostream &c)
     {
-        c << copyright_str << endl;
+        c << copyright_str.c_str() << endl;
         c << "// ************************************************************************* //" << endl;
         c << "//  File: "<<name<<"PluginInfo.C" << endl;
         c << "// ************************************************************************* //" << endl;
@@ -874,11 +861,11 @@ class InfoGeneratorPlugin : public Plugin
             }
         }
     }
-    void WriteCommonInfoSource(QTextStream &c)
+    void WriteCommonInfoSource(ostream &c)
     {
         if (type=="database")
         {
-            c << copyright_str << endl;
+            c << copyright_str.c_str() << endl;
             c << "#include <"<<name<<"PluginInfo.h>" << endl;
             if (dbtype != "Custom")
             {
@@ -911,7 +898,7 @@ class InfoGeneratorPlugin : public Plugin
                 c << "DatabaseType" << endl;
                 c << ""<<funcName<<"()" << endl;
                 c << "{" << endl;
-                c << "    return DB_TYPE_"<<dbtype.toUpper()<<";" << endl;
+                c << "    return DB_TYPE_"<<dbtype.upper()<<";" << endl;
                 c << "}" << endl;
             }
             c << "" << endl;
@@ -1003,7 +990,7 @@ class InfoGeneratorPlugin : public Plugin
                 }
                 else
                 {
-                    throw QString("Unknown database type '%1'").arg(dbtype);
+                    throw QString().sprintf("Unknown database type '%s'",dbtype.latin1());
                 }
                 c << "}" << endl;
             }
@@ -1057,7 +1044,7 @@ class InfoGeneratorPlugin : public Plugin
         }
         else
         {
-            c << copyright_str << endl;
+            c << copyright_str.c_str() << endl;
             c << "// ************************************************************************* //" << endl;
             c << "//  File: "<<name<<"CommonPluginInfo.C" << endl;
             c << "// ************************************************************************* //" << endl;
@@ -1116,19 +1103,19 @@ class InfoGeneratorPlugin : public Plugin
         }
     }
 
-    void WriteGUIInfoSource(QTextStream &c)
+    void WriteGUIInfoSource(ostream &c)
     {
         if (type=="database")
             return;
 
-        c << copyright_str << endl;
+        c << copyright_str.c_str() << endl;
         c << "// ************************************************************************* //" << endl;
         c << "//  File: "<<name<<"GUIPluginInfo.C" << endl;
         c << "// ************************************************************************* //" << endl;
         c << endl;
         c << "#include <"<<name<<"PluginInfo.h>" << endl;
         c << "#include <"<<atts->name<<".h>" << endl;
-        c << "#include <QApplication>" << endl;
+        c << "#include <qapplication.h>" << endl;
         if (type=="operator")
             c << "#include <Qvis"<<name<<"Window.h>" << endl;
         else if (type=="plot")
@@ -1312,18 +1299,18 @@ class InfoGeneratorPlugin : public Plugin
         WriteUserDefinedFunctions(c, name + "GUIPluginInfo", false);
     }
 
-    void WriteViewerInfoSource(QTextStream &c)
+    void WriteViewerInfoSource(ostream &c)
     {
         if (type=="database")
             return;
 
-        c << copyright_str << endl;
+        c << copyright_str.c_str() << endl;
         c << "// ************************************************************************* //" << endl;
         c << "//  File: "<<name<<"ViewerPluginInfo.C" << endl;
         c << "// ************************************************************************* //" << endl;
         c << endl;
         c << "#include <"<<name<<"PluginInfo.h>" << endl;
-        c << "#include <QApplication>" << endl;
+        c << "#include <qapplication.h>" << endl;
         if (type=="operator")
             c << "#include <"<<atts->name<<".h>" << endl;
         else if (type=="plot")
@@ -1542,6 +1529,8 @@ class InfoGeneratorPlugin : public Plugin
         else if(type == "plot")
         {
             WriteOverrideDefinition(c, name + "ViewerPluginInfo::ProvidesLegend");
+            WriteOverrideDefinition(c, name + "ViewerPluginInfo::PermitsCurveViewScaling");
+            WriteOverrideDefinition(c, name + "ViewerPluginInfo::Permits2DViewScaling");
 
             funcName = name + "ViewerPluginInfo::InitializePlotAtts";
             if(!ReplaceBuiltin(c, funcName))
@@ -1702,11 +1691,11 @@ class InfoGeneratorPlugin : public Plugin
         WriteUserDefinedFunctions(c, name + "ViewerPluginInfo", false);
     }
 
-    void WriteMDServerInfoSource(QTextStream &c)
+    void WriteMDServerInfoSource(ostream &c)
     {
         if (type=="database")
         {
-            c << copyright_str << endl;
+            c << copyright_str.c_str() << endl;
             c << "#include <"<<name<<"PluginInfo.h>" << endl;
             c << "" << endl;
             AddMacOSXMacro(c, "MDServer");
@@ -1733,11 +1722,11 @@ class InfoGeneratorPlugin : public Plugin
             WriteUserDefinedFunctions(c, name + "MDServerPluginInfo", false);
         }
     }
-    void WriteEngineInfoSource(QTextStream &c)
+    void WriteEngineInfoSource(ostream &c)
     {
         if (type=="database")
         {
-            c << copyright_str << endl;
+            c << copyright_str.c_str() << endl;
             c << "#include <"<<name<<"PluginInfo.h>" << endl;
             if (haswriter)
                 c << "#include <avt"<<name<<"Writer.h>" << endl;
@@ -1791,7 +1780,7 @@ class InfoGeneratorPlugin : public Plugin
         }
         else
         {
-            c << copyright_str << endl;
+            c << copyright_str.c_str() << endl;
             c << "// ************************************************************************* //" << endl;
             c << "//  File: "<<name<<"EnginePluginInfo.C" << endl;
             c << "// ************************************************************************* //" << endl;
@@ -1876,17 +1865,17 @@ class InfoGeneratorPlugin : public Plugin
         WriteUserDefinedFunctions(c, name + "EnginePluginInfo", false);
     }
 
-    void WriteScriptingInfoSource(QTextStream &c)
+    void WriteScriptingInfoSource(ostream &c)
     {
         if (type=="database")
             return;
 
-        c << copyright_str << endl;
+        c << copyright_str.c_str() << endl;
         c << "// ************************************************************************* //" << endl;
         c << "//                        "<<name<<"ScriptingPluginInfo.C" << endl;
         c << "// ************************************************************************* //" << endl;
-        c << "#include <"<<name<<"PluginInfo.h>" << endl;
         c << "#include <Py"<<atts->name<<".h>" << endl;
+        c << "#include <"<<name<<"PluginInfo.h>" << endl;
         c << "" << endl;
         AddMacOSXMacro(c, "Scripting");
         c << "// ****************************************************************************" << endl;

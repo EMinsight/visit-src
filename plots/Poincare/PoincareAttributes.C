@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -43,34 +43,182 @@
 #include <Line.h>
 
 //
+// Enum conversion methods for PoincareAttributes::SourceType
+//
+
+static const char *SourceType_strings[] = {
+"SpecifiedPoint", "SpecifiedLine"};
+
+std::string
+PoincareAttributes::SourceType_ToString(PoincareAttributes::SourceType t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 2) index = 0;
+    return SourceType_strings[index];
+}
+
+std::string
+PoincareAttributes::SourceType_ToString(int t)
+{
+    int index = (t < 0 || t >= 2) ? 0 : t;
+    return SourceType_strings[index];
+}
+
+bool
+PoincareAttributes::SourceType_FromString(const std::string &s, PoincareAttributes::SourceType &val)
+{
+    val = PoincareAttributes::SpecifiedPoint;
+    for(int i = 0; i < 2; ++i)
+    {
+        if(s == SourceType_strings[i])
+        {
+            val = (SourceType)i;
+            return true;
+        }
+    }
+    return false;
+}
+
+//
+// Enum conversion methods for PoincareAttributes::IntegrationType
+//
+
+static const char *IntegrationType_strings[] = {
+"DormandPrince", "AdamsBashforth", "M3DC1Integrator"
+};
+
+std::string
+PoincareAttributes::IntegrationType_ToString(PoincareAttributes::IntegrationType t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 3) index = 0;
+    return IntegrationType_strings[index];
+}
+
+std::string
+PoincareAttributes::IntegrationType_ToString(int t)
+{
+    int index = (t < 0 || t >= 3) ? 0 : t;
+    return IntegrationType_strings[index];
+}
+
+bool
+PoincareAttributes::IntegrationType_FromString(const std::string &s, PoincareAttributes::IntegrationType &val)
+{
+    val = PoincareAttributes::DormandPrince;
+    for(int i = 0; i < 3; ++i)
+    {
+        if(s == IntegrationType_strings[i])
+        {
+            val = (IntegrationType)i;
+            return true;
+        }
+    }
+    return false;
+}
+
+//
+// Enum conversion methods for PoincareAttributes::OverlapType
+//
+
+static const char *OverlapType_strings[] = {
+"Raw", "Remove", "Merge", 
+"Smooth"};
+
+std::string
+PoincareAttributes::OverlapType_ToString(PoincareAttributes::OverlapType t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 4) index = 0;
+    return OverlapType_strings[index];
+}
+
+std::string
+PoincareAttributes::OverlapType_ToString(int t)
+{
+    int index = (t < 0 || t >= 4) ? 0 : t;
+    return OverlapType_strings[index];
+}
+
+bool
+PoincareAttributes::OverlapType_FromString(const std::string &s, PoincareAttributes::OverlapType &val)
+{
+    val = PoincareAttributes::Raw;
+    for(int i = 0; i < 4; ++i)
+    {
+        if(s == OverlapType_strings[i])
+        {
+            val = (OverlapType)i;
+            return true;
+        }
+    }
+    return false;
+}
+
+//
+// Enum conversion methods for PoincareAttributes::ShowMeshType
+//
+
+static const char *ShowMeshType_strings[] = {
+"Curves", "Surfaces"};
+
+std::string
+PoincareAttributes::ShowMeshType_ToString(PoincareAttributes::ShowMeshType t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 2) index = 0;
+    return ShowMeshType_strings[index];
+}
+
+std::string
+PoincareAttributes::ShowMeshType_ToString(int t)
+{
+    int index = (t < 0 || t >= 2) ? 0 : t;
+    return ShowMeshType_strings[index];
+}
+
+bool
+PoincareAttributes::ShowMeshType_FromString(const std::string &s, PoincareAttributes::ShowMeshType &val)
+{
+    val = PoincareAttributes::Curves;
+    for(int i = 0; i < 2; ++i)
+    {
+        if(s == ShowMeshType_strings[i])
+        {
+            val = (ShowMeshType)i;
+            return true;
+        }
+    }
+    return false;
+}
+
+//
 // Enum conversion methods for PoincareAttributes::ColoringMethod
 //
 
 static const char *ColoringMethod_strings[] = {
-"Solid", "ColorBySpeed", "ColorByVorticity", 
-"ColorByLength", "ColorByTime", "ColorBySeedPointID"
-};
+"ColorBySingleColor", "ColorByColorTable"};
 
 std::string
 PoincareAttributes::ColoringMethod_ToString(PoincareAttributes::ColoringMethod t)
 {
     int index = int(t);
-    if(index < 0 || index >= 6) index = 0;
+    if(index < 0 || index >= 2) index = 0;
     return ColoringMethod_strings[index];
 }
 
 std::string
 PoincareAttributes::ColoringMethod_ToString(int t)
 {
-    int index = (t < 0 || t >= 6) ? 0 : t;
+    int index = (t < 0 || t >= 2) ? 0 : t;
     return ColoringMethod_strings[index];
 }
 
 bool
 PoincareAttributes::ColoringMethod_FromString(const std::string &s, PoincareAttributes::ColoringMethod &val)
 {
-    val = PoincareAttributes::Solid;
-    for(int i = 0; i < 6; ++i)
+    val = PoincareAttributes::ColorBySingleColor;
+    for(int i = 0; i < 2; ++i)
     {
         if(s == ColoringMethod_strings[i])
         {
@@ -82,74 +230,39 @@ PoincareAttributes::ColoringMethod_FromString(const std::string &s, PoincareAttr
 }
 
 //
-// Enum conversion methods for PoincareAttributes::TerminationType
+// Enum conversion methods for PoincareAttributes::ColorBy
 //
 
-static const char *TerminationType_strings[] = {
-"Distance", "Time"};
+static const char *ColorBy_strings[] = {
+"OriginalValue", "InputOrder", "PointIndex", 
+"Plane", "WindingOrder", "WindingPointOrder", 
+"ToroidalWindings", "PoloidalWindings", "SafetyFactor", 
+"Confidence", "RidgelineVariance"};
 
 std::string
-PoincareAttributes::TerminationType_ToString(PoincareAttributes::TerminationType t)
+PoincareAttributes::ColorBy_ToString(PoincareAttributes::ColorBy t)
 {
     int index = int(t);
-    if(index < 0 || index >= 2) index = 0;
-    return TerminationType_strings[index];
+    if(index < 0 || index >= 11) index = 0;
+    return ColorBy_strings[index];
 }
 
 std::string
-PoincareAttributes::TerminationType_ToString(int t)
+PoincareAttributes::ColorBy_ToString(int t)
 {
-    int index = (t < 0 || t >= 2) ? 0 : t;
-    return TerminationType_strings[index];
+    int index = (t < 0 || t >= 11) ? 0 : t;
+    return ColorBy_strings[index];
 }
 
 bool
-PoincareAttributes::TerminationType_FromString(const std::string &s, PoincareAttributes::TerminationType &val)
+PoincareAttributes::ColorBy_FromString(const std::string &s, PoincareAttributes::ColorBy &val)
 {
-    val = PoincareAttributes::Distance;
-    for(int i = 0; i < 2; ++i)
+    val = PoincareAttributes::OriginalValue;
+    for(int i = 0; i < 11; ++i)
     {
-        if(s == TerminationType_strings[i])
+        if(s == ColorBy_strings[i])
         {
-            val = (TerminationType)i;
-            return true;
-        }
-    }
-    return false;
-}
-
-//
-// Enum conversion methods for PoincareAttributes::SourceType
-//
-
-static const char *SourceType_strings[] = {
-"PointSource", "LineSource", "PlaneSource"
-};
-
-std::string
-PoincareAttributes::SourceType_ToString(PoincareAttributes::SourceType t)
-{
-    int index = int(t);
-    if(index < 0 || index >= 3) index = 0;
-    return SourceType_strings[index];
-}
-
-std::string
-PoincareAttributes::SourceType_ToString(int t)
-{
-    int index = (t < 0 || t >= 3) ? 0 : t;
-    return SourceType_strings[index];
-}
-
-bool
-PoincareAttributes::SourceType_FromString(const std::string &s, PoincareAttributes::SourceType &val)
-{
-    val = PoincareAttributes::PointSource;
-    for(int i = 0; i < 3; ++i)
-    {
-        if(s == SourceType_strings[i])
-        {
-            val = (SourceType)i;
+            val = (ColorBy)i;
             return true;
         }
     }
@@ -157,7 +270,7 @@ PoincareAttributes::SourceType_FromString(const std::string &s, PoincareAttribut
 }
 
 // Type map format string
-const char *PoincareAttributes::TypeMapFormatString = "diibbidDDDDDDDDsabbddd";
+const char *PoincareAttributes::TypeMapFormatString = "ddiDDDiidddiidiiiiddbbiasibbbbbb";
 
 // ****************************************************************************
 // Method: PoincareAttributes::PoincareAttributes
@@ -176,43 +289,44 @@ const char *PoincareAttributes::TypeMapFormatString = "diibbidDDDDDDDDsabbddd";
 
 PoincareAttributes::PoincareAttributes() : 
     AttributeSubject(PoincareAttributes::TypeMapFormatString),
-    colorTableName("Default"), singleColor(0, 0, 0)
+    singleColor(0, 0, 0), colorTableName("Default")
 {
-    termination = 10;
-    terminationType = Time;
-    showStreamlines = true;
-    showPoints = true;
-    pointDensity = 1;
-    sourceRadius = 1;
+    minPunctures = 10;
+    maxPunctures = 100;
+    sourceType = SpecifiedPoint;
     pointSource[0] = 0;
     pointSource[1] = 0;
     pointSource[2] = 0;
-    lineSourceStart[0] = 0;
-    lineSourceStart[1] = 0;
-    lineSourceStart[2] = 0;
-    lineSourceEnd[0] = 1;
-    lineSourceEnd[1] = 0;
-    lineSourceEnd[2] = 0;
-    planeSourcePoint[0] = 0;
-    planeSourcePoint[1] = 0;
-    planeSourcePoint[2] = 0;
-    planeSourceNormal[0] = 0;
-    planeSourceNormal[1] = 0;
-    planeSourceNormal[2] = 1;
-    planeSourceUpVec[0] = 0;
-    planeSourceUpVec[1] = 1;
-    planeSourceUpVec[2] = 0;
-    clipPlaneOrigin[0] = 0;
-    clipPlaneOrigin[1] = 0;
-    clipPlaneOrigin[2] = 0;
-    clipPlaneNormal[0] = 0;
-    clipPlaneNormal[1] = 0;
-    clipPlaneNormal[2] = 1;
-    legendFlag = true;
-    lightingFlag = true;
+    lineStart[0] = 0;
+    lineStart[1] = 0;
+    lineStart[2] = 0;
+    lineEnd[0] = 1;
+    lineEnd[1] = 0;
+    lineEnd[2] = 0;
+    pointDensity = 1;
+    integrationType = AdamsBashforth;
+    maxStepLength = 0.1;
     relTol = 0.0001;
     absTol = 1e-05;
-    maxStepLength = 0.1;
+    maxToroidalWinding = 30;
+    overrideToroidalWinding = 0;
+    hitRate = 0.9;
+    adjustPlane = -1;
+    overlaps = Remove;
+    showCurves = Curves;
+    numberPlanes = 1;
+    min = 0;
+    max = 0;
+    minFlag = false;
+    maxFlag = false;
+    colorType = ColorBySingleColor;
+    colorBy = SafetyFactor;
+    showIslands = false;
+    showLines = true;
+    showPoints = false;
+    verboseFlag = true;
+    legendFlag = true;
+    lightingFlag = true;
 }
 
 // ****************************************************************************
@@ -233,52 +347,47 @@ PoincareAttributes::PoincareAttributes() :
 PoincareAttributes::PoincareAttributes(const PoincareAttributes &obj) : 
     AttributeSubject(PoincareAttributes::TypeMapFormatString)
 {
-    termination = obj.termination;
-    terminationType = obj.terminationType;
-    streamlineSource = obj.streamlineSource;
-    showStreamlines = obj.showStreamlines;
-    showPoints = obj.showPoints;
-    pointDensity = obj.pointDensity;
-    sourceRadius = obj.sourceRadius;
+    minPunctures = obj.minPunctures;
+    maxPunctures = obj.maxPunctures;
+    sourceType = obj.sourceType;
     pointSource[0] = obj.pointSource[0];
     pointSource[1] = obj.pointSource[1];
     pointSource[2] = obj.pointSource[2];
 
-    lineSourceStart[0] = obj.lineSourceStart[0];
-    lineSourceStart[1] = obj.lineSourceStart[1];
-    lineSourceStart[2] = obj.lineSourceStart[2];
+    lineStart[0] = obj.lineStart[0];
+    lineStart[1] = obj.lineStart[1];
+    lineStart[2] = obj.lineStart[2];
 
-    lineSourceEnd[0] = obj.lineSourceEnd[0];
-    lineSourceEnd[1] = obj.lineSourceEnd[1];
-    lineSourceEnd[2] = obj.lineSourceEnd[2];
+    lineEnd[0] = obj.lineEnd[0];
+    lineEnd[1] = obj.lineEnd[1];
+    lineEnd[2] = obj.lineEnd[2];
 
-    planeSourcePoint[0] = obj.planeSourcePoint[0];
-    planeSourcePoint[1] = obj.planeSourcePoint[1];
-    planeSourcePoint[2] = obj.planeSourcePoint[2];
-
-    planeSourceNormal[0] = obj.planeSourceNormal[0];
-    planeSourceNormal[1] = obj.planeSourceNormal[1];
-    planeSourceNormal[2] = obj.planeSourceNormal[2];
-
-    planeSourceUpVec[0] = obj.planeSourceUpVec[0];
-    planeSourceUpVec[1] = obj.planeSourceUpVec[1];
-    planeSourceUpVec[2] = obj.planeSourceUpVec[2];
-
-    clipPlaneOrigin[0] = obj.clipPlaneOrigin[0];
-    clipPlaneOrigin[1] = obj.clipPlaneOrigin[1];
-    clipPlaneOrigin[2] = obj.clipPlaneOrigin[2];
-
-    clipPlaneNormal[0] = obj.clipPlaneNormal[0];
-    clipPlaneNormal[1] = obj.clipPlaneNormal[1];
-    clipPlaneNormal[2] = obj.clipPlaneNormal[2];
-
-    colorTableName = obj.colorTableName;
-    singleColor = obj.singleColor;
-    legendFlag = obj.legendFlag;
-    lightingFlag = obj.lightingFlag;
+    pointDensity = obj.pointDensity;
+    integrationType = obj.integrationType;
+    maxStepLength = obj.maxStepLength;
     relTol = obj.relTol;
     absTol = obj.absTol;
-    maxStepLength = obj.maxStepLength;
+    maxToroidalWinding = obj.maxToroidalWinding;
+    overrideToroidalWinding = obj.overrideToroidalWinding;
+    hitRate = obj.hitRate;
+    adjustPlane = obj.adjustPlane;
+    overlaps = obj.overlaps;
+    showCurves = obj.showCurves;
+    numberPlanes = obj.numberPlanes;
+    min = obj.min;
+    max = obj.max;
+    minFlag = obj.minFlag;
+    maxFlag = obj.maxFlag;
+    colorType = obj.colorType;
+    singleColor = obj.singleColor;
+    colorTableName = obj.colorTableName;
+    colorBy = obj.colorBy;
+    showIslands = obj.showIslands;
+    showLines = obj.showLines;
+    showPoints = obj.showPoints;
+    verboseFlag = obj.verboseFlag;
+    legendFlag = obj.legendFlag;
+    lightingFlag = obj.lightingFlag;
 
     SelectAll();
 }
@@ -322,52 +431,47 @@ PoincareAttributes&
 PoincareAttributes::operator = (const PoincareAttributes &obj)
 {
     if (this == &obj) return *this;
-    termination = obj.termination;
-    terminationType = obj.terminationType;
-    streamlineSource = obj.streamlineSource;
-    showStreamlines = obj.showStreamlines;
-    showPoints = obj.showPoints;
-    pointDensity = obj.pointDensity;
-    sourceRadius = obj.sourceRadius;
+    minPunctures = obj.minPunctures;
+    maxPunctures = obj.maxPunctures;
+    sourceType = obj.sourceType;
     pointSource[0] = obj.pointSource[0];
     pointSource[1] = obj.pointSource[1];
     pointSource[2] = obj.pointSource[2];
 
-    lineSourceStart[0] = obj.lineSourceStart[0];
-    lineSourceStart[1] = obj.lineSourceStart[1];
-    lineSourceStart[2] = obj.lineSourceStart[2];
+    lineStart[0] = obj.lineStart[0];
+    lineStart[1] = obj.lineStart[1];
+    lineStart[2] = obj.lineStart[2];
 
-    lineSourceEnd[0] = obj.lineSourceEnd[0];
-    lineSourceEnd[1] = obj.lineSourceEnd[1];
-    lineSourceEnd[2] = obj.lineSourceEnd[2];
+    lineEnd[0] = obj.lineEnd[0];
+    lineEnd[1] = obj.lineEnd[1];
+    lineEnd[2] = obj.lineEnd[2];
 
-    planeSourcePoint[0] = obj.planeSourcePoint[0];
-    planeSourcePoint[1] = obj.planeSourcePoint[1];
-    planeSourcePoint[2] = obj.planeSourcePoint[2];
-
-    planeSourceNormal[0] = obj.planeSourceNormal[0];
-    planeSourceNormal[1] = obj.planeSourceNormal[1];
-    planeSourceNormal[2] = obj.planeSourceNormal[2];
-
-    planeSourceUpVec[0] = obj.planeSourceUpVec[0];
-    planeSourceUpVec[1] = obj.planeSourceUpVec[1];
-    planeSourceUpVec[2] = obj.planeSourceUpVec[2];
-
-    clipPlaneOrigin[0] = obj.clipPlaneOrigin[0];
-    clipPlaneOrigin[1] = obj.clipPlaneOrigin[1];
-    clipPlaneOrigin[2] = obj.clipPlaneOrigin[2];
-
-    clipPlaneNormal[0] = obj.clipPlaneNormal[0];
-    clipPlaneNormal[1] = obj.clipPlaneNormal[1];
-    clipPlaneNormal[2] = obj.clipPlaneNormal[2];
-
-    colorTableName = obj.colorTableName;
-    singleColor = obj.singleColor;
-    legendFlag = obj.legendFlag;
-    lightingFlag = obj.lightingFlag;
+    pointDensity = obj.pointDensity;
+    integrationType = obj.integrationType;
+    maxStepLength = obj.maxStepLength;
     relTol = obj.relTol;
     absTol = obj.absTol;
-    maxStepLength = obj.maxStepLength;
+    maxToroidalWinding = obj.maxToroidalWinding;
+    overrideToroidalWinding = obj.overrideToroidalWinding;
+    hitRate = obj.hitRate;
+    adjustPlane = obj.adjustPlane;
+    overlaps = obj.overlaps;
+    showCurves = obj.showCurves;
+    numberPlanes = obj.numberPlanes;
+    min = obj.min;
+    max = obj.max;
+    minFlag = obj.minFlag;
+    maxFlag = obj.maxFlag;
+    colorType = obj.colorType;
+    singleColor = obj.singleColor;
+    colorTableName = obj.colorTableName;
+    colorBy = obj.colorBy;
+    showIslands = obj.showIslands;
+    showLines = obj.showLines;
+    showPoints = obj.showPoints;
+    verboseFlag = obj.verboseFlag;
+    legendFlag = obj.legendFlag;
+    lightingFlag = obj.lightingFlag;
 
     SelectAll();
     return *this;
@@ -396,64 +500,49 @@ PoincareAttributes::operator == (const PoincareAttributes &obj) const
     for(int i = 0; i < 3 && pointSource_equal; ++i)
         pointSource_equal = (pointSource[i] == obj.pointSource[i]);
 
-    // Compare the lineSourceStart arrays.
-    bool lineSourceStart_equal = true;
-    for(int i = 0; i < 3 && lineSourceStart_equal; ++i)
-        lineSourceStart_equal = (lineSourceStart[i] == obj.lineSourceStart[i]);
+    // Compare the lineStart arrays.
+    bool lineStart_equal = true;
+    for(int i = 0; i < 3 && lineStart_equal; ++i)
+        lineStart_equal = (lineStart[i] == obj.lineStart[i]);
 
-    // Compare the lineSourceEnd arrays.
-    bool lineSourceEnd_equal = true;
-    for(int i = 0; i < 3 && lineSourceEnd_equal; ++i)
-        lineSourceEnd_equal = (lineSourceEnd[i] == obj.lineSourceEnd[i]);
-
-    // Compare the planeSourcePoint arrays.
-    bool planeSourcePoint_equal = true;
-    for(int i = 0; i < 3 && planeSourcePoint_equal; ++i)
-        planeSourcePoint_equal = (planeSourcePoint[i] == obj.planeSourcePoint[i]);
-
-    // Compare the planeSourceNormal arrays.
-    bool planeSourceNormal_equal = true;
-    for(int i = 0; i < 3 && planeSourceNormal_equal; ++i)
-        planeSourceNormal_equal = (planeSourceNormal[i] == obj.planeSourceNormal[i]);
-
-    // Compare the planeSourceUpVec arrays.
-    bool planeSourceUpVec_equal = true;
-    for(int i = 0; i < 3 && planeSourceUpVec_equal; ++i)
-        planeSourceUpVec_equal = (planeSourceUpVec[i] == obj.planeSourceUpVec[i]);
-
-    // Compare the clipPlaneOrigin arrays.
-    bool clipPlaneOrigin_equal = true;
-    for(int i = 0; i < 3 && clipPlaneOrigin_equal; ++i)
-        clipPlaneOrigin_equal = (clipPlaneOrigin[i] == obj.clipPlaneOrigin[i]);
-
-    // Compare the clipPlaneNormal arrays.
-    bool clipPlaneNormal_equal = true;
-    for(int i = 0; i < 3 && clipPlaneNormal_equal; ++i)
-        clipPlaneNormal_equal = (clipPlaneNormal[i] == obj.clipPlaneNormal[i]);
+    // Compare the lineEnd arrays.
+    bool lineEnd_equal = true;
+    for(int i = 0; i < 3 && lineEnd_equal; ++i)
+        lineEnd_equal = (lineEnd[i] == obj.lineEnd[i]);
 
     // Create the return value
-    return ((termination == obj.termination) &&
-            (terminationType == obj.terminationType) &&
-            (streamlineSource == obj.streamlineSource) &&
-            (showStreamlines == obj.showStreamlines) &&
-            (showPoints == obj.showPoints) &&
-            (pointDensity == obj.pointDensity) &&
-            (sourceRadius == obj.sourceRadius) &&
+    return ((minPunctures == obj.minPunctures) &&
+            (maxPunctures == obj.maxPunctures) &&
+            (sourceType == obj.sourceType) &&
             pointSource_equal &&
-            lineSourceStart_equal &&
-            lineSourceEnd_equal &&
-            planeSourcePoint_equal &&
-            planeSourceNormal_equal &&
-            planeSourceUpVec_equal &&
-            clipPlaneOrigin_equal &&
-            clipPlaneNormal_equal &&
-            (colorTableName == obj.colorTableName) &&
-            (singleColor == obj.singleColor) &&
-            (legendFlag == obj.legendFlag) &&
-            (lightingFlag == obj.lightingFlag) &&
+            lineStart_equal &&
+            lineEnd_equal &&
+            (pointDensity == obj.pointDensity) &&
+            (integrationType == obj.integrationType) &&
+            (maxStepLength == obj.maxStepLength) &&
             (relTol == obj.relTol) &&
             (absTol == obj.absTol) &&
-            (maxStepLength == obj.maxStepLength));
+            (maxToroidalWinding == obj.maxToroidalWinding) &&
+            (overrideToroidalWinding == obj.overrideToroidalWinding) &&
+            (hitRate == obj.hitRate) &&
+            (adjustPlane == obj.adjustPlane) &&
+            (overlaps == obj.overlaps) &&
+            (showCurves == obj.showCurves) &&
+            (numberPlanes == obj.numberPlanes) &&
+            (min == obj.min) &&
+            (max == obj.max) &&
+            (minFlag == obj.minFlag) &&
+            (maxFlag == obj.maxFlag) &&
+            (colorType == obj.colorType) &&
+            (singleColor == obj.singleColor) &&
+            (colorTableName == obj.colorTableName) &&
+            (colorBy == obj.colorBy) &&
+            (showIslands == obj.showIslands) &&
+            (showLines == obj.showLines) &&
+            (showPoints == obj.showPoints) &&
+            (verboseFlag == obj.verboseFlag) &&
+            (legendFlag == obj.legendFlag) &&
+            (lightingFlag == obj.lightingFlag));
 }
 
 // ****************************************************************************
@@ -507,6 +596,9 @@ PoincareAttributes::TypeName() const
 // Programmer: Dave Pugmire
 // Creation:   Tues Oct 21 14:22:17 EDT 2008
 //
+// Modifications:
+//    Jeremy Meredith, Wed Apr  8 16:48:05 EDT 2009
+//    Initial steps to unification with streamline attributes.
 // ****************************************************************************
 
 bool
@@ -529,16 +621,8 @@ PoincareAttributes::CopyAttributes(const AttributeGroup *atts)
     else if(atts->TypeName() == "Line")
     {
         const Line *line = (const Line *)atts;
-        SetLineSourceStart(line->GetPoint1());
-        SetLineSourceEnd(line->GetPoint2());
-        retval = true;
-    }
-    else if(atts->TypeName() == "PlaneAttributes")
-    {
-        const PlaneAttributes *plane = (const PlaneAttributes *)atts;
-        SetPlaneSourcePoint(plane->GetOrigin());
-        SetPlaneSourceNormal(plane->GetNormal());
-        SetPlaneSourceUpVec(plane->GetUpAxis());
+        SetLineStart(line->GetPoint1());
+        SetLineEnd(line->GetPoint2());
         retval = true;
     }
     return retval;
@@ -553,6 +637,9 @@ PoincareAttributes::CopyAttributes(const AttributeGroup *atts)
 // Programmer: Dave Pugmire
 // Creation:   Tues Oct 21 14:22:17 EDT 2008
 //
+// Modifications:
+//    Jeremy Meredith, Wed Apr  8 16:48:05 EDT 2009
+//    Initial steps to unification with streamline attributes.
 // ****************************************************************************
 
 AttributeSubject *
@@ -572,17 +659,9 @@ PoincareAttributes::CreateCompatible(const std::string &tname) const
     else if (tname == "Line")
     {
         Line *l = new Line;
-        l->SetPoint1(GetLineSourceStart());
-        l->SetPoint2(GetLineSourceEnd());
+        l->SetPoint1(GetLineStart());
+        l->SetPoint2(GetLineEnd());
         retval = l;
-    }
-    else if (tname == "PlaneAttributes")
-    {
-        PlaneAttributes *p = new PlaneAttributes;
-        p->SetOrigin(GetPlaneSourcePoint());
-        p->SetNormal(GetPlaneSourceNormal());
-        p->SetUpAxis(GetPlaneSourceUpVec());
-        retval = p;
     }
     return retval;
 }
@@ -632,28 +711,38 @@ PoincareAttributes::NewInstance(bool copy) const
 void
 PoincareAttributes::SelectAll()
 {
-    Select(ID_termination,       (void *)&termination);
-    Select(ID_terminationType,   (void *)&terminationType);
-    Select(ID_streamlineSource,  (void *)&streamlineSource);
-    Select(ID_showStreamlines,   (void *)&showStreamlines);
-    Select(ID_showPoints,        (void *)&showPoints);
-    Select(ID_pointDensity,      (void *)&pointDensity);
-    Select(ID_sourceRadius,      (void *)&sourceRadius);
-    Select(ID_pointSource,       (void *)pointSource, 3);
-    Select(ID_lineSourceStart,   (void *)lineSourceStart, 3);
-    Select(ID_lineSourceEnd,     (void *)lineSourceEnd, 3);
-    Select(ID_planeSourcePoint,  (void *)planeSourcePoint, 3);
-    Select(ID_planeSourceNormal, (void *)planeSourceNormal, 3);
-    Select(ID_planeSourceUpVec,  (void *)planeSourceUpVec, 3);
-    Select(ID_clipPlaneOrigin,   (void *)clipPlaneOrigin, 3);
-    Select(ID_clipPlaneNormal,   (void *)clipPlaneNormal, 3);
-    Select(ID_colorTableName,    (void *)&colorTableName);
-    Select(ID_singleColor,       (void *)&singleColor);
-    Select(ID_legendFlag,        (void *)&legendFlag);
-    Select(ID_lightingFlag,      (void *)&lightingFlag);
-    Select(ID_relTol,            (void *)&relTol);
-    Select(ID_absTol,            (void *)&absTol);
-    Select(ID_maxStepLength,     (void *)&maxStepLength);
+    Select(ID_minPunctures,            (void *)&minPunctures);
+    Select(ID_maxPunctures,            (void *)&maxPunctures);
+    Select(ID_sourceType,              (void *)&sourceType);
+    Select(ID_pointSource,             (void *)pointSource, 3);
+    Select(ID_lineStart,               (void *)lineStart, 3);
+    Select(ID_lineEnd,                 (void *)lineEnd, 3);
+    Select(ID_pointDensity,            (void *)&pointDensity);
+    Select(ID_integrationType,         (void *)&integrationType);
+    Select(ID_maxStepLength,           (void *)&maxStepLength);
+    Select(ID_relTol,                  (void *)&relTol);
+    Select(ID_absTol,                  (void *)&absTol);
+    Select(ID_maxToroidalWinding,      (void *)&maxToroidalWinding);
+    Select(ID_overrideToroidalWinding, (void *)&overrideToroidalWinding);
+    Select(ID_hitRate,                 (void *)&hitRate);
+    Select(ID_adjustPlane,             (void *)&adjustPlane);
+    Select(ID_overlaps,                (void *)&overlaps);
+    Select(ID_showCurves,              (void *)&showCurves);
+    Select(ID_numberPlanes,            (void *)&numberPlanes);
+    Select(ID_min,                     (void *)&min);
+    Select(ID_max,                     (void *)&max);
+    Select(ID_minFlag,                 (void *)&minFlag);
+    Select(ID_maxFlag,                 (void *)&maxFlag);
+    Select(ID_colorType,               (void *)&colorType);
+    Select(ID_singleColor,             (void *)&singleColor);
+    Select(ID_colorTableName,          (void *)&colorTableName);
+    Select(ID_colorBy,                 (void *)&colorBy);
+    Select(ID_showIslands,             (void *)&showIslands);
+    Select(ID_showLines,               (void *)&showLines);
+    Select(ID_showPoints,              (void *)&showPoints);
+    Select(ID_verboseFlag,             (void *)&verboseFlag);
+    Select(ID_legendFlag,              (void *)&legendFlag);
+    Select(ID_lightingFlag,            (void *)&lightingFlag);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -686,46 +775,22 @@ PoincareAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool for
     // Create a node for PoincareAttributes.
     DataNode *node = new DataNode("PoincareAttributes");
 
-    if(completeSave || !FieldsEqual(ID_termination, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_minPunctures, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("termination", termination));
+        node->AddNode(new DataNode("minPunctures", minPunctures));
     }
 
-    if(completeSave || !FieldsEqual(ID_terminationType, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_maxPunctures, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("terminationType", TerminationType_ToString(terminationType)));
+        node->AddNode(new DataNode("maxPunctures", maxPunctures));
     }
 
-    if(completeSave || !FieldsEqual(ID_streamlineSource, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_sourceType, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("streamlineSource", SourceType_ToString(streamlineSource)));
-    }
-
-    if(completeSave || !FieldsEqual(ID_showStreamlines, &defaultObject))
-    {
-        addToParent = true;
-        node->AddNode(new DataNode("showStreamlines", showStreamlines));
-    }
-
-    if(completeSave || !FieldsEqual(ID_showPoints, &defaultObject))
-    {
-        addToParent = true;
-        node->AddNode(new DataNode("showPoints", showPoints));
-    }
-
-    if(completeSave || !FieldsEqual(ID_pointDensity, &defaultObject))
-    {
-        addToParent = true;
-        node->AddNode(new DataNode("pointDensity", pointDensity));
-    }
-
-    if(completeSave || !FieldsEqual(ID_sourceRadius, &defaultObject))
-    {
-        addToParent = true;
-        node->AddNode(new DataNode("sourceRadius", sourceRadius));
+        node->AddNode(new DataNode("sourceType", SourceType_ToString(sourceType)));
     }
 
     if(completeSave || !FieldsEqual(ID_pointSource, &defaultObject))
@@ -734,72 +799,34 @@ PoincareAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool for
         node->AddNode(new DataNode("pointSource", pointSource, 3));
     }
 
-    if(completeSave || !FieldsEqual(ID_lineSourceStart, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_lineStart, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("lineSourceStart", lineSourceStart, 3));
+        node->AddNode(new DataNode("lineStart", lineStart, 3));
     }
 
-    if(completeSave || !FieldsEqual(ID_lineSourceEnd, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_lineEnd, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("lineSourceEnd", lineSourceEnd, 3));
+        node->AddNode(new DataNode("lineEnd", lineEnd, 3));
     }
 
-    if(completeSave || !FieldsEqual(ID_planeSourcePoint, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_pointDensity, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("planeSourcePoint", planeSourcePoint, 3));
+        node->AddNode(new DataNode("pointDensity", pointDensity));
     }
 
-    if(completeSave || !FieldsEqual(ID_planeSourceNormal, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_integrationType, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("planeSourceNormal", planeSourceNormal, 3));
+        node->AddNode(new DataNode("integrationType", IntegrationType_ToString(integrationType)));
     }
 
-    if(completeSave || !FieldsEqual(ID_planeSourceUpVec, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_maxStepLength, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("planeSourceUpVec", planeSourceUpVec, 3));
-    }
-
-    if(completeSave || !FieldsEqual(ID_clipPlaneOrigin, &defaultObject))
-    {
-        addToParent = true;
-        node->AddNode(new DataNode("clipPlaneOrigin", clipPlaneOrigin, 3));
-    }
-
-    if(completeSave || !FieldsEqual(ID_clipPlaneNormal, &defaultObject))
-    {
-        addToParent = true;
-        node->AddNode(new DataNode("clipPlaneNormal", clipPlaneNormal, 3));
-    }
-
-    if(completeSave || !FieldsEqual(ID_colorTableName, &defaultObject))
-    {
-        addToParent = true;
-        node->AddNode(new DataNode("colorTableName", colorTableName));
-    }
-
-        DataNode *singleColorNode = new DataNode("singleColor");
-        if(singleColor.CreateNode(singleColorNode, completeSave, true))
-        {
-            addToParent = true;
-            node->AddNode(singleColorNode);
-        }
-        else
-            delete singleColorNode;
-    if(completeSave || !FieldsEqual(ID_legendFlag, &defaultObject))
-    {
-        addToParent = true;
-        node->AddNode(new DataNode("legendFlag", legendFlag));
-    }
-
-    if(completeSave || !FieldsEqual(ID_lightingFlag, &defaultObject))
-    {
-        addToParent = true;
-        node->AddNode(new DataNode("lightingFlag", lightingFlag));
+        node->AddNode(new DataNode("maxStepLength", maxStepLength));
     }
 
     if(completeSave || !FieldsEqual(ID_relTol, &defaultObject))
@@ -814,10 +841,132 @@ PoincareAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool for
         node->AddNode(new DataNode("absTol", absTol));
     }
 
-    if(completeSave || !FieldsEqual(ID_maxStepLength, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_maxToroidalWinding, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("maxStepLength", maxStepLength));
+        node->AddNode(new DataNode("maxToroidalWinding", maxToroidalWinding));
+    }
+
+    if(completeSave || !FieldsEqual(ID_overrideToroidalWinding, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("overrideToroidalWinding", overrideToroidalWinding));
+    }
+
+    if(completeSave || !FieldsEqual(ID_hitRate, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("hitRate", hitRate));
+    }
+
+    if(completeSave || !FieldsEqual(ID_adjustPlane, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("adjustPlane", adjustPlane));
+    }
+
+    if(completeSave || !FieldsEqual(ID_overlaps, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("overlaps", OverlapType_ToString(overlaps)));
+    }
+
+    if(completeSave || !FieldsEqual(ID_showCurves, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("showCurves", ShowMeshType_ToString(showCurves)));
+    }
+
+    if(completeSave || !FieldsEqual(ID_numberPlanes, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("numberPlanes", numberPlanes));
+    }
+
+    if(completeSave || !FieldsEqual(ID_min, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("min", min));
+    }
+
+    if(completeSave || !FieldsEqual(ID_max, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("max", max));
+    }
+
+    if(completeSave || !FieldsEqual(ID_minFlag, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("minFlag", minFlag));
+    }
+
+    if(completeSave || !FieldsEqual(ID_maxFlag, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("maxFlag", maxFlag));
+    }
+
+    if(completeSave || !FieldsEqual(ID_colorType, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("colorType", ColoringMethod_ToString(colorType)));
+    }
+
+        DataNode *singleColorNode = new DataNode("singleColor");
+        if(singleColor.CreateNode(singleColorNode, completeSave, true))
+        {
+            addToParent = true;
+            node->AddNode(singleColorNode);
+        }
+        else
+            delete singleColorNode;
+    if(completeSave || !FieldsEqual(ID_colorTableName, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("colorTableName", colorTableName));
+    }
+
+    if(completeSave || !FieldsEqual(ID_colorBy, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("colorBy", ColorBy_ToString(colorBy)));
+    }
+
+    if(completeSave || !FieldsEqual(ID_showIslands, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("showIslands", showIslands));
+    }
+
+    if(completeSave || !FieldsEqual(ID_showLines, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("showLines", showLines));
+    }
+
+    if(completeSave || !FieldsEqual(ID_showPoints, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("showPoints", showPoints));
+    }
+
+    if(completeSave || !FieldsEqual(ID_verboseFlag, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("verboseFlag", verboseFlag));
+    }
+
+    if(completeSave || !FieldsEqual(ID_legendFlag, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("legendFlag", legendFlag));
+    }
+
+    if(completeSave || !FieldsEqual(ID_lightingFlag, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("lightingFlag", lightingFlag));
     }
 
 
@@ -856,78 +1005,154 @@ PoincareAttributes::SetFromNode(DataNode *parentNode)
         return;
 
     DataNode *node;
-    if((node = searchNode->GetNode("termination")) != 0)
-        SetTermination(node->AsDouble());
-    if((node = searchNode->GetNode("terminationType")) != 0)
+    if((node = searchNode->GetNode("minPunctures")) != 0)
+        SetMinPunctures(node->AsDouble());
+    if((node = searchNode->GetNode("maxPunctures")) != 0)
+        SetMaxPunctures(node->AsDouble());
+    if((node = searchNode->GetNode("sourceType")) != 0)
     {
         // Allow enums to be int or string in the config file
         if(node->GetNodeType() == INT_NODE)
         {
             int ival = node->AsInt();
             if(ival >= 0 && ival < 2)
-                SetTerminationType(TerminationType(ival));
+                SetSourceType(SourceType(ival));
         }
         else if(node->GetNodeType() == STRING_NODE)
         {
-            TerminationType value;
-            if(TerminationType_FromString(node->AsString(), value))
-                SetTerminationType(value);
+            SourceType value;
+            if(SourceType_FromString(node->AsString(), value))
+                SetSourceType(value);
         }
     }
-    if((node = searchNode->GetNode("streamlineSource")) != 0)
+    if((node = searchNode->GetNode("pointSource")) != 0)
+        SetPointSource(node->AsDoubleArray());
+    if((node = searchNode->GetNode("lineStart")) != 0)
+        SetLineStart(node->AsDoubleArray());
+    if((node = searchNode->GetNode("lineEnd")) != 0)
+        SetLineEnd(node->AsDoubleArray());
+    if((node = searchNode->GetNode("pointDensity")) != 0)
+        SetPointDensity(node->AsInt());
+    if((node = searchNode->GetNode("integrationType")) != 0)
     {
         // Allow enums to be int or string in the config file
         if(node->GetNodeType() == INT_NODE)
         {
             int ival = node->AsInt();
             if(ival >= 0 && ival < 3)
-                SetStreamlineSource(SourceType(ival));
+                SetIntegrationType(IntegrationType(ival));
         }
         else if(node->GetNodeType() == STRING_NODE)
         {
-            SourceType value;
-            if(SourceType_FromString(node->AsString(), value))
-                SetStreamlineSource(value);
+            IntegrationType value;
+            if(IntegrationType_FromString(node->AsString(), value))
+                SetIntegrationType(value);
         }
     }
-    if((node = searchNode->GetNode("showStreamlines")) != 0)
-        SetShowStreamlines(node->AsBool());
-    if((node = searchNode->GetNode("showPoints")) != 0)
-        SetShowPoints(node->AsBool());
-    if((node = searchNode->GetNode("pointDensity")) != 0)
-        SetPointDensity(node->AsInt());
-    if((node = searchNode->GetNode("sourceRadius")) != 0)
-        SetSourceRadius(node->AsDouble());
-    if((node = searchNode->GetNode("pointSource")) != 0)
-        SetPointSource(node->AsDoubleArray());
-    if((node = searchNode->GetNode("lineSourceStart")) != 0)
-        SetLineSourceStart(node->AsDoubleArray());
-    if((node = searchNode->GetNode("lineSourceEnd")) != 0)
-        SetLineSourceEnd(node->AsDoubleArray());
-    if((node = searchNode->GetNode("planeSourcePoint")) != 0)
-        SetPlaneSourcePoint(node->AsDoubleArray());
-    if((node = searchNode->GetNode("planeSourceNormal")) != 0)
-        SetPlaneSourceNormal(node->AsDoubleArray());
-    if((node = searchNode->GetNode("planeSourceUpVec")) != 0)
-        SetPlaneSourceUpVec(node->AsDoubleArray());
-    if((node = searchNode->GetNode("clipPlaneOrigin")) != 0)
-        SetClipPlaneOrigin(node->AsDoubleArray());
-    if((node = searchNode->GetNode("clipPlaneNormal")) != 0)
-        SetClipPlaneNormal(node->AsDoubleArray());
-    if((node = searchNode->GetNode("colorTableName")) != 0)
-        SetColorTableName(node->AsString());
-    if((node = searchNode->GetNode("singleColor")) != 0)
-        singleColor.SetFromNode(node);
-    if((node = searchNode->GetNode("legendFlag")) != 0)
-        SetLegendFlag(node->AsBool());
-    if((node = searchNode->GetNode("lightingFlag")) != 0)
-        SetLightingFlag(node->AsBool());
+    if((node = searchNode->GetNode("maxStepLength")) != 0)
+        SetMaxStepLength(node->AsDouble());
     if((node = searchNode->GetNode("relTol")) != 0)
         SetRelTol(node->AsDouble());
     if((node = searchNode->GetNode("absTol")) != 0)
         SetAbsTol(node->AsDouble());
-    if((node = searchNode->GetNode("maxStepLength")) != 0)
-        SetMaxStepLength(node->AsDouble());
+    if((node = searchNode->GetNode("maxToroidalWinding")) != 0)
+        SetMaxToroidalWinding(node->AsInt());
+    if((node = searchNode->GetNode("overrideToroidalWinding")) != 0)
+        SetOverrideToroidalWinding(node->AsInt());
+    if((node = searchNode->GetNode("hitRate")) != 0)
+        SetHitRate(node->AsDouble());
+    if((node = searchNode->GetNode("adjustPlane")) != 0)
+        SetAdjustPlane(node->AsInt());
+    if((node = searchNode->GetNode("overlaps")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 4)
+                SetOverlaps(OverlapType(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            OverlapType value;
+            if(OverlapType_FromString(node->AsString(), value))
+                SetOverlaps(value);
+        }
+    }
+    if((node = searchNode->GetNode("showCurves")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 2)
+                SetShowCurves(ShowMeshType(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            ShowMeshType value;
+            if(ShowMeshType_FromString(node->AsString(), value))
+                SetShowCurves(value);
+        }
+    }
+    if((node = searchNode->GetNode("numberPlanes")) != 0)
+        SetNumberPlanes(node->AsInt());
+    if((node = searchNode->GetNode("min")) != 0)
+        SetMin(node->AsDouble());
+    if((node = searchNode->GetNode("max")) != 0)
+        SetMax(node->AsDouble());
+    if((node = searchNode->GetNode("minFlag")) != 0)
+        SetMinFlag(node->AsBool());
+    if((node = searchNode->GetNode("maxFlag")) != 0)
+        SetMaxFlag(node->AsBool());
+    if((node = searchNode->GetNode("colorType")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 2)
+                SetColorType(ColoringMethod(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            ColoringMethod value;
+            if(ColoringMethod_FromString(node->AsString(), value))
+                SetColorType(value);
+        }
+    }
+    if((node = searchNode->GetNode("singleColor")) != 0)
+        singleColor.SetFromNode(node);
+    if((node = searchNode->GetNode("colorTableName")) != 0)
+        SetColorTableName(node->AsString());
+    if((node = searchNode->GetNode("colorBy")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 11)
+                SetColorBy(ColorBy(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            ColorBy value;
+            if(ColorBy_FromString(node->AsString(), value))
+                SetColorBy(value);
+        }
+    }
+    if((node = searchNode->GetNode("showIslands")) != 0)
+        SetShowIslands(node->AsBool());
+    if((node = searchNode->GetNode("showLines")) != 0)
+        SetShowLines(node->AsBool());
+    if((node = searchNode->GetNode("showPoints")) != 0)
+        SetShowPoints(node->AsBool());
+    if((node = searchNode->GetNode("verboseFlag")) != 0)
+        SetVerboseFlag(node->AsBool());
+    if((node = searchNode->GetNode("legendFlag")) != 0)
+        SetLegendFlag(node->AsBool());
+    if((node = searchNode->GetNode("lightingFlag")) != 0)
+        SetLightingFlag(node->AsBool());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -935,52 +1160,24 @@ PoincareAttributes::SetFromNode(DataNode *parentNode)
 ///////////////////////////////////////////////////////////////////////////////
 
 void
-PoincareAttributes::SetTermination(double termination_)
+PoincareAttributes::SetMinPunctures(double minPunctures_)
 {
-    termination = termination_;
-    Select(ID_termination, (void *)&termination);
+    minPunctures = minPunctures_;
+    Select(ID_minPunctures, (void *)&minPunctures);
 }
 
 void
-PoincareAttributes::SetTerminationType(PoincareAttributes::TerminationType terminationType_)
+PoincareAttributes::SetMaxPunctures(double maxPunctures_)
 {
-    terminationType = terminationType_;
-    Select(ID_terminationType, (void *)&terminationType);
+    maxPunctures = maxPunctures_;
+    Select(ID_maxPunctures, (void *)&maxPunctures);
 }
 
 void
-PoincareAttributes::SetStreamlineSource(PoincareAttributes::SourceType streamlineSource_)
+PoincareAttributes::SetSourceType(PoincareAttributes::SourceType sourceType_)
 {
-    streamlineSource = streamlineSource_;
-    Select(ID_streamlineSource, (void *)&streamlineSource);
-}
-
-void
-PoincareAttributes::SetShowStreamlines(bool showStreamlines_)
-{
-    showStreamlines = showStreamlines_;
-    Select(ID_showStreamlines, (void *)&showStreamlines);
-}
-
-void
-PoincareAttributes::SetShowPoints(bool showPoints_)
-{
-    showPoints = showPoints_;
-    Select(ID_showPoints, (void *)&showPoints);
-}
-
-void
-PoincareAttributes::SetPointDensity(int pointDensity_)
-{
-    pointDensity = pointDensity_;
-    Select(ID_pointDensity, (void *)&pointDensity);
-}
-
-void
-PoincareAttributes::SetSourceRadius(double sourceRadius_)
-{
-    sourceRadius = sourceRadius_;
-    Select(ID_sourceRadius, (void *)&sourceRadius);
+    sourceType = sourceType_;
+    Select(ID_sourceType, (void *)&sourceType);
 }
 
 void
@@ -993,94 +1190,42 @@ PoincareAttributes::SetPointSource(const double *pointSource_)
 }
 
 void
-PoincareAttributes::SetLineSourceStart(const double *lineSourceStart_)
+PoincareAttributes::SetLineStart(const double *lineStart_)
 {
-    lineSourceStart[0] = lineSourceStart_[0];
-    lineSourceStart[1] = lineSourceStart_[1];
-    lineSourceStart[2] = lineSourceStart_[2];
-    Select(ID_lineSourceStart, (void *)lineSourceStart, 3);
+    lineStart[0] = lineStart_[0];
+    lineStart[1] = lineStart_[1];
+    lineStart[2] = lineStart_[2];
+    Select(ID_lineStart, (void *)lineStart, 3);
 }
 
 void
-PoincareAttributes::SetLineSourceEnd(const double *lineSourceEnd_)
+PoincareAttributes::SetLineEnd(const double *lineEnd_)
 {
-    lineSourceEnd[0] = lineSourceEnd_[0];
-    lineSourceEnd[1] = lineSourceEnd_[1];
-    lineSourceEnd[2] = lineSourceEnd_[2];
-    Select(ID_lineSourceEnd, (void *)lineSourceEnd, 3);
+    lineEnd[0] = lineEnd_[0];
+    lineEnd[1] = lineEnd_[1];
+    lineEnd[2] = lineEnd_[2];
+    Select(ID_lineEnd, (void *)lineEnd, 3);
 }
 
 void
-PoincareAttributes::SetPlaneSourcePoint(const double *planeSourcePoint_)
+PoincareAttributes::SetPointDensity(int pointDensity_)
 {
-    planeSourcePoint[0] = planeSourcePoint_[0];
-    planeSourcePoint[1] = planeSourcePoint_[1];
-    planeSourcePoint[2] = planeSourcePoint_[2];
-    Select(ID_planeSourcePoint, (void *)planeSourcePoint, 3);
+    pointDensity = pointDensity_;
+    Select(ID_pointDensity, (void *)&pointDensity);
 }
 
 void
-PoincareAttributes::SetPlaneSourceNormal(const double *planeSourceNormal_)
+PoincareAttributes::SetIntegrationType(PoincareAttributes::IntegrationType integrationType_)
 {
-    planeSourceNormal[0] = planeSourceNormal_[0];
-    planeSourceNormal[1] = planeSourceNormal_[1];
-    planeSourceNormal[2] = planeSourceNormal_[2];
-    Select(ID_planeSourceNormal, (void *)planeSourceNormal, 3);
+    integrationType = integrationType_;
+    Select(ID_integrationType, (void *)&integrationType);
 }
 
 void
-PoincareAttributes::SetPlaneSourceUpVec(const double *planeSourceUpVec_)
+PoincareAttributes::SetMaxStepLength(double maxStepLength_)
 {
-    planeSourceUpVec[0] = planeSourceUpVec_[0];
-    planeSourceUpVec[1] = planeSourceUpVec_[1];
-    planeSourceUpVec[2] = planeSourceUpVec_[2];
-    Select(ID_planeSourceUpVec, (void *)planeSourceUpVec, 3);
-}
-
-void
-PoincareAttributes::SetClipPlaneOrigin(const double *clipPlaneOrigin_)
-{
-    clipPlaneOrigin[0] = clipPlaneOrigin_[0];
-    clipPlaneOrigin[1] = clipPlaneOrigin_[1];
-    clipPlaneOrigin[2] = clipPlaneOrigin_[2];
-    Select(ID_clipPlaneOrigin, (void *)clipPlaneOrigin, 3);
-}
-
-void
-PoincareAttributes::SetClipPlaneNormal(const double *clipPlaneNormal_)
-{
-    clipPlaneNormal[0] = clipPlaneNormal_[0];
-    clipPlaneNormal[1] = clipPlaneNormal_[1];
-    clipPlaneNormal[2] = clipPlaneNormal_[2];
-    Select(ID_clipPlaneNormal, (void *)clipPlaneNormal, 3);
-}
-
-void
-PoincareAttributes::SetColorTableName(const std::string &colorTableName_)
-{
-    colorTableName = colorTableName_;
-    Select(ID_colorTableName, (void *)&colorTableName);
-}
-
-void
-PoincareAttributes::SetSingleColor(const ColorAttribute &singleColor_)
-{
-    singleColor = singleColor_;
-    Select(ID_singleColor, (void *)&singleColor);
-}
-
-void
-PoincareAttributes::SetLegendFlag(bool legendFlag_)
-{
-    legendFlag = legendFlag_;
-    Select(ID_legendFlag, (void *)&legendFlag);
-}
-
-void
-PoincareAttributes::SetLightingFlag(bool lightingFlag_)
-{
-    lightingFlag = lightingFlag_;
-    Select(ID_lightingFlag, (void *)&lightingFlag);
+    maxStepLength = maxStepLength_;
+    Select(ID_maxStepLength, (void *)&maxStepLength);
 }
 
 void
@@ -1098,10 +1243,150 @@ PoincareAttributes::SetAbsTol(double absTol_)
 }
 
 void
-PoincareAttributes::SetMaxStepLength(double maxStepLength_)
+PoincareAttributes::SetMaxToroidalWinding(int maxToroidalWinding_)
 {
-    maxStepLength = maxStepLength_;
-    Select(ID_maxStepLength, (void *)&maxStepLength);
+    maxToroidalWinding = maxToroidalWinding_;
+    Select(ID_maxToroidalWinding, (void *)&maxToroidalWinding);
+}
+
+void
+PoincareAttributes::SetOverrideToroidalWinding(int overrideToroidalWinding_)
+{
+    overrideToroidalWinding = overrideToroidalWinding_;
+    Select(ID_overrideToroidalWinding, (void *)&overrideToroidalWinding);
+}
+
+void
+PoincareAttributes::SetHitRate(double hitRate_)
+{
+    hitRate = hitRate_;
+    Select(ID_hitRate, (void *)&hitRate);
+}
+
+void
+PoincareAttributes::SetAdjustPlane(int adjustPlane_)
+{
+    adjustPlane = adjustPlane_;
+    Select(ID_adjustPlane, (void *)&adjustPlane);
+}
+
+void
+PoincareAttributes::SetOverlaps(PoincareAttributes::OverlapType overlaps_)
+{
+    overlaps = overlaps_;
+    Select(ID_overlaps, (void *)&overlaps);
+}
+
+void
+PoincareAttributes::SetShowCurves(PoincareAttributes::ShowMeshType showCurves_)
+{
+    showCurves = showCurves_;
+    Select(ID_showCurves, (void *)&showCurves);
+}
+
+void
+PoincareAttributes::SetNumberPlanes(int numberPlanes_)
+{
+    numberPlanes = numberPlanes_;
+    Select(ID_numberPlanes, (void *)&numberPlanes);
+}
+
+void
+PoincareAttributes::SetMin(double min_)
+{
+    min = min_;
+    Select(ID_min, (void *)&min);
+}
+
+void
+PoincareAttributes::SetMax(double max_)
+{
+    max = max_;
+    Select(ID_max, (void *)&max);
+}
+
+void
+PoincareAttributes::SetMinFlag(bool minFlag_)
+{
+    minFlag = minFlag_;
+    Select(ID_minFlag, (void *)&minFlag);
+}
+
+void
+PoincareAttributes::SetMaxFlag(bool maxFlag_)
+{
+    maxFlag = maxFlag_;
+    Select(ID_maxFlag, (void *)&maxFlag);
+}
+
+void
+PoincareAttributes::SetColorType(PoincareAttributes::ColoringMethod colorType_)
+{
+    colorType = colorType_;
+    Select(ID_colorType, (void *)&colorType);
+}
+
+void
+PoincareAttributes::SetSingleColor(const ColorAttribute &singleColor_)
+{
+    singleColor = singleColor_;
+    Select(ID_singleColor, (void *)&singleColor);
+}
+
+void
+PoincareAttributes::SetColorTableName(const std::string &colorTableName_)
+{
+    colorTableName = colorTableName_;
+    Select(ID_colorTableName, (void *)&colorTableName);
+}
+
+void
+PoincareAttributes::SetColorBy(PoincareAttributes::ColorBy colorBy_)
+{
+    colorBy = colorBy_;
+    Select(ID_colorBy, (void *)&colorBy);
+}
+
+void
+PoincareAttributes::SetShowIslands(bool showIslands_)
+{
+    showIslands = showIslands_;
+    Select(ID_showIslands, (void *)&showIslands);
+}
+
+void
+PoincareAttributes::SetShowLines(bool showLines_)
+{
+    showLines = showLines_;
+    Select(ID_showLines, (void *)&showLines);
+}
+
+void
+PoincareAttributes::SetShowPoints(bool showPoints_)
+{
+    showPoints = showPoints_;
+    Select(ID_showPoints, (void *)&showPoints);
+}
+
+void
+PoincareAttributes::SetVerboseFlag(bool verboseFlag_)
+{
+    verboseFlag = verboseFlag_;
+    Select(ID_verboseFlag, (void *)&verboseFlag);
+}
+
+void
+PoincareAttributes::SetLegendFlag(bool legendFlag_)
+{
+    legendFlag = legendFlag_;
+    Select(ID_legendFlag, (void *)&legendFlag);
+}
+
+void
+PoincareAttributes::SetLightingFlag(bool lightingFlag_)
+{
+    lightingFlag = lightingFlag_;
+    Select(ID_lightingFlag, (void *)&lightingFlag);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1109,45 +1394,21 @@ PoincareAttributes::SetMaxStepLength(double maxStepLength_)
 ///////////////////////////////////////////////////////////////////////////////
 
 double
-PoincareAttributes::GetTermination() const
+PoincareAttributes::GetMinPunctures() const
 {
-    return termination;
-}
-
-PoincareAttributes::TerminationType
-PoincareAttributes::GetTerminationType() const
-{
-    return TerminationType(terminationType);
-}
-
-PoincareAttributes::SourceType
-PoincareAttributes::GetStreamlineSource() const
-{
-    return SourceType(streamlineSource);
-}
-
-bool
-PoincareAttributes::GetShowStreamlines() const
-{
-    return showStreamlines;
-}
-
-bool
-PoincareAttributes::GetShowPoints() const
-{
-    return showPoints;
-}
-
-int
-PoincareAttributes::GetPointDensity() const
-{
-    return pointDensity;
+    return minPunctures;
 }
 
 double
-PoincareAttributes::GetSourceRadius() const
+PoincareAttributes::GetMaxPunctures() const
 {
-    return sourceRadius;
+    return maxPunctures;
+}
+
+PoincareAttributes::SourceType
+PoincareAttributes::GetSourceType() const
+{
+    return SourceType(sourceType);
 }
 
 const double *
@@ -1163,123 +1424,45 @@ PoincareAttributes::GetPointSource()
 }
 
 const double *
-PoincareAttributes::GetLineSourceStart() const
+PoincareAttributes::GetLineStart() const
 {
-    return lineSourceStart;
+    return lineStart;
 }
 
 double *
-PoincareAttributes::GetLineSourceStart()
+PoincareAttributes::GetLineStart()
 {
-    return lineSourceStart;
+    return lineStart;
 }
 
 const double *
-PoincareAttributes::GetLineSourceEnd() const
+PoincareAttributes::GetLineEnd() const
 {
-    return lineSourceEnd;
+    return lineEnd;
 }
 
 double *
-PoincareAttributes::GetLineSourceEnd()
+PoincareAttributes::GetLineEnd()
 {
-    return lineSourceEnd;
+    return lineEnd;
 }
 
-const double *
-PoincareAttributes::GetPlaneSourcePoint() const
+int
+PoincareAttributes::GetPointDensity() const
 {
-    return planeSourcePoint;
+    return pointDensity;
 }
 
-double *
-PoincareAttributes::GetPlaneSourcePoint()
+PoincareAttributes::IntegrationType
+PoincareAttributes::GetIntegrationType() const
 {
-    return planeSourcePoint;
+    return IntegrationType(integrationType);
 }
 
-const double *
-PoincareAttributes::GetPlaneSourceNormal() const
+double
+PoincareAttributes::GetMaxStepLength() const
 {
-    return planeSourceNormal;
-}
-
-double *
-PoincareAttributes::GetPlaneSourceNormal()
-{
-    return planeSourceNormal;
-}
-
-const double *
-PoincareAttributes::GetPlaneSourceUpVec() const
-{
-    return planeSourceUpVec;
-}
-
-double *
-PoincareAttributes::GetPlaneSourceUpVec()
-{
-    return planeSourceUpVec;
-}
-
-const double *
-PoincareAttributes::GetClipPlaneOrigin() const
-{
-    return clipPlaneOrigin;
-}
-
-double *
-PoincareAttributes::GetClipPlaneOrigin()
-{
-    return clipPlaneOrigin;
-}
-
-const double *
-PoincareAttributes::GetClipPlaneNormal() const
-{
-    return clipPlaneNormal;
-}
-
-double *
-PoincareAttributes::GetClipPlaneNormal()
-{
-    return clipPlaneNormal;
-}
-
-const std::string &
-PoincareAttributes::GetColorTableName() const
-{
-    return colorTableName;
-}
-
-std::string &
-PoincareAttributes::GetColorTableName()
-{
-    return colorTableName;
-}
-
-const ColorAttribute &
-PoincareAttributes::GetSingleColor() const
-{
-    return singleColor;
-}
-
-ColorAttribute &
-PoincareAttributes::GetSingleColor()
-{
-    return singleColor;
-}
-
-bool
-PoincareAttributes::GetLegendFlag() const
-{
-    return legendFlag;
-}
-
-bool
-PoincareAttributes::GetLightingFlag() const
-{
-    return lightingFlag;
+    return maxStepLength;
 }
 
 double
@@ -1294,10 +1477,142 @@ PoincareAttributes::GetAbsTol() const
     return absTol;
 }
 
-double
-PoincareAttributes::GetMaxStepLength() const
+int
+PoincareAttributes::GetMaxToroidalWinding() const
 {
-    return maxStepLength;
+    return maxToroidalWinding;
+}
+
+int
+PoincareAttributes::GetOverrideToroidalWinding() const
+{
+    return overrideToroidalWinding;
+}
+
+double
+PoincareAttributes::GetHitRate() const
+{
+    return hitRate;
+}
+
+int
+PoincareAttributes::GetAdjustPlane() const
+{
+    return adjustPlane;
+}
+
+PoincareAttributes::OverlapType
+PoincareAttributes::GetOverlaps() const
+{
+    return OverlapType(overlaps);
+}
+
+PoincareAttributes::ShowMeshType
+PoincareAttributes::GetShowCurves() const
+{
+    return ShowMeshType(showCurves);
+}
+
+int
+PoincareAttributes::GetNumberPlanes() const
+{
+    return numberPlanes;
+}
+
+double
+PoincareAttributes::GetMin() const
+{
+    return min;
+}
+
+double
+PoincareAttributes::GetMax() const
+{
+    return max;
+}
+
+bool
+PoincareAttributes::GetMinFlag() const
+{
+    return minFlag;
+}
+
+bool
+PoincareAttributes::GetMaxFlag() const
+{
+    return maxFlag;
+}
+
+PoincareAttributes::ColoringMethod
+PoincareAttributes::GetColorType() const
+{
+    return ColoringMethod(colorType);
+}
+
+const ColorAttribute &
+PoincareAttributes::GetSingleColor() const
+{
+    return singleColor;
+}
+
+ColorAttribute &
+PoincareAttributes::GetSingleColor()
+{
+    return singleColor;
+}
+
+const std::string &
+PoincareAttributes::GetColorTableName() const
+{
+    return colorTableName;
+}
+
+std::string &
+PoincareAttributes::GetColorTableName()
+{
+    return colorTableName;
+}
+
+PoincareAttributes::ColorBy
+PoincareAttributes::GetColorBy() const
+{
+    return ColorBy(colorBy);
+}
+
+bool
+PoincareAttributes::GetShowIslands() const
+{
+    return showIslands;
+}
+
+bool
+PoincareAttributes::GetShowLines() const
+{
+    return showLines;
+}
+
+bool
+PoincareAttributes::GetShowPoints() const
+{
+    return showPoints;
+}
+
+bool
+PoincareAttributes::GetVerboseFlag() const
+{
+    return verboseFlag;
+}
+
+bool
+PoincareAttributes::GetLegendFlag() const
+{
+    return legendFlag;
+}
+
+bool
+PoincareAttributes::GetLightingFlag() const
+{
+    return lightingFlag;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1311,57 +1626,27 @@ PoincareAttributes::SelectPointSource()
 }
 
 void
-PoincareAttributes::SelectLineSourceStart()
+PoincareAttributes::SelectLineStart()
 {
-    Select(ID_lineSourceStart, (void *)lineSourceStart, 3);
+    Select(ID_lineStart, (void *)lineStart, 3);
 }
 
 void
-PoincareAttributes::SelectLineSourceEnd()
+PoincareAttributes::SelectLineEnd()
 {
-    Select(ID_lineSourceEnd, (void *)lineSourceEnd, 3);
-}
-
-void
-PoincareAttributes::SelectPlaneSourcePoint()
-{
-    Select(ID_planeSourcePoint, (void *)planeSourcePoint, 3);
-}
-
-void
-PoincareAttributes::SelectPlaneSourceNormal()
-{
-    Select(ID_planeSourceNormal, (void *)planeSourceNormal, 3);
-}
-
-void
-PoincareAttributes::SelectPlaneSourceUpVec()
-{
-    Select(ID_planeSourceUpVec, (void *)planeSourceUpVec, 3);
-}
-
-void
-PoincareAttributes::SelectClipPlaneOrigin()
-{
-    Select(ID_clipPlaneOrigin, (void *)clipPlaneOrigin, 3);
-}
-
-void
-PoincareAttributes::SelectClipPlaneNormal()
-{
-    Select(ID_clipPlaneNormal, (void *)clipPlaneNormal, 3);
-}
-
-void
-PoincareAttributes::SelectColorTableName()
-{
-    Select(ID_colorTableName, (void *)&colorTableName);
+    Select(ID_lineEnd, (void *)lineEnd, 3);
 }
 
 void
 PoincareAttributes::SelectSingleColor()
 {
     Select(ID_singleColor, (void *)&singleColor);
+}
+
+void
+PoincareAttributes::SelectColorTableName()
+{
+    Select(ID_colorTableName, (void *)&colorTableName);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1388,28 +1673,38 @@ PoincareAttributes::GetFieldName(int index) const
 {
     switch (index)
     {
-    case ID_termination:       return "termination";
-    case ID_terminationType:   return "terminationType";
-    case ID_streamlineSource:  return "streamlineSource";
-    case ID_showStreamlines:   return "showStreamlines";
-    case ID_showPoints:        return "showPoints";
-    case ID_pointDensity:      return "pointDensity";
-    case ID_sourceRadius:      return "sourceRadius";
-    case ID_pointSource:       return "pointSource";
-    case ID_lineSourceStart:   return "lineSourceStart";
-    case ID_lineSourceEnd:     return "lineSourceEnd";
-    case ID_planeSourcePoint:  return "planeSourcePoint";
-    case ID_planeSourceNormal: return "planeSourceNormal";
-    case ID_planeSourceUpVec:  return "planeSourceUpVec";
-    case ID_clipPlaneOrigin:   return "clipPlaneOrigin";
-    case ID_clipPlaneNormal:   return "clipPlaneNormal";
-    case ID_colorTableName:    return "colorTableName";
-    case ID_singleColor:       return "singleColor";
-    case ID_legendFlag:        return "legendFlag";
-    case ID_lightingFlag:      return "lightingFlag";
-    case ID_relTol:            return "relTol";
-    case ID_absTol:            return "absTol";
-    case ID_maxStepLength:     return "maxStepLength";
+    case ID_minPunctures:            return "minPunctures";
+    case ID_maxPunctures:            return "maxPunctures";
+    case ID_sourceType:              return "sourceType";
+    case ID_pointSource:             return "pointSource";
+    case ID_lineStart:               return "lineStart";
+    case ID_lineEnd:                 return "lineEnd";
+    case ID_pointDensity:            return "pointDensity";
+    case ID_integrationType:         return "integrationType";
+    case ID_maxStepLength:           return "maxStepLength";
+    case ID_relTol:                  return "relTol";
+    case ID_absTol:                  return "absTol";
+    case ID_maxToroidalWinding:      return "maxToroidalWinding";
+    case ID_overrideToroidalWinding: return "overrideToroidalWinding";
+    case ID_hitRate:                 return "hitRate";
+    case ID_adjustPlane:             return "adjustPlane";
+    case ID_overlaps:                return "overlaps";
+    case ID_showCurves:              return "showCurves";
+    case ID_numberPlanes:            return "numberPlanes";
+    case ID_min:                     return "min";
+    case ID_max:                     return "max";
+    case ID_minFlag:                 return "minFlag";
+    case ID_maxFlag:                 return "maxFlag";
+    case ID_colorType:               return "colorType";
+    case ID_singleColor:             return "singleColor";
+    case ID_colorTableName:          return "colorTableName";
+    case ID_colorBy:                 return "colorBy";
+    case ID_showIslands:             return "showIslands";
+    case ID_showLines:               return "showLines";
+    case ID_showPoints:              return "showPoints";
+    case ID_verboseFlag:             return "verboseFlag";
+    case ID_legendFlag:              return "legendFlag";
+    case ID_lightingFlag:            return "lightingFlag";
     default:  return "invalid index";
     }
 }
@@ -1434,28 +1729,38 @@ PoincareAttributes::GetFieldType(int index) const
 {
     switch (index)
     {
-    case ID_termination:       return FieldType_double;
-    case ID_terminationType:   return FieldType_enum;
-    case ID_streamlineSource:  return FieldType_enum;
-    case ID_showStreamlines:   return FieldType_bool;
-    case ID_showPoints:        return FieldType_bool;
-    case ID_pointDensity:      return FieldType_int;
-    case ID_sourceRadius:      return FieldType_double;
-    case ID_pointSource:       return FieldType_doubleArray;
-    case ID_lineSourceStart:   return FieldType_doubleArray;
-    case ID_lineSourceEnd:     return FieldType_doubleArray;
-    case ID_planeSourcePoint:  return FieldType_doubleArray;
-    case ID_planeSourceNormal: return FieldType_doubleArray;
-    case ID_planeSourceUpVec:  return FieldType_doubleArray;
-    case ID_clipPlaneOrigin:   return FieldType_doubleArray;
-    case ID_clipPlaneNormal:   return FieldType_doubleArray;
-    case ID_colorTableName:    return FieldType_colortable;
-    case ID_singleColor:       return FieldType_color;
-    case ID_legendFlag:        return FieldType_bool;
-    case ID_lightingFlag:      return FieldType_bool;
-    case ID_relTol:            return FieldType_double;
-    case ID_absTol:            return FieldType_double;
-    case ID_maxStepLength:     return FieldType_double;
+    case ID_minPunctures:            return FieldType_double;
+    case ID_maxPunctures:            return FieldType_double;
+    case ID_sourceType:              return FieldType_enum;
+    case ID_pointSource:             return FieldType_doubleArray;
+    case ID_lineStart:               return FieldType_doubleArray;
+    case ID_lineEnd:                 return FieldType_doubleArray;
+    case ID_pointDensity:            return FieldType_int;
+    case ID_integrationType:         return FieldType_enum;
+    case ID_maxStepLength:           return FieldType_double;
+    case ID_relTol:                  return FieldType_double;
+    case ID_absTol:                  return FieldType_double;
+    case ID_maxToroidalWinding:      return FieldType_int;
+    case ID_overrideToroidalWinding: return FieldType_int;
+    case ID_hitRate:                 return FieldType_double;
+    case ID_adjustPlane:             return FieldType_int;
+    case ID_overlaps:                return FieldType_enum;
+    case ID_showCurves:              return FieldType_enum;
+    case ID_numberPlanes:            return FieldType_int;
+    case ID_min:                     return FieldType_double;
+    case ID_max:                     return FieldType_double;
+    case ID_minFlag:                 return FieldType_bool;
+    case ID_maxFlag:                 return FieldType_bool;
+    case ID_colorType:               return FieldType_enum;
+    case ID_singleColor:             return FieldType_color;
+    case ID_colorTableName:          return FieldType_colortable;
+    case ID_colorBy:                 return FieldType_enum;
+    case ID_showIslands:             return FieldType_bool;
+    case ID_showLines:               return FieldType_bool;
+    case ID_showPoints:              return FieldType_bool;
+    case ID_verboseFlag:             return FieldType_bool;
+    case ID_legendFlag:              return FieldType_bool;
+    case ID_lightingFlag:            return FieldType_bool;
     default:  return FieldType_unknown;
     }
 }
@@ -1480,28 +1785,38 @@ PoincareAttributes::GetFieldTypeName(int index) const
 {
     switch (index)
     {
-    case ID_termination:       return "double";
-    case ID_terminationType:   return "enum";
-    case ID_streamlineSource:  return "enum";
-    case ID_showStreamlines:   return "bool";
-    case ID_showPoints:        return "bool";
-    case ID_pointDensity:      return "int";
-    case ID_sourceRadius:      return "double";
-    case ID_pointSource:       return "doubleArray";
-    case ID_lineSourceStart:   return "doubleArray";
-    case ID_lineSourceEnd:     return "doubleArray";
-    case ID_planeSourcePoint:  return "doubleArray";
-    case ID_planeSourceNormal: return "doubleArray";
-    case ID_planeSourceUpVec:  return "doubleArray";
-    case ID_clipPlaneOrigin:   return "doubleArray";
-    case ID_clipPlaneNormal:   return "doubleArray";
-    case ID_colorTableName:    return "colortable";
-    case ID_singleColor:       return "color";
-    case ID_legendFlag:        return "bool";
-    case ID_lightingFlag:      return "bool";
-    case ID_relTol:            return "double";
-    case ID_absTol:            return "double";
-    case ID_maxStepLength:     return "double";
+    case ID_minPunctures:            return "double";
+    case ID_maxPunctures:            return "double";
+    case ID_sourceType:              return "enum";
+    case ID_pointSource:             return "doubleArray";
+    case ID_lineStart:               return "doubleArray";
+    case ID_lineEnd:                 return "doubleArray";
+    case ID_pointDensity:            return "int";
+    case ID_integrationType:         return "enum";
+    case ID_maxStepLength:           return "double";
+    case ID_relTol:                  return "double";
+    case ID_absTol:                  return "double";
+    case ID_maxToroidalWinding:      return "int";
+    case ID_overrideToroidalWinding: return "int";
+    case ID_hitRate:                 return "double";
+    case ID_adjustPlane:             return "int";
+    case ID_overlaps:                return "enum";
+    case ID_showCurves:              return "enum";
+    case ID_numberPlanes:            return "int";
+    case ID_min:                     return "double";
+    case ID_max:                     return "double";
+    case ID_minFlag:                 return "bool";
+    case ID_maxFlag:                 return "bool";
+    case ID_colorType:               return "enum";
+    case ID_singleColor:             return "color";
+    case ID_colorTableName:          return "colortable";
+    case ID_colorBy:                 return "enum";
+    case ID_showIslands:             return "bool";
+    case ID_showLines:               return "bool";
+    case ID_showPoints:              return "bool";
+    case ID_verboseFlag:             return "bool";
+    case ID_legendFlag:              return "bool";
+    case ID_lightingFlag:            return "bool";
     default:  return "invalid index";
     }
 }
@@ -1528,39 +1843,19 @@ PoincareAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
     bool retval = false;
     switch (index_)
     {
-    case ID_termination:
+    case ID_minPunctures:
         {  // new scope
-        retval = (termination == obj.termination);
+        retval = (minPunctures == obj.minPunctures);
         }
         break;
-    case ID_terminationType:
+    case ID_maxPunctures:
         {  // new scope
-        retval = (terminationType == obj.terminationType);
+        retval = (maxPunctures == obj.maxPunctures);
         }
         break;
-    case ID_streamlineSource:
+    case ID_sourceType:
         {  // new scope
-        retval = (streamlineSource == obj.streamlineSource);
-        }
-        break;
-    case ID_showStreamlines:
-        {  // new scope
-        retval = (showStreamlines == obj.showStreamlines);
-        }
-        break;
-    case ID_showPoints:
-        {  // new scope
-        retval = (showPoints == obj.showPoints);
-        }
-        break;
-    case ID_pointDensity:
-        {  // new scope
-        retval = (pointDensity == obj.pointDensity);
-        }
-        break;
-    case ID_sourceRadius:
-        {  // new scope
-        retval = (sourceRadius == obj.sourceRadius);
+        retval = (sourceType == obj.sourceType);
         }
         break;
     case ID_pointSource:
@@ -1573,94 +1868,39 @@ PoincareAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = pointSource_equal;
         }
         break;
-    case ID_lineSourceStart:
+    case ID_lineStart:
         {  // new scope
-        // Compare the lineSourceStart arrays.
-        bool lineSourceStart_equal = true;
-        for(int i = 0; i < 3 && lineSourceStart_equal; ++i)
-            lineSourceStart_equal = (lineSourceStart[i] == obj.lineSourceStart[i]);
+        // Compare the lineStart arrays.
+        bool lineStart_equal = true;
+        for(int i = 0; i < 3 && lineStart_equal; ++i)
+            lineStart_equal = (lineStart[i] == obj.lineStart[i]);
 
-        retval = lineSourceStart_equal;
+        retval = lineStart_equal;
         }
         break;
-    case ID_lineSourceEnd:
+    case ID_lineEnd:
         {  // new scope
-        // Compare the lineSourceEnd arrays.
-        bool lineSourceEnd_equal = true;
-        for(int i = 0; i < 3 && lineSourceEnd_equal; ++i)
-            lineSourceEnd_equal = (lineSourceEnd[i] == obj.lineSourceEnd[i]);
+        // Compare the lineEnd arrays.
+        bool lineEnd_equal = true;
+        for(int i = 0; i < 3 && lineEnd_equal; ++i)
+            lineEnd_equal = (lineEnd[i] == obj.lineEnd[i]);
 
-        retval = lineSourceEnd_equal;
+        retval = lineEnd_equal;
         }
         break;
-    case ID_planeSourcePoint:
+    case ID_pointDensity:
         {  // new scope
-        // Compare the planeSourcePoint arrays.
-        bool planeSourcePoint_equal = true;
-        for(int i = 0; i < 3 && planeSourcePoint_equal; ++i)
-            planeSourcePoint_equal = (planeSourcePoint[i] == obj.planeSourcePoint[i]);
-
-        retval = planeSourcePoint_equal;
+        retval = (pointDensity == obj.pointDensity);
         }
         break;
-    case ID_planeSourceNormal:
+    case ID_integrationType:
         {  // new scope
-        // Compare the planeSourceNormal arrays.
-        bool planeSourceNormal_equal = true;
-        for(int i = 0; i < 3 && planeSourceNormal_equal; ++i)
-            planeSourceNormal_equal = (planeSourceNormal[i] == obj.planeSourceNormal[i]);
-
-        retval = planeSourceNormal_equal;
+        retval = (integrationType == obj.integrationType);
         }
         break;
-    case ID_planeSourceUpVec:
+    case ID_maxStepLength:
         {  // new scope
-        // Compare the planeSourceUpVec arrays.
-        bool planeSourceUpVec_equal = true;
-        for(int i = 0; i < 3 && planeSourceUpVec_equal; ++i)
-            planeSourceUpVec_equal = (planeSourceUpVec[i] == obj.planeSourceUpVec[i]);
-
-        retval = planeSourceUpVec_equal;
-        }
-        break;
-    case ID_clipPlaneOrigin:
-        {  // new scope
-        // Compare the clipPlaneOrigin arrays.
-        bool clipPlaneOrigin_equal = true;
-        for(int i = 0; i < 3 && clipPlaneOrigin_equal; ++i)
-            clipPlaneOrigin_equal = (clipPlaneOrigin[i] == obj.clipPlaneOrigin[i]);
-
-        retval = clipPlaneOrigin_equal;
-        }
-        break;
-    case ID_clipPlaneNormal:
-        {  // new scope
-        // Compare the clipPlaneNormal arrays.
-        bool clipPlaneNormal_equal = true;
-        for(int i = 0; i < 3 && clipPlaneNormal_equal; ++i)
-            clipPlaneNormal_equal = (clipPlaneNormal[i] == obj.clipPlaneNormal[i]);
-
-        retval = clipPlaneNormal_equal;
-        }
-        break;
-    case ID_colorTableName:
-        {  // new scope
-        retval = (colorTableName == obj.colorTableName);
-        }
-        break;
-    case ID_singleColor:
-        {  // new scope
-        retval = (singleColor == obj.singleColor);
-        }
-        break;
-    case ID_legendFlag:
-        {  // new scope
-        retval = (legendFlag == obj.legendFlag);
-        }
-        break;
-    case ID_lightingFlag:
-        {  // new scope
-        retval = (lightingFlag == obj.lightingFlag);
+        retval = (maxStepLength == obj.maxStepLength);
         }
         break;
     case ID_relTol:
@@ -1673,9 +1913,109 @@ PoincareAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (absTol == obj.absTol);
         }
         break;
-    case ID_maxStepLength:
+    case ID_maxToroidalWinding:
         {  // new scope
-        retval = (maxStepLength == obj.maxStepLength);
+        retval = (maxToroidalWinding == obj.maxToroidalWinding);
+        }
+        break;
+    case ID_overrideToroidalWinding:
+        {  // new scope
+        retval = (overrideToroidalWinding == obj.overrideToroidalWinding);
+        }
+        break;
+    case ID_hitRate:
+        {  // new scope
+        retval = (hitRate == obj.hitRate);
+        }
+        break;
+    case ID_adjustPlane:
+        {  // new scope
+        retval = (adjustPlane == obj.adjustPlane);
+        }
+        break;
+    case ID_overlaps:
+        {  // new scope
+        retval = (overlaps == obj.overlaps);
+        }
+        break;
+    case ID_showCurves:
+        {  // new scope
+        retval = (showCurves == obj.showCurves);
+        }
+        break;
+    case ID_numberPlanes:
+        {  // new scope
+        retval = (numberPlanes == obj.numberPlanes);
+        }
+        break;
+    case ID_min:
+        {  // new scope
+        retval = (min == obj.min);
+        }
+        break;
+    case ID_max:
+        {  // new scope
+        retval = (max == obj.max);
+        }
+        break;
+    case ID_minFlag:
+        {  // new scope
+        retval = (minFlag == obj.minFlag);
+        }
+        break;
+    case ID_maxFlag:
+        {  // new scope
+        retval = (maxFlag == obj.maxFlag);
+        }
+        break;
+    case ID_colorType:
+        {  // new scope
+        retval = (colorType == obj.colorType);
+        }
+        break;
+    case ID_singleColor:
+        {  // new scope
+        retval = (singleColor == obj.singleColor);
+        }
+        break;
+    case ID_colorTableName:
+        {  // new scope
+        retval = (colorTableName == obj.colorTableName);
+        }
+        break;
+    case ID_colorBy:
+        {  // new scope
+        retval = (colorBy == obj.colorBy);
+        }
+        break;
+    case ID_showIslands:
+        {  // new scope
+        retval = (showIslands == obj.showIslands);
+        }
+        break;
+    case ID_showLines:
+        {  // new scope
+        retval = (showLines == obj.showLines);
+        }
+        break;
+    case ID_showPoints:
+        {  // new scope
+        retval = (showPoints == obj.showPoints);
+        }
+        break;
+    case ID_verboseFlag:
+        {  // new scope
+        retval = (verboseFlag == obj.verboseFlag);
+        }
+        break;
+    case ID_legendFlag:
+        {  // new scope
+        retval = (legendFlag == obj.legendFlag);
+        }
+        break;
+    case ID_lightingFlag:
+        {  // new scope
+        retval = (lightingFlag == obj.lightingFlag);
         }
         break;
     default: retval = false;
@@ -1687,4 +2027,105 @@ PoincareAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
 ///////////////////////////////////////////////////////////////////////////////
 // User-defined methods.
 ///////////////////////////////////////////////////////////////////////////////
+
+// ****************************************************************************
+// Method: PoincareAttributes::ChangesRequireRecalculation
+//
+// Purpose: 
+//   Determine if attribute changes require recalculation.
+//
+// Programmer: Dave Pugmire
+// Creation:   Tues Oct 21 14:22:17 EDT 2008
+//
+// Modifications:
+//
+// ****************************************************************************
+
+bool
+PoincareAttributes::ChangesRequireRecalculation(const PoincareAttributes &obj) const
+{
+    return StreamlineAttsRequireRecalculation(obj) ||
+           PoincareAttsRequireRecalculation(obj);
+}
+
+// ****************************************************************************
+// Method: PoincareAttributes::StreamlineAttsRequireRecalculation
+//
+// Purpose: 
+//   Determine if streamline attribute changes require recalculation.
+//
+// Programmer: Dave Pugmire
+// Creation:   Tues Oct 21 14:22:17 EDT 2008
+//
+// Modifications:
+//
+// ****************************************************************************
+
+#define PDIF(p1,p2,i) ((p1)[i] != (p2)[i])
+#define POINT_DIFFERS(p1,p2) (PDIF(p1,p2,0) || PDIF(p1,p2,1) || PDIF(p1,p2,2))
+
+bool
+PoincareAttributes::StreamlineAttsRequireRecalculation(const PoincareAttributes &obj) const
+{
+    // If we're in point source mode and the points differ, sourcePointsDiffer
+    // evaluates to true.
+    bool sourcePointsDiffer = ((sourceType == SpecifiedPoint) &&
+                               POINT_DIFFERS(pointSource, obj.pointSource));
+
+    // If we're in line source mode and the line differs, sourceLineDiffers
+    // evaluates to true.
+    bool sourceLineDiffers = ((sourceType == SpecifiedLine) &&
+                              (POINT_DIFFERS(lineStart, obj.lineStart) ||
+                               POINT_DIFFERS(lineEnd, obj.lineEnd)));
+    
+    // Other things need to be true before we start paying attention to
+    // point density.
+    bool densityMatters = ((sourceType == SpecifiedLine) &&
+			   (pointDensity != obj.pointDensity));
+
+    return (minPunctures != obj.minPunctures ||
+	    maxPunctures != obj.maxPunctures ||
+	    sourcePointsDiffer ||
+	    sourceLineDiffers ||
+	    densityMatters ||
+
+	    sourceType != obj.sourceType ||
+	    integrationType != obj.integrationType ||
+	    maxStepLength != obj.maxStepLength ||
+	    relTol != obj.relTol ||
+	    absTol != obj.absTol);
+}
+
+// ****************************************************************************
+// Method: PoincareAttributes::PoincareAttsRequireRecalculation
+//
+// Purpose: 
+//   Determine if poincare attribute changes require recalculation.
+//
+// Programmer: Dave Pugmire
+// Creation:   Tues Oct 21 14:22:17 EDT 2008
+//
+// Modifications:
+//
+// ****************************************************************************
+
+bool
+PoincareAttributes::PoincareAttsRequireRecalculation(const PoincareAttributes &obj) const
+{
+    return maxToroidalWinding != obj.maxToroidalWinding ||
+           overrideToroidalWinding != obj.overrideToroidalWinding ||
+           hitRate != obj.hitRate ||
+           adjustPlane != obj.adjustPlane ||
+           overlaps != obj.overlaps ||
+
+           showCurves != obj.showCurves ||
+           numberPlanes != obj.numberPlanes ||
+
+           colorBy != obj.colorBy ||
+
+           showIslands != obj.showIslands ||
+           showLines != obj.showLines ||
+           showPoints != obj.showPoints ||
+           verboseFlag != obj.verboseFlag;
+}
 

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -51,12 +51,13 @@
 #include <vector>
 #include <string>
 #include <avtMatrix.h>
-#include <PlotInfoAttributes.h>
 
 class     avtDataObjectString;
 class     avtDataObjectWriter;
 class     avtExtents;
 class     avtWebpage;
+class     PlotInfoAttributes;
+
 
 // ****************************************************************************
 //  Method: avtDataAttributes
@@ -241,12 +242,11 @@ class     avtWebpage;
 //    Added extents that can be associated with individual components of
 //    array variables.
 //
-//    Brad Whitlock, Wed Jan  7 11:25:36 PST 2009
-//    I made PlotInfoAttributes be a non-pointer member since I want it to
-//    always exist so many filters can append to it.
-//
 //    Hank Childs, Tue Jan 20 12:03:05 CST 2009
 //    Added dynamicDomainDecomposition.
+//
+//    Jeremy Meredith, Tue Jun  2 16:25:01 EDT 2009
+//    Added support for unit cell origin (previously assumed to be 0,0,0);
 //
 // ****************************************************************************
 
@@ -503,6 +503,11 @@ class PIPELINE_API avtDataAttributes
     void                     SetUnitCellVectors(const float *v)
                              { for (int i=0;i<9;i++) unitCellVectors[i]=v[i]; }
 
+    const float             *GetUnitCellOrigin(void) const
+                                   { return unitCellOrigin; }
+    void                     SetUnitCellOrigin(const float *v)
+                             { for (int i=0;i<3;i++) unitCellOrigin[i]=v[i]; }
+
     bool                     GetRectilinearGridHasTransform() const
                              { return rectilinearGridHasTransform; }
     void                     SetRectilinearGridHasTransform(bool v)
@@ -513,10 +518,9 @@ class PIPELINE_API avtDataAttributes
     void                     SetRectilinearGridTransform(const double *v)
                    { for (int i=0;i<16;i++) rectilinearGridTransform[i]=v[i]; }
 
-    const PlotInfoAttributes &GetPlotInformation() const
+    const PlotInfoAttributes *GetPlotInfoAtts(void) const
                                    { return plotInfoAtts; };
-    void                      AddPlotInformation(const std::string &key,
-                                                 const MapNode &info);
+    void                     SetPlotInfoAtts(const PlotInfoAttributes *);
 
     void                     DebugDump(avtWebpage *);
 
@@ -552,6 +556,7 @@ class PIPELINE_API avtDataAttributes
     avtMeshCoordType         meshCoordType;
     bool                     nodesAreCritical;
     float                    unitCellVectors[9];
+    float                    unitCellOrigin[3];
     bool                     rectilinearGridHasTransform;
     double                   rectilinearGridTransform[16];
 
@@ -607,7 +612,7 @@ class PIPELINE_API avtDataAttributes
 
     std::vector<bool>        selectionsApplied;
 
-    PlotInfoAttributes       plotInfoAtts;
+    PlotInfoAttributes      *plotInfoAtts;
 
     void                     WriteLabels(avtDataObjectString &,
                                          const avtDataObjectWriter *);

@@ -1,4 +1,4 @@
-#                         Copyright (c) 2000 - 2008
+#                         Copyright (c) 2000 - 2009
 #                  Lawrence Livermore National Security, LLC
 #            Produced at the Lawrence Livermore National Laboratory
 #                              LLNL-CODE-400124
@@ -86,9 +86,6 @@
 #    Eric Brugger, Fri Jun 29 09:43:34 PDT 2007
 #    Removed the setting of the NOT_DISTRIB variable.
 #
-#    Brad Whitlock, Fri May  9 10:22:52 PDT 2008
-#    Qt 4.
-#
 ##############################################################################
 
 ##
@@ -97,7 +94,7 @@
 @SET_MAKE@
 @VARIABLES@
 
-CXXFLAGS=@CXXFLAGS@ $(QT_CXXFLAGS)
+CXXFLAGS=@CXXFLAGS@ @QT_CXXFLAGS@
 CPPFLAGS=@CPPFLAGS@ -I. -I../include/visit @VTK_INCLUDES@
 
 ##
@@ -112,7 +109,7 @@ MOCOBJ=$(MOCSRC:.C=.o)
 
 OBJ=$(SRC:.C=.o) $(MOCOBJ)
 LIB=libvtkqt
-LIBS=$(QT_LDFLAGS) $(VTK_LIBS) $(MESA_LIBS) $(QT_CORE_LIB) $(QT_GUI_LIB) $(QT_OPENGL_LIB) $(GL_LIBS) $(X_LIBS)
+LIBS=@QT_LDFLAGS@ @QT_LIBS@ @VTK_LIBS@ @MESA_LIBS@ @GL_LIBS@ $(X_LIBS)
 
 ##
 ## Standard targets...

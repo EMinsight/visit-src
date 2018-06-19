@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,7 +37,7 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                          avtExpressionDataTreeIterator.C                          //
+//                     avtExpressionDataTreeIterator.C                       //
 // ************************************************************************* //
 
 #include <avtExpressionDataTreeIterator.h>
@@ -171,6 +171,14 @@ avtExpressionDataTreeIterator::~avtExpressionDataTreeIterator()
 //    Hank Childs, Sun Jan 13 20:26:34 PST 2008
 //    Add support for constant singletons.
 //
+//    Kathleen Bonnell, Tue Apr  7 07:55:25 PDT 2009
+//    Delete dat before early return.
+//
+//    Jeremy Meredith, Tue Apr 28 13:53:48 EDT 2009
+//    Had it detect singletons or ambiguous cases before comparing
+//    with ncells and npts.  (The old way would do the wrong thing
+//    for single-cell data sets.)
+//
 // ****************************************************************************
 
 vtkDataSet *
@@ -221,21 +229,21 @@ avtExpressionDataTreeIterator::ExecuteData(vtkDataSet *in_ds, int index,
     int ncells = rv->GetNumberOfCells();
     int ntups  = dat->GetNumberOfTuples();
     bool isPoint = false;
-    if ((ntups == ncells) && (ntups != npts))
-    {
-        isPoint = false;
-    }
-    else if ((ntups == npts) && (ntups != ncells))
-    {
-        isPoint = true;
-    }
-    else if ((ntups == npts) && (ntups == ncells))
+    if ((ntups == npts) && (ntups == ncells))
     {
         isPoint = IsPointVariable();
     }
     else if (ntups == 1) // Constant singleton.
     {
         isPoint = IsPointVariable();
+    }
+    else if ((ntups == ncells) && (ntups != npts))
+    {
+        isPoint = false;
+    }
+    else if ((ntups == npts) && (ntups != ncells))
+    {
+        isPoint = true;
     }
     else
     {
@@ -245,6 +253,7 @@ avtExpressionDataTreeIterator::ExecuteData(vtkDataSet *in_ds, int index,
         debug1 << "Ntuples = " << ntups << endl;
         debug1 << "Ncells = " << ncells << endl;
         debug1 << "Npts = " << npts << endl;
+        dat->Delete();
         return rv;
     }
 

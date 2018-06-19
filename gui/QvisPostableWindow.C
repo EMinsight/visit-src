@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -36,9 +36,9 @@
 *
 *****************************************************************************/
 
-#include <QPushButton>
-#include <QLayout>
-#include <QScrollArea>
+#include <qpushbutton.h>
+#include <qlayout.h>
+#include <qscrollview.h>
 
 #include <QvisPostableWindow.h>
 #include <QvisNotepadArea.h>
@@ -87,8 +87,12 @@ QvisPostableWindow::QvisPostableWindow(const QString &captionString,
 
     isCreated = false;
     isPosted = false;
+    central = 0;
+    topLayout = 0;
+    postButton = 0;
+    dismissButton = 0;    
     notepad = n;
-    addLayoutStretch = true;
+    addStretch = (notepad != 0);
 }
 
 // ****************************************************************************
@@ -127,9 +131,6 @@ QvisPostableWindow::~QvisPostableWindow()
 //   Brad Whitlock, Fri Sep 5 15:54:03 PST 2003
 //   Added postWhenShown.
 //
-//   Brad Whitlock, Fri Jun  6 10:14:30 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
@@ -137,7 +138,7 @@ QvisPostableWindow::CreateNode(DataNode *parentNode)
 {
     if(saveWindowDefaults)
     {
-        DataNode *node = new DataNode(windowTitle().toStdString());
+        DataNode *node = new DataNode(std::string(caption().latin1()));
         parentNode->AddNode(node);
 
         // Add generic window attributes
@@ -191,9 +192,6 @@ QvisPostableWindow::CreateNode(DataNode *parentNode)
 //   Brad Whitlock, Wed Nov 22 09:56:26 PDT 2006
 //   Added code to override the window location if an anchor has been provided.
 //
-//   Brad Whitlock, Fri Jun  6 10:14:48 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
@@ -204,7 +202,7 @@ QvisPostableWindow::SetFromNode(DataNode *parentNode, const int *borders)
     if((pwsNode = parentNode->GetNode("postWhenShown")) != 0)
         postWhenShown = pwsNode->AsBool();
 
-    DataNode *winNode = parentNode->GetNode(windowTitle().toStdString());
+    DataNode *winNode = parentNode->GetNode(std::string(caption().latin1()));
     if(winNode == 0)
         return;
 
@@ -303,6 +301,48 @@ QvisPostableWindow::SetPostEnabled(bool v)
 }
 
 // ****************************************************************************
+// Method: QvisPostableWindow::SetDismissEnabled
+//
+// Purpose: 
+//   Sets whether window dismissing is enabled.
+//
+// Arguments:
+//   v : True if enabled; false otherwise.
+//
+// Programmer: Brad Whitlock
+// Creation:   Thu Jul 23 14:58:23 PDT 2009
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+QvisPostableWindow::SetDismissEnabled(bool v)
+{
+    if(dismissButton != 0)
+        dismissButton->setEnabled(v);
+}
+
+// ****************************************************************************
+// Method: QvisPostableWindow::SetAddStretch
+//
+// Purpose: 
+//   Sets whether to add stretch to the layout.
+//
+// Programmer: Brad Whitlock
+// Creation:   Thu Jul 23 16:13:12 PDT 2009
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+QvisPostableWindow::SetAddStretch(bool v)
+{
+    addStretch = v;
+}
+
+// ****************************************************************************
 // Method: QvisPostableWindow::show
 //
 // Purpose: 
@@ -319,9 +359,6 @@ QvisPostableWindow::SetPostEnabled(bool v)
 //
 //   Brad Whitlock, Tue Apr  8 15:26:49 PDT 2008
 //   Support for internationalization.
-//
-//   Brad Whitlock, Fri Jun  6 10:24:17 PDT 2008
-//   Qt 4.
 //
 // ****************************************************************************
 
@@ -345,8 +382,7 @@ QvisPostableWindow::show()
         {
             // Call code to unpost the window.
             notepad->postWindow(this);
-            central->setParent(this);
-            central->show();
+            central->reparent(this, 0, QPoint(0,0), true);
             setCentralWidget(central);
             isPosted = false;
 
@@ -474,10 +510,7 @@ QvisPostableWindow::post()
 // Modifications:
 //   Brad Whitlock, Tue Apr  8 15:26:49 PDT 2008
 //   Support for internationalization.
-//
-//   Brad Whitlock, Fri Jun  6 10:25:12 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
@@ -499,8 +532,7 @@ QvisPostableWindow::unpost()
         {
             // Unpost the window
             notepad->postWindow(this);
-            central->setParent(this);
-            central->show();
+            central->reparent(this, 0, QPoint(0,0), true);
             setCentralWidget(central);
 
             // Show the main window
@@ -528,10 +560,7 @@ QvisPostableWindow::unpost()
 // Modifications:
 //   Brad Whitlock, Tue Apr  8 15:26:49 PDT 2008
 //   Support for internationalization.
-//
-//   Brad Whitlock, Fri Jun  6 10:25:46 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
@@ -544,8 +573,7 @@ QvisPostableWindow::hide()
 
         // Now that the window is unposted, reparent it to this widget
         // since the act of posting it reparented it to the notepad area.
-        central->setParent(this);
-        central->show();
+        central->reparent(this, 0, QPoint(0,0), true);
         setCentralWidget(central);
         postButton->setText(tr("Post"));
 
@@ -649,8 +677,8 @@ QvisPostableWindow::GetShortCaption()
 //   Brad Whitlock, Tue Apr  8 15:26:49 PDT 2008
 //   Support for internationalization.
 //
-//   Brad Whitlock, Fri May 30 10:01:20 PDT 2008
-//   Qt 4.
+//   Brad Whitlock, Thu Jul 23 16:13:47 PDT 2009
+//   I made adding stretch optional.
 //
 // ****************************************************************************
 
@@ -669,24 +697,24 @@ QvisPostableWindow::CreateEntireWindow()
         central = new QWidget( this );
         setCentralWidget( central );
         topCentral = central;
-        topLayout = new QVBoxLayout(central);
+        topLayout = new QVBoxLayout(central, 10);
         vLayout = topLayout;
     }
     else
     {
         topCentral = new QWidget(this);
-        vLayout = new QVBoxLayout(topCentral);
+        vLayout = new QVBoxLayout(topCentral, 10);
         vLayout->setSpacing(5);
         setCentralWidget( topCentral );
         
-        QScrollArea *sv = new QScrollArea(topCentral);
-        sv->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-        sv->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-        sv->setWidgetResizable(true);
-        central = new QWidget(0);
-        sv->setWidget(central);
+        QScrollView *sv = new QScrollView(topCentral);
+        sv->setHScrollBarMode(QScrollView::Auto);
+        sv->setVScrollBarMode(QScrollView::Auto);
+        sv->setResizePolicy(QScrollView::AutoOneFit);
+        central = new QWidget(sv->viewport());
+        sv->addChild(central);
         vLayout->addWidget(sv);
-        topLayout = new QVBoxLayout(central);
+        topLayout = new QVBoxLayout(central, 10);
     }
 
     // Call the Sub-class's CreateWindowContents function to create the
@@ -695,14 +723,15 @@ QvisPostableWindow::CreateEntireWindow()
 
     // Create a button layout and the buttons.
     vLayout->addSpacing(10);
-    QHBoxLayout *buttonLayout = new QHBoxLayout(0);
-    vLayout->addLayout(buttonLayout);
+    QHBoxLayout *buttonLayout = new QHBoxLayout(vLayout);
     buttonLayout->addStretch();
-    postButton = new QPushButton(tr("Post"));
+    postButton = new QPushButton(tr("Post"), topCentral,
+        "postButton");
     buttonLayout->addWidget(postButton);
-    dismissButton = new QPushButton(tr("Dismiss"));
+    dismissButton = new QPushButton(tr("Dismiss"), topCentral,
+        "dismissButton");
     buttonLayout->addWidget(dismissButton);
-    if(notepad != 0 && addLayoutStretch)
+    if(addStretch)
         vLayout->addStretch(0);
 
     // Make the window post itself when the post button is clicked.

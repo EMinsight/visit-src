@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -86,16 +86,13 @@ class QGroupBox;
 //    Brad Whitlock, Fri Mar 7 10:55:40 PDT 2008
 //    Added some group boxes.
 //
-//   Cyrus Harrison, Thu May 15 15:04:20 PDT 2008
-//   Ported to Qt 4.4
-//
 // ****************************************************************************
 
 class XMLEditPlugin : public QFrame
 {
     Q_OBJECT
   public:
-    XMLEditPlugin(QWidget *p);
+    XMLEditPlugin(QWidget *p, const QString &n);
     void SetDocument(XMLDocument *doc) { xmldoc = doc; }
     void BlockAllSignals(bool);
   public slots:

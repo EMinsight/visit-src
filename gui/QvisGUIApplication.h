@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -41,7 +41,8 @@
 #include <gui_exports.h>
 #include <vector>
 #include <string>
-#include <QObject>
+#include <qobject.h>
+#include <qstringlist.h>
 #include <visit-config.h>
 #include <ViewerProxy.h>
 #include <ConfigManager.h>
@@ -398,9 +399,6 @@ private:
     void RestoreCrashRecoveryFile();
     void RemoveCrashRecoveryFile(bool) const;
     QString CrashRecoveryFile() const;
-    
-    void ExtractSystemDefaultAppearance();
-        
 public slots:
     void newExpression();
     void SaveCrashRecoveryFile();

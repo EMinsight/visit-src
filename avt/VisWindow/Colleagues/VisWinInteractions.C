@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -129,9 +129,6 @@ VisWinInteractions::~VisWinInteractions()
 //    Jeremy Meredith, Mon Jan 28 17:59:07 EST 2008
 //    Added axis array mode.
 //
-//    Eric Brugger, Tue Dec  9 14:22:33 PST 2008
-//    Added the AxisParallel window mode.
-//
 // ****************************************************************************
 
 void
@@ -150,9 +147,6 @@ VisWinInteractions::SetInteractionMode(INTERACTION_MODE m)
         break;
       case WINMODE_AXISARRAY:
         StopAxisArrayMode();
-        break;
-      case WINMODE_AXISPARALLEL:
-        StopAxisParallelMode();
         break;
       case WINMODE_NONE:
       default:
@@ -174,9 +168,6 @@ VisWinInteractions::SetInteractionMode(INTERACTION_MODE m)
         break;
       case WINMODE_AXISARRAY:
         StartAxisArrayMode();
-        break;
-      case WINMODE_AXISPARALLEL:
-        StartAxisParallelMode();
         break;
       case WINMODE_NONE:
       default:
@@ -302,28 +293,6 @@ VisWinInteractions::StartAxisArrayMode(void)
 }
 
 // ****************************************************************************
-//  Method: VisWinInteractions::StartAxisParallelMode
-//
-//  Purpose:
-//      Sets the appropriate interactor for AxisParallel mode.
-//
-//  Programmer: Eric Brugger
-//  Creation:   December 9, 2008
-//
-//  Modifications:
-//
-// ****************************************************************************
-
-void
-VisWinInteractions::StartAxisParallelMode(void)
-{
-    if(hotPointInteractor != NULL)
-    {
-        hotPointInteractor->StartAxisParallelMode(mode);
-    }
-}
-
-// ****************************************************************************
 //  Method: VisWinInteractions::Stop2DMode
 //
 //  Purpose:
@@ -416,29 +385,6 @@ VisWinInteractions::StopAxisArrayMode(void)
     if(hotPointInteractor != NULL)
     {
         hotPointInteractor->StopAxisArrayMode();
-    }
-}
-
-
-// ****************************************************************************
-//  Method: VisWinInteractions::StopAxisParallelMode
-//
-//  Purpose:
-//      Stops the AxisParallel interactions.
-//
-//  Programmer: Eric Brugger
-//  Creation:   December 9, 2008
-//
-//  Modifications:
-//
-// ****************************************************************************
-
-void
-VisWinInteractions::StopAxisParallelMode(void)
-{
-    if(hotPointInteractor != NULL)
-    {
-        hotPointInteractor->StopAxisParallelMode();
     }
 }
 
@@ -602,17 +548,13 @@ VisWinInteractions::NoPlots(void)
 //    Jeremy Meredith, Thu Jan 31 14:41:50 EST 2008
 //    Added new AxisArray window mode; no lineout support for it.
 //
-//    Eric Brugger, Tue Dec  9 14:22:33 PST 2008
-//    Added the AxisParallel window mode.
-//
 // ****************************************************************************
 
 void
 VisWinInteractions::HasPlots(void)
 {
     if (!((mediator.GetMode() == WINMODE_3D
-           || mediator.GetMode() == WINMODE_AXISARRAY
-           || mediator.GetMode() == WINMODE_AXISPARALLEL) &&
+           || mediator.GetMode() == WINMODE_AXISARRAY) &&
           mode == LINEOUT))
     {
         SetInteractionMode(mode);

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -40,7 +40,8 @@
 #define QvisAbstractOpacityBar_H
 #include <gui_exports.h>
 
-#include <QFrame>
+#include <qframe.h>
+class QPixmap;
 class QImage;
 class ColorControlPointList;
 
@@ -54,53 +55,36 @@ class ColorControlPointList;
 //  Creation:    January 30, 2001
 //
 //  Modifications:
+//
 //    Gunther Weber, Fri Apr  6 16:04:52 PDT 2007
 //    Added support for painting in the color spectrum.
 //
-//    Brad Whitlock, Fri May 30 09:32:22 PDT 2008
-//    Qt 4.
-//
-//    Brad Whitlock, Thu Dec 18 10:55:02 PST 2008
-//    I added histogram textures.
-//
 // ****************************************************************************
-
 class GUI_API QvisAbstractOpacityBar : public QFrame
 {
     Q_OBJECT
-public:
-                   QvisAbstractOpacityBar(QWidget *parent=NULL);
+  public:
+                   QvisAbstractOpacityBar(QWidget *parent=NULL, const char *name=NULL);
     virtual       ~QvisAbstractOpacityBar();
     virtual float *getRawOpacities(int) = 0;
-    void           setBackgroundColorControlPoints(const ColorControlPointList *ccp);
+    void           SetBackgroundColorControlPoints(const ColorControlPointList *ccp);
 
-    void           setHistogramTexture(const float *t, int ts);
-
-signals:
-    void           mouseReleased();
-
-protected:
+  protected:
     int            val2x(float);
     float          x2val(int);
     int            val2y(float);
     float          y2val(int);
 
-    void           drawColorBackground();
-    void           drawFilledCurve(float *curve, int nc, const QColor &cc, float opac);
-    void           imageDirty();
-
     virtual void   paintEvent(QPaintEvent*);
     virtual void   resizeEvent(QResizeEvent*);
-    virtual void   drawOpacities() = 0;
+    virtual void   paintToPixmap(int,int) = 0;
 
-    QImage        *image;
+    QPixmap       *pix;
     const ColorControlPointList
                   *backgroundColorControlPoints;
-    float         *histTexture;
-    int            histTextureSize;
 
-private:
-    bool           ensureImageExists(int,int);
+  signals:
+    void           mouseReleased();
 };
 
 #endif

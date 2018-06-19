@@ -1,8 +1,8 @@
 // ****************************************************************************
 //
-// Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400142
+// LLNL-CODE-400124
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -3239,6 +3239,23 @@ public class ViewerMethods
     {
         GetViewerState().GetViewerRPC().SetRPCType(ViewerRPC.VIEWERRPCTYPE_SETQUERYFLOATFORMATRPC);
         GetViewerState().GetViewerRPC().SetStringArg1(format);
+        GetViewerState().GetViewerRPC().Notify();
+        return Synchronize();
+    }
+
+    /**
+     * Tells the viewer to send back plot information that was created by the specified
+     * plot.
+     *
+     * @param plotID The index of the plot in the plot list (>=0).
+     * @param winID The index of the visualization window that contains the plot (>=1).
+     * @return true on success; false otherwise.
+     */
+    public boolean UpdatePlotInfoAtts(int plotID, int winID)
+    {
+        GetViewerState().GetViewerRPC().SetRPCType(ViewerRPC.VIEWERRPCTYPE_UPDATEPLOTINFOATTSRPC);
+        GetViewerState().GetViewerRPC().SetWindowId(winID);
+        GetViewerState().GetViewerRPC().SetIntArg1(plotID);
         GetViewerState().GetViewerRPC().Notify();
         return Synchronize();
     }

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -40,7 +40,8 @@
 #define QVIS_IMAGE_ANNOTATION_INTERFACE_H
 
 #include <QvisAnnotationObjectInterface.h>
-#include <QString>
+
+#include <qstring.h>
 
 class QCheckBox;
 class QComboBox;
@@ -48,7 +49,6 @@ class QLineEdit;
 class QSpinBox;
 
 class QvisColorButton;
-class QvisDialogLineEdit;
 class QvisOpacitySlider;
 class QvisScreenPositionEdit;
 
@@ -64,17 +64,16 @@ class QvisScreenPositionEdit;
 // Creation:   Fri Oct 31 12:47:34 PDT 2003
 //
 // Modifications:
-//   Brad Whitlock, Thu Jun 26 14:57:22 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
-class GUI_API QvisImageAnnotationInterface : public QvisAnnotationObjectInterface
+class GUI_API QvisImageAnnotationInterface:
+  public QvisAnnotationObjectInterface
 {
     Q_OBJECT
 
 public:
-    QvisImageAnnotationInterface(QWidget *parent);
+    QvisImageAnnotationInterface(QWidget *parent, const char *name = 0);
     virtual ~QvisImageAnnotationInterface();
 
     virtual QString GetName() const { return "Image"; }
@@ -87,6 +86,7 @@ protected:
 
 private slots:
     void imageSourceChanged(const QString &);
+    void imageSourceEdit(); 
     void positionStartChanged(double, double);
     void widthChanged(int);
     void heightChanged(int);
@@ -97,7 +97,8 @@ private slots:
     void visibilityToggled(bool);
 
 private:
-    QvisDialogLineEdit     *imageSource;
+    QString                 initialDir;
+    QLineEdit              *imageSource;
     QvisScreenPositionEdit *positionStartEdit;
     QSpinBox               *widthSpinBox;
     QSpinBox               *heightSpinBox;

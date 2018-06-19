@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -76,10 +76,10 @@ class QvisDeferExpressionWindow : public QvisOperatorWindow
     Q_OBJECT
   public:
     QvisDeferExpressionWindow(const int type,
-                              DeferExpressionAttributes *subj,
-                              const QString &caption = QString::null,
-                              const QString &shortName = QString::null,
-                              QvisNotepadArea *notepad = 0);
+                         DeferExpressionAttributes *subj,
+                         const QString &caption = QString::null,
+                         const QString &shortName = QString::null,
+                         QvisNotepadArea *notepad = 0);
     virtual ~QvisDeferExpressionWindow();
     virtual void CreateWindowContents();
   protected:
@@ -91,8 +91,8 @@ class QvisDeferExpressionWindow : public QvisOperatorWindow
   private:
 
     DeferExpressionAttributes *atts;
-    QvisVariableButton        *varsButton;
-    QLineEdit                 *varsLineEdit;
+    QvisVariableButton  *varsButton;
+    QLineEdit           *varsLineEdit;
 };
 
 

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -82,10 +82,6 @@ class     vtkMatrix4x4;
 //    Hank Childs, Wed Aug 27 11:24:53 PDT 2008
 //    Add support for non-floats.
 //
-//    Hank Childs, Wed Dec 24 11:24:47 PST 2008
-//    Remove data member ProportionSpaceToZBufferSpace, as we now do our
-//    sampling in even intervals (wbuffer).
-//
 // ****************************************************************************
 
 class AVTFILTERS_API avtMassVoxelExtractor : public avtExtractor
@@ -111,6 +107,7 @@ class AVTFILTERS_API avtMassVoxelExtractor : public avtExtractor
     double           aspect;
     double           cur_clip_range[2];
     vtkMatrix4x4    *view_to_world_transform;
+    float           *ProportionSpaceToZBufferSpace;
 
     float           *X;
     float           *Y;
@@ -132,9 +129,9 @@ class AVTFILTERS_API avtMassVoxelExtractor : public avtExtractor
     int             *ind_buffer;
     bool            *valid_sample;
 
-    // We repeatedly divide by the term (X[i+1]-X[i]).  In the interest of
+    // We repeaated divide by the term (X[i+1]-X[i]).  In the interest of
     // performance, cache the term 1./(X[i+1]-X[i]) and use that for faster
-    // multiplication.  This sped up total performance by about 5%.
+    // multiplication.  This speed up total performance by about 5%.
     float           *divisors_X;
     float           *divisors_Y;
     float           *divisors_Z;

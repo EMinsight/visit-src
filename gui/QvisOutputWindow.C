@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -36,11 +36,11 @@
 *
 *****************************************************************************/
 
-#include <QLayout>
-#include <QPushButton>
-#include <QString>
-#include <QTabWidget>
-#include <QTextEdit>
+#include <qmultilineedit.h>
+#include <qtabwidget.h>
+#include <qpushbutton.h>
+#include <qlayout.h>
+#include <qstring.h>
 
 #include <QvisOutputWindow.h>
 #include <QvisMainWindow.h>
@@ -122,10 +122,10 @@ void
 QvisOutputWindow::CreateWindowContents()
 {
     // Create a multi line edit to display the text.
-    outputText = new QTextEdit(central);
+    outputText = new QMultiLineEdit(central, "outputText");
     outputText->setMinimumWidth(fontMetrics().width("MESSAGE: Closed the "
         "compute engine on host"));
-    outputText->setWordWrapMode(QTextOption::WordWrap);
+    outputText->setWordWrap(QMultiLineEdit::WidgetWidth);
     outputText->setReadOnly(true);
     topLayout->addWidget(outputText);
 }
@@ -156,9 +156,6 @@ QvisOutputWindow::CreateWindowContents()
 //   Brad Whitlock, Tue Apr 29 10:21:44 PDT 2008
 //   Support for internationalization.
 //
-//   Brad Whitlock, Fri May 30 15:40:17 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
@@ -182,7 +179,8 @@ QvisOutputWindow::UpdateWindow(bool)
     temp += QString("\n");
 
     // Add the line of text.
-    outputText->append(temp);
+    outputText->insertLine(temp);
+    outputText->setCursorPosition(outputText->numLines() - 1, 0);
 
     // If the window is visible then tell the main window to turn its
     // unread icon back to blue.

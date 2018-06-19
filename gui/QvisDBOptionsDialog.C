@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,13 +37,11 @@
 *****************************************************************************/
 
 #include <QvisDBOptionsDialog.h>
-#include <QLayout>
-#include <QPushButton>
-#include <QComboBox>
-#include <QCheckBox>
-#include <QLineEdit>
-
-#include <DebugStream.h>
+#include <qlayout.h>
+#include <qpushbutton.h>
+#include <qcombobox.h>
+#include <qcheckbox.h>
+#include <qlineedit.h>
 #include <DBOptionsAttributes.h>
 
 // ****************************************************************************
@@ -62,27 +60,24 @@
 // Creation:   Tue Apr  8 11:12:48 PDT 2008
 //
 // Modifications:
-//    Brad Whitlock, Tue Apr  8 09:27:26 PDT 2008
-//    Support for internationalization.
+//   Brad Whitlock, Tue Apr  8 09:27:26 PDT 2008
+//   Support for internationalization.
 //   
-//    Cyrus Harrison, Tue Jun 24 11:15:28 PDT 2008
-//    Initial Qt4 Port.
-//
 // ****************************************************************************
 
 QvisDBOptionsDialog::QvisDBOptionsDialog(DBOptionsAttributes *dbatts,
-                                         QWidget *parent)
-: QDialog(parent), atts(dbatts)
+                                         QWidget *parent, const char *name)
+    : QDialog(parent,name), atts(dbatts)
 {
     QVBoxLayout *topLayout = new QVBoxLayout(this);
+    topLayout->setMargin(10);
+    topLayout->setSpacing(5);
 
     int size = atts->GetNumberOfOptions();
-
-    QGridLayout *grid = new QGridLayout();
-
-    QLineEdit *ledit;
-    
-    topLayout->addLayout(grid);
+    checkboxes = new QCheckBox*[size];
+    lineedits = new QLineEdit*[size];
+    comboboxes = new QComboBox*[size];
+    QGridLayout *grid = new QGridLayout(topLayout, size, 2);
     for (int i=0; i<size; i++)
     {
         QString txt;
@@ -91,118 +86,66 @@ QvisDBOptionsDialog::QvisDBOptionsDialog(DBOptionsAttributes *dbatts,
         switch (t)
         {
           case DBOptionsAttributes::Bool:
-            { // new scope
-            QCheckBox *chk_box = new QCheckBox(name.c_str(), this);
-            chk_box->setChecked(atts->GetBool(name));
-            grid->addWidget(chk_box, i,0,1,2);
-            checkboxes.append(chk_box);
-            }
+            checkboxes[i] = new QCheckBox(name.c_str(), this);
+            checkboxes[i]->setChecked(atts->GetBool(name));
+            grid->addMultiCellWidget(checkboxes[i], i,i, 0,1);
             break;
           case DBOptionsAttributes::Int:
             txt.setNum(atts->GetInt(name));
-            ledit = new QLineEdit(txt, this);
+            lineedits[i] = new QLineEdit(txt, this);
             grid->addWidget(new QLabel(name.c_str(), this), i, 0);
-            grid->addWidget(ledit, i, 1);
-            lineedits.append(ledit);
+            grid->addWidget(lineedits[i], i, 1);
             break;
           case DBOptionsAttributes::Float:
             txt.setNum(atts->GetFloat(name));
-            ledit = new QLineEdit(txt, this);
+            lineedits[i] = new QLineEdit(txt, this);
             grid->addWidget(new QLabel(name.c_str(), this), i, 0);
             grid->addWidget(lineedits[i], i, 1);
-            lineedits.append(ledit);
             break;
           case DBOptionsAttributes::Double:
             txt.setNum(atts->GetDouble(name));
-            ledit = new QLineEdit(txt, this);
+            lineedits[i] = new QLineEdit(txt, this);
             grid->addWidget(new QLabel(name.c_str(), this), i, 0);
-            grid->addWidget(ledit, i, 1);
-            lineedits.append(ledit);
+            grid->addWidget(lineedits[i], i, 1);
             break;
           case DBOptionsAttributes::String:
             txt = atts->GetString(name).c_str();
-            ledit = new QLineEdit(txt, this);
+            lineedits[i] = new QLineEdit(txt, this);
             grid->addWidget(new QLabel(name.c_str(), this), i, 0);
-            grid->addWidget(ledit, i, 1);
-            lineedits.append(ledit);
+            grid->addWidget(lineedits[i], i, 1);
             break;
           case DBOptionsAttributes::Enum:
-            { // new scope
-            QComboBox *cbo_box = new QComboBox(this);
-            int cindex = -1;
-            QString sel_name(atts->GetEnum(name));
+            comboboxes[i] = new QComboBox(false, this);
             for (size_t j=0; j<atts->GetEnumStrings(name).size(); j++)
-            {
-                QString curr_name(atts->GetEnumStrings(name)[j].c_str());
-                cbo_box->addItem(curr_name);
-                if(curr_name == sel_name)
-                    cindex = j;
-            }
-            if(cindex >= 0)
-                cbo_box->setCurrentIndex(cindex);
-            
+                comboboxes[i]->insertItem(atts->GetEnumStrings(name)[j].c_str());
+            comboboxes[i]->setCurrentItem(atts->GetEnum(name));
             grid->addWidget(new QLabel(name.c_str(), this), i, 0);
-            grid->addWidget(cbo_box, i, 1);
-            comboboxes.append(cbo_box);
-            }
+            grid->addWidget(comboboxes[i], i, 1);
             break;
         }
     }
    
-    QHBoxLayout *btnLayout = new QHBoxLayout();
-    topLayout->addLayout(btnLayout);
-    //btnLayout->addStretch(10);
-    okButton = new QPushButton(tr("OK"), this);
+    QHBoxLayout *btnLayout = new QHBoxLayout(topLayout);
+    btnLayout->addStretch(10);
+    okButton = new QPushButton(tr("OK"), this, "okButton");
     connect(okButton, SIGNAL(clicked()),
             this, SLOT(okayClicked()));
     btnLayout->addWidget(okButton);
 
-    cancelButton = new QPushButton(tr("Cancel"), this);
+    cancelButton = new QPushButton(tr("Cancel"), this, "cancelButton");
     connect(cancelButton, SIGNAL(clicked()),
             this, SLOT(reject()));
     btnLayout->addWidget(cancelButton);
 }
 
-// ****************************************************************************
-// Method: QvisDBOptionsDialog::~QvisDBOptionsDialog
-//
-// Purpose: 
-//   Destructor
-//
-// Creation:   Tue Apr  8 11:12:48 PDT 2008
-//
-// Modifications:
-//
-// ****************************************************************************
-
 QvisDBOptionsDialog::~QvisDBOptionsDialog()
-{}
-
-// ****************************************************************************
-// Method: QvisDBOptionsDialog::okayClicked
-//
-// Purpose: 
-//   Slot to handle updating options.
-//
-// Creation:   Tue Apr  8 11:12:48 PDT 2008
-//
-// Modifications:
-//    Cyrus Harrison, Tue Jun 24 11:15:28 PDT 2008
-//    Initial Qt4 Port.
-//
-//    Brad Whitlock, Wed Dec  3 08:52:25 PST 2008
-//    Index into the widget arrays using different indices. Added debugging code.
-//
-// ****************************************************************************
+{
+}
 
 void
 QvisDBOptionsDialog::okayClicked()
 {
-    const char *mName = "QvisDBOptionsDialog::okayClicked: ";
     int size = atts->GetNumberOfOptions();
-    int lineedit_index = 0;
-    int checkbox_index = 0;
-    int combobox_index = 0;
     for (int i=0; i<size; i++)
     {
         QString txt;
@@ -211,47 +154,22 @@ QvisDBOptionsDialog::okayClicked()
         switch (t)
         {
           case DBOptionsAttributes::Bool:
-          {
-            bool val = checkboxes[checkbox_index++]->isChecked();
-            debug5 << mName << "Setting \"" << name.c_str() << "\" to " 
-                   << (val?"true":"false") << endl;
-            atts->SetBool(name, val);
-          }
+            atts->SetBool(name, checkboxes[i]->isChecked());
             break;
           case DBOptionsAttributes::Int:
-          {
-            int val = lineedits[lineedit_index++]->displayText().toInt();
-            debug5 << mName << "Setting \"" << name.c_str() << "\" to " << val << endl;
-            atts->SetInt(name, val);
-          }
+            atts->SetInt(name, lineedits[i]->displayText().toInt());
             break;
           case DBOptionsAttributes::Float:
-          {
-            float val = lineedits[lineedit_index++]->displayText().toFloat();
-            debug5 << mName << "Setting \"" << name.c_str() << "\" to " << val << endl;
-            atts->SetFloat(name, val);
-          }
+            atts->SetFloat(name, lineedits[i]->displayText().toFloat());
             break;
           case DBOptionsAttributes::Double:
-          {
-            double val = lineedits[lineedit_index++]->displayText().toDouble();
-            debug5 << mName << "Setting \"" << name.c_str() << "\" to " << val << endl;
-            atts->SetDouble(name, val);
-          }
+            atts->SetDouble(name, lineedits[i]->displayText().toDouble());
             break;
           case DBOptionsAttributes::String:
-          {
-            std::string val = lineedits[lineedit_index++]->displayText().toStdString();
-            debug5 << mName << "Setting \"" << name.c_str() << "\" to " << val.c_str() << endl;
-            atts->SetString(name, val);
-          }
+            atts->SetString(name, lineedits[i]->displayText().latin1());
             break;
           case DBOptionsAttributes::Enum:
-          {
-            int val = comboboxes[combobox_index++]->currentIndex();
-            debug5 << mName << "Setting \"" << name.c_str() << "\" to " << val << endl;
-            atts->SetEnum(name, val);
-          }
+            atts->SetEnum(name, comboboxes[i]->currentItem());
             break;
         }
     }

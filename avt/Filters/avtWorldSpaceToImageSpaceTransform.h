@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -81,9 +81,8 @@ class   avtIntervalTree;
 //    Hank Childs, Thu May 29 10:23:39 PDT 2008
 //    Added argument to method for culling domains for the aspect ratio.
 //
-//    Hank Childs, Wed Dec 24 14:17:30 PST 2008
-//    Make CalculateTransform be public and remove PreExecute, the majority
-//    of whose logic went into avtRayTracer.
+//    Hank Childs, Tue Sep 22 20:40:39 PDT 2009
+//    Redefine virtual method in order to disable transformation of vectors.
 //
 // ****************************************************************************
 
@@ -108,8 +107,6 @@ class AVTFILTERS_API avtWorldSpaceToImageSpaceTransform : public avtTransform
                               { tightenClippingPlanes = t; };
     void               SetPassThruRectilinearGrids(bool t)
                               { passThruRectilinear = t; };
-    static void        CalculateTransform(const avtViewInfo &,
-                                       vtkMatrix4x4 *, const double *, double);
 
   protected:
     vtkMatrix4x4           *transform;
@@ -126,11 +123,16 @@ class AVTFILTERS_API avtWorldSpaceToImageSpaceTransform : public avtTransform
                                                           vtkMatrix4x4 *);
     static void             CalculateOrthographicTransform(const avtViewInfo &,
                                                            vtkMatrix4x4 *);
+    static void             CalculateTransform(const avtViewInfo &,
+                                       vtkMatrix4x4 *, const double *, double);
     virtual avtContract_p
                             ModifyContract(avtContract_p);
 
     virtual void            UpdateDataObjectInfo(void);
+    virtual void            PreExecute(void);
     virtual bool            FilterUnderstandsTransformedRectMesh();
+    // Never want to do it for volume rendering.
+    virtual bool            TransformVectors(void) { return false; };
 };
 
 

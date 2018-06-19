@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -40,7 +40,7 @@
 #define QVIS_ANNOTATION_OBJECT_INTERFACE_H
 #include <gui_exports.h>
 #include <GUIBase.h>
-#include <QGroupBox>
+#include <qgroupbox.h>
 
 class AnnotationObject;
 class QLineEdit;
@@ -72,7 +72,7 @@ class GUI_API QvisAnnotationObjectInterface : public QGroupBox, public GUIBase
 {
     Q_OBJECT
 public:
-    QvisAnnotationObjectInterface(QWidget *parent);
+    QvisAnnotationObjectInterface(QWidget *parent, const char *name = 0);
     virtual ~QvisAnnotationObjectInterface();
 
     virtual QString GetName() const = 0;

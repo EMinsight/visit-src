@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,7 +39,7 @@
 #ifndef SPLASHSCREEN_H
 #define SPLASHSCREEN_H
 
-#include <QFrame>
+#include <qframe.h>
 #include <vector>
 
 // Forward declarations.
@@ -74,16 +74,13 @@ class QVBoxLayout;
 //   Brad Whitlock, Wed Apr  9 10:26:06 PDT 2008
 //   Use QString instead of const char *.
 //
-//   Brad Whitlock, Fri May 30 15:21:37 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 class SplashScreen : public QFrame
 {
     Q_OBJECT
 public:
-    SplashScreen(bool cyclePictures = false);
+    SplashScreen(bool cyclePictures = false, const char *name = 0);
     ~SplashScreen();
 
     void Progress(const QString &msg, int progress);

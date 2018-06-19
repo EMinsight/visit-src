@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,27 +37,9 @@
 *****************************************************************************/
 #ifndef QVIS_STRIPCHART_MGR
 #define QVIS_STRIPCHART_MGR
-#include <QWidget>
-#include <QGroupBox>
+#include <qwidget.h>
+#include <qgroupbox.h>
 #include <QvisPostableWindow.h>
-
-class QvisStripChartTabWidget;
-class QVBoxLayout;
-class QComboBox;
-class QGroupBox;
-class QLabel;
-class QPushButton;
-class QLineEdit;
-class QTreeView;
-class QString;
-class QSpinBox;
-class QCheckBox;
-class QGridLayout;
-class QScrollArea;
-class QColor;
-
-class EngineList;
-class ViewerProxy;
 
 // ****************************************************************************
 // Class: QvisStripChartTabWidget
@@ -71,20 +53,36 @@ class ViewerProxy;
 // Creation:   Wed Aug  1 15:11:06 PDT 2007
 //
 // Modifications:
-//   Brad Whitlock, Tue Jul  8 09:05:14 PDT 2008
-//   Qt 4.
-//
+
 // ****************************************************************************
+class QvisStripChartTabWidget;
+class QVBoxLayout;
+class QComboBox;
+class QGroupBox;
+class QLabel;
+class QPushButton;
+class QLineEdit;
+class QListView;
+class QString;
+class QSpinBox;
+class QCheckBox;
+class QGridLayout;
+class QScrollView;
+class QColor;
+
+class EngineList;
+class ViewerProxy;
 
 class QvisStripChartMgr : public QvisPostableWindow
 {                                                          
     Q_OBJECT
     
 public: 
-    QvisStripChartMgr(QWidget *parent, ViewerProxy *theViewer,
-                      EngineList *engineList, int index,
-                      QvisNotepadArea *notepad2);
-    virtual ~QvisStripChartMgr();
+//    QvisStripChartMgr(QWidget *parent, const char *name, ViewerProxy *theViewer,
+//    EngineList *engineList, int index );
+    QvisStripChartMgr(QWidget *parent, const char *name, ViewerProxy *theViewer,
+    EngineList *engineList, int index , QvisNotepadArea *notepad2 );
+   ~QvisStripChartMgr ();
     bool  isStripChartWidget( QString name );
     bool  isStripChartTabLabel( QString name );
     
@@ -102,10 +100,9 @@ public:
     void setCycleDisplay (int currentCycle);
     int  sendCMD(QString sig, const QObject *ui, QString value);
     int  sendCMD(QString cmd);
-
+    void CreateWindowContents();
     void setTabLabel(QString tabName, QString newLabel );
-
-    virtual void CreateEntireWindow();
+    
 public slots:
     void reset();
     void zoomIn();
@@ -122,8 +119,6 @@ protected slots:
     void executeEnableStripChartLimits();
     void executeEnableLogScale();
     
-protected:
-    virtual void CreateWindowContents();
 private:
     QvisStripChartTabWidget *stripChartTabWidget;
     QCheckBox          *enableStripChartLimits;
@@ -144,7 +139,7 @@ private:
     QPushButton        *plusButton;
     QPushButton        *minusButton;
     QPushButton        *focusButton;
-    QScrollArea        *sc;
+    QScrollView        *sc;
     QCheckBox          *enableLogScale;
     
     bool                posted;

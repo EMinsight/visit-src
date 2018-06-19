@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -38,8 +38,8 @@
 
 #ifndef QVIS_DB_OPTIONS_DIALOG_H
 #define QVIS_DB_OPTIONS_DIALOG_H
-#include <QDialog>
-#include <QLabel>
+#include <qdialog.h>
+#include <qlabel.h>
 
 class QPushButton;
 class QCheckBox;
@@ -59,29 +59,27 @@ class DBOptionsAttributes;
 // Creation:   July 19, 2007
 //
 // Modifications:
-//   Cyrus Harrison, Tue Jun 24 11:15:28 PDT 2008
-//   Initial Qt4 Port.
-//
+//   
 // ****************************************************************************
 
 class QvisDBOptionsDialog : public QDialog
 {
     Q_OBJECT
 public:
-    QvisDBOptionsDialog(DBOptionsAttributes *opts, QWidget *parent = 0);
+    QvisDBOptionsDialog(DBOptionsAttributes *opts,
+                        QWidget *parent = 0, const char *name = 0);
     virtual ~QvisDBOptionsDialog();
 public slots:
     void okayClicked();
 
 private:
-    DBOptionsAttributes *atts;
-    
-    QList<QCheckBox*>    checkboxes;
-    QList<QLineEdit*>    lineedits;
-    QList<QComboBox*>    comboboxes;
+    QCheckBox **checkboxes;
+    QLineEdit **lineedits;
+    QComboBox **comboboxes;
 
-    QPushButton         *okButton;
-    QPushButton         *cancelButton;
+    DBOptionsAttributes *atts;
+    QPushButton  *okButton;
+    QPushButton  *cancelButton;
 };
 
 #endif

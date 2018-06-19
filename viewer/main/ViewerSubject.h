@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -46,7 +46,7 @@
 #define VIEWER_NUM_ENGINE_RESTARTS        2
 
 #include <viewer_exports.h>
-#include <QObject>
+#include <qobject.h>
 
 #include <ViewerBase.h>
 #include <ParentProcess.h>
@@ -469,6 +469,9 @@ class avtDefaultPlotMetaData;
 //    Refactored the ViewerSubject so it no longer contains the QApplication or
 //    the event loop so it can be embedded in other Qt applications.
 //
+//    Hank Childs, Wed Jan 28 14:53:32 PST 2009
+//    Add support for named selections.
+//
 // ****************************************************************************
 
 class VIEWER_API ViewerSubject : public ViewerBase
@@ -543,7 +546,6 @@ private:
     DataNode *CreateAttributesDataNode(const avtDefaultPlotMetaData *) const;
 
     // RPC handler methods.
-    void HandleViewerRPCEx();
     void Close();
     void ConnectToMetaDataServer();
     void IconifyAllWindows();
@@ -572,6 +574,12 @@ private:
     void UpdateDBPluginInfo();
 
     void SendSimulationCommand();
+
+    void ApplyNamedSelection();
+    void CreateNamedSelection();
+    void DeleteNamedSelection();
+    void LoadNamedSelection();
+    void SaveNamedSelection();
 
     void SetDefaultPlotOptions();
     void ResetPlotOptions();
@@ -664,6 +672,7 @@ private:
     void ResizeWindow();
 
     void OpenClient();
+    void UpdatePlotInfoAtts();
 
     void SetDefaultFileOpenOptions();
     void SetSuppressMessages();
@@ -699,6 +708,7 @@ private slots:
     void ReadFromSimulationAndProcess(int);
 
     void ConnectWindow(ViewerWindow *win);
+    void DisconnectWindow(ViewerWindow *win);
 
     void ToggleMaintainViewMode(int windowIndex = -1);
     void ToggleMaintainDataMode(int windowIndex = -1);

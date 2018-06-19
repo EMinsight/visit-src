@@ -36,11 +36,11 @@
 *****************************************************************************/
 
 #include <QvisParallelCoordinatesPlotWizard.h>
-#include <QButtonGroup>
-#include <QGroupBox>
-#include <QLabel>
-#include <QLayout>
-#include <QRadioButton>
+#include <qbuttongroup.h>
+#include <qgroupbox.h>
+#include <qlabel.h>
+#include <qlayout.h>
+#include <qradiobutton.h>
 
 #include <QvisParallelCoordinatesWidget.h>
 #include <QvisVariableButton.h>
@@ -77,80 +77,103 @@
 //    Brad Whitlock, Wed Apr 23 10:12:44 PDT 2008
 //    Added tr()
 //  
-//    Cyrus Harrison, Mon Jul 21 08:33:47 PDT 2008
-//    Initial Qt4 Port. 
-//
 // ****************************************************************************
 
 QvisParallelCoordinatesPlotWizard::QvisParallelCoordinatesPlotWizard(
     AttributeSubject *s, QWidget *parent, const std::string &varName,
-    bool doNothing) 
-    : QvisWizard(s, parent)
+    bool doNothing, const char *name) : QvisWizard(s, parent, name)
 {
+    for (int pageNum = 0; pageNum < MAX_WIZARD_SELECTABLE_AXES*2 - 2; pageNum++)
+        pages[pageNum] = NULL;
+    for (int groupNum = 0; groupNum < MAX_WIZARD_SELECTABLE_AXES - 2; groupNum++)
+        yesNoButtonGroups[groupNum] = NULL;
+
 
     if (doNothing)
     {
         parAxisAtts->ResetAxes();
-        AddFinishPage(tr("Click Finish"),
-                      tr("The plot has successfully been "
+        CreateFinishPage(&pages[0], NULL, tr("The plot has successfully been "
                          "defined by use of an array variable."));
+        addPage(pages[0], tr("Click Finish"));
+        setHelpEnabled(pages[0], false);
+        setFinishEnabled(pages[0], true);
         return;    
     }
 
     InitializeParallelCoordinatesAttributes(varName);
     
-    axisVarNames.push_back(varName);
-
-    axisYesNos.push_back(true); 
-    axisYesNos.push_back(true); 
-    
-    dupVarMessages.append(NULL);
+    axisVarNames[0] = varName;
+    axisYesNos[0] = true; axisYesNos[1] = true;
     
     curAxisCount = 1;
     
-    // Set the wizard title.
-    topLevelWidget()->setWindowTitle(tr("ParallelCoordinates Plot Wizard"));
+    // Set the wizard's title.
+    topLevelWidget()->setCaption(tr("ParallelCoordinates Plot Wizard"));
     
     //
-    // Create wizard pages.
+    // Create the wizard's pages.
     //
-    
-    AddAxisVariablePage(1, tr("Choose second axis variable"),
-                tr("A ParallelCoordinates plot needs at least 2 axes.\n"
-                "Choose a scalar variable for the second axis."));
-    
-    AddAxisYesNoPage(2, tr("Add third axis?"),
-                     tr("Would you like to add a third axis to the plot?"));
-    AddAxisVariablePage(2, tr("Choose third axis variable"),
-                        tr("Choose a scalar variable for the third axis."));
-    
-    AddAxisYesNoPage(3, tr("Add fourth axis?"),
-                     tr("Would you like to add a fourth axis to the plot?"));
-    AddAxisVariablePage(3, tr("Choose forth axis variable"),
-                        tr("Choose a scalar variable for the forth axis."));
-    
-    AddAxisYesNoPage(4, tr("Add fifth axis?"),
-                     tr("Would you like to add a fourth axis to the plot?"));
-    AddAxisVariablePage(4, tr("Choose fifth axis variable"),
-                        tr("Choose a scalar variable for the fifth axis."));
-    
-    AddAxisYesNoPage(5, tr("Add sixth axis?"),
-                     tr("Would you like to add a fourth axis to the plot?"));
-    AddAxisVariablePage(5, tr("Choose sixth axis variable"),
-                        tr("Choose a scalar variable for the sixth axis."));
-    
-    AddAxisYesNoPage(6, tr("Add seventh axis?"),
-                     tr("Would you like to add a seventh axis to the plot?"));
-    AddAxisVariablePage(6, tr("Choose seventh axis variable"),
-                        tr("Choose a scalar variable for the seventh axis."));
+    CreateAxisVariablePage(&pages[0], &thumbnails[0], 1,
+        tr("A ParallelCoordinates plot needs at least 2 axes.\n"
+        "Choose a scalar variable for the second axis."));
+    addPage(pages[0], tr("Choose second axis variable"));
 
-    AddAxisYesNoPage(7, tr("Add eigth axis?"),
-                     tr("Would you like to add a eigth axis to the plot?"));
-    AddAxisVariablePage(7, tr("Choose eigth axis variable"),
-                        tr("Choose a scalar variable for the eigth axis."));
+    CreateAxisYesNoPage(&pages[1], &thumbnails[1], &yesNoButtonGroups[0], 2,
+        tr("Would you like to add a third axis to the plot?"));
+    addPage(pages[1], tr("Add third axis?"));
 
-    AddFinishPage(tr("Click Finish"),
+    CreateAxisVariablePage(&pages[2], &thumbnails[2], 2,
+        tr("Choose a scalar variable for the third axis."));
+    addPage(pages[2], tr("Choose third axis variable"));
+
+    CreateAxisYesNoPage(&pages[3], &thumbnails[3], &yesNoButtonGroups[1], 3,
+        tr("Would you like to add a fourth axis to the plot?"));
+    addPage(pages[3], tr("Add fourth axis?"));
+
+    CreateAxisVariablePage(&pages[4], &thumbnails[4], 3,
+        tr("Choose a scalar variable for the fourth axis."));
+    addPage(pages[4], tr("Choose fourth axis variable"));
+
+    CreateAxisYesNoPage(&pages[5], &thumbnails[5], &yesNoButtonGroups[2], 4,
+        tr("Would you like to add a fifth axis to the plot?"));
+    addPage(pages[5], tr("Add fifth axis?"));
+
+    CreateAxisVariablePage(&pages[6], &thumbnails[6], 4,
+        tr("Choose a scalar variable for the fifth axis."));
+    addPage(pages[6], tr("Choose fifth axis variable"));
+
+    CreateAxisYesNoPage(&pages[7], &thumbnails[7], &yesNoButtonGroups[3], 5,
+        tr("Would you like to add a sixth axis to the plot?"));
+    addPage(pages[7], tr("Add sixth axis?"));
+
+    CreateAxisVariablePage(&pages[8], &thumbnails[8], 5,
+        tr("Choose a scalar variable for the sixth axis."));
+    addPage(pages[8], tr("Choose sixth axis variable"));
+
+    CreateAxisYesNoPage(&pages[9], &thumbnails[9], &yesNoButtonGroups[4], 6,
+        tr("Would you like to add a seventh axis to the plot?"));
+    addPage(pages[9], tr("Add seventh axis?"));
+
+    CreateAxisVariablePage(&pages[10], &thumbnails[10], 6,
+        tr("Choose a scalar variable for the seventh axis."));
+    addPage(pages[10], tr("Choose seventh axis variable"));
+
+    CreateAxisYesNoPage(&pages[11], &thumbnails[11], &yesNoButtonGroups[5], 7,
+        tr("Would you like to add an eighth axis to the plot?"));
+    addPage(pages[11], tr("Add eighth axis?"));
+
+    CreateAxisVariablePage(&pages[12], &thumbnails[12], 7,
+        tr("Choose a scalar variable for the eighth axis."));
+    addPage(pages[12], tr("Choose eighth axis variable"));
+
+    CreateFinishPage(&pages[13], &thumbnails[13],
         tr("Click the Finish button to create a new ParallelCoordinates plot."));
+    addPage(pages[13], tr("Click Finish"));
+    
+    for (int pageNum = 0; pageNum < 14; pageNum++)
+        setHelpEnabled(pages[pageNum], false);
+
+    setFinishEnabled(pages[13], true);
 }
 
 
@@ -163,170 +186,92 @@ QvisParallelCoordinatesPlotWizard::QvisParallelCoordinatesPlotWizard(
 // Creation:   Mon Jun 19 15:16:00 PDT 2006
 //
 // Modifications:
-//    Cyrus Harrison, Mon Jul 21 08:33:47 PDT 2008
-//    Initial Qt4 Port. 
-//
+//   
 // ****************************************************************************
 
 QvisParallelCoordinatesPlotWizard::~QvisParallelCoordinatesPlotWizard()
 {
     // Delete parentless widgets.
     
-    foreach(QWizardPage *page, pages)
-        delete page;
-    pages.clear();
-    
-    yesNoGroups.clear();
-}
-// ****************************************************************************
-// Method: QvisParallelCoordinatesPlotWizard::validateCurrentPage
-//
-// Purpose: 
-//   Validates the current wizard page's inputs before moving 
-//   to the next. It ensures that duplicate axis varibles are not selected, 
-//   and refreshs the preview displays on the next page.
-//
-// Programmer: Cyrus Harrison
-// Creation:   Mon Jul 21 12:32:18 PDT 2008
-//
-//  
-// Modifications:
-//
-// ****************************************************************************
-
-bool
-QvisParallelCoordinatesPlotWizard::validateCurrentPage()
-{
-    int id = currentId();
-    
-    // if we are on the last page, we are golden
-    if(id == pages.count() -1)
-        return true;
-    
-    // find next page
-    int nextId = GetNextPageId();
-             
-     if((id & 1) == 0)
-     {
-        // if a axis var selection page, check for dups
-        std::string newVarName = axisVarNames[curAxisCount];
-
-        if (!UniqueAxisVariableName(newVarName))
-        {
-            // dont let a dupe var pass
-            dupVarMessages[curAxisCount]->show();
-            return false;
-        }
-        else
-        {
-            // add a new var
-            parAxisAtts->InsertAxis(newVarName);
-            curAxisCount++;
-            // make sure we have enough room for the next var.
-            if(axisVarNames.size() < curAxisCount)
-                axisVarNames.push_back("");
-        }
-    }
-    
-    // check if next page is final, update its thumbnail
-    if(nextId == pages.count() -1) 
+    for (int pageNum = 0; pageNum < MAX_WIZARD_SELECTABLE_AXES*2 - 2; pageNum++)
     {
-        thumbnails[nextId]->setNumberOfAxes(curAxisCount);
-        thumbnails[nextId]->setAxisTitles(axisVarNames);
-        thumbnails[nextId]->redrawAllAxes(true);
+        delete pages[pageNum];
     }
-    else
+    
+    for (int groupNum = 0; groupNum < MAX_WIZARD_SELECTABLE_AXES - 2; groupNum++)
     {
-        // update the thumbnail for current page
-        thumbnails[nextId]->setAxisTitles(axisVarNames);
-        thumbnails[nextId]->redrawAllAxes(false);
+        delete yesNoButtonGroups[groupNum];
     }
-        
-    return true;
 }
 
-// ****************************************************************************
-// Method: QvisParallelCoordinatesPlotWizard::cleanupPage
-//
-// Purpose: 
-//   Called when the user clicks the back button. Keeps the currentAxisCount 
-//   and atts  in sync.
-//
-// Programmer: Cyrus Harrison
-// Creation:   Mon Jul 21 12:32:18 PDT 2008
-//
-//  
-// Modifications:
-//
-// ****************************************************************************
-
-void
-QvisParallelCoordinatesPlotWizard::cleanupPage(int id)
-{
-    if((id & 1) != 0 && id != pages.count() -1)
-        parAxisAtts->DeleteAxis(axisVarNames[--curAxisCount], 1);
-}
 
 // ****************************************************************************
-// Method: QvisParallelCoordinatesPlotWizard::AddAxisVariablePage
+// Method: QvisParallelCoordinatesPlotWizard::CreateAxisVariablePage
 //
 // Purpose: 
 //   Creates a wizard page that enables the user to select a scalar variable
 //   for a specified axis in the plot.
 //
 // Note: This is intended to emulate the style of the QvisScatterPlotWizard
-//       for the Scatter plot, which came first. It was Refactored for Qt4 
-//       from Mark Blair's CreateAxisVariablePage().
-//
+//       for the Scatter plot, which came first.
 //
 // Arguments:
+//   f           : Return variable for the frame widget pointer
+//   s           : Return variable for the ParallelCoordinates widget pointer
 //   axisOrdinal : Ordinal number of the axis whose variable is being chosen
-//   title       : Page title.
 //   promptText  : User prompt to display
 //
-// Programmer: Cyrus Harrison
-// Creation:   Mon Jul 21 12:32:18 PDT 2008
+// Programmer: Mark Blair
+// Creation:   Mon Jun 19 15:16:00 PDT 2006
 //
-//  
 // Modifications:
+//    Jeremy Meredith, Fri Feb 15 13:16:46 EST 2008
+//    Renamed orderedAxisNames to scalarAxisNames to distinguish these
+//    as names of actual scalars instead of just display names.  Added
+//    visualAxisNames.
+//
+//    Brad Whitlock, Wed Apr 23 10:15:26 PDT 2008
+//    Added tr()
 //
 // ****************************************************************************
 
 void
-QvisParallelCoordinatesPlotWizard::AddAxisVariablePage(int axisOrdinal, 
-                                                       const QString &title,
-                                                       const QString &promptText)
+QvisParallelCoordinatesPlotWizard::CreateAxisVariablePage(QFrame **f,
+    QvisParallelCoordinatesWidget **s, int axisOrdinal, const char *promptText)
 {
     const std::vector<std::string> names = parAxisAtts->GetScalarAxisNames();
     std::string leftAxisVarName = names[names.size()-1];
 
-    QWizardPage *page = new QWizardPage();
-    page->setTitle(title);
-    pages.append(page);
-        
-    QHBoxLayout *pageLRLayout = new QHBoxLayout(page);
+    QFrame *frame = new QFrame(NULL, "frame");
+    *f = frame;
+    frame->setFrameStyle(QFrame::NoFrame);
+    QVBoxLayout *frameinnerLayout = new QVBoxLayout(frame);
+    frameinnerLayout->setMargin(0);
+    frameinnerLayout->addSpacing(10);
+    QHBoxLayout *pageLRLayout = new QHBoxLayout(frameinnerLayout);
+    pageLRLayout->setSpacing(10);
 
     QvisParallelCoordinatesWidget *thumbnail =
-        new QvisParallelCoordinatesWidget(page);
+        new QvisParallelCoordinatesWidget(frame, "thumbnail");
     thumbnail->setNumberOfAxes(axisOrdinal + 1);
     thumbnail->setAxisTitles(axisVarNames);
-    thumbnails.append(thumbnail);
-    //*s = thumbnail;
-    
+    *s = thumbnail;
     pageLRLayout->addWidget(thumbnail);
+    pageLRLayout->addSpacing(10); // or a line?
 
-    QVBoxLayout *pageRLayout = new QVBoxLayout();
-    pageLRLayout->addLayout(pageRLayout);
-    QLabel *prompt = new QLabel(promptText, page);
+    QVBoxLayout *pageRLayout = new QVBoxLayout(pageLRLayout);
+    pageRLayout->setSpacing(10);
+    QLabel *prompt = new QLabel(promptText, frame, "prompt");
     pageRLayout->addWidget(prompt);
-    
+    pageRLayout->addSpacing(10);
+
     // add interior.
-    QHBoxLayout *pageVLayout = new QHBoxLayout();
-    pageRLayout->addLayout(pageVLayout);
-        
-    QLabel *varlabel = new QLabel(tr("Variable"), page);
+    QHBoxLayout *pageVLayout = new QHBoxLayout(pageRLayout);
+    pageVLayout->setSpacing(10);
+    pageVLayout->addStretch(5);
+    QLabel *varlabel = new QLabel(tr("Variable"), frame);
     QvisVariableButton *var = new QvisVariableButton(false, false, true,
-                                       QvisVariableButton::Scalars,page);
+        QvisVariableButton::Scalars, frame);
     var->setMinimumWidth(fontMetrics().boundingRect("really_really_long_var_name").width());
     var->setText(QString(leftAxisVarName.c_str()));
     connect(var, SIGNAL(activated(const QString &)), this,
@@ -335,166 +280,152 @@ QvisParallelCoordinatesPlotWizard::AddAxisVariablePage(int axisOrdinal,
     pageVLayout->addWidget(var);
     pageVLayout->addStretch(5);
 
-    QLabel *dupeLabel = new QLabel(
+    pageRLayout->addSpacing(25);
+    dupVarMessages[axisOrdinal] = new QLabel(
         tr("Selected variable duplicates variable of another axis.\n"
-           "Choose a unique scalar variable for the new axis."), page);
-    dupVarMessages.append(dupeLabel);
-    QPalette palette;
-    palette.setColor( QPalette::Foreground, QColor( Qt::red ) );
-    dupeLabel->setPalette(palette);
-    pageRLayout->addWidget(dupeLabel);
-    dupeLabel->hide();
-    pageRLayout->addStretch(5);
+           "Choose a unique scalar variable for the new axis."), frame, "errMsg");
+    dupVarMessages[axisOrdinal]->setPaletteForegroundColor(QColor(255,0,0));
+    pageRLayout->addWidget(dupVarMessages[axisOrdinal]);
+    dupVarMessages[axisOrdinal]->hide();
+
+    pageRLayout->addStretch(10);
     
-    axisVarNames.push_back(leftAxisVarName);
-    addPage(page);
+    axisVarNames[axisOrdinal] = leftAxisVarName;
 }
 
+
 // ****************************************************************************
-// Method: QvisParallelCoordinatesPlotWizard::AddAxisYesNoPage
+// Method: QvisParallelCoordinatesPlotWizard::CreateAxisYesNoPage
 //
 // Purpose: 
 //   Creates a wizard page that enables the user to click "Yes" or "No" to
 //   indicate whether to add another axis to the plot.
 //
 // Note: This is intended to emulate the style of the QvisScatterPlotWizard
-//       for the Scatter plot, which came first. It was Refactored for Qt4 
-//       from Mark Blair's CreateAxisVariablePage().
+//       for the Scatter plot, which came first.
 //
 // Arguments:
+//   f           : Return variable for the frame widget pointer.
+//   s           : Return variable for the ParallelCoordinates widget pointer.
+//   bg          : Return variable for the button group.
 //   axisOrdinal : Ordinal number of the axis whose variable is being chosen
-//   title       : Page title.
-//   promptText  : User prompt to display
-
+//   promptText  : User prompt to display.
 //
-// Programmer: Cyrus Harrison
-// Creation:   Mon Jul 21 12:32:18 PDT 2008
+// Programmer: Mark Blair
+// Creation:   Mon Jun 19 15:16:00 PDT 2006
 //
 // Modifications:
+//   Brad Whitlock, Wed Apr 23 10:15:14 PDT 2008
+//   Added tr()
 //
 // ****************************************************************************
 
 void
-QvisParallelCoordinatesPlotWizard::AddAxisYesNoPage(int axisOrdinal, 
-                                                    const QString &title,
-                                                    const QString &promptText)
+QvisParallelCoordinatesPlotWizard::CreateAxisYesNoPage(QFrame **f, QvisParallelCoordinatesWidget **s,
+    QButtonGroup **bg, int axisOrdinal, const char *promptText)
 {
-    QWizardPage *page = new QWizardPage();
-    page->setTitle(title);
-    pages.append(page);
-    
-    QHBoxLayout *pageLRLayout = new QHBoxLayout(page);
-    
+    QFrame *frame = new QFrame(NULL, "frame");
+    *f = frame;
+    frame->setFrameStyle(QFrame::NoFrame);
+    QVBoxLayout *frameinnerLayout = new QVBoxLayout(frame);
+    frameinnerLayout->setMargin(0);
+    frameinnerLayout->addSpacing(10);
+    QHBoxLayout *pageLRLayout = new QHBoxLayout(frameinnerLayout);
+    pageLRLayout->setSpacing(10);
+
     QvisParallelCoordinatesWidget *thumbnail =
-        new QvisParallelCoordinatesWidget(page);
+        new QvisParallelCoordinatesWidget(frame, "thumbnail");
     thumbnail->setNumberOfAxes(axisOrdinal + 1);
     thumbnail->setAxisTitles(axisVarNames);
+    *s = thumbnail;
     pageLRLayout->addWidget(thumbnail);
-    thumbnails.append(thumbnail);
+    pageLRLayout->addSpacing(10); // or a line?
 
-    QVBoxLayout *pageRLayout = new QVBoxLayout();
-    pageLRLayout->addLayout(pageRLayout);
-    QLabel *prompt = new QLabel(promptText, page);
+    QVBoxLayout *pageRLayout = new QVBoxLayout(pageLRLayout);
+    pageRLayout->setSpacing(10);
+    QLabel *prompt = new QLabel(promptText, frame, "prompt");
     pageRLayout->addWidget(prompt);
+    pageRLayout->addSpacing(10);
 
     // add interior.
-    QHBoxLayout *pageVLayout = new QHBoxLayout();
-    pageRLayout->addLayout(pageVLayout);
-
-    QButtonGroup *btn = new QButtonGroup(page);
-    yesNoGroups.append(btn);
-    
-    connect(btn, SIGNAL(buttonClicked(int)), 
-            this, SLOT(decideIfAnotherAxis(int)));
-    
-    QRadioButton *r1 = new QRadioButton(tr("Yes"), page);
-    r1->setChecked(false);
-    btn->addButton(r1,0);
+    QHBoxLayout *pageVLayout = new QHBoxLayout(pageRLayout);
+    pageVLayout->setSpacing(10);
     pageVLayout->addStretch(5);
+
+    QButtonGroup *btn = new QButtonGroup(NULL, "btn");
+    *bg = btn;
+    connect(btn, SIGNAL(clicked(int)), this, SLOT(decideIfAnotherAxis(int)));
+    QRadioButton *r1 = new QRadioButton(tr("Yes"), frame, "r1");
+    r1->setChecked(false);
+    btn->insert(r1);
     pageVLayout->addWidget(r1);
-    QRadioButton *r2 = new QRadioButton(tr("No"), page);
+    QRadioButton *r2 = new QRadioButton(tr("No"), frame, "r2");
     r2->setChecked(true);
-    btn->addButton(r2,1);
+    btn->insert(r2);
     pageVLayout->addWidget(r2);
     pageVLayout->addStretch(5);
-    axisYesNos.push_back(false);
-    pageRLayout->addStretch(5);
-    addPage(page);
+
+    pageRLayout->addStretch(10);
+    
+    axisYesNos[axisOrdinal] = false;
 }
 
 
 // ****************************************************************************
-// Method: QvisParallelCoordinatesPlotWizard::AddFinishPage
+// Method: QvisParallelCoordinatesPlotWizard::CreateFinishPage
 //
 // Purpose: 
 //   Creates final wizard page
 //
 // Note: This is intended to emulate the style of the QvisScatterPlotWizard
-//       for the Scatter plot, which came first. It was Refactored for Qt4 
-//       from Mark Blair's CreateAxisVariablePage().
-//
+//       for the Scatter plot, which came first.
 //
 // Arguments:
-//   title       : Page title.
+//   f           : Return variable for the frame widget pointer.
+//   s           : Return variable for the ParallelCoordinates widget pointer.
 //   promptText  : User prompt to display.
 //
-// Programmer: Cyrus Harrison
-// Creation:   Mon Jul 21 12:32:18 PDT 2008
+// Programmer: Mark Blair
+// Creation:   Mon Jun 19 15:16:00 PDT 2006
 //
 // Modifications:
-//
+//    Jeremy Meredith, Thu Feb  7 12:59:42 EST 2008
+//    Allow either the widget or prompt text to be NULL.
+//   
 // ****************************************************************************
 
 void
-QvisParallelCoordinatesPlotWizard::AddFinishPage(const QString &title,
-                                                 const QString &promptText)
+QvisParallelCoordinatesPlotWizard::CreateFinishPage(QFrame **f,
+    QvisParallelCoordinatesWidget **s, const char *promptText)
 {
-    QWizardPage *page= new QWizardPage();
-    page->setTitle(title);
-    page->setFinalPage(true);
-    pages.append(page);
-    
-    QHBoxLayout *pageLRLayout = new QHBoxLayout(page);
-    
-    QvisParallelCoordinatesWidget *thumbnail = 
-                new QvisParallelCoordinatesWidget(page);
-    thumbnails.append(thumbnail);
-    pageLRLayout->addWidget(thumbnail);
+    QFrame *frame = new QFrame(NULL, "frame");
+    *f = frame;
+    frame->setFrameStyle(QFrame::NoFrame);
+    QVBoxLayout *frameinnerLayout = new QVBoxLayout(frame);
+    frameinnerLayout->setMargin(0);
+    frameinnerLayout->addSpacing(10);
+    QHBoxLayout *pageLRLayout = new QHBoxLayout(frameinnerLayout);
+    pageLRLayout->setSpacing(10);
 
-    if (!promptText.isEmpty())
+    if (s)
     {
-        QVBoxLayout *pageRLayout = new QVBoxLayout();
-        pageLRLayout->addLayout(pageRLayout);
-        QLabel *prompt = new QLabel(promptText, page);
+        QvisParallelCoordinatesWidget *thumbnail =
+            new QvisParallelCoordinatesWidget(frame, "thumbnail");
+        *s = thumbnail;
+        pageLRLayout->addWidget(thumbnail);
+        pageLRLayout->addSpacing(10); // or a line?
+    }
+
+    if (promptText)
+    {
+        QVBoxLayout *pageRLayout = new QVBoxLayout(pageLRLayout);
+        pageRLayout->setSpacing(10);
+        QLabel *prompt = new QLabel(promptText, frame, "prompt");
         pageRLayout->addWidget(prompt);
         pageRLayout->addStretch(10);
     }
-    addPage(page);
 }
-// ****************************************************************************
-// Method: QvisParallelCoordinatesPlotWizard::GetNextPageId()
-//
-// Purpose: Calculates the next page id.
-//
-//
-// Programmer: Cyrus Harrison
-// Creation:   Tue Jul 22 09:32:03 PDT 2008
-//
-// Modifications:
-//
-// ****************************************************************************
 
-int
-QvisParallelCoordinatesPlotWizard::GetNextPageId() const
-{    
-    int id = currentId();
-    int nextId = id + 1;
-    // check for yes/no page
-    if( (id & 1) != 0 )
-        if (!axisYesNos[curAxisCount]) // if "no", go to final page
-            nextId = pages.count()-1;
-    return nextId;
-}
 
 // ****************************************************************************
 // Method: QvisParallelCoordinatesPlotWizard::InitializeParallelCoordinatesAttributes
@@ -582,9 +513,8 @@ QvisParallelCoordinatesPlotWizard::UniqueAxisVariableName(
 void
 QvisParallelCoordinatesPlotWizard::choseAxisVariable(const QString &varName)
 {
-    
-    int curPageIndex = currentId();
-    std::string newVarName = varName.toStdString();
+    int curPageIndex = indexOf(currentPage());
+    std::string newVarName = varName.latin1();
 
     axisVarNames[curAxisCount] = newVarName;
     
@@ -592,6 +522,7 @@ QvisParallelCoordinatesPlotWizard::choseAxisVariable(const QString &varName)
     {
         thumbnails[curPageIndex]->setAxisTitles(axisVarNames);
         thumbnails[curPageIndex]->redrawAllAxes(true);
+
         dupVarMessages[curAxisCount]->hide();
     }
     else
@@ -604,12 +535,85 @@ QvisParallelCoordinatesPlotWizard::choseAxisVariable(const QString &varName)
 void
 QvisParallelCoordinatesPlotWizard::decideIfAnotherAxis(int buttonIndex)
 {
-    axisYesNos[curAxisCount] = (buttonIndex == 0);
+    axisYesNos[indexOf(currentPage())/2 + 2] = (buttonIndex == 0);
 }
 
 
-int
-QvisParallelCoordinatesPlotWizard::nextId() const
+void
+QvisParallelCoordinatesPlotWizard::next()
 {
-    return GetNextPageId();
+    int curPageIndex = indexOf(currentPage());
+    int nextPageIndex = curPageIndex + 1;
+
+    if ((curPageIndex & 1) == 0)   // Select axis variable name page
+    {
+        std::string newVarName = axisVarNames[curAxisCount];
+        
+        if (!UniqueAxisVariableName(newVarName))
+        {
+            dupVarMessages[curAxisCount]->show();
+            return;
+        }
+
+        dupVarMessages[curAxisCount]->hide();
+        
+        parAxisAtts->InsertAxis(newVarName);
+        curAxisCount++;
+        
+        if (nextPageIndex == MAX_WIZARD_SELECTABLE_AXES*2 - 3)   // Finish page
+        {
+            thumbnails[nextPageIndex]->setNumberOfAxes(curAxisCount);
+            thumbnails[nextPageIndex]->setAxisTitles(axisVarNames);
+            thumbnails[nextPageIndex]->redrawAllAxes(true);
+        }
+        else
+        {
+            thumbnails[nextPageIndex+1]->setAxisTitles(axisVarNames);
+            thumbnails[nextPageIndex  ]->setAxisTitles(axisVarNames);
+            thumbnails[nextPageIndex  ]->redrawAllAxes(false);
+        }
+    }
+    else   // New axis "Yes or No" page
+    {
+        if (axisYesNos[curAxisCount])
+        {
+            thumbnails[nextPageIndex]->redrawAllAxes(false);
+        }
+        else    // Finish page
+        {
+            nextPageIndex = MAX_WIZARD_SELECTABLE_AXES*2 - 3;
+
+            thumbnails[nextPageIndex]->setNumberOfAxes(curAxisCount);
+            thumbnails[nextPageIndex]->setAxisTitles(axisVarNames);
+            thumbnails[nextPageIndex]->redrawAllAxes(true);
+        }
+    }
+
+    showPage(pages[nextPageIndex]);
+}
+
+
+void
+QvisParallelCoordinatesPlotWizard::back()
+{
+    int curPageIndex = indexOf(currentPage());
+    int prevPageIndex = curPageIndex - 1;
+    
+    if ((curPageIndex & 1) != 0)   // New axis "Yes or No" page, or Finish page
+    {
+        parAxisAtts->DeleteAxis(axisVarNames[--curAxisCount], 1);
+
+        if (curPageIndex == MAX_WIZARD_SELECTABLE_AXES*2 - 3)   // Finish page
+        {
+            prevPageIndex = (curAxisCount == 1) ? 0 : curAxisCount*2 - 3;
+        }
+    }
+    else
+    {
+        dupVarMessages[curAxisCount]->hide();
+    }
+
+    thumbnails[prevPageIndex]->redrawAllAxes(false);
+
+    showPage(pages[prevPageIndex]);
 }

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -38,20 +38,19 @@
 
 #include <QvisImageAnnotationInterface.h>
 
-#include <QCheckBox>
-#include <QDir>
-#include <QFileDialog>
-#include <QWidget>
-#include <QLabel>
-#include <QLayout>
-#include <QLineEdit>
-#include <QPushButton>
-#include <QSpinBox>
-#include <QToolTip>
+#include <qcheckbox.h>
+#include <qdir.h>
+#include <qfiledialog.h>
+#include <qhbox.h>
+#include <qlabel.h>
+#include <qlayout.h>
+#include <qlineedit.h>
+#include <qpushbutton.h>
+#include <qspinbox.h>
+#include <qtooltip.h>
 
 #include <AnnotationObject.h>
 #include <QvisColorButton.h>
-#include <QvisDialogLineEdit.h>
 #include <QvisOpacitySlider.h>
 #include <QvisScreenPositionEdit.h>
 
@@ -75,102 +74,96 @@
 //   Brad Whitlock, Tue Apr  8 09:27:26 PDT 2008
 //   Support for internationalization.
 //
-//   Brad Whitlock, Thu Jun 26 14:59:15 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
-QvisImageAnnotationInterface::QvisImageAnnotationInterface(QWidget *parent) :
-    QvisAnnotationObjectInterface(parent)
+QvisImageAnnotationInterface::QvisImageAnnotationInterface(QWidget *parent,
+    const char *name) : QvisAnnotationObjectInterface(parent, name),
+    initialDir()
 {
     // Set the title of the group box.
     this->setTitle(GetName());
 
-    QGridLayout *cLayout = new QGridLayout(0);
-    topLayout->addLayout(cLayout);
-    cLayout->setSpacing(5);
+    QGridLayout *cLayout = new QGridLayout(topLayout, 6, 4);
+    cLayout->setSpacing(10);
 
     // Add controls for the image path.
-    imageSource = new QvisDialogLineEdit(this);
-    imageSource->setDialogMode(QvisDialogLineEdit::ChooseLocalFile);
-    imageSource->setDialogFilter(tr("Images") + QString(" (*.bmp *.jpg *.pbm *.pgm *.png *.ppm *.tif)"));
+    QHBox *imageSourceParent = new QHBox(this, "imageSourceParent");
+    imageSource = new QLineEdit(imageSourceParent, "imageSource");
     connect(imageSource, SIGNAL(textChanged(const QString &)),
             this, SLOT(imageSourceChanged(const QString &)));
-
-    cLayout->addWidget(imageSource, 0, 1, 1, 3);
-    QLabel *imageLabel = new QLabel(tr("Image source"), this);
-    imageLabel->setBuddy(imageSource);
-    imageLabel->setToolTip(tr("Name of the file containing the image"));
+    QPushButton *imageSourceBtn = new QPushButton("...",
+                                                  imageSourceParent,
+                                                  "imageSourceBtn");
+    imageSourceBtn->setMaximumWidth(
+         fontMetrics().boundingRect("...").width() + 6);
+    imageSourceBtn->setSizePolicy(QSizePolicy(QSizePolicy::Fixed,
+         QSizePolicy::Minimum));
+    connect(imageSourceBtn, SIGNAL(clicked()), this, SLOT(imageSourceEdit()));
+    cLayout->addMultiCellWidget(imageSourceParent, 0, 0, 1, 3);
+    QLabel *imageLabel = new QLabel(imageSource, tr("Image source"), this);
+    QToolTip::add(imageLabel, tr("Name of the file containing the image"));
     cLayout->addWidget(imageLabel, 0, 0);
 
     // Add controls for the start position
-    positionStartEdit = new QvisScreenPositionEdit(this);
+    positionStartEdit = new QvisScreenPositionEdit(this, "positionStartEdit");
     connect(positionStartEdit, SIGNAL(screenPositionChanged(double, double)),
             this, SLOT(positionStartChanged(double, double)));
-    cLayout->addWidget(positionStartEdit, 1, 1, 1, 3);
-    QLabel *lowerLeftLabel = new QLabel(tr("Lower left"), this);
-    lowerLeftLabel->setBuddy(positionStartEdit);
-    lowerLeftLabel->setToolTip(tr("Lower left corner of the image in "
+    cLayout->addMultiCellWidget(positionStartEdit, 1, 1, 1, 3);
+    QLabel *lowerLeftLabel = new QLabel(positionStartEdit, tr("Lower left"), this);
+    QToolTip::add(lowerLeftLabel, tr("Lower left corner of the image in "
         "screen coordinates [0,1]"));
     cLayout->addWidget(lowerLeftLabel, 1, 0);
 
     // Add controls for width.
-    widthSpinBox = new QSpinBox(this);
-    widthSpinBox->setMinimum(1);
-    widthSpinBox->setMaximum(1000);
+    widthSpinBox = new QSpinBox(1, 1000, 1, this, "widthSpinBox");
     widthSpinBox->setSuffix("%");
     widthSpinBox->setButtonSymbols(QSpinBox::PlusMinus);
     connect(widthSpinBox, SIGNAL(valueChanged(int)),
             this, SLOT(widthChanged(int)));
     cLayout->addWidget(widthSpinBox, 2, 1);
-    QLabel *wLabel = new QLabel(tr("Width"), this);
-    wLabel->setBuddy(widthSpinBox);
-    cLayout->addWidget(wLabel, 2, 0);
+    cLayout->addWidget(new QLabel(widthSpinBox, tr("Width"), this), 2, 0);
 
     // Add controls for height.
-    heightSpinBox = new QSpinBox(this);
+    heightSpinBox = new QSpinBox(1, 1000, 1, this, "heightSpinBox");
     heightSpinBox->setSuffix("%");
-    heightSpinBox->setMinimum(1);
-    heightSpinBox->setMaximum(1000);
     heightSpinBox->setButtonSymbols(QSpinBox::PlusMinus);
     connect(heightSpinBox, SIGNAL(valueChanged(int)),
             this, SLOT(heightChanged(int)));
     cLayout->addWidget(heightSpinBox, 3, 1);
-    QLabel *hLabel = new QLabel(tr("Height"), this);
-    hLabel->setBuddy(heightSpinBox);
-    cLayout->addWidget(hLabel, 3, 0);
+    cLayout->addWidget(new QLabel(heightSpinBox, tr("Height"), this), 3, 0);
 
     // Width/Height linked?
-    linkedWH = new QCheckBox(tr("Lock aspect"), this);
+    linkedWH = new QCheckBox(tr("Lock aspect"), this, "linkedWH");
     linkedWH->setChecked(true);
     connect(linkedWH, SIGNAL(toggled(bool)),
             this, SLOT(maintainAspectRatio(bool)));
-    cLayout->addWidget(linkedWH, 2, 2, 1, 2);
+    cLayout->addMultiCellWidget(linkedWH, 2, 2, 2, 3);
 
     // Add controls for the opacity color.
-    opacityCheck = new QCheckBox(tr("Transparent Color"), this);
+    opacityCheck = new QCheckBox(tr("Transparent Color"), this, "opacityCheck");
     connect(opacityCheck, SIGNAL(toggled(bool)),
             this, SLOT(toggleOpacityColor(bool)));
-    opacityColorButton = new QvisColorButton(this);
+    opacityColorButton = new QvisColorButton(this, "opacityColorButton");
     connect(opacityColorButton, SIGNAL(selectedColor(const QColor &)),
             this, SLOT(opacityColorChanged(const QColor &)));
     opacityCheck->setChecked(false);
-    cLayout->addWidget(opacityCheck, 4, 0, 1, 2);
+    cLayout->addMultiCellWidget(opacityCheck, 4, 4, 0, 1);
     cLayout->addWidget(opacityColorButton, 4, 2);
 
     // Add controls for the overall opacity.
     int row = 5;
 #ifdef OVERALL_OPACITY
-    opacitySlider = new QvisOpacitySlider(0, 255, 10, 0, this);
+    opacitySlider = new QvisOpacitySlider(0, 255, 10, 0, this,
+                                          "opacitySlider");
     connect(opacitySlider, SIGNAL(valueChanged(int)),
             this, SLOT(opacityChanged(int)));
-    cLayout->addWidget(new QLabel(tr("Opacity"), this), row, 0);
+    cLayout->addWidget(new QLabel(tr("Opacity"), this, "opacityLabel"), row, 0);
     cLayout->addMultiCellWidget(opacitySlider, row, row, 1, 3);
     ++row;
 #endif
 
     // Added a visibility toggle
-    visibleCheckBox = new QCheckBox(tr("Visible"), this);
+    visibleCheckBox = new QCheckBox(tr("Visible"), this, "visibleCheckBox");
     connect(visibleCheckBox, SIGNAL(toggled(bool)),
             this, SLOT(visibilityToggled(bool)));
     cLayout->addWidget(visibleCheckBox, row, 0);
@@ -210,10 +203,7 @@ QvisImageAnnotationInterface::~QvisImageAnnotationInterface()
 // Modifications:
 //   Brad Whitlock, Tue Apr  8 09:27:26 PDT 2008
 //   Support for internationalization.
-//
-//   Brad Whitlock, Thu Jun 26 15:13:31 PDT 2008
-//   Better implementation.
-//
+//   
 // ****************************************************************************
 
 QString
@@ -225,9 +215,9 @@ QvisImageAnnotationInterface::GetMenuText(const AnnotationObject &annot) const
     {
         if(annot.GetText()[0].size() > 0)
         {
-            retval = QString("%1 - \"%2\"").
-                     arg(GetName()).
-                     arg(annot.GetText()[0].c_str());
+            retval.sprintf("%s - \"%s\"",
+                           GetName().latin1(),
+                           annot.GetText()[0].c_str());
         }
         else
             retval = GetName() + QString(" - [") + noImage + QString("]");
@@ -297,7 +287,7 @@ QvisImageAnnotationInterface::UpdateControls()
     else
     {
         opacityColorButton->setEnabled(false);
-        opacityColorButton->setButtonColor(Qt::white);
+        opacityColorButton->setButtonColor(white);
     }
 #ifdef OVERALL_OPACITY
     opacitySlider->setValue(annot->GetColor1().Alpha());
@@ -328,9 +318,6 @@ QvisImageAnnotationInterface::UpdateControls()
 //   Brad Whitlock, Mon Mar 6 11:05:02 PDT 2006
 //   I added code to make sure that the screen position is recorded.
 //
-//   Brad Whitlock, Thu Jun 26 15:21:02 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
@@ -351,7 +338,7 @@ QvisImageAnnotationInterface::GetCurrentValues(int which_widget)
         int w = widthSpinBox->value();
         double pos[] = {w, annot->GetPosition2()[1], 0};
         annot->SetPosition2(pos);
-        if(linkedWH->isChecked())
+        if(linkedWH->isOn())
             heightSpinBox->setValue(w);
     }
 
@@ -362,7 +349,7 @@ QvisImageAnnotationInterface::GetCurrentValues(int which_widget)
         int h = heightSpinBox->value();
         double pos[] = {annot->GetPosition2()[0], h, 0};
         annot->SetPosition2(pos);
-        if(linkedWH->isChecked())
+        if(linkedWH->isOn())
             widthSpinBox->setValue(h);
     }
 }
@@ -396,10 +383,66 @@ void
 QvisImageAnnotationInterface::imageSourceChanged(const QString &s)
 {
     stringVector sv;
-    sv.push_back(s.toStdString());
+    sv.push_back(s.latin1());
     annot->SetText(sv);
     SetUpdate(false);
     Apply();
+}
+
+// ****************************************************************************
+// Method: QvisImageAnnotationInterface::imageSourceEdit
+//
+// Purpose:
+//   This is a Qt slot that helps the user select a new image filename.
+//
+// Arguments:
+//
+// Returns:
+//
+// Note:
+//
+// Programmer: John C. Anderson
+// Creation:   Mon Aug 30 09:31:45 PDT 2004
+//
+// Modifications:
+//   Brad Whitlock, Tue Jun 28 16:02:29 PST 2005
+//   I made it use the file server's path or the last path that was accessed.
+//
+//   Brad Whitlock, Tue Apr  8 09:27:26 PDT 2008
+//   Support for internationalization.
+//
+// ****************************************************************************
+
+void
+QvisImageAnnotationInterface::imageSourceEdit()
+{
+    QString imageDir;
+    if(imageSource->text() == "")
+    {
+        if(initialDir.isEmpty())
+            imageDir = QDir::current().path();
+        else
+            imageDir = initialDir;
+    }
+    else
+        imageDir = imageSource->text();
+
+    QString path = QFileDialog::getOpenFileName(
+      imageDir,
+      tr("Images") + QString(" (*.bmp *.jpg *.pbm *.pgm *.png *.ppm *.tif)"),
+      this,
+      "select image",
+      tr("Select Image"));
+
+    if(path != QString::null)
+    {
+        imageSource->setText(path);
+        widthSpinBox->setValue(100);
+        heightSpinBox->setValue(100);
+
+        // Set the initial path.
+        initialDir = path;
+    }
 }
 
 // ****************************************************************************
@@ -439,9 +482,7 @@ QvisImageAnnotationInterface::positionStartChanged(double x, double y)
 // Creation:   Wed Nov 5 11:49:46 PDT 2003
 //
 // Modifications:
-//   Brad Whitlock, Thu Jun 26 15:21:18 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
@@ -452,7 +493,7 @@ QvisImageAnnotationInterface::widthChanged(int w)
     SetUpdate(false);
     Apply();
 
-    if(linkedWH->isChecked())
+    if(linkedWH->isOn())
         heightSpinBox->setValue(w);
 }
 
@@ -470,9 +511,7 @@ QvisImageAnnotationInterface::widthChanged(int w)
 // Creation:   Wed Nov 5 11:49:46 PDT 2003
 //
 // Modifications:
-//   Brad Whitlock, Thu Jun 26 15:21:31 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
@@ -483,7 +522,7 @@ QvisImageAnnotationInterface::heightChanged(int h)
     SetUpdate(false);
     Apply();
 
-    if(linkedWH->isChecked())
+    if(linkedWH->isOn())
         widthSpinBox->setValue(h);
 }
 

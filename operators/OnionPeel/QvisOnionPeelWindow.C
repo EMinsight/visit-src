@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -44,15 +44,15 @@
 #include <SILRestrictionAttributes.h>
 #include <QvisSILSetSelector.h>
 
-#include <QButtonGroup>
-#include <QCheckBox>
-#include <QLabel>
-#include <QLayout>
-#include <QLineEdit>
-#include <QRadioButton>
-#include <QSpinBox>
-#include <QStringList>
-#include <QTimer>
+#include <qbuttongroup.h>
+#include <qcheckbox.h>
+#include <qlabel.h>
+#include <qlayout.h>
+#include <qlineedit.h>
+#include <qradiobutton.h>
+#include <qspinbox.h>
+#include <qstringlist.h>
+#include <qtimer.h>
 #include <stdio.h>
 #include <vectortypes.h>
 
@@ -74,9 +74,6 @@
 //   Kathleen Bonnell, Wed Jun  6 17:22:08 PDT 2007 
 //   Removed defaultItem, silTopSet, silNumSets, silNumCollections, silAtts.
 //
-//   Brad Whitlock, Fri Jul 18 08:54:49 PDT 2008
-//   Initialize adjacencyType button groups.
-//
 // ****************************************************************************
 
 QvisOnionPeelWindow::QvisOnionPeelWindow(const int type,
@@ -87,8 +84,6 @@ QvisOnionPeelWindow::QvisOnionPeelWindow(const int type,
     : QvisOperatorWindow(type,subj, caption, shortName, notepad) 
 {
     atts = subj;
-    adjacencyType = 0;
-    seedType = 0;
 }
 
 
@@ -102,9 +97,7 @@ QvisOnionPeelWindow::QvisOnionPeelWindow(const int type,
 // Creation:   Thu Aug 8 14:29:46 PST 2002
 //
 // Modifications:
-//   Brad Whitlock, Fri Jul 18 08:55:09 PDT 2008
-//   Delete button groups.
-//
+//   
 // ****************************************************************************
 
 QvisOnionPeelWindow::~QvisOnionPeelWindow()
@@ -137,32 +130,28 @@ QvisOnionPeelWindow::~QvisOnionPeelWindow()
 //   Brad Whitlock, Fri Apr 25 08:54:57 PDT 2008
 //   Added tr()'s
 //
-//   Brad Whitlock, Fri Jul 18 08:54:13 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
 QvisOnionPeelWindow::CreateWindowContents()
 {
-    QGridLayout *mainLayout = new QGridLayout(0);
-    mainLayout->setMargin(0);
-    topLayout->addLayout(mainLayout);
+    QGridLayout *mainLayout = new QGridLayout(topLayout, 7,3,  10, "mainLayout");
 
     //
     // Adjacency
     //
-    mainLayout->addWidget(new QLabel(tr("Adjacency"), central),0,0);
-    adjacencyType = new QButtonGroup(central);
-    connect(adjacencyType, SIGNAL(buttonClicked(int)),
+    mainLayout->addWidget(new QLabel(tr("Adjacency"), central, "adjacencyTypeLabel"),0,0);
+    adjacencyType = new QButtonGroup(central, "adjacencyType");
+    adjacencyType->setFrameStyle(QFrame::NoFrame);
+    QHBoxLayout *adjacencyTypeLayout = new QHBoxLayout(adjacencyType);
+    adjacencyTypeLayout->setSpacing(10);
+    QRadioButton *adjacencyTypeNodeFaceNode = new QRadioButton(tr("Node"), adjacencyType);
+    adjacencyTypeLayout->addWidget(adjacencyTypeNodeFaceNode);
+    QRadioButton *adjacencyTypeNodeFaceFace = new QRadioButton(tr("Face"), adjacencyType);
+    adjacencyTypeLayout->addWidget(adjacencyTypeNodeFaceFace);
+    connect(adjacencyType, SIGNAL(clicked(int)),
             this, SLOT(adjacencyTypeChanged(int)));
-
-    QRadioButton *rb = new QRadioButton(tr("Node"), central);
-    adjacencyType->addButton(rb, 0);
-    mainLayout->addWidget(rb, 0, 1);
-    rb = new QRadioButton(tr("Face"), central);
-    adjacencyType->addButton(rb, 2);
-    mainLayout->addWidget(rb, 0, 2);
+    mainLayout->addWidget(adjacencyType, 0,1);
 
     //
     // silSet (category/subset)
@@ -170,59 +159,62 @@ QvisOnionPeelWindow::CreateWindowContents()
     intVector roles;
     roles.push_back(SIL_DOMAIN);
     roles.push_back(SIL_BLOCK);
-    silSet = new QvisSILSetSelector(central, 
+    silSet = new QvisSILSetSelector(central, "silSet", 
         GetViewerState()->GetSILRestrictionAttributes(), roles);
     connect(silSet, SIGNAL(categoryChanged(const QString &)),
             this, SLOT(categoryChanged(const QString &)));
     connect(silSet, SIGNAL(subsetChanged(const QString &)),
             this, SLOT(subsetChanged(const QString &)));
-    mainLayout->addWidget(silSet, 1, 0, 1, 4);
+    mainLayout->addMultiCellWidget(silSet, 1,1, 0,2);
 
     //
     // Seed
     //
-    mainLayout->addWidget(new QLabel(tr("Seed"), central),2,0);
-    seedType = new QButtonGroup(central);
-    connect(seedType, SIGNAL(buttonClicked(int)),
+    mainLayout->addWidget(new QLabel(tr("Seed"), central, "seedTypeLabel"),2,0);
+    seedType = new QButtonGroup(central, "seedType");
+    seedType->setFrameStyle(QFrame::NoFrame);
+    QHBoxLayout *seedTypeLayout = new QHBoxLayout(seedType);
+    seedTypeLayout->setSpacing(10);
+    QRadioButton *rb = new QRadioButton(tr("Cell"), seedType);
+    seedTypeLayout->addWidget(rb);
+    rb = new QRadioButton(tr("Node"), seedType);
+    seedTypeLayout->addWidget(rb);
+    connect(seedType, SIGNAL(clicked(int)),
             this, SLOT(seedTypeChanged(int)));
-
-    rb = new QRadioButton(tr("Cell"), central);
-    seedType->addButton(rb, 0);
-    mainLayout->addWidget(rb, 2, 1);
-    rb = new QRadioButton(tr("Node"), central);
-    seedType->addButton(rb, 1);
-    mainLayout->addWidget(rb, 2, 2);
+    mainLayout->addWidget(seedType, 2,1);
     
     //
     // Index
     //
+#if 0
+    mainLayout->addMultiCellWidget(new QLabel(tr("Seed # or i j [k]"), 
+                central, "indexLabel"),3,3,0,1);
+#endif
     mainLayout->addWidget(new QLabel(tr("Seed # or i j [k]"), 
-                central),3,0);
-    index = new QLineEdit(central);
+                central, "indexLabel"),3,0);
+    index = new QLineEdit(central, "index");
     index->setText(QString("1"));
     connect(index, SIGNAL(returnPressed()),
             this, SLOT(indexChanged()));
-    mainLayout->addWidget(index, 3, 1, 1, 3);
+    mainLayout->addWidget(index, 3,1);
 
     //
     // UseGlobalId
     //
-    useGlobalId = new QCheckBox(tr("Seed # is Global"), central);
+    useGlobalId = new QCheckBox(tr("Seed # is Global"), central, "useGlobalId");
     useGlobalId->setChecked(false);
     connect(useGlobalId, SIGNAL(toggled(bool)),
             this, SLOT(useGlobalIdToggled(bool)));
-    mainLayout->addWidget(useGlobalId, 4, 0, 1, 3);
+    mainLayout->addMultiCellWidget(useGlobalId, 4,4, 0,1);
 
     //
     // Layers
     //
-    mainLayout->addWidget(new QLabel(tr("Layers"), central),5,0);
-    requestedLayer = new QSpinBox(central);
-    requestedLayer->setMinimum(0);
-    requestedLayer->setMaximum(10000);
+    mainLayout->addWidget(new QLabel(tr("Layers"), central, "requestedLayerLabel"),5,0);
+    requestedLayer = new QSpinBox(0, 10000, 1, central, "requestedLayer");
     connect(requestedLayer, SIGNAL(valueChanged(int)), 
             this, SLOT(requestedLayerChanged(int)));
-    mainLayout->addWidget(requestedLayer, 5, 1, 1, 3);
+    mainLayout->addWidget(requestedLayer, 5,1);
 }
 
 
@@ -251,9 +243,6 @@ QvisOnionPeelWindow::CreateWindowContents()
 //   Kathleen Bonnell, Wed Jun  6 17:22:08 PDT 2007 
 //   Removed calls to UpdateComboBoxes, replace category/subset with silSet.
 //
-//   Brad Whitlock, Fri Jul 18 09:03:53 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
@@ -277,28 +266,28 @@ QvisOnionPeelWindow::UpdateWindow(bool doAll)
 
         switch(i)
         {
-        case OnionPeelAttributes::ID_adjacencyType:
+        case 0: // Adjacency 
             adjacencyType->blockSignals(true);
-            adjacencyType->button(atts->GetAdjacencyType())->setChecked(true);
+            adjacencyType->setButton(atts->GetAdjacencyType());
             adjacencyType->blockSignals(false);
             break;
-        case OnionPeelAttributes::ID_useGlobalId :
+        case 1: //useGlobalId 
             useGlobalId->blockSignals(true);
             useGlobalId->setChecked(atts->GetUseGlobalId());
             silSet->setEnabled(!atts->GetUseGlobalId());
             useGlobalId->blockSignals(false);
             break;
-        case OnionPeelAttributes::ID_categoryName:
+        case 2: //Category 
             silSet->blockSignals(true);
             silSet->SetCategoryName(atts->GetCategoryName().c_str());
             silSet->blockSignals(false);
             break;
-        case OnionPeelAttributes::ID_subsetName:
+        case 3: // Subset 
             silSet->blockSignals(true);
             silSet->SetSubsetName(atts->GetSubsetName().c_str());
             silSet->blockSignals(false);
             break;
-        case OnionPeelAttributes::ID_index:
+        case 4: // index 
             index->blockSignals(true);
             ivec = atts->GetIndex(); 
             char buff[80];
@@ -311,16 +300,16 @@ QvisOnionPeelWindow::UpdateWindow(bool doAll)
             index->setText(temp); 
             index->blockSignals(false);
             break;
-        case OnionPeelAttributes::ID_logical:
+        case 5: // Logical 
             break;
-        case OnionPeelAttributes::ID_requestedLayer:
+        case 6: // Layers 
             requestedLayer->blockSignals(true);
             requestedLayer->setValue(atts->GetRequestedLayer());
             requestedLayer->blockSignals(false);
             break;
-        case OnionPeelAttributes::ID_seedType:
+        case 7: // SeedType 
             seedType->blockSignals(true);
-            seedType->button(atts->GetSeedType())->setChecked(true);
+            seedType->setButton(atts->GetSeedType());
             seedType->blockSignals(false);
             break;
         }
@@ -344,9 +333,6 @@ QvisOnionPeelWindow::UpdateWindow(bool doAll)
 //   Kathleen Bonnell, Wed Jun  6 17:22:08 PDT 2007 
 //   Replaced category/subset with silSet.
 //
-//   Brad Whitlock, Fri Jul 18 09:12:10 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
@@ -355,21 +341,35 @@ QvisOnionPeelWindow::GetCurrentValues(int which_widget)
     bool okay, doAll = (which_widget == -1);
     QString msg, temp;
 
+    // Do adjacencyType
+    if(which_widget == 0 || doAll)
+    {
+        // Nothing for adjacencyType
+    }
+
     // Do categoryName && subsetName
     if(doAll)
     {
-        atts->SetCategoryName(silSet->GetCategoryName().toStdString());
-        atts->SetSubsetName(silSet->GetSubsetName().toStdString());
+        atts->SetCategoryName(silSet->GetCategoryName().latin1());
+        atts->SetSubsetName(silSet->GetSubsetName().latin1());
     }
 
     // Do index
-    if(which_widget == OnionPeelAttributes::ID_index || doAll)
+    if(which_widget == 3 || doAll)
     {
         intVector ivec;
-        bool okay = false;
-        if(LineEditGetInts(index, ivec))
-            okay = ivec.size() > 0 && ivec.size() <= 3;
-        if(okay)
+        temp = index->displayText().simplifyWhiteSpace();
+        QStringList lst(QStringList::split(QString(" "), temp));
+ 
+        QStringList::Iterator it;
+        int val;
+        for (it = lst.begin(); it != lst.end(); ++it)
+        { 
+            sscanf((*it).latin1(), "%d", &val);
+            ivec.push_back(val);
+        }
+        okay = ((ivec.size() > 0) && (ivec.size() <= 3));
+        if (okay)
         {
             atts->SetLogical(ivec.size() != 1 && !atts->GetUseGlobalId());
             atts->SetIndex(ivec);
@@ -384,11 +384,13 @@ QvisOnionPeelWindow::GetCurrentValues(int which_widget)
         }
     }
 
-    if(which_widget == OnionPeelAttributes::ID_requestedLayer || doAll)
+    // Do requestedLayer
+    if(which_widget == 4 || doAll)
     {
         if (atts->GetRequestedLayer() != requestedLayer->value())
             atts->SetRequestedLayer(requestedLayer->value());
     }
+
 }
 
 
@@ -459,7 +461,7 @@ QvisOnionPeelWindow::seedTypeChanged(int val)
 void
 QvisOnionPeelWindow::categoryChanged(const QString &cname)
 {
-    atts->SetCategoryName(cname.toStdString());
+    atts->SetCategoryName(cname.latin1());
     if (AutoUpdate())
         QTimer::singleShot(100, this, SLOT(delayedApply()));
     else
@@ -478,7 +480,7 @@ QvisOnionPeelWindow::categoryChanged(const QString &cname)
 void
 QvisOnionPeelWindow::subsetChanged(const QString &sname)
 {
-    atts->SetSubsetName(sname.toStdString());
+    atts->SetSubsetName(sname.latin1());
     if (AutoUpdate())
         QTimer::singleShot(100, this, SLOT(delayedApply()));
     else
@@ -488,7 +490,7 @@ QvisOnionPeelWindow::subsetChanged(const QString &sname)
 void
 QvisOnionPeelWindow::indexChanged()
 {
-    GetCurrentValues(OnionPeelAttributes::ID_index);
+    GetCurrentValues(3);
     if (AutoUpdate())
         QTimer::singleShot(100, this, SLOT(delayedApply()));
     else
@@ -506,7 +508,7 @@ QvisOnionPeelWindow::indexChanged()
 void
 QvisOnionPeelWindow::requestedLayerChanged(int val)
 {
-    GetCurrentValues(OnionPeelAttributes::ID_requestedLayer);
+    GetCurrentValues(4);
     if (AutoUpdate())
         QTimer::singleShot(100, this, SLOT(delayedApply()));
     else

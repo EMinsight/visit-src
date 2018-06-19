@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,6 +37,7 @@
 *****************************************************************************/
 
 #include <NETCDFFileObject.h>
+#include <cstring>
 #include <netcdf.h>
 #include <DebugStream.h>
 #include <InvalidDBTypeException.h>
@@ -1213,3 +1214,60 @@ NETCDFFileObject::PrintFileContents(ostream &os)
     debug4 << mName << "unlimitedDimension = " << unlimitedDimension << endl;
 }
 
+// ****************************************************************************
+// Method: NETCDFFileObject::GetDimensionInfo
+//
+// Purpose: 
+//   Gets the size of a NETCDF dimension.
+//
+// Arguments:
+//   file : The NETCDF file object
+//   dName : The name of the dimension to query.
+//   size  : The size of the dimension.
+//
+// Returns:    True if the dimension was located, false otherwise.
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri Oct 5 12:03:15 PDT 2007
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+bool
+NETCDFFileObject::GetDimensionInfo(const char *dName, size_t *size)
+{
+    int status, nDims, nVars, nGlobalAtts, unlimitedDimension;
+    status = nc_inq(GetFileHandle(), &nDims, &nVars, &nGlobalAtts,
+                    &unlimitedDimension);
+    if(status != NC_NOERR)
+    {
+        HandleError(status);
+        return false;
+    }
+
+    int i;
+    for(i = 0; i < nDims; ++i)
+    {
+        char   dimName[NC_MAX_NAME+1];
+        size_t dimSize;
+        if((status = nc_inq_dim(GetFileHandle(), i, dimName,
+           &dimSize)) == NC_NOERR)
+        {
+            debug5 << "Dimension " << i << ": " << dimName << ", " << dimSize << endl;
+            if(strcmp(dimName, dName) == 0)
+            {
+                *size = dimSize;
+                return true;
+            }
+        }
+        else
+        {
+            HandleError(status);
+        }
+    }
+
+    return false;
+}

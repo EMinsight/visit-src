@@ -36,7 +36,7 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                             avtParallelCoordinatesFilter.h                       //
+//                         avtParallelCoordinatesFilter.h                    //
 // ************************************************************************* //
 
 #ifndef AVT_PARALLEL_COORDINATES_FILTER_H
@@ -45,11 +45,13 @@
 
 #include <ParallelCoordinatesAttributes.h>
 #include <avtSIMODataTreeIterator.h>
+#include <avtHistogramSpecification.h>
 
 #include <vector>
 #include <string>
 
 #define PCP_CTX_BRIGHTNESS_LEVELS         100
+#define PCP_MAX_TIMESTEPS                 12
 
 class vtkDataSet;
 class vtkPolyData;
@@ -77,6 +79,20 @@ class vtkPoints;
 //    ordered axis array names in the attributes be empty.
 //    Also handle X positions defined by binning in array vars.
 //
+//    Hank Childs, Mon Feb 23 18:01:41 PST 2009
+//    Added methods for creating named selections.
+//
+//    Jeremy Meredith, Wed Feb 25 13:37:08 EST 2009
+//    Use new histogram structure for context and (optionally) focus.
+//    Add some multiple-timestep support.
+//
+//    Hank Childs, Mon Apr  6 13:07:18 PDT 2009
+//    Added method for registering named selections.
+//
+//    Jeremy Meredith, Mon Apr 27 10:44:49 EDT 2009
+//    Added ability to draw focus as color-graduated bins, merging
+//    context- and focus-as-histogram-drawing routines.
+//
 // ****************************************************************************
 
 class avtParallelCoordinatesFilter : public avtSIMODataTreeIterator
@@ -90,12 +106,14 @@ public:
     virtual const char         *GetType(void)
                                     { return "avtParallelCoordinatesFilter"; };
     virtual const char         *GetDescription(void)
-                                    { return "Parallel axis plot"; };
+                                    { return "Parallel coordinates plot"; };
     virtual void                ReleaseData(void);
+    virtual avtNamedSelection  *CreateNamedSelection(avtContract_p, const std::string &);
+    virtual void                RegisterNamedSelection(const std::string &s) 
+                                              { namedSelections.push_back(s);};
 
 protected:
-    virtual avtContract_p
-                                ModifyContract(avtContract_p);
+    virtual avtContract_p       ModifyContract(avtContract_p);
     virtual avtDataTree_p       ExecuteDataTree(vtkDataSet *, int, string);
 
     virtual void                UpdateDataObjectInfo(void);
@@ -108,24 +126,29 @@ private:
     void                        ComputeCurrentDataExtentsOverAllDomains();
 
     void                        InitializeDataTupleInput();
-    void                        InitializeOutputDataSets();
-    void                        InputDataTuple(const floatVector &inputTuple);
-    void                        CountDataTuple(const floatVector &inputTuple);
+    void                        CountDataTupleFocus(int ts,
+                                                    const floatVector &tuple);
+    void                        CountDataTupleContext(int ts,
+                                                     const floatVector &tuple);
 
-    void                        InitializePairwiseBins();
-    void                        CleanUpPairwiseBins();
+    void                        InitializeContextHistograms();
+    void                        InitializeFocusHistograms();
+    void                        CleanUpAllHistograms();
 
-    void                        DrawContext();
-    void                        DrawDataCurves();
+    void                        DrawHistogram(int ts, bool focus);
+    void                        DrawContext(int ts);
+    void                        DrawFocusHistograms(int ts);
     void                        PrepareForArrayVariable();
+    string                      ConvertExtentsToCondition();
+    string                      ConvertNamedSelectionToCondition();
 
     ParallelCoordinatesAttributes parCoordsAtts;
     
     bool                        isArrayVar;
     bool                        sendNullOutput;
 
-    stringVector                curveAndAxisLabels;
-    stringVector                contextLabels;
+    stringVector                focusLabels[PCP_MAX_TIMESTEPS];
+    stringVector                contextLabels[PCP_MAX_TIMESTEPS];
 
     int                         axisCount;
 
@@ -133,18 +156,29 @@ private:
     doubleVector                axisMaxima;
     doubleVector                axisXPositions;
     
+    stringVector                namedSelections;
+
     boolVector                  applySubranges;
     bool                        extentsApplied;
 
-    int                         outputCurveCount;
+    bool                        gotHistogramsFromDB;
+    std::vector<avtHistogramSpecification*> histograms;
+    std::vector<avtHistogramSpecification*> histogramsForSelectedRegion;
 
+    // Data and methods to support old full-data-point focus rendering
     vtkPolyData                *dataCurvePolyData;
     vtkPoints                  *dataCurvePoints;
     vtkCellArray               *dataCurveLines;
     vtkCellArray               *dataCurveVerts;
+    int outputCurveCount;
+    void DrawFocusPolyLines();
+    void InitializeFocusPolyData();
+    void AppendDataTupleFocus(const floatVector&);
 
-    int                       **binnedAxisCounts;
+    virtual avtNamedSelection  *CreateNamedSelectionThroughTraversal(avtContract_p, const std::string &);
+    virtual avtNamedSelection  *CreateDBAcceleratedNamedSelection(avtContract_p, const std::string &);
 };
+
 
 
 #endif

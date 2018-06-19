@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -45,6 +45,7 @@
 #include <vtkDataSet.h>
 #include <vtkSmoothPolyDataFilter.h>
 #include <vtkPolyData.h>
+#include <vtkGeometryFilter.h>
 
 #include <avtDataset.h>
 
@@ -129,24 +130,33 @@ avtSmoothPolyDataFilter::SetSmoothingLevel(int sl)
 //  Creation:   December  6, 2002
 //
 //  Modifications:
+//    Jeremy Meredith, Mon Feb 23 10:41:33 EST 2009
+//    If we didn't get poly data, don't throw an error, convert it.
+//    Also, do that check after our no-op checks to save time.
+//
+//    Jeremy Meredith, Mon Feb 23 16:58:50 EST 2009
+//    Added deletion of geometry filter.
 //
 // ****************************************************************************
 
 vtkDataSet *
 avtSmoothPolyDataFilter::ExecuteData(vtkDataSet *inDS, int, string)
 {
-    // We only work on surface data
-    if (inDS->GetDataObjectType() != VTK_POLY_DATA)
-    {
-        EXCEPTION1(VisItException, "avtSmoothPolyDataFilter::ExecuteDataTree "
-                                   "-- Did not get polydata");
-    }
-
+    // Detect no-ops
     if (smoothingLevel == 0 ||
         GetInput()->GetInfo().GetAttributes().GetTopologicalDimension() != 2 ||
         GetInput()->GetInfo().GetAttributes().GetSpatialDimension()     != 3)
     {
         return inDS;
+    }
+
+    // We only work on surface data
+    vtkGeometryFilter *geom = NULL;
+    if (inDS->GetDataObjectType() != VTK_POLY_DATA)
+    {
+        geom = vtkGeometryFilter::New();
+        geom->SetInput(inDS);
+        inDS = geom->GetOutput();
     }
 
     //
@@ -192,6 +202,8 @@ avtSmoothPolyDataFilter::ExecuteData(vtkDataSet *inDS, int, string)
     ManageMemory(outDS);
     newDS->Delete();
     smoothPolyData->Delete();
+    if (geom)
+        geom->Delete();
 
     return outDS;
 }

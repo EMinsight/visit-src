@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -244,8 +244,12 @@ class     WindowAttributes;
 //    Hank Childs, Wed Aug 13 10:36:40 PDT 2008
 //    Add new virtual method "NeedZBufferToCompositeEvenIn2D".
 //
-//    Brad Whitlock, Wed Jan  7 14:24:40 PST 2009
-//    I renamed a method that returns the plot info atts.
+//    Kathleen Bonnell, Mon Mar  2 16:29:09 PST 2009
+//    Removed CanDoCurveViewScaling, CanDo2DViewScaling (moved into 
+//    ViewerPlotPluginInfo)
+//
+//    Hank Childs, Mon Apr  6 14:05:10 PDT 2009
+//    Add support for registering named selections.
 //
 // ****************************************************************************
 
@@ -310,15 +314,14 @@ class PLOTTER_API avtPlot
                               *SetOpaqueMeshIsAppropriate(bool)
                                    { return NULL; };
     float                      GetCellCountMultiplierForSRThreshold() const;
-    const PlotInfoAttributes  &GetPlotInformation() const; 
+    const PlotInfoAttributes  *GetPlotInfoAtts(); 
 
     bool                      SetScaleMode(ScaleMode, ScaleMode, WINDOW_MODE);
     bool                      ScaleModeRequiresUpdate(WINDOW_MODE, ScaleMode,
                                                       ScaleMode rs);
-    virtual bool              CanDoCurveViewScaling(void) { return false; } 
-    virtual bool              CanDo2DViewScaling(void)    { return true; } 
     virtual bool              NeedZBufferToCompositeEvenIn2D(void) 
                                                           { return false; };
+    virtual void              RegisterNamedSelection(const std::string &) {;};
 
     virtual avtFilter	      *GetFilterForTopOfPipeline() { return 0; }
 

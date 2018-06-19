@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -304,7 +304,7 @@ GetMovieTemplateInformation(const std::string &filename, MovieTemplateInformatio
 {
     // Use a MovieTemplateConfig object to get the movie template information.
     MovieTemplateConfig cfg;
-    bool retval = cfg.ReadConfigFile(filename.c_str());
+    bool retval = cfg.ReadConfigFile(filename.c_str()) != 0;
     DataNode *root = 0;
 
     if(retval && (root = cfg.GetRootNode()) != 0)

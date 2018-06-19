@@ -1,4 +1,4 @@
-#                         Copyright (c) 2000 - 2008
+#                         Copyright (c) 2000 - 2009
 #                  Lawrence Livermore National Security, LLC
 #            Produced at the Lawrence Livermore National Laboratory
 #                              LLNL-CODE-400124
@@ -127,9 +127,6 @@
 #   Brad Whitlock, Wed Feb 27 14:29:55 PST 2008
 #   Added TryAnnotations.java
 #
-#   Jeremy Meredith, Tue Nov 18 15:58:11 EST 2008
-#   Added AxesArray.java.
-#
 ##############################################################################
 
 ##
@@ -169,7 +166,6 @@ AnnotationObjectList.java \
 AppearanceAttributes.java \
 Axes2D.java \
 Axes3D.java \
-AxesArray.java \
 AxisAttributes.java \
 AxisLabels.java \
 AxisTickMarks.java \

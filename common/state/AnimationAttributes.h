@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -60,12 +60,6 @@
 class STATE_API AnimationAttributes : public AttributeSubject
 {
 public:
-    enum AnimationMode
-    {
-        ReversePlayMode,
-        StopMode,
-        PlayMode
-    };
     enum PlaybackMode
     {
         Looping,
@@ -90,16 +84,12 @@ public:
     virtual void SelectAll();
 
     // Property setting methods
-    void SetAnimationMode(AnimationMode animationMode_);
     void SetPipelineCachingMode(bool pipelineCachingMode_);
-    void SetFrameIncrement(int frameIncrement_);
     void SetTimeout(int timeout_);
     void SetPlaybackMode(PlaybackMode playbackMode_);
 
     // Property getting methods
-    AnimationMode GetAnimationMode() const;
     bool GetPipelineCachingMode() const;
-    int  GetFrameIncrement() const;
     int  GetTimeout() const;
     PlaybackMode GetPlaybackMode() const;
 
@@ -108,11 +98,6 @@ public:
     virtual void SetFromNode(DataNode *node);
 
     // Enum conversion functions
-    static std::string AnimationMode_ToString(AnimationMode);
-    static bool AnimationMode_FromString(const std::string &, AnimationMode &);
-protected:
-    static std::string AnimationMode_ToString(int);
-public:
     static std::string PlaybackMode_ToString(PlaybackMode);
     static bool PlaybackMode_FromString(const std::string &, PlaybackMode &);
 protected:
@@ -130,17 +115,13 @@ public:
 
     // IDs that can be used to identify fields in case statements
     enum {
-        ID_animationMode = 0,
-        ID_pipelineCachingMode,
-        ID_frameIncrement,
+        ID_pipelineCachingMode = 0,
         ID_timeout,
         ID_playbackMode
     };
 
 private:
-    int  animationMode;
     bool pipelineCachingMode;
-    int  frameIncrement;
     int  timeout;
     int  playbackMode;
 

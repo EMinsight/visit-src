@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -48,12 +48,19 @@
 #include <string.h>
 #include <snprintf.h>
 
+#include <string>
+using std::string;
+
+#include <vector>
 using std::vector;
 
 #if defined(_WIN32)
 #include <windows.h>
 #include <userenv.h> // for GetProfilesDirectory
 #else
+#if defined(__APPLE__)
+#include <malloc/malloc.h> // for mstat
+#endif
 #include <unistd.h>
 #include <sys/types.h>
 #include <dirent.h>
@@ -74,7 +81,7 @@ static bool isDevelopmentVersion = false;
 //
 //  Arguments:
 //      list    A list of strings.
-//      listN   The number of std::string in list.
+//      listN   The number of string in list.
 //
 //  Returns:   The length of the longest common prefix (possibly 0).
 //
@@ -135,7 +142,7 @@ LongestCommonPrefixLength(const char * const *list, int listN)
 //
 //  Arguments:
 //      list    A list of strings.
-//      listN   The number of strings in list.
+//      listN   The number of string in list.
 //
 //  Returns:   The length of the longest common suffix (possibly 0).
 //
@@ -212,6 +219,10 @@ LongestCommonSuffixLength(const char * const *list, int listN)
 //  Programmer: Hank Childs (from code from Peter Lindstrom)
 //  Creation:   February 28, 2008
 //
+//  Modifications:
+//    Brad Whitlock, Tue Jun 23 17:07:57 PDT 2009
+//    I added a Mac implementation.
+//
 // ****************************************************************************
 
 void
@@ -219,7 +230,12 @@ GetMemorySize(int &size, int &rss)
 {
     size = -1;
     rss  = -1;
-#if !defined(_WIN32)
+#if defined(__APPLE__)
+    struct mstats m = mstats();
+    size = m.bytes_used; // The bytes used out of the bytes_total.
+    rss = m.bytes_total; // not quite accurate but this should be the total
+                         // amount allocated by malloc.
+#elif !defined(_WIN32)
     FILE *file = fopen("/proc/self/statm", "r");
     if (file == NULL)
     {
@@ -356,7 +372,7 @@ CreateMessageStrings(char **lists, int *count, int nl)
 // ****************************************************************************
 
 bool
-WildcardStringMatch(const std::string &p, const std::string &s)
+WildcardStringMatch(const string &p, const string &s)
 {
     // wrap around the c-style function
     return WildcardStringMatch(p.c_str(), s.c_str());
@@ -495,7 +511,7 @@ ReadAndProcessDirectory(const std::string &directory,
                 bool isDir = ((fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0) ||
                              (strcmp(fd.cFileName, "..") == 0);
                 long sz = ((fd.nFileSizeHigh * MAXDWORD) + fd.nFileSizeLow);
-                std::string fileName(directory);
+                string fileName(directory);
                 if(directory.substr(directory.size() - 1) != "\\")
                     fileName += "\\";
                 fileName += fd.cFileName;
@@ -530,7 +546,7 @@ ReadAndProcessDirectory(const std::string &directory,
         {
             // Get information about the file.
             VisItStat_t s;
-            std::string fileName(directory);
+            string fileName(directory);
             if(directory.substr(directory.size() - 1, 1) != "/")
                 fileName += "/";
             fileName += ent->d_name;
@@ -700,12 +716,12 @@ NumericStringCompare(const std::string &str1, const std::string &str2)
 //  Creation:    March 23, 2004
 //
 // ****************************************************************************
-vector<std::string>
-SplitValues(const std::string &buff, char delim)
+vector<string>
+SplitValues(const string &buff, char delim)
 {
-    vector<std::string> output;
+    vector<string> output;
     
-    std::string tmp="";
+    string tmp="";
     for (size_t i=0; i<buff.length(); i++)
     {
         if (buff[i] == delim)
@@ -1394,14 +1410,23 @@ GetVisItInstallationDirectory(const char *version)
     }
     else
     {
-        // Use the VISITDEVDIR environment var.
-        std::string visitdev;
-        char *devdir = getenv("VISITDEVDIR");
-        if(devdir == 0)
-            visitdev = std::string("C:\\VisItDev") + std::string(version);
+        // See if the VISITHOME is defined as environment var.
+        char *homedir = getenv("VISITHOME");
+        if (homedir != 0)
+        {
+            installDir = homedir;
+        }
         else
-            visitdev = std::string(devdir);
-        installDir = visitdev + "\\bin\\" + _VISIT_MSVC_VER + "\\Release";
+        {
+            // Use the VISITDEVDIR environment var.
+            std::string visitdev;
+            char *devdir = getenv("VISITDEVDIR");
+            if(devdir == 0)
+                visitdev = std::string("C:\\VisItDev") + std::string(version);
+            else
+                visitdev = std::string(devdir);
+            installDir = visitdev + "\\bin\\" + _VISIT_MSVC_VER + "\\Release";
+        }
     }
     if (visitHome != 0)
         free(visitHome);
@@ -1674,7 +1699,7 @@ ConvertArgsToTunneledValues(const std::map<int,int> &portTunnelMap,
 //    Parse out a numerical major.minor.patch version number.
 //
 //  Arguments:
-//    v0         the version std::string to parse
+//    v0         the version string to parse
 //    major      the first portion of the version string
 //    minor      the second portion of the version string
 //    patch      the third portion of the version string
@@ -1772,206 +1797,5 @@ VisItVersionsCompatible(const char *v0, const char *v1)
     }
 
     return ret;
-}
-
-// ****************************************************************************
-// Function: VersionGreaterThan
-//
-// Purpose: 
-//   Returns true when v1 > v2 compared as VisIt versions.
-//
-// Arguments:
-//   v1 : The first version
-//   v2 : The second version
-//
-// Returns:    True when v1>v2
-//
-// Note:       
-//
-// Programmer: Brad Whitlock
-// Creation:   Thu Oct  2 11:12:39 PDT 2008
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-static int
-VersionToInt(const std::string &version)
-{
-    int v[3];
-    GetVisItVersionFromString(version.c_str(), v[0], v[1], v[2]);
-    return v[0]*10000 + v[1]*100 + v[2];
-}
-
-bool
-VersionGreaterThan(const std::string &v1, const std::string &v2)
-{
-    return VersionToInt(v1) > VersionToInt(v2);
-}
-
-// ****************************************************************************
-// Function: ReadInstallationInfo
-//
-// Purpose: 
-//   Reads VisIt's .visitinstall file, which is a file that visit-install creates
-//   that tells us the arguments used to install VisIt. Mostly, we want it so
-//   we know which distribution file was used during installation so we can
-//   download that same file.
-//
-// Arguments:
-//   distName   : Return argument for the distribution name.
-//   configName : Return argument for the config name.
-//   bankName   : Return argument for the bank that was used.
-//
-// Returns:    True if the distribution can be determined; False otherwise.
-//
-// Note:       
-//
-// Programmer: Brad Whitlock
-// Creation:   Thu Oct  2 11:16:08 PDT 2008
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-bool
-ReadInstallationInfo(std::string &distName, std::string &configName, std::string &bankName)
-{
-    // There is a 1:1 match between archNames and distNames.
-
-    //
-    // Architecture names that match VisIt's architecture directories. These are the
-    // directory names that you'd find in /usr/local/apps/visit/<ver>
-    //
-    static const char *archNames[] = {
-    "linux-intel",
-    "linux-intel",
-    "linux-x86_64",
-    "linux-x86_64",
-    "linux-ia64",
-    "linux-ia64",
-
-    "darwin-i386",
-    "darwin-ppc",
-
-    "sun4-sunos5-sparc",
-
-    "ibm-aix-pwr",
-    "ibm-aix-pwr64",
-
-    "sgi-irix6-mips2",
-
-    // Deprecated
-    "dec-osf1-alpha",
-    };
-
-#define NARCH (sizeof(archNames) / sizeof(const char *))
-
-    //
-    // Names that match VisIt's distribution names. These are used in the filenames
-    // that contain a VisIt distribution: e.g. visit1_10_1.darwin-i386.tar.gz
-    //
-    static const char *distNames[] = {
-    "linux_rhel3",
-    "linux-ellipse",
-    "linux-x86_64",
-    "linux-x86_64-fedora4",
-    "linux-ia64",
-    "linux-altix",
-
-    "darwin-i386",
-    "darwin-ppc",
-
-    "sunos5",
-
-    "aix",
-    "aix64",
-
-    "irix6",
-
-    // Deprecated
-    "osf1",
-    };
-
-    //
-    // Try and determine the platform that should be downloaded.
-    //
-    const char *archHome = getenv("VISITARCHHOME");
-    bool platformDetermined = false;
-    if(archHome != 0)
-    {
-        std::string arch(archHome);
-
-        // Try and read the .installinfo file that tells us just how VisIt
-        // was installed. That way we can be sure that we pick up the right
-        // Linux or AIX installation.
-        std::string installinfo(archHome);
-        if(installinfo[installinfo.length()-1] != '/')
-            installinfo += "/";
-        installinfo += ".installinfo";
-
-        FILE *fp = fopen(installinfo.c_str(), "rt");
-        if(fp != NULL)
-        {
-            int fver = 0;
-            if(fscanf(fp, "%d;", &fver) == 1)
-            {
-                char str[200];
-                for(int i = 0; i < 3; ++i)
-                {
-                    int j = 0;
-                    for(; j < 200-1; ++j)
-                    {                        
-                        str[j] = (char)fgetc(fp);
-                        if(str[j] == ';' || str[j] < ' ')
-                            break;
-                    }
-                    str[j] = '\0';
-
-                    if(j >= 1)
-                    {
-                        if(i == 0)
-                            configName = str;
-                        else if(i == 1)
-                            bankName = str;
-                        else
-                        {
-                            distName = str;
-                            platformDetermined = true;
-                        }                          
-                    }
-                    else
-                    {
-                        // error
-                        break;
-                    }
-                }
-            }
-
-            fclose(fp);
-        }
-
-        // We could not open the .installinfo file so let's try and
-        // determine the distName based on the archNames.
-        if(!platformDetermined)
-        {
-            int lastSlash = arch.rfind("/");
-            if(lastSlash != -1)
-            {
-                arch = arch.substr(lastSlash+1, arch.length() - lastSlash - 1);
-                for(int i = 0; i < NARCH; ++i)
-                {
-                    if(arch == archNames[i])
-                    {
-                        platformDetermined = true;
-                        distName = distNames[i];
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    return platformDetermined;
 }
 

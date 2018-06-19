@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -48,13 +48,11 @@
 // Creation:   Tue Dec 30 14:21:30 PST 2003
 //
 // Modifications:
-//   Brad Whitlock, Fri May 30 09:49:16 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
-QvisAnimationSlider::QvisAnimationSlider(Qt::Orientation orientation,
-    QWidget *parent) :  QSlider(orientation, parent)
+QvisAnimationSlider::QvisAnimationSlider(Orientation orientation,
+    QWidget *parent, const char *name) :  QSlider(orientation, parent, name)
 {
     the_sliderIsDown = false;
     emittedSignal = false;
@@ -67,8 +65,8 @@ QvisAnimationSlider::QvisAnimationSlider(Qt::Orientation orientation,
             this, SLOT(handleSliderReleased()));
 }
 
-QvisAnimationSlider::QvisAnimationSlider(QWidget *parent) : 
-    QSlider(parent)
+QvisAnimationSlider::QvisAnimationSlider(QWidget *parent, const char *name) : 
+    QSlider(parent, name)
 {
     the_sliderIsDown = false;
     emittedSignal = false;

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -53,12 +53,12 @@
 #include <DebugStream.h>
 #include <PickAttributes.h>
 
-#include <QAction>
-#include <QApplication>
-#include <QIcon>
-#include <QPainter>
-#include <QMenu>
-#include <QPixmap>
+#include <qaction.h>
+#include <qapplication.h>
+#include <qiconset.h>
+#include <qpainter.h>
+#include <qpopupmenu.h>
+#include <qpixmap.h>
 
 // Include icons
 #include <perspectiveon.xpm>
@@ -73,7 +73,7 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 
-TogglePerspectiveViewAction::TogglePerspectiveViewAction(ViewerWindow *win) : ViewerToggleAction(win)
+TogglePerspectiveViewAction::TogglePerspectiveViewAction(ViewerWindow *win) : ViewerToggleAction(win, "Perspective")
 {
     SetAllText(tr("Perspective"));
     SetToolTip(tr("Toggle perspective view"));
@@ -96,18 +96,18 @@ TogglePerspectiveViewAction::Enabled() const
 }
 
 bool
-TogglePerspectiveViewAction::Checked() const
+TogglePerspectiveViewAction::Toggled() const
 {
     return window->GetPerspectiveProjection();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-ResetViewAction::ResetViewAction(ViewerWindow *win) : ViewerAction(win)
+ResetViewAction::ResetViewAction(ViewerWindow *win) : ViewerAction(win, "ResetViewAction")
 {
     SetAllText(tr("Reset view"));
     if (!win->GetNoWinMode())
-        SetIcon(QIcon(QPixmap(resetview_xpm)));
+        SetIconSet(QIconSet(QPixmap(resetview_xpm)));
 }
 
 void
@@ -127,11 +127,11 @@ ResetViewAction::Enabled() const
 ///////////////////////////////////////////////////////////////////////////////
 
 RecenterViewAction::RecenterViewAction(ViewerWindow *win) :
-    ViewerAction(win)
+    ViewerAction(win, "RecenterViewAction")
 {
     SetAllText(tr("Recenter view"));
     if (!win->GetNoWinMode())
-        SetIcon(QIcon(QPixmap(recenterview_xpm)));
+        SetIconSet(QIconSet(QPixmap(recenterview_xpm)));
 }
 
 void
@@ -151,11 +151,11 @@ RecenterViewAction::Enabled() const
 ///////////////////////////////////////////////////////////////////////////////
 
 UndoViewAction::UndoViewAction(ViewerWindow *win) :
-    ViewerAction(win)
+    ViewerAction(win, "UndoViewAction")
 {
     SetAllText(tr("Undo view"));
     if (!win->GetNoWinMode())
-        SetIcon(QIcon(QPixmap(undoview_xpm)));
+        SetIconSet(QIconSet(QPixmap(undoview_xpm)));
 }
 
 void
@@ -176,11 +176,11 @@ UndoViewAction::Enabled() const
 ///////////////////////////////////////////////////////////////////////////////
 
 RedoViewAction::RedoViewAction(ViewerWindow *win) :
-    ViewerAction(win)
+    ViewerAction(win, "RedoViewAction")
 {
     SetAllText(tr("Redo view"));
     if (!win->GetNoWinMode())
-        SetIcon(QIcon(QPixmap(redoview_xpm)));
+        SetIconSet(QIconSet(QPixmap(redoview_xpm)));
 }
 
 void
@@ -201,7 +201,7 @@ RedoViewAction::Enabled() const
 ///////////////////////////////////////////////////////////////////////////////
 
 ToggleFullFrameAction::ToggleFullFrameAction(ViewerWindow *win) : 
-    ViewerToggleAction(win)
+    ViewerToggleAction(win, "Full frame")
 {
     SetAllText(tr("Full frame"));
     SetToolTip(tr("Toggle full frame"));
@@ -223,7 +223,7 @@ ToggleFullFrameAction::Enabled() const
 }
 
 bool
-ToggleFullFrameAction::Checked() const
+ToggleFullFrameAction::Toggled() const
 {
     return window->GetFullFrameMode();
 }
@@ -253,8 +253,8 @@ const int SaveViewAction::VIEW3D = 3;
 //
 // ****************************************************************************
 
-SaveViewAction::SaveViewAction(ViewerWindow *win) : ViewerMultipleAction(win),
-    views()
+SaveViewAction::SaveViewAction(ViewerWindow *win) : ViewerMultipleAction(win,
+    "SaveView"), views()
 {
     QString s1(tr("Clear saved views"));
     QString s2(tr("Save view"));
@@ -277,7 +277,7 @@ SaveViewAction::SaveViewAction(ViewerWindow *win) : ViewerMultipleAction(win),
 
         // Add the save view choice
         QPixmap icon(saveview_xpm);
-        SetIcon(QIcon(icon));
+        SetIconSet(QIconSet(icon));
         AddChoice(s2, s3, icon);
     }
     else
@@ -439,9 +439,7 @@ SaveViewAction::Execute(int val)
 // Creation:   Wed Apr 27 15:28:11 PST 2005
 //
 // Modifications:
-//   Brad Whitlock, Thu May 22 14:27:10 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 bool
@@ -449,7 +447,7 @@ SaveViewAction::CopyFrom(const ViewerActionBase *obj)
 {
     bool retval = false;
 
-    if(GetName() == obj->GetName())
+    if(std::string(GetName()) == std::string(obj->GetName()))
     {
         const SaveViewAction *saveView = (const SaveViewAction *)obj;
 
@@ -1038,7 +1036,7 @@ SaveViewAction::SetFromNode(DataNode *parentNode,
 // ****************************************************************************
 
 SetCenterOfRotationAction::SetCenterOfRotationAction(ViewerWindow *win) : 
-    ViewerAction(win)
+    ViewerAction(win, "SetCenterOfRotationAction")
 {
     DisableVisual();
 }
@@ -1122,12 +1120,12 @@ SetCenterOfRotationAction::Enabled() const
 // ****************************************************************************
 
 ChooseCenterOfRotationAction::ChooseCenterOfRotationAction(ViewerWindow *win) :
-    ViewerAction(win)
+    ViewerAction(win, "ChooseCenterOfRotationAction")
 {
     SetAllText(tr("Choose center"));
     SetToolTip(tr("Choose center of rotation"));
     if (!win->GetNoWinMode())
-        SetIcon(QIcon(QPixmap(choosecenterofrotation_xpm)));
+        SetIconSet(QIconSet(QPixmap(choosecenterofrotation_xpm)));
 }
 
 // ****************************************************************************

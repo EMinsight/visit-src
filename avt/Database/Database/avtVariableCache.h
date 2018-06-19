@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -56,12 +56,6 @@ class   vtkObject;
 
 
 #define HASH_SIZE 25
-
-typedef struct
-{ 
-   vtkObject  *obj;
-   int         domain;
-}  ObjectDomainPair;
 
 
 // ****************************************************************************
@@ -124,10 +118,6 @@ typedef struct
 //    OneDomain's GetItem method. Const qualified some methods that it made
 //    sense to.
 //
-//    Hank Childs, Mon Dec 15 18:38:35 CST 2008
-//    Store the data set's domain in the objectDomainPointer.  This allows us
-//    to avoid an O(n^2) algorithm.
-//
 // ****************************************************************************
 
 class DATABASE_API avtVariableCache
@@ -183,7 +173,7 @@ class DATABASE_API avtVariableCache
 
     // functions to help transform manager find items in cache
     void                   AddObjectPointerPair(vtkObject *o1,
-                                                vtkObject *o2, int domain);
+                                                vtkObject *o2);
     bool                   RemoveObjectPointerPair(vtkObject *o1);
     vtkObject             *FindObjectPointerPair(vtkObject *o1) const;
     
@@ -278,7 +268,7 @@ class DATABASE_API avtVariableCache
     std::vector<OneVar *>            vtkVars;
     std::vector<OneVar *>            voidRefVars;
 
-    std::map<vtkObject*, ObjectDomainPair> objectPointerMap;
+    std::map<vtkObject*, vtkObject*> objectPointerMap;
     
     static bool                      vtkDebugMode;
 };

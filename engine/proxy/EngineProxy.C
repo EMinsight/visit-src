@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -204,6 +204,9 @@ EngineProxy::~EngineProxy()
 //    Jeremy Meredith, Wed Jan 23 16:11:41 EST 2008
 //    Added setEFileOpenOptionsRPC.
 //
+//    Hank Childs, Thu Jan 29 10:16:47 PST 2009
+//    Added namedSelectionRPC.
+//
 // ****************************************************************************
 void
 EngineProxy::SetupComponentRPCs()
@@ -232,6 +235,7 @@ EngineProxy::SetupComponentRPCs()
     xfer.Add(&simulationCommandRPC);
     xfer.Add(&exportDatabaseRPC);
     xfer.Add(&constructDDFRPC);
+    xfer.Add(&namedSelectionRPC);
     xfer.Add(&setEFileOpenOptionsRPC);
 
     //
@@ -862,6 +866,8 @@ EngineProxy::OpenDatabase(const std::string &format, const std::string &file,
 //   Kathleen Bonnell, Tue Oct  9 14:40:10 PDT 2007 
 //   Added createMeshQualityExpressions, createTimeDerivativeExpressions.
 //
+//   Mark C. Miller, Wed Jun 17 16:10:27 PDT 2009
+//   Added logic to recieve possible error message and re-constitute it.
 // ****************************************************************************
 
 void
@@ -872,6 +878,20 @@ EngineProxy::DefineVirtualDatabase(const std::string &fileFormat,
 {
     defineVirtualDatabaseRPC(fileFormat,wholeDBName, pathToFiles, files, time,
         createMeshQualityExpressions, createTimeDerivativeExpressions);
+
+    while (defineVirtualDatabaseRPC.GetStatus() == VisItRPC::incomplete ||
+           defineVirtualDatabaseRPC.GetStatus() == VisItRPC::warning)
+    {
+        defineVirtualDatabaseRPC.RecvReply();
+    }
+
+    // Check for an error
+    if (defineVirtualDatabaseRPC.GetStatus() == VisItRPC::error)    
+    {
+        RECONSTITUTE_EXCEPTION(defineVirtualDatabaseRPC.GetExceptionType(),
+                               defineVirtualDatabaseRPC.Message());
+    }
+
 }
 
 // ****************************************************************************
@@ -1379,6 +1399,162 @@ EngineProxy::CloneNetwork(const int id, const QueryOverTimeAttributes *qa)
     {
         RECONSTITUTE_EXCEPTION(cloneNetworkRPC.GetExceptionType(),
                                cloneNetworkRPC.Message());
+    }
+}
+
+
+// ****************************************************************************
+//  Method:  EngineProxy::ApplyNamedSelection
+//
+//  Purpose:
+//      Apply a named selection to a list of plots.
+//
+//  Arguments:
+//    ids        the id of the network to have the selection applied to.
+//    selName    the name of the named selection.
+//
+//  Programmer:  Hank Childs
+//  Creation:    January 29, 2009
+//
+//  Modifications:
+//    Kathleen Bonnell, Wed Mar 25 15:35:32 MST 2009
+//    Renamed NamedSelectionRPC enum names to compile on windows.
+//
+// ****************************************************************************
+
+void
+EngineProxy::ApplyNamedSelection(const std::vector<std::string> &ids, 
+                                 const std::string selName)
+{
+    namedSelectionRPC(NamedSelectionRPC::NS_APPLY, ids, selName);
+    if (namedSelectionRPC.GetStatus() == VisItRPC::error)
+    {
+        RECONSTITUTE_EXCEPTION(namedSelectionRPC.GetExceptionType(),
+                               namedSelectionRPC.Message());
+    }
+}
+
+
+// ****************************************************************************
+//  Method:  EngineProxy::CreateNamedSelection
+//
+//  Purpose:
+//      Create a named selection to a list of plots.
+//
+//  Arguments:
+//    ids        the id of the network to create the selection from.
+//    selName    the name of the named selection.
+//
+//  Programmer:  Hank Childs
+//  Creation:    January 29, 2009
+//
+//  Modifications:
+//    Kathleen Bonnell, Wed Mar 25 15:35:32 MST 2009
+//    Renamed NamedSelectionRPC enum names to compile on windows.
+//
+// ****************************************************************************
+
+void
+EngineProxy::CreateNamedSelection(int id, const std::string selName)
+{
+    namedSelectionRPC(NamedSelectionRPC::NS_CREATE, id, selName);
+    if (namedSelectionRPC.GetStatus() == VisItRPC::error)
+    {
+        RECONSTITUTE_EXCEPTION(namedSelectionRPC.GetExceptionType(),
+                               namedSelectionRPC.Message());
+    }
+}
+
+
+// ****************************************************************************
+//  Method:  EngineProxy::DeleteNamedSelection
+//
+//  Purpose:
+//      Delete a named selection to a list of plots.
+//
+//  Arguments:
+//    ids        the id of the network to create the selection from.
+//    selName    the name of the named selection.
+//
+//  Programmer:  Hank Childs
+//  Creation:    January 29, 2009
+//
+//  Modifications:
+//    Kathleen Bonnell, Wed Mar 25 15:35:32 MST 2009
+//    Renamed NamedSelectionRPC enum names to compile on windows.
+//
+// ****************************************************************************
+
+void
+EngineProxy::DeleteNamedSelection(const std::string selName)
+{
+    namedSelectionRPC(NamedSelectionRPC::NS_DELETE, selName);
+    if (namedSelectionRPC.GetStatus() == VisItRPC::error)
+    {
+        RECONSTITUTE_EXCEPTION(namedSelectionRPC.GetExceptionType(),
+                               namedSelectionRPC.Message());
+    }
+}
+
+
+// ****************************************************************************
+//  Method:  EngineProxy::LoadNamedSelection
+//
+//  Purpose:
+//      Load a named selection to a list of plots.
+//
+//  Arguments:
+//    ids        the id of the network to create the selection from.
+//    selName    the name of the named selection.
+//
+//  Programmer:  Hank Childs
+//  Creation:    January 29, 2009
+//
+//  Modifications:
+//    Kathleen Bonnell, Wed Mar 25 15:35:32 MST 2009
+//    Renamed NamedSelectionRPC enum names to compile on windows.
+//
+// ****************************************************************************
+
+void
+EngineProxy::LoadNamedSelection(const std::string selName)
+{
+    namedSelectionRPC(NamedSelectionRPC::NS_LOAD, selName);
+    if (namedSelectionRPC.GetStatus() == VisItRPC::error)
+    {
+        RECONSTITUTE_EXCEPTION(namedSelectionRPC.GetExceptionType(),
+                               namedSelectionRPC.Message());
+    }
+}
+
+
+// ****************************************************************************
+//  Method:  EngineProxy::SaveNamedSelection
+//
+//  Purpose:
+//      Save a named selection to a list of plots.
+//
+//  Arguments:
+//    ids        the id of the network to create the selection from.
+//    selName    the name of the named selection.
+//
+//  Programmer:  Hank Childs
+//  Creation:    January 29, 2009
+//
+//  Modifications:
+//    Kathleen Bonnell, Wed Mar 25 15:35:32 MST 2009
+//    Renamed NamedSelectionRPC enum names to compile on windows.
+//
+// ****************************************************************************
+
+void
+EngineProxy::SaveNamedSelection(const std::string selName)
+{
+    namedSelectionRPC(NamedSelectionRPC::NS_SAVE, selName);
+    if (namedSelectionRPC.GetStatus() == VisItRPC::error)
+    {
+        RECONSTITUTE_EXCEPTION(namedSelectionRPC.GetExceptionType(),
+                               namedSelectionRPC.Message());
     }
 }
 

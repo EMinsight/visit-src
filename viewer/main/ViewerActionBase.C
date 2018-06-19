@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -57,7 +57,7 @@ ViewerWindowManager *ViewerActionBase::windowMgr = 0;
 //
 // Arguments:
 //   win  : The viewer window that owns the action.
-//   n    : The name of the object instance.
+//   name : The name of the object instance.
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Feb 5 17:16:35 PST 2003
@@ -71,8 +71,8 @@ ViewerWindowManager *ViewerActionBase::windowMgr = 0;
 //
 // ****************************************************************************
 
-ViewerActionBase::ViewerActionBase(ViewerWindow *win) :
-    ViewerBase(0)
+ViewerActionBase::ViewerActionBase(ViewerWindow *win, const char *name) :
+    ViewerBase(0, name)
 {
     window = win;
     windowId = window->GetWindowId();
@@ -166,27 +166,6 @@ ViewerActionBase::SetRPCType(ViewerRPC::ViewerRPCType t)
 }
 
 // ****************************************************************************
-// Method: ViewerActionBase::GetName
-//
-// Purpose: 
-//   Returns the action name based on its RPC type.
-//
-// Returns:    The action name.
-//
-// Programmer: Brad Whitlock
-// Creation:   Wed May 28 10:17:23 PDT 2008
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-std::string
-ViewerActionBase::GetName() const
-{
-    return ViewerRPC::ViewerRPCType_ToString(rpcType);
-}
-
-// ****************************************************************************
 // Method: ViewerActionBase::Activate
 //
 // Purpose: 
@@ -225,47 +204,35 @@ ViewerActionBase::Activate()
 //   Brad Whitlock, Thu Apr 14 16:16:11 PST 2005
 //   I added code to postpone the action's viewer rpc.
 //
-//   Brad Whitlock, Fri Jan 9 15:07:35 PST 2009
-//   Added exception handling to prevent exceptions from being propagated into
-//   the Qt event loop.
-//
 // ****************************************************************************
 
 void
 ViewerActionBase::Activate(bool interactive)
 {
-    TRY
+    if(interactive)
     {
-        if(interactive)
-        {
-            // Allow the action to store values in the args object.      
-            Setup();
+        // Allow the action to store values in the args object.      
+        Setup();
 
-            // Postpone the action until it is safe to execute it by scheduling it
-            // with the ViewerSubject. By always scheduling interactive actions
-            // in this way, we make it safe to handle them with other input that
-            // came in from the client.
-            args.SetRPCType(rpcType);
-            viewerSubject->PostponeAction(this);
-        }
-        else
-        {
-            // Before handling the action, do this.
-            PreExecute();
-
-            // Handle the action
-            Execute();
-
-            // Tell the action manager to update all of the actions.
-            window->GetActionManager()->Update();
-        }
-
-        // Hide the menu since we're done with the action.
-        window->HideMenu();
+        // Postpone the action until it is safe to execute it by scheduling it
+        // with the ViewerSubject. By always scheduling interactive actions
+        // in this way, we make it safe to handle them with other input that
+        // came in from the client.
+        args.SetRPCType(rpcType);
+        viewerSubject->PostponeAction(this);
     }
-    CATCHALL(...)
+    else
     {
-        ; // nothing
+        // Before handling the action, do this.
+        PreExecute();
+
+        // Handle the action
+        Execute();
+
+        // Tell the action manager to update all of the actions.
+        window->GetActionManager()->Update();
     }
-    ENDTRY
+
+    // Hide the menu since we're done with the action.
+    window->HideMenu();
 }

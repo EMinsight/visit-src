@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,7 +39,7 @@
 #ifndef QVIS_LIGHTING_WIDGET_H
 #define QVIS_LIGHTING_WIDGET_H
 #include <gui_exports.h>
-#include <QWidget>
+#include <qwidget.h>
 #include <mini3D.h>
 
 // ****************************************************************************
@@ -59,16 +59,13 @@
 //   I updated the code to use the new m3d_renderer class instead of using
 //   global m3d functions.
 //
-//   Brad Whitlock, Thu Jun  5 16:19:17 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 class GUI_API QvisLightingWidget : public QWidget
 {
     Q_OBJECT
 public:
-    QvisLightingWidget(QWidget *parent);
+    QvisLightingWidget(QWidget *parent, const char *name = 0);
     virtual ~QvisLightingWidget();
     virtual QSize sizeHint() const;
     virtual QSizePolicy sizePolicy() const;

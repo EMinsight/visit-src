@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -188,8 +188,8 @@ class avtTransparencyActor;
 //    and DoNextExternalRenderAsVisualQueue to support the 'in-progress'
 //    visual queue for SR mode.
 //
-//    Brad Whitlock, Wed Jan  7 14:38:44 PST 2009
-//    I changed the plot info atts method.
+//    Tom Fogal, Mon May 25 18:20:46 MDT 2009
+//    Added GetTransparencyActor method.
 //
 // ****************************************************************************
 
@@ -205,6 +205,9 @@ class VISWINDOW_API VisWinPlots : public VisWinColleague
     void                          ClearPlots(void);
     void                          OrderPlots();
     
+    int                           GetPlotListIndex(const char *plotName);
+    const PlotInfoAttributes     *GetPlotInfoAtts(const char *plotName);
+
     void                          GetBounds(double [6]);
     void                          GetDataRange(double &, double &);
     void                          SetViewExtentsType(avtExtentType);
@@ -256,6 +259,7 @@ class VISWINDOW_API VisWinPlots : public VisWinColleague
     bool                          DoAllPlotsAxesHaveSameUnits();
 
     bool                          TransparenciesExist(void);
+    avtTransparencyActor*         GetTransparencyActor();
 
     void                          SuspendOpaqueGeometry(void);
     void                          SuspendTranslucentGeometry(void);

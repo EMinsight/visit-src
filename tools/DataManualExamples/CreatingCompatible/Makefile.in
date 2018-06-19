@@ -1,4 +1,4 @@
-#                         Copyright (c) 2000 - 2008
+#                         Copyright (c) 2000 - 2009
 #                  Lawrence Livermore National Security, LLC
 #            Produced at the Lawrence Livermore National Laboratory
 #                              LLNL-CODE-400124
@@ -147,10 +147,7 @@ OBJ_VW_POINT3D=vwpoint3d.o
 PROGRAM_VW_UCD2D=vwucd2d
 OBJ_VW_UCD2D=vwucd2d.o
 
-SILO_TARGET=bovexamples rectmesh curvmesh pointmesh ucdmesh quadvar ucdvar pointvar \
-            defvarprogs multiobj @BUILD_FORTRAN@
-
-all: @SILO_TARGET@ visitwriter
+all: bovexamples rectmesh curvmesh pointmesh ucdmesh quadvar ucdvar pointvar defvarprogs multiobj @BUILD_FORTRAN@ visitwriter
 
 bovexamples: $(PROGRAM_BOV)
 

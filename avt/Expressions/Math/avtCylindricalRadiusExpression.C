@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -300,45 +300,4 @@ avtCylindricalRadiusExpression::ProcessArguments
     }
 }
 
-
-// ****************************************************************************
-//  Method: avtCylindricalRadiusExpression::avtCylindricalRadiusExpression
-//
-//  Purpose:
-//      Parses optional arguments. 
-//      Helper to obtain a constant floating point value from an expression 
-//      node. Handles IntegerConst, FloatConst, and Uniary Minus 
-//      (with either IntegerConst, FloatConst as a child node)
-//
-//  Programmer:   Cyrus Harrison 
-//  Creation:     April 4, 2008
-//
-// ****************************************************************************
-bool
-avtCylindricalRadiusExpression::GetNumericVal(ExprNode *node, double &val)
-{
-    bool ok = false;
-    val = 0;
-    string n_type = node->GetTypeName();
-    if ( n_type == "FloatConst")
-    {
-        val = dynamic_cast<FloatConstExpr*>(node)->GetValue();
-        ok = true;
-    }
-    else if (n_type == "IntegerConst")
-    {
-        val = dynamic_cast<IntegerConstExpr*>(node)->GetValue();
-        ok = true;
-    }
-    else if (n_type == "Unary")
-    {
-        ExprNode *child = dynamic_cast<UnaryExpr*>(node)->GetExpr();
-        if(GetNumericVal(child,val))
-        {
-            val *=-1;
-            ok = true;
-        }
-    }
-    return ok;
-}
 

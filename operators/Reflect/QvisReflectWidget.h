@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -38,7 +38,7 @@
 
 #ifndef QVIS_REFLECT_WIDGET_H
 #define QVIS_REFLECT_WIDGET_H
-#include <QWidget>
+#include <qwidget.h>
 #include <mini3D.h>
 
 class QTimer;
@@ -59,16 +59,13 @@ class QTimer;
 //   Brad Whitlock, Mon Jun 23 16:49:01 PST 2003
 //   I added a 2d interaction mode.
 //
-//   Cyrus Harrison, Tue Aug 19 08:52:09 PDT 2008
-//   Qt4 Port.
-//
 // ****************************************************************************
 
 class QvisReflectWidget : public QWidget
 {
     Q_OBJECT
 public:
-    QvisReflectWidget(QWidget *parent);
+    QvisReflectWidget(QWidget *parent, const char *name=0);
     virtual ~QvisReflectWidget();
     virtual QSize sizeHint() const;
     virtual QSizePolicy sizePolicy() const;
@@ -85,6 +82,7 @@ protected slots:
     void handleTimer();
 protected:
     void drawOnOffActors(int n, float scale);
+    void deleteBackingPixmap();
     void redrawScene(QPainter *painter);
     void redrawScene2D(QPainter *painter);
     void redrawScene3D(QPainter *painter);
@@ -106,6 +104,7 @@ protected:
 
     bool          mode2D;
 
+    QPixmap      *pixmap;
     m3d_renderer  renderer;
     bool          rendererCreated;
 

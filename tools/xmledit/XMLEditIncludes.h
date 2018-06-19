@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,15 +39,15 @@
 #ifndef XMLEDITINCLUDES_H
 #define XMLEDITINCLUDES_H
 
-#include <QFrame>
+#include <qframe.h>
 
 class XMLDocument;
 class QLineEdit;
 class QButtonGroup;
 class QComboBox;
 class QCheckBox;
-class QListWidget;
-class QTextEdit;
+class QListBox;
+class QMultiLineEdit;
 class QRadioButton;
 class QPushButton;
 
@@ -64,15 +64,12 @@ class QPushButton;
 //    Brad Whitlock, Thu Mar 6 16:20:35 PST 2008
 //    Added target.
 //
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 class XMLEditIncludes : public QFrame
 {
     Q_OBJECT
   public:
-    XMLEditIncludes(QWidget *p);
+    XMLEditIncludes(QWidget *p, const QString &n);
     void SetDocument(XMLDocument *doc) { xmldoc = doc; }
     void BlockAllSignals(bool);
   public slots:
@@ -93,7 +90,7 @@ class XMLEditIncludes : public QFrame
     QPushButton    *newButton;
     QPushButton    *delButton;
 
-    QListWidget       *includelist;
+    QListBox       *includelist;
     QRadioButton   *CButton;
     QRadioButton   *HButton;
     QRadioButton   *quotesButton;

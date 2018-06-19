@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -44,10 +44,11 @@
 #include <iostream>
 #include <vtkCell.h>
 #include <vtkDataSet.h>
-#include <vtkInterpolatedVelocityField.h>
+#include <vtkVisItInterpolatedVelocityField.h>
 #include <vtkDoubleArray.h>
 #include <vtkPointData.h>
-
+#include <vtkCellData.h>
+#include <DebugStream.h>
 
 // ****************************************************************************
 //  Method: avtIVPVTKField constructor
@@ -55,12 +56,24 @@
 //  Programmer: Christoph Garth
 //  Creation:   February 25, 2008
 //
+//  Modifications:
+//
+//    Hank Childs, Thu Apr  2 16:40:08 PDT 2009
+//    Use vtkVisItInterpolatedVelocityField, not vtkInterpolatedVelocityField.
+//
 // ****************************************************************************
 
-avtIVPVTKField::avtIVPVTKField( vtkInterpolatedVelocityField* velocity ) 
+avtIVPVTKField::avtIVPVTKField( vtkVisItInterpolatedVelocityField* velocity ) 
     : iv(velocity)
 {
     iv->Register( NULL );
+    normalized = false;
+}
+
+
+avtIVPVTKField::avtIVPVTKField() 
+    : iv(0)
+{
     normalized = false;
 }
 
@@ -75,7 +88,46 @@ avtIVPVTKField::avtIVPVTKField( vtkInterpolatedVelocityField* velocity )
 
 avtIVPVTKField::~avtIVPVTKField()
 {
-    iv->Delete();
+    if( iv )
+      iv->Delete();
+}
+
+// ****************************************************************************
+//  Method: avtIVPVTKField::HasGhostZones
+//
+//  Purpose:
+//      Determine if this vector field has ghost zones.
+//
+//  Programmer: Dave Pugmire
+//  Creation:   June 8, 2009
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+bool
+avtIVPVTKField::HasGhostZones() const
+{
+    return (iv->GetDataSet()->GetCellData()->GetArray("avtGhostZones") != NULL);
+}
+
+// ****************************************************************************
+//  Method: avtIVPVTKField::GetExtents
+//
+//  Purpose:
+//      Get field bounding box.
+//
+//  Programmer: Dave Pugmire
+//  Creation:   June 8, 2009
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+void
+avtIVPVTKField::GetExtents(double *extents) const
+{
+    iv->GetDataSet()->GetBounds(extents);
 }
 
 
@@ -88,6 +140,11 @@ avtIVPVTKField::~avtIVPVTKField()
 //  Programmer: Christoph Garth
 //  Creation:   February 25, 2008
 //
+//  Modifications:
+//
+//    Hank Childs, Thu Apr  2 16:40:08 PDT 2009
+//    Use vtkVisItInterpolatedVelocityField, not vtkInterpolatedVelocityField.
+//
 // ****************************************************************************
 
 avtVec
@@ -95,7 +152,8 @@ avtIVPVTKField::operator()(const double& t, const avtVecRef& x) const
 {
     avtVec y( x.dim() ), param( pad(x,t));
     
-    int result = iv->FunctionValues( param.values(), y.values() );
+    int result = iv->Evaluate( param.values(), y.values() );
+    //debug5<<result<<"= iv->Evaluate("<<param<<") y= "<<y<<endl;
     
     if( !result )
         throw Undefined();
@@ -125,6 +183,9 @@ avtIVPVTKField::operator()(const double& t, const avtVecRef& x) const
 //    Increase the size of the "w" (weights) variable to prevent stack 
 //    overwrites.
 //
+//    Hank Childs, Thu Apr  2 16:40:08 PDT 2009
+//    Use vtkVisItInterpolatedVelocityField, not vtkInterpolatedVelocityField.
+//
 // ****************************************************************************
 
 double
@@ -133,13 +194,13 @@ avtIVPVTKField::ComputeVorticity( const double& t, const avtVecRef& x ) const
     avtVec y( x.dim() );
     avtVec param = pad(x,t);
     
-    int result = iv->FunctionValues( param.values(), y.values() );
+    int result = iv->Evaluate( param.values(), y.values() );
     
     if( !result )
         throw Undefined();
 
-    vtkDataSet *ds = iv->GetLastDataSet();
-    vtkIdType cellID = iv->GetLastCellId();
+    vtkDataSet *ds = iv->GetDataSet();
+    vtkIdType cellID = iv->GetLastCell();
     vtkCell *cell = ds->GetCell( cellID );
     
     vtkDoubleArray *cellVectors;
@@ -154,9 +215,8 @@ avtIVPVTKField::ComputeVorticity( const double& t, const avtVecRef& x ) const
     inVectors->GetTuples( cell->PointIds, cellVectors );
 
     double *cellVel = cellVectors->GetPointer(0);
-    double pcoords[3], w[100];
-    iv->GetLastWeights( w );
-    iv->GetLastLocalCoordinates( pcoords );
+    double *w = iv->GetLastWeights();
+    double *pcoords = iv->GetLastPCoords();
     cell->Derivatives( 0, pcoords, cellVel, 3, derivs);
     //cout<<"pcoords= "<<pcoords[0]<<" "<<pcoords[1]<<" "<<pcoords[2]<<endl;
 
@@ -182,6 +242,58 @@ avtIVPVTKField::ComputeVorticity( const double& t, const avtVecRef& x ) const
 }
 
 // ****************************************************************************
+//  Method: avtIVPVTKField::ComputeScalarVariable
+//
+//  Purpose:
+//      Computes the variable value at a point.
+//
+//  Programmer: Dave Pugmire
+//  Creation:   June 5, 2009
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+double
+avtIVPVTKField::ComputeScalarVariable(const double& t,
+                                      const avtVecRef& x) const
+{
+    vtkDataSet *ds = iv->GetDataSet();
+    vtkCell *cell = ds->GetCell(iv->GetLastCell());
+    int numPts = cell->GetNumberOfPoints();
+    
+    int subId;
+    double pcoords[3], dist2, v;
+    double *weights = new double[numPts];
+
+    avtVec y(x.dim());
+    cell->EvaluatePosition((double *)x.values(), NULL, subId, pcoords, dist2, weights);
+    
+    double value = 0.0;
+    //See if we have node centered data...
+    if (ds->GetPointData()->GetScalars() != NULL)
+    {
+        vtkDataArray *data = ds->GetPointData()->GetScalars();
+        for (int i = 0; i < numPts; i++)
+        {
+            int id = cell->PointIds->GetId(i);
+            data->GetTuple(id, &v);
+            value += v*weights[i];
+        }
+    }
+    else if (ds->GetCellData()->GetScalars() != NULL)
+    {
+        vtkDataArray *data = ds->GetCellData()->GetScalars();
+        int id = cell->PointIds->GetId(0);
+        data->GetTuple(id,&value);
+    }
+
+    delete [] weights;
+    return value;
+}
+
+
+// ****************************************************************************
 //  Method: avtIVPVTKField::IsInsider
 //
 //  Purpose:
@@ -190,13 +302,18 @@ avtIVPVTKField::ComputeVorticity( const double& t, const avtVecRef& x ) const
 //  Programmer: Christoph Garth
 //  Creation:   February 25, 2008
 //
+//  Modifications:
+//
+//    Hank Childs, Thu Apr  2 16:40:08 PDT 2009
+//    Use vtkVisItInterpolatedVelocityField, not vtkInterpolatedVelocityField.
+//
 // ****************************************************************************
 
 bool
 avtIVPVTKField::IsInside( const double& t, const avtVecRef& x ) const
 {
     avtVec y( x.dim() );
-    return iv->FunctionValues( pad( x, t ).values(), y.values() );
+    return iv->Evaluate( pad( x, t ).values(), y.values() );
 }
 
 
@@ -209,12 +326,18 @@ avtIVPVTKField::IsInside( const double& t, const avtVecRef& x ) const
 //  Programmer: Christoph Garth
 //  Creation:   February 25, 2008
 //
+//  Modifications:
+//
+//    Hank Childs, Thu Apr  2 16:40:08 PDT 2009
+//    Use vtkVisItInterpolatedVelocityField, not vtkInterpolatedVelocityField.
+//    (The old method was just returning 0 anyways...)
+//
 // ****************************************************************************
 
 unsigned int 
 avtIVPVTKField::GetDimension() const
 {
-    return iv->GetNumberOfFunctions();
+    return 3;
 }  
 
 // ****************************************************************************
@@ -233,3 +356,4 @@ avtIVPVTKField::SetNormalized( bool v )
 {
     normalized = v;
 }
+

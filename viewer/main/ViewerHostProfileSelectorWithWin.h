@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,7 +39,7 @@
 #ifndef VIEWER_HOSTPROFILESELECTOR_WITHWIN_H
 #define VIEWER_HOSTPROFILESELECTOR_WITHWIN_H
 #include <viewer_exports.h>
-#include <QDialog>
+#include <qdialog.h>
 #include <ViewerHostProfileSelector.h>
 
 #include <string>
@@ -49,7 +49,7 @@
 class QLineEdit;
 class QLabel;
 class QSpinBox;
-class QListWidget;
+class QListBox;
 class QPushButton;
 class HostProfileList;
 
@@ -72,17 +72,13 @@ class HostProfileList;
 //    Jeremy Meredith, Thu Sep 15 16:42:48 PDT 2005
 //    Added machine file for some mpich implementations.
 //
-//    Brad Whitlock, Fri May 23 11:34:00 PDT 2008
-//    Qt 4.
-//
 // ****************************************************************************
-
 class VIEWER_API ViewerHostProfileSelectorWithWin : public QDialog, 
                                                     public ViewerHostProfileSelector
 {
     Q_OBJECT
   public:
-             ViewerHostProfileSelectorWithWin(QWidget *parent = 0);
+             ViewerHostProfileSelectorWithWin(QWidget *parent=NULL, const char *name=NULL);
     virtual ~ViewerHostProfileSelectorWithWin();
 
     virtual bool SelectProfile(HostProfileList*, const std::string&, 
@@ -94,7 +90,7 @@ class VIEWER_API ViewerHostProfileSelectorWithWin : public QDialog,
   private:
     bool       waitingOnUser;
 
-    QListWidget  *profiles;
+    QListBox  *profiles;
     QLabel    *numProcsLabel;
     QSpinBox  *numProcs;
     QLabel    *numNodesLabel;

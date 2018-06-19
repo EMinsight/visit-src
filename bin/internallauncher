@@ -1,6 +1,25 @@
-#! /bin/sh
-exec perl -x $0 ${1+"$@"};
-#!perl
+#!/bin/sh
+# Do a little magic to run perl from anywhere in your path.
+
+lines=`cat $0 | wc -l`
+lines=`expr $lines - 20`
+if (test -n "$TMPDIR") then
+    if (test ! -d "$TMPDIR") then
+        TMPDIR=$HOME
+    fi
+else
+    TMPDIR=$HOME
+fi
+tail -$lines $0 1> $TMPDIR/visitilperl$$ 2>/dev/null
+if (test $? -ne 0) then
+    tail --lines=$lines $0 1>> $TMPDIR/visitilperl$$
+fi
+echo "__END__" >> $TMPDIR/visitilperl$$
+echo "$0 $*" >> $TMPDIR/visitilperl$$
+exec perl $TMPDIR/visitilperl$$ $0 ${1+"$@"}
+
+unlink $0;
+$0 = shift @ARGV;
 
 ###############################################################################
 #
@@ -397,22 +416,76 @@ exec perl -x $0 ${1+"$@"};
 #    Fixed documentation for cycleregex which had a non-backslashed '$'
 #    character causing the process number to be inserted in the fullhelp string
 #
-#    Hank Childs, Wed Nov  5 15:48:09 PST 2008
-#    Add support for Eureka at Argonne.  Note that this sets up an environment
-#    variable (PYTHONPATH) that is likely to change.
+#    Gunther H. Weber, Mon Feb  2 18:05:13 PST 2009
+#    Set up LD_LIBRARY_PATH on franklin expicitly to include the path to the
+#    gcc version used to build VisIt so that users with different loaded modules
+#    still have a path to the correct C++ standard libraries. Use copy of env
+#    in VisIt directory since using the system version breaks some NERSC job
+#    validation scripts.
 #
-#    Hank Childs, Wed Dec  3 10:39:44 PST 2008
-#    Add -sshtunneling to the "-fullhelp" message.
+#    Hank Childs, Fri Feb 13 12:27:28 CST 2009
+#    Add support for Eureka to RC.
 #
-#    Jeremy Meredith, Wed Dec  3 15:52:00 EST 2008
-#    Added a little warning to -sshtunneling.
+#    Patrick Shinpaugh, Wed Mar 11 11:39:36 MST 2009
+#    Add ppc64 to the launcher types we support / know of.
 #
-#    Dave Pugmire, Thu Jan 15 16:43:07 EST 2009
-#    Add -debug_engine_rank option.
+#    Kathleen Bonnell, Wed Apr 22 17:43:26 PDT 2009
+#    Added environemnt variable VISITULTRAHOME, so that VisIt knows where to 
+#    find the ultra wrapper.
+#
+#    Hank Childs, Sat Apr 25 11:35:31 CDT 2009
+#    (1) Undo Perl magic that Sean put in about a year ago.  It seemed like a
+#    more elegant solution, but it was biting LLNL and TACC and Perl experts
+#    were not able to figure it out.  (2) Add support for TACC.
+#
+#    Dave Pugmire, Wed Apr 29 13:41:45 EDT 2009
+#    Fix module loading for lens.ccs.ornl.gov
+#
+#    Tom Fogal, Wed Apr 29 12:12:20 MDT 2009
+#    Add message about module loading.
+#
+#    Paul Navratil, Fri May  8 14:08:20 CDT 2009
+#    updated TACC support
+#
+#    Paul Navratil, Fri May  8 17:00:59 CDT 2009
+#    deleted ref to tacc_qsub, special qsub now gets auto-magically generated, like TFILE
+#
+#    Paul Navratil, Mon May 11 15:09:27 CDT 2009
+#    changed TACC-specific bits to use total procs and nodes format 
+#    for parallel engine request.  added error check for > 16way config, 
+#    will now generate (hopefully) helpful error message
+#
+#    Mark C. Miller, Tue Jul  7 18:00:34 PDT 2009
+#    Added logic to avoid backtick pwd if possible. That is causing problems
+#    on LLNL systems when ANY lscratch filesystem happens to be down and
+#    the user may be starting VisIt from ANOTHER lscratch filesystem.
+#
+#    Mark C. Miller, Wed Jul  8 16:52:17 PDT 2009
+#    Alter fix applied above for pwd to use getcwd() instead of $ENV{PWD}.
+#
+#    Gunther H. Weber, Wed Jul 15 17:09:34 PDT 2009
+#    Modifications for Franklin: Explictly add path to qsub since otherwise it
+#    will not be found when using Windows version of VisIt as front end. Only
+#    add number of nodes option to qsub/aprun when the user specifies number of
+#    nodes in the host profile. Change batch job directory to user's scratch to
+#    ensure that current directory is visible to compute nodes making it
+#    possible to write log files etc. from compute nodes.
+#
+#    Gunther H. Weber, Tue Sep 22 15:57:16 PDT 2009
+#    Do not set PYTHONPATH and PYTHONHOME if VisIt install does not contain
+#    "private" Python version.
+#
+#    Cyrus Harrison,Thu Nov  5 15:05:16 PST 2009
+#    Added hack to make sure msub never sees the "ppn" argument on LLNL's 
+#    graph cluster.
+#
+#    Hank Childs, Nov  6 15:49:14 PST 2009
+#    Incorporate TACC-specific launching changes from Paul Navratil
 #
 ###############################################################################
 
 use POSIX qw(ceil);
+use Cwd;
 
 # -----------------------------------------------------------------------------
 #                                 Setup
@@ -421,7 +494,11 @@ use POSIX qw(ceil);
 $visitdir = $ENV{VISITDIR};
 $progname = $ENV{VISITPROGRAM};
 $ver      = $ENV{VISITVERSION};
-$cwd      =`pwd`;
+$cwd      = getcwd();
+if (!$cwd)
+{
+    $cwd = `pwd`;
+}
 chomp $cwd;
 
 if (!defined $visitdir or
@@ -661,8 +738,6 @@ $fullusage = "$usage
                              the SSH_CLIENT, SSH2_CLIENT, or SSH_CONNECTION
                              environment variables.
         -noloopback          Disable use of the 127.0.0.1 loopback device.
-        -sshtunneling        Tunnel all remote connections through ssh.  NOTE:
-                             this overrides values set in the host profiles.
         -noint               Disable interruption capability.
         -nopty               Run without PTYs.
         -verbose             Prints status information during pipeline
@@ -753,13 +828,13 @@ $fullusage = "$usage
         -debug <level>       Run with <level> levels of output logging.
                              <level> must be between 1 and 5. This will generate
                              debug logs for ALL components.
-        -debug_<compname> <level>
-                             Run specified component with <level> of output
+        -debug_<compname> <level> Run specified component with <level> of output
                              logging. For example, '-debug_mdserver 4' will run
                              the mdserver with level 4 debugging. Multiple
                              '-debug_<compname> <level>' args are allowed.
-        -debug_engine_rank <r>
-                             Restrict debug output to the specified rank.
+        -debug-processor-stride N
+                             Have only every Nth processor output debug logs.
+                             Prevents overwhelming parallel file systems.
         -clobber_vlogs       By default, each invokation or restart of a VisIt
                              component will write its debug logs to new files.
                              This flag causes VisIt to overwrite existing debug
@@ -1325,6 +1400,25 @@ if ( ($parallel) and $exe_name eq "engine" and $host =~ /lens/ )
 }
 
 # ----
+# HACK for ranger/spur @ TACC
+# ----
+$IsRunningOnRanger_TACC = 0;
+$IsRunningOnSpur_TACC = 0;
+# Hostnames are of the form spur.tacc.utexas.edu, (vis*|login#).ranger.tacc.utexas.edu
+if ( ($parallel) and $exe_name eq "engine" and (($host =~ /spur.tacc/) or ($host =~ /ranger.tacc/)))
+{
+    $IsRunningOnRanger_TACC = 1;
+    $IsRunningOnSpur_TACC = 1 if $part =~ /vis/ ;  # determine machine by queue, since all jobs submit from spur
+    print STDERR "\n\nAttempting to launch parallel engine at TACC\n";
+    print STDERR "For more information about TACC resources and configurations, see:\n";
+    print STDERR "\thttp://services.tacc.utexas.edu/index.php/ranger-user-guide\n";
+    print STDERR "\thttp://services.tacc.utexas.edu/index.php/spur-user-guide\n\n";
+
+    # if launching from spur visnode to ranger, prepend 'i' to visnode hostname to get IB interface
+    $remotehost = "i".$remotehost if ($remotehost =~ /vis([0-9]|big).ranger/) and ($remotehost !~ /^i/);
+}
+
+# ----
 # HACK for jaguarcnl @ ORNL
 #
 # ----
@@ -1364,10 +1458,27 @@ if ( ($parallel) and $exe_name eq "engine" and $host =~ /jaguar/ )
 $IsRunningOnFranklinNERSC = 0;
 if ( $host =~ /^nid/ )
 {
-    $nodename=`/usr/common/nsg/bin/nodename`;
+    $nodename=`/usr/syscom/nsg/bin/nodename`;
     if ($nodename =~ /^franklin/)
     {
         $IsRunningOnFranklinNERSC = 1;
+        $ENV{LD_LIBRARY_PATH} = join ':' ,
+            ("/opt/gcc/4.2.0.quadcore/snos/lib64",
+             "/opt/xt-pe/2.1.41HD/lib",
+             "/opt/pgi/8.0.1/linux86-64/8.0/libso",
+             "/opt/pgi/8.0.1/linux86-64/8.0/lib",
+             "/opt/xt-os/2.1.41HD/lib",
+             "/opt/xt-libc/2.1.41HD/amd64/lib",
+             "/opt/torque/2.3.4-200809011357/lib",
+             "/opt/moab/5.2.4-s11143/lib");
+        if ($ENV{PATH} eq "")
+        {
+            $ENV{PATH} = "/opt/torque/2.3.4-200809011357/bin";
+        }
+        else
+        {
+            $ENV{PATH} = join ':' , ("$ENV{PATH}","/opt/torque/2.3.4-200809011357/bin");
+        }
     }
 }
 
@@ -1382,13 +1493,25 @@ if ($host =~ /^yana\d+$/ or $host =~ /^hopi\d+$/)
 }
 
 # ----
+# HACK for graph @ LLNL
+#
+# ----
+$UsePPN = 1;
+if ($host =~ /^graph\d+$/)
+{
+    $UsePPN  = 0;
+}
+
+# ----
 # HACK for Eureka @ Argonne
 # ----
 $IsRunningOnEureka_ANL = 0;
 if ( ($parallel) and $exe_name eq "engine" and $host =~ /login1/ )
 {
     $IsRunningOnEureka_ANL = 1;
+    $remotehost = "login1-mgmt.eureka";
 }
+
 
 #  We stripped off the "host" argument above, so put it back here.
 #  This allowed us to change it if needed, e.g. for the Q machine.
@@ -1479,6 +1602,14 @@ for ($os) {
         }
         elsif ($mach =~ /x86_64/) {
             push @supportedarchs, "linux-x86_64";
+        }
+        elsif ($mach =~ /ppc64/) {
+            if ($exe_name eq "engine" && $req_compiler eq "powerpc-bgp-linux-g++") {
+                push @supportedarchs, "linux-ppc64-powerpc-bgp-linux-g++";
+            }
+            else {
+                push @supportedarchs, "linux-ppc64";
+            }
         }
         else {
             if ($req_compiler eq "icc") {
@@ -1627,6 +1758,7 @@ if ($ver eq "")
     }
     $visitlibdir  = "$visitdir/lib";
     $visithelpdir = "$visitdir/help";
+    $visitultradir = "$visitdir/ultrawrapper";
     $visitplugins = "$visitdir/plugins";
     $publicversion = 0;
 }
@@ -1668,6 +1800,7 @@ else # We're running a public version.
     }
     $visitlibdir  = "$visitdir/$archdir/lib";
     $visithelpdir = "$visitdir/$archdir/help";
+    $visitultradir = "$visitdir/$archdir/ultrawrapper";
     $visitplugins = "$visitdir/$archdir/plugins";
     $publicversion = 1;
 }
@@ -1803,13 +1936,16 @@ else
 {
     $ENV{LIBPATH} = "$visitlibdir:$ENV{LIBPATH_VISITORIG}";
 }
-if ($ENV{PYTHONPATH_VISITORIG} eq "")
+if (-x "$visitlibdir/python")
 {
-    $ENV{PYTHONPATH} = "$visitlibdir/python";
-}
-else
-{
-    $ENV{PYTHONPATH} = "$visitlibdir/python:$ENV{PYTHONPATH_VISITORIG}";
+    if ($ENV{PYTHONPATH_VISITORIG} eq "")
+    {
+        $ENV{PYTHONPATH} = "$visitlibdir/python";
+    }
+    else
+    {
+        $ENV{PYTHONPATH} = "$visitlibdir/python:$ENV{PYTHONPATH_VISITORIG}";
+    }
 }
 
 # Add /usr/local/lib to the shared library path.  This was added for the
@@ -1884,13 +2020,17 @@ if (!defined($ENV{VISITPLUGININST}))
 $ENV{VISITHOME}     = "$visitdir";
 $ENV{VISITARCHHOME} = "$visitarchdir";
 $ENV{VISITHELPHOME} = "$visithelpdir";
-$ENV{PYTHONHOME}    = "$visitlibdir/python";
-
-# Some engine launchers (like MPICH2's mpirun) may be python-based
-# and we don't want to point them to our python environment.
-if ($exe_name eq "engine_par")
+$ENV{VISITULTRAHOME} = "$visitultradir";
+if (-x "$visitlibdir/python")
 {
-    delete $ENV{PYTHONHOME};
+    $ENV{PYTHONHOME}    = "$visitlibdir/python";
+
+    # Some engine launchers (like MPICH2's mpirun) may be python-based
+    # and we don't want to point them to our python environment.
+    if ($exe_name eq "engine_par")
+    {
+        delete $ENV{PYTHONHOME};
+    }
 }
 
 # Turn off trapping of floating point exceptions.
@@ -2015,6 +2155,26 @@ if ($procs_set or ($parallel and $parlaunch_set))
         push @parcmd, "-procs",  $procs if $procs_set;
         push @parcmd, "-nodes",  $nodes if $nodes_set;
         push @parcmd, "-rmpool", $part  if $part_set;
+
+        @printcmd = @parcmd;
+        if ($security_key_set) { push @parcmd, "-key", $security_key; }
+        push @parcmd, @post_args;
+        chomp($printcmd[0] = `basename $printcmd[0]`);
+    }
+    # ibrun
+    elsif ($launch eq "ibrun")
+    {
+        my $is_big = `hostname –s`;
+        chomp $is_big;
+        if ($is_big eq "visbig")
+        {
+            @parcmd = ("ibrun");
+        }
+        else
+        {
+            @parcmd = ("ibrun", "tacc_affinity");
+        }
+        push @parcmd, @visitcmd;
 
         @printcmd = @parcmd;
         if ($security_key_set) { push @parcmd, "-key", $security_key; }
@@ -2156,6 +2316,7 @@ if ($procs_set or ($parallel and $parlaunch_set))
         {
             $script_dir="/home/$tuser";
         }
+        $tdate =~ s/:/./g if ($IsRunningOnRanger_TACC);
         $tfilename = "$script_dir/visit.$tuser.$tdate";
         $tfile_opened = 1;
         open(TFILE, ">$tfilename") or $tfile_opened = 0;
@@ -2164,7 +2325,15 @@ if ($procs_set or ($parallel and $parlaunch_set))
             if ($security_key_set) { push @visitcmd, "-key", $security_key; }
             push @visitcmd, @post_args;
 
-            $cdcmd     = "cd $cwd\n";
+            if ($IsRunningOnFranklinNERSC)
+            {
+                # Need a location visible from compute nodes
+                $cdcmd     = "cd /scratch/scratchdirs/$ENV{USER}\n";
+            }
+            else
+            {
+                $cdcmd     = "cd $cwd\n";
+            }
             $limitcmd  = "ulimit -c 0\n";
 
             if ($sublauncher eq "mpiexec")
@@ -2199,8 +2368,13 @@ if ($procs_set or ($parallel and $parlaunch_set))
                 push @mpicmd, "-n",  $procs if $procs_set;
                 if ( $IsRunningOnFranklinNERSC || $IsRunningOnJaguarCNL_ORNL )
                 {
-                    push @mpicmd, "env LD_LIBRARY_PATH=$visitlibdir:$visitarchdir/system_libs";
+                    push @mpicmd, "$visitbindir/env LD_LIBRARY_PATH=$visitlibdir:$visitarchdir/system_libs";
                 }
+                push @mpicmd, "@visitcmd\n";
+            }
+            elsif ($sublauncher eq "ibrun")
+            {
+                @mpicmd = ("ibrun");
                 push @mpicmd, "@visitcmd\n";
             }
             elsif ($sublauncher eq "")
@@ -2212,7 +2386,54 @@ if ($procs_set or ($parallel and $parlaunch_set))
             if ($IsRunningOnLens_ORNL)
             {
                 # Lens loads modules that we hate, by default.
-                print TFILE 'eval $(modulecmd sh unload PE-pgi)',"\n";
+                print "NOTE I'm forcing a specific MPI implementation " .
+                      "which release versions of VisIt are known to be " .
+                      "compiled against.  If you are a *developer*, it's " .
+                      "very likely I've chosen the wrong MPI " .
+                      "implementation; you might have to hack " .
+                      "internallauncher to load the module you need.\n";
+                print TFILE 'eval $(modulecmd sh swap PE-pgi PE-gnu)',"\n";
+            }
+            if ($IsRunningOnEureka_ANL)
+            {
+                print TFILE "export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/mx/lib\n";
+            }
+            if ($IsRunningOnRanger_TACC)
+            {
+                # put some SGE opts in the script header, since command-line opts fail
+                print TFILE "#\$ -V\n";  # inherit shell env
+                if ($time_set)
+                {
+                    print TFILE "#\$ -l h_rt=$time\n";
+                } else {
+                    # if no time set, put in something reasonable, since job won't launch without it
+                    if ($part eq "development")
+                    {print TFILE "#\$ -l h_rt=0:10:0\n";}
+                    else 
+                    {print TFILE "#\$ -l h_rt=1:0:0\n";}
+                }            
+
+                # get correct module environmnet for Ranger/Spur
+                print TFILE "module purge\n";
+                print TFILE "module load TACC\n";
+                print TFILE "module delete pgi mvapich CTSSV4\n";
+                print TFILE "module load intel mvapich\n";
+                if ($IsRunningOnSpur_TACC) {
+                    # Spur has GPUs and a usable GL stack
+                    print TFILE "module load vis visit\n";
+                } else {
+                    # Ranger has no GPUs or GL stack, so load Mesa
+                    print TFILE "module load vis mesa visit\n";
+                }
+
+                # cache the binary on each node so lustre doesn't get hammered for large jobs
+                $pwd = getcwd();
+                if (!$pwd)
+                {
+                    $pwd = `pwd`;
+                }
+                chomp $pwd;
+                print TFILE "cache_binary $pwd $visitbindir/engine_par\n";
             }
             print TFILE $cdcmd;
             print TFILE $limitcmd;
@@ -2220,15 +2441,39 @@ if ($procs_set or ($parallel and $parlaunch_set))
             print TFILE "@mpicmd";
             print TFILE "@sublaunchpostcmd", "\n", if $sublaunchpostcmd_set;
             close(TFILE);
-           
+
             if ($IsRunningOnEureka_ANL)
             {
                 `chmod 755 $tfilename`;
             }
             @parcmd = ($plauncher);
+            if ($IsRunningOnRanger_TACC)
+            {
+                # full path to qsub hack until TACC non-interactive shells work correctly
+                $tqsubname = "$script_dir/tacc_qsub.$tuser.$tdate";
+                $tqsub_opened = 1;
+                open(TQSUB, ">$tqsubname") or $tqsub_opened = 0;
+                if ($tqsub_opened) {
+                    print TQSUB "#!/bin/bash -l\n";
+                    print TQSUB "qsub \$@\n";
+                    close(TQSUB);
+                    `chmod 755 $tqsubname`;
+
+                    @parcmd = ("$tqsubname") if ($plauncher eq "qsub");
+                }
+                else
+                {
+                    print STDERR "Could not create temporary qsub (\"$tqsubname\").\n";
+                    exit 1;
+                }
+            }
+
 
             # Add the env variables.
-            push @parcmd, "-v LIBPATH=$ENV{LIBPATH},LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH},VISITPLUGINDIR=$ENV{VISITPLUGINDIR}";
+            if (! $IsRunningOnRanger_TACC)
+            {
+                push @parcmd, "-v LIBPATH=$ENV{LIBPATH},LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH},VISITPLUGINDIR=$ENV{VISITPLUGINDIR}";
+            }
 
             # parse for '-l vis' so it can be separated from the
             # launchargs
@@ -2254,19 +2499,45 @@ if ($procs_set or ($parallel and $parlaunch_set))
             push @parcmd, @newlaunchargs if $newlaunchargs_set;
             $nodes = $procs if (!$nodes_set);
             $ppn = ceil($procs / $nodes);
-            $qsubNumNodeStr = "nodes";
-            $qsubPPNStr = "ppn";
-            $qsubSeparator = ":";
-            if ( $IsRunningOnJaguarCNL_ORNL ) {$qsubNumNodeStr = "size";}
-            if ( $IsRunningOnFranklinNERSC ) {
-                $qsubNumNodeStr = "mppwidth";
-                $qsubPPNStr = "mppnppn";
-                $qsubSeparator = ",";
+            if ($IsRunningOnRanger_TACC)
+            {
+                if ($nodes_set) 
+                { $tacc_way = $ppn; $tacc_procs = 16*$nodes; }
+                # if nodes not set explicitly assume 1way
+                else 
+                { $tacc_way = 1; $tacc_procs = 16*$procs; }  
+                if ($tacc_way > 16) {
+                    print STDERR "TACC-hosted engine configured with $procs procs on $nodes nodes (${ppn}x).\n";
+                    print STDERR "Number of procs must be no more than 16x number of nodes.\n";
+                    exit(1);
+                }
+                push @parcmd, "-pe", "${tacc_way}way", $tacc_procs;
             }
-            if ( $IsRunningOnLens_ORNL ) {$qsubPPNStr = "ppn";}
-            if ( $use_vis ) { push @parcmd, "-l", "$qsubNumNodeStr=$nodes$qsubSeparator$qsubPPNStr=$ppn:vis";}
-            else { push @parcmd, "-l", "$qsubNumNodeStr=$nodes$qsubSeparator$qsubPPNStr=$ppn"; }
-            push @parcmd, "-l", "walltime=$time" if $time_set;
+            elsif ($IsRunningOnFranklinNERSC)
+            {
+                push @parcmd, "-l", "mppwidth=$procs";
+                if ($nodes_set) {
+                    push @parcmd, "-l", "mppnppn=$nodes";
+                }
+            }
+            else
+            {
+                $qsubNumNodeStr = "nodes";
+                $qsubPPNStr = "ppn";
+                $qsubSeparator = ":";
+                if ( $IsRunningOnJaguarCNL_ORNL ) {$qsubNumNodeStr = "size";}
+                elsif ( $IsRunningOnLens_ORNL ) {$qsubPPNStr = "ppn";}
+                if ( $use_vis ) { push @parcmd, "-l", "$qsubNumNodeStr=$nodes$qsubSeparator$qsubPPNStr=$ppn:vis";}
+                elsif ( $UsePPN ) { push @parcmd, "-l", "$qsubNumNodeStr=$nodes$qsubSeparator$qsubPPNStr=$ppn"; }
+                else { push @parcmd, "-l", "$qsubNumNodeStr=$nodes"; }
+            }
+
+            # command-line time fails on TACC machines, must be set in the TFILE, above
+            if (! $IsRunningOnRanger_TACC)
+            {
+                push @parcmd, "-l", "walltime=$time" if $time_set;
+            }
+
             if ($UseTTC) { push @parcmd, "-l", "ttc=$procs"; }
             push @parcmd, "-q",  $part  if $part_set;
             push @parcmd, "-A",  $bank  if $bank_set;
@@ -2283,7 +2554,6 @@ if ($procs_set or ($parallel and $parlaunch_set))
             push @printcmd, @sublaunchpostcmd, "\n", if $sublaunchpostcmd_set;
             push @printcmd, ("\"".(pop @printcmd)."\"");
             if ( $IsRunningOnEureka_ANL ) {
-               $ENV{PYTHONPATH} = "/home/buettner/python_lib:/usr/lib64/python:/usr/lib64/python2.4/lib-dynload";
                @parcmd = "qsub";
                push @parcmd, "-n";
                push @parcmd, $nodes;
@@ -2384,6 +2654,7 @@ else
             print GDBFILE "set environment LIBPATH=$ENV{LIBPATH}\n";
             print GDBFILE "set environment VISITHOME=$ENV{VISITHOME}\n";
             print GDBFILE "set environment VISITHELPHOME=$ENV{VISITHELPHOME}\n";
+            print GDBFILE "set environment VISITULTRAHOME=$ENV{VISITULTRAHOME}\n";
             print GDBFILE "set environment VISITPLUGINDIR=$ENV{VISITPLUGINDIR}\n";
             print GDBFILE "set environment PYTHONHOME=$ENV{PYTHONHOME}\n";
             if($ENV{TRAP_FPE} ne "")
@@ -2631,6 +2902,7 @@ LD_LIBRARY64_PATH=$ENV{LD_LIBRARY64_PATH}
 LIBPATH=$ENV{LIBPATH}
 VISITHOME=$ENV{VISITHOME}
 VISITHELPHOME=$ENV{VISITHELPHOME}
+VISITULTRAHOME=$ENV{VISITULTRAHOME}
 VISITPLUGINDIR=$ENV{VISITPLUGINDIR}
 PYTHONHOME=$ENV{PYTHONHOME}
 TRAP_FPE=$ENV{TRAP_FPE}
@@ -2648,6 +2920,7 @@ Be sure to set your environment variables:
     setenv LIBPATH $ENV{LIBPATH}
     setenv VISITHOME $ENV{VISITHOME}
     setenv VISITHELPHOME $ENV{VISITHELPHOME}
+    setenv VISITULTRAHOME $ENV{VISITULTRAHOME}
     setenv VISITPLUGINDIR $ENV{VISITPLUGINDIR}
     setenv PYTHONHOME $ENV{PYTHONHOME}
     setenv TRAP_FPE $ENV{TRAP_FPE}
@@ -2665,6 +2938,7 @@ Be sure to set your environment variables:
     LIBPATH=$ENV{LIBPATH}
     VISITHOME=$ENV{VISITHOME}
     VISITHELPHOME=$ENV{VISITHELPHOME}
+    VISITULTRAHOME=$ENV{VISITULTRAHOME}
     VISITPLUGINDIR=$ENV{VISITPLUGINDIR}
     PYTHONHOME=$ENV{PYTHONHOME}
     TRAP_FPE=$ENV{TRAP_FPE}

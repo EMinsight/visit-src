@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -50,10 +50,13 @@
 #include <vtkProperty.h>
 #include <vtkRenderer.h>
 #include <vtkRenderWindow.h>
+#include <vtkToolkits.h>
 
 #include <avtCallback.h>
 #include <avtOpenGLSurfaceAndWireframeRenderer.h>
+#ifdef VTK_USE_MANGLED_MESA
 #include <avtMesaSurfaceAndWireframeRenderer.h>
+#endif
 
 #include <ImproperUseException.h>
 
@@ -186,19 +189,20 @@ avtSurfaceAndWireframeRenderer::~avtSurfaceAndWireframeRenderer()
 //    Hank Childs, Sat Dec  3 20:37:07 PST 2005
 //    Change test for whether or not we are doing software rendering.
 //
+//    Brad Whitlock, Wed Jun 10 12:14:32 PDT 2009
+//    Conditional compilation for Mesa.
+//
 // ****************************************************************************
 
 avtSurfaceAndWireframeRenderer *
 avtSurfaceAndWireframeRenderer::New(void)
 {
+#ifdef VTK_USE_MANGLED_MESA
     if (avtCallback::GetSoftwareRendering())
-    {
         return new avtMesaSurfaceAndWireframeRenderer;
-    }
     else
-    {
+#endif
         return new avtOpenGLSurfaceAndWireframeRenderer;
-    }
 }
 
 

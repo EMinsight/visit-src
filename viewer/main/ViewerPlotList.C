@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -48,7 +48,7 @@
 #include <float.h>
 #include <snprintf.h>
 
-#include <QMessageBox>
+#include <qmessagebox.h>
 
 #include <ViewerSubject.h>
 
@@ -77,7 +77,6 @@
 #include <ViewerPlotFactory.h>
 #include <ViewerPlotList.h>
 #include <ViewerQueryManager.h>
-#include <ViewerState.h>
 #include <ViewerWindow.h>
 #include <ViewerWindowManager.h>
 
@@ -130,6 +129,11 @@ static int            plotThreadAttrInit=0;
 #endif
 
 //
+// Class static variables.
+//
+int ViewerPlotList::maxPlotNumber=-1;
+
+//
 // Local prototypes.
 //
 static void *CreatePlot(void *info);
@@ -138,6 +142,38 @@ static void PthreadCreate(pthread_t *new_thread_ID, const pthread_attr_t *attr,
     void * (*start_func)(void *), void *arg);
 static void PthreadAttrInit(pthread_attr_t *attr);
 #endif
+
+//
+// Functions for converting ViewerPlotList::PlaybackMode to/from string.
+//
+
+static const char *PlaybackMode_strings[] = {
+"Looping", "PlayOnce", "Swing"
+};
+
+std::string
+PlaybackMode_ToString(ViewerPlotList::PlaybackMode t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 3) index = 0;
+    return PlaybackMode_strings[index];
+}
+
+bool
+PlaybackMode_FromString(const std::string &s,
+    ViewerPlotList::PlaybackMode &val)
+{
+    val = ViewerPlotList::Looping;
+    for(int i = 0; i < 3; ++i)
+    {
+        if(s == PlaybackMode_strings[i])
+        {
+            val = (ViewerPlotList::PlaybackMode)i;
+            return true;
+        }
+    }
+    return false;
+}
 
 // ****************************************************************************
 //  Method: ViewerPlotList constructor
@@ -174,14 +210,11 @@ static void PthreadAttrInit(pthread_attr_t *attr);
 //    Kathleen Bonnell, Fri Sep 28 08:34:36 PDT 2007
 //    Added scaleModeSet. 
 //
-//    Brad Whitlock, Wed Dec 10 14:58:10 PST 2008
-//    I moved animation attributes into animationAtts.
-//
 // ****************************************************************************
 
 ViewerPlotList::ViewerPlotList(ViewerWindow *const viewerWindow) : 
-    ViewerBase(0), hostDatabaseName(), hostName(), databaseName(), timeSliders(),
-    animationAtts()
+    ViewerBase(0, "ViewerPlotList"),
+    hostDatabaseName(), hostName(), databaseName(), timeSliders()
 {
     window           = viewerWindow;
     plots            = 0;
@@ -193,10 +226,13 @@ ViewerPlotList::ViewerPlotList(ViewerWindow *const viewerWindow) :
     spatialExtentsType = AVT_ORIGINAL_EXTENTS;
 
     activeTimeSlider = "";
+    animationMode = StopMode;
+    playbackMode = Looping;
 
     keyframeMode = false;
     nKeyframesWasUserSet = false;
     nKeyframes = 1;
+    pipelineCaching = false;
     xScaleMode = LINEAR;
     yScaleMode = LINEAR;
     scaleModeSet = false;
@@ -902,57 +938,63 @@ ViewerPlotList::TimeSliderExists(const std::string &ts) const
 // Creation:   Mon Mar 22 15:39:34 PST 2004
 //
 // Modifications:
-//   Brad Whitlock, Wed Dec 10 15:05:33 PST 2008
-//   I converted the code to use AnimationAttributes.
-//
+//   
 // ****************************************************************************
 
 void
 ViewerPlotList::SetNextState(int nextState, int boundary)
 {
-    switch(animationAtts.GetPlaybackMode())
+    switch(playbackMode)
     {
-    case AnimationAttributes::Looping:
+    case Looping:
         // Move to the next frame.
         SetTimeSliderState(nextState);
         break;
-    case AnimationAttributes::PlayOnce:
+    case PlayOnce:
         // If we're playing then make sure we stop on the last frame.
-        if(animationAtts.GetAnimationMode() == AnimationAttributes::PlayMode)
+        if(animationMode == PlayMode)
         {
             if(nextState == boundary)
-                animationAtts.SetAnimationMode(AnimationAttributes::StopMode);
+                animationMode = StopMode;
             else
+            {
                 SetTimeSliderState(nextState);
+            }
         }
-        else if(animationAtts.GetAnimationMode() == AnimationAttributes::ReversePlayMode)
+        else if(animationMode == ReversePlayMode)
         {
             if(nextState == boundary)
-                animationAtts.SetAnimationMode(AnimationAttributes::StopMode);
+                animationMode = StopMode;
             else
+            {
                 SetTimeSliderState(nextState);
+            }
         }
         else
         {
             SetTimeSliderState(nextState);
         }
         break;
-    case AnimationAttributes::Swing:
+    case Swing:
         // If we're playing then make sure that we reverse the play direction
         // on the last frame.
-        if(animationAtts.GetAnimationMode() == AnimationAttributes::PlayMode)
+        if(animationMode == PlayMode)
         {
             if(nextState == boundary)
-                animationAtts.SetAnimationMode(AnimationAttributes::ReversePlayMode);
+                animationMode = ReversePlayMode;
             else
+            {
                 SetTimeSliderState(nextState);
+            }
         }
-        else if(animationAtts.GetAnimationMode() == AnimationAttributes::ReversePlayMode)
+        else if(animationMode == ReversePlayMode)
         {
             if(nextState == boundary)
-                animationAtts.SetAnimationMode(AnimationAttributes::PlayMode);
+                animationMode = PlayMode;
             else
+            {
                 SetTimeSliderState(nextState);
+            }
         }
         else
         {
@@ -971,9 +1013,7 @@ ViewerPlotList::SetNextState(int nextState, int boundary)
 // Creation:   Mon Mar 22 15:42:28 PST 2004
 //
 // Modifications:
-//   Brad Whitlock, Wed Dec 10 15:06:13 PST 2008
-//   Make the frame increment adjustable.
-//
+//   
 // ****************************************************************************
 
 void
@@ -988,15 +1028,7 @@ ViewerPlotList::ForwardStep()
     if(timeSliderNStates < 2)
         return;
 
-    int nextState;
-    if(animationAtts.GetPlaybackMode() == AnimationAttributes::Swing)
-    {
-        nextState = timeSliderCurrentState + animationAtts.GetFrameIncrement();
-        if(nextState >= timeSliderNStates)
-            nextState = 0;
-    }
-    else
-        nextState = (timeSliderCurrentState + animationAtts.GetFrameIncrement()) % timeSliderNStates;
+    int nextState = (timeSliderCurrentState + 1) % timeSliderNStates;
     SetNextState(nextState, 0);
 }
 
@@ -1010,8 +1042,6 @@ ViewerPlotList::ForwardStep()
 // Creation:   Mon Mar 22 15:42:52 PST 2004
 //
 // Modifications:
-//   Brad Whitlock, Wed Dec 10 15:06:13 PST 2008
-//   Make the frame increment adjustable.
 //   
 // ****************************************************************************
 
@@ -1027,20 +1057,7 @@ ViewerPlotList::BackwardStep()
     if(timeSliderNStates < 2)
         return;
 
-    int nextState;
-    if(animationAtts.GetPlaybackMode() == AnimationAttributes::Swing)
-    {
-        nextState = timeSliderCurrentState - animationAtts.GetFrameIncrement();
-        if(nextState < 0)
-            nextState = timeSliderNStates - 1;
-    }
-    else
-    {
-        nextState = (timeSliderCurrentState + 
-                     timeSliderNStates - 
-                     animationAtts.GetFrameIncrement()) % timeSliderNStates;
-    }
-
+    int nextState = (timeSliderCurrentState + timeSliderNStates - 1) % timeSliderNStates;
     SetNextState(nextState, timeSliderNStates - 1);
 }
 
@@ -1183,9 +1200,6 @@ ViewerPlotList::UpdatePlotStates()
 //   Kathleen Bonnell, Thu Feb  3 16:03:32 PST 2005 
 //   Don't clear a plot's actors if it does not follow time. 
 //
-//   Brad Whitlock, Wed Dec 10 15:16:30 PST 2008
-//   Use AnimationAttributes.
-//
 // ****************************************************************************
 
 bool
@@ -1210,7 +1224,7 @@ ViewerPlotList::UpdateSinglePlotState(ViewerPlot *plot)
             {
                 different = true;
 
-                if(!animationAtts.GetPipelineCachingMode())
+                if(!pipelineCaching)
                     plot->ClearCurrentActor();
 
                 //
@@ -1294,7 +1308,7 @@ ViewerPlotList::UpdateSinglePlotState(ViewerPlot *plot)
             // pipeline caching then clear the plot's actor before setting
             // the new state.
             //
-            if (plot->FollowsTime() && different && !animationAtts.GetPipelineCachingMode())
+            if (plot->FollowsTime() && different && !pipelineCaching)
                 plot->ClearCurrentActor();
 
             // Set the new state.
@@ -1319,12 +1333,7 @@ ViewerPlotList::UpdateSinglePlotState(ViewerPlot *plot)
 // Creation:   Mon Mar 22 15:48:29 PST 2004
 //
 // Modifications:
-//   Brad Whitlock, Wed Dec 10 15:08:14 PST 2008
-//   Use AnimationAttributes.
-//
-//   Brad Whitlock, Thu Jan  8 16:00:43 PST 2009
-//   I added code to update the plot information.
-//
+//   
 // ****************************************************************************
 
 void
@@ -1362,8 +1371,8 @@ ViewerPlotList::UpdateFrame(bool updatePlotStates)
         // threaded mode. If no additional threads were spawned,
         // we need to update the windows.
         //
-        bool animating = ((animationAtts.GetAnimationMode() == AnimationAttributes::PlayMode) ||
-                          (animationAtts.GetAnimationMode() == AnimationAttributes::ReversePlayMode));
+        bool animating = ((animationMode == PlayMode) ||
+                          (animationMode == ReversePlayMode));
         if(UpdatePlots(animating))
             updateTheWindow = true;
     }
@@ -1376,62 +1385,91 @@ ViewerPlotList::UpdateFrame(bool updatePlotStates)
         // Update the plot list so that the color changes on the plots.
         //
         UpdatePlotList();
-        UpdatePlotInformation();
     }
 }
 
 // ****************************************************************************
-// Method: ViewerPlotList::SetAnimationAttributes
+// Method: ViewerPlotList::SetAnimationMode
 //
 // Purpose: 
-//   Set the animation attributes.
+//   Sets the plot list's animation mode.
 //
 // Arguments:
-//   a : The new animation attributes.
+//   m : The new animation mode.
 //
 // Programmer: Brad Whitlock
-// Creation:   Wed Dec 10 15:09:57 PST 2008
+// Creation:   Mon Mar 22 15:49:57 PST 2004
 //
 // Modifications:
 //   
 // ****************************************************************************
 
 void
-ViewerPlotList::SetAnimationAttributes(const AnimationAttributes &a)
+ViewerPlotList::SetAnimationMode(ViewerPlotList::AnimationMode m)
 {
-    AnimationAttributes newAtts(a);
-
-    if (newAtts.GetPipelineCachingMode() && avtCallback::GetNowinMode())
-    {
-        debug1 << "Overriding request to do pipeline caching, since we are in "
-               << "no-win mode." << endl;
-        newAtts.SetPipelineCachingMode(false);
-    }
-    if(!newAtts.GetPipelineCachingMode())
-        ClearPipelines();
-
-    animationAtts = newAtts;
+    animationMode = m;
 }
 
 // ****************************************************************************
-// Method: ViewerPlotList::GetAnimationAttributes
+// Method: ViewerPlotList::GetAnimationMode
 //
 // Purpose: 
-//   Get the current animation attributes.
+//   Gets the plot list's animation mode.
 //
-// Returns:    The animation attributes.
+// Returns:    The plot list's animation mode.
 //
 // Programmer: Brad Whitlock
-// Creation:   Wed Dec 10 15:10:19 PST 2008
+// Creation:   Mon Mar 22 15:50:30 PST 2004
 //
 // Modifications:
 //   
 // ****************************************************************************
 
-const AnimationAttributes &
-ViewerPlotList::GetAnimationAttributes() const
+ViewerPlotList::AnimationMode
+ViewerPlotList::GetAnimationMode() const
 {
-    return animationAtts;
+    return animationMode;
+}
+
+// ****************************************************************************
+// Method: ViewerPlotList::SetPlaybackMode
+//
+// Purpose: 
+//   Sets the plot list's playback mode.
+//
+// Arguments:
+//   m : The new playback mode.
+//
+// Programmer: Brad Whitlock
+// Creation:   Mon Mar 22 15:50:59 PST 2004
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+ViewerPlotList::SetPlaybackMode(ViewerPlotList::PlaybackMode m)
+{
+    playbackMode = m;
+}
+
+// ****************************************************************************
+// Method: ViewerPlotList::GetPlaybackMode
+//
+// Purpose: 
+//   Gets the plot list's playback mode.
+//
+// Programmer: Brad Whitlock
+// Creation:   Mon Mar 22 15:51:20 PST 2004
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+ViewerPlotList::PlaybackMode
+ViewerPlotList::GetPlaybackMode() const
+{
+    return playbackMode;
 }
 
 // ****************************************************************************
@@ -1627,7 +1665,7 @@ ViewerPlotList::AskForCorrelationPermission(const stringVector &dbs) const
         }
 
         debug3 << "Asking for permission to create correlation. Prompt="
-               << text.toStdString() << endl;
+               << text.latin1() << endl;
 
         // Pop up a Qt dialog to ask the user whether or not to correlate
         // the specified databases.
@@ -2864,9 +2902,6 @@ ViewerPlotList::MovePlotDatabaseKeyframe(int plotId, int oldFrame, int newFrame)
 //    Brad Whitlock, Tue Apr 29 15:58:03 PDT 2008
 //    Added tr().
 //
-//    Brad Whitlock, Wed Dec 10 15:12:33 PST 2008
-//    Use AnimationAttributes.
-//
 // ****************************************************************************
 
 void
@@ -2885,8 +2920,7 @@ ViewerPlotList::CopyFrom(const ViewerPlotList *pl, bool copyPlots)
     //
     // Copy the animation playback mode.
     //
-    animationAtts = pl->GetAnimationAttributes();
-    animationAtts.SetAnimationMode(AnimationAttributes::StopMode);
+    playbackMode = pl->GetPlaybackMode();
 
     //
     // If the plot list being copied is in keyframe mode then put the
@@ -3529,13 +3563,13 @@ ViewerPlotList::DeletePlot(ViewerPlot *whichOne, bool doUpdate)
 //    Jeremy Meredith, Mon Jul 16 17:14:43 EDT 2007
 //    Update DBPluginInfo to follow the host for a selected plot.
 //
-//    Brad Whitlock, Wed Dec 10 15:11:04 PST 2008
-//    Use AnimationAttributes.
+//    Brad Whitlock, Mon Oct 26 14:49:56 PDT 2009
+//    I made updates optional.
 //
 // ****************************************************************************
 
 void
-ViewerPlotList::DeleteActivePlots()
+ViewerPlotList::DeleteActivePlots(bool doUpdates)
 {
     //
     // Loop over the list deleting any active plots.  As it traverses
@@ -3583,7 +3617,7 @@ ViewerPlotList::DeleteActivePlots()
     else
     {
         // If there are no plots, make sure we stop animation.
-        animationAtts.SetAnimationMode(AnimationAttributes::StopMode);
+        animationMode = StopMode;
     }
 
     //
@@ -3591,8 +3625,9 @@ ViewerPlotList::DeleteActivePlots()
     //
     if(ValidateTimeSlider())
     {
-        ViewerWindowManager::Instance()->UpdateWindowInformation(
-            WINDOWINFO_TIMESLIDERS, window->GetWindowId());
+        if(doUpdates)
+            ViewerWindowManager::Instance()->UpdateWindowInformation(
+                WINDOWINFO_TIMESLIDERS, window->GetWindowId());
     }
 
     //
@@ -3600,24 +3635,52 @@ ViewerPlotList::DeleteActivePlots()
     //
     if(nDeletedLegends > 0)
         ViewerWindowManager::Instance()->UpdateAnnotationObjectList();
-    UpdatePlotList();
-    UpdatePlotAtts();
-    UpdateSILRestrictionAtts();
-    UpdateExpressionList(true);
+    if(doUpdates)
+    {
+        UpdatePlotList();
+        UpdatePlotAtts();
+        UpdateSILRestrictionAtts();
+        UpdateExpressionList(true);
+
+        //
+        // DBPluginInfo is currently expected to follow the selected plot's host.
+        //
+        if (nPlots > 0)
+        {
+            ViewerFileServer::Instance()->
+                UpdateDBPluginInfo(plots[0].plot->GetHostName());
+        }
+    }
 
     //
     // Update the frame.
     //
     UpdateFrame();
+}
 
-    //
-    // DBPluginInfo is currently expected to follow the selected plot's host.
-    //
-    if (nPlots > 0)
-    {
-        ViewerFileServer::Instance()->
-            UpdateDBPluginInfo(plots[0].plot->GetHostName());
-    }
+// ****************************************************************************
+// Method: ViewerPlotList::DeleteAllPlots
+//
+// Purpose: 
+//   Delete all of the plots in the plot list.
+//
+// Arguments:
+//   doUpdates : Whether the plot-related state should be sent to the client.
+//
+// Programmer: Brad Whitlock
+// Creation:   Mon Oct 26 14:50:55 PDT 2009
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+ViewerPlotList::DeleteAllPlots(bool doUpdates)
+{
+    for(int i = 0; i < nPlots; ++i)
+        plots[i].active = true;
+
+    DeleteActivePlots(doUpdates);
 }
 
 // ****************************************************************************
@@ -3763,6 +3826,10 @@ ViewerPlotList::TransmutePlots(bool turningOffScalableRendering)
 //  Programmer: Ellen Tarwater
 //  Creation:   September 27, 2007
 //
+//  Modifications:
+//    Brad Whitlock, Fri Apr  3 15:53:30 PDT 2009
+//    I made the new plots active and the ones that were previously selected
+//    inactive.
 //
 // ****************************************************************************
 
@@ -3772,10 +3839,14 @@ ViewerPlotList::CopyActivePlots()
      //
     // Loop over the list, copying any active plots.
     //
-    int plotsAdded = 0;
-    for (int i = 0; i < nPlots; i++)
+    int i, plotsAdded = 0;
+    int numInitialPlots = nPlots;
+    bool *active = new bool[nPlots+1];
+    for (i = 0; i < numInitialPlots; i++)
+        active[i] = plots[i].active;
+    for (i = 0; i < numInitialPlots; i++)
     {
-        if (plots[i].active == true)
+        if (active[i])
 	{
     
 	    // create a copy of this plot:
@@ -3802,8 +3873,9 @@ ViewerPlotList::CopyActivePlots()
 	        //
 	        SimpleAddPlot( dest, false );
 	        ++plotsAdded;
-		// make the added plot INactive...
-		plots[nPlots-1].active = false;
+
+		// Make the original plot INactive...
+		plots[i].active = false;
 	    }
 	    else
 	    {
@@ -3811,9 +3883,9 @@ ViewerPlotList::CopyActivePlots()
 	        return;
 	    }
 	}
-	
     }
- 
+    delete [] active;
+
     //
     // Update the client attributes.
     //
@@ -3821,12 +3893,7 @@ ViewerPlotList::CopyActivePlots()
     {
         UpdatePlotList();
 	UpdatePlotAtts();
-	UpdateSILRestrictionAtts();     //?
-
-        //
-        // Update the frame.
-        //
-        UpdateFrame();
+	UpdateSILRestrictionAtts();
     }
 }
 
@@ -4473,12 +4540,15 @@ ViewerPlotList::CloseDatabase(const std::string &dbName)
 //   Brad Whitlock, Tue Apr 29 16:03:00 PDT 2008
 //   Support for internationalization.
 //
+//   Cyrus Harrison, Tue Apr 14 13:32:18 PDT 2009
+//   Added ability to only replace active plots.
+//
 // ****************************************************************************
 
 void
 ViewerPlotList::ReplaceDatabase(const EngineKey &key,
     const std::string &database, int timeState, bool setTimeState,
-    bool onlyReplaceSame)
+    bool onlyReplaceSame, bool onlyReplaceActive)
 {
     //
     // Loop through the list replacing the plot's database.
@@ -4488,6 +4558,8 @@ ViewerPlotList::ReplaceDatabase(const EngineKey &key,
     const std::string &host = key.OriginalHostName();
     for (int i = 0; i < nPlots; i++)
     {
+        if(onlyReplaceActive && !plots[i].active)
+            continue;
         //
         // Decide which files to replace.
         //
@@ -4656,6 +4728,8 @@ ViewerPlotList::ReplaceDatabase(const EngineKey &key,
 //   the SIL restriction. I also added a timeState argument so it's possible
 //   to overlay a database at a paricular time state.
 //
+//   Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//   Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 
 void
@@ -4759,7 +4833,7 @@ ViewerPlotList::OverlayDatabase(const EngineKey &key,
             }
             ENDTRY
         }
-        CATCHALL(...)
+        CATCHALL
         {
             // newPlot will be zero if an error occurred, so we don't
             // need to do further error handling right here
@@ -6620,65 +6694,6 @@ ViewerPlotList::SetForegroundColor(const double *fg)
     return retval;
 }
 
-// ****************************************************************************
-// Method: ViewerPlotList::UpdatePlotInformation
-//
-// Purpose: 
-//   This method sends plot information back to the clients.
-//
-// Arguments:
-//
-// Returns:    
-//
-// Note:       The same criteria are used to select plots as are used when we
-//             send back plot atts to the client.
-//
-// Programmer: Brad Whitlock
-// Creation:   Thu Jan  8 15:03:52 PST 2009
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-void
-ViewerPlotList::UpdatePlotInformation() const
-{
-    //
-    // Return if this isn't the active plot list.
-    //
-    if (NotActivePlotList())
-    {
-        debug4 << "Returning from ViewerPlotList::UpdatePlotInformation "
-               << "because the plot list does not belong to the active window."
-               << endl;
-        return;
-    }
-
-    ViewerPlotFactory *plotFactory = viewerSubject->GetPlotFactory();
-    int       nPlotType = plotFactory->GetNPlotTypes();
-    int       *plotCount = new int[nPlotType];
-    memset((void*)plotCount, 0, sizeof(int) * nPlotType);
-
-    for (int i = 0; i < nPlots; i++)
-    {
-        const ViewerPlot *plot = plots[i].plot;
-        int plotType = plot->GetType();
-
-        //
-        // If the plot is within range of the frame and is active, bump
-        // the count and set the plot attributes if this is the first
-        // frame the plot type is encountered.
-        //
-        if (plot->IsInRange() && plots[i].active)
-        {
-            plotCount[plotType]++;
-            if (plotCount[plotType] == 1)
-                plot->UpdatePlotInformation();
-        }
-    }
-
-    delete [] plotCount;
-}
 
 // ****************************************************************************
 //  Method: ViewerPlotList::UpdatePlotAtts
@@ -6713,9 +6728,6 @@ ViewerPlotList::UpdatePlotInformation() const
 //    Brad Whitlock, Wed Feb 2 15:57:27 PST 2005
 //    I made it use the new NotActivePlotList so the check to see if the plot
 //    list belongs to the active window is more isolated.
-//
-//    Brad Whitlock, Wed Jan  7 15:41:39 PST 2009
-//    I added code to update the plot info atts for the selected plots.
 //
 // ****************************************************************************
 
@@ -6754,9 +6766,13 @@ ViewerPlotList::UpdatePlotAtts(bool updateThoseNotRepresented) const
     ViewerOperator **operatorForType = new ViewerOperator*[nOperatorType];
 
     for (i = 0; i < nPlotType; i++)
+    {
         plotCount[i] = 0;
+    }
     for (i = 0; i < nOperatorType; i++)
+    {
         operatorForType[i] = 0;
+    }
 
     for (i = 0; i < nPlots; i++)
     {
@@ -6774,7 +6790,6 @@ ViewerPlotList::UpdatePlotAtts(bool updateThoseNotRepresented) const
             if (plotCount[plotType] == 1)
             {
                 plot->SetClientAttsFromPlot();
-                plot->UpdatePlotInformation();
             }
 
             // Reset the count array for this plot.
@@ -6866,24 +6881,6 @@ ViewerPlotList::UpdatePlotAtts(bool updateThoseNotRepresented) const
         {
             if (plotCount[i] == 0)
                 plotFactory->SetClientAttsFromDefault(i);
-        }
-    }
-
-    //
-    // Send empty plot info atts to plots that did not have an active plot.
-    //
-    for (i = 0; i < nPlotType; i++)
-    {
-        if (plotCount[i] == 0)
-        {
-            // Let's empty out the plot info atts too if they are not 
-            // already empty.
-            PlotInfoAttributes *info = GetViewerState()->GetPlotInformation(i);
-            if(info != 0)
-            {
-                info->Reset();
-                info->Notify();
-            }
         }
     }
 
@@ -7543,6 +7540,55 @@ ViewerPlotList::InitializeTool(avtToolInterface &ti)
     return retval;
 }
 
+// ****************************************************************************
+// Method: ViewerPlotList::SetPipelineCaching
+//
+// Purpose: 
+//   Turn pipeline caching on or off.
+//
+// Arguments:
+//   val : Whether we should cache pipelines.
+//
+// Programmer: Brad Whitlock
+// Creation:   Mon Feb 2 15:09:15 PST 2004
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+ViewerPlotList::SetPipelineCaching(bool val)
+{
+    pipelineCaching = val;
+    if(!pipelineCaching)
+        ClearPipelines();
+
+    if (pipelineCaching && avtCallback::GetNowinMode() == true)
+    {
+        debug1 << "Overriding request to do pipeline caching, since we are in "
+               << "no-win mode." << endl;
+        pipelineCaching = false;
+    }
+}
+
+// ****************************************************************************
+// Method: ViewerPlotList::GetPipelineCaching
+//
+// Purpose: 
+//   Returns whether pipeline caching is enabled.
+//
+// Programmer: Brad Whitlock
+// Creation:   Mon Feb 2 15:09:44 PST 2004
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+bool
+ViewerPlotList::GetPipelineCaching() const
+{
+    return pipelineCaching;
+}
 
 // ****************************************************************************
 //  Method: ViewerPlotList::ClearPipelines
@@ -7807,20 +7853,31 @@ ViewerPlotList::GetPlot(const int id) const
 // Creation:   May 28, 2002 
 //
 // Modifications:
+//
 //   Hank Childs, Thu Oct  2 14:22:16 PDT 2003
 //   Renamed from GetPlotID.  Made it return a vector of ids.
+//
+//   Hank Childs, Mon Feb  2 16:02:32 PST 2009
+//   Added a Boolean for whether or not to include active and hidden plots.
 //
 // ****************************************************************************
 
 void
-ViewerPlotList::GetActivePlotIDs(intVector &ids) const
+ViewerPlotList::GetActivePlotIDs(intVector &ids, bool onlyRealizedAndUnhidden) 
+        const
 {
     ids.clear();
     for (int i = 0; i < nPlots; ++i)
     {
-        if (plots[i].active && plots[i].realized && !plots[i].hidden)
+        if (plots[i].active)
         {
-            ids.push_back(i);
+            if (onlyRealizedAndUnhidden)
+            {
+               if (plots[i].realized && !plots[i].hidden)
+                   ids.push_back(i);
+            }
+            else
+                ids.push_back(i);
         }
     }
 }
@@ -8057,9 +8114,6 @@ ViewerPlotList::GetNKeyframesWasUserSet() const
 //   Brad Whitlock, Fri Mar 23 16:02:43 PST 2007
 //   Added code to save the plot name.
 //
-//   Brad Whitlock, Wed Dec 10 15:15:19 PST 2008
-//   Use AnimationAttributes.
-//
 // ****************************************************************************
 
 void
@@ -8172,9 +8226,9 @@ ViewerPlotList::CreateNode(DataNode *parentNode,
     plotlistNode->AddNode(new DataNode("nPlots", numRealPlots));
     plotlistNode->AddNode(new DataNode("keyframeMode", keyframeMode));
     plotlistNode->AddNode(new DataNode("nKeyframes", nKeyframes));
-    AnimationAttributes anim(animationAtts);
-    anim.SetAnimationMode(AnimationAttributes::StopMode);
-    anim.CreateNode(plotlistNode, true, true);
+    plotlistNode->AddNode(new DataNode("pipelineCaching", pipelineCaching));
+    plotlistNode->AddNode(new DataNode("playbackMode",
+        PlaybackMode_ToString(playbackMode)));
 }
 
 // ****************************************************************************
@@ -8224,8 +8278,17 @@ ViewerPlotList::CreateNode(DataNode *parentNode,
 //   Brad Whitlock, Thu Jan 24 11:53:57 PDT 2008
 //   Added another argument to NewPlot().
 //
-//   Brad Whitlock, Wed Dec 10 15:22:22 PST 2008
-//   Use AnimationAttributes.
+//   Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//   Replaced CATCHALL(...) with CATCHALL.
+//
+//   Brad Whitlock, Fri Oct 23 17:04:38 PDT 2009
+//   I made it use GetMetaDataForState so we can open up databases at later
+//   timestates and get transient variables.
+//
+//   Eric Brugger, Fri Feb 12 15:47:38 PST 2010
+//   I added logic to determine the maximum number associated with the plot
+//   names and then use that number to tell the ViewerPlot the number to
+//   use to start numbering new plots.
 //
 // ****************************************************************************
 
@@ -8318,9 +8381,22 @@ ViewerPlotList::SetFromNode(DataNode *parentNode,
             nKeyframesWasUserSet = true;
         }
     }
-
-    // Get the animation attributes.
-    animationAtts.SetFromNode(plotlistNode);
+    if((node = plotlistNode->GetNode("playbackMode")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 3)
+                SetPlaybackMode(PlaybackMode(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            PlaybackMode value;
+            if(PlaybackMode_FromString(node->AsString(), value))
+                SetPlaybackMode(value);
+        }
+    }
 
     //
     // Set the time slider state for each of the time sliders. They are
@@ -8392,7 +8468,7 @@ ViewerPlotList::SetFromNode(DataNode *parentNode,
                      // If the time slider database has multiple time steps then
                      // create a correlation for it.
                      //
-                     const avtDatabaseMetaData *md = fs->GetMetaData(tsHost, tsDB);
+                     const avtDatabaseMetaData *md = fs->GetMetaDataForState(tsHost, tsDB, tsState);
                      if(md != 0 && md->GetNumStates() > 1)
                      {
                          stringVector dbs; dbs.push_back(tsName);
@@ -8534,6 +8610,9 @@ ViewerPlotList::SetFromNode(DataNode *parentNode,
         {
             plotNameStr = node->AsString();
             plotName = plotNameStr.c_str();
+            if (strncmp(plotName, "Plot", 4) == 0)
+                maxPlotNumber = atoi(&plotName[4]) > maxPlotNumber ?
+                    atoi(&plotName[4]) : maxPlotNumber;
         }
 
         bool createdPlot = false;
@@ -8581,7 +8660,7 @@ ViewerPlotList::SetFromNode(DataNode *parentNode,
                         plot = NewPlot(type,engineKey,plotHost,
                                        plotDB,plotVar,false,false,plotName);
                     }
-                    CATCHALL(...)
+                    CATCHALL
                     {
                         // plot will be zero if an error occurred, so we don't
                         // need to do further error handling right here
@@ -8652,6 +8731,12 @@ ViewerPlotList::SetFromNode(DataNode *parentNode,
                    << endl;
         }
     } // end for
+
+    // Tell the ViewerPlot the number it should use to start numbering
+    // plots from.
+    maxPlotNumber = maxPlotNumber > expectedPlots ?
+        maxPlotNumber : expectedPlots;
+    ViewerPlot::SetNumPlotsCreated(maxPlotNumber + 1);
 
     // Now that all of the plots are added, set the selected flag on each plot.
     // We can't do it as the plots are added because SimpleAddPlot contains
@@ -8916,75 +9001,64 @@ ViewerPlotList::SetFullFrameScaling(bool useScale, double *scale)
 // Creation:   Wed Feb 14 11:58:39 PDT 2007
 //
 // Modifications:
-//   Brad Whitlock, Fri Jan 9 15:07:35 PST 2009
-//   Added exception handling to prevent exceptions from being propagated into
-//   the Qt event loop.
-//
+//   
 // ****************************************************************************
 
 void
 ViewerPlotList::AlternateDisplayChangedPlotAttributes(ViewerPlot *plot)
 {
-    TRY
+    // Determine the plot index.
+    int activePlotCount = 0;
+    int activePlotIndex = -1;
+    int plotIndex = -1;
+    for (int i = 0; i < nPlots; i++)
     {
-        // Determine the plot index.
-        int activePlotCount = 0;
-        int activePlotIndex = -1;
-        int plotIndex = -1;
-        for (int i = 0; i < nPlots; i++)
+        if(plots[i].active)
         {
-            if(plots[i].active)
-            {
-                activePlotCount++;
-                activePlotIndex = i;
-            }
-            if (plots[i].plot == plot)
-                plotIndex = i;
+            activePlotCount++;
+            activePlotIndex = i;
         }
+        if (plots[i].plot == plot)
+            plotIndex = i;
+    }
  
-        if(plotIndex != -1 &&
-           (activePlotCount > 1 || plotIndex != activePlotIndex))
-        {
-            // If we found the plot in the list then make it be the
-            // selected plot so its attributes will be sent to the
-            // clients.
-            intVector selectedPlots;
-            selectedPlots.push_back(plotIndex);
-            GetViewerMethods()->SetActivePlots(selectedPlots);
-        }
-
-        if(plot->AlternateDisplayAllowClientUpdates())
-        {
-            //
-            // If we're allowing updates to go back to the client spontaneously
-            // caused by actions in the alternate display then send back the
-            // attributes now and then perform a SetPlotOptions RPC so this can
-            // all be logged in the clients.
-            //
-            // This path can be slower for continuous actions such as sliders
-            // so try not to take this path in such cases.
-            //
-            ViewerPlotFactory *plotFactory = viewerSubject->GetPlotFactory();
-            AttributeSubject *cAtts = plotFactory->GetClientAtts(plot->GetType());
-            if(cAtts->CopyAttributes(plot->GetPlotAtts()))
-            {
-                cAtts->Notify();
-                GetViewerMethods()->SetPlotOptions(plot->GetType());
-            }
-        }
-        else
-        {
-            // This path does not send plot attributes back to the client but
-            // it is a much faster way to make the alternate display update
-            // a window.
-            UpdateFrame();
-        }
-    }
-    CATCHALL(...)
+    if(plotIndex != -1 &&
+       (activePlotCount > 1 || plotIndex != activePlotIndex))
     {
-        ; //nothing
+        // If we found the plot in the list then make it be the
+        // selected plot so its attributes will be sent to the
+        // clients.
+        intVector selectedPlots;
+        selectedPlots.push_back(plotIndex);
+        GetViewerMethods()->SetActivePlots(selectedPlots);
     }
-    ENDTRY
+
+    if(plot->AlternateDisplayAllowClientUpdates())
+    {
+        //
+        // If we're allowing updates to go back to the client spontaneously
+        // caused by actions in the alternate display then send back the
+        // attributes now and then perform a SetPlotOptions RPC so this can
+        // all be logged in the clients.
+        //
+        // This path can be slower for continuous actions such as sliders
+        // so try not to take this path in such cases.
+        //
+        ViewerPlotFactory *plotFactory = viewerSubject->GetPlotFactory();
+        AttributeSubject *cAtts = plotFactory->GetClientAtts(plot->GetType());
+        if(cAtts->CopyAttributes(plot->GetPlotAtts()))
+        {
+            cAtts->Notify();
+            GetViewerMethods()->SetPlotOptions(plot->GetType());
+        }
+    }
+    else
+    {
+        // This path does not send plot attributes back to the client but
+        // it is a much faster way to make the alternate display update
+        // a window.
+        UpdateFrame();
+    }
 }
 
 // ****************************************************************************
@@ -9044,21 +9118,27 @@ ViewerPlotList::SetScaleMode(ScaleMode ds, ScaleMode rs, WINDOW_MODE wm)
 //   Kathleen Bonnell, Fri Sep 28 08:34:36 PDT 2007
 //   Added scaleModeSet.
 //
+//   Kathleen Bonnell, Tue Mar  3 09:35:52 PST 2009
+//   Ensure ds & rs are set appropriately by ensuring that xScaleMode and 
+//   yScaleMode have been set.
+//
 // ****************************************************************************
 
 void 
 ViewerPlotList::GetScaleMode(ScaleMode &ds, ScaleMode &rs, WINDOW_MODE wm)
 {
     if (!scaleModeSet)
-        window->GetScaleMode(ds, rs, wm);
-    xScaleMode = ds;
-    yScaleMode = rs;
-    scaleModeSet = true;
+    {
+        window->GetScaleMode(xScaleMode, yScaleMode, wm);
+        scaleModeSet = true;
+    }
+    ds = xScaleMode;
+    rs = yScaleMode;
 }
 
 
 // ****************************************************************************
-// Method: ViewerPlotList::CanDoLogViewScaling
+// Method: ViewerPlotList::PermitsLogViewScaling
 //
 // Purpose: 
 //   Returns whether or not all plots support log view scaling.
@@ -9070,11 +9150,18 @@ ViewerPlotList::GetScaleMode(ScaleMode &ds, ScaleMode &rs, WINDOW_MODE wm)
 // Creation:   May 11, 2007
 //
 // Modifications:
+//   Kathleen Bonnell, Tue Mar  3 09:35:52 PST 2009
+//   Only test an individual plot if it has been realized (otherwise, it
+//   will always return false). 
 //  
+//   Kathleen Bonnell, Tue Mar  3 10:16:49 PST 2009
+//   Renamed to PermitsLogViewScaling, no longer test for 'realized' as it
+//   is no longer necessary.
+//
 // ****************************************************************************
 
 bool 
-ViewerPlotList::CanDoLogViewScaling(WINDOW_MODE wm)
+ViewerPlotList::PermitsLogViewScaling(WINDOW_MODE wm)
 {
     if (nPlots <= 0)
         return false;
@@ -9082,7 +9169,7 @@ ViewerPlotList::CanDoLogViewScaling(WINDOW_MODE wm)
     bool rv = true;
     for (int i = 0; i < nPlots && rv; ++i)
     {
-        rv &= plots[i].plot->CanDoLogViewScaling(wm);
+        rv &= plots[i].plot->PermitsLogViewScaling(wm);
     }
     return rv;
 }

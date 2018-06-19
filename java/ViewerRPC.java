@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400142
+// LLNL-CODE-400124
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -228,17 +228,23 @@ public class ViewerRPC extends AttributeSubject
     public final static int VIEWERRPCTYPE_MOVEANDRESIZEWINDOWRPC = 165;
     public final static int VIEWERRPCTYPE_SETSTATELOGGINGRPC = 166;
     public final static int VIEWERRPCTYPE_CONSTRUCTDDFRPC = 167;
-    public final static int VIEWERRPCTYPE_REQUESTMETADATARPC = 168;
-    public final static int VIEWERRPCTYPE_SETTREATALLDBSASTIMEVARYINGRPC = 169;
-    public final static int VIEWERRPCTYPE_SETCREATEMESHQUALITYEXPRESSIONSRPC = 170;
-    public final static int VIEWERRPCTYPE_SETCREATETIMEDERIVATIVEEXPRESSIONSRPC = 171;
-    public final static int VIEWERRPCTYPE_SETCREATEVECTORMAGNITUDEEXPRESSIONSRPC = 172;
-    public final static int VIEWERRPCTYPE_COPYACTIVEPLOTSRPC = 173;
-    public final static int VIEWERRPCTYPE_SETPLOTFOLLOWSTIMERPC = 174;
-    public final static int VIEWERRPCTYPE_TURNOFFALLLOCKSRPC = 175;
-    public final static int VIEWERRPCTYPE_SETDEFAULTFILEOPENOPTIONSRPC = 176;
-    public final static int VIEWERRPCTYPE_SETSUPPRESSMESSAGESRPC = 177;
-    public final static int VIEWERRPCTYPE_MAXRPC = 178;
+    public final static int VIEWERRPCTYPE_UPDATEPLOTINFOATTSRPC = 168;
+    public final static int VIEWERRPCTYPE_REQUESTMETADATARPC = 169;
+    public final static int VIEWERRPCTYPE_SETTREATALLDBSASTIMEVARYINGRPC = 170;
+    public final static int VIEWERRPCTYPE_SETCREATEMESHQUALITYEXPRESSIONSRPC = 171;
+    public final static int VIEWERRPCTYPE_SETCREATETIMEDERIVATIVEEXPRESSIONSRPC = 172;
+    public final static int VIEWERRPCTYPE_SETCREATEVECTORMAGNITUDEEXPRESSIONSRPC = 173;
+    public final static int VIEWERRPCTYPE_COPYACTIVEPLOTSRPC = 174;
+    public final static int VIEWERRPCTYPE_SETPLOTFOLLOWSTIMERPC = 175;
+    public final static int VIEWERRPCTYPE_TURNOFFALLLOCKSRPC = 176;
+    public final static int VIEWERRPCTYPE_SETDEFAULTFILEOPENOPTIONSRPC = 177;
+    public final static int VIEWERRPCTYPE_SETSUPPRESSMESSAGESRPC = 178;
+    public final static int VIEWERRPCTYPE_APPLYNAMEDSELECTIONRPC = 179;
+    public final static int VIEWERRPCTYPE_CREATENAMEDSELECTIONRPC = 180;
+    public final static int VIEWERRPCTYPE_DELETENAMEDSELECTIONRPC = 181;
+    public final static int VIEWERRPCTYPE_LOADNAMEDSELECTIONRPC = 182;
+    public final static int VIEWERRPCTYPE_SAVENAMEDSELECTIONRPC = 183;
+    public final static int VIEWERRPCTYPE_MAXRPC = 184;
 
 
     public ViewerRPC()
@@ -1278,6 +1284,8 @@ public class ViewerRPC extends AttributeSubject
             str = str + "VIEWERRPCTYPE_SETSTATELOGGINGRPC";
         if(RPCType == VIEWERRPCTYPE_CONSTRUCTDDFRPC)
             str = str + "VIEWERRPCTYPE_CONSTRUCTDDFRPC";
+        if(RPCType == VIEWERRPCTYPE_UPDATEPLOTINFOATTSRPC)
+            str = str + "VIEWERRPCTYPE_UPDATEPLOTINFOATTSRPC";
         if(RPCType == VIEWERRPCTYPE_REQUESTMETADATARPC)
             str = str + "VIEWERRPCTYPE_REQUESTMETADATARPC";
         if(RPCType == VIEWERRPCTYPE_SETTREATALLDBSASTIMEVARYINGRPC)
@@ -1298,6 +1306,16 @@ public class ViewerRPC extends AttributeSubject
             str = str + "VIEWERRPCTYPE_SETDEFAULTFILEOPENOPTIONSRPC";
         if(RPCType == VIEWERRPCTYPE_SETSUPPRESSMESSAGESRPC)
             str = str + "VIEWERRPCTYPE_SETSUPPRESSMESSAGESRPC";
+        if(RPCType == VIEWERRPCTYPE_APPLYNAMEDSELECTIONRPC)
+            str = str + "VIEWERRPCTYPE_APPLYNAMEDSELECTIONRPC";
+        if(RPCType == VIEWERRPCTYPE_CREATENAMEDSELECTIONRPC)
+            str = str + "VIEWERRPCTYPE_CREATENAMEDSELECTIONRPC";
+        if(RPCType == VIEWERRPCTYPE_DELETENAMEDSELECTIONRPC)
+            str = str + "VIEWERRPCTYPE_DELETENAMEDSELECTIONRPC";
+        if(RPCType == VIEWERRPCTYPE_LOADNAMEDSELECTIONRPC)
+            str = str + "VIEWERRPCTYPE_LOADNAMEDSELECTIONRPC";
+        if(RPCType == VIEWERRPCTYPE_SAVENAMEDSELECTIONRPC)
+            str = str + "VIEWERRPCTYPE_SAVENAMEDSELECTIONRPC";
         if(RPCType == VIEWERRPCTYPE_MAXRPC)
             str = str + "VIEWERRPCTYPE_MAXRPC";
         str = str + "\n";

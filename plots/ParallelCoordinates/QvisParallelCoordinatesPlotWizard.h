@@ -39,13 +39,12 @@
 #define QVIS_PARALLEL_COORDINATES_PLOT_WIZARD_H
 #include <QvisWizard.h>
 
-#include <vectortypes.h>
+#define MAX_WIZARD_SELECTABLE_AXES      8
 
 class QButtonGroup;
 class QFrame;
 class QLabel;
 class QvisParallelCoordinatesWidget;
-
 
 
 // ****************************************************************************
@@ -67,20 +66,14 @@ class QvisParallelCoordinatesWidget;
 //    you'll have the wrong number of axes defined in the plot attributes.
 //    As such, I extended the wizard to support a "no-op" mode.
 //   
-//    Cyrus Harrison, Mon Jul 21 08:33:47 PDT 2008
-//    Initial Qt4 Port. 
-//
 // ****************************************************************************
 
 class QvisParallelCoordinatesPlotWizard : public QvisWizard
 {
     Q_OBJECT
 public:
-    QvisParallelCoordinatesPlotWizard(AttributeSubject *s,
-                                      QWidget *parent,
-                                      const std::string &varName,
-                                      bool doNothing);
-    
+    QvisParallelCoordinatesPlotWizard(AttributeSubject *s, QWidget *parent,
+       const std::string &varName, bool doNothing, const char *name = NULL);
     virtual ~QvisParallelCoordinatesPlotWizard();
 
 private slots:
@@ -88,33 +81,28 @@ private slots:
     void decideIfAnotherAxis(int buttonIndex);
     
 protected slots:
-    virtual int nextId() const;
+    virtual void next();
+    virtual void back();
 
 protected:
-    virtual bool validateCurrentPage();
-    virtual void cleanupPage(int id);
-    
-    int  GetNextPageId() const;
-    void AddAxisVariablePage(int axisOrdinal,
-                             const QString &title,
-                             const QString &prompt);
-    void AddAxisYesNoPage(int axisOrdinal,
-                          const QString &title,
-                          const QString &prompt);
-    void AddFinishPage(const QString &title, const QString &prompt);
-    
+    void CreateAxisVariablePage(QFrame **, QvisParallelCoordinatesWidget **,
+        int axisOrdinal, const char *prompt);
+    void CreateAxisYesNoPage(QFrame **, QvisParallelCoordinatesWidget **,
+        QButtonGroup **, int axisOrdinal, const char *prompt);
+    void CreateFinishPage(QFrame **, QvisParallelCoordinatesWidget **, const char *prompt);
+
     void InitializeParallelCoordinatesAttributes(const std::string &varName);
     bool UniqueAxisVariableName(const std::string &varName);
     
-    QList<QWizardPage*>                    pages;
-    QList<QvisParallelCoordinatesWidget*>  thumbnails;
-    QList<QButtonGroup*>                   yesNoGroups;
-    QList<QLabel*>                         dupVarMessages; 
+    QFrame                 *pages[MAX_WIZARD_SELECTABLE_AXES*2 - 2];
+    QvisParallelCoordinatesWidget *thumbnails[MAX_WIZARD_SELECTABLE_AXES*2 - 2];
+    QButtonGroup           *yesNoButtonGroups[MAX_WIZARD_SELECTABLE_AXES - 2];
+    QLabel                 *dupVarMessages[MAX_WIZARD_SELECTABLE_AXES];
     
-    stringVector                           axisVarNames;
-    boolVector                             axisYesNos;
-    int                                    curAxisCount;
-
+    std::string            axisVarNames[MAX_WIZARD_SELECTABLE_AXES];
+    bool                   axisYesNos[MAX_WIZARD_SELECTABLE_AXES];
+    
+    int                    curAxisCount;
 };
 
 #endif

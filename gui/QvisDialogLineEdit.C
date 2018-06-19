@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -36,16 +36,13 @@
 *
 *****************************************************************************/
 #include <QvisDialogLineEdit.h>
-#include <QFileDialog>
-#include <QFontDialog>
-#include <QLayout>
-#include <QLineEdit>
-#include <QPushButton>
-#include <QEvent>
+#include <qfiledialog.h>
+#include <qfontdialog.h>
+#include <qlineedit.h>
+#include <qpushbutton.h>
+#include <qtooltip.h>
 
-#ifndef DESIGNER_PLUGIN
 #include <QvisFileOpenDialog.h>
-#endif
 
 // ****************************************************************************
 // Method: QvisDialogLineEdit::QvisDialogLineEdit
@@ -61,28 +58,24 @@
 // Creation:   Tue Nov 14 16:24:08 PST 2006
 //
 // Modifications:
-//   Brad Whitlock, Thu Jun 19 11:26:42 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
-QvisDialogLineEdit::QvisDialogLineEdit(QWidget *parent)
-    : QWidget(parent), dialogFilter("*"), dialogCaption("Open")
+QvisDialogLineEdit::QvisDialogLineEdit(QWidget *parent, const char *name)
+    : QHBox(parent, name), dialogFilter("*"), dialogCaption("Open")
 {
     dialogMode = ChooseFile;
-    QHBoxLayout *hLayout = new QHBoxLayout(this);
-    hLayout->setSpacing(0);
-    hLayout->setMargin(0);
+    setSpacing(0);
 
-    lineEdit = new QLineEdit(this);
+    lineEdit = new QLineEdit(this, "lineEdit");
     lineEdit->setSizePolicy(QSizePolicy(QSizePolicy::MinimumExpanding,
         QSizePolicy::Minimum));
     connect(lineEdit, SIGNAL(returnPressed()),
             this, SIGNAL(returnPressed()));
     connect(lineEdit, SIGNAL(textChanged(const QString &)),
             this, SIGNAL(textChanged(const QString &)));
-    hLayout->addWidget(lineEdit);
-    pushButton = new QPushButton("...", this);
+    pushButton = new QPushButton("...",
+        this, "pushButton");
 #ifndef Q_WS_MACX
     pushButton->setMaximumWidth(
         fontMetrics().boundingRect("...").width() + 6);
@@ -91,10 +84,9 @@ QvisDialogLineEdit::QvisDialogLineEdit(QWidget *parent)
         QSizePolicy::Minimum));
     connect(pushButton, SIGNAL(clicked()),
             this, SLOT(pushButtonClicked()));
-    hLayout->addWidget(pushButton);
 
     // Make the line edit take most of the space.
-    hLayout->setStretchFactor(lineEdit, 100);
+    setStretchFactor(lineEdit, 100);
     setSizePolicy(QSizePolicy(QSizePolicy::MinimumExpanding,
         QSizePolicy::Minimum));
 }
@@ -123,7 +115,8 @@ QvisDialogLineEdit::~QvisDialogLineEdit()
 void
 QvisDialogLineEdit::setText(const QString &s)
 {
-    lineEdit->setToolTip(s);
+    QToolTip::remove(lineEdit);
+    QToolTip::add(lineEdit, s);
     lineEdit->setText(s);
 }
 
@@ -158,7 +151,7 @@ QvisDialogLineEdit::setDialogMode(QvisDialogLineEdit::DialogMode m)
 }
 
 // ****************************************************************************
-// Method: QvisDialogLineEdit::changeEvent
+// Method: QvisDialogLineEdit::fontChange
 //
 // Purpose: 
 //   Update the width of the font button when the font changes.
@@ -170,24 +163,19 @@ QvisDialogLineEdit::setDialogMode(QvisDialogLineEdit::DialogMode m)
 // Creation:   Thu Mar 15 17:03:41 PST 2007
 //
 // Modifications:
-//   Brad Whitlock, Thu Jun 19 11:36:17 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
-QvisDialogLineEdit::changeEvent(QEvent *e)
+QvisDialogLineEdit::fontChange(const QFont &oldFont)
 {
+    QHBox::fontChange(oldFont);
+
 #ifndef Q_WS_MACX
-    if(e->type() == QEvent::FontChange)
-    {
-        pushButton->setMaximumWidth(
-            QFontMetrics(font()).boundingRect("...").width() + 6);
-        update();
-        e->accept();
-    }
+    pushButton->setMaximumWidth(
+         QFontMetrics(font()).boundingRect("...").width() + 6);
+    update();
 #endif
-    QWidget::changeEvent(e);
 }
 
 //
@@ -209,9 +197,6 @@ QvisDialogLineEdit::changeEvent(QEvent *e)
 //   Brad Whitlock, Fri Mar 16 15:09:38 PST 2007
 //   Added support for fonts.
 //
-//   Brad Whitlock, Thu Jun 19 11:27:32 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
@@ -222,29 +207,26 @@ QvisDialogLineEdit::pushButtonClicked()
 
     if(dialogMode == ChooseFile)
     {
-#ifdef DESIGNER_PLUGIN
-        // Do this when we build the widget as a designer plugin
-        name = QFileDialog::getOpenFileName (this, dialogCaption, name, dialogFilter);
-#else
         // Choose a new filename using VisIt's file open dialog.
         name = QvisFileOpenDialog::getOpenFileName(name, dialogCaption);
-#endif
     }
     else if(dialogMode == ChooseLocalFile)
     { 
         // Choose a new filename.
-        name = QFileDialog::getOpenFileName (this, dialogCaption, name, dialogFilter);
+        name = QFileDialog::getOpenFileName(name, dialogFilter, this,
+            "getFileDialog", dialogCaption);
     }
     else if(dialogMode == ChooseDirectory)
     {
         // Choose a directory.
-        name = QFileDialog::getExistingDirectory(this, dialogCaption, name);
+        name = QFileDialog::getExistingDirectory(name, this,
+            "getDirectoryDialog", dialogCaption);
     }
     else if(dialogMode == ChooseFont)
     {
-        // Choose a font.
+        // Choose a directory.
         bool okay = false;
-        f = QFontDialog::getFont(&okay, font(), this, dialogCaption);
+        f = QFontDialog::getFont(&okay, font(), this, "getFontDialog");
         if(okay)
             name = f.toString();
         else
@@ -256,7 +238,8 @@ QvisDialogLineEdit::pushButtonClicked()
     //
     if(!name.isEmpty())
     {
-        lineEdit->setToolTip(name);
+        QToolTip::remove(lineEdit);
+        QToolTip::add(lineEdit, name);
 
         lineEdit->blockSignals(true);
         lineEdit->setText(name);

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -38,11 +38,9 @@
 
 #include <QvisLightingWidget.h>
 #include <math.h>
-#include <QMouseEvent>
-#include <QPainter>
-#include <QPaintEvent>
-#include <QPixmap>
-#include <QResizeEvent>
+#include <qdrawutil.h>
+#include <qpainter.h>
+#include <qpixmap.h>
 
 #include <mini3D.h>
 
@@ -104,13 +102,10 @@ m3d_complex_element QvisLightingWidget::cube;
 //   Brad Whitlock, Mon Mar 3 13:22:08 PST 2003
 //   I initialized the renderer.
 //
-//   Brad Whitlock, Thu Jun  5 16:20:07 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
-QvisLightingWidget::QvisLightingWidget(QWidget *parent) : 
-    QWidget(parent), renderer(150,150)
+QvisLightingWidget::QvisLightingWidget(QWidget *parent, const char *name) : 
+    QWidget(parent, name), renderer(150,150)
 {
     pixmap = 0;
     previewMode = false;
@@ -393,13 +388,13 @@ QvisLightingWidget::setLightType(int type)
 void
 QvisLightingWidget::mousePressEvent(QMouseEvent *e)
 {
-    if (e->button() == Qt::LeftButton)
+    if (e->button() == LeftButton)
     {
         lastX = ( (float)(e->x()*2)/(float)width() - 1.);
         lastY =-( (float)(e->y()*2)/(float)height() - 1.);
         mouseDown = true;
     }
-    else if (e->button() == Qt::MidButton)
+    else if (e->button() == MidButton)
     {
         view2=m3du_create_identity_matrix();
         renderer.set_view_matrix(mtx_mult(view,view2));
@@ -511,9 +506,7 @@ QvisLightingWidget::mouseReleaseEvent(QMouseEvent *)
 // Creation:   Fri Oct 19 16:37:34 PST 2001
 //
 // Modifications:
-//   Brad Whitlock, Thu Jun  5 16:21:22 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
@@ -533,16 +526,17 @@ QvisLightingWidget::paintEvent(QPaintEvent *e)
 
         // Draw the scene into the backing pixmap.
         QBrush b(QColor(16,16,16));
-        qDrawShadePanel(&pixpaint, 0, 0, width(), height(), palette(), true,
+        qDrawShadePanel(&pixpaint, 0, 0, width(), height(), colorGroup(), true,
                         2, &b);
         redrawScene(&pixpaint);
+        setBackgroundPixmap(*pixmap);
         needsRedrawPixmap = false;
         clipByRegion = false;
     }
 
     // Blit the pixmap to the screen.
     QPainter paint(this);
-    if(clipByRegion && !e->region().isEmpty())
+    if(clipByRegion && !e->region().isEmpty() && !e->region().isNull())
         paint.setClipRegion(e->region());
     paint.drawPixmap(QPoint(0,0), *pixmap);
 }

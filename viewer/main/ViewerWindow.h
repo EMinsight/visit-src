@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -63,6 +63,7 @@
 
 #include <ExternalRenderRequestInfo.h>
 
+class AnimationAttributes;
 class AnnotationObjectList;
 class AttributeSubject;
 class AttributeSubjectMap;
@@ -437,10 +438,6 @@ class ViewerToolbar;
 //    Brad Whitlock, Wed Feb 13 14:04:22 PST 2008
 //    Added configVersion to SetFromNode.
 //
-//    Brad Whitlock, Wed Dec 10 15:25:15 PST 2008
-//    I removed the AnimationAttribute methods since they can be accessed
-//    via the plot list.
-//
 // ****************************************************************************
 
 class VIEWER_API ViewerWindow : public ViewerBase
@@ -554,6 +551,9 @@ public:
     void SetMergeViewLimits(bool mode) { mergeViewLimits = mode; }
     void CopyViewAttributes(const ViewerWindow *);
     void UpdateCameraView();
+
+    void SetAnimationAttributes(const AnimationAttributes *);
+    const AnimationAttributes *GetAnimationAttributes() const;
 
     void SetAnnotationAttributes(const AnnotationAttributes *);
     const AnnotationAttributes *GetAnnotationAttributes() const;

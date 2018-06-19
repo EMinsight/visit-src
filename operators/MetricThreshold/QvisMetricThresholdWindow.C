@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -41,24 +41,228 @@
 #include <MetricThresholdAttributes.h>
 #include <ViewerProxy.h>
 
-#include <QCheckBox>
-#include <QLabel>
-#include <QLayout>
-#include <QLineEdit>
-#include <QSpinBox>
-#include <QComboBox>
-#include <QRadioButton>
+#include <qcheckbox.h>
+#include <qlabel.h>
+#include <qlayout.h>
+#include <qlineedit.h>
+#include <qspinbox.h>
+#include <qvbox.h>
+#include <qcombobox.h>
+#include <qradiobutton.h>
 #include <QvisColorTableButton.h>
 #include <QvisOpacitySlider.h>
 #include <QvisColorButton.h>
 #include <QvisLineStyleWidget.h>
 #include <QvisLineWidthWidget.h>
-#include <QvisVariableButton.h>
-
 #include <stdio.h>
 #include <string>
 
 using std::string;
+
+// ***
+// Table: PresetValueTable.
+//
+// This table holds the preset values for the attr fields based on the type of metric test.
+//
+// Programmer: Akira Haddox
+// Created: June 17 2002
+// ***
+
+struct PresetValueTableType
+{
+    bool hexOn;
+    double hexLo;
+    double hexHi;
+    bool tetOn;
+    double tetLo;
+    double tetHi;
+    bool wedgeOn;
+    double wedgeLo;
+    double wedgeHi;
+    bool pyrOn;
+    double pyrLo;
+    double pyrHi;
+    bool triOn;
+    double triLo;
+    double triHi;
+    bool quadOn;
+    double quadLo;
+    double quadHi;
+};
+
+const int _LAST_PRESET = (int)(MetricThresholdAttributes::Largest_Angle);
+
+const struct PresetValueTableType PresetValueTable[_LAST_PRESET+1] =
+{
+    //None
+    {    false,    0,    0,
+        false,    0,    0,
+        false,    0,    0,
+        false,    0,    0,
+        false,    0,    0,
+        false,    0,    0    },
+
+    //Aspect_Ratio
+    {    true,    1,    4,
+        true,    1,    3,
+        false,    0,    0,
+        false,    0,    0,
+        false,    0,    0,
+        true,    1,    4    },
+
+    //Aspect_Gamma
+    {    false,    0,    0,
+        true,    1,    3,
+        false,    0,    0,
+        false,    0,    0,
+        true,    1,    1.3,
+        false,    0,    0    },
+
+    //Skew
+    {    true,    0,    0.5,
+        false,    0,    0,
+        false,    0,    0,
+        false,    0,    0,
+        false,    0,    0,
+        true,    0,    0.5    },
+
+    //Taper
+    {    true,    0,    0.4,
+        false,    0,    0,
+        false,    0,    0,
+        false,    0,    0,
+        false,    0,    0,
+        true,    0,    0.7    },
+
+    //Element Volume
+    {    false,    0,    0,
+        false,    0,    0,
+        false,    0,    0,
+        false,    0,    0,
+        false,    0,    0,
+        false,    0,    0    },
+
+    //Stretch
+    {    true,    0.25,    1,
+        false,    0,    0,
+        false,    0,    0,
+        false,    0,    0,
+        false,    0,    0,
+        true,    0.25,    1    },
+
+    //Diagonal
+    {    true,    0.65,    1,
+        false,    0,    0,
+        false,    0,    0,
+        false,    0,    0,
+        false,    0,    0,
+        false,    0,    0    },
+
+    //Dimension
+    {    false,    0,    0,
+        false,    0,    0,
+        false,    0,    0,
+        false,    0,    0,
+        false,    0,    0,
+        false,    0,    0    },
+
+    //Oddy
+    {    true,    0,    20,
+        false,    0,    0,
+        false,    0,    0,
+        false,    0,    0,
+        false,    0,    0,
+        true,    0,    16    },
+
+    //Condition
+    {    true,    1,    8,
+        true,    1,    3,
+        false,    0,    0,
+        false,    0,    0,
+        true,    1,    1.3,
+        true,    1,    4    },
+
+    //Jacobian
+    {    false,    0,    0,
+        false,    0,    0,
+        false,    0,    0,
+        false,    0,    0,
+        false,    0,    0,
+        false,    0,    0    },
+
+    //Scaled Jacobian
+    {    true,    0.5,    1,
+        true,    0.5,    1.1414,
+        false,    0,    0,
+        false,    0,    0,
+        true,    0.5,    1.155,
+        true,    0.5,    1    },
+
+    //Shear
+    {    true,    0.3,    1,
+        true,    0.3,    1,
+        false,    0,    0,
+        false,    0,    0,
+        true,    0.75,    1,
+        true,    0.3,    1    },
+
+    //Shape
+    {    true,    0.3,    1,
+        true,    0.3,    1,
+        false,    0,    0,
+        false,    0,    0,
+        true,    0.75,    1,
+        true,    0.3,    1,    },
+
+    //Relative Size
+    {    true,    0.5,    1,
+        true,    0.5,    1,
+        false,    0,    0,
+        false,    0,    0,
+        true,    0.75,    1,
+        true,    0.5,    1    },
+
+    //Shape and Size
+    {    true,    0.2,    1,
+        true,    0.2,    1,
+        false,    0,    0,
+        false,    0,    0,
+        true,    0.75,    1,
+        true,    0.2,    1    },
+
+    //Area
+    {    false,    0,    0,
+        false,    0,    0,
+        false,    0,    0,
+        false,    0,    0,
+        false,    0,    0,
+        false,    0,    0    },
+
+    //Warpage
+    {    false,    0,    0,
+        false,    0,    0,
+        false,    0,    0,
+        false,    0,    0,
+        false,    0,    0,
+        true,    0,    0.1    },
+
+    //Smallest Angle
+    {    false,    0,    0,
+        false,    0,    0,
+        false,    0,    0,
+        false,    0,    0,
+        true,    30,    60,
+        true,    45,    90    },
+
+    //Largest Angle
+    {    false,    0,    0,
+        false,    0,    0,
+        false,    0,    0,
+        false,    0,    0,
+        true,    60,    90,
+        true,    90,    135    }
+};
+
 
 // ****************************************************************************
 // Method: QvisMetricThresholdWindow::QvisMetricThresholdWindow
@@ -66,10 +270,8 @@ using std::string;
 // Purpose: 
 //   Constructor
 //
-// Note:       Autogenerated by xml2window.
-//
 // Programmer: xml2window
-// Creation:   omitted
+// Creation:   Mon Jul 29 14:33:19 PST 2002
 //
 // Modifications:
 //   
@@ -92,10 +294,8 @@ QvisMetricThresholdWindow::QvisMetricThresholdWindow(const int type,
 // Purpose: 
 //   Destructor
 //
-// Note:       Autogenerated by xml2window.
-//
 // Programmer: xml2window
-// Creation:   omitted
+// Creation:   Mon Jul 29 14:33:19 PST 2002
 //
 // Modifications:
 //   
@@ -112,169 +312,159 @@ QvisMetricThresholdWindow::~QvisMetricThresholdWindow()
 // Purpose: 
 //   Creates the widgets for the window.
 //
-// Note:       Autogenerated by xml2window.
-//
 // Programmer: xml2window
-// Creation:   omitted
+// Creation:   Mon Jul 29 14:33:19 PST 2002
 //
 // Modifications:
-//   Cyrus Harrison, Tue Aug 19 11:30:19 PDT 2008
-//   Qt4 Port - Autogen and moved preset options into a ComboBox instead of 
-//   a set radio of buttons.
+//   Brad Whitlock, Fri Apr 25 08:56:37 PDT 2008
+//   Added tr()'s
 //
 // ****************************************************************************
 
 void
 QvisMetricThresholdWindow::CreateWindowContents()
 {
-    QGridLayout *mainLayout = new QGridLayout(0);
-    topLayout->addLayout(mainLayout);
 
-    QWidget *presetLabel = new QLabel(tr("preset"), central);
-    mainLayout->addWidget(presetLabel,0,0);
-    
-    preset = new QComboBox(central);
-    preset->addItem(tr("None"));
-    preset->addItem(tr("Aspect Ratio"));
-    preset->addItem(tr("Aspect Gamma"));
-    preset->addItem(tr("Skew"));
-    preset->addItem(tr("Taper"));
-    preset->addItem(tr("Volume"));
-    preset->addItem(tr("Stretch"));
-    preset->addItem(tr("Diagonal"));
-    preset->addItem(tr("Dimension"));
-    preset->addItem(tr("Oddy"));
-    preset->addItem(tr("Condition"));
-    preset->addItem(tr("Jacobian"));
-    preset->addItem(tr("Scaled Jacobian"));
-    preset->addItem(tr("Shear"));
-    preset->addItem(tr("Shape"));
-    preset->addItem(tr("Relative Size"));
-    preset->addItem(tr("Shape and Size"));
-    preset->addItem(tr("Area"));
-    preset->addItem(tr("Warpage"));
-    preset->addItem(tr("Smallest Angle"));
-    preset->addItem(tr("Largest Angle"));
+    QGridLayout *mainLayout = new QGridLayout(topLayout, 13,2,  10, "mainLayout");
 
-    connect(preset, SIGNAL(currentIndexChanged(int)),
+
+    // Preset
+    QHBoxLayout *presetLayout = new QHBoxLayout(mainLayout);
+    presetLayout->addWidget(new QLabel(tr("Preset Data for: "), central, "presetLayout"));
+    preset = new QComboBox(false, central, "preset");
+    preset->insertItem(tr("None"));
+    preset->insertItem(tr("Aspect Ratio"));
+    preset->insertItem(tr("Aspect Gamma"));
+    preset->insertItem(tr("Skew"));
+    preset->insertItem(tr("Taper"));
+    preset->insertItem(tr("Volume"));
+    preset->insertItem(tr("Stretch"));
+    preset->insertItem(tr("Diagonal"));
+    preset->insertItem(tr("Dimension"));
+    preset->insertItem(tr("Oddy"));
+    preset->insertItem(tr("Condition"));
+    preset->insertItem(tr("Jacobian"));
+    preset->insertItem(tr("Scaled Jacobian"));
+    preset->insertItem(tr("Shear"));
+    preset->insertItem(tr("Shape"));
+    preset->insertItem(tr("Relative Size"));
+    preset->insertItem(tr("Shape and Size"));
+    preset->insertItem(tr("Area"));
+    preset->insertItem(tr("Warpage"));
+    preset->insertItem(tr("Smallest Angle"));
+    preset->insertItem(tr("Largest Angle"));
+    presetLayout->addWidget(preset);
+
+    connect(preset, SIGNAL(activated(int)),
             this, SLOT(presetChanged(int)));
     mainLayout->addWidget(preset, 0,1);
 
-    Hexahedron = new QCheckBox(tr("Hexahedron"), central);
+    Hexahedron = new QCheckBox(tr("Hexahedron"), central, "Hexahedron");
     connect(Hexahedron, SIGNAL(toggled(bool)),
             this, SLOT(HexahedronChanged(bool)));
-    mainLayout->addWidget(Hexahedron, 1,0);
+    mainLayout->addWidget(Hexahedron, 2,0);
 
-    QWidget *hex_lowerLabel = new QLabel(tr("hex_lower"), central);
-    mainLayout->addWidget(hex_lowerLabel,2,0);
-    hex_lower = new QLineEdit(central);
+    mainLayout->addWidget(new QLabel(tr("Enable Type"), central, "et_label"),1,0);
+    mainLayout->addWidget(new QLabel(tr("Exclusion Range"), central, "er_label"),1,1);
+
+    mainLayout->addWidget(new QLabel(tr("hex_lower"), central, "hex_lowerLabel"),3,0);
+    hex_lower = new QLineEdit(central, "hex_lower");
     connect(hex_lower, SIGNAL(returnPressed()),
             this, SLOT(hex_lowerProcessText()));
-    mainLayout->addWidget(hex_lower, 2,1);
+    mainLayout->addWidget(hex_lower, 3,1);
 
-    QWidget *hex_upperLabel = new QLabel(tr("hex_upper"), central);
-    mainLayout->addWidget(hex_upperLabel,3,0);
-    hex_upper = new QLineEdit(central);
+    mainLayout->addWidget(new QLabel(tr("hex_upper"), central, "hex_upperLabel"),4,0);
+    hex_upper = new QLineEdit(central, "hex_upper");
     connect(hex_upper, SIGNAL(returnPressed()),
             this, SLOT(hex_upperProcessText()));
-    mainLayout->addWidget(hex_upper, 3,1);
+    mainLayout->addWidget(hex_upper, 4,1);
 
-    Tetrahedron = new QCheckBox(tr("Tetrahedron"), central);
+    Tetrahedron = new QCheckBox(tr("Tetrahedron"), central, "Tetrahedron");
     connect(Tetrahedron, SIGNAL(toggled(bool)),
             this, SLOT(TetrahedronChanged(bool)));
-    mainLayout->addWidget(Tetrahedron, 4,0);
+    mainLayout->addWidget(Tetrahedron, 5,0);
 
-    QWidget *tet_lowerLabel = new QLabel(tr("tet_lower"), central);
-    mainLayout->addWidget(tet_lowerLabel,5,0);
-    tet_lower = new QLineEdit(central);
+    mainLayout->addWidget(new QLabel(tr("tet_lower"), central, "tet_lowerLabel"),6,0);
+    tet_lower = new QLineEdit(central, "tet_lower");
     connect(tet_lower, SIGNAL(returnPressed()),
             this, SLOT(tet_lowerProcessText()));
-    mainLayout->addWidget(tet_lower, 5,1);
+    mainLayout->addWidget(tet_lower, 6,1);
 
-    QWidget *tet_upperLabel = new QLabel(tr("tet_upper"), central);
-    mainLayout->addWidget(tet_upperLabel,6,0);
-    tet_upper = new QLineEdit(central);
+    mainLayout->addWidget(new QLabel(tr("tet_upper"), central, "tet_upperLabel"),7,0);
+    tet_upper = new QLineEdit(central, "tet_upper");
     connect(tet_upper, SIGNAL(returnPressed()),
             this, SLOT(tet_upperProcessText()));
-    mainLayout->addWidget(tet_upper, 6,1);
+    mainLayout->addWidget(tet_upper, 7,1);
 
-    Wedge = new QCheckBox(tr("Wedge"), central);
+    Wedge = new QCheckBox(tr("Wedge"), central, "Wedge");
     connect(Wedge, SIGNAL(toggled(bool)),
             this, SLOT(WedgeChanged(bool)));
-    mainLayout->addWidget(Wedge, 7,0);
+    mainLayout->addWidget(Wedge, 8,0);
 
-    QWidget *wed_lowerLabel = new QLabel(tr("wed_lower"), central);
-    mainLayout->addWidget(wed_lowerLabel,8,0);
-    wed_lower = new QLineEdit(central);
+    mainLayout->addWidget(new QLabel(tr("wed_lower"), central, "wed_lowerLabel"),9,0);
+    wed_lower = new QLineEdit(central, "wed_lower");
     connect(wed_lower, SIGNAL(returnPressed()),
             this, SLOT(wed_lowerProcessText()));
-    mainLayout->addWidget(wed_lower, 8,1);
+    mainLayout->addWidget(wed_lower, 9,1);
 
-    QWidget *wed_upperLabel = new QLabel(tr("wed_upper"), central);
-    mainLayout->addWidget(wed_upperLabel,9,0);
-    wed_upper = new QLineEdit(central);
+    mainLayout->addWidget(new QLabel(tr("wed_upper"), central, "wed_upperLabel"),10,0);
+    wed_upper = new QLineEdit(central, "wed_upper");
     connect(wed_upper, SIGNAL(returnPressed()),
             this, SLOT(wed_upperProcessText()));
-    mainLayout->addWidget(wed_upper, 9,1);
+    mainLayout->addWidget(wed_upper, 10,1);
 
-    Pyramid = new QCheckBox(tr("Pyramid"), central);
+    Pyramid = new QCheckBox(tr("Pyramid"), central, "Pyramid");
     connect(Pyramid, SIGNAL(toggled(bool)),
             this, SLOT(PyramidChanged(bool)));
-    mainLayout->addWidget(Pyramid, 10,0);
+    mainLayout->addWidget(Pyramid, 11,0);
 
-    QWidget *pyr_lowerLabel = new QLabel(tr("pyr_lower"), central);
-    mainLayout->addWidget(pyr_lowerLabel,11,0);
-    pyr_lower = new QLineEdit(central);
+    mainLayout->addWidget(new QLabel(tr("pyr_lower"), central, "pyr_lowerLabel"),12,0);
+    pyr_lower = new QLineEdit(central, "pyr_lower");
     connect(pyr_lower, SIGNAL(returnPressed()),
             this, SLOT(pyr_lowerProcessText()));
-    mainLayout->addWidget(pyr_lower, 11,1);
+    mainLayout->addWidget(pyr_lower, 12,1);
 
-    QWidget *pyr_upperLabel = new QLabel(tr("pyr_upper"), central);
-    mainLayout->addWidget(pyr_upperLabel,12,0);
-    pyr_upper = new QLineEdit(central);
+    mainLayout->addWidget(new QLabel(tr("pyr_upper"), central, "pyr_upperLabel"),13,0);
+    pyr_upper = new QLineEdit(central, "pyr_upper");
     connect(pyr_upper, SIGNAL(returnPressed()),
             this, SLOT(pyr_upperProcessText()));
-    mainLayout->addWidget(pyr_upper, 12,1);
+    mainLayout->addWidget(pyr_upper, 13,1);
 
-    Triangle = new QCheckBox(tr("Triangle"), central);
+    Triangle = new QCheckBox(tr("Triangle"), central, "Triangle");
     connect(Triangle, SIGNAL(toggled(bool)),
             this, SLOT(TriangleChanged(bool)));
-    mainLayout->addWidget(Triangle, 13,0);
+    mainLayout->addWidget(Triangle, 14,0);
 
-    QWidget *tri_lowerLabel = new QLabel(tr("tri_lower"), central);
-    mainLayout->addWidget(tri_lowerLabel,14,0);
-    tri_lower = new QLineEdit(central);
+    mainLayout->addWidget(new QLabel(tr("tri_lower"), central, "tri_lowerLabel"),15,0);
+    tri_lower = new QLineEdit(central, "tri_lower");
     connect(tri_lower, SIGNAL(returnPressed()),
             this, SLOT(tri_lowerProcessText()));
-    mainLayout->addWidget(tri_lower, 14,1);
+    mainLayout->addWidget(tri_lower, 15,1);
 
-    QWidget *tri_upperLabel = new QLabel(tr("tri_upper"), central);
-    mainLayout->addWidget(tri_upperLabel,15,0);
-    tri_upper = new QLineEdit(central);
+    mainLayout->addWidget(new QLabel(tr("tri_upper"), central, "tri_upperLabel"),16,0);
+    tri_upper = new QLineEdit(central, "tri_upper");
     connect(tri_upper, SIGNAL(returnPressed()),
             this, SLOT(tri_upperProcessText()));
-    mainLayout->addWidget(tri_upper, 15,1);
+    mainLayout->addWidget(tri_upper, 16,1);
 
-    Quad = new QCheckBox(tr("Quad"), central);
+    Quad = new QCheckBox(tr("Quad"), central, "quad");
     connect(Quad, SIGNAL(toggled(bool)),
             this, SLOT(QuadChanged(bool)));
-    mainLayout->addWidget(Quad, 16,0);
+    mainLayout->addWidget(Quad, 17,0);
 
-    QWidget *quad_lowerLabel = new QLabel(tr("quad_lower"), central);
-    mainLayout->addWidget(quad_lowerLabel,17,0);
-    quad_lower = new QLineEdit(central);
+    mainLayout->addWidget(new QLabel(tr("quad_lower"), central, "quad_lowerLabel"),18,0);
+    quad_lower = new QLineEdit(central, "quad_lower");
     connect(quad_lower, SIGNAL(returnPressed()),
             this, SLOT(quad_lowerProcessText()));
-    mainLayout->addWidget(quad_lower, 17,1);
+    mainLayout->addWidget(quad_lower, 18,1);
 
-    QWidget *quad_upperLabel = new QLabel(tr("quad_upper"), central);
-    mainLayout->addWidget(quad_upperLabel,18,0);
-    quad_upper = new QLineEdit(central);
+    mainLayout->addWidget(new QLabel(tr("quad_upper"), central, "quad_upperLabel"),19,0);
+    quad_upper = new QLineEdit(central, "quad_upper");
     connect(quad_upper, SIGNAL(returnPressed()),
             this, SLOT(quad_upperProcessText()));
-    mainLayout->addWidget(quad_upper, 18,1);
-
+    mainLayout->addWidget(quad_upper, 19,1);
 }
+
 
 
 // ****************************************************************************
@@ -283,20 +473,20 @@ QvisMetricThresholdWindow::CreateWindowContents()
 // Purpose: 
 //   Updates the widgets in the window when the subject changes.
 //
-// Note:       Autogenerated by xml2window.
-//
 // Programmer: xml2window
-// Creation:   omitted
+// Creation:   Mon Jul 29 14:33:19 PST 2002
 //
 // Modifications:
-//   Cyrus Harrison, Tue Aug 19 11:30:19 PDT 2008
-//   Qt4 Port. 
+//   Jeremy Meredith, Tue Nov 16 11:39:53 PST 2004
+//   Replaced simple QString::sprintf's with a setNum because there seems
+//   to be a bug causing numbers to be incremented by .00001.  See '5263.
 //
 // ****************************************************************************
 
 void
 QvisMetricThresholdWindow::UpdateWindow(bool doAll)
 {
+    QString temp;
 
     for(int i = 0; i < atts->NumAttributes(); ++i)
     {
@@ -310,76 +500,74 @@ QvisMetricThresholdWindow::UpdateWindow(bool doAll)
 
         switch(i)
         {
-          case MetricThresholdAttributes::ID_preset:
-            preset->blockSignals(true);
-            preset->setCurrentIndex((int)atts->GetPreset());
-            preset->blockSignals(false);
+          case 0: //preset
+            preset->setCurrentItem(atts->GetPreset());
             break;
-          case MetricThresholdAttributes::ID_Hexahedron:
-            Hexahedron->blockSignals(true);
+          case 1: //Hexahedron
             Hexahedron->setChecked(atts->GetHexahedron());
-            Hexahedron->blockSignals(false);
             break;
-          case MetricThresholdAttributes::ID_hex_lower:
-            hex_lower->setText(DoubleToQString(atts->GetHex_lower()));
+          case 2: //hex_lower
+            temp.setNum(atts->GetHex_lower());
+            hex_lower->setText(temp);
             break;
-          case MetricThresholdAttributes::ID_hex_upper:
-            hex_upper->setText(DoubleToQString(atts->GetHex_upper()));
+          case 3: //hex_upper
+            temp.setNum(atts->GetHex_upper());
+            hex_upper->setText(temp);
             break;
-          case MetricThresholdAttributes::ID_Tetrahedron:
-            Tetrahedron->blockSignals(true);
+          case 4: //Tetrahedron
             Tetrahedron->setChecked(atts->GetTetrahedron());
-            Tetrahedron->blockSignals(false);
             break;
-          case MetricThresholdAttributes::ID_tet_lower:
-            tet_lower->setText(DoubleToQString(atts->GetTet_lower()));
+          case 5: //tet_lower
+            temp.setNum(atts->GetTet_lower());
+            tet_lower->setText(temp);
             break;
-          case MetricThresholdAttributes::ID_tet_upper:
-            tet_upper->setText(DoubleToQString(atts->GetTet_upper()));
+          case 6: //tet_upper
+            temp.setNum(atts->GetTet_upper());
+            tet_upper->setText(temp);
             break;
-          case MetricThresholdAttributes::ID_Wedge:
-            Wedge->blockSignals(true);
+          case 7: //Wedge
             Wedge->setChecked(atts->GetWedge());
-            Wedge->blockSignals(false);
             break;
-          case MetricThresholdAttributes::ID_wed_lower:
-            wed_lower->setText(DoubleToQString(atts->GetWed_lower()));
+          case 8: //wed_lower
+            temp.setNum(atts->GetWed_lower());
+            wed_lower->setText(temp);
             break;
-          case MetricThresholdAttributes::ID_wed_upper:
-            wed_upper->setText(DoubleToQString(atts->GetWed_upper()));
+          case 9: //wed_upper
+            temp.setNum(atts->GetWed_upper());
+            wed_upper->setText(temp);
             break;
-          case MetricThresholdAttributes::ID_Pyramid:
-            Pyramid->blockSignals(true);
+          case 10: //Pyramid
             Pyramid->setChecked(atts->GetPyramid());
-            Pyramid->blockSignals(false);
             break;
-          case MetricThresholdAttributes::ID_pyr_lower:
-            pyr_lower->setText(DoubleToQString(atts->GetPyr_lower()));
+          case 11: //pyr_lower
+            temp.setNum(atts->GetPyr_lower());
+            pyr_lower->setText(temp);
             break;
-          case MetricThresholdAttributes::ID_pyr_upper:
-            pyr_upper->setText(DoubleToQString(atts->GetPyr_upper()));
+          case 12: //pyr_upper
+            temp.setNum(atts->GetPyr_upper());
+            pyr_upper->setText(temp);
             break;
-          case MetricThresholdAttributes::ID_Triangle:
-            Triangle->blockSignals(true);
+          case 13: //Triangle
             Triangle->setChecked(atts->GetTriangle());
-            Triangle->blockSignals(false);
             break;
-          case MetricThresholdAttributes::ID_tri_lower:
-            tri_lower->setText(DoubleToQString(atts->GetTri_lower()));
+          case 14: //tri_lower
+            temp.setNum(atts->GetTri_lower());
+            tri_lower->setText(temp);
             break;
-          case MetricThresholdAttributes::ID_tri_upper:
-            tri_upper->setText(DoubleToQString(atts->GetTri_upper()));
+          case 15: //tri_upper
+            temp.setNum(atts->GetTri_upper());
+            tri_upper->setText(temp);
             break;
-          case MetricThresholdAttributes::ID_Quad:
-            Quad->blockSignals(true);
+          case 16: //Quad
             Quad->setChecked(atts->GetQuad());
-            Quad->blockSignals(false);
             break;
-          case MetricThresholdAttributes::ID_quad_lower:
-            quad_lower->setText(DoubleToQString(atts->GetQuad_lower()));
+          case 17: //quad_lower
+            temp.setNum(atts->GetQuad_lower());
+            quad_lower->setText(temp);
             break;
-          case MetricThresholdAttributes::ID_quad_upper:
-            quad_upper->setText(DoubleToQString(atts->GetQuad_upper()));
+          case 18: //quad_upper
+            temp.setNum(atts->GetQuad_upper());
+            quad_upper->setText(temp);
             break;
         }
     }
@@ -392,10 +580,8 @@ QvisMetricThresholdWindow::UpdateWindow(bool doAll)
 // Purpose: 
 //   Gets values from certain widgets and stores them in the subject.
 //
-// Note:       Autogenerated by xml2window.
-//
 // Programmer: xml2window
-// Creation:   omitted
+// Creation:   Mon Jul 29 14:33:19 PST 2002
 //
 // Modifications:
 //   
@@ -404,172 +590,311 @@ QvisMetricThresholdWindow::UpdateWindow(bool doAll)
 void
 QvisMetricThresholdWindow::GetCurrentValues(int which_widget)
 {
-    bool doAll = (which_widget == -1);
+    bool okay, doAll = (which_widget == -1);
+    QString msg, temp;
+
+    // Do preset
+    if(which_widget == 0 || doAll)
+    {
+        // Nothing for preset
+    }
+
+    // Do Hexahedron
+    if(which_widget == 1 || doAll)
+    {
+        // Nothing for Hexahedron
+    }
 
     // Do hex_lower
-    if(which_widget == MetricThresholdAttributes::ID_hex_lower || doAll)
+    if(which_widget == 2 || doAll)
     {
-        double val;
-        if(LineEditGetDouble(hex_lower, val))
-            atts->SetHex_lower(val);
-        else
+        temp = hex_lower->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("hex_lower"),
-                DoubleToQString(atts->GetHex_lower()));
+            double val = temp.toDouble(&okay);
+            if(okay)
+                atts->SetHex_lower(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of hex_lower was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetHex_lower());
+            Message(msg);
             atts->SetHex_lower(atts->GetHex_lower());
         }
     }
 
     // Do hex_upper
-    if(which_widget == MetricThresholdAttributes::ID_hex_upper || doAll)
+    if(which_widget == 3 || doAll)
     {
-        double val;
-        if(LineEditGetDouble(hex_upper, val))
-            atts->SetHex_upper(val);
-        else
+        temp = hex_upper->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("hex_upper"),
-                DoubleToQString(atts->GetHex_upper()));
+            double val = temp.toDouble(&okay);
+            if(okay)
+                atts->SetHex_upper(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of hex_upper was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetHex_upper());
+            Message(msg);
             atts->SetHex_upper(atts->GetHex_upper());
         }
     }
 
-    // Do tet_lower
-    if(which_widget == MetricThresholdAttributes::ID_tet_lower || doAll)
+    // Do Tetrahedron
+    if(which_widget == 4 || doAll)
     {
-        double val;
-        if(LineEditGetDouble(tet_lower, val))
-            atts->SetTet_lower(val);
-        else
+        // Nothing for Tetrahedron
+    }
+
+    // Do tet_lower
+    if(which_widget == 5 || doAll)
+    {
+        temp = tet_lower->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("tet_lower"),
-                DoubleToQString(atts->GetTet_lower()));
+            double val = temp.toDouble(&okay);
+            if(okay)
+                atts->SetTet_lower(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of tet_lower was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetTet_lower());
+            Message(msg);
             atts->SetTet_lower(atts->GetTet_lower());
         }
     }
 
     // Do tet_upper
-    if(which_widget == MetricThresholdAttributes::ID_tet_upper || doAll)
+    if(which_widget == 6 || doAll)
     {
-        double val;
-        if(LineEditGetDouble(tet_upper, val))
-            atts->SetTet_upper(val);
-        else
+        temp = tet_upper->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("tet_upper"),
-                DoubleToQString(atts->GetTet_upper()));
+            double val = temp.toDouble(&okay);
+            if(okay)
+                atts->SetTet_upper(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of tet_upper was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetTet_upper());
+            Message(msg);
             atts->SetTet_upper(atts->GetTet_upper());
         }
     }
 
-    // Do wed_lower
-    if(which_widget == MetricThresholdAttributes::ID_wed_lower || doAll)
+    // Do Wedge
+    if(which_widget == 7 || doAll)
     {
-        double val;
-        if(LineEditGetDouble(wed_lower, val))
-            atts->SetWed_lower(val);
-        else
+        // Nothing for Wedge
+    }
+
+    // Do wed_lower
+    if(which_widget == 8 || doAll)
+    {
+        temp = wed_lower->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("wed_lower"),
-                DoubleToQString(atts->GetWed_lower()));
+            double val = temp.toDouble(&okay);
+            if(okay)
+                atts->SetWed_lower(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of wed_lower was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetWed_lower());
+            Message(msg);
             atts->SetWed_lower(atts->GetWed_lower());
         }
     }
 
     // Do wed_upper
-    if(which_widget == MetricThresholdAttributes::ID_wed_upper || doAll)
+    if(which_widget == 9 || doAll)
     {
-        double val;
-        if(LineEditGetDouble(wed_upper, val))
-            atts->SetWed_upper(val);
-        else
+        temp = wed_upper->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("wed_upper"),
-                DoubleToQString(atts->GetWed_upper()));
+            double val = temp.toDouble(&okay);
+            if(okay)
+                atts->SetWed_upper(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of wed_upper was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetWed_upper());
+            Message(msg);
             atts->SetWed_upper(atts->GetWed_upper());
         }
     }
 
-    // Do pyr_lower
-    if(which_widget == MetricThresholdAttributes::ID_pyr_lower || doAll)
+    // Do Pyramid
+    if(which_widget == 10 || doAll)
     {
-        double val;
-        if(LineEditGetDouble(pyr_lower, val))
-            atts->SetPyr_lower(val);
-        else
+        // Nothing for Pyramid
+    }
+
+    // Do pyr_lower
+    if(which_widget == 11 || doAll)
+    {
+        temp = pyr_lower->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("pyr_lower"),
-                DoubleToQString(atts->GetPyr_lower()));
+            double val = temp.toDouble(&okay);
+            if(okay)
+                atts->SetPyr_lower(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of pyr_lower was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetPyr_lower());
+            Message(msg);
             atts->SetPyr_lower(atts->GetPyr_lower());
         }
     }
 
     // Do pyr_upper
-    if(which_widget == MetricThresholdAttributes::ID_pyr_upper || doAll)
+    if(which_widget == 12 || doAll)
     {
-        double val;
-        if(LineEditGetDouble(pyr_upper, val))
-            atts->SetPyr_upper(val);
-        else
+        temp = pyr_upper->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("pyr_upper"),
-                DoubleToQString(atts->GetPyr_upper()));
+            double val = temp.toDouble(&okay);
+            if(okay)
+                atts->SetPyr_upper(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of pyr_upper was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetPyr_upper());
+            Message(msg);
             atts->SetPyr_upper(atts->GetPyr_upper());
         }
     }
 
-    // Do tri_lower
-    if(which_widget == MetricThresholdAttributes::ID_tri_lower || doAll)
+    // Do Triangle
+    if(which_widget == 13 || doAll)
     {
-        double val;
-        if(LineEditGetDouble(tri_lower, val))
-            atts->SetTri_lower(val);
-        else
+        // Nothing for Triangle
+    }
+
+    // Do tri_lower
+    if(which_widget == 14 || doAll)
+    {
+        temp = tri_lower->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("tri_lower"),
-                DoubleToQString(atts->GetTri_lower()));
+            double val = temp.toDouble(&okay);
+            if(okay)
+                atts->SetTri_lower(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of tri_lower was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetTri_lower());
+            Message(msg);
             atts->SetTri_lower(atts->GetTri_lower());
         }
     }
 
     // Do tri_upper
-    if(which_widget == MetricThresholdAttributes::ID_tri_upper || doAll)
+    if(which_widget == 15 || doAll)
     {
-        double val;
-        if(LineEditGetDouble(tri_upper, val))
-            atts->SetTri_upper(val);
-        else
+        temp = tri_upper->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("tri_upper"),
-                DoubleToQString(atts->GetTri_upper()));
+            double val = temp.toDouble(&okay);
+            if(okay)
+                atts->SetTri_upper(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of tri_upper was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetTri_upper());
+            Message(msg);
             atts->SetTri_upper(atts->GetTri_upper());
         }
     }
 
-    // Do quad_lower
-    if(which_widget == MetricThresholdAttributes::ID_quad_lower || doAll)
+    // Do Quad
+    if(which_widget == 16 || doAll)
     {
-        double val;
-        if(LineEditGetDouble(quad_lower, val))
-            atts->SetQuad_lower(val);
-        else
+        // Nothing for Quad
+    }
+
+    // Do quad_lower
+    if(which_widget == 17 || doAll)
+    {
+        temp = quad_lower->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("quad_lower"),
-                DoubleToQString(atts->GetQuad_lower()));
+            double val = temp.toDouble(&okay);
+            if(okay)
+                atts->SetQuad_lower(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of quad_lower was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetQuad_lower());
+            Message(msg);
             atts->SetQuad_lower(atts->GetQuad_lower());
         }
     }
 
     // Do quad_upper
-    if(which_widget == MetricThresholdAttributes::ID_quad_upper || doAll)
+    if(which_widget == 18 || doAll)
     {
-        double val;
-        if(LineEditGetDouble(quad_upper, val))
-            atts->SetQuad_upper(val);
-        else
+        temp = quad_upper->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("quad_upper"),
-                DoubleToQString(atts->GetQuad_upper()));
+            double val = temp.toDouble(&okay);
+            if(okay)
+                atts->SetQuad_upper(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of quad_upper was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetQuad_upper());
+            Message(msg);
             atts->SetQuad_upper(atts->GetQuad_upper());
         }
     }
@@ -588,9 +913,35 @@ QvisMetricThresholdWindow::presetChanged(int val)
     if(val != atts->GetPreset())
     {
         atts->SetPreset(MetricThresholdAttributes::Preset(val));
-        SetUpdate(false);
         Apply();
     }
+
+    MetricThresholdAttributes::Preset p=(MetricThresholdAttributes::Preset)(val);
+    if(p>_LAST_PRESET)
+    return; // Something's not supported/not right
+
+    int index=(int)p;
+
+    atts->SetHexahedron(PresetValueTable[index].hexOn);
+    atts->SetHex_lower(PresetValueTable[index].hexLo);
+    atts->SetHex_upper(PresetValueTable[index].hexHi);
+    atts->SetTetrahedron(PresetValueTable[index].tetOn);
+    atts->SetTet_lower(PresetValueTable[index].tetLo);
+    atts->SetTet_upper(PresetValueTable[index].tetHi);
+    atts->SetWedge(PresetValueTable[index].wedgeOn);
+    atts->SetWed_lower(PresetValueTable[index].wedgeLo);
+    atts->SetWed_upper(PresetValueTable[index].wedgeHi);
+    atts->SetPyramid(PresetValueTable[index].pyrOn);
+    atts->SetPyr_lower(PresetValueTable[index].pyrLo);
+    atts->SetPyr_upper(PresetValueTable[index].pyrHi);
+    atts->SetTriangle(PresetValueTable[index].triOn);
+    atts->SetTri_lower(PresetValueTable[index].triLo);
+    atts->SetTri_upper(PresetValueTable[index].triHi);
+    atts->SetQuad(PresetValueTable[index].quadOn);
+    atts->SetQuad_lower(PresetValueTable[index].quadLo);
+    atts->SetQuad_upper(PresetValueTable[index].quadHi);
+    Apply();
+
 }
 
 
@@ -598,7 +949,6 @@ void
 QvisMetricThresholdWindow::HexahedronChanged(bool val)
 {
     atts->SetHexahedron(val);
-    SetUpdate(false);
     Apply();
 }
 
@@ -606,7 +956,7 @@ QvisMetricThresholdWindow::HexahedronChanged(bool val)
 void
 QvisMetricThresholdWindow::hex_lowerProcessText()
 {
-    GetCurrentValues(MetricThresholdAttributes::ID_hex_lower);
+    GetCurrentValues(2);
     Apply();
 }
 
@@ -614,7 +964,7 @@ QvisMetricThresholdWindow::hex_lowerProcessText()
 void
 QvisMetricThresholdWindow::hex_upperProcessText()
 {
-    GetCurrentValues(MetricThresholdAttributes::ID_hex_upper);
+    GetCurrentValues(3);
     Apply();
 }
 
@@ -623,7 +973,6 @@ void
 QvisMetricThresholdWindow::TetrahedronChanged(bool val)
 {
     atts->SetTetrahedron(val);
-    SetUpdate(false);
     Apply();
 }
 
@@ -631,7 +980,7 @@ QvisMetricThresholdWindow::TetrahedronChanged(bool val)
 void
 QvisMetricThresholdWindow::tet_lowerProcessText()
 {
-    GetCurrentValues(MetricThresholdAttributes::ID_tet_lower);
+    GetCurrentValues(5);
     Apply();
 }
 
@@ -639,7 +988,7 @@ QvisMetricThresholdWindow::tet_lowerProcessText()
 void
 QvisMetricThresholdWindow::tet_upperProcessText()
 {
-    GetCurrentValues(MetricThresholdAttributes::ID_tet_upper);
+    GetCurrentValues(6);
     Apply();
 }
 
@@ -648,7 +997,6 @@ void
 QvisMetricThresholdWindow::WedgeChanged(bool val)
 {
     atts->SetWedge(val);
-    SetUpdate(false);
     Apply();
 }
 
@@ -656,7 +1004,7 @@ QvisMetricThresholdWindow::WedgeChanged(bool val)
 void
 QvisMetricThresholdWindow::wed_lowerProcessText()
 {
-    GetCurrentValues(MetricThresholdAttributes::ID_wed_lower);
+    GetCurrentValues(8);
     Apply();
 }
 
@@ -664,7 +1012,7 @@ QvisMetricThresholdWindow::wed_lowerProcessText()
 void
 QvisMetricThresholdWindow::wed_upperProcessText()
 {
-    GetCurrentValues(MetricThresholdAttributes::ID_wed_upper);
+    GetCurrentValues(9);
     Apply();
 }
 
@@ -673,7 +1021,6 @@ void
 QvisMetricThresholdWindow::PyramidChanged(bool val)
 {
     atts->SetPyramid(val);
-    SetUpdate(false);
     Apply();
 }
 
@@ -681,7 +1028,7 @@ QvisMetricThresholdWindow::PyramidChanged(bool val)
 void
 QvisMetricThresholdWindow::pyr_lowerProcessText()
 {
-    GetCurrentValues(MetricThresholdAttributes::ID_pyr_lower);
+    GetCurrentValues(11);
     Apply();
 }
 
@@ -689,7 +1036,7 @@ QvisMetricThresholdWindow::pyr_lowerProcessText()
 void
 QvisMetricThresholdWindow::pyr_upperProcessText()
 {
-    GetCurrentValues(MetricThresholdAttributes::ID_pyr_upper);
+    GetCurrentValues(12);
     Apply();
 }
 
@@ -698,7 +1045,6 @@ void
 QvisMetricThresholdWindow::TriangleChanged(bool val)
 {
     atts->SetTriangle(val);
-    SetUpdate(false);
     Apply();
 }
 
@@ -706,7 +1052,7 @@ QvisMetricThresholdWindow::TriangleChanged(bool val)
 void
 QvisMetricThresholdWindow::tri_lowerProcessText()
 {
-    GetCurrentValues(MetricThresholdAttributes::ID_tri_lower);
+    GetCurrentValues(14);
     Apply();
 }
 
@@ -714,7 +1060,7 @@ QvisMetricThresholdWindow::tri_lowerProcessText()
 void
 QvisMetricThresholdWindow::tri_upperProcessText()
 {
-    GetCurrentValues(MetricThresholdAttributes::ID_tri_upper);
+    GetCurrentValues(15);
     Apply();
 }
 
@@ -723,7 +1069,6 @@ void
 QvisMetricThresholdWindow::QuadChanged(bool val)
 {
     atts->SetQuad(val);
-    SetUpdate(false);
     Apply();
 }
 
@@ -731,7 +1076,7 @@ QvisMetricThresholdWindow::QuadChanged(bool val)
 void
 QvisMetricThresholdWindow::quad_lowerProcessText()
 {
-    GetCurrentValues(MetricThresholdAttributes::ID_quad_lower);
+    GetCurrentValues(17);
     Apply();
 }
 
@@ -739,7 +1084,7 @@ QvisMetricThresholdWindow::quad_lowerProcessText()
 void
 QvisMetricThresholdWindow::quad_upperProcessText()
 {
-    GetCurrentValues(MetricThresholdAttributes::ID_quad_upper);
+    GetCurrentValues(18);
     Apply();
 }
 

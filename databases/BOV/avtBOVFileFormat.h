@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -73,6 +73,9 @@
 //    Jeremy Meredith, Thu Jul 24 14:55:41 EDT 2008
 //    Convert most int's to long longs to support >4GB files.
 //
+//    Brad Whitlock, Wed Apr  8 09:40:02 PDT 2009
+//    I added short int support.
+//
 // ****************************************************************************
 
 class avtBOVFileFormat : public avtSTMDFileFormat
@@ -97,7 +100,7 @@ class avtBOVFileFormat : public avtSTMDFileFormat
     void                       ActivateTimestep(void);
 
   protected:
-    typedef enum {ByteData, IntegerData, FloatData, DoubleData} DataFormatEnum;
+    typedef enum {ByteData, ShortData, IntegerData, FloatData, DoubleData} DataFormatEnum;
 
     void                       ReadTOC(void);
     void                       ReadWholeAndExtractBrick(void *dest, bool gzipped,

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -273,76 +273,72 @@ Wrap_StringVector(const stringVector &vec)
 // Programmer: Cyrus Harrison
 // Creation:   Mon Dec 17 15:20:25 PST 2007
 //
-// Modifications:
-//   Brad Whitlock, Wed Jan  7 16:06:16 PST 2009
-//   The enum that identifies the variant type is now in the Variant namespace.
-//
 // ****************************************************************************
 PyObject *
 PyVariant_Wrap(const Variant &var)
 {
     // int types
-    if(var.Type() == Variant::BOOL_TYPE)
+    if(var.Type() == BOOL_TYPE)
     {
         return PyInt_FromLong((long) var.AsBool());
     }
-    else if(var.Type() == Variant::UNSIGNED_CHAR_TYPE)
+    else if(var.Type() == UNSIGNED_CHAR_TYPE)
     {
         return PyInt_FromLong((long) var.AsUnsignedChar());
     }
-    else if(var.Type() == Variant::INT_TYPE)
+    else if(var.Type() == INT_TYPE)
     {
         return PyInt_FromLong((long) var.AsInt());
     }
-    else if(var.Type() == Variant::LONG_TYPE)
+    else if(var.Type() == LONG_TYPE)
     {
         return PyInt_FromLong(var.AsLong());
     }
-    else if(var.Type() == Variant::FLOAT_TYPE) // floating point types
+    else if(var.Type() == FLOAT_TYPE) // floating point types
     {
         return PyFloat_FromDouble((double)var.AsFloat());
     }
-    else if(var.Type() == Variant::DOUBLE_TYPE)
+    else if(var.Type() == DOUBLE_TYPE)
     {
         return PyFloat_FromDouble(var.AsDouble());
     }
-    else if(var.Type() == Variant::CHAR_TYPE) // string types
+    else if(var.Type() == CHAR_TYPE) // string types
     {
         return PyString_FromStringAndSize(&var.AsChar(),1);
     }
-    else if(var.Type() == Variant::STRING_TYPE)
+    else if(var.Type() == STRING_TYPE)
     {
         return PyString_FromString(var.AsString().c_str());
     }
-    if(var.Type() == Variant::BOOL_VECTOR_TYPE) // int vectors
+    if(var.Type() == BOOL_VECTOR_TYPE) // int vectors
     {
         return Wrap_BoolVector(var.AsBoolVector());
     }
-    else if(var.Type() == Variant::UNSIGNED_CHAR_VECTOR_TYPE)
+    else if(var.Type() == UNSIGNED_CHAR_VECTOR_TYPE)
     {
         return Wrap_UnsignedCharVector(var.AsUnsignedCharVector());
     }
-    else if(var.Type() == Variant::INT_VECTOR_TYPE)
+    else if(var.Type() == INT_VECTOR_TYPE)
     {
         return Wrap_IntVector(var.AsIntVector());
     }
-    else if(var.Type() == Variant::LONG_VECTOR_TYPE)
+    else if(var.Type() == LONG_VECTOR_TYPE)
     {
         return Wrap_LongVector(var.AsLongVector());
     }
-    else if(var.Type() == Variant::FLOAT_VECTOR_TYPE) // floating point vectors
+    else if(var.Type() == FLOAT_VECTOR_TYPE) // floating point vectors
     {
         return Wrap_FloatVector(var.AsFloatVector());
     }
-    else if(var.Type() == Variant::DOUBLE_VECTOR_TYPE)
+    else if(var.Type() == DOUBLE_VECTOR_TYPE)
     {
         return Wrap_DoubleVector(var.AsDoubleVector());
     }
-    else if(var.Type() == Variant::CHAR_VECTOR_TYPE) // string vectors
+    else if(var.Type() == CHAR_VECTOR_TYPE) // string vectors
     {
         return Wrap_CharVector(var.AsCharVector());
     }
-    else if(var.Type() == Variant::STRING_VECTOR_TYPE)
+    else if(var.Type() == STRING_VECTOR_TYPE)
     {
         return Wrap_StringVector(var.AsStringVector());
     }

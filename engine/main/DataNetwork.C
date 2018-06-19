@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -68,11 +68,7 @@ using std::deque;
 //    Brad Whitlock, Wed Mar 21 23:03:25 PST 2007
 //    Initialize plotName.
 //
-//    Hank Childs, Fri Jan 16 14:38:42 PST 2009
-//    Initialize time and var.
-//
 // ****************************************************************************
-
 DataNetwork::DataNetwork(void)
 {
     nid = -1;
@@ -83,8 +79,6 @@ DataNetwork::DataNetwork(void)
     plotActor = NULL;
     clone = false;
     plotName = "";
-    time = -1;
-    var = "";
 }
 
 // ****************************************************************************
@@ -110,7 +104,6 @@ DataNetwork::DataNetwork(void)
 //    Fix memory leak.
 //
 // ****************************************************************************
-
 DataNetwork::~DataNetwork(void)
 {
     // The terminal node has already been freed by this point.

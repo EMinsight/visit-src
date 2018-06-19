@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -101,23 +101,25 @@ static const char *ViewerRPCType_strings[] = {
 "SetQueryFloatFormatRPC", "SetMeshManagementAttributesRPC", "SetDefaultMeshManagementAttributesRPC", 
 "ResetMeshManagementAttributesRPC", "ResizeWindowRPC", "MoveWindowRPC", 
 "MoveAndResizeWindowRPC", "SetStateLoggingRPC", "ConstructDDFRPC", 
-"RequestMetaDataRPC", "SetTreatAllDBsAsTimeVaryingRPC", "SetCreateMeshQualityExpressionsRPC", 
-"SetCreateTimeDerivativeExpressionsRPC", "SetCreateVectorMagnitudeExpressionsRPC", "CopyActivePlotsRPC", 
-"SetPlotFollowsTimeRPC", "TurnOffAllLocksRPC", "SetDefaultFileOpenOptionsRPC", 
-"SetSuppressMessagesRPC", "MaxRPC"};
+"UpdatePlotInfoAttsRPC", "RequestMetaDataRPC", "SetTreatAllDBsAsTimeVaryingRPC", 
+"SetCreateMeshQualityExpressionsRPC", "SetCreateTimeDerivativeExpressionsRPC", "SetCreateVectorMagnitudeExpressionsRPC", 
+"CopyActivePlotsRPC", "SetPlotFollowsTimeRPC", "TurnOffAllLocksRPC", 
+"SetDefaultFileOpenOptionsRPC", "SetSuppressMessagesRPC", "ApplyNamedSelectionRPC", 
+"CreateNamedSelectionRPC", "DeleteNamedSelectionRPC", "LoadNamedSelectionRPC", 
+"SaveNamedSelectionRPC", "MaxRPC"};
 
 std::string
 ViewerRPC::ViewerRPCType_ToString(ViewerRPC::ViewerRPCType t)
 {
     int index = int(t);
-    if(index < 0 || index >= 179) index = 0;
+    if(index < 0 || index >= 185) index = 0;
     return ViewerRPCType_strings[index];
 }
 
 std::string
 ViewerRPC::ViewerRPCType_ToString(int t)
 {
-    int index = (t < 0 || t >= 179) ? 0 : t;
+    int index = (t < 0 || t >= 185) ? 0 : t;
     return ViewerRPCType_strings[index];
 }
 
@@ -125,7 +127,7 @@ bool
 ViewerRPC::ViewerRPCType_FromString(const std::string &s, ViewerRPC::ViewerRPCType &val)
 {
     val = ViewerRPC::CloseRPC;
-    for(int i = 0; i < 179; ++i)
+    for(int i = 0; i < 185; ++i)
     {
         if(s == ViewerRPCType_strings[i])
         {

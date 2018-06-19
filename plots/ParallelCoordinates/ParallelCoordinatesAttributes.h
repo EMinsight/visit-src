@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -61,6 +61,13 @@
 class ParallelCoordinatesAttributes : public AttributeSubject
 {
 public:
+    enum FocusRendering
+    {
+        IndividualLines,
+        BinsOfConstantColor,
+        BinsColoredByPopulation
+    };
+
     ParallelCoordinatesAttributes();
     ParallelCoordinatesAttributes(const ParallelCoordinatesAttributes &obj);
     virtual ~ParallelCoordinatesAttributes();
@@ -96,6 +103,9 @@ public:
     void SetContextColor(const ColorAttribute &contextColor_);
     void SetDrawLinesOnlyIfExtentsOn(bool drawLinesOnlyIfExtentsOn_);
     void SetUnifyAxisExtents(bool unifyAxisExtents_);
+    void SetLinesNumPartitions(int linesNumPartitions_);
+    void SetFocusGamma(float focusGamma_);
+    void SetDrawFocusAs(FocusRendering drawFocusAs_);
 
     // Property getting methods
     const stringVector   &GetScalarAxisNames() const;
@@ -116,11 +126,20 @@ public:
           ColorAttribute &GetContextColor();
     bool                 GetDrawLinesOnlyIfExtentsOn() const;
     bool                 GetUnifyAxisExtents() const;
+    int                  GetLinesNumPartitions() const;
+    float                GetFocusGamma() const;
+    FocusRendering       GetDrawFocusAs() const;
 
     // Persistence methods
     virtual bool CreateNode(DataNode *node, bool completeSave, bool forceAdd);
     virtual void SetFromNode(DataNode *node);
 
+    // Enum conversion functions
+    static std::string FocusRendering_ToString(FocusRendering);
+    static bool FocusRendering_FromString(const std::string &, FocusRendering &);
+protected:
+    static std::string FocusRendering_ToString(int);
+public:
 
     // Keyframing methods
     virtual std::string               GetFieldName(int index) const;
@@ -148,7 +167,10 @@ public:
         ID_contextNumPartitions,
         ID_contextColor,
         ID_drawLinesOnlyIfExtentsOn,
-        ID_unifyAxisExtents
+        ID_unifyAxisExtents,
+        ID_linesNumPartitions,
+        ID_focusGamma,
+        ID_drawFocusAs
     };
 
 private:
@@ -164,6 +186,9 @@ private:
     ColorAttribute contextColor;
     bool           drawLinesOnlyIfExtentsOn;
     bool           unifyAxisExtents;
+    int            linesNumPartitions;
+    float          focusGamma;
+    int            drawFocusAs;
 
     // Static class format string for type map.
     static const char *TypeMapFormatString;

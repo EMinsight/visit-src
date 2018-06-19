@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -236,10 +236,9 @@ public:
 //   Brad Whitlock, Fri Apr 15 13:57:12 PST 2005
 //   I removed host and database.
 //
-//   Brad Whitlock, Thu May 29 16:42:43 PDT 2008
-//   Removed menu and a slot.
-//
 // ****************************************************************************
+
+class QMenuBar;
 
 class AddPlotAction : public ViewerMultipleAction
 {
@@ -262,13 +261,15 @@ public:
     virtual bool Enabled() const;
     virtual bool ChoiceEnabled(int i) const;
 
-    virtual void ConstructMenu(QMenu *);
-    virtual void RemoveFromMenu(QMenu *);
+    virtual void ConstructMenu(QPopupMenu *);
+    virtual void RemoveFromMenu(QPopupMenu *);
     virtual void ConstructToolbar(QToolBar *toolbar);
 private slots:
     void addPlot(int, const QString &);
+    void orientationChanged(Orientation);
     void changeMenuIconSize(bool);
 private:
+    QMenuBar              *menu;
     int                   maxPixmapWidth, maxPixmapHeight;
     PluginEntryVector     pluginEntries;
     VariableMenuPopulator menuPopulator;

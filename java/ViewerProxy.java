@@ -1,8 +1,8 @@
 // ****************************************************************************
 //
-// Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400142
+// LLNL-CODE-400124
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -244,9 +244,6 @@ import java.util.prefs.BackingStoreException;
 //   Refactored some code into ViewerState and ViewerMethods. State objects
 //   are now located in ViewerState. Viewer rpc's are now located in
 //   ViewerMethods. Added JavaDoc comments.
-//
-//   Brad Whitlock, Fri Jan  9 15:53:40 PST 2009
-//   I added code to skip the plot info atts for each plot plugin -- for now.
 //
 // ****************************************************************************
 /**
@@ -848,9 +845,6 @@ public class ViewerProxy implements SimpleObserver
                      xfer.Add((AttributeSubject)p);
                  else
                      xfer.AddDummy();
-
-                 // Add a dummy for now to skip the plot info atts.
-                 xfer.AddDummy();
             }
 
             // Try loading the operator plugins. If they can all be loaded,

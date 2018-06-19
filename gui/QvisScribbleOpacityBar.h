@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -59,19 +59,13 @@ class QPixmap;
 //     Gunther Weber, Fri Apr  6 16:20:55 PDT 2007
 //     Add support for an inverse linear ramp.
 //
-//     Brad Whitlock, Wed Jun  4 09:19:29 PDT 2008
-//     Qt 4.
-//
-//     Brad Whitlock, Thu Dec 18 14:10:55 PST 2008
-//     I changed the drawOpacities method.
-//
 // ****************************************************************************
 
 class GUI_API QvisScribbleOpacityBar : public QvisAbstractOpacityBar
 {
     Q_OBJECT
 public:
-    QvisScribbleOpacityBar(QWidget *parent);
+    QvisScribbleOpacityBar(QWidget *parent=NULL, const char *name=NULL);
     ~QvisScribbleOpacityBar();
     float *getRawOpacities(int);
     void   setRawOpacities(int,float*);
@@ -87,12 +81,12 @@ public slots:
     void smoothCurve();
 
 protected:
-    virtual void mouseMoveEvent(QMouseEvent*);
-    virtual void mousePressEvent(QMouseEvent*);
-    virtual void mouseReleaseEvent(QMouseEvent*);
+    void mouseMoveEvent(QMouseEvent*);
+    void mousePressEvent(QMouseEvent*);
+    void mouseReleaseEvent(QMouseEvent*);
     void setValue(float,float);
     void setValues(int,int,int,int);
-    virtual void drawOpacities();
+    void paintToPixmap(int,int);
 
 private:
     int nvalues;

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -415,38 +415,6 @@ avtLegend::SetLabelVisibility(bool)
 
 bool
 avtLegend::GetLabelVisibility() const
-{
-    return true;
-}
-
-// ****************************************************************************
-// Method: avtLegend::SetMinMaxVisibility
-//
-// Programmer: Hank Childs
-// Creation:   January 23, 2009
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-void
-avtLegend::SetMinMaxVisibility(bool)
-{
-    // Do nothing
-}
-
-// ****************************************************************************
-// Method: avtLegend::GetMinMaxVisibility
-//
-// Programmer: Hank Childs
-// Creation:   January 23, 2009
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-bool
-avtLegend::GetMinMaxVisibility() const
 {
     return true;
 }

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -123,8 +123,6 @@ public:
     void SetPointSizeVarEnabled(bool pointSizeVarEnabled_);
     void SetPointSizeVar(const std::string &pointSizeVar_);
     void SetPointSizePixels(int pointSizePixels_);
-    void SetLineStyle(int lineStyle_);
-    void SetLineWidth(int lineWidth_);
 
     // Property getting methods
     bool              GetLegendFlag() const;
@@ -147,8 +145,6 @@ public:
     const std::string &GetPointSizeVar() const;
           std::string &GetPointSizeVar();
     int               GetPointSizePixels() const;
-    int               GetLineStyle() const;
-    int               GetLineWidth() const;
 
     // Persistence methods
     virtual bool CreateNode(DataNode *node, bool completeSave, bool forceAdd);
@@ -205,9 +201,7 @@ public:
         ID_smoothingLevel,
         ID_pointSizeVarEnabled,
         ID_pointSizeVar,
-        ID_pointSizePixels,
-        ID_lineStyle,
-        ID_lineWidth
+        ID_pointSizePixels
     };
 
 private:
@@ -229,8 +223,6 @@ private:
     bool        pointSizeVarEnabled;
     std::string pointSizeVar;
     int         pointSizePixels;
-    int         lineStyle;
-    int         lineWidth;
 
     // Static class format string for type map.
     static const char *TypeMapFormatString;

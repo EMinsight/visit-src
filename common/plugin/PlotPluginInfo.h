@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -139,8 +139,8 @@ class ViewerPlot;
 //    Made the GUI plugin info return QString so we can internationalize
 //    plot names. Added const to strings returned from GeneralPlotPluginInfo.
 //
-//    Cyrus Harrison, Tue Jul 22 10:24:33 PDT 2008
-//    Removed the name argument to CreatePluginWizard.
+//    Kathleen Bonnell, Mon Mar  2 16:25:53 PST 2009
+//    Added PermitsCurveViewScaling, Permits2DViewScaling.
 //
 // ****************************************************************************
 
@@ -172,7 +172,7 @@ class PLUGIN_API GUIPlotPluginInfo : public virtual CommonPlotPluginInfo
         QvisNotepadArea *notepad) = 0;
     virtual QvisWizard *CreatePluginWizard(AttributeSubject *attr, QWidget *parent,
         const std::string &varName, const avtDatabaseMetaData *md,
-        const ExpressionList *expList)
+        const ExpressionList *expList, const char *name =0)
     {
         return 0;
     }
@@ -190,6 +190,8 @@ class PLUGIN_API ViewerPlotPluginInfo : public virtual CommonPlotPluginInfo
     virtual avtPlot *AllocAvtPlot() = 0;
 
     virtual bool ProvidesLegend() const { return true; }
+    virtual bool PermitsCurveViewScaling() const { return false; }
+    virtual bool Permits2DViewScaling() const { return true; }
 
     virtual void InitializePlotAtts(AttributeSubject *atts, ViewerPlot *) = 0;
     virtual void ReInitializePlotAtts(AttributeSubject *atts, 

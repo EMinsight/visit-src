@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -41,25 +41,38 @@
 // ************************************************************************* //
 
 #include <DatabasePluginManager.h>
+#include <DBPluginInfoAttributes.h>
+#include <FileOpenOptions.h>
 
 #include <DatabasePluginInfo.h>
 #include <VisItInit.h>
 
+#ifndef DISABLE_EXPRESSIONS
 #include <ExprParser.h>
 #include <ParsingExprList.h>
+#endif
 #include <Utility.h>
 
 #include <avtDatabase.h>
 #include <avtDatabaseFactory.h>
 #include <avtDatabaseMetaData.h>
 #include <avtDatabaseWriter.h>
+#ifndef DISABLE_EXPRESSIONS
 #include <avtExpressionEvaluatorFilter.h>
 #include <avtExprNodeFactory.h>
+#endif
+#include <avtParallel.h>
 #include <DBOptionsAttributes.h>
 
 #include <VisItException.h>
 #include <visitstream.h>
+
+#include <string>
+#include <vector>
+
 using std::cin;
+using std::string;
+using std::vector;
 
 static void UsageAndExit(DatabasePluginManager *, const char *);
 
@@ -89,7 +102,7 @@ FillOptionsFromCommandline(DBOptionsAttributes *opts)
 
     for (int j=0; j<opts->GetNumberOfOptions(); j++)
     {
-        const std::string &name = opts->GetName(j);
+        const string &name = opts->GetName(j);
         cerr << endl << "Enter value for option '"<<name<<"'";
         switch (opts->GetType(j))
         {
@@ -157,8 +170,115 @@ FillOptionsFromCommandline(DBOptionsAttributes *opts)
             break;
         }
     }
+    opts->SelectAll();
 }
 
+// ****************************************************************************
+//  Function: GetPluginInfo
+//
+//  Programmer: Mark C. Miller
+//  Creation:   May 19, 2009 
+//
+// ****************************************************************************
+
+static EngineDatabasePluginInfo *
+GetPluginInfo(DatabasePluginManager *dbmgr, const char *arg0, const char *plugin)
+{
+    //
+    // Users want to enter formats like "Silo", not "Silo_1.0".  Make that
+    // conversion for them now.
+    //
+    EngineDatabasePluginInfo *edpi = NULL;
+    int index = dbmgr->GetAllIndexFromName(plugin);
+    if (index >= 0)
+    {
+        string id = dbmgr->GetAllID(index);
+        if (dbmgr->PluginAvailable(id))
+        {
+            edpi = dbmgr->GetEnginePluginInfo(id);
+        }
+    }
+
+    if (edpi == NULL)
+    {
+        cerr << "Was not able to identify file type " << plugin <<"\n\n"<<endl;
+        UsageAndExit(dbmgr, arg0);
+    }
+
+    return edpi;
+}
+
+// ****************************************************************************
+//  Function: HandleReadOptions
+//
+//  Purpose: Set read options for the input database.
+//
+//  Notes: As for write options, the logic here is designed such that read
+//  options will ALWAYS be processed in that they well be obtained via 
+//  GetReadOptions and then set via
+//  avtDatabaseFactory::SetDefaultFileOpenOptions. The noOptions bool controls
+//  only whether they are queried from the user, interactively. I believe this
+//  design allows for the case where a user's config file settings contain
+//  the desired read options.
+//
+//  Programmer: Mark C. Miller
+//  Creation:   May 19, 2009 
+//
+// ****************************************************************************
+
+static void
+HandleReadOptions(bool noOptions, DatabasePluginManager *dbmgr, const char *arg0)
+{
+    const char *assumeFormat = avtDatabaseFactory::GetFormatToTryFirst();
+    if (!assumeFormat)
+        return;
+
+    EngineDatabasePluginInfo *edpir = GetPluginInfo(dbmgr, arg0, assumeFormat);
+    DBOptionsAttributes *opts = edpir->GetReadOptions();
+
+    // Don't query user for options if they specifically asked NOT to be.
+    if (!noOptions)
+        FillOptionsFromCommandline(opts);
+
+    // One would think you could just now call the method to set
+    // read options for the particular plugin info we've obtained
+    // and be done with it.  However, it doesn't work like that.
+    // The resulting read options never make it down to the file format
+    // objects actually instantiated to read the input database. So,
+    // instead, we follow the paradigm in ViewerFileServer::UpdateDBPluginInfo()
+    // which is known to work but requires FileOpenOptions and
+    // DBPluginInfoAttributes.
+
+    // edpir->SetReadOptions(opts); can't do it this way
+
+    // FileOpenOptions is really a series of buckets of open options, one for
+    // each database plugin. DBPluginInfoOptions is also a series of buckets
+    // of information about each DB plugin. In this case, we create a
+    // DBPluginInfoOptions 'list' of size one, containing only the options
+    // for the specific database we are reading from. When this is 'merged'
+    // into FileOpenOptions, which is a list of ALL database plugins, it
+    // 'does the right thing' and affects to options for the correct
+    // plugin we are aiming to open the input database with.
+
+    // The logic below is basically the paradigm in
+    // ViewerFileServer::UpdateDBPluginInfo().
+    FileOpenOptions *fileOpenOptions = new FileOpenOptions;
+    DBPluginInfoAttributes *dbpia = new DBPluginInfoAttributes;
+    dbpia->AddDbReadOptions(*opts);
+
+    vector<string> types(1);
+    vector<string> fullnames(1);
+    vector<int>         hasWriter(1);
+    types[0] = edpir->GetName();
+    fullnames[0] = edpir->GetID();
+    hasWriter[0] = edpir->HasWriter();
+    dbpia->SetTypes(types);
+    dbpia->SetTypesFullNames(fullnames);
+    dbpia->SetHasWriter(hasWriter);
+
+    fileOpenOptions->MergeNewFromPluginInfo(dbpia);
+    avtDatabaseFactory::SetDefaultFileOpenOptions(*fileOpenOptions);
+}
 
 // ****************************************************************************
 //  Function: main
@@ -209,21 +329,31 @@ FillOptionsFromCommandline(DBOptionsAttributes *opts)
 //    Brad Whitlock, Tue Jun 24 16:58:35 PDT 2008
 //    The plugin manager is no longer a singleton.
 //
+//    Dave Pugmire (on behalf of Hank Childs), Thu May  7 13:43:28 EDT 2009
+//    Support for running visitconvert in parallel.
+//
+//    Mark C. Miller, Tue May 19 21:55:37 PDT 2009
+//    Added support for handling read options. Allowed for multiple '-variable'
+//    options on the command line.
+//
+//    Mark C. Miller, Wed Jun 17 14:23:51 PDT 2009
+//    Replaced CATCH(...) with CATCHALL
 // ****************************************************************************
 
 int main(int argc, char *argv[])
 {
     int  i;
 
+    bool parallel = false;
+#ifdef PARALLEL
+    parallel = true;
+    PAR_Init(argc, argv);
+#endif
     VisItInit::Initialize(argc, argv);
 
     //
     // Initialize the plugin readers.
     //
-    bool parallel = false;
-#ifdef PARALLEL
-    parallel = true;
-#endif
     DatabasePluginManager *dbmgr = new DatabasePluginManager;
     dbmgr->Initialize(DatabasePluginManager::Engine, parallel);
     dbmgr->LoadPluginsNow();
@@ -238,10 +368,10 @@ int main(int argc, char *argv[])
     bool doClean = false;
     bool disableMIR = false;
     bool disableExpressions = false;
-    bool doSpecificVariable = false;
-    const char *var = NULL;
+    vector<string> vars;
     int target_chunks = -1;
     long long target_zones = -1;
+    EngineDatabasePluginInfo *edpir = NULL;
     if (argc > 4)
     {
         for (int i = 4 ; i < argc ; i++)
@@ -256,9 +386,8 @@ int main(int argc, char *argv[])
             {
                 if ((i+1) >= argc)
                     UsageAndExit(dbmgr, argv[0]);
-                doSpecificVariable = true;
                 i++;
-                var = argv[i];
+                vars.push_back(argv[i]);
             }
             else if (strcmp(argv[i], "-target_chunks") == 0)
             {
@@ -301,37 +430,25 @@ int main(int argc, char *argv[])
             }
             else if (strcmp(argv[i], "-no_options") == 0)
                 noOptions = true;
+
             else
-                UsageAndExit(dbmgr, argv[0]);
+            {
+                //Ignore....
+            }
         }
     }
 
-    //
-    // Users want to enter formats like "Silo", not "Silo_1.0".  Make that
-    // conversion for them now.
-    //
-    EngineDatabasePluginInfo *edpi = NULL;
-    int index = dbmgr->GetAllIndexFromName(argv[3]);
-    if (index >= 0)
-    {
-        std::string id = dbmgr->GetAllID(index);
-        if (dbmgr->PluginAvailable(id))
-        {
-            edpi = dbmgr->GetEnginePluginInfo(id);
-        }
-    }
 
-    if (edpi == NULL)
-    {
-        cerr << "Was not able to create file type " << argv[3]<<"\n\n"<<endl;
-        UsageAndExit(dbmgr, argv[0]);
-    }
+    //
+    // Handle read options if we need to.
+    //
+    HandleReadOptions(noOptions, dbmgr, argv[0]);
 
     //
     // Instantiate the database.
     //
     avtDatabase *db = NULL;
-    std::vector<std::string> pluginList;
+    vector<string> pluginList;
     TRY
     {
         if (strstr(argv[1], ".visit") != NULL)
@@ -339,7 +456,7 @@ int main(int argc, char *argv[])
         else
             db = avtDatabaseFactory::FileList(dbmgr, argv+1, 1, 0, pluginList);
     }
-    CATCH(...)
+    CATCHALL
     {
         cerr << "The file " << argv[1] << " does not exist or could "
              << "not be opened." << endl;
@@ -363,8 +480,11 @@ int main(int argc, char *argv[])
     //
     // Set the write options as the default.
     // Walk through the write options and have the user iterate over them
-    // from the command line.
+    // from the command line. [MCM] I believe predicating ONLY the FillOptions...
+    // call on value of noOptions permits write options to flow from config
+    // file settings correctly.
     //
+    EngineDatabasePluginInfo *edpi = GetPluginInfo(dbmgr, argv[0], argv[3]);
     DBOptionsAttributes *opts = edpi->GetWriteOptions();
     if (!noOptions)
         FillOptionsFromCommandline(opts);
@@ -413,7 +533,7 @@ int main(int argc, char *argv[])
     //
     const avtDatabaseMetaData *md = db->GetMetaData(0);
     const avtMeshMetaData *mmd = NULL;
-    std::string meshname = "";
+    string meshname = "";
     if (md->GetNumMeshes() >= 1)
     {
         if (md->GetNumMeshes() > 1)
@@ -439,6 +559,7 @@ int main(int argc, char *argv[])
         }
     }
 
+#ifndef DISABLE_EXPRESSIONS
     //
     // Hook up the expressions we have associated with the database, so
     // we can get those as well.
@@ -451,14 +572,17 @@ int main(int argc, char *argv[])
         const Expression *e = md->GetExpression(i);
         list->AddExpressions(*e);
     }
+#endif
 
     cerr << "Operating on " << md->GetNumStates() << " timestep(s)." << endl;
     for (i = 0 ; i < md->GetNumStates() ; i++)
     {
          avtDataObject_p dob = db->GetOutput(meshname.c_str(), i);
+#ifndef DISABLE_EXPRESSIONS
          avtExpressionEvaluatorFilter eef;
          eef.SetInput(dob);
          dob = eef.GetOutput();
+#endif
          wrtr->SetInput(dob);
 
          char filename[1024];
@@ -471,11 +595,9 @@ int main(int argc, char *argv[])
         
          TRY
          {
-             if (doSpecificVariable)
+             if (vars.size())
              {
-                 std::vector<std::string> varlist;
-                 varlist.push_back(var);
-                 wrtr->Write(filename, md, varlist);
+                 wrtr->Write(filename, md, vars);
              }
              else
              {
@@ -493,6 +615,10 @@ int main(int argc, char *argv[])
     }
 
     delete dbmgr;
+
+#ifdef PARALLEL
+    PAR_Exit();
+#endif
 
     return 0;
 }
@@ -555,13 +681,17 @@ UsageAndExit(DatabasePluginManager *dbmgr, const char *argv0)
     cerr << "   repartitioned.  This is often used in conjunction with -target_zones." << endl;
     cerr << endl;
     cerr << "  -variable specifies which variable should be processed." << endl;
+    cerr << "  There can be multiple -variable options on the command line." << endl;
+    cerr << "  Each one specifies the name of an additional variable to process." << endl;
     cerr << endl;
     cerr << "  -assume_format specifies the plugin format type to try first" << endl;
     cerr << endl;
     cerr << "  -fallback_format specifies a plugin format type to try if the" << endl;
     cerr << "   guessing based on file extension failes" << endl;
     cerr << endl;
-    cerr << "  -no_options skips option entry, instead using only default values." << endl;
+    cerr << "  -no_options skips option entry, instead using only default values" << endl;
+    cerr << "  where defaults are taken first from your config file unless -noconfig" << endl;
+    cerr << "  is specified and then from defaults as specified by the plugin." << endl;
     cerr << endl;
     cerr << "Example (one timestep):" << endl;
     cerr << "  visitconvert_ser run1.exodus run1.silo Silo" << endl;

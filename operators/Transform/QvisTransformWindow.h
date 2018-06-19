@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -41,12 +41,19 @@
 
 #include <QvisOperatorWindow.h>
 #include <AttributeSubject.h>
-#include <QLineEdit>
+#include <qlineedit.h>
 
 class TransformAttributes;
-class QButtonGroup;
-class QCheckBox;
 class QLabel;
+class QCheckBox;
+class QSpinBox;
+class QVBox;
+class QButtonGroup;
+class QvisColorTableButton;
+class QvisOpacitySlider;
+class QvisColorButton;
+class QvisLineStyleWidget;
+class QvisLineWidthWidget;
 class QTabWidget;
 
 // ****************************************************************************
@@ -58,15 +65,16 @@ class QTabWidget;
 //  Programmer:  Jeremy Meredith
 //  Creation:    September 25, 2001
 //
-//  Modifications:
-//    Brad Whitlock, Wed Aug 13 20:10:25 PDT 2008
-//    Qt 4.
-//
 // ****************************************************************************
 class QNarrowLineEdit : public QLineEdit
 {
   public:
-    QNarrowLineEdit(QWidget *p) : QLineEdit(p)
+    QNarrowLineEdit(QWidget *p, const char *n=0)
+        : QLineEdit(p, n)
+    {
+    }
+    QNarrowLineEdit(const QString &s, QWidget *p, const char *n=0)
+        : QLineEdit(s, p, n)
     {
     }
     QSize sizeHint() const
@@ -135,7 +143,7 @@ class QvisTransformWindow : public QvisOperatorWindow
     void translateXProcessText();
     void translateYProcessText();
     void translateZProcessText();
-    void pageTurned(int);
+    void pageTurned(QWidget*);
     void inputCoordChanged(int);
     void outputCoordChanged(int);
     void ltElementtChanged();
@@ -151,7 +159,6 @@ class QvisTransformWindow : public QvisOperatorWindow
     QNarrowLineEdit *rotateAmount;
     QLabel          *rotateAmountLabel;
     QButtonGroup    *rotateType;
-    QWidget         *rotateTypeWidget;
 
     QCheckBox       *doScale;
     QLineEdit       *scaleOrigin;
@@ -186,9 +193,9 @@ class QvisTransformWindow : public QvisOperatorWindow
     QButtonGroup    *outputCoord;
 
     TransformAttributes *atts;
-    QWidget *firstPage;
-    QWidget *secondPage;
-    QWidget *thirdPage;
+    QFrame *firstPage;
+    QFrame *secondPage;
+    QFrame *thirdPage;
 };
 
 

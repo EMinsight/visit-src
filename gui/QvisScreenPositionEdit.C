@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -41,14 +41,13 @@
 #include <QvisScreenPositioner.h>
 #include <QvisTurnDownButton.h>
 
-#include <QApplication>
-#include <QDesktopWidget>
-#include <QLayout>
-#include <QLineEdit>
-#include <QPainter>
-#include <QPushButton>
-#include <QStyle>
-#include <QTimer>
+#include <qapplication.h>
+#include <qlayout.h>
+#include <qlineedit.h>
+#include <qpainter.h>
+#include <qpushbutton.h>
+#include <qstyle.h>
+#include <qtimer.h>
 
 // ****************************************************************************
 // Method: QvisScreenPositionEdit::QvisScreenPositionEdit
@@ -64,30 +63,25 @@
 // Creation:   Tue Dec 2 13:49:54 PST 2003
 //
 // Modifications:
-//   Brad Whitlock, Tue Jun  3 16:12:06 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
-QvisScreenPositionEdit::QvisScreenPositionEdit(QWidget *parent) : 
-    QWidget(parent)
+QvisScreenPositionEdit::QvisScreenPositionEdit(QWidget *parent,
+    const char *name) : QWidget(parent, name)
 {
     QHBoxLayout *hLayout = new QHBoxLayout(this);
-    hLayout->setMargin(0);
-    hLayout->setSpacing(0);
-    lineEdit = new QLineEdit(this);
+    lineEdit = new QLineEdit(this, "lineEdit");
     connect(lineEdit, SIGNAL(returnPressed()),
             this, SLOT(returnPressed()));
     hLayout->addWidget(lineEdit);
 
-    turnDown = new QvisTurnDownButton(this);
+    turnDown = new QvisTurnDownButton(this, "turnDown");
     connect(turnDown, SIGNAL(pressed()),
             this, SLOT(popup()));
     hLayout->addWidget(turnDown);
 
-    lineEdit->setMinimumHeight(turnDown->height());
-
-    screenPositionPopup = new QvisScreenPositioner(this, Qt::Popup);
+    screenPositionPopup = new QvisScreenPositioner(this, "screenPositionPopup",
+        WType_Popup);
     screenPositionPopup->setFixedSize(QSize(150,150));
     connect(screenPositionPopup,
             SIGNAL(intermediateScreenPositionChanged(double,double)),
@@ -96,7 +90,7 @@ QvisScreenPositionEdit::QvisScreenPositionEdit(QWidget *parent) :
             SIGNAL(screenPositionChanged(double,double)),
             this, SLOT(newScreenPosition(double, double)));
 
-    popupTimer = new QTimer(this);
+    popupTimer = new QTimer(this, "popupTimer");
     connect(popupTimer, SIGNAL(timeout()),
             this, SLOT(closePopup()));
 
@@ -197,18 +191,16 @@ QvisScreenPositionEdit::getPosition(double &x, double &y)
 // Creation:   Tue Dec 2 13:52:38 PST 2003
 //
 // Modifications:
-//   Brad Whitlock, Tue Jun  3 16:17:48 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 bool
 QvisScreenPositionEdit::getCurrentValues(double *newX, double *newY)
 {
-    QString temp(lineEdit->displayText().simplified());
+    QString temp(lineEdit->displayText().simplifyWhiteSpace());
     bool okay = !temp.isEmpty();
     if(okay)
-        okay = (sscanf(temp.toStdString().c_str(), "%lg %lg", newX, newY) == 2);
+        okay = (sscanf(temp.latin1(), "%lg %lg", newX, newY) == 2);
 
     return okay;
 }

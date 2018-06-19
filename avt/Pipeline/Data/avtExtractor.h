@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -42,8 +42,8 @@
 
 #ifndef AVT_EXTRACTOR_H
 #define AVT_EXTRACTOR_H
-
 #include <pipeline_exports.h>
+
 
 #include <math.h>
 
@@ -83,9 +83,6 @@
 //    Hank Childs, Thu Dec 20 17:02:48 PST 2007
 //    Change signature of InterpolateToPlane to avoid confusing the compiler.
 //
-//    Hank Childs, Fri Jan  9 14:03:43 PST 2009
-//    Add a data member for jittering.
-//
 // ****************************************************************************
 
 class PIPELINE_API avtExtractor
@@ -96,7 +93,6 @@ class PIPELINE_API avtExtractor
     virtual               ~avtExtractor();
 
     void                   SendCellsMode(bool);
-    void                   SetJittering(bool j) { jitter = j; };
     void                   Restrict(int, int, int, int);
 
   protected:
@@ -110,7 +106,6 @@ class PIPELINE_API avtExtractor
 
     int                    minx, maxx, miny, maxy, minz, maxz;
     bool                   sendCellsMode;
-    bool                   jitter;
 
     void                   ExtractTriangle(int,const float [3],const float [3],
                                       const float[3][AVT_VARIABLE_LIMIT], int);

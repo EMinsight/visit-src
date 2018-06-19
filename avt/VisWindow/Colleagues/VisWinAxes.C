@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -967,6 +967,9 @@ Digits(double min, double max)
 //    Hank Childs, Tue Sep 18 10:41:30 PDT 2001
 //    Casted to get rid of compiler warning.
 //
+//    Jeremy Meredith, Fri Aug 14 09:42:43 EDT 2009
+//    Fix case where range==0.
+//
 // ****************************************************************************
 
 int
@@ -977,7 +980,9 @@ LabelExponent(double min, double max)
     //
     double range = (fabs(min) > fabs(max) ? fabs(min) : fabs(max));
 
-    double pow10 = log10(range);
+    double pow10 = -5.0;
+    if (range > 0)
+        pow10 = log10(range);
 
     //
     // Cutoffs for using scientific notation.

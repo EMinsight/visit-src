@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -64,10 +64,6 @@ class VisWindowInteractorProxy;
 //    Jeremy Meredith, Thu Feb  7 17:58:11 EST 2008
 //    Added support for toggling horizontal snap-to-grid.
 //
-//    Eric Brugger, Tue Dec  9 14:48:50 PST 2008
-//    Added an axis orientation, which interchanges the horizontal and
-//    vertical zooming.
-//
 // ****************************************************************************
 
 class VISWINDOW_API NavigateAxisArray : public VisitInteractor
@@ -84,26 +80,16 @@ class VISWINDOW_API NavigateAxisArray : public VisitInteractor
     virtual void        OnMouseWheelForward();
     virtual void        OnMouseWheelBackward();
 
-    enum AxisOrientation
-    {
-        Horizontal,
-        Vertical
-    };
-    void                SetAxisOrientation(const AxisOrientation orientation);
-
   private:
     void                PanCamera(const int x, const int y, bool snap_horiz);
     void                ZoomCamera(const int x, const int y);
     void                ZoomHorizontal(double f);
     void                ZoomHorizontalFixed(double f);
     void                ZoomVertical(double f);
-    void                ZoomVerticalFixed(double f);
 
     bool                shouldSnap;
     bool                shiftKeyDown;
     bool                controlKeyDown;
-
-    AxisOrientation     axisOrientation;
 };
 
 

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -43,19 +43,20 @@
 #include <StatusAttributes.h>
 #include <ViewerProxy.h>
 
-#include <QCheckBox>
-#include <QColor>
-#include <QGroupBox>
-#include <QLabel>
-#include <QLayout>
-#include <QLineEdit>
-#include <QMessageBox>
-#include <QPushButton>
-#include <QRadioButton> 
-#include <QScrollArea>
-#include <QSpinBox>
-#include <QSplitter>
-#include <QTextEdit>
+#include <qlayout.h>
+#include <qlabel.h>
+#include <qlineedit.h>
+#include <qtextedit.h>
+#include <qcheckbox.h>
+#include <qpushbutton.h>
+#include <qgroupbox.h>
+#include <qvgroupbox.h>
+#include <qmessagebox.h>
+#include <qradiobutton.h> 
+#include <qspinbox.h>
+#include <qscrollview.h>
+#include <qsplitter.h>
+#include <qcolor.h>
 
 using std::string;
 
@@ -80,14 +81,11 @@ using std::string;
 //    zoomOutLimit to prevent to small of zooms.
 //   
 // ****************************************************************************
-QvisStripChartMgr::QvisStripChartMgr(QWidget *parent, ViewerProxy *theViewer,
-     EngineList *engineList, int index, QvisNotepadArea *notepad2):
-     QvisPostableWindow(tr("Strip charts"), tr("Strip charts"), notepad2)
+QvisStripChartMgr::QvisStripChartMgr( QWidget *parent, const char *name,ViewerProxy *theViewer, EngineList *engineList, int index, QvisNotepadArea *notepad2):QvisPostableWindow( name, "Strip Charts", notepad2)
 {
     viewer = theViewer;
     simIndex = index;
     engines = engineList;
-    addLayoutStretch = false;
     CreateEntireWindow();
     isPosted = FALSE;
     postEnabled = TRUE;
@@ -111,13 +109,6 @@ QvisStripChartMgr::~QvisStripChartMgr()
 // cleanup
 }
 
-void
-QvisStripChartMgr::CreateEntireWindow()
-{
-    QvisPostableWindow::CreateEntireWindow();
-    dismissButton->setEnabled(false);
-}
-
 // ****************************************************************************
 // Method: VisItSimStripChart::CreateWindowContents
 //
@@ -134,124 +125,114 @@ QvisStripChartMgr::CreateEntireWindow()
 //  
 //   Brad Whitlock, Tue Apr  8 16:29:55 PDT 2008
 //   Support for internationalization.
-//
-//   Brad Whitlock, Tue Jul  8 09:42:46 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
-
-void 
-QvisStripChartMgr::CreateWindowContents()
+void QvisStripChartMgr::CreateWindowContents()
 {
 
-    stripChartTabWidget = new QvisStripChartTabWidget(central, this, 2000, 100);
+    stripChartTabWidget = new QvisStripChartTabWidget(central,"Chart Container",this,2000,760 );
     topLayout->addWidget( stripChartTabWidget);
     
     // Create the group box 
-    QGroupBox *stripChartGroup = new QGroupBox(central);
+    QGroupBox *stripChartGroup = new QGroupBox(central, "StripChartGroup");
     stripChartGroup->setTitle(tr("Strip Chart Information and Controls"));
     topLayout->addWidget( stripChartGroup);
     
     chartLayout =  new QGridLayout(stripChartGroup);              
-    chartLayout->setMargin(10);
+    chartLayout->setMargin(20);
     chartLayout->setSpacing(10);
     
-    QLabel *limitLab = new QLabel(tr("Limit Bounds"), stripChartGroup);
+    QLabel *limitLab = new QLabel(stripChartGroup,"Bounds");
+    limitLab->setText(tr("Limit Bounds"));
     chartLayout->addWidget(limitLab,0,1); 
  
-    QLabel *extremaLab = new QLabel(tr("Extrema"), stripChartGroup); 
+    QLabel *extremaLab = new QLabel(stripChartGroup,"Extrema"); 
+    extremaLab->setText(tr("Extrema"));
     chartLayout->addWidget(extremaLab,0,3); 
     
-    QLabel *currentLab = new QLabel(tr("Current"), stripChartGroup);
+    QLabel *currentLab = new QLabel(stripChartGroup,"Current");
+    currentLab->setText(tr("Current"));
     chartLayout->addWidget(currentLab,0,5); 
 
-    minLimitEdit = new QLineEdit(stripChartGroup);
-    minLimitEdit->setObjectName(STRIP_MIN_LIMIT_WIDGET_NAME);
+    minLimitEdit = new QLineEdit(stripChartGroup,STRIP_MIN_LIMIT_WIDGET_NAME);
     minLimitEdit->setEnabled(false);
-    minLimitLabel = new QLabel(tr("Min"), stripChartGroup);
-    minLimitLabel->setBuddy(minLimitEdit);
+    minLimitLabel = new QLabel(stripChartGroup,"MinLimitLabel");
+    minLimitLabel->setText(tr("Min"));
     chartLayout->addWidget(minLimitLabel,1,0);
     chartLayout->addWidget(minLimitEdit,1,1);
     connect(minLimitEdit,SIGNAL(textChanged(const QString&)),this,SLOT(executeMinLimitStripChart()));
     
-    maxLimitEdit = new QLineEdit(stripChartGroup);
-    maxLimitEdit->setObjectName(STRIP_MAX_LIMIT_WIDGET_NAME);
+    maxLimitEdit = new QLineEdit(stripChartGroup,STRIP_MAX_LIMIT_WIDGET_NAME);
     maxLimitEdit->setEnabled(false); 
-    maxLimitLabel = new QLabel(tr("Max"), stripChartGroup);
-    maxLimitLabel->setBuddy(maxLimitEdit);
+    maxLimitLabel = new QLabel(stripChartGroup,"MaxLimitLabel");
+    maxLimitLabel->setText(tr("Max"));
     chartLayout->addWidget(maxLimitLabel,2,0);
     chartLayout->addWidget(maxLimitEdit,2,1);
     connect(maxLimitEdit,SIGNAL(textChanged(const QString&)),this,SLOT(executeMaxLimitStripChart()));
 
-    minEdit = new QLineEdit(stripChartGroup);
-    minEdit->setObjectName(STRIP_MIN_WIDGET_NAME);
+    minEdit = new QLineEdit(stripChartGroup,STRIP_MIN_WIDGET_NAME );
     minEdit->setEnabled(false);
     minEdit->setText("0.0");
-    minLabel = new QLabel(tr("Min"), stripChartGroup);
-    minLabel->setBuddy(minEdit);
+    minLabel = new QLabel(stripChartGroup,"MinLabel");
+    minLabel->setText(tr("Min"));
     chartLayout->addWidget(minLabel,1,2);
     chartLayout->addWidget(minEdit,1,3);    
 
 
-    maxEdit = new QLineEdit(stripChartGroup);
-    maxEdit->setObjectName(STRIP_MIN_WIDGET_NAME);
+    maxEdit = new QLineEdit(stripChartGroup,STRIP_MIN_WIDGET_NAME);
     maxEdit->setEnabled(false);
     maxEdit->setText("0.0");
-    maxLabel = new QLabel(tr("Max"), stripChartGroup);
-    maxLabel->setBuddy(maxEdit);
+    maxLabel = new QLabel(stripChartGroup,"MaxLabel");
+    maxLabel->setText(tr("Max"));
     chartLayout->addWidget(maxLabel,2,2);
     chartLayout->addWidget(maxEdit,2,3);
         
-    curEdit = new QLineEdit(stripChartGroup);
-    curEdit->setObjectName(STRIP_CUR_WIDGET_NAME);
+    curEdit = new QLineEdit(stripChartGroup,STRIP_CUR_WIDGET_NAME );
     curEdit->setEnabled(false);
     curEdit->setText("0.0");
-    curLabel = new QLabel(tr("Data"), stripChartGroup);
-    curLabel->setBuddy(curEdit);
+    curLabel = new QLabel(stripChartGroup,"CurLabel");
+    curLabel->setText(tr("Data"));
     chartLayout->addWidget(curLabel,1,4);
     chartLayout->addWidget(curEdit,1,5);
     
-    cycleEdit = new QLineEdit(stripChartGroup);
-    cycleEdit->setObjectName(STRIP_CYCLE_WIDGET_NAME);
+    cycleEdit = new QLineEdit(stripChartGroup,STRIP_CYCLE_WIDGET_NAME );
     cycleEdit->setEnabled(false);
     cycleEdit->setText("0.0");
-    cycleLabel = new QLabel(tr("Cycle"), stripChartGroup);
-    cycleLabel->setBuddy(cycleEdit);
+    cycleLabel = new QLabel(stripChartGroup,"Cycle");
+    cycleLabel->setText(tr("Cycle"));
     chartLayout->addWidget(cycleLabel,2,4);
     chartLayout->addWidget(cycleEdit,2,5);
     
-    enableStripChartLimits = new QCheckBox(stripChartGroup);
+    enableStripChartLimits = new QCheckBox(stripChartGroup,"EnableStripChartLimits");
     enableStripChartLimits->setText(tr("Enable Limits"));
-    connect(enableStripChartLimits, SIGNAL(stateChanged(int)),
-            this, SLOT(executeEnableStripChartLimits()));
-    chartLayout->addWidget(enableStripChartLimits,3, 0, 1, 3);
+    connect(enableStripChartLimits,SIGNAL(stateChanged(int)),this,SLOT(executeEnableStripChartLimits()));
+    chartLayout->addMultiCellWidget(enableStripChartLimits,3,3,0,2);
       
-    //enableLogScale = new QCheckBox(stripChartGroup);
+    //enableLogScale = new QCheckBox(stripChartGroup,"EnableLogScale");
     //enableLogScale->setText("Log Scale");
     //connect(enableLogScale,SIGNAL(stateChanged(int)),this,SLOT(executeEnableLogScale()));
     //chartLayout->addMultiCellWidget(enableLogScale,4,2,1,1);
     
     // zoom and focus buttons
     // Create the group box and generic buttons.
-    QGridLayout *zoomLayout = new QGridLayout(0);
-    chartLayout->addLayout(zoomLayout, 4, 0, 1, 6);
-    resetButton = new QPushButton(tr("Reset"));
+    QGridLayout *zoomLayout = new QGridLayout(stripChartGroup, 1, 4);
+    resetButton = new QPushButton(tr("Reset"),stripChartGroup);
     resetButton->setEnabled(true);
     zoomLayout->addWidget(resetButton,0,0);
     connect(resetButton,SIGNAL(clicked()),this,SLOT(reset()));
-    plusButton = new QPushButton(tr("Zoom in"));
+    plusButton = new QPushButton(tr("Zoom In"),stripChartGroup);
     plusButton->setEnabled(true);
     connect(plusButton,SIGNAL(clicked()),this,SLOT(zoomIn()));
     zoomLayout->addWidget(plusButton,0,1);
-    minusButton = new QPushButton(tr("Zoom out"));
+    minusButton = new QPushButton(tr("Zoom Out"),stripChartGroup);
     minusButton->setEnabled(true);
     connect(minusButton,SIGNAL(clicked()),this,SLOT(zoomOut()));
     zoomLayout->addWidget(minusButton,0,2);
-    focusButton = new QPushButton(tr("Focus"));
+    focusButton = new QPushButton(tr("Focus"),stripChartGroup);
     focusButton->setEnabled(true);
     connect(focusButton,SIGNAL(clicked()),this,SLOT(focus()));
     zoomLayout->addWidget(focusButton,0,3);
-
+    chartLayout->addLayout(zoomLayout,3,5);
     stripChartGroup->adjustSize();
 }
 
@@ -347,7 +328,6 @@ QvisStripChartMgr::zoomIn()
 {
     stripChartTabWidget->zoomIn();
 }
-
 // ****************************************************************************
 // Method: VisItSimStripChart::zoomOut
 //
@@ -852,8 +832,6 @@ QvisStripChartMgr::executeMinLimitStripChart()
 // Creation:   Jan 6, 2006
 //
 // Modifications:
-//   Brad Whitlock, Tue Jul  8 09:49:26 PDT 2008
-//   Qt 4.
 //
 // ****************************************************************************
 
@@ -876,9 +854,9 @@ int QvisStripChartMgr::sendCMD(QString sig, const QObject *ui, QString value)
     string host = engines->GetEngines()[simIndex];
     string sim  = engines->GetSimulationName()[simIndex];
 
-    QString cmd = sig + ";" + ui->objectName() + ";" + ui->metaObject()->className() + ";" +
-                  ui->parent()->objectName() + ";" + value;
-    viewer->GetViewerMethods()->SendSimulationCommand(host, sim, cmd.toStdString());
+    QString cmd = sig + ";" + ui->name() + ";" + ui->className() + ";" +
+                  ui->parent()->name() + ";" + value;
+    viewer->GetViewerMethods()->SendSimulationCommand(host, sim, cmd.latin1());
     return 0;
 }
 
@@ -910,7 +888,7 @@ int QvisStripChartMgr::sendCMD(QString cmd)
     if ( s.size() < 1) return 0;
     string host = engines->GetEngines()[simIndex];
     string sim  = engines->GetSimulationName()[simIndex];
-    viewer->GetViewerMethods()->SendSimulationCommand(host, sim, cmd.toStdString());
+    viewer->GetViewerMethods()->SendSimulationCommand(host, sim, cmd.latin1());
     return 0;
 }
 

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -66,14 +66,14 @@
 PyObject *
 PyMapNode_Wrap(const MapNode &node)
 {
-    if(node.Type() == MapNode::EMPTY_TYPE && node.GetNumEntries() == 0)
+    if(node.Type() == EMPTY_TYPE && node.GetNumEntries() == 0)
     {
         Py_INCREF(Py_None);
         return Py_None;
     }
     
     // must be a variant, use variant helper
-    if(node.Type() != MapNode::EMPTY_TYPE)
+    if(node.Type() != EMPTY_TYPE)
     {
         return PyVariant_Wrap(node);
     }

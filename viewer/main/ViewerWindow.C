@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -54,6 +54,7 @@ using std::string;
 #include <avtDataObjectReader.h>
 #include <avtWholeImageCompositerWithZ.h>
 #include <avtToolInterface.h>
+#include <avtTransparencyActor.h>
 
 #include <AnimationAttributes.h>
 #include <AnnotationAttributes.h>
@@ -264,7 +265,7 @@ static void RotateAroundY(const avtView3D&, double, avtView3D&);
 //
 // ****************************************************************************
 
-ViewerWindow::ViewerWindow(int windowIndex) : ViewerBase(0),
+ViewerWindow::ViewerWindow(int windowIndex) : ViewerBase(0, "ViewerWindow"),
     undoViewStack(true), redoViewStack()
 {
     if (doNoWinMode)
@@ -321,7 +322,7 @@ ViewerWindow::ViewerWindow(int windowIndex) : ViewerBase(0),
     toolbar = new ViewerToolbar(this);
 
     plotList = new ViewerPlotList(this);
-    plotList->SetAnimationAttributes(*ViewerWindowManager::GetAnimationClientAtts());
+    SetAnimationAttributes(ViewerWindowManager::GetAnimationClientAtts());
 
     //
     // Callbacks to show the menu when the right mouse button is
@@ -1090,9 +1091,6 @@ ViewerWindow::GetToolName(int index) const
 //    Jeremy Meredith, Thu Jan 31 14:56:06 EST 2008
 //    Added new axis array window mode.
 //
-//    Eric Brugger, Tue Dec  9 16:21:46 PST 2008
-//    Added the AxisParallel window mode.
-//
 // ****************************************************************************
 
 void
@@ -1115,7 +1113,6 @@ ViewerWindow::RecenterView()
         RecenterView3d(limits);
         break;
       case WINMODE_AXISARRAY:
-      case WINMODE_AXISPARALLEL:
         GetExtents(2, limits);
         RecenterViewAxisArray(limits);
         break;
@@ -1161,9 +1158,6 @@ ViewerWindow::RecenterView()
 //    Jeremy Meredith, Thu Jan 31 14:56:06 EST 2008
 //    Added new axis array window mode.
 //
-//    Eric Brugger, Tue Dec  9 16:21:46 PST 2008
-//    Added the AxisParallel window mode.
-//
 // ****************************************************************************
 
 void
@@ -1198,7 +1192,6 @@ ViewerWindow::ResetView()
         ResetView3d();
         break;
       case WINMODE_AXISARRAY:
-      case WINMODE_AXISPARALLEL:
         ResetViewAxisArray();
         break;
       default:
@@ -2393,11 +2386,18 @@ ViewerWindow::CopyGeneralAttributes(const ViewerWindow *source)
 //  Programmer: Eric Brugger
 //  Creation:   February 20, 2001
 //
+//  Modifications:
+//
+//    Tom Fogal, Mon May 25 18:05:11 MDT 2009
+//    Invalidate the transparency cache to ensure it'll get recalculated later.
+//
 // ****************************************************************************
 
 void
 ViewerWindow::AddPlot(avtActor_p &actor)
 {
+    avtTransparencyActor* trans = visWindow->GetTransparencyActor();
+    trans->InvalidateTransparencyCache();
     visWindow->AddPlot(actor);
 }
 
@@ -2612,9 +2612,6 @@ ViewerWindow::SendDeleteMessage()
 //    Jeremy Meredith, Thu Jan 31 14:56:06 EST 2008
 //    Added new axis array window mode.
 //
-//    Eric Brugger, Tue Dec  9 16:21:46 PST 2008
-//    Added the AxisParallel window mode.
-//
 // ****************************************************************************
 
 void
@@ -2636,7 +2633,6 @@ ViewerWindow::UpdateView(const WINDOW_MODE mode, const double *limits)
         UpdateView3d(limits);
         break;
       case WINMODE_AXISARRAY:
-      case WINMODE_AXISPARALLEL:
         UpdateViewAxisArray(limits);
         break;
       default:
@@ -3010,9 +3006,6 @@ ViewerWindow::CopyViewAttributes(const ViewerWindow *source)
 //   Jeremy Meredith, Thu Jan 31 14:56:06 EST 2008
 //   Added new axis array window mode.
 //
-//   Eric Brugger, Tue Dec  9 16:21:46 PST 2008
-//   Added the AxisParallel window mode.
-//
 // ****************************************************************************
 
 void
@@ -3051,8 +3044,7 @@ ViewerWindow::UpdateCameraView()
             view3d.SetFromView3DAttributes(curView3D);
             visWindow->SetView3D(view3d);
         }
-        else if (visWindow->GetWindowMode() == WINMODE_AXISARRAY ||
-                 visWindow->GetWindowMode() == WINMODE_AXISPARALLEL)
+        else if (visWindow->GetWindowMode() == WINMODE_AXISARRAY)
         {
             viewAxisArrayAtts->GetAtts(curIndex, curViewAxisArray);
             avtViewAxisArray viewAxisArray;
@@ -3072,11 +3064,9 @@ ViewerWindow::UpdateCameraView()
 // Creation:   Tue Mar 7 17:50:44 PST 2006
 //
 // Modifications:
+//   
 //    Jeremy Meredith, Thu Jan 31 14:56:06 EST 2008
 //    Added new axis array window mode.
-//
-//    Eric Brugger, Tue Dec  9 16:21:46 PST 2008
-//    Added the AxisParallel window mode.
 //
 // ****************************************************************************
 
@@ -3125,8 +3115,7 @@ ViewerWindow::UndoView()
             SetView3D(view);
         }
     }
-    else if(GetWindowMode() == WINMODE_AXISARRAY ||
-            GetWindowMode() == WINMODE_AXISPARALLEL)
+    else if(GetWindowMode() == WINMODE_AXISARRAY)
     {
         avtViewAxisArray view;
 
@@ -3154,9 +3143,6 @@ ViewerWindow::UndoView()
 // Modifications:
 //    Jeremy Meredith, Thu Jan 31 14:56:06 EST 2008
 //    Added new axis array window mode.
-//
-//    Eric Brugger, Tue Dec  9 16:21:46 PST 2008
-//    Added the AxisParallel window mode.
 //
 // ****************************************************************************
 
@@ -3190,8 +3176,7 @@ ViewerWindow::RedoView()
             SetView3D(view);
         }
     }
-    else if(GetWindowMode() == WINMODE_AXISARRAY ||
-            GetWindowMode() == WINMODE_AXISPARALLEL)
+    else if(GetWindowMode() == WINMODE_AXISARRAY)
     {
         avtViewAxisArray view;
         if(redoViewStack.PopViewAxisArray(view))
@@ -3215,9 +3200,6 @@ ViewerWindow::RedoView()
 //    Jeremy Meredith, Thu Jan 31 14:56:06 EST 2008
 //    Added new axis array window mode.
 //   
-//    Eric Brugger, Tue Dec  9 16:21:46 PST 2008
-//    Added the AxisParallel window mode.
-//
 // ****************************************************************************
 
 void
@@ -3229,8 +3211,7 @@ ViewerWindow::PushCurrentViews()
         undoViewStack.PushView2D(GetView2D());
     else if(GetWindowMode() == WINMODE_3D)
         undoViewStack.PushView3D(GetView3D());
-    else if(GetWindowMode() == WINMODE_AXISARRAY ||
-            GetWindowMode() == WINMODE_AXISPARALLEL)
+    else if(GetWindowMode() == WINMODE_AXISARRAY)
         undoViewStack.PushViewAxisArray(GetViewAxisArray());
 }
 
@@ -3247,9 +3228,6 @@ ViewerWindow::PushCurrentViews()
 //    Jeremy Meredith, Thu Jan 31 14:56:06 EST 2008
 //    Added new axis array window mode.
 //   
-//    Eric Brugger, Tue Dec  9 16:21:46 PST 2008
-//    Added the AxisParallel window mode.
-//
 // ****************************************************************************
 
 bool
@@ -3262,8 +3240,7 @@ ViewerWindow::UndoViewEnabled() const
         retval = undoViewStack.HasView2Ds();
     else if(GetWindowMode() == WINMODE_3D)
         retval = undoViewStack.HasView3Ds();
-    else if(GetWindowMode() == WINMODE_AXISARRAY ||
-            GetWindowMode() == WINMODE_AXISPARALLEL)
+    else if(GetWindowMode() == WINMODE_AXISARRAY)
         retval = undoViewStack.HasViewAxisArrays();
     return retval;
 }
@@ -3281,9 +3258,6 @@ ViewerWindow::UndoViewEnabled() const
 //    Jeremy Meredith, Thu Jan 31 14:56:06 EST 2008
 //    Added new axis array window mode.
 //   
-//    Eric Brugger, Tue Dec  9 16:21:46 PST 2008
-//    Added the AxisParallel window mode.
-//
 // ****************************************************************************
 
 bool
@@ -3296,10 +3270,78 @@ ViewerWindow::RedoViewEnabled() const
         retval = redoViewStack.HasView2Ds();
     else if(GetWindowMode() == WINMODE_3D)
         retval = redoViewStack.HasView3Ds();
-    else if(GetWindowMode() == WINMODE_AXISARRAY ||
-            GetWindowMode() == WINMODE_AXISPARALLEL)
+    else if(GetWindowMode() == WINMODE_AXISARRAY)
         retval = redoViewStack.HasViewAxisArrays();
     return retval;
+}
+
+// ****************************************************************************
+//  Method: ViewerWindow::SetAnimationAttributes
+//
+//  Purpose: 
+//    Set the animation attributes of the window.
+//
+//  Arguments:
+//    atts      The animation attributes for this window. 
+//
+//  Programmer: Eric Brugger
+//  Creation:   November 21, 2001 
+//
+//  Modifications:
+//    Brad Whitlock, Tue Oct 7 11:32:18 PDT 2003
+//    Added playbackMode.
+//
+// ****************************************************************************
+
+void
+ViewerWindow::SetAnimationAttributes(const AnimationAttributes *atts)
+{
+    // Set the pipeline caching flag.
+    GetPlotList()->SetPipelineCaching(atts->GetPipelineCachingMode());
+    // Set the animation's playback style.
+    if(atts->GetPlaybackMode() == AnimationAttributes::Looping)
+        GetPlotList()->SetPlaybackMode(ViewerPlotList::Looping);
+    else if(atts->GetPlaybackMode() == AnimationAttributes::PlayOnce)
+        GetPlotList()->SetPlaybackMode(ViewerPlotList::PlayOnce);
+    else if(atts->GetPlaybackMode() == AnimationAttributes::Swing)
+        GetPlotList()->SetPlaybackMode(ViewerPlotList::Swing);
+}
+
+// ****************************************************************************
+// Method: ViewerWindow::GetAnimationAttributes
+//
+// Purpose: 
+//   Returns a pointer to the VisWindow's animation attributes.
+//
+// Note:       Note that the pointer returned by this method cannot be used
+//             to set attributes of the annotation attributes.
+//
+// Programmer: Eric Brugger
+// Creation:   November 21, 2001
+//
+// Modifications:
+//   Brad Whitlock, Tue Oct 7 11:31:16 PDT 2003
+//   Added playbackMode.
+//
+// ****************************************************************************
+
+static AnimationAttributes animationAttributes;
+
+const AnimationAttributes *
+ViewerWindow::GetAnimationAttributes() const
+{
+    // Set the caching mode.
+    animationAttributes.SetPipelineCachingMode(
+        GetPlotList()->GetPipelineCaching());
+    // Set the playback mode.
+    if(GetPlotList()->GetPlaybackMode() == ViewerPlotList::Looping)
+        animationAttributes.SetPlaybackMode(AnimationAttributes::Looping);
+    else if(GetPlotList()->GetPlaybackMode() == ViewerPlotList::PlayOnce)
+        animationAttributes.SetPlaybackMode(AnimationAttributes::PlayOnce);
+    else if(GetPlotList()->GetPlaybackMode() == ViewerPlotList::Swing)
+        animationAttributes.SetPlaybackMode(AnimationAttributes::Swing);
+
+    return &animationAttributes;
 }
 
 // ****************************************************************************
@@ -4038,6 +4080,9 @@ ViewerWindow::GetScaleFactorAndType(double &s, int &t)
 //    Brad Whitlock, Wed Apr 30 09:32:47 PDT 2008
 //    Support for internationalization.
 //
+//    Kathleen Bonnell, Tue Mar  3 15:04:57 PST 2009
+//    CanDoLogViewScaling changed to PermitsLogViewScaling.
+//
 // ****************************************************************************
 
 void
@@ -4075,7 +4120,7 @@ ViewerWindow::RecenterViewCurve(const double *limits)
 #define SMALL 1e-100
     if (viewCurve.domainScale == LOG || viewCurve.rangeScale == LOG)
     {
-        bool logsOkay = GetPlotList()->CanDoLogViewScaling(WINMODE_CURVE);
+        bool logsOkay = GetPlotList()->PermitsLogViewScaling(WINMODE_CURVE);
         if (logsOkay)
         {
             if (viewCurve.domainScale == LOG)
@@ -4148,6 +4193,9 @@ ViewerWindow::RecenterViewCurve(const double *limits)
 //    Brad Whitlock, Wed Apr 30 09:32:47 PDT 2008
 //    Support for internationalization.
 //
+//    Kathleen Bonnell, Tue Mar  3 15:04:57 PST 2009
+//    CanDoLogViewScaling changed to PermitsLogViewScaling.
+//
 // ****************************************************************************
 
 void
@@ -4187,7 +4235,7 @@ ViewerWindow::RecenterView2d(const double *limits)
 #define SMALL 1e-100
     if (view2D.xScale == LOG || view2D.yScale == LOG)
     {
-        bool logsOkay = GetPlotList()->CanDoLogViewScaling(WINMODE_2D);
+        bool logsOkay = GetPlotList()->PermitsLogViewScaling(WINMODE_2D);
         if (logsOkay)
         {
             if (view2D.xScale == LOG)
@@ -4468,6 +4516,9 @@ ViewerWindow::RecenterViewAxisArray(const double *limits)
 //    Brad Whitlock, Wed Apr 30 09:32:47 PDT 2008
 //    Support for internationalization.
 //
+//    Kathleen Bonnell, Tue Mar  3 15:04:57 PST 2009
+//    CanDoLogViewScaling changed to PermitsLogViewScaling.
+//
 // ****************************************************************************
 
 void
@@ -4511,7 +4562,7 @@ ViewerWindow::ResetViewCurve()
     
     if (viewCurve.domainScale == LOG || viewCurve.rangeScale == LOG)
     {
-        bool logsOkay = GetPlotList()->CanDoLogViewScaling(WINMODE_CURVE);
+        bool logsOkay = GetPlotList()->PermitsLogViewScaling(WINMODE_CURVE);
         if (logsOkay)
         {
             if (viewCurve.domainScale == LOG)
@@ -4599,6 +4650,9 @@ ViewerWindow::ResetViewCurve()
 //    Brad Whitlock, Wed Apr 30 09:32:47 PDT 2008
 //    Support for internationalization.
 //
+//    Kathleen Bonnell, Tue Mar  3 15:04:57 PST 2009
+//    CanDoLogViewScaling changed to PermitsLogViewScaling.
+//
 // ****************************************************************************
 
 void
@@ -4642,7 +4696,7 @@ ViewerWindow::ResetView2d()
 #define SMALL 1e-100
     if (view2D.xScale == LOG || view2D.yScale == LOG)
     {
-        bool logsOkay = GetPlotList()->CanDoLogViewScaling(WINMODE_2D);
+        bool logsOkay = GetPlotList()->PermitsLogViewScaling(WINMODE_2D);
         if (logsOkay)
         {
             if (view2D.xScale == LOG)
@@ -5213,6 +5267,9 @@ ViewerWindow::SetInitialView3d()
 //    Kathleen Bonnell, Fri May 11 09:20:06 PDT 2007 
 //    Added support for Log scaling.
 //
+//    Kathleen Bonnell, Tue Mar  3 15:04:57 PST 2009
+//    CanDoLogViewScaling changed to PermitsLogViewScaling.
+//
 // ****************************************************************************
 
 void
@@ -5292,7 +5349,7 @@ ViewerWindow::UpdateViewCurve(const double *limits)
         const avtViewCurve &viewCurve = GetViewCurve();
         bool mustReset = 
             ((viewCurve.domainScale == LOG  || viewCurve.rangeScale == LOG ) &&
-              !GetPlotList()->CanDoLogViewScaling(WINMODE_CURVE));
+              !GetPlotList()->PermitsLogViewScaling(WINMODE_CURVE));
        
         if (!mustReset) 
             visWindow->UpdateView();
@@ -5352,6 +5409,9 @@ ViewerWindow::UpdateViewCurve(const double *limits)
 //
 //    Kathleen Bonnell, Fri May 11 09:20:06 PDT 2007 
 //    Added support for Log scaling.
+//
+//    Kathleen Bonnell, Tue Mar  3 15:04:57 PST 2009
+//    CanDoLogViewScaling changed to PermitsLogViewScaling.
 //
 // ****************************************************************************
 
@@ -5461,7 +5521,7 @@ ViewerWindow::UpdateView2d(const double *limits)
     // Ensure we aren't attempting log scaling when plots don't support it.
     // 
     if ((view2d.xScale == LOG  || view2d.yScale == LOG ) &&
-        !GetPlotList()->CanDoLogViewScaling(WINMODE_2D))
+        !GetPlotList()->PermitsLogViewScaling(WINMODE_2D))
     {
         ResetView2d();
     }
@@ -8168,8 +8228,9 @@ ViewerWindow::CreateNode(DataNode *parentNode,
 //   Brad Whitlock, Wed Feb 13 14:02:15 PST 2008
 //   Added configVersion so we can let the objects process older versions.
 //
-//   Brad Whitlock, Wed Dec 10 15:24:21 PST 2008
-//   I removed code to handle ancient session files.
+//   Brad Whitlock, Mon Oct 26 15:43:23 PDT 2009
+//   I replaced the code to delete the active plots with a new,more direct
+//   way that does not cause metadata read side-effects.
 //
 // ****************************************************************************
 
@@ -8211,11 +8272,103 @@ ViewerWindow::SetFromNode(DataNode *parentNode,
     // Delete the plots first and update the frame so when we set the 
     // view, etc no updates can happen.
     //
-    intVector plots, tmp;
-    for(int j = 0; j < GetPlotList()->GetNumPlots(); ++j)
-        plots.push_back(j);
-    GetPlotList()->SetActivePlots(plots, tmp, tmp, false);
-    GetPlotList()->DeleteActivePlots();
+    GetPlotList()->DeleteAllPlots(false);
+
+    ////////////////////// Reformat pre 1.3 session files /////////////////////
+    //
+    // If we find a ViewerAnimation, reparent its ViewerPlotList to the
+    // windowNode so old config files will still work. This should be removed
+    // in the future as configs with the now defunct ViewerAnimation become
+    // less common.
+    //
+    DataNode *vaNode = windowNode->GetNode("ViewerAnimation");
+    if(vaNode != 0)
+    {
+        debug1 << "***\n*** Converting the session file from pre 1.3 version.\n***\n";
+        DataNode *vplNode = vaNode->GetNode("ViewerPlotList");
+        // Remove the plot list node from the animation node without
+        // deleting it. Then reparent it in the window node.
+        vaNode->RemoveNode("ViewerPlotList", false);
+        windowNode->AddNode(vplNode);
+
+        // Add a few things from the animation node to the viewer plot
+        // list node.
+        DataNode *aNode;
+        if((aNode = vaNode->GetNode("pipelineCaching")) != 0)
+            vplNode->AddNode(new DataNode("pipelineCaching", aNode->AsBool()));
+        if((aNode = vaNode->GetNode("playbackMode")) != 0)
+        {
+            if(aNode->GetNodeType() == INT_NODE)
+                vplNode->AddNode(new DataNode("playbackMode", aNode->AsInt()));
+            else if(aNode->GetNodeType() == STRING_NODE)
+                vplNode->AddNode(new DataNode("playbackMode", aNode->AsString()));
+        }
+        //
+        // Get the curFrame and nFrames out of the ViewerAnimation and try
+        // to put it into the plots in the ViewerPlotList.
+        //
+        int curFrame = -1;
+        int nFrames = -1;
+        if((aNode = vaNode->GetNode("curFrame")) != 0)
+            curFrame = aNode->AsInt();
+        if((aNode = vaNode->GetNode("nFrames")) != 0)
+            nFrames = aNode->AsInt();
+        if(nFrames != -1 && curFrame != -1 &&
+           curFrame >= 0 && curFrame < nFrames)
+        {
+            DataNode *hostNode = vplNode->GetNode("hostName");
+            DataNode *databaseNode = vplNode->GetNode("databaseName");
+            DataNode *kfModeNode = vplNode->GetNode("keyframeMode");
+
+            //
+            // Determine whether the plot list is in keyframe mode.
+            //
+            bool kfMode = false;
+            if(kfModeNode != 0)
+                kfMode = kfModeNode->AsBool();
+
+            if(kfMode)
+            {
+                //
+                // We're in keyframe mode so set the number of keyframes and add a
+                // keyframing time slider.
+                //
+                vplNode->AddNode(new DataNode("nKeyframes", nFrames));
+                DataNode *tsNode = new DataNode("timeSliders");
+                tsNode->AddNode(new DataNode(KF_TIME_SLIDER, curFrame));
+                vplNode->AddNode(tsNode);
+                vplNode->AddNode(new DataNode("activeTimeSlider",
+                    std::string(KF_TIME_SLIDER)));
+                debug3 << "Created a time slider (" << KF_TIME_SLIDER
+                       << ") at state" << curFrame << " for old session file." << endl;
+            }
+            else if(hostNode != 0 && databaseNode != 0)
+            {
+                //
+                // We're not in keyframing mode so create a time slider for the
+                // active source.
+                //
+                std::string tsHost(hostNode->AsString());
+                std::string tsDB(databaseNode->AsString());
+                std::string tsName(ViewerFileServer::Instance()->
+                    ComposeDatabaseName(tsHost, tsDB));
+
+                //
+                // If the database has multiple time states then add a time
+                // slider for it in the ViewerPlotList.
+                //
+                DataNode *tsNode = new DataNode("timeSliders");
+                tsNode->AddNode(new DataNode(tsName, curFrame));
+                vplNode->AddNode(tsNode);
+                vplNode->AddNode(new DataNode("activeTimeSlider", tsName));
+                debug3 << "Created a time slider (" << tsName.c_str()
+                       << ") at state" << curFrame << " for old session file." << endl;
+            }
+        }
+        // Remove the ViewerAnimation node.
+        windowNode->RemoveNode("ViewerAnimation");
+    }
+    ///////////////// Done reformatting pre 1.3 session files /////////////////
 
     //
     // Read in the plot list.

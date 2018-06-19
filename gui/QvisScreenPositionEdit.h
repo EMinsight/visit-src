@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,9 +39,8 @@
 #ifndef QVIS_SCREEN_POSITION_EDIT_H
 #define QVIS_SCREEN_POSITION_EDIT_H
 #include <gui_exports.h>
-#include <QWidget>
+#include <qlineedit.h>
 
-class QLineEdit;
 class QTimer;
 class QvisScreenPositioner;
 class QvisTurnDownButton;
@@ -59,16 +58,14 @@ class QvisTurnDownButton;
 // Creation:   Tue Dec 2 13:17:32 PST 2003
 //
 // Modifications:
-//   Brad Whitlock, Tue Jun  3 16:10:00 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 class GUI_API QvisScreenPositionEdit : public QWidget
 {
     Q_OBJECT
 public:
-    QvisScreenPositionEdit(QWidget *parent = 0);
+    QvisScreenPositionEdit(QWidget *parent = 0, const char *name = 0);
     virtual ~QvisScreenPositionEdit();
 
     void setPosition(double, double);

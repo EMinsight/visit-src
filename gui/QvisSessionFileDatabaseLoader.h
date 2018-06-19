@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -38,7 +38,7 @@
 
 #ifndef QVIS_SESSION_FILE_DATABASE_LOADER_H
 #define QVIS_SESSION_FILE_DATABASE_LOADER_H
-#include <QObject>
+#include <qobject.h>
 #include <GUIBase.h>
 #include <vectortypes.h>
 
@@ -62,16 +62,13 @@ class CancelledObserver;
 //   Brad Whitlock, Tue Nov 14 15:20:22 PST 2006
 //   Added another complete signal.
 //
-//   Cyrus Harrison, Tue Jul  1 09:14:16 PDT 2008
-//   Initial Qt4 Port.
-//
 // ****************************************************************************
 
 class QvisSessionFileDatabaseLoader : public QObject, public GUIBase
 {
     Q_OBJECT
 public:
-    QvisSessionFileDatabaseLoader(QObject *parent);
+    QvisSessionFileDatabaseLoader(QObject *parent, const char *name = 0);
     virtual ~QvisSessionFileDatabaseLoader();
 
     void SetDatabases(const stringVector &s);

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -43,7 +43,7 @@
 #include <ViewerBase.h>
 #include <vectortypes.h>
 #include <map>
-#include <QSocketNotifier>
+#include <qsocketnotifier.h>
 
 #include <HostProfile.h>
 
@@ -90,9 +90,6 @@ class ViewerConnectionProgressDialog;
 //    Brad Whitlock, Wed Nov 21 14:32:31 PST 2007
 //    Added support for printing out remote process console output.
 //
-//    Jeremy Meredith, Wed Dec  3 16:48:35 EST 2008
-//    Allowed commandline override forcing-on of SSH tunneling.
-//
 // ****************************************************************************
 
 class VIEWER_API ViewerServerManager : public ViewerBase
@@ -115,7 +112,6 @@ public:
     static void SetArguments(const stringVector &arg);
     static void SetLocalHost(const std::string &hostName);
     static bool HostIsLocalHost(const std::string &hostName);
-    static void ForceSSHTunnelingForAllConnections();
 
     static HostProfileList *GetClientAtts();
 protected:
@@ -162,7 +158,6 @@ private:
     static std::string              localHost;
     static stringVector             arguments;
     static LauncherMap              launchers;
-    static bool                     sshTunnelingForcedOn;
     static void                    *cbData[2];
 };
 
@@ -179,16 +174,14 @@ private:
 // Creation:   Wed Nov 21 15:14:14 PST 2007
 //
 // Modifications:
-//   Brad Whitlock, Tue May 27 14:17:46 PDT 2008
-//   Removed name.
-//
+//   
 // ****************************************************************************
 
 class ViewerConnectionPrinter : public QSocketNotifier
 {
     Q_OBJECT
 public:
-    ViewerConnectionPrinter(Connection *);
+    ViewerConnectionPrinter(Connection *, const char *name = 0);
     virtual ~ViewerConnectionPrinter();
 private slots:
     void HandleRead(int);

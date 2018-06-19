@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -53,11 +53,12 @@ class QCheckBox;
 class QComboBox;
 class QGroupBox;
 class QLabel;
-class QListWidget;
+class QListBox;
 class QNarrowLineEdit;
 class QPushButton;
 class QSpinBox;
 class QTabWidget;
+class QVBox;
 class QvisAnnotationObjectInterface;
 class QvisAxisAttributesWidget;
 class QvisColorButton;
@@ -124,15 +125,8 @@ class QvisLineWidthWidget;
 //   Brad Whitlock, Wed Apr  9 10:58:41 PDT 2008
 //   QString for caption, shortName.
 //
-//   Brad Whitlock, Wed Jun 25 09:28:14 PDT 2008
-//   Qt 4.
-//
-//   Jeremy Meredith, Tue Nov 18 15:49:29 EST 2008
-//   Added AxisArray modality options.
-//
-//   Jeremy Meredith, Thu Jan 22 14:55:02 EST 2009
-//   Change the 2D and 3D tabs to update just the sub-widget sensitivities,
-//   not the whole tab itself, when "show axes" is unchecked.
+//   Brad Whitlock, Mon Mar  2 14:31:48 PST 2009
+//   I added support for scaling and offsetting time.
 //
 // ****************************************************************************
 
@@ -157,7 +151,6 @@ protected:
     virtual void UpdateWindow(bool doAll);
     void UpdateAxes2D();
     void UpdateAxes3D();
-    void UpdateAxesArray();
     void UpdateAnnotationControls(bool doAll);
     void UpdateAnnotationObjectControls(bool doAll);
     void Apply(bool dontIgnore = false);
@@ -165,8 +158,6 @@ protected:
     void SetButtonGroup(QButtonGroup *bg, bool *vals);
     void GetCurrentValues(int which_widget);
     void CreateGeneralTab();
-    void CreateArrayTab();
-    QWidget *CreateGeneralTabArray(QWidget *);
     void Create2DTab();
     QWidget *CreateGeneralTab2D(QWidget *);
     void Create3DTab();
@@ -179,7 +170,7 @@ private slots:
     virtual void reset();
 
     // General option slots
-    void tabSelected(int);
+    void tabSelected(const QString &tabLabel);
     void userInfoChecked(bool val);
     void userInfoFontChanged(const FontAttributes &);
     void databaseInfoChecked(bool val);
@@ -187,14 +178,8 @@ private slots:
     void databaseInfoFontChanged(const FontAttributes &);
     void legendChecked(bool val);
     void turnOffAllAnnotations();
-
-    // array option slots
-    void axesFlagCheckedArray(bool val);
-    void axesTicksChangedArray(bool val);
-    void axesAutoSetTicksCheckedArray(bool val);
-    void labelAutoSetScalingCheckedArray(bool val);
-    void axesLineWidthChangedArray(int index);
-    void axisChangedArray(const AxisAttributes &);
+    void databaseTimeScaleChanged();
+    void databaseTimeOffsetChanged();
 
     // 2D option slots
     void axesFlagChecked2D(bool val);
@@ -259,20 +244,12 @@ private:
     QComboBox                *databasePathExpansionMode;
     QCheckBox                *legendInfo;
     QPushButton              *turnOffAllButton;
-
-    // axisarray tab widgets
-    QWidget                  *pageArray;
-    QWidget                  *axesArrayGroup;
-    QCheckBox                *axesFlagToggleArray;
-    QCheckBox                *ticksToggleArray;
-    QCheckBox                *axesAutoSetTicksToggleArray;
-    QCheckBox                *labelAutoSetScalingToggleArray;
-    QvisLineWidthWidget      *axesLineWidthArray;
-    QvisAxisAttributesWidget *axesArray[1];
+    QNarrowLineEdit          *databaseTimeScale;
+    QNarrowLineEdit          *databaseTimeOffset;
 
     // 2D tab widgets
-    QWidget                  *page2D;
-    QTabWidget               *page2DTabs;
+    QVBox                    *page2D;
+    QGroupBox                *axes2DGroup;
     QCheckBox                *axesFlagToggle2D;
     QCheckBox                *axesAutoSetTicksToggle2D;
     QCheckBox                *labelAutoSetScalingToggle2D;
@@ -282,8 +259,8 @@ private:
     QvisAxisAttributesWidget *axes2D[2];
 
     // 3D tab widgets
-    QWidget                  *page3D;
-    QTabWidget               *page3DTabs;
+    QVBox                    *page3D;
+    QGroupBox                *axes3DGroup;
     QCheckBox                *axes3DVisible;
     QCheckBox                *axesAutoSetTicksToggle;
     QCheckBox                *labelAutoSetScalingToggle;
@@ -295,7 +272,7 @@ private:
     QvisAxisAttributesWidget *axes3D[3];
 
     // Color tab widgets
-    QWidget                  *pageColor;
+    QGroupBox                *pageColor;
     QvisColorButton          *backgroundColorButton;
     QvisColorButton          *foregroundColorButton;
     QButtonGroup             *backgroundStyleButtons;
@@ -313,9 +290,9 @@ private:
     QLabel                   *imageRepeatYLabel;
 
     // Objects tab widgets
-    QWidget                  *pageObjects;
+    QGroupBox                *pageObjects;
     QButtonGroup             *objButtonGroup;
-    QListWidget              *annotationListBox;
+    QListBox                 *annotationListBox;
     QPushButton              *hideShowAnnotationButton;
     QPushButton              *deleteAnnotationButton;
 };

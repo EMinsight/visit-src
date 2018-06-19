@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -331,6 +331,18 @@ avtStreamlinePlot::EnhanceSpecification(avtContract_p in_contract)
 //   Dave Pugmire, Tue Aug 19 17:13:04EST 2008
 //   Remove accurate distance calculate option.
 //
+//   Dave Pugmire, Thu Feb  5 12:23:33 EST 2009
+//   Add workGroupSize for masterSlave algorithm.
+//
+//   Dave Pugmire, Tue Mar 10 12:41:11 EDT 2009
+//   Add pathline option.
+//
+//   Jeremy Meredith, Wed Apr  8 16:48:05 EDT 2009
+//   Initial steps to unification with Poincare attributes.
+//
+//   Dave Pugmire, Wed Jun 10 16:26:25 EDT 2009
+//   Add color by variable.
+//
 // ****************************************************************************
 
 void
@@ -353,9 +365,11 @@ avtStreamlinePlot::SetAtts(const AttributeGroup *a)
     //
     streamlineFilter->SetSourceType(atts.GetSourceType());
     streamlineFilter->SetIntegrationType(atts.GetIntegrationType());
+    streamlineFilter->SetPathlines(atts.GetPathlines());
     streamlineFilter->SetStreamlineAlgorithm(atts.GetStreamlineAlgorithmType(), 
                                              atts.GetMaxStreamlineProcessCount(),
-                                             atts.GetMaxDomainCacheSize());
+                                             atts.GetMaxDomainCacheSize(),
+                                             atts.GetWorkGroupSize());
     streamlineFilter->SetMaxStepLength(atts.GetMaxStepLength());
     streamlineFilter->SetTolerances(atts.GetRelTol(),atts.GetAbsTol());
     streamlineFilter->SetTermination(atts.GetTerminationType(), atts.GetTermination());
@@ -376,7 +390,8 @@ avtStreamlinePlot::SetAtts(const AttributeGroup *a)
                                       atts.GetSphereRadius());
     streamlineFilter->SetBoxSource(atts.GetBoxExtents());
     streamlineFilter->SetUseWholeBox(atts.GetUseWholeBox());
-    streamlineFilter->SetColoringMethod(int(atts.GetColoringMethod()));
+    streamlineFilter->SetColoringMethod(int(atts.GetColoringMethod()),
+                                        atts.GetColoringVariable());
 #endif
 
     //
@@ -529,22 +544,22 @@ avtStreamlinePlot::SetLighting(bool lightingOn)
 //    Hank Childs, Tue Aug 12 15:04:40 PDT 2008
 //    If we don't have any streamlines, make sure something sensible shows up.
 //
+//   Dave Pugmire, Wed Jun 10 16:26:25 EDT 2009
+//   Don't clamp max to 0.0. We can now color by a variable.
+//
 // ****************************************************************************
 
 void
 avtStreamlinePlot::SetLegendRanges()
 {
-    double min, max;
+    double min=0.0, max=0.0;
     varMapper->GetVarRange(min, max);
-
-    if (max < 0.)
-        max = 0.;
-
+    
     //
     // Set the range for the legend's text and colors.
     //
-    varLegend->SetVarRange(0., max);
-    varLegend->SetRange(0., max);
+    varLegend->SetVarRange(min, max);
+    varLegend->SetRange(min, max);
 }
 
 

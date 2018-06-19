@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,15 +39,15 @@
 #ifndef XMLEDITCONSTANTS_H
 #define XMLEDITCONSTANTS_H
 
-#include <QFrame>
+#include <qframe.h>
 
 class XMLDocument;
 class QLineEdit;
 class QButtonGroup;
 class QComboBox;
 class QCheckBox;
-class QListWidget;
-class QTextEdit;
+class QListBox;
+class QMultiLineEdit;
 class QPushButton;
 
 // ****************************************************************************
@@ -63,15 +63,12 @@ class QPushButton;
 //    Brad Whitlock, Thu Mar 6 16:10:40 PST 2008
 //    Added target.
 //
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
 // ****************************************************************************
 class XMLEditConstants : public QFrame
 {
     Q_OBJECT
   public:
-    XMLEditConstants(QWidget *p);
+    XMLEditConstants(QWidget *p, const QString &n);
     void SetDocument(XMLDocument *doc) { xmldoc = doc; }
     void BlockAllSignals(bool);
   public slots:
@@ -93,12 +90,12 @@ class XMLEditConstants : public QFrame
     QPushButton    *newButton;
     QPushButton    *delButton;
 
-    QListWidget    *constantlist;
+    QListBox       *constantlist;
     QLineEdit      *target;
     QLineEdit      *name;
     QCheckBox      *member;
     QLineEdit      *declaration;
-    QTextEdit      *definition;
+    QMultiLineEdit *definition;
 };
 
 #endif

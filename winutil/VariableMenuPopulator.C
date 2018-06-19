@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -46,7 +46,7 @@
 #include <Expression.h>
 #include <ExpressionList.h>
 #include <QvisVariablePopupMenu.h>
-#include <QObject>
+#include <qobject.h>
 
 #include <set>
 
@@ -991,9 +991,6 @@ VariableMenuPopulator::ItemEnabled(int varType) const
 //   to original names map for this variable list. We pass it in so we can
 //   calculate it and re-use it for multiple menus.
 //
-//   Brad Whitlock, Fri May  9 11:13:53 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
@@ -1006,7 +1003,7 @@ VariableMenuPopulator::UpdateSingleMenu(QvisVariablePopupMenu *menu,
 
     // Add each variable to the variable menu.
     std::map <std::string, QvisVariablePopupMenu *> popups;
-    int j;
+    int j, varCount = menu->count();
     std::string var;
     bool        validVar;
     const StringStringMap &originalNameToGroupedName = ginfo->grouping;
@@ -1062,9 +1059,9 @@ VariableMenuPopulator::UpdateSingleMenu(QvisVariablePopupMenu *menu,
             if(p == popups.end())
             {
                 QvisVariablePopupMenu *newPopup =
-                    new QvisVariablePopupMenu(menu->getPlotType(), parent);
+                    new QvisVariablePopupMenu(menu->getPlotType(), parent,
+                                              path.c_str());
                 newPopup->setVarPath(altpath.c_str());
-                newPopup->setTitle(pathvar[j].c_str());
                 if (receiver != 0 && slot != 0)
                 {
                     QObject::connect(newPopup, SIGNAL(activated(int, const QString &)),
@@ -1072,7 +1069,7 @@ VariableMenuPopulator::UpdateSingleMenu(QvisVariablePopupMenu *menu,
                 }
 
                 popups[path] = newPopup;
-                parent->addMenu(newPopup);
+                parent->insertItem(pathvar[j].c_str(), newPopup, -1, parent->count());
                 parent = newPopup;
             }
             else
@@ -1080,7 +1077,8 @@ VariableMenuPopulator::UpdateSingleMenu(QvisVariablePopupMenu *menu,
         }
 
         // Add the variable.
-        parent->addVar(pathvar[j].c_str(), validVar);
+        int id = parent->insertItem(pathvar[j].c_str(), varCount++, parent->count());
+        parent->setItemEnabled(id, validVar);
     }
 }
 

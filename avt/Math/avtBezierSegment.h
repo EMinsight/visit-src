@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -52,6 +52,9 @@
 //    Jeremy Meredith, Thu Aug  7 14:38:59 EDT 2008
 //    Removed unused variables.
 //
+//    Dave Pugmire, Wed Jun 10 11:39:12 EDT 2009
+//    Add firstV and lastV methods.
+//
 // ****************************************************************************
 
 class avtBezierSegment: public avtVecArray
@@ -75,6 +78,22 @@ public:
     unsigned int order() const
     {
         return size();
+    }
+
+    avtVec firstV() const
+    {
+        avtVec v;
+        if (size() > 0)
+            v = (*this)[0];
+        return v;
+    }
+
+    avtVec lastV() const
+    {
+        avtVec v;
+        if (size() > 0)
+            v = (*this)[size()-1];
+        return v;
     }
 
     avtVec evaluate( const double& param )

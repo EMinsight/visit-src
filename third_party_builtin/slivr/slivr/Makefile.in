@@ -1,4 +1,4 @@
-#                         Copyright (c) 2000 - 2008
+#                         Copyright (c) 2000 - 2009
 #                  Lawrence Livermore National Security, LLC
 #            Produced at the Lawrence Livermore National Laboratory
 #                              LLNL-CODE-400124
@@ -43,6 +43,9 @@
 #   Tom Fogal, Sat Dec 27 21:46:28 MST 2008
 #   Pass VisIt's compilation flags to SLIVRs configuration.
 #
+#   Tom Fogal, Wed Mar 18 11:14:05 MST 2009
+#   Fix SLIVR tarball name.
+#
 ##############################################################################
 
 
@@ -53,7 +56,7 @@
 @VARIABLES@
 
 SLIVR_IS_EXTRACTED=slivr-extracted
-SLIVR_TARBALL=slivr-r141.tar.gz
+SLIVR_TARBALL=slivr-rev-141.tar.gz
 
 ##
 ## Standard targets...
@@ -62,6 +65,7 @@ all: message slivr
 
 clean:
 	$(RM) $(SLIVR_IS_EXTRACTED)
+	$(RM) build_slivr
 	# Next line is temporary: should remove eventually, but it will make sure
 	# developers don't get `dead files' in their tree.
 	#  -- Sat Dec 27 19:52:55 MST 2008
@@ -76,7 +80,7 @@ $(SLIVR_IS_EXTRACTED):
 	gunzip < $(SLIVR_TARBALL) | tar xvf - > /dev/null
 	touch $(SLIVR_IS_EXTRACTED)
 
-slivr: $(SLIVR_IS_EXTRACTED)
+build_slivr: $(SLIVR_IS_EXTRACTED)
 	cd slivr && \
 		$(CMAKE) \
 		-D CMAKE_C_COMPILER:FILEPATH=$(CC) \
@@ -92,6 +96,9 @@ slivr: $(SLIVR_IS_EXTRACTED)
 		.
 	cd slivr && $(MAKE)
 	cd slivr && $(MAKE) install
+	touch build_slivr
+
+slivr: build_slivr
 
 .PHONY: slivr
 

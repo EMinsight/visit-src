@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -755,6 +755,9 @@ FixWraparounds(vtkDataSet *in_ds, int comp_idx)
 //    Hank Childs, Tue Nov 15 15:40:04 PST 2005
 //    Re-order coordinates.
 //
+//    Hank Childs, Thu Jan  7 16:20:04 PST 2010
+//    Invalidate spatial meta-data.
+//
 // ****************************************************************************
 
 void
@@ -821,6 +824,7 @@ avtCoordSystemConvert::UpdateDataObjectInfo(void)
         outAtts.SetYUnits("radians");
     }
     GetOutput()->GetInfo().GetValidity().SetPointsWereTransformed(true);
+    GetOutput()->GetInfo().GetValidity().InvalidateSpatialMetaData();
 }
 
 

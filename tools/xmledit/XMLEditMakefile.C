@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -35,17 +35,17 @@
 * DAMAGE.
 *
 *****************************************************************************/
-#include "XMLEditStd.h"
+
 #include "XMLEditMakefile.h"
 
 #include <XMLDocument.h>
-#include <QButtonGroup>
-#include <QCheckBox>
-#include <QComboBox>
-#include <QLabel>
-#include <QLayout>
-#include <QLineEdit>
-#include <QRadioButton>
+#include <qbuttongroup.h>
+#include <qcheckbox.h>
+#include <qcombobox.h>
+#include <qlabel.h>
+#include <qlayout.h>
+#include <qlineedit.h>
+#include <qradiobutton.h>
 
 #include <Plugin.h>
 
@@ -71,19 +71,12 @@
 //    Brad Whitlock, Fri Mar 7 10:02:36 PDT 2008
 //    Changed layout.
 //
-//    Cyrus Harrison, Thu May 15 16:00:46 PDT 200
-//    First pass at porting to Qt 4.4.0
-//
-//    Cyrus Harrison, Fri Sep 19 13:58:39 PDT 2008
-//    Added support for custom libs for gui,engine,mdserver, and viewer libs
-//
 // ****************************************************************************
 
-XMLEditMakefile::XMLEditMakefile(QWidget *p)
-    : QFrame(p)
+XMLEditMakefile::XMLEditMakefile(QWidget *p, const QString &n)
+    : QFrame(p, n)
 {
-    QGridLayout *topLayout = new QGridLayout(this);
-    
+    QGridLayout *topLayout = new QGridLayout(this, 11,2, 5);
     int row = 0;
 
     topLayout->addWidget(new QLabel(tr("CXXFLAGS"), this), row, 0);
@@ -107,12 +100,6 @@ XMLEditMakefile::XMLEditMakefile(QWidget *p)
     topLayout->addWidget(GFiles, row, 1);
     row++;
 
-    customGLibs = new QCheckBox(tr("GUI Libs"), this);
-    GLibs = new QLineEdit(this);
-    topLayout->addWidget(customGLibs, row, 0);
-    topLayout->addWidget(GLibs, row, 1);
-    row++;
-    
     customWFiles = new QCheckBox(tr("GUI Widget Files"), this);
     WFiles = new QLineEdit(this);
     topLayout->addWidget(customWFiles, row, 0);
@@ -130,12 +117,6 @@ XMLEditMakefile::XMLEditMakefile(QWidget *p)
     topLayout->addWidget(customVFiles, row, 0);
     topLayout->addWidget(VFiles, row,1);
     row++;
-    
-    customVLibs = new QCheckBox(tr("Viewer Libs"), this);
-    VLibs = new QLineEdit(this);
-    topLayout->addWidget(customVLibs, row, 0);
-    topLayout->addWidget(VLibs, row, 1);
-    row++;
 
     customVWFiles = new QCheckBox(tr("Viewer Widget Files"), this);
     VWFiles = new QLineEdit(this);
@@ -149,32 +130,20 @@ XMLEditMakefile::XMLEditMakefile(QWidget *p)
     topLayout->addWidget(MFiles, row,1);
     row++;
 
-    customMLibs = new QCheckBox(tr("MDServer Libs"), this);
-    MLibs = new QLineEdit(this);
-    topLayout->addWidget(customMLibs, row, 0);
-    topLayout->addWidget(MLibs, row, 1);
-    row++;
-    
     customEFiles = new QCheckBox(tr("Engine Files"), this);
     EFiles = new QLineEdit(this);
     topLayout->addWidget(customEFiles, row, 0);
     topLayout->addWidget(EFiles, row,1);
     row++;
-    
-    customELibs = new QCheckBox(tr("Engine Libs"), this);
-    ELibs = new QLineEdit(this);
-    topLayout->addWidget(customELibs, row, 0);
-    topLayout->addWidget(ELibs, row, 1);
-    row++;
 
     engSpecificCode = new QCheckBox(tr("Plugin has code specific to the Engine"),
                                     this);
-    topLayout->addWidget(engSpecificCode, row,0, 1,2);
+    topLayout->addMultiCellWidget(engSpecificCode, row,row, 0,1);
     row++;
 
     mdSpecificCode = new QCheckBox(tr("Plugin has code specific to the MDServer "
                                    "(Database Plugins only)"), this);
-    topLayout->addWidget(mdSpecificCode, row,0, 1,2);
+    topLayout->addMultiCellWidget(mdSpecificCode, row,row, 0,1);
     row++;
 
     topLayout->setRowStretch(row, 100);
@@ -188,44 +157,28 @@ XMLEditMakefile::XMLEditMakefile(QWidget *p)
             this, SLOT(libsTextChanged(const QString&)));
     connect(GFiles, SIGNAL(textChanged(const QString&)),
             this, SLOT(gfilesTextChanged(const QString&)));
-    connect(GLibs, SIGNAL(textChanged(const QString&)),
-            this, SLOT(glibsTextChanged(const QString&)));
     connect(SFiles, SIGNAL(textChanged(const QString&)),
             this, SLOT(sfilesTextChanged(const QString&)));
     connect(VFiles, SIGNAL(textChanged(const QString&)),
             this, SLOT(vfilesTextChanged(const QString&)));
-    connect(VLibs, SIGNAL(textChanged(const QString&)),
-            this, SLOT(vlibsTextChanged(const QString&)));
     connect(MFiles, SIGNAL(textChanged(const QString&)),
             this, SLOT(mfilesTextChanged(const QString&)));
-    connect(MLibs, SIGNAL(textChanged(const QString&)),
-            this, SLOT(mlibsTextChanged(const QString&)));
     connect(EFiles, SIGNAL(textChanged(const QString&)),
             this, SLOT(efilesTextChanged(const QString&)));
-    connect(ELibs, SIGNAL(textChanged(const QString&)),
-            this, SLOT(elibsTextChanged(const QString&)));
     connect(WFiles, SIGNAL(textChanged(const QString&)),
             this, SLOT(wfilesTextChanged(const QString&)));
     connect(VWFiles, SIGNAL(textChanged(const QString&)),
             this, SLOT(vwfilesTextChanged(const QString&)));
     connect(customGFiles, SIGNAL(clicked()),
             this, SLOT(customgfilesChanged()));
-    connect(customGLibs, SIGNAL(clicked()),
-            this, SLOT(customglibsChanged()));
     connect(customSFiles, SIGNAL(clicked()),
             this, SLOT(customsfilesChanged()));
     connect(customVFiles, SIGNAL(clicked()),
             this, SLOT(customvfilesChanged()));
-    connect(customVLibs, SIGNAL(clicked()),
-            this, SLOT(customvlibsChanged()));
     connect(customMFiles, SIGNAL(clicked()),
             this, SLOT(custommfilesChanged()));
-    connect(customMLibs, SIGNAL(clicked()),
-            this, SLOT(custommlibsChanged()));
     connect(customEFiles, SIGNAL(clicked()),
             this, SLOT(customefilesChanged()));
-    connect(customELibs, SIGNAL(clicked()),
-            this, SLOT(customelibsChanged()));                            
     connect(customWFiles, SIGNAL(clicked()),
             this, SLOT(customwfilesChanged()));
     connect(customVWFiles, SIGNAL(clicked()),
@@ -234,7 +187,6 @@ XMLEditMakefile::XMLEditMakefile(QWidget *p)
             this, SLOT(mdSpecificCodeChanged()));
     connect(engSpecificCode, SIGNAL(clicked()),
             this, SLOT(engSpecificCodeChanged()));
-    
 }
 
 // ****************************************************************************
@@ -259,9 +211,6 @@ XMLEditMakefile::XMLEditMakefile(QWidget *p)
 //    Cyrus Harrison, Wed Mar  7 09:07:37 PST 2007
 //    Allow for engine-specific code in a plugin's source files.
 //
-//    Cyrus Harrison, Fri Sep 19 13:58:39 PDT 2008
-//    Added support for custom libs for gui,engine,mdserver, and viewer libs.
-//
 // ****************************************************************************
 void
 XMLEditMakefile::UpdateWindowContents()
@@ -274,67 +223,47 @@ XMLEditMakefile::UpdateWindowContents()
         CXXFLAGS->setText(JoinValues(p->cxxflags, ' '));
         LDFLAGS->setText(JoinValues(p->ldflags, ' '));
         LIBS->setText(JoinValues(p->libs, ' '));
-        // gui
         if (p->customgfiles)
             GFiles->setText(JoinValues(p->gfiles, ' '));
         else
             GFiles->setText(JoinValues(p->defaultgfiles, ' '));
         customGFiles->setChecked(p->customgfiles);
-        // scripting
-        if (p->customglibs)
-            GLibs->setText(JoinValues(p->glibs, ' '));
-        customGLibs->setChecked(p->customglibs);
         if (p->customsfiles)
             SFiles->setText(JoinValues(p->sfiles, ' '));
         else
             SFiles->setText(JoinValues(p->defaultsfiles, ' '));
         customSFiles->setChecked(p->customsfiles);
-        // viewer
         if (p->customvfiles)
             VFiles->setText(JoinValues(p->vfiles, ' '));
         else
             VFiles->setText(JoinValues(p->defaultvfiles, ' '));
         customVFiles->setChecked(p->customvfiles);
-        if (p->customvlibs)
-            VLibs->setText(JoinValues(p->vlibs, ' '));
-        customVLibs->setChecked(p->customvlibs);
-        // mdserver
         if (p->custommfiles)
             MFiles->setText(JoinValues(p->mfiles, ' '));
         else
             MFiles->setText(JoinValues(p->defaultmfiles, ' '));
         customMFiles->setChecked(p->custommfiles);
-        if (p->custommlibs)
-            MLibs->setText(JoinValues(p->mlibs, ' '));
-        customMLibs->setChecked(p->custommlibs);
-        // engine
         if (p->customefiles)
             EFiles->setText(JoinValues(p->efiles, ' '));
         else
             EFiles->setText(JoinValues(p->defaultefiles, ' '));
         customEFiles->setChecked(p->customefiles);
-        if (p->customelibs)
-            ELibs->setText(JoinValues(p->elibs, ' '));
-        customELibs->setChecked(p->customelibs);
-        // widgets
         if (p->customwfiles)
             WFiles->setText(JoinValues(p->wfiles, ' '));
         else
             WFiles->setText(JoinValues(p->defaultwfiles, ' '));
         customWFiles->setChecked(p->customwfiles);
-        // viewer widgets
         if (p->customvwfiles)
             VWFiles->setText(JoinValues(p->vwfiles, ' '));
         else
             VWFiles->setText("");
         customVWFiles->setChecked(p->customvwfiles);
-        // engine spec code
-        engSpecificCode->setChecked(p->hasEngineSpecificCode);
-        // only allow mdserver-specific code if this is a database plugin
-        if(xmldoc->plugin->type !="database")
-            p->has_MDS_specific_code=false;
+       engSpecificCode->setChecked(p->hasEngineSpecificCode);
+       // only allow mdserver-specific code if this is a database plugin
+       if(xmldoc->plugin->type !="database")
+           p->has_MDS_specific_code=false;
 
-        mdSpecificCode->setChecked(p->has_MDS_specific_code);
+       mdSpecificCode->setChecked(p->has_MDS_specific_code);
     }
     else
     {
@@ -369,9 +298,6 @@ XMLEditMakefile::UpdateWindowContents()
 //    Cyrus Harrison, Wed Mar  7 09:07:37 PST 2007
 //    Allow for engine-specific code in a plugin's source files.
 //
-//    Cyrus Harrison, Fri Sep 19 13:58:39 PDT 2008
-//    Added support for custom libs for gui,engine,mdserver, and viewer libs.
-//
 // ****************************************************************************
 void
 XMLEditMakefile::UpdateWindowSensitivity()
@@ -383,22 +309,14 @@ XMLEditMakefile::UpdateWindowSensitivity()
     LIBS->setEnabled(plugin);
     GFiles->setEnabled(plugin && xmldoc->plugin->customgfiles);
     customGFiles->setEnabled(plugin);
-    GLibs->setEnabled(plugin && xmldoc->plugin->customglibs);
-    customGLibs->setEnabled(plugin);
     SFiles->setEnabled(plugin && xmldoc->plugin->customsfiles);
     customSFiles->setEnabled(plugin);
     VFiles->setEnabled(plugin && xmldoc->plugin->customvfiles);
     customVFiles->setEnabled(plugin);
-    VLibs->setEnabled(plugin && xmldoc->plugin->customvlibs);
-    customVLibs->setEnabled(plugin);
     MFiles->setEnabled(plugin && xmldoc->plugin->custommfiles);
     customMFiles->setEnabled(plugin);
-    MLibs->setEnabled(plugin && xmldoc->plugin->custommlibs);
-    customMLibs->setEnabled(plugin);
     EFiles->setEnabled(plugin && xmldoc->plugin->customefiles);
     customEFiles->setEnabled(plugin);
-    ELibs->setEnabled(plugin && xmldoc->plugin->customelibs);
-    customELibs->setEnabled(plugin);
     WFiles->setEnabled(plugin && xmldoc->plugin->customwfiles);
     customWFiles->setEnabled(plugin);
     VWFiles->setEnabled(plugin && xmldoc->plugin->customvwfiles);
@@ -434,9 +352,6 @@ XMLEditMakefile::UpdateWindowSensitivity()
 //    Cyrus Harrison, Wed Mar  7 09:07:37 PST 2007
 //    Allow for engine-specific code in a plugin's source files.
 //
-//    Cyrus Harrison, Fri Sep 19 13:58:39 PDT 2008
-//    Added support for custom libs for gui,engine,mdserver, and viewer libs.
-//
 // ****************************************************************************
 void
 XMLEditMakefile::BlockAllSignals(bool block)
@@ -446,22 +361,14 @@ XMLEditMakefile::BlockAllSignals(bool block)
     LIBS->blockSignals(block);
     GFiles->blockSignals(block);
     customGFiles->blockSignals(block);
-    GLibs->blockSignals(block);
-    customGLibs->blockSignals(block);
     SFiles->blockSignals(block);
     customSFiles->blockSignals(block);
     VFiles->blockSignals(block);
-    VLibs->blockSignals(block);
-    customVLibs->blockSignals(block);
     customVFiles->blockSignals(block);
     MFiles->blockSignals(block);
     customMFiles->blockSignals(block);
-    MLibs->blockSignals(block);
-    customMLibs->blockSignals(block);
     EFiles->blockSignals(block);
     customEFiles->blockSignals(block);
-    ELibs->blockSignals(block);
-    customELibs->blockSignals(block);
     WFiles->blockSignals(block);
     customWFiles->blockSignals(block);
     VWFiles->blockSignals(block);
@@ -528,20 +435,6 @@ XMLEditMakefile::gfilesTextChanged(const QString &text)
 }
 
 // ****************************************************************************
-//  Method:  XMLEditMakefile::glibsTextChanged
-//
-//  Programmer:  Cyrus Harrison
-//  Creation:    September 19, 2008
-//
-// ****************************************************************************
-void
-XMLEditMakefile::glibsTextChanged(const QString &text)
-{
-    xmldoc->plugin->glibs = SplitValues(text);
-}
-
-
-// ****************************************************************************
 //  Method:  XMLEditMakefile::sfilesTextChanged
 //
 //  Programmer:  Jeremy Meredith
@@ -568,19 +461,6 @@ XMLEditMakefile::vfilesTextChanged(const QString &text)
 }
 
 // ****************************************************************************
-//  Method:  XMLEditMakefile::vlibsTextChanged
-//
-//  Programmer:  Cyrus Harrison
-//  Creation:    September 19, 2008
-//
-// ****************************************************************************
-void
-XMLEditMakefile::vlibsTextChanged(const QString &text)
-{
-    xmldoc->plugin->vlibs = SplitValues(text);
-}
-
-// ****************************************************************************
 //  Method:  XMLEditMakefile::mfilesTextChanged
 //
 //  Programmer:  Jeremy Meredith
@@ -594,19 +474,6 @@ XMLEditMakefile::mfilesTextChanged(const QString &text)
 }
 
 // ****************************************************************************
-//  Method:  XMLEditMakefile::mlibsTextChanged
-//
-//  Programmer:  Cyrus Harrison
-//  Creation:    September 19, 2008
-//
-// ****************************************************************************
-void
-XMLEditMakefile::mlibsTextChanged(const QString &text)
-{
-    xmldoc->plugin->mlibs = SplitValues(text);
-}
-
-// ****************************************************************************
 //  Method:  XMLEditMakefile::efilesTextChanged
 //
 //  Programmer:  Jeremy Meredith
@@ -617,19 +484,6 @@ void
 XMLEditMakefile::efilesTextChanged(const QString &text)
 {
     xmldoc->plugin->efiles = SplitValues(text);
-}
-
-// ****************************************************************************
-//  Method:  XMLEditMakefile::elibsTextChanged
-//
-//  Programmer:  Cyrus Harrison
-//  Creation:    September 19, 2008
-//
-// ****************************************************************************
-void
-XMLEditMakefile::elibsTextChanged(const QString &text)
-{
-    xmldoc->plugin->elibs = SplitValues(text);
 }
 
 // ****************************************************************************
@@ -673,21 +527,6 @@ XMLEditMakefile::customgfilesChanged()
 }
 
 // ****************************************************************************
-//  Method:  XMLEditMakefile::customglibsChanged
-//
-//  Programmer:  Cyrus Harrison
-//  Creation:    September 19, 2008
-//
-// ****************************************************************************
-void
-XMLEditMakefile::customglibsChanged()
-{
-    xmldoc->plugin->customglibs = customGLibs->isChecked();
-    UpdateWindowContents();
-}
-
-
-// ****************************************************************************
 //  Method:  XMLEditMakefile::customsfilesChanged
 //
 //  Programmer:  Jeremy Meredith
@@ -716,20 +555,6 @@ XMLEditMakefile::customvfilesChanged()
 }
 
 // ****************************************************************************
-//  Method:  XMLEditMakefile::customvlibsChanged
-//
-//  Programmer:  Cyrus Harrison
-//  Creation:    September 19, 2008
-//
-// ****************************************************************************
-void
-XMLEditMakefile::customvlibsChanged()
-{
-    xmldoc->plugin->customvlibs = customVLibs->isChecked();
-    UpdateWindowContents();
-}
-
-// ****************************************************************************
 //  Method:  XMLEditMakefile::custommfilesChanged
 //
 //  Programmer:  Jeremy Meredith
@@ -744,20 +569,6 @@ XMLEditMakefile::custommfilesChanged()
 }
 
 // ****************************************************************************
-//  Method:  XMLEditMakefile::custommlibsChanged
-//
-//  Programmer:  Cyrus Harrison
-//  Creation:    September 19, 2008
-//
-// ****************************************************************************
-void
-XMLEditMakefile::custommlibsChanged()
-{
-    xmldoc->plugin->custommlibs = customMLibs->isChecked();
-    UpdateWindowContents();
-}
-
-// ****************************************************************************
 //  Method:  XMLEditMakefile::customefilesChanged
 //
 //  Programmer:  Jeremy Meredith
@@ -768,20 +579,6 @@ void
 XMLEditMakefile::customefilesChanged()
 {
     xmldoc->plugin->customefiles = customEFiles->isChecked();
-    UpdateWindowContents();
-}
-
-// ****************************************************************************
-//  Method:  XMLEditMakefile::customelibsChanged
-//
-//  Programmer:  Cyrus Harrison
-//  Creation:    September 19, 2008
-//
-// ****************************************************************************
-void
-XMLEditMakefile::customelibsChanged()
-{
-    xmldoc->plugin->customelibs = customELibs->isChecked();
     UpdateWindowContents();
 }
 

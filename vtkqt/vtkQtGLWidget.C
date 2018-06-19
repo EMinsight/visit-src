@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -35,7 +35,6 @@
 * DAMAGE.
 *
 *****************************************************************************/
-#include <QtCore>
 
 #include <vtkQtGLWidget.h>
 #include <vtkQtRenderWindow.h>
@@ -49,17 +48,17 @@
 //
 // Arguments:
 //   parent : The parent vtkQtRenderWindow widget.
+//   name   : The name of this widget.
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Jan 27 17:32:28 PST 2003
 //
 // Modifications:
-//   Brad Whitlock, Thu May  8 16:21:37 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
-vtkQtGLWidget::vtkQtGLWidget(QWidget *parent) : QGLWidget(parent)
+vtkQtGLWidget::vtkQtGLWidget(QWidget *parent, const char *name) :
+    QGLWidget(parent, name)
 {
     lineSmoothing = false;
     interactor = 0;

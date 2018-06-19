@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -41,15 +41,15 @@
 #include <IsosurfaceAttributes.h>
 #include <ViewerProxy.h>
 
-#include <QCheckBox>
-#include <QComboBox>
-#include <QLabel>
-#include <QLayout>
-#include <QLineEdit>
-#include <QSpinBox>
-#include <QWidget>
-#include <QButtonGroup>
-#include <QRadioButton>
+#include <qcheckbox.h>
+#include <qcombobox.h>
+#include <qlabel.h>
+#include <qlayout.h>
+#include <qlineedit.h>
+#include <qspinbox.h>
+#include <qvbox.h>
+#include <qbuttongroup.h>
+#include <qradiobutton.h>
 #include <QvisColorTableButton.h>
 #include <QvisOpacitySlider.h>
 #include <QvisColorButton.h>
@@ -96,9 +96,7 @@ QvisIsosurfaceWindow::QvisIsosurfaceWindow(const int type,
 // Creation:   Tue Apr 16 17:41:29 PST 2002
 //
 // Modifications:
-//   Cyrus Harrison, Tue Aug 19 09:38:07 PDT 2008
-//   Qt4 Port.
-//
+//   
 // ****************************************************************************
 
 QvisIsosurfaceWindow::~QvisIsosurfaceWindow()
@@ -125,9 +123,6 @@ QvisIsosurfaceWindow::~QvisIsosurfaceWindow()
 //   Brad Whitlock, Fri Apr 25 09:05:45 PDT 2008
 //   Added tr()'s
 //
-//   Cyrus Harrison, Tue Aug 19 09:38:07 PDT 2008
-//   Qt4 Port.
-//
 //   Dave Pugmire, Thu Oct 30 08:40:26 EDT 2008
 //   Swapped the min/max fields.
 //
@@ -137,87 +132,92 @@ void
 QvisIsosurfaceWindow::CreateWindowContents()
 {
     topLayout->addSpacing(5);
-    QGridLayout *limitsLayout = new QGridLayout();
-    topLayout->addLayout(limitsLayout);
+    QGridLayout *limitsLayout = new QGridLayout(topLayout, 4, 3);
     limitsLayout->setSpacing(10);
 
     // Add the select by combo box.
-    selectByComboBox = new QComboBox(central);
-    selectByComboBox->addItem(tr("N levels"));
-    selectByComboBox->addItem(tr("Value(s)"));
-    selectByComboBox->addItem(tr("Percent(s)"));
+    selectByComboBox = new QComboBox(false, central, "selectByComboBox");
+    selectByComboBox->insertItem(tr("N levels"));
+    selectByComboBox->insertItem(tr("Value(s)"));
+    selectByComboBox->insertItem(tr("Percent(s)"));
     connect(selectByComboBox, SIGNAL(activated(int)),
            this, SLOT(selectByChanged(int)));
-    QLabel *selectByLabel = new QLabel(tr("Select by"),central);
+    QLabel *selectByLabel = new QLabel(selectByComboBox, tr("Select by"),
+                                       central, "selectByLabel");
     limitsLayout->addWidget(selectByLabel, 0, 0);
     limitsLayout->addWidget(selectByComboBox, 0, 1);
  
     // Add the select by text field.
-    selectByLineEdit = new QLineEdit(central);
+    selectByLineEdit = new QLineEdit(central, "selectByLineEdit");
     connect(selectByLineEdit, SIGNAL(returnPressed()),
            this, SLOT(processSelectByText()));
     limitsLayout->addWidget(selectByLineEdit, 0, 2);
  
-    //
+   //
     // Create the Limits stuff
     //
-    QLabel *limitsLabel = new QLabel(tr("Limits"), central);
+    QLabel *limitsLabel = new QLabel(tr("Limits"), central, "limitsLabel");
     limitsLayout->addWidget(limitsLabel, 1, 0);
 
     // Create the max toggle and line edit
-    maxToggle = new QCheckBox(tr("Maximum"), central);
+    maxToggle = new QCheckBox(tr("Max"), central, "maxToggle");
     limitsLayout->addWidget(maxToggle, 1, 1);
     connect(maxToggle, SIGNAL(toggled(bool)),
             this, SLOT(maxToggled(bool)));
-    maxLineEdit = new QLineEdit(central);
+    maxLineEdit = new QLineEdit(central, "maxLineEdit");
     connect(maxLineEdit, SIGNAL(returnPressed()),
             this, SLOT(processMaxLimitText()));
     limitsLayout->addWidget(maxLineEdit, 1, 2);
 
     // Create the min toggle and line edit
-    minToggle = new QCheckBox(tr("Minimum"), central);
+    minToggle = new QCheckBox(tr("Min"), central, "minToggle");
     limitsLayout->addWidget(minToggle, 2, 1);
     connect(minToggle, SIGNAL(toggled(bool)),
             this, SLOT(minToggled(bool)));
-    minLineEdit = new QLineEdit(central);
+    minLineEdit = new QLineEdit(central, "minLineEdit");
     connect(minLineEdit, SIGNAL(returnPressed()),
             this, SLOT(processMinLimitText()));
     limitsLayout->addWidget(minLineEdit, 2, 2);
  
-    limitsLayout->addWidget(new QLabel(tr("Variable"), central),3,0);
+    //
+    // Create the variable stuff
+    //
+    QLabel *variableLabel = new QLabel(tr("Variable"), central, "variableLabel");
+    limitsLayout->addWidget(variableLabel,3,0);
+
     variable = new QvisVariableButton(true, true, true, 
-                                      QvisVariableButton::Scalars, central);
+        QvisVariableButton::Scalars, central, "variable");
     connect(variable, SIGNAL(activated(const QString &)),
             this, SLOT(variableChanged(const QString &)));
-    limitsLayout->addWidget(variable, 3, 1, 1, 2);
-    
+    limitsLayout->addMultiCellWidget(variable, 3, 3, 1, 2);
+
     //
     // Create the scale radio buttons
     //
-    
-    scalingButtons = new QButtonGroup(central);
-    QHBoxLayout *scaleButtonsLayout = new QHBoxLayout();
-    topLayout->addLayout(scaleButtonsLayout);
-    
-    QLabel *scaleLabel = new QLabel(tr("Scale"), central);
-    scaleButtonsLayout->addWidget(scaleLabel);
+    QHBoxLayout *scaleLayout = new QHBoxLayout(topLayout);
+ 
+    // Create a group of radio buttons
+    scalingButtons = new QButtonGroup( central, "scaleRadioGroup" );
+    scalingButtons->setFrameStyle(QFrame::NoFrame);
+    QLabel *scaleLabel = new QLabel(scalingButtons, tr("Scale"), central,
+        "scaleLabel");
+    scaleLayout->addWidget(scaleLabel);
+ 
+    QHBoxLayout *scaleButtonsLayout = new QHBoxLayout(scalingButtons);
     scaleButtonsLayout->setSpacing(10);
-    
-    QRadioButton *rb = new QRadioButton(tr("Linear"), central);
-    scalingButtons->addButton(rb,0);
+    QRadioButton *rb = new QRadioButton(tr("Linear"), scalingButtons );
+    rb->setChecked( TRUE );
     scaleButtonsLayout->addWidget(rb);
-    
-    rb = new QRadioButton(tr("Log"),central);
-    scalingButtons->addButton(rb,1);
+    rb = new QRadioButton( scalingButtons );
+    rb->setText( tr("Log") );
     scaleButtonsLayout->addWidget(rb);
-    scaleButtonsLayout->addStretch(5);
-    
-    scalingButtons->button(0)->setChecked(true);
-    
+    scaleLayout->addWidget( scalingButtons );
+    scaleLayout->addStretch(0);
     // Each time a radio button is clicked, call the scaleClicked slot.
-    connect(scalingButtons, SIGNAL(buttonClicked(int)),
+    connect(scalingButtons, SIGNAL(clicked(int)),
             this, SLOT(scaleClicked(int)));
-}
+ 
+ }
 
 
 // ****************************************************************************
@@ -238,9 +238,6 @@ QvisIsosurfaceWindow::CreateWindowContents()
 //   Replaced simple QString::sprintf's with a setNum because there seems
 //   to be a bug causing numbers to be incremented by .00001.  See '5263.
 //
-//   Cyrus Harrison, Tue Aug 19 09:38:07 PDT 2008
-//   Qt4 Port.
-//
 // ****************************************************************************
 
 void
@@ -260,23 +257,27 @@ QvisIsosurfaceWindow::UpdateWindow(bool doAll)
 
         switch(i)
         {
-          case IsosurfaceAttributes::ID_contourNLevels: 
-            if(atts->GetContourMethod() == IsosurfaceAttributes::Level)
+          case 0: //contourNLevels
+            if(atts->GetContourMethod() 
+               == IsosurfaceAttributes::Level)
                 UpdateSelectByText();
             break;
-          case IsosurfaceAttributes::ID_contourValue: 
-            if(atts->GetContourMethod() == IsosurfaceAttributes::Value)
+          case 1: //contourValue
+            if(atts->GetContourMethod()
+               == IsosurfaceAttributes::Value)
                 UpdateSelectByText();
             break;
-          case IsosurfaceAttributes::ID_contourPercent:
-            if(atts->GetContourMethod() == IsosurfaceAttributes::Percent)
+          case 2: //contourPercent
+            if(atts->GetContourMethod()
+               == IsosurfaceAttributes::Percent)
                 UpdateSelectByText();
             break;
-          case IsosurfaceAttributes::ID_contourMethod:
+          case 3: //contourMethod
             selectByComboBox->blockSignals(true);
-            selectByComboBox->setCurrentIndex(atts->GetContourMethod());
+            selectByComboBox->setCurrentItem(atts->GetContourMethod());
             selectByComboBox->blockSignals(false);
-            if (atts->GetContourMethod() == IsosurfaceAttributes::Value)
+            if (atts->GetContourMethod() == 
+                IsosurfaceAttributes::Value)
             {
                 minToggle->setEnabled(false);
                 maxToggle->setEnabled(false);
@@ -292,31 +293,32 @@ QvisIsosurfaceWindow::UpdateWindow(bool doAll)
             }
             UpdateSelectByText();
             break;
-          case IsosurfaceAttributes::ID_minFlag:
+          case 4: //minFlag
             minToggle->blockSignals(true);
             minToggle->setChecked(atts->GetMinFlag());
             minLineEdit->setEnabled(atts->GetMinFlag());
             minToggle->blockSignals(false);
             break;
-          case IsosurfaceAttributes::ID_min:
-            minLineEdit->setText(DoubleToQString(atts->GetMin()));
+          case 5: //min
+            temp.setNum(atts->GetMin());
+            minLineEdit->setText(temp);
             break;
-          case IsosurfaceAttributes::ID_maxFlag:
+          case 6: //maxFlag
             maxToggle->blockSignals(true);
             maxToggle->setChecked(atts->GetMaxFlag());
             maxLineEdit->setEnabled(atts->GetMaxFlag());
             maxToggle->blockSignals(false);
             break;
-          case IsosurfaceAttributes::ID_max: 
-            maxLineEdit->setText(DoubleToQString(atts->GetMax()));
+          case 7: //max
+            temp.setNum(atts->GetMax());
+            maxLineEdit->setText(temp);
             break;
-          case IsosurfaceAttributes::ID_scaling: 
-            scalingButtons->button(atts->GetScaling())->setChecked(true);
+          case 8: //scaling
+            scalingButtons->setButton(atts->GetScaling());
             break;
-          case IsosurfaceAttributes::ID_variable:
-            variable->blockSignals(true);
-            variable->setText(QString(atts->GetVariable().c_str()));
-            variable->blockSignals(false);
+          case 9: //variable
+            temp = atts->GetVariable().c_str();
+            variable->setText(temp);
             break;
         }
     }
@@ -334,25 +336,39 @@ QvisIsosurfaceWindow::UpdateWindow(bool doAll)
 // Creation:   Sat Feb 17 12:18:33 PDT 2001
 //
 // Modifications:
-//   Cyrus Harrison, Tue Aug 19 09:38:07 PDT 2008
-//   Qt4 Port.
 //
 // ****************************************************************************
  
 void
 QvisIsosurfaceWindow::UpdateSelectByText()
 {
-     if(atts->GetContourMethod() == IsosurfaceAttributes::Level)
+    QString temp, temp2;
+    int     i;
+ 
+    if(atts->GetContourMethod() == IsosurfaceAttributes::Level)
     {
-        selectByLineEdit->setText(IntToQString(atts->GetContourNLevels()));
+        temp.sprintf("%d", atts->GetContourNLevels());
+        selectByLineEdit->setText(temp);
     }
-    else if(atts->GetContourMethod() == IsosurfaceAttributes::Value)
+    else if(atts->GetContourMethod() 
+            == IsosurfaceAttributes::Value)
     {
-        selectByLineEdit->setText(DoublesToQString(atts->GetContourValue()));
+        for(i = 0; i < atts->GetContourValue().size(); ++i)
+        {
+            temp2.sprintf("%g ", atts->GetContourValue()[i]);
+            temp += temp2;
+        }
+        selectByLineEdit->setText(temp);
     }
-    else if(atts->GetContourMethod() == IsosurfaceAttributes::Percent)
+    else if(atts->GetContourMethod()
+            == IsosurfaceAttributes::Percent)
     {
-        selectByLineEdit->setText(DoublesToQString(atts->GetContourPercent()));
+        for(i = 0; i < atts->GetContourPercent().size(); ++i)
+        {
+            temp2.sprintf("%g ", atts->GetContourPercent()[i]);
+            temp += temp2;
+        }
+        selectByLineEdit->setText(temp);
     }
 }
 
@@ -370,9 +386,6 @@ QvisIsosurfaceWindow::UpdateSelectByText()
 //   Brad Whitlock, Thu Feb 14 15:20:33 PST 2002
 //   Added a code to prevent more than MAX_CONTOURS contours.
 //
-//   Cyrus Harrison, Tue Aug 19 09:38:07 PDT 2008
-//   Qt4 Port.
-//
 // ****************************************************************************
  
 void
@@ -380,12 +393,12 @@ QvisIsosurfaceWindow::ProcessSelectByText()
 {
     doubleVector temp;
  
-    // Try converting the line edit to a double vector
-    LineEditGetDoubles(selectByLineEdit, temp);
-    
     if(atts->GetContourMethod() == IsosurfaceAttributes::Level)
     {
-        // take the first element as the number of levels.
+        // Try converting the line edit to a double vector so we can take
+        // the first element as the number of levels.
+        StringToDoubleList(selectByLineEdit->displayText().latin1(), temp);
+ 
         // If there were elements in the list use the first one, else use 10.
         int nlevels = (temp.size() > 0) ? int(temp[0]) : 10;
  
@@ -400,12 +413,16 @@ QvisIsosurfaceWindow::ProcessSelectByText()
     }
     else if(atts->GetContourMethod() == IsosurfaceAttributes::Value)
     {
-        // store values in contour's value vector.
+        // Convert the text fo a list of doubles and store them in the
+        // contour's value vector.
+        StringToDoubleList(selectByLineEdit->displayText().latin1(), temp);
         atts->SetContourValue(temp);
     }
     else if(atts->GetContourMethod() == IsosurfaceAttributes::Percent)
     {
-        // store values contour's percent vector.
+        // Convert the text to a list of doubles and store them in the
+        // contour's percent vector.
+        StringToDoubleList(selectByLineEdit->displayText().latin1(), temp);
         atts->SetContourPercent(temp);
     }
 }
@@ -424,44 +441,58 @@ QvisIsosurfaceWindow::ProcessSelectByText()
 //   I removed the coding to get the variable since it's now in a widget that
 //   does not need that.
 //
-//   Cyrus Harrison, Tue Aug 19 09:38:07 PDT 2008
-//   Qt4 Port.
-//
 // ****************************************************************************
 
 void
 QvisIsosurfaceWindow::GetCurrentValues(int which_widget)
 {
-    bool okay, doAll = (which_widget == -1);
+   bool okay, doAll = (which_widget == -1);
+    QString msg, temp;
  
     // Dp the steby line edit.
     if(which_widget == 0 || doAll)
         ProcessSelectByText();
  
     // Do the minimum value.
-    if(which_widget == IsosurfaceAttributes::ID_min || doAll)
-    {   
-        double val;
-        if(LineEditGetDouble(minLineEdit, val))
-            atts->SetMin(val);
-        else
+    if(which_widget == 1 || doAll)
+    {
+        temp = minLineEdit->displayText().stripWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("minimum value"),
-                DoubleToQString(atts->GetMin()));
+            double val = temp.toDouble(&okay);
+            if(okay)
+                atts->SetMin(val);
+        }
+ 
+        if(!okay)
+        {
+            msg = tr("The minimum value was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetMin());
+            Message(msg);
             atts->SetMin(atts->GetMin());
         }
     }
  
     // Do the maximum value
-    if(which_widget == IsosurfaceAttributes::ID_max || doAll)
+    if(which_widget == 2 || doAll)
     {
-        double val;
-        if(LineEditGetDouble(maxLineEdit, val))
-            atts->SetMax(val);
-        else
+        temp = maxLineEdit->displayText().stripWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("maximum value"),
-                DoubleToQString(atts->GetMax()));
+            double val = temp.toDouble(&okay);
+            if(okay)
+                atts->SetMax(val);
+        }
+ 
+        if(!okay)
+        {
+            msg = tr("The maximum value was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetMax());
+            Message(msg);
             atts->SetMax(atts->GetMax());
         }
     }
@@ -562,15 +593,13 @@ QvisIsosurfaceWindow::scaleClicked(int button)
 // Creation:   Sat Feb 17 10:11:38 PDT 2001
 //
 // Modifications:
-//   Cyrus Harrison, Tue Aug 19 09:38:07 PDT 2008
-//   Qt4 Port.
 //
 // ****************************************************************************
  
 void
 QvisIsosurfaceWindow::processMinLimitText()
 {
-    GetCurrentValues(IsosurfaceAttributes::ID_min);
+    GetCurrentValues(1);
     Apply();
 }
  
@@ -607,15 +636,13 @@ QvisIsosurfaceWindow::maxToggled(bool val)
 // Creation:   Sat Feb 17 10:11:38 PDT 2001
 //
 // Modifications:
-//   Cyrus Harrison, Tue Aug 19 09:38:07 PDT 2008
-//   Qt4 Port.
 //
 // ****************************************************************************
  
 void
 QvisIsosurfaceWindow::processMaxLimitText()
 {
-    GetCurrentValues(IsosurfaceAttributes::ID_max);
+    GetCurrentValues(2);
     Apply();
 }
 
@@ -633,15 +660,13 @@ QvisIsosurfaceWindow::processMaxLimitText()
 // Creation:   Thu Dec 9 17:48:30 PST 2004
 //
 // Modifications:
-//   Cyrus Harrison, Tue Aug 19 09:38:07 PDT 2008
-//   Qt4 Port.
-//
+//   
 // ****************************************************************************
 
 void
 QvisIsosurfaceWindow::variableChanged(const QString &var)
 {
-    atts->SetVariable(var.toStdString());
+    atts->SetVariable(var.latin1());
     SetUpdate(false);
     Apply();
 }

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -43,11 +43,14 @@
 #include <vtkDataSet.h>
 #include <vtkRenderer.h>
 #include <vtkRenderWindow.h>
+#include <vtkToolkits.h>
 
 #include <avtCallback.h>
 
 #include <avtOpenGLSpreadsheetTraceRenderer.h>
+#ifdef VTK_USE_MANGLED_MESA
 #include <avtMesaSpreadsheetTraceRenderer.h>
+#endif
 
 // ****************************************************************************
 // Method: avtSpreadsheetRenderer::avtSpreadsheetRenderer
@@ -207,6 +210,9 @@ avtSpreadsheetRenderer::SetForegroundColor(const double *fg)
 //   Support showing current cell outline. Calculate bounds from data set if
 //   "avtOriginalBounds" does not exist.
 //
+//   Brad Whitlock, Wed Jun 10 14:10:34 PST 2009
+//   I made Mesa suport be conditional.
+//
 // ****************************************************************************
 
 void
@@ -229,9 +235,11 @@ avtSpreadsheetRenderer::RenderTracePlane(vtkDataSet *ds)
     {
         if(rendererImplementation == 0)
         {
+#ifdef VTK_USE_MANGLED_MESA
             if(avtCallback::GetSoftwareRendering())
                 rendererImplementation = new avtMesaSpreadsheetTraceRenderer;
             else
+#endif
                 rendererImplementation = new avtOpenGLSpreadsheetTraceRenderer;
         }
          

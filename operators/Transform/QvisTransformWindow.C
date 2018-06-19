@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -41,16 +41,16 @@
 #include <TransformAttributes.h>
 #include <ViewerProxy.h>
 
-#include <QButtonGroup>
-#include <QCheckBox>
-#include <QGroupBox>
-#include <QLabel>
-#include <QLayout>
-#include <QLineEdit>
-#include <QRadioButton>
-#include <QTabWidget>
-#include <QWidget>
-
+#include <qcheckbox.h>
+#include <qlabel.h>
+#include <qlayout.h>
+#include <qlineedit.h>
+#include <qspinbox.h>
+#include <qvbox.h>
+#include <qbuttongroup.h>
+#include <qradiobutton.h>
+#include <qtabwidget.h>
+#include <qvgroupbox.h>
 #include <QvisColorTableButton.h>
 #include <QvisOpacitySlider.h>
 #include <QvisColorButton.h>
@@ -79,9 +79,6 @@ QvisTransformWindow::QvisTransformWindow(const int type,
     : QvisOperatorWindow(type, subj, caption, shortName, notepad)
 {
     atts = subj;
-
-    inputCoord = 0;
-    outputCoord = 0;
 }
 
 // ****************************************************************************
@@ -124,195 +121,186 @@ QvisTransformWindow::~QvisTransformWindow()
 //    Brad Whitlock, Thu Apr 24 15:50:49 PDT 2008
 //    Added tr()'s
 //
-//    Brad Whitlock, Wed Aug 13 20:51:47 PDT 2008
-//    Qt 4.
-//
 // ****************************************************************************
 
 void
 QvisTransformWindow::CreateWindowContents()
 {
-    transformTypeTabs = new QTabWidget(central);
+    transformTypeTabs = new QTabWidget(central, "transformTypeTabs");
     topLayout->addWidget(transformTypeTabs);
 
     // ----------------------------------------------------------------------
     // First page
     // ----------------------------------------------------------------------
-    firstPage = new QWidget(central);
+    firstPage = new QFrame(central, "firstPage");
     transformTypeTabs->addTab(firstPage, tr("Arbitrary"));
 
-    QGridLayout *mainLayout = new QGridLayout(firstPage);
+    QGridLayout *mainLayout = new QGridLayout(firstPage, 9,7, 10, 10, "mainLayout");
+    mainLayout->addColSpacing(0, 15);
 
     // ---------------
-    doRotate = new QCheckBox(tr("Rotate"), firstPage);
+    doRotate = new QCheckBox(tr("Rotate"), firstPage, "doRotate");
     connect(doRotate, SIGNAL(toggled(bool)),
             this, SLOT(doRotateChanged(bool)));
-    mainLayout->addWidget(doRotate, 0, 0, 1, 3);
+    mainLayout->addMultiCellWidget(doRotate, 0,0, 0,2);
 
-    rotateOriginLabel = new QLabel(tr("Origin"), firstPage);
+    rotateOriginLabel = new QLabel(tr("Origin"), firstPage, "rotateOriginLabel");
     mainLayout->addWidget(rotateOriginLabel,1,1, Qt::AlignRight);
-    rotateOrigin = new QLineEdit(firstPage);
+    rotateOrigin = new QLineEdit(firstPage, "rotateOrigin");
     connect(rotateOrigin, SIGNAL(returnPressed()),
             this, SLOT(rotateOriginProcessText()));
-    mainLayout->addWidget(rotateOrigin, 1, 2, 1, 5);
+    mainLayout->addMultiCellWidget(rotateOrigin, 1,1, 2,6);
 
-    rotateAxisLabel = new QLabel(tr("Axis"), firstPage);
+    rotateAxisLabel = new QLabel(tr("Axis"), firstPage, "rotateAxisLabel");
     mainLayout->addWidget(rotateAxisLabel,2,1, Qt::AlignRight);
-    rotateAxis = new QLineEdit(firstPage);
+    rotateAxis = new QLineEdit(firstPage, "rotateAxis");
     connect(rotateAxis, SIGNAL(returnPressed()),
             this, SLOT(rotateAxisProcessText()));
-    mainLayout->addWidget(rotateAxis, 2, 2, 1, 5);
+    mainLayout->addMultiCellWidget(rotateAxis, 2,2 ,2,6);
 
-    rotateAmountLabel = new QLabel(tr("Amount"), firstPage);
+    rotateAmountLabel = new QLabel(tr("Amount"), firstPage, "rotateAmountLabel");
     mainLayout->addWidget(rotateAmountLabel,3,1, Qt::AlignRight);
-    rotateAmount = new QNarrowLineEdit(firstPage);
+    rotateAmount = new QNarrowLineEdit(firstPage, "rotateAmount");
     connect(rotateAmount, SIGNAL(returnPressed()),
             this, SLOT(rotateAmountProcessText()));
-    mainLayout->addWidget(rotateAmount, 3, 2, 1, 2);
+    mainLayout->addMultiCellWidget(rotateAmount, 3,3, 2,3);
 
-    
-    rotateTypeWidget = new QWidget(firstPage);
-    rotateType = new QButtonGroup(rotateTypeWidget);
-    QHBoxLayout *rotateTypeLayout = new QHBoxLayout(rotateTypeWidget);
-    rotateTypeLayout->setMargin(0);
+    rotateType = new QButtonGroup(firstPage, "rotateType");
+    rotateType->setFrameStyle(QFrame::NoFrame);
+    QHBoxLayout *rotateTypeLayout = new QHBoxLayout(rotateType);
     rotateTypeLayout->setSpacing(10);
-    QRadioButton *rotateTypeAngleTypeDeg = new QRadioButton(tr("Deg"),rotateTypeWidget);
-    rotateType->addButton(rotateTypeAngleTypeDeg, 0);
+    QRadioButton *rotateTypeAngleTypeDeg = new QRadioButton(tr("Deg"), rotateType);
     rotateTypeLayout->addWidget(rotateTypeAngleTypeDeg);
-    QRadioButton *rotateTypeAngleTypeRad = new QRadioButton(tr("Rad"),rotateTypeWidget);
-    rotateType->addButton(rotateTypeAngleTypeRad, 1);
+    QRadioButton *rotateTypeAngleTypeRad = new QRadioButton(tr("Rad"), rotateType);
     rotateTypeLayout->addWidget(rotateTypeAngleTypeRad);
-    connect(rotateType, SIGNAL(buttonClicked(int)),
+    connect(rotateType, SIGNAL(clicked(int)),
             this, SLOT(rotateTypeChanged(int)));
-    mainLayout->addWidget(rotateTypeWidget, 3, 4, 1, 3);
+    mainLayout->addMultiCellWidget(rotateType, 3,3, 4,6);
 
     // ---------------
-    doScale = new QCheckBox(tr("Scale"), firstPage);
+    doScale = new QCheckBox(tr("Scale"), firstPage, "doScale");
     connect(doScale, SIGNAL(toggled(bool)),
             this, SLOT(doScaleChanged(bool)));
-    mainLayout->addWidget(doScale, 4, 0, 1, 3);
+    mainLayout->addMultiCellWidget(doScale, 4,4, 0,2);
 
-    scaleOriginLabel = new QLabel(tr("Origin"), firstPage);
+    scaleOriginLabel = new QLabel(tr("Origin"), firstPage, "scaleOriginLabel");
     mainLayout->addWidget(scaleOriginLabel,5,1, Qt::AlignRight);
-    scaleOrigin = new QLineEdit(firstPage);
+    scaleOrigin = new QLineEdit(firstPage, "scaleOrigin");
     connect(scaleOrigin, SIGNAL(returnPressed()),
             this, SLOT(scaleOriginProcessText()));
-    mainLayout->addWidget(scaleOrigin, 5, 2, 1, 5);
+    mainLayout->addMultiCellWidget(scaleOrigin, 5,5, 2,6);
 
-    scaleXLabel = new QLabel(tr("X"), firstPage);
+    scaleXLabel = new QLabel(tr("X"), firstPage, "scaleXLabel");
     mainLayout->addWidget(scaleXLabel,6,1, Qt::AlignRight);
-    scaleX = new QNarrowLineEdit(firstPage);
+    scaleX = new QNarrowLineEdit(firstPage, "scaleX");
     connect(scaleX, SIGNAL(returnPressed()),
             this, SLOT(scaleXProcessText()));
     mainLayout->addWidget(scaleX, 6,2);
 
-    scaleYLabel = new QLabel(tr("Y"), firstPage);
+    scaleYLabel = new QLabel(tr("Y"), firstPage, "scaleYLabel");
     mainLayout->addWidget(scaleYLabel,6,3, Qt::AlignRight);
-    scaleY = new QNarrowLineEdit(firstPage);
+    scaleY = new QNarrowLineEdit(firstPage, "scaleY");
     connect(scaleY, SIGNAL(returnPressed()),
             this, SLOT(scaleYProcessText()));
     mainLayout->addWidget(scaleY, 6,4);
 
-    scaleZLabel = new QLabel(tr("Z"), firstPage);
+    scaleZLabel = new QLabel(tr("Z"), firstPage, "scaleZLabel");
     mainLayout->addWidget(scaleZLabel,6,5, Qt::AlignRight);
-    scaleZ = new QNarrowLineEdit(firstPage);
+    scaleZ = new QNarrowLineEdit(firstPage, "scaleZ");
     connect(scaleZ, SIGNAL(returnPressed()),
             this, SLOT(scaleZProcessText()));
     mainLayout->addWidget(scaleZ, 6,6);
 
     // ---------------
-    doTranslate = new QCheckBox(tr("Translate"), firstPage);
+    doTranslate = new QCheckBox(tr("Translate"), firstPage, "doTranslate");
     connect(doTranslate, SIGNAL(toggled(bool)),
             this, SLOT(doTranslateChanged(bool)));
-    mainLayout->addWidget(doTranslate, 7, 0, 1, 3);
+    mainLayout->addMultiCellWidget(doTranslate, 7,7, 0,2);
 
-    translateXLabel = new QLabel(tr("X"), firstPage);
+    translateXLabel = new QLabel(tr("X"), firstPage, "translateXLabel");
     mainLayout->addWidget(translateXLabel,8,1, Qt::AlignRight);
-    translateX = new QNarrowLineEdit(firstPage);
+    translateX = new QNarrowLineEdit(firstPage, "translateX");
     connect(translateX, SIGNAL(returnPressed()),
             this, SLOT(translateXProcessText()));
     mainLayout->addWidget(translateX, 8,2);
 
-    translateYLabel = new QLabel(tr("Y"), firstPage);
+    translateYLabel = new QLabel(tr("Y"), firstPage, "translateYLabel");
     mainLayout->addWidget(translateYLabel,8,3, Qt::AlignRight);
-    translateY = new QNarrowLineEdit(firstPage);
+    translateY = new QNarrowLineEdit(firstPage, "translateY");
     connect(translateY, SIGNAL(returnPressed()),
             this, SLOT(translateYProcessText()));
     mainLayout->addWidget(translateY, 8,4);
 
-    translateZLabel = new QLabel(tr("Z"), firstPage);
+    translateZLabel = new QLabel(tr("Z"), firstPage, "translateZLabel");
     mainLayout->addWidget(translateZLabel,8,5, Qt::AlignRight);
-    translateZ = new QNarrowLineEdit(firstPage);
+    translateZ = new QNarrowLineEdit(firstPage, "translateZ");
     connect(translateZ, SIGNAL(returnPressed()),
             this, SLOT(translateZProcessText()));
     mainLayout->addWidget(translateZ, 8,6);
-    mainLayout->setRowStretch(9, 100);
 
     // ----------------------------------------------------------------------
     // Second page
     // ----------------------------------------------------------------------
-    secondPage = new QWidget(central);
+    secondPage = new QFrame(central, "secondPage");
     transformTypeTabs->addTab(secondPage, "Coordinate");
 
-    QVBoxLayout *secondPageLayout = new QVBoxLayout(secondPage);
+    QVBoxLayout *secondPageLayout = new QVBoxLayout(secondPage, 10, 10, "secondPageLayout");
 
-    QGroupBox *inputFrame = new QGroupBox(tr("Input coordinates"), secondPage);
+    QVGroupBox *inputFrame = new QVGroupBox(tr("Input coordinates"), secondPage, "inputFrame");
     secondPageLayout->addWidget(inputFrame);
+    inputFrame->setFrameStyle(QFrame::Box | QFrame::Sunken );
 
-    inputCoord = new QButtonGroup(inputFrame);
-    QVBoxLayout *inputCoordLayout = new QVBoxLayout(inputFrame);
+    inputCoord = new QButtonGroup(inputFrame, "inputCoord");
+    inputCoord->setFrameStyle(QFrame::NoFrame);
+    QVBoxLayout *inputCoordLayout = new QVBoxLayout(inputCoord,0,0);
     inputCoordLayout->setSpacing(10);
-    QRadioButton *iCart = new QRadioButton(tr("Cartesian (x,y,z)"), inputFrame);
-    inputCoord->addButton(iCart, 0);
+    QRadioButton *iCart = new QRadioButton(tr("Cartesian (x,y,z)"), inputCoord);
     inputCoordLayout->addWidget(iCart);
-    QRadioButton *iCyl  = new QRadioButton(tr("Cylindrical (r,phi,z)"), inputFrame);
-    inputCoord->addButton(iCyl, 1);
+    QRadioButton *iCyl  = new QRadioButton(tr("Cylindrical (r,phi,z)"), inputCoord);
     inputCoordLayout->addWidget(iCyl);
-    QRadioButton *iSph  = new QRadioButton(tr("Spherical (r,phi,theta)"), inputFrame);
-    inputCoord->addButton(iSph, 2);
+    QRadioButton *iSph  = new QRadioButton(tr("Spherical (r,phi,theta)"), inputCoord);
     inputCoordLayout->addWidget(iSph);
 
-    QGroupBox *outputFrame = new QGroupBox(tr("Output coordinates"), secondPage);
+    QVGroupBox *outputFrame = new QVGroupBox(tr("Output coordinates"), secondPage, "outputFrame");
     secondPageLayout->addWidget(outputFrame);
+    outputFrame->setFrameStyle(QFrame::Box | QFrame::Sunken );
 
-    outputCoord = new QButtonGroup(outputFrame);
-    QVBoxLayout *outputCoordLayout = new QVBoxLayout(outputFrame);
+    outputCoord = new QButtonGroup(outputFrame, "outputCoord");
+    outputCoord->setFrameStyle(QFrame::NoFrame);
+    QVBoxLayout *outputCoordLayout = new QVBoxLayout(outputCoord,0,0);
     outputCoordLayout->setSpacing(10);
-    QRadioButton *oCart = new QRadioButton(tr("Cartesian (x,y,z)"), outputFrame);
-    outputCoord->addButton(oCart, 0);
+    QRadioButton *oCart = new QRadioButton(tr("Cartesian (x,y,z)"), outputCoord);
     outputCoordLayout->addWidget(oCart);
-    QRadioButton *oCyl  = new QRadioButton(tr("Cylindrical (r,phi,z)"), outputFrame);
-    outputCoord->addButton(oCyl, 1);
+    QRadioButton *oCyl  = new QRadioButton(tr("Cylindrical (r,phi,z)"), outputCoord);
     outputCoordLayout->addWidget(oCyl);
-    QRadioButton *oSph  = new QRadioButton(tr("Spherical (r,phi,theta)"), outputFrame);
-    outputCoord->addButton(oSph, 2);
+    QRadioButton *oSph  = new QRadioButton(tr("Spherical (r,phi,theta)"), outputCoord);
     outputCoordLayout->addWidget(oSph);
 
     secondPageLayout->addStretch(100);
 
-    connect(inputCoord, SIGNAL(buttonClicked(int)),
+    connect(inputCoord, SIGNAL(clicked(int)),
             this, SLOT(inputCoordChanged(int)));
-    connect(outputCoord, SIGNAL(buttonClicked(int)),
+    connect(outputCoord, SIGNAL(clicked(int)),
             this, SLOT(outputCoordChanged(int)));
 
     // ----------------------------------------------------------------------
     // Third page
     // ----------------------------------------------------------------------
-    thirdPage = new QWidget(central);
+    thirdPage = new QFrame(central, "thirdPage");
     transformTypeTabs->addTab(thirdPage, tr("Linear"));
 
-    QGridLayout *thirdPageLayout = new QGridLayout(thirdPage);
-    thirdPageLayout->addWidget(new QLabel(tr("Matrix elements")),
-                               0, 0, 1, 3);
-    m00 = new QNarrowLineEdit(thirdPage);
-    m01 = new QNarrowLineEdit(thirdPage);
-    m02 = new QNarrowLineEdit(thirdPage);
-    m10 = new QNarrowLineEdit(thirdPage);
-    m11 = new QNarrowLineEdit(thirdPage);
-    m12 = new QNarrowLineEdit(thirdPage);
-    m20 = new QNarrowLineEdit(thirdPage);
-    m21 = new QNarrowLineEdit(thirdPage);
-    m22 = new QNarrowLineEdit(thirdPage);
+    QGridLayout *thirdPageLayout = new QGridLayout(thirdPage, 6,3, 10, 10, "thirdPageLayout");
+    thirdPageLayout->addMultiCellWidget(new QLabel(tr("Matrix elements"),thirdPage),
+                                        0,0, 0,2);
+    m00 = new QNarrowLineEdit(thirdPage, tr("m00"));
+    m01 = new QNarrowLineEdit(thirdPage, tr("m01"));
+    m02 = new QNarrowLineEdit(thirdPage, tr("m02"));
+    m10 = new QNarrowLineEdit(thirdPage, tr("m10"));
+    m11 = new QNarrowLineEdit(thirdPage, tr("m11"));
+    m12 = new QNarrowLineEdit(thirdPage, tr("m12"));
+    m20 = new QNarrowLineEdit(thirdPage, tr("m20"));
+    m21 = new QNarrowLineEdit(thirdPage, tr("m21"));
+    m22 = new QNarrowLineEdit(thirdPage, tr("m22"));
     thirdPageLayout->addWidget(m00, 1, 0);
     thirdPageLayout->addWidget(m01, 1, 1);
     thirdPageLayout->addWidget(m02, 1, 2);
@@ -332,14 +320,14 @@ QvisTransformWindow::CreateWindowContents()
     connect(m21, SIGNAL(returnPressed()), this, SLOT(ltElementtChanged()));
     connect(m22, SIGNAL(returnPressed()), this, SLOT(ltElementtChanged()));
     linearInvert = new QCheckBox(tr("Invert linear transform"),
-                                 thirdPage);
-    thirdPageLayout->addWidget(linearInvert, 4, 0, 1, 3);
+                                 thirdPage, "linearInvert");
+    thirdPageLayout->addMultiCellWidget(linearInvert, 4,4, 0,2);
     connect(linearInvert, SIGNAL(toggled(bool)),
             this, SLOT(linearInvertChanged(bool)));
-    thirdPageLayout->setRowStretch(5, 100);
 
-    connect(transformTypeTabs, SIGNAL(currentChanged(int)),
-            this, SLOT(pageTurned(int)));
+
+    connect(transformTypeTabs, SIGNAL(currentChanged(QWidget*)),
+            this, SLOT(pageTurned(QWidget*)));
 }
 
 // ****************************************************************************
@@ -362,9 +350,6 @@ QvisTransformWindow::CreateWindowContents()
 //    Jeremy Meredith, Tue Apr 15 13:20:52 EDT 2008
 //    Added support for linear transforms.
 //
-//    Brad Whitlock, Wed Aug 13 21:09:50 PDT 2008
-//    Qt 4
-//
 // ****************************************************************************
 void
 QvisTransformWindow::UpdateWindow(bool doAll)
@@ -381,9 +366,10 @@ QvisTransformWindow::UpdateWindow(bool doAll)
             }
         }
 
+        const float          *fptr;
         switch(i)
         {
-          case TransformAttributes::ID_doRotate:
+          case 0: //doRotate
             if (atts->GetDoRotate() == true)
             {
                 rotateOrigin->setEnabled(true);
@@ -392,7 +378,7 @@ QvisTransformWindow::UpdateWindow(bool doAll)
                 rotateAxisLabel->setEnabled(true);
                 rotateAmount->setEnabled(true);
                 rotateAmountLabel->setEnabled(true);
-                rotateTypeWidget->setEnabled(true);
+                rotateType->setEnabled(true);
             }
             else
             {
@@ -402,26 +388,28 @@ QvisTransformWindow::UpdateWindow(bool doAll)
                 rotateAxisLabel->setEnabled(false);
                 rotateAmount->setEnabled(false);
                 rotateAmountLabel->setEnabled(false);
-                rotateTypeWidget->setEnabled(false);
+                rotateType->setEnabled(false);
             }
             doRotate->setChecked(atts->GetDoRotate());
             break;
-          case TransformAttributes::ID_rotateOrigin:
-            rotateOrigin->setText(FloatsToQString(atts->GetRotateOrigin(),3));
+          case 1: //rotateOrigin
+            fptr = atts->GetRotateOrigin();
+            temp.sprintf("%g %g %g", fptr[0], fptr[1], fptr[2]);
+            rotateOrigin->setText(temp);
             break;
-          case TransformAttributes::ID_rotateAxis:
-            rotateAxis->setText(FloatsToQString(atts->GetRotateAxis(),3));
+          case 2: //rotateAxis
+            fptr = atts->GetRotateAxis();
+            temp.sprintf("%g %g %g", fptr[0], fptr[1], fptr[2]);
+            rotateAxis->setText(temp);
             break;
-          case TransformAttributes::ID_rotateAmount:
+          case 3: //rotateAmount
             temp.setNum(atts->GetRotateAmount());
             rotateAmount->setText(temp);
             break;
-          case TransformAttributes::ID_rotateType:
-            rotateType->blockSignals(true);
-            rotateType->button(atts->GetRotateType())->setChecked(true);
-            rotateType->blockSignals(false);
+          case 4: //rotateType
+            rotateType->setButton(atts->GetRotateType());
             break;
-          case TransformAttributes::ID_doScale:
+          case 5: //doScale
             if (atts->GetDoScale() == true)
             {
                 scaleOrigin->setEnabled(true);
@@ -446,22 +434,24 @@ QvisTransformWindow::UpdateWindow(bool doAll)
             }
             doScale->setChecked(atts->GetDoScale());
             break;
-          case TransformAttributes::ID_scaleOrigin:
-            scaleOrigin->setText(FloatsToQString(atts->GetScaleOrigin(),3));
+          case 6: //scaleOrigin
+            fptr = atts->GetScaleOrigin();
+            temp.sprintf("%g %g %g", fptr[0], fptr[1], fptr[2]);
+            scaleOrigin->setText(temp);
             break;
-          case TransformAttributes::ID_scaleX:
+          case 7: //scaleX
             temp.setNum(atts->GetScaleX());
             scaleX->setText(temp);
             break;
-          case TransformAttributes::ID_scaleY:
+          case 8: //scaleY
             temp.setNum(atts->GetScaleY());
             scaleY->setText(temp);
             break;
-          case TransformAttributes::ID_scaleZ:
+          case 9: //scaleZ
             temp.setNum(atts->GetScaleZ());
             scaleZ->setText(temp);
             break;
-          case TransformAttributes::ID_doTranslate:
+          case 10: //doTranslate
             if (atts->GetDoTranslate() == true)
             {
                 translateX->setEnabled(true);
@@ -482,41 +472,37 @@ QvisTransformWindow::UpdateWindow(bool doAll)
             }
             doTranslate->setChecked(atts->GetDoTranslate());
             break;
-          case TransformAttributes::ID_translateX:
+          case 11: //translateX
             temp.setNum(atts->GetTranslateX());
             translateX->setText(temp);
             break;
-          case TransformAttributes::ID_translateY:
+          case 12: //translateY
             temp.setNum(atts->GetTranslateY());
             translateY->setText(temp);
             break;
-          case TransformAttributes::ID_translateZ:
+          case 13: //translateZ
             temp.setNum(atts->GetTranslateZ());
             translateZ->setText(temp);
             break;
-          case TransformAttributes::ID_transformType:
+          case 14: // transformType
             if (atts->GetTransformType() == TransformAttributes::Similarity)
             {
-                transformTypeTabs->setCurrentIndex(0);
+                transformTypeTabs->showPage(firstPage);
             }
             else if (atts->GetTransformType() == TransformAttributes::Coordinate)
             {
-                transformTypeTabs->setCurrentIndex(1);
+                transformTypeTabs->showPage(secondPage);
             }
             else
             {
-                transformTypeTabs->setCurrentIndex(2);
+                transformTypeTabs->showPage(thirdPage);
             }
             break;
-          case TransformAttributes::ID_inputCoordSys:
-            inputCoord->blockSignals(true);
-            inputCoord->button(atts->GetInputCoordSys())->setChecked(true);
-            inputCoord->blockSignals(false);
+          case 15: // inputCoordSys
+            inputCoord->setButton(atts->GetInputCoordSys());
             break;
-          case TransformAttributes::ID_outputCoordSys:
-            outputCoord->blockSignals(true);
-            outputCoord->button(atts->GetOutputCoordSys())->setChecked(true);
-            outputCoord->blockSignals(false);
+          case 16: // outputCoordSys
+            outputCoord->setButton(atts->GetOutputCoordSys());
             break;
 
           case TransformAttributes::ID_m00:
@@ -559,9 +545,7 @@ QvisTransformWindow::UpdateWindow(bool doAll)
             break;
 
           case TransformAttributes::ID_invertLinearTransform:
-            linearInvert->blockSignals(true);
             linearInvert->setChecked(atts->GetInvertLinearTransform());
-            linearInvert->blockSignals(false);
             break;
         }
     }
@@ -588,8 +572,8 @@ QvisTransformWindow::UpdateWindow(bool doAll)
 //    Brad Whitlock, Thu Apr 24 15:53:37 PDT 2008
 //    Added tr()'s
 //
-//    Brad Whitlock, Wed Aug 13 21:34:35 PDT 2008
-//    Qt 4.
+//    Jeremy Meredith, Thu Aug  7 15:36:20 EDT 2008
+//    Corrected an if(a=b) to if(a==b).
 //
 // ****************************************************************************
 
@@ -599,141 +583,253 @@ QvisTransformWindow::GetCurrentValues(int which_widget)
     bool okay, doAll = (which_widget == -1);
     QString msg, temp;
 
-    // Do rotateOrigin
-    if(which_widget == TransformAttributes::ID_rotateOrigin || doAll)
+    // Do doRotate
+    if(which_widget == 0 || doAll)
     {
-        float val[3];
-        if(LineEditGetFloats(rotateOrigin, val, 3))
-            atts->SetRotateOrigin(val);
-        else
+        // Nothing for doRotate
+    }
+
+    // Do rotateOrigin
+    if(which_widget == 1 || doAll)
+    {
+        temp = rotateOrigin->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("rotate origin"), 
-                FloatsToQString(atts->GetRotateOrigin(), 3));
+            float val[3];
+            okay = (sscanf(temp.latin1(), "%g %g %g", 
+                           &val[0], &val[1], &val[2]) == 3);
+            if (okay)
+                atts->SetRotateOrigin(val);
+        }
+
+        if(!okay)
+        {
+            const float *val = atts->GetRotateOrigin();
+            QString num; num.sprintf("<%g %g %g>", val[0], val[1], val[2]);
+            msg = tr("The value of rotateOrigin was invalid. "
+                     "Resetting to the last good value of %1.").arg(num);
+            Message(msg);
             atts->SetRotateOrigin(atts->GetRotateOrigin());
         }
     }
 
     // Do rotateAxis
-    if(which_widget == TransformAttributes::ID_rotateAxis || doAll)
+    if(which_widget == 2 || doAll)
     {
-        float val[3];
-        if((okay = LineEditGetFloats(rotateAxis, val, 3)) == true)
+        temp = rotateAxis->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            okay = (val[0] != 0. || val[1] != 0. || val[2] != 0);
+            float val[3];
+            okay = (sscanf(temp.latin1(), "%g %g %g", 
+                           &val[0], &val[1], &val[2]) == 3);
             if (okay)
-                atts->SetRotateAxis(val);
+            {
+                okay = (val[0] != 0. || val[1] != 0. || val[2] != 0);
+                if (okay)
+                    atts->SetRotateAxis(val);
+            }
         }
 
         if(!okay)
         {
-            ResettingError(tr("rotate axis"),
-                FloatsToQString(atts->GetRotateAxis(), 3));
+            const float *val = atts->GetRotateAxis();
+            QString num; num.sprintf("<%g %g %g>", val[0], val[1], val[2]);
+            msg = tr("The value of rotateAxis was invalid. "
+                     "Resetting to the last good value of %1.").arg(num);
+            Message(msg);
             atts->SetRotateAxis(atts->GetRotateAxis());
         }
     }
 
     // Do rotateAmount
-    if(which_widget == TransformAttributes::ID_rotateAmount || doAll)
+    if(which_widget == 3 || doAll)
     {
-        float val;
-        if(LineEditGetFloat(rotateAmount, val))
-            atts->SetRotateAmount(val);
-        else
+        temp = rotateAmount->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("rotate amount"),
-                FloatToQString(atts->GetRotateAmount()));
+            float val = temp.toFloat(&okay);
+            if(okay)
+                atts->SetRotateAmount(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of rotateAmount was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetRotateAmount());
+            Message(msg);
             atts->SetRotateAmount(atts->GetRotateAmount());
         }
     }
 
-    // Do scaleOrigin
-    if(which_widget == TransformAttributes::ID_scaleOrigin || doAll)
+    // Do rotateType
+    if(which_widget == 4 || doAll)
     {
-        float val[3];
-        if(LineEditGetFloats(scaleOrigin, val, 3))
-            atts->SetScaleOrigin(val);
-        else
+        // Nothing for rotateType
+    }
+
+    // Do doScale
+    if(which_widget == 5 || doAll)
+    {
+        // Nothing for doScale
+    }
+
+    // Do scaleOrigin
+    if(which_widget == 6 || doAll)
+    {
+        temp = scaleOrigin->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("scale origin"),
-                FloatsToQString(atts->GetScaleOrigin(), 3));
+            float val[3];
+            okay = (sscanf(temp.latin1(), "%g %g %g", 
+                    &val[0], &val[1], &val[2]) == 3);
+            if (okay)
+                atts->SetScaleOrigin(val);
+        }
+
+        if(!okay)
+        {
+            const float *val = atts->GetScaleOrigin();
+            QString num; num.sprintf("<%g %g %g>", val[0], val[1], val[2]);
+            msg = tr("The value of scaleOrigin was invalid. "
+                     "Resetting to the last good value of %1.").arg(num);
+            Message(msg);
             atts->SetScaleOrigin(atts->GetScaleOrigin());
         }
     }
 
     // Do scaleX
-    if(which_widget == TransformAttributes::ID_scaleX || doAll)
+    if(which_widget == 7 || doAll)
     {
-        float val;
-        if(LineEditGetFloat(scaleX, val))
-            atts->SetScaleX(val);
-        else
+        temp = scaleX->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("X scale"), FloatToQString(atts->GetScaleX()));
+            float val = temp.toFloat(&okay);
+            atts->SetScaleX(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of scaleX was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetScaleX());
+            Message(msg);
             atts->SetScaleX(atts->GetScaleX());
         }
     }
 
     // Do scaleY
-    if(which_widget == TransformAttributes::ID_scaleY || doAll)
+    if(which_widget == 8 || doAll)
     {
-        float val;
-        if(LineEditGetFloat(scaleY, val))
-            atts->SetScaleY(val);
-        else
+        temp = scaleY->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("Y scale"), FloatToQString(atts->GetScaleY()));
+            float val = temp.toFloat(&okay);
+            atts->SetScaleY(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of scaleY was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetScaleY());
+            Message(msg);
             atts->SetScaleY(atts->GetScaleY());
         }
     }
 
     // Do scaleZ
-    if(which_widget == TransformAttributes::ID_scaleZ || doAll)
+    if(which_widget == 9 || doAll)
     {
-        float val;
-        if(LineEditGetFloat(scaleZ, val))
-            atts->SetScaleZ(val);
-        else
+        temp = scaleZ->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("Z scale"), FloatToQString(atts->GetScaleZ()));
+            float val = temp.toFloat(&okay);
+            atts->SetScaleZ(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of scaleZ was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetScaleZ());
+            Message(msg);
             atts->SetScaleZ(atts->GetScaleZ());
         }
     }
 
-    // Do translateX
-    if(which_widget == TransformAttributes::ID_translateX || doAll)
+    // Do doTranslate
+    if(which_widget == 10 || doAll)
     {
-        float val;
-        if(LineEditGetFloat(translateX, val))
-            atts->SetTranslateX(val);
-        else
+        // Nothing for doTranslate
+    }
+
+    // Do translateX
+    if(which_widget == 11 || doAll)
+    {
+        temp = translateX->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("translation in X"), FloatToQString(atts->GetTranslateX()));
+            float val = temp.toFloat(&okay);
+            atts->SetTranslateX(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of translateX was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetTranslateX());
+            Message(msg);
             atts->SetTranslateX(atts->GetTranslateX());
         }
     }
 
     // Do translateY
-    if(which_widget == TransformAttributes::ID_translateY || doAll)
+    if(which_widget == 12 || doAll)
     {
-        float val;
-        if(LineEditGetFloat(translateY, val))
-            atts->SetTranslateY(val);
-        else
+        temp = translateY->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("translation in Y"), FloatToQString(atts->GetTranslateY()));
+            float val = temp.toFloat(&okay);
+            atts->SetTranslateY(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of translateY was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetTranslateY());
+            Message(msg);
             atts->SetTranslateY(atts->GetTranslateY());
         }
     }
 
     // Do translateZ
-    if(which_widget == TransformAttributes::ID_translateZ || doAll)
+    if(which_widget == 13 || doAll)
     {
-        float val;
-        if(LineEditGetFloat(translateZ, val))
-            atts->SetTranslateZ(val);
-        else
+        temp = translateZ->displayText().simplifyWhiteSpace();
+        okay = !temp.isEmpty();
+        if(okay)
         {
-            ResettingError(tr("translation in Z"), FloatToQString(atts->GetTranslateZ()));
+            float val = temp.toFloat(&okay);
+            atts->SetTranslateZ(val);
+        }
+
+        if(!okay)
+        {
+            msg = tr("The value of translateZ was invalid. "
+                     "Resetting to the last good value of %1.").
+                  arg(atts->GetTranslateZ());
+            Message(msg);
             atts->SetTranslateZ(atts->GetTranslateZ());
         }
     }
@@ -741,17 +837,17 @@ QvisTransformWindow::GetCurrentValues(int which_widget)
     // Do linear transform matrix elements
     if (which_widget == 100 || doAll)
     {
-        atts->SetM00(m00->displayText().trimmed().toFloat());
-        atts->SetM01(m01->displayText().trimmed().toFloat());
-        atts->SetM02(m02->displayText().trimmed().toFloat());
+        atts->SetM00(m00->displayText().simplifyWhiteSpace().toFloat());
+        atts->SetM01(m01->displayText().simplifyWhiteSpace().toFloat());
+        atts->SetM02(m02->displayText().simplifyWhiteSpace().toFloat());
 
-        atts->SetM10(m10->displayText().trimmed().toFloat());
-        atts->SetM11(m11->displayText().trimmed().toFloat());
-        atts->SetM12(m12->displayText().trimmed().toFloat());
+        atts->SetM10(m10->displayText().simplifyWhiteSpace().toFloat());
+        atts->SetM11(m11->displayText().simplifyWhiteSpace().toFloat());
+        atts->SetM12(m12->displayText().simplifyWhiteSpace().toFloat());
 
-        atts->SetM20(m20->displayText().trimmed().toFloat());
-        atts->SetM21(m21->displayText().trimmed().toFloat());
-        atts->SetM22(m22->displayText().trimmed().toFloat());
+        atts->SetM20(m20->displayText().simplifyWhiteSpace().toFloat());
+        atts->SetM21(m21->displayText().simplifyWhiteSpace().toFloat());
+        atts->SetM22(m22->displayText().simplifyWhiteSpace().toFloat());
     }
 }
 
@@ -770,7 +866,7 @@ QvisTransformWindow::doRotateChanged(bool val)
 void
 QvisTransformWindow::rotateOriginProcessText()
 {
-    GetCurrentValues(TransformAttributes::ID_rotateOrigin);
+    GetCurrentValues(1);
     Apply();
 }
 
@@ -778,7 +874,7 @@ QvisTransformWindow::rotateOriginProcessText()
 void
 QvisTransformWindow::rotateAxisProcessText()
 {
-    GetCurrentValues(TransformAttributes::ID_rotateAxis);
+    GetCurrentValues(2);
     Apply();
 }
 
@@ -786,7 +882,7 @@ QvisTransformWindow::rotateAxisProcessText()
 void
 QvisTransformWindow::rotateAmountProcessText()
 {
-    GetCurrentValues(TransformAttributes::ID_rotateAmount);
+    GetCurrentValues(3);
     Apply();
 }
 
@@ -815,7 +911,7 @@ QvisTransformWindow::doScaleChanged(bool val)
 void
 QvisTransformWindow::scaleOriginProcessText()
 {
-    GetCurrentValues(TransformAttributes::ID_scaleOrigin);
+    GetCurrentValues(6);
     Apply();
 }
 
@@ -823,7 +919,7 @@ QvisTransformWindow::scaleOriginProcessText()
 void
 QvisTransformWindow::scaleXProcessText()
 {
-    GetCurrentValues(TransformAttributes::ID_scaleX);
+    GetCurrentValues(7);
     Apply();
 }
 
@@ -831,7 +927,7 @@ QvisTransformWindow::scaleXProcessText()
 void
 QvisTransformWindow::scaleYProcessText()
 {
-    GetCurrentValues(TransformAttributes::ID_scaleY);
+    GetCurrentValues(8);
     Apply();
 }
 
@@ -839,7 +935,7 @@ QvisTransformWindow::scaleYProcessText()
 void
 QvisTransformWindow::scaleZProcessText()
 {
-    GetCurrentValues(TransformAttributes::ID_scaleZ);
+    GetCurrentValues(9);
     Apply();
 }
 
@@ -855,7 +951,7 @@ QvisTransformWindow::doTranslateChanged(bool val)
 void
 QvisTransformWindow::translateXProcessText()
 {
-    GetCurrentValues(TransformAttributes::ID_translateX);
+    GetCurrentValues(11);
     Apply();
 }
 
@@ -863,7 +959,7 @@ QvisTransformWindow::translateXProcessText()
 void
 QvisTransformWindow::translateYProcessText()
 {
-    GetCurrentValues(TransformAttributes::ID_translateY);
+    GetCurrentValues(12);
     Apply();
 }
 
@@ -871,24 +967,24 @@ QvisTransformWindow::translateYProcessText()
 void
 QvisTransformWindow::translateZProcessText()
 {
-    GetCurrentValues(TransformAttributes::ID_translateZ);
+    GetCurrentValues(13);
     Apply();
 }
 
 void
-QvisTransformWindow::pageTurned(int page)
+QvisTransformWindow::pageTurned(QWidget *page)
 {
-    if (page == 0)
+    if (page == firstPage)
     {
         atts->SetTransformType(TransformAttributes::Similarity);
         Apply();
     }
-    else if (page == 1)
+    else if (page == secondPage)
     {
         atts->SetTransformType(TransformAttributes::Coordinate);
         Apply();
     }
-    else if (page == 2)
+    else if (page == thirdPage)
     {
         atts->SetTransformType(TransformAttributes::Linear);
         Apply();

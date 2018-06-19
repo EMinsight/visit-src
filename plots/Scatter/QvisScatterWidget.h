@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -38,7 +38,7 @@
 
 #ifndef QVIS_SCATTER_WIDGET_H
 #define QVIS_SCATTER_WIDGET_H
-#include <QWidget>
+#include <qwidget.h>
 #include <mini3D.h>
 
 class QTimer;
@@ -56,24 +56,21 @@ class QTimer;
 // Creation:   Mon Dec 13 14:45:08 PST 2004
 //
 // Modifications:
-//   Brad Whitlock, Fri Aug  8 09:42:33 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 class QvisScatterWidget : public QWidget
 {
     Q_OBJECT
 public:
-    QvisScatterWidget(QWidget *parent);
+    QvisScatterWidget(QWidget *parent, const char *name=0);
     virtual ~QvisScatterWidget();
     virtual QSize sizeHint() const;
+    virtual QSizePolicy sizePolicy() const;
 
     void setThreeD(bool threeD);
     void setHighlightAxis(bool highlight);
     void setColoredPoints(bool colored);
-
-    void setAllowAnimation(bool allow);
 
 public slots:
     virtual void show();
@@ -106,7 +103,6 @@ protected:
     bool                       threeD;
     bool                       highlightedAxis;
     bool                       coloredPoints;
-    bool                       allowAnimation;
 
     static bool                sharedElementsCreated;
     static m3d_complex_element sphere;

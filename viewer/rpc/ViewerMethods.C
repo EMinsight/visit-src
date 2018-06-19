@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -669,10 +669,14 @@ ViewerMethods::ReOpenDatabase(const std::string &database, bool forceClose)
 //    I added an optional timeState argument so we can replace databases
 //    at later time states.
 //
+//    Cyrus Harrison, Tue Apr 14 13:35:54 PDT 2009
+//    Added argument to allow replace of only active plots.
+//
 // ****************************************************************************
 
 void
-ViewerMethods::ReplaceDatabase(const std::string &database, int timeState)
+ViewerMethods::ReplaceDatabase(const std::string &database, int timeState,
+                               bool onlyReplaceActive)
 {
     //
     // Set the rpc type and arguments.
@@ -680,6 +684,7 @@ ViewerMethods::ReplaceDatabase(const std::string &database, int timeState)
     state->GetViewerRPC()->SetRPCType(ViewerRPC::ReplaceDatabaseRPC);
     state->GetViewerRPC()->SetDatabase(database);
     state->GetViewerRPC()->SetIntArg1(timeState);
+    state->GetViewerRPC()->SetIntArg2((int)onlyReplaceActive);
 
     //
     // Issue the RPC.
@@ -745,6 +750,149 @@ ViewerMethods::RequestMetaData(const std::string &database, int ts)
     state->GetViewerRPC()->SetRPCType(ViewerRPC::RequestMetaDataRPC);
     state->GetViewerRPC()->SetDatabase(database);
     state->GetViewerRPC()->SetStateNumber(ts);
+
+    //
+    // Issue the RPC.
+    //
+    state->GetViewerRPC()->Notify();
+}
+
+// ****************************************************************************
+// Method: ViewerMethods::ApplyNamedSelection
+//
+// Purpose: 
+//     Applies a named selection.
+//
+// Programmer: Hank Childs
+// Creation:   January 28, 2009
+//
+// ****************************************************************************
+
+void
+ViewerMethods::ApplyNamedSelection(const std::string &selName)
+{
+    //
+    // Set the rpc type and arguments.
+    //
+    state->GetViewerRPC()->SetRPCType(ViewerRPC::ApplyNamedSelectionRPC);
+    state->GetViewerRPC()->SetStringArg1(selName);
+
+    //
+    // Issue the RPC.
+    //
+    state->GetViewerRPC()->Notify();
+}
+
+// ****************************************************************************
+// Method: ViewerMethods::CreateNamedSelection
+//
+// Purpose: 
+//     Creates a named selection.
+//
+// Programmer: Hank Childs
+// Creation:   January 28, 2009
+//
+// ****************************************************************************
+
+void
+ViewerMethods::CreateNamedSelection(const std::string &selName)
+{
+    //
+    // Set the rpc type and arguments.
+    //
+    state->GetViewerRPC()->SetRPCType(ViewerRPC::CreateNamedSelectionRPC);
+    state->GetViewerRPC()->SetStringArg1(selName);
+
+    //
+    // Issue the RPC.
+    //
+    state->GetViewerRPC()->Notify();
+}
+
+// ****************************************************************************
+// Method: ViewerMethods::DeleteNamedSelection
+//
+// Purpose: 
+//     Deletes a named selection.
+//
+// Programmer: Hank Childs
+// Creation:   January 28, 2009
+//
+// ****************************************************************************
+
+void
+ViewerMethods::DeleteNamedSelection(const std::string &selName)
+{
+    //
+    // Set the rpc type and arguments.
+    //
+    state->GetViewerRPC()->SetRPCType(ViewerRPC::DeleteNamedSelectionRPC);
+    state->GetViewerRPC()->SetStringArg1(selName);
+
+    //
+    // Issue the RPC.
+    //
+    state->GetViewerRPC()->Notify();
+}
+
+// ****************************************************************************
+// Method: ViewerMethods::LoadNamedSelection
+//
+// Purpose: 
+//     Load a named selection.
+//
+// Programmer: Hank Childs
+// Creation:   January 28, 2009
+//
+// Modifications:
+//    Gunther H. Weber, Mon Apr  6 19:04:24 PDT 2009
+//    Added arguments for host name and simulation name
+//
+// ****************************************************************************
+
+void
+ViewerMethods::LoadNamedSelection(const std::string &selName,
+        const std::string& hostName, const std::string& simName)
+{
+    //
+    // Set the rpc type and arguments.
+    //
+    state->GetViewerRPC()->SetRPCType(ViewerRPC::LoadNamedSelectionRPC);
+    state->GetViewerRPC()->SetStringArg1(selName);
+    state->GetViewerRPC()->SetStringArg1(selName);
+    state->GetViewerRPC()->SetProgramHost(hostName);
+
+    //
+    // Issue the RPC.
+    //
+    state->GetViewerRPC()->Notify();
+}
+
+// ****************************************************************************
+// Method: ViewerMethods::SaveNamedSelection
+//
+// Purpose: 
+//     Saves a named selection.
+//
+// Programmer: Hank Childs
+// Creation:   January 28, 2009
+//
+// Modifications:
+//    Gunther H. Weber, Mon Apr  6 19:04:24 PDT 2009
+//
+// ****************************************************************************
+
+void
+ViewerMethods::SaveNamedSelection(const std::string &selName,
+        const std::string& hostName, const std::string& simName)
+{
+    //
+    // Set the rpc type and arguments.
+    //
+    state->GetViewerRPC()->SetRPCType(ViewerRPC::SaveNamedSelectionRPC);
+    state->GetViewerRPC()->SetStringArg1(selName);
+    state->GetViewerRPC()->SetProgramHost(hostName);
+    state->GetViewerRPC()->SetProgramSim(simName);
 
     //
     // Issue the RPC.
@@ -5064,6 +5212,35 @@ ViewerMethods::SetQueryFloatFormat(const std::string &format)
     //
     state->GetViewerRPC()->SetRPCType(ViewerRPC::SetQueryFloatFormatRPC);
     state->GetViewerRPC()->SetStringArg1(format);
+
+    //
+    // Issue the RPC.
+    //
+    state->GetViewerRPC()->Notify();
+}
+
+// ****************************************************************************
+// Method: ViewerMethods::UpdatePlotInfoAtts
+//
+// Purpose: 
+//   Update the plotInfoAttributes from the given plot and window.
+//
+// Programmer: Kathleen Bonnell 
+// Creation:   June 20, 2006
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+ViewerMethods::UpdatePlotInfoAtts(int plotID, int winID)
+{
+    //
+    // Set the rpc type and arguments.
+    //
+    state->GetViewerRPC()->SetRPCType(ViewerRPC::UpdatePlotInfoAttsRPC);
+    state->GetViewerRPC()->SetWindowId(winID);
+    state->GetViewerRPC()->SetIntArg1(plotID);
 
     //
     // Issue the RPC.

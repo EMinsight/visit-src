@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -49,7 +49,7 @@
 class vtkDataArray;
 class avtVolumeRendererImplementation;
 
-#define USE_HISTOGRAM 1
+#define USE_HISTOGRAM 0
 
 // ****************************************************************************
 //  Class: avtVolumeRenderer
@@ -78,9 +78,6 @@ class avtVolumeRendererImplementation;
 //    Made this class be a concrete implementation of a custom renderer.
 //    It will chose between actual rendering methods by instantiating an
 //    avtVolumeRendererImplementation at render time.
-//
-//    Brad Whitlock, Mon Dec 15 14:36:29 PST 2008
-//    I removed some methods.
 //
 // ****************************************************************************
 
@@ -114,7 +111,9 @@ class avtVolumeRenderer : public avtCustomRenderer
 
     bool                    reducedDetail;
 
-    bool                    GetScalars(vtkDataSet *ds, vtkDataArray *&d, vtkDataArray *&o);
+    bool                    GetScalars(vtkDataSet*,vtkDataArray*&,vtkDataArray *&);
+    void                    GetRange(vtkDataArray *, float &, float &);
+    void                    WriteHistogram(vtkDataSet* ds);
 };
 
 

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,9 +37,9 @@
 *****************************************************************************/
 #ifndef PLUGIN_BASE_H
 #define PLUGIN_BASE_H
-#include <QTextStream>
-
+#include <qstring.h>
 #include <vector>
+#include <visitstream.h>
 
 #include <stdlib.h>
 #include <sys/types.h>
@@ -71,9 +71,6 @@
 //    Brad Whitlock, Wed Oct 15 14:20:36 PDT 2008
 //    Added support for custom Java files.
 //
-//    Cyrus Harrison, Fri Sep 19 13:46:16 PDT 2008
-//    Added support for custom libs for gui,engine, mdserver, viewer
-//
 // ****************************************************************************
 
 class PluginBase
@@ -102,23 +99,15 @@ public:
     std::vector<QString> extensions; // for DB plugins
     std::vector<QString> filenames;  // for DB plugins
     bool customgfiles;
-    std::vector<QString> gfiles;     // gui files
-    bool customglibs;
-    std::vector<QString> glibs;      // gui libs
+    std::vector<QString> gfiles;     // gui
     bool customsfiles;
     std::vector<QString> sfiles;     // scripting
     bool customvfiles;
-    std::vector<QString> vfiles;     // viewer files
-    bool customvlibs;
-    std::vector<QString> vlibs;      // viewer libs
+    std::vector<QString> vfiles;     // viewer
     bool custommfiles;
-    std::vector<QString> mfiles;     // mdserver files
-    bool custommlibs;
-    std::vector<QString> mlibs;      // mdserver libs
+    std::vector<QString> mfiles;     // mdserver
     bool customefiles;
-    std::vector<QString> efiles;     // engine files
-    bool customelibs;
-    std::vector<QString> elibs;      // engine libs
+    std::vector<QString> efiles;     // engine
     bool customwfiles;
     std::vector<QString> wfiles;     // widgets
     bool customvwfiles;
@@ -148,22 +137,14 @@ public:
           filenames(),
           customgfiles(false),
           gfiles(),
-          customglibs(false),
-          glibs(),
           customsfiles(false),
           sfiles(),
           customvfiles(false),
           vfiles(),
-          customvlibs(false),
-          vlibs(),
           custommfiles(false),
           mfiles(),
-          custommlibs(false),
-          mlibs(),
           customefiles(false),
           efiles(),
-          customelibs(false),
-          elibs(),
           customwfiles(false),
           wfiles(),
           customvwfiles(false),

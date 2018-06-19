@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -188,9 +188,6 @@ OnionPeelViewerPluginInfo::GetClientAtts(AttributeSubject *atts)
 //    Brad Whitlock, Fri Feb 15 15:32:57 PST 2008
 //    Delete silAtts.
 //
-//    Hank Childs, Tue Nov 18 09:39:37 PST 2008
-//    Account for new optimization in CompactSILAttributes.
-//
 // ****************************************************************************
 #include <avtSIL.h>
 #include <avtSILRestriction.h>
@@ -226,7 +223,7 @@ OnionPeelViewerPluginInfo::InitializeOperatorAtts(AttributeSubject *atts,
     // 
     avtSILSet_p current = restriction->GetSILSet(silTopSet);
     const std::vector<int> &mapsOut = current->GetMapsOut();
-    for (size_t j = 0; j < mapsOut.size() && !categoryNameValid; ++j)
+    for (int j = 0; j < mapsOut.size() && !categoryNameValid; ++j)
     {
         int cIndex = mapsOut[j];
         avtSILCollection_p collection =restriction->GetSILCollection(cIndex);
@@ -255,14 +252,9 @@ OnionPeelViewerPluginInfo::InitializeOperatorAtts(AttributeSubject *atts,
             if (*collection != NULL)
             {
                 std::vector<int> sets = collection->GetSubsetList();
-                for (size_t i = 0; i < sets.size() && !subsetNameValid; ++i)
+                for (int i = 0; i < sets.size() && !subsetNameValid; ++i)
                 {
-                    bool isOn = false;
-                    if (silAtts->GetTopSetIsAllOn())
-                        isOn = true;
-                    else
-                        isOn = (useSet[sets[i]] != 0);
-                    if (isOn)
+                    if (useSet[sets[i]] != 0)
                     {
                         avtSILSet_p set = restriction->GetSILSet(sets[i]);
                         if (set->GetName() == subsetName)

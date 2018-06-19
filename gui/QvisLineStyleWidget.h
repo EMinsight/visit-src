@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,7 +39,7 @@
 #ifndef QVIS_LINE_STYLE_WIDGET_H
 #define QVIS_LINE_STYLE_WIDGET_H
 #include <gui_exports.h>
-#include <QWidget>
+#include <qwidget.h>
 
 class QComboBox;
 
@@ -59,16 +59,14 @@ class QComboBox;
 //   Added a method to change the pixmap strings. It is used before the
 //   pixmaps are created.
 //
-//   Brad Whitlock, Tue Jun  3 10:39:29 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 class GUI_API QvisLineStyleWidget : public QWidget
 {
     Q_OBJECT
 public:
-    QvisLineStyleWidget(int style_ = 0, QWidget *parent = 0);
+    QvisLineStyleWidget(int style_ = 0, QWidget *parent = 0,
+                        const char *name = 0);
     virtual ~QvisLineStyleWidget();
     void SetLineStyle(int style);
     int  GetLineStyle() const;

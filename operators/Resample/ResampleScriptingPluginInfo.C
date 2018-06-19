@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,8 +39,8 @@
 // ************************************************************************* //
 //                        ResampleScriptingPluginInfo.C
 // ************************************************************************* //
+#include <PyResamplePluginAttributes.h>
 #include <ResamplePluginInfo.h>
-#include <PyResampleAttributes.h>
 
 #if defined(__APPLE__)
 #define GetScriptingInfo Resample_GetScriptingInfo
@@ -82,7 +82,7 @@ void
 ResampleScriptingPluginInfo::InitializePlugin(AttributeSubject *subj,
     void *data)
 {
-    PyResampleAttributes_StartUp((ResampleAttributes *)subj, data);
+    PyResamplePluginAttributes_StartUp((ResamplePluginAttributes *)subj, data);
 }
 
 // ****************************************************************************
@@ -107,7 +107,7 @@ ResampleScriptingPluginInfo::InitializePlugin(AttributeSubject *subj,
 void *
 ResampleScriptingPluginInfo::GetMethodTable(int *nMethods)
 {
-    return PyResampleAttributes_GetMethodTable(nMethods);
+    return PyResamplePluginAttributes_GetMethodTable(nMethods);
 }
 
 // ****************************************************************************
@@ -129,7 +129,7 @@ ResampleScriptingPluginInfo::GetMethodTable(int *nMethods)
 bool
 ResampleScriptingPluginInfo::TypesMatch(void *pyobject)
 {
-    return PyResampleAttributes_Check((PyObject *)pyobject);
+    return PyResamplePluginAttributes_Check((PyObject *)pyobject);
 }
 
 // ****************************************************************************
@@ -151,7 +151,7 @@ ResampleScriptingPluginInfo::TypesMatch(void *pyobject)
 char *
 ResampleScriptingPluginInfo::GetLogString()
 {
-    std::string s(PyResampleAttributes_GetLogString());
+    std::string s(PyResamplePluginAttributes_GetLogString());
     char *v = new char[s.size() + 1];
     strcpy(v, s.c_str());
     return v;
@@ -176,5 +176,5 @@ ResampleScriptingPluginInfo::GetLogString()
 void
 ResampleScriptingPluginInfo::SetDefaults(const AttributeSubject *atts)
 {
-    PyResampleAttributes_SetDefaults((const ResampleAttributes *)atts);
+    PyResamplePluginAttributes_SetDefaults((const ResamplePluginAttributes *)atts);
 }

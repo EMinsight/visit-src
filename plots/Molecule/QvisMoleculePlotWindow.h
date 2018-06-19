@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -56,7 +56,6 @@ class QvisLineStyleWidget;
 class QvisLineWidthWidget;
 class QvisVariableButton;
 class QComboBox;
-class QGroupBox;
 
 // ****************************************************************************
 // Class: QvisMoleculePlotWindow
@@ -70,9 +69,7 @@ class QGroupBox;
 // Creation:   March 23, 2006
 //
 // Modifications:
-//   Cyrus Harrison, Fri Jul 18 14:38:14 PDT 2008
-//   Initial Qt4 Port.
-//
+//   
 // ****************************************************************************
 
 class QvisMoleculePlotWindow : public QvisPostableWindowObserver
@@ -118,51 +115,50 @@ class QvisMoleculePlotWindow : public QvisPostableWindowObserver
     void maxFlagChanged(bool val);
     void scalarMaxProcessText();
   private:
-    int                   plotType;
-    QComboBox            *drawAtomsAs;
-    QComboBox            *scaleRadiusBy;
-    QComboBox            *drawBondsAs;
-    QButtonGroup         *colorBondsGroup;
-    QWidget              *colorBondsWidget;
-    QvisColorButton      *bondSingleColor;
-    QvisVariableButton   *radiusVariable;
-    QLineEdit            *radiusScaleFactor;
-    QLineEdit            *radiusFixed;
-    QComboBox            *atomSphereQuality;
-    QComboBox            *bondCylinderQuality;
-    QLineEdit            *bondRadius;
-    QvisLineWidthWidget  *bondLineWidth;
-    QvisLineStyleWidget  *bondLineStyle;
+    int plotType;
+    QComboBox *drawAtomsAs;
+    QComboBox *scaleRadiusBy;
+    QComboBox *drawBondsAs;
+    QButtonGroup *colorBonds;
+    QvisColorButton *bondSingleColor;
+    QvisVariableButton *radiusVariable;
+    QLineEdit *radiusScaleFactor;
+    QLineEdit *radiusFixed;
+    QComboBox *atomSphereQuality;
+    QComboBox *bondCylinderQuality;
+    QLineEdit *bondRadius;
+    QvisLineWidthWidget *bondLineWidth;
+    QvisLineStyleWidget *bondLineStyle;
     QvisColorTableButton *elementColorTable;
     QvisColorTableButton *residueTypeColorTable;
     QvisColorTableButton *residueSequenceColorTable;
     QvisColorTableButton *continuousColorTable;
-    QCheckBox            *legendFlag;
-    QCheckBox            *minFlag;
-    QLineEdit            *scalarMin;
-    QCheckBox            *maxFlag;
-    QLineEdit            *scalarMax;
-    QLabel               *drawAtomsAsLabel;
-    QLabel               *scaleRadiusByLabel;
-    QLabel               *drawBondsAsLabel;
-    QLabel               *colorBondsLabel;
-    QLabel               *radiusVariableLabel;
-    QLabel               *radiusScaleFactorLabel;
-    QLabel               *radiusFixedLabel;
-    QLabel               *atomSphereQualityLabel;
-    QLabel               *bondCylinderQualityLabel;
-    QLabel               *bondRadiusLabel;
-    QLabel               *bondLineWidthLabel;
-    QLabel               *bondLineStyleLabel;
-    QLabel               *elementColorTableLabel;
-    QLabel               *residueTypeColorTableLabel;
-    QLabel               *residueSequenceColorTableLabel;
-    QLabel               *continuousColorTableLabel;
-    QLabel               *legendFlagLabel;
-    QLabel               *minFlagLabel;
-    QLabel               *maxFlagLabel;
+    QCheckBox *legendFlag;
+    QCheckBox *minFlag;
+    QLineEdit *scalarMin;
+    QCheckBox *maxFlag;
+    QLineEdit *scalarMax;
+    QLabel *drawAtomsAsLabel;
+    QLabel *scaleRadiusByLabel;
+    QLabel *drawBondsAsLabel;
+    QLabel *colorBondsLabel;
+    QLabel *radiusVariableLabel;
+    QLabel *radiusScaleFactorLabel;
+    QLabel *radiusFixedLabel;
+    QLabel *atomSphereQualityLabel;
+    QLabel *bondCylinderQualityLabel;
+    QLabel *bondRadiusLabel;
+    QLabel *bondLineWidthLabel;
+    QLabel *bondLineStyleLabel;
+    QLabel *elementColorTableLabel;
+    QLabel *residueTypeColorTableLabel;
+    QLabel *residueSequenceColorTableLabel;
+    QLabel *continuousColorTableLabel;
+    QLabel *legendFlagLabel;
+    QLabel *minFlagLabel;
+    QLabel *maxFlagLabel;
 
-    MoleculeAttributes   *atts;
+    MoleculeAttributes *atts;
 };
 
 

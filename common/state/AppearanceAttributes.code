@@ -25,9 +25,8 @@ AppearanceAttributes::InitializeStyle()
 
     style = "windows";
 #elif defined(__APPLE__)
-    style = "macintosh";
+    style = "aqua";
 #else
     style = "motif";
 #endif
 }
-

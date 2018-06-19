@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -103,9 +103,6 @@ class  vtkRenderer;
 //    Hank Childs, Fri Aug 31 10:28:10 PDT 2007
 //    Added AdaptsToAnyWindowMode.
 //
-//    Brad Whitlock, Wed Jan  7 14:26:22 PST 2009
-//    I modified a plot info atts method.
-//
 // ****************************************************************************
 
 class PLOTTER_API avtBehavior
@@ -143,7 +140,7 @@ class PLOTTER_API avtBehavior
     void                       SetLegend(avtLegend_p);
     avtLegend_p                GetLegend(void)       { return legend; };
 
-    const PlotInfoAttributes  &GetPlotInformation() const;
+    const PlotInfoAttributes  *GetPlotInfoAtts(void);
     
   protected:
     avtDataObjectInformation   info;

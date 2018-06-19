@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,13 +39,12 @@
 #ifndef QVIS_COLOR_BUTTON_H
 #define QVIS_COLOR_BUTTON_H
 #include <gui_exports.h>
-
-#include <QAbstractButton>
-#include <QColor>
+#include <qcolor.h>
+#include <qbutton.h>
 #include <vector>
 
 class QPainter;
-class QMenu;
+class QPopupMenu;
 class QvisColorSelectionWidget;
 
 // ****************************************************************************
@@ -61,18 +60,17 @@ class QvisColorSelectionWidget;
 // Creation:   Mon Dec 4 09:49:14 PDT 2000
 //
 // Modifications:
-//   Brad Whitlock, Tue Jun  3 15:28:12 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
-class GUI_API QvisColorButton : public QAbstractButton
+class GUI_API QvisColorButton : public QButton
 {
     Q_OBJECT
 
     typedef std::vector<QvisColorButton *> ColorButtonVector;
 public:
-    QvisColorButton(QWidget *parent = 0, const void *userData = 0);
+    QvisColorButton(QWidget *parent = 0, const char *name = 0,
+                    const void *userData = 0);
     virtual ~QvisColorButton();
     virtual QSize sizeHint() const;
     virtual QSizePolicy sizePolicy () const;
@@ -86,9 +84,8 @@ signals:
     void selectedColor(const QColor &c);
     void selectedColor(const QColor &c, const void *data);
 protected:
-    virtual void paintEvent(QPaintEvent *);
-    virtual void drawButton(QPainter *);
-    virtual void drawButtonLabel(QPainter *);
+    virtual void  drawButton(QPainter *);
+    virtual void  drawButtonLabel(QPainter *);
 private slots:
     void popupPressed();
     void colorSelected(const QColor &c);

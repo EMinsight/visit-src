@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -201,17 +201,13 @@ VisitPointTool::Disable()
 //    Jeremy Meredith, Thu Jan 31 14:36:26 EST 2008
 //    Disabled for AxisArray window mode.
 //
-//    Eric Brugger, Tue Dec  9 14:03:27 PST 2008
-//    Disabled for AxisParallel window mode.
-//
 // ****************************************************************************
 
 bool
 VisitPointTool::IsAvailable() const
 {
 
-    return proxy.GetMode() != WINMODE_AXISARRAY &&
-           proxy.GetMode() != WINMODE_AXISPARALLEL &&  proxy.HasPlots();
+    return proxy.GetMode() != WINMODE_AXISARRAY && proxy.HasPlots();
 }
 
 // ****************************************************************************

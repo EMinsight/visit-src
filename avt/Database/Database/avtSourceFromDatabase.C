@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -185,9 +185,6 @@ avtSourceFromDatabase::~avtSourceFromDatabase()
 //    Hank Childs, Wed Jul 25 14:16:36 PDT 2007
 //    Renamed method: NeedBoundarySurfaces -> GetBoundarySurfaceRepresentation.
 //
-//    Hank Childs, Mon Dec  1 15:41:49 PST 2008
-//    Removed code thought to be no longer necessary to prune trees.
-//
 // ****************************************************************************
 
 bool
@@ -223,10 +220,6 @@ avtSourceFromDatabase::FetchDataset(avtDataRequest_p spec,
         rv = true;
     }
 
-/* THE CALL TO GetDomainList IS NOT CHEAP AND I DO NOT BELIEVE THIS CODE
- * IS DOING ANYTHING MEANINGFUL ANYMORE, SO I'M COMMENTING IT OUT.
- * (I am not removing it because I want to leave a visible reminder for)
- * (the next few months in case something weird happens.)
     if (rv)
     {
         vector<int> list;
@@ -237,7 +230,6 @@ avtSourceFromDatabase::FetchDataset(avtDataRequest_p spec,
         visitTimer->StopTimer(t0, "PruneTree from avtSourceFromDatabase");
     }
     else
- */
     {
         //
         // PruneTree does an additional service that is a bit hidden.  If the

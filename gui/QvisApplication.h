@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -38,11 +38,7 @@
 
 #ifndef QVIS_APPLICATION_H
 #define QVIS_APPLICATION_H
-#include <QApplication>
-
-#ifdef Q_WS_MACX
-class QEventLoop;
-#endif
+#include <qapplication.h>
 
 // ****************************************************************************
 // Class: QvisApplication
@@ -59,9 +55,6 @@ class QEventLoop;
 // Modifications:
 //   Brad Whitlock, Tue Oct 9 15:16:34 PST 2007
 //   Changed signature for macEventFilter to match newer Qt method.
-//
-//   Brad Whitlock, Fri May 30 11:50:32 PDT 2008
-//   Qt 4.
 //
 // ****************************************************************************
 
@@ -82,8 +75,7 @@ private slots:
 #ifdef Q_WS_MACX
 public:
     virtual bool macEventFilter(EventHandlerCallRef, EventRef);
-    bool         needToMakeActive;
-    QEventLoop  *eventLoop;
+    bool needToMakeActive;
 #endif
 };
 #endif

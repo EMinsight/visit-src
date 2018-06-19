@@ -310,7 +310,7 @@ ac_includes_default="\
 # include <unistd.h>
 #endif"
 
-ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS TOPDIR PLATFORM_CPPFLAGS CMAKE CXXFLAGS EGREP CXX LDFLAGS CPPFLAGS ac_ct_CXX EXEEXT OBJEXT PARALLEL PARALLEL_CPPFLAGS MPI_LIBS MPI_CC MPI_CXX LIBSTATICPAR LIBSHAREDPAR LIBSHAREDPAR_UPDATEONLY PARDEP BUILD_COGNOMEN LIBCOGNOMEN MESA_DIR MESA_INCLUDE MESA_LIBS VIEWER_MESA_STUB_CPPFLAGS VIEWER_MESA_LIBS BUILD_MESA_STUB CC CFLAGS ac_ct_CC GL_LIBS VTK_DIR VTK_INCLUDES VTK_LIBS VTK_LIGHTWEIGHT_LIBS AVTPREP_SER AVTPREP_PAR CONVERT_SER CONVERT_PAR MAKEMILI_SER MAKEMILI_PAR ENGINE_SER ENGINE_PAR ENGINELIBSER ENGINELIBPAR METADATA_SERVER MDSERVERLIB MDSERVEROBJ VISITPY SCRIPTINGLIB SCRIPTINGOBJ PY_BUILD_VISITMODULE VIEWER VISWINDOW VIEWERLIB VIEWEROBJ VIEWERLIB_SRC VIEWEREXE_SRC GUI GUILIB GUIOBJ GUIFRAMEWORKS ANNOTATION_FLAGS JAVAC JAVA_TARGET JAR JAVAFLAGS JAVAPLUGINFLAGS BUILD_SLIVR SLIVR_INCLUDE SLIVR_LIBS TEEM_CMAKE_C_FLAGS SLIVR_CMAKE_SHARED_LINKER_FLAGS SLIVR_GUI_IMPL SLIVR_GUI_HDR HELP PLOT_BUILD_DIRS OPERATOR_BUILD_DIRS DB_BUILD_DIRS BUILD_GLEW GLEW_INCLUDE GLEW_LIBS BUILD_BILIB VISITWRAPPER_RPATH CXXCPP CPP F77 FFLAGS ac_ct_F77 SET_MAKE RANLIB ac_ct_RANLIB MAKEDEPEND BUILD_FORTRAN OS_RULE BUILD_TUVOK TUVOK_LIB TUVOK_INCLUDE BUILD_ZLIB ZLIB_LIB HDF5_INCLUDE HDF5_LIB HDF5_TARGET SILO_INCLUDE SILO_LIB SILO_TARGET EXODUS EXODUS_LIB EXODUS_LIBS EXODUS_FLAGS PDB_INCLUDE PDB_LIB PDB_TARGET MILI MILI_FLAGS MILI_LIBS MILI_DIR TCMALLOC_LIB TCMALLOC_DIR CREATE_TCMALLOC_LINK HDF4 HDF4_FLAGS HDF4_LIBS HDF4_LIBDIR BOXLIB2D BOXLIB2D_INCLUDE BOXLIB2D_LIBS BOXLIB2D_LIBDIR BOXLIB3D BOXLIB3D_INCLUDE BOXLIB3D_LIBS BOXLIB3D_LIBDIR H5PART H5PART_INCLUDE H5PART_LIB H5PART_LIBDIR VISUS VISUS_INCLUDE VISUS_LIB NETCDF NETCDF_INCLUDE NETCDF_LIB NETCDF_CXX_LIB CGNS CGNS_INCLUDE CGNS_LIB GDAL GDAL_INCLUDE GDAL_LIB GDAL_LIBS CFITSIO CFITSIO_INCLUDE CFITSIO_LIB CFITSIO_LIBDIR ITAPS_C_INCLUDE ITAPS_C_LIB ITAPS_C0_INCLUDE ITAPS_C0_LIB ITAPS_C1_INCLUDE ITAPS_C1_LIB ITAPS_C2_INCLUDE ITAPS_C2_LIB ITAPS_C3_INCLUDE ITAPS_C3_LIB ITAPS_C4_INCLUDE ITAPS_C4_LIB ITAPS_C CCMIO CCMIO_INCLUDE CCMIO_LIBS CCMIO_LIBDIR SIMULATION EXPORT_DYNAMIC ENGINE_CPPFLAGS PREPROCESSOR_CPPFLAGS PREPROCESSOR_PARALLEL_SRC COMPONENT_CPPFLAGS VISIT_VTK_CPPFLAGS VISIT_VTK_LDFLAGS VIEWER_CPPFLAGS QT_BIN QT_INCLUDE QT_LIB QT_LDFLAGS QT_LIBS QT_CORE QT_CORE_LIB QT_DESIGNER QT_DESIGNER_LIB QT_GUI QT_GUI_LIB QT_HELP QT_HELP_LIB QT_CLUCENE QT_CLUCENE_LIB QT_NETWORK QT_NETWORK_LIB QT_OPENGL QT_OPENGL_LIB QT_SCRIPT QT_SCRIPT_LIB QT_SQL QT_SQL_LIB QT_SVG QT_SVG_LIB QT_TEST QT_TEST_LIB QT_XML QT_XML_LIB QT_QUI QT_QUI_LIB QT_CXXFLAGS QT_MOC VTKQT_CPPFLAGS VTKQT VTKQT_LIBS X_LIBS PTHREAD_LIB PTHREAD_CXXFLAGS ICET_CXXFLAGS ICET_LDFLAGS ICET_LIBS ICET_ENG_MAIN_OBJ PYDIR PYVERSION PY_INCLUDEDIR PY_CXXFLAGS PY_LDFLAGS PY_LIB PY_CLI_LIB EXE_LDFLAGS PLUGIN_LDFLAGS DATA_EXE_LDFLAGS SHLIB_CREATEPROG SHLIB_LIBS SHLIB_SERLIBS SHLIB_PARLIBS SHLIB_MPI_LIBS SHLIB_ILIBS SHLIB_GLIBS SHLIB_VLIBS SHLIB_MLIBS SHLIB_ESERLIBS SHLIB_EPARLIBS SHLIB_SLIBS SHLIB_POSTPROCESS_ILIBS SHLIB_POSTPROCESS_GLIBS SHLIB_POSTPROCESS_VLIBS SHLIB_POSTPROCESS_MLIBS SHLIB_POSTPROCESS_ESERLIBS SHLIB_POSTPROCESS_EPARLIBS SHLIB_POSTPROCESS_SLIBS SHLIB_SOEXT SHLIB_LIBEXT SHLIB_POSTPROCESS SHLIB_POSTPROCESS_SER SHLIB_POSTPROCESS_PAR SHLIB_TMPDIR PREBIND_LIBS ENGINEWRAPSER ENGINEWRAPPAR CREATE_MILI_LINK CREATE_HDF4_LINK CREATE_NETCDF_LINK CREATE_CGNS_LINK CREATE_GDAL_LINK CREATE_EXODUS_LINK CREATE_BOXLIB2D_LINK CREATE_BOXLIB3D_LINK CREATE_CFITSIO_LINK CREATE_H5PART_LINK CREATE_CCMIO_LINK VAC_CV_LIBDIR_CREATE_LINKS VAC_CV_LIBDIR_DESTROY_LINKS MG tmpbin tmpinc tmplib plotplugindir operatorplugindir databaseplugindir DATA_REL_VISIT_PATH LIBOBJS LTLIBOBJS'
+ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS TOPDIR PLATFORM_CPPFLAGS SUBDIRS ALLSUBDIRS SRC BUILD_DBIO_ONLY CHECK_MAKE_AND_ENV_VARS NON_DBIO_SERLIBS NON_DBIO_PARLIBS CMAKE CXXFLAGS EGREP CXX LDFLAGS CPPFLAGS ac_ct_CXX EXEEXT OBJEXT PARALLEL PARALLEL_CPPFLAGS MPI_LIBS MPI_CC MPI_CXX LIBSTATICPAR LIBSHAREDPAR LIBSHAREDPAR_UPDATEONLY PARDEP BUILD_COGNOMEN LIBCOGNOMEN MESA_DIR MESA_INCLUDE MESA_LIBS MESA_LIBGL VIEWER_MESA_STUB_CPPFLAGS VIEWER_MESA_LIBS BUILD_MESA_STUB ICET_CXXFLAGS ICET_LDFLAGS ICET_LIBS ICET_ENG_MAIN_OBJ CC CFLAGS ac_ct_CC GL_LIBS VTK_DIR VTK_INCLUDES VTK_LIBS VTK_LIGHTWEIGHT_LIBS MESA_OBJ SERMESA_OBJ PARMESA_OBJ AVTPREP_SER AVTPREP_PAR CONVERT_SER CONVERT_PAR CONVERT_SER_LITE CONVERT_PAR_LITE MAKEMILI_SER MAKEMILI_PAR ENGINE_SER ENGINE_PAR ENGINELIBSER ENGINELIBPAR METADATA_SERVER MDSERVERLIB MDSERVEROBJ VISITPY SCRIPTINGLIB SCRIPTINGOBJ PY_BUILD_VISITMODULE VIEWER VIEWERLIB VIEWEROBJ VIEWERLIB_SRC VIEWEREXE_SRC ENGINEPROXYDIR GUI GUILIB GUIOBJ GUIFRAMEWORKS ANNOTATION_FLAGS JAVAC JAVA_TARGET JAR JAVAFLAGS JAVAPLUGINFLAGS BUILD_SLIVR SLIVR_INCLUDE SLIVR_LIBS TEEM_CMAKE_C_FLAGS SLIVR_CMAKE_SHARED_LINKER_FLAGS SLIVR_GUI_IMPL SLIVR_GUI_HDR HELP PLOT_BUILD_DIRS OPERATOR_BUILD_DIRS DB_BUILD_DIRS BUILD_GLEW GLEW_INCLUDE GLEW_LIBS BUILD_BILIB VISITWRAPPER_RPATH CXXCPP CPP F77 FFLAGS ac_ct_F77 SET_MAKE RANLIB ac_ct_RANLIB MAKEDEPEND BUILD_FORTRAN XML2MAKEFILE_CXX OS_RULE BUILD_ZLIB ZLIB_LIB HDF5_INCLUDE HDF5_LIB HDF5_TARGET SILO_INCLUDE SILO_LIB SILO_TARGET EXODUS EXODUS_LIB EXODUS_LIBS EXODUS_FLAGS PDB PDB_FLAGS PDB_LIBS PDB_EXEC MILI MILI_FLAGS MILI_LIBS MILI_DIR TCMALLOC_LIB TCMALLOC_DIR CREATE_TCMALLOC_LINK HDF4 HDF4_FLAGS HDF4_LIBS HDF4_LIBDIR BOXLIB2D BOXLIB2D_INCLUDE BOXLIB2D_LIBS BOXLIB2D_LIBDIR BOXLIB3D BOXLIB3D_INCLUDE BOXLIB3D_LIBS BOXLIB3D_LIBDIR H5PART H5PART_INCLUDE H5PART_LIB H5PART_LIBDIR FASTBIT FASTBIT_INCLUDE FASTBIT_LIB FASTBIT_LIBDIR VISUS VISUS_INCLUDE VISUS_LIB NETCDF NETCDF_INCLUDE NETCDF_LIB NETCDF_CXX_LIB CGNS CGNS_INCLUDE CGNS_LIB GDAL GDAL_INCLUDE GDAL_LIB GDAL_LIBS CFITSIO CFITSIO_INCLUDE CFITSIO_LIB CFITSIO_LIBDIR ITAPS_C_INCLUDE ITAPS_C_LIB ITAPS_C0_INCLUDE ITAPS_C0_LIB ITAPS_C1_INCLUDE ITAPS_C1_LIB ITAPS_C2_INCLUDE ITAPS_C2_LIB ITAPS_C3_INCLUDE ITAPS_C3_LIB ITAPS_C4_INCLUDE ITAPS_C4_LIB ITAPS_C CCMIO CCMIO_INCLUDE CCMIO_LIBS CCMIO_LIBDIR SIMULATION EXPORT_DYNAMIC ENGINE_CPPFLAGS SILOOBJVTK_CPPFLAGS PREPROCESSOR_CPPFLAGS PREPROCESSOR_PARALLEL_SRC COMPONENT_CPPFLAGS VISIT_VTK_CPPFLAGS VISIT_VTK_LDFLAGS VIEWER_CPPFLAGS QT_BIN QT_INCLUDE QT_LIB LIBQT QT_LIBS QUI_LIBS QT_LDFLAGS QT_STATICLDFLAGS QT_CXXFLAGS QT_MOC X_LIBS X_CPPFLAGS VTKQT_CPPFLAGS VTKQT VTKQT_LIBS PTHREAD_LIB PTHREAD_CXXFLAGS PYDIR PYVERSION PY_INCLUDEDIR PY_CXXFLAGS PY_LDFLAGS PY_LIB PY_CLI_LIB EXE_LDFLAGS PLUGIN_LDFLAGS DATA_EXE_LDFLAGS SHLIB_CREATEPROG SHLIB_LIBS SHLIB_SERLIBS SHLIB_PARLIBS SHLIB_MPI_LIBS SHLIB_ILIBS SHLIB_GLIBS SHLIB_VLIBS SHLIB_MLIBS SHLIB_ESERLIBS SHLIB_EPARLIBS SHLIB_SLIBS SHLIB_POSTPROCESS_ILIBS SHLIB_POSTPROCESS_GLIBS SHLIB_POSTPROCESS_VLIBS SHLIB_POSTPROCESS_MLIBS SHLIB_POSTPROCESS_ESERLIBS SHLIB_POSTPROCESS_EPARLIBS SHLIB_POSTPROCESS_SLIBS SHLIB_SOEXT SHLIB_LIBEXT SHLIB_POSTPROCESS SHLIB_POSTPROCESS_SER SHLIB_POSTPROCESS_PAR SHLIB_TMPDIR PREBIND_LIBS ENGINEWRAPSER ENGINEWRAPPAR CREATE_SILO_LINK CREATE_MILI_LINK CREATE_HDF4_LINK CREATE_NETCDF_LINK CREATE_CGNS_LINK CREATE_GDAL_LINK CREATE_EXODUS_LINK CREATE_BOXLIB2D_LINK CREATE_BOXLIB3D_LINK CREATE_CFITSIO_LINK CREATE_H5PART_LINK CREATE_FASTBIT_LINK CREATE_CCMIO_LINK VAC_CV_LIBDIR_CREATE_LINKS VAC_CV_LIBDIR_DESTROY_LINKS MG tmpbin tmpinc tmplib plotplugindir operatorplugindir databaseplugindir DATA_REL_VISIT_PATH LIBOBJS LTLIBOBJS'
 ac_subst_files='VARIABLES TARGETS DIRTARGETS LIBTARGETS PARLIBTARGETS SOURCE_DEPENDENCIES'
 
 # Initialize some variables set by options.
@@ -865,12 +865,19 @@ if test -n "$ac_init_help"; then
 Optional Features:
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
+  --enable-dbio-only      build only the components necessary to support
+                          database I/O
+  --enable-engine-only    build only the compute engine
+  --enable-server-components-only
+                          build only the server components
+                          (engine,mdserver,vcl)
   --enable-fake-exceptions       do not make use of C++'s exception library
   --enable-ignore-hangups        ignore hangup signals (this avoids RHEL3 bug)
   --enable-parallel       make the parallel version
   --enable-viewer-mesa-stub     use the mesa stub library in the viewer
+  --enable-icet           Use the ICE-T parallel image compositor
+
   --disable-ogl           do not check for the SGI ogl library
-  --disable-mdserver      build without mdserver
   --disable-scripting     build without CLI Python scripting capability
   --enable-visitmodule    build a VisIt Python module
   --disable-annotations   build without annotations
@@ -881,15 +888,18 @@ Optional Features:
   --disable-glew          do not build or use glew library -- disables
                           detection of OpenGL extensions
   --disable-bilib         do not use boost interval template library -- disables adaptive CSG discretization
-  --enable-tuvok          Enable Tuvok-based volume renderers.
-  --enable-icet           Use the ICE-T parallel image compositor
-
+  --disable-nospin-bcast           Use straight MPI_BCast instead of VisIt's no-spin BCast for getting commands from rank 0
+  --disable-select           build without using the select function
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-config=file      Specify a configuration file to execute
   --with-cmake=path to cmake     Location of cmake utility.
+  --with-icet-includedir=/path
+                          Directory where ICE-T include files can be found.
+  --with-icet-libdir=/path
+                          Directory where ICE-T libraries can be found.
   --with-plots=all,base   What plot plugins to build (overrides --enable-buildall)
   --with-operators=all,base What operator plugins to build (overrides --enable-buildall)
   --with-dbs=all,base     What database plugins to build (overrides --enable-buildall)
@@ -902,13 +912,14 @@ Optional Packages:
   --with-exodus=<DIR>           enable Exodus driver
   --with-exodus-include=<DIR>   specify Exodus include path
   --with-exodus-lib=<DIR>       specify Exodus lib path
-  --with-pdb              use pdb; build related plugin(s)/code
+  --with-pdb=INC-DIR,LIB-DIR      Location of PDB header and library
   --with-mili=DIR      Location of Mili header and library
   --with-google-perftools=DIR      Location of tc-malloc from google-perftools
   --with-hdf4=INC-DIR,LIB-DIR      Location of HDF4 header and library
   --with-boxlib2d=INC-DIR,LIB-DIR      Location of Boxlib2D header and library
   --with-boxlib3d=INC-DIR,LIB-DIR      Location of Boxlib3D header and library
   --with-h5part=INC-DIR,LIB-DIR       Location of H5Part headers and library
+  --with-fastbit=INC-DIR,LIB-DIR       Location of FastBit headers and library
   --with-visus=INC-DIR,LIB-DIR      Location of ViSUS header and library
   --with-netcdf=INC-DIR,LIB-DIR     Location of netCDF header and library
   --with-cgns=INC-DIR,LIB-DIR     Location of CGNS header and library
@@ -918,10 +929,6 @@ Optional Packages:
                           how to format the argument to this option
   --with-ccmio=INC-DIR,LIB-DIR      Location of CCMIO header and library
   --with-x                use the X Window System
-  --with-icet-includedir=/path
-                          Directory where ICE-T include files can be found.
-  --with-icet-libdir=/path
-                          Directory where ICE-T libraries can be found.
 
 Some influential environment variables:
   CXX         C++ compiler command
@@ -1558,6 +1565,84 @@ fi
 # Check for platform specific flags.
 #
 
+
+#
+# Setup default standard dir targets. These can get overridden
+# for specific types of builds like dbio-only.
+#
+SUBDIRS="$""(SUBDIRS_STD)"
+ALLSUBDIRS="$""(ALLSUBDIRS_STD)"
+SRC="$""(SRC_STD)"
+BUILD_DBIO_ONLY=""
+
+
+
+
+if test "$UNAME" = "Darwin"; then
+    # Skip the check because it uses an incompatible xargs argument.
+    CHECK_MAKE_AND_ENV_VARS=""
+else
+    CHECK_MAKE_AND_ENV_VARS="check-make-and-env-vars"
+fi
+
+
+#
+# Check for database-only build. Disable a slew of things if so.
+#
+enable_scripting=yes
+# Check whether --enable-dbio-only or --disable-dbio-only was given.
+if test "${enable_dbio_only+set}" = set; then
+  enableval="$enable_dbio_only"
+
+fi;
+if test "$enable_dbio_only" = yes; then
+    enable_scripting=no
+
+cat >>confdefs.h <<\_ACEOF
+#define DBIO_ONLY 1
+_ACEOF
+
+    NON_DBIO_SERLIBS=""
+    NON_DBIO_PARLIBS=""
+else
+    NON_DBIO_SERLIBS="$""(NON_DBIO_SERLIBS)"
+    NON_DBIO_PARLIBS="$""(NON_DBIO_PARLIBS)"
+fi
+
+
+
+#
+# Check for engine-only build. Disable clients,etc. Just build the engine.
+#
+# Check whether --enable-engine-only or --disable-engine-only was given.
+if test "${enable_engine_only+set}" = set; then
+  enableval="$enable_engine_only"
+
+fi;
+if test "$enable_engine_only" = yes && test "$enable_dbio_only" = yes; then
+   { { echo "$as_me:$LINENO: error: --enable-dbio-only is not compatible with --enable-engine-only" >&5
+echo "$as_me: error: --enable-dbio-only is not compatible with --enable-engine-only" >&2;}
+   { (exit 1); exit 1; }; }
+fi
+
+#
+# Check for server-components-only build. Disable clients,etc. Just build the engine,mdserver,vcl.
+#
+# Check whether --enable-server-components-only or --disable-server-components-only was given.
+if test "${enable_server_components_only+set}" = set; then
+  enableval="$enable_server_components_only"
+
+fi;
+if test "$enable_server_components_only" = yes && test "$enable_dbio_only" = yes; then
+   { { echo "$as_me:$LINENO: error: --enable-server-components-only is not compatible with --enable-engine-only" >&5
+echo "$as_me: error: --enable-server-components-only is not compatible with --enable-engine-only" >&2;}
+   { (exit 1); exit 1; }; }
+fi
+if test "$enable_server_components_only" = yes && test "$enable_engine_only" = yes; then
+   { echo "$as_me:$LINENO: WARNING: --enable-server-components-only overrides --enable-engine-only" >&5
+echo "$as_me: WARNING: --enable-server-components-only overrides --enable-engine-only" >&2;}
+   enable_engine_only=no
+fi
 
 #
 # Check for CMake
@@ -2423,12 +2508,18 @@ LIBCOGNOMEN=$ax_lib_cog
 #
 echo "$as_me:$LINENO: checking for Mesa" >&5
 echo $ECHO_N "checking for Mesa... $ECHO_C" >&6
+MESA_LIBGL="MesaGL"
 if test -n "$MESA"; then
    echo "$as_me:$LINENO: result: found" >&5
 echo "${ECHO_T}found" >&6
    MESA_DIR=$MESA
    MESA_INCLUDE="-I$""(TOPDIR)/include/mesa"
-   MESA_LIBS="-lOSMesa -lMesaGL"
+   if test -e $MESA/lib/libGL.so ; then
+       MESA_LIBS="-lOSMesa -lGL"
+       MESA_LIBGL="GL"
+   else
+       MESA_LIBS="-lOSMesa -lMesaGL"
+   fi
 else
    echo "$as_me:$LINENO: result: not found" >&5
 echo "${ECHO_T}not found" >&6
@@ -2436,6 +2527,7 @@ echo "${ECHO_T}not found" >&6
    MESA_INCLUDE=""
    MESA_LIBS=""
 fi
+
 
 
 
@@ -2453,7 +2545,7 @@ else
   UseViewerMesaStub=yes
 fi;
 
-if test "$UseViewerMesaStub" = "yes"; then
+if test "$UseViewerMesaStub" = "yes" && test ! "$enable_engine_only" = yes && test ! "$enable_server_components_only" = yes ; then
    echo "$as_me:$LINENO: result: enabled" >&5
 echo "${ECHO_T}enabled" >&6
    VIEWER_MESA_STUB_CPPFLAGS="-DMESA_STUB"
@@ -2467,6 +2559,402 @@ echo "${ECHO_T}disabled" >&6
    BUILD_MESA_STUB=""
 fi
 
+
+
+
+
+# Check whether --enable-icet or --disable-icet was given.
+if test "${enable_icet+set}" = set; then
+  enableval="$enable_icet"
+
+fi;
+
+
+# Check whether --with-icet-includedir or --without-icet-includedir was given.
+if test "${with_icet_includedir+set}" = set; then
+  withval="$with_icet_includedir"
+  with_icet_includedir=$withval
+else
+  with_icet_includedir=no
+
+fi;
+
+# Check whether --with-icet-libdir or --without-icet-libdir was given.
+if test "${with_icet_libdir+set}" = set; then
+  withval="$with_icet_libdir"
+  with_icet_libdir=$withval
+else
+  with_icet_libdir=no
+
+fi;
+
+ICET_LIBS=
+ax_ICET_LIB=
+ax_ICET_LIB_MPI=
+ax_ICET_LIB_STRATEGIES=
+
+
+if test "x$UseParallel" == "xno" -a "x$enable_icet" == "xyes" ; then
+	{ { echo "$as_me:$LINENO: error:
+IceT usage requested, but you're not doing a parallel build.  IceT requires
+'--enable-parallel' to be specified." >&5
+echo "$as_me: error:
+IceT usage requested, but you're not doing a parallel build.  IceT requires
+'--enable-parallel' to be specified." >&2;}
+   { (exit 1); exit 1; }; }
+elif test "x$UseParallel" == "xyes" -a "x$enable_icet" == "xyes" ; then
+
+
+ax_have_icet=0
+if test "x$enable_icet" != "xno"; then
+
+                        ac_ext=cc
+ac_cpp='$CXXCPP $CPPFLAGS'
+ac_compile='$CXX -c $CXXFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CXX -o conftest$ac_exeext $CXXFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
+
+        ax_save_LDFLAGS="${LDFLAGS}"
+        ax_save_CXXFLAGS="${CXXFLAGS}"
+
+                                if test -n "${EXE_LDFLAGS}"; then
+  LDFLAGS="${LDFLAGS} ${EXE_LDFLAGS}"
+
+fi
+
+
+                        if test "x$with_icet_includedir" != xno; then
+  ICET_INCLUDEDIR="${with_icet_includedir}"
+
+fi
+
+        if test "x$with_icet_libdir" != xno; then
+  ICET_LIBDIR="${with_icet_libdir}"
+
+fi
+
+
+                        if test -n "${ICET_INCLUDEDIR}"; then
+
+                ICET_CXXFLAGS="${ICET_CXXFLAGS} -I${ICET_INCLUDEDIR}"
+
+
+fi
+
+        CXXFLAGS="${CXXFLAGS} ${ICET_CXXFLAGS}"
+        if test -n "${ICET_LIBDIR}"; then
+
+            ICET_LDFLAGS="-L${ICET_LIBDIR}"
+            LDFLAGS="${LDFLAGS} ${ICET_LDFLAGS}"
+
+fi
+
+
+                                        echo "$as_me:$LINENO: checking for icetGetColorBuffer in -licet" >&5
+echo $ECHO_N "checking for icetGetColorBuffer in -licet... $ECHO_C" >&6
+if test "${ac_cv_lib_icet_icetGetColorBuffer+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-licet                                                                                                 -L$MESA_DIR/lib $MESA_LIBS -lm
+         $LIBS"
+cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+/* Override any gcc2 internal prototype to avoid an error.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+/* We use char because int might match the return type of a gcc2
+   builtin and then its argument prototype would still apply.  */
+char icetGetColorBuffer ();
+int
+main ()
+{
+icetGetColorBuffer ();
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (eval echo "$as_me:$LINENO: \"$ac_link\"") >&5
+  (eval $ac_link) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_cxx_werror_flag"
+			 || test ! -s conftest.err'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest$ac_exeext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_lib_icet_icetGetColorBuffer=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+ac_cv_lib_icet_icetGetColorBuffer=no
+fi
+rm -f conftest.err conftest.$ac_objext \
+      conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+echo "$as_me:$LINENO: result: $ac_cv_lib_icet_icetGetColorBuffer" >&5
+echo "${ECHO_T}$ac_cv_lib_icet_icetGetColorBuffer" >&6
+if test $ac_cv_lib_icet_icetGetColorBuffer = yes; then
+  ax_ICET_LIB="-licet"
+else
+  { { echo "$as_me:$LINENO: error:
+--enable-icet was given, but I could not use IceT.  Perhaps you need to set
+some custom LDFLAGS?
+See \`config.log' for more details." >&5
+echo "$as_me: error:
+--enable-icet was given, but I could not use IceT.  Perhaps you need to set
+some custom LDFLAGS?
+See \`config.log' for more details." >&2;}
+   { (exit 1); exit 1; }; }
+fi
+
+
+                                if test -n "${MPI_LIBS}"; then
+  ICET_MPI_LIBS="${MPI_LIBS}"
+else
+  ICET_MPI_LIBS="-lmpi"
+
+fi
+
+
+        echo "$as_me:$LINENO: checking for icetCreateMPICommunicator in -licet_mpi" >&5
+echo $ECHO_N "checking for icetCreateMPICommunicator in -licet_mpi... $ECHO_C" >&6
+if test "${ac_cv_lib_icet_mpi_icetCreateMPICommunicator+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-licet_mpi -L$MESA_DIR/lib $MESA_LIBS -lm -licet ${ICET_MPI_LIBS}
+         $LIBS"
+cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+/* Override any gcc2 internal prototype to avoid an error.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+/* We use char because int might match the return type of a gcc2
+   builtin and then its argument prototype would still apply.  */
+char icetCreateMPICommunicator ();
+int
+main ()
+{
+icetCreateMPICommunicator ();
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (eval echo "$as_me:$LINENO: \"$ac_link\"") >&5
+  (eval $ac_link) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_cxx_werror_flag"
+			 || test ! -s conftest.err'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest$ac_exeext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_lib_icet_mpi_icetCreateMPICommunicator=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+ac_cv_lib_icet_mpi_icetCreateMPICommunicator=no
+fi
+rm -f conftest.err conftest.$ac_objext \
+      conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+echo "$as_me:$LINENO: result: $ac_cv_lib_icet_mpi_icetCreateMPICommunicator" >&5
+echo "${ECHO_T}$ac_cv_lib_icet_mpi_icetCreateMPICommunicator" >&6
+if test $ac_cv_lib_icet_mpi_icetCreateMPICommunicator = yes; then
+  ax_ICET_LIB_MPI="-licet_mpi"
+else
+  { { echo "$as_me:$LINENO: error:
+--enable-icet was given, but I could not use IceT's MPI wrappers.  Perhaps you
+need to set some custom LDFLAGS?
+See \`config.log' for more details." >&5
+echo "$as_me: error:
+--enable-icet was given, but I could not use IceT's MPI wrappers.  Perhaps you
+need to set some custom LDFLAGS?
+See \`config.log' for more details." >&2;}
+   { (exit 1); exit 1; }; }
+fi
+
+                                        echo "$as_me:$LINENO: checking for icetTreeCompose in -licet_strategies" >&5
+echo $ECHO_N "checking for icetTreeCompose in -licet_strategies... $ECHO_C" >&6
+if test "${ac_cv_lib_icet_strategies_icetTreeCompose+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-licet_strategies -L$MESA_DIR/lib $MESA_LIBS -lm -licet ${ICET_MPI_LIBS}
+         $LIBS"
+cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+/* Override any gcc2 internal prototype to avoid an error.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+/* We use char because int might match the return type of a gcc2
+   builtin and then its argument prototype would still apply.  */
+char icetTreeCompose ();
+int
+main ()
+{
+icetTreeCompose ();
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (eval echo "$as_me:$LINENO: \"$ac_link\"") >&5
+  (eval $ac_link) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_cxx_werror_flag"
+			 || test ! -s conftest.err'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest$ac_exeext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_lib_icet_strategies_icetTreeCompose=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+ac_cv_lib_icet_strategies_icetTreeCompose=no
+fi
+rm -f conftest.err conftest.$ac_objext \
+      conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+echo "$as_me:$LINENO: result: $ac_cv_lib_icet_strategies_icetTreeCompose" >&5
+echo "${ECHO_T}$ac_cv_lib_icet_strategies_icetTreeCompose" >&6
+if test $ac_cv_lib_icet_strategies_icetTreeCompose = yes; then
+  ax_ICET_LIB_STRATEGIES="-licet_strategies"
+else
+  { { echo "$as_me:$LINENO: error:
+--enable-icet was given, but I could not make use of it's strategies!  This
+might mean the library was updated and VisIt's IceT test simply needs to be
+updated, or it might mean your IceT install is not quite right.  You may need
+to set some custom LDFLAGS.
+See \`config.log' for more details." >&5
+echo "$as_me: error:
+--enable-icet was given, but I could not make use of it's strategies!  This
+might mean the library was updated and VisIt's IceT test simply needs to be
+updated, or it might mean your IceT install is not quite right.  You may need
+to set some custom LDFLAGS.
+See \`config.log' for more details." >&2;}
+   { (exit 1); exit 1; }; }
+fi
+
+        ICET_LIBS="${ax_ICET_LIB} ${ax_ICET_LIB_MPI} ${ax_ICET_LIB_STRATEGIES}"
+        PARALLEL_CPPFLAGS="${PARALLEL_CPPFLAGS} -I${ICET_INCLUDEDIR}"
+
+
+
+        LDFLAGS=${ax_save_LDFLAGS}
+        CXXFLAGS=${ax_save_CXXFLAGS}
+        ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+        ax_have_icet=1
+
+else
+
+                        if test "x$with_icet_includedir" != xno -o \
+                    "x$with_icet_libdir" != xno; then
+
+            { echo "$as_me:$LINENO: WARNING:
+--with-icet-... options specified without --enable-icet.  Did you mean to
+enable IceT?" >&5
+echo "$as_me: WARNING:
+--with-icet-... options specified without --enable-icet.  Did you mean to
+enable IceT?" >&2;}
+
+fi
+
+
+
+fi
+
+
+cat >>confdefs.h <<_ACEOF
+#define HAVE_ICET "$ax_have_icet"
+_ACEOF
+
+
+
+fi
+
+
+                            if test "0$ax_have_icet" -eq "1"; then
+
+            ax_it_obj="IceTNetworkManager_icet.o"
+
+else
+
+            ax_it_obj=""
+
+
+fi
+
+    ICET_ENG_MAIN_OBJ=$ax_it_obj
 
 
 
@@ -3313,6 +3801,9 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 #
 echo "$as_me:$LINENO: checking for VTK" >&5
 echo $ECHO_N "checking for VTK... $ECHO_C" >&6
+MESA_OBJ=""
+SERMESA_OBJ=""
+PARMESA_OBJ=""
 if test -n "$VTK"; then
     echo "$as_me:$LINENO: result: found" >&5
 echo "${ECHO_T}found" >&6
@@ -3324,6 +3815,20 @@ echo "${ECHO_T}found" >&6
         VTK_LIGHTWEIGHT_LIBS=$VTK_LIBS
     else
         VTK_LIGHTWEIGHT_LIBS="-lvtkCommon -lvtkFiltering -lvtkzlib -lvtkexpat -lvtksys"
+    fi
+
+    # Determine whether VTK was built with mangled Mesa support. If it wasn't
+    # then there is code in VisIt that we do not want to compile.
+    useMangledMesa=`grep "define VTK_USE_MANGLED_MESA" $VTK/vtkToolkits.h`
+    if test -n "$useMangledMesa" ; then
+
+cat >>confdefs.h <<\_ACEOF
+#define VISIT_USE_MANGLED_MESA 1
+_ACEOF
+
+        MESA_OBJ="$""(MESA_OBJ)"
+        SERMESA_OBJ="$""(SERMESA_OBJ)"
+        PARMESA_OBJ="$""(PARMESA_OBJ)"
     fi
 else
     echo "$as_me:$LINENO: result: not found" >&5
@@ -3338,20 +3843,8 @@ fi
 
 
 
-#
-# Check for the common directory
-#
-echo "$as_me:$LINENO: checking for common" >&5
-echo $ECHO_N "checking for common... $ECHO_C" >&6
-if test -d common; then
-    echo "$as_me:$LINENO: result: found" >&5
-echo "${ECHO_T}found" >&6
-    COMMON="common"
-else
-    echo "$as_me:$LINENO: result: not found" >&5
-echo "${ECHO_T}not found" >&6
-    COMMON=""
-fi
+
+
 
 #
 # Check for the avtprep directory
@@ -3385,8 +3878,19 @@ if test -d tools/convert; then
     echo "$as_me:$LINENO: result: found" >&5
 echo "${ECHO_T}found" >&6
     CONVERT_SER="$""(tmpbin)/visitconvert_ser"
+    if test "$UNAME" = "Darwin"; then
+        CONVERT_SER_LITE=""
+    else
+        CONVERT_SER_LITE="$""(tmpbin)/visitconvert_ser_lite"
+    fi
+
     if test -n "$PARALLEL"; then
         CONVERT_PAR="$""(tmpbin)/visitconvert_par"
+        if test "$UNAME" = "Darwin"; then
+            CONVERT_PAR_LITE=""
+        else
+            CONVERT_PAR_LITE="$""(tmpbin)/visitconvert_par_lite"
+        fi
     else
         CONVERT_PAR=""
     fi
@@ -3395,7 +3899,11 @@ else
 echo "${ECHO_T}not found" >&6
     CONVERT_SER=""
     CONVERT_PAR=""
+    CONVERT_SER_LITE=""
+    CONVERT_PAR_LITE=""
 fi
+
+
 
 
 
@@ -3465,21 +3973,9 @@ fi
 
 
 #
-# Check to see if the mdserver was enabled.
+# The mdserver is enabled unless we're doing an engine-only build.
 #
-echo "$as_me:$LINENO: checking if mdserver is enabled" >&5
-echo $ECHO_N "checking if mdserver is enabled... $ECHO_C" >&6
-# Check whether --enable-mdserver or --disable-mdserver was given.
-if test "${enable_mdserver+set}" = set; then
-  enableval="$enable_mdserver"
-  UseMDSERVER="$enable_mdserver"
-else
-  UseMDSERVER=yes
-fi;
-if test "$UseMDSERVER" = "yes"; then
-    echo "$as_me:$LINENO: result: yes" >&5
-echo "${ECHO_T}yes" >&6
-
+if test ! "$enable_engine_only" = yes; then
                 echo "$as_me:$LINENO: checking for mdserver" >&5
 echo $ECHO_N "checking for mdserver... $ECHO_C" >&6
     if test -d mdserver; then
@@ -3494,8 +3990,6 @@ echo "${ECHO_T}not found" >&6
         METADATA_SERVER=""
     fi
 else
-    echo "$as_me:$LINENO: result: no" >&5
-echo "${ECHO_T}no" >&6
     METADATA_SERVER=""
 fi
 
@@ -3514,7 +4008,7 @@ if test "${enable_scripting+set}" = set; then
 else
   UseScripting=yes
 fi;
-if test "X$UseScripting" = "Xyes"; then
+if test "X$UseScripting" = "Xyes" && test ! "$enable_engine_only" = yes && test ! "$enable_server_components_only" = yes; then
     echo "$as_me:$LINENO: result: yes" >&5
 echo "${ECHO_T}yes" >&6
     enable_scripting=yes
@@ -3558,13 +4052,8 @@ fi
 
 
 
-echo "$as_me:$LINENO: checking for viewer" >&5
-echo $ECHO_N "checking for viewer... $ECHO_C" >&6
-if test -d viewer; then
-    echo "$as_me:$LINENO: result: found" >&5
-echo "${ECHO_T}found" >&6
+if test ! "$enable_engine_only" = yes && test ! "$enable_server_components_only" = yes; then
     VIEWER="viewer"
-    VISWINDOW="VisWindow"
     VIEWERLIB="$""(VDSO)"
     VIEWEROBJ="$""(VOBJ)"
     # The private source can go into the executable on all UNIX versions
@@ -3576,13 +4065,14 @@ echo "${ECHO_T}found" >&6
         VIEWERLIB_SRC="$""(PUBLIC_SRC)"
         VIEWEREXE_SRC="$""(MAINSRC) $""(PRIVATE_SRC) $""(SRCMOC)"
     fi
+    ENGINEPROXYDIR="proxy"
 else
     VIEWER=""
-    VISWINDOW=""
     VIEWERLIB=""
     VIEWEROBJ=""
     VIEWERLIB_SRC=""
     VIEWEREXE_SRC=""
+    ENGINEPROXYDIR=""
 fi
 
 
@@ -3591,11 +4081,7 @@ fi
 
 
 
-echo "$as_me:$LINENO: checking for gui" >&5
-echo $ECHO_N "checking for gui... $ECHO_C" >&6
-if test -d gui; then
-    echo "$as_me:$LINENO: result: found" >&5
-echo "${ECHO_T}found" >&6
+if test ! "$enable_engine_only" = yes && test ! "$enable_server_components_only" = yes; then
     GUI="gui"
     GUILIB="$""(GDSO)"
     GUIOBJ="$""(GOBJ)"
@@ -3605,8 +4091,6 @@ echo "${ECHO_T}found" >&6
         GUIFRAMEWORKS=""
     fi
 else
-    echo "$as_me:$LINENO: result: not found" >&5
-echo "${ECHO_T}not found" >&6
     GUI=""
     GUILIB=""
     GUIOBJ=""
@@ -5610,7 +6094,7 @@ fi
 
 
 # Provide some information about the compiler.
-echo "$as_me:5613:" \
+echo "$as_me:6097:" \
      "checking for Fortran 77 compiler version" >&5
 ac_compiler=`set X $ac_compile; echo $2`
 { (eval echo "$as_me:$LINENO: \"$ac_compiler --version </dev/null >&5\"") >&5
@@ -5900,14 +6384,13 @@ else
 echo "${ECHO_T}no" >&6
 fi
 
-
-        echo "$as_me:$LINENO: checking for strerror in -lcposix" >&5
-echo $ECHO_N "checking for strerror in -lcposix... $ECHO_C" >&6
-if test "${ac_cv_lib_cposix_strerror+set}" = set; then
+echo "$as_me:$LINENO: checking for library containing strerror" >&5
+echo $ECHO_N "checking for library containing strerror... $ECHO_C" >&6
+if test "${ac_cv_search_strerror+set}" = set; then
   echo $ECHO_N "(cached) $ECHO_C" >&6
 else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lcposix  $LIBS"
+  ac_func_search_save_LIBS=$LIBS
+ac_cv_search_strerror=no
 cat >conftest.$ac_ext <<_ACEOF
 /* confdefs.h.  */
 _ACEOF
@@ -5952,24 +6435,80 @@ if { (eval echo "$as_me:$LINENO: \"$ac_link\"") >&5
   ac_status=$?
   echo "$as_me:$LINENO: \$? = $ac_status" >&5
   (exit $ac_status); }; }; then
-  ac_cv_lib_cposix_strerror=yes
+  ac_cv_search_strerror="none required"
 else
   echo "$as_me: failed program was:" >&5
 sed 's/^/| /' conftest.$ac_ext >&5
 
-ac_cv_lib_cposix_strerror=no
 fi
 rm -f conftest.err conftest.$ac_objext \
       conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-echo "$as_me:$LINENO: result: $ac_cv_lib_cposix_strerror" >&5
-echo "${ECHO_T}$ac_cv_lib_cposix_strerror" >&6
-if test $ac_cv_lib_cposix_strerror = yes; then
-  LIBS="$LIBS -lcposix"
-fi
+if test "$ac_cv_search_strerror" = no; then
+  for ac_lib in cposix; do
+    LIBS="-l$ac_lib  $ac_func_search_save_LIBS"
+    cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
 
+/* Override any gcc2 internal prototype to avoid an error.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+/* We use char because int might match the return type of a gcc2
+   builtin and then its argument prototype would still apply.  */
+char strerror ();
+int
+main ()
+{
+strerror ();
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (eval echo "$as_me:$LINENO: \"$ac_link\"") >&5
+  (eval $ac_link) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_c_werror_flag"
+			 || test ! -s conftest.err'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest$ac_exeext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_search_strerror="-l$ac_lib"
+break
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
 
+fi
+rm -f conftest.err conftest.$ac_objext \
+      conftest$ac_exeext conftest.$ac_ext
+  done
+fi
+LIBS=$ac_func_search_save_LIBS
+fi
+echo "$as_me:$LINENO: result: $ac_cv_search_strerror" >&5
+echo "${ECHO_T}$ac_cv_search_strerror" >&6
+if test "$ac_cv_search_strerror" != no; then
+  test "$ac_cv_search_strerror" = "none required" || LIBS="$ac_cv_search_strerror $LIBS"
+
+fi
 
 
 BUILD_FORTRAN=""
@@ -5985,6 +6524,14 @@ if test $emptycxxflags = "yes"; then
         CXXFLAGS="-O2 $CXXFLAGS"
     fi
 fi
+
+# Give the option of using a different C++ compiler for xml2makefile since we
+# might want to give the local C++ compiler to generate a local tool, even if
+# we're cross-compiling
+if test -z "$XML2MAKEFILE_CXX"; then
+    XML2MAKEFILE_CXX="$""(CXX)"
+fi
+
 
 # Check to see if we're running clearmake.
 # If we are, set the build verbosity to 0 so that output won't mess up the rest
@@ -6802,58 +7349,6 @@ fi
 
 
 #
-# Check if the user wants to use Tuvok
-#
-
-    echo "$as_me:$LINENO: checking if Tuvok should be used" >&5
-echo $ECHO_N "checking if Tuvok should be used... $ECHO_C" >&6
-
-    # Use the option if given on the configure line, else use TUVOK_ENABLE in
-    # the environment (should it be set).
-    # Check whether --enable-tuvok or --disable-tuvok was given.
-if test "${enable_tuvok+set}" = set; then
-  enableval="$enable_tuvok"
-
-else
-  if test -n "${TUVOK_ENABLE}"; then
-  enable_tuvok="${TUVOK_ENABLE}"
-else
-  enable_tuvok="no"
-fi
-
-
-
-fi;
-
-    BUILD_TUVOK=
-    TUVOK_LIB=
-    TUVOK_INCLUDE=
-    if test "x${enable_tuvok}" != "xno"; then
-
-            BUILD_TUVOK="Tuvok"
-
-            TUVOK_LIB="-lTuvok"
-
-            TUVOK_INCLUDE="-I$""(TOPDIR)/include/Tuvok"
-
-
-cat >>confdefs.h <<\_ACEOF
-#define USE_TUVOK 1
-_ACEOF
-
-            report_tuvok="yes"
-
-else
-  report_tuvok="no"
-
-fi
-
-
-    echo "$as_me:$LINENO: result: $report_tuvok" >&5
-echo "${ECHO_T}$report_tuvok" >&6
-
-
-#
 # Handle zlib. By default, we try to find a zlib because VisIt can
 # use compression when shipping data between engine and viewer.
 # Since zlib may not be available everywhere, we also support it
@@ -7359,6 +7854,14 @@ fi
 _ACEOF
 
             fi
+        else
+            # have_zlib_h is empty so use the builtin version.
+            BUILD_ZLIB=zlib
+            ZLIB_LIB="-lz"
+            cat >>confdefs.h <<\_ACEOF
+#define HAVE_ZLIB_H 1
+_ACEOF
+
         fi
         ;;
     builtin)
@@ -8385,442 +8888,52 @@ fi
 #
 # See of --with-pdb was specified. Use PDB lite otherwise.
 #
-
-    withval=no
+echo "$as_me:$LINENO: checking for PDB" >&5
+echo $ECHO_N "checking for PDB... $ECHO_C" >&6
+PDB=""
+PDB_FLAGS=""
+PDB_LIBS=""
+PDB_EXEC=""
 
 # Check whether --with-pdb or --without-pdb was given.
 if test "${with_pdb+set}" = set; then
   withval="$with_pdb"
-
+  pdb_specified="yes"
 else
-  if test -n "$DEFAULT_PDB_LIBLOC"; then
-            withval=$DEFAULT_PDB_LIBLOC:$DEFAULT_PDB_LIBDEP
-        fi
+  pdb_specified="no"
+
 fi;
-
-    with_pdb=$withval
-    PDB_INCLUDE=""
-    PDB_LIB=""
-    PDB_TARGET=""
-    incfile=pdb.h
-    libtags="pdb"
-    incdirs="include inc ."
-    libdirs="libso lib ."
-    libexts="dylib so a"
-    lib_links=""
-    deplib_links=""
-    incdir=""
-    libdir=""
-    libtag=""
-    libfile=""
-
-    if test "$withval" = yes; then
-
-for ac_header in $incfile
-do
-as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
-if eval "test \"\${$as_ac_Header+set}\" = set"; then
-  echo "$as_me:$LINENO: checking for $ac_header" >&5
-echo $ECHO_N "checking for $ac_header... $ECHO_C" >&6
-if eval "test \"\${$as_ac_Header+set}\" = set"; then
-  echo $ECHO_N "(cached) $ECHO_C" >&6
-fi
-echo "$as_me:$LINENO: result: `eval echo '${'$as_ac_Header'}'`" >&5
-echo "${ECHO_T}`eval echo '${'$as_ac_Header'}'`" >&6
-else
-  # Is the header compilable?
-echo "$as_me:$LINENO: checking $ac_header usability" >&5
-echo $ECHO_N "checking $ac_header usability... $ECHO_C" >&6
-cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-$ac_includes_default
-#include <$ac_header>
-_ACEOF
-rm -f conftest.$ac_objext
-if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
-  (eval $ac_compile) 2>conftest.er1
-  ac_status=$?
-  grep -v '^ *+' conftest.er1 >conftest.err
-  rm -f conftest.er1
-  cat conftest.err >&5
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } &&
-	 { ac_try='test -z "$ac_c_werror_flag"
-			 || test ! -s conftest.err'
-  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
-  (eval $ac_try) 2>&5
-  ac_status=$?
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); }; } &&
-	 { ac_try='test -s conftest.$ac_objext'
-  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
-  (eval $ac_try) 2>&5
-  ac_status=$?
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); }; }; then
-  ac_header_compiler=yes
-else
-  echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-ac_header_compiler=no
-fi
-rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
-echo "$as_me:$LINENO: result: $ac_header_compiler" >&5
-echo "${ECHO_T}$ac_header_compiler" >&6
-
-# Is the header present?
-echo "$as_me:$LINENO: checking $ac_header presence" >&5
-echo $ECHO_N "checking $ac_header presence... $ECHO_C" >&6
-cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-#include <$ac_header>
-_ACEOF
-if { (eval echo "$as_me:$LINENO: \"$ac_cpp conftest.$ac_ext\"") >&5
-  (eval $ac_cpp conftest.$ac_ext) 2>conftest.er1
-  ac_status=$?
-  grep -v '^ *+' conftest.er1 >conftest.err
-  rm -f conftest.er1
-  cat conftest.err >&5
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } >/dev/null; then
-  if test -s conftest.err; then
-    ac_cpp_err=$ac_c_preproc_warn_flag
-    ac_cpp_err=$ac_cpp_err$ac_c_werror_flag
-  else
-    ac_cpp_err=
-  fi
-else
-  ac_cpp_err=yes
-fi
-if test -z "$ac_cpp_err"; then
-  ac_header_preproc=yes
-else
-  echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-  ac_header_preproc=no
-fi
-rm -f conftest.err conftest.$ac_ext
-echo "$as_me:$LINENO: result: $ac_header_preproc" >&5
-echo "${ECHO_T}$ac_header_preproc" >&6
-
-# So?  What about this header?
-case $ac_header_compiler:$ac_header_preproc:$ac_c_preproc_warn_flag in
-  yes:no: )
-    { echo "$as_me:$LINENO: WARNING: $ac_header: accepted by the compiler, rejected by the preprocessor!" >&5
-echo "$as_me: WARNING: $ac_header: accepted by the compiler, rejected by the preprocessor!" >&2;}
-    { echo "$as_me:$LINENO: WARNING: $ac_header: proceeding with the compiler's result" >&5
-echo "$as_me: WARNING: $ac_header: proceeding with the compiler's result" >&2;}
-    ac_header_preproc=yes
-    ;;
-  no:yes:* )
-    { echo "$as_me:$LINENO: WARNING: $ac_header: present but cannot be compiled" >&5
-echo "$as_me: WARNING: $ac_header: present but cannot be compiled" >&2;}
-    { echo "$as_me:$LINENO: WARNING: $ac_header:     check for missing prerequisite headers?" >&5
-echo "$as_me: WARNING: $ac_header:     check for missing prerequisite headers?" >&2;}
-    { echo "$as_me:$LINENO: WARNING: $ac_header: see the Autoconf documentation" >&5
-echo "$as_me: WARNING: $ac_header: see the Autoconf documentation" >&2;}
-    { echo "$as_me:$LINENO: WARNING: $ac_header:     section \"Present But Cannot Be Compiled\"" >&5
-echo "$as_me: WARNING: $ac_header:     section \"Present But Cannot Be Compiled\"" >&2;}
-    { echo "$as_me:$LINENO: WARNING: $ac_header: proceeding with the preprocessor's result" >&5
-echo "$as_me: WARNING: $ac_header: proceeding with the preprocessor's result" >&2;}
-    { echo "$as_me:$LINENO: WARNING: $ac_header: in the future, the compiler will take precedence" >&5
-echo "$as_me: WARNING: $ac_header: in the future, the compiler will take precedence" >&2;}
-    (
-      cat <<\_ASBOX
-## ------------------------------------------ ##
-## Report this to the AC_PACKAGE_NAME lists.  ##
-## ------------------------------------------ ##
-_ASBOX
-    ) |
-      sed "s/^/$as_me: WARNING:     /" >&2
-    ;;
-esac
-echo "$as_me:$LINENO: checking for $ac_header" >&5
-echo $ECHO_N "checking for $ac_header... $ECHO_C" >&6
-if eval "test \"\${$as_ac_Header+set}\" = set"; then
-  echo $ECHO_N "(cached) $ECHO_C" >&6
-else
-  eval "$as_ac_Header=\$ac_header_preproc"
-fi
-echo "$as_me:$LINENO: result: `eval echo '${'$as_ac_Header'}'`" >&5
-echo "${ECHO_T}`eval echo '${'$as_ac_Header'}'`" >&6
-
-fi
-if test `eval echo '${'$as_ac_Header'}'` = yes; then
-  cat >>confdefs.h <<_ACEOF
-#define `echo "HAVE_$ac_header" | $as_tr_cpp` 1
-_ACEOF
-
-fi
-
-done
-
-
-    else
-        echo "$as_me:$LINENO: checking if using pdb" >&5
-echo $ECHO_N "checking if using pdb... $ECHO_C" >&6
-    fi
-    if test "$withval" = builtin; then
-
-        libs=""
-        for t in $libtags; do
-            libs="$libs -l${t}"
-        done
-        PDB_LIB="$libs"
-        PDB_TARGET="$""(PDB_TARGET)"
+if test "$pdb_specified" = "yes"; then
+   if test "$withval" != "no"; then
+      PDB_FLAGS="-I`echo $withval |cut -f1 -d,`"
+      PDB_LIBS="-L`echo $withval |cut -f2 -d, -s` -lpdb -lscore -lpml"
+      PDB="$""(PDB)"
+      PDB_EXEC="$""(PDBEXEC)"
 
 cat >>confdefs.h <<\_ACEOF
-#define HAVE_LIBPDB 1
+#define HAVE_PDB_PROPER 1
 _ACEOF
 
-        echo "$as_me:$LINENO: result: builtin" >&5
-echo "${ECHO_T}builtin" >&6
-
-    elif test -n "$withval" && test $withval != no && test $withval != yes; then
-
-        #
-        # Handle various forms of the with argument
-        #     <DIR> single dir below which inc[lude]/lib subdirs can be found
-        #     <I-DIR>,<L-DIR> separate include/lib dirs
-        #     <DIR>:<ADDL_LDFLAGS> same as <DIR> but with additional LDFLAGS needed to link with this lib
-        #     <I-DIR>,<L-DIR>:<ADDL_LDFLAGS> same as <I-DIR>,<L-DIR> but with additional LDFLAGS needed to link with the lib
-        #
-        if test -n "`echo $withval | cut -d':' -f1 | grep ','`"; then
-            #
-            # confirm location of pdb header file and its existance and readability
-            #
-            incdir="`echo $withval | cut -d':' -f1 | cut -d',' -f1`"
-            if test ! -r $incdir/$incfile; then
-                incdir=""
-            fi
-
-            #
-            # confirm location of pdb lib file and its existance and readability
-            #
-            libdir="`echo $withval | cut -d':' -f1 | cut -d',' -f2`"
-            for t in $libtags; do
-                for e in $libexts; do
-                    if test -r $libdir/lib$t.$e; then
-                        libfile=lib$t.$e
-                        libtag=$t
-                        break 2
-                    fi
-                done
-            done
-            if test -z "$libfile"; then
-                libdir=""
-            fi
-
-        else
-            locdir="`echo $withval | cut -d':' -f1`"
-
-            #
-            # confirm location of pdb header file and its existance and readability
-            #
-            for i in $incdirs; do
-                if test -r $locdir/$i/$incfile; then
-                    incdir=$locdir/$i
-                    break
-                fi
-            done
-
-            #
-            # confirm location of pdb lib file and its existance and readability
-            #
-            for l in $libdirs; do
-                for t in $libtags; do
-                    for e in $libexts; do
-                        if test -r $locdir/$l/lib$t.$e; then
-                            libdir=$locdir/$l
-                            libfile=lib$t.$e
-                            libtag=$t
-                            break 3
-                        fi
-                    done
-                done
-            done
-        fi
-        if test -z "$incdir"; then
-            { { echo "$as_me:$LINENO: error: cannot find or read header $incfile from info in $withval" >&5
-echo "$as_me: error: cannot find or read header $incfile from info in $withval" >&2;}
-   { (exit 1); exit 1; }; }
-        fi
-        if test -z "$libdir"; then
-            { { echo "$as_me:$LINENO: error: cannot find or read lib file(s) $libtags from info in $withval" >&5
-echo "$as_me: error: cannot find or read lib file(s) $libtags from info in $withval" >&2;}
-   { (exit 1); exit 1; }; }
-        fi
-
-        PDB_LIBFILE=$libdir/$libfile
-
-        #
-        # Make links for this lib in the lib dir
-        #
-        rm -rf lib/${libfile}*
-        for f in $libdir/${libfile}*; do
-            fb=`basename $f`
-            if test -z "$VAC_CV_LIBDIR_CREATE_LINKS"; then
-                VAC_CV_LIBDIR_CREATE_LINKS="ln -sf $f $fb"
-                VAC_CV_LIBDIR_DESTROY_LINKS="rm -f $fb"
-            else
-                VAC_CV_LIBDIR_CREATE_LINKS="$VAC_CV_LIBDIR_CREATE_LINKS; ln -sf $f $fb"
-                VAC_CV_LIBDIR_DESTROY_LINKS="$VAC_CV_LIBDIR_DESTROY_LINKS; rm -f $fb"
-            fi
-            lib_links="$lib_links $f"
-        done
-
-        #
-        # Handle dependent libs for this library
-        #
-        deplib_ldflags="`echo $withval | cut -d':' -f2 | tr ',' ' '`"
-        deplib_dirs=$libdir
-        deplib_libs=""
-        deplib_flags=""
-        if test -n "`echo $withval | grep ':'`"; then
-
-            #
-            # Separate into -L terms and -l terms
-            #
-            for f in $deplib_ldflags; do
-                if test "`echo $f | cut -d'L' -f1`" = "-"; then
-                    deplib_dirs="$deplib_dirs `echo $f | cut -d'L' -f2-`"
-                elif test "`echo $f | cut -d'l' -f1`" = "-"; then
-                    deplib_libs="$deplib_libs `echo $f | cut -d'l' -f2-`"
-                    deplib_flags="$deplib_flags $f"
-                else
-                    { { echo "$as_me:$LINENO: error: unrecognized dependent lib flag \"$f\" in \"$deplib_ldflags\"" >&5
-echo "$as_me: error: unrecognized dependent lib flag \"$f\" in \"$deplib_ldflags\"" >&2;}
-   { (exit 1); exit 1; }; }
-                fi
-            done
-
-            #
-            # Create links in lib dir
-            #
-            deplib_found="$deplib_libs"
-            for l in $deplib_libs; do
-                for d in $deplib_dirs; do
-                    for e in $libexts; do
-                        libfiles="`ls -1 $d/lib${l}.${e}* 2>/dev/null`"
-                        if test -n "$libfiles"; then
-                            rm -rf lib/lib${l}.${e}*
-                            for lf in $libfiles; do
-                                lfb=`basename $lf`
-                                if test -z "$VAC_CV_LIBDIR_CREATE_LINKS"; then
-                                    VAC_CV_LIBDIR_CREATE_LINKS="ln -sf $lf $lfb"
-                                    VAC_CV_LIBDIR_DESTROY_LINKS="rm -f $lfb"
-                                else
-                                    VAC_CV_LIBDIR_CREATE_LINKS="$VAC_CV_LIBDIR_CREATE_LINKS; ln -sf $lf $lfb"
-                                    VAC_CV_LIBDIR_DESTROY_LINKS="$VAC_CV_LIBDIR_DESTROY_LINKS; rm -f $lfb"
-                                fi
-                                deplib_links="$deplib_links $lf"
-                                deplib_found="`echo $deplib_found | tr ' ' '\n' | grep -xve ${l}`"
-                            done
-                            continue 3
-                        fi
-                    done # loop over e (shared lib extensions)
-                done # loop over d (lib directories)
-            done # loop over l (lib names)
-
-            if test -n "`echo $deplib_found | tr -d ':space:'`"; then
-                { { echo "$as_me:$LINENO: error: unable to resolve dependent liraries \"$deplib_found\" for pdb" >&5
-echo "$as_me: error: unable to resolve dependent liraries \"$deplib_found\" for pdb" >&2;}
-   { (exit 1); exit 1; }; }
-            fi
-
-        fi
-
-        deplib_flags="`echo $deplib_flags | tr -d '\n'`"
-        PDB_INCLUDE="-I$incdir"
-        PDB_LIB="-l${libtag} $deplib_flags"
-        PDB_TARGET="$""(PDB_TARGET)"
-
-cat >>confdefs.h <<\_ACEOF
-#define HAVE_LIBPDB 1
-_ACEOF
-
-
-        # if these strings are all blank, then make them really so
-        if test -z "`echo $lib_links | tr -d ':space:'`"; then
-            lib_links=
-        fi
-        if test -z "`echo $deplib_links | tr -d ':space:'`"; then
-            deplib_links=
-        fi
-
-        #
-        # Adjust these strings so they format better in the result message.
-        #
-        lib_links=`echo $lib_links | tr -s ' ' | sed -e s'@ @\n    @'`
-        deplib_links=`echo $deplib_links | tr -s ' ' | sed -e s'@ @\n    @'`
-        if test -z "$deplib_links"; then
-            echo "$as_me:$LINENO: result:
-    PDB_INCLUDE=$PDB_INCLUDE
-    PDB_LIB=$PDB_LIB
-    Library...
-    $lib_links" >&5
-echo "${ECHO_T}
-    PDB_INCLUDE=$PDB_INCLUDE
-    PDB_LIB=$PDB_LIB
-    Library...
-    $lib_links" >&6
-        else
-            echo "$as_me:$LINENO: result:
-    PDB_INCLUDE=$PDB_INCLUDE
-    PDB_LIB=$PDB_LIB
-    Library...
-    $lib_links
-    Dependent libraries...
-    $deplib_links" >&5
-echo "${ECHO_T}
-    PDB_INCLUDE=$PDB_INCLUDE
-    PDB_LIB=$PDB_LIB
-    Library...
-    $lib_links
-    Dependent libraries...
-    $deplib_links" >&6
-        fi
-
-    else
-
-        echo "$as_me:$LINENO: result: no" >&5
+      echo "$as_me:$LINENO: result: using PDB proper" >&5
+echo "${ECHO_T}using PDB proper" >&6
+   fi
+else
+   if test -n "$SILO_LIB"; then
+       PDB_FLAGS="$SILO_INCLUDE"
+       PDB_LIBS="$SILO_LIB"
+       PDB="$""(PDB)"
+       PDB_EXEC="$""(PDBEXEC)"
+       echo "$as_me:$LINENO: result: using PDB lite" >&5
+echo "${ECHO_T}using PDB lite" >&6
+   else
+       echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6
-
-    fi
-
-
-
-
-
-
-
-if test -z "$PDB_LIB"; then
-    echo "$as_me:$LINENO: checking for PDB lite (e.g Silo)" >&5
-echo $ECHO_N "checking for PDB lite (e.g Silo)... $ECHO_C" >&6
-    if test -n "$SILO_LIB"; then
-        PDB_INCLUDE="$SILO_INCLUDE"
-        PDB_LIB="$SILO_LIB"
-        PDB_TARGET="$""(PDB_TARGET)"
-        echo "$as_me:$LINENO: result: yes" >&5
-echo "${ECHO_T}yes" >&6
-
-
-
-    fi
-else
-    PDB_LIB="$PDB_LIB -lpdb -lscore -lpml"
-
+   fi
 fi
+
+
+
+
 
 #
 # Look for Mili.
@@ -8888,12 +9001,12 @@ fi;
 if test "$google_perftools_specified" = "yes"; then
    if test "$withval" != "no"; then
       TCMALLOC_DIR=`echo $withval | cut -f1 -d' '`
-      TCMALLOC_LIB="-ltcmalloc"
+      TCMALLOC_LIB="-ltcmalloc_minimal"
    fi
 else
    if test "$DEFAULT_TCMALLOC_DIR" != "" ; then
       TCMALLOC_DIR=$DEFAULT_TCMALLOC_DIR
-      TCMALLOC_LIB="-ltcmalloc"
+      TCMALLOC_LIB="-ltcmalloc_minimal"
    fi
 fi
 if test "$TCMALLOC_LIB" != "" ; then
@@ -9114,6 +9227,61 @@ fi
 if test "$H5PART_LIB" != "" ; then
    if test "$H5PART_INCLUDE" != "" ; then
       H5PART="$""(H5PART)"
+      echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6
+   else
+      echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6
+   fi
+else
+   echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6
+fi
+
+
+
+
+
+#
+# Look for FastBit
+#
+echo "$as_me:$LINENO: checking for FastBit" >&5
+echo $ECHO_N "checking for FastBit... $ECHO_C" >&6
+FASTBIT=""
+FASTBIT_INCLUDE=""
+FASTBIT_LIB=""
+FASTBIT_LIBDIR=""
+
+# Check whether --with-fastbit or --without-fastbit was given.
+if test "${with_fastbit+set}" = set; then
+  withval="$with_fastbit"
+  fastbit_specified="yes"
+else
+  fastbit_specified="no"
+fi;
+if test "$fastbit_specified" = "yes"; then
+   if test "$withval" != "no"; then
+      FASTBIT_INCLUDE="-I`echo $withval |cut -f1 -d,`"
+      FASTBIT_LIB="-L`echo $withval |cut -f2 -d, -s`"
+      FASTBIT_LIBDIR="`echo $withval |cut -f2 -d, -s`"
+   fi
+else
+   if test "$DEFAULT_FASTBIT_INCLUDE" != "" ; then
+      FASTBIT_INCLUDE="-I$DEFAULT_FASTBIT_INCLUDE $FASTBIT_INCLUDE"
+   fi
+   if test "$DEFAULT_FASTBIT_LIB" != "" ; then
+      if test "$UNAME" = "Darwin"; then
+         # On Darwin librt does not exist
+         FASTBIT_LIB="-L$DEFAULT_FASTBIT_LIB -lfastbit"
+      else
+         # At least on Linux we need librt for fastbit
+         FASTBIT_LIB="-L$DEFAULT_FASTBIT_LIB -lfastbit -lrt"
+      fi
+   fi
+fi
+if test "$FASTBIT_LIB" != "" ; then
+   if test "$FASTBIT_INCLUDE" != "" ; then
+      FASTBIT="$""(FASTBIT)"
       echo "$as_me:$LINENO: result: yes" >&5
 echo "${ECHO_T}yes" >&6
    else
@@ -9521,23 +9689,20 @@ echo "$as_me: error: \"Configure needs to remove ITAPS implementation copy datab
         sed -i -e "s/ITAPS_C/${impl_name}/g" databases/$impl_name/*
 
         #
-        # Fix contents of the .xml file. Note that if the ITAPS_C.xml file
-        # ever gets re-generated, then it probably WILL NOT get formatted
-        # exactly how the following sed commands want it with, for example,
-        # <CXXFLAGS> and </CXXFLAGS> on the same line.
+        # Fix contents of the .xml file
         #
         sed -i -e "s%<Extensions>\(.*\)</Extensions>%<Extensions>${impl_exts}</Extensions>%" databases/$impl_name/$impl_name.xml
-        sed -i -e "s%<CXXFLAGS>\(.*\)</CXXFLAGS>%<CXXFLAGS>-D${impl_name} $\(ITAPS_C${itaps_impl_id}_INCLUDE\)</CXXFLAGS>%" databases/$impl_name/$impl_name.xml
-        sed -i -e "s%<LIBS>\(.*\)</LIBS>%<LIBS>$\(ITAPS_C${itaps_impl_id}_LIB\)</LIBS>%" databases/$impl_name/$impl_name.xml
+        sed -i -e "s%<CXXFLAGS>\(.*\)</CXXFLAGS>%<CXXFLAGS>-D${impl_name} $\(ITAPS_C${itaps_impl_id}_INCLUDE)</CXXFLAGS>%" databases/$impl_name/$impl_name.xml
+        sed -i -e "s%<LIBS>\(.*\)</LIBS>%<LIBS>$\(ITAPS_C${itaps_impl_id}_LIB)</LIBS>%" databases/$impl_name/$impl_name.xml
 
         #
         # Fix the extensions in the PluginInfo.C file
         #
-
-        sed -i -e "/defaultExtensions.push_back/d" databases/$impl_name/${impl_name}PluginInfo.C
+        sed -i -e "s%defaultExtensions.push_back(\(.*\));%defaultExtensions.push_back(\"itaps_foo\");%" databases/$impl_name/${impl_name}PluginInfo.C
         for ext in $impl_exts; do
-            sed -i -e "/return defaultExtensions;/i \ \ \ \ defaultExtensions.push_back(\"${ext}\");" databases/$impl_name/${impl_name}PluginInfo.C
+            sed -i -e "1,/defaultExtensions.push_back/s%defaultExtensions.push_back(\"itaps_foo\");%defaultExtensions.push_back(\"${ext}\");%" databases/$impl_name/${impl_name}PluginInfo.C
         done
+        sed -i -e "/defaultExtensions.push_back(\"itaps_foo\");/d" databases/$impl_name/${impl_name}PluginInfo.C
 
         #
         # Make a warning file
@@ -9742,6 +9907,14 @@ ENGINE_CPPFLAGS="$ENGINE_CPPFLAGS $VTK_INCLUDES"
 
 
 #
+# Add Some include paths to the SiloObjVtkDB's CPPFLAGS.
+#
+SILOOBJVTK_CPPFLAGS="$SILOOBJVTK_CPPFLAGS $VTK_INCLUDES"
+SILOOBJVTK_CPPFLAGS="$SILOOBJVTK_CPPFLAGS -I$""(TOPDIR)/include/visit"
+SILOOBJVTK_CPPFLAGS="$SILOOBJVTK_CPPFLAGS $SILO_INCLUDE"
+
+
+#
 # Add some include paths to the preprocessor's includes CPPFLAGS.
 # Also add the parallel source files when building in parallel.
 #
@@ -9764,192 +9937,113 @@ VISIT_VTK_CPPFLAGS="$VISIT_VTK_CPPFLAGS $VTK_INCLUDES -I$""(TOPDIR)/include/visi
 
 
 
-VIEWER_CPPFLAGS="$VIEWER_CPPFLAGS $VTK_INCLUDES"
-VIEWER_CPPFLAGS="$VIEWER_CPPFLAGS $SILO_INCLUDE"
+#
+# Check to see if we can compile with Gui support. If we can't then
+# make sure no windowing system stuff gets in.
+#
+if test ! "$enable_dbio_only" = yes; then
+                VIEWER_CPPFLAGS="$VIEWER_CPPFLAGS $VTK_INCLUDES"
+    VIEWER_CPPFLAGS="$VIEWER_CPPFLAGS $SILO_INCLUDE"
 
 
-if test -z "$QT_BIN" || test -z "$QT_INCLUDE" || test -z "$QT_LIB"; then
-   { { echo "$as_me:$LINENO: error: The QT_BIN, QT_INCLUDE and QT_LIB environment variables must be set in order to find Qt" >&5
+                if test -z "$QT_BIN" || test -z "$QT_INCLUDE" || test -z "$QT_LIB"; then
+       { { echo "$as_me:$LINENO: error: The QT_BIN, QT_INCLUDE and QT_LIB environment variables must be set in order to find Qt" >&5
 echo "$as_me: error: The QT_BIN, QT_INCLUDE and QT_LIB environment variables must be set in order to find Qt" >&2;}
    { (exit 1); exit 1; }; }
-fi
-echo "$as_me:$LINENO: checking for supported Qt version" >&5
+    fi
+    echo "$as_me:$LINENO: checking for supported Qt version" >&5
 echo $ECHO_N "checking for supported Qt version... $ECHO_C" >&6
-QtVersion=""
-QtVersion2=""
-consumeCount=-1
-toks=`$QT_BIN/qmake --version`
-for tok in $toks; do
-    if test "$tok" == "Qt"; then
-        consumeCount=2
-    fi
-    if test $consumeCount == 0; then
-        QtVersion2=$tok
-        break
-    else
-        consumeCount=$((consumeCount-1))
-    fi
-done
+    QtVersion=""
+    QtGlobalInc="$QT_INCLUDE/qglobal.h"
 
-## Check for supported versions of Qt.
-for ver in  4.4.0 4.4.1 4.4.2 4.4.3 4.4.4 4.4.5 \
-            4.5.0 4.5.1 4.5.2 4.5.3 4.5.4 4.5.5 \
-            4.6.0 4.6.1 4.6.2 4.6.3 4.6.4 4.6.5 ; do
-   if test "$QtVersion2" == "$ver"; then
-       QtVersion=$ver
-       break
-   fi
-done
+    if test -f $QtGlobalInc; then
+        ## Check for supported versions of Qt.
+	for ver in  3.3.0  3.3.1  3.3.2  3.3.3  3.3.4 3.3.7 3.3.8 3.3.8b \
+                    3.2.0  3.2.1  3.2.2  3.2.3 \
+                    3.1.2  3.1.1  3.1.0 \
+                    3.0.4  3.0.3  3.0.2  3.0.1  3.0.0 \
+                    ; do
+            QtVer=`grep \"$ver\" $QtGlobalInc`
+            if test -n "$QtVer"; then
+                QtVersion=$ver
+                break
+            fi
+        done
+    fi
 
-if test -z "$QtVersion"; then
-    { { echo "$as_me:$LINENO: error:   Sorry, but you need Qt version 4.4.0 or higher to compile VisIt. " >&5
-echo "$as_me: error:   Sorry, but you need Qt version 4.4.0 or higher to compile VisIt. " >&2;}
+    if test -z "$QtVersion"; then
+        { { echo "$as_me:$LINENO: error:   Sorry, but you need Qt version 3.0 or higher to compile VisIt. " >&5
+echo "$as_me: error:   Sorry, but you need Qt version 3.0 or higher to compile VisIt. " >&2;}
    { (exit 1); exit 1; }; }
-else
-    echo "$as_me:$LINENO: result: Qt $QtVersion in $QT_INCLUDE" >&5
+    else
+        echo "$as_me:$LINENO: result: Qt $QtVersion in $QT_INCLUDE" >&5
 echo "${ECHO_T}Qt $QtVersion in $QT_INCLUDE" >&6
-fi
+    fi
 
-# Set the Qt bin,include,lib directories
+    if test -f $QT_LIB/libqt-mt.so -o -f $QT_LIB/libqt-mt.dylib; then
+	echo "$as_me:$LINENO: result: Linking to libqt-mt" >&5
+echo "${ECHO_T}Linking to libqt-mt" >&6
+	LIBQT=libqt-mt
+    	QT_LIBS=-lqt-mt
+    else
+	echo "$as_me:$LINENO: result: Linking to libqt" >&5
+echo "${ECHO_T}Linking to libqt" >&6
+	LIBQT=libqt
+    	QT_LIBS=-lqt
+    fi
 
 
 
 
-# Set platform-specific options
-if test "$UNAME" = "Darwin"; then
-    QT_LDFLAGS="-F$""(TOPDIR)/lib -L$""(TOPDIR)/lib"
 
-    QT_CORE=QtCore.framework
-    QT_CORE_LIB="-framework QtCore"
 
-    QT_GUI=QtGui.framework
-    QT_GUI_LIB="-framework QtGui"
+    QUI_LIBS=-lqui
 
-    QT_DESIGNER=QtDesigner.framework
-    QT_DESIGNER_LIB="-framework QtDesigner"
+    QT_LDFLAGS=""
 
-    QT_HELP=QtHelp.framework
-    QT_HELP_LIB="-framework QtHelp"
+    QT_STATICLDFLAGS=-L$QT_LIB
 
-    QT_CLUCENE=libQtCLucene.
-    QT_CLUCENE_LIB="-lQtCLucene"
+    if test "$UNAME" = "Darwin"; then
+        QTMAC_FLAGS="-DMACOSX_102"
+    fi
+    QT_CXXFLAGS="-I$""(TOPDIR)/include/qt $QT_CXXFLAGS $QTMAC_FLAGS"
 
-    QT_NETWORK=QtNetwork.framework
-    QT_NETWORK_LIB="-framework QtNetwork"
-
-    QT_OPENGL=QtOpenGL.framework
-    QT_OPENGL_LIB="-framework QtOpenGL"
-
-    QT_SCRIPT=QtScript.framework
-    QT_SCRIPT_LIB="-framework QtScript"
-
-    QT_SQL=QtSql.framework
-    QT_SQL_LIB="-framework QtSql"
-
-    QT_SVG=QtSvg.framework
-    QT_SVG_LIB="-framework QtSvg"
-
-    QT_TEST=QtTest.framework
-    QT_TEST_LIB="-framework QtTest"
-
-    QT_XML=QtXml.framework
-    QT_XML_LIB="-framework QtXml"
+    QT_MOC="$""(TOPDIR)/bin/moc"
 
 else
-    QT_LDFLAGS="-L$""(TOPDIR)/lib"
+            X_LIBS=""
 
-    QT_CORE=libQtCore.so
-    QT_CORE_LIB=-lQtCore
+    X_CPPFLAGS=""
 
-    QT_GUI=libQtGui.so
-    QT_GUI_LIB=-lQtGui
+    QT_BIN=""
 
-    QT_DESIGNER=libQtDesigner.so
-    QT_DESIGNER_LIB=-lQtDesigner
+    QT_INCLUDE=""
 
-    QT_HELP=libQtHelp.so
-    QT_HELP_LIB=-lQtHelp
+    QT_LIB=""
 
-    QT_CLUCENE=libQtCLucene.so
-    QT_CLUCENE_LIB=-lQtCLucene
+    QT_LIBS=""
 
-    QT_NETWORK=libQtNetwork.so
-    QT_NETWORK_LIB=-lQtNetwork
+    QUI_LIBS=""
 
-    QT_OPENGL=libQtOpenGL.so
-    QT_OPENGL_LIB=-lQtOpenGL
+    QT_LDFLAGS=""
 
-    QT_SCRIPT=libQtScript.so
-    QT_SCRIPT_LIB=-lQtScript
+    QT_CXXFLAGS=""
 
-    QT_SQL=libQtSql.so
-    QT_SQL_LIB=-lQtSql
-
-    QT_SVG=libQtSvg.so
-    QT_SVG_LIB=-lQtSvg
-
-    QT_TEST=libQtTest.so
-    QT_TEST_LIB=-lQtTest
-
-    QT_XML=libQtXml.so
-    QT_XML_LIB=-lQtXml
+    QT_MOC=""
 
 fi
-
-
-# Qt libraries
-QT_LIBS="$""(QT_CORE_LIB) $""(QT_GUI_LIB) $""(QT_DESIGNER_LIB) $""(QT_HELP_LIB) $""(QT_CLUCENE_LIB) $""(QT_NETWORK_LIB) $""(QT_OPENGL_LIB) $""(QT_SCRIPT_LIB) $""(QT_SQL_LIB) $""(QT_SVG_LIB) $""(QT_TEST_LIB) $""(QT_XML_LIB)"
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# UI library
-QT_QUI=libQtUiTools.a
-QT_QUI_LIB=-lQtUiTools
-
-
-
-# Include path
-QT_CXXFLAGS="-I$""(TOPDIR)/include/qt -I$""(TOPDIR)/include/qt/Qt -I$""(TOPDIR)/include/qt/QtCore -I$""(TOPDIR)/include/qt/QtGui -I$""(TOPDIR)/include/qt/QtDesigner -I$""(TOPDIR)/include/qt/QtHelp -I$""(TOPDIR)/include/qt/QtNetwork -I$""(TOPDIR)/include/qt/QtOpenGL -I$""(TOPDIR)/include/qt/QtScript -I$""(TOPDIR)/include/qt/QtSvg -I$""(TOPDIR)/include/qt/QtUiTools -I$""(TOPDIR)/include/qt/QtXml"
-
-
-# Path to moc
-QT_MOC="$""(TOPDIR)/bin/moc"
-
 
 #
 # Only enable VTKQT if we're building the viewer.
 #
-if test -n "$VIEWER"; then
+if test ! "$enable_dbio_only" = yes && test ! "$enable_engine_only" = yes && test ! "$enable_server_components_only" = yes; then
    VTKQT_CPPFLAGS="-I$""(TOPDIR)/vtkqt"
    VTKQT="vtkqt"
    #
    # TEMP HACK FOR BUILDING ON MacOS X.
    #
    if test "$UNAME" = "Darwin"; then
-      VTKQT_LIBS="-lvtkqt $""(QT_LDFLAGS) $""(QT_CORE_LIB) $""(QT_GUI_LIB) $""(QT_OPENGL_LIB)"
+      VTKQT_LIBS="-lvtkqt $QT_LIBS"
    else
       VTKQT_LIBS=""
    fi
@@ -10390,9 +10484,12 @@ if test $ac_cv_lib_X11_main = yes; then
   X_LIBS="-lX11 -lXt $X_LIBS"
 fi
 
+    X_CPPFLAGS="-DHAVE_XLIB"
 else
     X_LIBS=""
+    X_CPPFLAGS=""
 fi
+
 
 
 #
@@ -10485,419 +10582,6 @@ fi
 
 
 
-
-# Check whether --enable-icet or --disable-icet was given.
-if test "${enable_icet+set}" = set; then
-  enableval="$enable_icet"
-
-fi;
-if test -z "${DEFAULT_ICET_INCLUDE}"; then
-  DEFAULT_ICET_INCLUDE="no"
-fi
-
-if test -z "${DEFAULT_ICET_LIB}"; then
-  DEFAULT_ICET_LIB="no"
-fi
-
-
-
-# Check whether --with-icet-includedir or --without-icet-includedir was given.
-if test "${with_icet_includedir+set}" = set; then
-  withval="$with_icet_includedir"
-  with_icet_includedir=$withval
-else
-  with_icet_includedir=$DEFAULT_ICET_INCLUDE
-
-fi;
-
-# Check whether --with-icet-libdir or --without-icet-libdir was given.
-if test "${with_icet_libdir+set}" = set; then
-  withval="$with_icet_libdir"
-  with_icet_libdir=$withval
-else
-  with_icet_libdir=$DEFAULT_ICET_LIB
-
-fi;
-
-echo "$as_me:$LINENO: checking if IceT should be used" >&5
-echo $ECHO_N "checking if IceT should be used... $ECHO_C" >&6
-
-# Allow enabling IceT through a config site variable.
-if test -n "${ICET_ENABLE}" -o "x${DEFAULT_ICET_INCLUDE}" != "xno"; then
-  enable_icet="yes"
-else
-  enable_icet="no"
-
-fi
-
-
-# Check to make sure they aren't doing something weird.
-if test "x${enable_icet}" = "yes" -a \
-        \( -z "${UseParallel}" -o "x${UseParallel}" = "xno" \); then
-
-    { { echo "$as_me:$LINENO: error: IceT usage requested, but you're not doing a parallel
-build. IceT requires '--enable-parallel' to be specified." >&5
-echo "$as_me: error: IceT usage requested, but you're not doing a parallel
-build. IceT requires '--enable-parallel' to be specified." >&2;}
-   { (exit 1); exit 1; }; }
-
-
-fi
-
-
-echo "$as_me:$LINENO: result: $enable_icet" >&5
-echo "${ECHO_T}$enable_icet" >&6
-
-
-if test "x$UseParallel" == "xno" -a "x$enable_icet" == "xyes" ; then
-	{ { echo "$as_me:$LINENO: error:
-IceT usage requested, but you're not doing a parallel build.  IceT requires
-'--enable-parallel' to be specified." >&5
-echo "$as_me: error:
-IceT usage requested, but you're not doing a parallel build.  IceT requires
-'--enable-parallel' to be specified." >&2;}
-   { (exit 1); exit 1; }; }
-elif test "x$UseParallel" == "xyes" -a "x$enable_icet" == "xyes" ; then
-
-
-ax_have_icet=0
-if test "x$enable_icet" != "xno"; then
-
-                        ac_ext=cc
-ac_cpp='$CXXCPP $CPPFLAGS'
-ac_compile='$CXX -c $CXXFLAGS $CPPFLAGS conftest.$ac_ext >&5'
-ac_link='$CXX -o conftest$ac_exeext $CXXFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
-ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
-
-        ax_save_LDFLAGS="${LDFLAGS}"
-        ax_save_CXXFLAGS="${CXXFLAGS}"
-
-                        if test "x$with_icet_includedir" != xno; then
-  ICET_INCLUDEDIR="${with_icet_includedir}"
-
-fi
-
-        if test "x$with_icet_libdir" != xno; then
-  ICET_LIBDIR="${with_icet_libdir}"
-
-fi
-
-
-                        if test -n "${ICET_INCLUDEDIR}"; then
-
-                ICET_CXXFLAGS="${ICET_CXXFLAGS} -I${ICET_INCLUDEDIR}"
-
-
-fi
-
-        CXXFLAGS="${CXXFLAGS} ${ICET_CXXFLAGS}"
-        if test -n "${ICET_LIBDIR}"; then
-
-            ICET_LDFLAGS="-L${ICET_LIBDIR}"
-            LDFLAGS="${LDFLAGS} ${ICET_LDFLAGS}"
-
-fi
-
-
-                                        echo "$as_me:$LINENO: checking for icetGetColorBuffer in -licet" >&5
-echo $ECHO_N "checking for icetGetColorBuffer in -licet... $ECHO_C" >&6
-if test "${ac_cv_lib_icet_icetGetColorBuffer+set}" = set; then
-  echo $ECHO_N "(cached) $ECHO_C" >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-licet                                                                                                 -L$MESA_DIR/lib $MESA_LIBS $X_LIBS -lXext -lm $PTHREAD_LIB
-         $LIBS"
-cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-
-/* Override any gcc2 internal prototype to avoid an error.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-/* We use char because int might match the return type of a gcc2
-   builtin and then its argument prototype would still apply.  */
-char icetGetColorBuffer ();
-int
-main ()
-{
-icetGetColorBuffer ();
-  ;
-  return 0;
-}
-_ACEOF
-rm -f conftest.$ac_objext conftest$ac_exeext
-if { (eval echo "$as_me:$LINENO: \"$ac_link\"") >&5
-  (eval $ac_link) 2>conftest.er1
-  ac_status=$?
-  grep -v '^ *+' conftest.er1 >conftest.err
-  rm -f conftest.er1
-  cat conftest.err >&5
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } &&
-	 { ac_try='test -z "$ac_cxx_werror_flag"
-			 || test ! -s conftest.err'
-  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
-  (eval $ac_try) 2>&5
-  ac_status=$?
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); }; } &&
-	 { ac_try='test -s conftest$ac_exeext'
-  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
-  (eval $ac_try) 2>&5
-  ac_status=$?
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); }; }; then
-  ac_cv_lib_icet_icetGetColorBuffer=yes
-else
-  echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-ac_cv_lib_icet_icetGetColorBuffer=no
-fi
-rm -f conftest.err conftest.$ac_objext \
-      conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-echo "$as_me:$LINENO: result: $ac_cv_lib_icet_icetGetColorBuffer" >&5
-echo "${ECHO_T}$ac_cv_lib_icet_icetGetColorBuffer" >&6
-if test $ac_cv_lib_icet_icetGetColorBuffer = yes; then
-  ax_ICET_LIB="-licet"
-else
-  { { echo "$as_me:$LINENO: error:
---enable-icet was given, but I could not use IceT.  Perhaps you need to set
-some custom LDFLAGS?
-See \`config.log' for more details." >&5
-echo "$as_me: error:
---enable-icet was given, but I could not use IceT.  Perhaps you need to set
-some custom LDFLAGS?
-See \`config.log' for more details." >&2;}
-   { (exit 1); exit 1; }; }
-fi
-
-        echo "$as_me:$LINENO: checking for icetCreateMPICommunicator in -licet_mpi" >&5
-echo $ECHO_N "checking for icetCreateMPICommunicator in -licet_mpi... $ECHO_C" >&6
-if test "${ac_cv_lib_icet_mpi_icetCreateMPICommunicator+set}" = set; then
-  echo $ECHO_N "(cached) $ECHO_C" >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-licet_mpi -L$MESA_DIR/lib $MESA_LIBS $X_LIBS -lXext -lm $PTHREAD_LIB -licet $MPI_LIBS
-         $LIBS"
-cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-
-/* Override any gcc2 internal prototype to avoid an error.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-/* We use char because int might match the return type of a gcc2
-   builtin and then its argument prototype would still apply.  */
-char icetCreateMPICommunicator ();
-int
-main ()
-{
-icetCreateMPICommunicator ();
-  ;
-  return 0;
-}
-_ACEOF
-rm -f conftest.$ac_objext conftest$ac_exeext
-if { (eval echo "$as_me:$LINENO: \"$ac_link\"") >&5
-  (eval $ac_link) 2>conftest.er1
-  ac_status=$?
-  grep -v '^ *+' conftest.er1 >conftest.err
-  rm -f conftest.er1
-  cat conftest.err >&5
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } &&
-	 { ac_try='test -z "$ac_cxx_werror_flag"
-			 || test ! -s conftest.err'
-  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
-  (eval $ac_try) 2>&5
-  ac_status=$?
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); }; } &&
-	 { ac_try='test -s conftest$ac_exeext'
-  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
-  (eval $ac_try) 2>&5
-  ac_status=$?
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); }; }; then
-  ac_cv_lib_icet_mpi_icetCreateMPICommunicator=yes
-else
-  echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-ac_cv_lib_icet_mpi_icetCreateMPICommunicator=no
-fi
-rm -f conftest.err conftest.$ac_objext \
-      conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-echo "$as_me:$LINENO: result: $ac_cv_lib_icet_mpi_icetCreateMPICommunicator" >&5
-echo "${ECHO_T}$ac_cv_lib_icet_mpi_icetCreateMPICommunicator" >&6
-if test $ac_cv_lib_icet_mpi_icetCreateMPICommunicator = yes; then
-  ax_ICET_LIB_MPI="-licet_mpi"
-else
-  { { echo "$as_me:$LINENO: error:
---enable-icet was given, but I could not use IceT's MPI wrappers.  Perhaps you
-need to set some custom LDFLAGS?
-See \`config.log' for more details." >&5
-echo "$as_me: error:
---enable-icet was given, but I could not use IceT's MPI wrappers.  Perhaps you
-need to set some custom LDFLAGS?
-See \`config.log' for more details." >&2;}
-   { (exit 1); exit 1; }; }
-fi
-
-                                        echo "$as_me:$LINENO: checking for icetTreeCompose in -licet_strategies" >&5
-echo $ECHO_N "checking for icetTreeCompose in -licet_strategies... $ECHO_C" >&6
-if test "${ac_cv_lib_icet_strategies_icetTreeCompose+set}" = set; then
-  echo $ECHO_N "(cached) $ECHO_C" >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-licet_strategies -L$MESA_DIR/lib $MESA_LIBS $X_LIBS -lXext -lm $PTHREAD_LIB -licet $MPI_LIBS
-         $LIBS"
-cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-
-/* Override any gcc2 internal prototype to avoid an error.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-/* We use char because int might match the return type of a gcc2
-   builtin and then its argument prototype would still apply.  */
-char icetTreeCompose ();
-int
-main ()
-{
-icetTreeCompose ();
-  ;
-  return 0;
-}
-_ACEOF
-rm -f conftest.$ac_objext conftest$ac_exeext
-if { (eval echo "$as_me:$LINENO: \"$ac_link\"") >&5
-  (eval $ac_link) 2>conftest.er1
-  ac_status=$?
-  grep -v '^ *+' conftest.er1 >conftest.err
-  rm -f conftest.er1
-  cat conftest.err >&5
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } &&
-	 { ac_try='test -z "$ac_cxx_werror_flag"
-			 || test ! -s conftest.err'
-  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
-  (eval $ac_try) 2>&5
-  ac_status=$?
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); }; } &&
-	 { ac_try='test -s conftest$ac_exeext'
-  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
-  (eval $ac_try) 2>&5
-  ac_status=$?
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); }; }; then
-  ac_cv_lib_icet_strategies_icetTreeCompose=yes
-else
-  echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-ac_cv_lib_icet_strategies_icetTreeCompose=no
-fi
-rm -f conftest.err conftest.$ac_objext \
-      conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-echo "$as_me:$LINENO: result: $ac_cv_lib_icet_strategies_icetTreeCompose" >&5
-echo "${ECHO_T}$ac_cv_lib_icet_strategies_icetTreeCompose" >&6
-if test $ac_cv_lib_icet_strategies_icetTreeCompose = yes; then
-  ax_ICET_LIB_STRATEGIES="-licet_strategies"
-else
-  { { echo "$as_me:$LINENO: error:
---enable-icet was given, but I could not make use of it's strategies!  This
-might mean the library was updated and VisIt's IceT test simply needs to be
-updated, or it might mean your IceT install is not quite right.  You may need
-to set some custom LDFLAGS.
-See \`config.log' for more details." >&5
-echo "$as_me: error:
---enable-icet was given, but I could not make use of it's strategies!  This
-might mean the library was updated and VisIt's IceT test simply needs to be
-updated, or it might mean your IceT install is not quite right.  You may need
-to set some custom LDFLAGS.
-See \`config.log' for more details." >&2;}
-   { (exit 1); exit 1; }; }
-fi
-
-        ICET_LIBS="${ax_ICET_LIB} ${ax_ICET_LIB_MPI} ${ax_ICET_LIB_STRATEGIES}"
-        PARALLEL_CPPFLAGS="${PARALLEL_CPPFLAGS} -I${ICET_INCLUDEDIR}"
-
-
-
-        LDFLAGS="${ax_save_LDFLAGS}"
-        CXXFLAGS="${ax_save_CXXFLAGS}"
-        ac_ext=c
-ac_cpp='$CPP $CPPFLAGS'
-ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
-ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
-ac_compiler_gnu=$ac_cv_c_compiler_gnu
-
-        ax_have_icet=1
-
-else
-
-                        if test "x$with_icet_includedir" != xno -o \
-                    "x$with_icet_libdir" != xno; then
-
-            { echo "$as_me:$LINENO: WARNING:
---with-icet-... options specified without --enable-icet.  Did you mean to
-enable IceT?" >&5
-echo "$as_me: WARNING:
---with-icet-... options specified without --enable-icet.  Did you mean to
-enable IceT?" >&2;}
-
-fi
-
-
-
-fi
-
-
-cat >>confdefs.h <<_ACEOF
-#define HAVE_ICET "$ax_have_icet"
-_ACEOF
-
-
-
-fi
-
-
-                            if test "0$ax_have_icet" -eq "1"; then
-
-            ax_it_obj="IceTNetworkManager_icet.o"
-
-else
-
-            ax_it_obj=""
-
-
-fi
-
-    ICET_ENG_MAIN_OBJ=$ax_it_obj
-
-
-
 #
 # Do a check to determine the actual limit of an OSMesa
 # window size.  Unfortunately, this must be done using
@@ -10920,7 +10604,7 @@ if test "$UNAME" = "Linux"; then
 else
     LDFLAGS="-L$MESA/lib $LDFLAGS"
 fi
-LIBS="-lOSMesa -lMesaGL $GL_LIBS $X_LIBS $PTHREAD_LIB"
+LIBS="$MESA_LIBS $GL_LIBS $X_LIBS $PTHREAD_LIB"
 OSMESA_SIZE_LIMIT="4096"
 if test "$cross_compiling" = yes; then
   echo "$as_me:$LINENO: result: Cross-compiling... assuming $OSMESA_SIZE_LIMIT" >&5
@@ -11029,6 +10713,21 @@ echo "${ECHO_T}$PYDIR, version $PYVERSION" >&6
             PY_CXXFLAGS="-Wno-long-double -I$PY_INCLUDEDIR"
             ;;
     esac
+
+    echo "$as_me:$LINENO: checking for PyParsing" >&5
+echo $ECHO_N "checking for PyParsing... $ECHO_C" >&6
+    if test -r "$PYDIR/lib/$PYVERSION/site-packages/pyparsing.pyc" ; then
+        echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_PYPARSING 1
+_ACEOF
+
+    else
+        echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6
+    fi
 else
     PYDIR=""
     PYVERSION=""
@@ -11495,13 +11194,51 @@ fi
 
 
 #
-# If tflops_override is 'no' then do the following checks.
+# Check to see if we want to use VisIt's no-spin Bcast function. We want to use it
+# unless the user gave --disable-nospin-bcast
 #
-if test 'no' = $tflops_override; then
+# Check whether --enable-nospin-bcast or --disable-nospin-bcast was given.
+if test "${enable_nospin_bcast+set}" = set; then
+  enableval="$enable_nospin_bcast"
+  UseNoSpinBCast="$enable_nospin_bcast"
+else
+  UseNoSpinBCast=yes
+fi;
+if test "$UseNoSpinBCast" == "yes" ; then
+
+cat >>confdefs.h <<\_ACEOF
+#define VISIT_USE_NOSPIN_BCAST 1
+_ACEOF
+
+fi
+
+#
+# Check to see if we want to use the select() function. We want to use it
+# unless the user gave --disable-select
+#
+# Check whether --enable-select or --disable-select was given.
+if test "${enable_select+set}" = set; then
+  enableval="$enable_select"
+  UseSelect="$enable_select"
+else
+  UseSelect=yes
+fi;
+if test "$UseSelect" == "yes" ; then
+    SELECT_FUNCTION="select"
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_SELECT 1
+_ACEOF
+
+fi
+
+#
+# Check for library functions.  If we don't have one, we can't continue.
+#
 
 
 
-for ac_func in select div strerror
+for ac_func in $SELECT_FUNCTION div strerror
 do
 as_ac_var=`echo "ac_cv_func_$ac_func" | $as_tr_sh`
 echo "$as_me:$LINENO: checking for $ac_func" >&5
@@ -11601,15 +11338,13 @@ _ACEOF
 
 else
   { { echo "$as_me:$LINENO: error: $0 wasn't able to find a necessary library
-                                function (see above)." >&5
+                            function (see above)." >&5
 echo "$as_me: error: $0 wasn't able to find a necessary library
-                                function (see above)." >&2;}
+                            function (see above)." >&2;}
    { (exit 1); exit 1; }; }
 
 fi
 done
-
-fi
 
 
 #
@@ -11797,6 +11532,7 @@ fi
 # these libraries are statically linked into the database plugins
 # and on MacOS X they are dynamically linked.
 #
+CREATE_SILO_LINK=""
 CREATE_MILI_LINK=""
 CREATE_HDF4_LINK=""
 CREATE_NETCDF_LINK=""
@@ -11807,9 +11543,13 @@ CREATE_BOXLIB2D_LINK=""
 CREATE_BOXLIB3D_LINK=""
 CREATE_CFITSIO_LINK=""
 CREATE_H5PART_LINK=""
+CREATE_FASTBIT_LINK=""
 CREATE_CCMIO_LINK=""
 case $UNAME in
   Darwin)
+    if test "$SILO_LIB" != "" ; then
+        CREATE_SILO_LINK="create_silo_link"
+    fi
     if test "$MILI_LIBS" != "" ; then
         CREATE_MILI_LINK="create_mili_link"
     fi
@@ -11840,11 +11580,16 @@ case $UNAME in
     if test "$H5PART_LIB" != "" ; then
         CREATE_H5PART_LINK="create_h5part_link"
     fi
+    if test "$FASTBIT_LIB" != "" ; then
+        CREATE_FASTBIT_LINK="create_fastbit_link"
+    fi
     if test "$CCMIO_LIBS" != "" ; then
         CREATE_CCMIO_LINK="create_ccmio_link"
     fi
   ;;
 esac
+
+
 
 
 
@@ -19671,11 +19416,7 @@ else
     MDSERVER_FILES=""
 fi
 
-if test -n "$GUI"; then
-    GUI_FILES="gui/Makefile"
-else
-    GUI_FILES=""
-fi
+GUI_FILES="gui/Makefile"
 
 if test -n "$HELP"; then
     HELP_FILES="help/Makefile"
@@ -19739,6 +19480,7 @@ TOOLS_FILES="tools/Makefile
              tools/mpeg2encode/Makefile
              tools/mpeg_encode/Makefile
              tools/protocol/Makefile
+             tools/silex/Makefile
              tools/surfcomp/Makefile
              tools/windowmaker/Makefile
              tools/writer/Makefile
@@ -19747,7 +19489,8 @@ TOOLS_FILES="tools/Makefile
 VISIT_VTK_FILES="visit_vtk/Makefile
                  visit_vtk/lightweight/Makefile
                  visit_vtk/full/Makefile
-                 visit_vtk/parallel/Makefile"
+                 visit_vtk/parallel/Makefile
+                 visit_vtk/rendering/Makefile"
 COMPONENT_FILES="avt/Makefile
                  avt/DBAtts/Makefile
                  avt/DDF/Makefile
@@ -19795,8 +19538,7 @@ THIRD_PARTY_BUILTIN_FILES="third_party_builtin/Makefile
                            third_party_builtin/slivr/slivr/Makefile
                            third_party_builtin/slivr/teem/Makefile
                            third_party_builtin/bow/Makefile
-                           third_party_builtin/cognomen/Makefile
-                           third_party_builtin/Tuvok/Makefile"
+                           third_party_builtin/cognomen/Makefile"
 
 if test "$enable_scripting" = "yes"; then
     VISITPY_FILES="visitpy/Makefile
@@ -19817,6 +19559,119 @@ LAUNCHER_FILES="launcher/Makefile
                 launcher/rpc/Makefile
                 launcher/proxy/Makefile
                 launcher/main/Makefile"
+
+if test "$enable_dbio_only" = yes; then
+    CONVERT_SER=""
+    CONVERT_PAR=""
+    SUBDIRS="$""(SUBDIRS_DBIO_ONLY)"
+    ALLSUBDIRS="$""(ALLSUBDIRS_DBIO_ONLY)"
+    SRC="$""(SRC_DBIO_ONLY)"
+    BUILD_DBIO_ONLY="$""(BUILD_DBIO_ONLY)"
+    MDSERVERLIB="$""(MDSO)"
+    MDSERVEROBJ="$""(MOBJ)"
+    ENGINELIBSER="$""(ESERDSO)"
+    ENGINELIBPAR="$""(EPARDSO)"
+    GUI_FILES=""
+    HELP_FILES=""
+    WINUTIL_FILES=""
+    VIEWER_FILES=""
+    ENGINE_FILES=""
+    MDSERVER_FILES=""
+    LAUNCHER_FILES=""
+    VTKQT_FILES=""
+    PLOT_FILES=""
+    OPERATOR_FILES=""
+    VISITPY_FILES=""
+    SIMULATION=""
+    SIMULATION_PROTOTYPE_FILES=""
+    CQSCORE_FILES=""
+    JAVA_FILES=""
+    THIRD_PARTY_BUILTIN_FILES="
+        third_party_builtin/Makefile
+        third_party_builtin/bilib/Makefile
+        third_party_builtin/bow/Makefile"
+    TOOLS_FILES="
+        tools/Makefile
+        tools/convert/Makefile
+        bin/topdir"
+    VISIT_VTK_FILES="
+        visit_vtk/Makefile
+        visit_vtk/lightweight/Makefile
+        visit_vtk/full/Makefile"
+    COMPONENT_FILES="
+        avt/Makefile
+        avt/DBAtts/Makefile
+        avt/Database/Makefile
+        avt/Pipeline/Makefile"
+fi
+if test "$enable_engine_only" = yes; then
+    CONVERT_SER=""
+    CONVERT_PAR=""
+    SUBDIRS="$""(SUBDIRS_ENGINE_ONLY)"
+    ALLSUBDIRS="$""(ALLSUBDIRS_ENGINE_ONLY)"
+#    SRC="$""(SRC_ENGINE_ONLY)"
+    GUI_FILES=""
+    HELP_FILES=""
+    WINUTIL_FILES=""
+    VIEWER_FILES=""
+    MDSERVER_FILES=""
+    LAUNCHER_FILES=""
+    VTKQT_FILES=""
+    VISITPY_FILES=""
+    CQSCORE_FILES=""
+    JAVA_FILES=""
+    TOOLS_FILES=""
+    COMPONENT_FILES="avt/Makefile
+                 avt/DBAtts/Makefile
+                 avt/DDF/Makefile
+                 avt/Database/Makefile
+                 avt/Expressions/Makefile
+                 avt/FileWriter/Makefile
+                 avt/Filters/Makefile
+                 avt/IVP/Makefile
+                 avt/Math/Makefile
+                 avt/MIR/Makefile
+                 avt/Pipeline/Makefile
+                 avt/Plotter/Makefile
+                 avt/Preprocessor/Makefile
+                 avt/Queries/Makefile
+                 avt/Shapelets/Makefile
+                 avt/View/Makefile
+                 avt/VisWindow/Makefile"
+fi
+if test "$enable_server_components_only" = yes; then
+    CONVERT_SER=""
+    CONVERT_PAR=""
+    SUBDIRS="$""(SUBDIRS_SERVER_COMPONENTS_ONLY)"
+    ALLSUBDIRS="$""(ALLSUBDIRS_SERVER_COMPONENTS_ONLY)"
+#    SRC="$""(SRC_SERVER_COMPONENTS_ONLY)"
+    GUI_FILES=""
+    HELP_FILES=""
+    WINUTIL_FILES=""
+    VIEWER_FILES=""
+    VTKQT_FILES=""
+    VISITPY_FILES=""
+    CQSCORE_FILES=""
+    JAVA_FILES=""
+    TOOLS_FILES=""
+    COMPONENT_FILES="avt/Makefile
+                 avt/DBAtts/Makefile
+                 avt/DDF/Makefile
+                 avt/Database/Makefile
+                 avt/Expressions/Makefile
+                 avt/FileWriter/Makefile
+                 avt/Filters/Makefile
+                 avt/IVP/Makefile
+                 avt/Math/Makefile
+                 avt/MIR/Makefile
+                 avt/Pipeline/Makefile
+                 avt/Plotter/Makefile
+                 avt/Preprocessor/Makefile
+                 avt/Queries/Makefile
+                 avt/Shapelets/Makefile
+                 avt/View/Makefile
+                 avt/VisWindow/Makefile"
+fi
 
                                                                                                                                                                                                                             ac_config_files="$ac_config_files $STANDARD_FILES $GUI_FILES $HELP_FILES $WINUTIL_FILES $VIEWER_FILES $ENGINE_FILES $MDSERVER_FILES $LAUNCHER_FILES $COMMON_FILES $TOOLS_FILES $VISIT_VTK_FILES $VTKQT_FILES $COMPONENT_FILES $PLOT_FILES $OPERATOR_FILES $DATABASE_FILES $DATA_FILES $VISITPY_FILES $SIMULATION_PROTOTYPE_FILES $CQSCORE_FILES $THIRD_PARTY_BUILTIN_FILES $JAVA_FILES"
           ac_config_commands="$ac_config_commands default"
@@ -20458,6 +20313,13 @@ s,@ECHO_T@,$ECHO_T,;t t
 s,@LIBS@,$LIBS,;t t
 s,@TOPDIR@,$TOPDIR,;t t
 s,@PLATFORM_CPPFLAGS@,$PLATFORM_CPPFLAGS,;t t
+s,@SUBDIRS@,$SUBDIRS,;t t
+s,@ALLSUBDIRS@,$ALLSUBDIRS,;t t
+s,@SRC@,$SRC,;t t
+s,@BUILD_DBIO_ONLY@,$BUILD_DBIO_ONLY,;t t
+s,@CHECK_MAKE_AND_ENV_VARS@,$CHECK_MAKE_AND_ENV_VARS,;t t
+s,@NON_DBIO_SERLIBS@,$NON_DBIO_SERLIBS,;t t
+s,@NON_DBIO_PARLIBS@,$NON_DBIO_PARLIBS,;t t
 s,@CMAKE@,$CMAKE,;t t
 s,@CXXFLAGS@,$CXXFLAGS,;t t
 s,@EGREP@,$EGREP,;t t
@@ -20481,9 +20343,14 @@ s,@LIBCOGNOMEN@,$LIBCOGNOMEN,;t t
 s,@MESA_DIR@,$MESA_DIR,;t t
 s,@MESA_INCLUDE@,$MESA_INCLUDE,;t t
 s,@MESA_LIBS@,$MESA_LIBS,;t t
+s,@MESA_LIBGL@,$MESA_LIBGL,;t t
 s,@VIEWER_MESA_STUB_CPPFLAGS@,$VIEWER_MESA_STUB_CPPFLAGS,;t t
 s,@VIEWER_MESA_LIBS@,$VIEWER_MESA_LIBS,;t t
 s,@BUILD_MESA_STUB@,$BUILD_MESA_STUB,;t t
+s,@ICET_CXXFLAGS@,$ICET_CXXFLAGS,;t t
+s,@ICET_LDFLAGS@,$ICET_LDFLAGS,;t t
+s,@ICET_LIBS@,$ICET_LIBS,;t t
+s,@ICET_ENG_MAIN_OBJ@,$ICET_ENG_MAIN_OBJ,;t t
 s,@CC@,$CC,;t t
 s,@CFLAGS@,$CFLAGS,;t t
 s,@ac_ct_CC@,$ac_ct_CC,;t t
@@ -20492,10 +20359,15 @@ s,@VTK_DIR@,$VTK_DIR,;t t
 s,@VTK_INCLUDES@,$VTK_INCLUDES,;t t
 s,@VTK_LIBS@,$VTK_LIBS,;t t
 s,@VTK_LIGHTWEIGHT_LIBS@,$VTK_LIGHTWEIGHT_LIBS,;t t
+s,@MESA_OBJ@,$MESA_OBJ,;t t
+s,@SERMESA_OBJ@,$SERMESA_OBJ,;t t
+s,@PARMESA_OBJ@,$PARMESA_OBJ,;t t
 s,@AVTPREP_SER@,$AVTPREP_SER,;t t
 s,@AVTPREP_PAR@,$AVTPREP_PAR,;t t
 s,@CONVERT_SER@,$CONVERT_SER,;t t
 s,@CONVERT_PAR@,$CONVERT_PAR,;t t
+s,@CONVERT_SER_LITE@,$CONVERT_SER_LITE,;t t
+s,@CONVERT_PAR_LITE@,$CONVERT_PAR_LITE,;t t
 s,@MAKEMILI_SER@,$MAKEMILI_SER,;t t
 s,@MAKEMILI_PAR@,$MAKEMILI_PAR,;t t
 s,@ENGINE_SER@,$ENGINE_SER,;t t
@@ -20510,11 +20382,11 @@ s,@SCRIPTINGLIB@,$SCRIPTINGLIB,;t t
 s,@SCRIPTINGOBJ@,$SCRIPTINGOBJ,;t t
 s,@PY_BUILD_VISITMODULE@,$PY_BUILD_VISITMODULE,;t t
 s,@VIEWER@,$VIEWER,;t t
-s,@VISWINDOW@,$VISWINDOW,;t t
 s,@VIEWERLIB@,$VIEWERLIB,;t t
 s,@VIEWEROBJ@,$VIEWEROBJ,;t t
 s,@VIEWERLIB_SRC@,$VIEWERLIB_SRC,;t t
 s,@VIEWEREXE_SRC@,$VIEWEREXE_SRC,;t t
+s,@ENGINEPROXYDIR@,$ENGINEPROXYDIR,;t t
 s,@GUI@,$GUI,;t t
 s,@GUILIB@,$GUILIB,;t t
 s,@GUIOBJ@,$GUIOBJ,;t t
@@ -20551,10 +20423,8 @@ s,@RANLIB@,$RANLIB,;t t
 s,@ac_ct_RANLIB@,$ac_ct_RANLIB,;t t
 s,@MAKEDEPEND@,$MAKEDEPEND,;t t
 s,@BUILD_FORTRAN@,$BUILD_FORTRAN,;t t
+s,@XML2MAKEFILE_CXX@,$XML2MAKEFILE_CXX,;t t
 s,@OS_RULE@,$OS_RULE,;t t
-s,@BUILD_TUVOK@,$BUILD_TUVOK,;t t
-s,@TUVOK_LIB@,$TUVOK_LIB,;t t
-s,@TUVOK_INCLUDE@,$TUVOK_INCLUDE,;t t
 s,@BUILD_ZLIB@,$BUILD_ZLIB,;t t
 s,@ZLIB_LIB@,$ZLIB_LIB,;t t
 s,@HDF5_INCLUDE@,$HDF5_INCLUDE,;t t
@@ -20567,9 +20437,10 @@ s,@EXODUS@,$EXODUS,;t t
 s,@EXODUS_LIB@,$EXODUS_LIB,;t t
 s,@EXODUS_LIBS@,$EXODUS_LIBS,;t t
 s,@EXODUS_FLAGS@,$EXODUS_FLAGS,;t t
-s,@PDB_INCLUDE@,$PDB_INCLUDE,;t t
-s,@PDB_LIB@,$PDB_LIB,;t t
-s,@PDB_TARGET@,$PDB_TARGET,;t t
+s,@PDB@,$PDB,;t t
+s,@PDB_FLAGS@,$PDB_FLAGS,;t t
+s,@PDB_LIBS@,$PDB_LIBS,;t t
+s,@PDB_EXEC@,$PDB_EXEC,;t t
 s,@MILI@,$MILI,;t t
 s,@MILI_FLAGS@,$MILI_FLAGS,;t t
 s,@MILI_LIBS@,$MILI_LIBS,;t t
@@ -20593,6 +20464,10 @@ s,@H5PART@,$H5PART,;t t
 s,@H5PART_INCLUDE@,$H5PART_INCLUDE,;t t
 s,@H5PART_LIB@,$H5PART_LIB,;t t
 s,@H5PART_LIBDIR@,$H5PART_LIBDIR,;t t
+s,@FASTBIT@,$FASTBIT,;t t
+s,@FASTBIT_INCLUDE@,$FASTBIT_INCLUDE,;t t
+s,@FASTBIT_LIB@,$FASTBIT_LIB,;t t
+s,@FASTBIT_LIBDIR@,$FASTBIT_LIBDIR,;t t
 s,@VISUS@,$VISUS,;t t
 s,@VISUS_INCLUDE@,$VISUS_INCLUDE,;t t
 s,@VISUS_LIB@,$VISUS_LIB,;t t
@@ -20631,6 +20506,7 @@ s,@CCMIO_LIBDIR@,$CCMIO_LIBDIR,;t t
 s,@SIMULATION@,$SIMULATION,;t t
 s,@EXPORT_DYNAMIC@,$EXPORT_DYNAMIC,;t t
 s,@ENGINE_CPPFLAGS@,$ENGINE_CPPFLAGS,;t t
+s,@SILOOBJVTK_CPPFLAGS@,$SILOOBJVTK_CPPFLAGS,;t t
 s,@PREPROCESSOR_CPPFLAGS@,$PREPROCESSOR_CPPFLAGS,;t t
 s,@PREPROCESSOR_PARALLEL_SRC@,$PREPROCESSOR_PARALLEL_SRC,;t t
 s,@COMPONENT_CPPFLAGS@,$COMPONENT_CPPFLAGS,;t t
@@ -20640,46 +20516,20 @@ s,@VIEWER_CPPFLAGS@,$VIEWER_CPPFLAGS,;t t
 s,@QT_BIN@,$QT_BIN,;t t
 s,@QT_INCLUDE@,$QT_INCLUDE,;t t
 s,@QT_LIB@,$QT_LIB,;t t
-s,@QT_LDFLAGS@,$QT_LDFLAGS,;t t
+s,@LIBQT@,$LIBQT,;t t
 s,@QT_LIBS@,$QT_LIBS,;t t
-s,@QT_CORE@,$QT_CORE,;t t
-s,@QT_CORE_LIB@,$QT_CORE_LIB,;t t
-s,@QT_DESIGNER@,$QT_DESIGNER,;t t
-s,@QT_DESIGNER_LIB@,$QT_DESIGNER_LIB,;t t
-s,@QT_GUI@,$QT_GUI,;t t
-s,@QT_GUI_LIB@,$QT_GUI_LIB,;t t
-s,@QT_HELP@,$QT_HELP,;t t
-s,@QT_HELP_LIB@,$QT_HELP_LIB,;t t
-s,@QT_CLUCENE@,$QT_CLUCENE,;t t
-s,@QT_CLUCENE_LIB@,$QT_CLUCENE_LIB,;t t
-s,@QT_NETWORK@,$QT_NETWORK,;t t
-s,@QT_NETWORK_LIB@,$QT_NETWORK_LIB,;t t
-s,@QT_OPENGL@,$QT_OPENGL,;t t
-s,@QT_OPENGL_LIB@,$QT_OPENGL_LIB,;t t
-s,@QT_SCRIPT@,$QT_SCRIPT,;t t
-s,@QT_SCRIPT_LIB@,$QT_SCRIPT_LIB,;t t
-s,@QT_SQL@,$QT_SQL,;t t
-s,@QT_SQL_LIB@,$QT_SQL_LIB,;t t
-s,@QT_SVG@,$QT_SVG,;t t
-s,@QT_SVG_LIB@,$QT_SVG_LIB,;t t
-s,@QT_TEST@,$QT_TEST,;t t
-s,@QT_TEST_LIB@,$QT_TEST_LIB,;t t
-s,@QT_XML@,$QT_XML,;t t
-s,@QT_XML_LIB@,$QT_XML_LIB,;t t
-s,@QT_QUI@,$QT_QUI,;t t
-s,@QT_QUI_LIB@,$QT_QUI_LIB,;t t
+s,@QUI_LIBS@,$QUI_LIBS,;t t
+s,@QT_LDFLAGS@,$QT_LDFLAGS,;t t
+s,@QT_STATICLDFLAGS@,$QT_STATICLDFLAGS,;t t
 s,@QT_CXXFLAGS@,$QT_CXXFLAGS,;t t
 s,@QT_MOC@,$QT_MOC,;t t
+s,@X_LIBS@,$X_LIBS,;t t
+s,@X_CPPFLAGS@,$X_CPPFLAGS,;t t
 s,@VTKQT_CPPFLAGS@,$VTKQT_CPPFLAGS,;t t
 s,@VTKQT@,$VTKQT,;t t
 s,@VTKQT_LIBS@,$VTKQT_LIBS,;t t
-s,@X_LIBS@,$X_LIBS,;t t
 s,@PTHREAD_LIB@,$PTHREAD_LIB,;t t
 s,@PTHREAD_CXXFLAGS@,$PTHREAD_CXXFLAGS,;t t
-s,@ICET_CXXFLAGS@,$ICET_CXXFLAGS,;t t
-s,@ICET_LDFLAGS@,$ICET_LDFLAGS,;t t
-s,@ICET_LIBS@,$ICET_LIBS,;t t
-s,@ICET_ENG_MAIN_OBJ@,$ICET_ENG_MAIN_OBJ,;t t
 s,@PYDIR@,$PYDIR,;t t
 s,@PYVERSION@,$PYVERSION,;t t
 s,@PY_INCLUDEDIR@,$PY_INCLUDEDIR,;t t
@@ -20718,6 +20568,7 @@ s,@SHLIB_TMPDIR@,$SHLIB_TMPDIR,;t t
 s,@PREBIND_LIBS@,$PREBIND_LIBS,;t t
 s,@ENGINEWRAPSER@,$ENGINEWRAPSER,;t t
 s,@ENGINEWRAPPAR@,$ENGINEWRAPPAR,;t t
+s,@CREATE_SILO_LINK@,$CREATE_SILO_LINK,;t t
 s,@CREATE_MILI_LINK@,$CREATE_MILI_LINK,;t t
 s,@CREATE_HDF4_LINK@,$CREATE_HDF4_LINK,;t t
 s,@CREATE_NETCDF_LINK@,$CREATE_NETCDF_LINK,;t t
@@ -20728,6 +20579,7 @@ s,@CREATE_BOXLIB2D_LINK@,$CREATE_BOXLIB2D_LINK,;t t
 s,@CREATE_BOXLIB3D_LINK@,$CREATE_BOXLIB3D_LINK,;t t
 s,@CREATE_CFITSIO_LINK@,$CREATE_CFITSIO_LINK,;t t
 s,@CREATE_H5PART_LINK@,$CREATE_H5PART_LINK,;t t
+s,@CREATE_FASTBIT_LINK@,$CREATE_FASTBIT_LINK,;t t
 s,@CREATE_CCMIO_LINK@,$CREATE_CCMIO_LINK,;t t
 s,@VAC_CV_LIBDIR_CREATE_LINKS@,$VAC_CV_LIBDIR_CREATE_LINKS,;t t
 s,@VAC_CV_LIBDIR_DESTROY_LINKS@,$VAC_CV_LIBDIR_DESTROY_LINKS,;t t
@@ -21378,17 +21230,23 @@ fi
 (cd include   && ${MAKE-make})
 (cd lib       && ${MAKE-make})
 (cd bin       && ${MAKE-make})
-rm -f $TOPDIR/exe/xml2makefile
-(cd tools/xml && ${MAKE-make} $TOPDIR/exe/xml2makefile)
+if test ! "$enable_dbio_only" = yes; then
+    rm -f $TOPDIR/exe/xml2makefile
+    (cd tools/xml && ${MAKE-make} $TOPDIR/exe/xml2makefile)
+fi
 
 # If we 're on a Darwin system, make bundles for the gui and the viewer.
 if test "$UNAME" = "Darwin";  then
     svn_bin/makebundles
 fi
 
-(cd plots     && ${MAKE-make} dirmakefiles)
-(cd operators && ${MAKE-make} dirmakefiles)
-(cd databases && ${MAKE-make} dirmakefiles)
+if test ! "$enable_dbio_only" = yes; then
+    (cd plots     && ${MAKE-make} dirmakefiles)
+    (cd operators && ${MAKE-make} dirmakefiles)
+    (cd databases && ${MAKE-make} dirmakefiles)
+else
+    (cd databases && ${MAKE-make} dirmakefiles_dbio_only)
+fi
 if test -n "$JAVA_TARGET"; then
 (cd java      && ${MAKE-make} version)
 fi

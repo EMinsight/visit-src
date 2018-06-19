@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -199,12 +199,14 @@ int avtITAPS_CUtility::ITAPSEntityTopologyToVTKZoneType(int ttype)
 }
 
 //
-// We re-define debug5 here because we use TraverseSetHierarchy for multiple
+// We re-define debug4/5 here because we use TraverseSetHierarchy for multiple
 // purposes and don't want data spewed to debug logs every time we traverse
-// the set hierarchy
+// the set hierarchy even when debug logs are enabled.
 //
 #undef debug5
 #define debug5 if (debugOff || !debug5_real) ; else debug5_real
+#undef debug4
+#define debug4 if (debugOff || !debug4_real) ; else debug4_real
 
 // ****************************************************************************
 //  Function: TraverseSetHierarchy 
@@ -215,11 +217,16 @@ int avtITAPS_CUtility::ITAPSEntityTopologyToVTKZoneType(int ttype)
 //  Modifications:
 //    Mark C. Miller, Mon Apr 14 15:41:21 PDT 2008
 //    Added code to output entity type and topology
+//
+//    Mark C. Miller, Tue Apr 21 15:54:20 PDT 2009
+//    Broad changes to better manage debug output to different level logs.
+//    Needed to add additional arg for EntityHandle as distinct from
+//    EntitySetHandle to confirm to new iMesh/iBase specification.
 // ****************************************************************************
 
 void
 avtITAPS_CUtility::TraverseSetHierarchy(iMesh_Instance aMesh, int level,
-    int memberId, bool isEntitySet, iBase_EntitySetHandle esh, bool debugOff,
+    int memberId, bool isEntitySet, iBase_EntityHandle eh, iBase_EntitySetHandle esh, bool debugOff,
     HandleThisSet handleSetCb, void *handleSetCb_data)
 {
 #ifndef MDSERVER
@@ -229,8 +236,8 @@ avtITAPS_CUtility::TraverseSetHierarchy(iMesh_Instance aMesh, int level,
 
     // Do the callback if one was requested
     bool shouldRecurse = true;
-    if (handleSetCb)
-        shouldRecurse = (*handleSetCb)(aMesh, level, memberId, isEntitySet, esh, handleSetCb_data);
+    if (isEntitySet && handleSetCb)
+        shouldRecurse = (*handleSetCb)(aMesh, level, memberId, isEntitySet, eh, esh, handleSetCb_data);
 
     iBase_EntitySetHandle *sets = 0; int sets_allocated = 0;
     int sets_size = 0;
@@ -244,18 +251,23 @@ avtITAPS_CUtility::TraverseSetHierarchy(iMesh_Instance aMesh, int level,
         ident += "        ";
 
     if (isEntitySet)
-        debug5 << ident << "For Entity Set at level " << level << ", index " << memberId << ":" << endl;
+    {
+        debug4 << ident << "For Entity Set at level " << level << ", index " << memberId << ":" << endl;
+        debug4 << ident << "{" << endl;
+    }
     else
+    {
         debug5 << ident << "For Entity     at level " << level << ", index " << memberId << ":" << endl;
-    debug5 << ident << "{" << endl;
+        debug5 << ident << "{" << endl;
+    }
 
     if (!isEntitySet)
     {
         int topo, type;
-        iMesh_getEntType(aMesh, esh, &type, &itapsError);
+        iMesh_getEntType(aMesh, eh, &type, &itapsError);
         if (level<2) CheckITAPSError(aMesh, iMesh_getEntType, NoL);
         debug5 << ident << "    type = \"" << entTypes[type] << "\"" << endl;
-        iMesh_getEntTopo(aMesh, esh, &topo, &itapsError);
+        iMesh_getEntTopo(aMesh, eh, &topo, &itapsError);
         if (level<2) CheckITAPSError(aMesh, iMesh_getEntTopo, NoL);
         debug5 << ident << "    topology = \"" << entTopologies[topo] << "\"" << endl;
     }
@@ -263,14 +275,24 @@ avtITAPS_CUtility::TraverseSetHierarchy(iMesh_Instance aMesh, int level,
     if (isEntitySet)
         iMesh_getAllEntSetTags(aMesh, esh, &tags, &tags_allocated, &tags_size, &itapsError);
     else
-        iMesh_getAllTags(aMesh, esh, &tags, &tags_allocated, &tags_size, &itapsError);
+        iMesh_getAllTags(aMesh, eh, &tags, &tags_allocated, &tags_size, &itapsError);
     if (level<2) CheckITAPSError(aMesh, iMesh_getAllTags, (0,tags,EoL));
     if (tags_size)
     {
-        debug5 << ident << "    tags = " << tags_size << endl;
-        debug5 << ident << "    {" << endl;
-        debug5 << ident << "            name                 type     size     value(s)..." << endl;
-        debug5 << ident << "     --------------------       -------   ----     -----------" << endl;
+        if (isEntitySet)
+        {
+            debug4 << ident << "    tags = " << tags_size << endl;
+            debug4 << ident << "    {" << endl;
+            debug4 << ident << "            name                 type     size     value(s)..." << endl;
+            debug4 << ident << "     --------------------       -------   ----     -----------" << endl;
+        }
+        else
+        {
+            debug5 << ident << "    tags = " << tags_size << endl;
+            debug5 << ident << "    {" << endl;
+            debug5 << ident << "            name                 type     size     value(s)..." << endl;
+            debug5 << ident << "     --------------------       -------   ----     -----------" << endl;
+        }
         for (int t = 0; t < tags_size; t++)
         {
             char lineBuf[256];
@@ -290,9 +312,9 @@ avtITAPS_CUtility::TraverseSetHierarchy(iMesh_Instance aMesh, int level,
                     if (isEntitySet)
                         iMesh_getEntSetIntData(aMesh, esh, tags[t], &theVal, &itapsError);
                     else
-                        iMesh_getIntData(aMesh, esh, tags[t], &theVal, &itapsError);
+                        iMesh_getIntData(aMesh, eh, tags[t], &theVal, &itapsError);
                     if (level<2) CheckITAPSError(aMesh, iMesh_getXXIntData, NoL); 
-                    if (debug5_real)
+                    if (debug4_real)
                     {
                         SNPRINTF(lineBuf, sizeof(lineBuf), "% 16s     % 8s     %03d     %d", 
                             tagName.c_str(), itapsDataTypeNames[typeId], tagSize, theVal);
@@ -300,20 +322,21 @@ avtITAPS_CUtility::TraverseSetHierarchy(iMesh_Instance aMesh, int level,
                 }
                 else if (tagSize > 1)
                 {
-                    int *tagvals = 0; int tagvals_allocated = 0; int tagvals_size = 0;
-                    iMesh_getIntArrData(aMesh, &esh, 1, tags[t],
-                        &tagvals, &tagvals_allocated, &tagvals_size, &itapsError);
-                    if (level<2) CheckITAPSError(aMesh, iMesh_getIntArrData, (0,tagvals,EoL)); 
+                    int *tagvals = (int *) malloc(tagSize*sizeof(int));
+                    if (isEntitySet)
+                        iMesh_getEntSetIntData(aMesh, esh, tags[t], tagvals, &itapsError);
+                    else
+                        iMesh_getIntData(aMesh, eh, tags[t], tagvals, &itapsError);
+                    if (level<2) CheckITAPSError(aMesh, iMesh_getIntData, (0,tagvals,EoL)); 
                     std::string valBuf;
-                    for (int k = 0; k < tagvals_size; k++)
+                    for (int k = 0; k < tagSize; k++)
                     {
                         char tmpChars[32];
                         sprintf(tmpChars, "%d ", tagvals[k]);
                         valBuf += std::string(tmpChars);
                     }
-                    if (tagvals_allocated)
-                        free(tagvals);
-                    if (debug5_real)
+                    free(tagvals);
+                    if (debug4_real)
                     {
                         SNPRINTF(lineBuf, sizeof(lineBuf), "% 16s     % 8s     %03d     %s", 
                             tagName.c_str(), itapsDataTypeNames[typeId], tagSize, valBuf.c_str());
@@ -321,7 +344,7 @@ avtITAPS_CUtility::TraverseSetHierarchy(iMesh_Instance aMesh, int level,
                 }
                 else
                 {
-                    if (debug5_real)
+                    if (debug4_real)
                     {
                         SNPRINTF(lineBuf, sizeof(lineBuf), "% 16s     % 8s     %03d     %s", 
                             tagName.c_str(), itapsDataTypeNames[typeId], tagSize, "invalid size");
@@ -336,9 +359,9 @@ avtITAPS_CUtility::TraverseSetHierarchy(iMesh_Instance aMesh, int level,
                     if (isEntitySet)
                         iMesh_getEntSetDblData(aMesh, esh, tags[t], &theVal, &itapsError);
                     else
-                        iMesh_getDblData(aMesh, esh, tags[t], &theVal, &itapsError);
+                        iMesh_getDblData(aMesh, eh, tags[t], &theVal, &itapsError);
                     if (level<2) CheckITAPSError(aMesh, iMesh_getXXDblData, NoL); 
-                    if (debug5_real)
+                    if (debug4_real)
                     {
                         SNPRINTF(lineBuf, sizeof(lineBuf), "% 16s     % 8s     %03d     %f", 
                             tagName.c_str(), itapsDataTypeNames[typeId], tagSize, theVal);
@@ -346,20 +369,21 @@ avtITAPS_CUtility::TraverseSetHierarchy(iMesh_Instance aMesh, int level,
                 }
                 else if (tagSize > 1)
                 {
-                    double *tagvals = 0; int tagvals_allocated = 0; int tagvals_size = 0;
-                    iMesh_getDblArrData(aMesh, &esh, 1, tags[t],
-                        &tagvals, &tagvals_allocated, &tagvals_size, &itapsError);
-                    if (level<2) CheckITAPSError(aMesh, iMesh_getDblArrData, (0,tagvals,EoL)); 
+                    double *tagvals = (double *) malloc(tagSize*sizeof(double)); 
+                    if (isEntitySet)
+                        iMesh_getEntSetDblData(aMesh, esh, tags[t], tagvals, &itapsError);
+                    else
+                        iMesh_getDblData(aMesh, eh, tags[t], tagvals, &itapsError);
+                    if (level<2) CheckITAPSError(aMesh, iMesh_getDblData, (0,tagvals,EoL)); 
                     std::string valBuf;
-                    for (int k = 0; k < tagvals_size; k++)
+                    for (int k = 0; k < tagSize; k++)
                     {
                         char tmpChars[32];
                         sprintf(tmpChars, "%f ", tagvals[k]);
                         valBuf += std::string(tmpChars);
                     }
-                    if (tagvals_allocated)
-                        free(tagvals);
-                    if (debug5_real)
+                    free(tagvals);
+                    if (debug4_real)
                     {
                         SNPRINTF(lineBuf, sizeof(lineBuf), "% 16s     % 8s     %03d     %s", 
                             tagName.c_str(), itapsDataTypeNames[typeId], tagSize, valBuf.c_str());
@@ -367,7 +391,7 @@ avtITAPS_CUtility::TraverseSetHierarchy(iMesh_Instance aMesh, int level,
                 }
                 else
                 {
-                    if (debug5_real)
+                    if (debug4_real)
                     {
                         SNPRINTF(lineBuf, sizeof(lineBuf), "% 16s     % 8s     %03d     %s", 
                             tagName.c_str(), itapsDataTypeNames[typeId], tagSize, "invalid size");
@@ -381,7 +405,7 @@ avtITAPS_CUtility::TraverseSetHierarchy(iMesh_Instance aMesh, int level,
                 if (isEntitySet)
                     iMesh_getEntSetData(aMesh, esh, tags[t], &theVal, &theVal_allocated, &theValSize, &itapsError);
                 else
-                    iMesh_getData(aMesh, esh, tags[t], &theVal, &theVal_allocated, &theValSize, &itapsError);
+                    iMesh_getData(aMesh, eh, tags[t], &theVal, &theVal_allocated, &theValSize, &itapsError);
                 if (level<2) CheckITAPSError(aMesh, iMesh_getXXData, (0,theVal,EoL));
                 std::string valBuf;
                 for (int k = 0; k < theValSize; k++)
@@ -395,7 +419,7 @@ avtITAPS_CUtility::TraverseSetHierarchy(iMesh_Instance aMesh, int level,
                 }
                 if (theVal_allocated)
                     free(theVal);
-                if (debug5_real)
+                if (debug4_real)
                 {
                     SNPRINTF(lineBuf, sizeof(lineBuf), "% 16s     % 8s     %03d     %s", 
                         tagName.c_str(), itapsDataTypeNames[typeId], tagSize, valBuf.c_str());
@@ -405,13 +429,13 @@ avtITAPS_CUtility::TraverseSetHierarchy(iMesh_Instance aMesh, int level,
             {
                 if (tagSize == 1)
                 {
-                    iBase_EntitySetHandle theVal;
+                    iBase_EntityHandle theVal;
                     if (isEntitySet)
                         iMesh_getEntSetEHData(aMesh, esh, tags[t], &theVal, &itapsError);
                     else
-                        iMesh_getEHData(aMesh, esh, tags[t], &theVal, &itapsError);
+                        iMesh_getEHData(aMesh, eh, tags[t], &theVal, &itapsError);
                     if (level<2) CheckITAPSError(aMesh, iMesh_getXXEHData, NoL); 
-                    if (debug5_real)
+                    if (debug4_real)
                     {
                         SNPRINTF(lineBuf, sizeof(lineBuf), "% 16s     % 8s     %03d     %X", 
                             tagName.c_str(), itapsDataTypeNames[typeId], tagSize, theVal, &itapsError);
@@ -419,20 +443,21 @@ avtITAPS_CUtility::TraverseSetHierarchy(iMesh_Instance aMesh, int level,
                 }
                 else if (tagSize > 1)
                 {
-                    iBase_EntitySetHandle *tagvals = 0; int tagvals_allocated = 0; int tagvals_size = 0;
-                    iMesh_getEHArrData(aMesh, &esh, 1, tags[t],
-                        &tagvals, &tagvals_allocated, &tagvals_size, &itapsError);
-                    if (level<2) CheckITAPSError(aMesh, iMesh_getEHArrData, (0,tagvals,EoL)); 
+                    iBase_EntityHandle *tagvals = (iBase_EntityHandle*) malloc(tagSize*sizeof(iBase_EntityHandle)); 
+                    if (isEntitySet)
+                        iMesh_getEntSetEHData(aMesh, esh, tags[t], tagvals, &itapsError);
+                    else
+                        iMesh_getEHData(aMesh, eh, tags[t], tagvals, &itapsError);
+                    if (level<2) CheckITAPSError(aMesh, iMesh_getEHData, (0,tagvals,EoL)); 
                     std::string valBuf;
-                    for (int k = 0; k < tagvals_size; k++)
+                    for (int k = 0; k < tagSize; k++)
                     {
                         char tmpChars[32];
                         sprintf(tmpChars, "%X ", tagvals[k]);
                         valBuf += std::string(tmpChars);
                     }
-                    if (tagvals_allocated)
-                        free(tagvals);
-                    if (debug5_real)
+                    free(tagvals);
+                    if (debug4_real)
                     {
                         SNPRINTF(lineBuf, sizeof(lineBuf), "% 16s     % 8s     %03d     %s", 
                             tagName.c_str(), itapsDataTypeNames[typeId], tagSize, valBuf.c_str());
@@ -440,23 +465,34 @@ avtITAPS_CUtility::TraverseSetHierarchy(iMesh_Instance aMesh, int level,
                 }
                 else
                 {
-                    if (debug5_real)
+                    if (debug4_real)
                     {
                         SNPRINTF(lineBuf, sizeof(lineBuf), "% 16s     % 8s     %03d     %s", 
                             tagName.c_str(), itapsDataTypeNames[typeId], tagSize, "invalid size");
                     }
                 }
             }
-            debug5 << ident << "         " << lineBuf << endl;
+            if (isEntitySet)
+                debug4 << ident << "         " << lineBuf << endl;
+            else
+                debug5 << ident << "         " << lineBuf << endl;
         }
-        debug5 << ident << "    }" << endl;
+        if (isEntitySet)
+            debug4 << ident << "    }" << endl;
+        else
+            debug5 << ident << "    }" << endl;
     }
     else
     {
-        debug5 << ident << "    tags = NONE" << endl;
+        if (isEntitySet)
+            debug4 << ident << "    tags = NONE" << endl;
+        else
+            debug5 << ident << "    tags = NONE" << endl;
     }
 
-    if (isEntitySet == false)
+    if (isEntitySet)
+        debug4 << ident << "}" << endl;
+    else
     {
         debug5 << ident << "}" << endl;
         return;
@@ -466,16 +502,16 @@ avtITAPS_CUtility::TraverseSetHierarchy(iMesh_Instance aMesh, int level,
     if (level<2) CheckITAPSError(aMesh, iMesh_getEntSets, (0,sets,EoL));
     if (sets_size > 0 && shouldRecurse)
     {
-        debug5 << ident << "    entity sets = " << sets_size << endl;
-        debug5 << ident << "    {" << endl;
+        debug4 << ident << "    entity sets = " << sets_size << endl;
+        debug4 << ident << "    {" << endl;
         for (int i = 0; i < sets_size; i++)
-            TraverseSetHierarchy(aMesh, level+1, i, true, sets[i], debugOff,
+            TraverseSetHierarchy(aMesh, level+1, i, true, eh, sets[i], debugOff,
                 handleSetCb, handleSetCb_data);
-        debug5 << ident << "    }" << endl;
+        debug4 << ident << "    }" << endl;
     }
     else
     {
-        debug5 << ident << "    entity sets = NONE" << endl;
+        debug4 << ident << "    entity sets = NONE" << endl;
     }
 
     iMesh_getEntities(aMesh, esh, iBase_ALL_TYPES,
@@ -486,7 +522,7 @@ avtITAPS_CUtility::TraverseSetHierarchy(iMesh_Instance aMesh, int level,
         debug5 << ident << "    entities = " << ents_size << endl;
         debug5 << ident << "    {" << endl;
         for (int i = 0; i < ents_size; i++)
-            TraverseSetHierarchy(aMesh, level+1, i, false, ents[i], debugOff,
+            TraverseSetHierarchy(aMesh, level+1, i, false, ents[i], esh, !debug5_real || debugOff,
                 handleSetCb, handleSetCb_data);
         debug5 << ident << "    }" << endl;
     }
@@ -495,7 +531,10 @@ avtITAPS_CUtility::TraverseSetHierarchy(iMesh_Instance aMesh, int level,
         debug5 << ident << "    entities = NONE" << endl;
     }
 
-    debug5 << ident << "}" << endl;
+    if (isEntitySet)
+        debug4 << ident << "}" << endl;
+    else
+        debug5 << ident << "}" << endl;
 
     if (sets_allocated)
         free(sets);
@@ -509,11 +548,14 @@ funcEnd: ;
 
 // Reset our overrided definition for debug5
 #undef debug5
+#undef debug4
+#define debug4 if (!debug4_real) ; else debug4_real
 #define debug5 if (!debug5_real) ; else debug5_real
+
 
 void
 avtITAPS_CUtility::GetTagsForEntity(iMesh_Instance aMesh, bool isEntitySet,
-    iBase_EntitySetHandle esh, vector<string> &tagNames, vector<int> &tagTypes,
+    iBase_EntityHandle eh, iBase_EntitySetHandle esh, vector<string> &tagNames, vector<int> &tagTypes,
     vector<int> &tagSizes, vector<string> &tagVals, int level)
 {
     iBase_TagHandle *tags = 0; int tags_allocated = 0; int tags_size = 0;
@@ -521,7 +563,7 @@ avtITAPS_CUtility::GetTagsForEntity(iMesh_Instance aMesh, bool isEntitySet,
     if (isEntitySet)
         iMesh_getAllEntSetTags(aMesh, esh, &tags, &tags_allocated, &tags_size, &itapsError);
     else
-        iMesh_getAllTags(aMesh, esh, &tags, &tags_allocated, &tags_size, &itapsError);
+        iMesh_getAllTags(aMesh, eh, &tags, &tags_allocated, &tags_size, &itapsError);
     if (level<2) CheckITAPSError(aMesh, iMesh_getAllXXTags, (0,tags,EoL));
 
     if (tags_size)
@@ -554,25 +596,26 @@ avtITAPS_CUtility::GetTagsForEntity(iMesh_Instance aMesh, bool isEntitySet,
                     if (isEntitySet)
                         iMesh_getEntSetIntData(aMesh, esh, tags[t], &theVal, &itapsError);
                     else
-                        iMesh_getIntData(aMesh, esh, tags[t], &theVal, &itapsError);
+                        iMesh_getIntData(aMesh, eh, tags[t], &theVal, &itapsError);
                     if (level<2) CheckITAPSError(aMesh, iMesh_getXXIntData, NoL); 
                     SNPRINTF(lineBuf, sizeof(lineBuf), "%d", theVal);
                 }
                 else if (tagSize > 1)
                 {
-                    int *tagvals = 0; int tagvals_allocated = 0; int tagvals_size = 0;
-                    iMesh_getIntArrData(aMesh, &esh, 1, tags[t],
-                        &tagvals, &tagvals_allocated, &tagvals_size, &itapsError);
-                    if (level<2) CheckITAPSError(aMesh, iMesh_getIntArrData, (0,tagvals,EoL)); 
+                    int *tagvals = (int *) malloc(tagSize*sizeof(int)); 
+                    if (isEntitySet)
+                        iMesh_getEntSetIntData(aMesh, esh, tags[t], tagvals, &itapsError);
+                    else
+                        iMesh_getIntData(aMesh, eh, tags[t], tagvals, &itapsError);
+                    if (level<2) CheckITAPSError(aMesh, iMesh_getIntData, (0,tagvals,EoL)); 
                     std::string valBuf;
-                    for (int k = 0; k < tagvals_size; k++)
+                    for (int k = 0; k < tagSize; k++)
                     {
                         char tmpChars[32];
                         sprintf(tmpChars, "%d ", tagvals[k]);
                         valBuf += std::string(tmpChars);
                     }
-                    if (tagvals_allocated)
-                        free(tagvals);
+                    free(tagvals);
                     SNPRINTF(lineBuf, sizeof(lineBuf), "%s", valBuf.c_str());
                 }
             }
@@ -584,25 +627,26 @@ avtITAPS_CUtility::GetTagsForEntity(iMesh_Instance aMesh, bool isEntitySet,
                     if (isEntitySet)
                         iMesh_getEntSetDblData(aMesh, esh, tags[t], &theVal, &itapsError);
                     else
-                        iMesh_getDblData(aMesh, esh, tags[t], &theVal, &itapsError);
+                        iMesh_getDblData(aMesh, eh, tags[t], &theVal, &itapsError);
                     if (level<2) CheckITAPSError(aMesh, iMesh_getXXDblData, NoL); 
                     SNPRINTF(lineBuf, sizeof(lineBuf), "%f", theVal);
                 }
                 else if (tagSize > 1)
                 {
-                    double *tagvals = 0; int tagvals_allocated = 0; int tagvals_size = 0;
-                    iMesh_getDblArrData(aMesh, &esh, 1, tags[t],
-                        &tagvals, &tagvals_allocated, &tagvals_size, &itapsError);
-                    if (level<2) CheckITAPSError(aMesh, iMesh_getDblArrData, (0,tagvals,EoL)); 
+                    double *tagvals = (double*) malloc(tagSize*sizeof(double));
+                    if (isEntitySet)
+                        iMesh_getEntSetDblData(aMesh, esh, tags[t], tagvals, &itapsError);
+                    else
+                        iMesh_getDblData(aMesh, eh, tags[t], tagvals, &itapsError);
+                    if (level<2) CheckITAPSError(aMesh, iMesh_getDblData, (0,tagvals,EoL)); 
                     std::string valBuf;
-                    for (int k = 0; k < tagvals_size; k++)
+                    for (int k = 0; k < tagSize; k++)
                     {
                         char tmpChars[32];
                         sprintf(tmpChars, "%f ", tagvals[k]);
                         valBuf += std::string(tmpChars);
                     }
-                    if (tagvals_allocated)
-                        free(tagvals);
+                    free(tagvals);
                     SNPRINTF(lineBuf, sizeof(lineBuf), "%s", valBuf.c_str());
                 }
             }
@@ -613,7 +657,7 @@ avtITAPS_CUtility::GetTagsForEntity(iMesh_Instance aMesh, bool isEntitySet,
                 if (isEntitySet)
                     iMesh_getEntSetData(aMesh, esh, tags[t], &theVal, &theVal_allocated, &theValSize, &itapsError);
                 else
-                    iMesh_getData(aMesh, esh, tags[t], &theVal, &theVal_allocated, &theValSize, &itapsError);
+                    iMesh_getData(aMesh, eh, tags[t], &theVal, &theVal_allocated, &theValSize, &itapsError);
                 if (level<2) CheckITAPSError(aMesh, iMesh_getXXData, (0,theVal,EoL));
                 std::string valBuf;
                 for (int k = 0; k < theValSize; k++)
@@ -633,29 +677,30 @@ avtITAPS_CUtility::GetTagsForEntity(iMesh_Instance aMesh, bool isEntitySet,
             {
                 if (tagSize == 1)
                 {
-                    iBase_EntitySetHandle theVal;
+                    iBase_EntityHandle theVal;
                     if (isEntitySet)
                         iMesh_getEntSetEHData(aMesh, esh, tags[t], &theVal, &itapsError);
                     else
-                        iMesh_getEHData(aMesh, esh, tags[t], &theVal, &itapsError);
+                        iMesh_getEHData(aMesh, eh, tags[t], &theVal, &itapsError);
                     if (level<2) CheckITAPSError(aMesh, iMesh_getXXEHData, NoL); 
                     SNPRINTF(lineBuf, sizeof(lineBuf), "%X", theVal);
                 }
                 else if (tagSize > 1)
                 {
-                    iBase_EntitySetHandle *tagvals = 0; int tagvals_allocated = 0; int tagvals_size = 0;
-                    iMesh_getEHArrData(aMesh, &esh, 1, tags[t],
-                        &tagvals, &tagvals_allocated, &tagvals_size, &itapsError);
-                    if (level<2) CheckITAPSError(aMesh, iMesh_getEHArrData, (0,tagvals,EoL)); 
+                    iBase_EntityHandle *tagvals = (iBase_EntityHandle*) malloc(tagSize*sizeof(iBase_EntityHandle));
+                    if (isEntitySet)
+                        iMesh_getEntSetEHData(aMesh, esh, tags[t], tagvals, &itapsError);
+                    else
+                        iMesh_getEHData(aMesh, eh, tags[t], tagvals, &itapsError);
+                    if (level<2) CheckITAPSError(aMesh, iMesh_getEHData, (0,tagvals,EoL)); 
                     std::string valBuf;
-                    for (int k = 0; k < tagvals_size; k++)
+                    for (int k = 0; k < tagSize; k++)
                     {
                         char tmpChars[32];
                         sprintf(tmpChars, "%X ", tagvals[k]);
                         valBuf += std::string(tmpChars);
                     }
-                    if (tagvals_allocated)
-                        free(tagvals);
+                    free(tagvals);
                     SNPRINTF(lineBuf, sizeof(lineBuf), "%s", valBuf.c_str());
                 }
             }
@@ -671,27 +716,149 @@ avtITAPS_CUtility::GetTagsForEntity(iMesh_Instance aMesh, bool isEntitySet,
 funcEnd: ;
 }
 
+
+// ****************************************************************************
+//  Function: GetTopLevelSets 
+//
+//  Purpose: Filter function used in traversing set hierarchy. Return
+//  sets meeting certain criteria at the top of the hierarchy. 
+//
+//  Mark C. Miller, Mon Apr 14 15:41:21 PDT 2008
+// ****************************************************************************
 bool 
 avtITAPS_CUtility::GetTopLevelSets(iMesh_Instance ima, int level, int memidx,
-    bool ises, iBase_EntitySetHandle esh, void *cb_data)
+    bool ises, iBase_EntityHandle eh, iBase_EntitySetHandle esh, void *cb_data)
 {
     vector<string> tagNames;
     vector<int>    tagTypes;
     vector<int>    tagSizes;
     vector<string> tagVals;
 
+    if (!ises) return false;
+
     map<string, vector<iBase_EntitySetHandle> > *theSets = 
         (map<string, vector<iBase_EntitySetHandle> > *) cb_data;
 
-    GetTagsForEntity(ima, ises, esh, tagNames, tagTypes, tagSizes, tagVals, level);
+    GetTagsForEntity(ima, ises, eh, esh, tagNames, tagTypes, tagSizes, tagVals, level);
 
     for (int i = 0; i < tagNames.size(); i++)
     {
         if (tagNames[i] == "CATEGORY")
             (*theSets)[tagVals[i]].push_back(esh);
+        else if (tagNames[i] == "PARALLEL_PARTITION" && level == 1)
+            (*theSets)[tagNames[i]].push_back(esh);
     }
 
     if (level > 0)
         return false;
     return true;
+}
+
+// ****************************************************************************
+//  Function: GetTagStuff 
+//
+//  Purpose: Utility function to get tag info on an entity set or entity
+//  but will presently NOT return tag values except on entity set.
+//
+//  Mark C. Miller, Mon Apr 14 15:41:21 PDT 2008
+// ****************************************************************************
+int avtITAPS_CUtility::GetTagStuff(iMesh_Instance ima, iBase_EntitySetHandle set,
+    int ent_type, string name, int *type, int *size, void **vals)
+{
+    int err;
+    IMESH_ADEF(iBase_TagHandle, tags);
+
+    //
+    // Get all tags either on the EntSet or on the first Ent of specified type
+    // in the set.
+    //
+    if (0 <= ent_type && ent_type < iBase_ALL_TYPES)
+    {
+        int has_data;
+        iBase_EntityHandle oneEnt;
+        iMesh_EntityIterator entIt;
+
+        iMesh_initEntIter(ima, set, ent_type, iMesh_ALL_TOPOLOGIES, &entIt, &err);
+        iMesh_getNextEntIter(ima, entIt, &oneEnt, &has_data, &err);
+        if (has_data && err == iBase_SUCCESS)
+            iMesh_getAllTags(ima, oneEnt, IMESH_AARG(tags), &err); 
+        iMesh_endEntIter(ima, entIt, &err);
+    }
+    else
+    {
+        iMesh_getAllEntSetTags(ima, set, IMESH_AARG(tags), &err);
+    }
+    if (err != iBase_SUCCESS)
+        return err;
+
+    for (int i = 0; i < tags_size; i++)
+    {
+        if (VisIt_iMesh_getTagName(ima, tags[i]) == name)
+        {
+            if (type)
+                iMesh_getTagType(ima, tags[i], type, &err);
+            if (err != iBase_SUCCESS)
+                return err;
+            if (size)
+                iMesh_getTagSizeValues(ima, tags[i], size, &err);
+            if (err != iBase_SUCCESS)
+                return err;
+            if (vals)
+            {
+                // We don't support getting vals on entities here yet
+                if (0 <= ent_type && ent_type < iBase_ALL_TYPES)
+                    return iBase_FAILURE;
+
+                int tmp_type = type ? *type : 0;
+                int tmp_size = size ? *size : 0;
+                if (!type)
+                    iMesh_getTagType(ima, tags[i], &tmp_type, &err);
+                if (!size)
+                    iMesh_getTagSizeValues(ima, tags[i], &tmp_size, &err);
+                switch(tmp_type)
+                {
+                    case iBase_BYTES:
+                    {
+                        int vals_allocated = 0, vals_size = 0;
+                        if (*vals == 0)
+                        {
+                            *vals = (void *) malloc(tmp_size * 1);
+                            vals_allocated = tmp_size;
+                        }
+                        iMesh_getEntSetData(ima, set, tags[i], (char**) vals, &vals_allocated, &vals_size, &err);
+                        break;
+                    }
+                    case iBase_INTEGER:
+                        if (*vals == 0)
+                            *vals = (void *) malloc(tmp_size * sizeof(int));
+                        iMesh_getEntSetIntData(ima, set, tags[i], (int*) *vals, &err);
+                        break;
+                    case iBase_DOUBLE:
+                        if (*vals == 0)
+                            *vals = (void *) malloc(tmp_size * sizeof(double));
+                        iMesh_getEntSetDblData(ima, set, tags[i], (double*) *vals, &err);
+                        break;
+                    case iBase_ENTITY_HANDLE:
+                    {
+                        int vals_allocated = 0, vals_size = 0;
+                        if (*vals == 0)
+                        {
+                            *vals = (void *) malloc(tmp_size * sizeof(iBase_EntityHandle));
+                            vals_allocated = tmp_size * sizeof(iBase_EntityHandle);
+                        }
+                        iMesh_getEntSetData(ima, set, tags[i], (char**) vals, &vals_allocated, &vals_size, &err);
+                        //iMesh_getEntSetEHData(ima, set, tags[i], *vals, &err);
+                        break;
+                    }
+                }
+            }
+
+            IMESH_AFREE(tags);
+            return err;
+
+        }
+    }
+
+    IMESH_AFREE(tags);
+    return iBase_FAILURE;
 }

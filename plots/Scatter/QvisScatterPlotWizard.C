@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,11 +37,11 @@
 *****************************************************************************/
 
 #include <QvisScatterPlotWizard.h>
-#include <QButtonGroup>
-#include <QGroupBox>
-#include <QLabel>
-#include <QLayout>
-#include <QRadioButton>
+#include <qbuttongroup.h>
+#include <qgroupbox.h>
+#include <qlabel.h>
+#include <qlayout.h>
+#include <qradiobutton.h>
 
 #include <QvisScatterWidget.h>
 #include <QvisVariableButton.h>
@@ -67,20 +67,13 @@
 //   Brad Whitlock, Wed Apr 23 11:09:42 PDT 2008
 //   Added tr()'s
 //
-//   Brad Whitlock, Fri Aug  8 14:00:29 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 QvisScatterPlotWizard::QvisScatterPlotWizard(AttributeSubject *s,
-    QWidget *parent) : QvisWizard(s, parent)
+    QWidget *parent, const char *name) : QvisWizard(s, parent, name)
 {
     selectZCoord = true;
     selectColor = true;
-
-    setOption(QWizard::NoCancelButton, false);
-    setOption(QWizard::HaveHelpButton, false);
-    setOption(QWizard::HaveNextButtonOnLastPage, false);
 
     // Set some defaults into the wizard's local copy of the plot attributes.
     scatterAtts->SetVar1Role(ScatterAttributes::Coordinate0);
@@ -92,60 +85,53 @@ QvisScatterPlotWizard::QvisScatterPlotWizard(AttributeSubject *s,
     scatterAtts->SetVar4Role(ScatterAttributes::Color);
 
     // Set the wizard's title.
-    topLevelWidget()->setWindowTitle(tr("Scatter plot wizard"));
+    topLevelWidget()->setCaption(tr("Scatter plot wizard"));
 
     //
     // Create the wizard's first page.
     //
-    CreateVariablePage(&page0, &scatter[0],
+    CreateVariablePage(&page1, &scatter1,
         tr("Choose a variable to use for the Scatter\n"
         "plot's Y coordinate."),
         SLOT(choseYVariable(const QString &)),
         true, false, false);
-    scatter[0]->setAllowAnimation(true);
-    page0->setSubTitle(tr("Choose Y coordinate"));
-    addPage(page0);
+    addPage(page1, tr("Choose Y coordinate"));
+    setHelpEnabled(page1, false);
 
-    CreateYesNoPage(&page1, &scatter[1], &bg2,
+    CreateYesNoPage(&page2, &scatter2, &bg2,
         tr("Would you like to choose a variable to use\n"
            "as the Scatter plot's Z coordinate?"),
         SLOT(decideZ(int)), true, true, false);
-    page1->setSubTitle(tr("Choose Z coordinate"));
-    addPage(page1);
+    addPage(page2, tr("Choose Z coordinate"));
+    setHelpEnabled(page2, false);
 
-    CreateVariablePage(&page2, &scatter[2],
+    CreateVariablePage(&page3, &scatter3,
         tr("Choose a variable to use for the Scatter\n"
            "plot's Z coordinate."), SLOT(choseZVariable(const QString &)),
         true, true, false);
-    page2->setSubTitle(tr("Choose Z coordinate"));
-    addPage(page2);
+    addPage(page3, tr("Choose Z coordinate"));
+    setHelpEnabled(page3, false);
 
-    CreateYesNoPage(&page3, &scatter[3], &bg4,
+    CreateYesNoPage(&page4, &scatter4, &bg4,
         tr("Would you like to choose a variable to use\n"
            "as the Scatter plot's color?"),
         SLOT(decideColor(int)), false, true /* depends on selectZCoord */, true);
-    page3->setSubTitle(tr("Choose color variable"));
-    addPage(page3);
+    addPage(page4, tr("Choose color variable"));
+    setHelpEnabled(page4, false);
 
-    CreateVariablePage(&page4, &scatter[4],
+    CreateVariablePage(&page5, &scatter5,
         tr("Choose a variable to use for the Scatter\n"
         "plot's color."), SLOT(choseColorVariable(const QString &)),
         false, true /* could be false*/, true);
-    page4->setSubTitle(tr("Choose color variable"));
-    addPage(page4);
+    addPage(page5, tr("Choose color variable"));
+    setHelpEnabled(page5, false);
 
-    CreateFinishPage(&page5, &scatter[5],
-        tr("Click the %1 button to create a new Scatter plot").
-            arg(buttonText(QWizard::FinishButton)),
+    CreateFinishPage(&page6, &scatter6,
+        tr("Click the Finish button to create a new Scatter plot"),
         false, true /* could be false*/, true);
-    page5->setSubTitle(tr("Click %1").arg(buttonText(QWizard::FinishButton)));
-    page5->setFinalPage(true);
-    addPage(page5);
-
-    // Connect a slot that turns the animation flag on the scatter widgets
-    // on and off as needed.
-    connect(this, SIGNAL(currentIdChanged(int)),
-            this, SLOT(updateAnimationFlags(int)));
+    addPage(page6, tr("Click Finish"));
+    setHelpEnabled(page6, false);
+    setFinishEnabled(page6, true);
 }
 
 // ****************************************************************************
@@ -164,12 +150,14 @@ QvisScatterPlotWizard::QvisScatterPlotWizard(AttributeSubject *s,
 QvisScatterPlotWizard::~QvisScatterPlotWizard()
 {
     // Delete parentless widgets.
-    delete page0;
     delete page1;
     delete page2;
     delete page3;
     delete page4;
     delete page5;
+    delete page6;
+    delete bg2;
+    delete bg4;
 }
 
 // ****************************************************************************
@@ -195,22 +183,23 @@ QvisScatterPlotWizard::~QvisScatterPlotWizard()
 //   Brad Whitlock, Wed Apr 23 11:09:58 PDT 2008
 //   Added tr()
 //
-//   Brad Whitlock, Fri Aug  8 14:03:29 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
-QvisScatterPlotWizard::CreateVariablePage(QWizardPage **f, QvisScatterWidget **s,
-    const QString &promptText,
+QvisScatterPlotWizard::CreateVariablePage(QFrame **f, QvisScatterWidget **s,
+    const char *promptText,
     const char *slot, bool highlight, bool threeD, bool colorPoints)
 {
-    QWizardPage *frame = new QWizardPage(0);
+    QFrame *frame = new QFrame(0, "frame");
     *f = frame;
+    frame->setFrameStyle(QFrame::NoFrame);
+    QVBoxLayout *frameinnerLayout = new QVBoxLayout(frame);
+    frameinnerLayout->setMargin(0);
+    frameinnerLayout->addSpacing(10);
+    QHBoxLayout *pageLRLayout = new QHBoxLayout(frameinnerLayout);
+    pageLRLayout->setSpacing(10);
 
-    QHBoxLayout *pageLRLayout = new QHBoxLayout(frame);
-
-    QvisScatterWidget *scatter = new QvisScatterWidget(frame);
+    QvisScatterWidget *scatter = new QvisScatterWidget(frame, "scatter");
     scatter->setHighlightAxis(highlight);
     scatter->setThreeD(threeD);
     scatter->setColoredPoints(colorPoints);
@@ -218,22 +207,17 @@ QvisScatterPlotWizard::CreateVariablePage(QWizardPage **f, QvisScatterWidget **s
     pageLRLayout->addWidget(scatter);
     pageLRLayout->addSpacing(10); // or a line?
 
-    QVBoxLayout *pageRLayout = new QVBoxLayout(0);
-    pageLRLayout->addLayout(pageRLayout);
-    pageLRLayout->setStretchFactor(pageRLayout, 10);
-    pageRLayout->setMargin(0);
+    QVBoxLayout *pageRLayout = new QVBoxLayout(pageLRLayout);
     pageRLayout->setSpacing(10);
-    QLabel *prompt = new QLabel(promptText, frame);
+    QLabel *prompt = new QLabel(promptText, frame, "prompt");
     pageRLayout->addWidget(prompt);
     pageRLayout->addSpacing(10);
 
     // add interior.
-    QHBoxLayout *pageVLayout = new QHBoxLayout(0);
-    pageRLayout->addLayout(pageVLayout);
-    pageVLayout->setMargin(0);
+    QHBoxLayout *pageVLayout = new QHBoxLayout(pageRLayout);
     pageVLayout->setSpacing(10);
     pageVLayout->addStretch(5);
-    QLabel *varlabel = new QLabel(tr("Variable"));
+    QLabel *varlabel = new QLabel(tr("Variable"), frame);
     QvisVariableButton *var = new QvisVariableButton(true, false, true,
         QvisVariableButton::Scalars, frame);
     var->setMinimumWidth(fontMetrics().boundingRect("really_really_long_var_name").width());
@@ -269,21 +253,23 @@ QvisScatterPlotWizard::CreateVariablePage(QWizardPage **f, QvisScatterWidget **s
 //   Brad Whitlock, Wed Apr 23 11:10:11 PDT 2008
 //   Added t()
 //
-//   Brad Whitlock, Fri Aug  8 14:03:51 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 void
-QvisScatterPlotWizard::CreateYesNoPage(QWizardPage **f, QvisScatterWidget **s,
-    QButtonGroup **b, const QString &promptText,
+QvisScatterPlotWizard::CreateYesNoPage(QFrame **f, QvisScatterWidget **s,
+    QButtonGroup **b, const char *promptText,
     const char *slot, bool highlight, bool threeD, bool colorPoints)
 {
-    QWizardPage *frame = new QWizardPage(0);
+    QFrame *frame = new QFrame(0, "frame");
     *f = frame;
-    QHBoxLayout *pageLRLayout = new QHBoxLayout(frame);
+    frame->setFrameStyle(QFrame::NoFrame);
+    QVBoxLayout *frameinnerLayout = new QVBoxLayout(frame);
+    frameinnerLayout->setMargin(0);
+    frameinnerLayout->addSpacing(10);
+    QHBoxLayout *pageLRLayout = new QHBoxLayout(frameinnerLayout);
+    pageLRLayout->setSpacing(10);
 
-    QvisScatterWidget *scatter = new QvisScatterWidget(frame);
+    QvisScatterWidget *scatter = new QvisScatterWidget(frame, "scatter");
     scatter->setHighlightAxis(highlight);
     scatter->setThreeD(threeD);
     scatter->setColoredPoints(colorPoints);
@@ -291,32 +277,27 @@ QvisScatterPlotWizard::CreateYesNoPage(QWizardPage **f, QvisScatterWidget **s,
     pageLRLayout->addWidget(scatter);
     pageLRLayout->addSpacing(10); // or a line?
 
-    QVBoxLayout *pageRLayout = new QVBoxLayout(0);
-    pageLRLayout->addLayout(pageRLayout);
-    pageLRLayout->setStretchFactor(pageRLayout, 10);
-    pageRLayout->setMargin(0);
+    QVBoxLayout *pageRLayout = new QVBoxLayout(pageLRLayout);
     pageRLayout->setSpacing(10);
-    QLabel *prompt = new QLabel(promptText, frame);
+    QLabel *prompt = new QLabel(promptText, frame, "prompt");
     pageRLayout->addWidget(prompt);
     pageRLayout->addSpacing(10);
 
     // add interior.
-    QHBoxLayout *pageVLayout = new QHBoxLayout(0);
-    pageRLayout->addLayout(pageVLayout);
-    pageRLayout->setMargin(0);
+    QHBoxLayout *pageVLayout = new QHBoxLayout(pageRLayout);
     pageVLayout->setSpacing(10);
     pageVLayout->addStretch(5);
 
-    QButtonGroup *btn = new QButtonGroup(frame);
+    QButtonGroup *btn = new QButtonGroup(0, "btn");
     *b = btn;
-    connect(btn, SIGNAL(buttonClicked(int)),
+    connect(btn, SIGNAL(clicked(int)),
             this, slot);
-    QRadioButton *r1 = new QRadioButton(tr("Yes"), frame);
+    QRadioButton *r1 = new QRadioButton(tr("Yes"), frame, "r1");
     r1->setChecked(true);
-    btn->addButton(r1, 0);
+    btn->insert(r1);
     pageVLayout->addWidget(r1);
-    QRadioButton *r2 = new QRadioButton(tr("No"), frame);
-    btn->addButton(r2, 1);
+    QRadioButton *r2 = new QRadioButton(tr("No"), frame, "r2");
+    btn->insert(r2);
     pageVLayout->addWidget(r2);
     pageVLayout->addStretch(5);
 
@@ -341,27 +322,24 @@ QvisScatterPlotWizard::CreateYesNoPage(QWizardPage **f, QvisScatterWidget **s,
 // Creation:   Tue Dec 14 09:56:01 PDT 2004
 //
 // Modifications:
-//   Brad Whitlock, Fri Aug  8 14:08:17 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 void
-QvisScatterPlotWizard::CreateFinishPage(QWizardPage **f, QvisScatterWidget **s,
-    const QString &promptText,
+QvisScatterPlotWizard::CreateFinishPage(QFrame **f, QvisScatterWidget **s,
+    const char *promptText,
     bool highlight, bool threeD, bool colorPoints)
 {
-    QWizardPage *frame = new QWizardPage(0);
+    QFrame *frame = new QFrame(0, "frame");
     *f = frame;
+    frame->setFrameStyle(QFrame::NoFrame);
     QVBoxLayout *frameinnerLayout = new QVBoxLayout(frame);
     frameinnerLayout->setMargin(0);
     frameinnerLayout->addSpacing(10);
-    QHBoxLayout *pageLRLayout = new QHBoxLayout(0);
-    frameinnerLayout->addLayout(pageLRLayout);
-    pageLRLayout->setMargin(0);
+    QHBoxLayout *pageLRLayout = new QHBoxLayout(frameinnerLayout);
     pageLRLayout->setSpacing(10);
 
-    QvisScatterWidget *scatter = new QvisScatterWidget(frame);
+    QvisScatterWidget *scatter = new QvisScatterWidget(frame, "scatter");
     scatter->setHighlightAxis(highlight);
     scatter->setThreeD(threeD);
     scatter->setColoredPoints(colorPoints);
@@ -369,74 +347,112 @@ QvisScatterPlotWizard::CreateFinishPage(QWizardPage **f, QvisScatterWidget **s,
     pageLRLayout->addWidget(scatter);
     pageLRLayout->addSpacing(10); // or a line?
 
-    QVBoxLayout *pageRLayout = new QVBoxLayout(0);
-    pageLRLayout->addLayout(pageRLayout);
-    pageRLayout->setMargin(0);
+    QVBoxLayout *pageRLayout = new QVBoxLayout(pageLRLayout);
     pageRLayout->setSpacing(10);
-
-    QLabel *prompt = new QLabel(promptText, frame);
+    QLabel *prompt = new QLabel(promptText, frame, "prompt");
     pageRLayout->addWidget(prompt);
     pageRLayout->addStretch(10);
 }
 
 // ****************************************************************************
-// Method: QvisScatterPlotWizard::nextid
+// Method: QvisScatterPlotWizard::appropriate
 //
 // Purpose: 
-//   This method returns the id of the next wizard page.
+//   This method determines which wizard pages can be viewed based on some
+//   of the responses.
 //
-// Returns:    The id of the next wizard page.
+// Arguments:
+//   page : The page being considered for its appropriateness.
+//
+// Returns:    True if the page can be displayed; False otherwise.
 //
 // Programmer: Brad Whitlock
-// Creation:   Fri Aug  8 16:13:07 PDT 2008
+// Creation:   Tue Dec 14 09:59:36 PDT 2004
 //
 // Modifications:
 //   
 // ****************************************************************************
 
-int
-QvisScatterPlotWizard::nextId() const
+bool
+QvisScatterPlotWizard::appropriate(QWidget *p) const
 {
-    int id;
+    bool retval = true;
+    QWidget *prevPage = 0;
+    QWidget *nextPage = 0;
+    int index = 0;
 
     //
     // Figure out the previous and next pages for the current page.
     //
-    if(currentPage() == page0)
+    if(currentPage() == page1)
     {
         // Choose Y coord
-        id = 1;
-    }
-    else if(currentPage() == page1)
-    {
-        // Choose Z coord?
-        id = selectZCoord ? 2 : 3;
+        index = 0;
+        prevPage = page1;
+        nextPage = page2;
     }
     else if(currentPage() == page2)
     {
-        // Choose Z coord
-        id = 3;
+        // Choose Z coord?
+        index = 1;
+        prevPage = page1;
+        nextPage = selectZCoord ? page3 : page4;
     }
     else if(currentPage() == page3)
     {
-        // Choose color?
-        id = selectColor ? 4 : 5;
+        // Choose Z coord
+        index = 2;
+        prevPage = page2;
+        nextPage = page4;
     }
     else if(currentPage() == page4)
     {
-        // Choose color
-        id = 5;
+        // Choose color?
+        index = 3;
+        prevPage = selectZCoord ? page3 : page2;
+        nextPage = selectColor ? page5 : page6;
     }
     else if(currentPage() == page5)
     {
+        // Choose color
+        index = 4;
+        prevPage = page4;
+        nextPage = page6;
+    }
+    else if(currentPage() == page6)
+    {
         // Finish
-        id = 5;
+        index = 5;
+        prevPage = selectColor ? page5 : page4;
+        nextPage = page6;
     }
 
-    // Turn off the current page's animation.
-    scatter[currentId()]->setAllowAnimation(false);
+    // Given the current page and the previous input, determine
+    // which pages are okay to show.
+    bool okayToShow[6];
+    int i;
+    for(i = 0; i < 6; ++i)
+        okayToShow[i] = false;
+    okayToShow[index] = true;
+    for(i = 0; i < 6; ++i)
+    {
+        if(page(i) == prevPage)
+            okayToShow[i] = true;
+        if(page(i) == nextPage)
+            okayToShow[i] = true;
+    }
 
-    return id;
+    // Determine whether the page being considered is okay to show.
+    for(i = 0; i < 6; ++i)
+    {
+        if(page(i) == p)
+        {
+            retval = okayToShow[i];
+            break;
+        }
+    }
+    
+    return retval;
 }
 
 //
@@ -446,21 +462,21 @@ QvisScatterPlotWizard::nextId() const
 void
 QvisScatterPlotWizard::choseYVariable(const QString &var)
 {
-    scatterAtts->SetVar2(var.toStdString());
+    scatterAtts->SetVar2(var.latin1());
     scatterAtts->SetVar2Role(ScatterAttributes::Coordinate1);
 }
 
 void
 QvisScatterPlotWizard::choseZVariable(const QString &var)
 {
-    scatterAtts->SetVar3(var.toStdString());
+    scatterAtts->SetVar3(var.latin1());
     scatterAtts->SetVar3Role(ScatterAttributes::Coordinate2);
 }
 
 void
 QvisScatterPlotWizard::choseColorVariable(const QString &var)
 {
-    scatterAtts->SetVar4(var.toStdString());
+    scatterAtts->SetVar4(var.latin1());
     scatterAtts->SetVar4Role(ScatterAttributes::Color);
 }
 
@@ -468,9 +484,9 @@ void
 QvisScatterPlotWizard::decideZ(int index)
 {
     selectZCoord = (index == 0);
-    scatter[3]->setThreeD(selectZCoord);
-    scatter[4]->setThreeD(selectZCoord);
-    scatter[5]->setThreeD(selectZCoord);
+    scatter4->setThreeD(selectZCoord);
+    scatter5->setThreeD(selectZCoord);
+    scatter6->setThreeD(selectZCoord);
     if(!selectZCoord)
         scatterAtts->SetVar3Role(ScatterAttributes::None);
     else
@@ -481,25 +497,10 @@ void
 QvisScatterPlotWizard::decideColor(int index)
 {
     selectColor = (index == 0);
-    scatter[4]->setColoredPoints(selectColor);
-    scatter[5]->setColoredPoints(selectColor);
+    scatter5->setColoredPoints(selectColor);
+    scatter6->setColoredPoints(selectColor);
     if(!selectColor)
         scatterAtts->SetVar4Role(ScatterAttributes::None);
     else
         scatterAtts->SetVar3Role(ScatterAttributes::Color);
-}
-
-void
-QvisScatterPlotWizard::updateAnimationFlags(int newId)
-{
-    if(newId >= 0 && newId <= 5)
-    {
-        // Turn on animation for the new page if it needs it.
-        scatter[newId]->setAllowAnimation(true);
-
-        // Disable the Continue/Next button if we're on the last page.
-        QAbstractButton *b = button(QWizard::NextButton);
-        if(newId == 5 && b != 0)
-            b->setEnabled(false);
-    }
 }

@@ -13,6 +13,8 @@
 #include <vector>
 #include <string>
 
+class DBOptionsAttributes;
+
 // ****************************************************************************
 //  Class: avtH5PartFileFormat
 //
@@ -26,12 +28,15 @@
 //    Kurt Stockinger, Tue Aug 28 17:35:50 PDT 2007
 //    Added support for field data
 //
+//    Gunther H. Weber, Fri Apr 17 13:03:47 PDT 2009
+//    Added option to reject file if FastBit index is present.
+//
 // ****************************************************************************
 
 class avtH5PartFileFormat : public avtMTMDFileFormat
 {
   public:
-                       avtH5PartFileFormat(const char *);
+                       avtH5PartFileFormat(const char *, DBOptionsAttributes *);
     virtual           ~avtH5PartFileFormat() {;};
 
     //
@@ -66,8 +71,6 @@ class avtH5PartFileFormat : public avtMTMDFileFormat
     // DATA MEMBERS
 
     virtual void           PopulateDatabaseMetaData(avtDatabaseMetaData *, int);
-    std::string fname; //filename
-    std::vector<float>  points; //point coordinates
     std::vector<std::vector<float> > pointvars; //point variables
     std::vector<std::string> pointvarnames; //point variables' names
     std::vector<float> minExtents; //min extents

@@ -36,7 +36,7 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                              avtParallelCoordinatesPlot.C                        //
+//                          avtParallelCoordinatesPlot.C                     //
 // ************************************************************************* //
 
 #include <avtParallelCoordinatesPlot.h>
@@ -57,6 +57,38 @@
 #include <string.h>
 
 #include <DebugStream.h>
+
+static const unsigned char multi_timestep_ctx_colors[PCP_MAX_TIMESTEPS*3] =
+{
+    255,0,0,
+    0,255,0,
+    0,0,255,
+    255,255,0,
+    255,0,255,
+    0,255,255,
+    255,128,0,
+    0,255,128,
+    128,0,255,
+    128,255,0,
+    0,128,255,
+    255,0,128
+};
+
+static const unsigned char multi_timestep_focus_colors[PCP_MAX_TIMESTEPS*3] =
+{
+    0,0,192,
+    0,100,192,
+    100,0,192,
+    100,100,192,
+    192,0,0,
+    192,0,100,
+    192,100,0,
+    192,100,100,
+    0,192,0,
+    100,192,0,
+    0,192,100,
+    100,192,100
+};
 
 
 // ****************************************************************************
@@ -181,6 +213,16 @@ avtParallelCoordinatesPlot::SetAtts(const AttributeGroup *a)
 //  Note: original implementation from Mark Blair's parallel axis plot
 //
 //  Modifications:
+//    Jeremy Meredith, Fri Mar  7 19:00:20 EST 2008
+//    Added primitive support for multiple timesteps to use multiple colors.
+//
+//    Jeremy Meredith, Wed Feb 25 16:37:49 EST 2009
+//    Port to trunk.  Not doing time yet, but left in the capability.
+//
+//    Jeremy Meredith, Mon Apr 27 11:11:15 EDT 2009
+//    Focus can now be drawn with colors graduated by population.
+//    Removed the time case since I couldn't test any changes this would
+//    have caused.
 //
 // ****************************************************************************
 
@@ -188,50 +230,58 @@ void
 avtParallelCoordinatesPlot::SetColors()
 {
     int redID, red, green, blue;
-    int numColorEntries = 4 * (1+PCP_CTX_BRIGHTNESS_LEVELS);
-    unsigned char *plotColors = new unsigned char[numColorEntries];
-
     ColorAttribute colorAtt;
     ColorAttributeList colorAttList;
 
-    for (redID = 0; redID < numColorEntries; redID += 4)
+    if (true) // TODO: !atts.GetDoTime()
     {
-        switch (redID)
+        int numColorEntries = 4 * 2 * PCP_CTX_BRIGHTNESS_LEVELS;
+        unsigned char *plotColors = new unsigned char[numColorEntries];
+
+        for (redID = 0; redID < numColorEntries; redID += 4)
         {
-          case PCP_CTX_BRIGHTNESS_LEVELS*4 + 0:
-            red   = atts.GetLinesColor().Red();
-            green = atts.GetLinesColor().Green();
-            blue  = atts.GetLinesColor().Blue();
-            break;
-          default:
-            {
-            float scale = ((redID)/4.)/float(PCP_CTX_BRIGHTNESS_LEVELS);
+            float scale;
+            if (redID < numColorEntries/2)
+                scale = ((redID)/4.)/float(PCP_CTX_BRIGHTNESS_LEVELS);
+            else
+                scale = ((redID-numColorEntries/2)/4.)/float(PCP_CTX_BRIGHTNESS_LEVELS);
             int bgred   = int(bgColor[0]*255);
             int bggreen = int(bgColor[1]*255);
             int bgblue  = int(bgColor[2]*255);
-            int hired   = atts.GetContextColor().Red();
-            int higreen = atts.GetContextColor().Green();
-            int hiblue  = atts.GetContextColor().Blue();            
+            int hired, higreen, hiblue;
+            if (redID < numColorEntries/2)
+            {
+                hired   = atts.GetContextColor().Red();
+                higreen = atts.GetContextColor().Green();
+                hiblue  = atts.GetContextColor().Blue();
+            }
+            else
+            {
+                hired   = atts.GetLinesColor().Red();
+                higreen = atts.GetLinesColor().Green();
+                hiblue  = atts.GetLinesColor().Blue();
+            }
             red   = int(scale*hired   + (1.-scale)*bgred);
             green = int(scale*higreen + (1.-scale)*bggreen);
             blue  = int(scale*hiblue  + (1.-scale)*bgblue);
-            }
-            break;
+
+            colorAtt.SetRgba(red, green, blue, 255);
+            colorAttList.AddColors(colorAtt);
+
+            plotColors[redID  ] = (unsigned char)red;
+            plotColors[redID+1] = (unsigned char)green;
+            plotColors[redID+2] = (unsigned char)blue;
+            plotColors[redID+3] = 255;
         }
 
-        colorAtt.SetRgba(red, green, blue, 255);
-        colorAttList.AddColors(colorAtt);
-
-        plotColors[redID  ] = (unsigned char)red;
-        plotColors[redID+1] = (unsigned char)green;
-        plotColors[redID+2] = (unsigned char)blue;
-        plotColors[redID+3] = 255;
+        avtLUT->SetLUTColorsWithOpacity(plotColors, 2*PCP_CTX_BRIGHTNESS_LEVELS);
+        levelsMapper->SetColors(colorAttList);
+        delete [] plotColors;
     }
-
-    avtLUT->SetLUTColorsWithOpacity(plotColors, 1+PCP_CTX_BRIGHTNESS_LEVELS);
-    levelsMapper->SetColors(colorAttList);
-
-    delete [] plotColors;
+    else
+    {
+        // Not implemented.....
+    }
 }
 
 
@@ -277,6 +327,9 @@ avtParallelCoordinatesPlot::GetMapper(void)
 //
 //  Modifications:
 //   
+//    Hank Childs, Mon Apr  6 14:15:56 PDT 2009
+//    Register named selections with the filter.
+//
 // ****************************************************************************
 
 avtDataObject_p
@@ -289,6 +342,10 @@ avtParallelCoordinatesPlot::ApplyOperators(avtDataObject_p input)
     }
 
     parAxisFilter = new avtParallelCoordinatesFilter(atts);
+    for (int i = 0 ; i < namedSelections.size() ; i++)
+    {
+        parAxisFilter->RegisterNamedSelection(namedSelections[i]);
+    }
 
     parAxisFilter->SetInput(input);
 

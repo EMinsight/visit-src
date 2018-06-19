@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -79,9 +79,11 @@ public:
 
     // User-defined methods
     avtCurveMetaData(const std::string &n);
-    avtCurveMetaData(const std::string &n, double minE, double maxE);
-    void SetExtents(const double *);
-    void UnsetExtents();
+    avtCurveMetaData(const std::string &n, double minS, double maxS, double minE, double maxE);
+    void SetSpatialExtents(const double *);
+    void UnsetSpatialExtents();
+    void SetDataExtents(const double *);
+    void UnsetDataExtents();
     void Print(ostream &, int = 0) const;
 
     // IDs that can be used to identify fields in case statements
@@ -94,6 +96,9 @@ public:
         ID_xLabel,
         ID_yUnits,
         ID_yLabel,
+        ID_hasSpatialExtents,
+        ID_minSpatialExtents,
+        ID_maxSpatialExtents,
         ID_hasDataExtents,
         ID_minDataExtents,
         ID_maxDataExtents,
@@ -109,6 +114,9 @@ public:
     std::string  xLabel;
     std::string  yUnits;
     std::string  yLabel;
+    bool         hasSpatialExtents;
+    double       minSpatialExtents;
+    double       maxSpatialExtents;
     bool         hasDataExtents;
     double       minDataExtents;
     double       maxDataExtents;

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -38,11 +38,12 @@
 #ifndef SPREADSHEET_TABLE_H
 #define SPREADSHEET_TABLE_H
 #include <string>
-#include <QTableView>
+#include <qtable.h>
 #include <list>
 
+#include <vtkDataArray.h>
+
 class avtLookupTable;
-class vtkDataArray;
 
 // ****************************************************************************
 // Class: SpreadsheetTable
@@ -63,18 +64,18 @@ class vtkDataArray;
 //   Gunther H. Weber, Thu Sep 27 13:33:36 PDT 2007
 //   Add support for updating column width after changing the font
 //
-//   Brad Whitlock, Tue Aug 26 15:09:37 PDT 2008
-//   Qt 4.
+//   Brad Whitlock, Fri May  8 12:07:49 PDT 2009
+//   I added functions to return the vtkIdTypes for a row and col.
 //
 // ****************************************************************************
 
-class SpreadsheetTable : public QTableView
+class SpreadsheetTable : public QTable
 {
     Q_OBJECT
 public:
     typedef enum {SliceX, SliceY, SliceZ, UCDCell, UCDNode} DisplayMode;
 
-    SpreadsheetTable(QWidget *parent = 0);
+    SpreadsheetTable(QWidget *parent = 0, const char *name = 0);
     virtual ~SpreadsheetTable();
 
     void setLUT(avtLookupTable *);
@@ -89,19 +90,45 @@ public:
     QString selectedCellsAsText() const;
     double  selectedCellsSum() const;
     double  selectedCellsAverage() const;
+    vtkIdType *selectedColumnIndices(int &nvals) const;
+    vtkIdType *selectedRowIndices(int &nvals) const;
 
-    void addSelectedCellLabel(int r, int c, const QString &label);
+    void addSelectedCellLabel(int, int, const std::string&);
     void clearSelectedCellLabels();
 
     void setFont(QFont&);
 
-signals:
-    void selectionChanged();
 public slots:
     void selectAll();
     void selectNone();
 protected:
+    virtual void paintCell(QPainter *painter, int row, int col, 
+                           const QRect &rect, bool selected,
+                           const QColorGroup &cg);
+    int rowColToIndex(int row, int col) const;
+    double displayValue(int row, int col, bool &ghost) const;
     void updateColumnWidths();
+
+    bool            renderInColor;
+    avtLookupTable *lut;
+    QString         formatString;
+
+    vtkDataArray   *dataArray;
+    vtkDataArray   *ghostArray;
+    int             dims[3];
+    DisplayMode     displayMode;
+    int             sliceIndex;
+
+    struct SelectedCellLabel
+    {
+        int row;
+        int col;
+        std::string label;
+        
+        SelectedCellLabel(int r, int c, const std::string& l)
+            : row(r), col(c), label(l) {}
+    };
+    std::list<SelectedCellLabel> selectedCellLabels;
 };
 
 #endif

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -74,9 +74,6 @@
 //    Jeremy Meredith, Thu Jan 31 14:41:50 EST 2008
 //    Added new AxisArray window mode.
 //
-//    Eric Brugger, Tue Dec  9 14:26:32 PST 2008
-//    Added the AxisParallel window mode.
-//
 // ****************************************************************************
 
 class VISWINDOW_API VisWinView : public VisWinColleague
@@ -98,9 +95,6 @@ class VISWINDOW_API VisWinView : public VisWinColleague
 
     virtual void         StartAxisArrayMode(void);
     virtual void         StopAxisArrayMode(void);
-
-    virtual void         StartAxisParallelMode(void);
-    virtual void         StopAxisParallelMode(void);
 
   protected:
     avtViewInfo          viewInfo;

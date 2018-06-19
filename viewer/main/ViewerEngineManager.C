@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -399,6 +399,20 @@ ViewerEngineManager::EngineExists(const EngineKey &ek) const
 //    some firewalls that try to close sockets that don't send data within
 //    some short period of time.
 //
+//    Brad Whitlock, Wed Jun 10 16:46:39 PST 2009
+//    I added code to catch LostConnectionException. I was getting it while
+//    debugging an engine that crashed right after connecting. We were
+//    were allowing the exception to propagate to a level where the viewer
+//    self-quit because it incorrectly thought the GUI had died.
+//
+//    Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//    Replaced CATCHALL(...) with CATCHALL.
+//
+//    Brad Whitlock, Mon Nov  9 11:40:27 PST 2009
+//    I expanded when inLaunch is true so we can use it to prevent certain
+//    types of events from executing elsewhere via the engine chooser's
+//    event loop.
+//
 // ****************************************************************************
 
 bool
@@ -424,6 +438,11 @@ ViewerEngineManager::CreateEngine(const EngineKey &ek,
     if (InLaunch())
         return false;
 
+    // Consider the state to be inLaunch from now on so we can check for
+    // recursion into this function as a result of getting into the
+    // engine chooser's event loop.
+    inLaunch = true;
+
     //
     // If an engine for the host doesn't already exist, create one.
     //
@@ -434,6 +453,7 @@ ViewerEngineManager::CreateEngine(const EngineKey &ek,
     if (!chooser->SelectProfile(clientAtts,ek.HostName(),skipChooser,
         newEngine.profile))
     {
+        inLaunch = false;
         return false;
     }
 
@@ -489,7 +509,6 @@ ViewerEngineManager::CreateEngine(const EngineKey &ek,
         //
         TRY
         {
-            inLaunch = true;
             if (!ShouldShareBatchJob(ek.HostName()) && 
                 HostIsLocalHost(ek.HostName()))
                 newEngine.proxy->Create("localhost", chd, clientHostName,
@@ -510,7 +529,7 @@ ViewerEngineManager::CreateEngine(const EngineKey &ek,
             // small amount of time.
             newEngine.proxy->SendKeepAlive();
         }
-        CATCHALL(...)
+        CATCHALL
         {
             inLaunch = false;
             RETHROW;
@@ -519,7 +538,6 @@ ViewerEngineManager::CreateEngine(const EngineKey &ek,
 
         // Add the new engine to the engine list.
         engines[ek] = newEngine;
-        inLaunch = false;
 
         // Make the engine manager observe the proxy's status atts.
         newEngine.proxy->GetStatusAttributes()->Attach(this);
@@ -599,7 +617,22 @@ ViewerEngineManager::CreateEngine(const EngineKey &ek,
                       arg(ek.HostName().c_str()).arg(ek.HostName().c_str());
         Error(msg);
     }
+    CATCH(LostConnectionException)
+    {
+        // Delete the new engine since we lost the connection to it.
+        delete newEngine.proxy;
+        ViewerRemoteProcessChooser::Instance()->ClearCache(ek.HostName());
+
+        // Tell the user that the engine was not launched
+        QString msg = tr("Communication with the compute engine on "
+                         "host \"%1\" has been lost.").
+                      arg(ek.HostName().c_str());
+        Error(msg);
+    }
     ENDTRY
+
+    // Nothing bad happened and the engine is launched so turn off this flag.
+    inLaunch = false;
 
     // Clear the status message.
     ClearStatus();
@@ -644,6 +677,9 @@ ViewerEngineManager::CreateEngine(const EngineKey &ek,
 //
 //    Brad Whitlock, Tue Apr 29 13:23:21 PDT 2008
 //    Support for internationalization.
+//
+//    Brad Whitlock, Tue Apr 28 09:32:04 PDT 2009
+//    Pass the SSH tunneling option to the launcher callback.
 //
 // ****************************************************************************
 
@@ -711,7 +747,8 @@ ViewerEngineManager::ConnectSim(const EngineKey &ek,
         //
         typedef struct {
             string h; int p; string k;
-            ViewerConnectionProgressDialog *d;} SimData;
+            ViewerConnectionProgressDialog *d;
+            bool tunnel;} SimData;
         SimData simData;
         // The windows compiler can't accept non aggregate types in an
         // initializer list so initialize them like this:
@@ -719,6 +756,7 @@ ViewerEngineManager::ConnectSim(const EngineKey &ek,
         simData.p = simPort;
         simData.k = simSecurityKey;
         simData.d = SetupConnectionProgressWindow(newEngine.proxy, ek.HostName());
+        GetSSHTunnelOptions(ek.HostName(), simData.tunnel);
 
         newEngine.proxy->Create(ek.HostName(),  chd, clientHostName,
                           manualSSHPort, sshPort, useTunneling,
@@ -829,6 +867,8 @@ ViewerEngineManager::ConnectSim(const EngineKey &ek,
 //    Brad Whitlock, Wed Aug 4 17:21:25 PST 2004
 //    I changed EngineMap.
 //
+//    Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//    Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 
 void
@@ -859,7 +899,7 @@ ViewerEngineManager::CloseEngines()
         {
             engine->Close();
         }
-        CATCHALL(...)
+        CATCHALL
         {
             debug1 << "Caught an exception while closing the engine." << endl;
         }
@@ -1052,6 +1092,8 @@ ViewerEngineManager::InLaunch() const
 //   Brad Whitlock, Wed Aug 4 17:23:00 PST 2004
 //   Changed EngineMap.
 //
+//   Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//   Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 
 void
@@ -1071,7 +1113,7 @@ ViewerEngineManager::SendKeepAlives()
             {
                 i->second.proxy->SendKeepAlive();
             }
-            CATCHALL(...)
+            CATCHALL
             {
                 debug1 << "Caught an exception while sending a keep alive "
                           "signal to the engine."
@@ -3215,6 +3257,112 @@ ViewerEngineManager::SetConstructDDFAtts(ConstructDDFAttributes *e)
 
     *constructDDFAtts = *e;
     constructDDFAtts->Notify();
+}
+
+
+// ****************************************************************************
+//  Method: ViewerEngineManager::ApplyNamedSelection
+//
+//  Purpose:
+//      Applies a named selection.
+//
+//  Programmer: Hank Childs
+//  Creation:   January 28, 2009
+//
+// ****************************************************************************
+
+bool
+ViewerEngineManager::ApplyNamedSelection(const EngineKey &ek, 
+                                         const std::vector<std::string> &ids,
+                                         const std::string &selName)
+{
+    ENGINE_PROXY_RPC_BEGIN("ApplyNamedSelection");
+    engine->ApplyNamedSelection(ids, selName);
+    ENGINE_PROXY_RPC_END_NORESTART_RETHROW2;
+}
+
+
+// ****************************************************************************
+//  Method: ViewerEngineManager::CreateNamedSelection
+//
+//  Purpose:
+//      Creates a named selection.
+//
+//  Programmer: Hank Childs
+//  Creation:   January 28, 2009
+//
+// ****************************************************************************
+
+bool
+ViewerEngineManager::CreateNamedSelection(const EngineKey &ek, 
+                                          int id, const std::string &selName)
+{
+    ENGINE_PROXY_RPC_BEGIN("CreateNamedSelection");
+    engine->CreateNamedSelection(id, selName);
+    ENGINE_PROXY_RPC_END_NORESTART_RETHROW2;
+}
+
+
+// ****************************************************************************
+//  Method: ViewerEngineManager::DeleteNamedSelection
+//
+//  Purpose:
+//      Deletes a named selection.
+//
+//  Programmer: Hank Childs
+//  Creation:   January 28, 2009
+//
+// ****************************************************************************
+
+bool
+ViewerEngineManager::DeleteNamedSelection(const EngineKey &ek, 
+                                         const std::string &selName)
+{
+    ENGINE_PROXY_RPC_BEGIN("DeleteNamedSelection");
+    engine->DeleteNamedSelection(selName);
+    ENGINE_PROXY_RPC_END_NORESTART_RETHROW2;
+}
+
+
+// ****************************************************************************
+//  Method: ViewerEngineManager::LoadNamedSelection
+//
+//  Purpose:
+//      Loads a named selection.
+//
+//  Programmer: Hank Childs
+//  Creation:   January 28, 2009
+//
+// ****************************************************************************
+
+bool
+ViewerEngineManager::LoadNamedSelection(const EngineKey &ek, 
+                                         const std::string &selName)
+{
+    ENGINE_PROXY_RPC_BEGIN("LoadNamedSelection");
+    engine->LoadNamedSelection(selName);
+    ENGINE_PROXY_RPC_END_NORESTART_RETHROW2;
+}
+
+
+// ****************************************************************************
+//  Method: ViewerEngineManager::SaveNamedSelection
+//
+//  Purpose:
+//      Saves a named selection.
+//
+//  Programmer: Hank Childs
+//  Creation:   January 28, 2009
+//
+// ****************************************************************************
+
+bool
+ViewerEngineManager::SaveNamedSelection(const EngineKey &ek, 
+                                         const std::string &selName)
+{
+    ENGINE_PROXY_RPC_BEGIN("SaveNamedSelection");
+    engine->SaveNamedSelection(selName);
+    ENGINE_PROXY_RPC_END_NORESTART_RETHROW2;
 }
 
 

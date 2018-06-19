@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -57,10 +57,6 @@
 //    Jeremy Meredith, Thu Feb  7 17:58:11 EST 2008
 //    Added support for toggling horizontal snap-to-grid.
 //
-//    Eric Brugger, Tue Dec  9 15:56:38 PST 2008
-//    Added an axis orientation, which interchanges the horizontal and
-//    vertical zooming.
-//
 // ****************************************************************************
 
 NavigateAxisArray::NavigateAxisArray(VisWindowInteractorProxy &v) : VisitInteractor(v)
@@ -68,7 +64,6 @@ NavigateAxisArray::NavigateAxisArray(VisWindowInteractorProxy &v) : VisitInterac
     shiftKeyDown = controlKeyDown = false;
     VisWindow *win = v;
     shouldSnap = win->GetInteractorAtts()->GetAxisArraySnap();
-    axisOrientation = Vertical;
 }
 
 
@@ -222,9 +217,6 @@ NavigateAxisArray::EndMiddleButtonAction()
 //  Creation:   January 31, 2008
 //
 //  Modifications:
-//    Eric Brugger, Tue Dec  9 15:56:38 PST 2008
-//    Added an axis orientation, which interchanges the horizontal and
-//    vertical zooming.
 //
 // ****************************************************************************
 
@@ -232,10 +224,7 @@ void
 NavigateAxisArray::OnMouseWheelForward()
 {
     StartZoom();
-    if (axisOrientation == Vertical)
-        ZoomHorizontalFixed(-0.25 * this->MouseWheelMotionFactor);
-    else
-        ZoomVerticalFixed(-0.25 * this->MouseWheelMotionFactor);
+    ZoomHorizontalFixed(-0.25 * this->MouseWheelMotionFactor);
     EndZoom();
 }
 
@@ -251,9 +240,6 @@ NavigateAxisArray::OnMouseWheelForward()
 //  Creation:   January 31, 2008
 //
 //  Modifications:
-//    Eric Brugger, Tue Dec  9 15:56:38 PST 2008
-//    Added an axis orientation, which interchanges the horizontal and
-//    vertical zooming.
 //
 // ****************************************************************************
 
@@ -261,28 +247,8 @@ void
 NavigateAxisArray::OnMouseWheelBackward()
 {
     StartZoom();
-    if (axisOrientation == Vertical)
-        ZoomHorizontalFixed(0.25 * this->MouseWheelMotionFactor);
-    else
-        ZoomVerticalFixed(0.25 * this->MouseWheelMotionFactor);
+    ZoomHorizontalFixed(0.25 * this->MouseWheelMotionFactor);
     EndZoom();
-}
-
-// ****************************************************************************
-//  Method: NavigateAxisArray::SetAxisOrientation
-//
-//  Purpose:
-//    Set the axis orientation.
-//
-//  Programmer: Eric Brugger
-//  Creation:   December 9, 2008
-//
-// ****************************************************************************
-
-void
-NavigateAxisArray::SetAxisOrientation(const AxisOrientation orientation)
-{
-    axisOrientation = orientation;
 }
 
 // ****************************************************************************
@@ -381,9 +347,6 @@ NavigateAxisArray::PanCamera(const int x, const int y, bool snap_horiz)
 //  Creation:   January 31, 2008
 //
 //  Modifications:
-//    Eric Brugger, Tue Dec  9 15:56:38 PST 2008
-//    Added an axis orientation, which interchanges the horizontal and
-//    vertical zooming.
 //
 // ****************************************************************************
 
@@ -406,19 +369,9 @@ NavigateAxisArray::ZoomCamera(const int x, const int y)
 	// Perform zoom
 	//
         if (shiftKeyDown || controlKeyDown)
-        {
-            if (axisOrientation == Vertical)
-                ZoomHorizontal(dyf);
-            else
-                ZoomVertical(dyf);
-        }
+            ZoomHorizontal(dyf);
         else
-        {
-            if (axisOrientation == Vertical)
-                ZoomVertical(dyf);
-            else
-                ZoomHorizontal(dyf);
-        }
+            ZoomVertical(dyf);
         
         //
         // Experimenting with horizontal and vertical zooming
@@ -454,9 +407,6 @@ NavigateAxisArray::ZoomCamera(const int x, const int y)
 //  Creation:   January 31, 2008
 //
 //  Modifications:
-//    Eric Brugger, Tue Dec  9 15:56:38 PST 2008
-//    I corrected an error in one of the calculations, where the range
-//    was used instead of the domain.
 //
 // ****************************************************************************
 
@@ -478,9 +428,11 @@ NavigateAxisArray::ZoomHorizontal(double f)
     avtViewAxisArray newViewAxisArray = vw->GetViewAxisArray();
 
     double xDist = newViewAxisArray.domain[1] - newViewAxisArray.domain[0];
+    double yDist = newViewAxisArray.range[1] - newViewAxisArray.range[0];
     double dX = ((1. / zoomFactor) - 1.) * (xDist / 2.);
+    double dY = ((1. / zoomFactor) - 1.) * (yDist / 2.);
 
-    newViewAxisArray.domain[0] -= dX;
+    newViewAxisArray.domain[0] -= dY;
     newViewAxisArray.domain[1] += dX;
 
     vw->SetViewAxisArray(newViewAxisArray);
@@ -549,44 +501,13 @@ NavigateAxisArray::ZoomVertical(double f)
 
     avtViewAxisArray newViewAxisArray = vw->GetViewAxisArray();
 
+    double xDist = newViewAxisArray.domain[1] - newViewAxisArray.domain[0];
     double yDist = newViewAxisArray.range[1] - newViewAxisArray.range[0];
+    double dX = ((1. / zoomFactor) - 1.) * (xDist / 2.);
     double dY = ((1. / zoomFactor) - 1.) * (yDist / 2.);
 
     newViewAxisArray.range[0]  -= dY;
     newViewAxisArray.range[1]  += dY;
-
-    vw->SetViewAxisArray(newViewAxisArray);
-}
-
-// ****************************************************************************
-//  Method: NavigateAxisArray::ZoomVerticalFixed
-//
-//  Purpose:
-//    Zoom the camera vertically by a fixed amount.
-//
-//  Programmer: Eric Brugger
-//  Creation:   December 9, 2008
-//
-//  Modifications:
-//
-// ****************************************************************************
-
-void
-NavigateAxisArray::ZoomVerticalFixed(double f)
-{
-    vtkRenderWindowInteractor *rwi = Interactor;
-
-    VisWindow *vw = proxy;
-
-    avtViewAxisArray newViewAxisArray = vw->GetViewAxisArray();
-
-    newViewAxisArray.range[0] -= f;
-    newViewAxisArray.range[1] += f;
-    if (newViewAxisArray.range[0] >= newViewAxisArray.domain[1])
-    {
-        newViewAxisArray.range[0] += f;
-        newViewAxisArray.range[1] -= f;
-    }
 
     vw->SetViewAxisArray(newViewAxisArray);
 }

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -41,16 +41,16 @@
 // ************************************************************************* //
 
 #include <avtDatabaseFactory.h>
-
-#include <errno.h> // for errno
-#include <visitstream.h>
-#include <sys/stat.h>
-
-#include <vector>
-#include <string>
-
 #include <visit-config.h>
 
+#include <cerrno>
+#include <cstring>
+#include <string>
+#include <vector>
+
+#include <sys/stat.h>
+
+#include <visitstream.h>
 #include <avtDatabase.h>
 #include <avtDatabaseMetaData.h>
 #include <avtGenericDatabase.h>
@@ -263,6 +263,8 @@ avtDatabaseFactory::SetDefaultFileOpenOptions(const FileOpenOptions &opts)
 //    Brad Whitlock, Tue Jun 24 15:33:58 PDT 2008
 //    Pass in the database plugin manager since it's no longer a singleton.
 //
+//    Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
+//    Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 
 avtDatabase *
@@ -379,7 +381,7 @@ avtDatabaseFactory::FileList(DatabasePluginManager *dbmgr,
                                        nBlocks, forceReadAllCyclesAndTimes,
                                        treatAllDBsAsTimeVarying);
                 }
-                CATCHALL(...)
+                CATCHALL
                 {
                     rv = NULL;
                 }
@@ -409,7 +411,7 @@ avtDatabaseFactory::FileList(DatabasePluginManager *dbmgr,
                                fileIndex, nBlocks, forceReadAllCyclesAndTimes,
                                treatAllDBsAsTimeVarying);
         }
-        CATCHALL(...)
+        CATCHALL
         {
             rv = NULL;
         }

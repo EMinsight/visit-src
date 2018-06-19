@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -66,9 +66,6 @@ class QvisColorButton;
 //   I removed some controls then I added other controls for setting the
 //   colors and heights for node labels and cell labels independently, also
 //   for z-buffering.
-//
-//   Cyrus Harrison, Fri Jul 18 14:38:14 PDT 2008
-//   Initial Qt4 Port.
 //
 // ****************************************************************************
 

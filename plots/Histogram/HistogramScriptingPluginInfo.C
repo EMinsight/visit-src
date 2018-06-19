@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -39,8 +39,8 @@
 // ************************************************************************* //
 //                        HistogramScriptingPluginInfo.C
 // ************************************************************************* //
-#include <HistogramPluginInfo.h>
 #include <PyHistogramAttributes.h>
+#include <HistogramPluginInfo.h>
 
 #if defined(__APPLE__)
 #define GetScriptingInfo Histogram_GetScriptingInfo

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -38,12 +38,12 @@
 
 #ifndef CODEFILE_H
 #define CODEFILE_H
-#include <QFile>
-#include <QStringList>
-#include <QTextStream>
 
 #include <map>
 #include <utility>
+#include <qstring.h>
+#include <qstringlist.h>
+#include <visitstream.h>
 
 #include <XMLParserUtil.h>
 
@@ -66,12 +66,6 @@
 //    Brad Whitlock, Wed Feb 27 14:35:40 PST 2008
 //    Added support for other XML tool targets in the code file. Encapsulated
 //    the data and added accessor methods.
-//
-//    Brad Whitlock, Thu May  8 11:26:07 PDT 2008
-//    Qt 4. Use QTextStream.
-//
-//    Cyrus Harrison, Mon Nov 24 09:10:42 PST 2008
-//    Fixed problem where last char of a function could be truncated.
 //
 // ****************************************************************************
 class CodeFile
@@ -106,22 +100,22 @@ class CodeFile
 
     void Parse()
     {
-        QFile *f = new QFile(filename);
-        if (!f->open(QIODevice::ReadOnly | QIODevice::Text))
-        {
-            delete f;
-            throw QString("Couldn't find file %1\n").arg(filename);
-        }
-        QTextStream in(f);
+        ifstream in(filename.latin1(), ios::in);
+        if (!in)
+            throw QString().sprintf("Couldn't find file %s\n",filename.latin1());
 
-        QString buff = in.readLine();
+        char cbuff[4096];
+        QString buff;
 
-        while (!in.atEnd())
+        in.getline(cbuff, 4096);
+        buff=cbuff;
+
+        while (in)
         {
             QString keyword = GetKeyword(buff);
             if (!keyword.isNull())
             {
-                QString name = buff.mid(keyword.length()).simplified();
+                QString name = buff.mid(keyword.length()).simplifyWhiteSpace();
                 if (keyword      == "Target:")
                 {
                     ParseTarget(buff, name, in);
@@ -151,8 +145,7 @@ class CodeFile
                 break;
         }
 
-        f->close();
-        delete f;
+        in.close();
     }
 
     bool HasCode(const QString &name) const
@@ -259,34 +252,38 @@ private:
 
         return keyword;
     }
-    void ParseTarget(QString &buff, const QString &name, QTextStream &in)
+    void ParseTarget(QString &buff, const QString &name, istream &in)
     {
-        currentTarget = name.trimmed();
+        currentTarget = name.stripWhiteSpace();
 
         // Get the next line.
-        buff = in.readLine();
+        char cbuff[4096];
+        in.getline(cbuff, 4096);
+        buff=cbuff;
     }
-    void ParseFunction(QString &buff, const QString &name, QTextStream &in)
+    void ParseFunction(QString &buff, const QString &name, istream &in)
     {
         QString decl;
         QString def;
 
-        buff = in.readLine();
+        char cbuff[4096];
+        in.getline(cbuff, 4096);
+        buff=cbuff;
         if (buff.left(12) != "Declaration:")
             throw "'Declaration:' must follow 'Function:'";
-        decl=buff.mid(12).trimmed();
+        decl=buff.mid(12).stripWhiteSpace();
 
-        buff = in.readLine();
+        in.getline(cbuff, 4096);
+        buff=cbuff;
         if (buff.left(11) != "Definition:")
             throw "'Definition:' must follow 'Declaration:'";
-
-        buff = in.readLine();
-        while (!in.atEnd() && GetKeyword(buff).isNull())
+        in.getline(cbuff, 4096);
+        buff=cbuff;
+        while (in && GetKeyword(buff).isNull())
         {
             def += buff + "\n";
-            buff = in.readLine();
-            if(in.atEnd())
-                def += buff + "\n";
+            in.getline(cbuff, 4096);
+            buff=cbuff;
         }
 
         while (def.right(2) == "\n\n")
@@ -294,29 +291,34 @@ private:
 
         func[Key(name)] = std::pair<QString,QString>(decl,def);
     }
-    void ParseVariable(QString &buff, const QString &name, QTextStream &in)
+    void ParseVariable(QString &buff, const QString &name, istream &in)
     {
     }
-    void ParseConstant(QString &buff, const QString &name, QTextStream &in)
+    void ParseConstant(QString &buff, const QString &name, istream &in)
     {
         QString decl;
         QString def;
 
-        buff = in.readLine();
+        char cbuff[4096];
+        in.getline(cbuff, 4096);
+        buff=cbuff;
         if (buff.left(12) != "Declaration:")
             throw "'Declaration:' must follow 'Function:'";
-        decl=buff.mid(12).trimmed();
+        decl=buff.mid(12).stripWhiteSpace();
 
-        buff = in.readLine();
+        in.getline(cbuff, 4096);
+        buff=cbuff;
         if (buff.left(11) != "Definition:")
             throw "'Definition:' must follow 'Declaration:'";
-        def=buff.mid(11).trimmed();
+        def=buff.mid(11).stripWhiteSpace();
 
-        buff = in.readLine();
-        while (!in.atEnd() && GetKeyword(buff).isNull())
+        in.getline(cbuff, 4096);
+        buff=cbuff;
+        while (in && GetKeyword(buff).isNull())
         {
             def += buff + "\n";
-            buff = in.readLine();
+            in.getline(cbuff, 4096);
+            buff=cbuff;
         }
 
         while (def.right(2) == "\n\n")
@@ -324,27 +326,34 @@ private:
 
         constant[Key(name)] = std::pair<QString,QString>(decl,def);
     }
-    void ParseCode(QString &buff, const QString &name, QTextStream &in)
+    void ParseCode(QString &buff, const QString &name, istream &in)
     {
         QString prefix,postfix;
 
-        buff = in.readLine();
+        char cbuff[4096];
+        in.getline(cbuff, 4096);
+        buff=cbuff;
+
         if (buff.left(7) != "Prefix:")
             throw "'Prefix:' must follow 'Code:'";
-        buff = in.readLine();
-        while (!in.atEnd() && buff.left(8) != "Postfix:")
+        in.getline(cbuff, 4096);
+        buff=cbuff;
+        while (in && buff.left(8) != "Postfix:")
         {
             prefix += buff + "\n";
-            buff = in.readLine();
+            in.getline(cbuff, 4096);
+            buff=cbuff;
         }
 
         if (buff.left(8) != "Postfix:")
             throw "'Postfix:' must follow 'Prefix:'";
-        buff = in.readLine();
-        while (!in.atEnd() && GetKeyword(buff).isNull())
+        in.getline(cbuff, 4096);
+        buff=cbuff;
+        while (in && GetKeyword(buff).isNull())
         {
             postfix += buff + "\n";
-            buff = in.readLine();
+            in.getline(cbuff, 4096);
+            buff=cbuff;
         }
 
         // chomp extra trailing whitespace
@@ -360,16 +369,19 @@ private:
 
         code[Key(name)] = std::pair<QString,QString>(prefix,postfix);
     }
-    void ParseInitialization(QString &buff, const QString &name, QTextStream &in)
+    void ParseInitialization(QString &buff, const QString &name, istream &in)
     {
         QString initcode;
 
-        buff = in.readLine();
+        char cbuff[4096];
+        in.getline(cbuff, 4096);
+        buff=cbuff;
 
-        while (!in.atEnd() && GetKeyword(buff).isNull())
+        while (in && GetKeyword(buff).isNull())
         {
             initcode += buff + "\n";
-            buff = in.readLine();
+            in.getline(cbuff, 4096);
+            buff=cbuff;
         }
 
         while (initcode.right(2) == "\n\n")
@@ -392,7 +404,7 @@ private:
 
     void SplitKey(const QString &key, QString &target, QString &name) const
     {
-        int comma = key.indexOf(",");
+        int comma = key.find(",");
         if(comma != -1)
         {
             target = key.left(comma);

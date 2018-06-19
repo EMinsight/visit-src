@@ -1,4 +1,4 @@
-#                         Copyright (c) 2000 - 2008
+#                         Copyright (c) 2000 - 2009
 #                  Lawrence Livermore National Security, LLC
 #            Produced at the Lawrence Livermore National Laboratory
 #                              LLNL-CODE-400124
@@ -249,8 +249,14 @@
 #    Hank Childs, Sun Aug 31 08:04:42 PDT 2008
 #    Remove avtGradients.
 #
-#    Hank Childs, Mon Jan  5 13:25:54 CST 2009
-#    Added avtIsolevelsSelection and avtPlaneSelection.
+#    Hank Childs and Jeremy Meredith, Tue Jan 27 11:00:31 PST 2009
+#    Added avtHistogramSpecification and avtIdentifierSelection.
+#
+#    Hank Childs, Mon Feb  2 08:24:47 PST 2009
+#    Added named selections.
+#
+#    Hank Childs, Sun Mar 22 14:25:29 CDT 2009
+#    Added avtPointSelection.
 #
 ##############################################################################
 
@@ -287,12 +293,13 @@ Data_src= \
   Data/avtHexahedronExtractor.C \
   Data/avtHexahedron20Extractor.C \
   Data/avtHexahedron27Extractor.C \
+  Data/avtHistogramSpecification.C \
+  Data/avtIdentifierSelection.C \
   Data/avtImage.C \
   Data/avtImagePartition.C \
   Data/avtImageRepresentation.C \
   Data/avtIntegrationRF.C \
   Data/avtIntervalTree.C \
-  Data/avtIsolevelsSelection.C \
   Data/avtLightingModel.C \
   Data/avtLogicalSelection.C \
   Data/avtMIPRangeRF.C \
@@ -305,9 +312,9 @@ Data_src= \
   Data/avtOpacityMapSamplePointArbitrator.C \
   Data/avtPhong.C \
   Data/avtPixelizer.C \
-  Data/avtPlaneSelection.C \
   Data/avtPointAttribute.C \
   Data/avtPointExtractor.C \
+  Data/avtPointSelection.C \
   Data/avtPyramidExtractor.C \
   Data/avtRangeMaxTable.C \
   Data/avtRay.C \
@@ -335,6 +342,8 @@ Pipeline_src= \
   Pipeline/avtImageReader.C \
   Pipeline/avtImageTiler.C \
   Pipeline/avtImageWriter.C \
+  Pipeline/avtNamedSelection.C \
+  Pipeline/avtNamedSelectionManager.C \
   Pipeline/avtNullDataReader.C \
   Pipeline/avtNullDataWriter.C \
   Pipeline/avtParallel.C \

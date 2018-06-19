@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -45,7 +45,6 @@
 // Forward declarations.
 class MeshManagementAttributes;
 class QButtonGroup;
-class QRadioButton;
 class QCheckBox;
 class QGroupBox;
 class QLabel;
@@ -73,12 +72,6 @@ class QVBox;
 //    Brad Whitlock, Wed Apr  9 11:34:22 PDT 2008
 //    QString for caption, shortName.
 //
-//   Cyrus Harrison, Wed Jul  2 11:16:25 PDT 2008
-//   Initial Qt4 Port.
-//
-//   Cyrus Harrison, Thu Dec 18 09:29:37 PST 2008
-//   Removed tabSelected slot b/c it was an empty method.
-//
 // ****************************************************************************
 
 class GUI_API QvisMeshManagementWindow : public QvisPostableWindowObserver
@@ -104,19 +97,19 @@ private slots:
     void processSmallestZoneText(const QString &);
     void processFlatEnoughText();
     void processFlatEnoughText(const QString &);
+    void tabSelected(const QString &tabLabel);
     void renderCSGDirectChanged(bool);
     void discretizeBoundaryOnlyChanged(bool);
     void discretizationModeChanged(int);
 private:
     MeshManagementAttributes *mmAtts;
 
-    QWidget          *pageCSGGroup;
+    QVBox            *pageCSG;
+    QGroupBox        *pageCSGGroup;
     QCheckBox        *renderCSGDirect;
     QCheckBox        *discretizeBoundaryOnly;
     QLabel           *discretizeModeLabel;
     QButtonGroup     *discretizationMode;
-    QRadioButton     *discretizeUniform;
-    QRadioButton     *discretizeAdaptive;
     QLabel           *smallestZoneLabel;
     QLineEdit        *smallestZoneLineEdit;
     QLabel           *flatEnoughLabel;

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -221,6 +221,9 @@ avtXmdvWriter::WriteHeaders(const avtDatabaseMetaData *md,
 //    Retest for varCentering here if necessary.  Throw excepton if we cannot
 //    determine centering.
 //
+//    Brad Whitlock, Fri Jul 24 11:31:23 PDT 2009
+//    I made the columns write values with more precision.
+//
 // ****************************************************************************
 
 void
@@ -359,6 +362,7 @@ avtXmdvWriter::WriteChunk(vtkDataSet *ds, int chunk)
         ofile << minK << "\t" << maxK << "\t10" << endl;
     }
 
+    ofile << std::scientific << std::setprecision(16);
     for (j = 0 ; j < nvals ; j++)
     {
         if (writeOutCoordinates)

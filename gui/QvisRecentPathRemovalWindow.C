@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,10 +37,10 @@
 *****************************************************************************/
 
 #include <QvisRecentPathRemovalWindow.h>
-#include <QGroupBox>
-#include <QLayout>
-#include <QListWidget>
-#include <QPushButton>
+#include <qgroupbox.h>
+#include <qlayout.h>
+#include <qlistbox.h>
+#include <qpushbutton.h>
 
 #include <algorithm>
 
@@ -97,52 +97,53 @@ QvisRecentPathRemovalWindow::~QvisRecentPathRemovalWindow()
 //   Brad Whitlock, Tue Apr  8 15:26:49 PDT 2008
 //   Support for internationalization.
 //   
-//   Cyrus Harrison, Wed Jun 25 16:13:05 PDT 2008
-//   Initial Qt4 Port.
-//
 // ****************************************************************************
 
 void
 QvisRecentPathRemovalWindow::CreateWindowContents()
 {
     // Create the widgets needed to remove the paths.
-    removalControlsGroup = new QGroupBox(central);
+    removalControlsGroup = new QGroupBox(central, "removalControlsGroup");
     removalControlsGroup->setTitle(tr("Select paths to remove"));
     topLayout->addWidget(removalControlsGroup, 5);
 
     QVBoxLayout *innerTopLayout = new QVBoxLayout(removalControlsGroup);
-    
+    innerTopLayout->setMargin(10);
+    innerTopLayout->addSpacing(15);
+    innerTopLayout->setSpacing(10);
+
     // Create the listbox that lets us select the paths to remove.
-    removalListBox = new QListWidget(removalControlsGroup);
-    removalListBox->setSelectionMode(QAbstractItemView::MultiSelection);
+    removalListBox = new QListBox(removalControlsGroup, "removalListBox");
+    removalListBox->setSelectionMode(QListBox::Multi);
     innerTopLayout->addWidget(removalListBox);
 
     // Create the pushbuttons that actually call the removal routines.
-    QHBoxLayout *hLayout = new QHBoxLayout();
-    innerTopLayout->addLayout(hLayout);
+    QHBoxLayout *hLayout = new QHBoxLayout(innerTopLayout);
     hLayout->setSpacing(5);
-    removeButton = new QPushButton(tr("Remove"), removalControlsGroup);
+    removeButton = new QPushButton(tr("Remove"), removalControlsGroup,
+        "removeButton");
     connect(removeButton, SIGNAL(clicked()),
             this, SLOT(removePaths()));
     hLayout->addWidget(removeButton);
-    removeAllButton = new QPushButton(tr("Remove all"), removalControlsGroup);
+    removeAllButton = new QPushButton(tr("Remove all"), removalControlsGroup,
+        "removeAllButton");
     connect(removeAllButton, SIGNAL(clicked()),
             this, SLOT(removeAllPaths()));
     hLayout->addWidget(removeAllButton);
-    invertSelectionButton = new QPushButton(tr("Invert selection"), removalControlsGroup);
+    invertSelectionButton = new QPushButton(tr("Invert selection"),
+        removalControlsGroup, "invertSelectionButton");
     connect(invertSelectionButton, SIGNAL(clicked()),
             this, SLOT(invertSelection()));
     hLayout->addWidget(invertSelectionButton);    
 
     // Create the ok and cancel buttons.
-    QHBoxLayout *buttonLayout = new QHBoxLayout();
-    topLayout->addLayout(buttonLayout);
+    QHBoxLayout *buttonLayout = new QHBoxLayout(topLayout);
     buttonLayout->addStretch(10);
-    okButton = new QPushButton(tr("Ok"), central);
+    okButton = new QPushButton(tr("Ok"), central, "Ok");
     connect(okButton, SIGNAL(clicked()),
             this, SLOT(applyDismiss()));
     buttonLayout->addWidget(okButton);
-    cancelButton = new QPushButton(tr("Cancel"), central);
+    cancelButton = new QPushButton(tr("Cancel"), central, "cancelButton");
     connect(cancelButton, SIGNAL(clicked()),
             this, SLOT(handleCancel()));
     buttonLayout->addWidget(cancelButton);
@@ -199,9 +200,7 @@ QvisRecentPathRemovalWindow::UpdateWindow(bool doAll)
 // Creation:   Fri Oct 10 16:09:56 PST 2003
 //
 // Modifications:
-//   Cyrus Harrison, Wed Jun 25 16:13:05 PDT 2008
-//   Initial Qt4 Port.
-//
+//   
 // ****************************************************************************
 
 void
@@ -215,7 +214,7 @@ QvisRecentPathRemovalWindow::UpdateWidgets()
     {
         QString f;
         f.sprintf("%s:%s", paths[i].host.c_str(), paths[i].path.c_str());
-        removalListBox->addItem(f);
+        removalListBox->insertItem(f);
     }
 
     // Don't enable the removal buttons unless there are paths.
@@ -260,9 +259,7 @@ QvisRecentPathRemovalWindow::show()
 // Creation:   Fri Oct 10 16:10:14 PST 2003
 //
 // Modifications:
-//   Cyrus Harrison, Wed Jun 25 16:13:05 PDT 2008
-//   Initial Qt4 Port.
-//
+//   
 // ****************************************************************************
 
 void
@@ -271,7 +268,7 @@ QvisRecentPathRemovalWindow::removePaths()
     QualifiedFilenameVector newPaths;
     for(int i = 0; i < removalListBox->count(); ++i)
     {
-        if(!removalListBox->item(i)->isSelected())
+        if(!removalListBox->isSelected(i))
             newPaths.push_back(paths[i]);
     }
     paths = newPaths;
@@ -311,21 +308,13 @@ QvisRecentPathRemovalWindow::removeAllPaths()
 // Creation:   Fri Oct 10 16:10:14 PST 2003
 //
 // Modifications:
-//   Cyrus Harrison, Wed Jun 25 16:13:05 PDT 2008
-//   Initial Qt4 Port.
-//
+//   
 // ****************************************************************************
 
 void
 QvisRecentPathRemovalWindow::invertSelection()
 {
-    for(int i=0;i<removalListBox->count();i++)
-    {
-        if(removalListBox->item(i)->isSelected())
-            removalListBox->item(i)->setSelected(false);
-        else
-            removalListBox->item(i)->setSelected(true);
-    }
+    removalListBox->invertSelection();
 }
 
 // ****************************************************************************

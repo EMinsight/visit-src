@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -123,9 +123,6 @@
 //    Hank Childs, Tue Jan 15 14:26:06 PST 2008
 //    Initialize members for sample point arbitration.
 //
-//    Hank Childs, Fri Jan  9 14:10:25 PST 2009
-//    Initialize jitter.
-//
 // ****************************************************************************
 
 avtSamplePointExtractor::avtSamplePointExtractor(int w, int h, int d)
@@ -150,7 +147,6 @@ avtSamplePointExtractor::avtSamplePointExtractor(int w, int h, int d)
 #else
     sendCells        = false;
 #endif
-    jitter           = false;
     rayfoo           = NULL;
 
     rectilinearGridsAreInWorldSpace = false;
@@ -376,11 +372,6 @@ avtSamplePointExtractor::Execute(void)
 //    Timo Bremer, Thu Sep 13 14:02:40 PDT 2007
 //    Added hex20 extractor.
 //
-//    Hank Childs, Fri Jan  9 14:11:24 PST 2009
-//    Tell extractors whether or not to jitter.  Also remove call to 
-//    massVoxelExtractor regarding "sendCellsMode", as it does not participate
-//    in that mode ... so the call was worthless.
-//
 // ****************************************************************************
 
 void
@@ -446,18 +437,11 @@ avtSamplePointExtractor::SetUpExtractors(void)
 
     hexExtractor->SendCellsMode(sendCells);
     hex20Extractor->SendCellsMode(sendCells);
+    massVoxelExtractor->SendCellsMode(sendCells);
     tetExtractor->SendCellsMode(sendCells);
     wedgeExtractor->SendCellsMode(sendCells);
     pointExtractor->SendCellsMode(sendCells);
     pyramidExtractor->SendCellsMode(sendCells);
-
-    hexExtractor->SetJittering(jitter);
-    hex20Extractor->SetJittering(jitter);
-    massVoxelExtractor->SetJittering(jitter);
-    tetExtractor->SetJittering(jitter);
-    wedgeExtractor->SetJittering(jitter);
-    pointExtractor->SetJittering(jitter);
-    pyramidExtractor->SetJittering(jitter);
 
     if (shouldDoTiling)
     {
@@ -1920,52 +1904,6 @@ avtSamplePointExtractor::SendCellsMode(bool mode)
     if (wedgeExtractor != NULL)
     {
         wedgeExtractor->SendCellsMode(sendCells);
-    }
-}
-
-
-// ****************************************************************************
-//  Method: avtSamplePointExtractor::SetJittering
-//
-//  Purpose:
-//      Tell the individual cell extractors whether or not to jitter.
-//
-//  Arguments:
-//      j     true if the cell extractors should jitter
-//
-//  Programmer: Hank Childs
-//  Creation:   January 9, 2009
-//
-// ****************************************************************************
-
-void
-avtSamplePointExtractor::SetJittering(bool j)
-{
-    jitter = j;
-
-    if (hexExtractor != NULL)
-    {
-        hexExtractor->SetJittering(jitter);
-    }
-    if (pointExtractor != NULL)
-    {
-        pointExtractor->SetJittering(jitter);
-    }
-    if (pyramidExtractor != NULL)
-    {
-        pyramidExtractor->SetJittering(jitter);
-    }
-    if (tetExtractor != NULL)
-    {
-        tetExtractor->SetJittering(jitter);
-    }
-    if (wedgeExtractor != NULL)
-    {
-        wedgeExtractor->SetJittering(jitter);
-    }
-    if (massVoxelExtractor != NULL)
-    {
-        massVoxelExtractor->SetJittering(jitter);
     }
 }
 

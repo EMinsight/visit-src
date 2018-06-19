@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -43,6 +43,8 @@
 #ifndef VIS_WINDOW_PROTECTION_PROXY_H
 #define VIS_WINDOW_PROTECTION_PROXY_H
 #include <viswindow_exports.h>
+
+
 #include <vector>
 
 #include <VisWindowTypes.h>
@@ -54,6 +56,7 @@ class     vtkRenderer;
 
 class     VisWindow;
 class     VisitInteractor;
+class     PlotInfoAttributes;
 
 
 // ****************************************************************************
@@ -157,9 +160,6 @@ class     VisitInteractor;
 //    plot, and the functionality has been accomodated in a new window
 //    modality supporting the correct style annotations.
 //
-//    Brad Whitlock, Wed Jan  7 14:49:10 PST 2009
-//    I removed plot info attributes.
-//
 // ****************************************************************************
 
 class VISWINDOW_API VisWindowProtectionProxy
@@ -192,7 +192,8 @@ class VISWINDOW_API VisWindowProtectionProxy
     void                ProxiedGetWindowSize(int &width, int &height) const;
     void                ProxiedHasPlots(bool);
     bool                ProxiedHasPlots();
-
+    int                 ProxiedGetPlotListIndex(const char *plotName);
+    const PlotInfoAttributes *ProxiedGetPlotInfoAtts(const char *plotName);
     bool                ProxiedUpdatesEnabled();
     void                ProxiedDisableUpdates();
     void                ProxiedEnableUpdates();
@@ -206,13 +207,13 @@ class VISWINDOW_API VisWindowProtectionProxy
     void                ProxiedPick(int, int);
     void                ProxiedUpdatePlotList(std::vector<avtActor_p> &);
     void                ProxiedLineout(int, int, int, int);
-    double              ProxiedComputeVectorTextScaleFactor(const double *p, 
+    double               ProxiedComputeVectorTextScaleFactor(const double *p, 
                                                         const double *v = NULL);
     void                ProxiedMotionBegin(void);
     void                ProxiedMotionEnd(void);
 
     bool                ProxiedGetAmbientOn();
-    double              ProxiedGetAmbientCoefficient();
+    double               ProxiedGetAmbientCoefficient();
     bool                ProxiedGetLighting();
     void                ProxiedUpdateLightPositions();
     int                 ProxiedGetSurfaceRepresentation();

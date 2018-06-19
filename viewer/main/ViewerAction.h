@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -42,8 +42,8 @@
 #include <ViewerActionBase.h>
 
 class QAction;
-class QIcon;
-class QMenu;
+class QIconSet;
+class QPopupMenu;
 class QToolBar;
 
 // ****************************************************************************
@@ -67,16 +67,13 @@ class QToolBar;
 //   Brad Whitlock, Tue Apr 29 11:20:27 PDT 2008
 //   Use QString for visible text.
 //
-//   Brad Whitlock, Thu May 22 13:44:45 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
 class VIEWER_API ViewerAction : public ViewerActionBase
 {
     Q_OBJECT
 public:
-    ViewerAction(ViewerWindow *win);
+    ViewerAction(ViewerWindow *win, const char *name = 0);
     virtual ~ViewerAction();
     
     virtual void Setup();
@@ -84,11 +81,11 @@ public:
     virtual void Update();
 
     virtual bool Enabled() const { return true;  }
-    virtual bool Checked() const { return false; }
+    virtual bool Toggled() const { return false; }
 
     // Methods to add the action to the menu and toolbar.
-    virtual void ConstructMenu(QMenu *menu);
-    virtual void RemoveFromMenu(QMenu *menu);
+    virtual void ConstructMenu(QPopupMenu *menu);
+    virtual void RemoveFromMenu(QPopupMenu *menu);
     virtual void ConstructToolbar(QToolBar *toolbar);
     virtual void RemoveFromToolbar(QToolBar *toolbar);
 
@@ -97,8 +94,10 @@ public:
     virtual void SetText(const QString &text);
     virtual void SetMenuText(const QString &text);
     virtual void SetToolTip(const QString &text);
-    virtual void SetIcon(const QIcon &icons);
+    virtual void SetIconSet(const QIconSet &icons);
     virtual void SetToggleAction(bool val);
+protected slots:
+    virtual void HandleToggle(bool);
 protected:
     QAction *action;
 };

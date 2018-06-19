@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -57,6 +57,9 @@ class vtkRectilinearGrid;
 //    Hank Childs, Sat Mar 18 14:16:09 PST 2006
 //    Added function CellContainsPoint.
 //
+//    Kathleen Bonnell, Thu Jun 11 08:20:11 PDT 2009
+//    Added optional tolerance argument to PointsEqual.
+//
 // ****************************************************************************
 
 namespace vtkVisItUtility
@@ -92,7 +95,8 @@ namespace vtkVisItUtility
     VISIT_VTK_LIGHT_API void       WriteDataSet(vtkDataSet*, const char *);
     VISIT_VTK_LIGHT_API vtkRectilinearGrid *Create1DRGrid(int nXCoords,
                                                           int type = VTK_FLOAT); 
-    VISIT_VTK_LIGHT_API bool       PointsEqual(double p1[3], double p2[3]);
+    VISIT_VTK_LIGHT_API bool       PointsEqual(double p1[3], double p2[3],
+                                               const double *_eps = 0);
 }
 
 #endif

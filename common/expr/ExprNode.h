@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -108,9 +108,6 @@ class Pos;
 //    Jeremy Meredith, Thu Aug  7 16:21:59 EDT 2008
 //    Reorder initializers to match true order.
 //
-//    Jeremy Meredith, Mon Dec 15 12:50:38 EST 2008
-//    Added GetOp to MathExpr.
-//
 // ****************************************************************************
 class EXPR_API ExprNode : public ExprParseTreeNode
 {
@@ -197,7 +194,6 @@ class EXPR_API MathExpr : public virtual ExprNode
         : ExprNode(p), op(o) {}
     virtual ~MathExpr() { }
     virtual const std::string GetTypeName() { return "Math"; }
-    char GetOp() const { return op; }
   protected:
     char op;
 };

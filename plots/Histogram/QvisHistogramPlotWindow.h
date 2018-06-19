@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -117,42 +117,40 @@ class QvisHistogramPlotWindow : public QvisPostableWindowObserver
     void colorChanged(const QColor &color);
   private:
     int plotType;
-    QButtonGroup        *basedOnGroup;
-    QWidget             *histogramTypeWidget;
-    QButtonGroup        *histogramTypeGroup;
-    QWidget             *weightTypeWidget;
-    QButtonGroup        *weightTypeGroup;
-    QvisVariableButton  *weightVariable;
-    QButtonGroup        *dataScaleGroup;
-    QButtonGroup        *binsScaleGroup;
-    QCheckBox           *specifyRange;
-    QLineEdit           *min;
-    QLineEdit           *max;
-    QLineEdit           *numBins;
-    QLineEdit           *domain;
-    QLineEdit           *zone;
-    QCheckBox           *useBinWidths;
-    QButtonGroup        *outputTypeGroup;
+    QButtonGroup *basedOn;
+    QButtonGroup *histogramType;
+    QButtonGroup *weightType;
+    QvisVariableButton *weightVariable;
+    QButtonGroup *dataScale;
+    QButtonGroup *binsScale;
+    QCheckBox *specifyRange;
+    QLineEdit *min;
+    QLineEdit *max;
+    QLineEdit *numBins;
+    QLineEdit *domain;
+    QLineEdit *zone;
+    QCheckBox *useBinWidths;
+    QButtonGroup *outputType;
     QvisLineStyleWidget *lineStyle;
     QvisLineWidthWidget *lineWidth;
-    QvisColorButton     *color;
-    QLabel              *basedOnLabel;
-    QLabel              *histogramTypeLabel;
-    QLabel              *weightTypeLabel;
-    QLabel              *weightVariableLabel;
-    QLabel              *minLabel;
-    QLabel              *maxLabel;
-    QLabel              *numBinsLabel;
-    QLabel              *domainLabel;
-    QLabel              *zoneLabel;
-    QLabel              *outputTypeLabel;
-    QLabel              *lineStyleLabel;
-    QLabel              *lineWidthLabel;
-    QLabel              *colorLabel;
+    QvisColorButton *color;
+    QLabel *basedOnLabel;
+    QLabel *histogramTypeLabel;
+    QLabel *weightTypeLabel;
+    QLabel *weightVariableLabel;
+    QLabel *minLabel;
+    QLabel *maxLabel;
+    QLabel *numBinsLabel;
+    QLabel *domainLabel;
+    QLabel *zoneLabel;
+    QLabel *outputTypeLabel;
+    QLabel *lineStyleLabel;
+    QLabel *lineWidthLabel;
+    QLabel *colorLabel;
 
-    QGroupBox           *histGroupBox;
-    QGroupBox           *barGroupBox;
-    QGroupBox           *styleGroupBox;
+    QGroupBox *histGroupBox;
+    QGroupBox *barGroupBox;
+    QGroupBox *styleGroupBox;
 
     HistogramAttributes *atts;
 };

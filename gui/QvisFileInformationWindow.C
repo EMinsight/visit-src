@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,11 +37,11 @@
 *****************************************************************************/
 
 #include <visitstream.h>
-#include <QTextEdit>
-#include <QTabWidget>
-#include <QPushButton>
-#include <QLayout>
-#include <QString>
+#include <qmultilineedit.h>
+#include <qtabwidget.h>
+#include <qpushbutton.h>
+#include <qlayout.h>
+#include <qstring.h>
 
 #include <FileServerList.h>
 #include <QvisFileInformationWindow.h>
@@ -112,8 +112,6 @@ QvisFileInformationWindow::~QvisFileInformationWindow()
 // Creation:   Tue Aug 20 13:56:24 PST 2002
 //
 // Modifications:
-//   Cyrus Harrison, Tue Jun 24 11:15:28 PDT 2008
-//   Initial Qt4 Port.
 //
 // ****************************************************************************
 
@@ -121,9 +119,9 @@ void
 QvisFileInformationWindow::CreateWindowContents()
 {
     // Create a multi line edit to display the text.
-    outputText = new QTextEdit(central);
+    outputText = new QMultiLineEdit(central, "outputText");
     outputText->setMinimumWidth(fontMetrics().width(titleSeparator));
-    outputText->setLineWrapMode(QTextEdit::NoWrap);
+    outputText->setWordWrap(QMultiLineEdit::NoWrap);
     outputText->setReadOnly(true);
     topLayout->addWidget(outputText);
 }
@@ -154,10 +152,9 @@ QvisFileInformationWindow::CreateWindowContents()
 //   Brad Whitlock, Tue Apr  8 12:26:44 PDT 2008
 //   Support for internationalization.
 //
-//   Cyrus Harrison, Tue Jun 24 11:15:28 PDT 2008
-//   Initial Qt4 Port.
-//
 // ****************************************************************************
+
+
 
 void
 QvisFileInformationWindow::UpdateWindow(bool doAll)
@@ -172,6 +169,7 @@ QvisFileInformationWindow::UpdateWindow(bool doAll)
 
         if(md != 0)
         {
+
             std::ostringstream os;
             os << "File = " << fileServer->GetOpenFile().FullName().c_str()
                << endl;
@@ -186,7 +184,6 @@ QvisFileInformationWindow::UpdateWindow(bool doAll)
         }
         else
             outputText->setText(tr("VisIt could not read the file meta-data."));
-    
-        outputText->moveCursor(QTextCursor::Start);
+        outputText->setCursorPosition(0, 0);
     }
 }

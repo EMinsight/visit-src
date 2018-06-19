@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -46,7 +46,6 @@
 
 #include <vtkCamera.h>
 #include <vtkMatrix4x4.h>
-#include <vtkPointSet.h>
 #include <vtkRectilinearGrid.h>
 
 #include <avtDataset.h>
@@ -84,10 +83,6 @@ bool   HexIntersectsImageCube(const float [8][3]);
 //    Hank Childs, Fri Nov 19 13:41:56 PST 2004
 //    Initialize passThruRectilinear.
 //
-//    Hank Childs, Wed Dec 24 13:28:16 PST 2008
-//    Remove tightenClippingPlanes, as this functionality has been moved to
-//    avtRayTracer.
-//
 // ****************************************************************************
 
 avtWorldSpaceToImageSpaceTransform::avtWorldSpaceToImageSpaceTransform(
@@ -98,6 +93,7 @@ avtWorldSpaceToImageSpaceTransform::avtWorldSpaceToImageSpaceTransform(
     scale[2] = 1.;
     aspect   = asp;
 
+    tightenClippingPlanes = false;
     passThruRectilinear = false;
 
     view = vi;
@@ -124,10 +120,6 @@ avtWorldSpaceToImageSpaceTransform::avtWorldSpaceToImageSpaceTransform(
 //    Hank Childs, Fri Nov 19 13:41:56 PST 2004
 //    Initialize passThruRectilinear.
 //
-//    Hank Childs, Wed Dec 24 13:28:16 PST 2008
-//    Remove tightenClippingPlanes, as this functionality has been moved to
-//    avtRayTracer.
-//
 // ****************************************************************************
 
 avtWorldSpaceToImageSpaceTransform::avtWorldSpaceToImageSpaceTransform(
@@ -138,6 +130,7 @@ avtWorldSpaceToImageSpaceTransform::avtWorldSpaceToImageSpaceTransform(
     scale[2] = s[2];
     aspect   = 1.;
 
+    tightenClippingPlanes = false;
     passThruRectilinear = false;
 
     view = vi;
@@ -299,9 +292,6 @@ avtWorldSpaceToImageSpaceTransform::GetTransform(void)
 //    Converted the image cube into a digestible format that is like that of
 //    a zbuffer.  This is because that format is expected later in the code.
 //
-//    Hank Childs, Wed Dec 24 09:48:28 PST 2008
-//    Change the matrix multiplication, as we now sample in the wbuffer.
-//
 // ****************************************************************************
 
 void
@@ -321,8 +311,8 @@ avtWorldSpaceToImageSpaceTransform::CalculatePerspectiveTransform(
     //
     // Calculation of the viewing matrix comes from Ken Joy's On-Line
     // Computer Graphics Notes.
-    // http://graphics.cs.ucdavis.edu/education/GraphicsNotes
-    //         /Viewing-Transformation/Viewing-Transformation.html
+    // http://graphics.cs.ucdavis.edu/GraphicsNotes/Viewing-Transformation
+    //          /Viewing-Transformation.html
     //
     vtkMatrix4x4 *viewtrans = vtkMatrix4x4::New();
     viewtrans->Zero();
@@ -335,19 +325,16 @@ avtWorldSpaceToImageSpaceTransform::CalculatePerspectiveTransform(
     viewtrans->SetElement(2, 3, -1.);
     viewtrans->SetElement(3, 2, (2*view.farPlane*view.nearPlane) / (view.farPlane-view.nearPlane));
 
+    //
+    // The transformation we have done so far puts us into the image cube, but
+    // we would like to match up with z-buffering, so we would like the closest
+    // things to be at z=0 and the furthest to be at z=1.  (the image cube has
+    // the front at z=1 and the back at z=-1).
+    //
     vtkMatrix4x4 *imageCubeToZBuffer = vtkMatrix4x4::New();
     imageCubeToZBuffer->Identity();
-    if (0) // we no longer do this, because we now go straight to the w-buffer.
-    {
-         //
-         // The transformation we have done so far puts us into the image cube, but
-         // we would like to match up with z-buffering, so we would like the closest
-         // things to be at z=0 and the furthest to be at z=1.  (the image cube has
-         // the front at z=1 and the back at z=-1).
-         //
-         imageCubeToZBuffer->SetElement(2, 2, -0.5);
-         imageCubeToZBuffer->SetElement(3, 2, 0.5);
-    }
+    imageCubeToZBuffer->SetElement(2, 2, -0.5);
+    imageCubeToZBuffer->SetElement(3, 2, 0.5);
 
     //
     // Multiply all of our intermediate matrices together.
@@ -717,6 +704,176 @@ avtWorldSpaceToImageSpaceTransform::UpdateDataObjectInfo(void)
 
 
 // ****************************************************************************
+//  Method: avtWorldSpaceToImageSpaceTransform::PreExecute
+//
+//  Purpose:
+//      This is called right before Execute is called.  This is the first
+//      time that we have access to the whole dataset. 
+//      See if we should tighten the clipping planes by looking at the
+//      bounding box of the dataset (if appropriate).
+//
+//  Programmer: Hank Childs
+//  Creation:   January 1, 2002
+//
+// ****************************************************************************
+
+void
+avtWorldSpaceToImageSpaceTransform::PreExecute(void)
+{
+    avtTransform::PreExecute();
+
+    if (!tightenClippingPlanes)
+    {
+        //
+        // Nothing for us to do.
+        //
+        return;
+    }
+
+    double dbounds[6];
+    avtDataAttributes &datts = GetInput()->GetInfo().GetAttributes();
+    avtExtents *exts = datts.GetEffectiveSpatialExtents();
+    if (exts->HasExtents())
+    {
+        exts->CopyTo(dbounds);
+    }
+    else
+    {
+        GetSpatialExtents(dbounds);
+    }
+
+    //
+    // Multiply our current transform by each of the points in the bounding
+    // box, keeping track of the furthest and closest point.
+    //
+    double nearest     =  1.;
+    int    nearestInd  = -1;
+    double farthest    =  0.;
+    int    farthestInd = -1;
+    for (int i = 0 ; i < 8 ; i++)
+    {
+        double pt[4];
+        pt[0] = (i & 1 ? dbounds[1] : dbounds[0]);
+        pt[1] = (i & 2 ? dbounds[3] : dbounds[2]);
+        pt[2] = (i & 4 ? dbounds[5] : dbounds[4]);
+        pt[3] = 1.;
+        
+        double outpt[4];
+        transform->MultiplyPoint(pt, outpt);
+
+        if (outpt[2] > farthest)
+        {
+            farthestInd = i;
+            farthest    = outpt[2];
+        }
+        if (outpt[2] < nearest)
+        {
+            nearestInd = i;
+            nearest    = outpt[2];
+        }
+    }
+
+    bool resetNearest = true;
+    if (nearestInd == -1 || nearest <= 0.)
+    {
+        resetNearest = false;
+    }
+
+    double vecFromCameraToPlaneX = view.focus[0] - view.camera[0];
+    double vecFromCameraToPlaneY = view.focus[1] - view.camera[1];
+    double vecFromCameraToPlaneZ = view.focus[2] - view.camera[2];
+    double vecMag = (vecFromCameraToPlaneX*vecFromCameraToPlaneX)
+                  + (vecFromCameraToPlaneY*vecFromCameraToPlaneY)
+                  + (vecFromCameraToPlaneZ*vecFromCameraToPlaneZ);
+    vecMag = sqrt(vecMag);
+
+    if (resetNearest)
+    {
+        double X = (nearestInd & 1 ? dbounds[1] : dbounds[0]);
+        double Y = (nearestInd & 2 ? dbounds[3] : dbounds[2]);
+        double Z = (nearestInd & 4 ? dbounds[5] : dbounds[4]);
+
+        //
+        // My best attempt at explaining what is going on is below is the
+        // "farthest" case.
+        //
+        double vecFromCameraToNearestX = X - view.camera[0];
+        double vecFromCameraToNearestY = Y - view.camera[1];
+        double vecFromCameraToNearestZ = Z - view.camera[2];
+
+        double dot = vecFromCameraToPlaneX*vecFromCameraToNearestX
+                   + vecFromCameraToPlaneY*vecFromCameraToNearestY
+                   + vecFromCameraToPlaneZ*vecFromCameraToNearestZ;
+
+        double newNearest = dot / vecMag;
+        newNearest = newNearest - (view.farPlane-newNearest)*0.01; // fudge
+        if (newNearest > view.nearPlane)
+        {
+            view.nearPlane = newNearest;
+        }
+        else
+        {
+            resetNearest = false;
+        }
+    }
+
+    bool resetFarthest = true;
+    if (farthestInd == -1 || farthest >= 1.)
+    {
+        resetFarthest = false;
+    }
+
+    if (resetFarthest)
+    {
+        double X = (farthestInd & 1 ? dbounds[1] : dbounds[0]);
+        double Y = (farthestInd & 2 ? dbounds[3] : dbounds[2]);
+        double Z = (farthestInd & 4 ? dbounds[5] : dbounds[4]);
+
+        double vecFromCameraToFarthestX = X - view.camera[0];
+        double vecFromCameraToFarthestY = Y - view.camera[1];
+        double vecFromCameraToFarthestZ = Z - view.camera[2];
+
+        //
+        // We are now constructing the dot product of our two vectors.  Note
+        // That this will give us cosine of their angles times the magnitude
+        // of the camera-to-plane vector times the magnitude of the
+        // camera-to-farthest vector.  We want the magnitude of a new vector,
+        // the camera-to-closest-point-on-plane-vector.  That vector will
+        // lie along the same vector as the camera-to-plane and it forms
+        // a triangle with the camera-to-farthest-vector.  Then we have the
+        // same angle between them and we can re-use the cosine we calculate.
+        //
+        double dot = vecFromCameraToPlaneX*vecFromCameraToFarthestX
+                   + vecFromCameraToPlaneY*vecFromCameraToFarthestY
+                   + vecFromCameraToPlaneZ*vecFromCameraToFarthestZ;
+
+        //
+        // dot = cos X * mag(A) * mag(B)
+        // We know cos X = mag(C) / mag(A)   C = adjacent, A = hyp.
+        // Then mag(C) = cos X * mag(A).
+        // So mag(C) = dot / mag(B).
+        //
+        double newFarthest = dot / vecMag;
+
+        newFarthest = newFarthest + (newFarthest-view.nearPlane)*0.01; // fudge
+        if (newFarthest < view.farPlane)
+        {
+            view.farPlane = newFarthest;
+        }
+        else
+        {
+            resetFarthest = false;
+        }
+    }
+
+    if (resetNearest || resetFarthest)
+    {
+        CalculateTransform(view, transform, scale, aspect);
+    }
+}
+
+
+// ****************************************************************************
 //  Method: avtWorldSpaceToImageSpaceTransform::ExecuteData
 //
 //  Purpose:
@@ -728,9 +885,6 @@ avtWorldSpaceToImageSpaceTransform::UpdateDataObjectInfo(void)
 //  Modifications:
 //    Jeremy Meredith, Thu Feb 15 11:44:28 EST 2007
 //    Added support for rectilinear grids with an inherent transform.
-//
-//    Hank Childs, Wed Dec 24 09:48:59 PST 2008
-//    Add support for sampling in the wbuffer.
 //
 // ****************************************************************************
 
@@ -745,7 +899,7 @@ avtWorldSpaceToImageSpaceTransform::ExecuteData(vtkDataSet *in_ds, int domain,
     }
 
     // Since we're applying a transform to the data, an existing
-    // implied transform will need to change.  Update it here.
+    // implied transform will ned to change.  Update it here.
     avtDataAttributes &inatts = GetInput()->GetInfo().GetAttributes();
     avtDataAttributes &outatts = GetOutput()->GetInfo().GetAttributes();
     if (inatts.GetRectilinearGridHasTransform())
@@ -770,39 +924,7 @@ avtWorldSpaceToImageSpaceTransform::ExecuteData(vtkDataSet *in_ds, int domain,
         outatts.SetRectilinearGridTransform(new_xform);
     }
 
-    vtkDataSet *mid_ds = avtTransform::ExecuteData(in_ds, domain, label);
-
-    // We only need to convert to w-buffer coords if we have perspective view.
-    if (view.orthographic)
-        return mid_ds;
-
-    // If we have a rectilinear grid, it will be dealt with in the
-    // mass voxel extractor.  Otherwise, we need to change the z-buffer
-    // to a w-buffer, so we can space out the sample points better.
-    if (mid_ds->GetDataObjectType() == VTK_STRUCTURED_GRID ||
-        mid_ds->GetDataObjectType() == VTK_UNSTRUCTURED_GRID)
-    {
-        vtkPointSet *ps = (vtkPointSet *) mid_ds;
-        vtkPoints *pts = ps->GetPoints();
-        int npts = pts->GetNumberOfPoints();
-        for (int i = 0 ; i < npts ; i++)
-        {
-            double pt[3];
-            pts->GetPoint(i, pt);
-            double fp = view.farPlane;
-            double np = view.nearPlane;
-            // Current transform puts near at 1 and far at -1.  Reverse
-            pt[2] *= -1.0;
-            // Map to actual distance from camera.
-            pt[2] = (-2*fp*np)
-                     / ((pt[2]*(fp-np)) - (fp+np));
-            // Now normalize based on near and far.
-            pt[2] = (pt[2] - np) / (fp-np);
-            pts->SetPoint(i, pt);
-        }
-    }
-
-    return mid_ds;
+    return avtTransform::ExecuteData(in_ds, domain, label);
 }
 
 

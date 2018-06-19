@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -52,13 +52,13 @@
 #include <avtShiftCenteringFilter.h>
 #include <avtUserDefinedMapper.h>
 #include <avtVolumeFilter.h>
-#include <avtLowerResolutionVolumeFilter.h>
 
 #include <VolumeAttributes.h>
 
 #include <DebugStream.h>
 #include <ImproperUseException.h>
 #include <LostConnectionException.h>
+
 
 // ****************************************************************************
 //  Method: avtVolumePlot constructor
@@ -92,15 +92,11 @@
 //    Hank Childs, Wed Nov 24 17:03:44 PST 2004
 //    Removed hacks involved with previous software volume rendering mode.
 //
-//    Brad Whitlock, Mon Dec 15 15:51:38 PST 2008
-//    I added another filter.
-//
 // ****************************************************************************
 
 avtVolumePlot::avtVolumePlot() : avtVolumeDataPlot()
 {
     volumeFilter = NULL;
-    volumeImageFilter = NULL;
     resampleFilter = NULL;
     shiftCentering = NULL;
     renderer = avtVolumeRenderer::New();
@@ -146,9 +142,6 @@ avtVolumePlot::avtVolumePlot() : avtVolumeDataPlot()
 //    Hank Childs, Wed Nov 24 17:03:44 PST 2004
 //    Removed hacks involved with previous software volume rendering mode.
 //
-//    Brad Whitlock, Mon Dec 15 15:52:01 PST 2008
-//    I added another filter.
-//
 // ****************************************************************************
 
 avtVolumePlot::~avtVolumePlot()
@@ -159,8 +152,6 @@ avtVolumePlot::~avtVolumePlot()
 
     if (volumeFilter != NULL)
         delete volumeFilter;
-    if (volumeImageFilter != NULL)
-        delete volumeImageFilter;
     if (resampleFilter != NULL)
         delete resampleFilter;
     renderer = NULL;
@@ -335,7 +326,7 @@ avtVolumePlot::SetLegendOpacities()
 int
 avtVolumePlot::GetNumberOfStagesForImageBasedPlot(const WindowAttributes &a)
 {
-    return volumeImageFilter->GetNumberOfStages(a);
+    return volumeFilter->GetNumberOfStages(a);
 }
 
 // ****************************************************************************
@@ -355,10 +346,10 @@ avtVolumePlot::ImageExecute(avtImage_p input,
 {
     avtImage_p rv = input;
 
-    if (volumeImageFilter != NULL)
+    if (volumeFilter != NULL)
     {
-        volumeImageFilter->SetAttributes(atts);
-        rv = volumeImageFilter->RenderImage(input, window_atts);
+        volumeFilter->SetAttributes(atts);
+        rv = volumeFilter->RenderImage(input, window_atts);
     }
     else
     {
@@ -512,12 +503,6 @@ avtVolumePlot::ApplyOperators(avtDataObject_p input)
 //    Hank Childs, Mon Sep 11 14:50:28 PDT 2006
 //    Added support for the integration ray function.
 //
-//    Brad Whitlock, Mon Dec 15 15:52:58 PST 2008
-//    Added a filter for the HW accelerated case.
-//
-//    Hank Childs, Wed Dec 31 13:47:37 PST 2008
-//    Renamed ResampleAtts to InternalResampleAtts.
-//
 // ****************************************************************************
 
 avtDataObject_p
@@ -531,11 +516,6 @@ avtVolumePlot::ApplyRenderingTransformation(avtDataObject_p input)
         delete volumeFilter;
         volumeFilter = NULL;
     }
-    if (volumeImageFilter != NULL)
-    {
-        delete volumeImageFilter;
-        volumeImageFilter = NULL;
-    }
     if (resampleFilter != NULL)
     {
         delete resampleFilter;
@@ -546,27 +526,22 @@ avtVolumePlot::ApplyRenderingTransformation(avtDataObject_p input)
     if (atts.GetRendererType() == VolumeAttributes::RayCasting ||
         atts.GetRendererType() == VolumeAttributes::RayCastingIntegration)
     {
-        volumeImageFilter = new avtVolumeFilter();
-        volumeImageFilter->SetAttributes(atts);
-        volumeImageFilter->SetInput(input);
-        dob = volumeImageFilter->GetOutput();
+        volumeFilter = new avtVolumeFilter();
+        volumeFilter->SetAttributes(atts);
+        volumeFilter->SetInput(input);
+        dob = volumeFilter->GetOutput();
     }
     else
     {
-        InternalResampleAttributes resampleAtts;
+        ResampleAttributes resampleAtts;
         resampleAtts.SetTargetVal(atts.GetResampleTarget());
         resampleAtts.SetUseTargetVal(true);
         resampleAtts.SetPrefersPowersOfTwo(
                     atts.GetRendererType() == VolumeAttributes::Texture3D);
         resampleFilter = new avtResampleFilter(&resampleAtts);
+
         resampleFilter->SetInput(input);
         dob = resampleFilter->GetOutput();
-
-        // Apply a filter that will work on the resampled data
-        volumeFilter = new avtLowerResolutionVolumeFilter();
-        volumeFilter->SetAtts(&atts);
-        volumeFilter->SetInput(dob);
-        dob = volumeFilter->GetOutput();
     }
 
     return dob;
@@ -681,9 +656,9 @@ avtVolumePlot::ReleaseData(void)
 {
     avtVolumeDataPlot::ReleaseData();
  
-    if (volumeImageFilter != NULL)
+    if (volumeFilter != NULL)
     {
-        volumeImageFilter->ReleaseData();
+        volumeFilter->ReleaseData();
     }
     if (shiftCentering != NULL)
     {

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -177,11 +177,6 @@ avtDataset::~avtDataset()
 //  Programmer:  Mark C. Miller 
 //  Creation:    November 5, 2003 
 //
-//  Modifications:
-//    
-//    Hank Childs, Tue Nov 18 06:09:52 PST 2008
-//    Handle NULL data trees.
-// 
 // ****************************************************************************
 
 int
@@ -192,9 +187,6 @@ avtDataset::GetNumberOfCells(bool polysOnly) const
    // we only care about topoDim if we're counting polys-only
    if (polysOnly)
       topoDim = GetInfo().GetAttributes().GetTopologicalDimension();
-
-   if (*dataTree == NULL)
-       return 0;
 
    return dataTree->GetNumberOfCells(topoDim, polysOnly);
 }

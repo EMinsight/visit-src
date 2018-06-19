@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -37,7 +37,7 @@
 *****************************************************************************/
 #ifndef SPREADSHEET_TAB_WIDGET_H
 #define SPREADSHEET_TAB_WIDGET_H
-#include <QTabWidget>
+#include <qtabwidget.h>
 
 // ****************************************************************************
 // Class: SpreadsheetTabWidget
@@ -52,21 +52,16 @@
 // Creation:   Thu Feb 22 09:41:32 PDT 2007
 //
 // Modifications:
-//   Brad Whitlock, Tue Aug 26 15:23:58 PDT 2008
-//   Qt 4.
-//
+//   
 // ****************************************************************************
 
 class SpreadsheetTabWidget : public QTabWidget
 {
-    Q_OBJECT
 public:
-    SpreadsheetTabWidget(QWidget *parent);
+    SpreadsheetTabWidget(QWidget *parent, const char *name);
     virtual ~SpreadsheetTabWidget();
     void setHighlightColor(const QColor &c);
     const QColor &highlightColor() const;
-protected slots:
-    void changeTabColors(int index);
 private:
     QColor highlight;
 };

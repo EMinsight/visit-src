@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -40,14 +40,15 @@
 #define QVIS_COLOR_MANAGER_WIDGET_H
 #include <gui_exports.h>
 #include <vector>
-#include <QColor>
-#include <QLayout>
-#include <QScrollArea>
-#include <QString>
+#include <qcolor.h>
+#include <qstring.h>
+#include <qwidget.h>
 
 // Forward declarations.
 class QGrid;
 class QLabel;
+class QScrollView;
+class QVBox;
 class QvisColorButton;
 class QvisOpacitySlider;
 
@@ -74,12 +75,9 @@ class QvisOpacitySlider;
 //   Brad Whitlock, Thu Aug 22 12:12:25 PDT 2002
 //   I added an override for the setEnabled method.
 //
-//   Brad Whitlock, Tue Jul 15 15:01:03 PDT 2008
-//   Qt 4.
-//
 // ****************************************************************************
 
-class GUI_API QvisColorManagerWidget : public QScrollArea
+class GUI_API QvisColorManagerWidget : public QWidget
 {
     Q_OBJECT
 
@@ -92,7 +90,7 @@ class GUI_API QvisColorManagerWidget : public QScrollArea
 
     typedef std::vector<ColorEntry *> ColorEntryVector;
 public:
-    QvisColorManagerWidget(QWidget *parent = 0);
+    QvisColorManagerWidget(QWidget *parent = 0, const char *name = 0);
     virtual ~QvisColorManagerWidget();
     virtual QSize sizeHint() const;
     virtual void setEnabled(bool val);
@@ -116,12 +114,14 @@ public:
 signals:
     void colorChanged(const QColor &color, int index);
     void opacityChanged(int opacity, int index);
+protected:
+    virtual void paletteChange(const QPalette &);
 private slots:
     void selectedColor(const QColor &color, const void *userData);
     void changedOpacity(int opacity, const void *userData);
 private:
-    QWidget          *top;
-    QGridLayout      *grid;
+    QScrollView      *scrollView;
+    QGrid            *grid;
     QLabel           *nameLabel;
     QLabel           *colorLabel;
     QLabel           *opacityLabel;

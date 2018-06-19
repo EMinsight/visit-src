@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -45,7 +45,7 @@
 #include <OperatorPluginInfo.h>
 #include <operator_plugin_exports.h>
 
-class ResampleAttributes;
+class ResamplePluginAttributes;
 
 // ****************************************************************************
 //  Class: ResamplePluginInfo
@@ -102,8 +102,8 @@ class ResampleViewerPluginInfo : public virtual ViewerOperatorPluginInfo, public
 
     static void InitializeGlobalObjects();
   private:
-    static ResampleAttributes *defaultAtts;
-    static ResampleAttributes *clientAtts;
+    static ResamplePluginAttributes *defaultAtts;
+    static ResamplePluginAttributes *clientAtts;
 };
 
 class ResampleEnginePluginInfo : public virtual EngineOperatorPluginInfo, public virtual ResampleCommonPluginInfo

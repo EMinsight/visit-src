@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400142
+* LLNL-CODE-400124
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -750,6 +750,31 @@ static PyObject *args_SetQueryFloatFormatRPC(ViewerRPC *rpc)
     return ViewerRPC_one_string(rpc->GetStringArg1());
 }
 
+static PyObject *args_CreateNamedSelectionRPC(ViewerRPC *rpc)
+{
+    return ViewerRPC_one_string(rpc->GetStringArg1());
+}
+
+static PyObject *args_DeleteNamedSelectionRPC(ViewerRPC *rpc)
+{
+    return ViewerRPC_one_string(rpc->GetStringArg1());
+}
+
+static PyObject *args_LoadNamedSelectionRPC(ViewerRPC *rpc)
+{
+    return ViewerRPC_one_string(rpc->GetStringArg1());
+}
+
+static PyObject *args_SaveNamedSelectionRPC(ViewerRPC *rpc)
+{
+    return ViewerRPC_one_string(rpc->GetStringArg1());
+}
+
+static PyObject *args_ApplyNamedSelectionRPC(ViewerRPC *rpc)
+{
+    return ViewerRPC_one_string(rpc->GetStringArg1());
+}
+
 static PyObject *args_SetMeshManagementAttributesRPC(ViewerRPC *) { return ViewerRPC_no_args(); }
 static PyObject *args_SetDefaultMeshManagementAttributesRPC(ViewerRPC *) { return ViewerRPC_no_args(); }
 static PyObject *args_ResetMeshManagementAttributesRPC(ViewerRPC *) { return ViewerRPC_no_args(); }
@@ -777,6 +802,11 @@ static PyObject *args_MoveAndResizeWindowRPC(ViewerRPC *rpc)
 
 static PyObject *args_SetStateLoggingRPC(ViewerRPC *) { return ViewerRPC_no_args(); }
 static PyObject *args_ConstructDDFRPC(ViewerRPC *) { return ViewerRPC_no_args(); }
+
+static PyObject *args_UpdatePlotInfoAttsRPC(ViewerRPC *rpc)
+{
+    return ViewerRPC_two_int(rpc->GetWindowId(), rpc->GetIntArg1());
+}
 
 static PyObject *args_RequestMetaDataRPC(ViewerRPC *rpc)
 {
@@ -831,6 +861,9 @@ static PyObject *args_SetDefaultFileOpenOptionsRPC(ViewerRPC *) { return ViewerR
 //
 // Modifications:
 //   
+//    Hank Childs, Wed Jan 28 07:21:05 PST 2009
+//    Add new RPCs for named selections.
+//
 // ****************************************************************************
 
 PyObject *
@@ -1342,6 +1375,9 @@ args_ViewerRPC(ViewerRPC *rpc)
     case ViewerRPC::ConstructDDFRPC:
         args = args_ConstructDDFRPC(rpc);
         break;
+    case ViewerRPC::UpdatePlotInfoAttsRPC:
+        args = args_UpdatePlotInfoAttsRPC(rpc);
+        break;
     case ViewerRPC::RequestMetaDataRPC:
         args = args_RequestMetaDataRPC(rpc);
         break;
@@ -1368,6 +1404,21 @@ args_ViewerRPC(ViewerRPC *rpc)
         break;
     case ViewerRPC::SetDefaultFileOpenOptionsRPC:
         args = args_SetDefaultFileOpenOptionsRPC(rpc);
+        break;
+    case ViewerRPC::CreateNamedSelectionRPC:
+        args = args_CreateNamedSelectionRPC(rpc);
+        break;
+    case ViewerRPC::DeleteNamedSelectionRPC:
+        args = args_DeleteNamedSelectionRPC(rpc);
+        break;
+    case ViewerRPC::LoadNamedSelectionRPC:
+        args = args_LoadNamedSelectionRPC(rpc);
+        break;
+    case ViewerRPC::SaveNamedSelectionRPC:
+        args = args_SaveNamedSelectionRPC(rpc);
+        break;
+    case ViewerRPC::ApplyNamedSelectionRPC:
+        args = args_ApplyNamedSelectionRPC(rpc);
         break;
     default:
         // The ViewerRPC is not handled so just wrap the whole ViewerRPC and pass
