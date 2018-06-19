@@ -128,6 +128,12 @@ QvisStreamlinePlotWindow::~QvisStreamlinePlotWindow()
 //   Dave Pugmire, Wed Aug 6 15:16:23 EST 2008
 //   Add accurate distance calculate option.
 //
+//   Dave Pugmire, Wed Aug 13 12:56:11 EST 2008
+//   Changed label text for streamline algorithms.
+//
+//   Dave Pugmire, Tue Aug 19 17:18:03 EST 2008
+//   Removed the accurate distance calculation option.
+//
 // ****************************************************************************
 
 void
@@ -148,12 +154,6 @@ QvisStreamlinePlotWindow::CreateWindowContents()
     connect(termination, SIGNAL(returnPressed()),
             this, SLOT(terminationProcessText()));
     mainLayout->addWidget(termination, 1,1);
-
-    accurateDistance = new QCheckBox(tr("Accurate distance"), central, "accurateDistance");
-    connect(accurateDistance, SIGNAL(toggled(bool)),
-            this, SLOT(accurateDistanceChanged(bool)));
-    mainLayout->addWidget(accurateDistance, 2,1);
-
 
     //Create the direction of integration.
     mainLayout->addWidget(new QLabel(tr("Streamline direction"), central, "streamlineDirectionLabel"),3,0);
@@ -408,7 +408,7 @@ QvisStreamlinePlotWindow::CreateWindowContents()
     algoGLayout->addWidget( slAlgoLabel, 1,0);
     algoGLayout->addWidget( slAlgo, 1,1);
     
-    maxSLCountLabel = new QLabel(tr("Streamline process count"), algoGrp, "slMaxCountLabel");
+    maxSLCountLabel = new QLabel(tr("Communication threshold"), algoGrp, "slMaxCountLabel");
     maxSLCount = new QSpinBox(1, 100000, 1, algoGrp, "slMaxCount");
     connect(maxSLCount, SIGNAL(valueChanged(int)), 
             this, SLOT(maxSLCountChanged(int)));
@@ -539,8 +539,14 @@ QvisStreamlinePlotWindow::ProcessOldVersions(DataNode *parentNode,
 //   Dave Pugmire, Thu Nov 15 12:09:08 EST 2007
 //   Add streamline direction option.
 //
-//   Dave Pugmire, Wed Aug 6 15:16:23 EST 2008
+//   Dave Pugmire, Wed Aug 6 15:16:23 EDT 2008
 //   Add accurate distance calculate option.
+//
+//   Dave Pugmire, Fri Aug 8 16:27:03 EDT 2008
+//   Set the termType combo box.
+//
+//   Dave Pugmire, Tue Aug 19 17:18:03 EST 2008
+//   Removed the accurate distance calculation option.
 //
 // ****************************************************************************
 
@@ -738,7 +744,9 @@ QvisStreamlinePlotWindow::UpdateWindow(bool doAll)
             absTol->setText(temp);
             break;
           case 27: //terminationType
-            accurateDistance->setEnabled( (streamAtts->GetTerminationType() == StreamlineAttributes::Distance) );
+            termType->blockSignals(true);
+            termType->setCurrentItem( int(streamAtts->GetTerminationType()) );
+            termType->blockSignals(false);
             break;
 
           case 28: //integrationType
@@ -769,12 +777,6 @@ QvisStreamlinePlotWindow::UpdateWindow(bool doAll)
             maxDomainCache->blockSignals(true);
             maxDomainCache->setValue(streamAtts->GetMaxDomainCacheSize());
             maxDomainCache->blockSignals(false);
-            break;
-
-          case 32: //accurateDistance
-            accurateDistance->blockSignals(true);
-            accurateDistance->setChecked(streamAtts->GetAccurateDistance());
-            accurateDistance->blockSignals(false);
             break;
         }
     }
@@ -947,6 +949,11 @@ QvisStreamlinePlotWindow::UpdateSourceAttributes()
 // Programmer: Dave Pugmire
 // Creation:   Thu Jul 31 14:41:00 EDT 2008
 //
+// Modifications:
+//
+//   Dave Pugmire, Fri Aug 8 16:27:03 EDT 2008
+//   Change the step label text based on the integration method.
+//
 // ****************************************************************************
 
 void
@@ -963,17 +970,11 @@ QvisStreamlinePlotWindow::UpdateIntegrationAttributes()
     absTol->hide();
     absTolLabel->hide();
 
-    //both use a step length.
-    if ( useDormandPrince || useAdamsBashforth )
-    {
-        maxStepLength->show();
-        maxStepLengthLabel->show();
-    }
-    
     if ( useDormandPrince )
     {
         maxStepLength->show();
         maxStepLengthLabel->show();
+        maxStepLengthLabel->setText(tr("Maximum step length"));
         relTol->show();
         relTolLabel->show();
         absTol->show();
@@ -983,6 +984,7 @@ QvisStreamlinePlotWindow::UpdateIntegrationAttributes()
     {
         maxStepLength->show();
         maxStepLengthLabel->show();
+        maxStepLengthLabel->setText(tr("Step length"));
         absTol->show();
         absTolLabel->show();
     }
@@ -1669,14 +1671,6 @@ void
 QvisStreamlinePlotWindow::displayMethodChanged(int val)
 {
     streamAtts->SetDisplayMethod((StreamlineAttributes::DisplayMethod)val);
-    Apply();
-}
-
-void
-QvisStreamlinePlotWindow::accurateDistanceChanged(bool val)
-{
-    streamAtts->SetAccurateDistance(val);
-    SetUpdate(false);
     Apply();
 }
 

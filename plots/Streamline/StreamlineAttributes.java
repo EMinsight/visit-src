@@ -136,7 +136,7 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         useWholeBox = true;
         pointDensity = 2;
         displayMethod = DISPLAYMETHOD_LINES;
-        showStart = true;
+        showStart = false;
         radius = 0.125;
         lineWidth = 2;
         coloringMethod = COLORINGMETHOD_COLORBYSPEED;
@@ -148,7 +148,8 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         relTol = 0.0001;
         absTol = 1e-05;
         terminationType = TERMINATIONTYPE_DISTANCE;
-            streamlineAlgorithmType = STREAMLINEALGORITHMTYPE_PARALLELSTATICDOMAINS;
+        integrationType = INTEGRATIONTYPE_DORMANDPRINCE;
+        streamlineAlgorithmType = STREAMLINEALGORITHMTYPE_PARALLELSTATICDOMAINS;
         maxStreamlineProcessCount = 10;
         maxDomainCacheSize = 3;
         accurateDistance = false;

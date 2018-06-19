@@ -365,7 +365,7 @@ StreamlineAttributes::StreamlineAttributes() :
     useWholeBox = true;
     pointDensity = 2;
     displayMethod = Lines;
-    showStart = true;
+    showStart = false;
     radius = 0.125;
     lineWidth = 2;
     coloringMethod = ColorBySpeed;
@@ -375,6 +375,7 @@ StreamlineAttributes::StreamlineAttributes() :
     relTol = 0.0001;
     absTol = 1e-05;
     terminationType = Distance;
+    integrationType = DormandPrince;
     streamlineAlgorithmType = ParallelStaticDomains;
     maxStreamlineProcessCount = 10;
     maxDomainCacheSize = 3;

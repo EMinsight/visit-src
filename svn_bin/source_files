@@ -51,6 +51,7 @@ sub get_norecursive ($@)
 @files = ();
 
 push @files, get_svn_norecursive  "./src";
+push @files, get_svn_recursive    "./src/ac";
 push @files, get_svn_recursive    "./src/common";
 push @files, get_svn_recursive    "./src/visit_vtk";
 push @files, get_svn_recursive    "./src/engine";
@@ -72,7 +73,7 @@ push @files, get_svn_recursive    "./src/include";
 push @files, get_svn_recursive    "./src/bin";
 push @files, get_svn_recursive    "./src/exe";
 push @files, get_svn_norecursive  "./src/lib";
-push @files, get_svn_norecursive  "./src/help";
+push @files, get_svn_recursive    "./src/help";
 push @files, get_svn_recursive    "./src/archives";
 push @files, get_svn_recursive    "./src/plugins";
 push @files, get_svn_recursive    "./src/clearcase_bin";
@@ -80,9 +81,6 @@ push @files, get_svn_recursive    "./src/svn_bin";
 push @files, get_svn_recursive    "./src/config-site";
 push @files, get_svn_recursive    "./src/cqscore";
 push @files, get_svn_recursive    "./src/third_party_builtin";
-push @files, get_norecursive      "./src/help/*/visit.helpml";
-push @files, get_norecursive      "./src/help/*/help*.html";
-push @files, get_norecursive      "./src/help/*/list*.html";
 push @files, get_norecursive      "./src/SVN_REVISION";
 push @files, get_norecursive      "./data/Makefile.in";
 push @files, get_norecursive      "./data/*.C";

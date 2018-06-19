@@ -69,6 +69,17 @@ static inline double sign( const double& a, const double& b )
 //  Programmer: Dave Pugmire
 //  Creation:   August 5, 2008
 //
+//  Modifications:
+//    Dave Pugmire, Fri Aug  8 16:05:34 EDT 2008
+//    Improved version of A-B solver that builds function history from
+//    initial Euler steps.
+//
+//    Dave Pugmire, Tue Aug 19, 17:38:03 EDT 2008
+//    Changed how distanced based termination is computed.
+//
+//    Dave Pugmire, Wed Aug 20, 12:54:44 EDT 2008
+//    Add a tolerance and counter for handling stiffness detection.
+//
 // ****************************************************************************
 
 avtIVPAdamsBashforth::avtIVPAdamsBashforth()
@@ -77,7 +88,9 @@ avtIVPAdamsBashforth::avtIVPAdamsBashforth()
     tol = 1e-8;
     h = 1e-5;
     t = 0.0;
-    initialized = 0;
+    d = 0.0;
+    degenerate_iterations = 0;
+    stiffness_eps = tol / 1000.0;
 }
 
 // ****************************************************************************
@@ -121,12 +134,17 @@ avtIVPAdamsBashforth::GetCurrentT() const
 //  Programmer: Dave Pugmire
 //  Creation:   August 5, 2008
 //
+//  Modifications:
+//    Dave Pugmire, Fri Aug  8 16:05:34 EDT 2008
+//    Improved version of A-B solver that builds function history from
+//    initial Euler steps.
+//
 // ****************************************************************************
 
 avtVec 
 avtIVPAdamsBashforth::GetCurrentY() const
 {
-    return ys[0];
+    return yCur;
 }
 
 // ****************************************************************************
@@ -138,12 +156,17 @@ avtIVPAdamsBashforth::GetCurrentY() const
 //  Programmer: Dave Pugmire
 //  Creation:   August 5, 2008
 //
+//  Modifications:
+//    Dave Pugmire, Fri Aug  8 16:05:34 EDT 2008
+//    Improved version of A-B solver that builds function history from
+//    initial Euler steps.
+//
 // ****************************************************************************
 
 void
 avtIVPAdamsBashforth::SetCurrentY(const avtVec &newY)
 {
-    ys[0] = newY;
+    yCur = newY;
 }
 
 
@@ -228,12 +251,17 @@ avtIVPAdamsBashforth::SetMaximumStepSize(const double& hMax)
 //  Programmer: Dave Pugmire
 //  Creation:   August 5, 2008
 //
+//  Modifications:
+//    Dave Pugmire, Wed Aug 20, 12:54:44 EDT 2008
+//    Add a tolerance and counter for handling stiffness detection.
+//
 // ****************************************************************************
 
 void
 avtIVPAdamsBashforth::SetTolerances(const double& relt, const double& abst)
 {
-    tol = relt;
+    tol = abst;
+    stiffness_eps = tol / 1000.0;
 }
 
 // ****************************************************************************
@@ -245,76 +273,51 @@ avtIVPAdamsBashforth::SetTolerances(const double& relt, const double& abst)
 //  Programmer: Dave Pugmire
 //  Creation:   August 5, 2008
 //
+//  Modifications:
+//    Dave Pugmire, Fri Aug  8 16:05:34 EDT 2008
+//    Improved version of A-B solver that builds function history from
+//    initial Euler steps.
+//
+//    Dave Pugmire, Tue Aug 19, 17:38:03 EDT 2008
+//    Changed how distanced based termination is computed.
+//
+//    Dave Pugmire, Wed Aug 20, 12:54:44 EDT 2008
+//    Add a tolerance and counter for handling stiffness detection.
+//
 // ****************************************************************************
 
 void 
 avtIVPAdamsBashforth::Reset(const double& t_start, const avtVecRef& y_start)
 {
     t = t_start;
-    x = y_start;
+    d = 0.0;
+    degenerate_iterations = 0;
+    yCur = y_start;
     h = h_max;
-    initialized = 0;
-    
-    // Set the self start values.
-    ys[0] = y_start;
-    
-    fns[0] = y_start;
-    fns[1] = y_start;
-    fns[2] = y_start;
-    fns[3] = y_start;
+    history.resize(yCur.dim(), 0);
 }
 
+
 // ****************************************************************************
-//  Method: avtIVPAdamsBashforth::Initialize
+//  Method: avtIVPAdamsBashforth::OnExitDomain
 //
 //  Purpose:
-//      Initialize the self start data.
+//      Post processing tasks after domain exit.
 //
 //  Programmer: Dave Pugmire
 //  Creation:   August 5, 2008
 //
+//  Modifications:
+//    Dave Pugmire, Fri Aug  8 16:05:34 EDT 2008
+//    Improved version of A-B solver that builds function history from
+//    initial Euler steps.
+//
 // ****************************************************************************
 
 void
-avtIVPAdamsBashforth::Initialize(const avtIVPField *field)
+avtIVPAdamsBashforth::OnExitDomain()
 {
-    /*
-    avtVec newY, x1 = x;
-
-    t += h;
-    x1 += h;
-    newY = (*field)( t, x1 );
-    fns[3] = newY;
-
-    t += h;
-    x1 += h;
-    newY = (*field)( t, x1 );
-    fns[2] = newY;
-    
-    t += h;
-    x1 += h;
-    newY = (*field)( t, x1 );
-    fns[1] = newY;
-    t += h;
-    
-    newY = (*field)( t, newY );
-    fns[0] = newY;
-
-    t += h;
-    x1 += h;
-    newY = (*field)( t, x1 );
-    ys[0] = newY;
-    */
-
-    //set *something*
-    ys[0] = x;
-    fns[0] = x;
-    fns[1] = x;
-    fns[2] = x;
-    fns[3] = x;
-    
-    h = h_max;
-    initialized = 1;
+    history.resize(yCur.dim(), 0);
 }
 
 
@@ -331,6 +334,10 @@ avtIVPAdamsBashforth::Initialize(const avtIVPField *field)
 //    Kathleen Bonnell, Thu Aug  7, 08:29:42 PDT 2008
 //    Changed for loops to use size_t to eliminate signed/unsigned int 
 //    comparison warnings.
+//
+//    Dave Pugmire, Fri Aug  8 16:05:34 EDT 2008
+//    Improved version of A-B solver that builds function history from
+//    initial Euler steps.
 //
 // ****************************************************************************
 
@@ -355,14 +362,6 @@ avtIVPAdamsBashforth::HasConverged(avtVec &y0, avtVec &y1, double epsilon)
             return false;
     
     return true;
-
-    /*
-    if ( fabs(y0) > 1.0 && fabs(y1) > 1.0 )
-        epsilon *= fabs(y1);
-    if ( fabs(y0 - y1) < epsilon )
-        return 1;
-    return 0;
-    */
 }
 
 // ****************************************************************************
@@ -400,7 +399,7 @@ avtIVPAdamsBashforth::AdamsMoulton4Steps(const avtIVPField* field,
    for (i = 1; i < STEPS; i++, n--)
    {
        for ( size_t j = 0; j < x.dim(); j++ )
-           delta.values()[j] += moulton[i] * fns[n].values()[j];
+           delta.values()[j] += moulton[i] * history[n].values()[j];
    }
    
    for (i = 0; i < iterations; i++)
@@ -442,7 +441,7 @@ avtIVPAdamsBashforth::AdamsBashforth5Steps( avtVec &y,
     for (i = 0; i < STEPS; i++, n--)
     {
         for ( size_t j = 0; j < y.dim(); j++ )
-            delta.values()[j] += bashforth[i] * fns[n].values()[j];
+            delta.values()[j] += bashforth[i] * history[n].values()[j];
     }
     
     avtVec yStep(y.dim());
@@ -479,11 +478,11 @@ avtIVPAdamsBashforth::Adams5Steps(const avtIVPField* field,
     int i;
 
     // Calculate the predictor using the Adams-Bashforth formula 
-    fns[STEPS-1] = (*field)(t, x0);
+    history[STEPS-1] = (*field)(t, x0);
 
     *y_bashforth  = AdamsBashforth5Steps( ys[0], h );
     for (i = 0; i < STEPS - 1; i++) 
-        fns[i] = fns[i+1];
+        history[i] = history[i+1];
     
     // Calculate the corrector using the Adams-Moulton formula 
     ys[1] = *y_bashforth;
@@ -495,7 +494,31 @@ avtIVPAdamsBashforth::Adams5Steps(const avtIVPField* field,
 }
 
 // ****************************************************************************
-//  Method: avtIVPAdamsBashforth::Step
+//  Method: avtIVPAdamsBashforth::UpdateHistory
+//
+//  Purpose:
+//      Take a step and return the result.
+//
+//  Programmer: Dave Pugmire
+//  Creation:   August 8, 2008
+//
+// ****************************************************************************
+
+void
+avtIVPAdamsBashforth::UpdateHistory( const avtVec &yNew )
+{
+    if ( history.size() < 5 )
+        history.resize( history.size()+1 );
+ 
+    for ( int i = 0; i < history.size()-1; i++ )
+        history[i] = history[i+1];
+    
+    history[history.size()-1] = yNew;
+}
+
+
+// ****************************************************************************
+//  Method: avtIVPAdamsBashforth::EulerStep
 //
 //  Purpose:
 //      Take a step and return the result.
@@ -506,8 +529,71 @@ avtIVPAdamsBashforth::Adams5Steps(const avtIVPField* field,
 // ****************************************************************************
 
 avtIVPSolver::Result 
+avtIVPAdamsBashforth::EulerStep(const avtIVPField* field,
+                                avtVec &yNew )
+{
+    avtVec v = (*field)(t,yCur);
+    yNew = yCur + (v*h);
+
+    return avtIVPSolver::OK;
+}
+
+
+// ****************************************************************************
+//  Method: avtIVPAdamsBashforth::ABStep
+//
+//  Purpose:
+//      Take a step and return the result.
+//
+//  Programmer: Dave Pugmire
+//  Creation:   August 5, 2008
+//
+// ****************************************************************************
+
+avtIVPSolver::Result 
+avtIVPAdamsBashforth::ABStep(const avtIVPField* field,
+                                avtVec &newY )
+{
+    int maxIter = 100;
+    avtVec yb(yCur.dim());
+    ys[0] = yCur;
+
+    if ( Adams5Steps( field, yCur, t, h, &yb, tol, maxIter ) > maxIter )
+        return avtIVPSolver::UNSPECIFIED_ERROR;
+
+    newY = ys[1];
+    ys[0] = ys[1];
+    
+    return avtIVPSolver::OK;
+}
+
+// ****************************************************************************
+//  Method: avtIVPAdamsBashforth::Step
+//
+//  Purpose:
+//      Take a step and return the result.
+//
+//  Programmer: Dave Pugmire
+//  Creation:   August 5, 2008
+//
+//  Modifications:
+//
+//    Dave Pugmire, Wed Aug 13 10:58:32 EDT 2008
+//    Store the velocity with each step.
+//
+//    Dave Pugmire, Tue Aug 19, 17:38:03 EDT 2008
+//    Chagned how distanced based termination is computed.
+//
+//    Dave Pugmire, Wed Aug 20, 12:54:44 EDT 2008
+//    Add a tolerance and counter for handling stiffness detection.
+//
+// ****************************************************************************
+
+avtIVPSolver::Result 
 avtIVPAdamsBashforth::Step(const avtIVPField* field,
+                           const bool &timeMode,
                            const double& t_max,
+                           const double& d_max,
                            avtIVPStep* ivpstep)
 {
     const double direction = sign( 1.0, t_max - t );
@@ -520,40 +606,71 @@ avtIVPAdamsBashforth::Step(const avtIVPField* field,
         h = t_max - t;
     }
 
-    if ( initialized == 0 )
-        Initialize( field );
-
     // stepsize underflow?
     if( 0.1*std::abs(h) <= std::abs(t)*epsilon )
     {
-        return STEPSIZE_UNDERFLOW;
+        return avtIVPSolver::STEPSIZE_UNDERFLOW;
     }
-    
-    avtVec yb;
-    int maxIter = 100;
-    int r = Adams5Steps( field, x, t, h, &yb, tol, maxIter );
-    
-    if ( r >= maxIter )
-        return UNSPECIFIED_ERROR;
-    
-    ivpstep->resize( ys[0].dim(), 2 );
 
-    (*ivpstep)[0] = ys[0];
-    (*ivpstep)[1] = ys[1]; 
-    ivpstep->tStart = t;
-    ivpstep->tEnd   = t + h;
-    x = ys[1];
+    avtIVPSolver::Result res;
+    avtVec yNew(yCur.dim());
+    if ( history.size() < 5 )
+    {
+        res = EulerStep( field, yNew );
+        UpdateHistory(yNew);
 
-    //Inc for next step.
-    t += h;
-    ys[0] = ys[1];
+    }
+    else
+    {
+        res = ABStep( field, yNew );
+    }
 
-    // Succesful step, we don't allow for adaptive step, so
 
-    // set it to the initial value.
+    if ( res == avtIVPSolver::OK )
+    {
+        ivpstep->resize( yCur.dim(), 2 );
+
+        (*ivpstep)[0] = yCur;
+        (*ivpstep)[1] = yNew;
+        ivpstep->tStart = t;
+        ivpstep->tEnd = t + h;
+
+        // Handle distanced based termination.
+        if (!timeMode)
+        {
+            double len = ivpstep->length();
+            
+            //debug1<<"ABStep: "<<t<<" d: "<<d<<" => "<<(d+len)<<" h= "<<h<<" len= "<<len<<" sEps= "<<stiffness_eps<<endl;
+            if (len < stiffness_eps)
+            {
+                degenerate_iterations++;
+                if (degenerate_iterations > 15)
+                {
+                    //debug1<<"********** STIFFNESS ***************************\n";
+                    return avtIVPSolver::STIFFNESS_DETECTED;
+                }
+            }
+            else
+                degenerate_iterations = 0;
+
+            if ( d+len > d_max )
+            {
+                //debug1<<"********** TOO LONG ***************************\n";
+                throw avtIVPField::Undefined();
+            }
+            d = d+len;
+        }
+
+        ivpstep->velStart = (*field)(t,yCur);
+        ivpstep->velEnd = (*field)((t+h),yNew);
+
+        t = t+h;
+        yCur = yNew;
+    }
+
+    // Reset the step size on sucessful step..
     h = h_max;
-
-    return avtIVPSolver::OK;
+    return res;
 }
 
 // ****************************************************************************
@@ -565,19 +682,24 @@ avtIVPAdamsBashforth::Step(const avtIVPField* field,
 //  Programmer: Dave Pugmire
 //  Creation:   August 5, 2008
 //
+//  Modifications:
+//
+//    Dave Pugmire, Wed Aug 20, 12:54:44 EDT 2008
+//    Add a tolerance and counter for handling stiffness detection.
+//
 // ****************************************************************************
 void
 avtIVPAdamsBashforth::AcceptStateVisitor(avtIVPStateHelper& aiss)
 {
     aiss.Accept(tol)
+        .Accept(degenerate_iterations)
+        .Accept(stiffness_eps)
         .Accept(h)
         .Accept(h_max)
         .Accept(t)
-        .Accept(initialized)
+        .Accept(d)
+        .Accept(yCur)
+        .Accept(history)
         .Accept(ys[0])
-        .Accept(ys[1])
-        .Accept(fns[0])
-        .Accept(fns[1])
-        .Accept(fns[2])
-        .Accept(fns[3]);
+        .Accept(ys[1]);
 }

@@ -81,8 +81,8 @@ class vtkAppendPolyData;
 #define STREAMLINE_INTEGRATE_DORLAND_PRINCE 0
 #define STREAMLINE_INTEGRATE_ADAMS_BASHFORTH 1
 
-#define STREAMLINE_PARALLEL_STATIC_DOMAINS 0
-#define STREAMLINE_STAGED_LOAD_ONDEMAND 1
+#define STREAMLINE_STAGED_LOAD_ONDEMAND 0
+#define STREAMLINE_PARALLEL_STATIC_DOMAINS 1
 
 class pt3d
 {
@@ -201,6 +201,12 @@ class avtStreamlineWrapper
 //   Dave Pugmire, Wed Aug 6 15:16:23 EST 2008
 //   Add accurate distance calculate option.
 //
+//   Dave Pugmire, Wed Aug 13 14:11:04 EST 2008
+//   Add dataSpatialDimension
+//
+//   Dave Pugmire, Tue Aug 19 17:13:04EST 2008
+//   Remove accurate distance calculate option.
+//
 // ****************************************************************************
 
 class avtStreamlineFilter : public avtDatasetOnDemandFilter
@@ -216,7 +222,7 @@ class avtStreamlineFilter : public avtDatasetOnDemandFilter
     // Methods to set the filter's attributes.
     void                      SetSourceType(int sourceType);
     void                      SetMaxStepLength(double len);
-    void                      SetTermination(int type, double term, bool accurateDistance);
+    void                      SetTermination(int type, double term);
     void                      SetIntegrationType(int algo);
     void                      SetStreamlineAlgorithm(int algo, int maxCnt, int domainCache);
     void                      SetTolerances(double reltol, double abstol);
@@ -243,7 +249,6 @@ class avtStreamlineFilter : public avtDatasetOnDemandFilter
     double absTol;
     int terminationType;
     int integrationType;
-    bool accurateDistance;
     double termination;
     double radius;
     int    displayMethod;
@@ -251,6 +256,7 @@ class avtStreamlineFilter : public avtDatasetOnDemandFilter
     int    pointDensity;
     int    streamlineDirection;
     int    coloringMethod;
+    int    dataSpatialDimension;
     std::string normalizedVecExprName;
 
     avtIntervalTree *intervalTree;
@@ -326,7 +332,7 @@ class avtStreamlineFilter : public avtDatasetOnDemandFilter
                                    std::vector<avtStreamlineWrapper *> &pts);
     void                      IntegrateStreamline(avtStreamlineWrapper *slSeg);
     avtIVPSolver::Result      IntegrateDomain(avtStreamlineWrapper *slSeg, 
-                                              vtkDataSet *ds);
+                                              vtkDataSet *ds, double *extents);
     void                      CreateStreamlineOutput( 
                                  vector<avtStreamlineWrapper *> &streamlines );
 

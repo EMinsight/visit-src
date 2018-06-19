@@ -250,13 +250,17 @@ avtStreamlinePlot::ApplyRenderingTransformation(avtDataObject_p input)
 //  Method: avtStreamlinePlot::CustomizeBehavior
 //
 //  Purpose:
-//      Customizes the behavior as appropriate for a Streamline plot.  This includes
-//      behavior like shifting towards or away from the screen.
+//      Customizes the behavior as appropriate for a Streamline plot.  This 
+//      includes behavior like shifting towards or away from the screen.
 //
 //  Programmer: Brad Whitlock
 //  Creation:   Fri Oct 4 15:22:57 PST 2002
 //
 //  Modifications:
+//
+//    Hank Childs, Tue Aug 12 10:55:03 PDT 2008
+//    Shift the streamline plot towards the front, so it will show up over 
+//    Pseudocolor plots.
 //
 // ****************************************************************************
 
@@ -265,6 +269,7 @@ avtStreamlinePlot::CustomizeBehavior(void)
 {
     SetLegendRanges();
     behavior->SetLegend(varLegendRefPtr);
+    behavior->SetShiftFactor(0.3);
 }
 
 
@@ -323,6 +328,9 @@ avtStreamlinePlot::EnhanceSpecification(avtContract_p in_contract)
 //   Dave Pugmire, Wed Aug 6 15:16:23 EST 2008
 //   Add accurate distance calculate option.
 //
+//   Dave Pugmire, Tue Aug 19 17:13:04EST 2008
+//   Remove accurate distance calculate option.
+//
 // ****************************************************************************
 
 void
@@ -350,7 +358,7 @@ avtStreamlinePlot::SetAtts(const AttributeGroup *a)
                                              atts.GetMaxDomainCacheSize());
     streamlineFilter->SetMaxStepLength(atts.GetMaxStepLength());
     streamlineFilter->SetTolerances(atts.GetRelTol(),atts.GetAbsTol());
-    streamlineFilter->SetTermination(atts.GetTerminationType(), atts.GetTermination(), atts.GetAccurateDistance());
+    streamlineFilter->SetTermination(atts.GetTerminationType(), atts.GetTermination());
     streamlineFilter->SetDisplayMethod(atts.GetDisplayMethod());
     streamlineFilter->SetShowStart(atts.GetShowStart());
     streamlineFilter->SetRadius(atts.GetRadius());
@@ -518,6 +526,9 @@ avtStreamlinePlot::SetLighting(bool lightingOn)
 //
 // Modifications:
 //   
+//    Hank Childs, Tue Aug 12 15:04:40 PDT 2008
+//    If we don't have any streamlines, make sure something sensible shows up.
+//
 // ****************************************************************************
 
 void
@@ -526,12 +537,16 @@ avtStreamlinePlot::SetLegendRanges()
     double min, max;
     varMapper->GetVarRange(min, max);
 
+    if (max < 0.)
+        max = 0.;
+
     //
     // Set the range for the legend's text and colors.
     //
     varLegend->SetVarRange(0., max);
     varLegend->SetRange(0., max);
 }
+
 
 // ****************************************************************************
 // Method: avtStreamlinePlot::SetLineWidth

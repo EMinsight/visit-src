@@ -56,6 +56,17 @@
 //  Programmer: Dave Pugmire
 //  Creation:   August 5, 2008
 //
+//  Modifications:
+//    Dave Pugmire, Fri Aug  8 16:05:34 EDT 2008
+//    Improved version of A-B solver that builds function history from
+//    initial Euler steps.
+//
+//    Dave Pugmire, Tue Aug 19, 17:38:03 EDT 2008
+//    Changed how distanced based termination is computed.
+//
+//    Dave Pugmire, Wed Aug 20, 12:54:44 EDT 2008
+//    Add a tolerance and counter for handling stiffness detection.
+//
 // ****************************************************************************
 
 class IVP_API avtIVPAdamsBashforth: public avtIVPSolver
@@ -69,8 +80,12 @@ class IVP_API avtIVPAdamsBashforth: public avtIVPSolver
 
     // perform a single integration step
     // adaptive stepsize control retries until success or underflow
-    virtual Result   Step(const avtIVPField* field, const double& t_max, 
+    virtual Result   Step(const avtIVPField* field,
+                          const bool& timeMode,
+                          const double& t_max,
+                          const double& d_max,
                           avtIVPStep* ivpstep = NULL);
+    virtual void    OnExitDomain();
 
     virtual avtVec   GetCurrentY() const;
     virtual double   GetCurrentT() const;
@@ -92,6 +107,11 @@ class IVP_API avtIVPAdamsBashforth: public avtIVPSolver
     // state serialization
     virtual void     AcceptStateVisitor(avtIVPStateHelper &aiss);
     
+    void             UpdateHistory( const avtVec &yNew );
+    avtIVPSolver::Result EulerStep(const avtIVPField* field,
+                                   avtVec &yNew);
+    avtIVPSolver::Result ABStep(const avtIVPField* field,
+                                avtVec &yNew);
     int              AdamsMoulton4Steps(const avtIVPField* field,
                                         avtVec x,
                                         double t,
@@ -113,15 +133,14 @@ class IVP_API avtIVPAdamsBashforth: public avtIVPSolver
                                     double epsilon );
 
   private:
-    void Initialize(const avtIVPField* field);
-    
     double tol;
     double h, h_max;
-    double t;
-    avtVec fns[4];
-    avtVec x;
+    double t, d;
+    int degenerate_iterations;
+    double stiffness_eps;
+    avtVecArray history;
+    avtVec yCur;
     avtVec ys[2];
-    int initialized;
 };
 
 #endif

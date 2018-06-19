@@ -328,6 +328,12 @@
 #    Hank Childs, Sat Feb  9 14:18:54 PST 2008
 #    Change clearcase_bin to svn_bin.
 #
+#    Hank Childs, Mon Aug 11 14:48:51 PDT 2008
+#    Add support for libtcmalloc.
+#
+#    Brad Whitlock, Thu Aug 21 10:21:12 PDT 2008
+#    Added code to copy translation files.
+#
 #------------------------------------------------------------------------------
 
 set DataFiles = "TRUE"
@@ -775,6 +781,7 @@ ln -s $Version distribution/visit/current
 mkdir distribution/visit/$Version/$visitbindir
 mkdir distribution/visit/$Version/$visitbindir/bin
 mkdir distribution/visit/$Version/$visitbindir/bin/movietemplates
+mkdir distribution/visit/$Version/$visitbindir/bin/translations
 mkdir distribution/visit/$Version/$visitbindir/lib
 mkdir distribution/visit/$Version/$visitbindir/include
 mkdir distribution/visit/$Version/$visitbindir/help
@@ -889,6 +896,9 @@ cp $VisItDir/bin/movietemplates/*.{bmp,jpg,gif,tif} $bindir/movietemplates
 cp $VisItDir/bin/visitdiff.py  $bindir
 # Copy the visitprotocol program.
 cp $VisItDir/exe/visitprotocol $bindir
+# Copy the language translations
+cp $VisItDir/bin/translations/*.qm $bindir/translations
+cp $VisItDir/bin/translations/*.ts $bindir/translations
 
 #
 # Make symlinks for the programs
@@ -952,6 +962,11 @@ echo "Copying libraries to the distribution..."
 if ((-e $VisItDir/lib/libgcc_s.so.1) || (-e $VisItDir/lib/libgcc_s.a)) then
     cp $VisItDir/lib/libgcc_s* $libdir
     cp $VisItDir/lib/libstdc++* $libdir
+endif
+# Add support for all the tcmalloc libs ... meaning libtcmalloc.so, 
+# libtcmalloc.so.0, & libtcmalloc.so.0.0.0.
+if (-e $VisItDir/lib/libtcmalloc.so) then
+    cp $VisItDir/lib/libtcmalloc* $libdir
 endif
 
 #
@@ -1249,7 +1264,7 @@ cp $VisItDir/include/qt/private/*.h             $incdir/qt/private
 if (-e $VisItDir/help) then
    set tmpDir = `pwd`
    cd $VisItDir/help
-   set translations=`find . -maxdepth 1 -type d`
+   set translations=`find . -type d`
    cd $tmpDir
    foreach t1 ($translations)
        set translation=`echo $t1 | sed "s/.\///g"`

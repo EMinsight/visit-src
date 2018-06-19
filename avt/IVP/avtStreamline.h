@@ -78,6 +78,14 @@
 //  Programmer: Christoph Garth
 //  Creation:   February 25, 2008
 //
+//  Modifications:
+//
+//    Dave Pugmire, Wed Aug 13 10:58:32 EDT 2008
+//    Modify how data without ghost zones are handled.
+//
+//    Dave Pugmire, Tue Aug 19, 17:38:03 EDT 2008
+//    Chagned how distanced based termination is computed.
+//
 // ****************************************************************************
 
 class IVP_API avtStreamline
@@ -94,9 +102,12 @@ class IVP_API avtStreamline
     void      UnsetIntersectPlane();
     void      SetIntersectPlane(const avtVec &pt, const avtVec &norm);
    
-    avtIVPSolver::Result 
-              Advance(const avtIVPField* field, double tEnd, 
-                      bool vorticity=false, bool haveGhostZones=false );
+    avtIVPSolver::Result Advance(const avtIVPField* field,
+                                 bool timeMode,
+                                 double end,
+                                 bool vorticity=false,
+                                 bool haveGhostZones=false,
+                                 double *extents=NULL);
 
     // Min/Max T of integrated streamlines.
     double    TMin() const;
@@ -124,11 +135,16 @@ class IVP_API avtStreamline
     avtStreamline( const avtStreamline& );
     avtStreamline& operator=( const avtStreamline& );
     
-    avtIVPSolver::Result 
-              DoAdvance(avtIVPSolver* ivp, const avtIVPField* field, 
-                        double t, bool haveGhostZones=false);
+    avtIVPSolver::Result DoAdvance(avtIVPSolver* ivp,
+                                   const avtIVPField* field,
+                                   double tEnd,
+                                   double dEnd,
+                                   bool timeMode,
+                                   bool haveGhostZones=false,
+                                   double *extents=NULL);
 
-    void      HandleGhostZones( avtIVPSolver* ivp, bool haveGhostZones );
+    void      HandleGhostZones(avtIVPSolver* ivp, bool haveGhostZones,
+                               double *extents);
 
     // Integration steps.
     //std::list<const avtIVPStep*> _steps;

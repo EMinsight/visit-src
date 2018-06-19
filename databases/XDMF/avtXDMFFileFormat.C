@@ -57,6 +57,8 @@
 #include <avtCallback.h>
 #include <avtDatabaseMetaData.h>
 #include <avtGhostData.h>
+#include <avtStructuredDomainBoundaries.h>
+#include <avtVariableCache.h>
 
 #include <Expression.h>
 
@@ -496,6 +498,10 @@ avtXDMFFileFormat::ReadXMLDataItem(DataItem *dataItem, void *buf, int lBuf,
 //    Brad Whitlock, Fri May 16 09:52:31 PDT 2008
 //    Added debugging info since it can help debug creation of XML schemas.
 //
+//    Eric Brugger, Tue Aug 19 15:49:00 PDT 2008
+//    I added coding to convert uchar, char, uint, and int to float if
+//    necessary, since HDF5 doesn't do that type of conversion.
+//
 // ****************************************************************************
 
 int
@@ -504,16 +510,15 @@ avtXDMFFileFormat::ReadHDFDataItem(DataItem *dataItem, void *buf, int lBuf,
 {
     const char *mName = "avtXDMFFileFormat::ReadHDFDataItem: ";
     hid_t     file_id, dataset_id, dataspace_id;
+    hid_t     dataset_type;
+    size_t    dataset_type_size;
+    H5T_sign_t dataset_type_sign;
+    H5T_class_t dataset_type_class;
 
     //
-    // Translate the buffer type to an HDF5 data type.
+    // Check that the buffer type is valid.
     //
-    hid_t buf_type;
-    if (bufType == VTK_FLOAT)
-        buf_type = H5T_NATIVE_FLOAT;
-    else if (bufType == VTK_INT)
-        buf_type = H5T_NATIVE_INT;
-    else
+    if (bufType != VTK_FLOAT && bufType != VTK_INT)
         return 0;
 
     //
@@ -555,10 +560,39 @@ avtXDMFFileFormat::ReadHDFDataItem(DataItem *dataItem, void *buf, int lBuf,
     if ((dataset_id = H5Dopen(file_id, datasetname)) < 0)
     {
         avtCallback::IssueWarning("Unable to open dataset.");
-        H5Fclose(file_id);
         return 0;
     }
 
+    //
+    // Get the data type information for the data set.
+    //
+    if ((dataset_type = H5Dget_type(dataset_id)) < 0)
+    {
+        avtCallback::IssueWarning("Unable to get the dataset type.");
+        H5Dclose(dataset_id);
+        return 0;
+    }
+
+    dataset_type_class = H5Tget_class(dataset_type);
+    dataset_type_sign  = H5Tget_sign(dataset_type);
+    dataset_type_size  = H5Tget_size(dataset_type);
+
+    //
+    // Check that the type is supported.  This includes 1 and 4 byte
+    // integers and 4 and 8 byte floats.
+    //
+    if ((dataset_type_class == H5T_INTEGER &&
+         dataset_type_size != 1 && dataset_type_size != 4) ||
+        (dataset_type_class == H5T_FLOAT &&
+         dataset_type_size != 4 && dataset_type_size != 8) ||
+        (dataset_type_class != H5T_INTEGER &&
+         dataset_type_class != H5T_FLOAT))
+    {
+        avtCallback::IssueWarning("Unsupported data type.");
+        H5Dclose(dataset_id);
+        return 0;
+    }
+        
     //
     // Determine the size of the dataset.
     //
@@ -566,7 +600,6 @@ avtXDMFFileFormat::ReadHDFDataItem(DataItem *dataItem, void *buf, int lBuf,
     {
         avtCallback::IssueWarning("Unable to get the dataspace id.");
         H5Dclose(dataset_id);
-        H5Fclose(file_id);
         return 0;
     }
     hssize_t ldataset = H5Sget_simple_extent_npoints(dataspace_id);
@@ -591,7 +624,6 @@ avtXDMFFileFormat::ReadHDFDataItem(DataItem *dataItem, void *buf, int lBuf,
     {
         avtCallback::IssueWarning("Dimensions don't match dataset size.");
         H5Dclose(dataset_id);
-        H5Fclose(file_id);
         return 0;
     }
 
@@ -602,20 +634,106 @@ avtXDMFFileFormat::ReadHDFDataItem(DataItem *dataItem, void *buf, int lBuf,
     {
         avtCallback::IssueWarning("Buffer size doesn't match dataset size.");
         H5Dclose(dataset_id);
-        H5Fclose(file_id);
         return 0;
     }
 
     //
     // Read the data set.
     //
-    if (H5Dread(dataset_id, buf_type, H5S_ALL, H5S_ALL,
-                H5P_DEFAULT, buf) < 0)
+    if (bufType == VTK_INT && dataset_type_class == H5T_INTEGER)
     {
-        avtCallback::IssueWarning("Unable to read the dataset.");
-        H5Dclose(dataset_id);
-        H5Fclose(file_id);
-        return 0;
+        debug4 << mName << "Reading integer data" << endl;
+        if (H5Dread(dataset_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL,
+                    H5P_DEFAULT, buf) < 0)
+        {
+            avtCallback::IssueWarning("Unable to read the dataset.");
+            H5Dclose(dataset_id);
+            return 0;
+        }
+    }
+    else if (bufType == VTK_FLOAT && dataset_type_class == H5T_FLOAT)
+    {
+        debug4 << mName << "Reading float data" << endl;
+        if (H5Dread(dataset_id, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL,
+                    H5P_DEFAULT, buf) < 0)
+        {
+            avtCallback::IssueWarning("Unable to read the dataset.");
+            H5Dclose(dataset_id);
+            return 0;
+        }
+    }
+    else if (bufType == VTK_FLOAT)
+    {
+        if (dataset_type_size == 1 && dataset_type_sign == H5T_SGN_NONE)
+        {
+            debug4 << mName << "Converting uchar to float" << endl;
+            unsigned char *cBuf = new unsigned char[lBuf];
+            if (H5Dread(dataset_id, H5T_NATIVE_UCHAR, H5S_ALL, H5S_ALL,
+                        H5P_DEFAULT, cBuf) < 0)
+            {
+                avtCallback::IssueWarning("Unable to read the dataset.");
+                H5Dclose(dataset_id);
+                return 0;
+            }
+            float *fBuf = (float *)buf;
+            for (int i = 0; i < lBuf; i++)
+                *fBuf++ = *cBuf++;
+            delete [] cBuf;
+        }
+        else if (dataset_type_size == 1 && dataset_type_sign == H5T_SGN_2)
+        {
+            debug4 << mName << "Converting char to float" << endl;
+            char *cBuf = new char[lBuf];
+            if (H5Dread(dataset_id, H5T_NATIVE_CHAR, H5S_ALL, H5S_ALL,
+                        H5P_DEFAULT, cBuf) < 0)
+            {
+                avtCallback::IssueWarning("Unable to read the dataset.");
+                H5Dclose(dataset_id);
+                return 0;
+            }
+            float *fBuf = (float *)buf;
+            for (int i = 0; i < lBuf; i++)
+                *fBuf++ = *cBuf++;
+            delete [] cBuf;
+        }
+        else if (dataset_type_size == 4 && dataset_type_sign == H5T_SGN_NONE)
+        {
+            debug4 << mName << "Converting uint to float" << endl;
+            unsigned int *iBuf = new unsigned int[lBuf];
+            if (H5Dread(dataset_id, H5T_NATIVE_UINT, H5S_ALL, H5S_ALL,
+                        H5P_DEFAULT, iBuf) < 0)
+            {
+                avtCallback::IssueWarning("Unable to read the dataset.");
+                H5Dclose(dataset_id);
+                return 0;
+            }
+            float *fBuf = (float *)buf;
+            for (int i = 0; i < lBuf; i++)
+                *fBuf++ = *iBuf++;
+            delete [] iBuf;
+        }
+        else if (dataset_type_size == 4 && dataset_type_sign == H5T_SGN_2)
+        {
+            debug4 << mName << "Converting int to float" << endl;
+            int *iBuf = new int[lBuf];
+            if (H5Dread(dataset_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL,
+                        H5P_DEFAULT, iBuf) < 0)
+            {
+                avtCallback::IssueWarning("Unable to read the dataset.");
+                H5Dclose(dataset_id);
+                return 0;
+            }
+            float *fBuf = (float *)buf;
+            for (int i = 0; i < lBuf; i++)
+                *fBuf++ = *iBuf++;
+            delete [] iBuf;
+        }
+        else
+        {
+            avtCallback::IssueWarning("Unable to read the dataset.");
+            H5Dclose(dataset_id);
+            return 0;
+        }
     }
 
     //
@@ -1270,11 +1388,17 @@ avtXDMFFileFormat::ParseAttribute(int iDomain, int iGrid,
 //  Programmer: Eric Brugger
 //  Creation:   Mon Mar 17 13:22:09 PDT 2008
 //
+//  Modifications:
+//    Eric Brugger, Tue Aug 26 15:57:05 PDT 2008
+//    Modified the routine to handle grid information with a baseIndex.
+//
 // ****************************************************************************
 
 void
-avtXDMFFileFormat::ParseGridInformation(string &ghostOffsets)
+avtXDMFFileFormat::ParseGridInformation(string &baseIndex,
+    string &ghostOffsets)
 {
+    bool haveBaseIndex = false;
     bool haveGhostOffsets = false;
 
     //
@@ -1284,12 +1408,16 @@ avtXDMFFileFormat::ParseGridInformation(string &ghostOffsets)
     {
         if (strcmp(xdmfParser.GetAttributeName(), "Name") == 0)
         {
-            if (strcmp(xdmfParser.GetAttributeValue(), "GhostOffsets") == 0)
+            if (strcmp(xdmfParser.GetAttributeValue(), "BaseIndex") == 0)
+                haveBaseIndex = true;
+            else if (strcmp(xdmfParser.GetAttributeValue(), "GhostOffsets") == 0)
                 haveGhostOffsets = true;
         }
         else if (strcmp(xdmfParser.GetAttributeName(), "Value") == 0)
         {
-            if (haveGhostOffsets)
+            if (haveBaseIndex)
+                baseIndex = string(xdmfParser.GetAttributeValue());
+            else if (haveGhostOffsets)
                 ghostOffsets = string(xdmfParser.GetAttributeValue());
         }
     }
@@ -1335,6 +1463,11 @@ avtXDMFFileFormat::ParseGridInformation(string &ghostOffsets)
 //    Eric Brugger, Tue Apr  8 14:25:31 PDT 2008
 //    I added coding to handle baseOffset and order for unstructured grids.
 //
+//    Eric Brugger, Tue Aug 26 15:57:05 PDT 2008
+//    Modified the routine to handle grid information with a baseIndex. I
+//    also reversed the order in which the ghost zone indices are interpreted
+//    to match the order in which dimensions are interpreted.
+//
 // ****************************************************************************
 
 void
@@ -1353,6 +1486,7 @@ avtXDMFFileFormat::ParseUniformGrid(vector<MeshInfo*> &meshList,
     DataItem *meshData[3];
     VarInfo  *varInfo = NULL;
     vector<VarInfo*> varList;
+    string    baseIndex;
     string    ghostOffsets;
 
     //
@@ -1379,7 +1513,7 @@ avtXDMFFileFormat::ParseUniformGrid(vector<MeshInfo*> &meshList,
             }
             else if (strcmp(xdmfParser.GetElementName(), "Information") == 0)
             {
-                ParseGridInformation(ghostOffsets);
+                ParseGridInformation(baseIndex, ghostOffsets);
             }
             else
             {
@@ -1616,6 +1750,23 @@ avtXDMFFileFormat::ParseUniformGrid(vector<MeshInfo*> &meshList,
         }
     }
 
+    if (baseIndex != "")
+    {
+        meshInfo->baseIndex = new int[3];
+        for (int i = 0; i < 3; i++)
+            meshInfo->baseIndex[i] = 0;
+        if (meshInfo->topologicalDimension == 2)
+        {
+            sscanf(baseIndex.c_str(), "%d %d",
+                &meshInfo->baseIndex[1], &meshInfo->baseIndex[0]);
+        }
+        else
+        {
+            sscanf(baseIndex.c_str(), "%d %d %d", &meshInfo->baseIndex[2],
+                &meshInfo->baseIndex[1], &meshInfo->baseIndex[0]);
+        }
+    }
+
     if (ghostOffsets != "")
     {
         meshInfo->ghostOffsets = new int[6];
@@ -1624,15 +1775,15 @@ avtXDMFFileFormat::ParseUniformGrid(vector<MeshInfo*> &meshList,
         if (meshInfo->topologicalDimension == 2)
         {
             sscanf(ghostOffsets.c_str(), "%d %d %d %d",
-                &meshInfo->ghostOffsets[0], &meshInfo->ghostOffsets[1],
-                &meshInfo->ghostOffsets[2], &meshInfo->ghostOffsets[3]);
+                &meshInfo->ghostOffsets[2], &meshInfo->ghostOffsets[3],
+                &meshInfo->ghostOffsets[0], &meshInfo->ghostOffsets[1]);
         }
         else
         {
             sscanf(ghostOffsets.c_str(), "%d %d %d %d %d %d",
-                &meshInfo->ghostOffsets[0], &meshInfo->ghostOffsets[1],
+                &meshInfo->ghostOffsets[4], &meshInfo->ghostOffsets[5],
                 &meshInfo->ghostOffsets[2], &meshInfo->ghostOffsets[3],
-                &meshInfo->ghostOffsets[4], &meshInfo->ghostOffsets[5]);
+                &meshInfo->ghostOffsets[0], &meshInfo->ghostOffsets[1]);
         }
     }
 
@@ -2101,6 +2252,10 @@ avtXDMFFileFormat::ActivateTimestep(void)
 //    Eric Brugger, Mon Apr 14 16:50:42 PDT 2008
 //    Added support for tensors.
 //
+//    Eric Brugger, Tue Aug 26 15:57:05 PDT 2008
+//    Modified the routine to add structured domain boundary information
+//    for multiblock rectilinear or curvilinear meshes.
+//
 // ****************************************************************************
 
 void
@@ -2116,6 +2271,87 @@ avtXDMFFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
         AddMeshToMetaData(md, meshInfo->name, meshInfo->type,
             meshInfo->extents, meshInfo->nBlocks, 0,
             meshInfo->spatialDimension, meshInfo->topologicalDimension);
+
+        if (!avtDatabase::OnlyServeUpMetaData() && meshInfo->nBlocks > 1)
+        {
+            //
+            // Check that baseIndex is defined on all the submeshes and
+            // that the mesh is either pure rectilinear or pure curvilinear.
+            //
+            avtMeshType meshType = meshInfo->blockList[0]->type;
+            int iBlock = 0;
+            while (iBlock < meshInfo->nBlocks)
+            {
+                if (meshInfo->blockList[iBlock]->baseIndex == NULL ||
+                    meshInfo->blockList[iBlock]->type != meshType)
+                    break;
+                iBlock++;
+            }
+
+            //
+            // Create the appropriate domain boundary information.
+            //
+            if (meshType == AVT_RECTILINEAR_MESH &&
+                iBlock == meshInfo->nBlocks)
+            {
+                avtRectilinearDomainBoundaries *rdb =
+                    new avtRectilinearDomainBoundaries(true);
+
+                rdb->SetNumDomains(meshInfo->nBlocks);
+                for (int j = 0; j < meshInfo->nBlocks; j++)
+                {
+                    int extents[6];
+
+                    extents[0] = meshInfo->blockList[j]->baseIndex[0];
+                    extents[1] = meshInfo->blockList[j]->baseIndex[0] +
+                                 meshInfo->blockList[j]->dimensions[0] - 1;
+                    extents[2] = meshInfo->blockList[j]->baseIndex[1];
+                    extents[3] = meshInfo->blockList[j]->baseIndex[1] +
+                                 meshInfo->blockList[j]->dimensions[1] - 1;
+                    extents[4] = meshInfo->blockList[j]->baseIndex[2];
+                    extents[5] = meshInfo->blockList[j]->baseIndex[2] +
+                                 meshInfo->blockList[j]->dimensions[2] - 1;
+
+                    rdb->SetIndicesForRectGrid(j, extents);
+                }
+                rdb->CalculateBoundaries();
+
+                void_ref_ptr vr = void_ref_ptr(rdb,
+                    avtStructuredDomainBoundaries::Destruct);
+                cache->CacheVoidRef("any_mesh",
+                    AUXILIARY_DATA_DOMAIN_BOUNDARY_INFORMATION, -1, -1, vr);
+            }
+            else if (meshType == AVT_CURVILINEAR_MESH &&
+                iBlock == meshInfo->nBlocks)
+            {
+                avtCurvilinearDomainBoundaries *cdb =
+                    new avtCurvilinearDomainBoundaries(true);
+
+                cdb->SetNumDomains(meshInfo->nBlocks);
+                for (int j = 0; j < meshInfo->nBlocks; j++)
+                {
+                    int extents[6];
+
+                    extents[0] = meshInfo->blockList[j]->baseIndex[0];
+                    extents[1] = meshInfo->blockList[j]->baseIndex[0] +
+                                 meshInfo->blockList[j]->dimensions[0] - 1;
+                    extents[2] = meshInfo->blockList[j]->baseIndex[1];
+                    extents[3] = meshInfo->blockList[j]->baseIndex[1] +
+                                 meshInfo->blockList[j]->dimensions[1] - 1;
+                    extents[4] = meshInfo->blockList[j]->baseIndex[2];
+                    extents[5] = meshInfo->blockList[j]->baseIndex[2] +
+                                 meshInfo->blockList[j]->dimensions[2] - 1;
+
+                    cdb->SetIndicesForRectGrid(j, extents);
+                }
+                cdb->CalculateBoundaries();
+
+                void_ref_ptr vr = void_ref_ptr(cdb,
+                    avtStructuredDomainBoundaries::Destruct);
+                cache->CacheVoidRef("any_mesh",
+                    AUXILIARY_DATA_DOMAIN_BOUNDARY_INFORMATION, -1, -1, vr);
+            }
+        }
     }   
 
     //
@@ -2495,7 +2731,6 @@ avtXDMFFileFormat::GetRectilinearMesh(MeshInfo *meshInfo)
 //    Eric Brugger, Thu Mar 20 16:14:36 PDT 2008
 //    I replaced ReadHDFDataItem with ReadDataItem.
 //
-//  Modifications:
 //    Eric Brugger, Fri Mar 21 15:22:11 PDT 2008
 //    I replaced some code with a call to the function GetPoints.
 //

@@ -82,12 +82,20 @@ struct avtIVPStateHelper;
 //    Kathleen Bonnell, Thu Aug  7 08:50:13 PDT 2008
 //    Changed return of ComputeVoriticity from double to void.
 //
+//    Dave Pugmire, Wed Aug 13 10:58:32 EDT 2008
+//    Store the velocity with each step.
+//
+//    Hank Childs, Tue Aug 19 15:34:14 PDT 2008
+//    Make sure that velStart and velEnd are appropriately sized.
+//
 // ****************************************************************************
 
 class IVP_API avtIVPStep: public avtBezierSegment
 {
 public:
-    avtIVPStep() : avtBezierSegment() { tStart = tEnd = vorticity = 0.0; }
+    avtIVPStep() : avtBezierSegment()
+                  { tStart = tEnd = vorticity = 0.0; 
+                    velStart = avtVec(0.,0.,0.); velEnd = avtVec(0.,0.,0.); }
     
     void   ComputeVorticity(const avtIVPField *field)
     {
@@ -104,6 +112,8 @@ public:
         buff.io( mode, tStart );
         buff.io( mode, tEnd );
         buff.io( mode, vorticity );
+        buff.io( mode, velStart );
+        buff.io( mode, velEnd );
         
         //TODO
         //avtBezierSegment::Serialize( mode, buff );
@@ -117,6 +127,7 @@ public:
     }
     
     double tStart, tEnd;
+    avtVec velStart, velEnd;
     double vorticity;
 };
 
@@ -152,7 +163,6 @@ class avtIVPState
 
     void       Serialize(MemStream::Mode mode, MemStream &buff)
                {
-                   //debug1 << "avtIVPState::Serialize()\n";
                    if ( mode == MemStream::WRITE )
                    {
                        buff.io(mode, _size );
@@ -165,8 +175,6 @@ class avtIVPState
                        allocate(sz);
                        buff.io(mode, _data, sz);
                    }
-                   //debug1 << "DONE: avtIVPState::Serialize() sz= " 
-                   //       << size() << endl;
                }
 
   private:
@@ -224,6 +232,13 @@ class avtIVPState
 //  Programmer: Christoph Garth
 //  Creation:   February 25, 2008
 //
+//  Modifications:
+//    Dave Pugmire, Fri Aug  8 16:05:34 EDT 2008
+//    Added OnExitDomain method.
+//
+//    Dave Pugmire, Tue Aug 19, 17:38:03 EDT 2008
+//    Chagned how distanced based termination is computed.
+//
 // ****************************************************************************
 
 class avtIVPSolver
@@ -240,10 +255,12 @@ class avtIVPSolver
     
     virtual void    Reset(const double& t_start, const avtVecRef& y_start) = 0;
 
-    virtual Result  Step( const avtIVPField* field, 
+    virtual Result  Step(const avtIVPField* field, 
+                         const bool &timeMode,
                          const double& t_max, 
+                         const double& d_max,
                          avtIVPStep* ivpstep = 0 ) = 0;
-
+    virtual void    OnExitDomain() {}
     virtual avtVec  GetCurrentY() const = 0;
     virtual double  GetCurrentT() const = 0;
 
