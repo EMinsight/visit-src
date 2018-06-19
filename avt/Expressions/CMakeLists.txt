@@ -134,10 +134,13 @@ Derivations/avtTensorMaximumShearExpression.C
 SET(GENERAL_SOURCES
 General/avtApplyDataBinningExpression.C
 General/avtApplyEnumerationExpression.C
-General/avtApplyMapExpression.C 
+General/avtApplyMapExpression.C
+General/avtArrayComponentwiseProductExpression.C
+General/avtArrayComponentwiseDivisionExpression.C
 General/avtArrayComposeExpression.C
 General/avtArrayComposeWithBinsExpression.C
 General/avtArrayDecomposeExpression.C
+General/avtArrayDecompose2DExpression.C
 General/avtArraySumExpression.C
 General/avtBinExpression.C
 General/avtColorComposeExpression.C
