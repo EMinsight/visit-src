@@ -1,4 +1,4 @@
-#/home/sci/allen/Projects/VisIt/trunk/visit/cmake/2.8.0/linux-x86_64_gcc-4.4/bin/cmake
+#/home/sci/allen/Projects/VisIt/trunk/visit/cmake/2.8.3/linux-x86_64_gcc-4.4/bin/cmake
 ##
 ## build_visit generated host.cmake
 ## created: Tue Oct 12 10:48:49 MDT 2010
@@ -19,7 +19,7 @@ VISIT_OPTION_DEFAULT(VISIT_MESA_DIR ${VISITHOME}/mesa/7.8.2/${VISITARCH})
 ##
 ## Specify the location of the vtk.
 ##
-VISIT_OPTION_DEFAULT(VISIT_VTK_DIR ${VISITHOME}/vtk/5.0.0f/${VISITARCH}/lib/vtk-5.0/)
+VISIT_OPTION_DEFAULT(VISIT_VTK_DIR ${VISITHOME}/vtk/5.0.0i/${VISITARCH}/lib/vtk-5.0/)
 
 ##
 ## Specify the Qt4 binary dir. 

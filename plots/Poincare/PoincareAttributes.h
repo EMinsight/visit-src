@@ -115,18 +115,19 @@ public:
     enum DataValue
     {
         Solid,
-        OriginalValue,
-        InputOrder,
-        PointIndex,
-        Plane,
-        WindingOrder,
-        WindingPointOrder,
-        WindingPointOrderModulo,
+        SafetyFactorQ,
+        SafetyFactorP,
+        SafetyFactorQ_NotP,
+        SafetyFactorP_NotQ,
         ToroidalWindings,
-        PoloidalWindings,
-        SafetyFactor,
-        Confidence,
-        RidgelineVariance
+        PoloidalWindingsQ,
+        PoloidalWindingsP,
+        FieldlineIndex,
+        PointIndex,
+        PlaneIndex,
+        WindingGroup,
+        WindingPointOrder,
+        WindingPointOrderModulo
     };
     enum StreamlineAlgorithmType
     {
@@ -195,7 +196,7 @@ public:
     void SetOverrideToroidalWinding(int overrideToroidalWinding_);
     void SetOverridePoloidalWinding(int overridePoloidalWinding_);
     void SetWindingPairConfidence(double windingPairConfidence_);
-    void SetPeriodicityConsistency(double periodicityConsistency_);
+    void SetRationalTemplateSeedParm(double rationalTemplateSeedParm_);
     void SetAdjustPlane(int adjustPlane_);
     void SetOverlaps(OverlapType overlaps_);
     void SetMeshType(ShowMeshType meshType_);
@@ -210,13 +211,13 @@ public:
     void SetColorTableName(const std::string &colorTableName_);
     void SetDataValue(DataValue dataValue_);
     void SetShowOPoints(bool showOPoints_);
-    void SetOPointMaxInterations(int OPointMaxInterations_);
+    void SetOPointMaxIterations(int OPointMaxIterations_);
     void SetShowXPoints(bool showXPoints_);
-    void SetXPointMaxInterations(int XPointMaxInterations_);
+    void SetXPointMaxIterations(int XPointMaxIterations_);
     void SetShowChaotic(bool showChaotic_);
     void SetShowIslands(bool showIslands_);
     void SetVerboseFlag(bool verboseFlag_);
-    void SetShowRidgelines(bool showRidgelines_);
+    void SetShow1DPlots(bool show1DPlots_);
     void SetShowLines(bool showLines_);
     void SetLineWidth(int lineWidth_);
     void SetLineStyle(int lineStyle_);
@@ -256,7 +257,7 @@ public:
     int                  GetOverrideToroidalWinding() const;
     int                  GetOverridePoloidalWinding() const;
     double               GetWindingPairConfidence() const;
-    double               GetPeriodicityConsistency() const;
+    double               GetRationalTemplateSeedParm() const;
     int                  GetAdjustPlane() const;
     OverlapType          GetOverlaps() const;
     ShowMeshType         GetMeshType() const;
@@ -273,13 +274,13 @@ public:
           std::string    &GetColorTableName();
     DataValue            GetDataValue() const;
     bool                 GetShowOPoints() const;
-    int                  GetOPointMaxInterations() const;
+    int                  GetOPointMaxIterations() const;
     bool                 GetShowXPoints() const;
-    int                  GetXPointMaxInterations() const;
+    int                  GetXPointMaxIterations() const;
     bool                 GetShowChaotic() const;
     bool                 GetShowIslands() const;
     bool                 GetVerboseFlag() const;
-    bool                 GetShowRidgelines() const;
+    bool                 GetShow1DPlots() const;
     bool                 GetShowLines() const;
     int                  GetLineWidth() const;
     int                  GetLineStyle() const;
@@ -394,7 +395,7 @@ public:
         ID_overrideToroidalWinding,
         ID_overridePoloidalWinding,
         ID_windingPairConfidence,
-        ID_periodicityConsistency,
+        ID_rationalTemplateSeedParm,
         ID_adjustPlane,
         ID_overlaps,
         ID_meshType,
@@ -409,13 +410,13 @@ public:
         ID_colorTableName,
         ID_dataValue,
         ID_showOPoints,
-        ID_OPointMaxInterations,
+        ID_OPointMaxIterations,
         ID_showXPoints,
-        ID_XPointMaxInterations,
+        ID_XPointMaxIterations,
         ID_showChaotic,
         ID_showIslands,
         ID_verboseFlag,
-        ID_showRidgelines,
+        ID_show1DPlots,
         ID_showLines,
         ID_lineWidth,
         ID_lineStyle,
@@ -454,7 +455,7 @@ private:
     int            overrideToroidalWinding;
     int            overridePoloidalWinding;
     double         windingPairConfidence;
-    double         periodicityConsistency;
+    double         rationalTemplateSeedParm;
     int            adjustPlane;
     int            overlaps;
     int            meshType;
@@ -469,13 +470,13 @@ private:
     std::string    colorTableName;
     int            dataValue;
     bool           showOPoints;
-    int            OPointMaxInterations;
+    int            OPointMaxIterations;
     bool           showXPoints;
-    int            XPointMaxInterations;
+    int            XPointMaxIterations;
     bool           showChaotic;
     bool           showIslands;
     bool           verboseFlag;
-    bool           showRidgelines;
+    bool           show1DPlots;
     bool           showLines;
     int            lineWidth;
     int            lineStyle;

@@ -59,6 +59,13 @@
 #   Create a complete python install in ${VISIT_INSTALLED_VERSION_LIB}/python
 #   This allows us to install python modules directly to VisIt's python.
 #
+#   Kathleen Bonnell, Wed Apr 20 11:03:05 MST 2011
+#   Change PYTHON_ADD_MODULE to use extension '.pyd' and PY_MODULE_TYPE 
+#   SHARED (instead of MODULE) on Windows.
+#
+#   Kathleen Bonnell, Tue May 3 15:13:27 MST 2011
+#   Revert PY_MODULE_TYPE used in PYTHON_ADD_MODULE to MODULE.
+#
 #****************************************************************************/
 
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/ThirdPartyInstallLibrary.cmake)
@@ -229,6 +236,9 @@ FUNCTION(PYTHON_ADD_MODULE _NAME )
 
     SET_PROPERTY(GLOBAL  APPEND  PROPERTY  PY_MODULES_LIST ${_NAME})
     ADD_LIBRARY(${_NAME} ${PY_MODULE_TYPE} ${ARGN})
+    IF (WIN32)
+        SET_TARGET_PROPERTIES(${_NAME} PROPERTIES SUFFIX ".pyd")
+    ENDIF(WIN32)
 #    TARGET_LINK_LIBRARIES(${_NAME} ${PYTHON_LIBRARIES})
 
   ENDIF(PYTHON_ENABLE_MODULE_${_NAME})

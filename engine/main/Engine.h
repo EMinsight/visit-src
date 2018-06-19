@@ -211,6 +211,9 @@ class Xfer;
 //    Hank Childs, Sat Aug 21 14:35:47 PDT 2010
 //    Rename DDF to DataBinning.
 //
+//    Tom Fogal, Wed May 26 09:22:43 MDT 2010
+//    Add state for launching X servers.
+//
 // ****************************************************************************
 
 class ENGINE_MAIN_API Engine
@@ -390,8 +393,10 @@ class ENGINE_MAIN_API Engine
  private:
     bool                      useIceT;
     std::string               X_Args;
+    std::string               X_Display;
     size_t                    nDisplays;
     VisItDisplay             *renderingDisplay;
+    bool                      launchXServers;
 };
 
 #endif

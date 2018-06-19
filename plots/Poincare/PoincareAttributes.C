@@ -383,24 +383,24 @@ PoincareAttributes::Opacity_FromString(const std::string &s, PoincareAttributes:
 //
 
 static const char *DataValue_strings[] = {
-"Solid", "OriginalValue", "InputOrder", 
-"PointIndex", "Plane", "WindingOrder", 
-"WindingPointOrder", "WindingPointOrderModulo", "ToroidalWindings", 
-"PoloidalWindings", "SafetyFactor", "Confidence", 
-"RidgelineVariance"};
+"Solid", "SafetyFactorQ", "SafetyFactorP", 
+"SafetyFactorQ_NotP", "SafetyFactorP_NotQ", "ToroidalWindings", 
+"PoloidalWindingsQ", "PoloidalWindingsP", "FieldlineIndex", 
+"PointIndex", "PlaneIndex", "WindingGroup", 
+"WindingPointOrder", "WindingPointOrderModulo"};
 
 std::string
 PoincareAttributes::DataValue_ToString(PoincareAttributes::DataValue t)
 {
     int index = int(t);
-    if(index < 0 || index >= 13) index = 0;
+    if(index < 0 || index >= 14) index = 0;
     return DataValue_strings[index];
 }
 
 std::string
 PoincareAttributes::DataValue_ToString(int t)
 {
-    int index = (t < 0 || t >= 13) ? 0 : t;
+    int index = (t < 0 || t >= 14) ? 0 : t;
     return DataValue_strings[index];
 }
 
@@ -408,7 +408,7 @@ bool
 PoincareAttributes::DataValue_FromString(const std::string &s, PoincareAttributes::DataValue &val)
 {
     val = PoincareAttributes::Solid;
-    for(int i = 0; i < 13; ++i)
+    for(int i = 0; i < 14; ++i)
     {
         if(s == DataValue_strings[i])
         {
@@ -538,7 +538,7 @@ void PoincareAttributes::Init()
     overrideToroidalWinding = 0;
     overridePoloidalWinding = 0;
     windingPairConfidence = 0.9;
-    periodicityConsistency = 0.8;
+    rationalTemplateSeedParm = 0.9;
     adjustPlane = -1;
     overlaps = Remove;
     meshType = Curves;
@@ -549,15 +549,15 @@ void PoincareAttributes::Init()
     minFlag = false;
     maxFlag = false;
     colorType = ColorByColorTable;
-    dataValue = SafetyFactor;
+    dataValue = SafetyFactorQ;
     showOPoints = false;
-    OPointMaxInterations = 2;
+    OPointMaxIterations = 2;
     showXPoints = false;
-    XPointMaxInterations = 2;
+    XPointMaxIterations = 2;
     showChaotic = false;
     showIslands = false;
     verboseFlag = true;
-    showRidgelines = false;
+    show1DPlots = false;
     showLines = true;
     lineWidth = 0;
     lineStyle = 0;
@@ -622,7 +622,7 @@ void PoincareAttributes::Copy(const PoincareAttributes &obj)
     overrideToroidalWinding = obj.overrideToroidalWinding;
     overridePoloidalWinding = obj.overridePoloidalWinding;
     windingPairConfidence = obj.windingPairConfidence;
-    periodicityConsistency = obj.periodicityConsistency;
+    rationalTemplateSeedParm = obj.rationalTemplateSeedParm;
     adjustPlane = obj.adjustPlane;
     overlaps = obj.overlaps;
     meshType = obj.meshType;
@@ -637,13 +637,13 @@ void PoincareAttributes::Copy(const PoincareAttributes &obj)
     colorTableName = obj.colorTableName;
     dataValue = obj.dataValue;
     showOPoints = obj.showOPoints;
-    OPointMaxInterations = obj.OPointMaxInterations;
+    OPointMaxIterations = obj.OPointMaxIterations;
     showXPoints = obj.showXPoints;
-    XPointMaxInterations = obj.XPointMaxInterations;
+    XPointMaxIterations = obj.XPointMaxIterations;
     showChaotic = obj.showChaotic;
     showIslands = obj.showIslands;
     verboseFlag = obj.verboseFlag;
-    showRidgelines = obj.showRidgelines;
+    show1DPlots = obj.show1DPlots;
     showLines = obj.showLines;
     lineWidth = obj.lineWidth;
     lineStyle = obj.lineStyle;
@@ -852,7 +852,7 @@ PoincareAttributes::operator == (const PoincareAttributes &obj) const
             (overrideToroidalWinding == obj.overrideToroidalWinding) &&
             (overridePoloidalWinding == obj.overridePoloidalWinding) &&
             (windingPairConfidence == obj.windingPairConfidence) &&
-            (periodicityConsistency == obj.periodicityConsistency) &&
+            (rationalTemplateSeedParm == obj.rationalTemplateSeedParm) &&
             (adjustPlane == obj.adjustPlane) &&
             (overlaps == obj.overlaps) &&
             (meshType == obj.meshType) &&
@@ -867,13 +867,13 @@ PoincareAttributes::operator == (const PoincareAttributes &obj) const
             (colorTableName == obj.colorTableName) &&
             (dataValue == obj.dataValue) &&
             (showOPoints == obj.showOPoints) &&
-            (OPointMaxInterations == obj.OPointMaxInterations) &&
+            (OPointMaxIterations == obj.OPointMaxIterations) &&
             (showXPoints == obj.showXPoints) &&
-            (XPointMaxInterations == obj.XPointMaxInterations) &&
+            (XPointMaxIterations == obj.XPointMaxIterations) &&
             (showChaotic == obj.showChaotic) &&
             (showIslands == obj.showIslands) &&
             (verboseFlag == obj.verboseFlag) &&
-            (showRidgelines == obj.showRidgelines) &&
+            (show1DPlots == obj.show1DPlots) &&
             (showLines == obj.showLines) &&
             (lineWidth == obj.lineWidth) &&
             (lineStyle == obj.lineStyle) &&
@@ -1076,7 +1076,7 @@ PoincareAttributes::SelectAll()
     Select(ID_overrideToroidalWinding,   (void *)&overrideToroidalWinding);
     Select(ID_overridePoloidalWinding,   (void *)&overridePoloidalWinding);
     Select(ID_windingPairConfidence,     (void *)&windingPairConfidence);
-    Select(ID_periodicityConsistency,    (void *)&periodicityConsistency);
+    Select(ID_rationalTemplateSeedParm,  (void *)&rationalTemplateSeedParm);
     Select(ID_adjustPlane,               (void *)&adjustPlane);
     Select(ID_overlaps,                  (void *)&overlaps);
     Select(ID_meshType,                  (void *)&meshType);
@@ -1091,13 +1091,13 @@ PoincareAttributes::SelectAll()
     Select(ID_colorTableName,            (void *)&colorTableName);
     Select(ID_dataValue,                 (void *)&dataValue);
     Select(ID_showOPoints,               (void *)&showOPoints);
-    Select(ID_OPointMaxInterations,      (void *)&OPointMaxInterations);
+    Select(ID_OPointMaxIterations,       (void *)&OPointMaxIterations);
     Select(ID_showXPoints,               (void *)&showXPoints);
-    Select(ID_XPointMaxInterations,      (void *)&XPointMaxInterations);
+    Select(ID_XPointMaxIterations,       (void *)&XPointMaxIterations);
     Select(ID_showChaotic,               (void *)&showChaotic);
     Select(ID_showIslands,               (void *)&showIslands);
     Select(ID_verboseFlag,               (void *)&verboseFlag);
-    Select(ID_showRidgelines,            (void *)&showRidgelines);
+    Select(ID_show1DPlots,               (void *)&show1DPlots);
     Select(ID_showLines,                 (void *)&showLines);
     Select(ID_lineWidth,                 (void *)&lineWidth);
     Select(ID_lineStyle,                 (void *)&lineStyle);
@@ -1264,10 +1264,10 @@ PoincareAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool for
         node->AddNode(new DataNode("windingPairConfidence", windingPairConfidence));
     }
 
-    if(completeSave || !FieldsEqual(ID_periodicityConsistency, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_rationalTemplateSeedParm, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("periodicityConsistency", periodicityConsistency));
+        node->AddNode(new DataNode("rationalTemplateSeedParm", rationalTemplateSeedParm));
     }
 
     if(completeSave || !FieldsEqual(ID_adjustPlane, &defaultObject))
@@ -1356,10 +1356,10 @@ PoincareAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool for
         node->AddNode(new DataNode("showOPoints", showOPoints));
     }
 
-    if(completeSave || !FieldsEqual(ID_OPointMaxInterations, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_OPointMaxIterations, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("OPointMaxInterations", OPointMaxInterations));
+        node->AddNode(new DataNode("OPointMaxIterations", OPointMaxIterations));
     }
 
     if(completeSave || !FieldsEqual(ID_showXPoints, &defaultObject))
@@ -1368,10 +1368,10 @@ PoincareAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool for
         node->AddNode(new DataNode("showXPoints", showXPoints));
     }
 
-    if(completeSave || !FieldsEqual(ID_XPointMaxInterations, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_XPointMaxIterations, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("XPointMaxInterations", XPointMaxInterations));
+        node->AddNode(new DataNode("XPointMaxIterations", XPointMaxIterations));
     }
 
     if(completeSave || !FieldsEqual(ID_showChaotic, &defaultObject))
@@ -1392,10 +1392,10 @@ PoincareAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool for
         node->AddNode(new DataNode("verboseFlag", verboseFlag));
     }
 
-    if(completeSave || !FieldsEqual(ID_showRidgelines, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_show1DPlots, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("showRidgelines", showRidgelines));
+        node->AddNode(new DataNode("show1DPlots", show1DPlots));
     }
 
     if(completeSave || !FieldsEqual(ID_showLines, &defaultObject))
@@ -1642,8 +1642,8 @@ PoincareAttributes::SetFromNode(DataNode *parentNode)
         SetOverridePoloidalWinding(node->AsInt());
     if((node = searchNode->GetNode("windingPairConfidence")) != 0)
         SetWindingPairConfidence(node->AsDouble());
-    if((node = searchNode->GetNode("periodicityConsistency")) != 0)
-        SetPeriodicityConsistency(node->AsDouble());
+    if((node = searchNode->GetNode("rationalTemplateSeedParm")) != 0)
+        SetRationalTemplateSeedParm(node->AsDouble());
     if((node = searchNode->GetNode("adjustPlane")) != 0)
         SetAdjustPlane(node->AsInt());
     if((node = searchNode->GetNode("overlaps")) != 0)
@@ -1716,7 +1716,7 @@ PoincareAttributes::SetFromNode(DataNode *parentNode)
         if(node->GetNodeType() == INT_NODE)
         {
             int ival = node->AsInt();
-            if(ival >= 0 && ival < 13)
+            if(ival >= 0 && ival < 14)
                 SetDataValue(DataValue(ival));
         }
         else if(node->GetNodeType() == STRING_NODE)
@@ -1728,20 +1728,20 @@ PoincareAttributes::SetFromNode(DataNode *parentNode)
     }
     if((node = searchNode->GetNode("showOPoints")) != 0)
         SetShowOPoints(node->AsBool());
-    if((node = searchNode->GetNode("OPointMaxInterations")) != 0)
-        SetOPointMaxInterations(node->AsInt());
+    if((node = searchNode->GetNode("OPointMaxIterations")) != 0)
+        SetOPointMaxIterations(node->AsInt());
     if((node = searchNode->GetNode("showXPoints")) != 0)
         SetShowXPoints(node->AsBool());
-    if((node = searchNode->GetNode("XPointMaxInterations")) != 0)
-        SetXPointMaxInterations(node->AsInt());
+    if((node = searchNode->GetNode("XPointMaxIterations")) != 0)
+        SetXPointMaxIterations(node->AsInt());
     if((node = searchNode->GetNode("showChaotic")) != 0)
         SetShowChaotic(node->AsBool());
     if((node = searchNode->GetNode("showIslands")) != 0)
         SetShowIslands(node->AsBool());
     if((node = searchNode->GetNode("verboseFlag")) != 0)
         SetVerboseFlag(node->AsBool());
-    if((node = searchNode->GetNode("showRidgelines")) != 0)
-        SetShowRidgelines(node->AsBool());
+    if((node = searchNode->GetNode("show1DPlots")) != 0)
+        SetShow1DPlots(node->AsBool());
     if((node = searchNode->GetNode("showLines")) != 0)
         SetShowLines(node->AsBool());
     if((node = searchNode->GetNode("lineWidth")) != 0)
@@ -1951,10 +1951,10 @@ PoincareAttributes::SetWindingPairConfidence(double windingPairConfidence_)
 }
 
 void
-PoincareAttributes::SetPeriodicityConsistency(double periodicityConsistency_)
+PoincareAttributes::SetRationalTemplateSeedParm(double rationalTemplateSeedParm_)
 {
-    periodicityConsistency = periodicityConsistency_;
-    Select(ID_periodicityConsistency, (void *)&periodicityConsistency);
+    rationalTemplateSeedParm = rationalTemplateSeedParm_;
+    Select(ID_rationalTemplateSeedParm, (void *)&rationalTemplateSeedParm);
 }
 
 void
@@ -2056,10 +2056,10 @@ PoincareAttributes::SetShowOPoints(bool showOPoints_)
 }
 
 void
-PoincareAttributes::SetOPointMaxInterations(int OPointMaxInterations_)
+PoincareAttributes::SetOPointMaxIterations(int OPointMaxIterations_)
 {
-    OPointMaxInterations = OPointMaxInterations_;
-    Select(ID_OPointMaxInterations, (void *)&OPointMaxInterations);
+    OPointMaxIterations = OPointMaxIterations_;
+    Select(ID_OPointMaxIterations, (void *)&OPointMaxIterations);
 }
 
 void
@@ -2070,10 +2070,10 @@ PoincareAttributes::SetShowXPoints(bool showXPoints_)
 }
 
 void
-PoincareAttributes::SetXPointMaxInterations(int XPointMaxInterations_)
+PoincareAttributes::SetXPointMaxIterations(int XPointMaxIterations_)
 {
-    XPointMaxInterations = XPointMaxInterations_;
-    Select(ID_XPointMaxInterations, (void *)&XPointMaxInterations);
+    XPointMaxIterations = XPointMaxIterations_;
+    Select(ID_XPointMaxIterations, (void *)&XPointMaxIterations);
 }
 
 void
@@ -2098,10 +2098,10 @@ PoincareAttributes::SetVerboseFlag(bool verboseFlag_)
 }
 
 void
-PoincareAttributes::SetShowRidgelines(bool showRidgelines_)
+PoincareAttributes::SetShow1DPlots(bool show1DPlots_)
 {
-    showRidgelines = showRidgelines_;
-    Select(ID_showRidgelines, (void *)&showRidgelines);
+    show1DPlots = show1DPlots_;
+    Select(ID_show1DPlots, (void *)&show1DPlots);
 }
 
 void
@@ -2345,9 +2345,9 @@ PoincareAttributes::GetWindingPairConfidence() const
 }
 
 double
-PoincareAttributes::GetPeriodicityConsistency() const
+PoincareAttributes::GetRationalTemplateSeedParm() const
 {
-    return periodicityConsistency;
+    return rationalTemplateSeedParm;
 }
 
 int
@@ -2447,9 +2447,9 @@ PoincareAttributes::GetShowOPoints() const
 }
 
 int
-PoincareAttributes::GetOPointMaxInterations() const
+PoincareAttributes::GetOPointMaxIterations() const
 {
-    return OPointMaxInterations;
+    return OPointMaxIterations;
 }
 
 bool
@@ -2459,9 +2459,9 @@ PoincareAttributes::GetShowXPoints() const
 }
 
 int
-PoincareAttributes::GetXPointMaxInterations() const
+PoincareAttributes::GetXPointMaxIterations() const
 {
-    return XPointMaxInterations;
+    return XPointMaxIterations;
 }
 
 bool
@@ -2483,9 +2483,9 @@ PoincareAttributes::GetVerboseFlag() const
 }
 
 bool
-PoincareAttributes::GetShowRidgelines() const
+PoincareAttributes::GetShow1DPlots() const
 {
-    return showRidgelines;
+    return show1DPlots;
 }
 
 bool
@@ -2650,7 +2650,7 @@ PoincareAttributes::GetFieldName(int index) const
     case ID_overrideToroidalWinding:   return "overrideToroidalWinding";
     case ID_overridePoloidalWinding:   return "overridePoloidalWinding";
     case ID_windingPairConfidence:     return "windingPairConfidence";
-    case ID_periodicityConsistency:    return "periodicityConsistency";
+    case ID_rationalTemplateSeedParm:  return "rationalTemplateSeedParm";
     case ID_adjustPlane:               return "adjustPlane";
     case ID_overlaps:                  return "overlaps";
     case ID_meshType:                  return "meshType";
@@ -2665,13 +2665,13 @@ PoincareAttributes::GetFieldName(int index) const
     case ID_colorTableName:            return "colorTableName";
     case ID_dataValue:                 return "dataValue";
     case ID_showOPoints:               return "showOPoints";
-    case ID_OPointMaxInterations:      return "OPointMaxInterations";
+    case ID_OPointMaxIterations:       return "OPointMaxIterations";
     case ID_showXPoints:               return "showXPoints";
-    case ID_XPointMaxInterations:      return "XPointMaxInterations";
+    case ID_XPointMaxIterations:       return "XPointMaxIterations";
     case ID_showChaotic:               return "showChaotic";
     case ID_showIslands:               return "showIslands";
     case ID_verboseFlag:               return "verboseFlag";
-    case ID_showRidgelines:            return "showRidgelines";
+    case ID_show1DPlots:               return "show1DPlots";
     case ID_showLines:                 return "showLines";
     case ID_lineWidth:                 return "lineWidth";
     case ID_lineStyle:                 return "lineStyle";
@@ -2730,7 +2730,7 @@ PoincareAttributes::GetFieldType(int index) const
     case ID_overrideToroidalWinding:   return FieldType_int;
     case ID_overridePoloidalWinding:   return FieldType_int;
     case ID_windingPairConfidence:     return FieldType_double;
-    case ID_periodicityConsistency:    return FieldType_double;
+    case ID_rationalTemplateSeedParm:  return FieldType_double;
     case ID_adjustPlane:               return FieldType_int;
     case ID_overlaps:                  return FieldType_enum;
     case ID_meshType:                  return FieldType_enum;
@@ -2745,13 +2745,13 @@ PoincareAttributes::GetFieldType(int index) const
     case ID_colorTableName:            return FieldType_colortable;
     case ID_dataValue:                 return FieldType_enum;
     case ID_showOPoints:               return FieldType_bool;
-    case ID_OPointMaxInterations:      return FieldType_int;
+    case ID_OPointMaxIterations:       return FieldType_int;
     case ID_showXPoints:               return FieldType_bool;
-    case ID_XPointMaxInterations:      return FieldType_int;
+    case ID_XPointMaxIterations:       return FieldType_int;
     case ID_showChaotic:               return FieldType_bool;
     case ID_showIslands:               return FieldType_bool;
     case ID_verboseFlag:               return FieldType_bool;
-    case ID_showRidgelines:            return FieldType_bool;
+    case ID_show1DPlots:               return FieldType_bool;
     case ID_showLines:                 return FieldType_bool;
     case ID_lineWidth:                 return FieldType_linewidth;
     case ID_lineStyle:                 return FieldType_linestyle;
@@ -2810,7 +2810,7 @@ PoincareAttributes::GetFieldTypeName(int index) const
     case ID_overrideToroidalWinding:   return "int";
     case ID_overridePoloidalWinding:   return "int";
     case ID_windingPairConfidence:     return "double";
-    case ID_periodicityConsistency:    return "double";
+    case ID_rationalTemplateSeedParm:  return "double";
     case ID_adjustPlane:               return "int";
     case ID_overlaps:                  return "enum";
     case ID_meshType:                  return "enum";
@@ -2825,13 +2825,13 @@ PoincareAttributes::GetFieldTypeName(int index) const
     case ID_colorTableName:            return "colortable";
     case ID_dataValue:                 return "enum";
     case ID_showOPoints:               return "bool";
-    case ID_OPointMaxInterations:      return "int";
+    case ID_OPointMaxIterations:       return "int";
     case ID_showXPoints:               return "bool";
-    case ID_XPointMaxInterations:      return "int";
+    case ID_XPointMaxIterations:       return "int";
     case ID_showChaotic:               return "bool";
     case ID_showIslands:               return "bool";
     case ID_verboseFlag:               return "bool";
-    case ID_showRidgelines:            return "bool";
+    case ID_show1DPlots:               return "bool";
     case ID_showLines:                 return "bool";
     case ID_lineWidth:                 return "linewidth";
     case ID_lineStyle:                 return "linestyle";
@@ -2987,9 +2987,9 @@ PoincareAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (windingPairConfidence == obj.windingPairConfidence);
         }
         break;
-    case ID_periodicityConsistency:
+    case ID_rationalTemplateSeedParm:
         {  // new scope
-        retval = (periodicityConsistency == obj.periodicityConsistency);
+        retval = (rationalTemplateSeedParm == obj.rationalTemplateSeedParm);
         }
         break;
     case ID_adjustPlane:
@@ -3062,9 +3062,9 @@ PoincareAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (showOPoints == obj.showOPoints);
         }
         break;
-    case ID_OPointMaxInterations:
+    case ID_OPointMaxIterations:
         {  // new scope
-        retval = (OPointMaxInterations == obj.OPointMaxInterations);
+        retval = (OPointMaxIterations == obj.OPointMaxIterations);
         }
         break;
     case ID_showXPoints:
@@ -3072,9 +3072,9 @@ PoincareAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (showXPoints == obj.showXPoints);
         }
         break;
-    case ID_XPointMaxInterations:
+    case ID_XPointMaxIterations:
         {  // new scope
-        retval = (XPointMaxInterations == obj.XPointMaxInterations);
+        retval = (XPointMaxIterations == obj.XPointMaxIterations);
         }
         break;
     case ID_showChaotic:
@@ -3092,9 +3092,9 @@ PoincareAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (verboseFlag == obj.verboseFlag);
         }
         break;
-    case ID_showRidgelines:
+    case ID_show1DPlots:
         {  // new scope
-        retval = (showRidgelines == obj.showRidgelines);
+        retval = (show1DPlots == obj.show1DPlots);
         }
         break;
     case ID_showLines:
@@ -3272,15 +3272,18 @@ PoincareAttributes::PoincareAttsRequireRecalculation(const PoincareAttributes &o
            overrideToroidalWinding != obj.overrideToroidalWinding ||
            overridePoloidalWinding != obj.overridePoloidalWinding ||
            windingPairConfidence != obj.windingPairConfidence ||
-           periodicityConsistency != obj.periodicityConsistency ||
+           rationalTemplateSeedParm != obj.rationalTemplateSeedParm ||
 
            showOPoints != obj.showOPoints ||
-           OPointMaxInterations != obj.OPointMaxInterations ||
+           OPointMaxIterations != obj.OPointMaxIterations ||
+
+           showXPoints != obj.showXPoints ||
+           XPointMaxIterations != obj.XPointMaxIterations ||
 
            overlaps != obj.overlaps ||
 
            showIslands != obj.showIslands ||
-           showRidgelines != obj.showRidgelines ||
+           show1DPlots != obj.show1DPlots ||
            showChaotic != obj.showChaotic ||
            verboseFlag != obj.verboseFlag ||
  

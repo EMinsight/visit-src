@@ -2044,7 +2044,8 @@ avtSiloFileFormat::ReadQuadmeshes(DBfile *dbfile,
                 extents_to_use = extents;
             }
 
-            avtMeshMetaData *mmd = new avtMeshMetaData(extents_to_use,
+            avtMeshMetaData *mmd = new avtMeshMetaData(NULL,
+                                                       extents_to_use,
                                                        name_w_dir, 1, 0,
                                                        qm->origin, 0,
                                                        qm->ndims, qm->ndims,
@@ -2156,7 +2157,9 @@ avtSiloFileFormat::ReadUcdmeshes(DBfile *dbfile,
 #endif
 #endif
 
-            avtMeshMetaData *mmd = new avtMeshMetaData(extents_to_use, name_w_dir,
+            avtMeshMetaData *mmd = new avtMeshMetaData(NULL,
+                                                       extents_to_use,
+                                                       name_w_dir,
                                 1, 0, um->origin, 0, um->ndims, tdims,
                                 AVT_UNSTRUCTURED_MESH);
             if (um->units[0] != NULL)
@@ -2397,7 +2400,9 @@ avtSiloFileFormat::ReadCSGmeshes(DBfile *dbfile,
                extents_to_use = extents;
            }
 
-           avtMeshMetaData *mmd = new avtMeshMetaData(extents_to_use, name_w_dir,
+           avtMeshMetaData *mmd = new avtMeshMetaData(NULL,
+                                                      extents_to_use,
+                                                      name_w_dir,
                                csgm->zones->nzones, 0, csgm->origin, 0,
                                csgm->ndims, csgm->ndims, AVT_CSG_MESH);
            if (csgm->units[0] != NULL)
@@ -3807,8 +3812,7 @@ avtSiloFileFormat::ReadDefvars(DBfile *dbfile,
     const char *dirname, avtDatabaseMetaData *md)
 {
 #ifdef DB_VARTYPE_SCALAR
-    int i,j;
-    for (i = 0; i < ndefvars; i++)
+    for (int i = 0; i < ndefvars; i++)
     {
         DBdefvars *defv = 0;
 
@@ -3916,7 +3920,7 @@ avtSiloFileFormat::ReadDir(DBfile *dbfile, const char *dirname,
         return;
 #endif
 
-    int    i, j, k;
+    int    i;
     DBtoc *toc = DBGetToc(dbfile);
     if (toc == NULL)
         return;
@@ -5497,7 +5501,8 @@ avtSiloFileFormat::AddCSGMultimesh(const char *const dirname,
     {
 
         char *name_w_dir = GenerateName(dirname, multimesh_name, topDir.c_str());
-        avtMeshMetaData *mmd = new avtMeshMetaData(extents_to_use, name_w_dir,
+        avtMeshMetaData *mmd = new avtMeshMetaData(NULL,
+                                                   extents_to_use, name_w_dir,
                                        nregions, 0, 0, 0, ndims, ndims, AVT_CSG_MESH);
 
         mmd->blockTitle = "regions";
@@ -7770,6 +7775,10 @@ ConvertToFloat(int silotype, void *data, int nels)
 //    Mark C. Miller, Wed Sep  8 14:09:33 PDT 2010
 //    Fix initialization of vals arrays to go over nnodes or nzones depending
 //    on whether ugrid is present.
+//
+//    Mark C. Miller, Tue Jun 21 11:03:03 PDT 2011
+//    Fixed indexing problem with use of 'nvals++' inside of loops over
+//    components.
 // ****************************************************************************
 
 template <typename T>
@@ -7832,14 +7841,16 @@ TraverseMaterialForSubsettedUcdvar(const DBucdvar *const uv,
                         {
                             haveVisitedPoint[ptId] = true;
                             for (int k = 0; k < uv->nvals; k++)
-                                newvals[k][(int)ptId] = ((T**)uv->vals)[k][nvals++];
+                                newvals[k][(int)ptId] = ((T**)uv->vals)[k][nvals];
+                            nvals++;
                         }
                     }
                 }
                 else // zone-centered case
                 {
                     for (j = 0; j < uv->nvals; j++)
-                        newvals[j][i] = ((T**)uv->vals)[j][nvals++];
+                        newvals[j][i] = ((T**)uv->vals)[j][nvals];
+                    nvals++;
                 }
             }
         }
@@ -7865,7 +7876,8 @@ TraverseMaterialForSubsettedUcdvar(const DBucdvar *const uv,
                                 {
                                     haveVisitedPoint[ptId] = true;
                                     for (int k = 0; k < uv->nvals; k++)
-                                        newvals[k][(int)ptId] = ((T**)uv->vals)[k][nvals++];
+                                        newvals[k][(int)ptId] = ((T**)uv->vals)[k][nvals];
+                                    nvals++;
                                 }
                             }
                         }
@@ -7879,7 +7891,8 @@ TraverseMaterialForSubsettedUcdvar(const DBucdvar *const uv,
                                 {
                                     haveVisitedPoint[ptId] = true;
                                     for (int k = 0; k < uv->nvals; k++)
-                                        newmixvals[k][(int)ptId] = ((T**)uv->mixvals)[k][nmixvals++];
+                                        newmixvals[k][(int)ptId] = ((T**)uv->mixvals)[k][nmixvals];
+                                    nmixvals++;
                                 }
                             }
                         }
@@ -7889,12 +7902,14 @@ TraverseMaterialForSubsettedUcdvar(const DBucdvar *const uv,
                         if (restrictToMats.size() == 1) // single material optimization
                         {
                             for (j = 0; j < uv->nvals; j++)
-                                newmixvals[j][mix_idx] = ((T**)uv->vals)[j][nvals++];
+                                newmixvals[j][mix_idx] = ((T**)uv->vals)[j][nvals];
+                            nvals++;
                         }
                         else // multiple material case
                         {
                             for (j = 0; j < uv->nvals; j++)
-                                newmixvals[j][mix_idx] = ((T**)uv->mixvals)[j][nmixvals++];
+                                newmixvals[j][mix_idx] = ((T**)uv->mixvals)[j][nmixvals];
+                            nmixvals++;
                         }
                     }
                 }
@@ -10735,8 +10750,6 @@ CreateCurve(DBcurve *cur, const char *curvename, int vtkType)
 vtkDataSet *
 avtSiloFileFormat::GetCurve(DBfile *dbfile, const char *cn)
 {
-    int i;
-
     //
     // It's ridiculous, but Silo does not have all of the `const's in their
     // library, so let's cast it away.
@@ -14717,7 +14730,7 @@ avtSiloFileFormat::AddAnnotIntNodelistEnumerations(DBfile *dbfile, avtDatabaseMe
 static DBgroupelmap * 
 GetCondensedGroupelMap(DBfile *dbfile, DBmrgtnode *rootNode, int dontForceSingle)
 {
-    int i,j,k,q,pass;
+    int i,k,q,pass;
     DBgroupelmap *retval = 0;
 
     // We do this to prevent Silo for re-interpreting integer data in
@@ -14859,8 +14872,7 @@ HandleMrgtreeForMultimesh(DBfile *dbfile, DBmultimesh *mm, const char *multimesh
 {
 #ifdef SILO_VERSION_GE
 #if SILO_VERSION_GE(4,6,3)
-    int i, j, k, q;
-    char tmpName[256];
+    int i, j, q;
     bool probablyAnAMRMesh = true;
     DBgroupelmap *gm = 0; 
 

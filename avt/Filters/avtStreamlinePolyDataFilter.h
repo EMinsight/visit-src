@@ -45,6 +45,7 @@
 
 #include <avtStreamlineFilter.h>
 
+class avtStateRecorderIntegralCurve;
 
 // ****************************************************************************
 // Class: avtStreamlinePolyDataFilter
@@ -83,30 +84,34 @@
 //   Convert references from avtStreamline to avtIntegralCurve, the new name
 //   for the abstract base type.
 //
+//   Dave Pugmire, Mon Feb 21 08:22:30 EST 2011
+//   Color by correlation distance.
+//
 // ****************************************************************************
 
 class AVTFILTERS_API avtStreamlinePolyDataFilter : public avtStreamlineFilter
 {
   public:
-                              avtStreamlinePolyDataFilter() {}
+                              avtStreamlinePolyDataFilter();
     virtual                  ~avtStreamlinePolyDataFilter() {}
     static                    std::string colorvarArrayName;
     static                    std::string paramArrayName;
     static                    std::string opacityArrayName;
     static                    std::string thetaArrayName;
     static                    std::string tangentsArrayName;
+    static                    std::string scaleRadiusArrayName;
 
     void                      SetCoordinateSystem(int c) {coordinateSystem = c;}
-    void                      SetPhiFactor(double pf) {phiFactor = pf;}
+    void                      SetPhiScaling(bool flag, double pf) {
+      phiScalingFlag = flag; phiScaling = pf;}
 
   protected:
     void                      CreateIntegralCurveOutput(vector<avtIntegralCurve *> &streamlines);
+    float                     ComputeCorrelationDistance(int idx,  avtStateRecorderIntegralCurve *ic,
+                                                         double angTol, double minDist);
 
     int    coordinateSystem;
-    double phiFactor;
+    bool   phiScalingFlag;
+    double phiScaling;
 };
-
-
 #endif
-
-

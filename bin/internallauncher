@@ -699,6 +699,29 @@ $0 = shift @ARGV;
 #    I made the logic that distinguishes between 32 and 64 bits on Mac OS X
 #    smarter since it was overly aggressive in selecting the 64 bit version.
 #
+#    Gunther H. Weber, Wed Apr 13 11:43:51 PDT 2011
+#    Update LD_LIBRARY_PATH for franklin.nersc.gov
+#
+#    Eric Brugger, Wed Apr 20 10:25:53 PDT 2011
+#    I added support for Cielo at LANL.
+#
+#    Brad Whitlock, Fri May  6 15:21:05 PDT 2011
+#    Add support for version in the private plugin path.
+#
+#    Eric Brugger, Wed May 11 14:10:24 PDT 2011
+#    I added support for the sbatch launch method. I added support for Glory
+#    at Sandia.
+#
+#    Eric Brugger, Tue May 24 11:05:30 PDT 2011
+#    I added support for the aprun launch method.
+#
+#    Brad Whitlock, Thu Jun 16 09:07:40 PDT 2011
+#    Get the plugin version number from VISITPLUGINVERSION environment variable
+#    which is now set in frontendlauncher.
+#
+#    Brad Whitlock, Wed Jun 22 09:04:14 PDT 2011
+#    Allow 64-bit Mac to launch the 32-bit executable if it is present.
+#
 ###############################################################################
 
 use POSIX qw(ceil);
@@ -869,9 +892,10 @@ $fullusage = "$usage
         switch into scalable rendering mode when rendering complexity exceeds
         a predefined limit.
 
-        VisIt must manage the creation and teardown of X servers when the
-        number of GPUs per node exceeds one.  It will do this automatically,
-        though you may customize the procedure with the -x-args parameter.
+        VisIt can manage the creation and teardown of X servers for you.  It
+        will do this automatically if you specify the -launch-x parameter,
+        but you can customize the process with the -x-args and -display
+        parameters, which respect %l and %n formatters.
 
         See the VisIt wiki for more information:
 
@@ -880,6 +904,9 @@ $fullusage = "$usage
     ---------------------------------------------------------------------------
         -hw-accel              Tells VisIt that it should use graphics cards.
         -n-gpus-per-node <int> Number of GPUs per node of the cluster (1).
+        -launch-x              Tell VisIt to manage the X servers
+        -no-launch-x           Let the cluster manager X servers [default]
+        -display               Tells VisIt which display to use.
         -x-args '<string>'     Extra arguments to X server.
 
     Load balance options
@@ -1762,7 +1789,7 @@ if ( $host =~ /^nid/ )
     if ($nodename =~ /^franklin/)
     {
         $IsRunningOnFranklinNERSC = 1;
-        $ENV{LD_LIBRARY_PATH} = "/opt/gcc/4.4.1/snos/lib64";
+        $ENV{LD_LIBRARY_PATH} = "/opt/gcc/4.4.4/snos/lib64";
         if ($ENV{PATH} eq "")
         {
             $ENV{PATH} = "/opt/torque/2.3.4-200809011357/bin";
@@ -1948,6 +1975,32 @@ if ( ($parallel) and $exe_name eq "engine" and $host =~ /brutus/ )
    $remotehost = $remotehost . ".hpc-net.ethz.ch";
 }
 
+# ----
+# HACK for Cielo @ LANL
+# ----
+$IsRunningOnCieloLANL = 0;
+if ( $host =~ /^ci-fe\d+$/ or $host =~ /^ci-login\d+$/ or
+     $host =~ /^ci-vizlogin\d+$/ )
+{
+    chomp($domain = `hostname -d`);
+    if ( $domain eq "lanl.gov" )
+    {
+        $IsRunningOnCieloLANL = 1;
+        $ENV{LIBGL_ALWAYS_INDIRECT} = "1";
+        $ENV{LD_LIBRARY_PATH} = "/opt/cray/mpt/5.2.0/xt/gemini/mpich2-gnu/lib:/opt/gcc/mpc/0.8.1/lib:/opt/gcc/mpfr/2.4.2/lib:/opt/gcc/gmp/4.3.2/lib:/opt/gcc/4.5.2/snos/lib64:$ENV{LD_LIBRARY_PATH}";
+    }
+}
+
+# ----
+# HACK for Glory @ Sandia
+# ----
+$IsRunningOnGlorySandia = 0;
+if ( $host =~ /^glory\d+$/ )
+{
+    $IsRunningOnGlorySandia = 1;
+    $ENV{LD_LIBRARY_PATH} = "apps/x86_64/compilers/gcc/gcc-4.3.4/lib64:/apps/x86_64/compilers/gcc/gcc-4.3.4/lib64:$ENV{LD_LIBRARY_PATH}";
+}
+
 #  We stripped off the "port" argument above, so put it back here. Put it
 #  at the beginning so that it ends after the -host argument, see below.
 if ($remoteport_set)
@@ -2115,7 +2168,8 @@ for ($os) {
                         push @supportedarchs, "darwin-i386";
                     }
                     else {
-                        push @supportedarchs, "darwin-x86_64";
+                        # Prefer the 64-bit executable but back up to the 32-bit one.
+                        push @supportedarchs, "darwin-x86_64", "darwin-i386";
                     }
                 }
                 else {
@@ -2463,24 +2517,32 @@ $ENV{LD_LIBRARY_PATH}    = "$ENV{LD_LIBRARY_PATH}:/usr/local/lib";
 # Set up some environment flags that let VisIt run on Darwin.
 if($os eq "darwin")
 {
+    $privateplugins="$ENV{HOME}/.visit/$ver/$archdir/plugins/plots:$ENV{HOME}/.visit/$ver/$archdir/plugins/databases:$ENV{HOME}/.visit/$ver/$archdir/plugins/operators";
+    $oldprivateplugins="$ENV{HOME}/.visit/$archdir/plugins/plots:$ENV{HOME}/.visit/$archdir/plugins/databases:$ENV{HOME}/.visit/$archdir/plugins/operators";
     if ($ENV{DYLD_FALLBACK_LIBRARY_PATH} eq "")
     {
-        $ENV{DYLD_FALLBACK_LIBRARY_PATH} = "$visitlibdir:$ENV{HOME}/.visit/$archdir/plugins/plots:$ENV{HOME}/.visit/$archdir/plugins/databases:$ENV{HOME}/.visit/$archdir/plugins/operators:/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries";
+        $ENV{DYLD_FALLBACK_LIBRARY_PATH} = "$visitlibdir:$privateplugins:$oldprivateplugins:/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries";
     }
     else
     {
-        $ENV{DYLD_FALLBACK_LIBRARY_PATH} = "$visitlibdir:$ENV{HOME}/.visit/$archdir/plugins/plots:$ENV{HOME}/.visit/$archdir/plugins/databases:$ENV{HOME}/.visit/$archdir/plugins/operators:/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries:$ENV{DYLD_FALLBACK_LIBRARY_PATH}";
+        $ENV{DYLD_FALLBACK_LIBRARY_PATH} = "$visitlibdir:$privateplugins:$oldprivateplugins:/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries:$ENV{DYLD_FALLBACK_LIBRARY_PATH}";
     }
 }
 
 # Set up plugin search paths in the correct order
 if ($IsRunningOnJaguar_ORNL)
 {
-    $visitprivateplugins = "/lustre/widow1/scratch/$ENV{USER}/.visit/$archdir/plugins";
+    $visitprivateplugins = "/lustre/widow1/scratch/$ENV{USER}/.visit/$ENV{VISITPLUGINVERSION}/$archdir/plugins";
+    $visitprivateplugins_old = "/lustre/widow1/scratch/$ENV{USER}/.visit/$archdir/plugins";
 }
 else
 {
-    $visitprivateplugins = "$ENV{HOME}/.visit/$archdir/plugins";
+    $visitprivateplugins = "$ENV{HOME}/.visit/$ENV{VISITPLUGINVERSION}/$archdir/plugins";
+    $visitprivateplugins_old = "$ENV{HOME}/.visit/$archdir/plugins";
+}
+if ($ENV{VISITPLUGINVERSION} eq "")
+{
+    $visitprivateplugins = $visitprivateplugins_old;
 }
 
 if ($publiconly)
@@ -2494,7 +2556,7 @@ else
     {
         $ENV{VISITPLUGINDIRORIG} = $ENV{VISITPLUGINDIR};
     }
-    $ENV{VISITPLUGINDIR}="$ENV{VISITPLUGINDIRORIG}:$visitprivateplugins:$visitplugins";
+    $ENV{VISITPLUGINDIR}="$ENV{VISITPLUGINDIRORIG}:$visitprivateplugins:$visitprivateplugins_old:$visitplugins";
 }
 
 
@@ -2645,6 +2707,19 @@ if ($procs_set or ($parallel and $parlaunch_set))
         push @parcmd, "$ENV{VISITHOME}";
         push @parcmd, "-visitarchhome";
         push @parcmd, "$ENV{VISITARCHHOME}";
+
+        @printcmd = @parcmd;
+        if ($security_key_set) { push @parcmd, "-key", $security_key; }
+        push @parcmd, @post_args;
+        chomp($printcmd[0] = `basename $printcmd[0]`);
+    }
+    # aprun
+    elsif ($launch eq "aprun")
+    {
+        @parcmd = ("aprun");
+        push @parcmd, @launchargs if $launchargs_set;
+        push @parcmd, "-n", $procs if $procs_set;
+        push @parcmd, @visitcmd;
 
         @printcmd = @parcmd;
         if ($security_key_set) { push @parcmd, "-key", $security_key; }
@@ -2816,6 +2891,81 @@ if ($procs_set or ($parallel and $parlaunch_set))
         @printcmd = @parcmd;
         push @printcmd, ("\"".(pop @printcmd)."\"");
     }
+    # sbatch
+    elsif (substr($launch,0,6) eq "sbatch")
+    {
+        @parcmd = ("sbatch");
+        push @parcmd, "--partition=$part" if $part_set;
+        push @parcmd, "--account=$bank" if $bank_set;
+        push @parcmd, "--time=$time" if $time_set;
+        push @parcmd, "--nodes=$nodes" if $nodes_set;
+        push @parcmd, "--ntasks=$procs" if $procs_set;
+
+        $ppn = 8;
+        if ($nodes_set)
+        {
+           $ppn = ceil($procs / $nodes);
+        }
+
+        ($sbatchcmd, $sublauncher) = split /\W+/, substr($launch,6);
+        $sublauncher = "" if (!defined $sublauncher);
+        if ($sublauncher eq "mpiexec")
+        {
+            @mpicmd = ("mpiexec");
+            push @mpicmd, @sublaunchargs if $sublaunchargs_set;
+            if ($IsRunningOnGlorySandia)
+            {
+                push @mpicmd, "--np", $procs;
+                push @mpicmd, "/apps/contrib/numa_wrapper-16ppn";
+            }
+            else
+            {
+                push @mpicmd, "--npernode", $ppn;
+                push @mpicmd, "numa_wrapper";
+                push @mpicmd, "--ppn", $ppn;
+            }
+            push @mpicmd, "@visitcmd";
+            if ($security_key_set) { push @mpicmd, "-key", $security_key; }
+            push @mpicmd, @post_args;
+        }
+        elsif ($sublauncher eq "")
+        {
+            @mpicmd = "@visitcmd";
+        }
+
+        chomp($tdate = `date | cut -c 12-19`);
+        chomp($tuser = `whoami`);
+        $script_dir="/tmp";
+        $tfilename = "$script_dir/visit.$tuser.$tdate";
+        $tfile_opened = 1;
+        open(TFILE, ">$tfilename") or $tfile_opened = 0;
+        if ($tfile_opened)
+        {
+            print TFILE "#!/bin/sh\n";
+            if ($IsRunningOnGlorySandia)
+            {
+                print TFILE "module load compilers/gcc-4.3.4\n";
+            }
+            print TFILE $cdcmd;
+            print TFILE $limitcmd;
+            print TFILE "@sublaunchprecmd", "\n", if $sublaunchprecmd_set;
+            print TFILE "@mpicmd", "\n";
+            print TFILE "@sublaunchpostcmd", "\n", if $sublaunchpostcmd_set;
+            close(TFILE);
+        }
+
+        @printcmd = @parcmd;
+        push @parcmd, $tfilename;
+        push @printcmd, $cdcmd;
+        push @printcmd, $limitcmd;
+        push @printcmd, $libcmd;
+        push @printcmd, $ldlibcmd;
+        push @printcmd, $plugincmd;
+        push @printcmd, @sublaunchprecmd, "\n", if $sublaunchprecmd_set;
+        push @printcmd, @mpicmd;
+        push @printcmd, @sublaunchpostcmd, "\n", if $sublaunchpostcmd_set;
+        push @printcmd, ("\"".(pop @printcmd)."\"");
+    }
     # bsub
     elsif (substr($launch,0,4) eq "bsub")
     {
@@ -2925,6 +3075,11 @@ if ($procs_set or ($parallel and $parlaunch_set))
                 @mpicmd = ("aprun");
                 push @mpicmd, @sublaunchargs if $sublaunchargs_set;
                 push @mpicmd, "-n",  $procs if $procs_set;
+                if ($nodes_set and $procs_set)
+                {
+                    $ppn = ceil($procs / $nodes);
+                    push @mpicmd, "-N",  $ppn;
+                }
                 if ( $IsRunningOnFranklinNERSC || $IsRunningOnHopperNERSC || $IsRunningOnJaguar_ORNL )
                 {
                     push @mpicmd, "$visitbindir/env LD_LIBRARY_PATH=$visitlibdir:$visitarchdir/system_libs";
@@ -2960,6 +3115,11 @@ if ($procs_set or ($parallel and $parlaunch_set))
             if ($IsRunningOnEureka_ANL)
             {
                 print TFILE "export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/mx/lib\n";
+            }
+            if ($IsRunningOnCieloLANL)
+            {
+                print TFILE "module swap PrgEnv-pgi PrgEnv-gnu\n";
+                print TFILE "module swap xt-mpt xt-mpich2\n";
             }
             if ($IsRunningOnRanger_TACC)
             {

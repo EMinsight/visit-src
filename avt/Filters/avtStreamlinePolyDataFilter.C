@@ -41,7 +41,7 @@
 // ************************************************************************* //
 
 #include <avtStreamlinePolyDataFilter.h>
-
+#include <limits>
 #include <vtkAppendPolyData.h>
 #include <vtkCellArray.h>
 #include <vtkFloatArray.h>
@@ -61,6 +61,24 @@ std::string avtStreamlinePolyDataFilter::paramArrayName = "params";
 std::string avtStreamlinePolyDataFilter::opacityArrayName = "opacity";
 std::string avtStreamlinePolyDataFilter::thetaArrayName = "theta";
 std::string avtStreamlinePolyDataFilter::tangentsArrayName = "tangents";
+std::string avtStreamlinePolyDataFilter::scaleRadiusArrayName = "scaleRadius";
+
+
+// ****************************************************************************
+//  Method: avtStreamlineFilter::avtStreamlinePolyDataFilter
+//
+//  Purpose:
+//      Create the class.
+//
+//  Programmer: Dave Pugmire
+//  Creation:   June 16, 2008
+//
+
+avtStreamlinePolyDataFilter::avtStreamlinePolyDataFilter():
+  coordinateSystem(0), phiScalingFlag( false ), phiScaling( 1.0 )
+{
+}
+
 
 // ****************************************************************************
 //  Method: avtStreamlineFilter::CreateIntegralCurveOutput
@@ -115,6 +133,12 @@ std::string avtStreamlinePolyDataFilter::tangentsArrayName = "tangents";
 //
 //   Hank Childs, Sun Dec  5 10:43:57 PST 2010
 //   Issue warnings for more problems.
+//
+//   Dave Pugmire, Fri Jan 28 14:49:50 EST 2011
+//   Add vary tube radius by variable.
+//
+//   Dave Pugmire, Mon Feb 21 08:22:30 EST 2011
+//   Color by correlation distance.
 //
 // ****************************************************************************
 
@@ -210,6 +234,7 @@ avtStreamlinePolyDataFilter::CreateIntegralCurveOutput(vector<avtIntegralCurve *
     vtkFloatArray *scalars  = vtkFloatArray::New();
     vtkFloatArray *params   = vtkFloatArray::New();
     vtkFloatArray *tangents = vtkFloatArray::New();
+    vtkFloatArray *scaleTubeRad = NULL;
     vtkFloatArray *thetas   = NULL;
     vtkFloatArray *opacity  = NULL;
 
@@ -238,12 +263,28 @@ avtStreamlinePolyDataFilter::CreateIntegralCurveOutput(vector<avtIntegralCurve *
         thetas->SetName(thetaArrayName.c_str());
         pd->GetPointData()->AddArray(thetas);
     }
-    if (opacityVariable != "")
+    if (!opacityVariable.empty())
     {
         opacity = vtkFloatArray::New();
         opacity->Allocate(numPts);
         opacity->SetName(opacityArrayName.c_str());
         pd->GetPointData()->AddArray(opacity);
+    }
+    if (!scaleTubeRadiusVariable.empty())
+    {
+        scaleTubeRad = vtkFloatArray::New();
+        scaleTubeRad->Allocate(numPts);
+        scaleTubeRad->SetName(scaleRadiusArrayName.c_str());
+        pd->GetPointData()->AddArray(scaleTubeRad);
+    }
+
+    double correlationDistMinDistToUse = correlationDistanceMinDist;
+    double correlationDistAngTolToUse = 0.0;
+    if (coloringMethod == STREAMLINE_CORRELATION_DISTANCE)
+    {
+        if (correlationDistanceDoBBox)
+            correlationDistMinDistToUse *= GetLengthScale();
+        correlationDistAngTolToUse = cos(correlationDistanceAngTol *M_PI/180.0);
     }
 
     vtkIdType pIdx = 0, idx = 0;
@@ -260,7 +301,7 @@ avtStreamlinePolyDataFilter::CreateIntegralCurveOutput(vector<avtIntegralCurve *
         float theta = 0.0, prevT = 0.0;
         avtVector lastPos;
 
-        //cerr << phiFactor << "  " << (phiFactor == 0.0) << endl;
+        //cerr << phiScaling << "  " << (phiScaling == 0.0) << endl;
 
         for (int j = 0; j < numSamps; j++)
         {
@@ -268,21 +309,33 @@ avtStreamlinePolyDataFilter::CreateIntegralCurveOutput(vector<avtIntegralCurve *
             line->GetPointIds()->SetId(j, pIdx);
 
             if( coordinateSystem == 0 )
-              points->InsertPoint(pIdx, s.position.x, s.position.y, s.position.z);
+            {
+              if( phiScalingFlag && phiScaling != 0.0 )
+                points->InsertPoint(pIdx, s.position.x, s.position.y / phiScaling, s.position.z);
+              else
+                points->InsertPoint(pIdx, s.position.x, s.position.y, s.position.z);
+            }
             else if( coordinateSystem == 1 )
               points->InsertPoint(pIdx, 
                                   s.position.x*cos(s.position.y),
                                   s.position.x*sin(s.position.y),
                                   s.position.z);
             else if( coordinateSystem == 2 )
-              points->InsertPoint(pIdx, 
-                                  sqrt(s.position.x*s.position.x+
-                                       s.position.y*s.position.y),
-                                  (phiFactor == 0.0 ?
-                                   atan2( s.position.y, s.position.x ) :
-                                   (double) (j) / phiFactor),
-                                  s.position.z);
-            
+            {
+              if( phiScalingFlag && phiScaling != 0.0 )
+                points->InsertPoint(pIdx, 
+                                    sqrt(s.position.x*s.position.x+
+                                         s.position.y*s.position.y),
+                                    (double) (j) / phiScaling,
+                                    s.position.z);
+              else
+                points->InsertPoint(pIdx,
+                                    sqrt(s.position.x*s.position.x+
+                                         s.position.y*s.position.y),
+                                    atan2( s.position.y, s.position.x ),
+                                    s.position.z);
+            }
+
             float speed = s.velocity.length();
             if (speed > 0)
                 s.velocity *= 1.0f/speed;
@@ -311,6 +364,10 @@ avtStreamlinePolyDataFilter::CreateIntegralCurveOutput(vector<avtIntegralCurve *
                 break;
               case STREAMLINE_COLOR_SOLID:
                 scalars->InsertTuple1(pIdx, 0.0f);
+                break;
+              case STREAMLINE_CORRELATION_DISTANCE:
+                scalars->InsertTuple1(pIdx, ComputeCorrelationDistance(j, ic, correlationDistAngTolToUse, correlationDistMinDistToUse));
+                break;
             }
 
             // parameter scalars
@@ -337,6 +394,8 @@ avtStreamlinePolyDataFilter::CreateIntegralCurveOutput(vector<avtIntegralCurve *
                 thetas->InsertTuple1(pIdx, theta);
                 prevT = s.time;
             }
+            if (scaleTubeRad)
+                scaleTubeRad->InsertTuple1(pIdx, s.scalar2);
             
             pIdx++;
             lastPos = s.position;
@@ -398,4 +457,60 @@ avtStreamlinePolyDataFilter::CreateIntegralCurveOutput(vector<avtIntegralCurve *
         fclose(fp);
     }
     */
+}
+
+// ****************************************************************************
+// Method:  avtStreamlinePolyDataFilter::ComputeCorrelationDistance
+//
+// Purpose:
+//   Compute the correlation distance at this point. Defined as the arc length
+//   distance from the current point to the next point (greater than minDist away)
+//   along the streamilne where the velocity direction is the same (to angTol).
+//
+// Arguments:
+//   
+//
+// Programmer:  Dave Pugmire
+// Creation:    February 21, 2011
+//
+// ****************************************************************************
+
+
+float
+avtStreamlinePolyDataFilter::ComputeCorrelationDistance(int idx,  avtStateRecorderIntegralCurve *ic,
+                                                        double angTol, double minDist)
+{
+    int nSamps = ic->GetNumberOfSamples();
+    
+    //Last point...
+    if (idx == nSamps-1)
+        return 0.0f;
+    
+    float val = std::numeric_limits<float>::max();
+    
+    avtStateRecorderIntegralCurve::Sample s0 = ic->GetSample(idx);
+    avtVector curVel = s0.velocity.normalized();
+    double dist = 0.0;
+
+    avtVector p0 = s0.position;
+    for (int i = idx+1; i < nSamps; i++)
+    {
+        avtStateRecorderIntegralCurve::Sample s = ic->GetSample(i);
+        dist += (p0-s.position).length();
+        p0 = s.position;
+        
+        if (dist < minDist)
+            continue;
+
+        avtVector vel = s.velocity.normalized();
+        double dot = vel.dot(curVel);
+
+        if (fabs(dot) >= angTol)
+        {
+            val = dist;
+            break;
+        }
+    }
+
+    return val;
 }

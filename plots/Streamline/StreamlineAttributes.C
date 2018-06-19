@@ -92,20 +92,20 @@ StreamlineAttributes::SourceType_FromString(const std::string &s, StreamlineAttr
 static const char *ColoringMethod_strings[] = {
 "Solid", "ColorBySpeed", "ColorByVorticity", 
 "ColorByLength", "ColorByTime", "ColorBySeedPointID", 
-"ColorByVariable"};
+"ColorByVariable", "ColorByCorrelationDistance"};
 
 std::string
 StreamlineAttributes::ColoringMethod_ToString(StreamlineAttributes::ColoringMethod t)
 {
     int index = int(t);
-    if(index < 0 || index >= 7) index = 0;
+    if(index < 0 || index >= 8) index = 0;
     return ColoringMethod_strings[index];
 }
 
 std::string
 StreamlineAttributes::ColoringMethod_ToString(int t)
 {
-    int index = (t < 0 || t >= 7) ? 0 : t;
+    int index = (t < 0 || t >= 8) ? 0 : t;
     return ColoringMethod_strings[index];
 }
 
@@ -113,7 +113,7 @@ bool
 StreamlineAttributes::ColoringMethod_FromString(const std::string &s, StreamlineAttributes::ColoringMethod &val)
 {
     val = StreamlineAttributes::Solid;
-    for(int i = 0; i < 7; ++i)
+    for(int i = 0; i < 8; ++i)
     {
         if(s == ColoringMethod_strings[i])
         {
@@ -539,6 +539,43 @@ StreamlineAttributes::PathlinesCMFE_FromString(const std::string &s, StreamlineA
     return false;
 }
 
+//
+// Enum conversion methods for StreamlineAttributes::VaryTubeRadiusType
+//
+
+static const char *VaryTubeRadiusType_strings[] = {
+"None", "Scalar"};
+
+std::string
+StreamlineAttributes::VaryTubeRadiusType_ToString(StreamlineAttributes::VaryTubeRadiusType t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 2) index = 0;
+    return VaryTubeRadiusType_strings[index];
+}
+
+std::string
+StreamlineAttributes::VaryTubeRadiusType_ToString(int t)
+{
+    int index = (t < 0 || t >= 2) ? 0 : t;
+    return VaryTubeRadiusType_strings[index];
+}
+
+bool
+StreamlineAttributes::VaryTubeRadiusType_FromString(const std::string &s, StreamlineAttributes::VaryTubeRadiusType &val)
+{
+    val = StreamlineAttributes::None;
+    for(int i = 0; i < 2; ++i)
+    {
+        if(s == VaryTubeRadiusType_strings[i])
+        {
+            val = (VaryTubeRadiusType)i;
+            return true;
+        }
+    }
+    return false;
+}
+
 // ****************************************************************************
 // Method: StreamlineAttributes::StreamlineAttributes
 //
@@ -624,7 +661,8 @@ void StreamlineAttributes::Init()
     pathlinesOverrideStartingTime = 0;
     pathlinesCMFE = POS_CMFE;
     coordinateSystem = AsIs;
-    phiFactor = 0;
+    phiScalingFlag = false;
+    phiScaling = 1;
     legendMinFlag = false;
     legendMaxFlag = false;
     legendMin = 0;
@@ -672,6 +710,12 @@ void StreamlineAttributes::Init()
     issueStiffnessWarnings = true;
     issueCriticalPointsWarnings = true;
     criticalPointThreshold = 0.001;
+    varyTubeRadius = None;
+    varyTubeRadiusFactor = 10;
+    correlationDistanceAngTol = 5;
+    correlationDistanceMinDistAbsolute = 1;
+    correlationDistanceMinDistBBox = 0.005;
+    correlationDistanceMinDistType = FractionOfBBox;
 
     StreamlineAttributes::SelectAll();
 }
@@ -760,7 +804,8 @@ void StreamlineAttributes::Copy(const StreamlineAttributes &obj)
     pathlinesOverrideStartingTime = obj.pathlinesOverrideStartingTime;
     pathlinesCMFE = obj.pathlinesCMFE;
     coordinateSystem = obj.coordinateSystem;
-    phiFactor = obj.phiFactor;
+    phiScalingFlag = obj.phiScalingFlag;
+    phiScaling = obj.phiScaling;
     coloringVariable = obj.coloringVariable;
     legendMinFlag = obj.legendMinFlag;
     legendMaxFlag = obj.legendMaxFlag;
@@ -810,6 +855,13 @@ void StreamlineAttributes::Copy(const StreamlineAttributes &obj)
     issueStiffnessWarnings = obj.issueStiffnessWarnings;
     issueCriticalPointsWarnings = obj.issueCriticalPointsWarnings;
     criticalPointThreshold = obj.criticalPointThreshold;
+    varyTubeRadius = obj.varyTubeRadius;
+    varyTubeRadiusFactor = obj.varyTubeRadiusFactor;
+    varyTubeRadiusVariable = obj.varyTubeRadiusVariable;
+    correlationDistanceAngTol = obj.correlationDistanceAngTol;
+    correlationDistanceMinDistAbsolute = obj.correlationDistanceMinDistAbsolute;
+    correlationDistanceMinDistBBox = obj.correlationDistanceMinDistBBox;
+    correlationDistanceMinDistType = obj.correlationDistanceMinDistType;
 
     StreamlineAttributes::SelectAll();
 }
@@ -1052,7 +1104,8 @@ StreamlineAttributes::operator == (const StreamlineAttributes &obj) const
             (pathlinesOverrideStartingTime == obj.pathlinesOverrideStartingTime) &&
             (pathlinesCMFE == obj.pathlinesCMFE) &&
             (coordinateSystem == obj.coordinateSystem) &&
-            (phiFactor == obj.phiFactor) &&
+            (phiScalingFlag == obj.phiScalingFlag) &&
+            (phiScaling == obj.phiScaling) &&
             (coloringVariable == obj.coloringVariable) &&
             (legendMinFlag == obj.legendMinFlag) &&
             (legendMaxFlag == obj.legendMaxFlag) &&
@@ -1101,7 +1154,14 @@ StreamlineAttributes::operator == (const StreamlineAttributes &obj) const
             (issueTerminationWarnings == obj.issueTerminationWarnings) &&
             (issueStiffnessWarnings == obj.issueStiffnessWarnings) &&
             (issueCriticalPointsWarnings == obj.issueCriticalPointsWarnings) &&
-            (criticalPointThreshold == obj.criticalPointThreshold));
+            (criticalPointThreshold == obj.criticalPointThreshold) &&
+            (varyTubeRadius == obj.varyTubeRadius) &&
+            (varyTubeRadiusFactor == obj.varyTubeRadiusFactor) &&
+            (varyTubeRadiusVariable == obj.varyTubeRadiusVariable) &&
+            (correlationDistanceAngTol == obj.correlationDistanceAngTol) &&
+            (correlationDistanceMinDistAbsolute == obj.correlationDistanceMinDistAbsolute) &&
+            (correlationDistanceMinDistBBox == obj.correlationDistanceMinDistBBox) &&
+            (correlationDistanceMinDistType == obj.correlationDistanceMinDistType));
 }
 
 // ****************************************************************************
@@ -1358,99 +1418,107 @@ StreamlineAttributes::NewInstance(bool copy) const
 void
 StreamlineAttributes::SelectAll()
 {
-    Select(ID_sourceType,                        (void *)&sourceType);
-    Select(ID_pointSource,                       (void *)pointSource, 3);
-    Select(ID_lineStart,                         (void *)lineStart, 3);
-    Select(ID_lineEnd,                           (void *)lineEnd, 3);
-    Select(ID_planeOrigin,                       (void *)planeOrigin, 3);
-    Select(ID_planeNormal,                       (void *)planeNormal, 3);
-    Select(ID_planeUpAxis,                       (void *)planeUpAxis, 3);
-    Select(ID_radius,                            (void *)&radius);
-    Select(ID_sphereOrigin,                      (void *)sphereOrigin, 3);
-    Select(ID_boxExtents,                        (void *)boxExtents, 6);
-    Select(ID_useWholeBox,                       (void *)&useWholeBox);
-    Select(ID_pointList,                         (void *)&pointList);
-    Select(ID_sampleDensity0,                    (void *)&sampleDensity0);
-    Select(ID_sampleDensity1,                    (void *)&sampleDensity1);
-    Select(ID_sampleDensity2,                    (void *)&sampleDensity2);
-    Select(ID_coloringMethod,                    (void *)&coloringMethod);
-    Select(ID_colorTableName,                    (void *)&colorTableName);
-    Select(ID_singleColor,                       (void *)&singleColor);
-    Select(ID_legendFlag,                        (void *)&legendFlag);
-    Select(ID_lightingFlag,                      (void *)&lightingFlag);
-    Select(ID_streamlineDirection,               (void *)&streamlineDirection);
-    Select(ID_maxSteps,                          (void *)&maxSteps);
-    Select(ID_terminateByDistance,               (void *)&terminateByDistance);
-    Select(ID_termDistance,                      (void *)&termDistance);
-    Select(ID_terminateByTime,                   (void *)&terminateByTime);
-    Select(ID_termTime,                          (void *)&termTime);
-    Select(ID_maxStepLength,                     (void *)&maxStepLength);
-    Select(ID_limitMaximumTimestep,              (void *)&limitMaximumTimestep);
-    Select(ID_maxTimeStep,                       (void *)&maxTimeStep);
-    Select(ID_relTol,                            (void *)&relTol);
-    Select(ID_absTolSizeType,                    (void *)&absTolSizeType);
-    Select(ID_absTolAbsolute,                    (void *)&absTolAbsolute);
-    Select(ID_absTolBBox,                        (void *)&absTolBBox);
-    Select(ID_integrationType,                   (void *)&integrationType);
-    Select(ID_streamlineAlgorithmType,           (void *)&streamlineAlgorithmType);
-    Select(ID_maxStreamlineProcessCount,         (void *)&maxStreamlineProcessCount);
-    Select(ID_maxDomainCacheSize,                (void *)&maxDomainCacheSize);
-    Select(ID_workGroupSize,                     (void *)&workGroupSize);
-    Select(ID_pathlines,                         (void *)&pathlines);
-    Select(ID_pathlinesOverrideStartingTimeFlag, (void *)&pathlinesOverrideStartingTimeFlag);
-    Select(ID_pathlinesOverrideStartingTime,     (void *)&pathlinesOverrideStartingTime);
-    Select(ID_pathlinesCMFE,                     (void *)&pathlinesCMFE);
-    Select(ID_coordinateSystem,                  (void *)&coordinateSystem);
-    Select(ID_phiFactor,                         (void *)&phiFactor);
-    Select(ID_coloringVariable,                  (void *)&coloringVariable);
-    Select(ID_legendMinFlag,                     (void *)&legendMinFlag);
-    Select(ID_legendMaxFlag,                     (void *)&legendMaxFlag);
-    Select(ID_legendMin,                         (void *)&legendMin);
-    Select(ID_legendMax,                         (void *)&legendMax);
-    Select(ID_displayBegin,                      (void *)&displayBegin);
-    Select(ID_displayEnd,                        (void *)&displayEnd);
-    Select(ID_displayBeginFlag,                  (void *)&displayBeginFlag);
-    Select(ID_displayEndFlag,                    (void *)&displayEndFlag);
-    Select(ID_referenceTypeForDisplay,           (void *)&referenceTypeForDisplay);
-    Select(ID_displayMethod,                     (void *)&displayMethod);
-    Select(ID_tubeSizeType,                      (void *)&tubeSizeType);
-    Select(ID_tubeRadiusAbsolute,                (void *)&tubeRadiusAbsolute);
-    Select(ID_tubeRadiusBBox,                    (void *)&tubeRadiusBBox);
-    Select(ID_ribbonWidthSizeType,               (void *)&ribbonWidthSizeType);
-    Select(ID_ribbonWidthAbsolute,               (void *)&ribbonWidthAbsolute);
-    Select(ID_ribbonWidthBBox,                   (void *)&ribbonWidthBBox);
-    Select(ID_lineWidth,                         (void *)&lineWidth);
-    Select(ID_showSeeds,                         (void *)&showSeeds);
-    Select(ID_seedRadiusSizeType,                (void *)&seedRadiusSizeType);
-    Select(ID_seedRadiusAbsolute,                (void *)&seedRadiusAbsolute);
-    Select(ID_seedRadiusBBox,                    (void *)&seedRadiusBBox);
-    Select(ID_showHeads,                         (void *)&showHeads);
-    Select(ID_headDisplayType,                   (void *)&headDisplayType);
-    Select(ID_headRadiusSizeType,                (void *)&headRadiusSizeType);
-    Select(ID_headRadiusAbsolute,                (void *)&headRadiusAbsolute);
-    Select(ID_headRadiusBBox,                    (void *)&headRadiusBBox);
-    Select(ID_headHeightRatio,                   (void *)&headHeightRatio);
-    Select(ID_opacityType,                       (void *)&opacityType);
-    Select(ID_opacityVariable,                   (void *)&opacityVariable);
-    Select(ID_opacity,                           (void *)&opacity);
-    Select(ID_opacityVarMin,                     (void *)&opacityVarMin);
-    Select(ID_opacityVarMax,                     (void *)&opacityVarMax);
-    Select(ID_opacityVarMinFlag,                 (void *)&opacityVarMinFlag);
-    Select(ID_opacityVarMaxFlag,                 (void *)&opacityVarMaxFlag);
-    Select(ID_tubeDisplayDensity,                (void *)&tubeDisplayDensity);
-    Select(ID_geomDisplayQuality,                (void *)&geomDisplayQuality);
-    Select(ID_sampleDistance0,                   (void *)&sampleDistance0);
-    Select(ID_sampleDistance1,                   (void *)&sampleDistance1);
-    Select(ID_sampleDistance2,                   (void *)&sampleDistance2);
-    Select(ID_fillInterior,                      (void *)&fillInterior);
-    Select(ID_randomSamples,                     (void *)&randomSamples);
-    Select(ID_randomSeed,                        (void *)&randomSeed);
-    Select(ID_numberOfRandomSamples,             (void *)&numberOfRandomSamples);
-    Select(ID_forceNodeCenteredData,             (void *)&forceNodeCenteredData);
-    Select(ID_issueTerminationWarnings,          (void *)&issueTerminationWarnings);
-    Select(ID_issueStiffnessWarnings,            (void *)&issueStiffnessWarnings);
-    Select(ID_issueCriticalPointsWarnings,       (void *)&issueCriticalPointsWarnings);
-    Select(ID_criticalPointThreshold,            (void *)&criticalPointThreshold);
+    Select(ID_sourceType,                         (void *)&sourceType);
+    Select(ID_pointSource,                        (void *)pointSource, 3);
+    Select(ID_lineStart,                          (void *)lineStart, 3);
+    Select(ID_lineEnd,                            (void *)lineEnd, 3);
+    Select(ID_planeOrigin,                        (void *)planeOrigin, 3);
+    Select(ID_planeNormal,                        (void *)planeNormal, 3);
+    Select(ID_planeUpAxis,                        (void *)planeUpAxis, 3);
+    Select(ID_radius,                             (void *)&radius);
+    Select(ID_sphereOrigin,                       (void *)sphereOrigin, 3);
+    Select(ID_boxExtents,                         (void *)boxExtents, 6);
+    Select(ID_useWholeBox,                        (void *)&useWholeBox);
+    Select(ID_pointList,                          (void *)&pointList);
+    Select(ID_sampleDensity0,                     (void *)&sampleDensity0);
+    Select(ID_sampleDensity1,                     (void *)&sampleDensity1);
+    Select(ID_sampleDensity2,                     (void *)&sampleDensity2);
+    Select(ID_coloringMethod,                     (void *)&coloringMethod);
+    Select(ID_colorTableName,                     (void *)&colorTableName);
+    Select(ID_singleColor,                        (void *)&singleColor);
+    Select(ID_legendFlag,                         (void *)&legendFlag);
+    Select(ID_lightingFlag,                       (void *)&lightingFlag);
+    Select(ID_streamlineDirection,                (void *)&streamlineDirection);
+    Select(ID_maxSteps,                           (void *)&maxSteps);
+    Select(ID_terminateByDistance,                (void *)&terminateByDistance);
+    Select(ID_termDistance,                       (void *)&termDistance);
+    Select(ID_terminateByTime,                    (void *)&terminateByTime);
+    Select(ID_termTime,                           (void *)&termTime);
+    Select(ID_maxStepLength,                      (void *)&maxStepLength);
+    Select(ID_limitMaximumTimestep,               (void *)&limitMaximumTimestep);
+    Select(ID_maxTimeStep,                        (void *)&maxTimeStep);
+    Select(ID_relTol,                             (void *)&relTol);
+    Select(ID_absTolSizeType,                     (void *)&absTolSizeType);
+    Select(ID_absTolAbsolute,                     (void *)&absTolAbsolute);
+    Select(ID_absTolBBox,                         (void *)&absTolBBox);
+    Select(ID_integrationType,                    (void *)&integrationType);
+    Select(ID_streamlineAlgorithmType,            (void *)&streamlineAlgorithmType);
+    Select(ID_maxStreamlineProcessCount,          (void *)&maxStreamlineProcessCount);
+    Select(ID_maxDomainCacheSize,                 (void *)&maxDomainCacheSize);
+    Select(ID_workGroupSize,                      (void *)&workGroupSize);
+    Select(ID_pathlines,                          (void *)&pathlines);
+    Select(ID_pathlinesOverrideStartingTimeFlag,  (void *)&pathlinesOverrideStartingTimeFlag);
+    Select(ID_pathlinesOverrideStartingTime,      (void *)&pathlinesOverrideStartingTime);
+    Select(ID_pathlinesCMFE,                      (void *)&pathlinesCMFE);
+    Select(ID_coordinateSystem,                   (void *)&coordinateSystem);
+    Select(ID_phiScalingFlag,                     (void *)&phiScalingFlag);
+    Select(ID_phiScaling,                         (void *)&phiScaling);
+    Select(ID_coloringVariable,                   (void *)&coloringVariable);
+    Select(ID_legendMinFlag,                      (void *)&legendMinFlag);
+    Select(ID_legendMaxFlag,                      (void *)&legendMaxFlag);
+    Select(ID_legendMin,                          (void *)&legendMin);
+    Select(ID_legendMax,                          (void *)&legendMax);
+    Select(ID_displayBegin,                       (void *)&displayBegin);
+    Select(ID_displayEnd,                         (void *)&displayEnd);
+    Select(ID_displayBeginFlag,                   (void *)&displayBeginFlag);
+    Select(ID_displayEndFlag,                     (void *)&displayEndFlag);
+    Select(ID_referenceTypeForDisplay,            (void *)&referenceTypeForDisplay);
+    Select(ID_displayMethod,                      (void *)&displayMethod);
+    Select(ID_tubeSizeType,                       (void *)&tubeSizeType);
+    Select(ID_tubeRadiusAbsolute,                 (void *)&tubeRadiusAbsolute);
+    Select(ID_tubeRadiusBBox,                     (void *)&tubeRadiusBBox);
+    Select(ID_ribbonWidthSizeType,                (void *)&ribbonWidthSizeType);
+    Select(ID_ribbonWidthAbsolute,                (void *)&ribbonWidthAbsolute);
+    Select(ID_ribbonWidthBBox,                    (void *)&ribbonWidthBBox);
+    Select(ID_lineWidth,                          (void *)&lineWidth);
+    Select(ID_showSeeds,                          (void *)&showSeeds);
+    Select(ID_seedRadiusSizeType,                 (void *)&seedRadiusSizeType);
+    Select(ID_seedRadiusAbsolute,                 (void *)&seedRadiusAbsolute);
+    Select(ID_seedRadiusBBox,                     (void *)&seedRadiusBBox);
+    Select(ID_showHeads,                          (void *)&showHeads);
+    Select(ID_headDisplayType,                    (void *)&headDisplayType);
+    Select(ID_headRadiusSizeType,                 (void *)&headRadiusSizeType);
+    Select(ID_headRadiusAbsolute,                 (void *)&headRadiusAbsolute);
+    Select(ID_headRadiusBBox,                     (void *)&headRadiusBBox);
+    Select(ID_headHeightRatio,                    (void *)&headHeightRatio);
+    Select(ID_opacityType,                        (void *)&opacityType);
+    Select(ID_opacityVariable,                    (void *)&opacityVariable);
+    Select(ID_opacity,                            (void *)&opacity);
+    Select(ID_opacityVarMin,                      (void *)&opacityVarMin);
+    Select(ID_opacityVarMax,                      (void *)&opacityVarMax);
+    Select(ID_opacityVarMinFlag,                  (void *)&opacityVarMinFlag);
+    Select(ID_opacityVarMaxFlag,                  (void *)&opacityVarMaxFlag);
+    Select(ID_tubeDisplayDensity,                 (void *)&tubeDisplayDensity);
+    Select(ID_geomDisplayQuality,                 (void *)&geomDisplayQuality);
+    Select(ID_sampleDistance0,                    (void *)&sampleDistance0);
+    Select(ID_sampleDistance1,                    (void *)&sampleDistance1);
+    Select(ID_sampleDistance2,                    (void *)&sampleDistance2);
+    Select(ID_fillInterior,                       (void *)&fillInterior);
+    Select(ID_randomSamples,                      (void *)&randomSamples);
+    Select(ID_randomSeed,                         (void *)&randomSeed);
+    Select(ID_numberOfRandomSamples,              (void *)&numberOfRandomSamples);
+    Select(ID_forceNodeCenteredData,              (void *)&forceNodeCenteredData);
+    Select(ID_issueTerminationWarnings,           (void *)&issueTerminationWarnings);
+    Select(ID_issueStiffnessWarnings,             (void *)&issueStiffnessWarnings);
+    Select(ID_issueCriticalPointsWarnings,        (void *)&issueCriticalPointsWarnings);
+    Select(ID_criticalPointThreshold,             (void *)&criticalPointThreshold);
+    Select(ID_varyTubeRadius,                     (void *)&varyTubeRadius);
+    Select(ID_varyTubeRadiusFactor,               (void *)&varyTubeRadiusFactor);
+    Select(ID_varyTubeRadiusVariable,             (void *)&varyTubeRadiusVariable);
+    Select(ID_correlationDistanceAngTol,          (void *)&correlationDistanceAngTol);
+    Select(ID_correlationDistanceMinDistAbsolute, (void *)&correlationDistanceMinDistAbsolute);
+    Select(ID_correlationDistanceMinDistBBox,     (void *)&correlationDistanceMinDistBBox);
+    Select(ID_correlationDistanceMinDistType,     (void *)&correlationDistanceMinDistType);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1743,10 +1811,16 @@ StreamlineAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool f
         node->AddNode(new DataNode("coordinateSystem", CoordinateSystem_ToString(coordinateSystem)));
     }
 
-    if(completeSave || !FieldsEqual(ID_phiFactor, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_phiScalingFlag, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("phiFactor", phiFactor));
+        node->AddNode(new DataNode("phiScalingFlag", phiScalingFlag));
+    }
+
+    if(completeSave || !FieldsEqual(ID_phiScaling, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("phiScaling", phiScaling));
     }
 
     if(completeSave || !FieldsEqual(ID_coloringVariable, &defaultObject))
@@ -2043,6 +2117,48 @@ StreamlineAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool f
         node->AddNode(new DataNode("criticalPointThreshold", criticalPointThreshold));
     }
 
+    if(completeSave || !FieldsEqual(ID_varyTubeRadius, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("varyTubeRadius", VaryTubeRadiusType_ToString(varyTubeRadius)));
+    }
+
+    if(completeSave || !FieldsEqual(ID_varyTubeRadiusFactor, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("varyTubeRadiusFactor", varyTubeRadiusFactor));
+    }
+
+    if(completeSave || !FieldsEqual(ID_varyTubeRadiusVariable, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("varyTubeRadiusVariable", varyTubeRadiusVariable));
+    }
+
+    if(completeSave || !FieldsEqual(ID_correlationDistanceAngTol, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("correlationDistanceAngTol", correlationDistanceAngTol));
+    }
+
+    if(completeSave || !FieldsEqual(ID_correlationDistanceMinDistAbsolute, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("correlationDistanceMinDistAbsolute", correlationDistanceMinDistAbsolute));
+    }
+
+    if(completeSave || !FieldsEqual(ID_correlationDistanceMinDistBBox, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("correlationDistanceMinDistBBox", correlationDistanceMinDistBBox));
+    }
+
+    if(completeSave || !FieldsEqual(ID_correlationDistanceMinDistType, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("correlationDistanceMinDistType", SizeType_ToString(correlationDistanceMinDistType)));
+    }
+
 
     // Add the node to the parent node.
     if(addToParent || forceAdd)
@@ -2129,7 +2245,7 @@ StreamlineAttributes::SetFromNode(DataNode *parentNode)
         if(node->GetNodeType() == INT_NODE)
         {
             int ival = node->AsInt();
-            if(ival >= 0 && ival < 7)
+            if(ival >= 0 && ival < 8)
                 SetColoringMethod(ColoringMethod(ival));
         }
         else if(node->GetNodeType() == STRING_NODE)
@@ -2277,8 +2393,10 @@ StreamlineAttributes::SetFromNode(DataNode *parentNode)
                 SetCoordinateSystem(value);
         }
     }
-    if((node = searchNode->GetNode("phiFactor")) != 0)
-        SetPhiFactor(node->AsDouble());
+    if((node = searchNode->GetNode("phiScalingFlag")) != 0)
+        SetPhiScalingFlag(node->AsBool());
+    if((node = searchNode->GetNode("phiScaling")) != 0)
+        SetPhiScaling(node->AsDouble());
     if((node = searchNode->GetNode("coloringVariable")) != 0)
         SetColoringVariable(node->AsString());
     if((node = searchNode->GetNode("legendMinFlag")) != 0)
@@ -2503,6 +2621,48 @@ StreamlineAttributes::SetFromNode(DataNode *parentNode)
         SetIssueCriticalPointsWarnings(node->AsBool());
     if((node = searchNode->GetNode("criticalPointThreshold")) != 0)
         SetCriticalPointThreshold(node->AsDouble());
+    if((node = searchNode->GetNode("varyTubeRadius")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 2)
+                SetVaryTubeRadius(VaryTubeRadiusType(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            VaryTubeRadiusType value;
+            if(VaryTubeRadiusType_FromString(node->AsString(), value))
+                SetVaryTubeRadius(value);
+        }
+    }
+    if((node = searchNode->GetNode("varyTubeRadiusFactor")) != 0)
+        SetVaryTubeRadiusFactor(node->AsDouble());
+    if((node = searchNode->GetNode("varyTubeRadiusVariable")) != 0)
+        SetVaryTubeRadiusVariable(node->AsString());
+    if((node = searchNode->GetNode("correlationDistanceAngTol")) != 0)
+        SetCorrelationDistanceAngTol(node->AsDouble());
+    if((node = searchNode->GetNode("correlationDistanceMinDistAbsolute")) != 0)
+        SetCorrelationDistanceMinDistAbsolute(node->AsDouble());
+    if((node = searchNode->GetNode("correlationDistanceMinDistBBox")) != 0)
+        SetCorrelationDistanceMinDistBBox(node->AsDouble());
+    if((node = searchNode->GetNode("correlationDistanceMinDistType")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 2)
+                SetCorrelationDistanceMinDistType(SizeType(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            SizeType value;
+            if(SizeType_FromString(node->AsString(), value))
+                SetCorrelationDistanceMinDistType(value);
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -2826,10 +2986,17 @@ StreamlineAttributes::SetCoordinateSystem(StreamlineAttributes::CoordinateSystem
 }
 
 void
-StreamlineAttributes::SetPhiFactor(double phiFactor_)
+StreamlineAttributes::SetPhiScalingFlag(bool phiScalingFlag_)
 {
-    phiFactor = phiFactor_;
-    Select(ID_phiFactor, (void *)&phiFactor);
+    phiScalingFlag = phiScalingFlag_;
+    Select(ID_phiScalingFlag, (void *)&phiScalingFlag);
+}
+
+void
+StreamlineAttributes::SetPhiScaling(double phiScaling_)
+{
+    phiScaling = phiScaling_;
+    Select(ID_phiScaling, (void *)&phiScaling);
 }
 
 void
@@ -3175,6 +3342,55 @@ StreamlineAttributes::SetCriticalPointThreshold(double criticalPointThreshold_)
     Select(ID_criticalPointThreshold, (void *)&criticalPointThreshold);
 }
 
+void
+StreamlineAttributes::SetVaryTubeRadius(StreamlineAttributes::VaryTubeRadiusType varyTubeRadius_)
+{
+    varyTubeRadius = varyTubeRadius_;
+    Select(ID_varyTubeRadius, (void *)&varyTubeRadius);
+}
+
+void
+StreamlineAttributes::SetVaryTubeRadiusFactor(double varyTubeRadiusFactor_)
+{
+    varyTubeRadiusFactor = varyTubeRadiusFactor_;
+    Select(ID_varyTubeRadiusFactor, (void *)&varyTubeRadiusFactor);
+}
+
+void
+StreamlineAttributes::SetVaryTubeRadiusVariable(const std::string &varyTubeRadiusVariable_)
+{
+    varyTubeRadiusVariable = varyTubeRadiusVariable_;
+    Select(ID_varyTubeRadiusVariable, (void *)&varyTubeRadiusVariable);
+}
+
+void
+StreamlineAttributes::SetCorrelationDistanceAngTol(double correlationDistanceAngTol_)
+{
+    correlationDistanceAngTol = correlationDistanceAngTol_;
+    Select(ID_correlationDistanceAngTol, (void *)&correlationDistanceAngTol);
+}
+
+void
+StreamlineAttributes::SetCorrelationDistanceMinDistAbsolute(double correlationDistanceMinDistAbsolute_)
+{
+    correlationDistanceMinDistAbsolute = correlationDistanceMinDistAbsolute_;
+    Select(ID_correlationDistanceMinDistAbsolute, (void *)&correlationDistanceMinDistAbsolute);
+}
+
+void
+StreamlineAttributes::SetCorrelationDistanceMinDistBBox(double correlationDistanceMinDistBBox_)
+{
+    correlationDistanceMinDistBBox = correlationDistanceMinDistBBox_;
+    Select(ID_correlationDistanceMinDistBBox, (void *)&correlationDistanceMinDistBBox);
+}
+
+void
+StreamlineAttributes::SetCorrelationDistanceMinDistType(StreamlineAttributes::SizeType correlationDistanceMinDistType_)
+{
+    correlationDistanceMinDistType = correlationDistanceMinDistType_;
+    Select(ID_correlationDistanceMinDistType, (void *)&correlationDistanceMinDistType);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Get property methods
 ///////////////////////////////////////////////////////////////////////////////
@@ -3503,10 +3719,16 @@ StreamlineAttributes::GetCoordinateSystem() const
     return CoordinateSystem(coordinateSystem);
 }
 
-double
-StreamlineAttributes::GetPhiFactor() const
+bool
+StreamlineAttributes::GetPhiScalingFlag() const
 {
-    return phiFactor;
+    return phiScalingFlag;
+}
+
+double
+StreamlineAttributes::GetPhiScaling() const
+{
+    return phiScaling;
 }
 
 const std::string &
@@ -3815,6 +4037,54 @@ StreamlineAttributes::GetCriticalPointThreshold() const
     return criticalPointThreshold;
 }
 
+StreamlineAttributes::VaryTubeRadiusType
+StreamlineAttributes::GetVaryTubeRadius() const
+{
+    return VaryTubeRadiusType(varyTubeRadius);
+}
+
+double
+StreamlineAttributes::GetVaryTubeRadiusFactor() const
+{
+    return varyTubeRadiusFactor;
+}
+
+const std::string &
+StreamlineAttributes::GetVaryTubeRadiusVariable() const
+{
+    return varyTubeRadiusVariable;
+}
+
+std::string &
+StreamlineAttributes::GetVaryTubeRadiusVariable()
+{
+    return varyTubeRadiusVariable;
+}
+
+double
+StreamlineAttributes::GetCorrelationDistanceAngTol() const
+{
+    return correlationDistanceAngTol;
+}
+
+double
+StreamlineAttributes::GetCorrelationDistanceMinDistAbsolute() const
+{
+    return correlationDistanceMinDistAbsolute;
+}
+
+double
+StreamlineAttributes::GetCorrelationDistanceMinDistBBox() const
+{
+    return correlationDistanceMinDistBBox;
+}
+
+StreamlineAttributes::SizeType
+StreamlineAttributes::GetCorrelationDistanceMinDistType() const
+{
+    return SizeType(correlationDistanceMinDistType);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Select property methods
 ///////////////////////////////////////////////////////////////////////////////
@@ -3897,6 +4167,12 @@ StreamlineAttributes::SelectOpacityVariable()
     Select(ID_opacityVariable, (void *)&opacityVariable);
 }
 
+void
+StreamlineAttributes::SelectVaryTubeRadiusVariable()
+{
+    Select(ID_varyTubeRadiusVariable, (void *)&varyTubeRadiusVariable);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Keyframing methods
 ///////////////////////////////////////////////////////////////////////////////
@@ -3921,99 +4197,107 @@ StreamlineAttributes::GetFieldName(int index) const
 {
     switch (index)
     {
-    case ID_sourceType:                        return "sourceType";
-    case ID_pointSource:                       return "pointSource";
-    case ID_lineStart:                         return "lineStart";
-    case ID_lineEnd:                           return "lineEnd";
-    case ID_planeOrigin:                       return "planeOrigin";
-    case ID_planeNormal:                       return "planeNormal";
-    case ID_planeUpAxis:                       return "planeUpAxis";
-    case ID_radius:                            return "radius";
-    case ID_sphereOrigin:                      return "sphereOrigin";
-    case ID_boxExtents:                        return "boxExtents";
-    case ID_useWholeBox:                       return "useWholeBox";
-    case ID_pointList:                         return "pointList";
-    case ID_sampleDensity0:                    return "sampleDensity0";
-    case ID_sampleDensity1:                    return "sampleDensity1";
-    case ID_sampleDensity2:                    return "sampleDensity2";
-    case ID_coloringMethod:                    return "coloringMethod";
-    case ID_colorTableName:                    return "colorTableName";
-    case ID_singleColor:                       return "singleColor";
-    case ID_legendFlag:                        return "legendFlag";
-    case ID_lightingFlag:                      return "lightingFlag";
-    case ID_streamlineDirection:               return "streamlineDirection";
-    case ID_maxSteps:                          return "maxSteps";
-    case ID_terminateByDistance:               return "terminateByDistance";
-    case ID_termDistance:                      return "termDistance";
-    case ID_terminateByTime:                   return "terminateByTime";
-    case ID_termTime:                          return "termTime";
-    case ID_maxStepLength:                     return "maxStepLength";
-    case ID_limitMaximumTimestep:              return "limitMaximumTimestep";
-    case ID_maxTimeStep:                       return "maxTimeStep";
-    case ID_relTol:                            return "relTol";
-    case ID_absTolSizeType:                    return "absTolSizeType";
-    case ID_absTolAbsolute:                    return "absTolAbsolute";
-    case ID_absTolBBox:                        return "absTolBBox";
-    case ID_integrationType:                   return "integrationType";
-    case ID_streamlineAlgorithmType:           return "streamlineAlgorithmType";
-    case ID_maxStreamlineProcessCount:         return "maxStreamlineProcessCount";
-    case ID_maxDomainCacheSize:                return "maxDomainCacheSize";
-    case ID_workGroupSize:                     return "workGroupSize";
-    case ID_pathlines:                         return "pathlines";
-    case ID_pathlinesOverrideStartingTimeFlag: return "pathlinesOverrideStartingTimeFlag";
-    case ID_pathlinesOverrideStartingTime:     return "pathlinesOverrideStartingTime";
-    case ID_pathlinesCMFE:                     return "pathlinesCMFE";
-    case ID_coordinateSystem:                  return "coordinateSystem";
-    case ID_phiFactor:                         return "phiFactor";
-    case ID_coloringVariable:                  return "coloringVariable";
-    case ID_legendMinFlag:                     return "legendMinFlag";
-    case ID_legendMaxFlag:                     return "legendMaxFlag";
-    case ID_legendMin:                         return "legendMin";
-    case ID_legendMax:                         return "legendMax";
-    case ID_displayBegin:                      return "displayBegin";
-    case ID_displayEnd:                        return "displayEnd";
-    case ID_displayBeginFlag:                  return "displayBeginFlag";
-    case ID_displayEndFlag:                    return "displayEndFlag";
-    case ID_referenceTypeForDisplay:           return "referenceTypeForDisplay";
-    case ID_displayMethod:                     return "displayMethod";
-    case ID_tubeSizeType:                      return "tubeSizeType";
-    case ID_tubeRadiusAbsolute:                return "tubeRadiusAbsolute";
-    case ID_tubeRadiusBBox:                    return "tubeRadiusBBox";
-    case ID_ribbonWidthSizeType:               return "ribbonWidthSizeType";
-    case ID_ribbonWidthAbsolute:               return "ribbonWidthAbsolute";
-    case ID_ribbonWidthBBox:                   return "ribbonWidthBBox";
-    case ID_lineWidth:                         return "lineWidth";
-    case ID_showSeeds:                         return "showSeeds";
-    case ID_seedRadiusSizeType:                return "seedRadiusSizeType";
-    case ID_seedRadiusAbsolute:                return "seedRadiusAbsolute";
-    case ID_seedRadiusBBox:                    return "seedRadiusBBox";
-    case ID_showHeads:                         return "showHeads";
-    case ID_headDisplayType:                   return "headDisplayType";
-    case ID_headRadiusSizeType:                return "headRadiusSizeType";
-    case ID_headRadiusAbsolute:                return "headRadiusAbsolute";
-    case ID_headRadiusBBox:                    return "headRadiusBBox";
-    case ID_headHeightRatio:                   return "headHeightRatio";
-    case ID_opacityType:                       return "opacityType";
-    case ID_opacityVariable:                   return "opacityVariable";
-    case ID_opacity:                           return "opacity";
-    case ID_opacityVarMin:                     return "opacityVarMin";
-    case ID_opacityVarMax:                     return "opacityVarMax";
-    case ID_opacityVarMinFlag:                 return "opacityVarMinFlag";
-    case ID_opacityVarMaxFlag:                 return "opacityVarMaxFlag";
-    case ID_tubeDisplayDensity:                return "tubeDisplayDensity";
-    case ID_geomDisplayQuality:                return "geomDisplayQuality";
-    case ID_sampleDistance0:                   return "sampleDistance0";
-    case ID_sampleDistance1:                   return "sampleDistance1";
-    case ID_sampleDistance2:                   return "sampleDistance2";
-    case ID_fillInterior:                      return "fillInterior";
-    case ID_randomSamples:                     return "randomSamples";
-    case ID_randomSeed:                        return "randomSeed";
-    case ID_numberOfRandomSamples:             return "numberOfRandomSamples";
-    case ID_forceNodeCenteredData:             return "forceNodeCenteredData";
-    case ID_issueTerminationWarnings:          return "issueTerminationWarnings";
-    case ID_issueStiffnessWarnings:            return "issueStiffnessWarnings";
-    case ID_issueCriticalPointsWarnings:       return "issueCriticalPointsWarnings";
-    case ID_criticalPointThreshold:            return "criticalPointThreshold";
+    case ID_sourceType:                         return "sourceType";
+    case ID_pointSource:                        return "pointSource";
+    case ID_lineStart:                          return "lineStart";
+    case ID_lineEnd:                            return "lineEnd";
+    case ID_planeOrigin:                        return "planeOrigin";
+    case ID_planeNormal:                        return "planeNormal";
+    case ID_planeUpAxis:                        return "planeUpAxis";
+    case ID_radius:                             return "radius";
+    case ID_sphereOrigin:                       return "sphereOrigin";
+    case ID_boxExtents:                         return "boxExtents";
+    case ID_useWholeBox:                        return "useWholeBox";
+    case ID_pointList:                          return "pointList";
+    case ID_sampleDensity0:                     return "sampleDensity0";
+    case ID_sampleDensity1:                     return "sampleDensity1";
+    case ID_sampleDensity2:                     return "sampleDensity2";
+    case ID_coloringMethod:                     return "coloringMethod";
+    case ID_colorTableName:                     return "colorTableName";
+    case ID_singleColor:                        return "singleColor";
+    case ID_legendFlag:                         return "legendFlag";
+    case ID_lightingFlag:                       return "lightingFlag";
+    case ID_streamlineDirection:                return "streamlineDirection";
+    case ID_maxSteps:                           return "maxSteps";
+    case ID_terminateByDistance:                return "terminateByDistance";
+    case ID_termDistance:                       return "termDistance";
+    case ID_terminateByTime:                    return "terminateByTime";
+    case ID_termTime:                           return "termTime";
+    case ID_maxStepLength:                      return "maxStepLength";
+    case ID_limitMaximumTimestep:               return "limitMaximumTimestep";
+    case ID_maxTimeStep:                        return "maxTimeStep";
+    case ID_relTol:                             return "relTol";
+    case ID_absTolSizeType:                     return "absTolSizeType";
+    case ID_absTolAbsolute:                     return "absTolAbsolute";
+    case ID_absTolBBox:                         return "absTolBBox";
+    case ID_integrationType:                    return "integrationType";
+    case ID_streamlineAlgorithmType:            return "streamlineAlgorithmType";
+    case ID_maxStreamlineProcessCount:          return "maxStreamlineProcessCount";
+    case ID_maxDomainCacheSize:                 return "maxDomainCacheSize";
+    case ID_workGroupSize:                      return "workGroupSize";
+    case ID_pathlines:                          return "pathlines";
+    case ID_pathlinesOverrideStartingTimeFlag:  return "pathlinesOverrideStartingTimeFlag";
+    case ID_pathlinesOverrideStartingTime:      return "pathlinesOverrideStartingTime";
+    case ID_pathlinesCMFE:                      return "pathlinesCMFE";
+    case ID_coordinateSystem:                   return "coordinateSystem";
+    case ID_phiScalingFlag:                     return "phiScalingFlag";
+    case ID_phiScaling:                         return "phiScaling";
+    case ID_coloringVariable:                   return "coloringVariable";
+    case ID_legendMinFlag:                      return "legendMinFlag";
+    case ID_legendMaxFlag:                      return "legendMaxFlag";
+    case ID_legendMin:                          return "legendMin";
+    case ID_legendMax:                          return "legendMax";
+    case ID_displayBegin:                       return "displayBegin";
+    case ID_displayEnd:                         return "displayEnd";
+    case ID_displayBeginFlag:                   return "displayBeginFlag";
+    case ID_displayEndFlag:                     return "displayEndFlag";
+    case ID_referenceTypeForDisplay:            return "referenceTypeForDisplay";
+    case ID_displayMethod:                      return "displayMethod";
+    case ID_tubeSizeType:                       return "tubeSizeType";
+    case ID_tubeRadiusAbsolute:                 return "tubeRadiusAbsolute";
+    case ID_tubeRadiusBBox:                     return "tubeRadiusBBox";
+    case ID_ribbonWidthSizeType:                return "ribbonWidthSizeType";
+    case ID_ribbonWidthAbsolute:                return "ribbonWidthAbsolute";
+    case ID_ribbonWidthBBox:                    return "ribbonWidthBBox";
+    case ID_lineWidth:                          return "lineWidth";
+    case ID_showSeeds:                          return "showSeeds";
+    case ID_seedRadiusSizeType:                 return "seedRadiusSizeType";
+    case ID_seedRadiusAbsolute:                 return "seedRadiusAbsolute";
+    case ID_seedRadiusBBox:                     return "seedRadiusBBox";
+    case ID_showHeads:                          return "showHeads";
+    case ID_headDisplayType:                    return "headDisplayType";
+    case ID_headRadiusSizeType:                 return "headRadiusSizeType";
+    case ID_headRadiusAbsolute:                 return "headRadiusAbsolute";
+    case ID_headRadiusBBox:                     return "headRadiusBBox";
+    case ID_headHeightRatio:                    return "headHeightRatio";
+    case ID_opacityType:                        return "opacityType";
+    case ID_opacityVariable:                    return "opacityVariable";
+    case ID_opacity:                            return "opacity";
+    case ID_opacityVarMin:                      return "opacityVarMin";
+    case ID_opacityVarMax:                      return "opacityVarMax";
+    case ID_opacityVarMinFlag:                  return "opacityVarMinFlag";
+    case ID_opacityVarMaxFlag:                  return "opacityVarMaxFlag";
+    case ID_tubeDisplayDensity:                 return "tubeDisplayDensity";
+    case ID_geomDisplayQuality:                 return "geomDisplayQuality";
+    case ID_sampleDistance0:                    return "sampleDistance0";
+    case ID_sampleDistance1:                    return "sampleDistance1";
+    case ID_sampleDistance2:                    return "sampleDistance2";
+    case ID_fillInterior:                       return "fillInterior";
+    case ID_randomSamples:                      return "randomSamples";
+    case ID_randomSeed:                         return "randomSeed";
+    case ID_numberOfRandomSamples:              return "numberOfRandomSamples";
+    case ID_forceNodeCenteredData:              return "forceNodeCenteredData";
+    case ID_issueTerminationWarnings:           return "issueTerminationWarnings";
+    case ID_issueStiffnessWarnings:             return "issueStiffnessWarnings";
+    case ID_issueCriticalPointsWarnings:        return "issueCriticalPointsWarnings";
+    case ID_criticalPointThreshold:             return "criticalPointThreshold";
+    case ID_varyTubeRadius:                     return "varyTubeRadius";
+    case ID_varyTubeRadiusFactor:               return "varyTubeRadiusFactor";
+    case ID_varyTubeRadiusVariable:             return "varyTubeRadiusVariable";
+    case ID_correlationDistanceAngTol:          return "correlationDistanceAngTol";
+    case ID_correlationDistanceMinDistAbsolute: return "correlationDistanceMinDistAbsolute";
+    case ID_correlationDistanceMinDistBBox:     return "correlationDistanceMinDistBBox";
+    case ID_correlationDistanceMinDistType:     return "correlationDistanceMinDistType";
     default:  return "invalid index";
     }
 }
@@ -4038,99 +4322,107 @@ StreamlineAttributes::GetFieldType(int index) const
 {
     switch (index)
     {
-    case ID_sourceType:                        return FieldType_enum;
-    case ID_pointSource:                       return FieldType_doubleArray;
-    case ID_lineStart:                         return FieldType_doubleArray;
-    case ID_lineEnd:                           return FieldType_doubleArray;
-    case ID_planeOrigin:                       return FieldType_doubleArray;
-    case ID_planeNormal:                       return FieldType_doubleArray;
-    case ID_planeUpAxis:                       return FieldType_doubleArray;
-    case ID_radius:                            return FieldType_double;
-    case ID_sphereOrigin:                      return FieldType_doubleArray;
-    case ID_boxExtents:                        return FieldType_doubleArray;
-    case ID_useWholeBox:                       return FieldType_bool;
-    case ID_pointList:                         return FieldType_doubleVector;
-    case ID_sampleDensity0:                    return FieldType_int;
-    case ID_sampleDensity1:                    return FieldType_int;
-    case ID_sampleDensity2:                    return FieldType_int;
-    case ID_coloringMethod:                    return FieldType_enum;
-    case ID_colorTableName:                    return FieldType_colortable;
-    case ID_singleColor:                       return FieldType_color;
-    case ID_legendFlag:                        return FieldType_bool;
-    case ID_lightingFlag:                      return FieldType_bool;
-    case ID_streamlineDirection:               return FieldType_enum;
-    case ID_maxSteps:                          return FieldType_int;
-    case ID_terminateByDistance:               return FieldType_bool;
-    case ID_termDistance:                      return FieldType_double;
-    case ID_terminateByTime:                   return FieldType_bool;
-    case ID_termTime:                          return FieldType_double;
-    case ID_maxStepLength:                     return FieldType_double;
-    case ID_limitMaximumTimestep:              return FieldType_bool;
-    case ID_maxTimeStep:                       return FieldType_double;
-    case ID_relTol:                            return FieldType_double;
-    case ID_absTolSizeType:                    return FieldType_enum;
-    case ID_absTolAbsolute:                    return FieldType_double;
-    case ID_absTolBBox:                        return FieldType_double;
-    case ID_integrationType:                   return FieldType_enum;
-    case ID_streamlineAlgorithmType:           return FieldType_enum;
-    case ID_maxStreamlineProcessCount:         return FieldType_int;
-    case ID_maxDomainCacheSize:                return FieldType_int;
-    case ID_workGroupSize:                     return FieldType_int;
-    case ID_pathlines:                         return FieldType_bool;
-    case ID_pathlinesOverrideStartingTimeFlag: return FieldType_bool;
-    case ID_pathlinesOverrideStartingTime:     return FieldType_double;
-    case ID_pathlinesCMFE:                     return FieldType_enum;
-    case ID_coordinateSystem:                  return FieldType_enum;
-    case ID_phiFactor:                         return FieldType_double;
-    case ID_coloringVariable:                  return FieldType_string;
-    case ID_legendMinFlag:                     return FieldType_bool;
-    case ID_legendMaxFlag:                     return FieldType_bool;
-    case ID_legendMin:                         return FieldType_double;
-    case ID_legendMax:                         return FieldType_double;
-    case ID_displayBegin:                      return FieldType_double;
-    case ID_displayEnd:                        return FieldType_double;
-    case ID_displayBeginFlag:                  return FieldType_bool;
-    case ID_displayEndFlag:                    return FieldType_bool;
-    case ID_referenceTypeForDisplay:           return FieldType_enum;
-    case ID_displayMethod:                     return FieldType_enum;
-    case ID_tubeSizeType:                      return FieldType_enum;
-    case ID_tubeRadiusAbsolute:                return FieldType_double;
-    case ID_tubeRadiusBBox:                    return FieldType_double;
-    case ID_ribbonWidthSizeType:               return FieldType_enum;
-    case ID_ribbonWidthAbsolute:               return FieldType_double;
-    case ID_ribbonWidthBBox:                   return FieldType_double;
-    case ID_lineWidth:                         return FieldType_linewidth;
-    case ID_showSeeds:                         return FieldType_bool;
-    case ID_seedRadiusSizeType:                return FieldType_enum;
-    case ID_seedRadiusAbsolute:                return FieldType_double;
-    case ID_seedRadiusBBox:                    return FieldType_double;
-    case ID_showHeads:                         return FieldType_bool;
-    case ID_headDisplayType:                   return FieldType_enum;
-    case ID_headRadiusSizeType:                return FieldType_enum;
-    case ID_headRadiusAbsolute:                return FieldType_double;
-    case ID_headRadiusBBox:                    return FieldType_double;
-    case ID_headHeightRatio:                   return FieldType_double;
-    case ID_opacityType:                       return FieldType_enum;
-    case ID_opacityVariable:                   return FieldType_string;
-    case ID_opacity:                           return FieldType_double;
-    case ID_opacityVarMin:                     return FieldType_double;
-    case ID_opacityVarMax:                     return FieldType_double;
-    case ID_opacityVarMinFlag:                 return FieldType_bool;
-    case ID_opacityVarMaxFlag:                 return FieldType_bool;
-    case ID_tubeDisplayDensity:                return FieldType_int;
-    case ID_geomDisplayQuality:                return FieldType_enum;
-    case ID_sampleDistance0:                   return FieldType_double;
-    case ID_sampleDistance1:                   return FieldType_double;
-    case ID_sampleDistance2:                   return FieldType_double;
-    case ID_fillInterior:                      return FieldType_bool;
-    case ID_randomSamples:                     return FieldType_bool;
-    case ID_randomSeed:                        return FieldType_int;
-    case ID_numberOfRandomSamples:             return FieldType_int;
-    case ID_forceNodeCenteredData:             return FieldType_bool;
-    case ID_issueTerminationWarnings:          return FieldType_bool;
-    case ID_issueStiffnessWarnings:            return FieldType_bool;
-    case ID_issueCriticalPointsWarnings:       return FieldType_bool;
-    case ID_criticalPointThreshold:            return FieldType_double;
+    case ID_sourceType:                         return FieldType_enum;
+    case ID_pointSource:                        return FieldType_doubleArray;
+    case ID_lineStart:                          return FieldType_doubleArray;
+    case ID_lineEnd:                            return FieldType_doubleArray;
+    case ID_planeOrigin:                        return FieldType_doubleArray;
+    case ID_planeNormal:                        return FieldType_doubleArray;
+    case ID_planeUpAxis:                        return FieldType_doubleArray;
+    case ID_radius:                             return FieldType_double;
+    case ID_sphereOrigin:                       return FieldType_doubleArray;
+    case ID_boxExtents:                         return FieldType_doubleArray;
+    case ID_useWholeBox:                        return FieldType_bool;
+    case ID_pointList:                          return FieldType_doubleVector;
+    case ID_sampleDensity0:                     return FieldType_int;
+    case ID_sampleDensity1:                     return FieldType_int;
+    case ID_sampleDensity2:                     return FieldType_int;
+    case ID_coloringMethod:                     return FieldType_enum;
+    case ID_colorTableName:                     return FieldType_colortable;
+    case ID_singleColor:                        return FieldType_color;
+    case ID_legendFlag:                         return FieldType_bool;
+    case ID_lightingFlag:                       return FieldType_bool;
+    case ID_streamlineDirection:                return FieldType_enum;
+    case ID_maxSteps:                           return FieldType_int;
+    case ID_terminateByDistance:                return FieldType_bool;
+    case ID_termDistance:                       return FieldType_double;
+    case ID_terminateByTime:                    return FieldType_bool;
+    case ID_termTime:                           return FieldType_double;
+    case ID_maxStepLength:                      return FieldType_double;
+    case ID_limitMaximumTimestep:               return FieldType_bool;
+    case ID_maxTimeStep:                        return FieldType_double;
+    case ID_relTol:                             return FieldType_double;
+    case ID_absTolSizeType:                     return FieldType_enum;
+    case ID_absTolAbsolute:                     return FieldType_double;
+    case ID_absTolBBox:                         return FieldType_double;
+    case ID_integrationType:                    return FieldType_enum;
+    case ID_streamlineAlgorithmType:            return FieldType_enum;
+    case ID_maxStreamlineProcessCount:          return FieldType_int;
+    case ID_maxDomainCacheSize:                 return FieldType_int;
+    case ID_workGroupSize:                      return FieldType_int;
+    case ID_pathlines:                          return FieldType_bool;
+    case ID_pathlinesOverrideStartingTimeFlag:  return FieldType_bool;
+    case ID_pathlinesOverrideStartingTime:      return FieldType_double;
+    case ID_pathlinesCMFE:                      return FieldType_enum;
+    case ID_coordinateSystem:                   return FieldType_enum;
+    case ID_phiScalingFlag:                     return FieldType_bool;
+    case ID_phiScaling:                         return FieldType_double;
+    case ID_coloringVariable:                   return FieldType_string;
+    case ID_legendMinFlag:                      return FieldType_bool;
+    case ID_legendMaxFlag:                      return FieldType_bool;
+    case ID_legendMin:                          return FieldType_double;
+    case ID_legendMax:                          return FieldType_double;
+    case ID_displayBegin:                       return FieldType_double;
+    case ID_displayEnd:                         return FieldType_double;
+    case ID_displayBeginFlag:                   return FieldType_bool;
+    case ID_displayEndFlag:                     return FieldType_bool;
+    case ID_referenceTypeForDisplay:            return FieldType_enum;
+    case ID_displayMethod:                      return FieldType_enum;
+    case ID_tubeSizeType:                       return FieldType_enum;
+    case ID_tubeRadiusAbsolute:                 return FieldType_double;
+    case ID_tubeRadiusBBox:                     return FieldType_double;
+    case ID_ribbonWidthSizeType:                return FieldType_enum;
+    case ID_ribbonWidthAbsolute:                return FieldType_double;
+    case ID_ribbonWidthBBox:                    return FieldType_double;
+    case ID_lineWidth:                          return FieldType_linewidth;
+    case ID_showSeeds:                          return FieldType_bool;
+    case ID_seedRadiusSizeType:                 return FieldType_enum;
+    case ID_seedRadiusAbsolute:                 return FieldType_double;
+    case ID_seedRadiusBBox:                     return FieldType_double;
+    case ID_showHeads:                          return FieldType_bool;
+    case ID_headDisplayType:                    return FieldType_enum;
+    case ID_headRadiusSizeType:                 return FieldType_enum;
+    case ID_headRadiusAbsolute:                 return FieldType_double;
+    case ID_headRadiusBBox:                     return FieldType_double;
+    case ID_headHeightRatio:                    return FieldType_double;
+    case ID_opacityType:                        return FieldType_enum;
+    case ID_opacityVariable:                    return FieldType_string;
+    case ID_opacity:                            return FieldType_double;
+    case ID_opacityVarMin:                      return FieldType_double;
+    case ID_opacityVarMax:                      return FieldType_double;
+    case ID_opacityVarMinFlag:                  return FieldType_bool;
+    case ID_opacityVarMaxFlag:                  return FieldType_bool;
+    case ID_tubeDisplayDensity:                 return FieldType_int;
+    case ID_geomDisplayQuality:                 return FieldType_enum;
+    case ID_sampleDistance0:                    return FieldType_double;
+    case ID_sampleDistance1:                    return FieldType_double;
+    case ID_sampleDistance2:                    return FieldType_double;
+    case ID_fillInterior:                       return FieldType_bool;
+    case ID_randomSamples:                      return FieldType_bool;
+    case ID_randomSeed:                         return FieldType_int;
+    case ID_numberOfRandomSamples:              return FieldType_int;
+    case ID_forceNodeCenteredData:              return FieldType_bool;
+    case ID_issueTerminationWarnings:           return FieldType_bool;
+    case ID_issueStiffnessWarnings:             return FieldType_bool;
+    case ID_issueCriticalPointsWarnings:        return FieldType_bool;
+    case ID_criticalPointThreshold:             return FieldType_double;
+    case ID_varyTubeRadius:                     return FieldType_enum;
+    case ID_varyTubeRadiusFactor:               return FieldType_double;
+    case ID_varyTubeRadiusVariable:             return FieldType_string;
+    case ID_correlationDistanceAngTol:          return FieldType_double;
+    case ID_correlationDistanceMinDistAbsolute: return FieldType_double;
+    case ID_correlationDistanceMinDistBBox:     return FieldType_double;
+    case ID_correlationDistanceMinDistType:     return FieldType_enum;
     default:  return FieldType_unknown;
     }
 }
@@ -4155,99 +4447,107 @@ StreamlineAttributes::GetFieldTypeName(int index) const
 {
     switch (index)
     {
-    case ID_sourceType:                        return "enum";
-    case ID_pointSource:                       return "doubleArray";
-    case ID_lineStart:                         return "doubleArray";
-    case ID_lineEnd:                           return "doubleArray";
-    case ID_planeOrigin:                       return "doubleArray";
-    case ID_planeNormal:                       return "doubleArray";
-    case ID_planeUpAxis:                       return "doubleArray";
-    case ID_radius:                            return "double";
-    case ID_sphereOrigin:                      return "doubleArray";
-    case ID_boxExtents:                        return "doubleArray";
-    case ID_useWholeBox:                       return "bool";
-    case ID_pointList:                         return "doubleVector";
-    case ID_sampleDensity0:                    return "int";
-    case ID_sampleDensity1:                    return "int";
-    case ID_sampleDensity2:                    return "int";
-    case ID_coloringMethod:                    return "enum";
-    case ID_colorTableName:                    return "colortable";
-    case ID_singleColor:                       return "color";
-    case ID_legendFlag:                        return "bool";
-    case ID_lightingFlag:                      return "bool";
-    case ID_streamlineDirection:               return "enum";
-    case ID_maxSteps:                          return "int";
-    case ID_terminateByDistance:               return "bool";
-    case ID_termDistance:                      return "double";
-    case ID_terminateByTime:                   return "bool";
-    case ID_termTime:                          return "double";
-    case ID_maxStepLength:                     return "double";
-    case ID_limitMaximumTimestep:              return "bool";
-    case ID_maxTimeStep:                       return "double";
-    case ID_relTol:                            return "double";
-    case ID_absTolSizeType:                    return "enum";
-    case ID_absTolAbsolute:                    return "double";
-    case ID_absTolBBox:                        return "double";
-    case ID_integrationType:                   return "enum";
-    case ID_streamlineAlgorithmType:           return "enum";
-    case ID_maxStreamlineProcessCount:         return "int";
-    case ID_maxDomainCacheSize:                return "int";
-    case ID_workGroupSize:                     return "int";
-    case ID_pathlines:                         return "bool";
-    case ID_pathlinesOverrideStartingTimeFlag: return "bool";
-    case ID_pathlinesOverrideStartingTime:     return "double";
-    case ID_pathlinesCMFE:                     return "enum";
-    case ID_coordinateSystem:                  return "enum";
-    case ID_phiFactor:                         return "double";
-    case ID_coloringVariable:                  return "string";
-    case ID_legendMinFlag:                     return "bool";
-    case ID_legendMaxFlag:                     return "bool";
-    case ID_legendMin:                         return "double";
-    case ID_legendMax:                         return "double";
-    case ID_displayBegin:                      return "double";
-    case ID_displayEnd:                        return "double";
-    case ID_displayBeginFlag:                  return "bool";
-    case ID_displayEndFlag:                    return "bool";
-    case ID_referenceTypeForDisplay:           return "enum";
-    case ID_displayMethod:                     return "enum";
-    case ID_tubeSizeType:                      return "enum";
-    case ID_tubeRadiusAbsolute:                return "double";
-    case ID_tubeRadiusBBox:                    return "double";
-    case ID_ribbonWidthSizeType:               return "enum";
-    case ID_ribbonWidthAbsolute:               return "double";
-    case ID_ribbonWidthBBox:                   return "double";
-    case ID_lineWidth:                         return "linewidth";
-    case ID_showSeeds:                         return "bool";
-    case ID_seedRadiusSizeType:                return "enum";
-    case ID_seedRadiusAbsolute:                return "double";
-    case ID_seedRadiusBBox:                    return "double";
-    case ID_showHeads:                         return "bool";
-    case ID_headDisplayType:                   return "enum";
-    case ID_headRadiusSizeType:                return "enum";
-    case ID_headRadiusAbsolute:                return "double";
-    case ID_headRadiusBBox:                    return "double";
-    case ID_headHeightRatio:                   return "double";
-    case ID_opacityType:                       return "enum";
-    case ID_opacityVariable:                   return "string";
-    case ID_opacity:                           return "double";
-    case ID_opacityVarMin:                     return "double";
-    case ID_opacityVarMax:                     return "double";
-    case ID_opacityVarMinFlag:                 return "bool";
-    case ID_opacityVarMaxFlag:                 return "bool";
-    case ID_tubeDisplayDensity:                return "int";
-    case ID_geomDisplayQuality:                return "enum";
-    case ID_sampleDistance0:                   return "double";
-    case ID_sampleDistance1:                   return "double";
-    case ID_sampleDistance2:                   return "double";
-    case ID_fillInterior:                      return "bool";
-    case ID_randomSamples:                     return "bool";
-    case ID_randomSeed:                        return "int";
-    case ID_numberOfRandomSamples:             return "int";
-    case ID_forceNodeCenteredData:             return "bool";
-    case ID_issueTerminationWarnings:          return "bool";
-    case ID_issueStiffnessWarnings:            return "bool";
-    case ID_issueCriticalPointsWarnings:       return "bool";
-    case ID_criticalPointThreshold:            return "double";
+    case ID_sourceType:                         return "enum";
+    case ID_pointSource:                        return "doubleArray";
+    case ID_lineStart:                          return "doubleArray";
+    case ID_lineEnd:                            return "doubleArray";
+    case ID_planeOrigin:                        return "doubleArray";
+    case ID_planeNormal:                        return "doubleArray";
+    case ID_planeUpAxis:                        return "doubleArray";
+    case ID_radius:                             return "double";
+    case ID_sphereOrigin:                       return "doubleArray";
+    case ID_boxExtents:                         return "doubleArray";
+    case ID_useWholeBox:                        return "bool";
+    case ID_pointList:                          return "doubleVector";
+    case ID_sampleDensity0:                     return "int";
+    case ID_sampleDensity1:                     return "int";
+    case ID_sampleDensity2:                     return "int";
+    case ID_coloringMethod:                     return "enum";
+    case ID_colorTableName:                     return "colortable";
+    case ID_singleColor:                        return "color";
+    case ID_legendFlag:                         return "bool";
+    case ID_lightingFlag:                       return "bool";
+    case ID_streamlineDirection:                return "enum";
+    case ID_maxSteps:                           return "int";
+    case ID_terminateByDistance:                return "bool";
+    case ID_termDistance:                       return "double";
+    case ID_terminateByTime:                    return "bool";
+    case ID_termTime:                           return "double";
+    case ID_maxStepLength:                      return "double";
+    case ID_limitMaximumTimestep:               return "bool";
+    case ID_maxTimeStep:                        return "double";
+    case ID_relTol:                             return "double";
+    case ID_absTolSizeType:                     return "enum";
+    case ID_absTolAbsolute:                     return "double";
+    case ID_absTolBBox:                         return "double";
+    case ID_integrationType:                    return "enum";
+    case ID_streamlineAlgorithmType:            return "enum";
+    case ID_maxStreamlineProcessCount:          return "int";
+    case ID_maxDomainCacheSize:                 return "int";
+    case ID_workGroupSize:                      return "int";
+    case ID_pathlines:                          return "bool";
+    case ID_pathlinesOverrideStartingTimeFlag:  return "bool";
+    case ID_pathlinesOverrideStartingTime:      return "double";
+    case ID_pathlinesCMFE:                      return "enum";
+    case ID_coordinateSystem:                   return "enum";
+    case ID_phiScalingFlag:                     return "bool";
+    case ID_phiScaling:                         return "double";
+    case ID_coloringVariable:                   return "string";
+    case ID_legendMinFlag:                      return "bool";
+    case ID_legendMaxFlag:                      return "bool";
+    case ID_legendMin:                          return "double";
+    case ID_legendMax:                          return "double";
+    case ID_displayBegin:                       return "double";
+    case ID_displayEnd:                         return "double";
+    case ID_displayBeginFlag:                   return "bool";
+    case ID_displayEndFlag:                     return "bool";
+    case ID_referenceTypeForDisplay:            return "enum";
+    case ID_displayMethod:                      return "enum";
+    case ID_tubeSizeType:                       return "enum";
+    case ID_tubeRadiusAbsolute:                 return "double";
+    case ID_tubeRadiusBBox:                     return "double";
+    case ID_ribbonWidthSizeType:                return "enum";
+    case ID_ribbonWidthAbsolute:                return "double";
+    case ID_ribbonWidthBBox:                    return "double";
+    case ID_lineWidth:                          return "linewidth";
+    case ID_showSeeds:                          return "bool";
+    case ID_seedRadiusSizeType:                 return "enum";
+    case ID_seedRadiusAbsolute:                 return "double";
+    case ID_seedRadiusBBox:                     return "double";
+    case ID_showHeads:                          return "bool";
+    case ID_headDisplayType:                    return "enum";
+    case ID_headRadiusSizeType:                 return "enum";
+    case ID_headRadiusAbsolute:                 return "double";
+    case ID_headRadiusBBox:                     return "double";
+    case ID_headHeightRatio:                    return "double";
+    case ID_opacityType:                        return "enum";
+    case ID_opacityVariable:                    return "string";
+    case ID_opacity:                            return "double";
+    case ID_opacityVarMin:                      return "double";
+    case ID_opacityVarMax:                      return "double";
+    case ID_opacityVarMinFlag:                  return "bool";
+    case ID_opacityVarMaxFlag:                  return "bool";
+    case ID_tubeDisplayDensity:                 return "int";
+    case ID_geomDisplayQuality:                 return "enum";
+    case ID_sampleDistance0:                    return "double";
+    case ID_sampleDistance1:                    return "double";
+    case ID_sampleDistance2:                    return "double";
+    case ID_fillInterior:                       return "bool";
+    case ID_randomSamples:                      return "bool";
+    case ID_randomSeed:                         return "int";
+    case ID_numberOfRandomSamples:              return "int";
+    case ID_forceNodeCenteredData:              return "bool";
+    case ID_issueTerminationWarnings:           return "bool";
+    case ID_issueStiffnessWarnings:             return "bool";
+    case ID_issueCriticalPointsWarnings:        return "bool";
+    case ID_criticalPointThreshold:             return "double";
+    case ID_varyTubeRadius:                     return "enum";
+    case ID_varyTubeRadiusFactor:               return "double";
+    case ID_varyTubeRadiusVariable:             return "string";
+    case ID_correlationDistanceAngTol:          return "double";
+    case ID_correlationDistanceMinDistAbsolute: return "double";
+    case ID_correlationDistanceMinDistBBox:     return "double";
+    case ID_correlationDistanceMinDistType:     return "enum";
     default:  return "invalid index";
     }
 }
@@ -4529,9 +4829,14 @@ StreamlineAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (coordinateSystem == obj.coordinateSystem);
         }
         break;
-    case ID_phiFactor:
+    case ID_phiScalingFlag:
         {  // new scope
-        retval = (phiFactor == obj.phiFactor);
+        retval = (phiScalingFlag == obj.phiScalingFlag);
+        }
+        break;
+    case ID_phiScaling:
+        {  // new scope
+        retval = (phiScaling == obj.phiScaling);
         }
         break;
     case ID_coloringVariable:
@@ -4779,6 +5084,41 @@ StreamlineAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (criticalPointThreshold == obj.criticalPointThreshold);
         }
         break;
+    case ID_varyTubeRadius:
+        {  // new scope
+        retval = (varyTubeRadius == obj.varyTubeRadius);
+        }
+        break;
+    case ID_varyTubeRadiusFactor:
+        {  // new scope
+        retval = (varyTubeRadiusFactor == obj.varyTubeRadiusFactor);
+        }
+        break;
+    case ID_varyTubeRadiusVariable:
+        {  // new scope
+        retval = (varyTubeRadiusVariable == obj.varyTubeRadiusVariable);
+        }
+        break;
+    case ID_correlationDistanceAngTol:
+        {  // new scope
+        retval = (correlationDistanceAngTol == obj.correlationDistanceAngTol);
+        }
+        break;
+    case ID_correlationDistanceMinDistAbsolute:
+        {  // new scope
+        retval = (correlationDistanceMinDistAbsolute == obj.correlationDistanceMinDistAbsolute);
+        }
+        break;
+    case ID_correlationDistanceMinDistBBox:
+        {  // new scope
+        retval = (correlationDistanceMinDistBBox == obj.correlationDistanceMinDistBBox);
+        }
+        break;
+    case ID_correlationDistanceMinDistType:
+        {  // new scope
+        retval = (correlationDistanceMinDistType == obj.correlationDistanceMinDistType);
+        }
+        break;
     default: retval = false;
     }
 
@@ -4824,6 +5164,9 @@ StreamlineAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
 //   Hank Childs, Mon Oct  4 14:32:06 PDT 2010
 //   Add support for having multiple termination criterias.
 //
+//   Dave Pugmire, Fri Jan 28 14:49:50 EST 2011
+//   Add vary tube radius by variable.
+//
 // ****************************************************************************
 
 #define PDIF(p1,p2,i) ((p1)[i] != (p2)[i])
@@ -4842,7 +5185,8 @@ StreamlineAttributes::ChangesRequireRecalculation(const StreamlineAttributes &ob
         streamlineDirection != obj.streamlineDirection ||
         integrationType != obj.integrationType ||
         coordinateSystem != obj.coordinateSystem ||
-        phiFactor != obj.phiFactor ||
+        phiScalingFlag != obj.phiScalingFlag ||
+        phiScaling != obj.phiScaling ||
         maxStepLength != obj.maxStepLength ||
         maxTimeStep != obj.maxTimeStep ||
         limitMaximumTimestep != obj.limitMaximumTimestep ||
@@ -4859,7 +5203,12 @@ StreamlineAttributes::ChangesRequireRecalculation(const StreamlineAttributes &ob
         coloringVariable != obj.coloringVariable ||
         (displayMethod != obj.displayMethod && obj.displayMethod == Ribbons) ||
         (coloringMethod != obj.coloringMethod && obj.coloringMethod != Solid) ||
-
+        ((coloringMethod == ColorByCorrelationDistance) && (correlationDistanceAngTol != obj.correlationDistanceAngTol ||
+                                                     correlationDistanceMinDistAbsolute != obj.correlationDistanceMinDistAbsolute ||
+                                                     correlationDistanceMinDistBBox != obj.correlationDistanceMinDistBBox ||
+                                                     correlationDistanceMinDistType != obj.correlationDistanceMinDistType)) ||
+        varyTubeRadiusVariable != obj.varyTubeRadiusVariable ||
+        varyTubeRadius != obj.varyTubeRadius ||
         ((opacityType == VariableRange) && (obj.opacityType != VariableRange ||
                                             opacityVariable != obj.opacityVariable)))
     {
@@ -4969,7 +5318,7 @@ StreamlineAttributes::ChangesRequireRecalculation(const StreamlineAttributes &ob
         if (pointList.size() != obj.pointList.size())
             return true;
         else
-            for (int i = 0 ; i < pointList.size() ; i++)
+            for (size_t i = 0 ; i < pointList.size() ; i++)
                 if (pointList[i] != obj.pointList[i])
                     return true;
     }

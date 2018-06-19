@@ -187,15 +187,18 @@ PoincareAttributes::PoincareAttsRequireRecalculation(const PoincareAttributes &o
            overrideToroidalWinding != obj.overrideToroidalWinding ||
            overridePoloidalWinding != obj.overridePoloidalWinding ||
            windingPairConfidence != obj.windingPairConfidence ||
-           periodicityConsistency != obj.periodicityConsistency ||
+           rationalTemplateSeedParm != obj.rationalTemplateSeedParm ||
 
            showOPoints != obj.showOPoints ||
-           OPointMaxInterations != obj.OPointMaxInterations ||
+           OPointMaxIterations != obj.OPointMaxIterations ||
+
+           showXPoints != obj.showXPoints ||
+           XPointMaxIterations != obj.XPointMaxIterations ||
 
            overlaps != obj.overlaps ||
 
            showIslands != obj.showIslands ||
-           showRidgelines != obj.showRidgelines ||
+           show1DPlots != obj.show1DPlots ||
            showChaotic != obj.showChaotic ||
            verboseFlag != obj.verboseFlag ||
  

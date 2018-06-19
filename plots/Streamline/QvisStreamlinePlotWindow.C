@@ -410,41 +410,50 @@ QvisStreamlinePlotWindow::CreateWindowContents()
     gRow++;
     
     int sRow = 0;
+    typeLabel = new QLabel(tr("Sampling type:"), samplingGroup);
+    samplingLayout->addWidget(typeLabel, sRow, 0);
+    typeButtonGroup = new QButtonGroup(samplingGroup);
+    typeButtons[0] = new QRadioButton(tr("Uniform"), samplingGroup);
+    typeButtons[1] = new QRadioButton(tr("Random"), samplingGroup);
+    typeButtons[0]->setChecked(true);
+    typeButtonGroup->addButton(typeButtons[0], 0);
+    typeButtonGroup->addButton(typeButtons[1], 1);
+    samplingLayout->addWidget(typeButtons[0], sRow, 1);
+    samplingLayout->addWidget(typeButtons[1], sRow, 2);
+    connect(typeButtonGroup, SIGNAL(buttonClicked(int)), this, SLOT(typeChanged(int)));
+
     fillLabel = new QLabel(tr("Sampling along:"), samplingGroup);
-    samplingLayout->addWidget(fillLabel, sRow, 0);
+    samplingLayout->addWidget(fillLabel, sRow, 3);
     fillButtonGroup = new QButtonGroup(samplingGroup);
     fillButtons[0] = new QRadioButton(tr("Boundary"), samplingGroup);
     fillButtons[1] = new QRadioButton(tr("Interior"), samplingGroup);
     fillButtons[0]->setChecked(true);
     fillButtonGroup->addButton(fillButtons[0], 0);
     fillButtonGroup->addButton(fillButtons[1], 1);
-    samplingLayout->addWidget(fillButtons[0], sRow, 1);
-    samplingLayout->addWidget(fillButtons[1], sRow, 2);
+    samplingLayout->addWidget(fillButtons[0], sRow, 4);
+    samplingLayout->addWidget(fillButtons[1], sRow, 5);
     connect(fillButtonGroup, SIGNAL(buttonClicked(int)), this, SLOT(fillChanged(int)));
+    
     sRow++;
     
-    randomSamples = new QCheckBox(tr("Random"), samplingGroup);
-    connect(randomSamples, SIGNAL(toggled(bool)),this, SLOT(randomSamplesChanged(bool)));
-    samplingLayout->addWidget(randomSamples, sRow, 0);
-
-    numberOfRandomSamplesLabel = new QLabel(tr("Number of Samples"), samplingGroup);
-    samplingLayout->addWidget(numberOfRandomSamplesLabel, sRow, 1);
+    numberOfRandomSamplesLabel = new QLabel(tr("Number of random samples"), samplingGroup);
+    samplingLayout->addWidget(numberOfRandomSamplesLabel, sRow, 0, 1, 2);
     numberOfRandomSamples = new QSpinBox(samplingGroup);
     numberOfRandomSamples->setMinimum(1);
     numberOfRandomSamples->setMaximum(100000000);
     connect(numberOfRandomSamples, SIGNAL(valueChanged(int)), this, SLOT(numberOfRandomSamplesChanged(int)));
     samplingLayout->addWidget(numberOfRandomSamples, sRow, 2);
 
-    randomSeedLabel = new QLabel(tr("Seed"), samplingGroup);
-    samplingLayout->addWidget(randomSeedLabel, sRow, 3);
+    randomSeedLabel = new QLabel(tr("Random number seed"), samplingGroup);
+    samplingLayout->addWidget(randomSeedLabel, sRow, 3, 1, 2);
     randomSeed = new QSpinBox(samplingGroup);
     randomSeed->setMinimum(0);
     randomSeed->setMaximum(100000000);
     connect(randomSeed, SIGNAL(valueChanged(int)), this, SLOT(randomSeedChanged(int)));
-    samplingLayout->addWidget(randomSeed, sRow, 4);
+    samplingLayout->addWidget(randomSeed, sRow, 5);
     randomSeedLabel->setBuddy(randomSeed);
 
-    sRow++;    
+    sRow++;
 
     sampleDensityLabel[0] = new QLabel(tr("Sample density 0"), samplingGroup);
     sampleDensityLabel[1] = new QLabel(tr("Sample density 1"), samplingGroup);
@@ -489,54 +498,25 @@ QvisStreamlinePlotWindow::CreateWindowContents()
     samplingLayout->addWidget(sampleDistance[2], sRow, 5);
     sRow++;
 
-    // Create the termination group box.
-    QGroupBox *terminationGroup = new QGroupBox(central);
-    terminationGroup->setTitle(tr("Termination"));
-    mainLayout->addWidget(terminationGroup, 6, 0, 2, 2);
-//    mainLayout->setStretchFactor(terminationGroup, 100);
-    QGridLayout *terminationLayout = new QGridLayout(terminationGroup);
-    terminationLayout->setMargin(5);
-    terminationLayout->setSpacing(10);
-
-    QLabel *maxStepsLabel = new QLabel(tr("Maximum number of steps"), terminationGroup);
-    terminationLayout->addWidget(maxStepsLabel, 0,1);
-    maxSteps = new QLineEdit(central);
-    connect(maxSteps, SIGNAL(returnPressed()),
-            this, SLOT(maxStepsProcessText()));
-    terminationLayout->addWidget(maxSteps, 0,2);
-
-    limitMaxDistance = new QCheckBox(central);
-    connect(limitMaxDistance, SIGNAL(toggled(bool)), this, SLOT(limitMaxDistanceChanged(bool)));
-    terminationLayout->addWidget(limitMaxDistance, 1,0);
-    QLabel *limitMaxDistanceLabel = new QLabel(tr("Limit maximum distance traveled by particles"), terminationGroup);
-    terminationLayout->addWidget(limitMaxDistanceLabel, 1,1);
-    maxDistance = new QLineEdit(central);
-    connect(maxDistance, SIGNAL(returnPressed()), this, SLOT(maxDistanceProcessText()));
-    terminationLayout->addWidget(maxDistance, 1,2);
-
-    limitMaxTime = new QCheckBox(central);
-    connect(limitMaxTime, SIGNAL(toggled(bool)), this, SLOT(limitMaxTimeChanged(bool)));
-    terminationLayout->addWidget(limitMaxTime, 2,0);
-    QLabel *limitMaxTimeLabel = new QLabel(tr("Limit maximum time elapsed for particles"), terminationGroup);
-    terminationLayout->addWidget(limitMaxTimeLabel, 2,1);
-    maxTime = new QLineEdit(central);
-    connect(maxTime, SIGNAL(returnPressed()), this, SLOT(maxTimeProcessText()));
-    terminationLayout->addWidget(maxTime, 2,2);
-
-    //Create the direction of integration.
-    terminationLayout->addWidget(new QLabel(tr("Streamline direction"), central),3,1, Qt::AlignRight);
+    // Create the direction of integration. NOte the location is row
+    // 100 which is silly but Qt will shrink the layout so that it is
+    // moved up appropriately.
+    sourceLayout->addWidget(new QLabel(tr("Streamline direction"), central),
+                            100, 0, Qt::AlignRight);
     directionType = new QComboBox(central);
     directionType->addItem(tr("Forward"));
     directionType->addItem(tr("Backward"));
     directionType->addItem(tr("Both"));
     connect(directionType, SIGNAL(activated(int)),
             this, SLOT(directionTypeChanged(int)));
-    terminationLayout->addWidget(directionType, 3,2);
+    sourceLayout->addWidget(directionType, 100, 1);
+
+
 
     // Create the integration group box.
     QGroupBox *integrationGroup = new QGroupBox(central);
     integrationGroup->setTitle(tr("Integration"));
-    mainLayout->addWidget(integrationGroup, 8, 0, 4, 2);
+    mainLayout->addWidget(integrationGroup, 6, 0, 4, 2);
 //    mainLayout->setStretchFactor(integrationGroup, 100);
     QGridLayout *integrationLayout = new QGridLayout(integrationGroup);
     integrationLayout->setMargin(5);
@@ -548,7 +528,7 @@ QvisStreamlinePlotWindow::CreateWindowContents()
     integrationType->addItem(tr("Adams-Bashforth (Multi-step)"));
     integrationType->addItem(tr("M3D-C1 2D Integrator (M3D-C1 2D data only)"));
     integrationType->addItem(tr("M3D-C1 3D Integrator (M3D-C1 3D data only)"));
-    integrationType->addItem(tr("NIMROD Integrator (NIMROD data only)"));
+//    integrationType->addItem(tr("NIMROD Integrator (NIMROD data only)"));
     connect(integrationType, SIGNAL(activated(int)),
             this, SLOT(integrationTypeChanged(int)));
     integrationLayout->addWidget(integrationType, 0,1);
@@ -561,29 +541,19 @@ QvisStreamlinePlotWindow::CreateWindowContents()
     integrationLayout->addWidget(maxStepLengthLabel, 1,0);
     integrationLayout->addWidget(maxStepLength, 1,1);
 
-    limitMaxTimeStepLabel = new QLabel(tr("Limit maximum time step"), integrationGroup);
-    limitMaxTimeStep = new QCheckBox(integrationGroup);
+    limitMaxTimeStep = new QCheckBox(tr("Limit maximum time step"), integrationGroup);
     connect(limitMaxTimeStep, SIGNAL(toggled(bool)), this, SLOT(limitMaxTimeStepChanged(bool)));
-    integrationLayout->addWidget(limitMaxTimeStepLabel, 2,0);
-    integrationLayout->addWidget(limitMaxTimeStep, 2, 1);
+    integrationLayout->addWidget(limitMaxTimeStep, 2, 0);
     
     // Create the step length text field.
-    maxTimeStepLabel = new QLabel(tr("Maximum time step"), integrationGroup);
     maxTimeStep = new QLineEdit(integrationGroup);
     connect(maxTimeStep, SIGNAL(returnPressed()),
             this, SLOT(maxTimeStepProcessText()));
-    integrationLayout->addWidget(maxTimeStepLabel, 3,0);
-    integrationLayout->addWidget(maxTimeStep, 3,1);
-
-    forceNodalLabel = new QLabel(tr("Force node centering"), integrationGroup);
-    forceNodal = new QCheckBox(integrationGroup);
-    connect(forceNodal, SIGNAL(toggled(bool)), this, SLOT(forceNodalChanged(bool)));
-    integrationLayout->addWidget(forceNodalLabel, 4,0);
-    integrationLayout->addWidget(forceNodal, 4, 1);
+    integrationLayout->addWidget(maxTimeStep, 2,1);
 
     QGroupBox *toleranceGroup = new QGroupBox(central);
     toleranceGroup->setTitle(tr("Tolerances: max error for step < max(abstol, reltol*velocity_i) for each component i"));
-    integrationLayout->addWidget(toleranceGroup, 5, 0, 1, 3);
+    integrationLayout->addWidget(toleranceGroup, 4, 0, 1, 3);
     QGridLayout *toleranceLayout = new QGridLayout(toleranceGroup);
     toleranceLayout->setMargin(5);
     toleranceLayout->setSpacing(10);
@@ -609,39 +579,40 @@ QvisStreamlinePlotWindow::CreateWindowContents()
     connect(absTolSizeType, SIGNAL(activated(int)), this, SLOT(absTolSizeTypeChanged(int)));
     toleranceLayout->addWidget(absTolSizeType, 1, 2);
 
-    // Create the coordinate group
-    QGroupBox *coordinateGrp = new QGroupBox(central);
-    coordinateGrp->setTitle(tr("Coordinate System"));
-    mainLayout->addWidget(coordinateGrp);
+    forceNodal = new QCheckBox(tr("Force node centering"), integrationGroup);
+    connect(forceNodal, SIGNAL(toggled(bool)), this, SLOT(forceNodalChanged(bool)));
+    integrationLayout->addWidget(forceNodal, 7, 0);
 
-    QGridLayout *coordinateLayout = new QGridLayout(coordinateGrp);
-    coordinateLayout->setMargin(5);
-    coordinateLayout->setSpacing(10);
-    coordinateLayout->setColumnStretch(2,10);
 
-    coordinateButtonGroup = new QButtonGroup(coordinateGrp);
-    QRadioButton *asIsButton = new QRadioButton(tr("As generated"), coordinateGrp);
-    QRadioButton *toCartesianButton = new QRadioButton(tr("Cylindrical to Cartesian"), coordinateGrp);
-    QRadioButton *toCylindricalButton = new QRadioButton(tr("Cartesian to Cylindrical"), coordinateGrp);
-    coordinateButtonGroup->addButton(asIsButton, 0);
-    coordinateButtonGroup->addButton(toCartesianButton, 1);
-    coordinateButtonGroup->addButton(toCylindricalButton, 2);
+    // Create the termination group box.
+    QGroupBox *terminationGroup = new QGroupBox(central);
+    terminationGroup->setTitle(tr("Termination"));
+    mainLayout->addWidget(terminationGroup, 10, 0, 2, 2);
+//    mainLayout->setStretchFactor(terminationGroup, 100);
+    QGridLayout *terminationLayout = new QGridLayout(terminationGroup);
+    terminationLayout->setMargin(5);
+    terminationLayout->setSpacing(10);
 
-    coordinateLayout->addWidget(asIsButton, 0, 0);
-    coordinateLayout->addWidget(toCartesianButton, 0, 1);
-    coordinateLayout->addWidget(toCylindricalButton, 0, 2);
+    QLabel *maxStepsLabel = new QLabel(tr("Maximum number of steps"), terminationGroup);
+    terminationLayout->addWidget(maxStepsLabel, 0,0);
+    maxSteps = new QLineEdit(central);
+    connect(maxSteps, SIGNAL(returnPressed()),
+            this, SLOT(maxStepsProcessText()));
+    terminationLayout->addWidget(maxSteps, 0,1);
 
-    connect(coordinateButtonGroup, SIGNAL(buttonClicked(int)), this,
-            SLOT(coordinateButtonGroupChanged(int)));
+    limitMaxDistance = new QCheckBox(tr("Limit maximum distance traveled by particles"), terminationGroup);
+    connect(limitMaxDistance, SIGNAL(toggled(bool)), this, SLOT(limitMaxDistanceChanged(bool)));
+    terminationLayout->addWidget(limitMaxDistance, 1,0);
+    maxDistance = new QLineEdit(central);
+    connect(maxDistance, SIGNAL(returnPressed()), this, SLOT(maxDistanceProcessText()));
+    terminationLayout->addWidget(maxDistance, 1,1);
 
-    // Create the widgets that specify a phi factor.
-    phiFactor = new QLineEdit(coordinateGrp);
-    connect(pointSource, SIGNAL(returnPressed()),
-            this, SLOT(phiFactorProcessText()));
-    phiFactorLabel = new QLabel(tr("Phi factor"), coordinateGrp);
-    phiFactorLabel->setBuddy(phiFactor);
-    coordinateLayout->addWidget(phiFactorLabel, 0, 3);
-    coordinateLayout->addWidget(phiFactor, 0, 4);
+    limitMaxTime = new QCheckBox(tr("Limit maximum time elapsed for particles"), terminationGroup);
+    connect(limitMaxTime, SIGNAL(toggled(bool)), this, SLOT(limitMaxTimeChanged(bool)));
+    terminationLayout->addWidget(limitMaxTime, 2,0);
+    maxTime = new QLineEdit(central);
+    connect(maxTime, SIGNAL(returnPressed()), this, SLOT(maxTimeProcessText()));
+    terminationLayout->addWidget(maxTime, 2,1);
 
 // ----------------------------------------------------------------------
     // Appearance tab
@@ -684,6 +655,9 @@ QvisStreamlinePlotWindow::CreateWindowContents()
 //   Hank Childs, Oct  8 23:30:27 PDT 2010
 //   Set up controls for multiple termination criteria.
 // 
+//   Dave Pugmire, Mon Feb 21 08:17:42 EST 2011
+//   Add color by correlation distance.
+//
 // ****************************************************************************
 
 void
@@ -692,6 +666,44 @@ QvisStreamlinePlotWindow::CreateAppearanceTab(QWidget *pageAppearance)
     QGridLayout *appearanceLayout = new QGridLayout(pageAppearance);
     appearanceLayout->setMargin(5);
     appearanceLayout->setSpacing(10);
+
+    // Create the coordinate group
+    QGroupBox *coordinateGrp = new QGroupBox(central);
+    coordinateGrp->setTitle(tr("Coordinate transform"));
+    appearanceLayout->addWidget(coordinateGrp);
+
+    QGridLayout *coordinateLayout = new QGridLayout(coordinateGrp);
+    coordinateLayout->setMargin(5);
+    coordinateLayout->setSpacing(10);
+    coordinateLayout->setColumnStretch(2,10);
+
+    coordinateButtonGroup = new QButtonGroup(coordinateGrp);
+    QRadioButton *asIsButton = new QRadioButton(tr("None"), coordinateGrp);
+    QRadioButton *toCartesianButton = new QRadioButton(tr("Cylindrical to Cartesian"), coordinateGrp);
+    QRadioButton *toCylindricalButton = new QRadioButton(tr("Cartesian to Cylindrical"), coordinateGrp);
+    coordinateButtonGroup->addButton(asIsButton, 0);
+    coordinateButtonGroup->addButton(toCartesianButton, 1);
+    coordinateButtonGroup->addButton(toCylindricalButton, 2);
+
+    coordinateLayout->addWidget(asIsButton, 0, 0);
+    coordinateLayout->addWidget(toCartesianButton, 0, 1);
+    coordinateLayout->addWidget(toCylindricalButton, 0, 2);
+
+    connect(coordinateButtonGroup, SIGNAL(buttonClicked(int)), this,
+            SLOT(coordinateButtonGroupChanged(int)));
+
+    // Create the widgets that specify a phi scaling.
+    phiScalingToggle = new QCheckBox(tr("Phi scaling"), central);
+    coordinateLayout->addWidget(phiScalingToggle, 1, 0);
+    connect(phiScalingToggle, SIGNAL(toggled(bool)),
+            this, SLOT(phiScalingToggled(bool)));
+
+    phiScaling = new QLineEdit(coordinateGrp);
+    connect(pointSource, SIGNAL(returnPressed()),
+            this, SLOT(phiScalingProcessText()));
+    coordinateLayout->addWidget(phiScaling, 1, 1);
+
+    coordinateLayout->addWidget(new QLabel(tr("(When displaying in cylindrical coordinates.)"), central), 1, 2, 1, 2);
 
     // Create the data group
     QGroupBox *dataGroup = new QGroupBox(pageAppearance);
@@ -713,10 +725,10 @@ QvisStreamlinePlotWindow::CreateAppearanceTab(QWidget *pageAppearance)
     dataValueComboBox->addItem(tr("Time"),4);
     dataValueComboBox->addItem(tr("Seed point ID"),5);
     dataValueComboBox->addItem(tr("Variable"),6);
+    dataValueComboBox->addItem(tr("Correlation Distance"),7);
     connect(dataValueComboBox, SIGNAL(activated(int)),
             this, SLOT(coloringMethodChanged(int)));
     dataLayout->addWidget(dataValueComboBox, 0, 1);
-
 
     coloringVar = new QvisVariableButton(false, true, true,
                                          QvisVariableButton::Scalars,
@@ -725,9 +737,29 @@ QvisStreamlinePlotWindow::CreateAppearanceTab(QWidget *pageAppearance)
     connect(coloringVar, SIGNAL(activated(const QString &)),
             this, SLOT(coloringVariableChanged(const QString&)));
 
+    //Correlation distance widgets.
+    correlationDistanceAngTolLabel = new QLabel(tr("Angular tolerance (degrees)"), dataGroup);
+    correlationDistanceMinDistLabel = new QLabel(tr("Minimum measuring distance"), dataGroup);
+    correlationDistanceAngTolEdit = new QLineEdit(dataGroup);
+    correlationDistanceMinDistEdit = new QLineEdit(dataGroup);
+    correlationDistanceMinDistType = new QComboBox(dataGroup);
+    correlationDistanceMinDistType->addItem(tr("Absolute"), 0);
+    correlationDistanceMinDistType->addItem(tr("Fraction of Bounding Box"), 1);
+    connect(correlationDistanceMinDistType, SIGNAL(activated(int)), this, SLOT(correlationDistanceMinDistTypeChanged(int)));
+
+    dataLayout->addWidget(correlationDistanceAngTolLabel, 1, 0);
+    dataLayout->addWidget(correlationDistanceAngTolEdit, 1, 1);
+    dataLayout->addWidget(correlationDistanceMinDistLabel, 2, 0);
+    dataLayout->addWidget(correlationDistanceMinDistEdit, 2, 1);
+    dataLayout->addWidget(correlationDistanceMinDistType, 2, 2);
+    connect(correlationDistanceAngTolEdit, SIGNAL(returnPressed()),
+            this, SLOT(processCorrelationDistanceAngTolEditText()));
+    connect(correlationDistanceMinDistEdit, SIGNAL(returnPressed()),
+            this, SLOT(processCorrelationDistanceMinDistEditText()));
+
     // Create the limits group box.
     QGroupBox *limitsGroup = new QGroupBox(central);
-    dataLayout->addWidget(limitsGroup, 1, 0, 1, 3);
+    dataLayout->addWidget(limitsGroup, 3, 0, 1, 3);
 
     QGridLayout *limitsLayout = new QGridLayout(limitsGroup);
     limitsLayout->setMargin(5);
@@ -754,6 +786,85 @@ QvisStreamlinePlotWindow::CreateAppearanceTab(QWidget *pageAppearance)
             this, SLOT(processMaxLimitText()));
     limitsLayout->addWidget(legendMaxEdit, 0, 4);
 
+
+    // Color group
+    QGroupBox *colorGrp = new QGroupBox(pageAppearance);
+    colorGrp->setTitle(tr("Color"));
+    appearanceLayout->addWidget(colorGrp);
+
+    QGridLayout *cLayout = new QGridLayout(colorGrp);
+    cLayout->setMargin(5);
+    cLayout->setSpacing(10);
+    cLayout->setColumnStretch(1,10);
+    int cRow = 0;
+
+    //--table
+    colorTableName = new QvisColorTableButton(colorGrp);
+    connect(colorTableName, SIGNAL(selectedColorTable(bool, const QString&)),
+            this, SLOT(colorTableNameChanged(bool, const QString&)));
+    colorTableNameLabel = new QLabel(tr("Color table"), colorGrp);
+    colorTableNameLabel->setBuddy(colorTableName);
+    cLayout->addWidget(colorTableNameLabel,cRow,0);
+    cLayout->addWidget(colorTableName, cRow,1, Qt::AlignLeft);
+    cRow++;
+
+    //--single
+    singleColor = new QvisColorButton(colorGrp);
+    connect(singleColor, SIGNAL(selectedColor(const QColor&)),
+            this, SLOT(singleColorChanged(const QColor&)));
+    singleColorLabel = new QLabel(tr("Single color"), colorGrp);
+    singleColorLabel->setBuddy(singleColor);
+    cLayout->addWidget(singleColorLabel,cRow,0);
+    cLayout->addWidget(singleColor, cRow,1, Qt::AlignLeft);
+    cRow++;
+
+
+    
+    // Create the opacity widgets.
+    opacityType = new QComboBox(colorGrp);
+    opacityType->addItem(tr("Fully Opaque"),0);
+    opacityType->addItem(tr("Constant"),1);
+    opacityType->addItem(tr("Ramp"),2);
+    opacityType->addItem(tr("Variable Range"),3);
+    connect(opacityType, SIGNAL(activated(int)),
+            this, SLOT(opacityTypeChanged(int)));
+    cLayout->addWidget(new QLabel(tr("Opacity"), colorGrp), cRow,0);
+    cLayout->addWidget(opacityType, cRow, 1);
+
+    opacityVarLabel = new QLabel(tr("Variable"), colorGrp);
+    opacityVar = new QvisVariableButton(false, true, true,
+                                        QvisVariableButton::Scalars, colorGrp);
+    cLayout->addWidget(opacityVarLabel,cRow,2);
+    cLayout->addWidget(opacityVar,cRow,3);
+    connect(opacityVar, SIGNAL(activated(const QString &)),
+            this, SLOT(opacityVariableChanged(const QString&)));
+
+    cRow++;
+    opacitySlider = new QvisOpacitySlider(0, 255, 25, 255, colorGrp);
+    opacitySlider->setTickInterval(64);
+    opacitySlider->setGradientColor(QColor(0, 0, 0));
+    connect(opacitySlider, SIGNAL(valueChanged(int, const void*)),
+            this, SLOT(opacityChanged(int, const void*)));
+    cLayout->addWidget(opacitySlider, cRow, 1, 1,3);
+    cRow++;
+
+    opacityMinToggle = new QCheckBox(tr("Opacity Min"), colorGrp);
+    opacityMaxToggle = new QCheckBox(tr("Opacity Max"), colorGrp);
+    connect(opacityMinToggle, SIGNAL(toggled(bool)), this, SLOT(opacityMinToggled(bool)));
+    connect(opacityMaxToggle, SIGNAL(toggled(bool)), this, SLOT(opacityMaxToggled(bool)));
+
+    opacityVarMin = new QLineEdit(colorGrp);
+    opacityVarMax = new QLineEdit(colorGrp);
+
+    connect(opacityVarMin, SIGNAL(returnPressed()), this, SLOT(processOpacityVarMin()));
+    connect(opacityVarMax, SIGNAL(returnPressed()), this, SLOT(processOpacityVarMax()));
+    cLayout->addWidget(opacityMinToggle, cRow, 1);
+    cLayout->addWidget(opacityVarMin, cRow, 2);
+    cLayout->addWidget(opacityMaxToggle, cRow, 3);
+    cLayout->addWidget(opacityVarMax, cRow, 4);
+    cRow++;
+
+
     // Create the display group
     QGroupBox *displayGrp = new QGroupBox(pageAppearance);
     displayGrp->setTitle(tr("Display"));
@@ -763,7 +874,6 @@ QvisStreamlinePlotWindow::CreateAppearanceTab(QWidget *pageAppearance)
     dLayout->setMargin(5);
     dLayout->setSpacing(10);
     dLayout->setColumnStretch(2,10);
-
 
     // Create the display subgroup
     QWidget *drawGroup = new QWidget(displayGrp);
@@ -830,6 +940,25 @@ QvisStreamlinePlotWindow::CreateAppearanceTab(QWidget *pageAppearance)
     drawLayout->addWidget(tubeDisplayDensityLabel, 0, 2);
     drawLayout->addWidget(tubeDisplayDensity, 0, 3);
 
+    //Tube vary radius.
+    tubeRadiusVary = new QCheckBox(tr("Vary radius"), displayGrp);
+    connect(tubeRadiusVary, SIGNAL(toggled(bool)), this, SLOT(tubeRadiusVaryChanged(bool)));
+    drawLayout->addWidget(tubeRadiusVary, 2, 0);
+    
+    tubeRadiusVaryVariableLabel = new QLabel(tr("Variable"), displayGrp);
+    drawLayout->addWidget(tubeRadiusVaryVariableLabel, 2, 1);
+    tubeRadiusVaryVariable = new QvisVariableButton(false, true, true,
+                                                    QvisVariableButton::Scalars, displayGrp);
+    connect(tubeRadiusVaryVariable, SIGNAL(activated(const QString &)),
+            this, SLOT(tubeRadiusVaryVariableChanged(const QString&)));
+    drawLayout->addWidget(tubeRadiusVaryVariable, 2, 2);
+
+    tubeRadiusVaryFactorLabel = new QLabel(tr("Factor"), displayGrp);
+    drawLayout->addWidget(tubeRadiusVaryFactorLabel, 2, 3);
+    tubeRadiusVaryFactorEdit = new QLineEdit(displayGrp);
+    connect(tubeRadiusVaryFactorEdit, SIGNAL(returnPressed()),
+            this, SLOT(tubeRadiusVaryFactorProcessText()));
+    drawLayout->addWidget(tubeRadiusVaryFactorEdit, 2, 4);
 
     // Splitter
     QFrame *splitter = new QFrame(displayGrp);
@@ -941,83 +1070,6 @@ QvisStreamlinePlotWindow::CreateAppearanceTab(QWidget *pageAppearance)
     cropLayout->addWidget(displayEndEdit, 0, 3);
     cropLayout->addWidget(drtl, 1, 0);
     cropLayout->addWidget(displayReferenceType, 1, 1);
-
-    QGroupBox *colorGrp = new QGroupBox(pageAppearance);
-    colorGrp->setTitle(tr("Color"));
-    appearanceLayout->addWidget(colorGrp);
-
-    QGridLayout *cLayout = new QGridLayout(colorGrp);
-    cLayout->setMargin(5);
-    cLayout->setSpacing(10);
-    cLayout->setColumnStretch(1,10);
-    int cRow = 0;
-
-    //--table
-    colorTableName = new QvisColorTableButton(colorGrp);
-    connect(colorTableName, SIGNAL(selectedColorTable(bool, const QString&)),
-            this, SLOT(colorTableNameChanged(bool, const QString&)));
-    colorTableNameLabel = new QLabel(tr("Color table"), colorGrp);
-    colorTableNameLabel->setBuddy(colorTableName);
-    cLayout->addWidget(colorTableNameLabel,cRow,0);
-    cLayout->addWidget(colorTableName, cRow,1, Qt::AlignLeft);
-    cRow++;
-
-    //--single
-    singleColor = new QvisColorButton(colorGrp);
-    connect(singleColor, SIGNAL(selectedColor(const QColor&)),
-            this, SLOT(singleColorChanged(const QColor&)));
-    singleColorLabel = new QLabel(tr("Single color"), colorGrp);
-    singleColorLabel->setBuddy(singleColor);
-    cLayout->addWidget(singleColorLabel,cRow,0);
-    cLayout->addWidget(singleColor, cRow,1, Qt::AlignLeft);
-    cRow++;
-
-
-    
-    // Create the opacity widgets.
-    opacityType = new QComboBox(colorGrp);
-    opacityType->addItem(tr("Fully Opaque"),0);
-    opacityType->addItem(tr("Constant"),1);
-    opacityType->addItem(tr("Ramp"),2);
-    opacityType->addItem(tr("Variable Range"),3);
-    connect(opacityType, SIGNAL(activated(int)),
-            this, SLOT(opacityTypeChanged(int)));
-    cLayout->addWidget(new QLabel(tr("Opacity"), colorGrp), cRow,0);
-    cLayout->addWidget(opacityType, cRow, 1);
-
-    opacityVarLabel = new QLabel(tr("Variable"), colorGrp);
-    opacityVar = new QvisVariableButton(false, true, true,
-                                        QvisVariableButton::Scalars, colorGrp);
-    cLayout->addWidget(opacityVarLabel,cRow,2);
-    cLayout->addWidget(opacityVar,cRow,3);
-    connect(opacityVar, SIGNAL(activated(const QString &)),
-            this, SLOT(opacityVariableChanged(const QString&)));
-
-    cRow++;
-    opacitySlider = new QvisOpacitySlider(0, 255, 25, 255, colorGrp);
-    opacitySlider->setTickInterval(64);
-    opacitySlider->setGradientColor(QColor(0, 0, 0));
-    connect(opacitySlider, SIGNAL(valueChanged(int, const void*)),
-            this, SLOT(opacityChanged(int, const void*)));
-    cLayout->addWidget(opacitySlider, cRow, 1, 1,3);
-    cRow++;
-
-    opacityMinToggle = new QCheckBox(tr("Opacity Min"), displayGrp);
-    opacityMaxToggle = new QCheckBox(tr("Opacity Max"), displayGrp);
-    connect(opacityMinToggle, SIGNAL(toggled(bool)), this, SLOT(opacityMinToggled(bool)));
-    connect(opacityMaxToggle, SIGNAL(toggled(bool)), this, SLOT(opacityMaxToggled(bool)));
-
-    opacityVarMin = new QLineEdit(colorGrp);
-    opacityVarMax = new QLineEdit(colorGrp);
-
-    connect(opacityVarMin, SIGNAL(returnPressed()), this, SLOT(processOpacityVarMin()));
-    connect(opacityVarMax, SIGNAL(returnPressed()), this, SLOT(processOpacityVarMax()));
-    cLayout->addWidget(opacityMinToggle, cRow, 1);
-    cLayout->addWidget(opacityVarMin, cRow, 2);
-    cLayout->addWidget(opacityMaxToggle, cRow, 3);
-    cLayout->addWidget(opacityVarMax, cRow, 4);
-    cRow++;
-
 
     //
     // Create the misc stuff
@@ -1331,7 +1383,6 @@ void
 QvisStreamlinePlotWindow::UpdateWindow(bool doAll)
 {
     QString       temp;
-    const double *dptr;
     QColor        tempcolor;
 
     for(int i = 0; i < streamAtts->NumAttributes(); ++i)
@@ -1362,17 +1413,14 @@ QvisStreamlinePlotWindow::UpdateWindow(bool doAll)
             limitMaxTimeStep->setChecked(streamAtts->GetLimitMaximumTimestep());
             limitMaxTimeStep->blockSignals(false);
             maxTimeStep->blockSignals(true);
-            maxTimeStepLabel->blockSignals(true);
-            if (streamAtts->GetIntegrationType() == StreamlineAttributes::DormandPrince
-                && !streamAtts->GetLimitMaximumTimestep())
+            if (streamAtts->GetIntegrationType() ==
+                StreamlineAttributes::DormandPrince )
             {
-                maxTimeStep->setEnabled(false);
-                maxTimeStepLabel->setEnabled(false);
+                maxTimeStep->setEnabled(streamAtts->GetLimitMaximumTimestep());
             }
             else
             {
-                maxTimeStep->setEnabled(true);
-                maxTimeStepLabel->setEnabled(true);
+                maxTimeStep->setEnabled(false);
             }
             maxTimeStep->blockSignals(false);
             break;
@@ -1401,7 +1449,7 @@ QvisStreamlinePlotWindow::UpdateWindow(bool doAll)
             maxTime->setEnabled(streamAtts->GetTerminateByTime());
             break;
         case StreamlineAttributes::ID_termTime:
-            temp.setNum(streamAtts->GetTermTime());
+            temp.setNum(streamAtts->GetTermTime(), 'g', 16);
             maxTime->setText(temp);
             break;
         case StreamlineAttributes::ID_pointSource:
@@ -1554,6 +1602,11 @@ QvisStreamlinePlotWindow::UpdateWindow(bool doAll)
                 geomRadiusLabel->hide();
                 tubeDisplayDensityLabel->hide();
                 tubeDisplayDensity->hide();
+                tubeRadiusVary->hide();
+                tubeRadiusVaryVariable->hide();
+                tubeRadiusVaryVariableLabel->hide();
+                tubeRadiusVaryFactorLabel->hide();
+                tubeRadiusVaryFactorEdit->hide();
             }
             else
             {
@@ -1566,6 +1619,15 @@ QvisStreamlinePlotWindow::UpdateWindow(bool doAll)
                     ribbonWidth->hide();
                     tubeSizeType->show();
                     ribbonSizeType->hide();
+
+                    tubeRadiusVary->show();
+                    if (streamAtts->GetVaryTubeRadius() == StreamlineAttributes::Scalar)
+                    {
+                        tubeRadiusVaryVariable->show();
+                        tubeRadiusVaryVariableLabel->show();
+                        tubeRadiusVaryFactorLabel->show();
+                        tubeRadiusVaryFactorEdit->show();
+                    }
                 }
                 if (streamAtts->GetDisplayMethod() == StreamlineAttributes::Ribbons)
                 {
@@ -1587,10 +1649,45 @@ QvisStreamlinePlotWindow::UpdateWindow(bool doAll)
             displayMethod->blockSignals(false);
             }
             break;
+
+          case StreamlineAttributes::ID_varyTubeRadius:
+            tubeRadiusVary->blockSignals(true);
+            if (streamAtts->GetVaryTubeRadius() == StreamlineAttributes::None)
+            {
+                tubeRadiusVary->setChecked(false);
+                tubeRadiusVaryVariable->hide();
+                tubeRadiusVaryVariableLabel->hide();
+                tubeRadiusVaryFactorLabel->hide();
+                tubeRadiusVaryFactorEdit->hide();
+            }
+            else
+            {
+                tubeRadiusVary->setChecked(true);
+                tubeRadiusVaryVariable->show();
+                tubeRadiusVaryVariableLabel->show();
+                tubeRadiusVaryFactorLabel->show();
+                tubeRadiusVaryFactorEdit->show();
+            }
+            tubeRadiusVary->blockSignals(false);
+            break;
+          case StreamlineAttributes::ID_varyTubeRadiusVariable:
+            tubeRadiusVaryVariable->blockSignals(true);
+            temp = streamAtts->GetVaryTubeRadiusVariable().c_str();
+            tubeRadiusVaryVariable->setText(temp);
+            tubeRadiusVaryVariable->blockSignals(false);
+            break;
+          case StreamlineAttributes::ID_varyTubeRadiusFactor:
+            tubeRadiusVaryFactorEdit->blockSignals(true);
+            temp.setNum(streamAtts->GetVaryTubeRadiusFactor());
+            tubeRadiusVaryFactorEdit->setText(temp);
+            tubeRadiusVaryFactorEdit->blockSignals(false);
+            break;
             
         case StreamlineAttributes::ID_coloringVariable:
+            coloringVar->blockSignals(true);
             temp = streamAtts->GetColoringVariable().c_str();
             coloringVar->setText(temp);
+            coloringVar->blockSignals(false);
           break;
           
         case StreamlineAttributes::ID_showSeeds:
@@ -1785,6 +1882,22 @@ QvisStreamlinePlotWindow::UpdateWindow(bool doAll)
                 coloringVar->setEnabled(false);
                 coloringVar->hide();
             }
+            if (streamAtts->GetColoringMethod() == StreamlineAttributes::ColorByCorrelationDistance)
+            {
+                TurnOn(correlationDistanceAngTolLabel);
+                TurnOn(correlationDistanceMinDistLabel);
+                TurnOn(correlationDistanceAngTolEdit);
+                TurnOn(correlationDistanceMinDistEdit);
+                TurnOn(correlationDistanceMinDistType);
+            }
+            else
+            {
+                TurnOff(correlationDistanceAngTolLabel);
+                TurnOff(correlationDistanceMinDistLabel);
+                TurnOff(correlationDistanceAngTolEdit);
+                TurnOff(correlationDistanceMinDistEdit);
+                TurnOff(correlationDistanceMinDistType);
+            }
             }
             break;
         case StreamlineAttributes::ID_colorTableName:
@@ -1863,12 +1976,17 @@ QvisStreamlinePlotWindow::UpdateWindow(bool doAll)
         case StreamlineAttributes::ID_coordinateSystem:
             coordinateButtonGroup->blockSignals(true);
             coordinateButtonGroup->button(streamAtts->GetCoordinateSystem())->setChecked(true);
-            phiFactor->setEnabled(streamAtts->GetCoordinateSystem()==2);
-            phiFactorLabel->setEnabled(streamAtts->GetCoordinateSystem()==2);
+            phiScalingToggle->setEnabled(streamAtts->GetCoordinateSystem()!=1);
+            phiScaling->setEnabled(streamAtts->GetCoordinateSystem()!=1 &&
+                                   streamAtts->GetPhiScalingFlag());
             coordinateButtonGroup->blockSignals(false);
             break;
-        case StreamlineAttributes::ID_phiFactor:
-            phiFactor->setText(DoubleToQString(streamAtts->GetPhiFactor()));
+        case StreamlineAttributes::ID_phiScalingFlag:
+            phiScaling->setEnabled(streamAtts->GetCoordinateSystem()!=1 &&
+                                   streamAtts->GetPhiScalingFlag());
+            break;
+        case StreamlineAttributes::ID_phiScaling:
+            phiScaling->setText(DoubleToQString(streamAtts->GetPhiScaling()));
             break;
         case StreamlineAttributes::ID_maxStreamlineProcessCount:
             maxSLCount->blockSignals(true);
@@ -1903,7 +2021,7 @@ QvisStreamlinePlotWindow::UpdateWindow(bool doAll)
             pathlineOverrideStartingTimeFlag->blockSignals(false);
             break;
         case StreamlineAttributes::ID_pathlinesOverrideStartingTime:
-            temp.setNum(streamAtts->GetPathlinesOverrideStartingTime());
+            temp.setNum(streamAtts->GetPathlinesOverrideStartingTime(), 'g', 16);
             pathlineOverrideStartingTime->setText(temp);
             break;
         case StreamlineAttributes::ID_pathlinesCMFE:
@@ -2042,18 +2160,18 @@ QvisStreamlinePlotWindow::UpdateWindow(bool doAll)
               opacityMaxToggle->blockSignals(false);
               break;
 
-            case StreamlineAttributes::ID_randomSamples:
-              randomSamples->blockSignals(true);
-              randomSamples->setChecked(streamAtts->GetRandomSamples());
-              UpdateSourceAttributes();
-              randomSamples->blockSignals(false);
-              break;
-
             case StreamlineAttributes::ID_fillInterior:
               fillButtonGroup->blockSignals(true);
               fillButtonGroup->button(streamAtts->GetFillInterior()?1:0)->setChecked(true);
               UpdateSourceAttributes();
               fillButtonGroup->blockSignals(false);
+              break;
+
+            case StreamlineAttributes::ID_randomSamples:
+              typeButtonGroup->blockSignals(true);
+              typeButtonGroup->button(streamAtts->GetRandomSamples()?1:0)->setChecked(true);
+              UpdateSourceAttributes();
+              typeButtonGroup->blockSignals(false);
               break;
 
             case StreamlineAttributes::ID_randomSeed:
@@ -2097,6 +2215,48 @@ QvisStreamlinePlotWindow::UpdateWindow(bool doAll)
               temp.setNum(streamAtts->GetCriticalPointThreshold());
               criticalPointThreshold->setText(temp);
               break;
+
+          case StreamlineAttributes::ID_correlationDistanceAngTol:
+            correlationDistanceAngTolEdit->blockSignals(true);
+            temp.setNum(streamAtts->GetCorrelationDistanceAngTol());
+            correlationDistanceAngTolEdit->setText(temp);
+            correlationDistanceAngTolEdit->blockSignals(false);
+            break;
+            
+          case StreamlineAttributes::ID_correlationDistanceMinDistAbsolute:
+            if (streamAtts->GetCorrelationDistanceMinDistType() == StreamlineAttributes::Absolute)
+            {
+                correlationDistanceMinDistEdit->blockSignals(true);
+                temp.setNum(streamAtts->GetCorrelationDistanceMinDistAbsolute());
+                correlationDistanceMinDistEdit->setText(temp);
+                correlationDistanceMinDistEdit->blockSignals(false);
+            }
+            break;
+          case StreamlineAttributes::ID_correlationDistanceMinDistBBox:
+            if (streamAtts->GetCorrelationDistanceMinDistType() == StreamlineAttributes::FractionOfBBox)
+            {
+                correlationDistanceMinDistEdit->blockSignals(true);
+                temp.setNum(streamAtts->GetCorrelationDistanceMinDistBBox());
+                correlationDistanceMinDistEdit->setText(temp);
+                correlationDistanceMinDistEdit->blockSignals(false);
+            }
+            break;
+            
+          case StreamlineAttributes::ID_correlationDistanceMinDistType:
+            correlationDistanceMinDistType->blockSignals(true);
+            correlationDistanceMinDistType->setCurrentIndex((int) streamAtts->GetCorrelationDistanceMinDistType());
+            correlationDistanceMinDistType->blockSignals(false);
+            if (streamAtts->GetCorrelationDistanceMinDistType() == StreamlineAttributes::FractionOfBBox)
+            {
+                temp.setNum(streamAtts->GetCorrelationDistanceMinDistBBox());
+                correlationDistanceMinDistEdit->setText(temp);
+            }
+            if (streamAtts->GetCorrelationDistanceMinDistType() == StreamlineAttributes::Absolute)
+            {
+                temp.setNum(streamAtts->GetCorrelationDistanceMinDistAbsolute());
+                correlationDistanceMinDistEdit->setText(temp);
+            }
+            break;
         }
     }
 }
@@ -2127,12 +2287,17 @@ QvisStreamlinePlotWindow::TurnOffSourceAttributes()
     TurnOff(pointListAddPoint);
     TurnOff(pointListReadPoints);
 
-    TurnOff(randomSamples);
-    TurnOff(numberOfRandomSamples, numberOfRandomSamplesLabel);
-    TurnOff(randomSeed, randomSeedLabel);
     TurnOff(fillLabel);
     TurnOff(fillButtons[0]);
     TurnOff(fillButtons[1]);
+
+    TurnOff(typeLabel);
+    TurnOff(typeButtons[0]);
+    TurnOff(typeButtons[1]);
+
+    TurnOff(numberOfRandomSamples, numberOfRandomSamplesLabel);
+    TurnOff(randomSeed, randomSeedLabel);
+
     for (int i = 0; i < 3; i++)
     {
         TurnOff(sampleDensity[i], sampleDensityLabel[i]);
@@ -2169,23 +2334,36 @@ QvisStreamlinePlotWindow::UpdateSourceAttributes()
 {
     TurnOffSourceAttributes();
 
-    bool showSampling = false, enableRandom = false, enableFill = false;
+    bool showSampling = false, enableFill = false;
     
     if (streamAtts->GetSourceType() == StreamlineAttributes::SpecifiedPoint)
         TurnOn(pointSource, pointSourceLabel);
+    else if (streamAtts->GetSourceType() == StreamlineAttributes::SpecifiedPointList)
+    {
+        TurnOn(pointList);
+        TurnOn(pointListDelPoint);
+        TurnOn(pointListDelAllPoints);
+        TurnOn(pointListAddPoint);
+        TurnOn(pointListReadPoints);
+    }
     else if (streamAtts->GetSourceType() == StreamlineAttributes::SpecifiedLine)
     {
         TurnOn(lineStart, lineStartLabel);
         TurnOn(lineEnd, lineEndLabel);
-        if (! streamAtts->GetRandomSamples())
+
+        showSampling = true;
+
+        if (streamAtts->GetRandomSamples())
+        {
+          TurnOn(randomSeed, randomSeedLabel);
+          TurnOn(numberOfRandomSamples, numberOfRandomSamplesLabel);
+        }
+        else
         {
             TurnOn(sampleDensity[0], sampleDensityLabel[0]);
             sampleDensityLabel[0]->setText(tr("Samples along line:"));
             sampleDensity[0]->setMinimum(1);
         }
-
-        enableRandom = true;
-        showSampling = true;
     }
     else if (streamAtts->GetSourceType() == StreamlineAttributes::SpecifiedPlane)
     {
@@ -2197,7 +2375,15 @@ QvisStreamlinePlotWindow::UpdateSourceAttributes()
         sampleDistanceLabel[0]->setText(tr("Distance in X:"));
         sampleDistanceLabel[1]->setText(tr("Distance in Y:"));
 
-        if (! streamAtts->GetRandomSamples())
+        showSampling = true;
+        enableFill = true;
+
+        if (streamAtts->GetRandomSamples())
+        {
+          TurnOn(randomSeed, randomSeedLabel);
+          TurnOn(numberOfRandomSamples, numberOfRandomSamplesLabel);
+        }
+        else
         {
             TurnOn(sampleDensity[0], sampleDensityLabel[0]);
             TurnOn(sampleDensity[1], sampleDensityLabel[1]);
@@ -2206,9 +2392,6 @@ QvisStreamlinePlotWindow::UpdateSourceAttributes()
             for (int i = 0; i < 2; i++)
                 sampleDensity[i]->setMinimum(2);
         }
-        enableRandom = true;
-        enableFill = true;
-        showSampling = true;
     }
     else if (streamAtts->GetSourceType() == StreamlineAttributes::SpecifiedCircle)
     {
@@ -2216,7 +2399,16 @@ QvisStreamlinePlotWindow::UpdateSourceAttributes()
         TurnOn(planeNormal, planeNormalLabel);
         TurnOn(planeUpAxis, planeUpAxisLabel);
         TurnOn(radius, radiusLabel);
-        if (! streamAtts->GetRandomSamples())
+
+        showSampling = true;
+        enableFill = true;
+
+        if (streamAtts->GetRandomSamples())
+        {
+          TurnOn(randomSeed, randomSeedLabel);
+          TurnOn(numberOfRandomSamples, numberOfRandomSamplesLabel);
+        }
+        else
         {
             if (streamAtts->GetFillInterior())
             {
@@ -2231,16 +2423,21 @@ QvisStreamlinePlotWindow::UpdateSourceAttributes()
                 sampleDensityLabel[0]->setText(tr("Samples in Theta:"));
             }
         }
-        enableRandom = true;
-        enableFill = true;
-        showSampling = true;
     }
     else if (streamAtts->GetSourceType() == StreamlineAttributes::SpecifiedSphere)
     {
         TurnOn(sphereOrigin, sphereOriginLabel);
         TurnOn(radius, radiusLabel);
         
-        if (! streamAtts->GetRandomSamples())
+        showSampling = true;
+        enableFill = true;
+
+        if (streamAtts->GetRandomSamples())
+        {
+          TurnOn(randomSeed, randomSeedLabel);
+          TurnOn(numberOfRandomSamples, numberOfRandomSamplesLabel);
+        }
+        else
         {
             TurnOn(sampleDensity[0], sampleDensityLabel[0]);
             TurnOn(sampleDensity[1], sampleDensityLabel[1]);
@@ -2253,11 +2450,7 @@ QvisStreamlinePlotWindow::UpdateSourceAttributes()
                 sampleDensityLabel[2]->setText(tr("Samples in R:"));
             }
         }
-
-        enableRandom = true;
-        enableFill = true;
-        showSampling = true;
-    }
+     }
     else if (streamAtts->GetSourceType() == StreamlineAttributes::SpecifiedBox)
     {
         TurnOn(useWholeBox);
@@ -2273,7 +2466,15 @@ QvisStreamlinePlotWindow::UpdateSourceAttributes()
             }
         }
 
-        if (! streamAtts->GetRandomSamples())
+        showSampling = true;
+        enableFill = true;
+
+        if (streamAtts->GetRandomSamples())
+        {
+          TurnOn(randomSeed, randomSeedLabel);
+          TurnOn(numberOfRandomSamples, numberOfRandomSamplesLabel);
+        }
+        else
         {
             TurnOn(sampleDensity[0], sampleDensityLabel[0]);
             TurnOn(sampleDensity[1], sampleDensityLabel[1]);
@@ -2284,42 +2485,23 @@ QvisStreamlinePlotWindow::UpdateSourceAttributes()
             for (int i = 0; i < 3; i++)
                 sampleDensity[i]->setMinimum(1);
         }
-
-        enableRandom = true;
-        enableFill = true;
-        showSampling = true;
-    }
-    else if (streamAtts->GetSourceType() == StreamlineAttributes::SpecifiedPointList)
-    {
-        TurnOn(pointList);
-        TurnOn(pointListDelPoint);
-        TurnOn(pointListDelAllPoints);
-        TurnOn(pointListAddPoint);
-        TurnOn(pointListReadPoints);
     }
 
-    if (enableRandom)
+    if (showSampling)
     {
-        TurnOn(randomSamples);
-        TurnOn(randomSeed, randomSeedLabel);
-        TurnOn(numberOfRandomSamples, numberOfRandomSamplesLabel);
-        if (! streamAtts->GetRandomSamples())
+        TurnOn(samplingGroup);
+
+        TurnOn(typeLabel);
+        TurnOn(typeButtons[0]);
+        TurnOn(typeButtons[1]);
+
+        if (enableFill)
         {
-            randomSeed->setEnabled(false);
-            randomSeedLabel->setEnabled(false);
-            numberOfRandomSamples->setEnabled(false);
-            numberOfRandomSamplesLabel->setEnabled(false);
+          TurnOn(fillLabel);
+          TurnOn(fillButtons[0]);
+          TurnOn(fillButtons[1]);
         }
     }
-    
-    if (enableFill)
-    {
-        TurnOn(fillLabel);
-        TurnOn(fillButtons[0]);
-        TurnOn(fillButtons[1]);
-    }
-    if (showSampling)
-        TurnOn(samplingGroup);
 }
 
 // ****************************************************************************
@@ -2347,10 +2529,8 @@ QvisStreamlinePlotWindow::UpdateIntegrationAttributes()
     //Turn off everything.
     maxStepLength->hide();
     maxStepLengthLabel->hide();
-    limitMaxTimeStepLabel->hide();
     limitMaxTimeStep->hide();
     maxTimeStep->hide();
-    maxTimeStepLabel->hide();
     relTol->hide();
     relTolLabel->hide();
     absTol->hide();
@@ -2359,10 +2539,8 @@ QvisStreamlinePlotWindow::UpdateIntegrationAttributes()
     switch( streamAtts->GetIntegrationType() )
     {
     case StreamlineAttributes::DormandPrince:
-        limitMaxTimeStepLabel->show();
         limitMaxTimeStep->show();
         maxTimeStep->show();
-        maxTimeStepLabel->show();
         relTol->show();
         relTolLabel->show();
         absTol->show();
@@ -2485,7 +2663,7 @@ QvisStreamlinePlotWindow::UpdateAlgorithmAttributes()
 void
 QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
 {
-    bool okay, doAll = (which_widget == -1);
+    bool doAll = (which_widget == -1);
     QString msg, temp;
 
     // Do stepLength
@@ -2876,16 +3054,16 @@ QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
             streamAtts->SetWorkGroupSize(val);
     }
     
-    if(which_widget == StreamlineAttributes::ID_phiFactor || doAll)
+    if(which_widget == StreamlineAttributes::ID_phiScaling || doAll)
     {
         double val;
-        if(LineEditGetDouble(phiFactor, val))
-            streamAtts->SetPhiFactor(val);
+        if(LineEditGetDouble(phiScaling, val) && val != 0)
+            streamAtts->SetPhiScaling(val);
         else
         {
             ResettingError(tr("phi factor"),
-                DoubleToQString(streamAtts->GetPhiFactor()));
-            streamAtts->SetPhiFactor(streamAtts->GetPhiFactor());
+                DoubleToQString(streamAtts->GetPhiScaling()));
+            streamAtts->SetPhiScaling(streamAtts->GetPhiScaling());
         }
     }
 
@@ -3059,6 +3237,98 @@ QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
             ResettingError(tr("Speed cutoff for critical points"),
                 DoubleToQString(streamAtts->GetCriticalPointThreshold()));
             streamAtts->SetCriticalPointThreshold(streamAtts->GetCriticalPointThreshold());
+        }
+    }
+
+    if (which_widget == StreamlineAttributes::ID_varyTubeRadiusFactor || doAll)
+    {
+        double val;
+        bool res = LineEditGetDouble(tubeRadiusVaryFactorEdit, val);
+        if (res)
+        {
+            if (val >= 1.0)
+                streamAtts->SetVaryTubeRadiusFactor(val);
+            else
+            {
+                ResettingError(tr("Tube vary radius factor must be >= 1.0"),
+                               DoubleToQString(streamAtts->GetVaryTubeRadiusFactor()));
+                streamAtts->SetVaryTubeRadiusFactor(streamAtts->GetVaryTubeRadiusFactor());
+            }
+        }
+        else
+        {
+            ResettingError(tr("Tube vary radius factor"),
+                DoubleToQString(streamAtts->GetVaryTubeRadiusFactor()));
+            streamAtts->SetVaryTubeRadiusFactor(streamAtts->GetVaryTubeRadiusFactor());
+        }
+    }
+
+    if (which_widget == StreamlineAttributes::ID_correlationDistanceAngTol || doAll)
+    {
+        double val;
+        bool res = LineEditGetDouble(correlationDistanceAngTolEdit, val);
+        if (res)
+        {
+            if (val >= 0.0)
+                streamAtts->SetCorrelationDistanceAngTol(val);
+            else
+            {
+                ResettingError(tr("Correlation distance angular tolerance must be >= 0.0"),
+                               DoubleToQString(streamAtts->GetCorrelationDistanceAngTol()));
+                streamAtts->SetCorrelationDistanceAngTol(streamAtts->GetCorrelationDistanceAngTol());
+            }
+        }
+        else
+        {
+            ResettingError(tr("Correlation distance angular tolerance"),
+                DoubleToQString(streamAtts->GetCorrelationDistanceAngTol()));
+            streamAtts->SetCorrelationDistanceAngTol(streamAtts->GetCorrelationDistanceAngTol());
+        }
+    }
+    if ((which_widget == StreamlineAttributes::ID_correlationDistanceMinDistAbsolute || doAll)
+        && streamAtts->GetCorrelationDistanceMinDistType() == StreamlineAttributes::Absolute)
+    {
+        double val;
+        bool res = LineEditGetDouble(correlationDistanceMinDistEdit, val);
+        if (res)
+        {
+            if (val >= 0.0)
+                streamAtts->SetCorrelationDistanceMinDistAbsolute(val);
+            else
+            {
+                ResettingError(tr("Correlation distance minimum distance must be >= 0.0"),
+                               DoubleToQString(streamAtts->GetCorrelationDistanceMinDistAbsolute()));
+                streamAtts->SetCorrelationDistanceMinDistAbsolute(streamAtts->GetCorrelationDistanceMinDistAbsolute());
+            }
+        }
+        else
+        {
+            ResettingError(tr("Correlation distance minimum distnace"),
+                DoubleToQString(streamAtts->GetCorrelationDistanceMinDistAbsolute()));
+            streamAtts->SetCorrelationDistanceMinDistAbsolute(streamAtts->GetCorrelationDistanceMinDistAbsolute());
+        }
+    }
+    if ((which_widget == StreamlineAttributes::ID_correlationDistanceMinDistBBox || doAll)
+        && streamAtts->GetCorrelationDistanceMinDistType() == StreamlineAttributes::FractionOfBBox)
+    {
+        double val;
+        bool res = LineEditGetDouble(correlationDistanceMinDistEdit, val);
+        if (res)
+        {
+            if (val >= 0.0)
+                streamAtts->SetCorrelationDistanceMinDistBBox(val);
+            else
+            {
+                ResettingError(tr("Correlation distance minimum distance must be >= 0.0"),
+                               DoubleToQString(streamAtts->GetCorrelationDistanceMinDistBBox()));
+                streamAtts->SetCorrelationDistanceMinDistBBox(streamAtts->GetCorrelationDistanceMinDistBBox());
+            }
+        }
+        else
+        {
+            ResettingError(tr("Correlation distance minimum distnace"),
+                DoubleToQString(streamAtts->GetCorrelationDistanceMinDistBBox()));
+            streamAtts->SetCorrelationDistanceMinDistBBox(streamAtts->GetCorrelationDistanceMinDistBBox());
         }
     }
 }
@@ -3534,6 +3804,27 @@ QvisStreamlinePlotWindow::coloringVariableChanged(const QString &var)
 }
 
 void
+QvisStreamlinePlotWindow::tubeRadiusVaryChanged(bool val)
+{
+    streamAtts->SetVaryTubeRadius( (val ? StreamlineAttributes::Scalar : StreamlineAttributes::None) );
+    Apply();
+}
+
+void
+QvisStreamlinePlotWindow::tubeRadiusVaryVariableChanged(const QString &var)
+{
+    streamAtts->SetVaryTubeRadiusVariable(var.toStdString());
+    Apply();
+}
+
+void
+QvisStreamlinePlotWindow::tubeRadiusVaryFactorProcessText()
+{
+    GetCurrentValues(StreamlineAttributes::ID_varyTubeRadiusFactor);
+    Apply();
+}
+
+void
 QvisStreamlinePlotWindow::colorTableNameChanged(bool useDefault, const QString &ctName)
 {
     streamAtts->SetColorTableName(ctName.toStdString());
@@ -3601,9 +3892,16 @@ QvisStreamlinePlotWindow::coordinateButtonGroupChanged(int val)
 
 
 void
-QvisStreamlinePlotWindow::phiFactorProcessText()
+QvisStreamlinePlotWindow::phiScalingToggled(bool val)
 {
-    GetCurrentValues(StreamlineAttributes::ID_phiFactor);
+    streamAtts->SetPhiScalingFlag(val);
+    Apply();
+}
+
+void
+QvisStreamlinePlotWindow::phiScalingProcessText()
+{
+    GetCurrentValues(StreamlineAttributes::ID_phiScaling);
     Apply();
 }
 
@@ -3799,16 +4097,16 @@ QvisStreamlinePlotWindow::tubeDisplayDensityChanged(int val)
 }
 
 void
-QvisStreamlinePlotWindow::randomSamplesChanged(bool val)
+QvisStreamlinePlotWindow::fillChanged(int index)
 {
-    streamAtts->SetRandomSamples(val);
+    streamAtts->SetFillInterior(index == 1);
     Apply();
 }
 
 void
-QvisStreamlinePlotWindow::fillChanged(int index)
+QvisStreamlinePlotWindow::typeChanged(int index)
 {
-    streamAtts->SetFillInterior(index == 1);
+    streamAtts->SetRandomSamples(index == 1);
     Apply();
 }
 
@@ -3909,6 +4207,28 @@ QvisStreamlinePlotWindow::readPoints()
     }
 
     f.close();
+}
+
+void
+QvisStreamlinePlotWindow::correlationDistanceMinDistTypeChanged(int v)
+{
+    streamAtts->SetCorrelationDistanceMinDistType((StreamlineAttributes::SizeType) v);
+    Apply();
+}
+
+void
+QvisStreamlinePlotWindow::processCorrelationDistanceAngTolEditText()
+{
+    GetCurrentValues(StreamlineAttributes::ID_correlationDistanceAngTol);
+    Apply();
+}
+
+void
+QvisStreamlinePlotWindow::processCorrelationDistanceMinDistEditText()
+{
+    GetCurrentValues(StreamlineAttributes::ID_correlationDistanceMinDistAbsolute);
+    GetCurrentValues(StreamlineAttributes::ID_correlationDistanceMinDistBBox);
+    Apply();
 }
 
 static void

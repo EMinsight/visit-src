@@ -407,6 +407,12 @@ avtStreamlinePlot::EnhanceSpecification(avtContract_p in_contract)
 //   Hank Childs, Sun Dec  5 11:43:46 PST 2010
 //   Pass along attributes for issuing warnings.
 //
+//   Dave Pugmire, Fri Jan 28 14:49:50 EST 2011
+//   Add vary tube radius by variable.
+//
+//   Dave Pugmire, Mon Feb 21 08:19:26 EST 2011
+//   Add color by correlation distance.
+//
 // ****************************************************************************
 
 void
@@ -508,14 +514,27 @@ avtStreamlinePlot::SetAtts(const AttributeGroup *a)
 
     streamlineFilter->SetColoringMethod(int(atts.GetColoringMethod()),
                                         atts.GetColoringVariable());
+    if (atts.GetColoringMethod() == StreamlineAttributes::ColorByCorrelationDistance)
+    {
+        bool doBBox = (atts.GetCorrelationDistanceMinDistType() == StreamlineAttributes::FractionOfBBox);
+        double minDist = (doBBox ? atts.GetCorrelationDistanceMinDistBBox() : atts.GetCorrelationDistanceMinDistAbsolute());
+        double angTol = atts.GetCorrelationDistanceAngTol();
+
+        streamlineFilter->SetColorByCorrelationDistanceTol(angTol, minDist, doBBox);
+    }
+
     streamlineFilter->SetVelocitiesForLighting(atts.GetLightingFlag());
     streamlineFilter->SetReferenceTypeForDisplay(atts.GetReferenceTypeForDisplay());
 
     streamlineFilter->SetCoordinateSystem(atts.GetCoordinateSystem());
-    streamlineFilter->SetPhiFactor(atts.GetPhiFactor());
+    streamlineFilter->SetPhiScaling(atts.GetPhiScalingFlag(), atts.GetPhiScaling());
 
     if (atts.GetOpacityType() == StreamlineAttributes::VariableRange)
         streamlineFilter->SetOpacityVariable(atts.GetOpacityVariable());
+    
+    if (atts.GetVaryTubeRadius() != StreamlineAttributes::None && !atts.GetVaryTubeRadiusVariable().empty())
+        streamlineFilter->SetScaleTubeRadiusVariable(atts.GetVaryTubeRadiusVariable());
+    
 #endif
 
     UpdateMapperAndLegend();

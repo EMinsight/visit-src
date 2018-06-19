@@ -18,6 +18,10 @@
 #ifndef VS_FILE_FORMAT_H
 #define VS_FILE_FORMAT_H
 
+#include <vector>
+using std::vector;
+
+
 //#include <VsH5Reader.h>
 #include <avtSTMDFileFormat.h>
 #include <hdf5.h>
@@ -52,9 +56,8 @@ class avtVsFileFormat: public avtSTMDFileFormat {
    * Construct a file reader from a data file.
    *
    * @param dfnm the name of the data file
-   * @param newStride The stride to use when loading data
    */
-  avtVsFileFormat(const char* dfnm, std::vector<int> settings);
+  avtVsFileFormat(const char* dfnm);
 
   /**
    * Destructor
@@ -69,6 +72,21 @@ class avtVsFileFormat: public avtSTMDFileFormat {
   virtual const char* GetType(void) {
     return "Vs";
   };
+
+  virtual bool CanCacheVariable(const char *var);
+
+  /**
+   * Get the data selections
+   *
+   */
+  virtual void RegisterDataSelections( const vector<avtDataSelection_p> &sels,
+                                       vector<bool> *selectionsApplied );
+
+  /**
+   * Process the data selections
+   *
+   */
+  bool ProcessDataSelections(int *mins, int *maxs, int *strides);
 
   /**
    * Get a mesh by name
@@ -102,9 +120,38 @@ class avtVsFileFormat: public avtSTMDFileFormat {
    */
   virtual void ActivateTimestep(void);
   
-  virtual void UpdateCyclesAndTimes();
+  /**
+   * Updates cycles and times in the given database metadata object
+   * Deprecated 06.02.2011 in favor of GetCycle and GetTime
+   * Marc Durant
+   */
+  virtual void UpdateCyclesAndTimes(avtDatabaseMetaData* md);
   
   protected:
+  /**
+   * Determines if the associated file has a valid cycle number
+   * @return true if cycle is valid, otherwise false
+   */
+  virtual bool ReturnsValidCycle();
+
+  /**
+   * Get the cycle for the associated file
+   * @return the cycle, or INVALID_CYCLE if none is available
+   */
+  virtual int GetCycle();
+
+  /**
+   * Determines if the associated file has a valid time
+   * @return true if time is valid, otherwise false
+   */
+  virtual bool ReturnsValidTime();
+
+  /**
+   * Get the time for the associated file
+   * @return the time, or INVALID_TIME if none is available
+   */
+  virtual double GetTime();
+
   /** Populate the meta data */
   virtual void PopulateDatabaseMetaData(avtDatabaseMetaData* md);
 
@@ -119,12 +166,14 @@ class avtVsFileFormat: public avtSTMDFileFormat {
 
   private:
   /**
-   * A user-specified setting for the stride to use when loading data.
-   * Default is 1 on all axes.
+   * A counter to track the number of avtVsFileFormat objects in existence
    */
-  std::vector<int> stride;
+  static int instanceCounter;
 
   VsRegistry* registry;
+
+    vector<avtDataSelection_p> selList;
+    vector<bool>              *selsApplied;
 
   /**
    * Set the axis labels for a mesh.
@@ -136,12 +185,11 @@ class avtVsFileFormat: public avtSTMDFileFormat {
   /**
    * Create various meshes.
    */
-  vtkDataSet* getUniformMesh(VsUniformMesh*);
-  vtkDataSet* getUnstructuredMesh(VsUnstructuredMesh*);
-  vtkDataSet* getRectilinearMesh(VsRectilinearMesh*);
-  vtkDataSet* getStructuredMesh(VsStructuredMesh*);
-  vtkDataSet* getPointMesh(VsVariableWithMesh*);
-  vtkDataSet* getSplitPointMesh(VsUnstructuredMesh*);
+  vtkDataSet* getUniformMesh(VsUniformMesh*, bool, int*, int*, int*);
+  vtkDataSet* getRectilinearMesh(VsRectilinearMesh*, bool, int*, int*, int*);
+  vtkDataSet* getStructuredMesh(VsStructuredMesh*, bool, int*, int*, int*);
+  vtkDataSet* getUnstructuredMesh(VsUnstructuredMesh*, bool, int*, int*, int*);
+  vtkDataSet* getPointMesh(VsVariableWithMesh*, bool, int*, int*, int*);
   vtkDataSet* getCurve(int domain, const std::string& name);
 
   /**
@@ -160,4 +208,3 @@ class avtVsFileFormat: public avtSTMDFileFormat {
 };
 
 #endif
-

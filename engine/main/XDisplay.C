@@ -42,8 +42,13 @@
 #include <string>
 #include <sys/types.h>
 #include <sys/wait.h>
+#if !defined(_WIN32)
 #include <unistd.h>
+#endif
+#include <iterator>
 #include <vector>
+
+#include <X11/Xlib.h>
 
 #include <XDisplay.h>
 
@@ -63,6 +68,9 @@ static inline bool initialized(pid_t x) { return ((int)x != -1); }
 static inline void set_uninitialized(pid_t *x) { *x = (pid_t) -1; }
 static char **vec_convert(std::vector<std::string> svec, size_t *len);
 void vec_convert_free(char **vec, size_t len);
+static pid_t xinit(const std::string& display,
+                   const std::vector<std::string>& user_args);
+static void fix_signals();
 
 // ****************************************************************************
 //  Method: XDisplay constructor
@@ -75,7 +83,7 @@ void vec_convert_free(char **vec, size_t len);
 //
 // ****************************************************************************
 
-XDisplay::XDisplay(): xserver((pid_t)-1), display(0) { }
+XDisplay::XDisplay(): xserver((pid_t)-1), launch(true) { }
 
 // ****************************************************************************
 //  Method: XDisplay destructor
@@ -113,69 +121,33 @@ XDisplay::~XDisplay()
 //
 //  Modifications:
 //
-//    Tom Fogal, Tue Aug  5 16:33:49 EDT 2008
-//    Add argument string-vector, and code to convert that into an argv-style
-//    array.  Finally, use execvp to start xinit.  All of this allows the user
-//    to specify their own custom arguments to the X launch.
+//    Tom Fogal, Mon May 24 18:58:57 MDT 2010
+//    Abstract most of this method out to `xinit'.
 //
-//    Tom Fogal, Mon Aug 11 19:02:11 EDT 2008
-//    Move print out of the child; this is confusing for the output stream (two
-//    processes can write to it, concurrently!).  Convert to an argv[] array in
-//    both processes, so that we can still output the X server options.
+//    Tom Fogal, Tue May 25 16:11:38 MDT 2010
+//    Lookup hostname; we'll use it in error messages.
 //
-//    Tom Fogal, Mon Sep  1 13:37:59 EDT 2008
-//    Prevent memory leaks in the event of failure.  Force "-ac" in X server
-//    command line options, as usage is unreliable otherwise.
+//    Tom Fogal, Wed May 26 09:20:18 MDT 2010
+//    Do not launch X servers if the client does not want us to.
 //
 // ****************************************************************************
 
 bool
-XDisplay::Initialize(size_t display, const std::vector<std::string> &user_args)
+XDisplay::Initialize(std::string display,
+                     const std::vector<std::string>& user_args)
 {
-    char **argv;
-    size_t v_elems;
-
     this->display = display;
 
-    std::vector<std::string> args;
-    args.push_back("xinit");
-    args.push_back("--");
-    args.push_back(format(":%l", /* unused */0, display));
-    args.push_back("-ac");
-    args.push_back("-sharevts");
-    args.push_back("-once");
-    args.push_back("-terminate");
-    StringHelpers::append(args, user_args);
-
-    argv = vec_convert(args, &v_elems);
-    if((this->xserver = fork()) == (pid_t) -1)
+    if(gethostname(this->hostname, 512) != 0)
     {
-        perror("fork");
-        vec_convert_free(argv, v_elems);
-        return false;
+        debug1 << "Error " << errno << " while getting hostname.\n";
+        this->hostname[0] = 0;
     }
-
-    if(this->xserver == 0)
+    if(this->launch && (this->xserver = xinit(this->display, user_args)) == -1)
     {
-        execvp("xinit", argv);
-        perror("execvp of xinit");
-        vec_convert_free(argv, v_elems);
-        return false;
+      return false;
     }
-    DEBUG_ONLY(
-        debug5 << "X server command line arguments:" << std::endl;
-        for(size_t i=0; i < args.size(); ++i)
-        {
-            debug5 << "\t" << argv[i] << std::endl;
-        }
-    )
-
-    vec_convert_free(argv, v_elems);
-    debug4 << "Giving a sec for the X server to start ...";
-    sleep(display);
-    debug4 << " done!" << std::endl;
-
-    debug3 << "Saved X server PID " << (int)this->xserver << std::endl;
+    debug2 << this->hostname << " saved X server PID " << this->xserver << "\n";
     return true;
 }
 
@@ -196,24 +168,94 @@ XDisplay::Initialize(size_t display, const std::vector<std::string> &user_args)
 //    Tom Fogal, Fri Aug 29 19:19:25 EDT 2008
 //    Removed a variable that was only useful in debugging.
 //
+//    Tom Fogal, Tue May 25 16:07:27 MDT 2010
+//    Made it return a bool so we can detect errors.
+//
+//    Tom Fogal, Wed May 26 09:05:00 MDT 2010
+//    Detect errors.
+//
+//    Tom Fogal, Wed May 26 10:15:05 MDT 2010
+//    Not initializing the X server shouldn't mean the connect fails.
+//
+//    Tom Fogal, Thu May  5 11:36:39 MDT 2011
+//    Eventually the spinning should end.
+//
+//    Tom Fogal, Thu May  5 11:43:36 MDT 2011
+//    xhost +hostname really isn't needed.
+//
+//    Tom Fogal, Fri May 13 18:56:52 MDT 2011
+//    Quick hacks to fix mac.
+//
 // ****************************************************************************
 
-void
+bool
 XDisplay::Connect()
 {
     static char env_display[128];
 
     debug3 << "Connecting to display " << this->display << std::endl;
-    SNPRINTF(env_display, 128, "DISPLAY=:%zu", this->display);
+    SNPRINTF(env_display, 128, "DISPLAY=%s", this->display.c_str());
 
     if(putenv(env_display) != 0)
     {
         perror("putenv");
-        debug1 << "putenv(\"" << env_display << "\") failed." << std::endl;
+        debug1 << this->hostname << ": putenv(\"" << env_display
+               << "\") failed.\n";
     }
     InitVTKRendering::UnforceMesa();
 
-    system("xhost +");
+    // Test our connection.
+    Display* dpy=NULL;
+    size_t spin_count = 0;
+    do
+    {
+        int status=0;
+        if(initialized(this->xserver))
+        {
+            // Our X server might have died.  Don't bother spinning
+            // until we can connect if it's never going to start!
+            switch(waitpid(this->xserver, &status, WNOHANG) == -1)
+            {
+            case -1:
+                debug1 << this->hostname << ": waitpid(" << this->xserver
+                       << ") failed.\n";
+                return false;
+                break;
+            case 0:
+                debug5 << "Good, X is still running.\n";
+                break;
+            default:
+                if(WIFEXITED(status) || WIFSIGNALED(status))
+                {
+                    debug1 << this->hostname << ": X server exited before we "
+                           << "could connect!  This normally means the X "
+                              "server configuration is incorrect.\n";
+                    return false;
+                }
+                break;
+            }
+        }
+#ifdef __linux__
+        dpy = XOpenDisplay(NULL);
+#endif
+        if(dpy == NULL)
+        {
+#ifdef __linux__
+            debug1 << this->hostname << ": could not connect to display "
+                   << XDisplayName(NULL) << "; spinning...\n";
+#endif
+            ++spin_count;
+            if(++spin_count > 10) {
+              return false;
+            }
+            sleep(1);
+        }
+    } while(dpy == NULL);
+#ifdef __linux__
+    XCloseDisplay(dpy);
+#endif
+
+    return true;
 }
 
 // ****************************************************************************
@@ -278,6 +320,20 @@ XDisplay::Teardown()
 }
 
 // ****************************************************************************
+//  Method: XDisplay::Launch
+//
+//  Purpose:
+//    Lets the user tell us whether the X server should be launched by VisIt.
+//
+//  Programmer:  Tom Fogal
+//  Creation:    May 26, 2010
+//
+//  Modifications:
+//
+// ****************************************************************************
+void XDisplay::Launch(bool l) { this->launch = l; }
+
+// ****************************************************************************
 //  Function: vec_convert
 //
 //  Purpose: Converts a vector of strings into ... a vector of strings.  The
@@ -336,4 +392,100 @@ vec_convert_free(char **vec, size_t len)
         free(vec[i]);
     }
     free(vec);
+}
+
+// ****************************************************************************
+//  Function: xinit
+//
+//  Purpose:
+//    Starts up an X server.
+//
+//  Arguments:
+//    display    the display to start the X server on.  Should start with ":".
+//    user_args  any additional server arguments to pass.
+//
+//  Programmer: Tom Fogal
+//  Creation:   May 24, 2010
+//
+// ****************************************************************************
+static pid_t
+xinit(const std::string& display, const std::vector<std::string>& user_args)
+{
+    char **argv;
+    size_t v_elems;
+
+    std::vector<std::string> args;
+    args.push_back("xinit");
+    args.push_back("sleep"); // sleep: make sure the server dies.
+    args.push_back("28800");
+    args.push_back("--");
+    args.push_back(display.c_str());
+    args.push_back("-ac");
+    args.push_back("-sharevts");
+    args.push_back("-once");
+    args.push_back("-terminate");
+    args.push_back("-nolisten");
+    args.push_back("tcp");
+    args.push_back("-allowMouseOpenFail");
+    StringHelpers::append(args, user_args);
+
+    debug5 << "X server command line arguments:\n\t";
+    std::copy(args.begin(), args.end(),
+              std::ostream_iterator<std::string>(DebugStream::Stream5(),
+                                                 "\n\t"));
+    debug5 << "\n";
+
+    argv = vec_convert(args, &v_elems);
+
+    // make sure we'll know when the child goes away.
+    signal(SIGCHLD, SIG_DFL);
+
+    pid_t xserver;
+    if((xserver = fork()) == (pid_t) -1)
+    {
+        perror("fork");
+        vec_convert_free(argv, v_elems);
+        return -1;
+    }
+
+    if(xserver == 0)
+    {
+        fix_signals(); // get rid of VisIt signal handlers.
+        execvp(argv[0], argv);
+        perror("execvp of xinit");
+        vec_convert_free(argv, v_elems);
+        _exit(0); // ignore atexit() handlers.
+    }
+    vec_convert_free(argv, v_elems);
+
+    return xserver;
+}
+
+// ****************************************************************************
+//  Function: fix_signals
+//
+//  Purpose:
+//    Fixes our signals for launching a child process.  VisIt tries to catch
+//    many signals so that we can report errors, but those handlers are
+//    inappropriate for our children.
+//
+//  Programmer: Tom Fogal
+//  Creation:   May 25, 2010
+//
+// ****************************************************************************
+static void fix_signals()
+{
+  alarm(0); // reset alarm.
+  signal(SIGCHLD, SIG_DFL);
+  signal(SIGQUIT, SIG_DFL);
+  signal(SIGTRAP, SIG_DFL);
+  signal(SIGSYS,  SIG_DFL);
+  signal(SIGBUS,  SIG_DFL);
+  signal(SIGPIPE, SIG_DFL);
+  signal(SIGILL,  SIG_DFL);
+  signal(SIGABRT, SIG_DFL);
+  signal(SIGFPE,  SIG_DFL);
+  signal(SIGSEGV, SIG_DFL);
+  signal(SIGTERM, SIG_DFL);
+  signal(SIGINT,  SIG_DFL);
 }

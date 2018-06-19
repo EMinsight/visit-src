@@ -144,6 +144,7 @@ avtNodePickQuery::~avtNodePickQuery()
 //
 //    Mark C. Miller, Tue Mar 27 08:39:55 PDT 2007
 //    Added support for node origin
+//
 // ****************************************************************************
 
 void

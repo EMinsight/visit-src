@@ -95,7 +95,7 @@ CaleGeneralPluginInfo::GetName() const
 const char *
 CaleGeneralPluginInfo::GetVersion() const
 {
-    return "1.0";
+    return "1.1";
 }
 
 // ****************************************************************************
@@ -114,7 +114,7 @@ CaleGeneralPluginInfo::GetVersion() const
 const char *
 CaleGeneralPluginInfo::GetID() const
 {
-    return "Cale_1.0";
+    return "Cale_1.1";
 }
 // ****************************************************************************
 //  Method: CaleGeneralPluginInfo::EnabledByDefault

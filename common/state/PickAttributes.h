@@ -41,6 +41,7 @@
 #include <state_exports.h>
 #include <string>
 #include <AttributeSubject.h>
+
 class PickVarInfo;
 #include <visitstream.h>
 
@@ -77,14 +78,29 @@ public:
         RZ,
         ZR
     };
+    enum TimeCurveType
+    {
+        Single_Y_Axis,
+        Multiple_Y_Axes
+    };
 
+    // These constructors are for objects of this class
     PickAttributes();
     PickAttributes(const PickAttributes &obj);
+protected:
+    // These constructors are for objects derived from this class
+    PickAttributes(private_tmfs_t tmfs);
+    PickAttributes(const PickAttributes &obj, private_tmfs_t tmfs);
+public:
     virtual ~PickAttributes();
 
     virtual PickAttributes& operator = (const PickAttributes &obj);
     virtual bool operator == (const PickAttributes &obj) const;
     virtual bool operator != (const PickAttributes &obj) const;
+private:
+    void Init();
+    void Copy(const PickAttributes &obj);
+public:
 
     virtual const std::string TypeName() const;
     virtual bool CopyAttributes(const AttributeGroup *);
@@ -145,7 +161,7 @@ public:
     void SetPickPoint(const double *pickPoint_);
     void SetCellPoint(const double *cellPoint_);
     void SetNodePoint(const double *nodePoint_);
-    void SetPlotBounds(const double *plotBounds_);
+    void SetPlotBounds(const doubleVector &plotBounds_);
     void SetRayPoint1(const double *rayPoint1_);
     void SetRayPoint2(const double *rayPoint2_);
     void SetMeshInfo(const std::string &meshInfo_);
@@ -188,6 +204,7 @@ public:
     void SetSubsetName(const std::string &subsetName_);
     void SetFloatFormat(const std::string &floatFormat_);
     void SetTimePreserveCoord(bool timePreserveCoord_);
+    void SetTimeCurveType(TimeCurveType timeCurveType_);
 
     // Property getting methods
     const stringVector &GetVariables() const;
@@ -221,8 +238,8 @@ public:
           double       *GetCellPoint();
     const double       *GetNodePoint() const;
           double       *GetNodePoint();
-    const double       *GetPlotBounds() const;
-          double       *GetPlotBounds();
+    const doubleVector &GetPlotBounds() const;
+          doubleVector &GetPlotBounds();
     const double       *GetRayPoint1() const;
           double       *GetRayPoint1();
     const double       *GetRayPoint2() const;
@@ -284,6 +301,7 @@ public:
     const std::string  &GetFloatFormat() const;
           std::string  &GetFloatFormat();
     bool               GetTimePreserveCoord() const;
+    TimeCurveType      GetTimeCurveType() const;
 
     // Persistence methods
     virtual bool CreateNode(DataNode *node, bool completeSave, bool forceAdd);
@@ -311,6 +329,11 @@ public:
     static bool CoordinateType_FromString(const std::string &, CoordinateType &);
 protected:
     static std::string CoordinateType_ToString(int);
+public:
+    static std::string TimeCurveType_ToString(TimeCurveType);
+    static bool TimeCurveType_FromString(const std::string &, TimeCurveType &);
+protected:
+    static std::string TimeCurveType_ToString(int);
 public:
 
     // Keyframing methods
@@ -395,7 +418,9 @@ public:
         ID_createSpreadsheet,
         ID_subsetName,
         ID_floatFormat,
-        ID_timePreserveCoord
+        ID_timePreserveCoord,
+        ID_timeCurveType,
+        ID__LAST
     };
 
 protected:
@@ -424,7 +449,7 @@ private:
     double               pickPoint[3];
     double               cellPoint[3];
     double               nodePoint[3];
-    double               plotBounds[6];
+    doubleVector         plotBounds;
     double               rayPoint1[3];
     double               rayPoint2[3];
     std::string          meshInfo;
@@ -468,9 +493,12 @@ private:
     std::string          subsetName;
     std::string          floatFormat;
     bool                 timePreserveCoord;
+    int                  timeCurveType;
 
     // Static class format string for type map.
     static const char *TypeMapFormatString;
+    static const private_tmfs_t TmfsStruct;
 };
+#define PICKATTRIBUTES_TMFS "s*bbbbbbbbbsbiiii*iissDDDd*DDsii*s*s*s*s*s*ba*s*bsbbbbbbssi*bbbbbii*bbbiibiibssbi"
 
 #endif

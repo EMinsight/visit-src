@@ -153,6 +153,27 @@ PyavtMeshMetaData_ToString(const avtMeshMetaData *atts, const char *prefix)
     str += tmpStr;
     SNPRINTF(tmpStr, 1000, "%sspatialDimension = %d\n", prefix, atts->spatialDimension);
     str += tmpStr;
+    if(atts->hasLogicalBounds)
+        SNPRINTF(tmpStr, 1000, "%shasLogicalBounds = 1\n", prefix);
+    else
+        SNPRINTF(tmpStr, 1000, "%shasLogicalBounds = 0\n", prefix);
+    str += tmpStr;
+    {   const int *logicalBounds = atts->logicalBounds;
+        SNPRINTF(tmpStr, 1000, "%slogicalBounds = (", prefix);
+        str += tmpStr;
+        for(int i = 0; i < 3; ++i)
+        {
+            SNPRINTF(tmpStr, 1000, "%d", logicalBounds[i]);
+            str += tmpStr;
+            if(i < 2)
+            {
+                SNPRINTF(tmpStr, 1000, ", ");
+                str += tmpStr;
+            }
+        }
+        SNPRINTF(tmpStr, 1000, ")\n");
+        str += tmpStr;
+    }
     SNPRINTF(tmpStr, 1000, "%stopologicalDimension = %d\n", prefix, atts->topologicalDimension);
     str += tmpStr;
     SNPRINTF(tmpStr, 1000, "%sxUnits = \"%s\"\n", prefix, atts->xUnits.c_str());
@@ -427,6 +448,8 @@ PyavtMeshMetaData_ToString(const avtMeshMetaData *atts, const char *prefix)
     else
         SNPRINTF(tmpStr, 1000, "%shideFromGUI = 0\n", prefix);
     str += tmpStr;
+    SNPRINTF(tmpStr, 1000, "%sLODs = %d\n", prefix, atts->LODs);
+    str += tmpStr;
     return str;
 }
 
@@ -602,6 +625,84 @@ avtMeshMetaData_GetSpatialDimension(PyObject *self, PyObject *args)
 {
     avtMeshMetaDataObject *obj = (avtMeshMetaDataObject *)self;
     PyObject *retval = PyInt_FromLong(long(obj->data->spatialDimension));
+    return retval;
+}
+
+/*static*/ PyObject *
+avtMeshMetaData_SetHasLogicalBounds(PyObject *self, PyObject *args)
+{
+    avtMeshMetaDataObject *obj = (avtMeshMetaDataObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the hasLogicalBounds in the object.
+    obj->data->hasLogicalBounds = (ival != 0);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+avtMeshMetaData_GetHasLogicalBounds(PyObject *self, PyObject *args)
+{
+    avtMeshMetaDataObject *obj = (avtMeshMetaDataObject *)self;
+    PyObject *retval = PyInt_FromLong(obj->data->hasLogicalBounds?1L:0L);
+    return retval;
+}
+
+/*static*/ PyObject *
+avtMeshMetaData_SetLogicalBounds(PyObject *self, PyObject *args)
+{
+    avtMeshMetaDataObject *obj = (avtMeshMetaDataObject *)self;
+
+    int *ivals = obj->data->logicalBounds;
+    if(!PyArg_ParseTuple(args, "iii", &ivals[0], &ivals[1], &ivals[2]))
+    {
+        PyObject     *tuple;
+        if(!PyArg_ParseTuple(args, "O", &tuple))
+            return NULL;
+
+        if(PyTuple_Check(tuple))
+        {
+            if(PyTuple_Size(tuple) != 3)
+                return NULL;
+
+            PyErr_Clear();
+            for(int i = 0; i < PyTuple_Size(tuple); ++i)
+            {
+                PyObject *item = PyTuple_GET_ITEM(tuple, i);
+                if(PyFloat_Check(item))
+                    ivals[i] = int(PyFloat_AS_DOUBLE(item));
+                else if(PyInt_Check(item))
+                    ivals[i] = int(PyInt_AS_LONG(item));
+                else if(PyLong_Check(item))
+                    ivals[i] = int(PyLong_AsDouble(item));
+                else
+                    ivals[i] = 0;
+            }
+        }
+        else
+            return NULL;
+    }
+
+    // Mark the logicalBounds in the object as modified.
+    obj->data->SelectAll();
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+avtMeshMetaData_GetLogicalBounds(PyObject *self, PyObject *args)
+{
+    avtMeshMetaDataObject *obj = (avtMeshMetaDataObject *)self;
+    // Allocate a tuple the with enough entries to hold the logicalBounds.
+    PyObject *retval = PyTuple_New(3);
+    const int *logicalBounds = obj->data->logicalBounds;
+    for(int i = 0; i < 3; ++i)
+        PyTuple_SET_ITEM(retval, i, PyInt_FromLong(long(logicalBounds[i])));
     return retval;
 }
 
@@ -1756,6 +1857,30 @@ avtMeshMetaData_GetHideFromGUI(PyObject *self, PyObject *args)
     return retval;
 }
 
+/*static*/ PyObject *
+avtMeshMetaData_SetLODs(PyObject *self, PyObject *args)
+{
+    avtMeshMetaDataObject *obj = (avtMeshMetaDataObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the LODs in the object.
+    obj->data->LODs = (int)ival;
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+avtMeshMetaData_GetLODs(PyObject *self, PyObject *args)
+{
+    avtMeshMetaDataObject *obj = (avtMeshMetaDataObject *)self;
+    PyObject *retval = PyInt_FromLong(long(obj->data->LODs));
+    return retval;
+}
+
 
 
 PyMethodDef PyavtMeshMetaData_methods[AVTMESHMETADATA_NMETH] = {
@@ -1774,6 +1899,10 @@ PyMethodDef PyavtMeshMetaData_methods[AVTMESHMETADATA_NMETH] = {
     {"GetCellOrigin", avtMeshMetaData_GetCellOrigin, METH_VARARGS},
     {"SetSpatialDimension", avtMeshMetaData_SetSpatialDimension, METH_VARARGS},
     {"GetSpatialDimension", avtMeshMetaData_GetSpatialDimension, METH_VARARGS},
+    {"SetHasLogicalBounds", avtMeshMetaData_SetHasLogicalBounds, METH_VARARGS},
+    {"GetHasLogicalBounds", avtMeshMetaData_GetHasLogicalBounds, METH_VARARGS},
+    {"SetLogicalBounds", avtMeshMetaData_SetLogicalBounds, METH_VARARGS},
+    {"GetLogicalBounds", avtMeshMetaData_GetLogicalBounds, METH_VARARGS},
     {"SetTopologicalDimension", avtMeshMetaData_SetTopologicalDimension, METH_VARARGS},
     {"GetTopologicalDimension", avtMeshMetaData_GetTopologicalDimension, METH_VARARGS},
     {"SetXUnits", avtMeshMetaData_SetXUnits, METH_VARARGS},
@@ -1848,6 +1977,8 @@ PyMethodDef PyavtMeshMetaData_methods[AVTMESHMETADATA_NMETH] = {
     {"GetContainsExteriorBoundaryGhosts", avtMeshMetaData_GetContainsExteriorBoundaryGhosts, METH_VARARGS},
     {"SetHideFromGUI", avtMeshMetaData_SetHideFromGUI, METH_VARARGS},
     {"GetHideFromGUI", avtMeshMetaData_GetHideFromGUI, METH_VARARGS},
+    {"SetLODs", avtMeshMetaData_SetLODs, METH_VARARGS},
+    {"GetLODs", avtMeshMetaData_GetLODs, METH_VARARGS},
     {NULL, NULL}
 };
 
@@ -1914,6 +2045,10 @@ PyavtMeshMetaData_getattr(PyObject *self, char *name)
         return avtMeshMetaData_GetCellOrigin(self, NULL);
     if(strcmp(name, "spatialDimension") == 0)
         return avtMeshMetaData_GetSpatialDimension(self, NULL);
+    if(strcmp(name, "hasLogicalBounds") == 0)
+        return avtMeshMetaData_GetHasLogicalBounds(self, NULL);
+    if(strcmp(name, "logicalBounds") == 0)
+        return avtMeshMetaData_GetLogicalBounds(self, NULL);
     if(strcmp(name, "topologicalDimension") == 0)
         return avtMeshMetaData_GetTopologicalDimension(self, NULL);
     if(strcmp(name, "xUnits") == 0)
@@ -2012,6 +2147,8 @@ PyavtMeshMetaData_getattr(PyObject *self, char *name)
         return avtMeshMetaData_GetContainsExteriorBoundaryGhosts(self, NULL);
     if(strcmp(name, "hideFromGUI") == 0)
         return avtMeshMetaData_GetHideFromGUI(self, NULL);
+    if(strcmp(name, "LODs") == 0)
+        return avtMeshMetaData_GetLODs(self, NULL);
 
     return Py_FindMethod(PyavtMeshMetaData_methods, self, name);
 }
@@ -2040,6 +2177,10 @@ PyavtMeshMetaData_setattr(PyObject *self, char *name, PyObject *args)
         obj = avtMeshMetaData_SetCellOrigin(self, tuple);
     else if(strcmp(name, "spatialDimension") == 0)
         obj = avtMeshMetaData_SetSpatialDimension(self, tuple);
+    else if(strcmp(name, "hasLogicalBounds") == 0)
+        obj = avtMeshMetaData_SetHasLogicalBounds(self, tuple);
+    else if(strcmp(name, "logicalBounds") == 0)
+        obj = avtMeshMetaData_SetLogicalBounds(self, tuple);
     else if(strcmp(name, "topologicalDimension") == 0)
         obj = avtMeshMetaData_SetTopologicalDimension(self, tuple);
     else if(strcmp(name, "xUnits") == 0)
@@ -2114,11 +2255,15 @@ PyavtMeshMetaData_setattr(PyObject *self, char *name, PyObject *args)
         obj = avtMeshMetaData_SetContainsExteriorBoundaryGhosts(self, tuple);
     else if(strcmp(name, "hideFromGUI") == 0)
         obj = avtMeshMetaData_SetHideFromGUI(self, tuple);
+    else if(strcmp(name, "LODs") == 0)
+        obj = avtMeshMetaData_SetLODs(self, tuple);
 
     if(obj != NULL)
         Py_DECREF(obj);
 
     Py_DECREF(tuple);
+    if( obj == NULL)
+        PyErr_Format(PyExc_RuntimeError, "Unable to set unknown attribute: '%s'", name);
     return (obj != NULL) ? 0 : -1;
 }
 

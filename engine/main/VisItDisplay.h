@@ -57,6 +57,9 @@
 //    Tom Fogal, Mon Sep  1 15:11:06 EDT 2008
 //    Add a method to create the appropriate display type (factory).
 //
+//    Tom Fogal, Tue May 25 16:08:39 MDT 2010
+//    Made ::Connect return a bool, to detect errors.
+//
 // ****************************************************************************
 
 class ENGINE_MAIN_API VisItDisplay
@@ -70,15 +73,15 @@ class ENGINE_MAIN_API VisItDisplay
     /// intervening `Teardown's result in undefined behavior.
     /// Initialization may fail; success is given via the return value.
     ///
-    /// n     The display number (identifier) for this display.
-    /// args  user arguments appropriate for configuring the VisIt display.
+    /// display the display string to utilize.
+    /// args    user arguments appropriate for configuring the VisIt display.
     /// returns: Display initialization status.
-    virtual bool   Initialize(size_t n,
+    virtual bool   Initialize(std::string display,
                               const std::vector<std::string> &args) = 0;
 
     /// Associates this process with the previously-`Initialize'd VisIt Display.
     /// Undefined if this VisItDisplay has not been initialized.
-    virtual void   Connect() = 0;
+    virtual bool   Connect() = 0;
 
     /// Closes down a VisItDisplay.  You may assume that this will be called by
     /// the destructor.  It is safe to call Teardown more than once.  It is not
@@ -90,13 +93,13 @@ class ENGINE_MAIN_API VisItDisplay
 // Methods helpful in argument vector creation.
 // If these were to be generalized, they would more appropriately end up in
 // `StringHelpers'
-std::string format(std::string s, size_t node, size_t display);
+std::string display_format(std::string s, size_t node, size_t display);
 std::vector<std::string> split(std::string, size_t, size_t);
 
-namespace Display {
+namespace VDisplay {
     enum visitDisplayType {
         D_MESA, // mesa based SW rendering
-        D_X     // starts an X server to use HW rendering
+        D_X     // utilize an X server for HW rendering
     };
     /// Creates a display type based on the given parameter.  It is the
     /// caller's responsibility to deallocate the display via `delete'.

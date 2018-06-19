@@ -143,6 +143,12 @@ class StreamlineAttributes;
 //   Hank Childs, Sun Dec  5 04:59:00 PST 2010
 //   Add new data members for warnings for stiffness and critical points.
 //
+//   Dave Pugmire, Fri Jan 28 14:49:50 EST 2011
+//   Add vary tube radius by variable.
+//
+//   Dave Pugmire, Mon Feb 21 08:17:42 EST 2011
+//   Add color by correlation distance.
+//
 // ****************************************************************************
 
 class QvisStreamlinePlotWindow : public QvisPostableWindowObserver
@@ -203,7 +209,7 @@ class QvisStreamlinePlotWindow : public QvisPostableWindowObserver
     void sampleDistance0ProcessText();
     void sampleDistance1ProcessText();
     void sampleDistance2ProcessText();
-    void randomSamplesChanged(bool);
+    void typeChanged(int);
     void randomSeedChanged(int);
     void numberOfRandomSamplesChanged(int);
     void fillChanged(int);
@@ -227,7 +233,8 @@ class QvisStreamlinePlotWindow : public QvisPostableWindowObserver
     void lightingFlagChanged(bool val);
     void icButtonGroupChanged(int val);
     void coordinateButtonGroupChanged(int val);
-    void phiFactorProcessText();
+    void phiScalingToggled(bool);
+    void phiScalingProcessText();
     void pathlineOverrideStartingTimeFlagChanged(bool val);
     void pathlineOverrideStartingTimeProcessText();
     void pathlineCMFEButtonGroupChanged(int val);
@@ -270,17 +277,20 @@ class QvisStreamlinePlotWindow : public QvisPostableWindowObserver
     void issueWarningForStiffnessChanged(bool);
     void issueWarningForCriticalPointsChanged(bool);
     void criticalPointThresholdProcessText();
-
+    void tubeRadiusVaryFactorProcessText();
+    void tubeRadiusVaryVariableChanged(const QString&);
+    void tubeRadiusVaryChanged(bool);
+    void correlationDistanceMinDistTypeChanged(int);
+    void processCorrelationDistanceAngTolEditText();
+    void processCorrelationDistanceMinDistEditText();
   private:
     int plotType;
     QComboBox *sourceType;
     QComboBox *directionType;
-    QLabel    *limitMaxTimeStepLabel;
     QCheckBox *limitMaxTimeStep;
     QLineEdit *maxStepLength;
     QLabel    *maxStepLengthLabel;
     QLineEdit *maxTimeStep;
-    QLabel    *maxTimeStepLabel;
     QLineEdit *maxSteps;
     QCheckBox *limitMaxTime;
     QLineEdit *maxTime;
@@ -291,7 +301,6 @@ class QvisStreamlinePlotWindow : public QvisPostableWindowObserver
     QLineEdit *absTol;
     QComboBox *absTolSizeType;
     QLabel    *absTolLabel;
-    QLabel    *forceNodalLabel;
     QCheckBox *forceNodal;
     QLineEdit *pointSource;
     QLabel    *pointSourceLabel;
@@ -319,16 +328,24 @@ class QvisStreamlinePlotWindow : public QvisPostableWindowObserver
     QLineEdit *sampleDistance[3];
 
     QGroupBox *samplingGroup;
-    QCheckBox *randomSamples;
+    QLabel    *fillLabel;
+    QButtonGroup *fillButtonGroup;
+    QRadioButton *fillButtons[2];
+    QLabel    *typeLabel;
+    QButtonGroup *typeButtonGroup;
+    QRadioButton *typeButtons[2];
     QSpinBox  *numberOfRandomSamples;
     QLabel    *numberOfRandomSamplesLabel;
     QSpinBox  *randomSeed;
     QLabel    *randomSeedLabel;
-    QLabel    *fillLabel;
-    QButtonGroup *fillButtonGroup;
-    QRadioButton *fillButtons[2];
+
 
     QComboBox *displayMethod;
+    QCheckBox *tubeRadiusVary;
+    QComboBox *tubeRadiusVaryMethod;
+    QLabel    *tubeRadiusVaryVariableLabel, *tubeRadiusVaryFactorLabel;
+    QvisVariableButton *tubeRadiusVaryVariable;
+    QLineEdit *tubeRadiusVaryFactorEdit;
     QCheckBox *showSeeds, *showHeads;
     QLabel    *seedRadiusLabel, *headRadiusLabel, *headHeightLabel;
     QComboBox *headDisplayType;
@@ -344,6 +361,9 @@ class QvisStreamlinePlotWindow : public QvisPostableWindowObserver
     QLabel    *lineWidthLabel;
     QLabel    *lineWidthDummy;
     QComboBox *dataValueComboBox;
+    QLabel    *correlationDistanceAngTolLabel, *correlationDistanceMinDistLabel;
+    QLineEdit *correlationDistanceAngTolEdit, *correlationDistanceMinDistEdit;
+    QComboBox *correlationDistanceMinDistType;
     QvisColorTableButton *colorTableName;
     QLabel    *colorTableNameLabel;
     QvisColorButton *singleColor;
@@ -352,8 +372,8 @@ class QvisStreamlinePlotWindow : public QvisPostableWindowObserver
     QCheckBox *lightingFlag;
     QButtonGroup *icButtonGroup;
     QButtonGroup *coordinateButtonGroup;
-    QLineEdit *phiFactor;
-    QLabel    *phiFactorLabel;
+    QLineEdit *phiScaling;
+    QCheckBox *phiScalingToggle;
     QCheckBox *pathlineOverrideStartingTimeFlag;
     QLineEdit *pathlineOverrideStartingTime;
     QButtonGroup *pathlineCMFEButtonGroup;
@@ -400,7 +420,4 @@ class QvisStreamlinePlotWindow : public QvisPostableWindowObserver
     StreamlineAttributes *streamAtts;
 };
 
-
 #endif
-
-

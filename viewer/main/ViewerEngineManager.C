@@ -61,6 +61,8 @@
 #include <PickAttributes.h>
 #include <ProcessAttributes.h>
 #include <QueryAttributes.h>
+#include <SelectionList.h>
+#include <SelectionSummary.h>
 #include <SimulationCommand.h>
 #include <StatusAttributes.h>
 #include <ViewerFileServer.h>
@@ -417,6 +419,10 @@ ViewerEngineManager::EngineExists(const EngineKey &ek) const
 //    Jeremy Meredith, Thu Feb 18 15:25:27 EST 2010
 //    Split HostProfile int MachineProfile and LaunchProfile.
 //
+//    Eric Brugger, Mon May  2 17:06:31 PDT 2011
+//    I added the ability to use a gateway machine when connecting to a
+//    remote host.
+//
 // ****************************************************************************
 
 bool
@@ -513,6 +519,10 @@ ViewerEngineManager::CreateEngine(const EngineKey &ek,
         // We don't set up tunnels when launching an engine, just the VCL
         bool useTunneling = false;
 
+        // We don't use a gateway when launching an engine, just the VCL
+        bool useGateway = false;
+        string gatewayHost = "";
+
         //
         // Launch the engine.
         //
@@ -530,7 +540,9 @@ ViewerEngineManager::CreateEngine(const EngineKey &ek,
                 {
                     debug1 << "Launching a local engine" << endl;
                     newEngine.proxy->Create("localhost", chd, clientHostName,
-                                            manualSSHPort, sshPort, useTunneling);
+                                            manualSSHPort, sshPort,
+                                            useTunneling,
+                                            useGateway, gatewayHost);
                 }
             }
             else
@@ -540,6 +552,7 @@ ViewerEngineManager::CreateEngine(const EngineKey &ek,
                 // Use VisIt's launcher to start the remote engine.
                 newEngine.proxy->Create(ek.HostName(),  chd, clientHostName,
                                   manualSSHPort, sshPort, useTunneling,
+                                  useGateway, gatewayHost,
                                   OpenWithLauncher, (void *)dialog, true);
             }
 
@@ -709,6 +722,10 @@ ViewerEngineManager::CreateEngine(const EngineKey &ek,
 //    Brad Whitlock, Wed Dec 1 23:35:34 PST 2010
 //    Tell EngineProxy that it is a simulation.
 //
+//    Eric Brugger, Mon May  2 17:06:31 PDT 2011
+//    I added the ability to use a gateway machine when connecting to a
+//    remote host.
+//
 // ****************************************************************************
 
 bool
@@ -779,6 +796,11 @@ ViewerEngineManager::ConnectSim(const EngineKey &ek,
         // just when launching the VCL
         bool useTunneling = false;
 
+        // We don't use a gateway when connecting to a simulation,
+        // just when launching the VCL
+        bool useGateway = false;
+        string gatewayHost = "";
+
         //
         // Launch the engine.
         //
@@ -797,6 +819,7 @@ ViewerEngineManager::ConnectSim(const EngineKey &ek,
 
         newEngine.proxy->Create(ek.HostName(),  chd, clientHostName,
                           manualSSHPort, sshPort, useTunneling,
+                          useGateway, gatewayHost,
                           SimConnectThroughLauncher, (void *)&simData,
                           true);
 
@@ -3337,14 +3360,31 @@ ViewerEngineManager::ApplyNamedSelection(const EngineKey &ek,
 //  Programmer: Hank Childs
 //  Creation:   January 28, 2009
 //
+//  Modifications:
+//    Brad Whitlock, Tue Dec 14 11:48:13 PST 2010
+//    Pass the selection properties to the engine.
+//
 // ****************************************************************************
 
 bool
 ViewerEngineManager::CreateNamedSelection(const EngineKey &ek, 
-                                          int id, const std::string &selName)
+    int id, const SelectionProperties &props)
 {
+    SelectionSummary summary;
     ENGINE_PROXY_RPC_BEGIN("CreateNamedSelection");
-    engine->CreateNamedSelection(id, selName);
+
+        // Remove the summary if it is there.
+        int sindex = ViewerWindowManager::GetSelectionList()->
+            GetSelectionSummary(props.GetName());
+        if(sindex >= 0)
+            ViewerWindowManager::GetSelectionList()->RemoveSelectionSummary(sindex);
+
+        // Create the named selection
+        summary = engine->CreateNamedSelection(id, props);
+
+        // Add the new summary to the list.
+        ViewerWindowManager::GetSelectionList()->AddSelectionSummary(summary);
+
     ENGINE_PROXY_RPC_END_NORESTART_RETHROW2;
 }
 
@@ -3362,10 +3402,18 @@ ViewerEngineManager::CreateNamedSelection(const EngineKey &ek,
 
 bool
 ViewerEngineManager::DeleteNamedSelection(const EngineKey &ek, 
-                                         const std::string &selName)
+                                          const std::string &selName)
 {
     ENGINE_PROXY_RPC_BEGIN("DeleteNamedSelection");
-    engine->DeleteNamedSelection(selName);
+
+        // Remove the summary if it is there.
+        int sindex = ViewerWindowManager::GetSelectionList()->GetSelectionSummary(selName);
+        if(sindex >= 0)
+            ViewerWindowManager::GetSelectionList()->RemoveSelectionSummary(sindex);
+
+        // Delete the selection on the engine.
+        engine->DeleteNamedSelection(selName);
+
     ENGINE_PROXY_RPC_END_NORESTART_RETHROW2;
 }
 

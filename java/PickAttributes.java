@@ -40,6 +40,7 @@ package llnl.visit;
 
 import java.util.Vector;
 import java.lang.Integer;
+import java.lang.Double;
 
 // ****************************************************************************
 // Class: PickAttributes
@@ -58,7 +59,7 @@ import java.lang.Integer;
 
 public class PickAttributes extends AttributeSubject
 {
-    private static int PickAttributes_numAdditionalAtts = 67;
+    private static int PickAttributes_numAdditionalAtts = 68;
 
     // Enum values
     public final static int PICKTYPE_ZONE = 0;
@@ -71,6 +72,9 @@ public class PickAttributes extends AttributeSubject
     public final static int COORDINATETYPE_XY = 0;
     public final static int COORDINATETYPE_RZ = 1;
     public final static int COORDINATETYPE_ZR = 2;
+
+    public final static int TIMECURVETYPE_SINGLE_Y_AXIS = 0;
+    public final static int TIMECURVETYPE_MULTIPLE_Y_AXES = 1;
 
 
     public PickAttributes()
@@ -110,13 +114,7 @@ public class PickAttributes extends AttributeSubject
         nodePoint[0] = 0;
         nodePoint[1] = 0;
         nodePoint[2] = 0;
-        plotBounds = new double[6];
-        plotBounds[0] = 0;
-        plotBounds[1] = 0;
-        plotBounds[2] = 0;
-        plotBounds[3] = 0;
-        plotBounds[4] = 0;
-        plotBounds[5] = 0;
+        plotBounds = new Vector();
         rayPoint1 = new double[3];
         rayPoint1[0] = 0;
         rayPoint1[1] = 0;
@@ -166,6 +164,7 @@ public class PickAttributes extends AttributeSubject
         subsetName = new String("");
         floatFormat = new String("%g");
         timePreserveCoord = true;
+        timeCurveType = TIMECURVETYPE_SINGLE_Y_AXIS;
     }
 
     public PickAttributes(int nMoreFields)
@@ -205,13 +204,7 @@ public class PickAttributes extends AttributeSubject
         nodePoint[0] = 0;
         nodePoint[1] = 0;
         nodePoint[2] = 0;
-        plotBounds = new double[6];
-        plotBounds[0] = 0;
-        plotBounds[1] = 0;
-        plotBounds[2] = 0;
-        plotBounds[3] = 0;
-        plotBounds[4] = 0;
-        plotBounds[5] = 0;
+        plotBounds = new Vector();
         rayPoint1 = new double[3];
         rayPoint1[0] = 0;
         rayPoint1[1] = 0;
@@ -261,6 +254,7 @@ public class PickAttributes extends AttributeSubject
         subsetName = new String("");
         floatFormat = new String("%g");
         timePreserveCoord = true;
+        timeCurveType = TIMECURVETYPE_SINGLE_Y_AXIS;
     }
 
     public PickAttributes(PickAttributes obj)
@@ -312,9 +306,12 @@ public class PickAttributes extends AttributeSubject
         nodePoint[1] = obj.nodePoint[1];
         nodePoint[2] = obj.nodePoint[2];
 
-        plotBounds = new double[6];
-        for(i = 0; i < obj.plotBounds.length; ++i)
-            plotBounds[i] = obj.plotBounds[i];
+        plotBounds = new Vector(obj.plotBounds.size());
+        for(i = 0; i < obj.plotBounds.size(); ++i)
+        {
+            Double dv = (Double)obj.plotBounds.elementAt(i);
+            plotBounds.addElement(new Double(dv.doubleValue()));
+        }
 
         rayPoint1 = new double[3];
         rayPoint1[0] = obj.rayPoint1[0];
@@ -407,6 +404,7 @@ public class PickAttributes extends AttributeSubject
         subsetName = new String(obj.subsetName);
         floatFormat = new String(obj.floatFormat);
         timePreserveCoord = obj.timePreserveCoord;
+        timeCurveType = obj.timeCurveType;
 
         SelectAll();
     }
@@ -458,11 +456,15 @@ public class PickAttributes extends AttributeSubject
         for(i = 0; i < 3 && nodePoint_equal; ++i)
             nodePoint_equal = (nodePoint[i] == obj.nodePoint[i]);
 
-        // Compare the plotBounds arrays.
-        boolean plotBounds_equal = true;
-        for(i = 0; i < 6 && plotBounds_equal; ++i)
-            plotBounds_equal = (plotBounds[i] == obj.plotBounds[i]);
-
+        // Compare the elements in the plotBounds vector.
+        boolean plotBounds_equal = (obj.plotBounds.size() == plotBounds.size());
+        for(i = 0; (i < plotBounds.size()) && plotBounds_equal; ++i)
+        {
+            // Make references to Double from Object.
+            Double plotBounds1 = (Double)plotBounds.elementAt(i);
+            Double plotBounds2 = (Double)obj.plotBounds.elementAt(i);
+            plotBounds_equal = plotBounds1.equals(plotBounds2);
+        }
         // Compare the rayPoint1 arrays.
         boolean rayPoint1_equal = true;
         for(i = 0; i < 3 && rayPoint1_equal; ++i)
@@ -630,7 +632,8 @@ public class PickAttributes extends AttributeSubject
                 (createSpreadsheet == obj.createSpreadsheet) &&
                 (subsetName.equals(obj.subsetName)) &&
                 (floatFormat.equals(obj.floatFormat)) &&
-                (timePreserveCoord == obj.timePreserveCoord));
+                (timePreserveCoord == obj.timePreserveCoord) &&
+                (timeCurveType == obj.timeCurveType));
     }
 
     // Property setting methods
@@ -802,10 +805,9 @@ public class PickAttributes extends AttributeSubject
         Select(22);
     }
 
-    public void SetPlotBounds(double[] plotBounds_)
+    public void SetPlotBounds(Vector plotBounds_)
     {
-        for(int i = 0; i < 6; ++i)
-             plotBounds[i] = plotBounds_[i];
+        plotBounds = plotBounds_;
         Select(23);
     }
 
@@ -1081,6 +1083,12 @@ public class PickAttributes extends AttributeSubject
         Select(66);
     }
 
+    public void SetTimeCurveType(int timeCurveType_)
+    {
+        timeCurveType = timeCurveType_;
+        Select(67);
+    }
+
     // Property getting methods
     public Vector   GetVariables() { return variables; }
     public boolean  GetDisplayIncidentElements() { return displayIncidentElements; }
@@ -1105,7 +1113,7 @@ public class PickAttributes extends AttributeSubject
     public double[] GetPickPoint() { return pickPoint; }
     public double[] GetCellPoint() { return cellPoint; }
     public double[] GetNodePoint() { return nodePoint; }
-    public double[] GetPlotBounds() { return plotBounds; }
+    public Vector   GetPlotBounds() { return plotBounds; }
     public double[] GetRayPoint1() { return rayPoint1; }
     public double[] GetRayPoint2() { return rayPoint2; }
     public String   GetMeshInfo() { return meshInfo; }
@@ -1149,6 +1157,7 @@ public class PickAttributes extends AttributeSubject
     public String   GetSubsetName() { return subsetName; }
     public String   GetFloatFormat() { return floatFormat; }
     public boolean  GetTimePreserveCoord() { return timePreserveCoord; }
+    public int      GetTimeCurveType() { return timeCurveType; }
 
     // Write and read methods.
     public void WriteAtts(CommunicationBuffer buf)
@@ -1200,7 +1209,7 @@ public class PickAttributes extends AttributeSubject
         if(WriteSelect(22, buf))
             buf.WriteDoubleArray(nodePoint);
         if(WriteSelect(23, buf))
-            buf.WriteDoubleArray(plotBounds);
+            buf.WriteDoubleVector(plotBounds);
         if(WriteSelect(24, buf))
             buf.WriteDoubleArray(rayPoint1);
         if(WriteSelect(25, buf))
@@ -1294,6 +1303,8 @@ public class PickAttributes extends AttributeSubject
             buf.WriteString(floatFormat);
         if(WriteSelect(66, buf))
             buf.WriteBool(timePreserveCoord);
+        if(WriteSelect(67, buf))
+            buf.WriteInt(timeCurveType);
     }
 
     public void ReadAtts(int index, CommunicationBuffer buf)
@@ -1370,7 +1381,7 @@ public class PickAttributes extends AttributeSubject
             SetNodePoint(buf.ReadDoubleArray());
             break;
         case 23:
-            SetPlotBounds(buf.ReadDoubleArray());
+            SetPlotBounds(buf.ReadDoubleVector());
             break;
         case 24:
             SetRayPoint1(buf.ReadDoubleArray());
@@ -1511,6 +1522,9 @@ public class PickAttributes extends AttributeSubject
         case 66:
             SetTimePreserveCoord(buf.ReadBool());
             break;
+        case 67:
+            SetTimeCurveType(buf.ReadInt());
+            break;
         }
     }
 
@@ -1553,7 +1567,7 @@ public class PickAttributes extends AttributeSubject
         str = str + doubleArrayToString("pickPoint", pickPoint, indent) + "\n";
         str = str + doubleArrayToString("cellPoint", cellPoint, indent) + "\n";
         str = str + doubleArrayToString("nodePoint", nodePoint, indent) + "\n";
-        str = str + doubleArrayToString("plotBounds", plotBounds, indent) + "\n";
+        str = str + doubleVectorToString("plotBounds", plotBounds, indent) + "\n";
         str = str + doubleArrayToString("rayPoint1", rayPoint1, indent) + "\n";
         str = str + doubleArrayToString("rayPoint2", rayPoint2, indent) + "\n";
         str = str + stringToString("meshInfo", meshInfo, indent) + "\n";
@@ -1613,6 +1627,12 @@ public class PickAttributes extends AttributeSubject
         str = str + stringToString("subsetName", subsetName, indent) + "\n";
         str = str + stringToString("floatFormat", floatFormat, indent) + "\n";
         str = str + boolToString("timePreserveCoord", timePreserveCoord, indent) + "\n";
+        str = str + indent + "timeCurveType = ";
+        if(timeCurveType == TIMECURVETYPE_SINGLE_Y_AXIS)
+            str = str + "TIMECURVETYPE_SINGLE_Y_AXIS";
+        if(timeCurveType == TIMECURVETYPE_MULTIPLE_Y_AXES)
+            str = str + "TIMECURVETYPE_MULTIPLE_Y_AXES";
+        str = str + "\n";
         return str;
     }
 
@@ -1674,7 +1694,7 @@ public class PickAttributes extends AttributeSubject
     private double[] pickPoint;
     private double[] cellPoint;
     private double[] nodePoint;
-    private double[] plotBounds;
+    private Vector   plotBounds; // vector of Double objects
     private double[] rayPoint1;
     private double[] rayPoint2;
     private String   meshInfo;
@@ -1718,5 +1738,6 @@ public class PickAttributes extends AttributeSubject
     private String   subsetName;
     private String   floatFormat;
     private boolean  timePreserveCoord;
+    private int      timeCurveType;
 }
 

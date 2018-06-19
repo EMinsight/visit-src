@@ -46,11 +46,22 @@
 //  Class:  XDisplay
 //
 //  Purpose:
-//    Launches and brings down X servers, utilized for HW rendering on UNIX
-//    clusters.
+//    Manages X servers, utilized for HW rendering on UNIX clusters.
 //
 //  Programmer:  Tom Fogal
 //  Creation:    August 29, 2008
+//
+//  Modifications:
+//
+//    Tom Fogal, Tue May 25 15:49:00 MDT 2010
+//    Add hostname storage, for printing error messages.
+//    Change ::Connect retval to bool.
+//
+//    Tom Fogal, Wed May 26 09:10:08 MDT 2010
+//    Add a method to indicate we should not launch the server.
+//
+//    Tom Fogal, Wed May  4 14:30:00 MDT 2011
+//    Change display to a string for more flexibility.
 //
 // ****************************************************************************
 
@@ -60,13 +71,19 @@ class ENGINE_MAIN_API XDisplay : public VisItDisplay
                    XDisplay();
     virtual       ~XDisplay();
 
-    virtual bool   Initialize(size_t n,
+    virtual bool   Initialize(std::string display,
                               const std::vector<std::string> &args);
-    virtual void   Connect();
+    virtual bool   Connect();
     virtual void   Teardown();
 
+    // Tell the implementation whether it should launch the X server or just
+    // use it.  Must be set before Initialize!
+    void           Launch(bool);
+
   private:
-    pid_t   xserver;
-    size_t  display;
+    pid_t       xserver;
+    std::string display;
+    char        hostname[256];
+    bool        launch;
 };
 #endif /* VISIT_X_DISPLAY_H */

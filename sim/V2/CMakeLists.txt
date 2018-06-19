@@ -40,3 +40,7 @@
 
 ADD_SUBDIRECTORY(lib)
 ADD_SUBDIRECTORY(runtime)
+# Disable swig bindings on Windows for now. Generated code has some errors.
+IF(UNIX)
+    ADD_SUBDIRECTORY(swig)
+ENDIF(UNIX)

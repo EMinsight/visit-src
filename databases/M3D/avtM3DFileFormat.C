@@ -622,13 +622,12 @@ avtM3DFileFormat::GetVar( int timestate, int domain, const char *nm )
         hsize_t dims[10];
         H5Sget_simple_extent_dims( spaceID, dims, NULL );
                         
-        int N = dims[0]*dims[1];
-        int *vals = new int[N];
-                
+        float *vals = new float[dims[0]*dims[1]];
         H5Dread( dataID, H5T_NATIVE_FLOAT, H5S_ALL, spaceID, H5P_DEFAULT, vals );
         
         vtkFloatArray *var = vtkFloatArray::New();
         int nScalars = dims[0], offset = 0;
+
         if ( m_scalarVars[i]->planeIdx != -1 )
         {
             nScalars = m_nNodes / m_nPlanes;
@@ -636,9 +635,14 @@ avtM3DFileFormat::GetVar( int timestate, int domain, const char *nm )
         }
 
         var->SetNumberOfTuples( nScalars );
+        float *entry = &vals[offset];
+
         for ( int j = 0; j < nScalars; j++ )
-            var->SetTuple1( j, vals[offset+j] );
-                                
+        {
+            var->SetTuple1( j, vals[j] );
+            ++entry;
+        }
+                        
         delete [] vals;
         return var;
     }
@@ -680,7 +684,6 @@ avtM3DFileFormat::GetVectorVar( int timestate, int domain, const char *nm )
     sprintf( values, "/time_node_data[%d]/node_data[%d]/values", timestate, domain );
 
     string varname = nm;
-        
     for ( int i = 0; i < m_vectorVars.size(); i++ )
     {
         if ( varname != m_vectorVars[i]->varName )
@@ -698,6 +701,7 @@ avtM3DFileFormat::GetVectorVar( int timestate, int domain, const char *nm )
         
         vtkFloatArray *var = vtkFloatArray::New();
         int nVecs = dims[0], offset = 0;
+
         if ( m_vectorVars[i]->planeIdx != -1 )
         {
             nVecs = m_nNodes / m_nPlanes;
@@ -706,8 +710,8 @@ avtM3DFileFormat::GetVectorVar( int timestate, int domain, const char *nm )
         
         var->SetNumberOfComponents( dims[1] );
         var->SetNumberOfTuples( nVecs );
-        
         float *entry = &vals[offset];
+
         for ( int j = 0; j < nVecs; j++ )
         {
             var->SetTuple3( j, entry[0], entry[1], entry[2] );

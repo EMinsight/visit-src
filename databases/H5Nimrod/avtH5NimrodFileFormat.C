@@ -129,7 +129,7 @@ avtH5NimrodFileFormat::avtH5NimrodFileFormat (const char *filename):
 {
     // INITIALIZE DATA MEMBERS
     fname = filename;
-    hid_t file_id, root_id, group_id, dataset_id;
+    hid_t file_id, root_id, group_id;
     char *string_attrib;
     float time;
 
@@ -388,10 +388,15 @@ avtH5NimrodFileFormat::PopulateDatabaseMetaData (avtDatabaseMetaData * md,
     int spatial_dimension = ndims;
     int topological_dimension = ndims;
     double *extents = NULL;
+    int bounds[3];
 
+    bounds[0] = grid_dims[0];
+    bounds[1] = grid_dims[1];
+    bounds[2] = grid_dims[2];
 
     AddMeshToMetaData (md, "Mesh", AVT_CURVILINEAR_MESH, extents, nblocks,
-            block_origin, spatial_dimension, topological_dimension);
+                       block_origin, spatial_dimension, topological_dimension,
+                       bounds);
 
     for (int idx = 0; idx < nscalarvars; idx++)
     {
@@ -399,7 +404,7 @@ avtH5NimrodFileFormat::PopulateDatabaseMetaData (avtDatabaseMetaData * md,
         string varname = scalarvarnames[idx];
         // AVT_NODECENT, AVT_ZONECENT, AVT_UNKNOWN_CENT
         avtCentering cent = AVT_NODECENT;
-        AddScalarVarToMetaData (md, varname, mesh_for_this_var, cent);
+        AddScalarVarToMetaData (md, varname, mesh_for_this_var, cent, extents);
     }
     for (int idx = 0; idx < nvectorvars; idx++)
     {
@@ -408,7 +413,7 @@ avtH5NimrodFileFormat::PopulateDatabaseMetaData (avtDatabaseMetaData * md,
         // AVT_NODECENT, AVT_ZONECENT, AVT_UNKNOWN_CENT
         avtCentering cent = AVT_NODECENT;
         AddVectorVarToMetaData (md, varname, mesh_for_this_var, cent,
-                vectorvardims[idx]);
+                                vectorvardims[idx], extents);
     }
 
     md->SetCyclesAreAccurate(true);

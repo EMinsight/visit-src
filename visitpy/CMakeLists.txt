@@ -35,9 +35,18 @@
 # DAMAGE.
 #
 # Modifications:
-#
 #  Hank Childs, Thu Jul 22 09:55:03 PDT 2010
 #  Add attributes for multi-window saves.
+#
+#  Kathleen Bonnell, Wed Apr 20 12:10:37 MST 2011
+#  Allow visitfrontend to be built on windows.
+#
+#  Brad Whitlock, Tue Dec 14 16:25:32 PST 2010
+#  Add PySelectionProperties, PySelectionList, PySelectionSummary,
+#  PySelectionVariableSummary.
+#
+#  Kathleen Bonnell, Wed Apr 20 12:10:37 MST 2011
+#  Allow visitfrontend to be built on windows.
 #
 #****************************************************************************/
 
@@ -133,6 +142,10 @@ visitpy/PyRenderingAttributes.C
 visitpy/PySaveWindowAttributes.C 
 visitpy/PySaveSubWindowAttributes.C 
 visitpy/PySaveSubWindowsAttributes.C 
+visitpy/PySelectionProperties.C
+visitpy/PySelectionSummary.C
+visitpy/PySelectionVariableSummary.C
+visitpy/PySelectionList.C
 visitpy/PyView2DAttributes.C 
 visitpy/PyView3DAttributes.C 
 visitpy/PyViewAttributes.C 
@@ -243,21 +256,17 @@ ELSE(VISIT_STATIC)
     ENDIF(NOT APPLE)
 
     # Create the front end visit module
-    IF(NOT WIN32)
-        PYTHON_ADD_MODULE(visitfrontend
-            visitmodule/visitfrontend.c
-        )
-        SET_TARGET_PROPERTIES(visitfrontend PROPERTIES PREFIX "" OUTPUT_NAME visit)
-        TARGET_LINK_LIBRARIES(visitfrontend
-            ${PYTHON_LIBRARIES}
-        )
-        IF(NOT APPLE)
-           SET_TARGET_PROPERTIES(visitfrontend PROPERTIES INSTALL_RPATH "$ORIGIN")
-        ENDIF(NOT APPLE)
-        VISIT_INSTALL_TARGETS(visitfrontend)
-    ENDIF(NOT WIN32)
-
-    VISIT_INSTALL_TARGETS(visitpy cli visitmodule)
+    PYTHON_ADD_MODULE(visitfrontend
+        visitmodule/visitfrontend.c
+    )
+    SET_TARGET_PROPERTIES(visitfrontend PROPERTIES PREFIX "" OUTPUT_NAME visit)
+    TARGET_LINK_LIBRARIES(visitfrontend
+        ${PYTHON_LIBRARIES}
+    )
+    IF(NOT APPLE)
+        SET_TARGET_PROPERTIES(visitfrontend PROPERTIES INSTALL_RPATH "$ORIGIN")
+    ENDIF(NOT APPLE)
+    VISIT_INSTALL_TARGETS(visitfrontend visitpy cli visitmodule)
 ENDIF(VISIT_STATIC)
 
 IF(VISIT_PYTHON_FILTERS)

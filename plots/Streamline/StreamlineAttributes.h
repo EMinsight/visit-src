@@ -79,7 +79,8 @@ public:
         ColorByLength,
         ColorByTime,
         ColorBySeedPointID,
-        ColorByVariable
+        ColorByVariable,
+        ColorByCorrelationDistance
     };
     enum CoordinateSystem
     {
@@ -149,6 +150,11 @@ public:
         CONN_CMFE,
         POS_CMFE
     };
+    enum VaryTubeRadiusType
+    {
+        None,
+        Scalar
+    };
 
     // These constructors are for objects of this class
     StreamlineAttributes();
@@ -188,6 +194,7 @@ public:
     void SelectSingleColor();
     void SelectColoringVariable();
     void SelectOpacityVariable();
+    void SelectVaryTubeRadiusVariable();
 
     // Property setting methods
     void SetSourceType(SourceType sourceType_);
@@ -233,7 +240,8 @@ public:
     void SetPathlinesOverrideStartingTime(double pathlinesOverrideStartingTime_);
     void SetPathlinesCMFE(PathlinesCMFE pathlinesCMFE_);
     void SetCoordinateSystem(CoordinateSystem coordinateSystem_);
-    void SetPhiFactor(double phiFactor_);
+    void SetPhiScalingFlag(bool phiScalingFlag_);
+    void SetPhiScaling(double phiScaling_);
     void SetColoringVariable(const std::string &coloringVariable_);
     void SetLegendMinFlag(bool legendMinFlag_);
     void SetLegendMaxFlag(bool legendMaxFlag_);
@@ -283,6 +291,13 @@ public:
     void SetIssueStiffnessWarnings(bool issueStiffnessWarnings_);
     void SetIssueCriticalPointsWarnings(bool issueCriticalPointsWarnings_);
     void SetCriticalPointThreshold(double criticalPointThreshold_);
+    void SetVaryTubeRadius(VaryTubeRadiusType varyTubeRadius_);
+    void SetVaryTubeRadiusFactor(double varyTubeRadiusFactor_);
+    void SetVaryTubeRadiusVariable(const std::string &varyTubeRadiusVariable_);
+    void SetCorrelationDistanceAngTol(double correlationDistanceAngTol_);
+    void SetCorrelationDistanceMinDistAbsolute(double correlationDistanceMinDistAbsolute_);
+    void SetCorrelationDistanceMinDistBBox(double correlationDistanceMinDistBBox_);
+    void SetCorrelationDistanceMinDistType(SizeType correlationDistanceMinDistType_);
 
     // Property getting methods
     SourceType           GetSourceType() const;
@@ -339,7 +354,8 @@ public:
     double               GetPathlinesOverrideStartingTime() const;
     PathlinesCMFE        GetPathlinesCMFE() const;
     CoordinateSystem     GetCoordinateSystem() const;
-    double               GetPhiFactor() const;
+    bool                 GetPhiScalingFlag() const;
+    double               GetPhiScaling() const;
     const std::string    &GetColoringVariable() const;
           std::string    &GetColoringVariable();
     bool                 GetLegendMinFlag() const;
@@ -391,6 +407,14 @@ public:
     bool                 GetIssueStiffnessWarnings() const;
     bool                 GetIssueCriticalPointsWarnings() const;
     double               GetCriticalPointThreshold() const;
+    VaryTubeRadiusType   GetVaryTubeRadius() const;
+    double               GetVaryTubeRadiusFactor() const;
+    const std::string    &GetVaryTubeRadiusVariable() const;
+          std::string    &GetVaryTubeRadiusVariable();
+    double               GetCorrelationDistanceAngTol() const;
+    double               GetCorrelationDistanceMinDistAbsolute() const;
+    double               GetCorrelationDistanceMinDistBBox() const;
+    SizeType             GetCorrelationDistanceMinDistType() const;
 
     // Persistence methods
     virtual bool CreateNode(DataNode *node, bool completeSave, bool forceAdd);
@@ -462,6 +486,11 @@ public:
 protected:
     static std::string PathlinesCMFE_ToString(int);
 public:
+    static std::string VaryTubeRadiusType_ToString(VaryTubeRadiusType);
+    static bool VaryTubeRadiusType_FromString(const std::string &, VaryTubeRadiusType &);
+protected:
+    static std::string VaryTubeRadiusType_ToString(int);
+public:
 
     // Keyframing methods
     virtual std::string               GetFieldName(int index) const;
@@ -518,7 +547,8 @@ public:
         ID_pathlinesOverrideStartingTime,
         ID_pathlinesCMFE,
         ID_coordinateSystem,
-        ID_phiFactor,
+        ID_phiScalingFlag,
+        ID_phiScaling,
         ID_coloringVariable,
         ID_legendMinFlag,
         ID_legendMaxFlag,
@@ -568,6 +598,13 @@ public:
         ID_issueStiffnessWarnings,
         ID_issueCriticalPointsWarnings,
         ID_criticalPointThreshold,
+        ID_varyTubeRadius,
+        ID_varyTubeRadiusFactor,
+        ID_varyTubeRadiusVariable,
+        ID_correlationDistanceAngTol,
+        ID_correlationDistanceMinDistAbsolute,
+        ID_correlationDistanceMinDistBBox,
+        ID_correlationDistanceMinDistType,
         ID__LAST
     };
 
@@ -615,7 +652,8 @@ private:
     double         pathlinesOverrideStartingTime;
     int            pathlinesCMFE;
     int            coordinateSystem;
-    double         phiFactor;
+    bool           phiScalingFlag;
+    double         phiScaling;
     std::string    coloringVariable;
     bool           legendMinFlag;
     bool           legendMaxFlag;
@@ -665,11 +703,18 @@ private:
     bool           issueStiffnessWarnings;
     bool           issueCriticalPointsWarnings;
     double         criticalPointThreshold;
+    int            varyTubeRadius;
+    double         varyTubeRadiusFactor;
+    std::string    varyTubeRadiusVariable;
+    double         correlationDistanceAngTol;
+    double         correlationDistanceMinDistAbsolute;
+    double         correlationDistanceMinDistBBox;
+    int            correlationDistanceMinDistType;
 
     // Static class format string for type map.
     static const char *TypeMapFormatString;
     static const private_tmfs_t TmfsStruct;
 };
-#define STREAMLINEATTRIBUTES_TMFS "iDDDDDDdDDbd*iiiisabbiibdbddbddiddiiiiibbdiidsbbddddbbiiiddiddibiddbiidddisdddbbiidddbbiibbbbd"
+#define STREAMLINEATTRIBUTES_TMFS "iDDDDDDdDDbd*iiiisabbiibdbddbddiddiiiiibbdiibdsbbddddbbiiiddiddibiddbiidddisdddbbiidddbbiibbbbdidsdddi"
 
 #endif

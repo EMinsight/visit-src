@@ -215,7 +215,7 @@ QvisPoincarePlotWindow::CreateWindowContents()
     integrationTypeCombo->addItem(tr("Adams-Bashforth (Multi-step)"));
     integrationTypeCombo->addItem(tr("M3D-C1 2D Integrator (M3D-C1 2D data only)"));
     integrationTypeCombo->addItem(tr("M3D-C1 3D Integrator (M3D-C1 3D data only)"));
-    integrationTypeCombo->addItem(tr("NIMROD Integrator (NIMROD data only)"));
+//    integrationTypeCombo->addItem(tr("NIMROD Integrator (NIMROD data only)"));
     connect(integrationTypeCombo, SIGNAL(activated(int)),
            this, SLOT(integrationTypeChanged(int)));
     integrationLayout->addWidget(integrationTypeCombo, 0, 1);
@@ -325,7 +325,7 @@ QvisPoincarePlotWindow::CreateWindowContents()
     
     mainLayout = new QGridLayout(secondTab);
 
-    analysisLabel = new QLabel(tr("Analysis"), secondTab);
+    analysisLabel = new QLabel(tr("Analysis type"), secondTab);
     mainLayout->addWidget(analysisLabel, 0, 0, Qt::AlignTop);
     analysis = new QWidget(secondTab);
     analysisButtonGroup= new QButtonGroup(analysis);
@@ -333,7 +333,7 @@ QvisPoincarePlotWindow::CreateWindowContents()
     analysisTypeLayout->setMargin(0);
     analysisTypeLayout->setSpacing(10);
     QRadioButton *analysisTypeNone =
-      new QRadioButton(tr("Punctures only"), analysis);
+      new QRadioButton(tr("None - Punctures only"), analysis);
     analysisButtonGroup->addButton(analysisTypeNone,0);
     analysisTypeLayout->addWidget(analysisTypeNone);
     QRadioButton *analysisTypeNormal =
@@ -392,13 +392,14 @@ QvisPoincarePlotWindow::CreateWindowContents()
             this, SLOT(windingPairConfidenceProcessText()));
     analysisLayout->addWidget(windingPairConfidence, 3, 1);
 
-    periodicityConsistencyLabel =
-      new QLabel(tr("Periodicity consistency"), secondTab);
-    analysisLayout->addWidget(periodicityConsistencyLabel, 4, 0);
-    periodicityConsistency = new QLineEdit(secondTab);
-    connect(periodicityConsistency, SIGNAL(returnPressed()),
-            this, SLOT(periodicityConsistencyProcessText()));
-    analysisLayout->addWidget(periodicityConsistency, 4, 1);
+
+    rationalTemplateSeedParmLabel =
+      new QLabel(tr("Rational Template Seed Parameter"), secondTab);
+    analysisLayout->addWidget(rationalTemplateSeedParmLabel, 4, 0);
+    rationalTemplateSeedParm = new QLineEdit(secondTab);
+    connect(rationalTemplateSeedParm, SIGNAL(returnPressed()),
+            this, SLOT(rationalTemplateSeedParmProcessText()));
+    analysisLayout->addWidget(rationalTemplateSeedParm, 4, 1);
 
    // Create the O/X Point group box.
     QGroupBox *criticalPointGroup = new QGroupBox(secondTab);
@@ -417,8 +418,7 @@ QvisPoincarePlotWindow::CreateWindowContents()
     OPointMaxIterationsLabel =
       new QLabel(tr(" Maximum iterations"), criticalPointGroup);
     OPointMaxIterations = new QSpinBox(criticalPointGroup);
-    OPointMaxIterations->setMinimum(1);
-    OPointMaxIterations->setMaximum(10);
+    OPointMaxIterations->setRange(0, 10);
     connect(OPointMaxIterations, SIGNAL(valueChanged(int)), 
             this, SLOT(OPointMaxIterationsChanged(int)));
     criticalPointLayout->addWidget( OPointMaxIterationsLabel, 0, 2);
@@ -484,10 +484,10 @@ QvisPoincarePlotWindow::CreateWindowContents()
             this, SLOT(showChaoticChanged(bool)));
     analysisOptionsLayout->addWidget(showChaotic, 0, 1);
 
-    showRidgelines = new QCheckBox(tr("Show ridgelines"), analysisOptionsGroup);
-    connect(showRidgelines, SIGNAL(toggled(bool)),
-            this, SLOT(showRidgelinesChanged(bool)));
-    analysisOptionsLayout->addWidget(showRidgelines, 1, 0);
+    show1DPlots = new QCheckBox(tr("Show 1D plots (distance/ridgelines)"), analysisOptionsGroup);
+    connect(show1DPlots, SIGNAL(toggled(bool)),
+            this, SLOT(show1DPlotsChanged(bool)));
+    analysisOptionsLayout->addWidget(show1DPlots, 1, 0);
 
     verboseFlag = new QCheckBox(tr("Verbose"), analysisOptionsGroup);
     connect(verboseFlag, SIGNAL(toggled(bool)),
@@ -519,18 +519,19 @@ QvisPoincarePlotWindow::CreateWindowContents()
 
     dataValueCombo = new QComboBox(dataGroup);
     dataValueCombo->addItem(tr("None"));
-    dataValueCombo->addItem(tr("OriginalValue"));
-    dataValueCombo->addItem(tr("InputOrder"));
-    dataValueCombo->addItem(tr("PointIndex"));
-    dataValueCombo->addItem(tr("Plane"));
-    dataValueCombo->addItem(tr("WindingGroup"));
-    dataValueCombo->addItem(tr("WindingPointOrder"));
-    dataValueCombo->addItem(tr("WindingPointOrderModulo"));
-    dataValueCombo->addItem(tr("ToroidalWindings"));
-    dataValueCombo->addItem(tr("PoloidalWindings"));
-    dataValueCombo->addItem(tr("SafetyFactor"));
-    dataValueCombo->addItem(tr("Confidence"));
-    dataValueCombo->addItem(tr("RidgelineVariance"));
+    dataValueCombo->addItem(tr("Safety Factor Q"));
+    dataValueCombo->addItem(tr("Safety Factor P"));
+    dataValueCombo->addItem(tr("Safety Factor Q if Q==P"));
+    dataValueCombo->addItem(tr("Safety Factor P if P!=Q"));
+    dataValueCombo->addItem(tr("Toroidal Windings"));
+    dataValueCombo->addItem(tr("Poloidal Windings Q"));
+    dataValueCombo->addItem(tr("Poloidal Windings P"));
+    dataValueCombo->addItem(tr("Fieldline Order"));
+    dataValueCombo->addItem(tr("Point Order"));
+    dataValueCombo->addItem(tr("Plane Order"));
+    dataValueCombo->addItem(tr("Winding Group Order"));
+    dataValueCombo->addItem(tr("Winding Point Order"));
+    dataValueCombo->addItem(tr("Winding Point Order Modulo"));
     connect(dataValueCombo, SIGNAL(activated(int)),
            this, SLOT(dataValueChanged(int)));
     dataLayout->addWidget(dataValueCombo, 0, 1);
@@ -568,55 +569,10 @@ QvisPoincarePlotWindow::CreateWindowContents()
     limitsLayout->addWidget(max, 0, 4);
 
 
-    // Create the display group box.
-    QGroupBox *displayGroup = new QGroupBox(thirdTab);
-    displayGroup->setTitle(tr("Display"));
-    mainLayout->addWidget(displayGroup, 1, 0);
-//    mainLayout->setStretchFactor(displayGroup, 100);
-    QGridLayout *displayLayout = new QGridLayout(displayGroup);
-    displayLayout->setMargin(5);
-    displayLayout->setSpacing(10);
-
-    meshTypeLabel = new QLabel(tr("Mesh type:"), displayGroup);
-    displayLayout->addWidget(meshTypeLabel, 0, 0);
-
-    meshTypeCombo = new QComboBox(displayGroup);
-    meshTypeCombo->addItem(tr("Curves"));
-    meshTypeCombo->addItem(tr("Surfaces"));
-    connect(meshTypeCombo, SIGNAL(activated(int)),
-           this, SLOT(meshTypeChanged(int)));
-    displayLayout->addWidget(meshTypeCombo, 0, 1);
-
-    numberPlanesLabel = new QLabel(tr("Number of planes"), displayGroup);
-    displayLayout->addWidget(numberPlanesLabel, 1, 0);
-    numberPlanes = new QSpinBox(displayGroup);
-    numberPlanes->setMinimum(1);
-    numberPlanes->setMaximum(250);
-    connect(numberPlanes, SIGNAL(valueChanged(int)),
-            this, SLOT(numberPlanesChanged(int)));
-    displayLayout->addWidget(numberPlanes, 1, 1);
-
-    singlePlaneLabel = new QLabel(tr("Base plane (degrees)"), displayGroup);
-    displayLayout->addWidget(singlePlaneLabel, 1, 2);
-    singlePlane = new QLineEdit(displayGroup);
-    connect(singlePlane, SIGNAL(returnPressed()),
-            this, SLOT(singlePlaneProcessText()));
-    displayLayout->addWidget(singlePlane, 1, 3);
-
-    adjustPlaneLabel = new QLabel(tr("Adjust plane index"), displayGroup);
-    displayLayout->addWidget(adjustPlaneLabel, 1, 2);
-    adjustPlane = new QSpinBox(displayGroup);
-    adjustPlane->setMinimum(-1);
-    adjustPlane->setMaximum(250);
-    connect(adjustPlane, SIGNAL(valueChanged(int)),
-            this, SLOT(adjustPlaneChanged(int)));
-    displayLayout->addWidget(adjustPlane, 1, 3);
-
-
    // Create the color group box.
     QGroupBox *colorGroup = new QGroupBox(thirdTab);
     colorGroup->setTitle(tr("Color"));
-    mainLayout->addWidget(colorGroup, 2, 0);
+    mainLayout->addWidget(colorGroup, 1, 0);
 //    mainLayout->setStretchFactor(colorGroup, 100);
     QGridLayout *colorLayout = new QGridLayout(colorGroup);
     colorLayout->setMargin(5);
@@ -670,6 +626,51 @@ QvisPoincarePlotWindow::CreateWindowContents()
     connect(opacitySlider, SIGNAL(valueChanged(int, const void*)),
             this, SLOT(changedOpacity(int, const void*)));
     colorLayout->addWidget(opacitySlider, 1, 3, 1, 2);
+
+
+    // Create the display group box.
+    QGroupBox *displayGroup = new QGroupBox(thirdTab);
+    displayGroup->setTitle(tr("Display"));
+    mainLayout->addWidget(displayGroup, 2, 0);
+//    mainLayout->setStretchFactor(displayGroup, 100);
+    QGridLayout *displayLayout = new QGridLayout(displayGroup);
+    displayLayout->setMargin(5);
+    displayLayout->setSpacing(10);
+
+    meshTypeLabel = new QLabel(tr("Mesh type:"), displayGroup);
+    displayLayout->addWidget(meshTypeLabel, 0, 0);
+
+    meshTypeCombo = new QComboBox(displayGroup);
+    meshTypeCombo->addItem(tr("Curves"));
+    meshTypeCombo->addItem(tr("Surfaces"));
+    connect(meshTypeCombo, SIGNAL(activated(int)),
+           this, SLOT(meshTypeChanged(int)));
+    displayLayout->addWidget(meshTypeCombo, 0, 1);
+
+    numberPlanesLabel = new QLabel(tr("Number of planes"), displayGroup);
+    displayLayout->addWidget(numberPlanesLabel, 1, 0);
+    numberPlanes = new QSpinBox(displayGroup);
+    numberPlanes->setMinimum(1);
+    numberPlanes->setMaximum(250);
+    connect(numberPlanes, SIGNAL(valueChanged(int)),
+            this, SLOT(numberPlanesChanged(int)));
+    displayLayout->addWidget(numberPlanes, 1, 1);
+
+    singlePlaneLabel = new QLabel(tr("Base plane (degrees)"), displayGroup);
+    displayLayout->addWidget(singlePlaneLabel, 1, 2);
+    singlePlane = new QLineEdit(displayGroup);
+    connect(singlePlane, SIGNAL(returnPressed()),
+            this, SLOT(singlePlaneProcessText()));
+    displayLayout->addWidget(singlePlane, 1, 3);
+
+    adjustPlaneLabel = new QLabel(tr("Adjust plane index"), displayGroup);
+    displayLayout->addWidget(adjustPlaneLabel, 1, 2);
+    adjustPlane = new QSpinBox(displayGroup);
+    adjustPlane->setMinimum(-1);
+    adjustPlane->setMaximum(250);
+    connect(adjustPlane, SIGNAL(valueChanged(int)),
+            this, SLOT(adjustPlaneChanged(int)));
+    displayLayout->addWidget(adjustPlane, 1, 3);
 
 
    // Create the options group box.
@@ -958,8 +959,9 @@ QvisPoincarePlotWindow::UpdateWindow(bool doAll)
           case PoincareAttributes::ID_windingPairConfidence:
             windingPairConfidence->setText(DoubleToQString(atts->GetWindingPairConfidence()));
             break;
-          case PoincareAttributes::ID_periodicityConsistency:
-            periodicityConsistency->setText(DoubleToQString(atts->GetPeriodicityConsistency()));
+
+          case PoincareAttributes::ID_rationalTemplateSeedParm:
+            rationalTemplateSeedParm->setText(DoubleToQString(atts->GetRationalTemplateSeedParm()));
             break;
           case PoincareAttributes::ID_adjustPlane:
             adjustPlane->blockSignals(true);
@@ -1093,6 +1095,11 @@ QvisPoincarePlotWindow::UpdateWindow(bool doAll)
             showOPoints->setChecked(atts->GetShowOPoints());
             showOPoints->blockSignals(false);
             break;
+          case PoincareAttributes::ID_OPointMaxIterations:
+            OPointMaxIterations->blockSignals(true);
+            OPointMaxIterations->setValue(atts->GetOPointMaxIterations());
+            OPointMaxIterations->blockSignals(false);
+            break;
           case PoincareAttributes::ID_showIslands:
             showIslands->blockSignals(true);
             showIslands->setChecked(atts->GetShowIslands());
@@ -1137,10 +1144,10 @@ QvisPoincarePlotWindow::UpdateWindow(bool doAll)
             pointControl->SetPointType(atts->GetPointType());
             pointControl->blockSignals(false);
             break;
-          case PoincareAttributes::ID_showRidgelines:
-            showRidgelines->blockSignals(true);
-            showRidgelines->setChecked(atts->GetShowRidgelines());
-            showRidgelines->blockSignals(false);
+          case PoincareAttributes::ID_show1DPlots:
+            show1DPlots->blockSignals(true);
+            show1DPlots->setChecked(atts->GetShow1DPlots());
+            show1DPlots->blockSignals(false);
             break;
           case PoincareAttributes::ID_verboseFlag:
             verboseFlag->blockSignals(true);
@@ -1309,17 +1316,17 @@ QvisPoincarePlotWindow::GetCurrentValues(int which_widget)
         }
     }
 
-    // Do periodicityConsistency
-    if(which_widget == PoincareAttributes::ID_periodicityConsistency || doAll)
+    // Do rationalTemplateSeedParm
+    if(which_widget == PoincareAttributes::ID_rationalTemplateSeedParm || doAll)
     {
         double val;
-        if(LineEditGetDouble(periodicityConsistency, val))
-            atts->SetPeriodicityConsistency(val);
+        if(LineEditGetDouble(rationalTemplateSeedParm, val))
+            atts->SetRationalTemplateSeedParm(val);
         else
         {
-            ResettingError(tr("periodicityConsistency"),
-                DoubleToQString(atts->GetPeriodicityConsistency()));
-            atts->SetPeriodicityConsistency(atts->GetPeriodicityConsistency());
+            ResettingError(tr("rationalTemplateSeedParm"),
+                DoubleToQString(atts->GetRationalTemplateSeedParm()));
+            atts->SetRationalTemplateSeedParm(atts->GetRationalTemplateSeedParm());
         }
     }
 
@@ -1332,7 +1339,7 @@ QvisPoincarePlotWindow::GetCurrentValues(int which_widget)
         else
         {
             ResettingError(tr("singlePlane"),
-                IntToQString(atts->GetSinglePlane()));
+                IntToQString((int)(atts->GetSinglePlane())));
             atts->SetSinglePlane(atts->GetSinglePlane());
         }
     }
@@ -1397,6 +1404,7 @@ QvisPoincarePlotWindow::UpdateIntegrationAttributes()
     switch( atts->GetIntegrationType() )
     {
     case PoincareAttributes::DormandPrince:
+    case PoincareAttributes::M3DC13DIntegrator:
         maxStepLength->show();
         maxStepLengthLabel->show();
         maxStepLengthLabel->setText(tr("Maximum step length"));
@@ -1408,7 +1416,6 @@ QvisPoincarePlotWindow::UpdateIntegrationAttributes()
 
     case PoincareAttributes::AdamsBashforth:
     case PoincareAttributes::M3DC12DIntegrator:
-    case PoincareAttributes::M3DC13DIntegrator:
     case PoincareAttributes::NIMRODIntegrator:
         maxStepLength->show();
         maxStepLengthLabel->show();
@@ -1767,9 +1774,9 @@ QvisPoincarePlotWindow::windingPairConfidenceProcessText()
 
 
 void
-QvisPoincarePlotWindow::periodicityConsistencyProcessText()
+QvisPoincarePlotWindow::rationalTemplateSeedParmProcessText()
 {
-    GetCurrentValues(PoincareAttributes::ID_periodicityConsistency);
+    GetCurrentValues(PoincareAttributes::ID_rationalTemplateSeedParm);
     Apply();
 }
 
@@ -1925,7 +1932,7 @@ QvisPoincarePlotWindow::showOPointsChanged(bool val)
 void
 QvisPoincarePlotWindow::OPointMaxIterationsChanged(int val)
 {
-    atts->SetOPointMaxInterations(val);
+    atts->SetOPointMaxIterations(val);
     Apply();
 }
 
@@ -1955,9 +1962,9 @@ QvisPoincarePlotWindow::showLinesChanged(bool val)
 
 
 void
-QvisPoincarePlotWindow::showRidgelinesChanged(bool val)
+QvisPoincarePlotWindow::show1DPlotsChanged(bool val)
 {
-    atts->SetShowRidgelines(val);
+    atts->SetShow1DPlots(val);
     Apply();
 }
 

@@ -44,6 +44,9 @@
 #   Kathleen Bonnell, Wed Jan 05 10:25:13 PST 2010
 #   Add FOLDER property.
 #
+#   Cyrus Harrison, Fri Apr 29 15:33:38 PDT 2011
+#   Added mrgtree2dot utility.
+#
 #****************************************************************************/
 
 MACRO(VISIT_TOOLS_ADD_FOLDER type)
@@ -70,6 +73,9 @@ ELSE(VISIT_DBIO_ONLY)
         ADD_SUBDIRECTORY(mcurvit)
     ENDIF(NOT WIN32)
     ADD_SUBDIRECTORY(mpeg2encode)
+    IF(SILO_FOUND)
+        ADD_SUBDIRECTORY(mrgtree2dot)
+    ENDIF(SILO_FOUND)
     ADD_SUBDIRECTORY(protocol)
     IF(WIN32)
        ADD_SUBDIRECTORY(qtssh)

@@ -253,7 +253,7 @@ PyPoincareAttributes_ToString(const PoincareAttributes *atts, const char *prefix
     str += tmpStr;
     SNPRINTF(tmpStr, 1000, "%swindingPairConfidence = %g\n", prefix, atts->GetWindingPairConfidence());
     str += tmpStr;
-    SNPRINTF(tmpStr, 1000, "%speriodicityConsistency = %g\n", prefix, atts->GetPeriodicityConsistency());
+    SNPRINTF(tmpStr, 1000, "%srationalTemplateSeedParm = %g\n", prefix, atts->GetRationalTemplateSeedParm());
     str += tmpStr;
     SNPRINTF(tmpStr, 1000, "%sadjustPlane = %d\n", prefix, atts->GetAdjustPlane());
     str += tmpStr;
@@ -333,33 +333,58 @@ PyPoincareAttributes_ToString(const PoincareAttributes *atts, const char *prefix
     str += tmpStr;
     SNPRINTF(tmpStr, 1000, "%scolorTableName = \"%s\"\n", prefix, atts->GetColorTableName().c_str());
     str += tmpStr;
-    const char *dataValue_names = "Solid, OriginalValue, InputOrder, PointIndex, Plane, "
-        "WindingOrder, WindingPointOrder, WindingPointOrderModulo, ToroidalWindings, "
-        "PoloidalWindings, SafetyFactor, Confidence, RidgelineVariance";
+    const char *dataValue_names = "Solid, SafetyFactorQ, SafetyFactorP, SafetyFactorQ_NotP, SafetyFactorP_NotQ, "
+        "ToroidalWindings, PoloidalWindingsQ, PoloidalWindingsP, FieldlineIndex, "
+        "PointIndex, PlaneIndex, WindingGroup, WindingPointOrder, "
+        "WindingPointOrderModulo";
     switch (atts->GetDataValue())
     {
       case PoincareAttributes::Solid:
           SNPRINTF(tmpStr, 1000, "%sdataValue = %sSolid  # %s\n", prefix, prefix, dataValue_names);
           str += tmpStr;
           break;
-      case PoincareAttributes::OriginalValue:
-          SNPRINTF(tmpStr, 1000, "%sdataValue = %sOriginalValue  # %s\n", prefix, prefix, dataValue_names);
+      case PoincareAttributes::SafetyFactorQ:
+          SNPRINTF(tmpStr, 1000, "%sdataValue = %sSafetyFactorQ  # %s\n", prefix, prefix, dataValue_names);
           str += tmpStr;
           break;
-      case PoincareAttributes::InputOrder:
-          SNPRINTF(tmpStr, 1000, "%sdataValue = %sInputOrder  # %s\n", prefix, prefix, dataValue_names);
+      case PoincareAttributes::SafetyFactorP:
+          SNPRINTF(tmpStr, 1000, "%sdataValue = %sSafetyFactorP  # %s\n", prefix, prefix, dataValue_names);
+          str += tmpStr;
+          break;
+      case PoincareAttributes::SafetyFactorQ_NotP:
+          SNPRINTF(tmpStr, 1000, "%sdataValue = %sSafetyFactorQ_NotP  # %s\n", prefix, prefix, dataValue_names);
+          str += tmpStr;
+          break;
+      case PoincareAttributes::SafetyFactorP_NotQ:
+          SNPRINTF(tmpStr, 1000, "%sdataValue = %sSafetyFactorP_NotQ  # %s\n", prefix, prefix, dataValue_names);
+          str += tmpStr;
+          break;
+      case PoincareAttributes::ToroidalWindings:
+          SNPRINTF(tmpStr, 1000, "%sdataValue = %sToroidalWindings  # %s\n", prefix, prefix, dataValue_names);
+          str += tmpStr;
+          break;
+      case PoincareAttributes::PoloidalWindingsQ:
+          SNPRINTF(tmpStr, 1000, "%sdataValue = %sPoloidalWindingsQ  # %s\n", prefix, prefix, dataValue_names);
+          str += tmpStr;
+          break;
+      case PoincareAttributes::PoloidalWindingsP:
+          SNPRINTF(tmpStr, 1000, "%sdataValue = %sPoloidalWindingsP  # %s\n", prefix, prefix, dataValue_names);
+          str += tmpStr;
+          break;
+      case PoincareAttributes::FieldlineIndex:
+          SNPRINTF(tmpStr, 1000, "%sdataValue = %sFieldlineIndex  # %s\n", prefix, prefix, dataValue_names);
           str += tmpStr;
           break;
       case PoincareAttributes::PointIndex:
           SNPRINTF(tmpStr, 1000, "%sdataValue = %sPointIndex  # %s\n", prefix, prefix, dataValue_names);
           str += tmpStr;
           break;
-      case PoincareAttributes::Plane:
-          SNPRINTF(tmpStr, 1000, "%sdataValue = %sPlane  # %s\n", prefix, prefix, dataValue_names);
+      case PoincareAttributes::PlaneIndex:
+          SNPRINTF(tmpStr, 1000, "%sdataValue = %sPlaneIndex  # %s\n", prefix, prefix, dataValue_names);
           str += tmpStr;
           break;
-      case PoincareAttributes::WindingOrder:
-          SNPRINTF(tmpStr, 1000, "%sdataValue = %sWindingOrder  # %s\n", prefix, prefix, dataValue_names);
+      case PoincareAttributes::WindingGroup:
+          SNPRINTF(tmpStr, 1000, "%sdataValue = %sWindingGroup  # %s\n", prefix, prefix, dataValue_names);
           str += tmpStr;
           break;
       case PoincareAttributes::WindingPointOrder:
@@ -368,26 +393,6 @@ PyPoincareAttributes_ToString(const PoincareAttributes *atts, const char *prefix
           break;
       case PoincareAttributes::WindingPointOrderModulo:
           SNPRINTF(tmpStr, 1000, "%sdataValue = %sWindingPointOrderModulo  # %s\n", prefix, prefix, dataValue_names);
-          str += tmpStr;
-          break;
-      case PoincareAttributes::ToroidalWindings:
-          SNPRINTF(tmpStr, 1000, "%sdataValue = %sToroidalWindings  # %s\n", prefix, prefix, dataValue_names);
-          str += tmpStr;
-          break;
-      case PoincareAttributes::PoloidalWindings:
-          SNPRINTF(tmpStr, 1000, "%sdataValue = %sPoloidalWindings  # %s\n", prefix, prefix, dataValue_names);
-          str += tmpStr;
-          break;
-      case PoincareAttributes::SafetyFactor:
-          SNPRINTF(tmpStr, 1000, "%sdataValue = %sSafetyFactor  # %s\n", prefix, prefix, dataValue_names);
-          str += tmpStr;
-          break;
-      case PoincareAttributes::Confidence:
-          SNPRINTF(tmpStr, 1000, "%sdataValue = %sConfidence  # %s\n", prefix, prefix, dataValue_names);
-          str += tmpStr;
-          break;
-      case PoincareAttributes::RidgelineVariance:
-          SNPRINTF(tmpStr, 1000, "%sdataValue = %sRidgelineVariance  # %s\n", prefix, prefix, dataValue_names);
           str += tmpStr;
           break;
       default:
@@ -399,14 +404,14 @@ PyPoincareAttributes_ToString(const PoincareAttributes *atts, const char *prefix
     else
         SNPRINTF(tmpStr, 1000, "%sshowOPoints = 0\n", prefix);
     str += tmpStr;
-    SNPRINTF(tmpStr, 1000, "%sOPointMaxInterations = %d\n", prefix, atts->GetOPointMaxInterations());
+    SNPRINTF(tmpStr, 1000, "%sOPointMaxIterations = %d\n", prefix, atts->GetOPointMaxIterations());
     str += tmpStr;
     if(atts->GetShowXPoints())
         SNPRINTF(tmpStr, 1000, "%sshowXPoints = 1\n", prefix);
     else
         SNPRINTF(tmpStr, 1000, "%sshowXPoints = 0\n", prefix);
     str += tmpStr;
-    SNPRINTF(tmpStr, 1000, "%sXPointMaxInterations = %d\n", prefix, atts->GetXPointMaxInterations());
+    SNPRINTF(tmpStr, 1000, "%sXPointMaxIterations = %d\n", prefix, atts->GetXPointMaxIterations());
     str += tmpStr;
     if(atts->GetShowChaotic())
         SNPRINTF(tmpStr, 1000, "%sshowChaotic = 1\n", prefix);
@@ -423,10 +428,10 @@ PyPoincareAttributes_ToString(const PoincareAttributes *atts, const char *prefix
     else
         SNPRINTF(tmpStr, 1000, "%sverboseFlag = 0\n", prefix);
     str += tmpStr;
-    if(atts->GetShowRidgelines())
-        SNPRINTF(tmpStr, 1000, "%sshowRidgelines = 1\n", prefix);
+    if(atts->GetShow1DPlots())
+        SNPRINTF(tmpStr, 1000, "%sshow1DPlots = 1\n", prefix);
     else
-        SNPRINTF(tmpStr, 1000, "%sshowRidgelines = 0\n", prefix);
+        SNPRINTF(tmpStr, 1000, "%sshow1DPlots = 0\n", prefix);
     str += tmpStr;
     if(atts->GetShowLines())
         SNPRINTF(tmpStr, 1000, "%sshowLines = 1\n", prefix);
@@ -1152,7 +1157,7 @@ PoincareAttributes_GetWindingPairConfidence(PyObject *self, PyObject *args)
 }
 
 /*static*/ PyObject *
-PoincareAttributes_SetPeriodicityConsistency(PyObject *self, PyObject *args)
+PoincareAttributes_SetRationalTemplateSeedParm(PyObject *self, PyObject *args)
 {
     PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
 
@@ -1160,18 +1165,18 @@ PoincareAttributes_SetPeriodicityConsistency(PyObject *self, PyObject *args)
     if(!PyArg_ParseTuple(args, "d", &dval))
         return NULL;
 
-    // Set the periodicityConsistency in the object.
-    obj->data->SetPeriodicityConsistency(dval);
+    // Set the rationalTemplateSeedParm in the object.
+    obj->data->SetRationalTemplateSeedParm(dval);
 
     Py_INCREF(Py_None);
     return Py_None;
 }
 
 /*static*/ PyObject *
-PoincareAttributes_GetPeriodicityConsistency(PyObject *self, PyObject *args)
+PoincareAttributes_GetRationalTemplateSeedParm(PyObject *self, PyObject *args)
 {
     PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
-    PyObject *retval = PyFloat_FromDouble(obj->data->GetPeriodicityConsistency());
+    PyObject *retval = PyFloat_FromDouble(obj->data->GetRationalTemplateSeedParm());
     return retval;
 }
 
@@ -1553,17 +1558,17 @@ PoincareAttributes_SetDataValue(PyObject *self, PyObject *args)
         return NULL;
 
     // Set the dataValue in the object.
-    if(ival >= 0 && ival < 13)
+    if(ival >= 0 && ival < 14)
         obj->data->SetDataValue(PoincareAttributes::DataValue(ival));
     else
     {
         fprintf(stderr, "An invalid dataValue value was given. "
-                        "Valid values are in the range of [0,12]. "
+                        "Valid values are in the range of [0,13]. "
                         "You can also use the following names: "
-                        "Solid, OriginalValue, InputOrder, PointIndex, Plane, "
-                        "WindingOrder, WindingPointOrder, WindingPointOrderModulo, ToroidalWindings, "
-                        "PoloidalWindings, SafetyFactor, Confidence, RidgelineVariance"
-                        ".");
+                        "Solid, SafetyFactorQ, SafetyFactorP, SafetyFactorQ_NotP, SafetyFactorP_NotQ, "
+                        "ToroidalWindings, PoloidalWindingsQ, PoloidalWindingsP, FieldlineIndex, "
+                        "PointIndex, PlaneIndex, WindingGroup, WindingPointOrder, "
+                        "WindingPointOrderModulo.");
         return NULL;
     }
 
@@ -1604,7 +1609,7 @@ PoincareAttributes_GetShowOPoints(PyObject *self, PyObject *args)
 }
 
 /*static*/ PyObject *
-PoincareAttributes_SetOPointMaxInterations(PyObject *self, PyObject *args)
+PoincareAttributes_SetOPointMaxIterations(PyObject *self, PyObject *args)
 {
     PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
 
@@ -1612,18 +1617,18 @@ PoincareAttributes_SetOPointMaxInterations(PyObject *self, PyObject *args)
     if(!PyArg_ParseTuple(args, "i", &ival))
         return NULL;
 
-    // Set the OPointMaxInterations in the object.
-    obj->data->SetOPointMaxInterations((int)ival);
+    // Set the OPointMaxIterations in the object.
+    obj->data->SetOPointMaxIterations((int)ival);
 
     Py_INCREF(Py_None);
     return Py_None;
 }
 
 /*static*/ PyObject *
-PoincareAttributes_GetOPointMaxInterations(PyObject *self, PyObject *args)
+PoincareAttributes_GetOPointMaxIterations(PyObject *self, PyObject *args)
 {
     PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
-    PyObject *retval = PyInt_FromLong(long(obj->data->GetOPointMaxInterations()));
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetOPointMaxIterations()));
     return retval;
 }
 
@@ -1652,7 +1657,7 @@ PoincareAttributes_GetShowXPoints(PyObject *self, PyObject *args)
 }
 
 /*static*/ PyObject *
-PoincareAttributes_SetXPointMaxInterations(PyObject *self, PyObject *args)
+PoincareAttributes_SetXPointMaxIterations(PyObject *self, PyObject *args)
 {
     PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
 
@@ -1660,18 +1665,18 @@ PoincareAttributes_SetXPointMaxInterations(PyObject *self, PyObject *args)
     if(!PyArg_ParseTuple(args, "i", &ival))
         return NULL;
 
-    // Set the XPointMaxInterations in the object.
-    obj->data->SetXPointMaxInterations((int)ival);
+    // Set the XPointMaxIterations in the object.
+    obj->data->SetXPointMaxIterations((int)ival);
 
     Py_INCREF(Py_None);
     return Py_None;
 }
 
 /*static*/ PyObject *
-PoincareAttributes_GetXPointMaxInterations(PyObject *self, PyObject *args)
+PoincareAttributes_GetXPointMaxIterations(PyObject *self, PyObject *args)
 {
     PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
-    PyObject *retval = PyInt_FromLong(long(obj->data->GetXPointMaxInterations()));
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetXPointMaxIterations()));
     return retval;
 }
 
@@ -1748,7 +1753,7 @@ PoincareAttributes_GetVerboseFlag(PyObject *self, PyObject *args)
 }
 
 /*static*/ PyObject *
-PoincareAttributes_SetShowRidgelines(PyObject *self, PyObject *args)
+PoincareAttributes_SetShow1DPlots(PyObject *self, PyObject *args)
 {
     PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
 
@@ -1756,18 +1761,18 @@ PoincareAttributes_SetShowRidgelines(PyObject *self, PyObject *args)
     if(!PyArg_ParseTuple(args, "i", &ival))
         return NULL;
 
-    // Set the showRidgelines in the object.
-    obj->data->SetShowRidgelines(ival != 0);
+    // Set the show1DPlots in the object.
+    obj->data->SetShow1DPlots(ival != 0);
 
     Py_INCREF(Py_None);
     return Py_None;
 }
 
 /*static*/ PyObject *
-PoincareAttributes_GetShowRidgelines(PyObject *self, PyObject *args)
+PoincareAttributes_GetShow1DPlots(PyObject *self, PyObject *args)
 {
     PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
-    PyObject *retval = PyInt_FromLong(obj->data->GetShowRidgelines()?1L:0L);
+    PyObject *retval = PyInt_FromLong(obj->data->GetShow1DPlots()?1L:0L);
     return retval;
 }
 
@@ -2179,8 +2184,8 @@ PyMethodDef PyPoincareAttributes_methods[POINCAREATTRIBUTES_NMETH] = {
     {"GetOverridePoloidalWinding", PoincareAttributes_GetOverridePoloidalWinding, METH_VARARGS},
     {"SetWindingPairConfidence", PoincareAttributes_SetWindingPairConfidence, METH_VARARGS},
     {"GetWindingPairConfidence", PoincareAttributes_GetWindingPairConfidence, METH_VARARGS},
-    {"SetPeriodicityConsistency", PoincareAttributes_SetPeriodicityConsistency, METH_VARARGS},
-    {"GetPeriodicityConsistency", PoincareAttributes_GetPeriodicityConsistency, METH_VARARGS},
+    {"SetRationalTemplateSeedParm", PoincareAttributes_SetRationalTemplateSeedParm, METH_VARARGS},
+    {"GetRationalTemplateSeedParm", PoincareAttributes_GetRationalTemplateSeedParm, METH_VARARGS},
     {"SetAdjustPlane", PoincareAttributes_SetAdjustPlane, METH_VARARGS},
     {"GetAdjustPlane", PoincareAttributes_GetAdjustPlane, METH_VARARGS},
     {"SetOverlaps", PoincareAttributes_SetOverlaps, METH_VARARGS},
@@ -2209,20 +2214,20 @@ PyMethodDef PyPoincareAttributes_methods[POINCAREATTRIBUTES_NMETH] = {
     {"GetDataValue", PoincareAttributes_GetDataValue, METH_VARARGS},
     {"SetShowOPoints", PoincareAttributes_SetShowOPoints, METH_VARARGS},
     {"GetShowOPoints", PoincareAttributes_GetShowOPoints, METH_VARARGS},
-    {"SetOPointMaxInterations", PoincareAttributes_SetOPointMaxInterations, METH_VARARGS},
-    {"GetOPointMaxInterations", PoincareAttributes_GetOPointMaxInterations, METH_VARARGS},
+    {"SetOPointMaxIterations", PoincareAttributes_SetOPointMaxIterations, METH_VARARGS},
+    {"GetOPointMaxIterations", PoincareAttributes_GetOPointMaxIterations, METH_VARARGS},
     {"SetShowXPoints", PoincareAttributes_SetShowXPoints, METH_VARARGS},
     {"GetShowXPoints", PoincareAttributes_GetShowXPoints, METH_VARARGS},
-    {"SetXPointMaxInterations", PoincareAttributes_SetXPointMaxInterations, METH_VARARGS},
-    {"GetXPointMaxInterations", PoincareAttributes_GetXPointMaxInterations, METH_VARARGS},
+    {"SetXPointMaxIterations", PoincareAttributes_SetXPointMaxIterations, METH_VARARGS},
+    {"GetXPointMaxIterations", PoincareAttributes_GetXPointMaxIterations, METH_VARARGS},
     {"SetShowChaotic", PoincareAttributes_SetShowChaotic, METH_VARARGS},
     {"GetShowChaotic", PoincareAttributes_GetShowChaotic, METH_VARARGS},
     {"SetShowIslands", PoincareAttributes_SetShowIslands, METH_VARARGS},
     {"GetShowIslands", PoincareAttributes_GetShowIslands, METH_VARARGS},
     {"SetVerboseFlag", PoincareAttributes_SetVerboseFlag, METH_VARARGS},
     {"GetVerboseFlag", PoincareAttributes_GetVerboseFlag, METH_VARARGS},
-    {"SetShowRidgelines", PoincareAttributes_SetShowRidgelines, METH_VARARGS},
-    {"GetShowRidgelines", PoincareAttributes_GetShowRidgelines, METH_VARARGS},
+    {"SetShow1DPlots", PoincareAttributes_SetShow1DPlots, METH_VARARGS},
+    {"GetShow1DPlots", PoincareAttributes_GetShow1DPlots, METH_VARARGS},
     {"SetShowLines", PoincareAttributes_SetShowLines, METH_VARARGS},
     {"GetShowLines", PoincareAttributes_GetShowLines, METH_VARARGS},
     {"SetLineWidth", PoincareAttributes_SetLineWidth, METH_VARARGS},
@@ -2357,8 +2362,8 @@ PyPoincareAttributes_getattr(PyObject *self, char *name)
         return PoincareAttributes_GetOverridePoloidalWinding(self, NULL);
     if(strcmp(name, "windingPairConfidence") == 0)
         return PoincareAttributes_GetWindingPairConfidence(self, NULL);
-    if(strcmp(name, "periodicityConsistency") == 0)
-        return PoincareAttributes_GetPeriodicityConsistency(self, NULL);
+    if(strcmp(name, "rationalTemplateSeedParm") == 0)
+        return PoincareAttributes_GetRationalTemplateSeedParm(self, NULL);
     if(strcmp(name, "adjustPlane") == 0)
         return PoincareAttributes_GetAdjustPlane(self, NULL);
     if(strcmp(name, "overlaps") == 0)
@@ -2406,47 +2411,49 @@ PyPoincareAttributes_getattr(PyObject *self, char *name)
         return PoincareAttributes_GetDataValue(self, NULL);
     if(strcmp(name, "Solid") == 0)
         return PyInt_FromLong(long(PoincareAttributes::Solid));
-    if(strcmp(name, "OriginalValue") == 0)
-        return PyInt_FromLong(long(PoincareAttributes::OriginalValue));
-    if(strcmp(name, "InputOrder") == 0)
-        return PyInt_FromLong(long(PoincareAttributes::InputOrder));
+    if(strcmp(name, "SafetyFactorQ") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::SafetyFactorQ));
+    if(strcmp(name, "SafetyFactorP") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::SafetyFactorP));
+    if(strcmp(name, "SafetyFactorQ_NotP") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::SafetyFactorQ_NotP));
+    if(strcmp(name, "SafetyFactorP_NotQ") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::SafetyFactorP_NotQ));
+    if(strcmp(name, "ToroidalWindings") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::ToroidalWindings));
+    if(strcmp(name, "PoloidalWindingsQ") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::PoloidalWindingsQ));
+    if(strcmp(name, "PoloidalWindingsP") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::PoloidalWindingsP));
+    if(strcmp(name, "FieldlineIndex") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::FieldlineIndex));
     if(strcmp(name, "PointIndex") == 0)
         return PyInt_FromLong(long(PoincareAttributes::PointIndex));
-    if(strcmp(name, "Plane") == 0)
-        return PyInt_FromLong(long(PoincareAttributes::Plane));
-    if(strcmp(name, "WindingOrder") == 0)
-        return PyInt_FromLong(long(PoincareAttributes::WindingOrder));
+    if(strcmp(name, "PlaneIndex") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::PlaneIndex));
+    if(strcmp(name, "WindingGroup") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::WindingGroup));
     if(strcmp(name, "WindingPointOrder") == 0)
         return PyInt_FromLong(long(PoincareAttributes::WindingPointOrder));
     if(strcmp(name, "WindingPointOrderModulo") == 0)
         return PyInt_FromLong(long(PoincareAttributes::WindingPointOrderModulo));
-    if(strcmp(name, "ToroidalWindings") == 0)
-        return PyInt_FromLong(long(PoincareAttributes::ToroidalWindings));
-    if(strcmp(name, "PoloidalWindings") == 0)
-        return PyInt_FromLong(long(PoincareAttributes::PoloidalWindings));
-    if(strcmp(name, "SafetyFactor") == 0)
-        return PyInt_FromLong(long(PoincareAttributes::SafetyFactor));
-    if(strcmp(name, "Confidence") == 0)
-        return PyInt_FromLong(long(PoincareAttributes::Confidence));
-    if(strcmp(name, "RidgelineVariance") == 0)
-        return PyInt_FromLong(long(PoincareAttributes::RidgelineVariance));
 
     if(strcmp(name, "showOPoints") == 0)
         return PoincareAttributes_GetShowOPoints(self, NULL);
-    if(strcmp(name, "OPointMaxInterations") == 0)
-        return PoincareAttributes_GetOPointMaxInterations(self, NULL);
+    if(strcmp(name, "OPointMaxIterations") == 0)
+        return PoincareAttributes_GetOPointMaxIterations(self, NULL);
     if(strcmp(name, "showXPoints") == 0)
         return PoincareAttributes_GetShowXPoints(self, NULL);
-    if(strcmp(name, "XPointMaxInterations") == 0)
-        return PoincareAttributes_GetXPointMaxInterations(self, NULL);
+    if(strcmp(name, "XPointMaxIterations") == 0)
+        return PoincareAttributes_GetXPointMaxIterations(self, NULL);
     if(strcmp(name, "showChaotic") == 0)
         return PoincareAttributes_GetShowChaotic(self, NULL);
     if(strcmp(name, "showIslands") == 0)
         return PoincareAttributes_GetShowIslands(self, NULL);
     if(strcmp(name, "verboseFlag") == 0)
         return PoincareAttributes_GetVerboseFlag(self, NULL);
-    if(strcmp(name, "showRidgelines") == 0)
-        return PoincareAttributes_GetShowRidgelines(self, NULL);
+    if(strcmp(name, "show1DPlots") == 0)
+        return PoincareAttributes_GetShow1DPlots(self, NULL);
     if(strcmp(name, "showLines") == 0)
         return PoincareAttributes_GetShowLines(self, NULL);
     if(strcmp(name, "lineWidth") == 0)
@@ -2556,8 +2563,8 @@ PyPoincareAttributes_setattr(PyObject *self, char *name, PyObject *args)
         obj = PoincareAttributes_SetOverridePoloidalWinding(self, tuple);
     else if(strcmp(name, "windingPairConfidence") == 0)
         obj = PoincareAttributes_SetWindingPairConfidence(self, tuple);
-    else if(strcmp(name, "periodicityConsistency") == 0)
-        obj = PoincareAttributes_SetPeriodicityConsistency(self, tuple);
+    else if(strcmp(name, "rationalTemplateSeedParm") == 0)
+        obj = PoincareAttributes_SetRationalTemplateSeedParm(self, tuple);
     else if(strcmp(name, "adjustPlane") == 0)
         obj = PoincareAttributes_SetAdjustPlane(self, tuple);
     else if(strcmp(name, "overlaps") == 0)
@@ -2586,20 +2593,20 @@ PyPoincareAttributes_setattr(PyObject *self, char *name, PyObject *args)
         obj = PoincareAttributes_SetDataValue(self, tuple);
     else if(strcmp(name, "showOPoints") == 0)
         obj = PoincareAttributes_SetShowOPoints(self, tuple);
-    else if(strcmp(name, "OPointMaxInterations") == 0)
-        obj = PoincareAttributes_SetOPointMaxInterations(self, tuple);
+    else if(strcmp(name, "OPointMaxIterations") == 0)
+        obj = PoincareAttributes_SetOPointMaxIterations(self, tuple);
     else if(strcmp(name, "showXPoints") == 0)
         obj = PoincareAttributes_SetShowXPoints(self, tuple);
-    else if(strcmp(name, "XPointMaxInterations") == 0)
-        obj = PoincareAttributes_SetXPointMaxInterations(self, tuple);
+    else if(strcmp(name, "XPointMaxIterations") == 0)
+        obj = PoincareAttributes_SetXPointMaxIterations(self, tuple);
     else if(strcmp(name, "showChaotic") == 0)
         obj = PoincareAttributes_SetShowChaotic(self, tuple);
     else if(strcmp(name, "showIslands") == 0)
         obj = PoincareAttributes_SetShowIslands(self, tuple);
     else if(strcmp(name, "verboseFlag") == 0)
         obj = PoincareAttributes_SetVerboseFlag(self, tuple);
-    else if(strcmp(name, "showRidgelines") == 0)
-        obj = PoincareAttributes_SetShowRidgelines(self, tuple);
+    else if(strcmp(name, "show1DPlots") == 0)
+        obj = PoincareAttributes_SetShow1DPlots(self, tuple);
     else if(strcmp(name, "showLines") == 0)
         obj = PoincareAttributes_SetShowLines(self, tuple);
     else if(strcmp(name, "lineWidth") == 0)

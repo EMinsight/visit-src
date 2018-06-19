@@ -45,6 +45,9 @@
 #   Brad Whitlock, Fri Jan 28 11:13:40 PST 2011
 #   Add EventLoop object.
 #
+#   Brad Whitlock, Mon Jun 20 15:44:41 PDT 2011
+#   Add SelectionVariableSummary and SelectionSummary.
+#
 #****************************************************************************/
 
 PROJECT(JavaClient Java)
@@ -138,11 +141,14 @@ SILArrayAttributes.java
 SILAttributes.java 
 SILMatrixAttributes.java 
 SILRestrictionAttributes.java 
+SimulationUIValues.java
 SaveSubWindowAttributes.java
 SaveSubWindowsAttributes.java
 SaveWindowAttributes.java 
 SelectionList.java
 SelectionProperties.java
+SelectionSummary.java
+SelectionVariableSummary.java
 StatusAttributes.java 
 SyncAttributes.java 
 View2DAttributes.java 
@@ -188,7 +194,7 @@ ADD_EXECUTABLE(VersionWriter VersionWriter.C)
 # per-file source dependencies.
 ADD_CUSTOM_COMMAND(TARGET VersionWriter POST_BUILD 
     COMMAND ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/VersionWriter ${VISIT_SOURCE_DIR}/VERSION ${VISIT_SOURCE_DIR}/java/Version.java
-    COMMAND ${CMAKE_Java_COMPILER} ${CMAKE_Java_FLAGS} -d ${VISIT_BINARY_DIR}/java ${PACKAGE_SOURCES} ${PACKAGE_STATE_SOURCES} ${METADATA_SOURCES}
+    COMMAND ${CMAKE_Java_COMPILER} ${CMAKE_Java_FLAGS} -sourcepath ${VISIT_SOURCE_DIR}/java -d ${VISIT_BINARY_DIR}/java ${PACKAGE_SOURCES} ${PACKAGE_STATE_SOURCES} ${METADATA_SOURCES}
     WORKING_DIRECTORY ${VISIT_BINARY_DIR}/java
 )
 
@@ -213,5 +219,5 @@ TryAnnotations.java
 TryLighting.java 
 TryQuery.java 
 )
-ADD_CUSTOM_TARGET(main ${CMAKE_Java_COMPILER} ${CMAKE_Java_FLAGS} -d ${CMAKE_CURRENT_SOURCE_DIR} ${MAIN_SOURCES})
+ADD_CUSTOM_TARGET(main ${CMAKE_Java_COMPILER} ${CMAKE_Java_FLAGS} -sourcepath ${VISIT_SOURCE_DIR}/java -d ${CMAKE_CURRENT_SOURCE_DIR} ${MAIN_SOURCES})
 

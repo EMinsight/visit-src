@@ -90,6 +90,7 @@ class PrinterAttributes;
 class RenderingAttributes;
 class SaveWindowAttributes;
 class SelectionList;
+class SelectionProperties;
 class ViewerWindow;
 class ViewerAnimation;
 class ViewCurveAttributes;
@@ -572,7 +573,6 @@ class VIEWER_API ViewerWindowManager : public ViewerBase
     bool SetCreateMeshQualityExpressions(bool val);
     bool SetCreateTimeDerivativeExpressions(bool val);
     bool SetCreateVectorMagnitudeExpressions(bool val);
-    void SetPlotFollowsTime();
 
     void ReplaceDatabase(const EngineKey &key,
                          const std::string &database,
@@ -625,6 +625,7 @@ class VIEWER_API ViewerWindowManager : public ViewerBase
     static AnnotationObjectList          *GetDefaultAnnotationObjectList();
     static void                          SetDefaultAnnotationObjectListFromClient();
     static SelectionList                 *GetSelectionList();
+    static SelectionProperties           *GetSelectionProperties();
 
     void SetInteractorAttsFromClient();
     void SetInteractorAttsFromDefault();
@@ -695,6 +696,7 @@ class VIEWER_API ViewerWindowManager : public ViewerBase
     static InteractorAttributes          *interactorClientAtts;
     static InteractorAttributes          *interactorDefaultAtts;
     static SelectionList                 *selectionList;
+    static SelectionProperties           *selectionProperties;
 
     int               layout;
     int               layoutIndex;

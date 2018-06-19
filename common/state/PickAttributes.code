@@ -59,7 +59,7 @@ PickAttributes::PrintSelf(ostream &os)
     
     std::string fileName;
     std::string format;
-    int pos = databaseName.find_last_of('/');
+    size_t pos = databaseName.find_last_of('/');
     if (pos >= databaseName.size())
         fileName = databaseName;
     else
@@ -244,6 +244,11 @@ PickAttributes::PrintSelf(ostream &os)
     if (timePreserveCoord)
         os << "Set up for time-curve to preserve picked coord.\n";
 
+    if (timeCurveType == PickAttributes::Single_Y_Axis)
+        os << "Set up for time-curve to create a curve plot with single y axis.\n";
+    else 
+        os << "Set up for time-curve to create a curve plot with multiple y axes.\n";
+
     if (createSpreadsheet)
         os << "Create a spreadsheet with this pick.\n";
 
@@ -331,7 +336,7 @@ PickAttributes::CreateOutputString(std::string &os, bool withLetter)
    
     std::string fileName; 
     std::string format; 
-    int pos = databaseName.find_last_of('/');
+    size_t pos = databaseName.find_last_of('/');
     if (pos >= databaseName.size())
         fileName = databaseName;
     else
@@ -662,6 +667,9 @@ Definition:
 //   Brad Whitlock, Tue Jan 20 16:42:30 PST 2009
 //   Changed to using local CoordinateType enum.
 //
+//   Kathleen Bonnell, Thu Feb  3 11:20:11 PST 2011
+//   plotBounds changed to a vetor.
+//
 // ****************************************************************************
 
 void
@@ -703,9 +711,8 @@ PickAttributes::PrepareForNewPick()
         realIncidentElements.clear();
 
     meshInfo = "";
-    for (int i = 0; i < 6; ++i)
-        plotBounds[i] = 0.;
-
+    if (!plotBounds.empty())
+        plotBounds.clear();
     ClearVarInfos();
 
     if (!invalidVars.empty())
@@ -1005,7 +1012,7 @@ PickAttributes::CreateConciseOutputString(std::string &os, bool withLetter)
    
     std::string fileName;
     std::string format;
-    int pos = databaseName.find_last_of('/');
+    size_t pos = databaseName.find_last_of('/');
     if (pos >= databaseName.size())
         fileName = databaseName;
     else

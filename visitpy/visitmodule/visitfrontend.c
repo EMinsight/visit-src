@@ -49,7 +49,17 @@
  * Platform specific includes.
  */
 #if defined(_WIN32)
-;
+#  ifndef WIN32_LEAN_AND_MEAN
+#    define PLEASE_RESET_WIN32_LEAN_AND_MEAN
+#    define WIN32_LEAN_AND_MEAN
+#  endif
+#  include <windows.h>
+#  ifdef PLEASE_RESET_WIN32_LEAN_AND_MEAN
+#    undef WIN32_LEAN_AND_MEAN
+#  endif
+#  define pclose _pclose
+#  define popen  _popen
+typedef void* DynamicLibraryHandle;
 #else
 #include <dlfcn.h>
 typedef void* DynamicLibraryHandle;
@@ -75,7 +85,52 @@ static VisItModuleState *moduleState = NULL;
  * Define dynamic library access functions.
  */
 #if defined(_WIN32)
-;
+void *
+OpenDynamicLibrary(const char *filename)
+{
+    HINSTANCE lib = LoadLibrary(filename);
+    if (!lib)
+    {
+        va_list *va = 0;
+        char loadError[500];
+        FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, 0, GetLastError(), 0, &loadError[0], 500 , va);
+        fprintf(stderr, "LoadLibrary(%s) failed because: %s\n", filename, loadError);
+    }
+#ifdef DEBUG_PRINT
+    fprintf(stderr, "LoadLibrary(%s) returned: %p\n", filename, lib);
+#endif 
+    return (void*)lib;
+}
+
+void*
+GetDynamicFunction(const char *funcName)
+{
+    void *func = NULL;
+
+    /* Need to open the library. */
+    if(moduleState->moduleLibrary == NULL &&
+       moduleState->moduleFile != NULL)
+    {
+        moduleState->moduleLibrary = OpenDynamicLibrary(moduleState->moduleFile);
+    }
+
+    if(moduleState->moduleLibrary != NULL)
+    {
+#ifdef DEBUG_PRINT
+        fprintf(stderr, "Calling GetProcAddress function to get %s.\n", funcName);
+#endif 
+        func = (void*)GetProcAddress((HMODULE)moduleState->moduleLibrary, (char*)funcName);
+    }
+#ifdef DEBUG_PRINT
+    else
+    {
+        fprintf(stderr, "Could not call GetProcAddress function because library could not be opened.\n");
+    }
+#endif 
+
+    return func;
+
+}
 #else
 void *
 OpenDynamicLibrary(const char *filename)
@@ -125,6 +180,16 @@ GetDynamicFunction(const char *funcName)
 }
 #endif
 
+#ifdef _WIN32
+#  ifdef visitfrontend_EXPORTS
+#    define VISITFRONTEND_API __declspec(dllexport)
+#  else
+#    define VISITFRONTEND_API __declspec(dllimport)
+#  endif
+#else
+#  define VISITFRONTEND_API 
+#endif
+
 
 /*
  * Make the initvisit function callable from C.
@@ -133,7 +198,7 @@ GetDynamicFunction(const char *funcName)
 extern "C"
 {
 #endif
-    void initvisit(void);
+    VISITFRONTEND_API void initvisit(void);
 #ifdef CPLUSPLUS
 }
 #endif
@@ -286,6 +351,9 @@ ReadVisItEnvironment(const char *visitProgram, char **LIBPATH,
  *   Use provided arguments to get the right version of VisIt. Also set 
  *   VISITPLUGINDIR.
  *
+ *   Kathleen Bonnell, Tue May 3 15:17:09 MST 2011
+ *   Change module extenstion to .pyd on Windows.
+ *
  * ***************************************************************************/
 
 PyObject *
@@ -295,10 +363,11 @@ visit_frontend_Launch(PyObject *self, PyObject *args)
          *LIBPATH = NULL, *VISITPLUGINDIR = NULL;
     int i, slen = 0;
     PyCFunction func = NULL;
-    static char *visitProgramDefault = "visit";
 #if defined(_WIN32)
-    static const char *moduleFile = "/visitmodule.dll";
+    static char *visitProgramDefault = "visit.exe";
+    static const char *moduleFile = "/visitmodule.pyd";
 #else
+    static char *visitProgramDefault = "visit";
     static const char *moduleFile = "/visitmodule.so";
 #endif
 #if defined(__APPLE__)

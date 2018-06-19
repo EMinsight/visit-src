@@ -55,6 +55,7 @@
 #endif
 #include <new>
 
+#include <vtkDebugStream.h>
 #include <visitstream.h>
 #include <visit-config.h>
 #include <snprintf.h>
@@ -89,7 +90,9 @@
 #include <StringHelpers.h>
 #include <StackTimer.h>
 #include <VisItDisplay.h>
-#include <vtkDebugStream.h>
+#ifndef _WIN32
+# include <XDisplay.h>
+#endif
 
 #include <avtDatabaseMetaData.h>
 #include <avtDataObjectReader.h>
@@ -190,6 +193,9 @@ const int INTERRUPT_MESSAGE_TAG = GetUniqueStaticMessageTag();
 // Creation:   Thu Apr  9 11:51:35 PDT 2009
 //
 // Modifications:
+//   Eric Brugger, Mon May  2 17:00:41 PDT 2011
+//   I added the ability to use a gateway machine when connecting to a
+//   remote host.
 //
 // ****************************************************************************
 
@@ -244,12 +250,15 @@ protected:
         viewerArgs.push_back("-connectengine");
         viewerArgs.push_back(arg);
 
-        debug5 << mName << "viewer args(";
-        for(size_t i = 0; i < viewerArgs.size(); ++i)
-            debug5 << viewerArgs[i] << ", ";
-        debug5 << ")" << endl;
+        if (DebugStream::Level5())
+        {
+            debug5 << mName << "viewer args(";
+            for(size_t i = 0; i < viewerArgs.size(); ++i)
+                debug5 << viewerArgs[i] << ", ";
+            debug5 << ")" << endl;
+        }
 
-        RemoteProcess::Launch(rHost, createAsThoughLocal, viewerArgs);
+        RemoteProcess::Launch(rHost, createAsThoughLocal, false, "", viewerArgs);
     }
 };
 
@@ -315,6 +324,9 @@ protected:
 //    Tom Fogal, Fri Jan  8 17:09:26 MST 2010
 //    Enable IceT by default.
 //
+//    Tom Fogal, Wed May 26 09:26:08 MDT 2010
+//    State for launching X servers.
+//
 // ****************************************************************************
 
 Engine::Engine() : viewerArgs()
@@ -374,6 +386,7 @@ Engine::Engine() : viewerArgs()
 #endif
     nDisplays = 0;
     renderingDisplay = NULL;
+    launchXServers = false;
 }
 
 // ****************************************************************************
@@ -544,6 +557,9 @@ Engine *Engine::Instance()
 //    Brad Whitlock, Wed Nov  4 12:05:18 PST 2009
 //    I removed a function that created an MPI type that we no longer use.
 //
+//    Tom Fogal, Mon May 24 19:36:40 MDT 2010
+//    Avoid an Open MPI warning when starting X servers.
+//
 // ****************************************************************************
 
 void
@@ -555,6 +571,13 @@ Engine::Initialize(int *argc, char **argv[], bool sigs)
     ExtractViewerArguments(argc, argv);
 
 #ifdef PARALLEL
+    // We fork/exec X servers in some cases.  Open MPI will yell at us about
+    // it, but the warning is not relevant for us because our children are
+    // well behaved.
+    // This environment variable tells Open MPI we have good children, so it
+    // doesn't need to yell at us.
+    Environment::set("OMPI_MCA_mpi_warn_on_fork", "0");
+
     xfer = new MPIXfer;
     //
     // Initialize for MPI and get the process rank & size.
@@ -576,6 +599,7 @@ Engine::Initialize(int *argc, char **argv[], bool sigs)
 
     // Configure external options.
     RuntimeSetting::parse_command_line(*argc, const_cast<const char**>(*argv));
+    this->X_Args = RuntimeSetting::lookups("x-args");
 
     //
     // Set a different new handler for the engine
@@ -584,7 +608,8 @@ Engine::Initialize(int *argc, char **argv[], bool sigs)
     std::set_new_handler(Engine::NewHandler);
 #endif
 
-    debug1 << "ENGINE started\n";
+    if (DebugStream::Level1())
+        debug1 << "ENGINE started. pid: " << getpid() << endl;
 #ifdef PARALLEL
     {
         char msg[1024];
@@ -874,7 +899,8 @@ Engine::SetUpViewerInterface(int *argc, char **argv[])
     {
         std::ostringstream s;
         s << "Setting up " << this->nDisplays << " GPUs for HW rendering";
-        debug3 << "Setting up X displays for " << this->nDisplays << " GPUs."
+        if (DebugStream::Level3())
+            debug3 << "Setting up X displays for " << this->nDisplays << " GPUs."
                << "  Using X arguments: '" << this->X_Args << "'" << std::endl;
         TimedCodeBlock(s.str(), this->SetupDisplay());
     }
@@ -887,19 +913,24 @@ Engine::SetUpViewerInterface(int *argc, char **argv[])
 #if defined(PARALLEL) && defined(HAVE_ICET)
     if(this->useIceT)
     {
-        debug2 << "Using IceT network manager." << std::endl;
+        if (DebugStream::Level2())
+            debug2 << "Using IceT network manager." << std::endl;
         netmgr = new IceTNetworkManager;
     }
     else
     {
-        debug2 << "Using standard network manager." << std::endl;
+        if (DebugStream::Level2())
+            debug2 << "Using standard network manager." << std::endl;
         netmgr = new NetworkManager;
     }
 #else
-    if(this->useIceT)
+    if (DebugStream::Level1())
     {
-        debug1 << "Error; IceT not enabled at compile time. "
+        if(this->useIceT)
+        {
+            debug1 << "Error; IceT not enabled at compile time. "
                << "Ignoring ..." << std::endl;
+        }
     }
     netmgr = new NetworkManager;
 #endif
@@ -1260,6 +1291,10 @@ Engine::ExtractViewerArguments(int *argc, char **argv[])
 //    Jeremy Meredith, Thu Feb 18 15:25:27 EST 2010
 //    Split HostProfile int MachineProfile and LaunchProfile.
 //   
+//    Eric Brugger, Mon May  2 17:00:41 PDT 2011
+//    I added the ability to use a gateway machine when connecting to a
+//    remote host.
+//
 // ****************************************************************************
 
 bool
@@ -1285,6 +1320,8 @@ Engine::ReverseLaunchViewer(int *argc, char **argv[])
                          false,                    // manual SSH port
                          0,                        // ssh port
                          false,                    // ssh tunnelling
+                         false,                    // use gateway
+                         "",                       // gateway host name
                          1,                        // num read sockets
                          simulationPluginsEnabled ? 3 : 2); // num write sockets
         }
@@ -1369,7 +1406,8 @@ Engine::ConnectViewer(int *argc, char **argv[])
     }
     CATCH(IncompatibleVersionException)
     {
-        debug1 << "The engine has a different version than its client." << endl;
+        if (DebugStream::Level1())
+            debug1 << "The engine has a different version than its client." << endl;
         noFatalExceptions = false;
     }
     CATCH(CouldNotConnectException)
@@ -1500,7 +1538,8 @@ Engine::PAR_EventLoop()
             overrideTimeoutEnabled = false;
 
             idleTimeoutEnabled = true;
-            debug5 << "Resetting idle timeout to " << idleTimeoutMins << " minutes." << endl;
+            if (DebugStream::Level5())
+                debug5 << "Resetting idle timeout to " << idleTimeoutMins << " minutes." << endl;
             ResetTimeout(idleTimeoutMins * 60);
 
             // Get the next message length.
@@ -1523,7 +1562,8 @@ Engine::PAR_EventLoop()
 
             // We have work to do, so reset the alarm.
             idleTimeoutEnabled = false;
-            debug5 << "Resetting execution timeout to " << executionTimeoutMins << " minutes." << endl;
+            if (DebugStream::Level5())
+                debug5 << "Resetting execution timeout to " << executionTimeoutMins << " minutes." << endl;
             ResetTimeout(executionTimeoutMins * 60);
 
             // Process the state information.
@@ -1646,7 +1686,8 @@ Engine::EventLoop()
         overrideTimeoutEnabled = false;
 
         idleTimeoutEnabled = true;
-        debug5 << "Resetting idle timeout to " << idleTimeoutMins << " minutes." << endl;
+        if (DebugStream::Level5())
+            debug5 << "Resetting idle timeout to " << idleTimeoutMins << " minutes." << endl;
         ResetTimeout(idleTimeoutMins * 60);
 
         //
@@ -1661,14 +1702,16 @@ Engine::EventLoop()
             {
                 // We've got some work to do.  Reset the alarm.
                 idleTimeoutEnabled = false;
-                debug5 << "Resetting execution timeout to " << executionTimeoutMins << " minutes." << endl;
+                if (DebugStream::Level5())
+                     debug5 << "Resetting execution timeout to " << executionTimeoutMins << " minutes." << endl;
                 ResetTimeout(executionTimeoutMins * 60);
 
                 // Process input.
                 ProcessInput();
 
                 idleTimeoutEnabled = true;
-                debug5 << "Resetting idle timeout to " << idleTimeoutMins << " minutes." << endl;
+                if (DebugStream::Level5())
+                    debug5 << "Resetting idle timeout to " << idleTimeoutMins << " minutes." << endl;
                 ResetTimeout(idleTimeoutMins * 60);
             }
             CATCH(LostConnectionException)
@@ -1819,9 +1862,6 @@ Engine::ProcessInput()
 //    Tom Fogal, Fri Jul 11 11:55:43 EDT 2008
 //    Added `icet' command line parameter.
 //
-//    Tom Fogal, Tue Aug  5 14:21:56 EDT 2008
-//    Add `x-args' command line parameter.
-//
 //    Jeremy Meredith, Thu Aug  7 16:23:22 EDT 2008
 //    Wrap parallel-only vars with appropriate ifdef.
 //
@@ -1864,6 +1904,12 @@ Engine::ProcessInput()
 //    For Windows, handle spaces and quotes for -dump and -infodump paths
 //    if specified.
 //
+//    Tom Fogal, Wed May 26 09:27:36 MDT 2010
+//    Add -launch-x, -no-launch-x command line options.
+//
+//    Tom Fogal, Wed May 26 09:56:08 MDT 2010
+//    Don't parse x-args here; use an RTS.
+//
 // ****************************************************************************
 
 void
@@ -1885,17 +1931,13 @@ Engine::ProcessCommandLine(int argc, char **argv)
             if (this->nDisplays == 0)
                 this->nDisplays = 1;
         }
-        else if (strcmp(argv[i], "-x-args") == 0 && i+1 < argc)
-        {
-            this->X_Args = std::string(argv[i+1]);
-            i++;
-        }
         else if (strcmp(argv[i], "-n-gpus-per-node") == 0 && i+1 < argc)
         {
             if(!StringHelpers::str_to_u_numeric<size_t>(argv[i+1],
                                                         &this->nDisplays))
             {
-                debug1 << "Could not parse '-n-gpus-per-node' argument "
+                if (DebugStream::Level1())
+                    debug1 << "Could not parse '-n-gpus-per-node' argument "
                        << "'" << argv[i+1] << "'. "
                        << "Disabling hardware acceleration!" << std::endl;
                 this->nDisplays = 0;
@@ -1952,7 +1994,8 @@ Engine::ProcessCommandLine(int argc, char **argv)
                     {
                         if (!PAR_Rank())
                             cerr << "-timeout option will soon be deprecated. Use -idle-timeout or -exec-timeout." << endl;
-                        debug1 << "-timeout option will soon be deprecated. Use -idle-timeout or -exec-timeout." << endl;
+                        if (DebugStream::Level1())
+                            debug1 << "-timeout option will soon be deprecated. Use -idle-timeout or -exec-timeout." << endl;
                         idleTimeoutMins = (int) to;
                     }
                     else if (strcmp(argv[i], "-idle-timeout") == 0)
@@ -1964,7 +2007,8 @@ Engine::ProcessCommandLine(int argc, char **argv)
                 {
                     if (!PAR_Rank())
                         cerr << "\"" << argv[i] << "\" option ignored due to bad argument." << endl;
-                    debug1 << "\"" << argv[i] << "\" option ignored due to bad argument." << endl;
+                    if (DebugStream::Level1())
+                        debug1 << "\"" << argv[i] << "\" option ignored due to bad argument." << endl;
                 }
                 i++;
             }
@@ -1972,7 +2016,8 @@ Engine::ProcessCommandLine(int argc, char **argv)
             {
                 if (!PAR_Rank())
                     cerr << "\"" << argv[i] << "\" option ignored due to missing argument." << endl;
-                debug1 << "\"" << argv[i] << "\" option ignored due to missing argument." << endl;
+                if (DebugStream::Level1())
+                    debug1 << "\"" << argv[i] << "\" option ignored due to missing argument." << endl;
             }
         }
         else if (strcmp(argv[i], "-ui-bcast-thresholds") == 0)
@@ -2110,8 +2155,9 @@ Engine::ProcessCommandLine(int argc, char **argv)
             }
             else
             {
-              debug1 << "Ignoring IceT request: currently incompatible with "
-                        "parallel HW acceleration.\n";
+              if (DebugStream::Level1())
+                  debug1 << "Ignoring IceT request: currently incompatible with "
+                            "parallel HW acceleration.\n";
             }
         }
         else if (strcmp(argv[i], "-no-icet") == 0)
@@ -2126,6 +2172,14 @@ Engine::ProcessCommandLine(int argc, char **argv)
                 avtCallback::SetAuxSessionKey(s);
                 i++;
             }
+        }
+        else if (strcmp(argv[i], "-launch-x") == 0)
+        {
+            this->launchXServers = true;
+        }
+        else if (strcmp(argv[i], "-no-launch-x") == 0)
+        {
+            this->launchXServers = false;
         }
     }
     avtCallback::SetSoftwareRendering(!haveHWAccel);
@@ -2251,8 +2305,9 @@ WriteByteStreamToSocket(NonBlockingRPC *rpc, Connection *vtkConnection,
     rpc->SendReply(totalSize);
     int writeData = visitTimer->StartTimer();
     int nStrings = do_str.GetNStrings();
-    debug5 << "sending " << totalSize << " bytes to the viewer " << nStrings
-           << " from strings." << endl;
+    if (DebugStream::Level5())
+        debug5 << "sending " << totalSize << " bytes to the viewer " << nStrings
+               << " from strings." << endl;
 
     const int buff_size = 4096;
     unsigned char buffer[buff_size];
@@ -2303,7 +2358,8 @@ WriteByteStreamToSocket(NonBlockingRPC *rpc, Connection *vtkConnection,
         }
     }
 
-    debug5 << "Number of actual direct writes = " << strings_written << endl;
+    if (DebugStream::Level5())
+        debug5 << "Number of actual direct writes = " << strings_written << endl;
 
     char info[124];
     SNPRINTF(info, 124, "Writing %d bytes to socket", totalSize);     
@@ -2334,6 +2390,12 @@ WriteByteStreamToSocket(NonBlockingRPC *rpc, Connection *vtkConnection,
 //    Hank Childs, Sat Apr 24 18:31:34 PDT 2010
 //    Fix problem-sized memory leak.
 //
+//    Mark C. Miller, Tue Feb  8 19:59:04 PST 2011
+//    Add logic to deal with possible memory over usage as per #587
+//
+//    Mark C. Miller, Wed Feb  9 09:42:57 PST 2011
+//    Handle possible overflow condition in memory usage computation. Added
+//    debug output. Protected the test with some additional checks.
 // ****************************************************************************
 
 static void
@@ -2391,6 +2453,43 @@ SwapAndMergeClonedWriterOutputs(avtDataObject_p dob,
             srcCnt = INT_MAX-1;
         else
             srcCnt = srcCnt + dstCnt;
+
+        //
+        // MANAGE POSSIBLE MEMORY OVER-USAGE
+        // ---------------------------------
+        //
+        // Its concievable that polygon count does not correlate well with memory
+        // usage such that polygon count could be well below threshold but
+        // memory usage, nonetheless, is going to drive us into a condition where
+        // we run into 'virtual' memory and thrash horribly or run out of memory
+        // entirely and crash. To avert this possibility, we also check for possible
+        // memory OVERusage and will kick into SR mode if we determine we are going
+        // to use too much memory. The trick is to guesstimate the amount of memory
+        // a 'scalableThreshold' number of triangles (polygons reall) should require.
+        // If we consider JUST TRIANGLES and assume that for each triangle, we
+        // represent the x, y and z coordinates of each vertex in double precision,
+        // then a 'scalableThreshold' number of triangles will require
+        // scalableThreshold * 3 (coords) * 3 (vertices) * 8 (bytes).
+        // Although we have here the length of the data-object-string equivalent of
+        // the datasets, that is ok, because the data-object-string equivalent is still
+        // a 'binary' representation of the data, as opposed to ASCII representation.
+        // Now, we don't really know if indeed after the dob->Merge() operation the
+        // resultant merged dataset will be of size srcLen + dstLen. In theory,
+        // I think it could be smaller. I don't think it could be larger. Regardless,
+        // our condition of possible OVERusage of memory involves testing
+        // srcLen+dstLen against our guesstimate of what it should take. For our
+        // default SR threshold of 2e+6 triangles, this equates to 144 Mbytes.
+        //
+        if (srcCnt < INT_MAX-1 && scalableThreshold > 0)
+        {
+            tmp = (double) srcLen + (double) dstLen;
+            if (tmp >= (double) scalableThreshold*72.0)
+            {
+                debug3 << "Triggering transition into SR due to memory usage of " 
+                       << tmp << " bytes." << endl;
+                srcCnt = INT_MAX-1;
+            }
+        }
     }
 
     //
@@ -2401,7 +2500,6 @@ SwapAndMergeClonedWriterOutputs(avtDataObject_p dob,
     // case where we send basically the data tree--labels and domain ids--without
     // the actual data).
     //
-
     if ((srcCnt < scalableThreshold) || sendDataAnyway)
     {
         dstStr = new char [dstLen];
@@ -2760,8 +2858,9 @@ Engine::WriteData(NonBlockingRPC *rpc, avtDataObjectWriter_p &writer,
             (currentTotalGlobalCellCount + currentCellCount 
                   > scalableThreshold))
         {
-            debug5 << "exceeded scalable threshold of " << scalableThreshold 
-                   << endl;
+            if (DebugStream::Level5())
+                debug5 << "exceeded scalable threshold of " << scalableThreshold 
+                       << endl;
             thresholdExceeded = true; 
         }
 
@@ -2783,9 +2882,12 @@ Engine::WriteData(NonBlockingRPC *rpc, avtDataObjectWriter_p &writer,
             {
                 if (!thresholdExceeded)
                 {
-                    debug5 << "Exceeded scalable threshold of " << scalableThreshold << endl;
-                    if (reducedCurrentCellCount == INT_MAX-1)
-                        debug5 << "This was due to 'oridinary' overflow in summing cell counts" << endl;
+                    if (DebugStream::Level5())
+                    {
+                        debug5 << "Exceeded scalable threshold of " << scalableThreshold << endl;
+                        if (reducedCurrentCellCount == INT_MAX-1)
+                            debug5 << "This was due to 'oridinary' overflow in summing cell counts" << endl;
+                    }
                 }
                 thresholdExceeded = true;
             }
@@ -2810,7 +2912,8 @@ Engine::WriteData(NonBlockingRPC *rpc, avtDataObjectWriter_p &writer,
             if (thresholdExceeded && !sendDataAnyway)
             {
                 // dummy a null data object message to send to viewer
-                debug2 << "Sending back null dataset message." << std::endl;
+                if (DebugStream::Level2())
+                    debug2 << "Sending back null dataset message.\n";
                 avtNullData_p nullData = new avtNullData(NULL,AVT_NULL_DATASET_MSG);
                 CopyTo(ui_dob, nullData);
             }
@@ -2836,7 +2939,8 @@ Engine::WriteData(NonBlockingRPC *rpc, avtDataObjectWriter_p &writer,
         }
         else
         {
-            debug1 << "Sending error: " << v.GetErrorMessage() << std::endl;
+            if (DebugStream::Level1())
+                debug1 << "Sending error: " << v.GetErrorMessage() << std::endl;
             rpc->SendError(v.GetErrorMessage());
         }
 
@@ -2877,8 +2981,9 @@ Engine::WriteData(NonBlockingRPC *rpc, avtDataObjectWriter_p &writer,
         }
         else
         {
-            debug5 << "not sending data to proc 0 because the data object "
-                   << "does not require parallel streams." << endl;
+            if (DebugStream::Level5())
+                debug5 << "not sending data to proc 0 because the data object "
+                       << "does not require parallel streams." << endl;
         }
     }
 
@@ -3243,8 +3348,11 @@ Engine::EngineInitializeProgressCallback(void *data, int nStages)
             rpc->SendStatus(0, 1, "Starting execution", nStages+1);
     }
     else
-        debug1 << "ERROR: EngineInitializeProgressCallback called "
-               << "with nStages == 0" << endl;
+    {
+        if (DebugStream::Level1())
+            debug1 << "ERROR: EngineInitializeProgressCallback called "
+                   << "with nStages == 0" << endl;
+    }
 }
 
 
@@ -3279,8 +3387,11 @@ Engine::EngineWarningCallback(void *data, const char *msg)
     NonBlockingRPC *rpc = (NonBlockingRPC*)data;
     if (!rpc)
     {
-        debug1 << "EngineWarningCallback called with no RPC set. Message was..." << endl;
-        debug1 << msg << endl;
+        if (DebugStream::Level1())
+        {
+            debug1 << "EngineWarningCallback called with no RPC set. Message was..." << endl;
+            debug1 << msg << endl;
+        }
     }
     else
     {
@@ -3707,12 +3818,25 @@ Engine::GetProcessAttributes()
 //    Set the callback HW/SW rendering, since code outside of the Engine will
 //    use that to query what kind of rendering to do.
 //
+//    Tom Fogal, Tue May 25 16:09:31 MDT 2010
+//    Namespace was renamed to avoid X conflict
+//    Detect connection errors.
+//
+//    Tom Fogal, Wed May 26 09:28:12 MDT 2010
+//    Tell the display whether or not to launch servers.
+//
+//    Tom Fogal, Wed May  4 15:57:22 MDT 2011
+//    Handle displays as a string, to support variations more easily.
+//
+//    Tom Fogal, Wed May 11 07:14:04 MDT 2011
+//    (Hopefully) fix Win32 compilation problem.
+//
 // ****************************************************************************
 
 void
 Engine::SetupDisplay()
 {
-    int display = -1;  // Display ID to create.
+    int display_num = -1;  // Display ID to create.
 #ifdef PARALLEL
     cog_set lnodes;
 
@@ -3734,33 +3858,51 @@ Engine::SetupDisplay()
             if(PAR_Rank() == rank &&
                static_cast<size_t>(rank-min) < this->nDisplays)
             {
-                display = rank-min;
-                this->renderingDisplay = Display::Create(Display::D_X);
+                display_num = rank-min;
+                this->renderingDisplay = VDisplay::Create(VDisplay::D_X);
             }
         }
     }
 #else
     if(this->nDisplays > 0)
     {
-        this->renderingDisplay = Display::Create(Display::D_X);
+        this->renderingDisplay = VDisplay::Create(VDisplay::D_X);
         avtCallback::SetSoftwareRendering(false);
-        display = 0;
+        display_num = 0;
     }
 #endif
+    std::string X_Display = RuntimeSetting::lookups("x-display");
+    std::string disp = display_format(X_Display, PAR_Rank(), display_num);
+#ifndef _WIN32
+    // Tell the display whether or not it should start X servers.  This must be
+    // done before ::Initialize!
+    XDisplay* xd = dynamic_cast<XDisplay*>(this->renderingDisplay);
+    if(xd != NULL)
+    {
+        xd->Launch(this->launchXServers);
+    }
+#endif
+
     if(this->renderingDisplay == NULL)
     {
-        this->renderingDisplay = Display::Create(Display::D_MESA);
+        this->renderingDisplay = VDisplay::Create(VDisplay::D_MESA);
         avtCallback::SetSoftwareRendering(true);
     }
-    if(this->renderingDisplay->Initialize(display,
-                               split(this->X_Args, PAR_Rank(), display)))
+    if(this->renderingDisplay->Initialize(disp,
+                               split(this->X_Args, PAR_Rank(), display_num)))
     {
-        this->renderingDisplay->Connect();
+        if(false == this->renderingDisplay->Connect())
+        {
+            debug1 << "Display initialization succeeded, but connection "
+                      "failed.  Try running with -debug_engine 5 and "
+                      "examining the log files.";
+        }
     }
     else
     {
-        debug1 << "Display initialization failed.  Rendering in this state "
-               << "has undefined results ..." << std::endl;
+        if (DebugStream::Level1())
+            debug1 << "Display initialization failed.  Rendering in this state "
+                   << "has undefined results ..." << std::endl;
     }
 }
 
@@ -3786,11 +3928,16 @@ ResetEngineTimeout(void *p, int secs)
     e->SetOverrideTimeout(secs*60);
     if (e->IsIdleTimeoutEnabled() == false)
     {
-        debug5 << "ResetEngineTimeout: Overriding timeout to " << secs << " seconds." << endl;
-    } else
+        if (DebugStream::Level5())
+            debug5 << "ResetEngineTimeout: Overriding timeout to " << secs << " seconds." << endl;
+    }
+    else
     {
-        debug5 << "ResetEngineTimeout: We shouldn't get here!  Callbacks shouldn't set the timeout during idle!" << endl;
-        debug5 << "ResetEngineTimeout: Overriding timeout to " << secs << " seconds." << endl;
+        if (DebugStream::Level5())
+        {
+            debug5 << "ResetEngineTimeout: We shouldn't get here!  Callbacks shouldn't set the timeout during idle!" << endl;
+            debug5 << "ResetEngineTimeout: Overriding timeout to " << secs << " seconds." << endl;
+        }
     }
     e->ResetTimeout(secs);
 }

@@ -43,9 +43,6 @@
 
 //#define STRAIGHTLINE_SKELETON 1
 
-//#include <Core/Geometry/Point.h>
-//#include <Core/Geometry/Vector.h>
-
 #include <avtVector.h>
 #include <DebugStream.h>
 
@@ -63,6 +60,14 @@ struct WindingPair {
   int ranking;
 };
 
+
+class FieldlineProperties;
+
+#include <avtPoincareIC.h>
+
+#ifndef POINCARE_FIELDLINE_PROPERTIES_H
+#define POINCARE_FIELDLINE_PROPERTIES_H
+
 class FieldlineProperties {
 
 public:
@@ -71,26 +76,34 @@ public:
   {
     type = FieldlineProperties::UNKNOWN_TYPE;
     analysisState = FieldlineProperties::UNKNOWN_STATE;
+
+    source = FieldlineProperties::UNKNOWN_TYPE;
     
+    iteration = 0;
+
+    safetyFactor = 0;
+
     toroidalWinding = 0;
     poloidalWinding = 0;
 
-    toroidalPeriod    = 0;
-    poloidalPeriod    = 0;
+    poloidalWinding2 = 0;
+
+    toroidalResonance = 0;
+    poloidalResonance = 0;
 
     windingGroupOffset = 0;
     islands = 0;
+    islandGroups = 0;
 
     nnodes  = 0;
     
-    confidence        = 0;
-    ridgelineVariance = 0;
-
     maxPunctures      = 0;
     nPuncturesNeeded  = 0;
   };
 
 enum FieldlineType { UNKNOWN_TYPE  = 0,
+
+                     ORIGINAL_SEED = 1,
 
                      PERIODIC = 10,
                      RATIONAL = 11,
@@ -108,7 +121,11 @@ enum FieldlineType { UNKNOWN_TYPE  = 0,
 enum AnalysisState { UNKNOWN_STATE = 0,
 
                      ADDING_POINTS = 10,
-                     NODE_COUNT_STABILITY_TEST = 11,
+                     RATIONAL_TEMPLATE_SEED = 11,
+                     RATIONAL_SURFACE_SEED = 12,
+
+                     O_POINT_SEED = 22,
+                     X_POINT_SEED = 23,
 
                      COMPLETED  = 30,
                      TERMINATED = 40,
@@ -117,27 +134,36 @@ enum AnalysisState { UNKNOWN_STATE = 0,
 
                      ADD          = 50,
                      ADD_O_POINTS = 51,
-                     ADD_X_POINTS = 52 };
+                     ADD_X_POINTS = 52,
+
+                     ADD_RATIONAL_SEED_POINT = 55 };
 
 public:
 
   FieldlineType type;
 
+  FieldlineType source;
+
   AnalysisState analysisState;
+
+  double safetyFactor;
+
+  unsigned int iteration;
 
   unsigned int toroidalWinding;
   unsigned int poloidalWinding;
+  unsigned int poloidalWindingP;
 
   unsigned int toroidalPeriod;
   unsigned int poloidalPeriod;
 
+  std::vector< std::pair< unsigned int, unsigned int > > windingPairs;
+
   unsigned int windingGroupOffset;
   unsigned int islands;
+  unsigned int islandGroups;
 
   float nnodes;
-
-  float confidence;
-  float ridgelineVariance;
 
   unsigned int maxPunctures;
   unsigned int nPuncturesNeeded;
@@ -148,6 +174,7 @@ public:
   std::vector< int > parentIds;
   std::vector< int > childIds;
 };
+#endif
 
 namespace FusionPSE {
 
@@ -166,16 +193,23 @@ public:
 
   void convexHull( vector< pair< Point, unsigned int > > &hullPts,
                    unsigned int &m,
-                   unsigned int toroidalWinding,
+                   unsigned int npts,
                    int dir );
 
   bool hullCheck( vector< Point > &points,
                   int &direction);
 
+  unsigned int isPrime( unsigned int a );
+
   unsigned int GCD( unsigned int a, unsigned int b );
 
   unsigned int GCD( vector< unsigned int > values,
+                    unsigned int &freq,
                     unsigned int minGCD = 1 );
+
+  unsigned int ResonanceCheck( vector< pair< unsigned int, double > > &stats,
+                              unsigned int baseResonance,
+                              unsigned int max_samples = 3 );
 
   Point circle(Point &pt1, Point &pt2, Point &pt3);
 
@@ -217,7 +251,9 @@ public:
                     unsigned int checkType );
 
 
-  void thresholdStats( vector< pair< unsigned int, double > >& stats );
+  void thresholdStats( vector< pair< unsigned int, double > >& stats,
+                       bool erase,
+                       unsigned int checkType );
 
   double
   calculateSumOfSquares( vector< Point >& poloidalWinding_points,
@@ -238,14 +274,50 @@ public:
                 bool &complete );
 
   void
+  getPunctures( vector< Point > &ptList,
+                Vector planeN,
+                vector< Point > &puncturePts );
+
+  void
+  getFieldlineBaseValues( vector< Point > &ptList,
+                          vector< Point > &poloidal_puncture_pts,
+                          vector< Point > &ridgeline_points,
+                          vector< double > &rotationalSums,
+                          vector< unsigned int > &poloidalWindingCounts,
+                          float &delta );
+
+  void
+  GetBaseWindingPairs( vector< unsigned int > &poloidalWindingCounts,
+                       vector< Point > &poloidal_puncture_pts,
+                       vector< WindingPair > &baseWindingPairs,
+                       double &windingPairConfidence,
+                       unsigned int &toroidalWindingMax,
+                       unsigned int &poloidalWindingMax,
+                       unsigned int &windingNumberMatchIndex );
+
+  void
+  GetPeriodWindingPairs( vector< WindingPair > &baseWindingPairs,
+                         vector< WindingPair > &periodWindingPairs,
+                         vector< pair< unsigned int, double > > &toroidalStats,
+                         vector< pair< unsigned int, double > > &poloidalStats );
+
+  void
   fieldlineProperties( vector< Point > &ptList,
-                       FieldlineProperties &fi,
+                       FieldlineProperties &properties,
                        unsigned int overrideToroidalWinding,
                        unsigned int overridePoloidalWinding,
                        unsigned int maxToroidalWinding,
                        double windingPairConfidence,
-                       double periodicityConsistency,
-                       bool findIslandCenters );
+                       bool detectIslandCenters );
+
+  void
+  fieldlineProperties2( vector< Point > &ptList,
+                        FieldlineProperties &fi );
+
+  void findIslandCenters( vector< Point > &puncturePts,
+                          unsigned int toroialWinding,
+                          unsigned int nnodes,
+                          vector< Point > &centers );
 
   unsigned int
   islandProperties( vector< Point > &points,
@@ -291,15 +363,38 @@ public:
                 unsigned int skip,
                 unsigned int island );
 
-  void
-  findIslandCenter( vector< Point > &points,
-                    unsigned int nnodes,
-                    unsigned int toroidalWinding,
-                    unsigned int poloidalWinding,
-                    vector< Point > &centers );
-
   bool verboseFlag;
 };
+
+
+class Otsu
+{
+  // Compute the q values in the equation
+  double Px( unsigned int init, unsigned int end, vector< unsigned int > &histo);
+
+  // Compute the mean values in the equation (mu)
+  double Mx( unsigned int init, unsigned int end, vector< unsigned int > &histo);
+
+  // Find the maximum element in a vector
+  unsigned int findMaxVet( vector< double > &vet, double &maxVet);    
+  // Compute the histogram
+  void getHistogram( vector< pair< unsigned int, double > >& stats,
+                     vector< unsigned int > &histo );
+public:
+  // find otsu threshold
+  void getOtsuThreshold2(vector< pair< unsigned int, double > >& stats,
+                         double &threshold, double &maxVet );
+
+
+  // find otsu threshold
+  void getOtsuThreshold3(vector< pair< unsigned int, double > >& stats,
+                         double &threshold0, double &threshold1,
+                         double &maxVet );
+};
+
+int chainHull_2D( vector< pair< Point, unsigned int > > &pts,
+                  vector< pair< Point, unsigned int > > &hullPts,
+                  int direction  );
 
 } // End namespace FusionPSE
 

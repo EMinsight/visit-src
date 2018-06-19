@@ -3302,6 +3302,12 @@ VisWindow::RecalculateRenderOrder(void)
 //    Hank Childs, Wed Feb 27 10:02:18 PST 2002
 //    Add support for timings.
 //
+//    Hank Childs, Fri Feb 11 12:46:01 PST 2011
+//    Don't measure time for every 50 renderings.  It just causes unmatched
+//    timings in the engine and viewer.  And we don't look at it.  And we
+//    get an instantaneous frame rate in the viewer and for each SR in the
+//    engine.
+//
 // ****************************************************************************
 
 void
@@ -3309,11 +3315,15 @@ VisWindow::StartRender(void)
 {
     static int timingIndex = -1;
     static int numFrames = 0;
-    if (timingIndex == -1)
+    bool   measureEvery50Renders = false;
+    if (measureEvery50Renders)
     {
-        timingIndex = visitTimer->StartTimer();
+        if (timingIndex == -1)
+        {
+            timingIndex = visitTimer->StartTimer();
+        }
+        numFrames++;
     }
-    numFrames++;
 
     std::vector< VisWinColleague * >::iterator it;
     for (it = colleagues.begin() ; it != colleagues.end() ; it++)
@@ -3321,13 +3331,16 @@ VisWindow::StartRender(void)
         (*it)->UpdateView();
     }
 
-    if (numFrames >= 50)
+    if (measureEvery50Renders)
     {
-        visitTimer->StopTimer(timingIndex,
-                              "Time elapsed over rendering of last 50 frames");
-        visitTimer->DumpTimings();
-        timingIndex = visitTimer->StartTimer();
-        numFrames = 0;
+        if (numFrames >= 50)
+        {
+            visitTimer->StopTimer(timingIndex,
+                                  "Time elapsed over rendering of last 50 frames");
+            visitTimer->DumpTimings();
+            timingIndex = visitTimer->StartTimer();
+            numFrames = 0;
+        }
     }
 }
 
@@ -3613,12 +3626,18 @@ VisWindow::SetShowCallback(VisCallback *cb, void *data)
 //   in order to force the update. This is needed when we are constructing
 //   the axes for the first time with default atts.
 //
+//   Hank Childs, Mon May 23 13:24:50 PDT 2011
+//   Tell the Axes3D colleague if the bounding box location is being overridden
+//
 // ****************************************************************************
 
 void
 VisWindow::SetAnnotationAtts(const AnnotationAttributes *atts, bool force)
 {
     bool changed = (annotationAtts != *atts);
+
+    axes3D->SetBBoxLocation(atts->GetAxes3D().GetSetBBoxLocation(),
+                            atts->GetAxes3D().GetBboxLocation());
 
     if (changed || force)
     {

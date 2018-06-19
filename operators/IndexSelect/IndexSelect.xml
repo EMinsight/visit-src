@@ -6,8 +6,14 @@
         TwoD
         ThreeD
       </Enum>
+      <Field name="maxDim" label="MaxDimension" type="enum" subtype="Dimension">
+        ThreeD
+      </Field>
       <Field name="dim" label="Dimension" type="enum" subtype="Dimension">
         TwoD
+      </Field>
+      <Field name="xAbsMax" label="X-absolute-Max" type="int">
+        -1
       </Field>
       <Field name="xMin" label="X-Min" type="int">
         0
@@ -21,6 +27,9 @@
       <Field name="xWrap" label="X-Wrap" type="bool">
         false
       </Field>
+      <Field name="yAbsMax" label="Y-absolute-Max" type="int">
+        -1
+      </Field>
       <Field name="yMin" label="Y-Min" type="int" enabler="dim:TwoD,ThreeD">
         0
       </Field>
@@ -32,6 +41,9 @@
       </Field>
       <Field name="yWrap" label="Y-Wrap" type="bool">
         false
+      </Field>
+      <Field name="zAbsMax" label="Z-absolute-Max" type="int">
+        -1
       </Field>
       <Field name="zMin" label="Z-Min" type="int" enabler="dim:ThreeD">
         0

@@ -96,15 +96,19 @@ public:
     void SelectSubsetName();
 
     // Property setting methods
+    void SetMaxDim(Dimension maxDim_);
     void SetDim(Dimension dim_);
+    void SetXAbsMax(int xAbsMax_);
     void SetXMin(int xMin_);
     void SetXMax(int xMax_);
     void SetXIncr(int xIncr_);
     void SetXWrap(bool xWrap_);
+    void SetYAbsMax(int yAbsMax_);
     void SetYMin(int yMin_);
     void SetYMax(int yMax_);
     void SetYIncr(int yIncr_);
     void SetYWrap(bool yWrap_);
+    void SetZAbsMax(int zAbsMax_);
     void SetZMin(int zMin_);
     void SetZMax(int zMax_);
     void SetZIncr(int zIncr_);
@@ -114,15 +118,19 @@ public:
     void SetSubsetName(const std::string &subsetName_);
 
     // Property getting methods
+    Dimension         GetMaxDim() const;
     Dimension         GetDim() const;
+    int               GetXAbsMax() const;
     int               GetXMin() const;
     int               GetXMax() const;
     int               GetXIncr() const;
     bool              GetXWrap() const;
+    int               GetYAbsMax() const;
     int               GetYMin() const;
     int               GetYMax() const;
     int               GetYIncr() const;
     bool              GetYWrap() const;
+    int               GetZAbsMax() const;
     int               GetZMin() const;
     int               GetZMax() const;
     int               GetZIncr() const;
@@ -155,15 +163,19 @@ public:
 
     // IDs that can be used to identify fields in case statements
     enum {
-        ID_dim = 0,
+        ID_maxDim = 0,
+        ID_dim,
+        ID_xAbsMax,
         ID_xMin,
         ID_xMax,
         ID_xIncr,
         ID_xWrap,
+        ID_yAbsMax,
         ID_yMin,
         ID_yMax,
         ID_yIncr,
         ID_yWrap,
+        ID_zAbsMax,
         ID_zMin,
         ID_zMax,
         ID_zIncr,
@@ -175,15 +187,19 @@ public:
     };
 
 private:
+    int         maxDim;
     int         dim;
+    int         xAbsMax;
     int         xMin;
     int         xMax;
     int         xIncr;
     bool        xWrap;
+    int         yAbsMax;
     int         yMin;
     int         yMax;
     int         yIncr;
     bool        yWrap;
+    int         zAbsMax;
     int         zMin;
     int         zMax;
     int         zIncr;
@@ -196,6 +212,6 @@ private:
     static const char *TypeMapFormatString;
     static const private_tmfs_t TmfsStruct;
 };
-#define INDEXSELECTATTRIBUTES_TMFS "iiiibiiibiiibbss"
+#define INDEXSELECTATTRIBUTES_TMFS "iiiiiibiiiibiiiibbss"
 
 #endif

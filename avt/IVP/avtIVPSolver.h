@@ -405,9 +405,12 @@ class avtIVPState
 //    Dave Pugmire, Tue Dec  1 11:50:18 EST 2009
 //    Switch from avtVec to avtVector.
 //
+//    Kathleen Bonnell, Wed May 11 16:16:34 PDT 2011
+//    Added IVP_API to class specification, for proper symbol export on Win32.
+//
 // ****************************************************************************
 
-class avtIVPSolver
+class IVP_API avtIVPSolver
 {
   public:
     enum Result
@@ -419,6 +422,9 @@ class avtIVPSolver
         STIFFNESS_DETECTED,
         UNSPECIFIED_ERROR,
     };
+                    avtIVPSolver();
+    virtual         ~avtIVPSolver() {};
+
     
     virtual void    Reset(const double& t_start, const avtVector& y_start) = 0;
 
@@ -446,7 +452,7 @@ class avtIVPSolver
     virtual avtIVPSolver* Clone() const = 0;
 
     bool convertToCartesian;
-    avtVector CylindricalToCartesian(const avtVector& pt) const;
+    bool convertToCylindrical;
 
 protected:
     virtual void    AcceptStateVisitor(avtIVPStateHelper& sv) = 0;

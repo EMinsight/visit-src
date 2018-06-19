@@ -63,9 +63,12 @@
 //    Use a debug stream instead of cerr.  Use SNPRINTF macro instead of
 //    calling the function directly.
 //
+//    Tom Fogal, Wed May  4 14:58:42 MDT 2011
+//    Rename to avoid an apparent naming conflict.
+//
 // ****************************************************************************
 std::string
-format(std::string s, size_t node, size_t display)
+display_format(std::string s, size_t node, size_t display)
 {
     std::string::size_type percent;
     if((percent = s.find('%')) != std::string::npos) {
@@ -88,7 +91,7 @@ format(std::string s, size_t node, size_t display)
     }
     // If they gave multiple %'s in the same string, recurse.
     if(s.find('%') != std::string::npos) {
-        return format(s, node, display);
+        return display_format(s, node, display);
     }
     return s;
 }
@@ -114,7 +117,7 @@ split(std::string str, size_t node, size_t display)
 {
     namespace SH = StringHelpers;
     std::vector<std::string> ret;
-    ret.push_back(format(SH::car(str, ' '), node, display));
+    ret.push_back(display_format(SH::car(str, ' '), node, display));
     if(str.find(' ') != std::string::npos) {
         SH::append(ret, split(SH::cdr(str, ' '), node, display));
     }
@@ -137,9 +140,12 @@ split(std::string str, size_t node, size_t display)
 //    Tom Fogal, Sat May 30 12:32:51 MDT 2009
 //    Add debug messages so we can figure out which display was created.
 //
+//    Tom Fogal, Tue May 25 16:09:02 MDT 2010
+//    Rename namespace to avoid X conflict.
+//
 // ****************************************************************************
 VisItDisplay *
-Display::Create(enum visitDisplayType vtype)
+VDisplay::Create(enum visitDisplayType vtype)
 {
     switch(vtype)
     {

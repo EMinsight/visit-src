@@ -1,6 +1,6 @@
 Target: xml2info
 Function: CaleCommonPluginInfo::SetupDatabase
-Declaration: virtual avtDatabase * CaleCommonPluginInfo::SetupDatabase(const char *const *list, int nList, int nBlock);
+Declaration: virtual avtDatabase *SetupDatabase(const char *const *list, int nList, int nBlock);
 Definition:
 // ****************************************************************************
 //  Method: CaleCommonPluginInfo::SetupDatabase

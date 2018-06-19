@@ -42,6 +42,7 @@
 
 #include <sstream>
 #include <avtNamedSelectionManager.h>
+#include <avtNamedSelectionExtension.h>
 
 #include <vtkCellData.h>
 #include <vtkDataArray.h>
@@ -108,12 +109,38 @@ avtNamedSelectionManager::GetInstance(void)
     return instance;
 }
 
+// ****************************************************************************
+// Method: avtNamedSelectionManager::MaximumSelectionSize
+//
+// Purpose: 
+//   Returns the upper limit on the size of selections we're allowed to create.
+//
+// Returns:    The upper limit on selections we're allowed to create.
+//
+// Programmer: Brad Whitlock
+// Creation:   Thu Jun 16 09:54:19 PDT 2011
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+int
+avtNamedSelectionManager::MaximumSelectionSize()
+{
+    return 50000000;
+}
 
 // ****************************************************************************
 //  Method: avtNamedSelectionManager::CreateNamedSelection
 //
 //  Purpose:
 //      Creates a named selection from a data object.
+//
+//  Arguments:
+//    dob      : The data object used to create the named selection.
+//    selProps : The named selection properties.
+//    ext      : The named selection extension object that helps set up the 
+//               pipeline and contract.
 //
 //  Programmer: Hank Childs
 //  Creation:   January 30, 2009
@@ -130,18 +157,31 @@ avtNamedSelectionManager::GetInstance(void)
 //    Automatically save out an internal named selection, for fault tolerance
 //    and for save/restore sessions.
 //
+//    Brad Whitlock, Mon Dec 13 15:59:51 PST 2010
+//    I added support for named selection "extensions" that add more stuff
+//    to the pipeline before we reexecute it. I also changed things so we pass
+//    in selection properties.
+//
+//    Brad Whitlock, Tue Jun 14 16:58:15 PST 2011
+//    I fixed a memory corruption problem that caused bad selections to be
+//    generated in parallel.
+//
 // ****************************************************************************
 
 void
 avtNamedSelectionManager::CreateNamedSelection(avtDataObject_p dob, 
-                                               const std::string &selName)
+    const SelectionProperties &selProps, avtNamedSelectionExtension *ext)
 {
     int   i;
+    const char *mName = "avtNamedSelectionManager::CreateNamedSelection: ";
 
     if (strcmp(dob->GetType(), "avtDataset") != 0)
     {
         EXCEPTION1(VisItException, "Named selections only work on data sets");
     }
+
+    // Save the selection properties.
+    AddSelectionProperties(selProps);
 
     avtContract_p c1 = dob->GetContractFromPreviousExecution();
     avtContract_p contract;
@@ -161,6 +201,7 @@ avtNamedSelectionManager::CreateNamedSelection(avtDataObject_p dob,
     // Let the input try to create the named selection ... some have special
     // logic, for example the parallel coordinates filter.
     //
+    const std::string &selName = selProps.GetName();
     avtNamedSelection *ns = dob->GetSource()->CreateNamedSelection(contract, 
                                                                    selName);
     if (ns != NULL)
@@ -174,19 +215,33 @@ avtNamedSelectionManager::CreateNamedSelection(avtDataObject_p dob,
         // save/restore session, etc.
         //  
         SaveNamedSelection(selName, true);
-
         return;
     }
 
-    if (c1->GetDataRequest()->NeedZoneNumbers() == false)
+    bool needZoneNumbers = c1->GetDataRequest()->NeedZoneNumbers() == false;
+    avtDataset_p ds;
+    if(ext != 0)
     {
-        debug1 << "Must re-execute pipeline to create named selection" << endl;
-        dob->Update(contract);
-        debug1 << "Done re-executing pipeline to create named selection" << endl;
+        // Perform additional setup using the extension.
+        avtDataObject_p newdob = ext->GetSelectedData(dob, contract, selProps);
+
+        debug5 << mName << "Must execute the pipeline to create the named selection" << endl;
+        newdob->Update(contract);
+        debug5 << mName << "Done executing the pipeline to create the named selection" << endl;
+
+        CopyTo(ds, newdob);
+    }
+    else
+    {
+        if (needZoneNumbers)
+        {
+            debug1 << mName << "Must re-execute pipeline to create named selection" << endl;
+            dob->Update(contract);
+            debug1 << mName << "Done re-executing pipeline to create named selection" << endl;
+        }
+        CopyTo(ds, dob);
     }
 
-    avtDataset_p ds;
-    CopyTo(ds, dob);
     avtDataTree_p tree = ds->GetDataTree();
     std::vector<int> doms;
     std::vector<int> zones;
@@ -201,27 +256,43 @@ avtNamedSelectionManager::CreateNamedSelection(avtDataObject_p dob,
                                             GetArray("avtOriginalCellNumbers");
         if (ocn == NULL)
         {
-            delete [] leaves;
-            EXCEPTION0(ImproperUseException);
+            // Write an error to the logs but don't fail out since we have
+            // a collective communication coming up.
+            debug5 << mName
+                   << "This dataset has no original cell numbers so it cannot "
+                      "contribute to the selection." << endl;
         }
-        unsigned int *ptr = (unsigned int *) ocn->GetVoidPointer(0);
-        if (ptr == NULL)
+        else
         {
-            delete [] leaves;
-            EXCEPTION0(ImproperUseException);
-        }
-
-        int ncells = leaves[i]->GetNumberOfCells();
-        int curSize = doms.size();
-        doms.resize(curSize+ncells);
-        zones.resize(curSize+ncells);
-        for (int j = 0 ; j < ncells ; j++)
-        {
-            doms[curSize+j]  = ptr[2*j];
-            zones[curSize+j] = ptr[2*j+1];
+            unsigned int *ptr = (unsigned int *) ocn->GetVoidPointer(0);
+            if (ptr == NULL)
+            {
+                // Write an error to the logs but don't fail out since we have
+                // a collective communication coming up.
+                debug5 << mName
+                       << "This dataset has no original cell numbers so it "
+                          "cannot contribute to the selection." << endl;
+            }
+            else
+            {
+                // We have original cell numbers so add them to the selection.
+                int ncells = leaves[i]->GetNumberOfCells();
+                int curSize = doms.size();
+                doms.resize(curSize+ncells);
+                zones.resize(curSize+ncells);
+                for (int j = 0 ; j < ncells ; j++)
+                {
+                    doms[curSize+j]  = ptr[2*j];
+                    zones[curSize+j] = ptr[2*j+1];
+                }
+            }
         }
     }
     delete [] leaves;
+
+    // Let the extension free its resources. (We could just do this later...)
+    if(ext != 0)
+        ext->FreeUpResources();
 
     // Note the poor use of MPI below, coded for expediency, as I believe all
     // of the named selections will be small.
@@ -234,25 +305,27 @@ avtNamedSelectionManager::CreateNamedSelection(avtDataObject_p dob,
     int numTotal = 0;
     for (i = 0 ; i < PAR_Size() ; i++)
         numTotal += numPerProc[i];
-    if (numTotal > 1000000)
+    if (numTotal > MaximumSelectionSize())
     {
         EXCEPTION1(VisItException, "You have selected too many zones in your "
                    "named selection.  Disallowing ... no selection created");
     }
+
     int myStart = 0;
     for (i = 0 ; i < PAR_Rank()-1 ; i++)
         myStart += numPerProc[i];
-
     int *selForDomsIn = new int[numTotal];
-    int *selForDoms   = new int[numTotal];
+    memset(selForDomsIn, 0, sizeof(int) * numTotal);
     for (i = 0 ; i < doms.size() ; i++)
         selForDomsIn[myStart+i] = doms[i];
+    int *selForDoms   = new int[numTotal];
     SumIntArrayAcrossAllProcessors(selForDomsIn, selForDoms, numTotal);
 
     int *selForZonesIn = new int[numTotal];
-    int *selForZones   = new int[numTotal];
+    memset(selForZonesIn, 0, sizeof(int) * numTotal);
     for (i = 0 ; i < zones.size() ; i++)
         selForZonesIn[myStart+i] = zones[i];
+    int *selForZones   = new int[numTotal];
     SumIntArrayAcrossAllProcessors(selForZonesIn, selForZones, numTotal);
 
     //
@@ -518,4 +591,73 @@ avtNamedSelectionManager::CreateQualifiedSelectionName(const std::string &name,
     return qualName;
 }
 
+// ****************************************************************************
+// Method: avtNamedSelectionManager::GetSelectionProperties
+//
+// Purpose: 
+//   Gets the selection properties based on the selection name.
+//
+// Arguments:
+//   selName : The name of the selection for which to get selection properties.
+//
+// Returns:    A pointer to the selection properties or NULL if not found.
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Tue Dec 14 14:19:56 PST 2010
+//
+// Modifications:
+//   
+// ****************************************************************************
 
+const SelectionProperties *
+avtNamedSelectionManager::GetSelectionProperties(const std::string &selName) const
+{
+    for(size_t i = 0; i < properties.size(); ++i)
+    {
+        if(selName == properties[i].GetName())
+            return &properties[i];
+    }
+    return NULL;
+}
+
+// ****************************************************************************
+// Method: avtNamedSelectionManager::AddSelectionProperties
+//
+// Purpose: 
+//   Adds the new selection properties to the list of selection properties, 
+//   overwriting properties with the same name, if present.
+//
+// Arguments:
+//   srcp : The new selection properties.
+//
+// Returns:    
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Tue Dec 14 14:21:14 PST 2010
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+avtNamedSelectionManager::AddSelectionProperties(const SelectionProperties &srcp)
+{
+    SelectionProperties *p = NULL;
+    for(size_t i = 0; i < properties.size(); ++i)
+    {
+        if(srcp.GetName() == properties[i].GetName())
+        {
+            p = &properties[i];
+            break;
+        }
+    }
+
+    if(p != NULL)
+        *p = srcp;
+    else
+        properties.push_back(srcp);
+}

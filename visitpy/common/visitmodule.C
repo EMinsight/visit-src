@@ -78,6 +78,7 @@
 #include <StringHelpers.h>
 #include <Logging.h>
 #include <SingleAttributeConfigManager.h>
+#include <InstallationFunctions.h>
 
 //
 // State object include files.
@@ -112,6 +113,8 @@
 #include <QueryAttributes.h>
 #include <PrinterAttributes.h>
 #include <RenderingAttributes.h>
+#include <SelectionProperties.h>
+#include <SelectionList.h>
 #include <StatusAttributes.h>
 #include <SyncAttributes.h>
 #include <QueryOverTimeAttributes.h>
@@ -165,6 +168,9 @@
 #include <PyProcessAttributes.h>
 #include <PyRenderingAttributes.h>
 #include <PySaveWindowAttributes.h>
+#include <PySelectionProperties.h>
+#include <PySelectionSummary.h>
+#include <PySelectionList.h>
 #include <PySILRestrictionBase.h>
 #include <PySILRestriction.h>
 #include <PyText2DObject.h>
@@ -211,7 +217,11 @@
 #define NO_ARGUMENTS() if(!PyArg_ParseTuple(args, "")) return NULL;
 
 #if defined(_WIN32)
-# define VISITMODULE_API   /* not affected */
+# if defined(visitmodule_EXPORTS)
+#  define VISITMODULE_API __declspec(dllexport)
+# else
+#  define VISITMODULE_API 
+# endif
 #else
 # if __GNUC__ >= 4
 #   define VISITMODULE_API __attribute__ ((visibility("default")))
@@ -4595,7 +4605,7 @@ visit_RedrawWindow(PyObject *self, PyObject *args)
 }
 
 // ****************************************************************************
-// Function: visit_MoveAndResizeWindow
+// Function: visit_ResizeWindow
 //
 // Purpose:
 //   Moves a window.
@@ -7390,6 +7400,45 @@ visit_SetPlotDescription(PyObject *self, PyObject *args)
 
     MUTEX_LOCK();
         GetViewerMethods()->SetPlotDescription(index, description);
+    MUTEX_UNLOCK();
+
+    // Return the success value.
+    return IntReturnValue(Synchronize());
+}
+
+// ****************************************************************************
+// Method: visit_SetPlotFollowsTime
+//
+// Purpose:
+//   Sets the followsTime flag on the active plots.
+//
+// Programmer: Brad Whitlock
+// Creation:   Wed Dec  8 16:02:51 PST 2010
+//
+// Modifications:
+//   Brad Whitlock, Tue Mar 29 11:12:11 PDT 2011
+//   We can pass a bool to SetPlotFollowsTime now.
+//
+// ****************************************************************************
+
+STATIC PyObject *
+visit_SetPlotFollowsTime(PyObject *self, PyObject *args)
+{
+    ENSURE_VIEWER_EXISTS();
+
+    int ifollowsTime = 1;
+    if (!PyArg_ParseTuple(args, "i", &ifollowsTime))
+    {
+        // We're just going to toggle the values.
+        NO_ARGUMENTS();
+        PyErr_Clear();
+    }
+    
+    MUTEX_LOCK();
+
+    // Set the follows time value for the active plots.
+    GetViewerMethods()->SetPlotFollowsTime(ifollowsTime > 0);
+
     MUTEX_UNLOCK();
 
     // Return the success value.
@@ -10558,6 +10607,9 @@ visit_WriteConfigFile(PyObject *self, PyObject *args)
 //   Dave Pugmire, Tue Nov  9 16:11:06 EST 2010
 //   Added streamline info query.
 //
+//   Kathleen Bonnell, Wed Mar  2 17:37:47 PST 2011
+//   Remove test for queryName == 'Pick'.
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -10703,8 +10755,6 @@ visit_Query(PyObject *self, PyObject *args)
 
     // Check for global flag.
     std::string qname(queryName);
-    if (qname == "Pick")
-        qname = "ZonePick";
 
     bool doGlobal = false;
 #if defined(_WIN32)
@@ -11106,6 +11156,9 @@ visit_SetQueryFloatFormat(PyObject *self, PyObject *args)
 //
 //   Brad Whitlock, Tue Jan 10 14:04:35 PST 2006
 //   Changed logging.
+//  
+//   Kathleen Bonnell, Wed Mar  2 17:37:47 PST 2011
+//   Remove test for queryName == 'Pick'.
 //
 // ****************************************************************************
 
@@ -11147,9 +11200,6 @@ visit_QueryOverTime(PyObject *self, PyObject *args)
     }
 
     MUTEX_LOCK();
-        if (queryName == "Pick")
-            queryName = "ZonePick";
-
         GetViewerMethods()->DatabaseQuery(queryName, vars, true, arg1, arg2);
 
         char tmp[1024];
@@ -11197,6 +11247,9 @@ visit_QueryOverTime(PyObject *self, PyObject *args)
 //   Kathleen Bonnell, Thu Dec  9 10:17:24 PST 2010
 //   Renamed to ZonePick, as that is its actual functionality.
 //
+//   Kathleen Bonnell, Thu Mar  3 09:30:46 PST 2011
+//   Separate logging based on pick args.
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -11236,14 +11289,23 @@ visit_ZonePick(PyObject *self, PyObject *args)
 
     MUTEX_LOCK();
         if (!wp)
+        {
             GetViewerMethods()->ZonePick(x, y, vars);
+            char tmp[1024];
+            SNPRINTF(tmp, 1024, "ZonePick(%d, %d, %s)\n", x, y,
+                     StringVectorToTupleString(vars).c_str());
+            LogFile_Write(tmp);
+        }
         else
-            GetViewerMethods()->ZonePick(pt,  vars);
+        {
+            GetViewerMethods()->ZonePick(pt, vars);
+            char tmp[1024];
+            SNPRINTF(tmp, 1024, "ZonePick((%g, %g, %g), %s)\n",
+                     pt[0], pt[1], pt[2], 
+                     StringVectorToTupleString(vars).c_str());
+            LogFile_Write(tmp);
+        }
 
-        char tmp[1024];
-        SNPRINTF(tmp, 1024, "Pick(%d, %d, %s)\n", x, y,
-                 StringVectorToTupleString(vars).c_str());
-        LogFile_Write(tmp);
     MUTEX_UNLOCK();
 
     // Return the success value.
@@ -11274,6 +11336,9 @@ visit_ZonePick(PyObject *self, PyObject *args)
 //
 //   Brad Whitlock, Tue Jan 10 14:07:43 PST 2006
 //   Changed logging.
+//
+//   Kathleen Bonnell, Thu Mar  3 09:30:46 PST 2011
+//   Separate logging based on pick args.
 //
 // ****************************************************************************
 
@@ -11313,14 +11378,21 @@ visit_NodePick(PyObject *self, PyObject *args)
 
     MUTEX_LOCK();
         if (!wp)
-            GetViewerMethods()->NodePick(x, y, vars);
+        {
+           GetViewerMethods()->NodePick(x, y, vars);
+           char tmp[1024];
+           SNPRINTF(tmp, 1024, "NodePick(%d, %d, %s)\n", x, y,
+                    StringVectorToTupleString(vars).c_str());
+           LogFile_Write(tmp);
+        }
         else
-            GetViewerMethods()->NodePick(pt, vars);
-
-        char tmp[1024];
-        SNPRINTF(tmp, 1024, "Pick(%d, %d, %s)\n", x, y,
-                 StringVectorToTupleString(vars).c_str());
-        LogFile_Write(tmp);
+        {
+           GetViewerMethods()->NodePick(pt, vars);
+           char tmp[1024];
+           SNPRINTF(tmp, 1024, "NodePick((%g, %g, %g) %s)\n", pt[0], pt[1], 
+                    pt[2], StringVectorToTupleString(vars).c_str());
+           LogFile_Write(tmp);
+        }
     MUTEX_UNLOCK();
 
     // Return the success value.
@@ -11968,6 +12040,9 @@ visit_GetGlobalLineoutAttributes(PyObject *self, PyObject *args)
 //   Kathleen Bonnell, Thu Dec 16 17:31:10 PST 2004
 //   Added bool arg, indicating of node/zone is global or not.
 //
+//   Kathleen Bonnell, Tue Mar  1 18:32:50 PST 2011
+//   Send default value (-1) for timeCurvePlotType.
+// 
 // ****************************************************************************
 
 STATIC PyObject *
@@ -11977,7 +12052,7 @@ visit_DomainPick(const char *type, int el, int dom, stringVector vars,
     double pt[3] = {0., 0., 0};
 
     MUTEX_LOCK();
-       GetViewerMethods()->PointQuery(type, pt, vars, false, el, dom, doGlobal);
+       GetViewerMethods()->PointQuery(type, pt, vars, false, -1, el, dom, doGlobal);
     MUTEX_UNLOCK();
 
     // Return the success value.
@@ -12674,6 +12749,9 @@ visit_CreateAnnotationObject(PyObject *self, PyObject *args)
 //   Brad Whitlock, Thu Mar 22 03:24:48 PDT 2007
 //   Rewrote for new annotation object scheme.
 //
+//   Cyrus Harrison, Mon May  9 10:30:37 PDT 2011
+//   Remove fetch by index case (only support access by name - Issue #537).
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -12683,14 +12761,13 @@ visit_GetAnnotationObject(PyObject *self, PyObject *args)
     ENSURE_VIEWER_EXISTS();
 
     bool useIndex = true;
-    int annotIndex;
     char *annotName = NULL;
-    if (!PyArg_ParseTuple(args, "i", &annotIndex))
+
+    if(!PyArg_ParseTuple(args, "s", &annotName))
     {
-        if(!PyArg_ParseTuple(args, "s", &annotName))
-            return NULL;
-        PyErr_Clear();
-        useIndex = false;
+        const char *errMsg = "GetAnnotationObject() takes a single string argument.";
+        VisItErrorFunc(errMsg);
+        return NULL;
     }
 
     // Make sure the annotation object list is up to date.
@@ -12700,95 +12777,58 @@ visit_GetAnnotationObject(PyObject *self, PyObject *args)
 
     PyObject *retval = NULL;
 
-    if(useIndex)
+    debug1 << mName << "Look in the map for an object called "
+           << annotName << endl;
+    std::map<std::string, AnnotationObjectRef>::iterator pos =
+        localObjectMap.find(annotName);
+    if(pos != localObjectMap.end())
     {
-        if(annotIndex >= 0 &&
-           annotIndex < GetViewerState()->GetAnnotationObjectList()->GetNumAnnotations())
-        {
-            debug1 << mName << "Look in the map for an object that has index equal to "
-                   << annotIndex << endl;
-            for(std::map<std::string, AnnotationObjectRef>::iterator pos = localObjectMap.begin();
-                pos != localObjectMap.end(); ++pos)
-            {
-                if(pos->second.index == annotIndex)
-                {
-                    debug1 << mName << "Found object called "
-                           << pos->second.object->GetObjectName()
-                           << " with an index of " << annotIndex
-                           << endl;
+        AnnotationObject *annot = pos->second.object;
+        retval = CreateAnnotationWrapper(annot);
 
-                    AnnotationObject *annot = pos->second.object;
-                    retval = CreateAnnotationWrapper(annot);
-    
-                    // Increase the object's reference count.
-                    if(retval != 0)
-                        ++pos->second.refCount;
-                    break;
-                }
-            }
-        }
-        else
-        {
-            const char *errMsg = "An invalid annotation object index was given!";
-            debug1 << mName << errMsg << endl;
-            VisItErrorFunc(errMsg);
-        }
+        // Increase the object's reference count.
+        if(retval != 0)
+            ++pos->second.refCount;
     }
     else
     {
-        debug1 << mName << "Look in the map for an object called "
-               << annotName << endl;
-        std::map<std::string, AnnotationObjectRef>::iterator pos =
-            localObjectMap.find(annotName);
-        if(pos != localObjectMap.end())
+        // The object was not in the map but see if we can add it.
+        int index = GetViewerState()->GetAnnotationObjectList()->
+            IndexForName(annotName);
+        if(index != -1)
         {
-            AnnotationObject *annot = pos->second.object;
-            retval = CreateAnnotationWrapper(annot);
-    
-            // Increase the object's reference count.
+            AnnotationObject &newObject = GetViewerState()->
+                GetAnnotationObjectList()->GetAnnotation(index);
+
+            //
+            // Create a copy of the new annotation object that we'll keep in the
+            // module's own annotation object list.
+            //
+            AnnotationObject *localCopy = new AnnotationObject(newObject);
+
+            retval = CreateAnnotationWrapper(localCopy);
+
             if(retval != 0)
-                ++pos->second.refCount;
-        }
-        else
-        {
-            // The object was not in the map but see if we can add it.
-            int index = GetViewerState()->GetAnnotationObjectList()->
-                IndexForName(annotName);
-            if(index != -1)
             {
-                AnnotationObject &newObject = GetViewerState()->
-                    GetAnnotationObjectList()->GetAnnotation(index);
+                // Cache references based on the object name.
+                AnnotationObjectRef ref;
+                ref.object = localCopy;
+                ref.refCount = 1;
+                ref.index = localObjectMap.size();
 
-                //
-                // Create a copy of the new annotation object that we'll keep in the
-                // module's own annotation object list.
-                //
-                AnnotationObject *localCopy = new AnnotationObject(newObject);
-
-                retval = CreateAnnotationWrapper(localCopy);
-
-                if(retval != 0)
-                {
-                    // Cache references based on the object name.
-                    AnnotationObjectRef ref;
-                    ref.object = localCopy;
-                    ref.refCount = 1;
-                    ref.index = localObjectMap.size();
-         
-                    localObjectMap[newObject.GetObjectName()] = ref;
-                }
-                else
-                {
-                    delete localCopy;
-                    debug1 << mName << "CreateAnnotationWrapper returned 0!" << endl;
-                }
+                localObjectMap[newObject.GetObjectName()] = ref;
             }
             else
             {
-                char msg[400];
-                SNPRINTF(msg, 400, "An unrecognized object name \"%s\" was requested.", annotName);
-                VisItErrorFunc(msg);
+                delete localCopy;
+                debug1 << mName << "CreateAnnotationWrapper returned 0!" << endl;
             }
+        }
+        else
+        {
+            char msg[400];
+            SNPRINTF(msg, 400, "An unrecognized object name \"%s\" was requested.", annotName);
+            VisItErrorFunc(msg);
         }
     }
 
@@ -13047,7 +13087,7 @@ visit_ApplyNamedSelection(PyObject *self, PyObject *args)
 {
     ENSURE_VIEWER_EXISTS();
 
-    char *selName;
+    char *selName = NULL;
     if (!PyArg_ParseTuple(args, "s", &selName))
        return NULL;
 
@@ -13071,6 +13111,8 @@ visit_ApplyNamedSelection(PyObject *self, PyObject *args)
 // Creation:   January 28, 2009
 //
 // Modifications:
+//   Brad Whitlock, Tue Dec 14 16:36:13 PST 2010
+//   Allow a SelectionProperties object to be passed too.
 //
 // ****************************************************************************
 
@@ -13079,14 +13121,38 @@ visit_CreateNamedSelection(PyObject *self, PyObject *args)
 {
     ENSURE_VIEWER_EXISTS();
 
-    char *selName;
-    if (!PyArg_ParseTuple(args, "s", &selName))
-       return NULL;
+    PyObject *props = NULL;
+    char *selName = NULL;
+    if(!PyArg_ParseTuple(args, "sO", &selName, &props))
+    {
+        if (!PyArg_ParseTuple(args, "s", &selName))
+            return NULL;
+        PyErr_Clear();
+    }
 
-    // Activate the database.
-    MUTEX_LOCK();
-        GetViewerMethods()->CreateNamedSelection(selName);
-    MUTEX_UNLOCK();
+    if(props != NULL)
+    {
+        if(PySelectionProperties_Check(props))
+        {
+            // We have a selection properties object. Add it to the selection
+            // list and send it to the viewer.
+            const SelectionProperties *p = PySelectionProperties_FromPyObject(props);
+
+            // Create the named selection.
+            MUTEX_LOCK();   
+                GetViewerMethods()->CreateNamedSelection(p->GetName(), *p);
+            MUTEX_UNLOCK();
+        }
+        else
+            return NULL;
+    }
+    else
+    {
+        // Create the named selection.
+        MUTEX_LOCK();        
+            GetViewerMethods()->CreateNamedSelection(selName);
+        MUTEX_UNLOCK();
+    }
 
     // Return the success value.
     return IntReturnValue(Synchronize());
@@ -13110,7 +13176,7 @@ visit_DeleteNamedSelection(PyObject *self, PyObject *args)
 {
     ENSURE_VIEWER_EXISTS();
 
-    char *selName;
+    char *selName = NULL;
     if (!PyArg_ParseTuple(args, "s", &selName))
        return NULL;
 
@@ -13133,7 +13199,9 @@ visit_DeleteNamedSelection(PyObject *self, PyObject *args)
 // Creation:   Fri Aug 13 14:39:21 PDT 2010
 //
 // Modifications:
-//   
+//   Brad Whitlock, Tue Dec 14 16:36:13 PST 2010
+//   Allow a SelectionProperties object to be passed too.
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -13141,14 +13209,38 @@ visit_UpdateNamedSelection(PyObject *self, PyObject *args)
 {
     ENSURE_VIEWER_EXISTS();
 
-    char *selName;
-    if (!PyArg_ParseTuple(args, "s", &selName))
-       return NULL;
+    PyObject *props = NULL;
+    char *selName = NULL;
+    if(!PyArg_ParseTuple(args, "sO", &selName, &props))
+    {
+        if (!PyArg_ParseTuple(args, "s", &selName))
+            return NULL;
+        PyErr_Clear();
+    }
 
-    // Activate the database.
-    MUTEX_LOCK();
-        GetViewerMethods()->UpdateNamedSelection(selName);
-    MUTEX_UNLOCK();
+    if(props != NULL)
+    {
+        if(PySelectionProperties_Check(props))
+        {
+            // We have a selection properties object. Add it to the selection
+            // list and send it to the viewer.
+            const SelectionProperties *p = PySelectionProperties_FromPyObject(props);
+
+            // Create the named selection.
+            MUTEX_LOCK();
+                GetViewerMethods()->UpdateNamedSelection(selName, *p);
+            MUTEX_UNLOCK();
+        }
+        else
+            return NULL;
+    }
+    else
+    {
+        // Create the named selection.
+        MUTEX_LOCK();        
+            GetViewerMethods()->UpdateNamedSelection(selName);
+        MUTEX_UNLOCK();
+    }
 
     // Return the success value.
     return IntReturnValue(Synchronize());
@@ -13310,9 +13402,144 @@ visit_SetNamedSelectionAutoApply(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "i", &apply))
        return NULL;
 
-    // Activate the database.
+    // Set the named selection auto apply mode.
     MUTEX_LOCK();
         GetViewerMethods()->SetNamedSelectionAutoApply(apply != 0);
+    MUTEX_UNLOCK();
+
+    // Return the success value.
+    return IntReturnValue(Synchronize());
+}
+
+// ****************************************************************************
+// Method: visit_GetSelection
+//
+// Purpose: 
+//   Return the selection with the right name.
+//
+// Programmer: Brad Whitlock
+// Creation:   Thu Jun  2 15:42:46 PDT 2011
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+STATIC PyObject *
+visit_GetSelection(PyObject *self, PyObject *args)
+{
+    ENSURE_VIEWER_EXISTS();
+
+    char *selName = 0;
+    if (!PyArg_ParseTuple(args, "s", &selName))
+        return NULL;
+
+    // Try and stash the selection properties in the new object.
+    PyObject *ret = PySelectionProperties_New();
+
+    MUTEX_LOCK();
+    int index = GetViewerState()->GetSelectionList()->GetSelection(selName);
+    if(index >= 0)
+    {
+        SelectionProperties *props = PySelectionProperties_FromPyObject(ret);
+        *props = GetViewerState()->GetSelectionList()->GetSelections(index);
+    }
+    MUTEX_UNLOCK();
+
+    return ret;
+}
+
+// ****************************************************************************
+// Method: visit_GetSelectionSummary
+//
+// Purpose: 
+//   Return the selection with the right name.
+//
+// Programmer: Brad Whitlock
+// Creation:   Thu Jun  2 15:42:46 PDT 2011
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+STATIC PyObject *
+visit_GetSelectionSummary(PyObject *self, PyObject *args)
+{
+    ENSURE_VIEWER_EXISTS();
+
+    char *selName = 0;
+    if (!PyArg_ParseTuple(args, "s", &selName))
+        return NULL;
+
+    // Try and stash the selection summary in the new object.
+    PyObject *ret = PySelectionSummary_New();
+
+    MUTEX_LOCK();
+    int index = GetViewerState()->GetSelectionList()->GetSelectionSummary(selName);
+    if(index >= 0)
+    {
+        SelectionSummary *sum = PySelectionSummary_FromPyObject(ret);
+        *sum = GetViewerState()->GetSelectionList()->GetSelectionSummary(index);
+    }
+    MUTEX_UNLOCK();
+
+    return ret;
+}
+
+// ****************************************************************************
+// Method: visit_GetSelectionList
+//
+// Purpose: 
+//   Return the current selection list.
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri Dec 17 11:18:58 PST 2010
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+STATIC PyObject *
+visit_GetSelectionList(PyObject *self, PyObject *args)
+{
+    ENSURE_VIEWER_EXISTS();
+
+    PyObject *ret = 0;
+    MUTEX_LOCK();
+        ret = PySelectionList_New();
+        // Copy the selection list into the new object's SelectionList object.
+        *PySelectionList_FromPyObject(ret) =
+            *GetViewerState()->GetSelectionList();
+
+    MUTEX_UNLOCK();
+
+    return ret;
+}
+
+// ****************************************************************************
+// Function: visit_InitializeNamedSelectionVariables
+//
+// Purpose: 
+//   Tells the viewer to set the named selection auto apply mode.
+//
+// Programmer: Brad Whitlock
+// Creation:   Mon May  2 14:58:48 PDT 2011
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+STATIC PyObject *
+visit_InitializeNamedSelectionVariables(PyObject *self, PyObject *args)
+{
+    ENSURE_VIEWER_EXISTS();
+
+    char *selName = 0;
+    if (!PyArg_ParseTuple(args, "s", &selName))
+       return NULL;
+
+    // Tell the named selection to update itself based on the plot's variables.
+    MUTEX_LOCK();
+        GetViewerMethods()->InitializeNamedSelectionVariables(selName);
     MUTEX_UNLOCK();
 
     // Return the success value.
@@ -13683,7 +13910,7 @@ visit_ExecuteMacro(PyObject *self, PyObject *args)
 }
 
 // ****************************************************************************
-// Function: visit_ClearMacro
+// Function: visit_ClearMacros
 //
 // Purpose:
 //   Gives a function a name that can be called from the VisIt GUI.
@@ -14209,17 +14436,17 @@ ExecuteClientMethod(ClientMethod *method, bool onNewThread)
         {
             // If onNewThread is true then we got into this method on the 2nd
             // thread, which means that xfer's update will be set to false. That
-            // means that calling Notify on the client information would not make
-            // xfer send it to the viewer. To combat this problem, we set xfer's
-            // update to true temporarily so we can send the object to the viewer.
-            // We only do it on the 2nd thread because if this method is called
-            // from the first thread, we did not arrive here from xfer and
-            // turning off its updates messes up Synchronize.
+            // means that calling Notify on the client information would not 
+            // make xfer send it to the viewer. To combat this problem, we set 
+            // xfer's update to true temporarily so we can send the object to 
+            // the viewer.  We only do it on the 2nd thread because if this 
+            // method is called from the first thread, we did not arrive here 
+            // from xfer and turning off its updates messes up Synchronize.
             if(onNewThread)
                GetViewerProxy()->SetXferUpdate(true);
 
-            // We don't want to get here re-entrantly so disable the client method
-            // observer temporarily.
+            // We don't want to get here re-entrantly so disable the client 
+            // method observer temporarily.
             clientMethodObserver->SetUpdate(false);
 
             stringVector args;
@@ -14274,8 +14501,9 @@ ExecuteClientMethod(ClientMethod *method, bool onNewThread)
                 {
                     delete m;
                     delete [] cbData;
-                    fprintf(stderr, "VisIt: Error - Could not create work thread to "
-                            "execute %s client method.\n", m->GetMethodName().c_str());
+                    fprintf(stderr, "VisIt: Error - Could not create work "
+                            "thread to execute %s client method.\n", 
+                            m->GetMethodName().c_str());
                 }
 #else
                 // Create the thread using PThreads.
@@ -14284,8 +14512,9 @@ ExecuteClientMethod(ClientMethod *method, bool onNewThread)
                 {
                     delete m;
                     delete [] cbData;
-                    fprintf(stderr, "VisIt: Error - Could not create work thread to "
-                            "execute %s client method.\n", m->GetMethodName().c_str());
+                    fprintf(stderr, "VisIt: Error - Could not create work "
+                            "thread to execute %s client method.\n", 
+                            m->GetMethodName().c_str());
                 }
 #endif
 #endif
@@ -14658,6 +14887,15 @@ AddMethod(const char *methodName,
 //   Brad Whitlock, Fri Aug 27 10:37:20 PDT 2010
 //   I added RenamePickLabel.
 //
+//   Brad Whitlock, Wed Dec  8 16:04:37 PST 2010
+//   I exposed SetPlotFollowsTime.
+//
+//   Brad Whitlock, Fri Dec 17 11:19:57 PST 2010
+//   I added GetSelectionList.
+//
+//   Brad Whitlock, Mon Jun 13 15:54:38 PDT 2011
+//   I added doc strings for a bunch of functions that did not have them.
+//
 // ****************************************************************************
 
 static void
@@ -14770,7 +15008,7 @@ AddDefaultMethods()
     AddMethod("EnableTool", visit_EnableTool, visit_EnableTool_doc);
     AddMethod("ExportDatabase", visit_ExportDatabase, visit_ExportDatabase_doc);
     AddMethod("GetAnimationAttributes", visit_GetAnimationAttributes,
-                                                NULL /* DOCUMENT ME*/);
+                                        visit_GetAnimationAttributes_doc);
     AddMethod("GetAnimationTimeout", visit_GetAnimationTimeout,
                                                 visit_GetAnimationTimeout_doc);
     AddMethod("GetAnnotationObject", visit_GetAnnotationObject,
@@ -14840,20 +15078,24 @@ AddDefaultMethods()
     AddMethod("HideToolbars", visit_HideToolbars, visit_HideToolbars_doc);
     AddMethod("IconifyAllWindows", visit_IconifyAllWindows,
                                                   visit_IconifyAllWindows_doc);
+    AddMethod("InitializeNamedSelectionVariables", visit_InitializeNamedSelectionVariables, 
+                                                   visit_InitializeNamedSelectionVariables_doc);
     AddMethod("InvertBackgroundColor", visit_InvertBackgroundColor,
                                               visit_InvertBackgroundColor_doc);
     AddMethod("Lineout", visit_Lineout, visit_Lineout_doc);
     AddMethod("LoadNamedSelection", visit_LoadNamedSelection,
                                            visit_LoadNamedSelection_doc);
     AddMethod("LoadUltra", visit_LoadUltra, visit_LoadUltra_doc);
-    AddMethod("GetUltraScript", visit_GetUltraScript, NULL /*DOCUMENT ME */);
-    AddMethod("SetUltraScript", visit_SetUltraScript, NULL /*DOCUMENT ME */);
+    AddMethod("GetUltraScript", visit_GetUltraScript, visit_GetUltraScript_doc);
+    AddMethod("SetUltraScript", visit_SetUltraScript, visit_SetUltraScript_doc);
     AddMethod("MovePlotDatabaseKeyframe", visit_MovePlotDatabaseKeyframe,
                                            visit_MovePlotDatabaseKeyframe_doc);
     AddMethod("MovePlotKeyframe", visit_MovePlotKeyframe,
                                                    visit_MovePlotKeyframe_doc);
-    AddMethod("MovePlotOrderTowardFirst", visit_MovePlotOrderTowardFirst, NULL /*DOCUMENT ME*/);
-    AddMethod("MovePlotOrderTowardLast", visit_MovePlotOrderTowardLast, NULL /*DOCUMENT ME*/);
+    AddMethod("MovePlotOrderTowardFirst", visit_MovePlotOrderTowardFirst,
+              visit_MovePlotOrderTowardFirst_doc);
+    AddMethod("MovePlotOrderTowardLast", visit_MovePlotOrderTowardLast,
+              visit_MovePlotOrderTowardLast_doc);
 
     AddMethod("MoveViewKeyframe", visit_MoveViewKeyframe,
                                                    visit_MoveViewKeyframe_doc);
@@ -14891,7 +15133,7 @@ AddDefaultMethods()
     AddMethod("RemoveLastOperator", visit_RemoveLastOperator,
                                                      visit_RemoveOperator_doc);
     AddMethod("RemoveOperator", visit_RemoveOperator,visit_RemoveOperator_doc);
-    AddMethod("RenamePickLabel", visit_RenamePickLabel, NULL /* DOCUMENT ME*/);
+    AddMethod("RenamePickLabel", visit_RenamePickLabel, visit_RenamePickLabel_doc);
     AddMethod("ReOpenDatabase", visit_ReOpenDatabase,visit_ReOpenDatabase_doc);
     AddMethod("ReplaceDatabase", visit_ReplaceDatabase,
                                                     visit_ReplaceDatabase_doc);
@@ -14966,7 +15208,8 @@ AddDefaultMethods()
                                             visit_SetMaterialAttributes_doc);
     AddMethod("SetMeshManagementAttributes", visit_SetMeshManagementAttributes,
                                         visit_SetMeshManagementAttributes_doc);
-    AddMethod("SetNamedSelectionAutoApply", visit_SetNamedSelectionAutoApply, NULL /*DOCUMENT ME*/);
+    AddMethod("SetNamedSelectionAutoApply", visit_SetNamedSelectionAutoApply,
+              visit_SetNamedSelectionAutoApply_doc);
     AddMethod("SetOperatorOptions", visit_SetOperatorOptions,
                                                  visit_SetOperatorOptions_doc);
     AddMethod("SetPickAttributes", visit_SetPickAttributes,
@@ -14975,12 +15218,14 @@ AddDefaultMethods()
                                              visit_SetPipelineCachingMode_doc);
     AddMethod("SetPlotDatabaseState", visit_SetPlotDatabaseState,
                                                visit_SetPlotDatabaseState_doc);
-    AddMethod("SetPlotDescription", visit_SetPlotDescription, NULL /*DOCUMENT ME*/);
+    AddMethod("SetPlotDescription", visit_SetPlotDescription, visit_SetPlotDescription_doc);
+    AddMethod("SetPlotFollowsTime", visit_SetPlotFollowsTime, 
+                                               visit_SetPlotFollowsTime_doc);
     AddMethod("SetPlotFrameRange", visit_SetPlotFrameRange,
                                                   visit_SetPlotFrameRange_doc);
     AddMethod("SetPlotOptions", visit_SetPlotOptions,visit_SetPlotOptions_doc);
-    AddMethod("SetPlotOrderToFirst", visit_SetPlotOrderToFirst, NULL /*DOCUMENT ME*/);
-    AddMethod("SetPlotOrderToLast", visit_SetPlotOrderToLast, NULL /*DOCUMENT ME*/);
+    AddMethod("SetPlotOrderToFirst", visit_SetPlotOrderToFirst, visit_SetPlotOrderToFirst_doc);
+    AddMethod("SetPlotOrderToLast", visit_SetPlotOrderToLast, visit_SetPlotOrderToLast_doc);
     AddMethod("SetPlotSILRestriction", visit_SetPlotSILRestriction,
                                               visit_SetPlotSILRestriction_doc);
     AddMethod("SetPreferredFileFormats", visit_SetPreferredFileFormats,
@@ -15039,7 +15284,7 @@ AddDefaultMethods()
                                                          visit_ToggleMode_doc);
     AddMethod("ToggleSpinMode", visit_ToggleSpinMode, visit_ToggleMode_doc);
     AddMethod("UndoView",  visit_UndoView, visit_UndoView_doc);
-    AddMethod("UpdateNamedSelection", visit_UpdateNamedSelection, NULL /*DOCUMENT ME*/);
+    AddMethod("UpdateNamedSelection", visit_UpdateNamedSelection, visit_UpdateNamedSelection_doc);
 
     AddMethod("UserActionFinished",visit_UserActionFinished,NULL);
     AddMethod("RedoView",  visit_RedoView, visit_RedoView_doc);
@@ -15058,8 +15303,8 @@ AddDefaultMethods()
                                                 visit_GetActiveTimeSlider_doc);
     AddMethod("GetDomains", visit_GetDomains, visit_GetDomains_doc);
     AddMethod("GetMaterials", visit_GetMaterials, visit_GetMaterials_doc);
-    AddMethod("GetOperatorOptions", visit_GetOperatorOptions, NULL/*DOCUMENT ME*/);
-    AddMethod("GetPlotOptions", visit_GetPlotOptions, NULL/*DOCUMENT ME*/);
+    AddMethod("GetOperatorOptions", visit_GetOperatorOptions, visit_GetOperatorOptions_doc);
+    AddMethod("GetPlotOptions", visit_GetPlotOptions, visit_GetPlotOptions_doc);
     AddMethod("GetTimeSliders", visit_GetTimeSliders,visit_GetTimeSliders_doc);
     AddMethod("ListDomains", visit_ListDomains, visit_List_doc);
     AddMethod("ListMaterials", visit_ListMaterials, visit_List_doc);
@@ -15079,18 +15324,23 @@ AddDefaultMethods()
     AddMethod("TurnMaterialsOn", visit_TurnMaterialsOn, visit_Turn_doc);
     AddMethod("QueriesOverTime",  visit_QueriesOverTime,
                                                     visit_QueriesOverTime_doc);
-    AddMethod("SetColorTexturingEnabled", visit_SetColorTexturingEnabled, NULL/*DOCUMENT ME*/);
-    AddMethod("GetMetaData", visit_GetMetaData, NULL/*DOCUMENT ME*/);
-    AddMethod("GetPlotList", visit_GetPlotList, NULL/*DOCUMENT ME*/);
+    AddMethod("SetColorTexturingEnabled", visit_SetColorTexturingEnabled, 
+              visit_SetColorTexturingEnabled_doc);
+    AddMethod("GetMetaData", visit_GetMetaData, visit_GetMetaData_doc);
+    AddMethod("GetPlotList", visit_GetPlotList, visit_GetPlotList_doc);
+    AddMethod("GetSelection", visit_GetSelection, visit_GetSelection_doc);
+    AddMethod("GetSelectionSummary", visit_GetSelectionSummary, visit_GetSelectionSummary_doc);
+    AddMethod("GetSelectionList", visit_GetSelectionList, visit_GetSelectionList_doc);
 
-    AddMethod("ClearMacros", visit_ClearMacros, NULL/*DOCUMENT ME*/);
-    AddMethod("ExecuteMacro", visit_ExecuteMacro, NULL/*DOCUMENT ME*/);
-    AddMethod("RegisterMacro", visit_RegisterMacro, NULL/*DOCUMENT ME*/);
+    AddMethod("ClearMacros", visit_ClearMacros, visit_ClearMacros_doc);
+    AddMethod("ExecuteMacro", visit_ExecuteMacro, visit_ExecuteMacro_doc);
+    AddMethod("RegisterMacro", visit_RegisterMacro, visit_RegisterMacro_doc);
     AddMethod("SuppressMessages", visit_SuppressMessages, visit_SuppressMessages_doc);
 
     AddMethod("GetCallbackNames", visit_GetCallbackNames, visit_GetCallbackNames_doc);
     AddMethod("RegisterCallback", visit_RegisterCallback, visit_RegisterCallback_doc);
-    AddMethod("GetCallbackArgumentCount", visit_GetCallbackArgumentCount, NULL/*DOCUMENT ME*/);
+    AddMethod("GetCallbackArgumentCount", visit_GetCallbackArgumentCount, 
+              visit_GetCallbackArgumentCount_doc);
 
     AddMethod("LoadAttribute", visit_LoadAttribute, visit_LoadSaveAttribute_doc);
     AddMethod("SaveAttribute", visit_SaveAttribute, visit_LoadSaveAttribute_doc);
@@ -15179,6 +15429,9 @@ AddDefaultMethods()
 //   Jeremy Meredith, Thu Feb 18 15:25:27 EST 2010
 //   Split HostProfile int MachineProfile and LaunchProfile.
 //
+//   Brad Whitlock, Tue Dec 14 16:27:10 PST 2010
+//   Add SelectionProperties.
+//
 // ****************************************************************************
 
 static void
@@ -15206,6 +15459,7 @@ AddExtensions()
     ADD_EXTENSION(PyProcessAttributes_GetMethodTable);
     ADD_EXTENSION(PyRenderingAttributes_GetMethodTable);
     ADD_EXTENSION(PySaveWindowAttributes_GetMethodTable);
+    ADD_EXTENSION(PySelectionProperties_GetMethodTable);
     ADD_EXTENSION(PySILRestriction_GetMethodTable);
     ADD_EXTENSION(PyViewAttributes_GetMethodTable);
     ADD_EXTENSION(PyViewAxisArrayAttributes_GetMethodTable);
@@ -15280,6 +15534,9 @@ AddExtensions()
 //   Jeremy Meredith, Thu Feb 18 15:25:27 EST 2010
 //   Split HostProfile int MachineProfile and LaunchProfile.
 //
+//   Brad Whitlock, Tue Dec 14 16:27:46 PST 2010
+//   Add PySelectionProperties.
+//
 // ****************************************************************************
 
 static void
@@ -15299,6 +15556,7 @@ InitializeExtensions()
     PyProcessAttributes_StartUp(GetViewerState()->GetProcessAttributes(), 0);
     PyRenderingAttributes_StartUp(GetViewerState()->GetRenderingAttributes(), 0);
     PySaveWindowAttributes_StartUp(GetViewerState()->GetSaveWindowAttributes(), 0);
+    PySelectionProperties_StartUp(0, 0);
     PyWindowInformation_StartUp(GetViewerState()->GetWindowInformation(), 0);
 
     PyViewAxisArrayAttributes_StartUp(GetViewerState()->GetViewAxisArrayAttributes(), (void *)SS_log_ViewAxisArray);
@@ -15336,6 +15594,9 @@ InitializeExtensions()
 //   Jeremy Meredith, Mon Feb  4 13:42:08 EST 2008
 //   Added ViewAxisArrayAttributes.
 //
+//   Brad Whitlock, Tue Dec 14 16:28:11 PST 2010
+//   Add PySelectionProperties.
+//
 // ****************************************************************************
 
 static void
@@ -15349,6 +15610,7 @@ CloseExtensions()
     PyPickAttributes_CloseDown();
     PyPrinterAttributes_CloseDown();
     PySaveWindowAttributes_CloseDown();
+    PySelectionProperties_CloseDown();
     PyViewAxisArrayAttributes_CloseDown();
     PyViewCurveAttributes_CloseDown();
     PyView2DAttributes_CloseDown();
@@ -15693,6 +15955,13 @@ NeedToLoadPlugins(Subject *, void *)
 //
 //   Mark C. Miller, Tue Apr 21 14:24:18 PDT 2009
 //   Added logic to manage buffering of debug logs; an extra 'b' after level.
+//
+//   Kathleen Bonnell, Thu Apr 28 13:34:55 MST 2011
+//   Change location of visitlog.py on Windows to be users' VisIt directory, as
+//   the '.' directory when running VisIt on Windows may be VisIt's install 
+//   directory, and user may not have write permissions there, making command 
+//   logging fail silently.
+//
 // ****************************************************************************
 
 static int
@@ -15797,7 +16066,12 @@ InitializeModule()
     //
     // Open the log file
     //
+#ifndef _WIN32
     const char *logName = "visitlog.py";
+#else
+    string vud = GetUserVisItDirectory() + "\\visitlog.py";
+    const char *logName = vud.c_str();
+#endif
     if(!LogFile_Open(logName))
         fprintf(stderr, "Could not open %s log file.\n", logName);
 

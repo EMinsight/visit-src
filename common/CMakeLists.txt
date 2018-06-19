@@ -46,6 +46,16 @@
 #
 #   Mark C. Miller, Fri Oct 29 10:02:16 PDT 2010
 #   Added DBYieldedNoDataException
+#
+#   Brad Whitlock, Fri Dec 10 15:42:46 PST 2010
+#   I added ThresholdOpAttributes, the bulk of the ThresholdAttributes. I also
+#   added SelectionSummary and SelectionVariableSummary.
+#
+#
+#   Mark C. Miller, Tue Feb  8 16:28:32 PST 2011
+#   Added custom 'init' target for pareser re-gen. It was lost in transition
+#   from autoconf to CMake.
+#
 #****************************************************************************/
 
 SET(COMM_SOURCES
@@ -254,6 +264,9 @@ state/SaveSubWindowAttributes.C
 state/SaveSubWindowsAttributes.C
 state/SelectionList.C
 state/SelectionProperties.C
+state/SelectionSummary.C
+state/SelectionVariableSummary.C
+state/SimulationUIValues.C
 state/SILArrayAttributes.C
 state/SILAttributes.C
 state/SILMatrixAttributes.C
@@ -267,6 +280,7 @@ state/StatusAttributes.C
 state/Subject.C
 state/SurfaceFilterAttributes.C
 state/SyncAttributes.C
+state/ThresholdOpAttributes.C
 state/TimeFormat.C
 state/Variant.C
 state/View2DAttributes.C
@@ -322,6 +336,14 @@ ELSE(WIN32)
     ADD_EXECUTABLE(Namescheme_test utility/Namescheme_test.C)
     TARGET_LINK_LIBRARIES(Namescheme_test visitcommon ${CMAKE_THREAD_LIBS} ${DL_LIB})
     ADD_EXECUTABLE(MRUCache_test utility/MRUCache_test.C)
+    ADD_EXECUTABLE(exprconfig expr/ExprConfig.C)
+    TARGET_LINK_LIBRARIES(exprconfig visitcommon ${CMAKE_THREAD_LIBS} ${DL_LIB})
+    ADD_EXECUTABLE(exprtest expr/test.C)
+    TARGET_LINK_LIBRARIES(exprtest visitcommon ${CMAKE_THREAD_LIBS} ${DL_LIB})
+    ADD_CUSTOM_TARGET(init)
+    ADD_DEPENDENCIES(init exprconfig)
+    ADD_CUSTOM_COMMAND(TARGET init POST_BUILD COMMAND exprconfig ExprInit.C
+        WORKING_DIRECTORY ${VISIT_SOURCE_DIR}/common/expr)
 ENDIF(WIN32)
 
 VISIT_INSTALL_TARGETS(visitcommon)

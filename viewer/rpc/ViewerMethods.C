@@ -39,6 +39,7 @@
 #include <ViewerState.h>
 #include <ViewerRPC.h>
 #include <ColorTableAttributes.h>
+#include <SelectionList.h>
 
 #include <snprintf.h>
 
@@ -797,11 +798,49 @@ ViewerMethods::ApplyNamedSelection(const std::string &selName)
 void
 ViewerMethods::CreateNamedSelection(const std::string &selName)
 {
+    SelectionProperties s;
+    s.SetName(selName);
+    (*state->GetSelectionProperties()) = s;
+    state->GetSelectionProperties()->Notify();
+
     //
     // Set the rpc type and arguments.
     //
     state->GetViewerRPC()->SetRPCType(ViewerRPC::CreateNamedSelectionRPC);
     state->GetViewerRPC()->SetStringArg1(selName);
+    state->GetViewerRPC()->SetBoolFlag(true);
+
+    //
+    // Issue the RPC.
+    //
+    state->GetViewerRPC()->Notify();
+}
+
+// ****************************************************************************
+// Method: ViewerMethods::CreateNamedSelection
+//
+// Purpose: 
+//     Creates a named selection.
+//
+// Programmer: Brad Whitlock
+// Creation:   Tue Dec 14 16:40:57 PST 2010
+//
+// ****************************************************************************
+
+void
+ViewerMethods::CreateNamedSelection(const std::string &selName,
+    const SelectionProperties &props)
+{
+    // Set the selection properties.
+    (*state->GetSelectionProperties()) = props;
+    state->GetSelectionProperties()->Notify();
+
+    //
+    // Set the rpc type and arguments.
+    //
+    state->GetViewerRPC()->SetRPCType(ViewerRPC::CreateNamedSelectionRPC);
+    state->GetViewerRPC()->SetStringArg1(selName);
+    state->GetViewerRPC()->SetBoolFlag(false);
 
     //
     // Issue the RPC.
@@ -942,6 +981,65 @@ ViewerMethods::UpdateNamedSelection(const std::string &selName)
     // Set the rpc type and arguments.
     //
     state->GetViewerRPC()->SetRPCType(ViewerRPC::UpdateNamedSelectionRPC);
+    state->GetViewerRPC()->SetStringArg1(selName);
+    state->GetViewerRPC()->SetBoolFlag(false);
+
+    //
+    // Issue the RPC.
+    //
+    state->GetViewerRPC()->Notify();
+}
+
+// ****************************************************************************
+// Method: ViewerMethods::UpdateNamedSelection
+//
+// Purpose: 
+//     Updates a named selection.
+//
+// Programmer: Brad Whitlock
+// Creation:   Tue Dec 14 16:40:57 PST 2010
+//
+// ****************************************************************************
+
+void
+ViewerMethods::UpdateNamedSelection(const std::string &selName,
+    const SelectionProperties &props)
+{
+    // Set the selection properties.
+    (*state->GetSelectionProperties()) = props;
+    state->GetSelectionProperties()->Notify();
+
+    //
+    // Set the rpc type and arguments.
+    //
+    state->GetViewerRPC()->SetRPCType(ViewerRPC::UpdateNamedSelectionRPC);
+    state->GetViewerRPC()->SetStringArg1(selName);
+    state->GetViewerRPC()->SetBoolFlag(true);
+
+    //
+    // Issue the RPC.
+    //
+    state->GetViewerRPC()->Notify();
+}
+
+// ****************************************************************************
+// Method: ViewerMethods::InitializeNamedSelectionVariables
+//
+// Purpose: 
+//     Updates a named selection's variables from the currently selected plot.
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri Aug 13 14:28:09 PDT 2010
+//
+// ****************************************************************************
+
+void
+ViewerMethods::InitializeNamedSelectionVariables(const std::string &selName)
+{
+    //
+    // Set the rpc type and arguments.
+    //
+    state->GetViewerRPC()->SetRPCType(ViewerRPC::InitializeNamedSelectionVariablesRPC);
     state->GetViewerRPC()->SetStringArg1(selName);
 
     //
@@ -2103,14 +2201,19 @@ ViewerMethods::HideActivePlots()
 //  Programmer: Ellen Tarwater
 //  Creation:   December 6, 2007
 //
+//  Modifications:
+//    Brad Whitlock, Tue Mar 29 11:06:45 PDT 2011
+//    Add bool argument.
+//
 // ****************************************************************************
 void
-ViewerMethods::SetPlotFollowsTime()
+ViewerMethods::SetPlotFollowsTime(bool val)
 {
     //
     // Set the rpc type and arguments.
     //
     state->GetViewerRPC()->SetRPCType(ViewerRPC::SetPlotFollowsTimeRPC);
+    state->GetViewerRPC()->SetBoolFlag(val);
 
     //
     // Issue the RPC.
@@ -4728,12 +4831,15 @@ ViewerMethods::DatabaseQuery(const std::string &queryName,
 //   Kathleen Bonnell, Wed Dec 15 17:12:47 PST 2004 
 //   Added optional bool flag.
 //   
+//   Kathleen Bonnell, Tue Mar  1 11:14:05 PST 2011
+//   Added another int arg.
+//
 // ****************************************************************************
 
 void
 ViewerMethods::PointQuery(const std::string &queryName, const double pt[3],
     const stringVector &vars, const bool time, const int arg1, const int arg2,
-    const bool globalFlag) 
+    const int arg3, const bool globalFlag) 
 {
     //
     // Set the rpc type.
@@ -4745,13 +4851,15 @@ ViewerMethods::PointQuery(const std::string &queryName, const double pt[3],
     state->GetViewerRPC()->SetBoolFlag(time);
     state->GetViewerRPC()->SetIntArg1(arg1);
     state->GetViewerRPC()->SetIntArg2(arg2);
-    state->GetViewerRPC()->SetIntArg3((int)globalFlag);
+    state->GetViewerRPC()->SetIntArg3(arg3);
+    state->GetViewerRPC()->SetIntArg4((int)globalFlag);
 
     //
     // Issue the RPC.
     //
     state->GetViewerRPC()->Notify();
 }
+
 
 // ****************************************************************************
 // Method: ViewerMethods::LineQuery

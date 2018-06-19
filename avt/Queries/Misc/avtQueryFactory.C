@@ -47,12 +47,14 @@
 #include <avtAggregateRayLengthDistributionQuery.h>
 #include <avtAreaBetweenCurvesQuery.h>
 #include <avtAverageMeanCurvatureQuery.h>
+#include <avtAverageValueQuery.h>
 #include <avtBestFitLineQuery.h>
 #include <avtCentroidQuery.h>
 #include <avtCompactnessQuery.h>
 #include <avtConnComponentsQuery.h>
 #include <avtConnComponentsAreaQuery.h>
 #include <avtConnComponentsCentroidQuery.h>
+#include <avtConnComponentsLengthQuery.h>
 #include <avtConnComponentsSummaryQuery.h>
 #include <avtConnComponentsVolumeQuery.h>
 #include <avtConnComponentsVariableQuery.h>
@@ -299,8 +301,18 @@ avtQueryFactory::Instance()
 //    Cyrus Harrison, Tue Sep 21 11:12:17 PDT 2010
 //    Added explicit passing of args to the python filter query.
 //
-//   Dave Pugmire, Tue Nov  9 14:57:20 EST 2010
-//   Add Streamline Info query.
+//    Dave Pugmire, Tue Nov  9 14:57:20 EST 2010
+//    Add Streamline Info query.
+//
+//    Kathleen Bonnell, Thu Feb 17 09:51:44 PST 2011
+//    Set number of vars for LocateAndPickNode/Zone queries, and 
+//    VariableyByNode/Zone queries.
+//
+//    Hank Childs, Thu May 12 15:37:21 PDT 2011
+//    Add average value query.
+//
+//    Cyrus Harrison, Wed Jun 15 13:14:49 PDT 2011
+//    Added Connected Components Length.
 //
 // ****************************************************************************
 
@@ -484,11 +496,15 @@ avtQueryFactory::CreateQuery(const QueryAttributes *qa)
     }
     else if (qname == "Variable by Zone")
     {
-        query = new avtVariableByZoneQuery();
+        avtVariableByZoneQuery *vzq = new avtVariableByZoneQuery();
+        vzq->SetNumVars((int)qa->GetVariables().size());
+        query = vzq;
     }
     else if (qname == "Variable by Node")
     {
-        query = new avtVariableByNodeQuery();
+        avtVariableByNodeQuery *vnq = new avtVariableByNodeQuery();
+        vnq->SetNumVars((int)qa->GetVariables().size());
+        query = vnq;
     }
     else if (qname == "MinMax")
     {
@@ -573,6 +589,10 @@ avtQueryFactory::CreateQuery(const QueryAttributes *qa)
     {
         query = new avtAverageMeanCurvatureQuery();
     }
+    else if (qname == "Average Value")
+    {
+        query = new avtAverageValueQuery();
+    }
     else if (qname == "Hohlraum Flux")
     {
         avtHohlraumFluxQuery *mdq = new avtHohlraumFluxQuery();
@@ -598,6 +618,10 @@ avtQueryFactory::CreateQuery(const QueryAttributes *qa)
     {
         query = new avtConnComponentsAreaQuery();
     }
+    else if( qname == "Connected Component Length")
+    {
+        query = new avtConnComponentsLengthQuery();
+    }
     else if( qname == "Connected Component Volume")
     {
         query = new avtConnComponentsVolumeQuery();
@@ -619,11 +643,15 @@ avtQueryFactory::CreateQuery(const QueryAttributes *qa)
     }
     else if( qname == "Locate and Pick Zone")
     {
-        query = new avtLocateAndPickZoneQuery();
+        avtLocateAndPickZoneQuery *lpzq = new avtLocateAndPickZoneQuery();
+        lpzq->SetNumVars((int)qa->GetVariables().size());
+        query = lpzq;
     }
     else if( qname == "Locate and Pick Node")
     {
-        query = new avtLocateAndPickNodeQuery();
+        avtLocateAndPickNodeQuery *lpnq = new avtLocateAndPickNodeQuery();
+        lpnq->SetNumVars((int)qa->GetVariables().size());
+        query = lpnq;
     }
     else if( qname == "Shapelet Decomposition")
     {

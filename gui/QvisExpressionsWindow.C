@@ -40,11 +40,13 @@
 
 #include <Expression.h>
 #include <ExpressionList.h>
+#include <SingleAttributeConfigManager.h>
 #include <ViewerProxy.h>
 
 #include <QApplication>
 #include <QCheckBox>
 #include <QComboBox>
+#include <QFileDialog>
 #include <QGroupBox>
 #include <QLabel>
 #include <QLayout>
@@ -169,6 +171,9 @@
 //    Retire [min|max][x|y|z] coord, replaced with min_coord and max_coord.
 //    Adding polar coordinates and I really didn't think there should be
 //    12 expressions for this minor functionality.
+//
+//    Hank Childs, Fri Feb  4 14:00:21 PST 2011
+//    Added external_cell expression.
 //
 // ****************************************************************************
 
@@ -322,6 +327,7 @@ const char *expr_mesh[] = {
     "cylindrical",
     "cylindrical_radius",
     "cylindrical_theta",
+    "external_cell",
     "external_node",
     "global_nodeid",
     "global_zoneid",
@@ -1573,6 +1579,10 @@ QvisExpressionsWindow::UpdateStandardExpressionEditor(const QString &expr_def)
 //    Hank Childs, Thu Jul  8 08:14:23 PDT 2010
 //    Added min_coord and max_coord.
 //    
+//    Kathleen Bonnell, Thu May 19 15:57:50 PDT 2011
+//    Fixed value_for_material so it shows up correctly in windows.
+//    (was showing arguments first, then expression name).
+//
 // ****************************************************************************
 
 QString
@@ -1682,7 +1692,7 @@ QvisExpressionsWindow::ExpandFunction(const QString &func_name)
     }
     else if(func_name == "value_for_material")
     {
-        stdDefinitionEdit->insertPlainText("(<var>, <material-name-or-number>)");
+        res += QString("(<var>, <material-name-or-number>)");
         doParens = false;
     }
     else if (func_name == "enumerate")
@@ -2045,4 +2055,67 @@ QvisExpressionsWindow::newExpression()
     nameEdit->setFocus();
     nameEdit->setCursorPosition(0);
     nameEdit->selectAll();
+}
+
+// ****************************************************************************
+// Method: QvisExpressionsWindow::loadSubject
+//
+// Purpose: 
+//   This is a Qt slot function that gets called when the window's Load button
+//   is clicked.
+//
+// Arguments:
+//
+// Returns:    
+//
+// Note:       We append the expressions from the file to the list instead of
+//             replacing the ones in the list.
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri May  6 14:40:40 PDT 2011
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+QvisExpressionsWindow::loadSubject()
+{
+    if (!subject)
+        return;
+
+    QString filename = QFileDialog::getOpenFileName(this,
+                                                    tr("Open Attribute XML"),
+                                                    NULL,
+                                                    tr("XML Files (*.xml);;"
+                                                       "All files (*)"));
+    if (filename.isNull())
+        return;
+    
+    ExpressionList newExpressions;
+    SingleAttributeConfigManager mgr(&newExpressions);
+    mgr.Import(filename.toStdString());
+
+    // Let's append the expressions from the new list to the existing list and
+    // check for duplicates.
+    bool foundDuplicates = false;
+    for(int i = 0; i < newExpressions.GetNumExpressions(); ++i)
+    {
+        // Check for dups
+        Expression *e = exprList->operator[](newExpressions[i].GetName().c_str());
+        foundDuplicates |= (e != NULL);
+
+        // Append the new expression.
+        exprList->AddExpressions(newExpressions[i]);
+    }
+
+    Apply();
+
+    if(foundDuplicates)
+    {
+        Message(tr("The expressions loaded from %1 contained expressions "
+                   "having the same names as expressions already in the "
+                   "expression list. You may want to edit some of your "
+                   "expression names so they are unique.").arg(filename));
+    }
 }

@@ -97,18 +97,19 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
     public final static int OPACITY_COLORTABLE = 1;
 
     public final static int DATAVALUE_SOLID = 0;
-    public final static int DATAVALUE_ORIGINALVALUE = 1;
-    public final static int DATAVALUE_INPUTORDER = 2;
-    public final static int DATAVALUE_POINTINDEX = 3;
-    public final static int DATAVALUE_PLANE = 4;
-    public final static int DATAVALUE_WINDINGORDER = 5;
-    public final static int DATAVALUE_WINDINGPOINTORDER = 6;
-    public final static int DATAVALUE_WINDINGPOINTORDERMODULO = 7;
-    public final static int DATAVALUE_TOROIDALWINDINGS = 8;
-    public final static int DATAVALUE_POLOIDALWINDINGS = 9;
-    public final static int DATAVALUE_SAFETYFACTOR = 10;
-    public final static int DATAVALUE_CONFIDENCE = 11;
-    public final static int DATAVALUE_RIDGELINEVARIANCE = 12;
+    public final static int DATAVALUE_SAFETYFACTORQ = 1;
+    public final static int DATAVALUE_SAFETYFACTORP = 2;
+    public final static int DATAVALUE_SAFETYFACTORQ_NOTP = 3;
+    public final static int DATAVALUE_SAFETYFACTORP_NOTQ = 4;
+    public final static int DATAVALUE_TOROIDALWINDINGS = 5;
+    public final static int DATAVALUE_POLOIDALWINDINGSQ = 6;
+    public final static int DATAVALUE_POLOIDALWINDINGSP = 7;
+    public final static int DATAVALUE_FIELDLINEINDEX = 8;
+    public final static int DATAVALUE_POINTINDEX = 9;
+    public final static int DATAVALUE_PLANEINDEX = 10;
+    public final static int DATAVALUE_WINDINGGROUP = 11;
+    public final static int DATAVALUE_WINDINGPOINTORDER = 12;
+    public final static int DATAVALUE_WINDINGPOINTORDERMODULO = 13;
 
     public final static int STREAMLINEALGORITHMTYPE_LOADONDEMAND = 0;
     public final static int STREAMLINEALGORITHMTYPE_PARALLELSTATICDOMAINS = 1;
@@ -154,7 +155,7 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         overrideToroidalWinding = 0;
         overridePoloidalWinding = 0;
         windingPairConfidence = 0.9;
-        periodicityConsistency = 0.8;
+        rationalTemplateSeedParm = 0.9;
         adjustPlane = -1;
         overlaps = OVERLAPTYPE_REMOVE;
         meshType = SHOWMESHTYPE_CURVES;
@@ -167,15 +168,15 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         colorType = COLORINGMETHOD_COLORBYCOLORTABLE;
         singleColor = new ColorAttribute(0, 0, 0);
         colorTableName = new String("Default");
-        dataValue = DATAVALUE_SAFETYFACTOR;
+        dataValue = DATAVALUE_SAFETYFACTORQ;
         showOPoints = false;
-        OPointMaxInterations = 2;
+        OPointMaxIterations = 2;
         showXPoints = false;
-        XPointMaxInterations = 2;
+        XPointMaxIterations = 2;
         showChaotic = false;
         showIslands = false;
         verboseFlag = true;
-        showRidgelines = false;
+        show1DPlots = false;
         showLines = true;
         lineWidth = 0;
         lineStyle = 0;
@@ -225,7 +226,7 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         overrideToroidalWinding = 0;
         overridePoloidalWinding = 0;
         windingPairConfidence = 0.9;
-        periodicityConsistency = 0.8;
+        rationalTemplateSeedParm = 0.9;
         adjustPlane = -1;
         overlaps = OVERLAPTYPE_REMOVE;
         meshType = SHOWMESHTYPE_CURVES;
@@ -238,15 +239,15 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         colorType = COLORINGMETHOD_COLORBYCOLORTABLE;
         singleColor = new ColorAttribute(0, 0, 0);
         colorTableName = new String("Default");
-        dataValue = DATAVALUE_SAFETYFACTOR;
+        dataValue = DATAVALUE_SAFETYFACTORQ;
         showOPoints = false;
-        OPointMaxInterations = 2;
+        OPointMaxIterations = 2;
         showXPoints = false;
-        XPointMaxInterations = 2;
+        XPointMaxIterations = 2;
         showChaotic = false;
         showIslands = false;
         verboseFlag = true;
-        showRidgelines = false;
+        show1DPlots = false;
         showLines = true;
         lineWidth = 0;
         lineStyle = 0;
@@ -301,7 +302,7 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         overrideToroidalWinding = obj.overrideToroidalWinding;
         overridePoloidalWinding = obj.overridePoloidalWinding;
         windingPairConfidence = obj.windingPairConfidence;
-        periodicityConsistency = obj.periodicityConsistency;
+        rationalTemplateSeedParm = obj.rationalTemplateSeedParm;
         adjustPlane = obj.adjustPlane;
         overlaps = obj.overlaps;
         meshType = obj.meshType;
@@ -316,13 +317,13 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         colorTableName = new String(obj.colorTableName);
         dataValue = obj.dataValue;
         showOPoints = obj.showOPoints;
-        OPointMaxInterations = obj.OPointMaxInterations;
+        OPointMaxIterations = obj.OPointMaxIterations;
         showXPoints = obj.showXPoints;
-        XPointMaxInterations = obj.XPointMaxInterations;
+        XPointMaxIterations = obj.XPointMaxIterations;
         showChaotic = obj.showChaotic;
         showIslands = obj.showIslands;
         verboseFlag = obj.verboseFlag;
-        showRidgelines = obj.showRidgelines;
+        show1DPlots = obj.show1DPlots;
         showLines = obj.showLines;
         lineWidth = obj.lineWidth;
         lineStyle = obj.lineStyle;
@@ -391,7 +392,7 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
                 (overrideToroidalWinding == obj.overrideToroidalWinding) &&
                 (overridePoloidalWinding == obj.overridePoloidalWinding) &&
                 (windingPairConfidence == obj.windingPairConfidence) &&
-                (periodicityConsistency == obj.periodicityConsistency) &&
+                (rationalTemplateSeedParm == obj.rationalTemplateSeedParm) &&
                 (adjustPlane == obj.adjustPlane) &&
                 (overlaps == obj.overlaps) &&
                 (meshType == obj.meshType) &&
@@ -406,13 +407,13 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
                 (colorTableName.equals(obj.colorTableName)) &&
                 (dataValue == obj.dataValue) &&
                 (showOPoints == obj.showOPoints) &&
-                (OPointMaxInterations == obj.OPointMaxInterations) &&
+                (OPointMaxIterations == obj.OPointMaxIterations) &&
                 (showXPoints == obj.showXPoints) &&
-                (XPointMaxInterations == obj.XPointMaxInterations) &&
+                (XPointMaxIterations == obj.XPointMaxIterations) &&
                 (showChaotic == obj.showChaotic) &&
                 (showIslands == obj.showIslands) &&
                 (verboseFlag == obj.verboseFlag) &&
-                (showRidgelines == obj.showRidgelines) &&
+                (show1DPlots == obj.show1DPlots) &&
                 (showLines == obj.showLines) &&
                 (lineWidth == obj.lineWidth) &&
                 (lineStyle == obj.lineStyle) &&
@@ -583,9 +584,9 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         Select(19);
     }
 
-    public void SetPeriodicityConsistency(double periodicityConsistency_)
+    public void SetRationalTemplateSeedParm(double rationalTemplateSeedParm_)
     {
-        periodicityConsistency = periodicityConsistency_;
+        rationalTemplateSeedParm = rationalTemplateSeedParm_;
         Select(20);
     }
 
@@ -673,9 +674,9 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         Select(34);
     }
 
-    public void SetOPointMaxInterations(int OPointMaxInterations_)
+    public void SetOPointMaxIterations(int OPointMaxIterations_)
     {
-        OPointMaxInterations = OPointMaxInterations_;
+        OPointMaxIterations = OPointMaxIterations_;
         Select(35);
     }
 
@@ -685,9 +686,9 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         Select(36);
     }
 
-    public void SetXPointMaxInterations(int XPointMaxInterations_)
+    public void SetXPointMaxIterations(int XPointMaxIterations_)
     {
-        XPointMaxInterations = XPointMaxInterations_;
+        XPointMaxIterations = XPointMaxIterations_;
         Select(37);
     }
 
@@ -709,9 +710,9 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         Select(40);
     }
 
-    public void SetShowRidgelines(boolean showRidgelines_)
+    public void SetShow1DPlots(boolean show1DPlots_)
     {
-        showRidgelines = showRidgelines_;
+        show1DPlots = show1DPlots_;
         Select(41);
     }
 
@@ -820,7 +821,7 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
     public int            GetOverrideToroidalWinding() { return overrideToroidalWinding; }
     public int            GetOverridePoloidalWinding() { return overridePoloidalWinding; }
     public double         GetWindingPairConfidence() { return windingPairConfidence; }
-    public double         GetPeriodicityConsistency() { return periodicityConsistency; }
+    public double         GetRationalTemplateSeedParm() { return rationalTemplateSeedParm; }
     public int            GetAdjustPlane() { return adjustPlane; }
     public int            GetOverlaps() { return overlaps; }
     public int            GetMeshType() { return meshType; }
@@ -835,13 +836,13 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
     public String         GetColorTableName() { return colorTableName; }
     public int            GetDataValue() { return dataValue; }
     public boolean        GetShowOPoints() { return showOPoints; }
-    public int            GetOPointMaxInterations() { return OPointMaxInterations; }
+    public int            GetOPointMaxIterations() { return OPointMaxIterations; }
     public boolean        GetShowXPoints() { return showXPoints; }
-    public int            GetXPointMaxInterations() { return XPointMaxInterations; }
+    public int            GetXPointMaxIterations() { return XPointMaxIterations; }
     public boolean        GetShowChaotic() { return showChaotic; }
     public boolean        GetShowIslands() { return showIslands; }
     public boolean        GetVerboseFlag() { return verboseFlag; }
-    public boolean        GetShowRidgelines() { return showRidgelines; }
+    public boolean        GetShow1DPlots() { return show1DPlots; }
     public boolean        GetShowLines() { return showLines; }
     public int            GetLineWidth() { return lineWidth; }
     public int            GetLineStyle() { return lineStyle; }
@@ -901,7 +902,7 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         if(WriteSelect(19, buf))
             buf.WriteDouble(windingPairConfidence);
         if(WriteSelect(20, buf))
-            buf.WriteDouble(periodicityConsistency);
+            buf.WriteDouble(rationalTemplateSeedParm);
         if(WriteSelect(21, buf))
             buf.WriteInt(adjustPlane);
         if(WriteSelect(22, buf))
@@ -931,11 +932,11 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         if(WriteSelect(34, buf))
             buf.WriteBool(showOPoints);
         if(WriteSelect(35, buf))
-            buf.WriteInt(OPointMaxInterations);
+            buf.WriteInt(OPointMaxIterations);
         if(WriteSelect(36, buf))
             buf.WriteBool(showXPoints);
         if(WriteSelect(37, buf))
-            buf.WriteInt(XPointMaxInterations);
+            buf.WriteInt(XPointMaxIterations);
         if(WriteSelect(38, buf))
             buf.WriteBool(showChaotic);
         if(WriteSelect(39, buf))
@@ -943,7 +944,7 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         if(WriteSelect(40, buf))
             buf.WriteBool(verboseFlag);
         if(WriteSelect(41, buf))
-            buf.WriteBool(showRidgelines);
+            buf.WriteBool(show1DPlots);
         if(WriteSelect(42, buf))
             buf.WriteBool(showLines);
         if(WriteSelect(43, buf))
@@ -1039,7 +1040,7 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
             SetWindingPairConfidence(buf.ReadDouble());
             break;
         case 20:
-            SetPeriodicityConsistency(buf.ReadDouble());
+            SetRationalTemplateSeedParm(buf.ReadDouble());
             break;
         case 21:
             SetAdjustPlane(buf.ReadInt());
@@ -1085,13 +1086,13 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
             SetShowOPoints(buf.ReadBool());
             break;
         case 35:
-            SetOPointMaxInterations(buf.ReadInt());
+            SetOPointMaxIterations(buf.ReadInt());
             break;
         case 36:
             SetShowXPoints(buf.ReadBool());
             break;
         case 37:
-            SetXPointMaxInterations(buf.ReadInt());
+            SetXPointMaxIterations(buf.ReadInt());
             break;
         case 38:
             SetShowChaotic(buf.ReadBool());
@@ -1103,7 +1104,7 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
             SetVerboseFlag(buf.ReadBool());
             break;
         case 41:
-            SetShowRidgelines(buf.ReadBool());
+            SetShow1DPlots(buf.ReadBool());
             break;
         case 42:
             SetShowLines(buf.ReadBool());
@@ -1211,7 +1212,7 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         str = str + intToString("overrideToroidalWinding", overrideToroidalWinding, indent) + "\n";
         str = str + intToString("overridePoloidalWinding", overridePoloidalWinding, indent) + "\n";
         str = str + doubleToString("windingPairConfidence", windingPairConfidence, indent) + "\n";
-        str = str + doubleToString("periodicityConsistency", periodicityConsistency, indent) + "\n";
+        str = str + doubleToString("rationalTemplateSeedParm", rationalTemplateSeedParm, indent) + "\n";
         str = str + intToString("adjustPlane", adjustPlane, indent) + "\n";
         str = str + indent + "overlaps = ";
         if(overlaps == OVERLAPTYPE_RAW)
@@ -1246,39 +1247,41 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         str = str + indent + "dataValue = ";
         if(dataValue == DATAVALUE_SOLID)
             str = str + "DATAVALUE_SOLID";
-        if(dataValue == DATAVALUE_ORIGINALVALUE)
-            str = str + "DATAVALUE_ORIGINALVALUE";
-        if(dataValue == DATAVALUE_INPUTORDER)
-            str = str + "DATAVALUE_INPUTORDER";
+        if(dataValue == DATAVALUE_SAFETYFACTORQ)
+            str = str + "DATAVALUE_SAFETYFACTORQ";
+        if(dataValue == DATAVALUE_SAFETYFACTORP)
+            str = str + "DATAVALUE_SAFETYFACTORP";
+        if(dataValue == DATAVALUE_SAFETYFACTORQ_NOTP)
+            str = str + "DATAVALUE_SAFETYFACTORQ_NOTP";
+        if(dataValue == DATAVALUE_SAFETYFACTORP_NOTQ)
+            str = str + "DATAVALUE_SAFETYFACTORP_NOTQ";
+        if(dataValue == DATAVALUE_TOROIDALWINDINGS)
+            str = str + "DATAVALUE_TOROIDALWINDINGS";
+        if(dataValue == DATAVALUE_POLOIDALWINDINGSQ)
+            str = str + "DATAVALUE_POLOIDALWINDINGSQ";
+        if(dataValue == DATAVALUE_POLOIDALWINDINGSP)
+            str = str + "DATAVALUE_POLOIDALWINDINGSP";
+        if(dataValue == DATAVALUE_FIELDLINEINDEX)
+            str = str + "DATAVALUE_FIELDLINEINDEX";
         if(dataValue == DATAVALUE_POINTINDEX)
             str = str + "DATAVALUE_POINTINDEX";
-        if(dataValue == DATAVALUE_PLANE)
-            str = str + "DATAVALUE_PLANE";
-        if(dataValue == DATAVALUE_WINDINGORDER)
-            str = str + "DATAVALUE_WINDINGORDER";
+        if(dataValue == DATAVALUE_PLANEINDEX)
+            str = str + "DATAVALUE_PLANEINDEX";
+        if(dataValue == DATAVALUE_WINDINGGROUP)
+            str = str + "DATAVALUE_WINDINGGROUP";
         if(dataValue == DATAVALUE_WINDINGPOINTORDER)
             str = str + "DATAVALUE_WINDINGPOINTORDER";
         if(dataValue == DATAVALUE_WINDINGPOINTORDERMODULO)
             str = str + "DATAVALUE_WINDINGPOINTORDERMODULO";
-        if(dataValue == DATAVALUE_TOROIDALWINDINGS)
-            str = str + "DATAVALUE_TOROIDALWINDINGS";
-        if(dataValue == DATAVALUE_POLOIDALWINDINGS)
-            str = str + "DATAVALUE_POLOIDALWINDINGS";
-        if(dataValue == DATAVALUE_SAFETYFACTOR)
-            str = str + "DATAVALUE_SAFETYFACTOR";
-        if(dataValue == DATAVALUE_CONFIDENCE)
-            str = str + "DATAVALUE_CONFIDENCE";
-        if(dataValue == DATAVALUE_RIDGELINEVARIANCE)
-            str = str + "DATAVALUE_RIDGELINEVARIANCE";
         str = str + "\n";
         str = str + boolToString("showOPoints", showOPoints, indent) + "\n";
-        str = str + intToString("OPointMaxInterations", OPointMaxInterations, indent) + "\n";
+        str = str + intToString("OPointMaxIterations", OPointMaxIterations, indent) + "\n";
         str = str + boolToString("showXPoints", showXPoints, indent) + "\n";
-        str = str + intToString("XPointMaxInterations", XPointMaxInterations, indent) + "\n";
+        str = str + intToString("XPointMaxIterations", XPointMaxIterations, indent) + "\n";
         str = str + boolToString("showChaotic", showChaotic, indent) + "\n";
         str = str + boolToString("showIslands", showIslands, indent) + "\n";
         str = str + boolToString("verboseFlag", verboseFlag, indent) + "\n";
-        str = str + boolToString("showRidgelines", showRidgelines, indent) + "\n";
+        str = str + boolToString("show1DPlots", show1DPlots, indent) + "\n";
         str = str + boolToString("showLines", showLines, indent) + "\n";
         str = str + intToString("lineWidth", lineWidth, indent) + "\n";
         str = str + intToString("lineStyle", lineStyle, indent) + "\n";
@@ -1336,7 +1339,7 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
     private int            overrideToroidalWinding;
     private int            overridePoloidalWinding;
     private double         windingPairConfidence;
-    private double         periodicityConsistency;
+    private double         rationalTemplateSeedParm;
     private int            adjustPlane;
     private int            overlaps;
     private int            meshType;
@@ -1351,13 +1354,13 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
     private String         colorTableName;
     private int            dataValue;
     private boolean        showOPoints;
-    private int            OPointMaxInterations;
+    private int            OPointMaxIterations;
     private boolean        showXPoints;
-    private int            XPointMaxInterations;
+    private int            XPointMaxIterations;
     private boolean        showChaotic;
     private boolean        showIslands;
     private boolean        verboseFlag;
-    private boolean        showRidgelines;
+    private boolean        show1DPlots;
     private boolean        showLines;
     private int            lineWidth;
     private int            lineStyle;

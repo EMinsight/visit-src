@@ -4131,12 +4131,14 @@ ViewerPlotList::HideActivePlots()
 //    Reindented, removed UpdateFrame since disconnecting should not cause a
 //    redraw because time has not changed.
 //
+//    Brad Whitlock, Tue Mar 29 11:18:19 PDT 2011
+//    I added a bool argument so we're no longer toggling.
+//
 // ****************************************************************************
 
 void
-ViewerPlotList::SetPlotFollowsTime()
+ViewerPlotList::SetPlotFollowsTime(bool follows)
 {
-
     //
     // Loop over the list, toggling the disconnect flag on any active plots.
     //
@@ -4146,12 +4148,7 @@ ViewerPlotList::SetPlotFollowsTime()
         // If the plot is active toggle the hide flag.
         //
         if (plots[i].active)
-        {
-            if (plots[i].plot->FollowsTime()) 
-                plots[i].plot->SetFollowsTime( false );
-            else
-                plots[i].plot->SetFollowsTime( true );
-        }
+            plots[i].plot->SetFollowsTime( follows );
     }
  
     //
@@ -6444,7 +6441,7 @@ ViewerPlotList::UpdatePlots(const intVector &somePlots, bool animating)
             const SelectionList *sList = ViewerWindowManager::GetSelectionList();
             for(int j = 0; j < sList->GetNumSelections(); ++j)
             {
-                if(sList->operator[](j).GetOriginatingPlot() == 
+                if(sList->GetSelections(j).GetOriginatingPlot() == 
                    plots[i].plot->GetPlotName())
                 {
                     originatingPlot = true;
@@ -6573,7 +6570,7 @@ ViewerPlotList::UpdatePlots(const intVector &somePlots, bool animating)
             const SelectionList *sList = ViewerWindowManager::GetSelectionList();
             for(int j = 0; j < sList->GetNumSelections(); ++j)
             {
-                const SelectionProperties &sel = sList->operator[](j);
+                const SelectionProperties &sel = sList->GetSelections(j);
                 if(sel.GetOriginatingPlot() == 
                    plots[originatingPlots[p]].plot->GetPlotName())
                 {
@@ -6985,7 +6982,9 @@ ViewerPlotList::UpdateWindow(const intVector &somePlots, bool immediateUpdate)
             {
                 if (errorCount == 0)
                 {
-                    Error(tr("The plot dimensions do not match."));
+                    Error(tr("The plot spatial dimensions do not match, 2D vs "
+                        "3D. Plots need to be in windows with plots of the "
+                        "same spatial dimension."));
                     ++errorCount;
                 }
 

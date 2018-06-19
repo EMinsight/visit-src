@@ -59,7 +59,7 @@ import llnl.visit.Plugin;
 
 public class IndexSelectAttributes extends AttributeSubject implements Plugin
 {
-    private static int numAdditionalAttributes = 16;
+    private static int IndexSelectAttributes_numAdditionalAtts = 20;
 
     // Enum values
     public final static int DIMENSION_ONED = 0;
@@ -69,17 +69,21 @@ public class IndexSelectAttributes extends AttributeSubject implements Plugin
 
     public IndexSelectAttributes()
     {
-        super(numAdditionalAttributes);
+        super(IndexSelectAttributes_numAdditionalAtts);
 
+        maxDim = DIMENSION_THREED;
         dim = DIMENSION_TWOD;
+        xAbsMax = -1;
         xMin = 0;
         xMax = -1;
         xIncr = 1;
         xWrap = false;
+        yAbsMax = -1;
         yMin = 0;
         yMax = -1;
         yIncr = 1;
         yWrap = false;
+        zAbsMax = -1;
         zMin = 0;
         zMax = -1;
         zIncr = 1;
@@ -91,17 +95,21 @@ public class IndexSelectAttributes extends AttributeSubject implements Plugin
 
     public IndexSelectAttributes(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(IndexSelectAttributes_numAdditionalAtts + nMoreFields);
 
+        maxDim = DIMENSION_THREED;
         dim = DIMENSION_TWOD;
+        xAbsMax = -1;
         xMin = 0;
         xMax = -1;
         xIncr = 1;
         xWrap = false;
+        yAbsMax = -1;
         yMin = 0;
         yMax = -1;
         yIncr = 1;
         yWrap = false;
+        zAbsMax = -1;
         zMin = 0;
         zMax = -1;
         zIncr = 1;
@@ -113,17 +121,21 @@ public class IndexSelectAttributes extends AttributeSubject implements Plugin
 
     public IndexSelectAttributes(IndexSelectAttributes obj)
     {
-        super(numAdditionalAttributes);
+        super(IndexSelectAttributes_numAdditionalAtts);
 
+        maxDim = obj.maxDim;
         dim = obj.dim;
+        xAbsMax = obj.xAbsMax;
         xMin = obj.xMin;
         xMax = obj.xMax;
         xIncr = obj.xIncr;
         xWrap = obj.xWrap;
+        yAbsMax = obj.yAbsMax;
         yMin = obj.yMin;
         yMax = obj.yMax;
         yIncr = obj.yIncr;
         yWrap = obj.yWrap;
+        zAbsMax = obj.zAbsMax;
         zMin = obj.zMin;
         zMax = obj.zMax;
         zIncr = obj.zIncr;
@@ -142,21 +154,25 @@ public class IndexSelectAttributes extends AttributeSubject implements Plugin
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return IndexSelectAttributes_numAdditionalAtts;
     }
 
     public boolean equals(IndexSelectAttributes obj)
     {
         // Create the return value
-        return ((dim == obj.dim) &&
+        return ((maxDim == obj.maxDim) &&
+                (dim == obj.dim) &&
+                (xAbsMax == obj.xAbsMax) &&
                 (xMin == obj.xMin) &&
                 (xMax == obj.xMax) &&
                 (xIncr == obj.xIncr) &&
                 (xWrap == obj.xWrap) &&
+                (yAbsMax == obj.yAbsMax) &&
                 (yMin == obj.yMin) &&
                 (yMax == obj.yMax) &&
                 (yIncr == obj.yIncr) &&
                 (yWrap == obj.yWrap) &&
+                (zAbsMax == obj.zAbsMax) &&
                 (zMin == obj.zMin) &&
                 (zMax == obj.zMax) &&
                 (zIncr == obj.zIncr) &&
@@ -170,112 +186,140 @@ public class IndexSelectAttributes extends AttributeSubject implements Plugin
     public String GetVersion() { return "1.0"; }
 
     // Property setting methods
+    public void SetMaxDim(int maxDim_)
+    {
+        maxDim = maxDim_;
+        Select(0);
+    }
+
     public void SetDim(int dim_)
     {
         dim = dim_;
-        Select(0);
+        Select(1);
+    }
+
+    public void SetXAbsMax(int xAbsMax_)
+    {
+        xAbsMax = xAbsMax_;
+        Select(2);
     }
 
     public void SetXMin(int xMin_)
     {
         xMin = xMin_;
-        Select(1);
+        Select(3);
     }
 
     public void SetXMax(int xMax_)
     {
         xMax = xMax_;
-        Select(2);
+        Select(4);
     }
 
     public void SetXIncr(int xIncr_)
     {
         xIncr = xIncr_;
-        Select(3);
+        Select(5);
     }
 
     public void SetXWrap(boolean xWrap_)
     {
         xWrap = xWrap_;
-        Select(4);
+        Select(6);
+    }
+
+    public void SetYAbsMax(int yAbsMax_)
+    {
+        yAbsMax = yAbsMax_;
+        Select(7);
     }
 
     public void SetYMin(int yMin_)
     {
         yMin = yMin_;
-        Select(5);
+        Select(8);
     }
 
     public void SetYMax(int yMax_)
     {
         yMax = yMax_;
-        Select(6);
+        Select(9);
     }
 
     public void SetYIncr(int yIncr_)
     {
         yIncr = yIncr_;
-        Select(7);
+        Select(10);
     }
 
     public void SetYWrap(boolean yWrap_)
     {
         yWrap = yWrap_;
-        Select(8);
+        Select(11);
+    }
+
+    public void SetZAbsMax(int zAbsMax_)
+    {
+        zAbsMax = zAbsMax_;
+        Select(12);
     }
 
     public void SetZMin(int zMin_)
     {
         zMin = zMin_;
-        Select(9);
+        Select(13);
     }
 
     public void SetZMax(int zMax_)
     {
         zMax = zMax_;
-        Select(10);
+        Select(14);
     }
 
     public void SetZIncr(int zIncr_)
     {
         zIncr = zIncr_;
-        Select(11);
+        Select(15);
     }
 
     public void SetZWrap(boolean zWrap_)
     {
         zWrap = zWrap_;
-        Select(12);
+        Select(16);
     }
 
     public void SetUseWholeCollection(boolean useWholeCollection_)
     {
         useWholeCollection = useWholeCollection_;
-        Select(13);
+        Select(17);
     }
 
     public void SetCategoryName(String categoryName_)
     {
         categoryName = categoryName_;
-        Select(14);
+        Select(18);
     }
 
     public void SetSubsetName(String subsetName_)
     {
         subsetName = subsetName_;
-        Select(15);
+        Select(19);
     }
 
     // Property getting methods
+    public int     GetMaxDim() { return maxDim; }
     public int     GetDim() { return dim; }
+    public int     GetXAbsMax() { return xAbsMax; }
     public int     GetXMin() { return xMin; }
     public int     GetXMax() { return xMax; }
     public int     GetXIncr() { return xIncr; }
     public boolean GetXWrap() { return xWrap; }
+    public int     GetYAbsMax() { return yAbsMax; }
     public int     GetYMin() { return yMin; }
     public int     GetYMax() { return yMax; }
     public int     GetYIncr() { return yIncr; }
     public boolean GetYWrap() { return yWrap; }
+    public int     GetZAbsMax() { return zAbsMax; }
     public int     GetZMin() { return zMin; }
     public int     GetZMax() { return zMax; }
     public int     GetZIncr() { return zIncr; }
@@ -288,36 +332,44 @@ public class IndexSelectAttributes extends AttributeSubject implements Plugin
     public void WriteAtts(CommunicationBuffer buf)
     {
         if(WriteSelect(0, buf))
-            buf.WriteInt(dim);
+            buf.WriteInt(maxDim);
         if(WriteSelect(1, buf))
-            buf.WriteInt(xMin);
+            buf.WriteInt(dim);
         if(WriteSelect(2, buf))
-            buf.WriteInt(xMax);
+            buf.WriteInt(xAbsMax);
         if(WriteSelect(3, buf))
-            buf.WriteInt(xIncr);
+            buf.WriteInt(xMin);
         if(WriteSelect(4, buf))
-            buf.WriteBool(xWrap);
+            buf.WriteInt(xMax);
         if(WriteSelect(5, buf))
-            buf.WriteInt(yMin);
+            buf.WriteInt(xIncr);
         if(WriteSelect(6, buf))
-            buf.WriteInt(yMax);
+            buf.WriteBool(xWrap);
         if(WriteSelect(7, buf))
-            buf.WriteInt(yIncr);
+            buf.WriteInt(yAbsMax);
         if(WriteSelect(8, buf))
-            buf.WriteBool(yWrap);
+            buf.WriteInt(yMin);
         if(WriteSelect(9, buf))
-            buf.WriteInt(zMin);
+            buf.WriteInt(yMax);
         if(WriteSelect(10, buf))
-            buf.WriteInt(zMax);
+            buf.WriteInt(yIncr);
         if(WriteSelect(11, buf))
-            buf.WriteInt(zIncr);
+            buf.WriteBool(yWrap);
         if(WriteSelect(12, buf))
-            buf.WriteBool(zWrap);
+            buf.WriteInt(zAbsMax);
         if(WriteSelect(13, buf))
-            buf.WriteBool(useWholeCollection);
+            buf.WriteInt(zMin);
         if(WriteSelect(14, buf))
-            buf.WriteString(categoryName);
+            buf.WriteInt(zMax);
         if(WriteSelect(15, buf))
+            buf.WriteInt(zIncr);
+        if(WriteSelect(16, buf))
+            buf.WriteBool(zWrap);
+        if(WriteSelect(17, buf))
+            buf.WriteBool(useWholeCollection);
+        if(WriteSelect(18, buf))
+            buf.WriteString(categoryName);
+        if(WriteSelect(19, buf))
             buf.WriteString(subsetName);
     }
 
@@ -326,51 +378,63 @@ public class IndexSelectAttributes extends AttributeSubject implements Plugin
         switch(index)
         {
         case 0:
-            SetDim(buf.ReadInt());
+            SetMaxDim(buf.ReadInt());
             break;
         case 1:
-            SetXMin(buf.ReadInt());
+            SetDim(buf.ReadInt());
             break;
         case 2:
-            SetXMax(buf.ReadInt());
+            SetXAbsMax(buf.ReadInt());
             break;
         case 3:
-            SetXIncr(buf.ReadInt());
+            SetXMin(buf.ReadInt());
             break;
         case 4:
-            SetXWrap(buf.ReadBool());
+            SetXMax(buf.ReadInt());
             break;
         case 5:
-            SetYMin(buf.ReadInt());
+            SetXIncr(buf.ReadInt());
             break;
         case 6:
-            SetYMax(buf.ReadInt());
+            SetXWrap(buf.ReadBool());
             break;
         case 7:
-            SetYIncr(buf.ReadInt());
+            SetYAbsMax(buf.ReadInt());
             break;
         case 8:
-            SetYWrap(buf.ReadBool());
+            SetYMin(buf.ReadInt());
             break;
         case 9:
-            SetZMin(buf.ReadInt());
+            SetYMax(buf.ReadInt());
             break;
         case 10:
-            SetZMax(buf.ReadInt());
+            SetYIncr(buf.ReadInt());
             break;
         case 11:
-            SetZIncr(buf.ReadInt());
+            SetYWrap(buf.ReadBool());
             break;
         case 12:
-            SetZWrap(buf.ReadBool());
+            SetZAbsMax(buf.ReadInt());
             break;
         case 13:
-            SetUseWholeCollection(buf.ReadBool());
+            SetZMin(buf.ReadInt());
             break;
         case 14:
-            SetCategoryName(buf.ReadString());
+            SetZMax(buf.ReadInt());
             break;
         case 15:
+            SetZIncr(buf.ReadInt());
+            break;
+        case 16:
+            SetZWrap(buf.ReadBool());
+            break;
+        case 17:
+            SetUseWholeCollection(buf.ReadBool());
+            break;
+        case 18:
+            SetCategoryName(buf.ReadString());
+            break;
+        case 19:
             SetSubsetName(buf.ReadString());
             break;
         }
@@ -379,6 +443,14 @@ public class IndexSelectAttributes extends AttributeSubject implements Plugin
     public String toString(String indent)
     {
         String str = new String();
+        str = str + indent + "maxDim = ";
+        if(maxDim == DIMENSION_ONED)
+            str = str + "DIMENSION_ONED";
+        if(maxDim == DIMENSION_TWOD)
+            str = str + "DIMENSION_TWOD";
+        if(maxDim == DIMENSION_THREED)
+            str = str + "DIMENSION_THREED";
+        str = str + "\n";
         str = str + indent + "dim = ";
         if(dim == DIMENSION_ONED)
             str = str + "DIMENSION_ONED";
@@ -387,14 +459,17 @@ public class IndexSelectAttributes extends AttributeSubject implements Plugin
         if(dim == DIMENSION_THREED)
             str = str + "DIMENSION_THREED";
         str = str + "\n";
+        str = str + intToString("xAbsMax", xAbsMax, indent) + "\n";
         str = str + intToString("xMin", xMin, indent) + "\n";
         str = str + intToString("xMax", xMax, indent) + "\n";
         str = str + intToString("xIncr", xIncr, indent) + "\n";
         str = str + boolToString("xWrap", xWrap, indent) + "\n";
+        str = str + intToString("yAbsMax", yAbsMax, indent) + "\n";
         str = str + intToString("yMin", yMin, indent) + "\n";
         str = str + intToString("yMax", yMax, indent) + "\n";
         str = str + intToString("yIncr", yIncr, indent) + "\n";
         str = str + boolToString("yWrap", yWrap, indent) + "\n";
+        str = str + intToString("zAbsMax", zAbsMax, indent) + "\n";
         str = str + intToString("zMin", zMin, indent) + "\n";
         str = str + intToString("zMax", zMax, indent) + "\n";
         str = str + intToString("zIncr", zIncr, indent) + "\n";
@@ -407,15 +482,19 @@ public class IndexSelectAttributes extends AttributeSubject implements Plugin
 
 
     // Attributes
+    private int     maxDim;
     private int     dim;
+    private int     xAbsMax;
     private int     xMin;
     private int     xMax;
     private int     xIncr;
     private boolean xWrap;
+    private int     yAbsMax;
     private int     yMin;
     private int     yMax;
     private int     yIncr;
     private boolean yWrap;
+    private int     zAbsMax;
     private int     zMin;
     private int     zMax;
     private int     zIncr;

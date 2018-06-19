@@ -64,6 +64,11 @@
 #include <DataNode.h>
 #include <StringHelpers.h>
 
+#ifdef _WIN32
+#include <QTemporaryFile>
+#include <InstallationFunctions.h>
+#endif
+
 using std::string;
 using std::vector;
 
@@ -227,6 +232,9 @@ QvisPickWindow::~QvisPickWindow()
 //   Gunther H. Weber, Fri Aug 15 10:50:10 PDT 2008
 //   Add buttons for redoing pick with and without opening a Spreadsheet plot.
 //   Added a missing tr() for "Clear Picks".
+//
+//   Kathleen Bonnell, Thu Mar  3 08:07:31 PST 2011
+//   Added timeCurveType combo box.
 //
 // ****************************************************************************
 
@@ -409,17 +417,25 @@ QvisPickWindow::CreateWindowContents()
             this, SLOT(preserveCoordActivated(int)));
     gLayout->addWidget(preserveCoord, 13, 0, 1, 4);
 
+    timeCurveType= new QComboBox(central);
+    timeCurveType->addItem(tr("Time curve use single Y axis"));
+    timeCurveType->addItem(tr("Time curve use multiple Y axes"));
+    timeCurveType->setCurrentIndex(0);
+    connect(timeCurveType, SIGNAL(activated(int)),
+            this, SLOT(timeCurveTypeActivated(int)));
+    gLayout->addWidget(timeCurveType, 14, 0, 1, 4);
+
     spreadsheetCheckBox = new QCheckBox(tr("Create spreadsheet with next pick"), 
                                         central);
     connect(spreadsheetCheckBox, SIGNAL(toggled(bool)),
             this, SLOT(spreadsheetToggled(bool)));
-    gLayout->addWidget(spreadsheetCheckBox, 14, 0, 1, 2);
+    gLayout->addWidget(spreadsheetCheckBox, 15, 0, 1, 2);
 
     QPushButton *redoPickWithSpreadsheetButton =
         new QPushButton(tr("Display in Spreadsheet"), central);
     connect(redoPickWithSpreadsheetButton, SIGNAL(clicked()),
             this, SLOT(redoPickWithSpreadsheetClicked()));
-    gLayout->addWidget(redoPickWithSpreadsheetButton, 14, 2, 1, 2);
+    gLayout->addWidget(redoPickWithSpreadsheetButton, 15, 2, 1, 2);
 }
 
 // ****************************************************************************
@@ -483,6 +499,9 @@ QvisPickWindow::CreateWindowContents()
 //
 //   Brad Whitlock, Mon Dec 17 09:33:48 PST 2007
 //   Made it use ids.
+//
+//   Kathleen Bonnell, Thu Mar  3 08:08:03 PST 2011
+//   Added timeCurveType.
 //
 // ****************************************************************************
 
@@ -607,6 +626,7 @@ QvisPickWindow::UpdateWindow(bool doAll)
         timeCurveCheckBox->blockSignals(true);
         timeCurveCheckBox->setChecked(pickAtts->GetDoTimeCurve());
         preserveCoord->setEnabled(pickAtts->GetDoTimeCurve());
+        timeCurveType->setEnabled(pickAtts->GetDoTimeCurve());
         timeCurveCheckBox->blockSignals(false);
     }
 
@@ -672,6 +692,14 @@ QvisPickWindow::UpdateWindow(bool doAll)
         preserveCoord->blockSignals(true);
         preserveCoord->setCurrentIndex((int)pickAtts->GetTimePreserveCoord());
         preserveCoord->blockSignals(false);
+    }
+
+    // timeCurveType
+    if (pickAtts->IsSelected(PickAttributes::ID_timePreserveCoord) || doAll)
+    {
+        timeCurveType->blockSignals(true);
+        timeCurveType->setCurrentIndex((int)pickAtts->GetTimeCurveType());
+        timeCurveType->blockSignals(false);
     }
 }
 
@@ -1562,7 +1590,7 @@ QvisPickWindow::displayPickLetterToggled(bool val)
 
 
 // ****************************************************************************
-// Method: QvisPickWindow::preserveCoordToggled
+// Method: QvisPickWindow::preserveCoordActivated
 //
 // Purpose: 
 //   This is a Qt slot function that sets the flag indicating whether
@@ -1582,6 +1610,31 @@ void
 QvisPickWindow::preserveCoordActivated(int val)
 {
     pickAtts->SetTimePreserveCoord((bool)val);
+    Apply();
+}
+
+// ****************************************************************************
+// Method: QvisPickWindow::timeCurveTypeActivated
+//
+// Purpose: 
+//   This is a Qt slot function that sets the value indicating whether
+//   a time-curve pick will generate a curve with single-y axis (Curve plot)
+//   or multiple y axes (MultiCurve plot).
+//
+// Arguments:
+//   val : The new timeCurveType value.
+//
+// Programmer: Kathleen Bonnell 
+// Creation:   March 3, 2011 
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+QvisPickWindow::timeCurveTypeActivated(int val)
+{
+    pickAtts->SetTimeCurveType((PickAttributes::TimeCurveType)val);
     Apply();
 }
 
@@ -1655,6 +1708,11 @@ QvisPickWindow::ResizeTabs()
 //   Brad Whitlock, Fri Jun  6 14:59:53 PDT 2008
 //   Qt 4.
 //
+//    Kathleen Bonnell, Fri May 13 13:28:45 PDT 2011
+//    On Windows, explicitly test writeability of the 'cwd' before passing it 
+//    to getSaveFileName (eg don't present user with a place to save a file if 
+//    they cannot save there!)
+//
 // ****************************************************************************
 
 void
@@ -1667,10 +1725,21 @@ QvisPickWindow::savePickText()
     defaultFile.sprintf("visit%04d", saveCount);
     defaultFile += saveExtension;
     
-    QString currentDir;
-    currentDir = QDir::current().path();
-    
-    defaultFile = currentDir + "/" + defaultFile;
+    QString useDir;
+    useDir = QDir::current().path();
+
+#ifdef _WIN32
+    { // new scope
+        // force a temporary file creation in cwd
+        QTemporaryFile tf("mytemp");
+        if (!tf.open())
+        {
+            useDir = GetUserVisItDirectory().c_str();
+        }
+    }
+#endif
+
+    defaultFile = useDir + "/" + defaultFile;
 
     // Get the name of the file that the user saved.
     QString sFilter(QString("VisIt ") + QString("save") + QString(" (*") + saveExtension + ")");
@@ -1804,14 +1873,16 @@ void QvisPickWindow::redoPickWithSpreadsheetClicked()
 // Creation:   Fri Aug 15 10:52:49 PDT 2008
 //
 // Modifications:
-//   
+//    Gunther H. Weber, Tue May 17 19:45:24 PDT 2011
+//    Replaced generic "Pick" with "ZonePick" to get re-picking to work again.
+//
 // ****************************************************************************
 
 void
 QvisPickWindow::redoPick()
 {
     if (pickAtts->GetPickType() == PickAttributes::Zone)
-        GetViewerMethods()->PointQuery("Pick", pickAtts->GetPickPoint(), pickAtts->GetVariables());
+        GetViewerMethods()->PointQuery("ZonePick", pickAtts->GetPickPoint(), pickAtts->GetVariables());
     else if (pickAtts->GetPickType() == PickAttributes::Node)
         GetViewerMethods()->PointQuery("NodePick", pickAtts->GetPickPoint(),  pickAtts->GetVariables());
 

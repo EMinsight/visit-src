@@ -62,6 +62,10 @@ void avtMeshMetaData::Init()
     meshCoordType = AVT_XY;
     cellOrigin = 0;
     spatialDimension = 3;
+    hasLogicalBounds = false;
+    logicalBounds[0] = 0;
+    logicalBounds[1] = 0;
+    logicalBounds[2] = 0;
     topologicalDimension = 3;
     xLabel = "X-Axis";
     yLabel = "Y-Axis";
@@ -151,6 +155,11 @@ void avtMeshMetaData::Copy(const avtMeshMetaData &obj)
     meshCoordType = obj.meshCoordType;
     cellOrigin = obj.cellOrigin;
     spatialDimension = obj.spatialDimension;
+    hasLogicalBounds = obj.hasLogicalBounds;
+    logicalBounds[0] = obj.logicalBounds[0];
+    logicalBounds[1] = obj.logicalBounds[1];
+    logicalBounds[2] = obj.logicalBounds[2];
+
     topologicalDimension = obj.topologicalDimension;
     xUnits = obj.xUnits;
     yUnits = obj.yUnits;
@@ -358,6 +367,11 @@ avtMeshMetaData::operator = (const avtMeshMetaData &obj)
 bool
 avtMeshMetaData::operator == (const avtMeshMetaData &obj) const
 {
+    // Compare the logicalBounds arrays.
+    bool logicalBounds_equal = true;
+    for(int i = 0; i < 3 && logicalBounds_equal; ++i)
+        logicalBounds_equal = (logicalBounds[i] == obj.logicalBounds[i]);
+
     // Compare the minSpatialExtents arrays.
     bool minSpatialExtents_equal = true;
     for(int i = 0; i < 3 && minSpatialExtents_equal; ++i)
@@ -391,6 +405,8 @@ avtMeshMetaData::operator == (const avtMeshMetaData &obj) const
             (meshCoordType == obj.meshCoordType) &&
             (cellOrigin == obj.cellOrigin) &&
             (spatialDimension == obj.spatialDimension) &&
+            (hasLogicalBounds == obj.hasLogicalBounds) &&
+            logicalBounds_equal &&
             (topologicalDimension == obj.topologicalDimension) &&
             (xUnits == obj.xUnits) &&
             (yUnits == obj.yUnits) &&
@@ -579,6 +595,8 @@ avtMeshMetaData::SelectAll()
     Select(ID_meshCoordType,                  (void *)&meshCoordType);
     Select(ID_cellOrigin,                     (void *)&cellOrigin);
     Select(ID_spatialDimension,               (void *)&spatialDimension);
+    Select(ID_hasLogicalBounds,               (void *)&hasLogicalBounds);
+    Select(ID_logicalBounds,                  (void *)logicalBounds, 3);
     Select(ID_topologicalDimension,           (void *)&topologicalDimension);
     Select(ID_xUnits,                         (void *)&xUnits);
     Select(ID_yUnits,                         (void *)&yUnits);
@@ -635,6 +653,7 @@ avtMeshMetaData::SelectAll()
 //  Method: avtMeshMetaData constructor
 //
 //  Arguments:
+//      bounds      Strunctured mesh bounds as < max_i, max_j, max_k>.
 //      extents     Mesh extents as <min_x, max_x, min_y, max_y, min_z, max_z>.
 //      s           The name of the mesh.
 //      nb          The number of blocks.
@@ -707,7 +726,8 @@ avtMeshMetaData::SelectAll()
 //
 // ****************************************************************************
 
-avtMeshMetaData::avtMeshMetaData(const double *extents, std::string s, int nb,
+avtMeshMetaData::avtMeshMetaData(const int *bounds, const double *extents,
+                                 std::string s, int nb,
                                  int bo, int co, int go, int sd, int td,
                                  avtMeshType mt)
     : AttributeSubject(avtMeshMetaData::TypeMapFormatString)
@@ -728,6 +748,7 @@ avtMeshMetaData::avtMeshMetaData(const double *extents, std::string s, int nb,
     numGroups            = 0;
     containsExteriorBoundaryGhosts = false;
     SetExtents(extents);
+    SetBounds(bounds);
 }
 
 // ****************************************************************************
@@ -827,6 +848,7 @@ avtMeshMetaData::avtMeshMetaData(std::string s, int nb, int bo, int co, int go,
     meshType             = mt;
     containsExteriorBoundaryGhosts = false;
     SetExtents(0);
+    SetBounds(0);
 }
 
 // ****************************************************************************
@@ -881,6 +903,55 @@ void
 avtMeshMetaData::UnsetExtents()
 {
     hasSpatialExtents = false;
+}
+
+// ****************************************************************************
+//  Method: avtMeshMetaData::SetBounds
+//
+//  Purpose:
+//      Sets the logical bounds of a structured mesh.
+//
+//  Arguments:
+//      bounds     Mesh bounds as < i_max, j_max, k_max>.
+//
+//  Creationist: Allen Sanderson
+//  Creation:    March 3, 2011
+//
+// ****************************************************************************
+
+void
+avtMeshMetaData::SetBounds(const int *bounds)
+{
+    if (bounds == NULL)
+    {
+        hasLogicalBounds = false;
+        for (int i = 0 ; i < std::min(topologicalDimension, 3) ; i++)
+        {
+            logicalBounds[i] = 0.0;  
+        }
+    }
+    else
+    {
+        hasLogicalBounds = true;
+        if( meshType == AVT_POINT_MESH || meshType == AVT_UNSTRUCTURED_MESH)
+        {
+          cerr << endl << "Setting bounds ..............." << endl;
+            logicalBounds[0] = bounds[0];
+        }
+        else
+        {
+          for (int i = 0 ; i < std::min(topologicalDimension, 3) ; i++)
+          {
+            logicalBounds[i] = bounds[i];
+          }
+        }
+    }
+}
+
+void
+avtMeshMetaData::UnsetBounds()
+{
+    hasLogicalBounds = false;
 }
 
 // ****************************************************************************
@@ -1081,12 +1152,11 @@ avtMeshMetaData::Print(ostream &out, int indent) const
 
     Indent(out, indent);
     out << "Spatial Dimension = " << spatialDimension << endl;
-    Indent(out, indent);
-    out << "Topological Dimension = " << topologicalDimension << endl;
+
     if (hasSpatialExtents)
     {
         Indent(out, indent);
-        out << "Extents are: (";
+        out << "Spatial extents are: (";
         for (int j = 0 ; j < std::min(spatialDimension, 3) ; j++)
         {
             out << "(" << minSpatialExtents[j] << ", " << maxSpatialExtents[j]
@@ -1101,6 +1171,48 @@ avtMeshMetaData::Print(ostream &out, int indent) const
         Indent(out, indent);
         out << "The spatial extents are not set." << endl;
     }
+
+    Indent(out, indent);
+    out << "Topological Dimension = " << topologicalDimension << endl;
+
+    if (hasLogicalBounds)
+    {
+        Indent(out, indent);
+        out << "Logical bounds are: (";
+
+        if( meshType == AVT_POINT_MESH || meshType == AVT_UNSTRUCTURED_MESH)
+            out << logicalBounds[0];
+        else
+        {
+          for (int j = 0 ; j < std::min(topologicalDimension, 3) ; j++)
+          {
+              out << logicalBounds[j];
+              if(j < topologicalDimension-1)
+                  out << ", ";
+          }
+        }
+
+        out << ")" << endl;
+    }
+    else
+    {
+        switch (meshType)
+        {
+          case AVT_RECTILINEAR_MESH:
+          case AVT_CURVILINEAR_MESH:
+          case AVT_UNSTRUCTURED_MESH:
+          case AVT_POINT_MESH:
+            Indent(out, indent);
+            out << "The logical bounds are not set." << endl;
+            break;
+
+//          Report nothing as the logical bounds are not applicable
+//          default:
+//            out << "The logical bounds are not applicable." << endl;
+//            break;
+        }
+    }
+
 
     if (blockNames.size() == numBlocks)
     {
@@ -1310,4 +1422,3 @@ avtMeshMetaData::SetAMRInfo(const std::string &levelName,
     atts.SetNamescheme(base_string);
     this->blockNameScheme = atts;
 }
-

@@ -39,6 +39,7 @@
 #include "VisItControlInterface_V2.h"
 #include "SimV2Tracing.h"
 #include "DeclareDataCallbacks.h"
+#include "SimUI.h"
 
 #ifdef _WIN32
 #if _MSC_VER < 1600
@@ -499,6 +500,8 @@ visit_do_sync(int id)
 * Date:       Thu Mar 26 13:28:11 PDT 2009
 *
 * Modifications:
+*   Brad Whitlock, Sun Feb 27 16:17:24 PST 2011
+*   Handle UI commands.
 *
 ******************************************************************************/
 
@@ -513,7 +516,29 @@ visit_handle_command_callback(const char *cmd, const char *args, void *cbdata)
     }
     else if(visit_command_callback != NULL)
     {
-        (*visit_command_callback)(cmd, args, visit_command_callback_data);
+        if(strncmp(cmd, "UI;", 3) == 0)
+        {
+            char *cmd2, *args2;
+            cmd2 = (char*)malloc(strlen(cmd) + 1 - 3);
+            strcpy(cmd2, cmd + 3);
+            args2 = cmd2;
+            while(*args2 != ';')
+                args2++;
+            *args2++ = '\0';
+
+            /* Try and call user-defined slot functions */
+            if(sim_ui_handle(cmd2, args2) == 0)
+            {
+                /* As a backup, call the regular command function. */
+                (*visit_command_callback)(cmd2, args2, visit_command_callback_data);
+            }
+
+            free(cmd2);
+        }
+        else
+        {
+            (*visit_command_callback)(cmd, args, visit_command_callback_data);
+        }
     }
 }
 
@@ -1739,6 +1764,68 @@ void VisItSetOptions(char *o)
 
 /*******************************************************************************
 *
+* Name: VisItGetEnvironment
+*
+* Purpose: Try to determine the environment variables that the VisIt Engine
+*          needs to run and return a string containing those values.  The 
+*          VisIt script can tell us this.
+*
+* Author: Brad Whitlock, B Division, Lawrence Livermore National Laboratory
+*
+* Modifications:
+*
+*******************************************************************************/
+char *VisItGetEnvironment(void)
+{
+#ifdef _WIN32
+    LIBSIM_API_ENTER(VisItGetEnvironment);
+    LIBSIM_API_LEAVE1(VisItGetEnvironment, "return %s", "NULL");
+    return NULL;
+#else
+    int done = 0;
+    char *new_env = NULL;
+
+    LIBSIM_API_ENTER(VisItGetEnvironment);
+
+    new_env = (char*)(malloc(ENV_BUF_SIZE));
+    memset(new_env, 0, ENV_BUF_SIZE * sizeof(char));
+
+    /* Try the one specified in by the visit_dir command first */
+    if (visit_directory)
+    {
+        char path[200];
+        sprintf(path, "%s/bin/visit", visit_directory);
+        done = ReadEnvironmentFromCommand(path, new_env);
+    }
+
+    /* Try the one in their path next */
+    if (!done)
+    {
+        done = ReadEnvironmentFromCommand("visit", new_env);
+    }
+
+    /* If we still can't find it, try the one in /usr/gapps/visit */
+    if (!done)
+    {
+        done = ReadEnvironmentFromCommand("/usr/gapps/visit/bin/visit", new_env);
+    }
+
+    /* We didn't get good values, arrange to return NULL. */
+    if(!done)
+    {
+        free(new_env);
+        new_env = NULL;
+    }
+
+    LIBSIM_API_LEAVE1(VisItGetEnvironment, "return %s", 
+                     (new_env ? new_env : "NULL"));
+
+    return new_env;
+#endif   
+}
+
+/*******************************************************************************
+*
 * Name: VisItSetupEnvironment
 *
 * Purpose: Try to determine the environment variables that the VisIt Engine
@@ -1757,15 +1844,41 @@ void VisItSetOptions(char *o)
 *   Brad Whitlock, Thu Nov 25 23:40:34 PST 2010
 *   Windows port.
 *
+*   Brad Whitlock, Wed Mar 23 11:06:27 PDT 2011
+*   I moved the guts to VisItSetupEnvironment2.
+*
 *******************************************************************************/
 int VisItSetupEnvironment(void)
+{
+    int r;
+    LIBSIM_API_ENTER(VisItSetupEnvironment);
+    /* Pass NULL for the environment so we'll read it in the most appropriate way.*/
+    r = VisItSetupEnvironment2(NULL);
+    LIBSIM_API_LEAVE1(VisItSetupEnvironment, "return %d", r);
+    return r;
+}
+
+/*******************************************************************************
+*
+* Name: VisItSetupEnvironment2
+*
+* Purpose: Try to determine the environment variables that the VisIt Engine
+*          needs to run.  The VisIt script can tell us this.
+*
+* Author: Jeremy Meredith / Brad Whitlock, B Division, 
+*         Lawrence Livermore National Laboratory
+*
+* Modifications:
+*
+*******************************************************************************/
+int VisItSetupEnvironment2(char *env)
 {
 #ifdef _WIN32
     WORD wVersionRequested;
     WSADATA wsaData;
     char visitpath[1024], tmp[1024];
 
-    LIBSIM_API_ENTER(VisItSetupEnvironment);
+    LIBSIM_API_ENTER(VisItSetupEnvironment2);
     GetVisItDirectory(visitpath, 1024);
 
     /* Tell Windows that we want to get DLLs from this path. We DO need this
@@ -1787,36 +1900,58 @@ int VisItSetupEnvironment(void)
     wVersionRequested = MAKEWORD(2,2);
     WSAStartup(wVersionRequested, &wsaData);
 #else
-   char *new_env = (char*)(malloc(ENV_BUF_SIZE));
-   int done = 0;
+   char *new_env = NULL;
+   int done = 0, canBroadcast = 0, mustReadEnv = 1;
    char *ptr;
 
-   LIBSIM_API_ENTER(VisItSetupEnvironment);
+   LIBSIM_API_ENTER(VisItSetupEnvironment2);
 
-   /* Try the one specified in by the visit_dir command first */
-   if (visit_directory)
+   /* Make a copy of the input string. */
+   new_env = (char*)(malloc(ENV_BUF_SIZE));
+   memset(new_env, 0, ENV_BUF_SIZE * sizeof(char));
+   if(env != NULL)
    {
-      char path[200];
-      sprintf(path, "%s/bin/visit", visit_directory);
-      done = ReadEnvironmentFromCommand(path, new_env);
+       strncpy(new_env, env, ENV_BUF_SIZE);
+       done = 1;
    }
 
-   /* Try the one in their path next */
-   if (!done)
+   /* Determine whether we can broadcast strings */
+   canBroadcast = isParallel && (BroadcastString_internal != NULL);
+
+   /* Determine whether we must read the environment. */
+   if(canBroadcast)
+       mustReadEnv = (parallelRank == 0) && (env == NULL);
+   else
+       mustReadEnv = (env == NULL);
+
+   /* Read the environment. */
+   if(mustReadEnv)
    {
-      done = ReadEnvironmentFromCommand("visit", new_env);
+       char *c = VisItGetEnvironment();
+       if(c != NULL)
+       {
+           free(new_env);
+           new_env = c;
+           done = 1;
+       }
    }
 
-   /* If we still can't find it, try the one in /usr/gapps/visit */
-   if (!done)
+   /* Use broadcast if we can. */
+   if(canBroadcast)
    {
-      done = ReadEnvironmentFromCommand("/usr/gapps/visit/bin/visit", new_env);
+       /* Send the string to other processors */
+       BroadcastString(new_env, ENV_BUF_SIZE, 0);
+
+       /* We're done if the string was not empty. */
+       done = (new_env[0] != '\0');
    }
 
    if (!done)
    {
-      LIBSIM_API_LEAVE1(VisItSetupEnvironment, "return %d", FALSE);
-      return FALSE;
+       /* We're not using new_env for putenv so we can free it. */
+       free(new_env);
+       LIBSIM_API_LEAVE1(VisItSetupEnvironment2, "return %d", FALSE);
+       return FALSE;
    }
 
    /* Do a bunch of putenv calls; it should already be formatted correctly */
@@ -1835,7 +1970,7 @@ int VisItSetupEnvironment(void)
    }
    /* free(new_env); <--- NO!  You are not supposed to free this memory! */
 #endif
-   LIBSIM_API_LEAVE1(VisItSetupEnvironment, "return %d", TRUE);
+   LIBSIM_API_LEAVE1(VisItSetupEnvironment2, "return %d", TRUE);
    return TRUE;
 }
 
@@ -3092,3 +3227,89 @@ VISIT_DEBUG_FUNCTION(2)
 VISIT_DEBUG_FUNCTION(3)
 VISIT_DEBUG_FUNCTION(4)
 VISIT_DEBUG_FUNCTION(5)
+
+/***************************************************************************/
+int
+VisItUI_clicked(const char *name, void (*cb)(void*), void *cbdata)
+{
+    int retval = VISIT_ERROR;
+    sim_ui_element *e = NULL;
+    LIBSIM_API_ENTER(VisItUI_clicked);
+    if((e = sim_ui_get(name)) != NULL)
+    {
+        e->slot_clicked = cb;
+        e->slot_clicked_data = cbdata;
+        retval = VISIT_OKAY;
+    }
+    LIBSIM_API_LEAVE(VisItUI_clicked);
+    return retval;
+}
+
+int
+VisItUI_stateChanged(const char *name, void (*cb)(int,void*), void *cbdata)
+{
+    int retval = VISIT_ERROR;
+    sim_ui_element *e = NULL;
+    LIBSIM_API_ENTER(VisItUI_stateChanged);
+    if((e = sim_ui_get(name)) != NULL)
+    {
+        e->slot_stateChanged = cb;
+        e->slot_stateChanged_data = cbdata;
+        retval = VISIT_OKAY;
+    }
+    LIBSIM_API_LEAVE(VisItUI_stateChanged);
+    return retval;
+}
+
+int
+VisItUI_valueChanged(const char *name, void (*cb)(int,void*), void *cbdata)
+{
+    int retval = VISIT_ERROR;
+    sim_ui_element *e = NULL;
+    LIBSIM_API_ENTER(VisItUI_valueChanged);
+    if((e = sim_ui_get(name)) != NULL)
+    {
+        e->slot_valueChanged = cb;
+        e->slot_valueChanged_data = cbdata;
+        retval = VISIT_OKAY;
+    }
+    LIBSIM_API_LEAVE(VisItUI_valueChanged);
+    return retval;
+}
+/***************************************************************************/
+
+int
+VisItUI_setValueI(const char *name, int value, int enabled)
+{
+    int retval = VISIT_ERROR;
+
+    LIBSIM_API_ENTER(VisItUI_setValueI);
+    /* Make sure the function exists before using it. */
+    if (engine && callbacks != NULL && callbacks->control.execute_command)
+    {
+        char cmd[500];
+        sprintf(cmd, "SetUI:i:%s:%d:%d", name, value, enabled?1:0);
+        (*callbacks->control.execute_command)(engine, cmd);
+        retval = VISIT_OKAY;
+    }
+    LIBSIM_API_LEAVE(VisItUI_setValueI)
+    return retval;
+}
+
+int
+VisItUI_setValueS(const char *name, const char *value, int enabled)
+{
+    int retval = VISIT_ERROR;
+
+    LIBSIM_API_ENTER(VisItUI_setValueS);
+    /* Make sure the function exists before using it. */
+    if (engine && callbacks != NULL && callbacks->control.execute_command)
+    {
+        char cmd[500];
+        sprintf(cmd, "SetUI:s:%s:%s:%d", name, value, enabled?1:0);
+        (*callbacks->control.execute_command)(engine, cmd);
+        retval = VISIT_OKAY;
+    }
+    LIBSIM_API_LEAVE(VisItUI_setValueS)
+    return retval;
+}

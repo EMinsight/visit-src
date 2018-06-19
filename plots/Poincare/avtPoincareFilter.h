@@ -84,8 +84,6 @@ class avtPoincareIC;
 //
 // ****************************************************************************
 
-#include "StreamlineAnalyzerLib.h"
-
 class avtPoincareFilter : public avtStreamlineFilter
 {
   public:
@@ -109,7 +107,7 @@ class avtPoincareFilter : public avtStreamlineFilter
       overridePoloidalWinding = value; }
 
     void SetWindingPairConfidence( double val ) { windingPairConfidence = val; }
-    void SetPeriodicityConsistency( double val ) { periodicityConsistency = val; }
+    void SetRationalTemplateSeedParm( double val ) { rationalTemplateSeedParm = val; }
 
     void SetAdjustPlane( int val ) { adjust_plane = val; }
 
@@ -124,13 +122,16 @@ class avtPoincareFilter : public avtStreamlineFilter
     void SetDataValue( unsigned int val ) { dataValue = val; }
 
     void SetShowOPoints( bool val ) { showOPoints = val; }
+    void SetOPointMaxIterations( int val ) { OPointMaxIterations = val; }
+    void SetShowXPoints( bool val ) { showXPoints = val; }
+    void SetXPointMaxIterations( int val ) { XPointMaxIterations = val; }
     void SetShowChaotic( bool val ) { showChaotic = val; }
     void SetShowIslands( bool val ) { showIslands = val; }
     void SetShowLines( bool val )   { showLines = val; }
     void SetShowPoints( bool val )  { showPoints = val; }
     void SetPointScale(int scale)   { pointScale = scale; }
     void SetVerboseFlag( bool val ) { verboseFlag = val; }
-    void SetShowRidgelines( bool val )   { showRidgelines = val; }
+    void SetShow1DPlots( bool val )   { show1DPlots = val; }
 
     // Methods to set the filter's attributes.
     void                      SetIntersectionCriteria(vtkObject *obj, int);
@@ -149,15 +150,10 @@ class avtPoincareFilter : public avtStreamlineFilter
                                                    const avtVector &p_start, long ID );
 
   virtual void drawPoints( avtDataTree *dt,
-                           vector < Point > &nodes );
-
-  virtual void findIslandCenter( avtDataTree *dt,
-                                 vector< vector < vector < Point > > > &nodes,
-                                 unsigned int color,
-                                 double color_value );
+                           vector < avtVector > &nodes );
 
   virtual void drawRationalCurve( avtDataTree *dt,
-                                  vector< vector < vector < Point > > > &nodes,
+                                  vector< vector < vector < avtVector > > > &nodes,
                                   unsigned int nnodes,
                                   unsigned int islands,
                                   unsigned int skip,
@@ -165,7 +161,7 @@ class avtPoincareFilter : public avtStreamlineFilter
                                   double color_value );
   
   virtual void drawIrrationalCurve( avtDataTree *dt,
-                                    vector< vector < vector < Point > > > &nodes,
+                                    vector< vector < vector < avtVector > > > &nodes,
                                     unsigned int nnodes,
                                     unsigned int islands,
                                     unsigned int skip,
@@ -175,7 +171,7 @@ class avtPoincareFilter : public avtStreamlineFilter
                                     bool modulo = false);
   
   virtual void drawSurface( avtDataTree *dt,
-                            vector< vector < vector < Point > > > &nodes,
+                            vector< vector < vector < avtVector > > > &nodes,
                             unsigned int nnodes,
                             unsigned int islands,
                             unsigned int skip,
@@ -184,7 +180,7 @@ class avtPoincareFilter : public avtStreamlineFilter
                             bool modulo = false);
 
   virtual void drawPeriodicity( avtDataTree *dt,
-                                vector < Point  > &nodes,
+                                vector < avtVector > &nodes,
                                 unsigned int period,
                                 unsigned int nnodes,
                                 unsigned int islands,
@@ -194,13 +190,12 @@ class avtPoincareFilter : public avtStreamlineFilter
                                 bool ptFlag );
 
     // Poincare filter methods.
-    bool                      ClassifyStreamlines();
-    avtDataTree               *CreatePoincareOutput();
+    bool ClassifyStreamlines(vector<avtIntegralCurve *> &ic);
+    void CreatePoincareOutput(avtDataTree *dt,
+                              vector<avtIntegralCurve *> &ic);
 
     void CreateIntegralCurveOutput(std::vector<avtIntegralCurve*,
                                    std::allocator<avtIntegralCurve*> >&) {};
-
-    FusionPSE::FieldlineLib FLlib;         
 
     unsigned int puncturePlane;
     unsigned int analysis;
@@ -212,7 +207,7 @@ class avtPoincareFilter : public avtStreamlineFilter
     unsigned int overridePoloidalWinding;
 
     double windingPairConfidence;
-    double periodicityConsistency;
+    double rationalTemplateSeedParm;
 
     unsigned int overlaps;
 
@@ -225,23 +220,26 @@ class avtPoincareFilter : public avtStreamlineFilter
     vtkObject *intersectObj; 
     int maxIntersections;
 
-    bool showOPoints, showIslands, showChaotic;
-    bool showLines, showPoints, showRidgelines, verboseFlag;
+    bool showOPoints, showXPoints, showIslands, showChaotic;
+    bool showLines, showPoints, show1DPlots, verboseFlag;
     int  pointScale;
 
-    class ICHelper
-    {
-      public:
-        ICHelper() {}
-        ~ICHelper() {}
+    unsigned int OPointMaxIterations;
+    unsigned int XPointMaxIterations;
 
-        avtPoincareIC *ic;
-        std::vector<avtVector> points;
-        FieldlineProperties properties;
-        long int id;
-    };
+//     class ICHelper
+//     {
+//       public:
+//         ICHelper() : ic(0) {}
+//         ~ICHelper() {}
 
-    std::map< long int, ICHelper > fieldlines;
+//         avtPoincareIC *ic;
+//         std::vector<avtVector> points;
+//         FieldlineProperties properties;
+//         long int id;
+//     };
+
+//     std::map< long int, ICHelper > fieldlines;
 };
 
 

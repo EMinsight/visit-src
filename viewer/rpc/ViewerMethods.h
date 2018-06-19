@@ -40,6 +40,7 @@
 #include <string>
 #include <vectortypes.h>
 #include <viewerrpc_exports.h>
+#include <SelectionProperties.h>
 
 class ViewerState;
 
@@ -139,6 +140,16 @@ class ViewerState;
 //   Dave Pugmire, Tue Nov  9 16:09:44 EST 2010
 //   Added dumpSteps for streamline info query.
 //
+//   Brad Whitlock, Tue Dec 14 16:45:05 PST 2010
+//   I added new methods that let me pass selection properties when creating
+//   or updating a selection.
+//
+//   Kathleen Bonnell, Tue Mar  1 11:12:51 PST 2011
+//   Added another int arg to PointQuery.
+//
+//   Brad Whitlock, Tue Mar 29 11:05:58 PDT 2011
+//   Added a bool to SetPlotFollowsTime.
+//
 // ****************************************************************************
 
 class VIEWER_RPC_API ViewerMethods
@@ -205,6 +216,7 @@ public:
 
     void ApplyNamedSelection(const std::string &selName);
     void CreateNamedSelection(const std::string &selName);
+    void CreateNamedSelection(const std::string &selName, const SelectionProperties &props);
     void DeleteNamedSelection(const std::string &selName);
     void LoadNamedSelection(const std::string &selName,
                             const std::string &hostName,
@@ -212,6 +224,8 @@ public:
     void SaveNamedSelection(const std::string &selName);
     void SetNamedSelectionAutoApply(bool);
     void UpdateNamedSelection(const std::string &selName);
+    void UpdateNamedSelection(const std::string &selName, const SelectionProperties &props);
+    void InitializeNamedSelectionVariables(const std::string &selName);
 
     void AnimationSetNFrames(int nFrames);
     void AnimationPlay();
@@ -232,7 +246,7 @@ public:
     void MovePlotDatabaseKeyframe(int plotId, int oldFrame, int newFrame);
     void DeleteActivePlots();
     void HideActivePlots();
-    void SetPlotFollowsTime();
+    void SetPlotFollowsTime(bool);
     void DrawPlots(bool drawAllPlots = true);
     void SetActivePlots(const intVector &activePlotIds);
     void SetActivePlots(const intVector &activePlotIds,
@@ -383,8 +397,10 @@ public:
                        const doubleVector &darg1 = doubleVector(),
                        const doubleVector &darg2 = doubleVector());
     void PointQuery(const std::string &queryName, const double pt[3],
-                    const stringVector &vars, const bool = false,
-                    const int arg1 = -1, const int arg2 = -1,
+                    const stringVector &vars, const bool = false, 
+                    const int arg1 = 0,
+                    const int arg2 = -1, 
+                    const int arg3 = -1,
                     const bool = false);
     void LineQuery(const std::string &queryName, const double pt1[3],
                    const double pt2[3], const stringVector &vars,

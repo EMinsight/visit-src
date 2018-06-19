@@ -433,7 +433,8 @@ avtPoincarePlot::SetAtts(const AttributeGroup *a)
                                            atts.GetWorkGroupSize());
 
     if (atts.GetIntegrationType() == PoincareAttributes::M3DC13DIntegrator ||
-        atts.GetIntegrationType() == PoincareAttributes::NIMRODIntegrator )
+//      atts.GetIntegrationType() == PoincareAttributes::NIMRODIntegrator ||
+        0 )
       poincareFilter->ConvertToCartesian( true );
     else
       poincareFilter->ConvertToCartesian( false );
@@ -446,7 +447,7 @@ avtPoincarePlot::SetAtts(const AttributeGroup *a)
     poincareFilter->SetOverrideToroidalWinding( atts.GetOverrideToroidalWinding() );
     poincareFilter->SetOverridePoloidalWinding( atts.GetOverridePoloidalWinding() );
     poincareFilter->SetWindingPairConfidence( atts.GetWindingPairConfidence() );
-    poincareFilter->SetPeriodicityConsistency( atts.GetPeriodicityConsistency() );
+    poincareFilter->SetRationalTemplateSeedParm( atts.GetRationalTemplateSeedParm() );
     poincareFilter->SetOverlaps( atts.GetOverlaps() );
     poincareFilter->SetAdjustPlane( atts.GetAdjustPlane() );
 
@@ -474,12 +475,15 @@ avtPoincarePlot::SetAtts(const AttributeGroup *a)
     poincareFilter->SetDataValue( atts.GetDataValue() );
 
     poincareFilter->SetShowOPoints( atts.GetShowOPoints() );
+    poincareFilter->SetOPointMaxIterations( atts.GetOPointMaxIterations() );
+    poincareFilter->SetShowXPoints( atts.GetShowXPoints() );
+    poincareFilter->SetXPointMaxIterations( atts.GetXPointMaxIterations() );
     poincareFilter->SetShowChaotic( atts.GetShowChaotic() );
     poincareFilter->SetShowIslands( atts.GetShowIslands() );
     poincareFilter->SetShowLines(atts.GetShowLines());
     poincareFilter->SetShowPoints(atts.GetShowPoints());
     poincareFilter->SetPointScale(atts.GetPointSize());
-    poincareFilter->SetShowRidgelines(atts.GetShowRidgelines());
+    poincareFilter->SetShow1DPlots(atts.GetShow1DPlots());
     poincareFilter->SetVerboseFlag( atts.GetVerboseFlag() );
 #endif
 

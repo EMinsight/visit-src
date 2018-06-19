@@ -20,31 +20,66 @@
 #
 #   Mark C. Miller, Fri Dec  4 09:37:39 PST 2009
 #   Fixed typo in chmod command
+#
+#   Mark C. Miller, Mon Jan 31 08:48:59 PST 2011
+#   Prevent installing hooks from anything other than trunk commits.
+#
+#   Mark C. Miller, Wed Feb  2 09:58:10 PST 2011
+#   Made it so installation warning is issued only once in presence of
+#   changes to multiple hooks.
+#   
 ##############################################################################
 
 REPOS="$1"
 REV=$2
 
+issuedInstallWarning=0
 hookCommonFile=""
 preCommitFile=""
 postCommitFile=""
 hookFiles=""
 files=`svnlook changed -r ${REV} ${REPOS} | awk '{print $2}'`
 for f in ${files} ; do
+
+    # This logic prevents any of the hooks_update magic acting on
+    # hooks that are changed on something other than the trunk.
+    if test "`echo $f | rev | cut -d'/' -f2-4 | rev`" = "src/svn_bin/hooks" \
+         -a "`echo $f | cut -d'/' -f1-4`" != "trunk/src/svn_bin/hooks"; then
+        if test "$issuedInstallWarning" = "0"; then
+            issuedInstallWarning=1
+            log -e "\
+In the file, \"$f\",\n\
+you are committing a change to hooks on something other than the trunk.\n\
+If this is the result of a merge of the trunk into a branch, then you\n\
+may IGNORE this message. However, if this is the result of changes you\n\
+have explicitly made to hooks on your branch, your changes to your hook\n\
+have been COMMITTED only. They will NOT be INSTALLED and will, therefore,\n\
+not effect behavior of any subsequent commit on ANY branch. All changes\n\
+to hooks that you want INSTALLED must be done ONLY ON THE TRUNK. If you\n\
+require hook behavior that is specific to your branch -- which can involve\n\
+some tricky coding in the hooks -- you may want to have your changes reviewed\n\
+by another developer before committing."
+        else
+            log "...and for file \"$f\""
+        fi
+        continue
+    fi
+
     case ${f} in
-        *src/svn_bin/hooks/hook_common.sh)
+        trunk/src/svn_bin/hooks/hook_common.sh)
 	    hookCommonFile=$f
             ;;
-        *src/svn_bin/hooks/pre-commit)
+        trunk/src/svn_bin/hooks/pre-commit)
 	    preCommitFile=$f
             ;;
-        *src/svn_bin/hooks/post-commit)
+        trunk/src/svn_bin/hooks/post-commit)
 	    postCommitFile=$f
             ;;
-        *src/svn_bin/hooks/*)
+        trunk/src/svn_bin/hooks/*)
             hookFiles="$hookFiles $f"
             ;;
     esac
+
 done
 
 #

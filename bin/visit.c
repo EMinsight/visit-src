@@ -123,15 +123,17 @@ static const char usage[] =
 "        -private             xml2cmake: force install plugins privately\n"
 "        -clobber             Permit xml2... tools to overwrite old files\n"
 "        -noprint             Silence debugging output from xml2... tools\n"
+"        -env                 Print environment strings set up by the launcher\n"
 "\n";
 
 /*
  * Prototypes
  */
-char *AddEnvironment(const int, const int);
+char *AddEnvironment(const int, const int, bool &);
 void  AddPath(char *, const char *, const char*);
 int   ReadKey(const char *key, char **keyval);
 void  TestForConfigFiles(const char *component);
+void PrintEnvironment(void);
 
 /******************************************************************************
  *
@@ -230,6 +232,9 @@ void  TestForConfigFiles(const char *component);
  *   Kathleen Bonnell, Wed Dec 1 08:45:12 MST 2010
  *   Add support for xml2cmake.
  *
+ *   Kathleen Bonnell, Tue May 3 14:31:50 MST 2011
+ *   Add support for -env. 
+ *
  *****************************************************************************/
 
 int
@@ -248,6 +253,8 @@ main(int argc, char *argv[])
     char *spawnargs[100];
     int nspawnargs = 0;
     char component[100];
+    bool freeVisItPath = false;
+    bool envOnly = false;
 
     /*
      * Default values.
@@ -373,6 +380,10 @@ main(int argc, char *argv[])
             addVISITARGS = 0;
             addPluginVars = 1;
         }
+        else if(ARG("-env"))
+        {
+            envOnly = true;
+        }
         else
         {
             if (!BEGINSWITHQUOTE(argv[i]) && HASSPACE(argv[i]))
@@ -423,7 +434,21 @@ main(int argc, char *argv[])
     /*
      * Add some stuff to the environment.
      */
-    visitpath = AddEnvironment(useShortFileName, addPluginVars);
+    visitpath = AddEnvironment(useShortFileName, addPluginVars, freeVisItPath);
+
+    if (envOnly)
+    {
+        PrintEnvironment();
+        for(i = 0; i < nComponentArgs; ++i)
+            free(componentArgs[i]);
+        for(i = 0; i < nspawnargs; ++i)
+            free(spawnargs[i]);
+        if (freeVisItPath)
+            free(visitpath);
+        if(visitargs != 0)
+            free(visitargs);
+        return 1;
+    }
 
     /*
      * Migrate config files 
@@ -607,7 +632,8 @@ printf("=============\n");
         free(componentArgs[i]);
     for(i = 0; i < nspawnargs; ++i)
         free(spawnargs[i]);
-    free(visitpath);
+    if (freeVisItPath)
+        free(visitpath);
     if(visitargs != 0)
         free(visitargs);
 
@@ -801,10 +827,13 @@ ReadKey(const char *key, char **keyval)
  *   Kathleen Bonnell, Wed Dec 1 08:43:44 MST 2010 
  *   Add variables necessary for plugin development if necessary.
  *
+ *   Kathleen Bonnell, Tue May 3 14:33:17 MST 2011 
+ *   Add root lib directory to PYTHONPATH.
+ *
  *****************************************************************************/
 
 char *
-AddEnvironment(const int useShortFileName, const int addPluginVars)
+AddEnvironment(const int useShortFileName, const int addPluginVars, bool &freeVisItPath)
 {
     char *tmp, *visitpath = 0;
     char *visitdevdir = 0;
@@ -814,6 +843,8 @@ AddEnvironment(const int useShortFileName, const int addPluginVars)
 
     tmp = (char *)malloc(10000);
 
+
+    freeVisItPath = true;
     /*
      * Determine visit path
      */
@@ -824,7 +855,10 @@ AddEnvironment(const int useShortFileName, const int addPluginVars)
         free(visitpath);
         visitpath = 0;
         if ((visitpath = getenv("VISITHOME")) != NULL)
+        {
             haveVISITHOME = 1;
+            freeVisItPath = false;
+        }
     }
 
     /*
@@ -919,8 +953,10 @@ AddEnvironment(const int useShortFileName, const int addPluginVars)
     {
         char *vp2 = (char *)malloc(512);
         GetShortPathName(visitpath, vp2, 512);
-        free(visitpath);
+        if (freeVisItPath)
+            free(visitpath);
         visitpath = vp2;
+        freeVisItPath = true;
     }
 
 
@@ -1000,12 +1036,14 @@ AddEnvironment(const int useShortFileName, const int addPluginVars)
      */
     if (!usingdev)
     {
-        sprintf(tmp, "PYTHONPATH=%s\\lib\\Python\\lib", visitpath);
+        sprintf(tmp, "PYTHONPATH=%s\\lib;%s\\lib\\Python\\lib", 
+                visitpath, visitpath);
         putenv(tmp);
     }
     else 
     {
-        sprintf(tmp, "PYTHONPATH=%s\\..\\..\\lib\\Python\\lib", visitpath);
+        sprintf(tmp, "PYTHONPATH=%s\\..\\..\\lib;%s\\..\\..\\lib\\Python\\lib",
+                visitpath, visitpath);
         putenv(tmp);
     }
 
@@ -1758,3 +1796,23 @@ TestForConfigFiles(const char *component)
     }
 }
 
+void
+PrintEnvironment()
+{
+    char *tmp;
+
+    if((tmp = getenv("VISITHOME")) != NULL)
+    {
+        fprintf(stdout, "LIBPATH=%s\\lib\n", tmp);
+        fprintf(stdout, "VISITHOME=%s\n", tmp);
+    }
+    if((tmp = getenv("VISITARCHHOME")) != NULL)
+        fprintf(stdout, "VISITARCHHOME=%s\n", tmp);
+    if((tmp = getenv("VISITHELPHOME")) != NULL)
+        fprintf(stdout, "VISITHELPHOME=%s\n", tmp);
+    if((tmp = getenv("VISITULTRAHOME")) != NULL)
+        fprintf(stdout, "VISITULTRAHOME=%s\n", tmp);
+    if((tmp = getenv("VISITPLUGINDIR")) != NULL)
+        fprintf(stdout, "VISITPLUGINDIR=%s\n", tmp);
+
+}

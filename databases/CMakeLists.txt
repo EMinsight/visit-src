@@ -92,10 +92,26 @@
 #    Eric Brugger, Fri Jan  7 13:35:31 PST 2011
 #    I replaced the BOXLIB2D and BOXLIB3D variables with just BOXLIB.
 #
+#    Brad Whitlock, Wed Feb 23 11:52:22 PST 2011
+#    Add VelodyneCLE "AMR" plugin from Corvid.
+#
 #    Eric Brugger, Wed Mar 30 11:58:31 PDT 2011
 #    I added the lata database reader contributed by CEA.
 #
+#    Eric Brugger, Mon Apr  4 10:05:55 PDT 2011
+#    I temporarily disabled the ITAPS readers since they aren't compiling.
+#
+#    Mark C. Miller, Mon Apr  4 23:56:43 PDT 2011
+#    Re-enabled ITAPS after fixing config-site file
+#
+#    Brad Whitlock, Thu May  5 10:12:18 PDT 2011
+#    Add CaleHDF5 by Rob Managan.
+#
+#    Oliver Ruebel, Thu May 12 11:30 PDT 2011
+#    I added a CUBE reader
+#
 #****************************************************************************/
+
 IF(NOT WIN32)
     SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${VISIT_PLUGIN_DIR}/databases)
 ELSE(NOT WIN32)
@@ -150,6 +166,8 @@ IF(NOT XDMF_FOUND)
     SET(XDMF_READER VisItXdmf)
 ENDIF(NOT XDMF_FOUND)
 THIRDPARTY_DEPENDENT_PLUGINS(HDF5     
+AMR
+CaleHDF5
 Chombo
 CosmosPP
 Enzo
@@ -213,6 +231,7 @@ BOW
 CEAucd
 CMAT
 CTRL
+Cube
 Curve2D
 DDCMD
 Dyna3D

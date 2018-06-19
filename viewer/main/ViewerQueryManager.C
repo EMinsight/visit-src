@@ -1918,6 +1918,9 @@ ViewerQueryManager::ClearPickPoints()
 //    Jeremy Meredith, Wed May 19 14:15:58 EDT 2010
 //    Support 3D axis scaling (3D equivalent of full-frame mode).
 //
+//    Kathleen Bonnell, Thu Feb  3 11:24:17 PST 2011
+//    PickAtts plotBounds now stored as a vector.
+//
 // ****************************************************************************
 
 bool
@@ -2012,10 +2015,15 @@ ViewerQueryManager::ComputePick(PICK_POINT_INFO *ppi, const int dom,
         if (dext)
         {
             int dim = plot->GetSpatialDimension();
-            double pb[6] = { 0., 0., 0., 0., 0., 0.};
-            for (int i = 0; i < 2*dim; i++)
+            doubleVector pb;
+            for (int i = 0; i < 2*dim; ++i)
             {
-                pb[i] = dext[i];
+                pb.push_back(dext[i]);
+            }
+            // need 6
+            for (int i = 2*dim; i < 6; ++i)
+            {
+                pb.push_back(0.);
             }
             pickAtts->SetPlotBounds(pb);
             delete [] dext;
@@ -2637,7 +2645,7 @@ ViewerQueryManager::Pick(PICK_POINT_INFO *ppi, const int dom, const int el)
  
     if (pickAtts->GetDoTimeCurve())
     {
-        PickThroughTime(ppi, dom, el);
+        PickThroughTime(ppi, pickAtts->GetTimeCurveType(), dom, el);
         return;
     }
     PickAttributes::PickType oldPickType = pickAtts->GetPickType();
@@ -3230,12 +3238,16 @@ ViewerQueryManager::HandlePickCache()
 //    Reset the vars in pickAtts at the end of this method, to prevent
 //    query-set-vars to be applied to picks.
 //
+//    Kathleen Bonnell, Tue Mar  1 10:25:05 PST 2011
+//    Added arg curvePlotType.
+//
 // ****************************************************************************
 
 void         
 ViewerQueryManager::PointQuery(const string &qName, const double *pt, 
                     const stringVector &vars, const int arg1, const int arg2,
-                    const bool doTime, const bool elementIsGlobal)
+                    const bool doTime, const int curvePlotType,
+                    const bool elementIsGlobal)
 {
     // test for non-hidden active plot and running engine
     ViewerWindow *win = ViewerWindowManager::Instance()->GetActiveWindow();
@@ -3301,7 +3313,7 @@ ViewerQueryManager::PointQuery(const string &qName, const double *pt,
             bool tc = pickAtts->GetDoTimeCurve();
             pickAtts->SetTimePreserveCoord(true);
             pickAtts->SetDoTimeCurve(true);
-            PickThroughTime(&ppi);
+            PickThroughTime(&ppi, curvePlotType);
             pickAtts->SetDoTimeCurve(tc);
             pickAtts->SetTimePreserveCoord(tpc);
         }
@@ -3341,7 +3353,7 @@ ViewerQueryManager::PointQuery(const string &qName, const double *pt,
             bool tc = pickAtts->GetDoTimeCurve();
             pickAtts->SetTimePreserveCoord(false);
             pickAtts->SetDoTimeCurve(true);
-            PickThroughTime(&ppi, arg2, arg1);
+            PickThroughTime(&ppi, curvePlotType, arg2, arg1);
             pickAtts->SetTimePreserveCoord(tpc);
             pickAtts->SetDoTimeCurve(tc);
         }
@@ -3773,6 +3785,12 @@ GetUniqueVars(const stringVector &vars, const string &activeVar,
 //    Eric Brugger, Wed Jun 30 14:10:00 PDT 2010
 //    Added the xray image query.
 //
+//    Hank Childs, Thu May 12 15:37:21 PDT 2011
+//    Add average value query.
+//
+//    Cyrus Harrison, Wed Jun 15 13:14:49 PDT 2011
+//    Added Connected Components Length.
+//
 // ****************************************************************************
 
 void
@@ -3862,6 +3880,7 @@ ViewerQueryManager::InitializeQueryList()
     queryTypes->AddQuery("Elliptical Compactness Factor", dq, sr, basic, 1, 0, qt);
     queryTypes->AddQuery("Spherical Compactness Factor", dq, sr, basic, 1, 0, qt);
     queryTypes->AddQuery("Average Mean Curvature", dq, mr, basic, 1, 0, qt);
+    queryTypes->AddQuery("Average Value", dq, vr, basic, 1, 0, qt);
     queryTypes->AddQuery("Variable Sum", dq, vr, basic, 1, 0, qt);
     queryTypes->AddQuery("Watertight", dq, mr, basic, 1, 0, qo);
     queryTypes->AddQuery("Weighted Variable Sum", dq, vr, basic, 1, 0, qt);
@@ -3870,6 +3889,7 @@ ViewerQueryManager::InitializeQueryList()
     queryTypes->AddQuery("PointPick (aka NodePick)", pq, pr, sp, 1, 0, qt);
 
     queryTypes->AddQuery("Number of Connected Components", dq, ccl_r, basic, 1, 0, qo);
+    queryTypes->AddQuery("Connected Component Length", dq, ccl_r, basic, 1, 0, qo);
     queryTypes->AddQuery("Connected Component Area", dq, ccl_r, basic, 1, 0, qo);
     queryTypes->AddQuery("Connected Component Centroids", dq, ccl_r, basic, 1, 0, qo);
     queryTypes->AddQuery("Connected Component Volume", dq, ccl_r, basic, 1, 0, qo);
@@ -4280,6 +4300,10 @@ ViewerQueryManager::UpdateQueryOverTimeAtts()
 //    Kathleen Bonnell, Tue Feb  8 12:25:14 PST 2011
 //    Reorder start/endTime tests to catch more errors.
 //
+//    Kathleen Bonnell, Thu Feb 17 10:03:27 PST 2011
+//    Add ability for TimeCurve to create MultiCurve plot if querying
+//    multiple variables.
+//
 // ***********************************************************************
 
 void
@@ -4431,7 +4455,12 @@ ViewerQueryManager::DoTimeQuery(ViewerWindow *origWin, QueryAttributes *qA)
         return;
     }
 
-    int plotType = GetPlotPluginManager()->GetEnabledIndex("Curve_1.0");
+    int plotType;
+    if (qA->GetTimeCurvePlotType() == QueryAttributes::Single_Y_Axis)
+      plotType = GetPlotPluginManager()->GetEnabledIndex("Curve_1.0");
+    else 
+      plotType = GetPlotPluginManager()->GetEnabledIndex("MultiCurve_1.0");
+
     ViewerPlotList *plotList =  resWin->GetPlotList();
 
     plotList->SetHostDatabaseName(hdbName);
@@ -4583,11 +4612,19 @@ ViewerQueryManager::DoTimeQuery(ViewerWindow *origWin, QueryAttributes *qA)
 //    Kathleen Bonnell, Wed Feb 23 10:52:02 PST 2011
 //    Save the current vars from PickAtts to use for resetting at completion.
 //
+//    Kathleen Bonnell, Tue Mar  1 16:09:50 PST 2011
+//    Add curvePlotType argument.
+//
+//    Kathleen Bonnell, Thu Mar  3 13:15:22 PST 2011
+//    Added warning if curvePlotType is 'Multiple y axes' when only using
+//    1 variable, and revert to 'Single y axis' for the Time pick.
+//
 // ****************************************************************************
 
 void
-ViewerQueryManager::PickThroughTime(PICK_POINT_INFO *ppi, const int dom, 
-                                    const int el)
+ViewerQueryManager::PickThroughTime(PICK_POINT_INFO *ppi, 
+                                    const int curvePlotType, 
+                                    const int dom, const int el)
 {
     ViewerWindow *origWin = (ViewerWindow *)ppi->callbackData;
 
@@ -4602,7 +4639,7 @@ ViewerQueryManager::PickThroughTime(PICK_POINT_INFO *ppi, const int dom,
     //  We can only do one variable (for now) for a time query,
     //  so make sure we have the right one.
     // 
-    stringVector userVars  = pickAtts->GetVariables();
+    stringVector userVars = pickAtts->GetVariables();
     string pvarName = userVars[0];
     if (pvarName == "default")
         pvarName = vName;
@@ -4694,9 +4731,22 @@ ViewerQueryManager::PickThroughTime(PICK_POINT_INFO *ppi, const int dom,
             qatts.SetElement(pickAtts->GetElementNumber());
         }
         qatts.SetDataType(QueryAttributes::OriginalData);
-        stringVector vars;
-        vars.push_back(pvarName);
-        qatts.SetVariables(vars);
+        stringVector pvars = pickAtts->GetVariables();
+        for (size_t i = 0; i < pvars.size(); ++i)
+            if (pvars[i] == "default")
+                pvars[i] = pvarName;
+        qatts.SetVariables(pvars);
+        int cpt;
+        if (curvePlotType != -1)
+            cpt = curvePlotType;
+        else
+            cpt = pickAtts->GetTimeCurveType();
+        if (cpt == 1 && pvars.size() < 2)
+        {
+           cpt = 0;
+           Warning(tr("Multiple-Y-Axes time query availble only with multiple variable selected.  Using Single-Y-Axis instead."));
+        }
+        qatts.SetTimeCurvePlotType((QueryAttributes::TimeCurveType)cpt);
         if (type == PickAttributes::Zone || type == PickAttributes::DomainZone) 
         {
             if (pickAtts->GetTimePreserveCoord())

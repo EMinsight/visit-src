@@ -51,18 +51,19 @@
       </Enum>
       <Enum name="DataValue">
         Solid
-        OriginalValue
-        InputOrder
-        PointIndex
-        Plane
-        WindingOrder
+        SafetyFactorQ
+        SafetyFactorP
+        SafetyFactorQ_NotP
+        SafetyFactorP_NotQ
+        ToroidalWindings
+        PoloidalWindingsQ
+        PoloidalWindingsP
+        FieldlineOrder
+        PointOrder
+        PlaneOrder
+        WindingGroupOrder
         WindingPointOrder
         WindingPointOrderModulo
-        ToroidalWindings
-        PoloidalWindings
-        SafetyFactor
-        Confidence
-        RidgelineVariance
       </Enum>
       <Enum name="StreamlineAlgorithmType">
         LoadOnDemand
@@ -142,8 +143,9 @@
       <Field name="windingPairConfidence" label="Winding Pair Confidence" type="double">
         0.900000
       </Field>
-      <Field name="periodicityConsistency" label="Periodicity Consistency" type="double">
-        0.800000
+      <Field name="rationalTemplateSeedParm" label="Rational Template
+                                                    Seed Parameter" type="double">
+        0.900000
       </Field>
       <Field name="adjustPlane" label="Adjust plane" type="int">
         -1
@@ -185,18 +187,18 @@
         Default
       </Field>
       <Field name="dataValue" label="dataValue" type="enum" subtype="DataValue">
-        SafetyFactor
+        SafetyFactorQ
       </Field>
       <Field name="showOPoints" label="Detect O Points" type="bool">
         false
       </Field>
-      <Field name="OPointMaxInterations" label="Maximum Interations" type="int">
+      <Field name="OPointMaxIterations" label="Maximum Iterations" type="int">
         2
       </Field>
       <Field name="showXPoints" label="Detect X Points" type="bool">
         false
       </Field>
-      <Field name="XPointMaxInterations" label="Maximum Interations" type="int">
+      <Field name="XPointMaxIterations" label="Maximum Iterations" type="int">
         2
       </Field>
       <Field name="showChaotic" label="Show Chaotic Fieldlines" type="bool">
@@ -208,7 +210,7 @@
       <Field name="verboseFlag" label="Verbose" type="bool">
         true
       </Field>
-      <Field name="showRidgelines" label="Show Ridgelines" type="bool">
+      <Field name="show1DPlots" label="Show 1D Plots" type="bool">
         false
       </Field>
       <Field name="showLines" label="Show Lines" type="bool">
