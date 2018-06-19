@@ -16,6 +16,7 @@ SET(LIBM_SOURCES
 SiloMDServerPluginInfo.C
 ${COMMON_SOURCES}
 avtSiloFileFormat.C
+avtSiloMBObjectCache.C
 avtSiloOptions.C
 )
 
@@ -23,8 +24,9 @@ SET(LIBE_SOURCES
 SiloEnginePluginInfo.C
 ${COMMON_SOURCES}
 avtSiloFileFormat.C
-avtSiloWriter.C
+avtSiloMBObjectCache.C
 avtSiloOptions.C
+avtSiloWriter.C
 )
 
 INCLUDE_DIRECTORIES(
@@ -81,4 +83,5 @@ ENDIF(VISIT_PARALLEL)
 
 VISIT_INSTALL_DATABASE_PLUGINS(${INSTALLTARGETS})
 VISIT_PLUGIN_TARGET_PREFIX(${INSTALLTARGETS})
-VISIT_PLUGIN_TARGET_FOLDER(databases ${INSTALLTARGETS})
+VISIT_PLUGIN_TARGET_FOLDER(databases Silo ${INSTALLTARGETS})
+

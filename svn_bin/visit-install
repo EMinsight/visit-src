@@ -291,6 +291,13 @@
 #    Brad Whitlock, Wed Oct 12 09:49:37 PDT 2011
 #    I added RZ/CZ options for LLNL.
 #
+#    Eric Brugger, Mon Feb 27 17:52:44 PST 2012
+#    I added host profiles for unity, whitney and redsky-s.
+#
+#    Eric Brugger, Mon Mar  5 10:00:03 PST 2012
+#    I corrected some errors with the changes I made to add host
+#    profiles for unity, whitney and redsky-s.
+#
 #-----------------------------------------------------------------------
 
 Compress=COMPRESS
@@ -356,7 +363,7 @@ while [ "$option_found" = "true" ]; do
 done
 
 if [ "$#" != "3" ]; then
-   echo "Usage: visit-install [-c anag | anl | llnl_open | llnl_open_rz | llnl_open_cz | llnl_closed | nersc | ornl | princeton | sandia | tacc | umich | nics]"
+   echo "Usage: visit-install [-c anag | anl | llnl_open | llnl_open_rz | llnl_open_cz | llnl_closed | nersc | ornl | princeton | sandia | sandia_closed | tacc | umich | nics]"
    echo "                     [-g group] [-b bank] [-gw] [-l] [-dmg]"
    echo "                     [-beta | -private] version platform directory"
    echo ""
@@ -479,9 +486,10 @@ while [ "$config" = "prompt" ]; do
    echo "   9) ORNL network"
    echo "   10) Princeton network"
    echo "   11) Sandia network"
-   echo "   12) TACC network"
-   echo "   13) U of Michigan Center for Advanced Computing network"
-   echo "   14) NICS at University of Tennessee at Knoxville"
+   echo "   12) Sandia closed network"
+   echo "   13) TACC network"
+   echo "   14) U of Michigan Center for Advanced Computing network"
+   echo "   15) NICS at University of Tennessee at Knoxville"
    echo ""
    echo "Enter (1-14):"
 
@@ -521,12 +529,15 @@ while [ "$config" = "prompt" ]; do
          config=sandia
          ;;
       12)
-         config=tacc
+         config=sandia_closed
          ;;
       13)
-         config=umich
+         config=tacc
          ;;
       14)
+         config=umich
+         ;;
+      15)
          config=nics
          ;;
       *)
@@ -558,6 +569,8 @@ case "$config" in
       ;;
    sandia)
       ;;
+   sandia_closed)
+      ;;
    tacc)
       ;;
    umich)
@@ -567,7 +580,7 @@ case "$config" in
    *)
       echo "Illegal configuration option, choices are none, anag, anl,"
       echo "llnl_open, llnl_open_cz, llnl_open_rz, llnl_closed, nersc, ornl, "
-      echo "princeton, sandia, tacc, umich, and nics."
+      echo "princeton, sandia, sandia_closed, tacc, umich, and nics."
       exit 4
       ;;
 esac
@@ -733,6 +746,10 @@ elif [ "$config" = "princeton" ]; then
 elif [ "$config" = "sandia" ]; then
    cp "$dir"/$version+/.visit/allhosts/host_sandia_glory.xml "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/.visit/allhosts/host_sandia_redsky.xml "$dir"/$version+/.visit/hosts/
+elif [ "$config" = "sandia_closed" ]; then
+   cp "$dir"/$version+/.visit/allhosts/host_sandia_closed_unity.xml "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_sandia_closed_whitney.xml "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_sandia_closed_redsky-s.xml "$dir"/$version+/.visit/hosts/
 elif [ "$config" = "tacc" ]; then
    cp "$dir"/$version+/.visit/allhosts/host_tacc_longhorn.xml "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/.visit/allhosts/host_tacc_ranger.xml "$dir"/$version+/.visit/hosts/

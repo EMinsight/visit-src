@@ -40,28 +40,23 @@ function bv_visit_info
     # release tag.
     ############################################################################
 
-    export VISIT_VERSION=${VISIT_VERSION:-"2.3.2"}
-    #set this value to blank to get trunk?
-    export VISIT_FILE="" #${VISIT_FILE:-"visit${VISIT_VERSION}.tar.gz"}
+    export VISIT_VERSION=${VISIT_VERSION:-"2.4.2"}
     
-    #export VISIT_COMPATIBILITY_VERSION=${VISIT_COMPATIBILITY_VERSION:-"2.3.2"}
-    #export VISIT_BUILD_DIR=${VISIT_BUILD_DIR:-"visit"}
-
     ####
     # Trunk:
     ####
-    export SVN_SOURCE_PATH="trunk/src"
+    #export SVN_SOURCE_PATH="trunk/src"
 
     ###
     # Release:
     ###
-    #export SVN_SOURCE_PATH="tags/${VISIT_VERSION}/src"
+    export SVN_SOURCE_PATH="tags/${VISIT_VERSION}/src"
 }
 
 #print variables used by this module
 function bv_visit_print
 {
-    printf "%s%s\n" "VISIT_FILE=" "${VISIT:_FILE}"
+    printf "%s%s\n" "VISIT_FILE=" "${VISIT_FILE}"
     printf "%s%s\n" "VISIT_VERSION=" "${VISIT_VERSION}"
     #printf "%s%s\n" "VISIT_COMPATIBILITY_VERSION=" "${VISIT_COMPATIBILITY_VERSION}"
     #printf "%s%s\n" "VISIT_BUILD_DIR=" "${VISIT_BUILD_DIR}"
@@ -94,12 +89,46 @@ function bv_visit_host_profile
 #prepare the module and check whether it is built or is ready to be built.
 function bv_visit_ensure_built_or_ready
 {
-    if [[ "VISIT" == "yes" ]] ; then
-        ensure_built_or_ready "VISIT" $VISIT_VERSION $VISIT_BUILD_DIR $VISIT_FILE
-        if [[ $? != 0 ]] ; then
-            ANY_ERRORS="yes"
-            DO_VISIT="no"
-            error "Unable to build VISIT.  ${VISIT_FILE} not found."
+    # Check-out the latest svn sources, before building VisIt
+    if [[ "$DO_SVN" == "yes" && "$USE_VISIT_FILE" == "no" ]] ; then
+        if [[ -d src ]] ; then
+           info "Found existing VisIt SVN src directory, using that . . ."
+        else
+           # Print a dialog screen
+           info "SVN check-out of VisIt ($SVN_ROOT_PATH/$SVN_SOURCE_PATH) . . ."
+           if [[ "$DO_REVISION" == "yes" && "$SVNREVISION" != "" ]] ; then
+               svn co --quiet --non-interactive --revision "$SVNREVISION" \
+                  $SVN_ROOT_PATH/$SVN_SOURCE_PATH
+           else
+               svn co --quiet --non-interactive $SVN_ROOT_PATH/$SVN_SOURCE_PATH
+           fi
+           if [[ $? != 0 ]] ; then
+               warn "Unable to build VisIt. SVN download failed."
+               return 1
+           fi
+        fi
+
+    # Build using (the assumed) existing VisIt svn "src" directory
+    elif [[ -d src ]] ; then
+           info "Found VisIt SVN src directory found, using it."
+           #resetting any values that have mixup the build between Trunk and RC
+           VISIT_FILE="" #erase any accidental setting of these values
+           USE_VISIT_FILE="no"
+           ON_USE_VISIT_FILE="off"
+           DO_SVN="yes" #if src directory exists it may have come from svn..
+
+    # Build using a VisIt source tarball
+    else
+        if [[ -e ${VISIT_FILE%.gz} || -e ${VISIT_FILE} ]] ; then
+            info \
+"Got VisIt source code. Lets look for 3rd party libraries."
+        else
+            download_file $VISIT_FILE
+            if [[ $? != 0 ]] ; then
+               warn \
+"Unable to build VisIt.  Can't find source code: ${VISIT_FILE}."
+               return 1
+            fi
         fi
     fi
 }
@@ -149,15 +178,6 @@ function build_visit
     fi
 
     #
-    # Set up environment variables for the configure step.
-    #
-    PARFLAGS=""
-    if [[ "$parallel" == "yes" ]] ; then
-       PARFLAGS="--enable-parallel"
-       CXXFLAGS="$CXXFLAGS $PAR_INCLUDE"
-    fi
-
-    #
     # Set up the config-site file, which gives configure the information it
     # needs about the third party libraries.
     #
@@ -170,26 +190,48 @@ function build_visit
     cp $START_DIR/$(hostname).cmake config-site
 
     #
-    # Call configure
+    # Call cmake
     # 
     info "Configuring VisIt . . ."
-    EXTRA_FEATURES=""
+    FEATURES="-DVISIT_INSTALL_THIRD_PARTY:BOOL=ON"
+    if [[ "$parallel" == "yes" ]] ; then
+        FEATURES="${FEATURES} -DVISIT_PARALLEL:BOOL=ON"
+    fi
+    FEATURES="${FEATURES} -DCMAKE_BUILD_TYPE:STRING=${VISIT_BUILD_MODE}"
+    FEATURES="${FEATURES} -DVISIT_C_COMPILER:FILEPATH=${C_COMPILER}"
+    FEATURES="${FEATURES} -DVISIT_CXX_COMPILER:FILEPATH=${CXX_COMPILER}"
+    
+    FEATURES="${FEATURES} -DVISIT_C_FLAGS:STRING=\"${CFLAGS} ${C_OPT_FLAGS}\""
+    if [[ "$parallel" == "yes" ]] ; then
+        CXXFLAGS="$CXXFLAGS $PAR_INCLUDE"
+    fi
+    FEATURES="${FEATURES} -DVISIT_CXX_FLAGS:STRING=\"${CXXFLAGS} ${CXX_OPT_FLAGS}\""
+
     if [[ "${DO_MODULE}" == "yes" ]] ; then
-       EXTRA_FEATURES="${EXTRA_FEATURES} --enable-visitmodule"
+       FEATURES="${FEATURES} -DVISIT_PYTHON_MODULE:BOOL=ON"
     fi
     if [[ "${DO_JAVA}" == "yes" ]] ; then
-       EXTRA_FEATURES="${EXTRA_FEATURES} --enable-java"
+       FEATURES="${FEATURES} -DVISIT_JAVA:BOOL=ON"
     fi
     if [[ "${DO_SLIVR}" == "yes" ]] ; then
-       EXTRA_FEATURES="${EXTRA_FEATURES} --enable-slivr"
+       FEATURES="${FEATURES} -DVISIT_SLIVR:BOOL=ON"
     fi
-    # A dbio-only build disables pretty much everything else.
+    if [[ "${VISIT_INSTALL_PREFIX}" != "" ]] ; then
+       FEATURES="${FEATURES} -DCMAKE_INSTALL_PREFIX:PATH=${VISIT_INSTALL_PREFIX}"
+    fi
+    # Select a specialized build mode.
     if [[ "${DO_DBIO_ONLY}" == "yes" ]] ; then
-       EXTRA_FEATURES="--enable-dbio-only"
-    else
-       EXTRA_FEATURES="${EXTRA_FEATURES} --enable-install-thirdparty"
+       FEATURES="${FEATURES} -DVISIT_DBIO_ONLY:BOOL=ON"
+    elif [[ "${DO_ENGINE_ONLY}" = "yes" ]] ; then
+       FEATURES="${FEATURES} -DVISIT_ENGINE_ONLY:BOOL=ON"
+    elif [[ "${DO_SERVER_COMPONENTS_ONLY}" = "yes" ]] ; then
+       FEATURES="${FEATURES} -DVISIT_SERVER_COMPONENTS_ONLY:BOOL=ON"
     fi
-    ./configure ${PARFLAGS} ${EXTRA_FEATURES}
+
+    CMAKE_INSTALL=${CMAKE_INSTALL:-"$VISITDIR/cmake/${CMAKE_VERSION}/$VISITARCH/bin"}
+    CMAKE_BIN="${CMAKE_INSTALL}/cmake"
+    rm -f CMakeCache.txt
+    issue_command ${CMAKE_BIN} ${FEATURES} . 
     if [[ $? != 0 ]] ; then
        echo "VisIt configure failed.  Giving up"
        return 1
@@ -286,6 +328,18 @@ function build_visit
        return 1
     fi
     warn "All indications are that VisIt successfully built."
+
+    #
+    # Install VisIt
+    #
+    if [[ "${VISIT_INSTALL_PREFIX}" != "" ]] ; then
+        $MAKE $MAKE_OPT_FLAGS install
+        if [[ $? != 0 ]] ; then
+            warn "VisIt installation failed.  Giving up"
+            return 1
+        fi
+        warn "All indications are that VisIt successfully installed."
+    fi
 
     #
     # Major hack here. Mark M. should really pull this total hack out of

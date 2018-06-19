@@ -75,11 +75,13 @@ class QTVISWINDOW_API QtVisWindow : public VisWindow
     QtVisWindow(bool fullScreenMode = false);
 
     static void SetWindowCreationCallback(vtkQtRenderWindow *(*wcc)(void*), void *wccdata);
+    static void SetOwnerShipOfAllWindows(bool owner);
   protected:
     virtual void CreateToolColleague();
 
     static vtkQtRenderWindow* (*windowCreationCallback)(void *);
     static void                *windowCreationData;
+    static bool               ownsAllWindows;
 };
 
 #endif

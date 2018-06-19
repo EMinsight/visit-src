@@ -80,6 +80,69 @@ function error
 }
 
 # *************************************************************************** #
+# Function: issue_command                                                     #
+#                                                                             #
+# Purpose: Print a command and execute it too.                                #
+#                                                                             #
+# Programmer: Brad Whitlock,                                                  #
+# Date: Tue Feb 28 17:04:43 PST 2012                                          #
+#                                                                             #
+# Modifications:                                                              #
+#
+# *************************************************************************** #
+
+function issue_command
+{
+    echo $@
+    $@
+    return $?
+}
+
+# *************************************************************************** #
+# Function: add_extra_commandline_args                                        #
+#                                                                             #
+# Purpose: Allows modules to add extra arguments to VisIt                     #
+#                                                                             #
+# Programmer: Hari Krishnan,                                                  #
+# Date: Thu Dec 15 14:38:36 PST 2011                                          #
+#                                                                             #
+# Modifications:                                                              #
+#   Eric Brugger, Wed Jan 18 08:17:48 PST 2012                                #
+#   I re-enabled the code that replaces dashes with underscores in the        #
+#   name of the enable function.                                              #
+#                                                                             #
+# *************************************************************************** #
+#global argument list for extra args..
+declare -a extra_commandline_args
+export EXTRA_COMMANDLINE_ARG_CALL=""
+
+function add_extra_commandline_args 
+{
+
+  if [[ $# != 4 ]]; then
+   echo "extra command line usage requires 4 parameters"
+   return
+  fi
+
+  #replace all occurrences of "-" with "_"
+  local enable_func="bv_$1_${2//-/_}"
+
+  #check if function exists..
+  #maybe this should be moved to build_visit rather than here..
+  #in case some bash consoles don't have declare -F capabilities?
+  declare -F "$enable_func" &>/dev/null || errorFunc "function pointer $enable_func not found"
+
+  #add parameters..
+  for f in "$@"; do
+    extra_commandline_args[${#extra_commandline_args[*]}]="$f"
+  done
+
+  #add function pointer..
+  extra_commandline_args[${#extra_commandline_args[*]}]="$enable_func"
+}
+
+
+# *************************************************************************** #
 # Function: info_box                                                          #
 #                                                                             #
 # Purpose: Show an information box with a message.                            #
@@ -575,54 +638,6 @@ function check_required_3rdparty
 
 
 # *************************************************************************** #
-#                   Function 1.0, check_visit_source_code                     #
-# --------------------------------------------------------------------------- #
-# This function will check to make sure that the VisIt source code            #
-# actually exists.                                                            #
-# *************************************************************************** #
-
-function check_visit_source_code
-{
-    # Check-out the latest svn sources, before building VisIt
-    if [[ "$DO_SVN" == "yes" && "$USE_VISIT_FILE" == "no" ]] ; then
-        if [[ -d src ]] ; then
-           info "Found existing VisIt SVN src directory, using that . . ."
-        else
-           # Print a dialog screen
-           info "SVN check-out of VisIt ($SVN_ROOT_PATH/$SVN_SOURCE_PATH) . . ."
-           if [[ "$DO_REVISION" == "yes" && "$SVNREVISION" != "" ]] ; then
-               svn co --quiet --non-interactive --revision "$SVNREVISION" \
-                  $SVN_ROOT_PATH/$SVN_SOURCE_PATH
-           else
-               svn co --quiet --non-interactive $SVN_ROOT_PATH/$SVN_SOURCE_PATH
-           fi
-           if [[ $? != 0 ]] ; then
-               warn "Unable to build VisIt.  SVN download failed."
-               return 1
-           fi
-        fi
-
-    # Build using (the assumed) existing VisIt svn "src" directory
-    elif [[ -d src ]] ; then
-           info "Found VisIt SVN src directory found, using it."
-
-    # Build using a VisIt source tarball
-    else
-        if [[ -e ${VISIT_FILE%.gz} || -e ${VISIT_FILE} ]] ; then
-            info \
-"Got VisIt source code. Lets look for 3rd party libraries."
-        else
-            download_file $VISIT_FILE
-            if [[ $? != 0 ]] ; then
-               warn \
-"Unable to build VisIt.  Can't find source code: ${VISIT_FILE}."
-               return 1
-            fi
-        fi
-    fi
-}
-
-# *************************************************************************** #
 #                         Function 1.0, check_files                           #
 # --------------------------------------------------------------------------- #
 # This function will check to make sure that all of the necessary files       #
@@ -637,7 +652,7 @@ function check_files
     fi
 
     if [[ "$DO_VISIT" == "yes" ]] ;  then
-       check_visit_source_code
+       bv_visit_ensure_built_or_ready
        if [[ $? != 0 ]]; then
            return 1
        fi
@@ -673,7 +688,6 @@ function check_more_options
 "Symbol: turn on -g, debugging flag\n"\
 "Group: specify the group name for install\n"\
 "Path: specify the root directory for libraries\n"\
-"Absolute: Change the default install name path for Darwin dynamic libraries "\
 "to use the given Path rather than the default [@executable_path/../lib]\n"\
 "Trace: print a trace of commands and arguments during build\n\n"\
 "Select build and installed options:" 0 0 0 \
@@ -685,7 +699,6 @@ function check_more_options
            "Group"     "specify group name for install"         $ON_GROUP \
            "HostConf"  "create host.conf file"                  $ON_HOSTCONF \
            "Path"      "specify library path [$THIRD_PARTY_PATH]" $ON_PATH \
-           "Absolute"  "change the behavior of install name"    $ON_ABS_PATH \
            "Trace"     "enable SHELL debugging"      $ON_VERBOSE 2> tmp$$
         retval=$?
 
@@ -701,14 +714,13 @@ function check_more_options
             DO_GROUP="no"
             DO_HOSTCONF="no"
             DO_PATH="no"
-            ABS_PATH="no"
             DO_VERBOSE="no"
             for OPTION in $choice
             do
                 case $OPTION in
                   Version)
                      $DLG --backtitle "$DLG_BACKTITLE" \
-                        --no-cancel --inputbox \
+                        --nocancel --inputbox \
 "Enter $OPTION value:" 0 $DLG_WIDTH_WIDE "$VISIT_VERSION" 2> tmp$$
                      VISIT_VERSION="$(cat tmp$$)"
                      VISIT_FILE="visit${VISIT_VERSION}.tar.gz"
@@ -723,7 +735,7 @@ function check_more_options
                      DO_DEBUG="yes";;
                   Group)
                      $DLG --backtitle "$DLG_BACKTITLE" \
-                        --no-cancel --inputbox \
+                        --nocancel --inputbox \
 "Enter $OPTION value:" 0 $DLG_WIDTH_WIDE "$GROUP" 2> tmp$$
                      GROUP="$(cat tmp$$)"
                      DO_GROUP="yes";;
@@ -731,12 +743,10 @@ function check_more_options
                       DO_HOSTCONF="yes";;
                   Path)
                      $DLG --backtitle "$DLG_BACKTITLE" \
-                        --no-cancel --inputbox \
+                        --nocancel --inputbox \
 "Enter $OPTION value:" 0 $DLG_WIDTH_WIDE "$THIRD_PARTY_PATH" 2> tmp$$
                      THIRD_PARTY_PATH="$(cat tmp$$)"
                      DO_PATH="yes";;
-                  Absolute)
-                     ABS_PATH="yes";;
                   Trace)
                      DO_VERBOSE="yes";;
                 esac
@@ -884,7 +894,7 @@ function check_parallel
                 if [[ $? == 1 ]] ; then
                     tryagain=1
                     $DLG --backtitle "$DLG_BACKTITLE" \
-                    --no-cancel --inputbox \
+                    --nocancel --inputbox \
 "Enter CPPFLAGS needed for MPI:" 0 $DLG_WIDTH_WIDE "$PAR_CPPFLAGS" 2> tmp$$
                     PAR_CPPFLAGS="$(cat tmp$$)"
                 else
@@ -903,7 +913,7 @@ function check_parallel
                 if [[ $? == 1 ]] ; then
                     tryagain=1
                     $DLG --backtitle "$DLG_BACKTITLE" \
-                    --no-cancel --inputbox \
+                    --nocancel --inputbox \
 "Enter LDFLAGS needed for MPI:" 0 $DLG_WIDTH_WIDE "$PAR_LDFLAGS" 2> tmp$$
                     PAR_LDFLAGS="$(cat tmp$$)"
                 else
@@ -992,73 +1002,73 @@ function check_variables
                    case $OPTION in
                      OPSYS)
                         $DLG --backtitle "$DLG_BACKTITLE" \
-                           --no-cancel --inputbox \
+                           --nocancel --inputbox \
 "Enter $OPTION value:" 0 $DLG_WIDTH_WIDE "$OPSYS" 2> tmp$$
                         OPSYS="$(cat tmp$$)"
                         ;;
                      ARCH)
                         $DLG --backtitle "$DLG_BACKTITLE" \
-                           --no-cancel --inputbox \
+                           --nocancel --inputbox \
 "Enter $OPTION value:" 0 $DLG_WIDTH_WIDE "$ARCH" 2> tmp$$
                         ARCH="$(cat tmp$$)"
                         ;;
                      C_COMPILER)
                         $DLG --backtitle "$DLG_BACKTITLE" \
-                           --no-cancel --inputbox \
+                           --nocancel --inputbox \
 "Enter $OPTION value:" 0 $DLG_WIDTH_WIDE "$C_COMPILER" 2> tmp$$
                         C_COMPILER="$(cat tmp$$)"
                         ;;
                      CXX_COMPILER)
                         $DLG --backtitle "$DLG_BACKTITLE" \
-                           --no-cancel --inputbox \
+                           --nocancel --inputbox \
 "Enter $OPTION value:" 0 $DLG_WIDTH_WIDE "$CXX_COMPILER" 2> tmp$$
                         CXX_COMPILER="$(cat tmp$$)"
                         ;;
                      CFLAGS)
                         $DLG --backtitle "$DLG_BACKTITLE" \
-                           --no-cancel --inputbox \
+                           --nocancel --inputbox \
 "Enter $OPTION value:" 0 $DLG_WIDTH_WIDE "$CFLAGS" 2> tmp$$
                         CFLAGS="$(cat tmp$$)"
                         ;;
                      CXXFLAGS)
                         $DLG --backtitle "$DLG_BACKTITLE" \
-                           --no-cancel --inputbox \
+                           --nocancel --inputbox \
 "Enter $OPTION value:" 0 $DLG_WIDTH_WIDE "$CXXFLAGS" 2> tmp$$
                         CXXFLAGS="$(cat tmp$$)"
                         ;;
                      C_OPT_FLAGS)
                         $DLG --backtitle "$DLG_BACKTITLE" \
-                           --no-cancel --inputbox \
+                           --nocancel --inputbox \
 "Enter $OPTION value:" 0 $DLG_WIDTH_WIDE "$C_OPT_FLAGS" 2> tmp$$
                         C_OPT_FLAGS="$(cat tmp$$)"
                         ;;
                      CXX_OPT_FLAGS)
                         $DLG --backtitle "$DLG_BACKTITLE" \
-                           --no-cancel --inputbox \
+                           --nocancel --inputbox \
 "Enter $OPTION value:" 0 $DLG_WIDTH_WIDE "$CXX_OPT_FLAGS" 2> tmp$$
                         CXX_OPT_FLAGS="$(cat tmp$$)"
                         ;;
                      FC_COMPILER)
                         $DLG --backtitle "$DLG_BACKTITLE" \
-                           --no-cancel --inputbox \
+                           --nocancel --inputbox \
 "Enter $OPTION value:" 0 $DLG_WIDTH_WIDE "$FC_COMPILER" 2> tmp$$
                         FC_COMPILER="$(cat tmp$$)"
                         ;;
                      FCFLAGS)
                         $DLG --backtitle "$DLG_BACKTITLE" \
-                           --no-cancel --inputbox \
+                           --nocancel --inputbox \
 "Enter $OPTION value:" 0 $DLG_WIDTH_WIDE "$FCFLAGS" 2> tmp$$
                         FCFLAGS="$(cat tmp$$)"
                         ;;
                      VISITARCH)
                         $DLG --backtitle "$DLG_BACKTITLE" \
-                           --no-cancel --inputbox \
+                           --nocancel --inputbox \
 "Enter $OPTION value:" 0 $DLG_WIDTH_WIDE "$VISITARCHTMP" 2> tmp$$
                         VISITARCH="$(cat tmp$$)"
                         ;;
                      REVISION)
                         $DLG --backtitle "$DLG_BACKTITLE" \
-                           --no-cancel --inputbox \
+                           --nocancel --inputbox \
 "Enter $OPTION value:" 0 $DLG_WIDTH_WIDE "$SVNREVISION" 2> tmp$$
                         SVNREVISION="$(cat tmp$$)"
                         DO_SVN="yes"
@@ -1300,10 +1310,12 @@ usage () {
   printf "BOOLEAN FLAGS\n"
   printf "\tThese are used to enable or disable specific functionality.  They do not take option values.\n\n"
   printf "%-15s %s [%s]\n" "--dry-run"  "Dry run of the presented options" "false"
+  printf "%-15s %s [%s]\n" "--build-mode" "VisIt build mode (Debug or Release)" "$VISIT_BUILD_MODE"
   printf "%-15s %s [%s]\n" "--build-with-version"  "install using build_visit of a different version of VisIt (experimental)" "$VISIT_VERSION"
   printf "%-15s %s [%s]\n" "--all-io"  "Build all available I/O libraries" "$DO_ALLIO"
   printf "%-15s %s [%s]\n" "--console" "Do not use dialog ('graphical') interface" "!$GRAPHICAL"
   printf "%-15s %s [%s]\n" "--dbio-only" "Disables EVERYTHING but I/O." "$DO_DBIO_ONLY"
+  printf "%-15s %s [%s]\n" "--engine-only" "Only build the compute engine." "$DO_ENGINE_ONLY"
   printf "%-15s %s [%s]\n" "--debug"   "Enable debugging for this script" "false"
   printf "%-15s %s [%s]\n" "--download-only" "Only download the specified packages" "false"
   printf "%-15s %s [%s]\n" "--flags-debug" "Add '-g' to C[XX]FLAGS" "false"
@@ -1314,8 +1326,10 @@ usage () {
   printf "%-15s %s [%s]\n" "--no-thirdparty" "Do not build required 3rd party libraries" "$ON_THIRD_PARTY"
   printf "%-15s %s [%s]\n" "--no-hostconf" "Do not create host.conf file." "$ON_HOSTCONF"
   printf "%-15s %s [%s]\n" "--parallel" "Enable parallel build, display MPI prompt" "$parallel"
+  printf "%-15s %s [%s]\n" "--prefix" "The directory to which VisIt should be installed once it is built" "$VISIT_INSTALL_PREFIX"
   printf "%-15s %s [%s]\n" "--print-vars" "Display user settable environment variables" "false"
   printf "%-15s %s [%s]\n" "--python-module" "Build with the VisIt Python module" "$DO_MODULE"
+  printf "%-15s %s [%s]\n" "--server-components-only" "Only build VisIt's server components (mdserver,vcl,engine)." "$DO_SERVER_COMPONENTS_ONLY"
   printf "%-15s %s [%s]\n" "--slivr" "Build with SLIVR shader support" "$DO_SLIVR"
   printf "%-15s %s [%s]\n" "--static" "Build using static linking" "$DO_STATIC_BUILD"
   printf "%-15s %s [%s]\n" "--stdout" "Write build log to stdout" "$LOG_FILE"
@@ -1339,17 +1353,6 @@ usage () {
   printf "These values all take a special value.  If given, they require an associated value to be provided as well.\n\n"
   printf "%-15s \n\t%s [%s]\n" "--installation-build-dir"  "Specify the directory visit will use for building" "output-filename"
   printf "%-15s \n\t%s [%s]\n" "--write-unified-file"  "Write single unified build_visit file" "output-filename"
-  printf "%-12s %s [%s]\n" "--absolute" \
-    "Change the behavior of the install name path for
-             the Darwin dynamic libraries. Enabling this flag
-             will use the absolute THIRD_PARTY_PATH path for 
-             each library's install name directory instead of
-             the relative path (@executable_relative/../lib).
-             This is the opposite of --relative." "$ON_ABS_PATH"
-  printf "%-12s %s \n" "--relative" \
-    "Use @executable_relative/../lib for the library
-             install name directory on Darwin. This is the
-             opposite of using --absolute."
   printf "%s <%s> %s [%s]\n" "--arch" "architecture" "Set architecture" "$VISITARCHTMP"
   printf "\t  %s\n" "   This variable is used in constructing the 3rd party"
   printf "\t  %s\n" "   library path; usually set to something like"

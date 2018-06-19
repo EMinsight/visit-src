@@ -11,16 +11,16 @@
 SET(VISITARCH i386-apple-darwin10_gcc-4.2)
 IF(VISIT_STATIC)
     SET(VISITHOME /Users/whitlock2/Development/thirdparty_static)
-    SET(MESAver 7.8.2)
+    SET(MesaVer 7.8.2)
 ELSE(VISIT_STATIC)
     SET(VISITHOME /Users/whitlock2/Development/thirdparty_shared)
-    SET(MESAver 7.10.2)
+    SET(MesaVer 7.10.2)
 ENDIF(VISIT_STATIC)
 
 ##
 ## Specify the location of the mesa.
 ##
-VISIT_OPTION_DEFAULT(VISIT_MESA_DIR ${VISITHOME}/mesa/${MESAver}/${VISITARCH})
+VISIT_OPTION_DEFAULT(VISIT_MESA_DIR ${VISITHOME}/mesa/${MesaVer}/${VISITARCH})
 
 ##
 ## Specify the location of the vtk.
@@ -60,7 +60,9 @@ VISIT_OPTION_DEFAULT(VISIT_CXX_FLAGS "-fno-common -fexceptions -fvisibility=hidd
 ## (configured w/ mpi compiler wrapper)
 VISIT_OPTION_DEFAULT(VISIT_MPI_COMPILER /usr/bin/mpic++)
 #VISIT_OPTION_DEFAULT(VISIT_MPI_FORTRAN_COMPILER /usr/bin/mpif77)
-VISIT_OPTION_DEFAULT(VISIT_ICET_DIR ${VISITHOME}/icet/1.0.0/${VISITARCH})
+
+#VISIT_OPTION_DEFAULT(VISIT_ICET_DIR ${VISITHOME}/icet/1.0.0/${VISITARCH})
+
 VISIT_OPTION_DEFAULT(VISIT_FORTRAN_COMPILER /usr/local/bin/gfortran)
 
 ##
@@ -117,7 +119,7 @@ VISIT_OPTION_DEFAULT(VISIT_ADVIO_DIR ${VISITHOME}/AdvIO/1.2/${VISITARCH}/)
 ##
 ## Boxlib
 ##
-VISIT_OPTION_DEFAULT(VISIT_BOXLIB_DIR ${VISITHOME}/boxlib/2011.04.28/${VISITARCH})
+#VISIT_OPTION_DEFAULT(VISIT_BOXLIB_DIR ${VISITHOME}/boxlib/2011.04.28/${VISITARCH})
 
 ##
 ## CCMIO

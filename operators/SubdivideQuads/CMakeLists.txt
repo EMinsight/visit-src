@@ -21,7 +21,6 @@ ${COMMON_SOURCES}
 SET(LIBG_MOC_SOURCES
 QvisSubdivideQuadsWindow.h
 )
-QT_WRAP_CPP(GSubdivideQuadsOperator LIBG_SOURCES ${LIBG_MOC_SOURCES})
 
 SET(LIBV_SOURCES
 SubdivideQuadsViewerPluginInfo.C
@@ -49,6 +48,7 @@ ${VISIT_INCLUDE_DIR}/avt/Expressions/ImageProcessing
 ${VISIT_INCLUDE_DIR}/avt/Expressions/Management
 ${VISIT_INCLUDE_DIR}/avt/Expressions/Math
 ${VISIT_INCLUDE_DIR}/avt/Expressions/MeshQuality
+${VISIT_INCLUDE_DIR}/avt/Expressions/TimeIterators
 ${VISIT_INCLUDE_DIR}/avt/FileWriter
 ${VISIT_INCLUDE_DIR}/avt/Filters
 ${VISIT_INCLUDE_DIR}/avt/IVP
@@ -91,6 +91,7 @@ TARGET_LINK_LIBRARIES(ISubdivideQuadsOperator visitcommon)
 SET(INSTALLTARGETS ISubdivideQuadsOperator)
 
 IF(NOT VISIT_SERVER_COMPONENTS_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)
+    QT_WRAP_CPP(GSubdivideQuadsOperator LIBG_SOURCES ${LIBG_MOC_SOURCES})
     ADD_LIBRARY(GSubdivideQuadsOperator ${LIBG_SOURCES})
     TARGET_LINK_LIBRARIES(GSubdivideQuadsOperator visitcommon gui )
 
@@ -127,5 +128,5 @@ ENDIF(VISIT_PARALLEL)
 
 VISIT_INSTALL_OPERATOR_PLUGINS(${INSTALLTARGETS})
 VISIT_PLUGIN_TARGET_PREFIX(${INSTALLTARGETS})
-VISIT_PLUGIN_TARGET_FOLDER(operators ${INSTALLTARGETS})
+VISIT_PLUGIN_TARGET_FOLDER(operators SubdivideQuads ${INSTALLTARGETS})
 

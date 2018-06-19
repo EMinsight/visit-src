@@ -262,6 +262,14 @@
 #    Gunther H. Weber, Wed Oct  5 19:14:27 PDT 2011
 #    Change NERSC_HOST to VISIT_HOSTNAME to make it more general
 #
+#    Kathleen Biagas, Tue Jan 24 12:22:47 MST 2012
+#    On windows, use VisIt version of FindMPI.cmake to ensure correct search
+#    paths.  Also ensure paths returned from FindMPI are converted to NATIVE
+#    style.
+#
+#    Eric Brugger, Wed Feb 22 10:14:46 PST 2012
+#    I added support for building without mesa.
+#
 #****************************************************************************/
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8.0 FATAL_ERROR)
@@ -473,6 +481,10 @@ OPTION(VISIT_CREATE_APPBUNDLE_PACKAGE "Create DMG file with Mac App bundle with 
 IF(WIN32)
   OPTION(VISIT_MAKE_NSIS_INSTALLER "Create an installer package using NSIS" OFF)
 ENDIF(WIN32)
+IF(VISIT_MESA_DIR)
+  OPTION(VISIT_USE_MANGLED_MESA "Enable use of mangled Mesa classes in VisIt"
+ON)
+ENDIF(VISIT_MESA_DIR)
 
 MACRO(VISIT_3RDPARTY_VAR libvar comment)
     IF(NOT DEFINED VISIT_${libvar})
@@ -795,9 +807,9 @@ IF(NOT VISIT_DBIO_ONLY)
 ENDIF(NOT VISIT_DBIO_ONLY)
 
 # Configure Mesa support.
-IF(NOT WIN32 AND NOT VISIT_DBIO_ONLY)
+IF(NOT WIN32 AND VISIT_MESA_DIR AND NOT VISIT_DBIO_ONLY)
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItMesa.cmake)
-ENDIF(NOT WIN32 AND NOT VISIT_DBIO_ONLY)
+ENDIF(NOT WIN32 AND VISIT_MESA_DIR AND NOT VISIT_DBIO_ONLY)
 
 # Configure VTK support.
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItVTK.cmake)
@@ -832,17 +844,17 @@ IF(VISIT_PYTHON_FILTERS AND VISIT_DBIO_ONLY)
 ENDIF(VISIT_PYTHON_FILTERS AND VISIT_DBIO_ONLY)
 
 # Configure Qt4 support.
-IF(NOT VISIT_DBIO_ONLY)
+IF(NOT VISIT_DBIO_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_SERVER_COMPONENTS_ONLY)
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItQt4.cmake)
-ENDIF(NOT VISIT_DBIO_ONLY)
+ENDIF(NOT VISIT_DBIO_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_SERVER_COMPONENTS_ONLY)
 
 # Configure PySide Support
-IF(NOT VISIT_DBIO_ONLY)
+IF(NOT VISIT_DBIO_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_SERVER_COMPONENTS_ONLY)
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindPySide.cmake)
     IF(PYSIDE_FOUND)
         SET(HAVE_PYSIDE 1)
     ENDIF(PYSIDE_FOUND)
-ENDIF(NOT VISIT_DBIO_ONLY)
+ENDIF(NOT VISIT_DBIO_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_SERVER_COMPONENTS_ONLY)
 
 # Treat GLEW as a 3rd party builtin.
 SET(GLEW_FOUND 1)
@@ -1144,20 +1156,22 @@ IF(VISIT_PARALLEL)
             ENDIF(VISIT_MPI_LD_FLAGS)
         ELSE(VISIT_MPI_LIBS OR VISIT_MPI_FORTRAN_LIBS)
             IF(WIN32)
-              INCLUDE(${CMAKE_ROOT}/Modules/FindMPI.cmake)
-              IF(MPI_FOUND)
+              INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindMPI.cmake)
+               IF(MPI_FOUND)
                 IF(MPI_COMPILE_FLAGS)
                     LIST(APPEND VPFLAGS "${MPI_COMPILE_FLAGS}")
                 ENDIF(MPI_COMPILE_FLAGS)
                 IF(MPI_INCLUDE_PATH)
-                    LIST(APPEND VPFLAGS "/I \"${MPI_INCLUDE_PATH}\"")
+                    FILE(TO_NATIVE_PATH ${MPI_INCLUDE_PATH} MIP_NATIVE)
+                    LIST(APPEND VPFLAGS "/I \"${MIP_NATIVE}\"")
                 ENDIF(MPI_INCLUDE_PATH)
                 STRING(REPLACE ";" " " VPFLAGS "${VPFLAGS}")
                 SET(VISIT_PARALLEL_CFLAGS "${VPFLAGS}" 
                     CACHE STRING "Parallel CFLAGS")
                 SET(VISIT_PARALLEL_CXXFLAGS "${VPFLAGS}" 
                      CACHE STRING "Parallel CXXFLAGS")
-                SET(VISIT_PARALLEL_LIBS "${MPI_LIBRARY}"
+                FILE(TO_NATIVE_PATH ${MPI_LIBRARY} ML_NATIVE)
+                SET(VISIT_PARALLEL_LIBS "${ML_NATIVE}"
                     CACHE STRING "MPI libraries")
                 IF(MPI_LINK_FLAGS)
                     SET(VISIT_PARALLEL_LINKER_FLAGS "${MPI_LINK_FLAGS}"
@@ -1598,14 +1612,22 @@ IF(NOT VISIT_DISABLE_SELECT)
     ENDIF(WIN32)
 ENDIF(NOT VISIT_DISABLE_SELECT)
 
-IF (NOT WIN32)
-  MESSAGE(STATUS "Setting VISIT_RENDERING_SIZE_LIMIT to ${OSMESA_SIZE_LIMIT}")
-  SET(VISIT_RENDERING_SIZE_LIMIT ${OSMESA_SIZE_LIMIT} CACHE INTERNAL "rendering size limit")
-ELSE(NOT WIN32)
-  # totally arbitrary, but it is what Mesa was set to when built on Windows
+IF (NOT WIN32 AND VISIT_MESA_DIR)
+  IF (NOT VISIT_MESA_DIR)
+    MESSAGE(STATUS "Setting VISIT_RENDERING_SIZE_LIMIT to ${OSMESA_SIZE_LIMIT}")
+    SET(VISIT_RENDERING_SIZE_LIMIT ${OSMESA_SIZE_LIMIT} CACHE INTERNAL "rendering size limit")
+  ELSE (NOT VISIT_MESA_DIR)
+    # Using 16384 may be a bit risky when running against an engine not using
+    # mesa, but I didn't want to unnecessarily limit the user when running
+    # client/server to a parallel engine.
+    MESSAGE(STATUS "Setting VISIT_RENDERING_SIZE_LIMIT to 16384")
+    SET(VISIT_RENDERING_SIZE_LIMIT 4096 CACHE INTERNAL "rendering size limit")
+  ENDIF (NOT VISIT_MESA_DIR)
+ELSE(NOT WIN32 AND VISIT_MESA_DIR)
+  # Totally arbitrary, but it is what Mesa was set to when built on Windows
   MESSAGE(STATUS "Setting VISIT_RENDERING_SIZE_LIMIT to 16384")
   SET(VISIT_RENDERING_SIZE_LIMIT 16384 CACHE INTERNAL "rendering size limit")
-ENDIF(NOT WIN32)
+ENDIF(NOT WIN32 AND VISIT_MESA_DIR)
 
 CONFIGURE_FILE(${VISIT_SOURCE_DIR}/include/visit-cmake.h.in
                ${VISIT_BINARY_DIR}/include/visit-config.h @ONLY IMMEDIATE)
@@ -1735,6 +1757,7 @@ ADD_SUBDIRECTORY(third_party_builtin)
 ADD_SUBDIRECTORY(common)
 ADD_SUBDIRECTORY(visit_vtk)
 ADD_SUBDIRECTORY(avt)
+ADD_SUBDIRECTORY(sim)
 IF(VISIT_DBIO_ONLY)
     ADD_SUBDIRECTORY(tools)
 ELSE(VISIT_DBIO_ONLY)
@@ -1743,7 +1766,6 @@ ENDIF(VISIT_DBIO_ONLY)
 IF(NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)
     ADD_SUBDIRECTORY(launcher)
     ADD_SUBDIRECTORY(mdserver)
-    ADD_SUBDIRECTORY(sim)
 ENDIF(NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)
 IF(NOT VISIT_SERVER_COMPONENTS_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)
     ADD_SUBDIRECTORY(vtkqt)

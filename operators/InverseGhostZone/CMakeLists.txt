@@ -21,7 +21,6 @@ ${COMMON_SOURCES}
 SET(LIBG_MOC_SOURCES
 QvisInverseGhostZoneWindow.h
 )
-QT_WRAP_CPP(GInverseGhostZoneOperator LIBG_SOURCES ${LIBG_MOC_SOURCES})
 
 SET(LIBV_SOURCES
 InverseGhostZoneViewerPluginInfo.C
@@ -49,6 +48,7 @@ ${VISIT_INCLUDE_DIR}/avt/Expressions/ImageProcessing
 ${VISIT_INCLUDE_DIR}/avt/Expressions/Management
 ${VISIT_INCLUDE_DIR}/avt/Expressions/Math
 ${VISIT_INCLUDE_DIR}/avt/Expressions/MeshQuality
+${VISIT_INCLUDE_DIR}/avt/Expressions/TimeIterators
 ${VISIT_INCLUDE_DIR}/avt/FileWriter
 ${VISIT_INCLUDE_DIR}/avt/Filters
 ${VISIT_INCLUDE_DIR}/avt/IVP
@@ -91,6 +91,7 @@ TARGET_LINK_LIBRARIES(IInverseGhostZoneOperator visitcommon)
 SET(INSTALLTARGETS IInverseGhostZoneOperator)
 
 IF(NOT VISIT_SERVER_COMPONENTS_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)
+    QT_WRAP_CPP(GInverseGhostZoneOperator LIBG_SOURCES ${LIBG_MOC_SOURCES})
     ADD_LIBRARY(GInverseGhostZoneOperator ${LIBG_SOURCES})
     TARGET_LINK_LIBRARIES(GInverseGhostZoneOperator visitcommon gui )
 
@@ -127,5 +128,5 @@ ENDIF(VISIT_PARALLEL)
 
 VISIT_INSTALL_OPERATOR_PLUGINS(${INSTALLTARGETS})
 VISIT_PLUGIN_TARGET_PREFIX(${INSTALLTARGETS})
-VISIT_PLUGIN_TARGET_FOLDER(operators ${INSTALLTARGETS})
+VISIT_PLUGIN_TARGET_FOLDER(operators InverseGhostZone ${INSTALLTARGETS})
 
