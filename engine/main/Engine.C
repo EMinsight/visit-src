@@ -130,7 +130,7 @@ using std::vector;
 // We do this so that the strings command on the .o file
 // can tell us whether or not DEBUG_MEMORY_LEAKS was turned on
 #ifdef DEBUG_MEMORY_LEAKS
-const char *dummy_string1 = "DEBUG_MEMORY_LEAKS";
+static const char *dummy_string1 = "DEBUG_MEMORY_LEAKS";
 #endif
 
 #ifdef PARALLEL
@@ -570,6 +570,11 @@ Engine::~Engine()
 void
 Engine::Initialize(int *argc, char **argv[], bool sigs)
 {
+#ifdef DEBUG_MEMORY_LEAKS
+    // ensure dummy_string1 cannot optimized away
+    char const *dummy = dummy_string1; dummy++;
+#endif
+
     int initTimer = visitTimer->StartTimer();
 
     int nthreads = 0;
@@ -2930,6 +2935,17 @@ ParallelMergeClonedWriterOutputs(avtDataObject_p dob,
 //    I corrected a bug in the counting of cells where the cell count was
 //    multiplied by cell count multiplier twice.
 //
+//    Cyrus Harrison, Wed May 24 11:04:49 PDT 2017
+//    Fixed a bug in Engine::GatherData() where the number of global cells 
+//    returned from a network was incorrect when SR is triggered. This broke
+//    SR triggering logic for subsequent plots. For example: in one instance, 
+//    b/c the various tasks have different global cell counts for the 
+//    networks, (including some with 0), when the next plot was drawn the 
+//    tasks would make different SR decisions -- some thinking SR had not been 
+//    triggered, some thinking it had -- which lead to a cascade mistmatched
+//    MPI calls. 
+//
+//
 // ****************************************************************************
 
 bool
@@ -3038,10 +3054,10 @@ Engine::GatherData(avtDataObjectWriter_p &writer,
                 }
                 thresholdExceeded = true;
             }
-            else
-            {
-                currentCellCount = reducedCurrentCellCount;
-            }
+
+            // current cell count is used to set the output value, so always update it
+            currentCellCount = reducedCurrentCellCount;
+
 
             // We only need to do the data exchange if we are below the
             // threshold or we're being asked to send data regardless
@@ -3154,10 +3170,10 @@ Engine::GatherData(avtDataObjectWriter_p &writer,
                 }
                 thresholdExceeded = true;
             }
-            else
-            {
-                currentCellCount = reducedCurrentCellCount;
-            }
+
+            // current cell count is used to set the output value, so always update it
+            currentCellCount = reducedCurrentCellCount;
+
 
             // We only need to do the data exchange if we are below the
             // threshold or we're being asked to send data regardless
