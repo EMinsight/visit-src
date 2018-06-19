@@ -25,10 +25,10 @@ return ""
 
 function bv_hdf4_info
 {
-export HDF4_FILE=${HDF4_FILE:-"hdf-4.2.6.tar.gz"}
-export HDF4_VERSION=${HDF4_VERSION:-"4.2.6"}
+export HDF4_FILE=${HDF4_FILE:-"hdf-4.2.5.tar.gz"}
+export HDF4_VERSION=${HDF4_VERSION:-"4.2.5"}
 export HDF4_COMPATIBILITY_VERSION=${HDF4_COMPATIBILITY_VERSION:-"4.2"}
-export HDF4_BUILD_DIR=${HDF4_BUILD_DIR:-"hdf-4.2.6"}
+export HDF4_BUILD_DIR=${HDF4_BUILD_DIR:-"hdf-4.2.5"}
 export HDF4_URL=${HDF4_URL:-"http://www.hdfgroup.org/ftp/HDF/HDF_Current/src"}
 }
 
@@ -1312,7 +1312,7 @@ function build_hdf4
     fi
 
     if [[ "$FC_COMPILER" == "no" ]] ; then
-        FORTRANARGS=""
+        FORTRANARGS="--disable-fortran"
     else
         FORTRANARGS="FC=\"$FC_COMPILER\" F77=\"$FC_COMPILER\" FCFLAGS=\"$FCFLAGS\" FFLAGS=\"$FCFLAGS\" --enable-fortran"
     fi
@@ -1333,7 +1333,7 @@ function build_hdf4
         --prefix=\"$VISITDIR/hdf4/$HDF4_VERSION/$VISITARCH\" \
         --with-jpeg=\"$VISITDIR/vtk/${VTK_VERSION}/$VISITARCH\" \
         --with-szlib=\"$VISITDIR/szip/$SZIP_VERSION/$VISITARCH\" \
-        --disable-dependency-tracking --disable-fortran"
+        --disable-dependency-tracking"
         if [[ $? != 0 ]] ; then
            warn "HDF4 configure failed.  Giving up"\
                 "You can see the details of the build failure at $HDF4_BUILD_DIR/config.log\n"
@@ -1348,10 +1348,10 @@ function build_hdf4
         CFLAGS=\"$CFLAGS $C_OPT_FLAGS\" LIBS=\"-lm\" \
         CPPFLAGS=\"-I$VISITDIR/vtk/${VTK_VERSION}/$VISITARCH/include/ \
         -I$VISITDIR/vtk/${VTK_VERSION}/$VISITARCH/include/vtkjpeg\" \
-        $FOTRANARGS \
+        $FORTRANARGS \
         --prefix=\"$VISITDIR/hdf4/$HDF4_VERSION/$VISITARCH\" \
         --with-jpeg=\"$VISITDIR/vtk/${VTK_VERSION}/$VISITARCH\" \
-        --with-szlib=\"$VISITDIR/szip/$SZIP_VERSION/$VISITARCH\" --disable-fortran"
+        --with-szlib=\"$VISITDIR/szip/$SZIP_VERSION/$VISITARCH\""
         if [[ $? != 0 ]] ; then
            warn "HDF4 configure failed.  Giving up.\n"\
                 "You can see the details of the build failure at $HDF4_BUILD_DIR/config.log\n"
@@ -1385,11 +1385,8 @@ function build_hdf4
         #
         info "Creating dynamic libraries for HDF4 . . ."
         # Relink libdf.
-        if [[ $ABS_PATH == "yes" ]]; then
-           INSTALLNAMEPATH="$VISITDIR/hdf4/${HDF4_VERSION}/$VISITARCH/lib"
-        else
-           INSTALLNAMEPATH="@executable_path/../lib"
-        fi
+        INSTALLNAMEPATH="$VISITDIR/hdf4/${HDF4_VERSION}/$VISITARCH/lib"
+
         ${C_COMPILER} -dynamiclib -o libdf.${SO_EXT} hdf/src/*.o \
            -Wl,-headerpad_max_install_names \
            -Wl,-install_name,$INSTALLNAMEPATH/libdf.${SO_EXT} \

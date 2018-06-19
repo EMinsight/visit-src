@@ -21,6 +21,15 @@ unset CDPATH
 ### export TAR=/usr/local/bin/tar # Up and Purple
 export TAR=tar
 
+# Determine if gfortran is present. This overly complex coding is to prevent
+# the "which" command from echoing failure to the user.
+which gfortran >& /dev/null
+if [[ $? == 0 ]]; then
+    export GFORTRAN=`which gfortran | grep '^/'`
+else
+    export GFORTRAN=""
+fi
+
 export OPSYS=${OPSYS:-$(uname -s)}
 export PROC=${PROC:-$(uname -p)}
 export REL=${REL:-$(uname -r)}
@@ -45,7 +54,7 @@ if [[ "$OPSYS" == "Darwin" ]]; then
    export C_COMPILER=${C_COMPILER:-"gcc"}
    export CXX_COMPILER=${CXX_COMPILER:-"g++"}
    # Disable Fortran on Darwin since it causes HDF5, H5Part, Silo, ADIOS builds to explode.
-   export FC_COMPILER="" #${FC_COMPILER:-$(which gfortran | grep '^/')}
+   export FC_COMPILER=""
    export C_OPT_FLAGS=${C_OPT_FLAGS:-"-O2"}
    export CFLAGS=${CFLAGS:-"-fno-common -fexceptions"}
    export CXX_OPT_FLAGS=${CXX_OPT_FLAGS:-"-O2"}
@@ -110,7 +119,7 @@ elif [[ "$OPSYS" == "Linux" ]]; then
    fi
    export C_COMPILER=${C_COMPILER:-"gcc"}
    export CXX_COMPILER=${CXX_COMPILER:-"g++"}
-   export FC_COMPILER=${FC_COMPILER:-$(which gfortran | grep '^/')}
+   export FC_COMPILER=${FC_COMPILER:-$GFORTRAN}
    export C_OPT_FLAGS=${C_OPT_FLAGS:-"-O2"}
    export CXX_OPT_FLAGS=${CXX_OPT_FLAGS:-"-O2"}
    export MESA_TARGET=${MESA_TARGET:-"linux"}
@@ -134,7 +143,7 @@ elif [[ "$OPSYS" == "IRIX64" ]]; then
    export ARCH="irix64" # You can change this to say RHEL, SuSE, Fedora, etc.
    export SO_EXT="so"
    export C_COMPILER=${C_COMPILER:-"gcc"}
-   export FC_COMPILER=${FC_COMPILER:-$(which gfortran | grep '^/')}
+   export FC_COMPILER=${FC_COMPILER:-$GFORTRAN}
    export CXX_COMPILER=${CXX_COMPILER:-"g++"}
    export C_OPT_FLAGS=${C_OPT_FLAGS:-"-O2"}
    export CXX_OPT_FLAGS=${CXX_OPT_FLAGS:-"-O2"}
@@ -144,7 +153,7 @@ elif [[ "$OPSYS" == "SunOS" ]]; then
    export ARCH=${ARCH:-"sunos5"}
    export SO_EXT="so"
    export C_COMPILER=${C_COMPILER:-"gcc"}
-   export FC_COMPILER=${FC_COMPILER:-$(which gfortran | grep '^/')}
+   export FC_COMPILER=${FC_COMPILER:-$GFORTRAN}
    export CXX_COMPILER=${CXX_COMPILER:-"g++"}
    export C_OPT_FLAGS=${C_OPT_FLAGS:-"-O2"}
    export CXX_OPT_FLAGS=${CXX_OPT_FLAGS:-"-O2"}
@@ -179,7 +188,7 @@ else
       QT_PLATFORM="linux-g++-64"
    fi
    export C_COMPILER=${C_COMPILER:-"gcc"}
-   export FC_COMPILER=${FC_COMPILER:-$(which gfortran | grep '^/')}
+   export FC_COMPILER=${FC_COMPILER:-$GFORTRAN}
    export CXX_COMPILER=${CXX_COMPILER:-"g++"}
    export C_OPT_FLAGS=${C_OPT_FLAGS:-"-O2"}
    export CXX_OPT_FLAGS=${CXX_OPT_FLAGS:-"-O2"}
@@ -236,8 +245,6 @@ export ON_ALLIO="off"
 
 export DO_DEBUG="no"
 export ON_DEBUG="off"
-export ABS_PATH="yes"
-export ON_ABS_PATH="on"
 export DO_REQUIRED_THIRD_PARTY="yes"
 export ON_THIRD_PARTY="on"
 export DO_GROUP="no"
@@ -263,6 +270,8 @@ export DO_VERBOSE="no"
 export ON_VERBOSE="off"
 export DO_JAVA="no"
 export ON_JAVA="off"
+export DO_FORTRAN="no"
+export ON_FORTRAN="off"
 export DO_SLIVR="no"
 export ON_SLIVR="off"
 export PREVENT_ICET="no"
@@ -323,6 +332,8 @@ if [[ "$VISIT_FILE" != "" ]] ; then
   USE_VISIT_FILE="yes"
   ON_USE_VISIT_FILE="on"
 fi
+export VISIT_FILE=${VISIT_FILE:-"visit${VISIT_VERSION}.tar.gz"}
+
 
 for (( bv_i=0; bv_i<${#reqlibs[*]}; ++bv_i ))
 do
@@ -366,7 +377,7 @@ BUILD_VISIT_WITH_VERSION="trunk"
 
 function starts_with_quote
 {
-    if test "${1:0:1}" = "\""; then
+    if test "${1:0:1}" = "\""; then #"
         return 0
     fi
     if test "${1:0:1}" = "'" ; then
@@ -388,7 +399,7 @@ function starts_with_quote
 
 function ends_with_quote
 {
-    if test "${1: -1:1}" = "\""; then
+    if test "${1: -1:1}" = "\""; then #"
         return 0
     fi
     if test "${1: -1:1}" = "'"; then
@@ -434,33 +445,35 @@ declare -a arguments
 quoting="" # temp buffer for concatenating quoted args
 state=0    # 0 is the default state, for grabbing std arguments.
            # 1 is for when we've seen a quote, and are currently "cramming"
-for arg in $@ ; do
-    case $state in
-        0)
-            if $(starts_with_quote "$arg") ; then
-                state=1
-                quoting="${arg}"
-            else
-                state=0
-                tval="${arg}"
-                arguments[${#arguments[@]}]=$tval
-            fi
-            ;;
-        1)
-            if $(starts_with_quote "$arg") ; then
-                state=0
-                arguments="${quoting}"
-            elif $(ends_with_quote "$arg") ; then
-                quoting="${quoting} ${arg}"
-                tval="${quoting}"
-                arguments[${#arguments[@]}]=$tval
-                state=0
-            else
-                quoting="${quoting} ${arg}"
-            fi
-            ;;
-        *) error "invalid state.";;
-    esac
+for arg in "$@" ; do
+    arguments[${#arguments[@]}]="$arg"
+
+    #case $state in
+    #    0)
+    #        if $(starts_with_quote "$arg") ; then
+    #            state=1
+    #            quoting="${arg}"
+    #        else
+    #            state=0
+    #            tval="${arg}"
+    #            arguments[${#arguments[@]}]="$tval"
+    #        fi
+    #        ;;
+    #    1)
+    #        if $(starts_with_quote "$arg") ; then
+    #            state=0
+    #            arguments="${quoting}"
+    #        elif $(ends_with_quote "$arg") ; then
+    #            quoting="${quoting} ${arg}"
+    #            tval="${quoting}"
+    #            arguments[${#arguments[@]}]="$tval"
+    #            state=0
+    #        else
+    #            quoting="${quoting} ${arg}"
+    #        fi
+    #        ;;
+    #    *) error "invalid state.";;
+    #esac
 done
 
 # Will be set if the next argument is an argument to an argument (I swear that
@@ -500,14 +513,15 @@ for arg in "${arguments[@]}" ; do
     if test -n "$next_arg" ; then
         # Yep.  Which option was it?
         case $next_arg in
+            extra_commandline_arg) $EXTRA_COMMANDLINE_ARG_CALL "$arg";;
             installation-build-dir) VISIT_INSTALLATION_BUILD_DIR="$arg";;
             write-unified-file) WRITE_UNIFIED_FILE="$arg";;
             build-with-version) BUILD_VISIT_WITH_VERSION="$arg";;
             append-cflags) C_OPT_FLAGS="${C_OPT_FLAGS} ${arg}";;
             append-cxxflags) CXX_OPT_FLAGS="${CXX_OPT_FLAGS} ${arg}";;
             arch) VISITARCH="${arg}";;
-            cflags) C_OPT_FLAGS=$(strip_quotes "${arg}");;
-            cxxflags) CXX_OPT_FLAGS=$(strip_quotes "${arg}");;
+            cflags) C_OPT_FLAGS="${arg}";;
+            cxxflags) CXX_OPT_FLAGS="${arg}";;
             cc) C_COMPILER="${arg}";;
             cxx) CXX_COMPILER="${arg}";;
             flags-debug) C_OPT_FLAGS="${C_OPT_FLAGS} -g"
@@ -543,10 +557,47 @@ for arg in "${arguments[@]}" ; do
                echo "disabling ${resolve_arg_no_opt}"
                initializeFunc="bv_${resolve_arg_no_opt}_disable"
                $initializeFunc
+               #if disabling icet, prevent it as well
+               if [[ ${resolve_arg_no_opt} == "icet" ]]; then
+                   echo "preventing icet from starting"
+                   PREVENT_ICET="yes"
+               fi
                continue
            fi
        fi
     fi
+
+    #checking to see if additional command line arguments were requested
+    if [[ ${#arg} -gt 2 ]] ; then #possibly has --
+
+        resolve_arg=${arg:2} #remove --
+        local match=0
+        for (( bv_i=0; bv_i<${#extra_commandline_args[*]}; bv_i += 5 ))
+        do
+            local module_name=${extra_commandline_args[$bv_i]} 
+            local command=${extra_commandline_args[$bv_i+1]} 
+            local args=${extra_commandline_args[$bv_i+2]} 
+            local comment=${extra_commandline_args[$bv_i+3]} 
+            local fp=${extra_commandline_args[$bv_i+4]} 
+            if [[ "$command" == "$resolve_arg" ]]; then
+                if [ $args -eq 0 ] ; then 
+                  #call function immediately
+                  $fp
+                else 
+                  #call function with next argument
+                  next_arg="extra_commandline_arg"
+                  EXTRA_COMMANDLINE_ARG_CALL="$fp"
+                fi 
+                match="1"
+                break;
+            fi
+        done
+        #found a match in the modules..
+        if [[ $match == "1" ]]; then
+           continue
+        fi
+    fi
+
              
     case $arg in
         --installation-build-dir) next_arg="installation-build-dir";;
@@ -555,7 +606,6 @@ for arg in "${arguments[@]}" ; do
         --dry-run) VISIT_DRY_RUN=1;;
         --all-io) continue;; #do nothing now..
         --dbio-only) continue;; #do nothing now..
-        --absolute) ABS_PATH="yes"; ON_ABS_PATH="on";;
         --arch) next_arg="arch";;
         --cflag) next_arg="append-cflags";;
         --cflags) next_arg="cflags";;
@@ -568,17 +618,16 @@ for arg in "${arguments[@]}" ; do
         --download-only) DOWNLOAD_ONLY="yes";;
         --flags-debug) next_arg="flags-debug";;
         --gdal) DO_GDAL="yes"; ON_GDAL="on";;
+        --fortran) DO_FORTRAN="yes"; ON_FORTRAN="on";;
         --group) next_arg="group"; DO_GROUP="yes"; ON_GROUP="on";;
         -h|--help) next_action="help";;
         --java) DO_JAVA="yes"; ON_JAVA="on";;
         --makeflags) next_arg="makeflags";;
         --no-thirdparty) DO_REQUIRED_THIRD_PARTY="no"; ON_THIRD_PARTY="off";;
         --no-hostconf) DO_HOSTCONF="no"; ON_HOSTCONF="off";;
-        --no-icet) PREVENT_ICET="yes";;
         --parallel) parallel="yes"; DO_ICET="yes"; ON_parallel="ON";;
         --print-vars) next_action="print-vars";;
         --python-module) DO_MODULE="yes"; ON_MODULE="on";;
-        --relative) ABS_PATH="no"; ON_ABS_PATH="off";;
         --slivr) DO_SLIVR="yes"; ON_SLIVR="on";;
         --static) DO_STATIC_BUILD="yes";;
         --stdout) LOG_FILE="/dev/tty";;
@@ -672,10 +721,11 @@ if [[ "$OPSYS" == "AIX" ]]; then
     fi
 fi
 
-# Disable fortran support if a fortran compiler was not specified or found.
-if [[ $FC_COMPILER == "" ]]; then
+# Disable fortran support unless --fortran specified and a fortran compiler
+# was specified or found.
+if [[ $DO_FORTRAN == "no" || $FC_COMPILER == "" ]]; then
     export FC_COMPILER="no";
-    warn "FC_COMPILER not set: Fortran support for thirdparty libraries disabled."
+    warn "Fortran support for thirdparty libraries disabled."
 fi
 
 # Show a splashscreen. This routine also determines if we have "dialog"
@@ -735,6 +785,7 @@ if [[ "$GRAPHICAL" == "yes" ]] ; then
            "Parallel"   "specify parallel build flags"    $ON_parallel\
            "Python"     "enable VisIt python module"      $ON_MODULE\
            "Java"       "enable java client library"      $ON_JAVA\
+           "Fortran"    "enable fortran in third party libraries"  $ON_FORTRAN\
            "SLIVR"      "enable SLIVR volume rendering library"  $ON_SLIVR\
            "EnvVars"     "specify build environment var values"   $ON_verify\
            "Advanced"   "display advanced options"        $ON_MORE  2> tmp$$
@@ -751,6 +802,7 @@ if [[ "$GRAPHICAL" == "yes" ]] ; then
         parallel="no"
         DO_MODULE="no"
         DO_JAVA="no"
+        DO_FORTRAN="no"
         DO_SLIVR="no"
         verify="no"
         DO_MORE="no"
@@ -765,7 +817,7 @@ if [[ "$GRAPHICAL" == "yes" ]] ; then
                  DO_SVN="yes";DO_SVN_ANON="yes";export SVN_ROOT_PATH=$SVN_ANON_ROOT_PATH ;;
               Tarball)
                  $DLG --backtitle "$DLG_BACKTITLE" \
-                    --no-cancel --inputbox \
+                    --nocancel --inputbox \
 "Enter $OPTION value:" 0 $DLG_WIDTH_WIDE "$VISIT_FILE" 2> tmp$$
                  VISIT_FILE="$(cat tmp$$)"
                  USE_VISIT_FILE="yes";;
@@ -775,6 +827,8 @@ if [[ "$GRAPHICAL" == "yes" ]] ; then
                  DO_MODULE="yes";;
               Java)
                  DO_JAVA="yes";;
+              Fortran)
+                 DO_FORTRAN="yes";;
               SLIVR)
                  DO_SLIVR="yes";;
               EnvVars)
@@ -1046,16 +1100,18 @@ cd "$START_DIR"
 # Later we will build Qt.  We are going to bypass their licensing agreement,
 # so echo it here.
 #
+if [[ "$USE_SYSTEM_QT" != "yes" ]]; then
 
-check_if_installed "qt" $QT_VERSION
-if [[ $? == 0 ]] ; then
-   DO_QT="no"
-fi
+    check_if_installed "qt" $QT_VERSION
+    if [[ $? == 0 ]] ; then
+    DO_QT="no"
+    fi
 
-if [[ "$DO_QT" == "yes" && "$DOWNLOAD_ONLY" == "no" ]] ; then
-    qt_license_prompt
-    if [[ $? != 0 ]] ;then
-        error "Qt4 Open Source Edition License Declined. Bailing out."
+    if [[ "$DO_QT" == "yes" && "$DOWNLOAD_ONLY" == "no" ]] ; then
+        qt_license_prompt
+        if [[ $? != 0 ]] ;then
+            error "Qt4 Open Source Edition License Declined. Bailing out."
+        fi
     fi
 fi
 

@@ -158,12 +158,12 @@ function build_gdal
     info "Invoking command to configure GDAL"
     if [[ "$OPSYS" == "Darwin" ]]; then
        if [[ "$DO_STATIC_BUILD" == "no" ]]; then
-           EXTRA_FLAGS="F77=\"\" --enable-shared --disable-static"
+           EXTRA_FLAGS="F77=\"\" --enable-shared --disable-static --without-libtool --without-expat"
        else
-           EXTRA_FLAGS="F77=\"\" --enable-static --without-ld-shared"
+           EXTRA_FLAGS="F77=\"\" --enable-static --without-ld-shared  --without-libtool --without-expat"
        fi
     else
-       EXTRA_FLAGS="--enable-static --disable-shared"
+       EXTRA_FLAGS="--enable-static --disable-shared --with-hide-internal-symbols"
     fi
 
     if [[ "$OPSYS" == "Darwin" ]]; then
@@ -188,7 +188,7 @@ function build_gdal
        --with-libz=internal --with-netcdf=no \
        --with-pg=no --with-curl=no \
        --without-jasper --without-python \
-       --without-libtool --without-sqlite3 --without-expat
+       --without-sqlite3
     if [[ $? != 0 ]] ; then
        warn "GDAL configure failed.  Giving up"
        return 1
@@ -222,11 +222,8 @@ function build_gdal
         info "Fixing install_name of dynamic libraries for GDAL . . ."
 
         cp .libs/libgdal.1.10.0.${SO_EXT} libgdal.${SO_EXT}
-        if [[ $ABS_PATH == "yes" ]]; then
-           INSTALLNAMEPATH="$VISITDIR/gdal/${GDAL_VERSION}/$VISITARCH/lib"
-        else
-           INSTALLNAMEPATH="@executable_path/../lib"
-        fi
+        INSTALLNAMEPATH="$VISITDIR/gdal/${GDAL_VERSION}/$VISITARCH/lib"
+
         install_name_tool -id \
            $INSTALLNAMEPATH/libgdal.${SO_EXT} \
            libgdal.${SO_EXT}

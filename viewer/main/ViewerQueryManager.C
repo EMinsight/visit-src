@@ -3188,6 +3188,9 @@ ViewerQueryManager::HandlePickCache()
 //    Kathleen Biagas, Wed Sep  7 11:11:19 PDT 2011
 //    coord argument may be an intVector or a doubleVector.
 //
+//    Kathleen Biagas, Thu Jan 12 09:42:46 PST 2012
+//    If point query has time options, use them to set PickAtts.TimeOptions.
+//
 // ****************************************************************************
 
 void         
@@ -3210,7 +3213,14 @@ ViewerQueryManager::PointQuery(const MapNode &queryParams)
     int timeCurve = 0;
     if (queryParams.HasEntry("do_time"))
         timeCurve = queryParams.GetEntry("do_time")->AsInt();
-    timeCurve |= pickAtts->GetDoTimeCurve(); 
+    timeCurve |= (pickAtts->GetDoTimeCurve() ? 1 : 0); 
+
+    // A query with time options should override what is set from PickWindow,
+    // but then PickAtts should be reset, so save what PickAtts currently has
+    // to reset it later.
+    MapNode origTimeOpts = pickAtts->GetTimeOptions();
+    if (timeCurve && queryParams.HasEntry("time_options"))
+        pickAtts->SetTimeOptions(*queryParams.GetEntry("time_options"));
 
     int curvePlotType = 0;
     if (queryParams.HasEntry("curve_plot_type"))
@@ -3282,7 +3292,9 @@ ViewerQueryManager::PointQuery(const MapNode &queryParams)
         {
             bool preserveCoord = true; // is this really the default we want?
             if (queryParams.HasEntry("preserve_coord"))
-                preserveCoord = queryParams.GetEntry("preserve_coord")->AsBool();
+               preserveCoord = (bool)queryParams.GetEntry("preserve_coord")->AsInt();
+            else 
+               preserveCoord = pickAtts->GetTimePreserveCoord();
 
             bool tpc = pickAtts->GetTimePreserveCoord();
             bool tc  = pickAtts->GetDoTimeCurve();
@@ -3316,7 +3328,9 @@ ViewerQueryManager::PointQuery(const MapNode &queryParams)
 
         bool preserveCoord = false; // is this really the default we want?
         if (queryParams.HasEntry("preserve_coord"))
-            preserveCoord = queryParams.GetEntry("preserve_coord")->AsBool();
+          preserveCoord = (bool)queryParams.GetEntry("preserve_coord")->AsInt();
+        else 
+          preserveCoord = pickAtts->GetTimePreserveCoord();
 
         if (timeCurve && preserveCoord)
         {
@@ -3409,6 +3423,7 @@ ViewerQueryManager::PointQuery(const MapNode &queryParams)
         win->SetInteractionMode(imode);
     }
     // cleanup
+    pickAtts->SetTimeOptions(origTimeOpts);
     pickAtts->SetElementIsGlobal(false);
     stringVector emptyVars;
     emptyVars.push_back("default");
@@ -5466,12 +5481,21 @@ ViewerQueryManager::CloneQuery(ViewerQuery *toBeCloned, int newTS, int oldTS)
 //
 //  Modifications:
 //
+//    Kathleen Biagas, Fri Jan 13 14:37:40 PST 2012
+//    Test for presense of query_name.
+//
 // ****************************************************************************
 
 
 void         
 ViewerQueryManager::Query(const MapNode &queryParams)
 {
+    if (!queryParams.HasEntry("query_name"))
+    {
+        debug3 << "VQM::Query, no query_name specified" << endl;
+        return;
+    }
+
     string qName = queryParams.GetEntry("query_name")->AsString();
 
     ViewerWindow *win = ViewerWindowManager::Instance()->GetActiveWindow();

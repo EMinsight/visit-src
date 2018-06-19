@@ -725,6 +725,9 @@ $0 = shift @ARGV;
 #    Hank Childs, Wed Aug  3 22:45:51 UTC 2011
 #    Add support for Eureka's new "login1" hostname.
 #
+#    Jean Favre, Fri Nov 18 08:43:21 PST 2011 (committed by Hank)
+#    Pass along additional launch arguments when using sbatch.
+#
 ###############################################################################
 
 use POSIX qw(ceil);
@@ -1876,7 +1879,7 @@ $IsRunningOnHopperNERSC = 0;
 if ( $host =~ /^hopper/ )
 {
     $IsRunningOnHopperNERSC = 1;
-    $ENV{LD_LIBRARY_PATH} = "/opt/gcc/4.5.2/snos/lib64";
+    $ENV{LD_LIBRARY_PATH} = "/opt/gcc/4.6.1/snos/lib64";
 
     if ($exe_name eq "gui")
     {
@@ -2977,6 +2980,7 @@ if ($procs_set or ($parallel and $parlaunch_set))
         push @parcmd, "--time=$time" if $time_set;
         push @parcmd, "--nodes=$nodes" if $nodes_set;
         push @parcmd, "--ntasks=$procs" if $procs_set;
+        push @parcmd, @launchargs if $launchargs_set;
 
         $ppn = 8;
         if ($nodes_set)
@@ -3354,8 +3358,26 @@ if ($procs_set or ($parallel and $parlaunch_set))
             elsif ($IsRunningOnFranklinNERSC || $IsRunningOnHopperNERSC)
             {
                 push @parcmd, "-d", "$cwd" if $wd_set;
-                push @parcmd, "-l", "mppwidth=$procs";
-                push @parcmd, "-l", "mppnppn=$nodes" if $nodes_set;
+                if ($nodes_set) {
+                    if ($IsRunningOnFranklinNERSC) {
+                        $nprocpernode=4;
+                    } else {
+                        $nprocpernode=24;
+                    }
+                    $nwidth=$nprocpernode*$nodes;
+                    # If the number of nodes is set, we need to modify mppwidth to ensure
+                    # allocation of the proper number of nodes. The number of nodes allocated
+                    # is mppwidth divided by the number of cores per node (compare
+                    # http://www.nersc.gov/users/computational-systems/hopper/running-jobs/batch-jobs/).
+                    push @parcmd, "-l", "mppwidth=$nwidth";
+                }
+                else 
+                {
+                    # Number of nodes is not specified. We use all cores on each node and do not
+                    # need to modify mppdith to ensure the allocation of the appropriate number of
+                    # nodes.
+                    push @parcmd, "-l", "mppwidth=$procs";
+                }
             }
             elsif ($IsRunningOnJaguar_ORNL || $IsRunningOnKraken_UTK)
             {

@@ -1359,6 +1359,9 @@ QvisQueryWindow::Apply(bool ignore)
 //   Kathleen Bonnell, Tue Mar  1 11:08:16 PST 2011
 //   For TimePicks, send along curvePlotType.
 //
+//   Kathleen Biagas, Thu Jan 12 09:55:40 PST 2012
+//   For Pick, put time options in a MapNode.
+//
 // ****************************************************************************
 
 void
@@ -1528,7 +1531,18 @@ QvisQueryWindow::ExecuteStandardQuery()
 
         if(!timeQueryOptions->isCheckable() || timeQueryOptions->isChecked())
         {
-            noErrors = timeQueryOptions->GetTimeQueryOptions(queryParams);
+            if (winT != QueryList::Pick)
+            {
+                noErrors = timeQueryOptions->GetTimeQueryOptions(queryParams);
+            }
+            else
+            {
+                // Pick needs its time options all together in one MapNode.
+                MapNode timeOptions;
+                noErrors = timeQueryOptions->GetTimeQueryOptions(timeOptions);
+                if (noErrors)
+                    queryParams["time_options"] = timeOptions;
+            }
             if (noErrors)
                 queryParams["do_time"] = 1;
         }
@@ -1702,6 +1716,9 @@ QvisQueryWindow::GetFloatingPointNumber(int index, double *num)
 //   Kathleen Bonnell, Tue Jun 24 11:18:13 PDT 2008
 //   Reworked to retrieve vars from varsLineEdit. Removed 'index' arg.
 //
+//   Cyrus Harrison, Tue Jun 24 16:21:00 PDT 2008
+//   When spitting to create the vars list, discard empty parts.
+//
 // ****************************************************************************
 
 bool
@@ -1712,10 +1729,10 @@ QvisQueryWindow::GetVars(stringVector &vars)
     QString temp(varsLineEdit->displayText().trimmed());
 
     // Split the variable list using the spaces.
-    QStringList sList(temp.split(" "));
+    QStringList sList = temp.split(" ",QString::SkipEmptyParts);
 
     QStringList::Iterator it;
- 
+
     for (it = sList.begin(); it != sList.end(); ++it)
     {
         vars.push_back((*it).toStdString());
