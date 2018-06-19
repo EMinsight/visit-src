@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -223,6 +223,10 @@ avtReplicateFilter::ModifyContract(avtContract_p spec)
 //  Creation:   August 29, 2006
 //
 //  Modifications:
+//    Jeremy Meredith, Tue Aug 10 11:54:34 EDT 2010
+//    Update unit cell vectors.  Since we're likely to call CreateBonds
+//    after replicating, for example, we need to know what the new 
+//    supercell vectors are for periodicity, not the old unit cell vectors.
 //
 // ****************************************************************************
  
@@ -238,6 +242,17 @@ avtReplicateFilter::UpdateDataObjectInfo(void)
     GetOutput()->GetInfo().GetAttributes().SetCanUseTransform(false);
 
     GetOutput()->GetInfo().GetValidity().InvalidateSpatialMetaData();
+
+    const float *inUC = GetInput()->GetInfo().GetAttributes().GetUnitCellVectors();
+    float outUC[9];
+
+    for (int i=0; i<3; i++)
+    {
+        outUC[0*3 + i] = inUC[0*3 + i] * atts.GetXReplications();
+        outUC[1*3 + i] = inUC[1*3 + i] * atts.GetYReplications();
+        outUC[2*3 + i] = inUC[2*3 + i] * atts.GetZReplications();
+    }
+    GetOutput()->GetInfo().GetAttributes().SetUnitCellVectors(outUC);
 }
 
 

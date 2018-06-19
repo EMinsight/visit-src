@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -286,6 +286,11 @@ IceTNetworkManager::TileLayout(size_t width, size_t height) const
 //    Add case detecting plots down their own transparency.  For example
 //    splatting volume rendering, which doesn't work with Ice-T.
 //
+//    Eric Brugger, Fri Mar 26 16:37:34 PDT 2010
+//    I added a fix to Hank's change that was causing scalable rendering
+//    to fail in some instances.  In particular workingNet needed to be set
+//    back to NULL after it was used.
+//
 // ****************************************************************************
 
 avtDataObject_p
@@ -316,6 +321,7 @@ IceTNetworkManager::Render(bool, intVector networkIds, bool getZBuffer,
                 plotDoingTransparencyOutsideTransparencyActor = true;
             }
         }
+        workingNet = NULL;
 
         // We can't easily figure out a compositing order, which IceT requires
         // in order to properly composite transparent geometry.  Thus if there

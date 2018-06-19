@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -56,11 +56,11 @@ package llnl.visit;
 
 public class GaussianControlPoint extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 5;
+    private static int GaussianControlPoint_numAdditionalAtts = 5;
 
     public GaussianControlPoint()
     {
-        super(numAdditionalAttributes);
+        super(GaussianControlPoint_numAdditionalAtts);
 
         x = 0f;
         height = 0f;
@@ -71,7 +71,7 @@ public class GaussianControlPoint extends AttributeSubject
 
     public GaussianControlPoint(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(GaussianControlPoint_numAdditionalAtts + nMoreFields);
 
         x = 0f;
         height = 0f;
@@ -82,7 +82,7 @@ public class GaussianControlPoint extends AttributeSubject
 
     public GaussianControlPoint(GaussianControlPoint obj)
     {
-        super(numAdditionalAttributes);
+        super(GaussianControlPoint_numAdditionalAtts);
 
         x = obj.x;
         height = obj.height;
@@ -100,7 +100,7 @@ public class GaussianControlPoint extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return GaussianControlPoint_numAdditionalAtts;
     }
 
     public boolean equals(GaussianControlPoint obj)

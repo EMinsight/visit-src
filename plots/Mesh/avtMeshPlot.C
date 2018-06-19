@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -376,7 +376,7 @@ avtMeshPlot::SetAtts(const AttributeGroup *a)
 
     SetLineWidth(Int2LineWidth(atts.GetLineWidth()));
     SetLineStyle(Int2LineStyle(atts.GetLineStyle()));
-    if (atts.GetForegroundFlag())
+    if (atts.GetMeshColorSource()==0)
     {
         SetMeshColor(fgColor);
         glyphMapper->ColorBySingleColor(fgColor);
@@ -388,7 +388,7 @@ avtMeshPlot::SetAtts(const AttributeGroup *a)
     }
     SetPointSize(atts.GetPointSize());
     SetRenderOpaque();
-    if (atts.GetBackgroundFlag())  
+    if (atts.GetOpaqueColorSource()==0)  
     {
         SetOpaqueColor(bgColor);
     }
@@ -1034,7 +1034,7 @@ avtMeshPlot::SetBackgroundColor(const double *bg)
 {
     bool retVal = false;
 
-    if (atts.GetBackgroundFlag() && ShouldRenderOpaque())
+    if (atts.GetOpaqueColorSource()==0 && ShouldRenderOpaque())
     {
        if (bgColor[0] != bg[0] || bgColor[1] != bg[1] || bgColor[2] != bg[2])
        {
@@ -1072,7 +1072,7 @@ avtMeshPlot::SetForegroundColor(const double *fg)
 {
     bool retVal = false;
 
-    if (atts.GetForegroundFlag())
+    if (atts.GetMeshColorSource()==0)
     {
        if (fgColor[0] != fg[0] || fgColor[1] != fg[1] || fgColor[2] != fg[2])
        {

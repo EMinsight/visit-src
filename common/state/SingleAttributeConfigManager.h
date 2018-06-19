@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -56,6 +56,8 @@ class DataNode;
 // Creation:   January  2, 2009
 //
 // Modifications:
+//   Jeremy Meredith, Thu Apr 29 12:14:13 EDT 2010
+//   Added ability to do a selective save.
 //
 // ****************************************************************************
 
@@ -65,7 +67,8 @@ public:
     SingleAttributeConfigManager(AttributeGroup*);
     virtual ~SingleAttributeConfigManager();
 
-    bool              Export(const std::string &filename);
+    bool              Export(const std::string &filename,
+                             bool completeSave = true);
     bool              Import(const std::string &filename);
 
     virtual bool      WriteConfigFile(const char *filename);
@@ -73,6 +76,7 @@ public:
 protected:
 private:
     AttributeGroup *attribute;
+    bool completeSave;
 };
 
 #endif

@@ -2,9 +2,9 @@
 #define AVT_SIMV2_WRITER_H
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -90,13 +90,13 @@ private:
     int                            numblocks;
 
     void           WriteCurvilinearMesh(vtkStructuredGrid *,
-                                       int, VisIt_MeshMetaData *);
+                                       int, visit_handle);
     void           WriteUnstructuredMesh(vtkUnstructuredGrid *,
-                                       int, VisIt_MeshMetaData *);
+                                       int, visit_handle);
     void           WriteRectilinearMesh(vtkRectilinearGrid *,
-                                       int, VisIt_MeshMetaData *);
+                                       int, visit_handle);
     void           WritePolyDataMesh(vtkPolyData *,
-                                       int, VisIt_MeshMetaData *);
+                                       int, visit_handle);
 
     void           WriteDataArrays(vtkDataSet *ds, int chunk);
     void           WriteOneDataArray(vtkDataArray *, const std::string &, int, VisIt_VarCentering);

@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-400142
 # All rights reserved.
@@ -43,7 +43,7 @@
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/SetUpThirdParty.cmake)
 
 IF (WIN32)
-  SET_UP_THIRD_PARTY(H5PART lib/${VISIT_MSVC_VERSION} include h5part14)
+  SET_UP_THIRD_PARTY(H5PART lib/${VISIT_MSVC_VERSION} include h5partdll)
 ELSE (WIN32)
   SET_UP_THIRD_PARTY(H5PART lib include H5Part)
 ENDIF (WIN32)

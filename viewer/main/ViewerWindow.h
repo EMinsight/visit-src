@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -451,6 +451,12 @@ class ViewerToolbar;
 //    Removed maintain data; moved maintain view from Global settings
 //    (Main window) to per-window Window Information (View window).
 //
+//    Hank Childs, Sat Mar 13 18:43:02 PST 2010
+//    Removed bounding box mode.  Now handled through interactors.
+//
+//    Jeremy Meredith, Fri Apr 30 14:39:07 EDT 2010
+//    Added automatic depth cueing mode.
+//
 // ****************************************************************************
 
 class VIEWER_API ViewerWindow : public ViewerBase
@@ -501,7 +507,6 @@ public:
     void SetViewExtentsType(const avtExtentType);
     avtExtentType GetViewExtentsType() const;
     void GetExtents(int nDimensions, double *extents) const;
-    void SetBoundingBoxMode(const bool mode);
     bool GetBoundingBoxMode() const;
     void SetSpinMode(const bool mode);
     bool GetSpinMode() const;
@@ -672,8 +677,9 @@ public:
     void SetShadingProperties(bool,double);
     bool GetDoShading() const;
     double GetShadingStrength() const;
-    void SetDepthCueingProperties(bool,const double[3],const double[3]);
+    void SetDepthCueingProperties(bool,bool,const double[3],const double[3]);
     bool GetDoDepthCueing() const;
+    bool GetDepthCueingAutomatic() const;
     const double *GetStartCuePoint() const;
     const double *GetEndCuePoint() const;
     void SetColorTexturingFlag(bool);
@@ -813,6 +819,7 @@ private:
     double          shadingStrength;
     // Same for depth cueing
     bool            doDepthCueing;
+    bool            depthCueingAuto;
     double          startCuePoint[3];
     double          endCuePoint[3];
 };

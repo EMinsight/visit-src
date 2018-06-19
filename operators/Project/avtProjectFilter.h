@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -70,6 +70,10 @@ class vtkRectilinearGrid;
 //    Hank Childs, Thu Jan 20 10:27:29 PST 2005
 //    Added extents calculation in PostExecute.
 //
+//    Jeremy Meredith, Thu Apr  1 14:41:33 EDT 2010
+//    Added double precision version of projection for increased
+//    accuracy.
+//
 // ****************************************************************************
 
 class avtProjectFilter : public avtPluginDataTreeIterator
@@ -96,6 +100,7 @@ class avtProjectFilter : public avtPluginDataTreeIterator
 
   private:
     void                ProjectPoint(float &x, float &y, float &z);
+    void                ProjectPoint(double &x, double &y, double &z);
     vtkPointSet        *ProjectPointSet(vtkPointSet*);
     vtkPointSet        *ProjectRectilinearGrid(vtkRectilinearGrid*);
     void                ProjectVectors(vtkDataSet*,vtkDataSet*,

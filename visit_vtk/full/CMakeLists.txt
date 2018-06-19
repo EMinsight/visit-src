@@ -35,12 +35,16 @@
 # DAMAGE.
 #
 # Modifications:
+#   Cyrus Harrison, Tue Mar  9 08:28:53 PST 2010
+#   Define __USE_ISOC99 if we are using the boost interval lib to make sure
+#   a rounding scheme is available. 
 #
 #****************************************************************************/
 
 SET(VISIT_VTK_SOURCES
 InitVTK.C
 vtkAxisDepthSort.C
+vtkBinaryPartitionVolumeFromVolume.C
 vtkCSGCell.C
 vtkCSGGrid.C
 vtkConnectedTubeFilter.C
@@ -79,6 +83,7 @@ vtkVisItProbeFilter.C
 vtkVisItRectilinearGrid.C
 vtkVisItSTLWriter.C
 vtkVisItScalarTree.C
+vtkVisItSplitter.C
 vtkVisItStreamLine.C
 vtkVisItStructuredGrid.C
 vtkVisItStructuredGridNormals.C
@@ -98,7 +103,12 @@ ${VISIT_SOURCE_DIR}/common/misc
 ${VISIT_SOURCE_DIR}/common/utility
 ${VISIT_SOURCE_DIR}/visit_vtk/lightweight
 ${VTK_INCLUDE_DIRS}
+${BOOST_INCLUDE_DIR}
 )
+
+IF(HAVE_BILIB)
+    ADD_DEFINITIONS(-D__USE_ISOC99)
+ENDIF(HAVE_BILIB)
 
 # Add link directories needed to use our libraries and VTK.
 LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY} ${VTK_LIBRARY_DIRS})

@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-400142
 # All rights reserved.
@@ -40,6 +40,9 @@
 #
 #   Cyrus Harrison, Thu Feb 11 09:37:20 PST 2010
 #   Added QvisPythonFilterEditor
+#
+#   Cyrus Harrison, Mon Mar 15 13:27:16 PDT 2010
+#   Added  QvisTimeSliderControlWidget & QvisSourceManagerWidget.
 #
 #****************************************************************************/
 
@@ -166,6 +169,7 @@ QvisSessionSourceChangerDialog.C
 QvisSimulationCommandWindow.C
 QvisSimulationMessageWindow.C
 QvisSimulationWindow.C
+QvisSourceManagerWidget.C
 QvisSpectrumBar.C
 QvisStripChart.C
 QvisStripChartMgr.C
@@ -175,6 +179,7 @@ QvisSubsetPanelWidget.C
 QvisSubsetWindow.C
 QvisText2DInterface.C
 QvisText3DInterface.C
+QvisTimeSliderControlWidget.C
 QvisTimeSliderInterface.C
 QvisTurnDownButton.C
 QvisUiLoader.C
@@ -272,6 +277,7 @@ QvisScribbleOpacityBar.h
 QvisSessionFileDatabaseLoader.h
 QvisSessionSourceChanger.h
 QvisSessionSourceChangerDialog.h
+QvisSourceManagerWidget.h
 QvisSpectrumBar.h
 QvisTurnDownButton.h
 QvisVCRControl.h
@@ -297,6 +303,7 @@ QvisLegendAttributesInterface.h
 QvisLine2DInterface.h
 QvisText3DInterface.h
 QvisText2DInterface.h
+QvisTimeSliderControlWidget.h
 QvisVisItUpdate.h
 QvisSequenceButton.h
 QvisCompositeTransition.h

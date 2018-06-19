@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -57,11 +57,11 @@ import java.util.Vector;
 
 public class ColorControlPointList extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 5;
+    private static int ColorControlPointList_numAdditionalAtts = 5;
 
     public ColorControlPointList()
     {
-        super(numAdditionalAttributes);
+        super(ColorControlPointList_numAdditionalAtts);
 
         controlPoints = new Vector();
         smoothingFlag = true;
@@ -72,7 +72,7 @@ public class ColorControlPointList extends AttributeSubject
 
     public ColorControlPointList(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(ColorControlPointList_numAdditionalAtts + nMoreFields);
 
         controlPoints = new Vector();
         smoothingFlag = true;
@@ -83,7 +83,7 @@ public class ColorControlPointList extends AttributeSubject
 
     public ColorControlPointList(ColorControlPointList obj)
     {
-        super(numAdditionalAttributes);
+        super(ColorControlPointList_numAdditionalAtts);
 
         int i;
 
@@ -91,8 +91,8 @@ public class ColorControlPointList extends AttributeSubject
         controlPoints = new Vector(obj.controlPoints.size());
         for(i = 0; i < obj.controlPoints.size(); ++i)
         {
-            ColorControlPoint newObj = (ColorControlPoint)controlPoints.elementAt(i);
-            controlPoints.addElement(new ColorControlPoint(newObj));
+            ColorControlPoint oldObj = (ColorControlPoint)obj.controlPoints.elementAt(i);
+            controlPoints.addElement(new ColorControlPoint(oldObj));
         }
 
         smoothingFlag = obj.smoothingFlag;
@@ -110,7 +110,7 @@ public class ColorControlPointList extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return ColorControlPointList_numAdditionalAtts;
     }
 
     public boolean equals(ColorControlPointList obj)

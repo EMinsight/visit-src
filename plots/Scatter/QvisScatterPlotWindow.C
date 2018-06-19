@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -152,6 +152,12 @@ QvisScatterPlotWindow::~QvisScatterPlotWindow()
 //   Dave Pugmire, Wed Oct 29 16:00:48 EDT 2008
 //   Swap the min/max in the gui.
 //
+//   Allen Sanderson, Sun Mar  7 12:49:56 PST 2010
+//   Change layout of window for 2.0 interface changes.
+//
+//   Brad Whitlock, Fri Jul 16 14:34:23 PDT 2010
+//   Make curves an allowable variable type.
+//
 // ****************************************************************************
 
 void
@@ -271,7 +277,8 @@ QvisScatterPlotWindow::CreateWindowContents()
     var2TopLayout->addWidget(var2Label,0,0);
 
     // Create a variable button
-    var2 = new QvisVariableButton(true, true, true, QvisVariableButton::Scalars,
+    var2 = new QvisVariableButton(true, true, true, 
+        QvisVariableButton::Scalars | QvisVariableButton::Curves,
         var2Top);
     connect(var2, SIGNAL(activated(const QString &)),
             this, SLOT(var2Selected(const QString &)));
@@ -350,7 +357,8 @@ QvisScatterPlotWindow::CreateWindowContents()
     var3TopLayout->addWidget(var3Label,0,0);
 
     // Create a variable button.
-    var3 = new QvisVariableButton(true, true, true, QvisVariableButton::Scalars,
+    var3 = new QvisVariableButton(true, true, true, 
+        QvisVariableButton::Scalars | QvisVariableButton::Curves,
         var3Top);
     connect(var3, SIGNAL(activated(const QString &)),
             this, SLOT(var3Selected(const QString &)));
@@ -429,7 +437,8 @@ QvisScatterPlotWindow::CreateWindowContents()
     var4TopLayout->addWidget(var4Label,0,0);
 
     // Create a variable button.
-    var4 = new QvisVariableButton(true, true, true, QvisVariableButton::Scalars,
+    var4 = new QvisVariableButton(true, true, true, 
+        QvisVariableButton::Scalars | QvisVariableButton::Curves,
         var4Top);
     connect(var4, SIGNAL(activated(const QString &)),
             this, SLOT(var4Selected(const QString &)));
@@ -535,17 +544,17 @@ QvisScatterPlotWindow::CreateWindowContents()
     colorTableNameLabel->setBuddy(colorTableName);
     aLayout->addWidget(colorTableNameLabel, 2, 0);
 
+    singleColorLabel = new QLabel(tr("Single color"), appearanceGroup);
+    aLayout->addWidget(singleColorLabel, 3, 0);
+
     QWidget *scBox = new QWidget(appearanceGroup);
     QHBoxLayout *scBoxLayout = new QHBoxLayout(scBox);
     scBoxLayout->setMargin(0);
     scBoxLayout->setSpacing(10);
     aLayout->addWidget(scBox, 3, 1);
 
-    singleColorLabel = new QLabel(tr("Single color"), appearanceGroup);
-    singleColorLabel->setBuddy(singleColor);
-    aLayout->addWidget(singleColorLabel, 3, 0);
-
     singleColor = new QvisColorButton(scBox);
+    singleColorLabel->setBuddy(singleColor);
     connect(singleColor, SIGNAL(selectedColor(const QColor&)),
             this, SLOT(singleColorChanged(const QColor&)));
     scBoxLayout->addWidget(singleColor);
@@ -555,7 +564,7 @@ QvisScatterPlotWindow::CreateWindowContents()
             this, SLOT(foregroundFlagChanged(bool)));
     scBoxLayout->addWidget(foregroundFlag);
 
-    scaleCube = new QCheckBox(tr("Scale to cube"), scBox);
+    scaleCube = new QCheckBox(tr("Scale to cube"), appearanceGroup);
     connect(scaleCube, SIGNAL(toggled(bool)),
             this, SLOT(scaleCubeChanged(bool)));
     aLayout->addWidget(scaleCube, 4, 0, 1, 2);
@@ -577,12 +586,22 @@ QvisScatterPlotWindow::CreateWindowContents()
     colorRoleLabel = new QLabel(tr("Color:    "), roleGroup);
     roleLayout->addWidget(colorRoleLabel, 1, 1);
 
+    //
+    // Create the misc stuff
+    //
+    QGroupBox * miscGroup = new QGroupBox(central);
+    miscGroup->setTitle(tr("Misc"));
+    topLayout->addWidget(miscGroup);
 
-
-    legendFlag = new QCheckBox(tr("Legend"), central);
-    connect(legendFlag, SIGNAL(toggled(bool)),
-            this, SLOT(legendFlagChanged(bool)));
-    topLayout->addWidget(legendFlag);
+    QGridLayout *miscLayout = new QGridLayout(miscGroup);
+    miscLayout->setMargin(5);
+    miscLayout->setSpacing(10);
+ 
+    // Create the legend toggle
+    legendToggle = new QCheckBox(tr("Legend"), miscGroup);
+    connect(legendToggle, SIGNAL(toggled(bool)),
+            this, SLOT(legendToggled(bool)));
+    miscLayout->addWidget(legendToggle, 0, 0);
 }
 
 
@@ -851,9 +870,9 @@ QvisScatterPlotWindow::UpdateWindow(bool doAll)
             foregroundFlag->blockSignals(false);
             break;
         case ScatterAttributes::ID_legendFlag:
-            legendFlag->blockSignals(true);
-            legendFlag->setChecked(atts->GetLegendFlag());
-            legendFlag->blockSignals(false);
+            legendToggle->blockSignals(true);
+            legendToggle->setChecked(atts->GetLegendFlag());
+            legendToggle->blockSignals(false);
             break;
         }
     }
@@ -1662,7 +1681,7 @@ QvisScatterPlotWindow::foregroundFlagChanged(bool val)
 
 
 void
-QvisScatterPlotWindow::legendFlagChanged(bool val)
+QvisScatterPlotWindow::legendToggled(bool val)
 {
     atts->SetLegendFlag(val);
     SetUpdate(false);

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -88,6 +88,10 @@
 //   Don't need to call Initialize here -- it will be called when we need it,
 //   even if we are being strict about ruling out non-Pixie files.
 //
+//   Eric Brugger, Tue Mar  9 15:20:50 PST 2010
+//   Moved the code to turn off error message printing to the constructor
+//   so that it is always called.
+//
 // ****************************************************************************
 
 avtPixieFileFormat::avtPixieFileFormat(const char *filename)
@@ -97,6 +101,9 @@ avtPixieFileFormat::avtPixieFileFormat(const char *filename)
      fileId = -1;
      nTimeStates = 0;
      haveMeshCoords = false;
+
+    // Turn off error message printing.
+    H5Eset_auto(0,0);
 }
 
 // ****************************************************************************
@@ -176,6 +183,9 @@ avtPixieFileFormat::GetCycles(std::vector<int> &cycles)
 //    Brad Whitlock, Thu Apr 27 11:49:07 PDT 2006
 //    Fixed it so it works if cycles are never read.
 //
+//    Luis Chacon, Tue Mar 2 10:02:00 EST 2010
+//    Modified routine to read time values in double vector time_val (if available)
+//
 // ****************************************************************************
 
 void
@@ -187,8 +197,16 @@ avtPixieFileFormat::GetTimes(std::vector<double> &times)
     {
         if(i < cycles.size())
         {
-            times.push_back(double(cycles[i]));
-            lastTime = double(cycles[i]);
+            if (time_val.size() == nTimeStates)
+            {
+                times.push_back(time_val[i]);
+                lastTime = time_val[i];
+            }
+            else
+            {
+                times.push_back(double(cycles[i]));
+                lastTime = double(cycles[i]);
+            }
         }
         else
         {
@@ -273,6 +291,13 @@ avtPixieFileFormat::FreeUpResources(void)
 //   Jeremy Meredith, Fri Jan 15 17:25:23 EST 2010
 //   Use runtime strictness checking behavior.
 //
+//   Eric Brugger, Tue Mar  9 15:20:50 PST 2010
+//   Moved the code to turn off error message printing to the constructor
+//   so that it is always called.
+//
+//   Luis Chacon, Tue Mar 2 10:02:00 EST 2010
+//   Added code to sort time values
+//
 // ****************************************************************************
     
 void
@@ -292,14 +317,12 @@ avtPixieFileFormat::Initialize()
 
         if (GetStrictMode())
         {
-            // Turn off error message printing.
-            H5Eset_auto(0,0);
-
             //
-            // See if the file format looks like a Tetrad file. I know it's
-            // hackish to have to check like this but how else should it be
-            // done when we don't want Pixie to read HDF5 files that happen
-            // to have Tetrad stuff in them.
+            // See if the file format looks like a some other file format.
+            // I know it's hackish to have to check like this but how else
+            // should it be done when we don't want Pixie to read HDF5 files
+            // that are really HDF5 files following a convention supported
+            // by another format.
             //
             hid_t siloDir = H5Gopen(fileId, ".silo");
             if (siloDir >= 0)
@@ -430,8 +453,9 @@ avtPixieFileFormat::Initialize()
             H5Dclose(expid);
         }
 
-        // Sort the cycles.
+        // Sort the cycles and the times
         std::sort(cycles.begin(), cycles.end());
+        std::sort(time_val.begin(), time_val.end());
 
 #ifdef MDSERVER
         // We're on the mdserver so close the file now that we've determined
@@ -1586,6 +1610,9 @@ avtPixieFileFormat::ReadCoordinateFields(int timestate, const VarInfo &info,
 //   Jeremy Meredith, Thu Jan  7 15:35:18 EST 2010
 //   Skip ".." group names.
 //
+//   Luis Chacon, Tue Mar 2 10:02:00 EST 2010
+//   Added code to read time value attributes
+//
 // ****************************************************************************
 
 herr_t
@@ -1849,6 +1876,37 @@ avtPixieFileFormat::GetVariableList(hid_t group, const char *name,
                 }
                 H5Aclose(coordsAttribute);
             }
+
+            //
+            // Read time level if available
+            //
+            hid_t timeAttribute = H5Aopen_name(obj, "Time");
+            if(timeAttribute >= 0)
+            {
+                debug4 << "Found time attribute" << endl;
+
+                hid_t attrType = H5Aget_type(timeAttribute);
+                if(attrType >= 0)
+                {
+                    double time;
+                    if(H5Aread(timeAttribute, attrType, &time) >= 0)
+                    {
+                        info->This->time_val.push_back(time);
+                        debug4 << "time value found="<< time << endl;
+                    }
+                    else
+                    {
+                        debug4 << "No time value found." << endl;
+                    }
+                    H5Tclose(attrType);
+                }
+                else
+                {
+                    debug4 << "Problems opening time attribute." << endl;
+                }
+                H5Aclose(timeAttribute);
+            }
+
 // ************************** End Pixie-specific coding ***********************
 
             // Iterate over the items in this group.           

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -2031,6 +2031,11 @@ ViewerFileServer::TerminateConnectionRequest(const stringVector &args, int failC
 //    about existing file opening options.  These will not override, but
 //    instead append to, existing options (like ones saved in a config file).
 //
+//    Jeremy Meredith, Fri Mar 26 10:40:40 EDT 2010
+//    Though we do not need to use the command line to specify assumed and
+//    fallback formats anymore, such usage still has some conveniences.
+//    Added support to munge the preferred list when given those options.
+//
 // ****************************************************************************
 void
 ViewerFileServer::UpdateDBPluginInfo(const std::string &host)
@@ -2041,6 +2046,8 @@ ViewerFileServer::UpdateDBPluginInfo(const std::string &host)
         dbPluginInfoAtts->SetHost(host);
         dbPluginInfoAtts->Notify();
         fileOpenOptions->MergeNewFromPluginInfo(dbPluginInfoAtts);
+        fileOpenOptions->AddAssumedFormatsToPreferred(assumedFormatsFromCL);
+        fileOpenOptions->AddFallbackFormatsToPreferred(fallbackFormatsFromCL);
         fileOpenOptions->Notify();
     }
 }
@@ -3360,7 +3367,13 @@ ViewerFileServer::SetSimulationMetaData(const std::string &host,
 //  Programmer:  Jeremy Meredith
 //  Creation:    August 25, 2004
 //
+//  Modifications:
+//    Brad Whitlock, Tue Mar 16 11:51:51 PDT 2010
+//    Add the SIL if it has not been added before. Otherwise, the mdserver
+//    will be queried for the SIL and that's useless for simulations.
+//
 // ****************************************************************************
+
 void
 ViewerFileServer::SetSimulationSILAtts(const std::string &host,
                                        const std::string &filename,
@@ -3368,6 +3381,7 @@ ViewerFileServer::SetSimulationSILAtts(const std::string &host,
 {
     avtSIL *sil = new avtSIL(silAtts);
     std::string dbName(ComposeDatabaseName(host, filename));
+    bool added = false;
     for(FileSILMap::const_iterator pos = fileSIL.begin();
         pos != fileSIL.end();
         ++pos)
@@ -3381,10 +3395,20 @@ ViewerFileServer::SetSimulationSILAtts(const std::string &host,
 
         if(name == dbName)
         {
+            added = true;
             *(pos->second) = *sil;
         }
     }
-    delete sil;
+    if(!added)
+    {
+        // If we have not added the simuation SIL before, add it now.
+        debug5 << "Adding simulation SIL for " << dbName << endl;
+        fileSIL[dbName] = sil;
+    }
+    else
+    { 
+        delete sil;
+    }
 }
 
 // ****************************************************************************
@@ -3454,3 +3478,49 @@ ViewerFileServer::BroadcastUpdatedFileOpenOptions()
     }
 }
 
+
+// ****************************************************************************
+// Method:  ViewerFileServer::AddAssumedFormatFromCL
+//
+// Purpose:
+//   Though we do not need to use the command line to specify 
+//   assumed and fallback formats anymore, such usage still has
+//   some conveniences.  This function adds an "assumed" format
+//   which we will prepend to the preferred list in the file
+//   open options as seen by the meta-data server.
+//
+// Arguments:
+//   fmt        the format to make preferred
+//
+// Programmer:  Jeremy Meredith
+// Creation:    March 26, 2010
+//
+// ****************************************************************************
+void
+ViewerFileServer::AddAssumedFormatFromCL(const std::string &fmt)
+{
+    assumedFormatsFromCL.push_back(fmt);
+}
+
+// ****************************************************************************
+// Method:  ViewerFileServer::AddFallbackFormatFromCL
+//
+// Purpose:
+//   Though we do not need to use the command line to specify 
+//   assumed and fallback formats anymore, such usage still has
+//   some conveniences.  This function adds a "fallback" format
+//   which we will append to the preferred list in the file
+//   open options as seen by the meta-data server.
+//
+// Arguments:
+//   fmt        the format to make preferred
+//
+// Programmer:  Jeremy Meredith
+// Creation:    March 26, 2010
+//
+// ****************************************************************************
+void
+ViewerFileServer::AddFallbackFormatFromCL(const std::string &fmt)
+{
+    fallbackFormatsFromCL.push_back(fmt);
+}

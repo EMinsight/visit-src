@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -70,6 +70,9 @@ class QvisPointControl;
 //   Brad Whitlock, Thu Jul 17 15:44:03 PDT 2008
 //   Adapted from Boundary plot window after that windows was ported to Qt 4.
 //
+//   Allen Sanderson, Sun Mar  7 12:49:56 PST 2010
+//   Change layout of window for 2.0 interface changes.
+//
 // ****************************************************************************
 
 class QvisSubsetPlotWindow : public QvisPostableWindowObserver
@@ -125,7 +128,7 @@ private:
     QLabel                 *lineWidthLabel;
     QvisLineWidthWidget    *lineWidth;
     QButtonGroup           *colorModeButtons;
-    QCheckBox              *legendCheckBox;
+    QCheckBox              *legendToggle;
     QGroupBox              *subsetColorGroup;
     QvisColorButton        *singleColor;
     QvisOpacitySlider      *singleColorOpacity;
@@ -135,10 +138,10 @@ private:
     QvisOpacitySlider      *multipleColorOpacity;
     QvisColorTableButton   *colorTableButton;
     QvisOpacitySlider      *overallOpacity;
-    QCheckBox              *wireframeCheckBox;
+    QCheckBox              *wireframeToggle;
     QButtonGroup           *smoothingLevelButtons;
     QvisPointControl       *pointControl;
-    QCheckBox              *drawInternalCheckBox;
+    QCheckBox              *drawInternalToggle;
 };
 
 #endif

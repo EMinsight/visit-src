@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -49,6 +49,7 @@
 
 
 class     avtBinaryMultiplyExpression;
+class     avtEdgeLength;
 class     avtRevolvedVolume;
 class     avtVMetricArea;
 class     avtVMetricVolume;
@@ -73,6 +74,9 @@ class     avtVMetricVolume;
 //    Hank Childs, Thu May 11 13:28:50 PDT 2006
 //    Added new virtual methods so that new queries can inherit from this.
 //
+//    Hank Childs, Wed Apr 28 05:25:52 PDT 2010
+//    Add support for 1D cross sections.
+//
 // ****************************************************************************
 
 class QUERY_API avtWeightedVariableSummationQuery : public avtSummationQuery
@@ -85,6 +89,7 @@ class QUERY_API avtWeightedVariableSummationQuery : public avtSummationQuery
                              { return "avtWeightedVariableSummationQuery"; };
 
   protected:
+    avtEdgeLength               *length;
     avtVMetricArea              *area;
     avtVMetricVolume            *volume;
     avtRevolvedVolume           *revolvedVolume;

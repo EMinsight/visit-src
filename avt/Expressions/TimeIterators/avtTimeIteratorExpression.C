@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -328,6 +328,11 @@ avtTimeIteratorExpression::Execute(void)
 //  Programmer:   Hank Childs
 //  Creation:     February 14, 2009
 //
+//  Modifications:
+//
+//    Hank Childs, Wed Jul 14 06:38:42 PDT 2010
+//    Fix problem with meshnames like category/meshname.
+//
 // ****************************************************************************
 
 void
@@ -350,13 +355,13 @@ avtTimeIteratorExpression::UpdateExpressions(int ts)
         char expr_defn[1024];
         if (cmfeType == CONN_CMFE)
         {
-            SNPRINTF(expr_defn, 1024, "conn_cmfe(<[%d]i:%s>, %s)", ts,
+            SNPRINTF(expr_defn, 1024, "conn_cmfe(<[%d]i:%s>, <%s>)", ts,
                                         varnames[i].c_str(), meshname.c_str());
         }
         else
         {
             int defVarIndex = varnames.size()-1;
-            SNPRINTF(expr_defn, 1024, "pos_cmfe(<[%d]i:%s>, %s, %s)", ts,
+            SNPRINTF(expr_defn, 1024, "pos_cmfe(<[%d]i:%s>, <%s>, %s)", ts,
                                         varnames[i].c_str(), meshname.c_str(),
                                         varnames[defVarIndex].c_str());
         }

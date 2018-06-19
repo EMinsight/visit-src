@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -69,6 +69,9 @@ class QvisColorTableButton;
 //   Eric Brugger, Wed Nov 24 11:39:58 PST 2004
 //   Added scaleByMagnitude and autoScale.
 //
+//   Allen Sanderson, Sun Mar  7 12:49:56 PST 2010
+//   Change layout of window for 2.0 interface changes.
+//
 // ****************************************************************************
 
 class QvisTensorPlotWindow : public QvisPostableWindowObserver
@@ -92,30 +95,30 @@ protected:
 private slots:
     void tensorColorChanged(const QColor &color);
     void processScaleText();
-    void scaleByMagnitudeToggled();
-    void autoScaleToggled();
+    void scaleByMagnitudeToggled(bool on);
+    void autoScaleToggled(bool on);
     void reduceMethodChanged(int index);
     void processNTensorsText();
     void processStrideText();
-    void legendToggled();
+    void legendToggled(bool on);
     void colorModeChanged(int);
     void colorTableClicked(bool useDefault, const QString &ctName);
 private:
     int                  plotType;
     TensorAttributes     *tensorAtts;
 
-    QGroupBox            *colorGroupBox;
     QvisColorButton      *tensorColor;
     QButtonGroup         *colorButtonGroup; 
     QvisColorTableButton *colorTableButton;
-    QGroupBox            *scaleGroupBox;    
+
     QLineEdit            *scaleLineEdit;
     QCheckBox            *scaleByMagnitudeToggle;
     QCheckBox            *autoScaleToggle;
-    QGroupBox            *reduceGroupBox;
+
     QButtonGroup         *reduceButtonGroup;
     QLineEdit            *nTensorsLineEdit;
     QLineEdit            *strideLineEdit;
+
     QCheckBox            *legendToggle;
 };
 

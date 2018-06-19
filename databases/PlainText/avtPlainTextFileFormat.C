@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -76,6 +76,11 @@ using     std::vector;
 //
 //    Mark C. Miller, Wed Oct 29 12:32:11 PDT 2008
 //    Made it possible for curves to have any column as the abscissa
+//
+//    Jeremy Meredith, Fri Apr 30 09:57:29 EDT 2010
+//    Changed data layout field to have a new default, and so I renamed
+//    it so it wouldn't conflict with the old values.
+//
 // ****************************************************************************
 
 avtPlainTextFileFormat::avtPlainTextFileFormat(const char *fn,
@@ -96,11 +101,11 @@ avtPlainTextFileFormat::avtPlainTextFileFormat(const char *fn,
     zcol = -1;
 
     if (readOpts &&
-        readOpts->FindIndex("Format of data")>=0)
+        readOpts->FindIndex("Data layout")>=0)
     {
-        int index = readOpts->GetEnum("Format of data");
-        if (index==0) format = Grid;
-        if (index==1) format = Columns;
+        int index = readOpts->GetEnum("Data layout");
+        if (index==0) format = Columns;
+        if (index==1) format = Grid;
     }
     if (readOpts &&
         readOpts->FindIndex("First row has variable names")>=0)
@@ -152,6 +157,11 @@ avtPlainTextFileFormat::avtPlainTextFileFormat(const char *fn,
 //  Programmer: Jeremy Meredith
 //  Creation:   January 24, 2008
 //
+//  Modifications:
+//
+//    Hank Childs, Wed May 26 09:05:44 PDT 2010
+//    Fix memory bloat issue from STL.
+//
 // ****************************************************************************
 
 void
@@ -159,6 +169,9 @@ avtPlainTextFileFormat::FreeUpResources(void)
 {
     variableNames.clear();
     data.clear();
+    std::vector< std::vector<float> > tmp;
+    data.swap(tmp); // this makes capacity() drop to 0, which is better than
+                    // what clear() does.
     fileRead = false;
 }
 

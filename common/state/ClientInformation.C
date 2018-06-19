@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -528,8 +528,8 @@ ClientInformation::DeclareMethod(const std::string &name, const std::string &pro
 {
     methodNames.push_back(name);
     methodPrototypes.push_back(proto);
-    SelectField(1);
-    SelectField(2);
+    SelectMethodNames();
+    SelectMethodPrototypes();
 }
 
 int
@@ -565,7 +565,7 @@ ClientInformation::ClearMethods()
 {
     methodNames.clear();
     methodPrototypes.clear();
-    SelectField(1);
-    SelectField(2);
+    SelectMethodNames();
+    SelectMethodPrototypes();
 }
 

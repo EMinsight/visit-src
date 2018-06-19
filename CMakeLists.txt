@@ -77,13 +77,66 @@
 #    Kathleen Bonnell, Tue Feb 16 14:04:16 MST 2010
 #    Removed conditional setting of VISIT_RENDERING_SIZE_LIMIT, in case 
 #    initial configure pass was missing something. Install our zlib on windows.
-#    
+#
 #    Cyrus Harrison, Sun Feb 21 19:12:33 PST 2010
 #    Added support for enable/disable of Python Engine Filters.
 #
+#    Eric Brugger, Mon Mar  8 13:02:08 PST 2010
+#    Modified the logic that sets the VISIT_SVN_REVISION to get it from
+#    the file SVN_REVISION before trying svn to get it.
+#
+#    Cyrus Harrison, Tue Mar  9 08:02:50 PST 2010
+#    Enabled python filters support by default.
+#
+#    Kathleen Bonnell, Wed Mar 17 10:06:44 MST 2010 
+#    Change cmake minimum required to 2.8.0, to support FILE(COPY .
+#
+#    Kathleen Bonnell, Thu April 1 19:29:24 MST 2010 
+#    Find MakeNSIS on windows. Add PACKAGE target for windows, that uses
+#    our NSIS scripts to create the self-installer.
+#
+#    Kathleen Bonnell, Wed April 14 16:33:27 MST 2010
+#    Renable FindTortoiseSVN on windows to retrieve SVN revision number.
+#
+#    Jeremy Meredith, Mon Apr 19 16:34:02 EDT 2010
+#    Support multiple paths returned for include files from mpi compiler.
+#
+#    Cyrus Harrison, Tue Apr 27 13:39:38 PDT 2010
+#    Added ability to bake rpaths for MPI libs into exes & libs when
+#    'make install' & 'make package' are used.
+#
+#    Cyrus Harrison, Thu Apr 29 09:32:01 PDT 2010
+#    Small change to rpath detection to avoid cmake error w/
+#    LIST(REMOVE_DUPLCIATES) if no rpaths are found.
+#
+#    Tom Fogal, Fri Apr 30 09:35:51 MDT 2010
+#    Define HAVE_LIBSLIVR as appropriate.
+#
+#    Eric Brugger, Thu May  6 12:23:34 PDT 2010
+#    I corrected the rpath detection logic to handle the case were there
+#    were multiple rpaths.  In particular, INSTALL_RPATH was being set as a
+#    list of rpaths (the rpaths end up semi-colon separated) and I changed
+#    it to a string of space separated rpaths.
+#
+#    Kathleen Bonnell, Tue May 11 13:01:44 MST 2010 
+#    Set HAVE_SELECT to TRUE on windows. 
+#
+#    Kathleen Bonnell, Fri Jun 4 7:58:34 PDT 2010
+#    Changed logic for finding SVN_REVISION so check is not performed on
+#    any platform if not building from a working copy. 
+#
+#    Eric Brugger, Wed Jun  9 13:06:18 PDT 2010
+#    I made a correction to a MESSAGE statement in the code that adds the
+#    current link to the installation directory and added a comment that
+#    explains why the flawed code we have there is actually what we want.
+#
+#    Eric Brugger, Thu Jun 17 13:38:03 PDT 2010
+#    I modified the file to add -DMPICH_IGNORE_CXX_SEEK wherever -DPARALLEL
+#    is specified to eliminate a compile failure with some versions of mpi.
+#
 #****************************************************************************/
 
-CMAKE_MINIMUM_REQUIRED(VERSION 2.6.4 FATAL_ERROR)
+CMAKE_MINIMUM_REQUIRED(VERSION 2.8.0 FATAL_ERROR)
 
 IF (COMMAND cmake_policy)
     cmake_policy(SET CMP0003 NEW)
@@ -156,6 +209,7 @@ IF (WIN32)
   MESSAGE(STATUS "Trying to include config-site/windows.cmake")
   INCLUDE(config-site/windows.cmake)
   SET(CMAKE_SKIP_RPATH ON CACHE INTERNAL "VisIt builds with rpath set." FORCE)
+  SET(VISIT_WIN_ICON_RESOURCE ${VISIT_WINDOWS_DIR}/resources/visitresources.rc)
 ENDIF (WIN32)
 
 #-----------------------------------------------------------------------------
@@ -191,18 +245,7 @@ IF(VISIT_STATIC)
     ADD_DEFINITIONS(-DVISIT_STATIC -DGLEW_STATIC)
 ENDIF(VISIT_STATIC)
 OPTION(VISIT_PYTHON_SCRIPTING      "Build VisIt with Python scripting support." ON)
-OPTION(VISIT_PYTHON_FILTERS        "Build VisIt with Python Engine Filter support." OFF)
-
-# VTK Python's wrappers avalaible with the static libs, so we cannot support
-# python filters in a static build
-IF(VISIT_STATIC AND VISIT_PYTHON_FILTERS)
-    SET(VISIT_PYTHON_FILTERS OFF)
-    MESSAGE(STATUS "Python Engine Filters are not supported for static build")
-ENDIF(VISIT_STATIC AND VISIT_PYTHON_FILTERS)
-
-IF(VISIT_PYTHON_FILTERS)
-    ADD_DEFINITIONS(-DVISIT_PYTHON_FILTERS)
-ENDIF(VISIT_PYTHON_FILTERS)
+OPTION(VISIT_PYTHON_FILTERS        "Build VisIt with Python Engine Filter support." ON)
 
 OPTION(VISIT_BUILD_ALL_PLUGINS     "Build all of VisIt's plugins." OFF)
 OPTION(VISIT_BUILD_MINIMAL_PLUGINS "Build a minimal set of VisIt's plugins." OFF)
@@ -224,6 +267,7 @@ OPTION(VISIT_CREATE_SOCKET_RELAY "Create a separate executable that forwards Vis
 OPTION(VISIT_RPATH_RELATIVE_TO_EXECUTABLE_PATH "Install rpath relative to executable location using \$ORIGIN tag" OFF)
 OPTION(VISIT_FORTRAN "Enable compilation of Fortran example progams" OFF)
 OPTION(VISIT_DATA_MANUAL_EXAMPLES "Build Getting Data Into VisIt examples" OFF)
+
 
 MACRO(VISIT_3RDPARTY_VAR vvar comment libvar)
     # Create a path variable 
@@ -280,6 +324,7 @@ VISIT_3RDPARTY_VAR(VISIT_NETCDF_DIR    "Path containing the NETCDF library's inc
 VISIT_3RDPARTY_VAR(VISIT_SILO_DIR      "Path containing the Silo library's include and lib" SILO_DIR)
 VISIT_3RDPARTY_DEP(VISIT_SILO_LIBDEP   "Silo library dependencies" SILO_LIBDEP)
 VISIT_3RDPARTY_VAR(VISIT_VISUS_DIR     "Path containing the ViSUS library's include and lib" VISUS_DIR)
+VISIT_3RDPARTY_VAR(VISIT_XDMF_DIR      "Path containing the Xdmf library's include and lib" XDMF_DIR)
 
 #-----------------------------------------------------------------------------
 # Read the version
@@ -296,32 +341,63 @@ SET(VISIT_VERSION ${VERSION})
 
 IF(WIN32)
     IF( NOT APPENDED_VISIT_VERSION_TO_INSTALL_PATH)
-        SET(CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX} ${VISIT_VERSION}" 
+        SET(CMAKE_INSTALL_PREFIX "${VISIT_BINARY_DIR}/VisIt ${VISIT_VERSION}" 
             CACHE PATH "Install path prefix, prepended onto install directories" FORCE)
         SET(APPENDED_VISIT_VERSION_TO_INSTALL_PATH TRUE CACHE INTERNAL "")
     ENDIF( NOT APPENDED_VISIT_VERSION_TO_INSTALL_PATH)
-    SET(VISIT_INSTALLED_VERSION_BIN ${CMAKE_INSTALL_PREFIX} CACHE PATH "VisIt bin install directory" FORCE)
-    SET(VISIT_INSTALLED_VERSION_LIB ${CMAKE_INSTALL_PREFIX}/lib CACHE PATH "VisIt lib install directory" FORCE)
-    SET(VISIT_INSTALLED_VERSION_INCLUDE ${CMAKE_INSTALL_PREFIX}/include CACHE PATH "VisIt include install directory" FORCE)
-    SET(VISIT_INSTALLED_VERSION_HELP ${CMAKE_INSTALL_PREFIX}/help CACHE PATH "VisIt help install directory" FORCE)
-    SET(VISIT_INSTALLED_VERSION_PLUGINS ${CMAKE_INSTALL_PREFIX} CACHE PATH "VisIt plugins install directory" FORCE)
+    SET(VISIT_INSTALLED_VERSION ${CMAKE_INSTALL_PREFIX}
+        CACHE PATH "VisIt install directory" FORCE)
+    SET(VISIT_INSTALLED_VERSION_BIN ${CMAKE_INSTALL_PREFIX} 
+        CACHE PATH "VisIt bin install directory" FORCE)
+    SET(VISIT_INSTALLED_VERSION_LIB ${CMAKE_INSTALL_PREFIX}/lib 
+        CACHE PATH "VisIt lib install directory" FORCE)
+    SET(VISIT_INSTALLED_VERSION_INCLUDE ${CMAKE_INSTALL_PREFIX}/include 
+        CACHE PATH "VisIt include install directory" FORCE)
+    SET(VISIT_INSTALLED_VERSION_HELP ${CMAKE_INSTALL_PREFIX}/help 
+        CACHE PATH "VisIt help install directory" FORCE)
+    SET(VISIT_INSTALLED_VERSION_PLUGINS ${CMAKE_INSTALL_PREFIX} 
+        CACHE PATH "VisIt plugins install directory" FORCE)
+    SET(VISIT_INSTALLED_VERSION_ARCHIVES ${CMAKE_INSTALL_PREFIX}/lib 
+        CACHE PATH "3rd party I/O archives install directory" FORCE)
 ELSE(WIN32)
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/DetermineVisItArchitecture.cmake)
     DETERMINE_VISIT_ARCHITECTURE(VISIT_INSTALL_PLATFORM)
-    SET(VISIT_INSTALLED_VERSION ${VISIT_VERSION}/${VISIT_INSTALL_PLATFORM} CACHE PATH "VisIt install directory")
-    SET(VISIT_INSTALLED_VERSION_BIN ${VISIT_INSTALLED_VERSION}/bin CACHE PATH "VisIt bin install directory")
-    SET(VISIT_INSTALLED_VERSION_LIB ${VISIT_INSTALLED_VERSION}/lib CACHE PATH "VisIt lib install directory")
-    SET(VISIT_INSTALLED_VERSION_INCLUDE ${VISIT_INSTALLED_VERSION}/include CACHE PATH "VisIt include install directory")
-    SET(VISIT_INSTALLED_VERSION_HELP ${VISIT_INSTALLED_VERSION}/help CACHE PATH "VisIt help install directory")
-    SET(VISIT_INSTALLED_VERSION_PLUGINS ${VISIT_INSTALLED_VERSION}/plugins CACHE PATH "VisIt plugins install directory")
-    SET(VISIT_INSTALLED_VERSION_ARCHIVES ${VISIT_INSTALLED_VERSION}/archives CACHE PATH "3rd party I/O archives install directory")
+    SET(VISIT_INSTALLED_VERSION ${VISIT_VERSION}/${VISIT_INSTALL_PLATFORM} 
+        CACHE PATH "VisIt install directory")
+    SET(VISIT_INSTALLED_VERSION_BIN ${VISIT_INSTALLED_VERSION}/bin 
+        CACHE PATH "VisIt bin install directory")
+    SET(VISIT_INSTALLED_VERSION_LIB ${VISIT_INSTALLED_VERSION}/lib 
+        CACHE PATH "VisIt lib install directory")
+    SET(VISIT_INSTALLED_VERSION_INCLUDE ${VISIT_INSTALLED_VERSION}/include 
+        CACHE PATH "VisIt include install directory")
+    SET(VISIT_INSTALLED_VERSION_HELP ${VISIT_INSTALLED_VERSION}/help 
+        CACHE PATH "VisIt help install directory")
+    SET(VISIT_INSTALLED_VERSION_PLUGINS ${VISIT_INSTALLED_VERSION}/plugins 
+        CACHE PATH "VisIt plugins install directory")
+    SET(VISIT_INSTALLED_VERSION_ARCHIVES ${VISIT_INSTALLED_VERSION}/archives 
+        CACHE PATH "3rd party I/O archives install directory")
 
     IF(VISIT_RPATH_RELATIVE_TO_EXECUTABLE_PATH)
         SET(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
         SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
     ENDIF(VISIT_RPATH_RELATIVE_TO_EXECUTABLE_PATH)
+    #
+    # Note that the last line in the EXECUTE_PROCESS command below should
+    # have a "\" before the ${CMAKE_INSTALL_PREFIX} to be truely correct.
+    # The code creates a symbolic link from "current" to the current visit
+    # version number.  Because of the coding error it succeeds when doing
+    # a "make install" and fails when doing a "make package", which is
+    # exactly what we want.  We do this because CPACK may create an
+    # invalid tar file if the distribution contains a link to a directory.
+    # This happens because CPACK removes the symbolic link and replaces all
+    # the files in the directory pointed to by the symbolic link with hard
+    # links.  It only stores 100 characters of path information in the hard
+    # link so long paths may get truncated resulting in invalid files.  We
+    # have a bunch of files with paths greater than 100 character so this
+    # fails in our case.
+    #
     INSTALL(CODE "
-      MESSAGE(STATUS \"Symlinking current to \${VISIT_VERSION}\")
+      MESSAGE(\"Symlinking current to ${VISIT_VERSION}\")
       EXECUTE_PROCESS(WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}
         COMMAND \${CMAKE_COMMAND} -E create_symlink
         \"${VISIT_VERSION}\"
@@ -348,7 +424,9 @@ MACRO(VISIT_INSTALL_TARGETS)
                     BUNDLE  DESTINATION ${VISIT_INSTALLED_VERSION_BIN}
                     LIBRARY DESTINATION ${VISIT_INSTALLED_VERSION_LIB}
                     ARCHIVE DESTINATION ${VISIT_INSTALLED_VERSION_ARCHIVES}
-                    PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_WRITE GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+                    PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE 
+                                GROUP_READ GROUP_WRITE GROUP_EXECUTE 
+                                WORLD_READ             WORLD_EXECUTE
                     CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
                 )
             ENDIF(NOT ${pType} STREQUAL "STATIC_LIBRARY")
@@ -359,7 +437,9 @@ MACRO(VISIT_INSTALL_TARGETS)
             BUNDLE  DESTINATION ${VISIT_INSTALLED_VERSION_BIN}
             LIBRARY DESTINATION ${VISIT_INSTALLED_VERSION_LIB}
             ARCHIVE DESTINATION ${VISIT_INSTALLED_VERSION_ARCHIVES}
-            PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_WRITE GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+            PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE 
+                        GROUP_READ GROUP_WRITE GROUP_EXECUTE 
+                        WORLD_READ             WORLD_EXECUTE
             CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
         )
         IF(APPLE)
@@ -369,7 +449,7 @@ MACRO(VISIT_INSTALL_TARGETS)
                     SET(filename lib${target}.dylib)
                     INSTALL(CODE 
                         "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
-                             COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib ${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/${filename}
+                             COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/${filename}\"
                              OUTPUT_VARIABLE OSXOUT)
                          MESSAGE(STATUS \"\${OSXOUT}\")
                         ")
@@ -382,14 +462,14 @@ MACRO(VISIT_INSTALL_TARGETS)
                     IF(${bundle} STREQUAL "ON")
                         INSTALL(CODE 
                             "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
-                                COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -bundle ${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_BIN} ${filename}
+                                COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -bundle \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_BIN}\" ${filename}
                                 OUTPUT_VARIABLE OSXOUT)
                              MESSAGE(STATUS \"\${OSXOUT}\")
                             ")
                     ELSE(${bundle} STREQUAL "ON")
                         INSTALL(CODE 
                             "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
-                                COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -exe ${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_BIN}/${filename}
+                                COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -exe \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_BIN}/${filename}\"
                                 OUTPUT_VARIABLE OSXOUT)
                              MESSAGE(STATUS \"\${OSXOUT}\")
                             ")
@@ -409,7 +489,9 @@ MACRO(VISIT_INSTALL_PLUGINS type)
             INSTALL(TARGETS ${ARGN}
                 LIBRARY DESTINATION ${VISIT_INSTALLED_VERSION_PLUGINS}/${type}
                 RUNTIME DESTINATION ${VISIT_INSTALLED_VERSION_PLUGINS}/${type}
-                PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_WRITE GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+                PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE 
+                            GROUP_READ GROUP_WRITE GROUP_EXECUTE 
+                            WORLD_READ             WORLD_EXECUTE
                 CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
             )
         ELSE(NOT WIN32)
@@ -422,7 +504,9 @@ MACRO(VISIT_INSTALL_PLUGINS type)
                 INSTALL(FILES ${filename}
                     DESTINATION ${VISIT_INSTALLED_VERSION_PLUGINS}/${type}
                     COMPONENT RUNTIME
-                    PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_WRITE GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+                    PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE 
+                                GROUP_READ GROUP_WRITE GROUP_EXECUTE 
+                                WORLD_READ             WORLD_EXECUTE
                     CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
                 )
             ENDFOREACH(target)
@@ -432,7 +516,7 @@ MACRO(VISIT_INSTALL_PLUGINS type)
                 SET(filename lib${target}.dylib)
                 INSTALL(CODE 
                     "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
-                         COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib ${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_PLUGINS}/${type}/${filename}
+                         COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_PLUGINS}/${type}/${filename}\"
                          OUTPUT_VARIABLE OSXOUT)
                      MESSAGE(STATUS \"\${OSXOUT}\")
                     ")
@@ -456,8 +540,12 @@ ENDMACRO(VISIT_INSTALL_PLOT_PLUGINS)
 # Install the headers for directories that we need in order to build plugins
 INSTALL(DIRECTORY avt common engine gui launcher mdserver third_party_builtin viewer visit_vtk visitpy vtkqt winutil
     DESTINATION ${VISIT_INSTALLED_VERSION_INCLUDE}/visit
-    FILE_PERMISSIONS OWNER_WRITE OWNER_READ GROUP_WRITE GROUP_READ WORLD_READ
-    DIRECTORY_PERMISSIONS OWNER_WRITE OWNER_READ OWNER_EXECUTE GROUP_WRITE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+    FILE_PERMISSIONS OWNER_READ OWNER_WRITE 
+                     GROUP_READ GROUP_WRITE 
+                     WORLD_READ
+    DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE 
+                          GROUP_READ GROUP_WRITE GROUP_EXECUTE 
+                          WORLD_READ             WORLD_EXECUTE
     CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
     FILES_MATCHING PATTERN "*.h"
     PATTERN ".svn" EXCLUDE
@@ -522,6 +610,23 @@ INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItMesa.cmake)
 # Configure VTK support.
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItVTK.cmake)
 
+#-----------------------------------------------------------------------------
+# If we are doing a static build or the VTK Python wrappers do not exist:
+#   Disable python filters.
+#-----------------------------------------------------------------------------
+
+# VTK Python's wrappers are not available with a static build of VTK.
+IF(VISIT_PYTHON_FILTERS AND VISIT_STATIC)
+    SET(VISIT_PYTHON_FILTERS OFF)
+    MESSAGE(STATUS "Python Engine Filters disabled because a static build of VisIt was selected.")
+ENDIF(VISIT_PYTHON_FILTERS AND VISIT_STATIC)
+
+# Disable python filters if the VTK Python's wrappers are not found.
+IF(VISIT_PYTHON_FILTERS AND NOT VTK_PYTHON_WRAPPERS_FOUND)
+    SET(VISIT_PYTHON_FILTERS OFF)
+    MESSAGE(STATUS "Python Engine Filters disabled because VTK python wrappers are not installed.")
+ENDIF(VISIT_PYTHON_FILTERS AND NOT VTK_PYTHON_WRAPPERS_FOUND)
+
 # Configure Qt4 support.
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItQt4.cmake)
 
@@ -537,6 +642,12 @@ IF(VISIT_TUVOK)
     SET(TUVOK_LIB tuvok ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY} GLEW)
 ENDIF(VISIT_TUVOK)
 
+# Set up boost (interval) library
+SET(HAVE_BILIB 1)
+SET(BOOST_INCLUDE_DIR ${VISIT_SOURCE_DIR}/third_party_builtin/bilib/boost_1_42_0    CACHE PATH "Path to boost lib")
+
+ 
+
 # Set up the SLIVR library if it was enabled.
 IF(VISIT_SLIVR)
     SET(SLIVR_INCLUDE_DIR 
@@ -548,6 +659,7 @@ IF(VISIT_SLIVR)
     SET(SLIVR_GUI_IMPL QvisCMap2Display.C QvisCMap2Widget.C)
     SET(SLIVR_GUI_HDR QvisCMap2Display.h QvisCMap2Widget.h)
     SET(SLIVR_LIB slivrG slivrV)
+    ADD_DEFINITIONS(-DHAVE_LIBSLIVR)
 ENDIF(VISIT_SLIVR)
 
 # Include Ice-T support if we can.
@@ -666,6 +778,12 @@ IF(VISUS_FOUND)
     SET(HAVE_LIBVISUS 1)
 ENDIF(VISUS_FOUND)
 
+# Configure Xdmf support.
+INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindXdmf.cmake)
+IF(XDMF_FOUND)
+    SET(HAVE_LIBXDMF 1)
+ENDIF(XDMF_FOUND)
+
 
 IF(CMAKE_HOST_UNIX)
   SET(ZLIB_LIB z)
@@ -680,7 +798,9 @@ ELSE(CMAKE_HOST_UNIX)
                       ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/ThirdParty)
       INSTALL(FILES ${ZLIB_LIBRARY_DIR}/zlib1.dll
           DESTINATION ${VISIT_INSTALLED_VERSION_BIN}
-          PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_WRITE GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+          PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE 
+                      GROUP_READ GROUP_WRITE GROUP_EXECUTE 
+                      WORLD_READ             WORLD_EXECUTE
           CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
           )
 
@@ -688,6 +808,10 @@ ELSE(CMAKE_HOST_UNIX)
       SET(ZLIB_LIB vtkzlib)
   ENDIF(WIN32)
 ENDIF(CMAKE_HOST_UNIX)
+
+IF (WIN32)
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindNSIS.cmake)
+ENDIF (WIN32)
 
 
 IF(VISIT_STATIC)
@@ -698,7 +822,7 @@ IF(VISIT_FORTRAN)
     ENABLE_LANGUAGE(Fortran)
 ENDIF(VISIT_FORTRAN)
 
-FUNCTION(DETECT_MPI_SETTINGS COMP mlibs mflags mlflags)
+FUNCTION(DETECT_MPI_SETTINGS COMP mlibs mflags mlflags mrpath)
     # Unset any variables that may have been set before by FindMPI
     UNSET(MPI_FOUND CACHE)
     UNSET(MPI_INCLUDE_PATH CACHE)
@@ -709,6 +833,7 @@ FUNCTION(DETECT_MPI_SETTINGS COMP mlibs mflags mlflags)
     UNSET(MPI_EXTRA_LIBRARY CACHE)
     UNSET(MPI_LINK_FLAGS CACHE)
     UNSET(MPI_COMPILER CACHE)
+    UNSET(MPI_RPATH CACHE)
 
     # Set the compiler and call FindMPI
     SET(MPI_COMPILER ${COMP})
@@ -718,9 +843,32 @@ FUNCTION(DETECT_MPI_SETTINGS COMP mlibs mflags mlflags)
     IF(NOT MPI_FOUND)
         MESSAGE(FATAL_ERROR  "Failed to setup MPI using compiler wrapper: ${COMP}")
     ELSE(NOT MPI_FOUND)
+        # Take the MPI include path and split it into -I's
+        SET(MPI_INCLUDE_PATH_CONV "")
+        FOREACH(I ${MPI_INCLUDE_PATH})
+            SET(MPI_INCLUDE_PATH_CONV "${MPI_INCLUDE_PATH_CONV} -I${I}")
+        ENDFOREACH(I)
+
         SET(${mlibs}   ${MPI_LIBRARIES} CACHE STRING "MPI libraries")
-        SET(${mflags}  "-DPARALLEL -I${MPI_INCLUDE_PATH} ${MPI_COMPILE_FLAGS}" CACHE STRING "Parallel compiler flags")
+        SET(${mflags}  "-DPARALLEL -DMPICH_IGNORE_CXX_SEEK ${MPI_INCLUDE_PATH_CONV} ${MPI_COMPILE_FLAGS}" CACHE STRING "Parallel compiler flags")
         SET(${mlflags} "${MPI_LINK_FLAGS}" CACHE STRING "Parallel linker flags")
+
+        #
+        # Detect all mpi library paths, we need these to keep the RPATH intact
+        # for installs that link to MPI.
+        #
+        SET(MPI_RPATH "")
+        FOREACH(MLIB ${MPI_LIBRARIES})
+            GET_FILENAME_COMPONENT(MLIB_PATH ${MLIB} PATH)
+            # make sure it is not an implicit path - we need to skip these
+            LIST(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES ${MLIB_PATH} pidx)
+            IF(${pidx} EQUAL -1)
+                LIST(APPEND MPI_RPATH ${MLIB_PATH})
+            ENDIF(${pidx} EQUAL -1)
+        ENDFOREACH(MLIB ${MPI_LIBRARIES})
+        LIST(REMOVE_DUPLICATES MPI_RPATH)
+        SET(${mrpath} "${MPI_RPATH}" CACHE STRING "Parallel rpath(s)")
+
     ENDIF(NOT MPI_FOUND)
 ENDFUNCTION(DETECT_MPI_SETTINGS)
 
@@ -729,10 +877,11 @@ IF(VISIT_PARALLEL)
         MESSAGE(STATUS "Setting up MPI using compiler wrapper")
 
         # Detect the MPI settings that C++ wants
-        DETECT_MPI_SETTINGS(${VISIT_MPI_COMPILER} 
+        DETECT_MPI_SETTINGS(${VISIT_MPI_COMPILER}
             VISIT_PARALLEL_LIBS
             VISIT_PARALLEL_CFLAGS
             VISIT_PARALLEL_LINKER_FLAGS
+            VISIT_PARALLEL_RPATH
         )
         SET(VISIT_PARALLEL_CXXFLAGS ${VISIT_PARALLEL_CFLAGS} CACHE STRING "Parallel CXXFLAGS")
 
@@ -742,6 +891,7 @@ IF(VISIT_PARALLEL)
                 VISIT_PARALLEL_FORTRAN_LIBS
                 VISIT_PARALLEL_FORTRAN_FLAGS
                 VISIT_PARALLEL_FORTRAN_LINKER_FLAGS
+                VISIT_PARALLEL_RPATH
             )
         ENDIF(VISIT_FORTRAN AND VISIT_MPI_FORTRAN_COMPILER)
 
@@ -752,21 +902,21 @@ IF(VISIT_PARALLEL)
             SET(VISIT_PARALLEL_FORTRAN_LIBS  ${VISIT_MPI_FORTRAN_LIBS} CACHE STRING "MPI libraries for Fortran")
 
             IF(VISIT_MPI_C_FLAGS)
-                SET(VISIT_PARALLEL_CFLAGS  "-DPARALLEL ${VISIT_MPI_C_FLAGS}" CACHE STRING "Parallel CFLAGS")
+                SET(VISIT_PARALLEL_CFLAGS  "-DPARALLEL -DMPICH_IGNORE_CXX_SEEK ${VISIT_MPI_C_FLAGS}" CACHE STRING "Parallel CFLAGS")
             ELSE(VISIT_MPI_C_FLAGS)
-                SET(VISIT_PARALLEL_CFLAGS  "-DPARALLEL" CACHE STRING "Parallel CFLAGS")
+                SET(VISIT_PARALLEL_CFLAGS  "-DPARALLEL -DMPICH_IGNORE_CXX_SEEK" CACHE STRING "Parallel CFLAGS")
             ENDIF(VISIT_MPI_C_FLAGS)
 
             IF(VISIT_MPI_CXX_FLAGS)
-                SET(VISIT_PARALLEL_CXXFLAGS  "-DPARALLEL ${VISIT_MPI_CXX_FLAGS}" CACHE STRING "Parallel CXXFLAGS")
+                SET(VISIT_PARALLEL_CXXFLAGS  "-DPARALLEL -DMPICH_IGNORE_CXX_SEEK ${VISIT_MPI_CXX_FLAGS}" CACHE STRING "Parallel CXXFLAGS")
             ELSE(VISIT_MPI_CXX_FLAGS)
-                SET(VISIT_PARALLEL_CXXFLAGS  "-DPARALLEL" CACHE STRING "Parallel CXXFLAGS")
+                SET(VISIT_PARALLEL_CXXFLAGS  "-DPARALLEL -DMPICH_IGNORE_CXX_SEEK" CACHE STRING "Parallel CXXFLAGS")
             ENDIF(VISIT_MPI_CXX_FLAGS)
 
             IF(VISIT_MPI_FORTRAN_FLAGS)
-                SET(VISIT_PARALLEL_FORTRANFLAGS  "-DPARALLEL ${VISIT_MPI_FORTRAN_FLAGS}" CACHE STRING "Parallel Fortran flags")
+                SET(VISIT_PARALLEL_FORTRANFLAGS  "-DPARALLEL -DMPICH_IGNORE_CXX_SEEK ${VISIT_MPI_FORTRAN_FLAGS}" CACHE STRING "Parallel Fortran flags")
             ELSE(VISIT_MPI_FORTRAN_FLAGS)
-                SET(VISIT_PARALLEL_FORTRANFLAGS  "-DPARALLEL" CACHE STRING "Parallel flags for Fortran")
+                SET(VISIT_PARALLEL_FORTRANFLAGS  "-DPARALLEL -DMPICH_IGNORE_CXX_SEEK" CACHE STRING "Parallel flags for Fortran")
             ENDIF(VISIT_MPI_FORTRAN_FLAGS)
 
             IF(VISIT_MPI_LD_FLAGS)
@@ -785,6 +935,8 @@ IF(VISIT_PARALLEL)
     MESSAGE(STATUS "    VISIT_PARALLEL_CXXFLAGS = ${VISIT_PARALLEL_CXXFLAGS}")
     MESSAGE(STATUS "    VISIT_PARALLEL_LINKER_FLAGS = ${VISIT_PARALLEL_LINKER_FLAGS}")
     MESSAGE(STATUS "    VISIT_PARALLEL_LIBS = ${VISIT_PARALLEL_LIBS}")
+    MESSAGE(STATUS "    VISIT_PARALLEL_RPATH = ${VISIT_PARALLEL_RPATH}")
+
     IF(VISIT_FORTRAN AND VISIT_PARALLEL_FORTRAN_LIBS)
         MESSAGE(STATUS "")
         MESSAGE(STATUS "    VISIT_PARALLEL_FORTRAN_FLAGS = ${VISIT_PARALLEL_FORTRAN_FLAGS}")
@@ -805,7 +957,7 @@ FUNCTION(ADD_PARALLEL_EXECUTABLE target)
         SET_TARGET_PROPERTIES(${target} PROPERTIES
             COMPILE_FLAGS ${PAR_COMPILE_FLAGS}
         )
-	
+
         IF(VISIT_PARALLEL_LINKER_FLAGS)
             SET(PAR_LINK_FLAGS "")
             FOREACH(X ${VISIT_PARALLEL_LINKER_FLAGS})
@@ -821,6 +973,19 @@ FUNCTION(ADD_PARALLEL_EXECUTABLE target)
         IF(NOT VISIT_NOLINK_MPI_WITH_LIBRARIES) # This is a new if test
             TARGET_LINK_LIBRARIES(${target} ${VISIT_PARALLEL_LIBS})
         ENDIF(NOT VISIT_NOLINK_MPI_WITH_LIBRARIES)
+
+        IF(VISIT_PARALLEL_RPATH)
+            SET(PAR_RPATHS "")
+            FOREACH(X ${CMAKE_INSTALL_RPATH})
+                SET(PAR_RPATHS "${PAR_RPATHS} ${X}")
+            ENDFOREACH(X)
+            FOREACH(X ${VISIT_PARALLEL_RPATH})
+                SET(PAR_RPATHS "${PAR_RPATHS} ${X}")
+            ENDFOREACH(X)
+            SET_TARGET_PROPERTIES(${target} PROPERTIES
+                INSTALL_RPATH ${PAR_RPATHS}
+            )
+        ENDIF(VISIT_PARALLEL_RPATH)
     ENDIF(VISIT_PARALLEL_CXXFLAGS)
 ENDFUNCTION(ADD_PARALLEL_EXECUTABLE)
 
@@ -834,7 +999,7 @@ FUNCTION(ADD_PARALLEL_FORTRAN_EXECUTABLE target)
         SET_TARGET_PROPERTIES(${target} PROPERTIES
             COMPILE_FLAGS ${PAR_COMPILE_FLAGS}
         )
-	
+
         IF(VISIT_PARALLEL_FORTRAN_LINKER_FLAGS)
             SET(PAR_LINK_FLAGS "")
             FOREACH (X ${VISIT_PARALLEL_FORTRAN_LINKER_FLAGS})
@@ -843,6 +1008,18 @@ FUNCTION(ADD_PARALLEL_FORTRAN_EXECUTABLE target)
             SET_TARGET_PROPERTIES(${target} PROPERTIES
                 LINK_FLAGS ${PAR_LINK_FLAGS}
             )
+        IF(VISIT_PARALLEL_RPATH)
+            SET(PAR_RPATHS "")
+            FOREACH(X ${CMAKE_INSTALL_RPATH})
+                LIST(APPEND PAR_RPATHS ${X})
+            ENDFOREACH(X)
+            FOREACH(X ${VISIT_PARALLEL_RPATH})
+                LIST(APPEND PAR_RPATHS ${X})
+            ENDFOREACH(X)
+            SET_TARGET_PROPERTIES(${target} PROPERTIES
+                INSTALL_RPATH ${PAR_RPATHS}
+            )
+        ENDIF(VISIT_PARALLEL_RPATH)
         ENDIF(VISIT_PARALLEL_FORTRAN_LINKER_FLAGS)
         TARGET_LINK_LIBRARIES(${target} ${VISIT_PARALLEL_FORTRAN_LIBS})
     ENDIF(VISIT_PARALLEL_FORTRAN_FLAGS)
@@ -875,6 +1052,20 @@ FUNCTION(ADD_PARALLEL_LIBRARY target)
                 LINK_FLAGS ${PAR_LINK_FLAGS}
             )
         ENDIF(VISIT_PARALLEL_LINKER_FLAGS)
+
+        IF(VISIT_PARALLEL_RPATH)
+            SET(PAR_RPATHS "")
+            FOREACH(X ${CMAKE_INSTALL_RPATH})
+                SET(PAR_RPATHS "${PAR_RPATHS} ${X}")
+            ENDFOREACH(X)
+            FOREACH(X ${VISIT_PARALLEL_RPATH})
+                SET(PAR_RPATHS "${PAR_RPATHS} ${X}")
+            ENDFOREACH(X)
+            SET_TARGET_PROPERTIES(${target} PROPERTIES
+                INSTALL_RPATH ${PAR_RPATHS}
+            )
+        ENDIF(VISIT_PARALLEL_RPATH)
+
         IF(NOT VISIT_NOLINK_MPI_WITH_LIBRARIES)
             TARGET_LINK_LIBRARIES(${target} ${VISIT_PARALLEL_LIBS})
         ENDIF(NOT VISIT_NOLINK_MPI_WITH_LIBRARIES)
@@ -929,23 +1120,46 @@ IF (WIN32)
 
   # cmake automatically uses _DEBUG and MDd for Debug flags, but our
   # third-party libs are NOT debug versions, so we won't be able to
-  # link against them if those defines are used.  Use our own instead.
-  SET (CMAKE_CXX_FLAGS_DEBUG "/MD /ZI /Ob0 /Od /RTC1" CACHE STRING 
-       "Flags used by the compiler during debug builds." FORCE)
-  SET (CMAKE_C_FLAGS_DEBUG "/MD /Zi /Ob0 /Od /RTC1" CACHE STRING 
-       "Flags used by the compiler during debug builds." FORCE)
-  SET (CMAKE_EXE_LINKER_FLAGS_DEBUG "/INCREMENTAL:YES" CACHE STRING 
-       "Flags used by the linker during debug builds." FORCE)
-  SET (CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "/INCREMENTAL:YES" CACHE STRING 
-       "Flags used by the linker during debug builds." FORCE)
-  SET (CMAKE_MODULE_LINKER_FLAGS_DEBUG "/INCREMENTAL:YES" CACHE STRING 
-       "Flags used by the linker during debug builds." FORCE)
-  SET (CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO "/INCREMENTAL:YES" CACHE STRING 
-       "Flags used by the linker during debug builds." FORCE)
-  SET (CMAKE_SHARED_LINKER_FLAGS_DEBUG "/INCREMENTAL:YES" CACHE STRING 
-       "Flags used by the linker during debug builds." FORCE)
-  SET (CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO "/INCREMENTAL:YES" CACHE STRING 
-       "Flags used by the linker during debug builds." FORCE)
+  # link against them if those defines are used.  Replace those flags:
+  # When we allow users to supply their own third-party libs, then
+  # this will have to be rethought -- they may want to be able to c
+  # change them and this currently forces.
+
+  MACRO(REPLACE_FLAG OLD_FLAG NEW_FLAG FLAG_TYPE FLAG_STRING)
+      STRING(REPLACE "${OLD_FLAG}" "${NEW_FLAG}" TMP "${${FLAG_TYPE}}")
+      SET(${FLAG_TYPE} "${TMP}" CACHE STRING "${FLAG_STRING}" FORCE)
+  ENDMACRO(REPLACE_FLAG)
+
+  # Remove /_DEBUG From debug builds
+  REPLACE_FLAG("/D_DEBUG" "" CMAKE_CXX_FLAGS_DEBUG 
+               "Flags used by the compiler during debug builds")
+  REPLACE_FLAG("/D_DEBUG" "" CMAKE_C_FLAGS_DEBUG 
+               "Flags used by the compiler during debug builds")
+  REPLACE_FLAG("/D_DEBUG" "" CMAKE_EXE_LINKER_FLAGS_DEBUG 
+               "Flags used by the linker during debug builds")
+  REPLACE_FLAG("/D_DEBUG" "" CMAKE_MODULE_LINKER_FLAGS_DEBUG 
+               "Flags used by the linker during debug builds")
+  # Change /MDd to /MD for debug builds
+  REPLACE_FLAG("/MDd" "/MD" CMAKE_CXX_FLAGS_DEBUG 
+               "Flags used by the compiler during debug builds")
+  REPLACE_FLAG("/MDd" "/MD" CMAKE_C_FLAGS_DEBUG 
+               "Flags used by the compiler during debug builds")
+  REPLACE_FLAG("/MDd" "/MD" CMAKE_EXE_LINKER_FLAGS_DEBUG 
+               "Flags used by the linker during debug builds")
+  REPLACE_FLAG("/MDd" "/MD" CMAKE_MODULE_LINKER_FLAGS_DEBUG 
+               "Flags used by the linker during debug builds")
+
+  # Change /Zi to /ZI for CXX flags
+  REPLACE_FLAG("/Zi" "/ZI" CMAKE_CXX_FLAGS_DEBUG 
+               "Flags used by the compiler during debug builds")
+
+  # Remove /machine:I386 from linker flags
+  REPLACE_FLAG("/machine:I386" "" CMAKE_EXE_LINKER_FLAGS
+               "Flags used by the linker")
+  REPLACE_FLAG("/machine:I386" "" CMAKE_MODULE_LINKER_FLAGS
+               "Flags used by the linker during creation of modules.")
+  REPLACE_FLAG("/machine:I386" "" CMAKE_SHARED_LINKER_FLAGS
+               "Flags used by the linker during creation of dll's.")
 ENDIF (WIN32)
 
 #-----------------------------------------------------------------------------
@@ -954,24 +1168,27 @@ ENDIF (WIN32)
 #dummy revision, in case commands fail
 SET(VISIT_SVN_REVISION "Unknown") 
 # Get the subversion revision number
-FIND_PACKAGE(Subversion)
-IF(Subversion_FOUND)
-    IF(UNIX AND EXISTS ${VISIT_SOURCE_DIR}/.svn)
-        # Only try and determine the version number if it looks like we're in
-        # a working copy (a .svn directory should be present)
-        Subversion_WC_INFO(${PROJECT_SOURCE_DIR} VISIT)
-        SET(VISIT_SVN_REVISION "${VISIT_WC_REVISION}")
-    ENDIF(UNIX AND EXISTS ${VISIT_SOURCE_DIR}/.svn)
-#ELSE(Subversion_FOUND)
-# THIS NEEDS TO BE UPDATED: FindTortoiseSVN.cmake needs to use keyword substituion and templates!@
-#    IF(WIN32)
-#        INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindTortoiseSVN.cmake)
-#        IF(TortoiseSVN_FOUND)
-#            TortoiseSVN_WC_INFO(${PROJECT_SOURCE_DIR} VISIT)
-#            SET(VISIT_SVN_REVISION "${VISIT_WC_REVISION}")
-#        ENDIF(TortoiseSVN_FOUND)
-#    ENDIF(WIN32)
-ENDIF(Subversion_FOUND)
+IF(EXISTS SVN_REVISION)
+    FILE(STRINGS SVN_REVISION VISIT_SVN_REVISION)
+ELSE(EXISTS SVN_REVISION)
+    IF (EXISTS ${VISIT_SOURCE_DIR}/.svn)
+        # Only try and determine the version number if it looks like
+        # we're in a working copy (a .svn directory should be present)
+        FIND_PACKAGE(Subversion)
+        IF(Subversion_FOUND)
+            Subversion_WC_INFO(${PROJECT_SOURCE_DIR} VISIT)
+            SET(VISIT_SVN_REVISION "${VISIT_WC_REVISION}")
+        ELSE(Subversion_FOUND)
+            IF(WIN32)
+                INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindTortoiseSVN.cmake)
+                IF(TortoiseSVN_FOUND)
+                    TortoiseSVN_WC_INFO(${PROJECT_SOURCE_DIR} VISIT)
+                    SET(VISIT_SVN_REVISION "${VISIT_WC_REVISION}")
+                ENDIF(TortoiseSVN_FOUND)
+            ENDIF(WIN32)
+        ENDIF(Subversion_FOUND)
+    ENDIF (EXISTS ${VISIT_SOURCE_DIR}/.svn)
+ENDIF(EXISTS SVN_REVISION)
 
 #-----------------------------------------------------------------------------
 # Create visit-config.h
@@ -1116,7 +1333,11 @@ CHECK_ISFINITE_EXISTS(HAVE_ISFINITE)
 
 # If we're not disabling the select() call then check for it.
 IF(NOT VISIT_DISABLE_SELECT)
-    CHECK_FUNCTION_EXISTS(select HAVE_SELECT)
+    IF(WIN32)
+        SET(HAVE_SELECT TRUE)
+    ELSE(WIN32)
+        CHECK_FUNCTION_EXISTS(select HAVE_SELECT)
+    ENDIF(WIN32)
 ENDIF(NOT VISIT_DISABLE_SELECT)
 
 MESSAGE(STATUS "Setting VISIT_RENDERING_SIZE_LIMIT to ${OSMESA_SIZE_LIMIT}")
@@ -1124,6 +1345,10 @@ SET(VISIT_RENDERING_SIZE_LIMIT ${OSMESA_SIZE_LIMIT} CACHE INTERNAL "rendering si
 
 CONFIGURE_FILE(${VISIT_SOURCE_DIR}/include/visit-cmake.h.in
                ${VISIT_BINARY_DIR}/include/visit-config.h @ONLY IMMEDIATE)
+
+CONFIGURE_FILE(${VISIT_SOURCE_DIR}/include/visit-python-cmake.h.in
+               ${VISIT_BINARY_DIR}/include/visit-python-config.h @ONLY IMMEDIATE)
+
 
 #-----------------------------------------------------------------------------
 # Create common/misc/ConfigureInfo.C 
@@ -1154,7 +1379,9 @@ CONFIGURE_FILE(${VISIT_SOURCE_DIR}/CMake/PluginVsInstall.cmake.in
                ${VISIT_BINARY_DIR}/CMake/PluginVsInstall.cmake @ONLY IMMEDIATE)
 INSTALL(FILES ${VISIT_BINARY_DIR}/CMake/PluginVsInstall.cmake
     DESTINATION ${VISIT_INSTALLED_VERSION_INCLUDE}
-    PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ GROUP_WRITE WORLD_READ
+    PERMISSIONS OWNER_READ OWNER_WRITE 
+                GROUP_READ GROUP_WRITE 
+                WORLD_READ
 )
 
 #-----------------------------------------------------------------------------
@@ -1295,11 +1522,54 @@ IF(NOT WIN32 AND IS_DIRECTORY ${VISIT_SOURCE_DIR}/../data)
     ENDIF(VISIT_OUT_OF_SOURCE_BUILD)
 ENDIF(NOT WIN32 AND IS_DIRECTORY ${VISIT_SOURCE_DIR}/../data)
 
+#-----------------------------------------------------------------------------
+# Create library dependencies file
+#-----------------------------------------------------------------------------
+EXPORT_LIBRARY_DEPENDENCIES(${VISIT_BINARY_DIR}/include/VisItLibraryDependencies.cmake.in)
+
+INSTALL(CODE "
+FUNCTION(FILTER_LIBRARY_DEPENDENCIES filename)
+    FILE(STRINGS \${filename}.in lines)
+    FILE(WRITE \${filename} \"# Filtered version\\n\")
+    FOREACH(line \${lines})
+        SET(outputLine TRUE)
+        IF(\"\${line}\" MATCHES \".*Plot[_ser|_par]*_LIB_DEPENDS.*\")
+            SET(outputLine FALSE)
+        ENDIF(\"\${line}\" MATCHES \".*Plot[_ser|_par]*_LIB_DEPENDS.*\")
+        IF(\"\${line}\" MATCHES \".*Operator[_ser|_par]*_LIB_DEPENDS.*\")
+            SET(outputLine FALSE)
+        ENDIF(\"\${line}\" MATCHES \".*Operator[_ser|_par]*_LIB_DEPENDS.*\")
+        IF(\"\${line}\" MATCHES \".*Database[_ser|_par]*_LIB_DEPENDS.*\")
+            SET(outputLine FALSE)
+        ENDIF(\"\${line}\" MATCHES \".*Database[_ser|_par]*_LIB_DEPENDS.*\")
+        FOREACH(suppress visit_writer visitfrontend visitmodule proxyexample bow slivrG slivrV air alan bane biff coil dye echo ell gage hest hoover limn mite moss nrrd push ten unrrdu)
+            IF(\"\${line}\" MATCHES \".*\${suppress}_LIB_DEPENDS.*\")
+                SET(outputLine FALSE)
+            ENDIF(\"\${line}\" MATCHES \".*\${suppress}_LIB_DEPENDS.*\")
+        ENDFOREACH(suppress)
+        IF(\${outputLine} STREQUAL \"TRUE\")
+            FILE(APPEND \${filename} \"\${line}\\n\")
+        ENDIF(\${outputLine} STREQUAL \"TRUE\")
+    ENDFOREACH(line)
+ENDFUNCTION(FILTER_LIBRARY_DEPENDENCIES)
+FILTER_LIBRARY_DEPENDENCIES(${VISIT_BINARY_DIR}/include/VisItLibraryDependencies.cmake)
+")
+
+INSTALL(FILES ${VISIT_BINARY_DIR}/include/VisItLibraryDependencies.cmake
+        DESTINATION ${VISIT_INSTALLED_VERSION_INCLUDE}
+        PERMISSIONS OWNER_READ OWNER_WRITE 
+                    GROUP_READ GROUP_WRITE 
+                    WORLD_READ             
+        CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
+)
 
 #-----------------------------------------------------------------------------
 # CPack -- This leverages our install targets to provide a "make package" that
 #          packages up a VisIt distribution.
 #-----------------------------------------------------------------------------
+
+# temporarily turn this off on windows
+IF (NOT WIN32)
 SET(CPACK_PACKAGE_NAME "visit")
 SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "VisIt ${VISIT_VERSION} is a parallel visualization and data analysis tool")
 SET(CPACK_PACKAGE_VENDOR "LLNS")
@@ -1310,16 +1580,60 @@ SET(CPACK_PACKAGE_VERSION_MAJOR "2")
 SET(CPACK_PACKAGE_VERSION_MINOR "0")
 SET(CPACK_PACKAGE_VERSION_PATCH "0")
 
-IF(WIN32)
-    SET(CPACK_PACKAGE_FILE_NAME "visit${VISIT_VERSION}")
-    SET(CPACK_PACKAGE_INSTALL_DIRECTORY "VisIt ${VISIT_VERSION}")
-
-    SET(CPACK_GENERATOR "NSIS")
-ELSE(WIN32)
+#IF(WIN32)
+#    SET(CPACK_PACKAGE_FILE_NAME "visit${VISIT_VERSION}")
+#    SET(CPACK_PACKAGE_INSTALL_DIRECTORY "VisIt ${VISIT_VERSION}")
+#
+#    SET(CPACK_GENERATOR "NSIS")
+#ELSE(WIN32)
     STRING(REPLACE "." "_" UL_VERSION ${VISIT_VERSION})
     SET(CPACK_PACKAGE_FILE_NAME "visit${UL_VERSION}.${VISIT_INSTALL_PLATFORM}")
 
     SET(CPACK_GENERATOR "TGZ")
-    SET(CPACK_STRIP_FILES TRUE)
-ENDIF(WIN32)
+    IF(NOT APPLE)
+        SET(CPACK_STRIP_FILES TRUE)
+    ENDIF(NOT APPLE)
+#ENDIF(WIN32)
 INCLUDE(CPack)
+ELSE (NOT WIN32)
+    # create a custom target that will run our nsis scripts.
+    # Make sure it won't run unless specifically called.
+    # 
+    IF (${MAKENSIS_FOUND})
+        FILE(TO_NATIVE_PATH ${VISIT_SOURCE_DIR} VSD_NATIVE)
+        FILE(TO_NATIVE_PATH ${CMAKE_INSTALL_PREFIX} CIP_NATIVE)
+        ADD_CUSTOM_COMMAND(OUTPUT visit${VISIT_VERSION}.exe
+            COMMAND ${MAKENSIS} 
+                    /DVISIT_SOURCE_DIR=${VSD_NATIVE} 
+                    /DINSTALL_PREFIX=${CIP_NATIVE} 
+                     ${VISIT_WINDOWS_DIR}/installation/CreateDBSections.nsi
+            COMMAND ${MAKENSIS} 
+                    /DVisItVersion=${VISIT_VERSION} 
+                    /DCOMPILER=${VISIT_MSVC_VERSION} 
+                    /DVISIT_SOURCE_DIR=${VSD_NATIVE} 
+                    /DINSTALL_PREFIX=${CIP_NATIVE} 
+                     ${VISIT_WINDOWS_DIR}/installation/binaryinstallation.nsi
+            DEPENDS ${VISIT_WINDOWS_DIR}/installation/CreateDBSections.nsi
+                    ${VISIT_WINDOWS_DIR}/installation/binaryinstallation.nsi
+        )
+        ADD_CUSTOM_TARGET(_PACKAGE ALL DEPENDS visit${VISIT_VERSION}.exe)
+        ADD_CUSTOM_COMMAND(TARGET _PACKAGE PRE_BUILD 
+            COMMAND ${CMAKE_COMMAND} -DBUILD_TYPE=${CMAKE_CFG_INTDIR} -P cmake_install.cmake)
+ 
+        SET_TARGET_PROPERTIES(_PACKAGE PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD 1)
+        
+        # source installer
+        ADD_CUSTOM_COMMAND(OUTPUT visitdev${VISIT_VERSION}.exe
+            COMMAND ${MAKENSIS} 
+                    /DVisItVersion=${VISIT_VERSION} 
+                    /DVISIT_SOURCE_DIR=${VSD_NATIVE} 
+                    /DINSTALLER_LOCATION=${VISIT_BINARY_DIR} 
+                     ${VISIT_WINDOWS_DIR}/installation/sourceinstallation.nsi
+            DEPENDS ${VISIT_WINDOWS_DIR}/installation/sourceinstallation.nsi
+        )
+        ADD_CUSTOM_TARGET(_SRC_PACKAGE ALL DEPENDS visitdev${VISIT_VERSION}.exe)
+        SET_TARGET_PROPERTIES(_SRC_PACKAGE PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD 1)
+    ENDIF (${MAKENSIS_FOUND})
+ENDIF (NOT WIN32)
+
+

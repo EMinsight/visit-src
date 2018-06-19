@@ -40,11 +40,29 @@
 
 SET(LIBSIM_SOURCES
 VisItControlInterface_V2.c 
-VisItDataInterface_V2.c
-SimV2Tracing.c 
+SimV2Tracing.c
+VisItFortran.c
+VisIt_CommandMetaData.c
+VisIt_CSGMesh.c
+VisIt_CurveData.c
+VisIt_CurveMetaData.c
+VisIt_CurvilinearMesh.c
 VisIt_DomainBoundaries.c 
+VisIt_DomainList.c
 VisIt_DomainNesting.c
+VisIt_ExpressionMetaData.c
+VisIt_MaterialData.c
+VisIt_MaterialMetaData.c
+VisIt_MeshMetaData.c
+VisIt_NameList.c
+VisIt_PointMesh.c
+VisIt_RectilinearMesh.c
+VisIt_SimulationMetaData.c
+VisIt_SpeciesData.c
+VisIt_SpeciesMetaData.c
+VisIt_UnstructuredMesh.c
 VisIt_VariableData.c
+VisIt_VariableMetaData.c
 )
 
 SET(FORTRAN_LIBSIM_SOURCES visitfortransimV2interface.c)
@@ -64,7 +82,32 @@ INSTALL(TARGETS simV2 simV2f
     ARCHIVE DESTINATION ${VISIT_INSTALLED_VERSION}/libsim/V2/lib   
     PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_WRITE GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
 )
-INSTALL(FILES VisItControlInterface_V2.h VisItDataInterface_V2.h VisItInterfaceTypes_V2.h visitfortransimV2interface.inc
+INSTALL(FILES 
+VisItControlInterface_V2.h
+VisItDataInterface_V2.h
+VisItInterfaceTypes_V2.h
+VisIt_CSGMesh.h
+VisIt_CommandMetaData.h
+VisIt_CurveData.h
+VisIt_CurveMetaData.h
+VisIt_CurvilinearMesh.h
+VisIt_DomainBoundaries.h
+VisIt_DomainList.h
+VisIt_DomainNesting.h
+VisIt_ExpressionMetaData.h
+VisIt_MaterialData.h
+VisIt_MaterialMetaData.h
+VisIt_MeshMetaData.h
+VisIt_NameList.h
+VisIt_PointMesh.h
+VisIt_RectilinearMesh.h
+VisIt_SimulationMetaData.h
+VisIt_SpeciesData.h
+VisIt_SpeciesMetaData.h
+VisIt_UnstructuredMesh.h
+VisIt_VariableData.h
+VisIt_VariableMetaData.h
+visitfortransimV2interface.inc
     DESTINATION ${VISIT_INSTALLED_VERSION}/libsim/V2/include
     PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ GROUP_WRITE WORLD_READ 
 )

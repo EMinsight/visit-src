@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -75,6 +75,11 @@
 //    Hank Childs, Tue Dec 11 20:25:22 PST 2007
 //    Added support for weighting by a variable.
 //
+//    Eric Brugger, Mon Aug  2 13:00:36 PDT 2010
+//    I changed the data type of workingRange from double to float to avoid
+//    a problem where the raw data to be processed may be outside of the
+//    working range.
+//
 // ****************************************************************************
 
 class avtHistogramFilter : public avtDataTreeIterator
@@ -94,7 +99,8 @@ class avtHistogramFilter : public avtDataTreeIterator
     float                    *bins;
     float                     binStep, logBinStep, sqrtBinStep;
     double                    dataValueRange[2];
-    double                    workingRange[2], logWorkingRange[2], sqrtWorkingRange[2];
+    float                     workingRange[2];
+    double                    logWorkingRange[2], sqrtWorkingRange[2];
     int                       workingNumBins;
 
     virtual vtkDataSet       *ExecuteData(vtkDataSet *, int, std::string);

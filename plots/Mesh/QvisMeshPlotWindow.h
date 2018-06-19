@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -100,6 +100,9 @@ class QvisOpacitySlider;
 //   Jeremy Meredith, Fri Feb 20 17:28:17 EST 2009
 //   Added per-plot alpha (opacity) support.
 //
+//   Allen Sanderson, Sun Mar  7 12:49:56 PST 2010
+//   Change layout of window for 2.0 interface changes.
+//
 // ****************************************************************************
 
 class QvisMeshPlotWindow : public QvisPostableWindowObserver
@@ -130,8 +133,8 @@ private slots:
     void opaqueModeChanged(int val);
     void processErrorToleranceText();
     void opaqueColorChanged(const QColor &color);
-    void backgroundToggled(bool on);
-    void foregroundToggled(bool on);
+    void meshColorClicked(int val);
+    void opaqueColorClicked(int val);
     void smoothingLevelChanged(int index);
 
     void pointSizeChanged(double d);
@@ -145,23 +148,20 @@ private slots:
 private:
     int                     plotType;
     MeshAttributes         *meshAtts;
-    QLabel                 *lineStyleLabel;
     QvisLineStyleWidget    *lineStyle;
-    QLabel                 *lineWidthLabel;
     QvisLineWidthWidget    *lineWidth;
-    QLabel                 *meshColorLabel;
-    QvisColorButton        *meshColor;
     QCheckBox              *outlineOnlyToggle;
     QLabel                 *errorToleranceLabel;
     QLineEdit              *errorToleranceLineEdit;
     QButtonGroup           *opaqueModeGroup;
     QCheckBox              *legendToggle;
     QCheckBox              *showInternalToggle;
+    QButtonGroup           *meshColorButtons;
+    QvisColorButton        *meshColor;
     QLabel                 *opaqueColorLabel;
+    QButtonGroup           *opaqueColorButtons;
     QvisColorButton        *opaqueColor;
-    QCheckBox              *backgroundToggle;
-    QCheckBox              *foregroundToggle;
-    QButtonGroup           *smoothingLevelGroup;
+    QButtonGroup           *smoothingLevelButtons;
     QvisPointControl       *pointControl;
     QLabel                *opacityLabel;
     QvisOpacitySlider     *opacitySlider;

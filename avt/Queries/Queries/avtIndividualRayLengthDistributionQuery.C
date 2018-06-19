@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -134,6 +134,11 @@ avtIndividualRayLengthDistributionQuery::PreExecute(void)
 //  Programmer: Hank Childs
 //  Creation:   August 28, 2006
 //
+//  Modifications:
+//    Eric Brugger, Thu Mar 25 09:48:31 PDT 2010
+//    I changed the name of the curve in the ultra file to avoid using
+//    special characters.
+//
 // ****************************************************************************
 
 void
@@ -192,7 +197,7 @@ avtIndividualRayLengthDistributionQuery::PostExecute(void)
             SetResultMessage(msg);
             return;
         }
-        ofile << "# Ray length distribution (individual)" << endl;
+        ofile << "# Ray length distribution - individual" << endl;
         double binWidth = (maxLength) / numBins;
         for (int i = 0 ; i < numBins ; i++)
         {

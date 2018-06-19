@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -56,11 +56,11 @@ package llnl.visit;
 
 public class AppearanceAttributes extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 11;
+    private static int AppearanceAttributes_numAdditionalAtts = 11;
 
     public AppearanceAttributes()
     {
-        super(numAdditionalAttributes);
+        super(AppearanceAttributes_numAdditionalAtts);
 
         useSystemDefault = true;
         background = new String("#c0c0c0");
@@ -77,7 +77,7 @@ public class AppearanceAttributes extends AttributeSubject
 
     public AppearanceAttributes(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(AppearanceAttributes_numAdditionalAtts + nMoreFields);
 
         useSystemDefault = true;
         background = new String("#c0c0c0");
@@ -94,7 +94,7 @@ public class AppearanceAttributes extends AttributeSubject
 
     public AppearanceAttributes(AppearanceAttributes obj)
     {
-        super(numAdditionalAttributes);
+        super(AppearanceAttributes_numAdditionalAtts);
 
         useSystemDefault = obj.useSystemDefault;
         background = new String(obj.background);
@@ -118,7 +118,7 @@ public class AppearanceAttributes extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return AppearanceAttributes_numAdditionalAtts;
     }
 
     public boolean equals(AppearanceAttributes obj)

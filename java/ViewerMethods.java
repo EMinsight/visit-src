@@ -1,8 +1,8 @@
 // ****************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -2453,20 +2453,6 @@ public class ViewerMethods
     public boolean ToggleMaintainViewMode()
     {
         GetViewerState().GetViewerRPC().SetRPCType(ViewerRPC.VIEWERRPCTYPE_TOGGLEMAINTAINVIEWMODERPC);
-        GetViewerState().GetViewerRPC().Notify();
-        return Synchronize();
-    }
-
-    /**
-     * Toggles the maintain data mode, which ensures that data limits such as those 
-     * used in the Pseudocolor plot remain set to the values that were in force when
-     * maintain data mode was engaged.
-     *
-     * @return true on success; false otherwise.
-     */
-    public boolean ToggleMaintainDataMode()
-    {
-        GetViewerState().GetViewerRPC().SetRPCType(ViewerRPC.VIEWERRPCTYPE_TOGGLEMAINTAINDATAMODERPC);
         GetViewerState().GetViewerRPC().Notify();
         return Synchronize();
     }

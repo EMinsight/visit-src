@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -67,6 +67,10 @@
 // Modifications:
 //   Brad Whitlock, Thu Oct 22 11:06:53 PDT 2009
 //   I added methods that let the user edit the plot name with a line edit.
+//
+//   Brad Whitlock, Tue Apr 20 11:46:16 PDT 2010
+//   I added an event filter to prevent crashes when pressing Esc to work
+//   around a bug in Qt.
 //
 // ****************************************************************************
 
@@ -163,6 +167,29 @@ public:
             lb->triggerPlotRename(lb->row(currentItem), s);
         }
     }
+
+    virtual bool eventFilter(QObject *object, QEvent *event)
+    {
+        QWidget *editor = qobject_cast<QWidget*>(object);
+        if (!editor)
+            return false;
+        if (event->type() == QEvent::KeyPress)
+        {
+            bool retval = true;
+            switch (static_cast<QKeyEvent *>(event)->key())
+            {
+            case Qt::Key_Escape:
+                emit closeEditor(editor, QAbstractItemDelegate::RevertModelCache);
+                break;
+            default:
+                retval = QItemDelegate::eventFilter(object, event);
+            }
+
+            return retval;
+        }
+
+        return QItemDelegate::eventFilter(object, event);
+    }
 };
 
 // ****************************************************************************
@@ -237,12 +264,15 @@ QvisPlotListBox::~QvisPlotListBox()
 //   Brad Whitlock, Fri May 30 16:05:33 PDT 2008
 //   Qt 4.
 //
+//   Brad Whitlock, Fri Apr 23 14:31:43 PDT 2010
+//   I changed the code to work better with extended selection.
+//
 // ****************************************************************************
 
 void
 QvisPlotListBox::mousePressEvent(QMouseEvent *e)
 {
-    clickHandler(e->pos(), e->button() == Qt::RightButton, false);
+    clickHandler(e->pos(), e->button() == Qt::RightButton, false, e->modifiers());
     QListWidget::mousePressEvent(e);
 }
 
@@ -260,6 +290,8 @@ QvisPlotListBox::mousePressEvent(QMouseEvent *e)
 // Creation:   Mon Sep 11 09:59:58 PDT 2000
 //
 // Modifications:
+//   Brad Whitlock, Fri Apr 23 14:31:43 PDT 2010
+//   I changed the code to work better with extended selection.
 //   
 // ****************************************************************************
 
@@ -267,7 +299,7 @@ void
 QvisPlotListBox::mouseDoubleClickEvent(QMouseEvent *e)
 {
     QPoint p = e->pos();
-    clickHandler(p, e->button() == Qt::RightButton, true);
+    clickHandler(p, e->button() == Qt::RightButton, true, Qt::NoModifier);
     QListWidget::mouseDoubleClickEvent (e);
 }
 
@@ -296,15 +328,19 @@ QvisPlotListBox::mouseDoubleClickEvent(QMouseEvent *e)
 //   Sean Ahern, Thu Aug 21 14:32:54 EDT 2008
 //   Fixed deleting operators on non-selected plots.
 //
+//   Cyrus Harrison, Thu Apr 15 08:45:34 PDT 2010
+//   Proper offset calc for non drawn items.
+//
+//   Brad Whitlock, Fri Apr 23 14:31:43 PDT 2010
+//   I changed the code to work better with extended selection.
+//
 // ****************************************************************************
 
 void
 QvisPlotListBox::clickHandler(const QPoint &clickLocation, bool rightClick,
-    bool doubleClicked)
+    bool doubleClicked, Qt::KeyboardModifiers modifiers)
 {
     QPoint itemClickLocation(clickLocation);
-    int y = 0;
-    int heightSum = 0;
     int action = -1, opId = -1;
     bool bs = signalsBlocked();
     bool emitted = true;
@@ -314,32 +350,44 @@ QvisPlotListBox::clickHandler(const QPoint &clickLocation, bool rightClick,
     {
         QListWidgetItem *current = item(i);
         QvisPlotListBoxItem *item2 = (QvisPlotListBoxItem *)current;
+        int y = visualItemRect(current).y();
         int h = visualItemRect(current).height();
         if (clickLocation.y() >= y && clickLocation.y() < (y + h))
         {
-            // If the item is not selected, select it.
-            blockSignals(false);
-            current->setSelected(true);
-            blockSignals(bs);
-
-            // Reduce the y location of the click location to be local to the
-            // item.
-            itemClickLocation.setY(clickLocation.y() - heightSum);
-
-            // Handle the click.
-            if (action == -1)
+            if(!rightClick &&
+               (modifiers & (Qt::ControlModifier | Qt::MetaModifier)) > 0)
             {
-                action = item2->clicked(itemClickLocation, doubleClicked, opId);
+                // If we're using Ctrl or Meta + mouse click then switch
+                // the item to its reverse selection.
+                blockSignals(false);
+                current->setSelected(!current->isSelected());
+                blockSignals(bs);
+            }
+            else
+            {
+                // If the item is not selected, select it.
+                blockSignals(false);
+                current->setSelected(true);
+                blockSignals(bs);
+
+                // Reduce the y location of the click location to be local             // item.
+                // to the item
+                itemClickLocation.setY(clickLocation.y() - y);
+
+                // Handle the click.
+                if (action == -1)
+                {
+                    action = item2->clicked(itemClickLocation, doubleClicked, 
+                                            opId);
+                }
             }
         }
-        else
+        else if(rightClick || doubleClicked)
         {
             blockSignals(false);
             current->setSelected(false);
             blockSignals(bs);
         }
-        heightSum += h;
-        y += h;
     }
 
     switch(action)
@@ -557,6 +605,27 @@ QvisPlotListBox::NeedToUpdateSelection(const PlotList *pl) const
     return retval;
 }
 
+// ****************************************************************************
+// Method: QvisPlotListBox::IsSelecting
+//
+// Purpose: 
+//   Returns whether we're in selecting mode (the user is selecting items with
+//   the mouse)
+//
+// Returns:    True if we're in selecting mode.
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri Apr 23 14:32:30 PDT 2010
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+bool
+QvisPlotListBox::IsSelecting() const
+{
+    return state() == DragSelectingState;
+}
 
 // ****************************************************************************
 // Method: QvisPlotListBox::contextMenuCreateActions

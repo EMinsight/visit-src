@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -64,6 +64,7 @@ class QTimer;
 
 class BufferConnection;
 class DataNode;
+class HostProfileList;
 class SILAttributes;
 class ViewerActionBase;
 class ViewerClientConnection;
@@ -480,6 +481,10 @@ class avtDefaultPlotMetaData;
 //    Removed maintain data; moved maintain view from Global settings
 //    (Main window) to per-window Window Information (View window).
 //
+//    Jeremy Meredith, Wed Apr 21 13:19:16 EDT 2010
+//    Save a copy of the host profiles we loaded from the system
+//    installation directory, so we know if a user changed anything.
+//
 // ****************************************************************************
 
 class VIEWER_API ViewerSubject : public ViewerBase
@@ -528,7 +533,6 @@ private:
     void ConnectObjectsAndHandlers();
     void ConnectConfigManager();
 
-    void HeavyInitialization();
     void InitializePluginManagers();
     void LoadPlotPlugins();
     void LoadOperatorPlugins();
@@ -682,8 +686,11 @@ private:
     void SetDefaultFileOpenOptions();
     void SetSuppressMessages();
         
-
+signals:
+    void scheduleHeavyInitialization();
 private slots:
+    void HeavyInitialization();
+
     void AddInputToXfer(ViewerClientConnection *, AttributeSubject *subj);
     void ProcessSpecialOpcodes(int opcode);
     void DisconnectClient(ViewerClientConnection *client);
@@ -730,7 +737,6 @@ private:
     static void BroadcastToAllClients(void *, Subject *);
 
     QSocketNotifier       *checkParent;
-    QSocketNotifier       *checkRenderer;
     QTimer                *keepAliveTimer;
     bool                   launchingComponent;
     bool                   deferHeavyInitialization;
@@ -765,8 +771,9 @@ private:
     DataNode              *systemSettings;
     DataNode              *localSettings;
 
+    HostProfileList       *originalSystemHostProfileList;
+
     ViewerMessageBuffer   *messageBuffer;
-    int                    messagePipe[2];
 
     std::map<int,EngineKey>                     simulationSocketToKey;
     std::map<EngineKey,QSocketNotifier*>        engineKeyToNotifier;

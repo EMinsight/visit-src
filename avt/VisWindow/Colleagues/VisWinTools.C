@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -145,6 +145,9 @@ protected:
 //   Jeremy Meredith, Tue Apr 22 14:31:20 EDT 2008
 //   Removed Extents tool.  (Subsumed by axis restriction tool.)
 //
+//   Allen Sanderson, Sun Mar  7 12:49:56 PST 2010
+//   Reorder the icons (2.0 interface changes).
+//
 // ****************************************************************************
 
 VisWinTools::VisWinTools(VisWindowColleagueProxy &v) : VisWinColleague(v),
@@ -159,19 +162,23 @@ VisWinTools::VisWinTools(VisWindowColleagueProxy &v) : VisWinColleague(v),
     numTools = 0;
 
     // Create the tools.
-    boxTool = new VisitBoxTool(toolProxy);
+    pointTool = new VisitPointTool(toolProxy);
     lineTool = new VisitLineTool(toolProxy);
     planeTool = new VisitPlaneTool(toolProxy);
-    pointTool = new VisitPointTool(toolProxy);
+    boxTool = new VisitBoxTool(toolProxy);
     sphereTool = new VisitSphereTool(toolProxy);
     axisRestrictionTool = new VisitAxisRestrictionTool(toolProxy);
 
-    // Add the tools to the tools array.
-    tools[numTools++] = boxTool;
+    // Add the tools to the tools array. The ordering of the tools
+    // will define the ordering of the icons in viewer.
+
+    // When adding new tools please use a logical ordering even
+    // if means putting it beween two existing tools.
+    tools[numTools++] = pointTool;
     tools[numTools++] = lineTool;
     tools[numTools++] = planeTool;
+    tools[numTools++] = boxTool;
     tools[numTools++] = sphereTool;
-    tools[numTools++] = pointTool;
     tools[numTools++] = axisRestrictionTool;
 }
 

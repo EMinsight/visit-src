@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -139,6 +139,12 @@ QvisMeshManagementWindow::~QvisMeshManagementWindow()
 //   tabSelected slot. This signal does not exist in Qt4 & the slot code 
 //   was empty.
 //   
+//   Jeremy Meredith, Fri Feb 26 14:13:08 EST 2010
+//   Added a new "multi-pass" discretization algorithm
+//
+//   Mark C. Miller, Wed Mar  3 07:59:15 PST 2010
+//   Changed form of conditional compilation check for HAVE_BILIB from
+//   numeric test to existence test.
 // ****************************************************************************
 
 void
@@ -183,10 +189,13 @@ QvisMeshManagementWindow::CreateWindowContents()
     layoutCSGGroup->addWidget(discretizeUniform, 2, 1);
     discretizeAdaptive = new QRadioButton(tr("Adaptive"), pageCSGGroup);
     discretizationMode->addButton(discretizeAdaptive,1);
-#if !HAVE_BILIB
+#ifndef HAVE_BILIB
     discretizeAdaptive->setEnabled(false);
 #endif
     layoutCSGGroup->addWidget(discretizeAdaptive, 2, 2);
+    discretizeMultiPass = new QRadioButton(tr("Multi-pass"), pageCSGGroup);
+    discretizationMode->addButton(discretizeMultiPass,2);
+    layoutCSGGroup->addWidget(discretizeMultiPass, 2, 3);
 
     smallestZoneLabel = new QLabel(tr("Smallest Zone (% bbox diag)"), pageCSGGroup);
     layoutCSGGroup->addWidget(smallestZoneLabel, 3, 0);
@@ -240,6 +249,12 @@ QvisMeshManagementWindow::CreateWindowContents()
 //   Cyrus Harrison, Wed Jul  2 11:16:25 PDT 2008
 //   Initial Qt4 Port.
 //
+//   Jeremy Meredith, Fri Feb 26 14:13:08 EST 2010
+//   Added a new "multi-pass" discretization algorithm
+//
+//   Mark C. Miller, Wed Mar  3 07:59:15 PST 2010
+//   Changed form of conditional compilation check for HAVE_BILIB from
+//   numeric test to existence test.
 // ****************************************************************************
 
 void
@@ -280,17 +295,27 @@ QvisMeshManagementWindow::UpdateWindow(bool doAll)
                 dMode = atts->GetDiscretizationMode();
                 discretizationMode->blockSignals(true);
                 if (dMode == MeshManagementAttributes::Uniform)
+                {
                     discretizationMode->button(0)->setChecked(true);
+                    flatEnoughLineEdit->setEnabled(false);
+                }
                 else if (dMode == MeshManagementAttributes::Adaptive)
                 {
-#if HAVE_BILIB
+#ifdef HAVE_BILIB
                     discretizationMode->button(1)->setChecked(true);
+                    flatEnoughLineEdit->setEnabled(true);
 #else
                     GUIBase::Warning(tr("Adaptive not available. "
                                      "Missing boost interval template library. "
                                      "Overriding to Uniform."));
                     discretizationMode->button(0)->setChecked(true);
+                    flatEnoughLineEdit->setEnabled(false);
 #endif
+                }
+                else if (dMode == MeshManagementAttributes::MultiPass)
+                {
+                    discretizationMode->button(2)->setChecked(true);
+                    flatEnoughLineEdit->setEnabled(false);
                 }
                 discretizationMode->blockSignals(false);
             }
@@ -325,6 +350,9 @@ QvisMeshManagementWindow::UpdateWindow(bool doAll)
 //    Cyrus Harrison, Wed Jul  2 11:16:25 PDT 2008
 //    Initial Qt4 Port.
 //
+//    Jeremy Meredith, Fri Feb 26 14:13:08 EST 2010
+//    Added a new "multi-pass" discretization algorithm
+//
 // ****************************************************************************
 void
 QvisMeshManagementWindow::GetCurrentValues(const QWidget *widget)
@@ -344,7 +372,8 @@ QvisMeshManagementWindow::GetCurrentValues(const QWidget *widget)
         }
     }
 
-    if (doAll || widget == discretizeUniform || widget == discretizeAdaptive)
+    if (doAll || widget == discretizeAdaptive ||
+        widget == discretizeUniform || widget == discretizeAdaptive)
     {
         
         int selectedId = discretizationMode->id(discretizationMode->checkedButton());
@@ -352,8 +381,11 @@ QvisMeshManagementWindow::GetCurrentValues(const QWidget *widget)
             mmAtts->GetDiscretizationMode() != MeshManagementAttributes::Uniform)
             mmAtts->SetDiscretizationMode(MeshManagementAttributes::Uniform);
         else if (selectedId == 1 &&
-            mmAtts->GetDiscretizationMode() != MeshManagementAttributes::Adaptive)
+                 mmAtts->GetDiscretizationMode() != MeshManagementAttributes::Adaptive)
             mmAtts->SetDiscretizationMode(MeshManagementAttributes::Adaptive);
+        else if (selectedId == 2 &&
+                 mmAtts->GetDiscretizationMode() != MeshManagementAttributes::MultiPass)
+            mmAtts->SetDiscretizationMode(MeshManagementAttributes::MultiPass);
     }
 
     if (doAll || widget == discretizeBoundaryOnly)
@@ -475,12 +507,14 @@ QvisMeshManagementWindow::discretizeBoundaryOnlyChanged(bool val)
 void
 QvisMeshManagementWindow::discretizationModeChanged(int val)
 {
+    flatEnoughLineEdit->setEnabled(false);
     if (val == 0)
         mmAtts->SetDiscretizationMode(MeshManagementAttributes::Uniform);
     else if (val == 1)
     {
-#if HAVE_BILIB
+#ifdef HAVE_BILIB
         mmAtts->SetDiscretizationMode(MeshManagementAttributes::Adaptive);
+        flatEnoughLineEdit->setEnabled(true);
 #else
         GUIBase::Warning(tr("Adaptive not available. "
                          "Missing boost interval template library. "
@@ -488,6 +522,8 @@ QvisMeshManagementWindow::discretizationModeChanged(int val)
         mmAtts->SetDiscretizationMode(MeshManagementAttributes::Uniform);
 #endif
     }
+    else if (val == 2)
+        mmAtts->SetDiscretizationMode(MeshManagementAttributes::MultiPass);
     SetUpdate(false);
     Apply();
 }

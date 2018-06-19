@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -56,25 +56,25 @@ package llnl.visit;
 
 public class avtVectorMetaData extends avtVarMetaData
 {
-    private static int numAdditionalAttributes = 1;
+    private static int avtVectorMetaData_numAdditionalAtts = 1;
 
     public avtVectorMetaData()
     {
-        super(numAdditionalAttributes);
+        super(avtVectorMetaData_numAdditionalAtts);
 
         varDim = 0;
     }
 
     public avtVectorMetaData(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(avtVectorMetaData_numAdditionalAtts + nMoreFields);
 
         varDim = 0;
     }
 
     public avtVectorMetaData(avtVectorMetaData obj)
     {
-        super(numAdditionalAttributes);
+        super(avtVectorMetaData_numAdditionalAtts);
 
         varDim = obj.varDim;
 
@@ -88,7 +88,7 @@ public class avtVectorMetaData extends avtVarMetaData
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return avtVectorMetaData_numAdditionalAtts;
     }
 
     public boolean equals(avtVectorMetaData obj)
@@ -101,7 +101,7 @@ public class avtVectorMetaData extends avtVarMetaData
     public void SetVarDim(int varDim_)
     {
         varDim = varDim_;
-        Select(Offset() + 0);
+        Select((new avtVectorMetaData()).Offset() + 0);
     }
 
     // Property getting methods
@@ -112,14 +112,15 @@ public class avtVectorMetaData extends avtVarMetaData
     {
         super.WriteAtts(buf);
 
-        int offset = Offset();
+        int offset = (new avtVectorMetaData()).Offset();
         if(WriteSelect(offset + 0, buf))
             buf.WriteInt(varDim);
     }
 
     public void ReadAtts(int id, CommunicationBuffer buf)
     {
-        if(id == Offset())
+        int offset = (new avtVectorMetaData()).Offset();
+        if(id == offset)
             SetVarDim(buf.ReadInt());
         else
             super.ReadAtts(id, buf);

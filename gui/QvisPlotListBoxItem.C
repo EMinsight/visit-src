@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -304,6 +304,10 @@ QvisPlotListBoxItem::textX() const
 //   Jeremy Meredith, Thu Feb  4 17:13:20 EST 2010
 //   No need for a "-" separator in expanded mode; we have a ":" one still.
 //
+//   Cyrus Harrison, Mon Mar 15 15:43:20 PDT 2010
+//   Add ":"  between db name and varible if we have a numeric (selected files)
+//   prefix.
+//
 // ****************************************************************************
 
 void QvisPlotListBoxItem::paint(QPainter *painter)
@@ -429,7 +433,7 @@ void QvisPlotListBoxItem::paint(QPainter *painter)
         {
             // The prefix is a number so get the db name.
             QualifiedFilename name(plot.GetDatabaseName());
-            dbName = prefix + QString(name.filename.c_str());
+            dbName = prefix + QString(name.filename.c_str()) + QString(":");
         }
         else
         {

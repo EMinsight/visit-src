@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -92,11 +92,11 @@ typedef enum
 typedef enum
 {
     NAVIGATE         = 0,
-    ZONE_PICK,       /* 1 */
-    NODE_PICK,       /* 2 */
-    ZOOM,            /* 3 */
-    LINEOUT,         /* 4 */
-    SPREADSHEET_PICK /* 5*/
+    ZOOM,             /* 1 */
+    ZONE_PICK,        /* 2 */
+    NODE_PICK,        /* 3 */
+    SPREADSHEET_PICK, /* 4 */
+    LINEOUT,          /* 5 */
 }  INTERACTION_MODE;
 
 typedef enum {

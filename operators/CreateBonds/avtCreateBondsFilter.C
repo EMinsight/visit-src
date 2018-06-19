@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -161,7 +161,7 @@ avtCreateBondsFilter::Equivalent(const AttributeGroup *a)
 //    atom pattern but the distances were wrong.
 //
 //    Jeremy Meredith, Wed May 20 11:49:18 EDT 2009
-//    MAX_ELEMENT_NUMBER now means the actual max element number, not the
+//    MAX_ELEMENT_NUMBER now means the actual max element number, not
 //    total number of known elements in visit.  Added a fake "0" element
 //    which means "unknown", and hydrogen now starts at 1.  This
 //    also means we don't have to correct for 1-origin atomic numbers.
@@ -346,6 +346,11 @@ avtCreateBondsFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
 // Programmer:  Jeremy Meredith
 // Creation:    January 27, 2010
 //
+// Modifications:
+//   Jeremy Meredith, Wed Aug 11 10:21:59 EDT 2010
+//   Use the element variable specified in the attributes.
+//   Support any type of input nodal array.
+//
 // ****************************************************************************
 vtkDataSet *
 avtCreateBondsFilter::ExecuteData_Fast(vtkPolyData *in, float maxBondDist,
@@ -363,14 +368,22 @@ avtCreateBondsFilter::ExecuteData_Fast(vtkPolyData *in, float maxBondDist,
     int nPts   = in->GetNumberOfPoints();
     int nVerts = in->GetNumberOfVerts();
 
-    vtkDataArray *element = inPD->GetArray("element");
-    if (!element || !element->IsA("vtkFloatArray"))
+    vtkDataArray *element;
+    if (atts.GetElementVariable() == "default")
+        element = inPD->GetScalars();
+    else
+        element = inPD->GetArray(atts.GetElementVariable().c_str());
+    if (!element)
     {
-        debug4 << "avtCreateBondsFilter: did not find float element array\n";
+        debug1 << "avtCreateBondsFilter: did not find appropriate point array\n";
+        debug1 << "   -- returning original data set with no bonds changed.\n";
         return in;
     }
 
-    float *elementnos = element ? (float*)element->GetVoidPointer(0) : NULL;
+    vector<float> elementnos;
+    elementnos.resize(nPts);
+    for (int i=0; i<nPts; i++)
+        elementnos[i] = element->GetTuple1(i);
 
     //
     // Set up the output stuff
@@ -447,12 +460,11 @@ avtCreateBondsFilter::ExecuteData_Fast(vtkPolyData *in, float maxBondDist,
     }
     
     //
-    // 
+    // ni,nj,nk are the number of bins in the i,j,k directions
     //
-
-    // Why the 3+ here?
+    // Why the "3 + ..." here?
     // (a) if we weren't doing periodic atom checks, we could
-    //     make do with 1+ -- that one we need because there
+    //     make do with 1+ -- that "1" we always need because there
     //     will be one atom at maxx,maxy,maxz which will go in
     //     the final cube.  easier than clamping or fuzz factors.
     // (b) for periodic checks, we know they must be within
@@ -493,8 +505,8 @@ avtCreateBondsFilter::ExecuteData_Fast(vtkPolyData *in, float maxBondDist,
     // probably wait until I see evidence of problems before changing.
     //
     typedef pair<int,int> atomimage;
-    typedef vector<atomimage> intvec;
-    intvec *atomgrid = new intvec[ni*nj*nk];
+    typedef vector<atomimage> atomvec;
+    atomvec *atomgrid = new atomvec[ni*nj*nk];
 
     map<atomimage, int> imageMap;
 
@@ -545,7 +557,8 @@ avtCreateBondsFilter::ExecuteData_Fast(vtkPolyData *in, float maxBondDist,
                         // from all 26 non-native images.  However, we
                         // don't store any which lie any significant
                         // distance outside the original bounding box,
-                        // so the only 
+                        // so the max cost should be one extra bin's
+                        // worth of atoms.
                         int outpt = outPts->InsertNextPoint(pt);
                         outPD->CopyData(inPD, a, outpt);
                         imageMap[atomimage(image,a)] = outpt;
@@ -698,6 +711,10 @@ avtCreateBondsFilter::ExecuteData_Fast(vtkPolyData *in, float maxBondDist,
 //    This is now known as the "slow" version.  Also, fixed a bug
 //    with setting the periodic instance min/max.
 //
+//    Jeremy Meredith, Wed Aug 11 10:21:59 EDT 2010
+//    Use the element variable specified in the attributes.
+//    Support any type of input nodal array.
+//
 // ****************************************************************************
 
 vtkDataSet *
@@ -713,14 +730,22 @@ avtCreateBondsFilter::ExecuteData_Slow(vtkPolyData *in)
     int nPts   = in->GetNumberOfPoints();
     int nVerts = in->GetNumberOfVerts();
 
-    vtkDataArray *element = inPD->GetArray("element");
-    if (!element || !element->IsA("vtkFloatArray"))
+    vtkDataArray *element;
+    if (atts.GetElementVariable() == "default")
+        element = inPD->GetScalars();
+    else
+        element = inPD->GetArray(atts.GetElementVariable().c_str());
+    if (!element)
     {
-        debug4 << "avtCreateBondsFilter: did not find float element array\n";
+        debug1 << "avtCreateBondsFilter: did not find appropriate point array\n";
+        debug1 << "   -- returning original data set with no bonds changed.\n";
         return in;
     }
 
-    float *elementnos = element ? (float*)element->GetVoidPointer(0) : NULL;
+    vector<float> elementnos;
+    elementnos.resize(nPts);
+    for (int i=0; i<nPts; i++)
+        elementnos[i] = element->GetTuple1(i);
 
     //
     // Set up the output stuff
@@ -980,6 +1005,11 @@ avtCreateBondsFilter::ExecuteData_Slow(vtkPolyData *in)
 //  Programmer:  Jeremy Meredith
 //  Creation:    August 29, 2006
 //
+//  Modifications:
+//    Jeremy Meredith, Wed Aug 11 10:21:59 EDT 2010
+//    Use the element variable specified in the attributes.
+//    Skip the removal of a "bonds" variable -- this was obsolete long ago.
+//
 // ****************************************************************************
 avtContract_p
 avtCreateBondsFilter::ModifyContract(avtContract_p spec)
@@ -995,13 +1025,11 @@ avtCreateBondsFilter::ModifyContract(avtContract_p spec)
     //
     avtDataRequest_p nds = new avtDataRequest(ds);
 
-    // Remove the bonds variable; we're going to create it here.
-    nds->RemoveSecondaryVariable("bonds");
-
     // We need those element numbers.
-    if (string(primaryVariable) != "element")
+    if (string(primaryVariable) != atts.GetElementVariable() &&
+        atts.GetElementVariable() != "default")
     {
-        nds->AddSecondaryVariable("element");
+        nds->AddSecondaryVariable(atts.GetElementVariable().c_str());
     }
 
     //

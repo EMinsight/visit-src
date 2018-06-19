@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -313,6 +313,9 @@ ExprScanner::UpdateScanState(const std::string &parsed)
 //    Cyrus Harrison, Thu Feb 11 21:21:46 PST 2010
 //    Add support escaped newlines.
 //
+//    Cyrus Harrison, Thu Feb 11 21:21:46 PST 2010
+//    Add support for escaped spaces.
+//
 // ****************************************************************************
 Token*
 ExprScanner::ScanOneToken()
@@ -336,6 +339,8 @@ ExprScanner::ScanOneToken()
                 lookahead = text[pos+1];
                 if(lookahead == 'n')
                     lookahead ='\n';
+                if(lookahead == 's')
+                    lookahead =' ';
             }
         }
 

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -47,10 +47,10 @@
 #include "SimulationExample.h"
 
 /* Data Access Function prototypes */
-int SimGetMetaData(VisIt_SimulationMetaData *, void *);
-int SimGetMesh(int, const char *, VisIt_MeshData *, void *);
-int SimGetVariable(int, const char *, visit_handle, void *);
-int SimGetDomainNesting(const char *, visit_handle, void *);
+visit_handle SimGetMetaData(void *);
+visit_handle SimGetMesh(int, const char *, void *);
+visit_handle SimGetVariable(int, const char *, void *);
+visit_handle SimGetDomainNesting(const char *, void *);
 
 /******************************************************************************
  * Code for calculating data values
@@ -250,6 +250,8 @@ simulation_data_dtor(simulation_data *sim)
 {
     patch_dtor(&sim->patch);
 }
+
+const char *cmd_names[] = {"halt", "step", "run", "update"};
 
 /******************************************************************************
  *
@@ -560,90 +562,87 @@ int main(int argc, char **argv)
  *
  *****************************************************************************/
 
-int
-SimGetMetaData(VisIt_SimulationMetaData *md, void *cbdata)
+visit_handle
+SimGetMetaData(void *cbdata)
 {
+    visit_handle md = VISIT_INVALID_HANDLE;
     simulation_data *sim = (simulation_data *)cbdata;
-    int i, nlevels, *pcount;
-    size_t sz;
 
-    /* Set the simulation state. */
-    md->currentMode = (sim->runMode == SIM_STOPPED) ? VISIT_SIMMODE_STOPPED : VISIT_SIMMODE_RUNNING;
-    md->currentCycle = sim->cycle;
-    md->currentTime = sim->time;
-
-    /* Allocate enough room for 1 mesh in the metadata. */
-    md->numMeshes = 1;
-    sz = sizeof(VisIt_MeshMetaData) * md->numMeshes;
-    md->meshes = (VisIt_MeshMetaData *)malloc(sz);
-    memset(md->meshes, 0, sz);
-
-    /* Fill in the AMR metadata. */
-    nlevels = patch_num_levels(&sim->patch);
-    md->meshes[0].name = strdup("AMR_mesh");
-    md->meshes[0].meshType = VISIT_MESHTYPE_AMR;
-    md->meshes[0].topologicalDimension = 2;
-    md->meshes[0].spatialDimension = 2;
-    md->meshes[0].numBlocks = patch_num_patches(&sim->patch);
-    md->meshes[0].blockTitle = strdup("patches");
-    md->meshes[0].blockPieceName = strdup("patch");
-    md->meshes[0].numGroups = nlevels;
-    md->meshes[0].groupTitle = strdup("levels");
-    md->meshes[0].groupPieceName = strdup("level");
-    md->meshes[0].groupIds = (int *)malloc(md->meshes[0].numBlocks * sizeof(int));
-    patch_t **patches = patch_flat_array(&sim->patch);
-    md->meshes[0].blockNames = (char**)malloc(md->meshes[0].numBlocks * sizeof(char*));
-    pcount = (int *)malloc(nlevels * sizeof(int));
-    memset(pcount, 0, nlevels * sizeof(int));
-    for(i = 0; i < md->meshes[0].numBlocks; ++i)
+    /* Create metadata. */
+    if(VisIt_SimulationMetaData_alloc(&md) == VISIT_OKAY)
     {
-        char tmpName[100];
-        sprintf(tmpName, "level%d,patch%04d", patches[i]->level, pcount[patches[i]->level]++);
-        md->meshes[0].blockNames[i] = strdup(tmpName);
-        md->meshes[0].groupIds[i] = patches[i]->level;
+        visit_handle mmd = VISIT_INVALID_HANDLE;
+        visit_handle vmd = VISIT_INVALID_HANDLE;
+        visit_handle cmd = VISIT_INVALID_HANDLE;
+
+        /* Set the simulation state. */
+        VisIt_SimulationMetaData_setMode(md, (sim->runMode == SIM_STOPPED) ?
+            VISIT_SIMMODE_STOPPED : VISIT_SIMMODE_RUNNING);
+        VisIt_SimulationMetaData_setCycleTime(md, sim->cycle, sim->time);
+
+        /* Fill in the AMR metadata. */
+        if(VisIt_MeshMetaData_alloc(&mmd) == VISIT_OKAY)
+        {
+            /* Set the mesh's properties.*/
+            VisIt_MeshMetaData_setName(mmd, "AMR_mesh");
+            VisIt_MeshMetaData_setMeshType(mmd, VISIT_MESHTYPE_AMR);
+            VisIt_MeshMetaData_setTopologicalDimension(mmd, 2);
+            VisIt_MeshMetaData_setSpatialDimension(mmd, 2);
+
+            int ndoms = patch_num_patches(&sim->patch);
+            VisIt_MeshMetaData_setNumDomains(mmd, ndoms);
+            VisIt_MeshMetaData_setDomainTitle(mmd, "patches");
+            VisIt_MeshMetaData_setDomainPieceName(mmd, "patch");
+
+            int nlevels = patch_num_levels(&sim->patch);
+            VisIt_MeshMetaData_setNumGroups(mmd, nlevels);
+            VisIt_MeshMetaData_setGroupTitle(mmd, "levels");
+            VisIt_MeshMetaData_setGroupPieceName(mmd, "level");
+            patch_t **patches = patch_flat_array(&sim->patch);
+            int *pcount = (int *)malloc(nlevels * sizeof(int));
+            memset(pcount, 0, nlevels * sizeof(int));
+            for(int i = 0; i < ndoms; ++i)
+            {
+                char tmpName[100];
+                sprintf(tmpName, "level%d,patch%04d", patches[i]->level, pcount[patches[i]->level]++);
+                VisIt_MeshMetaData_addDomainName(mmd, tmpName);
+                VisIt_MeshMetaData_addGroupId(mmd, patches[i]->level);
+            }
+            FREE(pcount);
+            FREE(patches);
+
+            VisIt_MeshMetaData_setXUnits(mmd, "cm");
+            VisIt_MeshMetaData_setYUnits(mmd, "cm");
+            VisIt_MeshMetaData_setXLabel(mmd, "Real");
+            VisIt_MeshMetaData_setYLabel(mmd, "Imaginary");
+
+            VisIt_SimulationMetaData_addMesh(md, mmd);
+        }
+
+        /* Add a variable. */
+        if(VisIt_VariableMetaData_alloc(&vmd) == VISIT_OKAY)
+        {
+            VisIt_VariableMetaData_setName(vmd, "mandelbrot");
+            VisIt_VariableMetaData_setMeshName(vmd, "AMR_mesh");
+            VisIt_VariableMetaData_setType(vmd, VISIT_VARTYPE_SCALAR);
+            VisIt_VariableMetaData_setCentering(vmd, VISIT_VARCENTERING_ZONE);
+
+            VisIt_SimulationMetaData_addVariable(md, vmd);
+        }
+
+        /* Add some custom commands. */
+        for(int i = 0; i < sizeof(cmd_names)/sizeof(const char *); ++i)
+        {
+            visit_handle cmd = VISIT_INVALID_HANDLE;
+            if(VisIt_CommandMetaData_alloc(&cmd) == VISIT_OKAY)
+            {
+                VisIt_CommandMetaData_setName(cmd, cmd_names[i]);
+                VisIt_SimulationMetaData_addGenericCommand(md, cmd);
+            }
+        }
     }
-    FREE(pcount);
-    FREE(patches);
-    /* nothing to set the blockpiecenames yet. */
-    md->meshes[0].units = strdup("cm");
-    md->meshes[0].xLabel = strdup("Real");
-    md->meshes[0].yLabel = strdup("Imaginary");
 
-    /* Add a variable. */
-    md->numVariables = 1;
-    sz = sizeof(VisIt_VariableMetaData) * md->numVariables;
-    md->variables = (VisIt_VariableMetaData *)malloc(sz);
-    memset(md->variables, 0, sz);
-
-    /* Add a zonal variable on mesh2d. */
-    md->variables[0].name = strdup("mandelbrot");
-    md->variables[0].meshName = strdup("AMR_mesh");
-    md->variables[0].type = VISIT_VARTYPE_SCALAR;
-    md->variables[0].centering = VISIT_VARCENTERING_ZONE;
-
-    /* Add some custom commands. */
-    md->numGenericCommands = 4;
-    sz = sizeof(VisIt_SimulationControlCommand) * md->numGenericCommands;
-    md->genericCommands = (VisIt_SimulationControlCommand *)malloc(sz);
-    memset(md->genericCommands, 0, sz);
-
-    md->genericCommands[0].name = strdup("halt");
-    md->genericCommands[0].argType = VISIT_CMDARG_NONE;
-    md->genericCommands[0].enabled = 1;
-
-    md->genericCommands[1].name = strdup("step");
-    md->genericCommands[1].argType = VISIT_CMDARG_NONE;
-    md->genericCommands[1].enabled = 1;
-
-    md->genericCommands[2].name = strdup("run");
-    md->genericCommands[2].argType = VISIT_CMDARG_NONE;
-    md->genericCommands[2].enabled = 1;
-
-    md->genericCommands[3].name = strdup("update");
-    md->genericCommands[3].argType = VISIT_CMDARG_NONE;
-    md->genericCommands[3].enabled = 1;
-
-    return VISIT_OKAY;
+    return md;
 }
 
 /******************************************************************************
@@ -657,11 +656,11 @@ SimGetMetaData(VisIt_SimulationMetaData *md, void *cbdata)
  *
  *****************************************************************************/
 
-int
-SimGetMesh(int domain, const char *name, VisIt_MeshData *mesh, void *cbdata)
+visit_handle
+SimGetMesh(int domain, const char *name, void *cbdata)
 {
-    size_t sz;
-    int ret = VISIT_ERROR;
+    visit_handle h = VISIT_INVALID_HANDLE;
+
     /* Get the patch with the appropriate domain id. */
     simulation_data *sim = (simulation_data *)cbdata;
     patch_t *patch = patch_get_patch(&sim->patch, domain);
@@ -670,64 +669,48 @@ SimGetMesh(int domain, const char *name, VisIt_MeshData *mesh, void *cbdata)
     {
         int i;
 
-        /* Make VisIt_MeshData contain a VisIt_RectilinearMesh. */
-        sz = sizeof(VisIt_RectilinearMesh);
-        mesh->rmesh = (VisIt_RectilinearMesh *)malloc(sz);
-        memset(mesh->rmesh, 0, sz);
-
-        /* Tell VisIt which mesh object to use. */
-        mesh->meshType = VISIT_MESHTYPE_RECTILINEAR;
-
-        /* Set the mesh's number of dimensions. */
-        mesh->rmesh->ndims = 2;
-
-        /* Set the mesh dimensions. */
-        mesh->rmesh->dims[0] = patch->nx+1;
-        mesh->rmesh->dims[1] = patch->ny+1;
-        mesh->rmesh->dims[2] = 1;
-
-        mesh->rmesh->baseIndex[0] = 0;
-        mesh->rmesh->baseIndex[1] = 0;
-        mesh->rmesh->baseIndex[2] = 0;
-
-        mesh->rmesh->minRealIndex[0] = 0;
-        mesh->rmesh->minRealIndex[1] = 0;
-        mesh->rmesh->minRealIndex[2] = 0;
-        mesh->rmesh->maxRealIndex[0] = patch->nx;
-        mesh->rmesh->maxRealIndex[1] = patch->ny;
-        mesh->rmesh->maxRealIndex[2] = 1;
-
-        /* Initialize X coords. */
-        float *coordX = (float *)malloc(sizeof(float) * (patch->nx+1));
-        float width  = sim->patch.window[1] - sim->patch.window[0];
-        float x0 = (patch->window[0] - sim->patch.window[0]) / width;
-        float x1 = (patch->window[1] - sim->patch.window[0]) / width;
-        for(i = 0; i < (patch->nx+1); ++i)
+        if(VisIt_RectilinearMesh_alloc(&h) != VISIT_ERROR)
         {
-            float t = float(i) / float(patch->nx);
-            coordX[i] = (1.-t)*x0 + t*x1;
-        }
-        /* Initialize Y coords. */
-        float *coordY = (float *)malloc(sizeof(float) * (patch->ny+1));
-        float height = sim->patch.window[3] - sim->patch.window[2];
-        float y0 = (patch->window[2] - sim->patch.window[2]) / height;
-        float y1 = (patch->window[3] - sim->patch.window[2]) / height;
-        for(i = 0; i < (patch->ny+1); ++i)
-        {
-            float t = float(i) / float(patch->ny);
-            coordY[i] = (1.-t)*y0 + t*y1;
-        }
+            /* Initialize X coords. */
+            float *coordX = (float *)malloc(sizeof(float) * (patch->nx+1));
+            float width  = sim->patch.window[1] - sim->patch.window[0];
+            float x0 = (patch->window[0] - sim->patch.window[0]) / width;
+            float x1 = (patch->window[1] - sim->patch.window[0]) / width;
+            for(i = 0; i < (patch->nx+1); ++i)
+            {
+                float t = float(i) / float(patch->nx);
+                coordX[i] = (1.-t)*x0 + t*x1;
+            }
+            /* Initialize Y coords. */
+            float *coordY = (float *)malloc(sizeof(float) * (patch->ny+1));
+            float height = sim->patch.window[3] - sim->patch.window[2];
+            float y0 = (patch->window[2] - sim->patch.window[2]) / height;
+            float y1 = (patch->window[3] - sim->patch.window[2]) / height;
+            for(i = 0; i < (patch->ny+1); ++i)
+            {
+                float t = float(i) / float(patch->ny);
+                coordY[i] = (1.-t)*y0 + t*y1;
+            }
 
-        /* Let VisIt use the simulation's copy of the mesh coordinates. */
-        mesh->rmesh->xcoords = VisIt_CreateDataArrayFromFloat(
-           VISIT_OWNER_VISIT, coordX);
-        mesh->rmesh->ycoords = VisIt_CreateDataArrayFromFloat(
-           VISIT_OWNER_VISIT, coordY);
-
-        ret = VISIT_OKAY;
+            /* Give the mesh some coordinates it can use. */
+            visit_handle xc, yc;
+            VisIt_VariableData_alloc(&xc);
+            VisIt_VariableData_alloc(&yc);
+            if(xc != VISIT_INVALID_HANDLE && yc != VISIT_INVALID_HANDLE)
+            {
+                VisIt_VariableData_setDataF(xc, VISIT_OWNER_VISIT, 1, patch->nx+1, coordX);
+                VisIt_VariableData_setDataF(yc, VISIT_OWNER_VISIT, 1, patch->ny+1, coordY);
+                VisIt_RectilinearMesh_setCoordsXY(h, xc, yc);
+            }
+            else
+            {
+                free(coordX);
+                free(coordY);
+            }
+        }
     }
 
-    return ret;
+    return h;
 }
 
 /******************************************************************************
@@ -741,62 +724,66 @@ SimGetMesh(int domain, const char *name, VisIt_MeshData *mesh, void *cbdata)
  *
  *****************************************************************************/
 
-int
-SimGetDomainNesting(const char *name, visit_handle nesting, void *cbdata)
+visit_handle
+SimGetDomainNesting(const char *name, void *cbdata)
 {
     simulation_data *sim = (simulation_data *)cbdata;
+    visit_handle h = VISIT_INVALID_HANDLE;
 
-    int npatches = patch_num_patches(&sim->patch);
-    int nlevels = patch_num_levels(&sim->patch);
-    VisIt_DomainNesting_set_dimensions(nesting, npatches, nlevels, 2);
-
-    int ratios[3];
-    for(int level = 0; level < nlevels; ++level)
+    if(VisIt_DomainNesting_alloc(&h) != VISIT_ERROR)
     {
-        if(level == 0)
+        int npatches = patch_num_patches(&sim->patch);
+        int nlevels = patch_num_levels(&sim->patch);
+        VisIt_DomainNesting_set_dimensions(h, npatches, nlevels, 2);
+
+        int ratios[3];
+        for(int level = 0; level < nlevels; ++level)
         {
-            ratios[0] = ratios[1] = ratios[2] = 1;
-            VisIt_DomainNesting_set_levelRefinement(nesting, level, ratios);
+            if(level == 0)
+            {
+                ratios[0] = ratios[1] = ratios[2] = 1;
+                VisIt_DomainNesting_set_levelRefinement(h, level, ratios);
+            }
+            else
+            {
+                ratios[0] = sim->refinement_ratio;
+                ratios[1] = sim->refinement_ratio;
+                ratios[2] = 1;
+            }
+            VisIt_DomainNesting_set_levelRefinement(h, level, ratios);
         }
-        else
+
+        patch_t **patches = patch_flat_array(&sim->patch);
+        int logicalExtents[6];
+        for(int i = 0; i < npatches; ++i)
         {
-            ratios[0] = sim->refinement_ratio;
-            ratios[1] = sim->refinement_ratio;
-            ratios[2] = 1;
+            int *child_patches = NULL;
+            int nchild_patches = patches[i]->nsubpatches;
+            if(nchild_patches > 0)
+            {
+                child_patches = ALLOC(nchild_patches, int);
+                for(int j = 0; j < nchild_patches; ++j)
+                    child_patches[j] = patches[i]->subpatches[j].id;
+            }
+
+            // logical extents are stored lowI,lowJ,lowL,hiI,hiJ,hiK
+            logicalExtents[0] = patches[i]->logical_extents[0];
+            logicalExtents[1] = patches[i]->logical_extents[2];
+            logicalExtents[2] = 0;
+            logicalExtents[3] = patches[i]->logical_extents[1];
+            logicalExtents[4] = patches[i]->logical_extents[3];
+            logicalExtents[5] = 0;
+    
+            VisIt_DomainNesting_set_nestingForPatch(h, 
+                patches[i]->id, patches[i]->level, child_patches, nchild_patches,
+                logicalExtents);
+    
+            FREE(child_patches);
         }
-        VisIt_DomainNesting_set_levelRefinement(nesting, level, ratios);
+        FREE(patches);
     }
 
-    patch_t **patches = patch_flat_array(&sim->patch);
-    int logicalExtents[6];
-    for(int i = 0; i < npatches; ++i)
-    {
-        int *child_patches = NULL;
-        int nchild_patches = patches[i]->nsubpatches;
-        if(nchild_patches > 0)
-        {
-            child_patches = ALLOC(nchild_patches, int);
-            for(int j = 0; j < nchild_patches; ++j)
-                child_patches[j] = patches[i]->subpatches[j].id;
-        }
-
-        // logical extents are stored lowI,lowJ,lowL,hiI,hiJ,hiK
-        logicalExtents[0] = patches[i]->logical_extents[0];
-        logicalExtents[1] = patches[i]->logical_extents[2];
-        logicalExtents[2] = 0;
-        logicalExtents[3] = patches[i]->logical_extents[1];
-        logicalExtents[4] = patches[i]->logical_extents[3];
-        logicalExtents[5] = 0;
-
-        VisIt_DomainNesting_set_nestingForPatch(nesting, 
-            patches[i]->id, patches[i]->level, child_patches, nchild_patches,
-            logicalExtents);
-
-        FREE(child_patches);
-    }
-    FREE(patches);
-
-    return VISIT_OKAY;
+    return h;
 }
 
 /******************************************************************************
@@ -810,10 +797,10 @@ SimGetDomainNesting(const char *name, visit_handle nesting, void *cbdata)
  *
  *****************************************************************************/
 
-int
-SimGetVariable(int domain, const char *name, visit_handle var, void *cbdata)
+visit_handle
+SimGetVariable(int domain, const char *name, void *cbdata)
 {
-    int ret = VISIT_ERROR;
+    visit_handle h = VISIT_INVALID_HANDLE;
 
     /* Get the patch with the appropriate domain id. */
     simulation_data *sim = (simulation_data *)cbdata;
@@ -821,9 +808,10 @@ SimGetVariable(int domain, const char *name, visit_handle var, void *cbdata)
 
     if(strcmp(name, "mandelbrot") == 0 && patch != NULL)
     { 
-        ret = VisIt_VariableData_setDataC(var, VISIT_OWNER_SIM, 1,
+        VisIt_VariableData_alloc(&h);
+        VisIt_VariableData_setDataC(h, VISIT_OWNER_SIM, 1,
             patch->nx * patch->ny, (char *)patch->data);
     }
 
-    return ret;
+    return h;
 }

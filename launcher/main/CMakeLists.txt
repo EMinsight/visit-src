@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-400142
 # All rights reserved.
@@ -38,6 +38,9 @@
 #     Gunther H. Weber, Thu Jan 14 11:36:21 PST 2010
 #     Added conditional target for separate socket bridge executable.
 #
+#     Kathleen Bonnell, Thu Feb 25 11:00:43 MST 2010 
+#     Exclude testvcl on windows.
+#
 #****************************************************************************/
 
 SET(VCL_SOURCES
@@ -60,15 +63,17 @@ ${VISIT_SOURCE_DIR}/launcher/proxy
 
 LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY} ${VTK_LIBRARY_DIRS})
 
-ADD_EXECUTABLE(vcl ${VCL_SOURCES})
+ADD_EXECUTABLE(vcl ${VCL_SOURCES} ${VISIT_WIN_ICON_RESOURCE})
 TARGET_LINK_LIBRARIES(vcl vclrpc visitcommon ${CMAKE_THREAD_LIBS} ${DL_LIB})
 
 IF (VISIT_CREATE_SOCKET_RELAY_EXECUTABLE)
     ADD_EXECUTABLE(visit_socket_relay SocketRelayMain.C SocketBridge.C)
     TARGET_LINK_LIBRARIES(visit_socket_relay visitcommon ${CMAKE_THREAD_LIBS} ${DL_LIB})
+    VISIT_INSTALL_TARGETS(visit_socket_relay)
 ENDIF (VISIT_CREATE_SOCKET_RELAY_EXECUTABLE)
 
-ADD_EXECUTABLE(testvcl EXCLUDE_FROM_ALL testvcl.C)
-TARGET_LINK_LIBRARIES(testvcl vclproxy vclrpc visitcommon ${CMAKE_THREAD_LIBS} ${DL_LIB})
-
+IF (NOT WIN32)
+    ADD_EXECUTABLE(testvcl EXCLUDE_FROM_ALL testvcl.C)
+    TARGET_LINK_LIBRARIES(testvcl vclproxy vclrpc visitcommon ${CMAKE_THREAD_LIBS} ${DL_LIB})
+ENDIF (NOT WIN32)
 VISIT_INSTALL_TARGETS(vcl)

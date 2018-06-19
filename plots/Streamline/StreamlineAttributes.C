@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -50,9 +50,9 @@
 //
 
 static const char *SourceType_strings[] = {
-"SpecifiedPoint", "SpecifiedLine", "SpecifiedPlane", 
-"SpecifiedSphere", "SpecifiedBox", "SpecifiedCircle", 
-"SpecifiedPointList"};
+"SpecifiedPoint", "SpecifiedPointList", "SpecifiedLine", 
+"SpecifiedCircle", "SpecifiedPlane", "SpecifiedSphere", 
+"SpecifiedBox"};
 
 std::string
 StreamlineAttributes::SourceType_ToString(StreamlineAttributes::SourceType t)

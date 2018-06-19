@@ -69,6 +69,8 @@
 #include <vtkCamera.h>
 #include <vtkStripper.h>
 #include <avtVector.h>
+#include <vtkTriangleFilter.h>
+#include <vtkVisItSTLWriter.h>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -392,6 +394,8 @@ avtOpenGLStreamlineRenderer::DrawStreamlines(vtkPolyData *data)
 {
     if (atts.GetOpacityType() != StreamlineAttributes::None)
         appendForTranspPolys = vtkAppendPolyData::New();
+    if (atts.GetOpacityType() == StreamlineAttributes::VariableRange)
+        InitVarOpacity(data);
     
     if (atts.GetShowSeeds())
         DrawSeedPoints(data);
@@ -424,9 +428,11 @@ avtOpenGLStreamlineRenderer::DrawStreamlines(vtkPolyData *data)
 //
 //  Modifications:
 //
-//
 //   Dave Pugmire (for Christoph Garth), Wed Jan 20 09:28:59 EST 2010
-//   Illuminated lighting model for lines..
+//   Illuminated lighting model for lines.
+//
+//   Dave Pugmire, Thu Mar 25 16:34:23 EDT 2010
+//   Fixed indexing problem.
 //
 // ****************************************************************************
 
@@ -532,11 +538,11 @@ avtOpenGLStreamlineRenderer::DrawAsLines(vtkPolyData *data)
         }
 
         //If we have an interpolated end point, calculate it.
-        if (idx1 < nPts)
+        if (idx1 < nPts && idx1 > 0)
         {
             double next[3];
-            points->GetPoint(segptr[idx1], pt);
-            points->GetPoint(segptr[idx1+1], next);
+            points->GetPoint(segptr[idx1-1], pt);
+            points->GetPoint(segptr[idx1], next);
             
             float p[3];
             p[0] = pt[0] + t1*(next[0]-pt[0]);
@@ -544,16 +550,16 @@ avtOpenGLStreamlineRenderer::DrawAsLines(vtkPolyData *data)
             p[2] = pt[2] + t1*(next[2]-pt[2]);
 
             float  s0, s1, s, o;
-            s0 = scalar[segptr[idx1]];
-            s1 = scalar[segptr[idx1+1]];
+            s0 = scalar[segptr[idx1-1]];
+            s1 = scalar[segptr[idx1]];
             s = s0 + t1*(s1-s0);
             
             if (atts.GetOpacityType() == StreamlineAttributes::Ramp)
                 o = 1.0;
             else if (opacity)
             {
-                s0 = scalar[segptr[idx1]];
-                s1 = scalar[segptr[idx1+1]];
+                s0 = scalar[segptr[idx1-1]];
+                s1 = scalar[segptr[idx1]];
                 o = s0 + t1*(s1-s0);
             }
             
@@ -561,8 +567,8 @@ avtOpenGLStreamlineRenderer::DrawAsLines(vtkPolyData *data)
             
             if (tangents)
             {
-                float* v0 = tangents + segptr[idx1];
-                float* v1 = tangents + segptr[idx1+1];
+                float* v0 = tangents + segptr[idx1-1];
+                float* v1 = tangents + segptr[idx1];
             
                 v[0] = v0[0] + t1*(v1[0]-v0[0]);
                 v[1] = v0[1] + t1*(v1[1]-v0[1]);
@@ -843,6 +849,9 @@ avtOpenGLStreamlineRenderer::DrawSeedPoints(vtkPolyData *data)
 //   Dave Pugmire, Tue Feb 16 09:08:32 EST 2010
 //   Add display head geom as cone.
 //
+//   Dave Pugmire, Thu Mar 25 16:34:23 EDT 2010
+//   Fixed indexing problem.
+//
 // ****************************************************************************
 
 void
@@ -890,13 +899,13 @@ avtOpenGLStreamlineRenderer::DrawHeadGeom(vtkPolyData *data)
             endPtPrev[2] = pt[2];
             
             float  s0, s1;
-            s0 = s[segptr[idx1]];
-            s1 = s[segptr[idx1+1]];
+            s0 = s[segptr[idx1-1]];
+            s1 = s[segptr[idx1]];
             scalar = s0 + t1*(s1-s0);
             if (o)
             {
-                s0 = o[segptr[idx1]];
-                s1 = o[segptr[idx1+1]];
+                s0 = o[segptr[idx1-1]];
+                s1 = o[segptr[idx1]];
                 opacity = s0 + t1*(s1-s0);
             }
         }
@@ -963,6 +972,9 @@ avtOpenGLStreamlineRenderer::DrawHeadGeom(vtkPolyData *data)
 //   Dave Pugmire, Wed Jan 20 09:28:59 EST 2010
 //   Copy over the param array.
 //
+//   Dave Pugmire, Thu Mar 25 16:34:23 EDT 2010
+//   Fixed indexing problem.
+//
 // ****************************************************************************
 
 vtkPolyData *
@@ -1028,13 +1040,13 @@ avtOpenGLStreamlineRenderer::MakeNewPolyline(vtkPolyData *data,
         points->GetPoint(segptr[idx0-1], prev);
         points->GetPoint(segptr[idx0], pt);
         
-        double p[3];
-        p[0] = prev[0] + t0*(pt[0]-prev[0]);
-        p[1] = prev[1] + t0*(pt[1]-prev[1]);
-        p[2] = prev[2] + t0*(pt[2]-prev[2]);
+        double pi[3];
+        pi[0] = prev[0] + t0*(pt[0]-prev[0]);
+        pi[1] = prev[1] + t0*(pt[1]-prev[1]);
+        pi[2] = prev[2] + t0*(pt[2]-prev[2]);
         //cout<<"0"<<" "<<idx<<": "<<pt[0]<<" "<<pt[1]<<" "<<pt[2]<<endl;
         
-        pts->InsertPoint(idx, p[0], p[1], p[2]);
+        pts->InsertPoint(idx, pi[0], pi[1], pi[2]);
         cells->InsertCellPoint(idx);
 
         double v0, v1, v;
@@ -1084,43 +1096,43 @@ avtOpenGLStreamlineRenderer::MakeNewPolyline(vtkPolyData *data,
     }
 
     //If we have an interpolated end point, calculate it.
-    if (idx1 < nPts)
+    if (idx1 < nPts && idx1 > 0)
     {
         double next[3];
-        points->GetPoint(segptr[idx1], pt);
-        points->GetPoint(segptr[idx1+1], next);
+        points->GetPoint(segptr[idx1-1], pt);
+        points->GetPoint(segptr[idx1], next);
         
-        double p[3];
-        p[0] = pt[0] + t1*(next[0]-pt[0]);
-        p[1] = pt[1] + t1*(next[1]-pt[1]);
-        p[2] = pt[2] + t1*(next[2]-pt[2]);
+        double pi[3];
+        pi[0] = pt[0] + t1*(next[0]-pt[0]);
+        pi[1] = pt[1] + t1*(next[1]-pt[1]);
+        pi[2] = pt[2] + t1*(next[2]-pt[2]);
         //cout<<"N"<<" "<<idx<<": "<<pt[0]<<" "<<pt[1]<<" "<<pt[2]<<endl;
         
-        pts->InsertPoint(idx, p[0], p[1], p[2]);
+        pts->InsertPoint(idx, pi[0], pi[1], pi[2]);
         cells->InsertCellPoint(idx);
         
         double v0, v1, v;
-        v0 = s[segptr[idx1]];
-        v1 = s[segptr[idx1+1]];
+        v0 = s[segptr[idx1-1]];
+        v1 = s[segptr[idx1]];
         v = v0 + t1*(v1-v0);
         scalars->InsertTuple1(idx, v);
 
-        v0 = p[segptr[idx1]];
-        v1 = p[segptr[idx1+1]];
+        v0 = p[segptr[idx1-1]];
+        v1 = p[segptr[idx1]];
         v = v0 + t1*(v1-v0);
         params->InsertTuple1(idx, v);
 
         if (t)
         {
-            v0 = t[segptr[idx1]];
-            v1 = t[segptr[idx1+1]];
+            v0 = t[segptr[idx1-1]];
+            v1 = t[segptr[idx1]];
             v = v0 + t1*(v1-v0);
             thetas->InsertTuple1(idx, v);
         }
         if (o)
         {
-            v0 = o[segptr[idx1]];
-            v1 = o[segptr[idx1+1]];
+            v0 = o[segptr[idx1-1]];
+            v1 = o[segptr[idx1]];
             v = v0 + t1*(v1-v0);
             opacity->InsertTuple1(idx, v);
         }
@@ -1235,6 +1247,25 @@ avtOpenGLStreamlineRenderer::DrawPolyData(vtkPolyData *input)
 
     if (sorter)
         sorter->Delete();
+
+    /*
+    //Write as STL.
+    vtkTriangleFilter *tris = vtkTriangleFilter::New();
+    tris->SetPassLines(false);
+    tris->SetPassVerts(false);
+    tris->SetInput(input);
+    vtkVisItSTLWriter *writer = vtkVisItSTLWriter::New();
+    writer->SetFileTypeToBinary();
+    static int cnt = 0;
+    char tmp[132];
+    sprintf(tmp, "output_%02d.stl", cnt);
+    cnt++;
+    writer->SetFileName(tmp);
+    writer->SetInput(tris->GetOutput());
+    writer->Write();
+    writer->Delete();
+    tris->Delete();
+    */
 }
 
 // ****************************************************************************
@@ -1290,9 +1321,10 @@ avtOpenGLStreamlineRenderer::SetColor(const float &scalar,
              atts.GetOpacityType() == StreamlineAttributes::VariableRange)
     {
         float alpha = atts.GetOpacity();
-        
         if (atts.GetOpacityType() == StreamlineAttributes::VariableRange)
         {
+            //alpha *= (opacity-opacityMin) / opacityDiff;
+
             if (atts.GetOpacityVarMinFlag() && opacity < atts.GetOpacityVarMin())
                 alpha = 0.0;
             if (atts.GetOpacityVarMaxFlag() && opacity > atts.GetOpacityVarMax())
@@ -2031,4 +2063,61 @@ avtOpenGLStreamlineRenderer::ComputeRampOpacity(const float &p) const
         o = 1.0;
     
     return o;
+}
+
+
+// ****************************************************************************
+//  Method:  avtOpenGLStreamlineRenderer::InitVarOpacity
+//
+//  Purpose:
+//    
+//  Programmer:  Dave Pugmire
+//  Creation:    April 5, 2010
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+void
+avtOpenGLStreamlineRenderer::InitVarOpacity(vtkPolyData *data)
+{
+    /*
+    float *opacity = NULL;
+    if (data->GetPointData()->GetArray(avtStreamlinePolyDataFilter::opacityArrayName.c_str()))
+        opacity = (float *)data->GetPointData()->GetArray(avtStreamlinePolyDataFilter::opacityArrayName.c_str())->GetVoidPointer(0);
+
+    if (opacity == NULL)
+        return;
+
+    vtkPoints *points = data->GetPoints();
+    vtkCellArray *lines = data->GetLines();
+    vtkIdType *segments = lines->GetPointer();
+
+    int *segptr = segments;
+
+    for (int i=0; i<data->GetNumberOfLines(); i++)
+    {
+        int nPts = *segptr;
+        segptr++;
+        for (int j=0; j < nPts; j++)
+        {
+            float o = opacity[segptr[j]];
+            if (i == 0 && j == 0)
+            {
+                opacityMin = o;
+                opacityMax = o;
+            }
+            else
+            {
+                if (o < opacityMin)
+                    opacityMin = o;
+                if (o > opacityMax)
+                    opacityMax = o;
+            }
+        }
+        segptr += nPts;
+    }
+
+    opacityDiff = opacityMax-opacityMin;
+    */
 }

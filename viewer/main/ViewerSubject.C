@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -241,6 +241,9 @@ using std::string;
 //    Brad Whitlock, Tue Apr 14 11:47:41 PDT 2009
 //    I moved many members into ViewerProperties.
 //
+//    Jeremy Meredith, Wed Apr 21 13:19:50 EDT 2010
+//    Save a copy of the original system host profiles.
+//
 // ****************************************************************************
 
 ViewerSubject::ViewerSubject() : ViewerBase(0), 
@@ -253,7 +256,6 @@ ViewerSubject::ViewerSubject() : ViewerBase(0),
     // until later.
     //
     checkParent = 0;
-    checkRenderer = 0;
 
     //
     // We start out with no ParentProcess object and it's only temporary anyway.
@@ -312,6 +314,7 @@ ViewerSubject::ViewerSubject() : ViewerBase(0),
     configMgr = new ViewerConfigManager(this);
     systemSettings = 0;
     localSettings = 0;
+    originalSystemHostProfileList = 0;
 
     //
     // Initialize pointers to some objects that don't get created until later.
@@ -319,7 +322,6 @@ ViewerSubject::ViewerSubject() : ViewerBase(0),
     plotFactory = 0;
     operatorFactory = 0;
     messageBuffer = new ViewerMessageBuffer;
-    messagePipe[0] = -1; messagePipe[1] = -1;
 
     viewerSubject = this;   // FIX_ME Hack, this should be removed.
 
@@ -369,6 +371,9 @@ ViewerSubject::ViewerSubject() : ViewerBase(0),
 //    Brad Whitlock, Tue Apr 14 11:21:46 PDT 2009
 //    Delete viewer properties.
 //
+//    Jeremy Meredith, Wed Apr 21 13:20:11 EDT 2010
+//    Delete original system host profile list.
+//
 // ****************************************************************************
 
 ViewerSubject::~ViewerSubject()
@@ -384,6 +389,7 @@ ViewerSubject::~ViewerSubject()
     delete operatorFactory;
     delete configMgr;
     delete syncObserver;
+    delete originalSystemHostProfileList;
 
     delete GetViewerProperties();
     delete GetViewerState();
@@ -455,6 +461,9 @@ ViewerSubject::Connect(int *argc, char ***argv)
 //
 //   Brad Whitlock, Tue Apr 14 11:57:11 PDT 2009
 //   Use ViewerProperties.
+//
+//   Brad Whitlock, Thu Apr 22 16:53:34 PST 2010
+//   Use a signal to schedule HeavyInitialization.
 //
 // ****************************************************************************
 
@@ -534,6 +543,12 @@ ViewerSubject::Initialize()
         // client.
         //
         QTimer::singleShot(350, this, SLOT(EnableSocketSignals()));
+    }
+    else
+    {
+        connect(this, SIGNAL(scheduleHeavyInitialization()),
+                this, SLOT(HeavyInitialization()),
+                Qt::QueuedConnection);
     }
 
     visitTimer->StopTimer(timeid, "Total time setting up");
@@ -1039,7 +1054,10 @@ ViewerSubject::HeavyInitialization()
         if(processingFromParent)
             QTimer::singleShot(100, this, SLOT(CreateViewerDelayedState()));
         else
+        {
+            // This is the more common case
             CreateViewerDelayedState();
+        }
 
         // Discover the client's information.
         QTimer::singleShot(100, this, SLOT(DiscoverClientInformation()));
@@ -1775,6 +1793,9 @@ ViewerSubject::LaunchEngineOnStartup()
 // Creation:   Thu Apr  9 16:05:43 PDT 2009
 //
 // Modifications:
+//   Jeremy Meredith, Fri Mar 26 13:12:48 EDT 2010
+//   Allow for the -o command line option to take an optional ,<pluginID>
+//   suffix, e.g. "-o foobar,LAMMPS_1.0".
 //   
 // ****************************************************************************
 
@@ -1783,11 +1804,28 @@ ViewerSubject::OpenDatabaseOnStartup()
 {
     if(openDatabaseOnStartup != "")
     {
-        OpenDatabaseHelper(openDatabaseOnStartup, // DB name
-           0,    // timeState, 
-           true, // addDefaultPlots
-           true, // updateWindowInfo,
-           "");  // forcedFileType
+        stringVector split = StringHelpers::split(openDatabaseOnStartup,',');
+
+        int ts = -1; // OpenDatabaseHelper returns -1 on error
+        if (split.size() == 2)
+        {
+            ts = OpenDatabaseHelper(split[0],  // DB name
+                                    0,         // timeState, 
+                                    true,      // addDefaultPlots
+                                    true,      // updateWindowInfo,
+                                    split[1]); // forcedFileType
+        }
+
+        // If we didn't try, or failed, to open using the above
+        // method, try using just the given name without splitting.
+        if (ts < 0)
+        {
+            ts = OpenDatabaseHelper(openDatabaseOnStartup, // DB name
+                                    0,    // timeState, 
+                                    true, // addDefaultPlots
+                                    true, // updateWindowInfo,
+                                    "");  // forcedFileType
+        }
 
         ViewerWindowManager::Instance()->UpdateActions();
         ViewerWindowManager::Instance()->ShowAllWindows();
@@ -2286,6 +2324,10 @@ ViewerSubject::GetOperatorFactory() const
 //    Jeremy Meredith, Thu Feb 18 15:39:42 EST 2010
 //    Host profiles are now handles outside the config manager.
 //
+//    Jeremy Meredith, Wed Apr 21 13:20:28 EDT 2010
+//    Save a copy of the original host profiles loaded from the system dir.
+//    Don't read any host profiles if they passed -noconfig.
+//
 // ****************************************************************************
 
 void
@@ -2363,12 +2405,24 @@ ViewerSubject::ReadConfigFiles(int argc, char **argv)
     configMgr->ProcessConfigSettings(systemSettings);
     configMgr->ProcessConfigSettings(localSettings);
     configMgr->ClearSubjects();
-    ReadAndProcessDirectory(GetAndMakeSystemVisItHostsDirectory(),
-                            &ReadHostProfileCallback,
-                            GetViewerState()->GetHostProfileList());
-    ReadAndProcessDirectory(GetAndMakeUserVisItHostsDirectory(),
-                            &ReadHostProfileCallback,
-                            GetViewerState()->GetHostProfileList());
+
+    // And do the host profiles.  Keep the system one around
+    // so we can see what the user changed and that we have to keep.
+    if (!GetViewerProperties()->GetNoConfig())
+    {
+        if (originalSystemHostProfileList != NULL)
+            delete originalSystemHostProfileList;
+        originalSystemHostProfileList = new HostProfileList;
+        ReadAndProcessDirectory(GetSystemVisItHostsDirectory(),
+                                &ReadHostProfileCallback,
+                                originalSystemHostProfileList);
+        *(GetViewerState()->GetHostProfileList()) =
+                                                *originalSystemHostProfileList;
+        ReadAndProcessDirectory(GetAndMakeUserVisItHostsDirectory(),
+                                &ReadHostProfileCallback,
+                                GetViewerState()->GetHostProfileList());
+    }
+
     visitTimer->StopTimer(timeid, "Reading config files.");
 }
 
@@ -2507,6 +2561,12 @@ ViewerSubject::ReadConfigFiles(int argc, char **argv)
 //
 //    Mark C. Miller, Tue Apr 21 14:24:18 PDT 2009
 //    Added logic to manage buffering of debug logs; an extra 'b' after level.
+//
+//    Jeremy Meredith, Fri Mar 26 10:39:17 EDT 2010
+//    Though we do not need to use the command line to specify assumed and
+//    fallback formats anymore, such usage still has some conveniences.
+//    Added support to munge the preferred list when given those options.
+//
 // ****************************************************************************
 
 void
@@ -2846,6 +2906,26 @@ ViewerSubject::ProcessCommandLine(int argc, char **argv)
         {
             ViewerServerManager::ForceSSHTunnelingForAllConnections();
         }
+        else if (strcmp(argv[i], "-assume_format") == 0)
+        {
+            if ((i + 1 >= argc))
+            {
+                cerr << "The -assume_format option must be followed by a "
+                        "string." << endl;
+            }
+            ViewerFileServer::Instance()->AddAssumedFormatFromCL(argv[i+1]);
+            ++i;
+        }
+        else if (strcmp(argv[i], "-fallback_format") == 0)
+        {
+            if ((i + 1 >= argc))
+            {
+                cerr << "The -fallback_format option must be followed by a "
+                        "string." << endl;
+            }
+            ViewerFileServer::Instance()->AddFallbackFormatFromCL(argv[i+1]);
+            ++i;
+        }
         else // Unknown argument -- add it to the list
         {
             clientArguments.push_back(argv[i]);
@@ -2884,16 +2964,8 @@ ViewerSubject::ProcessCommandLine(int argc, char **argv)
 void
 ViewerSubject::MessageRendererThread(const char *message)
 {
-#ifdef VIEWER_MT
-    int msglen = strlen(message);
-    if (write(this->messagePipe[1], message, msglen) != msglen)
-    {
-        cerr << "Error sending a message to the master thread.\n";
-    }
-#else
     messageBuffer->AddString(message);
     QTimer::singleShot(1, this, SLOT(ProcessRendererMessage()));
-#endif
 }
 
 // ****************************************************************************
@@ -4000,6 +4072,10 @@ ViewerSubject::CreateAttributesDataNode(const avtDefaultPlotMetaData *dp) const
 //    Brad Whitlock, Tue Apr 14 13:38:10 PDT 2009
 //    Use ViewerProperties.
 //
+//    Brad Whitlock, Tue Mar 16 11:56:53 PDT 2010
+//    I added a call to ClearCache for simulations to force this method to
+//    block until metadata and SIL have come back from the simulation.
+//
 // ****************************************************************************
 
 int
@@ -4239,6 +4315,13 @@ ViewerSubject::OpenDatabaseHelper(const std::string &entireDBName,
             {
                 eMgr->OpenDatabase(ek, md->GetFileFormat().c_str(),
                                    db.c_str(), timeState);
+
+                // If we're opening a simulation, send ClearCache to it since that
+                // is a harmless blocking RPC that will prevent OpenDatabaase from
+                // returning until we get simulation metadata and SIL back. This is
+                // a synchronize operation.
+                if(md->GetIsSimulation())
+                    eMgr->ClearCache(ek, "invalid name");
             }
         }
         
@@ -5888,10 +5971,21 @@ ViewerSubject::ExportColorTable()
 //    Use ViewerProperties.
 //
 //    Jeremy Meredith, Thu Feb 18 15:39:42 EST 2010
-//    Host profiles are now handles outside the config manager.
+//    Host profiles are now handled outside the config manager.
 //
 //    Jeremy Meredith, Fri Feb 19 13:29:24 EST 2010
 //    Make sure host profile filenames are unique.
+//
+//    Jeremy Meredith, Wed Apr 21 13:15:09 EDT 2010
+//    Only write out host profiles users have changed.
+//
+//    Jeremy Meredith, Thu Apr 22 13:21:27 EDT 2010
+//    Also make sure to write out new host profiles that don't exist
+//    in the system host profiles.
+//
+//    Jeremy Meredith, Thu Apr 29 14:48:03 EDT 2010
+//    If the user modified a profile from the original system-global one,
+//    only write out the fields they actually changed, not the whole thing.
 //
 // ****************************************************************************
 
@@ -5929,7 +6023,7 @@ ViewerSubject::WriteConfigFile()
     //
     string userdir = GetAndMakeUserVisItHostsDirectory();
     HostProfileList *hpl = GetViewerState()->GetHostProfileList();
-    ReadAndProcessDirectory(userdir, &CleanHostProfileCallback, hpl);
+    ReadAndProcessDirectory(userdir, &CleanHostProfileCallback);
     // Make a filename-safe version of the nicknames
     stringVector basenames;
     int n = hpl->GetNumMachines();
@@ -5962,14 +6056,45 @@ ViewerSubject::WriteConfigFile()
             basenames[i] += tmp;
         }
     }
-    // Write them out
+    // Write them out if they are different
     for (int i=0; i<hpl->GetNumMachines(); i++)
     {
         MachineProfile &pl = hpl->GetMachines(i);
+        // try to find an original system-global profile which our
+        // user one was modified from
+        MachineProfile *orig = NULL;
+        for (int j=0; j<originalSystemHostProfileList->GetNumMachines(); j++)
+        {
+            MachineProfile &origpl(originalSystemHostProfileList->GetMachines(j));
+            if (origpl.GetHostNickname() == pl.GetHostNickname())
+            {
+                orig = &origpl;
+                break;
+            }
+        }
         string filename = userdir + VISIT_SLASH_STRING +
                           "host_" + basenames[i] + ".xml";
-        SingleAttributeConfigManager mgr(&pl);
-        mgr.Export(filename);
+        if (orig)
+        {
+            // if we found a match, compare the original with the new
+            if (*orig != pl)
+            {
+                // if there are differences, we should only write
+                // out the things the user actually changed, so that
+                // they pick up any updates to the system one
+                pl.SelectOnlyDifferingFields(*orig);
+                SingleAttributeConfigManager mgr(&pl);
+                mgr.Export(filename, false);
+            }
+            // else skip it entirely - it's identical
+        }
+        else
+        {
+            // there's no original version - user-created, write it out
+            // in its entirety
+            SingleAttributeConfigManager mgr(&pl);
+            mgr.Export(filename);
+        }
     }
 }
 
@@ -6058,6 +6183,9 @@ ViewerSubject::ImportEntireStateWithDifferentSources()
 //   Brad Whitlock, Fri May  9 14:54:53 PDT 2008
 //   Qt 4.
 //
+//   Kathleen Bonnell, Fri Jun 18 15:11:42 MST 2010
+//   Use '.session' as extension on windows, too.
+//
 // ****************************************************************************
 
 void
@@ -6065,11 +6193,7 @@ ViewerSubject::RemoveCrashRecoveryFile() const
 {
     QString filename(GetUserVisItDirectory().c_str());
     filename += "crash_recovery";
-#if defined(_WIN32)
-    filename += ".vses";
-#else
     filename += ".session";
-#endif
     // Remove the viewer's crash recovery file if it exists.
     QFile cr(filename);
     if(cr.exists())
@@ -6674,6 +6798,10 @@ ViewerSubject::SetWindowArea()
 //   Jeremy Meredith, Tue Feb  8 08:58:49 PST 2005
 //   Added a query for errors detected during plugin initialization.
 //
+//   Brad Whitlock, Thu Apr 22 17:02:23 PST 2010
+//   Defer execution of HeavyInitialization so when it modifies the viewer
+//   state, it does not alter the xfer subjects already in a notify.
+//
 // ****************************************************************************
 
 void
@@ -6715,7 +6843,7 @@ ViewerSubject::ConnectToMetaDataServer()
     //
     // Do heavy initialization if we still need to do it.
     //
-    HeavyInitialization();
+    emit scheduleHeavyInitialization();
 }
 
 // ****************************************************************************
@@ -7335,20 +7463,6 @@ ViewerSubject::ProcessRendererMessage()
     TRY
     {
         char msg[512];
-
-#ifdef VIEWER_MT
-        //
-        // Read from the message pipe.
-        //
-        int n = read(messagePipe[0], msg, 512);
-        if (n < 0 && n >= 512)
-        {
-            cerr << "Error getting the message sent to the master.\n";
-            CATCH_RETURN(1);
-        }
-        msg[n] = '\0';
-        messageBuffer->AddString(msg);
-#endif
 
         //
         // Add the string to the message buffer and then process messages
@@ -8806,6 +8920,11 @@ ViewerSubject::DiscoverClientInformation()
 //
 //    Mark C. Miller, Wed Jun 17 17:46:18 PDT 2009
 //    Replaced CATCHALL(...) with CATCHALL
+//
+//    Brad Whitlock, Wed May 12 14:09:23 PST 2010
+//    Add an extra Show() for MacOS X since 10.5 versions weren't showing new
+//    windows.
+//
 // ****************************************************************************
 
 void
@@ -8814,6 +8933,9 @@ ViewerSubject::ConnectWindow(ViewerWindow *win)
     TRY
     {
         win->GetActionManager()->EnableActions(ViewerWindowManager::Instance()->GetWindowAtts());
+#ifdef Q_WS_MACX
+        win->Show();
+#endif
     }
     CATCHALL
     {
@@ -10250,7 +10372,6 @@ ViewerSubject::SetNowinMode(bool value)
 //   Callback for directory processing.  Unlinks old host profiles.
 //
 // Arguments:
-//   hpl        the host profile list to load into
 //   file       the current filename
 //   isdir      true if it's a directory
 //
@@ -10259,13 +10380,12 @@ ViewerSubject::SetNowinMode(bool value)
 //
 // ****************************************************************************
 static void
-CleanHostProfileCallback(void *hpl,
+CleanHostProfileCallback(void *,
                          const string &file,
                          bool isdir,
                          bool canaccess,
                          long size)
 {
-    HostProfileList *profileList = (HostProfileList*)hpl;
     if (isdir)
         return;
     string base = StringHelpers::Basename(file.c_str());
@@ -10298,6 +10418,17 @@ CleanHostProfileCallback(void *hpl,
 // Programmer:  Jeremy Meredith
 // Creation:    February 18, 2010
 //
+// Modifications:
+//   Jeremy Meredith, Wed Apr 21 11:29:10 EDT 2010
+//   If we're reading something with the same nickname, clobber the old one.
+//   This allows user-saved profiles to override system ones.
+//
+//   Jeremy Meredith, Thu Apr 29 15:05:52 EDT 2010
+//   Don't completely override the old one -- instead, import it over top of
+//   the original one.  We no longer assume that host profiles saved to disk
+//   are complete -- they now only contain values users changed from the 
+//   system-global host profiles.
+//
 // ****************************************************************************
 static void
 ReadHostProfileCallback(void *hpl,
@@ -10318,11 +10449,36 @@ ReadHostProfileCallback(void *hpl,
         (base.substr(base.length()-4) != ".xml" &&
          base.substr(base.length()-4) != ".XML"))
         return;
+
+    // Import the machine profile
     MachineProfile mp;
     SingleAttributeConfigManager mgr(&mp);
     mgr.Import(file);
     mp.SelectAll();
-    profileList->AddMachines(mp);
+
+    // If it matches one of the existing ones, import it
+    // over top of the old one so the old settings remain
+    bool found = false;
+    for (int i=0; i<profileList->GetNumMachines(); i++)
+    {
+        MachineProfile &mpold(profileList->GetMachines(i));
+        if (mpold.GetHostNickname() == mp.GetHostNickname())
+        {
+            // note: yes, it's less inefficient to import it
+            // twice, but the only easy way to override only
+            // some of the old settings instead of all of them
+            SingleAttributeConfigManager mgr2(&mpold);
+            mgr2.Import(file);
+            found = true;
+            break;
+        }
+    }
+    // and if it doesn't match, just add it to the list
+    if (!found)
+    {
+        profileList->AddMachines(mp);
+    }
+    mp.SelectAll();
     profileList->SelectMachines();
 }
                              

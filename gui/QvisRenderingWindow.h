@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -109,6 +109,9 @@ class QLineEdit;
 //   Brad Whitlock, Thu Jun 19 12:14:23 PDT 2008
 //   Qt 4.
 //
+//   Jeremy Meredith, Fri Apr 30 14:25:11 EDT 2010
+//   Added depth cueing automatic mode.
+//
 // ****************************************************************************
 
 class GUI_API QvisRenderingWindow : public QvisPostableWindowSimpleObserver
@@ -150,6 +153,7 @@ private slots:
     void shadowToggled(bool);
     void shadowStrengthChanged(int, const void*);
     void depthCueingToggled(bool);
+    void depthCueingAutoToggled(bool);
     void depthCueingStartChanged();
     void depthCueingEndChanged();
     void colorTexturingToggled(bool);
@@ -191,6 +195,7 @@ private:
     QLabel            *shadowStrengthLabel;
     QvisOpacitySlider *shadowStrengthSlider;
     QCheckBox         *depthCueingToggle;
+    QCheckBox         *depthCueingAutoToggle;
     QLabel            *depthCueingStartLabel;
     QLineEdit         *depthCueingStartEdit;
     QLabel            *depthCueingEndLabel;

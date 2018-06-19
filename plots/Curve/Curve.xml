@@ -1,21 +1,26 @@
 <?xml version="1.0"?>
-  <Plugin name="Curve" type="plot" label="Curve" version="1.0" enabled="true" mdspecificcode="false" onlyengine="false" noengine="false" vartype="curve" iconFile="Curve.xpm">
+  <Plugin name="Curve" type="plot" label="Curve" version="1.0" enabled="true" mdspecificcode="false" engspecificcode="false" onlyengine="false" noengine="false" vartype="curve" iconFile="Curve.xpm">
+    <CXXFLAGS>
+      -I${GLEW_INCLUDE_DIR}
+    </CXXFLAGS>
     <Files components="V">
       avtCurveFilter.C
       avtCurveRenderer.C
       avtOpenGLCurveRenderer.C
-      avtMesaCurveRenderer.C
     </Files>
     <Files components="E">
       avtCurveFilter.C
       avtCurveRenderer.C
       avtOpenGLCurveRenderer.C
-      avtMesaCurveRenderer.C
     </Files>
-    <Attribute name="CurveAttributes" purpose="Attributes for the xy plot" persistent="true" exportAPI="" exportInclude="" codefile="CurveAttributes.code">
+    <Attribute name="CurveAttributes" purpose="Attributes for the xy plot" persistent="true" keyframe="true" exportAPI="" exportInclude="" codefile="CurveAttributes.code">
       <Enum name="RenderMode">
         RenderAsLines
         RenderAsSymbols
+      </Enum>
+      <Enum name="CurveColor">
+        Cycle
+        Custom
       </Enum>
       <Enum name="SymbolTypes">
         TriangleUp
@@ -31,7 +36,7 @@
       <Field name="lineWidth" label="Line Width" type="linewidth">
         0
       </Field>
-      <Field name="color" label="Color" type="color">
+      <Field name="curveColor" label="Color" type="color" length="4">
         0
         0
         0
@@ -51,8 +56,8 @@
       <Field name="showLegend" label="Legend" type="bool">
         true
       </Field>
-      <Field name="cycleColors" label="cycleColors" type="bool">
-        true
+      <Field name="curveColorSource" label="Curve color" type="enum" subtype="CurveColor">
+        Cycle
       </Field>
       <Field name="renderMode" label="Render mode" type="enum" subtype="RenderMode">
         RenderAsLines

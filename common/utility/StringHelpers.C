@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -454,6 +454,40 @@ StringHelpers::ReplaceRE(string &s, const string &re, const string &repl)
     return true;
 }
 
+
+// ****************************************************************************
+//  Function: Replace
+//
+//  Purpose: Simple string replace helper.
+//
+//  Programmer: Cyrus Harrison
+//  Creation:   Wed Mar 17 13:00:43 PDT 2010
+//
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+string
+StringHelpers::Replace(const string &source,
+                       const string &before,
+                       const string &after)
+{
+    string res = source;
+    string::size_type before_len = before.size();
+    string::size_type after_len  = after.size();
+    if(before_len == 0)
+        return res;
+    string::size_type pos = 0; // Must initialize
+    while ( ( pos = res.find (before,pos) ) != string::npos )
+    {
+        res.replace(pos,before_len,after);
+        pos += after_len;
+    }
+
+    return res;
+}
+
 // ****************************************************************************
 //  Function: ExtractRESubstr 
 //
@@ -467,11 +501,15 @@ StringHelpers::ReplaceRE(string &s, const string &re, const string &repl)
 //   pass here would look like...
 //
 //                                               V--substring reference
-//                      "<.*_([0-9]{4})_.*\\..*> \1"
+//                      "<.*_([0-9]{4})_.*\\..*> \0"
 //          opening char-^                     ^--closing char
 //                        ^------RE part------^
 //
 //  Do a 'man 7 regex' to get more information on regular expression syntax
+//
+//  Note: The substring reference implemented here is a zero-origin index.
+//  That is NOT consistent with 'man 7 regex' which uses a one-origin index.
+//  We should probably update this logic to use one-origin index.
 //
 //  Programmer: Mark C. Miller 
 //  Creation:   June 12, 2007 

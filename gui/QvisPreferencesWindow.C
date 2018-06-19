@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -177,6 +177,12 @@ QvisPreferencesWindow::~QvisPreferencesWindow()
 //   Mark C. Miller, Tue Jun 10 22:36:25 PDT 2008
 //   Added support for ignoring bad extents from dbs. 
 //
+//   Hank Childs, Wed Mar 17 20:13:21 PDT 2010
+//   Added "Expand new plots"
+//
+//   Brad Whitlock, Fri May  7 14:31:00 PDT 2010
+//   I transplanted replacePlotsToggle.
+//
 // ****************************************************************************
 
 void
@@ -212,6 +218,18 @@ QvisPreferencesWindow::CreateWindowContents()
             this, SLOT(newPlotsInheritSILRestrictionToggled(bool)));
     topLayout->addWidget(newPlotsInheritSILRestrictionToggle);
 
+    expandNewPlotsToggle =
+        new QCheckBox(tr("New plots automatically expanded"),central);
+    connect(expandNewPlotsToggle, SIGNAL(toggled(bool)),
+            this, SLOT(expandNewPlotsToggled(bool)));
+    topLayout->addWidget(expandNewPlotsToggle);
+
+    replacePlotsToggle = new QCheckBox(tr("Replace plots"), central);
+    connect(replacePlotsToggle, SIGNAL(toggled(bool)),
+            this, SLOT(replacePlotsToggled(bool)));
+    topLayout->addWidget(replacePlotsToggle);
+
+    //
     //
     // Create group box for database controls.
     //
@@ -438,6 +456,12 @@ QvisPreferencesWindow::Update(Subject *TheChangedSubject)
 //   Jeremy Meredith, Fri Nov  6 11:39:11 EST 2009
 //   Removed duplicate code which looked like a copy/paste error.
 //
+//   Hank Childs, Wed Mar 17 20:13:21 PDT 2010
+//   Added support for "Expand New Plots".
+//
+//   Brad Whitlock, Fri May  7 14:34:37 PDT 2010
+//   I transplanted some replace plots code.
+//
 // ****************************************************************************
 
 void
@@ -485,6 +509,16 @@ QvisPreferencesWindow::UpdateWindow(bool doAll)
         newPlotsInheritSILRestrictionToggle->setChecked(
             atts->GetNewPlotsInheritSILRestriction());
         newPlotsInheritSILRestrictionToggle->blockSignals(false);
+    }
+
+    if (doAll || atts->IsSelected(GlobalAttributes::ID_expandNewPlots))
+    {
+        //
+        // New plots expanded by default
+        //
+        expandNewPlotsToggle->blockSignals(true);
+        expandNewPlotsToggle->setChecked(atts->GetExpandNewPlots());
+        expandNewPlotsToggle->blockSignals(false);
     }
 
     if (doAll || atts->IsSelected(GlobalAttributes::ID_tryHarderCyclesTimes))
@@ -555,6 +589,13 @@ QvisPreferencesWindow::UpdateWindow(bool doAll)
         saveCrashRecoveryFileToggle->setChecked(
             atts->GetSaveCrashRecoveryFile());
         saveCrashRecoveryFileToggle->blockSignals(false);
+    }
+
+    if(doAll || atts->IsSelected(GlobalAttributes::ID_replacePlots))
+    {
+        replacePlotsToggle->blockSignals(true);
+        replacePlotsToggle->setChecked(atts->GetReplacePlots());
+        replacePlotsToggle->blockSignals(false);
     }
 
     if(doAll)
@@ -773,6 +814,31 @@ void
 QvisPreferencesWindow::newPlotsInheritSILRestrictionToggled(bool val)
 {
     atts->SetNewPlotsInheritSILRestriction(val);
+    SetUpdate(false);
+    atts->Notify();
+}
+
+// ****************************************************************************
+// Method: QvisPreferencesWindow::expandNewPlotsToggled
+//
+// Purpose: 
+//   This is a Qt slot function that gets the flag that tells whether new plots
+//   should be automatically expanded.
+//
+// Arguments:
+//   val : The new value.
+//
+// Programmer: Hank Childs
+// Creation:   March 17, 2010
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+QvisPreferencesWindow::expandNewPlotsToggled(bool val)
+{
+    atts->SetExpandNewPlots(val);
     SetUpdate(false);
     atts->Notify();
 }
@@ -1069,3 +1135,26 @@ QvisPreferencesWindow::saveCrashRecoveryFileToggled(bool val)
     atts->Notify();
 }
 
+// ****************************************************************************
+// Method: QvisPreferencesWindow::replacePlotsToggled
+//
+// Purpose: 
+//   This is a Qt slot function that is called when the replace plots checkbox
+//   is toggled.
+//
+// Arguments:
+//   val : The new toggle value.
+//
+// Programmer: Brad Whitlock
+// Creation:   Mon Mar 4 11:45:12 PDT 2002
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+QvisPreferencesWindow::replacePlotsToggled(bool val)
+{
+    atts->SetReplacePlots(val);
+    atts->Notify();
+}

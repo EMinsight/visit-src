@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -45,17 +45,21 @@
 //
 // Functions exposed to the VisIt module.
 //
+#define MESHMANAGEMENTATTRIBUTES_NMETH 16
 void VISITPY_API           PyMeshManagementAttributes_StartUp(MeshManagementAttributes *subj, void *data);
 void VISITPY_API           PyMeshManagementAttributes_CloseDown();
-VISITPY_API PyMethodDef *   PyMeshManagementAttributes_GetMethodTable(int *nMethods);
+VISITPY_API PyMethodDef *  PyMeshManagementAttributes_GetMethodTable(int *nMethods);
 bool VISITPY_API           PyMeshManagementAttributes_Check(PyObject *obj);
 VISITPY_API MeshManagementAttributes *  PyMeshManagementAttributes_FromPyObject(PyObject *obj);
-VISITPY_API PyObject *      PyMeshManagementAttributes_New();
-VISITPY_API PyObject *      PyMeshManagementAttributes_Wrap(const MeshManagementAttributes *attr);
+VISITPY_API PyObject *     PyMeshManagementAttributes_New();
+VISITPY_API PyObject *     PyMeshManagementAttributes_Wrap(const MeshManagementAttributes *attr);
 void VISITPY_API           PyMeshManagementAttributes_SetParent(PyObject *obj, PyObject *parent);
 void VISITPY_API           PyMeshManagementAttributes_SetDefaults(const MeshManagementAttributes *atts);
 std::string VISITPY_API    PyMeshManagementAttributes_GetLogString();
 std::string VISITPY_API    PyMeshManagementAttributes_ToString(const MeshManagementAttributes *, const char *);
+VISITPY_API PyObject *     PyMeshManagementAttributes_getattr(PyObject *self, char *name);
+int VISITPY_API            PyMeshManagementAttributes_setattr(PyObject *self, char *name, PyObject *args);
+VISITPY_API extern PyMethodDef PyMeshManagementAttributes_methods[MESHMANAGEMENTATTRIBUTES_NMETH];
 
 #endif
 

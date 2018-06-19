@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -57,11 +57,11 @@ import java.util.Vector;
 
 public class avtDefaultPlotMetaData extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 3;
+    private static int avtDefaultPlotMetaData_numAdditionalAtts = 3;
 
     public avtDefaultPlotMetaData()
     {
-        super(numAdditionalAttributes);
+        super(avtDefaultPlotMetaData_numAdditionalAtts);
 
         pluginID = new String("");
         plotVar = new String("var");
@@ -70,7 +70,7 @@ public class avtDefaultPlotMetaData extends AttributeSubject
 
     public avtDefaultPlotMetaData(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(avtDefaultPlotMetaData_numAdditionalAtts + nMoreFields);
 
         pluginID = new String("");
         plotVar = new String("var");
@@ -79,7 +79,7 @@ public class avtDefaultPlotMetaData extends AttributeSubject
 
     public avtDefaultPlotMetaData(avtDefaultPlotMetaData obj)
     {
-        super(numAdditionalAttributes);
+        super(avtDefaultPlotMetaData_numAdditionalAtts);
 
         int i;
 
@@ -100,7 +100,7 @@ public class avtDefaultPlotMetaData extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return avtDefaultPlotMetaData_numAdditionalAtts;
     }
 
     public boolean equals(avtDefaultPlotMetaData obj)

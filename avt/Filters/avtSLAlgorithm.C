@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -140,7 +140,7 @@ vtkDataSet *
 avtSLAlgorithm::GetDomain(const DomainType &dom, double X, double Y, double Z)
 {
     int timerHandle = visitTimer->StartTimer();
-    vtkDataSet *ds = streamlineFilter->GetDomain(dom, X, Y, Z);
+    vtkDataSet *ds = streamlineFilter->avtStreamlineFilter::GetDomain(dom, X, Y, Z);
     IOTime.value += visitTimer->StopTimer(timerHandle, "GetDomain()");
     
     return ds;

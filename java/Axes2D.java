@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -56,7 +56,7 @@ package llnl.visit;
 
 public class Axes2D extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 8;
+    private static int Axes2D_numAdditionalAtts = 8;
 
     // Enum values
     public final static int TICKS_OFF = 0;
@@ -72,7 +72,7 @@ public class Axes2D extends AttributeSubject
 
     public Axes2D()
     {
-        super(numAdditionalAttributes);
+        super(Axes2D_numAdditionalAtts);
 
         visible = true;
         autoSetTicks = true;
@@ -86,7 +86,7 @@ public class Axes2D extends AttributeSubject
 
     public Axes2D(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(Axes2D_numAdditionalAtts + nMoreFields);
 
         visible = true;
         autoSetTicks = true;
@@ -100,7 +100,7 @@ public class Axes2D extends AttributeSubject
 
     public Axes2D(Axes2D obj)
     {
-        super(numAdditionalAttributes);
+        super(Axes2D_numAdditionalAtts);
 
         visible = obj.visible;
         autoSetTicks = obj.autoSetTicks;
@@ -121,7 +121,7 @@ public class Axes2D extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return Axes2D_numAdditionalAtts;
     }
 
     public boolean equals(Axes2D obj)

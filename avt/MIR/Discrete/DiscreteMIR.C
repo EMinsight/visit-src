@@ -67,7 +67,7 @@
 using std::vector;
 
 // Programmer: John C. Anderson, Fri Oct 31 12:53:10 2008
-#define RANDOM ((double) rand() / (double) RAND_MAX)
+#define RANDOM ((double) rand() / (double) (RAND_MAX+1))
 
 
 // WARNING by John C. Anderson: The following arrays are probably
@@ -322,6 +322,11 @@ DiscreteMIR::Reconstruct2DMesh(vtkDataSet *mesh_orig, avtMaterial *mat_orig)
 //    Split labels into mixed and clean versions to avoid assumptions
 //    about signedness of pointers and sizes of integers and pointers.
 //
+//    Jeremy Meredith, Fri Apr 30 11:03:23 EDT 2010
+//    Fixed bug where we walked off an array when looking at neighboring cells.
+//    Also, use random number generator in the range [0,1) so that we don't
+//    walk off the end of other arrays.
+//
 // ****************************************************************************
 bool
 DiscreteMIR::ReconstructMesh(vtkDataSet *mesh_orig, avtMaterial *mat_orig, int dim)
@@ -560,7 +565,14 @@ DiscreteMIR::ReconstructMesh(vtkDataSet *mesh_orig, avtMaterial *mat_orig, int d
                             (dimension == 2) ?
                             cell.incidentCell4(n) :
                             cell.incidentCell26(n);
-                        if(matlist[id(celln)] < 0)
+
+                        // if we're on a boundary, some cells will
+                        // be off the edges of the array; we're going
+                        // to assume those cells are clean for simplicity
+                        int cellid = id(celln);
+                        if (cellid >= 0 &&
+                            cellid < nCells &&
+                            matlist[cellid] < 0)
                         {
                             cleanish.push_back(cell);
                             goto NEXT_CELL;

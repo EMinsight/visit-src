@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -126,6 +126,9 @@ class AVTFILTERS_API DomainType
 //   Dave Pugmire, Thu Sep 24 13:52:59 EDT 2009
 //   Add serialization flags and a sequenceCnt.
 //
+//   Dave Pugmire, Tue Feb 23 09:42:25 EST 2010
+//   Remove the Dir member data.
+//
 // ****************************************************************************
 
 class AVTFILTERS_API avtStreamlineWrapper
@@ -138,12 +141,6 @@ class AVTFILTERS_API avtStreamlineWrapper
         OUTOFBOUNDS
     };
 
-    enum Dir
-    {
-        FWD=0,
-        BWD
-    };
-
     enum SerializeFlags
     {
         SERIALIZE_STEPS = 1,
@@ -151,7 +148,7 @@ class AVTFILTERS_API avtStreamlineWrapper
     };
 
     avtStreamlineWrapper();
-    avtStreamlineWrapper(avtStreamline *s, Dir slDir=FWD, int ID=-1);
+    avtStreamlineWrapper(avtStreamline *s, int ID=-1);
     ~avtStreamlineWrapper();
 
     void UpdateDomainCount(DomainType &dom);
@@ -185,7 +182,6 @@ class AVTFILTERS_API avtStreamlineWrapper
     std::vector<DomainType> seedPtDomainList;
     DomainType domain;
     Status status;
-    Dir dir;
     
     // statistical bookeeping.
     //std::vector<int> domainVisitCnts;

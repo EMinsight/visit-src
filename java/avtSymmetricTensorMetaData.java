@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -56,25 +56,25 @@ package llnl.visit;
 
 public class avtSymmetricTensorMetaData extends avtVarMetaData
 {
-    private static int numAdditionalAttributes = 1;
+    private static int avtSymmetricTensorMetaData_numAdditionalAtts = 1;
 
     public avtSymmetricTensorMetaData()
     {
-        super(numAdditionalAttributes);
+        super(avtSymmetricTensorMetaData_numAdditionalAtts);
 
         dim = 0;
     }
 
     public avtSymmetricTensorMetaData(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(avtSymmetricTensorMetaData_numAdditionalAtts + nMoreFields);
 
         dim = 0;
     }
 
     public avtSymmetricTensorMetaData(avtSymmetricTensorMetaData obj)
     {
-        super(numAdditionalAttributes);
+        super(avtSymmetricTensorMetaData_numAdditionalAtts);
 
         dim = obj.dim;
 
@@ -88,7 +88,7 @@ public class avtSymmetricTensorMetaData extends avtVarMetaData
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return avtSymmetricTensorMetaData_numAdditionalAtts;
     }
 
     public boolean equals(avtSymmetricTensorMetaData obj)
@@ -101,7 +101,7 @@ public class avtSymmetricTensorMetaData extends avtVarMetaData
     public void SetDim(int dim_)
     {
         dim = dim_;
-        Select(Offset() + 0);
+        Select((new avtSymmetricTensorMetaData()).Offset() + 0);
     }
 
     // Property getting methods
@@ -112,14 +112,15 @@ public class avtSymmetricTensorMetaData extends avtVarMetaData
     {
         super.WriteAtts(buf);
 
-        int offset = Offset();
+        int offset = (new avtSymmetricTensorMetaData()).Offset();
         if(WriteSelect(offset + 0, buf))
             buf.WriteInt(dim);
     }
 
     public void ReadAtts(int id, CommunicationBuffer buf)
     {
-        if(id == Offset())
+        int offset = (new avtSymmetricTensorMetaData()).Offset();
+        if(id == offset)
             SetDim(buf.ReadInt());
         else
             super.ReadAtts(id, buf);

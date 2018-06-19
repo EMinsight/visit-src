@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -56,12 +56,12 @@ package llnl.visit;
 
 public class ColorAttribute extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 1;
+    private static int ColorAttribute_numAdditionalAtts = 1;
 
 
     public ColorAttribute()
     {
-        super(numAdditionalAttributes);
+        super(ColorAttribute_numAdditionalAtts);
 
         color = new byte[4];
         color[0] = (byte)0;
@@ -72,7 +72,7 @@ public class ColorAttribute extends AttributeSubject
 
     public ColorAttribute(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(ColorAttribute_numAdditionalAtts + nMoreFields);
 
         color = new byte[4];
         color[0] = (byte)0;
@@ -83,7 +83,7 @@ public class ColorAttribute extends AttributeSubject
 
     public ColorAttribute(ColorAttribute obj)
     {
-        super(numAdditionalAttributes);
+        super(ColorAttribute_numAdditionalAtts);
 
         int i;
 
@@ -102,7 +102,7 @@ public class ColorAttribute extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return ColorAttribute_numAdditionalAtts;
     }
 
     public boolean equals(ColorAttribute obj)

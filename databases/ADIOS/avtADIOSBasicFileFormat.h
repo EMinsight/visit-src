@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -61,6 +61,11 @@ class vtkRectilinearGrid;
 //
 //  Programmer: Dave Pugmire
 //  Creation:   Thu Sep 17 11:23:05 EDT 2009
+//
+//  Modifications:
+//
+//   Dave Pugmire, Tue Mar  9 12:40:15 EST 2010
+//   Use uint64_t for start/count arrays.
 //
 // ****************************************************************************
 
@@ -124,7 +129,7 @@ class avtADIOSBasicFileFormat : public avtMTMDFileFormat
         ~meshInfo() {}
 
         int dim;
-        int start[3], count[3], global[3];
+        uint64_t start[3], count[3], global[3];
         std::string name;
 
         void SwapIndices()
@@ -137,15 +142,15 @@ class avtADIOSBasicFileFormat : public avtMTMDFileFormat
 
     std::map<std::string, meshInfo> meshes;
 
-    vtkRectilinearGrid    *CreateUniformGrid(const int *start,
-                                             const int *count);
+    vtkRectilinearGrid    *CreateUniformGrid(const uint64_t *start,
+                                             const uint64_t *count);
     
     virtual void           PopulateDatabaseMetaData(avtDatabaseMetaData *, int);
 
-    static void ComputeStartCount(int *globalDims,
+    static void ComputeStartCount(uint64_t *globalDims,
                                   int dim,
-                                  int *start,
-                                  int *count);
+                                  uint64_t *start,
+                                  uint64_t *count);
 };
 
 #endif

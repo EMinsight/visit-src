@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -59,7 +59,7 @@ import java.lang.Double;
 
 public class DatabaseCorrelation extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 10;
+    private static int DatabaseCorrelation_numAdditionalAtts = 10;
 
     // Enum values
     public final static int CORRELATIONMETHOD_INDEXFORINDEXCORRELATION = 0;
@@ -71,7 +71,7 @@ public class DatabaseCorrelation extends AttributeSubject
 
     public DatabaseCorrelation()
     {
-        super(numAdditionalAttributes);
+        super(DatabaseCorrelation_numAdditionalAtts);
 
         name = new String("");
         numStates = 1;
@@ -87,7 +87,7 @@ public class DatabaseCorrelation extends AttributeSubject
 
     public DatabaseCorrelation(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(DatabaseCorrelation_numAdditionalAtts + nMoreFields);
 
         name = new String("");
         numStates = 1;
@@ -103,7 +103,7 @@ public class DatabaseCorrelation extends AttributeSubject
 
     public DatabaseCorrelation(DatabaseCorrelation obj)
     {
-        super(numAdditionalAttributes);
+        super(DatabaseCorrelation_numAdditionalAtts);
 
         int i;
 
@@ -163,7 +163,7 @@ public class DatabaseCorrelation extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return DatabaseCorrelation_numAdditionalAtts;
     }
 
     public boolean equals(DatabaseCorrelation obj)

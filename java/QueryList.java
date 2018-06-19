@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -58,7 +58,7 @@ import java.lang.Integer;
 
 public class QueryList extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 9;
+    private static int QueryList_numAdditionalAtts = 9;
 
     // Enum values
     public final static int QUERYTYPE_DATABASEQUERY = 0;
@@ -96,7 +96,7 @@ public class QueryList extends AttributeSubject
 
     public QueryList()
     {
-        super(numAdditionalAttributes);
+        super(QueryList_numAdditionalAtts);
 
         names = new Vector();
         types = new Vector();
@@ -111,7 +111,7 @@ public class QueryList extends AttributeSubject
 
     public QueryList(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(QueryList_numAdditionalAtts + nMoreFields);
 
         names = new Vector();
         types = new Vector();
@@ -126,7 +126,7 @@ public class QueryList extends AttributeSubject
 
     public QueryList(QueryList obj)
     {
-        super(numAdditionalAttributes);
+        super(QueryList_numAdditionalAtts);
 
         int i;
 
@@ -193,7 +193,7 @@ public class QueryList extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return QueryList_numAdditionalAtts;
     }
 
     public boolean equals(QueryList obj)

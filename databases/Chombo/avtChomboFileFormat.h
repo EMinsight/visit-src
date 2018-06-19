@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -84,6 +84,22 @@ union
   box3d b3;
 } typedef box;
 
+struct {
+  double x;
+  double y;
+} typedef doublevect2d;
+
+struct {
+  double x;
+  double y;
+  double z;
+} typedef doublevect3d;
+
+union
+{
+  doublevect2d dv2;
+  doublevect3d dv3;
+} typedef doublevect;
 
 class DBOptionsAttributes;
 
@@ -130,6 +146,10 @@ class DBOptionsAttributes;
 //    Gunther H. Weber, Tue Sep 15 11:25:21 PDT 2009
 //    Added support for 3D mappings for 2D files
 //
+//    Gunther H. Weber, Thu Jun 17 10:10:17 PDT 2010
+//    Added ability to connect particle mesh based on polymer_id and
+//    particle_nid
+//
 // ****************************************************************************
 
 class avtChomboFileFormat : public avtSTMDFileFormat
@@ -162,6 +182,7 @@ class avtChomboFileFormat : public avtSTMDFileFormat
     std::vector<std::string>  varnames;
     int                    nMaterials;
     bool                   hasParticles;
+    bool                   connectParticles;
     std::vector<std::string>  particleVarnames;
     double                 dtime;
     int                    cycle;
@@ -194,6 +215,9 @@ class avtChomboFileFormat : public avtSTMDFileFormat
     std::vector<int>       hiJ;
     std::vector<int>       lowK;
     std::vector<int>       hiK;
+
+    double                 probLo[3];
+    double                 aspectRatio[3];
 
     void                   InitializeReader(void);
     void                   GetLevelAndLocalPatchNumber(int global_patch,

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -159,6 +159,9 @@ avtProjectFilter::Equivalent(const AttributeGroup *a)
 //    Jeremy Meredith, Fri Sep 10 16:15:55 PDT 2004
 //    Added projection of vectors.
 //
+//    Hank Childs, Tue Aug  3 09:28:35 PDT 2010
+//    Fix bug with project of cell-centered vectors.
+//
 // ****************************************************************************
 
 vtkDataSet *
@@ -208,8 +211,8 @@ avtProjectFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
         arr->Allocate(3*vectors->GetNumberOfTuples());
         ProjectVectors(in_ds, out_ds, vectors, arr, true);
         arr->SetName(vectors->GetName());
-        out_ds->GetPointData()->RemoveArray(vectors->GetName());
-        out_ds->GetPointData()->SetVectors(arr);
+        out_ds->GetCellData()->RemoveArray(vectors->GetName());
+        out_ds->GetCellData()->SetVectors(arr);
         arr->Delete();
     }
 
@@ -265,13 +268,108 @@ avtProjectFilter::ProjectPoint(float &x,float &y,float &z)
 {
     switch (atts.GetProjectionType())
     {
-      case ProjectAttributes::XYCartesian:
+      case ProjectAttributes::ZYCartesian:
+        x = z;
+        y = y;
         z = 0;
+        break;
+
+      case ProjectAttributes::XZCartesian:
+        x = x;
+        y = z;
+        z = 0;
+        break;
+
+      case ProjectAttributes::XYCartesian:
+        x = x;
+        y = y;
+        z = 0;
+        break;
+
+      case ProjectAttributes::XRCylindrical:
+        {
+            float r = sqrt(y*y + z*z);
+            x = x;
+            y = r;
+            z = 0;
+        }
+        break;
+      case ProjectAttributes::YRCylindrical:
+        {
+            float r = sqrt(x*x + z*z);
+            x = y;
+            y = r;
+            z = 0;
+        }
         break;
 
       case ProjectAttributes::ZRCylindrical:
         {
             float r = sqrt(x*x + y*y);
+            x = z;
+            y = r;
+            z = 0;
+        }
+        break;
+    }
+}
+
+// ****************************************************************************
+//  Method:  avtProjectFilter::ProjectPoint
+//
+//  Purpose:
+//    Project a single point in-place.  Double precision copy version.
+//
+//  Arguments:
+//    x,y,z      the point to project
+//
+//  Programmer:  Jeremy Meredith
+//  Creation:    April  1, 2010
+//
+// ****************************************************************************
+void
+avtProjectFilter::ProjectPoint(double &x,double &y,double &z)
+{
+    switch (atts.GetProjectionType())
+    {
+      case ProjectAttributes::ZYCartesian:
+        x = z;
+        y = y;
+        z = 0;
+        break;
+
+      case ProjectAttributes::XZCartesian:
+        x = x;
+        y = z;
+        z = 0;
+        break;
+
+      case ProjectAttributes::XYCartesian:
+        x = x;
+        y = y;
+        z = 0;
+        break;
+
+      case ProjectAttributes::XRCylindrical:
+        {
+            double r = sqrt(y*y + z*z);
+            x = x;
+            y = r;
+            z = 0;
+        }
+        break;
+      case ProjectAttributes::YRCylindrical:
+        {
+            double r = sqrt(x*x + z*z);
+            x = y;
+            y = r;
+            z = 0;
+        }
+        break;
+
+      case ProjectAttributes::ZRCylindrical:
+        {
+            double r = sqrt(x*x + y*y);
             x = z;
             y = r;
             z = 0;
@@ -435,13 +533,12 @@ avtProjectFilter::ProjectPointSet(vtkPointSet *in_ds)
 //    out             the place to store the new vectors
 //    cell_centered   true if these vectors are cell data
 //
-//  Notes:  Yes, it is horribly inefficient.  Get over it or rewrite it.
-//          Plus, it might not even be doing the right thing!  If you
-//          know what it truly means to project a vector cylindrically,
-//          you are welcome to fix that as well.
-//
 //  Programmer:  Jeremy Meredith
 //  Creation:    September 10, 2004
+//
+//  Modifications:
+//    Jeremy Meredith, Thu Apr  1 14:43:48 EDT 2010
+//    Took into account various ways one might want to transform a vector.
 //
 // ****************************************************************************
 void
@@ -451,6 +548,9 @@ avtProjectFilter::ProjectVectors(vtkDataSet *old_ds,
                                  vtkDataArray *out,
                                  bool cell_centered)
 {
+    const double instantEps    = 1.e-5;
+    const double instantEpsInv = 1.e+5;
+
     int nvectors  = in->GetNumberOfTuples();
     float *inptr  = (float*)in->GetVoidPointer(0);
     float *outptr = (float*)out->GetVoidPointer(0);
@@ -471,28 +571,53 @@ avtProjectFilter::ProjectVectors(vtkDataSet *old_ds,
             new_ds->GetPoint(i, newpt);
         }
 
-        // What the heck is the right thing for projecting a
-        // vector!?  Especially a vector that is cell-centered?!?!?
-        // Especially a cylindrical projection!
+        double u = inptr[i*3+0];
+        double v = inptr[i*3+1];
+        double w = inptr[i*3+2];
 
-        // Well, we'll do something defensible.  Assume the vector is
-        // a displacement.  The new vector will be the one that takes
-        // us FROM the post-transformed location TO the spot that
-        // started at the original location, was first displaced
-        // using the original vector, and was *then* projected.
-        float u = inptr[i*3+0];
-        float v = inptr[i*3+1];
-        float w = inptr[i*3+2];
+        switch (atts.GetVectorTransformMethod())
+        {
+          case ProjectAttributes::None:
+            outptr[i*3+0] = u;
+            outptr[i*3+1] = v;
+            outptr[i*3+2] = w;
+            break;
+            
+          case ProjectAttributes::AsPoint:
+            ProjectPoint(u,v,w);
+            outptr[i*3+0] = u;
+            outptr[i*3+1] = v;
+            outptr[i*3+2] = w;
+            break;
+            
+          case ProjectAttributes::AsDisplacement:
+            {
+            double x = oldpt[0] + u;
+            double y = oldpt[1] + v;
+            double z = oldpt[2] + w;
 
-        float x = oldpt[0] + u;
-        float y = oldpt[1] + v;
-        float z = oldpt[2] + w;
+            ProjectPoint(x,y,z);
 
-        ProjectPoint(x,y,z);
+            outptr[i*3+0] = x - newpt[0];
+            outptr[i*3+1] = y - newpt[1];
+            outptr[i*3+2] = z - newpt[2];
+            }
+            break;
 
-        outptr[i*3+0] = x - newpt[0];
-        outptr[i*3+1] = y - newpt[1];
-        outptr[i*3+2] = z - newpt[2];
+          case ProjectAttributes::AsDirection:
+            {
+            double x = oldpt[0] + u*instantEps;
+            double y = oldpt[1] + v*instantEps;
+            double z = oldpt[2] + w*instantEps;
+
+            ProjectPoint(x,y,z);
+
+            outptr[i*3+0] = (x - newpt[0])*instantEpsInv;
+            outptr[i*3+1] = (y - newpt[1])*instantEpsInv;
+            outptr[i*3+2] = (z - newpt[2])*instantEpsInv;
+            }
+            break;
+        }
     }
 }
 
@@ -527,6 +652,44 @@ avtProjectFilter::UpdateDataObjectInfo(void)
         outAtts.SetSpatialDimension(2);
 
     GetOutput()->GetInfo().GetValidity().InvalidateSpatialMetaData();
+
+    switch (atts.GetProjectionType())
+    {
+      case ProjectAttributes::ZYCartesian:
+        outAtts.SetXLabel(inAtts.GetZLabel());
+        outAtts.SetYLabel(inAtts.GetYLabel());
+        outAtts.SetZLabel("Projected X Axis");
+        break;
+
+      case ProjectAttributes::XZCartesian:
+        outAtts.SetXLabel(inAtts.GetXLabel());
+        outAtts.SetYLabel(inAtts.GetZLabel());
+        outAtts.SetZLabel("Projected Y Axis");
+        break;
+
+      case ProjectAttributes::XYCartesian:
+        outAtts.SetXLabel(inAtts.GetXLabel());
+        outAtts.SetYLabel(inAtts.GetYLabel());
+        outAtts.SetZLabel("Projected Z Axis");
+        break;
+
+      case ProjectAttributes::XRCylindrical:
+        outAtts.SetXLabel(inAtts.GetXLabel());
+        outAtts.SetYLabel("Radial Axis");
+        outAtts.SetZLabel("Projected Theta Axis");
+        break;
+      case ProjectAttributes::YRCylindrical:
+        outAtts.SetXLabel(inAtts.GetYLabel());
+        outAtts.SetYLabel("Radial Axis");
+        outAtts.SetZLabel("Projected Theta Axis");
+        break;
+      case ProjectAttributes::ZRCylindrical:
+        outAtts.SetXLabel(inAtts.GetZLabel());
+        outAtts.SetYLabel("Radial Axis");
+        outAtts.SetZLabel("Projected Theta Axis");
+        break;
+    }
+
 }
 
 // ****************************************************************************

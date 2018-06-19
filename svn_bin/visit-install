@@ -184,6 +184,31 @@
 #    Unified windows and unix host profiles.
 #    Split host profiles from rest of config files.
 #
+#    Eric Brugger, Fri Mar  5 13:18:43 PST 2010
+#    I modified the script so that it handles the case where the name
+#    of the distribution file had been changed from the name created
+#    by "make package".
+#
+#    Gunther H. Weber, Tue Mar 30 15:39:05 PDT 2010
+#    Added Hopper to NERSC config.
+#
+#    Jeremy Meredith, Thu Apr  8 16:14:17 EDT 2010
+#    Changed the way we update banks in installed host profiles.
+#    As part of this, changed it to copy the host profiles instead
+#    of linking to them. (So the copy in allhosts/ uses "bdivp", and
+#    the copy in hosts/ uses $bank.)
+#
+#    Cyrus Harrison, Thu Apr 22 09:29:47 PDT 2010
+#    Changed bin directory detection logic to look for 'engine_ser'
+#    instead of 'cli' b/c the existence of an empty cli include path.
+#
+#    Eric Brugger, Wed May  5 14:25:04 PDT 2010
+#    I made some corrections that worked around some bugs in the c shell
+#    on a newer version of redhat linux.  The first change was to copy the
+#    data files one at a time in a loop instead of all at once and the
+#    second change was to change the default bank in one host file at a
+#    time in a loop instead of all at once.
+#
 #-----------------------------------------------------------------------
 
 set Compress = COMPRESS
@@ -424,7 +449,7 @@ if ($bank == prompt) then
     # Determine whether the user needs a bank in order to install.
     set yn = ""
     while ("$yn" == "")
-        echo "Do you need to use a bank when submitting parallel jobs to a"
+        echo "Do you need to use a bank when submitting jobs to a"
         echo "batch system? (y/n):"
         set yn = `echo $< | tr "[A-Z]" "[a-z]"`
         if ("$yn" != "y" && "$yn" != "n") then
@@ -437,7 +462,7 @@ if ($bank == prompt) then
         while ($bank == prompt)
            echo ""
            echo "Type the name of a bank for VisIt to use when launching its"
-           echo "parallel compute engine in a batch system:"
+           echo "compute engine in a batch system:"
 
            set bank = $<
            if ("$bank" == "") then
@@ -467,10 +492,18 @@ endif
 #
 # Set up the distribution directory
 #
-rm -rf distribution
-mkdir distribution
-cp $fname1 distribution
-cd distribution
+(mkdir testdir && rmdir testdir) >& /dev/null
+if ($status == 0) then
+    echo "Local directory is writable."
+    set dist = "distribution"
+else
+    echo "Local directory is NOT writable.  Using /tmp."
+    set dist = "/tmp/distribution"
+endif
+rm -rf $dist
+mkdir $dist
+cp $fname1 $dist
+cd "$dist"
 if ($Compress == "COMPRESS") then
    uncompress $fname1
 else
@@ -485,7 +518,10 @@ if (! -e $fname2) then
    exit (2)
 endif
 tar xvbf 20 $fname2
+rm -f $fname2
 cd ..
+
+set distributiondir = `ls -d distribution/*`
 
 #
 # If the installation directory doesn't exist, create it.
@@ -499,10 +535,10 @@ if (! -e "$dir"/data)           mkdir "$dir"/data
 # installation in a consistent state with the exception of the
 # data directory.
 #
-cp distribution/$base.$platform/bin/frontendlauncher "$dir"/bin/frontendlauncher+
-cp distribution/$base.$platform/bin/xml2plugin       "$dir"/bin/xml2plugin+
-cp distribution/$base.$platform/bin/visit_plugin     "$dir"/bin/visit_plugin+
-cp distribution/$base.$platform/bin/mkgrdbl          "$dir"/bin/mkgrdbl+
+cp $distributiondir/bin/frontendlauncher "$dir"/bin/frontendlauncher+
+cp $distributiondir/bin/xml2plugin       "$dir"/bin/xml2plugin+
+cp $distributiondir/bin/visit_plugin     "$dir"/bin/visit_plugin+
+cp $distributiondir/bin/mkgrdbl          "$dir"/bin/mkgrdbl+
 
 if (-e "$dir"/$version) then
    mv "$dir"/$version "$dir"/$version+
@@ -510,15 +546,15 @@ if (-e "$dir"/$version) then
 endif
 if (! -e "$dir"/$version+)                 mkdir "$dir"/$version+
 
-cd distribution/$base.$platform/$version
+cd "$distributiondir/$version"
 
 # Determine the platform
-set findcli = `find . -name cli`
-set platformBin = `echo "$findcli" | sed -e "s/cli//"`
+set findbin = `find . -name engine_ser`
+set platformBin = `echo "$findbin" | sed -e "s/engine_ser//"`
 set savepwd = `pwd`
-cd $platformBin/..
+cd "$platformBin/.."
 set platformPath = `pwd`
-cd $savepwd
+cd "$savepwd"
 set platformDir = ""
 foreach f (`echo $platformPath | tr "/" " "`)
    set platformDir = $f
@@ -526,7 +562,9 @@ end
 # Copy the files
 find . -print | cpio -pmud "$dir"/$version+
 cd ../../..
-cp distribution/$base.$platform/data/* "$dir"/data
+foreach datafile (`ls $distributiondir/data/*`)
+    cp $datafile "$dir"/data
+end
 
 #
 # Store some of the installation options so they can be used by VisIt when
@@ -539,67 +577,69 @@ echo "1;$config;$bank;$platform" > "$dir"/$version+/$platformDir/.installinfo
 # Use the appropriate configuration file, setting the bank to the right value.
 #
 rm -f "$dir"/$version+/.visit/config
+rm -rf "$dir"/$version+/.visit/hosts
 mkdir "$dir"/$version+/.visit/hosts
 if ($config == anl) then
-   ln -s ../allhosts/host_anl_cosmea.xml   "$dir"/$version+/.visit/hosts/
-   ln -s ../allhosts/host_anl_eureka.xml   "$dir"/$version+/.visit/hosts/
-   ln -s ../allhosts/host_anl_gadzooks.xml "$dir"/$version+/.visit/hosts/
-   ln -s ../allhosts/host_anl_teragrid.xml "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_anl_cosmea.xml   "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_anl_eureka.xml   "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_anl_gadzooks.xml "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_anl_teragrid.xml "$dir"/$version+/.visit/hosts/
 else if ($config == llnl_closed) then
-   ln -s visit-config-llnl_closed.ini "$dir"/$version+/.visit/config_template
-   ln -s ../allhosts/host_llnl_closed_eos.xml     "$dir"/$version+/.visit/hosts/
-   ln -s ../allhosts/host_llnl_closed_gauss.xml   "$dir"/$version+/.visit/hosts/
-   ln -s ../allhosts/host_llnl_closed_graph.xml   "$dir"/$version+/.visit/hosts/
-   ln -s ../allhosts/host_llnl_closed_hopi.xml    "$dir"/$version+/.visit/hosts/
-   ln -s ../allhosts/host_llnl_closed_juno.xml    "$dir"/$version+/.visit/hosts/
-   ln -s ../allhosts/host_llnl_closed_minos.xml   "$dir"/$version+/.visit/hosts/
-   ln -s ../allhosts/host_llnl_closed_purple.xml  "$dir"/$version+/.visit/hosts/
-   ln -s ../allhosts/host_llnl_closed_rhea.xml    "$dir"/$version+/.visit/hosts/
-   ln -s ../allhosts/host_llnl_closed_tempest.xml "$dir"/$version+/.visit/hosts/
-   ln -s ../allhosts/host_llnl_closed_um.xml      "$dir"/$version+/.visit/hosts/
-   ln -s ../allhosts/host_snl_closed_redrose.xml  "$dir"/$version+/.visit/hosts/
+   ln -s visit-config-llnl_closed.ini "$dir"/$version+/.visit/config
+   cp "$dir"/$version+/.visit/allhosts/host_llnl_closed_eos.xml     "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_llnl_closed_gauss.xml   "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_llnl_closed_graph.xml   "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_llnl_closed_hopi.xml    "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_llnl_closed_juno.xml    "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_llnl_closed_minos.xml   "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_llnl_closed_purple.xml  "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_llnl_closed_rhea.xml    "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_llnl_closed_tempest.xml "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_llnl_closed_um.xml      "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_snl_closed_redrose.xml  "$dir"/$version+/.visit/hosts/
 else if ($config == llnl_open) then
-   ln -s visit-config-llnl_open.ini  "$dir"/$version+/.visit/config_template
-   ln -s ../allhosts/host_llnl_alastor.xml "$dir"/$version+/.visit/hosts/
-   ln -s ../allhosts/host_llnl_atlas.xml   "$dir"/$version+/.visit/hosts/
-   ln -s ../allhosts/host_llnl_ellipse.xml "$dir"/$version+/.visit/hosts/
-   ln -s ../allhosts/host_llnl_hera.xml    "$dir"/$version+/.visit/hosts/
-   ln -s ../allhosts/host_llnl_ilx.xml     "$dir"/$version+/.visit/hosts/
-   ln -s ../allhosts/host_llnl_prism.xml   "$dir"/$version+/.visit/hosts/
-   ln -s ../allhosts/host_llnl_up.xml      "$dir"/$version+/.visit/hosts/
-   ln -s ../allhosts/host_llnl_xchem.xml   "$dir"/$version+/.visit/hosts/
-   ln -s ../allhosts/host_llnl_yana.xml    "$dir"/$version+/.visit/hosts/
-   ln -s ../allhosts/host_llnl_zeus.xml    "$dir"/$version+/.visit/hosts/
-   ln -s ../allhosts/host_slac_red.xml     "$dir"/$version+/.visit/hosts/
+   ln -s visit-config-llnl_open.ini  "$dir"/$version+/.visit/config
+   cp "$dir"/$version+/.visit/allhosts/host_llnl_alastor.xml "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_llnl_atlas.xml   "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_llnl_ellipse.xml "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_llnl_hera.xml    "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_llnl_ilx.xml     "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_llnl_prism.xml   "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_llnl_up.xml      "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_llnl_xchem.xml   "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_llnl_yana.xml    "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_llnl_zeus.xml    "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_slac_red.xml     "$dir"/$version+/.visit/hosts/
 else if ($config == nersc) then
-   ln -s ../allhosts/host_nersc_davinci.xml  "$dir"/$version+/.visit/hosts/
-   ln -s ../allhosts/host_nersc_franklin.xml "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_nersc_davinci.xml  "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_nersc_franklin.xml "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_nersc_hopper.xml "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_nersc_euclid.xml "$dir"/$version+/.visit/hosts/
 else if ($config == ornl) then
-   ln -s ../allhosts/host_ornl_ewok.xml     "$dir"/$version+/.visit/hosts/
-   ln -s ../allhosts/host_ornl_jaguarpf.xml "$dir"/$version+/.visit/hosts/
-   ln -s ../allhosts/host_ornl_jaguar.xml   "$dir"/$version+/.visit/hosts/
-   ln -s ../allhosts/host_ornl_lens.xml     "$dir"/$version+/.visit/hosts/
-   ln -s ../allhosts/host_ornl_photon.xml   "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_ornl_ewok.xml     "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_ornl_jaguarpf.xml "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_ornl_jaguar.xml   "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_ornl_lens.xml     "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_ornl_photon.xml   "$dir"/$version+/.visit/hosts/
 else if ($config == princeton) then
-   ln -s visit-config-princeton.ini "$dir"/$version+/.visit/config_template
-   ln -s ../allhosts/host_princeton_artemis.xml     "$dir"/$version+/.visit/hosts/
-   ln -s ../allhosts/host_princeton_hecate.xml      "$dir"/$version+/.visit/hosts/
-   ln -s ../allhosts/host_princeton_tigressdata.xml "$dir"/$version+/.visit/hosts/
+   ln -s visit-config-princeton.ini "$dir"/$version+/.visit/config
+   cp "$dir"/$version+/.visit/allhosts/host_princeton_artemis.xml     "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_princeton_hecate.xml      "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_princeton_tigressdata.xml "$dir"/$version+/.visit/hosts/
 else if ($config == tacc) then
-   ln -s ../allhosts/host_tacc_ranger.xml "$dir"/$version+/.visit/hosts/
-   ln -s ../allhosts/host_tacc_spur.xml   "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_tacc_ranger.xml "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_tacc_spur.xml   "$dir"/$version+/.visit/hosts/
 else if ($config == anag) then
    ln -s visit-config-anag.ini    "$dir"/$version+/.visit/config
    ln -s visit-guiconfig-anag.ini "$dir"/$version+/.visit/guiconfig
    ln -s visit-visitrc-anag.ini   "$dir"/$version+/.visit/visitrc
 endif
-if (-e "$dir"/$version+/.visit/config_template) then
-    sed -e "s/bdivp/$bank/" "$dir"/$version+/.visit/config_template > "$dir"/$version+/.visit/config
-    if ($group_ownership != none) then
-        chgrp $group_ownership "$dir"/$version+/.visit/config
-    endif
-    chmod 664 "$dir"/$version+/.visit/config
-endif
+
+# Do the bank fixup
+foreach hostfile (`ls $dir/$version+/.visit/hosts/host_*`)
+    sed -e "s/bdivp/${bank}/" -i $hostfile
+end
+
 
 #
 # If we're on MacOS X, then we want to create some small scripts that
@@ -658,6 +698,9 @@ find "$dir"/$version+ -type f -exec chmod $file_permission {} \;
 
 chmod $dir_permission "$dir"/$version+/*/bin/*
 chmod $dir_permission "$dir"/$version+/bin/*
+if("$os" == "darwin") then
+    chmod $dir_permission "$dir"/$version+/*/bin/*.app/Contents/MacOS/* 
+endif
 
 #
 # Set the group ownership properly
@@ -675,7 +718,7 @@ if ($group_ownership != none) then
 endif
 
 if ($logging == true) then
-    sed -e "s/logging[ \t]*= 0/logging        = 1/" distribution/$base.$platform/$version/bin/internallauncher > "$dir"/$version+/bin/internallauncher
+    sed -e "s/logging[ \t]*= 0/logging        = 1/" $distributiondir/$version/bin/internallauncher > "$dir"/$version+/bin/internallauncher
     chmod $dir_permission "$dir"/$version+/bin/internallauncher
     touch "$dir"/$version+/usagelog
     touch "$dir"/$version+/cli_usagelog

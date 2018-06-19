@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -165,6 +165,7 @@ vtkVisItInterpolatedVelocityField::Evaluate(double *pt, double *vel, double t)
         double rad = 1e-6, dist=0.0;
         double resPt[3]={0.0,0.0,0.0};
         int subId = 0;
+        locator->IgnoreGhostsOff();
         int success = locator->FindClosestPointWithinRadius(pt, rad, resPt,
                                                                 cell, subId, dist);
     }

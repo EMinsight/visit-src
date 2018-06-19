@@ -45,6 +45,29 @@
 #    Added Vs plugin.  Plugin has been available for a while, but we weren't
 #    generating a Makefile for it.
 #
+#    Eric Brugger, Wed Feb 24 09:27:11 PST 2010
+#    I added the paraDIS and paraDIS_tecplot plugins to the build.
+#
+#    Eric Brugger, Wed Feb 24 17:46:10 PST 2010
+#    I temporalily removed the paraDIS and paraDIS_tecplot plugins from
+#    the build since they don't build.
+#
+#    Eric Brugger, Fri Feb 26 10:20:38 PST 2010
+#    I added back the paraDIS and paraDIS_tecplot plugins to the build since
+#    they now build.
+#
+#    Eric Brugger, Thu Mar  4 14:31:45 PST 2010
+#    I deleted the PlasmaState plugin from the build since it no longer
+#    exists.
+#
+#    Brad Whitlock, Mon Apr 26 13:35:37 PST 2010
+#    I made Xdmf use the Xdmf library. I renamed our old XDMF reader to 
+#    VisItXdmf and I made it get used when the Xdmf reader that uses the
+#    Xdmf library is not available.
+#
+#    Kathleen Bonnell, Wed May 5 12:04:22 PST 2010 
+#    Enable VASP reader on windows. 
+#
 #****************************************************************************/
 IF(NOT WIN32)
     SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${VISIT_PLUGIN_DIR}/databases)
@@ -98,6 +121,9 @@ THIRDPARTY_DEPENDENT_PLUGINS(EXODUSII Exodus TimeVaryingExodus)
 THIRDPARTY_DEPENDENT_PLUGINS(FASTBIT  HDF_UC)
 THIRDPARTY_DEPENDENT_PLUGINS(GDAL     GDAL)
 THIRDPARTY_DEPENDENT_PLUGINS(HDF4     Cosmos ZeusMP)
+IF(NOT XDMF_FOUND)
+    SET(XDMF_READER VisItXdmf)
+ENDIF(NOT XDMF_FOUND)
 THIRDPARTY_DEPENDENT_PLUGINS(HDF5     
 Chombo
 CosmosPP
@@ -114,17 +140,18 @@ Tetrad
 UNIC
 Velodyne
 Vs
-XDMF
+${XDMF_READER}
 )
 THIRDPARTY_DEPENDENT_PLUGINS(H5PART   H5Part)
 THIRDPARTY_DEPENDENT_PLUGINS(MILI     Mili)
-THIRDPARTY_DEPENDENT_PLUGINS(NETCDF   NETCDF PlasmaState S3D)
+THIRDPARTY_DEPENDENT_PLUGINS(NETCDF   NETCDF S3D)
 IF (NOT WIN32)
     THIRDPARTY_DEPENDENT_PLUGINS(SILO     Cale KullLite PDB Silo SAMI Vista)
 ELSE (NOT WIN32)
     THIRDPARTY_DEPENDENT_PLUGINS(SILO     Cale KullLite PDB Silo SAMI)
 ENDIF (NOT WIN32)
 THIRDPARTY_DEPENDENT_PLUGINS(VISUS    ViSUS)
+THIRDPARTY_DEPENDENT_PLUGINS(XDMF     Xdmf)
 
 # Add ITAPS
 IF(ITAPS_DIRS)
@@ -193,16 +220,18 @@ Spheral
 TFT
 TSurf
 Tecplot
+VASP
 VTK
 WavefrontOBJ
 XYZ
 Xmdv
+paraDIS
+paraDIS_tecplot
 )
 
 IF (NOT WIN32)
     LIST(APPEND REQUIRED_DATABASE_PLUGINS 
         Claw
-        VASP
         Vis5D
         ZipWrapper
     )

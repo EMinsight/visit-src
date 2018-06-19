@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -566,29 +566,29 @@ ClientMethod::ClearArgs()
     intArgs.clear();
     doubleArgs.clear();
     stringArgs.clear();
-    SelectField(1);
-    SelectField(2);
-    SelectField(3);
+    SelectIntArgs();
+    SelectDoubleArgs();
+    SelectStringArgs();
 }
 
 void
 ClientMethod::AddArgument(int val)
 {
     intArgs.push_back(val);
-    SelectField(1);
+    SelectIntArgs();
 }
 
 void
 ClientMethod::AddArgument(double val)
 {
     doubleArgs.push_back(val);
-    SelectField(2);
+    SelectDoubleArgs();
 }
 
 void
 ClientMethod::AddArgument(const std::string &val)
 {
     stringArgs.push_back(val);
-    SelectField(3);
+    SelectStringArgs();
 }
 

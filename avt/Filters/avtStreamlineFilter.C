@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -55,7 +55,6 @@ Consider the leaveDomains SLs and the balancing at the same time.
 #include <math.h>
 #include <visitstream.h>
 
-#include <vtkCellDataToPointData.h>
 #include <vtkCellArray.h>
 #include <vtkCellData.h>
 #include <vtkDataSet.h>
@@ -248,8 +247,10 @@ avtStreamlineFilter::~avtStreamlineFilter()
 {
     std::map<DomainType, vtkVisItCellLocator*>::const_iterator it;
     for ( it = domainToCellLocatorMap.begin(); it != domainToCellLocatorMap.end(); it++ )
-        it->second->Delete();
-
+    {
+        if (it->second)
+            it->second->Delete();
+    }
     if (intersectObj)
         intersectObj->Delete();
 }
@@ -454,6 +455,7 @@ avtStreamlineFilter::GetDomain(const DomainType &domain,
         /*
         if (domain.timeStep != curTimeSlice)
         {
+          if (DebugStream::Level5())
             debug5<<"::GetDomain()  Loading: "<<domain<<endl;
             avtContract_p new_contract = new avtContract(lastContract);
             new_contract->GetDataRequest()->SetTimestep(domain.timeStep);
@@ -1153,6 +1155,10 @@ avtStreamlineFilter::SetStreamlineDirection(int dir)
 //   Dave Pugmire, Thu Dec 18 13:24:23 EST 2008
 //   Reverse the logic to check for on demand.
 //
+//   Hank Childs, Fri Mar 12 12:25:11 PST 2010
+//   Don't use the interval tree if another filter has invalidated it
+//   (i.e. displace, reflect)
+//
 // ****************************************************************************
 
 bool
@@ -1165,8 +1171,12 @@ avtStreamlineFilter::CheckOnDemandViability(void)
         return false;
     }
     
-    avtIntervalTree *it = GetMetaData()->GetSpatialExtents();
-    bool val = (it == NULL ? false : true);
+    bool val = false;
+    if (GetInput()->GetInfo().GetValidity().GetSpatialMetaDataPreserved())
+    {
+        avtIntervalTree *it = GetMetaData()->GetSpatialExtents();
+        bool val = (it == NULL ? val : true);
+    }
     debug1 << "avtStreamlineFilter::CheckOnDemandViability(): = " << val <<endl;
     return val;
 }
@@ -1612,6 +1622,9 @@ avtStreamlineFilter::SetupLocator(const DomainType &dom, vtkDataSet *ds)
 //   Hank Childs, Fri Feb 19 17:47:04 CST 2010
 //   Use a separate routine to generate a cell locator.
 //
+//   Dave Pugmire, Tue Mar 23 11:11:11 EDT 2010
+//   Make sure we ignore ghost zones with using cell locator.
+//
 // ****************************************************************************
 
 bool
@@ -1687,6 +1700,9 @@ avtStreamlineFilter::PointInDomain(avtVector &pt, DomainType &domain)
     double rad = 1e-6, dist=0.0;
     double p[3] = {pt.x, pt.y, pt.z}, resPt[3]={0.0,0.0,0.0};
     int foundCell = -1, subId = 0;
+    
+    //Ignore ghost zones.
+    cellLocator->IgnoreGhostsOn();
     int success = cellLocator->FindClosestPointWithinRadius(p, rad, resPt, 
                                                             foundCell, subId, dist);
 
@@ -1812,11 +1828,20 @@ avtStreamlineFilter::ComputeDomainToRankMapping()
 #endif
 }
 
+// ****************************************************************************
+//  Modifications:
+//
+//   Allen Sanderson, Sun Mar  7 12:49:56 PST 2010
+//   Change ".size() == 0" test with empty, as empty has much better 
+//   performance.
+//
+// ****************************************************************************
+
 int
 avtStreamlineFilter::DomainToRank(DomainType &domain)
 {
     // First time through, compute the mapping.
-    if (domainToRank.size() == 0)
+    if (domainToRank.empty())
         ComputeDomainToRankMapping();
 
     if (domain.domain < 0 || domain.domain >= domainToRank.size())
@@ -1901,6 +1926,17 @@ avtStreamlineFilter::DomainToRank(DomainType &domain)
 //   Send the SL filter's instance of a locator to the interpolated velocity
 //   field.
 //
+//   Dave Pugmire, Tue Feb 23 09:42:25 EST 2010
+//   Use domainToCellLocatorMap.find() instead of [] accessor. It will actually
+//   add an entry for the key if doesn't already exist.
+//
+//   Allen Sanderson, Sun Mar  7 12:49:56 PST 2010
+//   Change ".size() == 0" test with empty, as empty has much better 
+//   performance.
+//
+//   Dave Pugmire, Tue Mar 23 11:11:11 EDT 2010
+//   Moved zone-to-node centering to the streamline plot.
+//
 // ****************************************************************************
 
 avtIVPSolver::Result
@@ -1918,26 +1954,19 @@ avtStreamlineFilter::IntegrateDomain(avtStreamlineWrapper *slSeg,
     
     avtDataAttributes &a = GetInput()->GetInfo().GetAttributes();
 
-    if (DebugStream::Level5())
-        debug5<<"avtStreamlineFilter::IntegrateDom(dom= "<<slSeg->domain<<")"<<endl;
+    if (DebugStream::Level4())
+        debug4<<"avtStreamlineFilter::IntegrateDom(dom= "<<slSeg->domain<<")"<<endl;
 
     // prepare streamline integration ingredients
-    vtkVisItInterpolatedVelocityField* velocity1 = vtkVisItInterpolatedVelocityField::New();
-    
-    // See if we have cell cenetered data...
-    vtkCellDataToPointData *cellToPt1 = NULL;
-    if (ds->GetPointData()->GetVectors() == NULL)
-    {
-        cellToPt1 = vtkCellDataToPointData::New();
-        
-        cellToPt1->SetInput(ds);
-        cellToPt1->Update();
-        velocity1->SetDataSet(cellToPt1->GetOutput());
-    }
-    else
-        velocity1->SetDataSet(ds);
+    vtkVisItInterpolatedVelocityField* velocity1 =
+      vtkVisItInterpolatedVelocityField::New();
+    velocity1->SetDataSet(ds);
 
-    vtkVisItCellLocator *cellLocator = domainToCellLocatorMap[slSeg->domain];
+    vtkVisItCellLocator *cellLocator = NULL;
+    std::map<DomainType, vtkVisItCellLocator*>::iterator it = domainToCellLocatorMap.find(slSeg->domain);
+    
+    if (it != domainToCellLocatorMap.end())
+        cellLocator = it->second;
     velocity1->SetLocator(cellLocator);
 
     if (coloringMethod == STREAMLINE_COLOR_VARIABLE)
@@ -1967,11 +1996,6 @@ avtStreamlineFilter::IntegrateDomain(avtStreamlineWrapper *slSeg,
         velocity1->SetNextTime(t2);
     }
 
-    // FIX ME - This code is not on the branch?????
-//     double end = termination;
-//     if (slSeg->dir == avtStreamlineWrapper::BWD)
-//       end = - end;
-
     //slSeg->Debug();
     int numSteps = slSeg->sl->size();
     avtIVPSolver::Result result;
@@ -1979,7 +2003,9 @@ avtStreamlineFilter::IntegrateDomain(avtStreamlineWrapper *slSeg,
     // When restarting a streamline one step is always taken. To avoid
     // this unneed step check to see if the termination criteria was
     // previously met.
-    if (DebugStream::Level5()) debug5<<"IntegrateDomain: slSeg->terminated= "<<slSeg->terminated<<endl;
+    if (DebugStream::Level4())
+        debug4<<"IntegrateDomain: slSeg->terminated= "<<slSeg->terminated<<endl;
+
     if( ! slSeg->terminated )
     {
         if (intersectObj)
@@ -2009,14 +2035,16 @@ avtStreamlineFilter::IntegrateDomain(avtStreamlineWrapper *slSeg,
         
         // Termination criteria was met.
         slSeg->terminated = (result == avtIVPSolver::TERMINATE);
-        debug5<<"Advance:= "<<result<<endl;
-        debug5<<"IntegrateDomain: slSeg->terminated= "<<slSeg->terminated<<endl;
-        
+
+        if (DebugStream::Level5())
+        {
+          debug5<<"Advance:= "<<result<<endl;
+          debug5<<"IntegrateDomain: slSeg->terminated= "<<slSeg->terminated<<endl;
+        }
     }
     else
         result = avtIVPSolver::TERMINATE;
 
-    numSteps = slSeg->sl->size() - numSteps;
     //slSeg->Debug();
     if (result == avtIVPSolver::OUTSIDE_DOMAIN)
     {
@@ -2027,7 +2055,7 @@ avtStreamlineFilter::IntegrateDomain(avtStreamlineWrapper *slSeg,
         SetDomain(slSeg);
         
         // Not in any domains.
-        if (slSeg->seedPtDomainList.size() == 0)
+        if (slSeg->seedPtDomainList.empty())
         {
             slSeg->status = avtStreamlineWrapper::TERMINATE;
         }
@@ -2041,6 +2069,7 @@ avtStreamlineFilter::IntegrateDomain(avtStreamlineWrapper *slSeg,
                 slSeg->status = avtStreamlineWrapper::TERMINATE;
             }
 
+            numSteps = slSeg->sl->size() - numSteps;
             if (slSeg->domain == oldDomain && numSteps == 0)
             {
                 slSeg->status = avtStreamlineWrapper::TERMINATE;
@@ -2050,6 +2079,7 @@ avtStreamlineFilter::IntegrateDomain(avtStreamlineWrapper *slSeg,
                 slSeg->status = avtStreamlineWrapper::OUTOFBOUNDS;
             }
         }
+
         else
         {
             //slSeg->status = avtStreamlineWrapper::TERMINATE;
@@ -2061,11 +2091,8 @@ avtStreamlineFilter::IntegrateDomain(avtStreamlineWrapper *slSeg,
     }
     
     velocity1->Delete();
-    if (cellToPt1)
-        cellToPt1->Delete();
-    
-    if (DebugStream::Level5())
-        debug5<<"::IntegrateDomain() result= "<<result<<endl;
+    if (DebugStream::Level4())
+        debug4<<"::IntegrateDomain() result= "<<result<<endl;
     visitTimer->StopTimer(t0, "IntegrateDomain");
     return result;
 }
@@ -2100,7 +2127,8 @@ avtStreamlineFilter::IntegrateDomain(avtStreamlineWrapper *slSeg,
 // ****************************************************************************
 
 void
-avtStreamlineFilter::IntegrateStreamline(avtStreamlineWrapper *slSeg, int maxSteps)
+avtStreamlineFilter::IntegrateStreamline(avtStreamlineWrapper *slSeg,
+                                         int maxSteps)
 {
     int t1 = visitTimer->StartTimer();
     slSeg->status = avtStreamlineWrapper::UNSET;
@@ -2110,8 +2138,8 @@ avtStreamlineFilter::IntegrateStreamline(avtStreamlineWrapper *slSeg, int maxSte
     slSeg->GetEndPoint(pt);
     vtkDataSet *ds = GetDomain(slSeg->domain, pt.x, pt.y, pt.z);
 
-    if (DebugStream::Level5())
-        debug5 << "avtStreamlineFilter::IntegrateStreamline("<<pt<<" "<<slSeg->domain<<")"<<endl;
+    if (DebugStream::Level4())
+        debug4 << "avtStreamlineFilter::IntegrateStreamline("<<pt<<" "<<slSeg->domain<<")"<<endl;
 
     if (ds == NULL)
     {
@@ -2124,7 +2152,8 @@ avtStreamlineFilter::IntegrateStreamline(avtStreamlineWrapper *slSeg, int maxSte
 
         double extents[6] = { 0.,0., 0.,0., 0.,0. };
         intervalTree->GetElementExtents(slSeg->domain.domain, extents);
-        avtIVPSolver::Result result = IntegrateDomain(slSeg, ds, extents, maxSteps);
+        avtIVPSolver::Result result =
+          IntegrateDomain(slSeg, ds, extents, maxSteps);
         if (DebugStream::Level5())
             debug5<<"ISL: result= "<<result<<endl;
 
@@ -2143,8 +2172,8 @@ avtStreamlineFilter::IntegrateStreamline(avtStreamlineWrapper *slSeg, int maxSte
         }
     }
     
-    if (DebugStream::Level5())
-        debug5 << "IntegrateStreamline DONE: status = "<<slSeg->status<<" doms= "<<slSeg->seedPtDomainList<<endl;
+    if (DebugStream::Level4())
+        debug4 << "IntegrateStreamline DONE: status = "<<slSeg->status<<" doms= "<<slSeg->seedPtDomainList<<endl;
     visitTimer->StopTimer(t1, "IntegrateStreamline");
 }
 
@@ -2470,6 +2499,11 @@ avtStreamlineFilter::AddSeedpoints(std::vector<avtVector> &pts,
 //  Programmer: Dave Pugmire
 //  Creation:   December 3, 2009
 //
+//  Modifications:
+//
+//   Dave Pugmire, Tue Feb 23 09:42:25 EST 2010
+//   Removed avtStreamlineWrapper:Dir
+//
 // ****************************************************************************
 
 void
@@ -2510,7 +2544,6 @@ avtStreamlineFilter::CreateStreamlinesFromSeeds(std::vector<avtVector> &pts,
                 
                 avtStreamlineWrapper *slSeg;
                 slSeg = new avtStreamlineWrapper(sl,
-                                                 avtStreamlineWrapper::FWD,
                                                  GetNextStreamlineID());
                 slSeg->domain = dom;
                 slSeg->termination = termination;
@@ -2528,7 +2561,6 @@ avtStreamlineFilter::CreateStreamlinesFromSeeds(std::vector<avtVector> &pts,
                 
                 avtStreamlineWrapper *slSeg;
                 slSeg = new avtStreamlineWrapper(sl,
-                                                 avtStreamlineWrapper::BWD,
                                                  GetNextStreamlineID());
                 slSeg->domain = dom;
                 slSeg->termination = -termination;
@@ -2548,7 +2580,8 @@ avtStreamlineFilter::CreateStreamlinesFromSeeds(std::vector<avtVector> &pts,
     for (int i = 0; i < streamlines.size(); i++)
     {
         avtStreamlineWrapper *slSeg = streamlines[i];
-        debug5<<"Create seed: id= "<<slSeg->id<<" dom= "<<slSeg->domain<<" pt= "<<slSeg->sl->PtStart()<<endl;
+        if (DebugStream::Level5())
+          debug5<<"Create seed: id= "<<slSeg->id<<" dom= "<<slSeg->domain<<" pt= "<<slSeg->sl->PtStart()<<endl;
     }
 }
 
@@ -2860,15 +2893,47 @@ avtStreamlineFilter::ModifyContract(avtContract_p in_contract)
     avtDataRequest_p in_dr = in_contract->GetDataRequest();
     avtDataRequest_p out_dr = NULL;
 
-    if (strcmp(in_dr->GetVariable(), "colorVar") == 0 || doPathlines)
+    if (integrationType == STREAMLINE_INTEGRATE_M3D_C1_INTEGRATOR ||
+        strcmp(in_dr->GetVariable(), "colorVar") == 0 ||
+        opacityVariable != "" ||
+        doPathlines)
     {
         // The avtStreamlinePlot requested "colorVar", so remove that from the
         // contract now.
         out_dr = new avtDataRequest(in_dr,in_dr->GetOriginalVariable());
     }
 
+    if ( integrationType == STREAMLINE_INTEGRATE_M3D_C1_INTEGRATOR )
+    {
+        // Add in the other fields that the M3D Interpolation needs
+        // for doing their Newton's Metod.
+
+        // Assume the user has selected B as the primary variable.
+        // Which is ignored.
+
+        // Single variables stored as attributes on the header
+        out_dr->AddSecondaryVariable("hidden/header/linear");  // /linear
+        out_dr->AddSecondaryVariable("hidden/header/ntor");    // /ntor
+        
+        out_dr->AddSecondaryVariable("hidden/header/bzero");    // /bzero
+        out_dr->AddSecondaryVariable("hidden/header/rzero");    // /rzero
+
+        // The mesh - N elememts x 7
+        out_dr->AddSecondaryVariable("hidden/elements"); // /time_000/mesh/elements
+
+        // Variables on the mesh - N elements x 20
+        out_dr->AddSecondaryVariable("hidden/equilibrium/f");  // /equilibrium/fields/f
+        out_dr->AddSecondaryVariable("hidden/equilibrium/psi");// /equilibrium/fields/psi
+
+        out_dr->AddSecondaryVariable("hidden/f");      // /time_XXX/fields/f
+        out_dr->AddSecondaryVariable("hidden/f_i");    // /time_XXX/fields/f_i
+        out_dr->AddSecondaryVariable("hidden/psi");    // /time_XXX/fields/psi
+        out_dr->AddSecondaryVariable("hidden/psi_i");  // /time_XXX/fields/psi_i
+    }
+
     if (coloringMethod == STREAMLINE_COLOR_VARIABLE)
         out_dr->AddSecondaryVariable(coloringVariable.c_str());
+
     if (opacityVariable != "")
         out_dr->AddSecondaryVariable(opacityVariable.c_str());
 
@@ -2901,7 +2966,6 @@ avtStreamlineFilter::ModifyContract(avtContract_p in_contract)
         }
         if (needExpr)
         {
-
             pathlineVar = out_dr->GetVariable(); // HANK: ASSUMPTION
             std::string meshname = out_dr->GetVariable(); // Can reuse varname here.
             Expression *e = new Expression();

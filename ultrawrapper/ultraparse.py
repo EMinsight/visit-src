@@ -1,5 +1,10 @@
 import os, sys, inspect
 
+try:
+    import pyparsing
+except:
+    raise VisItException("LoadUltra requires PyParsing to be installed in python's site-packages.")
+
 #make the ultrawrapper modules available for import
 sys.path.append(os.path.dirname(os.path.realpath(inspect.getfile(inspect.currentframe()))))
 
@@ -556,15 +561,17 @@ def runUltraWrapper():
             SetUltraScript("")
         else: 
             cmd = raw_input('U-> ')
-        if cmd.split()[0] == 'runscript':
-            ultrascript.parseFile(cmd.split()[1])
-            continue
-        try:
-            ulRes = ultracommand.parseString(cmd)
-        except ParseException, err: 
-            print 'Exception (%s) while parsing command: %s' %(err,cmd)
-            UltraUsage(cmd.split()[0])
-            continue
+        
+        if cmd != '': 
+            if cmd.split()[0] == 'runscript':
+                ultrascript.parseFile(cmd.split()[1])
+                continue
+            try:
+                ulRes = ultracommand.parseString(cmd)
+            except ParseException, err: 
+                print 'Exception (%s) while parsing command: %s' %(err,cmd)
+                UltraUsage(cmd.split()[0])
+                continue
 
 
 

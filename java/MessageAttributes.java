@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -58,7 +58,7 @@ import java.util.Vector;
 
 public class MessageAttributes extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 4;
+    private static int MessageAttributes_numAdditionalAtts = 4;
 
     // Enum values
     public final static int SEVERITY_ERROR = 0;
@@ -70,7 +70,7 @@ public class MessageAttributes extends AttributeSubject
 
     public MessageAttributes()
     {
-        super(numAdditionalAttributes);
+        super(MessageAttributes_numAdditionalAtts);
 
         text = new String("");
         unicode = new Vector();
@@ -80,7 +80,7 @@ public class MessageAttributes extends AttributeSubject
 
     public MessageAttributes(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(MessageAttributes_numAdditionalAtts + nMoreFields);
 
         text = new String("");
         unicode = new Vector();
@@ -90,7 +90,7 @@ public class MessageAttributes extends AttributeSubject
 
     public MessageAttributes(MessageAttributes obj)
     {
-        super(numAdditionalAttributes);
+        super(MessageAttributes_numAdditionalAtts);
 
         int i;
 
@@ -115,7 +115,7 @@ public class MessageAttributes extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return MessageAttributes_numAdditionalAtts;
     }
 
     public boolean equals(MessageAttributes obj)

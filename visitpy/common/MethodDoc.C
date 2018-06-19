@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -3393,7 +3393,7 @@ const char *visit_GetSaveWindowAttributes_doc =
 "print s\n"
 "s.width = 600\n"
 "s.height = 600\n"
-"s.format = s.FILEFORMAT_RGB\n"
+"s.format = s.RGB\n"
 "print s\n"
 ;
 const char *visit_GetTimeSliders_doc = 
@@ -5135,6 +5135,70 @@ const char *visit_QueryOverTime_doc =
 "\n"
 "ResetView()\n"
 ;
+const char *visit_PythonQuery_doc = 
+"PythonQuery\n"
+"-Executes a Python Filter Query.\n"
+"\n"
+"\n"
+"Synopsis:\n"
+"\n"
+"PythonQuery(source='python filter source ...') -> integer\n"
+"PythonQuery(file='path/to/python_filter_script.py') -> integer\n"
+"\n"
+"Arguments:\n"
+"\n"
+"source  A string containing the source code for a Python Query Filter .\n"
+"file    A string containing the path to a Python Query Filter script file.\n"
+"\n"
+"Note: Use only one of the 'source' or 'file' arguments.\n"
+"      If both are used the 'source' argument overrides 'file'."
+"\n"
+"\n"
+"Returns:\n"
+"\n"
+"The PythonQuery function returns 1 on success and 0 on failure.\n"
+"\n"
+"\n"
+"Description:\n"
+"\n"
+"Used to execute a Python Filter Query."
+;
+
+const char *visit_DefinePythonExpression_doc =
+"DefinePythonExpression\n"
+"-Defines a new Python Filter Expression.\n"
+"\n"
+"\n"
+"Synopsis:\n"
+"\n"
+"DefinePythonExpression(\"myvar\",[args],source='python filter source ...')\n"
+"DefinePythonExpression(\"myvar\",[args],source='python filter source ...',type='scalar')\n"
+"DefinePythonExpression(\"myvar\",[args],file='path/to/python_filter_script.py')\n"
+"\n"
+"Arguments:\n"
+"\n"
+"name    The name of the variable to be created.\n"
+"args    A tuple (or list) of strings providing the variable names of the\n"
+"        arguments to the Python Expression.\n"
+"source  A string containing the source code for a Python Expression Filter .\n"
+"file    A string containing the path to a Python Expression Filter script file.\n"
+"type    An optional string defining the output type of the expression.\n"
+"         Default type: 'scalar'\n"
+"         Avalaible types: 'scalar','vector','tensor','array','curve'\n"
+"\n"
+"Note: Use only one of the 'source' or 'file' arguments.\n"
+"      If both are used the 'source' argument overrides 'file'."
+"\n"
+"\n"
+"Returns:\n"
+"\n"
+"The DefineExpression functions do not return a value.\n"
+"\n"
+"\n"
+"Description:\n"
+"\n"
+"Used to define a Python Filter Expression."
+;
 const char *visit_RecenterView_doc = 
 "RecenterView\n"
 "-Recalculates the view for the active visualization window so that its\n"
@@ -5855,8 +5919,8 @@ const char *visit_SaveWindow_doc =
 "\n"
 "# Set the save window attributes.\n"
 "s = SaveWindowAttributes()\n"
-"s.filename = \"test\"\n"
-"s.format = s.FILEFORMAT_JPEG\n"
+"s.fileName = \"test\"\n"
+"s.format = s.JPEG\n"
 "s.progressive = 1\n"
 "s.fileName = \"test\"\n"
 "SetSaveWindowAttributes(s)\n"
@@ -7218,8 +7282,8 @@ const char *visit_SetSaveWindowAttributes_doc =
 "\n"
 "# Set the save window attributes\n"
 "s = SaveWindowAttributes()\n"
-"s.filename = \"test\"\n"
-"s.format = s.FILEFORMAT_JPEG\n"
+"s.fileName = \"test\"\n"
+"s.format = s.JPEG\n"
 "s.progressive = 1\n"
 "s.fileName = \"test\"\n"
 "SetSaveWindowAttributes(s)\n"

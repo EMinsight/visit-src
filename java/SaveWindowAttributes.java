@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -56,7 +56,7 @@ package llnl.visit;
 
 public class SaveWindowAttributes extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 17;
+    private static int SaveWindowAttributes_numAdditionalAtts = 17;
 
     // Enum values
     public final static int FILEFORMAT_BMP = 0;
@@ -85,7 +85,7 @@ public class SaveWindowAttributes extends AttributeSubject
 
     public SaveWindowAttributes()
     {
-        super(numAdditionalAttributes);
+        super(SaveWindowAttributes_numAdditionalAtts);
 
         outputToCurrentDirectory = true;
         outputDirectory = new String(".");
@@ -108,7 +108,7 @@ public class SaveWindowAttributes extends AttributeSubject
 
     public SaveWindowAttributes(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(SaveWindowAttributes_numAdditionalAtts + nMoreFields);
 
         outputToCurrentDirectory = true;
         outputDirectory = new String(".");
@@ -131,7 +131,7 @@ public class SaveWindowAttributes extends AttributeSubject
 
     public SaveWindowAttributes(SaveWindowAttributes obj)
     {
-        super(numAdditionalAttributes);
+        super(SaveWindowAttributes_numAdditionalAtts);
 
         outputToCurrentDirectory = obj.outputToCurrentDirectory;
         outputDirectory = new String(obj.outputDirectory);
@@ -161,7 +161,7 @@ public class SaveWindowAttributes extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return SaveWindowAttributes_numAdditionalAtts;
     }
 
     public boolean equals(SaveWindowAttributes obj)

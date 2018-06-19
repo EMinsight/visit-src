@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -140,6 +140,7 @@ class GUI_API QvisExpressionsWindow : public QvisPostableWindowObserver
     void    CreatePythonFilterEditor();
     void    UpdatePythonExpression();
     bool    ParsePythonExpression(const QString &, QString &, QString &);
+    void    UpdateStandardExpressionEditor(const QString &);
     void    UpdatePythonExpressionEditor(const QString &);
 
     // Widgets and layouts.
@@ -182,6 +183,7 @@ class GUI_API QvisExpressionsWindow : public QvisPostableWindowObserver
     // State information
     ExpressionList         *exprList;
     std::map<int,int>       indexMap;
+    bool                    stdExprActive;
     bool                    pyExprActive;
 };
 

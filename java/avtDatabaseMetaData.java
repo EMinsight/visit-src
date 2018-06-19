@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -59,11 +59,11 @@ import java.lang.Double;
 
 public class avtDatabaseMetaData extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 34;
+    private static int avtDatabaseMetaData_numAdditionalAtts = 35;
 
     public avtDatabaseMetaData()
     {
-        super(numAdditionalAttributes);
+        super(avtDatabaseMetaData_numAdditionalAtts);
 
         hasTemporalExtents = false;
         minTemporalExtents = 0;
@@ -99,11 +99,12 @@ public class avtDatabaseMetaData extends AttributeSubject
         isSimulation = false;
         simInfo = new avtSimulationInformation();
         suggestedDefaultSILRestriction = new Vector();
+        replacementMask = -65;
     }
 
     public avtDatabaseMetaData(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(avtDatabaseMetaData_numAdditionalAtts + nMoreFields);
 
         hasTemporalExtents = false;
         minTemporalExtents = 0;
@@ -139,11 +140,12 @@ public class avtDatabaseMetaData extends AttributeSubject
         isSimulation = false;
         simInfo = new avtSimulationInformation();
         suggestedDefaultSILRestriction = new Vector();
+        replacementMask = -65;
     }
 
     public avtDatabaseMetaData(avtDatabaseMetaData obj)
     {
-        super(numAdditionalAttributes);
+        super(avtDatabaseMetaData_numAdditionalAtts);
 
         int i;
 
@@ -194,96 +196,96 @@ public class avtDatabaseMetaData extends AttributeSubject
         meshes = new Vector(obj.meshes.size());
         for(i = 0; i < obj.meshes.size(); ++i)
         {
-            avtMeshMetaData newObj = (avtMeshMetaData)meshes.elementAt(i);
-            meshes.addElement(new avtMeshMetaData(newObj));
+            avtMeshMetaData oldObj = (avtMeshMetaData)obj.meshes.elementAt(i);
+            meshes.addElement(new avtMeshMetaData(oldObj));
         }
 
         // *** Copy the subsets field ***
         subsets = new Vector(obj.subsets.size());
         for(i = 0; i < obj.subsets.size(); ++i)
         {
-            avtSubsetsMetaData newObj = (avtSubsetsMetaData)subsets.elementAt(i);
-            subsets.addElement(new avtSubsetsMetaData(newObj));
+            avtSubsetsMetaData oldObj = (avtSubsetsMetaData)obj.subsets.elementAt(i);
+            subsets.addElement(new avtSubsetsMetaData(oldObj));
         }
 
         // *** Copy the scalars field ***
         scalars = new Vector(obj.scalars.size());
         for(i = 0; i < obj.scalars.size(); ++i)
         {
-            avtScalarMetaData newObj = (avtScalarMetaData)scalars.elementAt(i);
-            scalars.addElement(new avtScalarMetaData(newObj));
+            avtScalarMetaData oldObj = (avtScalarMetaData)obj.scalars.elementAt(i);
+            scalars.addElement(new avtScalarMetaData(oldObj));
         }
 
         // *** Copy the vectors field ***
         vectors = new Vector(obj.vectors.size());
         for(i = 0; i < obj.vectors.size(); ++i)
         {
-            avtVectorMetaData newObj = (avtVectorMetaData)vectors.elementAt(i);
-            vectors.addElement(new avtVectorMetaData(newObj));
+            avtVectorMetaData oldObj = (avtVectorMetaData)obj.vectors.elementAt(i);
+            vectors.addElement(new avtVectorMetaData(oldObj));
         }
 
         // *** Copy the tensors field ***
         tensors = new Vector(obj.tensors.size());
         for(i = 0; i < obj.tensors.size(); ++i)
         {
-            avtTensorMetaData newObj = (avtTensorMetaData)tensors.elementAt(i);
-            tensors.addElement(new avtTensorMetaData(newObj));
+            avtTensorMetaData oldObj = (avtTensorMetaData)obj.tensors.elementAt(i);
+            tensors.addElement(new avtTensorMetaData(oldObj));
         }
 
         // *** Copy the symmTensors field ***
         symmTensors = new Vector(obj.symmTensors.size());
         for(i = 0; i < obj.symmTensors.size(); ++i)
         {
-            avtSymmetricTensorMetaData newObj = (avtSymmetricTensorMetaData)symmTensors.elementAt(i);
-            symmTensors.addElement(new avtSymmetricTensorMetaData(newObj));
+            avtSymmetricTensorMetaData oldObj = (avtSymmetricTensorMetaData)obj.symmTensors.elementAt(i);
+            symmTensors.addElement(new avtSymmetricTensorMetaData(oldObj));
         }
 
         // *** Copy the arrays field ***
         arrays = new Vector(obj.arrays.size());
         for(i = 0; i < obj.arrays.size(); ++i)
         {
-            avtArrayMetaData newObj = (avtArrayMetaData)arrays.elementAt(i);
-            arrays.addElement(new avtArrayMetaData(newObj));
+            avtArrayMetaData oldObj = (avtArrayMetaData)obj.arrays.elementAt(i);
+            arrays.addElement(new avtArrayMetaData(oldObj));
         }
 
         // *** Copy the materials field ***
         materials = new Vector(obj.materials.size());
         for(i = 0; i < obj.materials.size(); ++i)
         {
-            avtMaterialMetaData newObj = (avtMaterialMetaData)materials.elementAt(i);
-            materials.addElement(new avtMaterialMetaData(newObj));
+            avtMaterialMetaData oldObj = (avtMaterialMetaData)obj.materials.elementAt(i);
+            materials.addElement(new avtMaterialMetaData(oldObj));
         }
 
         // *** Copy the species field ***
         species = new Vector(obj.species.size());
         for(i = 0; i < obj.species.size(); ++i)
         {
-            avtSpeciesMetaData newObj = (avtSpeciesMetaData)species.elementAt(i);
-            species.addElement(new avtSpeciesMetaData(newObj));
+            avtSpeciesMetaData oldObj = (avtSpeciesMetaData)obj.species.elementAt(i);
+            species.addElement(new avtSpeciesMetaData(oldObj));
         }
 
         // *** Copy the curves field ***
         curves = new Vector(obj.curves.size());
         for(i = 0; i < obj.curves.size(); ++i)
         {
-            avtCurveMetaData newObj = (avtCurveMetaData)curves.elementAt(i);
-            curves.addElement(new avtCurveMetaData(newObj));
+            avtCurveMetaData oldObj = (avtCurveMetaData)obj.curves.elementAt(i);
+            curves.addElement(new avtCurveMetaData(oldObj));
         }
 
         // *** Copy the labels field ***
         labels = new Vector(obj.labels.size());
         for(i = 0; i < obj.labels.size(); ++i)
         {
-            avtLabelMetaData newObj = (avtLabelMetaData)labels.elementAt(i);
-            labels.addElement(new avtLabelMetaData(newObj));
+            avtLabelMetaData oldObj = (avtLabelMetaData)obj.labels.elementAt(i);
+            labels.addElement(new avtLabelMetaData(oldObj));
         }
 
         // *** Copy the defaultPlots field ***
         defaultPlots = new Vector(obj.defaultPlots.size());
         for(i = 0; i < obj.defaultPlots.size(); ++i)
         {
-            avtDefaultPlotMetaData newObj = (avtDefaultPlotMetaData)defaultPlots.elementAt(i);
-            defaultPlots.addElement(new avtDefaultPlotMetaData(newObj));
+            avtDefaultPlotMetaData oldObj = (avtDefaultPlotMetaData)obj.defaultPlots.elementAt(i);
+            defaultPlots.addElement(new avtDefaultPlotMetaData(oldObj));
         }
 
         isSimulation = obj.isSimulation;
@@ -292,6 +294,7 @@ public class avtDatabaseMetaData extends AttributeSubject
         for(i = 0; i < obj.suggestedDefaultSILRestriction.size(); ++i)
             suggestedDefaultSILRestriction.addElement(new String((String)obj.suggestedDefaultSILRestriction.elementAt(i)));
 
+        replacementMask = obj.replacementMask;
 
         SelectAll();
     }
@@ -303,7 +306,7 @@ public class avtDatabaseMetaData extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return avtDatabaseMetaData_numAdditionalAtts;
     }
 
     public boolean equals(avtDatabaseMetaData obj)
@@ -506,7 +509,8 @@ public class avtDatabaseMetaData extends AttributeSubject
                 defaultPlots_equal &&
                 (isSimulation == obj.isSimulation) &&
                 (simInfo.equals(obj.simInfo)) &&
-                suggestedDefaultSILRestriction_equal);
+                suggestedDefaultSILRestriction_equal &&
+                (replacementMask == obj.replacementMask));
     }
 
     // Property setting methods
@@ -642,6 +646,12 @@ public class avtDatabaseMetaData extends AttributeSubject
         Select(33);
     }
 
+    public void SetReplacementMask(int replacementMask_)
+    {
+        replacementMask = replacementMask_;
+        Select(34);
+    }
+
     // Property getting methods
     public boolean                  GetHasTemporalExtents() { return hasTemporalExtents; }
     public double                   GetMinTemporalExtents() { return minTemporalExtents; }
@@ -677,6 +687,7 @@ public class avtDatabaseMetaData extends AttributeSubject
     public boolean                  GetIsSimulation() { return isSimulation; }
     public avtSimulationInformation GetSimInfo() { return simInfo; }
     public Vector                   GetSuggestedDefaultSILRestriction() { return suggestedDefaultSILRestriction; }
+    public int                      GetReplacementMask() { return replacementMask; }
 
     // Write and read methods.
     public void WriteAtts(CommunicationBuffer buf)
@@ -833,6 +844,8 @@ public class avtDatabaseMetaData extends AttributeSubject
             simInfo.Write(buf);
         if(WriteSelect(33, buf))
             buf.WriteStringVector(suggestedDefaultSILRestriction);
+        if(WriteSelect(34, buf))
+            buf.WriteInt(replacementMask);
     }
 
     public void ReadAtts(int index, CommunicationBuffer buf)
@@ -1063,6 +1076,9 @@ public class avtDatabaseMetaData extends AttributeSubject
         case 33:
             SetSuggestedDefaultSILRestriction(buf.ReadStringVector());
             break;
+        case 34:
+            SetReplacementMask(buf.ReadInt());
+            break;
         }
     }
 
@@ -1211,6 +1227,7 @@ public class avtDatabaseMetaData extends AttributeSubject
         str = str + boolToString("isSimulation", isSimulation, indent) + "\n";
         str = str + indent + "simInfo = {\n" + simInfo.toString(indent + "    ") + indent + "}\n";
         str = str + stringVectorToString("suggestedDefaultSILRestriction", suggestedDefaultSILRestriction, indent) + "\n";
+        str = str + intToString("replacementMask", replacementMask, indent) + "\n";
         return str;
     }
 
@@ -1635,5 +1652,6 @@ public class avtDatabaseMetaData extends AttributeSubject
     private boolean                  isSimulation;
     private avtSimulationInformation simInfo;
     private Vector                   suggestedDefaultSILRestriction; // vector of String objects
+    private int                      replacementMask;
 }
 

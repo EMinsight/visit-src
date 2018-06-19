@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -499,6 +499,12 @@ avtIVPDopri5::GuessInitialStep(const avtIVPField* field,
 //    Dave Pugmire, Tue Dec  1 11:50:18 EST 2009
 //    Switch from avtVec to avtVector.
 //
+//    Dave Pugmire, Tue Feb 23 09:42:25 EST 2010
+//    Set the velStart/velEnd direction based on integration direction.
+//
+//    Hank Childs, David Camp, and Christoph Garth, Fri Jul 23 14:31:57 PDT 2010
+//    Make sure we don't exceed the max step size.
+//
 // ****************************************************************************
 
 avtIVPSolver::Result 
@@ -571,6 +577,12 @@ avtIVPDopri5::Step(const avtIVPField* field,
             last = true;
             h = t_max - t;
         }
+
+        // Check to make sure we don't exceed the max step.
+        if( h < 0 && -h > h_max )
+           h = -h_max;
+        else if( h > h_max )
+           h = h_max;
 
         n_steps++;
 
@@ -688,8 +700,16 @@ avtIVPDopri5::Step(const avtIVPField* field,
         
                 ivpstep->tStart = t;
                 ivpstep->tEnd   = t + h;
-                ivpstep->velStart = k1;
-                ivpstep->velEnd = k7;
+                if (end < 0.0)
+                {
+                    ivpstep->velStart = -k1;
+                    ivpstep->velEnd = -k7;
+                }
+                else
+                {
+                    ivpstep->velStart = k1;
+                    ivpstep->velEnd = k7;
+                }
             }
             
             // update internal state

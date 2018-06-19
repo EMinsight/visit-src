@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -44,17 +44,21 @@
 //
 // Functions exposed to the VisIt module.
 //
+#define CURVEATTRIBUTES_NMETH 26
 void           PyCurveAttributes_StartUp(CurveAttributes *subj, void *data);
 void           PyCurveAttributes_CloseDown();
-PyMethodDef *   PyCurveAttributes_GetMethodTable(int *nMethods);
+PyMethodDef *  PyCurveAttributes_GetMethodTable(int *nMethods);
 bool           PyCurveAttributes_Check(PyObject *obj);
 CurveAttributes *  PyCurveAttributes_FromPyObject(PyObject *obj);
-PyObject *      PyCurveAttributes_New();
-PyObject *      PyCurveAttributes_Wrap(const CurveAttributes *attr);
+PyObject *     PyCurveAttributes_New();
+PyObject *     PyCurveAttributes_Wrap(const CurveAttributes *attr);
 void           PyCurveAttributes_SetParent(PyObject *obj, PyObject *parent);
 void           PyCurveAttributes_SetDefaults(const CurveAttributes *atts);
 std::string    PyCurveAttributes_GetLogString();
 std::string    PyCurveAttributes_ToString(const CurveAttributes *, const char *);
+PyObject *     PyCurveAttributes_getattr(PyObject *self, char *name);
+int            PyCurveAttributes_setattr(PyObject *self, char *name, PyObject *args);
+extern PyMethodDef PyCurveAttributes_methods[CURVEATTRIBUTES_NMETH];
 
 #endif
 

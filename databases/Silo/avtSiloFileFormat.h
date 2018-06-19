@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -246,6 +246,17 @@ typedef struct _GroupInfo
 //    Mark C. Miller, Wed Jan 27 13:13:20 PST 2010
 //    Added an extra level of indirection to the arbMeshXXXRemap maps to
 //    make sure they work for multi-block case.
+//
+//    Cyrus Harrison, Wed Mar 24 10:59:17 PDT 2010
+//    Added haveAmrGroupInfo, which is used to prevent collsion of amr
+//    levels info with connectivity group info.
+//
+//    Eric Brugger, Thu May 27 15:54:50 PDT 2010
+//    I added RemapFacelistForPolyhedronZones.
+//
+//    Cyrus Harrison, Mon Jun 14 15:45:46 PDT 2010
+//    Added metadataIsTimeVaryingChecked & CheckForTimeVaryingMetadata().
+//
 // ****************************************************************************
 
 class avtSiloFileFormat : public avtSTMDFileFormat
@@ -253,10 +264,10 @@ class avtSiloFileFormat : public avtSTMDFileFormat
   public:
                           avtSiloFileFormat(const char *, DBOptionsAttributes*);
     virtual              ~avtSiloFileFormat();
-    
+
     virtual void          FreeUpResources(void);
     virtual const char   *GetType(void) { return "Silo File Format"; };
-    
+
     virtual void         *GetAuxiliaryData(const char *var, int,
                                            const char *type, void *args,
                                            DestructorFunction &);
@@ -293,6 +304,7 @@ class avtSiloFileFormat : public avtSTMDFileFormat
     bool                  readGlobalInfo;
     bool                  connectivityIsTimeVarying;
     bool                  metadataIsTimeVarying;
+    bool                  metadataIsTimeVaryingChecked;
     bool                  hasDisjointElements;
     string                codeNameGuess;
 
@@ -318,6 +330,7 @@ class avtSiloFileFormat : public avtSTMDFileFormat
     map<string, string>             multivarToMultimeshMap;
 
     GroupInfo                       groupInfo;
+    bool                            haveAmrGroupInfo;
 
     map<string, map<int, vector<int>* > >      arbMeshCellReMap;
     map<string, map<int, vector<int>* > >      arbMeshNodeReMap;
@@ -390,6 +403,9 @@ class avtSiloFileFormat : public avtSTMDFileFormat
     vtkDataSet           *GetCurve(DBfile *, const char *);
     vtkDataSet           *GetUnstructuredMesh(DBfile *, const char *,
                                               int, const char *);
+
+    void                  RemapFacelistForPolyhedronZones(DBfacelist *,
+                                                          DBzonelist *);
 #ifdef SILO_VERSION_GE
 #if SILO_VERSION_GE(4,7,1)
     void                  HandleGlobalZoneIds(const char *, int, void*, int, int);
@@ -423,7 +439,7 @@ class avtSiloFileFormat : public avtSTMDFileFormat
     avtSpecies           *CalcSpecies(DBfile *, char *);
     vtkDataArray         *GetGlobalNodeIds(int, const char *);
     vtkDataArray         *GetGlobalZoneIds(int, const char *);
-    
+
     avtIntervalTree      *GetSpatialExtents(const char *);
     avtIntervalTree      *GetDataExtents(const char *);
 
@@ -471,6 +487,7 @@ class avtSiloFileFormat : public avtSTMDFileFormat
     DBmultimatspecies    *GetMultimatspec(const char *path, const char *name);
     DBmultimatspecies    *QueryMultimatspec(const char *path, const char *name);
     void                  RemoveMultimatspec(DBmultimatspecies *ms);
+    void                  CheckForTimeVaryingMetadata(DBfile *toc);
 };
 
 

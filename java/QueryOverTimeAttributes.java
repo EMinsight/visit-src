@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -56,7 +56,7 @@ package llnl.visit;
 
 public class QueryOverTimeAttributes extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 10;
+    private static int QueryOverTimeAttributes_numAdditionalAtts = 10;
 
     // Enum values
     public final static int TIMETYPE_CYCLE = 0;
@@ -66,7 +66,7 @@ public class QueryOverTimeAttributes extends AttributeSubject
 
     public QueryOverTimeAttributes()
     {
-        super(numAdditionalAttributes);
+        super(QueryOverTimeAttributes_numAdditionalAtts);
 
         timeType = TIMETYPE_CYCLE;
         startTimeFlag = false;
@@ -82,7 +82,7 @@ public class QueryOverTimeAttributes extends AttributeSubject
 
     public QueryOverTimeAttributes(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(QueryOverTimeAttributes_numAdditionalAtts + nMoreFields);
 
         timeType = TIMETYPE_CYCLE;
         startTimeFlag = false;
@@ -98,7 +98,7 @@ public class QueryOverTimeAttributes extends AttributeSubject
 
     public QueryOverTimeAttributes(QueryOverTimeAttributes obj)
     {
-        super(numAdditionalAttributes);
+        super(QueryOverTimeAttributes_numAdditionalAtts);
 
         timeType = obj.timeType;
         startTimeFlag = obj.startTimeFlag;
@@ -121,7 +121,7 @@ public class QueryOverTimeAttributes extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return QueryOverTimeAttributes_numAdditionalAtts;
     }
 
     public boolean equals(QueryOverTimeAttributes obj)

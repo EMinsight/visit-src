@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -57,25 +57,25 @@ import java.util.Vector;
 
 public class AnnotationObjectList extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 1;
+    private static int AnnotationObjectList_numAdditionalAtts = 1;
 
     public AnnotationObjectList()
     {
-        super(numAdditionalAttributes);
+        super(AnnotationObjectList_numAdditionalAtts);
 
         annotation = new Vector();
     }
 
     public AnnotationObjectList(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(AnnotationObjectList_numAdditionalAtts + nMoreFields);
 
         annotation = new Vector();
     }
 
     public AnnotationObjectList(AnnotationObjectList obj)
     {
-        super(numAdditionalAttributes);
+        super(AnnotationObjectList_numAdditionalAtts);
 
         int i;
 
@@ -83,8 +83,8 @@ public class AnnotationObjectList extends AttributeSubject
         annotation = new Vector(obj.annotation.size());
         for(i = 0; i < obj.annotation.size(); ++i)
         {
-            AnnotationObject newObj = (AnnotationObject)annotation.elementAt(i);
-            annotation.addElement(new AnnotationObject(newObj));
+            AnnotationObject oldObj = (AnnotationObject)obj.annotation.elementAt(i);
+            annotation.addElement(new AnnotationObject(oldObj));
         }
 
 
@@ -98,7 +98,7 @@ public class AnnotationObjectList extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return AnnotationObjectList_numAdditionalAtts;
     }
 
     public boolean equals(AnnotationObjectList obj)

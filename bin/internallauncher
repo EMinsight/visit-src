@@ -584,10 +584,79 @@ $0 = shift @ARGV;
 #    Hank Childs, Sun Feb 21 12:15:49 CST 2010
 #    Fix some way-ness issues on longhorn.
 #
+#    Eric Brugger, Thu Mar  4 13:51:50 PST 2010
+#    I modified the script so that it would properly launch VisIt in
+#    parallel on xchem.llnl.gov.
+#
+#    Hank Childs and Rick Angelini, Sat Mar 13 20:19:49 PST 2010
+#    Add support for salloc.
+#
+#    Dave Pugmire, Fri Mar 19 10:15:04 EDT 2010 
+#    Updates for jaguarpf.ccs.ornl.gov
+#
+#    Eric Brugger, Mon Mar 22 11:53:43 PDT 2010
+#    I modified the script so that it would properly launch VisIt in
+#    parallel on up and purple at LLNL.
+#
+#    Jeremy Meredith, Fri Mar 26 10:28:51 EDT 2010
+#    Allow assume_format and fallback_format arguments to still work.
+#    They are now deprecated, though.  I added good warning/error messages
+#    for both those and for the truly obsolete default_format option.
+#
+#    Gunther H. Weber, Tue Mar 30 15:35:26 PDT 2010
+#    Put qsub job submission file into user's home directory if running on
+#    Hopper @ NERSC since currently having it in /tmp does not work.
+#    Revert to having plugins in a user's home directory on Franklin @NERSC 
+#    since home is now visible from compute nodes.
+#
+#    Eric Brugger, Wed Apr  7 16:56:43 PDT 2010
+#    I modified the script so that it would properly launch VisIt in
+#    parallel on the opteron clusters at LLNL.
+#
+#    Jeremy Meredith, Mon Apr 12 11:12:19 EDT 2010
+#    Fixed -help variants so they work on installations.
+#
+#    Cyrus Harrison, Thu Apr 15 11:40:19 PDT 2010
+#    Make sure proper mpi path is used on alastor (extended yana & hopi case)
+#
+#    Gunther H. Weber, Fri Apr 23 15:14:50 PDT 2010
+#    Modifications limited to LBL ANAG (tested by checking for /usr/local/anag)
+#    Delete PYTHONPHOME and PYTHONPATH to avoid conflict with their local
+#    Python installation. Iconify cli xterm at startup.
+#
+#    Rick Angelini (commit by HRC), Wed Apr 28 04:05:31 PDT 2010
+#    Add support for varying numbers of processors per node.
+#    
+#    Gunther H. Weber, Fri May  7 15:11:21 PDT 2010
+#    Detect whether we are running on Euclid @ NERSC and specify full path
+#    to mpirun if we do.
+#
+#    Gunther H. Weber, Thu May 13 11:42:57 PDT 2010
+#    Added information/error messages when trying to start gui or serial
+#    engine on Hopper.
+#
+#    Gunther H. Weber, Thu May 13 11:42:57 PDT 2010
+#    Added information/error messages when trying to start gui or serial
+#    engine on Franklin.
+#
+#    Eric Brugger, Tue Jul 20 17:21:16 PDT 2010
+#    I updated the help text for the "-v" option.
+#
+#    Larry Pezzaglia, Thu Jul 15 13:58:08 PDT 2010
+#    Add support for nautilus.nics.utk.edu.
+#
 ###############################################################################
 
 use POSIX qw(ceil);
 use Cwd;
+
+# HACK for LBNL ANAG/APDEC: Delete PYTHONHOME and PYTHONPATH on ANAG machines
+# to ensure using the appropriate Python version
+if (-x "/usr/local/anag")
+{
+    delete $ENV{PYTHONHOME};
+    delete $ENV{PYTHONPATH};
+}
 
 # -----------------------------------------------------------------------------
 #                                 Setup
@@ -687,7 +756,10 @@ $usage = "
         -svn_revision        Do NOT run VisIt. Just print the Subversion 
                              revision it was built from.
         -beta                Run the current beta version.
-        -v <version>         Run a specified version (e.g. '1.3.3').
+        -v <version>         Run a specified version. Specifying 2 digits,
+                             such as X.Y, will run the latest patch release
+                             for that version. Specifying 3 digits, such as
+                             X.Y.Z, will run that specific version.
 
     Other resources for help
     ---------------------------------------------------------------------------
@@ -1100,7 +1172,8 @@ $ssh_tunneling  = 0;
 $leftdb = "";
 $rightdb = "";
 $noloopback = 0;
-$argc = scalar(@ARGV);
+$assume_fallback_warned = 0;
+$showhelp = 0;
 
 # Parse the arguments 
 @visitargs = ();
@@ -1137,34 +1210,45 @@ while (scalar(@ARGV) > 0) {
     elsif ($arg eq "-movie" )    { $exe_name = "cli"; $add_movie_args = 1; $exe_name_passed = 1;}
     elsif ($arg eq "-s")         { if($add_movie_args) { $sfile = shift; push @visitargs, "-scriptfile", $sfile;} else { push @visitargs, $arg;}}
     elsif ($arg eq "-publicpluginsonly"){ $publiconly = 1; push @visitargs, $arg; }
-    elsif ($arg eq "-help" and $argc == 2)
-        { print STDERR "\nUSAGE: visit [options] $helpnote\n $usage\n"; exit(0); }
-    elsif ($arg eq "-h" and $argc == 2)
-        { print STDERR "\nUSAGE: visit [options] $helpnote\n $usage\n"; exit(0); }
-    elsif ($arg eq "--help" and $argc == 2)
-        { print STDERR "\nUSAGE: visit [options] $helpnote\n $usage\n"; exit(0); }
-    elsif ($arg eq "-fullhelp" and $argc == 2)
-        { print STDERR "\nUSAGE: visit [options] $fullusage\n"; exit(0); }
-    elsif ($arg eq "--fullhelp" and $argc == 2)
-        { print STDERR "\nUSAGE: visit [options] $fullusage\n"; exit(0); }
+    elsif ($arg eq "-help" or $arg eq "-h" or $arg eq "--help")
+        { $showhelp = 1; push @visitargs, $arg; }
+    elsif ($arg eq "-fullhelp" or $arg eq "--fullhelp")
+        { $showhelp = 2; push @visitargs, $arg; }
     elsif ($arg eq "-norun")     { $nr = shift; push @norun, $nr; push @visitargs, "-norun", $nr; }
     elsif ($arg eq "-arch")      { $print_arch = 1; } 
     elsif ($arg eq "-env")              { $envonly = 1; }
     elsif ($arg eq "-launchengine")     { if (scalar(@ARGV)>0) {$launchengine = shift;}
                                           if ($launchengine eq "") { $launchengine="localhost"; }
                                           elsif ($launchengine =~ /^-/) { unshift @ARGV, $launchengine; $launchengine = "localhost";}}
-    elsif ($arg eq "-default_format" or
-           $arg eq "-assume_format" or
-           $arg eq "-fallback_format")
+    elsif ($arg eq "-default_format")
     {
-        # All obsolete in 2.0.
+        # Obsolete in 2.0.
         print STDERR "\n";
-        print STDERR "ERROR: -default_format, -assume_format, and -fallback_format\n";
-        print STDERR "are all obsolete.  Automatic file format detection has been\n";
-        print STDERR "improved in version 2.0, and any adjustments, if still\n";
+        print STDERR "ERROR: -default_format is obsolete.\n";
+        print STDERR "Automatic file format detection has been improved\n";
+        print STDERR "in version 2.0, and any adjustments, if still\n";
         print STDERR "necessary, can be made within VisIt proper.\n";
+        print STDERR "See the Preferred File Formats list and other\n";
+        print STDERR "settings available in the Databases tab of\n";
+        print STDERR "the Plugin Manager window.\n";
         print STDERR "\n";
         exit(1);
+    }
+    elsif (($arg eq "-assume_format" or $arg eq "-fallback_format") and
+          !$assume_fallback_warned and $exe_name eq "viewer")
+    {
+        $assume_fallback_warned = 1;
+        # Deprecated in 2.0.
+        print STDERR "\n";
+        print STDERR "NOTE: -assume_format and -fallback_format have been\n";
+        print STDERR "deprecated.  Automatic file format detection has been\n";
+        print STDERR "improved in version 2.0, and any adjustments, if still\n";
+        print STDERR "necessary, can be made within VisIt proper. See the\n";
+        print STDERR "Preferred File Formats list in the Databases tab of\n";
+        print STDERR "the Plugin Manager window.  The formats you supplied\n";
+        print STDERR "will be added to that list for you right now.\n";
+        print STDERR "\n";
+        push @visitargs, $arg;
     }
     elsif ($arg eq "-gdb")              { $debug_gdb = 1; $gdb_xterm = 1;}
     elsif ($arg eq "-gdb-gui")          { if($exe_name eq "gui") {$debug_gdb = 1;} else {push @visitargs, $arg;}}
@@ -1303,6 +1387,24 @@ while (scalar(@ARGV) > 0) {
     elsif ($arg eq "-viewerdisplay" )   { $viewerdisplay = shift; push @visitargs, $arg, $viewerdisplay; }
     elsif ($arg eq "-noloopback")       { push @visitargs, $arg if (!$noloopback); $noloopback = 1; }
     else                         { push @visitargs, $arg; }
+}
+
+# -----------------------------------------------------------------------------
+#                             Display help messages
+# -----------------------------------------------------------------------------
+
+if ($showhelp != 0 and $exe_name eq "gui")
+{
+    if ($showhelp == 1)
+    {
+        print STDERR "\nUSAGE: visit [options] $helpnote\n $usage\n";
+        exit(0);
+    }
+    else # ($showhelp == 2)
+    {
+        print STDERR "\nUSAGE: visit [options] $fullusage\n";
+        exit(0);
+    }
 }
 
 # -----------------------------------------------------------------------------
@@ -1532,35 +1634,39 @@ if ( ($parallel) and $exe_name eq "engine" and (($host =~ /spur.tacc/) or ($host
 }
 
 # ----
-# HACK for jaguarcnl @ ORNL
+# HACK for jaguarpf.ccs.ornl.gov
 #
 # ----
-$IsRunningOnJaguarCNL_ORNL = 0;
-if ( ($parallel) and $exe_name eq "engine" and $host =~ /jaguar/ )
+$IsRunningOnJaguar_ORNL = 0;
+if ( ($parallel) and $exe_name eq "engine" and ($host =~ /jaguarpf/ or $host =~ /jaguar/) )
 {
     chomp($domain   = `hostname -d`);
     if ( $domain eq "ccs.ornl.gov" )
     {
-        if ( $host eq "jaguar1" ) 
+        $IsRunningOnJaguar_ORNL = 1;
+        $remotehost = $host;
+        if ($host =~ /jaguarpf/)
         {
-            $IsRunningOnJaguarCNL_ORNL = 1;
-            $remotehost = "192.168.0.9";
+            $remotehost =~ s/jaguarpf-//;
         }
-        if ( $host eq "jaguar2" )
+        else
         {
-            $IsRunningOnJaguarCNL_ORNL = 1;
-            $remotehost = "192.168.0.13";
+            $remotehost =~ s/jaguar/login/;
         }
-        if ( $host eq "jaguar3" )
-        {
-            $IsRunningOnJaguarCNL_ORNL = 1;
-            $remotehost = "192.168.0.17";
-        }
-        if ( $host eq "jaguar4" )
-        {
-            $IsRunningOnJaguarCNL_ORNL = 1;
-            $remotehost = "192.168.0.21";
-        }
+    }
+}
+
+# ----
+# HACK for nautilus.nics.utk.edu
+#
+# ----
+$IsRunningOnNautilus_UTK = 0;
+if ( $host =~ /^nautilus/ )
+{
+    chomp($domain = `hostname -d`);
+    if ( $domain eq "nics.utk.edu" )
+    {
+        $IsRunningOnNautilus_UTK = 1;
     }
 }
 
@@ -1575,15 +1681,7 @@ if ( $host =~ /^nid/ )
     if ($nodename =~ /^franklin/)
     {
         $IsRunningOnFranklinNERSC = 1;
-        $ENV{LD_LIBRARY_PATH} = join ':' ,
-            ("/opt/gcc/4.2.0.quadcore/snos/lib64",
-             "/opt/xt-pe/2.1.41HD/lib",
-             "/opt/pgi/8.0.1/linux86-64/8.0/libso",
-             "/opt/pgi/8.0.1/linux86-64/8.0/lib",
-             "/opt/xt-os/2.1.41HD/lib",
-             "/opt/xt-libc/2.1.41HD/amd64/lib",
-             "/opt/torque/2.3.4-200809011357/lib",
-             "/opt/moab/5.2.4-s11143/lib");
+        $ENV{LD_LIBRARY_PATH} = "/opt/gcc/4.4.1/snos/lib64";
         if ($ENV{PATH} eq "")
         {
             $ENV{PATH} = "/opt/torque/2.3.4-200809011357/bin";
@@ -1592,11 +1690,40 @@ if ( $host =~ /^nid/ )
         {
             $ENV{PATH} = join ':' , ("$ENV{PATH}","/opt/torque/2.3.4-200809011357/bin");
         }
+        if ($exe_name eq "gui")
+        {
+            print "The VisIt install on Franklin is provided for the purpose of running ";
+            print "the parallel remote visualization backend on Franklin or run scripts ";
+            print "via VisIt's Python Command Line Interface (CLI). If you need to run ";
+            print "VisIt's gui, please install VisIt $ver on your local workstation.\n\n";
+            print "For more information, see ";
+            print "http://www.nersc.gov/nusers/resources/software/apps/visualization/visit/visit_franklin_remote.php\n\n";
+            print "If you do not want to install VisIt on your local machine, run the ";
+            print "VisIt GUI on Euclid, and follow the instructions under \"Running a ";
+            print "remote compute engine on Franklin\" on the Web page above. (VisIt on ";
+            print "Euclid already is configured with a host profile for Franklin).\n\n";
+            print "Please note that you will achieve the best performance by running the ";
+            print "VisIt GUI on your local workstation and the remote compute engine on ";
+            print "Franklin (or any other NERSC machine with VisIt).\n\n";
+            print "If you would like to perform batch data analysis or visualization on ";
+            print "Franklin using VisIt\'s CLI, add the options \"-cli -nowin\" to your ";
+            print "command line. Please contact NERSC Analytics at consult@nersc.gov for ";
+            print "further help.\n\n";
+            print "For more information about running VisIt at NERSC:";
+            print "http://www.nersc.gov/nusers/resources/software/apps/visualization/visit/\n\n";
+            exit 1;
+        }
+        elsif (($exe_name eq "engine") and not $parallel)
+        {
+            print "The VisIt install on Franklin only supports running a parallel ";
+            print "engine on the compute nodes!\n";
+            exit 1;
+        }
     }
 }
 
 # ----
-# HACK for franklin @ NERSC
+# HACK for hopper @ NERSC
 #
 # ----
 $IsRunningOnHopperNERSC = 0;
@@ -1605,23 +1732,81 @@ if ( $host =~ /^hopper/ )
     $IsRunningOnHopperNERSC = 1;
     $ENV{LD_LIBRARY_PATH} = "/opt/gcc/4.3.3/snos/lib64";
 
-    if ($parallel and ($exe_name eq "engine"))
+    if ($exe_name eq "gui")
     {
-        $loginnodeport = $remoteport;
-        $remoteport = "\$MOM_PORT";
-        $loginnodehost = $remotehost;
-        $remotehost = "\$MOM_HOST";
+        print "The VisIt install on Hopper is provided for the purpose of running ";
+        print "the parallel remote visualization backend on Franklin or run scripts ";
+        print "via VisIt's Python Command Line Interface (CLI). If you need to run ";
+        print "VisIt's gui, please install VisIt $ver on your local workstation.\n\n";
+        print "For more information, see ";
+        print "http://www.nersc.gov/nusers/resources/software/apps/visualization/visit/visit_franklin_remote.php";
+        print " and replace all occurances of \"franklin\" with \"hopper.\"\n\n";
+        print "If you do not want to install VisIt on your local machine, run the ";
+        print "VisIt GUI on Euclid, and follow the instructions under \"Running a ";
+        print "remote compute engine on Hopper\" on the Web page above. (VisIt on ";
+        print "Euclid already is configured with a host profile for Hopper).\n\n";
+        print "Please note that you will achieve the best performance by running the ";
+        print "VisIt GUI on your local workstation and the remote compute engine on ";
+        print "Hopper (or any other NERSC machine with VisIt).\n\n";
+        print "If you would like to perform batch data analysis or visualization on ";
+        print "Franklin using VisIt\'s CLI, add the options \"-cli -nowin\" to your ";
+        print "command line. Please contact NERSC Analytics at consult@nersc.gov for ";
+        print "further help.\n\n";
+        print "For more information about running VisIt at NERSC:";
+        print "http://www.nersc.gov/nusers/resources/software/apps/visualization/visit/\n\n";
+        exit 1;
+    }
+
+    if ($exe_name eq "engine")
+    {
+        if ($parallel)
+        {
+            $loginnodeport = $remoteport;
+            $remoteport = "\$MOM_PORT";
+            $loginnodehost = $remotehost;
+            $remotehost = "\$MOM_HOST";
+        }
+        else
+        {
+            print "The VisIt install on Hopper only supports running a parallel ";
+            print "engine on the compute nodes!\n";
+            exit 1;
+        }
     }
 }
 
 # ----
-# HACK for yana and hopi @ LLNL
+# HACK for euclid @ NERSC
+#
+# ----
+$IsRunningOnEuclidNERSC = 0;
+if ( $host =~ /^euclid.nersc.gov/ )
+{
+    $IsRunningOnEuclidNERSC = 1;
+}
+
+# ----
+# HACK for xchem @ LLNL
+#
+# ----
+$IsRunningOnXchemLLNL = 0;
+if ( $host =~ /^xchem.llnl.gov/ )
+{
+    $IsRunningOnXchemLLNL = 1;
+    $ENV{LD_LIBRARY_PATH} = join ':' ,
+        ("/opt/intel/cc/10.1.021/lib",
+         "/opt/llnl/mpich2_shared/ch3-ssm/lib");
+}
+
+# ----
+# HACK for yana, alastor hopi @ LLNL
 #
 # ----
 $UseTTC = 0;
-if ($host =~ /^yana\d+$/ or $host =~ /^hopi\d+$/)
+if ($host =~ /^yana\d+$/ or $host =~ /^alastor\d+$/ or $host =~ /^hopi\d+$/)
 {
     $UseTTC = 1;
+    $ENV{LD_LIBRARY_PATH} = "/usr/local/tools/mvapich-gnu/lib/shared";
 }
 
 # ----
@@ -1632,6 +1817,28 @@ $UsePPN = 1;
 if ($host =~ /^graph\d+$/)
 {
     $UsePPN  = 0;
+    $ENV{LD_LIBRARY_PATH} = "/usr/local/tools/mvapich-gnu/lib/shared";
+}
+
+# ----
+# HACK for AMD Opteron clusters @ LLNL
+#
+# ----
+if ($host =~ /^atlas\d+$/ or $host =~ /^hera\d+$/ or $host =~ /^prism\d+$/ or
+    $host =~ /^zeus\d+$/ or $host =~ /^eos\d+$/ or $host =~ /^gauss\d+$/ or
+    $host =~ /^juno\d+$/ or $host =~ /^minos\d+$/ or $host =~ /^rhea\d+$/)
+{
+    $ENV{LD_LIBRARY_PATH} = "/usr/local/tools/mvapich-gnu/lib/shared";
+}
+
+# ----
+# HACK for up and purple @ LLNL
+#
+# ----
+if ( $host =~ /^up\d+$/ or $host =~ /^purple\d+$/)
+{
+    $ENV{LD_LIBRARY_PATH} = "/usr/lpp/ppe.poe/lib";
+    $ENV{LIBPATH} = "/usr/lpp/ppe.poe/lib";
 }
 
 # ----
@@ -1948,7 +2155,7 @@ else # We're running a public version.
 {
     foreach (@supportedarchs)
     {
-        if (-x "$visitdir/$_/bin/$exe_name")
+        if (-x "$visitdir/$_/bin/$exe_name" || -x "$visitdir/$_/bin/$exe_name.app")
         {
             $archdir = $_;
             last;
@@ -2038,10 +2245,6 @@ if (defined($ENV{HOME}))
     foreach my $archdir (@supportedarchs)
     {
         $makedir  = "$ENV{HOME}/.visit";mkdir $makedir,0777 if (! -e $makedir);
-        if ($IsRunningOnFranklinNERSC)
-        {
-            $makedir  = "/scratch/scratchdirs/$ENV{USER}/.visit";mkdir $makedir,0777 if (! -e $makedir);
-        }
         $makedir .= "/$archdir";        mkdir $makedir,0777 if (! -e $makedir);
         $makedir .= "/plugins";         mkdir $makedir,0777 if (! -e $makedir);
 
@@ -2150,9 +2353,9 @@ if($os eq "darwin")
 }
 
 # Set up plugin search paths in the correct order
-if ($IsRunningOnFranklinNERSC)
+if ($IsRunningOnJaguar_ORNL)
 {
-    $visitprivateplugins = "/scratch/scratchdirs/$ENV{USER}/.visit/$archdir/plugins";
+    $visitprivateplugins = "/lustre/widow1/scratch/$ENV{USER}/.visit/$archdir/plugins";
 }
 else
 {
@@ -2203,6 +2406,7 @@ $ENV{VISITHOME}     = "$visitdir";
 $ENV{VISITARCHHOME} = "$visitarchdir";
 $ENV{VISITHELPHOME} = "$visithelpdir";
 $ENV{VISITULTRAHOME} = "$visitultradir";
+
 if (-x "$visitlibdir/python")
 {
     $ENV{PYTHONHOME}    = "$visitlibdir/python";
@@ -2291,7 +2495,14 @@ if ($procs_set or ($parallel and $parlaunch_set))
     # mpirun
     if ($launch eq "mpirun")
     {
-        @parcmd = ("mpirun");
+        if ($IsRunningOnEuclidNERSC)
+        {
+            @parcmd = ("/usr/common/usg/openmpi/1.4.1/gnu/bin/mpirun");
+        }
+        else
+        {
+            @parcmd = ("mpirun");
+        }
         if ($debug_totalview eq $exe_name)
         {
             push @parcmd, "-tv";
@@ -2458,6 +2669,32 @@ if ($procs_set or ($parallel and $parlaunch_set))
         @printcmd = @parcmd;
         push @printcmd, ("\"".(pop @printcmd)."\"");
     }
+    # salloc
+    elsif (substr($launch,0,6) eq "salloc")
+    {
+        @parcmd = ("salloc");
+        push @parcmd, "-p", $part  if $part_set;
+        push @parcmd, "-t", $time  if $time_set; 
+        push @parcmd, "-N", $nodes if $nodes_set;
+        push @parcmd, "-n", $procs if $procs_set;    
+        if ($nodes_set)
+        {
+           $ppn = ceil($procs / $nodes);
+           push @parcmd, "--ntasks-per-node=$ppn";
+        }
+        push @parcmd, "srun","-N1","-n1","--preserve-env","--mpi=none", "mpirun";
+
+        if ($nodes_set)
+        {
+           $ppn = ceil($procs / $nodes);
+           push @parcmd, "--npernode", $ppn;
+        }
+        push @parcmd, @visitcmd;
+        if ($security_key_set) { push @parcmd, "-key", $security_key; }
+        push @parcmd, @post_args;
+        @printcmd = @parcmd;
+        push @printcmd, ("\"".(pop @printcmd)."\"");
+    }
     # bsub
     elsif (substr($launch,0,4) eq "bsub")
     {
@@ -2502,6 +2739,10 @@ if ($procs_set or ($parallel and $parlaunch_set))
         {
             $script_dir="/home/$tuser";
         }
+        elsif ($IsRunningOnHopperNERSC)
+        {
+            $script_dir = $ENV{HOME};
+        }
         $tdate =~ s/:/./g if ($IsRunningOnRanger_TACC);
         $tfilename = "$script_dir/visit.$tuser.$tdate";
         $tfile_opened = 1;
@@ -2511,10 +2752,10 @@ if ($procs_set or ($parallel and $parlaunch_set))
             if ($security_key_set) { push @visitcmd, "-key", $security_key; }
             push @visitcmd, @post_args;
 
-            if ($IsRunningOnFranklinNERSC)
+            if ($IsRunningOnJaguar_ORNL)
             {
                 # Need a location visible from compute nodes
-                $cdcmd     = "cd /scratch/scratchdirs/$ENV{USER}\n";
+                $cdcmd     = "cd /lustre/widow1/scratch/$ENV{USER}\n";
             }
             else
             {
@@ -2527,6 +2768,10 @@ if ($procs_set or ($parallel and $parlaunch_set))
                 if ($IsRunningOnSaguaro_ASU)
                 {
                     @mpicmd = ("/packages/gcc-openmpi-1.2.7/bin/mpiexec");
+                }
+                elsif ($IsRunningOnXchemLLNL)
+                {
+                    @mpicmd = ("/opt/mpiexec/bin/mpiexec");
                 }
                 else
                 {
@@ -2559,7 +2804,7 @@ if ($procs_set or ($parallel and $parlaunch_set))
                 @mpicmd = ("aprun");
                 push @mpicmd, @sublaunchargs if $sublaunchargs_set;
                 push @mpicmd, "-n",  $procs if $procs_set;
-                if ( $IsRunningOnFranklinNERSC || $IsRunningOnHopperNERSC || $IsRunningOnJaguarCNL_ORNL )
+                if ( $IsRunningOnFranklinNERSC || $IsRunningOnHopperNERSC || $IsRunningOnJaguar_ORNL )
                 {
                     push @mpicmd, "$visitbindir/env LD_LIBRARY_PATH=$visitlibdir:$visitarchdir/system_libs";
                 }
@@ -2586,6 +2831,10 @@ if ($procs_set or ($parallel and $parlaunch_set))
                       "implementation; you might have to hack " .
                       "internallauncher to load the module you need.\n";
                 print TFILE 'eval $(modulecmd sh swap PE-pgi PE-gnu)',"\n";
+            }
+            if ($IsRunningOnJaguar_ORNL)
+            {
+                print TFILE 'eval $(modulecmd sh swap PrgEnv-pgi PrgEnv-gnu)',"\n";
             }
             if ($IsRunningOnEureka_ANL)
             {
@@ -2725,13 +2974,20 @@ if ($procs_set or ($parallel and $parlaunch_set))
                     push @parcmd, "-l", "mppnppn=$nodes";
                 }
             }
+            elsif ($IsRunningOnJaguar_ORNL || $IsRunningOnNautilus_UTK)
+            {
+                $qsubNumNodeStr = "size";
+                $asubPPNStr = "";
+                $qsubSeparator = "";
+                $nodes = $procs;
+                push @parcmd, "-l size=$procs";
+            }
             else
             {
                 $qsubNumNodeStr = "nodes";
                 $qsubPPNStr = "ppn";
                 $qsubSeparator = ":";
-                if ( $IsRunningOnJaguarCNL_ORNL ) {$qsubNumNodeStr = "size";}
-                elsif ( $IsRunningOnLens_ORNL ) {$qsubPPNStr = "ppn";}
+                if ( $IsRunningOnLens_ORNL ) {$qsubPPNStr = "ppn";}
                 if ( $use_vis ) { push @parcmd, "-l", "$qsubNumNodeStr=$nodes$qsubSeparator$qsubPPNStr=$ppn:vis";}
                 elsif ( $UsePPN ) { push @parcmd, "-l", "$qsubNumNodeStr=$nodes$qsubSeparator$qsubPPNStr=$ppn"; }
                 else { push @parcmd, "-l", "$qsubNumNodeStr=$nodes"; }
@@ -3090,7 +3346,17 @@ else
                 splice @visitcmd, 0, 1, @newcmd;
 
                 @tmpcmd = @visitcmd;
-                @visitcmd = ("xterm", "-title", "VisIt $exe_name$ver", "-e");
+
+                if (-x "/usr/local/anag")
+                {
+                    # HACK: Iconify cli xterm window for ANAG/APDEC users
+                    @visitcmd = ("xterm", "-iconic", "-title", "VisIt $exe_name$ver", "-e");
+                }
+                else
+                {
+                    @visitcmd = ("xterm", "-title", "VisIt $exe_name$ver", "-e");
+                }
+
                 push @visitcmd, @tmpcmd;
             }
         }

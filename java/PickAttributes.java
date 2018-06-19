@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -58,7 +58,7 @@ import java.lang.Integer;
 
 public class PickAttributes extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 67;
+    private static int PickAttributes_numAdditionalAtts = 67;
 
     // Enum values
     public final static int PICKTYPE_ZONE = 0;
@@ -75,7 +75,7 @@ public class PickAttributes extends AttributeSubject
 
     public PickAttributes()
     {
-        super(numAdditionalAttributes);
+        super(PickAttributes_numAdditionalAtts);
 
         variables = new Vector();
         variables.addElement(new String("default"));
@@ -170,7 +170,7 @@ public class PickAttributes extends AttributeSubject
 
     public PickAttributes(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(PickAttributes_numAdditionalAtts + nMoreFields);
 
         variables = new Vector();
         variables.addElement(new String("default"));
@@ -265,7 +265,7 @@ public class PickAttributes extends AttributeSubject
 
     public PickAttributes(PickAttributes obj)
     {
-        super(numAdditionalAttributes);
+        super(PickAttributes_numAdditionalAtts);
 
         int i;
 
@@ -359,8 +359,8 @@ public class PickAttributes extends AttributeSubject
         varInfo = new Vector(obj.varInfo.size());
         for(i = 0; i < obj.varInfo.size(); ++i)
         {
-            PickVarInfo newObj = (PickVarInfo)varInfo.elementAt(i);
-            varInfo.addElement(new PickVarInfo(newObj));
+            PickVarInfo oldObj = (PickVarInfo)obj.varInfo.elementAt(i);
+            varInfo.addElement(new PickVarInfo(oldObj));
         }
 
         invalidVars = new Vector(obj.invalidVars.size());
@@ -418,7 +418,7 @@ public class PickAttributes extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return PickAttributes_numAdditionalAtts;
     }
 
     public boolean equals(PickAttributes obj)

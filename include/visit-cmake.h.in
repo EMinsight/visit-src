@@ -34,6 +34,9 @@
 /* Define if you have silo. */
 #cmakedefine HAVE_LIBSILO
 
+/* Define to identify the variant of PDB Lite (in silo) */
+#cmakedefine PDB_LITE_HAS_LONG_LONG
+
 /*******************************************************************************
  * Optional libraries
  ******************************************************************************/
@@ -270,9 +273,6 @@
 
 /* Define the largest image that VisIt can save. */
 #cmakedefine VISIT_RENDERING_SIZE_LIMIT @VISIT_RENDERING_SIZE_LIMIT@
-
-/* Define if you have pyparsing. */
-#cmakedefine HAVE_PYPARSING
 
 /* Define to `int' if <sys/types.h> doesn't define. */
 #cmakedefine gid_t

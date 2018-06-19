@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -49,8 +49,13 @@
 #include <string.h>
 
 #include <FileFunctions.h>
+#include <Utility.h>
 #include <InstallationFunctions.h>
 #include <VisItException.h>
+
+#include <string>
+#include <vector>
+
 #ifdef WIN32
   #define VISITCLI_API __declspec(dllimport)
 
@@ -144,6 +149,13 @@ extern "C" VISITCLI_API int Py_Main(int, char **);
 //    Added book keeping to track execution stack of source files and the
 //    script file passed via the '-s' command line option.
 //
+//    Kathleen Bonnell, Wed Mar 24 08:20:01 MST 2010
+//    Fix pointer overwrite problem when both "-s" and "-o" are used on Windows
+//
+//    Jeremy Meredith, Fri Mar 26 13:11:46 EDT 2010
+//    Allow for the -o command line option to take an optional ,<pluginID>
+//    suffix, e.g. "-o foobar,LAMMPS_1.0".
+//
 // ****************************************************************************
 
 int
@@ -209,8 +221,8 @@ main(int argc, char *argv[])
                         break;
                 }
                 i += (nArgsSkip -1);
-                // We want to remove the beginning and ending quotes, to ensure proper
-                // operation further on.
+                // We want to remove the beginning and ending quotes, to 
+                // ensure proper operation further on.
                 strncpy(tmpArg, tmpArg+1, tmplen-2);
                 tmpArg[tmplen-2] = '\0';
             }
@@ -220,12 +232,14 @@ main(int argc, char *argv[])
             }
             if (runF)
             {
-                runFile = tmpArg;
+                runFile = new char [strlen(tmpArg)+1];
+                sprintf(runFile, "%s", tmpArg);
                 s_found = true;
             }
             else
             {
-                loadFile = tmpArg;
+                loadFile = new char [strlen(tmpArg)+1];
+                sprintf(loadFile, "%s", tmpArg);
             }
         }
 #else
@@ -342,10 +356,22 @@ main(int argc, char *argv[])
         // If a database was specified, load it.
         if(loadFile != 0)
         {
-             char *command = new char[strlen(loadFile) + 1 + 16];
-             sprintf(command, "OpenDatabase(\"%s\")", loadFile);
+             char *command = new char[strlen(loadFile) + 10 + 16];
+             std::vector<std::string> split = SplitValues(loadFile, ',');
+             if (split.size() == 2)
+             {
+                 sprintf(command, "OpenDatabase(\"%s\", 0, \"%s\")",
+                         split[0].c_str(), split[1].c_str());
+             }  
+             else
+             {
+                 sprintf(command, "OpenDatabase(\"%s\")", loadFile);
+             }
              PyRun_SimpleString(command);
              delete [] command;
+#ifdef WIN32
+             delete [] loadFile;
+#endif
         }
 
 
@@ -362,6 +388,9 @@ main(int argc, char *argv[])
             PyRun_SimpleString(pycmd.c_str());
 
             cli_runscript(runFile);
+#ifdef WIN32
+             delete [] runFile;
+#endif
         }
 
         // Enter the python interpreter loop.

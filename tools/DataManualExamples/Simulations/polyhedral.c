@@ -47,8 +47,9 @@
 #include "SimulationExample.h"
 
 /* Data Access Function prototypes */
-int SimGetMetaData(VisIt_SimulationMetaData *, void *);
-int SimGetMesh(int, const char *, VisIt_MeshData *, void *);
+visit_handle SimGetMetaData(void *);
+visit_handle SimGetMesh(int, const char *, void *);
+visit_handle SimGetVariable(int, const char *, void *);
 
 /******************************************************************************
  * Simulation data and functions
@@ -79,6 +80,8 @@ simulation_data_dtor(simulation_data *sim)
 {
 }
 
+const char *cmd_names[] = {"halt", "step", "run", "update"};
+
 void read_input_deck(void) { }
 
 /* SIMULATE ONE TIME STEP */
@@ -97,10 +100,10 @@ void simulate_one_timestep(simulation_data *sim)
 float xc[] = {
 2.5, 2.5, 2.5, 2.5,
 1.5, 1.5, 1.5, 1.5,
-/*NOTE: the 0.45's are to displace a node so we don't have 3 colinear nodes
+/*NOTE: the 0.49's are to displace a node so we don't have 3 colinear nodes
         since it will cause the tessellator to ignore a node.
  */
-0.5, 0.45 ,0.5, 0.45, 0.5, 0.45, 0.5, 0.45, 0.5,
+0.5, 0.49 ,0.5, 0.49, 0.5, 0.49, 0.5, 0.49, 0.5,
 0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.
 };
 
@@ -142,7 +145,12 @@ int connectivity[] = {
         12,13,22,21,15,16,25,24,
 };
 
+int npolynodes = 9 + 9 + 4 + 4;
 int npolyzones = 6;
+
+float zonal[] = {
+    0., 1., 2., 3., 4., 5.
+};
 
 /*************************** Polyhedral Mesh variables ***********************/
 
@@ -151,7 +159,7 @@ int npolyzones = 6;
  * Purpose: Callback function for control commands.
  *
  * Programmer: Brad Whitlock
- * Date:       Fri Feb  6 14:29:36 PST 2009
+ * Date:       Fri Feb  6 14:29:36 PST 2010
  *
  * Input Arguments:
  *   cmd    : The command string that we want the sim to execute.
@@ -166,13 +174,18 @@ void ControlCommandCallback(const char *cmd, const char *args, void *cbdata)
 {
     simulation_data *sim = (simulation_data *)cbdata;
 
-#define IS_COMMAND(C) (strstr(cmd, C) != NULL) 
+#define IS_COMMAND(C) (strcmp(cmd, C) == 0) 
     if(IS_COMMAND("halt"))
         sim->runMode = SIM_STOPPED;
     else if(IS_COMMAND("step"))
         simulate_one_timestep(sim);
     else if(IS_COMMAND("run"))
         sim->runMode = SIM_RUNNING;
+    else if(strcmp(cmd, "update") == 0)
+    {
+        VisItTimeStepChanged();
+        VisItUpdatePlots();
+    }
 }
 
 /* Called to handle case 3 from VisItDetectInput where we have console
@@ -202,6 +215,11 @@ ProcessConsoleCommand(simulation_data *sim)
         simulate_one_timestep(sim);
     else if(strcmp(cmd, "run") == 0)
         sim->runMode = SIM_RUNNING;
+    else if(strcmp(cmd, "update") == 0)
+    {
+        VisItTimeStepChanged();
+        VisItUpdatePlots();
+    }
 }
 
 /******************************************************************************
@@ -209,7 +227,7 @@ ProcessConsoleCommand(simulation_data *sim)
  * Purpose: This is the main event loop function.
  *
  * Programmer: Brad Whitlock
- * Date:       Fri Feb  6 14:29:36 PST 2009
+ * Date:       Fri Feb  6 14:29:36 PST 2010
  *
  * Modifications:
  *
@@ -218,29 +236,6 @@ ProcessConsoleCommand(simulation_data *sim)
 void mainloop(simulation_data *sim)
 {
     int blocking, visitstate, err = 0;
-    void *cbdata[2] = {NULL, NULL};
-
-    /* Let's initialize some mesh metadata here to show that we can pass
-     * user-defined data pointers to the various data access functions. In this
-     * case, we'll pass the address of this "mmd" structure and use it in the
-     * data access function to initialize metadata that we pass back to VisIt.
-     */
-    VisIt_MeshMetaData mmd;
-    memset(&mmd, 0, sizeof(VisIt_MeshMetaData));
-    mmd.name = "polyhedral";
-    mmd.meshType = VISIT_MESHTYPE_UNSTRUCTURED;
-    mmd.topologicalDimension = 3;
-    mmd.spatialDimension = 3;
-    mmd.numBlocks = 1;
-    mmd.blockTitle = "Regions";
-    mmd.blockPieceName = "region";
-    mmd.blockNames = (char**)malloc(sizeof(char*));
-    mmd.blockNames[0] = "zones";
-    mmd.numGroups = 0;
-    mmd.units = "cm";
-    mmd.xLabel = "Width";
-    mmd.yLabel = "Height";
-    mmd.zLabel = "Depth";
 
     /* main loop */
     fprintf(stderr, "command> ");
@@ -271,10 +266,9 @@ void mainloop(simulation_data *sim)
                 fprintf(stderr, "VisIt connected\n");
                 VisItSetCommandCallback(ControlCommandCallback, (void*)sim);
 
-                cbdata[0] = (void*)&mmd;
-                cbdata[1] = (void*)sim;
-                VisItSetGetMetaData(SimGetMetaData, (void*)cbdata);
-                VisItSetGetMesh(SimGetMesh, NULL);
+                VisItSetGetMetaData(SimGetMetaData, (void*)sim);
+                VisItSetGetMesh(SimGetMesh, (void*)sim);
+                VisItSetGetVariable(SimGetVariable, (void*)sim);
             }
             else
                 fprintf(stderr, "VisIt did not connect\n");
@@ -308,7 +302,7 @@ void mainloop(simulation_data *sim)
  * Purpose: This is the main function for the program.
  *
  * Programmer: Brad Whitlock
- * Date:       Fri Feb  6 14:29:36 PST 2009
+ * Date:       Fri Feb  6 14:29:36 PST 2010
  *
  * Input Arguments:
  *   argc : The number of command line arguments.
@@ -339,86 +333,98 @@ int main(int argc, char **argv)
     /* Call the main loop. */
     mainloop(&sim);
 
+    /* Cleanup */
+    simulation_data_dtor(&sim);
+
     return 0;
 }
 
 /* DATA ACCESS FUNCTIONS */
-static void
-copy_VisIt_MeshMetaData(VisIt_MeshMetaData *dest, VisIt_MeshMetaData *src)
-{
-#define STRDUP(s) ((s == NULL) ? NULL : strdup(s))
-    int i;
-
-    memcpy(dest, src, sizeof(VisIt_MeshMetaData));
-    dest->name           = STRDUP(src->name);
-    dest->blockTitle     = STRDUP(src->blockTitle);
-    dest->blockPieceName = STRDUP(src->blockPieceName);
-    if(src->blockNames != NULL)
-    {
-        dest->blockNames = (char**)malloc(src->numBlocks*sizeof(char*));
-        for(i = 0; i < src->numBlocks; ++i)
-            dest->blockNames[i] = STRDUP(src->blockNames[i]);
-    }
-    dest->units          = STRDUP(src->units);
-    dest->xLabel         = STRDUP(src->xLabel);
-    dest->yLabel         = STRDUP(src->yLabel);
-    dest->zLabel         = STRDUP(src->zLabel);
-}
 
 /******************************************************************************
  *
  * Purpose: This callback function returns simulation metadata.
  *
  * Programmer: Brad Whitlock
- * Date:       Fri Feb  6 14:29:36 PST 2009
+ * Date:       Fri Feb  6 14:29:36 PST 2010
  *
  * Modifications:
  *
  *****************************************************************************/
 
-int
-SimGetMetaData(VisIt_SimulationMetaData *md, void *cbdata)
+visit_handle
+SimGetMetaData(void *cbdata)
 {
-    size_t sz;
-    VisIt_MeshMetaData *mmd = NULL;
-    simulation_data *sim = NULL;
-    mmd = (VisIt_MeshMetaData *)(((void**)cbdata)[0]);
-    sim = (simulation_data *)(((void**)cbdata)[1]);
+    visit_handle md = VISIT_INVALID_HANDLE;
+    simulation_data *sim = (simulation_data *)cbdata;
 
-    /* Set the simulation state. */
-    md->currentMode = (sim->runMode == SIM_RUNNING) ?
-        VISIT_SIMMODE_RUNNING : VISIT_SIMMODE_STOPPED;
-    md->currentCycle = sim->cycle;
-    md->currentTime = sim->time;
+    /* Create metadata. */
+    if(VisIt_SimulationMetaData_alloc(&md) == VISIT_OKAY)
+    {
+        int i;
+        visit_handle mmd = VISIT_INVALID_HANDLE;
+        visit_handle vmd = VISIT_INVALID_HANDLE;
+        visit_handle cmd = VISIT_INVALID_HANDLE;
 
-    /* Allocate enough room for 1 mesh in the metadata. */
-    md->numMeshes = 1;
-    sz = sizeof(VisIt_MeshMetaData) * md->numMeshes;
-    md->meshes = (VisIt_MeshMetaData *)malloc(sz);
-    memset(md->meshes, 0, sz);
+        /* Set the simulation state. */
+        VisIt_SimulationMetaData_setMode(md, (sim->runMode == SIM_STOPPED) ?
+            VISIT_SIMMODE_STOPPED : VISIT_SIMMODE_RUNNING);
+        VisIt_SimulationMetaData_setCycleTime(md, sim->cycle, sim->time);
 
-    /* Set the first mesh's properties based on data that we passed in
-     * as callback data.
-     */
-    copy_VisIt_MeshMetaData(&md->meshes[0], mmd);
+        /* Fill in the AMR metadata. */
+        if(VisIt_MeshMetaData_alloc(&mmd) == VISIT_OKAY)
+        {
+            /* Set the mesh's properties.*/
+            VisIt_MeshMetaData_setName(mmd, "polyhedral");
+            VisIt_MeshMetaData_setMeshType(mmd, VISIT_MESHTYPE_UNSTRUCTURED);
+            VisIt_MeshMetaData_setTopologicalDimension(mmd, 3);
+            VisIt_MeshMetaData_setSpatialDimension(mmd, 3);
+            VisIt_MeshMetaData_setNumDomains(mmd, 1);
+            VisIt_MeshMetaData_setXUnits(mmd, "cm");
+            VisIt_MeshMetaData_setYUnits(mmd, "cm");
+            VisIt_MeshMetaData_setYUnits(mmd, "cm");
+            VisIt_MeshMetaData_setXLabel(mmd, "Width");
+            VisIt_MeshMetaData_setYLabel(mmd, "Height");
+            VisIt_MeshMetaData_setYLabel(mmd, "Depth");
 
-    /* Add some custom commands. */
-    md->numGenericCommands = 3;
-    sz = sizeof(VisIt_SimulationControlCommand) * md->numGenericCommands;
-    md->genericCommands = (VisIt_SimulationControlCommand *)malloc(sz);
-    memset(md->genericCommands, 0, sz);
+            VisIt_SimulationMetaData_addMesh(md, mmd);
+        }
 
-    md->genericCommands[0].name = strdup("halt");
-    md->genericCommands[0].argType = VISIT_CMDARG_NONE;
-    md->genericCommands[0].enabled = 1;
+        /* Add a variable. */
+        if(VisIt_VariableMetaData_alloc(&vmd) == VISIT_OKAY)
+        {
+            VisIt_VariableMetaData_setName(vmd, "zonal");
+            VisIt_VariableMetaData_setMeshName(vmd, "polyhedral");
+            VisIt_VariableMetaData_setType(vmd, VISIT_VARTYPE_SCALAR);
+            VisIt_VariableMetaData_setCentering(vmd, VISIT_VARCENTERING_ZONE);
 
-    md->genericCommands[1].name = strdup("step");
-    md->genericCommands[1].argType = VISIT_CMDARG_NONE;
-    md->genericCommands[1].enabled = 1;
+            VisIt_SimulationMetaData_addVariable(md, vmd);
+        }
 
-    md->genericCommands[2].name = strdup("run");
-    md->genericCommands[2].argType = VISIT_CMDARG_NONE;
-    md->genericCommands[2].enabled = 1;
+        /* Add a nodal variable. */
+        if(VisIt_VariableMetaData_alloc(&vmd) == VISIT_OKAY)
+        {
+            VisIt_VariableMetaData_setName(vmd, "nodal");
+            VisIt_VariableMetaData_setMeshName(vmd, "polyhedral");
+            VisIt_VariableMetaData_setType(vmd, VISIT_VARTYPE_SCALAR);
+            VisIt_VariableMetaData_setCentering(vmd, VISIT_VARCENTERING_NODE);
+
+            VisIt_SimulationMetaData_addVariable(md, vmd);
+        }
+
+        /* Add some custom commands. */
+        for(i = 0; i < sizeof(cmd_names)/sizeof(const char *); ++i)
+        {
+            visit_handle cmd = VISIT_INVALID_HANDLE;
+            if(VisIt_CommandMetaData_alloc(&cmd) == VISIT_OKAY)
+            {
+                VisIt_CommandMetaData_setName(cmd, cmd_names[i]);
+                VisIt_SimulationMetaData_addGenericCommand(md, cmd);
+            }
+        }
+    }
+
+    return md;
 
     return VISIT_OKAY;
 }
@@ -428,53 +434,71 @@ SimGetMetaData(VisIt_SimulationMetaData *md, void *cbdata)
  * Purpose: This callback function returns meshes.
  *
  * Programmer: Brad Whitlock
- * Date:       Fri Feb  6 14:29:36 PST 2009
+ * Date:       Fri Feb  6 14:29:36 PST 2010
  *
  * Modifications:
  *
  *****************************************************************************/
 
-int
-SimGetMesh(int domain, const char *name, VisIt_MeshData *mesh, void *cbdata)
+visit_handle
+SimGetMesh(int domain, const char *name, void *cbdata)
 {
-    int ret = VISIT_ERROR;
+    visit_handle h = VISIT_INVALID_HANDLE;
 
     if(strcmp(name, "polyhedral") == 0)
     {
-        /* Make VisIt_MeshData contain a VisIt_CSGMesh. */
-        size_t sz = sizeof(VisIt_UnstructuredMesh);
-        mesh->umesh = (VisIt_UnstructuredMesh *)malloc(sz);
-        memset(mesh->umesh, 0, sz);
+        if(VisIt_UnstructuredMesh_alloc(&h) == VISIT_OKAY)
+        {
+            visit_handle x,y,z,conn;
+            int nnodes = sizeof(xc) / sizeof(float);
+            VisIt_VariableData_alloc(&x);
+            VisIt_VariableData_alloc(&y);
+            VisIt_VariableData_alloc(&z);
+            VisIt_VariableData_setDataF(x, VISIT_OWNER_SIM, 1, nnodes, xc);
+            VisIt_VariableData_setDataF(y, VISIT_OWNER_SIM, 1, nnodes, yc);
+            VisIt_VariableData_setDataF(z, VISIT_OWNER_SIM, 1, nnodes, zc);
+            VisIt_UnstructuredMesh_setCoordsXYZ(h, x, y, z);
 
-        /* Tell VisIt which mesh object to use. */
-        mesh->meshType = VISIT_MESHTYPE_UNSTRUCTURED;
+            VisIt_VariableData_alloc(&conn);
+            VisIt_VariableData_setDataI(conn, VISIT_OWNER_SIM, 1, 
+                sizeof(connectivity)/sizeof(int), connectivity);
+            VisIt_UnstructuredMesh_setConnectivity(h, npolyzones, conn);
 
-        /* Fill in the polyhedral mesh's data values. */
-        mesh->umesh->ndims = 3;
-        /* Set the number of nodes and zones in the mesh. */
-        mesh->umesh->nnodes = sizeof(xc) / sizeof(float);
-        mesh->umesh->nzones = npolyzones;
-
-        /* Set the indices for the first and last real zones. */
-        mesh->umesh->firstRealZone = 0;
-        mesh->umesh->lastRealZone = npolyzones-1;
-
-        /* Let VisIt use the simulation's copy of the mesh coordinates. */
-        mesh->umesh->xcoords = VisIt_CreateDataArrayFromFloat(
-           VISIT_OWNER_SIM, xc);
-        mesh->umesh->ycoords = VisIt_CreateDataArrayFromFloat(
-           VISIT_OWNER_SIM, yc);
-        mesh->umesh->zcoords = VisIt_CreateDataArrayFromFloat(
-           VISIT_OWNER_SIM, zc);
-
-        /* Let VisIt use the simulation's copy of the connectivity. */
-        mesh->umesh->connectivity = VisIt_CreateDataArrayFromInt(
-           VISIT_OWNER_SIM, connectivity);
-        mesh->umesh->connectivityLen = sizeof(connectivity)/sizeof(int);
-
-        ret = VISIT_OKAY;
+            VisIt_UnstructuredMesh_setRealIndices(h, 0, npolyzones-1);
+        }
     }
 
-    return ret;
+    return h;
 }
 
+/******************************************************************************
+ *
+ * Purpose: This callback function returns scalars.
+ *
+ * Programmer: Brad Whitlock
+ * Date:       Fri Jan 12 13:37:17 PST 2010
+ *
+ * Modifications:
+ *
+ *****************************************************************************/
+
+visit_handle
+SimGetVariable(int domain, const char *name, void *cbdata)
+{
+    visit_handle h = VISIT_INVALID_HANDLE;
+    simulation_data *sim = (simulation_data *)cbdata;
+
+    if(strcmp(name, "zonal") == 0)
+    {
+        VisIt_VariableData_alloc(&h);
+        VisIt_VariableData_setDataF(h, VISIT_OWNER_SIM, 1,
+            npolyzones, zonal);
+    }
+    else if(strcmp(name, "nodal") == 0)
+    {
+        VisIt_VariableData_alloc(&h);
+        VisIt_VariableData_setDataF(h, VISIT_OWNER_SIM, 1,
+            npolynodes, xc);
+    }
+    return h;
+}

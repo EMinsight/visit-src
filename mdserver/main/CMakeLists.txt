@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-400142
 # All rights reserved.
@@ -35,7 +35,15 @@
 # DAMAGE.
 #
 # Modifications:
+#   Kathleen Bonnell, Thu Feb 25 10:59 MST 2010
+#   Exclude testmds on windows.
 #
+#   Kathleen Bonnell, Tue Mar 23 11:51:02 MST 2010
+#   Put install of mdserver outside of NOT WIN32 loop so it will get installed
+#   on windows.
+#
+#   Mark C. Miller, Thu Jul 29 13:09:44 PDT 2010
+#   Removed LibPipelineStubs as mdserver is now linked with libvisit_vtk
 #****************************************************************************/
 
 SET(MDSERVER_SOURCES
@@ -50,7 +58,6 @@ GetMetaDataRPCExecutor.C
 GetPluginErrorsRPCExecutor.C
 GetSILRPCExecutor.C
 KeepAliveRPCExecutor.C
-LibPipelineStubs.C
 LoadPluginsRPCExecutor.C
 MDServerApplication.C
 MDServerConnection.C
@@ -92,7 +99,7 @@ ${GLEW_LIBRARY_DIR}
 ${ALL_THIRDPARTY_IO_LIBRARY_DIR}
 )
 
-ADD_EXECUTABLE(mdserver ${MDSERVER_SOURCES} ${MDSERVER_STATIC_SOURCES})
+ADD_EXECUTABLE(mdserver ${MDSERVER_SOURCES} ${MDSERVER_STATIC_SOURCES} ${VISIT_WIN_ICON_RESOURCE})
 TARGET_LINK_LIBRARIES(mdserver 
     ${mdserver_MDatabase}
     ${mdserver_IDatabase}
@@ -125,7 +132,9 @@ IF(VISIT_STATIC)
     )
 ENDIF(VISIT_STATIC)
 
-ADD_EXECUTABLE(testmds EXCLUDE_FROM_ALL testmds.C LibPipelineStubs.C)
-TARGET_LINK_LIBRARIES(testmds mdserverproxy mdserverrpc visitcommon avtdbatts)
+IF (NOT WIN32)
+    ADD_EXECUTABLE(testmds EXCLUDE_FROM_ALL testmds.C)
+    TARGET_LINK_LIBRARIES(testmds mdserverproxy mdserverrpc visitcommon avtdbatts)
+ENDIF (NOT WIN32)
 
 VISIT_INSTALL_TARGETS(mdserver)

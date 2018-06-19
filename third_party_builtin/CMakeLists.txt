@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-400142
 # All rights reserved.
@@ -42,6 +42,7 @@ PROJECT(thirdparty_builtins)
 
 ADD_SUBDIRECTORY(glew)
 ADD_SUBDIRECTORY(verdict)
+ADD_SUBDIRECTORY(bilib)
 IF(VISIT_PARALLEL)
     ADD_SUBDIRECTORY(cognomen)
 ENDIF(VISIT_PARALLEL)

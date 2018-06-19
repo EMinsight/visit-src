@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -311,10 +311,10 @@ private:
         virtual ~typeInfo();
         void operator = (const typeInfo &);
 
+        void         *address;
+        int           length;
         unsigned char typeCode;
-        bool selected;
-        void *address;
-        int  length;
+        bool          selected;
     };
 
     typedef std::vector<typeInfo> typeInfoVector;

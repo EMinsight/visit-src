@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -56,25 +56,25 @@ package llnl.visit;
 
 public class SyncAttributes extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 1;
+    private static int SyncAttributes_numAdditionalAtts = 1;
 
     public SyncAttributes()
     {
-        super(numAdditionalAttributes);
+        super(SyncAttributes_numAdditionalAtts);
 
         syncTag = -1;
     }
 
     public SyncAttributes(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(SyncAttributes_numAdditionalAtts + nMoreFields);
 
         syncTag = -1;
     }
 
     public SyncAttributes(SyncAttributes obj)
     {
-        super(numAdditionalAttributes);
+        super(SyncAttributes_numAdditionalAtts);
 
         syncTag = obj.syncTag;
 
@@ -88,7 +88,7 @@ public class SyncAttributes extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return SyncAttributes_numAdditionalAtts;
     }
 
     public boolean equals(SyncAttributes obj)

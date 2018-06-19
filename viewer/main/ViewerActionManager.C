@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -557,6 +557,9 @@ public:
 //   Jeremy Meredith, Tue Feb  2 13:51:37 EST 2010
 //   Added actions for setting the new tool update mode.
 //
+//   Hank Childs, Sat Mar 13 18:40:52 PST 2010
+//   Removed bounding box navigation button.
+//
 // ****************************************************************************
 
 
@@ -602,7 +605,6 @@ ViewerActionManager::ViewerActionManager(ViewerWindow *win) :
 
     AddAction(new ToggleSpinModeAction(win), ViewerRPC::ToggleSpinModeRPC);
     AddAction(new TogglePerspectiveViewAction(win), ViewerRPC::TogglePerspectiveViewRPC);
-    AddAction(new ToggleBoundingBoxModeAction(win), ViewerRPC::ToggleBoundingBoxModeRPC);
 
     AddAction(new AnimationStopAction(win), ViewerRPC::AnimationStopRPC);
     AddAction(new TimeSliderForwardStepAction(win), ViewerRPC::TimeSliderNextStateRPC);

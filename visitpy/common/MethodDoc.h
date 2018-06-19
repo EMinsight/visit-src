@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -66,6 +66,7 @@ extern const char *visit_CreateAnnotationObject_doc;
 extern const char *visit_CreateDatabaseCorrelation_doc;
 extern const char *visit_CreateNamedSelection_doc;
 extern const char *visit_DefineExpression_doc;
+extern const char *visit_DefinePythonExpression_doc;
 extern const char *visit_DeIconifyAllWindows_doc;
 extern const char *visit_DeletePlots_doc;
 extern const char *visit_DeleteDatabaseCorrelation_doc;
@@ -152,6 +153,7 @@ extern const char *visit_PickByZone_doc;
 extern const char *visit_PlotPlugins_doc;
 extern const char *visit_PrintWindow_doc;
 extern const char *visit_PromoteOperator_doc;
+extern const char *visit_PythonQuery_doc;
 extern const char *visit_Queries_doc;
 extern const char *visit_QueriesOverTime_doc;
 extern const char *visit_Query_doc;

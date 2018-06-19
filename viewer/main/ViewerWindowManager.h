@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -416,6 +416,10 @@ typedef struct {
 //    Removed maintain data; moved maintain view from Global settings
 //    (Main window) to per-window Window Information (View window).
 //
+//    Hank Childs, Sat Mar 13 18:43:02 PST 2010
+//    Remove reference to bounding box mode.  Now handled through interactor
+//    attributes.
+//
 // ****************************************************************************
 
 class VIEWER_API ViewerWindowManager : public ViewerBase
@@ -499,7 +503,6 @@ class VIEWER_API ViewerWindowManager : public ViewerBase
     void SetWindowLayout(const int windowLayout);
 
     void SetRenderingAttributes(int windowIndex = -1);
-    void ToggleBoundingBoxMode(int windowIndex = -1);
     void TogglePerspective(int windowIndex = -1);
     void ToggleMaintainViewMode(int windowIndex = -1);
     void ToggleSpinMode(int windowIndex = -1);

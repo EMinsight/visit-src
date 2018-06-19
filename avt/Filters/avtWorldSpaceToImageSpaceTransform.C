@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -732,6 +732,10 @@ avtWorldSpaceToImageSpaceTransform::UpdateDataObjectInfo(void)
 //    Hank Childs, Wed Dec 24 09:48:59 PST 2008
 //    Add support for sampling in the wbuffer.
 //
+//    Hank Childs, Sat May  8 09:19:44 CDT 2010
+//    If we are looking at polydata (point meshes), then do the same 
+//    perspective trick as we do for curvilinear and unstructured meshes.
+//
 // ****************************************************************************
 
 vtkDataSet *
@@ -780,7 +784,8 @@ avtWorldSpaceToImageSpaceTransform::ExecuteData(vtkDataSet *in_ds, int domain,
     // mass voxel extractor.  Otherwise, we need to change the z-buffer
     // to a w-buffer, so we can space out the sample points better.
     if (mid_ds->GetDataObjectType() == VTK_STRUCTURED_GRID ||
-        mid_ds->GetDataObjectType() == VTK_UNSTRUCTURED_GRID)
+        mid_ds->GetDataObjectType() == VTK_UNSTRUCTURED_GRID ||
+        mid_ds->GetDataObjectType() == VTK_POLY_DATA)
     {
         vtkPointSet *ps = (vtkPointSet *) mid_ds;
         vtkPoints *pts = ps->GetPoints();

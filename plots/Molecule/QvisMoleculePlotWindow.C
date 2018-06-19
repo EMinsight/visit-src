@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -125,6 +125,9 @@ QvisMoleculePlotWindow::~QvisMoleculePlotWindow()
 //
 //   Cyrus Harrison, Fri Jul 18 14:38:14 PDT 2008
 //   Initial Qt4 Port.
+//
+//   Allen Sanderson, Sun Mar  7 12:49:56 PST 2010
+//   Change layout of window for 2.0 interface changes.
 //
 // ****************************************************************************
 
@@ -370,11 +373,22 @@ QvisMoleculePlotWindow::CreateWindowContents()
 
     // ------------------------------------------------------------------
 
-    legendFlag = new QCheckBox(tr("Legend"), central);
-    connect(legendFlag, SIGNAL(toggled(bool)),
-            this, SLOT(legendFlagChanged(bool)));
-    topLayout->addWidget(legendFlag);
+    //
+    // Create the misc stuff
+    //
+    QGroupBox * miscGroup = new QGroupBox(central);
+    miscGroup->setTitle(tr("Misc"));
+    topLayout->addWidget(miscGroup);
 
+    QGridLayout *miscLayout = new QGridLayout(miscGroup);
+    miscLayout->setMargin(5);
+    miscLayout->setSpacing(10);
+ 
+    // Create the legend toggle
+    legendToggle = new QCheckBox(tr("Legend"), central);
+    connect(legendToggle, SIGNAL(toggled(bool)),
+            this, SLOT(legendToggled(bool)));
+    miscLayout->addWidget(legendToggle, 0, 0);
 }
 
 
@@ -610,9 +624,9 @@ QvisMoleculePlotWindow::UpdateWindow(bool doAll)
             continuousColorTable->setColorTable(atts->GetContinuousColorTable().c_str());
             break;
           case MoleculeAttributes::ID_legendFlag:
-            legendFlag->blockSignals(true);
-            legendFlag->setChecked(atts->GetLegendFlag());
-            legendFlag->blockSignals(false);
+            legendToggle->blockSignals(true);
+            legendToggle->setChecked(atts->GetLegendFlag());
+            legendToggle->blockSignals(false);
             break;
           case MoleculeAttributes::ID_minFlag:
             if (atts->GetMinFlag() == true)
@@ -1001,7 +1015,7 @@ QvisMoleculePlotWindow::continuousColorTableChanged(bool useDefault, const QStri
 
 
 void
-QvisMoleculePlotWindow::legendFlagChanged(bool val)
+QvisMoleculePlotWindow::legendToggled(bool val)
 {
     atts->SetLegendFlag(val);
     Apply();

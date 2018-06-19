@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -56,25 +56,25 @@ package llnl.visit;
 
 public class MaterialAttributes extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 12;
+    private static int MaterialAttributes_numAdditionalAtts = 12;
 
     // Enum values
-    public final static int ALGORITHM_TETRAHEDRAL = 0;
-    public final static int ALGORITHM_ZOOCLIPPING = 1;
+    public final static int ALGORITHM_EQUIT = 0;
+    public final static int ALGORITHM_EQUIZ = 1;
     public final static int ALGORITHM_ISOVOLUME = 2;
-    public final static int ALGORITHM_YOUNGS = 3;
+    public final static int ALGORITHM_PLIC = 3;
     public final static int ALGORITHM_DISCRETE = 4;
 
 
     public MaterialAttributes()
     {
-        super(numAdditionalAttributes);
+        super(MaterialAttributes_numAdditionalAtts);
 
         smoothing = false;
         forceMIR = false;
         cleanZonesOnly = false;
         needValidConnectivity = false;
-        algorithm = ALGORITHM_ZOOCLIPPING;
+        algorithm = ALGORITHM_EQUIZ;
         iterationEnabled = false;
         numIterations = 5;
         iterationDamping = 0.4f;
@@ -86,13 +86,13 @@ public class MaterialAttributes extends AttributeSubject
 
     public MaterialAttributes(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(MaterialAttributes_numAdditionalAtts + nMoreFields);
 
         smoothing = false;
         forceMIR = false;
         cleanZonesOnly = false;
         needValidConnectivity = false;
-        algorithm = ALGORITHM_ZOOCLIPPING;
+        algorithm = ALGORITHM_EQUIZ;
         iterationEnabled = false;
         numIterations = 5;
         iterationDamping = 0.4f;
@@ -104,7 +104,7 @@ public class MaterialAttributes extends AttributeSubject
 
     public MaterialAttributes(MaterialAttributes obj)
     {
-        super(numAdditionalAttributes);
+        super(MaterialAttributes_numAdditionalAtts);
 
         smoothing = obj.smoothing;
         forceMIR = obj.forceMIR;
@@ -129,7 +129,7 @@ public class MaterialAttributes extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return MaterialAttributes_numAdditionalAtts;
     }
 
     public boolean equals(MaterialAttributes obj)
@@ -316,14 +316,14 @@ public class MaterialAttributes extends AttributeSubject
         str = str + boolToString("cleanZonesOnly", cleanZonesOnly, indent) + "\n";
         str = str + boolToString("needValidConnectivity", needValidConnectivity, indent) + "\n";
         str = str + indent + "algorithm = ";
-        if(algorithm == ALGORITHM_TETRAHEDRAL)
-            str = str + "ALGORITHM_TETRAHEDRAL";
-        if(algorithm == ALGORITHM_ZOOCLIPPING)
-            str = str + "ALGORITHM_ZOOCLIPPING";
+        if(algorithm == ALGORITHM_EQUIT)
+            str = str + "ALGORITHM_EQUIT";
+        if(algorithm == ALGORITHM_EQUIZ)
+            str = str + "ALGORITHM_EQUIZ";
         if(algorithm == ALGORITHM_ISOVOLUME)
             str = str + "ALGORITHM_ISOVOLUME";
-        if(algorithm == ALGORITHM_YOUNGS)
-            str = str + "ALGORITHM_YOUNGS";
+        if(algorithm == ALGORITHM_PLIC)
+            str = str + "ALGORITHM_PLIC";
         if(algorithm == ALGORITHM_DISCRETE)
             str = str + "ALGORITHM_DISCRETE";
         str = str + "\n";

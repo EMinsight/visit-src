@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -163,6 +163,7 @@ public:
     void SetIsSimulation(bool isSimulation_);
     void SetSimInfo(const avtSimulationInformation &simInfo_);
     void SetSuggestedDefaultSILRestriction(const stringVector &suggestedDefaultSILRestriction_);
+    void SetReplacementMask(int replacementMask_);
 
     // Property getting methods
     bool                           GetHasTemporalExtents() const;
@@ -223,6 +224,7 @@ public:
           avtSimulationInformation &GetSimInfo();
     const stringVector             &GetSuggestedDefaultSILRestriction() const;
           stringVector             &GetSuggestedDefaultSILRestriction();
+    int                            GetReplacementMask() const;
 
 
     // Attributegroup convenience methods
@@ -430,6 +432,7 @@ public:
         ID_isSimulation,
         ID_simInfo,
         ID_suggestedDefaultSILRestriction,
+        ID_replacementMask,
         ID__LAST
     };
 
@@ -470,11 +473,12 @@ private:
     bool                     isSimulation;
     avtSimulationInformation simInfo;
     stringVector             suggestedDefaultSILRestriction;
+    int                      replacementMask;
 
     // Static class format string for type map.
     static const char *TypeMapFormatString;
     static const private_tmfs_t TmfsStruct;
 };
-#define AVTDATABASEMETADATA_TMFS "bddibbbbbss*i*i*d*i*sssaa*a*a*a*a*a*a*a*a*a*a*a*bas*"
+#define AVTDATABASEMETADATA_TMFS "bddibbbbbss*i*i*d*i*sssaa*a*a*a*a*a*a*a*a*a*a*a*bas*i"
 
 #endif

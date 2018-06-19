@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-400142
 * All rights reserved.
@@ -36,45 +36,78 @@
 *
 *****************************************************************************/
 
+/* SIMPLE SIMULATION SKELETON */
 #include <VisItControlInterface_V2.h>
 #include <VisItDataInterface_V2.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
-#include "materialhelpers.h"
 
 #include "SimulationExample.h"
 
-/* Data Access Function prototypes. */
-int SimGetMetaData(VisIt_SimulationMetaData *, void *);
-int SimGetMesh(int, const char *, VisIt_MeshData *, void *);
-int SimGetMaterial(int, const char *, VisIt_MaterialData *, void *);
-int SimGetSpecies(int domain, const char *name, VisIt_SpeciesData *spec, void *cbdata);
-int SimGetVariable(int, const char *, visit_handle, void *);
-int SimGetMixedVariable(int, const char *, visit_handle, void *);
+/* Data Access Function prototypes */
+visit_handle SimGetMetaData(void *);
+visit_handle SimGetMesh(int, const char *, void *);
+visit_handle SimGetMaterial(int, const char *, void *);
+visit_handle SimGetSpecies(int domain, const char *name, void *cbdata);
+visit_handle SimGetVariable(int, const char *, void *);
+visit_handle SimGetMixedVariable(int, const char *, void *);
 
-void simulate_one_timestep(void);
+/******************************************************************************
+ * Simulation data and functions
+ *****************************************************************************/
+
+#define SIM_STOPPED       0
+#define SIM_RUNNING       1
+
+typedef struct
+{
+    int     cycle;
+    double  time;
+    int     runMode;
+    int     done;
+} simulation_data;
+
+void
+simulation_data_ctor(simulation_data *sim)
+{
+    sim->cycle = 0;
+    sim->time = 0.;
+    sim->runMode = SIM_STOPPED;
+    sim->done = 0;
+}
+
+void
+simulation_data_dtor(simulation_data *sim)
+{
+}
+
+const char *cmd_names[] = {"halt", "step", "run", "update"};
+
 void read_input_deck(void) { }
-int  simulation_done(void)   { return 0; }
 
-/* Is the simulation in run mode (not waiting for VisIt input) */
-static int    runFlag = 1;
-static int    simcycle = 0;
-static double simtime = 0.;
+/* SIMULATE ONE TIME STEP */
+#include <unistd.h>
+void simulate_one_timestep(simulation_data *sim)
+{
+    ++sim->cycle;
+    sim->time += 0.0134;
+    printf("Simulating time step: cycle=%d, time=%lg\n", sim->cycle, sim->time);
+    sleep(1);
+}
 
 /******************************************************************************
  *
  * Purpose: Callback function for control commands.
  *
  * Programmer: Brad Whitlock
- * Date:       Mon Feb  9 15:27:09 PST 2009
+ * Date:       Fri Feb  6 14:29:36 PST 2009
  *
  * Input Arguments:
- *   cmd         : The command string that we want the sim to execute.
- *   int_data    : Integer argument for the command.
- *   float_data  : Float argument for the command.
- *   string_data : String argument for the command.
+ *   cmd    : The command string that we want the sim to execute.
+ *   args   : String argument for the command.
+ *   cbdata : User-provided callback data.
  *
  * Modifications:
  *
@@ -82,22 +115,54 @@ static double simtime = 0.;
 
 void ControlCommandCallback(const char *cmd, const char *args, void *cbdata)
 {
-    if(strcmp(cmd, "halt") == 0)
-        runFlag = 0;
-    else if(strcmp(cmd, "step") == 0)
-        simulate_one_timestep();
-    else if(strcmp(cmd, "run") == 0)
-        runFlag = 1;
+    simulation_data *sim = (simulation_data *)cbdata;
+
+#define IS_COMMAND(C) (strcmp(cmd, C) == 0) 
+    if(IS_COMMAND("halt"))
+        sim->runMode = SIM_STOPPED;
+    else if(IS_COMMAND("step"))
+        simulate_one_timestep(sim);
+    else if(IS_COMMAND("run"))
+        sim->runMode = SIM_RUNNING;
+    else if(strcmp(cmd, "update") == 0)
+    {
+        VisItTimeStepChanged();
+        VisItUpdatePlots();
+    }
 }
 
-/* SIMULATE ONE TIME STEP */
-#include <unistd.h>
-void simulate_one_timestep(void)
+/* Called to handle case 3 from VisItDetectInput where we have console
+ * input that needs to be processed in order to accomplish an action.
+ */
+void
+ProcessConsoleCommand(simulation_data *sim)
 {
-    ++simcycle;
-    simtime += 0.0134;
-    printf("Simulating time step: cycle=%d, time=%lg\n", simcycle, simtime);
-    sleep(1);
+    /* Read A Command */
+    char cmd[1000];
+
+    int iseof = (fgets(cmd, 1000, stdin) == NULL);
+    if (iseof)
+    {
+        sprintf(cmd, "quit");
+        printf("quit\n");
+    }
+
+    if (strlen(cmd)>0 && cmd[strlen(cmd)-1] == '\n')
+        cmd[strlen(cmd)-1] = '\0';
+
+    if(strcmp(cmd, "quit") == 0)
+        sim->done = 1;
+    else if(strcmp(cmd, "halt") == 0)
+        sim->runMode = SIM_STOPPED;
+    else if(strcmp(cmd, "step") == 0)
+        simulate_one_timestep(sim);
+    else if(strcmp(cmd, "run") == 0)
+        sim->runMode = SIM_RUNNING;
+    else if(strcmp(cmd, "update") == 0)
+    {
+        VisItTimeStepChanged();
+        VisItUpdatePlots();
+    }
 }
 
 /******************************************************************************
@@ -105,21 +170,24 @@ void simulate_one_timestep(void)
  * Purpose: This is the main event loop function.
  *
  * Programmer: Brad Whitlock
- * Date:       Mon Feb  9 15:27:09 PST 2009
+ * Date:       Fri Feb  6 14:29:36 PST 2009
  *
  * Modifications:
  *
  *****************************************************************************/
 
-void mainloop(void)
+void mainloop(simulation_data *sim)
 {
     int blocking, visitstate, err = 0;
 
+    /* main loop */
+    fprintf(stderr, "command> ");
+    fflush(stderr);
     do
     {
-        blocking = runFlag ? 0 : 1;
+        blocking = (sim->runMode == SIM_RUNNING) ? 0 : 1;
         /* Get input from VisIt or timeout so the simulation can run. */
-        visitstate = VisItDetectInput(blocking, -1);
+        visitstate = VisItDetectInput(blocking, fileno(stdin));
 
         /* Do different things depending on the output from VisItDetectInput. */
         if(visitstate >= -5 && visitstate <= -1)
@@ -130,22 +198,23 @@ void mainloop(void)
         else if(visitstate == 0)
         {
             /* There was no input from VisIt, return control to sim. */
-            simulate_one_timestep();
+            simulate_one_timestep(sim);
         }
         else if(visitstate == 1)
         {
             /* VisIt is trying to connect to sim. */
             if(VisItAttemptToCompleteConnection() == VISIT_OKAY)
             {
+                sim->runMode = SIM_STOPPED;
                 fprintf(stderr, "VisIt connected\n");
-                VisItSetCommandCallback(ControlCommandCallback, NULL); 
+                VisItSetCommandCallback(ControlCommandCallback, (void*)sim);
 
-                VisItSetGetMetaData(SimGetMetaData, NULL);
-                VisItSetGetMesh(SimGetMesh, NULL);
-                VisItSetGetMaterial(SimGetMaterial, NULL);
-                VisItSetGetSpecies(SimGetSpecies, NULL);
-                VisItSetGetVariable(SimGetVariable, NULL);
-                VisItSetGetMixedVariable(SimGetMixedVariable, NULL);
+                VisItSetGetMetaData(SimGetMetaData, (void*)sim);
+                VisItSetGetMesh(SimGetMesh, (void*)sim);
+                VisItSetGetSpecies(SimGetSpecies, (void*)sim);
+                VisItSetGetMaterial(SimGetMaterial, (void*)sim);
+                VisItSetGetVariable(SimGetVariable, (void*)sim);
+                VisItSetGetMixedVariable(SimGetMixedVariable, (void*)sim);
             }
             else
                 fprintf(stderr, "VisIt did not connect\n");
@@ -153,16 +222,25 @@ void mainloop(void)
         else if(visitstate == 2)
         {
             /* VisIt wants to tell the engine something. */
-            runFlag = 0;
             if(VisItProcessEngineCommand() == VISIT_ERROR)
             {
                 /* Disconnect on an error or closed connection. */
                 VisItDisconnect();
                 /* Start running again if VisIt closes. */
-                runFlag = 1;
+                sim->runMode = SIM_RUNNING;
             }
         }
-    } while(!simulation_done() && err == 0);
+        else if(visitstate == 3)
+        {
+            /* VisItDetectInput detected console input - do something with it.
+             * NOTE: you can't get here unless you pass a file descriptor to
+             * VisItDetectInput instead of -1.
+             */
+            ProcessConsoleCommand(sim);
+            fprintf(stderr, "command> ");
+            fflush(stderr);
+        }
+    } while(!sim->done && err == 0);
 }
 
 /******************************************************************************
@@ -170,7 +248,7 @@ void mainloop(void)
  * Purpose: This is the main function for the program.
  *
  * Programmer: Brad Whitlock
- * Date:       Mon Feb  9 15:27:09 PST 2009
+ * Date:       Fri Feb  6 14:29:36 PST 2009
  *
  * Input Arguments:
  *   argc : The number of command line arguments.
@@ -182,10 +260,14 @@ void mainloop(void)
 
 int main(int argc, char **argv)
 {
+    simulation_data sim;
+    simulation_data_ctor(&sim);
+
     /* Initialize environment variables. */
     SimulationArguments(argc, argv);
     VisItSetupEnvironment();
-    /* Write out .sim file that VisIt uses to connect. */
+
+    /* Write out .sim2 file that VisIt uses to connect. */
     VisItInitializeSocketAndDumpSimFile("species",
         "Demonstrates species data access function",
         "/path/to/where/sim/was/started",
@@ -195,12 +277,17 @@ int main(int argc, char **argv)
     read_input_deck();
 
     /* Call the main loop. */
-    mainloop();
+    mainloop(&sim);
+
+    /* Cleanup */
+    simulation_data_dtor(&sim);
 
     return 0;
 }
 
 /* DATA ACCESS FUNCTIONS */
+
+/* Values to match the Fortran example. */
 #define NX 5
 #define NY 4
 #define XMIN 0.f
@@ -208,6 +295,7 @@ int main(int argc, char **argv)
 #define YMIN 0.f
 #define YMAX 3.f
 const char *matNames[] = {"Water", "Membrane", "Air"};
+
 #define DX (XMAX - XMIN)
 
 /* Rectilinear mesh */
@@ -248,19 +336,17 @@ const float matspeciesMF[3][4] = {
     {0.7f,  0.2f,    0.06f,   0.04f}
 };
 
-VisIt_NameList *
-SpeciesNames(void)
+visit_handle
+SpeciesNames(int i)
 {
-    int i, j;
-    VisIt_NameList *elem = (VisIt_NameList *)malloc(3 * sizeof(VisIt_NameList));
-    for(i = 0; i < 3; ++i)
+    visit_handle h = VISIT_INVALID_HANDLE;
+    if(VisIt_NameList_alloc(&h) == VISIT_OKAY)
     {
-        elem[i].numNames = nmaterialSpecies[i];
-        elem[i].names = (char **)malloc(sizeof(char*)*nmaterialSpecies[i]);
+        int j;
         for(j = 0; j < nmaterialSpecies[i]; ++j)
-            elem[i].names[j] = strdup(materialSpecies[i][j]);
+            VisIt_NameList_addName(h, materialSpecies[i][j]);
     }
-    return elem;
+    return h;
 }
 
 /******************************************************************************
@@ -268,98 +354,100 @@ SpeciesNames(void)
  * Purpose: This callback function returns simulation metadata.
  *
  * Programmer: Brad Whitlock
- * Date:       Mon Feb  9 15:27:09 PST 2009
+ * Date:       Fri Feb  6 14:29:36 PST 2009
  *
  * Modifications:
  *
  *****************************************************************************/
 
-int
-SimGetMetaData(VisIt_SimulationMetaData *md, void *cbdata)
+visit_handle
+SimGetMetaData(void *cbdata)
 {
-    int i, j;
-    size_t sz;
+    visit_handle md = VISIT_INVALID_HANDLE;
+    simulation_data *sim = (simulation_data *)cbdata;
 
-    /* Set the simulation state. */
-    md->currentMode = runFlag ? VISIT_SIMMODE_RUNNING : VISIT_SIMMODE_STOPPED;
-    md->currentCycle = simcycle;
-    md->currentTime = simtime;
+    /* Create metadata. */
+    if(VisIt_SimulationMetaData_alloc(&md) == VISIT_OKAY)
+    {
+        int i;
+        visit_handle mmd = VISIT_INVALID_HANDLE;
+        visit_handle vmd = VISIT_INVALID_HANDLE;
+        visit_handle mat = VISIT_INVALID_HANDLE;
+        visit_handle smd = VISIT_INVALID_HANDLE;
 
-#define NDOMAINS 1
-    /* Allocate enough room for 1 mesh in the metadata. */
-    md->numMeshes = 1;
-    sz = sizeof(VisIt_MeshMetaData) * md->numMeshes;
-    md->meshes = (VisIt_MeshMetaData *)malloc(sz);
-    memset(md->meshes, 0, sz);
+        /* Set the simulation state. */
+        VisIt_SimulationMetaData_setMode(md, (sim->runMode == SIM_STOPPED) ?
+            VISIT_SIMMODE_STOPPED : VISIT_SIMMODE_RUNNING);
+        VisIt_SimulationMetaData_setCycleTime(md, sim->cycle, sim->time);
 
-    /* Set the first mesh's properties.*/
-    md->meshes[0].name = strdup("mesh2d");
-    md->meshes[0].meshType = VISIT_MESHTYPE_RECTILINEAR;
-    md->meshes[0].topologicalDimension = 2;
-    md->meshes[0].spatialDimension = 2;
-    md->meshes[0].numBlocks = NDOMAINS;
-    md->meshes[0].blockTitle = strdup("Domains");
-    md->meshes[0].blockPieceName = strdup("domain");
-    md->meshes[0].numGroups = 0;
-    md->meshes[0].units = strdup("cm");
-    md->meshes[0].xLabel = strdup("Width");
-    md->meshes[0].yLabel = strdup("Height");
-    md->meshes[0].zLabel = strdup("Depth");
+        /* Add mesh metadata. */
+        if(VisIt_MeshMetaData_alloc(&mmd) == VISIT_OKAY)
+        {
+            /* Set the mesh's properties.*/
+            VisIt_MeshMetaData_setName(mmd, "mesh2d");
+            VisIt_MeshMetaData_setMeshType(mmd, VISIT_MESHTYPE_RECTILINEAR);
+            VisIt_MeshMetaData_setTopologicalDimension(mmd, 2);
+            VisIt_MeshMetaData_setSpatialDimension(mmd, 2);
+            VisIt_MeshMetaData_setNumDomains(mmd, 1);
+            VisIt_MeshMetaData_setDomainTitle(mmd, "Domains");
+            VisIt_MeshMetaData_setDomainPieceName(mmd, "domain");
+            VisIt_MeshMetaData_setXUnits(mmd, "cm");
+            VisIt_MeshMetaData_setYUnits(mmd, "cm");
+            VisIt_MeshMetaData_setXLabel(mmd, "Width");
+            VisIt_MeshMetaData_setYLabel(mmd, "Height");
 
-    /* Add a material */
-    sz = sizeof(VisIt_MaterialMetaData);
-    md->numMaterials = 1;
-    md->materials = (VisIt_MaterialMetaData *)malloc(sz);
-    md->materials[0].name = strdup("Material");
-    md->materials[0].meshName = strdup("mesh2d");
-    md->materials[0].numMaterials = 3;
-    md->materials[0].materialNames = (char **)malloc(3*sizeof(char*));
-    md->materials[0].materialNames[0] = strdup(matNames[0]);
-    md->materials[0].materialNames[1] = strdup(matNames[1]);
-    md->materials[0].materialNames[2] = strdup(matNames[2]);
+            VisIt_SimulationMetaData_addMesh(md, mmd);
+        }
 
-    /* Add a variable. */
-    md->numVariables = 1;
-    sz = sizeof(VisIt_VariableMetaData) * md->numVariables;
-    md->variables = (VisIt_VariableMetaData *)malloc(sz);
-    memset(md->variables, 0, sz);
+        /* Add a material */
+        if(VisIt_MaterialMetaData_alloc(&mat) == VISIT_OKAY)
+        {
+            VisIt_MaterialMetaData_setName(mat, "Material");
+            VisIt_MaterialMetaData_setMeshName(mat, "mesh2d");
+            VisIt_MaterialMetaData_addMaterialName(mat, matNames[0]);
+            VisIt_MaterialMetaData_addMaterialName(mat, matNames[1]);
+            VisIt_MaterialMetaData_addMaterialName(mat, matNames[2]);
 
-    /* Add a zonal variable on mesh2d. */
-    md->variables[0].name = strdup("scalar");
-    md->variables[0].meshName = strdup("mesh2d");
-    md->variables[0].type = VISIT_VARTYPE_SCALAR;
-    md->variables[0].centering = VISIT_VARCENTERING_ZONE;
+            VisIt_SimulationMetaData_addMaterial(md, mat);
+        }
 
-    /* Add species */
-    sz = sizeof(VisIt_SpeciesMetaData);
-    md->numSpecies = 1;
-    md->species = (VisIt_SpeciesMetaData *)malloc(sz);
-    md->species[0].name = strdup("Species");
-    md->species[0].meshName = strdup("mesh2d");
-    md->species[0].materialName = strdup("Material");
-    md->species[0].nmaterialSpecies = 3;
-    sz = sizeof(VisIt_NameList) * 3;
-    md->species[0].materialSpeciesNames = SpeciesNames();
+        /* Add a variable. */
+        if(VisIt_VariableMetaData_alloc(&vmd) == VISIT_OKAY)
+        {
+            VisIt_VariableMetaData_setName(vmd, "scalar");
+            VisIt_VariableMetaData_setMeshName(vmd, "mesh2d");
+            VisIt_VariableMetaData_setType(vmd, VISIT_VARTYPE_SCALAR);
+            VisIt_VariableMetaData_setCentering(vmd, VISIT_VARCENTERING_ZONE);
 
-    /* Add some custom commands. */
-    md->numGenericCommands = 3;
-    sz = sizeof(VisIt_SimulationControlCommand) * md->numGenericCommands;
-    md->genericCommands = (VisIt_SimulationControlCommand *)malloc(sz);
-    memset(md->genericCommands, 0, sz);
+            VisIt_SimulationMetaData_addVariable(md, vmd);
+        }
 
-    md->genericCommands[0].name = strdup("halt");
-    md->genericCommands[0].argType = VISIT_CMDARG_NONE;
-    md->genericCommands[0].enabled = 1;
+        /* Add species */
+        if(VisIt_SpeciesMetaData_alloc(&smd) == VISIT_OKAY)
+        {
+            VisIt_SpeciesMetaData_setName(smd, "Species");
+            VisIt_SpeciesMetaData_setMeshName(smd, "mesh2d");
+            VisIt_SpeciesMetaData_setMaterialName(smd, "Material");
+            VisIt_SpeciesMetaData_addSpeciesName(smd, SpeciesNames(0));
+            VisIt_SpeciesMetaData_addSpeciesName(smd, SpeciesNames(1));
+            VisIt_SpeciesMetaData_addSpeciesName(smd, SpeciesNames(2));
 
-    md->genericCommands[1].name = strdup("step");
-    md->genericCommands[1].argType = VISIT_CMDARG_NONE;
-    md->genericCommands[1].enabled = 1;
+            VisIt_SimulationMetaData_addSpecies(md, smd);
+        }
 
-    md->genericCommands[2].name = strdup("run");
-    md->genericCommands[2].argType = VISIT_CMDARG_NONE;
-    md->genericCommands[2].enabled = 1;
+        /* Add some commands. */
+        for(i = 0; i < sizeof(cmd_names)/sizeof(const char *); ++i)
+        {
+            visit_handle cmd = VISIT_INVALID_HANDLE;
+            if(VisIt_CommandMetaData_alloc(&cmd) == VISIT_OKAY)
+            {
+                VisIt_CommandMetaData_setName(cmd, cmd_names[i]);
+                VisIt_SimulationMetaData_addGenericCommand(md, cmd);
+            }
+        }
+    }
 
-    return VISIT_OKAY;
+    return md;
 }
 
 /******************************************************************************
@@ -367,71 +455,46 @@ SimGetMetaData(VisIt_SimulationMetaData *md, void *cbdata)
  * Purpose: This callback function returns meshes.
  *
  * Programmer: Brad Whitlock
- * Date:       Mon Feb  9 15:27:09 PST 2009
+ * Date:       Fri Feb  6 14:29:36 PST 2009
  *
  * Modifications:
  *
  *****************************************************************************/
 
-int
-SimGetMesh(int domain, const char *name, VisIt_MeshData *mesh, void *cbdata)
+visit_handle
+SimGetMesh(int domain, const char *name, void *cbdata)
 {
-    size_t sz;
-    int ret = VISIT_ERROR;
+    visit_handle h = VISIT_INVALID_HANDLE;
 
     if(strcmp(name, "mesh2d") == 0)
     {
-        int i;
-
-        /* Make VisIt_MeshData contain a VisIt_RectilinearMesh. */
-        sz = sizeof(VisIt_RectilinearMesh);
-        mesh->rmesh = (VisIt_RectilinearMesh *)malloc(sz);
-        memset(mesh->rmesh, 0, sz);
-
-        /* Tell VisIt which mesh object to use. */
-        mesh->meshType = VISIT_MESHTYPE_RECTILINEAR;
-
-        /* Set the mesh's number of dimensions. */
-        mesh->rmesh->ndims = rmesh_ndims;
-
-        /* Set the mesh dimensions. */
-        mesh->rmesh->dims[0] = rmesh_dims[0];
-        mesh->rmesh->dims[1] = rmesh_dims[1];
-        mesh->rmesh->dims[2] = rmesh_dims[2];
-
-        mesh->rmesh->baseIndex[0] = 0;
-        mesh->rmesh->baseIndex[1] = 0;
-        mesh->rmesh->baseIndex[2] = 0;
-
-        mesh->rmesh->minRealIndex[0] = 0;
-        mesh->rmesh->minRealIndex[1] = 0;
-        mesh->rmesh->minRealIndex[2] = 0;
-        mesh->rmesh->maxRealIndex[0] = rmesh_dims[0]-1;
-        mesh->rmesh->maxRealIndex[1] = rmesh_dims[1]-1;
-        mesh->rmesh->maxRealIndex[2] = rmesh_dims[2]-1;
-
-        /* Initialize X coords. */
-        for(i = 0; i < NX; ++i)
+        if(VisIt_RectilinearMesh_alloc(&h) == VISIT_OKAY)
         {
-            float t = (float)i / (float)(NX-1);
-            rmesh_x[i] = (1.f-t)*XMIN + t*XMAX;
-        }
-        /* Initialize Y coords. */
-        for(i = 0; i < NY; ++i) 
-        {
-            float t = (float)i / (float)(NY-1);
-            rmesh_y[i] = (1.f-t)*YMIN + t*YMAX;
-        }
+            int i;
+            visit_handle x,y;
 
-        /* Let VisIt use the simulation's copy of the mesh coordinates. */
-        mesh->rmesh->xcoords = VisIt_CreateDataArrayFromFloat(
-           VISIT_OWNER_SIM, rmesh_x);
-        mesh->rmesh->ycoords = VisIt_CreateDataArrayFromFloat(
-           VISIT_OWNER_SIM, rmesh_y);
-        ret = VISIT_OKAY;
+            /* Initialize X coords. */
+            for(i = 0; i < NX; ++i)
+            {
+                float t = (float)i / (float)(NX-1);
+                rmesh_x[i] = (1.f-t)*XMIN + t*XMAX;
+            }
+            /* Initialize Y coords. */
+            for(i = 0; i < NY; ++i) 
+            {
+                float t = (float)i / (float)(NY-1);
+                rmesh_y[i] = (1.f-t)*YMIN + t*YMAX;
+            }
+
+            VisIt_VariableData_alloc(&x);
+            VisIt_VariableData_alloc(&y);
+            VisIt_VariableData_setDataF(x, VISIT_OWNER_SIM, 1, NX, rmesh_x);
+            VisIt_VariableData_setDataF(y, VISIT_OWNER_SIM, 1, NY, rmesh_y);
+            VisIt_RectilinearMesh_setCoordsXY(h, x, y);
+        }
     }
 
-    return ret;
+    return h;
 }
 
 /******************************************************************************
@@ -439,50 +502,57 @@ SimGetMesh(int domain, const char *name, VisIt_MeshData *mesh, void *cbdata)
  * Purpose: This callback function returns material data.
  *
  * Programmer: Brad Whitlock
- * Date:       Mon Feb  9 15:27:09 PST 2009
+ * Date:       Fri Jan 12 13:37:17 PST 2007
  *
  * Modifications:
+ *   Brad Whitlock, Thu Feb 26 10:21:57 PST 2009
+ *   Use SimV2 API.
  *
  *****************************************************************************/
 
-int
-SimGetMaterial(int domain, const char *name, VisIt_MaterialData *mat, void *cbdata)
+visit_handle
+SimGetMaterial(int domain, const char *name, void *cbdata)
 {
-    int i, j, m, cell = 0, arrlen = 0;
-    VisIt_MaterialData *handle = NULL;
-    int nmats, cellmat[10], matnos[3];
-    float cellmatvf[10];
+    visit_handle h = VISIT_INVALID_HANDLE;
 
     /* Allocate a VisIt_MaterialData */
-    VisIt_MaterialData_init(mat, (NX-1)*(NY-1), &arrlen);
-
-    /* Fill in the VisIt_MaterialData */
-    matnos[0] = VisIt_MaterialData_addMaterial(mat, matNames[0]);
-    matnos[1] = VisIt_MaterialData_addMaterial(mat, matNames[1]);
-    matnos[2] = VisIt_MaterialData_addMaterial(mat, matNames[2]);
-
-    for(j = 0; j < NY-1; ++j)
+    if(VisIt_MaterialData_alloc(&h) == VISIT_OKAY)
     {
-        for(i = 0; i < NX-1; ++i, ++cell)
+        int i, j, m, cell = 0, arrlen = 0;
+        int nmats, cellmat[10], matnos[3]={1,2,3};
+        float cellmatvf[10];
+
+        /* Tell the object we'll be adding cells to it using add*Cell functions */
+        VisIt_MaterialData_appendCells(h, (NX-1)*(NY-1));
+
+        /* Fill in the VisIt_MaterialData */
+        VisIt_MaterialData_addMaterial(h, matNames[0], &matnos[0]);
+        VisIt_MaterialData_addMaterial(h, matNames[1], &matnos[1]);
+        VisIt_MaterialData_addMaterial(h, matNames[2], &matnos[2]);
+
+        for(j = 0; j < NY-1; ++j)
         {
-            nmats = 0;
-            for(m = 0; m < 3; ++m)
+            for(i = 0; i < NX-1; ++i, ++cell)
             {
-                if(matlist[j][i][m] > 0)
+                nmats = 0;
+                for(m = 0; m < 3; ++m)
                 {
-                    cellmat[nmats] = matnos[matlist[j][i][m] - 1];
-                    cellmatvf[nmats] = mat_vf[j][i][m];
-                    nmats++;
-                }
-            }        
-            if(nmats > 1)
-                VisIt_MaterialData_addMixedCell(mat, cell, cellmat, cellmatvf, nmats, &arrlen);
-            else
-                VisIt_MaterialData_addCleanCell(mat, cell, cellmat[0]);
+                    if(matlist[j][i][m] > 0)
+                    {
+                        cellmat[nmats] = matnos[matlist[j][i][m] - 1];
+                        cellmatvf[nmats] = mat_vf[j][i][m];
+                        nmats++;
+                    }
+                }        
+                if(nmats > 1)
+                    VisIt_MaterialData_addMixedCell(h, cell, cellmat, cellmatvf, nmats);
+                else
+                    VisIt_MaterialData_addCleanCell(h, cell, cellmat[0]);
+            }
         }
     }
 
-    return VISIT_OKAY;
+    return h;
 }
 
 /******************************************************************************
@@ -496,102 +566,119 @@ SimGetMaterial(int domain, const char *name, VisIt_MaterialData *mat, void *cbda
  *
  *****************************************************************************/
 
-int
-SimGetSpecies(int domain, const char *name, VisIt_SpeciesData *spec, void *cbdata)
+visit_handle
+SimGetSpecies(int domain, const char *name, void *cbdata)
 {
-    int *species = NULL, *mixedSpecies = NULL;
-    int c, mixc, mfc, i, j;
-    float *speciesMF = NULL;
+    visit_handle h = VISIT_INVALID_HANDLE;
 
-    spec->ndims = 2;
-    spec->dims[0] = NX-1;
-    spec->dims[1] = NY-1;
-    spec->nmaterialSpecies = 3;
-    spec->materialSpecies = VisIt_CreateDataArrayFromInt(VISIT_OWNER_SIM,
-        nmaterialSpecies);
-    spec->materialSpeciesNames = SpeciesNames();
-
-    species = (int *)malloc(100 * sizeof(int));
-    memset(species, 0, 100 * sizeof(int));
-    spec->species = VisIt_CreateDataArrayFromInt(VISIT_OWNER_VISIT, species);
-
-    mixedSpecies = (int *)malloc(100 * sizeof(int));
-    memset(mixedSpecies, 0, 100 * sizeof(int));
-    spec->mixedSpecies = VisIt_CreateDataArrayFromInt(VISIT_OWNER_VISIT, mixedSpecies);
-
-    speciesMF = (float *)malloc(100 * sizeof(float));
-    memset(speciesMF, 0, 100 * sizeof(float));
-    spec->speciesMF = VisIt_CreateDataArrayFromFloat(VISIT_OWNER_VISIT, speciesMF);
-
-    c = 0;
-    mixc = 0;
-    mfc = 0;
-    for (j = 0; j < NY-1; j++)
+    if(VisIt_SpeciesData_alloc(&h) == VISIT_OKAY)
     {
-        for (i = 0; i < NX-1; i++, c++)
+        visit_handle hspecies = VISIT_INVALID_HANDLE;
+        visit_handle hspeciesMF = VISIT_INVALID_HANDLE;
+        visit_handle hmixedSpecies = VISIT_INVALID_HANDLE;
+
+        int *species = NULL, *mixedSpecies = NULL;
+        int c, mixc, mfc, i, j;
+        float *speciesMF = NULL;
+
+        /* Allocate the species arrays */
+        species = (int *)malloc(100 * sizeof(int));
+        memset(species, 0, 100 * sizeof(int));
+
+        mixedSpecies = (int *)malloc(100 * sizeof(int));
+        memset(mixedSpecies, 0, 100 * sizeof(int));
+    
+        speciesMF = (float *)malloc(100 * sizeof(float));
+        memset(speciesMF, 0, 100 * sizeof(float));
+
+        /* Populate the species arrays based on our simpler data */
+        c = 0;
+        mixc = 0;
+        mfc = 0;
+        for (j = 0; j < NY-1; j++)
         {
-            int m, mi, s, nmats = 0;
-            /* Count the number of materials in the cell. */
-            for(mi = 0; mi < 3; ++mi)
+            for (i = 0; i < NX-1; i++, c++)
             {
-                if(matlist[j][i][mi] > 0)
-                    nmats++;
-            }   
-
-            if (nmats == 1)
-            {
-                m = matlist[j][i][0]-1;
-
-                if (nmaterialSpecies[m] == 1)
+                int m, mi, s, nmats = 0;
+                /* Count the number of materials in the cell. */
+                for(mi = 0; mi < 3; ++mi)
                 {
-                    /* This 1 material has 1 species. */
-                    species[c] = 0;
-                }
-                else
-                {
-                    /* This 1 material has many species */
-                    species[c] = mfc + 1; /* 1-origin */
-                    for (s = 0; s < nmaterialSpecies[m]; s++)
-                    {
-                        speciesMF[mfc] = matspeciesMF[m][s];
-                        mfc++;
-                    }
-                }
-            }
-            else
-            {
-                /* There are mixed materials */
-                species[c] = -mixc - 1;
+                    if(matlist[j][i][mi] > 0)
+                        nmats++;
+                }   
 
-                for (mi = 0; mi < nmats; ++mi)
+                if (nmats == 1)
                 {
-                    m = matlist[j][i][mi]-1;
-
+                    m = matlist[j][i][0]-1;
+    
                     if (nmaterialSpecies[m] == 1)
                     {
-                        /* The current material has 1 species. */
-                        mixedSpecies[mixc] = 0;
+                        /* This 1 material has 1 species. */
+                        species[c] = 0;
                     }
                     else
                     {
-                        /* The current material has many species. */
-                        int     s;
-                        mixedSpecies[mixc] = mfc + 1; /* 1-origin */
+                        /* This 1 material has many species */
+                        species[c] = mfc + 1; /* 1-origin */
                         for (s = 0; s < nmaterialSpecies[m]; s++)
                         {
                             speciesMF[mfc] = matspeciesMF[m][s];
                             mfc++;
                         }
                     }
-                    mixc++;
+                }
+                else
+                {
+                    /* There are mixed materials */
+                    species[c] = -mixc - 1;
+
+                    for (mi = 0; mi < nmats; ++mi)
+                    {
+                        m = matlist[j][i][mi]-1;
+
+                        if (nmaterialSpecies[m] == 1)
+                        {
+                            /* The current material has 1 species. */
+                            mixedSpecies[mixc] = 0;
+                        }
+                        else
+                        {
+                            /* The current material has many species. */
+                            int     s;
+                            mixedSpecies[mixc] = mfc + 1; /* 1-origin */
+                            for (s = 0; s < nmaterialSpecies[m]; s++)
+                            {
+                                speciesMF[mfc] = matspeciesMF[m][s];
+                                mfc++;
+                            }
+                        }
+                        mixc++;
+                    }
                 }
             }
         }
-    }
-    spec->nspeciesMF = mfc;
-    spec->nmixedSpecies = mixc;
 
-    return VISIT_OKAY;
+        VisIt_SpeciesData_addSpeciesName(h, SpeciesNames(0));
+        VisIt_SpeciesData_addSpeciesName(h, SpeciesNames(1));
+        VisIt_SpeciesData_addSpeciesName(h, SpeciesNames(2));
+
+        VisIt_VariableData_alloc(&hspecies);
+        VisIt_VariableData_setDataI(hspecies, VISIT_OWNER_VISIT, 1,
+            (NX-1)*(NY-1), species);
+        VisIt_SpeciesData_setSpecies(h, hspecies);
+
+        VisIt_VariableData_alloc(&hspeciesMF);
+        VisIt_VariableData_setDataF(hspeciesMF, VISIT_OWNER_VISIT, 1,
+            mfc, speciesMF);
+        VisIt_SpeciesData_setSpeciesMF(h, hspeciesMF);
+
+        VisIt_VariableData_alloc(&hmixedSpecies);
+        VisIt_VariableData_setDataI(hmixedSpecies, VISIT_OWNER_VISIT, 1,
+            mixc, mixedSpecies);
+        VisIt_SpeciesData_setMixedSpecies(h, hmixedSpecies);
+    }
+
+    return h;
 }
 
 /******************************************************************************
@@ -602,6 +689,8 @@ SimGetSpecies(int domain, const char *name, VisIt_SpeciesData *spec, void *cbdat
  * Date:       Thu Apr 10 11:47:56 PDT 2008
  *
  * Modifications:
+ *   Brad Whitlock, Thu Feb 26 10:21:57 PST 2009
+ *   Use SimV2 API.
  *
  *****************************************************************************/
 
@@ -618,20 +707,22 @@ float zonal_scalar[NY-1][NX-1] = {
 {C1*1.f, C2*1.f, C3*1.f, C4*1.f}
 };
 
-int
-SimGetVariable(int domain, const char *name, visit_handle var, void *cbdata)
+visit_handle
+SimGetVariable(int domain, const char *name, void *cbdata)
 {
-    int ret = VISIT_ERROR;
+    visit_handle h = VISIT_INVALID_HANDLE;
 
     if(strcmp(name, "scalar") == 0)
-    { 
-        ret = VisIt_VariableData_setDataF(var, VISIT_OWNER_SIM, 1,
-            (NX-1) * (NY-1), &zonal_scalar[0][0]); 
+    {
+        if(VisIt_VariableData_alloc(&h) == VISIT_OKAY)
+        {
+            VisIt_VariableData_setDataF(h, VISIT_OWNER_SIM, 1,
+                (NX-1) * (NY-1), &zonal_scalar[0][0]); 
+        }
     }
 
-    return ret;
+    return h;
 }
-
 
 /******************************************************************************
  *
@@ -641,6 +732,8 @@ SimGetVariable(int domain, const char *name, visit_handle var, void *cbdata)
  * Date:       Fri Jan 12 13:37:17 PST 2007
  *
  * Modifications:
+ *   Brad Whitlock, Thu Feb 26 10:21:57 PST 2009
+ *   Use SimV2 API.
  *
  *****************************************************************************/
 
@@ -658,18 +751,21 @@ float mixvar[] = {
 /*cell 2,0*/ /*cell 2,1*/ C2*0.3,C2*0.7,    /*cell 2,2*/ C3*0.2,C3*0.4,C3*0.4,   /*cell 2,3*/C4*0.55,C4*0.45
 };
 
-int
-SimGetMixedVariable(int domain, const char *name, visit_handle mvar, void *cbdata)
+visit_handle
+SimGetMixedVariable(int domain, const char *name, void *cbdata)
 {
-    int ret = VISIT_ERROR;
+    visit_handle h = VISIT_INVALID_HANDLE;
 
     if(strcmp(name, "scalar") == 0)
     {
-        int nTuples = sizeof(mixvar) / sizeof(float);
-        ret = VisIt_VariableData_setDataF(mvar, VISIT_OWNER_SIM, 1,
-            nTuples, mixvar);
+        if(VisIt_VariableData_alloc(&h) == VISIT_OKAY)
+        {
+            int nTuples = sizeof(mixvar) / sizeof(float);
+            VisIt_VariableData_setDataF(h, VISIT_OWNER_SIM, 1,
+                nTuples, mixvar);
+        }
     }
 
-    return ret;
+    return h;
 }
 

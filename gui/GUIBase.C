@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -571,6 +571,10 @@ GUIBase::RestoreCursor()
 //   Do not issue an error if you can't open a file ... the viewer will do this
 //   for us.
 //
+//   Jeremy Meredith, Fri Mar 19 13:22:13 EDT 2010
+//   Added extra parameter telling ClearFile whether or not we want it
+//   to forget about which plugin opened a file.  Here, we don't.
+//
 // ****************************************************************************
 
 bool
@@ -586,7 +590,7 @@ GUIBase::SetOpenDataFile(const QualifiedFilename &qf, int timeState,
     //
     if(reOpen)
     {
-        fileServer->ClearFile(qf);
+        fileServer->ClearFile(qf, false);
         fileServer->CloseFile();
         if(sob)
             sob->SetUpdate(false);

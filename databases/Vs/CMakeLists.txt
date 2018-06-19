@@ -15,9 +15,26 @@ VsMDServerPluginInfo.C
 ${COMMON_SOURCES}
 avtVsFileFormat.C
 VsFilter.C
+VsH5Attribute.C
+VsH5Dataset.C
+VsH5File.C
+VsH5Group.C
+VsH5Object.C
 VsH5Reader.C
+VsLog.C
+VsMDMesh.C
+VsMDVariable.C
+VsMesh.C
+VsRectilinearMesh.C
 VsSchema.C
+VsStructuredMesh.C
+VsUniformMesh.C
+VsUnstructuredMesh.C
 VsUtils.C
+VsVariable.C
+VsVariableWithMesh.C
+VsRegistry.C
+VsRegistryObject.C
 )
 
 SET(LIBE_SOURCES
@@ -25,13 +42,31 @@ VsEnginePluginInfo.C
 ${COMMON_SOURCES}
 avtVsFileFormat.C
 VsFilter.C
+VsH5Attribute.C
+VsH5Dataset.C
+VsH5File.C
+VsH5Group.C
+VsH5Object.C
 VsH5Reader.C
+VsLog.C
+VsMDMesh.C
+VsMDVariable.C
+VsMesh.C
+VsRectilinearMesh.C
 VsSchema.C
+VsStructuredMesh.C
+VsUniformMesh.C
+VsUnstructuredMesh.C
 VsUtils.C
+VsVariable.C
+VsVariableWithMesh.C
+VsRegistry.C
+VsRegistryObject.C
 )
 
 INCLUDE_DIRECTORIES(
 ${CMAKE_CURRENT_SOURCE_DIR}
+${HDF5_INCLUDE_DIR} 
 ${VISIT_COMMON_INCLUDES}
 ${VISIT_INCLUDE_DIR}/avt/DBAtts/MetaData
 ${VISIT_INCLUDE_DIR}/avt/DBAtts/SIL
@@ -53,7 +88,6 @@ ${VISIT_INCLUDE_DIR}/avt/VisWindow/VisWindow
 ${VISIT_INCLUDE_DIR}/visit_vtk/full
 ${VISIT_INCLUDE_DIR}/visit_vtk/lightweight
 ${VTK_INCLUDE_DIRS} 
-${HDF5_INCLUDE_DIR} 
 )
 
 IF(WIN32)

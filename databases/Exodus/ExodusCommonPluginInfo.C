@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -147,13 +147,7 @@ ExodusCommonPluginInfo::SetupDatabase(const char *const *list,
     }
 
     int nTimestepGroups = 1;
-    if(nBlock == -1)
-    {
-        // If nBlock == -1 then we're in here recursively and we're dealing
-        // with a list of domains.
-        nBlock = nList;
-    }
-    nTimestepGroups = nList / nBlock;
+    nBlock = nList;
 
     avtMTSDFileFormat ***ffl = new avtMTSDFileFormat**[nTimestepGroups];
     for (int i = 0 ; i < nTimestepGroups ; i++)

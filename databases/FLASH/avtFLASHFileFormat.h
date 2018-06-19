@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -113,6 +113,9 @@ class     DBOptionsAttributes;
 //
 //    Hank Childs, Thu Dec 17 14:07:52 PST 2009
 //    Add support for database options.
+//
+//    Hank Childs, Sat Mar 20 20:21:47 PDT 2010
+//    Add data members for more database options.
 //
 // ****************************************************************************
 
@@ -266,6 +269,8 @@ class avtFLASHFileFormat : public avtSTMDFileFormat
     std::vector<int>          visitIdToFLASHId;
     std::vector<int>          FLASHIdToVisitId;
     bool                      showProcessors;
+    bool                      newStyleCurves;
+    bool                      addStructuredDomainBoundaries;
 };
 
 

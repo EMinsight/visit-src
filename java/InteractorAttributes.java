@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -56,45 +56,52 @@ package llnl.visit;
 
 public class InteractorAttributes extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 5;
+    private static int InteractorAttributes_numAdditionalAtts = 6;
 
     // Enum values
     public final static int NAVIGATIONMODE_TRACKBALL = 0;
     public final static int NAVIGATIONMODE_DOLLY = 1;
     public final static int NAVIGATIONMODE_FLYTHROUGH = 2;
 
+    public final static int BOUNDINGBOXMODE_ALWAYS = 0;
+    public final static int BOUNDINGBOXMODE_NEVER = 1;
+    public final static int BOUNDINGBOXMODE_AUTO = 2;
+
 
     public InteractorAttributes()
     {
-        super(numAdditionalAttributes);
+        super(InteractorAttributes_numAdditionalAtts);
 
         showGuidelines = true;
         clampSquare = false;
         fillViewportOnZoom = true;
         navigationMode = NAVIGATIONMODE_TRACKBALL;
         axisArraySnap = true;
+        boundingBoxMode = BOUNDINGBOXMODE_AUTO;
     }
 
     public InteractorAttributes(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(InteractorAttributes_numAdditionalAtts + nMoreFields);
 
         showGuidelines = true;
         clampSquare = false;
         fillViewportOnZoom = true;
         navigationMode = NAVIGATIONMODE_TRACKBALL;
         axisArraySnap = true;
+        boundingBoxMode = BOUNDINGBOXMODE_AUTO;
     }
 
     public InteractorAttributes(InteractorAttributes obj)
     {
-        super(numAdditionalAttributes);
+        super(InteractorAttributes_numAdditionalAtts);
 
         showGuidelines = obj.showGuidelines;
         clampSquare = obj.clampSquare;
         fillViewportOnZoom = obj.fillViewportOnZoom;
         navigationMode = obj.navigationMode;
         axisArraySnap = obj.axisArraySnap;
+        boundingBoxMode = obj.boundingBoxMode;
 
         SelectAll();
     }
@@ -106,7 +113,7 @@ public class InteractorAttributes extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return InteractorAttributes_numAdditionalAtts;
     }
 
     public boolean equals(InteractorAttributes obj)
@@ -116,7 +123,8 @@ public class InteractorAttributes extends AttributeSubject
                 (clampSquare == obj.clampSquare) &&
                 (fillViewportOnZoom == obj.fillViewportOnZoom) &&
                 (navigationMode == obj.navigationMode) &&
-                (axisArraySnap == obj.axisArraySnap));
+                (axisArraySnap == obj.axisArraySnap) &&
+                (boundingBoxMode == obj.boundingBoxMode));
     }
 
     // Property setting methods
@@ -150,12 +158,19 @@ public class InteractorAttributes extends AttributeSubject
         Select(4);
     }
 
+    public void SetBoundingBoxMode(int boundingBoxMode_)
+    {
+        boundingBoxMode = boundingBoxMode_;
+        Select(5);
+    }
+
     // Property getting methods
     public boolean GetShowGuidelines() { return showGuidelines; }
     public boolean GetClampSquare() { return clampSquare; }
     public boolean GetFillViewportOnZoom() { return fillViewportOnZoom; }
     public int     GetNavigationMode() { return navigationMode; }
     public boolean GetAxisArraySnap() { return axisArraySnap; }
+    public int     GetBoundingBoxMode() { return boundingBoxMode; }
 
     // Write and read methods.
     public void WriteAtts(CommunicationBuffer buf)
@@ -170,6 +185,8 @@ public class InteractorAttributes extends AttributeSubject
             buf.WriteInt(navigationMode);
         if(WriteSelect(4, buf))
             buf.WriteBool(axisArraySnap);
+        if(WriteSelect(5, buf))
+            buf.WriteInt(boundingBoxMode);
     }
 
     public void ReadAtts(int index, CommunicationBuffer buf)
@@ -191,6 +208,9 @@ public class InteractorAttributes extends AttributeSubject
         case 4:
             SetAxisArraySnap(buf.ReadBool());
             break;
+        case 5:
+            SetBoundingBoxMode(buf.ReadInt());
+            break;
         }
     }
 
@@ -209,6 +229,14 @@ public class InteractorAttributes extends AttributeSubject
             str = str + "NAVIGATIONMODE_FLYTHROUGH";
         str = str + "\n";
         str = str + boolToString("axisArraySnap", axisArraySnap, indent) + "\n";
+        str = str + indent + "boundingBoxMode = ";
+        if(boundingBoxMode == BOUNDINGBOXMODE_ALWAYS)
+            str = str + "BOUNDINGBOXMODE_ALWAYS";
+        if(boundingBoxMode == BOUNDINGBOXMODE_NEVER)
+            str = str + "BOUNDINGBOXMODE_NEVER";
+        if(boundingBoxMode == BOUNDINGBOXMODE_AUTO)
+            str = str + "BOUNDINGBOXMODE_AUTO";
+        str = str + "\n";
         return str;
     }
 
@@ -219,5 +247,6 @@ public class InteractorAttributes extends AttributeSubject
     private boolean fillViewportOnZoom;
     private int     navigationMode;
     private boolean axisArraySnap;
+    private int     boundingBoxMode;
 }
 

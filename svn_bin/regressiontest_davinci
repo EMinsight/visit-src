@@ -192,6 +192,31 @@
 #
 #    Mark C. Miller, Fri Feb 19 08:46:29 PST 2010
 #    Made pre-update configure failure a warning instead of fatal error.
+#
+#    Mark C. Miller, Fri Feb 26 11:15:51 PST 2010
+#    Removed logic to skip on no changes as we test a different mode
+#    each time. Added logic to alternate mode tested based on day of week.
+#
+#    Mark C. Miller, Fri Mar  5 16:21:43 PST 2010
+#    Added VERBOSE=1 to make commands
+#
+#    Cyrus Harrison, Mon Mar 22 10:59:26 PDT 2010
+#    Temporarily only run the 'serial' case.
+#
+#    Mark C. MIller, Sat Mar 27 08:49:54 PDT 2010
+#    Removed above, temporary fix once serial started passing.
+#
+#    Mark C. Miller, Wed Mar 31 14:22:12 PDT 2010
+#    Set pixel diff tolerances slightly above zero for scalable modes. This
+#    is to help reduce need for mode-specific baselines.
+#
+#    Eric Brugger, Tue Apr 27 08:23:23 PDT 2010
+#    Corrected a bug where the large baseline image would always be the non
+#    mode specific version regardless of the mode the test was being run in.
+#
+#    Eric Brugger, Thu May 27 17:04:35 PDT 2010
+#    Removed the partial skips for arbpoly.
+#
 # ----------------------------------------------------------------------------
 dateTag=`date +%y%b%d`
 svnHost=svn.nersc.gov
@@ -339,7 +364,7 @@ PATH=/usr/common/usg/bin:/usr/common/mss/bin:/usr/common/pbs/bin:/global/u1/m/mi
 export PATH
 
 optError=0
-skipIfNoChanges=1
+skipIfNoChanges=0
 scriptWasChanged=0
 testEmail=""
 for options
@@ -482,24 +507,32 @@ checkAndHandleError "`eqzero $conflictFiles`" fatal "conflicting files" "$confli
 cd src
 ./configure CXXFLAGS=-g MAKE=gmake --enable-parallel --enable-buildall 1>> config_log.txt 2>&1
 checkAndHandleError $? fatal "Post-Update configure failed" config_log.txt 
-gmake -j 6 1>> make_log.txt 2>&1
-checkAndHandleError $? fatal "gmake -j 6 failed in src" make_log.txt 1000
+gmake VERBOSE=1 -j 6 1>> make_log.txt 2>&1
+checkAndHandleError $? fatal "gmake VERBOSE=1 -j 6 failed in src" make_log.txt 1000
 cd ..
 
 # build data
 cd data
 rm -f make_log.txt
 gmake clean 1> /dev/null 2>&1
-gmake -j 6 test 1>> make_log.txt 2>&1
-checkAndHandleError $? fatal "gmake -j 6 failed in data" make_log.txt  1000
+gmake VERBOSE=1 -j 6 test 1>> make_log.txt 2>&1
+checkAndHandleError $? fatal "gmake VERBOSE=1 -j 6 failed in data" make_log.txt  1000
 cd ..
 
 # set the datestamp used for all test modes
 curdate=`date +%Y-%m-%d-%p%I%M`
 theDay=`date +%A`
 
-# set mode to run in
-modes="davinci,serial davinci,parallel davinci,scalable,parallel,icet"
+modes="davinci,serial"
+case $theDay in
+    Monday)    modes="davinci,serial" ;; 
+    Tuesday)   modes="davinci,parallel" ;;
+    Wednesday) modes="davinci,scalable,parallel,icet" ;;
+    Thursday)  modes="davinci,serial" ;;
+    Friday)    modes="davinci,parallel" ;;
+    Saturday)  modes="davinci,scalable,parallel,icet" ;;
+    Sunday)    modes="davinci,scalable,parallel,icet" ;;
+esac
 
 # set list of tests/modes to skip
 skipList_dueTo_clientServer="\
@@ -512,9 +545,6 @@ skipList_dueTo_parallelRendering="\
 
 skipList_dueTo_temporaryBugs="\
           davinci,scalable,parallel,icet:tests/operators/transform.py:ops_transform05 \
-          davinci,serial:tests/meshtype/arbpoly.py:arbpoly_01,arbpoly_02,arbpoly_03 \
-          davinci,parallel:tests/meshtype/arbpoly.py:arbpoly_01,arbpoly_02,arbpoly_03 \
-          davinci,scalable,parallel,icet:tests/meshtype/arbpoly.py:arbpoly_01,arbpoly_02,arbpoly_03 \
           davinci,serial:tests/rendering/tuvok.py:tuvok_2,tuvok_4,tuvok_6 \
           davinci,parallel:tests/rendering/tuvok.py:tuvok_2,tuvok_4,tuvok_6 \
           davinci,scalable,parallel,icet:tests/rendering/tuvok.py:tuvok_2,tuvok_4,tuvok_6 \
@@ -558,10 +588,16 @@ for m in $modes; do
         testsToRun="tests/databases/image.py"
     fi
 
+    # set pixel diff-tolerances slightly above zero for mode containing 'scalable'
+    diffTols=""
+    if test -n "$(echo $modes | grep scalable)"; then
+        diffTols="-pixdiff 2 -avgdiff 1"
+    fi
+
     if test "$skipList" = ""; then
-        ./runtest -q -m "$m" -l 1200 -notrackmem $testsToRun
+        ./runtest -q -m "$m" -l 1200 $diffTols -notrackmem $testsToRun
     else
-        ./runtest -q -s "$skipList" -m "$m" -l 1200 -notrackmem $testsToRun
+        ./runtest -q -s "$skipList" -m "$m" -l 1200 $diffTols -notrackmem $testsToRun
     fi
     curerror=$?
     theMode=`echo $m | tr ',' '_'`
@@ -572,6 +608,18 @@ for m in $modes; do
     grep 'category\|failed' summary >> short_summary
     checkAndHandleError $curerror warning "test mode $m failed" short_summary 
     failedPyFiles=`grep failed short_summary | cut -d':' -f1`
+
+    # Determine the mode directory name in the baselines.
+    parallel_found=`echo $m | grep "parallel"`
+    scalable_found=`echo $m | grep "scalable"`
+    theBaselineModeDir="serial"
+    if test "$parallel_found" != ""; then
+        if test "$scalable_found" != ""; then
+            theBaselineModeDir="scalable_parallel"
+        else
+            theBaselineModeDir="parallel"
+        fi
+    fi
 
     # Do the work to copy html results and post them only if this is NOT
     # a test of the regressiontest script itself.
@@ -592,6 +640,13 @@ for m in $modes; do
                 baseName=""
                 if test -f ./baseline/$theCat/$thePyFileBase/$baseNameTxt.txt; then
                     baseName=$baseNameTxt
+                elif test -f ./baseline/$theCat/$thePyFileBase/$theBaselineModeDir/$baseNamePng.png; then
+                    baseName=$baseNamePng
+                    if test -f ./html/d_$baseNamePng.png; then
+                        cp html/[cd]_${baseName}.png html_${dateTag}/. 1>/dev/null 2>&1
+                    fi
+                    ln /project/projectdirs/visit/test/trunk/test/baseline/$theCat/$thePyFileBase/$theBaselineModeDir/$baseNamePng.png html_${dateTag}/b_${baseName}.png
+                    cp html/[cdb]_${baseName}_thumb.png html_${dateTag}/. 1>/dev/null 2>&1
                 elif test -f ./baseline/$theCat/$thePyFileBase/$baseNamePng.png; then
                     baseName=$baseNamePng
                     if test -f ./html/d_$baseNamePng.png; then

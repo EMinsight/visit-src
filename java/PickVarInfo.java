@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -59,7 +59,7 @@ import java.lang.Integer;
 
 public class PickVarInfo extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 14;
+    private static int PickVarInfo_numAdditionalAtts = 14;
 
     // Enum values
     public final static int CENTERING_NODAL = 0;
@@ -69,7 +69,7 @@ public class PickVarInfo extends AttributeSubject
 
     public PickVarInfo()
     {
-        super(numAdditionalAttributes);
+        super(PickVarInfo_numAdditionalAtts);
 
         variableName = new String("");
         variableType = new String("");
@@ -89,7 +89,7 @@ public class PickVarInfo extends AttributeSubject
 
     public PickVarInfo(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(PickVarInfo_numAdditionalAtts + nMoreFields);
 
         variableName = new String("");
         variableType = new String("");
@@ -109,7 +109,7 @@ public class PickVarInfo extends AttributeSubject
 
     public PickVarInfo(PickVarInfo obj)
     {
-        super(numAdditionalAttributes);
+        super(PickVarInfo_numAdditionalAtts);
 
         int i;
 
@@ -169,7 +169,7 @@ public class PickVarInfo extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return PickVarInfo_numAdditionalAtts;
     }
 
     public boolean equals(PickVarInfo obj)

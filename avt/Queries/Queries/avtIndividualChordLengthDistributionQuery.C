@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -130,6 +130,10 @@ avtIndividualChordLengthDistributionQuery::PreExecute(void)
 //    Hank Childs, Fri Sep  1 15:13:33 PDT 2006
 //    Output a histogram, not a curve.
 //
+//    Eric Brugger, Thu Mar 25 09:45:08 PDT 2010
+//    I changed the name of the curve in the ultra file to avoid using
+//    special characters.
+//
 // ****************************************************************************
 
 void
@@ -189,7 +193,7 @@ avtIndividualChordLengthDistributionQuery::PostExecute(void)
             SetResultMessage(msg);
             return;
         }
-        ofile << "# Chord length distribution (individual)" << endl;
+        ofile << "# Chord length distribution - individual" << endl;
 
         for (int i = 0 ; i < numBins ; i++)
         {

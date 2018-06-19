@@ -29,24 +29,23 @@
 #       MacOSX  ppc,		GCC 4.0.1	snailbait.llnl.gov
 #
 #   It is believed that this script will also work with other Linux variations.
-#   Please send feedback to visit-users@ornl.gov if you run into problems 
+#   Please send feedback to visit-users@ornl.gov if you run into problems
 #   so that this script can be improved in the future.  If you have built
 #   VisIt using this script on an OS/hardware/compiler combination not listed
 #   above, please send a note to visit-users@ornl.gov, so we can add that
 #   information to the script.
 #
 #   Setup:
-#       This script assumes you have downloaded the VisIt source code and 
+#       This script assumes you have downloaded the VisIt source code and
 #       the necessary third party libraries and that they are placed in the
 #       current directory.  If it does not locate these libraries, it will
 #       try to download them.
 #       You must have:
-#          Qt		qt-x11-opensource-4.4.3.tar.gz
-#                    or qt-mac-opensource-4.4.3.tar.gz (Mac)
-#          Mesa         MesaLib-7.5.tar.gz
-#          Python	Python-2.5.tgz
-#          VTK		vtk-5.0.0d.tar.gz
-#          CMake	cmake-2.6.4.tar.gz
+#          Qt       qt-everywhere-opensource-src-4.6.1.tar.gz
+#          Mesa     MesaLib-7.5.tar.gz
+#          Python   Python-2.6.4tgz
+#          VTK      vtk-5.0.0f.tar.gz
+#          CMake    cmake-2.8.0.tar.gz
 #
 #        The following optional libraries need to be in the current directory
 #        to be built. You must explicitly select which option library to
@@ -70,9 +69,9 @@
 #           szip     2.1      szip-2.1.tar.gz
 #
 #         Experimental (internal)
-#           ITAPS             ITAPS-FMDB-1.0-15Apr09.tar.gz
-#           ITAPS             ITAPS-GRUMMP-0.5.0-20Apr09.tar.gz
-#           ITAPS             ITAPS-MOAB-3.99-20Apr09.tar.gz
+#           ITAPS             ITAPS-FMDB-1.1-03Jun10.tar.gz
+#           ITAPS             ITAPS-GRUMMP-0.5.0-03Jun10.tar.gz
+#           ITAPS             ITAPS-MOAB-3.99-10Jun10.tar.gz
 #           ViSUS             visus_26Feb07.tar.gz      -V
 #
 #   Layout:
@@ -87,6 +86,7 @@
 #     Function 6, build_vtk:        build VTK
 #     Function 7, build_python:     build Python
 #     Function 7.1, build_pil       build the Python Imaging Library
+#     Function 7.2, build_pyparsing build the pyparsing python module
 #     Function 8.0, build_szip:     build SZIP
 #     Function 8.1, build_hdf5:     build HDF5
 #     Function 8.2, build_mili:     build Mili
@@ -206,7 +206,7 @@
 #     Changed link options on Mac
 #
 #     Kathleen Bonnell, Mon Aug 27 08:42:06 PDT 2007
-#     Changed -DMANGLED_OSMESA_INCLUDE to -DMANGLED_OSMESA_INCLUDE_DIR 
+#     Changed -DMANGLED_OSMESA_INCLUDE to -DMANGLED_OSMESA_INCLUDE_DIR
 #     in build_vtk. 
 #
 #     Gunther H. Weber, Wed Aug 29 12:34:58 PDT 2007
@@ -302,7 +302,7 @@
 #     1) Rename some variables that are conflicting with names used elsewhere.
 #     (QT_DIR by Linux, MILI_DIR by VisIt's configure script.)
 #     2) Do not do a parallel build for H5_part.
-#     
+#
 #     Thomas R. Treadway, Wed Feb  6 15:08:07 PST 2008
 #     Corrected the silo build
 #     Added an explicit CMake build step.
@@ -825,6 +825,111 @@
 #     Hank Childs and Paul Navratil, Sat Feb 20 17:31:54 CST 2010
 #     Fix for building Ice-T when PAR_INCLUDE has a -DDEFINE first.
 #
+#     Eric Brugger, Mon Feb 22 13:39:04 PST 2010
+#     I modified build_qt to build a 32 bit versoin of Qt if the OBJECT_MODE
+#     environment variable was 32.  I added a check to make sure that if we
+#     are building on AIX that we are using GNU tar.  I made the tar command
+#     be a variable so that it could be easily changed.  I modified the patch
+#     commands so that they would work on AIX systems.  I modified one of the
+#     mesa patches to add some AIX specific code from a later version of mesa
+#     (that Tom Fogal had contributed to mesa).
+#
+#     Hank Childs, Sun Feb 28 13:28:05 PST 2010
+#     Make IceT builds be automatic if you enable parallel builds.
+#
+#     Cyrus Harrison, Tue Mar  9 07:52:50 PST 2010
+#     Install name patching for vtk python module on OSX.
+#
+#     Eric Brugger, Fri Mar 12 14:18:26 PST 2010
+#     I modified build_exodus so that the netcdf header file and library
+#     are files instead of links in the installation directory so that make
+#     package works with VISIT_INSTALL_THIRD_PARTY defined.
+#
+#     Cyrus Harrison, Fri Mar 12 15:47:11 PST 2010
+#     Use qt 4.6.1 & python 2.6.4 on all platforms.
+#
+#     Eric Brugger, Mon Mar 15 14:27:23 PDT 2010
+#     I added a patch for ccmio 2.6.1 so that it would build in 32 bit mode
+#     on AIX.
+#
+#     Cyrus Harrison, Wed Mar 17 10:21:15 PDT 2010
+#     Use cmake 2.8.0.
+#
+#     Cyrus Harrison, Wed Mar 17 10:21:15 PDT 2010
+#     Fix python shared lib gen on AIX + removed old python patches.
+#
+#     Eric Brugger, Thu Mar 18 15:12:19 PDT 2010
+#     I added several patches for VTK so that VTK would compile under AIX
+#     with cmake 2.8.0.
+#
+#     Eric Brugger, Fri Mar 19 16:04:36 PDT 2010
+#     I added several patches and disabled javascript-jit, script, and
+#     scripttools for Qt 4.6.1 so that it would compile with gcc 3.2.3 on
+#     an x86 platform.
+#
+#     Cyrus Harrison, Tue Mar 23 09:21:32 PDT 2010
+#     Added support to set group permissions on:
+#      pil, tcmalloc, icet & advio
+#
+#     Tom Fogal, Fri Mar 26 17:24:39 MDT 2010
+#     Add --cflag, --cxxflag.  These *append* a specific flag.
+#     Getting '--cflags' to quote reliably is a nightmare.
+#
+#     Cyrus Harrison, Tue Apr 20 17:03:10 PDT 2010
+#     Add support for setting up MPI_INCLUDE_PATH for ice-t via
+#     PAR_COMPILER. Includes special case for osx w/ default mpic++.
+#
+#     Brad Whitlock, Mon Apr 26 13:55:27 PST 2010
+#     I added support for the Xdmf library.
+#
+#     Jeremy Meredith, Mon May  3 12:58:17 EDT 2010
+#     Added patch to fix undefined _environ issue in python in OS X 10.4.
+#
+#     Kathleen Bonnell, Mon May  3 14:55:55 PDT 2010
+#     Use of vtk-5.0.0e.
+#
+#     Cyrus Harrison, Fri May  7 13:58:35 PDT 2010
+#     Added build & install of pyparsing module to the python build process.
+#
+#     Brad Whitlock, Mon May 24 15:30:40 PDT 2010
+#     I added more patching for VTK using Mac and Cocoa. This prevents a crash
+#     later in offscreen saves that have annotations.
+#
+#     Mark C. Miller, Thu Jun 10 10:42:25 PDT 2010
+#     Updated ITAPS libs to what was available begining of June, 2010.
+#
+#     Mark C. Miller, Thu Jun 10 10:45:56 PDT 2010
+#     Update date in message regarding ITAPS libs.
+#
+#     Eric Brugger, Thu Jun 10 16:20:09 PDT 2010
+#     I added zlib to the list of dependent libraries for silo in the config
+#     site file.
+#
+#     Eric Brugger, Thu Jun 10 17:35:17 PDT 2010
+#     I added the option "--download-only", which only downloads the files.
+#
+#     Mark C. Miller, Mon Jun 14 08:53:09 PDT 2010
+#     Removed --enable-iMesh from build_moab as newer versions of MOAB don't
+#     use that configure flag.
+#
+#     Eric Brugger, Thu Jun 17 15:48:19 PDT 2010
+#     I modified the script to use vtk-5.0.0f.
+#
+#     Eric Brugger, Thu Jun 17 17:06:14 PDT 2010
+#     I modified some of the vtk patches to work with vtk-5.0.0f.
+#
+#     Eric Brugger, Mon Jun 21 09:11:33 PDT 2010
+#     I set the VisIt version number to 2.0.1.
+#
+#     Eric Brugger, Mon Jul 19 12:57:52 PDT 2010
+#     I set the VisIt version number to 2.0.2.
+#
+#     Eric Brugger, Tue Jul 20 14:38:54 PDT 2010
+#     I added zlib to the list of dependent libraries for hdf5 in the config
+#     site file.  I also removed zlib from the list of dependent libraries
+#     for silo in the case of using hdf5 since it will now get it from the
+#     hdf5 dependent libraries.
+#
 # *****************************************************************************
 #                                                                             #
 # *************************************************************************** #
@@ -841,6 +946,11 @@ export BUILD_VISIT_ENV=$(env | cut -d'=' -f1 | sort | uniq)
 
 # Can cause problems in some build systems.
 unset CDPATH
+
+# Some systems tar command does not support the deep directory hierarchies
+# used in Qt, such as AIX. Gnu tar is a good alternative.
+### export TAR=/usr/local/bin/tar # Up and Purple
+export TAR=tar
 
 export OPSYS=${OPSYS:-$(uname -s)}
 export PROC=${PROC:-$(uname -p)}
@@ -917,7 +1027,11 @@ elif [[ "$OPSYS" == "AIX" ]]; then
    export CXX_OPT_FLAGS=${CXX_OPT_FLAGS:-"-O2"}
    export MAKE=${MAKE:-"gmake"}
    export MESA_TARGET=${MESA_TARGET:-"aix"}
-   export QT_PLATFORM=${QT_PLATFORM:-"aix-xlc-64"}
+   if [[ "$OBJECT_MODE" == 32 ]]; then
+      export QT_PLATFORM=${QT_PLATFORM:-"aix-xlc"}
+   else
+      export QT_PLATFORM=${QT_PLATFORM:-"aix-xlc-64"}
+   fi
 elif [[ "$OPSYS" == "IRIX64" ]]; then
    export ARCH="irix64" # You can change this to say RHEL, SuSE, Fedora, etc.
    export SO_EXT="so"
@@ -1060,10 +1174,13 @@ export DO_SLIVR="no"
 export ON_SLIVR="off"
 export DO_VISUS="no"
 export ON_VISUS="off"
+export DO_XDMF="no"
+export ON_XDMF="off"
 export DO_TCMALLOC="no"
 export ON_TCMALLOC="off"
 export DO_ICET="no"
 export ON_ICET="off"
+export PREVENT_ICET="no"
 GRAPHICAL="yes"
 ON_GRAPHICAL="on"
 verify="no"
@@ -1074,6 +1191,16 @@ export DO_MORE="no"
 export ON_MORE="off"
 export DO_DBIO_ONLY="no"
 export DO_STATIC_BUILD="no"
+export USE_VISIBILITY_HIDDEN="no"
+DOWNLOAD_ONLY="no"
+
+if [[ "$CXX_COMPILER" == "g++" ]] ; then
+    VERSION=$(g++ -v 2>&1 | grep "gcc version" | cut -d' ' -f3 | cut -d'.' -f1-1)
+    if [[ ${VERSION} -ge 4 ]] ; then
+        export USE_VISIBILITY_HIDDEN="yes"
+    fi
+fi
+
 
 export SVN_ANON_ROOT_PATH="http://portal.nersc.gov/svn/visit/"
 # Setup svn path: use SVN_NERSC_NAME if set
@@ -1101,55 +1228,37 @@ if [[ "$VISIT_FILE" != "" ]] ; then
   USE_VISIT_FILE="yes"
   ON_USE_VISIT_FILE="on"
 fi
-export VISIT_VERSION=${VISIT_VERSION:-"2.0.0"}
+export VISIT_VERSION=${VISIT_VERSION:-"2.0.2"}
 export VISIT_FILE=${VISIT_FILE:-"visit${VISIT_VERSION}.tar.gz"}
 
-export VTK_FILE=${VTK_FILE:-"vtk-5.0.0d.tar.gz"}
-export VTK_VERSION=${VTK_VERSION:-"5.0.0d"}
+export VTK_FILE=${VTK_FILE:-"vtk-5.0.0f.tar.gz"}
+export VTK_VERSION=${VTK_VERSION:-"5.0.0f"}
 export VTK_BUILD_DIR=${VTK_BUILD_DIR:-"VTK"}
 
-export CMAKE_FILE=${CMAKE_FILE:-"cmake-2.6.4.tar.gz"}
-export CMAKE_VERSION=${CMAKE_VERSION:-"2.6.4"}
-export CMAKE_BUILD_DIR=${CMAKE_BUILD_DIR:-"cmake-2.6.4"}
+export CMAKE_FILE=${CMAKE_FILE:-"cmake-2.8.0.tar.gz"}
+export CMAKE_VERSION=${CMAKE_VERSION:-"2.8.0"}
+export CMAKE_BUILD_DIR=${CMAKE_BUILD_DIR:-"cmake-2.8.0"}
 
 export MESA_FILE=${MESA_FILE:-"MesaLib-7.5.tar.gz"}
 export MESA_VERSION=${MESA_VERSION:-"7.5"}
 export MESA_BUILD_DIR=${MESA_BUILD_DIR:-"Mesa-7.5"}
 export MESA_URL="http://downloads.sourceforge.net/project/mesa3d/MesaLib/7.5"
 
-# The old Python version at LLNL does not work on Mac, we need a newer version
-export PYTHON_FILE_SUFFIX="tgz" # This is for the new version. 
-export PYTHON_VERSION=${PYTHON_VERSION:-"2.5"}
-# Need this for the dylib build
-export PYTHON_COMPATIBILITY_VERSION=${PYTHON_COMPATIBILITY_VERSION:-"2.5"}
-export PYTHON_FILE=${PYTHON_FILE:-"Python-$PYTHON_VERSION.$PYTHON_FILE_SUFFIX"}
-export PYTHON_BUILD_DIR=${PYTHON_BUILD_DIR:-"Python-$PYTHON_VERSION"}
-
-# FIXME: Hack: Use newer versions for OSX
-if [[ "$OPSYS" == "Darwin" ]] ; then
-    export PYTHON_VERSION="2.6.4"
-    export PYTHON_COMPATIBILITY_VERSION=2.6
-    export PYTHON_FILE="Python-$PYTHON_VERSION.$PYTHON_FILE_SUFFIX"
-    export PYTHON_BUILD_DIR="Python-$PYTHON_VERSION"
-fi
+export PYTHON_FILE_SUFFIX="tgz"
+export PYTHON_VERSION="2.6.4"
+export PYTHON_COMPATIBILITY_VERSION=2.6
+export PYTHON_FILE="Python-$PYTHON_VERSION.$PYTHON_FILE_SUFFIX"
+export PYTHON_BUILD_DIR="Python-$PYTHON_VERSION"
 
 export PIL_URL=${PIL_URL:-"http://effbot.org/media/downloads"}
 export PIL_FILE=${PIL_FILE:-"Imaging-1.1.6.tar.gz"}
 export PIL_BUILD_DIR=${PIL_BUILD_DIR:-"Imaging-1.1.6"}
 
-if [[ "$OPSYS" == "Darwin" ]] ; then
-   VER=$(uname -r)
-   if [[ ${VER%%.*} -ge 10 ]] ; then
-       export QT_FILE=${QT_FILE:-"qt-mac-opensource-src-4.5.3.tar.gz"}
-       export QT_VERSION=${QT_VERSION:-"4.5.3"}
-   else
-       export QT_FILE=${QT_FILE:-"qt-mac-opensource-src-4.4.3.tar.gz"}
-       export QT_VERSION=${QT_VERSION:-"4.4.3"}
-   fi
-else
-   export QT_FILE=${QT_FILE:-"qt-x11-opensource-src-4.4.3.tar.gz"}
-   export QT_VERSION=${QT_VERSION:-"4.4.3"}
-fi
+export PYPARSING_FILE=${PYPARSING_FILE:-"pyparsing-1.5.2.tar.gz"}
+export PYPARSING_BUILD_DIR=${PYPARSING_BUILD_DIR:-"pyparsing-1.5.2"}
+
+export QT_FILE=${QT_FILE:-"qt-everywhere-opensource-src-4.6.1.tar.gz"}
+export QT_VERSION=${QT_VERSION:-"4.6.1"}
 
 export QT_BUILD_DIR=${QT_BUILD_DIR:-"${QT_FILE%.tar*}"}
 
@@ -1232,19 +1341,19 @@ export SILO_COMPATIBILITY_VERSION=${SILO_COMPATIBILITY_VERSION:-"4.7.2"}
 export SILO_BUILD_DIR=${SILO_BUILD_DIR:-"silo-${SILO_VERSION}"}
 export SILO_URL=${SILO_URL:-https://wci.llnl.gov/codes/silo/silo-${SILO_VERSION}}
 
-export ITAPS_MOAB_FILE=${ITAPS_MOAB_FILE:-"ITAPS-MOAB-3.99-20Apr09.tar.gz"}
-export ITAPS_MOAB_VERSION=${ITAPS_MOAB_VERSION:-"3.99-20Apr09"}
-export ITAPS_MOAB_COMPATIBILITY_VERSION=${ITAPS_MOAB_COMPATIBILITY_VERSION:-"3.99-20Apr09"}
+export ITAPS_MOAB_FILE=${ITAPS_MOAB_FILE:-"ITAPS-MOAB-3.99-10Jun10.tar.gz"}
+export ITAPS_MOAB_VERSION=${ITAPS_MOAB_VERSION:-"3.99-10Jun10"}
+export ITAPS_MOAB_COMPATIBILITY_VERSION=${ITAPS_MOAB_COMPATIBILITY_VERSION:-"3.99-10Jun10"}
 export ITAPS_MOAB_BUILD_DIR=${ITAPS_MOAB_BUILD_DIR:-"${ITAPS_MOAB_FILE%.tar*}"}
 
-export ITAPS_FMDB_FILE=${ITAPS_FMDB_FILE:-"ITAPS-FMDB-1.0-15Apr09.tar.gz"}
-export ITAPS_FMDB_VERSION=${ITAPS_FMDB_VERSION:-"1.0-15Apr09"}
-export ITAPS_FMDB_COMPATIBILITY_VERSION=${ITAPS_FMDB_COMPATIBILITY_VERSION:-"1.0-15Apr09"}
+export ITAPS_FMDB_FILE=${ITAPS_FMDB_FILE:-"ITAPS-FMDB-1.1-03Jun10.tar.gz"}
+export ITAPS_FMDB_VERSION=${ITAPS_FMDB_VERSION:-"1.1-03Jun10"}
+export ITAPS_FMDB_COMPATIBILITY_VERSION=${ITAPS_FMDB_COMPATIBILITY_VERSION:-"1.1-03Jun10"}
 export ITAPS_FMDB_BUILD_DIR=${ITAPS_FMDB_BUILD_DIR:-"${ITAPS_FMDB_FILE%.tar*}"}
 
-export ITAPS_GRUMMP_FILE=${ITAPS_GRUMMP_FILE:-"ITAPS-GRUMMP-0.5.0-20Apr09.tar.gz"}
-export ITAPS_GRUMMP_VERSION=${ITAPS_GRUMMP_VERSION:-"0.5.0-20Apr09"}
-export ITAPS_GRUMMP_COMPATIBILITY_VERSION=${ITAPS_GRUMMP_COMPATIBILITY_VERSION:-"0.5.0-20Apr09"}
+export ITAPS_GRUMMP_FILE=${ITAPS_GRUMMP_FILE:-"ITAPS-GRUMMP-0.5.0-03Jun10.tar.gz"}
+export ITAPS_GRUMMP_VERSION=${ITAPS_GRUMMP_VERSION:-"0.5.0-03Jun10"}
+export ITAPS_GRUMMP_COMPATIBILITY_VERSION=${ITAPS_GRUMMP_COMPATIBILITY_VERSION:-"0.5.0-03Jun10"}
 export ITAPS_GRUMMP_BUILD_DIR=${ITAPS_GRUMMP_BUILD_DIR:-"${ITAPS_GRUMMP_FILE%.tar*}"}
 
 export VISUS_FILE=${VISUS_FILE:-"visus_26Feb07.tar.gz"}
@@ -1256,6 +1365,11 @@ export TCMALLOC_FILE=${TCMALLOC_FILE:-"google-perftools-0.97.tar.gz"}
 export TCMALLOC_VERSION=${TCMALLOC_VERSION:-"0.97"}
 export TCMALLOC_COMPATIBILITY_VERSION=${TCMALLOC_COMPATIBILITY_VERSION:-"0.97"}
 export TCMALLOC_BUILD_DIR=${TCMALLOC_BUILD_DIR:-"google-perftools-0.97"}
+
+export XDMF_FILE=${XDMF_FILE:-"Xdmf-2.1.tar.gz"}
+export XDMF_VERSION=${XDMF_VERSION:-"2.1"}
+export XDMF_COMPATIBILITY_VERSION=${XDMF_COMPATIBILITY_VERSION:-"2.1"}
+export XDMF_BUILD_DIR=${XDMF_BUILD_DIR:-"Xdmf"}
 
 export ICET_FILE=${ICET_FILE:-"IceT-0-5-4.tar.gz"}
 export ICET_VERSION=${ICET_VERSION:-"0.5.4"}
@@ -1389,7 +1503,7 @@ function info
 
 function uncompress_untar
 {
-    # Check if GUN tar
+    # Check if GNU tar
     if [[ $(echo $1 | egrep "\.gz$" ) != "" ]] ; then
         COMPRESSTYPE="gzip"
     elif [[ $(echo $1 | egrep "\.bz2$" ) != "" ]] ; then
@@ -1400,25 +1514,25 @@ function uncompress_untar
         warn "unsupported uncompression method"
         return 1
     fi
-    TARVERSION=$(tar --version >/dev/null 2>&1)
+    TARVERSION=$($TAR --version >/dev/null 2>&1)
     if [[ $? == 0 ]] ; then
         case $COMPRESSTYPE in
-            gzip|targzip) tar zxf $1;;
-            bzip) tar jxf $1;;
+            gzip|targzip) $TAR zxf $1;;
+            bzip) $TAR jxf $1;;
         esac
     else
         case $COMPRESSTYPE in
             gzip) 
                gunzip $1
-               tar xf ${1%.gz}
+               $TAR xf ${1%.gz}
                ;;
             targzip) 
                gunzip $1
-               tar xf "${1%.tgz}.tar"
+               $TAR xf "${1%.tgz}.tar"
                ;;
             bzip)
                bunzip2 $1
-               tar xf ${1%.bz2}
+               $TAR xf ${1%.bz2}
                ;;
         esac
     fi
@@ -1501,7 +1615,7 @@ function download_file
         warn "Anonymous SVN download attempt failed: $SVN_ANON_ROOT_PATH/trunk/third_party/$dfile"
         rm -f $dfile
     fi
-    
+
     if [[ "$1" == "" ]] ; then
         # If SVN was not requested or if it failed...
         if [[ "$dfile" == "$VISIT_FILE" ]] ; then
@@ -1509,7 +1623,7 @@ function download_file
         else
             try_download_file https://wci.llnl.gov/codes/visit/3rd_party/$dfile $dfile
         fi
-        
+
         if [[ $? == 0 ]] ; then
             return 0
         fi
@@ -1524,8 +1638,8 @@ function download_file
         return 0
     fi
     done
-    info "Failed to download $dfile" 
-    return 1 
+    info "Failed to download $dfile"
+    return 1
 }
 
 # *************************************************************************** 
@@ -1726,7 +1840,7 @@ function prepare_build_dir
        fi
     elif [[ -f ${SRC_FILE%.*} ]] ; then
        info "Untarring ${SRC_FILE%.*} . . ."
-       tar xf ${SRC_FILE%.*}
+       $TAR xf ${SRC_FILE%.*}
        untarred_src=1
        if [[ $? != 0 ]] ; then
           warn \
@@ -1910,6 +2024,9 @@ function check_visit_source_code
 #    Brad Whitlock, Mon Sep 21 09:57:52 PDT 2009
 #    Added AdvIO support.
 #
+#    Brad Whitlock, Mon Apr 26 14:04:16 PST 2010
+#    I added Xdmf support.
+#
 # *************************************************************************** #
 
 function check_optional_3rdparty
@@ -2090,7 +2207,16 @@ function check_optional_3rdparty
             error "Unable to build ViSUS.  ${VISUS_FILE} not found."
         fi
     fi
-    
+
+    if [[ "$DO_XDMF" == "yes" ]] ; then
+        ensure_built_or_ready "XDMF" $XDMF_VERSION $XDMF_BUILD_DIR $XDMF_FILE
+        if [[ $? != 0 ]] ; then
+            ANY_ERRORS="yes"
+            DO_XDMF="no"
+            error "Unable to build XDMF.  ${XDMF_FILE} not found."
+        fi
+    fi
+
     if [[ "$DO_TCMALLOC" == "yes" ]] ; then
         ensure_built_or_ready "google-perftools" $TCMALLOC_VERSION $TCMALLOC_BUILD_DIR $TCMALLOC_FILE
         if [[ $? != 0 ]] ; then
@@ -2106,7 +2232,7 @@ function check_optional_3rdparty
         fi
     fi
     
-    if [[ "$DO_ICET" == "yes" ]] ; then
+    if [[ "$DO_ICET" == "yes" && "$PREVENT_ICET" != "yes" ]] ; then
         ensure_built_or_ready "icet" $ICET_VERSION $ICET_BUILD_DIR $ICET_FILE "http://www.cs.unm.edu/~kmorel/IceT"
         if [[ $? != 0 ]] ; then
             ANY_ERRORS="yes"
@@ -2524,9 +2650,9 @@ function check_variables
 function apply_mesa_75_patch_1
 {
    patch -p0 <<\EOF
-diff -p -r Mesa-7.5.orig/src/mesa/main/config.h Mesa-7.5/src/mesa/main/config.h
-*** Mesa-7.5.orig/src/mesa/main/config.h    2009-06-26 18:41:04.000000000 -0400
---- Mesa-7.5/src/mesa/main/config.h 2009-08-13 16:38:09.000000000 -0400
+diff -c a/src/mesa/main/config.h Mesa-7.5/src/mesa/main/config.h
+*** a/src/mesa/main/config.h
+--- Mesa-7.5/src/mesa/main/config.h
 ***************
 *** 138,146 ****
   /** 
@@ -2560,19 +2686,20 @@ EOF
 function apply_mesa_75_patch_2
 {
     patch -p0 <<\EOF
-diff --git a/configure.ac b/configure.ac
-index 7518976..44fb779 100644
---- a/configure.ac
-+++ Mesa-7.5/configure.ac
-@@ -230,6 +230,8 @@ else
-         LIB_EXTENSION='dylib' ;;
-     cygwin* )
-         LIB_EXTENSION='dll' ;;
-+    aix* )
-+        LIB_EXTENSION='a' ;;
-     * )
-         LIB_EXTENSION='so' ;;
-     esac
+diff -c a/configure.ac Mesa-7.5/configure.ac
+*** a/configure.ac
+--- Mesa-7.5/configure.ac
+***************
+*** 224,229 ****
+--- 224,231 ----
+          LIB_EXTENSION='dylib' ;;
+      cygwin* )
+          LIB_EXTENSION='dll' ;;
++     aix* )
++         LIB_EXTENSION='a' ;;
+      * )
+          LIB_EXTENSION='so' ;;
+      esac
 EOF
 
     if [[ $? != 0 ]] ; then
@@ -2586,52 +2713,69 @@ EOF
 function apply_mesa_75_patch_3
 {
     patch -p0 <<\EOF
-diff --git a/progs/Makefile b/progs/Makefile
-index c99f4ee..064e5a2 100644
---- a/progs/Makefile
-+++ Mesa-7.5/progs/Makefile
-@@ -4,7 +4,7 @@ TOP = ..
- 
- include $(TOP)/configs/current
- 
--SUBDIRS = $(PROGRAM_DIRS)
-+SUBDIRS ="$(PROGRAM_DIRS)"
- 
- 
- default: message subdirs
-@@ -15,18 +15,22 @@ message:
- 
- 
- subdirs:
--	@for dir in $(SUBDIRS) ; do \
--		if [ -d $$dir ] ; then \
--			(cd $$dir && $(MAKE)) || exit 1 ; \
--		fi \
--	done
-+	@if test -n "$(SUBDIRS)" ; then \
-+		for dir in $(SUBDIRS) ; do \
-+			if [ -d $$dir ] ; then \
-+				(cd $$dir && $(MAKE)) || exit 1 ; \
-+			fi \
-+		done \
-+	fi
- 
- # Dummy install target
- install:
- 
- clean:
--	-@for dir in $(SUBDIRS) tests ; do \
--		if [ -d $$dir ] ; then \
--			(cd $$dir && $(MAKE) clean) ; \
--		fi \
--	done
-+	-@if test -n "$(SUBDIRS)" ; then \
-+		for dir in $(SUBDIRS) tests ; do \
-+			if [ -d $$dir ] ; then \
-+				(cd $$dir && $(MAKE) clean) ; \
-+			fi \
-+		done \
-+	fi
+diff -c a/progs/Makefile Mesa-7.5/progs/Makefile
+*** a/progs/Makefile
+--- Mesa-7.5/progs/Makefile
+***************
+*** 4,10 ****
+  
+  include $(TOP)/configs/current
+  
+! SUBDIRS = $(PROGRAM_DIRS)
+  
+  
+  default: message subdirs
+--- 4,10 ----
+  
+  include $(TOP)/configs/current
+  
+! SUBDIRS ="$(PROGRAM_DIRS)"
+  
+  
+  default: message subdirs
+***************
+*** 15,32 ****
+  
+  
+  subdirs:
+! 	@for dir in $(SUBDIRS) ; do \
+! 		if [ -d $$dir ] ; then \
+! 			(cd $$dir && $(MAKE)) || exit 1 ; \
+! 		fi \
+! 	done
+  
+  # Dummy install target
+  install:
+  
+  clean:
+! 	-@for dir in $(SUBDIRS) tests ; do \
+! 		if [ -d $$dir ] ; then \
+! 			(cd $$dir && $(MAKE) clean) ; \
+! 		fi \
+! 	done
+--- 15,36 ----
+  
+  
+  subdirs:
+! 	@if test -n "$(SUBDIRS)" ; then \
+! 		for dir in $(SUBDIRS) ; do \
+! 			if [ -d $$dir ] ; then \
+! 				(cd $$dir && $(MAKE)) || exit 1 ; \
+! 			fi \
+! 		done \
+! 	fi
+  
+  # Dummy install target
+  install:
+  
+  clean:
+! 	-@if test -n "$(SUBDIRS)" ; then \
+! 		for dir in $(SUBDIRS) tests ; do \
+! 			if [ -d $$dir ] ; then \
+! 				(cd $$dir && $(MAKE) clean) ; \
+! 			fi \
+! 		done \
+! 	fi
 EOF
 
     if [[ $? != 0 ]] ; then
@@ -2646,19 +2790,31 @@ EOF
 function apply_mesa_75_patch_4
 {
     patch -p0 <<\EOF
-diff --git a/src/mesa/main/compiler.h b/src/mesa/main/compiler.h
-index 380663e..4f1df92 100644
---- a/src/mesa/main/compiler.h
-+++ Mesa-7.5/src/mesa/main/compiler.h
-@@ -234,6 +234,8 @@ extern "C" {
- #elif defined(__APPLE__)
- #include <CoreFoundation/CFByteOrder.h>
- #define CPU_TO_LE32( x )	CFSwapInt32HostToLittle( x )
-+#elif defined(_AIX)
-+#define CPU_TO_LE32( x )	( x )
- #else /*__linux__ __APPLE__*/
- #include <sys/endian.h>
- #define CPU_TO_LE32( x )	bswap32( x )
+diff -c a/src/mesa/main/compiler.h Mesa-7.5/src/mesa/main/compiler.h
+*** a/src/mesa/main/compiler.h
+--- Mesa-7.5/src/mesa/main/compiler.h
+***************
+*** 233,239 ****
+  #elif defined(__APPLE__)
+  #include <CoreFoundation/CFByteOrder.h>
+  #define CPU_TO_LE32( x )	CFSwapInt32HostToLittle( x )
+! #else /*__linux__ __APPLE__*/
+  #include <sys/endian.h>
+  #define CPU_TO_LE32( x )	bswap32( x )
+  #endif /*__linux__*/
+--- 233,244 ----
+  #elif defined(__APPLE__)
+  #include <CoreFoundation/CFByteOrder.h>
+  #define CPU_TO_LE32( x )	CFSwapInt32HostToLittle( x )
+! #elif defined(_AIX)
+! #define CPU_TO_LE32( x )	x = ((x & 0x000000ff) << 24) | \
+! 				    ((x & 0x0000ff00) <<  8) | \
+! 				    ((x & 0x00ff0000) >>  8) | \
+! 				    ((x & 0xff000000) >> 24);
+! #else /*__linux__*/
+  #include <sys/endian.h>
+  #define CPU_TO_LE32( x )	bswap32( x )
+  #endif /*__linux__*/
 EOF
 
     if [[ $? != 0 ]] ; then
@@ -2883,17 +3039,19 @@ function build_mesa
 function qt_license_prompt
 {
 
+
 QT_LIC_MSG="During the build process this script will build Qt and confirm\
             that you accept Trolltech's license for the Qt4 Open Source\
             Edition. Please respond \"yes\" to accept (in advance) either\
-            the GNU General Public License (GPL) version 2 or 3. Visit\
+            the Lesser GNU General Public License (LGPL) version 2.1 or \
+            the GNU General Public License (GPL) version 3. Visit\
             http://trolltech.com/products/appdev/licensing to view these\
             licenses."
 
 QT_CONFIRM_MSG="VisIt requires Qt4: Please respond with \"yes\" to accept\
-                Qt licensing under the terms of the GNU General Public License\
-                (GPL) version 2 or 3."
-
+                Qt licensing under the terms of the Lesser GNU General \
+                Public License (LGPL) version 2.1 or \
+                the GNU General Public License (GPL) version 3"
 if [[ "$GRAPHICAL" == "yes" ]] ; then
     $DLG --backtitle "$DLG_BACKTITLE" --yesno "$QT_LIC_MSG" 0 0 
     if [[ $? == 1 ]] ; then
@@ -2917,22 +3075,203 @@ fi
 return 0
 }
 
+function apply_qt_461_patch_1
+{
+   patch -p0 <<\EOF
+diff -c a/src/gui/itemviews/qlistview.cpp qt-everywhere-opensource-src-4.6.1/src/gui/itemviews/qlistview.cpp
+*** a/src/gui/itemviews/qlistview.cpp
+--- qt-everywhere-opensource-src-4.6.1/src/gui/itemviews/qlistview.cpp
+***************
+*** 2814,2820 ****
+      if (moved.count() != items.count())
+          moved.resize(items.count());
+  
+!     QRect rect(QPoint(), topLeft);
+      QListViewItem *item = 0;
+      for (int row = info.first; row <= info.last; ++row) {
+          item = &items[row];
+--- 2814,2821 ----
+      if (moved.count() != items.count())
+          moved.resize(items.count());
+  
+!     QPoint zeroPoint;
+!     QRect rect(zeroPoint, topLeft);
+      QListViewItem *item = 0;
+      for (int row = info.first; row <= info.last; ++row) {
+          item = &items[row];
+EOF
+   if [[ $? != 0 ]] ; then
+        warn "Unable to apply patch 1 to Qt 4.6.1"
+        return 1
+   else
+        return 0
+   fi
+}
+
+function apply_qt_461_patch_2
+{
+   patch -p0 <<\EOF
+diff -c a/src/corelib/kernel/qmetaobject.cp qt-everywhere-opensource-src-4.6.1/src/corelib/kernel/qmetaobject.cpp
+*** a/src/corelib/kernel/qmetaobject.cpp
+--- qt-everywhere-opensource-src-4.6.1/src/corelib/kernel/qmetaobject.cpp
+***************
+*** 943,949 ****
+      if (!type || !*type)
+          return result;
+  
+!     QVarLengthArray<char> stackbuf(int(strlen(type)) + 1);
+      qRemoveWhitespace(type, stackbuf.data());
+      int templdepth = 0;
+      qNormalizeType(stackbuf.data(), templdepth, result);
+--- 943,950 ----
+      if (!type || !*type)
+          return result;
+  
+!     int len = int(strlen(type)) + 1;
+!     QVarLengthArray<char> stackbuf(len);
+      qRemoveWhitespace(type, stackbuf.data());
+      int templdepth = 0;
+      qNormalizeType(stackbuf.data(), templdepth, result);
+EOF
+   if [[ $? != 0 ]] ; then
+        warn "Unable to apply patch 2 to Qt 4.6.1"
+        return 1
+   else
+        return 0
+   fi
+}
+
+function apply_qt_461_patch_3
+{
+   patch -p0 <<\EOF
+diff -c a/src/corelib/statemachine/qabstractstate_p.h qt-everywhere-opensource-src-4.6.1/src/corelib/statemachine/qabstractstate_p.h
+*** a/src/corelib/statemachine/qabstractstate_p.h
+--- qt-everywhere-opensource-src-4.6.1/src/corelib/statemachine/qabstractstate_p.h
+***************
+*** 86,92 ****
+      void emitExited();
+  
+      uint stateType:31;
+!     uint isMachine:1;
+      mutable QState *parentState;
+  };
+  
+--- 86,92 ----
+      void emitExited();
+  
+      uint stateType:31;
+!     bool isMachine;
+      mutable QState *parentState;
+  };
+  
+EOF
+   if [[ $? != 0 ]] ; then
+        warn "Unable to apply patch 3 to Qt 4.6.1"
+        return 1
+   else
+        return 0
+   fi
+}
+
+function apply_qt_461_patch_4
+{
+   patch -p0 <<\EOF
+diff -c a/src/plugins/graphicssystems/trace/qgraphicssystem_trace.cpp qt-everywhere-opensource-src-4.6.1/src/plugins/graphicssystems/trace/qgraphicssystem_trace.cpp
+*** a/src/plugins/graphicssystems/trace/qgraphicssystem_trace.cpp
+--- qt-everywhere-opensource-src-4.6.1/src/plugins/graphicssystems/trace/qgraphicssystem_trace.cpp
+***************
+*** 79,85 ****
+  QTraceWindowSurface::~QTraceWindowSurface()
+  {
+      if (buffer) {
+!         QFile outputFile(QString(QLatin1String("qtgraphics-%0.trace")).arg(winId));
+          if (outputFile.open(QIODevice::WriteOnly)) {
+              QDataStream out(&outputFile);
+              out.writeBytes("qttrace", 7);
+--- 79,86 ----
+  QTraceWindowSurface::~QTraceWindowSurface()
+  {
+      if (buffer) {
+!         QString traceFile = QString(QLatin1String("qtgraphics-%0.trace"));
+!         QFile outputFile(traceFile.arg(winId));
+          if (outputFile.open(QIODevice::WriteOnly)) {
+              QDataStream out(&outputFile);
+              out.writeBytes("qttrace", 7);
+EOF
+   if [[ $? != 0 ]] ; then
+        warn "Unable to apply patch 4 to Qt 4.6.1"
+        return 1
+   else
+        return 0
+   fi
+}
+
+function apply_qt_461_patch
+{
+   apply_qt_461_patch_1
+   if [[ $? != 0 ]] ; then
+       return 1
+   fi
+   apply_qt_461_patch_2
+   if [[ $? != 0 ]] ; then
+       return 1
+   fi
+   apply_qt_461_patch_3
+   if [[ $? != 0 ]] ; then
+       return 1
+   fi
+   apply_qt_461_patch_4
+   if [[ $? != 0 ]] ; then
+       return 1
+   fi
+}
+
+function apply_qt_patch
+{
+   if [[ ${QT_VERSION} == 4.6.1 ]] ; then
+       apply_qt_461_patch
+       if [[ $? != 0 ]] ; then
+           return 1
+       fi
+   fi
+
+   return 0
+}
+
 function build_qt
 {
     #
     # Prepare the build dir using src file.
     #
-    
+
     prepare_build_dir $QT_BUILD_DIR $QT_FILE
+    untarred_qt=$?
     # 0, already exists, 1  untarred src, 2 error
-    
-    if [[ $? == -1 ]] ; then
+
+    if [[ untarred_qt == -1 ]] ; then
        warn "Unable to prepare Qt4 build directory. Giving Up!"
        return 1
     fi
-    
+
+    #
+    # Apply patches
+    #
+    info "Patching qt . . ."
+    apply_qt_patch
+    if [[ $? != 0 ]] ; then
+       if [[ $untarred_qt == 1 ]] ; then
+          warn "Giving up on Qt build because the patch failed."
+          return 1
+       else
+          warn "Patch failed, but continuing.  I believe that this script\n" \
+               "tried to apply a patch to an existing directory which had " \
+               "already been patched ... that is, that the patch is " \
+               "failing harmlessly on a second application."
+       fi
+    fi
+
     cd $QT_BUILD_DIR || error "Can't cd to Qt build dir."
-      
+
     #
     # Platform specific configuration
     #
@@ -2975,15 +3314,18 @@ function build_qt
     qt_flags="${qt_flags} -no-sql-sqlite2 -no-sql-tds"
     qt_flags="${qt_flags} -no-xmlpatterns"
     qt_flags="${qt_flags} -no-libtiff"
-    #qt_flags="${qt_flags} -no-scripttools" # disable for now -- not in 4.4.3
     qt_flags="${qt_flags} -no-webkit"
+    if [[ ${QT_VERSION} == 4.6.1 ]] ; then
+        qt_flags="${qt_flags} -no-javascript-jit"
+        qt_flags="${qt_flags} -no-script"
+        qt_flags="${qt_flags} -no-scripttools"
+    fi
     info "Configuring Qt4: ./configure --prefix=${VISITDIR}/qt/${QT_VERSION}/${VISITARCH}/" \
          "-platform ${QT_PLATFORM}" \
          "-make libs -make tools -fast -no-separate-debug-info" \
          "${qt_flags}" \
          "${EXTRA_QT_FLAGS}"
-    (if [[ $(echo $QT_VERSION | cut -c 3) > 4 ]]; then echo 'o'; fi; echo "yes" ) | \
-        ./configure --prefix=${VISITDIR}/qt/${QT_VERSION}/${VISITARCH}/ \
+   (echo "o"; echo "yes") | ./configure --prefix=${VISITDIR}/qt/${QT_VERSION}/${VISITARCH}/ \
                     -platform ${QT_PLATFORM} \
                     -make libs -make tools -fast -no-separate-debug-info \
                     ${qt_flags} \
@@ -3005,7 +3347,7 @@ function build_qt
           return 1
        fi
     fi
-    
+
     #
     # Build Qt4. Config options above make sure we only build the libs & tools.
     #
@@ -3015,10 +3357,10 @@ function build_qt
        warn "Qt4 build failed.  Giving up"
        return 1
     fi
-    
+
     info "Installing Qt4 . . . "
     $MAKE install
-    
+
     #
     # Visit expects .so suffix on qt libs but xlc uses .a suffixe even 
     # for shared libs (however subversioned qts libs end up with a .so suffix)
@@ -3049,70 +3391,21 @@ function build_qt
             done
         done
     fi
-    
+
+    if [[ "$DO_GROUP" == "yes" ]] ; then
+       chmod -R ug+w,a+rX "$VISITDIR/qt"
+       chgrp -R ${GROUP} "$VISITDIR/qt"
+    fi
+
     cd "$START_DIR"
     info "Done with Qt4"
-    
+
     return 0
 }
 
 # *************************************************************************** #
 #                          Function 5, build_cmake                            #
 # *************************************************************************** #
-
-function apply_cmake_245_aix_patch
-{
-   patch -p0 <<\EOF
-diff -c cmake-2.4.5.orig/Utilities/cmzlib/zconf.h cmake-2.4.5/Utilities/cmzlib/zconf.h
-*** cmake-2.4.5.orig/Utilities/cmzlib/zconf.h	Mon Dec  4 08:04:11 2006
---- cmake-2.4.5/Utilities/cmzlib/zconf.h	Mon May 21 15:59:54 2007
-***************
-*** 89,100 ****
-  #  endif
-  #endif
-  
-- #ifndef STDC
-- #  ifndef const /* cannot use !defined(STDC) && !defined(const) on Mac */
-- #    define const
-- #  endif
-- #endif
-- 
-  /* Some Mac compilers merge all .h files incorrectly: */
-  #if defined(__MWERKS__) || defined(applec) ||defined(THINK_C) ||defined(__SC__)
-  #  define NO_DUMMY_DECL
---- 89,94 ----
-EOF
-   if [[ $? != 0 ]] ; then
-      warn "CMake patch for V2.4.5 on AIX failed."
-      return 1
-   fi
-
-   return 0
-}
-
-function apply_cmake_245_patch
-{
-   if [[ "$OPSYS" == "AIX" ]]; then
-       apply_cmake_245_aix_patch
-       if [[ $? != 0 ]] ; then
-           return 1
-       fi
-   fi
-
-   return 0
-}
-
-function apply_cmake_patch
-{
-   if [[ ${CMAKE_VERSION} == 2.4.5 ]] ; then
-       apply_cmake_245_patch
-       if [[ $? != 0 ]] ; then
-           return 1
-       fi
-   fi
-
-   return 0
-}
 
 function build_cmake
 {
@@ -3124,23 +3417,6 @@ function build_cmake
     if [[ $untarred_cmake == -1 ]] ; then
        warn "Unable to prepare CMake build directory. Giving Up!"
        return 1
-    fi
-
-    #
-    # Patching cmake.
-    #
-    info "Patching cmake . . ."
-    apply_cmake_patch
-    if [[ $? != 0 ]] ; then
-       if [[ $untarred_cmake == 1 ]] ; then
-          warn "Giving up on CMake build because the patch failed."
-          return 1
-       else
-          warn "Patch failed, but continuing.  I believe that this script" \
-               "tried to apply a patch to an existing directory which had " \
-               "already been patched ... that is, that the patch is " \
-               "failing harmlessly on a second application."
-       fi
     fi
 
     #
@@ -3189,17 +3465,19 @@ function build_cmake
 function apply_vtk_500d_generic_patch_1
 {
   patch -p0 << \EOF
-diff -rp VTK/Utilities/DICOMParser/DICOMParser.cxx.orig VTK/Utilities/DICOMParser/DICOMParser.cxx
---- VTK/Utilities/DICOMParser/DICOMParser.cxx.orig        2008-08-18 11:31:49.000000000 -0600
-+++ VTK/Utilities/DICOMParser/DICOMParser.cxx     2008-08-18 11:33:17.000000000 -0600
-@@ -37,6 +37,7 @@
- #endif
-
- #include <string>
-+#include <string.h>
- #include <map>
-
- #include "DICOMConfig.h"
+diff -c a/Utilities/DICOMParser/DICOMParser.cxx VTK/Utilities/DICOMParser/DICOMParser.cxx
+*** a/Utilities/DICOMParser/DICOMParser.cxx
+--- VTK/Utilities/DICOMParser/DICOMParser.cxx
+***************
+*** 37,42 ****
+--- 37,43 ----
+  #endif
+  
+  #include <string>
++ #include <string.h>
+  #include <map>
+  #include <cstring>
+  
 EOF
   if [[ $? != 0 ]] ; then
      warn "Unable to patch VTK. Wrong version?"
@@ -3212,15 +3490,19 @@ EOF
 function apply_vtk_500d_generic_patch_2
 {
    patch -p0 << \EOF
---- VTK/Utilities/DICOMParser/DICOMAppHelper.cxx.orig   2008-08-18 12:13:40.000000000 -0600
-+++ VTK/Utilities/DICOMParser/DICOMAppHelper.cxx        2008-08-18 12:14:03.000000000 -0600
-@@ -32,6 +32,7 @@
- #include <stdlib.h>
- #include <stdio.h>
- #include <string>
-+#include <string.h>
- #include <math.h>
- #include <algorithm>
+diff -c a/Utilities/DICOMParser/DICOMAppHelper.cxx VTK/Utilities/DICOMParser/DICOMAppHelper.cxx
+*** a/Utilities/DICOMParser/DICOMAppHelper.cxx
+--- VTK/Utilities/DICOMParser/DICOMAppHelper.cxx
+***************
+*** 32,37 ****
+--- 32,38 ----
+  #include <stdlib.h>
+  #include <stdio.h>
+  #include <string>
++ #include <string.h>
+  #include <math.h>
+  #include <algorithm>
+  #include <cstring>
 EOF
    if [[ $? != 0 ]] ; then
       warn "Unable to patch VTK. Wrong version?"
@@ -3231,16 +3513,187 @@ EOF
 function apply_vtk_500d_generic_patch_3
 {
    patch -p0 << \EOF
---- VTK/Utilities/DICOMParser/DICOMFile.cxx.orig        2008-08-18 12:14:23.000000000 -0600
-+++ VTK/Utilities/DICOMParser/DICOMFile.cxx     2008-08-18 12:13:13.000000000 -0600
-@@ -24,6 +24,7 @@
+diff -c a/Utilities/DICOMParser/DICOMFile.cxx VTK/Utilities/DICOMParser/DICOMFile.cxx
+*** a/Utilities/DICOMParser/DICOMFile.cxx
+--- VTK/Utilities/DICOMParser/DICOMFile.cxx
+***************
+*** 24,29 ****
+--- 24,30 ----
+  
+  #include <stdio.h>
+  #include <string>
++ #include <string.h>
+  #include <cstring>
+  
+  #include "DICOMConfig.h"
+EOF
+    if [[ $? != 0 ]] ; then
+       warn "Unable to patch VTK. Wrong version?"
+       return 1
+    fi
+}
 
- #include <stdio.h>
- #include <string>
-+#include <string.h>
+function apply_vtk_500d_generic_patch_4
+{
+   patch -p0 << \EOF
+diff -c a/CMake/cmVTKGenerateJavaDependencies.c VTK/CMake/cmVTKGenerateJavaDependencies.c
+*** a/CMake/cmVTKGenerateJavaDependencies.c
+--- VTK/CMake/cmVTKGenerateJavaDependencies.c
+***************
+*** 43,49 ****
+    const char *endTempFile;
+  
+    FILE* outfile = 0;
+!   const char* filename = 0;
+  
+    if(argc < 2 )
+      {
+--- 43,49 ----
+    const char *endTempFile;
+  
+    FILE* outfile = 0;
+!   char* filename = 0;
+  
+    if(argc < 2 )
+      {
+EOF
+    if [[ $? != 0 ]] ; then
+       warn "Unable to patch VTK. Wrong version?"
+       return 1
+    fi
+}
 
- #include "DICOMConfig.h"
- #include "DICOMFile.h"
+function apply_vtk_500d_generic_patch_5
+{
+   patch -p0 << \EOF
+diff -c a/CMake/cmVTKWrapPython2Command.c VTK/CMake/cmVTKWrapPython2Command.c
+*** a/CMake/cmVTKWrapPython2Command.c
+--- VTK/CMake/cmVTKWrapPython2Command.c
+***************
+*** 124,130 ****
+      return 0;
+      }
+    
+!   info->CAPI->ExpandSourceListArguments(mf, argc, argv, 
+                                          &newArgc, &newArgv, 2);
+    
+    /* Now check and see if the value has been stored in the cache */
+--- 124,130 ----
+      return 0;
+      }
+    
+!   info->CAPI->ExpandSourceListArguments(mf, argc, (const char **)argv, 
+                                          &newArgc, &newArgv, 2);
+    
+    /* Now check and see if the value has been stored in the cache */
+***************
+*** 233,239 ****
+    info->CAPI->SourceFileSetProperty(cfile,"ABSTRACT","0");
+    newName = (char *)malloc(strlen(newArgv[0]) + 5);
+    sprintf(newName,"%sInit",newArgv[0]);
+!   CreateInitFile(info,mf,newArgv[0],numClasses,classes);
+    info->CAPI->SourceFileSetName2(cfile, newName, 
+                                   info->CAPI->GetCurrentOutputDirectory(mf),
+                                   "cxx",0);
+--- 233,239 ----
+    info->CAPI->SourceFileSetProperty(cfile,"ABSTRACT","0");
+    newName = (char *)malloc(strlen(newArgv[0]) + 5);
+    sprintf(newName,"%sInit",newArgv[0]);
+!   CreateInitFile(info,mf,newArgv[0],numClasses,(const char **)classes);
+    info->CAPI->SourceFileSetName2(cfile, newName, 
+                                   info->CAPI->GetCurrentOutputDirectory(mf),
+                                   "cxx",0);
+***************
+*** 301,307 ****
+      numArgs++;
+      info->CAPI->AddCustomCommand(mf, args[0],
+                         wpython, numArgs, args, numDepends, depends, 
+!                        1, &res, cdata->LibraryName);
+      free(res);
+      }
+  }
+--- 301,307 ----
+      numArgs++;
+      info->CAPI->AddCustomCommand(mf, args[0],
+                         wpython, numArgs, args, numDepends, depends, 
+!                        1, (const char **) &res, cdata->LibraryName);
+      free(res);
+      }
+  }
+EOF
+    if [[ $? != 0 ]] ; then
+       warn "Unable to patch VTK. Wrong version?"
+       return 1
+    fi
+}
+
+function apply_vtk_500d_generic_patch_6
+{
+   patch -p0 << \EOF
+diff -c a/CMake/cmVTKWrapTcl2Command.c VTK/CMake/cmVTKWrapTcl2Command.c
+*** a/CMake/cmVTKWrapTcl2Command.c
+--- VTK/CMake/cmVTKWrapTcl2Command.c
+***************
+*** 203,214 ****
+    
+    if (!strcmp(argv[1],"SOURCES"))
+      {
+!     info->CAPI->ExpandSourceListArguments(mf, argc, argv, &newArgc, 
+                                            &newArgv, 3);
+      }
+    else
+      {
+!     info->CAPI->ExpandSourceListArguments(mf, argc, argv, 
+                                            &newArgc, &newArgv, 2);
+      }
+    
+--- 203,214 ----
+    
+    if (!strcmp(argv[1],"SOURCES"))
+      {
+!     info->CAPI->ExpandSourceListArguments(mf, argc, (const char **)argv, &newArgc, 
+                                            &newArgv, 3);
+      }
+    else
+      {
+!     info->CAPI->ExpandSourceListArguments(mf, argc, (const char **)argv, 
+                                            &newArgc, &newArgv, 2);
+      }
+    
+***************
+*** 350,356 ****
+      info->CAPI->SourceFileSetProperty(cfile,"ABSTRACT","0");
+      newName = (char *)malloc(strlen(argv[0]) + 5);
+      sprintf(newName,"%sInit",argv[0]);
+!     CreateInitFile(info,mf,argv[0],numConcrete,concrete,numCommands,commands);
+      info->CAPI->SourceFileSetName2(cfile, newName, 
+                                     info->CAPI->GetCurrentOutputDirectory(mf),
+                                     "cxx",0);
+--- 350,356 ----
+      info->CAPI->SourceFileSetProperty(cfile,"ABSTRACT","0");
+      newName = (char *)malloc(strlen(argv[0]) + 5);
+      sprintf(newName,"%sInit",argv[0]);
+!     CreateInitFile(info,mf,argv[0],numConcrete,(const char **)concrete,numCommands,(const char **)commands);
+      info->CAPI->SourceFileSetName2(cfile, newName, 
+                                     info->CAPI->GetCurrentOutputDirectory(mf),
+                                     "cxx",0);
+***************
+*** 429,435 ****
+      numArgs++;
+      info->CAPI->AddCustomCommand(mf, args[0],
+                         wtcl, numArgs, args, numDepends, depends, 
+!                        1, &res, cdata->LibraryName);
+      free(res);
+      }
+  }
+--- 429,435 ----
+      numArgs++;
+      info->CAPI->AddCustomCommand(mf, args[0],
+                         wtcl, numArgs, args, numDepends, depends, 
+!                        1, (const char **)&res, cdata->LibraryName);
+      free(res);
+      }
+  }
 EOF
     if [[ $? != 0 ]] ; then
        warn "Unable to patch VTK. Wrong version?"
@@ -3251,9 +3704,9 @@ EOF
 function apply_vtk_500d_darwin_patch
 {
    patch -p0 << \EOF
-diff -rp VTK.orig/CMakeLists.txt VTK/CMakeLists.txt
-*** VTK.orig/CMakeLists.txt     Mon Mar 26 14:28:51 2007
---- VTK/CMakeLists.txt  Wed Apr 25 15:41:25 2007
+diff -rp a/CMakeLists.txt VTK/CMakeLists.txt
+*** a/CMakeLists.txt
+--- VTK/CMakeLists.txt
 *************** ELSE(CMAKE_COMPILER_IS_GNUCXX)
 *** 302,312 ****
   ENDIF(CMAKE_COMPILER_IS_GNUCXX)
@@ -3280,12 +3733,14 @@ diff -rp VTK.orig/CMakeLists.txt VTK/CMakeLists.txt
         SET(VTK_REQUIRED_CXX_FLAGS "${VTK_REQUIRED_CXX_FLAGS} -fpascal-strings")
       ENDIF(VTK_USE_CARBON)
 --- 1352,1357 ----
-diff -rp VTK.orig/Rendering/vtkImagingFactory.cxx VTK/Rendering/vtkImagingFactory.cxx
-*** VTK.orig/Rendering/vtkImagingFactory.cxx    Mon Mar 26 13:25:40 2007
---- VTK/Rendering/vtkImagingFactory.cxx Wed Apr 25 15:56:01 2007
+diff -rp a/Rendering/vtkImagingFactory.cxx VTK/Rendering/vtkImagingFactory.cxx
+*** a/Rendering/vtkImagingFactory.cxx
+--- VTK/Rendering/vtkImagingFactory.cxx
 *************** vtkObject* vtkImagingFactory::CreateInst
-*** 202,215 ****
---- 202,233 ----
+*** 200,233 ****
+--- 200,269 ----
+  #ifdef VTK_USE_CARBON
+    if (!strcmp("CarbonOpenGL",rl))
       {
       if(strcmp(vtkclassname, "vtkTextMapper") == 0)
         {
@@ -3318,9 +3773,45 @@ diff -rp VTK.orig/Rendering/vtkImagingFactory.cxx VTK/Rendering/vtkImagingFactor
         return vtkOpenGLPolyDataMapper2D::New();
         }
       }
-diff -rp VTK.orig/Utilities/ftgl/CMakeLists.txt VTK/Utilities/ftgl/CMakeLists.txt
-*** VTK.orig/Utilities/ftgl/CMakeLists.txt      Mon Mar 26 13:26:34 2007
---- VTK/Utilities/ftgl/CMakeLists.txt   Wed Apr 25 15:46:53 2007
+  #endif
+  #ifdef VTK_USE_COCOA
+    if (!strcmp("CocoaOpenGL",rl))
+      {
+      if(strcmp(vtkclassname, "vtkTextMapper") == 0)
+        {
++ #if defined(VTK_USE_MANGLED_MESA)
++       if ( vtkImagingFactory::UseMesaClasses )
++         {
++         return vtkMesaFreeTypeTextMapper::New();
++         }
++ #endif
+        return vtkOpenGLFreeTypeTextMapper::New();
+        }
+      if(strcmp(vtkclassname, "vtkImageMapper") == 0)
+        {
++ #if defined(VTK_USE_MANGLED_MESA)
++       if ( vtkImagingFactory::UseMesaClasses )
++         {
++         return vtkMesaImageMapper::New();
++         }
++ #endif
+        return vtkOpenGLImageMapper::New();
+        }
+      if(strcmp(vtkclassname, "vtkPolyDataMapper2D") == 0)
+        {
++ #if defined(VTK_USE_MANGLED_MESA)
++       if ( vtkImagingFactory::UseMesaClasses )
++         {
++         return vtkMesaPolyDataMapper2D::New();
++         }
++ #endif
+        return vtkOpenGLPolyDataMapper2D::New();
+        }
+      }
+  #endif
+diff -rp a/Utilities/ftgl/CMakeLists.txt VTK/Utilities/ftgl/CMakeLists.txt
+*** a/Utilities/ftgl/CMakeLists.txt
+--- VTK/Utilities/ftgl/CMakeLists.txt
 *************** IF(NOT OPENGL_FOUND)
 *** 134,144 ****
   ENDIF(NOT OPENGL_FOUND)
@@ -3356,9 +3847,9 @@ EOF
    VER=$(uname -r)
    if (( ${VER%%.*} < 7 )) ; then
        patch -p0 << \EOF
-diff -rp VTK.orig/Rendering/vtkCarbonRenderWindow.cxx VTK/Rendering/vtkCarbonRenderWindow.cxx
-*** VTK.orig/Rendering/vtkCarbonRenderWindow.cxx      Wed Aug 31 11:39:33 2005
---- VTK/Rendering/vtkCarbonRenderWindow.cxx   Wed Aug 15 17:57:10 2007
+diff -rp a/Rendering/vtkCarbonRenderWindow.cxx VTK/Rendering/vtkCarbonRenderWindow.cxx
+*** a/Rendering/vtkCarbonRenderWindow.cxx
+--- VTK/Rendering/vtkCarbonRenderWindow.cxx
 *************** void vtkCarbonRenderWindow::CreateAWindo
 *** 737,743 ****
         ShowWindow(this->RootWindow);
@@ -3444,6 +3935,18 @@ function apply_vtk_500d_generic_patches
    if [[ $? != 0 ]] ; then
        return 1
    fi
+   apply_vtk_500d_generic_patch_4
+   if [[ $? != 0 ]] ; then
+       return 1
+   fi
+   apply_vtk_500d_generic_patch_5
+   if [[ $? != 0 ]] ; then
+       return 1
+   fi
+   apply_vtk_500d_generic_patch_6
+   if [[ $? != 0 ]] ; then
+       return 1
+   fi
 }
 
 function apply_vtk_500d_patch
@@ -3465,7 +3968,7 @@ function apply_vtk_500d_patch
 
 function apply_vtk_patch
 {
-   if [[ ${VTK_VERSION} == 5.0.0d ]] ; then
+   if [[ ${VTK_VERSION} == 5.0.0f ]] ; then
        apply_vtk_500d_patch
        if [[ $? != 0 ]] ; then
            return 1
@@ -3845,6 +4348,42 @@ function build_vtk
                 $VISITDIR/vtk/${VTK_VERSION}/${VISITARCH}/lib/$i.$SO_EXT
           done
         done
+
+        #
+        # Fix vtk python wrapper module intall names.
+        #
+        for i in libvtkCommonPython.so libvtkFilteringPython.so libvtkGenericFilteringPython.so \
+        libvtkGraphicsPython.so libvtkHybridPython.so libvtkIOPython.so libvtkImagingPython.so \
+        libvtkRenderingPython.so libvtkVolumeRenderingPython.so 
+        do
+            install_name_tool -id \
+             $INSTALLNAMEPATH/python${PYTHON_COMPATIBILITY_VERSION}/site-packages/vtk/$i \
+             $VISITDIR/vtk/${VTK_VERSION}/${VISITARCH}/lib/python${PYTHON_COMPATIBILITY_VERSION}/site-packages/vtk/$i
+        done
+
+        #
+        # The vtk python module libs depend on the main vtk libs, resolve these install names.
+        #
+        for i in libvtkCommonPython.so libvtkFilteringPython.so libvtkGenericFilteringPython.so \
+        libvtkGraphicsPython.so libvtkHybridPython.so libvtkIOPython.so libvtkImagingPython.so \
+        libvtkRenderingPython.so libvtkVolumeRenderingPython.so 
+        do
+          for j in libvtkCommon libvtkCommonPythonD libvtkDICOMParser libvtkFiltering \
+          libvtkFilteringPythonD libvtkGenericFiltering libvtkGenericFilteringPythonD \
+          libvtkGraphics libvtkGraphicsPythonD libvtkHybrid libvtkHybridPythonD libvtkIO \
+          libvtkIOPythonD libvtkImaging libvtkImagingPythonD libvtkMPEG2Encode libvtkRendering \
+          libvtkRenderingPythonD libvtkVolumeRendering libvtkVolumeRenderingPythonD libvtkexpat \
+          libvtkfreetype libvtkftgl libvtkjpeg libvtkpng libvtksys \
+          libvtktiff libvtkzlib
+          do
+             install_name_tool -change \
+                $j.5.0.$SO_EXT \
+                $INSTALLNAMEPATH/$j.$SO_EXT \
+                $VISITDIR/vtk/${VTK_VERSION}/${VISITARCH}/lib/python${PYTHON_COMPATIBILITY_VERSION}/site-packages/vtk/$i
+          done
+        done
+
+
     fi
 
     #
@@ -3881,47 +4420,30 @@ function build_vtk
     return 0
 }
 
-
-# *************************************************************************** #
-#                         Function 7, build_python                            #
-# *************************************************************************** #
-
-function apply_python_25_darwin_patch
+function apply_python_osx104_patch
 {
-   # Check for version >= 7.0.0 (MacOS 10.3, Panther)
-   VER=$(uname -r)
-   if (( ${VER%%.*} < 7 )) ; then
-      patch -p0 << \EOF
-diff -rp Python-2.5.orig/Modules/getpath.c Python-2.5/Modules/getpath.c
-*** Python-2.5.orig/Modules/getpath.c Sun Jul  9 18:18:57 2006
---- Python-2.5/Modules/getpath.c      Wed Aug 15 18:25:14 2007
+   info "Patching Python: fix _environ issue for OS X 10.4"
+   patch -p0 << \EOF
+diff -c Modules.orig/posixmodule.c Modules/posixmodule.c
+*** Modules.orig/posixmodule.c  Mon May  3 12:17:59 2010
+--- Modules/posixmodule.c       Mon May  3 12:19:31 2010
 ***************
-*** 3,8 ****
---- 3,9 ----
-  #include "Python.h"
-  #include "osdefs.h"
+*** 360,365 ****
+--- 360,369 ----
+  #endif
+  #endif
   
-+ #include <stdint.h>
-  #include <sys/types.h>
-  #include <string.h>
-  
++ /* On OS X 10.4, we need to use a function to get access to environ; 
++  * otherwise we get an unresolved "_environ" when linking shared libs */
++ #define WITH_NEXT_FRAMEWORK
++ 
+  /* Return a dictionary corresponding to the POSIX environment table */
+  #ifdef WITH_NEXT_FRAMEWORK
+  /* On Darwin/MacOSX a shared library or framework has no access to
 EOF
-      if [[ $? != 0 ]] ; then
-         warn "Python patch for V2.5 on Darwin failed."
-         return 1
-      fi
-   fi
-
-   return 0
-}
-
-function apply_python_25_patch
-{
-   if [[ "$OPSYS" == "Darwin" ]]; then
-       apply_python_25_darwin_patch
-       if [[ $? != 0 ]] ; then
-           return 1
-       fi
+   if [[ $? != 0 ]] ; then
+      warn "Python patch on OS X 10.4 failed."
+      return 1
    fi
 
    return 0
@@ -3929,15 +4451,23 @@ function apply_python_25_patch
 
 function apply_python_patch
 {
-   if [[ $PYTHON__VERSION} == 2.5 ]] ; then
-       apply_python_25_patch
-       if [[ $? != 0 ]] ; then
-           return 1
-       fi
-   fi
+    if [[ "$OPSYS" == "Darwin" ]]; then
+        VER=$(uname -r)
+        if [[ ${VER%%.*} == 8 ]] ; then
+            apply_python_osx104_patch
+            if [[ $? != 0 ]] ; then
+                return 1
+            fi
+        fi
+    fi
 
-   return 0
+    return 0
 }
+
+
+# *************************************************************************** #
+#                         Function 7, build_python                            #
+# *************************************************************************** #
 
 function build_python
 {
@@ -3949,26 +4479,17 @@ function build_python
     fi
 
     #
-    # Apply patches
+    # Do any python patches if necessary
     #
-    info "Patching python . . ."
+    cd $PYTHON_BUILD_DIR || error "Can't cd to Python build dir."
     apply_python_patch
     if [[ $? != 0 ]] ; then
-       if [[ $untarred_python == 1 ]] ; then
-          warn "Giving up on Python build because the patch failed."
-          return 1
-       else
-          warn "Patch failed, but continuing.  I believe that this script" \
-               "tried to apply a patch to an existing directory which had" \
-               "already been patched ... that is, that the patch is" \
-               "failing harmlessly on a second application."
-       fi
+        warn "Patch failed, but continuing."
     fi
 
     #
     # Call configure
     #
-    cd $PYTHON_BUILD_DIR || error "Can't cd to Python build dir."
     cCompiler="${C_COMPILER}"
     cFlags="${C_OPT_FLAGS}"
     cxxCompiler="${CXX_COMPILER}"
@@ -4040,14 +4561,22 @@ function build_python
         # configure flag --enable-shared doesn't work on llnl aix5 systems
         # we need to create the shared lib manually and place it in the
         # proper loc
+        mv $VISITDIR/python/$PYTHON_VERSION/$VISITARCH/lib/libpython$PYTHON_COMPATIBILITY_VERSION.$SO_EXT \
+           $VISITDIR/python/$PYTHON_VERSION/$VISITARCH/lib/libpython$PYTHON_COMPATIBILITY_VERSION.static.a
+
         $C_COMPILER -qmkshrobj -lm \
-          $VISITDIR/python/$PYTHON_VERSION/$VISITARCH/lib/python$PYTHON_VERSION/config/libpython$PYTHON_COMPATIBILITY_VERSION.a \
+             $VISITDIR/python/$PYTHON_VERSION/$VISITARCH/lib/libpython$PYTHON_COMPATIBILITY_VERSION.static.a \
           -o $VISITDIR/python/$PYTHON_VERSION/$VISITARCH/lib/libpython$PYTHON_COMPATIBILITY_VERSION.$SO_EXT
+
         if [[ $? != 0 ]] ; then
           warn "Python dynamic library build failed.  Giving up"
           return 1
         fi
+
+        # we can safely remove this version of the static lib b/c it also exists under python2.6/config/
+        rm -f $VISITDIR/python/$PYTHON_VERSION/$VISITARCH/lib/libpython$PYTHON_COMPATIBILITY_VERSION.static.a
     fi
+
 
     if [[ "$DO_GROUP" == "yes" ]] ; then
        chmod -R ug+w,a+rX "$VISITDIR/python"
@@ -4080,7 +4609,6 @@ function build_pil
             return 1
         fi
     fi
-    
 
     PYHOME="${VISITDIR}/python/${PYTHON_VERSION}/${VISITARCH}"
     pushd $PIL_BUILD_DIR > /dev/null
@@ -4089,16 +4617,61 @@ function build_pil
         info "Installing PIL ..."
         ${PYHOME}/bin/python ./setup.py install --prefix="${PYHOME}"
     popd > /dev/null
-    info "Done with PIL."
 
+    # PIL installs into site-packages dir of Visit's Python.
+    # Simply re-execute the python perms command.
+    if [[ "$DO_GROUP" == "yes" ]] ; then
+       chmod -R ug+w,a+rX "$VISITDIR/python"
+       chgrp -R ${GROUP} "$VISITDIR/python"
+    fi
+
+    info "Done with PIL."
+    return 0
+}
+
+# *************************************************************************** #
+#                            Function 7.2, build_pyparsing                    #
+# *************************************************************************** #
+function build_pyparsing
+{
+    if ! test -f ${PYPARSING_FILE} ; then
+        download_file ${PYPARSING_FILE}
+        if [[ $? != 0 ]] ; then
+            warn "Could not download ${PYPARSING_FILE}"
+            return 1
+        fi
+    fi
+    if ! test -d ${PYPARSING_BUILD_DIR} ; then
+        info "Extracting pyparsing ..."
+        uncompress_untar ${PYPARSING_FILE}
+        if test $? -ne 0 ; then
+            warn "Could not extract ${PYPARSING_FILE}"
+            return 1
+        fi
+    fi
+
+    PYHOME="${VISITDIR}/python/${PYTHON_VERSION}/${VISITARCH}"
+    pushd $PYPARSING_BUILD_DIR > /dev/null
+        info "Installing pyparsing ..."
+        ${PYHOME}/bin/python ./setup.py install --prefix="${PYHOME}"
+    popd > /dev/null
+
+    # pyparsing installs into site-packages dir of Visit's Python.
+    # Simply re-execute the python perms command.
+    if [[ "$DO_GROUP" == "yes" ]] ; then
+       chmod -R ug+w,a+rX "$VISITDIR/python"
+       chgrp -R ${GROUP} "$VISITDIR/python"
+    fi
+
+    info "Done with pyparsing."
     return 0
 }
 
 
 # *************************************************************************** #
-#                            Function 8, build_silo                           
+#                            Function 8, build_silo
 #
-# Modfications:                                                          
+# Modfications:
 #   Mark C. Miller, Wed Feb 18 22:57:25 PST 2009
 #   Added logic to build silex and copy bins on Mac. Removed disablement of
 #   browser.
@@ -4443,9 +5016,9 @@ function build_hdf5
 function apply_mili_110_darwin_patch
 {
    patch -p0 << \EOF
-diff -rp mili.orig/src/mili_internal.h mili/src/mili_internal.h
-*** mili.orig/src/mili_internal.h       Thu Oct 12 14:31:40 2006
---- mili/src/mili_internal.h    Thu Mar 22 16:39:39 2007
+diff -c a/src/mili_internal.h mili/src/mili_internal.h
+*** a/src/mili_internal.h
+--- mili/src/mili_internal.h
 ***************
 *** 54,59 ****
 --- 54,60 ----
@@ -6130,11 +6703,10 @@ function build_exodus
         cp libexoIIv2c.${SO_EXT} \
            "$VISITDIR/exodus/$EXODUS_VERSION/$VISITARCH/lib"
         cp ../include/*.h "$VISITDIR/exodus/$EXODUS_VERSION/$VISITARCH/inc"
-        ln -s  "../../../../netcdf/$NETCDF_VERSION/$VISITARCH/include/netcdf.h"\
-           "$VISITDIR/exodus/$EXODUS_VERSION/$VISITARCH/inc/netcdf.h"
-        ln -s  \
-        "../../../../netcdf/$NETCDF_VERSION/$VISITARCH/lib/libnetcdf.${SO_EXT}"\
-        "$VISITDIR/exodus/$EXODUS_VERSION/$VISITARCH/lib/libnetcdf.${SO_EXT}"
+        cp "$VISITDIR/netcdf/$NETCDF_VERSION/$VISITARCH/include/netcdf.h" \
+           "$VISITDIR/exodus/$EXODUS_VERSION/$VISITARCH/inc"
+        cp "$VISITDIR/netcdf/$NETCDF_VERSION/$VISITARCH/lib/libnetcdf.${SO_EXT}" \
+           "$VISITDIR/exodus/$EXODUS_VERSION/$VISITARCH/lib"
     else
         ar -cr libexoIIv2c.a *.o
         if [[ $? != 0 ]] ; then
@@ -6143,14 +6715,13 @@ function build_exodus
         fi
         cp libexoIIv2c.a "$VISITDIR/exodus/$EXODUS_VERSION/$VISITARCH/lib"
         cp ../include/exodusII.h \
-        "$VISITDIR/exodus/$EXODUS_VERSION/$VISITARCH/inc"
+           "$VISITDIR/exodus/$EXODUS_VERSION/$VISITARCH/inc"
         cp ../include/exodusII_ext.h \
-        "$VISITDIR/exodus/$EXODUS_VERSION/$VISITARCH/inc"
-        ln -s  "../../../../netcdf/$NETCDF_VERSION/$VISITARCH/include/netcdf.h" \
-        "$VISITDIR/exodus/$EXODUS_VERSION/$VISITARCH/inc/netcdf.h"
-        ln -s  \
-        "../../../../netcdf/$NETCDF_VERSION/$VISITARCH/lib/libnetcdf.a" \
-        "$VISITDIR/exodus/$EXODUS_VERSION/$VISITARCH/lib/libnetcdf.a"
+           "$VISITDIR/exodus/$EXODUS_VERSION/$VISITARCH/inc"
+        cp "$VISITDIR/netcdf/$NETCDF_VERSION/$VISITARCH/include/netcdf.h" \
+           "$VISITDIR/exodus/$EXODUS_VERSION/$VISITARCH/inc"
+        cp "$VISITDIR/netcdf/$NETCDF_VERSION/$VISITARCH/lib/libnetcdf.a" \
+           "$VISITDIR/exodus/$EXODUS_VERSION/$VISITARCH/lib"
     fi
 
     if [[ "$DO_GROUP" == "yes" ]] ; then
@@ -6170,10 +6741,10 @@ function build_exodus
 function apply_boxlib_25_aix_patch
 {
    patch -p0 << \EOF
-diff -rp CCSEApps.orig/BoxLib/GNUmakefile CCSEApps/BoxLib/GNUmakefile
-*** CCSEApps.orig/BoxLib/GNUmakefile	Sun Jul 22 21:32:20 2001
---- CCSEApps/BoxLib/GNUmakefile	Fri May 18 15:54:14 2007
-*************** PBOXLIB_HOME = ..
+diff -c a/BoxLib/GNUmakefile CCSEApps/BoxLib/GNUmakefile
+*** a/BoxLib/GNUmakefile
+--- CCSEApps/BoxLib/GNUmakefile
+***************
 *** 7,16 ****
   TOP = $(PBOXLIB_HOME)
   
@@ -6209,9 +6780,9 @@ EOF
 function apply_boxlib_25_gcc_patch
 {
     patch -p0 << \EOF
-diff -rp CCSEApps.orig/BoxLib/GNUmakefile CCSEApps/BoxLib/GNUmakefile
-*** CCSEApps.orig/BoxLib/GNUmakefile    Sun Jul 22 21:32:20 2001
---- CCSEApps/BoxLib/GNUmakefile Fri May 18 15:54:14 2007
+diff -c a/BoxLib/GNUmakefile CCSEApps/BoxLib/GNUmakefile
+*** a/BoxLib/GNUmakefile
+--- CCSEApps/BoxLib/GNUmakefile
 *************** PBOXLIB_HOME = ..
 *** 7,16 ****
   TOP = $(PBOXLIB_HOME)
@@ -6247,9 +6818,9 @@ EOF
 function apply_boxlib_25_darwin_patch
 {
    patch -p0 << \EOF
-diff -rp CCSEApps.orig/BoxLib/BaseFab.cpp CCSEApps/BoxLib/BaseFab.cpp
-*** CCSEApps.orig/BoxLib/BaseFab.cpp	Wed Mar 19 10:11:09 2003
---- CCSEApps/BoxLib/BaseFab.cpp	Fri Apr 27 15:09:29 2007
+diff -rp a/BoxLib/BaseFab.cpp CCSEApps/BoxLib/BaseFab.cpp
+*** a/BoxLib/BaseFab.cpp
+--- CCSEApps/BoxLib/BaseFab.cpp
 ***************
 *** 28,34 ****
   #include <BArena.H>
@@ -6418,9 +6989,9 @@ diff -rp CCSEApps.orig/BoxLib/BaseFab.cpp CCSEApps/BoxLib/BaseFab.cpp
 ! //    }
   }
   #endif
-diff -rp CCSEApps.orig/BoxLib/FPC.cpp CCSEApps/BoxLib/FPC.cpp
-*** CCSEApps.orig/BoxLib/FPC.cpp	Wed Jan 11 11:13:06 2006
---- CCSEApps/BoxLib/FPC.cpp	Fri Apr 27 15:06:49 2007
+diff -c a/BoxLib/FPC.cpp CCSEApps/BoxLib/FPC.cpp
+*** a/BoxLib/FPC.cpp
+--- CCSEApps/BoxLib/FPC.cpp
 *************** FPC::NativeLongDescriptor ()
 *** 64,70 ****
   #endif
@@ -6472,9 +7043,9 @@ diff -rp CCSEApps.orig/BoxLib/FPC.cpp CCSEApps/BoxLib/FPC.cpp
         defined(__i486__)   || \
         defined(i386)       || \
         defined(__i386__)   || \
-diff -rp CCSEApps.orig/BoxLib/Make.package CCSEApps/BoxLib/Make.package
-*** CCSEApps.orig/BoxLib/Make.package	Thu Nov 14 10:43:29 2002
---- CCSEApps/BoxLib/Make.package	Fri Apr 27 15:11:01 2007
+diff -c a/BoxLib/Make.package CCSEApps/BoxLib/Make.package
+*** a/BoxLib/Make.package
+--- CCSEApps/BoxLib/Make.package
 *************** T_headers += ccse-mpi.H
 *** 91,99 ****
   # Fortran interface routines.
@@ -6671,9 +7242,9 @@ function change_boxlib_dim_using_patches
        if [[ "$OPSYS" == "AIX" ]]; then
           info "PATCHING AIX"
           patch -p0 << \EOF
-diff -rp CCSEApps.orig/BoxLib/GNUmakefile CCSEApps/BoxLib/GNUmakefile
-*** CCSEApps.orig/BoxLib/GNUmakefile	Fri Apr 27 15:18:35 2007
---- CCSEApps/BoxLib/GNUmakefile	Fri Apr 27 15:18:54 2007
+diff -c a/BoxLib/GNUmakefile CCSEApps/BoxLib/GNUmakefile
+*** a/BoxLib/GNUmakefile
+--- CCSEApps/BoxLib/GNUmakefile
 *************** TOP = $(PBOXLIB_HOME)
 *** 8,14 ****
   
@@ -6695,9 +7266,9 @@ EOF
        else
           info "PATCHING GCC"
           patch -p0 << \EOF
-diff -rp CCSEApps.orig/BoxLib/GNUmakefile CCSEApps/BoxLib/GNUmakefile
-*** CCSEApps.orig/BoxLib/GNUmakefile	Fri Apr 27 15:18:35 2007
---- CCSEApps/BoxLib/GNUmakefile	Fri Apr 27 15:18:54 2007
+diff -c a/BoxLib/GNUmakefile CCSEApps/BoxLib/GNUmakefile
+*** a/BoxLib/GNUmakefile
+--- CCSEApps/BoxLib/GNUmakefile
 *************** TOP = $(PBOXLIB_HOME)
 *** 8,14 ****
   
@@ -6806,7 +7377,7 @@ function build_boxlib
     else
        cp libbox3d*.a \
        "$VISITDIR/boxlib/$VISITARCH/lib/libbox3D.a"
-       tar cf Boxlib3D.h.tar *.H
+       $TAR cf Boxlib3D.h.tar *.H
        if [[ $? != 0 ]] ; then
           warn "Boxlib install failed.  Giving up"
           return 1
@@ -6854,11 +7425,11 @@ function build_boxlib
         rm *.o
         cd ..
         rmdir tmp
-        tar cf Boxlib2D.h.tar *.H
+        $TAR cf Boxlib2D.h.tar *.H
     else
         cp libbox2d*.a \
         "$VISITDIR/boxlib/$VISITARCH/lib/libbox2D.a"
-        tar cf Boxlib2D.h.tar *.H
+        $TAR cf Boxlib2D.h.tar *.H
         if [[ $? != 0 ]] ; then
           warn "Boxlib install failed.  Giving up"
           return 1
@@ -7097,8 +7668,8 @@ $LD_LIBRARY_PATH
 function apply_ccmio_261_darwin_patch
 {
    patch -p0 << \EOF
-diff -rp libccmio-2.6.1.orig/config/config.gnu.to.star libccmio-2.6.1/config/config.gnu.to.star
-*** libccmio-2.6.1.orig/config/config.gnu.to.star
+diff -c a/config/config.gnu.to.star libccmio-2.6.1/config/config.gnu.to.star
+*** a/config/config.gnu.to.star
 --- libccmio-2.6.1/config/config.gnu.to.star
 *************** case ${1:-null}-${2:-null} in
 *** 34,39 ****
@@ -7110,8 +7681,8 @@ diff -rp libccmio-2.6.1.orig/config/config.gnu.to.star libccmio-2.6.1/config/con
       *)                                 echo unknown                         ;;
   esac
   
-diff -rp libccmio-2.6.1.orig/config/config.system libccmio-2.6.1/config/config.system 
-*** libccmio-2.6.1.orig/config/config.system
+diff -c a/config/config.system libccmio-2.6.1/config/config.system 
+*** a/config/config.system
 --- libccmio-2.6.1/config/config.system
 *************** case ${SYSTEM} in
 *** 85,93 ****
@@ -7161,6 +7732,92 @@ function apply_ccmio_261_linux_ppc_patch
  QMAKE_TAR		= tar -cf
  QMAKE_GZIP		= gzip -9f
 EOF
+   if [[ $? != 0 ]] ; then
+        warn "Unable to apply linux ppc patch to CCMIO 2.6.1."
+        return 1
+   else
+        return 0
+   fi
+}
+
+function apply_ccmio_261_aix_patch
+{
+  patch -p0 <<\EOF
+diff -c a/config/aix64_5.1-pwr4/qmake.conf libccmio-2.6.1/config/aix64_5.1-pwr4/qmake.conf
+*** a/config/aix64_5.1-pwr4/qmake.conf
+--- libccmio-2.6.1/config/aix64_5.1-pwr4/qmake.conf
+***************
+*** 15,21 ****
+  QMAKE_LEXFLAGS		= 
+  QMAKE_YACC		= yacc
+  QMAKE_YACCFLAGS		= -d
+! QMAKE_CFLAGS		= -q64 -ma -qrndsngl -qnomaf -qstrict -DLARGE_FILES
+  # -qwarn64 turns on too many bogus warnings and shadows real warnings
+  #QMAKE_CFLAGS_WARN_ON	= -qwarn64
+  QMAKE_CFLAGS_WARN_ON    =
+--- 15,21 ----
+  QMAKE_LEXFLAGS		= 
+  QMAKE_YACC		= yacc
+  QMAKE_YACCFLAGS		= -d
+! QMAKE_CFLAGS		= -ma -qrndsngl -qnomaf -qstrict -DLARGE_FILES
+  # -qwarn64 turns on too many bogus warnings and shadows real warnings
+  #QMAKE_CFLAGS_WARN_ON	= -qwarn64
+  QMAKE_CFLAGS_WARN_ON    =
+***************
+*** 49,61 ****
+  QMAKE_LINK		= xlC
+  QMAKE_LINK_THREAD	= xlC_r
+  QMAKE_LINK_SHLIB	= ld
+! QMAKE_LINK_SHLIB_CMD	= makeC++SharedLib -p 0 -X64 \
+  			    -o $(TARGETD) \
+  			    $(LFLAGS) $(OBJECTS) $(OBJMOC) $(LIBS); \
+  			  $(AR) lib$(QMAKE_TARGET).a $(TARGETD); \
+  			  $(RANLIB) lib$(QMAKE_TARGET).a; \
+  			  mv lib$(QMAKE_TARGET).a $(DESTDIR)
+! QMAKE_LFLAGS		= -q64 -qnotempinc
+  QMAKE_LFLAGS_RELEASE	=
+  QMAKE_LFLAGS_DEBUG	=
+  QMAKE_LFLAGS_SHLIB	=
+--- 49,61 ----
+  QMAKE_LINK		= xlC
+  QMAKE_LINK_THREAD	= xlC_r
+  QMAKE_LINK_SHLIB	= ld
+! QMAKE_LINK_SHLIB_CMD	= makeC++SharedLib -p 0 \
+  			    -o $(TARGETD) \
+  			    $(LFLAGS) $(OBJECTS) $(OBJMOC) $(LIBS); \
+  			  $(AR) lib$(QMAKE_TARGET).a $(TARGETD); \
+  			  $(RANLIB) lib$(QMAKE_TARGET).a; \
+  			  mv lib$(QMAKE_TARGET).a $(DESTDIR)
+! QMAKE_LFLAGS		= -qnotempinc
+  QMAKE_LFLAGS_RELEASE	=
+  QMAKE_LFLAGS_DEBUG	=
+  QMAKE_LFLAGS_SHLIB	=
+***************
+*** 77,84 ****
+  QMAKE_MOC		= $(QTDIR)/bin/moc
+  QMAKE_UIC		= $(QTDIR)/bin/uic
+  
+! QMAKE_AR		= ar -X64 cq
+! QMAKE_RANLIB		= ranlib -X64
+  
+  QMAKE_TAR		= tar -cf
+  QMAKE_GZIP		= gzip -9f
+--- 77,84 ----
+  QMAKE_MOC		= $(QTDIR)/bin/moc
+  QMAKE_UIC		= $(QTDIR)/bin/uic
+  
+! QMAKE_AR		= ar cq
+! QMAKE_RANLIB		= ranlib
+  
+  QMAKE_TAR		= tar -cf
+  QMAKE_GZIP		= gzip -9f
+EOF
+   if [[ $? != 0 ]] ; then
+        warn "Unable to apply aix patch to CCMIO 2.6.1."
+        return 1
+   else
+        return 0
+   fi
 }
 
 function apply_ccmio_261_patch
@@ -7173,6 +7830,13 @@ function apply_ccmio_261_patch
    fi
    if [[ `uname -m` == "ppc64" ]]; then
        apply_ccmio_261_linux_ppc_patch
+       if [[ $? != 0 ]] ; then
+           return 1
+       fi
+   fi
+   apply_ccmio_261_aix_patch
+   if [[ $? != 0 ]] ; then
+       return 1
    fi
 
    return 0
@@ -7253,10 +7917,10 @@ function build_ccmio
         env RELEASE=1 STATIC=1 $MAKE CXX="$CXX_COMPILER" CC="$C_COMPILER" \
            CFLAGS="$C_OPT_FLAGS" CXXFLAGS="$CXX_OPT_FLAGS"
     fi
-##  if [[ $? != 0 ]] ; then
-##     echo "CCMIO build failed.  Giving up"
-##     return 1
-##  fi
+    if [[ $? != 0 ]] ; then
+       echo "CCMIO build failed.  Giving up"
+       return 1
+    fi
     info "Installing CCMIO . . ."
 
     mkdir $VISITDIR/ccmio
@@ -7345,6 +8009,15 @@ function build_tcmalloc
     mkdir $VISITDIR/google-perftools/${TCMALLOC_VERSION}/$VISITARCH
     mkdir $VISITDIR/google-perftools/${TCMALLOC_VERSION}/$VISITARCH/lib
     cp .libs/libtcmalloc.* $VISITDIR/google-perftools/${TCMALLOC_VERSION}/$VISITARCH/lib
+
+    if [[ "$DO_GROUP" == "yes" ]] ; then
+       chmod -R ug+w,a+rX "$VISITDIR/google-perftools"
+       chgrp -R ${GROUP} "$VISITDIR/google-perftools"
+    fi
+
+    cd "$START_DIR"
+    echo "Done with google-perftools"
+    return 0
 }
 
 # *************************************************************************** #
@@ -7353,9 +8026,23 @@ function build_tcmalloc
 
 function build_icet
 {
-    if [[ "$PAR_INCLUDE" == "" ]] ; then
-       warn "You must set the PAR_INCLUDE environment variable to be Ice-T."
-       warn "It should be of the form \"-I/path/to/mpi/include\""
+    PAR_INCLUDE_STRING=""
+    if [[ "$PAR_INCLUDE" != "" ]] ; then
+        PAR_INCLUDE_STRING=$PAR_INCLUDE
+    fi
+    
+    if [[ "$PAR_COMPILER" != "" ]] ; then
+        if [[ "$OPSYS" == "Darwin" && "$PAR_COMPILER" == "/usr/bin/mpic++" ]]; then
+            PAR_INCLUDE_STRING="-I/usr/include/"
+        else
+            PAR_INCLUDE_STRING=`$PAR_COMPILER --showme:compile`    
+        fi
+    fi
+    
+    if [[ "$PAR_INCLUDE_STRING" == "" ]] ; then
+       warn "You must set either the PAR_COMPILER or PAR_INCLUDE environment variable to be Ice-T."
+       warn "PAR_COMPILER should be of the form \"/path/to/mpi/bin/mpic++\""
+       warn "PAR_INCLUDE should be of the form \"-I/path/to/mpi/include\""
        warn "Giving Up!"
        return 1
     fi
@@ -7371,7 +8058,7 @@ function build_icet
 
     # split string at space, grab the front/first string in it.
     PAR_INCLUDE_DIR=""
-    for arg in $PAR_INCLUDE ; do
+    for arg in $PAR_INCLUDE_STRING ; do
        if [[ "$arg" != "${arg#-I}" ]] ; then
           PAR_INCLUDE_DIR=${arg#-I}
           break
@@ -7386,7 +8073,7 @@ function build_icet
         if test -n "${PAR_INCLUDE}" ; then
             error "Please re-run with the required \"-I\" option included in PAR_INCLUDE"
         else
-            error "You need to specify the PAR_INCLUDE variable.  On many "
+            error "You need to specify either PAR_COMPILER or PAR_INCLUDE variable.  On many "
                   " systems, the output of \"mpicxx -showme\" is good enough."
             error ""
         fi
@@ -7440,14 +8127,25 @@ function build_icet
     info "Building Ice-T . . . (~2 minutes)"
     $MAKE $MAKE_OPT_FLAGS
     if [[ $? != 0 ]] ; then
-       warn "VTK did not build correctly.  Giving up."
+       warn "Ice-T did not build correctly.  Giving up."
        return 1
     fi
 
     info "Installing Ice-T . . ."
 
     $MAKE install
+    if [[ $? != 0 ]] ; then
+       warn "Ice-T: 'make install' failed.  Giving up"
+       return 1
+    fi
 
+    if [[ "$DO_GROUP" == "yes" ]] ; then
+       chmod -R ug+w,a+rX "$VISITDIR/icet"
+       chgrp -R ${GROUP} "$VISITDIR/icet"
+    fi
+
+    cd "$START_DIR"
+    echo "Done with Ice-T"
     return 0
 }
 
@@ -7473,7 +8171,7 @@ function build_fastbit
        fi
     elif [[ -f ${FASTBIT_FILE%.*} ]] ; then
        info_box "Tarring ${FASTBIT_FILE%.*} . . ." 1>&3
-       tar xf ${FASTBIT_FILE%.*}
+       $TAR xf ${FASTBIT_FILE%.*}
        if [[ $? != 0 ]] ; then
           echo \
 "Unable to untar ${FASTBIT_FILE%.*}.  Corrupted file or out of space on device?"
@@ -7562,7 +8260,7 @@ function build_itaps_moab
     ./configure CXX="$CXX_COMPILER" CC="$C_COMPILER" \
         CFLAGS="$C_OPT_FLAGS" CXXFLAGS="$CXX_OPT_FLAGS" \
         --prefix="$VISITDIR/itaps/MOAB/$ITAPS_MOAB_VERSION/$VISITARCH" \
-        --enable-imesh=nofortran --with-zlib \
+        --with-zlib \
         $WITHHDF5ARG "$WITHSZIPARG" "$WITHNETCDFARG"
     if [[ $? != 0 ]] ; then
        warn "ITAPS_MOAB configure failed.  Giving up"
@@ -7794,10 +8492,124 @@ function build_advio
     # Install AdvIO
     info "Installing AdvIO"
     $MAKE install
+    if [[ $? != 0 ]] ; then
+       warn "AdvIO install failed.  Giving up"
+       return 1
+    fi
+
+    if [[ "$DO_GROUP" == "yes" ]] ; then
+       chmod -R ug+w,a+rX "$VISITDIR/AdvIO"
+       chgrp -R ${GROUP} "$VISITDIR/AdvIO"
+    fi
 
     cd "$START_DIR"
     info "Done with AdvIO"
+    return 0
+}
 
+# *************************************************************************** #
+#                         Function 8.19, build_xdmf                           #
+# *************************************************************************** #
+
+function build_xdmf
+{
+    #
+    # CMake is the build system for Xdmf.  Call another script that will build
+    # that program.
+    #
+    CMAKE_INSTALL="$VISITDIR/cmake/${CMAKE_VERSION}/$VISITARCH/bin"
+    if [[ -e ${CMAKE_INSTALL}/cmake ]] ; then
+       info "Xdmf: CMake found"
+    else
+       build_cmake
+       if [[ $? != 0 ]] ; then
+          warn "Unable to build cmake.  Giving up"
+          return 1
+       fi
+    fi
+    CMAKE_BIN=${CMAKE_INSTALL}/cmake
+
+    #
+    # Prepare build dir
+    #
+    prepare_build_dir $XDMF_BUILD_DIR $XDMF_FILE
+    untarred_XDMF=$?
+    if [[ $untarred_XDMF == -1 ]] ; then
+       warn "Unable to prepare Xdmf Build Directory. Giving up"
+       return 1
+    fi
+
+    # We need to patch the CMakeLists.txt so it uses our HDF5 by default
+    # when we tell it to use the system versions.
+    cd $XDMF_BUILD_DIR || error "Can't cd to Xdmf build dir."
+    rm CML.*
+    mv CMakeLists.txt CML.0
+    H5DIR=$(echo "$VISITDIR/hdf5/$HDF5_VERSION/$VISITARCH" | sed "s/\//\\\\\//g")
+    sed "s/  hdf5/  hdf5  $H5DIR\/lib/g" CML.0 > CML.1
+    sed "s/H5Ipublic.h/H5Ipublic.h $H5DIR\/include/g" CML.1 > CMakeLists.txt
+
+    # Configure Xdmf
+    info "Executing CMake on Xdmf"
+    if [[ "$DO_STATIC_BUILD" == "yes" ]]; then
+        XDMF_SHARED_LIBS="OFF"
+        LIBEXT="a"
+    else
+        XDMF_SHARED_LIBS="ON"
+        LIBEXT="${SO_EXT}"
+    fi
+    ${CMAKE_BIN} -DCMAKE_INSTALL_PREFIX:PATH="$VISITDIR/Xdmf/${XDMF_VERSION}/${VISITARCH}"\
+        -DCMAKE_BUILD_WITH_INSTALL_RPATH:BOOL=ON \
+        -DBUILD_SHARED_LIBS:BOOL=${XDMF_SHARED_LIBS}\
+        -DCMAKE_CXX_FLAGS:STRING="${CXX_OPT_FLAGS}"\
+        -DCMAKE_CXX_COMPILER:STRING=${CXX_COMPILER}\
+        -DCMAKE_C_FLAGS:STRING="${C_OPT_FLAGS}"\
+        -DCMAKE_C_COMPILER:STRING=${C_COMPILER}\
+        -DBUILD_TESTING:BOOL=OFF \
+        -DXDMF_BUILD_MPI:BOOL=OFF \
+        -DXDMF_BUILD_UTILS:BOOL=OFF \
+        -DXDMF_BUILD_VTK:BOOL=OFF \
+        -DXDMF_SYSTEM_HDF5:BOOL=ON \
+        -DXDMF_SYSTEM_ZLIB:BOOL=ON \
+        .
+
+    if [[ $? != 0 ]] ; then
+       warn "Xdmf configure failed.  Giving up"
+       return 1
+    fi
+
+    #
+    # Build Xdmf
+    #
+    info "Building Xdmf . . . (~3 minutes)"
+
+    $MAKE
+    if [[ $? != 0 ]] ; then
+       warn "Xdmf build failed.  Giving up"
+       return 1
+    fi
+
+    # Install Xdmf
+    info "Installing Xdmf"
+    $MAKE install
+    if [[ $? != 0 ]] ; then
+       warn "Xdmf install failed.  Giving up"
+       return 1
+    fi
+
+    # Patch up the library names on Darwin
+    if [[ "$DO_STATIC_BUILD" != "yes" && "$OPSYS" == "Darwin" ]]; then
+        LIBDIR="$VISITDIR/Xdmf/${XDMF_VERSION}/${VISITARCH}/lib"
+        install_name_tool -change libvtklibxml2.dylib $LIBDIR/libvtklibxml2.dylib -id $LIBDIR/libXdmf.dylib $LIBDIR/libXdmf.dylib 
+        install_name_tool -id $LIBDIR/libvtklibxml2.dylib $LIBDIR/libvtklibxml2.dylib 
+    fi
+
+    if [[ "$DO_GROUP" == "yes" ]] ; then
+       chmod -R ug+w,a+rX "$VISITDIR/Xdmf"
+       chgrp -R ${GROUP} "$VISITDIR/Xdmf"
+    fi
+
+    cd "$START_DIR"
+    info "Done with Xdmf"
     return 0
 }
 
@@ -7870,8 +8682,14 @@ function build_hostconf
     echo "##" >> $HOSTCONF
     echo "VISIT_OPTION_DEFAULT(VISIT_C_COMPILER $C_COMPILER)">> $HOSTCONF
     echo "VISIT_OPTION_DEFAULT(VISIT_CXX_COMPILER $CXX_COMPILER)" >> $HOSTCONF
-    echo "VISIT_OPTION_DEFAULT(VISIT_C_FLAGS \"$CFLAGS\")" >> $HOSTCONF
-    echo "VISIT_OPTION_DEFAULT(VISIT_CXX_FLAGS \"$CXXFLAGS\")" >> $HOSTCONF
+
+    if [[ "$USE_VISIBILITY_HIDDEN" == "yes" ]] ; then
+            echo "VISIT_OPTION_DEFAULT(VISIT_C_FLAGS \"$CFLAGS -fvisibility=hidden\")" >> $HOSTCONF
+            echo "VISIT_OPTION_DEFAULT(VISIT_CXX_FLAGS \"$CXXFLAGS -fvisibility=hidden\")" >> $HOSTCONF
+        else
+            echo "VISIT_OPTION_DEFAULT(VISIT_C_FLAGS \"$CFLAGS\")" >> $HOSTCONF
+            echo "VISIT_OPTION_DEFAULT(VISIT_CXX_FLAGS \"$CXXFLAGS\")" >> $HOSTCONF
+    fi
 
     if [[ "$parallel" == "yes" ]] ; then
         echo >> $HOSTCONF
@@ -8024,7 +8842,11 @@ function build_hostconf
         >> $HOSTCONF 
         if [[ "$DO_SZIP" == "yes" ]] ; then
             echo \
-            "VISIT_OPTION_DEFAULT(VISIT_HDF5_LIBDEP \${VISITHOME}/szip/$SZIP_VERSION/\${VISITARCH}/lib sz)" \
+            "VISIT_OPTION_DEFAULT(VISIT_HDF5_LIBDEP \${VISITHOME}/szip/$SZIP_VERSION/\${VISITARCH}/lib sz /usr/lib z)" \
+            >> $HOSTCONF
+        else
+            echo \
+            "VISIT_OPTION_DEFAULT(VISIT_HDF5_LIBDEP /usr/lib z)" \
             >> $HOSTCONF
         fi
     fi
@@ -8085,8 +8907,13 @@ function build_hostconf
             echo \
             "VISIT_OPTION_DEFAULT(VISIT_SILO_LIBDEP HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP})" \
             >> $HOSTCONF
+        else
+            echo \
+            "VISIT_OPTION_DEFAULT(VISIT_SILO_LIBDEP /usr/lib z \${VISIT_HDF5_LIBDEP})" \
+            >> $HOSTCONF
         fi
     fi
+
     if [[ "$DO_VISUS" == "yes" ]] ; then
         echo >> $HOSTCONF
         echo "##" >> $HOSTCONF
@@ -8096,6 +8923,20 @@ function build_hostconf
         "VISIT_OPTION_DEFAULT(VISIT_VISUS_DIR \${VISITHOME}/visus/$VISUS_VERSION/\${VISITARCH})" \
         >> $HOSTCONF
     fi
+
+    if [[ "$DO_XDMF" == "yes" ]] ; then
+        echo >> $HOSTCONF
+        echo "##" >> $HOSTCONF
+        echo "## Xdmf" >> $HOSTCONF
+        echo "##" >> $HOSTCONF
+        echo \
+        "VISIT_OPTION_DEFAULT(VISIT_XDMF_DIR \${VISITHOME}/Xdmf/$XDMF_VERSION/\${VISITARCH})" \
+        >> $HOSTCONF
+        echo \
+        "VISIT_OPTION_DEFAULT(VISIT_XDMF_LIBDEP HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP})" \
+        >> $HOSTCONF
+    fi
+
     if [[ "$DO_TCMALLOC" == "yes" ]] ; then
         echo >> $HOSTCONF
         echo "##" >> $HOSTCONF
@@ -8105,7 +8946,7 @@ function build_hostconf
         "VISIT_OPTION_DEFAULT(VISIT_TCMALLOC_DIR \${VISITHOME}/google-perftools/$TCMALLOC_VERSION/\${VISITARCH})" \
         >> $HOSTCONF
     fi
-    if [[ "$DO_ICET" == "yes" ]] ; then
+    if [[ "$DO_ICET" == "yes" && "$PREVENT_ICET" != "yes" ]] ; then
         echo >> $HOSTCONF
         echo "##" >> $HOSTCONF
         echo "## Ice-T" >> $HOSTCONF
@@ -8172,7 +9013,7 @@ function build_visit
            fi
         elif [[ -f ${VISIT_FILE%.*} ]] ; then
            info "Unzipping ${VISIT_FILE%.*} . . ."
-           tar xf ${VISIT_FILE%.*}
+           $TAR xf ${VISIT_FILE%.*}
            if [[ $? != 0 ]] ; then
               warn  \
 "Unable to untar ${VISIT_FILE%.*}.  Corrupted file or out of space on device?"
@@ -8220,6 +9061,8 @@ function build_visit
     # A dbio-only build disables pretty much everything else.
     if [[ "${DO_DBIO_ONLY}" == "yes" ]] ; then
        EXTRA_FEATURES="--enable-dbio-only"
+    else
+       EXTRA_FEATURES="${EXTRA_FEATURES} --enable-install-thirdparty"
     fi
     ./configure ${PARFLAGS} ${EXTRA_FEATURES}
     if [[ $? != 0 ]] ; then
@@ -8380,79 +9223,69 @@ printvariables () {
   printf "%s%s\n" "QT_PLATFORM=" "${QT_PLATFORM}"
   printf "%s%s\n" "QT_BUILD_DIR=" "${QT_BUILD_DIR}"
 
-  printf "%s%s\n" "SILO_FILE=" "${SILO_FILE}"
-  printf "%s%s\n" "SILO_VERSION=" "${SILO_VERSION}"
-  printf "%s%s\n" "SILO_COMPATIBILITY_VERSION=" "${SILO_COMPATIBILITY_VERSION}"
-  printf "%s%s\n" "SILO_BUILD_DIR=" "${SILO_BUILD_DIR}"
+  printf "%s%s\n" "TCMALLOC_FILE=" "${TCMALLOC_FILE}"
+  printf "%s%s\n" "TCMALLOC_VERSION=" "${TCMALLOC_VERSION}"
+  printf "%s%s\n" "TCMALLOC_COMPATIBILITY_VERSION=" "${TCMALLOC_COMPATIBILITY_VERSION}"
+  printf "%s%s\n" "TCMALLOC_BUILD_DIR=" "${TCMALLOC_BUILD_DIR}"
 
-  printf "%s%s\n" "SZIP_FILE=" "${SZIP_FILE}"
-  printf "%s%s\n" "SZIP_VERSION=" "${SZIP_VERSION}"
-  printf "%s%s\n" "SZIP_COMPATIBILITY_VERSION=" "${SZIP_COMPATIBILITY_VERSION}"
-  printf "%s%s\n" "SZIP_BUILD_DIR=" "${SZIP_BUILD_DIR}"
+  printf "%s%s\n" "ICET_FILE=" "${ICET_FILE}"
+  printf "%s%s\n" "ICET_VERSION=" "${ICET_VERSION}"
+  printf "%s%s\n" "ICET_COMPATIBILITY_VERSION=" "${ICET_COMPATIBILITY_VERSION}"
+  printf "%s%s\n" "ICET_BUILD_DIR=" "${ICET_BUILD_DIR}"
 
-  printf "%s%s\n" "HDF5_FILE=" "${HDF5_FILE}"
-  printf "%s%s\n" "HDF5_VERSION=" "${HDF5_VERSION}"
-  printf "%s%s\n" "HDF5_COMPATIBILITY_VERSION=" "${HDF5_COMPATIBILITY_VERSION}"
-  printf "%s%s\n" "HDF5_BUILD_DIR=" "${HDF5_BUILD_DIR}"
-
-  printf "%s%s\n" "HDF4_FILE=" "${HDF4_FILE}"
-  printf "%s%s\n" "HDF4_VERSION=" "${HDF4_VERSION}"
-  printf "%s%s\n" "HDF4_COMPATIBILITY_VERSION=" "${HDF4_COMPATIBILITY_VERSION}"
-  printf "%s%s\n" "HDF4_BUILD_DIR=" "${HDF4_BUILD_DIR}"
-
-  printf "%s%s\n" "MILI_FILE=" "${MILI_FILE}"
-  printf "%s%s\n" "MILI_VERSION=" "${MILI_VERSION}"
-  printf "%s%s\n" "MILI_COMPATIBILITY_VERSION=" "${MILI_COMPATIBILITY_VERSION}"
-  printf "%s%s\n" "MILI_BUILD_DIR=" "${MILI_BUILD_DIR}"
-
-  printf "%s%s\n" "NETCDF_FILE=" "${NETCDF_FILE}"
-  printf "%s%s\n" "NETCDF_VERSION=" "${NETCDF_VERSION}"
-  printf "%s%s\n" "NETCDF_COMPATIBILITY_VERSION=" "${NETCDF_COMPATIBILITY_VERSION}"
-  printf "%s%s\n" "NETCDF_BUILD_DIR=" "${NETCDF_BUILD_DIR}"
-
-  printf "%s%s\n" "CGNS_FILE=" "${CGNS_FILE}"
-  printf "%s%s\n" "CGNS_VERSION=" "${CGNS_VERSION}"
-  printf "%s%s\n" "CGNS_COMPATIBILITY_VERSION=" "${CGNS_COMPATIBILITY_VERSION}"
-  printf "%s%s\n" "CGNS_BUILD_DIR=" "${CGNS_BUILD_DIR}"
-
-  printf "%s%s\n" "GDAL_FILE=" "${GDAL_FILE}"
-  printf "%s%s\n" "GDAL_VERSION=" "${GDAL_VERSION}"
-  printf "%s%s\n" "GDAL_COMPATIBILITY_VERSION=" "${GDAL_COMPATIBILITY_VERSION}"
-  printf "%s%s\n" "GDAL_BUILD_DIR=" "${GDAL_BUILD_DIR}"
-
-  printf "%s%s\n" "EXODUS_FILE=" "${EXODUS_FILE}"
-  printf "%s%s\n" "EXODUS_VERSION=" "${EXODUS_VERSION}"
-  printf "%s%s\n" "EXODUS_COMPATIBILITY_VERSION=" "${EXODUS_COMPATIBILITY_VERSION}"
-  printf "%s%s\n" "EXODUS_BUILD_DIR=" "${EXODUS_BUILD_DIR}"
+  printf "%s%s\n" "ADVIO_FILE=" "${ADVIO_FILE}"
+  printf "%s%s\n" "ADVIO_VERSION=" "${ADVIO_VERSION}"
+  printf "%s%s\n" "ADVIO_COMPATIBILITY_VERSION=" "${ADVIO_COMPATIBILITY_VERSION}"
+  printf "%s%s\n" "ADVIO_BUILD_DIR=" "${ADVIO_BUILD_DIR}"
 
   printf "%s%s\n" "BOXLIB_FILE=" "${BOXLIB_FILE}"
   printf "%s%s\n" "BOXLIB_VERSION=" "${BOXLIB_VERSION}"
   printf "%s%s\n" "BOXLIB_COMPATIBILITY_VERSION=" "${BOXLIB_COMPATIBILITY_VERSION}"
   printf "%s%s\n" "BOXLIB_BUILD_DIR=" "${BOXLIB_BUILD_DIR}"
 
+  printf "%s%s\n" "CCMIO_FILE=" "${CCMIO_FILE}"
+  printf "%s%s\n" "CCMIO_VERSION=" "${CCMIO_VERSION}"
+  printf "%s%s\n" "CCMIO_COMPATIBILITY_VERSION=" "${CCMIO_COMPATIBILITY_VERSION}"
+  printf "%s%s\n" "CCMIO_BUILD_DIR=" "${CCMIO_BUILD_DIR}"
+
   printf "%s%s\n" "CFITSIO_FILE=" "${CFITSIO_FILE}"
   printf "%s%s\n" "CFITSIO_VERSION=" "${CFITSIO_VERSION}"
   printf "%s%s\n" "CFITSIO_COMPATIBILITY_VERSION=" "${CFITSIO_COMPATIBILITY_VERSION}"
   printf "%s%s\n" "CFITSIO_BUILD_DIR=" "${CFITSIO_BUILD_DIR}"
+
+  printf "%s%s\n" "CGNS_FILE=" "${CGNS_FILE}"
+  printf "%s%s\n" "CGNS_VERSION=" "${CGNS_VERSION}"
+  printf "%s%s\n" "CGNS_COMPATIBILITY_VERSION=" "${CGNS_COMPATIBILITY_VERSION}"
+  printf "%s%s\n" "CGNS_BUILD_DIR=" "${CGNS_BUILD_DIR}"
+
+  printf "%s%s\n" "EXODUS_FILE=" "${EXODUS_FILE}"
+  printf "%s%s\n" "EXODUS_VERSION=" "${EXODUS_VERSION}"
+  printf "%s%s\n" "EXODUS_COMPATIBILITY_VERSION=" "${EXODUS_COMPATIBILITY_VERSION}"
+  printf "%s%s\n" "EXODUS_BUILD_DIR=" "${EXODUS_BUILD_DIR}"
+
+  printf "%s%s\n" "FASTBIT_FILE=" "${FASTBIT_FILE}"
+  printf "%s%s\n" "FASTBIT_VERSION=" "${FASTBIT_VERSION}"
+  printf "%s%s\n" "FASTBIT_BUILD_DIR=" "${FASTBIT_BUILD_DIR}"
+
+  printf "%s%s\n" "GDAL_FILE=" "${GDAL_FILE}"
+  printf "%s%s\n" "GDAL_VERSION=" "${GDAL_VERSION}"
+  printf "%s%s\n" "GDAL_COMPATIBILITY_VERSION=" "${GDAL_COMPATIBILITY_VERSION}"
+  printf "%s%s\n" "GDAL_BUILD_DIR=" "${GDAL_BUILD_DIR}"
 
   printf "%s%s\n" "H5PART_FILE=" "${H5PART_FILE}"
   printf "%s%s\n" "H5PART_VERSION=" "${H5PART_VERSION}"
   printf "%s%s\n" "H5PART_COMPATIBILITY_VERSION=" "${H5PART_COMPATIBILITY_VERSION}"
   printf "%s%s\n" "H5PART_BUILD_DIR=" "${H5PART_BUILD_DIR}"
 
-  printf "%s%s\n" "FASTBIT_FILE=" "${FASTBIT_FILE}"
-  printf "%s%s\n" "FASTBIT_VERSION=" "${FASTBIT_VERSION}"
-  printf "%s%s\n" "FASTBIT_BUILD_DIR=" "${FASTBIT_BUILD_DIR}"
+  printf "%s%s\n" "HDF4_FILE=" "${HDF4_FILE}"
+  printf "%s%s\n" "HDF4_VERSION=" "${HDF4_VERSION}"
+  printf "%s%s\n" "HDF4_COMPATIBILITY_VERSION=" "${HDF4_COMPATIBILITY_VERSION}"
+  printf "%s%s\n" "HDF4_BUILD_DIR=" "${HDF4_BUILD_DIR}"
 
-  printf "%s%s\n" "CCMIO_FILE=" "${CCMIO_FILE}"
-  printf "%s%s\n" "CCMIO_VERSION=" "${CCMIO_VERSION}"
-  printf "%s%s\n" "CCMIO_COMPATIBILITY_VERSION=" "${CCMIO_COMPATIBILITY_VERSION}"
-  printf "%s%s\n" "CCMIO_BUILD_DIR=" "${CCMIO_BUILD_DIR}"
-
-  printf "%s%s\n" "ITAPS_MOAB_FILE=" "${ITAPS_MOAB_FILE}"
-  printf "%s%s\n" "ITAPS_MOAB_VERSION=" "${ITAPS_MOAB_VERSION}"
-  printf "%s%s\n" "ITAPS_MOAB_COMPATIBILITY_VERSION=" "${ITAPS_MOAB_COMPATIBILITY_VERSION}"
-  printf "%s%s\n" "ITAPS_MOAB_BUILD_DIR=" "${ITAPS_MOAB_BUILD_DIR}"
+  printf "%s%s\n" "HDF5_FILE=" "${HDF5_FILE}"
+  printf "%s%s\n" "HDF5_VERSION=" "${HDF5_VERSION}"
+  printf "%s%s\n" "HDF5_COMPATIBILITY_VERSION=" "${HDF5_COMPATIBILITY_VERSION}"
+  printf "%s%s\n" "HDF5_BUILD_DIR=" "${HDF5_BUILD_DIR}"
 
   printf "%s%s\n" "ITAPS_FMDB_FILE=" "${ITAPS_FMDB_FILE}"
   printf "%s%s\n" "ITAPS_FMDB_VERSION=" "${ITAPS_FMDB_VERSION}"
@@ -8464,25 +9297,40 @@ printvariables () {
   printf "%s%s\n" "ITAPS_GRUMMP_COMPATIBILITY_VERSION=" "${ITAPS_GRUMMP_COMPATIBILITY_VERSION}"
   printf "%s%s\n" "ITAPS_GRUMMP_BUILD_DIR=" "${ITAPS_GRUMMP_BUILD_DIR}"
 
+  printf "%s%s\n" "ITAPS_MOAB_FILE=" "${ITAPS_MOAB_FILE}"
+  printf "%s%s\n" "ITAPS_MOAB_VERSION=" "${ITAPS_MOAB_VERSION}"
+  printf "%s%s\n" "ITAPS_MOAB_COMPATIBILITY_VERSION=" "${ITAPS_MOAB_COMPATIBILITY_VERSION}"
+  printf "%s%s\n" "ITAPS_MOAB_BUILD_DIR=" "${ITAPS_MOAB_BUILD_DIR}"
+
+  printf "%s%s\n" "MILI_FILE=" "${MILI_FILE}"
+  printf "%s%s\n" "MILI_VERSION=" "${MILI_VERSION}"
+  printf "%s%s\n" "MILI_COMPATIBILITY_VERSION=" "${MILI_COMPATIBILITY_VERSION}"
+  printf "%s%s\n" "MILI_BUILD_DIR=" "${MILI_BUILD_DIR}"
+
+  printf "%s%s\n" "NETCDF_FILE=" "${NETCDF_FILE}"
+  printf "%s%s\n" "NETCDF_VERSION=" "${NETCDF_VERSION}"
+  printf "%s%s\n" "NETCDF_COMPATIBILITY_VERSION=" "${NETCDF_COMPATIBILITY_VERSION}"
+  printf "%s%s\n" "NETCDF_BUILD_DIR=" "${NETCDF_BUILD_DIR}"
+
+  printf "%s%s\n" "SILO_FILE=" "${SILO_FILE}"
+  printf "%s%s\n" "SILO_VERSION=" "${SILO_VERSION}"
+  printf "%s%s\n" "SILO_COMPATIBILITY_VERSION=" "${SILO_COMPATIBILITY_VERSION}"
+  printf "%s%s\n" "SILO_BUILD_DIR=" "${SILO_BUILD_DIR}"
+
+  printf "%s%s\n" "SZIP_FILE=" "${SZIP_FILE}"
+  printf "%s%s\n" "SZIP_VERSION=" "${SZIP_VERSION}"
+  printf "%s%s\n" "SZIP_COMPATIBILITY_VERSION=" "${SZIP_COMPATIBILITY_VERSION}"
+  printf "%s%s\n" "SZIP_BUILD_DIR=" "${SZIP_BUILD_DIR}"
+
   printf "%s%s\n" "VISUS_FILE=" "${VISUS_FILE}"
   printf "%s%s\n" "VISUS_VERSION=" "${VISUS_VERSION}"
   printf "%s%s\n" "VISUS_COMPATIBILITY_VERSION=" "${VISUS_COMPATIBILITY_VERSION}"
   printf "%s%s\n" "VISUS_BUILD_DIR=" "${VISUS_BUILD_DIR}"
 
-  printf "%s%s\n" "ADVIO_FILE=" "${ADVIO_FILE}"
-  printf "%s%s\n" "ADVIO_VERSION=" "${ADVIO_VERSION}"
-  printf "%s%s\n" "ADVIO_COMPATIBILITY_VERSION=" "${ADVIO_COMPATIBILITY_VERSION}"
-  printf "%s%s\n" "ADVIO_BUILD_DIR=" "${ADVIO_BUILD_DIR}"
-
-  printf "%s%s\n" "TCMALLOC_FILE=" "${TCMALLOC_FILE}"
-  printf "%s%s\n" "TCMALLOC_VERSION=" "${TCMALLOC_VERSION}"
-  printf "%s%s\n" "TCMALLOC_COMPATIBILITY_VERSION=" "${TCMALLOC_COMPATIBILITY_VERSION}"
-  printf "%s%s\n" "TCMALLOC_BUILD_DIR=" "${TCMALLOC_BUILD_DIR}"
-
-  printf "%s%s\n" "ICET_FILE=" "${ICET_FILE}"
-  printf "%s%s\n" "ICET_VERSION=" "${ICET_VERSION}"
-  printf "%s%s\n" "ICET_COMPATIBILITY_VERSION=" "${ICET_COMPATIBILITY_VERSION}"
-  printf "%s%s\n" "ICET_BUILD_DIR=" "${ICET_BUILD_DIR}"
+  printf "%s%s\n" "XDMF_FILE=" "${XDMF_FILE}"
+  printf "%s%s\n" "XDMF_VERSION=" "${XDMF_VERSION}"
+  printf "%s%s\n" "XDMF_COMPATIBILITY_VERSION=" "${XDMF_COMPATIBILITY_VERSION}"
+  printf "%s%s\n" "XDMF_BUILD_DIR=" "${XDMF_BUILD_DIR}"
 }
 usage () {
   printf "Usage: %s [options]\n" $0
@@ -8497,7 +9345,9 @@ usage () {
   printf "%-15s %s [%s]\n" "--cgns"    "Build CGNS" "$DO_CGNS"
   printf "%-15s %s [%s]\n" "--cmake"   "Build CMake" "built by default unless --no-thirdparty flag is used"
   printf "%-15s %s [%s]\n" "--console" "Do not use dialog ('graphical') interface" "!$GRAPHICAL"
+  printf "%-15s %s [%s]\n" "--dbio-only" "Disables EVERYTHING but I/O." "$DO_DBIO_ONLY"
   printf "%-15s %s [%s]\n" "--debug"   "Enable debugging for this script" "false"
+  printf "%-15s %s [%s]\n" "--download-only" "Only download the specified packages" "false"
   printf "%-15s %s [%s]\n" "--exodus" "Build Exodus (requires NetCDF)" "$DO_EXODUS"
   printf "%-15s %s [%s]\n" "--fastbit" "Build FastBit" "$DO_FASTBIT"
   printf "%-15s %s [%s]\n" "--flags-debug" "Add '-g' to C[XX]FLAGS" "false"
@@ -8517,6 +9367,7 @@ usage () {
   printf "%-15s %s [%s]\n" "--netcdf" "Build NetCDF" "${DO_NETCDF}"
   printf "%-15s %s [%s]\n" "--no-visit" "Do not build VisIt, build 3rd party libraries only" "$DO_VISIT"
   printf "%-15s %s [%s]\n" "--no-thirdparty" "Do not build required 3rd party libraries" "$ON_THIRD_PARTY"
+  printf "%-15s %s [%s]\n" "--no-icet" "Ice-T is automatically built with --enable-parallel.  Prevent it from being built" "$PREVENT_ICET"
   printf "%-15s %s [%s]\n" "--no-hostconf" "Do not create host.conf file." "$ON_HOSTCONF"
   printf "%-15s %s [%s]\n" "--parallel" "Enable parallel build, display MPI prompt" "$parallel"
   printf "%-15s %s [%s]\n" "--print-vars" "Display user settable environment variables" "false"
@@ -8532,7 +9383,7 @@ usage () {
   printf "\t\t%15s\n" "NOTE: not available for download from web"
   printf "%-15s %s [%s]\n" "--visus" "Build ViSUS (experimental!)" "$DO_VISUS"
   printf "%-15s %s [%s]\n" "--vtk" "Build VTK" "built by default unless --no-thirdparty flag is used"
-  printf "%-15s %s [%s]\n" "--dbio-only" "Disables EVERYTHING but I/O." "$DO_DBIO_ONLY"
+  printf "%-15s %s [%s]\n" "--xdmf" "Build Xdmf" "$DO_XDMF"
   printf "%s\n" ""
   printf "OPTIONS\n"
   printf "These values all take a special value.  If given, they require an associated value to be provided as well.\n\n"
@@ -8551,6 +9402,8 @@ usage () {
   printf "\t  %s\n" "   This variable is used in constructing the 3rd party"
   printf "\t  %s\n" "   library path; usually set to something like"
   printf "\t  %s\n" "   'linux_gcc-3.4.6' or 'Darwin_gcc-4.0.1'"
+  printf "%-11s %s [%s]\n" "--cflag"   "Append a flag to CFLAGS" "${CFLAGS}"
+  printf "%-11s %s [%s]\n" "--cxxflag" "Append a flag to CXXFLAGS" "$CXXFLAGS"
   printf "%-11s %s [%s]\n" "--cflags"  "Explicitly set CFLAGS" "$CFLAGS"
   printf "%-11s %s [%s]\n" "--cxxflags" "Explicitly set CXXFLAGS" "$CXXFLAGS"
   printf "%-11s %s [%s]\n" "--cc"  "Explicitly set C_COMPILER" "$C_COMPILER"
@@ -8576,7 +9429,7 @@ usage () {
 # *************************************************************************** #
 # Function: starts_with_quote                                                 #
 #                                                                             #
-# Purpose: Meant to be used `if $(starts_with_quote "$var") ; then`           #
+# Purpose: Meant to be used in `if $(starts_with_quote "$var") ; then`        #
 #          conditionals.                                                      #
 #                                                                             #
 # Programmer: Tom Fogal                                                       #
@@ -8698,7 +9551,7 @@ for arg in "${arguments[@]}" ; do
         # Yep.  Which option was it?
         case $next_arg in
             append-cflags) C_OPT_FLAGS="${C_OPT_FLAGS} ${arg}";;
-            append-cxxflags) CXX_OPT_FLAGS="${C_OPT_FLAGS} ${arg}";;
+            append-cxxflags) CXX_OPT_FLAGS="${CXX_OPT_FLAGS} ${arg}";;
             arch) VISITARCH="${arg}";;
             cflags) C_OPT_FLAGS=$(strip_quotes "${arg}");;
             cxxflags) CXX_OPT_FLAGS=$(strip_quotes "${arg}");;
@@ -8727,14 +9580,18 @@ for arg in "${arguments[@]}" ; do
         --boxlib) DO_BOXLIB="yes"; ON_BOXLIB="on";;
         --ccmio) DO_CCMIO="yes"; ON_CCMIO="on";;
         --cfitsio) DO_CFITSIO="yes"; ON_CFITSIO="on";;
+        --cflag) next_arg="append-cflags";;
         --cflags) next_arg="cflags";;
         --cgns) DO_CGNS="yes"; ON_CGNS="on";;
         --cmake) DO_CMAKE="yes"; ON_CMAKE="on";;
+        --cxxflag) next_arg="append-cxxflags";;
         --cxxflags) next_arg="cxxflags";;
         --cc) next_arg="cc";;
         --cxx) next_arg="cxx";;
         --console) GRAPHICAL="no"; ON_GRAPHICAL="off";;
+        --dbio-only) DO_DBIO_ONLY="yes";;
         --debug) set -vx;;
+        --download-only) DOWNLOAD_ONLY="yes";;
         --fastbit) DO_FASTBIT="yes"; ON_FASTBIT="on"
                   DO_HDF5="yes"; ON_HDF5="on";;
         --exodus) DO_EXODUS="yes"; ON_EXODUS="on"
@@ -8759,7 +9616,8 @@ for arg in "${arguments[@]}" ; do
         --no-visit) DO_VISIT="no"; ON_VISIT="off";;
         --no-thirdparty) DO_REQUIRED_THIRD_PARTY="no"; ON_THIRD_PARTY="off";;
         --no-hostconf) DO_HOSTCONF="no"; ON_HOSTCONF="off";;
-        --parallel) parallel="yes"; ON_parallel="ON";;
+        --no-icet) PREVENT_ICET="yes";;
+        --parallel) parallel="yes"; DO_ICET="yes"; ON_parallel="ON";;
         --print-vars) next_action="print-vars";;
         --python) DO_PYTHON="yes"; ON_PYTHON="on";;
         --python-module) DO_MODULE="yes"; ON_MODULE="on";;
@@ -8783,7 +9641,7 @@ for arg in "${arguments[@]}" ; do
         --visus) DO_VISUS="yes"; ON_VISUS="on";;
         --version) next_arg="version";;
         --vtk) DO_VTK="yes"; ON_VTK="on";;
-        --dbio-only) DO_DBIO_ONLY="yes";;
+        --xdmf) DO_XDMF="yes"; ON_XDMF="on";;
         -4) deprecated="${deprecated} --hdf4";;
         -5) deprecated="${deprecated} --hdf5";;
         -c) deprecated="${deprecated} --cgns";;
@@ -8868,6 +9726,8 @@ if [[ "$DO_DBIO_ONLY" == "yes" ]]; then
     ON_ITAPS="on"
     DO_SILO="yes"
     ON_SILO="on"
+    DO_XDMF="yes"
+    ON_XDMF="on"
 
     #
     # Any plugin for this yet?
@@ -8884,6 +9744,19 @@ if [[ "$DO_DBIO_ONLY" == "yes" ]]; then
 #    ON_VISUS="on"
 fi
 
+#
+# If we are AIX, make sure we are using GNU tar.
+#
+if [[ "$OPSYS" == "AIX" ]]; then
+    TARVERSION=$($TAR --version >/dev/null 2>&1)
+    if [[ $? != 0 ]] ; then
+        echo "Error in build process. You are using the system tar on AIX."
+        echo "Change the TAR variable in the script to the location of the"
+        echo "GNU tar command."
+        exit 1
+    fi
+fi
+
 # Show a splashscreen. This routine also determines if we have "dialog"
 # or "whiptail", which we use to show dialogs. If we do not have either
 # then proceed in non-graphical mode.
@@ -8894,7 +9767,7 @@ if [[ "$GRAPHICAL" == "yes" ]] ; then
     
     # Guard against bad "which" implementations that return
     # "no <exe> in path1 path2 ..." (these implementations also
-    # return 0 as the exit status.
+    # return 0 as the exit status).
     if [[ "${DLG#no }" != "${DLG}" ]] ; then
         DLG=""
     fi
@@ -8969,7 +9842,7 @@ if [[ "$GRAPHICAL" == "yes" ]] ; then
                  VISIT_FILE="$(cat tmp$$)"
                  USE_VISIT_FILE="yes";;
               Parallel)
-                 parallel="yes";;
+                 parallel="yes"; DO_ICET="yes";;
               PythonModule)
                  DO_MODULE="yes";;
               Java)
@@ -9014,12 +9887,13 @@ if [[ "$DO_OPTIONAL" == "yes" && "$GRAPHICAL" == "yes" ]] ; then
            "HDF4"     "$HDF4_VERSION  $HDF4_FILE"      $ON_HDF4 \
            "HDF5"     "$HDF5_VERSION  $HDF5_FILE"      $ON_HDF5 \
            "IceT"     "$ICET_VERSION  $ICET_FILE"      $ON_ICET \
-           "ITAPS"    "15Apr09 Versions of MOAB, FMDB, GRUMMP"    $ON_ITAPS \
+           "ITAPS"    "Jun-2010 Versions of MOAB, FMDB, GRUMMP"    $ON_ITAPS \
            "Mili"     "$MILI_VERSION $MILI_FILE (not available from the web)"      $ON_MILI \
+           "NetCDF"   "$NETCDF_VERSION  $NETCDF_FILE"    $ON_NETCDF \
            "TCMALLOC" "$TCMALLOC_VERSION   $TCMALLOC_FILE (not available from the web)"      $ON_TCMALLOC \
            "Silo"     "$SILO_VERSION    $SILO_FILE"      $ON_SILO \
            "SZip"     "$SZIP_VERSION    $SZIP_FILE"      $ON_SZIP \
-           "NetCDF"   "$NETCDF_VERSION  $NETCDF_FILE"    $ON_NETCDF 2> tmp$$
+           "Xdmf"     "$XDMF_VERSION  $XDMF_FILE"    $ON_XDMF 2> tmp$$
     retval=$?
 
     # Remove the extra quoting, new dialog has --single-quoted
@@ -9043,6 +9917,7 @@ if [[ "$DO_OPTIONAL" == "yes" && "$GRAPHICAL" == "yes" ]] ; then
         DO_SILO="no"
         DO_SZIP="no"
         DO_ITAPS="no"
+        DO_XDMF="no"
         for OPTION in $choice
         do
             case $OPTION in
@@ -9085,6 +9960,9 @@ if [[ "$DO_OPTIONAL" == "yes" && "$GRAPHICAL" == "yes" ]] ; then
                  DO_SZIP="yes";;
               ITAPS)
                  DO_ITAPS="yes";;
+              Xdmf)
+                 DO_XDMF="yes"
+                 DO_HDF5="yes";;
             esac
         done
         ;;
@@ -9136,23 +10014,25 @@ if [[ $VISITARCH == "" ]] ; then
     fi
 fi
 
-if [[ ! -d "$THIRD_PARTY_PATH" ]] ; then
-   if [[ "$THIRD_PARTY_PATH" == "./visit" ]] ; then
-      mkdir "$THIRD_PARTY_PATH"
-      if [[ $? != 0 ]] ; then
-          error "Unable to write files to the third party library location." \
-                "Bailing out."
-      fi
-   else
-      error "The location to install the third party libraries does not exit." \
-            "Bailing out"
-   fi
-fi
-
 START_DIR="$PWD"
-cd "$THIRD_PARTY_PATH"
-if [[ $? != 0 ]] ; then
-   error "Unable to access the third party location. Bailing out."
+if [[ "$DOWNLOAD_ONLY" == "no" ]] ; then
+   if [[ ! -d "$THIRD_PARTY_PATH" ]] ; then
+      if [[ "$THIRD_PARTY_PATH" == "./visit" ]] ; then
+         mkdir "$THIRD_PARTY_PATH"
+         if [[ $? != 0 ]] ; then
+            error "Unable to write files to the third party library location." \
+                  "Bailing out."
+         fi
+      else
+         error "The location to install the third party libraries does not exist." \
+               "Bailing out"
+      fi
+   fi
+
+   cd "$THIRD_PARTY_PATH"
+   if [[ $? != 0 ]] ; then
+      error "Unable to access the third party location. Bailing out."
+   fi
 fi
 export VISITDIR=${VISITDIR:-$(pwd)}
 
@@ -9169,7 +10049,7 @@ if [[ "$DO_REQUIRED_THIRD_PARTY" == "yes" ]] ; then
         DO_PYTHON="no"
     fi
 fi
-if [[ "$DO_ICET" == "yes" ]] ; then
+if [[ "$DO_ICET" == "yes" && "$PREVENT_ICET" != "yes" ]] ; then
     DO_CMAKE="yes"
 fi
 
@@ -9187,7 +10067,7 @@ if [[ $? == 0 ]] ; then
    DO_QT="no"
 fi
 
-if [[ "$DO_QT" == "yes" ]] ; then
+if [[ "$DO_QT" == "yes" && "$DOWNLOAD_ONLY" == "no" ]] ; then
     qt_license_prompt
     if [[ $? != 0 ]] ;then
         error "Qt4 Open Source Edition License Declined. Bailing out."
@@ -9232,6 +10112,13 @@ if [[ $? != 0 ]] ; then
    error "Stopping build because necessary files aren't available."
 fi
 
+#
+# Exit if we were told to only download the files.
+#
+if [[ "$DOWNLOAD_ONLY" == "yes" ]] ; then
+    info "Successfully downloaded the specified files."
+    exit 0
+fi
 
 #
 # We are now ready to build.
@@ -9277,6 +10164,12 @@ if [[ "$DO_PYTHON" == "yes" ]] ; then
             warn "PIL build failed."
         fi
         info "Done building the Python Imaging Library"
+
+        build_pyparsing
+        if [[ $? != 0 ]] ; then
+            warn "pyparsing build failed."
+        fi
+        info "Done building the pyparsing module."
     fi
 fi
 
@@ -9381,7 +10274,7 @@ if [[ "$DO_MILI" == "yes" ]] ; then
 fi
 
 cd "$START_DIR"
-if [[ "$DO_ICET" == "yes" ]] ; then
+if [[ "$DO_ICET" == "yes" && "$PREVENT_ICET" != "yes" ]] ; then
     check_if_installed "icet" $ICET_VERSION
     if [[ $? == 0 ]] ; then
         info "Skipping Ice-T build.  Ice-T is already installed."
@@ -9651,6 +10544,21 @@ if [[ "$DO_ADVIO" == "yes" ]] ; then
         fi
         info "Done building AdvIO"
     fi
+fi
+
+cd "$START_DIR"
+if [[ "$DO_XDMF" == "yes" ]] ; then
+    check_if_installed "Xdmf" $XDMF_VERSION
+    if [[ $? == 0 ]] ; then
+        info "Skipping Xdmf build.  Xdmf is already installed."
+    else
+        info "Building Xdmf (~2 minutes)"
+        build_xdmf
+        if [[ $? != 0 ]] ; then
+            error "Unable to build or install Xdmf.  Bailing out."
+        fi
+        info "Done building Xdmf"
+   fi
 fi
 
 #

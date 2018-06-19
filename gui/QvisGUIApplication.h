@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -329,6 +329,13 @@ class SplashScreen;
 //    Gunther H. Weber, Fri Aug 15 10:22:13 PDT 2008
 //    Added methods for initiating and synchronizing repick.
 //
+//    Cyrus Harrison, Fri Mar  5 10:28:42 PST 2010
+//    Added FireInit & Init to work around a Qt/Glib init problem in linux.
+//
+//    Jeremy Meredith, Fri Mar 26 13:11:46 EDT 2010
+//    Allow for the -o command line option to take an optional ,<pluginID>
+//    suffix, e.g. "-o foobar,LAMMPS_1.0".
+//
 // ****************************************************************************
 
 class GUI_API QvisGUIApplication : public QObject, public ConfigManager, public GUIBase
@@ -338,6 +345,9 @@ public:
     QvisGUIApplication(int &argc, char **argv);
     ~QvisGUIApplication();
     int Exec();
+
+signals:
+    void FireInit(int stage);
 
 private:
     void AddViewerArguments(int argc, char **argv);
@@ -398,16 +408,19 @@ private:
     void RestoreCrashRecoveryFile();
     void RemoveCrashRecoveryFile(bool) const;
     QString CrashRecoveryFile() const;
-    
+
     void ExtractSystemDefaultAppearance();
-        
+    void ShowAllWindows();
+
 public slots:
     void newExpression();
     void SaveCrashRecoveryFile();
     void Interpret(const QString &);
     void redoPick();
     void restorePickAttributesAfterRepick();
+
 private slots:
+    void Init(int stage);
     void Quit();
     void HeavyInitialization();
     void ReadFromViewer(int);
@@ -574,6 +587,7 @@ private:
 
     // File to load on startup.
     QualifiedFilename            loadFile;
+    std::string                  loadFilePlugin;
     bool                         allowFileSelectionChange;
 
     // Session variables

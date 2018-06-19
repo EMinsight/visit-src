@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -425,6 +425,10 @@ VisWinAxesParallel::SetViewport(double vl_, double vb_, double vr_, double vt_)
 //  Programmer: Eric Brugger
 //  Creation:   December 9, 2008
 //
+//  Modifications:
+//
+//    Mark C. Miller, Tue Apr 13 13:11:03 PDT 2010
+//    Replaced EXCEPTION with early return.
 // ****************************************************************************
 
 void
@@ -465,8 +469,7 @@ VisWinAxesParallel::UpdatePlotList(vector<avtActor_p> &list)
         else if (atts.GetCumulativeTrueSpatialExtents()->HasExtents())
             atts.GetCumulativeTrueSpatialExtents()->CopyTo(extents);
         else
-            EXCEPTION1(ImproperUseException,
-                       "Did not have valid Spatial extents");
+            return;
       
         axes[0].xpos = 0;
         axes[0].range[0] = extents[0];

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -105,6 +105,7 @@
 
 #include <visit-config.h>
 
+#include <sstream>
 #include <snprintf.h>
 #include <stdlib.h> // for qsort
 
@@ -122,6 +123,7 @@ using std::string;
 using std::vector;
 using std::map;
 using std::set;
+using std::ostringstream;
 using namespace SiloDBOptions;
 
 static void      ExceptionGenerator(char *);
@@ -156,6 +158,8 @@ static void BuildDomainAuxiliaryInfoForAMRMeshes(DBfile *dbfile, DBmultimesh *mm
     int dontForceSingle);
 
 static int MultiMatHasAllMatInfo(const DBmultimat *const mm);
+static vtkDataArray *CreateDataArray(int silotype, void *data, int numvals);
+
 
 // the maximum number of nodelists any given single node can be in
 static const int maxCoincidentNodelists = 12;
@@ -236,6 +240,21 @@ static const int maxCoincidentNodelists = 12;
 //    situation where you opened a file with dontForceSingle false and later
 //    set dontForceSingle to true but would then neglect to call
 //    DBForceSingle unsetting the value.
+//
+//    Cyrus Harrison, Wed Mar 24 10:39:30 PDT 2010
+//    Added init of haveAmrGroupInfo.
+//
+//    Cyrus Harrison, Thu Jun 10 16:15:36 PDT 2010
+//    Changed default init of 'metadataIsTimeVarying' member to true.
+//    This helps to deal w/ a chicken & egg senairo when detecting if a silo
+//    dataset has time varying metadata.
+//
+//    Cyrus Harrison, Mon Jun 14 15:25:48 PDT 2010
+//    Reverted previous change to init of 'metadataIsTimeVarying' & added
+//    init of 'metadataIsTimeVaryingCheck'.
+//
+//    Mark C. Miller, Wed Jul 21 12:18:17 PDT 2010
+//    Added logic to ignore force single behavior for older versions of Silo.
 // ****************************************************************************
 
 avtSiloFileFormat::avtSiloFileFormat(const char *toc_name,
@@ -257,7 +276,9 @@ avtSiloFileFormat::avtSiloFileFormat(const char *toc_name,
     readGlobalInfo = false;
     connectivityIsTimeVarying = false;
     metadataIsTimeVarying = false;
+    metadataIsTimeVaryingChecked = false;
     groupInfo.haveGroups = false;
+    haveAmrGroupInfo = false;
     hasDisjointElements = false;
     topDir = "/";
     dbfiles = new DBfile*[MAX_FILES];
@@ -281,6 +302,32 @@ avtSiloFileFormat::avtSiloFileFormat(const char *toc_name,
             ignoreDataExtentsAAN = (AANTriState) rdatts->GetEnum(SILO_RDOPT_IGNORE_DEXTS);
         else
             debug1 << "Ignoring unknown option \"" << rdatts->GetName(i) << "\"" << endl;
+    }
+
+    // This block of logic does the following. Sets default ignore of force single
+    // to false. But, for older versions of Silo which either do not define
+    // SILO_VERSION_GE macro (e.g. really, really old) or which do define it but
+    // are older than version 4.8, we set ignore of force single to true. In
+    // addition, if the user had set read options to NOT dontForceSingle, then
+    // we'll also put a message in the debug logs about it.
+    bool ignoreForceSingle = false;
+#ifndef SILO_VERSION_GE
+    ignoreForceSingle = true;
+#else
+#if !SILO_VERSION_GE(4,8,0)
+    ignoreForceSingle = true;
+#endif
+#endif
+    if (ignoreForceSingle)
+    {
+        if (!dontForceSingle)
+        {
+            debug1 << "Ignoring Don't Force Single setting of 0 (false) which would have...\n"
+                   << "...otherwise caused the Silo library to try to force all datatype'd\n"
+                   << "...arrays to float because the old version of the Silo library being\n"
+                   << "...used here does NOT correctly honor the force single setting." << endl;
+        }
+        dontForceSingle = 1;
     }
 
     //
@@ -344,11 +391,25 @@ avtSiloFileFormat::~avtSiloFileFormat()
 //  Programmer: Mark C. Miller
 //  Creation:   February 9, 2004 
 //
+//  Modifications:
+//    Cyrus Harrison, Mon Jun 14 15:34:22 PDT 2010
+//    Added check for time varying metadata.
+//
 // ****************************************************************************
 void
 avtSiloFileFormat::ActivateTimestep(void)
 {
-    OpenFile(tocIndex);
+    DBfile *toc = OpenFile(tocIndex);
+    // note:
+    // We actually create a new instance of the file format class for every
+    // timestep. For each instance the 'metadataIsTimeVaryingChecked'
+    // starts out as false so this flag really only saves us work if a timestep
+    // is viewed more than once.
+    if(!metadataIsTimeVaryingChecked)
+    {
+        CheckForTimeVaryingMetadata(toc);
+        metadataIsTimeVaryingChecked = true;
+    }
 }
 
 // ****************************************************************************
@@ -1009,6 +1070,10 @@ avtSiloFileFormat::FreeUpResources(void)
 //    Mark C. Miller, Thu Mar 18 11:00:38 PST 2004
 //    Added call to set cycle/time
 //
+//    Jeremy Meredith, Thu Mar 25 16:52:04 EDT 2010
+//    Error if we openend a file with nothing in it to prevent false
+//    positives when detecting Silo files.  Happens only in strict mode.
+//
 // ****************************************************************************
 
 void
@@ -1048,6 +1113,16 @@ avtSiloFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
     // To be nice to other functions, tell Silo to turn back on reading all
     // of the data.
     DBSetDataReadMask(DBAll);
+
+    // If we got nothing, it may be that this was a PDB file or
+    // an HDF5 file, for example, but not really a Silo file.
+    if (GetStrictMode() &&
+        md->GetNumMeshes() == 0 &&
+        md->GetNumCurves() == 0)
+    {
+        EXCEPTION1(InvalidFilesException, filenames[0]);
+    }
+        
 }
 
 // ****************************************************************************
@@ -1356,6 +1431,15 @@ avtSiloFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
 //
 //    Mark C. Miller, Tue Dec 15 14:01:48 PST 2009
 //    Added metadataIsTimeVarying
+//
+//    Cyrus Harrison, Thu Jun 10 16:15:36 PDT 2010
+//    Set 'metadataIsTimeVarying' member var to false if silo var
+//    'MetadataIsTimeVarying' is not equal 1 or does not exist.
+//
+//    Cyrus Harrison.
+//    Reverted previous change. Moved init of 'metadataIsTimeVarying'
+//    out of this function & into CheckForTimeVaryingMetadata().
+//
 // ****************************************************************************
 void
 avtSiloFileFormat::ReadTopDirStuff(DBfile *dbfile, const char *dirname,
@@ -1402,14 +1486,6 @@ avtSiloFileFormat::ReadTopDirStuff(DBfile *dbfile, const char *dirname,
                 DBReadVar(dbfile, "ConnectivityIsTimeVarying", &tvFlag);
                 if (tvFlag == 1)
                     connectivityIsTimeVarying = true;
-            }
-
-            if (DBInqVarExists(dbfile, "MetadataIsTimeVarying"))
-            {
-                int mdFlag;
-                DBReadVar(dbfile, "MetadataIsTimeVarying", &mdFlag);
-                if (mdFlag == 1)
-                    metadataIsTimeVarying = true;
             }
 
             if (DBInqVarExists(dbfile, "AlphabetizeVariables"))
@@ -1507,6 +1583,10 @@ avtSiloFileFormat::ReadTopDirStuff(DBfile *dbfile, const char *dirname,
 //
 //    Mark C. Miller, Mon Nov  9 10:41:48 PST 2009
 //    Added 'dontForceSingle' to call to HandleMrgtree
+//
+//   Cyrus Harrison, Wed Mar 24 10:41:20 PDT 2010
+//   Set haveAmrGroupInfo if we have amr level info.
+//
 // ****************************************************************************
 void
 avtSiloFileFormat::ReadMultimeshes(DBfile *dbfile, 
@@ -1745,6 +1825,7 @@ avtSiloFileFormat::ReadMultimeshes(DBfile *dbfile,
                     break;
                 }
 
+
                 avtMeshMetaData *mmd = new avtMeshMetaData(name_w_dir,
                     mm?mm->nblocks:0, mm?mm->blockorigin:0, cellOrigin,
                     groupOrigin, ndims, tdims, mt);
@@ -1804,7 +1885,13 @@ avtSiloFileFormat::ReadMultimeshes(DBfile *dbfile,
                     mmd->meshType = AVT_AMR_MESH;
                     md->Add(mmd);
                     groupInfo.haveGroups = false;
+                    // On the engine groupInfo.haveGroups may get changed when connectivty
+                    // info is read. To avoid clobbering amr group info we set haveAmrGroupInfo
+                    // to true to guard against md->AddGroupInformation getting called in
+                    // DoRootDirectroyWork()
+                    haveAmrGroupInfo = true;
                     md->AddGroupInformation(num_amr_groups, mm?mm->nblocks:0, amr_group_ids);
+                    debug1 << "Using AMR levels as Group Information"<<endl;
                 }
                 else
                 {
@@ -4008,6 +4095,10 @@ const char *const name_w_dir, int meshnum, const DBmultimesh *const mm)
 //    Code around the case where 'treatAllDBsAsTimeVarying' is turned on
 //    and we need to produce a good SIL, but haven't gotten the group info.
 //
+//    Cyrus Harrison, Wed Mar 24 10:45:30 PDT 2010
+//    Don't set group information if we have already set it for an AMR
+//    dataset.
+//
 // ****************************************************************************
 
 void
@@ -4035,9 +4126,11 @@ avtSiloFileFormat::DoRootDirectoryWork(avtDatabaseMetaData *md)
         GetConnectivityAndGroupInformation(dbfile, true);
     }
 
-    if (groupInfo.haveGroups)
+    if (!haveAmrGroupInfo && groupInfo.haveGroups)
+    {
         md->AddGroupInformation(groupInfo.numgroups, groupInfo.ndomains,
                                 groupInfo.ids);
+    }
 }
 
 // ****************************************************************************
@@ -6545,19 +6638,35 @@ CopyUcdVar(const DBucdvar *uv, const vector<int> &remap)
     }
     else
     {
-        //
-        // Populate the variable as we normally would.
-        //
-        vtkvar->SetNumberOfTuples(uv->nels);
-        ptr = (T *) vtkvar->GetVoidPointer(0);
-        for (i = 0; i < uv->nels; i++)
+#if 0
+        // This is an appropriate optimization as it saves a data copy.
+        // However, all the context in which CopyUcdVar is used are not
+        // necessarily designed in anticipation that the ucdvar object's
+        // data could be inherited by the data array.
+        if (uv->nvals == 1)
         {
-            for (j = 0; j < nvtkcomps; j++)
+            vtkvar->Delete();
+            vtkDataArray *retval = CreateDataArray(uv->datatype, (void*) uv->vals[0], uv->nels);
+            uv->vals[0] = 0; // the vtkDataArray now owns the data.
+            return retval;
+        }
+        else
+#endif
+        {
+            //
+            // Populate the variable as we normally would.
+            //
+            vtkvar->SetNumberOfTuples(uv->nels);
+            ptr = (T *) vtkvar->GetVoidPointer(0);
+            for (i = 0; i < uv->nels; i++)
             {
-                if (j < uv->nvals)
-                    ptr[i*nvtkcomps+j] = ((T**)(uv->vals))[j][i];
-                else
-                    ptr[i*nvtkcomps+j] = ((T)0);
+                for (j = 0; j < nvtkcomps; j++)
+                {
+                    if (j < uv->nvals)
+                        ptr[i*nvtkcomps+j] = ((T**)(uv->vals))[j][i];
+                    else
+                        ptr[i*nvtkcomps+j] = ((T)0);
+                }
             }
         }
     }
@@ -6603,6 +6712,9 @@ CopyUcdVar(const DBucdvar *uv, const vector<int> &remap)
 //    Mark C. Miller, Wed Jan 27 13:14:03 PST 2010
 //    Added extra level of indirection to arbMeshXXXRemap objects to handle
 //    multi-block case.
+//
+//    Mark C. Miller, Tue Jul 20 19:21:34 PDT 2010
+//    Added support for LONG LONG types.
 // ****************************************************************************
 
 vtkDataArray *
@@ -6646,6 +6758,14 @@ avtSiloFileFormat::GetUcdVectorVar(DBfile *dbfile, const char *vname,
         vectors = CopyUcdVar<double,vtkDoubleArray>(uv, *remap);
     else if(uv->datatype == DB_FLOAT)
         vectors = CopyUcdVar<float,vtkFloatArray>(uv, *remap);
+#ifdef SILO_VERSION_GE
+#if SILO_VERSION_GE(4,8,0)
+    else if(uv->datatype == DB_LONG_LONG)
+        vectors = CopyUcdVar<long long,vtkLongLongArray>(uv, *remap);
+#endif
+#endif
+    else if(uv->datatype == DB_LONG)
+        vectors = CopyUcdVar<long,vtkLongArray>(uv, *remap);
     else if(uv->datatype == DB_INT)
         vectors = CopyUcdVar<int,vtkIntArray>(uv, *remap);
     else if(uv->datatype == DB_SHORT)
@@ -6732,6 +6852,9 @@ CopyQuadVectorVar(const DBquadvar *qv)
 //    Mark C. Miller, Tue Dec 16 09:36:56 PST 2008
 //    Added casts to deal with new Silo API where datatype'd pointers
 //    have been changed from float* to void*.
+//
+//    Mark C. Miller, Tue Jul 20 19:21:34 PDT 2010
+//    Added support for LONG LONG types.
 // ****************************************************************************
 
 vtkDataArray *
@@ -6761,6 +6884,14 @@ avtSiloFileFormat::GetQuadVectorVar(DBfile *dbfile, const char *vname,
         vectors = CopyQuadVectorVar<double,vtkDoubleArray>(qv);
     else if(qv->datatype == DB_FLOAT)
         vectors = CopyQuadVectorVar<float,vtkFloatArray>(qv);
+#ifdef SILO_VERSION_GE
+#if SILO_VERSION_GE(4,8,0)
+    else if(qv->datatype == DB_LONG_LONG)
+        vectors = CopyQuadVectorVar<long long,vtkLongLongArray>(qv);
+#endif
+#endif
+    else if(qv->datatype == DB_LONG)
+        vectors = CopyQuadVectorVar<long,vtkLongArray>(qv);
     else if(qv->datatype == DB_INT)
         vectors = CopyQuadVectorVar<int,vtkIntArray>(qv);
     else if(qv->datatype == DB_SHORT)
@@ -6794,6 +6925,9 @@ avtSiloFileFormat::GetQuadVectorVar(DBfile *dbfile, const char *vname,
 //    Mark C. Miller, Tue Oct 20 16:50:41 PDT 2009
 //    Made it static.
 //   
+//    Kathleen Bonnell, Thu May  6 15:36:11 PDT 2010
+//    Fix error in vector dimensionality test.
+//
 // ****************************************************************************
 
 template <typename T, typename Tarr>
@@ -6805,7 +6939,7 @@ CopyPointVectorVar(const DBmeshvar *mv)
     vectors->SetNumberOfTuples(mv->nels);
     const T *v1 = ((const T**)mv->vals)[0];
     const T *v2 = ((const T**)mv->vals)[1];
-    if(mv->nels == 3)
+    if(mv->nvals == 3)
     {
         const T *v3 = ((const T**)mv->vals)[2];
         for (int i = 0 ; i < mv->nels ; i++)
@@ -6847,6 +6981,8 @@ CopyPointVectorVar(const DBmeshvar *mv)
 //    Brad Whitlock, Thu Aug  6 14:55:49 PDT 2009
 //    I added support for non-float data types.
 //
+//    Mark C. Miller, Tue Jul 20 19:21:34 PDT 2010
+//    Added support for LONG LONG types.
 // ****************************************************************************
 
 vtkDataArray *
@@ -6872,6 +7008,14 @@ avtSiloFileFormat::GetPointVectorVar(DBfile *dbfile, const char *vname)
         vectors = CopyPointVectorVar<double,vtkDoubleArray>(mv);
     else if(mv->datatype == DB_FLOAT)
         vectors = CopyPointVectorVar<float,vtkFloatArray>(mv);
+#ifdef SILO_VERSION_GE
+#if SILO_VERSION_GE(4,8,0)
+    else if(mv->datatype == DB_LONG_LONG)
+        vectors = CopyPointVectorVar<long long,vtkLongLongArray>(mv);
+#endif
+#endif
+    else if(mv->datatype == DB_LONG)
+        vectors = CopyPointVectorVar<long,vtkLongArray>(mv);
     else if(mv->datatype == DB_INT)
         vectors = CopyPointVectorVar<int,vtkIntArray>(mv);
     else if(mv->datatype == DB_SHORT)
@@ -7097,6 +7241,10 @@ avtSiloFileFormat::GetMeshHelper(int *_domain, const char *m, DBmultimesh **_mm,
 //
 //    Mark C. Miller, Mon Nov  9 10:42:13 PST 2009
 //    Added dontForceSingle to call to BuildDomainAux... for AMR cases.
+//
+//    Cyrus Harrison, Fri Mar 26 09:07:59 PDT 2010
+//    Resolve mesh type before constructing amr domain boundries.
+//
 // ****************************************************************************
 
 vtkDataSet *
@@ -7123,10 +7271,33 @@ avtSiloFileFormat::GetMesh(int domain, const char *m)
     }
     else if (type==DB_QUADMESH || type==DB_QUAD_RECT || type==DB_QUAD_CURV)
     {
-        if (metadata->GetMesh(m)->meshType == AVT_AMR_MESH)
-            BuildDomainAuxiliaryInfoForAMRMeshes(dbfile, mm, m, timestep, type,
-                cache, dontForceSingle);
+
+        // We need to wait to create domain boundries until after we obtain
+        // the actual mesh so we know if it is rectilinear or curvilinear.
+
         rv = GetQuadMesh(domain_file, directory_mesh, domain);
+
+        // DB_QUADMESH won't cut it for the call to BuildDomainAuxiliaryInfoForAMRMeshes
+        // we need DB_QUAD_RECT or DB_QUAD_CURV to be able to create the proper domain
+        // boundries.
+        //
+        // Resolve this using the type of the newly created mesh.
+        //
+        if (rv != NULL && metadata->GetMesh(m)->meshType == AVT_AMR_MESH)
+        {
+            int true_type = type;
+            if(type == DB_QUADMESH)
+            {
+                if(rv->IsA("vtkRectilinearGrid"))
+                    true_type  = DB_QUAD_RECT;
+                else
+                    true_type  = DB_QUAD_CURV;
+            }
+
+            BuildDomainAuxiliaryInfoForAMRMeshes(dbfile, mm, m, timestep,
+                                                 true_type, cache,
+                                                 dontForceSingle);
+        }
     }
     else if (type == DB_POINTMESH)
     {
@@ -7158,7 +7329,7 @@ avtSiloFileFormat::GetMesh(int domain, const char *m)
 }
 
 // ****************************************************************************
-// Method: CreateDataArray
+// Function: CreateDataArray
 //
 // Purpose: 
 //   Creates a vtkDataArray suitable for the given Silo type. Also return the
@@ -7224,7 +7395,7 @@ CreateDataArray(int silotype, void *data, int numvals)
         break;
     }
 #ifdef SILO_VERSION_GE
-#if SILO_VERSION_GE(4,7,1)
+#if SILO_VERSION_GE(4,8,0)
     case DB_LONG_LONG:
     {
         vtkLongLongArray *d = vtkLongLongArray::New();
@@ -7270,6 +7441,8 @@ CreateDataArray(int silotype, void *data, int numvals)
 //
 // Modifications:
 //   
+//    Mark C. Miller, Tue Jul 20 19:21:34 PDT 2010
+//    Added support for LONG LONG types.
 // ****************************************************************************
 
 static float *
@@ -7293,6 +7466,17 @@ ConvertToFloat(int silotype, void *data, int nels)
             retval[i] = (float)ptr[i];
         }
         break;
+#ifdef SILO_VERSION_GE
+#if SILO_VERSION_GE(4,8,0)
+    case DB_LONG_LONG:
+        { const long long *ptr = (const long long *)data;
+        retval = new float[nels];
+        for(int i = 0; i < nels; ++i)
+            retval[i] = (float)ptr[i];
+        }
+        break;
+#endif
+#endif
     case DB_LONG:
         { const long *ptr = (const long *)data;
         retval = new float[nels];
@@ -7376,6 +7560,9 @@ ConvertToFloat(int silotype, void *data, int nels)
 //
 //    Mark C. Miller, Mon Oct 19 20:25:08 PDT 2009
 //    Replaced skipping logic with remapping logic.
+//
+//    Mark C. Miller, Tue Jul 20 19:21:34 PDT 2010
+//    Added support for LONG LONG types.
 // ****************************************************************************
 
 vtkDataArray *
@@ -7419,6 +7606,14 @@ avtSiloFileFormat::GetUcdVar(DBfile *dbfile, const char *vname,
         scalars = CopyUcdVar<double,vtkDoubleArray>(uv, *remap);
     else if(uv->datatype == DB_FLOAT)
         scalars = CopyUcdVar<float,vtkFloatArray>(uv, *remap);
+#ifdef SILO_VERSION_GE
+#if SILO_VERSION_GE(4,8,0)
+    else if(uv->datatype == DB_LONG_LONG)
+        scalars = CopyUcdVar<long long,vtkLongLongArray>(uv, *remap);
+#endif
+#endif
+    else if(uv->datatype == DB_LONG)
+        scalars = CopyUcdVar<long,vtkLongArray>(uv, *remap);
     else if(uv->datatype == DB_INT)
         scalars = CopyUcdVar<int,vtkIntArray>(uv, *remap);
     else if(uv->datatype == DB_SHORT)
@@ -7503,6 +7698,9 @@ avtSiloFileFormat::GetUcdVar(DBfile *dbfile, const char *vname,
 //
 //    Mark C. Miller, Tue Jan 12 17:50:52 PST 2010
 //    Use CreateDataArray.
+//
+//    Mark C. Miller, Tue Jul 20 19:21:34 PDT 2010
+//    Added support for LONG LONG types.
 // ****************************************************************************
 
 template <class T>
@@ -7564,6 +7762,14 @@ avtSiloFileFormat::GetQuadVar(DBfile *dbfile, const char *vname,
         int nz = qv->ndims == 3 ? qv->dims[2] : 1;
         if (qv->datatype == DB_DOUBLE)
             CopyAndReorderQuadVar((double *) var2, nx, ny, nz, var);
+        else if (qv->datatype == DB_LONG)
+            CopyAndReorderQuadVar((long *) var2, nx, ny, nz, var);
+#ifdef SILO_VERSION_GE
+#if SILO_VERSION_GE(4,8,0)
+        else if (qv->datatype == DB_LONG_LONG)
+            CopyAndReorderQuadVar((long long *) var2, nx, ny, nz, var);
+#endif
+#endif
         else if (qv->datatype == DB_LONG)
             CopyAndReorderQuadVar((long *) var2, nx, ny, nz, var);
         else if (qv->datatype == DB_INT)
@@ -7792,6 +7998,9 @@ CopyUnstructuredMeshCoordinates(T *pts, const DBucdmesh *um)
 //    Mark C. Miller, Wed Jan 27 13:14:03 PST 2010
 //    Added extra level of indirection to arbMeshXXXRemap objects to handle
 //    multi-block case.
+//
+//    Mark C. Miller, Tue Jul 20 19:21:34 PDT 2010
+//    Added support for LONG LONG types.
 // ****************************************************************************
 
 #ifdef SILO_VERSION_GE
@@ -7850,7 +8059,7 @@ avtSiloFileFormat::HandleGlobalZoneIds(const char *meshname, int domain,
     else if (tmp.datatype == DB_LONG)
         arr = CopyUcdVar<long,vtkLongArray>(&tmp, *remap);
 #ifdef SILO_VERSION_GE
-#if SILO_VERSION_GE(4,7,1)
+#if SILO_VERSION_GE(4,8,0)
     else if (tmp.datatype == DB_LONG_LONG)
         arr = CopyUcdVar<long long,vtkLongLongArray>(&tmp, *remap);
 #endif
@@ -7864,6 +8073,138 @@ avtSiloFileFormat::HandleGlobalZoneIds(const char *meshname, int domain,
     void_ref_ptr vr = void_ref_ptr(arr, avtVariableCache::DestructVTKObject);
     cache->CacheVoidRef(meshname, AUXILIARY_DATA_GLOBAL_ZONE_IDS, timestep, 
         domain, vr);
+}
+
+// ****************************************************************************
+//  Method: avtSiloFileFormat::RemapFacelistForPolyhedronZones
+//
+//  Purpose:
+//      Correct the zoneno array in a facelist where the associated
+//      zonelist has polyhedral elements that will get split up into zoo
+//      elements.
+//
+//  Arguments:
+//      sfl       The Silo facelist object to correct.
+//      szl       The Silo zonelist object associated with the facelist.
+//
+//  Programmer:   Eric Brugger
+//  Creation:     May 27, 2010
+//
+//  Modifications:
+//      Eric Brugger, Fri May 28 12:11:37 PDT 2010
+//      I added a test to check if either the facelist or zonelist are NULL
+//      and return if so.  Either one can be NULL and it is still a valid
+//      Silo unstructured mesh.
+//
+// ****************************************************************************
+
+void
+avtSiloFileFormat::RemapFacelistForPolyhedronZones(DBfacelist *sfl,
+    DBzonelist *szl)
+{
+    //
+    // If either the facelist or zonelist is NULL, return.  Either one
+    // can be NULL and it i s a valid mesh.
+    //
+    if (sfl == 0 || szl == 0)
+        return;
+
+    //
+    // Check if the facelist needs remapping and if not return.
+    //
+    bool needsRemapping = false;
+    for (int i = 0 ; i < szl->nshapes ; i++)
+    {
+        if (szl->shapetype[i] == DB_ZONETYPE_POLYHEDRON)
+        {
+            needsRemapping = true;
+            break;
+        }
+    }
+    if (!needsRemapping)
+        return;
+
+    //
+    // Form the remap array for the normal zones.
+    //
+    int nfaces = sfl->nfaces;
+    int *zoneno = sfl->zoneno;
+
+    int nzones = szl->nzones;
+    int *remap = new int[nzones];
+
+    int iremap = 0, inewzoneno = 0;
+    for (int i = 0 ; i < szl->nshapes ; i++)
+    {
+        const int shapecnt = szl->shapecnt[i];
+        const int shapesize = szl->shapesize[i];
+        const int shapetype = szl->shapetype[i];
+        if (shapetype != DB_ZONETYPE_POLYHEDRON)
+        {
+            for (int j = 0; j < shapecnt; j++)
+            {
+                remap[iremap++] = inewzoneno;
+                inewzoneno++;
+            }
+        }
+        else
+        {
+            iremap += shapecnt;
+        }
+    }
+
+    //
+    // Form the remap array for the polyhedral zones.
+    //
+    int izonelist = 0;
+    int *zonelist = szl->nodelist;
+    iremap = 0;
+    for (int i = 0 ; i < szl->nshapes ; i++)
+    {
+        const int shapecnt = szl->shapecnt[i];
+        const int shapesize = szl->shapesize[i];
+        const int shapetype = szl->shapetype[i];
+        if (shapetype == DB_ZONETYPE_POLYHEDRON)
+        {
+            for (int j = 0; j < shapecnt; j++)
+            {
+                remap[iremap++] = inewzoneno;
+
+                const int nfaces = zonelist[izonelist++];
+                for (int k = 0; k < nfaces; k++)
+                {
+                    const int nnodes = zonelist[izonelist];
+                    izonelist += nnodes + 1;
+                    if (nnodes < 5)
+                        inewzoneno++;
+                    else
+                        inewzoneno += nnodes - 4 + 1;
+                }
+            }
+        }
+        else
+        {
+            izonelist += shapecnt * shapesize;
+            iremap += shapecnt;
+        }
+    }
+
+    //
+    // Remap the zoneno array.
+    //
+    int *zoneno2 = new int[nfaces];
+
+    for (int i = 0; i < nfaces; i++)
+    {
+         zoneno2[i] = remap[zoneno[i]];
+    }
+    for (int i = 0; i < nfaces; i++)
+    {
+         zoneno[i] = zoneno2[i];
+    }
+
+    delete [] remap;
+    delete [] zoneno2;
 }
 
 // ****************************************************************************
@@ -7966,6 +8307,12 @@ avtSiloFileFormat::HandleGlobalZoneIds(const char *meshname, int domain,
 //    Mark C. Miller, Tue Jan 12 17:53:17 PST 2010
 //    Use CreateDataArray for global node numbers and handle long long case
 //    as well. Vary interface to HandleGlobalZoneIds for versions of Silo. 
+//
+//    Eric Brugger, Thu May 27 16:00:03 PDT 2010
+//    I added a call to a newly written method that remaps the zoneno
+//    array of a Silo facelist object when the zonelist associated with the
+//    facelist has polyhedral elements.
+//
 // ****************************************************************************
 
 vtkDataSet *
@@ -8026,6 +8373,10 @@ avtSiloFileFormat::GetUnstructuredMesh(DBfile *dbfile, const char *mn,
     if (um->faces != NULL && um->ndims == 3)
     {
         DBfacelist *sfl = um->faces;
+        DBzonelist *szl = um->zones;
+
+        RemapFacelistForPolyhedronZones(sfl, szl);
+
         fl = new avtFacelist(sfl->nodelist, sfl->lnodelist,
                              sfl->nshapes, sfl->shapecnt, sfl->shapesize,
                              sfl->zoneno, sfl->origin);
@@ -8241,6 +8592,10 @@ MakePHZonelistFromZonelistArbFragment(const int *nl, int shapecnt)
 //    Mark C. Miller, Wed Jan 27 13:14:03 PST 2010
 //    Added extra level of indirection to arbMeshXXXRemap objects to handle
 //    multi-block case.
+//
+//    Mark C. Miller, Tue Apr 13 18:00:45 PDT 2010
+//    When handling 2D arbitrary polygons, if its 3 or 4 nodes, call it a
+//    triangle or quad instead of leaving it as a polygon.
 // ****************************************************************************
 
 void
@@ -8375,7 +8730,6 @@ avtSiloFileFormat::ReadInConnectivity(vtkUnstructuredGrid *ugrid,
             bool firstTet = true;
             for (j = 0 ; j < shapecnt ; j++, zoneIndex++)
             {
-                *ct++ = effective_vtk_zonetype;
                 *cl++ = currentIndex;
 
                 if (vtk_zonetype != VTK_WEDGE &&
@@ -8400,6 +8754,11 @@ avtSiloFileFormat::ReadInConnectivity(vtkUnstructuredGrid *ugrid,
                         *nl++ = shapesize;
                         for (k = 0 ; k < shapesize ; k++)
                             *nl++ = *(nodelist+k) - origin;
+                        /* correct stored cell type if its really a tri or quad */
+                        if (shapesize == 3)
+                            effective_vtk_zonetype = VTK_TRIANGLE;
+                        else if (shapesize == 4)
+                            effective_vtk_zonetype = VTK_QUAD;
                     }
                     else
                     {
@@ -8408,6 +8767,11 @@ avtSiloFileFormat::ReadInConnectivity(vtkUnstructuredGrid *ugrid,
                         for (k = 0 ; k < ss; k++)
                             *nl++ = *(nodelist+k+1) - origin;
                         nodelist += ss+1;
+                        /* correct stored cell type if its really a tri or quad */
+                        if (ss == 3)
+                            effective_vtk_zonetype = VTK_TRIANGLE;
+                        else if (ss == 4)
+                            effective_vtk_zonetype = VTK_QUAD;
                         effective_shapesize = ss;
                     }
                 }
@@ -8479,6 +8843,7 @@ avtSiloFileFormat::ReadInConnectivity(vtkUnstructuredGrid *ugrid,
                         *nl++ = *(nodelist+k);
                 }
 
+                *ct++ = effective_vtk_zonetype;
                 nodelist += shapesize;
                 currentIndex += effective_shapesize+1;
             }
@@ -8665,21 +9030,33 @@ avtSiloFileFormat::ReadInConnectivity(vtkUnstructuredGrid *ugrid,
     }
 }
 
+// ****************************************************************************
+//  Function: QuadFaceIsTwisted
+//
+//  Purpose: Use goemetric shape to determine if a Quadrilateral is twisted.
+//
+//  Programmer: Mark C. Miller, Mon Jul 26 23:11:56 PDT 2010
+//
+//  Modifications:
+//
+//    Mark C. Miller, Mon Jul 26 23:13:06 PDT 2010
+//    Replaced assumption of float data with GetTuple, converting all to
+//    double for purposes of the computation performed here. This is necessary
+//    as newer versions of the Silo plugin can serve up arbitrary type.
+// ****************************************************************************
+
 static bool
 QuadFaceIsTwisted(vtkUnstructuredGrid *ugrid, int *nids)
 {
     int i, j;
 
     //
-    // initialize set of 4 points of quad
+    // initialize set of 4 points of tet
     //
-    float *pts = (float *) ugrid->GetPoints()->GetVoidPointer(0); 
-    float p[4][3];
-    for (i = 0; i < 4; i++)
-    {
-        for (j = 0; j < 3; j++)
-            p[i][j] = pts[3*nids[i] + j];
-    }
+    vtkDataArray *pda = ugrid->GetPoints()->GetData();
+    double p[4][3];
+    for (int i = 0; i < 4; i++)
+        pda->GetTuple(nids[i], p[i]);
 
     // Walk around quad, computing inner product of two edge vectors.
     // You can have at most 2 negative inner products. If it is twisted,
@@ -8688,8 +9065,8 @@ QuadFaceIsTwisted(vtkUnstructuredGrid *ugrid, int *nids)
     // each inner product will be near zero but randomly to either
     // side of it. So, we compare the inner product magnitude to
     // an average of the two vector magnitudes and consider the
-    // inner product sign only when it is sufficiently. There is
-    // somewhat an assumption of planarity here. However, for near
+    // inner product sign only when it is sufficiently large. There is
+    // somewhat of an assumption of planarity here. However, for near
     // planar quads, the algorithm is expected to still work as the
     // off-plane components that can skew the inner product are
     // expected to be small. For very much non planar quads, this
@@ -8697,13 +9074,13 @@ QuadFaceIsTwisted(vtkUnstructuredGrid *ugrid, int *nids)
     int numNegiProds = 0;
     for (i = 0; i < 4; i++)
     {
-        float dotsum = 0.0;
-        float mag1sum = 0.0;
-        float mag2sum = 0.0;
+        double dotsum = 0.0;
+        double mag1sum = 0.0;
+        double mag2sum = 0.0;
         for (j = 0; j < 3; j++)
         {
-            float v1j = p[(i+1)%4][j] - p[(i+0)%4][j];
-            float v2j = p[(i+2)%4][j] - p[(i+1)%4][j];
+            double v1j = p[(i+1)%4][j] - p[(i+0)%4][j];
+            double v2j = p[(i+2)%4][j] - p[(i+1)%4][j];
             mag1sum += v1j*v1j;
             mag2sum += v2j*v2j;
             dotsum += v1j * v2j;
@@ -9064,6 +9441,10 @@ ArbInsertArbitrary(vtkUnstructuredGrid *ugrid, DBphzonelist *phzl, int gz,
 //    Mark C. Miller, Wed Jan 27 13:14:03 PST 2010
 //    Added extra level of indirection to arbMeshXXXRemap objects to handle
 //    multi-block case.
+//
+//    Mark C. Miller, Mon Mar 29 17:28:33 PDT 2010
+//    Fixed cut-n-paste error where arbMeshCellReMap entry was NOT erased
+//    at the end of this routine if no new points were inserted.
 // ****************************************************************************
 void
 avtSiloFileFormat::ReadInArbConnectivity(const char *meshname,
@@ -9343,7 +9724,7 @@ avtSiloFileFormat::ReadInArbConnectivity(const char *meshname,
     {
         ugrid->GetCellData()->RemoveArray("avtOriginalCellNumbers");
         arbMeshNodeReMap.find(meshname)->second.erase(domain);
-        arbMeshNodeReMap.find(meshname)->second.erase(domain);
+        arbMeshCellReMap.find(meshname)->second.erase(domain);
         delete cellReMap;
         delete nodeReMap;
     }
@@ -9798,6 +10179,8 @@ CreateCurve(DBcurve *cur, const char *curvename, int vtkType)
 //    Brad Whitlock, Thu Aug  6 12:15:50 PDT 2009
 //    Use templates.
 //
+//    Mark C. Miller, Tue Jul 20 19:21:34 PDT 2010
+//    Added support for LONG LONG types.
 // ****************************************************************************
 
 vtkDataSet *
@@ -9825,6 +10208,14 @@ avtSiloFileFormat::GetCurve(DBfile *dbfile, const char *cn)
         rg = CreateCurve<float,vtkFloatArray>(cur, curvename, VTK_FLOAT);
     else if (cur->datatype == DB_DOUBLE)
         rg = CreateCurve<double,vtkDoubleArray>(cur, curvename, VTK_DOUBLE);
+#ifdef SILO_VERSION_GE
+#if SILO_VERSION_GE(4,8,0)
+    else if (cur->datatype == DB_LONG_LONG)
+        rg = CreateCurve<long long,vtkLongLongArray>(cur, curvename, VTK_LONG_LONG);
+#endif
+#endif
+    else if (cur->datatype == DB_LONG)
+        rg = CreateCurve<long,vtkLongArray>(cur, curvename, VTK_LONG);
     else if (cur->datatype == DB_INT)
         rg = CreateCurve<int,vtkIntArray>(cur, curvename, VTK_INT);
     else if (cur->datatype == DB_SHORT)
@@ -12788,6 +13179,32 @@ void avtSiloFileFormat::RemoveMultimatspec(DBmultimatspecies *ms)
 }
 
 // ****************************************************************************
+//  Function: CheckForTimeVaryingMetadata
+//
+//  Purpose:
+//      Checks the existance & value of the flag 'MetadataIsTimeVarying'
+//      to determine if the metadata & sil potentially change between
+//      time steps.
+//
+//  Programmer: Cyrus Harrison
+//  Creation:   Mon Jun 14 15:30:11 PDT 2010
+//
+//  Modifications:
+//
+// ****************************************************************************
+void
+avtSiloFileFormat::CheckForTimeVaryingMetadata(DBfile *toc)
+{
+    if (DBInqVarExists(toc, "MetadataIsTimeVarying"))
+    {
+        int mdFlag;
+        DBReadVar(toc, "MetadataIsTimeVarying", &mdFlag);
+        if (mdFlag == 1)
+            metadataIsTimeVarying = true;
+    }
+}
+
+// ****************************************************************************
 //  Function: ExceptionGenerator
 //
 //  Purpose:
@@ -13249,6 +13666,12 @@ TranslateSiloTetrahedronToVTKTetrahedron(const int *siloTetrahedron,
 //  Programmer:  Mark C. Miller 
 //  Creation:    March 21, 2007 
 //
+//  Modifications:
+//
+//    Mark C. Miller, Mon Jul 26 23:13:06 PDT 2010
+//    Replaced assumption of float data with GetTuple, converting all to
+//    double for purposes of the computation performed here. This is necessary
+//    as newer versions of the Silo plugin can serve up arbitrary type.
 // ****************************************************************************
 
 bool
@@ -13257,20 +13680,17 @@ TetIsInverted(const int *siloTetrahedron, vtkUnstructuredGrid *ugrid)
     //
     // initialize set of 4 points of tet
     //
-    float *pts = (float *) ugrid->GetPoints()->GetVoidPointer(0); 
-    float p[4][3];
+    vtkDataArray *pda = ugrid->GetPoints()->GetData();
+    double p[4][3];
     for (int i = 0; i < 4; i++)
-    {
-        for (int j = 0; j < 3; j++)
-            p[i][j] = pts[3*siloTetrahedron[i] + j];
-    }
+        pda->GetTuple(siloTetrahedron[i], p[i]);
 
     //
     // Compute a vector normal to plane of first 3 points
     //
-    float n1[3] = {p[1][0] - p[0][0], p[1][1] - p[0][1], p[1][2] - p[0][2]};
-    float n2[3] = {p[2][0] - p[0][0], p[2][1] - p[0][1], p[2][2] - p[0][2]};
-    float n1Xn2[3] = {  n1[1]*n2[2] - n1[2]*n2[1],
+    double n1[3] = {p[1][0] - p[0][0], p[1][1] - p[0][1], p[1][2] - p[0][2]};
+    double n2[3] = {p[2][0] - p[0][0], p[2][1] - p[0][1], p[2][2] - p[0][2]};
+    double n1Xn2[3] = {  n1[1]*n2[2] - n1[2]*n2[1],
                       -(n1[0]*n2[2] - n1[2]*n2[0]),
                         n1[0]*n2[1] - n1[1]*n2[0]};
     
@@ -13280,8 +13700,8 @@ TetIsInverted(const int *siloTetrahedron, vtkUnstructuredGrid *ugrid)
     // product should be negative. If it is not negative, then tets
     // are inverted
     //
-    float n3[3] = {p[3][0] - p[0][0], p[3][1] - p[0][1], p[3][2] - p[0][2]};
-    float n3Dotn1Xn2 = n3[0]*n1Xn2[0] + n3[1]*n1Xn2[1] + n3[2]*n1Xn2[2];
+    double n3[3] = {p[3][0] - p[0][0], p[3][1] - p[0][1], p[3][2] - p[0][2]};
+    double n3Dotn1Xn2 = n3[0]*n1Xn2[0] + n3[1]*n1Xn2[1] + n3[2]*n1Xn2[2];
 
     if (n3Dotn1Xn2 > 0)
         return true;
@@ -14078,6 +14498,14 @@ HandleMrgtreeForMultimesh(DBfile *dbfile, DBmultimesh *mm, const char *multimesh
 //
 //    Mark C. Miller, Wed Jan 20 16:35:37 PST 2010
 //    Made calls to ForceSingle on and off UNconditional.
+//
+//    Cyrus Harrison, Mon Mar 22 15:07:25 PDT 2010
+//    Use curvi domain boundries if db_mesh_type == DB_QUADMESH.
+//
+//    Cyrus Harrison, Mon Mar 22 15:07:25 PDT 2010
+//    This function requires db_mesh_type to be either DB_QUAD_RECT or DB_QUAD_CURV
+//    (DB_QUADMESH is ambiguous).
+//
 // ****************************************************************************
 static void
 BuildDomainAuxiliaryInfoForAMRMeshes(DBfile *dbfile, DBmultimesh *mm,
@@ -14303,15 +14731,27 @@ BuildDomainAuxiliaryInfoForAMRMeshes(DBfile *dbfile, DBmultimesh *mm,
     bool canComputeNeighborsFromExtents = true;
     avtStructuredDomainBoundaries *sdb = 0;
 
-    if (db_mesh_type == DB_QUAD_CURV)
+    if (db_mesh_type == DB_QUAD_RECT)
+    {
+        sdb = new avtRectilinearDomainBoundaries(canComputeNeighborsFromExtents);
+        debug5 << "using rectilinear boundaries" << endl;
+    }
+    else if(db_mesh_type == DB_QUAD_CURV)
     {
         sdb = new avtCurvilinearDomainBoundaries(canComputeNeighborsFromExtents);
         debug5 << "using curvilinear boundaries" << endl;
     }
     else
     {
-        sdb = new avtRectilinearDomainBoundaries(canComputeNeighborsFromExtents);
-        debug5 << "using rectilinear boundaries" << endl;
+        // DB_QUADMESH is ambiguous in this case, we need either
+        //  DB_QUAD_RECT or DB_QUAD_CURV.
+        //  throw an exception if we end up here to warn a developer.
+        ostringstream oss;
+        oss << "Could not determine coordinate type for AMR mesh=\""
+            << meshName << "\".\n"
+            << "Expected: QB_QUAD_RECT (DB_COLLINEAR) or "
+            << "DB_QUAD_CURV (DB_NONCOLLINEAR).";
+        EXCEPTION1(ImproperUseException, oss.str().c_str());
     }
 
     sdb->SetNumDomains(num_patches);

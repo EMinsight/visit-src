@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -56,6 +56,10 @@
 //  Programmer: Hank Childs
 //  Creation:   March 17, 2005
 //
+//  Modifications:
+//
+//    Mark C. Miller, Fri Apr 23 23:32:27 PDT 2010
+//    Added tdata and dataType.
 // ****************************************************************************
 
 class vtkStimulateReader : public vtkImageReader2
@@ -81,6 +85,7 @@ public:
 
 
 protected:
+  enum dtype {UCHAR, SHORT, INT, FLOAT};
   void ExecuteInformation();
   void ExecuteData(vtkDataObject *);
   virtual int OpenFile(void);
@@ -92,6 +97,7 @@ private:
   int      dims[2];
   float    origin[2];
   float    step[2];
+  dtype    dataType;
 
   vtkStimulateReader(const vtkStimulateReader&);  // Not implemented.
   void operator=(const vtkStimulateReader&);  // Not implemented.

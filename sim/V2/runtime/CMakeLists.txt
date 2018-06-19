@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-400142
 # All rights reserved.
@@ -42,10 +42,27 @@ SET(LIBSIM_RUNTIME_SOURCES
 VisItControlInterfaceRuntime.C 
 VisItDataInterfaceRuntime.C 
 VisItDataInterfaceRuntimeP.C 
-VisItDataInterface_V2P.C 
-simv2_DomainBoundaries.C 
+simv2_CommandMetaData.C
+simv2_CurveData.C
+simv2_CurveMetaData.C
+simv2_CurvilinearMesh.C
+simv2_CSGMesh.C
+simv2_DomainBoundaries.C
+simv2_DomainList.C 
 simv2_DomainNesting.C
+simv2_ExpressionMetaData.C
+simv2_MaterialData.C
+simv2_MaterialMetaData.C
+simv2_MeshMetaData.C
+simv2_NameList.C
+simv2_PointMesh.C
+simv2_RectilinearMesh.C
+simv2_SimulationMetaData.C
+simv2_SpeciesData.C
+simv2_SpeciesMetaData.C
+simv2_UnstructuredMesh.C
 simv2_VariableData.C
+simv2_VariableMetaData.C
 )
 
 INCLUDE_DIRECTORIES(
@@ -97,12 +114,9 @@ ADD_LIBRARY(simV2runtime_ser ${LIBSIM_RUNTIME_SOURCES})
 TARGET_LINK_LIBRARIES(simV2runtime_ser
     engine_ser
 )
-#IF(NOT APPLE)
-#    SET_TARGET_PROPERTIES(simV2runtime_ser PROPERTIES
-#        BUILD_WITH_INSTALL_RPATH ON
-#        INSTALL_RPATH ${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}
-#    )
-#ENDIF(NOT APPLE)
+IF(NOT APPLE)
+    SET_TARGET_PROPERTIES(simV2runtime_ser PROPERTIES INSTALL_RPATH "$ORIGIN")
+ENDIF(NOT APPLE)
 
 VISIT_INSTALL_TARGETS(simV2runtime_ser)
 
@@ -111,12 +125,9 @@ IF(VISIT_PARALLEL)
     TARGET_LINK_LIBRARIES(simV2runtime_par
         engine_par
     )
-#    IF(NOT APPLE)
-#        SET_TARGET_PROPERTIES(simV2runtime_par PROPERTIES
-#            BUILD_WITH_INSTALL_RPATH ON
-#            INSTALL_RPATH ${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}
-#        )
-#    ENDIF(NOT APPLE)
+    IF(NOT APPLE)
+        SET_TARGET_PROPERTIES(simV2runtime_par PROPERTIES INSTALL_RPATH "$ORIGIN")
+    ENDIF(NOT APPLE)
 
     VISIT_INSTALL_TARGETS(simV2runtime_par)
 ENDIF(VISIT_PARALLEL)

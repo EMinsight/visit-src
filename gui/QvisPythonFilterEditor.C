@@ -2,7 +2,7 @@
 *
 * Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -51,6 +51,7 @@
 #include <visit-config.h>
 #include <sstream>
 #include <Environment.h>
+#include <InstallationFunctions.h>
 
 #include <iostream>
 using namespace std;
@@ -147,7 +148,6 @@ QvisPythonFilterEditor::~QvisPythonFilterEditor()
 QString
 QvisPythonFilterEditor::getSource(bool escape)
 {
-    // TODO test escape
     QString res = editor->toPlainText();
     res = res.trimmed() + QString("\n");
 
@@ -155,6 +155,7 @@ QvisPythonFilterEditor::getSource(bool escape)
     {
         res.replace(QString("\""),QString("\\\""));
         res.replace(QString("\n"),QString("\\n"));
+        res.replace(QString(" "),QString("\\s"));
     }
 
     return res;
@@ -182,6 +183,7 @@ QvisPythonFilterEditor::setSource(const QString &py_script, bool escaped)
         QString res = py_script;
         res.replace(QString("\\\""),QString("\""));
         res.replace(QString("\\n"),QString("\n"));
+        res.replace(QString("\\s"),QString(" "));
         editor->setText(res);
     }
     else
@@ -258,6 +260,9 @@ QvisPythonFilterEditor::loadScript(const QString &py_script)
 // Creation:   Thu Feb 11 09:35:54 PST 2010
 //
 // Modifications:
+//   Cyrus Harrison, Fri May 21 09:51:44 PDT 2010
+//   Added 'All Files' to the filter, to support scripts without a '.py'
+//   extension.
 //
 // ****************************************************************************
 
@@ -268,7 +273,8 @@ QvisPythonFilterEditor::cmdSaveClick()
                            + "/" + QString("visit_filter.py");
 
     // Get the name of the file that the user saved.
-    QString filter(tr("Python Script File") +  QString(" (*.py)"));
+    QString filter(tr("Python Script File") +  QString(" (*.py);;")
+                   + tr("All Files") + QString(" (*)"));
 
     QString res = QFileDialog::getSaveFileName(this,
                                                tr("Save Python Filter Script"),
@@ -288,6 +294,9 @@ QvisPythonFilterEditor::cmdSaveClick()
 // Creation:   Thu Feb 11 09:35:54 PST 2010
 //
 // Modifications:
+//   Cyrus Harrison, Fri May 21 09:51:44 PDT 2010
+//   Added 'All Files' to the filter, to support scripts without a '.py'
+//   extension.
 //
 // ****************************************************************************
 
@@ -296,7 +305,8 @@ QvisPythonFilterEditor::loadMenuEvent(QAction *action)
 {
     if(action == loadFile)
     {
-        QString filter(tr("Python Script File") +  QString(" (*.py)"));
+        QString filter(tr("Python Script File") +  QString(" (*.py);;")
+                       + tr("All Files") + QString(" (*)"));
         QString res = QFileDialog::getOpenFileName(this,
                                                    tr("Load Python Filter"),
                                                    QDir::current().path(),
@@ -320,13 +330,15 @@ QvisPythonFilterEditor::loadMenuEvent(QAction *action)
 // Creation:   Thu Feb 11 09:35:54 PST 2010
 //
 // Modifications:
+//   Kathleen Bonnell, Wed Mar 24 16:28:37 MST 2010
+//   Retrieve VISITARCHHOME via GetVisItArchitectureDirectory.
 //
 // ****************************************************************************
 
 QString
 QvisPythonFilterEditor::templateDirectory()
 {
-    QString res(Environment::get("VISITARCHHOME").c_str());
+    QString res(GetVisItArchitectureDirectory().c_str());
     res += QString(VISIT_SLASH_CHAR)
            + QString("lib")
            + QString(VISIT_SLASH_CHAR)

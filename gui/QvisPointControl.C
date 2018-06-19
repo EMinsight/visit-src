@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -42,8 +42,9 @@
 #include <QComboBox>
 #include <QLabel>
 #include <QLayout>
-#include <QLineEdit>
 #include <QRadioButton>
+
+#include <QNarrowLineEdit.h>
 #include <QvisVariableButton.h>
 
 #define POINT_TYPE_POINTS 3
@@ -70,8 +71,11 @@
 //    Brad Whitlock, Tue Apr  8 15:26:49 PDT 2008
 //    Support for internationalization.
 //
-//   Cyrus Harrison, Tue Jul  8 09:58:45 PDT 2008
-//   Initial Qt4 Port
+//    Cyrus Harrison, Tue Jul  8 09:58:45 PDT 2008
+//    Initial Qt4 Port
+//
+//    Allen Sanderson, Mon Mar  8 19:57:29 PST 2010
+//    Reorganize layout of widget.
 //
 // ****************************************************************************
 
@@ -90,15 +94,27 @@ QvisPointControl::QvisPointControl(QWidget *parent) :
     topLayout->setMargin(0);
     topLayout->setSpacing(10);
 
-    QString temp;
+    // Create the type combo box
+    topLayout->addWidget(new QLabel(tr("Point type"), this), 0, 0);
+
+    typeComboBox = new QComboBox(this);
+    typeComboBox->addItem(tr("Box"));
+    typeComboBox->addItem(tr("Axis"));
+    typeComboBox->addItem(tr("Icosahedron"));
+    typeComboBox->addItem(tr("Point"));
+    typeComboBox->addItem(tr("Sphere"));
+    connect(typeComboBox, SIGNAL(activated(int)),
+            this, SLOT(typeComboBoxChanged(int)));
+    topLayout->addWidget(typeComboBox, 0, 1);
+
     // Create the size label and line edit.
-    sizeLineEdit = new QLineEdit(this);
+    sizeLabel = new QLabel(tr("Point size"), this);
+    topLayout->addWidget(sizeLabel, 0, 2, Qt::AlignRight);
+
+    sizeLineEdit = new QNarrowLineEdit(this);
     connect(sizeLineEdit, SIGNAL(returnPressed()),
             this, SLOT(processSizeText()));
-    topLayout->addWidget(sizeLineEdit, 0, 1, 1, 2);
-    sizeLabel = new QLabel(tr("Point size"), this);
-    sizeLabel->setBuddy(sizeLabel);
-    topLayout->addWidget(sizeLabel, 0, 0);
+    topLayout->addWidget(sizeLineEdit, 0, 3);
 
     // Create the size variable check box and variable button.
     sizeVarToggle = new QCheckBox(tr("Scale point size by variable"), this);
@@ -111,18 +127,6 @@ QvisPointControl::QvisPointControl(QWidget *parent) :
     connect(sizeVarButton, SIGNAL(activated(const QString &)),
             this, SLOT(sizeVarChanged(const QString &)));
     topLayout->addWidget(sizeVarButton, 1, 2);
-
-    // Create the type combo box
-    typeComboBox = new QComboBox(this);
-    typeComboBox->addItem(tr("Box"));
-    typeComboBox->addItem(tr("Axis"));
-    typeComboBox->addItem(tr("Icosahedron"));
-    typeComboBox->addItem(tr("Point"));
-    typeComboBox->addItem(tr("Sphere"));
-    connect(typeComboBox, SIGNAL(activated(int)),
-            this, SLOT(typeComboBoxChanged(int)));
-    topLayout->addWidget(new QLabel(tr("Point Type"), this), 2, 0);
-    topLayout->addWidget(typeComboBox, 2, 1, 1, 2);
 
     SetPointSize(lastGoodSize);
     SetPointSizeVar(lastGoodVar);
@@ -621,6 +625,10 @@ void QvisPointControl::SetPointType(int type)
 //   Brad Whitlock, Tue Apr  8 15:26:49 PDT 2008
 //   Support for internationalization.
 //
+//   Allen Sanderson, Sun Mar  7 16:29:40 PST 2010
+//   Combine point type test ... we wanted an 'and', where the current test
+//   was just giving us a last one in.
+//
 // ****************************************************************************
 
 void
@@ -637,7 +645,7 @@ QvisPointControl::UpdatePointType()
         sizeLabel->setText(tr("Point size (pixels)"));
 
     sizeVarToggle->setEnabled(e);
-    sizeVarButton->setEnabled(sizeVarToggle->isChecked());
+    sizeVarButton->setEnabled(e && sizeVarToggle->isChecked());
 }
 
 // ****************************************************************************

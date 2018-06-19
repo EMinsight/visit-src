@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -53,7 +53,10 @@ class QTimer;
 class QVBoxLayout;
 class QvisFilePanel;
 class QvisNotepadArea;
+class QvisSourceManagerWidget;
 class QvisPlotManagerWidget;
+class QvisTimeSliderControlWidget;
+class QvisPostableMainWindow;
 class GlobalAttributes;
 class MessageAttributes;
 class PlotList;
@@ -219,6 +222,9 @@ class WindowInformation;
 //   Hide the Select File menu item when we're not in selected files mode.
 //   Big redesign, adding icons and functionality and shuffling arrangement.
 //
+//   Cyrus Harrison, Fri Mar 12 10:50:26 PST 2010
+//   More shuffling to provide better layouts. 
+//
 // ****************************************************************************
 
 class GUI_API QvisMainWindow : public QvisWindowBase, public SimpleObserver
@@ -343,10 +349,7 @@ private slots:
 
     void emitActivateOutputWindow();
 
-    void replacePlotsToggled(bool);
     void autoUpdateToggled(bool);
-    void applyOperatorToggled(bool);
-    void applySelectionToggled(bool);
 
     void winset(int);
     void winset2(QAction *);
@@ -360,21 +363,25 @@ private slots:
     void lockView();
     void unlockEverything();
 private:
-    void CreateMainContents(QWidget *parent, QSplitter *splitter, QVBoxLayout *L);
-    void CreateGlobalArea(QWidget *par);
+    void CreateMainContents(QSplitter *parent);
+    void CreateMainContents(QvisPostableMainWindow *win);
+    QWidget *CreateGlobalArea(QWidget *par);
     void UpdateFileMenuPopup(QMenu *, QAction *);
     void UpdateGlobalArea(bool doAll);
     void UpdateWindowList(bool doList);
     void UpdateWindowMenu(bool updateWindowNums);
     void UpdateCrashRecoveryTimer();
     void AddHelpMenu(void);
+    void SetDefaultSplitterSizes(int);
 
 private:
-    QSplitter                 *splitter;
-    QBoxLayout                *topLayout;
-    QvisFilePanel             *filePanel;
-    QvisPlotManagerWidget     *plotManager;
-    QvisNotepadArea           *notepad;
+    QSplitter                   *splitter;
+    QBoxLayout                  *topLayout;
+    QvisFilePanel               *filePanel;
+    QvisSourceManagerWidget     *sourceManager;
+    QvisTimeSliderControlWidget *tsControl;
+    QvisPlotManagerWidget       *plotManager;
+    QvisNotepadArea             *notepad;
 
     bool                      unreadOutputFlag;
     QPushButton               *outputButton;
@@ -384,10 +391,7 @@ private:
     QPixmap                   *openIcon;
 
     QComboBox                 *activeWindowComboBox;
-    QCheckBox                 *replacePlotsCheckBox;
     QCheckBox                 *autoUpdateCheckBox;
-    QCheckBox                 *applyOperatorCheckBox;
-    QCheckBox                 *applySelectionCheckBox;
 
     QMenu                     *filePopup;
     QAction                   *selFileAct;
@@ -413,7 +417,7 @@ private:
     QMenu                    *clearPopup;
     QAction                  *clearPopupAct;
     QMenu                    *lockPopup;
-    
+
     QAction                  *lockPopupAct;
     QAction                  *lockTimeAct;
     QAction                  *lockToolsAct;

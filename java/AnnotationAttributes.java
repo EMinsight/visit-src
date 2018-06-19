@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -56,7 +56,7 @@ package llnl.visit;
 
 public class AnnotationAttributes extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 20;
+    private static int AnnotationAttributes_numAdditionalAtts = 20;
 
     // Enum values
     public final static int GRADIENTSTYLE_TOPTOBOTTOM = 0;
@@ -79,7 +79,7 @@ public class AnnotationAttributes extends AttributeSubject
 
     public AnnotationAttributes()
     {
-        super(numAdditionalAttributes);
+        super(AnnotationAttributes_numAdditionalAtts);
 
         axes2D = new Axes2D();
         axes3D = new Axes3D();
@@ -105,7 +105,7 @@ public class AnnotationAttributes extends AttributeSubject
 
     public AnnotationAttributes(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(AnnotationAttributes_numAdditionalAtts + nMoreFields);
 
         axes2D = new Axes2D();
         axes3D = new Axes3D();
@@ -131,7 +131,7 @@ public class AnnotationAttributes extends AttributeSubject
 
     public AnnotationAttributes(AnnotationAttributes obj)
     {
-        super(numAdditionalAttributes);
+        super(AnnotationAttributes_numAdditionalAtts);
 
         axes2D = new Axes2D(obj.axes2D);
         axes3D = new Axes3D(obj.axes3D);
@@ -164,7 +164,7 @@ public class AnnotationAttributes extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return AnnotationAttributes_numAdditionalAtts;
     }
 
     public boolean equals(AnnotationAttributes obj)

@@ -45,8 +45,11 @@
 #include <DebugStream.h>
 #include <Environment.h>
 #include <StringHelpers.h>
+#include <InstallationFunctions.h>
 
 using namespace std;
+
+PythonInterpreter *avtPythonFilterEnvironment::pyi=NULL;
 
 // ****************************************************************************
 //  Method:  avtPythonFilterEnvironment constructor
@@ -54,12 +57,17 @@ using namespace std;
 //  Programmer:  Cyrus Harrison
 //  Creation:    Tue Feb  2 13:14:44 PST 2010
 //
+//  Modifications:
+//   Cyrus Harrison, Fri Jul  9 10:31:03 PDT 2010
+//   Init singleton instance of the python interpreter.
+//
 // ****************************************************************************
 
 avtPythonFilterEnvironment::avtPythonFilterEnvironment()
-: pyi(NULL), pyFilter(NULL)
+: pyFilter(NULL)
 {
-    pyi = new PythonInterpreter();
+    if(pyi == NULL)
+        pyi = new PythonInterpreter();
 }
 
 // ****************************************************************************
@@ -68,12 +76,18 @@ avtPythonFilterEnvironment::avtPythonFilterEnvironment()
 //  Programmer:  Cyrus Harrison
 //  Creation:    Tue Feb  2 13:14:44 PST 2010
 //
+//  Modifications:
+//   Cyrus Harrison, Fri Jul  9 10:31:03 PDT 2010
+//   Handle filter cleanup. This was previously done in the 'Shutdown'
+//   method, which was removed due to the singleton use of the python
+//   interpreter.
+//
 // ****************************************************************************
 
 avtPythonFilterEnvironment::~avtPythonFilterEnvironment()
 {
-    Shutdown();
-    delete pyi;
+    if(pyFilter)
+        delete pyFilter; // calls decref
 }
 
 
@@ -89,6 +103,11 @@ avtPythonFilterEnvironment::~avtPythonFilterEnvironment()
 //  Programmer:   Cyrus Harrison
 //  Creation:     Tue Feb  2 13:14:44 PST 2010
 //
+//  Modifications:
+//    Kathleen Bonnell, Wed Mar 24 16:17:23 MST 2010
+//    Retrieve VISITARCHHOME via GetVisItArchitectureDirectory.
+//    Remove slash from end of paths passed to AddSystemPath.
+//
 // ****************************************************************************
 
 bool
@@ -99,9 +118,10 @@ avtPythonFilterEnvironment::Initialize()
         return false;
     // setup pyavt env:
     // add system paths: $VISITARCHOME/lib & $VISITARCHOME/lib/site-packages
-    string varchdir = Environment::get("VISITARCHHOME");
-    string vlibdir = varchdir + VISIT_SLASH_CHAR + "lib" + VISIT_SLASH_CHAR;
-    string vlibsp  = vlibdir  + "site-packages" + VISIT_SLASH_CHAR;
+    string varchdir = GetVisItArchitectureDirectory();
+    string vlibdir = varchdir + VISIT_SLASH_CHAR + "lib";
+    string vlibsp  = vlibdir  + VISIT_SLASH_CHAR + "site-packages";
+
     if(!pyi->AddSystemPath(vlibdir))
         return false;
     if(!pyi->AddSystemPath(vlibsp)) // vtk module is symlinked here
@@ -196,25 +216,6 @@ avtPythonFilterEnvironment::LoadFilter(const string &py_script)
 
 
 // ****************************************************************************
-//  Method: avtPythonFilterEnvironment::Shutdown
-//
-//  Purpose:
-//      Cleanup python filter environment.
-//
-//  Programmer:   Cyrus Harrison
-//  Creation:     Tue Feb  2 13:14:44 PST 2010
-//
-// ****************************************************************************
-void
-avtPythonFilterEnvironment::Shutdown()
-{
-    if(pyFilter)
-        delete pyFilter; // calls decref
-    pyi->Shutdown();
-}
-
-
-// ****************************************************************************
 //  Method: avtPythonFilterEnvironment::WrapVTKObject
 //
 //  Purpose:
@@ -223,16 +224,26 @@ avtPythonFilterEnvironment::Shutdown()
 //  Programmer:   Cyrus Harrison
 //  Creation:     Tue Feb  2 13:14:44 PST 2010
 //
+//  Modifications:
+//    Kathleen Bonnell, Wed Mar 24 17:58:11 MST 2010
+//    Check for existence of '0x' at beginning of obj address before attempting
+//    to remove it.
+//
 // ****************************************************************************
 PyObject *
 avtPythonFilterEnvironment::WrapVTKObject(void *obj,
                                           const string &obj_type)
 {
     ostringstream oss;
+    string addy_str;
     // vtk constructor needs a string of the objects address.
     oss << (void *) obj;
     // remove 0x from front of string
-    string addy_str = oss.str().substr(2);
+
+    if (oss.str().substr(0, 2) == "0x")   
+        addy_str = oss.str().substr(2);
+    else 
+        addy_str = oss.str();
 
     if(!pyi->RunScript("_vtkobj = vtk." + obj_type + "('" + addy_str + "')\n"))
         return NULL;

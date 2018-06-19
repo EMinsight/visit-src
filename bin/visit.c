@@ -624,6 +624,9 @@ printf("=============\n");
  *   Kathleen Bonnell, Fri Feb 29 16:43:46 PST 2008 
  *   Only malloc keyval if it is null. 
  *
+ *   Kathleen Bonnell, Thu Jun 17 20:23:51 MST 2010
+ *   Location of VisIt's registry keys has changed to Software\Classes.
+ *
  *****************************************************************************/
 
 int
@@ -636,7 +639,7 @@ ReadKeyFromRoot(HKEY which_root, const char *key, char **keyval)
     /* 
      * Try and read the key from the system registry. 
      */
-    sprintf(regkey, "VISIT%s", VISIT_VERSION);
+    sprintf(regkey, "Software\\Classes\\VISIT%s", VISIT_VERSION);
     if (*keyval == 0)
         *keyval = (char *)malloc(500);
     
@@ -678,6 +681,9 @@ ReadKeyFromRoot(HKEY which_root, const char *key, char **keyval)
  *   in a couple places. This is to avoid the situation where VisIt won't
  *   run when installed without Administrator access.
  *
+ *   Kathleen Bonnell, Thu Jun 17 20:23:51 MST 2010
+ *   VisIt's registry keys are stored in HKLM or HKCU.
+ *
  *****************************************************************************/
 
 int
@@ -685,7 +691,7 @@ ReadKey(const char *key, char **keyval)
 {
     int retval = 0;
 
-    if((retval = ReadKeyFromRoot(HKEY_CLASSES_ROOT, key, keyval)) == 0)
+    if((retval = ReadKeyFromRoot(HKEY_LOCAL_MACHINE, key, keyval)) == 0)
         retval = ReadKeyFromRoot(HKEY_CURRENT_USER, key, keyval);
     
     return retval;     
@@ -775,6 +781,12 @@ ReadKey(const char *key, char **keyval)
  *   Kathleen Bonnell, Wed Feb  3 13:59:42 PST 2010
  *   Removed use of VISITDEVDIR env var.
  *
+ *   Kathleen Bonnell, Wed Mar 24 16:21:03 MST 2010
+ *   Check for VISITHOME in env. Set PYTHONPATH.
+ *
+ *   Kathleen Bonnell, Tue Mar 30 16:46:19 MST 2010
+ *   Test for dev dir and set vars accordingly.
+ *
  *****************************************************************************/
 
 char *
@@ -784,6 +796,7 @@ AddEnvironment(int useShortFileName)
     char *visitdevdir = 0;
     char tmpdir[512];
     int haveVISITHOME = 0;
+    int usingdev = 0;
 
     tmp = (char *)malloc(10000);
 
@@ -792,17 +805,20 @@ AddEnvironment(int useShortFileName)
      */
     haveVISITHOME         = ReadKey("VISITHOME", &visitpath);
 
+    if (!haveVISITHOME)
+    {
+        free(visitpath);
+        visitpath = 0;
+        if ((visitpath = getenv("VISITHOME")) != NULL)
+            haveVISITHOME = 1;
+    }
+
     /*
      * We could not get the value associated with the key. It may mean
      * that VisIt was not installed properly. Use a default value.
      */
     if(!haveVISITHOME)
     {
-        char *tempvisitdev = 0;
-        int freetempvisitdev = 1;
-        free(visitpath);
-
-
         char tmpdir[MAX_PATH];
         if (GetModuleFileName(NULL, tmpdir, MAX_PATH) != 0)
         {
@@ -818,7 +834,20 @@ AddEnvironment(int useShortFileName)
             visitpath = (char*)malloc(pos +1);
             strncpy(visitpath, tmpdir, pos);
             visitpath[pos] = '\0';
-            len = strlen(visitpath);
+         }
+    }
+    /*
+     * Determine if this is is dev version
+     */
+    {
+        string vp(visitpath);
+        string tp = vp + "\\..\\" + "ThirdParty";
+        struct _stat fs;
+        if (_stat(tp.c_str(), &fs) == 0)
+        {
+            usingdev = 1;
+            size_t pos;
+            size_t len = strlen(visitpath);
             for (pos = len; visitpath[pos] != '\\' && pos >=0; pos--)
             {
                 continue;
@@ -831,8 +860,6 @@ AddEnvironment(int useShortFileName)
             visitdevdir[pos] = '\0';
             sprintf(visitdevdir,"%s\\ThirdParty", visitdevdir);
         }
-        if (tempvisitdev != 0 && freetempvisitdev)
-            free(tempvisitdev);
     }
  
     /*
@@ -855,7 +882,7 @@ AddEnvironment(int useShortFileName)
             ExpandEnvironmentStrings(visituserpath,expvisituserpath,512);
             if (_stat(expvisituserpath, &fs) == -1)
             {
-                mkdir(expvisituserpath);
+                _mkdir(expvisituserpath);
             }
         }
         else
@@ -865,7 +892,7 @@ AddEnvironment(int useShortFileName)
         sprintf(tmpdir, "%s\\My images", expvisituserpath);
         if (_stat(tmpdir, &fs) == -1)
         {
-            mkdir(tmpdir);
+            _mkdir(tmpdir);
         }
         sprintf(tmp, "VISITUSERHOME=%s", expvisituserpath);
         putenv(tmp);
@@ -920,14 +947,39 @@ AddEnvironment(int useShortFileName)
     /*
      * Set the help dir.
      */
-    sprintf(tmp, "VISITHELPHOME=%s\\help", visitpath);
-    putenv(tmp);
+    if (!usingdev)
+    {
+        sprintf(tmp, "VISITHELPHOME=%s\\help", visitpath);
+        putenv(tmp);
+    }
 
     /*
      * Set the ultrawrapper dir.
      */
-    sprintf(tmp, "VISITULTRAHOME=%s\\ultrawrapper", visitpath);
-    putenv(tmp);
+    if (!usingdev)
+    {
+        sprintf(tmp, "VISITULTRAHOME=%s\\ultrawrapper", visitpath);
+        putenv(tmp);
+    }
+    else
+    {
+        sprintf(tmp, "VISITULTRAHOME=%s\\..\\ultrawrapper", visitpath);
+        putenv(tmp);
+    }
+
+    /*
+     * Set PYTHONPATH
+     */
+    if (!usingdev)
+    {
+        sprintf(tmp, "PYTHONPATH=%s\\lib\\Python\\lib", visitpath);
+        putenv(tmp);
+    }
+    else 
+    {
+        sprintf(tmp, "PYTHONPATH=%s\\..\\..\\lib\\Python\\lib", visitpath);
+        putenv(tmp);
+    }
 
     /*
      * Set the SSH program.
@@ -1003,16 +1055,25 @@ AddEnvironment(int useShortFileName)
  * Modifications:
  *   Kathleen Bonnell, Mon Jun 2 18:11:01 PDT 2008
  *   Add 'visitdev' argument. Add it to the path if not null.
- *
+ * 
+ *   Kathleen Bonnell, Sun Feb 28 16:23:45 MST 2010
+ *   Add visitpath and visitdev to beginning of PATH, not end.  Ensure they
+ *   don't get duplicated in the PATH string.
+ * 
  *****************************************************************************/
 
 void
 AddPath(char *tmp, const char *visitpath, const char *visitdev)
 {
-    char *env = 0, *path, *start = tmp;
+    char *env = 0, *path;
+    bool skiptoken;
 
-    strcpy(tmp, "PATH=");
-    start = path = tmp + 5;
+    if (visitdev != 0)
+        sprintf(tmp, "PATH=%s;%s", visitpath, visitdev);
+    else
+        sprintf(tmp, "PATH=%s", visitpath);
+
+    path = tmp + strlen(tmp);
 
     if((env = getenv("PATH")) != NULL)
     {
@@ -1027,19 +1088,19 @@ AddPath(char *tmp, const char *visitpath, const char *visitdev)
            /* 
             * If the token does not contain "VisIt " then add it to the path.
             */
-           if(strstr(token, "VisIt ") == NULL)
+           skiptoken = false;
+           if (strcmp(token, visitpath) == 0)
+               skiptoken = true;
+           else if (visitdev != 0 && strcmp(token, visitdev) == 0)
+               skiptoken = true;
+           else if(strstr(token, "VisIt ") != NULL)
+               skiptoken = true;
+
+           if (!skiptoken)
            {
                int len = strlen(token);
-               if(path == start)
-               {
-                   sprintf(path, "%s", token);
-                   path += len;
-               }
-               else
-               {
-                   sprintf(path, ";%s", token);
-                   path += (len + 1);
-               }
+               sprintf(path, ";%s", token);
+               path += (len + 1);
            }
 
            /* 
@@ -1050,14 +1111,6 @@ AddPath(char *tmp, const char *visitpath, const char *visitdev)
 
        free(env2);
     }
-
-    if(path == start)
-        sprintf(path, "%s", visitpath);
-    else
-        sprintf(path, ";%s", visitpath);
-
-    if (visitdev != 0)
-        sprintf(path, ";%s", visitdev);
 
     putenv(tmp);
 }
@@ -1125,6 +1178,8 @@ HandleConfigFiles(const char *path, void (*cb)(const char *, void *),
             char *ini = fd.cFileName + len-4;
             char *vses = fd.cFileName + len-5;
             char *vsesgui = fd.cFileName + len-5-4;
+            char *session = fd.cFileName + len-8;
+            char *sessiongui = fd.cFileName + len-8-4;
 
             if(log != NULL)
             {
@@ -1132,11 +1187,15 @@ HandleConfigFiles(const char *path, void (*cb)(const char *, void *),
                 if(ini >= fd.cFileName)     fprintf(log, "\t\t%s\n", ini);
                 if(vses >= fd.cFileName)    fprintf(log, "\t\t%s\n", vses);
                 if(vsesgui >= fd.cFileName) fprintf(log, "\t\t%s\n", vsesgui);
+                if(session >= fd.cFileName)    fprintf(log, "\t\t%s\n", session);
+                if(sessiongui >= fd.cFileName) fprintf(log, "\t\t%s\n", sessiongui);
             }
 
             if((ini >= fd.cFileName && _stricmp(ini, ".ini") == 0)   ||
-               (vses >= fd.cFileName && _stricmp(vses, ".vses") == 0) ||
-               (vsesgui >= fd.cFileName && _stricmp(vsesgui, ".vses.gui") == 0)
+              (vses >= fd.cFileName && _stricmp(vses, ".vses") == 0) ||
+             (vsesgui >= fd.cFileName && _stricmp(vsesgui, ".vses.gui") == 0) ||
+             (session >= fd.cFileName && _stricmp(session, ".session") == 0) ||
+             (sessiongui >= fd.cFileName && _stricmp(sessiongui, ".session.gui") == 0)
               )
             {
                 if(_strnicmp(fd.cFileName, "visit-config", 12) == 0)
@@ -1227,7 +1286,7 @@ copy_config_files(const char *filename, void *cbData)
 
     if (_stat(newpath, &fs) == -1)
     {
-        mkdir(newpath);
+        _mkdir(newpath);
     }
 
     len = strlen(oldpath);

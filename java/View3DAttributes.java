@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -56,11 +56,11 @@ package llnl.visit;
 
 public class View3DAttributes extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 13;
+    private static int View3DAttributes_numAdditionalAtts = 13;
 
     public View3DAttributes()
     {
-        super(numAdditionalAttributes);
+        super(View3DAttributes_numAdditionalAtts);
 
         viewNormal = new double[3];
         viewNormal[0] = 0;
@@ -93,7 +93,7 @@ public class View3DAttributes extends AttributeSubject
 
     public View3DAttributes(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(View3DAttributes_numAdditionalAtts + nMoreFields);
 
         viewNormal = new double[3];
         viewNormal[0] = 0;
@@ -126,7 +126,7 @@ public class View3DAttributes extends AttributeSubject
 
     public View3DAttributes(View3DAttributes obj)
     {
-        super(numAdditionalAttributes);
+        super(View3DAttributes_numAdditionalAtts);
 
         int i;
 
@@ -173,7 +173,7 @@ public class View3DAttributes extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return View3DAttributes_numAdditionalAtts;
     }
 
     public boolean equals(View3DAttributes obj)

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -71,6 +71,9 @@ struct  avtView3D;
 //    Tom Fogal, Mon Jun 16 11:17:53 EDT 2008
 //    Added some const qualifications.
 //
+//    Jeremy Meredith, Fri Apr 30 14:23:19 EDT 2010
+//    Added automatic mode for depth cueing.
+//
 // ****************************************************************************
 
 class PLOTTER_API avtSoftwareShader
@@ -82,6 +85,7 @@ class PLOTTER_API avtSoftwareShader
                             const avtView3D &, double);
     static void  AddDepthCueing(avtImage_p current_image,
                                 const avtView3D &current_view,
+                                bool autoExtents,
                                 const double startPoint[3],
                                 const double endPoint[3],
                                 unsigned char cuecolor[3]);

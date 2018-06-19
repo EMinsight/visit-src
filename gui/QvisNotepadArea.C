@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -79,6 +79,7 @@ QvisNotepadArea::QvisNotepadArea(QWidget *parent) : QWidget(parent),
     postedLookup()
 {
     QVBoxLayout *topLayout = new QVBoxLayout(this);
+    topLayout->setMargin(0);
 
     tabs = new QTabWidget(this);
     topLayout->addWidget(tabs);
@@ -186,10 +187,14 @@ QvisNotepadArea::showPage(QvisPostableWindow *pw)
 //   Brad Whitlock, Fri Jun  6 09:40:11 PDT 2008
 //   Qt 4.
 //
+//   Cyrus Harrison, Thu May  6 16:34:02 PDT 2010
+//   Added 'avoid_scroll' argument. This avoids creating scrollbars if they do
+//   not already exist.
+//
 // ****************************************************************************
 
 void
-QvisNotepadArea::postWindow(QvisPostableWindow *pw)
+QvisNotepadArea::postWindow(QvisPostableWindow *pw, bool avoid_scroll)
 {
     if(pw == NULL)
         return;
@@ -262,7 +267,7 @@ QvisNotepadArea::postWindow(QvisPostableWindow *pw)
             need_vscroll = true;
         }
 
-        if(need_hscroll || need_vscroll)
+        if(!avoid_scroll && (need_hscroll || need_vscroll))
         {
             // The widget is too big to fit without a scrolled window.
             // Create a scrollview.

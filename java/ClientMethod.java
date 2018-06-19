@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -59,11 +59,11 @@ import java.lang.Double;
 
 public class ClientMethod extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 4;
+    private static int ClientMethod_numAdditionalAtts = 4;
 
     public ClientMethod()
     {
-        super(numAdditionalAttributes);
+        super(ClientMethod_numAdditionalAtts);
 
         methodName = new String("");
         intArgs = new Vector();
@@ -73,7 +73,7 @@ public class ClientMethod extends AttributeSubject
 
     public ClientMethod(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(ClientMethod_numAdditionalAtts + nMoreFields);
 
         methodName = new String("");
         intArgs = new Vector();
@@ -83,7 +83,7 @@ public class ClientMethod extends AttributeSubject
 
     public ClientMethod(ClientMethod obj)
     {
-        super(numAdditionalAttributes);
+        super(ClientMethod_numAdditionalAtts);
 
         int i;
 
@@ -116,7 +116,7 @@ public class ClientMethod extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return ClientMethod_numAdditionalAtts;
     }
 
     public boolean equals(ClientMethod obj)

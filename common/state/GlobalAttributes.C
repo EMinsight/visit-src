@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -72,10 +72,15 @@ void GlobalAttributes::Init()
     createTimeDerivativeExpressions = true;
     createVectorMagnitudeExpressions = true;
     newPlotsInheritSILRestriction = true;
+#ifdef WIN32
+    userDirForSessionFiles = true;
+#else
     userDirForSessionFiles = false;
+#endif
     saveCrashRecoveryFile = true;
     applySelection = true;
     ignoreExtentsFromDbs = false;
+    expandNewPlots = false;
 
     GlobalAttributes::SelectAll();
 }
@@ -119,6 +124,7 @@ void GlobalAttributes::Copy(const GlobalAttributes &obj)
     saveCrashRecoveryFile = obj.saveCrashRecoveryFile;
     applySelection = obj.applySelection;
     ignoreExtentsFromDbs = obj.ignoreExtentsFromDbs;
+    expandNewPlots = obj.expandNewPlots;
 
     GlobalAttributes::SelectAll();
 }
@@ -297,7 +303,8 @@ GlobalAttributes::operator == (const GlobalAttributes &obj) const
             (userDirForSessionFiles == obj.userDirForSessionFiles) &&
             (saveCrashRecoveryFile == obj.saveCrashRecoveryFile) &&
             (applySelection == obj.applySelection) &&
-            (ignoreExtentsFromDbs == obj.ignoreExtentsFromDbs));
+            (ignoreExtentsFromDbs == obj.ignoreExtentsFromDbs) &&
+            (expandNewPlots == obj.expandNewPlots));
 }
 
 // ****************************************************************************
@@ -463,6 +470,7 @@ GlobalAttributes::SelectAll()
     Select(ID_saveCrashRecoveryFile,            (void *)&saveCrashRecoveryFile);
     Select(ID_applySelection,                   (void *)&applySelection);
     Select(ID_ignoreExtentsFromDbs,             (void *)&ignoreExtentsFromDbs);
+    Select(ID_expandNewPlots,                   (void *)&expandNewPlots);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -948,6 +956,13 @@ GlobalAttributes::SetIgnoreExtentsFromDbs(bool ignoreExtentsFromDbs_)
     Select(ID_ignoreExtentsFromDbs, (void *)&ignoreExtentsFromDbs);
 }
 
+void
+GlobalAttributes::SetExpandNewPlots(bool expandNewPlots_)
+{
+    expandNewPlots = expandNewPlots_;
+    Select(ID_expandNewPlots, (void *)&expandNewPlots);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Get property methods
 ///////////////////////////////////////////////////////////////////////////////
@@ -1096,6 +1111,12 @@ GlobalAttributes::GetIgnoreExtentsFromDbs() const
     return ignoreExtentsFromDbs;
 }
 
+bool
+GlobalAttributes::GetExpandNewPlots() const
+{
+    return expandNewPlots;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Select property methods
 ///////////////////////////////////////////////////////////////////////////////
@@ -1158,6 +1179,7 @@ GlobalAttributes::GetFieldName(int index) const
     case ID_saveCrashRecoveryFile:            return "saveCrashRecoveryFile";
     case ID_applySelection:                   return "applySelection";
     case ID_ignoreExtentsFromDbs:             return "ignoreExtentsFromDbs";
+    case ID_expandNewPlots:                   return "expandNewPlots";
     default:  return "invalid index";
     }
 }
@@ -1204,6 +1226,7 @@ GlobalAttributes::GetFieldType(int index) const
     case ID_saveCrashRecoveryFile:            return FieldType_bool;
     case ID_applySelection:                   return FieldType_bool;
     case ID_ignoreExtentsFromDbs:             return FieldType_bool;
+    case ID_expandNewPlots:                   return FieldType_bool;
     default:  return FieldType_unknown;
     }
 }
@@ -1250,6 +1273,7 @@ GlobalAttributes::GetFieldTypeName(int index) const
     case ID_saveCrashRecoveryFile:            return "bool";
     case ID_applySelection:                   return "bool";
     case ID_ignoreExtentsFromDbs:             return "bool";
+    case ID_expandNewPlots:                   return "bool";
     default:  return "invalid index";
     }
 }
@@ -1384,6 +1408,11 @@ GlobalAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
     case ID_ignoreExtentsFromDbs:
         {  // new scope
         retval = (ignoreExtentsFromDbs == obj.ignoreExtentsFromDbs);
+        }
+        break;
+    case ID_expandNewPlots:
+        {  // new scope
+        retval = (expandNewPlots == obj.expandNewPlots);
         }
         break;
     default: retval = false;

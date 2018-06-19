@@ -1,3 +1,50 @@
+Target: xml2python
+Code: PyCurveAttributes_getattr
+Prefix:
+Postfix:
+    // Try and handle legacy fields in CurveAttributes
+    if(strcmp(name, "cycleColors") == 0)
+    {
+        CurveAttributesObject *curveObj = (CurveAttributesObject *)self;
+        bool cycleColors = curveObj->data->GetCurveColorSource() == CurveAttributes::Custom;
+        return PyInt_FromLong(cycleColors?1L:0L);
+    }
+    // Try and handle legacy fields in CurveAttributes
+    if(strcmp(name, "color") == 0)
+    {
+        return CurveAttributes_GetCurveColor(self, NULL);
+    }
+
+Code: PyCurveAttributes_setattr
+Prefix:
+Postfix:
+   // Try and handle legacy fields in CurveAttributes
+    if(obj == NULL)
+    {
+        CurveAttributesObject *CurveObj = (CurveAttributesObject *)self;
+        if(strcmp(name, "color") == 0)
+        {
+            obj = CurveAttributes_SetCurveColor(self, tuple);
+        }
+        if(strcmp(name, "cycleColors") == 0)
+        {
+            int ival;
+            if(!PyArg_ParseTuple(tuple, "i", &ival))
+            {
+                Py_DECREF(tuple);
+                return -1;
+            }
+            if(ival == 0)
+                CurveObj->data->SetCurveColorSource(CurveAttributes::Custom);
+            else
+                CurveObj->data->SetCurveColorSource(CurveAttributes::Cycle);
+    
+            Py_INCREF(Py_None);
+            obj = Py_None;
+        }
+    }
+
+Target: xml2atts
 Function: CopyAttributes
 Declaration: virtual bool CopyAttributes(const AttributeGroup *);
 Definition:
@@ -17,7 +64,7 @@ CurveAttributes::CopyAttributes(const AttributeGroup *atts)
     {
         const Line *tmp = (const Line*)atts;
         SetDesignator(tmp->GetDesignator());
-        SetColor(tmp->GetColor());
+        SetCurveColor(tmp->GetColor());
         retval = true;
     }
 
@@ -40,7 +87,7 @@ CurveAttributes::CreateCompatible(const std::string &tname) const
     {
         Line *line = new Line;
         line->SetDesignator(GetDesignator());
-        line->SetColor(GetColor());
+        line->SetColor(GetCurveColor());
         line->SetLineStyle(GetLineStyle());
         line->SetLineWidth(GetLineWidth());
         retval = line;
@@ -76,7 +123,7 @@ CurveAttributes::Print(ostream &out, bool selected_only) const
           case  0: out << "lineStyle=  " << GetLineStyle();      break;
           case  1: out << "lineWidth=  " << GetLineWidth();      break;
           case  2: double color[4];
-                   GetColor().GetRgba(color);
+                   GetCurveColor().GetRgba(color);
                    out << "color=      " 
                        << color[0] << " " << color[1] << " " 
                        << color[2] << " " << color[3];
@@ -86,7 +133,7 @@ CurveAttributes::Print(ostream &out, bool selected_only) const
           case  5: out << "showPoints= " << GetShowPoints();    break;
           case  6: out << "pointSize=  " << GetPointSize();    break;
           case  7: out << "legend=  " << (GetShowLegend()?"true":"false");    break;
-          case  8: out << "cycleColors=" << (GetCycleColors()?"true":"false"); break;
+//          case  8: out << "curveColor=" << (GetCurveColor()==CurveColor::Cycle?"cycle":"custom"); break;
           case  9: out << "renderMode=" << RenderMode_ToString(GetRenderMode()).c_str(); break;
           case  10: out << "symbol=" << SymbolTypes_ToString(GetSymbol()).c_str(); break;
           case  11: out << "symbolDensity=" << GetSymbolDensity(); break;
@@ -170,6 +217,11 @@ Definition:
 //  Programmer: Kathleen Bonnell 
 //  Creation:   October 31, 2005 
 //
+//  Modifications:
+//
+//    Hank Childs, Sat Mar 13 10:35:34 PST 2010
+//    Change Boolean test to comparison with enumeration.
+//
 // ****************************************************************************
 #include <avtColorTables.h>
 
@@ -178,7 +230,7 @@ CurveViewerPluginInfo::SetColor(AttributeSubject *atts)
 {
     CurveAttributes *curveAtts = (CurveAttributes *)atts;
 
-    if (curveAtts->GetCycleColors())
+    if (curveAtts->GetCurveColorSource() == CurveAttributes::Cycle)
     {
         ColorAttribute c;
         unsigned char rgb[3] = {0,0,0};
@@ -195,14 +247,13 @@ CurveViewerPluginInfo::SetColor(AttributeSubject *atts)
             c.SetGreen(int(rgb[1]));
             c.SetBlue(int(rgb[2]));
         }
-        curveAtts->SetColor(c);
+        curveAtts->SetCurveColor(c);
         // Increment the color index.
         colorIndex = (colorIndex + 1) % ct->GetNumColors();
     }
 }
 
-Target: xml2info
-Function:  CurveViewerPluginInfo::PermitsCurveViewScaling
+Function: CurveViewerPluginInfo::PermitsCurveViewScaling
 Declaration: virtual bool PermitsCurveViewScaling() const;
 Definition:
 bool
@@ -210,3 +261,4 @@ CurveViewerPluginInfo::PermitsCurveViewScaling() const
 {
     return true;
 }
+

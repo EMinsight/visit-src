@@ -28,7 +28,11 @@
         Point
         Sphere
       </Enum>
-      <Field name="legendFlag" label="Legend" type="bool">
+      <Enum name="Opacity">
+        Explicit
+        ColorTable
+      </Enum>
+       <Field name="legendFlag" label="Legend" type="bool">
         true
       </Field>
       <Field name="lightingFlag" label="Lighting" type="bool">
@@ -88,12 +92,14 @@
       <Field name="lineWidth" label="lineWidth" type="linewidth">
         0
       </Field>
-      <Field name="useColorTableOpacity" label="Use opacity from color table" type="bool">
-        false
+      <Field name="opacityType" label="Opacity" type="enum" subtype="Opacity">
+        Explicit
       </Field>
       <Function name="ChangesRequireRecalculation" user="true" member="true">
       </Function>
       <Function name="Print" user="true" member="true">
+      </Function>
+      <Function name="ProcessOldVersions" user="true" member="true">
       </Function>
       <Include file="header" quoted="false">
         visitstream.h

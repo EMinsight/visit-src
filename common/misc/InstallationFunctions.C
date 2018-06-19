@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -45,6 +45,7 @@
 
 #if defined(_WIN32)
 #include <windows.h>
+#include <direct.h>
 #else
 #include <unistd.h>
 #include <sys/types.h>
@@ -92,6 +93,9 @@ static bool isDevelopmentVersion = false;
 //
 //   Tom Fogal, Sun Apr 19 11:39:50 MST 2009
 //   Use `Environment' to simplify and fix a compilation error.
+//
+//   Kathleen Bonnell, Thu Apr 22 17:25:54 MST 2010
+//   Username no longer added to config file names on windows.
 //
 // ****************************************************************************
 
@@ -148,29 +152,13 @@ GetDefaultConfigFile(const char *filename, const char *home)
 
     if(!realhome.empty())
     {
-        if(home == NULL)
-        {
-            // User config. Get the username so we can append it to
-            // the filename.
-            DWORD namelen = 100;
-            char username[100];
-            GetUserName(username, &namelen);
-
-            retval = new char[realhome.length() + namelen + 5 + filenameLength + 2 + 7];
-            sprintf(retval, "%s\\%s for %s.ini", realhome.c_str(),
-                    configFileName, username);
-        }
-        else
-        {
-            // System config.
-            retval = new char[realhome.length() + filenameLength + 2 + 7];
-            sprintf(retval, "%s\\%s.ini", realhome.c_str(), configFileName);
-        }
+        retval = new char[realhome.length() + filenameLength + 2];
+        sprintf(retval, "%s\\%s", realhome.c_str(), configFileName);
     }
     else
     {
-        retval = new char[filenameLength + 1 + 4];
-        sprintf(retval, "%s.ini", configFileName);
+        retval = new char[filenameLength + 1];
+        sprintf(retval, "%s", configFileName);
     }
 #else
     // The file it is assumed to be in the home directory unless the home
@@ -365,7 +353,7 @@ GetAndMakeUserVisItHostsDirectory()
 {
     std::string retval = GetUserVisItDirectory() + "hosts";
 #if defined(_WIN32)
-    mkdir(retval.c_str());
+    _mkdir(retval.c_str());
 #else
     mkdir(retval.c_str(), 0777);
 #endif
@@ -373,7 +361,7 @@ GetAndMakeUserVisItHostsDirectory()
 }
 
 // ****************************************************************************
-// Method:  GetAndMakeUserVisItHostsDirectory
+// Method:  GetUserVisItHostsDirectory
 //
 // Purpose:
 //   Returns the path to the visit installation directory's
@@ -385,18 +373,18 @@ GetAndMakeUserVisItHostsDirectory()
 // Programmer:  Jeremy Meredith
 // Creation:    February 18, 2010
 //
+// Modifications:
+//   Jeremy Meredith, Wed Apr 21 13:02:53 EDT 2010
+//   Don't mkdir the system hosts directory.  If it doesn't exist, no problem;
+//   we're never going to write into it.  Only the installer does that.
+//
 // ****************************************************************************
 std::string
-GetAndMakeSystemVisItHostsDirectory()
+GetSystemVisItHostsDirectory()
 {
     const char *defConfig = GetDefaultConfigFile("hosts", "VISITHOME");
     std::string retVal(defConfig);
     delete [] defConfig;
-#if defined(_WIN32)
-    mkdir(retVal.c_str());
-#else
-    mkdir(retVal.c_str(), 0777);
-#endif
     return retVal;
 }
 
@@ -408,6 +396,10 @@ GetAndMakeSystemVisItHostsDirectory()
 //  Modifications:
 //    Kathleen Bonnell, Wed May 21 08:12:16 PDT 2008
 //    Only malloc keyval if it hasn't already been done.
+//
+//    Kathleen Bonnell, Thu Jun 17 20:25:44 MST 2010
+//    Location of VisIt's registry keys has changed to Software\Classes.
+//
 // ***************************************************************************
 int
 ReadKeyFromRoot(HKEY which_root, const char *ver, const char *key,
@@ -418,7 +410,7 @@ ReadKeyFromRoot(HKEY which_root, const char *ver, const char *key,
     HKEY hkey;
 
     /* Try and read the key from the system registry. */
-    sprintf(regkey, "VISIT%s", ver);
+    sprintf(regkey, "Software\\Classes\\VisIt%s", ver);
     if (*keyval == 0)
         *keyval = (char *)malloc(500);
     if(RegOpenKeyEx(which_root, regkey, 0, KEY_QUERY_VALUE, &hkey) == ERROR_SUCCESS)
@@ -436,16 +428,30 @@ ReadKeyFromRoot(HKEY which_root, const char *ver, const char *key,
     return readSuccess;
 }
 
+// ***************************************************************************
+//  Modifications:
+//    Kathleen Bonnell, Thu Jun 17 20:25:44 MST 2010
+//    VisIt's registry keys are stored in HKLM or HKCU.
+//
+// ***************************************************************************
+
 int
 ReadKey(const char *ver, const char *key, char **keyval)
 {
     int retval = 0;
 
-    if((retval = ReadKeyFromRoot(HKEY_CLASSES_ROOT, ver, key, keyval)) == 0)
+    if((retval = ReadKeyFromRoot(HKEY_LOCAL_MACHINE, ver, key, keyval)) == 0)
         retval = ReadKeyFromRoot(HKEY_CURRENT_USER, ver, key, keyval);
     
     return retval;     
 }
+
+// ***************************************************************************
+//  Modifications:
+//    Kathleen Bonnell, Thu Jun 17 20:25:44 MST 2010
+//    Location of VisIt's registry keys has changed to Software\Classes.
+//
+// ***************************************************************************
 
 int
 WriteKeyToRoot(HKEY which_root, const char *ver, const char *key,
@@ -456,7 +462,7 @@ WriteKeyToRoot(HKEY which_root, const char *ver, const char *key,
     HKEY hkey;
 
     /* Try and read the key from the system registry. */
-    sprintf(regkey, "VISIT%s", ver);
+    sprintf(regkey, "Software\\Classes\\VisIt%s", ver);
     if(RegOpenKeyEx(which_root, regkey, 0, KEY_SET_VALUE, &hkey) == ERROR_SUCCESS)
     {
         DWORD strSize = strlen(keyval);
@@ -472,12 +478,19 @@ WriteKeyToRoot(HKEY which_root, const char *ver, const char *key,
     return writeSuccess;
 }
 
+// ***************************************************************************
+//  Modifications:
+//    Kathleen Bonnell, Thu Jun 17 20:25:44 MST 2010
+//    VisIt's registry keys are stored in HKLM or HKCU.
+//
+// ***************************************************************************
+
 int
 WriteKey(const char *ver, const char *key, const char *keyval)
 {
     int retval = 0;
 
-    if((retval = WriteKeyToRoot(HKEY_CLASSES_ROOT, ver, key, keyval)) == 0)
+    if((retval = WriteKeyToRoot(HKEY_LOCAL_MACHINE, ver, key, keyval)) == 0)
         retval = WriteKeyToRoot(HKEY_CURRENT_USER, ver, key, keyval);
 
     return retval;

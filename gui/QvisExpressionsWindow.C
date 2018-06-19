@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -838,6 +838,8 @@ QvisExpressionsWindow::UpdateWindowSingleItem()
         stdDefinitionEdit->setText("");
         pyArgsEdit->setText("");
         pyFilterEdit->setSource("");
+        stdExprActive = true;
+        pyExprActive = true;
     }
     else
     {
@@ -851,9 +853,10 @@ QvisExpressionsWindow::UpdateWindowSingleItem()
 
         QString expr_def = QString(e.GetDefinition().c_str());
 
-        stdDefinitionEdit->setText(expr_def);
+        UpdateStandardExpressionEditor(expr_def);
         UpdatePythonExpressionEditor(expr_def);
-
+        if(expr_def.trimmed() == QString("") && pyExprActive)
+            stdExprActive = true;
     }
 
     UpdateWindowSensitivity();
@@ -907,7 +910,7 @@ QvisExpressionsWindow::UpdateWindowSensitivity()
     typeList->setEnabled(enable);
     notHidden->setEnabled(enable);
 
-    stdEditorWidget->setEnabled(enable);
+    stdEditorWidget->setEnabled(enable && stdExprActive);
     pyEditorWidget->setEnabled(enable && pyExprActive);
 }
 
@@ -923,14 +926,20 @@ QvisExpressionsWindow::UpdateWindowSensitivity()
 //  Programmer:  Jeremy Meredith
 //  Creation:    October 10, 2004
 //
+// Modifications:
+//   Cyrus Harrison, Fri Mar  5 13:22:24 PST 2010
+//   Block signals from all edits related to python filters.
+//
 // ****************************************************************************
 void
 QvisExpressionsWindow::BlockAllSignals(bool block)
 {
     exprListBox->blockSignals(block);
     nameEdit->blockSignals(block);
-    stdEditorWidget->blockSignals(block);
-    pyEditorWidget->blockSignals(block);
+
+    stdDefinitionEdit->blockSignals(block);
+    pyArgsEdit->blockSignals(block);
+    pyFilterEdit->blockSignals(block);
 }
 
 // ****************************************************************************
@@ -1323,6 +1332,9 @@ QvisExpressionsWindow::notHiddenChanged()
 //    Fixed crash when no user expressions are defined and the user clicks
 //    show database expressions.
 //
+//    Cyrus Harrison, Wed Apr 14 13:44:48 PDT 2010
+//    Fixed crash related to reselection.
+//
 // ****************************************************************************
 void
 QvisExpressionsWindow::displayAllVarsChanged()
@@ -1341,7 +1353,6 @@ QvisExpressionsWindow::displayAllVarsChanged()
 
     if (reselect)
     {
-        QString item = exprListBox->currentItem()->text();
         for (int i=0; i<exprListBox->count(); i++)
         {
             if (exprListBox->item(i)->text() == item)
@@ -1388,7 +1399,7 @@ QvisExpressionsWindow::UpdatePythonExpression()
 }
 
 // ****************************************************************************
-//  Method:  QvisExpressionsWindow::UpdatePythonExpressionEditor
+//  Method:  QvisExpressionsWindow::ParsePythonExpression
 //
 //  Purpose:
 //    Attempts to extract a python expression from given expression
@@ -1399,6 +1410,8 @@ QvisExpressionsWindow::UpdatePythonExpression()
 //  Creation:    Thu Feb 18 12:26:48 PST 2010
 //
 //  Modifications:
+//    Cyrus Harrison,Thu Apr  8 12:40:22 PDT 2010
+//    Resolved issue w/ incorrectly flagging non python expressions.
 //
 // ****************************************************************************
 bool
@@ -1416,9 +1429,9 @@ QvisExpressionsWindow::ParsePythonExpression(const QString &expr_def,
 
     int start_idx = -1;
 
-    if(start_idx =edef.indexOf("py(") == 0)
+    if(edef.indexOf("py(") == 0)
         start_idx = 3;
-    else if (start_idx =edef.indexOf("python(") == 0)
+    else if (edef.indexOf("python(") == 0)
         start_idx = 7;
 
     if(start_idx == -1)
@@ -1469,6 +1482,7 @@ QvisExpressionsWindow::UpdatePythonExpressionEditor(const QString &expr_def)
     if(ParsePythonExpression(expr_def,res_args,res_script))
     {
         pyExprActive = true;
+        stdExprActive = false;
         pyArgsEdit->setText(res_args);
         pyFilterEdit->setSource(res_script,true);
         if(res_script != QString(""))
@@ -1477,6 +1491,7 @@ QvisExpressionsWindow::UpdatePythonExpressionEditor(const QString &expr_def)
     else
     {
         pyExprActive = false;
+        stdExprActive = true;
         pyArgsEdit->setText(QString(""));
         pyFilterEdit->setSource(QString(""));
         editorTabs->setCurrentIndex(0);
@@ -1484,6 +1499,26 @@ QvisExpressionsWindow::UpdatePythonExpressionEditor(const QString &expr_def)
     BlockAllSignals(false);
 }
 
+
+// ****************************************************************************
+//  Method:  QvisExpressionsWindow::UpdateStandardExpressionEditor
+//
+//  Purpose:
+//   Updates the standard expression editor.
+//
+//  Programmer:  Cyrus Harrison
+//  Creation:    Fri Mar  5 16:55:08 PST 2010
+//
+//  Modifications:
+//
+// ****************************************************************************
+void
+QvisExpressionsWindow::UpdateStandardExpressionEditor(const QString &expr_def)
+{
+    BlockAllSignals(true);
+    stdDefinitionEdit->setText(expr_def);
+    BlockAllSignals(false);
+}
 
 // ****************************************************************************
 //  Method:  QvisExpressionsWindow::ExpandFunction
@@ -1769,6 +1804,8 @@ QvisExpressionsWindow::stdInsertFunction(QAction * action)
 //  Creation:    Thu Feb 11 15:21:11 PST 2010
 //
 //  Modifications:
+//   Cyrus Harrison, Tue May 11 23:39:37 PDT 2010
+//   Added comma separator for multiple arguments.
 //
 // ****************************************************************************
 
@@ -1781,6 +1818,9 @@ QvisExpressionsWindow::pyInsertFunction(QAction * action)
     QString func_name = action->text();
 
     QString func_res =ExpandFunction(func_name);
+    QString args_trimmed = pyArgsEdit->text().trimmed();
+    if(args_trimmed.size() > 0 && args_trimmed.right(1) != QString(","))
+        func_res = QString(", ") + func_res;
     pyArgsEdit->insert(func_res);
     pyArgsEdit->setFocus();
 }
@@ -1877,6 +1917,9 @@ QvisExpressionsWindow::stdInsertVariable(const QString &var)
 // Creation:   Thu Feb 11 15:22:08 PST 2010
 //
 // Modifications:
+//  Modifications:
+//   Cyrus Harrison, Tue May 11 23:39:37 PDT 2010
+//   Added comma separator for multiple arguments.
 //
 // ****************************************************************************
 
@@ -1886,7 +1929,11 @@ QvisExpressionsWindow::pyInsertVariable(const QString &var)
     if (!pyArgsEdit->isEnabled())
         return;
 
-    pyArgsEdit->insert(QuoteVariable(var));
+    QString var_res = QuoteVariable(var);
+    QString args_trimmed = pyArgsEdit->text().trimmed();
+    if(args_trimmed.size() > 0 && args_trimmed.right(1) != QString(","))
+        var_res = QString(", ") + var_res;
+    pyArgsEdit->insert(var_res);
     pyArgsEdit->setFocus();
 }
 

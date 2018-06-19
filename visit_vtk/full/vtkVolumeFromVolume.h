@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -81,11 +81,15 @@ class vtkUnstructuredGrid;
 //    Jeremy Meredith, Tue Aug 29 14:33:30 EDT 2006
 //    Added support for lines and vertices.
 //
+//    Jeremy Meredith, Fri Feb 26 14:00:07 EST 2010
+//    Made internal class definitions protected instead of private so
+//    we could usefully subclass this.
+//
 // ****************************************************************************
 
 class vtkVolumeFromVolume : public vtkDataSetFromVolume
 {
-
+protected:
 class ShapeList
 {
   public:

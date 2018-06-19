@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -1520,6 +1520,10 @@ avtBoxlibFileFormat::GetVisMF(int index)
 //    Hank Childs, Wed Jan 11 09:40:17 PST 2006
 //    Change mesh type to AMR.
 //
+//    Hank Childs, Mon Jun 14 14:28:15 PDT 2010
+//    Use new AMR infrastructure if there are no materials.  (It doesn't work
+//    with materials yet.)
+//
 // ****************************************************************************
 
 void
@@ -1536,6 +1540,8 @@ avtBoxlibFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
     // Prevent VisIt from sorting the variables.
     md->SetMustAlphabetizeVariables(false);
 
+    bool useFastTrack = (nMaterials <= 0);
+
     char mesh_name[32] = "Mesh";
     avtMeshMetaData *mesh = new avtMeshMetaData;
     mesh->name = mesh_name;
@@ -1545,23 +1551,32 @@ avtBoxlibFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
     mesh->spatialDimension = dimension;
     mesh->topologicalDimension = dimension;
     mesh->hasSpatialExtents = false;
-    mesh->blockTitle = "patches";
-    mesh->blockPieceName = "patch";
-    mesh->numGroups = nLevels;
-    mesh->groupTitle = "levels";
-    mesh->groupPieceName = "level";
-    vector<int> groupIds(totalPatches);
-    vector<string> blockPieceNames(totalPatches);
-    for (int i = 0 ; i < totalPatches ; i++)
+
+    vector<int> groupIds;
+    vector<string> blockPieceNames;
+
+    if (useFastTrack)
+        mesh->SetAMRInfo("level", "patch", 1, patchesPerLevel);
+    else
     {
-        char tmpName[128];
-        int level, local_patch;
-        GetLevelAndLocalPatchNumber(i, level, local_patch);
-        groupIds[i] = level;
-        sprintf(tmpName, "level%d,patch%d", level, local_patch);
-        blockPieceNames[i] = tmpName;
+        groupIds.resize(totalPatches);
+        blockPieceNames.resize(totalPatches);
+        mesh->blockTitle = "patches";
+        mesh->blockPieceName = "patch";
+        mesh->numGroups = nLevels;
+        mesh->groupTitle = "levels";
+        mesh->groupPieceName = "level";
+        for (int i = 0 ; i < totalPatches ; i++)
+        {
+            char tmpName[128];
+            int level, local_patch;
+            GetLevelAndLocalPatchNumber(i, level, local_patch);
+            groupIds[i] = level;
+            sprintf(tmpName, "level%d,patch%d", level, local_patch);
+            blockPieceNames[i] = tmpName;
+        }
+        mesh->blockNames = blockPieceNames;
     }
-    mesh->blockNames = blockPieceNames;
 #if BL_SPACEDIM==2
     // coordSys == 0 <- XYZ
     // coordSys == 1 <- ZR
@@ -1579,7 +1594,8 @@ avtBoxlibFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
     }
 #endif
     md->Add(mesh);
-    md->AddGroupInformation(nLevels, totalPatches, groupIds);
+    if (! useFastTrack)
+        md->AddGroupInformation(nLevels, totalPatches, groupIds);
 
     int v;
     for (v = 0; v < nVars; ++v)
@@ -1943,6 +1959,9 @@ avtBoxlibFileFormat::GetAuxiliaryData(const char *var, int dom,
 //    and therefore pass NULL, because attempting to  dereference an empty 
 //    vector's 0'th item crashes on windows.
 //
+//    Kathleen Bonnell, Fri Apr 23 10:36:54 MST 2010
+//    Remove redundant line of code.
+//
 // ****************************************************************************
     
 void *
@@ -2052,8 +2071,6 @@ avtBoxlibFileFormat::GetMaterial(const char *var, int patch,
 
     if (material_list.size() > 0)
         ml = &(material_list[0]);
-    if (mix_mat.size() > 0)
-        mixm = &(mix_mat[0]);
     if (mix_mat.size() > 0)
         mixm = &(mix_mat[0]);
     if (mix_next.size() > 0)

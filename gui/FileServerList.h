@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -205,6 +205,14 @@ class MessageAttributes;
 //   Brad Whitlock, Fri Dec 14 17:16:51 PST 2007
 //   Added ids for the fields that make up the object.
 //
+//   Jeremy Meredith, Fri Mar 19 13:27:07 EDT 2010
+//   Replicate the logic already in the viewer, where we keep a cache
+//   of which plugin we used to open a given file.  So when we re-open
+//   it, we don't get it wrong.
+//
+//   Jeremy Meredith, Tue Mar 30 15:54:17 EDT 2010
+//   Add way for GUI to pre-set a plugin we intend to use for a file.
+//
 // ****************************************************************************
 
 class GUI_API FileServerList : public AttributeSubject
@@ -257,7 +265,8 @@ public:
     void ReplaceFile(const QualifiedFilename &filename);
     void OverlayFile(const QualifiedFilename &filename);
     void CloseFile();
-    void ClearFile(const QualifiedFilename &filename);
+    void ClearFile(const QualifiedFilename &filename, bool forgetPlugin);
+    void SetFilePlugin(const QualifiedFilename &filename, const string &plugin);
     void CreateGroupList(const string &filename,
                          const stringVector &groupList);
 
@@ -390,6 +399,7 @@ private:
 
     // MRU caches for MetaData and SIL
     FileMetaDataMap   fileMetaData;
+    StringStringMap   filePlugins;
     SILMap            SILData;
 
     StringStringVectorMap recentPaths;

@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -56,7 +56,7 @@ package llnl.visit;
 
 public class RenderingAttributes extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 19;
+    private static int RenderingAttributes_numAdditionalAtts = 20;
 
     // Enum values
     public final static int GEOMETRYREPRESENTATION_SURFACES = 0;
@@ -80,7 +80,7 @@ public final static int DEFAULT_SCALABLE_ACTIVATION_MODE = TRISTATEMODE_AUTO;
 
     public RenderingAttributes()
     {
-        super(numAdditionalAttributes);
+        super(RenderingAttributes_numAdditionalAtts);
 
         antialiasing = false;
         geometryRepresentation = GEOMETRYREPRESENTATION_SURFACES;
@@ -97,6 +97,7 @@ public final static int DEFAULT_SCALABLE_ACTIVATION_MODE = TRISTATEMODE_AUTO;
         doShadowing = false;
         shadowStrength = 0.5;
         doDepthCueing = false;
+        depthCueingAutomatic = true;
         startCuePoint = new double[3];
         startCuePoint[0] = -10;
         startCuePoint[1] = 0;
@@ -111,7 +112,7 @@ public final static int DEFAULT_SCALABLE_ACTIVATION_MODE = TRISTATEMODE_AUTO;
 
     public RenderingAttributes(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(RenderingAttributes_numAdditionalAtts + nMoreFields);
 
         antialiasing = false;
         geometryRepresentation = GEOMETRYREPRESENTATION_SURFACES;
@@ -128,6 +129,7 @@ public final static int DEFAULT_SCALABLE_ACTIVATION_MODE = TRISTATEMODE_AUTO;
         doShadowing = false;
         shadowStrength = 0.5;
         doDepthCueing = false;
+        depthCueingAutomatic = true;
         startCuePoint = new double[3];
         startCuePoint[0] = -10;
         startCuePoint[1] = 0;
@@ -142,7 +144,7 @@ public final static int DEFAULT_SCALABLE_ACTIVATION_MODE = TRISTATEMODE_AUTO;
 
     public RenderingAttributes(RenderingAttributes obj)
     {
-        super(numAdditionalAttributes);
+        super(RenderingAttributes_numAdditionalAtts);
 
         int i;
 
@@ -161,6 +163,7 @@ public final static int DEFAULT_SCALABLE_ACTIVATION_MODE = TRISTATEMODE_AUTO;
         doShadowing = obj.doShadowing;
         shadowStrength = obj.shadowStrength;
         doDepthCueing = obj.doDepthCueing;
+        depthCueingAutomatic = obj.depthCueingAutomatic;
         startCuePoint = new double[3];
         startCuePoint[0] = obj.startCuePoint[0];
         startCuePoint[1] = obj.startCuePoint[1];
@@ -184,7 +187,7 @@ public final static int DEFAULT_SCALABLE_ACTIVATION_MODE = TRISTATEMODE_AUTO;
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return RenderingAttributes_numAdditionalAtts;
     }
 
     public boolean equals(RenderingAttributes obj)
@@ -217,6 +220,7 @@ public final static int DEFAULT_SCALABLE_ACTIVATION_MODE = TRISTATEMODE_AUTO;
                 (doShadowing == obj.doShadowing) &&
                 (shadowStrength == obj.shadowStrength) &&
                 (doDepthCueing == obj.doDepthCueing) &&
+                (depthCueingAutomatic == obj.depthCueingAutomatic) &&
                 startCuePoint_equal &&
                 endCuePoint_equal &&
                 (compressionActivationMode == obj.compressionActivationMode) &&
@@ -314,12 +318,18 @@ public final static int DEFAULT_SCALABLE_ACTIVATION_MODE = TRISTATEMODE_AUTO;
         Select(14);
     }
 
+    public void SetDepthCueingAutomatic(boolean depthCueingAutomatic_)
+    {
+        depthCueingAutomatic = depthCueingAutomatic_;
+        Select(15);
+    }
+
     public void SetStartCuePoint(double[] startCuePoint_)
     {
         startCuePoint[0] = startCuePoint_[0];
         startCuePoint[1] = startCuePoint_[1];
         startCuePoint[2] = startCuePoint_[2];
-        Select(15);
+        Select(16);
     }
 
     public void SetStartCuePoint(double e0, double e1, double e2)
@@ -327,7 +337,7 @@ public final static int DEFAULT_SCALABLE_ACTIVATION_MODE = TRISTATEMODE_AUTO;
         startCuePoint[0] = e0;
         startCuePoint[1] = e1;
         startCuePoint[2] = e2;
-        Select(15);
+        Select(16);
     }
 
     public void SetEndCuePoint(double[] endCuePoint_)
@@ -335,7 +345,7 @@ public final static int DEFAULT_SCALABLE_ACTIVATION_MODE = TRISTATEMODE_AUTO;
         endCuePoint[0] = endCuePoint_[0];
         endCuePoint[1] = endCuePoint_[1];
         endCuePoint[2] = endCuePoint_[2];
-        Select(16);
+        Select(17);
     }
 
     public void SetEndCuePoint(double e0, double e1, double e2)
@@ -343,19 +353,19 @@ public final static int DEFAULT_SCALABLE_ACTIVATION_MODE = TRISTATEMODE_AUTO;
         endCuePoint[0] = e0;
         endCuePoint[1] = e1;
         endCuePoint[2] = e2;
-        Select(16);
+        Select(17);
     }
 
     public void SetCompressionActivationMode(int compressionActivationMode_)
     {
         compressionActivationMode = compressionActivationMode_;
-        Select(17);
+        Select(18);
     }
 
     public void SetColorTexturingFlag(boolean colorTexturingFlag_)
     {
         colorTexturingFlag = colorTexturingFlag_;
-        Select(18);
+        Select(19);
     }
 
     // Property getting methods
@@ -374,6 +384,7 @@ public final static int DEFAULT_SCALABLE_ACTIVATION_MODE = TRISTATEMODE_AUTO;
     public boolean        GetDoShadowing() { return doShadowing; }
     public double         GetShadowStrength() { return shadowStrength; }
     public boolean        GetDoDepthCueing() { return doDepthCueing; }
+    public boolean        GetDepthCueingAutomatic() { return depthCueingAutomatic; }
     public double[]       GetStartCuePoint() { return startCuePoint; }
     public double[]       GetEndCuePoint() { return endCuePoint; }
     public int            GetCompressionActivationMode() { return compressionActivationMode; }
@@ -413,12 +424,14 @@ public final static int DEFAULT_SCALABLE_ACTIVATION_MODE = TRISTATEMODE_AUTO;
         if(WriteSelect(14, buf))
             buf.WriteBool(doDepthCueing);
         if(WriteSelect(15, buf))
-            buf.WriteDoubleArray(startCuePoint);
+            buf.WriteBool(depthCueingAutomatic);
         if(WriteSelect(16, buf))
-            buf.WriteDoubleArray(endCuePoint);
+            buf.WriteDoubleArray(startCuePoint);
         if(WriteSelect(17, buf))
-            buf.WriteInt(compressionActivationMode);
+            buf.WriteDoubleArray(endCuePoint);
         if(WriteSelect(18, buf))
+            buf.WriteInt(compressionActivationMode);
+        if(WriteSelect(19, buf))
             buf.WriteBool(colorTexturingFlag);
     }
 
@@ -473,15 +486,18 @@ public final static int DEFAULT_SCALABLE_ACTIVATION_MODE = TRISTATEMODE_AUTO;
             SetDoDepthCueing(buf.ReadBool());
             break;
         case 15:
-            SetStartCuePoint(buf.ReadDoubleArray());
+            SetDepthCueingAutomatic(buf.ReadBool());
             break;
         case 16:
-            SetEndCuePoint(buf.ReadDoubleArray());
+            SetStartCuePoint(buf.ReadDoubleArray());
             break;
         case 17:
-            SetCompressionActivationMode(buf.ReadInt());
+            SetEndCuePoint(buf.ReadDoubleArray());
             break;
         case 18:
+            SetCompressionActivationMode(buf.ReadInt());
+            break;
+        case 19:
             SetColorTexturingFlag(buf.ReadBool());
             break;
         }
@@ -535,6 +551,7 @@ public final static int DEFAULT_SCALABLE_ACTIVATION_MODE = TRISTATEMODE_AUTO;
         str = str + boolToString("doShadowing", doShadowing, indent) + "\n";
         str = str + doubleToString("shadowStrength", shadowStrength, indent) + "\n";
         str = str + boolToString("doDepthCueing", doDepthCueing, indent) + "\n";
+        str = str + boolToString("depthCueingAutomatic", depthCueingAutomatic, indent) + "\n";
         str = str + doubleArrayToString("startCuePoint", startCuePoint, indent) + "\n";
         str = str + doubleArrayToString("endCuePoint", endCuePoint, indent) + "\n";
         str = str + indent + "compressionActivationMode = ";
@@ -566,6 +583,7 @@ public final static int DEFAULT_SCALABLE_ACTIVATION_MODE = TRISTATEMODE_AUTO;
     private boolean        doShadowing;
     private double         shadowStrength;
     private boolean        doDepthCueing;
+    private boolean        depthCueingAutomatic;
     private double[]       startCuePoint;
     private double[]       endCuePoint;
     private int            compressionActivationMode;

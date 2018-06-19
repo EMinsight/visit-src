@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -56,11 +56,11 @@ package llnl.visit;
 
 public class AxisAttributes extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 4;
+    private static int AxisAttributes_numAdditionalAtts = 4;
 
     public AxisAttributes()
     {
-        super(numAdditionalAttributes);
+        super(AxisAttributes_numAdditionalAtts);
 
         title = new AxisTitles();
         label = new AxisLabels();
@@ -70,7 +70,7 @@ public class AxisAttributes extends AttributeSubject
 
     public AxisAttributes(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(AxisAttributes_numAdditionalAtts + nMoreFields);
 
         title = new AxisTitles();
         label = new AxisLabels();
@@ -80,7 +80,7 @@ public class AxisAttributes extends AttributeSubject
 
     public AxisAttributes(AxisAttributes obj)
     {
-        super(numAdditionalAttributes);
+        super(AxisAttributes_numAdditionalAtts);
 
         title = new AxisTitles(obj.title);
         label = new AxisLabels(obj.label);
@@ -97,7 +97,7 @@ public class AxisAttributes extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return AxisAttributes_numAdditionalAtts;
     }
 
     public boolean equals(AxisAttributes obj)

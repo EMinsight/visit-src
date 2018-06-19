@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -101,7 +101,9 @@ namespace StringHelpers
                             std::vector<std::string>);
     std::vector<std::string> UTILITY_API split(const std::string,
                                                const char separator);
-
+    std::string UTILITY_API Replace(const std::string &source,
+                                    const std::string &before,
+                                    const std::string &after);
     std::string UTILITY_API Plural(const std::string &noun);
     bool UTILITY_API IsPureASCII(const std::string &txt);
     bool UTILITY_API IsPureASCII(const char *const txt, int length);

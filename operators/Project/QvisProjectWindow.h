@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -45,6 +45,7 @@
 class ProjectAttributes;
 class QLabel;
 class QCheckBox;
+class QComboBox;
 class QLineEdit;
 class QSpinBox;
 class QVBox;
@@ -68,6 +69,10 @@ class QvisVariableButton;
 // Creation:   omitted
 //
 // Modifications:
+//   Jeremy Meredith, Thu Apr  1 14:47:27 EDT 2010
+//   Made projection type a combo box since there are 6 of them now.
+//   Adde dvector transform type.
+//
 //   
 // ****************************************************************************
 
@@ -87,10 +92,10 @@ class QvisProjectWindow : public QvisOperatorWindow
     virtual void GetCurrentValues(int which_widget);
   private slots:
     void projectionTypeChanged(int val);
+    void vectorMethodChanged(int);
   private:
-    QWidget      *projectionType;
-    QButtonGroup *projectionTypeButtonGroup;
-    QLabel *projectionTypeLabel;
+    QComboBox    *projectionTypeCombo;
+    QComboBox    *vectorMethodCombo;
 
     ProjectAttributes *atts;
 };

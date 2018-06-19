@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -265,6 +265,9 @@ static void RotateAroundY(const avtView3D&, double, avtView3D&);
 //    Removed maintain data; moved maintain view from Global settings
 //    (Main window) to per-window Window Information (View window).
 //
+//    Jeremy Meredith, Fri Apr 30 14:39:07 EDT 2010
+//    Added automatic depth cueing mode.
+//
 // ****************************************************************************
 
 ViewerWindow::ViewerWindow(int windowIndex) : ViewerBase(0),
@@ -400,6 +403,7 @@ ViewerWindow::ViewerWindow(int windowIndex) : ViewerBase(0),
     shadingStrength = 0.5;
 
     doDepthCueing = false;
+    depthCueingAuto = true;
     startCuePoint[0] = -10;  startCuePoint[0] = 0;  startCuePoint[0] = 0;
     endCuePoint[0]   =  10;  endCuePoint[0]   = 0;  endCuePoint[0]   = 0;
 }
@@ -1549,27 +1553,6 @@ ViewerWindow::GetExtents(int nDimensions, double *extents) const
 }
 
 // ****************************************************************************
-//  Method: ViewerWindow::SetBoundingBoxMode
-//
-//  Purpose: 
-//    Set the window's bounding box mode.
-//
-//  Arguments:
-//    mode      The bbox mode.  A true value indicates that the window
-//              is in navigate bbox mode.
-//
-//  Programmer: Brad Whitlock
-//  Creation:   Thu Nov 9 15:34:23 PST 2000
-//
-// ****************************************************************************
-
-void
-ViewerWindow::SetBoundingBoxMode(const bool mode)
-{
-    visWindow->SetBoundingBoxMode(mode);
-}
-
-// ****************************************************************************
 //  Method: ViewerWindow::GetBoundingBoxMode
 //
 //  Purpose: 
@@ -2256,6 +2239,12 @@ ViewerWindow::InvertBackgroundColor()
 //   Removed maintain data; moved maintain view from Global settings
 //   (Main window) to per-window Window Information (View window).
 //
+//   Hank Childs, Sat Mar 13 18:46:54 PST 2010
+//   Remove reference to bounding box mode.
+//
+//   Jeremy Meredith, Fri Apr 30 14:39:07 EDT 2010
+//   Added automatic depth cueing mode.
+//
 // ****************************************************************************
 
 void
@@ -2277,6 +2266,7 @@ ViewerWindow::CopyGeneralAttributes(const ViewerWindow *source)
                           source->GetSpecularColor());
     SetShadingProperties(source->GetDoShading(), source->GetShadingStrength());
     SetDepthCueingProperties(source->GetDoDepthCueing(),
+                             source->GetDepthCueingAutomatic(),
                              source->GetStartCuePoint(),
                              source->GetEndCuePoint());
     SetColorTexturingFlag(source->GetColorTexturingFlag());
@@ -2284,7 +2274,6 @@ ViewerWindow::CopyGeneralAttributes(const ViewerWindow *source)
     //
     // Set window mode flags.
     //
-    SetBoundingBoxMode(source->GetBoundingBoxMode());
     SetSpinMode(source->GetSpinMode());
     SetCameraViewMode(source->GetCameraViewMode());
     SetMaintainViewMode(source->GetMaintainViewMode());
@@ -6160,6 +6149,9 @@ ViewerWindow::SetLargeIcons(bool val)
 //   Jeremy Meredith, Thu Jan 31 14:56:06 EST 2008
 //   Added new axis array window mode.
 //
+//   Jeremy Meredith, Fri Apr 30 14:39:07 EDT 2010
+//   Added automatic depth cueing mode.
+//
 // ****************************************************************************
 
 WindowAttributes
@@ -6251,6 +6243,7 @@ ViewerWindow::GetWindowAttributes() const
     renderAtts.SetShadowStrength(GetShadingStrength());
 
     renderAtts.SetDoDepthCueing(GetDoDepthCueing());
+    renderAtts.SetDepthCueingAutomatic(GetDepthCueingAutomatic());
     renderAtts.SetStartCuePoint(GetStartCuePoint());
     renderAtts.SetEndCuePoint(GetEndCuePoint());
 
@@ -7181,6 +7174,26 @@ ViewerWindow::GetDoDepthCueing() const
 }
 
 // ****************************************************************************
+//  Method:  ViewerWindow::GetDepthCueingAutomatic
+//
+//  Purpose:
+//    Returns the window's depth cueing automatic flag.
+//
+//  Arguments:
+//    none
+//
+//  Programmer:  Jeremy Meredith
+//  Creation:    April 30, 2010
+//
+// ****************************************************************************
+
+bool
+ViewerWindow::GetDepthCueingAutomatic() const
+{
+    return depthCueingAuto;
+}
+
+// ****************************************************************************
 //  Method:  ViewerWindow::GetStartCuePoint
 //
 //  Purpose:
@@ -7232,13 +7245,19 @@ ViewerWindow::GetEndCuePoint() const
 //  Programmer:  Jeremy Meredith
 //  Creation:    August 29, 2007
 //
+//  Modifications:
+//    Jeremy Meredith, Fri Apr 30 14:39:07 EDT 2010
+//    Added automatic depth cueing mode.
+//
 // ****************************************************************************
 void
 ViewerWindow::SetDepthCueingProperties(bool flag,
+                                       bool autoflag,
                                        const double start[3],
                                        const double end[3])
 {
     doDepthCueing = flag;
+    depthCueingAuto = autoflag;
     startCuePoint[0] = start[0];
     startCuePoint[1] = start[1];
     startCuePoint[2] = start[2];
@@ -7862,6 +7881,12 @@ ViewerWindow::GetIsCompressingScalableImage() const
 //   Removed maintain data; moved maintain view from Global settings
 //   (Main window) to per-window Window Information (View window).
 //
+//   Hank Childs, Sat Mar 13 18:46:54 PST 2010
+//   Remove reference to bounding box mode.
+//
+//   Jeremy Meredith, Fri Apr 30 14:39:07 EDT 2010
+//   Added automatic depth cueing mode.
+//
 // ****************************************************************************
 
 void
@@ -7891,7 +7916,6 @@ ViewerWindow::CreateNode(DataNode *parentNode,
     //
     if(detailed)
     {
-        windowNode->AddNode(new DataNode("boundingBoxMode", GetBoundingBoxMode()));
         windowNode->AddNode(new DataNode("cameraView", cameraView));
         windowNode->AddNode(new DataNode("maintainView", maintainView));
         windowNode->AddNode(new DataNode("viewExtentsType", avtExtentType_ToString(plotExtentsType)));
@@ -7956,6 +7980,7 @@ ViewerWindow::CreateNode(DataNode *parentNode,
         windowNode->AddNode(new DataNode("doShading", GetDoShading()));
         windowNode->AddNode(new DataNode("shadingStrength", GetShadingStrength()));
         windowNode->AddNode(new DataNode("doDepthCueing", GetDoDepthCueing()));
+        windowNode->AddNode(new DataNode("depthCueingAuto", GetDepthCueingAutomatic()));
         windowNode->AddNode(new DataNode("startCuePoint", GetStartCuePoint(), 3));
         windowNode->AddNode(new DataNode("endCuePoint", GetEndCuePoint(), 3));
         windowNode->AddNode(new DataNode("colorTexturingFlag", GetColorTexturingFlag()));
@@ -8132,6 +8157,12 @@ ViewerWindow::CreateNode(DataNode *parentNode,
 //   Removed maintain data; moved maintain view from Global settings
 //   (Main window) to per-window Window Information (View window).
 //
+//   Hank Childs, Sat Mar 13 18:46:54 PST 2010
+//   Remove reference to bounding box mode.
+//
+//   Jeremy Meredith, Fri Apr 30 14:39:07 EDT 2010
+//   Added automatic depth cueing mode.
+//
 // ****************************************************************************
 
 void
@@ -8220,8 +8251,6 @@ ViewerWindow::SetFromNode(DataNode *parentNode,
         viewAxisArray.SetFromViewAxisArrayAttributes(&viewAxisArrayAtts);
         SetViewAxisArray(viewAxisArray);
     }
-    if((node = windowNode->GetNode("boundingBoxMode")) != 0)
-        SetBoundingBoxMode(node->AsBool());
     if((node = windowNode->GetNode("cameraView")) != 0)
         SetCameraViewMode(node->AsBool());
     if((node = windowNode->GetNode("maintainView")) != 0)
@@ -8328,11 +8357,17 @@ ViewerWindow::SetFromNode(DataNode *parentNode,
 
     numParamsSaved = 0;
     bool tmpDoDepthCueing = false;
+    bool tmpDepthCueingAuto = true;
     double tmpStartCuePoint[3];
     double tmpEndCuePoint[3];
     if((node = windowNode->GetNode("doDepthCueing")) != 0)
     {
         tmpDoDepthCueing = node->AsBool();
+        numParamsSaved++;
+    }
+    if((node = windowNode->GetNode("depthCueingAuto")) != 0)
+    {
+        tmpDepthCueingAuto = node->AsBool();
         numParamsSaved++;
     }
     if((node = windowNode->GetNode("startCuePoint")) != 0)
@@ -8349,9 +8384,10 @@ ViewerWindow::SetFromNode(DataNode *parentNode,
         tmpEndCuePoint[2] = node->AsDoubleArray()[2];
         numParamsSaved++;
     }
-    if (numParamsSaved == 3)
+    if (numParamsSaved == 4)
     {
         SetDepthCueingProperties(tmpDoDepthCueing,
+                                 tmpDepthCueingAuto,
                                  tmpStartCuePoint,
                                  tmpEndCuePoint);
     }

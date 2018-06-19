@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -447,6 +447,11 @@ QvisHostProfileWindow::CreateBasicSettingsGroup()
 // Programmer:  Jeremy Meredith
 // Creation:    February 18, 2010
 //
+// Modifications:
+//
+//   Hank Childs, Sat Mar 13 20:21:17 PST 2010
+//   Add support for salloc.
+//
 // ****************************************************************************
 void
 QvisHostProfileWindow::CreateLaunchSettingsGroup()
@@ -471,6 +476,7 @@ QvisHostProfileWindow::CreateLaunchSettingsGroup()
     launchMethod->addItem("poe");
     launchMethod->addItem("prun");
     launchMethod->addItem("psub");
+    launchMethod->addItem("salloc");
     launchMethod->addItem("srun");
     launchMethod->addItem("yod");
     launchMethod->addItem("msub/srun");
@@ -1410,6 +1416,10 @@ QvisHostProfileWindow::UpdateWindowSensitivity()
 //   Jeremy Meredith, Thu Feb 18 15:25:27 EST 2010
 //   Split HostProfile int MachineProfile and LaunchProfile. Rewrote window.
 //
+//   Jeremy Meredith, Wed Apr 21 13:17:58 EDT 2010
+//   If the username in the window is the same one we would have gotten
+//   anyway, set the internal value back to the default "notset".
+//
 // ****************************************************************************
 
 bool
@@ -1473,7 +1483,10 @@ QvisHostProfileWindow::GetCurrentValues()
         temp = temp.trimmed();
         if(!temp.isEmpty())
         {
-            currentMachine->SetUserName(std::string(temp.toStdString()));
+            if (temp.toStdString() == GetViewerProxy()->GetLocalUserName())
+                currentMachine->SetUserName("notset");
+            else
+                currentMachine->SetUserName(std::string(temp.toStdString()));
         }
         else
         {
@@ -3066,6 +3079,9 @@ QvisHostProfileWindow::toggleCanDoHW(bool state)
 //   Jeremy Meredith, Thu Feb 18 15:54:50 EST 2010
 //   Split HostProfile int MachineProfile and LaunchProfile.  Rewrote window.
 //
+//   Jeremy Meredith, Thu Apr 29 13:19:48 EDT 2010
+//   Made UpdateWindowSensitivity last as it probably should be.
+//
 // ****************************************************************************
 void
 QvisHostProfileWindow::togglePreCommand(bool state)
@@ -3074,9 +3090,9 @@ QvisHostProfileWindow::togglePreCommand(bool state)
         return;
 
     currentLaunch->SetHavePreCommand(state);
-    UpdateWindowSensitivity();
     SetUpdate(false);
     Apply();
+    UpdateWindowSensitivity();
 }
 
 // ****************************************************************************
@@ -3095,6 +3111,9 @@ QvisHostProfileWindow::togglePreCommand(bool state)
 //   Jeremy Meredith, Thu Feb 18 15:54:50 EST 2010
 //   Split HostProfile int MachineProfile and LaunchProfile.  Rewrote window.
 //
+//   Jeremy Meredith, Thu Apr 29 13:19:48 EDT 2010
+//   Made UpdateWindowSensitivity last as it probably should be.
+//
 // ****************************************************************************
 void
 QvisHostProfileWindow::togglePostCommand(bool state)
@@ -3103,9 +3122,9 @@ QvisHostProfileWindow::togglePostCommand(bool state)
         return;
 
     currentLaunch->SetHavePostCommand(state);
-    UpdateWindowSensitivity();
     SetUpdate(false);
     Apply();
+    UpdateWindowSensitivity();
 }
 
 // ****************************************************************************
@@ -3130,6 +3149,9 @@ QvisHostProfileWindow::togglePostCommand(bool state)
 //    Jeremy Meredith, Thu Feb 18 15:54:50 EST 2010
 //    Split HostProfile int MachineProfile and LaunchProfile.  Rewrote window.
 //
+//    Jeremy Meredith, Thu Apr 29 13:18:59 EDT 2010
+//    Fixed some bugs.
+//
 // ****************************************************************************
 
 void
@@ -3140,19 +3162,18 @@ QvisHostProfileWindow::preCommandChanged(const QString &portStr)
 
     QString temp, msg;
     temp = preCommand->displayText();
-    if(!temp.isEmpty())
-    {
-        currentLaunch->SetHwAccelPreCommand(std::string(temp.toStdString()));
-        preCommandCheckBox->setChecked(false);
-    }
-    else
+    currentLaunch->SetHwAccelPreCommand(std::string(temp.toStdString()));
+    if(temp.isEmpty())
     {
         msg = tr("Pre-command cannot be empty, turning off pre-command.");
         currentLaunch->SetHavePreCommand(false);
+        preCommandCheckBox->blockSignals(true);
+        preCommandCheckBox->setChecked(false);
+        preCommandCheckBox->blockSignals(false);
     }
-    UpdateWindowSensitivity();
     SetUpdate(false);
     Apply();
+    UpdateWindowSensitivity();
 }
 
 // ****************************************************************************
@@ -3174,6 +3195,9 @@ QvisHostProfileWindow::preCommandChanged(const QString &portStr)
 //    Jeremy Meredith, Thu Feb 18 15:54:50 EST 2010
 //    Split HostProfile int MachineProfile and LaunchProfile.  Rewrote window.
 //
+//    Jeremy Meredith, Thu Apr 29 13:18:59 EDT 2010
+//    Fixed some bugs.
+//
 // ****************************************************************************
 void
 QvisHostProfileWindow::postCommandChanged(const QString &portStr)
@@ -3183,19 +3207,18 @@ QvisHostProfileWindow::postCommandChanged(const QString &portStr)
 
     QString temp, msg;
     temp = postCommand->displayText();
-    if(!temp.isEmpty())
-    {
-        currentLaunch->SetHwAccelPostCommand(std::string(temp.toStdString()));
-        postCommandCheckBox->setChecked(false);
-    }
-    else
+    currentLaunch->SetHwAccelPostCommand(std::string(temp.toStdString()));
+    if(temp.isEmpty())
     {
         msg = tr("Post-command cannot be empty, turning off post-command.");
         currentLaunch->SetHavePostCommand(false);
+        postCommandCheckBox->blockSignals(true);
+        postCommandCheckBox->setChecked(false);
+        postCommandCheckBox->blockSignals(false);
     }
-    UpdateWindowSensitivity();
     SetUpdate(false);
     Apply();
+    UpdateWindowSensitivity();
 }
 
 

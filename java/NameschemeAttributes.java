@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -58,11 +58,11 @@ import java.lang.Integer;
 
 public class NameschemeAttributes extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 7;
+    private static int NameschemeAttributes_numAdditionalAtts = 7;
 
     public NameschemeAttributes()
     {
-        super(numAdditionalAttributes);
+        super(NameschemeAttributes_numAdditionalAtts);
 
         namescheme = new String("");
         externalArrayNames = new Vector();
@@ -75,7 +75,7 @@ public class NameschemeAttributes extends AttributeSubject
 
     public NameschemeAttributes(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(NameschemeAttributes_numAdditionalAtts + nMoreFields);
 
         namescheme = new String("");
         externalArrayNames = new Vector();
@@ -88,7 +88,7 @@ public class NameschemeAttributes extends AttributeSubject
 
     public NameschemeAttributes(NameschemeAttributes obj)
     {
-        super(numAdditionalAttributes);
+        super(NameschemeAttributes_numAdditionalAtts);
 
         int i;
 
@@ -134,7 +134,7 @@ public class NameschemeAttributes extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return NameschemeAttributes_numAdditionalAtts;
     }
 
     public boolean equals(NameschemeAttributes obj)

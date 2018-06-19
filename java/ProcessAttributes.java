@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -58,11 +58,11 @@ import java.util.Vector;
 
 public class ProcessAttributes extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 4;
+    private static int ProcessAttributes_numAdditionalAtts = 4;
 
     public ProcessAttributes()
     {
-        super(numAdditionalAttributes);
+        super(ProcessAttributes_numAdditionalAtts);
 
         pids = new Vector();
         ppids = new Vector();
@@ -72,7 +72,7 @@ public class ProcessAttributes extends AttributeSubject
 
     public ProcessAttributes(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(ProcessAttributes_numAdditionalAtts + nMoreFields);
 
         pids = new Vector();
         ppids = new Vector();
@@ -82,7 +82,7 @@ public class ProcessAttributes extends AttributeSubject
 
     public ProcessAttributes(ProcessAttributes obj)
     {
-        super(numAdditionalAttributes);
+        super(ProcessAttributes_numAdditionalAtts);
 
         int i;
 
@@ -114,7 +114,7 @@ public class ProcessAttributes extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return ProcessAttributes_numAdditionalAtts;
     }
 
     public boolean equals(ProcessAttributes obj)

@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -56,11 +56,11 @@ package llnl.visit;
 
 public class ColorControlPoint extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 2;
+    private static int ColorControlPoint_numAdditionalAtts = 2;
 
     public ColorControlPoint()
     {
-        super(numAdditionalAttributes);
+        super(ColorControlPoint_numAdditionalAtts);
 
         colors = new byte[4];
         colors[0] = (byte)0;
@@ -72,7 +72,7 @@ public class ColorControlPoint extends AttributeSubject
 
     public ColorControlPoint(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(ColorControlPoint_numAdditionalAtts + nMoreFields);
 
         colors = new byte[4];
         colors[0] = (byte)0;
@@ -84,7 +84,7 @@ public class ColorControlPoint extends AttributeSubject
 
     public ColorControlPoint(ColorControlPoint obj)
     {
-        super(numAdditionalAttributes);
+        super(ColorControlPoint_numAdditionalAtts);
 
         int i;
 
@@ -104,7 +104,7 @@ public class ColorControlPoint extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return ColorControlPoint_numAdditionalAtts;
     }
 
     public boolean equals(ColorControlPoint obj)

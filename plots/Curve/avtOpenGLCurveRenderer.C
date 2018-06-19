@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -54,17 +54,7 @@
 #include <DebugStream.h>
 #include <TimingsManager.h>
 
-#ifndef VTK_IMPLEMENT_MESA_CXX
-  #if defined(__APPLE__) && (defined(VTK_USE_CARBON) || defined(VTK_USE_COCOA))
-    #include <OpenGL/gl.h>
-  #else
-    #if defined(_WIN32)
-      #include <windows.h>
-    #endif
-    #include <GL/gl.h>
-  #endif
-#endif
-
+#include <avtGLEWInitializer.h>
 
 // ****************************************************************************
 // Method: avtOpenGLCurveRenderer::avtOpenGLCurveRenderer
@@ -218,7 +208,7 @@ void
 avtOpenGLCurveRenderer::DrawCurveAsLines()
 {
     // Set the curve color.
-    ColorAttribute curveColor(atts.GetColor());
+    ColorAttribute curveColor(atts.GetCurveColor());
     curveColor.SetAlpha(255);
     glColor4ubv(curveColor.GetColor());
 
@@ -366,7 +356,7 @@ avtOpenGLCurveRenderer::DrawCurveAsDynamicSymbols()
 #endif
 
     // Set the curve color.
-    ColorAttribute curveColor(atts.GetColor());
+    ColorAttribute curveColor(atts.GetCurveColor());
     curveColor.SetAlpha(255);
     glColor4ubv(curveColor.GetColor());
 

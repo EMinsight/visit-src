@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -44,10 +44,11 @@
 
 
 #include <string>
+#include <boost/cstdint.hpp>
+using boost::int32_t;
 #ifdef _WIN32
 #include <direct.h> /* for _getcwd */
 #else
-#include <inttypes.h>
 #include <unistd.h>
 #endif
 
@@ -81,9 +82,6 @@ using std::string;
 #endif
 #endif
 
-#ifdef _WIN32
-typedef int int32_t;
-#endif
 
 
 // ****************************************************************************

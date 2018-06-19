@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -49,6 +49,7 @@
 #include <vtkUnstructuredGrid.h>
 #include <vtkPolyData.h>
 #include <vtkCellArray.h>
+#include <vtkTriangulationTables.h>
 #include <avtMTSDFileFormatInterface.h>
 
 #include <avtDatabaseMetaData.h>
@@ -188,12 +189,31 @@ avtLAMMPSDumpFileFormat::OpenFileAtBeginning()
 //    Jeremy Meredith, Tue Jun  2 16:25:01 EDT 2009
 //    Added support for unit cell origin (previously assumed to be 0,0,0);
 //
+//    Jeremy Meredith, Thu Apr 22 11:12:51 EDT 2010
+//    Added unit cell bounding box mesh.
+//
+//    Jeremy Meredith, Fri Apr 30 10:03:17 EDT 2010
+//    Added cycles to meta-data.
+//
 // ****************************************************************************
 
 void
 avtLAMMPSDumpFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md, int timestep)
 {
     ReadAllMetaData();
+
+    avtMeshMetaData *mmd_bbox = new avtMeshMetaData("unitCell", 1, 0,0,0,
+                                                    3, 1,
+                                                    AVT_UNSTRUCTURED_MESH);
+    for (int i=0; i<9; i++)
+        mmd_bbox->unitCellVectors[i] = 0;
+    mmd_bbox->unitCellVectors[0] = xMax - xMin;
+    mmd_bbox->unitCellVectors[4] = yMax - yMin;
+    mmd_bbox->unitCellVectors[8] = zMax - zMin;
+    mmd_bbox->unitCellOrigin[0] = xMin;
+    mmd_bbox->unitCellOrigin[1] = yMin;
+    mmd_bbox->unitCellOrigin[2] = zMin;
+    md->Add(mmd_bbox);
 
     avtMeshMetaData *mmd = new avtMeshMetaData("mesh", 1, 0,0,0,
                                                3, 1,
@@ -216,6 +236,9 @@ avtLAMMPSDumpFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md, int t
             continue;
         AddScalarVarToMetaData(md, varNames[v], "mesh", AVT_NODECENT);
     }
+
+    md->SetCycles(cycles);
+    md->SetCyclesAreAccurate(true);
 }
 
 
@@ -244,20 +267,64 @@ avtLAMMPSDumpFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md, int t
 //    Jeremy Meredith, Fri May 15 11:00:49 EDT 2009
 //    Fixed typo....
 //
+//    Jeremy Meredith, Thu Apr 22 11:12:51 EDT 2010
+//    Added unit cell bounding box mesh.
+//
+//    Jeremy Meredith, Tue Apr 27 14:41:11 EDT 2010
+//    The number of atoms can now vary per timestep.
+//
 // ****************************************************************************
 
 vtkDataSet *
-avtLAMMPSDumpFileFormat::GetMesh(int timestep, const char *meshname)
+avtLAMMPSDumpFileFormat::GetMesh(int timestep, const char *name)
 {
     ReadTimeStep(timestep);
+
+    string meshname(name);
+    if (meshname == "unitCell")
+    {
+        vtkPolyData *pd  = vtkPolyData::New();
+        vtkPoints   *pts = vtkPoints::New();
+
+        pts->SetNumberOfPoints(8);
+        pd->SetPoints(pts);
+        pts->Delete();
+        for (int j = 0 ; j < 8 ; j++)
+        {
+            float x=xMin,y=yMin,z=zMin;
+            if (j & 0x01)
+                x = xMax;
+            if (j & 0x02)
+                y = yMax;
+            if (j & 0x04)
+                z = zMax;
+            pts->SetPoint(j, x,y,z);
+        }
+ 
+        vtkCellArray *lines = vtkCellArray::New();
+        pd->SetLines(lines);
+        lines->Delete();
+        for (int k = 0 ; k < 12 ; k++)
+        {
+            lines->InsertNextCell(2);
+            lines->InsertCellPoint(voxVerticesFromEdges[k][0]);
+            lines->InsertCellPoint(voxVerticesFromEdges[k][1]);
+        }
+
+        return pd;
+    }
+
+    if (meshname != "mesh")
+        return NULL;
+
 
     vtkPolyData *pd  = vtkPolyData::New();
     vtkPoints   *pts = vtkPoints::New();
 
-    pts->SetNumberOfPoints(nAtoms);
+    pts->SetNumberOfPoints(nAtoms[timestep]);
     pd->SetPoints(pts);
     pts->Delete();
-    for (int j = 0 ; j < nAtoms ; j++)
+    for (int j = 0 ; j < nAtoms[timestep] ; j++)
     {
         double x = vars[xIndex][j];
         double y = vars[yIndex][j];
@@ -274,7 +341,7 @@ avtLAMMPSDumpFileFormat::GetMesh(int timestep, const char *meshname)
     vtkCellArray *verts = vtkCellArray::New();
     pd->SetVerts(verts);
     verts->Delete();
-    for (int k = 0 ; k < nAtoms ; k++)
+    for (int k = 0 ; k < nAtoms[timestep] ; k++)
     {
         verts->InsertNextCell(1);
         verts->InsertCellPoint(k);
@@ -305,6 +372,9 @@ avtLAMMPSDumpFileFormat::GetMesh(int timestep, const char *meshname)
 //    Jeremy Meredith, Mon May 11 16:55:53 EDT 2009
 //    Added support for new, more arbitrary LAMMPS atom dump style formatting.
 //
+//    Jeremy Meredith, Tue Apr 27 14:41:11 EDT 2010
+//    The number of atoms can now vary per timestep.
+//
 // ****************************************************************************
 
 vtkDataArray *
@@ -316,9 +386,9 @@ avtLAMMPSDumpFileFormat::GetVar(int timestep, const char *varname)
     if (string(varname) == "species")
     {
         vtkFloatArray *scalars = vtkFloatArray::New();
-        scalars->SetNumberOfTuples(nAtoms);
+        scalars->SetNumberOfTuples(nAtoms[timestep]);
         float *ptr = (float *) scalars->GetVoidPointer(0);
-        for (int i=0; i<nAtoms; i++)
+        for (int i=0; i<nAtoms[timestep]; i++)
         {
             ptr[i] = speciesVar[i];
         }
@@ -342,9 +412,9 @@ avtLAMMPSDumpFileFormat::GetVar(int timestep, const char *varname)
 
     // and now create the data array for it
     vtkFloatArray *scalars = vtkFloatArray::New();
-    scalars->SetNumberOfTuples(nAtoms);
+    scalars->SetNumberOfTuples(nAtoms[timestep]);
     float *ptr = (float *) scalars->GetVoidPointer(0);
-    for (int i=0; i<nAtoms; i++)
+    for (int i=0; i<nAtoms[timestep]; i++)
     {
         ptr[i] = vars[varIndex][i];
     }
@@ -396,6 +466,9 @@ avtLAMMPSDumpFileFormat::GetVectorVar(int timestep, const char *varname)
 //    Jeremy Meredith, Fri May 15 11:32:54 EDT 2009
 //    Fixed species to be 0-origin.  Also, only set it once.
 //
+//    Jeremy Meredith, Tue Apr 27 14:41:11 EDT 2010
+//    The number of atoms can now vary per timestep.
+//
 // ****************************************************************************
 void
 avtLAMMPSDumpFileFormat::ReadTimeStep(int timestep)
@@ -410,13 +483,13 @@ avtLAMMPSDumpFileFormat::ReadTimeStep(int timestep)
     OpenFileAtBeginning();
     in.seekg(file_positions[timestep]);
 
-    speciesVar.resize(nAtoms);
+    speciesVar.resize(nAtoms[timestep]);
     for (int v=0; v<vars.size(); v++)
     {
         // id and species are ints; don't bother with the float arrays for them
         if (v == idIndex || v == speciesIndex)
             continue;
-        vars[v].resize(nAtoms);
+        vars[v].resize(nAtoms[timestep]);
     }
 
     vector<double> tmpVars(nVars);
@@ -424,7 +497,7 @@ avtLAMMPSDumpFileFormat::ReadTimeStep(int timestep)
 
     char buff[1000];
     // read all the atoms
-    for (int a=0; a<nAtoms; a++)
+    for (int a=0; a<nAtoms[timestep]; a++)
     {
         in.getline(buff,1000);
         istringstream sin(buff);
@@ -469,6 +542,9 @@ avtLAMMPSDumpFileFormat::ReadTimeStep(int timestep)
 //    Added support for new, more arbitrary LAMMPS atom dump style formatting.
 //    Includes bounds/unit cell, and an optional atom format string.
 //
+//    Jeremy Meredith, Tue Apr 27 14:41:11 EDT 2010
+//    The number of atoms can now vary per timestep.
+//
 // ****************************************************************************
 void
 avtLAMMPSDumpFileFormat::ReadAllMetaData()
@@ -480,7 +556,6 @@ avtLAMMPSDumpFileFormat::ReadAllMetaData()
 
     char buff[1000];
 
-    nAtoms = 0;
     nTimeSteps = 0;
     nVars = -1;
 
@@ -504,17 +579,19 @@ avtLAMMPSDumpFileFormat::ReadAllMetaData()
             in >> zMin >> zMax;
             in.getline(buff, 1000); // get rest of Z line
         }
+        else if (item == "BOX BOUNDS xy xz yz")
+        {
+            float xy, xz, yz;
+            in >> xMin >> xMax >> xy;
+            in >> yMin >> yMax >> xz;
+            in >> zMin >> zMax >> yz;
+            in.getline(buff, 1000); // get rest of Z line
+        }
         else if (item == "NUMBER OF ATOMS")
         {
             in.getline(buff,1000);
             int n = strtol(buff, NULL, 10);
-            if (nAtoms == 0)
-                nAtoms = n;
-            else
-            {
-                if (n != nAtoms)
-                    EXCEPTION1(InvalidFilesException, filename.c_str());
-            }
+            nAtoms.push_back(n);
         }
         else if (item.substr(0,5) == "ATOMS")
         {

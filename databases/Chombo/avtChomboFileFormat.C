@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -50,12 +50,14 @@
 
 #include <vtkFieldData.h>
 #include <vtkCellData.h>
+#include <vtkCellArray.h>
 #include <vtkFloatArray.h>
 #include <vtkDoubleArray.h>
 #include <vtkIntArray.h>
 #include <vtkUnsignedCharArray.h>
 #include <vtkRectilinearGrid.h>
 #include <vtkUnstructuredGrid.h>
+#include <vtkPolyData.h>
 #include <vtkCellType.h>
 
 #include <DBOptionsAttributes.h>
@@ -87,7 +89,8 @@
 #define H5_USE_16_API
 #include <hdf5.h>
 #include <visit-hdf5.h>
-
+#include <boost/cstdint.hpp>
+using     boost::int32_t;
 using     std::string;
 
 
@@ -116,6 +119,13 @@ using     std::string;
 //    Gunther H. Weber, Tue Sep 15 11:26:12 PDT 2009
 //    Added support for 3D mappings for 2D files.
 //
+//    Hank Childs, Fri Mar  5 13:16:52 PST 2010
+//    Initialize hasParticles.
+//
+//    Gunther H. Weber, Thu Jun 17 10:10:17 PDT 2010
+//    Added ability to connect particle mesh based on polymer_id and
+//    particle_nid
+//
 // ****************************************************************************
 
 avtChomboFileFormat::avtChomboFileFormat(const char *filename, 
@@ -130,6 +140,8 @@ avtChomboFileFormat::avtChomboFileFormat(const char *filename,
     checkForMappingFile = true;
     mappingFileExists = false;
     mappingIs3D = false;
+    hasParticles = false;
+    connectParticles = false;
     if (atts != NULL)
     {
         for (int i = 0; i < atts->GetNumberOfOptions(); ++i)
@@ -142,6 +154,8 @@ avtChomboFileFormat::avtChomboFileFormat(const char *filename,
                 enableOnlyExplicitMaterials = atts->GetBool("Enable only explicitly defined materials by default");
             else if (atts->GetName(i) == "Check for mapping file and import coordinates if available")
                 checkForMappingFile = atts->GetBool("Check for mapping file and import coordinates if available");
+            else if (atts->GetName(i) == "Use particle_nid and polymer_id to connect particles")
+                connectParticles = atts->GetBool("Use particle_nid and polymer_id to connect particles");
             else
                 debug1 << "Ignoring unknown option " << atts->GetName(i) << endl;
         }
@@ -417,6 +431,32 @@ avtChomboFileFormat::InitializeReader(void)
     }
 
     //
+    // Open up "Chombo_global". Need to do open this before the "/" group to
+    // determine number of dimensions, which we need to know for reading origin
+    // and aspect ratio information.
+    //
+    hid_t global = H5Gopen(file_handle, "Chombo_global");
+    if (global < 0)
+    {
+        EXCEPTION1(InvalidDBTypeException, "Cannot be a Chombo file, does "
+                                           "not have Chombo_global");
+    }
+    hid_t dim_id = H5Aopen_name(global, "SpaceDim");
+    if (dim_id < 0)
+    {
+        EXCEPTION1(InvalidDBTypeException, "Cannot be a Chombo file, does "
+                                         "not have SpaceDim in Chombo_global");
+    }
+    H5Aread(dim_id, H5T_NATIVE_INT, &dimension);
+    if (dimension != 2 && dimension != 3)
+    {
+        debug1 << "ERROR: Reader only supports 2D and 3D data sets." << endl;
+        EXCEPTION1(InvalidFilesException, filenames[0]);
+    }
+    H5Aclose(dim_id);
+    H5Gclose(global);
+
+    //
     // Most of the global info is stored in the "/" group.
     //
     hid_t slash = H5Gopen(file_handle, "/");
@@ -430,6 +470,8 @@ avtChomboFileFormat::InitializeReader(void)
     bool hasTime = false;
     bool hasIterations = false;
     bool hasCentering = false;
+    bool hasProbLo = false;
+    bool hasAspectRatio = false;
 
     int numAttrs = H5Aget_num_attrs(slash);
     char buf[1024];
@@ -443,6 +485,10 @@ avtChomboFileFormat::InitializeReader(void)
             hasIterations = true;
         if (strcmp(buf,"data_centering") == 0)
             hasCentering = true;
+        if (strcmp(buf,"prob_lo") == 0)
+            hasProbLo = true;
+        if (strcmp(buf,"aspect_ratio") == 0)
+            hasAspectRatio = true;
         H5Aclose(idx);
     }
 
@@ -512,6 +558,91 @@ avtChomboFileFormat::InitializeReader(void)
             debug1 << "Cell centered data." << std::endl;
         }
     }
+
+    //
+    // Get origin and aspect ratio
+    //
+    for (int i=0; i<3; ++i)
+    {
+        probLo[i] = 0.0;
+        aspectRatio[i] =1.0;
+    }
+
+    hid_t doublevect2d_id = H5Tcreate (H5T_COMPOUND, sizeof(doublevect2d));
+    H5Tinsert (doublevect2d_id, "x", HOFFSET(doublevect2d, x), H5T_NATIVE_DOUBLE);
+    H5Tinsert (doublevect2d_id, "y", HOFFSET(doublevect2d, y), H5T_NATIVE_DOUBLE);
+    hid_t doublevect3d_id = H5Tcreate (H5T_COMPOUND, sizeof(doublevect3d));
+    H5Tinsert (doublevect3d_id, "x", HOFFSET(doublevect3d, x), H5T_NATIVE_DOUBLE);
+    H5Tinsert (doublevect3d_id, "y", HOFFSET(doublevect3d, y), H5T_NATIVE_DOUBLE);
+    H5Tinsert (doublevect3d_id, "z", HOFFSET(doublevect3d, z), H5T_NATIVE_DOUBLE);
+
+    if (hasProbLo)
+    {
+        hid_t probLo_id = H5Aopen_name(slash, "prob_lo");
+        if (probLo_id < 0)
+        {
+            EXCEPTION1(InvalidDBTypeException, "Could not open attribute \"prob_lo\".");
+        }
+        else
+        {
+            doublevect probLoBuff;
+            if (H5Aread(probLo_id, (dimension == 2 ? doublevect2d_id : doublevect3d_id), &probLoBuff) < 0)
+            {
+                EXCEPTION1(InvalidDBTypeException, "Cannot read \"prob_lo\".");
+            }
+            else
+            {
+                if (dimension == 2)
+                {
+                    probLo[0] = probLoBuff.dv2.x;
+                    probLo[1] = probLoBuff.dv2.y;
+                }
+                else
+                {
+                    probLo[0] = probLoBuff.dv3.x;
+                    probLo[1] = probLoBuff.dv3.y;
+                    probLo[2] = probLoBuff.dv3.z;
+                }
+            }
+            H5Aclose(probLo_id);
+        }
+    }
+
+    if (hasAspectRatio)
+    {
+        hid_t aspectRatio_id = H5Aopen_name(slash, "aspect_ratio");
+        if (aspectRatio_id < 0)
+        {
+            EXCEPTION1(InvalidDBTypeException, "Could not open attribute \"aspect_ratio\".");
+        }
+        else
+        {
+            doublevect aspectRatioBuff;
+            if (H5Aread(aspectRatio_id, (dimension == 2 ? doublevect2d_id : doublevect3d_id), &aspectRatioBuff) < 0)
+            {
+                EXCEPTION1(InvalidDBTypeException, "Cannot read \"aspect_ratio\".");
+            }
+            else
+            {
+                if (dimension == 2)
+                {
+                    aspectRatio[0] = aspectRatioBuff.dv2.x;
+                    aspectRatio[1] = aspectRatioBuff.dv2.y;
+                }
+                else
+                {
+                    aspectRatio[0] = aspectRatioBuff.dv3.x;
+                    aspectRatio[1] = aspectRatioBuff.dv3.y;
+                    aspectRatio[2] = aspectRatioBuff.dv3.z;
+                }
+            }
+            H5Aclose(aspectRatio_id);
+        }
+    }
+
+    H5Tclose(doublevect2d_id);
+    H5Tclose(doublevect3d_id);
+
 
     //
     // Note: max_level, per conversation with John Shalf, is for the code
@@ -588,30 +719,6 @@ avtChomboFileFormat::InitializeReader(void)
     // We're done reading everything from "slash".
     //
     H5Gclose(slash);
-
-    //
-    // Now open up "Chombo_global".
-    //
-    hid_t global = H5Gopen(file_handle, "Chombo_global");
-    if (global < 0)
-    {
-        EXCEPTION1(InvalidDBTypeException, "Cannot be a Chombo file, does "
-                                           "not have Chombo_global");
-    }
-    hid_t dim_id = H5Aopen_name(global, "SpaceDim");
-    if (dim_id < 0)
-    {
-        EXCEPTION1(InvalidDBTypeException, "Cannot be a Chombo file, does "
-                                         "not have SpaceDim in Chombo_global");
-    }
-    H5Aread(dim_id, H5T_NATIVE_INT, &dimension);
-    if (dimension != 2 && dimension != 3)
-    {
-        debug1 << "ERROR: Reader only supports 2D and 3D data sets." << endl;
-        EXCEPTION1(InvalidFilesException, filenames[0]);
-    }
-    H5Aclose(dim_id);
-    H5Gclose(global);
 
     //
     // Look for epxressions
@@ -1406,14 +1513,14 @@ avtChomboFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
         mesh->spatialDimension = 3;
     }
     mesh->hasSpatialExtents = true;
-    mesh->minSpatialExtents[0] = lowProbI[0] * dx[0];
-    mesh->maxSpatialExtents[0] = (hiProbI[0] + 1) * dx[0];
-    mesh->minSpatialExtents[1] = lowProbJ[0] * dx[0];
-    mesh->maxSpatialExtents[1] = (hiProbJ[0] + 1) * dx[0];
+    mesh->minSpatialExtents[0] = probLo[0] + lowProbI[0] * dx[0] * aspectRatio[0];
+    mesh->maxSpatialExtents[0] = probLo[0] + (hiProbI[0] + 1) * dx[0] * aspectRatio[0];
+    mesh->minSpatialExtents[1] = probLo[1] + lowProbJ[0] * dx[0] * aspectRatio[1];
+    mesh->maxSpatialExtents[1] = probLo[1] + (hiProbJ[0] + 1) * dx[0] * aspectRatio[1];
     if (dimension == 3)
     {
-        mesh->minSpatialExtents[2] = lowProbK[0] * dx[0];
-        mesh->maxSpatialExtents[2] = (hiProbK[0] + 1) * dx[0];
+        mesh->minSpatialExtents[2] = probLo[2] + lowProbK[0] * dx[0] * aspectRatio[2];
+        mesh->maxSpatialExtents[2] = probLo[2] + (hiProbK[0] + 1) * dx[0] * aspectRatio[2];
     }
     mesh->blockTitle = "patches";
     mesh->blockPieceName = "patch";
@@ -1858,7 +1965,29 @@ avtChomboFileFormat::GetLevelAndLocalPatchNumber(int global_patch,
 //    Gunther H. Weber, Wed Jun 10 18:28:24 PDT 2009
 //    Added ability to handle particle data in Chombo files.
 //
+//    Gunther H. Weber, Thu Jun 17 10:10:17 PDT 2010
+//    Added ability to connect particle mesh based on polymer_id and
+//    particle_nid
+//
 // ****************************************************************************
+
+// Comaprator class used to sort an array with integers so that the permutation
+// of integers gives an order so that all prticles belonging to a single polymer
+// are next to each other and in correct order along the polymer.
+class LookUpOrderCmp
+{
+    public:
+        LookUpOrderCmp(const int32_t *d1, const int32_t *d2) : order1Var(d1), order2Var(d2) {}
+        bool operator()(vtkIdType a, vtkIdType b)
+        {
+            return order1Var[a] < order1Var[b] ||
+                order1Var[a] == order1Var[b] && order2Var[a] < order2Var[b];
+        }
+
+    private:
+        const int32_t *order1Var;
+        const int32_t *order2Var;
+};
 
 vtkDataSet *
 avtChomboFileFormat::GetMesh(int patch, const char *meshname)
@@ -1915,32 +2044,32 @@ avtChomboFileFormat::GetMesh(int patch, const char *meshname)
 
         float *ptr = xcoord->GetPointer(0);
         if (!allowedToUseGhosts)
-            ptr[0] = lowI[patch]*dx[level];
+            ptr[0] = probLo[0] + lowI[patch]*dx[level]*aspectRatio[0];
         else
-            ptr[0] = (lowI[patch]-numGhostI)*dx[level];
+            ptr[0] = probLo[0] + (lowI[patch]-numGhostI)*dx[level]*aspectRatio[0];
 
         for (i = 1; i < dims[0]; i++)
-            ptr[i] = ptr[0] + i*dx[level];
+            ptr[i] = ptr[0] + i*dx[level]*aspectRatio[0];
 
         ptr = ycoord->GetPointer(0);
         if (!allowedToUseGhosts)
-            ptr[0] = lowJ[patch]*dx[level];
+            ptr[0] = probLo[1] + lowJ[patch]*dx[level]*aspectRatio[1];
         else
-            ptr[0] = (lowJ[patch]-numGhostJ)*dx[level];
+            ptr[0] = probLo[1] + (lowJ[patch]-numGhostJ)*dx[level]*aspectRatio[1];
 
         for (i = 1; i < dims[1]; i++)
-            ptr[i] = ptr[0] + i*dx[level];
+            ptr[i] = ptr[0] + i*dx[level]*aspectRatio[1];
 
         if (dimension == 3)
         {
             ptr = zcoord->GetPointer(0);
             if (!allowedToUseGhosts)
-                ptr[0] = lowK[patch]*dx[level];
+                ptr[0] = probLo[2] + lowK[patch]*dx[level]*aspectRatio[2];
             else
-                ptr[0] = (lowK[patch]-numGhostK)*dx[level];
+                ptr[0] = probLo[2] + (lowK[patch]-numGhostK)*dx[level]*aspectRatio[2];
 
             for (i = 1; i < dims[2]; i++)
-                ptr[i] = ptr[0] + i*dx[level];
+                ptr[i] = ptr[0] + i*dx[level]*aspectRatio[2];
         }
         else
             zcoord->SetTuple1(0, 0.);
@@ -2225,6 +2354,69 @@ avtChomboFileFormat::GetMesh(int patch, const char *meshname)
             }
         }
 
+        int32_t *particleOrder = 0;
+        int32_t *polymerNo = 0;
+
+        if (connectParticles &&
+            std::find(
+                particleVarnames.begin(), particleVarnames.end(), "particle_nid"
+                     ) != particleVarnames.end() &&
+            std::find(
+                particleVarnames.begin(), particleVarnames.end(), "polymer_id"
+                     ) != particleVarnames.end())
+        {
+            dataSet = H5Dopen(file_handle, "/particles/particle_nid");
+
+            if ( dataSet > 0)
+            {
+                hid_t dataSpace = H5Dget_space(dataSet);
+                if (H5Sis_simple(dataSpace))
+                {
+                    hsize_t nParticlesCheck;
+                    if (H5Sget_simple_extent_ndims(dataSpace) == 1)
+                    {
+                        H5Sget_simple_extent_dims(dataSpace, &nParticlesCheck, NULL);
+                        if (nParticles == nParticlesCheck)
+                        {
+                            particleOrder = new int32_t[nParticles];
+                            H5Dread(dataSet, H5T_NATIVE_INT32, H5S_ALL, H5S_ALL, H5P_DEFAULT, particleOrder);
+                        }
+                    }
+                }
+                H5Dclose(dataSet);
+            }
+
+            dataSet = H5Dopen(file_handle, "/particles/polymer_id");
+            if ( dataSet > 0)
+            {
+                hid_t dataSpace = H5Dget_space(dataSet);
+                if (H5Sis_simple(dataSpace))
+                {
+                    hsize_t nParticlesCheck;
+                    if (H5Sget_simple_extent_ndims(dataSpace) == 1)
+                    {
+                        H5Sget_simple_extent_dims(dataSpace, &nParticlesCheck, NULL);
+                        if (nParticles == nParticlesCheck)
+                        {
+                            polymerNo = new int32_t[nParticles];
+                            H5Dread(dataSet, H5T_NATIVE_INT32, H5S_ALL, H5S_ALL, H5P_DEFAULT, polymerNo);
+                        }
+                    }
+                }
+                H5Dclose(dataSet);
+            }
+
+            // Check if both data sets for connecting particles were loaded
+            if (!(particleOrder && polymerNo))
+            {
+                // No, delete any that may be loaded and set pointers to zero
+                delete[] particleOrder;
+                particleOrder = 0;
+                delete[] polymerNo;
+                polymerNo = 0;
+            }
+        }
+
         H5Fclose(file_handle);
         file_handle = -1;
 
@@ -2240,21 +2432,66 @@ avtChomboFileFormat::GetMesh(int patch, const char *meshname)
         delete[] zPos;
         delete[] datasetname;
 
-        //
-        // Create a vtkUnstructuredGrid to contain the point cells.
-        //
-        vtkUnstructuredGrid* ugrid = vtkUnstructuredGrid::New();
-        ugrid->SetPoints(points);
-        points->Delete();
-        ugrid->Allocate(nParticles);
-        vtkIdType onevertex;
-        for(int i = 0; i < nParticles; ++i)
+        if (particleOrder)
         {
-            onevertex = i;
-            ugrid->InsertNextCell(VTK_VERTEX, 1, &onevertex);
-        }
+            // Create an integer array with proper permutation of particles such that
+            // all particles on same polymer are "next" to each other and that particles
+            // within a polymer are ordered according to particle_nid
+            vtkIdType *orderPermutation = new vtkIdType[nParticles];
+            for (vtkIdType i=0; i <nParticles; ++i) orderPermutation[i]=i;
 
-        return ugrid;
+            LookUpOrderCmp cmp(polymerNo, particleOrder);
+            std::sort(orderPermutation, orderPermutation+nParticles, cmp);
+
+            //
+            // Create poly data
+            //
+            vtkPolyData *pd = vtkPolyData::New();
+            pd->SetPoints(points);
+            points->Delete();
+            vtkCellArray *verts = vtkCellArray::New();
+            pd->SetVerts(verts);
+            verts->Delete();
+            for (vtkIdType i= 0; i<nParticles; ++i)
+            {
+                verts->InsertNextCell(1);
+                verts->InsertCellPoint(i);
+            }
+            vtkCellArray *lines = vtkCellArray::New();
+            pd->SetLines(lines);
+            lines->Delete();
+            for (vtkIdType i=0; i<nParticles-1; ++i)
+            {
+                if (polymerNo[i] == polymerNo[i+1])
+                {
+                    lines->InsertNextCell(2);
+                    lines->InsertCellPoint(orderPermutation[i]);
+                    lines->InsertCellPoint(orderPermutation[i+1]);
+                }
+            }
+
+            delete[] particleOrder;
+            delete[] polymerNo;
+
+            return pd;
+        }
+        else {
+            //
+            // Create a vtkUnstructuredGrid to contain the point cells.
+            //
+            vtkUnstructuredGrid* ugrid = vtkUnstructuredGrid::New();
+            ugrid->SetPoints(points);
+            points->Delete();
+            ugrid->Allocate(nParticles);
+            vtkIdType onevertex;
+            for(int i = 0; i < nParticles; ++i)
+            {
+                onevertex = i;
+                ugrid->InsertNextCell(VTK_VERTEX, 1, &onevertex);
+            }
+
+            return ugrid;
+        }
     }
     else
         EXCEPTION1(InvalidVariableException, meshname);
@@ -2652,16 +2889,16 @@ avtChomboFileFormat::GetAuxiliaryData(const char *var, int dom,
 
             GetLevelAndLocalPatchNumber(patch, level, local_patch);
 
-            bounds[0] = lowI[patch]*dx[level];
-            bounds[1] = bounds[0] + (hiI[patch]-lowI[patch])*dx[level];
-            bounds[2] = lowJ[patch]*dx[level];
-            bounds[3] = bounds[2] + (hiJ[patch]-lowJ[patch])*dx[level];
+            bounds[0] = probLo[0] + lowI[patch]*dx[level]*aspectRatio[0];
+            bounds[1] = probLo[0] + bounds[0] + (hiI[patch]-lowI[patch])*dx[level]*aspectRatio[0];
+            bounds[2] = probLo[1] + lowJ[patch]*dx[level]*aspectRatio[1];
+            bounds[3] = probLo[1] + bounds[2] + (hiJ[patch]-lowJ[patch])*dx[level]*aspectRatio[1];
             bounds[4] = 0;
             bounds[5] = 0;
             if (dimension == 3)
             {
-                bounds[4] = lowK[patch]*dx[level];
-                bounds[5] = bounds[4] + (hiK[patch]-lowK[patch])*dx[level];
+                bounds[4] = probLo[2] + lowK[patch]*dx[level]*aspectRatio[2];
+                bounds[5] = probLo[2] + bounds[4] + (hiK[patch]-lowK[patch])*dx[level]*aspectRatio[2];
             }
             itree->AddElement(patch, bounds);
         }
@@ -2691,6 +2928,12 @@ avtChomboFileFormat::GetAuxiliaryData(const char *var, int dom,
 //
 //    Hank Childs, Tue Feb  5 16:28:31 PST 2008
 //    Fix problem with GetVar returning doubles.  Also fix memory leak.
+//
+//    Kathleen Bonnell, Fri Apr 23 10:33:17 MST 2010 
+//    Fix crash on windows -- cast std::vectors to pointers before passing
+//    as args to avtMaterial, so can catch the case where the vector is empty
+//    and therefore pass NULL, because attempting to  dereference an empty 
+//    vector's 0'th item crashes on windows.
 //
 // ****************************************************************************
     
@@ -2783,10 +3026,23 @@ avtChomboFileFormat::GetMaterial(const char *var, int patch,
     }
 
     int mixed_size = mix_zone.size();
-    avtMaterial * mat = new avtMaterial(nMaterials, mnames, nCells,
-                                        &(material_list[0]), mixed_size,
-                                        &(mix_mat[0]), &(mix_next[0]),
-                                        &(mix_zone[0]), &(mix_vf[0]));
+    // get pointers to pass to avtMaterial.  Windows will except if
+    // an empty std::vector's zeroth item is dereferenced.
+    int *ml = NULL, *mixm = NULL, *mixn = NULL, *mixz = NULL;
+    float *mixv = NULL;
+    if (material_list.size() > 0)
+        ml = &(material_list[0]);
+    if (mix_mat.size() > 0)
+        mixm = &(mix_mat[0]);
+    if (mix_next.size() > 0)
+        mixn = &(mix_next[0]);
+    if (mix_zone.size() > 0)
+        mixz = &(mix_zone[0]);
+    if (mix_vf.size() > 0)
+        mixv = &(mix_vf[0]);
+
+    avtMaterial * mat = new avtMaterial(nMaterials, mnames, nCells, ml, 
+                                        mixed_size, mixm, mixn, mixz, mixv);
      
     df = avtMaterial::Destruct;
 

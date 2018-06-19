@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -530,6 +530,14 @@ QvisThresholdWindow::variableAddedToList(const QString &variableToAdd)
 }
 
 
+// ****************************************************************************
+//  Modifications:
+//
+//    Hank Childs, Thu May 20 10:09:27 PDT 2010
+//    Fix problem uncovered by Cihan Altinay with deleting the last variable.
+//
+// ****************************************************************************
+
 void
 QvisThresholdWindow::selectedVariableDeleted()
 {
@@ -539,15 +547,17 @@ QvisThresholdWindow::selectedVariableDeleted()
                << endl;
         return;
     }
-
+ 
     if (guiFullVarNames.size() == 0)
         return;
-        
+ 
     int selectedVarNum = threshVars->currentRow();
-
-    threshVars->removeRow(selectedVarNum);
-
-    guiFullVarNames.erase(guiFullVarNames.begin() + selectedVarNum);
+ 
+    if (selectedVarNum >= 0)
+    {
+        threshVars->removeRow(selectedVarNum);
+        guiFullVarNames.erase(guiFullVarNames.begin() + selectedVarNum);
+    }
 }
 
 

@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -57,25 +57,25 @@ import java.util.Vector;
 
 public class ClientInformationList extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 1;
+    private static int ClientInformationList_numAdditionalAtts = 1;
 
     public ClientInformationList()
     {
-        super(numAdditionalAttributes);
+        super(ClientInformationList_numAdditionalAtts);
 
         clients = new Vector();
     }
 
     public ClientInformationList(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(ClientInformationList_numAdditionalAtts + nMoreFields);
 
         clients = new Vector();
     }
 
     public ClientInformationList(ClientInformationList obj)
     {
-        super(numAdditionalAttributes);
+        super(ClientInformationList_numAdditionalAtts);
 
         int i;
 
@@ -83,8 +83,8 @@ public class ClientInformationList extends AttributeSubject
         clients = new Vector(obj.clients.size());
         for(i = 0; i < obj.clients.size(); ++i)
         {
-            ClientInformation newObj = (ClientInformation)clients.elementAt(i);
-            clients.addElement(new ClientInformation(newObj));
+            ClientInformation oldObj = (ClientInformation)obj.clients.elementAt(i);
+            clients.addElement(new ClientInformation(oldObj));
         }
 
 
@@ -98,7 +98,7 @@ public class ClientInformationList extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return ClientInformationList_numAdditionalAtts;
     }
 
     public boolean equals(ClientInformationList obj)

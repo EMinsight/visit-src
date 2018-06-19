@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-400142
 # All rights reserved.
@@ -38,7 +38,9 @@
 #
 #****************************************************************************/
 
-INSTALL(FILES ${VISIT_BINARY_DIR}/include/visit-config.h lite_pdb.h lite_score.h visit-hdf5.h
+INSTALL(FILES ${VISIT_BINARY_DIR}/include/visit-config.h 
+              ${VISIT_BINARY_DIR}/include/visit-python-config.h
+              lite_pdb.h lite_score.h visit-hdf5.h
     DESTINATION ${VISIT_INSTALLED_VERSION_INCLUDE}/visit/include
     PERMISSIONS OWNER_WRITE OWNER_READ GROUP_WRITE GROUP_READ WORLD_READ
 )

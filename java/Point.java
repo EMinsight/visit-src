@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -56,7 +56,7 @@ package llnl.visit;
 
 public class Point extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 1;
+    private static int Point_numAdditionalAtts = 1;
 
     // Enum values
     public final static int VALUETYPE_VT_TUPLE = 0;
@@ -71,21 +71,21 @@ public class Point extends AttributeSubject
 
     public Point()
     {
-        super(numAdditionalAttributes);
+        super(Point_numAdditionalAtts);
 
         value = new String("");
     }
 
     public Point(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(Point_numAdditionalAtts + nMoreFields);
 
         value = new String("");
     }
 
     public Point(Point obj)
     {
-        super(numAdditionalAttributes);
+        super(Point_numAdditionalAtts);
 
         value = new String(obj.value);
 
@@ -99,7 +99,7 @@ public class Point extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return Point_numAdditionalAtts;
     }
 
     public boolean equals(Point obj)

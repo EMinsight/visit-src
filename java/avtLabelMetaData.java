@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -56,23 +56,23 @@ package llnl.visit;
 
 public class avtLabelMetaData extends avtVarMetaData
 {
-    private static int numAdditionalAttributes = 0;
+    private static int avtLabelMetaData_numAdditionalAtts = 0;
 
     public avtLabelMetaData()
     {
-        super(numAdditionalAttributes);
+        super(avtLabelMetaData_numAdditionalAtts);
 
     }
 
     public avtLabelMetaData(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(avtLabelMetaData_numAdditionalAtts + nMoreFields);
 
     }
 
     public avtLabelMetaData(avtLabelMetaData obj)
     {
-        super(numAdditionalAttributes);
+        super(avtLabelMetaData_numAdditionalAtts);
 
 
         SelectAll();
@@ -85,7 +85,7 @@ public class avtLabelMetaData extends avtVarMetaData
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return avtLabelMetaData_numAdditionalAtts;
     }
 
     public boolean equals(avtLabelMetaData obj)
@@ -102,11 +102,12 @@ public class avtLabelMetaData extends avtVarMetaData
     {
         super.WriteAtts(buf);
 
-        int offset = Offset();
+        int offset = (new avtLabelMetaData()).Offset();
     }
 
     public void ReadAtts(int id, CommunicationBuffer buf)
     {
+        int offset = (new avtLabelMetaData()).Offset();
     }
 
     public String toString(String indent)

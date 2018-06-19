@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -75,6 +75,12 @@ struct Atom
 //    Jeremy Meredith, Tue Mar 10 17:42:20 EDT 2009
 //    Added support for POTIM field to get time values.
 //
+//    Jeremy Meredith, Mon May 10 18:01:50 EDT 2010
+//    Changed the way cycles and times are generated.
+//
+//    Jeremy Meredith, Thu Aug 12 16:26:24 EDT 2010
+//    Allowed per-cycle changes in unit cell vectors.
+//
 // ****************************************************************************
 
 class avtOUTCARFileFormat : public avtMTSDFileFormat
@@ -91,10 +97,14 @@ class avtOUTCARFileFormat : public avtMTSDFileFormat
 
     virtual const char    *GetType(void)   { return "OUTCAR"; };
     virtual void           FreeUpResources(void); 
+    virtual void           GetCycles(std::vector<int>&);
+    virtual void           GetTimes(std::vector<double>&);
 
     virtual vtkDataSet    *GetMesh(int, const char *);
     virtual vtkDataArray  *GetVar(int, const char *);
     virtual vtkDataArray  *GetVectorVar(int, const char *);
+
+    virtual bool          HasInvariantMetaData(void) const { return false; };
 
   protected:
     virtual void           PopulateDatabaseMetaData(avtDatabaseMetaData *,int);
@@ -111,6 +121,12 @@ class avtOUTCARFileFormat : public avtMTSDFileFormat
     int ntimesteps;
     int natoms;
 
+    struct UCV
+    {
+        double v[3][3];
+        double *operator[](int i) { return v[i]; }
+    };
+
     std::vector<istream::pos_type>   file_positions;
     bool has_magnetization;
     std::vector<float>               mags,magp,magd,magtot;
@@ -118,7 +134,7 @@ class avtOUTCARFileFormat : public avtMTSDFileFormat
     std::vector<float>               free_energy;
     std::vector< std::vector<Atom> > allatoms;
 
-    double unitCell[3][3];
+    std::vector<UCV> unitCell;
     double potim;
 
     std::vector<std::string> element_names;

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -995,6 +995,9 @@ ViewerWindowManagerAttributes::FieldsEqual(int index_, const AttributeGroup *rhs
 //   Jeremy Meredith, Fri Feb 15 15:01:48 EST 2008
 //   Added lock tools.
 //
+//   Hank Childs, Sat Mar 13 18:43:02 PST 2010
+//   Remove reference to toggling bounding box mode.
+//
 // ****************************************************************************
 
 void
@@ -1038,7 +1041,6 @@ ViewerWindowManagerAttributes::ProcessOldVersions(DataNode *parentNode,
         windowGroup.AddAction(ViewerRPC::DeleteWindowRPC);
         windowGroup.AddAction(ViewerRPC::SetWindowLayoutRPC);
         windowGroup.AddAction(ViewerRPC::ToggleSpinModeRPC);
-        windowGroup.AddAction(ViewerRPC::ToggleBoundingBoxModeRPC);
         windowGroup.AddAction(ViewerRPC::InvertBackgroundRPC);
         AddActionGroup(actionNode, windowGroup);
 

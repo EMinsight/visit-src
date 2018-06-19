@@ -5,11 +5,12 @@
 
 #ifndef PARADIS_C_INTERFACE_H
 #define PARADIS_C_INTERFACE_H
-#ifndef WIN32
-#  include <stdint.h>
-#else
-#  include <msc_stdint.h>
-#endif
+
+#include <boost/cstdint.hpp>
+using boost::int8_t;
+using boost::int32_t;
+using boost::uint32_t;
+
 #ifdef __cplusplus
 extern "C" {
 #endif  
@@ -23,6 +24,8 @@ extern "C" {
   void paraDIS_close(void); 
 
   void paraDIS_SetVerbosity(int level, const char *filename=0); 
+  
+  void paraDIS_SetThreshold(double threshold); 
   
   void paraDIS_EnableDebugOutput(int truth); 
   

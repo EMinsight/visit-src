@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -62,6 +62,7 @@
 extern "C" {
 #endif
 
+#include <visit-config.h> /* For PDB_LITE_HAS_LONG_LONG */
 #include <setjmp.h> /* For the setjmp/long structure jmp_buf. */
 #include <stdio.h>
 #include <lite_score.h> /* For type definitions */ 
@@ -210,6 +211,9 @@ struct s_data_alignment {
    int short_alignment;
    int int_alignment;
    int long_alignment;
+#ifdef PDB_LITE_HAS_LONG_LONG 
+   int longlong_alignment;
+#endif
    int float_alignment;
    int double_alignment;
    int struct_alignment;
@@ -226,6 +230,10 @@ struct s_data_standard {
    int int_order;
    int long_bytes;
    int long_order;
+#ifdef PDB_LITE_HAS_LONG_LONG 
+   int longlong_bytes;
+   int longlong_order;
+#endif
    int float_bytes;
    long *float_format;
    int *float_order;

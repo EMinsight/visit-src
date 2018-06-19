@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -73,6 +73,9 @@ class QGroupBox;
 //   Cyrus Harrison, Fri Jul 18 14:38:14 PDT 2008
 //   Initial Qt4 Port.
 //
+//   Allen Sanderson, Sun Mar  7 12:49:56 PST 2010
+//   Change layout of window for 2.0 interface changes.
+//
 // ****************************************************************************
 
 class QvisMoleculePlotWindow : public QvisPostableWindowObserver
@@ -112,7 +115,7 @@ class QvisMoleculePlotWindow : public QvisPostableWindowObserver
     void residueTypeColorTableChanged(bool useDefault, const QString &ctName);
     void residueSequenceColorTableChanged(bool useDefault, const QString &ctName);
     void continuousColorTableChanged(bool useDefault, const QString &ctName);
-    void legendFlagChanged(bool val);
+    void legendToggled(bool val);
     void minFlagChanged(bool val);
     void scalarMinProcessText();
     void maxFlagChanged(bool val);
@@ -137,7 +140,7 @@ class QvisMoleculePlotWindow : public QvisPostableWindowObserver
     QvisColorTableButton *residueTypeColorTable;
     QvisColorTableButton *residueSequenceColorTable;
     QvisColorTableButton *continuousColorTable;
-    QCheckBox            *legendFlag;
+    QCheckBox            *legendToggle;
     QCheckBox            *minFlag;
     QLineEdit            *scalarMin;
     QCheckBox            *maxFlag;
@@ -158,7 +161,6 @@ class QvisMoleculePlotWindow : public QvisPostableWindowObserver
     QLabel               *residueTypeColorTableLabel;
     QLabel               *residueSequenceColorTableLabel;
     QLabel               *continuousColorTableLabel;
-    QLabel               *legendFlagLabel;
     QLabel               *minFlagLabel;
     QLabel               *maxFlagLabel;
 

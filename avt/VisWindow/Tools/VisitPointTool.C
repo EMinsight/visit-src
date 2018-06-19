@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -819,7 +819,7 @@ VisitPointTool::UpdateSphere()
     double dX = bounds[1] - bounds[0];
     double dY = bounds[3] - bounds[2];
     double dZ = bounds[5] - bounds[4];
-    double radius = sqrt(dX*dX + dY*dY + dZ*dZ) / 100.;
+    double radius = sqrt(dX*dX + dY*dY + dZ*dZ) * 0.0025;
     vtkRenderer *ren = proxy.GetCanvas();
     if(ren != 0)
     {
@@ -844,6 +844,7 @@ VisitPointTool::UpdateSphere()
     sphereActor->GetProperty()->SetDiffuse(1.);
     sphereActor->GetProperty()->SetSpecular(0.6);
     sphereActor->GetProperty()->SetSpecularPower(20.);
+    sphereActor->GetProperty()->SetOpacity(0.33);
     // Set the color of the sphere. Red outside, FG inside.
     double fg[3] = {1., 0., 0.};
     if((hotPoints[0].pt.x >= bounds[0] && hotPoints[0].pt.x <= bounds[1]) &&

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -454,6 +454,9 @@ avtIVPAdamsBashforth::ABStep(const avtIVPField* field,
 //   Dave Pugmire, Tue Aug 11 10:25:45 EDT 2009
 //   Add new termination criterion: Number of intersections with an object.
 //
+//   Dave Pugmire, Tue Feb 23 09:42:25 EST 2010
+//   Set the velStart/velEnd direction based on integration direction.
+//
 // ****************************************************************************
 
 avtIVPSolver::Result 
@@ -553,8 +556,16 @@ avtIVPAdamsBashforth::Step(const avtIVPField* field,
                  numStep >= (int)fabs(end))
             return TERMINATE;
 
-        ivpstep->velStart = (*field)(t,yCur);
-        ivpstep->velEnd = (*field)((t+h),yNew);
+        if (end < 0.0)
+        {
+            ivpstep->velStart = (*field)(t,yCur);
+            ivpstep->velEnd = (*field)((t+h),yNew);
+        }
+        else
+        {
+            ivpstep->velStart = - (*field)(t,yCur);
+            ivpstep->velEnd = - (*field)((t+h),yNew);
+        }
 
         // Update the history to save the last 5 vector values.
         history[4] = history[3];

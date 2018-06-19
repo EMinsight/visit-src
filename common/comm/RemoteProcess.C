@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -1781,6 +1781,13 @@ RemoteProcess::SecureShellArgs() const
 //    Jeremy Meredith, Thu Feb 18 15:25:27 EST 2010
 //    Split HostProfile int MachineProfile and LaunchProfile.
 //
+//    Jeremy Meredith, Fri Feb 26 17:54:07 EST 2010
+//    Don't use ParsedFromSSHCLIENT on local launches.
+//
+//    Jeremy Meredith, Fri Feb 26 18:04:58 EST 2010
+//    Oops, too aggressive -- don't ignore the ParsedFromSSHCLIENT when
+//    only "treatAsThoughLocal" is true, it must truly be a local launch.
+//
 // ****************************************************************************
 
 void
@@ -1970,6 +1977,15 @@ RemoteProcess::CreateCommandLine(stringVector &args, const std::string &rHost,
     {
         // If we're not tunneling, we must choose a method of determining
         // the host name, and use the actual listen port number.
+
+        // For local launches, don't parse from SSH_CLIENT.
+        // That's a trick that only works for remote launches.
+        if (chd == MachineProfile::ParsedFromSSHCLIENT &&
+            HostIsLocal(rHost))
+        {
+            chd = MachineProfile::MachineName;
+        }
+
         switch (chd)
         {
           case MachineProfile::MachineName:

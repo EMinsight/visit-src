@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-400142
 # All rights reserved.
@@ -40,6 +40,14 @@
 #
 #   Cyrus Harrison, Fri Feb 19 15:41:04 PST 2010
 #   Added install of vtk python wrappers (if they exist).
+#
+#   Cyrus Harrison, Tue Mar  9 07:51:00 PST 2010
+#   Added install_name_tool patch of of vtk python wrappers (if they exist)
+#
+#   Kathleen Bonnell,  Wed Mar 17 10:03:52 MST 2010
+#   Prevent '.svn' from being included when installing directories. 
+#   Change how python wrappers are handled on windows, due to different
+#   VTK directory structure.
 #
 #****************************************************************************/
 
@@ -124,20 +132,26 @@ FOREACH(X ${VTK_INCLUDE_DIRS})
             DESTINATION ${VISIT_INSTALLED_VERSION_INCLUDE}/vtk/include
             FILE_PERMISSIONS OWNER_WRITE OWNER_READ GROUP_WRITE GROUP_READ WORLD_READ
             DIRECTORY_PERMISSIONS OWNER_WRITE OWNER_READ OWNER_EXECUTE GROUP_WRITE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+            PATTERN ".svn" EXCLUDE
         )
         INSTALL(DIRECTORY ${X}/../MangleMesaInclude
             DESTINATION ${VISIT_INSTALLED_VERSION_INCLUDE}/vtk/include
             FILE_PERMISSIONS OWNER_WRITE OWNER_READ GROUP_WRITE GROUP_READ WORLD_READ
             DIRECTORY_PERMISSIONS OWNER_WRITE OWNER_READ OWNER_EXECUTE GROUP_WRITE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+            PATTERN ".svn" EXCLUDE
         )
     ENDIF(EXISTS ${X}/vtkActor.h)
 ENDFOREACH(X)
 
 # check for python wrappers
-FILE(GLOB VTK_PY_WRAPPERS_DIR ${VTK_LIBRARY_DIRS}/python*/)
+IF (NOT WIN32)
+    FILE(GLOB VTK_PY_WRAPPERS_DIR ${VTK_LIBRARY_DIRS}/python*/)
+ELSE (NOT WIN32)
+    FILE(GLOB VTK_PY_WRAPPERS_DIR ${VTK_LIBRARY_DIRS})
+ENDIF (NOT WIN32)
 
-IF(EXISTS ${VTK_PY_WRAPPERS_DIR})
-    MESSAGE(STATUS ${VTK_PY_WRAPPERS_DIR})
+IF(EXISTS ${VTK_PY_WRAPPERS_DIR}/site-packages/vtk)
+    MESSAGE(STATUS "Found VTK Python Wrappers - ${VTK_PY_WRAPPERS_DIR}")
     FILE(GLOB VTK_PY_EGG ${VTK_PY_WRAPPERS_DIR}/site-packages/*.egg*)
     FILE(GLOB VTK_PY_MODULE ${VTK_PY_WRAPPERS_DIR}/site-packages/vtk)
     INSTALL(FILES ${VTK_PY_EGG}
@@ -149,11 +163,33 @@ IF(EXISTS ${VTK_PY_WRAPPERS_DIR})
             DESTINATION ${VISIT_INSTALLED_VERSION_LIB}/site-packages/
             FILE_PERMISSIONS OWNER_WRITE OWNER_READ GROUP_WRITE GROUP_READ WORLD_READ
             DIRECTORY_PERMISSIONS OWNER_WRITE OWNER_READ OWNER_EXECUTE GROUP_WRITE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+            PATTERN ".svn" EXCLUDE
            )
+#
+# On OSX we need to patch the lib names in the vtk python wrappers.
+#
+# Obtain a list of all '.so' libs from the module source directory and
+# use these names to create an install rule that executes 'osxfixup'.
+# Yes - VTK generates '.so's here instead of 'dylib's ...
+#
+    IF(APPLE)
+        FILE(GLOB vtkpylibs ${VTK_PY_MODULE}/*so)
+        FOREACH(vtkpylib ${vtkpylibs})
+            GET_FILENAME_COMPONENT(libname ${vtkpylib} NAME)
+            INSTALL(CODE
+                    "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
+                     COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib 
+                     \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/site-packages/vtk/${libname}\"
+                     OUTPUT_VARIABLE OSXOUT)
+                     MESSAGE(STATUS \"\${OSXOUT}\")
+                     ")
+        ENDFOREACH(vtkpylib ${vtkpylibs})
+    ENDIF(APPLE)
+
     SET(VTK_PYTHON_WRAPPERS_FOUND TRUE)
-ELSE(EXISTS ${VTK_PY_WRAPPERS_DIR})
+ELSE(EXISTS ${VTK_PY_WRAPPERS_DIR}/site-packages/vtk)
     SET(VTK_PYTHON_WRAPPERS_FOUND FALSE)
-ENDIF(EXISTS ${VTK_PY_WRAPPERS_DIR})
+ENDIF(EXISTS ${VTK_PY_WRAPPERS_DIR}/site-packages/vtk)
 
 MARK_AS_ADVANCED(VTK_PYTHON_WRAPPERS_FOUND)
 

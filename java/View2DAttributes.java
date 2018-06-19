@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -56,7 +56,7 @@ package llnl.visit;
 
 public class View2DAttributes extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 6;
+    private static int View2DAttributes_numAdditionalAtts = 6;
 
     // Enum values
     public final static int TRISTATEMODE_ON = 0;
@@ -69,7 +69,7 @@ public class View2DAttributes extends AttributeSubject
 
     public View2DAttributes()
     {
-        super(numAdditionalAttributes);
+        super(View2DAttributes_numAdditionalAtts);
 
         windowCoords = new double[4];
         windowCoords[0] = 0;
@@ -89,7 +89,7 @@ public class View2DAttributes extends AttributeSubject
 
     public View2DAttributes(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(View2DAttributes_numAdditionalAtts + nMoreFields);
 
         windowCoords = new double[4];
         windowCoords[0] = 0;
@@ -109,7 +109,7 @@ public class View2DAttributes extends AttributeSubject
 
     public View2DAttributes(View2DAttributes obj)
     {
-        super(numAdditionalAttributes);
+        super(View2DAttributes_numAdditionalAtts);
 
         int i;
 
@@ -136,7 +136,7 @@ public class View2DAttributes extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return View2DAttributes_numAdditionalAtts;
     }
 
     public boolean equals(View2DAttributes obj)

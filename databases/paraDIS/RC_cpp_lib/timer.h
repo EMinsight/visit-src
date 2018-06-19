@@ -61,12 +61,21 @@
 
   
 */
+ /*!
+   VisIt has its quirks
+ */
+#ifdef RC_CPP_VISIT_BUILD
 #include <visit-config.h>
-#include <stdio.h>
-#include <ctime>
+ // this does not work on chaos machines outside of VisIt, maybe it's a VisIt thing?  
 #ifdef HAVE_SYS_TIME_H
 #include <sys/time.h>
 #endif
+#else
+ // if not in VisIt, then just include sys/time.h
+#include <sys/time.h>
+#endif
+#include <stdio.h>
+#include <ctime>
 #ifdef WIN32
 #include <sys/timeb.h>
 #include <Winsock2.h>
@@ -77,7 +86,7 @@
 class timer; 
 int Progress(timer &iTimer, double iNum, double iMax, 
              double &oPercent, double iPercentDelta, 
-             double &oTime, double iTimeDelta, char *iMsg);
+             double &oTime, double iTimeDelta, const char *iMsg);
 
 
 using namespace std; 
@@ -90,7 +99,11 @@ class timer
   double acc_time;
   double time_per_tick; 
   bool mUseWallTime; 
+ public:
 #ifndef WIN32
+#ifndef RC_CPP_VISIT_BUILD
+  static
+#endif
   double getExactSeconds(void) {
     struct timeval t; 
     gettimeofday(&t, NULL); 
@@ -103,7 +116,6 @@ class timer
    return t.time + (double)t.millitm/1000.0;
   }
 #endif
- public:
   // 'running' is initially false.  A timer needs to be explicitly started
   // using 'start' or 'restart'
   timer() : running(false), start_clock(0),  acc_time(0), mUseWallTime(true) { 

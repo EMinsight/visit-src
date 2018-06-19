@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -105,6 +105,7 @@ typedef enum {
 /* Array Owner */
 #define VISIT_OWNER_SIM                   0
 #define VISIT_OWNER_VISIT                 1
+#define VISIT_OWNER_COPY                  2
 
 /* Cell Types */
 #define VISIT_CELL_BEAM                   0
@@ -116,6 +117,10 @@ typedef enum {
 #define VISIT_CELL_HEX                    6
 #define VISIT_CELL_POINT                  7
 #define VISIT_CELL_POLYHEDRON             8
+
+/* Coordinate modes */
+#define VISIT_COORD_MODE_SEPARATE         0
+#define VISIT_COORD_MODE_INTERLEAVED      1
 
 /* Definitions for CSG boundary types 
    Designed so low-order 16 bits are unused

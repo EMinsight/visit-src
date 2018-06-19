@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -64,7 +64,7 @@ std::string MISC_API GetUserVisItRCFile();
 std::string MISC_API GetSystemVisItRCFile();
 
 std::string MISC_API GetAndMakeUserVisItHostsDirectory();
-std::string MISC_API GetAndMakeSystemVisItHostsDirectory();
+std::string MISC_API GetSystemVisItHostsDirectory();
 
 int         MISC_API ConfigStateGetRunCount(ConfigStateEnum &code);
 void        MISC_API ConfigStateIncrementRunCount(ConfigStateEnum &code);

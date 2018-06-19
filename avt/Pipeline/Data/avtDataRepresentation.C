@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -946,6 +946,10 @@ avtDataRepresentation::GetTimeToDecompress() const
 //    Changed 'avt' prefixed array names to a use a "dump_internal_" prefix
 //    for dump output.
 //
+//    Jeremy Meredith, Thu Apr  1 16:42:41 EDT 2010
+//    Accound for removed point/cell arrays when determining how many
+//    of each of those we need to actually write.
+//
 // ****************************************************************************
 
 const char *
@@ -984,6 +988,9 @@ avtDataRepresentation::DebugDump(avtWebpage *webpage, const char *prefix)
                 newDS->GetFieldData()->AddArray(arr);
             }
         }
+        // recalculate npt in case we removed a point array
+        npt = newDS->GetPointData()->GetNumberOfArrays();
+
         int  ncell = newDS->GetCellData()->GetNumberOfArrays();
         for (i = ncell-1 ; i >= 0 ; i--)
         {
@@ -994,6 +1001,9 @@ avtDataRepresentation::DebugDump(avtWebpage *webpage, const char *prefix)
                 newDS->GetFieldData()->AddArray(arr);
             }
         }
+        // recalculate ncell in case we removed a cell array
+        ncell = newDS->GetCellData()->GetNumberOfArrays();
+
         int nfield = newDS->GetFieldData()->GetNumberOfArrays();
         // rename internal avt prefix("avt") to "dump_avt"
 

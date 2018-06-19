@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -120,6 +120,9 @@ class vtkObject;
 //   Dave Pugmire, Tue Dec 29 14:37:53 EST 2009
 //   Generalize the compute scalar variable.
 //
+//   Dave Pugmire, Tue Feb 23 09:42:25 EST 2010
+//   Use a vector instead of a list for the integration steps.
+//
 // ****************************************************************************
 
 class IVP_API avtStreamline
@@ -127,7 +130,7 @@ class IVP_API avtStreamline
   public:
     enum ScalarValueType {NONE=0, SPEED=1, VORTICITY=2, SCALAR_VARIABLE=4};
 
-    typedef std::list<avtIVPStep*>::const_iterator iterator;
+    typedef std::vector<avtIVPStep*>::const_iterator iterator;
     avtStreamline(const avtIVPSolver* model, const double& t_start, 
                   const avtVector &p_start, int ID=-1);
     avtStreamline();
@@ -175,8 +178,7 @@ class IVP_API avtStreamline
                                    double end);
 
     void      HandleGhostZones(bool forward, double *extents);
-    void      HandleIntersections(bool forward,
-                                  avtIVPStep *step,
+    void      HandleIntersections(avtIVPStep *step,
                                   avtIVPSolver::TerminateType termType,
                                   double end,
                                   avtIVPSolver::Result *result);
@@ -184,7 +186,7 @@ class IVP_API avtStreamline
 
   public:
     // Integration steps.
-    std::list<avtIVPStep*> _steps;
+    std::vector<avtIVPStep*> _steps;
   protected:
 
     // Intersection points.

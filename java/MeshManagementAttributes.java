@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -58,48 +58,49 @@ import java.util.Vector;
 
 public class MeshManagementAttributes extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 7;
+    private static int MeshManagementAttributes_numAdditionalAtts = 7;
 
     // Enum values
     public final static int DISCRETIZATIONMODES_UNIFORM = 0;
     public final static int DISCRETIZATIONMODES_ADAPTIVE = 1;
+    public final static int DISCRETIZATIONMODES_MULTIPASS = 2;
 
 
     public MeshManagementAttributes()
     {
-        super(numAdditionalAttributes);
+        super(MeshManagementAttributes_numAdditionalAtts);
 
         discretizationTolerance = new Vector();
-        discretizationTolerance.addElement(new Double(0.01));
+        discretizationTolerance.addElement(new Double(0.02));
         discretizationTolerance.addElement(new Double(0.025));
         discretizationTolerance.addElement(new Double(0.05));
         discretizationToleranceX = new Vector();
         discretizationToleranceY = new Vector();
         discretizationToleranceZ = new Vector();
-        discretizationMode = DISCRETIZATIONMODES_ADAPTIVE;
+        discretizationMode = DISCRETIZATIONMODES_UNIFORM;
         discretizeBoundaryOnly = false;
         passNativeCSG = false;
     }
 
     public MeshManagementAttributes(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(MeshManagementAttributes_numAdditionalAtts + nMoreFields);
 
         discretizationTolerance = new Vector();
-        discretizationTolerance.addElement(new Double(0.01));
+        discretizationTolerance.addElement(new Double(0.02));
         discretizationTolerance.addElement(new Double(0.025));
         discretizationTolerance.addElement(new Double(0.05));
         discretizationToleranceX = new Vector();
         discretizationToleranceY = new Vector();
         discretizationToleranceZ = new Vector();
-        discretizationMode = DISCRETIZATIONMODES_ADAPTIVE;
+        discretizationMode = DISCRETIZATIONMODES_UNIFORM;
         discretizeBoundaryOnly = false;
         passNativeCSG = false;
     }
 
     public MeshManagementAttributes(MeshManagementAttributes obj)
     {
-        super(numAdditionalAttributes);
+        super(MeshManagementAttributes_numAdditionalAtts);
 
         int i;
 
@@ -145,7 +146,7 @@ public class MeshManagementAttributes extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return MeshManagementAttributes_numAdditionalAtts;
     }
 
     public boolean equals(MeshManagementAttributes obj)
@@ -309,6 +310,8 @@ public class MeshManagementAttributes extends AttributeSubject
             str = str + "DISCRETIZATIONMODES_UNIFORM";
         if(discretizationMode == DISCRETIZATIONMODES_ADAPTIVE)
             str = str + "DISCRETIZATIONMODES_ADAPTIVE";
+        if(discretizationMode == DISCRETIZATIONMODES_MULTIPASS)
+            str = str + "DISCRETIZATIONMODES_MULTIPASS";
         str = str + "\n";
         str = str + boolToString("discretizeBoundaryOnly", discretizeBoundaryOnly, indent) + "\n";
         str = str + boolToString("passNativeCSG", passNativeCSG, indent) + "\n";

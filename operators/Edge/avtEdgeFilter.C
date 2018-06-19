@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -184,10 +184,16 @@ avtEdgeFilter::ExecuteData(vtkDataSet *inDS, int, std::string)
 //  Programmer:  Jeremy Meredith
 //  Creation:    February 23, 2009
 //
+//  Modifications:
+//    Jeremy Meredith, Fri Apr 30 13:46:43 EDT 2010
+//    Disabled setting the topological dimension to 1.  Currently, mixing
+//    e.g. a translucent pseudocolor-edge plot (i.e. topodim==1) with a normal
+//    translucent pseudocolor plot results in lighting being disabled for both.
+//
 // ****************************************************************************
 void
 avtEdgeFilter::UpdateDataObjectInfo(void)
 {
-    if (GetInput()->GetInfo().GetAttributes().GetTopologicalDimension() != 0)
-        GetOutput()->GetInfo().GetAttributes().SetTopologicalDimension(1);
+    //if (GetInput()->GetInfo().GetAttributes().GetTopologicalDimension() != 0)
+    //    GetOutput()->GetInfo().GetAttributes().SetTopologicalDimension(1);
 }

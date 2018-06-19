@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -389,7 +389,12 @@ QvisTransformWindow::CreateWindowContents()
 //    Jeremy Meredith, Fri Aug  7 14:42:15 EDT 2009
 //    Added vector transform method selection to coordinate system conversions.
 //
+//    Brad Whitlock, Wed Jul 14 15:18:44 PDT 2010
+//    I added some more blockSignals calls to prevent slots from being called
+//    as a result of setting widget values.
+//
 // ****************************************************************************
+
 void
 QvisTransformWindow::UpdateWindow(bool doAll)
 {
@@ -428,7 +433,9 @@ QvisTransformWindow::UpdateWindow(bool doAll)
                 rotateAmountLabel->setEnabled(false);
                 rotateTypeWidget->setEnabled(false);
             }
+            doRotate->blockSignals(true);
             doRotate->setChecked(atts->GetDoRotate());
+            doRotate->blockSignals(false);
             break;
           case TransformAttributes::ID_rotateOrigin:
             rotateOrigin->setText(FloatsToQString(atts->GetRotateOrigin(),3));
@@ -468,7 +475,9 @@ QvisTransformWindow::UpdateWindow(bool doAll)
                 scaleZ->setEnabled(false);
                 scaleZLabel->setEnabled(false);
             }
+            doScale->blockSignals(true);
             doScale->setChecked(atts->GetDoScale());
+            doScale->blockSignals(false);
             break;
           case TransformAttributes::ID_scaleOrigin:
             scaleOrigin->setText(FloatsToQString(atts->GetScaleOrigin(),3));
@@ -504,7 +513,9 @@ QvisTransformWindow::UpdateWindow(bool doAll)
                 translateZ->setEnabled(false);
                 translateZLabel->setEnabled(false);
             }
+            doTranslate->blockSignals(true);
             doTranslate->setChecked(atts->GetDoTranslate());
+            doTranslate->blockSignals(false);
             break;
           case TransformAttributes::ID_translateX:
             temp.setNum(atts->GetTranslateX());

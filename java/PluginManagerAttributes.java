@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -58,11 +58,11 @@ import java.lang.Integer;
 
 public class PluginManagerAttributes extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 6;
+    private static int PluginManagerAttributes_numAdditionalAtts = 6;
 
     public PluginManagerAttributes()
     {
-        super(numAdditionalAttributes);
+        super(PluginManagerAttributes_numAdditionalAtts);
 
         name = new Vector();
         type = new Vector();
@@ -74,7 +74,7 @@ public class PluginManagerAttributes extends AttributeSubject
 
     public PluginManagerAttributes(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(PluginManagerAttributes_numAdditionalAtts + nMoreFields);
 
         name = new Vector();
         type = new Vector();
@@ -86,7 +86,7 @@ public class PluginManagerAttributes extends AttributeSubject
 
     public PluginManagerAttributes(PluginManagerAttributes obj)
     {
-        super(numAdditionalAttributes);
+        super(PluginManagerAttributes_numAdditionalAtts);
 
         int i;
 
@@ -127,7 +127,7 @@ public class PluginManagerAttributes extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return PluginManagerAttributes_numAdditionalAtts;
     }
 
     public boolean equals(PluginManagerAttributes obj)

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -1766,6 +1766,9 @@ Engine::ProcessInput()
 //    Hank Childs, Sun Feb 21 13:04:25 CST 2010
 //    Do not use Ice-T if we are using the GPUs.
 //
+//    Tom Fogal, Fri Apr 16 12:40:09 MDT 2010
+//    Ignore IceT flags if we've already seen -hw-accel.
+//
 // ****************************************************************************
 
 void
@@ -1974,7 +1977,15 @@ Engine::ProcessCommandLine(int argc, char **argv)
         }
         else if (strcmp(argv[i], "-icet") == 0)
         {
-            this->useIceT = true;
+            if(!haveHWAccel)
+            {
+              this->useIceT = true;
+            }
+            else
+            {
+              debug1 << "Ignoring IceT request: currently incompatible with "
+                        "parallel HW acceleration.\n";
+            }
         }
         else if (strcmp(argv[i], "-no-icet") == 0)
         {
@@ -2183,7 +2194,12 @@ WriteByteStreamToSocket(NonBlockingRPC *rpc, Connection *vtkConnection,
 //    The paired processors ALWAYS communicate string size and cell count
 //    info in the first sendrecv. However, they may or may NOT engage in the
 //    2nd sendrecv of the data depending on cell count.
+//
+//    Hank Childs, Sat Apr 24 18:31:34 PDT 2010
+//    Fix problem-sized memory leak.
+//
 // ****************************************************************************
+
 static void
 SwapAndMergeClonedWriterOutputs(avtDataObject_p dob,
     int *reducedCellCount, int scalableThreshold, bool sendDataAnyway,
@@ -2277,6 +2293,7 @@ SwapAndMergeClonedWriterOutputs(avtDataObject_p dob,
         delete avtreader;
     }
 
+   delete dobwrtr;
    *reducedCellCount = srcCnt;
 
 }

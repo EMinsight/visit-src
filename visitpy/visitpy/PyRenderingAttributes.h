@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -45,17 +45,21 @@
 //
 // Functions exposed to the VisIt module.
 //
+#define RENDERINGATTRIBUTES_NMETH 42
 void VISITPY_API           PyRenderingAttributes_StartUp(RenderingAttributes *subj, void *data);
 void VISITPY_API           PyRenderingAttributes_CloseDown();
-VISITPY_API PyMethodDef *   PyRenderingAttributes_GetMethodTable(int *nMethods);
+VISITPY_API PyMethodDef *  PyRenderingAttributes_GetMethodTable(int *nMethods);
 bool VISITPY_API           PyRenderingAttributes_Check(PyObject *obj);
 VISITPY_API RenderingAttributes *  PyRenderingAttributes_FromPyObject(PyObject *obj);
-VISITPY_API PyObject *      PyRenderingAttributes_New();
-VISITPY_API PyObject *      PyRenderingAttributes_Wrap(const RenderingAttributes *attr);
+VISITPY_API PyObject *     PyRenderingAttributes_New();
+VISITPY_API PyObject *     PyRenderingAttributes_Wrap(const RenderingAttributes *attr);
 void VISITPY_API           PyRenderingAttributes_SetParent(PyObject *obj, PyObject *parent);
 void VISITPY_API           PyRenderingAttributes_SetDefaults(const RenderingAttributes *atts);
 std::string VISITPY_API    PyRenderingAttributes_GetLogString();
 std::string VISITPY_API    PyRenderingAttributes_ToString(const RenderingAttributes *, const char *);
+VISITPY_API PyObject *     PyRenderingAttributes_getattr(PyObject *self, char *name);
+int VISITPY_API            PyRenderingAttributes_setattr(PyObject *self, char *name, PyObject *args);
+VISITPY_API extern PyMethodDef PyRenderingAttributes_methods[RENDERINGATTRIBUTES_NMETH];
 
 #endif
 

@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-400142
 # All rights reserved.
@@ -46,8 +46,14 @@
 #   Kathleen Bonnell, Thu Dec 10 17:50:01 MT 2009
 #   Removed MSVC_VERSION from searchpath in favor of 'libs' for windows.
 #
-#    Gunther H. Weber, Fri Jan 29 12:00:39 PST 2010
-#    Only install Python if we are not using the system Python.
+#   Gunther H. Weber, Fri Jan 29 12:00:39 PST 2010
+#   Only install Python if we are not using the system Python.
+#
+#   Kathleen Bonnell, Wed Mar 17 10:01:22 MT 2010
+#   Exclude '.svn' from being included when installing directories. 
+#
+#   Kathleen Bonnell, Wed Mar 24 16:26:32 MST 2010
+#   Change install on windows due to different directory structure.
 #
 #****************************************************************************/
 
@@ -296,25 +302,50 @@ IF(PYTHONLIBS_FOUND)
                     PATTERN "*.pyo" EXCLUDE
 	            PATTERN "lib-tk" EXCLUDE
                     PATTERN "visit*" EXCLUDE
-                    PATTERN "Python-2.5-py2.5.egg-info" EXCLUDE
+                    PATTERN "Python-2.6-py2.6.egg-info" EXCLUDE
                 )
             ENDIF(EXISTS ${PYTHON_DIR}/lib/python${PYTHON_VERSION})
     
             # Install the Python headers
-            INSTALL(DIRECTORY ${PYTHON_INCLUDE_PATH}
-                DESTINATION ${VISIT_INSTALLED_VERSION_INCLUDE}/python/include
-                FILE_PERMISSIONS OWNER_WRITE OWNER_READ GROUP_WRITE GROUP_READ WORLD_READ
-                DIRECTORY_PERMISSIONS OWNER_WRITE OWNER_READ OWNER_EXECUTE GROUP_WRITE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
-            )
+            IF (NOT WIN32)
+                INSTALL(DIRECTORY ${PYTHON_INCLUDE_PATH}
+                  DESTINATION ${VISIT_INSTALLED_VERSION_INCLUDE}/python/include
+                  FILE_PERMISSIONS OWNER_READ OWNER_WRITE 
+                                   GROUP_READ GROUP_WRITE 
+                                   WORLD_READ
+                  DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE 
+                                        GROUP_READ GROUP_WRITE GROUP_EXECUTE 
+                                        WORLD_READ             WORLD_EXECUTE
+                  PATTERN ".svn" EXCLUDE
+                )
+            ELSE (NOT WIN32)
+                INSTALL(DIRECTORY ${PYTHON_INCLUDE_PATH}/
+                    DESTINATION ${VISIT_INSTALLED_VERSION_INCLUDE}/python
+                    FILE_PERMISSIONS OWNER_READ OWNER_WRITE 
+                                     GROUP_READ GROUP_WRITE 
+                                     WORLD_READ
+                    DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE 
+                                          GROUP_READ GROUP_WRITE GROUP_EXECUTE 
+                                          WORLD_READ             WORLD_EXECUTE
+                    FILES_MATCHING PATTERN "*.h"
+                    PATTERN ".svn" EXCLUDE
+                )
+                INSTALL(DIRECTORY ${VISIT_PYTHON_DIR}/lib
+                    DESTINATION ${VISIT_INSTALLED_VERSION_LIB}/python
+                    FILE_PERMISSIONS OWNER_READ OWNER_WRITE 
+                                     GROUP_READ GROUP_WRITE 
+                                     WORLD_READ
+                    DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE 
+                                          GROUP_READ GROUP_WRITE GROUP_EXECUTE 
+                                          WORLD_READ             WORLD_EXECUTE
+                    PATTERN "*.pyc"  EXCLUDE
+                    PATTERN "*.pyo"  EXCLUDE
+                    PATTERN "lib-tk" EXCLUDE
+                    PATTERN "visit*" EXCLUDE
+                    PATTERN ".svn"   EXCLUDE
+                    PATTERN "Python-2.6-py2.6.egg-info" EXCLUDE
+                )
+            ENDIF (NOT WIN32)
         ENDIF((NOT ${PYTHON_DIR} STREQUAL "/usr")) 
     ENDIF(Python_FRAMEWORKS)
-ENDIF(PYTHONLIBS_FOUND)
-
-# See if we have pyparsing
-IF(PYTHONLIBS_FOUND)
-    SET(cfgLibPy "config/libpython${PYTHON_VERSION}.so")
-    STRING(REPLACE ${cfgLibPy} "site-packages/pyparsing.py" pyParsingFile ${PYTHON_LIBRARIES})
-    IF(EXISTS ${pyParsingFile})
-        SET(HAVE_PYPARSING 1 CACHE BOOL "Defined if Python has pyparsing")
-    ENDIF(EXISTS ${pyParsingFile})
 ENDIF(PYTHONLIBS_FOUND)

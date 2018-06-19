@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-400142
 # All rights reserved.
@@ -39,19 +39,20 @@
 #****************************************************************************/
 
 IF(NOT WIN32)
-    IF(CMAKE_SYSTEM_NAME STREQUAL Linux)
-        MESSAGE(STATUS "BSD style pseudo-tty")
-    ELSEIF(CMAKE_SYSTEM_NAME STREQUAL AIX)
+    IF(CMAKE_SYSTEM_NAME STREQUAL AIX)
         MESSAGE(STATUS "BSD style pseudo-tty")
     ELSEIF(CMAKE_SYSTEM_NAME STREQUAL Darwin)
         MESSAGE(STATUS "BSD style pseudo-tty")
-    ELSE(CMAKE_SYSTEM_NAME STREQUAL Linux)
+    ELSE(CMAKE_SYSTEM_NAME STREQUAL AIX)
         TRY_COMPILE(tmpVar
                 ${CMAKE_CURRENT_BINARY_DIR}
                 ${VISIT_SOURCE_DIR}/CMake/TestPTY.cpp
                 OUTPUT_VARIABLE outvar)
         IF(tmpVar)
+            MESSAGE(STATUS "System V style pseudo-tty")
             SET(PTY_SYSV 1 CACHE BOOL "Defined if we have System V style pty functions")
+        ELSE(tmpVar)
+            MESSAGE(STATUS "BSD style pseudo-tty")
         ENDIF(tmpVar)
-    ENDIF(CMAKE_SYSTEM_NAME STREQUAL Linux)
+    ENDIF(CMAKE_SYSTEM_NAME STREQUAL AIX)
 ENDIF(NOT WIN32)

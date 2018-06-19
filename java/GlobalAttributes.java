@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -58,11 +58,11 @@ import java.lang.Integer;
 
 public class GlobalAttributes extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 22;
+    private static int GlobalAttributes_numAdditionalAtts = 23;
 
     public GlobalAttributes()
     {
-        super(numAdditionalAttributes);
+        super(GlobalAttributes_numAdditionalAtts);
 
         sources = new Vector();
         windows = new Vector();
@@ -86,11 +86,12 @@ public class GlobalAttributes extends AttributeSubject
         saveCrashRecoveryFile = true;
         applySelection = true;
         ignoreExtentsFromDbs = false;
+        expandNewPlots = false;
     }
 
     public GlobalAttributes(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(GlobalAttributes_numAdditionalAtts + nMoreFields);
 
         sources = new Vector();
         windows = new Vector();
@@ -114,11 +115,12 @@ public class GlobalAttributes extends AttributeSubject
         saveCrashRecoveryFile = true;
         applySelection = true;
         ignoreExtentsFromDbs = false;
+        expandNewPlots = false;
     }
 
     public GlobalAttributes(GlobalAttributes obj)
     {
-        super(numAdditionalAttributes);
+        super(GlobalAttributes_numAdditionalAtts);
 
         int i;
 
@@ -152,6 +154,7 @@ public class GlobalAttributes extends AttributeSubject
         saveCrashRecoveryFile = obj.saveCrashRecoveryFile;
         applySelection = obj.applySelection;
         ignoreExtentsFromDbs = obj.ignoreExtentsFromDbs;
+        expandNewPlots = obj.expandNewPlots;
 
         SelectAll();
     }
@@ -163,7 +166,7 @@ public class GlobalAttributes extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return GlobalAttributes_numAdditionalAtts;
     }
 
     public boolean equals(GlobalAttributes obj)
@@ -210,7 +213,8 @@ public class GlobalAttributes extends AttributeSubject
                 (userDirForSessionFiles == obj.userDirForSessionFiles) &&
                 (saveCrashRecoveryFile == obj.saveCrashRecoveryFile) &&
                 (applySelection == obj.applySelection) &&
-                (ignoreExtentsFromDbs == obj.ignoreExtentsFromDbs));
+                (ignoreExtentsFromDbs == obj.ignoreExtentsFromDbs) &&
+                (expandNewPlots == obj.expandNewPlots));
     }
 
     // Property setting methods
@@ -346,6 +350,12 @@ public class GlobalAttributes extends AttributeSubject
         Select(21);
     }
 
+    public void SetExpandNewPlots(boolean expandNewPlots_)
+    {
+        expandNewPlots = expandNewPlots_;
+        Select(22);
+    }
+
     // Property getting methods
     public Vector  GetSources() { return sources; }
     public Vector  GetWindows() { return windows; }
@@ -369,6 +379,7 @@ public class GlobalAttributes extends AttributeSubject
     public boolean GetSaveCrashRecoveryFile() { return saveCrashRecoveryFile; }
     public boolean GetApplySelection() { return applySelection; }
     public boolean GetIgnoreExtentsFromDbs() { return ignoreExtentsFromDbs; }
+    public boolean GetExpandNewPlots() { return expandNewPlots; }
 
     // Write and read methods.
     public void WriteAtts(CommunicationBuffer buf)
@@ -417,6 +428,8 @@ public class GlobalAttributes extends AttributeSubject
             buf.WriteBool(applySelection);
         if(WriteSelect(21, buf))
             buf.WriteBool(ignoreExtentsFromDbs);
+        if(WriteSelect(22, buf))
+            buf.WriteBool(expandNewPlots);
     }
 
     public void ReadAtts(int index, CommunicationBuffer buf)
@@ -489,6 +502,9 @@ public class GlobalAttributes extends AttributeSubject
         case 21:
             SetIgnoreExtentsFromDbs(buf.ReadBool());
             break;
+        case 22:
+            SetExpandNewPlots(buf.ReadBool());
+            break;
         }
     }
 
@@ -517,6 +533,7 @@ public class GlobalAttributes extends AttributeSubject
         str = str + boolToString("saveCrashRecoveryFile", saveCrashRecoveryFile, indent) + "\n";
         str = str + boolToString("applySelection", applySelection, indent) + "\n";
         str = str + boolToString("ignoreExtentsFromDbs", ignoreExtentsFromDbs, indent) + "\n";
+        str = str + boolToString("expandNewPlots", expandNewPlots, indent) + "\n";
         return str;
     }
 
@@ -544,5 +561,6 @@ public class GlobalAttributes extends AttributeSubject
     private boolean saveCrashRecoveryFile;
     private boolean applySelection;
     private boolean ignoreExtentsFromDbs;
+    private boolean expandNewPlots;
 }
 

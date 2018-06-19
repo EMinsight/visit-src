@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -57,11 +57,11 @@ import java.util.Vector;
 
 public class ExportDBAttributes extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 6;
+    private static int ExportDBAttributes_numAdditionalAtts = 6;
 
     public ExportDBAttributes()
     {
-        super(numAdditionalAttributes);
+        super(ExportDBAttributes_numAdditionalAtts);
 
         db_type = new String("");
         db_type_fullname = new String("");
@@ -73,7 +73,7 @@ public class ExportDBAttributes extends AttributeSubject
 
     public ExportDBAttributes(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(ExportDBAttributes_numAdditionalAtts + nMoreFields);
 
         db_type = new String("");
         db_type_fullname = new String("");
@@ -85,7 +85,7 @@ public class ExportDBAttributes extends AttributeSubject
 
     public ExportDBAttributes(ExportDBAttributes obj)
     {
-        super(numAdditionalAttributes);
+        super(ExportDBAttributes_numAdditionalAtts);
 
         int i;
 
@@ -109,7 +109,7 @@ public class ExportDBAttributes extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return ExportDBAttributes_numAdditionalAtts;
     }
 
     public boolean equals(ExportDBAttributes obj)

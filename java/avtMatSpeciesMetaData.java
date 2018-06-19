@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -57,11 +57,11 @@ import java.util.Vector;
 
 public class avtMatSpeciesMetaData extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 3;
+    private static int avtMatSpeciesMetaData_numAdditionalAtts = 3;
 
     public avtMatSpeciesMetaData()
     {
-        super(numAdditionalAttributes);
+        super(avtMatSpeciesMetaData_numAdditionalAtts);
 
         numSpecies = 0;
         speciesNames = new Vector();
@@ -70,7 +70,7 @@ public class avtMatSpeciesMetaData extends AttributeSubject
 
     public avtMatSpeciesMetaData(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(avtMatSpeciesMetaData_numAdditionalAtts + nMoreFields);
 
         numSpecies = 0;
         speciesNames = new Vector();
@@ -79,7 +79,7 @@ public class avtMatSpeciesMetaData extends AttributeSubject
 
     public avtMatSpeciesMetaData(avtMatSpeciesMetaData obj)
     {
-        super(numAdditionalAttributes);
+        super(avtMatSpeciesMetaData_numAdditionalAtts);
 
         int i;
 
@@ -100,7 +100,7 @@ public class avtMatSpeciesMetaData extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return avtMatSpeciesMetaData_numAdditionalAtts;
     }
 
     public boolean equals(avtMatSpeciesMetaData obj)

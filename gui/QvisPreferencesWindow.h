@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -100,6 +100,13 @@ class QSpinBox;
 //
 //   Mark C. Miller, Tue Jun 10 22:36:25 PDT 2008
 //   Added preference to ignore extents.
+//
+//   Hank Childs, Wed Mar 17 20:13:21 PDT 2010
+//   Added preference to expand new plots.
+//
+//   Brad Whitlock, Fri May  7 14:29:53 PDT 2010
+//   I transplanted some replace plots coding.
+//
 // ****************************************************************************
 
 class GUI_API QvisPreferencesWindow : public QvisPostableWindowObserver
@@ -138,9 +145,11 @@ private slots:
     void createTimeDerivativeToggled(bool);
     void createVectorMagnitudeToggled(bool);
     void newPlotsInheritSILRestrictionToggled(bool);
+    void expandNewPlotsToggled(bool);
     void userDirForSessionFilesToggled(bool);
     void saveCrashRecoveryFileToggled(bool);
     void ignoreDbExtentsToggled(bool val);
+    void replacePlotsToggled(bool);
 private:
     QCheckBox        *cloneWindowOnFirstRefToggle;
     QCheckBox        *postWindowsWhenShownToggle;
@@ -156,9 +165,11 @@ private:
     QCheckBox        *createTimeDerivativeToggle;
     QCheckBox        *createVectorMagnitudeToggle;
     QCheckBox        *newPlotsInheritSILRestrictionToggle;
+    QCheckBox        *expandNewPlotsToggle;
     QCheckBox        *userDirForSessionFilesToggle;
     QCheckBox        *saveCrashRecoveryFileToggle;
     QCheckBox        *ignoreDbExtentsToggle;
+    QCheckBox        *replacePlotsToggle;
     GlobalAttributes *atts;
 
     TimeFormat        tsFormat;

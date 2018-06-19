@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -1903,6 +1903,13 @@ ViewerQueryManager::ClearPickPoints()
 //    Check whether reusePickLetter flag in PickAttributes is set and
 //    do not update pick letter if it is.
 //
+//    Kathleen Bonnell, Thu May  6 18:44:08 PDT 2010
+//    Add topodim of 1 to test for 'linesData'.  (Allows picking on meshes 
+//    consisting of vtk lines.)
+//
+//    Kathleen Bonnell, Fri May  7 10:35:51 PDT 2010
+//    Revert yesterdays change, it causes other problems.
+//
 // ****************************************************************************
 
 bool
@@ -2089,14 +2096,13 @@ ViewerQueryManager::ComputePick(PICK_POINT_INFO *ppi, const int dom,
                   ((plot->GetMeshType() == AVT_POINT_MESH) &&
                    (strcmp(plot->GetPlotTypeName(), "Mesh") != 0));
 
-
         bool isLinesData = (plot->GetSpatialDimension() == 2) &&
                   ((strcmp(plot->GetPlotTypeName(), "Boundary") == 0) ||
                    (strcmp(plot->GetPlotTypeName(), "Contour") == 0));
+
         pickAtts->SetLinesData(isLinesData);
         pickAtts->SetInputTopoDim(plot->GetTopologicalDimension());
                   
-
         if (mustGlyphPickOnEngine || 
             (doGlyphPick && win->GetScalableRendering() && 
             (dom ==-1 || el == -1)))
@@ -3739,6 +3745,11 @@ GetUniqueVars(const stringVector &vars, const string &activeVar,
 //    Cyrus Harrison, Fri Feb  5 10:08:53 PST 2010
 //    Added Python Query.
 //
+//    Eric Brugger, Thu Mar 25 10:24:30 PDT 2010
+//    Renamed the individual/aggregate "Chord Length Distribution" and
+//    individual/aggregate "Ray Length Distribution" queries so that they do
+//    not use special characters.
+//
 // ****************************************************************************
 
 void
@@ -3799,10 +3810,10 @@ ViewerQueryManager::InitializeQueryList()
     queryTypes->AddQuery("Time", dq, tr, basic, 1, 0, qo);
     queryTypes->AddQuery("L2Norm", dq, cr, basic, 1, 0, qo);
     queryTypes->AddQuery("Kurtosis", dq, cr, basic, 1, 0, qo);
-    queryTypes->AddQuery("Chord Length Distribution (individual)", dq, sr, ld, 1, 0, qo);
-    queryTypes->AddQuery("Chord Length Distribution (aggregate)", dq, sr, ld, 1, 0, qo);
-    queryTypes->AddQuery("Ray Length Distribution (individual)", dq, sr, ld, 1, 0, qo);
-    queryTypes->AddQuery("Ray Length Distribution (aggregate)", dq, sr, ld, 1, 0, qo);
+    queryTypes->AddQuery("Chord Length Distribution - individual", dq, sr, ld, 1, 0, qo);
+    queryTypes->AddQuery("Chord Length Distribution - aggregate", dq, sr, ld, 1, 0, qo);
+    queryTypes->AddQuery("Ray Length Distribution - individual", dq, sr, ld, 1, 0, qo);
+    queryTypes->AddQuery("Ray Length Distribution - aggregate", dq, sr, ld, 1, 0, qo);
     queryTypes->AddQuery("Mass Distribution", dq, sr, ld, 1, 0, qo);
     queryTypes->AddQuery("Distance From Boundary", dq, sr, ld, 1, 0, qo);
     queryTypes->AddQuery("Line Scan Transform", dq, sr, ld, 1, 0, qo);

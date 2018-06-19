@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -56,11 +56,11 @@ package llnl.visit;
 
 public class ViewCurveAttributes extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 5;
+    private static int ViewCurveAttributes_numAdditionalAtts = 5;
 
     public ViewCurveAttributes()
     {
-        super(numAdditionalAttributes);
+        super(ViewCurveAttributes_numAdditionalAtts);
 
         domainCoords = new double[2];
         domainCoords[0] = 0;
@@ -79,7 +79,7 @@ public class ViewCurveAttributes extends AttributeSubject
 
     public ViewCurveAttributes(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(ViewCurveAttributes_numAdditionalAtts + nMoreFields);
 
         domainCoords = new double[2];
         domainCoords[0] = 0;
@@ -98,7 +98,7 @@ public class ViewCurveAttributes extends AttributeSubject
 
     public ViewCurveAttributes(ViewCurveAttributes obj)
     {
-        super(numAdditionalAttributes);
+        super(ViewCurveAttributes_numAdditionalAtts);
 
         int i;
 
@@ -127,7 +127,7 @@ public class ViewCurveAttributes extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return ViewCurveAttributes_numAdditionalAtts;
     }
 
     public boolean equals(ViewCurveAttributes obj)

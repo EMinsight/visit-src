@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -45,7 +45,7 @@
 
 #include <avtExpressionFilter.h>
 
-class vtkIntArray;
+class vtkDataArray;
 class vtkFloatArray;
 
 // ****************************************************************************
@@ -61,6 +61,8 @@ class vtkFloatArray;
 //  Creation:   March 26, 2009
 //
 //  Modifications:
+//   Cyrus Harrison, Thu Oct 29 10:26:42 PDT 2009
+//   Switch to generic use of vtkDataArray to support non integer key types.
 //
 // ****************************************************************************
 
@@ -77,24 +79,24 @@ class EXPRESSION_API avtKeyAggregatorExpression : public avtExpressionFilter
     virtual const char       *GetDescription(void)
                                       {return "Aggregating values per key.";};
 
-                                      
+
     virtual int               NumVariableArguments() { return 2; };
     virtual int               GetVariableDimension();
-    
+
     virtual bool              IsPointVariable(void) { return false; }
-  
+
   protected:
     virtual void              Execute(void);
-    
-  private:
-    int                       FindMaxKey(vector<vtkIntArray*> &key_arrays);
 
-    void                      Aggregate(vector<vtkIntArray*>   &key_arrays,
-                                        vector<vtkFloatArray*> &val_arrays,
+  private:
+    int                       FindMaxKey(vector<vtkDataArray*> &key_arrays);
+
+    void                      Aggregate(vector<vtkDataArray*>   &key_arrays,
+                                        vector<vtkDataArray*> &val_arrays,
                                         int num_keys, int num_val_comps,
                                         vector<float> &key_results);
 
-    vtkFloatArray            *CreateResultArray(vtkIntArray   *keys,
+    vtkFloatArray            *CreateResultArray(vtkDataArray *keys,
                                                 vector<float> &key_results,
                                                 int num_val_comps);
 

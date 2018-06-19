@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -57,6 +57,7 @@
 
 void FileOpenOptions::Init()
 {
+    preferredIDs.push_back("Silo_1.0");
 
     FileOpenOptions::SelectAll();
 }
@@ -547,9 +548,9 @@ FileOpenOptions::SetFromNode(DataNode *parentNode)
         SetTypeNames(node->AsStringVector());
     if((node = searchNode->GetNode("typeIDs")) != 0)
         SetTypeIDs(node->AsStringVector());
-    // Clear all the DBOptionsAttributess.
-    ClearOpenOptions();
 
+    // Clear all the DBOptionsAttributess if we got any.
+    bool clearedOpenOptions = false;
     // Go through all of the children and construct a new
     // DBOptionsAttributes for each one of them.
     children = searchNode->GetChildren();
@@ -559,6 +560,11 @@ FileOpenOptions::SetFromNode(DataNode *parentNode)
         {
             if(children[i]->GetKey() == std::string("DBOptionsAttributes"))
             {
+                if (!clearedOpenOptions)
+                {
+                    ClearOpenOptions();
+                    clearedOpenOptions = true;
+                }
                 DBOptionsAttributes temp;
                 temp.SetFromNode(children[i]);
                 AddOpenOptions(temp);
@@ -1189,6 +1195,103 @@ FileOpenOptions::MergeNewFromPluginInfo(const DBPluginInfoAttributes *dbinfo)
             }
         }
     }
+}
+
+// ****************************************************************************
+// Method:  FileOpenOptions::AddAssumedFormatsToPreferred
+//
+// Purpose:
+//   Adds any given formats to the *beginning* of the preferred list, moving
+//   their position to the front if they were already in the list.
+//
+// Arguments:
+//   given    the list of formats labeled as "assumed"
+//
+// Programmer:  Jeremy Meredith
+// Creation:    March 26, 2010
+//
+// ****************************************************************************
+void
+FileOpenOptions::AddAssumedFormatsToPreferred(const stringVector &given)
+{
+    // for each format, prepend it; visit them in reverse order
+    // so the first one given winds up first in the new list
+    for (int i=given.size()-1; i>=0; i--)
+    {
+        // get its actual ID
+        std::string id = "";
+        for (int j=0; j<typeIDs.size(); j++)
+        {
+            if (given[i] == typeIDs[j] ||
+                given[i] == typeNames[j])
+            {
+                id = typeIDs[j];
+                break;
+            }
+        }
+        // if no id, we don't have that plugin, so skip this one
+        if (id == "")
+            continue;
+
+        // make a new list with this given one at the front
+        stringVector newPreferredIDs;
+        newPreferredIDs.push_back(id);
+        for (int j=0; j<preferredIDs.size(); j++)
+        {
+            if (preferredIDs[j] != id)
+                newPreferredIDs.push_back(preferredIDs[j]);
+        }
+        preferredIDs = newPreferredIDs;
+    }
+    SelectPreferredIDs();
+}
+
+// ****************************************************************************
+// Method:  FileOpenOptions::AddFallbackFormatsToPreferred
+//
+// Purpose:
+//   Adds any given formats to the *end* of the preferred list, moving
+//   their position to the back if they were already in the list.
+//
+// Arguments:
+//   given    the list of formats labeled as "fallback"
+//
+// Programmer:  Jeremy Meredith
+// Creation:    March 26, 2010
+//
+// ****************************************************************************
+void
+FileOpenOptions::AddFallbackFormatsToPreferred(const stringVector &given)
+{
+    // for each format, append it
+    for (int i=0; i<given.size(); i++)
+    {
+        // get its actual ID
+        std::string id = "";
+        for (int j=0; j<typeIDs.size(); j++)
+        {
+            if (given[i] == typeIDs[j] ||
+                given[i] == typeNames[j])
+            {
+                id = typeIDs[j];
+                break;
+            }
+        }
+        // if no id, we don't have that plugin, so skip this one
+        if (id == "")
+            continue;
+
+        // make a new list with this given one at the back
+        stringVector newPreferredIDs;
+        for (int j=0; j<preferredIDs.size(); j++)
+        {
+            if (preferredIDs[j] != id)
+                newPreferredIDs.push_back(preferredIDs[j]);
+        }
+        newPreferredIDs.push_back(id);
+        preferredIDs = newPreferredIDs;
+    }
+    SelectPreferredIDs();
 }
 
 const DBOptionsAttributes*

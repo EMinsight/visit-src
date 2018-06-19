@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -58,7 +58,7 @@ import java.util.Vector;
 
 public class VisualCueInfo extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 9;
+    private static int VisualCueInfo_numAdditionalAtts = 9;
 
     // Enum values
     public final static int CUETYPE_PICKPOINT = 0;
@@ -68,7 +68,7 @@ public class VisualCueInfo extends AttributeSubject
 
     public VisualCueInfo()
     {
-        super(numAdditionalAttributes);
+        super(VisualCueInfo_numAdditionalAtts);
 
         points = new Vector();
         cueType = CUETYPE_UNKNOWN;
@@ -83,7 +83,7 @@ public class VisualCueInfo extends AttributeSubject
 
     public VisualCueInfo(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(VisualCueInfo_numAdditionalAtts + nMoreFields);
 
         points = new Vector();
         cueType = CUETYPE_UNKNOWN;
@@ -98,7 +98,7 @@ public class VisualCueInfo extends AttributeSubject
 
     public VisualCueInfo(VisualCueInfo obj)
     {
-        super(numAdditionalAttributes);
+        super(VisualCueInfo_numAdditionalAtts);
 
         int i;
 
@@ -128,7 +128,7 @@ public class VisualCueInfo extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return VisualCueInfo_numAdditionalAtts;
     }
 
     public boolean equals(VisualCueInfo obj)

@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -68,6 +68,9 @@
 //    Brad Whitlock, Wed Feb 14 10:58:34 PDT 2007
 //    I renamed the class to ViewerObserverToSignal.
 //
+//    Brad Whitlock, Thu Apr 22 15:47:45 PST 2010
+//    I made the destructor virtual.
+//
 // ****************************************************************************
 
 class VIEWER_API ViewerObserverToSignal : public QObject, public Observer
@@ -75,7 +78,7 @@ class VIEWER_API ViewerObserverToSignal : public QObject, public Observer
     Q_OBJECT
 public:
     ViewerObserverToSignal(Subject *);
-    ~ViewerObserverToSignal();
+    virtual ~ViewerObserverToSignal();
     virtual void Update(Subject *);
 signals:
     void execute();

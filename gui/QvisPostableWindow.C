@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -78,12 +78,17 @@ bool QvisPostableWindow::postEnabled = true;
 //   Tom Fogal, Sun Jan 24 17:08:09 MST 2010
 //   Patch from Andreas Kloeckner to set appropriate Qt window role.
 //
+//   Cyrus Harrison, Thu Apr  1 15:32:30 PDT 2010
+//   Do not use Qt::Dialog window flags. This makes all visible postable
+//   windows raise above all other windows when the main gui is clicked on &
+//   will occlude viewer windows.
+//
 // ****************************************************************************
 
 QvisPostableWindow::QvisPostableWindow(const QString &captionString,
                                        const QString &shortName,
                                        QvisNotepadArea *n) :
-  QvisWindowBase(captionString, Qt::Dialog)
+  QvisWindowBase(captionString)
 {
     setWindowRole("postable-window");
 
@@ -477,10 +482,14 @@ QvisPostableWindow::raise()
 //   Brad Whitlock, Tue Apr  8 15:26:49 PDT 2008
 //   Support for internationalization.
 //
+//   Cyrus Harrison, Thu May  6 16:32:07 PDT 2010
+//   Added 'avoid_scroll' argument. This avoids creating scrollbars if they do
+//   not already exist.
+//
 // ****************************************************************************
 
 void
-QvisPostableWindow::post()
+QvisPostableWindow::post(bool avoid_scroll)
 {
     if(!isPosted && notepad)
     {
@@ -498,7 +507,7 @@ QvisPostableWindow::post()
         if(postEnabled)
         {
             // Post to the notepad
-            notepad->postWindow(this);
+            notepad->postWindow(this,avoid_scroll);
 
             // Hide the main window.
             QvisWindowBase::hide();

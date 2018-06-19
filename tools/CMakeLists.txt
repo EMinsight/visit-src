@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-400142
 # All rights reserved.
@@ -35,6 +35,11 @@
 # DAMAGE.
 #
 # Modifications:
+#   Kathleen Bonnell, Wed Jun 2 15:11:22 PST 2010
+#   Disable MakeMili on windows.
+#
+#   Kathleen Bonnell, Fri Jun  4 14:46:56 PDT 2010
+#   Change ${MILI_FOUND} to MILI_FOUND.
 #
 #****************************************************************************/
 
@@ -46,9 +51,9 @@ ELSE(VISIT_DBIO_ONLY)
     ADD_SUBDIRECTORY(convert)
     ADD_SUBDIRECTORY(embedviewer)
     ADD_SUBDIRECTORY(imagetools)
-    IF(${MILI_FOUND})
+    IF(MILI_FOUND AND NOT WIN32)
         ADD_SUBDIRECTORY(makemili)
-    ENDIF(${MILI_FOUND})
+    ENDIF(MILI_FOUND AND NOT WIN32)
     IF(NOT WIN32)
         ADD_SUBDIRECTORY(mcurvit)
     ENDIF(NOT WIN32)

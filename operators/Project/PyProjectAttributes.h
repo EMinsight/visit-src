@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -44,17 +44,21 @@
 //
 // Functions exposed to the VisIt module.
 //
+#define PROJECTATTRIBUTES_NMETH 6
 void           PyProjectAttributes_StartUp(ProjectAttributes *subj, void *data);
 void           PyProjectAttributes_CloseDown();
-PyMethodDef *   PyProjectAttributes_GetMethodTable(int *nMethods);
+PyMethodDef *  PyProjectAttributes_GetMethodTable(int *nMethods);
 bool           PyProjectAttributes_Check(PyObject *obj);
 ProjectAttributes *  PyProjectAttributes_FromPyObject(PyObject *obj);
-PyObject *      PyProjectAttributes_New();
-PyObject *      PyProjectAttributes_Wrap(const ProjectAttributes *attr);
+PyObject *     PyProjectAttributes_New();
+PyObject *     PyProjectAttributes_Wrap(const ProjectAttributes *attr);
 void           PyProjectAttributes_SetParent(PyObject *obj, PyObject *parent);
 void           PyProjectAttributes_SetDefaults(const ProjectAttributes *atts);
 std::string    PyProjectAttributes_GetLogString();
 std::string    PyProjectAttributes_ToString(const ProjectAttributes *, const char *);
+PyObject *     PyProjectAttributes_getattr(PyObject *self, char *name);
+int            PyProjectAttributes_setattr(PyObject *self, char *name, PyObject *args);
+extern PyMethodDef PyProjectAttributes_methods[PROJECTATTRIBUTES_NMETH];
 
 #endif
 

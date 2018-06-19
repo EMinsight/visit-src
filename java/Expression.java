@@ -1,8 +1,8 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2009, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
-// LLNL-CODE-400124
+// LLNL-CODE-442911
 // All rights reserved.
 //
 // This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -56,7 +56,7 @@ package llnl.visit;
 
 public class Expression extends AttributeSubject
 {
-    private static int numAdditionalAttributes = 8;
+    private static int Expression_numAdditionalAtts = 8;
 
     // Enum values
     public final static int EXPRTYPE_UNKNOWN = 0;
@@ -73,7 +73,7 @@ public class Expression extends AttributeSubject
 
     public Expression()
     {
-        super(numAdditionalAttributes);
+        super(Expression_numAdditionalAtts);
 
         name = new String("notset");
         definition = new String("notset");
@@ -87,7 +87,7 @@ public class Expression extends AttributeSubject
 
     public Expression(int nMoreFields)
     {
-        super(numAdditionalAttributes + nMoreFields);
+        super(Expression_numAdditionalAtts + nMoreFields);
 
         name = new String("notset");
         definition = new String("notset");
@@ -101,7 +101,7 @@ public class Expression extends AttributeSubject
 
     public Expression(Expression obj)
     {
-        super(numAdditionalAttributes);
+        super(Expression_numAdditionalAtts);
 
         name = new String(obj.name);
         definition = new String(obj.definition);
@@ -122,7 +122,7 @@ public class Expression extends AttributeSubject
 
     public int GetNumAdditionalAttributes()
     {
-        return numAdditionalAttributes;
+        return Expression_numAdditionalAtts;
     }
 
     public boolean equals(Expression obj)
