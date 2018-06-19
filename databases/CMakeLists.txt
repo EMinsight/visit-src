@@ -110,6 +110,9 @@
 #    Oliver Ruebel, Thu May 12 11:30 PDT 2011
 #    I added a CUBE reader
 #
+#    Hank Childs, Thu Aug  4 13:22:36 PDT 2011
+#    Add VCell reader on behalf of Ed Boyce and UCHC team.
+#
 #****************************************************************************/
 
 IF(NOT WIN32)
@@ -196,6 +199,7 @@ ELSE (NOT WIN32)
 ENDIF (NOT WIN32)
 THIRDPARTY_DEPENDENT_PLUGINS(VISUS    ViSUS)
 THIRDPARTY_DEPENDENT_PLUGINS(XDMF     Xdmf)
+THIRDPARTY_DEPENDENT_PLUGINS(ZLIB     VCellMTMD)
 
 # Add ITAPS
 IF(ITAPS_DIRS)

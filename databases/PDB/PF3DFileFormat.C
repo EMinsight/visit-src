@@ -737,6 +737,10 @@ PF3DFileFormat::CanAccessFile(const std::string &filename) const
 //   I made it try multiple filenames in the event that the first filename
 //   that it tries is not a valid file.
 //
+//   Eric Brugger, Mon Aug 29 09:07:07 PDT 2011
+//   I modified the reader so that it returns a block of zeros for any
+//   blocks that are in a file that can't be read.
+//
 // ****************************************************************************
 
 std::string
@@ -836,7 +840,7 @@ PF3DFileFormat::FilenameForDomain(int realDomain)
                << endl;
     }
 
-    return filename;
+    return "";
 }
 
 // ****************************************************************************
@@ -856,6 +860,9 @@ PF3DFileFormat::FilenameForDomain(int realDomain)
 // Creation:   Fri Jul 9 16:30:54 PST 2004
 //
 // Modifications:
+//   Eric Brugger, Mon Aug 29 09:07:07 PDT 2011
+//   I modified the reader so that it returns a block of zeros for any
+//   blocks that are in a file that can't be read.
 //   
 // ****************************************************************************
 
@@ -869,6 +876,12 @@ PF3DFileFormat::GetDomainFileObject(int realDomain)
     // Get the filename associated with the real domain.
     //
     std::string key(FilenameForDomain(realDomain));
+
+    //
+    // Return NULL if the key is the empty string.
+    //
+    if (key == "")
+        return NULL;
 
     //
     // See if the filename was in the variable cache.
@@ -1770,6 +1783,14 @@ PF3DFileFormat::GetBOFKey(int realDomain, const char *varName) const
 //   Brad Whitlock, Thu Jun 22 16:46:22 PST 2006
 //   Added support for multiple domains in a file.
 //
+//   Eric Brugger, Thu Jul 28 11:45:26 PDT 2011
+//   I corrected an error in the decompression code for one of the compression
+//   schemes where "char *" was used instead of "unsigned char *".
+//
+//   Eric Brugger, Mon Aug 29 09:07:07 PDT 2011
+//   I modified the reader so that it returns a block of zeros for any
+//   blocks that are in a file that can't be read.
+//   
 // ****************************************************************************
 
 PF3DFileFormat::BOF *
@@ -1913,7 +1934,7 @@ PF3DFileFormat::GetBOF(int realDomain, const char *varName)
                     {
                         long N = dims[0] * dims[1] * dims[2];
                         float *fptr = new float[N];
-                        char *cptr = (char *)data;
+                        unsigned char *cptr = (unsigned char *)data;
 
                         retval = new BOF;
                         retval->size[0] = dims[0];
@@ -1999,6 +2020,30 @@ PF3DFileFormat::GetBOF(int realDomain, const char *varName)
         {
             debug4 << mName << "Could not create the PDB file object needed "
                 "to read domain " << realDomain << endl;
+
+            // Create a dataset with all zeros.
+            int base_index[3], size[3];
+            GetLogicalExtents(realDomain, base_index, size);
+
+            long N = size[0] * size[1] * size[2];
+            float *fptr = new float[N];
+
+            retval = new BOF;
+            retval->size[0] = size[0];
+            retval->size[1] = size[1];
+            retval->size[2] = size[2];
+            retval->data = (float *)fptr;
+
+            for (int i = 0; i < N; i++)
+                fptr[i] = 0.;
+
+#ifdef CACHE_BOF
+            // Store the BOF in the cache.
+            void_ref_ptr vr2 = void_ref_ptr(retval,
+                BOF::Destruct);
+            cache->CacheVoidRef(key.c_str(), BOF_KEY, timestep,
+                realDomain, vr2);
+#endif
         }
     }
 

@@ -434,6 +434,17 @@
 #     With Jean Favre's help, I modified the script so that it would build
 #     VisIt on Ubuntu 11.04.
 #
+#     Jeremy Meredith, Tue Aug  9 17:19:55 EDT 2011
+#     Updated the subversion host/path.
+#
+#     Hank Childs, Mon Aug 29 11:07:26 PDT 2011
+#     More tricks for Ubuntu.
+#
+#     Eric Brugger, Mon Aug 29 14:42:36 PDT 2011
+#     I changed the visit version number to 2.3.2.
+#
+#     Mark C. Miller, Mon Aug 29 23:54:40 PDT 2011
+#     I fixed URL for where it obtains ITAPS-FMDB tarballs
 # *****************************************************************************
 
 
@@ -752,9 +763,9 @@ fi
 export SVN_ANON_ROOT_PATH="http://portal.nersc.gov/svn/visit"
 # Setup svn path: use SVN_NERSC_NAME if set
 if test -z "$SVN_NERSC_NAME" ; then
-    export SVN_REPO_ROOT_PATH="svn+ssh://svn.nersc.gov/svn/visit"
+    export SVN_REPO_ROOT_PATH="svn+ssh://portal-auth.nersc.gov/project/projectdirs/visit/svn/visit"
 else
-    export SVN_REPO_ROOT_PATH="svn+ssh://$SVN_NERSC_NAME@svn.nersc.gov/svn/visit"
+    export SVN_REPO_ROOT_PATH="svn+ssh://$SVN_NERSC_NAME@portal-auth.nersc.gov/project/projectdirs/visit/svn/visit"
 fi
 
 ############################################################################
@@ -764,7 +775,7 @@ fi
 # release tag.
 ############################################################################
 
-export VISIT_VERSION=${VISIT_VERSION:-"2.3.1"}
+export VISIT_VERSION=${VISIT_VERSION:-"2.3.2"}
 
 ####
 # Trunk:
@@ -921,7 +932,7 @@ export ITAPS_MOAB_BUILD_DIR=${ITAPS_MOAB_BUILD_DIR:-"moab-4.0.1"}
 
 export ITAPS_FMDB_VERSION=${ITAPS_FMDB_VERSION:-"1.2"}
 export ITAPS_FMDB_FILE=${ITAPS_FMDB_FILE:-"FMDB-${ITAPS_FMDB_VERSION}.tar.gz"}
-export ITAPS_FMDB_URL=${ITAPS_FMDB_URL:-http://www.scorec.rpi.edu/FMDB/source}
+export ITAPS_FMDB_URL=${ITAPS_FMDB_URL:-https://redmine.scorec.rpi.edu/anonsvn/itaps/software/branches/1.2RC/release_distros/FMDB}
 export ITAPS_FMDB_BUILD_DIR=${ITAPS_FMDB_BUILD_DIR:-"${ITAPS_FMDB_FILE%.tar*}"}
 
 # CGM is an indirect dependency introduced by ITAPS_GRUMMP. No other part
@@ -7785,13 +7796,13 @@ function build_itaps_fmdb
     abs_itaps_fmdb_build_dir=$(pwd)
 
     if [[ ! -e GMI-1.0.tar.gz ]]; then
-        download_file GMI-1.0.tar.gz http://www.scorec.rpi.edu/FMDB/source
+        download_file GMI-1.0.tar.gz $ITAPS_FMDB_URL
         [[ $? -eq 0 ]] || { error "Unable to download GMI-1.0.tar.gz for ITAPS_FMDB" && return 1; }
     fi
     gunzip < GMI-1.0.tar.gz | tar xf -
     [[ $? -eq 0 ]] || { error "Unable to untar GMI-1.0.tar.gz for ITAPS_FMDB" && return 1; }
     if [[ ! -e SCUtil.tar.gz ]]; then
-        download_file SCUtil.tar.gz http://www.scorec.rpi.edu/FMDB/source
+        download_file SCUtil.tar.gz $ITAPS_FMDB_URL
         [[ $? -eq 0 ]] || { error "Unable to download SCUtil.tar.gz for ITAPS_FMDB" && return 1; }
     fi
     gunzip < SCUtil.tar.gz | tar xf -
@@ -8439,6 +8450,9 @@ function build_ADIOS
 #                                                                             #
 # Kathleen Bonnell, Wed Feb 16 08:35:40 PST 2011                              #
 # Remove setting of CMAKE_BUILD_TYPE                                          #
+#                                                                             #
+# Kathleen Biagas, Mon Aug 8 08:12:37 MST 2011                                #
+# Use FILEPATH type for compilers, STRING type for libdep.                    # 
 # *************************************************************************** #
 
 function build_hostconf
@@ -8510,8 +8524,8 @@ function build_hostconf
     echo "##" >> $HOSTCONF
     echo "## Compiler flags." >> $HOSTCONF
     echo "##" >> $HOSTCONF
-    echo "VISIT_OPTION_DEFAULT(VISIT_C_COMPILER $C_COMPILER TYPE STRING)">> $HOSTCONF
-    echo "VISIT_OPTION_DEFAULT(VISIT_CXX_COMPILER $CXX_COMPILER TYPE STRING)" >> $HOSTCONF
+    echo "VISIT_OPTION_DEFAULT(VISIT_C_COMPILER $C_COMPILER TYPE FILEPATH)">> $HOSTCONF
+    echo "VISIT_OPTION_DEFAULT(VISIT_CXX_COMPILER $CXX_COMPILER TYPE FILEPATH)" >> $HOSTCONF
 
     if [[ "$USE_VISIBILITY_HIDDEN" == "yes" ]] ; then
         echo "VISIT_OPTION_DEFAULT(VISIT_C_FLAGS \"$CFLAGS -fvisibility=hidden\" TYPE STRING)" >> $HOSTCONF
@@ -8530,14 +8544,14 @@ function build_hostconf
         # we either set an mpi wrapper compiler in the host conf
         if [[ "$VISIT_MPI_COMPILER" != "" ]] ; then
             echo "## (configured w/ mpi compiler wrapper)" >> $HOSTCONF
-            echo "VISIT_OPTION_DEFAULT(VISIT_MPI_COMPILER $VISIT_MPI_COMPILER TYPE STRING)"  >> $HOSTCONF
+            echo "VISIT_OPTION_DEFAULT(VISIT_MPI_COMPILER $VISIT_MPI_COMPILER TYPE FILEPATH)"  >> $HOSTCONF
         else
             # or we just set the flags.
             echo "## (configued w/ user provided CXX (PAR_INCLUDE) & LDFLAGS (PAR_LIBS) flags)" \
              >> $HOSTCONF
             echo "VISIT_OPTION_DEFAULT(VISIT_MPI_CXX_FLAGS \"$PAR_INCLUDE\" TYPE STRING)"     >> $HOSTCONF
             echo "VISIT_OPTION_DEFAULT(VISIT_MPI_LD_FLAGS  \"$PAR_LINKER_FLAGS\" TYPE STRING)" >> $HOSTCONF
-            echo "VISIT_OPTION_DEFAULT(VISIT_MPI_LIBS        $PAR_LIBRARY_NAMES)" >> $HOSTCONF
+            echo "VISIT_OPTION_DEFAULT(VISIT_MPI_LIBS        $PAR_LIBRARY_NAMES TYPE STRING)" >> $HOSTCONF
         fi
     fi
 
@@ -8579,11 +8593,11 @@ function build_hostconf
         >> $HOSTCONF
         if [[ "$DO_SZIP" == "yes" ]] ; then
             echo \
-            "VISIT_OPTION_DEFAULT(VISIT_HDF4_LIBDEP \${VISITHOME}/szip/$SZIP_VERSION/\${VISITARCH}/lib sz \${VISITHOME}/vtk/$VTK_VERSION/\${VISITARCH}/lib vtkjpeg)" \
+            "VISIT_OPTION_DEFAULT(VISIT_HDF4_LIBDEP \${VISITHOME}/szip/$SZIP_VERSION/\${VISITARCH}/lib sz \${VISITHOME}/vtk/$VTK_VERSION/\${VISITARCH}/lib vtkjpeg TYPE STRING)" \
             >> $HOSTCONF
           else
             echo \
-            "VISIT_OPTION_DEFAULT(VISIT_HDF4_LIBDEP \${VISITHOME}/vtk/$VTK_VERSION/\${VISITARCH}/lib vtkjpeg)" \
+            "VISIT_OPTION_DEFAULT(VISIT_HDF4_LIBDEP \${VISITHOME}/vtk/$VTK_VERSION/\${VISITARCH}/lib vtkjpeg TYPE STRING)" \
             >> $HOSTCONF
         fi
         >> $HOSTCONF
@@ -8599,11 +8613,11 @@ function build_hostconf
         >> $HOSTCONF 
         if [[ "$DO_SZIP" == "yes" ]] ; then
             echo \
-            "VISIT_OPTION_DEFAULT(VISIT_HDF5_LIBDEP \${VISITHOME}/szip/$SZIP_VERSION/\${VISITARCH}/lib sz /usr/lib z)" \
+            "VISIT_OPTION_DEFAULT(VISIT_HDF5_LIBDEP \${VISITHOME}/szip/$SZIP_VERSION/\${VISITARCH}/lib sz /usr/lib z TYPE STRING)" \
             >> $HOSTCONF
         else
             echo \
-            "VISIT_OPTION_DEFAULT(VISIT_HDF5_LIBDEP /usr/lib z)" \
+            "VISIT_OPTION_DEFAULT(VISIT_HDF5_LIBDEP /usr/lib z TYPE STRING)" \
             >> $HOSTCONF
         fi
     fi
@@ -8618,7 +8632,7 @@ function build_hostconf
         >> $HOSTCONF
         if [[ "$DO_HDF5" == "yes" ]] ; then
             echo \
-            "VISIT_OPTION_DEFAULT(VISIT_NETCDF_LIBDEP HDF5_LIBRARY_DIR hdf5_hl HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP})" \
+            "VISIT_OPTION_DEFAULT(VISIT_NETCDF_LIBDEP HDF5_LIBRARY_DIR hdf5_hl HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP} TYPE STRING)" \
             >> $HOSTCONF
         fi
     fi
@@ -8674,7 +8688,7 @@ function build_hostconf
         >> $HOSTCONF
         if [[ "$DO_HDF5" == "yes" ]] ; then
             echo \
-            "VISIT_OPTION_DEFAULT(VISIT_CGNS_LIBDEP HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP})" \
+            "VISIT_OPTION_DEFAULT(VISIT_CGNS_LIBDEP HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP} TYPE STRING)" \
             >> $HOSTCONF
         fi
     fi
@@ -8688,7 +8702,7 @@ function build_hostconf
         "VISIT_OPTION_DEFAULT(VISIT_EXODUSII_DIR \${VISITHOME}/exodus/$EXODUS_VERSION/\${VISITARCH})" \
         >> $HOSTCONF
         echo \
-        "VISIT_OPTION_DEFAULT(VISIT_EXODUSII_LIBDEP NETCDF_LIBRARY_DIR netcdf \${VISIT_NETCDF_LIBDEP})" \
+        "VISIT_OPTION_DEFAULT(VISIT_EXODUSII_LIBDEP NETCDF_LIBRARY_DIR netcdf \${VISIT_NETCDF_LIBDEP} TYPE STRING)" \
         >> $HOSTCONF
     fi
 
@@ -8721,7 +8735,7 @@ function build_hostconf
         "VISIT_OPTION_DEFAULT(VISIT_H5PART_DIR \${VISITHOME}/h5part/$H5PART_VERSION/\${VISITARCH})" \
         >> $HOSTCONF
         echo \
-        "VISIT_OPTION_DEFAULT(VISIT_H5PART_LIBDEP HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP})" \
+        "VISIT_OPTION_DEFAULT(VISIT_H5PART_LIBDEP HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP} TYPE STRING)" \
         >> $HOSTCONF
 
     fi
@@ -8735,7 +8749,7 @@ function build_hostconf
         "VISIT_OPTION_DEFAULT(VISIT_MDSPLUS_DIR \${VISITHOME}/mdsplus/$MDSPLUS_VERSION/\${VISITARCH})" \
         >> $HOSTCONF
         echo \
-        "VISIT_OPTION_DEFAULT(VISIT_MDSPLUS_LIBDEP HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP})" \
+        "VISIT_OPTION_DEFAULT(VISIT_MDSPLUS_LIBDEP HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP} TYPE STRING)" \
         >> $HOSTCONF
 
     fi
@@ -8770,11 +8784,11 @@ function build_hostconf
         >> $HOSTCONF
         if [[ "$DO_HDF5" == "yes" ]] ; then
             echo \
-            "VISIT_OPTION_DEFAULT(VISIT_SILO_LIBDEP HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP})" \
+            "VISIT_OPTION_DEFAULT(VISIT_SILO_LIBDEP HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP} TYPE STRING)" \
             >> $HOSTCONF
         else
             echo \
-            "VISIT_OPTION_DEFAULT(VISIT_SILO_LIBDEP /usr/lib z)" \
+            "VISIT_OPTION_DEFAULT(VISIT_SILO_LIBDEP /usr/lib z TYPE STRING)" \
             >> $HOSTCONF
         fi
     fi
@@ -8798,7 +8812,7 @@ function build_hostconf
         "VISIT_OPTION_DEFAULT(VISIT_XDMF_DIR \${VISITHOME}/Xdmf/$XDMF_VERSION/\${VISITARCH})" \
         >> $HOSTCONF
         echo \
-        "VISIT_OPTION_DEFAULT(VISIT_XDMF_LIBDEP HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP})" \
+        "VISIT_OPTION_DEFAULT(VISIT_XDMF_LIBDEP HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP} TYPE STRING)" \
         >> $HOSTCONF
     fi
 
@@ -8871,10 +8885,13 @@ function build_hostconf
     # Patch for Ubuntu 11.04
     #
     if test -d "/usr/lib/x86_64-linux-gnu" ; then
-        rm -f $HOSTCONF.tmp
-        cat $HOSTCONF | sed "s/\/usr\/lib/\/usr\/lib\/x86_64-linux-gnu/" > $HOSTCONF.tmp
-        rm $HOSTCONF
-        mv $HOSTCONF.tmp $HOSTCONF
+        numLibs=$(ls -1 /usr/lib/x86_64-linux-gnu | wc -l)
+        if (( $numLibs > 10 )) ; then
+           rm -f $HOSTCONF.tmp
+           cat $HOSTCONF | sed "s/\/usr\/lib/\/usr\/lib\/x86_64-linux-gnu/" > $HOSTCONF.tmp
+           rm $HOSTCONF
+           mv $HOSTCONF.tmp $HOSTCONF
+        fi
     fi
 
     cd "$START_DIR"
