@@ -434,17 +434,19 @@ avtPseudocolorPlot::CustomizeBehavior()
     SetLimitsMode(atts.GetLimitsMode());
     SetPointGlyphSize();
 
-    bool fullyOpaque = atts.GetOpacityType() ?
-        colorTableIsFullyOpaque : (atts.GetOpacity() == 1.);
-    if (!fullyOpaque)
-    {
-       behavior->SetRenderOrder(MUST_GO_LAST);
-       behavior->SetAntialiasedRenderOrder(MUST_GO_LAST);
-    }
-    else
+    if( (atts.GetOpacityType() == PseudocolorAttributes::FullyOpaque) ||
+        (atts.GetOpacityType() == PseudocolorAttributes::ColorTable &&
+         colorTableIsFullyOpaque) ||
+        (atts.GetOpacityType() == PseudocolorAttributes::Constant &&
+         atts.GetOpacity() == 1.) )
     {
        behavior->SetRenderOrder(DOES_NOT_MATTER);
        behavior->SetAntialiasedRenderOrder(DOES_NOT_MATTER);
+    }
+    else
+    {
+       behavior->SetRenderOrder(MUST_GO_LAST);
+       behavior->SetAntialiasedRenderOrder(MUST_GO_LAST);
     }
 
     behavior->SetLegend(varLegendRefPtr);
@@ -558,9 +560,11 @@ avtPseudocolorPlot::SetAtts(const AttributeGroup *a)
 
     // See if the colors will need to be updated.
     bool updateColors = (!colorsInitialized) ||
-        (atts.GetColorTableName() != newAtts->GetColorTableName()) ||
-        (atts.GetInvertColorTable() != newAtts->GetInvertColorTable()) ||
-        (atts.GetOpacityType() != newAtts->GetOpacityType());
+      (atts.GetColorTableName() != newAtts->GetColorTableName()) ||
+      (atts.GetInvertColorTable() != newAtts->GetInvertColorTable()) ||
+      (atts.GetOpacityType() != newAtts->GetOpacityType()) ||
+      (atts.GetOpacityType() == PseudocolorAttributes::Ramp &&
+       atts.GetOpacity() != newAtts->GetOpacity());
 
     // See if any attributes that require the plot to be regenerated were
     // changed and copy the state object.
@@ -573,8 +577,9 @@ avtPseudocolorPlot::SetAtts(const AttributeGroup *a)
         colorsInitialized = true;
         SetColorTable(atts.GetColorTableName().c_str());
     }
+    else
+      SetOpacityFromAtts();
 
-    SetOpacityFromAtts();
     SetLighting(atts.GetLightingFlag());
     SetLegend(atts.GetLegendFlag());
 
@@ -698,21 +703,36 @@ bool
 avtPseudocolorPlot::SetColorTable(const char *ctName)
 {
     bool oldColorTableIsFullyOpaque = colorTableIsFullyOpaque;
+
     colorTableIsFullyOpaque =
         avtColorTables::Instance()->ColorTableIsFullyOpaque(ctName);
-    SetOpacityFromAtts();
-
+    
     bool namesMatch = (atts.GetColorTableName() == std::string(ctName));
+    bool useOpacities = SetOpacityFromAtts();
+
+    double rampOpacity;
+
+    if( atts.GetOpacityType() == PseudocolorAttributes::Ramp )
+    {
+      useOpacities = false;
+      rampOpacity = atts.GetOpacity();
+    }
+    else
+      rampOpacity = -1;
+
     bool retval = (namesMatch &&
                    (oldColorTableIsFullyOpaque != colorTableIsFullyOpaque));
+
     if (atts.GetColorTableName() == "Default")
         retval |= avtLUT->SetColorTable(NULL, namesMatch,
-                                     atts.GetOpacityType(), 
-                                     atts.GetInvertColorTable()); 
+                                        useOpacities, 
+                                        atts.GetInvertColorTable(),
+                                        rampOpacity );
     else
         retval |= avtLUT->SetColorTable(ctName, namesMatch,
-                                     atts.GetOpacityType(), 
-                                     atts.GetInvertColorTable()); 
+                                        useOpacities, 
+                                        atts.GetInvertColorTable(),
+                                        rampOpacity ); 
     return retval;
 }
 
@@ -958,23 +978,49 @@ avtPseudocolorPlot::SetLimitsMode(int limitsMode)
 //
 // ****************************************************************************
 
-void
+bool
 avtPseudocolorPlot::SetOpacityFromAtts()
 {
-    double origOpacity = atts.GetOpacity();
-    double realOpacity = atts.GetOpacityType() ?
-        (colorTableIsFullyOpaque ? 1.0 : 0.99) : origOpacity;
+    double realOpacity;
+
+    if( atts.GetOpacityType() == PseudocolorAttributes::FullyOpaque ) 
+      realOpacity = 1.0;
+    else if (atts.GetOpacityType() == PseudocolorAttributes::ColorTable )
+    {
+      if( colorTableIsFullyOpaque )
+        realOpacity = 1.0;
+      else
+        realOpacity = 0.99;
+    }
+    else if( atts.GetOpacityType() == PseudocolorAttributes::Constant )
+      realOpacity = atts.GetOpacity();
+    else if( atts.GetOpacityType() == PseudocolorAttributes::Ramp )
+      realOpacity = 0.99;
+    else if( atts.GetOpacityType() == PseudocolorAttributes::VariableRange )
+      realOpacity = 0.99;
+
+    // double origOpacity = atts.GetOpacity();
+    // double realOpacity = atts.GetOpacityType() ?
+    //     (colorTableIsFullyOpaque ? 1.0 : 0.99) : origOpacity;
 
     glyphMapper->SetOpacity(realOpacity);
+
     if (realOpacity < 1.0)
     {
        behavior->SetRenderOrder(MUST_GO_LAST);
        behavior->SetAntialiasedRenderOrder(MUST_GO_LAST);
+
+       if (atts.GetOpacityType() == PseudocolorAttributes::ColorTable )
+         return true;
+       else
+         return false;
     }
     else
     {
        behavior->SetRenderOrder(DOES_NOT_MATTER);
        behavior->SetAntialiasedRenderOrder(DOES_NOT_MATTER);
+
+       return false;
     }
 }
 

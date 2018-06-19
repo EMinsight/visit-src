@@ -1529,7 +1529,7 @@ QvisCMFEWizard::GetMeshForTargetDatabase(void)
 void
 QvisCMFEWizard::AddCMFEExpression(void)
 {
-    char file_var_part[1024];
+    char file_var_part[1024] = "\0";
 
     if( decision_donorType == DONOR_SINGLE_DATABASE ||
         decision_donorType == DONOR_MULTIPLE_DATABASES )
@@ -1546,16 +1546,14 @@ QvisCMFEWizard::AddCMFEExpression(void)
     }
     else if (decision_donorType == DONOR_TIME_SLICES)
     {
-        char file_var_part[1024];
-
         if (decision_timeType == TIME_TYPE_SIMTIME)
-            SNPRINTF(file_var_part, 1024, "<[%f]t%s:%s", decision_time, 
+            SNPRINTF(file_var_part, 1024, "[%f]t%s:%s", decision_time, 
                      (decision_absolute ? "" : "d"), decision_variable.c_str());
         else if (decision_timeType == TIME_TYPE_SIMCYCLE)
-            SNPRINTF(file_var_part, 1024, "<[%d]c%s:%s", decision_cycle, 
+            SNPRINTF(file_var_part, 1024, "[%d]c%s:%s", decision_cycle, 
                      (decision_absolute ? "" : "d"), decision_variable.c_str());
         else if (decision_timeType == TIME_TYPE_INDEX)
-            SNPRINTF(file_var_part, 1024, "<[%d]i%s:%s", decision_index, 
+            SNPRINTF(file_var_part, 1024, "[%d]i%s:%s", decision_index, 
                      (decision_absolute ? "" : "d"), decision_variable.c_str());
     }
 
@@ -1564,7 +1562,7 @@ QvisCMFEWizard::AddCMFEExpression(void)
 
     if (decision_interp == INTERP_CONN_CMFE)
     {
-      SNPRINTF(cmfe_part, 1024, "conn_cmfe(%s, %s)", 
+      SNPRINTF(cmfe_part, 1024, "conn_cmfe(<%s>, <%s>)", 
                file_var_part, decision_mesh.c_str());
     }
     else
@@ -1574,9 +1572,9 @@ QvisCMFEWizard::AddCMFEExpression(void)
       if (decision_fill == FILL_CONSTANT)
         SNPRINTF(fillstr, 1024, "%f", decision_fillval);
       else
-        strcpy(fillstr, decision_fillvar.c_str());
+        SNPRINTF(fillstr, 1024, "<%s>", decision_fillvar.c_str());
       
-      SNPRINTF(cmfe_part, 1024, "pos_cmfe(%s, %s, %s)", 
+      SNPRINTF(cmfe_part, 1024, "pos_cmfe(<%s>, <%s>, %s)", 
                file_var_part, decision_mesh.c_str(), fillstr);
     }
 
@@ -1645,7 +1643,7 @@ QvisCMFEWizard::AddCMFEExpression(void)
 
           if (decision_interp == INTERP_CONN_CMFE)
           {
-            SNPRINTF(cmfe_part, 1024, "%s conn_cmfe(%s, %s)", 
+            SNPRINTF(cmfe_part, 1024, "%s conn_cmfe(<%s>, <%s>)", 
                      cmfe_part_tmp, file_var_part.c_str(),
                      decision_mesh.c_str());
 
@@ -1653,8 +1651,8 @@ QvisCMFEWizard::AddCMFEExpression(void)
             if(decision_exprtype == EXPRESSION_VARIANCE)
               SNPRINTF(cmfe_part_var, 1024,
                        "%s "
-                       "((conn_cmfe(%s, %s) - %s_average) *"
-                       " (conn_cmfe(%s, %s) - %s_average))", 
+                       "((conn_cmfe(<%s>, <%s>) - %s_average) *"
+                       " (conn_cmfe(<%s>, <%s>) - %s_average))", 
                        cmfe_part_tmp_var,
                        file_var_part.c_str(), decision_mesh.c_str(),
                        decision_exprname.c_str(),
@@ -1670,15 +1668,15 @@ QvisCMFEWizard::AddCMFEExpression(void)
             else
               strcpy(fillstr, decision_fillvar.c_str());
             
-            SNPRINTF(cmfe_part, 1024, "%s pos_cmfe(%s, %s, %s)", 
+            SNPRINTF(cmfe_part, 1024, "%s pos_cmfe(<%s>, <%s>, <%s>)", 
                      cmfe_part_tmp, file_var_part.c_str(),
                      decision_mesh.c_str(), fillstr);
 
             if(decision_exprtype == EXPRESSION_VARIANCE)
               SNPRINTF(cmfe_part_var, 1024,
                        "%s "
-                       "((pos_cmfe(%s, %s, %s) - %s_average) *"
-                       " (pos_cmfe(%s, %s, %s) - %s_average))", 
+                       "((pos_cmfe(<%s>, <%s>, <%s>) - %s_average) *"
+                       " (pos_cmfe(<%s>, <%s>, <%s>) - %s_average))", 
                        cmfe_part_tmp_var,
                        file_var_part.c_str(), decision_mesh.c_str(), fillstr,
                        decision_exprname.c_str(),
@@ -2410,10 +2408,9 @@ QvisCMFEWizard::addDonor()
   std::string donor;
 
   if( decision_donorType == DONOR_SINGLE_DATABASE )
-    donor = std::string("<[0]id:") + decision_variable + std::string(">");
+    donor = std::string("[0]id:") + decision_variable;
   else if( decision_donorType == DONOR_MULTIPLE_DATABASES )  
-    donor = std::string("<") + std::string(src) + std::string(":") +
-      decision_variable + std::string(">");
+    donor = std::string(src) + std::string(":") + decision_variable ;
 
   QListWidgetItem *item;
 

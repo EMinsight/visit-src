@@ -115,18 +115,20 @@ IF(NOT VISIT_SERVER_COMPONENTS_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO
     ENDIF(VISIT_PYTHON_SCRIPTING)
 
     IF(VISIT_JAVA)
-        ADD_CUSTOM_TARGET(JavaIntegralCurve ALL ${CMAKE_Java_COMPILER} ${CMAKE_Java_FLAGS} -d ${VISIT_BINARY_DIR}/java -classpath ${VISIT_BINARY_DIR}/java IntegralCurveAttributes.java)
-        ADD_DEPENDENCIES(JavaIntegralCurve JavaClient)
+        FILE(COPY IntegralCurveAttributes.java DESTINATION ${JavaClient_BINARY_DIR}/src/operators)
+        ADD_CUSTOM_TARGET(JavaIntegralCurve ALL ${Java_JAVAC_EXECUTABLE} ${VISIT_Java_FLAGS} -d ${JavaClient_BINARY_DIR} -classpath ${JavaClient_BINARY_DIR} -sourcepath ${JavaClient_BINARY_DIR} IntegralCurveAttributes.java
+            DEPENDS JavaClient
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
     ENDIF(VISIT_JAVA)
 ENDIF(NOT VISIT_SERVER_COMPONENTS_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)
 
 ADD_LIBRARY(EIntegralCurveOperator_ser ${LIBE_SOURCES})
-TARGET_LINK_LIBRARIES(EIntegralCurveOperator_ser visitcommon avtexpressions_ser avtfilters_ser avtpipeline_ser )
+TARGET_LINK_LIBRARIES(EIntegralCurveOperator_ser visitcommon avtexpressions_ser avtfilters_ser avtpipeline_ser avtivp_ser )
 SET(INSTALLTARGETS ${INSTALLTARGETS} EIntegralCurveOperator_ser)
 
 IF(VISIT_PARALLEL)
     ADD_PARALLEL_LIBRARY(EIntegralCurveOperator_par ${LIBE_SOURCES})
-    TARGET_LINK_LIBRARIES(EIntegralCurveOperator_par visitcommon avtexpressions_par avtfilters_par avtpipeline_par )
+    TARGET_LINK_LIBRARIES(EIntegralCurveOperator_par visitcommon avtexpressions_par avtfilters_par avtpipeline_par avtivp_par )
     SET(INSTALLTARGETS ${INSTALLTARGETS} EIntegralCurveOperator_par)
 ENDIF(VISIT_PARALLEL)
 

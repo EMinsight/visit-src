@@ -222,25 +222,28 @@ class QvisIntegralCurveWindow : public QvisOperatorWindow
     void fieldTypeChanged(int val);
     void fieldConstantProccessText();
     void velocitySourceProcessText();
-    void forceNodalChanged(bool);
+//    void forceNodalChanged(bool);
 
-    void integrationTypeChanged(int val);
     void directionTypeChanged(int val);
+    void integrationTypeChanged(int val);
     void maxStepLengthProcessText();
-    void maxTimeStepProcessText();
-    void maxStepsProcessText();
-    void limitMaxTimeChanged(bool);
-    void maxTimeProcessText();
-    void limitMaxDistanceChanged(bool);
     void limitMaxTimeStepChanged(bool);
-    void maxDistanceProcessText();
+    void maxTimeStepProcessText();
+
     void relTolProcessText();
     void absTolProcessText();
     void absTolSizeTypeChanged(int);
 
+    void limitMaxTimeChanged(bool);
+    void limitMaxDistanceChanged(bool);
+
+    void maxStepsProcessText();
+    void maxTimeProcessText();
+    void maxDistanceProcessText();
+
   // Appearance
-    void coloringMethodChanged(int val);
-    void coloringVariableChanged(const QString &var);
+    void dataValueChanged(int val);
+    void dataVariableChanged(const QString &var);
 
     void correlationDistanceMinDistTypeChanged(int);
     void processCorrelationDistanceAngTolEditText();
@@ -248,6 +251,7 @@ class QvisIntegralCurveWindow : public QvisOperatorWindow
 
     void showLinesChanged(bool val);
     void showPointsChanged(bool val);
+    void geometryButtonGroupChanged(int val);
 
     void coordinateButtonGroupChanged(int val);
     void phiScalingToggled(bool);
@@ -320,7 +324,7 @@ class QvisIntegralCurveWindow : public QvisOperatorWindow
     QLineEdit *fieldConstant;
     QLineEdit *velocitySource;
     QLabel    *velocitySourceLabel;
-    QCheckBox *forceNodal;
+//    QCheckBox *forceNodal;
 
     QComboBox *directionType;
     QComboBox *integrationType;
@@ -343,13 +347,16 @@ class QvisIntegralCurveWindow : public QvisOperatorWindow
 
   // Appearance
     QComboBox *dataValueComboBox;
-    QvisVariableButton *coloringVar;
+    QvisVariableButton *dataVariable;
     QLabel    *correlationDistanceAngTolLabel, *correlationDistanceMinDistLabel;
     QLineEdit *correlationDistanceAngTolEdit, *correlationDistanceMinDistEdit;
     QComboBox *correlationDistanceMinDistType;
 
     QCheckBox    *showLines;
     QCheckBox    *showPoints;
+
+    QLabel       *geometryLabel;
+    QButtonGroup *geometryButtonGroup;
 
     QButtonGroup *coordinateButtonGroup;
     QLineEdit *phiScaling;

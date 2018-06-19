@@ -2036,8 +2036,7 @@ avtSiloFileFormat::ReadMultimeshes(DBfile *dbfile,
                     haveAddedNodelistEnumerations[name_w_dir] = true;
                     AddNodelistEnumerations(dbfile, md, name_w_dir);
                 }
-                else if (searchForAnnotInt && strcmp(dirname, topDir.c_str()) == 0)
-
+                if (searchForAnnotInt && strcmp(dirname, topDir.c_str()) == 0)
                 {
                     AddAnnotIntNodelistEnumerations(dbfile, md, name_w_dir, mm_ent);
                 }
@@ -2175,6 +2174,7 @@ avtSiloFileFormat::ReadQuadmeshes(DBfile *dbfile,
                 mmd->groupPieceName = "block";
                 mmd->hideFromGUI = qm->guihide;
                 md->Add(mmd);
+
             }
             else
             {
@@ -4680,6 +4680,13 @@ avtSiloFileFormat::StoreMultimeshInfo(const char *const dirname,
 //    Don't set group information if we have already set it for an AMR
 //    dataset.
 //
+//    Mark C. Miller, Tue Feb 25 15:10:29 PST 2014
+//    Do the work that md->AddGroupInformation() would have done but make
+//    sure we do it *only* for the relevant meshes.
+//
+//    Mark C. Miller, Tue Jun  3 13:07:01 PDT 2014
+//    Adjust algorithm to find matching meshes to attach group info and ids
+//    to make it a little clearer what it is doing/how it is working.
 // ****************************************************************************
 
 void
@@ -4709,8 +4716,26 @@ avtSiloFileFormat::DoRootDirectoryWork(avtDatabaseMetaData *md)
 
     if (!haveAmrGroupInfo && groupInfo.haveGroups)
     {
-        md->AddGroupInformation(groupInfo.numgroups, groupInfo.ndomains,
-                                groupInfo.ids);
+        for (int i = 0; i < md->GetNumMeshes(); i++)
+        {
+            int namesMatchAtIndex = -1;
+            for (int j = 0; j < (int) actualMeshName.size(); j++)
+            {
+                if (md->GetMeshes(i).name == actualMeshName[j])
+                {
+                    namesMatchAtIndex = j;
+                    break;
+                }
+            }
+
+            if (namesMatchAtIndex != -1 &&
+                groupInfo.ndomains == blocksForMesh[namesMatchAtIndex] && 
+                groupInfo.ndomains == md->GetMeshes(i).numBlocks)
+            {
+                md->GetMeshes(i).numGroups = groupInfo.numgroups;
+                md->GetMeshes(i).groupIds = groupInfo.ids;
+            }
+        }
     }
 }
 
@@ -4832,6 +4857,10 @@ avtSiloFileFormat::FindDecomposedMeshType(DBfile *dbfile)
 //    Hank Childs, Wed Dec 22 15:14:33 PST 2010
 //    Early return when we are streaming.
 //
+//    Mark C. Miller, Tue Jun  3 13:09:26 PDT 2014
+//    Adjust conditional logic to determine if domain boundary information is
+//    served up from 'ndomains > 0' to 'ndomains > 1' to deal with Silo files
+//    with one domain and one group.
 // ****************************************************************************
 
 void
@@ -4929,7 +4958,7 @@ avtSiloFileFormat::GetConnectivityAndGroupInformation(DBfile *dbfile,
     // appropriate data structure and register it.
     //
     if (!useLocalDomainBoundries &&
-        ndomains > 0 &&
+        ndomains > 1 &&
         !avtDatabase::OnlyServeUpMetaData())
     {
         avtStructuredDomainBoundaries *dbi = NULL;
@@ -5204,6 +5233,9 @@ avtSiloFileFormat::GetConnectivityAndGroupInformationFromFile(DBfile *dbfile,
 //    local info as global if it were global and crash. Also support
 //    Domain to Block mapping via Domains_BlockNums array.
 //
+//    Mark C. Miller, Tue Jun  3 13:10:31 PDT 2014
+//    If numGroups is 1 *and* ndomains is also 1, set needConnectivityInfo to
+//    false. This is to deal with Silo files with one domain and one group.
 // ****************************************************************************
 
 
@@ -5267,6 +5299,8 @@ avtSiloFileFormat::FindStandardConnectivity(DBfile *dbfile, int &ndomains,
                  groupIds[i] = 0;
              }
              needGroupInfo = false;
+             if (ndomains == 1)
+                 needConnectivityInfo = false;
          }
          else
          {
@@ -11314,7 +11348,7 @@ avtSiloFileFormat::ReadInArbConnectivity(const char *meshname,
     // the mesh has been re-mapped to all ucd elements. We use the cell
     // centered re-mapping, if any, to make it work.
     //
-    if (phzl->lo_offset != 0 || phzl->hi_offset != phzl->nzones-1)
+    if (phzl->nzones > 0 && (phzl->lo_offset != 0 || phzl->hi_offset != phzl->nzones-1))
     {
         //
         // Populate a zone-centered array of ghost zone values.
@@ -11437,6 +11471,11 @@ avtSiloFileFormat::ReadInArbConnectivity(const char *meshname,
 //    Brad Whitlock, Fri Aug  7 11:11:29 PDT 2009
 //    I added some exception handling.
 //
+//    Mark C. Miller, Wed Sep 25 10:30:05 PDT 2013
+//    Added logic to handle 3D, co-linear, cylindrical meshes from Silo
+//    
+//    Mark C. Miller, Tue Jan  7 10:28:47 PST 2014
+//    Only query cached SDB for extents if all meshes have same block count.
 // ****************************************************************************
 
 vtkDataSet *
@@ -11474,7 +11513,12 @@ avtSiloFileFormat::GetQuadMesh(DBfile *dbfile, const char *mn, int domain)
     TRY
     {
         if (qm->coordtype == DB_COLLINEAR)
-            ds = CreateRectilinearMesh(qm);
+        {
+            if (qm->ndims == 3 && qm->coord_sys == DB_CYLINDRICAL)
+                ds = CreateCurvilinearMesh(qm);
+            else
+                ds = CreateRectilinearMesh(qm);
+        }
         else
             ds = CreateCurvilinearMesh(qm);
     }
@@ -11519,9 +11563,18 @@ avtSiloFileFormat::GetQuadMesh(DBfile *dbfile, const char *mn, int domain)
         qm->base_index[1] == 0 &&
         qm->base_index[2] == 0) 
     {
-        void_ref_ptr vr = cache->GetVoidRef("any_mesh",
-                        AUXILIARY_DATA_DOMAIN_BOUNDARY_INFORMATION, -1, -1);
-        if (*vr != NULL)
+        bool allSameBlockCount = true;
+        for (int i = 0; (i < (int) blocksForMesh.size() - 1) && allSameBlockCount; i++)
+        {
+            if (blocksForMesh[i] != blocksForMesh[i+1])
+                allSameBlockCount = false;
+        }
+
+        void_ref_ptr vr;
+        if (allSameBlockCount)
+            vr = cache->GetVoidRef("any_mesh", AUXILIARY_DATA_DOMAIN_BOUNDARY_INFORMATION, -1, -1);
+
+        if (*vr != 0)
         {
             avtStructuredDomainBoundaries *dbi = 
                 (avtStructuredDomainBoundaries*)*vr;
@@ -12013,6 +12066,8 @@ avtSiloFileFormat::CreateRectilinearMesh(DBquadmesh *qm)
 //    I modified the row major case so it just uses increment for index
 //    calculations. Use unsigned int.
 //
+//    Mark C. Miller, Wed Sep 25 10:30:43 PDT 2013
+//    Added logic to handle 3d, co-linear, cylindrical meshes from Silo
 // ****************************************************************************
 
 template <class T>
@@ -12043,6 +12098,27 @@ static void CopyQuadCoordinates(T *dest, int nx, int ny, int nz, int morder,
                     *dest++ = c1 ? c1[idx] : 0.;
                     *dest++ = c2 ? c2[idx] : 0.;
                 }
+            }
+        }
+    }
+}
+
+template <class T>
+static void ConvertQuadCylindricalCoordinates(T *dest, int nx, int ny, int nz,
+    const T *const c0, const T *const c1, const T *const c2)
+{
+    for (int k = 0; k < nz; k++)
+    {
+        for (int j = 0; j < ny; j++)
+        {
+            for (int i = 0; i < nx; i++)
+            {
+                T x = c0[i] * cos(M_PI/180.0*c1[j]);
+                T y = c0[i] * sin(M_PI/180.0*c1[j]);
+                T z = c2[k];
+                *dest++ = x;
+                *dest++ = y;
+                *dest++ = z;
             }
         }
     }
@@ -12090,15 +12166,23 @@ avtSiloFileFormat::CreateCurvilinearMesh(DBquadmesh *qm)
     void *pts = points->GetVoidPointer(0);
     if (qm->datatype == DB_DOUBLE)
     {
-        CopyQuadCoordinates((double *) pts, nx, ny, nz, qm->major_order,
-            (double *) qm->coords[0], (double *) qm->coords[1],
-            qm->ndims <= 2 ? 0 : (double *) qm->coords[2]);
+        if (qm->ndims == 3 && qm->coord_sys == DB_CYLINDRICAL)
+            ConvertQuadCylindricalCoordinates((double *) pts, nx, ny, nz,
+               (double *) qm->coords[0], (double *) qm->coords[1], (double *) qm->coords[2]);
+        else
+            CopyQuadCoordinates((double *) pts, nx, ny, nz, qm->major_order,
+                (double *) qm->coords[0], (double *) qm->coords[1],
+                qm->ndims <= 2 ? 0 : (double *) qm->coords[2]);
     }
     else
     {
-        CopyQuadCoordinates((float *) pts, nx, ny, nz, qm->major_order,
-            (float *) qm->coords[0], (float *) qm->coords[1],
-            qm->ndims <= 2 ? 0 : (float *) qm->coords[2]);
+        if (qm->ndims == 3 && qm->coord_sys == DB_CYLINDRICAL)
+            ConvertQuadCylindricalCoordinates((float *) pts, nx, ny, nz,
+               (float *) qm->coords[0], (float *) qm->coords[1], (float *) qm->coords[2]);
+        else
+            CopyQuadCoordinates((float *) pts, nx, ny, nz, qm->major_order,
+                (float *) qm->coords[0], (float *) qm->coords[1],
+                qm->ndims <= 2 ? 0 : (float *) qm->coords[2]);
     }
 
     return sgrid;
@@ -15903,11 +15987,12 @@ avtSiloFileFormat::AddAnnotIntNodelistEnumerations(DBfile *dbfile,
             continue;
 
         string realvar;
-        DBfile *correctFile;
+        DBfile *correctFile = 0;
         DetermineFileAndDirectory(mb_meshname.c_str(),"",
                                   correctFile, realvar);
+
         if (correctFile == 0)
-            continue;
+            correctFile = dbfile;
 
         DBcompoundarray *ai = DBGetCompoundarray(correctFile, "ANNOTATION_INT");
         if (ai)
@@ -15937,7 +16022,10 @@ avtSiloFileFormat::AddAnnotIntNodelistEnumerations(DBfile *dbfile,
     // If we didn't find anything, we're done.
     //
     if (!haveNodeLists && !haveFaceLists)
+    {
+        debug5 << "Although we were asked to search for ANNOTATION_INT nodelists, none were found." << endl;
         return;
+    }
 
     //
     // Populate the enumeration names. This is a two pass loop;

@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # All rights reserved.
 #
@@ -616,6 +616,10 @@ class MakeMovie(object):
     #   Brad Whitlock, Wed Apr  3 16:44:08 PDT 2013
     #   Change various lists to formatInfo dictionary.
     #
+    #   Eric Brugger, Tue Oct 22 13:22:35 PDT 2013
+    #   Change the movie formats to all use PNG as the input format when
+    #   ffmpeg is present and PPM otherwise (for use with mpeg2encode).
+    #
     ###########################################################################
 
     def __init__(self):
@@ -634,9 +638,9 @@ class MakeMovie(object):
             "bmp"  : [("bmp",),        "bmp",  None, 1, 0],\
             "rgb"  : [("rgb",),        "rgb",  None, 1, 0],\
             "png"  : [("png",),        "png",  None, 1, 0],\
-            "mpeg" : [("mpg", "mpeg"), "jpeg", "mpg", 1, 0],\
-            "qt"   : [("mov", "qt"),   "jpeg", "mov", 0, 0],\
-            "sm"   : [("sm",),         "png",  "sm",  0, 1]\
+            "mpeg" : [("mpg", "mpeg"), "png", "mpg", 1, 0],\
+            "qt"   : [("mov", "qt"),   "png", "mov", 0, 0],\
+            "sm"   : [("sm",),         "png",  "sm", 0, 1]\
         }
 
         # See if there are any other encoders that we can use.
@@ -665,6 +669,9 @@ class MakeMovie(object):
         if CommandInPath("ffmpeg"):
             self.allow_ffmpeg = 1
 
+        if(self.allow_ffmpeg == 0):
+            self.formatInfo["mpeg"][self.FMT_INPUTFORMAT] = "ppm"
+
         # Movie properties.
         self.stateFile = ""
         self.scriptFile = ""
@@ -679,6 +686,7 @@ class MakeMovie(object):
         self.frameEnd = -1
         self.tmpDir = os.path.abspath(os.curdir)
         self.fps = 10
+        self.initialFrameValue = 0
         self.templateFile = ""
         self.usesTemplateFile = 0
         self.screenCaptureImages = 0
@@ -902,6 +910,8 @@ class MakeMovie(object):
         print "    -start frame       The frame that we want to start at."
         print ""
         print "    -end frame         The frame that we want to end at."
+        print ""
+        print "    -frame value       The initial value used in the name of the first frame."
         print ""
         print "    -output moviename  The output option lets you set the name of "
         print "                       your movie."
@@ -1223,6 +1233,10 @@ class MakeMovie(object):
     #   Brad Whitlock, Fri Feb 10 14:20:32 PST 2012
     #   Add -source argument.
     #
+    #   Eric Brugger, Tue Oct 22 13:22:35 PDT 2013
+    #   Change the movie formats to all use PNG as the input format when
+    #   ffmpeg is present and PPM otherwise (for use with mpeg2encode).
+    #
     ###########################################################################
 
     def ProcessArguments(self):
@@ -1379,6 +1393,19 @@ class MakeMovie(object):
                 else:
                     self.PrintUsage()
                     sys.exit(-1)
+            elif(commandLine[i] == "-frame"):
+                if((i+1) < len(commandLine)):
+                    try:
+                        self.initialFrameValue = int(commandLine[i+1])
+                        if(self.initialFrameValue < 0):
+                            self.initialFrameValue = 0
+                    except ValueError:
+                        self.initialFrameValue = 0
+                        print "A bad value was provided for frame initial value. Using a value of 0."
+                    i = i + 1
+                else:
+                    self.PrintUsage()
+                    sys.exit(-1)
             elif(commandLine[i] == "-output"):
                 if((i+1) < len(commandLine)):
                     outputName = commandLine[i+1]
@@ -1530,7 +1557,7 @@ class MakeMovie(object):
         # If we are using ffmpeg for the mpeg encoder then let's make sure that 
         # we make JPEG images to start with.
         if self.allow_ffmpeg:
-            self.formatInfo["mpeg"][self.FMT_INPUTFORMAT] = "jpeg"
+            self.formatInfo["mpeg"][self.FMT_INPUTFORMAT] = "png"
         else:
             self.formatInfo["mpeg"][self.FMT_INPUTFORMAT] = "ppm"
 
@@ -1734,6 +1761,15 @@ class MakeMovie(object):
         # Save the frame in the required formats.
         retval = 1
         for format in self.movieFormats:
+
+            # Determine if any movie formats get encoded if so ignore the
+            # initialFrameValue
+            initialFrameValue = self.initialFrameValue
+
+            fmt = format[1]
+            if self.formatInfo[fmt][self.FMT_ENCODER] != None:
+                initialFrameValue = 0
+
             # Stereo format
             stereo = format[4]
             ra = GetRenderingAttributes()
@@ -1756,7 +1792,7 @@ class MakeMovie(object):
 
             # Create a filename
             frameFormatString = format[0]
-            s.fileName = frameFormatString % index
+            s.fileName = frameFormatString % (initialFrameValue+index)
             self.Debug(5, "SaveImage: %s" % s.fileName)
 
             # Determine the format of the frame that VisIt needs to save.
@@ -2087,6 +2123,7 @@ class MakeMovie(object):
     #
     ###########################################################################
     def IterateAndSaveFrames(self):
+
         self.Debug(1, "IterateAndSaveFrames:")
 
         # Make sure that camera view mode is on so that if we have a
@@ -2301,7 +2338,7 @@ class MakeMovie(object):
             # Determine the name of the movie template base class's file.
             prefix = ""
             if os.name == "nt":
-                prefix = sys.executable[:-7]
+                prefix = sys.executable[:-7] + "resources" + self.slash
             else:
                 pos = string.find(sys.argv[0], "exe" + self.slash + "cli")
                 if pos != -1:
@@ -2496,18 +2533,35 @@ class MakeMovie(object):
     # Date:       Wed Apr  3 16:32:42 PDT 2013
     #
     # Modifications:
+    #   Cyrus Harrison, Sat Mar 27 11:51:10 PST 2004
+    #   Bring back our old fps / frame duplication heuristic for mpeg encoding.
     #
     ###########################################################################
 
     def EncodeMPEGMovie(self, moviename, imageFormatString, xres, yres):
-        if self.allow_ffmpeg:
+        if self.allow_ffmpeg:        
+            # keep old fps / frame duplication heuristic, feed dup rate into 
+            # visit_utils.encoding
+            #
+            # We can only drive the movie at 30 fps.  So if the user wants
+            # a movie at 10 fps, we have to pad frames.  Determine what that
+            # pad rate is.
+            pad_rate=-1
+            for i in range(1,31):
+               if (pad_rate < 0):
+                  if ((30./i) <= self.fps):
+                     pad_rate = i
+                     if ((30./i) != self.fps):
+                         print "Because of limitations in MPEG encoding, the "
+                         print "movie will be encoded at %f frames per second" %(30./i)
             frameExt = self.OutputExtension(self.formatInfo["mpeg"][self.FMT_INPUTFORMAT])
             framePattern = self.tmpDir + self.slash + imageFormatString + frameExt
             absMovieName = self.outputDir + self.slash + moviename
 
             success = 1
             msg = ""
-            if encoding.encode(framePattern, absMovieName) > 0:
+            # use fdup to set the duplication frame rate
+            if encoding.encode(framePattern, absMovieName,fdup=pad_rate) > 0:
                 success = 0
                 msg = "The movie encoder used in the visit_utils module did not complete successfully."
 
@@ -2747,19 +2801,36 @@ class MakeMovie(object):
     # Date:       Wed Apr  3 17:51:17 PDT 2013
     #
     # Modifications:
+    #   Cyrus Harrison, Sat Mar 27 11:51:10 PST 2004
+    #   Bring back our old fps / frame duplication heuristic for mpeg encoding.
     #
     ###########################################################################
 
     def EncodeMovie(self, fmt, moviename, imageFormatString, xres, yres, stereo):
         self.Debug(1, "EncodeMovie")
 
+        # keep old fps / frame duplication heuristic, feed dup rate into 
+        # visit_utils.encoding
+        #
+        # We can only drive the movie at 30 fps.  So if the user wants
+        # a movie at 10 fps, we have to pad frames.  Determine what that
+        # pad rate is.
+        pad_rate=-1
+        for i in range(1,31):
+           if (pad_rate < 0):
+              if ((30./i) <= self.fps):
+                 pad_rate = i
+                 if ((30./i) != self.fps):
+                     print "Because of limitations in MPEG encoding, the "
+                     print "movie will be encoded at %f frames per second" %(30./i)
         formatExt = "." + self.formatInfo[fmt][self.FMT_INPUTFORMAT]
         framePattern = self.tmpDir + self.slash + imageFormatString + formatExt
         absMovieName = self.outputDir + self.slash + moviename
 
         success = 1
         msg = ""
-        if encoding.encode(framePattern, absMovieName) > 0:
+        # use fdup to set the duplication frame rate
+        if encoding.encode(framePattern, absMovieName,fdup=pad_rate) > 0:
             success = 0
             msg = "The movie encoder used in the visit_utils module did not complete successfully."
 
@@ -3090,5 +3161,3 @@ Message from \"visit -movie\" running on %s.\n\n""" % host
             for f in tmpfiles:
                 os.remove("%s%s%s" % (self.tmpDir, self.slash, f))
             os.rmdir(self.tmpDir)
-
-

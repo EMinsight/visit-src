@@ -102,7 +102,7 @@ IF(NOT VISIT_SERVER_COMPONENTS_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO
     TARGET_LINK_LIBRARIES(GStreamlinePlot visitcommon gui )
 
     ADD_LIBRARY(VStreamlinePlot ${LIBV_SOURCES})
-    TARGET_LINK_LIBRARIES(VStreamlinePlot visitcommon viewer ${GLEW_LIB} )
+    TARGET_LINK_LIBRARIES(VStreamlinePlot visitcommon viewer avtivp_ser ${GLEW_LIB} )
 
     SET(INSTALLTARGETS ${INSTALLTARGETS} GStreamlinePlot VStreamlinePlot)
 
@@ -118,19 +118,21 @@ IF(NOT VISIT_SERVER_COMPONENTS_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO
     ENDIF(VISIT_PYTHON_SCRIPTING)
 
     IF(VISIT_JAVA)
-        ADD_CUSTOM_TARGET(JavaStreamline ALL ${CMAKE_Java_COMPILER} ${CMAKE_Java_FLAGS} -d ${VISIT_BINARY_DIR}/java -classpath ${VISIT_BINARY_DIR}/java StreamlineAttributes.java)
-        ADD_DEPENDENCIES(JavaStreamline JavaClient)
+        FILE(COPY StreamlineAttributes.java DESTINATION ${JavaClient_BINARY_DIR}/src/plots)
+        ADD_CUSTOM_TARGET(JavaStreamline ALL ${Java_JAVAC_EXECUTABLE} ${VISIT_Java_FLAGS} -d ${JavaClient_BINARY_DIR} -classpath ${JavaClient_BINARY_DIR} -sourcepath ${JavaClient_BINARY_DIR} StreamlineAttributes.java
+            DEPENDS JavaClient
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
     ENDIF(VISIT_JAVA)
 ENDIF(NOT VISIT_SERVER_COMPONENTS_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)
 
 ADD_LIBRARY(EStreamlinePlot_ser ${LIBE_SOURCES})
-TARGET_LINK_LIBRARIES(EStreamlinePlot_ser visitcommon avtplotter_ser avtpipeline_ser ${GLEW_LIB} vtkFiltersModeling )
+TARGET_LINK_LIBRARIES(EStreamlinePlot_ser visitcommon avtplotter_ser avtpipeline_ser avtivp_ser ${GLEW_LIB} vtkFiltersModeling )
 SET(INSTALLTARGETS ${INSTALLTARGETS} EStreamlinePlot_ser)
 ADD_TARGET_DEFINITIONS(EStreamlinePlot_ser ENGINE)
 
 IF(VISIT_PARALLEL)
     ADD_PARALLEL_LIBRARY(EStreamlinePlot_par ${LIBE_SOURCES})
-    TARGET_LINK_LIBRARIES(EStreamlinePlot_par visitcommon avtplotter_par avtpipeline_par ${GLEW_LIB} vtkFiltersModeling )
+    TARGET_LINK_LIBRARIES(EStreamlinePlot_par visitcommon avtplotter_par avtpipeline_par avtivp_par ${GLEW_LIB} vtkFiltersModeling )
     SET(INSTALLTARGETS ${INSTALLTARGETS} EStreamlinePlot_par)
     ADD_TARGET_DEFINITIONS(EStreamlinePlot_par ENGINE)
 ENDIF(VISIT_PARALLEL)

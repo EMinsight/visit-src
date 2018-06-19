@@ -148,6 +148,7 @@ avtOpenGLSLIVRVolumeRenderer::FreeContext()
         delete context;
     }
     context = 0;
+    videoCardMemorySize = video_card_memory_size();
 }
 
 #ifdef DEBUG_PRINT
@@ -363,6 +364,9 @@ avtOpenGLSLIVRVolumeRenderer::OnlyLightingFlagIsDifferent(
 //   Brad Whitlock, Wed Apr 22 12:10:06 PDT 2009
 //   I changed the interface.
 //
+//   Kathleen Biagas, Thu Jan 9 16:29:43 PST 2014
+//   Added early return and intel-specific warning message.
+//
 // ****************************************************************************
 
 void
@@ -371,13 +375,32 @@ avtOpenGLSLIVRVolumeRenderer::Render(
     const avtVolumeRendererImplementation::VolumeData &volume)
 {
     const char *mName = "avtOpenGLSLIVRVolumeRenderer::Render: ";
-
+    static bool haveIssuedWarning = false;
     // Initializes SLIVR shaders and GLEW.
     if(!slivrInit)
     {
         debug5 << mName << "Initializing SLIVR" << endl;
         SLIVR::ShaderProgramARB::init_shaders_supported();
         slivrInit = true;
+    }
+
+    if (SLIVR::ShaderProgramARB::shaders_supported() == false)
+    {
+        if (!haveIssuedWarning)
+        {
+            std::stringstream sstr;
+            if (SLIVR::ShaderProgramARB::isGFXIntel())
+            {
+                sstr << "SLIVR currently does not support Intel graphics cards.";
+            }
+            else
+            {
+                sstr << "SLIVR uses shaders which your graphics card does not support.";
+            }
+            avtCallback::IssueWarning(sstr.str().c_str());
+            haveIssuedWarning = true;
+        }
+        return;
     }
 
     // Get the sampling rate that the renderer will use.
@@ -410,6 +433,9 @@ avtOpenGLSLIVRVolumeRenderer::Render(
 
     // create a range from -1 to 1 instead of from 0 - 1
     context->renderer->set_slice_alpha(props.atts.GetOpacityAttenuation()*2.0 - 1.0);
+
+    const double *matProp = props.atts.GetMaterialProperties();
+    context->renderer->set_material(matProp[0], matProp[1], matProp[2], matProp[3]);
 
     // Render the context.
     debug5 << mName << "Rendering..." << endl;
@@ -492,7 +518,7 @@ avtOpenGLSLIVRVolumeRenderer::SlivrContext::~SlivrContext()
     if(renderer != 0)
         delete renderer;
     for(int i=0;i<planes.size();i++)
-      delete planes[i];
+        delete planes[i];
 }
 
 // ****************************************************************************
@@ -587,7 +613,7 @@ avtOpenGLSLIVRVolumeRenderer::CreateContext(vtkRectilinearGrid *grid,
     if (vcm==0)
     {
       std::stringstream sstr;
-      sstr << "Insufficient video card memory to run SLIVR.";
+      sstr << "Insufficient video card memory to run SLIVR (only "<<vcm<<" mb available).";
       avtCallback::IssueWarning(sstr.str().c_str());
       return;
     }
@@ -636,7 +662,7 @@ avtOpenGLSLIVRVolumeRenderer::CreateContext(vtkRectilinearGrid *grid,
                   else
                     if (val < vmin)
                       val = vmin;
-            
+
                   float t = (val - vmin) * inv_d;
                   ccdata[k] = (unsigned char)(((int)(t * 254.)) + 1);
                 }

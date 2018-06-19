@@ -33,6 +33,7 @@ avtCartographicProjectionFilter.C
 ${COMMON_SOURCES}
 )
 
+
 IF(VISIT_PYTHON_SCRIPTING)
     SET(PYINCLUDES ${PYTHON_INCLUDE_PATH} ${VISIT_INCLUDE_DIR}/visitpy/visitpy)
 ENDIF(VISIT_PYTHON_SCRIPTING)
@@ -114,20 +115,20 @@ IF(NOT VISIT_SERVER_COMPONENTS_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO
     ENDIF(VISIT_PYTHON_SCRIPTING)
 
     IF(VISIT_JAVA)
-        ADD_CUSTOM_TARGET(JavaCartographicProjection ALL ${CMAKE_Java_COMPILER} ${CMAKE_Java_FLAGS} -d ${VISIT_BINARY_DIR}/java -classpath ${VISIT_BINARY_DIR}/java CartographicProjectionAttributes.java)
-        ADD_DEPENDENCIES(JavaCartographicProjection JavaClient)
+        FILE(COPY CartographicProjectionAttributes.java DESTINATION ${JavaClient_BINARY_DIR}/src/operators)
+        ADD_CUSTOM_TARGET(JavaCartographicProjection ALL ${Java_JAVAC_EXECUTABLE} ${VISIT_Java_FLAGS} -d ${JavaClient_BINARY_DIR} -classpath ${JavaClient_BINARY_DIR} -sourcepath ${JavaClient_BINARY_DIR} CartographicProjectionAttributes.java
+            DEPENDS JavaClient
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
     ENDIF(VISIT_JAVA)
 ENDIF(NOT VISIT_SERVER_COMPONENTS_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)
 
 ADD_LIBRARY(ECartographicProjectionOperator_ser ${LIBE_SOURCES})
-TARGET_LINK_LIBRARIES(ECartographicProjectionOperator_ser visitcommon
-avtexpressions_ser avtfilters_ser avtpipeline_ser vtkGeovisCore )
+TARGET_LINK_LIBRARIES(ECartographicProjectionOperator_ser visitcommon avtexpressions_ser avtfilters_ser avtpipeline_ser vtkGeovisCore )
 SET(INSTALLTARGETS ${INSTALLTARGETS} ECartographicProjectionOperator_ser)
 
 IF(VISIT_PARALLEL)
     ADD_PARALLEL_LIBRARY(ECartographicProjectionOperator_par ${LIBE_SOURCES})
-    TARGET_LINK_LIBRARIES(ECartographicProjectionOperator_par visitcommon
-avtexpressions_par avtfilters_par avtpipeline_par vtkGeovisCore )
+    TARGET_LINK_LIBRARIES(ECartographicProjectionOperator_par visitcommon avtexpressions_par avtfilters_par avtpipeline_par vtkGeovisCore )
     SET(INSTALLTARGETS ${INSTALLTARGETS} ECartographicProjectionOperator_par)
 ENDIF(VISIT_PARALLEL)
 

@@ -110,19 +110,21 @@ IF(NOT VISIT_SERVER_COMPONENTS_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO
     ENDIF(VISIT_PYTHON_SCRIPTING)
 
     IF(VISIT_JAVA)
-        ADD_CUSTOM_TARGET(JavaPoincare ALL ${CMAKE_Java_COMPILER} ${CMAKE_Java_FLAGS} -d ${VISIT_BINARY_DIR}/java -classpath ${VISIT_BINARY_DIR}/java PoincareAttributes.java)
-        ADD_DEPENDENCIES(JavaPoincare JavaClient)
+        FILE(COPY PoincareAttributes.java DESTINATION ${JavaClient_BINARY_DIR}/src/plots)
+        ADD_CUSTOM_TARGET(JavaPoincare ALL ${Java_JAVAC_EXECUTABLE} ${VISIT_Java_FLAGS} -d ${JavaClient_BINARY_DIR} -classpath ${JavaClient_BINARY_DIR} -sourcepath ${JavaClient_BINARY_DIR} PoincareAttributes.java
+            DEPENDS JavaClient
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
     ENDIF(VISIT_JAVA)
 ENDIF(NOT VISIT_SERVER_COMPONENTS_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)
 
 ADD_LIBRARY(EPoincarePlot_ser ${LIBE_SOURCES})
-TARGET_LINK_LIBRARIES(EPoincarePlot_ser visitcommon avtplotter_ser avtpipeline_ser )
+TARGET_LINK_LIBRARIES(EPoincarePlot_ser visitcommon avtplotter_ser avtpipeline_ser avtivp_ser )
 SET(INSTALLTARGETS ${INSTALLTARGETS} EPoincarePlot_ser)
 ADD_TARGET_DEFINITIONS(EPoincarePlot_ser ENGINE)
 
 IF(VISIT_PARALLEL)
     ADD_PARALLEL_LIBRARY(EPoincarePlot_par ${LIBE_SOURCES})
-    TARGET_LINK_LIBRARIES(EPoincarePlot_par visitcommon avtplotter_par avtpipeline_par )
+    TARGET_LINK_LIBRARIES(EPoincarePlot_par visitcommon avtplotter_par avtpipeline_par avtivp_par )
     SET(INSTALLTARGETS ${INSTALLTARGETS} EPoincarePlot_par)
     ADD_TARGET_DEFINITIONS(EPoincarePlot_par ENGINE)
 ENDIF(VISIT_PARALLEL)

@@ -528,7 +528,7 @@ static pthread_mutex_t       mutex;
 static pthread_cond_t        received_sync_from_viewer;
 static bool waitingForViewer = false;
 static ObserverToCallback   *synchronizeCallback = 0;
-#define THREAD_INIT()        { pthread_attr_init(&thread_atts); }
+#define THREAD_INIT()        pthread_attr_init(&thread_atts)
 #define MUTEX_CREATE()       pthread_mutex_init(&mutex, NULL)
 #define MUTEX_DESTROY()      pthread_mutex_destroy(&mutex)
 #define MUTEX_LOCK()         pthread_mutex_lock(&mutex)
@@ -3356,7 +3356,7 @@ OpenClientHelper(PyObject *self, PyObject *args, int componentNumber)
 
         PyErr_Clear();
     }
-    if(componentNumber == 2)
+    else if(componentNumber == 2)
     {
         clientName = "CLI";
         program = "visit";
@@ -3385,6 +3385,11 @@ OpenClientHelper(PyObject *self, PyObject *args, int componentNumber)
                     VisItErrorFunc(OCEError);
                     return NULL;
                 }
+            }
+            else
+            {
+                VisItErrorFunc(OCEError);
+                return NULL;
             }
         }
         else
@@ -15864,12 +15869,6 @@ visit_exec_client_method(void *data)
             VisItUnlockPythonInterpreter(myThreadState);
 
         PyGILState_STATE state = PyGILState_Ensure();
-        if(PyOS_ReadlineFunctionPointer || _PyOS_ReadlineTState)
-        {
-            PyOS_Readline(0,0,0);
-            PyOS_ReadlineFunctionPointer = NULL;
-            PyThreadState_Delete(_PyOS_ReadlineTState);
-        }
         PyRun_SimpleString("import sys; sys.exit(0)");
         PyGILState_Release(state);
     }
@@ -15881,27 +15880,84 @@ visit_exec_client_method(void *data)
         for(size_t i = 0; i < code.size(); ++i)
         {
             char *buf = NULL;
-            // Handle ClientMethod specially if we're not in a local namespace.
-            if(strncmp(code[i].c_str(), "ClientMethod(", 13) == 0)
-            {
-                if(!localNameSpace)
+
+            /// hktodo: remove this raw input abstraction,
+            /// currently I want this separated from regular interpret logic
+            if(code[i].find("raw:") == 0) {
+                std::ostringstream c;
+                c << "exec(\"" << code[i].substr(4) << "\")"; /// remove the prefix
+                PyRun_SimpleString(c.str().c_str());
+            }
+            else {
+                // Handle ClientMethod specially if we're not in a local namespace.
+                if(strncmp(code[i].c_str(), "ClientMethod(", 13) == 0)
                 {
-                    int len = code[i].size() + 6 + 1;
-                    buf = new char[len];
-                    SNPRINTF(buf, len, "visit.%s", code[i].c_str());
+                    if(!localNameSpace)
+                    {
+                        int len = code[i].size() + 6 + 1;
+                        buf = new char[len];
+                        SNPRINTF(buf, len, "visit.%s", code[i].c_str());
+                    }
                 }
+                if(buf == NULL)
+                {
+                    int len = code[i].size() + 1;
+                    buf = new char[len];
+                    strcpy(buf, code[i].c_str());
+                }
+                PyRun_SimpleString(buf);
+                delete [] buf;
             }
-            if(buf == NULL)
-            {
-                int len = code[i].size() + 1;
-                buf = new char[len];
-                strcpy(buf, code[i].c_str());
-            }
-            PyRun_SimpleString(buf);
-            delete [] buf;
         }
     }
+    else if(m->GetMethodName() == "WriteState")
+    {
+        std::string command = "";
+        std::string result = "";
 
+
+        command += "import cStringIO\n";
+        command += "__tmpOut__ = cStringIO.StringIO()\n";
+        command += "WriteScript(__tmpOut__)\n";
+        command += "__tmpOut__.seek(0)\n";
+        command += "__tmpRes__ = __tmpOut__.read()\n";
+        command += "__tmpOut__.close()\n";
+
+        PyRun_SimpleString(command.c_str());
+
+        PyObject* mod = PyImport_AddModule("__main__");
+        PyObject* dict = PyModule_GetDict(mod);
+
+        PyObject* key = PyString_FromString("__tmpRes__");
+        PyObject* res = PyDict_GetItem(dict, key);
+
+        result = PyString_AsString(res);
+
+        // Send the macro to the clients.
+
+        if(result.size() > 0)
+        {
+            //if(onNewThread)
+            GetViewerProxy()->SetXferUpdate(true);
+
+            // We don't want to get here re-entrantly so disable the client
+            // method observer temporarily.
+            clientMethodObserver->SetUpdate(false);
+
+            stringVector args;
+            args.push_back(result);
+
+            ClientMethod *newM = GetViewerState()->GetClientMethod();
+            newM->ClearArgs();
+            newM->SetMethodName("AcceptRecordedMacro");
+            newM->SetStringArgs(args);
+            newM->Notify();
+
+            //if(onNewThread)
+            GetViewerProxy()->SetXferUpdate(false);
+
+        }
+    }
     if(acquireLock)
         VisItUnlockPythonInterpreter(myThreadState);
 
@@ -16011,6 +16067,7 @@ ExecuteClientMethod(ClientMethod *method, bool onNewThread)
         info->DeclareMethod("MacroStart", "");
         info->DeclareMethod("MacroPause", "");
         info->DeclareMethod("MacroEnd",   "");
+        info->DeclareMethod("WriteState",   "");
         info->SelectAll();
 
         // If onNewThread is true then we got into this method on the 2nd
@@ -18488,7 +18545,6 @@ static void *
 visit_eventloop(void *)
 #endif
 {
-    bool viewerQuit = false;
     // This is the event loop for the messaging thread. If it needs to read
     // input from the viewer, it does so and executes the Notify method of
     // all subjects that changed.
@@ -18520,7 +18576,6 @@ visit_eventloop(void *)
                 // Indicate that there is no viewer.
                 //
                 noViewer = true;
-                viewerQuit = true;
 
 #ifndef POLLING_SYNCHRONIZE
                 SYNC_WAKE_MAIN_THREAD();
@@ -18535,20 +18590,6 @@ visit_eventloop(void *)
     }
 
     viewerBlockingRead = false;
-
-    /// HKTODO: should the python client quit if the viewer is killed?
-    if(viewerQuit)
-    {
-        PyGILState_STATE state = PyGILState_Ensure();
-        if(PyOS_ReadlineFunctionPointer || _PyOS_ReadlineTState)
-        {
-            PyOS_Readline(0,0,0);
-            PyOS_ReadlineFunctionPointer = NULL;
-            PyThreadState_Delete(_PyOS_ReadlineTState);
-        }
-        PyRun_SimpleString("import sys; sys.exit(0)");
-        PyGILState_Release(state);
-    }
 
     return NULL;
 }
@@ -18608,8 +18649,23 @@ Synchronize()
 
     // Return if the thread initialization failed.
     // or if viewer is embedded
-    if(!moduleUseThreads || viewerEmbedded)
+    if(!moduleUseThreads) {
         return 0;
+    }
+
+    if(viewerEmbedded) {
+        SyncAttributes *syncAtts = GetViewerState()->GetSyncAttributes();
+        syncAtts->SetSyncTag(syncCount);
+        syncAtts->Notify();
+        syncAtts->SetSyncTag(-1);
+
+        /// should only run once?
+        while(syncCount != syncAtts->GetSyncTag()) {
+            PyRun_SimpleString("visit.__VisIt_PySide_Idle_Hook__()");
+        }
+        syncCount++;
+        return 0;
+    }
 
     //
     // If the 2nd thread is not running, don't enter this method or we'll

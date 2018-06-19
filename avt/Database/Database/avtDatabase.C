@@ -44,7 +44,10 @@
 
 #include <visitstream.h>
 #include <visit-config.h>
+
+#include <cerrno>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include <Expression.h>
 #include <ExprNode.h>
@@ -1411,6 +1414,10 @@ avtDatabase::Convert1DVarMDsToCurveMDs(avtDatabaseMetaData *md)
 //    Sean Ahern, Wed Jun 24 17:13:50 EDT 2009
 //    Renamed diagonal to diagonal_ratio.  Added max_diagonal and
 //    min_diagonal.
+//
+//    Matthew Wheeler, Mon 20 May 12:00:00 GMT 2013
+//    Added min_corner_area and min_sin_corner
+//
 // ****************************************************************************
 
 void
@@ -1460,7 +1467,7 @@ avtDatabase::AddMeshQualityExpressions(avtDatabaseMetaData *md)
             continue;
 
         nmeshes_done++;
-        const int nPairs = 28;
+        const int nPairs = 30;
         // Static allocation?!  Really??!!
         MQExprTopoPair exprs[nPairs];
         exprs[0]  = MQExprTopoPair("area", 2);
@@ -1491,6 +1498,9 @@ avtDatabase::AddMeshQualityExpressions(avtDatabaseMetaData *md)
         exprs[25] = MQExprTopoPair("warpage", 2);
         exprs[26] = MQExprTopoPair("face_planarity", 3);
         exprs[27] = MQExprTopoPair("relative_face_planarity", 3);
+        exprs[28] = MQExprTopoPair("min_corner_area", 2);
+        exprs[29] = MQExprTopoPair("min_sin_corner", 2);
+        //exprs[30] = MQExprTopoPair("min_sin_corner_cw", 2);
 
         for (int j = 0 ; j < nPairs ; j++)
         {
@@ -2283,11 +2293,13 @@ avtDatabase::NumStagesForFetch(avtDataRequest_p)
 //    Kathleen Biagas, Mon Sep 24 18:32:43 MST 2012
 //    Check for ':' when determining if directory should be prepended.
 //
+//    Mark C. Miller, Wed Jan  8 18:16:00 PST 2014
+//    Added support for !NBLOCKS declaration in the file
 // ****************************************************************************
 
 void
 avtDatabase::GetFileListFromTextFile(const char *textfile,
-                                     char **&filelist, int &filelistN)
+                                     char **&filelist, int &filelistN, int *bang_nBlocks)
 {
     ifstream ifile(textfile);
 
@@ -2321,6 +2333,22 @@ avtDatabase::GetFileListFromTextFile(const char *textfile,
 
         if (str_auto[0] != '\0' && str_auto[0] != '#')
         {
+            if (strstr(str_auto, "!NBLOCKS ") != NULL)
+            {
+                errno = 0;
+                int bnb = strtol(str_auto + strlen("!NBLOCKS "), 0, 10);
+                if (errno != 0 || bnb <= 0)
+                {
+                    debug1 << "BAD SYNTAX FOR !NBLOCKS, \"" << str_auto << "\", RESETTING TO 1"  << endl;
+                    bnb = 1;
+                }
+                else
+                    debug1 << "Found a multi-block file with " << bnb << " blocks." << endl;
+
+                if (bang_nBlocks)
+                    *bang_nBlocks = bnb;
+            }
+
             ConvertSlashes(str_auto);
             if (str_auto[0] == VISIT_SLASH_CHAR || str_auto[0] == '!' ||
                 (str_auto_len > 2 && str_auto[1] == ':'))

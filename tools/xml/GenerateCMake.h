@@ -142,6 +142,14 @@
 //    No longer add definition _HDF5USEDLL_ for hdf5 based plugins, as this
 //    is now predefined in an hdf5 header.
 //
+//    Kathleen Biagas, Wed Oct  9 10:01:15 PDT 2013
+//    Added handling of 'Code' and 'Condition' keywords in codefile. 
+//    'Condition' allows for conditional includes, definitions and links.
+//
+//    Kathleen Biagas, Tue Oct 29 16:04:19 MST 2013
+//    For extraIncludes specified in CXXFLAGS, check for use of 
+//    ${VISIT_INCLUDE_DIR} and correct it if building against public VisIt.
+//
 // ****************************************************************************
 
 class CMakeGeneratorPlugin : public Plugin
@@ -234,6 +242,19 @@ class CMakeGeneratorPlugin : public Plugin
         return using_dev ? "${VISIT_INCLUDE_DIR}" : "${VISIT_INCLUDE_DIR}/visit";
     }
 
+    QString
+    ConvertToProperVisItIncludeDir(const QString &s) const
+    {
+        QString VID = VisItIncludeDir();
+        QString retval(s);
+        if (!s.startsWith(VID))
+        {
+            if (!using_dev && s.startsWith("${VISIT_INCLUDE_DIR}"))
+                retval = VID + s.right(s.length()-20);
+        }
+        return retval;
+    }
+
 #ifdef _WIN32
     QString
     ToCMakePath(const QString &s) const
@@ -246,6 +267,130 @@ class CMakeGeneratorPlugin : public Plugin
     }
 #endif
 
+    bool
+    HasCondition(const QString &c) const
+    {
+        bool retval = false;
+        if (atts != NULL && atts->codeFile != NULL)
+        {
+            retval =  atts->codeFile->HasCondition(c);
+        }
+        return retval;
+    }
+
+    bool
+    GetCondition(const QString &c, QString &cond, QString &val) const
+    {
+        bool retval = false;
+        if (HasCondition(c))
+        {
+            QStringList targets, first, second;
+            atts->codeFile->GetCondition(c, targets, first, second);
+            for (int i = 0; i < targets.size(); ++i)
+            {
+                if (targets[i] == "xml2cmake")
+                {
+                    cond = first[i];
+                    val = second[i];
+                    retval = true;
+                    break;
+                }
+            }
+        }
+        return retval;
+    }
+
+    void WriteCMake_ConditionalIncludes(QTextStream &out)
+    {
+        QString condition, incs;
+        if(GetCondition("Includes:", condition, incs))
+        {
+            out << endl;
+            out << "IF(" << condition << ")" << endl;
+            out << "    INCLUDE_DIRECTORIES(";
+            out << incs;
+            out << ")" << endl;
+            out << "ENDIF(" << condition << ")" << endl;
+        }
+    }
+
+    void WriteCMake_ConditionalDefinitions(QTextStream &out)
+    {
+        QString condition, defs;
+        if(GetCondition("Definitions:", condition, defs))
+        {
+            out << "IF(" << condition << ")" << endl;
+            out << "    ADD_DEFINITIONS(";
+            out << defs;
+            out << ")" << endl;
+            out << "ENDIF(" << condition << ")" << endl;
+        }
+    }
+
+    void WriteCMake_ConditionalLinkDirs(QTextStream &out, std::vector<QString> &linkDirs)
+    {
+        QString condition, dirs;
+        if (GetCondition("LinkDirectories:", condition, dirs))
+        {
+            out << "IF(" << condition << ")" << endl;
+            out << "    LINK_DIRECTORIES(" << ToString(linkDirs) << dirs << ")" << endl;
+            out << "ELSE(" << condition << ")" << endl;
+            out << "    LINK_DIRECTORIES(" << ToString(linkDirs) << ")" << endl;
+            out << "ENDIF(" << condition << ")" << endl;
+        }
+    }
+
+    void WriteCMake_ConditionalTargetLinks(QTextStream &out, const QString &target, const char *libType, const char *plugType, const char *indent)
+    {
+        QString c(libType);
+        c += "LinkLibraries:";
+        QString condition, link;
+        if (GetCondition(c, condition, link))
+        {
+            out << indent << "IF(" << condition << ")" << endl;
+            out << indent << "    TARGET_LINK_LIBRARIES(" << libType << target << plugType << " " << link << ")" << endl;
+            out << indent << "ENDIF(" << condition << ")" << endl;
+        }
+    }
+
+    void WriteCMake_ConditionalSources(QTextStream &out, const char *libType, const char *indent)
+    {
+        QString c(libType);
+        c += "Sources:";
+        QString condition, src;
+        if (GetCondition(c, condition, src))
+        {
+            out << indent << "IF(" << condition << ")" << endl;
+            out << indent << "    SET(LIB" << libType << "_SOURCES ${LIB" << libType << "_SOURCES} " << src << ")" << endl;
+            out << indent << "ENDIF(" << condition << ")" << endl;
+            out << endl;
+        }
+    }
+
+    void
+    WriteCMake_AdditionalCode(QTextStream &out)
+    {
+        if (atts != NULL && atts->codeFile != NULL)
+        {
+            QStringList targets, names, first, second;
+            atts->codeFile->GetAllCodes(targets, names, first, second);
+            for (int i = 0; i < targets.size(); ++i)
+            {
+                if (targets[i] == "xml2cmake")
+                {
+                    if (!first[i].isEmpty())
+                    {
+                        out << first[i] << endl;
+                    }
+                    if (!second[i].isEmpty())
+                    {
+                        out << second[i] << endl;
+                    }
+                }
+            }
+        }
+    }
+
     void WriteCMake_PlotOperator_Includes(QTextStream &out, bool isOperator)
     {
         // take any ${} from the CXXFLAGS to mean a variable that contains 
@@ -254,9 +399,9 @@ class CMakeGeneratorPlugin : public Plugin
         for (size_t i=0; i<cxxflags.size(); i++)
         {
             if(cxxflags[i].startsWith("${"))
-                 extraIncludes.push_back(cxxflags[i]);
+                 extraIncludes.push_back(ConvertToProperVisItIncludeDir(cxxflags[i]));
             else if(cxxflags[i].startsWith("$("))
-                 extraIncludes.push_back(ConvertDollarParenthesis(cxxflags[i]));
+                 extraIncludes.push_back(ConvertToProperVisItIncludeDir(ConvertDollarParenthesis(cxxflags[i])));
         }
 
         out << endl
@@ -361,6 +506,7 @@ class CMakeGeneratorPlugin : public Plugin
         out << name << "PluginInfo.C" << endl;
         out << ")" << endl;
         out << endl;
+        WriteCMake_ConditionalSources(out, "I", "");
 
         // libG sources
         out << "SET(LIBG_SOURCES" << endl;
@@ -384,6 +530,7 @@ class CMakeGeneratorPlugin : public Plugin
                 out << wfiles[i] << endl;
         out << ")" << endl;
         out << endl;
+        WriteCMake_ConditionalSources(out, "G", "");
 
         // libV sources
         out << "SET(LIBV_SOURCES" << endl;
@@ -408,6 +555,7 @@ class CMakeGeneratorPlugin : public Plugin
             out << ")" << endl;
         }
         out << endl;
+        WriteCMake_ConditionalSources(out, "V", "");
 
         // libE sources
         out << "SET(LIBE_SOURCES" << endl;
@@ -425,6 +573,7 @@ class CMakeGeneratorPlugin : public Plugin
         out << "${COMMON_SOURCES}" << endl;
         out << ")" << endl;
         out << endl;
+        WriteCMake_ConditionalSources(out, "E", "");
 
         if(useFortran)
         {
@@ -451,6 +600,7 @@ class CMakeGeneratorPlugin : public Plugin
         }
 
         WriteCMake_PlotOperator_Includes(out, false);
+        WriteCMake_ConditionalIncludes(out);
 
         // Pass other CXXFLAGS
         for (size_t i=0; i<cxxflags.size(); i++)
@@ -459,6 +609,8 @@ class CMakeGeneratorPlugin : public Plugin
                  out << "ADD_DEFINITIONS(\"" << cxxflags[i] << "\")" << endl;
         }
         out << endl;
+
+        WriteCMake_ConditionalDefinitions(out);
 
 #if 0
         if (installpublic)
@@ -469,8 +621,12 @@ class CMakeGeneratorPlugin : public Plugin
 #endif
 
         out << endl;
-        // Extract extra link directories from LDFLAGS if they have ${},$(),-L
         std::vector<QString> linkDirs;
+        linkDirs.push_back("${VISIT_LIBRARY_DIR}");
+        linkDirs.push_back("${QT_LIBRARY_DIR}");
+        linkDirs.push_back("${GLEW_LIBRARY_DIR}");
+        linkDirs.push_back("${VTK_LIBRARY_DIRS}");
+        // Extract extra link directories from LDFLAGS if they have ${},$(),-L
         for (size_t i=0; i<ldflags.size(); i++)
         {
             if(ldflags[i].startsWith("${") || ldflags[i].startsWith("$("))
@@ -478,10 +634,19 @@ class CMakeGeneratorPlugin : public Plugin
             else if(ldflags[i].startsWith("-L"))
                  linkDirs.push_back(ldflags[i].right(ldflags[i].size()-2));
         }
-        out << "LINK_DIRECTORIES(${VISIT_LIBRARY_DIR} ${QT_LIBRARY_DIR} ${GLEW_LIBRARY_DIR} ${VTK_LIBRARY_DIRS} " << ToString(linkDirs) << ")" << endl;
+
+        if (HasCondition("LinkDirectories:"))
+        {
+            WriteCMake_ConditionalLinkDirs(out, linkDirs);
+        }
+        else
+        {
+            out << "LINK_DIRECTORIES(" << ToString(linkDirs) << ")" << endl;
+        }
         out << endl;
         out << "ADD_LIBRARY(I"<<name<<"Plot ${LIBI_SOURCES})" << endl;
         out << "TARGET_LINK_LIBRARIES(I"<<name<<"Plot visitcommon)" << endl;
+        WriteCMake_ConditionalTargetLinks(out, name, "I", "Plot", "");
         out << "SET(INSTALLTARGETS I"<<name<<"Plot)" << endl;
         out << endl;
 
@@ -491,6 +656,7 @@ class CMakeGeneratorPlugin : public Plugin
         out << "    TARGET_LINK_LIBRARIES(G" << name << "Plot visitcommon "
             << guilibname << " " << ToString(libs) << ToString(glibs) 
             << ")" << endl;
+        WriteCMake_ConditionalTargetLinks(out, name, "G", "Plot", "    ");
         out << endl;
 
         if (customvwfiles)
@@ -499,6 +665,7 @@ class CMakeGeneratorPlugin : public Plugin
         out << "    TARGET_LINK_LIBRARIES(V" << name << "Plot visitcommon "
             << viewerlibname << " " << ToString(libs) << ToString(vlibs) 
             << ")" << endl;
+        WriteCMake_ConditionalTargetLinks(out, name, "V", "Plot", "    ");
         out << endl;
         out << "    SET(INSTALLTARGETS ${INSTALLTARGETS} G"<<name<<"Plot V"<<name<<"Plot)" << endl;
         out << endl;
@@ -515,23 +682,27 @@ class CMakeGeneratorPlugin : public Plugin
                 out << "            " << defaultsfiles[i] << endl;
         out << "            ${COMMON_SOURCES}" << endl;
         out << "        )" << endl;
+        WriteCMake_ConditionalSources(out, "S", "        ");
         out << "        ADD_LIBRARY(S"<<name<<"Plot ${LIBS_SOURCES})" << endl;
         out << "        TARGET_LINK_LIBRARIES(S" << name
             << "Plot visitcommon visitpy ${PYTHON_LIBRARY})" << endl;
+        WriteCMake_ConditionalTargetLinks(out, name, "S", "Plot", "        ");
         out << "        SET(INSTALLTARGETS ${INSTALLTARGETS} S" << name
             << "Plot)" << endl;
         out << "    ENDIF(VISIT_PYTHON_SCRIPTING)" << endl;
         out << endl;
         // Java sources
         out << "    IF(VISIT_JAVA)" << endl;
-        out << "        ADD_CUSTOM_TARGET(Java"<<name<<" ALL ${CMAKE_Java_COMPILER} ${CMAKE_Java_FLAGS} -d ${VISIT_BINARY_DIR}/java -classpath ${VISIT_BINARY_DIR}/java ";
+        out << "        FILE(COPY " << atts->name<<".java " << "DESTINATION ${JavaClient_BINARY_DIR}/src/plots)" << endl;
+        out << "        ADD_CUSTOM_TARGET(Java"<<name<<" ALL ${Java_JAVAC_EXECUTABLE} ${VISIT_Java_FLAGS} -d ${JavaClient_BINARY_DIR} -classpath ${JavaClient_BINARY_DIR} -sourcepath ${JavaClient_BINARY_DIR} ";
         if(customjfiles)
         {
             for(size_t i = 0; i < jfiles.size(); ++i)
                 out << jfiles[i] << " ";
         }
-        out << atts->name<<".java)" << endl;
-        out << "        ADD_DEPENDENCIES(Java"<<name<<" JavaClient)" << endl;
+        out << atts->name<<".java" << endl;
+        out << "            DEPENDS JavaClient" << endl;
+        out << "            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})" << endl;
         out << "    ENDIF(VISIT_JAVA)" << endl;
 
         out << "ENDIF(NOT VISIT_SERVER_COMPONENTS_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)" << endl;
@@ -539,12 +710,14 @@ class CMakeGeneratorPlugin : public Plugin
 
         out << "ADD_LIBRARY(E"<<name<<"Plot_ser ${LIBE_SOURCES})" << endl;
         out << "TARGET_LINK_LIBRARIES(E"<<name<<"Plot_ser visitcommon avtplotter_ser avtpipeline_ser " << ToString(libs) << ToString(elibsSer) << ")" << endl;
+        WriteCMake_ConditionalTargetLinks(out, name, "E", "Plot_ser", "");
         out << "SET(INSTALLTARGETS ${INSTALLTARGETS} E"<<name<<"Plot_ser)" << endl;
         out << "ADD_TARGET_DEFINITIONS(E"<<name<<"Plot_ser ENGINE)" << endl;
         out << endl;
         out << "IF(VISIT_PARALLEL)" << endl;
         out << "    ADD_PARALLEL_LIBRARY(E"<<name<<"Plot_par ${LIBE_SOURCES})" << endl;
         out << "    TARGET_LINK_LIBRARIES(E"<<name<<"Plot_par visitcommon avtplotter_par avtpipeline_par " << ToString(libs) << ToString(elibsPar) << ")" << endl;
+        WriteCMake_ConditionalTargetLinks(out, name, "E", "Plot_par", "    ");
         out << "    SET(INSTALLTARGETS ${INSTALLTARGETS} E"<<name<<"Plot_par)" << endl;
         out << "    ADD_TARGET_DEFINITIONS(E"<<name<<"Plot_par ENGINE)" << endl;
         out << "ENDIF(VISIT_PARALLEL)" << endl;
@@ -580,6 +753,7 @@ class CMakeGeneratorPlugin : public Plugin
         out << name << "PluginInfo.C" << endl;
         out << ")" << endl;
         out << endl;
+        WriteCMake_ConditionalSources(out, "I", "");
 
         // libG sources
         out << "SET(LIBG_SOURCES" << endl;
@@ -596,6 +770,7 @@ class CMakeGeneratorPlugin : public Plugin
             for (size_t i=0; i<defaultgfiles.size(); i++)
                 out << defaultgfiles[i] << endl;
         out << ")" << endl;
+        WriteCMake_ConditionalSources(out, "G", "");
         out << "SET(LIBG_MOC_SOURCES" << endl;
         out << "Qvis" << name << "Window.h" << endl;
         if (customwfiles)
@@ -618,6 +793,7 @@ class CMakeGeneratorPlugin : public Plugin
                 out << defaultvfiles[i] << endl;
         out << "${COMMON_SOURCES}" << endl;
         out << ")" << endl;
+        WriteCMake_ConditionalSources(out, "V", "");
         if (customvwfiles)
         {
             out << "SET(LIBV_MOC_SOURCES" << endl;
@@ -642,6 +818,7 @@ class CMakeGeneratorPlugin : public Plugin
         out << "${COMMON_SOURCES}" << endl;
         out << ")" << endl;
         out << endl;
+        WriteCMake_ConditionalSources(out, "E", "");
 
         if(useFortran)
         {
@@ -649,6 +826,7 @@ class CMakeGeneratorPlugin : public Plugin
         }
 
         WriteCMake_PlotOperator_Includes(out, true);
+        WriteCMake_ConditionalIncludes(out);
 
         // Pass other CXXFLAGS
         for (size_t i=0; i<cxxflags.size(); i++)
@@ -657,6 +835,8 @@ class CMakeGeneratorPlugin : public Plugin
                  out << "ADD_DEFINITIONS(\"" << cxxflags[i] << "\")" << endl;
         }
         out << endl;
+
+        WriteCMake_ConditionalDefinitions(out);
 
 #if 0
         if (installpublic)
@@ -669,6 +849,10 @@ class CMakeGeneratorPlugin : public Plugin
         out << endl;
         // Extract extra link directories from LDFLAGS if they have ${},$(),-L
         std::vector<QString> linkDirs;
+        linkDirs.push_back("${VISIT_LIBRARY_DIR}");
+        linkDirs.push_back("${QT_LIBRARY_DIR}");
+        linkDirs.push_back("${GLEW_LIBRARY_DIR}");
+        linkDirs.push_back("${VTK_LIBRARY_DIRS}");
         for (size_t i=0; i<ldflags.size(); i++)
         {
             if(ldflags[i].startsWith("${") || ldflags[i].startsWith("$("))
@@ -676,10 +860,19 @@ class CMakeGeneratorPlugin : public Plugin
             else if(ldflags[i].startsWith("-L"))
                  linkDirs.push_back(ldflags[i].right(ldflags[i].size()-2));
         }
-        out << "LINK_DIRECTORIES(${VISIT_LIBRARY_DIR} ${QT_LIBRARY_DIR} ${GLEW_LIBRARY_DIR} ${VTK_LIBRARY_DIRS} " << ToString(linkDirs) << ")" << endl;
+
+        if (HasCondition("LinkDirectories:"))
+        {
+            WriteCMake_ConditionalLinkDirs(out, linkDirs);
+        }
+        else
+        {
+            out << "LINK_DIRECTORIES(" << ToString(linkDirs) << ")" << endl;
+        }
         out << endl;
         out << "ADD_LIBRARY(I"<<name<<"Operator ${LIBI_SOURCES})" << endl;
         out << "TARGET_LINK_LIBRARIES(I"<<name<<"Operator visitcommon)" << endl;
+        WriteCMake_ConditionalTargetLinks(out, name, "I", "Operator", "");
         out << "SET(INSTALLTARGETS I"<<name<<"Operator)" << endl;
         out << endl;
 
@@ -689,6 +882,7 @@ class CMakeGeneratorPlugin : public Plugin
         out << "    TARGET_LINK_LIBRARIES(G" << name << "Operator visitcommon "
             << guilibname << " " << ToString(libs) << ToString(glibs) 
             << ")" << endl;
+        WriteCMake_ConditionalTargetLinks(out, name, "G", "Operator", "    ");
         out << endl;
         if (customvwfiles)
             out << "    QT_WRAP_CPP(V"<<name<<"Operator LIBV_SOURCES ${LIBV_MOC_SOURCES})" << endl;
@@ -696,6 +890,7 @@ class CMakeGeneratorPlugin : public Plugin
         out << "    TARGET_LINK_LIBRARIES(V" << name << "Operator visitcommon "
             << viewerlibname << " " << ToString(libs) << ToString(vlibs) 
             << ")" << endl;
+        WriteCMake_ConditionalTargetLinks(out, name, "V", "Operator", "    ");
         out << "    SET(INSTALLTARGETS ${INSTALLTARGETS} G"<<name<<"Operator V"<<name<<"Operator)" << endl;
         out << endl;
         // libS sources
@@ -711,21 +906,25 @@ class CMakeGeneratorPlugin : public Plugin
                 out << "            " << defaultsfiles[i] << endl;
         out << "            ${COMMON_SOURCES}" << endl;
         out << "        )" << endl;
+        WriteCMake_ConditionalSources(out, "S", "        ");
         out << "        ADD_LIBRARY(S"<<name<<"Operator ${LIBS_SOURCES})" << endl;
         out << "        TARGET_LINK_LIBRARIES(S"<<name<<"Operator visitcommon visitpy ${PYTHON_LIBRARY})" << endl;
+        WriteCMake_ConditionalTargetLinks(out, name, "S", "Operator", "        ");
         out << "        SET(INSTALLTARGETS ${INSTALLTARGETS} S"<<name<<"Operator)" << endl;
         out << "    ENDIF(VISIT_PYTHON_SCRIPTING)" << endl;
         out << endl;
         // Java sources
         out << "    IF(VISIT_JAVA)" << endl;
-        out << "        ADD_CUSTOM_TARGET(Java"<<name<<" ALL ${CMAKE_Java_COMPILER} ${CMAKE_Java_FLAGS} -d ${VISIT_BINARY_DIR}/java -classpath ${VISIT_BINARY_DIR}/java ";
+        out << "        FILE(COPY " << atts->name<<".java DESTINATION ${JavaClient_BINARY_DIR}/src/operators)" << endl;
+        out << "        ADD_CUSTOM_TARGET(Java"<<name<<" ALL ${Java_JAVAC_EXECUTABLE} ${VISIT_Java_FLAGS} -d ${JavaClient_BINARY_DIR} -classpath ${JavaClient_BINARY_DIR} -sourcepath ${JavaClient_BINARY_DIR} ";
         if(customjfiles)
         {
             for(size_t i = 0; i < jfiles.size(); ++i)
                 out << jfiles[i] << " ";
         }
-        out << atts->name<<".java)" << endl;
-        out << "        ADD_DEPENDENCIES(Java"<<name<<" JavaClient)" << endl;
+        out << atts->name<<".java" << endl;
+        out << "            DEPENDS JavaClient" << endl;
+        out << "            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})" << endl;
         out << "    ENDIF(VISIT_JAVA)" << endl;
 
         out << "ENDIF(NOT VISIT_SERVER_COMPONENTS_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)" << endl;
@@ -733,6 +932,7 @@ class CMakeGeneratorPlugin : public Plugin
 
         out << "ADD_LIBRARY(E"<<name<<"Operator_ser ${LIBE_SOURCES})" << endl;
         out << "TARGET_LINK_LIBRARIES(E"<<name<<"Operator_ser visitcommon avtexpressions_ser avtfilters_ser avtpipeline_ser " << ToString(libs) << ToString(elibsSer) << ")" << endl;
+        WriteCMake_ConditionalTargetLinks(out, name, "E", "Operator_ser", "");
         out << "SET(INSTALLTARGETS ${INSTALLTARGETS} E"<<name<<"Operator_ser)" << endl;
         if (hasEngineSpecificCode)
             out << "ADD_TARGET_DEFINITIONS(E"<<name<<"Operator_ser ENGINE)" << endl;
@@ -740,6 +940,7 @@ class CMakeGeneratorPlugin : public Plugin
         out << "IF(VISIT_PARALLEL)" << endl;
         out << "    ADD_PARALLEL_LIBRARY(E"<<name<<"Operator_par ${LIBE_SOURCES})" << endl;
         out << "    TARGET_LINK_LIBRARIES(E"<<name<<"Operator_par visitcommon avtexpressions_par avtfilters_par avtpipeline_par " << ToString(libs) << ToString(elibsPar) << ")" << endl;
+        WriteCMake_ConditionalTargetLinks(out, name, "E", "Operator_par", "    ");
         out << "    SET(INSTALLTARGETS ${INSTALLTARGETS} E"<<name<<"Operator_par)" << endl;
         if (hasEngineSpecificCode)
             out << "    ADD_TARGET_DEFINITIONS(E"<<name<<"Operator_par ENGINE)" << endl;
@@ -773,6 +974,7 @@ class CMakeGeneratorPlugin : public Plugin
         out << ""<<name<<"PluginInfo.C" << endl;
         out << ")" << endl;
         out << endl;
+        WriteCMake_ConditionalSources(out, "I", "");
         if(!onlyEnginePlugin)
         {
             out << "SET(LIBM_SOURCES" << endl;
@@ -788,6 +990,7 @@ class CMakeGeneratorPlugin : public Plugin
                 for (size_t i=0; i<defaultmfiles.size(); i++)
                     out << defaultmfiles[i] << endl;
             out << ")" << endl;
+            WriteCMake_ConditionalSources(out, "M", "");
             if (customwmfiles)
             {
                 useFortran |= CustomFilesUseFortran(wmfiles);
@@ -824,6 +1027,7 @@ class CMakeGeneratorPlugin : public Plugin
                 for (size_t i=0; i<defaultefiles.size(); i++)
                     out << defaultefiles[i] << endl;
             out << ")" << endl;
+            WriteCMake_ConditionalSources(out, "E", "");
             if (customwefiles)
             {
                 useFortran |= CustomFilesUseFortran(wefiles);
@@ -852,11 +1056,11 @@ class CMakeGeneratorPlugin : public Plugin
         for (size_t i=0; i<cxxflags.size(); i++)
         {
             if(cxxflags[i].startsWith("${"))
-                 extraIncludes.push_back(cxxflags[i]);
+                 extraIncludes.push_back(ConvertToProperVisItIncludeDir(cxxflags[i]));
             else if(cxxflags[i].startsWith("$("))
-                 extraIncludes.push_back(ConvertDollarParenthesis(cxxflags[i]));
+                 extraIncludes.push_back(ConvertToProperVisItIncludeDir(ConvertDollarParenthesis(cxxflags[i])));
             else if(cxxflags[i].startsWith("-I"))
-                 extraIncludes.push_back(cxxflags[i].right(cxxflags[i].size()-2));
+                 extraIncludes.push_back(ConvertToProperVisItIncludeDir(cxxflags[i].right(cxxflags[i].size()-2)));
         }
         out << "INCLUDE_DIRECTORIES(" << endl;
         out << "${CMAKE_CURRENT_SOURCE_DIR}" << endl;
@@ -885,6 +1089,9 @@ class CMakeGeneratorPlugin : public Plugin
         out << "${VTK_INCLUDE_DIRS} " << endl;
         out << ")" << endl;
         out << endl;
+
+        WriteCMake_ConditionalIncludes(out);
+
         // Pass other CXXFLAGS
         for (size_t i=0; i<cxxflags.size(); i++)
         {
@@ -910,6 +1117,7 @@ class CMakeGeneratorPlugin : public Plugin
         if (needWindowsDefines)
         {
             out << "IF(WIN32)" << endl;
+            bool netcdfAdded = false;
             for (size_t i=0; i<libs.size(); i++)
             {
                 if(libs[i].contains("BOXLIB"))
@@ -918,13 +1126,17 @@ class CMakeGeneratorPlugin : public Plugin
                      out << "  ADD_DEFINITIONS(-D_HDFDLL_ -D_MFHDFLIB_ -D_HDFLIB_ -DINTEL86)" << endl;
                 else if(libs[i].contains("FITS"))
                      out << "  ADD_DEFINITIONS(-D_HDF5USEDLL_)" << endl;
-                else if(libs[i].contains("NETCDF"))
+                else if(libs[i].contains("NETCDF")&& !netcdfAdded)
+                {
                      out << "  ADD_DEFINITIONS(-DDLL_NETCDF)" << endl;
+                     netcdfAdded = true;
+                }
                 else if(libs[i].contains("CGNS"))
                      out << "  ADD_DEFINITIONS(-DUSE_DLL)" << endl;
             }
             out << "ENDIF(WIN32)" << endl;
         }
+        WriteCMake_ConditionalDefinitions(out);
 
         if(useFortran)
         {
@@ -934,6 +1146,8 @@ class CMakeGeneratorPlugin : public Plugin
         out << endl;
         // Extract extra link directories from LDFLAGS if they have ${},$(),-L
         std::vector<QString> linkDirs;
+        linkDirs.push_back("${VISIT_LIBRARY_DIR}");
+        linkDirs.push_back("${VTK_LIBRARY_DIRS}");
         for (size_t i=0; i<ldflags.size(); i++)
         {
             if(ldflags[i].startsWith("${") || ldflags[i].startsWith("$("))
@@ -941,10 +1155,18 @@ class CMakeGeneratorPlugin : public Plugin
             else if(ldflags[i].startsWith("-L"))
                  linkDirs.push_back(ldflags[i].right(ldflags[i].size()-2));
         }
-        out << "LINK_DIRECTORIES(${VISIT_LIBRARY_DIR} ${VTK_LIBRARY_DIRS} " << ToString(linkDirs) << ")" << endl;
+        if (HasCondition("LinkDirectories:"))
+        {
+            WriteCMake_ConditionalLinkDirs(out, linkDirs);
+        }
+        else
+        {
+            out << "LINK_DIRECTORIES(" << ToString(linkDirs) << ")" << endl;
+        }
         out << endl;
         out << "ADD_LIBRARY(I"<<name<<"Database ${LIBI_SOURCES})" << endl;
         out << "TARGET_LINK_LIBRARIES(I"<<name<<"Database visitcommon)" << endl;
+        WriteCMake_ConditionalTargetLinks(out, name, "I", "Database", "");
         out << "SET(INSTALLTARGETS I"<<name<<"Database)" << endl;
         out << endl;
         if(!onlyEnginePlugin)
@@ -956,6 +1178,7 @@ class CMakeGeneratorPlugin : public Plugin
                 out << "     ${LIBM_WIN32_SOURCES}";
             out << "    )" << endl;
             out << "    TARGET_LINK_LIBRARIES(M"<<name<<"Database visitcommon avtdbatts avtdatabase_ser " << ToString(libs) << ToString(mlibs) << ")" << endl;
+            WriteCMake_ConditionalTargetLinks(out, name, "M", "Database", "    ");
             out << "    ADD_TARGET_DEFINITIONS(M"<<name<<"Database MDSERVER)" << endl;
             out << "    SET(INSTALLTARGETS ${INSTALLTARGETS} M"<<name<<"Database)" << endl;
             out << "ENDIF(NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)" << endl;
@@ -968,12 +1191,14 @@ class CMakeGeneratorPlugin : public Plugin
                 out << " ${LIBE_WIN32_SOURCES}";
             out << ")" << endl;
             out << "TARGET_LINK_LIBRARIES(E"<<name<<"Database_ser visitcommon avtdatabase_ser avtpipeline_ser " << ToString(libs) << ToString(elibsSer) << ")" << endl;
+            WriteCMake_ConditionalTargetLinks(out, name, "E", "Database_ser", "");
             out << "ADD_TARGET_DEFINITIONS(E"<<name<<"Database_ser ENGINE)" << endl;
             out << "SET(INSTALLTARGETS ${INSTALLTARGETS} E"<<name<<"Database_ser)" << endl;
             out << endl;
             out << "IF(VISIT_PARALLEL)" << endl;
             out << "    ADD_PARALLEL_LIBRARY(E"<<name<<"Database_par ${LIBE_SOURCES})" << endl;
             out << "    TARGET_LINK_LIBRARIES(E"<<name<<"Database_par visitcommon avtdatabase_par avtpipeline_par " << ToString(libs) << ToString(elibsPar) << ")" << endl;
+            WriteCMake_ConditionalTargetLinks(out, name, "E", "Database_par", "    ");
             out << "    ADD_TARGET_DEFINITIONS(E"<<name<<"Database_par ENGINE)" << endl;
             out << "    SET(INSTALLTARGETS ${INSTALLTARGETS} E"<<name<<"Database_par)" << endl;
             out << "ENDIF(VISIT_PARALLEL)" << endl;
@@ -1096,6 +1321,8 @@ class CMakeGeneratorPlugin : public Plugin
             WriteCMake_Operator(out, guilibname, viewerlibname);
         else if(type == "database")
             WriteCMake_Database(out);
+
+        WriteCMake_AdditionalCode(out);
     }
 };
 

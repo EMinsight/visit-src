@@ -2555,6 +2555,9 @@ ViewerPlotList::GetNumVisiblePlots() const
 //    Brad Whitlock, Wed Jun 27 10:36:47 PDT 2012
 //    Add the operator before updating the plot list.
 //
+//    Kathleen Biagas, Wed Nov 20 13:26:45 PST 2013
+//    Delete the operatored created expression list.
+//
 // ****************************************************************************
 
 int
@@ -2689,33 +2692,35 @@ ViewerPlotList::AddPlot(int type, const std::string &var, bool replacePlots,
         CommonOperatorPluginInfo *info = oPM->GetCommonPluginInfo(id);
 
         ExpressionList *exprs = info->GetCreatedExpressions(&md2);
-        if (exprs == NULL)
-            continue;
-        for (int k = 0 ; k < exprs->GetNumExpressions() ; k++)
+        if (exprs != NULL)
         {
-            Expression expr = exprs->GetExpressions(k);
-            if (var == expr.GetName())
+            for (int k = 0 ; k < exprs->GetNumExpressions() ; k++)
             {
-                if (expr.GetFromOperator()) // should always be true
+                Expression expr = exprs->GetExpressions(k);
+                if (var == expr.GetName())
                 {
-                    // See if it already has the operator
-                    int nOps = newPlot->GetNOperators();
-                    bool hasAlready = false;
-                    for (int opId = 0 ; opId < nOps ; opId++)
+                    if (expr.GetFromOperator()) // should always be true
                     {
-                        ViewerOperator *op = newPlot->GetOperator(opId);
-                        if (op->GetPluginID() == id)
-                            hasAlready = true;
-                    }
+                        // See if it already has the operator
+                        int nOps = newPlot->GetNOperators();
+                        bool hasAlready = false;
+                        for (int opId = 0 ; opId < nOps ; opId++)
+                        {
+                            ViewerOperator *op = newPlot->GetOperator(opId);
+                            if (op->GetPluginID() == id)
+                                hasAlready = true;
+                        }
 
-                    if (!hasAlready)
-                    {
-                        newPlot->AddOperator(j, true);
-                        newPlot->SetExpanded(true);
+                        if (!hasAlready)
+                        {
+                            newPlot->AddOperator(j, true);
+                            newPlot->SetExpanded(true);
+                        }
+                        break;
                     }
-                    break;
                 }
             }
+            delete exprs; 
         }
     }
 
@@ -6656,6 +6661,11 @@ ViewerPlotList::InterruptUpdatePlotList()
 //    we do any plots that generate a named selection then we update the
 //    named selection, causing plots that use it to be regenerated.
 //
+//    Kathleen Biagas, Fri Feb  7 09:59:06 PST 2014
+//    Loop variable 'id' was overshadowing 'id' declared just before the loop,
+//    preventing loop from being executed the correct number of times when
+//    originatingPlot gets set to true.
+//
 // ****************************************************************************
 
 bool
@@ -6669,12 +6679,12 @@ ViewerPlotList::UpdatePlots(const intVector &somePlots, bool animating)
     //
     int nOrder(2 * somePlots.size());
     int *order = new int[nOrder];
-    for(size_t id = 0; id < nOrder; ++id)
-        order[id] = -1;
+    for(size_t i = 0; i < nOrder; ++i)
+        order[i] = -1;
     int id = 0, id2 = (int)somePlots.size();
-    for (size_t id = 0; id < somePlots.size(); ++id)
+    for (size_t i = 0; i < somePlots.size(); ++i)
     {
-        int i = somePlots[id];
+        int pid = somePlots[i];
         bool originatingPlot = false;
         if(ViewerWindowManager::GetSelectionList()->GetAutoApplyUpdates())
         {
@@ -6682,7 +6692,7 @@ ViewerPlotList::UpdatePlots(const intVector &somePlots, bool animating)
             for(int j = 0; j < sList->GetNumSelections(); ++j)
             {
                 if(sList->GetSelections(j).GetOriginatingPlot() == 
-                   plots[i].plot->GetPlotName())
+                   plots[pid].plot->GetPlotName())
                 {
                     originatingPlot = true;
                     break;
@@ -6693,11 +6703,11 @@ ViewerPlotList::UpdatePlots(const intVector &somePlots, bool animating)
         if(originatingPlot)
         {
             // This plot generates a named selection and we're auto applying changes.
-            order[id++] = i;
+            order[id++] = pid;
         }
         else
         {
-            order[id2++] = i;
+            order[id2++] = pid;
         }
     }
 
@@ -8049,6 +8059,9 @@ ViewerPlotList::UpdateSILRestrictionAtts()
 //   Do not set operator attributes from the expression. This was for DataBinning
 //   and I moved the code into the viewer plugin info.
 //
+//   Kathleen Biagas, Wed Nov 20 13:27:19 PST 2013
+//   Delete the operator-created exression list.
+//
 // ****************************************************************************
 
 void
@@ -8146,6 +8159,7 @@ ViewerPlotList::UpdateExpressionList(bool considerPlots, bool update)
                     exp.SetFromOperator(true);
                     newList.AddExpressions(exp);
                 }
+                delete exprs;
             }
         }
     }

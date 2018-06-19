@@ -356,6 +356,21 @@
 #    Kathleen Biagas, Tue Sep  3 11:06:51 PDT 2013
 #    Turn off SLIVR if we aren't using GLEW.
 #
+#    Cyrus Harrison, on Oct 28 14:39:05 PDT 2013
+#    Fix exported VTK targets for VTK-6. Fix VTK-6 include dirs 
+#    for make install / package.
+#
+#    Kathleen Biagas, Wed Nov  6 17:42:32 PST 2013
+#    Remove setting of CMAKE_Java_xxx, rely instead on the Java_xxx vars
+#    set by FindJava.cmake
+#
+#    Kathleen Biagas, Tue Nov 26 10:14:29 PST 2013
+#    Only add osxfixup dir if on APPLE.
+#
+#    Eric Brugger, Fri Feb 28 15:18:49 PST 2014
+#    I added -DMPI_NO_CPPBIND to the VISIT_PARALLEL_CFLAGS and
+#    VISIT_PARALLEL_CXXFLAGS.
+#
 #****************************************************************************/
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8.8 FATAL_ERROR)
@@ -708,6 +723,8 @@ VISIT_3RDPARTY_DEP(XDMF_LIBDEP   "Xdmf library dependencies")
 VISIT_3RDPARTY_VAR(MDSPLUS_DIR   "Path containing the MDSplus library's include and lib")
 VISIT_3RDPARTY_VAR(MANTA_DIR     "Path containing the Manta library's include and lib")
 VISIT_3RDPARTY_VAR(ZLIB_DIR      "Path containing the zlib library's include and lib")
+VISIT_3RDPARTY_VAR(UINTAH_DIR    "Path containing the Uintah library's include and lib")
+VISIT_3RDPARTY_VAR(GFORTRAN_DIR  "Path containing the GFortran library's include and lib")
 
 #-----------------------------------------------------------------------------
 # Read the version
@@ -825,7 +842,7 @@ MACRO(VISIT_INSTALL_TARGETS_RELATIVE dest_dir)
                     PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
                                 GROUP_READ GROUP_WRITE GROUP_EXECUTE
                                 WORLD_READ             WORLD_EXECUTE
-                    CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
+                    CONFIGURATIONS "" None Debug Release RelWithDebInfo MinSizeRel
                 )
             ENDIF(NOT ${pType} STREQUAL "STATIC_LIBRARY")
         ENDFOREACH(T)
@@ -838,7 +855,7 @@ MACRO(VISIT_INSTALL_TARGETS_RELATIVE dest_dir)
             PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
                         GROUP_READ GROUP_WRITE GROUP_EXECUTE
                         WORLD_READ             WORLD_EXECUTE
-            CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
+            CONFIGURATIONS "" None Debug Release RelWithDebInfo MinSizeRel
         )
     ENDIF(VISIT_STATIC)
 ENDMACRO(VISIT_INSTALL_TARGETS_RELATIVE)
@@ -859,7 +876,7 @@ ELSE(VISIT_HEADERS_SKIP_INSTALL)
         DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
                               GROUP_READ GROUP_WRITE GROUP_EXECUTE
                               WORLD_READ             WORLD_EXECUTE
-        CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
+        CONFIGURATIONS "" None Debug Release RelWithDebInfo MinSizeRel
         FILES_MATCHING PATTERN "*.h"
         PATTERN "*.hpp"
         PATTERN ".svn" EXCLUDE
@@ -928,11 +945,8 @@ ENDIF((VISIT_PYTHON_SCRIPTING OR VISIT_PYTHON_FILTERS) AND NOT VISIT_DBIO_ONLY)
 
 IF(VISIT_JAVA)
     INCLUDE(${CMAKE_ROOT}/Modules/FindJava.cmake)
-
     ENABLE_LANGUAGE(Java)
-    SET(CMAKE_Java_COMPILER ${JAVA_COMPILE})
-    SET(CMAKE_Java_FLAGS -source 1.4)
-    SET(CMAKE_Java_ARCHIVE ${JAVA_ARCHIVE})
+    SET(VISIT_Java_FLAGS -source 1.4)
 ENDIF(VISIT_JAVA)
 
 CHECK_INCLUDE_FILES (fcntl.h     HAVE_FCNTL_H)
@@ -1247,6 +1261,18 @@ IF(NOT VISIT_BUILD_MINIMAL_PLUGINS)
     IF(MDSPLUS_FOUND)
         SET(HAVE_LIBMDSPLUS 1)
     ENDIF(MDSPLUS_FOUND)
+
+    # Configure Uintah support.
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindUintah.cmake)
+    IF(UINTAH_FOUND)
+        SET(HAVE_LIBUINTAH 1)
+    ENDIF(UINTAH_FOUND)
+
+    # Configure GFortran support.
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindGFortran.cmake)
+    IF(GFORTRAN_FOUND)
+        SET(HAVE_LIBGFORTRAN 1)
+    ENDIF(GFORTRAN_FOUND)
 ENDIF(NOT VISIT_BUILD_MINIMAL_PLUGINS)
 
 # Configure Manta support.
@@ -1321,9 +1347,9 @@ ENDFUNCTION(DETECT_MPI_SETTINGS)
 
 IF(VISIT_PARALLEL)
     IF(WIN32)
-        SET(VPFLAGS "PARALLEL MPICH_IGNORE_CXX_SEEK OMPI_SKIP_MPICXX")
+        SET(VPFLAGS "PARALLEL MPICH_IGNORE_CXX_SEEK OMPI_SKIP_MPICXX MPICH_SKIP_MPICXX MPI_NO_CPPBIND")
     ELSE(WIN32)
-        SET(VPFLAGS "-DPARALLEL -DMPICH_IGNORE_CXX_SEEK -DOMPI_SKIP_MPICXX")
+        SET(VPFLAGS "-DPARALLEL -DMPICH_IGNORE_CXX_SEEK -DOMPI_SKIP_MPICXX -DMPICH_SKIP_MPICXX -DMPI_NO_CPPBIND")
     ENDIF(WIN32)
     IF(VISIT_MPI_COMPILER)
         MESSAGE(STATUS "Setting up MPI using compiler wrapper")
@@ -1468,12 +1494,16 @@ FUNCTION(ADD_TARGET_DEFINITIONS target newDefs)
     # if there truly are current definitions, and more than 1 in the list, then
     # IF(${currentDefs} MATCHES NOTFOUND) causes a configure failure.
     # Grab the first item in the list for comparison instead.
-    LIST(GET currentDefs 0 firstItem )
-    IF(${firstItem} MATCHES NOTFOUND)
+    if (currentDefs)
+        LIST(GET currentDefs 0 firstItem )
+        IF(${firstItem} MATCHES NOTFOUND)
+            SET(allDefs ${newDefs})
+        ELSE(${firstItem} MATCHES NOTFOUND)
+            SET(allDefs ${currentDefs} ${newDefs})
+        ENDIF(${firstItem} MATCHES NOTFOUND)
+    else()
         SET(allDefs ${newDefs})
-    ELSE(${firstItem} MATCHES NOTFOUND)
-        SET(allDefs ${currentDefs} ${newDefs})
-    ENDIF(${firstItem} MATCHES NOTFOUND)
+    endif()
     SET_TARGET_PROPERTIES(${target} PROPERTIES
             COMPILE_DEFINITIONS "${allDefs}"
         )
@@ -2008,15 +2038,20 @@ IF(NOT WIN32)
 ELSE(NOT WIN32)
     SET(CMAKE_C_COMPILER_VERSION_MESSAGE " ${CMAKE_GENERATOR}")
     IF(MSVC)
-        INCLUDE(CMakeDetermineVSServicePack)
-        DetermineVSServicePack(my_service_pack)
-        IF(my_service_pack)
-            SET(CMAKE_C_COMPILER_VERSION_MESSAGE "${CMAKE_C_COMPILER_VERSION_MESSAGE} (${my_service_pack})")
-        ENDIF(my_service_pack)
-        SET(CMAKE_CXX_COMPILER_VERSION_MESSAGE " Visual C/C++ version number: ${MSVC_VERSION}")
+        IF(CMAKE_VERSION VERSION_LESS "2.8.10")
+            INCLUDE(CMakeDetermineVSServicePack)
+            DetermineVSServicePack(my_service_pack)
+            IF(my_service_pack)
+                SET(CMAKE_C_COMPILER_VERSION_MESSAGE "${CMAKE_C_COMPILER_VERSION_MESSAGE} (${my_service_pack})")
+            ENDIF(my_service_pack)
+        ENDIF()
+        IF(CMAKE_CXX_COMPILER_VERSION)
+            SET(CMAKE_CXX_COMPILER_VERSION_MESSAGE " Visual C/C++ version number: ${CMAKE_CXX_COMPILER_VERSION}")
+        ELSE()
+            SET(CMAKE_CXX_COMPILER_VERSION_MESSAGE " Visual C/C++ version number: ${MSVC_VERSION}")
+        ENDIF()
         FILE(WRITE ${VISIT_BINARY_DIR}/CMake/VisItGenerator.cmake
-            "SET(CMAKE_GENERATOR \"${CMAKE_GENERATOR}\" CACHE INTERNAL \"\" FORCE)"
-        )
+            "SET(CMAKE_GENERATOR \"${CMAKE_GENERATOR}\" CACHE INTERNAL \"\" FORCE)")
         INSTALL(FILES ${VISIT_BINARY_DIR}/CMake/VisItGenerator.cmake
                 DESTINATION ${VISIT_INSTALLED_VERSION_INCLUDE}
                 PERMISSIONS OWNER_READ OWNER_WRITE
@@ -2033,11 +2068,11 @@ ENDIF(NOT WIN32)
 IF(UNIX)
    SET(python_include_relative_path "/python/include/python@PYTHON_VERSION@")
    SET(exodusii_include_relative_path "/exodusii/inc")
-   SET(vtk_include_relative_path "/vtk/include")
+   SET(vtk_include_relative_path "/vtk/vtk-${VTK_MAJOR_VERSION}.${VTK_MINOR_VERSION}")
 ELSE(UNIX)
    SET(python_include_relative_path "/python")
    SET(exodusii_include_relative_path "/exodusii/include")
-   SET(vtk_include_relative_path "/vtk/vtk-6.0")
+   SET(vtk_include_relative_path "/vtk/vtk-${VTK_MAJOR_VERSION}.${VTK_MINOR_VERSION}")
 ENDIF(UNIX)
 
 # If we're installing MPICH as our MPI then filter the parallel flags so
@@ -2110,7 +2145,7 @@ IF(VISIT_MPICH_INSTALL)
         DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
                               GROUP_READ GROUP_WRITE GROUP_EXECUTE
                               WORLD_READ             WORLD_EXECUTE
-        CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
+        CONFIGURATIONS "" None Debug Release RelWithDebInfo MinSizeRel
     )
     INSTALL(DIRECTORY ${VISIT_MPICH_DIR}/bin
         DESTINATION ${VISIT_INSTALLED_VERSION}
@@ -2120,7 +2155,7 @@ IF(VISIT_MPICH_INSTALL)
         DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
                               GROUP_READ GROUP_WRITE GROUP_EXECUTE
                               WORLD_READ             WORLD_EXECUTE
-        CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
+        CONFIGURATIONS "" None Debug Release RelWithDebInfo MinSizeRel
     )
     INSTALL(DIRECTORY ${VISIT_MPICH_DIR}/lib
         DESTINATION ${VISIT_INSTALLED_VERSION}
@@ -2130,7 +2165,7 @@ IF(VISIT_MPICH_INSTALL)
         DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
                               GROUP_READ GROUP_WRITE GROUP_EXECUTE
                               WORLD_READ             WORLD_EXECUTE
-        CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
+        CONFIGURATIONS "" None Debug Release RelWithDebInfo MinSizeRel
     )
 ENDIF(VISIT_MPICH_INSTALL)
 
@@ -2288,6 +2323,31 @@ ENDIF(IS_DIRECTORY ${VISIT_SOURCE_DIR}/../test)
 #-----------------------------------------------------------------------------
 EXPORT_LIBRARY_DEPENDENCIES(${VISIT_BINARY_DIR}/include/VisItLibraryDependencies.cmake.in)
 
+FOREACH(VTK_TARGET ${VTK_LIBRARIES})
+    IF(TARGET ${VTK_TARGET})
+        # this lets us know if this is a real VTK lib, not a depend lib (such as python)
+        GET_PROPERTY(VTK_TARGET_IMPORT_LOC_EXISTS TARGET ${VTK_TARGET} 
+                                                  PROPERTY IMPORT_LOCATION SET)
+        IF(${VTK_TARGET_IMPORT_LOC_EXISTS})
+            # We can follow the import loc property  to get the actual filename, but we 
+            # will want to link with -lvkt , not libvtk ...
+            #
+            # So for now, we create the suffix manually. Keeping this code in case
+            # we need it to create something more sophisticated in the future. 
+            # 
+            # GET_PROPERTY(VTK_LIB_TARGET_LOC TARGET ${VTK_TARGET} 
+            #                                 PROPERTY IMPORT_LOCATION)
+            # get_filename_component(VTK_TRUE_TARGET ${VTK_LIB_TARGET_LOC} NAME_WE)
+            #
+            SET(VTK_TRUE_TARGET "${VTK_TARGET}-${VTK_MAJOR_VERSION}.${VTK_MINOR_VERSION}") 
+            MESSAGE(STATUS "${VTK_TARGET} vs ${VTK_TRUE_TARGET}")
+            LIST(APPEND VTK_VALID_TARGETS  ${VTK_TARGET})
+            LIST(APPEND VTK_TRUE_TARGETS  ${VTK_TRUE_TARGET})
+        ENDIF()
+    ENDIF()
+ENDFOREACH()
+
+
 IF(WIN32)
     get_filename_component(PD ${PYTHON_LIBRARIES} PATH)
 ENDIF(WIN32)
@@ -2296,6 +2356,13 @@ INSTALL(CODE "
 FUNCTION(FILTER_LIBRARY_DEPENDENCIES filename)
     FILE(STRINGS \${filename}.in lines)
     FILE(WRITE \${filename} \"# Filtered version\\n\")
+    # we need to steal the lists from the parent scope so they can 
+    # be used in our install code
+    SET(FVTK_VALID_TARGETS ${VTK_VALID_TARGETS})
+    SET(FVTK_TRUE_TARGETS ${VTK_TRUE_TARGETS})
+    MESSAGE(STATUS \"VALID_TARGETS: \${FVTK_VALID_TARGETS}\")
+    MESSAGE(STATUS \"TRUE_TARGETS:  \${FVTK_TRUE_TARGETS}\")
+
     FOREACH(line \${lines})
         SET(outputLine TRUE)
         IF(\"\${line}\" MATCHES \".*Plot[_ser|_par]*_LIB_DEPENDS.*\")
@@ -2334,15 +2401,36 @@ FUNCTION(FILTER_LIBRARY_DEPENDENCIES filename)
                        filteredline4
                        \"\${filteredline3}\")
             ENDIF(\"${VISIT_MPICH_DIR}\" STREQUAL \"\")
+            
+            #
+            # fix the names of any vtk dep targets
+            #
+            
+            LIST(LENGTH FVTK_TRUE_TARGETS  L_FVTK_TRUE_TARGETS)
+            MESSAGE(STATUS \"${L_FVTK_TRUE_TARGETS}\")
+            SET(filtered_line \"\${filteredline4}\")
+            LIST(LENGTH FVTK_TRUE_TARGETS  L_FVTK_TRUE_TARGETS)
+            MATH(EXPR t_max_index \"\${L_FVTK_TRUE_TARGETS}-1\")
+            message(STATUS \"\${t_max_index}\")
+            FOREACH(i RANGE \${t_max_index})
+                LIST(GET FVTK_VALID_TARGETS \${i} A)
+                LIST(GET FVTK_TRUE_TARGETS  \${i} B)
+                STRING(REPLACE \"\${A};\" 
+                               \"\${B};\"
+                               fl_temp 
+                               \"\${filtered_line}\")
+
+                SET(filtered_line \"\${fl_temp}\")
+            ENDFOREACH()
 
             IF(NOT WIN32)
-                FILE(APPEND \${filename} \"\${filteredline4}\\n\")
+                FILE(APPEND \${filename} \"\${filtered_line}\\n\")
             ELSE(NOT WIN32)
                 # extra replacements that need to be made on Windows.
                 STRING(REPLACE \"${PD}\"
                        \"\\\${VISIT_LIBRARY_DIR}\"
                        filteredline5
-                       \"\${filteredline4}\")
+                       \"\${filtered_line}\")
                 STRING(REPLACE \"${ZLIB_LIBRARY_DIR}\"
                        \"\\\${VISIT_LIBRARY_DIR}\"
                        filteredline6
@@ -2356,6 +2444,9 @@ FUNCTION(FILTER_LIBRARY_DEPENDENCIES filename)
                        filteredline8 \"\${filteredline7}\")
                 FILE(APPEND \${filename} \"\${filteredline8}\\n\")
             ENDIF(NOT WIN32)
+            
+
+            
         ENDIF(\${outputLine} STREQUAL \"TRUE\")
     ENDFOREACH(line)
 ENDFUNCTION(FILTER_LIBRARY_DEPENDENCIES)
@@ -2367,7 +2458,7 @@ INSTALL(FILES ${VISIT_BINARY_DIR}/include/VisItLibraryDependencies.cmake
         PERMISSIONS OWNER_READ OWNER_WRITE
                     GROUP_READ GROUP_WRITE
                     WORLD_READ
-        CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
+        CONFIGURATIONS "" None Debug Release RelWithDebInfo MinSizeRel
 )
 
 #-----------------------------------------------------------------------------
@@ -2417,16 +2508,20 @@ ELSE (NOT WIN32)
         #
         FILE(TO_NATIVE_PATH ${VISIT_SOURCE_DIR} VSD_NATIVE)
         FILE(TO_NATIVE_PATH ${CMAKE_INSTALL_PREFIX} CIP_NATIVE)
+        FILE(TO_NATIVE_PATH ${CMAKE_CURRENT_BINARY_DIR} CBD_NATIVE)
         ADD_CUSTOM_COMMAND(OUTPUT visit${VISIT_VERSION}.exe
             COMMAND ${MAKENSIS}
                     /DVISIT_SOURCE_DIR=${VSD_NATIVE}
                     /DINSTALL_PREFIX=${CIP_NATIVE}
+                    /DBIN_DIR=${CBD_NATIVE}
+                    /DCL_64=${CMAKE_CL_64}
                     ${VISIT_WINDOWS_DIR}/installation/CreateDBSections.nsi
             COMMAND ${MAKENSIS}
                     /DVisItVersion=${VISIT_VERSION}
                     /DCOMPILER=${VISIT_MSVC_VERSION}
                     /DVISIT_SOURCE_DIR=${VSD_NATIVE}
                     /DINSTALL_PREFIX=${CIP_NATIVE}
+                    /DBIN_DIR=${CBD_NATIVE}
                     /DCL_64=${CMAKE_CL_64}
                     ${VISIT_WINDOWS_DIR}/installation/binaryinstallation.nsi
             DEPENDS ${VISIT_WINDOWS_DIR}/installation/CreateDBSections.nsi
@@ -2453,6 +2548,9 @@ ELSE (NOT WIN32)
         )
         ADD_CUSTOM_TARGET(_SRC_PACKAGE ALL DEPENDS visitdev${VISIT_VERSION}.exe)
         SET_TARGET_PROPERTIES(_SRC_PACKAGE PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD 1)
+        UNSET(VSD_NATIVE)
+        UNSET(CIP_NATIVE)
+        UNSET(CBD_NATIVE)
       ELSE(${MAKENSIS_FOUND})
         MESSAGE(FATAL_ERROR "NSIS installer package requested, but 'makensis' could not be found.")
       ENDIF(${MAKENSIS_FOUND})
@@ -2467,7 +2565,9 @@ ENDIF (NOT WIN32)
 #ADD_DEPENDENCIES(osxfixup install)
 
 #todo: replace add_subdirectory with the lines above
-ADD_SUBDIRECTORY(osxfixup)
+IF(APPLE)
+    ADD_SUBDIRECTORY(osxfixup)
+ENDIF(APPLE)
 
 IF (NOT WIN32)
     MESSAGE(STATUS "\n\nUse recmake_visit.sh or search for `CMAKE_INVOKE' in CMakeCache.txt to re-run CMake with the same arguments\n\n")

@@ -1196,7 +1196,7 @@ static void PlusEqual(vtkDataArray *lhs, vtkDataArray *rhs)
 // ****************************************************************************
 
 static void 
-DecodeExodusElemTypeAttText(const char *ex_elem_type_att, int *tdim, int *vtk_celltype, int &num_nodes)
+DecodeExodusElemTypeAttText(const char *ex_elem_type_att, int *tdim, int *vtk_celltype, int num_nodes)
 {
     std::string elemType(ex_elem_type_att);
     std::transform(elemType.begin(), elemType.end(), elemType.begin(), ::tolower);    
@@ -1236,6 +1236,12 @@ DecodeExodusElemTypeAttText(const char *ex_elem_type_att, int *tdim, int *vtk_ce
             else if (6 == num_nodes)
                 *vtk_celltype = VTK_QUADRATIC_TRIANGLE;
         }
+        return;
+    }
+    else if (elemType.substr(0, 4) == "nsid")
+    {
+        if (tdim) *tdim = 2;
+        if (vtk_celltype) *vtk_celltype = VTK_POLYGON;
         return;
     }
     else if (elemType.substr(0, 3) == "she")
@@ -1398,7 +1404,9 @@ static int
 ExodusElemTypeAtt2TopoDim(const char *ex_elem_type_att)
 {
     int tdim;
-    DecodeExodusElemTypeAttText(ex_elem_type_att, &tdim, 0, tdim);
+    DecodeExodusElemTypeAttText(ex_elem_type_att, &tdim, 0, 0);
+    debug5 << "For element type attribute text \"" << ex_elem_type_att << "\""
+           << ", got topo dim = " << tdim << endl;
     return tdim;
 }
 
@@ -1410,10 +1418,12 @@ ExodusElemTypeAtt2TopoDim(const char *ex_elem_type_att)
 // ****************************************************************************
 
 static int
-ExodusElemTypeAtt2VTKCellType(const char *ex_elem_type_att, int &num_nodes)
+ExodusElemTypeAtt2VTKCellType(const char *ex_elem_type_att, int num_nodes)
 {
     int ctype = -1;
     DecodeExodusElemTypeAttText(ex_elem_type_att, 0, &ctype, num_nodes);
+    debug5 << "For element type attribute text \"" << ex_elem_type_att << "\" "
+           << "and num_nodes = " << num_nodes << ", got vtk_celltype = " << ctype << endl;
     return ctype;
 }
 
@@ -1496,6 +1506,9 @@ avtExodusFileFormat::AddVar(avtDatabaseMetaData *md, char const *vname,
 //    Hank Childs, Thu Dec  2 08:45:31 PST 2010
 //    No longer sort the block names.  It creates indexing issues later.
 //
+//    Mark C. Miller, Tue Sep 17 16:04:32 PDT 2013
+//    Add logic to populate *both* composite variables like vectors and
+//    tensors as well as scalar components.
 // ****************************************************************************
 
 #ifdef MAX
@@ -1633,41 +1646,47 @@ avtExodusFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md,
 
     char **node_var_names = GetStringListFromExodusIINCvar(ncExIIId, "name_nod_var");
     i = 0;
+    int skip_composite = -1;
     while (node_var_names[i])
     {
-        char composite_name[NC_MAX_NAME];
-        int ncomps;
-        if (AreSuccessiveStringsRelatedComponentNames(node_var_names, i,
+        if (i > skip_composite)
+        {
+            char composite_name[NC_MAX_NAME];
+            int ncomps;
+            if (AreSuccessiveStringsRelatedComponentNames(node_var_names, i,
                 &ncomps, composite_name))
-        {
-            AddVar(md, composite_name, topologicalDimension, ncomps, AVT_NODECENT);
-            i += ncomps;
+            {
+                AddVar(md, composite_name, topologicalDimension, ncomps, AVT_NODECENT);
+                skip_composite = i + ncomps - 1;
+            }
         }
-        else
-        {
-            AddVar(md, node_var_names[i], topologicalDimension, 1, AVT_NODECENT);
-            i++;
-        }
+
+        // Add the scalar (component) variable.
+        AddVar(md, node_var_names[i], topologicalDimension, 1, AVT_NODECENT);
+        i++;
     }
     FreeStringListFromExodusIINCvar(node_var_names);
 
     char **elem_var_names = GetStringListFromExodusIINCvar(ncExIIId, "name_elem_var");
     i = 0;
+    skip_composite = -1;
     while (elem_var_names[i])
     {
-        char composite_name[NC_MAX_NAME];
-        int ncomps;
-        if (AreSuccessiveStringsRelatedComponentNames(elem_var_names, i,
+        if (i > skip_composite)
+        {
+            char composite_name[NC_MAX_NAME];
+            int ncomps;
+            if (AreSuccessiveStringsRelatedComponentNames(elem_var_names, i,
                 &ncomps, composite_name))
-        {
-            AddVar(md, composite_name, topologicalDimension, ncomps, AVT_ZONECENT);
-            i += ncomps;
+            {
+                AddVar(md, composite_name, topologicalDimension, ncomps, AVT_ZONECENT);
+                skip_composite = i + ncomps - 1;
+            }
         }
-        else
-        {
-            AddVar(md, elem_var_names[i], topologicalDimension, 1, AVT_ZONECENT);
-            i++;
-        }
+
+        // Add the scalar (component) variable.
+        AddVar(md, elem_var_names[i], topologicalDimension, 1, AVT_ZONECENT);
+        i++;
     }
     FreeStringListFromExodusIINCvar(elem_var_names);
 
@@ -1796,6 +1815,8 @@ avtExodusFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md,
 //    are handled correctly.  Change 'verts' size to 20 to handle quadratic
 //    hexes. 
 //
+//    Mark C. Miller, Thu Sep 26 12:01:01 PDT 2013
+//    Fixed assumption that length of connect variable was always dimension 0.
 // ****************************************************************************
 
 vtkDataSet *
@@ -1912,7 +1933,11 @@ avtExodusFileFormat::GetMesh(int ts, const char *mesh)
         SNPRINTF(connect_varname, sizeof(connect_varname), "connect%d", i+1);
         VisItNCErr = nc_inq_varid(ncExIIId, connect_varname, &connect_varid);
         if (VisItNCErr != NC_NOERR) continue;
-
+        int connect_vardimids[NC_MAX_VAR_DIMS];
+        nc_inq_var(ncExIIId, connect_varid, 0, 0, 0, connect_vardimids, 0);
+        size_t connect_dim0varlen;
+        VisItNCErr = nc_inq_dimlen(ncExIIId, connect_vardimids[0], &connect_dim0varlen);
+        CheckNCError(nc_inq_dimlen);
         nc_type connect_vartype;
         VisItNCErr = nc_inq_vartype(ncExIIId, connect_varid, &connect_vartype);
         CheckNCError(nc_inq_varid);
@@ -1945,14 +1970,43 @@ avtExodusFileFormat::GetMesh(int ts, const char *mesh)
         int vtk_celltype = ExodusElemTypeAtt2VTKCellType(connect_elem_type_attval, num_nodes_per_elem);
         delete [] connect_elem_type_attval;
 
+        int *ebepecnt_buf = 0;
+        int connect_varlen = num_elems_in_blk * num_nodes_per_elem;
+        if (vtk_celltype == VTK_POLYGON)
+        {
+            int ebepecnt_varid;
+            char ebepecnt_varname[NC_MAX_NAME+1];
+            SNPRINTF(ebepecnt_varname, sizeof(ebepecnt_varname), "ebepecnt%d", i+1);
+            VisItNCErr = nc_inq_varid(ncExIIId, ebepecnt_varname, &ebepecnt_varid);
+            if (VisItNCErr != NC_NOERR)
+            {
+                char msg[256];
+                SNPRINTF(msg, sizeof(msg), "Unable to get var id for ebepecnt%d: \"%s\"", i+1, nc_strerror(VisItNCErr));
+                EXCEPTION1(InvalidFilesException, msg);
+            }
+
+            ebepecnt_buf = new int[num_elems_in_blk];
+            VisItNCErr = nc_get_var_int(ncExIIId, ebepecnt_varid, ebepecnt_buf);
+            CheckNCError(nc_get_var_int);
+            if (VisItNCErr != NC_NOERR)
+            {
+                char msg[256];
+                SNPRINTF(msg, sizeof(msg), "Unable to read ebepecnt%d: \"%s\"", i+1, nc_strerror(VisItNCErr));
+                EXCEPTION1(InvalidFilesException, msg);
+            }
+
+            connect_varlen = connect_dim0varlen;
+        }
+
         blockIdToMatMap[i+1] = num_elems_in_blk;
 
-        vtkIdType verts[20];
+        // Note: for poly-case, num_nodes_per_elem should be size of entire connect array
+        vtkIdType *verts = new vtkIdType[num_nodes_per_elem];
         switch (connect_vartype)
         {
             case NC_INT:
             {
-                int *conn_buf = new int[num_nodes_per_elem * num_elems_in_blk];
+                int *conn_buf = new int[connect_varlen];
                 VisItNCErr = nc_get_var_int(ncExIIId, connect_varid, conn_buf);
                 CheckNCError(nc_get_var_int);
                 if (VisItNCErr != NC_NOERR)
@@ -1964,18 +2018,17 @@ avtExodusFileFormat::GetMesh(int ts, const char *mesh)
                 int *p = conn_buf;
                 for (int j = 0; j < num_elems_in_blk; j++)
                 {
-                    for (int k = 0; k < num_nodes_per_elem; k++, p++)
-                    {
+                    int nnodes = ebepecnt_buf?ebepecnt_buf[j]:num_nodes_per_elem;
+                    for (int k = 0; k < nnodes; k++, p++)
                         verts[k] = (vtkIdType) *p-1; // Exodus is 1-origin
-                    }
-                    ugrid->InsertNextCell(vtk_celltype, num_nodes_per_elem, verts);
+                    ugrid->InsertNextCell(vtk_celltype, nnodes, verts);
                 }
                 delete [] conn_buf;
                 break;
             }
             case NC_INT64:
             {
-                long long *conn_buf = new long long[num_nodes_per_elem * num_elems_in_blk];
+                long long *conn_buf = new long long[connect_varlen];
                 VisItNCErr = nc_get_var_longlong(ncExIIId, connect_varid, conn_buf);
                 CheckNCError(nc_get_var_longlong);
                 if (VisItNCErr != NC_NOERR)
@@ -1987,9 +2040,10 @@ avtExodusFileFormat::GetMesh(int ts, const char *mesh)
                 long long *p = conn_buf;
                 for (int j = 0; j < num_elems_in_blk; j++)
                 {
-                    for (int k = 0; k < num_nodes_per_elem; k++, p++)
+                    int nnodes = ebepecnt_buf?ebepecnt_buf[j]:num_nodes_per_elem;
+                    for (int k = 0; k < nnodes; k++, p++)
                         verts[k] = (vtkIdType) *p-1; // Exodus is 1-origin
-                    ugrid->InsertNextCell(vtk_celltype, num_nodes_per_elem, verts);
+                    ugrid->InsertNextCell(vtk_celltype, nnodes, verts);
                 }
                 delete [] conn_buf;
                 break;
@@ -1999,6 +2053,8 @@ avtExodusFileFormat::GetMesh(int ts, const char *mesh)
                 EXCEPTION2(UnexpectedValueException, "NC_INT || NC_INT64", connect_vartype);
             }
         }
+        if (ebepecnt_buf) delete [] ebepecnt_buf;
+        delete [] verts;
     }
 
     return ugrid;
@@ -2287,27 +2343,4 @@ avtExodusFileFormat::GetAuxiliaryData(const char *var, int ts,
     }
 
     return NULL;
-}
-
-
-// ****************************************************************************
-//  Method: avtExodusFileFormat::SetTimestep
-//
-//  Purpose:
-//      Sets the timestep of the Exodus file.
-//
-//  Programmer: Hank Childs
-//  Creation:   October 9, 2001
-//
-// ****************************************************************************
-
-void
-avtExodusFileFormat::SetTimestep(int ts)
-{
-    int nTimesteps = GetNTimesteps();
-    if (ts < 0 || ts >= nTimesteps)
-    {
-        EXCEPTION2(BadIndexException, ts, nTimesteps);
-    }
-    debug1 << "avtExodusFileFormat::SetTimestep called but don't know what to do about about" << endl;
 }

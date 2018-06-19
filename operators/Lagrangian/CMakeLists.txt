@@ -115,18 +115,20 @@ IF(NOT VISIT_SERVER_COMPONENTS_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO
     ENDIF(VISIT_PYTHON_SCRIPTING)
 
     IF(VISIT_JAVA)
-        ADD_CUSTOM_TARGET(JavaLagrangian ALL ${CMAKE_Java_COMPILER} ${CMAKE_Java_FLAGS} -d ${VISIT_BINARY_DIR}/java -classpath ${VISIT_BINARY_DIR}/java LagrangianAttributes.java)
-        ADD_DEPENDENCIES(JavaLagrangian JavaClient)
+        FILE(COPY LagrangianAttributes.java DESTINATION ${JavaClient_BINARY_DIR}/src/operators)
+        ADD_CUSTOM_TARGET(JavaLagrangian ALL ${Java_JAVAC_EXECUTABLE} ${VISIT_Java_FLAGS} -d ${JavaClient_BINARY_DIR} -classpath ${JavaClient_BINARY_DIR} -sourcepath ${JavaClient_BINARY_DIR} LagrangianAttributes.java
+            DEPENDS JavaClient
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
     ENDIF(VISIT_JAVA)
 ENDIF(NOT VISIT_SERVER_COMPONENTS_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)
 
 ADD_LIBRARY(ELagrangianOperator_ser ${LIBE_SOURCES})
-TARGET_LINK_LIBRARIES(ELagrangianOperator_ser visitcommon avtexpressions_ser avtfilters_ser avtpipeline_ser )
+TARGET_LINK_LIBRARIES(ELagrangianOperator_ser visitcommon avtexpressions_ser avtfilters_ser avtpipeline_ser avtivp_ser )
 SET(INSTALLTARGETS ${INSTALLTARGETS} ELagrangianOperator_ser)
 
 IF(VISIT_PARALLEL)
     ADD_PARALLEL_LIBRARY(ELagrangianOperator_par ${LIBE_SOURCES})
-    TARGET_LINK_LIBRARIES(ELagrangianOperator_par visitcommon avtexpressions_par avtfilters_par avtpipeline_par )
+    TARGET_LINK_LIBRARIES(ELagrangianOperator_par visitcommon avtexpressions_par avtfilters_par avtpipeline_par avtivp_par )
     SET(INSTALLTARGETS ${INSTALLTARGETS} ELagrangianOperator_par)
 ENDIF(VISIT_PARALLEL)
 

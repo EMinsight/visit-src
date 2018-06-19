@@ -31,7 +31,7 @@ ExtremeValueAnalysisCommonPluginInfo::GetCreatedExpressions(const avtDatabaseMet
             e2.SetType(Expression::ScalarMeshVar);
             e2.SetFromOperator(true);
             e2.SetOperatorName("ExtremeValueAnalysis");
-            sprintf(defn, "cell_constant(%s, 0.)", mmd->name.c_str());
+            sprintf(defn, "cell_constant(<%s>, 0.)", mmd->name.c_str());
             e2.SetDefinition(defn);
             el->AddExpressions(e2);
         }
@@ -51,7 +51,7 @@ ExtremeValueAnalysisCommonPluginInfo::GetCreatedExpressions(const avtDatabaseMet
                 e2.SetType(Expression::ScalarMeshVar);
                 e2.SetFromOperator(true);
                 e2.SetOperatorName("ExtremeValueAnalysis");
-                sprintf(defn, "cell_constant(%s, 0.)", e.GetName().c_str());
+                sprintf(defn, "cell_constant(<%s>, 0.)", e.GetName().c_str());
                 e2.SetDefinition(defn);
                 el->AddExpressions(e2);
             }
@@ -59,4 +59,16 @@ ExtremeValueAnalysisCommonPluginInfo::GetCreatedExpressions(const avtDatabaseMet
     }
     return el;
 }
+
+Target: xml2cmake
+Condition: HAVE_LIBNETCDF
+Includes: ${NETCDF_INCLUDE_DIR}
+Definitions: -DHAVE_NETCDF
+LinkDirectories: ${NETCDF_LIBRARY_DIR}
+ELinkLibraries: ${NETCDF_LIB}
+
+Code: AddSubDir
+Prefix:
+Postfix:
+ADD_SUBDIRECTORY(r_src)
 

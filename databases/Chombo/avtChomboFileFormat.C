@@ -55,7 +55,6 @@
 #include <vtkCellType.h>
 #include <vtkDoubleArray.h>
 #include <vtkFieldData.h>
-#include <vtkFloatArray.h>
 #include <vtkInformation.h>
 #include <vtkIntArray.h>
 #include <vtkPolyData.h>
@@ -931,7 +930,7 @@ avtChomboFileFormat::InitializeReader(void)
 
                 int rr_tmp;
                 H5Aread(rr_id, H5T_NATIVE_INT, &rr_tmp);
-                for (int d = 0; d<std::max(dimension, 3); ++d)
+                for (int d = 0; d<std::min(dimension, 3); ++d)
                     refinement_ratio[i].push_back(rr_tmp);
             }
             H5Aclose(rr_id);
@@ -1477,15 +1476,15 @@ avtChomboFileFormat::CalculateDomainNesting(void)
     //
     // Calculate what the refinement ratio is from one level to the next.
     //
-    std::vector<double> cs(std::max(dimension, 3));
+    std::vector<double> cs(std::min(dimension, 3));
     for (level = 0 ; level < num_levels ; level++)
     {
         if (level == 0)
-            dn->SetLevelRefinementRatios(level, std::vector<int>(std::max(dimension, 3), 1));
+            dn->SetLevelRefinementRatios(level, std::vector<int>(std::min(dimension, 3), 1));
         else
             dn->SetLevelRefinementRatios(level, refinement_ratio[level-1]);
 
-        for (int d=0; d < (std::max(dimension, 3)) ; ++d)
+        for (int d=0; d < (std::min(dimension, 3)) ; ++d)
             cs[d] = dx[level][d]*aspectRatio[d];
         dn->SetLevelCellSizes(level, cs);
     }
@@ -1494,12 +1493,12 @@ avtChomboFileFormat::CalculateDomainNesting(void)
     // This multiplier will be needed to find out if patches are nested.
     //
     std::vector< std::vector<int> > multiplier(num_levels);
-    for (int d = 0; d < std::max(dimension, 3); ++d)
+    for (int d = 0; d < std::min(dimension, 3); ++d)
         multiplier[num_levels-1].push_back(1);
     for (level = num_levels-2 ; level >= 0 ; level--)
     {
-        multiplier[level].resize(std::max(dimension, 3));
-        for (int d = 0; d < std::max(dimension, 3); ++d)
+        multiplier[level].resize(std::min(dimension, 3));
+        for (int d = 0; d < std::min(dimension, 3); ++d)
             multiplier[level][d] = multiplier[level+1][d]*refinement_ratio[level][d];
     }
     visitTimer->StopTimer(t1, "Setting up domain nesting: part 1");
@@ -2369,6 +2368,10 @@ avtChomboFileFormat::GetLevelAndLocalPatchNumber(int global_patch,
 //    Initial bare-bones support for 4D Chombo files (fairly limited and 
 //    "hackish")
 //
+//    Gunther H. Weber, Wed Nov 20 15:49:21 PST 2013
+//    Return coordinates as double instead of float (consistent with data
+//    values).
+//
 // ****************************************************************************
 
 // Comaprator class used to sort an array with integers so that the permutation
@@ -2435,15 +2438,15 @@ avtChomboFileFormat::GetMesh(int patch, const char *meshname)
         vtkRectilinearGrid *rg = vtkRectilinearGrid::New();
         rg->SetDimensions(dims);
 
-        vtkFloatArray  *xcoord = vtkFloatArray::New();
-        vtkFloatArray  *ycoord = vtkFloatArray::New();
-        vtkFloatArray  *zcoord = vtkFloatArray::New();
+        vtkDoubleArray *xcoord = vtkDoubleArray::New();
+        vtkDoubleArray *ycoord = vtkDoubleArray::New();
+        vtkDoubleArray *zcoord = vtkDoubleArray::New();
 
         xcoord->SetNumberOfTuples(dims[0]);
         ycoord->SetNumberOfTuples(dims[1]);
         zcoord->SetNumberOfTuples(dims[2]);
 
-        float *ptr = xcoord->GetPointer(0);
+        double *ptr = xcoord->GetPointer(0);
         if (!allowedToUseGhosts)
             ptr[0] = probLo[0] + lowI[patch]*dx[level][0]*aspectRatio[0];
         else

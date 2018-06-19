@@ -1076,6 +1076,101 @@ QvisHelpWindow::openHelp(QTreeWidgetItem *item)
 }
 
 // ****************************************************************************
+// Method: QvisHelpWindow::openHelp
+//
+// Purpose:
+//   This is a Qt slot function that is called when an item in the contents
+//   listview is clicked. We display the page associated with the item.
+//
+// Arguments:
+//   item : The item that was clicked.
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri Jul 12 13:03:00 PST 2002
+//
+// Modifications:
+//   Brad Whitlock, Thu Jun 19 16:27:10 PDT 2008
+//   Qt 4.
+//
+//   Jeremy Meredith, Fri Sep 20 11:56:56 EDT 2013
+//   Updated help searching logic.
+//
+// ****************************************************************************
+
+static int DepthOfModelIndex(QModelIndex mi)
+{
+    int depth = 0;
+    while ((mi = mi.parent()).isValid())
+        ++depth;
+    return depth;
+}
+
+void
+QvisHelpWindow::openHelp(const QString& entry)
+{
+    if(!isCreated) {
+        CreateEntireWindow();
+    }
+
+    show();
+
+    helpContents->clearSelection();
+
+    // find closest match in help index..
+
+    QModelIndexList list;
+
+    QStringList words = entry.split(' ');
+    while (list.size() == 0 && words.size() > 0)
+    {
+        QString query = words.join(" ");
+        QString query_nospaces = words.join("");
+        list = helpContents->model()->match(helpContents->model()->index(0,0), Qt::DisplayRole,
+                                            query, -1, Qt::MatchStartsWith | Qt::MatchRecursive);
+        if(list.size() == 0)
+            list = helpContents->model()->match(helpContents->model()->index(0,0), Qt::DisplayRole,
+                                                query, -1, Qt::MatchContains | Qt::MatchRecursive);
+        if(list.size() == 0)
+            list = helpContents->model()->match(helpContents->model()->index(0,0), Qt::DisplayRole,
+                                                query_nospaces, -1, Qt::MatchContains | Qt::MatchRecursive);
+        words.pop_back();
+    }
+        
+    if(list.size() == 0)
+    {
+        displayTitle(entry + " help not found...");
+    }
+    else
+    {
+        // Chose the result with the shallowest depth in the help TOC
+        int item_with_min_depth = 0;
+        int min_depth = 1e9;
+        for (int i=0; i<list.size(); i++)
+        {
+            int depth = DepthOfModelIndex(list[i]);
+            if (depth < min_depth)
+            {
+                item_with_min_depth = i;
+                min_depth = depth;
+            }
+        }
+
+        QModelIndex item = list[item_with_min_depth];
+
+        helpContents->expand(item);
+        helpContents->scrollTo(item);
+        helpContents->setCurrentIndex(item);
+
+        QString document(item.data(Qt::UserRole).toString());
+
+        if(!document.isEmpty())
+            displayPage(document);
+        else
+            displayTitle(entry + " help not found...");
+    }
+}
+
+// ****************************************************************************
 // Method: QvisHelpWindow::topicExpanded
 //
 // Purpose: 

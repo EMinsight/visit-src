@@ -1,5 +1,6 @@
 Argonne National Laboatory (ANL) network:anl
 Arizona State University:asu
+Clemson University network:clemson
 Lawrence Livermore National Laboratory (LLNL) closed network:llnl_closed
 Lawrence Livermore National Laboratory (LLNL) open network:llnl
 Los Alamos National Laboratory (LANL) closed network:lanl_closed
@@ -12,5 +13,6 @@ Sandia National Laboratory (SNL) closed network:sandia_closed
 Sandia National Laboratory (SNL) open network:sandia
 Stanford Linear Accelerator Center (SLAC) network:slac
 Swiss Federal Institue of Technology Zurich:eth_zurich
+Swiss National Supercomputing Center (CSCS) network:cscs
 Texas Advanced Computing Center (TACC) network:tacc
 University of Michigan Center for Advanced Computing network:umich
