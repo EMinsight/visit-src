@@ -2453,7 +2453,7 @@ vtkDataSet* avtVsFileFormat::getCurve(int domain, const std::string& requestedNa
     vtkFloatArray* vals = vtkFloatArray::New();
     vals->SetNumberOfComponents(1);
     vals->SetNumberOfTuples(nPtsInOutput);
-    vals->SetName(name.c_str());
+    vals->SetName(requestedName.c_str());
 
     vtkRectilinearGrid* rg = vtkVisItUtility::Create1DRGrid(nPtsInOutput, VTK_FLOAT);
     rg->GetPointData()->SetScalars(vals);
@@ -3560,7 +3560,7 @@ void avtVsFileFormat::RegisterMeshes(avtDatabaseMetaData* md)
           new avtMeshMetaData(it->c_str(), 1, 1, 1, 0,
                               spatialDims, topologicalDims, meshType);
         vmd->SetBounds( bounds );
-//        vmd->SetNumberCells( numCells );
+        vmd->SetNumberCells( numCells );
         setAxisLabels(vmd);
         md->Add(vmd);
       }
@@ -3861,7 +3861,7 @@ void avtVsFileFormat::RegisterVarsWithMesh(avtDatabaseMetaData* md)
       avtMeshMetaData* vmd = new avtMeshMetaData(it->c_str(),
           1, 1, 1, 0, spatialDims, 0, AVT_POINT_MESH);
       vmd->SetBounds( bounds );
-//      vmd->SetNumberCells( numCells );
+      vmd->SetNumberCells( numCells );
       setAxisLabels(vmd);
       md->Add(vmd);
     }

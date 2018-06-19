@@ -1,7 +1,8 @@
 function bv_qt_initialize
 {
-    export DO_QT="no"
-    export ON_QT="off"
+    export DO_QT="yes"
+    export ON_QT="on"
+    export FORCE_QT="no"
     export USE_SYSTEM_QT="no"
     add_extra_commandline_args "qt" "system-qt" 0 "Use qt found on system"
     add_extra_commandline_args "qt" "alt-qt-dir" 1 "Use qt found in alternative directory"
@@ -11,12 +12,22 @@ function bv_qt_enable
 {
 DO_QT="yes"
 ON_QT="on"
+FORCE_QT="yes"
 }
 
 function bv_qt_disable
 {
 DO_QT="no"
 ON_QT="off"
+FORCE_QT="no"
+}
+
+function bv_qt_force
+{
+  if [[ "$FORCE_QT" == "yes" ]]; then
+     return 0;
+  fi
+  return 1;
 }
 
 function bv_qt_system_qt
@@ -419,7 +430,7 @@ function build_qt
     #
     # Figure out if configure found the OpenGL libraries
     #
-    if [[ "${DO_DBIO_ONLY}" != "yes" ]] ; then
+    if [[ "${DO_DBIO_ONLY}" != "yes" && "${DO_ENGINE_ONLY}" != "yes" && "${DO_SERVER_COMPONENTS_ONLY}" != "yes" ]] ; then
        HAS_OPENGL_SUPPORT=`grep "OpenGL support" qt.config.out | sed -e 's/.*\. //'  | cut -c 1-3`
        if [[ "$HAS_OPENGL_SUPPORT" != "yes" ]]; then
           warn "Qt4 configure did not find OpenGL." \

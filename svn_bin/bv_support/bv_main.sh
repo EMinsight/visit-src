@@ -286,9 +286,18 @@ export ON_OPTIONAL2="off"
 export DO_MORE="no"
 export ON_MORE="off"
 export DO_DBIO_ONLY="no"
+export DO_ENGINE_ONLY="no"
+export DO_SERVER_COMPONENTS_ONLY="no"
 export DO_STATIC_BUILD="no"
 export USE_VISIBILITY_HIDDEN="no"
+export VISIT_INSTALL_PREFIX=""
+export VISIT_BUILD_MODE="Release"
 DOWNLOAD_ONLY="no"
+
+if [[ "$OPSYS" == "Darwin" ]]; then
+    export DO_MESA="yes"
+    export ON_MESA="on"
+fi
 
 if [[ "$CXX_COMPILER" == "g++" ]] ; then
     VERSION=$(g++ -v 2>&1 | grep "gcc version" | cut -d' ' -f3 | cut -d'.' -f1-1)
@@ -520,13 +529,13 @@ for arg in "${arguments[@]}" ; do
             append-cflags) C_OPT_FLAGS="${C_OPT_FLAGS} ${arg}";;
             append-cxxflags) CXX_OPT_FLAGS="${CXX_OPT_FLAGS} ${arg}";;
             arch) VISITARCH="${arg}";;
+            build-mode) VISIT_BUILD_MODE="${arg}";;
             cflags) C_OPT_FLAGS="${arg}";;
             cxxflags) CXX_OPT_FLAGS="${arg}";;
             cc) C_COMPILER="${arg}";;
             cxx) CXX_COMPILER="${arg}";;
-            flags-debug) C_OPT_FLAGS="${C_OPT_FLAGS} -g"
-                         CXX_OPT_FLAGS="${CXX_OPT_FLAGS} -g";;
             makeflags) MAKE_OPT_FLAGS="${arg}";;
+            prefix) VISIT_INSTALL_PREFIX="${arg}";;
             group) GROUP="${arg}";;
             svn) SVNREVISION="${arg}";;
             tarball) VISIT_FILE="${arg}";;
@@ -607,6 +616,7 @@ for arg in "${arguments[@]}" ; do
         --all-io) continue;; #do nothing now..
         --dbio-only) continue;; #do nothing now..
         --arch) next_arg="arch";;
+        --build-mode) next_arg="build-mode";;
         --cflag) next_arg="append-cflags";;
         --cflags) next_arg="cflags";;
         --cxxflag) next_arg="append-cxxflags";;
@@ -616,7 +626,8 @@ for arg in "${arguments[@]}" ; do
         --console) GRAPHICAL="no"; ON_GRAPHICAL="off";;
         --debug) set -vx;;
         --download-only) DOWNLOAD_ONLY="yes";;
-        --flags-debug) next_arg="flags-debug";;
+        --engine-only) DO_ENGINE_ONLY="yes";;
+        --flags-debug) C_OPT_FLAGS="${C_OPT_FLAGS} -g"; CXX_OPT_FLAGS="${CXX_OPT_FLAGS} -g"; VISIT_BUILD_MODE="Debug";;
         --gdal) DO_GDAL="yes"; ON_GDAL="on";;
         --fortran) DO_FORTRAN="yes"; ON_FORTRAN="on";;
         --group) next_arg="group"; DO_GROUP="yes"; ON_GROUP="on";;
@@ -625,9 +636,11 @@ for arg in "${arguments[@]}" ; do
         --makeflags) next_arg="makeflags";;
         --no-thirdparty) DO_REQUIRED_THIRD_PARTY="no"; ON_THIRD_PARTY="off";;
         --no-hostconf) DO_HOSTCONF="no"; ON_HOSTCONF="off";;
-        --parallel) parallel="yes"; DO_ICET="yes"; ON_parallel="ON";;
+        --parallel) parallel="yes"; DO_ICET="yes"; ON_ICET="on"; DO_MESA="yes"; ON_MESA="on"; ON_parallel="on";;
+        --prefix) next_arg="prefix";;
         --print-vars) next_action="print-vars";;
         --python-module) DO_MODULE="yes"; ON_MODULE="on";;
+        --server-components-only) DO_SERVER_COMPONENTS_ONLY="yes";;
         --slivr) DO_SLIVR="yes"; ON_SLIVR="on";;
         --static) DO_STATIC_BUILD="yes";;
         --stdout) LOG_FILE="/dev/tty";;
@@ -822,7 +835,7 @@ if [[ "$GRAPHICAL" == "yes" ]] ; then
                  VISIT_FILE="$(cat tmp$$)"
                  USE_VISIT_FILE="yes";;
               Parallel)
-                 parallel="yes"; DO_ICET="yes";;
+                 parallel="yes"; DO_ICET="yes"; ON_ICET="on"; DO_MESA="yes"; ON_MESA="on";;
               PythonModule)
                  DO_MODULE="yes";;
               Java)
@@ -860,6 +873,13 @@ if [[ "$DO_OPTIONAL" == "yes" && "$GRAPHICAL" == "yes" ]] ; then
         add_checklist_vars=${add_checklist_vars}" "${output_str}
     done
 
+    for (( i=0; i < ${#noniolibs[*]}; ++i ))
+    do
+        initializeFunc="bv_${noniolibs[$i]}_graphical"
+        output_str="$($initializeFunc)"
+        add_checklist_vars=${add_checklist_vars}" "${output_str}
+    done
+
 
     $DLG --backtitle "$DLG_BACKTITLE" --title "Select 3rd party libraries" --checklist "Select the optional 3rd party libraries to be built and installed:" 0 0 0 $add_checklist_vars 2> tmp$$
     retval=$?
@@ -872,6 +892,12 @@ if [[ "$DO_OPTIONAL" == "yes" && "$GRAPHICAL" == "yes" ]] ; then
         for (( bv_i=0; bv_i < ${#iolibs[*]}; ++bv_i ))
         do
           initializeFunc="bv_${iolibs[$bv_i]}_disable"
+          $initializeFunc
+        done
+        
+        for (( bv_i=0; bv_i < ${#noniolibs[*]}; ++bv_i ))
+        do
+          initializeFunc="bv_${noniolibs[$bv_i]}_disable"
           $initializeFunc
         done
         
@@ -1073,11 +1099,6 @@ export VISITDIR=${VISITDIR:-$(pwd)}
 
 
 if [[ "$DO_REQUIRED_THIRD_PARTY" == "yes" ]] ; then
-    for (( bv_i=0; bv_i<${#thirdpartylibs[*]}; ++bv_i ))
-    do
-        initializeFunc="bv_${thirdpartylibs[$bv_i]}_enable"
-        $initializeFunc
-    done
     if [[ "$DO_DBIO_ONLY" == "yes" ]]; then
         #disable all non dbio libraries
         for (( bv_i=0; bv_i<${#nodbiolibs[*]}; ++bv_i ))
@@ -1086,6 +1107,27 @@ if [[ "$DO_REQUIRED_THIRD_PARTY" == "yes" ]] ; then
             $initializeFunc
         done
     fi
+    if [[ "$DO_ENGINE_ONLY" == "yes" || "$DO_SERVER_COMPONENTS_ONLY" == "yes" ]] ; then
+        #disable all non server libraries
+        for (( bv_i=0; bv_i<${#noserverlibs[*]}; ++bv_i ))
+        do
+            initializeFunc="bv_${noserverlibs[$bv_i]}_disable"
+            $initializeFunc
+        done
+    fi
+fi
+
+if [[ "$DO_REQUIRED_THIRD_PARTY" == "no" ]] ; then
+    for (( bv_i=0; bv_i<${#thirdpartylibs[*]}; ++bv_i ))
+    do
+        # check force
+        forceFunc="bv_${thirdpartylibs[$bv_i]}_force"
+        $forceFunc
+        if [[ $? != 0 ]] ; then
+            disableFunc="bv_${thirdpartylibs[$bv_i]}_disable"
+            $disableFunc
+        fi
+    done
 fi
 
 if [[ "$DO_ICET" == "yes" && "$PREVENT_ICET" != "yes" ]] ; then
@@ -1100,11 +1142,11 @@ cd "$START_DIR"
 # Later we will build Qt.  We are going to bypass their licensing agreement,
 # so echo it here.
 #
-if [[ "$USE_SYSTEM_QT" != "yes" ]]; then
+if [[ "$USE_SYSTEM_QT" != "yes" && "$DO_QT" == "yes" ]]; then
 
     check_if_installed "qt" $QT_VERSION
     if [[ $? == 0 ]] ; then
-    DO_QT="no"
+        DO_QT="no"
     fi
 
     if [[ "$DO_QT" == "yes" && "$DOWNLOAD_ONLY" == "no" ]] ; then

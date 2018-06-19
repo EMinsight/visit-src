@@ -167,6 +167,9 @@
 //    Eric Brugger, Mon Jan 30 10:55:12 PST 2012
 //    Changed the date on the splash screen to February 2012.
 //
+//    Eric Brugger, Tue Feb 28 08:47:39 PST 2012
+//    Changed the date on the splash screen to March 2012.
+//
 // ****************************************************************************
 
 SplashScreen::SplashScreen(bool cyclePictures) 
@@ -265,7 +268,7 @@ SplashScreen::SplashScreen(bool cyclePictures)
     lrLayout->addLayout(rLayout );
     
 
-    QString C("(c) 2000-2011 LLNS. ");
+    QString C("(c) 2000-2012 LLNS. ");
     C += tr("All Rights Reserved");
     C += ".";
     lLayout->addWidget(new QLabel(C, this));
@@ -291,7 +294,7 @@ SplashScreen::SplashScreen(bool cyclePictures)
            << tr("October")
            << tr("November")
            << tr("December");
-    int currentMonth = 2;
+    int currentMonth = 3;
     lLayout->addWidget(new QLabel(versionText, this));
     lLayout->addWidget(new QLabel(months[currentMonth-1] + " 2012", this));
 
