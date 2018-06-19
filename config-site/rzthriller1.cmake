@@ -11,8 +11,6 @@
 SET(VISITHOME /usr/gapps/visit)
 SET(VISITARCH linux-x86_64_gcc-4.1)
 
-VISIT_OPTION_DEFAULT(VISIT_VERBOSE_MAKEFILE TRUE TYPE BOOL)
-
 ##
 ## Specify the location of the mesa.
 ##
@@ -49,8 +47,8 @@ VISIT_OPTION_DEFAULT(VISIT_ICET_DIR ${VISITHOME}/icet/1.0.0/${VISITARCH})
 ##
 VISIT_OPTION_DEFAULT(VISIT_C_COMPILER gcc TYPE FILEPATH)
 VISIT_OPTION_DEFAULT(VISIT_CXX_COMPILER g++ TYPE FILEPATH)
-VISIT_OPTION_DEFAULT(VISIT_C_FLAGS " -Wno-deprecated -m64 -fPIC -fvisibility=hidden" TYPE STRING)
-VISIT_OPTION_DEFAULT(VISIT_CXX_FLAGS " -Wno-deprecated -m64 -fPIC -fvisibility=hidden" TYPE STRING)
+VISIT_OPTION_DEFAULT(VISIT_C_FLAGS " -Wno-deprecated -m64 -fvisibility=hidden" TYPE STRING)
+VISIT_OPTION_DEFAULT(VISIT_CXX_FLAGS " -Wno-deprecated -m64 -fvisibility=hidden" TYPE STRING)
 
 ##
 ## Add parallel arguments.

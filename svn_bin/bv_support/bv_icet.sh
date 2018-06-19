@@ -42,7 +42,7 @@ function bv_icet_print
 function bv_icet_print_usage
 {
 printf "%-15s %s [%s]\n" "--icet" "Build Ice-T (parallel rendering lib)" "$DO_ICET"
-printf "%-15s %s [%s]\n" "--no-icet" "Ice-T is automatically built with --enable-parallel.  Prevent it from being built" "$PREVENT_ICET"  
+printf "%-15s %s [%s]\n" "--no-icet" "Ice-T is automatically built with --enable-parallel.  Prevent it from being built" "$PREVENT_ICET"
 }
 
 function bv_icet_graphical
@@ -160,20 +160,20 @@ function build_icet
     if [[ "$PAR_INCLUDE" != "" ]] ; then
         PAR_INCLUDE_STRING=$PAR_INCLUDE
     fi
-    
+
     if [[ "$PAR_COMPILER" != "" ]] ; then
-        if [[ "$OPSYS" == "Darwin" && "$PAR_COMPILER" == "/usr/bin/mpic++" ]]; then
+        if [[ "$OPSYS" == "Darwin" && "$PAR_COMPILER" == "/usr/bin/mpicc" ]]; then
             PAR_INCLUDE_STRING="-I/usr/include/"
         else
             if [[ -z "$PAR_INCLUDE_STRING" ]]; then
-                PAR_INCLUDE_STRING=`$PAR_COMPILER --showme:compile`    
+                PAR_INCLUDE_STRING=`$PAR_COMPILER --showme:compile`
             fi
         fi
     fi
-    
+
     if [[ "$PAR_INCLUDE_STRING" == "" ]] ; then
        warn "You must set either the PAR_COMPILER or PAR_INCLUDE environment variable to be Ice-T."
-       warn "PAR_COMPILER should be of the form \"/path/to/mpi/bin/mpic++\""
+       warn "PAR_COMPILER should be of the form \"/path/to/mpi/bin/mpicc\""
        warn "PAR_INCLUDE should be of the form \"-I/path/to/mpi/include\""
        warn "Giving Up!"
        return 1
@@ -206,7 +206,7 @@ function build_icet
             error "Please re-run with the required \"-I\" option included in PAR_INCLUDE"
         else
             error "You need to specify either PAR_COMPILER or PAR_INCLUDE variable.  On many "
-                  " systems, the output of \"mpicxx -showme\" is good enough."
+                  " systems, the output of \"mpicc -showme\" is good enough."
             error ""
         fi
     fi
@@ -235,6 +235,11 @@ function build_icet
     fi
     touch fakempi.${LIBEXT}
     ${CMAKE_BIN} \
+        -DCMAKE_C_COMPILER:STRING=${C_COMPILER} \
+        -DCMAKE_CXX_COMPILER:STRING=${CXX_COMPILER} \
+        -DCMAKE_BUILD_TYPE:STRING="${VISIT_BUILD_MODE}" \
+        -DCMAKE_C_FLAGS:STRING="${CFLAGS} ${C_OPT_FLAGS}" \
+        -DCMAKE_CXX_FLAGS:STRING="${CXXFLAGS} ${CXX_OPT_FLAGS}" \
         -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
         -DCMAKE_INSTALL_PREFIX:PATH="$VISITDIR/icet/${ICET_VERSION}/${VISITARCH}"\
         -DOPENGL_INCLUDE_DIR:PATH="$VISITDIR/mesa/${MESA_VERSION}/${VISITARCH}/include"\
@@ -282,7 +287,7 @@ function build_icet
 function bv_icet_is_enabled
 {
     if [[ $DO_ICET == "yes" ]]; then
-        return 1    
+        return 1
     fi
     return 0
 }

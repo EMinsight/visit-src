@@ -122,13 +122,6 @@ parse_dirname(char *wholePath)
 
 
 //===============================================
-FileSet::FileSet(): mNumFiles(0), mBytesPerElem(0), mFilesAreBinary(false) {
-  mDataTypeSizes[0] = mDataTypeSizes[2] = 8; // doubles and longs
-  mDataTypeSizes[1] = mDataTypeSizes[3] = 4; //floats and ints
-  return; 
-}
-
-//===============================================
 void FileSet::AddVar(string varname, string vartype, int components) {
   mDataArrayNames.push_back(varname); 
   mDataArrayTypes.push_back(vartype); 
@@ -575,52 +568,6 @@ vtkDataArray * VarElementFetcher::GetVarElems(void) {
   return tuples; 
 }
 
-//=============================================================
-/*
-  InterpretBurgersType(void)
-  Helper function to change mVarBuffer[0] to the enumerated value corresponding to the burgers type detected in mVarBuffer at start of function. 
-  from paradis.h: 
-  #define BURGERS_NONE 0
-  #define BURGERS_100  1
-  #define BURGERS_010  2
-  #define BURGERS_001  3
-  #define BURGERS_PPP  4  // +++
-  #define BURGERS_PPM  5  // ++-
-  #define BURGERS_PMP  6  // +-+
-  #define BURGERS_PMM  7  // +--
-  #define BURGERS_UNKNOWN  8    
-*/ 
-int VarElementFetcher::InterpretBurgersType(void) {
-  int valarray[3] = 
-    {Category(mVarBuffer[0]), 
-     Category(mVarBuffer[1]), 
-     Category(mVarBuffer[2])};
-  int btype = BURGERS_NONE;
-  if (valarray[0] == 1 && valarray[1] == 0 && valarray[2] == 0)
-    btype = BURGERS_100;
-  else if (valarray[0] == 0 && valarray[1] == 1 && valarray[2] == 0)
-    btype = BURGERS_010;
-  else if (valarray[0] == 0 && valarray[1] == 0 && valarray[2] == 1)
-    btype = BURGERS_001;
-  else if ((valarray[0] == 2 && valarray[1] == 2 && valarray[2] == 2) ||
-           (valarray[0] == 3 && valarray[1] == 3 && valarray[2] == 3))
-    btype = BURGERS_PPP;
-  else if ((valarray[0] == 2 && valarray[1] == 2 && valarray[2] == 3) ||
-           (valarray[0] == 3 && valarray[1] == 3 && valarray[2] == 2))
-    btype = BURGERS_PPM;
-  else if ((valarray[0] == 2 && valarray[1] == 3 && valarray[2] == 2) ||
-           (valarray[0] == 3 && valarray[1] == 2 && valarray[2] == 3))
-    btype = BURGERS_PMP;
-  else if ((valarray[0] == 2 && valarray[1] == 3 && valarray[2] == 3) ||
-           (valarray[0] == 3 && valarray[1] == 2 && valarray[2] == 2)) {
-    btype = BURGERS_PMM;
-  }  else {    
-    debug1 << "Warning:  unknown burgers type: create verbose debug logs for details" << endl;
-    btype = BURGERS_NONE; // redundant for explictness' sake
-  }
-  debug5 << "InterpretBurgersType returning type " << btype; 
-  return btype; 
-}
 
 //=============================================================
 /*
@@ -644,7 +591,7 @@ void VarElementFetcher:: InterpretTextElement(std::string line, long linenum) {
   }
   debug5 << ")" << endl;
   if (mElementName == "Burgers type" ) {
-    ((int*)mOutputData)[mOutputIndex++] = InterpretBurgersType(); 
+    ((int*)mOutputData)[mOutputIndex++] = InterpretBurgersType(mVarBuffer); 
   } else {
     ((vtkFloatArray *)mOutputData)->SetTuple(mOutputIndex++, mVarBuffer); 
   }
@@ -679,21 +626,25 @@ inline void VarElementFetcher::InterpretBinaryElement(char *elementData){
   debug5 << ")" << endl;
 
   if (mElementName == "Burgers type" ) {
-    ((int*)mOutputData)[mOutputIndex++] = InterpretBurgersType(); 
+    ((int*)mOutputData)[mOutputIndex++] = InterpretBurgersType(mVarBuffer); 
   } else {
     ((vtkFloatArray *)mOutputData)->SetTuple(mOutputIndex++, mVarBuffer); 
   }
   return; 
 }
 
+
 //=============================================================
 /*
-  ParallelData constructor
+  ParallelData initializer
  */
-ParallelData::ParallelData(string filename): mMetaDataFileName(filename) {
+void ParallelData::Clear(void) {
+  mMetaDataFileName = "";
+  mDataDescription = ""; 
+  mNodeFiles.Clear(); 
+  mSegmentFiles.Clear(); 
   return; 
 }
-
 //=============================================================
 /*
   ParallelData destructor
@@ -962,9 +913,9 @@ ParallelData::GetAuxiliaryData(const char *var, const char *type,
   FileSet *fileset = NULL; 
   if (mNodeFiles.HaveVar(varname)) {
     fileset = &mNodeFiles;
-  } else if (varname == "Burgers type" || mSegmentFiles.HaveVar(varname)) {
+  }  else if (varname == "Burgers type" || mSegmentFiles.HaveVar(varname)) {
     fileset = &mSegmentFiles;
-  } 
+    }  
   if (!fileset) {
     debug1 << "WARNING ParallelData::GetVar is unable to find a fileset that contains the variable requested" << endl; 
     return NULL; 

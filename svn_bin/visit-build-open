@@ -104,6 +104,19 @@
 #   Eric Brugger, Wed Sep 26 17:09:04 PDT 2012
 #   I deleted prism.
 #
+#   Eric Brugger, Wed Nov 14 09:15:07 PST 2012
+#   I deleted hoth.
+#
+#   Eric Brugger, Wed Nov 14 14:22:16 PST 2012
+#   I made the sidious build off by default. I modified the kickit build
+#   since it is now a linux-x86_64 system instead of a linux-intel system.
+#
+#   Eric Brugger, Wed Nov 14 15:53:56 PST 2012
+#   I modified the euclid build to point to the new cmake.
+#
+#   Eric Brugger, Wed Nov 28 08:38:09 PST 2012
+#   I modified the ubuntu1104_64 build to point to the new cmake.
+#
 #-----------------------------------------------------------------------
 
 test=no
@@ -147,9 +160,8 @@ esac
 #
 # Parse the execute line, providing default values for error checking.
 #
-hoth=true
 kickit=true
-sidious=true
+sidious=false
 ubuntu1104_64=false
 aztec=true
 rzthriller=true
@@ -169,7 +181,6 @@ for abc
 do
    case $1 in
       -none)
-         hoth=false
          kickit=false
          sidious=false
          ubuntu1104_64=false
@@ -179,14 +190,6 @@ do
          euclid=false
          glory=false
          redsky=false
-         shift
-         ;;
-      -hoth)
-         hoth=false
-         shift
-         ;;
-      +hoth)
-         hoth=true
          shift
          ;;
       -kickit)
@@ -275,10 +278,9 @@ if [ $dist = undefined ]
 then
    echo "Usage: [-none] [-<machine name>] -d <distribution>"
    echo "Valid machine names:"
-   echo "    hoth (B-Div, Linux),"
-   echo "    kickit (B-Div, Linux),"
-   echo "    sidious(B-Div, Linux),"
-   echo "    Ubunut1104-64(B-Div, Linux),"
+   echo "    kickit (B-Div, Linux, x86_64),"
+   echo "    sidious(B-Div, Linux, x86_64),"
+   echo "    Ubunut1104-64(B-Div, Linux, x86_64),"
    echo "    aztec (LC, Linux, x86_64),"
    echo "    rzthriller (LC, Linux, x86_64),"
    echo "    rzzeus (LC, Linux, x86_64),"
@@ -296,61 +298,6 @@ if [ ! -f $distfile ]
 then
    echo "Distribution file doesn't exist."
    exit
-fi
-
-#
-# Build on hoth.
-#
-rm -f hoth
-cat <<EOF > hoth
-#!/bin/sh
-if test ! -e /data/$user ; then
-   mkdir /data/$user
-fi
-if test ! -e /data/$user/hoth ; then
-   mkdir /data/$user/hoth
-fi
-rm -rf /data/$user/hoth/visitbuild
-mkdir /data/$user/hoth/visitbuild
-mv hoth_$dist.tar.gz /data/$user/hoth/visitbuild/$dist.tar.gz
-cd /data/$user/hoth/visitbuild
-gunzip -c $dist.tar.gz | tar xvf - > buildlog 2>&1
-cd $dist/src
-cd config-site
-mv hoth.cmake hoth.parallel.cmake
-mv hoth.serial.cmake hoth.cmake
-cd ..
-ver=\`cat VERSION\`
-ver2=\`echo \$ver | tr "." "_"\`
-/usr/gapps/visit/thirdparty_shared_2_5_1/cmake/2.8.8/linux-x86_64_gcc-4.4/bin/cmake . -DCMAKE_BUILD_TYPE:STRING=Release -DVISIT_INSTALL_THIRD_PARTY:BOOL=ON >> ../../buildlog 2>&1
-make -j 4 >> ../../buildlog 2>&1
-make -j 4 package >> ../../buildlog 2>&1
-mv visit\$ver2.linux-x86_64.tar.gz ../..
-cd ../..
-rm -f resultlog
-echo "        build of visit on hoth"         > resultlog 2>&1
-echo "       ------------------------"        >> resultlog 2>&1
-echo ""                                       >> resultlog 2>&1
-ls -l                                         >> resultlog 2>&1
-echo ""                                       >> resultlog 2>&1
-echo "number of database plugins = "\`ls $dist/src/plugins/databases/libI* | wc -l\` >> resultlog 2>&1
-echo "number of operator plugins = "\`ls $dist/src/plugins/operators/libI* | wc -l\` >> resultlog 2>&1
-echo "number of plot plugins = "\`ls $dist/src/plugins/plots/libI* | wc -l\` >> resultlog 2>&1
-echo ""                                       >> resultlog 2>&1
-echo "The database plugins:"                  >> resultlog 2>&1
-ls $dist/src/plugins/databases/libI* | sed "s/$dist\/src\/plugins\/databases\/libI//" | sed "s/Database.so//" >> resultlog 2>&1
-mail  -s "VisIt build ($dist): hoth" $emailName < resultlog
-EOF
-
-if [ $hoth = true ]
-then
-   if [ $test = no ]
-   then
-      echo "Building on hoth"
-      scp hoth hoth:hoth_buildit
-      scp $dist.tar.gz hoth:hoth_$dist.tar.gz
-      ssh hoth "chmod 750 hoth_buildit;./hoth_buildit" &
-   fi
 fi
 
 #
@@ -373,10 +320,10 @@ gunzip -c $dist.tar.gz | tar xvf - > buildlog 2>&1
 cd $dist/src
 ver=\`cat VERSION\`
 ver2=\`echo \$ver | tr "." "_"\`
-/usr/gapps/visit/thirdparty_shared_2_5_1/cmake/2.8.8/linux-i686_gcc-4.1/bin/cmake . -DCMAKE_BUILD_TYPE:STRING=Release -DVISIT_INSTALL_THIRD_PARTY:BOOL=ON >> ../../buildlog 2>&1
+/usr/gapps/visit/thirdparty_shared_2_6_0/cmake/2.8.8/linux-x86_64_gcc-4.4/bin/cmake . -DCMAKE_BUILD_TYPE:STRING=Release -DVISIT_INSTALL_THIRD_PARTY:BOOL=ON >> ../../buildlog 2>&1
 make -j 4 >> ../../buildlog 2>&1
 make -j 4 package >> ../../buildlog 2>&1
-mv visit\$ver2.linux-intel.tar.gz ../..
+mv visit\$ver2.linux-x86_64.tar.gz ../..
 cd ../..
 rm -f resultlog
 echo "        build of visit on kickit"       > resultlog 2>&1
@@ -427,7 +374,7 @@ mv sidious.llnl.gov.serial.cmake sidious.llnl.gov.cmake
 cd ..
 ver=\`cat VERSION\`
 ver2=\`echo \$ver | tr "." "_"\`
-/usr/gapps/visit/thirdparty_shared_2_5_1/cmake/2.8.8/linux-x86_64_gcc-4.1/bin/cmake . -DCMAKE_BUILD_TYPE:STRING=Release -DVISIT_INSTALL_THIRD_PARTY:BOOL=ON >> ../../buildlog 2>&1
+/usr/gapps/visit/thirdparty_shared_2_6_0/cmake/2.8.8/linux-x86_64_gcc-4.1/bin/cmake . -DCMAKE_BUILD_TYPE:STRING=Release -DVISIT_INSTALL_THIRD_PARTY:BOOL=ON >> ../../buildlog 2>&1
 make -j 4 >> ../../buildlog 2>&1
 make -j 4 package >> ../../buildlog 2>&1
 mv visit\$ver2.linux-x86_64.tar.gz ../..
@@ -474,7 +421,7 @@ gunzip -c $dist.tar.gz | tar xvf - > buildlog 2>&1
 cd $dist/src
 ver=\`cat VERSION\`
 ver2=\`echo \$ver | tr "." "_"\`
-/home/visit/visit/thirdparty_shared_2_5_1/cmake/2.8.8/linux-x86_64_gcc-4.5/bin/cmake . -DCMAKE_BUILD_TYPE:STRING=Release -DVISIT_INSTALL_THIRD_PARTY:BOOL=ON >> ../../buildlog 2>&1
+/home/visit/visit/thirdparty_shared_2_6_0/cmake/2.8.8/linux-x86_64_gcc-4.5/bin/cmake . -DCMAKE_BUILD_TYPE:STRING=Release -DVISIT_INSTALL_THIRD_PARTY:BOOL=ON >> ../../buildlog 2>&1
 make -j 2 >> ../../buildlog 2>&1
 make -j 2 package >> ../../buildlog 2>&1
 mv visit\$ver2.linux-x86_64.tar.gz ../..
@@ -525,7 +472,7 @@ cd $dist/src
 ver=\`cat VERSION\`
 ver2=\`echo \$ver | tr "." "_"\`
 export PATH=\$PATH:/usr/bin/X11
-/usr/gapps/visit/thirdparty_shared_2_5_1/cmake/2.8.8/linux-x86_64_gcc-4.4/bin/cmake . -DCMAKE_BUILD_TYPE:STRING=Release -DVISIT_INSTALL_THIRD_PARTY:BOOL=ON >> ../../buildlog 2>&1
+/usr/gapps/visit/thirdparty_shared_2_6_0/cmake/2.8.8/linux-x86_64_gcc-4.4/bin/cmake . -DCMAKE_BUILD_TYPE:STRING=Release -DVISIT_INSTALL_THIRD_PARTY:BOOL=ON >> ../../buildlog 2>&1
 make -j 6 >> ../../buildlog 2>&1
 make -j 6 package >> ../../buildlog 2>&1
 mv visit\$ver2.linux-x86_64.tar.gz ../..
@@ -632,7 +579,7 @@ cd $dist/src
 ver=\`cat VERSION\`
 ver2=\`echo \$ver | tr "." "_"\`
 export PATH=\$PATH:/usr/bin/X11
-/usr/gapps/visit/thirdparty_shared_2_5_1/cmake/2.8.8/linux-x86_64_gcc-4.4/bin/cmake . -DCMAKE_BUILD_TYPE:STRING=Release -DVISIT_INSTALL_THIRD_PARTY:BOOL=ON >> ../../buildlog 2>&1
+/usr/gapps/visit/thirdparty_shared_2_6_0/cmake/2.8.8/linux-x86_64_gcc-4.4/bin/cmake . -DCMAKE_BUILD_TYPE:STRING=Release -DVISIT_INSTALL_THIRD_PARTY:BOOL=ON >> ../../buildlog 2>&1
 make -j 6 >> ../../buildlog 2>&1
 make -j 6 package >> ../../buildlog 2>&1
 mv visit\$ver2.linux-x86_64.tar.gz ../..
@@ -683,7 +630,7 @@ gunzip -c $dist.tar.gz | tar xvf - > buildlog 2>&1
 cd $dist/src
 ver=\`cat VERSION\`
 ver2=\`echo \$ver | tr "." "_"\`
-/project/projectdirs/visit/visit_3rdparty/euclid_2_5_1/cmake/2.8.8/linux-x86_64_gcc-4.1/bin/cmake . -DCMAKE_BUILD_TYPE:STRING=Release -DVISIT_INSTALL_THIRD_PARTY:BOOL=ON >> ../../buildlog 2>&1
+/project/projectdirs/visit/visit_3rdparty/euclid_2_6_0/cmake/2.8.8/linux-x86_64_gcc-4.1/bin/cmake . -DCMAKE_BUILD_TYPE:STRING=Release -DVISIT_INSTALL_THIRD_PARTY:BOOL=ON >> ../../buildlog 2>&1
 make -j 4 >> ../../buildlog 2>&1
 make -j 4 package >> ../../buildlog 2>&1
 mv visit\$ver2.linux-x86_64.tar.gz ../..
@@ -738,7 +685,7 @@ gunzip -c $dist.tar.gz | tar xvf - > buildlog 2>&1
 cd $dist/src
 ver=\`cat VERSION\`
 ver2=\`echo \$ver | tr "." "_"\`
-/projects/visit/thirdparty_shared_2_5_1/cmake/2.8.8/linux-x86_64_gcc-4.3/bin/cmake . -DCMAKE_BUILD_TYPE:STRING=Release >> ../../buildlog 2>&1
+/projects/visit/thirdparty_shared_2_6_0/cmake/2.8.8/linux-x86_64_gcc-4.3/bin/cmake . -DCMAKE_BUILD_TYPE:STRING=Release >> ../../buildlog 2>&1
 make -j 2 >> ../../buildlog 2>&1
 make -j 2 package >> ../../buildlog 2>&1
 mv visit\$ver2.linux-x86_64.tar.gz ../..
@@ -775,6 +722,7 @@ fi
 rm -f redsky
 cat <<EOF > redsky
 #!/bin/sh
+module load compilers/gcc-4.3.4
 if test ! -d /usr/tmp ; then
    mkdir /usr/tmp
 fi
@@ -792,7 +740,7 @@ gunzip -c $dist.tar.gz | tar xvf - > buildlog 2>&1
 cd $dist/src
 ver=\`cat VERSION\`
 ver2=\`echo \$ver | tr "." "_"\`
-/projects/visit/thirdparty_shared_2_5_1/cmake/2.8.8/linux-x86_64_gcc-4.1/bin/cmake . -DCMAKE_BUILD_TYPE:STRING=Release >> ../../buildlog 2>&1
+/projects/visit/thirdparty_shared_2_6_0/cmake/2.8.8/linux-x86_64_gcc-4.3/bin/cmake . -DCMAKE_BUILD_TYPE:STRING=Release >> ../../buildlog 2>&1
 make >> ../../buildlog 2>&1
 make package >> ../../buildlog 2>&1
 mv visit\$ver2.linux-x86_64.tar.gz ../..
@@ -828,5 +776,5 @@ fi
 #
 if [ $test = no ]
 then
-   rm -f hoth kickit sidious ubuntu1104_64 aztec rzthriller rzzeus euclid glory redsky
+   rm -f kickit sidious ubuntu1104_64 aztec rzthriller rzzeus euclid glory redsky
 fi

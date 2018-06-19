@@ -169,8 +169,7 @@ public:
     static void DisablePTY();
     static void SetCustomConnectionCallback(Connection* (*)(int, void *), void* cbData);
 protected:
-    bool StartMakingConnection(const std::string &rHost, int numRead,
-                               int numWrite);
+    bool StartMakingConnection(const std::string &remoteHost, int numRead, int numWrite);
     void FinishMakingConnection(int numRead, int numWrite);
     const char *SecureShell() const;
     const char *SecureShellArgs() const;

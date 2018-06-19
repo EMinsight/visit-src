@@ -37,15 +37,15 @@ VISIT_OPTION_DEFAULT(VISIT_PYTHON_DIR ${VISITHOME}/python/2.6.4/${VISITARCH})
 ##
 VISIT_OPTION_DEFAULT(VISIT_C_COMPILER gcc)
 VISIT_OPTION_DEFAULT(VISIT_CXX_COMPILER g++)
-VISIT_OPTION_DEFAULT(VISIT_C_FLAGS " -m64 -fPIC -fvisibility=hidden")
-VISIT_OPTION_DEFAULT(VISIT_CXX_FLAGS " -m64 -fPIC -fvisibility=hidden")
+VISIT_OPTION_DEFAULT(VISIT_C_FLAGS " -m64 -fvisibility=hidden")
+VISIT_OPTION_DEFAULT(VISIT_CXX_FLAGS " -m64 -fvisibility=hidden")
 
 ##
 ## Parallel Build Setup.
 ##
 VISIT_OPTION_DEFAULT(VISIT_PARALLEL ON)
 ## (configured w/ mpi compiler wrapper)
-VISIT_OPTION_DEFAULT(VISIT_MPI_COMPILER /usr/local/bin/mpic++)
+VISIT_OPTION_DEFAULT(VISIT_MPI_COMPILER /usr/local/bin/mpicc)
 
 ##############################################################
 ##

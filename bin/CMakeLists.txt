@@ -69,6 +69,9 @@
 #  Brad Whitlock, Fri May 18 16:09:34 PST 2012
 #  Use different resource file.
 #
+#  Brad Whitlock, Wed Mar 13 11:41:38 PDT 2013
+#  Install frontendlauncher.py
+#
 #****************************************************************************/
 
 #-----------------------------------------------------------------------------
@@ -81,6 +84,7 @@ SET(VISIT_BIN_FILES
         Doxyfile
         curv3dprep
         frontendlauncher
+        frontendlauncher.py
         makemili
         mkgrdbl
         mpeg2encode
@@ -116,7 +120,7 @@ FOREACH(VISIT_BIN_ITEM ${VISIT_BIN_DIRECTORIES})
 ENDFOREACH(VISIT_BIN_ITEM)
 
 IF (NOT WIN32)
-    FOREACH(VISIT_BIN_ITEM ${VISIT_BIN_FILES} internallauncher)
+    FOREACH(VISIT_BIN_ITEM ${VISIT_BIN_FILES} internallauncher makemovie.py makemoviemain.py)
         EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E copy
                                 ${CMAKE_CURRENT_SOURCE_DIR}/${VISIT_BIN_ITEM}
                                 ${CMAKE_CURRENT_BINARY_DIR}/${VISIT_BIN_ITEM})

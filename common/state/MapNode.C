@@ -329,6 +329,46 @@ MapNode::HasEntry(const string &key) const
     return entries.find(key) != entries.end();
 }
 
+// ****************************************************************************
+//  Method:  MapNode::HasNumericEntry
+//
+//  Purpose:
+//     Checks if the map has a numeric entry for the given key.
+//
+//  Programmer:  Kathleen Biagas 
+//  Creation:    January 9, 2012
+//
+// ****************************************************************************
+bool
+MapNode::HasNumericEntry(const string &key) const
+{
+    map<string,MapNode>::const_iterator itr = entries.find(key);
+    if(itr == entries.end())
+        return false;
+    else
+        return itr->second.IsNumeric();
+}
+
+// ****************************************************************************
+//  Method:  MapNode::HasNumericVectorEntry
+//
+//  Purpose:
+//     Checks if the map has a numeric vector entry for the given key.
+//
+//  Programmer:  Kathleen Biagas 
+//  Creation:    January 9, 2012
+//
+// ****************************************************************************
+bool
+MapNode::HasNumericVectorEntry(const string &key) const
+{
+    map<string,MapNode>::const_iterator itr = entries.find(key);
+    if(itr == entries.end())
+        return false;
+    else
+        return itr->second.IsNumericVector();
+}
+
 
 // ****************************************************************************
 //  Method:  MapNode::GetEntryNames
@@ -540,7 +580,7 @@ MapNode::SetValue(const JSONNode &node,bool decodeString)
 
     if(node.GetType() != JSONNode::JSONOBJECT) return;
 
-    const JSONNode::JSONObject& object = node.GetObject();
+    const JSONNode::JSONObject& object = node.GetJsonObject();
 
     //if( object.find("data") == object.end() ||
     //    object.find("metadata") == object.end()) return;
@@ -581,8 +621,8 @@ MapNode::SetValue(const JSONNode& data, const JSONNode& metadata, bool decodeStr
 {
     if(data.GetType() == JSONNode::JSONOBJECT)
     {
-        const JSONNode::JSONObject& object = data.GetObject();
-        const JSONNode::JSONObject& mobject = metadata.GetObject();
+        const JSONNode::JSONObject& object = data.GetJsonObject();
+        const JSONNode::JSONObject& mobject = metadata.GetJsonObject();
         JSONNode::JSONObject::const_iterator itr  = object.begin();
         JSONNode::JSONObject::const_iterator mitr = mobject.begin();
 

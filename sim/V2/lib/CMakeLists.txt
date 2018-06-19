@@ -38,61 +38,40 @@
 #   Dirk Schubert (Allinea Software), Mon Oct 15, 2012
 #   Build symV2dyn only if VISIT_DDT is chosen.
 #
+#   Eric Brugger, Wed Dec 26 15:31:11 PST 2012
+#   Always build symV2dyn, so that it can be used in the swig/python
+#   directory.
+#
+#   Kathleen Biagas, Mon Jan 7 18:04:23 PST 2012
+#   Don't build symV2dyn on Windows.
+#
 #****************************************************************************/
 
-SET(LIBSIM_SOURCES
-VisItControlInterface_V2.c 
-SimUI.c
-SimV2Tracing.c
-VisItFortran.c
-VisIt_CommandMetaData.c
-VisIt_CSGMesh.c
-VisIt_CurveData.c
-VisIt_CurveMetaData.c
-VisIt_CurvilinearMesh.c
-VisIt_DomainBoundaries.c 
-VisIt_DomainList.c
-VisIt_DomainNesting.c
-VisIt_ExpressionMetaData.c
-VisIt_MaterialData.c
-VisIt_MaterialMetaData.c
-VisIt_MeshMetaData.c
-VisIt_NameList.c
-VisIt_PointMesh.c
-VisIt_RectilinearMesh.c
-VisIt_SimulationMetaData.c
-VisIt_SpeciesData.c
-VisIt_SpeciesMetaData.c
-VisIt_UnstructuredMesh.c
-VisIt_VariableData.c
-VisIt_VariableMetaData.c
-)
+# See ../CMakeLists.txt for LIBSIM_SOURCES
 
 SET(FORTRAN_LIBSIM_SOURCES visitfortransimV2interface.c)
-
-SET(BUILD_SHARED_LIBS 0)
 
 INCLUDE_DIRECTORIES(
 ${CMAKE_CURRENT_SOURCE_DIR}
 ${VISIT_BINARY_DIR}/include
 )
 
-IF(VISIT_DDT)
-    # Allinea Software:
-    # Create a libsimV2.so shared library for the standard VisIt
-    # interface (normally provided by statically linking with libsimV2.a).
-    # -fvisibility is set to default (it is normally hidden).
-    # Preferred solution would be to tag each function to be exposed in
-    # the shared library individually instead of exposing everything,
-    # but this will do for now. Also provide debug info.
-    ADD_DEFINITIONS(-g -fvisibility=default)
-    ADD_LIBRARY(simV2dyn SHARED ${LIBSIM_SOURCES})
+IF(NOT WIN32)
+  # Allinea Software:
+  # Create a libsimV2.so shared library for the standard VisIt
+  # interface (normally provided by statically linking with libsimV2.a).
+  # -fvisibility is set to default (it is normally hidden).
+  # Preferred solution would be to tag each function to be exposed in
+  # the shared library individually instead of exposing everything,
+  # but this will do for now. Also provide debug info.
+  ADD_DEFINITIONS(-g -fvisibility=default)
+  ADD_LIBRARY(simV2dyn SHARED ${LIBSIM_SOURCES})
+  SET(LIBSIM_DYN simV2dyn)
+ENDIF(NOT WIN32)
 
-    SET(LIBSIM_DYN simV2dyn)
-ENDIF(VISIT_DDT)
+ADD_LIBRARY(simV2 STATIC ${LIBSIM_SOURCES})
+ADD_LIBRARY(simV2f STATIC ${FORTRAN_LIBSIM_SOURCES})
 
-ADD_LIBRARY(simV2 ${LIBSIM_SOURCES})
-ADD_LIBRARY(simV2f ${FORTRAN_LIBSIM_SOURCES})
 
 INSTALL(TARGETS simV2 simV2f ${LIBSIM_DYN}
     ARCHIVE DESTINATION ${VISIT_INSTALLED_VERSION}/libsim/V2/lib

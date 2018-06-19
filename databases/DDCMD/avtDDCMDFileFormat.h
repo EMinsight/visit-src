@@ -48,6 +48,8 @@
 #include <vectortypes.h>
 #include <visitstream.h>
 
+class vtkPoints;
+
 // ****************************************************************************
 //  Class: avtDDCMDFileFormat
 //
@@ -76,6 +78,9 @@
 //    Brad Whitlock, Mon Oct  8 15:29:33 PDT 2012
 //    Use stringVector and std::string in some places.
 //
+//    Brad Whitlock, Thu Dec  6 10:48:33 PST 2012
+//    I changed several members to unsigned long to allow for larger files.
+//
 // ****************************************************************************
 
 class DDCMDHeader
@@ -91,7 +96,7 @@ class DDCMDHeader
     inline unsigned int        GetHeaderLength() const { return headerLength; }
     inline const std::string  &GetDataType() const     { return dataType; }
     inline unsigned int        GetLRec() const         { return lRec; }
-    inline unsigned int        GetNRecord() const      { return nRecord; }
+    inline unsigned long       GetNRecord() const      { return nRecord; }
     inline unsigned int        GetNFiles() const       { return nFiles; }
     inline unsigned int        GetNFields() const      { return nFields; }
     inline unsigned int        GetSwap() const         { return swap; }
@@ -119,7 +124,8 @@ class DDCMDHeader
 
     unsigned int           headerLength;
     std::string            dataType;
-    unsigned int           lRec, nRecord, nFiles, nFields, swap;
+    unsigned int           lRec, nFiles, nFields, swap;
+    unsigned long          nRecord;
     double                 hMatrix[9];
     int                    loop;
     double                 time;
@@ -180,22 +186,22 @@ class avtDDCMDFileFormat : public avtSTMDFileFormat
 
     // Mesh information
     std::string            coordsUnit;
-    int                    nDims;
-    int                    nXMesh, nYMesh, nZMesh;
-    int                    nXMeshBlocks, nYMeshBlocks, nZMeshBlocks;
+    unsigned int           nDims;
+    unsigned int           nXMesh, nYMesh, nZMesh;
+    unsigned int           nXMeshBlocks, nYMeshBlocks, nZMeshBlocks;
     float                  xMin, yMin, zMin;
     float                  dX, dY, dZ;
     float                  coordsScale;
-    int                    nPoints;
+    unsigned long          nPoints;
 
     // Block information
-    int                    nXBlock, nYBlock, nZBlock;
-    int                    nZonesBlock;
-    int                    nVarsBlock;
+    unsigned int           nXBlock, nYBlock, nZBlock;
+    unsigned long          nZonesBlock;
+    unsigned int           nVarsBlock;
     stringVector           varNamesBlock, varUnitsBlock;
     float                **varsBlock;
-    float                 *coordsBlock;
-    unsigned              *pinfoBlock;
+    vtkPoints             *coordsBlock;
+    unsigned int          *pinfoBlock;
 
     // Variable information
     int                    labelOffset, iSpeciesOffset;
@@ -214,16 +220,16 @@ class avtDDCMDFileFormat : public avtSTMDFileFormat
 
     // File information
     bool                   dataRead;
-    long                  *nRecordsList;
-    int                   *fileNumberList;
-    off_t                 *fileOffsetList;
+    unsigned long         *nRecordsList;
+    unsigned int          *fileNumberList;
+    unsigned long         *fileOffsetList;
 
     virtual void           PopulateDatabaseMetaData(avtDatabaseMetaData *);
 
     struct DataRecords
     {
-        long  nRecords;
-        char *data;
+        unsigned long  nRecords;
+        char          *data;
     };
 
     void                   Convert(void *, int);

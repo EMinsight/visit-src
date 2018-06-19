@@ -619,6 +619,9 @@ GUI_LogQtMessages(QtMsgType type, const char *msg)
 //   Brad Whitlock, Tue May  1 10:06:12 PDT 2012
 //   Call GetVisItResourcesDirectory to get the translations directory.
 //
+//   Brad Whitlock, Tue Jan 15 10:30:20 PST 2013
+//   Give the file server list a pointer to the host profiles.
+//
 // ****************************************************************************
 
 QvisGUIApplication::QvisGUIApplication(int &argc, char **argv, ViewerProxy *proxy) :
@@ -706,6 +709,7 @@ QvisGUIApplication::QvisGUIApplication(int &argc, char **argv, ViewerProxy *prox
     SetViewerProxy( proxy ? proxy : new ViewerProxy());
     statusSubject = new StatusSubject;
     fileServer = new FileServerList;
+    fileServer->SetProfiles(GetViewerState()->GetHostProfileList());
     embeddedGUI = false;
 
     // Process any GUI arguments that should not be passed on to other programs.
@@ -1187,6 +1191,9 @@ QvisGUIApplication::HeavyInitialization()
 
         if(!inheritedGUI)
             fileServer->SetConnectCallback(StartMDServer, (void *)GetViewerProxy());
+        else
+            fileServer->SetStartServerCallback(StartSharedServer, (void *)GetViewerProxy());
+
         fileServer->Initialize();
         visitTimer->StopTimer(timeid, "stage 6 - Launching mdserver");
         break;
@@ -1611,7 +1618,9 @@ QvisGUIApplication::FinalInitialization()
         allowSocketRead = false;
 
         // Show the main window and the viewer window.
-        if(!embeddedGUI)
+        // If inherited then let the derived class control
+        // how it wants to show all the windows
+        if(!inheritedGUI)
         {
             mainWin->show();
             ShowAllWindows();
@@ -1765,10 +1774,11 @@ QvisGUIApplication::FinalInitialization()
                           "crash recovery file that may be present." << endl;
                 RemoveCrashRecoveryFile(true);
             }
+
+            // Set the timer indicating that it's okay to save the crash
+            // recovery file.
+            mainWin->OkayToSaveRecoveryFile();
         }
-        // Set the timer indicating that it's okay to save the crash 
-        // recovery file.
-        mainWin->OkayToSaveRecoveryFile();
         visitTimer->StopTimer(timeid, "stage 13 - Handling recovery file");
         break;
     case 14:
@@ -5504,6 +5514,15 @@ QvisGUIApplication::ReadSavedMainWindowGeometry(DataNode *parentNode,
 //   us to have metadata.
 //
 // ****************************************************************************
+
+/// setup a connection that does not require callbacks..
+void
+QvisGUIApplication::StartSharedServer(const std::string &hostName,
+    const stringVector &args, void *data)
+{
+    ViewerProxy *theViewer = (ViewerProxy *)data;
+    theViewer->GetViewerMethods()->OpenMDServer(hostName, args);
+}
 
 void
 QvisGUIApplication::StartMDServer(const std::string &hostName, 

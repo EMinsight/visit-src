@@ -300,10 +300,14 @@ IceTNetworkManager::TileLayout(size_t width, size_t height) const
 //    Brad Whitlock, Fri Jul 20 16:42:05 PDT 2012
 //    Use a different compositing strategy for curve windows.
 //
+//    Hank Childs, Tue Jul  9 15:12:18 PDT 2013
+//    Pass along checkThreshold argument so we can get kicked out of SR-mode
+//    when Ice-T falls back to normal compositing.
+//
 // ****************************************************************************
 
 avtDataObject_p
-IceTNetworkManager::Render(bool, intVector networkIds, bool getZBuffer,
+IceTNetworkManager::Render(bool checkThreshold, intVector networkIds, bool getZBuffer,
                            int annotMode, int windowID, bool leftEye)
 {
     int t0 = visitTimer->StartTimer();
@@ -344,7 +348,7 @@ IceTNetworkManager::Render(bool, intVector networkIds, bool getZBuffer,
         {
             debug2 << "Encountered transparency: falling back to old "
                       "SR / compositing routines." << std::endl;
-            CATCH_RETURN2(1, NetworkManager::Render(false, networkIds,
+            CATCH_RETURN2(1, NetworkManager::Render(checkThreshold, networkIds,
                                                     getZBuffer, annotMode,
                                                     windowID, leftEye));
         }
@@ -397,7 +401,7 @@ IceTNetworkManager::Render(bool, intVector networkIds, bool getZBuffer,
         // scalable threshold test (the 0.5 is to add some hysteresus to avoid 
         // the misfortune of oscillating switching of modes around the
         // threshold)
-        int scalableThreshold = GetScalableThreshold(windowID);
+        long scalableThreshold = GetScalableThreshold(windowID);
         if (GetTotalGlobalCellCounts(windowID) < 0.5 * scalableThreshold)
         {
             this->RenderCleanup(windowID);
@@ -782,7 +786,7 @@ IceTNetworkManager::StopTimer(int windowID)
     viswin->GetCaptureRegion(width_start, height_start, rows,cols,
                              this->r_mgmt.viewportedMode);
 
-    SNPRINTF(msg, 1023, "IceTNM::Render %d cells %d pixels",
+    SNPRINTF(msg, 1023, "IceTNM::Render %ld cells %d pixels",
              GetTotalGlobalCellCounts(windowID), rows*cols);
     visitTimer->StopTimer(this->r_mgmt.timer, msg);
     this->r_mgmt.timer = -1;

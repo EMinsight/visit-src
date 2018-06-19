@@ -38,16 +38,16 @@ function bv_cmake_force
 
 function cmake_set_vars_helper
 {
-   CMAKE_VERSION=`${CMAKE_COMMAND} --version`
+   CMAKE_VERSION=`"${CMAKE_COMMAND}" --version`
    CMAKE_VERSION=${CMAKE_VERSION/cmake version }
-   CMAKE_BUILD_DIR=`${CMAKE_COMMAND} --system-information 2>& 1 | grep _CMAKE_INSTALL_DIR | grep -v _CMAKE_INSTALL_DIR:INTERNAL | sed -e s/\"//g -e s/_CMAKE_INSTALL_DIR//g`
+   CMAKE_BUILD_DIR=`"${CMAKE_COMMAND}" --system-information 2>& 1 | grep _CMAKE_INSTALL_DIR | grep -v _CMAKE_INSTALL_DIR:INTERNAL | sed -e s/\"//g -e s/_CMAKE_INSTALL_DIR//g`
    CMAKE_BUILD_DIR=`echo $CMAKE_BUILD_DIR`
    CMAKE_INSTALL="$CMAKE_BUILD_DIR/bin"
    CMAKE_ROOT=`"$CMAKE_COMMAND" --system-information 2>&1 | grep CMAKE_ROOT | grep -v CMAKE_ROOT:INTERNAL | sed -e s/\"//g -e s/CMAKE_ROOT//g` 
    CMAKE_ROOT=`echo "$CMAKE_ROOT"`
    CMAKE_ROOT=`echo $CMAKE_ROOT`
 
-   echo $CMAKE_VERSION "--> $CMAKE_BUILD_DIR" "--> $CMAKE_INSTALL" "--> $CMAKE_ROOT"
+   echo "version: $CMAKE_VERSION build: $CMAKE_BUILD_DIR bin: $CMAKE_INSTALL root: $CMAKE_ROOT"
 }
 
 function bv_cmake_system_cmake

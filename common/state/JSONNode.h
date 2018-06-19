@@ -54,6 +54,8 @@
 //  Creation:    December 13, 2007
 //
 //  Modifications:
+//    Kathleen Biagas Fri Nov 16 04:45:15 MST 2012
+//    Renamed 'GetObject' to 'GetJsonObject' to avoid name conflict on Windows.
 //
 // ****************************************************************************
 
@@ -113,20 +115,20 @@ class STATE_API JSONNode
 
     virtual  ~JSONNode();
 
-    JSONType GetType() const { return type; } const
+    JSONType GetType()   const { return type; }
 
     bool isNullValue()   const { return json.num.nullValue; }
-    bool   GetBool()    const { return json.num.boolValue; }
-    int    GetInt()       const { return (int)GetLong(); }
-    long   GetLong()      const { return json.num.lnumber; }
-    float  GetFloat()     const { return (float)GetDouble(); }
+    bool   GetBool()     const { return json.num.boolValue; }
+    int    GetInt()      const { return (int)GetLong(); }
+    long   GetLong()     const { return json.num.lnumber; }
+    float  GetFloat()    const { return (float)GetDouble(); }
     double GetDouble() const { return type == JSONINTEGER || type == JSONLONG ?
                                         (double)json.num.lnumber :
                                                 json.num.dnumber; }
 
     std::string GetString() const { return json.str; }
     JSONArray& GetArray() { return json.array; }
-    JSONObject& GetObject() { return json.object; }
+    JSONObject& GetJsonObject() { return json.object; }
 
 //    bool isNullValue()  { return json.num.nullValue; }
 //    bool   GetBool()     { return json.num.boolValue; }
@@ -136,7 +138,7 @@ class STATE_API JSONNode
 //    double GetDouble()   { return json.num.dnumber; }
 //    std::string GetString() { return json.str; }
     const JSONArray& GetArray() const { return json.array; }
-    const JSONObject& GetObject() const { return json.object; }
+    const JSONObject& GetJsonObject() const { return json.object; }
 
     void SetNullValue();
     //JSONNode  *operator=(const void*& v);

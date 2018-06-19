@@ -36,6 +36,7 @@
             <lib name="visus"/>
             <lib name="pyside"/>
             <lib name="manta"/>
+            <lib name="mpich"/>
         </optional>
 
 
@@ -51,29 +52,23 @@
         <group name="optional" comment="All optional libraries">
             <lib name="szip"/>
             <lib name="hdf5"/>
-            <lib name="mili"/>
-            <lib name="icet"/>
-            <lib name="hdf4"/>
             <lib name="netcdf"/>
             <lib name="cgns"/>
             <lib name="gdal"/>
             <lib name="exodus"/>
-            <lib name="tcmalloc"/>
             <lib name="boxlib"/>
             <lib name="cfitsio"/>
-            <lib name="mdsplus"/>
             <lib name="h5part"/>
             <lib name="fastbit"/>
             <lib name="ccmio"/>
             <lib name="silo"/>
-            <lib name="itaps"/>
             <lib name="advio"/>
             <lib name="xdmf"/>
             <lib name="mxml"/>
             <lib name="adios"/>
-            <lib name="visus"/>
             <lib name="pyside"/>
             <lib name="manta"/>
+            <lib name="mpich"/>
         </group>
 
 
@@ -97,9 +92,7 @@
             <lib name="fastbit"/>
             <lib name="gdal"/>
             <lib name="h5part"/>
-            <lib name="hdf4"/>
             <lib name="hdf5"/>
-            <lib name="itaps"/>
             <lib name="mxml"/>
             <lib name="netcdf"/>
             <lib name="silo"/>
@@ -119,9 +112,7 @@
             <lib name="fastbit"/>
             <lib name="gdal"/>
             <lib name="h5part"/>
-            <lib name="hdf4"/>
             <lib name="hdf5"/>
-            <lib name="itaps"/>
             <lib name="mxml"/>
             <lib name="netcdf"/>
             <lib name="silo"/>
@@ -149,6 +140,8 @@
             <lib name="visus"/>
             <lib name="mdsplus"/>
             <lib name="tcmalloc"/>
+            <lib name="itaps"/>
+            <lib name="hdf4"/>
         </group>
     </license>
 
@@ -169,6 +162,7 @@
 
         <!-- optional libraries -->
         <optional>
+            <lib name="szip"/>
             <lib name="netcdf"/>
             <lib name="hdf5"/>
             <lib name="icet"/>
@@ -186,9 +180,9 @@
         </group>
 
         <group name="optional" comment="All optional libraries">
+            <lib name="szip"/>
             <lib name="netcdf"/>
             <lib name="hdf5"/>
-            <lib name="icet"/>
         </group>
 
 
@@ -201,6 +195,7 @@
 
         <!-- nodbio flag -->
         <group name="dbio-only" comment="Disables EVERYTHING but I/O.">
+            <lib name="szip"/>
             <lib name="netcdf"/>
             <lib name="hdf5"/>
             <lib name="no-mesa"/>
@@ -210,6 +205,7 @@
 
         <!-- all io libraries -->
         <group name="all-io" comment="Build all available I/O libraries">
+            <lib name="szip"/>
             <lib name="netcdf"/>
             <lib name="hdf5"/>
         </group>

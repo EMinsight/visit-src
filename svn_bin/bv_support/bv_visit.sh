@@ -40,17 +40,17 @@ function bv_visit_info
     # release tag.
     ############################################################################
 
-    export VISIT_VERSION=${VISIT_VERSION:-"2.5.2"}
+    export VISIT_VERSION=${VISIT_VERSION:-"2.6.3"}
     
     ####
     # Trunk:
     ####
-    export SVN_SOURCE_PATH="trunk/src"
+    #export SVN_SOURCE_PATH="trunk/src"
 
     ###
     # Release:
     ###
-    #export SVN_SOURCE_PATH="tags/${VISIT_VERSION}/src"
+    export SVN_SOURCE_PATH="tags/${VISIT_VERSION}/src"
 }
 
 #print variables used by this module
@@ -230,13 +230,14 @@ EOF
         fi
     fi
     cd $VISIT_DIR
-    cp $START_DIR/$(hostname).cmake config-site
+    #cp $START_DIR/$(hostname).cmake config-site
 
     #
     # Call cmake
     # 
     info "Configuring VisIt . . ."
-    FEATURES="-DVISIT_INSTALL_THIRD_PARTY:BOOL=ON"
+    FEATURES="-DVISIT_CONFIG_SITE:FILEPATH=${START_DIR}/${HOSTCONF}"
+    FEATURES="${FEATURES} -DVISIT_INSTALL_THIRD_PARTY:BOOL=ON"
     if [[ "$parallel" == "yes" ]] ; then
         FEATURES="${FEATURES} -DVISIT_PARALLEL:BOOL=ON"
     fi
@@ -256,8 +257,8 @@ EOF
     if [[ "${DO_JAVA}" == "yes" ]] ; then
        FEATURES="${FEATURES} -DVISIT_JAVA:BOOL=ON"
     fi
-    if [[ "${DO_SLIVR}" == "yes" ]] ; then
-       FEATURES="${FEATURES} -DVISIT_SLIVR:BOOL=ON"
+    if [[ "${DO_SLIVR}" == "no" ]] ; then
+       FEATURES="${FEATURES} -DVISIT_SLIVR:BOOL=OFF"
     fi
     if [[ "${VISIT_INSTALL_PREFIX}" != "" ]] ; then
        FEATURES="${FEATURES} -DCMAKE_INSTALL_PREFIX:PATH=${VISIT_INSTALL_PREFIX}"

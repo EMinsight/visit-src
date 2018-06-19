@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -308,6 +308,32 @@
 #    Kathleen Biagas, Wed Sep 12 16:02:02 PDT 2012
 #    Added VISIT_INSTALL_PROFILES_TO_HOST as a first-class VisIt option.
 #
+#    Kathleen Biagas, Mon Dec 17 16:56:38 MST 2012
+#    Use CMake's FindMPI module for windows.
+#
+#    Cyrus Harrison, Thu Jan 10 10:03:50 PST 2013
+#    Try to capture the full cmake invocation command line.
+#    On non windows systems, generate a script that allows re-config
+#    from scratch using the captured invocation command line.
+#
+#    Mark C. Miller, Tue Jan 15 17:15:43 PST 2013
+#    Modified cmake invokation logic to ensure the CMAKE_INVOKE variable
+#    is indeed (forced) cached so it winds up in CMakeCache.txt and
+#    adjusted name of the shell script to recmake_visit.sh.
+#
+#    Eric Brugger, Tue Mar 19 10:40:49 PDT 2013
+#    Added code to only build the paraDIS reader if boost 1.36.0 or later
+#    was installed on the system.
+#
+#    Eric Brugger, Wed Mar 20 17:23:28 PDT 2013
+#    I modified the script to have VisIt use the system boost everywhere
+#    instead of the internal boost if the system boost is usable by
+#    paraDIS. This is to avoid using the system boost in the paraDIS
+#    reader and the internal boost in the rest of visit. This fix was
+#    recommended by Gunther. The other option was to add more of boost
+#    to the internal boost so that it could be used by paraDIS, but that
+#    seemed like more work.
+#
 #****************************************************************************/
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8.8 FATAL_ERROR)
@@ -315,6 +341,38 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.8.8 FATAL_ERROR)
 IF (COMMAND cmake_policy)
     cmake_policy(SET CMP0003 NEW)
 ENDIF (COMMAND cmake_policy)
+
+#
+# Try to capture the initial set of cmake command line args passed by
+# the user for configuration.
+# Recipe taken from http://stackoverflow.com/questions/10205986/how-to-capture-cmake-command-line-arguments
+#
+# Note: The entrires will live on CMakeCache.txt, so re-configuring with
+# a command line that doesn't include an option won't remove it. You need
+# to remove the CMakeCache.txt file, or override the value via the command line.
+#
+#
+GET_CMAKE_PROPERTY(CACHE_VARS CACHE_VARIABLES)
+FOREACH(CACHE_VAR ${CACHE_VARS})
+  GET_PROPERTY(CACHE_VAR_HELPSTRING CACHE ${CACHE_VAR} PROPERTY HELPSTRING)
+  IF(CACHE_VAR_HELPSTRING STREQUAL "No help, variable specified on the command line.")
+    GET_PROPERTY(CACHE_VAR_TYPE CACHE ${CACHE_VAR} PROPERTY TYPE)
+    IF(CACHE_VAR_TYPE STREQUAL "UNINITIALIZED")
+      SET(CACHE_VAR_TYPE)
+    ELSE(CACHE_VAR_TYPE STREQUAL "UNINITIALIZED")
+      SET(CACHE_VAR_TYPE :${CACHE_VAR_TYPE})
+    ENDIF()
+    SET(CMAKE_INVOKE_ARGS "${CMAKE_INVOKE_ARGS} -D${CACHE_VAR}${CACHE_VAR_TYPE}=\"${${CACHE_VAR}}\"")
+  ENDIF()
+ENDFOREACH(CACHE_VAR ${CACHE_VARS})
+# Record the full command line invocation.
+SET(CMAKE_INVOKE "${CMAKE_COMMAND} ${CMAKE_INVOKE_ARGS} ${CMAKE_CURRENT_SOURCE_DIR}" CACHE STRING "Command used to invoke cmake" FORCE)
+# Create a simple shell script that allows us to reinvoke cmake with the captured command line.
+IF (NOT WIN32)
+    FILE(WRITE ${CMAKE_BINARY_DIR}/recmake_visit.sh "#!/bin/sh\n"
+                                                     "rm -f CMakeCache.txt\n"
+                                                     "${CMAKE_INVOKE}\n")
+ENDIF (NOT WIN32)
 
 
 # Tell the CMake makefile generator to not have rules depend on
@@ -524,6 +582,7 @@ IF(VISIT_MESA_DIR)
   OPTION(VISIT_USE_MANGLED_MESA "Enable use of mangled Mesa classes in VisIt"
 ON)
 ENDIF(VISIT_MESA_DIR)
+OPTION(VISIT_MPICH_INSTALL "Install MPICH into VisIt binary distribution" OFF)
 
 SET(VISIT_INSTALL_PROFILES_TO_HOSTS "" CACHE STRING "Install specified host profiles (no action if empty)." )
 
@@ -743,7 +802,7 @@ MACRO(VISIT_INSTALL_TARGETS_RELATIVE dest_dir)
                     GET_FILENAME_COMPONENT(filename ${filename} NAME)
                     INSTALL(CODE
                         "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
-                             COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib ${VISIT_OSX_USE_RPATH} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/${dest_dir}/${filename}\"
+                             COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib ${VISIT_MPICH_INSTALL} ${VISIT_OSX_USE_RPATH} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/${dest_dir}/${filename}\"
                              OUTPUT_VARIABLE OSXOUT)
                          MESSAGE(STATUS \"\${OSXOUT}\")
                         ")
@@ -754,7 +813,7 @@ MACRO(VISIT_INSTALL_TARGETS_RELATIVE dest_dir)
                     GET_FILENAME_COMPONENT(filename ${filename} NAME)
                     INSTALL(CODE
                         "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
-                             COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib ${VISIT_OSX_USE_RPATH} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/${dest_dir}/${filename}\"
+                             COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib ${VISIT_MPICH_INSTALL} ${VISIT_OSX_USE_RPATH} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/${dest_dir}/${filename}\"
                              OUTPUT_VARIABLE OSXOUT)
                          MESSAGE(STATUS \"\${OSXOUT}\")
                         ")
@@ -767,14 +826,14 @@ MACRO(VISIT_INSTALL_TARGETS_RELATIVE dest_dir)
                     IF(${bundle} STREQUAL "ON")
                         INSTALL(CODE
                             "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
-                                COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -bundle ${VISIT_OSX_USE_RPATH} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_BIN}/${dest_dir}\" ${filename}
+                                COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -bundle ${VISIT_MPICH_INSTALL} ${VISIT_OSX_USE_RPATH} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_BIN}/${dest_dir}\" ${filename}
                                 OUTPUT_VARIABLE OSXOUT)
                              MESSAGE(STATUS \"\${OSXOUT}\")
                             ")
                     ELSE(${bundle} STREQUAL "ON")
                         INSTALL(CODE
                             "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
-                                COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -exe ${VISIT_OSX_USE_RPATH} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_BIN}//${dest_dir}${filename}\"
+                                COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -exe ${VISIT_MPICH_INSTALL} ${VISIT_OSX_USE_RPATH} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_BIN}//${dest_dir}${filename}\"
                                 OUTPUT_VARIABLE OSXOUT)
                              MESSAGE(STATUS \"\${OSXOUT}\")
                             ")
@@ -819,8 +878,35 @@ INCLUDE(${CMAKE_ROOT}/Modules/CMakeBackwardCompatibilityCXX.cmake)
 INCLUDE(${CMAKE_ROOT}/Modules/CheckTypeSize.cmake)
 INCLUDE(${CMAKE_ROOT}/Modules/CheckFunctionExists.cmake)
 INCLUDE(${CMAKE_ROOT}/Modules/CheckSymbolExists.cmake)
+INCLUDE(${CMAKE_ROOT}/Modules/FindBoost.cmake)
 INCLUDE(${CMAKE_ROOT}/Modules/FindX11.cmake)
 INCLUDE(${CMAKE_ROOT}/Modules/TestBigEndian.cmake)
+
+# Set Boost_USABLE_PARADIS if boost 1.36.0 or later is found. ParaDIS
+# uses make_shared, which was only introduced in boost 1.36.0.
+IF(Boost_VERSION)
+    MESSAGE(STATUS "  Boost_VERSION=${Boost_VERSION}")
+
+    # FindBoost.cmake does not always properly set the major, minor
+    # and subminor versions correctly, so do that ourselves.
+    STRING(REPLACE "." "0" Boost_VERSION_NUMERIC "${Boost_VERSION}")
+    SET(Boost_MAJOR_VERSION 0)
+    SET(Boost_MINOR_VERSION 0)
+    SET(Boost_SUBMINOR_VERSION 0)
+    IF(NOT "${Boost_VERSION_NUMERIC}" STREQUAL "0")
+        MATH(EXPR Boost_MAJOR_VERSION "${Boost_VERSION_NUMERIC} / 100000")
+        MATH(EXPR Boost_MINOR_VERSION "${Boost_VERSION_NUMERIC} / 100 % 1000")
+        MATH(EXPR Boost_SUBMINOR_VERSION "${Boost_VERSION_NUMERIC} % 100")
+    ENDIF(NOT "${Boost_VERSION_NUMERIC}" STREQUAL "0")
+    MESSAGE(STATUS "  Boost_MAJOR_VERSION=${Boost_MAJOR_VERSION}")
+    MESSAGE(STATUS "  Boost_MINOR_VERSION=${Boost_MINOR_VERSION}")
+    MESSAGE(STATUS "  Boost_SUBMINOR_VERSION=${Boost_SUBMINOR_VERSION}")
+
+    IF(Boost_MAJOR_VERSION GREATER 0 AND Boost_MINOR_VERSION GREATER 35)
+        SET(Boost_USABLE_PARADIS 1)
+        MESSAGE(STATUS "  Boost usable by paraDIS")
+    ENDIF(Boost_MAJOR_VERSION GREATER 0 AND Boost_MINOR_VERSION GREATER 35)
+ENDIF(Boost_VERSION)
 
 IF( (VISIT_PYTHON_SCRIPTING OR VISIT_PYTHON_FILTERS) AND NOT VISIT_DBIO_ONLY)
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItPython.cmake)
@@ -874,6 +960,12 @@ INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItVTK.cmake)
 #   Disable python filters.
 #-----------------------------------------------------------------------------
 
+# Disable Python filters if we don't have Python.
+IF(VISIT_PYTHON_FILTERS AND NOT PYTHONLIBS_FOUND)
+    SET(VISIT_PYTHON_FILTERS OFF)
+    MESSAGE(STATUS "Python Engine Filters disabled because Python was not found.")
+ENDIF(VISIT_PYTHON_FILTERS AND NOT PYTHONLIBS_FOUND)
+
 # VTK Python's wrappers are not available with a static build of VTK.
 IF(VISIT_PYTHON_FILTERS AND VISIT_STATIC)
     SET(VISIT_PYTHON_FILTERS OFF)
@@ -904,16 +996,18 @@ IF(NOT VISIT_DBIO_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_SERVER_COMPONENTS
 ENDIF(NOT VISIT_DBIO_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_SERVER_COMPONENTS_ONLY)
 
 # Configure PySide Support
-IF(VISIT_PYTHON_SCRIPTING AND NOT VISIT_DBIO_ONLY
+IF(VISIT_PYTHON_SCRIPTING AND PYTHONLIBS_FOUND
+                          AND NOT VISIT_DBIO_ONLY
                           AND NOT VISIT_ENGINE_ONLY
                           AND NOT VISIT_SERVER_COMPONENTS_ONLY)
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindPySide.cmake)
     IF(PYSIDE_FOUND)
         SET(HAVE_PYSIDE 1)
     ENDIF(PYSIDE_FOUND)
-ENDIF(VISIT_PYTHON_SCRIPTING AND NOT VISIT_DBIO_ONLY
-                          AND NOT VISIT_ENGINE_ONLY
-                          AND NOT VISIT_SERVER_COMPONENTS_ONLY)
+ENDIF(VISIT_PYTHON_SCRIPTING AND PYTHONLIBS_FOUND
+                             AND NOT VISIT_DBIO_ONLY
+                             AND NOT VISIT_ENGINE_ONLY
+                             AND NOT VISIT_SERVER_COMPONENTS_ONLY)
 
 # Treat GLEW as a 3rd party builtin.
 SET(GLEW_FOUND 1)
@@ -929,7 +1023,11 @@ ENDIF(VISIT_TUVOK)
 
 # Set up boost (interval) library
 SET(HAVE_BILIB 1)
-SET(BOOST_INCLUDE_DIR ${VISIT_SOURCE_DIR}/third_party_builtin/bilib/boost_1_42_0    CACHE PATH "Path to boost lib")
+IF(Boost_USABLE_PARADIS)
+    SET(BOOST_INCLUDE_DIR ${Boost_INCLUDE_DIR} CACHE PATH "Path to boost lib")
+ELSE(Boost_USABLE_PARADIS)
+    SET(BOOST_INCLUDE_DIR ${VISIT_SOURCE_DIR}/third_party_builtin/bilib/boost_1_42_0 CACHE PATH "Path to boost lib")
+ENDIF(Boost_USABLE_PARADIS)
 
 
 
@@ -1226,7 +1324,7 @@ IF(VISIT_PARALLEL)
         ELSE(VISIT_MPI_LIBS OR VISIT_MPI_FORTRAN_LIBS)
             IF(WIN32)
               IF(NOT MPI_FOUND)
-                INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindMPI.cmake)
+                INCLUDE(${CMAKE_ROOT}/Modules/FindMPI.cmake)
                 IF(MPI_FOUND)
                   STRING(REPLACE " " ";" VPFLAGS "${VPFLAGS}")
                   SET(VISIT_PARALLEL_DEFS "${VPFLAGS}"
@@ -1874,6 +1972,50 @@ ELSE(UNIX)
    SET(vtk_include_relative_path "/vtk/vtk-5.8")
 ENDIF(UNIX)
 
+# If we're installing MPICH as our MPI then filter the parallel flags so
+# libraries and includes will come from our internal MPICH installation.
+IF(VISIT_MPICH_INSTALL)
+    STRING(REPLACE "${VISIT_MPICH_DIR}/lib" "\${VISIT_LIBRARY_DIR}"
+                    f0_VISIT_PARALLEL_CXXFLAGS
+                    "${VISIT_PARALLEL_CXXFLAGS}")
+    STRING(REPLACE "${VISIT_MPICH_DIR}/include" "\${VISIT_INCLUDE_DIR}/mpich/include"
+                    filtered_VISIT_PARALLEL_CXXFLAGS
+                    "${f0_VISIT_PARALLEL_CXXFLAGS}")
+
+    STRING(REPLACE "${VISIT_MPICH_DIR}/lib" "\${VISIT_LIBRARY_DIR}"
+                    f0_VISIT_PARALLEL_LINKER_FLAGS
+                    "${VISIT_PARALLEL_LINKER_FLAGS}")
+    STRING(REPLACE "${VISIT_MPICH_DIR}/include" "\${VISIT_INCLUDE_DIR}/mpich/include"
+                    filtered_VISIT_PARALLEL_LINKER_FLAGS
+                    "${f0_VISIT_PARALLEL_LINKER_FLAGS}")
+
+    STRING(REPLACE "${VISIT_MPICH_DIR}/lib" "\${VISIT_LIBRARY_DIR}"
+                    f0_VISIT_PARALLEL_LIBS
+                    "${VISIT_PARALLEL_LIBS}")
+    STRING(REPLACE "${VISIT_MPICH_DIR}/include" "\${VISIT_INCLUDE_DIR}/mpich/include"
+                    filtered_VISIT_PARALLEL_LIBS
+                    "${f0_VISIT_PARALLEL_LIBS}")
+
+    STRING(REPLACE "${VISIT_MPICH_DIR}/lib" "\${VISIT_LIBRARY_DIR}"
+                    f0_VISIT_PARALLEL_INCLUDE
+                    "${VISIT_PARALLEL_INCLUDE}")
+    STRING(REPLACE "${VISIT_MPICH_DIR}/include" "\${VISIT_INCLUDE_DIR}/mpich/include"
+                    filtered_VISIT_PARALLEL_INCLUDE
+                    "${f0_VISIT_PARALLEL_INCLUDE}")
+
+    STRING(REPLACE "${VISIT_MPICH_DIR}/lib" "\${VISIT_LIBRARY_DIR}"
+                    f0_VISIT_PARALLEL_DEFS
+                    "${VISIT_PARALLEL_DEFS}")
+    STRING(REPLACE "${VISIT_MPICH_DIR}/include" "\${VISIT_INCLUDE_DIR}/mpich/include"
+                    filtered_VISIT_PARALLEL_DEFS
+                    "${f0_VISIT_PARALLEL_DEFS}")
+ELSE(VISIT_MPICH_INSTALL)
+    SET(filtered_VISIT_PARALLEL_CXXFLAGS     "${VISIT_PARALLEL_CXXFLAGS}")
+    SET(filtered_VISIT_PARALLEL_LINKER_FLAGS "${VISIT_PARALLEL_LINKER_FLAGS}")
+    SET(filtered_VISIT_PARALLEL_LIBS         "${VISIT_PARALLEL_LIBS}")
+    SET(filtered_VISIT_PARALLEL_INCLUDE      "${VISIT_PARALLEL_INCLUDE}")
+    SET(filtered_VISIT_PARALLEL_DEFS         "${VISIT_PARALLEL_DEFS}")
+ENDIF(VISIT_MPICH_INSTALL)
 
 CONFIGURE_FILE(${VISIT_SOURCE_DIR}/CMake/PluginVsInstall.cmake.in
                ${VISIT_BINARY_DIR}/CMake/PluginVsInstall.cmake @ONLY IMMEDIATE)
@@ -1886,6 +2028,53 @@ INSTALL(FILES ${VISIT_BINARY_DIR}/CMake/PluginVsInstall.cmake
 UNSET(python_include_relative_path)
 UNSET(exodusii_include_relative_path)
 UNSET(vtk_include_relative_path)
+
+#-----------------------------------------------------------------------------
+# If we're installing MPICH into our VisIt distribution then let's do that by
+# adding some install commands.
+#-----------------------------------------------------------------------------
+IF(VISIT_MPICH_INSTALL)
+    INSTALL(DIRECTORY ${VISIT_MPICH_DIR}/include
+        DESTINATION ${VISIT_INSTALLED_VERSION_INCLUDE}/mpich
+        FILE_PERMISSIONS OWNER_READ OWNER_WRITE
+                         GROUP_READ GROUP_WRITE
+                         WORLD_READ
+        DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
+                              GROUP_READ GROUP_WRITE GROUP_EXECUTE
+                              WORLD_READ             WORLD_EXECUTE
+        CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
+    )
+    INSTALL(DIRECTORY ${VISIT_MPICH_DIR}/bin
+        DESTINATION ${VISIT_INSTALLED_VERSION}
+        FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
+                         GROUP_READ GROUP_WRITE GROUP_EXECUTE
+                         WORLD_READ
+        DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
+                              GROUP_READ GROUP_WRITE GROUP_EXECUTE
+                              WORLD_READ             WORLD_EXECUTE
+        CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
+    )
+    INSTALL(DIRECTORY ${VISIT_MPICH_DIR}/lib
+        DESTINATION ${VISIT_INSTALLED_VERSION}
+        FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
+                         GROUP_READ GROUP_WRITE GROUP_EXECUTE
+                         WORLD_READ
+        DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
+                              GROUP_READ GROUP_WRITE GROUP_EXECUTE
+                              WORLD_READ             WORLD_EXECUTE
+        CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
+    )
+    IF(APPLE)
+        FOREACH(filename libmpich.dylib libopa.dylib libmpl.dylib libpmpich.dylib)
+            INSTALL(CODE
+                    "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
+                        COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib ${VISIT_MPICH_INSTALL} ${VISIT_OSX_USE_RPATH} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/${filename}\"
+                        OUTPUT_VARIABLE OSXOUT)
+                     MESSAGE(STATUS \"\${OSXOUT}\")
+                    ")
+        ENDFOREACH(filename)
+    ENDIF(APPLE)
+ENDIF(VISIT_MPICH_INSTALL)
 
 #-----------------------------------------------------------------------------
 # Set flags & options from config-site files after everything is set up since
@@ -2063,26 +2252,36 @@ FUNCTION(FILTER_LIBRARY_DEPENDENCIES filename)
                    \"/../archives/libQtUiTools.a\"
                    filteredline3
                    \"\${filteredline2}\")
+
+            IF(\"${VISIT_MPICH_DIR}\" STREQUAL \"\")
+                SET(filteredline4 \"\${filteredline3}\")
+            ELSE(\"${VISIT_MPICH_DIR}\" STREQUAL \"\")
+                STRING(REPLACE \"${VISIT_MPICH_DIR}/lib/\"
+                       \"\\\${VISIT_LIBRARY_DIR}/\"
+                       filteredline4
+                       \"\${filteredline3}\")
+            ENDIF(\"${VISIT_MPICH_DIR}\" STREQUAL \"\")
+
             IF(NOT WIN32)
-                FILE(APPEND \${filename} \"\${filteredline3}\\n\")
+                FILE(APPEND \${filename} \"\${filteredline4}\\n\")
             ELSE(NOT WIN32)
                 # extra replacements that need to be made on Windows.
                 STRING(REPLACE \"${PD}\"
                        \"\\\${VISIT_LIBRARY_DIR}\"
-                       filteredline4
-                       \"\${filteredline3}\")
-                STRING(REPLACE \"${ZLIB_LIBRARY_DIR}\"
-                       \"\\\${VISIT_LIBRARY_DIR}\"
                        filteredline5
                        \"\${filteredline4}\")
-                STRING(REPLACE \"viewer_LIB_DEPENDS\"
-                       \"viewerlib_LIB_DEPENDS\"
+                STRING(REPLACE \"${ZLIB_LIBRARY_DIR}\"
+                       \"\\\${VISIT_LIBRARY_DIR}\"
                        filteredline6
                        \"\${filteredline5}\")
+                STRING(REPLACE \"viewer_LIB_DEPENDS\"
+                       \"viewerlib_LIB_DEPENDS\"
+                       filteredline7
+                       \"\${filteredline6}\")
                 STRING(REPLACE \"gui_LIB_DEPENDS\"
                        \"guilib_LIB_DEPENDS\"
-                       filteredline7 \"\${filteredline6}\")
-                FILE(APPEND \${filename} \"\${filteredline7}\\n\")
+                       filteredline8 \"\${filteredline7}\")
+                FILE(APPEND \${filename} \"\${filteredline8}\\n\")
             ENDIF(NOT WIN32)
         ENDIF(\${outputLine} STREQUAL \"TRUE\")
     ENDFOREACH(line)
@@ -2185,4 +2384,10 @@ ELSE (NOT WIN32)
         MESSAGE(FATAL_ERROR "NSIS installer package requested, but 'makensis' could not be found.")
       ENDIF(${MAKENSIS_FOUND})
     ENDIF(VISIT_MAKE_NSIS_INSTALLER)
+ENDIF (NOT WIN32)
+
+IF (NOT WIN32)
+    MESSAGE(STATUS "\n\nUse recmake_visit.sh or search for `CMAKE_INVOKE' in CMakeCache.txt to re-run CMake with the same arguments\n\n")
+ELSE (NOT WIN32)
+    MESSAGE(STATUS "\n\nSearch for `CMAKE_INVOKE' in CMakeCache.txt to re-run CMake with the same arguments\n\n")
 ENDIF (NOT WIN32)

@@ -62,13 +62,15 @@
 #include <ViewerState.h>
 #include <VisItException.h>
 #include <Xfer.h>
-
+#include <JSONNode.h>
 #include <snprintf.h>
 
 #include <cstring>
 #include <cstdlib>
 #ifdef _WIN32
 #include <io.h>
+#else
+#include <unistd.h>
 #endif
 
 
@@ -487,7 +489,7 @@ bool ViewerProxy::ConnectToExistingViewer(const std::string& host, const int& po
         return false;
     }
 
-    std::cout << "connecting host: " << host << " port " << port << std::endl;
+    std::cout << "connecting to host: " << host << " port " << port << std::endl;
     struct sockaddr_in sin;
     struct hostent *server = gethostbyname(host.c_str());
     memset(&sin, 0, sizeof(sin));
@@ -500,21 +502,22 @@ bool ViewerProxy::ConnectToExistingViewer(const std::string& host, const int& po
         std::cerr << "Unable to connect to Viewer" << std::endl;
         CloseSocket(testSocket);
         return false;
-        //exit(1);
     }
 
     //Step 2: Send password to verify that you should be added
+    std::ostringstream handshake;
+    handshake << "{ \"password\" : \"" << password << "\" }";
+
 #ifndef _WIN32
-    int nwrite = write(testSocket,password.c_str(),password.length()); 
+    int nwrite = write(testSocket,handshake.str().c_str(),handshake.str().length());
 #else
-    int nwrite = _write(testSocket,password.c_str(),password.length()); 
+    int nwrite = _write(testSocket,handshake.str().c_str(),handshake.str().length());
 #endif
     if(nwrite < 0)
     {
         std::cerr << "Error writing to Viewer" << std::endl;
         CloseSocket(testSocket);
         return false;
-        //exit(1);
     }
 
     //Step 3: receive arguments to establish reverse connection
@@ -536,21 +539,24 @@ bool ViewerProxy::ConnectToExistingViewer(const std::string& host, const int& po
 
     std::string message = buffer;
 
-    int start_index = 0;
-    int end_index = 0;
-    stringVector args;
-    while( (end_index = message.find(",",start_index)) != -1)
-    {
-        std::string arg = message.substr(start_index,(end_index-start_index));
-        args.push_back(arg);
-        start_index = end_index + 1;
-    }
+    JSONNode node;
+    node.Parse(message);
 
-    if(start_index < message.length())
-    {
-        std::string arg = message.substr(start_index);
-        args.push_back(arg);
-    }
+    stringVector args;
+
+    args.push_back("-v");
+    args.push_back(node.GetJsonObject()["version"].GetString());
+
+    args.push_back("-host");
+    args.push_back(node.GetJsonObject()["host"].GetString());
+
+    args.push_back("-port");
+    args.push_back(node.GetJsonObject()["port"].GetString());
+
+    args.push_back("-key");
+    args.push_back(node.GetJsonObject()["securityKey"].GetString());
+
+    args.push_back("-reverse_launch");
 
     int inputArgc = args.size();
 
@@ -967,7 +973,7 @@ void
 ViewerProxy::Close()
 {
     // Tell the viewer to close.
-    methods->Close();
+    GetViewerMethods()->Close();
 
     //
     // Wait for the viewer to exit.
@@ -992,7 +998,7 @@ ViewerProxy::Close()
 void
 ViewerProxy::Detach()
 {
-    methods->Detach();
+    GetViewerMethods()->Detach();
 }
 
 // ****************************************************************************
@@ -1047,7 +1053,7 @@ ViewerProxy::AnimationStop()
     //
     xfer->SendSpecialOpcode(animationStopOpcode);
 
-    methods->AnimationStop();
+    GetViewerMethods()->AnimationStop();
 }
 
 // ****************************************************************************
@@ -1084,7 +1090,7 @@ ViewerProxy::SetPlotSILRestriction()
 
         // Now that the new SIL restriction attributes have been sent to the
         // viewer, send the RPC that tells the viewer to apply them.
-        methods->SetPlotSILRestriction();
+        GetViewerMethods()->SetPlotSILRestriction();
 
         // Delete the new SRA since we're done with it.
         delete newSRA;
@@ -1131,7 +1137,7 @@ ViewerProxy::SetPlotSILRestriction(avtSILRestriction_p newRestriction)
 
         // Now that the new SIL restriction attributes have been sent to the
         // viewer, send the RPC that tells the viewer to apply them.
-        methods->SetPlotSILRestriction();
+        GetViewerMethods()->SetPlotSILRestriction();
 
         // Delete the new SRA since we're done with it.
         delete newSRA;

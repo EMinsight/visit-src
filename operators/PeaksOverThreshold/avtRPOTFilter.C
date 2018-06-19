@@ -325,6 +325,13 @@ avtRPOTFilter::Initialize()
     int t1 = GetEndTime();
     numTimes = t1-t0 + 1;
     numYears = numTimes/365;
+    if (atts.GetDataAnalysisYearRangeEnabled())
+    {
+        numYears = atts.GetDataAnalysisYearRange()[1]-atts.GetDataAnalysisYearRange()[0]+1;
+        numTimes = numYears*365;
+    }
+    //cout<<"numTimes = "<<numTimes<<" : numYears = "<<numYears<<endl;
+
 
     //How to compute maxes.
     //Monthly maxes.
@@ -411,6 +418,18 @@ avtRPOTFilter::Execute()
     debug1<<"avtRPOTFilter::Execute() time= "<<currentTime<<endl;
 
     Initialize();
+    
+    if (atts.GetDataAnalysisYearRangeEnabled())
+    {
+        int currYear = atts.GetDataYearBegin()+(currentTime/365);
+        if (currYear < atts.GetDataAnalysisYearRange()[0] ||
+            currYear > atts.GetDataAnalysisYearRange()[1])
+        {
+            //cout<<"Skipping "<<currentTime<<" : year= "<<currYear<<endl;
+            return;
+        }
+    }
+    
     int nleaves;
     vtkDataSet **leaves = GetInputDataTree()->GetAllLeaves(nleaves);
     vtkDataSet *ds = leaves[0];
@@ -667,7 +686,7 @@ avtRPOTFilter::CreateFinalOutput()
             newData->SetNumberOfTuples(atts.GetCovariateReturnYears().size());
             for (int y = 0; y < atts.GetCovariateReturnYears().size(); y++)
             {
-                newData->SetValue(y, atts.GetCovariateReturnYears()[y]);
+                newData->SetValue(y, atts.GetCovariateReturnYears()[y]-atts.GetDataYearBegin() +1);
             }
             RI->AssignVTKDataArrayToRVariable(newData, newDataStr.c_str());
             newData->Delete();
@@ -678,8 +697,8 @@ avtRPOTFilter::CreateFinalOutput()
                 vtkIntArray *rvDiff = vtkIntArray::New();
                 rvDiff->SetNumberOfComponents(1);
                 rvDiff->SetNumberOfTuples(2);
-                rvDiff->SetValue(0, atts.GetRvDifferences()[0]);
-                rvDiff->SetValue(1, atts.GetRvDifferences()[1]);
+                rvDiff->SetValue(0, atts.GetRvDifferences()[0]-atts.GetDataYearBegin() +1);
+                rvDiff->SetValue(1, atts.GetRvDifferences()[1]-atts.GetDataYearBegin() +1);
                 RI->AssignVTKDataArrayToRVariable(rvDiff, rvDiffStr.c_str());
                 rvDiff->Delete();
             }

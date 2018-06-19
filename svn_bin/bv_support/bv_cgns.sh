@@ -18,7 +18,15 @@ ON_CGNS="off"
 
 function bv_cgns_depends_on
 {
-echo ""
+    local depends=""
+    if [[ "$DO_HDF5" == "yes" ]] ; then
+        depends="hdf5"
+        if [[ "$DO_SZIP" == "yes" ]] ; then
+            depends="szip hdf5"
+        fi
+    fi
+    
+    echo $depends
 }
 
 function bv_cgns_info
@@ -164,7 +172,7 @@ function build_cgns
 
         # Check for version >= 8.0.0 (MacOS 10.4, Tiger) for SystemStubs
         VER=$(uname -r)
-        if (( ${VER%%.*} > 7 )) ; then
+        if (( ${VER%%.*} > 7 && ${VER%%.*} < 12)) ; then
            USESTUBS="-lSystemStubs"
         else
            USESTUBS=""

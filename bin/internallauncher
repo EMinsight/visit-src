@@ -10,6 +10,9 @@ import os, math, socket, stat, time
 # Date:       Thu May 17 14:22:04 PDT 2012
 #
 # Modifications:
+#   Eric Brugger, Mon Dec  3 13:25:32 PST 2012
+#   I modified the script so that all the arguments are passed to subsequent
+#   components before the "-s script_file" argument.
 #
 ###############################################################################
 
@@ -88,6 +91,56 @@ class JobSubmitter_mpirun(JobSubmitter):
             parcmd = parcmd + self.parallel.launchargs
         if self.parallel.np != None:
             parcmd = parcmd + ["-np", self.parallel.np]
+        if self.parallel.partition != None:
+            parcmd = parcmd + ["-p", self.parallel.partition]
+        if self.parallel.machinefile != None:
+            parcmd = parcmd + ["-machinefile", self.parallel.machinefile]
+        parcmd = parcmd + self.VisItExecutable()
+        parcmd = parcmd + ["-plugindir", GETENV("VISITPLUGINDIR")]
+        parcmd = parcmd + ["-visithome", GETENV("VISITHOME")]
+        parcmd = parcmd + ["-visitarchhome", GETENV("VISITARCHHOME")]
+        parcmd = debugger.CreateCommand(parcmd + args)
+        return parcmd
+
+###############################################################################
+# Class: JobSubmitter_mpiexec
+#
+# Purpose:    Launch an MPI job with mpiexec.
+#
+# Programmer: Gunther H. Weber
+# Date:       Wed Dec  5 18:39:03 PST 2012
+#
+# Modifications:
+#   Brad Whitlock, Tue Jan 29 12:22:39 PST 2013
+#   If we're on a newer Mac and we're not running a dev version then get 
+#   mpiexec from the VisIt architecture/bin directory, if it exists.
+#
+#   Cyrus Harrison, Fri Feb  1 17:02:02 PST 2013
+#   Use mpiexe on OSX 10.6 and beyond.
+#
+################################################################################
+
+class JobSubmitter_mpiexec(JobSubmitter):
+    def __init__(self, launcher):
+        super(JobSubmitter_mpiexec,self).__init__(launcher)
+
+    def Executable(self):
+        # If we're running on MacOS X 10.7 or later, use our own mpich
+        # that we bundle with VisIt when we're running an installed version
+        # of the code.
+        if self.launcher.os == "darwin" and self.launcher.osver >= 10 and \
+           self.launcher.generalArgs.dv == 0:
+            mpiexec = os.path.join(GETENV("VISITARCHHOME"),"bin","mpiexec")
+            if os.path.exists(mpiexec):
+                return [mpiexec]
+        return ["mpiexec"]
+
+    def CreateCommand(self, args, debugger):
+        parcmd = self.Executable()
+        if self.parallel.launchargs != None:
+            parcmd = parcmd + self.parallel.launchargs
+        if self.parallel.np != None:
+            parcmd = parcmd + ["-n", self.parallel.np]
         if self.parallel.partition != None:
             parcmd = parcmd + ["-p", self.parallel.partition]
         if self.parallel.machinefile != None:
@@ -410,6 +463,11 @@ class JobSubmitter_salloc(JobSubmitter):
 # Date:       Thu May 17 14:22:04 PDT 2012
 #
 # Modifications:
+#   Satheesh Maheswaran, Tue Jan 15 14:47:54 GMT 2013
+#   I added job name option to Slurm scheduler and mpirun launcher argument support 
+#
+#   Paul Selby, Thu May 16 12:06:30 BST 2013
+#   Use launchargs if supplied
 #
 ###############################################################################
 
@@ -436,6 +494,8 @@ class JobSubmitter_sbatch(JobSubmitter):
 
     def CreateCommand(self, args, debugger):
         parcmd = self.Executable()
+        if self.parallel.launchargs != None:
+           parcmd = parcmd + self.parallel.launchargs
         if self.parallel.partition != None:
            parcmd = parcmd + ["--partition=%s" % self.parallel.partition]
         if self.parallel.bank != None:
@@ -446,7 +506,8 @@ class JobSubmitter_sbatch(JobSubmitter):
            parcmd = parcmd + ["--nodes=%s" % self.parallel.nn]
         if self.parallel.np != None:
            parcmd = parcmd + ["--ntasks=%s" % self.parallel.np]
-
+        if self.parallel.name != None:
+            parcmd = parcmd + ["--job-name=%s" % self.parallel.name]
         ppn = "8"
         if self.parallel.nn != None:
             ppn = self.PPN()
@@ -462,6 +523,14 @@ class JobSubmitter_sbatch(JobSubmitter):
             mpicmd = ["aprun", "-n", self.parallel.np]
             if self.parallel.sublaunchargs != None:
                 mpicmd = mpicmd + self.parallel.sublaunchargs
+            mpicmd = mpicmd + self.VisItExecutable() + args
+        elif sublauncher == "mpirun":
+            mpicmd = ["mpirun"]
+            if self.parallel.sublaunchargs != None:
+                mpicmd = mpicmd + self.parallel.sublaunchargs
+            if self.parallel.np != None:
+                mpicmd = mpicmd + ["-np", self.parallel.np]
+            mpicmd = mpicmd + ["--ppn", str(ppn)] 
             mpicmd = mpicmd + self.VisItExecutable() + args
         else:
             mpicmd = self.VisItExecutable() + args
@@ -1057,6 +1126,9 @@ class DebugMallocDebugger(Debugger):
 # Date:       Thu May 17 14:22:04 PDT 2012
 #
 # Modifications:
+#   Brad Whitlock, Thu Dec  6 10:47:27 PST 2012
+#   I fixed the non -noloopback case for launching of parallel engines on
+#   linux clusters.
 #
 ###############################################################################
 
@@ -1073,6 +1145,7 @@ class GeneralArguments(object):
         self.diffmode = 0        # 0 = none, 1=diff, 2=diffsum
         self.diffargs = []
         self.scriptfile = None
+        self.scriptarguments = []
         self.norun = None
         self.env = 0
         self.arch = 0
@@ -1104,7 +1177,9 @@ class GeneralArguments(object):
             self.add_movie_args = 1
         elif args[i] == "-s":
             self.scriptfile = args[i+1]
-            n = 2
+            for j in range(i+2, len(args)):
+                self.scriptarguments = self.scriptarguments + [args[j]]
+            n = len(args) - i
         elif args[i] == "-diff":
             self.exe_name = "cli"
             self.diffmode = 1
@@ -1204,7 +1279,7 @@ class GeneralArguments(object):
                 args = args + ["-nowin"]
             args = args + ["-s", os.path.join(self.launcher.visitscriptdir, "makemoviemain.py")]
 
-        args = args + self.arguments
+        args = self.arguments + args + self.scriptarguments
 
         return args
 
@@ -1231,8 +1306,10 @@ class GeneralArguments(object):
         else:
             remotehost = "127.0.0.1"
             remotehost_set = 1
-            if parallel and (self.exe_name[:6] == "engine"):
-                args = args + ["-noloopback"]
+            if parallel and (self.exe_name[:6] == "engine") and \
+                self.launcher.os != "darwin":
+                remotehost = self.launcher.hostname()
+                remotehost_set = 1
 
         # Determine remotehost based on whether we're guessing the host or
         # tunneling ssh.
@@ -1496,6 +1573,7 @@ class MainLauncher(object):
         self.parallelArgs = None
         self.debugArgs = None
         self.os = ""
+        self.osver = 0
         self.visitarch = ""
         self.visitarchdir = ""
         self.visitbindir = ""
@@ -1534,7 +1612,7 @@ class MainLauncher(object):
     def domainname(self):
         fullhost = socket.gethostbyname_ex(self.hostname())[0]
         pos = string.find(fullhost, ".")
-        if pos != -1:
+        if pos == -1:
             return fullhost
         else:
             return fullhost[pos+1:]
@@ -1624,6 +1702,8 @@ class MainLauncher(object):
     def Initialize(self, visitdir, visitprogram, visitver, visitpluginver):
         self.visitdir = visitdir
         self.visithome = visitdir
+        if self.visithome[-1] == '/':
+            self.visithome = visitdir[:-1]
         self.visitprogram = visitprogram
         self.visitver = visitver
         self.visitpluginver = visitpluginver
@@ -1750,6 +1830,9 @@ class MainLauncher(object):
     # Date: Fri May 25 10:48:41 PDT 2012
     #
     # Modifications:
+    #   Eric Brugger, Wed Jun 26 14:49:49 PDT 2013
+    #   I corrected a bug that incorrectly identified the machine architecture
+    #   on some Mac systems.
     #
     ############################################################################
 
@@ -1781,10 +1864,12 @@ class MainLauncher(object):
                     arch = arch + "-" + compiler
             supportedarches.append(arch)
         elif self.os == "darwin":
-            all_uname = string.split(self.uname("-a"))
-            version = [int(x) for x in string.split(all_uname[2], ".")]
+            mach = self.uname("-m")
+            release = self.uname("-r")
+            version = [int(x) for x in string.split(release, ".")]
+            self.osver = version[0]
             if version[0] >= 11:
-                if all_uname[-1] == "x86_64":
+                if mach == "x86_64":
                     supportedarches.append("darwin-x86_64")
                     supportedarches.append("darwin-i386")
                 else:
@@ -1915,6 +2000,11 @@ class MainLauncher(object):
     # Date: Fri May 25 10:48:41 PDT 2012
     #
     # Modifications:
+    #   Brad Whitlock, Tue Jan 29 12:18:57 PST 2013
+    #   Change default launcher to mpiexec on Mac 10.7 and later.
+    #
+    #   Cyrus Harrison, Fri Feb  1 17:02:02 PST 2013
+    #   Use mpiexe on OSX 10.6 and beyond.
     #
     ############################################################################
 
@@ -1927,7 +2017,10 @@ class MainLauncher(object):
 
         # If no launcher was specified then give a default.
         if self.parallelArgs.parallel and self.parallelArgs.launch == None:
-            self.parallelArgs.launch = "mpirun"
+            if self.os == "darwin" and self.osver >= 10:
+                self.parallelArgs.launch = "mpiexec"
+            else:
+                self.parallelArgs.launch = "mpirun"
 
     ############################################################################
     # Method: Customize
@@ -1953,6 +2046,8 @@ class MainLauncher(object):
     # Date: Fri May 25 10:48:41 PDT 2012
     #
     # Modifications:
+    #   Eric Brugger, Mon Nov 19 13:24:37 PST 2012
+    #   Correct a bug with running makemili and visitconvert in serial.
     #
     ############################################################################
 
@@ -1978,7 +2073,7 @@ class MainLauncher(object):
                     self.generalArgs.exe_name = self.generalArgs.exe_name + "_par"
             else:
                 ser_lite = os.path.join(self.visitdir, "exe", self.generalArgs.exe_name + "_ser_lite")
-                if os.path.exists(par_lite):
+                if os.path.exists(ser_lite):
                     self.generalArgs.exe_name = self.generalArgs.exe_name + "_ser_lite"
                 else:
                     self.generalArgs.exe_name = self.generalArgs.exe_name + "_ser"
@@ -2007,13 +2102,18 @@ class MainLauncher(object):
     # Date: Fri May 25 10:48:41 PDT 2012
     #
     # Modifications:
+    #   Brad Whitlock, Tue Nov 27 10:13:42 PST 2012
+    #   Set PYTHONHOME if we're running the cli.
+    #
+    #   Kathleen Biagas, Mon Jul 15 11:31:27 PDT 2013
+    #   Unset QT_PLUGIN_PATH.
     #
     ############################################################################
 
     def SetupEnvironment(self):
         # Get some environment variables and store their original values.
         keys = ("LD_LIBRARY_PATH", "LD_LIBRARY32_PATH", "LD_LIBRARYN32_PATH", 
-                "LD_LIBRARY64_PATH", "LIBPATH") #, "PYTHONHOME")
+                "LD_LIBRARY64_PATH", "LIBPATH")
         for k in keys:
             if GETENV("%s_VISITORIG" % k) == "":
                 SETENV("%s_VISITORIG" % k, GETENV(k))
@@ -2052,7 +2152,7 @@ class MainLauncher(object):
             SETENV("VISITPLUGINDIR", self.visitplugins)
         else:
             if GETENV("VISITPLUGINDIRORIG") == "":
-                SETENV("VISITPLUGINDIR", GETENV("VISITPLUGINDIR"))
+                SETENV("VISITPLUGINDIRORIG", GETENV("VISITPLUGINDIR"))
             SETENV("VISITPLUGINDIR", self.joinpaths([GETENV("VISITPLUGINDIRORIG"), visitprivateplugins,self.visitplugins]))
 
         # If we are using a public version, or if any main plugin directory is
@@ -2077,6 +2177,14 @@ class MainLauncher(object):
         SETENV("VISITARCHHOME", self.visitarchdir)
         SETENV("VISITULTRAHOME", self.visitultradir)
 
+        # If we're using VisIt's Python, set PYTHONHOME
+        visitlibdir_python = os.path.join(self.visitlibdir, "python")
+        if self.generalArgs.exe_name == "cli":
+            SETENV("PYTHONHOME", visitlibdir_python)
+
+        # Unset QT_PLUGIN_PATH
+        UNSETENV("QT_PLUGIN_PATH")
+
         # Turn off trapping of floating point exceptions.
         SETENV("TRAP_FPE", "")
 
@@ -2089,7 +2197,7 @@ class MainLauncher(object):
         # that the viewer should use, no matter what the GUI was using.  This
         # can be useful for wall-type displays with a separate console, e.g.
         # the console on :0 and the DMX server on :2, you could run
-        # env DISPLAY=:0 visit -viewerdisplaay :2
+        # env DISPLAY=:0 visit -viewerdisplay :2
         if self.generalArgs.exe_name == "viewer" and self.generalArgs.viewerdisplay != None:
             SETENV("DISPLAY", self.generalArgs.viewerdisplay)
 
@@ -2439,13 +2547,16 @@ VisIt does not recognize your terminal application so it will ignore the -newcon
     # Date: Fri May 25 10:48:41 PDT 2012
     #
     # Modifications:
+    #   Satheesh Maheswaran, Tue Jan 15 14:47:54 GMT 2013
+    #   Permit serial engines to use job submitter.
     #
     ############################################################################
 
     def Launch(self):
         ret = 0
         if self.parallelArgs.parallel and \
-           string.find(self.generalArgs.exe_name, "_par") != -1:
+           (string.find(self.generalArgs.exe_name, "_par") != -1 or \
+            string.find(self.generalArgs.exe_name, "_ser") != -1):
             # Create the appropriate job submitter.
             submitter = self.JobSubmitterFactory(self.parallelArgs.launch)
             if submitter == None:
@@ -2556,6 +2667,8 @@ VisIt does not recognize your terminal application so it will ignore the -newcon
     # Date: Fri May 25 10:48:41 PDT 2012
     #
     # Modifications:
+    #    Gunther H. Weber, Wed Dec  5 18:39:31 PST 2012
+    #    Added mpiexec as new job submitter
     #
     ############################################################################
 
@@ -2568,6 +2681,8 @@ VisIt does not recognize your terminal application so it will ignore the -newcon
         # Instantiate a job submitter
         if launch == "mpirun":
             return JobSubmitter_mpirun(self)
+        elif launch == "mpiexec":
+            return JobSubmitter_mpiexec(self)
         elif launch == "aprun":
             return JobSubmitter_aprun(self)
         elif launch == "dmpirun":
@@ -2634,9 +2749,9 @@ def internallauncher(launcher, visitdir, visitprogram, visitver, visitpluginver,
         return 0
 
     launcher.ConsistencyCheck()
-    launcher.Customize()
     launcher.UpdateExecutableNames()
     launcher.SetupDirectoryNames(supportedarches)
+    launcher.Customize()
     launcher.SetupEnvironment()
     launcher.MakeUserDirectories(visitpluginver, supportedarches)
 
