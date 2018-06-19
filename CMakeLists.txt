@@ -218,6 +218,9 @@
 #    Added init of opt_ARG_PREV in VISIT_OPTION_DEFAULT to avoid cmake 
 #    warning message.
 #
+#    Kathleen Bonnell, Wed Feb 16 08:33:33 PST 2011
+#    Set CMAKE_BUILD_TYPE to Release, if not already set.
+#
 #****************************************************************************/
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8.0 FATAL_ERROR)
@@ -289,6 +292,14 @@ IF (NOT WIN32)
 
 ENDIF (NOT WIN32)
 
+#-----------------------------------------------------------------------------
+# If not already set, we use a default build type of Release
+#-----------------------------------------------------------------------------
+
+IF (NOT CMAKE_BUILD_TYPE)
+  SET(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build,
+options are: Debug Release RelWithDebInfo MinSizeRel.")
+ENDIF()
 
 #-----------------------------------------------------------------------------
 # Set compiler from config-site

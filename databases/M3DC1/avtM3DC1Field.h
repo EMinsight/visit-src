@@ -46,6 +46,7 @@
 #include <vtkDataSet.h>
 #include <vtkPointData.h>
 
+#include <avtVector.h>
 
 // ****************************************************************************
 //  Class:  avtM3DC1Field
@@ -78,26 +79,44 @@ class avtM3DC1Field
   } edge;
   
   public:
-    avtM3DC1Field( float *elementsPtr, int nelements );
+    avtM3DC1Field( float *elementsPtr, int nelements, int dim, int planes );
 
     ~avtM3DC1Field();
+
+    virtual bool IsInside(const double& t, const avtVector& x) const;
 
     void findElementNeighbors();
     void register_vert(v_entry *vlist, int *len,
                        double x, double y, int *index);
     void add_edge(edge *list, int *tri, int side, int el, int *nlist);
 
-    int get_tri_coords2D(double *x, double *xout);
-    int get_tri_coords2D(double *x, int el, double *xout);
+    int get_tri_coords2D(double *x, double *xout) const;
+    int get_tri_coords2D(double *x, int el, double *xout) const;
 
-    float interp    (float *var, int el, double *lcoords);
-    float interpdR  (float *var, int el, double *lcoords);
-    float interpdz  (float *var, int el, double *lcoords);
-    float interpdR2 (float *var, int el, double *lcoords);
-    float interpdz2 (float *var, int el, double *lcoords);
-    float interpdRdz(float *var, int el, double *lcoords);
+    avtVector operator()( const double &t, const avtVector &p ) const;
 
-    void interpBcomps(float *B, double *x, int element, double *xieta);
+    void interpBcomps(float *B, double *x, int element, double *xieta) const;
+
+    float interp    (float *var, int el, double *lcoords) const;
+
+    void interpdX(float *var, int el, double *lcoords,
+                  double &xicoef, double &etacoef) const;
+    void interpdX2(float *var, int el, double *lcoords,
+                   double &xixicoef, double &etaetacoef,
+                   double &xietacoef ) const;
+    void interpdXdPhi(float *var, int el, double *lcoords,
+                      double &xicoef, double &etacoef) const;
+
+    float interpdR  (float *var, int el, double *lcoords) const;
+    float interpdz  (float *var, int el, double *lcoords) const;
+    float interpdPhi(float *var, int el, double *lcoords) const;
+
+    float interpdR2 (float *var, int el, double *lcoords) const;
+    float interpdz2 (float *var, int el, double *lcoords) const;
+
+    float interpdRdz  (float *var, int el, double *lcoords) const;
+    float interpdRdPhi(float *var, int el, double *lcoords) const;
+    float interpdzdPhi(float *var, int el, double *lcoords) const;
 
  protected:
 
@@ -107,30 +126,42 @@ class avtM3DC1Field
     double *trigtable;   /* Geometry of each triangle */
     int    *neighbors;   /* Element neighbor table for efficient searches */
 
+    int tElements;       /* Number elements in a plane */
+
+    int element_dimension;
+    int nplanes;
+    int element_size;
+    int scalar_size;
+
  public:
-    //  variables on the mesh
-    float *psi0, *f0;                  /* Equilibrium field */
-    float *psinr, *psini, *fnr, *fni;  /* Complex perturbed field */
 
-    // variable based on attributes (bzero and rzero)
-    double F0;                      /* Strength of vacuum toroidal field */
-    
-    // Variables calculated in findElementNeighbors
-    double Rmin, Rmax, zmin, zmax;  /* Mesh bounds */
+  // 2D Variables variables on the mesh
+  float *psi0, *f0;                  /* Equilibrium B field conponents */
+  float *psinr, *psini, *fnr, *fni;  /* Complex perturbed field */
+  
+  // 3D Variables variables on the mesh
+  float *I0;                         /* Equilibrium B field conponents */
+  float *f, *psi, *I;                /* Perturbed field */
 
-    // unused variables read from header attributes
-    // (xlim, zlim) or explicitly set (psilim).
-//  double xlim, zlim, psilim;      /* Information about limiting surface */
+  // Variables calculated in findElementNeighbors
+//double Rmin, Rmax, zmin, zmax;  /* Mesh bounds */
 
-    // unused variables read from header attributes (ntime == nframes)
-//  int    nframes;
+  // unused variables read from header attributes
+  // (xlim, zlim) or explicitly set (psilim).
+//double xlim, zlim, psilim;      /* Information about limiting surface */
 
-    // variables read from header attributes (linear == linflag,
-    // ntor == tmode) or part of the mesh (nelms).
-    int linflag, nelms, tmode;
+  // unused variables read from header attributes (ntime == nframes)
+//int    nframes;
 
-    // variables read from header attributes.
-    double bzero, rzero;
+  // variables read from header attributes (linear == linflag,
+  // ntor == tmode) or part of the mesh (nelms).
+  int eqsubtract, linflag, nelms, tmode;
+  
+  // variables read from header attributes.
+  double bzero, rzero;
+
+  // variable based on attributes (bzero and rzero)
+  double F0;                      /* Strength of vacuum toroidal field */  
 };
 
 #endif

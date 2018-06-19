@@ -57,6 +57,7 @@
 #include <avtDatabase.h>
 #include <avtDatabaseMetaData.h>
 #include <avtMTSDFileFormatInterface.h>
+#include <AtomicProperties.h>
 
 #include <Expression.h>
 
@@ -743,6 +744,16 @@ avtCHGCARFileFormat::DoDomainDecomposition()
 //    Jeremy Meredith, Tue Dec 29 13:38:26 EST 2009
 //    Added some error testing to make sure the file is viable.
 //
+//    Jeremy Meredith, Mon Jan 24 17:03:27 EST 2011
+//    In newer VASP flavors, there is an optional line with atomic symbols
+//    above the line which lists the counts of atoms for each species
+//    type.  We don't yet use it here, but we need to see if it's there, and
+//    skip it if it is.
+//
+//    Jeremy Meredith, Mon Mar  7 11:57:28 EST 2011
+//    Account for the possible extra atomic symbol line for
+//    multi-timestep files.
+//
 // ****************************************************************************
 void
 avtCHGCARFileFormat::ReadAllMetaData()
@@ -786,15 +797,36 @@ avtCHGCARFileFormat::ReadAllMetaData()
             unitCell[i][j] = scale*lat[i][j];
 
     in.getline(line, 2048); // skip rest of last lattice line
-    in.getline(line, 2048); // get atom counts line
+
+    // get atom counts, and optionally, element types
+    in.getline(line, 2048);
+    string atomtypeline(line);
     string atomcountline(line);
 
-    natoms = 0;
-    int tmp = 0;
-    std::istringstream count_in(atomcountline); // parse atom counts
-    while (count_in >> tmp)
+    std::istringstream type_in(atomtypeline);
+    string tmp_element;
+    bool had_species_line = false;
+    if ((type_in >> tmp_element) &&
+        ElementNameToAtomicNumber(tmp_element.c_str()) > 0)
     {
-        natoms += tmp;
+        // We've got an element types line to parse.
+        // We don't use it, so we can just skip it.
+
+        // We need to read the next line for the atom counts: we set it up
+        // to use this past line in the event we didn't have a species line:
+        in.getline(line, 2048);
+        atomcountline = line;
+
+        // But: also flag it so we can account for the extra line
+        had_species_line = true;
+    }
+
+    natoms = 0;
+    int tmp_count;
+    std::istringstream count_in(atomcountline);
+    while (count_in >> tmp_count)
+    {
+        natoms += tmp_count;
     }
 
     // error check
@@ -847,7 +879,8 @@ avtCHGCARFileFormat::ReadAllMetaData()
     // Mark the start of the volumetric grid data
     int values_per_vol = globalZDims[0]*globalZDims[1]*globalZDims[2];
     int lines_per_vol = (values_per_vol+values_per_line-1)/values_per_line;
-    int lines_per_step = 7 + natoms + 2 + lines_per_vol;
+    int lines_per_step = 7 + natoms + 2 + lines_per_vol +
+                         (had_species_line ? 1 : 0);
 
     in.seekg(start_of_data);
     while (in)

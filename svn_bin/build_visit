@@ -19,13 +19,12 @@
 #
 #	OS	Hardware	Compiler	Machine
 #	-----	--------	--------	-------
-#       RHEL3,	x86,		GCC 3.4.6	staples.llnl.gov
 #       RHEL3, 	x86,		GCC 3.2.3	hoth.llnl.gov
-#       CHAOS, 	x86_64,		GCC 3.4.5	vertex.llnl.gov
-#       CHAOS,	ia64, 		GCC 3.4.5	thunder.llnl.gov
+#       CHAOS, 	x86_64,		GCC 4.1.2	aztec.llnl.gov
 #       SuSE,   x86_64,		GCC 4.0.2	antares.lbl.gov
 #       SuSE,   x86_64,		GCC 4.1.0	octagon.lbl.gov
-#       MacOSX  i386,		GCC 4.0.1	dantooine.llnl.gov
+#       MacOSX  i386,		GCC 4.0.1	corellia.llnl.gov
+#       MacOSX  x86_64          GCC 4.2.1       dantooine.llnl.gov
 #       MacOSX  ppc,		GCC 4.0.1	snailbait.llnl.gov
 #
 #   It is believed that this script will also work with other Linux variations.
@@ -60,12 +59,11 @@
 #           FastBit  0.9.9    fastbit-b0.9.9.tar.gz  
 #           GDAL     1.3.2    gdal-1.3.2.tar.gz      --gdal
 #           H5part   1.6.0    H5Part-1.6.0.tar.gz    --h5part
-#           HDF4     2.4.1    HDF4.2r1.tar.gz        --hdf4
-#                    2.5      hdf-4.2.5.tar.gz       (on Mac)
+#           HDF4     4.2.5    hdf-4.2.5.tar.gz       --hdf4
 #           HDF5     1.8.4    hdf5-1.8.4.tar.gz      --hdf5
 #           MDSplus  2.2      mdsplus-2.2-4.tar.gz
 #           Mili     1.10     mili-1.10a.tar.gz      --mili
-#           NetCDF   4.1,1    netcdf-4.1.1.tar.gz    --netcdf
+#           NetCDF   4.1.1    netcdf-4.1.1.tar.gz    --netcdf
 #           AdvIO    1.2.0    AdvIO-1.2.tar.gz       --advio
 #           Silo     4.8      silo-4.8.tar.gz        --silo
 #           szip     2.1      szip-2.1.tar.gz        --szip
@@ -110,6 +108,8 @@
 #     Function 8.18, build_advio:   build AdvIO
 #     Function 8.19, build_xdmf  :  build XDMF
 #     Function 8.20, build_mdsplus: build MDSplus
+#     Function 8.21, build_mxml:    build mxml
+#     Function 8.22, build_ADIOS:   build ADIOS
 #     Function 8, build_silo:       build Silo
 #     Function 9, build_hostconf:   build the config-site/host.conf file
 #     Function 9.1, build_visit:    build the VisIt source code
@@ -1065,6 +1065,57 @@
 #     I modified the script to build IceT 1.0.0 instead of 0.5.4. I also
 #     modified it to add -fPIC to the compiler options.
 #
+#     Eric Brugger, Wed Jan 19 10:13:02 PST 2011
+#     I modified the script to set the svn source path to the 2.2.0 tagged
+#     source.
+#
+#     Eric Brugger, Thu Jan 20 15:19:55 PST 2011
+#     I modified the script to add hdf5_hl as a dependent library for
+#     netcdf if using netcdf with hdf5.
+#
+#     Jeremy Meredith, Thu Jan 27 16:21:08 EST 2011
+#     HDF4 libdep generation needs to use libvtkjpeg on only Darwin/AIX,
+#     and the normal libjpeg everywhere else.
+#
+#     Hank Childs, Fri Jan 28 09:07:07 PST 2011
+#     Add better error messages when Qt won't build because of OpenGL.
+#
+#     Hank Childs, Sun Jan 30 08:52:51 AST 2011
+#     Update VisIt release number.  Also add error message about why HDF4
+#     may be failing.  Also fix problem with GDAL for Linux x86_64.
+#
+#     Eric Brugger, Fri Feb  4 14:26:40 PST 2011
+#     I modified the anonymous svn downloads to use http instead of https.
+#     I switched the version of HDF4 to 4.2.5 and modified it to use vtkjpeg
+#     on all platforms, not just on the Mac.
+#
+#     Eric Brugger, Wed Feb  9 16:24:13 PST 2011
+#     I modified the script to only add the hdf5 dependent libraries to
+#     silo's dependent libraries in the config site file it generates if
+#     the script is building hdf5.
+#
+#     Dave Pugmire, Thu Feb 17 15:55:03 EST 2011
+#     Add ADIOS build.
+#
+#     Eric Brugger, Fri Feb 18 13:42:05 PST 2011
+#     I modified the script to lower the optimization for VTK if using gcc
+#     4.5.1 to avoid a compiler bug that is encountered compiling one of
+#     the VTK source files.
+#
+#     Eric Brugger, Wed Jan 19 10:13:02 PST 2011
+#     I changed the visit version number to 2.2.1.
+#
+#     Eric Brugger, Thu Mar 31 09:36:14 PDT 2011
+#     I changed the visit version number to 2.2.2.
+#
+#     Eric Brugger, Fri Apr  8 16:04:57 PDT 2011
+#     I changed the script to download the visit source code from the
+#     releases directory in the anonymous svn site.
+#
+#     Gunther H. Weber, Wed Apr 13 11:42:22 PDT 2011
+#     Disable Java in FastBit built (we do not use it, and some systems
+#     do not have a working Java install).
+#
 # *****************************************************************************
 
 
@@ -1353,6 +1404,10 @@ export ON_TCMALLOC="off"
 export DO_ICET="no"
 export ON_ICET="off"
 export PREVENT_ICET="no"
+export DO_ADIOS="no"
+export ON_ADIOS="off"
+export DO_MXML="no"
+export ON_MXML="off"
 GRAPHICAL="yes"
 ON_GRAPHICAL="on"
 verify="no"
@@ -1376,7 +1431,7 @@ if [[ "$CXX_COMPILER" == "g++" ]] ; then
 fi
 
 
-export SVN_ANON_ROOT_PATH="https://portal.nersc.gov/svn/visit"
+export SVN_ANON_ROOT_PATH="http://portal.nersc.gov/svn/visit"
 # Setup svn path: use SVN_NERSC_NAME if set
 if test -z "$SVN_NERSC_NAME" ; then
     export SVN_REPO_ROOT_PATH="svn+ssh://svn.nersc.gov/svn/visit"
@@ -1391,10 +1446,17 @@ fi
 # release tag.
 ############################################################################
 
+export VISIT_VERSION=${VISIT_VERSION:-"2.2.2"}
+
 ####
 # Trunk:
 ####
-export SVN_SOURCE_PATH="trunk/src"
+#export SVN_SOURCE_PATH="trunk/src"
+
+###
+# Release:
+###
+export SVN_SOURCE_PATH="tags/${VISIT_VERSION}/src"
 
 if [[ "$OPSYS" != "Darwin" ]]; then
     WGET_MINOR_VERSION=$(wget --version| head -n 1|cut -d. -f 2)
@@ -1407,6 +1469,7 @@ if [[ "$OPSYS" != "Darwin" ]]; then
        export WGET_OPTS=${WGET_OPTS:-"--no-check-certificate"}
     fi
 fi
+
 #
 # TARBALL LOCATIONS AND VERSIONS
 #
@@ -1414,7 +1477,6 @@ if [[ "$VISIT_FILE" != "" ]] ; then
   USE_VISIT_FILE="yes"
   ON_USE_VISIT_FILE="on"
 fi
-export VISIT_VERSION=${VISIT_VERSION:-"2.1.2"}
 export VISIT_FILE=${VISIT_FILE:-"visit${VISIT_VERSION}.tar.gz"}
 
 export VTK_FILE=${VTK_FILE:-"vtk-5.0.0g.tar.gz"}
@@ -1460,17 +1522,10 @@ export HDF5_BUILD_DIR=${HDF5_BUILD_DIR:-"hdf5-${HDF5_VERSION}"}
 # Note: Versions of HDF5 1.6.5 and earlier DO NOT have last path component
 export HDF5_URL=${HDF5_URL:-"http://www.hdfgroup.org/ftp/HDF5/prev-releases/hdf5-${HDF5_VERSION}/src"}
 
-if [[ "$OPSYS" == "Darwin" ]]; then
 export HDF4_FILE=${HDF4_FILE:-"hdf-4.2.5.tar.gz"}
 export HDF4_VERSION=${HDF4_VERSION:-"4.2.5"}
 export HDF4_COMPATIBILITY_VERSION=${HDF4_COMPATIBILITY_VERSION:-"4.2"}
 export HDF4_BUILD_DIR=${HDF4_BUILD_DIR:-"hdf-4.2.5"}
-else
-export HDF4_FILE=${HDF4_FILE:-"HDF4.2r1.tar.gz"}
-export HDF4_VERSION=${HDF4_VERSION:-"4.2.1"}
-export HDF4_COMPATIBILITY_VERSION=${HDF4_COMPATIBILITY_VERSION:-"4.0"}
-export HDF4_BUILD_DIR=${HDF4_BUILD_DIR:-"HDF4.2r1"}
-fi
 
 export MILI_FILE=${MILI_FILE:-"mili-1.10a.tar.gz"}
 export MILI_VERSION=${MILI_VERSION:-"1.10.0"}
@@ -1570,6 +1625,16 @@ export XDMF_VERSION=${XDMF_VERSION:-"2.1"}
 export XDMF_COMPATIBILITY_VERSION=${XDMF_COMPATIBILITY_VERSION:-"2.1"}
 export XDMF_BUILD_DIR=${XDMF_BUILD_DIR:-"Xdmf"}
 
+export ADIOS_FILE=${ADIOS_FILE:-"adios-1.2.1.tar.gz"}
+export ADIOS_VERSION=${ADIOS_VERSION:-"1.2.1"}
+export ADIOS_COMPATIBILITY_VERSION=${ADIOS_COMPATIBILITY_VERSION:-"1.2.1"}
+export ADIOS_BUILD_DIR=${ADIOS_BUILD_DIR:-"adios-1.2.1"}
+
+export MXML_FILE=${MXML_FILE:-"mxml-2.6.tar.gz"}
+export MXML_VERSION=${MXML_VERSION:-"2.6"}
+export MXML_COMPATIBILITY_VERSION=${MXML_COMPATIBILITY_VERSION:-"2.6"}
+export MXML_BUILD_DIR=${MXML_BUILD_DIR:-"mxml-2.6"}
+
 export ICET_FILE=${ICET_FILE:-"IceT-1-0-0.tar.gz"}
 export ICET_VERSION=${ICET_VERSION:-"1.0.0"}
 export ICET_COMPATIBILITY_VERSION=${ICET_COMPATIBILITY_VERSION:-"1.0.0"}
@@ -1605,13 +1670,18 @@ function log
 # Programmer: Cyrus Harrison                                                  #
 # Date: Tue Nov 18 15:09:47 PST 2008                                          #
 #                                                                             #
+# Modifications:                                                              #
+#                                                                             #
+#   Hank Childs, Fri Jan 28 10:32:06 PST 2011                                 #
+#   Add -e to echo so tabs are printed.                                       #
+#                                                                             #
 # *************************************************************************** #
 function warn
 {
     if [[ "$REDIRECT_ACTIVE" == "yes" ]] ; then
-        echo "$@" 1>&3
+        echo -e "$@" 1>&3
     else
-        echo "$@"
+        echo -e "$@"
     fi
     
     if [[ "${LOG_FILE}" != "/dev/tty" ]] ; then
@@ -1821,7 +1891,7 @@ function download_file
 
     # If the visit source code is requested try that next.
     if [[ "$dfile" == "$VISIT_FILE" ]] ; then
-        try_download_file https://wci.llnl.gov/codes/visit/$VISIT_VERSION/$dfile $dfile
+        try_download_file $SVN_ANON_ROOT_PATH/trunk/releases/$VISIT_VERSION/$dfile $dfile
         if [[ $? == 0 ]] ; then
             return 0
         fi
@@ -2455,6 +2525,25 @@ function check_optional_3rdparty
             ANY_ERRORS="yes"
             DO_XDMF="no"
             error "Unable to build XDMF.  ${XDMF_FILE} not found."
+        fi
+    fi
+
+    if [[ "$DO_MXML" == "yes" ]] ; then
+        ensure_built_or_ready "MXML" $MXML_VERSION $MXML_BUILD_DIR $MXML_FILE
+            
+        if [[ $? != 0 ]] ; then
+            ANY_ERRORS="yes"
+            DO_MXML="no"
+            error "Unable to build MXML.  ${MXML_FILE} not found."
+        fi
+    fi
+
+    if [[ "$DO_ADIOS" == "yes" ]] ; then
+        ensure_built_or_ready "ADIOS" $ADIOS_VERSION $ADIOS_BUILD_DIR $ADIOS_FILE
+        if [[ $? != 0 ]] ; then
+            ANY_ERRORS="yes"
+            DO_ADIOS="no"
+            error "Unable to build ADIOS.  ${ADIOS_FILE} not found."
         fi
     fi
 
@@ -3747,7 +3836,18 @@ function build_qt
        HAS_OPENGL_SUPPORT=`grep "OpenGL support" qt.config.out | sed -e 's/.*\. //'  | cut -c 1-3`
        if [[ "$HAS_OPENGL_SUPPORT" != "yes" ]]; then
           warn "Qt4 configure did not find OpenGL." \
-                "VisIt needs Qt4 with enabled OpenGL support. Giving up."
+                "VisIt needs Qt4 with enabled OpenGL support. Giving up.\n" \
+                "Here are some common reasons why Qt will not build with GL support.\n" \
+                "\t- The OpenGL development environment is not installed.\n" \
+                "\t  (You can check this by searching for /usr/include/GL/GL.h)\n" \
+                "\t- libGLU is not available\n"\
+                "\t- libGLU is available, but only as a shared library\n"\
+                "You can learn more about exactly why Qt failed by doing the following:\n"\
+                "\t- cd $QT_BUILD_DIR\n" \
+                "\t- ./configure -opengl -verbose\n" \
+                "\t  (this will produce the details of the failed OpenGL tests.)\n" \
+                "\t  (also note you will need to respond with \"o\" to opt for\n" \
+                "\t   the open source license and \"yes\" to accept.)\n"
           return 1
        fi
     fi
@@ -3960,6 +4060,20 @@ echo " $PYTHON_INSTALL ${PYTHON_INSTALL}/python"
     fi
 
     #
+    # Determine if we need to lower the optimizatoin for gcc 4.5.1.
+    #
+    if [[ "$CXX_COMPILER" == "g++" ]] ; then
+        GCC_VERSION=$(g++ -v 2>&1 | grep "gcc version" | cut -d' ' -f3)
+        if [[ "$GCC_VERSION" == "4.5.1" ]] ; then
+           BUILD_TYPE_STRING=""
+           CXX_OPTIMIZATION_STRING="-O2"
+        else
+           BUILD_TYPE_STRING="-DCMAKE_BUILD_TYPE:STRING=Release"
+           CXX_OPTIMIZATION_STRING=""
+        fi
+    fi
+
+    #
     # Execute CMake, which will set up the Makefiles for VTK.  (like configure)
     #
     # Linking OSMesa for MANGLED_MESA_LIBRARY is correct here; we'll never use
@@ -3989,10 +4103,10 @@ echo " $PYTHON_INSTALL ${PYTHON_INSTALL}/python"
             -DUSE_ANSI_STD_LIB:BOOL=ON\
             -DVTK_USE_MANGLED_MESA:BOOL=ON\
             -DVTK_USE_HYBRID:BOOL=ON\
-            -DCMAKE_BUILD_TYPE:STRING=Release\
-            -DCMAKE_CXX_FLAGS:STRING="${CXXFLAGS}"\
+            ${BUILD_TYPE_STRING}\
+            -DCMAKE_CXX_FLAGS:STRING="${CXX_OPTIMIZATION_STRING} ${CXXFLAGS}"\
             -DCMAKE_CXX_COMPILER:STRING=${CXX_COMPILER}\
-            -DCMAKE_C_FLAGS:STRING="${CFLAGS}"\
+            -DCMAKE_C_FLAGS:STRING="${CXX_OPTIMIZATION_STRING} ${CFLAGS}"\
             -DCMAKE_C_COMPILER:STRING=${C_COMPILER}\
             -DCMAKE_SHARED_LINKER_FLAGS:STRING=-Wl,-headerpad_max_install_names,-compatibility_version,5.0,-current_version,5.0.0\
             -DMANGLED_MESA_INCLUDE_DIR:PATH="$VISITDIR/mesa/${MESA_VERSION}/${VISITARCH}/include"\
@@ -4017,10 +4131,10 @@ echo " $PYTHON_INSTALL ${PYTHON_INSTALL}/python"
             -DUSE_ANSI_STD_LIB:BOOL=ON\
             -DVTK_USE_MANGLED_MESA:BOOL=ON\
             -DVTK_USE_HYBRID:BOOL=ON\
-            -DCMAKE_BUILD_TYPE:STRING=Release\
-            -DCMAKE_CXX_FLAGS:STRING="${CXXFLAGS}"\
+            ${BUILD_TYPE_STRING}\
+            -DCMAKE_CXX_FLAGS:STRING="${CXX_OPTIMIZATION_STRING} ${CXXFLAGS}"\
             -DCMAKE_CXX_COMPILER:STRING=${CXX_COMPILER}\
-            -DCMAKE_C_FLAGS:STRING="${CFLAGS}"\
+            -DCMAKE_C_FLAGS:STRING="${CXX_OPTIMIZATION_STRING} ${CFLAGS}"\
             -DCMAKE_C_COMPILER:STRING=${C_COMPILER}\
             -DCMAKE_SHARED_LINKER_FLAGS:STRING=-Wl,-headerpad_max_install_names,-compatibility_version,5.0,-current_version,5.0.0\
             -DMANGLED_MESA_INCLUDE_DIR:PATH="$VISITDIR/mesa/${MESA_VERSION}/${VISITARCH}/include"\
@@ -4045,10 +4159,10 @@ echo " $PYTHON_INSTALL ${PYTHON_INSTALL}/python"
             -DUSE_ANSI_STD_LIB:BOOL=ON\
             -DVTK_USE_MANGLED_MESA:BOOL=ON\
             -DVTK_USE_HYBRID:BOOL=ON\
-            -DCMAKE_BUILD_TYPE:STRING=Release\
-            -DCMAKE_CXX_FLAGS:STRING="${CXXFLAGS}"\
+            ${BUILD_TYPE_STRING}\
+            -DCMAKE_CXX_FLAGS:STRING="${CXX_OPTIMIZATION_STRING} ${CXXFLAGS}"\
             -DCMAKE_CXX_COMPILER:STRING=${CXX_COMPILER}\
-            -DCMAKE_C_FLAGS:STRING="${CFLAGS}"\
+            -DCMAKE_C_FLAGS:STRING="${CXX_OPTIMIZATION_STRING} ${CFLAGS}"\
             -DCMAKE_C_COMPILER:STRING=${C_COMPILER}\
             -DCMAKE_SHARED_LINKER_FLAGS:STRING=-Wl,-headerpad_max_install_names\
             -DMANGLED_MESA_INCLUDE_DIR:PATH="$VISITDIR/mesa/${MESA_VERSION}/${VISITARCH}/include"\
@@ -4068,10 +4182,10 @@ echo " $PYTHON_INSTALL ${PYTHON_INSTALL}/python"
         -DUSE_ANSI_STD_LIB:BOOL=ON\
         -DVTK_USE_MANGLED_MESA:BOOL=ON\
         -DVTK_USE_HYBRID:BOOL=ON\
-        -DCMAKE_BUILD_TYPE:STRING=Release\
-        -DCMAKE_CXX_FLAGS:STRING="${CXXFLAGS} -LANG:std -64"\
+        ${BUILD_TYPE_STRING}\
+        -DCMAKE_CXX_FLAGS:STRING="${CXX_OPTIMIZATION_STRING} ${CXXFLAGS} -LANG:std -64"\
         -DCMAKE_CXX_COMPILER:STRING=${CXX_COMPILER}\
-        -DCMAKE_C_FLAGS:STRING="${CFLAGS}" \
+        -DCMAKE_C_FLAGS:STRING="${CXX_OPTIMIZATION_STRING} ${CFLAGS}" \
         -DCMAKE_C_COMPILER:STRING=${C_COMPILER}\
         -DCMAKE_EXE_LINKER_FLAGS:STRING=-LANG:std -64\
         -DCMAKE_MODULE_LINKER_FLAGS:STRING=-LANG:std -64\
@@ -4098,10 +4212,10 @@ echo " $PYTHON_INSTALL ${PYTHON_INSTALL}/python"
                -DUSE_ANSI_STD_LIB:BOOL=ON\
                -DVTK_USE_MANGLED_MESA:BOOL=OFF\
                -DVTK_USE_HYBRID:BOOL=ON\
-               -DCMAKE_BUILD_TYPE:STRING=Release\
-               -DCMAKE_CXX_FLAGS:STRING="${CXXFLAGS}"\
+               ${BUILD_TYPE_STRING}\
+               -DCMAKE_CXX_FLAGS:STRING="${CXX_OPTIMIZATION_STRING} ${CXXFLAGS}"\
                -DCMAKE_CXX_COMPILER:STRING=${CXX_COMPILER}\
-               -DCMAKE_C_FLAGS:STRING="${CFLAGS}"\
+               -DCMAKE_C_FLAGS:STRING="${CXX_OPTIMIZATION_STRING} ${CFLAGS}"\
                -DCMAKE_C_COMPILER:STRING=${C_COMPILER}\
                -DVTK_USE_TK:BOOL=OFF\
                -DTK_INCLUDE_PATH:FILEPATH=""\
@@ -4118,10 +4232,10 @@ echo " $PYTHON_INSTALL ${PYTHON_INSTALL}/python"
                -DUSE_ANSI_STD_LIB:BOOL=ON\
                -DVTK_USE_MANGLED_MESA:BOOL=ON\
                -DVTK_USE_HYBRID:BOOL=ON\
-               -DCMAKE_BUILD_TYPE:STRING=Release\
-               -DCMAKE_CXX_FLAGS:STRING="${CXXFLAGS}"\
+               ${BUILD_TYPE_STRING}\
+               -DCMAKE_CXX_FLAGS:STRING="${CXX_OPTIMIZATION_STRING} ${CXXFLAGS}"\
                -DCMAKE_CXX_COMPILER:STRING=${CXX_COMPILER}\
-               -DCMAKE_C_FLAGS:STRING="${CFLAGS}"\
+               -DCMAKE_C_FLAGS:STRING="${CXX_OPTIMIZATION_STRING} ${CFLAGS}"\
                -DCMAKE_C_COMPILER:STRING=${C_COMPILER}\
                -DMANGLED_MESA_INCLUDE_DIR:PATH="$VISITDIR/mesa/${MESA_VERSION}/${VISITARCH}/include"\
                -DMANGLED_MESA_LIBRARY:FILEPATH="$VISITDIR/mesa/${MESA_VERSION}/${VISITARCH}/lib/libMesaGL.${LIBEXT}"\
@@ -4139,10 +4253,10 @@ echo " $PYTHON_INSTALL ${PYTHON_INSTALL}/python"
                -DUSE_ANSI_STD_LIB:BOOL=ON\
                -DVTK_USE_MANGLED_MESA:BOOL=ON\
                -DVTK_USE_HYBRID:BOOL=ON\
-               -DCMAKE_BUILD_TYPE:STRING=Release\
-               -DCMAKE_CXX_FLAGS:STRING="${CXXFLAGS}"\
+               ${BUILD_TYPE_STRING}\
+               -DCMAKE_CXX_FLAGS:STRING="${CXX_OPTIMIZATION_STRING} ${CXXFLAGS}"\
                -DCMAKE_CXX_COMPILER:STRING=${CXX_COMPILER}\
-               -DCMAKE_C_FLAGS:STRING="${CFLAGS}"\
+               -DCMAKE_C_FLAGS:STRING="${CXX_OPTIMIZATION_STRING} ${CFLAGS}"\
                -DCMAKE_C_COMPILER:STRING=${C_COMPILER}\
                -DMANGLED_MESA_INCLUDE_DIR:PATH="$VISITDIR/mesa/${MESA_VERSION}/${VISITARCH}/include"\
                -DMANGLED_MESA_LIBRARY:FILEPATH="$VISITDIR/mesa/${MESA_VERSION}/${VISITARCH}/lib/libOSMesa.${LIBEXT}"\
@@ -4278,21 +4392,18 @@ echo " $PYTHON_INSTALL ${PYTHON_INSTALL}/python"
     #
 
     if [[ "$DO_DBIO_ONLY" != "yes" ]]; then
-        cd MangleMesaInclude
-        export BAD_MESA="$PWD"
-        cd ..
-        mkdir "$VISITDIR/vtk/${VTK_VERSION}/$VISITARCH/include/MangleMesaInclude"
-        cp MangleMesaInclude/*.h  "$VISITDIR/vtk/${VTK_VERSION}/$VISITARCH/include/MangleMesaInclude"
-        cd "$VISITDIR/vtk/${VTK_VERSION}/$VISITARCH/include/MangleMesaInclude"
-        SED_STR1=$(echo "$BAD_MESA" | sed 's/\//\\\//g')  
-        # Converts all '/' to "\/" for later sed'ding 
-        SED_STR2=$(echo "$VISITDIR/vtk/${VTK_VERSION}/$VISITARCH/include/MangleMesaInclude" | sed 's/\//\\\//g')
-        for i in *.h ; do
-           cat $i | sed 's/'${SED_STR1}'/'${SED_STR2}'/g' > tmp.h
-           mv -f tmp.h $i
-        done
-        cd $BAD_MESA
-        cd ../
+         echo "Copying MangleMesaInclude directory"
+         mkdir -p VISIT_VTK_MANGLED_MESA_MOVE_DIR
+         cd VISIT_VTK_MANGLED_MESA_MOVE_DIR
+         echo "cmake_minimum_required(version 2.8)" > CMakeLists.txt
+         echo "use_mangled_mesa($VISITDIR/mesa/${MESA_VERSION}/${VISITARCH}/include/GL $VISITDIR/vtk/${VTK_VERSION}/$VISITARCH/include/MangleMesaInclude)" >> CMakeLists.txt
+         
+         #this will call cmake to copy the MesaGL to the VTK install directory
+         ${CMAKE_INSTALL}/cmake .
+         cd ../
+
+         #remove the tmp directory
+         rm -fR VISIT_VTK_MANGLED_MESA_MOVE_DIR
     fi
 
     if [[ "$DO_GROUP" == "yes" ]] ; then
@@ -6078,10 +6189,10 @@ function build_hdf4
     cd $HDF4_BUILD_DIR || error "Can't cd to hdf4 build dir."
     info "Invoking command to configure HDF4"
     MAKEOPS=""
+    mv configure configure.old
+    sed "s/-ljpeg/-lvtkjpeg/g" configure.old | sed "s/jpeg_start_decompress/vtk_jpeg_start_decompress/g" > configure
+    chmod 700 configure
     if [[ "$OPSYS" == "Darwin" || "$OPSYS" == "AIX" ]]; then
-        mv configure configure.old
-        sed "s/-ljpeg/-lvtkjpeg/g" configure.old | sed "s/jpeg_start_decompress/vtk_jpeg_start_decompress/g" > configure
-        chmod 700 configure
         export DYLD_LIBRARY_PATH="$VISITDIR/szip/$SZIP_VERSION/$VISITARCH/lib":$DYLD_LIBRARY_PATH
         ./configure CXX="$CXX_COMPILER" CC="$C_COMPILER" \
         CFLAGS="$CFLAGS $C_OPT_FLAGS" \
@@ -6092,18 +6203,23 @@ function build_hdf4
         --with-szlib="$VISITDIR/szip/$SZIP_VERSION/$VISITARCH" \
         --disable-fortran --disable-dependency-tracking
         if [[ $? != 0 ]] ; then
-           warn "HDF4 configure failed.  Giving up"
+           warn "HDF4 configure failed.  Giving up"\
+                "You can see the details of the build failure at $HDF4_BUILD_DIR/config.log\n"
            return 1
         fi
         MAKEOPS="-i"
     else
-        export LD_LIBRARY_PATH="$VISITDIR/szip/$SZIP_VERSION/$VISITARCH/lib":$LD_LIBRARY_PATH
+        export LD_LIBRARY_PATH="$VISITDIR/vtk/${VTK_VERSION}/$VISITARCH/lib":"$VISITDIR/szip/$SZIP_VERSION/$VISITARCH/lib":$LD_LIBRARY_PATH
         ./configure CXX="$CXX_COMPILER" CC="$C_COMPILER" \
         CFLAGS="$CFLAGS $C_OPT_FLAGS" LIBS="-lm" --disable-fortran \
+        CPPFLAGS="-I$VISITDIR/vtk/${VTK_VERSION}/$VISITARCH/include/vtk-5.0 \
+        -I$VISITDIR/vtk/${VTK_VERSION}/$VISITARCH/include/vtk-5.0/vtkjpeg" \
         --prefix="$VISITDIR/hdf4/$HDF4_VERSION/$VISITARCH" \
+        --with-jpeg="$VISITDIR/vtk/${VTK_VERSION}/$VISITARCH" \
         --with-szlib="$VISITDIR/szip/$SZIP_VERSION/$VISITARCH"
         if [[ $? != 0 ]] ; then
-           warn "HDF4 configure failed.  Giving up"
+           warn "HDF4 configure failed.  Giving up.\n"\
+                "You can see the details of the build failure at $HDF4_BUILD_DIR/config.log\n"
            return 1
         fi
     fi
@@ -6523,44 +6639,23 @@ function build_cgns
 #                         Function 8.6, build_gdal                            #
 # *************************************************************************** #
 
-function build_gdal
+function apply_gdal_linux_x86_64_patch
 {
-    #
-    # Prepare build dir
-    #
-    prepare_build_dir $GDAL_BUILD_DIR $GDAL_FILE
-    untarred_gdal=$?
-    if [[ $untarred_gdal == -1 ]] ; then
-       warn "Unable to prepare GDAL Build Directory. Giving Up"
-       return 1
-    fi
+    mv configure configure.old
+    sed "s/expat_prefix\/lib -lexpat/expat_prefix\/lib64 -lexpat/g" configure.old > configure
+    chmod 700 configure
+}
 
-    #
-    info "Configuring GDAL . . ."
-    cd $GDAL_BUILD_DIR || error "Can't cd to GDAL build dir."
-    info "Invoking command to configure GDAL"
-    if [[ "$OPSYS" == "Darwin" ]]; then
-       if [[ "$DO_STATIC_BUILD" == "no" ]]; then
-           EXTRA_FLAGS="F77=\"\"--enable-shared --disable-static"
-       else
-           EXTRA_FLAGS="F77=\"\"--enable-static --disable-shared"
-       fi
-    else
-       EXTRA_FLAGS="--enable-static --disable-shared"
-    fi
+function apply_gdal_mac6_patch
+{
+    cat frmts/gtiff/libtiff/GNUmakefile | \
+       sed 's/tif_zip.o/tif_zip.o lfind.o/' > tmp.make
+    mv frmts/gtiff/libtiff/GNUmakefile \
+       frmts/gtiff/libtiff/GNUmakefile.orig
+    mv tmp.make frmts/gtiff/libtiff/GNUmakefile
 
-    if [[ "$OPSYS" == "Darwin" ]]; then
-        # Check for version 6.x.x (MacOS 10.2, Jaguar)
-        VER=$(uname -r)
-        if (( ${VER%%.*} < 7 )) ; then
-            cat frmts/gtiff/libtiff/GNUmakefile | \
-               sed 's/tif_zip.o/tif_zip.o lfind.o/' > tmp.make
-            mv frmts/gtiff/libtiff/GNUmakefile \
-               frmts/gtiff/libtiff/GNUmakefile.orig
-            mv tmp.make frmts/gtiff/libtiff/GNUmakefile
-
-            echo > frmts/gtiff/libtiff/lfind.c
-            cat >> frmts/gtiff/libtiff/lfind.c << EOF
+    echo > frmts/gtiff/libtiff/lfind.c
+    cat >> frmts/gtiff/libtiff/lfind.c << EOF
 #include <sys/types.h>
 #include <string.h>
 #include <unistd.h>
@@ -6597,8 +6692,47 @@ linear_base(key, base, nelp, width, compar, add_flag)
       return(end);
 }
 EOF
+}
+
+function build_gdal
+{
+    #
+    # Prepare build dir
+    #
+    prepare_build_dir $GDAL_BUILD_DIR $GDAL_FILE
+    untarred_gdal=$?
+    if [[ $untarred_gdal == -1 ]] ; then
+       warn "Unable to prepare GDAL Build Directory. Giving Up"
+       return 1
+    fi
+
+    #
+    info "Configuring GDAL . . ."
+    cd $GDAL_BUILD_DIR || error "Can't cd to GDAL build dir."
+    info "Invoking command to configure GDAL"
+    if [[ "$OPSYS" == "Darwin" ]]; then
+       if [[ "$DO_STATIC_BUILD" == "no" ]]; then
+           EXTRA_FLAGS="F77=\"\"--enable-shared --disable-static"
+       else
+           EXTRA_FLAGS="F77=\"\"--enable-static --disable-shared"
+       fi
+    else
+       EXTRA_FLAGS="--enable-static --disable-shared"
+    fi
+
+    if [[ "$OPSYS" == "Darwin" ]]; then
+        # Check for version 6.x.x (MacOS 10.2, Jaguar)
+        VER=$(uname -r)
+        if (( ${VER%%.*} < 7 )) ; then
+             apply_gdal_mac6_patch
         fi
     fi
+    if [[ "$OPSYS" == "Linux" ]] ; then
+        if [[ "$(uname -m)" == "x86_64" ]] ; then
+             apply_gdal_linux_x86_64_patch
+        fi
+    fi
+
     ./configure CXX="$CXX_COMPILER" CC="$C_COMPILER" $EXTRA_FLAGS \
        CFLAGS="$CFLAGS $C_OPT_FLAGS -DH5_USE_16_API" \
        CXXFLAGS="$CXXFLAGS $CXX_OPT_FLAGS -DH5_USE_16_API" \
@@ -6616,7 +6750,7 @@ EOF
     #
     # Build GDAL
     #
-    info "Building GDAL . . . (~4 minutes)"
+    info "Building GDAL . . . (~7 minutes)"
 
     $MAKE $MAKE_OPT_FLAGS
     if [[ $? != 0 ]] ; then
@@ -7663,7 +7797,7 @@ function build_fastbit
        CXX="$CXX_COMPILER" CC="$C_COMPILER" \
        CFLAGS="$CFLAGS $C_OPT_FLAGS" CXXFLAGS="$CXXFLAGS $CXX_OPT_FLAGS" \
        --prefix="$VISITDIR/fastbit/$FASTBIT_VERSION/$VISITARCH" \
-       --disable-shared
+       --disable-shared --with-java=no
     if [[ $? != 0 ]] ; then
        echo "FastBit configure failed.  Giving up"
        return 1
@@ -8152,12 +8286,146 @@ function build_mdsplus
     return 0
 }
 
+
+# ***************************************************************************
+#                         Function 8.21, build_mxml
+# Required by ADIOS.
+#
+# Modifications:
+#
+# ***************************************************************************
+
+function build_mxml
+{
+    #
+    # Prepare build dir
+    #
+    prepare_build_dir $MXML_BUILD_DIR $MXML_FILE
+    untarred_mxml=$?
+    if [[ $untarred_mxml == -1 ]] ; then
+       warn "Unable to prepare mxml Build Directory. Giving Up"
+       return 1
+    fi
+
+    #
+    info "Configuring mxml . . ."
+    cd $MXML_BUILD_DIR || error "Can't cd to mxml build dir."
+    info "Invoking command to configure mxml"
+    ./configure ${OPTIONAL} CXX="$CXX_COMPILER" \
+       CC="$C_COMPILER" CFLAGS="$CFLAGS $C_OPT_FLAGS" CXXFLAGS="$CXXFLAGS $CXX_OPT_FLAGS" \
+       --prefix="$VISITDIR/mxml/$MXML_VERSION/$VISITARCH"
+    if [[ $? != 0 ]] ; then
+       warn "mxml configure failed.  Giving up"
+       return 1
+    fi
+
+    #
+    # Build mxml
+    #
+    info "Building mxml . . . (~1 minutes)"
+
+    $MAKE $MAKE_OPT_FLAGS
+    if [[ $? != 0 ]] ; then
+       warn "mxml build failed.  Giving up"
+       return 1
+    fi
+    info "Installing ADIOS . . ."
+
+    $MAKE install
+    if [[ $? != 0 ]] ; then
+       warn "mxml build (make install) failed.  Giving up"
+       return 1
+    fi
+
+    if [[ "$DO_GROUP" == "yes" ]] ; then
+       chmod -R ug+w,a+rX "$VISITDIR/mxml"
+       chgrp -R ${GROUP} "$VISITDIR/mxml"
+    fi
+    cd "$START_DIR"
+    info "Done with mxml"
+    return 0
+}
+
+# ***************************************************************************
+#                         Function 8.22, build_ADIOS
+#
+# Modifications:
+#
+# ***************************************************************************
+
+function build_ADIOS
+{
+    #
+    # Prepare build dir
+    #
+    prepare_build_dir $ADIOS_BUILD_DIR $ADIOS_FILE
+    untarred_ADIOS=$?
+    if [[ $untarred_ADIOS == -1 ]] ; then
+       warn "Unable to prepare ADIOS Build Directory. Giving Up"
+       return 1
+    fi
+
+    #
+    info "Configuring ADIOS . . ."
+    cd $ADIOS_BUILD_DIR || error "Can't cd to ADIOS build dir."
+    info "Invoking command to configure ADIOS"
+    if [[ "$VISIT_MPI_COMPILER" != "" ]] ; then
+        ./configure ${OPTIONAL} CXX="$CXX_COMPILER" \
+            CC="$C_COMPILER" CFLAGS="$CFLAGS $C_OPT_FLAGS" CXXFLAGS="$CXXFLAGS $CXX_OPT_FLAGS" \
+            MPICXX="$VISIT_MPI_COMPILER" \
+            --with-mxml="$VISITDIR/mxml/$MXML_VERSION/$VISITARCH" \
+            --prefix="$VISITDIR/ADIOS/$ADIOS_VERSION/$VISITARCH"
+    else
+        ./configure ${OPTIONAL} CXX="$CXX_COMPILER" \
+            CC="$C_COMPILER" CFLAGS="$CFLAGS $C_OPT_FLAGS" CXXFLAGS="$CXXFLAGS $CXX_OPT_FLAGS" \
+            --without-mpi \
+            --with-mxml="$VISITDIR/mxml/$MXML_VERSION/$VISITARCH" \
+            --prefix="$VISITDIR/ADIOS/$ADIOS_VERSION/$VISITARCH"
+    fi
+        
+    if [[ $? != 0 ]] ; then
+       warn "ADIOS configure failed.  Giving up"
+       return 1
+    fi
+
+    #
+    # Build ADIOS
+    #
+    info "Building ADIOS . . . (~2 minutes)"
+
+    $MAKE $MAKE_OPT_FLAGS
+    if [[ $? != 0 ]] ; then
+       warn "ADIOSbuild failed.  Giving up"
+       return 1
+    fi
+    info "Installing ADIOS . . ."
+
+    $MAKE install
+    if [[ $? != 0 ]] ; then
+       warn "ADIOS build (make install) failed.  Giving up"
+       return 1
+    fi
+
+    if [[ "$DO_GROUP" == "yes" ]] ; then
+       chmod -R ug+w,a+rX "$VISITDIR/ADIOS"
+       chgrp -R ${GROUP} "$VISITDIR/ADIOS"
+    fi
+    cd "$START_DIR"
+    info "Done with ADIOS"
+    return 0
+}
+
+
+
 # *************************************************************************** #
 #                          Function 9, build_hostconf                         #
 #                                                                             #
 # Mark C. Miller, Wed Oct 27 19:29:19 PDT 2010                                #
 # Adjusted ordering of database lib variables to ensure LIBDEP gets processed #
 # correctly. Added comments to host conf file regarding ordering issue.       #
+#                                                                             #
+# Kathleen Bonnell, Wed Feb 16 08:35:40 PST 2011                              #
+# Remove setting of CMAKE_BUILD_TYPE                                          #
 # *************************************************************************** #
 
 function build_hostconf
@@ -8231,7 +8499,6 @@ function build_hostconf
     echo "##" >> $HOSTCONF
     echo "VISIT_OPTION_DEFAULT(VISIT_C_COMPILER $C_COMPILER TYPE STRING)">> $HOSTCONF
     echo "VISIT_OPTION_DEFAULT(VISIT_CXX_COMPILER $CXX_COMPILER TYPE STRING)" >> $HOSTCONF
-    echo "VISIT_OPTION_DEFAULT(CMAKE_BUILD_TYPE Release TYPE STRING)" >> $HOSTCONF
 
     if [[ "$USE_VISIBILITY_HIDDEN" == "yes" ]] ; then
         echo "VISIT_OPTION_DEFAULT(VISIT_C_FLAGS \"$CFLAGS -fvisibility=hidden\" TYPE STRING)" >> $HOSTCONF
@@ -8301,7 +8568,7 @@ function build_hostconf
             echo \
             "VISIT_OPTION_DEFAULT(VISIT_HDF4_LIBDEP \${VISITHOME}/szip/$SZIP_VERSION/\${VISITARCH}/lib sz \${VISITHOME}/vtk/$VTK_VERSION/\${VISITARCH}/lib vtkjpeg)" \
             >> $HOSTCONF
-        else
+          else
             echo \
             "VISIT_OPTION_DEFAULT(VISIT_HDF4_LIBDEP \${VISITHOME}/vtk/$VTK_VERSION/\${VISITARCH}/lib vtkjpeg)" \
             >> $HOSTCONF
@@ -8338,7 +8605,7 @@ function build_hostconf
         >> $HOSTCONF
         if [[ "$DO_HDF5" == "yes" ]] ; then
             echo \
-            "VISIT_OPTION_DEFAULT(VISIT_NETCDF_LIBDEP HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP})" \
+            "VISIT_OPTION_DEFAULT(VISIT_NETCDF_LIBDEP HDF5_LIBRARY_DIR hdf5_hl HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP})" \
             >> $HOSTCONF
         fi
     fi
@@ -8494,7 +8761,7 @@ function build_hostconf
             >> $HOSTCONF
         else
             echo \
-            "VISIT_OPTION_DEFAULT(VISIT_SILO_LIBDEP /usr/lib z \${VISIT_HDF5_LIBDEP})" \
+            "VISIT_OPTION_DEFAULT(VISIT_SILO_LIBDEP /usr/lib z)" \
             >> $HOSTCONF
         fi
     fi
@@ -8570,6 +8837,19 @@ function build_hostconf
         echo "ITAPS_LINK_LIBRARIES(GRUMMP iMesh_GRUMMP GR_3D GR_surf GR_2D GR_base SUMAAlog_lite OptMS vtkGraphics)" \
         >> $HOSTCONF
         echo "ITAPS_LINK_DIRECTORIES(GRUMMP \${VISITHOME}/itaps/GRUMMP/$ITAPS_GRUMMP_VERSION/\${VISITARCH}/lib)" \
+        >> $HOSTCONF
+    fi
+
+    if [[ "$DO_ADIOS" == "yes" ]] ; then
+        echo >> $HOSTCONF
+        echo "##" >> $HOSTCONF
+        echo "## ADIOS" >> $HOSTCONF
+        if [[ "$VISIT_MPI_COMPILER" != "" ]] ; then
+            echo "## (configured w/ mpi compiler wrapper)" >> $HOSTCONF
+        fi
+        echo "##" >> $HOSTCONF
+        echo \
+        "VISIT_OPTION_DEFAULT(VISIT_ADIOS_DIR \${VISITHOME}/ADIOS/$ADIOS_VERSION/\${VISITARCH})" \
         >> $HOSTCONF
     fi
     echo >> $HOSTCONF
@@ -8930,6 +9210,7 @@ usage () {
   printf "BOOLEAN FLAGS\n"
   printf "\tThese are used to enable or disable specific functionality.  They do not take option values.\n\n"
   printf "%-15s %s [%s]\n" "--all-io"  "Build all available I/O libraries" "$DO_ALLIO"
+  printf "%-15s %s [%s]\n" "--adios"   "Build ADIOS" "$DO_ADIOS"
   printf "%-15s %s [%s]\n" "--advio"   "Build AdvIO" "$DO_ADVIO"
   printf "%-15s %s [%s]\n" "--boxlib"  "Build Boxlib" "$DO_BOXLIB"
   printf "%-15s %s [%s]\n" "--ccmio"   "Build Star-CD support" "$DO_CCMIO"
@@ -9170,6 +9451,7 @@ for arg in "${arguments[@]}" ; do
     case $arg in
         --absolute) ABS_PATH="yes"; ON_ABS_PATH="on";;
         --all-io) DO_ALLIO="yes";;
+        --adios) DO_ADIOS="yes"; ON_ADIOS="on"; DO_MXML="yes"; ON_MXML="yes";;
         --advio) DO_ADVIO="yes"; ON_ADVIO="on";;
         --arch) next_arg="arch";;
         --boxlib) DO_BOXLIB="yes"; ON_BOXLIB="on";;
@@ -9327,6 +9609,10 @@ if [[ "$DO_DBIO_ONLY" == "yes" || "$DO_ALLIO" == "yes" ]]; then
     ON_SILO="on"
     DO_XDMF="yes"
     ON_XDMF="on"
+    DO_ADIOS="yes"
+    ON_ADIOS="on"
+    DO_MXML="yes"
+    ON_MXML="on"
 
     #
     # Releasibility of these libs is not yet understood
@@ -9492,6 +9778,7 @@ if [[ "$DO_OPTIONAL" == "yes" && "$GRAPHICAL" == "yes" ]] ; then
            "Silo"     "$SILO_VERSION    $SILO_FILE"      $ON_SILO \
            "SZip"     "$SZIP_VERSION    $SZIP_FILE"      $ON_SZIP \
            "Xdmf"     "$XDMF_VERSION  $XDMF_FILE"    $ON_XDMF  \
+           "ADIOS"    "$ADIOS_VERSION  $ADIOS_FILE"    $ON_ADIOS \
             2> tmp$$
     retval=$?
 
@@ -9514,6 +9801,8 @@ if [[ "$DO_OPTIONAL" == "yes" && "$GRAPHICAL" == "yes" ]] ; then
         DO_SILO="no"
         DO_SZIP="no"
         DO_XDMF="no"
+        DO_ADIOS="no"
+        DO_MXML="no"
         for OPTION in $choice
         do
             case $OPTION in
@@ -9553,6 +9842,9 @@ if [[ "$DO_OPTIONAL" == "yes" && "$GRAPHICAL" == "yes" ]] ; then
               Xdmf)
                  DO_XDMF="yes"
                  DO_HDF5="yes";;
+              ADIOS)
+                 DO_ADIOS="yes"
+                 DO_MXML="yes"
             esac
         done
         ;;
@@ -10216,6 +10508,32 @@ if [[ "$DO_XDMF" == "yes" ]] ; then
             error "Unable to build or install Xdmf.  Bailing out."
         fi
         info "Done building Xdmf"
+   fi
+fi
+
+cd "$START_DIR"
+if [[ "$DO_ADIOS" == "yes" ]] ; then
+    check_if_installed "ADIOS" $ADIOS_VERSION
+    if [[ $? == 0 ]] ; then
+        info "Skipping ADIOS build.  ADIOS is already installed."
+    else
+        check_if_installed "mxml" $MXML_VERSION
+        if [[ $? == 0 ]] ; then
+            info "Skipping build of MXML"
+        else
+            build_mxml
+            if [[ $? != 0 ]] ; then
+                 error "Unable to build or install mxml.  Bailing out."
+            fi
+            info "Done building mxml"
+        fi
+
+        info "Building ADIOS (~1 minutes)"
+        build_ADIOS
+        if [[ $? != 0 ]] ; then
+            error "Unable to build or install ADIOS.  Bailing out."
+        fi
+        info "Done building ADIOS"
    fi
 fi
 

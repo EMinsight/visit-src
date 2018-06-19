@@ -131,8 +131,38 @@ class Otsu
       histo[index]++;
     }
 
+
+    pair< unsigned int, unsigned int > zeropair[2];
+
+    zeropair[0] = pair< unsigned int, unsigned int >(0,0);
+    zeropair[1] = pair< unsigned int, unsigned int >(0,0);
+
+    unsigned int zerostart=nbins, zerostop=nbins;
+
     for( unsigned int i=0; i<nbins; ++i )
     {
+      if( histo[i] == 0 && zerostart == nbins )
+      {
+        zerostart = i;
+        zerostop  = i;
+      }
+      else if( histo[i] != 0 && zerostart != nbins )
+      {
+        zerostop = i-1;
+
+        if( zerostop-zerostart > zeropair[0].second-zeropair[0].first )
+        {
+          zeropair[1] = zeropair[0];
+          zeropair[0] = pair< unsigned int, unsigned int >(zerostart, zerostop);
+        }
+        else if( zerostop-zerostart > zeropair[1].second-zeropair[1].first )
+        {
+          zeropair[1] = pair< unsigned int, unsigned int >(zerostart, zerostop);
+        }
+
+        zerostart = nbins;
+      }
+
       int diff;
 
       if( i )
@@ -142,6 +172,13 @@ class Otsu
 
       cerr << i << "  " << histo[i] << "  " << diff << "  " << histo[i] << endl;
     }
+
+    cerr << endl
+         << "zero pairs  "
+         << zeropair[0].first << "-" << zeropair[0].second << "  "
+         << zeropair[0].second-zeropair[0].first+1 << "     "
+         << zeropair[1].first << "-" << zeropair[1].second << "  "
+         << zeropair[1].second-zeropair[1].first+1 << endl;
   }
 
 public:
@@ -1276,78 +1313,90 @@ poloidalWindingCheck( vector< unsigned int > &poloidalWindingCounts,
 double FieldlineLib::
 calculateSumOfSquares( vector< Point >& points,
                        unsigned int period,
-                       int checkType )
+                       unsigned int checkType )
 {
   // Find the sum of squares for each of the periods. If the period is
   // correct the sum of squares should be a small compared to a wrong
   // value.
 
-  double sumofsquares = 0;
+  double sum = 0;
   double tSamples = 0;
     
   for( unsigned int i=0; i<period; ++i )
   {
-    // Find the centroid of the points based on the period.
     Vector centroid(0,0,0);
     double length = 0;
     double nSamples = 0;
     
-    for( unsigned int j=i; j<points.size(); j+=period )
+    if( checkType != 2 )
     {
+      // Find the centroid of the points based on the period.
+      for( unsigned int j=i; j<points.size(); j+=period )
+      {
+        if( checkType == 0 || checkType == 1 )
+        {
+          centroid += points[j];
+          ++nSamples;
+        }
+        // Find the average length of the distance between points
+        // based on the period.
+        else if( checkType == 3 && j>period )
+        {
+          length += (points[j]-points[j-period]).length();
+          ++nSamples;
+        }
+      }
+      
       if( checkType == 0 || checkType == 1 )
-      {
-        centroid += points[j];
-        ++nSamples;
-      }
-
-      else if( checkType == 2 && j>period )
-      {
-        length += (points[j]-points[j-period]).length();
-        ++nSamples;
-      }
+        centroid /= (double) nSamples;
+      
+      else if( checkType == 3 )
+        length   /= (double) nSamples;
     }
-    
-    if( checkType == 0 || checkType == 1 )
-      centroid /= (double) nSamples;
 
-    else if( checkType == 2 )
-      length   /= (double) nSamples;
-
-    if( nSamples > 1 )
+    if( checkType == 2 || nSamples > 1 )
     {
       // Get the sum of squares for each bin.
-      double tmpsumofsquares = 0;
-      
       for( unsigned int j=i; j<points.size(); j+=period )
       {
         // Centroid difference
         if( checkType == 0 )
         {
           Vector diff = points[j] - centroid;
-          tmpsumofsquares += diff.length2();
+          sum += diff.length2();
           ++tSamples;
         }
         // Z difference
         else if( checkType == 1 )
         {
           double diff = points[j].z - centroid.z;
-          tmpsumofsquares += (diff * diff);
+          sum += (diff * diff);
           ++tSamples;
         }
-        // Length difference
+
+        // Length sum
         else if( checkType == 2 && j>period )
         {
+          double len = (points[j]-points[j-period]).length();
+          sum += len;
+          ++tSamples;
+        }
+
+        // Length difference
+        else if( checkType == 3 && j>period )
+        {
           double diff = (points[j]-points[j-period]).length() - length;
-          tmpsumofsquares += (diff * diff);
+          sum += (diff * diff);
           ++tSamples;
         }
       }
-
-      sumofsquares += tmpsumofsquares;
     }
   }
 
-  return sumofsquares / tSamples;
+  if( checkType != 2 )
+    return sum / tSamples;
+  else
+    return sum;
 }
 
 int
@@ -1360,15 +1409,16 @@ compareSecond( const pair< unsigned int, double > s0,
 void FieldlineLib::
 periodicityStats( vector< Point >& points,
                   vector< pair< unsigned int, double > >& stats,
-                  unsigned int max_period )
+                  unsigned int max_period,
+                  unsigned int checkType )
 {
   stats.clear();
 
- // Find the base period variance.
+  // Find the base period variance.
   unsigned int best_period = points.size();
   double test_var, best_var = 1.0e9;
 
-  double base_var = calculateSumOfSquares( points, 1, 1 );
+  double base_var = calculateSumOfSquares( points, 1, checkType );
 
   if( verboseFlag )
     cerr << "Base variance  " << base_var << endl;
@@ -1379,7 +1429,7 @@ periodicityStats( vector< Point >& points,
 
   for( unsigned int i=1; i<=max_period; ++i ) 
   {
-    double var = calculateSumOfSquares( points, i, 1 );
+    double var = calculateSumOfSquares( points, i, checkType );
     
     stats.push_back( pair< unsigned int, double > (i, var ) );
 
@@ -1392,7 +1442,7 @@ periodicityStats( vector< Point >& points,
 
   if( verboseFlag )
     cerr << "Best period " << best_period << "  "
-         << "variance  " << calculateSumOfSquares( points, best_period, 1 )
+         << "variance  " << calculateSumOfSquares( points, best_period, checkType )
          << endl;
 
   if( stats.size() == 0 )
@@ -1455,8 +1505,8 @@ thresholdStats( vector< pair< unsigned int, double > >& stats )
     }
   }
 
-  if( cutoffIndex > 1 )
-    stats.resize(cutoffIndex);
+//   if( cutoffIndex > 1 )
+//     stats.resize(cutoffIndex);
 }
 
 
@@ -1886,16 +1936,16 @@ islandChecks( vector< Point >& points,
         max_gap *= 0.5;
 
         double min_gap = 1.0e9;  // Distance between points.
-        double min_gap_index;
+        unsigned int min_gap_index = 0;
 
         double min_len = 1.0e9;  // Difference in segments.
-        double min_len_index;
+        unsigned int min_len_index = 0;
 
         double min_dist = 1.0e9; // Minimum distance.
-        double min_dist_index;
+        unsigned int min_dist_index = 0;
 
         double min_dist2 = 1.0e9;// Second minimum distance.
-        double min_dist2_index;
+        unsigned int min_dist2_index = 0;
 
         bool past_max_gap = false;
 
@@ -2279,61 +2329,34 @@ FieldlineLib::fieldlineProperties( vector< Point > &ptList,
   FieldlineProperties::AnalysisState analysisState = FieldlineProperties::UNKNOWN_STATE;
 
   // Last Pair Estimation
-  double LWC_SafetyFactor = (float) poloidalWindingCounts.size() /
-    (float) poloidalWindingCounts[poloidalWindingCounts.size()-1];
-
   double LRS_SafetyFactor = (2.0 * M_PI * poloidal_puncture_pts.size()) /
-    fabs(rotationalSum);
-
-  if( verboseFlag )
-    cerr << "Limit Rotational Sum Safety Factor    "
-         << LRS_SafetyFactor << endl
-         << "Limit Rotational Sum2 Safety Factor   "
-         << LWC_SafetyFactor << "   "
-         << "Difference  "
-         << fabs(LRS_SafetyFactor-LWC_SafetyFactor)
-         << endl;
-
+    fabs(rotationalSums[poloidal_puncture_pts.size()-1]);
 
   // Average Estimation
-  double averageRotationalSum, averageRotationalSum2, averageSafetyFactor;
-  double stdDev;
+  double averageRotationalSum, stdDev;
 
-  safetyFactorStats( poloidalWindingCounts, averageSafetyFactor, stdDev );
   safetyFactorStats( rotationalSums, averageRotationalSum, stdDev );
-
   averageRotationalSum *= 2.0 * M_PI;
 
-  if( verboseFlag )
-    cerr << "Average Rotational Sum Safety Factor         "
-         << averageRotationalSum << endl 
-         << "Average Rotational Sum2 Safety Factor        "
-         << averageSafetyFactor << "   "
-         << "Difference  "
-         << fabs(averageRotationalSum-averageSafetyFactor)
-         << endl;
-
-
   // Least Squares Estimation
-  double LSWC_SafetyFactor, LSRS_SafetyFactor, LSRS2_SafetyFactor;
+  double LSRS_SafetyFactor;
 
-  least_square_fit( poloidalWindingCounts, LSWC_SafetyFactor);
-  least_square_fit( rotationalSums, LSRS_SafetyFactor);
+  least_square_fit( rotationalSums, LSRS_SafetyFactor );
   LSRS_SafetyFactor *= 2.0 * M_PI;
 
-  if( verboseFlag )
-    cerr << "Least Square Rotational Sum Safety Factor    "
-         << LSRS_SafetyFactor << endl 
-         << "Least Square Rotational Sum2 Safety Factor   "
-         << LSWC_SafetyFactor << "   "
-         << "Difference  "
-         << fabs(LSRS_SafetyFactor-LSWC_SafetyFactor)
-         << endl;
-
-  double safetyFactor = LSWC_SafetyFactor;
+  double safetyFactor = LRS_SafetyFactor;
 
   if( verboseFlag )
-    cerr << "Using safety factor " << safetyFactor << endl;
+  {
+    cerr << "Limit Rotational Sum Safety Factor    "
+         << LRS_SafetyFactor << endl
+ << "Average Rotational Sum Safety Factor         "
+         << averageRotationalSum << endl
+         << "Least Square Rotational Sum Safety Factor    "
+         << LSRS_SafetyFactor << endl
+
+         << "Using safety factor " << safetyFactor << endl;
+  }
 
   unsigned int toroidalWinding = 0, poloidalWinding = 0;
   unsigned int windingGroupOffset = 0, islands = 0;
@@ -2394,7 +2417,7 @@ FieldlineLib::fieldlineProperties( vector< Point > &ptList,
         windingNumberMatchIndex = i;
         
       if( verboseFlag )
-        cerr << "Drawable   winding pair "
+        cerr << "**Drawable winding pair "
              << offsetWindingPairs[i].toroidal << ","
              << offsetWindingPairs[i].poloidal << "  ("
              << local_safetyFactor << " - "
@@ -2427,13 +2450,20 @@ FieldlineLib::fieldlineProperties( vector< Point > &ptList,
       cerr << "Poor consistency - probably chaotic" << endl;
 
     if( overrideToroidalWinding && overridePoloidalWinding )
+    {
       windingGroupOffset = Blankinship( overrideToroidalWinding,
-                                      overridePoloidalWinding );
+                                        overridePoloidalWinding );
+
+      fi.analysisState = FieldlineProperties::UNKNOWN_STATE;
+      fi.type = FieldlineProperties::CHAOTIC;
+    }
     else
+    {
       windingGroupOffset = 0;
 
-    fi.analysisState = FieldlineProperties::UNKNOWN_STATE;
-    fi.type = FieldlineProperties::CHAOTIC;
+      fi.analysisState = FieldlineProperties::UNKNOWN_STATE;
+      fi.type = FieldlineProperties::CHAOTIC;
+    }
 
     fi.toroidalWinding = overrideToroidalWinding;
     fi.poloidalWinding = overridePoloidalWinding;
@@ -2539,7 +2569,7 @@ FieldlineLib::fieldlineProperties( vector< Point > &ptList,
          << "max period " << toroidalWindingMax
          << endl;
 
-  periodicityStats( poloidal_puncture_pts, toroidalStats, toroidalWindingMax );
+  periodicityStats( poloidal_puncture_pts, toroidalStats, toroidalWindingMax, 3 );
 
   // Find the best poloidal periodicity. For a flux surface the period
   // will be the poloidal winding number. For an island chain the
@@ -2552,7 +2582,7 @@ FieldlineLib::fieldlineProperties( vector< Point > &ptList,
          << "max period " << poloidalWindingMax
          << endl;
   
-  periodicityStats( ridgeline_points, poloidalStats, poloidalWindingMax );
+  periodicityStats( ridgeline_points, poloidalStats, poloidalWindingMax, 1 );
   
   // Form a second winding number list that is ranked based on the
   // euclidian distance of each of the period lists.
@@ -2601,7 +2631,7 @@ FieldlineLib::fieldlineProperties( vector< Point > &ptList,
 
   for( unsigned int i=0; i<periodWindingPairs.size(); ++i )
   {
-    if( verboseFlag & i<10 )
+    if( verboseFlag && i<10 )
       cerr << "Period based winding pair:  " 
            << periodWindingPairs[i].toroidal << ","
            << periodWindingPairs[i].poloidal << "  "
@@ -2707,8 +2737,71 @@ FieldlineLib::fieldlineProperties( vector< Point > &ptList,
       cerr << endl;
   }
 
+
   if( drawableIndex == -1 )
   {
+    if( overrideToroidalWinding && overridePoloidalWinding )
+    {
+      toroidalWinding = overrideToroidalWinding;
+      poloidalWinding = overridePoloidalWinding;
+    }
+
+    else if( poloidal_puncture_pts.size() >= fi.maxPunctures )
+    {
+      toroidalWinding = offsetWindingPairs[ windingNumberMatchIndex ].toroidal;
+      poloidalWinding = offsetWindingPairs[ windingNumberMatchIndex ].poloidal;
+
+      analysisState = FieldlineProperties::TERMINATED;
+    }
+
+    else
+    {
+      toroidalWinding = 0;
+      poloidalWinding = 0;
+    }
+
+    if( toroidalWinding && poloidalWinding )
+    {
+      windingGroupOffset = Blankinship( toroidalWinding, poloidalWinding );
+
+      nnodes  = poloidal_puncture_pts.size() / 2;
+
+      // Check to see if the fieldline is periodic. I.e. on a rational
+      // surface.  If within "delta" of the distance the fieldline is
+      // probably on a rational surface.
+      if( rationalCheck( poloidal_puncture_pts,
+                         toroidalWinding,
+                         nnodes, delta*0.1 ) ) 
+      {
+        type = FieldlineProperties::RATIONAL;
+        islands = 0;
+        
+        analysisState = FieldlineProperties::COMPLETED;
+        
+        if( verboseFlag )
+          cerr << "Appears to be a rational surface " << delta*0.1 << endl;
+      }
+      else
+      {
+        fi.analysisState = FieldlineProperties::UNKNOWN_STATE;
+        fi.type = FieldlineProperties::CHAOTIC;
+      }
+
+      fi.toroidalWinding = toroidalWinding;
+      fi.poloidalWinding = poloidalWinding;
+      fi.windingGroupOffset = windingGroupOffset;
+      fi.islands = 0;
+      fi.nnodes = poloidal_puncture_pts.size() / 2;
+
+      fi.confidence        = 0;
+      fi.nPuncturesNeeded  = 0;
+      fi.toroidalPeriod    = toroidalWinding;
+      fi.poloidalPeriod    = poloidalWinding;
+      fi.ridgelineVariance = 0;
+
+      return;
+    }
+  
     if( verboseFlag )
       cerr << "Garbage matches adding more points" << endl;
 

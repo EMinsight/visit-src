@@ -1,4 +1,4 @@
- /*****************************************************************************
+/*****************************************************************************
 *
 * Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
@@ -37,7 +37,7 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                             avtM3DC1Field.C                            //
+//                             avtM3DC1Field.C                               //
 // ************************************************************************* //
 
 #include "avtM3DC1Field.h"
@@ -48,21 +48,47 @@
 #include <vtkIntArray.h>
 #include <vtkFloatArray.h>
 
-#define ELEMENT_SIZE 7
-#define SCALAR_SIZE 20
+#define ELEMENT_SIZE_2D 7
+#define SCALAR_SIZE_2D 20
+
+#define ELEMENT_SIZE_3D 9
+#define SCALAR_SIZE_3D 80
 
 // ****************************************************************************
 //  Method: avtM3DC1Field constructor
 //
-//  Creationist: Allen Sanderson
+//  Creationist: Joshua Breslau
 //  Creation:   20 November 2009
 //
 // ****************************************************************************
 
-avtM3DC1Field::avtM3DC1Field( float *elementsPtr, int nelements ) 
+avtM3DC1Field::avtM3DC1Field( float *elementsPtr,
+                              int nelements, int dim, int planes ) 
   : elements( elementsPtr), neighbors(0),
-    psi0(0), f0(0), psinr(0), psini(0), fnr(0), fni(0), nelms(nelements)
+    f0(0), psi0(0), fnr(0), fni(0), psinr(0), psini(0),
+    I0(0), f(0), psi(0), I(0),
+    eqsubtract(0), linflag(0), tmode(0), bzero(0), rzero(0), F0(0),
+    nelms(nelements), element_dimension(dim), nplanes(planes)
 {
+  if( element_dimension == 2 )
+  {
+    element_size = ELEMENT_SIZE_2D;
+    scalar_size = SCALAR_SIZE_2D;
+  }  
+  else //if( element_dimension == 3 )
+  {
+    element_size = ELEMENT_SIZE_3D;
+    scalar_size = SCALAR_SIZE_3D;
+  }
+
+  // For the lookup table make the following assumptions:
+  // Equally spaced planes,
+  // Equal number of elements in each plane,
+  // Matching element alignment at each plane.
+  
+  // As such, construct a table with using elements from one plane.
+  tElements = nelms / nplanes;
+
   findElementNeighbors();
 }
 
@@ -70,7 +96,7 @@ avtM3DC1Field::avtM3DC1Field( float *elementsPtr, int nelements )
 // ****************************************************************************
 //  Method: avtM3DC1Field destructor
 //
-//  Creationist: Allen Sanderson
+//  Creationist: Joshua Breslau
 //  Creation:   20 November 2009
 //
 // ****************************************************************************
@@ -81,12 +107,49 @@ avtM3DC1Field::~avtM3DC1Field()
   if( trigtable ) free(trigtable);
 
   if( elements ) delete [] elements;
-  if( psi0 )     delete [] psi0;
+
   if( f0 )       delete [] f0;
-  if( psinr )    delete [] psinr;
-  if( psini )    delete [] psini;
+  if( psi0 )     delete [] psi0;
+  if( I0 )      delete [] I0;
+
   if( fnr )      delete [] fnr;
   if( fni )      delete [] fni;
+  if( psinr )    delete [] psinr;
+  if( psini )    delete [] psini;
+
+  if( f )       delete [] f;
+  if( psi )     delete [] psi;
+  if( I )       delete [] I;
+}
+
+
+// ****************************************************************************
+//  Method: avtM3DC1Field IsInside
+//
+//  Creationist: Joshua Breslau
+//  Creation:   16 April 2010
+//
+//  The VTK check should work but is not reliable because the mesh
+//  lies in the XZ plane and Y may or may not be exactly zero. As such
+//  due to round off VTK may say the point is outside the
+//  mesh. As such, use the native check instead.
+//
+//  ****************************************************************************
+
+bool avtM3DC1Field::IsInside(const double& t, const avtVector& x) const
+{
+  double xin[3];
+  double *xieta = new double[element_dimension];
+
+  xin[0] = x[0];
+  xin[1] = x[1];
+  xin[2] = x[2];
+
+  int el = get_tri_coords2D(xin, xieta);
+
+  delete [] xieta;
+
+  return (bool) ( el >= 0 );
 }
 
 
@@ -106,36 +169,36 @@ void avtM3DC1Field::findElementNeighbors()
   int     el, vert, tri[3], vlen;
 
   /* Allocate, initialize neighbor table */
-  neighbors = (int *)malloc(3 * nelms * sizeof(int));
+  neighbors = (int *)malloc(3 * tElements * sizeof(int));
   if (neighbors == NULL) {
     fputs("Insufficient memory in findElementNeighbors.\n", stderr);
     exit(1);
   }
 
-  for (el=0; el<3*nelms; el++)
+  for (el=0; el<3*tElements; el++)
     neighbors[el] = -1;
 
   /* Allocate trig table */
-  trigtable = (double *)malloc(2 * nelms * sizeof(double));
+  trigtable = (double *)malloc(2 * tElements * sizeof(double));
   if (trigtable == NULL) {
     fputs("Insufficient memory in findElementNeighbors.\n", stderr);
     exit(1);
   }
 
   /* Allocate, initialize temporary hash tables */
-  vert_list = (v_entry *)malloc(3 * nelms * sizeof(v_entry));
+  vert_list = (v_entry *)malloc(3 * tElements * sizeof(v_entry));
   if (vert_list == NULL) {
     fputs("Insufficient memory in findElementNeighbors.\n", stderr);
     exit(1);
   }
   vlen = 0;
-  edge_list = (edge *)malloc(3 * nelms * sizeof(edge));
+  edge_list = (edge *)malloc(3 * tElements * sizeof(edge));
   if (edge_list == NULL) {
     fputs("Insufficient memory in findElementNeighbors.\n", stderr);
     exit(1);
   }
 
-  for (vert=0; vert<3*nelms; vert++)
+  for (vert=0; vert<3*tElements; vert++)
     edge_list[vert].n = 0;
 
   /* Loop over elements, finding vertices, edges, neighbors */
@@ -146,8 +209,8 @@ void avtM3DC1Field::findElementNeighbors()
   // (x+(a+b)*cos(theta),z+(a+b)*sin(theta)),
   // (x+b*cos(theta)-c*sin(theta),z+b*sin(theta)+c*cos(theta)).
 
-  for (el=0; el<nelms; el++) {
-    ptr = elements + ELEMENT_SIZE*el;
+  for (el=0; el<tElements; el++) {
+    ptr = elements + element_size*el;
     co = trigtable[2*el]     = cos(ptr[3]);
     sn = trigtable[2*el + 1] = sin(ptr[3]);
 
@@ -167,19 +230,19 @@ void avtM3DC1Field::findElementNeighbors()
       add_edge(edge_list, tri, vert, el, neighbors);
   } /* end loop el */
 
-//   fprintf(stderr, "%d / %d unique vertices\n", vlen, 3*nelms);
+//   fprintf(stderr, "%d / %d unique vertices\n", vlen, 3*tElements);
 //   fprintf(stderr, "Neighbors of element 0: %d, %d, %d\n", neighbors[0],
 //           neighbors[1], neighbors[2]);
 
   /* Use unique vert list to find mesh bounds */
-  Rmin = Rmax = vert_list[0].x;
-  zmin = zmax = vert_list[0].y;
-  for (vert=1; vert<vlen; vert++) {
-    if (Rmin > vert_list[vert].x) Rmin = vert_list[vert].x;
-    if (Rmax < vert_list[vert].x) Rmax = vert_list[vert].x;
-    if (zmin > vert_list[vert].y) zmin = vert_list[vert].y;
-    if (zmax < vert_list[vert].y) zmax = vert_list[vert].y;    
-  }
+//   Rmin = Rmax = vert_list[0].x;
+//   zmin = zmax = vert_list[0].y;
+//   for (vert=1; vert<vlen; vert++) {
+//     if (Rmin > vert_list[vert].x) Rmin = vert_list[vert].x;
+//     if (Rmax < vert_list[vert].x) Rmax = vert_list[vert].x;
+//     if (zmin > vert_list[vert].y) zmin = vert_list[vert].y;
+//     if (zmax < vert_list[vert].y) zmax = vert_list[vert].y;    
+//   }
 
 //   fprintf(stderr, "R bounds: %lf, %lf\nz bounds: %lf, %lf\n",
 //           Rmin, Rmax, zmin, zmax);
@@ -258,22 +321,41 @@ void avtM3DC1Field::add_edge(edge *list, int *tri,
 //  Creation:   20 November 2009
 //
 // ****************************************************************************
-int avtM3DC1Field::get_tri_coords2D(double *xin, int el, double *xout)
+int avtM3DC1Field::get_tri_coords2D(double *xin, int el, double *xout) const
 {
-  float     *tri;
-  double     co, sn, rrel, zrel;
+  float  *tri;
+  double co, sn, rrel, zrel;
+  int    index;
+
+  tri = elements + element_size*el;
 
   /* Compute coordinates local to the current element */
-  co = trigtable[2*el];
-  sn = trigtable[2*el + 1];
-  
-  tri = elements + ELEMENT_SIZE*el;
-  
+  if( element_dimension == 2 )
+    index = 2 * el;
+  else //if( element_dimension == 3 )
+    index = 2*(el%tElements);
+
+  co = trigtable[index];
+  sn = trigtable[index + 1];
+
   rrel = xin[0] - (tri[4] + tri[1]*co);
   zrel = xin[2] - (tri[5] + tri[1]*sn);
   
   xout[0] = rrel*co + zrel*sn;  /* = xi */
   xout[1] = zrel*co - rrel*sn;  /* = eta */
+
+  if( element_dimension == 3 )  /* = zi */
+  {
+    float phi = xin[1];
+
+    while( phi < 0 )
+      phi += 2.0*M_PI;
+
+    while( xin[1] > 2.0*M_PI )
+      phi -= 2.0*M_PI;
+
+    xout[2] = phi - tri[8]; // tri[8] = phi0
+  }
 
   return el;
 }
@@ -286,29 +368,31 @@ int avtM3DC1Field::get_tri_coords2D(double *xin, int el, double *xout)
 //  Creation:   20 November 2009
 //
 // ****************************************************************************
-int avtM3DC1Field::get_tri_coords2D(double *xin, double *xout)
+int avtM3DC1Field::get_tri_coords2D(double *xin, double *xout) const
 {
-  static int el=0;
-  float     *tri;
-  double     co, sn, rrel, zrel;
-  int        last=-1, next, flag0, flag1, flag2;
+  static int el=0;  /* Needs to be static so the method is a const. */
 
-  for (int count=0; count<nelms; ++count) {
+  float  *tri;
+  double co, sn, rrel, zrel;
+  int    last=-1, next, flag0, flag1, flag2;
+
+  for (int count=0; count<tElements; ++count)
+  {
+    tri = elements + element_size*el;
 
     /* Compute coordinates local to the current element */
     co = trigtable[2*el];
     sn = trigtable[2*el + 1];
-
-    tri = elements + ELEMENT_SIZE*el;
 
     rrel = xin[0] - (tri[4] + tri[1]*co);
     zrel = xin[2] - (tri[5] + tri[1]*sn);
 
     xout[0] = rrel*co + zrel*sn;  /* = xi */
     xout[1] = zrel*co - rrel*sn;  /* = eta */
+
     /* Determine whether point is inside element */
     /* "Outside" side 0? */
-    if ((flag0 = ((*tri + tri[1])*xout[1] < 0.0)))
+    if ((flag0 = ((tri[0] + tri[1])*xout[1] < 0.0)))
     {
       if ((next = neighbors[3*el]) >= 0) {
         if (next != last) // not on the boundary so continue;
@@ -323,7 +407,7 @@ int avtM3DC1Field::get_tri_coords2D(double *xin, double *xout)
     }
 
     /* "Outside" side 1? */
-    if ((flag1 = (*tri*xout[1] > tri[2]*(*tri - xout[0]))))
+    if ((flag1 = (tri[0]*xout[1] > tri[2]*(*tri - xout[0]))))
     {
       if ((next = neighbors[3*el + 1]) >= 0) {
         if (next != last) // not on the boundary so continue;
@@ -361,8 +445,202 @@ int avtM3DC1Field::get_tri_coords2D(double *xin, double *xout)
 
 // fprintf(stderr, "Searched %d elements.\n", count);
 
-  return el;
+  if( element_dimension == 2 )
+    return el;
+  else //if( element_dimension == 3 )
+  {
+    // The above finds the xi and eta for the phi = 0 plane. Which is
+    // the same for any plane. Now find the correct phi plane via a
+    // brut force search of each plane.
+
+    // Assumptions:
+    // Equal number of elements in each plane,
+    // Same ordering of elements in each plane,
+    // Matching element alignment at each plane.
+
+    float phi = xin[1];
+
+    while( phi < 0 )
+      phi += 2.0*M_PI;
+
+    while( xin[1] > 2.0*M_PI )
+      phi -= 2.0*M_PI;
+
+    for( int i=0; i<nplanes; ++i )
+    {
+      if( tri[8] <= phi ) // tri[8] = phi0
+      {
+        xout[2] = phi - tri[8];
+
+        if( xout[2] <= tri[7] ) // tri[7] == depth of the section
+          return el + i * tElements;
+      }
+
+      // Go to the next plane
+      tri += element_size*tElements;
+    }
+
+//     tri = elements + element_size*el;
+
+//     for( int i=0; i<nplanes; ++i )
+//     {
+//       cerr << tri[8] << "  " <<  xin[1] << endl;
+//       // Go to the next plane
+//       tri += element_size*tElements;
+//     }
+
+    return -1;
+  }
 }
+
+
+// ****************************************************************************
+//  Method: avtM3DC1Field::operator
+//
+//  Evaluates a point location by consulting a M3D C1 grid.  Gets the
+//      B field components directly.
+//
+//  Programmer: Joshua Breslau
+//  Creation:   October 24, 2009
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+avtVector
+avtM3DC1Field::operator()( const double &t, const avtVector &p ) const
+{
+  // NOTE: Assumes the point is in cylindrical coordiantes.
+  double pt[3] = { p[0], p[1], p[2] };
+
+  /* Find the element containing the point; get local coords xi,eta */
+  double *xieta = new double[element_dimension];
+  int    element;
+
+  avtVector vec;
+
+  if ((element = get_tri_coords2D(pt, xieta)) < 0) 
+  {
+    vec = avtVector(0,0,0);
+  }
+  else 
+  {
+    float B[3];
+
+    interpBcomps(B, pt, element, xieta);
+
+    // The B value is in cylindrical coordiantes
+    vec = avtVector( B[0], B[1], B[2] );
+  }
+
+  delete [] xieta;
+
+  return vec;
+}
+
+
+// ****************************************************************************
+//  Method: interpBcomps
+//
+//  Simultaneously interpolate all three cylindrical components of
+//  magnetic field.
+//
+//  THIS CODE SHOULD NOT BE USED FOR FIELDLINE INTEGRATION WITH 2D
+//  ELEMENTS.
+//
+//  Creationist: Joshua Breslau
+//  Creation:   20 November 2009
+//
+// ****************************************************************************
+void avtM3DC1Field::interpBcomps(float *B, double *x,
+                                    int element, double *xieta) const
+{
+  float *B_r   = &(B[0]);
+  float *B_z   = &(B[2]);
+  float *B_phi = &(B[1]);
+
+  if( element_dimension == 2 )
+  {
+    // Add in the equalibrium if was subtracted out.
+    if( eqsubtract )
+    {
+      /* n=0 components */
+      /* B_R = -1/R dpsi/dz - df'/dR */
+      *B_r = -interpdz(psi0, element, xieta) / x[0];
+      
+      /* B_z = 1/R dpsi/dR - df'/dz */
+      *B_z =  interpdR(psi0, element, xieta) / x[0];
+      
+      /* B_phi = d^2f/dR^2 + 1/R df/dR + d^2f/dz^2 + F0/R^2 */
+      *B_phi = (interpdR2(f0, element, xieta) +
+                interpdz2(f0, element, xieta) +
+                (interpdR(f0, element, xieta) + F0/x[0]) / x[0]);
+    }
+    else
+    {
+      *B_r   = 0;
+      *B_z   = 0;
+      *B_phi = 0;
+    }
+
+    // Add in the perturbed parts. n>0 components, if applicable
+    if (linflag)
+    {
+      double co = cos(tmode * x[1]);
+      double sn = sin(tmode * x[1]);
+
+      double dfnrdr = interpdR(fnr, element, xieta);
+      double dfnidr = interpdR(fni, element, xieta);
+
+      *B_r += (interpdz(psini, element, xieta)*sn -
+               interpdz(psinr, element, xieta)*co) / x[0]
+        + tmode*(dfnrdr*sn + dfnidr*co);
+
+      *B_z += (interpdR(psinr, element, xieta)*co -
+               interpdR(psini, element, xieta)*sn) / x[0]
+        + tmode*(interpdz(fnr, element, xieta)*sn +
+                 interpdz(fni, element, xieta)*co);
+
+      *B_phi += ( (interpdR2(fnr, element, xieta) +
+                   interpdz2(fnr, element, xieta))*co
+                - (interpdR2(fni, element, xieta) +
+                   interpdz2(fni, element, xieta))*sn +
+                  (dfnrdr*co - dfnidr*sn) / x[0] );
+    }
+  }
+  else //if( element_dimension == 3 )
+  {
+    // B = grad(psi) x grad (phi) + grad_perp d(f)/zi + I grad(phi)
+
+    // Add in the equalibrium if was subtracted out.
+    if( eqsubtract )
+    {
+      *B_r =  -interpdz(psi0, element, xieta) / x[0] -
+        interpdRdPhi(f0, element, xieta);
+
+      *B_z =   interpdR(psi0, element, xieta) / x[0] -
+        interpdzdPhi(f0, element, xieta);
+
+      *B_phi = interp(I0, element, xieta) / x[0];
+    }
+    else
+    {
+      *B_r   = 0;
+      *B_z   = 0;
+      *B_phi = 0;
+    }
+
+    // Add in the perturbed parts.
+    *B_r +=  -interpdz(psi, element, xieta) / x[0] -
+      interpdRdPhi(f, element, xieta);
+
+    *B_z +=   interpdR(psi, element, xieta) / x[0] -
+      interpdzdPhi(f, element, xieta);
+
+    *B_phi += interp(I, element, xieta) / x[0];
+  }
+}
+
 
 // ****************************************************************************
 //  Method: interp basic interpolation
@@ -371,17 +649,100 @@ int avtM3DC1Field::get_tri_coords2D(double *xin, double *xout)
 //  Creation:   20 November 2009
 //
 // ****************************************************************************
-float avtM3DC1Field::interp(float *var, int el, double *lcoords)
+float avtM3DC1Field::interp(float *var, int el, double *lcoords) const
 {
-  float *a = var + SCALAR_SIZE*el;
-  double xi = *lcoords, eta = lcoords[1];
+  float *a = var + scalar_size*el;
+  double xi = lcoords[0], eta = lcoords[1];
+  double val = 0;
 
-  return *a + eta*(a[2] + eta*(a[5] + eta*(a[9] + eta*(a[14] + eta*a[19])))) +
-    xi*(a[1] + eta*(a[4] + eta*(a[8] + eta*(a[13] + eta*a[18]))) +
-        xi*(a[3] + eta*(a[7] + eta*(a[12] + eta*a[17])) +
-            xi*(a[6] + eta*(a[11] + eta*a[16]) +
-                xi*(a[10] + xi*a[15]))));
+  if( element_dimension == 2 )
+  {
+    val = a[0] +
+      eta*(a[2] + eta*(a[5] + eta*(a[9] + eta*(a[14] + eta*a[19])))) +
+      xi*(a[1] + eta*(a[4] + eta*(a[8] + eta*(a[13] + eta*a[18]))) +
+          xi*(a[3] + eta*(a[7] + eta*(a[12] + eta*a[17])) +
+              xi*(a[6] + eta*(a[11] + eta*a[16]) +
+                  xi*(a[10] + xi*a[15]))));
+  }
+  else //if( element_dimension == 3 )
+  {
+    double zi = lcoords[2];
+    double zi_q = 1;
+
+    for( unsigned int q=0; q<4; ++q )
+    {
+      val += (a[0] +
+              eta*(a[2] + eta*(a[5] + eta*(a[9] + eta*(a[14] + eta*a[19])))) +
+              xi*(a[1] + eta*(a[4] + eta*(a[8] + eta*(a[13] + eta*a[18]))) +
+                  xi*(a[3] + eta*(a[7] + eta*(a[12] + eta*a[17])) +
+                      xi*(a[6] + eta*(a[11] + eta*a[16]) +
+                          xi*(a[10] + xi*a[15]))))) * zi_q;
+
+      zi_q *= zi;
+
+      a += scalar_size/4;
+    }
+  }
+
+  return val;
 }
+
+
+// ****************************************************************************
+//  Method: interp - interpolation for xicoef and etacoef used for dR
+//  and dz
+//
+//  Creationist: Joshua Breslau
+//  Creation:   20 November 2009
+//
+// ****************************************************************************
+void avtM3DC1Field::interpdX(float *var, int el, double *lcoords,
+                             double &xicoef, double &etacoef) const
+{
+  float *a = var + scalar_size*el;
+  double xi = lcoords[0], eta = lcoords[1];
+
+  if( element_dimension == 2 )
+  {
+    xicoef = a[1] + eta*(a[4] + eta*(a[8] + eta*(a[13] + a[18]*eta))) +
+      xi*(2.0*(a[3] + eta*(a[7] + eta*(a[12] + a[17]*eta))) +
+          xi*(3.0*(a[6] + eta*(a[11] + a[16]*eta)) +
+              xi*(4.0*a[10] + xi*5.0*a[15])));
+    
+    etacoef = a[2] + xi*(a[4] + xi*(a[7] + a[11]*xi)) +
+      eta*(2.0*(a[5] + xi*(a[8] + xi*(a[12] + a[16]*xi))) +
+           eta*(3.0*(a[9] + xi*(a[13] + a[17]*xi)) +
+              eta*(4.0*(a[14] + a[18]*xi) + eta*5.0*a[19])));
+  }
+  else //if( element_dimension == 3 )
+  {
+    double zi = lcoords[2];
+    double zi_q = 1;
+
+    xicoef  = 0;
+    etacoef = 0;
+
+    for( unsigned int q=0; q<4; ++q )
+    {
+      xicoef +=
+        (a[1] + eta*(a[4] + eta*(a[8] + eta*(a[13] + a[18]*eta))) +
+         xi*(2.0*(a[3] + eta*(a[7] + eta*(a[12] + a[17]*eta))) +
+             xi*(3.0*(a[6] + eta*(a[11] + a[16]*eta)) +
+                 xi*(4.0*a[10] + xi*5.0*a[15])))) * zi_q;
+      
+      etacoef +=
+        (a[2] + xi*(a[4] + xi*(a[7] + a[11]*xi)) +
+         eta*(2.0*(a[5] + xi*(a[8] + xi*(a[12] + a[16]*xi))) +
+              eta*(3.0*(a[9] + xi*(a[13] + a[17]*xi)) +
+                   eta*(4.0*(a[14] + a[18]*xi) + eta*5.0*a[19])))) * zi_q;
+      
+      zi_q *= zi; 
+
+      a += scalar_size/4;
+    }
+  }
+}
+
 
 // ****************************************************************************
 //  Method: interpdR interpolation in dR
@@ -390,22 +751,19 @@ float avtM3DC1Field::interp(float *var, int el, double *lcoords)
 //  Creation:   20 November 2009
 //
 // ****************************************************************************
-float avtM3DC1Field::interpdR(float *var, int el, double *lcoords)
+float avtM3DC1Field::interpdR(float *var, int el, double *lcoords) const
 {
-  float *a = var + SCALAR_SIZE*el;
-  double xi = lcoords[0], eta = lcoords[1], xicoef, etacoef;
+  double xicoef, etacoef;
+  int index;
 
-  xicoef = a[1] + eta*(a[4] + eta*(a[8] + eta*(a[13] + a[18]*eta))) +
-    xi*(2.0*(a[3] + eta*(a[7] + eta*(a[12] + a[17]*eta))) +
-        xi*(3.0*(a[6] + eta*(a[11] + a[16]*eta)) +
-            xi*(4.0*a[10] + xi*5.0*a[15])));
+  if( element_dimension == 2 )
+    index = 2 * el;
+  else //if( element_dimension == 3 )
+    index = 2*(el%tElements);
 
-  etacoef = a[2] + xi*(a[4] + xi*(a[7] + a[11]*xi)) +
-    eta*(2.0*(a[5] + xi*(a[8] + xi*(a[12] + a[16]*xi))) +
-         eta*(3.0*(a[9] + xi*(a[13] + a[17]*xi)) +
-              eta*(4.0*(a[14] + a[18]*xi) + eta*5.0*a[19])));
+  interpdX( var, el, lcoords, xicoef, etacoef );
 
-  return xicoef*trigtable[2*el] - etacoef*trigtable[2*el + 1];
+  return xicoef*trigtable[index] - etacoef*trigtable[index + 1];
 }
 
 // ****************************************************************************
@@ -415,22 +773,129 @@ float avtM3DC1Field::interpdR(float *var, int el, double *lcoords)
 //  Creation:   20 November 2009
 //
 // ****************************************************************************
-float avtM3DC1Field::interpdz(float *var, int el, double *lcoords)
+float avtM3DC1Field::interpdz(float *var, int el, double *lcoords) const
 {
-  float *a = var + SCALAR_SIZE*el;
-  double xi = lcoords[0], eta = lcoords[1], xicoef, etacoef;
+  double xicoef, etacoef;
+  int index;
 
-  xicoef = a[1] + eta*(a[4] + eta*(a[8] + eta*(a[13] + a[18]*eta))) +
-    xi*(2.0*(a[3] + eta*(a[7] + eta*(a[12] + a[17]*eta))) +
-        xi*(3.0*(a[6] + eta*(a[11] + a[16]*eta)) +
-            xi*(4.0*a[10] + xi*5.0*a[15])));
+  if( element_dimension == 2 )
+    index = 2 * el;
+  else //if( element_dimension == 3 )
+    index = 2*(el%tElements);
 
-  etacoef = a[2] + xi*(a[4] + xi*(a[7] + a[11]*xi)) +
-    eta*(2.0*(a[5] + xi*(a[8] + xi*(a[12] + a[16]*xi))) +
-         eta*(3.0*(a[9] + xi*(a[13] + a[17]*xi)) +
-              eta*(4.0*(a[14] + a[18]*xi) + eta*5.0*a[19])));
+  interpdX( var, el, lcoords, xicoef, etacoef );
 
-  return xicoef*trigtable[2*el + 1] + etacoef*trigtable[2*el];
+  return xicoef*trigtable[index + 1] + etacoef*trigtable[index];
+}
+
+
+// ****************************************************************************
+//  Method: interpdPhi interpolation on dPhi
+//
+//  Creationist: Joshua Breslau
+//  Creation:   20 November 2009
+//
+// ****************************************************************************
+float avtM3DC1Field::interpdPhi(float *var, int el, double *lcoords) const
+{
+  float *a = var + scalar_size*el;
+  double xi = lcoords[0], eta = lcoords[1], zi = lcoords[2];
+  double val = 0;
+
+  if( element_dimension == 2 )
+  {
+    val = 0;
+  }
+  else //if( element_dimension == 3 )
+  {
+    double zi = lcoords[2];
+    double zi_q = 1;
+
+    // For skipping q = 0;
+    a += scalar_size/4;
+
+    for( unsigned int q=1; q<4; ++q )
+    {
+      val += (double) q *
+        (a[0] +
+         eta*(a[2] + eta*(a[5] + eta*(a[9] + eta*(a[14] + eta*a[19])))) +
+         xi*(a[1] + eta*(a[4] + eta*(a[8] + eta*(a[13] + eta*a[18]))) +
+             xi*(a[3] + eta*(a[7] + eta*(a[12] + eta*a[17])) +
+                 xi*(a[6] + eta*(a[11] + eta*a[16]) +
+                     xi*(a[10] + xi*a[15]))))) * zi_q;
+
+      zi_q *= zi;
+
+      a += scalar_size/4;
+    }
+  }
+
+  return val;
+}
+
+
+// ****************************************************************************
+//  Method: interp interpolation for xixicoef, etaetacoef, and
+//  xietacoef used for dR2 and dz2
+//
+//  Creationist: Joshua Breslau
+//  Creation:   20 November 2009
+//
+// ****************************************************************************
+void avtM3DC1Field::interpdX2(float *var, int el, double *lcoords,
+                                 double &xixicoef, double &etaetacoef,
+                                 double &xietacoef ) const
+{
+  float *a = var + scalar_size*el;
+  double xi = lcoords[0], eta = lcoords[1];
+
+  if( element_dimension == 2 )
+  {
+    xixicoef = 2.0*(a[3] + eta*(a[7] + eta*(a[12] + eta*a[17]))) +
+      xi*(6.0*(a[6] + eta*(a[11] + eta*a[16])) +
+          xi*(12.0*a[10] + xi*20.0*a[15]));
+
+    etaetacoef = 2.0*(a[5] + xi*(a[8] + xi*(a[12] + xi*a[16]))) +
+      eta*(6.0*(a[9] + xi*(a[13] + xi*a[17])) +
+           eta*(12.0*(a[14] + xi*a[18]) + 20.0*eta*a[19]));
+
+    xietacoef = 2.0*a[4] +
+      eta*(4.0*a[8] + xi*(8.0*a[12] + 12.0*xi*a[16]) +
+           eta*(6.0*a[13] + 12.0*xi*a[17] + 8.0*eta*a[18])) +
+      xi*(4.0*a[7] + 6.0*xi*a[11]);
+  }
+  else //if( element_dimension == 3 )
+  {
+    double zi = lcoords[2];
+    double zi_q = 1;
+
+    xixicoef   = 0;
+    etaetacoef = 0;
+    xietacoef  = 0;
+
+    for( unsigned int q=0; q<4; ++q )
+    {
+      xixicoef +=
+        (2.0*(a[3] + eta*(a[7] + eta*(a[12] + eta*a[17]))) +
+         xi*(6.0*(a[6] + eta*(a[11] + eta*a[16])) +
+             xi*(12.0*a[10] + xi*20.0*a[15]))) * zi_q;
+
+      etaetacoef +=
+        (2.0*(a[5] + xi*(a[8] + xi*(a[12] + xi*a[16]))) +
+         eta*(6.0*(a[9] + xi*(a[13] + xi*a[17])) +
+              eta*(12.0*(a[14] + xi*a[18]) + 20.0*eta*a[19]))) * zi_q;
+
+      xietacoef +=
+        (2.0*a[4] +
+         eta*(4.0*a[8] + xi*(8.0*a[12] + 12.0*xi*a[16]) +
+              eta*(6.0*a[13] + 12.0*xi*a[17] + 8.0*eta*a[18])) +
+         xi*(4.0*a[7] + 6.0*xi*a[11])) * zi_q;
+
+      zi_q *= zi; 
+
+      a += scalar_size/4;
+    }
+  }
 }
 
 
@@ -441,24 +906,19 @@ float avtM3DC1Field::interpdz(float *var, int el, double *lcoords)
 //  Creation:   20 November 2009
 //
 // ****************************************************************************
-float avtM3DC1Field::interpdR2(float *var, int el, double *lcoords)
+float avtM3DC1Field::interpdR2(float *var, int el, double *lcoords) const
 {
-  float *a = var + SCALAR_SIZE*el;
-  double co=trigtable[2*el], sn=trigtable[2*el + 1];
-  double xi = lcoords[0], eta = lcoords[1], xixicoef, etaetacoef, xietacoef;
+  double xixicoef, etaetacoef, xietacoef;
+  int index;
 
-  xixicoef = 2.0*(a[3] + eta*(a[7] + eta*(a[12] + eta*a[17]))) +
-    xi*(6.0*(a[6] + eta*(a[11] + eta*a[16])) +
-        xi*(12.0*a[10] + xi*20.0*a[15]));
+  if( element_dimension == 2 )
+    index = 2 * el;
+  else //if( element_dimension == 3 )
+    index = 2*(el%tElements);
 
-  etaetacoef = 2.0*(a[5] + xi*(a[8] + xi*(a[12] + xi*a[16]))) +
-    eta*(6.0*(a[9] + xi*(a[13] + xi*a[17])) +
-         eta*(12.0*(a[14] + xi*a[18]) + 20.0*eta*a[19]));
+  interpdX2(var, el, lcoords, xixicoef, etaetacoef, xietacoef);
 
-  xietacoef = 2.0*a[4] +
-    eta*(4.0*a[8] + xi*(8.0*a[12] + 12.0*xi*a[16]) +
-         eta*(6.0*a[13] + 12.0*xi*a[17] + 8.0*eta*a[18])) +
-    xi*(4.0*a[7] + 6.0*xi*a[11]);
+  double co=trigtable[index], sn=trigtable[index + 1];
 
   return (xixicoef*co - xietacoef*sn)*co + etaetacoef*sn*sn;
 }
@@ -471,111 +931,186 @@ float avtM3DC1Field::interpdR2(float *var, int el, double *lcoords)
 //  Creation:   20 November 2009
 //
 // ****************************************************************************
-float avtM3DC1Field::interpdz2(float *var, int el, double *lcoords)
+float avtM3DC1Field::interpdz2(float *var, int el, double *lcoords) const
 {
-  float *a = var + SCALAR_SIZE*el;
-  double co=trigtable[2*el], sn=trigtable[2*el + 1];
-  double xi = lcoords[0], eta = lcoords[1], xixicoef, etaetacoef, xietacoef;
+  double xixicoef, etaetacoef, xietacoef;
+  int index;
 
-  xixicoef = 2.0*(a[3] + eta*(a[7] + eta*(a[12] + eta*a[17]))) +
-    xi*(6.0*(a[6] + eta*(a[11] + eta*a[16])) +
-        xi*(12.0*a[10] + xi*20.0*a[15]));
+  if( element_dimension == 2 )
+    index = 2 * el;
+  else //if( element_dimension == 3 )
+    index = 2*(el%tElements);
 
-  etaetacoef = 2.0*(a[5] + xi*(a[8] + xi*(a[12] + xi*a[16]))) +
-    eta*(6.0*(a[9] + xi*(a[13] + xi*a[17])) +
-         eta*(12.0*(a[14] + xi*a[18]) + 20.0*eta*a[19]));
+  interpdX2(var, el, lcoords, xixicoef, etaetacoef, xietacoef);
 
-  xietacoef = 2.0*a[4] +
-    eta*(4.0*a[8] + xi*(8.0*a[12] + 12.0*xi*a[16]) +
-         eta*(6.0*a[13] + 12.0*xi*a[17] + 8.0*eta*a[18])) +
-    xi*(4.0*a[7] + 6.0*xi*a[11]);
+  double co=trigtable[index], sn=trigtable[index + 1];
 
   return (xixicoef*sn + xietacoef*co)*sn + etaetacoef*co*co;
 }
 
 
 // ****************************************************************************
-//  Method: interpdR interpolation in dR
+//  Method: interpdRdz interpolation in dRdz
 //
 //  Creationist: Joshua Breslau
 //  Creation:   20 November 2009
 //
 // ****************************************************************************
-float avtM3DC1Field::interpdRdz(float *var, int el, double *lcoords)
+float avtM3DC1Field::interpdRdz(float *var, int el, double *lcoords) const
 {
-  float *a = var + SCALAR_SIZE*el;
-  double co=trigtable[2*el], sn=trigtable[2*el + 1];
-  double xi = lcoords[0], eta = lcoords[1], xixicoef, etaetacoef, xietacoef;
+  float *a = var + scalar_size*el;
+  double xi = lcoords[0], eta = lcoords[1];
+  double xixicoef, etaetacoef, xietacoef;
+  int index;
 
-  xixicoef = 2.0*(a[3] + eta*(a[7] + eta*(a[12] + eta*a[17]))) +
-    xi*(6.0*(a[6] + eta*(a[11] + eta*a[16])) +
-        xi*(12.0*a[10] + xi*20.0*a[15]));
+  if( element_dimension == 2 )
+  {
+    index = 2 * el;
 
-  etaetacoef = 2.0*(a[5] + xi*(a[8] + xi*(a[12] + xi*a[16]))) +
-    eta*(6.0*(a[9] + xi*(a[13] + xi*a[17])) +
-         eta*(12.0*(a[14] + xi*a[18]) + 20.0*eta*a[19]));
+    xixicoef = 2.0*(a[3] + eta*(a[7] + eta*(a[12] + eta*a[17]))) +
+      xi*(6.0*(a[6] + eta*(a[11] + eta*a[16])) +
+          xi*(12.0*a[10] + xi*20.0*a[15]));
 
-  xietacoef = a[4] +
-    eta*(2.0*a[8] + xi*(4.0*a[12] + 6.0*xi*a[16]) +
-         eta*(3.0*a[13] + 6.0*xi*a[17] + 4.0*eta*a[18])) +
-    xi*(2.0*a[7] + 3.0*xi*a[11]);
+    etaetacoef = 2.0*(a[5] + xi*(a[8] + xi*(a[12] + xi*a[16]))) +
+      eta*(6.0*(a[9] + xi*(a[13] + xi*a[17])) +
+           eta*(12.0*(a[14] + xi*a[18]) + 20.0*eta*a[19]));
+
+    xietacoef = a[4] +
+      eta*(2.0*a[8] + xi*(4.0*a[12] + 6.0*xi*a[16]) +
+           eta*(3.0*a[13] + 6.0*xi*a[17] + 4.0*eta*a[18])) +
+      xi*(2.0*a[7] + 3.0*xi*a[11]);
+
+  }
+  else //if( element_dimension == 3 )
+  {
+    index = 2*(el%tElements);
+
+    double zi = lcoords[2];
+    double zi_q = 1;
+
+    xixicoef   = 0;
+    etaetacoef = 0;
+    xietacoef  = 0;
+
+    for( unsigned int q=0; q<4; ++q )
+    {
+      xixicoef += 2.0*(a[3] + eta*(a[7] + eta*(a[12] + eta*a[17]))) +
+        xi*(6.0*(a[6] + eta*(a[11] + eta*a[16])) +
+            xi*(12.0*a[10] + xi*20.0*a[15])) * zi_q;
+
+      etaetacoef += 2.0*(a[5] + xi*(a[8] + xi*(a[12] + xi*a[16]))) +
+        eta*(6.0*(a[9] + xi*(a[13] + xi*a[17])) +
+             eta*(12.0*(a[14] + xi*a[18]) + 20.0*eta*a[19])) * zi_q;
+
+      xietacoef += a[4] +
+        eta*(2.0*a[8] + xi*(4.0*a[12] + 6.0*xi*a[16]) +
+             eta*(3.0*a[13] + 6.0*xi*a[17] + 4.0*eta*a[18])) +
+        xi*(2.0*a[7] + 3.0*xi*a[11]) * zi_q;
+
+      zi_q *= zi; 
+
+      a += scalar_size/4;
+    }
+  }
+
+  double co=trigtable[index], sn=trigtable[index + 1];
 
   return (xixicoef - etaetacoef)*co*sn + xietacoef*(co*co - sn*sn);
 }
 
 
 // ****************************************************************************
-//  Method: interpBcomps
-//
-//  Simultaneously interpolate all three cylindrical components of
-//  magnetic field - should not be used for calculating integral
-//  curves.
+//  Method: interpdR interpolation in dXdPhi
 //
 //  Creationist: Joshua Breslau
 //  Creation:   20 November 2009
 //
 // ****************************************************************************
-void avtM3DC1Field::interpBcomps(float *B, double *x,
-                                    int element, double *xieta)
+void avtM3DC1Field::interpdXdPhi(float *var, int el, double *lcoords,
+                                    double &xicoef, double &etacoef) const
 {
-  float *B_R   = &(B[0]);
-  float *B_z   = &(B[2]);
-  float *B_phi = &(B[1]);
+  float *a = var + scalar_size*el;
+  double xi = lcoords[0], eta = lcoords[1];
 
-  double co, sn, dfnrdr, dfnidr;
-
-  /* n=0 components */
-  /* B_R = -1/R dpsi/dz - df'/dR */
-  *B_R = -interpdz(psi0, element, xieta) / x[0];
-
-  /* B_z = 1/R dpsi/dR - df'/dz */
-  *B_z = interpdR(psi0, element, xieta) / x[0];
-
-  /* B_phi = d^2f/dR^2 + 1/R df/dR + d^2f/dz^2 + F0/R^2 */
-  *B_phi = interpdR2(f0, element, xieta) +
-    interpdz2(f0, element, xieta) +
-    (interpdR(f0, element, xieta) + F0/x[0])/ x[0];
-
-  /* n>0 components, if applicable */
-  if (linflag) {
-    co = cos(tmode * x[1]);  sn = sin(tmode * x[1]);
-
-    dfnrdr = interpdR(fnr, element, xieta);
-    dfnidr = interpdR(fni, element, xieta);
-
-    *B_R += (interpdz(psini, element, xieta)*sn -
-             interpdz(psinr, element, xieta)*co) / x[0]
-      + tmode*(dfnrdr*sn + dfnidr*co);
-
-    *B_z += (interpdR(psinr, element, xieta)*co -
-             interpdR(psini, element, xieta)*sn)/ x[0]
-      + tmode*(interpdz(fnr, element, xieta)*sn +
-                      interpdz(fni, element, xieta)*co);
-
-    *B_phi += (interpdR2(fnr, element, xieta) +
-               interpdz2(fnr, element, xieta))*co
-      - (interpdR2(fni, element, xieta) +
-         interpdz2(fni, element, xieta))*sn +
-      (dfnrdr*co - dfnidr*sn) / x[0];
+  if( element_dimension == 2 )
+  {
+    xicoef  = 0;
+    etacoef = 0;
   }
+  else //if( element_dimension == 3 )
+  {
+    xicoef  = 0;
+    etacoef = 0;
+
+    double zi = lcoords[2];
+    double zi_q = 1;
+
+    // For skipping q = 0;
+    a += scalar_size/4;
+
+    for( unsigned int q=1; q<4; ++q )
+    {
+      xicoef += (double) q *
+        (a[1] + eta*(a[4] + eta*(a[8] + eta*(a[13] + a[18]*eta))) +
+         xi*(2.0*(a[3] + eta*(a[7] + eta*(a[12] + a[17]*eta))) +
+             xi*(3.0*(a[6] + eta*(a[11] + a[16]*eta)) +
+                 xi*(4.0*a[10] + xi*5.0*a[15])))) * zi_q;
+      
+      etacoef += (double) q * 
+        (a[2] + xi*(a[4] + xi*(a[7] + a[11]*xi)) +
+         eta*(2.0*(a[5] + xi*(a[8] + xi*(a[12] + a[16]*xi))) +
+              eta*(3.0*(a[9] + xi*(a[13] + a[17]*xi)) +
+                   eta*(4.0*(a[14] + a[18]*xi) + eta*5.0*a[19])))) * zi_q;
+
+      zi_q *= zi;
+
+      a += scalar_size/4;
+    }
+  }
+}
+
+
+// ****************************************************************************
+//  Method: interpdR interpolation in dRdPhi
+//
+//  Creationist: Joshua Breslau
+//  Creation:   20 November 2009
+//
+// ****************************************************************************
+float avtM3DC1Field::interpdRdPhi(float *var, int el, double *lcoords) const
+{
+  double xicoef, etacoef;
+  int index;
+
+  if( element_dimension == 2 )
+    index = 2 * el;
+  else //if( element_dimension == 3 )
+    index = 2*(el%tElements);
+
+  interpdXdPhi(var, el, lcoords, xicoef, etacoef);
+
+  return xicoef*trigtable[index] - etacoef*trigtable[index + 1];
+}
+
+
+// ****************************************************************************
+//  Method: interpdz interpolation in dzdPhi
+//
+//  Creationist: Joshua Breslau
+//  Creation:   20 November 2009
+//
+// ****************************************************************************
+float avtM3DC1Field::interpdzdPhi(float *var, int el, double *lcoords) const
+{
+  double xicoef, etacoef;
+  int index;
+
+  if( element_dimension == 2 )
+    index = 2 * el;
+  else //if( element_dimension == 3 )
+    index = 2*(el%tElements);
+
+  interpdXdPhi(var, el, lcoords, xicoef, etacoef);
+
+  return xicoef*trigtable[index + 1] + etacoef*trigtable[index];
 }
