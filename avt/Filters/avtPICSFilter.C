@@ -85,10 +85,12 @@ Consider the leaveDomains ICs and the balancing at the same time.
 #include <avtIVPVTKTimeVaryingField.h>
 #include <avtIVPDopri5.h>
 #include <avtIVPAdamsBashforth.h>
+#include <avtIVPEuler.h>
+#include <avtIVPLeapfrog.h>
 #include <avtIVPM3DC1Integrator.h>
 #include <avtIVPM3DC1Field.h>
-#include <avtIVPNIMRODIntegrator.h>
 #include <avtIVPNIMRODField.h>
+#include <avtIVPFlashField.h>
 #include <avtIntervalTree.h>
 #include <avtMetaData.h>
 #include <avtParallel.h>
@@ -108,6 +110,10 @@ Consider the leaveDomains ICs and the balancing at the same time.
 #include <time.h> // needed for nanosleep
 #include <mpi.h>
 #endif
+
+#include <vector>
+
+using std::vector;
 
 avtPICSFilter *pcFilter = NULL;
 bool PostStepCB(void)
@@ -145,6 +151,9 @@ avtPICSFilter::avtPICSFilter()
     seedTime0 = 0.0;
     icAlgo = NULL;
     emptyDataset = false;
+
+    fieldType = STREAMLINE_FIELD_DEFAULT;
+    fieldConstant = 1.0;
 
     maxStepLength = 0.;
     integrationDirection = VTK_INTEGRATE_FORWARD;
@@ -184,6 +193,24 @@ avtPICSFilter::avtPICSFilter()
 // ****************************************************************************
 
 avtPICSFilter::~avtPICSFilter()
+{
+   ClearDomainToCellLocatorMap();
+}
+
+// ****************************************************************************
+//  Method: avtPICSFilter::ClearDomainToCellLocatorMap
+//
+//  Purpose:
+//      Clear the map for cell locators.
+//
+//  Programmer: David Camp
+//  Creation:   April 21, 2011
+//
+//  Modifications:
+// ****************************************************************************
+
+void
+avtPICSFilter::ClearDomainToCellLocatorMap()
 {
     std::map<DomainType, avtCellLocator_p>::iterator it;
 
@@ -300,18 +327,17 @@ avtPICSFilter::SetDomain(avtIntegralCurve *ic)
     //if (DebugStream::Level5())
     //    debug5<<"SetDomain(): pt= "<<endPt<<" t "<<t<<" doms= "<<doms<<endl;
 
-    for( int i=0; i<doms.size(); i++ )
+    for( int i=0; i < doms.size(); i++ )
         ic->seedPtDomainList.push_back( DomainType( doms[i], timeStep ) );
 
     ic->domain = DomainType(-1,-1);
-    // 1 domain, easy.
-    if (ic->seedPtDomainList.size() == 1)
-        ic->domain = ic->seedPtDomainList[0];
 
     // Point in multiple domains. See if we can shorten the list by 
-    //looking at "my" domains.
-    else if (ic->seedPtDomainList.size() > 1)
+    // looking at "my" domains.
+    if (ic->seedPtDomainList.size() > 1)
     {
+        // Point in multiple domains. See if we can shorten the list by 
+        // looking at "my" domains.
         // See if the point is contained in a domain owned by "me".
         vector<DomainType> newDomList;
         bool foundOwner = false;
@@ -330,7 +356,9 @@ avtPICSFilter::SetDomain(avtIntegralCurve *ic)
                 }
             }
             else
+            {
                 newDomList.push_back(dom);
+            }
         }
 
         // Update the list in ic.
@@ -341,18 +369,24 @@ avtPICSFilter::SetDomain(avtIntegralCurve *ic)
                 ic->seedPtDomainList.push_back(newDomList[i]);
         }
     }
-    
+
+    // 1 domain, easy.
     if (ic->seedPtDomainList.size() == 1)
+    {
         ic->domain = ic->seedPtDomainList[0];
+    }
+
     if (DebugStream::Level5())
-        debug5<<"SetDomain: "<<ic->domain<<endl;
-    /*
-    debug1<<"::SetDomain() pt=["<<endPt.xyz[0]<<" "<<endPt.xyz[1]
-          <<" "<<endPt.xyz[2]<<"] in domains: ";
-    for (int i = 0; i < ic->seedPtDomainList.size(); i++)
-        debug1<<ic->seedPtDomainList[i]<<", ";
-    debug1<<endl;
-    */
+    {
+        debug5<<"SetDomain: id: "<<ic->id<<" time: "<<t<<" Domain:"<<ic->domain<<endl;
+        /*
+        debug1<<"::SetDomain() pt=["<<endPt.xyz[0]<<" "<<endPt.xyz[1]
+            <<" "<<endPt.xyz[2]<<"] in domains: ";
+        for (int i = 0; i < ic->seedPtDomainList.size(); i++)
+            debug1<<ic->seedPtDomainList[i]<<", ";
+        debug1<<endl;
+        */
+    }
 }
 
 
@@ -408,10 +442,28 @@ avtPICSFilter::GetDomain(const DomainType &domain,
             ds = avtDatasetOnDemandFilter::GetDomain(domain.domain,
                                                      domain.timeStep);
         }
+        if (ds && doPathlines)
+        {
+            // We need to set the active variable to the correct velocity value.
+            std::string velocityName, meshName;
+            avtDataRequest_p dr = lastContract->GetDataRequest();
+            GetPathlineVelocityMeshVariables(dr, velocityName, meshName);
+            if (ds->GetPointData()->GetArray(velocityName.c_str()) != NULL)
+               ds->GetPointData()->SetActiveAttribute(velocityName.c_str(), vtkDataSetAttributes::VECTORS);
+            else if (ds->GetCellData()->GetArray(velocityName.c_str()) != NULL)
+               ds->GetCellData()->SetActiveAttribute(velocityName.c_str(), vtkDataSetAttributes::VECTORS);
+            else
+            {
+                if (DebugStream::Level1())
+                    debug1 << "Unable to locate velocity variable for pathlines.\n";
+            }
+        }
     }
     else
+    {
         ds = dataSets[domain.domain];
-    
+    }
+
     //    if (DebugStream::Level5())
     //        debug5<<ds<<endl;
 
@@ -435,16 +487,24 @@ avtPICSFilter::GetDomain(const DomainType &domain,
 bool
 avtPICSFilter::LoadNextTimeSlice()
 {
-    if (!doPathlines || OperatingOnDemand())
+    ClearDomainToCellLocatorMap();
+
+    if (!doPathlines)
         return false;
 
     if ((curTimeSlice+1) >= domainTimeIntervals.size())
         return false;
 
+    // Reset the timeout for the next iteration.
+    avtCallback::ResetTimeout(60*5);
+    
     curTimeSlice++;
     if (DebugStream::Level5())
         debug5<<"LoadNextTimeSlice() "<<curTimeSlice<<" tsMax= "<<domainTimeIntervals.size()<<endl;
     
+    if (OperatingOnDemand())
+        return true;
+
     avtContract_p new_contract = new avtContract(lastContract);
     new_contract->GetDataRequest()->SetTimestep(curTimeSlice);
     GetInput()->Update(new_contract);
@@ -455,29 +515,38 @@ avtPICSFilter::LoadNextTimeSlice()
     GetPathlineVelocityMeshVariables(dr, velocityName, meshName);
     GetTypedInput()->SetActiveVariable(velocityName.c_str());
 
+    UpdateIntervalTree();
+    if( intervalTree == NULL )
+      return false;
+
     GetAllDatasetsArgs ds_list;
     bool dummy = false;
     GetInputDataTree()->Traverse(CGetAllDatasets, (void*)&ds_list, dummy);
-    
+
     // Release all the old dataSets.
     for (int i = 0; i < dataSets.size(); i++)
     {
         if(dataSets[i])
+        {
             dataSets[i]->UnRegister(NULL);
+            dataSets[i] = NULL;
+        }
     }
-    
+
     // Load the dataSets map with the new datasets for the next time step.
-    dataSets.resize(numDomains,NULL);
+    numDomains = intervalTree->GetNLeaves();
+    dataSets.resize(numDomains, NULL);
     for (int i = 0; i < ds_list.domains.size(); i++)
     {
         vtkDataSet *ds = ds_list.datasets[i];
         ds->Register(NULL);
         dataSets[ ds_list.domains[i] ] = ds;
     }
-    
-    // Reset the timeout for the next iteration.
-    avtCallback::ResetTimeout(60*5);
-    
+
+    // Need to update the domain to rank mapping because the
+    // domain numbers have changed.
+    ComputeDomainToRankMapping();
+
     return true;
 }
 
@@ -549,6 +618,52 @@ avtPICSFilter::DomainLoaded(DomainType &domain) const
 #endif
     
     return true;
+}
+
+
+// ****************************************************************************
+// Method: avtPICSFilter::SetFieldType
+//
+// Purpose: 
+//   Sets value for specialized fields.
+//
+// Arguments:
+//   field : The new field type.
+//
+// Programmer: Christoph Garth
+// Creation:   Mon Feb 25 16:14:44 PST 2008
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+avtPICSFilter::SetFieldType(int field)
+{
+    fieldType = field;
+}
+
+
+// ****************************************************************************
+// Method: avtPICSFilter::SetFieldConstant
+//
+// Purpose: 
+//   Sets a constant value for specialized fields.
+//
+// Arguments:
+//   val : The value of the constant.
+//
+// Programmer: Christoph Garth
+// Creation:   Mon Feb 25 16:14:44 PST 2008
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+avtPICSFilter::SetFieldConstant(double val)
+{
+    fieldConstant = val;
 }
 
 
@@ -753,7 +868,7 @@ avtPICSFilter::CheckOnDemandViability(void)
     if (method == STREAMLINE_PARALLEL_OVER_DOMAINS)
     {
         if (DebugStream::Level1())
-            debug1 << "avtPICSFilter::CheckOnDemandViability(): = " << 0 <<endl;
+            debug1 << "avtPICSFilter::CheckOnDemandViability(): = 0\n";
         return false;
     }
     
@@ -831,7 +946,6 @@ avtPICSFilter::Execute(void)
 
     vector<avtIntegralCurve *> ics;
     GetIntegralCurvesFromInitialSeeds(ics);
-    numSeedPts = ics.size();
 
     SetMaxQueueLength(cacheQLen);
 
@@ -1019,72 +1133,20 @@ avtPICSFilter::Initialize()
     avtIntervalTree *it_tmp = GetMetaData()->GetSpatialExtents();
 
     bool dontUseIntervalTree = false;
-    if (GetInput()->GetInfo().GetAttributes().GetDynamicDomainDecomposition())
+    if (GetInput()->GetInfo().GetAttributes().GetDynamicDomainDecomposition() ||
+        !GetInput()->GetInfo().GetValidity().GetSpatialMetaDataPreserved())
     {
         // The reader returns an interval tree with one domain (for everything).
         // This is not what we want.  So forget about this one, as we will be 
         // better off calculating one.
         dontUseIntervalTree = true;
     }
-    
-    if (!GetInput()->GetInfo().GetValidity().GetSpatialMetaDataPreserved())
-    {
-        dontUseIntervalTree = true;
-    }
-    
+
     if (it_tmp == NULL || dontUseIntervalTree)
     {
-        if (OperatingOnDemand())
-        {
-            if (GetInput()->GetInfo().GetAttributes().GetDynamicDomainDecomposition())
-            {
-                // We are going to assume that the format that operates on
-                // demand can accept hints about where the data lies and return
-                // that data.
-                // (This was previously an exception, so we haven't taken too
-                //  far of a step backwards with this assumption.)
-                if (DebugStream::Level1())
-                {
-                    debug1 << "This file format reader does dynamic decomposition." << endl;
-                    debug1 << "We are assuming it can handle hints about what data "
-                           << "to read." << endl;
-                }
-                specifyPoint = true;
-
-                // Use the dummy interval tree, so we have something that fits
-                // the existing interface.
-                // Make a copy so it doesn't get deleted out from underneath us.
-                intervalTree = new avtIntervalTree(it_tmp);
-            }
-            else
-            {
-                // It should be there, or else we would have precluded 
-                // OnDemand processing in the method CheckOnDemandViability.
-                // Basically, this should never happen, so throw an exception.
-                EXCEPTION0(ImproperUseException);
-            }
-        }
-        else 
-        {
-            bool dataIsReplicated = GetInput()->GetInfo().GetAttributes().
-                                             DataIsReplicatedOnAllProcessors();
-            bool performCalculationsOverAllProcs = true;
-            if (dataIsReplicated)
-                performCalculationsOverAllProcs = false;
-            GetTypedInput()->RenumberDomainIDs(performCalculationsOverAllProcs);
-            TRY
-            {
-                intervalTree = GetTypedInput()->CalculateSpatialIntervalTree(
-                                               performCalculationsOverAllProcs);
-            }
-            CATCH(VisItException)
-            {
-                emptyDataset = true;
-                intervalTree = NULL;
-                return;
-            }
-            ENDTRY
-        }
+        UpdateIntervalTree();
+        if( intervalTree == NULL )
+            return;
     }
     else
     {
@@ -1190,6 +1252,7 @@ avtPICSFilter::Initialize()
 
     if (DebugStream::Level5())
     {
+        debug5<< "method: " << method << endl;
         debug5<< "Domain/Data setup:\n";
         for (int i = 0; i < numDomains; i++)
             debug5<<i<<": rank= "<< domainToRank[i]<<" ds= "<<dataSets[i]<<endl;
@@ -1207,16 +1270,22 @@ avtPICSFilter::Initialize()
           EXCEPTION1(InvalidFilesException, db.c_str());
         avtDatabaseMetaData *md = dbp->GetMetaData(0, 1);
 
-
         if (md->AreAllTimesAccurateAndValid() != true)
         {
             avtCallback::IssueWarning("Pathlines - The time data does not appear to be accurate and valid. Will continue.");
         }
 
+        int numTimes = md->GetTimes().size() - 1;
+        if (numTimes == 0)
+        {
+            if (DebugStream::Level5())
+                debug5 << "Only 1 data set, you need 2 at least\n";
+            EXCEPTION1(ImproperUseException, "Only 1 data set, you need 2 at least.");
+        }
 
         if (DebugStream::Level5())
             debug5<<"Times: [";
-        for (int i = 0; i < md->GetTimes().size()-1; i++)
+        for (int i = 0; i < numTimes; i++)
         {
             vector<double> intv(2);
             intv[0] = md->GetTimes()[i];
@@ -1235,8 +1304,6 @@ avtPICSFilter::Initialize()
             debug5<<"]"<<endl;
         
         numTimeSteps = domainTimeIntervals.size();
-        if (numTimeSteps == 1)
-            doPathlines = false;
 
         if (! pathlineOverrideTime)
             seedTime0 = GetInput()->GetInfo().GetAttributes().GetTime();
@@ -1266,6 +1333,78 @@ avtPICSFilter::Initialize()
     }
 }
 
+
+void 
+avtPICSFilter::UpdateIntervalTree()
+{
+    // Get/Compute the interval tree.
+    avtIntervalTree *it_tmp = GetMetaData()->GetSpatialExtents();
+
+    if (OperatingOnDemand())
+    {
+        if (GetInput()->GetInfo().GetAttributes().GetDynamicDomainDecomposition())
+        {
+            // We are going to assume that the format that operates on
+            // demand can accept hints about where the data lies and return
+            // that data.
+            // (This was previously an exception, so we haven't taken too
+            //  far of a step backwards with this assumption.)
+            if (DebugStream::Level1())
+            {
+                debug1 << "This file format reader does dynamic decomposition." << endl;
+                debug1 << "We are assuming it can handle hints about what data "
+                       << "to read." << endl;
+            }
+            specifyPoint = true;
+
+            if (intervalTree)
+                delete intervalTree;
+
+            // Use the dummy interval tree, so we have something that fits
+            // the existing interface.
+            // Make a copy so it doesn't get deleted out from underneath us.
+            intervalTree = new avtIntervalTree(it_tmp);
+        }
+        else
+        {
+            // It should be there, or else we would have precluded 
+            // OnDemand processing in the method CheckOnDemandViability.
+            // Basically, this should never happen, so throw an exception.
+            EXCEPTION0(ImproperUseException);
+        }
+    }
+    else 
+    {
+        bool dataIsReplicated = GetInput()->GetInfo().GetAttributes().
+                                         DataIsReplicatedOnAllProcessors();
+        bool performCalculationsOverAllProcs = true;
+        if (dataIsReplicated)
+            performCalculationsOverAllProcs = false;
+        GetTypedInput()->RenumberDomainIDs(performCalculationsOverAllProcs);
+        TRY
+        {
+            if (intervalTree)
+            {
+                delete intervalTree;
+                intervalTree = NULL;
+            }
+
+            intervalTree = GetTypedInput()->CalculateSpatialIntervalTree(
+                                           performCalculationsOverAllProcs);
+        }
+        CATCH(VisItException)
+        {
+            emptyDataset = true;
+            if (intervalTree)
+            {
+                delete intervalTree;
+                intervalTree = NULL;
+            }
+            return;
+        }
+        ENDTRY
+    }
+}
 
 // ****************************************************************************
 //  Method: avtPICSFilter::InitializeLocators
@@ -1417,8 +1556,11 @@ avtPICSFilter::SetupLocator( const DomainType &domain, vtkDataSet *ds )
                                            velocityName.c_str(), domain.domain, 
                                            curTimeSlice, "BIH_CELL_LOCATOR");
                 if (*vrp != NULL)
+                {
                     locator = ref_ptr<avtCellLocator>((avtCellLocator*) (*vrp),
                                                       vrp.GetN());
+                    locator->SetDataSet( ds );
+                }
             }
 
             // If it wasn't in the cache, we have to build it.
@@ -1441,7 +1583,10 @@ avtPICSFilter::SetupLocator( const DomainType &domain, vtkDataSet *ds )
         visitTimer->StopTimer( timer, "SetupLocator" );
     }
     else
+    {
         locator = it->second;
+        locator->SetDataSet( ds );
+    }
 
     return locator;
 }
@@ -1476,11 +1621,21 @@ avtPICSFilter::GetFieldForDomain( const DomainType &domain, vtkDataSet *ds )
     }
     else
     {
-      if (integrationType == STREAMLINE_INTEGRATE_M3D_C1_2D_INTEGRATOR ||
-          integrationType == STREAMLINE_INTEGRATE_M3D_C1_3D_INTEGRATOR)
-        return new avtIVPM3DC1Field(ds, *locator);
-       else if (integrationType == STREAMLINE_INTEGRATE_NIMROD_INTEGRATOR)
+      if( fieldType == STREAMLINE_FIELD_M3D_C1_2D )
+        return new avtIVPM3DC1Field(ds, *locator, fieldConstant );
+
+      else if( fieldType == STREAMLINE_FIELD_M3D_C1_3D )
+      {
+        avtIVPM3DC1Field *field = new avtIVPM3DC1Field(ds, *locator, 1.0);
+        field->reparameterize = true;
+        return field;
+      }
+      else if( fieldType == STREAMLINE_FIELD_NIMROD )
          return new avtIVPNIMRODField(ds, *locator);
+
+      else if( fieldType == STREAMLINE_FIELD_FLASH )
+        return new avtIVPFlashField(ds, *locator, fieldConstant );
+
       else
         return new avtIVPVTKField(ds, *locator);
     }
@@ -1554,7 +1709,6 @@ avtPICSFilter::PointInDomain(avtVector &pt, DomainType &domain)
     {
         if (DebugStream::Level5())
             debug5<<"Get DS failed for domain= "<<domain<<endl;
-        EXCEPTION0(ImproperUseException);
         return false;
     }
 
@@ -1598,7 +1752,8 @@ avtPICSFilter::PointInDomain(avtVector &pt, DomainType &domain)
         double bbox[6];
         cli->second->GetDataSet()->GetBounds(bbox);
 
-        if (pt.x < bbox[0] || pt.x > bbox[1] || pt.y < bbox[2] || pt.y > bbox[3] ||
+        if (pt.x < bbox[0] || pt.x > bbox[1] ||
+            pt.y < bbox[2] || pt.y > bbox[3] ||
             pt.z < bbox[4] || pt.z > bbox[5])
         {
             // We are getting data in a point based way and the point changed
@@ -1629,6 +1784,7 @@ avtPICSFilter::PointInDomain(avtVector &pt, DomainType &domain)
                << (cell == -1 ? "false" : "true") << endl;
 
     visitTimer->StopTimer( t1, "PointInDomain" );
+
     return cell != -1;
 }
 
@@ -1684,9 +1840,12 @@ avtPICSFilter::OwnDomain(DomainType &domain)
 void
 avtPICSFilter::ComputeDomainToRankMapping()
 {
-#if 0
-    domainToRank.resize(numDomains,0);
-    dataSets.resize(numDomains,NULL);
+#ifdef PARALLEL
+    int rank = PAR_Rank();
+    int nProcs = PAR_Size();
+#endif
+
+    domainToRank.resize(numDomains, 0);
     
     // Compute a balanced layout of domains to ranks.
     if (OperatingOnDemand())
@@ -1706,44 +1865,34 @@ avtPICSFilter::ComputeDomainToRankMapping()
         }
 #endif
     }
-    
-    // See what the pipeline has already established.
     else
     {
+        // See what I have.
         GetAllDatasetsArgs ds_list;
         bool dummy = false;
         GetInputDataTree()->Traverse(CGetAllDatasets, (void*)&ds_list, dummy);
-        vector<int> myDoms;
-        myDoms.resize(numDomains, 0);
-        for (int i = 0; i < ds_list.domains.size(); i++)
-        {
-            myDoms[ ds_list.domains[i] ] = 0;
-#ifdef PARALLEL
-            myDoms[ ds_list.domains[i] ] = rank;
-#endif
-            dataSets[ ds_list.domains[i] ] = ds_list.datasets[i];
-        }
 
 #ifdef PARALLEL
-        if (DebugStream::Level5())
-            debug5<<"Sum across all procs\n";
-        SumIntArrayAcrossAllProcessors(&myDoms[0], &domainToRank[0], numDomains);
-#endif
-
-        if (DebugStream::Level5())
+        if (numDomains > 1)
         {
-            for (int i = 0; i < numDomains; i++)
-            {
-                debug5<<"dom: "<<i<<": rank= "<<domainToRank[i]<<" ds= "<<dataSets[i] << endl;
-            }
+            vector<int> myDoms;
+            myDoms.resize(numDomains, 0);
+            for (int i = 0; i < ds_list.domains.size(); i++)
+                myDoms[ ds_list.domains[i] ] = rank;
+            SumIntArrayAcrossAllProcessors(&myDoms[0], &domainToRank[0], numDomains);
+            if (DebugStream::Level5())
+                debug5<<"numdomains= "<<numDomains<<" myDoms[0]= "<<myDoms[0]<<endl;
         }
+        else
+            domainToRank[0] = rank;
+#endif
     }
 
     if (DebugStream::Level5())
+    {
         for (int i = 0; i < numDomains; i++)
-            debug5<<i<<": rank= "<< domainToRank[i]<<endl;
-
-#endif
+            debug5<<"dom: "<<i<<": rank= "<<domainToRank[i]<<" ds= "<<dataSets[i] << endl;
+    }
 }
 
 // ****************************************************************************
@@ -1758,10 +1907,6 @@ avtPICSFilter::ComputeDomainToRankMapping()
 int
 avtPICSFilter::DomainToRank(DomainType &domain)
 {
-    // First time through, compute the mapping.
-    if (domainToRank.empty())
-        ComputeDomainToRankMapping();
-
     if (domain.domain < 0 || domain.domain >= domainToRank.size())
         EXCEPTION1(ImproperUseException, "Domain out of range.");
 
@@ -1769,7 +1914,7 @@ avtPICSFilter::DomainToRank(DomainType &domain)
 }
 
 // ****************************************************************************
-//  Method: avtPICSFilter::IntegrateDomain
+//  Method: avtPICSFilter::AdvectParticle
 //
 //  Purpose:
 //      Do an integration inside a domain.
@@ -1865,18 +2010,19 @@ avtPICSFilter::DomainToRank(DomainType &domain)
 // ****************************************************************************
 
 void
-avtPICSFilter::IntegrateDomain(avtIntegralCurve *ic,
-                               vtkDataSet *ds,
-                               double *extents,
-                               int maxSteps)
+avtPICSFilter::AdvectParticle(avtIntegralCurve *ic, vtkDataSet *ds, int maxSteps)
 {
     int t0 = visitTimer->StartTimer();
+
     if (DebugStream::Level4())
-        debug4<<"avtPICSFilter::IntegrateDom(dom= "<<ic->domain<<")"<<endl;
+        debug4<<"avtPICSFilter::AdvectParticle(id="<<ic->id<<" dom= "<<ic->domain<<")"<<endl;
 
     if (ic->status == avtIntegralCurve::STATUS_OK)
     {
         avtIVPField* field = GetFieldForDomain(ic->domain, ds);
+
+        if (field->GetOrder() > solver->order)
+          EXCEPTION1(ImproperUseException, "The selected integrator does not support field order. Choose another integrator. ");
         
         //pcFilter = this;
         //ic->SetPostStepCallback(&PostStepCB);
@@ -1895,18 +2041,18 @@ avtPICSFilter::IntegrateDomain(avtIntegralCurve *ic,
         if (domCnt == 0 || (domCnt == 1 && ic->domain == oldDomain))
         {
             if( DebugStream::Level5() )
-                debug5 << "avtPICSFilter::IntegrateDomain(): same domain, finishing\n";
+                debug5 << "avtPICSFilter::AdvectParticle(): same domain, finishing\n";
 
             ic->status = avtIntegralCurve::STATUS_FINISHED;
         }
-        if (GetTimeStep(ic->CurrentTime()) > curTimeSlice)
+        else if (GetTimeStep(ic->CurrentTime()) > curTimeSlice)
             ic->status = avtIntegralCurve::STATUS_FINISHED;
     }
     
     if (DebugStream::Level4())
-        debug4<<"avtPICSFilter::IntegrateDomain(): status = " << ic->status << endl;
+        debug4<<"avtPICSFilter::AdvectParticle(): status = " << ic->status << endl;
 
-    visitTimer->StopTimer(t0, "IntegrateDomain");
+    visitTimer->StopTimer(t0, "AdvectParticle");
 }
 
 
@@ -1954,31 +2100,17 @@ avtPICSFilter::AdvectParticle(avtIntegralCurve *ic, int maxSteps)
     if (ic->status != avtIntegralCurve::STATUS_OK)
         return;
 
-    //Get the required domain.
+    // Get the required domain.
     avtVector pt;
     ic->CurrentLocation(pt);
 
     vtkDataSet *ds = GetDomain(ic->domain, pt.x, pt.y, pt.z);
     
-    if (ds == NULL) //No domain? curve is done.
+    if (ds == NULL) // No domain? curve is done.
         ic->status = avtIntegralCurve::STATUS_FINISHED;
     else
         AdvectParticle(ic, ds, maxSteps);
 }
-
-void
-avtPICSFilter::AdvectParticle(avtIntegralCurve *ic, vtkDataSet *ds, int maxSteps)
-{
-    double extents[6] = { 0., 0., 0., 0., 0., 0. };
-    intervalTree->GetElementExtents( ic->domain.domain, extents );
-
-    IntegrateDomain(ic, ds, extents, maxSteps);
-
-    // IC exited this domain.
-    if (ic->status == avtIntegralCurve::STATUS_OK)
-        SetDomain(ic);
-}
-
 
 // ****************************************************************************
 //  Method: avtPICSFilter::GetLengthScale
@@ -2065,7 +2197,17 @@ avtPICSFilter::PreExecute(void)
         absTolToUse = l*absTol;
     }
     // Create the solver. --Get from user prefs.
-    if (integrationType == STREAMLINE_INTEGRATE_DORMAND_PRINCE)
+    if (integrationType == STREAMLINE_INTEGRATE_EULER)
+    {
+        solver = new avtIVPEuler;
+        solver->SetMaximumStepSize(maxStepLength);
+    }
+    else if (integrationType == STREAMLINE_INTEGRATE_LEAPFROG)
+    {
+        solver = new avtIVPLeapfrog;
+        solver->SetMaximumStepSize(maxStepLength);
+    }
+    else if (integrationType == STREAMLINE_INTEGRATE_DORMAND_PRINCE)
     {
         solver = new avtIVPDopri5;
         solver->SetMaximumStepSize(maxStepLength);
@@ -2077,26 +2219,15 @@ avtPICSFilter::PreExecute(void)
         solver->SetMaximumStepSize(maxStepLength);
         solver->SetTolerances(relTol, absTolToUse);
     }
-    else if (integrationType == STREAMLINE_INTEGRATE_M3D_C1_2D_INTEGRATOR)
+    else if (integrationType == STREAMLINE_INTEGRATE_M3D_C1_2D)
     {
         solver = new avtIVPM3DC1Integrator;
         solver->SetMaximumStepSize(maxStepLength);
         solver->SetTolerances(relTol, absTolToUse);
     }
-    else if (integrationType == STREAMLINE_INTEGRATE_M3D_C1_3D_INTEGRATOR)
-    {
-        solver = new avtIVPAdamsBashforth;
-        solver->SetMaximumStepSize(maxStepLength);
-        solver->SetTolerances(relTol, absTolToUse);
-    }
-    else if (integrationType == STREAMLINE_INTEGRATE_NIMROD_INTEGRATOR)
-    {
-        solver = new avtIVPAdamsBashforth;
-        solver->SetMaximumStepSize(maxStepLength);
-        solver->SetTolerances(relTol, absTolToUse);
-    }
 
-    solver->convertToCartesian = convertToCartesian;
+    if( solver )
+      solver->convertToCartesian = convertToCartesian;
 }
 
 
@@ -2223,10 +2354,16 @@ avtPICSFilter::PostExecute(void)
 void
 avtPICSFilter::GetIntegralCurvesFromInitialSeeds(std::vector<avtIntegralCurve *> &curves)
 {
-    std::vector<avtVector> seedPts = GetInitialLocations();
+    std::vector<avtVector> seedPts  = GetInitialLocations();
+    std::vector<avtVector> seedVels = GetInitialVelocities();
+
+    // Make sure the velocity list size matches the point list size.
+    for( int i=seedVels.size(); i<seedPts.size(); ++i )
+      // Use the last velocity if available or initalize to be zero.
+      seedVels.push_back( seedVels.empty() ? avtVector(0,0,0) : seedVels[i-1]);
 
     vector<vector<int> > ids;
-    CreateIntegralCurvesFromSeeds(seedPts, curves, ids);
+    CreateIntegralCurvesFromSeeds(seedPts, seedVels, curves, ids);
 }
 
 // ****************************************************************************
@@ -2242,17 +2379,22 @@ avtPICSFilter::GetIntegralCurvesFromInitialSeeds(std::vector<avtIntegralCurve *>
 
 void
 avtPICSFilter::AddSeedPoint(avtVector &pt,
+                            avtVector &vel,
                             std::vector<avtIntegralCurve *> &ics)
 {
     if (icAlgo == NULL)
-        EXCEPTION1(ImproperUseException, "Improper call of avtPICSFilter::AddSeedpoints");
+        EXCEPTION1(ImproperUseException,
+                   "Improper call of avtPICSFilter::AddSeedpoints");
 
     std::vector<std::vector<int> > ids;
 
     std::vector<avtVector> pts;
     pts.push_back( pt );
 
-    CreateIntegralCurvesFromSeeds(pts, ics, ids);
+    std::vector<avtVector> vels;
+    vels.push_back( vel );
+
+    CreateIntegralCurvesFromSeeds(pts, vels, ics, ids);
     icAlgo->AddIntegralCurves(ics);
 }
 
@@ -2275,12 +2417,13 @@ avtPICSFilter::AddSeedPoint(avtVector &pt,
 
 void
 avtPICSFilter::AddSeedPoints(std::vector<avtVector> &pts,
+                             std::vector<avtVector> &vels,
                              std::vector<std::vector<avtIntegralCurve *> > &ics)
 {
     for (int i = 0; i < pts.size(); i++)
     {
         vector<avtIntegralCurve *> icsFromPt;
-        AddSeedPoint(pts[i], icsFromPt);
+        AddSeedPoint(pts[i], vels[i], icsFromPt);
         
         ics.push_back(icsFromPt);
     }
@@ -2310,73 +2453,119 @@ avtPICSFilter::AddSeedPoints(std::vector<avtVector> &pts,
 //   Don't do initialization of distance for integral curves.  That happens in
 //   the derived type of integral curve now.
 //
+//   Dave Pugmire, Thu Sep  1 07:44:48 EDT 2011
+//   Keep track of fwd/bwd pair IDs, as they might need to be unified later.
+//
 // ****************************************************************************
 
 void
 avtPICSFilter::CreateIntegralCurvesFromSeeds(std::vector<avtVector> &pts,
+                                             std::vector<avtVector> &vels,
                                              std::vector<avtIntegralCurve *> &curves,
                                              std::vector<std::vector<int> > &ids)
 {
+    if (DebugStream::Level5())
+    {
+        debug5<<"number of IC to generate: "<<pts.size()<<endl;
+        for (int i = 0; i < pts.size(); i++)
+        {
+            debug5 << "point: " << pts[i] << endl;
+        }
+    }
+
     for (int i = 0; i < pts.size(); i++)
     {
-        double xyz[3] = {pts[i].x, pts[i].y, pts[i].z};
+        avtVector seedPt;
+        avtVector seedVel = vels[i];
+
+        // Transform the seed into the correct coordinate systems so
+        // it passes the domain tests.
+        if( fieldType == STREAMLINE_FIELD_M3D_C1_2D )
+        {
+          // Convert the seed to cylindrical coordiantes.
+          seedPt.x = sqrt(pts[i].x*pts[i].x+pts[i].y*pts[i].y);
+          seedPt.y = 0; //atan2( pts[i].y, pts[i].x );
+          seedPt.z = pts[i].z;
+        }
+        else if( fieldType == STREAMLINE_FIELD_M3D_C1_3D )
+        {
+          // Convert the seed to cylindrical coordinates
+          seedPt.x = sqrt(pts[i].x*pts[i].x+pts[i].y*pts[i].y);
+          seedPt.y = atan2( pts[i].y, pts[i].x );
+          seedPt.z = pts[i].z;
+        }
+        else
+          seedPt = pts[i];
+
+
+        double xyz[3] = {seedPt.x, seedPt.y, seedPt.z};
         vector<int> dl;
         
         intervalTree->GetElementsListFromRange(xyz, xyz, dl);
         
         vector<int> seedPtIds;
+
+        // Need a single ID for the IC even if there are many domains.
+        int currentID = GetNextCurveID();
+        int nextID = -1;
+        if (integrationDirection == VTK_INTEGRATE_BOTH_DIRECTIONS)
+            nextID = GetNextCurveID();
         
         for (int j = 0; j < dl.size(); j++)
         {
             DomainType dom(dl[j], seedTimeStep0);
 
-            avtVector seedPt;
-
-            if ( integrationType == STREAMLINE_INTEGRATE_M3D_C1_2D_INTEGRATOR )
+            if (!PointInDomain(seedPt, dom))
             {
-              // Convert the seed to cylindrical coordiantes.
-              seedPt.x = sqrt(pts[i].x*pts[i].x+pts[i].y*pts[i].y);
-              seedPt.y = 0; //atan2( pts[i].y, pts[i].x );
-              seedPt.z = pts[i].z;
+                continue;
             }
-            else if (integrationType ==
-                     STREAMLINE_INTEGRATE_M3D_C1_3D_INTEGRATOR)
-            {
-              // Convert the seed to cylindrical coordinates
-              seedPt.x = sqrt(pts[i].x*pts[i].x+pts[i].y*pts[i].y);
-              seedPt.y = atan2( pts[i].y, pts[i].x );
-              seedPt.z = pts[i].z;
-            }
-            else
-              seedPt = pts[i];
 
-            if (integrationDirection == VTK_INTEGRATE_FORWARD ||
-                integrationDirection == VTK_INTEGRATE_BOTH_DIRECTIONS)
+            if (integrationDirection == VTK_INTEGRATE_FORWARD)
             {
-                avtIntegralCurve *ic = 
-                    CreateIntegralCurve(solver,
-                                        avtIntegralCurve::DIRECTION_FORWARD,
-                                        seedTime0, seedPt, 
-                                        GetNextCurveID());
-
+                avtIntegralCurve *ic =
+                  CreateIntegralCurve(solver,
+                                      avtIntegralCurve::DIRECTION_FORWARD,
+                                      seedTime0, seedPt, seedVel, 
+                                      currentID);
                 ic->domain = dom;
-            
                 curves.push_back(ic);
                 seedPtIds.push_back(ic->id);
+                break;
             }
-            
-            if (integrationDirection == VTK_INTEGRATE_BACKWARD ||
-                integrationDirection == VTK_INTEGRATE_BOTH_DIRECTIONS)
+            else if (integrationDirection == VTK_INTEGRATE_BACKWARD)
             {
-                avtIntegralCurve *ic = 
-                    CreateIntegralCurve(solver,
-                                        avtIntegralCurve::DIRECTION_BACKWARD,
-                                        seedTime0, seedPt, 
-                                        GetNextCurveID());
+                avtIntegralCurve *ic =
+                  CreateIntegralCurve(solver,
+                                      avtIntegralCurve::DIRECTION_BACKWARD,
+                                      seedTime0, seedPt, seedVel,
+                                      currentID);
                 ic->domain = dom;
-            
                 curves.push_back(ic);
                 seedPtIds.push_back(ic->id);
+                break;
+            }
+            else if (integrationDirection == VTK_INTEGRATE_BOTH_DIRECTIONS)
+            {
+                avtIntegralCurve *ic0 =
+                  CreateIntegralCurve(solver,
+                                      avtIntegralCurve::DIRECTION_FORWARD,
+                                      seedTime0, seedPt, seedVel,
+                                      currentID);
+                ic0->domain = dom;
+                curves.push_back(ic0);
+                seedPtIds.push_back(ic0->id);
+
+                avtIntegralCurve *ic1 =
+                  CreateIntegralCurve(solver,
+                                      avtIntegralCurve::DIRECTION_BACKWARD,
+                                      seedTime0, seedPt, seedVel,
+                                      nextID);
+                ic1->domain = dom;
+                curves.push_back(ic1);
+                seedPtIds.push_back(ic1->id);
+
+                fwdBwdICPairs.push_back(std::pair<int,int> (ic0->id, ic1->id));
+                break;
             }
         }
         
@@ -2388,6 +2577,7 @@ avtPICSFilter::CreateIntegralCurvesFromSeeds(std::vector<avtVector> &pts,
 
     if (DebugStream::Level5())
     {
+        debug5<<"curves.size(): "<<curves.size()<<endl;
         for (int i = 0; i < curves.size(); i++)
         {
             avtIntegralCurve *ic = curves[i];
@@ -2443,7 +2633,7 @@ avtPICSFilter::ModifyContract(avtContract_p in_contract)
     avtDataRequest_p out_dr = new avtDataRequest(in_contract->GetDataRequest());
     out_dr->SetVelocityFieldMustBeContinuous(true);
 
-    if ( integrationType == STREAMLINE_INTEGRATE_M3D_C1_2D_INTEGRATOR )
+    if ( fieldType == STREAMLINE_FIELD_M3D_C1_2D )
     {
         // Add in the other fields that the M3D 2D Interpolation needs
         // for doing their Newton's Metod.
@@ -2472,7 +2662,7 @@ avtPICSFilter::ModifyContract(avtContract_p in_contract)
         out_dr->AddSecondaryVariable("hidden/psi");    // /time_XXX/fields/psi
         out_dr->AddSecondaryVariable("hidden/psi_i");  // /time_XXX/fields/psi_i
     }
-    else if ( integrationType == STREAMLINE_INTEGRATE_M3D_C1_3D_INTEGRATOR )
+    else if ( fieldType == STREAMLINE_FIELD_M3D_C1_3D )
     {
         // Add in the other fields that the M3D 3D Interpolation needs.
 
@@ -2496,33 +2686,26 @@ avtPICSFilter::ModifyContract(avtContract_p in_contract)
         out_dr->AddSecondaryVariable("hidden/psi");  // /time_XXX/fields/psi
         out_dr->AddSecondaryVariable("hidden/I");    // /time_XXX/fields/I
     }
-    else if ( integrationType == STREAMLINE_INTEGRATE_NIMROD_INTEGRATOR )
+    else if ( fieldType == STREAMLINE_FIELD_NIMROD )
     {
-        // Add in the other fields that the M3D Interpolation needs
-        // for doing their Newton's Metod.
+        // Add in the other fields that the NIMROD Interpolation needs
 
         // Assume the user has selected B as the primary variable.
         // Which is ignored.
 
-        // Single variables stored as attributes on the header
-        out_dr->AddSecondaryVariable("hidden/header/nplanes"); // /nplanes
-        out_dr->AddSecondaryVariable("hidden/header/linear");  // /linear
-        out_dr->AddSecondaryVariable("hidden/header/ntor");    // /ntor
-        
-        out_dr->AddSecondaryVariable("hidden/header/bzero");    // /bzero
-        out_dr->AddSecondaryVariable("hidden/header/rzero");    // /rzero
+        // Fourier series grid and data stored on the original mesh
+//        out_dr->AddSecondaryVariable("hidden/grid_fourier_series");  // grid
+//        out_dr->AddSecondaryVariable("hidden/data_fourier_series");  // data
+    }
+    else if ( fieldType == STREAMLINE_FIELD_FLASH )
+    {
+        // Add in the other fields that the Flash Interpolation needs
 
-        // The mesh - N elements x 7
-        out_dr->AddSecondaryVariable("hidden/elements"); // /time_000/mesh/elements
+        // Assume the user has selected B as the primary variable.
+        // Which is ignored.
 
-        // Variables on the mesh - N elements x 20
-        out_dr->AddSecondaryVariable("hidden/equilibrium/f");  // /equilibrium/fields/f
-        out_dr->AddSecondaryVariable("hidden/equilibrium/psi");// /equilibrium/fields/psi
-
-        out_dr->AddSecondaryVariable("hidden/f");      // /time_XXX/fields/f
-        out_dr->AddSecondaryVariable("hidden/f_i");    // /time_XXX/fields/f_i
-        out_dr->AddSecondaryVariable("hidden/psi");    // /time_XXX/fields/psi
-        out_dr->AddSecondaryVariable("hidden/psi_i");  // /time_XXX/fields/psi_i
+        out_dr->AddSecondaryVariable("B");  // Magnetic Field
+        out_dr->AddSecondaryVariable("E");  // Eletric Field
     }
 
     if (doPathlines)
@@ -2550,7 +2733,8 @@ avtPICSFilter::ModifyContract(avtContract_p in_contract)
 
         for (int i = 0; i < elist->GetNumExpressions(); i++)
         {
-            if (elist->GetExpressions(i).GetName() == avtIVPVTKTimeVaryingField::NextTimePrefix)
+            if (elist->GetExpressions(i).GetName() ==
+                avtIVPVTKTimeVaryingField::NextTimePrefix)
             {
                 needExpr = false;
                 break;
@@ -2567,11 +2751,14 @@ avtPICSFilter::ModifyContract(avtContract_p in_contract)
             char defn[1024];
             if( pathlineCMFE == 0 )
             {
-                SNPRINTF(defn, 1024, "conn_cmfe(<[1]id:%s>, %s)", pathlineName.c_str(), meshName.c_str());
+                SNPRINTF(defn, 1024, "conn_cmfe(<[1]id:%s>, %s)",
+                         pathlineName.c_str(), meshName.c_str());
             }
             else
             {
-                SNPRINTF(defn, 1024, "pos_cmfe(<[1]id:%s>, %s, %s)", pathlineName.c_str(), meshName.c_str(), pathlineName.c_str());
+                SNPRINTF(defn, 1024, "pos_cmfe(<[1]id:%s>, %s, %s)",
+                         pathlineName.c_str(), meshName.c_str(),
+                         pathlineName.c_str());
             }
             e->SetDefinition(defn);
             e->SetType(Expression::VectorMeshVar);
@@ -2669,7 +2856,9 @@ avtPICSFilter::DeleteIntegralCurves(vector<int> &icIDs)
 // ****************************************************************************
 
 void
-avtPICSFilter::GetPathlineVelocityMeshVariables(avtDataRequest_p &dataRequest, std::string &velocity, std::string &mesh)
+avtPICSFilter::GetPathlineVelocityMeshVariables(avtDataRequest_p &dataRequest,
+                                                std::string &velocity,
+                                                std::string &mesh)
 {
     mesh = dataRequest->GetVariable();
     velocity = mesh;
@@ -2719,4 +2908,30 @@ bool
 avtPICSFilter::PostStepCallback()
 {
     return (icAlgo ? icAlgo->PostStepCallback() : false);
+}
+
+// ****************************************************************************
+// Method:  avtPICSFilter::PurgeDS()
+//
+// Purpose: The avtDatasetOnDemandFilter is purging a data set and we need
+//          to remove the cell locator.
+//   
+//
+// Programmer:  David Camp
+// Creation:    May 1, 2011
+//
+// ****************************************************************************
+
+void
+avtPICSFilter::PurgeDomain( const int domain, const int timeStep )
+{
+    DomainType dom(domain, timeStep);
+    std::map<DomainType,avtCellLocator_p>::iterator it =
+      domainToCellLocatorMap.find( dom );
+
+    if( it != domainToCellLocatorMap.end() )
+    {
+        it->second = NULL;
+        domainToCellLocatorMap.erase( it );
+    } 
 }

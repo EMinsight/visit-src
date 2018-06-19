@@ -46,6 +46,8 @@
 #include <avtIVPSolver.h>
 #include <ivp_exports.h>
 
+#define ADAMS_BASHFORTH_NSTEPS 5
+
 // ****************************************************************************
 //  Class: avtIVPAdamsBashforth
 //
@@ -89,7 +91,9 @@ class IVP_API avtIVPAdamsBashforth: public avtIVPSolver
     ~avtIVPAdamsBashforth();
 
     // begin a new IVP solution
-    virtual void     Reset( const double& t_start, const avtVector &y_start );
+    virtual void     Reset( const double& t_start,
+                            const avtVector &y_start,
+                            const avtVector& v_start = avtVector(0,0,0) );
 
     // perform a single integration step
     // adaptive stepsize control retries until success or underflow
@@ -132,10 +136,9 @@ class IVP_API avtIVPAdamsBashforth: public avtIVPSolver
     double t, d;
     int degenerate_iterations;
     double stiffness_eps;
-    avtVector history[5];
+    avtVector history[ADAMS_BASHFORTH_NSTEPS];
+    avtVector dhistory[ADAMS_BASHFORTH_NSTEPS];
     avtVector yCur;
-    avtVector ys[2];
-    int initialized;
 };
 
 #endif

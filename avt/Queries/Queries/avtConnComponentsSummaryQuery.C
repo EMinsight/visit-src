@@ -67,6 +67,10 @@
 
 #include <climits>
 
+#include <string>
+#include <vector>
+
+using std::vector;
 
 // ****************************************************************************
 //  Method: avtConnComponentsSummaryQuery constructor
@@ -123,6 +127,51 @@ avtConnComponentsSummaryQuery::
     delete areaFilter;
     delete revolvedVolumeFilter;
     delete volumeFilter;
+}
+
+
+// ****************************************************************************
+//  Method: avtConnComponentsSummaryQuery::SetInputParams
+//
+//  Purpose: Allows this query to read input parameters set by user.
+//
+//  Arguments:
+//    params:  MapNode containing input.
+//
+//  Programmer: Kathleen Biagas 
+//  Creation:   June 17, 2011
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+void
+avtConnComponentsSummaryQuery::SetInputParams(const MapNode &params)
+{
+   if (params.HasEntry("output_file"))
+        SetOutputFileName(params.GetEntry("output_file")->AsString());
+}
+
+
+// ****************************************************************************
+//  Method: avtConnComponentsSummaryQuery::GetDefaultInputParams
+//
+//  Purpose:  Retrieve default input parameters.
+//
+//  Arguments:
+//    params:  MapNode to store default values.
+//
+//  Programmer: Kathleen Biagas 
+//  Creation:   July 15, 2011
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+void
+avtConnComponentsSummaryQuery::GetDefaultInputParams(MapNode &params)
+{
+    params["output_file"] = std::string("cc_summary.okc");
 }
 
 
@@ -648,7 +697,7 @@ avtConnComponentsSummaryQuery::VerifyInput(void)
 // ****************************************************************************
 
 void
-avtConnComponentsSummaryQuery::SaveComponentResults(string fname)
+avtConnComponentsSummaryQuery::SaveComponentResults(std::string fname)
 {
     // look index
     int i;
@@ -663,7 +712,7 @@ avtConnComponentsSummaryQuery::SaveComponentResults(string fname)
     if(!outs.is_open())
     {
         sprintf(msg, "Unable to save component summary output to %s",fname.c_str());
-        SetResultMessage(string(msg));
+        SetResultMessage(std::string(msg));
         return;
     }
 

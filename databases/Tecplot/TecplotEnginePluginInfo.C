@@ -69,6 +69,6 @@ extern "C" DBP_EXPORT EngineDatabasePluginInfo* Tecplot_GetEngineInfo()
 avtDatabaseWriter *
 TecplotEnginePluginInfo::GetWriter(void)
 {
-    return new avtTecplotWriter;
+    return new avtTecplotWriter(writeOptions);
 }
 

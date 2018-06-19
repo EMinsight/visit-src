@@ -55,7 +55,8 @@
 //
 // ****************************************************************************
 
-avtIVPSolver::avtIVPSolver() : convertToCartesian(0), convertToCylindrical(0)
+avtIVPSolver::avtIVPSolver() : convertToCartesian(0), convertToCylindrical(0),
+                               order(1)
 {
 }
 
@@ -82,6 +83,7 @@ avtIVPSolver::GetState( avtIVPState& state )
     aiss.Reset(avtIVPStateHelper::GET, state._data);
     this->AcceptStateVisitor(aiss);
 }
+
 
 // ****************************************************************************
 //  Method: avtIVPSolver::PutState

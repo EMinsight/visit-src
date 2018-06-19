@@ -46,6 +46,8 @@
 #endif
 #include <snprintf.h>
 #include <map>
+#include <string>
+#include <vector>
 
 #define THREADS
 
@@ -2267,11 +2269,13 @@ visit_SetActiveWindow(PyObject *self, PyObject *args)
     ENSURE_VIEWER_EXISTS();
 
     int activewin;
+    int raisewin = 1;
     if (!PyArg_ParseTuple(args, "i", &activewin))
-       return NULL;
+        if (!PyArg_ParseTuple(args, "ii", &activewin, &raisewin))
+            return NULL;
 
     MUTEX_LOCK();
-        GetViewerMethods()->SetActiveWindow(activewin);
+        GetViewerMethods()->SetActiveWindow(activewin, raisewin);
     MUTEX_UNLOCK();
 
     // Return the success value.
@@ -3716,7 +3720,7 @@ visit_CloseComputeEngine(PyObject *self, PyObject *args)
     MUTEX_LOCK();
          if(useFirstEngine)
          {
-             const stringVector &engines = GetViewerState()->GetEngineList()->GetEngines();
+             const stringVector &engines = GetViewerState()->GetEngineList()->GetEngineName();
              const stringVector &sims = GetViewerState()->GetEngineList()->GetSimulationName();
              if(engines.size() > 0)
              {
@@ -3726,7 +3730,7 @@ visit_CloseComputeEngine(PyObject *self, PyObject *args)
          }
          else if (useFirstSimulation)
          {
-             const stringVector &engines = GetViewerState()->GetEngineList()->GetEngines();
+             const stringVector &engines = GetViewerState()->GetEngineList()->GetEngineName();
              const stringVector &sims = GetViewerState()->GetEngineList()->GetSimulationName();
              for (int i=0; i<engines.size(); i++)
              {
@@ -4968,7 +4972,7 @@ visit_GetEngineList(PyObject *self, PyObject *args)
     NO_ARGUMENTS();
 
     // Allocate a tuple the with enough entries to hold the engine list.
-    const stringVector &engines = GetViewerState()->GetEngineList()->GetEngines();
+    const stringVector &engines = GetViewerState()->GetEngineList()->GetEngineName();
     PyObject *retval = PyTuple_New(engines.size());
     for(int i = 0; i < engines.size(); ++i)
     {
@@ -8438,6 +8442,35 @@ visit_GetPickOutput(PyObject *self, PyObject *args)
     return PyString_FromString(pickOut.c_str());
 }
 
+
+// ****************************************************************************
+// Function: visit_GetPickOutputObject
+//
+// Purpose:
+//   Returns a python dictonary created from an xml pick result.
+//   Assumes the xml pick result is a serialized MapNode.
+//
+//
+// Programmer: Kathleen Biagas 
+// Creation:   September 22, 2011
+//
+// ****************************************************************************
+
+STATIC PyObject *
+visit_GetPickOutputObject(PyObject *self, PyObject *args)
+{
+    ENSURE_VIEWER_EXISTS();
+    NO_ARGUMENTS();
+
+    PickAttributes *pa = GetViewerState()->GetPickAttributes();
+    std::string pickOut;
+    pa->CreateXMLString(pickOut);
+    XMLNode xml_node(pickOut);
+    MapNode node(xml_node);
+    return PyMapNode_Wrap(node);
+}
+
+
 // ****************************************************************************
 // Function: visit_GetQueryOutputString
 //
@@ -8553,7 +8586,7 @@ visit_GetQueryOutputObject(PyObject *self, PyObject *args)
     NO_ARGUMENTS();
 
     QueryAttributes *qa = GetViewerState()->GetQueryAttributes();
-    string xml_string = qa->GetXmlResult();
+    std::string xml_string = qa->GetXmlResult();
     XMLNode xml_node(xml_string);
     MapNode node(xml_node);
     return PyMapNode_Wrap(node);
@@ -10539,6 +10572,56 @@ visit_WriteConfigFile(PyObject *self, PyObject *args)
     return Py_None;
 }
 
+
+// ****************************************************************************
+// Function: visit_GetQueryParameters
+//
+// Purpose:
+//   Returns the default input parameters for the specified query.
+//
+// Notes:
+//
+// Programmer: Kathleen Biagas 
+// Creation:   July 19, 2011
+//
+// Modifications:
+//
+// ****************************************************************************
+
+STATIC PyObject *
+visit_GetQueryParameters(PyObject *self, PyObject *args)
+{
+    ENSURE_VIEWER_EXISTS();
+    const char *queryName;
+    if (!PyArg_ParseTuple(args, "s", &queryName))
+    {
+        return NULL;
+    }
+    MUTEX_LOCK();
+        GetViewerMethods()->GetQueryParameters(queryName);
+    MUTEX_UNLOCK();
+
+    Synchronize();
+
+    QueryAttributes *qa = GetViewerState()->GetQueryAttributes();
+    PyObject *retval  = NULL;
+    std::string xml_string = qa->GetXmlResult();
+    XMLNode xml_node(xml_string);
+    MapNode params(xml_node);
+    if(params.GetNumEntries() > 0)
+    {
+        retval = PyMapNode_Wrap(params);
+    }
+    else
+    {
+        retval = Py_None;
+        Py_INCREF(retval);
+    }
+
+    return retval; 
+}
+
+
 // ****************************************************************************
 // Function: visit_Query
 //
@@ -10610,41 +10693,65 @@ visit_WriteConfigFile(PyObject *self, PyObject *args)
 //   Kathleen Bonnell, Wed Mar  2 17:37:47 PST 2011
 //   Remove test for queryName == 'Pick'.
 //
+//   Kathleen Biagas, Tue Jul 19 12:00:04 PDT 2011
+//   Used parsed args to set MapNode query parameters which is now sent to 
+//   Viewer.  Made this a deprecated method, in favor of one that uses
+//   python dictionary and/or named arguments.
+//
 // ****************************************************************************
 
-STATIC PyObject *
-visit_Query(PyObject *self, PyObject *args)
+STATIC PyObject*
+visit_Query_deprecated(PyObject *self, PyObject *args)
 {
     ENSURE_VIEWER_EXISTS();
+    const char* mn = "visit_Query_deprecated ";
     char *queryName = NULL;
     char *output_name = NULL;
     int arg1 = 0, arg2 = 0;
-    doubleVector darg1(3), darg2(3);
+    double darg;
+    doubleVector darg1(3), darg2(2), darg3(2); 
     bool dumpSteps = false;
     PyObject *tuple = NULL;
     
     bool parse_success = false;
-    
+  
+    // create the MapNode to store the parameters that will be parsed
+    // below.
+    MapNode params;
+ 
     parse_success = PyArg_ParseTuple(args, "siidddddd|O", &queryName,
                                      &arg1, &arg2,
                                      &(darg1[0]), &(darg1[1]), &(darg1[2]),
-                                     &(darg2[0]), &(darg2[1]), &(darg2[2]),
+                                     &darg, &(darg2[0]), &(darg2[1]),
                                      &tuple);
-    if(!parse_success)
+    if (parse_success) 
+    {
+        debug3 << mn <<  "parsed "  << queryName 
+               << " with 1st attempt (siidddddd)" << endl;
+        //HohlraumFlux with DivEmisByAsborb
+        params["num_lines"] = arg1;
+        params["divide_emis_by_absorb"] = arg2;
+        params["ray_center"] = darg1;
+        params["radius"] = darg;
+        params["theta"] = darg2[0];
+        params["phi"] = darg2[1];
+    }
+    else 
     {
         // Handle the x ray image query.
         char *imageType = NULL;
+        intVector ps(2);
         PyErr_Clear();
-        darg1.resize(3);
-        darg2.resize(6);
-        parse_success = PyArg_ParseTuple(args, "ssiddddddddd|O", &queryName,
+        parse_success = PyArg_ParseTuple(args, "ssidddddddii|O", &queryName,
                                          &imageType, &arg2,
                                          &(darg1[0]), &(darg1[1]), &(darg1[2]),
-                                         &(darg2[0]), &(darg2[1]), &(darg2[2]),
-                                         &(darg2[3]), &(darg2[4]), &(darg2[5]),
-                                         &tuple);
+                                         &(darg2[0]), &(darg2[1]), 
+                                         &(darg3[0]), &(darg3[1]), 
+                                         &(ps[0]), &(ps[1]), &tuple);
         if (parse_success)
         {
+            debug3 << mn << "parsed " <<  queryName 
+                   << " with 2nd attempt (ssidddddddii)" << endl;
             arg1 = 2;
             if (strcmp(imageType, "bmp") == 0)
                 arg1 = 0;
@@ -10656,20 +10763,31 @@ visit_Query(PyObject *self, PyObject *args)
                 arg1 = 3;
             else if (strcmp(imageType, "rawfloats") == 0)
                 arg1 = 4;
+            params["output_type"] = arg1;
+            params["divide_emis_by_absorb"] = arg2;
+            params["origin"] = darg1;
+            params["theta"] = darg2[0];
+            params["phi"] = darg2[1];
+            params["width"] = darg3[0];
+            params["height"] = darg3[1];
+            params["image_size"] = ps;
         }
     }
 
     if (!parse_success)
     {
-        //streamline info
+        //streamline info with dump
         PyErr_Clear();
         char *dump = NULL;
         parse_success = PyArg_ParseTuple(args, "ss|O", &queryName, &dump);
+
         if (parse_success && strcmp(queryName, "Streamline Info") == 0 &&
             (strcmp(dump, "DumpSteps") == 0 ||
              strcmp(dump, "dumpSteps") == 0))
         {
-            dumpSteps = true;
+            debug3 << mn << "parsed " << queryName 
+                   << " with 3rd attempt (ss)" << endl;
+            params["dump_steps"] = 1;
         }
         else
             parse_success = false;
@@ -10678,52 +10796,90 @@ visit_Query(PyObject *self, PyObject *args)
     if(!parse_success)
     {
         PyErr_Clear();
-        darg1.resize(3);
-        darg2.resize(3);
         parse_success = PyArg_ParseTuple(args, "sidddddd|O", &queryName, &arg1,
                                          &(darg1[0]), &(darg1[1]), &(darg1[2]),
-                                         &(darg2[0]), &(darg2[1]), &(darg2[2]),
+                                         &darg, &(darg2[0]), &(darg2[1]),
                                          &tuple);
+        if (parse_success)
+        {
+            debug3 << mn << "parsed " << queryName 
+                   << " with 4th attempt (sidddddd)" << endl;
+            //HohlraumFlux without DivEmisByAsborb
+            params["num_lines"] = arg1;
+            params["ray_center"] = darg1;
+            params["radius"] = darg;
+            params["theta"] = darg2[0];
+            params["phi"] = darg2[1];
+        }
     }
 
     if(!parse_success)
     {
         PyErr_Clear();
-        darg1.resize(1);
-        darg2.resize(1);
         parse_success = PyArg_ParseTuple(args, "siidd|O", &queryName, &arg1,
-                                         &arg2, &(darg1[0]), &(darg2[0]),
+                                         &arg2, &(darg1[0]), &(darg1[1]),
                                          &tuple);
+        if (parse_success)
+        {
+           debug3 << mn << "parsed " << queryName 
+                  << " with 5th attempt (siidd)" << endl;
+           // Line-Scan type queries:
+           //Chord Length Distribution
+           //Ray Length Distribution
+           //Mass Distribution
+           //Line Scan Transform
+           params["num_lines"] = arg1;
+           params["num_bins"] = arg2;
+           params["min"] = darg1[0];
+           params["max"] = darg1[1];
+        }
     }
     
-    // shapelets
     if(!parse_success)
     {
+        // shapelets (with output)
         PyErr_Clear();
-        darg1.resize(1);
-        darg2.resize(0);
         parse_success = PyArg_ParseTuple(args, "sdis|O", &queryName,
                                          &(darg1[0]), &arg1, &output_name,
                                          &tuple);
+        if (parse_success)
+        {
+            if (std::string(queryName) == "Shapelet Decomposition")
+            { 
+               debug3 << mn << "parsed " << queryName 
+                      << " with 6th attempt (sdis)" << endl;
+                params["beta"] = darg1[0];
+                params["nmax"] = arg1;
+                params["recomp_file"] = std::string(output_name);
+            }
+            else
+                parse_success = false; 
+        }
     }
     
-    // shapelets (with output)
     if(!parse_success)
     {
         PyErr_Clear();
         parse_success = PyArg_ParseTuple(args, "sdi|O", &queryName,
                                          &(darg1[0]), &arg1, &tuple);
-    }
-
-    if(parse_success)
-    {
-        // args for Zone Center and Node Coords need a special fix here.
-        std::string qname(queryName);
-        if(qname == "Zone Center" || qname == "Node Coords" )
+        if (parse_success)
         {
-            arg2 = arg1;
-            arg1 = (int)darg1[0];
-            darg1.resize(0);
+            debug3 << mn << "parsed " << queryName 
+                   << " with 7th attempt (sdi)" << endl;
+            // args for Zone Center and Node Coords need a special fix here.
+            std::string qname(queryName);
+            if(qname == "Zone Center" || qname == "Node Coords" )
+            {
+                params["element"] = (int)darg1[0];
+                params["domain"] = arg1;
+            }
+            else if(qname == "Shapelet Decomposition")
+            {
+                params["beta"] = darg1[0];
+                params["nmax"] = arg1;
+            }
+            else
+                parse_success = false;
         }
     }
 
@@ -10733,20 +10889,42 @@ visit_Query(PyObject *self, PyObject *args)
         darg1.resize(0);
         parse_success = PyArg_ParseTuple(args, "sii|O", &queryName,
                                          &arg1, &arg2, &tuple);
+        if (parse_success)
+        {
+            debug3 << mn << "parsed " << queryName 
+                   << " with 8th attempt (sii)" << endl;
+        }
     }
-    
     
     if(!parse_success)
     {
         PyErr_Clear();
         parse_success = PyArg_ParseTuple(args, "si|O", &queryName, &arg1,
                                          &tuple);
+        if (parse_success)
+        {
+            debug3 << mn << "parsed " << queryName 
+                   << " with 9th attempt (si)" << endl;
+            // SpatialExtents with 0/1 for "use_actual_data"
+            // Global Node Coords/Zone Center with int for element id 
+            if (strncmp(queryName, "SpatialExtents", 14)==0)
+            {
+                params["use_actual_data"] = arg1;
+            }
+        }
     }
     
     if(!parse_success)
     {
+        // simple queries, only passing along the name, and possibly vars
+        // no params to add
         PyErr_Clear();
         parse_success = PyArg_ParseTuple(args, "s|O", &queryName, &tuple);
+        if (parse_success)
+        {
+            debug3 << mn << "parsed " << queryName 
+                   << " with 10th attempt (s)" << endl;
+        }
     }
     
     // we could not parse the args!
@@ -10756,7 +10934,124 @@ visit_Query(PyObject *self, PyObject *args)
     // Check for global flag.
     std::string qname(queryName);
 
-    bool doGlobal = false;
+#if defined(_WIN32)
+    if (_strnicmp(queryName, "Global ", 7) == 0)
+#else
+    if (strncasecmp(queryName, "Global ", 7) == 0)
+#endif
+    {
+        // here's where we can distinguish form other '9th' attempts, possibly
+        // move to w/i the '9th' section?
+        std::string::size_type pos1 = 0;
+        pos1 = qname.find_first_of(' ', pos1);
+        qname = qname.substr(pos1+1);
+        params["use_global_id"] = 1;
+        params["element"] = arg1;
+    }
+    
+    // Check the tuple argument.
+    stringVector vars;
+    GetStringVectorFromPyObject(tuple, vars);
+    
+    if (vars.size() == 1)
+    {
+        if (strcmp(vars[0].c_str(), "original") == 0)
+        {
+            params["use_actual_data"] = 0;
+            vars.clear();
+        }
+        else if (strcmp(vars[0].c_str(), "actual") == 0)
+        {
+            params["use_actual_data"] = 1;
+            vars.clear();
+        }
+    }
+
+    params["query_name"] = qname;
+    if (!vars.empty())
+        params["vars"] = vars;
+
+    debug3 << mn << " sending query params: " << params.ToXML() << endl;
+    MUTEX_LOCK();
+    GetViewerMethods()->Query(params);
+    MUTEX_UNLOCK();
+
+    // Return the success value.
+    return IntReturnValue(Synchronize());
+}
+
+
+// ****************************************************************************
+// Function: visit_Query
+//
+// Purpose:
+//   Tells the viewer to do a query.
+//
+// Notes:
+//
+// Programmer: Kathleen Bonnell
+// Creation:   July 15, 2011
+//
+// Modifications:
+//   Kathleen Biagas, Wed Sep  7 12:46:24 PDT 2011
+//   Use VisItErrorFunc instead of cerr.
+//
+// ****************************************************************************
+
+STATIC PyObject *
+visit_Query(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    ENSURE_VIEWER_EXISTS();
+
+    char *queryName = NULL;
+    bool parse_success = true;
+    MapNode queryParams;
+
+
+    if (args == NULL)
+    {
+        VisItErrorFunc("Query requires at least one argument: the query name.");
+        return NULL;
+    }
+  
+    if (!(PyString_Check(PyTuple_GetItem(args, 0))))
+    {
+         VisItErrorFunc("Query requires first argument to be the query name.");
+         return NULL;
+    }
+    queryName = PyString_AS_STRING(PyTuple_GetItem(args, 0));
+
+ 
+    // parse other arguments.  First check if second arg (if present) is
+    // a python dictionary object
+    // If no second 'args', check for named args (kwargs).
+    if (PyTuple_Size(args) > 1)
+    {
+        if (!(PyDict_Check(PyTuple_GetItem(args, 1))))
+        {
+            debug3 << "Query second argument not a Python dictionary." << endl;
+            debug3 << "  attempting old parsing methodology." << endl;
+            return visit_Query_deprecated(self, args);
+        }
+        parse_success = PyDict_To_MapNode(PyTuple_GetItem(args,1), queryParams); 
+        if (!parse_success)
+        {
+           VisItErrorFunc("Query:  could not parse dictionary argument.");
+           return NULL;
+        }
+    }
+    else if (kwargs != NULL)
+    {
+        parse_success = PyDict_To_MapNode(kwargs, queryParams); 
+        if (!parse_success)
+        {
+            VisItErrorFunc(" Query:  could not parse keyword args.");
+            return NULL;
+        }
+    }
+    // Special case of a convenience query name , but viewer needs query name
+    // without 'Global'.  Perhaps should force proper query name and use
+    // of UseGlobalId=1 in kwargs?
 #if defined(_WIN32)
     if (_strnicmp(queryName, "Global ", 7) == 0)
 #else
@@ -10764,39 +11059,19 @@ visit_Query(PyObject *self, PyObject *args)
 #endif
     {
         std::string::size_type pos1 = 0;
+        std::string qname(queryName);
         pos1 = qname.find_first_of(' ', pos1);
         qname = qname.substr(pos1+1);
-        doGlobal = true;
+        queryParams["use_global_id"] = 1;
+        queryParams["query_name"] = qname;
     }
-    
-    // Check the tuple argument.
-    stringVector vars;
-    GetStringVectorFromPyObject(tuple, vars);
-    
-    // magic for Shapelet Decomposition call
-    if(output_name != NULL)
+    else
     {
-        vars.push_back("default");
-        vars.push_back(std::string(output_name));
-    }
-
-    if (vars.size() == 1)
-    {
-        if (strcmp(vars[0].c_str(), "original") == 0)
-        {
-            arg1 = 0;
-            vars.clear();
-        }
-        else if (strcmp(vars[0].c_str(), "actual") == 0)
-        {
-            arg1 = 1;
-            vars.clear();
-        }
+        queryParams["query_name"] = std::string(queryName);
     }
 
     MUTEX_LOCK();
-    GetViewerMethods()->DatabaseQuery(qname, vars, false, arg1, arg2, doGlobal, dumpSteps,
-                              darg1, darg2);
+    GetViewerMethods()->Query(queryParams);
     MUTEX_UNLOCK();
 
     // Return the success value.
@@ -10818,6 +11093,9 @@ visit_Query(PyObject *self, PyObject *args)
 // Modifications:
 //  Cyrus Harrison, Fri Jul  9 11:49:44 PDT 2010
 //  Support passing of arbitary arguments via "args" keyword.
+//
+//  Kathleen Biagas, Tue Jul 19 12:00:04 PDT 2011
+//  Pass args to viewer via MapNode.
 //
 // ****************************************************************************
 
@@ -10892,14 +11170,17 @@ visit_PythonQuery(PyObject *self, PyObject *args, PyObject *kwargs)
             PyErr_SetString(VisItError, err_msg.str().c_str());
             return NULL;
         }
-        string py_script((std::istreambuf_iterator<char>(ifs)),
+        std::string py_script((std::istreambuf_iterator<char>(ifs)),
                           std::istreambuf_iterator<char>());
         vars.push_back(py_script);
     }
 
-
     MUTEX_LOCK();
-        GetViewerMethods()->DatabaseQuery("Python", vars);
+        MapNode params;
+        params["query_name"] = std::string("Python");
+        if (!vars.empty())
+            params["vars"] = vars;
+        GetViewerMethods()->Query(params);
     MUTEX_UNLOCK();
 
     // Return the success value.
@@ -10974,8 +11255,8 @@ visit_DefinePythonExpression(PyObject *self, PyObject *args, PyObject *kwargs)
         return NULL;
     }
 
-    string expr_name(var_name);
-    string py_script="";
+    std::string expr_name(var_name);
+    std::string py_script="";
 
     if(source_text != NULL)
     {
@@ -10997,7 +11278,7 @@ visit_DefinePythonExpression(PyObject *self, PyObject *args, PyObject *kwargs)
             PyErr_SetString(VisItError, err_msg.str().c_str());
             return NULL;
         }
-        py_script = string((std::istreambuf_iterator<char>(ifs)),
+        py_script = std::string((std::istreambuf_iterator<char>(ifs)),
                           std::istreambuf_iterator<char>());
     }
 
@@ -11007,8 +11288,8 @@ visit_DefinePythonExpression(PyObject *self, PyObject *args, PyObject *kwargs)
     py_script = StringHelpers::Replace(py_script,"\n","\\n");
     py_script = StringHelpers::Replace(py_script," ","\\s");
 
-    string expr_def = "py(";
-    vector<string>::iterator itr;
+    std::string expr_def = "py(";
+    std::vector<std::string>::iterator itr;
     for( itr =expr_args.begin() ; itr != expr_args.end(); ++itr)
         expr_def += *itr + ",";
     expr_def += "\"";
@@ -11136,6 +11417,7 @@ visit_SetQueryFloatFormat(PyObject *self, PyObject *args)
     return Py_None;
 }
 
+
 // ****************************************************************************
 // Function: visit_QueryOverTime
 //
@@ -11160,27 +11442,53 @@ visit_SetQueryFloatFormat(PyObject *self, PyObject *args)
 //   Kathleen Bonnell, Wed Mar  2 17:37:47 PST 2011
 //   Remove test for queryName == 'Pick'.
 //
+//   Kathleen Biagas, Tue Jul 19 12:50:28 PDT 2011
+//   Create MapNode from parsed args to pass to viewer. Make this method
+//   deprecated in favor of one that accepts python dictionary/named args.
+// 
 // ****************************************************************************
 
+
 STATIC PyObject *
-visit_QueryOverTime(PyObject *self, PyObject *args)
+visit_QueryOverTime_deprecated(PyObject *self, PyObject *args)
 {
     ENSURE_VIEWER_EXISTS();
 
     char *queryName;
     int arg1 = 0, arg2 = 0;
     PyObject *tuple = NULL;
-    if (!PyArg_ParseTuple(args, "sii|O", &queryName, &arg1, &arg2, &tuple))
+
+    MapNode params;
+
+    bool parse_success = PyArg_ParseTuple(args, "sii|O", &queryName, &arg1, 
+                                          &arg2, &tuple);
+
+    if (parse_success)
     {
-        if (!PyArg_ParseTuple(args, "si|O", &queryName, &arg1, &tuple))
+        params["element"] = arg1;
+        params["domain"]  = arg2;
+    }
+    else
+    {
+        PyErr_Clear();
+        parse_success = PyArg_ParseTuple(args, "si|O", &queryName, &arg1, 
+                                         &tuple);
+
+        if (parse_success)
         {
-            if (!PyArg_ParseTuple(args, "s|O", &queryName, &tuple))
-            {
-                return NULL;
-            }
+            params["element"] = arg1;
+            params["use_global_id"] = 1;
         }
+    }
+    if (!parse_success)
+    {
+        PyErr_Clear();
+        parse_success = PyArg_ParseTuple(args, "s|O", &queryName, &tuple);
         PyErr_Clear();
     }
+
+    if (!parse_success)
+        return NULL;
 
     // Check the tuple argument.
     stringVector vars;
@@ -11189,18 +11497,22 @@ visit_QueryOverTime(PyObject *self, PyObject *args)
     {
         if (strcmp(vars[0].c_str(), "original") == 0)
         {
-            arg1 = 0;
+            params["use_actual_data"] = 0;
             vars.clear();
         }
         else if (strcmp(vars[0].c_str(), "actual") == 0)
         {
-            arg1 = 1;
+            params["use_actual_data"] = 1;
             vars.clear();
         }
     }
 
+    params["query_Name"] = std::string(queryName);
+    if (!vars.empty())
+        params["vars"] = vars;
+    params["do_time"] = 1;
     MUTEX_LOCK();
-        GetViewerMethods()->DatabaseQuery(queryName, vars, true, arg1, arg2);
+        GetViewerMethods()->Query(params);
 
         char tmp[1024];
         SNPRINTF(tmp, 1024, "QueryOverTime(\"%s\", %d, %d, %s)\n", queryName,
@@ -11213,9 +11525,89 @@ visit_QueryOverTime(PyObject *self, PyObject *args)
     return IntReturnValue(Synchronize());
 }
 
+// ****************************************************************************
+// Function: visit_QueryOverTime
+//
+// Purpose:
+//   Tells the viewer to do a time-query.
+//
+// Notes:
+//
+// Programmer: Kathleen Biagas
+// Creation:   July 19, 2011
+//
+// Modifications:
+//
+// ****************************************************************************
+
+
+STATIC PyObject *
+visit_QueryOverTime(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    ENSURE_VIEWER_EXISTS();
+    const char* mn = "visit_QueryOverTime ";
+
+    char *queryName = NULL;
+    bool parse_success = false;
+    MapNode queryParams;
+
+    if (args == NULL)
+    {
+        VisItErrorFunc("QueryOverTime: requires at least one argument, the query name."); 
+        return NULL;
+    }
+  
+    if (!(PyString_Check(PyTuple_GetItem(args, 0))))
+    {
+         VisItErrorFunc("QueryOverTime: requires first argument to be the query name."); 
+         return NULL;
+    }
+    queryName = PyString_AS_STRING(PyTuple_GetItem(args, 0));
+
+ 
+    // parse other arguments.  First check if second arg (if present) is
+    // a python dictionary object
+    // If no second 'args', check for named args (kwargs).
+    if (PyTuple_Size(args) > 1)
+    {
+        if (!(PyDict_Check(PyTuple_GetItem(args, 1))))
+        {
+            debug3 << mn << "second argument not a Python dictionary." << endl;
+            debug3<< "     attempting old parsing methodology." << endl;
+            return visit_QueryOverTime_deprecated(self, args);
+        }
+        parse_success = PyDict_To_MapNode(PyTuple_GetItem(args,1), queryParams); 
+        if (!parse_success)
+        {
+          VisItErrorFunc("QueryOverTime: could not parse dictionary argument.");
+          return NULL;
+        }
+    }
+    else if (kwargs != NULL)
+    {
+        parse_success = PyDict_To_MapNode(kwargs, queryParams); 
+        if (!parse_success)
+        {
+          VisItErrorFunc("QueryOverTime:  could not parse keyword arguments.");
+          return NULL;
+        }
+    }
+
+    queryParams["query_name"] = std::string(queryName);
+    queryParams["do_time"] = 1;
+
+    MUTEX_LOCK();
+    GetViewerMethods()->Query(queryParams);
+    MUTEX_UNLOCK();
+
+    // Return the success value.
+    return IntReturnValue(Synchronize());
+}
+
+
 
 // ****************************************************************************
-// Function: visit_ZonePick
+// Function: visit_ZonePick_deprecated
 //
 // Purpose:
 //   Tells the viewer to do pick.
@@ -11250,10 +11642,17 @@ visit_QueryOverTime(PyObject *self, PyObject *args)
 //   Kathleen Bonnell, Thu Mar  3 09:30:46 PST 2011
 //   Separate logging based on pick args.
 //
+//   Kathleen Biagas, Tue Jul 19 12:00:04 PDT 2011
+//   Send args as MapNode to new ViewerMethod 'Query'.
+//
+//   Kathleen Biagas, Wed Sep  7 07:39:35 PDT 2011
+//   Made this a deprecated method, in favor of one that uses
+//   python dictionary and/or named arguments.
+//
 // ****************************************************************************
 
 STATIC PyObject *
-visit_ZonePick(PyObject *self, PyObject *args)
+visit_ZonePick_deprecated(PyObject *self, PyObject *args)
 {
     ENSURE_VIEWER_EXISTS();
 
@@ -11271,11 +11670,12 @@ visit_ZonePick(PyObject *self, PyObject *args)
         PyErr_Clear();
     }
 
-    double pt[3] = {0.,0.,0.};
+    doubleVector pt(3);
+    pt[0] = pt[1] = pt[2] = 0.;
     if (wp)
     {
         // Extract the world-coordinate point from the first object.
-        if(!GetDoubleArrayFromPyObject(pt_tuple, pt, 3))
+        if(!GetDoubleArrayFromPyObject(pt_tuple, &pt[0], 3))
         {
             VisItErrorFunc("The first argument to Pick must be a point "
                            "specified as a tuple of coordinates.");
@@ -11288,9 +11688,15 @@ visit_ZonePick(PyObject *self, PyObject *args)
     GetStringVectorFromPyObject(tuple, vars);
 
     MUTEX_LOCK();
+        MapNode params;
+        if (!vars.empty())
+            params["vars"] = vars; 
         if (!wp)
         {
-            GetViewerMethods()->ZonePick(x, y, vars);
+            params["query_name"] = std::string("Pick");
+            params["pick_type"] = std::string("ScreenZone");
+            params["x"] = x;
+            params["y"] = y;
             char tmp[1024];
             SNPRINTF(tmp, 1024, "ZonePick(%d, %d, %s)\n", x, y,
                      StringVectorToTupleString(vars).c_str());
@@ -11298,13 +11704,16 @@ visit_ZonePick(PyObject *self, PyObject *args)
         }
         else
         {
-            GetViewerMethods()->ZonePick(pt, vars);
+            params["query_name"] = std::string("Pick");
+            params["pick_type"] = std::string("Zone");
+            params["coord"] = pt;
             char tmp[1024];
             SNPRINTF(tmp, 1024, "ZonePick((%g, %g, %g), %s)\n",
                      pt[0], pt[1], pt[2], 
                      StringVectorToTupleString(vars).c_str());
             LogFile_Write(tmp);
         }
+        GetViewerMethods()->Query(params);
 
     MUTEX_UNLOCK();
 
@@ -11314,7 +11723,79 @@ visit_ZonePick(PyObject *self, PyObject *args)
 
 
 // ****************************************************************************
-// Function: visit_NodePick
+// Function: visit_ZonePick
+//
+// Purpose:
+//   Tells the viewer to do ZonePick.
+//
+// Notes:
+//
+// Programmer: Kathleen Biagas
+// Creation:   September 7, 2011
+//
+// ****************************************************************************
+
+STATIC PyObject *
+visit_ZonePick(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    ENSURE_VIEWER_EXISTS();
+
+    bool parse_success = true;
+    MapNode pickParams;
+
+    // parse arguments.  First check if first arg (if present) is
+    // a python dictionary object
+    // If not, check for named args (kwargs).
+    if (PyTuple_Size(args) > 0)
+    {
+        if (!(PyDict_Check(PyTuple_GetItem(args, 0))))
+        {
+            debug3 << "Pick first argument not a Python dictionary." << endl;
+            debug3 << "  attempting old parsing methodology." << endl;
+            return visit_ZonePick_deprecated(self, args);
+        }
+        parse_success = PyDict_To_MapNode(PyTuple_GetItem(args,0), pickParams); 
+        if (!parse_success)
+        {
+           VisItErrorFunc("ZonePick: could not parse dictionary argument.");
+           return NULL;
+        }
+    }
+    else if (kwargs != NULL)
+    {
+        parse_success = PyDict_To_MapNode(kwargs, pickParams); 
+        if (!parse_success)
+        {
+            VisItErrorFunc("ZonePick: could not parse keyword arguments.");
+            return NULL;
+        }
+    }
+    if (pickParams.HasEntry("coord"))
+    {
+        pickParams["pick_type"] = std::string("Zone");
+    } 
+    else if (pickParams.HasEntry("x") && pickParams.HasEntry("y"))
+    {
+        pickParams["pick_type"] = std::string("ScreenZone");
+    } 
+    else
+    {
+        VisItErrorFunc("ZonePick: requires \"coord\" argument.");
+        return NULL;
+    }
+    pickParams["query_name"] = std::string("Pick");
+    MUTEX_LOCK();
+        GetViewerMethods()->Query(pickParams);
+    MUTEX_UNLOCK();
+
+    // Return the success value.
+    return IntReturnValue(Synchronize());
+}
+
+
+
+// ****************************************************************************
+// Function: visit_NodePick_deprecated
 //
 // Purpose:
 //   Tells the viewer to do NodePick.
@@ -11340,10 +11821,17 @@ visit_ZonePick(PyObject *self, PyObject *args)
 //   Kathleen Bonnell, Thu Mar  3 09:30:46 PST 2011
 //   Separate logging based on pick args.
 //
+//   Kathleen Biagas, Tue Jul 19 12:00:04 PDT 2011
+//   Send args as MapNode to new ViewerMethod 'Query'.
+//
+//   Kathleen Biagas, Wed Sep  7 07:39:35 PDT 2011
+//   Made this a deprecated method, in favor of one that uses
+//   python dictionary and/or named arguments.
+//
 // ****************************************************************************
 
 STATIC PyObject *
-visit_NodePick(PyObject *self, PyObject *args)
+visit_NodePick_deprecated(PyObject *self, PyObject *args)
 {
     ENSURE_VIEWER_EXISTS();
 
@@ -11361,10 +11849,11 @@ visit_NodePick(PyObject *self, PyObject *args)
         PyErr_Clear();
     }
     // Extract the world-coordinate point from the first object.
-    double pt[3] = {0.,0.,0.};
+    doubleVector pt(3);
+    pt[0] = pt[1] = pt[2] = 0.;
     if (wp)
     {
-        if(!GetDoubleArrayFromPyObject(pt_tuple, pt, 3))
+        if(!GetDoubleArrayFromPyObject(pt_tuple, &pt[0], 3))
         {
             VisItErrorFunc("The first argument to NodePick must be a "
                            "point specified as a tuple of coordinates.");
@@ -11377,22 +11866,103 @@ visit_NodePick(PyObject *self, PyObject *args)
     GetStringVectorFromPyObject(tuple, vars);
 
     MUTEX_LOCK();
+        MapNode params;
+        if (!vars.empty())
+            params["vars"] = vars;
+
         if (!wp)
         {
-           GetViewerMethods()->NodePick(x, y, vars);
-           char tmp[1024];
-           SNPRINTF(tmp, 1024, "NodePick(%d, %d, %s)\n", x, y,
-                    StringVectorToTupleString(vars).c_str());
-           LogFile_Write(tmp);
+            params["query_name"] = std::string("Pick");
+            params["pick_type"] = std::string("ScreenNode");
+            params["x"] = x;
+            params["y"] = y;
+            char tmp[1024];
+            SNPRINTF(tmp, 1024, "NodePick(%d, %d, %s)\n", x, y,
+                     StringVectorToTupleString(vars).c_str());
+            LogFile_Write(tmp);
         }
         else
         {
-           GetViewerMethods()->NodePick(pt, vars);
-           char tmp[1024];
-           SNPRINTF(tmp, 1024, "NodePick((%g, %g, %g) %s)\n", pt[0], pt[1], 
-                    pt[2], StringVectorToTupleString(vars).c_str());
-           LogFile_Write(tmp);
+            params["query_name"] = std::string("Pick");
+            params["pick_type"] = std::string("Node");
+            params["coord"] = pt;
+            char tmp[1024];
+            SNPRINTF(tmp, 1024, "NodePick((%g, %g, %g) %s)\n", pt[0], pt[1], 
+                     pt[2], StringVectorToTupleString(vars).c_str());
+            LogFile_Write(tmp);
         }
+        GetViewerMethods()->Query(params);
+    MUTEX_UNLOCK();
+
+    // Return the success value.
+    return IntReturnValue(Synchronize());
+}
+
+
+// ****************************************************************************
+// Function: visit_NodePick
+//
+// Purpose:
+//   Tells the viewer to do NodePick.
+//
+// Notes:
+//
+// Programmer: Kathleen Biagas
+// Creation:   September 7, 2011
+//
+// ****************************************************************************
+
+STATIC PyObject *
+visit_NodePick(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    ENSURE_VIEWER_EXISTS();
+
+    bool parse_success = true;
+    MapNode pickParams;
+
+    // parse arguments.  First check if first arg (if present) is
+    // a python dictionary object
+    // If not, check for named args (kwargs).
+    if (PyTuple_Size(args) > 0)
+    {
+        if (!(PyDict_Check(PyTuple_GetItem(args, 0))))
+        {
+            debug3 << "Pick first argument not a Python dictionary." << endl;
+            debug3 << "  attempting old parsing methodology." << endl;
+            return visit_NodePick_deprecated(self, args);
+        }
+        parse_success = PyDict_To_MapNode(PyTuple_GetItem(args,0), pickParams); 
+        if (!parse_success)
+        {
+           VisItErrorFunc("NodePick:  could not parse dictionary argument.");
+           return NULL;
+        }
+    }
+    else if (kwargs != NULL)
+    {
+        parse_success = PyDict_To_MapNode(kwargs, pickParams); 
+        if (!parse_success)
+        {
+            VisItErrorFunc("NodePick: could not parse keyword arguments.");
+            return NULL;
+        }
+    }
+    if (pickParams.HasEntry("coord"))
+    {
+        pickParams["pick_type"] = std::string("Node");
+    } 
+    else if (pickParams.HasEntry("x") && pickParams.HasEntry("y"))
+    {
+        pickParams["pick_type"] = std::string("ScreenNode");
+    } 
+    else
+    {
+        VisItErrorFunc("NodePick:  requires \"coord\" arguments.");
+        return NULL;
+    }
+    pickParams["query_name"] = std::string("Pick");
+    MUTEX_LOCK();
+        GetViewerMethods()->Query(pickParams);
     MUTEX_UNLOCK();
 
     // Return the success value.
@@ -11854,7 +12424,12 @@ visit_SetQueryOverTimeAttributes(PyObject *self, PyObject *args)
         QueryOverTimeAttributes *tqa =
             PyQueryOverTimeAttributes_FromPyObject(queryOverTime);
 
-        // Copy the object into the pick attributes.
+        // backwards compatibility, strideFlag is new
+        if (tqa->GetStride() != 1)
+            tqa->SetStrideFlag(true);
+        
+
+        // Copy the object into the query over time attributes.
         *(GetViewerState()->GetQueryOverTimeAttributes()) = *tqa;
         GetViewerState()->GetQueryOverTimeAttributes()->Notify();
         GetViewerMethods()->SetQueryOverTimeAttributes();
@@ -12020,48 +12595,7 @@ visit_GetGlobalLineoutAttributes(PyObject *self, PyObject *args)
 
 
 // ****************************************************************************
-// Function: visit_DomainPick
-//
-// Purpose:
-//   The generic method for PickByZone, PickByNode.
-//
-// Notes:
-//
-// Programmer: Kathleen Bonnell
-// Creation:   December 1, 2003
-//
-// Modifications:
-//   Kathleen Bonnell, Thu Apr  1 20:12:56 PST 2004
-//   New bool arg required by PointQuery.
-//
-//   Kathleen Bonnell, Tue Jun  1 08:29:54 PDT 2004
-//   Swapped order of dom/el in args list, and in call to PointQuery.
-//
-//   Kathleen Bonnell, Thu Dec 16 17:31:10 PST 2004
-//   Added bool arg, indicating of node/zone is global or not.
-//
-//   Kathleen Bonnell, Tue Mar  1 18:32:50 PST 2011
-//   Send default value (-1) for timeCurvePlotType.
-// 
-// ****************************************************************************
-
-STATIC PyObject *
-visit_DomainPick(const char *type, int el, int dom, stringVector vars,
-                 bool doGlobal)
-{
-    double pt[3] = {0., 0., 0};
-
-    MUTEX_LOCK();
-       GetViewerMethods()->PointQuery(type, pt, vars, false, -1, el, dom, doGlobal);
-    MUTEX_UNLOCK();
-
-    // Return the success value.
-    return IntReturnValue(Synchronize());
-}
-
-
-// ****************************************************************************
-// Function: visit_PickByZone
+// Function: visit_PickByZone_deprecated
 //
 // Purpose:
 //   Tells the viewer to perform Pick via domain and zone.
@@ -12081,14 +12615,20 @@ visit_DomainPick(const char *type, int el, int dom, stringVector vars,
 //   Jeremy Meredith, Thu Aug  7 15:06:45 EDT 2008
 //   Change string literals to const char*'s.
 //
+//   Kathleen Biagas, Tue Jul 19 12:00:04 PDT 2011
+//   Send args as MapNode to new ViewerMethod 'Query'.
+//
+//   Kathleen Biagas, Wed Sep  7 07:39:35 PDT 2011
+//   Made this a deprecated method, in favor of one that uses
+//   python dictionary and/or named arguments.
+//
 // ****************************************************************************
 
 STATIC PyObject *
-visit_PickByZone(PyObject *self, PyObject *args)
+visit_PickByZone_deprecated(PyObject *self, PyObject *args)
 {
     ENSURE_VIEWER_EXISTS();
 
-    const char *type = "PickByZone";
     int dom = 0, zone = 0;
     PyObject *tuple = NULL;
     if (!PyArg_ParseTuple(args, "ii|O", &zone, &dom, &tuple))
@@ -12104,12 +12644,89 @@ visit_PickByZone(PyObject *self, PyObject *args)
     stringVector vars;
     GetStringVectorFromPyObject(tuple, vars);
 
+    MapNode params;
+    params["query_name"] = std::string("Pick");
+    params["pick_type"] = std::string("DomainZone");
+    params["element"] = zone;
+    params["domain"] = dom;
+    if (!vars.empty())
+        params["vars"] = vars;
+
+    MUTEX_LOCK();
+       GetViewerMethods()->Query(params);
+    MUTEX_UNLOCK();
+
     // Return the success value.
-    return visit_DomainPick(type, zone, dom, vars, false);
+    return IntReturnValue(Synchronize());
 }
 
+
 // ****************************************************************************
-// Function: visit_PickByGlobalZone
+// Function: visit_PickByZone
+//
+// Purpose:
+//   Tells the viewer to do PickByZone.
+//
+// Notes:
+//
+// Programmer: Kathleen Biagas
+// Creation:   September 7, 2011
+//
+// ****************************************************************************
+
+STATIC PyObject *
+visit_PickByZone(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    ENSURE_VIEWER_EXISTS();
+
+    bool parse_success = true;
+    MapNode pickParams;
+
+    // parse arguments.  First check if first arg (if present) is
+    // a python dictionary object
+    // If not, check for named args (kwargs).
+    if (PyTuple_Size(args) > 0)
+    {
+        if (!(PyDict_Check(PyTuple_GetItem(args, 0))))
+        {
+            debug3 << "Pick first argument not a Python dictionary." << endl;
+            debug3 << "  attempting old parsing methodology." << endl;
+            return visit_PickByZone_deprecated(self, args);
+        }
+        parse_success = PyDict_To_MapNode(PyTuple_GetItem(args,0), pickParams); 
+        if (!parse_success)
+        {
+           VisItErrorFunc("PickByZone:  could not parse dictionary argument.");
+           return NULL;
+        }
+    }
+    else if (kwargs != NULL)
+    {
+        parse_success = PyDict_To_MapNode(kwargs, pickParams); 
+        if (!parse_success)
+        {
+            VisItErrorFunc("PickByZone:  could not parse keyword arguments.");
+            return NULL;
+        }
+    }
+    if (!pickParams.HasEntry("element"))
+    {
+        VisItErrorFunc("PickByZone: requires \"element\" argument.");
+        return NULL;
+    } 
+    pickParams["query_name"] = std::string("Pick");
+    pickParams["pick_type"] = std::string("DomainZone");
+    MUTEX_LOCK();
+        GetViewerMethods()->Query(pickParams);
+    MUTEX_UNLOCK();
+
+    // Return the success value.
+    return IntReturnValue(Synchronize());
+}
+
+
+// ****************************************************************************
+// Function: visit_PickByGlobalZone_deprecated
 //
 // Purpose:
 //   Tells the viewer to perform Pick via global zone id.
@@ -12123,32 +12740,114 @@ visit_PickByZone(PyObject *self, PyObject *args)
 //   Jeremy Meredith, Thu Aug  7 15:06:45 EDT 2008
 //   Change string literals to const char*'s.
 //
+//   Kathleen Biagas, Tue Jul 19 12:00:04 PDT 2011
+//   Send args as MapNode to new ViewerMethod 'Query'.
+//
+//   Kathleen Biagas, Wed Sep  7 07:39:35 PDT 2011
+//   Made this a deprecated method, in favor of one that uses
+//   python dictionary and/or named arguments.
+//
 // ****************************************************************************
 
 STATIC PyObject *
-visit_PickByGlobalZone(PyObject *self, PyObject *args)
+visit_PickByGlobalZone_deprecated(PyObject *self, PyObject *args)
 {
     ENSURE_VIEWER_EXISTS();
 
-    const char *type = "PickByZone";
-    int dom = 0, zone = 0;
+    int zone = 0;
     PyObject *tuple = NULL;
     if (!PyArg_ParseTuple(args, "i|O", &zone, &tuple))
     {
         return NULL;
     }
-
     // Check the tuple argument.
     stringVector vars;
     GetStringVectorFromPyObject(tuple, vars);
 
+    MapNode params;
+    params["query_name"] = std::string("Pick");
+    params["pick_type"] = std::string("DomainZone");
+    params["element"] = zone;
+    params["use_global_id"] = 1;
+    if (!vars.empty())
+        params["vars"] = vars;
+
+    MUTEX_LOCK();
+       GetViewerMethods()->Query(params);
+    MUTEX_UNLOCK();
+
     // Return the success value.
-    return visit_DomainPick(type, zone, dom, vars, true);
+    return IntReturnValue(Synchronize());
 }
 
 
 // ****************************************************************************
-// Function: visit_PickByNode
+// Function: visit_PickByGlobalZone
+//
+// Purpose:
+//   Tells the viewer to do PickByGlobalZone.
+//
+// Notes:
+//
+// Programmer: Kathleen Biagas
+// Creation:   September 7, 2011
+//
+// ****************************************************************************
+
+STATIC PyObject *
+visit_PickByGlobalZone(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    ENSURE_VIEWER_EXISTS();
+
+    bool parse_success = true;
+    MapNode pickParams;
+
+    // parse arguments.  First check if first arg (if present) is
+    // a python dictionary object
+    // If not, check for named args (kwargs).
+    if (PyTuple_Size(args) > 0)
+    {
+        if (!(PyDict_Check(PyTuple_GetItem(args, 0))))
+        {
+            debug3 << "Pick first argument not a Python dictionary." << endl;
+            debug3 << "  attempting old parsing methodology." << endl;
+            return visit_PickByGlobalZone_deprecated(self, args);
+        }
+        parse_success = PyDict_To_MapNode(PyTuple_GetItem(args,0), pickParams); 
+        if (!parse_success)
+        {
+           VisItErrorFunc("PickByGlobalZone:  could not parse dictionary argument.");
+           return NULL;
+        }
+    }
+    else if (kwargs != NULL)
+    {
+        parse_success = PyDict_To_MapNode(kwargs, pickParams); 
+        if (!parse_success)
+        {
+            VisItErrorFunc("PickByGlobalZone:  could not parse keyword arguments.");
+            return NULL;
+        }
+    }
+    if (!pickParams.HasEntry("element"))
+    {
+        VisItErrorFunc("PickByGlobalZone: requires \"element\" argument.");
+        return NULL;
+    } 
+    pickParams["query_name"] = std::string("Pick");
+    pickParams["pick_type"] = std::string("DomainZone");
+    pickParams["use_global_id"] = 1;
+    MUTEX_LOCK();
+        GetViewerMethods()->Query(pickParams);
+    MUTEX_UNLOCK();
+
+    // Return the success value.
+    return IntReturnValue(Synchronize());
+}
+
+
+// ****************************************************************************
+// Function: visit_PickByNode_deprecated
 //
 // Purpose:
 //   Tells the viewer to perform Pick via domain and node.
@@ -12168,13 +12867,20 @@ visit_PickByGlobalZone(PyObject *self, PyObject *args)
 //   Jeremy Meredith, Thu Aug  7 15:06:45 EDT 2008
 //   Change string literals to const char*'s.
 //
+//   Kathleen Biagas, Tue Jul 19 12:00:04 PDT 2011
+//   Send args as MapNode to new ViewerMethod 'Query'.
+//
+//   Kathleen Biagas, Wed Sep  7 07:39:35 PDT 2011
+//   Made this a deprecated method, in favor of one that uses
+//   python dictionary and/or named arguments.
+//
 // ****************************************************************************
+
 STATIC PyObject *
-visit_PickByNode(PyObject *self, PyObject *args)
+visit_PickByNode_deprecated(PyObject *self, PyObject *args)
 {
     ENSURE_VIEWER_EXISTS();
 
-    const char *type = "PickByNode";
     int dom = 0, node = 0;
     PyObject *tuple = NULL;
     if (!PyArg_ParseTuple(args, "ii|O", &node, &dom, &tuple))
@@ -12190,13 +12896,90 @@ visit_PickByNode(PyObject *self, PyObject *args)
     stringVector vars;
     GetStringVectorFromPyObject(tuple, vars);
 
+    MapNode params;
+    params["query_name"] = std::string("Pick");
+    params["pick_type"] = std::string("DomainNode");
+    params["element"] = node;
+    params["domain"] = dom;
+    if (!vars.empty())
+        params["vars"] = vars;
+
+    MUTEX_LOCK();
+       GetViewerMethods()->Query(params);
+    MUTEX_UNLOCK();
+
     // Return the success value.
-    return visit_DomainPick(type, node, dom, vars, false);
+    return IntReturnValue(Synchronize());
 }
 
 
 // ****************************************************************************
-// Function: visit_PickByGlobalNode
+// Function: visit_PickByNode
+//
+// Purpose:
+//   Tells the viewer to do PickByNode.
+//
+// Notes:
+//
+// Programmer: Kathleen Biagas
+// Creation:   September 7, 2011
+//
+// ****************************************************************************
+
+STATIC PyObject *
+visit_PickByNode(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    ENSURE_VIEWER_EXISTS();
+
+    bool parse_success = true;
+    MapNode pickParams;
+
+    // parse arguments.  First check if first arg (if present) is
+    // a python dictionary object
+    // If not, check for named args (kwargs).
+    if (PyTuple_Size(args) > 0)
+    {
+        if (!(PyDict_Check(PyTuple_GetItem(args, 0))))
+        {
+            debug3 << "Pick first argument not a Python dictionary." << endl;
+            debug3 << "  attempting old parsing methodology." << endl;
+            return visit_PickByNode_deprecated(self, args);
+        }
+        parse_success = PyDict_To_MapNode(PyTuple_GetItem(args,0), pickParams); 
+        if (!parse_success)
+        {
+           VisItErrorFunc("PickByNode: could not parse dictionary argument.");
+           return NULL;
+        }
+    }
+    else if (kwargs != NULL)
+    {
+        parse_success = PyDict_To_MapNode(kwargs, pickParams); 
+        if (!parse_success)
+        {
+            VisItErrorFunc("PickByNode:  could not parse keyword arguments.");
+            return NULL;
+        }
+    }
+    if (!pickParams.HasEntry("element"))
+    {
+        VisItErrorFunc("PickByNode: requires \"element\" argument.");
+        return NULL;
+    } 
+    pickParams["query_name"] = std::string("Pick");
+    pickParams["pick_type"] = std::string("DomainNode");
+    MUTEX_LOCK();
+        GetViewerMethods()->Query(pickParams);
+    MUTEX_UNLOCK();
+
+    // Return the success value.
+    return IntReturnValue(Synchronize());
+}
+
+
+
+// ****************************************************************************
+// Function: visit_PickByGlobalNode_deprecated
 //
 // Purpose:
 //   Tells the viewer to perform Pick via global node id.
@@ -12210,15 +12993,21 @@ visit_PickByNode(PyObject *self, PyObject *args)
 //   Jeremy Meredith, Thu Aug  7 15:06:45 EDT 2008
 //   Change string literals to const char*'s.
 //
+//   Kathleen Biagas, Tue Jul 19 12:00:04 PDT 2011
+//   Send args as MapNode to new ViewerMethod 'Query'.
+//
+//   Kathleen Biagas, Wed Sep  7 07:39:35 PDT 2011
+//   Made this a deprecated method, in favor of one that uses
+//   python dictionary and/or named arguments.
+//
 // ****************************************************************************
 
 STATIC PyObject *
-visit_PickByGlobalNode(PyObject *self, PyObject *args)
+visit_PickByGlobalNode_deprecated(PyObject *self, PyObject *args)
 {
     ENSURE_VIEWER_EXISTS();
 
-    const char *type = "PickByNode";
-    int dom = 0, node = 0;
+    int node = 0;
     PyObject *tuple = NULL;
     if (!PyArg_ParseTuple(args, "i|O", &node, &tuple))
     {
@@ -12229,9 +13018,87 @@ visit_PickByGlobalNode(PyObject *self, PyObject *args)
     stringVector vars;
     GetStringVectorFromPyObject(tuple, vars);
 
+    MapNode params;
+    params["query_name"] = std::string("Pick");
+    params["pick_type"] = std::string("DomainNode");
+    params["element"] = node;
+    params["use_global_id"] = 1;
+    if (!vars.empty())
+        params["vars"] = vars;
+
+    MUTEX_LOCK();
+       GetViewerMethods()->Query(params);
+    MUTEX_UNLOCK();
+
     // Return the success value.
-    return visit_DomainPick(type, node, dom, vars, true);
+    return IntReturnValue(Synchronize());
 }
+
+
+// ****************************************************************************
+// Function: visit_PickByGlobalNode
+//
+// Purpose:
+//   Tells the viewer to do PickByGlobalNode.
+//
+// Notes:
+//
+// Programmer: Kathleen Biagas
+// Creation:   September 7, 2011
+//
+// ****************************************************************************
+
+STATIC PyObject *
+visit_PickByGlobalNode(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    ENSURE_VIEWER_EXISTS();
+
+    bool parse_success = true;
+    MapNode pickParams;
+
+    // parse arguments.  First check if first arg (if present) is
+    // a python dictionary object
+    // If not, check for named args (kwargs).
+    if (PyTuple_Size(args) > 0)
+    {
+        if (!(PyDict_Check(PyTuple_GetItem(args, 0))))
+        {
+            debug3 << "Pick first argument not a Python dictionary." << endl;
+            debug3 << "  attempting old parsing methodology." << endl;
+            return visit_PickByGlobalNode_deprecated(self, args);
+        }
+        parse_success = PyDict_To_MapNode(PyTuple_GetItem(args,0), pickParams); 
+        if (!parse_success)
+        {
+           VisItErrorFunc("PickByGlobalNode:  could not parse dictionary argument.");
+           return NULL;
+        }
+    }
+    else if (kwargs != NULL)
+    {
+        parse_success = PyDict_To_MapNode(kwargs, pickParams); 
+        if (!parse_success)
+        {
+            VisItErrorFunc("PickByGlobalNode: could not parse keyword arguments.");
+            return NULL;
+        }
+    }
+    if (!pickParams.HasEntry("element"))
+    {
+        VisItErrorFunc("PickByGlobalNode:  requires \"element\" argument.");
+        return NULL;
+    } 
+    pickParams["query_name"] = std::string("Pick");
+    pickParams["pick_type"] = std::string("DomainNode");
+    pickParams["use_global_id"] = 1;
+    MUTEX_LOCK();
+        GetViewerMethods()->Query(pickParams);
+    MUTEX_UNLOCK();
+
+    // Return the success value.
+    return IntReturnValue(Synchronize());
+}
+
 
 
 // ****************************************************************************
@@ -12269,6 +13136,9 @@ visit_PickByGlobalNode(PyObject *self, PyObject *args)
 //
 //   Gunther H. Weber, Tue Apr  1 16:42:15 PDT 2008
 //   Save state of "apply operator toggle"
+//
+//   Kathleen Biagas, Tue Jul 19 12:00:04 PDT 2011
+//   Send args as MapNode to new ViewerMethod 'Query'.
 //
 // ****************************************************************************
 
@@ -12331,10 +13201,26 @@ visit_Lineout(PyObject *self, PyObject *args)
 
     MUTEX_LOCK();
         // Lineout should not be applied to more than one plot at a time.
-        bool applyOperatorSave = GetViewerState()->GetGlobalAttributes()->GetApplyOperator();
+        bool applyOperatorSave = 
+            GetViewerState()->GetGlobalAttributes()->GetApplyOperator();
         GetViewerState()->GetGlobalAttributes()->SetApplyOperator(false);
         GetViewerState()->GetGlobalAttributes()->Notify();
-        GetViewerMethods()->Lineout(p0, p1, vars, samples, haveSamples);
+        doubleVector pt1(3);
+        doubleVector pt2(3);
+        for (int i = 0; i < 3; ++i)
+        {
+            pt1[i] = p0[i];
+            pt2[i] = p1[i];
+        }
+        MapNode params;
+        params["query_name"] = std::string("Lineout");
+        params["start_point"] = pt1;
+        params["end_point"] = pt2;
+        if (!vars.empty())
+            params["vars"] = vars;
+        if (haveSamples)
+            params["num_samples"] = samples;
+        GetViewerMethods()->Query(params);
 
         // Write the output to the log
         char tmp[1024];
@@ -12398,7 +13284,7 @@ UpdateAnnotationHelper(AnnotationObject *annot)
         debug1 << "found!" << endl;
 
         // Synchronize so we don't send more operations than we can handle.
-        debug1 << mName << "Synchonizing..." << endl;
+        debug1 << mName << "Synchronizing..." << endl;
         Synchronize();
 
         MUTEX_LOCK();
@@ -13202,6 +14088,12 @@ visit_DeleteNamedSelection(PyObject *self, PyObject *args)
 //   Brad Whitlock, Tue Dec 14 16:36:13 PST 2010
 //   Allow a SelectionProperties object to be passed too.
 //
+//   Brad Whitlock, Mon Aug 22 15:39:27 PDT 2011
+//   Add optional updatePlots argument.
+//
+//   Brad Whitlock, Wed Sep  7 15:53:54 PDT 2011
+//   Add optional allowCaching argument.
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -13211,10 +14103,21 @@ visit_UpdateNamedSelection(PyObject *self, PyObject *args)
 
     PyObject *props = NULL;
     char *selName = NULL;
-    if(!PyArg_ParseTuple(args, "sO", &selName, &props))
+    int updatePlots = 1;
+    int allowCaching = 1;
+    if(!PyArg_ParseTuple(args, "sOii", &selName, &props, &updatePlots, &allowCaching))
     {
-        if (!PyArg_ParseTuple(args, "s", &selName))
-            return NULL;
+        if(!PyArg_ParseTuple(args, "sOi", &selName, &props, &updatePlots))
+        {
+            if (!PyArg_ParseTuple(args, "si", &selName, &updatePlots))
+            {
+                if(!PyArg_ParseTuple(args, "sO", &selName, &props))
+                {
+                    if (!PyArg_ParseTuple(args, "s", &selName))
+                        return NULL;
+                }
+            }
+        }
         PyErr_Clear();
     }
 
@@ -13228,7 +14131,8 @@ visit_UpdateNamedSelection(PyObject *self, PyObject *args)
 
             // Create the named selection.
             MUTEX_LOCK();
-                GetViewerMethods()->UpdateNamedSelection(selName, *p);
+                GetViewerMethods()->UpdateNamedSelection(selName, *p, 
+                    updatePlots!=0, allowCaching!=0);
             MUTEX_UNLOCK();
         }
         else
@@ -13238,7 +14142,7 @@ visit_UpdateNamedSelection(PyObject *self, PyObject *args)
     {
         // Create the named selection.
         MUTEX_LOCK();        
-            GetViewerMethods()->UpdateNamedSelection(selName);
+            GetViewerMethods()->UpdateNamedSelection(selName, updatePlots!=0);
         MUTEX_UNLOCK();
     }
 
@@ -13296,7 +14200,7 @@ visit_LoadNamedSelection(PyObject *self, PyObject *args)
     MUTEX_LOCK();
         if(useFirstEngine)
         {
-            const stringVector &engines = GetViewerState()->GetEngineList()->GetEngines();
+            const stringVector &engines = GetViewerState()->GetEngineList()->GetEngineName();
             const stringVector &sims = GetViewerState()->GetEngineList()->GetSimulationName();
             if(engines.size() > 0)
             {
@@ -13306,7 +14210,7 @@ visit_LoadNamedSelection(PyObject *self, PyObject *args)
         }
         else if (useFirstSimulation)
         {
-            const stringVector &engines = GetViewerState()->GetEngineList()->GetEngines();
+            const stringVector &engines = GetViewerState()->GetEngineList()->GetEngineName();
             const stringVector &sims = GetViewerState()->GetEngineList()->GetSimulationName();
             for (int i=0; i<engines.size(); i++)
             {
@@ -13658,8 +14562,8 @@ visit_LoadUltra(PyObject *self, PyObject *args)
 {
     NO_ARGUMENTS();
 
-    string parserFile = string(getenv("VISITULTRAHOME")) +
-                        string("/ultraparse.py");
+    std::string parserFile = std::string(getenv("VISITULTRAHOME")) +
+                        std::string("/ultraparse.py");
 
     PyObject *argTuple = PyTuple_New(1);
     PyTuple_SetItem(argTuple, 0, PyString_FromString(parserFile.c_str()));
@@ -14896,6 +15800,9 @@ AddMethod(const char *methodName,
 //   Brad Whitlock, Mon Jun 13 15:54:38 PDT 2011
 //   I added doc strings for a bunch of functions that did not have them.
 //
+//   Kathleen Biagas, Wed Oct 26 09:28:41 PDT 2011
+//   Add GetPickOutputObject.
+//
 // ****************************************************************************
 
 static void
@@ -15052,6 +15959,8 @@ AddDefaultMethods()
     AddMethod("GetPickAttributes", visit_GetPickAttributes,
                                                   visit_GetPickAttributes_doc);
     AddMethod("GetPickOutput", visit_GetPickOutput, visit_GetPickOutput_doc);
+    AddMethod("GetPickOutputObject", visit_GetPickOutputObject, 
+              visit_GetPickOutput_doc);
     AddMethod("GetPipelineCachingMode", visit_GetPipelineCachingMode,
                                              visit_GetPipelineCachingMode_doc);
     AddMethod("GetProcessAttributes", visit_GetProcessAttributes, NULL);
@@ -15063,6 +15972,7 @@ AddDefaultMethods()
                                                      visit_GetQueryOutput_doc);
     AddMethod("GetQueryOutputObject", visit_GetQueryOutputObject,
                                                      visit_GetQueryOutput_doc);
+    AddMethod("GetQueryParameters", visit_GetQueryParameters, visit_GetQueryParameters_doc);
     AddMethod("GetPlotInformation", visit_GetPlotInformation,
                                                      visit_GetPlotInformation_doc);
     AddMethod("GetPreferredFileFormats", visit_GetPreferredFileFormats,
@@ -16015,7 +16925,7 @@ InitializeModule()
     //
     // Create the viewer proxy and add some default arguments.
     //
-    viewer = new ViewerProxy;
+    viewer = ViewerProxy::CreateViewerProxy(); //PySide modification, new ViewerProxy;
 
     //
     // Ensure that the viewer will be run in a mode that does not check for
@@ -16069,7 +16979,7 @@ InitializeModule()
 #ifndef _WIN32
     const char *logName = "visitlog.py";
 #else
-    string vud = GetUserVisItDirectory() + "\\visitlog.py";
+    std::string vud = GetUserVisItDirectory() + "\\visitlog.py";
     const char *logName = vud.c_str();
 #endif
     if(!LogFile_Open(logName))

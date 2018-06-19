@@ -58,8 +58,9 @@
 #include <avtBehavior.h>
 #include <avtDatasetToDatasetFilter.h>
 
-#include <vector>
 #include <enumtypes.h>
+#include <string>
+#include <vector>
 
 class     avtCondenseDatasetFilter;
 class     avtDatasetToDatasetFilter;
@@ -340,6 +341,8 @@ class PLOTTER_API avtPlot
 
     virtual avtFilter         *GetFilterForTopOfPipeline() { return 0; }
 
+    virtual bool               CompatibleWithCumulativeQuery() const { return true; }
+
   protected:
     bool                       needsRecalculation;
     int                        index;
@@ -358,7 +361,7 @@ class PLOTTER_API avtPlot
     avtSILRestriction_p        silr;
     char                      *varname;
     char                      *varunits;
-    vector<double>             dataExtents;
+    std::vector<double>        dataExtents;
     float                      cellCountMultiplierForSRThreshold;
 
     avtDataObjectWriter_p      Execute(avtDataObject_p,

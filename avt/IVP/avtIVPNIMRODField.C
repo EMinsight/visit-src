@@ -86,7 +86,7 @@ avtIVPNIMRODField::avtIVPNIMRODField( vtkDataSet* dataset,
   }
 
   // Dummy variable to the template class
-  float fltVar = 0;
+//  float fltVar = 0;
 
   // The mesh elements.
 //  grid_fourier_series =
@@ -163,7 +163,6 @@ type* avtIVPNIMRODField::SetDataPointer( vtkDataSet *ds,
                                         const int ncomponents )
 {
   vtkDataArray *array;
-  int XX;
 
   // Because the triangluar mesh is defined by using non unique points
   // and the data is cell centered data VisIt moves it out to the
@@ -176,10 +175,10 @@ type* avtIVPNIMRODField::SetDataPointer( vtkDataSet *ds,
 
   if( array == 0 )
   {
-    debug1 << "Variable " << varname
-           << " does not exist"
-           << endl;
-    
+    if (DebugStream::Level1())
+        debug1 << "Variable " << varname
+               << " does not exist"
+               << endl;
     return 0;
   }
 
@@ -188,10 +187,10 @@ type* avtIVPNIMRODField::SetDataPointer( vtkDataSet *ds,
   if( ntuples != array->GetNumberOfTuples() ||
       ncomponents != array->GetNumberOfComponents() )
   {
-    debug1 << "Variable " << varname
-           << " size does not equal the number elements and/or components"
-           << endl;
-    
+    if (DebugStream::Level1())
+        debug1 << "Variable " << varname
+               << " size does not equal the number elements and/or components"
+               << endl;
     return 0;
   }
 
@@ -199,7 +198,8 @@ type* avtIVPNIMRODField::SetDataPointer( vtkDataSet *ds,
 
   if( newptr == 0 )
   {
-    debug1 << "Variable " << varname << " can not allocated" << endl;
+    if (DebugStream::Level1())
+        debug1 << "Variable " << varname << " can not allocated" << endl;
     return 0;
   }
 
@@ -235,11 +235,11 @@ type* avtIVPNIMRODField::SetDataPointer( vtkDataSet *ds,
   }
   else
   {
-    debug1 << "avtIVPNIMRODField::SetDataPointer "
-           << "Variable " << varname
-           << " is not of type float - can not safely down cast"
-           << endl;
-    
+    if (DebugStream::Level1())
+        debug1 << "avtIVPNIMRODField::SetDataPointer "
+               << "Variable " << varname
+               << " is not of type float - can not safely down cast"
+               << endl;
     return 0;
   }
 }
@@ -359,11 +359,11 @@ avtIVPNIMRODField::operator()( const double &t, const avtVector &p ) const
   double x[3];
   ds->GetPoint( ptIds->GetId(ic), x);
 
-  double rad, theta, phi;
+//  double rad, theta, phi;
 
   
-  vec3 P;
-  mat3 DRV;
+//  vec3 P;
+//  mat3 DRV;
 
 //  interpolate( rad, theta, phi, &P, &DRV );
 
@@ -543,10 +543,10 @@ void avtIVPNIMRODField::interpolate( double rad, double theta, double phi,
     *P   = p;
 //    *DRV = Dp;
 
-    delete wtheta;
-    delete dtheta;
-    delete wrad;
-    delete drad;
-    delete wphi;
-    delete dphi;
+    delete [] wtheta;
+    delete [] dtheta;
+    delete [] wrad;
+    delete [] drad;
+    delete [] wphi;
+    delete [] dphi;
 }

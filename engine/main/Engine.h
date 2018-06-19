@@ -45,6 +45,7 @@ class ClearCacheRPC;
 class CloneNetworkRPC;
 class ConstructDataBinningRPC;
 class DefineVirtualDatabaseRPC;
+#include <EnginePropertiesRPC.h>
 class ExecuteRPC;
 class ExportDatabaseRPC;
 class KeepAliveRPC;
@@ -53,6 +54,7 @@ class NamedSelectionRPC;
 class OpenDatabaseRPC;
 class PickRPC;
 class QueryRPC;
+class QueryParametersRPC;
 class QuitRPC;
 class ReadRPC;
 class ReleaseDataRPC;
@@ -214,6 +216,9 @@ class Xfer;
 //    Tom Fogal, Wed May 26 09:22:43 MDT 2010
 //    Add state for launching X servers.
 //
+//    Kathleen Biagas, Fri Jul 15 11:08:14 PDT 2011
+//    Added QueryPrametersRPC.
+//
 // ****************************************************************************
 
 class ENGINE_MAIN_API Engine
@@ -270,6 +275,9 @@ class ENGINE_MAIN_API Engine
 
     // Method to get unix process information
     ProcessAttributes *GetProcessAttributes();
+
+    // Method to get engine properties.
+    EngineProperties GetEngineProperties();
 
     // Various callbacks
     static bool     EngineAbortCallback(void *);
@@ -359,6 +367,7 @@ class ENGINE_MAIN_API Engine
     ExecuteRPC               *executeRPC;
     ClearCacheRPC            *clearCacheRPC;
     QueryRPC                 *queryRPC;
+    QueryParametersRPC       *queryParametersRPC;
     ReleaseDataRPC           *releaseDataRPC;
     OpenDatabaseRPC          *openDatabaseRPC;
     DefineVirtualDatabaseRPC *defineVirtualDatabaseRPC;
@@ -371,6 +380,7 @@ class ENGINE_MAIN_API Engine
     ConstructDataBinningRPC  *constructDataBinningRPC;
     NamedSelectionRPC        *namedSelectionRPC;
     SetEFileOpenOptionsRPC   *setEFileOpenOptionsRPC;
+    EnginePropertiesRPC      *enginePropertiesRPC;
 
 #ifdef DEBUG_MEMORY_LEAKS
     ParsingExprList          *parsingExprList;

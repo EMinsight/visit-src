@@ -48,9 +48,10 @@
 #include <VisualCueList.h>
 #include <WindowAttributes.h>
 #include <vectortypes.h>
-#include <string>
 #include <deque>
 #include <map>
+#include <string>
+#include <vector>
 #include <engine_main_exports.h>
 
 class AttributeGroup;
@@ -420,6 +421,15 @@ typedef void   (*ProgressCallback)(void *, const char *, const char *,int,int);
 //    Tom Fogal, Wed May 18 12:17:18 MDT 2011
 //    Need some debug code in IceT; promoting it to class methods.
 //
+//    Brad Whitlock, Mon Aug 22 10:23:00 PDT 2011
+//    I added a selName argument to StartNetwork.
+//
+//    Kathleen Biagas, Fri Jul 15 11:10:35 PDT 2011
+//    Add GetQueryParameters.
+//
+//    Eric Brugger, Mon Oct 31 09:52:28 PDT 2011
+//    Add a multi resolution display capability for AMR data.
+//
 // ****************************************************************************
 
 class ENGINE_MAIN_API NetworkManager
@@ -454,7 +464,7 @@ class ENGINE_MAIN_API NetworkManager
     void          ClearAllNetworks(void);
     void          ClearNetworksWithDatabase(const std::string &);
 
-    NetnodeDB*    GetDBFromCache(const string &filename, int time,
+    NetnodeDB*    GetDBFromCache(const std::string &filename, int time,
                                  const char * = NULL, bool=false,
                                  bool=false, bool=false);
     void          StartNetwork(const std::string&, const std::string &,
@@ -462,7 +472,9 @@ class ENGINE_MAIN_API NetworkManager
                                const CompactSILRestrictionAttributes &,
                                const MaterialAttributes &,
                                const MeshManagementAttributes &,
-                               bool, bool);
+                               bool, bool,
+                               const std::string &selName,
+                               int windowID);
     void          DefineDB(const std::string &, const std::string &,
                            const stringVector &, int, const std::string &);
     void          AddFilter(const std::string&,
@@ -523,11 +535,11 @@ class ENGINE_MAIN_API NetworkManager
     void          Pick(const int, const int, PickAttributes *);
     void          PickForIntersection(const int, PickAttributes *);
     void          Query(const std::vector<int> &, QueryAttributes*);
+    std::string   GetQueryParameters(const std::string &qName);
     void          ExportDatabase(const int, ExportDBAttributes *);
     void          ConstructDataBinning(const int, ConstructDataBinningAttributes *);
     avtDataBinning *GetDataBinning(const char *);
-    void          ApplyNamedSelection(const std::vector<std::string> &, 
-                                      const std::string &);
+
     SelectionSummary CreateNamedSelection(int, const SelectionProperties &);
     void          DeleteNamedSelection(const std::string &);
     void          LoadNamedSelection(const std::string &);
@@ -615,8 +627,6 @@ class ENGINE_MAIN_API NetworkManager
 
     std::vector<Netnode*>       workingNetnodeList;
     std::vector<std::string>    nameStack;
-
-    std::map<std::string, std::string> namedSelectionsToApply;
 
     int                         uniqueNetworkId;
     bool                        requireOriginalCells;

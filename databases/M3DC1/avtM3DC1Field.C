@@ -48,6 +48,7 @@
 #include <vtkIntArray.h>
 #include <vtkFloatArray.h>
 
+#include <InvalidVariableException.h>
 
 #define ELEMENT_SIZE_2D 7
 #define SCALAR_SIZE_2D 20
@@ -65,7 +66,7 @@
 
 avtM3DC1Field::avtM3DC1Field( float *elementsPtr,
                               int nelements, int dim, int planes ) 
-  : elements( elementsPtr), neighbors(0),
+  : elements( elementsPtr), trigtable(0), neighbors(0),
     f0(0), psi0(0), fnr(0), fni(0), psinr(0), psini(0),
     I0(0), f(0), psi(0), I(0),
     eqsubtract(0), linflag(0), tmode(0), bzero(0), rzero(0), F0(0),
@@ -179,8 +180,8 @@ void avtM3DC1Field::findElementNeighbors()
   /* Allocate, initialize neighbor table */
   neighbors = (int *)malloc(3 * tElements * sizeof(int));
   if (neighbors == NULL) {
-    fputs("Insufficient memory in findElementNeighbors.\n", stderr);
-    exit(1);
+    EXCEPTION1( InvalidVariableException,
+                "M3DC1 findElementNeighbors - Insufficient memory for neighbors" );
   }
 
   for (el=0; el<3*tElements; el++)
@@ -189,8 +190,8 @@ void avtM3DC1Field::findElementNeighbors()
   /* Allocate trig table */
   trigtable = (double *)malloc(2 * tElements * sizeof(double));
   if (trigtable == NULL) {
-    fputs("Insufficient memory in findElementNeighbors.\n", stderr);
-    exit(1);
+    EXCEPTION1( InvalidVariableException,
+                "M3DC1 findElementNeighbors - Insufficient memory for trigtable" );
   }
 
   /* Loop over elements, finding vertices, edges, neighbors */
@@ -569,7 +570,7 @@ avtM3DC1Field::operator()( const double &t, const avtVector &p ) const
 //
 // ****************************************************************************
 void avtM3DC1Field::interpBcomps(float *B, double *x,
-                                    int element, double *xieta) const
+                                 int element, double *xieta) const
 {
   float *B_r   = &(B[0]);
   float *B_z   = &(B[2]);

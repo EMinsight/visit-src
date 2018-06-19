@@ -57,19 +57,28 @@
 #include <mpi.h>
 #endif
 
+#include <vector>
+
 class DomainType;
 class avtICAlgorithm;
+
+#define STREAMLINE_FIELD_DEFAULT 0
+#define STREAMLINE_FIELD_M3D_C1_2D 1
+#define STREAMLINE_FIELD_M3D_C1_3D 2
+#define STREAMLINE_FIELD_NIMROD 3
+#define STREAMLINE_FIELD_FLASH 4
+
+#define STREAMLINE_INTEGRATE_EULER 0
+#define STREAMLINE_INTEGRATE_LEAPFROG 1
+#define STREAMLINE_INTEGRATE_DORMAND_PRINCE 2
+#define STREAMLINE_INTEGRATE_ADAMS_BASHFORTH 3
+//#define STREAMLINE_INTEGRATE_UNUSED 4
+#define STREAMLINE_INTEGRATE_M3D_C1_2D 5
 
 #define STREAMLINE_TERMINATE_DISTANCE 0
 #define STREAMLINE_TERMINATE_TIME 1
 #define STREAMLINE_TERMINATE_STEPS 2
 #define STREAMLINE_TERMINATE_INTERSECTIONS 3
-
-#define STREAMLINE_INTEGRATE_DORMAND_PRINCE 0
-#define STREAMLINE_INTEGRATE_ADAMS_BASHFORTH 1
-#define STREAMLINE_INTEGRATE_M3D_C1_2D_INTEGRATOR 2
-#define STREAMLINE_INTEGRATE_M3D_C1_3D_INTEGRATOR 3
-#define STREAMLINE_INTEGRATE_NIMROD_INTEGRATOR 4
 
 #define STREAMLINE_SERIAL                0
 #define STREAMLINE_PARALLEL_OVER_DOMAINS 1
@@ -129,6 +138,9 @@ class avtICAlgorithm;
 //   Add new communication pattern: RestoreSequenceAssembleUniformly, and
 //   PostStepCallback()
 //
+//   David Camp, Tue May  3 06:51:37 PDT 2011
+//   Added the PurgeDomain() to be able to remove the cell locator when the
+//   avtDatasetOnDemandFilter purges a data set from it's cache.
 // ****************************************************************************
 
 class AVTFILTERS_API avtPICSFilter : 
@@ -157,32 +169,42 @@ class AVTFILTERS_API avtPICSFilter :
                                         const avtIVPSolver* model,
                                         avtIntegralCurve::Direction dir,
                                         const double& t_start,
-                                        const avtVector &p_start, long ID) = 0;
+                                        const avtVector &p_start,
+                                        const avtVector &v_start,
+                                        long ID) = 0;
 
     virtual std::vector<avtVector>  GetInitialLocations() = 0;
+    virtual std::vector<avtVector>  GetInitialVelocities() = 0;
     virtual CommunicationPattern    GetCommunicationPattern() = 0;
-
+    std::vector<std::pair<int,int> > GetFwdBwdICPairs() { return fwdBwdICPairs; }
+    
     // Methods to set the filter's attributes.
-    void                      SetMaxStepLength(double len);
-    void                      SetPathlines(bool pathlines, bool overrideTime, double time0, int _pathlineCMFE);
-    void                      SetIntegrationType(int algo);
-    void                      SetStreamlineAlgorithm(int algo, int maxCnt,
-                                                     int domainCache,
-                                                     int workGrpSz);
-    void                      SetTolerances(double reltol, double abstol, bool isFraction);
+    void SetFieldType(int val);
+    void SetFieldConstant(double val);
+    void SetMaxStepLength(double len);
+    void SetPathlines(bool pathlines, bool overrideTime,
+                      double time0, int _pathlineCMFE);
+    void SetIntegrationType(int algo);
+    void SetStreamlineAlgorithm(int algo, int maxCnt,
+                                int domainCache,
+                                int workGrpSz);
+    void SetTolerances(double reltol, double abstol, bool isFraction);
 
-    void                      SetIntegrationDirection(int dir);
+    void SetIntegrationDirection(int dir);
 
-    void                      InitializeLocators(void);
-    void                      UpdateProgress(int amt, int total)
-                                 { avtFilter::UpdateProgress(amt, total); };
+    void InitializeLocators(void);
+    void UpdateProgress(int amt, int total)
+    {
+      avtFilter::UpdateProgress(amt, total);
+    };
 
-    virtual void              ReleaseData(void);
-    virtual void              UpdateDataObjectInfo(void);
+    virtual void ReleaseData(void);
+    virtual void UpdateDataObjectInfo(void);
 
-    void                      ConvertToCartesian(bool val) { convertToCartesian = val; };
-    bool                      PostStepCallback();
+    void         ConvertToCartesian(bool val) { convertToCartesian = val; };
+    bool         PostStepCallback();
 
+    void                      SetDomain(avtIntegralCurve *ic);
 
   protected:
     bool   emptyDataset;
@@ -194,6 +216,9 @@ class AVTFILTERS_API avtPICSFilter :
     int    integrationDirection;
     int    dataSpatialDimension;
     bool   convertToCartesian;
+
+    int    fieldType;
+    double fieldConstant;
 
     avtICAlgorithm *icAlgo;
 
@@ -214,6 +239,7 @@ class AVTFILTERS_API avtPICSFilter :
     std::vector<int> domainToRank;
     std::vector<vtkDataSet*>dataSets;
     std::map<DomainType, avtCellLocator_p> domainToCellLocatorMap;
+    std::vector<std::pair<int,int> > fwdBwdICPairs;
 
     std::vector<double> pointList;
 
@@ -224,7 +250,7 @@ class AVTFILTERS_API avtPICSFilter :
     int curTimeSlice;
 
     // Timings helpers.
-    int                       numSeedPts, MaxID;
+    int                       MaxID;
     int                       method;
     int                       maxCount, workGroupSz;
     double                    InitialIOTime;
@@ -251,25 +277,29 @@ class AVTFILTERS_API avtPICSFilter :
 
     int                       GetNextCurveID(){ int id = MaxID; MaxID++; return id;}
     void                      CreateIntegralCurvesFromSeeds(std::vector<avtVector> &pts,
+                                                         std::vector<avtVector> &vels,
                                                          std::vector<avtIntegralCurve *> &ics,
                                                          std::vector<std::vector<int> > &ids);
     void                      GetIntegralCurvesFromInitialSeeds(std::vector<avtIntegralCurve *> &ics);
     void                      AddSeedPoint(avtVector &pt,
+                                           avtVector &vel,
                                            std::vector<avtIntegralCurve *> &ics);
     void                      AddSeedPoints(std::vector<avtVector> &pts,
+                                            std::vector<avtVector> &vels,
                                             std::vector<std::vector<avtIntegralCurve *> > &ics);
     void                      DeleteIntegralCurves(std::vector<int> &icIDs);
-    virtual void              CreateIntegralCurveOutput(vector<avtIntegralCurve *> &ics) = 0;
-    void                      GetTerminatedIntegralCurves(vector<avtIntegralCurve *> &ics);
+    virtual void              CreateIntegralCurveOutput(std::vector<avtIntegralCurve *> &ics) = 0;
+    void                      GetTerminatedIntegralCurves(std::vector<avtIntegralCurve *> &ics);
 
     virtual void              GetPathlineVelocityMeshVariables(avtDataRequest_p &dataRequest, std::string &velocity, std::string &mesh);
+
+    virtual void              PurgeDomain( const int domain, const int timeStep );
 
     // Helper functions.
     bool                      PointInDomain(avtVector &pt, DomainType &domain);
     int                       DomainToRank(DomainType &domain);
     void                      ComputeDomainToRankMapping();
     bool                      OwnDomain(DomainType &domain);
-    void                      SetDomain(avtIntegralCurve *ic);
     void                      Initialize();
     void                      ComputeRankList(const std::vector<int> &domList,
                                               std::vector<int> &ranks,
@@ -278,10 +308,12 @@ class AVTFILTERS_API avtPICSFilter :
     bool                      CacheLocators(void);
 
     avtCellLocator_p          SetupLocator(const DomainType &, vtkDataSet *);
+    void                      ClearDomainToCellLocatorMap();
     virtual avtIVPField      *GetFieldForDomain(const DomainType&, vtkDataSet*);
+
+    void                      UpdateIntervalTree();
 
     friend class avtICAlgorithm;
 };
 
 #endif
-

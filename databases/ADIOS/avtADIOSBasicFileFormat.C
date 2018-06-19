@@ -55,7 +55,9 @@
 #include <avtDatabase.h>
 #include <sys/types.h>
 
-using     std::string;
+#include <map>
+#include <string>
+#include <vector>
 
 // ****************************************************************************
 //  Method: avtEMSTDFileFormat::Identify
@@ -88,34 +90,17 @@ avtADIOSBasicFileFormat::Identify(ADIOSFileObject *f)
 // ****************************************************************************
 
 avtFileFormatInterface *
-avtADIOSBasicFileFormat::CreateInterface(ADIOSFileObject *f,
-                                         const char *const *list,
+avtADIOSBasicFileFormat::CreateInterface(const char *const *list,
                                          int nList,
                                          int nBlock)
 {
     int nTimestepGroups = nList / nBlock;
     avtMTMDFileFormat **ffl = new avtMTMDFileFormat*[nTimestepGroups];
     for (int i = 0 ; i < nTimestepGroups ; i++)
-        ffl[i] = new avtADIOSBasicFileFormat(list[i*nBlock], (i==0)?f:NULL);
+        ffl[i] = new avtADIOSBasicFileFormat(list[i*nBlock]);
     
     return new avtMTMDFileFormatInterface(ffl, nTimestepGroups);
 }
-
-// ****************************************************************************
-//  Method: avtADIOSBasicFileFormat constructor
-//
-//  Programmer: Dave Pugmire
-//  Creation:   Thu Sep 17 11:23:05 EDT 2009
-//
-// ****************************************************************************
-
-avtADIOSBasicFileFormat::avtADIOSBasicFileFormat(const char *nm, ADIOSFileObject *f)
-    : avtMTMDFileFormat(nm)
-{
-    fileObj = f;
-    initialized = false;
-}
-
 
 // ****************************************************************************
 //  Method: avtADIOSBasicFileFormat constructor
@@ -265,7 +250,7 @@ avtADIOSBasicFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md, int t
         } 
         else
         {
-            string meshName = GenerateMeshName(v->second);
+            std::string meshName = GenerateMeshName(v->second);
             avtScalarMetaData *smd = new avtScalarMetaData();
             
             smd->name = v->first;
@@ -409,11 +394,11 @@ avtADIOSBasicFileFormat::GetVectorVar(int timestate, int domain, const char *var
 //
 // ****************************************************************************
 
-string
+std::string
 avtADIOSBasicFileFormat::GenerateMeshName(const ADIOSVar &v)
 {
-    vector<int64_t> dimT, dims;
-    string meshname = "mesh_";
+    std::vector<int64_t> dimT, dims;
+    std::string meshname = "mesh_";
 
     for (int i=0; i<v.dim; i++)
     {
@@ -458,7 +443,7 @@ avtADIOSBasicFileFormat::Initialize()
     {
         ADIOSVar &v = (*vi).second;
         
-        string meshname = GenerateMeshName(v);
+        std::string meshname = GenerateMeshName(v);
         
         //Add mesh, if not found...
         if (meshes.find(meshname) == meshes.end())

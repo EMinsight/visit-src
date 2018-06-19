@@ -50,7 +50,9 @@
 #include <avtPlot.h>
 #include <EngineKey.h>
 #include <ExpressionList.h>
+
 #include <string>
+#include <vector>
 
 // Forward declarations
 class AttributeSubject;
@@ -297,6 +299,9 @@ class avtToolInterface;
 //    Eric Brugger, Fri Feb 12 15:28:11 PST 2010
 //    Added SetNumPlotsCreated.
 //
+//    Brad Whitlock, Mon Aug 22 10:59:48 PDT 2011
+//    I moved some selection method bodies into the C file.
+//
 // ****************************************************************************
 
 class VIEWER_API ViewerPlot : public ViewerBase
@@ -360,8 +365,8 @@ class VIEWER_API ViewerPlot : public ViewerBase
     avtSILRestriction_p GetSILRestriction() const;
     const avtDatabaseMetaData *GetMetaData() const;
     ExpressionList GetExpressions() const;
-    void SetNamedSelection(const std::string &s) { namedSelection = s; };
-    const std::string &GetNamedSelection(void) { return namedSelection; };
+    void SetNamedSelection(const std::string &s);
+    const std::string &GetNamedSelection() const;
 
     //
     // Returns the database state that the plot currently displays.
@@ -575,7 +580,7 @@ class VIEWER_API ViewerPlot : public ViewerBase
 
     static avtActor_p             nullActor;
     static avtDataObjectReader_p  nullReader;
-    static vector<double>         nullDataExtents;
+    static std::vector<double>    nullDataExtents;
     static int                    numPlotsCreated;
 
     int                    clonedNetworkId;

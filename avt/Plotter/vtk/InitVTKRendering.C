@@ -39,14 +39,9 @@
 #include <InitVTKRendering.h>
 
 #include <vtkVisItDataSetMapper.h>
-#include <vtkVisItOpenGLPolyDataMapper.h>
-#include <vtkVisItOpenGLTexture.h>
 #include <vtkToolkits.h>
 #include <vtkVisItRectilinearGrid.h>
 #include <vtkVisItStructuredGrid.h>
-#if defined(__APPLE__)
-#include <vtkOSMesaRenderWindow.h>
-#endif
 
 #include <vtkObjectFactory.h>
 #include <vtkVersion.h>
@@ -76,16 +71,9 @@ class vtkVisItGraphicsFactory : public vtkObjectFactory
 //
 // Necessary for each object that will override a vtkObject.
 //
-VTK_CREATE_CREATE_FUNCTION(vtkVisItOpenGLPolyDataMapper);
-VTK_CREATE_CREATE_FUNCTION(vtkVisItOpenGLTexture);
 VTK_CREATE_CREATE_FUNCTION(vtkVisItDataSetMapper);
 VTK_CREATE_CREATE_FUNCTION(vtkVisItRectilinearGrid);
 VTK_CREATE_CREATE_FUNCTION(vtkVisItStructuredGrid);
-
-#if defined(__APPLE__)
-VTK_CREATE_CREATE_FUNCTION(vtkOSMesaRenderWindow);
-#endif
-
 
 const char*
 vtkVisItGraphicsFactory::GetVTKSourceVersion()
@@ -127,19 +115,11 @@ vtkVisItGraphicsFactory::GetVTKSourceVersion()
 //    Tom Fogal, Tue Apr 27 11:42:46 MDT 2010
 //    Fix Mesa special case: our OGL classes can handle that.
 //
+//    Brad Whitlock, Wed Aug 10 11:52:31 PDT 2011
+//    Use VTK's new polydata mapper by eliminating our override of vtkOpenGLPolyDataMapper.
+//
 vtkVisItGraphicsFactory::vtkVisItGraphicsFactory()
 {
-  this->RegisterOverride("vtkOpenGLPolyDataMapper", "vtkVisItOpenGLPolyDataMapper",
-                         "vtkVisItOpenGLPolyDataMapper override vtkOpenGLPolyDataMapper",
-                         1,
-                         vtkObjectFactoryCreatevtkVisItOpenGLPolyDataMapper);
-#ifdef VTK_USE_MANGLED_MESA
-  this->RegisterOverride("vtkMesaPolyDataMapper",
-                         "vtkVisItOpenGLPolyDataMapper",
-                         "vtkVisItOpenGLPolyDataMapper override vtkMesaGLPolyDataMapper",
-                         1,
-                         vtkObjectFactoryCreatevtkVisItOpenGLPolyDataMapper);
-#endif
   this->RegisterOverride("vtkDataSetMapper", "vtkVisItDataSetMapper",
                          "vtkVisItDataSetMapper override vtkDataSetMapper",
                          1,
@@ -152,21 +132,6 @@ vtkVisItGraphicsFactory::vtkVisItGraphicsFactory()
                          "vtkVisItStructuredGrid override vtkStructuredGrid",
                          1,
                          vtkObjectFactoryCreatevtkVisItStructuredGrid);
-#if defined(__APPLE__)
-#ifdef VTK_USE_COCOA
-  this->RegisterOverride("vtkCocoaRenderWindow", "vtkOSMesaRenderWindow",
-                         "vtkOSMesaRenderWindow override vtkCocoaRenderWindow",
-#else
-  this->RegisterOverride("vtkCarbonRenderWindow", "vtkOSMesaRenderWindow",
-                         "vtkOSMesaRenderWindow override vtkCarbonRenderWindow",
-#endif
-                         1,
-                         vtkObjectFactoryCreatevtkOSMesaRenderWindow);
-#endif
-  this->RegisterOverride("vtkOpenGLTexture", "vtkVisItOpenGLTexture",
-                         "vtkVisItOpenGLTexture override vtkOpenGLTexture",
-                         1,
-                         vtkObjectFactoryCreatevtkVisItOpenGLTexture);
 }
 
 // ****************************************************************************
@@ -228,8 +193,10 @@ InitVTKRendering::Initialize(void)
 void
 InitVTKRendering::ForceMesa(void)
 {
-#if !defined(_WIN32) && defined(VTK_USE_MANGLED_MESA)
+#if !defined(_WIN32) && (defined(VTK_USE_MANGLED_MESA) || \
+                         defined(VTK_OPENGL_HAS_OSMESA))
     vtkGraphicsFactory::SetUseMesaClasses(1);
+    vtkGraphicsFactory::SetOffScreenOnlyMode(1);
     vtkImagingFactory::SetUseMesaClasses(1);
 #endif
 }
@@ -239,6 +206,7 @@ InitVTKRendering::UnforceMesa(void)
 {
 #if !defined(_WIN32) && defined(VTK_USE_MANGLED_MESA)
     vtkGraphicsFactory::SetUseMesaClasses(0);
+    vtkGraphicsFactory::SetOffScreenOnlyMode(0);
     vtkImagingFactory::SetUseMesaClasses(0);
 #endif
 }

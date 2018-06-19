@@ -46,7 +46,6 @@
 #include <vtkPolyData.h>
 #include <vtkPolyDataMapper2D.h>
 #include <vtkProperty2D.h>
-#include <vtkRubberBandMapper2D.h>
 #include <vtkRenderer.h>
 #include <vtkRenderWindowInteractor.h>
 
@@ -80,6 +79,9 @@
 //    Added APPLE-specific code where we create polydata that can contain
 //    4 points instead of 2. This lets us draw the lines at the same time
 //    into an overlay window.
+//
+//    Brad Whitlock, Fri Oct 14 16:27:15 PDT 2011
+//    Create mapper via proxy.
 //
 // ****************************************************************************
 
@@ -121,7 +123,7 @@ ZoomInteractor::ZoomInteractor(VisWindowInteractorProxy &vw)
     lines->Delete();
 #endif
 
-    rubberBandMapper = vtkRubberBandMapper2D::New();
+    rubberBandMapper = proxy.CreateRubberbandMapper();
     rubberBandMapper->SetInput(rubberBand);
 
     rubberBandActor  = vtkActor2D::New();
@@ -404,12 +406,15 @@ ZoomInteractor::OnMouseMove()
 //    Retreive LastPos from RenderWindowInteractor as it is no longer a member
 //    of the parent class. 
 //    
+//    Kathleen Bonnell, Wed Jun  8 10:01:52 PDT 2011
+//    Use current EventPostion instead of last.
+//
 // ****************************************************************************
 
 void
 ZoomInteractor::OnTimer(void)
 {
-    int LastPos[2];
+    int Pos[2];
     if (!rubberBandMode)
     {
     
@@ -418,8 +423,8 @@ ZoomInteractor::OnTimer(void)
         switch (State)
         {
           case VTKIS_ZOOM:
-            rwi->GetLastEventPosition(LastPos);
-            ZoomCamera(LastPos[0], LastPos[1]);
+            rwi->GetEventPosition(Pos);
+            ZoomCamera(Pos[0], Pos[1]);
 
             rwi->CreateTimer(VTKI_TIMER_UPDATE);
             break;

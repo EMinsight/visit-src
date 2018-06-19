@@ -92,7 +92,7 @@ class IVP_API DomainType
     bool operator<(const DomainType &dt) const
     {
         return (domain < dt.domain) ||
-               (!(domain < dt.domain) && timeStep < dt.timeStep);
+               ((domain == dt.domain) && timeStep < dt.timeStep);
     }
 
     //Members
@@ -216,6 +216,7 @@ class IVP_API avtIntegralCurve
                       Direction dir, 
                       const double& t_start, 
                       const avtVector &p_start, 
+                      const avtVector &v_start, 
                       long ID );
 
     avtIntegralCurve();
@@ -242,6 +243,8 @@ class IVP_API avtIntegralCurve
 
     void     SetPostStepCallback(avtIntegralCurveCallback func) {postStepCallbackFunction = func; }
 
+    virtual avtIntegralCurve* MergeIntegralCurveSequence(std::vector<avtIntegralCurve *> &v) = 0;
+
   protected:
     avtIntegralCurveCallback postStepCallbackFunction;
 
@@ -267,6 +270,7 @@ class IVP_API avtIntegralCurve
     int counter;
 
     bool   encounteredNumericalProblems;
+    int    originatingRank;
   protected:
 
     avtIVPSolver*       ivp;

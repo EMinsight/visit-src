@@ -158,11 +158,6 @@ class avtParICAlgorithm : public avtICAlgorithm
                                       std::vector<DSCommData> *ds,
                                       bool blockAndWait);
 
-    void                      RestoreIntegralCurveSequenceAssembleOnCurrentProcessor();
-    void                      RestoreIntegralCurveSequenceAssembleUniformly();
-    void                      MergeTerminatedICSequences();
-    
-
     virtual void              CompileTimingStatistics();
     virtual void              CompileCounterStatistics();
     virtual void              CalculateExtraTime();
@@ -189,8 +184,15 @@ class avtParICAlgorithm : public avtICAlgorithm
                                         std::vector<avtIntegralCurve*> &);
     void                      PrepareForSend(int tag, MemStream *buff, std::vector<unsigned char *> &buffList);
     static bool               PacketCompare(const unsigned char *a, const unsigned char *b);
-    void                      ProcessReceivedBuffers(vector<unsigned char*> &incomingBuffers,
-                                                     vector<std::pair<int, MemStream *> > &buffers);
+    void                      ProcessReceivedBuffers(std::vector<unsigned char*> &incomingBuffers,
+                                                     std::vector<std::pair<int, MemStream *> > &buffers);
+
+    void                      RestoreIntegralCurve(bool uniformlyDistrubute);
+    void                      RestoreIntegralCurveSequenceAssembleOnCurrentProcessor();
+    void                      RestoreIntegralCurveSequenceAssembleUniformly();
+    void                      RestoreIntegralCurveToOriginatingProcessor();
+    void                      MergeTerminatedICSequences();
+
 
     // Send/Recv buffer management structures.
     typedef std::pair<MPI_Request, int> RequestTagPair;

@@ -45,6 +45,15 @@
 #   Hank Childs, Fri Sep 24 08:16:10 PDT 2010
 #   Add SurfaceNormal, Flux, and ConnectedComponents operators.
 #
+#   Brad Whitlock, Wed Jun 22 15:25:18 PDT 2011
+#   I added the Extrude operator.
+#
+#   Marc Durant, Tue Sep 6 2011
+#   Added the FFT operator
+#
+#   Hank Childs, Mon Oct 31 09:38:27 PDT 2011
+#   Add ToroidalPoloidalProjection on behalf of Hari Krishnan.
+#
 #****************************************************************************/
 IF(NOT WIN32)
     SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${VISIT_PLUGIN_DIR}/operators)
@@ -72,6 +81,9 @@ DualMesh
 Edge
 Elevate
 ExternalSurface
+Extrude
+FFT
+FiveFoldTetSubdivision
 Flux
 IndexSelect
 InverseGhostZone
@@ -95,6 +107,7 @@ SphereSlice
 SurfaceNormal
 ThreeSlice
 Threshold
+ToroidalPoloidalProjection
 Transform
 TriangulateRegularPoints
 Tube

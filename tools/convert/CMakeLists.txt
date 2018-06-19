@@ -100,15 +100,13 @@ ${MESA_LIBRARY_DIR}
 ${GLEW_LIBRARY_DIR}
 ${VTK_LIBRARY_DIRS}
 ${ALL_THIRDPARTY_IO_LIBRARY_DIR}
+${ICET_LIBRARY_DIR}
 )
 
 SET(VTK_EXTRA_LIBS
 vtkjpeg 
 vtkpng 
-vtkexpat
 vtkzlib 
-vtkDICOMParser 
-vtkMPEG2Encode 
 vtkfreetype 
 vtkftgl
 )

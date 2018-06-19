@@ -61,6 +61,12 @@
 
 #include <stdio.h>
 
+#include <string>
+#include <vector>
+
+using std::string;
+using std::vector;
+
 // ****************************************************************************
 //  Method: EngineProxy constructor
 //
@@ -274,7 +280,14 @@ EngineProxy::Connect(const stringVector &args)
 //    Hank Childs, Thu Jan 29 10:16:47 PST 2009
 //    Added namedSelectionRPC.
 //
+//    Kathleen Biagas, Fri Jul 15 11:06:13 PDT 2011
+//    Added queryParametersRPC.
+//
+//    Brad Whitlock, Mon Oct 10 12:11:42 PDT 2011
+//    Added enginePropertiesRPC.
+//
 // ****************************************************************************
+
 void
 EngineProxy::SetupComponentRPCs()
 {
@@ -292,6 +305,7 @@ EngineProxy::SetupComponentRPCs()
     xfer.Add(&executeRPC);
     xfer.Add(&clearCacheRPC);
     xfer.Add(&queryRPC);
+    xfer.Add(&queryParametersRPC);
     xfer.Add(&releaseDataRPC);
     xfer.Add(&openDatabaseRPC);
     xfer.Add(&defineVirtualDatabaseRPC);
@@ -304,6 +318,8 @@ EngineProxy::SetupComponentRPCs()
     xfer.Add(&constructDataBinningRPC);
     xfer.Add(&namedSelectionRPC);
     xfer.Add(&setEFileOpenOptionsRPC);
+    xfer.Add(&enginePropertiesRPC);
+
     xfer.Add(&exprList);
 
     //
@@ -393,7 +409,7 @@ EngineProxy::ExtractEngineInformation()
 //   
 // ****************************************************************************
 
-std::string
+string
 EngineProxy::GetComponentName() const
 {
     return "compute engine";
@@ -457,6 +473,12 @@ EngineProxy::SendKeepAlive()
 //      var       the variable to read
 //      time      the time step to read
 //      silr      the sil restriction to use.
+//      matopts
+//      meshopts
+//      treatAllDBsAsTimeVarying
+//      ignoreExtents
+//      selName   the selection to apply to the data.
+//      windowID  the window id.
 //
 //  Returns:    
 //
@@ -498,17 +520,26 @@ EngineProxy::SendKeepAlive()
 //
 //    Mark C. Miller, Tue Jun 10 15:57:15 PDT 2008
 //    Added support for ignoring extents
+//
+//    Brad Whitlock, Mon Aug 22 10:10:04 PDT 2011
+//    I added a selName argument.
+//
+//    Eric Brugger, Mon Oct 31 10:37:19 PDT 2011
+//    I added a window id argument.
+//
 // ****************************************************************************
 
 void
-EngineProxy::ReadDataObject(const string &format, const string &file, 
-                            const string &var, const int time,
+EngineProxy::ReadDataObject(const std::string &format, const std::string &file, 
+                            const std::string &var, const int time,
                             avtSILRestriction_p silr,
                             const MaterialAttributes &matopts,
                             const ExpressionList &expressions,
                             const MeshManagementAttributes &meshopts,
                             bool treatAllDBsAsTimeVarying,
-                            bool ignoreExtents)
+                            bool ignoreExtents,
+                            const std::string &selName,
+                            int windowID)
 {
     // Make sure the engine knows about our current expression list.
     if (exprList != expressions)
@@ -519,7 +550,7 @@ EngineProxy::ReadDataObject(const string &format, const string &file,
 
     CompactSILRestrictionAttributes *atts = silr->MakeCompactAttributes();
     readRPC(format, file, var, time, *atts, matopts, meshopts,
-        treatAllDBsAsTimeVarying, ignoreExtents);
+        treatAllDBsAsTimeVarying, ignoreExtents, selName, windowID);
     if (readRPC.GetStatus() == VisItRPC::error)
     {
         RECONSTITUTE_EXCEPTION(readRPC.GetExceptionType(),
@@ -598,7 +629,7 @@ EngineProxy::ApplyOperator(const string &name, const AttributeSubject *atts)
 //
 // ****************************************************************************
 int
-EngineProxy::MakePlot(const std::string &plotName, const string &pluginID,
+EngineProxy::MakePlot(const string &plotName, const string &pluginID,
     const AttributeSubject *atts, const vector<double> &extents, int winID)
 {
     int id;
@@ -898,7 +929,7 @@ EngineProxy::ClearCache()
 }
 
 void
-EngineProxy::ClearCache(const std::string &filename)
+EngineProxy::ClearCache(const string &filename)
 {
     clearCacheRPC(filename, false);
 }
@@ -931,7 +962,7 @@ EngineProxy::ClearCache(const std::string &filename)
 // ****************************************************************************
 
 void
-EngineProxy::OpenDatabase(const std::string &format, const std::string &file,
+EngineProxy::OpenDatabase(const string &format, const string &file,
                           int time, bool createMeshQualityExpressions,
                           bool createTimeDerivativeExpressions,
                           bool ignoreExtents)
@@ -968,8 +999,8 @@ EngineProxy::OpenDatabase(const std::string &format, const std::string &file,
 // ****************************************************************************
 
 void
-EngineProxy::DefineVirtualDatabase(const std::string &fileFormat,
-    const std::string &wholeDBName, const std::string &pathToFiles, 
+EngineProxy::DefineVirtualDatabase(const string &fileFormat,
+    const string &wholeDBName, const string &pathToFiles, 
     const stringVector &files, int time, bool createMeshQualityExpressions,
     bool createTimeDerivativeExpressions)
 {
@@ -1185,7 +1216,7 @@ EngineProxy::Status(const char *message)
 // ****************************************************************************
 
 void
-EngineProxy::Status(int percent, int curStage, const std::string &curStageName,
+EngineProxy::Status(int percent, int curStage, const string &curStageName,
    int maxStage)
 {
     statusAtts->SetClearStatus(false);
@@ -1378,7 +1409,7 @@ EngineProxy::StartQuery(const bool flag, const int nid)
 // ****************************************************************************
 
 void 
-EngineProxy::Query(const std::vector<int> &nid, const QueryAttributes *atts,
+EngineProxy::Query(const vector<int> &nid, const QueryAttributes *atts,
                    QueryAttributes &retAtts)
 {
     queryRPC(nid, atts);
@@ -1419,6 +1450,26 @@ EngineProxy::Query(const std::vector<int> &nid, const QueryAttributes *atts,
     retAtts = queryRPC.GetReturnAtts();
     ClearStatus();
 }
+
+
+// ****************************************************************************
+//  Method:  EngineProxy::GetQueryParameters
+//
+//  Purpose: Gets query parameters for the named query.
+//
+//  Programmer:  Kathleen Biagas 
+//  Creation:    July 15, 2011
+//
+// ****************************************************************************
+
+string 
+EngineProxy::GetQueryParameters(const string &qName)
+{
+    string params = queryParametersRPC(qName);
+
+    return params;
+}
+
 
 // ****************************************************************************
 //  Method:  EngineProxy::GetProcInfo
@@ -1568,41 +1619,10 @@ EngineProxy::BlockForNamedSelectionOperation()
 }
 
 // ****************************************************************************
-//  Method:  EngineProxy::ApplyNamedSelection
-//
-//  Purpose:
-//      Apply a named selection to a list of plots.
-//
-//  Arguments:
-//    ids        the id of the network to have the selection applied to.
-//    selName    the name of the named selection.
-//
-//  Programmer:  Hank Childs
-//  Creation:    January 29, 2009
-//
-//  Modifications:
-//    Kathleen Bonnell, Wed Mar 25 15:35:32 MST 2009
-//    Renamed NamedSelectionRPC enum names to compile on windows.
-//
-//    Brad Whitlock, Tue Dec 14 11:58:33 PST 2010
-//    I changed the invocation method.
-//
-// ****************************************************************************
-
-void
-EngineProxy::ApplyNamedSelection(const std::vector<std::string> &ids, 
-                                 const std::string selName)
-{
-    namedSelectionRPC.ApplyNamedSelection(ids, selName);
-
-    BlockForNamedSelectionOperation();
-}
-
-// ****************************************************************************
 //  Method:  EngineProxy::CreateNamedSelection
 //
 //  Purpose:
-//      Create a named selection to a list of plots.
+//      Create a named selection.
 //
 //  Arguments:
 //    ids        the id of the network to create the selection from.
@@ -1631,6 +1651,32 @@ EngineProxy::CreateNamedSelection(int id, const SelectionProperties &props)
     return s;
 }
 
+// ****************************************************************************
+//  Method:  EngineProxy::UpdateNamedSelection
+//
+//  Purpose:
+//      Update a named selection.
+//
+//  Arguments:
+//    ids        the id of the network to create the selection from.
+//    props      the properties of the named selection.
+//
+//  Programmer:  Brad Whitlock
+//  Creation:    Wed Sep  7 14:30:38 PDT 2011
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+const SelectionSummary &
+EngineProxy::UpdateNamedSelection(int id, const SelectionProperties &props, bool cache)
+{
+    const SelectionSummary &s = namedSelectionRPC.UpdateNamedSelection(id, props, cache);
+
+    BlockForNamedSelectionOperation();
+
+    return s;
+}
 
 // ****************************************************************************
 //  Method:  EngineProxy::DeleteNamedSelection
@@ -1652,7 +1698,7 @@ EngineProxy::CreateNamedSelection(int id, const SelectionProperties &props)
 // ****************************************************************************
 
 void
-EngineProxy::DeleteNamedSelection(const std::string selName)
+EngineProxy::DeleteNamedSelection(const string selName)
 {
     namedSelectionRPC.DeleteNamedSelection(selName);
 
@@ -1680,7 +1726,7 @@ EngineProxy::DeleteNamedSelection(const std::string selName)
 // ****************************************************************************
 
 void
-EngineProxy::LoadNamedSelection(const std::string selName)
+EngineProxy::LoadNamedSelection(const string selName)
 {
     namedSelectionRPC.LoadNamedSelection(selName);
 
@@ -1708,7 +1754,7 @@ EngineProxy::LoadNamedSelection(const std::string selName)
 // ****************************************************************************
 
 void
-EngineProxy::SaveNamedSelection(const std::string selName)
+EngineProxy::SaveNamedSelection(const string selName)
 {
     namedSelectionRPC.SaveNamedSelection(selName);
 
@@ -1923,7 +1969,7 @@ EngineProxy::UpdateExpressions(const ExpressionList &expressions)
 // ****************************************************************************
 
 void
-EngineProxy::ExecuteSimulationControlCommand(const std::string &cmd)
+EngineProxy::ExecuteSimulationControlCommand(const string &cmd)
 {
     simulationCommandRPC(cmd, "");
 }
@@ -1944,8 +1990,8 @@ EngineProxy::ExecuteSimulationControlCommand(const std::string &cmd)
 // ****************************************************************************
 
 void
-EngineProxy::ExecuteSimulationControlCommand(const std::string &cmd,
-                                             const std::string &arg)
+EngineProxy::ExecuteSimulationControlCommand(const string &cmd,
+                                             const string &arg)
 {
     simulationCommandRPC(cmd, arg);
 }
@@ -1968,4 +2014,55 @@ void
 EngineProxy::SetDefaultFileOpenOptions(const FileOpenOptions &opts)
 {
     setEFileOpenOptionsRPC(opts);
+}
+
+// ****************************************************************************
+// Method: EngineProxy::GetEngineProperties
+//
+// Purpose: 
+//   Return engine properties.
+//
+// Returns:    The engine properties.
+//
+// Note:       The number of nodes is retained from the command line used to
+//             initiate the engine connection.
+//
+// Programmer: Brad Whitlock
+// Creation:   Mon Oct 10 12:16:05 PDT 2011
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+EngineProperties
+EngineProxy::GetEngineProperties()
+{
+    enginePropertiesRPC();
+
+    // Get the reply and update the progress bar
+    while (enginePropertiesRPC.GetStatus() == VisItRPC::incomplete ||
+           enginePropertiesRPC.GetStatus() == VisItRPC::warning)
+    {
+        enginePropertiesRPC.RecvReply();
+    }
+ 
+    // Check for abort
+    if (enginePropertiesRPC.GetStatus() == VisItRPC::abort)
+    {
+        ClearStatus();
+        EXCEPTION0(AbortException);
+    }
+
+    // Check for an error
+    if (enginePropertiesRPC.GetStatus() == VisItRPC::error)    
+    {
+        RECONSTITUTE_EXCEPTION(enginePropertiesRPC.GetExceptionType(),
+                               enginePropertiesRPC.Message());
+    }
+
+    EngineProperties props(enginePropertiesRPC.GetReturnAtts());
+    if(numNodes > props.GetNumNodes())
+        props.SetNumNodes(numNodes);
+
+    return props;
 }

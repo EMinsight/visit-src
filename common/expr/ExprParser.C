@@ -49,8 +49,10 @@
 #include <VisItInit.h>
 #include <InvalidExpressionException.h>
 #include <ParseException.h>
+#include <string>
 #include <vector>
 using std::vector;
+using std::string;
 
 ExprParser::ErrorMessageTarget ExprParser::errorMessageTarget = EMT_EXCEPTION;
 
@@ -74,7 +76,7 @@ ExprParser::ExprParser(ExprNodeFactory *f) : Parser(), factory(f)
     if (!G->Initialize())
     {
         cerr << "Error in initializion of Expression Grammar!\n";
-        exit(-1);
+        exit(-1); // HOOKS_IGNORE
     }
 
     SetGrammar(G);

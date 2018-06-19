@@ -117,7 +117,9 @@ public:
                                    const avtIVPSolver* model, 
                                    Direction dir,
                                    const double& t_start, 
-                                   const avtVector &p_start, int ID );
+                                   const avtVector &p_start,
+                                   const avtVector &v_start,
+                                   int ID );
 
     avtStateRecorderIntegralCurve();
     virtual ~avtStateRecorderIntegralCurve();
@@ -128,7 +130,7 @@ public:
                            { serializeFlags |= SERIALIZE_INC_SEQ; };
     virtual bool  SameCurve(avtIntegralCurve *ic);
 
-    static avtIntegralCurve* MergeIntegralCurveSequence(
+    virtual avtIntegralCurve* MergeIntegralCurveSequence(
                               std::vector<avtIntegralCurve *> &v);
     static bool IdSeqCompare(const avtIntegralCurve *slA,
                              const avtIntegralCurve *slB);
@@ -149,15 +151,15 @@ public:
     size_t    GetSampleStride() const;
 
   public:
-    unsigned long serializeFlags;
-    long          sequenceCnt;
-    unsigned char      historyMask;
+    unsigned long       serializeFlags;
+    long                sequenceCnt;
+    unsigned char       historyMask;
 
   protected:
     double distance;
 
-    std::vector<float> history;
-    static const double      epsilon;
+    std::vector<float>  history;
+    static const double epsilon;
 
     void RecordStep( const avtIVPField* field, 
                      const avtIVPStep& step, 
@@ -167,7 +169,5 @@ public:
                               avtIVPField* field );
 };
 
-
 #endif 
-
 

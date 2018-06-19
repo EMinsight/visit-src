@@ -69,8 +69,10 @@ avtStateRecorderIntegralCurve::avtStateRecorderIntegralCurve(
     const avtIVPSolver* model, 
     Direction dir,
     const double& t_start,
-    const avtVector &p_start, int ID) :
-    avtIntegralCurve(model, dir, t_start, p_start, ID), historyMask(mask)
+    const avtVector &p_start,
+    const avtVector &v_start,
+    int ID) :
+    avtIntegralCurve(model, dir, t_start, p_start, v_start, ID), historyMask(mask)
 {
     distance = 0.0;
     sequenceCnt = 0;
@@ -131,7 +133,7 @@ void avtStateRecorderIntegralCurve::RecordStep(const avtIVPField* field,
                                                double t)
 {
     avtVector p = step.GetP(t);
-    
+
     /*
     //If the step is within tolerance of the previous step, just overwrite the last step
     //with this step.
@@ -404,6 +406,10 @@ avtStateRecorderIntegralCurve::Serialize(MemStream::Mode mode, MemStream &buff,
 //   Hank Childs, Fri Jun  4 19:58:30 CDT 2010
 //   Move this method from avtStreamlineWrapper.
 //
+//   David Camp, Fri Jul 29 06:55:39 PDT 2011
+//   Added code to send the ending setting, IC status, domain, ivp.
+//   The pathlines need this information.
+//
 // ****************************************************************************
 
 avtIntegralCurve *
@@ -411,12 +417,13 @@ avtStateRecorderIntegralCurve::MergeIntegralCurveSequence(std::vector<avtIntegra
 {
     if( v2.empty() )
         return NULL;
-    if( v2.size() == 1 )
+    size_t vSize = v2.size();
+    if( vSize == 1 )
         return v2[0];
 
-    std::vector<avtStateRecorderIntegralCurve *> v( v2.size() );
+    std::vector<avtStateRecorderIntegralCurve *> v( vSize );
     
-    for( size_t i=0 ; i<v2.size(); ++i )
+    for( size_t i=0 ; i<vSize; ++i )
     {
         v[i] = dynamic_cast<avtStateRecorderIntegralCurve*>( v2[i] );
         assert( v[i] != NULL );
@@ -429,7 +436,8 @@ avtStateRecorderIntegralCurve::MergeIntegralCurveSequence(std::vector<avtIntegra
     // find the combined history size
     size_t combinedHistorySize = 0;
 
-    for( size_t i=0; i<v.size(); ++i )
+    vSize = v.size(); // This should be the same size as v2
+    for( size_t i=0; i < vSize; ++i )
     {
         combinedHistorySize += v[i]->history.size();
 
@@ -441,7 +449,14 @@ avtStateRecorderIntegralCurve::MergeIntegralCurveSequence(std::vector<avtIntegra
     // in sequence order; we merge by appending to the first (v[0]'s) history
     v[0]->history.reserve( combinedHistorySize );
 
-    for( size_t i=1; i<v.size(); i++ )
+    // Need to get the ending setting transfered.
+    v[0]->status = v[vSize-1]->status;
+    v[0]->domain = v[vSize-1]->domain;
+    avtIVPSolver *tmpSolver = v[0]->ivp;
+    v[0]->ivp = v[vSize-1]->ivp;
+    v[vSize-1]->ivp = tmpSolver;
+
+    for( size_t i=1; i < vSize; i++ )
     {
         v[0]->history.insert( v[0]->history.end(), 
                               v[i]->history.begin(), v[i]->history.end() );
@@ -468,6 +483,7 @@ avtStateRecorderIntegralCurve::MergeIntegralCurveSequence(std::vector<avtIntegra
 //    Move this method from avtStreamlineWrapper.
 //
 // ****************************************************************************
+
 bool
 avtStateRecorderIntegralCurve::IdSeqCompare(const avtIntegralCurve *icA,
                                             const avtIntegralCurve *icB)
@@ -496,6 +512,7 @@ avtStateRecorderIntegralCurve::IdSeqCompare(const avtIntegralCurve *icA,
 //    Move this method from avtStreamlineWrapper.
 //
 // ****************************************************************************
+
 bool
 avtStateRecorderIntegralCurve::IdRevSeqCompare(const avtIntegralCurve *icA,
                                                const avtIntegralCurve *icB)
@@ -508,7 +525,6 @@ avtStateRecorderIntegralCurve::IdRevSeqCompare(const avtIntegralCurve *icA,
 
     return sicA->id < sicB->id;
 }
-
 
 // ****************************************************************************
 //  Method: avtStateRecorderIntegralCurve::SameCurve
@@ -527,5 +543,4 @@ avtStateRecorderIntegralCurve::SameCurve(avtIntegralCurve *ic)
     avtStateRecorderIntegralCurve *sic = (avtStateRecorderIntegralCurve *) ic;
     return (id == sic->id) && (sequenceCnt == sic->sequenceCnt);
 }
-
 

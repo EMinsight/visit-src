@@ -111,6 +111,7 @@
 #include <avtPlot.h>
 #include <avtQueryOverTimeFilter.h>
 #include <avtQueryFactory.h>
+#include <avtMultiresFilter.h>
 #include <CompactSILRestrictionAttributes.h>
 #include <VisWindow.h>
 #include <VisWinRendering.h> // for SetStereoEnabled
@@ -121,6 +122,9 @@
 #include <PlotPluginManager.h>
 #include <PlotPluginInfo.h>
 #include <StackTimer.h>
+
+#include <vtkImageData.h>
+
 #ifdef PARALLEL
 #include <mpi.h>
 #endif
@@ -128,15 +132,11 @@
 #include <TimingsManager.h>
 #include <SaveWindowAttributes.h>
 
-#include <set>
-#include <map>
 #include <algorithm>
-
 #include <climits>
-
-#include <vtkImageData.h>
-
-using std::set;
+#include <map>
+#include <string>
+#include <vector>
 
 //
 // Static functions.
@@ -392,7 +392,14 @@ NetworkManager::GetPlotPluginManager() const
 //    Hank Childs, Thu Mar  2 10:06:33 PST 2006
 //    Added support for image based plots.
 //
+//    Tom Fogal, Wed Sep 28 12:52:49 MDT 2011
+//    Allow lazy init of visualization window.
+//
+//    Brad Whitlock, Wed Sep  7 13:31:27 PDT 2011
+//    Tell the NSM to clear its cache.
+//
 // ****************************************************************************
+
 void
 NetworkManager::ClearAllNetworks(void)
 {
@@ -426,7 +433,10 @@ NetworkManager::ClearAllNetworks(void)
         delete it->second.viswin;
     }
     viswinMap.clear();
-    NewVisWindow(0);
+
+    avtNamedSelectionManager::GetInstance()->ClearCache();
+
+    avtNamedSelectionManager::GetInstance()->ClearCache();
 }
 
 // ****************************************************************************
@@ -571,7 +581,7 @@ NetworkManager::ClearNetworksWithDatabase(const std::string &db)
 // ****************************************************************************
 
 NetnodeDB *
-NetworkManager::GetDBFromCache(const string &filename, int time,
+NetworkManager::GetDBFromCache(const std::string &filename, int time,
     const char *format, bool treatAllDBsAsTimeVarying, 
     bool fileMayHaveUnloadedPlugin, bool ignoreExtents)
 {
@@ -853,22 +863,36 @@ NetworkManager::GetDBFromCache(const string &filename, int time,
 //    Jeremy Meredith, Fri Feb 13 11:22:39 EST 2009
 //    Added MIR iteration capability.
 //
+//    Brad Whitlock, Mon Aug 22 13:34:36 PDT 2011
+//    I added named selection creation here instead of at the end of the pipeline.
+//
+//    Brad Whitlock, Thu Sep  1 11:07:55 PDT 2011
+//    Stash the selection name into the data request in case we need it 
+//    when creating other pipelines based on this one. For instance, the 
+//    avtExecuteThenTimeLoopFilter creates its own pipeline from the original
+//    source so we need the selection name there to apply it.
+//
+//    Eric Brugger, Mon Oct 31 09:54:07 PDT 2011
+//    Add a multi resolution display capability for AMR data.
+//
 // ****************************************************************************
 
 void
-NetworkManager::StartNetwork(const string &format,
-                             const string &filename,
-                             const string &var,
+NetworkManager::StartNetwork(const std::string &format,
+                             const std::string &filename,
+                             const std::string &var,
                              int time,
                              const CompactSILRestrictionAttributes &atts,
                              const MaterialAttributes &matopts,
                              const MeshManagementAttributes &meshopts,
                              bool treatAllDBsAsTimeVarying,
-                             bool ignoreExtents)
+                             bool ignoreExtents,
+                             const std::string &selName,
+                             int windowID)
 {
     // If the variable is an expression, we need to find a "real" variable
     // name to work with.
-    string leaf = ParsingExprList::GetRealVariable(var);
+    std::string leaf = ParsingExprList::GetRealVariable(var);
 
     // Make empty strings behave as though no format was specified.
     const char *defaultFormat = 0;
@@ -885,18 +909,69 @@ NetworkManager::StartNetwork(const string &format,
     workingNet->SetNetDB(netDB);
     workingNet->SetVariable(leaf);
     netDB->SetDBInfo(filename, leaf, time);
+    Netnode *input = netDB;
 
-    // Put an ExpressionEvaluatorFilter right after the netDB to handle
-    // expressions that come up the pipe.
+    // Add ExpressionEvaluatorFilter to handle expressions that come up the pipe.
     avtExpressionEvaluatorFilter *f = new avtExpressionEvaluatorFilter();
     NetnodeFilter *filt = new NetnodeFilter(f, "ExpressionEvaluator");
-    filt->GetInputNodes().push_back(netDB);
+    filt->GetInputNodes().push_back(input);
     f->GetOutput()->SetTransientStatus(false);
 
-    // Push the ExpressionEvaluator onto the working list.
+    input = filt;
+    if(!selName.empty())
+    {
+        // Add the EEF to the network.
+        workingNet->AddNode(filt);
+
+        avtNamedSelectionFilter *f = new avtNamedSelectionFilter();
+        f->SetSelectionName(selName);
+        filt = new NetnodeFilter(f, "NamedSelection");
+        filt->GetInputNodes().push_back(input);
+        workingNet->SetSelectionName(selName);
+    }
+
+    // Push the last filter onto the working list.
     workingNetnodeList.push_back(filt);
 
     workingNet->AddNode(filt);
+
+    // If we are in multiresolution mode then add a MultiresFilter
+    // right after the expression filter.
+    VisWindow *visWin = viswinMap[windowID].viswin;
+    if (visWin->GetMultiresolutionMode())
+    {
+        double frustum[6];
+        const avtView2D view2D = visWin->GetView2D();
+        if (!view2D.windowValid)
+        {
+            frustum[0] = DBL_MAX;
+            frustum[1] = -DBL_MAX;
+            frustum[2] = DBL_MAX;
+            frustum[3] = -DBL_MAX;
+        }
+        else
+        {
+            frustum[0] = view2D.window[0];
+            frustum[1] = view2D.window[1];
+            frustum[2] = view2D.window[2];
+            frustum[3] = view2D.window[3];
+        }
+        double cellSize = visWin->GetMultiresolutionCellSize();
+
+        avtMultiresFilter *f2 = new avtMultiresFilter(frustum, cellSize);
+        NetnodeFilter *filt2 = new NetnodeFilter(f2, "MultiresFilter");
+
+        std::vector<Netnode*> &filt2Inputs = filt2->GetInputNodes();
+        Netnode *n = workingNetnodeList.back();
+        workingNetnodeList.pop_back();
+        filt2Inputs.push_back(n);
+
+        // Push the MultiresFilter onto the working list.
+        workingNetnodeList.push_back(filt2);
+
+        workingNet->AddNode(filt2);
+    }
+
     // Push the variable name onto the name stack.
     nameStack.push_back(var);
     debug4 << "NetworkManager::AddDB: Adding " << var.c_str()
@@ -926,6 +1001,7 @@ NetworkManager::StartNetwork(const string &format,
     dataRequest->SetDiscMode(meshopts.GetDiscretizationMode());
     dataRequest->SetDiscBoundaryOnly(meshopts.GetDiscretizeBoundaryOnly());
     dataRequest->SetPassNativeCSG(meshopts.GetPassNativeCSG());
+    dataRequest->SetSelectionName(selName);
     workingNet->SetDataSpec(dataRequest);
     workingNet->SetTime(dataRequest->GetTimestep());
 
@@ -988,8 +1064,8 @@ NetworkManager::StartNetwork(const string &format,
 // ****************************************************************************
 
 void
-NetworkManager::DefineDB(const string &dbName, const string &dbPath,
-    const stringVector &files, int time, const string &format)
+NetworkManager::DefineDB(const std::string &dbName, const std::string &dbPath,
+    const stringVector &files, int time, const std::string &format)
 {
     //
     // We gotta have a load balancer
@@ -1171,7 +1247,7 @@ NetworkManager::DefineDB(const string &dbName, const string &dbPath,
 //
 // ****************************************************************************
 void
-NetworkManager::AddFilter(const string &filtertype,
+NetworkManager::AddFilter(const std::string &filtertype,
                           const AttributeGroup *atts,
                           const unsigned int nInputs)
 {
@@ -1249,8 +1325,8 @@ NetworkManager::AddFilter(const string &filtertype,
 // ****************************************************************************
 
 void
-NetworkManager::MakePlot(const string &plotName, const string &pluginID, 
-    const AttributeGroup *atts, const vector<double> &dataExtents)
+NetworkManager::MakePlot(const std::string &plotName, const std::string &pluginID, 
+    const AttributeGroup *atts, const std::vector<double> &dataExtents)
 {
     if (workingNet == NULL)
     {
@@ -1338,38 +1414,14 @@ NetworkManager::MakePlot(const string &plotName, const string &pluginID,
 //    Brad Whitlock, Tue Aug 10 16:11:25 PDT 2010
 //    Use find() method.
 //
+//    Brad Whitlock, Mon Aug 22 10:39:12 PDT 2011
+//    Changed how named selections are finally set up.
+//
 // ****************************************************************************
 
 int
 NetworkManager::EndNetwork(int windowID)
 {
-    std::map<std::string, std::string>::iterator it;
-    it = namedSelectionsToApply.find(workingNet->GetPlotName());
-    if (it != namedSelectionsToApply.end())
-    {
-        avtNamedSelectionFilter *f = new avtNamedSelectionFilter();
-        f->SetSelectionName(it->second);
-        NetnodeFilter *filt = new NetnodeFilter(f, "NamedSelection");
-        Netnode *n = workingNetnodeList.back();
-        workingNetnodeList.pop_back();
-        filt->GetInputNodes().push_back(n);
-
-        // Push the NamedSelection filter onto the working list.
-        workingNetnodeList.push_back(filt);
-
-        workingNet->AddNode(filt);
-
-        std::vector<Netnode *> netnodes = workingNet->GetNodeList();
-        for (int i = 0 ; i < netnodes.size() ; i++)
-        {
-            avtFilter *filt = netnodes[i]->GetFilter();
-            if (filt == NULL)
-                continue;
-            filt->RegisterNamedSelection(it->second);
-        }
-        workingNet->GetPlot()->RegisterNamedSelection(it->second);
-    }
-
     // Checking to see if the network has been built successfully.
     if (workingNetnodeList.size() != 1)
     {
@@ -1377,6 +1429,22 @@ NetworkManager::EndNetwork(int windowID)
                << "absorb " << workingNetnodeList.size() << " nodes."  << endl;
 
         EXCEPTION0(ImproperUseException);
+    }
+
+    // If a named selection has been applied, make sure all of the filters
+    // know about it.
+    if (!workingNet->GetSelectionName().empty())
+    {
+        const std::string &selName = workingNet->GetSelectionName();
+        std::vector<Netnode *> netnodes = workingNet->GetNodeList();
+        for (int i = 0 ; i < netnodes.size() ; i++)
+        {
+            avtFilter *filt = netnodes[i]->GetFilter();
+            if (filt == NULL)
+                continue;
+            filt->RegisterNamedSelection(selName);
+        }
+        workingNet->GetPlot()->RegisterNamedSelection(selName);
     }
 
     // set the pipeline specification
@@ -2058,8 +2126,8 @@ NetworkManager::HasNonMeshPlots(const intVector plotIds)
     {
         workingNet = NULL;
         UseNetwork(plotIds[i]);
-        if (string(workingNet->GetPlot()->GetName()) != "MeshPlot" &&
-            string(workingNet->GetPlot()->GetName()) != "LabelPlot")
+        if (std::string(workingNet->GetPlot()->GetName()) != "MeshPlot" &&
+            std::string(workingNet->GetPlot()->GetName()) != "LabelPlot")
         {
             hasNonMeshPlots = true;
             break;
@@ -2674,6 +2742,9 @@ NetworkManager::SaveWindow(const std::string &filename, int imageWidth, int imag
 //    Tom Fogal, Fri Jul 18 19:10:06 EDT 2008
 //    Use enum definitions instead of int.
 //
+//    Eric Brugger, Fri Oct 28 10:45:26 PDT 2011
+//    Add a multi resolution display capability for AMR data.
+//
 // ****************************************************************************
 void
 NetworkManager::SetWindowAttributes(const WindowAttributes &atts,
@@ -2819,6 +2890,10 @@ NetworkManager::SetWindowAttributes(const WindowAttributes &atts,
 
     if (viswin->GetAntialiasing() != atts.GetRenderAtts().GetAntialiasing())
        viswin->SetAntialiasing(atts.GetRenderAtts().GetAntialiasing());
+    if (viswin->GetMultiresolutionMode() != atts.GetRenderAtts().GetMultiresolutionMode())
+       viswin->SetMultiresolutionMode(atts.GetRenderAtts().GetMultiresolutionMode());
+    if (viswin->GetMultiresolutionCellSize() != atts.GetRenderAtts().GetMultiresolutionCellSize())
+       viswin->SetMultiresolutionCellSize(atts.GetRenderAtts().GetMultiresolutionCellSize());
     if (viswin->GetSurfaceRepresentation() != atts.GetRenderAtts().GetGeometryRepresentation())
        viswin->SetSurfaceRepresentation(atts.GetRenderAtts().GetGeometryRepresentation());
     viswin->SetDisplayListMode(0);  // never
@@ -3747,6 +3822,12 @@ NetworkManager::Query(const std::vector<int> &ids, QueryAttributes *qa)
 //    Brad Whitlock, Mon Dec 13 15:22:00 PST 2010
 //    I added support for cumulative query selections.
 //
+//    Brad Whitlock, Tue Sep  6 15:56:53 PDT 2011
+//    Pass a default named selection extension to the NSM.
+//
+//    Brad Whitlock, Thu Oct 27 14:34:45 PDT 2011
+//    I improved the exception handling.
+//
 // ****************************************************************************
 
 SelectionSummary
@@ -3756,13 +3837,61 @@ NetworkManager::CreateNamedSelection(int id, const SelectionProperties &props)
     avtExpressionEvaluatorFilter *f = NULL;
     avtDataObject_p dob;
 
-    debug1 << mName << "selection source " << props.GetSource() << endl;
+    std::string source(props.GetSource());
+    debug1 << mName << "selection source " << source << endl;
+
+    if(id >= 0)
+    {
+        // The selection source is a plot that has been executed.
+
+        if (id >= networkCache.size())
+        {
+            debug1 << mName << "Internal error:  asked to use network ID (" << id 
+                   << ") >= num saved networks ("
+                   << networkCache.size() << ")" << endl;
+            EXCEPTION0(ImproperUseException);
+        }
+ 
+        if (networkCache[id] == NULL)
+        {
+            debug1 << mName << "Asked to construct a named selection from a network "
+                   << "that has already been cleared." << endl;
+            EXCEPTION0(ImproperUseException);
+        }
+
+        if (id != networkCache[id]->GetNetID())
+        {
+            debug1 << mName << "Internal error: network at position[" << id << "] "
+                   << "does not have same id (" << networkCache[id]->GetNetID()
+                   << ")" << endl;
+            EXCEPTION0(ImproperUseException);
+        }
+
+        if(props.GetSelectionType() == SelectionProperties::CumulativeQuerySelection &&
+           !networkCache[id]->GetPlot()->CompatibleWithCumulativeQuery())
+        {
+            // Work off of the source file instead of the plot.
+            source = networkCache[id]->GetNetDB()->GetFilename();
+            debug1 << mName << "Do not use the plot's intermediate data object "
+                               "for selection. Use its database source: " << source << endl;
+            // Do not allow use of the plot's output.
+            id = -1;
+        }
+        else
+        {
+            dob = networkCache[id]->GetPlot()->GetIntermediateDataObject();
+
+            debug1 << mName << "Cached network's plot id: "
+                   << networkCache[id]->GetPlotName()
+                   << ", selection plot: " << source << endl;
+        }
+    }
 
     if(id < 0)
     {
-        // We're going to assume that the props.source is a database name.
+        // We're going to assume that the source is a database name.
         int ts = 0;
-        NetnodeDB *netDB = GetDBFromCache(props.GetSource(), ts);
+        NetnodeDB *netDB = GetDBFromCache(source, ts);
         if(netDB != NULL)
         {
             // Try and determine a suitable variable to use to start our pipeline.
@@ -3802,7 +3931,7 @@ NetworkManager::CreateNamedSelection(int id, const SelectionProperties &props)
                 TRY
                 {
                     debug1 << mName << "Try creating new db source for "
-                           << props.GetSource() << " named selection." << endl;
+                           << source << " named selection." << endl;
                     std::string leaf = ParsingExprList::GetRealVariable(var);
 
                     // Add an expression filter since we may need to do expressions.
@@ -3816,7 +3945,7 @@ NetworkManager::CreateNamedSelection(int id, const SelectionProperties &props)
                     std::string mesh = netDB->GetDB()->GetMetaData(0)->MeshForVar(var);
                     silr->SetTopSet(mesh.c_str());
                     avtDataRequest_p dataRequest = new avtDataRequest(var.c_str(), ts, silr);
-                    int pipelineIndex = loadBalancer->AddPipeline(props.GetSource());
+                    int pipelineIndex = loadBalancer->AddPipeline(source);
                     avtContract_p contract = new avtContract(dataRequest, pipelineIndex);
 
                     // Execute with an empty source so the contract gets put in the data
@@ -3831,53 +3960,25 @@ NetworkManager::CreateNamedSelection(int id, const SelectionProperties &props)
                 }
                 CATCH(VisItException)
                 {
+                    if(f != NULL)
+                        delete f;
+                    RETHROW;
                 }
                 ENDTRY
             }
         }
         else
         {
-           debug1 << mName << "Could not get database " << props.GetSource() << " from cache." << endl;
+           debug1 << mName << "Could not get database " << source << " from cache." << endl;
         }
-    }
-    else
-    {
-        // The selection source is a plot that has been executed.
-
-        if (id >= networkCache.size())
-        {
-            debug1 << mName << "Internal error:  asked to use network ID (" << id 
-                   << ") >= num saved networks ("
-                   << networkCache.size() << ")" << endl;
-            EXCEPTION0(ImproperUseException);
-        }
- 
-        if (networkCache[id] == NULL)
-        {
-            debug1 << mName << "Asked to construct a named selection from a network "
-                   << "that has already been cleared." << endl;
-            EXCEPTION0(ImproperUseException);
-        }
-
-        if (id != networkCache[id]->GetNetID())
-        {
-            debug1 << mName << "Internal error: network at position[" << id << "] "
-                   << "does not have same id (" << networkCache[id]->GetNetID()
-                   << ")" << endl;
-            EXCEPTION0(ImproperUseException);
-        }
-
-        dob = networkCache[id]->GetPlot()->GetIntermediateDataObject();
-
-        debug1 << mName << "Cached network's plot id: "
-               << networkCache[id]->GetPlotName()
-               << ", selection plot: " << props.GetSource() << endl;
     }
 
     if (*dob == NULL)
     {
         debug1 << mName << "Could not find a valid data set from which to create"
                            " a named selection." << endl;
+        if(f != NULL)
+            delete f;
         EXCEPTION0(NoInputException);
     }
 
@@ -3894,6 +3995,8 @@ NetworkManager::CreateNamedSelection(int id, const SelectionProperties &props)
             debug1 << mName << "The cumulative query is malformed. It must have the same "
                       "number of elements for each of the variables, mins, maxs lists."
                    << endl;
+            if(f != NULL)
+                delete f;
             EXCEPTION0(ImproperUseException);
         }
 
@@ -3908,7 +4011,8 @@ NetworkManager::CreateNamedSelection(int id, const SelectionProperties &props)
     else
     {
         debug1 << mName << "Creating named selection." << endl;
-        nsm->CreateNamedSelection(dob, props, NULL);
+        avtNamedSelectionExtension ext;
+        nsm->CreateNamedSelection(dob, props, &ext);
     }
 
     if(f != NULL)
@@ -3931,44 +4035,6 @@ NetworkManager::CreateNamedSelection(int id, const SelectionProperties &props)
 
 
 // ****************************************************************************
-//  Method:  NetworkManager::ApplyNamedSelection
-//
-//  Purpose:
-//      Applies a named selection to a plot.
-//
-//  Arguments:
-//    ids        The names of the plots to which the selection will apply.
-//    selName    The name of the selection.
-//
-//  Programmer:  Hank Childs
-//  Creation:    January 30, 2009
-//
-//  Modifications:
-//    Brad Whitlock, Tue Aug 10 16:13:27 PDT 2010
-//    Remove a named selection from a plot if the selName is empty.
-//
-// ****************************************************************************
-
-void
-NetworkManager::ApplyNamedSelection(const std::vector<std::string> &ids, 
-                                    const std::string &selName)
-{
-    for (int i = 0 ; i < ids.size() ; i++)
-    {
-        if(selName.size() > 0)
-            namedSelectionsToApply[ids[i]] = selName;
-        else
-        {
-            std::map<std::string,std::string>::iterator it;
-            it = namedSelectionsToApply.find(ids[i]);
-            if(it != namedSelectionsToApply.end())
-                namedSelectionsToApply.erase(it);
-        }
-    }
-}
-
-
-// ****************************************************************************
 //  Method:  NetworkManager::DeleteNamedSelection
 //
 //  Purpose:
@@ -3976,9 +4042,15 @@ NetworkManager::ApplyNamedSelection(const std::vector<std::string> &ids,
 //
 //  Arguments:
 //    selName    The name of the selection.
+//    clearCache Whether we should clear the NSM's cache of intermediate results
+//               related to this selection.
 //
 //  Programmer:  Hank Childs
 //  Creation:    January 30, 2009
+//
+//  Modifications:
+//    Brad Whitlock, Thu Oct 27 14:23:12 PDT 2011
+//    Make it not an error when we can't remove a selection that does not exist.
 //
 // ****************************************************************************
 
@@ -3986,7 +4058,7 @@ void
 NetworkManager::DeleteNamedSelection(const std::string &selName)
 {
     avtNamedSelectionManager *nsm = avtNamedSelectionManager::GetInstance();
-    nsm->DeleteNamedSelection(selName);
+    nsm->DeleteNamedSelection(selName, false);
 }
 
 
@@ -4251,7 +4323,7 @@ NetworkManager::ExportDatabase(int id, ExportDBAttributes *atts)
 
     wrtr->SetContractToUse(networkCache[id]->GetContract());
     
-    string qualFilename;
+    std::string qualFilename;
     if (atts->GetDirname() == "")
         qualFilename = atts->GetFilename();
     else
@@ -4357,7 +4429,7 @@ NetworkManager::CloneNetwork(const int id)
     //
     if (workingNet != NULL)
     {
-        string error = "Unable to clone an open network.";
+        std::string error = "Unable to clone an open network.";
         debug1 << error.c_str() << endl;
         EXCEPTION1(ImproperUseException,error);
     }
@@ -4372,7 +4444,7 @@ NetworkManager::CloneNetwork(const int id)
 
     if (networkCache[id] == NULL)
     {
-        string error = "Asked to clone a network that has already been cleared.";
+        std::string error = "Asked to clone a network that has already been cleared.";
         debug1 << error.c_str() << endl;
         EXCEPTION1(ImproperUseException, error);
     }
@@ -4439,7 +4511,7 @@ NetworkManager::AddQueryOverTimeFilter(QueryOverTimeAttributes *qA,
 {
     if (workingNet == NULL)
     {
-        string error =  "Adding a filter to a non-existent network." ;
+        std::string error =  "Adding a filter to a non-existent network." ;
         EXCEPTION1(ImproperUseException, error);
     }
 
@@ -4712,7 +4784,7 @@ const
 
     this->FormatDebugImage(tmpName, 256, fmt);
 
-    string dump_image = avtDebugDumpOptions::GetDumpDirectory() + tmpName +
+    std::string dump_image = avtDebugDumpOptions::GetDumpDirectory() + tmpName +
                         ".png";
 
     fileWriter->SetFormat(SaveWindowAttributes::PNG);
@@ -5479,7 +5551,7 @@ NetworkManager::SetUpWindowContents(int windowID, const intVector &plotIds,
         }
 
         if(hasNonMeshPlots &&
-           string(workingNetSaved->GetPlot()->GetName()) == "MeshPlot")
+           std::string(workingNetSaved->GetPlot()->GetName()) == "MeshPlot")
         {
            const AttributeSubject *meshAtts = workingNetSaved->
                  GetPlot()->SetOpaqueMeshIsAppropriate(false);
@@ -5767,7 +5839,7 @@ NetworkManager::RenderSetup(intVector& plotIds, bool getZBuffer,
     if (this->r_mgmt.needToSetUpWindowContents)
     {
         // determine any networks with no data
-        vector<int> networksWithNoData;
+        std::vector<int> networksWithNoData;
 
         for (size_t i = 0; i < plotIds.size(); i++)
         {
@@ -5777,7 +5849,7 @@ NetworkManager::RenderSetup(intVector& plotIds, bool getZBuffer,
         // issue warning messages for plots with no data
         if (networksWithNoData.size() > 0)
         {
-            string msg = "The plot(s) with id(s) = ";
+            std::string msg = "The plot(s) with id(s) = ";
             for (size_t i = 0; i < networksWithNoData.size(); i++)
             {
                 char tmpStr[32];
@@ -5877,7 +5949,7 @@ NetworkManager::RenderSetup(intVector& plotIds, bool getZBuffer,
             avtCallback::IssueWarning(msg);
             issuedWarning = false;
         }
-        vector<avtPlot_p> imageBasedPlots_tmp;
+        std::vector<avtPlot_p> imageBasedPlots_tmp;
         imageBasedPlots_tmp.push_back(imageBasedPlots[0]);
         imageBasedPlots = imageBasedPlots_tmp;
     }
@@ -6615,4 +6687,27 @@ NetworkManager::RenderPostProcess(std::vector<avtPlot_p>& image_plots,
         CopyTo(input_as_dob, postProcessedImage);
         visitTimer->StopTimer(t2, "VisWindow::PostProcessScreenCapture");
     }
+}
+
+// ****************************************************************************
+//  Method: GetQueryParameters
+//
+//  Purpose: Retrieves default parameters for named query.
+//
+//  Arguments:
+//    qName     The name of the query.
+//
+//  Returns:    The default parameters in string format.
+//          
+//  Programmer: Kathleen Biagas 
+//  Creation:   July 15, 2011
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+std::string 
+NetworkManager::GetQueryParameters(const std::string &qName)
+{
+    return avtQueryFactory::Instance()->GetDefaultInputParams(qName);
 }

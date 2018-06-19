@@ -42,7 +42,9 @@
 
 #include <float.h>
 #include <snprintf.h>
-#include <string.h>
+#include <sstream>
+#include <string>
+#include <vector>
 
 #include <avtDataObjectQuery.h>
 #include <avtQueryFactory.h>
@@ -68,9 +70,6 @@
 #include <VisItException.h>
 #include <DebugStream.h>
 #include <MapNode.h>
-
-using std::string;
-
 
 // ****************************************************************************
 //  Method: avtQueryOverTimeFilter constructor
@@ -410,6 +409,9 @@ avtQueryOverTimeFilter::FilterSupportsTimeParallelization(void)
 //    Kathleen Bonnell, Thu Mar  3 12:40:41 PST 2011
 //    Set output Atts labels to be the variable names used for the query.
 //
+//    Kathleen Biagas, Thu Sep 29 06:13:54 PDT 2011
+//    Set ConstructMultipleCurves in the output's DataAttributes.
+//
 // ****************************************************************************
 
 void
@@ -446,21 +448,25 @@ avtQueryOverTimeFilter::UpdateDataObjectInfo(void)
             }
             if (useVarForYAxis)
             {
-                string yl = outAtts.GetVariableName();
+                std::string yl = outAtts.GetVariableName();
                 outAtts.SetYLabel(yl);
                 outAtts.SetYUnits(outAtts.GetVariableUnits(yl.c_str()));
             }
         }
         else 
         {
-            string xl = atts.GetQueryAtts().GetVariables()[0] + "(t)";
-            string yl = atts.GetQueryAtts().GetVariables()[1] + "(t)";
+            std::string xl = atts.GetQueryAtts().GetVariables()[0] + "(t)";
+            std::string yl = atts.GetQueryAtts().GetVariables()[1] + "(t)";
             outAtts.SetXLabel(xl);
             outAtts.SetYLabel(yl);
             outAtts.SetXUnits(atts.GetQueryAtts().GetXUnits());
             outAtts.SetYUnits(atts.GetQueryAtts().GetYUnits());
         }
         outAtts.SetLabels(atts.GetQueryAtts().GetVariables());
+        if (atts.GetQueryAtts().GetVariables().size() > 1)
+            outAtts.SetConstructMultipleCurves(true);
+        else 
+            outAtts.SetConstructMultipleCurves(false);
         double bounds[6];
         avtDataset_p ds = GetTypedOutput();
         avtDatasetExaminer::GetSpatialExtents(ds, bounds);
@@ -515,8 +521,15 @@ avtQueryOverTimeFilter::SetSILAtts(const SILRestrictionAttributes *silAtts)
 //    In support of multiple-variable time picks, create an output Tree instead
 //    of a single grid.
 //
-//    Kathleen Bonnell, Thu Jul  7 11:26:31 PDT 2011
+//    Kathleen Biagas, Tue Jun 21 09:52:26 PDT 2011
+//    Change setting of 'multiCurve' to reflect use of MapNode for
+//    query Input parameters.
+//
+//    Kathleen Biagas, Thu Jul  7 11:26:31 PDT 2011
 //    Fixed incorrect generation of warning when nResults > 2.
+//
+//    Tom Fogal, Thu Jul 21 15:42:59 MDT 2011
+//    Do not use deprecated C++ streams.
 //
 // ****************************************************************************
 
@@ -545,8 +558,8 @@ avtQueryOverTimeFilter::CreateFinalOutput()
                                                               : maxIterations);
             }
 
-            vector<double> finalQRes(nResults, 0.);
-            vector<double> finalTimes(nResults, 0.);
+            std::vector<double> finalQRes(nResults, 0.);
+            std::vector<double> finalTimes(nResults, 0.);
             int index = 0;
             for (int j = 0 ; j < maxIterations ; j++)
             {
@@ -607,7 +620,7 @@ avtQueryOverTimeFilter::CreateFinalOutput()
     }
     if (skippedTimes.size() != 0)
     {
-        ostrstream osm;
+        std::ostringstream osm;
         osm << "\nQueryOverTime (" << atts.GetQueryAtts().GetName().c_str()
             << ") experienced\n"
             << "problems with the following timesteps and \n"
@@ -617,11 +630,15 @@ avtQueryOverTimeFilter::CreateFinalOutput()
             osm << skippedTimes[j] << " ";
         osm << "\nLast message received: " << errorMessage.c_str() << ends;
         debug4 << osm.str() << endl;
-        avtCallback::IssueWarning(osm.str());
+        avtCallback::IssueWarning(osm.str().c_str());
     }
 
     stringVector vars = atts.GetQueryAtts().GetVariables();
-    bool multiCurve = atts.GetQueryAtts().GetTimeCurvePlotType() == QueryAttributes::Multiple_Y_Axes;
+    bool multiCurve = false;
+    if (atts.GetQueryAtts().GetQueryInputParams().HasEntry("curve_plot_type"))
+    {
+        multiCurve = (atts.GetQueryAtts().GetQueryInputParams().GetEntry("curve_plot_type")->AsInt() == 1);
+    }
     avtDataTree_p tree = CreateTree(times, qRes, vars, multiCurve);
     SetOutputDataTree(tree);
     finalOutputCreated = true;

@@ -177,7 +177,7 @@ class CMakeGeneratorPlugin : public Plugin
     }
 
     void
-    GetFilesWith(const QString &name, const vector<QString> &input, 
+    GetFilesWith(const QString &name, const std::vector<QString> &input, 
                  std::set<QString> &output)
     {
          for(size_t i = 0; i < input.size(); ++i)
@@ -197,7 +197,7 @@ class CMakeGeneratorPlugin : public Plugin
     }
 
     QString
-    ToString(const vector<QString> &vec, bool withNewline=false) const
+    ToString(const std::vector<QString> &vec, bool withNewline=false) const
     {
         QString s;
         if (withNewline)
@@ -235,7 +235,7 @@ class CMakeGeneratorPlugin : public Plugin
     {
         // take any ${} from the CXXFLAGS to mean a variable that contains 
         // include directories.
-        vector<QString> extraIncludes;
+        std::vector<QString> extraIncludes;
         for (size_t i=0; i<cxxflags.size(); i++)
         {
             if(cxxflags[i].startsWith("${"))
@@ -262,6 +262,7 @@ class CMakeGeneratorPlugin : public Plugin
             out << VisItIncludeDir() << "/avt/Expressions/Management" << endl;
             out << VisItIncludeDir() << "/avt/Expressions/Math" << endl;
             out << VisItIncludeDir() << "/avt/Expressions/MeshQuality" << endl;
+            out << VisItIncludeDir() << "/avt/Expressions/TimeIterators" << endl;
         }
         out << VisItIncludeDir() << "/avt/FileWriter" << endl;
         out << VisItIncludeDir() << "/avt/Filters" << endl;
@@ -454,7 +455,7 @@ class CMakeGeneratorPlugin : public Plugin
 
         out << endl;
         // Extract extra link directories from LDFLAGS if they have ${},$(),-L
-        vector<QString> linkDirs;
+        std::vector<QString> linkDirs;
         for (size_t i=0; i<ldflags.size(); i++)
         {
             if(ldflags[i].startsWith("${") || ldflags[i].startsWith("$("))
@@ -650,7 +651,7 @@ class CMakeGeneratorPlugin : public Plugin
 
         out << endl;
         // Extract extra link directories from LDFLAGS if they have ${},$(),-L
-        vector<QString> linkDirs;
+        std::vector<QString> linkDirs;
         for (size_t i=0; i<ldflags.size(); i++)
         {
             if(ldflags[i].startsWith("${") || ldflags[i].startsWith("$("))
@@ -827,7 +828,7 @@ class CMakeGeneratorPlugin : public Plugin
 
         // take any ${} from the CXXFLAGS to mean a variable that contains 
         // include directories.
-        vector<QString> extraIncludes;
+        std::vector<QString> extraIncludes;
         for (size_t i=0; i<cxxflags.size(); i++)
         {
             if(cxxflags[i].startsWith("${"))
@@ -918,7 +919,7 @@ class CMakeGeneratorPlugin : public Plugin
 
         out << endl;
         // Extract extra link directories from LDFLAGS if they have ${},$(),-L
-        vector<QString> linkDirs;
+        std::vector<QString> linkDirs;
         for (size_t i=0; i<ldflags.size(); i++)
         {
             if(ldflags[i].startsWith("${") || ldflags[i].startsWith("$("))

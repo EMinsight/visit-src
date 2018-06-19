@@ -80,37 +80,113 @@ PoincareAttributes::SourceType_FromString(const std::string &s, PoincareAttribut
 }
 
 //
+// Enum conversion methods for PoincareAttributes::FieldType
+//
+
+static const char *FieldType_strings[] = {
+"Default", "M3DC12DField", "M3DC13DField", 
+"NIMRODField", "FlashField"};
+
+std::string
+PoincareAttributes::FieldType_ToString(PoincareAttributes::FieldType t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 5) index = 0;
+    return FieldType_strings[index];
+}
+
+std::string
+PoincareAttributes::FieldType_ToString(int t)
+{
+    int index = (t < 0 || t >= 5) ? 0 : t;
+    return FieldType_strings[index];
+}
+
+bool
+PoincareAttributes::FieldType_FromString(const std::string &s, PoincareAttributes::FieldType &val)
+{
+    val = PoincareAttributes::Default;
+    for(int i = 0; i < 5; ++i)
+    {
+        if(s == FieldType_strings[i])
+        {
+            val = (FieldType)i;
+            return true;
+        }
+    }
+    return false;
+}
+
+//
 // Enum conversion methods for PoincareAttributes::IntegrationType
 //
 
 static const char *IntegrationType_strings[] = {
-"DormandPrince", "AdamsBashforth", "M3DC12DIntegrator", 
-"M3DC13DIntegrator", "NIMRODIntegrator"};
+"Euler", "Leapfrog", "DormandPrince", 
+"AdamsBashforth", "Reserved_4", "M3DC12DIntegrator"
+};
 
 std::string
 PoincareAttributes::IntegrationType_ToString(PoincareAttributes::IntegrationType t)
 {
     int index = int(t);
-    if(index < 0 || index >= 5) index = 0;
+    if(index < 0 || index >= 6) index = 0;
     return IntegrationType_strings[index];
 }
 
 std::string
 PoincareAttributes::IntegrationType_ToString(int t)
 {
-    int index = (t < 0 || t >= 5) ? 0 : t;
+    int index = (t < 0 || t >= 6) ? 0 : t;
     return IntegrationType_strings[index];
 }
 
 bool
 PoincareAttributes::IntegrationType_FromString(const std::string &s, PoincareAttributes::IntegrationType &val)
 {
-    val = PoincareAttributes::DormandPrince;
-    for(int i = 0; i < 5; ++i)
+    val = PoincareAttributes::Euler;
+    for(int i = 0; i < 6; ++i)
     {
         if(s == IntegrationType_strings[i])
         {
             val = (IntegrationType)i;
+            return true;
+        }
+    }
+    return false;
+}
+
+//
+// Enum conversion methods for PoincareAttributes::SizeType
+//
+
+static const char *SizeType_strings[] = {
+"Absolute", "FractionOfBBox"};
+
+std::string
+PoincareAttributes::SizeType_ToString(PoincareAttributes::SizeType t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 2) index = 0;
+    return SizeType_strings[index];
+}
+
+std::string
+PoincareAttributes::SizeType_ToString(int t)
+{
+    int index = (t < 0 || t >= 2) ? 0 : t;
+    return SizeType_strings[index];
+}
+
+bool
+PoincareAttributes::SizeType_FromString(const std::string &s, PoincareAttributes::SizeType &val)
+{
+    val = PoincareAttributes::Absolute;
+    for(int i = 0; i < 2; ++i)
+    {
+        if(s == SizeType_strings[i])
+        {
+            val = (SizeType)i;
             return true;
         }
     }
@@ -385,8 +461,8 @@ PoincareAttributes::Opacity_FromString(const std::string &s, PoincareAttributes:
 static const char *DataValue_strings[] = {
 "Solid", "SafetyFactorQ", "SafetyFactorP", 
 "SafetyFactorQ_NotP", "SafetyFactorP_NotQ", "ToroidalWindings", 
-"PoloidalWindingsQ", "PoloidalWindingsP", "FieldlineIndex", 
-"PointIndex", "PlaneIndex", "WindingGroup", 
+"PoloidalWindingsQ", "PoloidalWindingsP", "FieldlineOrder", 
+"PointOrder", "PlaneOrder", "WindingGroupOrder", 
 "WindingPointOrder", "WindingPointOrderModulo"};
 
 std::string
@@ -514,8 +590,8 @@ void PoincareAttributes::Init()
 {
     opacityType = Explicit;
     opacity = 1;
-    minPunctures = 10;
-    maxPunctures = 100;
+    minPunctures = 50;
+    maxPunctures = 500;
     puncturePlane = Poloidal;
     sourceType = SpecifiedPoint;
     pointSource[0] = 0;
@@ -528,17 +604,26 @@ void PoincareAttributes::Init()
     lineEnd[1] = 0;
     lineEnd[2] = 0;
     pointDensity = 1;
+    fieldType = Default;
+    fieldConstant = 1;
+    velocitySource[0] = 0;
+    velocitySource[1] = 0;
+    velocitySource[2] = 0;
     integrationType = AdamsBashforth;
     coordinateSystem = Cartesian;
     maxStepLength = 0.1;
+    limitMaximumTimestep = false;
+    maxTimeStep = 0.1;
     relTol = 0.0001;
-    absTol = 1e-05;
+    absTolSizeType = FractionOfBBox;
+    absTolAbsolute = 1e-05;
+    absTolBBox = 1e-06;
     analysis = Normal;
     maximumToroidalWinding = 0;
     overrideToroidalWinding = 0;
     overridePoloidalWinding = 0;
     windingPairConfidence = 0.9;
-    rationalTemplateSeedParm = 0.9;
+    rationalSurfaceFactor = 0.1;
     adjustPlane = -1;
     overlaps = Remove;
     meshType = Curves;
@@ -612,17 +697,27 @@ void PoincareAttributes::Copy(const PoincareAttributes &obj)
     lineEnd[2] = obj.lineEnd[2];
 
     pointDensity = obj.pointDensity;
+    fieldType = obj.fieldType;
+    fieldConstant = obj.fieldConstant;
+    velocitySource[0] = obj.velocitySource[0];
+    velocitySource[1] = obj.velocitySource[1];
+    velocitySource[2] = obj.velocitySource[2];
+
     integrationType = obj.integrationType;
     coordinateSystem = obj.coordinateSystem;
     maxStepLength = obj.maxStepLength;
+    limitMaximumTimestep = obj.limitMaximumTimestep;
+    maxTimeStep = obj.maxTimeStep;
     relTol = obj.relTol;
-    absTol = obj.absTol;
+    absTolSizeType = obj.absTolSizeType;
+    absTolAbsolute = obj.absTolAbsolute;
+    absTolBBox = obj.absTolBBox;
     analysis = obj.analysis;
     maximumToroidalWinding = obj.maximumToroidalWinding;
     overrideToroidalWinding = obj.overrideToroidalWinding;
     overridePoloidalWinding = obj.overridePoloidalWinding;
     windingPairConfidence = obj.windingPairConfidence;
-    rationalTemplateSeedParm = obj.rationalTemplateSeedParm;
+    rationalSurfaceFactor = obj.rationalSurfaceFactor;
     adjustPlane = obj.adjustPlane;
     overlaps = obj.overlaps;
     meshType = obj.meshType;
@@ -831,6 +926,11 @@ PoincareAttributes::operator == (const PoincareAttributes &obj) const
     for(int i = 0; i < 3 && lineEnd_equal; ++i)
         lineEnd_equal = (lineEnd[i] == obj.lineEnd[i]);
 
+    // Compare the velocitySource arrays.
+    bool velocitySource_equal = true;
+    for(int i = 0; i < 3 && velocitySource_equal; ++i)
+        velocitySource_equal = (velocitySource[i] == obj.velocitySource[i]);
+
     // Create the return value
     return ((opacityType == obj.opacityType) &&
             (opacity == obj.opacity) &&
@@ -842,17 +942,24 @@ PoincareAttributes::operator == (const PoincareAttributes &obj) const
             lineStart_equal &&
             lineEnd_equal &&
             (pointDensity == obj.pointDensity) &&
+            (fieldType == obj.fieldType) &&
+            (fieldConstant == obj.fieldConstant) &&
+            velocitySource_equal &&
             (integrationType == obj.integrationType) &&
             (coordinateSystem == obj.coordinateSystem) &&
             (maxStepLength == obj.maxStepLength) &&
+            (limitMaximumTimestep == obj.limitMaximumTimestep) &&
+            (maxTimeStep == obj.maxTimeStep) &&
             (relTol == obj.relTol) &&
-            (absTol == obj.absTol) &&
+            (absTolSizeType == obj.absTolSizeType) &&
+            (absTolAbsolute == obj.absTolAbsolute) &&
+            (absTolBBox == obj.absTolBBox) &&
             (analysis == obj.analysis) &&
             (maximumToroidalWinding == obj.maximumToroidalWinding) &&
             (overrideToroidalWinding == obj.overrideToroidalWinding) &&
             (overridePoloidalWinding == obj.overridePoloidalWinding) &&
             (windingPairConfidence == obj.windingPairConfidence) &&
-            (rationalTemplateSeedParm == obj.rationalTemplateSeedParm) &&
+            (rationalSurfaceFactor == obj.rationalSurfaceFactor) &&
             (adjustPlane == obj.adjustPlane) &&
             (overlaps == obj.overlaps) &&
             (meshType == obj.meshType) &&
@@ -1066,17 +1173,24 @@ PoincareAttributes::SelectAll()
     Select(ID_lineStart,                 (void *)lineStart, 3);
     Select(ID_lineEnd,                   (void *)lineEnd, 3);
     Select(ID_pointDensity,              (void *)&pointDensity);
+    Select(ID_fieldType,                 (void *)&fieldType);
+    Select(ID_fieldConstant,             (void *)&fieldConstant);
+    Select(ID_velocitySource,            (void *)velocitySource, 3);
     Select(ID_integrationType,           (void *)&integrationType);
     Select(ID_coordinateSystem,          (void *)&coordinateSystem);
     Select(ID_maxStepLength,             (void *)&maxStepLength);
+    Select(ID_limitMaximumTimestep,      (void *)&limitMaximumTimestep);
+    Select(ID_maxTimeStep,               (void *)&maxTimeStep);
     Select(ID_relTol,                    (void *)&relTol);
-    Select(ID_absTol,                    (void *)&absTol);
+    Select(ID_absTolSizeType,            (void *)&absTolSizeType);
+    Select(ID_absTolAbsolute,            (void *)&absTolAbsolute);
+    Select(ID_absTolBBox,                (void *)&absTolBBox);
     Select(ID_analysis,                  (void *)&analysis);
     Select(ID_maximumToroidalWinding,    (void *)&maximumToroidalWinding);
     Select(ID_overrideToroidalWinding,   (void *)&overrideToroidalWinding);
     Select(ID_overridePoloidalWinding,   (void *)&overridePoloidalWinding);
     Select(ID_windingPairConfidence,     (void *)&windingPairConfidence);
-    Select(ID_rationalTemplateSeedParm,  (void *)&rationalTemplateSeedParm);
+    Select(ID_rationalSurfaceFactor,     (void *)&rationalSurfaceFactor);
     Select(ID_adjustPlane,               (void *)&adjustPlane);
     Select(ID_overlaps,                  (void *)&overlaps);
     Select(ID_meshType,                  (void *)&meshType);
@@ -1204,6 +1318,24 @@ PoincareAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool for
         node->AddNode(new DataNode("pointDensity", pointDensity));
     }
 
+    if(completeSave || !FieldsEqual(ID_fieldType, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("fieldType", FieldType_ToString(fieldType)));
+    }
+
+    if(completeSave || !FieldsEqual(ID_fieldConstant, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("fieldConstant", fieldConstant));
+    }
+
+    if(completeSave || !FieldsEqual(ID_velocitySource, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("velocitySource", velocitySource, 3));
+    }
+
     if(completeSave || !FieldsEqual(ID_integrationType, &defaultObject))
     {
         addToParent = true;
@@ -1222,16 +1354,40 @@ PoincareAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool for
         node->AddNode(new DataNode("maxStepLength", maxStepLength));
     }
 
+    if(completeSave || !FieldsEqual(ID_limitMaximumTimestep, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("limitMaximumTimestep", limitMaximumTimestep));
+    }
+
+    if(completeSave || !FieldsEqual(ID_maxTimeStep, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("maxTimeStep", maxTimeStep));
+    }
+
     if(completeSave || !FieldsEqual(ID_relTol, &defaultObject))
     {
         addToParent = true;
         node->AddNode(new DataNode("relTol", relTol));
     }
 
-    if(completeSave || !FieldsEqual(ID_absTol, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_absTolSizeType, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("absTol", absTol));
+        node->AddNode(new DataNode("absTolSizeType", SizeType_ToString(absTolSizeType)));
+    }
+
+    if(completeSave || !FieldsEqual(ID_absTolAbsolute, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("absTolAbsolute", absTolAbsolute));
+    }
+
+    if(completeSave || !FieldsEqual(ID_absTolBBox, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("absTolBBox", absTolBBox));
     }
 
     if(completeSave || !FieldsEqual(ID_analysis, &defaultObject))
@@ -1264,10 +1420,10 @@ PoincareAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool for
         node->AddNode(new DataNode("windingPairConfidence", windingPairConfidence));
     }
 
-    if(completeSave || !FieldsEqual(ID_rationalTemplateSeedParm, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_rationalSurfaceFactor, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("rationalTemplateSeedParm", rationalTemplateSeedParm));
+        node->AddNode(new DataNode("rationalSurfaceFactor", rationalSurfaceFactor));
     }
 
     if(completeSave || !FieldsEqual(ID_adjustPlane, &defaultObject))
@@ -1580,13 +1736,33 @@ PoincareAttributes::SetFromNode(DataNode *parentNode)
         SetLineEnd(node->AsDoubleArray());
     if((node = searchNode->GetNode("pointDensity")) != 0)
         SetPointDensity(node->AsInt());
-    if((node = searchNode->GetNode("integrationType")) != 0)
+    if((node = searchNode->GetNode("fieldType")) != 0)
     {
         // Allow enums to be int or string in the config file
         if(node->GetNodeType() == INT_NODE)
         {
             int ival = node->AsInt();
             if(ival >= 0 && ival < 5)
+                SetFieldType(FieldType(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            FieldType value;
+            if(FieldType_FromString(node->AsString(), value))
+                SetFieldType(value);
+        }
+    }
+    if((node = searchNode->GetNode("fieldConstant")) != 0)
+        SetFieldConstant(node->AsDouble());
+    if((node = searchNode->GetNode("velocitySource")) != 0)
+        SetVelocitySource(node->AsDoubleArray());
+    if((node = searchNode->GetNode("integrationType")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 6)
                 SetIntegrationType(IntegrationType(ival));
         }
         else if(node->GetNodeType() == STRING_NODE)
@@ -1614,10 +1790,32 @@ PoincareAttributes::SetFromNode(DataNode *parentNode)
     }
     if((node = searchNode->GetNode("maxStepLength")) != 0)
         SetMaxStepLength(node->AsDouble());
+    if((node = searchNode->GetNode("limitMaximumTimestep")) != 0)
+        SetLimitMaximumTimestep(node->AsBool());
+    if((node = searchNode->GetNode("maxTimeStep")) != 0)
+        SetMaxTimeStep(node->AsDouble());
     if((node = searchNode->GetNode("relTol")) != 0)
         SetRelTol(node->AsDouble());
-    if((node = searchNode->GetNode("absTol")) != 0)
-        SetAbsTol(node->AsDouble());
+    if((node = searchNode->GetNode("absTolSizeType")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 2)
+                SetAbsTolSizeType(SizeType(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            SizeType value;
+            if(SizeType_FromString(node->AsString(), value))
+                SetAbsTolSizeType(value);
+        }
+    }
+    if((node = searchNode->GetNode("absTolAbsolute")) != 0)
+        SetAbsTolAbsolute(node->AsDouble());
+    if((node = searchNode->GetNode("absTolBBox")) != 0)
+        SetAbsTolBBox(node->AsDouble());
     if((node = searchNode->GetNode("analysis")) != 0)
     {
         // Allow enums to be int or string in the config file
@@ -1642,8 +1840,8 @@ PoincareAttributes::SetFromNode(DataNode *parentNode)
         SetOverridePoloidalWinding(node->AsInt());
     if((node = searchNode->GetNode("windingPairConfidence")) != 0)
         SetWindingPairConfidence(node->AsDouble());
-    if((node = searchNode->GetNode("rationalTemplateSeedParm")) != 0)
-        SetRationalTemplateSeedParm(node->AsDouble());
+    if((node = searchNode->GetNode("rationalSurfaceFactor")) != 0)
+        SetRationalSurfaceFactor(node->AsDouble());
     if((node = searchNode->GetNode("adjustPlane")) != 0)
         SetAdjustPlane(node->AsInt());
     if((node = searchNode->GetNode("overlaps")) != 0)
@@ -1881,6 +2079,29 @@ PoincareAttributes::SetPointDensity(int pointDensity_)
 }
 
 void
+PoincareAttributes::SetFieldType(PoincareAttributes::FieldType fieldType_)
+{
+    fieldType = fieldType_;
+    Select(ID_fieldType, (void *)&fieldType);
+}
+
+void
+PoincareAttributes::SetFieldConstant(double fieldConstant_)
+{
+    fieldConstant = fieldConstant_;
+    Select(ID_fieldConstant, (void *)&fieldConstant);
+}
+
+void
+PoincareAttributes::SetVelocitySource(const double *velocitySource_)
+{
+    velocitySource[0] = velocitySource_[0];
+    velocitySource[1] = velocitySource_[1];
+    velocitySource[2] = velocitySource_[2];
+    Select(ID_velocitySource, (void *)velocitySource, 3);
+}
+
+void
 PoincareAttributes::SetIntegrationType(PoincareAttributes::IntegrationType integrationType_)
 {
     integrationType = integrationType_;
@@ -1902,6 +2123,20 @@ PoincareAttributes::SetMaxStepLength(double maxStepLength_)
 }
 
 void
+PoincareAttributes::SetLimitMaximumTimestep(bool limitMaximumTimestep_)
+{
+    limitMaximumTimestep = limitMaximumTimestep_;
+    Select(ID_limitMaximumTimestep, (void *)&limitMaximumTimestep);
+}
+
+void
+PoincareAttributes::SetMaxTimeStep(double maxTimeStep_)
+{
+    maxTimeStep = maxTimeStep_;
+    Select(ID_maxTimeStep, (void *)&maxTimeStep);
+}
+
+void
 PoincareAttributes::SetRelTol(double relTol_)
 {
     relTol = relTol_;
@@ -1909,10 +2144,24 @@ PoincareAttributes::SetRelTol(double relTol_)
 }
 
 void
-PoincareAttributes::SetAbsTol(double absTol_)
+PoincareAttributes::SetAbsTolSizeType(PoincareAttributes::SizeType absTolSizeType_)
 {
-    absTol = absTol_;
-    Select(ID_absTol, (void *)&absTol);
+    absTolSizeType = absTolSizeType_;
+    Select(ID_absTolSizeType, (void *)&absTolSizeType);
+}
+
+void
+PoincareAttributes::SetAbsTolAbsolute(double absTolAbsolute_)
+{
+    absTolAbsolute = absTolAbsolute_;
+    Select(ID_absTolAbsolute, (void *)&absTolAbsolute);
+}
+
+void
+PoincareAttributes::SetAbsTolBBox(double absTolBBox_)
+{
+    absTolBBox = absTolBBox_;
+    Select(ID_absTolBBox, (void *)&absTolBBox);
 }
 
 void
@@ -1951,10 +2200,10 @@ PoincareAttributes::SetWindingPairConfidence(double windingPairConfidence_)
 }
 
 void
-PoincareAttributes::SetRationalTemplateSeedParm(double rationalTemplateSeedParm_)
+PoincareAttributes::SetRationalSurfaceFactor(double rationalSurfaceFactor_)
 {
-    rationalTemplateSeedParm = rationalTemplateSeedParm_;
-    Select(ID_rationalTemplateSeedParm, (void *)&rationalTemplateSeedParm);
+    rationalSurfaceFactor = rationalSurfaceFactor_;
+    Select(ID_rationalSurfaceFactor, (void *)&rationalSurfaceFactor);
 }
 
 void
@@ -2284,6 +2533,30 @@ PoincareAttributes::GetPointDensity() const
     return pointDensity;
 }
 
+PoincareAttributes::FieldType
+PoincareAttributes::GetFieldType() const
+{
+    return FieldType(fieldType);
+}
+
+double
+PoincareAttributes::GetFieldConstant() const
+{
+    return fieldConstant;
+}
+
+const double *
+PoincareAttributes::GetVelocitySource() const
+{
+    return velocitySource;
+}
+
+double *
+PoincareAttributes::GetVelocitySource()
+{
+    return velocitySource;
+}
+
 PoincareAttributes::IntegrationType
 PoincareAttributes::GetIntegrationType() const
 {
@@ -2302,16 +2575,40 @@ PoincareAttributes::GetMaxStepLength() const
     return maxStepLength;
 }
 
+bool
+PoincareAttributes::GetLimitMaximumTimestep() const
+{
+    return limitMaximumTimestep;
+}
+
+double
+PoincareAttributes::GetMaxTimeStep() const
+{
+    return maxTimeStep;
+}
+
 double
 PoincareAttributes::GetRelTol() const
 {
     return relTol;
 }
 
-double
-PoincareAttributes::GetAbsTol() const
+PoincareAttributes::SizeType
+PoincareAttributes::GetAbsTolSizeType() const
 {
-    return absTol;
+    return SizeType(absTolSizeType);
+}
+
+double
+PoincareAttributes::GetAbsTolAbsolute() const
+{
+    return absTolAbsolute;
+}
+
+double
+PoincareAttributes::GetAbsTolBBox() const
+{
+    return absTolBBox;
 }
 
 PoincareAttributes::AnalysisType
@@ -2345,9 +2642,9 @@ PoincareAttributes::GetWindingPairConfidence() const
 }
 
 double
-PoincareAttributes::GetRationalTemplateSeedParm() const
+PoincareAttributes::GetRationalSurfaceFactor() const
 {
-    return rationalTemplateSeedParm;
+    return rationalSurfaceFactor;
 }
 
 int
@@ -2595,6 +2892,12 @@ PoincareAttributes::SelectLineEnd()
 }
 
 void
+PoincareAttributes::SelectVelocitySource()
+{
+    Select(ID_velocitySource, (void *)velocitySource, 3);
+}
+
+void
 PoincareAttributes::SelectSingleColor()
 {
     Select(ID_singleColor, (void *)&singleColor);
@@ -2640,17 +2943,24 @@ PoincareAttributes::GetFieldName(int index) const
     case ID_lineStart:                 return "lineStart";
     case ID_lineEnd:                   return "lineEnd";
     case ID_pointDensity:              return "pointDensity";
+    case ID_fieldType:                 return "fieldType";
+    case ID_fieldConstant:             return "fieldConstant";
+    case ID_velocitySource:            return "velocitySource";
     case ID_integrationType:           return "integrationType";
     case ID_coordinateSystem:          return "coordinateSystem";
     case ID_maxStepLength:             return "maxStepLength";
+    case ID_limitMaximumTimestep:      return "limitMaximumTimestep";
+    case ID_maxTimeStep:               return "maxTimeStep";
     case ID_relTol:                    return "relTol";
-    case ID_absTol:                    return "absTol";
+    case ID_absTolSizeType:            return "absTolSizeType";
+    case ID_absTolAbsolute:            return "absTolAbsolute";
+    case ID_absTolBBox:                return "absTolBBox";
     case ID_analysis:                  return "analysis";
     case ID_maximumToroidalWinding:    return "maximumToroidalWinding";
     case ID_overrideToroidalWinding:   return "overrideToroidalWinding";
     case ID_overridePoloidalWinding:   return "overridePoloidalWinding";
     case ID_windingPairConfidence:     return "windingPairConfidence";
-    case ID_rationalTemplateSeedParm:  return "rationalTemplateSeedParm";
+    case ID_rationalSurfaceFactor:     return "rationalSurfaceFactor";
     case ID_adjustPlane:               return "adjustPlane";
     case ID_overlaps:                  return "overlaps";
     case ID_meshType:                  return "meshType";
@@ -2720,17 +3030,24 @@ PoincareAttributes::GetFieldType(int index) const
     case ID_lineStart:                 return FieldType_doubleArray;
     case ID_lineEnd:                   return FieldType_doubleArray;
     case ID_pointDensity:              return FieldType_int;
+    case ID_fieldType:                 return FieldType_enum;
+    case ID_fieldConstant:             return FieldType_double;
+    case ID_velocitySource:            return FieldType_doubleArray;
     case ID_integrationType:           return FieldType_enum;
     case ID_coordinateSystem:          return FieldType_enum;
     case ID_maxStepLength:             return FieldType_double;
+    case ID_limitMaximumTimestep:      return FieldType_bool;
+    case ID_maxTimeStep:               return FieldType_double;
     case ID_relTol:                    return FieldType_double;
-    case ID_absTol:                    return FieldType_double;
+    case ID_absTolSizeType:            return FieldType_enum;
+    case ID_absTolAbsolute:            return FieldType_double;
+    case ID_absTolBBox:                return FieldType_double;
     case ID_analysis:                  return FieldType_enum;
     case ID_maximumToroidalWinding:    return FieldType_int;
     case ID_overrideToroidalWinding:   return FieldType_int;
     case ID_overridePoloidalWinding:   return FieldType_int;
     case ID_windingPairConfidence:     return FieldType_double;
-    case ID_rationalTemplateSeedParm:  return FieldType_double;
+    case ID_rationalSurfaceFactor:     return FieldType_double;
     case ID_adjustPlane:               return FieldType_int;
     case ID_overlaps:                  return FieldType_enum;
     case ID_meshType:                  return FieldType_enum;
@@ -2800,17 +3117,24 @@ PoincareAttributes::GetFieldTypeName(int index) const
     case ID_lineStart:                 return "doubleArray";
     case ID_lineEnd:                   return "doubleArray";
     case ID_pointDensity:              return "int";
+    case ID_fieldType:                 return "enum";
+    case ID_fieldConstant:             return "double";
+    case ID_velocitySource:            return "doubleArray";
     case ID_integrationType:           return "enum";
     case ID_coordinateSystem:          return "enum";
     case ID_maxStepLength:             return "double";
+    case ID_limitMaximumTimestep:      return "bool";
+    case ID_maxTimeStep:               return "double";
     case ID_relTol:                    return "double";
-    case ID_absTol:                    return "double";
+    case ID_absTolSizeType:            return "enum";
+    case ID_absTolAbsolute:            return "double";
+    case ID_absTolBBox:                return "double";
     case ID_analysis:                  return "enum";
     case ID_maximumToroidalWinding:    return "int";
     case ID_overrideToroidalWinding:   return "int";
     case ID_overridePoloidalWinding:   return "int";
     case ID_windingPairConfidence:     return "double";
-    case ID_rationalTemplateSeedParm:  return "double";
+    case ID_rationalSurfaceFactor:     return "double";
     case ID_adjustPlane:               return "int";
     case ID_overlaps:                  return "enum";
     case ID_meshType:                  return "enum";
@@ -2937,6 +3261,26 @@ PoincareAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (pointDensity == obj.pointDensity);
         }
         break;
+    case ID_fieldType:
+        {  // new scope
+        retval = (fieldType == obj.fieldType);
+        }
+        break;
+    case ID_fieldConstant:
+        {  // new scope
+        retval = (fieldConstant == obj.fieldConstant);
+        }
+        break;
+    case ID_velocitySource:
+        {  // new scope
+        // Compare the velocitySource arrays.
+        bool velocitySource_equal = true;
+        for(int i = 0; i < 3 && velocitySource_equal; ++i)
+            velocitySource_equal = (velocitySource[i] == obj.velocitySource[i]);
+
+        retval = velocitySource_equal;
+        }
+        break;
     case ID_integrationType:
         {  // new scope
         retval = (integrationType == obj.integrationType);
@@ -2952,14 +3296,34 @@ PoincareAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (maxStepLength == obj.maxStepLength);
         }
         break;
+    case ID_limitMaximumTimestep:
+        {  // new scope
+        retval = (limitMaximumTimestep == obj.limitMaximumTimestep);
+        }
+        break;
+    case ID_maxTimeStep:
+        {  // new scope
+        retval = (maxTimeStep == obj.maxTimeStep);
+        }
+        break;
     case ID_relTol:
         {  // new scope
         retval = (relTol == obj.relTol);
         }
         break;
-    case ID_absTol:
+    case ID_absTolSizeType:
         {  // new scope
-        retval = (absTol == obj.absTol);
+        retval = (absTolSizeType == obj.absTolSizeType);
+        }
+        break;
+    case ID_absTolAbsolute:
+        {  // new scope
+        retval = (absTolAbsolute == obj.absTolAbsolute);
+        }
+        break;
+    case ID_absTolBBox:
+        {  // new scope
+        retval = (absTolBBox == obj.absTolBBox);
         }
         break;
     case ID_analysis:
@@ -2987,9 +3351,9 @@ PoincareAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (windingPairConfidence == obj.windingPairConfidence);
         }
         break;
-    case ID_rationalTemplateSeedParm:
+    case ID_rationalSurfaceFactor:
         {  // new scope
-        retval = (rationalTemplateSeedParm == obj.rationalTemplateSeedParm);
+        retval = (rationalSurfaceFactor == obj.rationalSurfaceFactor);
         }
         break;
     case ID_adjustPlane:
@@ -3235,6 +3599,9 @@ PoincareAttributes::StreamlineAttsRequireRecalculation(const PoincareAttributes 
     return (sourceType != obj.sourceType ||
             sourcePointsDiffer ||
             sourceLineDiffers ||
+
+            POINT_DIFFERS(velocitySource, obj.velocitySource) ||
+
             densityMatters ||
 
             minPunctures != obj.minPunctures ||
@@ -3242,10 +3609,16 @@ PoincareAttributes::StreamlineAttsRequireRecalculation(const PoincareAttributes 
 
             puncturePlane != obj.puncturePlane ||
 
+            fieldType != obj.fieldType ||
+            fieldConstant != obj.fieldConstant ||
             integrationType != obj.integrationType ||
             maxStepLength != obj.maxStepLength ||
+            limitMaximumTimestep != obj.limitMaximumTimestep ||
+            maxTimeStep != obj.maxTimeStep ||
             relTol != obj.relTol ||
-            absTol != obj.absTol);
+            absTolSizeType != obj.absTolSizeType ||
+            absTolAbsolute != obj.absTolAbsolute ||
+            absTolBBox != obj.absTolBBox);
 }
 
 // ****************************************************************************
@@ -3272,7 +3645,7 @@ PoincareAttributes::PoincareAttsRequireRecalculation(const PoincareAttributes &o
            overrideToroidalWinding != obj.overrideToroidalWinding ||
            overridePoloidalWinding != obj.overridePoloidalWinding ||
            windingPairConfidence != obj.windingPairConfidence ||
-           rationalTemplateSeedParm != obj.rationalTemplateSeedParm ||
+           rationalSurfaceFactor != obj.rationalSurfaceFactor ||
 
            showOPoints != obj.showOPoints ||
            OPointMaxIterations != obj.OPointMaxIterations ||

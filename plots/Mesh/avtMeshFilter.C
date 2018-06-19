@@ -56,6 +56,7 @@
 #include <ImproperUseException.h>
 #include <DebugStream.h>
 
+#include <string>
 
 // ****************************************************************************
 //  Method: avtMeshFilter constructor
@@ -197,7 +198,7 @@ avtMeshFilter::~avtMeshFilter()
 // ****************************************************************************
 
 avtDataTree_p
-avtMeshFilter::ExecuteDataTree(vtkDataSet *inDS, int dom, string lab)
+avtMeshFilter::ExecuteDataTree(vtkDataSet *inDS, int dom, std::string lab)
 {
     avtDataAttributes &datts = GetInput()->GetInfo().GetAttributes();
     int topoDim = datts.GetTopologicalDimension();
@@ -214,6 +215,7 @@ avtMeshFilter::ExecuteDataTree(vtkDataSet *inDS, int dom, string lab)
 
     vtkPolyData *opaquePolys = NULL;
     vtkPolyData *outDS = NULL;
+    vtkRectilinearLinesNoDataFilter *rlines = NULL;
 
     vtkDataSet *revisedInput = NULL; 
     vtkDataSet *revisedInput2 = NULL; 
@@ -307,8 +309,7 @@ avtMeshFilter::ExecuteDataTree(vtkDataSet *inDS, int dom, string lab)
         // into this state essentially imply that we have unstructured
         // or polygonal data, so we should be safe ignoring it.
         //
-        vtkRectilinearLinesNoDataFilter *rlines =
-            vtkRectilinearLinesNoDataFilter::New();
+        rlines = vtkRectilinearLinesNoDataFilter::New();
         rlines->SetInput((vtkRectilinearGrid*)revisedInput3);
         rlines->Update();
         outDS = rlines->GetOutput();
@@ -390,6 +391,8 @@ avtMeshFilter::ExecuteDataTree(vtkDataSet *inDS, int dom, string lab)
     ghostFilter->Delete();
     rectFacesFilter->Delete();
 
+    if(rlines)
+        rlines->Delete();
     return rv;
 }
 
@@ -480,7 +483,7 @@ avtMeshFilter::ModifyContract(avtContract_p spec)
     }
     else
     {
-        string pointVar = atts.GetPointSizeVar();
+        std::string pointVar = atts.GetPointSizeVar();
         avtDataRequest_p dataRequest = spec->GetDataRequest();
 
         //

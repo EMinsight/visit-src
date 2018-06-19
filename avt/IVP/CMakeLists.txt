@@ -52,10 +52,13 @@ avtCellLocatorRect.C
 avtIntegralCurve.C
 avtIVPAdamsBashforth.C
 avtIVPDopri5.C
+avtIVPEuler.C
+avtIVPLeapfrog.C
 avtIVPSolver.C
 avtIVPM3DC1Field.C
 avtIVPM3DC1Integrator.C
 avtIVPNIMRODField.C
+avtIVPFlashField.C
 avtIVPVTKField.C
 avtIVPVTKTimeVaryingField.C
 avtPoincareIC.C

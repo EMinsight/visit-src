@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-400142
 # All rights reserved.
@@ -39,6 +39,12 @@
 #   Hank Childs, Sat Aug 21 14:35:47 PDT 2010
 #   Rename DDF to DataBinning.
 #
+#   Kathleen Biagas, Fri Jul 15 11:34:11 PDT 2011
+#   Added QueryParametersRPC.
+#
+#   Brad Whitlock, Mon Oct 10 11:14:46 PDT 2011
+#   Added EnginePropertiesRPC.
+#
 #****************************************************************************/
 
 SET(ENGINERPC_SOURCES
@@ -47,6 +53,7 @@ ClearCacheRPC.C
 CloneNetworkRPC.C
 ConstructDataBinningRPC.C
 DefineVirtualDatabaseRPC.C
+EnginePropertiesRPC.C 
 ExecuteRPC.C
 ExportDatabaseRPC.C
 MakePlotRPC.C
@@ -55,6 +62,7 @@ OpenDatabaseRPC.C
 PickRPC.C
 ProcInfoRPC.C
 QueryRPC.C
+QueryParametersRPC.C
 ReadRPC.C
 ReleaseDataRPC.C
 RenderRPC.C

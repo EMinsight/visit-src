@@ -59,6 +59,9 @@
 //    Tom Fogal, Wed May  4 14:59:45 MDT 2011
 //    'Initialize' changed signature.
 //
+//    Brad Whitlock, Mon Oct 10 11:40:10 PDT 2011
+//    Added GetDisplayType.
+//
 // ****************************************************************************
 
 class ENGINE_MAIN_API MesaDisplay : public VisItDisplay
@@ -71,5 +74,7 @@ class ENGINE_MAIN_API MesaDisplay : public VisItDisplay
                               const std::vector<std::string> &args);
     virtual bool   Connect();
     virtual void   Teardown();
+
+    virtual DisplayType GetDisplayType() const;
 };
 #endif /* VISIT_MESA_DISPLAY_H */

@@ -56,6 +56,9 @@
 #   Added custom 'init' target for pareser re-gen. It was lost in transition
 #   from autoconf to CMake.
 #
+#   Kathleen Biagas, Tue Aug 23 10:16:30 PDT 2011
+#   Added QueryArgumentException.
+#
 #****************************************************************************/
 
 SET(COMM_SOURCES
@@ -114,6 +117,7 @@ Exceptions/Pipeline/NoCurveException.C
 Exceptions/Pipeline/NoDefaultVariableException.C
 Exceptions/Pipeline/NoInputException.C
 Exceptions/Pipeline/NonQueryableInputException.C
+Exceptions/Pipeline/QueryArgumentException.C
 Exceptions/Pipeline/StubReferencedException.C
 Exceptions/Pipeline/UnexpectedValueException.C
 Exceptions/Plotter/InvalidColortableException.C
@@ -213,6 +217,7 @@ state/DataNode.C
 state/DBOptionsAttributes.C
 state/DBPluginInfoAttributes.C
 state/EngineList.C
+state/EngineProperties.C
 state/ExportDBAttributes.C
 state/Expression.C
 state/ExpressionList.C

@@ -174,6 +174,9 @@ extern "C" VISITCLI_API int Py_Main(int, char **);
 //    Hank Childs, Fri Oct 29 12:32:26 PDT 2010
 //    Change while (1) to select based on guidance from Sean Ahern.
 //
+//    Cyrus Harrison, Thu Sep 29 15:04:16 PDT 2011
+//    Add PySide Support.
+//
 // ****************************************************************************
 
 int
@@ -183,6 +186,8 @@ main(int argc, char *argv[])
     int  debugLevel = 0;
     bool bufferDebug = false;
     bool verbose = false, s_found = false;
+    bool pyside_gui = false;
+    bool pyside = false;
     char *runFile = 0, *loadFile = 0, tmpArg[512];
     char **argv2 = new char *[argc];
     char **argv_after_s = new char *[argc];
@@ -313,6 +318,14 @@ main(int argc, char *argv[])
             // Skip the rate that comes along with -fps.
             ++i;
         }
+        else if(strcmp(argv[i], "-pyside") == 0)
+        {
+            pyside = true;
+        }
+        else if(strcmp(argv[i], "-pysideviewer") == 0)
+        {
+            pyside_gui = true;
+        }
         else
         {
             // Pass the array along to the visitmodule.
@@ -328,6 +341,21 @@ main(int argc, char *argv[])
         }
     }
 
+    //for some reason if the viewer requests the pysideviewer
+    //for now this does not make sense
+    for(int i = 0; i < argc; ++i)
+    {
+        std::string tmp = argv[i];
+        if(pyside_gui && tmp == "-reverse_launch")
+        {
+            std::cerr << "Warning: Cannot enable pysideviewer from remote process,"
+                    << " disabling and reverting functionality to pyside"
+                    << std::endl;
+            pyside_gui = false;
+            pyside = true;
+        }
+    }
+
     TRY
     {
         // Initialize python
@@ -335,6 +363,66 @@ main(int argc, char *argv[])
         PyEval_InitThreads();
         Py_SetProgramName(argv[0]);
         PySys_SetArgv(argc, argv);
+
+        if(pyside || pyside_gui)
+        {
+            PyRun_SimpleString((char*)"import sys");
+            PyRun_SimpleString((char*)"import os");
+            PyRun_SimpleString((char*)"from threading import Event, Thread");
+            PyRun_SimpleString((char*)"from PySide.QtCore import *");
+            PyRun_SimpleString((char*)"from PySide.QtGui import *");
+            PyRun_SimpleString((char*)"from PySide.QtOpenGL import *");
+            PyRun_SimpleString((char*)"from PySide.QtUiTools import *");
+
+            // add lib to sys.path to pickup pyside dylibs. 
+            std::string varchdir = GetVisItArchitectureDirectory();
+            std::string vlibdir  = varchdir + VISIT_SLASH_CHAR + "lib";
+            std::ostringstream oss;
+
+
+            PyRun_SimpleString((char*)"__qtapp = QApplication(sys.argv)");
+
+            // this is a function that polls for keyboard input,
+            // when it sees one it quits the
+            std::string pycmd  = "";
+                        pycmd += "class ProcessCLIInput(Thread):\n";
+                        pycmd += "    def __init__(self, interval):\n";
+                        pycmd += "        Thread.__init__(self)\n";
+                        pycmd += "        self.interval = interval\n";
+                        pycmd += "        self.event = Event()\n";
+                        pycmd += "        self.qtapp = globals()[\"__qtapp\"]\n";
+                        pycmd += "    def run(self):\n";
+                        pycmd += "        while not self.event.is_set():\n";
+                        pycmd += "            self.event.wait(self.interval)\n";
+                        pycmd += "            if not self.event.is_set():\n";
+                        pycmd += "                if os.name == 'posix' or os.name == 'mac' :\n";
+                        pycmd += "                    import select\n";
+                        pycmd += "                    i,o,e = select.select([sys.stdin],[],[],0.0001)\n";
+                        pycmd += "                    for s in i:\n";
+                        pycmd += "                        if s == sys.stdin:\n";
+                        pycmd += "                            self.qtapp.exit(0)\n";
+                        pycmd += "                else:\n";
+                        pycmd += "                    import msvcrt\n";
+                        pycmd += "                    if msvcrt.kbhit():\n";
+                        pycmd += "                        self.qtapp.exit(0)\n";
+                        pycmd += "__cli_timer = ProcessCLIInput(0.001)\n";
+                        pycmd += "__cli_timer.start()\n";
+
+            PyRun_SimpleString(pycmd.c_str());
+
+            oss << "sys.path.append(\"" << vlibdir  <<"\")";
+            PyRun_SimpleString(oss.str().c_str());
+            PyRun_SimpleString((char*)"import pyside_visithook");
+            PyRun_SimpleString((char*)"pyside_visithook.SetHook()");
+        }
+
+        if(pyside_gui)
+        {
+            //pysideviewer needs to be executed before visit import
+            //so that visit will use the window..
+            PyRun_SimpleString((char*)"import pyside_pysideviewer");
+            PyRun_SimpleString((char*)"__pysideviewer = pyside_pysideviewer.PySideViewer(sys.argv)");
+        }
 
         // Initialize the VisIt module.
         cli_initvisit(bufferDebug ? -debugLevel : debugLevel, verbose, argc2, argv2,
@@ -349,6 +437,27 @@ main(int argc, char *argv[])
         // Run some Python commands that import VisIt and launch the viewer.
         PyRun_SimpleString((char*)"from visit import *");
         PyRun_SimpleString((char*)"Launch()");
+
+
+        char buffer[1024];
+
+        //isPySideEnabled..
+        sprintf(buffer,"def IsPySideEnabled():\n  return %s\n",
+                pyside ? "True" : "False");
+        PyRun_SimpleString((const char*)buffer);
+
+        sprintf(buffer,"def IsPySideViewerEnabled():\n  return %s\n",
+                pyside_gui ? "True" : "False");
+        PyRun_SimpleString((const char*)buffer);
+
+        sprintf(buffer,"def GetRenderWindow(i):\n  return %s\n",
+                pyside_gui ? "__pysideviewer.GetRenderWindow(i)":"None");
+        PyRun_SimpleString((const char*)buffer);
+
+
+        sprintf(buffer,"def GetRenderWindowIDs():\n  return %s\n",
+                pyside_gui ? "__pysideviewer.GetRenderWindowIDs()":"None");
+        PyRun_SimpleString((const char*)buffer);
 
         // If a visitrc file exists, execute it.
         std::string visitSystemRc(GetSystemVisItRCFile());

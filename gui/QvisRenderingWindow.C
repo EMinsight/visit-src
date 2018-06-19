@@ -154,7 +154,9 @@ QvisRenderingWindow::~QvisRenderingWindow()
 // Creation:   Thu Jun 19 12:10:45 PDT 2008
 //
 // Modifications:
-//   
+//   Eric Brugger, Tue Oct 25 12:32:40 PDT 2011
+//   Add a multi resolution display capability for AMR data.
+//
 // ****************************************************************************
 
 QWidget *
@@ -171,6 +173,23 @@ QvisRenderingWindow::CreateBasicPage()
     connect(antialiasingToggle, SIGNAL(toggled(bool)),
             this, SLOT(antialiasingToggled(bool)));
     basicLayout->addWidget(antialiasingToggle, row, 0, 1, 3);
+    row++;
+
+    // Create the multi resolution widgets.
+    multiresolutionModeToggle = new QCheckBox(tr("Multi resolution for 2d AMR data"), basicOptions);
+    connect(multiresolutionModeToggle, SIGNAL(toggled(bool)),
+            this, SLOT(multiresolutionModeToggled(bool)));
+    basicLayout->addWidget(multiresolutionModeToggle, row, 0, 1, 3);
+    row++;
+
+    multiresolutionSmallestCellLabel = new QLabel(tr("Smallest cell"), basicOptions);
+    basicLayout->addWidget(multiresolutionSmallestCellLabel, row, 1);
+    multiresolutionSmallestCellLineEdit = new QLineEdit(basicOptions);
+    connect(multiresolutionSmallestCellLineEdit, SIGNAL(returnPressed()),
+            this, SLOT(processMultiresolutionSmallestCellText()));
+    connect(multiresolutionSmallestCellLineEdit, SIGNAL(textChanged(const QString &)),
+            this, SLOT(processMultiresolutionSmallestCellText(const QString &)));
+    basicLayout->addWidget(multiresolutionSmallestCellLineEdit, row, 2, 1, 2);
     row++;
 
     // Create the surface rep widgets.
@@ -549,7 +568,6 @@ QvisRenderingWindow::CreateWindowContents()
     //
     topTab->addTab(CreateBasicPage(), tr("Basic"));
 
-
     //
     // Create the advanced renderer options group.
     //
@@ -645,6 +663,9 @@ QvisRenderingWindow::UpdateWindow(bool doAll)
 //   Jeremy Meredith, Fri Apr 30 15:04:34 EDT 2010
 //   Added an automatic start/end setting capability for depth cueing.
 //
+//   Eric Brugger, Tue Oct 25 12:32:40 PDT 2011
+//   Add a multi resolution display capability for AMR data.
+//
 // ****************************************************************************
 
 void
@@ -670,6 +691,17 @@ QvisRenderingWindow::UpdateOptions(bool doAll)
             antialiasingToggle->blockSignals(true);
             antialiasingToggle->setChecked(renderAtts->GetAntialiasing());
             antialiasingToggle->blockSignals(false);
+            break;
+        case RenderingAttributes::ID_multiresolutionMode:
+            multiresolutionModeToggle->blockSignals(true);
+            multiresolutionModeToggle->setChecked(renderAtts->GetMultiresolutionMode());
+            multiresolutionModeToggle->blockSignals(false);
+            break;
+        case RenderingAttributes::ID_multiresolutionCellSize:
+            multiresolutionSmallestCellLineEdit->blockSignals(true);
+            tmp = DoubleToQString(renderAtts->GetMultiresolutionCellSize());
+            multiresolutionSmallestCellLineEdit->setText(tmp);
+            multiresolutionSmallestCellLineEdit->blockSignals(false);
             break;
         case RenderingAttributes::ID_geometryRepresentation:
             itmp = (int)renderAtts->GetGeometryRepresentation();
@@ -855,11 +887,19 @@ QvisRenderingWindow::UpdateOptions(bool doAll)
 //    Dave Pugmire, Tue Aug 24 11:32:12 EDT 2010
 //    Add compact domain options.
 //
+//    Hank Childs, Wed Oct 12 07:26:39 PDT 2011
+//    Don't disable shadowing or depth cueing ... they now manually force
+//    SR to always.
+//
+//    Eric Brugger, Tue Oct 25 12:32:40 PDT 2011
+//    Add a multi resolution display capability for AMR data.
+//
 // ****************************************************************************
 
 void
 QvisRenderingWindow::UpdateWindowSensitivity()
 {
+    bool multiresolutionOn = renderAtts->GetMultiresolutionMode();
     bool scalableAlways =
         renderAtts->GetScalableActivationMode() == RenderingAttributes::Always;
     bool scalableAuto =
@@ -872,18 +912,19 @@ QvisRenderingWindow::UpdateWindowSensitivity()
     bool stereoOn = renderAtts->GetStereoRendering();
     bool specularOn = renderAtts->GetSpecularFlag();
 
+    multiresolutionSmallestCellLabel->setEnabled(multiresolutionOn);
+    multiresolutionSmallestCellLineEdit->setEnabled(multiresolutionOn);
+
     scalrenAutoThreshold->setEnabled(scalableAuto);
     compactDomainsAutoThreshold->setEnabled(compactAuto);
-    shadowToggle->setEnabled(scalableAlways);
-    shadowStrengthSlider->setEnabled(scalableAlways && shadowOn);
-    shadowStrengthLabel->setEnabled(scalableAlways && shadowOn);
+    shadowStrengthSlider->setEnabled(shadowOn);
+    shadowStrengthLabel->setEnabled(shadowOn);
 
-    depthCueingToggle->setEnabled(scalableAlways);
-    depthCueingAutoToggle->setEnabled(scalableAlways && depthCueingOn);
-    depthCueingStartEdit->setEnabled(scalableAlways && depthCueingOn && !depthCueingAuto);
-    depthCueingStartLabel->setEnabled(scalableAlways && depthCueingOn && !depthCueingAuto);
-    depthCueingEndEdit->setEnabled(scalableAlways && depthCueingOn && !depthCueingAuto);
-    depthCueingEndLabel->setEnabled(scalableAlways && depthCueingOn && !depthCueingAuto);
+    depthCueingAutoToggle->setEnabled(depthCueingOn);
+    depthCueingStartEdit->setEnabled(depthCueingOn && !depthCueingAuto);
+    depthCueingStartLabel->setEnabled(depthCueingOn && !depthCueingAuto);
+    depthCueingEndEdit->setEnabled(depthCueingOn && !depthCueingAuto);
+    depthCueingEndLabel->setEnabled(depthCueingOn && !depthCueingAuto);
 
     redblue->setEnabled(stereoOn);
     interlace->setEnabled(stereoOn);
@@ -1185,6 +1226,94 @@ QvisRenderingWindow::antialiasingToggled(bool val)
     renderAtts->SetAntialiasing(val);
     SetUpdate(false);
     Apply();
+}
+
+// ****************************************************************************
+// Method: QvisRenderingWindow::multiresolutionModeToggled
+//
+// Purpose: 
+//   This Qt slot function is called when the multiresolution mode checkbox is
+//   clicked.
+//
+// Arguments:
+//   val : The new multi resolution value.
+//
+// Programmer: Eric Brugger
+// Creation:   Tue Oct 25 12:32:40 PDT 2011
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+QvisRenderingWindow::multiresolutionModeToggled(bool val)
+{
+    renderAtts->SetMultiresolutionMode(val);
+    SetUpdate(false);
+    Apply();
+    UpdateWindowSensitivity();
+}
+
+// ****************************************************************************
+// Method: QvisRenderingWindow::processMultiresolutionSmallestCellText
+//
+// Purpose: 
+//   This Qt slot function is called when the multiresolution smallest
+//   cell text is changed.
+//
+// Arguments:
+//
+// Programmer: Eric Brugger
+// Creation:   Tue Oct 25 12:32:40 PDT 2011
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+QvisRenderingWindow::processMultiresolutionSmallestCellText()
+{
+    double temp = -1.0;
+    bool okay = sscanf(multiresolutionSmallestCellLineEdit->displayText().toStdString().c_str(),
+                       "%lg", &temp) == 1;
+
+    if (okay && temp >= 0.0)
+    {
+        renderAtts->SetMultiresolutionCellSize(temp);
+        SetUpdate(false);
+        Apply();
+    }
+}
+
+// ****************************************************************************
+// Method: QvisRenderingWindow::processMultiresolutionSmallestCellText
+//
+// Purpose: 
+//   This Qt slot function is called when the multiresolution smallest
+//   cell text is changed.
+//
+// Arguments:
+//
+// Programmer: Eric Brugger
+// Creation:   Tue Oct 25 12:32:40 PDT 2011
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+QvisRenderingWindow::processMultiresolutionSmallestCellText(const QString &tols)
+{
+    double temp = -1.0;
+    bool okay = sscanf(multiresolutionSmallestCellLineEdit->displayText().toStdString().c_str(),
+                       "%lg", &temp) == 1;
+
+    if (okay && temp >= 0.0)
+    {
+        renderAtts->SetMultiresolutionCellSize(temp);
+        SetUpdate(false);
+        Apply();
+    }
 }
 
 // ****************************************************************************
@@ -1560,13 +1689,26 @@ QvisRenderingWindow::scalrenCompressModeChanged(int mode)
 //    Jeremy Meredith, Wed Aug 29 15:28:05 EDT 2007
 //    Moved window sensitivity handling to its own function.
 //
+//    Hank Childs, Wed Oct 12 07:26:39 PDT 2011
+//    Add new behavior for switching SR to always when shadows are enabled.
+//
 // ****************************************************************************
 
 void
 QvisRenderingWindow::shadowToggled(bool val)
 {
+    bool doUpdate = false;
+    if (val == true)
+    {
+        if (renderAtts->GetScalableActivationMode() != RenderingAttributes::Always)
+        {
+            Warning(tr("As shadows only work with VisIt's software rendering mode, software rendering is now being enabled.  If you turn off shadows at a later time, you must manually disable software rendering.  You do this by setting \"Use scalable rendering\" to \"Auto\"."));
+            renderAtts->SetScalableActivationMode(RenderingAttributes::Always);
+            doUpdate = true;
+        }
+    }
     renderAtts->SetDoShadowing(val);
-    SetUpdate(false);
+    SetUpdate(doUpdate);
     Apply();
     UpdateWindowSensitivity();
 }
@@ -1701,13 +1843,28 @@ QvisRenderingWindow::colorTexturingToggled(bool val)
 //  Programmer:  Jeremy Meredith
 //  Creation:    August 29, 2007
 //
+//  Modifications:
+//
+//    Hank Childs, Wed Oct 12 07:26:39 PDT 2011
+//    Add new behavior for switching SR to always when shadows are enabled.
+//
 // ****************************************************************************
 void
 QvisRenderingWindow::depthCueingToggled(bool val)
 {
+    bool doUpdate = false;
+    if (val == true)
+    {
+        if (renderAtts->GetScalableActivationMode() != RenderingAttributes::Always)
+        {
+            Warning(tr("As depth cueing only work with VisIt's software rendering mode, software rendering is now being enabled.  If you turn off depth cueing at a later time, you must manually disable software rendering.  You do this by setting \"Use scalable rendering\" to \"Auto\"."));
+            renderAtts->SetScalableActivationMode(RenderingAttributes::Always);
+            doUpdate = true;
+        }
+    }
     renderAtts->SetDoDepthCueing(val);
     UpdateWindowSensitivity();
-    SetUpdate(false);
+    SetUpdate(doUpdate);
     Apply();
 }
 

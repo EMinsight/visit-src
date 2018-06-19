@@ -103,11 +103,12 @@ avtIntegralCurve::avtIntegralCurve( const avtIVPSolver* model,
                                     Direction dir,
                                     const double& t_start,
                                     const avtVector &p_start, 
+                                    const avtVector &v_start, 
                                     long ID )
-    : status(STATUS_OK), direction(dir), domain(-1), sortKey(0), id(ID)
+    : status(STATUS_OK), direction(dir), domain(-1), sortKey(0), id(ID), originatingRank(-1)
 {
     ivp = model->Clone();
-    ivp->Reset( t_start, p_start );
+    ivp->Reset( t_start, p_start, v_start );
     counter = 0;
     encounteredNumericalProblems = false;
     postStepCallbackFunction = NULL;
@@ -158,6 +159,7 @@ avtIntegralCurve::avtIntegralCurve()
     sortKey = 0;
     id = -1;
     counter = 0;
+    originatingRank = -1;
     encounteredNumericalProblems = false;
     postStepCallbackFunction = NULL;
 }
@@ -225,6 +227,13 @@ avtIntegralCurve::~avtIntegralCurve()
 //   Dave Pugmire, Fri Feb 18 14:52:18 EST 2011
 //   Replaced minH with minHFactor for use when integrating upto a domain boundary.
 //
+//   Hank Childs, Thu Aug 25 14:08:48 PDT 2011
+//   If we take a step to that ends up "OUTSIDE_DOMAIN", then make sure
+//   that the amount of step is limited by our maximum time.  (We have 
+//   observed multiple cases where the epsilon step in space is actually
+//   a huge step in time ... so big that it causes the particle to go well
+//   too far in the future.)
+//
 // ****************************************************************************
 
 void avtIntegralCurve::Advance( avtIVPField* field )
@@ -235,7 +244,6 @@ void avtIntegralCurve::Advance( avtIVPField* field )
     {
         if( DebugStream::Level5() )
             debug5 << "avtIntegralCurve::Advance(): initial point is outside domain\n";
-
         return;
     }
 
@@ -330,7 +338,6 @@ void avtIntegralCurve::Advance( avtIVPField* field )
                 // Do a very small Euler step to move the integrator's current 
                 // position just outside the domain so that it is inside the 
                 // next domain.
-                double    t = ivp->GetCurrentT();
                 avtVector y = ivp->GetCurrentY();
                 avtVector v;
                 try
@@ -353,18 +360,28 @@ void avtIntegralCurve::Advance( avtIVPField* field )
                 double ext[6];
                 field->GetExtents( ext );
 
+                avtVector dir = v / v.length();
                 const double eps = 1e-6;
 
-                double nv = v.length();
-
-                ext[0] = std::abs( v.x ? eps * (ext[1] - ext[0]) / v.x : 0.0 );
-                ext[1] = std::abs( v.y ? eps * (ext[3] - ext[2]) / v.y : 0.0 );
-                ext[2] = std::abs( v.z ? eps * (ext[5] - ext[4]) / v.z : 0.0 );
+                ext[0] = std::abs( dir.x * eps * (ext[1] - ext[0]) );
+                ext[1] = std::abs( dir.y * eps * (ext[3] - ext[2]) );
+                ext[2] = std::abs( dir.z * eps * (ext[5] - ext[4]) );
 
                 double hmin = std::max( ext[0], std::max( ext[1], ext[2] ) );
 
                 if( std::abs(h) < hmin )
                     h = h < 0 ? -hmin : hmin;
+
+                if (h > 0)
+                {
+                    if (t + h > tfinal)
+                        h = tfinal-t;
+                }
+                else
+                {
+                    if (t + h < tfinal)
+                        h = tfinal-t;
+                }
 
                 t += h;
                 y += h*v;
@@ -524,6 +541,7 @@ avtIntegralCurve::Serialize(MemStream::Mode mode, MemStream &buff,
     buff.io(mode, status);
     buff.io(mode, counter);
     buff.io(mode, encounteredNumericalProblems);
+    buff.io(mode, originatingRank);
     
     if ( mode == MemStream::WRITE )
     {
@@ -552,11 +570,20 @@ avtIntegralCurve::Serialize(MemStream::Mode mode, MemStream &buff,
                << buff.len() << endl;
 }
 
+
+// ****************************************************************************
+// Method:  avtIntegralCurve::DomainCompare
+//
+//
+// Programmer:  Dave Pugmire
+// Creation:    August 30, 2011
+//
+// ****************************************************************************
+
 bool
 avtIntegralCurve::DomainCompare(const avtIntegralCurve *icA,
                                 const avtIntegralCurve *icB)
 {
     return icA->domain < icB->domain;
 }
-
 

@@ -45,6 +45,7 @@
 #include <query_exports.h>
 #include <avtDatasetQuery.h>
 #include <avtShapeletDecompResult.h>
+
 #include <string>
 
 class vtkDataSet;
@@ -61,6 +62,13 @@ class vtkRectilinearGrid;
 //  Programmer: Cyrus Harrison
 //  Creation:   December 14, 2007 
 //
+//  Modifications:
+//    Kathleen Biagas, Mon Jun 20 09:00:09 PDT 2011
+//    Added SetInputParams.
+//
+//    Kathleen Biagas, Fri Jul 15 16:30:09 PDT 2011
+//    Added GetDefaultInputParams.
+//
 // ****************************************************************************
 
 class QUERY_API avtShapeletDecompositionQuery: public avtDatasetQuery
@@ -73,6 +81,9 @@ class QUERY_API avtShapeletDecompositionQuery: public avtDatasetQuery
                                    { return "avtShapeletDecompositionQuery"; };
     virtual const char        *GetDescription(void)
                              { return "Constructing Shapelet Decomposition"; };
+
+    virtual void               SetInputParams(const MapNode &);
+    static  void               GetDefaultInputParams(MapNode &);
     
     void                       SetBeta(double val) { beta = val;}
     double                     GetBeta() { return beta;}
@@ -92,7 +103,7 @@ class QUERY_API avtShapeletDecompositionQuery: public avtDatasetQuery
   private:
     double                     ComputeError(vtkRectilinearGrid *a,
                                             vtkRectilinearGrid *b,
-                                            const string &var_name);
+                                            const std::string &var_name);
 
     int                        nmax;
     double                     beta;

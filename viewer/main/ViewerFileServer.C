@@ -37,7 +37,6 @@
 *****************************************************************************/
 
 #include <visit-config.h>
-#include <stdlib.h>
 #include <snprintf.h>
 #include <ViewerFileServer.h>
 
@@ -74,13 +73,16 @@
 #include <DebugStream.h>
 #include <TimingsManager.h>
 
-#include <algorithm>
+#include <stdlib.h>
 
-#define ANY_STATE -1
+#include <algorithm>
+#include <string>
+#include <vector>
 
 // A static pointer to the one and only instance of ViewerFileServer
 ViewerFileServer *ViewerFileServer::instance = NULL;
 
+const int ViewerFileServer::ANY_STATE = -1;
 
 // ****************************************************************************
 // Function: GetTreatAllDBsAsTimeVarying 
@@ -1432,7 +1434,7 @@ ViewerFileServer::StartServer(const std::string &host, const stringVector &args)
 
         // We don't use a gateway when launching an MD server, just the VCL
         bool useGateway = false;
-        string gatewayHost = "";
+        std::string gatewayHost = "";
 
         // Create a connection progress dialog and hook it up to the
         // mdserver proxy.
@@ -1626,7 +1628,7 @@ ViewerFileServer::SendFileOpenOptions(const std::string &host)
         // DB plugin list with data from this machine.  Revert to the
         // old one after we have the initial set.
 
-        string oldhost = dbPluginInfoAtts->GetHost();
+        std::string oldhost = dbPluginInfoAtts->GetHost();
         UpdateDBPluginInfo(host);
         if (oldhost != "")
             UpdateDBPluginInfo(oldhost);
@@ -1838,6 +1840,12 @@ ViewerFileServer::SendKeepAlives()
 //   Kathleen Bonnell, Thu Aug 14 16:21:57 PDT 2008
 //   Added call to SendFileOpenOptions.
 //
+//   Brad Whitlock, Wed Oct 12 15:39:39 PDT 2011
+//   Remove TerminateConnectionRequest for when we want to change usernames
+//   since that sends a message to the gui that stops it from waiting for
+//   a connection from the mdserver. We want it to keep waiting so when we
+//   change the username, the mdserver connects.
+//
 // ****************************************************************************
 
 void
@@ -1882,7 +1890,6 @@ ViewerFileServer::ConnectServer(const std::string &mdServerHost,
         {
             // set up a new username
             debug1 << "Asked to pick a new username" << endl;
-            TerminateConnectionRequest(args, 6);
             ViewerChangeUsernameWindow::changeUsername(mdServerHost.c_str());
             keepGoing = true;
         }
@@ -3151,10 +3158,10 @@ ViewerFileServer::DetermineRealVarType(const std::string &host,
     ExpressionList expressionList;
     GetAllExpressions(expressionList, host, db, state);
     Expression *exp = expressionList[var.c_str()];
-    string realVar = var;
+    std::string realVar = var;
     if (exp != NULL)
     {
-        string realVar = ParsingExprList::GetRealVariable(var);
+        std::string realVar = ParsingExprList::GetRealVariable(var);
         if (realVar != var)
             exp = NULL;
     }
@@ -3248,7 +3255,10 @@ ViewerFileServer::GetUserExpressions(ExpressionList &newList)
 // Creation:   Fri Feb 18 09:45:27 PDT 2005
 //
 // Modifications:
-//   
+//   Brad Whitlock, Fri Aug 19 11:06:39 PDT 2011
+//   If ANY_STATE was passed for the state then call a different metadata
+//   function.
+//
 // ****************************************************************************
 
 void
@@ -3259,7 +3269,11 @@ ViewerFileServer::GetDatabaseExpressions(ExpressionList &newList,
     // new list.
     if(host.size() > 0 && db.size() > 0)
     {
-        const avtDatabaseMetaData *md = GetMetaDataForState(host, db, state);
+        const avtDatabaseMetaData *md = 0;
+        if(state == ANY_STATE)
+            md = GetMetaData(host, db);
+        else
+            md = GetMetaDataForState(host, db, state);
         if (md != 0)
         {
             // Add the expressions for the database.
@@ -3346,11 +3360,11 @@ ViewerFileServer::SetSimulationMetaData(const std::string &host,
 
         if(name == dbName)
         {
-            string host = pos->second->GetSimInfo().GetHost();
+            std::string host = pos->second->GetSimInfo().GetHost();
             int    port = pos->second->GetSimInfo().GetPort();
-            string key  = pos->second->GetSimInfo().GetSecurityKey();
-            vector<string> onames = pos->second->GetSimInfo().GetOtherNames();
-            vector<string> ovalues= pos->second->GetSimInfo().GetOtherValues();
+            std::string key  = pos->second->GetSimInfo().GetSecurityKey();
+            std::vector<std::string> onames = pos->second->GetSimInfo().GetOtherNames();
+            std::vector<std::string> ovalues= pos->second->GetSimInfo().GetOtherValues();
 
             *(pos->second) = md;
             pos->second->GetSimInfo().SetHost(host);

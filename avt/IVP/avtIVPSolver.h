@@ -426,7 +426,9 @@ class IVP_API avtIVPSolver
     virtual         ~avtIVPSolver() {};
 
     
-    virtual void    Reset(const double& t_start, const avtVector& y_start) = 0;
+    virtual void    Reset(const double& t_start,
+                          const avtVector& y_start,
+                          const avtVector& v_start = avtVector(0,0,0)) = 0;
 
     virtual Result  Step(avtIVPField* field, double t_max,
                          avtIVPStep* ivpstep = 0 ) = 0;
@@ -453,6 +455,8 @@ class IVP_API avtIVPSolver
 
     bool convertToCartesian;
     bool convertToCylindrical;
+
+    unsigned int order;
 
 protected:
     virtual void    AcceptStateVisitor(avtIVPStateHelper& sv) = 0;
@@ -482,5 +486,3 @@ inline std::ostream& operator<<( std::ostream& out,
 }
 
 #endif
-
-

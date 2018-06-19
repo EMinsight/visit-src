@@ -730,7 +730,7 @@ avtMinMaxQuery::StandardPostExecute(void)
             result_node["max_coord"] = maxCoord;
 
         }
-        else if(doMin)
+        if(doMin)
         {
             result_node["min"] = minInfo1.GetValue();
             result_node["min_domain"] = minInfo1.GetDomain();
@@ -1144,4 +1144,21 @@ avtMinMaxQuery::FindElement(MinMaxInfo &info)
         info.SetElementNum(elNum);
         info.SetCoord(c);
     }
+}
+
+
+// ****************************************************************************
+//  Method: avtMinMaxQuery::GetDefaultInputParams
+//
+//  Programmer: Kathleen Biagas
+//  Creation:   July 26, 2011 
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+void
+avtMinMaxQuery::GetDefaultInputParams(MapNode &params)
+{
+    params["use_actual_data"] = 0;
 }

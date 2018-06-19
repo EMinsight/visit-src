@@ -58,6 +58,7 @@
 
 #include <cstring>
 #include <snprintf.h>
+#include <float.h>
 
 using     std::string;
 using     std::vector;
@@ -71,7 +72,6 @@ using     std::sort;
 //  Creation:   March 24, 2001
 //
 //  Modifications:
-//
 //    Hank Childs, Tue Sep  4 13:39:02 PDT 2001
 //    Removed unneeded fields.  Made all extents use avtExtents.
 //
@@ -174,6 +174,13 @@ using     std::sort;
 //    Hank Childs, Tue Jan 11 08:41:22 PST 2011
 //    Add support for time index.
 //
+//    Kathleen Biagas, Thu Sep 29 06:08:06 PDT 2011
+//    Add constructMultipleCurves.
+//
+//    Eric Brugger, Thu Oct 27 10:29:42 PDT 2011
+//    Add GetMultiresExtents and GetMultiresCellSize to support adding
+//    a multi resolution display capability for AMR data.
+//
 // ****************************************************************************
 
 avtDataAttributes::avtDataAttributes() : plotInfoAtts()
@@ -181,8 +188,9 @@ avtDataAttributes::avtDataAttributes() : plotInfoAtts()
     originalSpatial              = NULL;
     thisProcsOriginalSpatial     = NULL;
     actualSpatial                = NULL;
-    desiredSpatial             = NULL;
+    desiredSpatial               = NULL;
     thisProcsActualSpatial       = NULL;
+    multiresExtents              = NULL;
 
     canUseThisProcsAsOriginalOrActual = false;
 
@@ -253,6 +261,10 @@ avtDataAttributes::avtDataAttributes() : plotInfoAtts()
         }
     }
     rectilinearGridHasTransform = false;
+
+    multiresCellSize = DBL_MAX;
+
+    constructMultipleCurves = false;
 }
 
 
@@ -263,7 +275,6 @@ avtDataAttributes::avtDataAttributes() : plotInfoAtts()
 //  Creation:   March 24, 2001
 //      
 //  Modifications:
-//
 //    Hank Childs, Mon Feb 23 09:18:58 PST 2004
 //    Moved all code in the former destructor to DestructSelf.  Also moved
 //    appropriate comments.
@@ -283,7 +294,6 @@ avtDataAttributes::~avtDataAttributes()
 //  Creation:   February 23, 2004
 //      
 //  Modifications:
-//
 //    Hank Childs, Tue Sep  4 13:39:02 PDT 2001
 //    Reflected use of avtExtents.
 //
@@ -307,6 +317,10 @@ avtDataAttributes::~avtDataAttributes()
 //
 //    Brad Whitlock, Wed Jan  7 14:04:25 PST 2009
 //    plotInfoAtts is no longer a pointer so no special treatment is needed.
+//
+//    Eric Brugger, Thu Oct 27 10:29:42 PDT 2011
+//    Add GetMultiresExtents and GetMultiresCellSize to support adding
+//    a multi resolution display capability for AMR data.
 //
 // ****************************************************************************
 
@@ -386,6 +400,12 @@ avtDataAttributes::DestructSelf(void)
     {
         delete transform;
         transform = NULL;
+    }
+
+    if (multiresExtents != NULL)
+    {
+        delete multiresExtents;
+        multiresExtents = NULL;
     }
 }
 
@@ -490,6 +510,10 @@ avtDataAttributes::DestructSelf(void)
 //
 //    Hank Childs, Tue Jan 11 08:41:22 PST 2011
 //    Add support for time index.
+//
+//    Eric Brugger, Thu Oct 27 10:29:42 PDT 2011
+//    Add GetMultiresExtents and GetMultiresCellSize to support adding
+//    a multi resolution display capability for AMR data.
 //
 // ****************************************************************************
 
@@ -851,6 +875,13 @@ avtDataAttributes::Print(ostream &out)
         }
     }
 
+    if (multiresExtents != NULL)
+    {
+        out << "Multires extents = " << endl;
+        multiresExtents->Print(out);
+    }
+    out << "Multires cell size = " << multiresCellSize << endl;
+
     out << "PlotInfoAttributes: ";
     plotInfoAtts.PrintSelf(out);
     out << endl;
@@ -870,7 +901,6 @@ avtDataAttributes::Print(ostream &out)
 //  Creation:   March 24, 2001
 //
 //  Modifications:
-//
 //    Hank Childs, Tue Sep  4 13:39:02 PDT 2001
 //    Reflected use of avtExtents.
 //
@@ -997,6 +1027,13 @@ avtDataAttributes::Print(ostream &out)
 //    Hank Childs, Tue Jan 11 08:41:22 PST 2011
 //    Add support for time index.
 //
+//    Kathleen Biagas, Thu Sep 29 06:08:06 PDT 2011
+//    Add constructMultipleCurves.
+//
+//    Eric Brugger, Thu Oct 27 10:29:42 PDT 2011
+//    Add GetMultiresExtents and GetMultiresCellSize to support adding
+//    a multi resolution display capability for AMR data.
+//
 // ****************************************************************************
 
 void
@@ -1102,6 +1139,9 @@ avtDataAttributes::Copy(const avtDataAttributes &di)
         rectilinearGridTransform[k] = di.rectilinearGridTransform[k];
     plotInfoAtts = di.plotInfoAtts;
     levelsOfDetail = di.levelsOfDetail;
+    *(multiresExtents) = *(di.multiresExtents);
+    multiresCellSize = di.multiresCellSize;
+    constructMultipleCurves = di.constructMultipleCurves;
 }
 
 
@@ -1118,7 +1158,6 @@ avtDataAttributes::Copy(const avtDataAttributes &di)
 //  Creation:   March 25, 2001
 //
 //  Modifications:
-//
 //    Hank Childs, Tue Sep  4 13:39:02 PDT 2001
 //    Reflected use of avtExtents.
 //
@@ -1240,6 +1279,13 @@ avtDataAttributes::Copy(const avtDataAttributes &di)
 //
 //    Hank Childs, Tue Jan 11 08:41:22 PST 2011
 //    Add support for time index.
+//
+//    Kathleen Biagas, Thu Sep 29 06:08:06 PDT 2011
+//    Add constructMultipleCurves.
+//
+//    Eric Brugger, Thu Oct 27 10:29:42 PDT 2011
+//    Add GetMultiresExtents and GetMultiresCellSize to support adding
+//    a multi resolution display capability for AMR data.
 //
 // ****************************************************************************
 
@@ -1502,7 +1548,9 @@ avtDataAttributes::Merge(const avtDataAttributes &da,
     mirOccurred |= da.mirOccurred;
     canUseOrigZones &= da.canUseOrigZones;
     origElementsRequiredForPick |= da.origElementsRequiredForPick;
+    multiresExtents->Merge(*(da.multiresExtents));
     plotInfoAtts.Merge(da.plotInfoAtts);
+    constructMultipleCurves &= da.constructMultipleCurves;
 
     // there's no good answer for unitCellVectors or rectilinearGridTransform
 }
@@ -1524,7 +1572,6 @@ avtDataAttributes::Merge(const avtDataAttributes &da,
 //  Creation:    September 4, 2001
 //
 //  Modifications:
-//
 //    Hank Childs, Tue Nov 13 12:18:16 PST 2001
 //    Don't use desired spatial extents.
 //
@@ -1618,7 +1665,6 @@ avtDataAttributes::GetAnySpatialExtents(double *buff)
 //  Creation:    September 4, 2001
 //
 //  Modifications:
-//
 //    Hank Childs, Tue Nov 13 12:18:16 PST 2001
 //    Don't use desired data extents.
 //
@@ -1957,9 +2003,12 @@ avtDataAttributes::SetTopologicalDimension(int td)
 //  Creation:   September 4, 2001
 //
 //  Modifications:
-//
 //    Kathleen Bonnell, Wed Oct  3 10:57:13 PDT 2001
 //    Add actualSpatial, thisProcsActualSpatial.
+//
+//    Eric Brugger, Thu Oct 27 10:29:42 PDT 2011
+//    Add GetMultiresExtents and GetMultiresCellSize to support adding
+//    a multi resolution display capability for AMR data.
 //
 // ****************************************************************************
 
@@ -2002,6 +2051,12 @@ avtDataAttributes::SetSpatialDimension(int td)
         delete thisProcsActualSpatial;
     }
     thisProcsActualSpatial = new avtExtents(spatialDimension);
+
+    if (multiresExtents != NULL)
+    {
+        delete multiresExtents;
+    }
+    multiresExtents = new avtExtents(spatialDimension);
 }
 
 
@@ -2018,7 +2073,6 @@ avtDataAttributes::SetSpatialDimension(int td)
 //  Creation:   September 4, 2001
 //
 //  Modifications:
-//
 //    Kathleen Bonnell, Wed Oct  3 10:57:13 PDT 2001
 //    Add actualData, thisProcsActualData.
 //
@@ -2153,7 +2207,6 @@ avtDataAttributes::GetVariableDimension(const char *varname) const
 //  Creation:      March 19, 2001
 //
 //  Modifications:
-//
 //    Hank Childs, Mon Feb 23 14:19:15 PST 2004
 //    Account for multiple variables.
 //
@@ -2584,7 +2637,6 @@ avtDataAttributes::SetDynamicDomainDecomposition(bool ddd)
 //  Creation:  March 25, 2001
 //
 //  Modifications:
-//
 //    Hank Childs, Sat May 26 10:06:58 PDT 2001
 //    Made use of avtDataObjectString::Append instead of string::append to
 //    prevent bottleneck.
@@ -2720,6 +2772,13 @@ avtDataAttributes::SetDynamicDomainDecomposition(bool ddd)
 //    Hank Childs, Tue Jan 11 08:41:22 PST 2011
 //    Add support for time index.
 //
+//    Kathleen Biagas, Thu Sep 29 06:08:06 PDT 2011
+//    Add constructMultipleCurves.
+//
+//    Eric Brugger, Thu Oct 27 10:29:42 PDT 2011
+//    Add GetMultiresExtents and GetMultiresCellSize to support adding
+//    a multi resolution display capability for AMR data.
+//
 // ****************************************************************************
 
 void
@@ -2729,7 +2788,7 @@ avtDataAttributes::Write(avtDataObjectString &str,
     int   i, j;
 
     int varSize = 7;
-    int numVals = 34 + varSize*variables.size();
+    int numVals = 35 + varSize*variables.size();
     int *vals = new int[numVals];
     i = 0;
     vals[i++] = topologicalDimension;
@@ -2764,6 +2823,7 @@ avtDataAttributes::Write(avtDataObjectString &str,
     vals[i++] = meshType;
     vals[i++] = (nodesAreCritical ? 1 : 0);
     vals[i++] = (rectilinearGridHasTransform ? 1 : 0);
+    vals[i++] = (constructMultipleCurves ? 1 : 0);
     vals[i++] = activeVariable;
     vals[i++] = variables.size();
     int basei = i;
@@ -2876,6 +2936,9 @@ avtDataAttributes::Write(avtDataObjectString &str,
     WriteInvTransform(str, wrtr);
     WriteTransform(str, wrtr);
 
+    multiresExtents->Write(str, wrtr);
+    wrtr->WriteDouble(str, multiresCellSize);
+
     WritePlotInfoAtts(str, wrtr);
 
     delete [] vals;
@@ -2897,7 +2960,6 @@ avtDataAttributes::Write(avtDataObjectString &str,
 //  Creation:  March 25, 2001
 //
 //  Modifications:
-//
 //    Kathleen Bonnell, Thu Sep 20 14:24 PDT 2001 
 //    Call ReadLabels method. 
 //
@@ -3023,6 +3085,13 @@ avtDataAttributes::Write(avtDataObjectString &str,
 //
 //    Hank Childs, Tue Jan 11 08:41:22 PST 2011
 //    Add support for time index.
+//
+//    Kathleen Biagas, Thu Sep 29 06:08:06 PDT 2011
+//    Add constructMultipleCurves.
+//
+//    Eric Brugger, Thu Oct 27 10:29:42 PDT 2011
+//    Add GetMultiresExtents and GetMultiresCellSize to support adding
+//    a multi resolution display capability for AMR data.
 //
 // ****************************************************************************
 
@@ -3161,6 +3230,10 @@ avtDataAttributes::Read(char *input)
     memcpy(&tmp, input, sizeof(int));
     input += sizeof(int); size += sizeof(int);
     rectilinearGridHasTransform = (tmp != 0 ? true : false);
+
+    memcpy(&tmp, input, sizeof(int));
+    input += sizeof(int); size += sizeof(int);
+    constructMultipleCurves = (tmp != 0 ? true : false);
 
     memcpy(&tmp, input, sizeof(int));
     input += sizeof(int); size += sizeof(int);
@@ -3416,6 +3489,12 @@ avtDataAttributes::Read(char *input)
     input += s; 
     size  += s;
 
+    s = multiresExtents->Read(input);
+    input += s; size += s;
+
+    memcpy(&multiresCellSize, input, sizeof(double));
+    input += sizeof(double); size += sizeof(double);
+
     s = ReadPlotInfoAtts(input); 
     input += s; 
     size  += s;
@@ -3437,7 +3516,6 @@ avtDataAttributes::Read(char *input)
 //  Creation:  September 19, 2001 
 //
 //  Modifications:
-//
 //    Hank Childs, Thu Mar 18 20:20:48 PST 2004
 //    Re-wrote to avoid a quadratic performance.
 //
@@ -3630,11 +3708,9 @@ avtDataAttributes::GetLabels(vector<string> &l)
 //  Creation:    October 2, 2001
 //
 //  Modifications:
-//
 //    Hank Childs, Mon Feb 23 08:59:42 PST 2004
 //    Allow for multiple variables.
 //
-//  Modifications:
 //    Kathleen Bonnell, Wed Mar 31 08:03:47 PST 2004
 //    Added a reason to the exception.
 //
@@ -4533,7 +4609,6 @@ avtDataAttributes::GetUseForAxis(const char *varname) const
 //  Creation:      July 21, 2004 
 //
 //  Modifications:
-//
 //    Hank Childs, Wed Dec  1 15:29:56 PST 2004
 //    Make sure varname is non-NULL, or we'll crash.
 //
@@ -4571,7 +4646,6 @@ avtDataAttributes::SetTreatAsASCII(const bool ascii, const char *varname)
 //  Creation:   July 21, 2004 
 //
 //  Modifications:
-//
 //    Hank Childs, Wed Dec  1 15:29:56 PST 2004
 //    Make sure varname is non-NULL, or we'll crash.
 //
@@ -4854,6 +4928,10 @@ avtDataAttributes::AddPlotInformation(const std::string &key,
 //    Hank Childs, Tue Jan 11 08:41:22 PST 2011
 //    Add support for time index.
 //
+//    Eric Brugger, Thu Oct 27 10:29:42 PDT 2011
+//    Add GetMultiresExtents and GetMultiresCellSize to support adding
+//    a multi resolution display capability for AMR data.
+//
 // ****************************************************************************
 
 static const char *
@@ -4958,6 +5036,12 @@ avtDataAttributes::DebugDump(avtWebpage *webpage)
                             YesOrNo(origElementsRequiredForPick));
     webpage->AddTableEntry2("Is the file format reader doing domain decomposition?",
                             YesOrNo(dynamicDomainDecomposition));
+    SNPRINTF(str, 4096, "%d", levelsOfDetail);
+    webpage->AddTableEntry2("Levels of detail", str);
+    ExtentsToString(multiresExtents, str, 4096);
+    webpage->AddTableEntry2("Multires extents", str);
+    SNPRINTF(str, 4096, "%g", multiresCellSize);
+    webpage->AddTableEntry2("Multires cell size", str);
     switch (meshCoordType)
     {
       case AVT_XY:

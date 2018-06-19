@@ -54,6 +54,9 @@
       <Field name="distributedResample" label="Distribute resampled data\nset across all processors\n(parallel only)?" type="bool">
         true
       </Field>
+      <Field name="cellCenteredOutput" label="Output cell centered data" type="bool">
+        false
+      </Field>
       <Function name="SetValue1" user="true" member="true">
       </Function>
       <Function name="ResampleEnginePluginInfo::AllocAvtPluginFilter" user="false" member="true">

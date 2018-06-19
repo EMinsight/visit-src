@@ -1293,7 +1293,7 @@ avtTransformManager::TransformMaterialDataset(const avtDatabaseMetaData *const m
         EXCEPTION1(PointerNotInCacheException, *vr);
     }
     
-    string meshname = md->MeshForVar(vname);
+    std::string meshname = md->MeshForVar(vname);
     const avtMeshMetaData *mmd = md->GetMesh(meshname);
     if (mmd->meshType == AVT_CSG_MESH)
     {
@@ -1440,7 +1440,7 @@ avtTransformManager::AddVertexCellsToPointsOnlyDataset(avtDatabaseMetaData *md,
     for (i = 0; i < md->GetNumMeshes(); i++)
     {
         avtMeshMetaData &mmd = md->GetMeshes(i);
-        if (mmd.name == string(mname))
+        if (mmd.name == std::string(mname))
         {
             mmd.meshType = AVT_POINT_MESH;
             mmd.topologicalDimension = 0;
@@ -1456,22 +1456,28 @@ avtTransformManager::AddVertexCellsToPointsOnlyDataset(avtDatabaseMetaData *md,
     if (doType == VTK_POLY_DATA)
     {
         vtkPolyData *pd = vtkPolyData::SafeDownCast(ds);
-        pd->Allocate(ds->GetNumberOfPoints());
-        for (i = 0; i < ds->GetNumberOfPoints(); i++)
+        if(pd != NULL)
         {
-            onevertex[0] = i;
-            pd->InsertNextCell(VTK_VERTEX, 1, onevertex);
+            pd->Allocate(ds->GetNumberOfPoints());
+            for (i = 0; i < ds->GetNumberOfPoints(); i++)
+            {
+                onevertex[0] = i;
+                pd->InsertNextCell(VTK_VERTEX, 1, onevertex);
+            }
         }
 
     }
     else // must be VTK_UNSTRUCTURED_GRID
     {
         vtkUnstructuredGrid *ugrid = vtkUnstructuredGrid::SafeDownCast(ds);
-        ugrid->Allocate(ds->GetNumberOfPoints());
-        for (i = 0; i < ds->GetNumberOfPoints(); i++)
+        if(ugrid != NULL)
         {
-            onevertex[0] = i;
-            ugrid->InsertNextCell(VTK_VERTEX, 1, onevertex);
+            ugrid->Allocate(ds->GetNumberOfPoints());
+            for (i = 0; i < ds->GetNumberOfPoints(); i++)
+            {
+                onevertex[0] = i;
+                ugrid->InsertNextCell(VTK_VERTEX, 1, onevertex);
+            }
         }
     }
 
@@ -1635,7 +1641,7 @@ vtkDataSet *ds, int dom)
     for (i = 0; i < md->GetNumCurves(); i++)
     {
         cmd = md->GetCurve(i);
-        if (cmd->from1DScalarName == string(vname))
+        if (cmd->from1DScalarName == std::string(vname))
             break;
         cmd = 0;
     }

@@ -60,23 +60,53 @@
 class LineSamplerAttributes : public AttributeSubject
 {
 public:
-    enum CoordinateSystem
+    enum MeshGeometry
     {
         Cartesian,
-        Cylindrical
+        Cylindrical,
+        Toroidal
     };
-    enum BeamProjection
+    enum ArrayConfiguration
     {
-        Parallel,
-        Divergent
+        Geometry,
+        Manual
     };
-    enum BeamAxis
+    enum Boundary
+    {
+        Data,
+        Wall
+    };
+    enum ChannelProjection
+    {
+        Divergent,
+        Parallel,
+        Grid
+    };
+    enum ChannelLayoutType
+    {
+        ChannelAbsolute,
+        ChannelRelative
+    };
+    enum ArrayAxis
     {
         R,
         Z
     };
-    enum BeamShape
+    enum ViewGeometry
     {
+        Points,
+        Lines,
+        Surfaces
+    };
+    enum DisplayTime
+    {
+        Step,
+        Time,
+        Cycle
+    };
+    enum ChannelGeometry
+    {
+        Point,
         Line,
         Cylinder,
         Cone
@@ -87,10 +117,31 @@ public:
         Two,
         Three
     };
-    enum BeamType
+    enum ChannelProfile
     {
         TopHat,
         Gaussian
+    };
+    enum ChannelIntegration
+    {
+        NoChannelIntegration,
+        IntegrateAlongChannel
+    };
+    enum ToroidalIntegration
+    {
+        NoToroidalIntegration,
+        ToroidalTimeSample,
+        IntegrateToroidally
+    };
+    enum ToroidalAngleSampling
+    {
+        ToroidalAngleAbsoluteSampling,
+        ToroidalAngleRelativeSampling
+    };
+    enum TimeSampling
+    {
+        CurrentTimeStep,
+        MultipleTimeSteps
     };
 
     // These constructors are for objects of this class
@@ -118,85 +169,196 @@ public:
 
     // Property selection methods
     virtual void SelectAll();
-    void SelectOrigin();
+    void SelectArrayOrigin();
+    void SelectChannelList();
+    void SelectWallList();
 
     // Property setting methods
-    void SetCoordinateSystem(CoordinateSystem coordinateSystem_);
-    void SetBeamShape(BeamShape beamShape_);
-    void SetRadius(double radius_);
-    void SetDivergence(double divergence_);
-    void SetBeamProjection(BeamProjection beamProjection_);
-    void SetNBeams(int nBeams_);
-    void SetOffset(double offset_);
-    void SetAngle(double angle_);
-    void SetOrigin(const double *origin_);
-    void SetBeamAxis(BeamAxis beamAxis_);
+    void SetMeshGeometry(MeshGeometry meshGeometry_);
+    void SetArrayConfiguration(ArrayConfiguration arrayConfiguration_);
+    void SetBoundary(Boundary boundary_);
+    void SetNArrays(int nArrays_);
+    void SetToroidalArrayAngle(double toroidalArrayAngle_);
+    void SetNChannels(int nChannels_);
+    void SetChannelProjection(ChannelProjection channelProjection_);
+    void SetChannelLayoutType(ChannelLayoutType channelLayoutType_);
+    void SetChannelOffset(double channelOffset_);
+    void SetChannelAngle(double channelAngle_);
+    void SetNRows(int nRows_);
+    void SetRowOffset(double rowOffset_);
+    void SetArrayOrigin(const double *arrayOrigin_);
+    void SetArrayAxis(ArrayAxis arrayAxis_);
+    void SetPoloidalAngleStart(double poloidalAngleStart_);
+    void SetPoloidalAngleStop(double poloidalAngleStop_);
     void SetPoloialAngle(double poloialAngle_);
     void SetPoloialRTilt(double poloialRTilt_);
     void SetPoloialZTilt(double poloialZTilt_);
-    void SetToroialAngle(double toroialAngle_);
+    void SetToroidalAngle(double toroidalAngle_);
+    void SetFlipToroidalAngle(bool flipToroidalAngle_);
+    void SetViewGeometry(ViewGeometry viewGeometry_);
     void SetViewDimension(ViewDimension viewDimension_);
-    void SetBeamType(BeamType beamType_);
+    void SetHeightPlotScale(double heightPlotScale_);
+    void SetChannelPlotOffset(double channelPlotOffset_);
+    void SetArrayPlotOffset(double arrayPlotOffset_);
+    void SetDisplayTime(DisplayTime displayTime_);
+    void SetChannelGeometry(ChannelGeometry channelGeometry_);
+    void SetRadius(double radius_);
+    void SetDivergence(double divergence_);
+    void SetChannelProfile(ChannelProfile channelProfile_);
     void SetStandardDeviation(double standardDeviation_);
     void SetSampleDistance(double sampleDistance_);
+    void SetSampleVolume(double sampleVolume_);
     void SetSampleArc(double sampleArc_);
+    void SetChannelIntegration(ChannelIntegration channelIntegration_);
+    void SetToroidalIntegration(ToroidalIntegration toroidalIntegration_);
+    void SetToroidalAngleSampling(ToroidalAngleSampling toroidalAngleSampling_);
+    void SetToroidalAngleStart(double toroidalAngleStart_);
+    void SetToroidalAngleStop(double toroidalAngleStop_);
+    void SetToroidalAngleStride(double toroidalAngleStride_);
+    void SetTimeSampling(TimeSampling timeSampling_);
+    void SetTimeStepStart(int timeStepStart_);
+    void SetTimeStepStop(int timeStepStop_);
+    void SetTimeStepStride(int timeStepStride_);
+    void SetChannelList(const doubleVector &channelList_);
+    void SetWallList(const doubleVector &wallList_);
+    void SetNChannelListArrays(int nChannelListArrays_);
+    void SetChannelListToroidalArrayAngle(double channelListToroidalArrayAngle_);
+    void SetChannelListToroidalAngle(double channelListToroidalAngle_);
 
     // Property getting methods
-    CoordinateSystem GetCoordinateSystem() const;
-    BeamShape    GetBeamShape() const;
-    double       GetRadius() const;
-    double       GetDivergence() const;
-    BeamProjection GetBeamProjection() const;
-    int          GetNBeams() const;
-    double       GetOffset() const;
-    double       GetAngle() const;
-    const double *GetOrigin() const;
-          double *GetOrigin();
-    BeamAxis     GetBeamAxis() const;
-    double       GetPoloialAngle() const;
-    double       GetPoloialRTilt() const;
-    double       GetPoloialZTilt() const;
-    double       GetToroialAngle() const;
-    ViewDimension GetViewDimension() const;
-    BeamType     GetBeamType() const;
-    double       GetStandardDeviation() const;
-    double       GetSampleDistance() const;
-    double       GetSampleArc() const;
+    MeshGeometry       GetMeshGeometry() const;
+    ArrayConfiguration GetArrayConfiguration() const;
+    Boundary           GetBoundary() const;
+    int                GetNArrays() const;
+    double             GetToroidalArrayAngle() const;
+    int                GetNChannels() const;
+    ChannelProjection  GetChannelProjection() const;
+    ChannelLayoutType  GetChannelLayoutType() const;
+    double             GetChannelOffset() const;
+    double             GetChannelAngle() const;
+    int                GetNRows() const;
+    double             GetRowOffset() const;
+    const double       *GetArrayOrigin() const;
+          double       *GetArrayOrigin();
+    ArrayAxis          GetArrayAxis() const;
+    double             GetPoloidalAngleStart() const;
+    double             GetPoloidalAngleStop() const;
+    double             GetPoloialAngle() const;
+    double             GetPoloialRTilt() const;
+    double             GetPoloialZTilt() const;
+    double             GetToroidalAngle() const;
+    bool               GetFlipToroidalAngle() const;
+    ViewGeometry       GetViewGeometry() const;
+    ViewDimension      GetViewDimension() const;
+    double             GetHeightPlotScale() const;
+    double             GetChannelPlotOffset() const;
+    double             GetArrayPlotOffset() const;
+    DisplayTime        GetDisplayTime() const;
+    ChannelGeometry    GetChannelGeometry() const;
+    double             GetRadius() const;
+    double             GetDivergence() const;
+    ChannelProfile     GetChannelProfile() const;
+    double             GetStandardDeviation() const;
+    double             GetSampleDistance() const;
+    double             GetSampleVolume() const;
+    double             GetSampleArc() const;
+    ChannelIntegration GetChannelIntegration() const;
+    ToroidalIntegration GetToroidalIntegration() const;
+    ToroidalAngleSampling GetToroidalAngleSampling() const;
+    double             GetToroidalAngleStart() const;
+    double             GetToroidalAngleStop() const;
+    double             GetToroidalAngleStride() const;
+    TimeSampling       GetTimeSampling() const;
+    int                GetTimeStepStart() const;
+    int                GetTimeStepStop() const;
+    int                GetTimeStepStride() const;
+    const doubleVector &GetChannelList() const;
+          doubleVector &GetChannelList();
+    const doubleVector &GetWallList() const;
+          doubleVector &GetWallList();
+    int                GetNChannelListArrays() const;
+    double             GetChannelListToroidalArrayAngle() const;
+    double             GetChannelListToroidalAngle() const;
 
     // Persistence methods
     virtual bool CreateNode(DataNode *node, bool completeSave, bool forceAdd);
     virtual void SetFromNode(DataNode *node);
 
     // Enum conversion functions
-    static std::string CoordinateSystem_ToString(CoordinateSystem);
-    static bool CoordinateSystem_FromString(const std::string &, CoordinateSystem &);
+    static std::string MeshGeometry_ToString(MeshGeometry);
+    static bool MeshGeometry_FromString(const std::string &, MeshGeometry &);
 protected:
-    static std::string CoordinateSystem_ToString(int);
+    static std::string MeshGeometry_ToString(int);
 public:
-    static std::string BeamProjection_ToString(BeamProjection);
-    static bool BeamProjection_FromString(const std::string &, BeamProjection &);
+    static std::string ArrayConfiguration_ToString(ArrayConfiguration);
+    static bool ArrayConfiguration_FromString(const std::string &, ArrayConfiguration &);
 protected:
-    static std::string BeamProjection_ToString(int);
+    static std::string ArrayConfiguration_ToString(int);
 public:
-    static std::string BeamAxis_ToString(BeamAxis);
-    static bool BeamAxis_FromString(const std::string &, BeamAxis &);
+    static std::string Boundary_ToString(Boundary);
+    static bool Boundary_FromString(const std::string &, Boundary &);
 protected:
-    static std::string BeamAxis_ToString(int);
+    static std::string Boundary_ToString(int);
 public:
-    static std::string BeamShape_ToString(BeamShape);
-    static bool BeamShape_FromString(const std::string &, BeamShape &);
+    static std::string ChannelProjection_ToString(ChannelProjection);
+    static bool ChannelProjection_FromString(const std::string &, ChannelProjection &);
 protected:
-    static std::string BeamShape_ToString(int);
+    static std::string ChannelProjection_ToString(int);
+public:
+    static std::string ChannelLayoutType_ToString(ChannelLayoutType);
+    static bool ChannelLayoutType_FromString(const std::string &, ChannelLayoutType &);
+protected:
+    static std::string ChannelLayoutType_ToString(int);
+public:
+    static std::string ArrayAxis_ToString(ArrayAxis);
+    static bool ArrayAxis_FromString(const std::string &, ArrayAxis &);
+protected:
+    static std::string ArrayAxis_ToString(int);
+public:
+    static std::string ViewGeometry_ToString(ViewGeometry);
+    static bool ViewGeometry_FromString(const std::string &, ViewGeometry &);
+protected:
+    static std::string ViewGeometry_ToString(int);
+public:
+    static std::string DisplayTime_ToString(DisplayTime);
+    static bool DisplayTime_FromString(const std::string &, DisplayTime &);
+protected:
+    static std::string DisplayTime_ToString(int);
+public:
+    static std::string ChannelGeometry_ToString(ChannelGeometry);
+    static bool ChannelGeometry_FromString(const std::string &, ChannelGeometry &);
+protected:
+    static std::string ChannelGeometry_ToString(int);
 public:
     static std::string ViewDimension_ToString(ViewDimension);
     static bool ViewDimension_FromString(const std::string &, ViewDimension &);
 protected:
     static std::string ViewDimension_ToString(int);
 public:
-    static std::string BeamType_ToString(BeamType);
-    static bool BeamType_FromString(const std::string &, BeamType &);
+    static std::string ChannelProfile_ToString(ChannelProfile);
+    static bool ChannelProfile_FromString(const std::string &, ChannelProfile &);
 protected:
-    static std::string BeamType_ToString(int);
+    static std::string ChannelProfile_ToString(int);
+public:
+    static std::string ChannelIntegration_ToString(ChannelIntegration);
+    static bool ChannelIntegration_FromString(const std::string &, ChannelIntegration &);
+protected:
+    static std::string ChannelIntegration_ToString(int);
+public:
+    static std::string ToroidalIntegration_ToString(ToroidalIntegration);
+    static bool ToroidalIntegration_FromString(const std::string &, ToroidalIntegration &);
+protected:
+    static std::string ToroidalIntegration_ToString(int);
+public:
+    static std::string ToroidalAngleSampling_ToString(ToroidalAngleSampling);
+    static bool ToroidalAngleSampling_FromString(const std::string &, ToroidalAngleSampling &);
+protected:
+    static std::string ToroidalAngleSampling_ToString(int);
+public:
+    static std::string TimeSampling_ToString(TimeSampling);
+    static bool TimeSampling_FromString(const std::string &, TimeSampling &);
+protected:
+    static std::string TimeSampling_ToString(int);
 public:
 
     // Keyframing methods
@@ -208,53 +370,115 @@ public:
 
     // IDs that can be used to identify fields in case statements
     enum {
-        ID_coordinateSystem = 0,
-        ID_beamShape,
-        ID_radius,
-        ID_divergence,
-        ID_beamProjection,
-        ID_nBeams,
-        ID_offset,
-        ID_angle,
-        ID_origin,
-        ID_beamAxis,
+        ID_meshGeometry = 0,
+        ID_arrayConfiguration,
+        ID_boundary,
+        ID_nArrays,
+        ID_toroidalArrayAngle,
+        ID_nChannels,
+        ID_channelProjection,
+        ID_channelLayoutType,
+        ID_channelOffset,
+        ID_channelAngle,
+        ID_nRows,
+        ID_rowOffset,
+        ID_arrayOrigin,
+        ID_arrayAxis,
+        ID_poloidalAngleStart,
+        ID_poloidalAngleStop,
         ID_poloialAngle,
         ID_poloialRTilt,
         ID_poloialZTilt,
-        ID_toroialAngle,
+        ID_toroidalAngle,
+        ID_flipToroidalAngle,
+        ID_viewGeometry,
         ID_viewDimension,
-        ID_beamType,
+        ID_heightPlotScale,
+        ID_channelPlotOffset,
+        ID_arrayPlotOffset,
+        ID_displayTime,
+        ID_channelGeometry,
+        ID_radius,
+        ID_divergence,
+        ID_channelProfile,
         ID_standardDeviation,
         ID_sampleDistance,
+        ID_sampleVolume,
         ID_sampleArc,
+        ID_channelIntegration,
+        ID_toroidalIntegration,
+        ID_toroidalAngleSampling,
+        ID_toroidalAngleStart,
+        ID_toroidalAngleStop,
+        ID_toroidalAngleStride,
+        ID_timeSampling,
+        ID_timeStepStart,
+        ID_timeStepStop,
+        ID_timeStepStride,
+        ID_channelList,
+        ID_wallList,
+        ID_nChannelListArrays,
+        ID_channelListToroidalArrayAngle,
+        ID_channelListToroidalAngle,
         ID__LAST
     };
 
 private:
-    int    coordinateSystem;
-    int    beamShape;
-    double radius;
-    double divergence;
-    int    beamProjection;
-    int    nBeams;
-    double offset;
-    double angle;
-    double origin[3];
-    int    beamAxis;
-    double poloialAngle;
-    double poloialRTilt;
-    double poloialZTilt;
-    double toroialAngle;
-    int    viewDimension;
-    int    beamType;
-    double standardDeviation;
-    double sampleDistance;
-    double sampleArc;
+    int          meshGeometry;
+    int          arrayConfiguration;
+    int          boundary;
+    int          nArrays;
+    double       toroidalArrayAngle;
+    int          nChannels;
+    int          channelProjection;
+    int          channelLayoutType;
+    double       channelOffset;
+    double       channelAngle;
+    int          nRows;
+    double       rowOffset;
+    double       arrayOrigin[3];
+    int          arrayAxis;
+    double       poloidalAngleStart;
+    double       poloidalAngleStop;
+    double       poloialAngle;
+    double       poloialRTilt;
+    double       poloialZTilt;
+    double       toroidalAngle;
+    bool         flipToroidalAngle;
+    int          viewGeometry;
+    int          viewDimension;
+    double       heightPlotScale;
+    double       channelPlotOffset;
+    double       arrayPlotOffset;
+    int          displayTime;
+    int          channelGeometry;
+    double       radius;
+    double       divergence;
+    int          channelProfile;
+    double       standardDeviation;
+    double       sampleDistance;
+    double       sampleVolume;
+    double       sampleArc;
+    int          channelIntegration;
+    int          toroidalIntegration;
+    int          toroidalAngleSampling;
+    double       toroidalAngleStart;
+    double       toroidalAngleStop;
+    double       toroidalAngleStride;
+    int          timeSampling;
+    int          timeStepStart;
+    int          timeStepStop;
+    int          timeStepStride;
+    doubleVector channelList;
+    doubleVector wallList;
+    int          nChannelListArrays;
+    double       channelListToroidalArrayAngle;
+    double       channelListToroidalAngle;
 
     // Static class format string for type map.
     static const char *TypeMapFormatString;
     static const private_tmfs_t TmfsStruct;
 };
-#define LINESAMPLERATTRIBUTES_TMFS "iiddiiddDiddddiiddd"
+#define LINESAMPLERATTRIBUTES_TMFS "iiiidiiiddidDiddddddbiidddiiddiddddiiidddiiiid*d*idd"
 
 #endif

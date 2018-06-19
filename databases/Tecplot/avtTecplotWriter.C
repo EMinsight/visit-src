@@ -71,9 +71,10 @@ using     std::vector;
 #define FLOAT_COLUMN_WIDTH 14
 #define INT_COLUMN_WIDTH   11
 
-avtTecplotWriter::avtTecplotWriter()
+avtTecplotWriter::avtTecplotWriter(DBOptionsAttributes *)
 {
     variablesWritten = false;
+    // no options used
 }
 
 avtTecplotWriter::~avtTecplotWriter()
@@ -574,11 +575,11 @@ avtTecplotWriter::WriteUnstructuredMesh(vtkUnstructuredGrid *ug, int chunk)
         {
             vtkCell *cell = ug->GetCell(c);
             int n = cell->GetNumberOfPoints();
-            int ids[8];
+            vtkIdType ids[8];
             for (int i=0; i<n; i++)
                 ids[i] = cell->GetPointId(i);
 
-            int tetids[1000];
+            vtkIdType tetids[1000];
 
             // Do the connectivity
 #ifndef DBIO_ONLY
@@ -633,11 +634,11 @@ avtTecplotWriter::WriteUnstructuredMesh(vtkUnstructuredGrid *ug, int chunk)
         {
             vtkCell *cell = ug->GetCell(c);
             int n = cell->GetNumberOfPoints();
-            int ids[8];
+            vtkIdType ids[8];
             for (int i=0; i<n; i++)
                 ids[i] = cell->GetPointId(i);
 
-            int subids[1000];
+            vtkIdType subids[1000];
             int ntets = 0, ntris = 0;
 
             // Do the connectivity

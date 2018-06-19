@@ -134,7 +134,7 @@ static void
 NewHandler(void)
 {
     debug1 << "This component has run out of memory." << endl;
-    abort();
+    abort(); // HOOKS_IGNORE
 }
 
 // ****************************************************************************
@@ -231,6 +231,9 @@ NewHandler(void)
 //    Kathleen Bonnell, Thu Sep  7 12:02:15 PDT 2010
 //    Use InstallationFunction GetUserVisItDirectory instead of retreiving
 //    VISITUSERHOME directly from environment (in case it is not set).
+//
+//    Tom Fogal, Wed Sep 28 13:40:21 MDT 2011
+//    Fix a UMR that valgrind complained about.
 //
 // ****************************************************************************
 
@@ -352,7 +355,7 @@ VisItInit::Initialize(int &argc, char *argv[], int r, int n, bool strip, bool si
                 cerr << "SVN revision is unknown!" << endl;
             else
                 cerr << "Built from revision " << visitcommon::SVNVersion() << endl;
-            exit(0);
+            exit(0); // HOOKS_IGNORE
         }
     }
 
@@ -372,7 +375,7 @@ VisItInit::Initialize(int &argc, char *argv[], int r, int n, bool strip, bool si
         strcpy(progname_wo_dir, homedir.c_str());
     }
 #endif
-    char progname[256];
+    char progname[256] = {0};
     if (n > 1)
     {
         sprintf(progname, "%s.%03d", progname_wo_dir, r);

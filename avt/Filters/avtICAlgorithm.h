@@ -45,6 +45,7 @@
 
 #include <avtPICSFilter.h>
 #include "avtIntegralCurve.h"
+#include <vector>
 
 // ****************************************************************************
 // Class: avtICAlgorithm
@@ -108,6 +109,9 @@
 //   Dave Pugmire, Fri Jan 14 11:06:09 EST 2011
 //   Added PostStepCallback() method.
 //
+//   David Camp, Mon Aug 22 12:59:31 PDT 2011
+//   Added SetDomain method, which forwards the call to the PICs filter.
+//
 // ****************************************************************************
 
 class avtICAlgorithm
@@ -122,7 +126,7 @@ class avtICAlgorithm
     virtual void              ResetIntegralCurvesForContinueExecute() = 0;
     virtual bool              CheckNextTimeStepNeeded(int curTimeSlice) = 0;
     virtual void              PostExecute();
-    virtual void              GetTerminatedICs(vector<avtIntegralCurve *> &v);
+    virtual void              GetTerminatedICs(std::vector<avtIntegralCurve *> &v);
     virtual void              AddIntegralCurves(std::vector<avtIntegralCurve*> &ics) = 0;
     virtual void              DeleteIntegralCurves(std::vector<int> &icIDs);
     virtual bool              PostStepCallback() { return false; }
@@ -148,6 +152,8 @@ class avtICAlgorithm
                                         double X=0, double Y=0, double Z=0);
     virtual bool              DomainLoaded(DomainType &dom) const
     { return picsFilter->avtPICSFilter::DomainLoaded(dom); }
+    void                      SetDomain(avtIntegralCurve *ic)
+    { return picsFilter->avtPICSFilter::SetDomain(ic); }
     
     bool                      OwnDomain(DomainType &dom)
     {return picsFilter->avtPICSFilter::OwnDomain(dom); }
@@ -176,12 +182,7 @@ class avtICAlgorithm
         float value;
         std::string nm;
 
-        friend ostream& operator<<(std::ostream &out, const avtICAlgorithm::ICStatistics &s)
-        //friend ostream& operator<<(std::ostream &out)
-        {
-            out<<s.nm<<" V: "<<s.value<<" "<<s.total<<" ["<<s.min<<", "<<s.max<<", "<<s.mean<<" : "<<s.sigma<<"]";
-            return out;
-        }
+        ostream& operator<<(std::ostream &out) const;
     };
 
     virtual void              ReportStatistics();

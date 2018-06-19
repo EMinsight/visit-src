@@ -3357,6 +3357,9 @@ ViewerWindowManager::SetViewExtentsType(avtExtentType viewType,
 //    Dave Pugmire, Tue Aug 24 11:32:12 EDT 2010
 //    Add compact domain options.
 //
+//    Eric Brugger, Fri Oct 28 10:07:28 PDT 2011
+//    Add a multi resolution display capability for AMR data.
+//
 // ****************************************************************************
 
 void
@@ -3370,6 +3373,14 @@ ViewerWindowManager::SetRenderingAttributes(int windowIndex)
 
         if (windows[index]->GetAntialiasing() != renderAtts->GetAntialiasing())
             windows[index]->SetAntialiasing(renderAtts->GetAntialiasing());
+
+        if (windows[index]->GetMultiresolutionMode() != renderAtts->GetMultiresolutionMode())
+            windows[index]->SetMultiresolutionMode(renderAtts->GetMultiresolutionMode());
+
+        if (windows[index]->GetMultiresolutionCellSize() !=
+            renderAtts->GetMultiresolutionCellSize())
+            windows[index]->SetMultiresolutionCellSize(
+            renderAtts->GetMultiresolutionCellSize());
 
         if (windows[index]->GetSurfaceRepresentation() !=
             (int) renderAtts->GetGeometryRepresentation())
@@ -4456,7 +4467,8 @@ ViewerWindowManager::SetWindowLayout(const int windowLayout)
 //    Set the active window.
 //
 //  Arguments:
-//    windowId  The 1 origin window identifier.
+//    windowId      The 1 origin window identifier.
+//    raiseWindow   Flag specifying whether window should be raised
 //
 //  Programmer: Eric Brugger
 //  Creation:   September 13, 2000
@@ -4522,6 +4534,9 @@ ViewerWindowManager::SetWindowLayout(const int windowLayout)
 //    Brad Whitlock, Fri Aug 13 16:38:06 PDT 2010
 //    Fix legend names.
 //
+//    Gunther H. Weber, Mon Jul 11 11:57:06 PDT 2011
+//    Added flag indicating whether window should be raised.
+//
 //    Gunther H. Weber, Mon Jul 18 16:27:41 PDT 2011
 //    Activate window before raising it (otherwise MacOS will only
 //    raise the window briefly.
@@ -4529,7 +4544,7 @@ ViewerWindowManager::SetWindowLayout(const int windowLayout)
 // ****************************************************************************
 
 void
-ViewerWindowManager::SetActiveWindow(const int windowId)
+ViewerWindowManager::SetActiveWindow(const int windowId, const bool raiseWindow)
 {
     //
     // Check the window id.
@@ -4599,11 +4614,15 @@ ViewerWindowManager::SetActiveWindow(const int windowId)
     // Deiconify the activated window.
     windows[activeWindow]->DeIconify();
  
-    // Activate window in windowing system
-    windows[activeWindow]->ActivateWindow();
 
-    // Raise the activated window.
-    windows[activeWindow]->Raise();
+    if (raiseWindow)
+    {
+        // Activate window in windowing system
+        windows[activeWindow]->ActivateWindow();
+
+        // Raise the activated window.
+        windows[activeWindow]->Raise();
+    }
 
     //
     // Update all of the client window attributes.
@@ -5016,6 +5035,9 @@ ViewerWindowManager::UpdateLightListAtts()
 //   Jeremy Meredith, Fri Apr 30 14:39:07 EDT 2010
 //   Added automatic depth cueing mode.
 //
+//   Eric Brugger, Fri Oct 28 10:07:28 PDT 2011
+//   Add a multi resolution display capability for AMR data.
+//
 // ****************************************************************************
 
 void
@@ -5031,6 +5053,8 @@ ViewerWindowManager::UpdateRenderingAtts(int windowIndex)
         // attributes and notify the client.
         //
         renderAtts->SetAntialiasing(win->GetAntialiasing());
+        renderAtts->SetMultiresolutionMode(win->GetMultiresolutionMode());
+        renderAtts->SetMultiresolutionCellSize(win->GetMultiresolutionCellSize());
         renderAtts->SetGeometryRepresentation(
             (RenderingAttributes::GeometryRepresentation)win->GetSurfaceRepresentation());
         renderAtts->SetDisplayListMode(
@@ -8192,6 +8216,9 @@ ViewerWindowManager::CreateVisWindow(const int windowIndex,
 //    Jeremy Meredith, Fri Apr 30 14:39:07 EDT 2010
 //    Added automatic depth cueing mode.
 //
+//    Eric Brugger, Fri Oct 28 10:07:28 PDT 2011
+//    Add a multi resolution display capability for AMR data.
+//
 // ****************************************************************************
 
 void
@@ -8215,6 +8242,8 @@ ViewerWindowManager::SetWindowAttributes(int windowIndex, bool copyAtts)
         w->SetToolLock(false);
     }
     w->SetAntialiasing(renderAtts->GetAntialiasing());
+    w->SetMultiresolutionMode(renderAtts->GetMultiresolutionMode());
+    w->SetMultiresolutionCellSize(renderAtts->GetMultiresolutionCellSize());
     int rep = (int)renderAtts->GetGeometryRepresentation();
     w->SetSurfaceRepresentation(rep);
     w->SetDisplayListMode(renderAtts->GetDisplayListMode());
@@ -9564,6 +9593,9 @@ ViewerWindowManager::CreateNode(DataNode *parentNode,
 //   I rewrote how we manage window creation/deletion and setting sizes based
 //   on information from the config file.
 //
+//   Brad Whitlock, Fri Aug 19 11:37:00 PDT 2011
+//   Fix restoration of selections that are not based on plots.
+//
 // ****************************************************************************
 
 void
@@ -9748,22 +9780,63 @@ ViewerWindowManager::SetFromNode(DataNode *parentNode,
         // originating plots for a selection. Save the name too.
         intVector *originatingPlots = new intVector[maxWindows];
         std::vector<SelectionProperties> *selProps = new std::vector<SelectionProperties>[maxWindows];
-        for(i = 0; i < maxWindows; ++i)
+
+        for(int k = 0; k < GetSelectionList()->GetNumSelections(); ++k)
         {
-            if(windows[i] == 0)
-                continue;
-            for(int j = 0; j < windows[i]->GetPlotList()->GetNumPlots(); ++j)
+            const SelectionProperties &props = GetSelectionList()->GetSelections(k);
+            bool notFound = true;
+
+            for(i = 0; i < maxWindows && notFound; ++i)
             {
-                for(int k = 0; k < GetSelectionList()->GetNumSelections(); ++k)
+                if(windows[i] == 0)
+                    continue;
+                for(int j = 0; j < windows[i]->GetPlotList()->GetNumPlots() && notFound; ++j)
                 {
-                    if(GetSelectionList()->GetSelections(k).GetOriginatingPlot() ==
+                    if(props.GetSource() == 
                        windows[i]->GetPlotList()->GetPlot(j)->GetPlotName())
                     {
-                        selProps[i].push_back(GetSelectionList()->GetSelections(k));
+                        selProps[i].push_back(props);
                         originatingPlots[i].push_back(j);
-                        break;
+                        notFound = false;
                     }
                 }
+            }
+
+            if(notFound)
+            {
+                // This selection does not have an originating plot, which means
+                // that it must be a selection directly on the database. Set it up.
+                TRY
+                {
+                    debug4 << "Creating named selection " << props.GetName()
+                           << " from database " << props.GetSource() << endl;
+
+                    std::string host, db, sim, src(props.GetSource());
+                    ViewerFileServer *fs = ViewerFileServer::Instance();
+                    fs->ExpandDatabaseName(src, host, db);
+
+                    const avtDatabaseMetaData *md = fs->GetMetaData(host, db);
+                    if (md != NULL && md->GetIsSimulation())
+                        sim = db;
+
+                    EngineKey engineKey(host, sim);
+                    SelectionProperties P(props);
+                    P.SetSource(db);
+
+                    // We're doing a selection based directly on the database. We need to
+                    // send the expression definitions to the engine since we haven't yet
+                    // created any plots.
+                    ExpressionList exprList;
+                    ViewerFileServer::Instance()->GetAllExpressions(exprList, host, db, 
+                        ViewerFileServer::ANY_STATE);
+                    ViewerEngineManager::Instance()->UpdateExpressions(engineKey, exprList);
+                    ViewerEngineManager::Instance()->CreateNamedSelection(engineKey, -1, P);
+                }
+                CATCH(VisItException)
+                {
+                    Error(tr("Could not create named selection %1.").arg(props.GetName().c_str()));
+                }
+                ENDTRY
             }
         }
 

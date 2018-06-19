@@ -88,7 +88,7 @@ using namespace std;
 //  Stolen from S3D reader. 
 //
 // ****************************************************************************
-string
+static string
 parse_dirname(char *wholePath)
 {
 #ifndef WIN32
@@ -322,6 +322,7 @@ void ElementFetcher::GetElemsFromBinaryFile(std::string filename, long fileOffse
   long byteOffset = mFileSet->mBytesPerElem * fileOffset; 
   if (fseek(fp, byteOffset, SEEK_SET) == -1) {
     string msg = string("Error, cannot seek ")+intToString(byteOffset)+" bytes into file: "+filename+string(" (")+strerror(errno)+string(")");
+    fclose(fp);
     EXCEPTION1(VisItException, msg.c_str()); 
   }
 
@@ -335,6 +336,7 @@ void ElementFetcher::GetElemsFromBinaryFile(std::string filename, long fileOffse
     long chunkElems = chunkBytes/mFileSet->mBytesPerElem; 
     if (fread((void*)buffer, mFileSet->mBytesPerElem, chunkElems, fp) == -1) {
       string msg = string("Error, cannot read ")+intToString(chunkBytes)+" bytes from file: "+filename+string(" (")+strerror(errno)+string(")");
+      fclose(fp);
       EXCEPTION1(VisItException, msg.c_str()); 
     }
     char *bufp = buffer; 
@@ -346,6 +348,7 @@ void ElementFetcher::GetElemsFromBinaryFile(std::string filename, long fileOffse
     bytesToRead -= chunkBytes; 
   }
   debug2 << "ElementFetcher::GetElemsFromBinaryFile complete " << endl;
+  fclose(fp);
   return; 
 }
 /* 
@@ -711,7 +714,12 @@ bool ParallelData:: ParseMetaDataFile(void) {
   } else {
     cwd = string(buf) + "/"; 
   }
-  if (mMetaDataFileName[0] != '/' ) {
+#ifndef WIN32
+  if (mMetaDataFileName[0] != '/' )
+#else
+  if (mMetaDataFileName.size() > 1 && mMetaDataFileName[1] != ':' )
+#endif
+  {
     debug2 << "mMetaDataFileName " << mMetaDataFileName; 
     mMetaDataFileName = cwd + "/" + mMetaDataFileName; 
     debug2 << " changed to " << mMetaDataFileName << endl;  

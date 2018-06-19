@@ -59,6 +59,7 @@
 #include <avtColorTables.h>
 #include <avtDatabaseFactory.h>
 #include <avtDataObjectQuery.h>
+#include <avtNamedSelectionManager.h>
 #include <avtNullData.h>
 
 
@@ -67,6 +68,7 @@
 #include <CloneNetworkRPC.h>
 #include <ConstructDataBinningRPC.h>
 #include <DefineVirtualDatabaseRPC.h>
+#include <EnginePropertiesRPC.h>
 #include <ExecuteRPC.h>
 #include <ExportDatabaseRPC.h>
 #include <KeepAliveRPC.h>
@@ -76,6 +78,7 @@
 #include <PickRPC.h>
 #include <ProcInfoRPC.h>
 #include <QueryRPC.h>
+#include <QueryParametersRPC.h>
 #include <QuitRPC.h>
 #include <ReadRPC.h>
 #include <ReleaseDataRPC.h>
@@ -87,6 +90,8 @@
 #include <StartQueryRPC.h>
 #include <UpdatePlotAttsRPC.h>
 #include <UseNetworkRPC.h>
+
+#include <string>
 
 // ****************************************************************************
 //  Method: RPCExecutor<QuitRPC>::Execute
@@ -207,6 +212,12 @@ RPCExecutor<KeepAliveRPC>::Execute(KeepAliveRPC *rpc)
 //    Brad Whitlock, Tue Jun 24 15:57:34 PDT 2008
 //    Changed how the database plugin manager is accessed.
 //
+//    Brad Whitlock, Mon Aug 22 10:22:18 PDT 2011
+//    Pass the selection name to StartNetwork.
+//
+//    Eric Brugger, Mon Oct 31 09:51:17 PDT 2011
+//    Added the window id to StartNetwork.
+//
 // ****************************************************************************
 
 template<>
@@ -229,7 +240,9 @@ RPCExecutor<ReadRPC>::Execute(ReadRPC *rpc)
                              rpc->GetMaterialAttributes(),
                              rpc->GetMeshManagementAttributes(),
                              rpc->GetTreatAllDBsAsTimeVarying(),
-                             rpc->GetIgnoreExtents());
+                             rpc->GetIgnoreExtents(),
+                             rpc->GetSelectionName(),
+                             rpc->GetWindowID());
         rpc->SendReply();
     }
     CATCH2(VisItException, e)
@@ -291,7 +304,7 @@ RPCExecutor<PrepareOperatorRPC>::Execute(PrepareOperatorRPC *rpc)
     debug2 << "Executing PrepareOperatorRPC: " << rpc->GetID().c_str() << endl;
     TRY 
     {
-        string id = rpc->GetID().c_str();
+        std::string id = rpc->GetID().c_str();
 
         if (!netmgr->GetOperatorPluginManager()->PluginAvailable(id))
         {
@@ -409,7 +422,7 @@ RPCExecutor<PreparePlotRPC>::Execute(PreparePlotRPC *rpc)
     debug2 << "Executing PreparePlotRPC: " << rpc->GetID().c_str() << endl;
     TRY
     {
-        string id = rpc->GetID().c_str();
+        std::string id = rpc->GetID().c_str();
 
         if (!netmgr->GetPlotPluginManager()->PluginAvailable(id))
         {
@@ -550,7 +563,7 @@ RPCExecutor<PrepareUpdatePlotAttsRPC>::Execute(PrepareUpdatePlotAttsRPC *rpc)
     {
         Engine         *engine = Engine::Instance();
         NetworkManager *netmgr = engine->GetNetMgr();
-        string id = rpc->GetID().c_str();
+        std::string id = rpc->GetID().c_str();
 
         if (!netmgr->GetPlotPluginManager()->PluginAvailable(id))
         {
@@ -1107,6 +1120,35 @@ RPCExecutor<ProcInfoRPC>::Execute(ProcInfoRPC *rpc)
 }
 
 // ****************************************************************************
+//  Method: RPCExecutor<EnginePropertiesRPC>::Execute
+//
+//  Purpose:  Execute a request for process infor.
+//
+//  Programmer: Brad Whitlock
+//  Creation:   Mon Oct 10 11:17:03 PDT 2011
+//
+// ****************************************************************************
+template<>
+void
+RPCExecutor<EnginePropertiesRPC>::Execute(EnginePropertiesRPC *rpc)
+{
+    Engine *engine = Engine::Instance();
+
+    debug2 << "Executing EnginePropertiesRPC: " << endl;
+
+    TRY
+    {
+        EngineProperties props(engine->GetEngineProperties());
+        rpc->SendReply(&props);
+    }
+    CATCH2(VisItException, e)
+    {
+        rpc->SendError(e.Message(), e.GetExceptionType());
+    }
+    ENDTRY
+}
+
+// ****************************************************************************
 //  Method: RPCExecutor<QueryRPC>::Execute
 //
 //  Purpose:  Execute a query.
@@ -1166,6 +1208,40 @@ RPCExecutor<QueryRPC>::Execute(QueryRPC *rpc)
                                Engine::EngineInitializeProgressCallback, NULL);
     avtOriginatingSource::RegisterInitializeProgressCallback(
                                Engine::EngineInitializeProgressCallback, NULL);
+}
+
+
+// ****************************************************************************
+//  Method: RPCExecutor<QueryParametersRPC>::Execute
+//
+//  Purpose:  Retrieve query parameters.
+//
+//  Programmer: Kathleen Biagas
+//  Creation:   July 15, 2011 
+//
+//  Modifications:
+//
+// ****************************************************************************
+template<>
+void
+RPCExecutor<QueryParametersRPC>::Execute(QueryParametersRPC *rpc)
+{
+    Engine         *engine = Engine::Instance();
+    NetworkManager *netmgr = engine->GetNetMgr();
+
+    debug2 << "Executing QueryParametersRPC: " << endl;
+
+    TRY
+    {
+        QueryParametersRPC::MapNodeString s(
+            netmgr->GetQueryParameters(rpc->GetQueryName()));
+        rpc->SendReply(&s);
+    }
+    CATCH2(VisItException, e)
+    {
+        rpc->SendError(e.Message(), e.GetExceptionType());
+    }
+    ENDTRY
 }
 
 
@@ -1560,6 +1636,12 @@ RPCExecutor<SimulationCommandRPC>::Execute(SimulationCommandRPC *rpc)
 //    Pass selection properties to CreateNamedSelection. I also added status
 //    updates since the RPC is now non-blocking.
 //
+//    Brad Whitlock, Mon Aug 22 10:21:17 PDT 2011
+//    I changed how named selections get applied.
+//
+//    Brad Whitlock, Wed Sep  7 14:33:01 PDT 2011
+//    I added NS_UPDATE and code to clear the NSM's cache.
+//
 // ****************************************************************************
 template<>
 void
@@ -1586,14 +1668,20 @@ RPCExecutor<NamedSelectionRPC>::Execute(NamedSelectionRPC *rpc)
 
         switch (rpc->GetNamedSelectionOperation())
         {
-        case NamedSelectionRPC::NS_APPLY:
-            netmgr->ApplyNamedSelection(rpc->GetPlotNames(), rpc->GetSelectionName());
-            break;
         case NamedSelectionRPC::NS_CREATE:
+            avtNamedSelectionManager::GetInstance()->ClearCache(rpc->GetSelectionName());
+            summary = netmgr->CreateNamedSelection(
+                rpc->GetPlotID(), rpc->GetSelectionProperties());
+            break;
+        case NamedSelectionRPC::NS_UPDATE:
+            if(!rpc->GetAllowCache())
+                avtNamedSelectionManager::GetInstance()->ClearCache(rpc->GetSelectionName());
+            netmgr->DeleteNamedSelection(rpc->GetSelectionName());
             summary = netmgr->CreateNamedSelection(
                 rpc->GetPlotID(), rpc->GetSelectionProperties());
             break;
         case NamedSelectionRPC::NS_DELETE:
+            avtNamedSelectionManager::GetInstance()->ClearCache(rpc->GetSelectionName());
             netmgr->DeleteNamedSelection(rpc->GetSelectionName());
             break;
         case NamedSelectionRPC::NS_LOAD:

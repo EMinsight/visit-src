@@ -41,12 +41,13 @@
 // ************************************************************************* //
 
 #include <avtDatabaseMetaData.h>
+#include <avtGhostData.h>
 #include <avtMaterial.h>
 #include <avtVTKFileFormat.h>
 
 #include <vtkCellData.h>
 #include <vtkDataSet.h>
-#include <vtkVisItDataSetReader.h>
+#include <vtkDataSetReader.h>
 #include <vtkPointData.h>
 #include <vtkPolyData.h>
 #include <vtkUnstructuredGrid.h>
@@ -54,17 +55,19 @@
 #include <vtkStructuredPoints.h>
 #include <vtkRectilinearGrid.h>
 #include <vtkFloatArray.h>
-#include <vtkVisItXMLImageDataReader.h>
-#include <vtkVisItXMLPolyDataReader.h>
-#include <vtkVisItXMLRectilinearGridReader.h>
-#include <vtkVisItXMLStructuredGridReader.h>
-#include <vtkVisItXMLUnstructuredGridReader.h>
+#include <vtkXMLImageDataReader.h>
+#include <vtkXMLPolyDataReader.h>
+#include <vtkXMLRectilinearGridReader.h>
+#include <vtkXMLStructuredGridReader.h>
+#include <vtkXMLUnstructuredGridReader.h>
 
 #include <snprintf.h>
 #include <DebugStream.h>
 #include <Expression.h>
 #include <InvalidVariableException.h>
 #include <InvalidFilesException.h>
+
+#include <vtkVisItUtility.h>
 
 #include <map>
 #include <string>
@@ -164,6 +167,9 @@ avtVTKFileFormat::avtVTKFileFormat(const char *fname, DBOptionsAttributes *)
 //    Mark C. Miller, Thu Sep 15 19:45:51 PDT 2005
 //    Freed matvarname
 //
+//    Brad Whitlock, Wed Oct 26 11:03:14 PDT 2011
+//    Delete curves in vtkCurves.
+//
 // ****************************************************************************
 
 avtVTKFileFormat::~avtVTKFileFormat()
@@ -177,6 +183,11 @@ avtVTKFileFormat::~avtVTKFileFormat()
     {
         free(matvarname);
         matvarname = NULL;
+    }
+    for(std::map<std::string, vtkRectilinearGrid *>::iterator pos = vtkCurves.begin();
+        pos != vtkCurves.end(); ++pos)
+    {
+        pos->second->Delete();
     }
 }
 
@@ -221,6 +232,9 @@ avtVTKFileFormat::~avtVTKFileFormat()
 //    Kathleen Bonnell, Wed Jul  9 18:13:20 PDT 2008
 //    Retrieve CYCLE from FieldData if available.
 //
+//    Brad Whitlock, Wed Oct 26 11:04:50 PDT 2011
+//    Create curves for 1D rectilinear grids.
+//
 // ****************************************************************************
 
 void
@@ -247,11 +261,12 @@ avtVTKFileFormat::ReadInDataset(void)
         //
         // Create a file reader and set our dataset to be its output.
         //
-        vtkVisItDataSetReader *reader = vtkVisItDataSetReader::New();
+        vtkDataSetReader *reader = vtkDataSetReader::New();
         reader->ReadAllScalarsOn();
         reader->ReadAllVectorsOn();
         reader->ReadAllTensorsOn();
         reader->SetFileName(filename);
+        reader->Update();
         dataset = reader->GetOutput();
         if (dataset == NULL)
         {
@@ -269,8 +284,9 @@ avtVTKFileFormat::ReadInDataset(void)
     }
     else if (extension == "vti")
     {
-        vtkVisItXMLImageDataReader *reader = vtkVisItXMLImageDataReader::New();
+        vtkXMLImageDataReader *reader = vtkXMLImageDataReader::New();
         reader->SetFileName(filename);
+        reader->Update();
         dataset = reader->GetOutput();
         if (dataset == NULL)
         {
@@ -283,9 +299,10 @@ avtVTKFileFormat::ReadInDataset(void)
     } 
     else if (extension == "vtr") 
     {
-        vtkVisItXMLRectilinearGridReader *reader = 
-            vtkVisItXMLRectilinearGridReader::New();
+        vtkXMLRectilinearGridReader *reader = 
+            vtkXMLRectilinearGridReader::New();
         reader->SetFileName(filename);
+        reader->Update();
         dataset = reader->GetOutput();
         if (dataset == NULL)
         {
@@ -298,9 +315,10 @@ avtVTKFileFormat::ReadInDataset(void)
     } 
     else if (extension == "vts")
     {
-        vtkVisItXMLStructuredGridReader *reader = 
-            vtkVisItXMLStructuredGridReader::New();
+        vtkXMLStructuredGridReader *reader = 
+            vtkXMLStructuredGridReader::New();
         reader->SetFileName(filename);
+        reader->Update();
         dataset = reader->GetOutput();
         if (dataset == NULL)
         {
@@ -313,8 +331,9 @@ avtVTKFileFormat::ReadInDataset(void)
     } 
     else if (extension == "vtp") 
     {
-        vtkVisItXMLPolyDataReader *reader = vtkVisItXMLPolyDataReader::New();
+        vtkXMLPolyDataReader *reader = vtkXMLPolyDataReader::New();
         reader->SetFileName(filename);
+        reader->Update();
         dataset = reader->GetOutput();
         if (dataset == NULL)
         {
@@ -327,9 +346,10 @@ avtVTKFileFormat::ReadInDataset(void)
     } 
     else if (extension == "vtu") 
     {
-        vtkVisItXMLUnstructuredGridReader *reader = 
-            vtkVisItXMLUnstructuredGridReader::New();
+        vtkXMLUnstructuredGridReader *reader = 
+            vtkXMLUnstructuredGridReader::New();
         reader->SetFileName(filename);
+        reader->Update();
         dataset = reader->GetOutput();
         if (dataset == NULL)
         {
@@ -366,7 +386,96 @@ avtVTKFileFormat::ReadInDataset(void)
         //
         dataset = ConvertStructuredPointsToRGrid((vtkStructuredPoints*)dataset);
     }
+
+    if(dataset->GetDataObjectType() == VTK_RECTILINEAR_GRID)
+    {
+        vtkRectilinearGrid *rgrid = vtkRectilinearGrid::SafeDownCast(dataset);
+        int dims[3];
+        rgrid->GetDimensions(dims);
+        if(dims[0] > 0 && dims[1] <= 1 && dims[2] <= 1)
+        {
+            // Make some curves from this dataset.
+            CreateCurves(rgrid);
+        }
+    }
+
     readInDataset = true;
+}
+
+// ****************************************************************************
+// Method: avtVTKFileFormat::CreateCurves
+//
+// Purpose: 
+//   Create curve datasets based on the input rectilinear grid.
+//
+// Arguments:
+//   rgrid : The rectilinear grid from which to create curves.
+//
+// Returns:    
+//
+// Note:       vtkCurves gets the new datasets.
+//
+// Programmer: Brad Whitlock
+// Creation:   Wed Oct 26 11:01:44 PDT 2011
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+avtVTKFileFormat::CreateCurves(vtkRectilinearGrid *rgrid)
+{
+    vtkDataArray *xc = rgrid->GetXCoordinates();
+    int nPts = xc->GetNumberOfTuples();
+
+    for(int i = 0; i < rgrid->GetPointData()->GetNumberOfArrays(); ++i)
+    {
+        vtkDataArray *arr = rgrid->GetPointData()->GetArray(i);
+        if(arr->GetNumberOfComponents() == 1)
+        {
+            vtkRectilinearGrid *curve = vtkVisItUtility::Create1DRGrid(nPts,VTK_FLOAT);
+            vtkDataArray *curve_xc = curve->GetXCoordinates();
+            vtkFloatArray *curve_yc = vtkFloatArray::New();
+            curve_yc->SetName(arr->GetName());
+            curve_yc->SetNumberOfTuples(nPts);
+            for(vtkIdType j = 0; j < nPts; ++j)
+            {
+                curve_xc->SetTuple1(j, xc->GetTuple1(j));
+                curve_yc->SetTuple1(j, arr->GetTuple1(j));
+            }
+            curve->GetPointData()->SetScalars(curve_yc);
+            curve_yc->Delete();
+
+            vtkCurves[std::string("curve_") + std::string(arr->GetName())] = curve;
+        }
+    }
+
+    for(int i = 0; i < rgrid->GetCellData()->GetNumberOfArrays(); ++i)
+    {
+        vtkDataArray *arr = rgrid->GetCellData()->GetArray(i);
+        if(arr->GetNumberOfComponents() == 1)
+        {
+            vtkRectilinearGrid *curve = vtkVisItUtility::Create1DRGrid(nPts,VTK_FLOAT);
+            vtkDataArray *curve_xc = curve->GetXCoordinates();
+            for(vtkIdType j = 0; j < nPts; ++j)
+                curve_xc->SetTuple1(j, xc->GetTuple1(j));
+
+            int nCells = nPts-1;
+            int idx = 0;
+            vtkFloatArray *curve_yc = vtkFloatArray::New();
+            curve_yc->SetName(arr->GetName());
+            curve_yc->SetNumberOfTuples(nPts);
+            curve_yc->SetTuple1(idx++, arr->GetTuple1(0));
+            for(vtkIdType j = 0; j < nCells-1; ++j)
+                curve_yc->SetTuple1(idx++, (arr->GetTuple1(j) + arr->GetTuple1(j+1)) / 2.);
+            curve_yc->SetTuple1(idx++, arr->GetTuple1(nCells-1));
+
+            curve->GetPointData()->SetScalars(curve_yc);
+            curve_yc->Delete();
+
+            vtkCurves[std::string("curve_") + std::string(arr->GetName())] = curve;
+        }
+    }
 }
 
 // ****************************************************************************
@@ -384,6 +493,9 @@ avtVTKFileFormat::ReadInDataset(void)
 //    Determine the proper material variable name & material metadata
 //    if PopulateDatabaseMetaData has not been called. This supports materials
 //    in the case we multiple vtk files acting as separate timesteps.
+//
+//    Cyrus Harrison, Wed Nov 16 13:35:54 PST 2011
+//    Use "MaterialIds" field data to help generate avtMaterials result object.
 //
 // ****************************************************************************
 
@@ -425,9 +537,17 @@ avtVTKFileFormat::GetAuxiliaryData(const char *var,
         // this data will be bad ...
         if(matnos.size() == 0)
         {
-            int *iptr = matarr->GetPointer(0);
+            vtkIntArray  *iarr = NULL;
+            // check for field data "MaterialIds" that can directly provide us
+            // the proper set of material ids.
+            vtkDataArray *mids_arr = dataset->GetFieldData()->GetArray("MaterialIds");
+            if( mids_arr != NULL)
+                iarr = vtkIntArray::SafeDownCast(mids_arr);
+            else
+                iarr = vtkIntArray::SafeDownCast(matarr);
+            int *iptr = iarr->GetPointer(0);
             std::map<int, bool> valMap;
-            int ntuples = matarr->GetNumberOfTuples();
+            int ntuples = iarr->GetNumberOfTuples();
             for (int j = 0; j < ntuples; j++)
                 valMap[iptr[j]] = true;
             std::map<int, bool>::const_iterator it;
@@ -491,9 +611,11 @@ avtVTKFileFormat::GetAuxiliaryData(const char *var,
 //  Creation:   February 23, 2001
 //
 //  Modifications:
-//
 //    Hank Childs, Tue Mar 26 13:33:43 PST 2002
 //    Add a reference so that reference counting tricks work.
+//
+//    Brad Whitlock, Wed Oct 26 11:08:31 PDT 2011
+//    Return curves.
 //
 // ****************************************************************************
 
@@ -502,14 +624,22 @@ avtVTKFileFormat::GetMesh(const char *mesh)
 {
     debug5 << "Getting mesh from VTK file " << filename << endl;
 
-    if (strcmp(mesh, MESHNAME) != 0)
-    {
-        EXCEPTION1(InvalidVariableException, mesh);
-    }
-
     if (!readInDataset)
     {
         ReadInDataset();
+    }
+
+    // If the requested mesh is a curve, return it.
+    std::map<std::string, vtkRectilinearGrid *>::iterator pos = vtkCurves.find(mesh);
+    if(pos != vtkCurves.end())
+    {
+        pos->second->Register(NULL);
+        return pos->second;
+    }
+
+    if (strcmp(mesh, MESHNAME) != 0)
+    {
+        EXCEPTION1(InvalidVariableException, mesh);
     }
 
     //
@@ -762,6 +892,15 @@ avtVTKFileFormat::FreeUpResources(void)
 //    Expand the test for lower topological dimensions to include
 //    structured grids.
 //
+//    Hank Childs, Wed Sep 14 16:29:19 PDT 2011
+//    Improve handling of ghost data.
+//
+//    Brad Whitlock, Wed Oct 26 11:12:17 PDT 2011
+//    Add metadata for curves.
+//
+//    Cyrus Harrison, Wed Nov 16 13:35:54 PST 2011
+//    Use "MaterialIds" field data to help generate materials metadata.
+//
 // ****************************************************************************
 
 void
@@ -826,6 +965,11 @@ avtVTKFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
                 debug5 << "The VTK file format contains all points -- "
                        << "declaring this a point mesh." << endl;
                 topo = 0;
+            }
+            else if(myType == VTK_LINE)
+            {
+                debug5 << "The mesh contains all lines, set topo=1" << endl;
+                topo = 1;
             }
         }
 
@@ -900,7 +1044,35 @@ avtVTKFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
             }
         }
     }
+    if (dataset->GetCellData()->GetArray("avtGhostZones"))
+    {
+        mesh->containsGhostZones = AVT_HAS_GHOSTS;
+        int ncells = dataset->GetNumberOfCells();
+        vtkUnsignedCharArray *arr = (vtkUnsignedCharArray *) dataset->GetCellData()->GetArray("avtGhostZones");
+        unsigned char *ptr = arr->GetPointer(0);
+        unsigned char v = '\0';
+        avtGhostData::AddGhostZoneType(v, ZONE_EXTERIOR_TO_PROBLEM);
+        for (int i = 0 ; i < ncells ; i++)
+            if (ptr[i] & v)
+            {
+                mesh->containsExteriorBoundaryGhosts = true;
+                break;
+            }
+    }
+    else
+        mesh->containsGhostZones = AVT_NO_GHOSTS;
+
     md->Add(mesh); 
+
+    std::map<std::string, vtkRectilinearGrid *>::iterator pos;
+    for(pos = vtkCurves.begin(); pos != vtkCurves.end(); ++pos)
+    {
+        avtCurveMetaData *curve = new avtCurveMetaData;
+        curve->name = pos->first;
+        curve->hasSpatialExtents = false;
+        curve->hasDataExtents = false;
+        md->Add(curve);
+    }
 
     int nvars = 0;
 
@@ -984,12 +1156,21 @@ avtVTKFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
             ((strncmp(name, "internal_var_Subsets", strlen("internal_var_Subsets")) == 0) ||
             ((strncmp(name, "material", strlen("material")) == 0))))
         {
-            vtkIntArray *iarr = vtkIntArray::SafeDownCast(arr);
-            int *iptr = iarr->GetPointer(0);
             std::map<int, bool> valMap;
+            vtkIntArray  *iarr = NULL;
+            // check for field data "MaterialIds" that can directly provide us
+            // the proper set of material ids.
+            vtkDataArray *mids_arr = dataset->GetFieldData()->GetArray("MaterialIds");
+            if( mids_arr != NULL)
+                iarr = vtkIntArray::SafeDownCast(mids_arr);
+            else
+                iarr = vtkIntArray::SafeDownCast(arr);
+
+            int *iptr = iarr->GetPointer(0);
             int ntuples = iarr->GetNumberOfTuples();
             for (int j = 0; j < ntuples; j++)
                 valMap[iptr[j]] = true;
+
             std::map<int, bool>::const_iterator it;
             for (it = valMap.begin(); it != valMap.end(); it++)
             {

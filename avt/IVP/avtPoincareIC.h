@@ -111,7 +111,8 @@ enum FieldlineType { UNKNOWN_TYPE  = 0,
                      IRRATIONAL     = 20,
                      FLUX_SURFACE   = 21,
                      ISLAND_CHAIN   = 22,
-                     ISLANDS_WITHIN_ISLANDS = 23,
+                     ISLAND_WITH_SECONDARY_ISLANDS = 23,
+                     ISLAND_AMBIGUOUS_AXIS = 24,
                      
                      CHAOTIC = 30 };
   
@@ -178,7 +179,9 @@ class IVP_API avtPoincareIC : public avtStateRecorderIntegralCurve
 public:
     avtPoincareIC(unsigned char mask, const avtIVPSolver* model, 
                   Direction dir, const double& t_start, 
-                  const avtVector &p_start, int ID);
+                  const avtVector &p_start,
+                  const avtVector &v_start,
+                  int ID);
 
     void          SetIntersectionCriteria(vtkObject *obj, int);
 

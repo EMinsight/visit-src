@@ -105,6 +105,9 @@ Consider the leaveDomains SLs and the balancing at the same time.
 #include <mpi.h>
 #endif
 
+#include <string>
+#include <vector>
+
 static float random01()
 {
     return (float)rand()/(float)RAND_MAX;
@@ -191,7 +194,7 @@ static float random_11()
 //
 // ****************************************************************************
 
-avtStreamlineFilter::avtStreamlineFilter()
+avtStreamlineFilter::avtStreamlineFilter() : seedVelocity(0,0,0)
 {
     coloringMethod = STREAMLINE_COLOR_SPEED;
     displayMethod = STREAMLINE_DISPLAY_LINES;
@@ -249,6 +252,23 @@ avtStreamlineFilter::avtStreamlineFilter()
 
 avtStreamlineFilter::~avtStreamlineFilter()
 {
+}
+
+// ****************************************************************************
+// Method:  avtStreamlineFilter::GetCommunicationPattern()
+//
+// Programmer:  Dave Pugmire
+// Creation:    September  1, 2011
+//
+// ****************************************************************************
+
+avtPICSFilter::CommunicationPattern
+avtStreamlineFilter::GetCommunicationPattern()
+{
+    if (! scaleTubeRadiusVariable.empty())
+        return avtPICSFilter::ReturnToOriginatingProcessor;
+    
+    return avtPICSFilter::RestoreSequenceAssembleUniformly;
 }
 
 // ****************************************************************************
@@ -356,7 +376,8 @@ avtStreamlineFilter::CreateIntegralCurve()
 
 void
 avtStreamlineFilter::SetTermination(int maxSteps_, bool doDistance_,
-                            double maxDistance_, bool doTime_, double maxTime_)
+                                    double maxDistance_,
+                                    bool doTime_, double maxTime_)
 {
     maxSteps = maxSteps_;
     doDistance = doDistance_;
@@ -388,13 +409,15 @@ avtIntegralCurve *
 avtStreamlineFilter::CreateIntegralCurve( const avtIVPSolver* model,
                                           const avtIntegralCurve::Direction dir,
                                           const double& t_start,
-                                          const avtVector &p_start, long ID ) 
+                                          const avtVector &p_start,
+                                          const avtVector &v_start,
+                                          long ID ) 
 {
     unsigned char attr = GenerateAttributeFields();
 
     avtStateRecorderIntegralCurve *rv = 
         new avtStreamlineIC(maxSteps, doDistance, maxDistance, doTime, maxTime,
-                            attr, model, dir, t_start, p_start, ID);
+                            attr, model, dir, t_start, p_start, v_start, ID);
 
     return rv;
 }
@@ -421,7 +444,7 @@ avtStreamlineFilter::CreateIntegralCurve( const avtIVPSolver* model,
 // ****************************************************************************
 
 void
-avtStreamlineFilter::SetColoringMethod(int m, const string &var)
+avtStreamlineFilter::SetColoringMethod(int m, const std::string &var)
 {
     coloringMethod = m;
     coloringVariable = var;
@@ -487,6 +510,27 @@ void
 avtStreamlineFilter::SetDisplayMethod(int d)
 {
     displayMethod = d;
+}
+
+
+// ****************************************************************************
+// Method: avtStreamlineFilter::SetVelocitySource
+//
+// Purpose: 
+//   Sets the streamline point source.
+//
+// Arguments:
+//   vel : The velocity of the point.
+//
+// Programmer: Brad Whitlock
+// Creation:   Wed Nov 6 12:58:36 PDT 2002
+//
+// ****************************************************************************
+
+void
+avtStreamlineFilter::SetVelocitySource(const double *p)
+{
+  seedVelocity.set(p);
 }
 
 
@@ -814,7 +858,7 @@ avtStreamlineFilter::SeedInfoString() const
     else
         sprintf(buff, "%s", "UNKNOWN");
     
-    string str = buff;
+    std::string str = buff;
     return str;
 }
 
@@ -948,6 +992,28 @@ randMinus1_1()
 //  Purpose:
 //      Get the seed points out of the attributes.
 //
+//  Programmer: Hank Childs
+//  Creation:   June 5, 2008
+//
+// ****************************************************************************
+
+std::vector<avtVector>
+avtStreamlineFilter::GetInitialVelocities(void)
+{
+    std::vector<avtVector> seedVels;
+
+    seedVels.push_back( seedVelocity );
+
+    return seedVels;
+}
+
+
+ // ****************************************************************************
+//  Method: avtStreamlineFilter::GetInitialLocations
+//
+//  Purpose:
+//      Get the seed points out of the attributes.
+//
 //  Programmer: Hank Childs (harvested from GetStreamlinesFromInitialSeeds by
 //                           David Pugmire)
 //  Creation:   June 5, 2008
@@ -989,7 +1055,7 @@ avtStreamlineFilter::GetInitialLocations(void)
     //Check for 2D input.
     if (GetInput()->GetInfo().GetAttributes().GetSpatialDimension() == 2)
     {
-        vector<avtVector>::iterator it;
+        std::vector<avtVector>::iterator it;
         for (it = seedPts.begin(); it != seedPts.end(); it++)
             (*it)[2] = 0.0f;
     }
@@ -1117,7 +1183,7 @@ avtStreamlineFilter::GenerateSeedPointsFromPlane(std::vector<avtVector> &pts)
         if (!fill)
         {
             // There are 4 sides. Create a vector that we will shuffle each time.
-            vector<int> sides(4);
+            std::vector<int> sides(4);
             for (int i = 0; i < 4; i++)
                 sides[i] = i;
 
@@ -1152,7 +1218,9 @@ avtStreamlineFilter::GenerateSeedPointsFromPlane(std::vector<avtVector> &pts)
     }
     else
     {
-        float dX = (x1-x0)/(float)(sampleDensity[0]-1), dY = (y1-y0)/(float)(sampleDensity[1]-1);
+        float dX = (x1-x0)/(float)(sampleDensity[0]-1);
+        float dY = (y1-y0)/(float)(sampleDensity[1]-1);
+
         for (int x = 0; x < sampleDensity[0]; x++)
         {
             for (int y = 0; y < sampleDensity[1]; y++)
@@ -1423,7 +1491,7 @@ avtStreamlineFilter::GenerateSeedPointsFromBox(std::vector<avtVector> &pts)
         else
         {
             // There are 6 faces. Create a vector that we will shuffle each time.
-            vector<int> faces(6);
+            std::vector<int> faces(6);
             for (int i = 0; i < 6; i++)
                 faces[i] = i;
             

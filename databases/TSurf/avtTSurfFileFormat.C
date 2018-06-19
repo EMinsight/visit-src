@@ -373,13 +373,13 @@ avtTSurfFileFormat::ReadFile(const char *name, int nLines)
         }
         fseek(fp, 0, SEEK_END);
         fileSize = ftell(fp);
+        fclose(fp);
         debug4 << "File is " << fileSize << " bytes long." << endl;
 
         // Make a guess about the number of cells and points based on
         // the size of the file.
         nPoints = fileSize / 60;
         nCells  = fileSize / 45;
-        fclose(fp);
 #endif
     }
     vtkPoints *pts = vtkPoints::New();
@@ -395,7 +395,7 @@ avtTSurfFileFormat::ReadFile(const char *name, int nLines)
 
     char  line[1024];
     float pt[3];
-    int verts[8];
+    vtkIdType verts[8];
     bool recognized = false;
     bool titleRead = false;
     for(int lineIndex = 0; !ifile.eof(); ++lineIndex)
@@ -454,17 +454,17 @@ avtTSurfFileFormat::ReadFile(const char *name, int nLines)
         else if(strncmp(line, "TRGL", 4) == 0)
         {
             recognized = true;
-
+            int iverts[3] = {1,1,1};
             if(sscanf(line, "TRGL %d %d %d",
-               &verts[0], &verts[1], &verts[2]) != 3)
+               &iverts[0], &iverts[1], &iverts[2]) != 3)
             {
                 debug4 << "Error at line: " << line << endl;
             }
 
             // Make them be zero offset.
-            --verts[0];
-            --verts[1];
-            --verts[2];
+            verts[0] = iverts[0]-1;
+            verts[1] = iverts[1]-1;
+            verts[2] = iverts[2]-1;
 #if 0
             debug4 << verts[0]
                    << ", " << verts[1]

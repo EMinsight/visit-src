@@ -47,8 +47,6 @@
 
 #include <avtVelodyneFileFormat.h>
 
-#include <string>
-
 #include <vtkCellType.h>
 #include <vtkUnstructuredGrid.h>
 
@@ -62,8 +60,13 @@
 #include <InvalidVariableException.h>
 #include <DebugStream.h>
 
+#include <visit-hdf5.h>
 
-using     std::string;
+#include <set>
+#include <string>
+
+using std::set;
+using std::string;
 
 const string avtVelodyneFileFormat::node_name    ="Node";
 const string avtVelodyneFileFormat::solid_name   ="Solid";

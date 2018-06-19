@@ -99,6 +99,9 @@ static bool isDevelopmentVersion = false;
 //   Kathleen Bonnell, Thu Apr 22 17:25:54 MST 2010
 //   Username no longer added to config file names on windows.
 //
+//   Kathleen Biagas, Wed Nov 2 09:55:12 MST 2010
+//   Don't assume drive letter is 'C', only test for presence of ':'.
+//
 // ****************************************************************************
 
 char *
@@ -117,7 +120,7 @@ GetDefaultConfigFile(const char *filename, const char *home)
         return retval;
     }
     // If the filename has an absolute path, do not prepend the home directory.
-    if (filename != NULL && (filename[0] == 'C' && filename[1] == ':'))
+    if (filename != NULL && strlen(filename) > 1 && filename[1] == ':')
     {
         retval = new char[strlen(filename)+1];
         strcpy(retval, filename);
@@ -808,7 +811,10 @@ GetVisItLauncher()
 //
 //   Tom Fogal, Sun Apr 19 12:48:38 MST 2009
 //   Use `Environment' to simplify and fix a compilation error.
-//   
+//
+//   Brad Whitlock, Mon Oct 31 15:05:20 PDT 2011
+//   darwin-x86_64 enhancements.
+//
 // ****************************************************************************
 
 bool
@@ -829,8 +835,10 @@ ReadInstallationInfo(std::string &distName, std::string &configName, std::string
     "linux-ia64",
 
     "darwin-i386",
-    "darwin-ppc",
+    "darwin-x86_64",
 
+    // Deprecated
+    "darwin-ppc",
     "sun4-sunos5-sparc",
 
     "ibm-aix-pwr",
@@ -838,7 +846,6 @@ ReadInstallationInfo(std::string &distName, std::string &configName, std::string
 
     "sgi-irix6-mips2",
 
-    // Deprecated
     "dec-osf1-alpha",
     };
 
@@ -857,8 +864,10 @@ ReadInstallationInfo(std::string &distName, std::string &configName, std::string
     "linux-altix",
 
     "darwin-i386",
-    "darwin-ppc",
+    "darwin-x86_64",
 
+    // Deprecated
+    "darwin-ppc",
     "sunos5",
 
     "aix",
@@ -866,7 +875,6 @@ ReadInstallationInfo(std::string &distName, std::string &configName, std::string
 
     "irix6",
 
-    // Deprecated
     "osf1",
     };
 
@@ -947,6 +955,17 @@ ReadInstallationInfo(std::string &distName, std::string &configName, std::string
                 }
             }
         }
+
+#ifdef __APPLE__
+        if(!platformDetermined)
+        {
+            if(sizeof(long) == 8)
+                distName = "darwin-x86_64";
+            else
+                distName = "darwin-i386";
+            platformDetermined = true;
+        }
+#endif
     }
 
     return platformDetermined;

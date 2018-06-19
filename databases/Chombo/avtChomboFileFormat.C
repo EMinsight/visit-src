@@ -44,6 +44,7 @@
 
 #include <snprintf.h>
 #include <string>
+#include <vector>
 #include <cstring>
 #include <limits>
 #include <algorithm>
@@ -1229,6 +1230,9 @@ avtChomboFileFormat::InitializeReader(void)
 //    Tom Fogal, Thu Aug  5 16:45:30 MDT 2010
 //    Fix incorrect destructor function.
 //
+//    Gunther H. Weber, Mon Jan 10 10:42:45 PST 2011
+//    Add setting of refinement ratios.
+//
 // ****************************************************************************
 
 void
@@ -1242,8 +1246,8 @@ avtChomboFileFormat::CalculateDomainNesting(void)
     //
     int t0 = visitTimer->StartTimer();
     int totalPatches = 0;
-    vector<int> levelStart;
-    vector<int> levelEnd;
+    std::vector<int> levelStart;
+    std::vector<int> levelEnd;
     for (level = 0 ; level < num_levels ; level++)
     {
 
@@ -1264,7 +1268,7 @@ avtChomboFileFormat::CalculateDomainNesting(void)
     //
     // Calculate what the refinement ratio is from one level to the next.
     //
-    vector<int> rr(dimension);
+    std::vector<int> rr(dimension);
     for (level = 0 ; level < num_levels ; level++)
     {
         if (level == 0)
@@ -1283,7 +1287,7 @@ avtChomboFileFormat::CalculateDomainNesting(void)
     //
     // This multiplier will be needed to find out if patches are nested.
     //
-    vector<int> multiplier(num_levels);
+    std::vector<int> multiplier(num_levels);
     multiplier[num_levels-1] = 1;
     for (level = num_levels-2 ; level >= 0 ; level--)
     {
@@ -1301,6 +1305,10 @@ avtChomboFileFormat::CalculateDomainNesting(void)
         avtRectilinearDomainBoundaries *rdb 
                                     = new avtRectilinearDomainBoundaries(true);
         rdb->SetNumDomains(totalPatches);
+        std::vector<int> real_rr(refinement_ratio.size()-1);
+        for (int lvl=0; lvl<real_rr.size(); lvl++)
+            real_rr[lvl] = refinement_ratio[lvl];
+        rdb->SetRefinementRatios(real_rr);
         for (int patch = 0 ; patch < totalPatches ; patch++)
         {
             int my_level, local_patch;
@@ -1328,7 +1336,7 @@ avtChomboFileFormat::CalculateDomainNesting(void)
     // Calculate the child patches.
     //
     int t3 = visitTimer->StartTimer();
-    vector< vector<int> > childPatches(totalPatches);
+    std::vector< std::vector<int> > childPatches(totalPatches);
     for (level = num_levels-1 ; level > 0 ; level--)
     {
         int prev_level = level-1;
@@ -1369,7 +1377,7 @@ avtChomboFileFormat::CalculateDomainNesting(void)
                 min[2] = mp*lowK[patch];
                 max[2] = mp*hiK[patch];
             }
-            vector<int> list;
+            std::vector<int> list;
             coarse_levels.GetElementsListFromRange(min, max, list);
             for (int i = 0 ; i < list.size() ; i++)
             {
@@ -1405,7 +1413,7 @@ avtChomboFileFormat::CalculateDomainNesting(void)
         int my_level, local_patch;
         GetLevelAndLocalPatchNumber(i, my_level, local_patch);
 
-        vector<int> logExts(6);
+        std::vector<int> logExts(6);
         logExts[0] = lowI[i];
         logExts[3] = hiI[i]-1;
         logExts[1] = lowJ[i];
@@ -1547,7 +1555,7 @@ avtChomboFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
     mesh->groupPieceName = "level";
     mesh->containsExteriorBoundaryGhosts = allowedToUseGhosts && fileContainsGhosts;
     std::vector<int> groupIds(totalPatches);
-    std::vector<string> blockPieceNames(totalPatches);
+    std::vector<std::string> blockPieceNames(totalPatches);
     int levels_of_detail = 0;
     for (i = 0 ; i < totalPatches ; i++)
     {
@@ -1672,7 +1680,7 @@ avtChomboFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
     if (hasParticles)
     {
         // Add particle mesh
-        AddMeshToMetaData(md, string("particles"), AVT_POINT_MESH, 0, 1, 0, dimension, 0);
+        AddMeshToMetaData(md, std::string("particles"), AVT_POINT_MESH, 0, 1, 0, dimension, 0);
 
         for (std::vector<std::string>::iterator it = particleVarnames.begin();
                 it != particleVarnames.end(); ++it)
@@ -1780,9 +1788,9 @@ avtChomboFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
     // 
     if (nMaterials)
     {
-        vector<string> mnames(nMaterials);
+        std::vector<std::string> mnames(nMaterials);
 
-        string matname;
+        std::string matname;
         matname = "materials";
         
         char str[32];
@@ -1991,6 +1999,9 @@ avtChomboFileFormat::GetLevelAndLocalPatchNumber(int global_patch,
 //    Added ability to connect particle mesh based on polymer_id and
 //    particle_nid
 //
+//    Gunther H. Weber, Fri Mar 25 13:20:48 PDT 2011
+//    Only add avtRealDims if file contains ghosts.
+//
 // ****************************************************************************
 
 // Comaprator class used to sort an array with integers so that the permutation
@@ -2117,7 +2128,7 @@ avtChomboFileFormat::GetMesh(int patch, const char *meshname)
         rg->GetFieldData()->AddArray(arr);
         arr->Delete();
 
-        if (allowedToUseGhosts)
+        if (allowedToUseGhosts && (numGhostI > 0 || numGhostJ > 0 || numGhostK > 0))
         {
             //
             // Store real dims so that pick reports correct indices
@@ -2142,67 +2153,40 @@ avtChomboFileFormat::GetMesh(int patch, const char *meshname)
             rg->GetFieldData()->AddArray(arr);
             arr->Delete();
 
-
             //
             // Calculate the problem domian in the current level
             //
             //
             // Generate ghost zone information
             //
-            if (numGhostI > 0 || numGhostJ > 0 || numGhostK > 0)
+            unsigned char realVal = 0, ghostInternal = 0, ghostExternal = 0;
+            avtGhostData::AddGhostZoneType(ghostInternal, 
+                    DUPLICATED_ZONE_INTERNAL_TO_PROBLEM);
+            avtGhostData::AddGhostZoneType(ghostExternal, 
+                    ZONE_EXTERIOR_TO_PROBLEM);
+
+            vtkUnsignedCharArray *ghostCells = vtkUnsignedCharArray::New();
+            ghostCells->SetName("avtGhostZones");
+
+            ghostCells->Allocate(rg->GetNumberOfCells());
+
+            if (dimension == 3)
             {
-                unsigned char realVal = 0, ghostInternal = 0, ghostExternal = 0;
-                avtGhostData::AddGhostZoneType(ghostInternal, 
-                        DUPLICATED_ZONE_INTERNAL_TO_PROBLEM);
-                avtGhostData::AddGhostZoneType(ghostExternal, 
-                        ZONE_EXTERIOR_TO_PROBLEM);
-
-                vtkUnsignedCharArray *ghostCells = vtkUnsignedCharArray::New();
-                ghostCells->SetName("avtGhostZones");
-
-                ghostCells->Allocate(rg->GetNumberOfCells());
-
-                if (dimension == 3)
-                {
-                    for (int k=lowK[patch] - numGhostK; k<hiK[patch] + numGhostK; ++k)
-                        for (int j=lowJ[patch] - numGhostJ; j<hiJ[patch] + numGhostJ; ++j)
-                            for (int i=lowI[patch] - numGhostI; i<hiI[patch] + numGhostI; ++i)
-                            {
-                                if (i>=lowI[patch] && i<hiI[patch] &&
-                                        j>=lowJ[patch] && j<hiJ[patch] && 
-                                        k>=lowK[patch] && k<hiK[patch])  
-                                {
-                                    ghostCells->InsertNextValue(realVal);
-                                }
-                                else
-                                {
-                                    if (i>=lowProbI[level] && i<=hiProbI[level] &&
-                                            j>=lowProbJ[level] && j<=hiProbJ[level] &&
-                                            k>=lowProbK[level] && k<=hiProbK[level])
-                                    {
-                                        ghostCells->InsertNextValue(ghostInternal);
-                                    }
-                                    else
-                                    {
-                                        ghostCells->InsertNextValue(ghostExternal);
-                                    }
-                                }
-                            }
-                }
-                else
-                {
+                for (int k=lowK[patch] - numGhostK; k<hiK[patch] + numGhostK; ++k)
                     for (int j=lowJ[patch] - numGhostJ; j<hiJ[patch] + numGhostJ; ++j)
                         for (int i=lowI[patch] - numGhostI; i<hiI[patch] + numGhostI; ++i)
                         {
                             if (i>=lowI[patch] && i<hiI[patch] &&
-                                    j>=lowJ[patch] && j<hiJ[patch])
+                                    j>=lowJ[patch] && j<hiJ[patch] && 
+                                    k>=lowK[patch] && k<hiK[patch])  
                             {
                                 ghostCells->InsertNextValue(realVal);
                             }
                             else
                             {
                                 if (i>=lowProbI[level] && i<=hiProbI[level] &&
-                                        j>=lowProbJ[level] && j<=hiProbJ[level])
+                                        j>=lowProbJ[level] && j<=hiProbJ[level] &&
+                                        k>=lowProbK[level] && k<=hiProbK[level])
                                 {
                                     ghostCells->InsertNextValue(ghostInternal);
                                 }
@@ -2212,12 +2196,35 @@ avtChomboFileFormat::GetMesh(int patch, const char *meshname)
                                 }
                             }
                         }
-                }
-
-                rg->GetCellData()->AddArray(ghostCells);
-                rg->SetUpdateGhostLevel(0);
-                ghostCells->Delete();
             }
+            else
+            {
+                for (int j=lowJ[patch] - numGhostJ; j<hiJ[patch] + numGhostJ; ++j)
+                    for (int i=lowI[patch] - numGhostI; i<hiI[patch] + numGhostI; ++i)
+                    {
+                        if (i>=lowI[patch] && i<hiI[patch] &&
+                                j>=lowJ[patch] && j<hiJ[patch])
+                        {
+                            ghostCells->InsertNextValue(realVal);
+                        }
+                        else
+                        {
+                            if (i>=lowProbI[level] && i<=hiProbI[level] &&
+                                    j>=lowProbJ[level] && j<=hiProbJ[level])
+                            {
+                                ghostCells->InsertNextValue(ghostInternal);
+                            }
+                            else
+                            {
+                                ghostCells->InsertNextValue(ghostExternal);
+                            }
+                        }
+                    }
+            }
+
+            rg->GetCellData()->AddArray(ghostCells);
+            rg->SetUpdateGhostLevel(0);
+            ghostCells->Delete();
         }
 
         return rg;
@@ -2977,7 +2984,7 @@ avtChomboFileFormat::GetMaterial(const char *var, int patch,
         InitializeReader();
 
     int i;
-    vector<string> mnames(nMaterials);
+    std::vector<std::string> mnames(nMaterials);
     char str[32];
     for (i = 0; i < nMaterials; ++i)
     {
@@ -2986,8 +2993,8 @@ avtChomboFileFormat::GetMaterial(const char *var, int patch,
     }
     
     // Get the material fractions
-    vector<double *> mats(nMaterials);
-    vector<vtkDoubleArray *> deleteList;
+    std::vector<double *> mats(nMaterials);
+    std::vector<vtkDoubleArray *> deleteList;
     int nCells = 0;
     for (i = 0; i <= nMaterials - 2; ++i)
     {
@@ -3012,11 +3019,11 @@ avtChomboFileFormat::GetMaterial(const char *var, int patch,
     mats[nMaterials - 1] = addMatPtr;
 
     // Build the appropriate data structures
-    vector<int> material_list(nCells);
-    vector<int> mix_mat;
-    vector<int> mix_next;
-    vector<int> mix_zone;
-    vector<float> mix_vf;
+    std::vector<int> material_list(nCells);
+    std::vector<int> mix_mat;
+    std::vector<int> mix_next;
+    std::vector<int> mix_zone;
+    std::vector<float> mix_vf;
 
     for (i = 0; i < nCells; ++i)
     {

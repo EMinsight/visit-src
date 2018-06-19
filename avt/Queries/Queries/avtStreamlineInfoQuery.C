@@ -48,11 +48,13 @@
 #include <vtkPoints.h>
 #include <vtkPointData.h>
 #include <vtkCellArray.h>
-#include <string>
 #include <NonQueryableInputException.h>
 #ifdef PARALLEL
 #include <mpi.h>
 #endif
+
+#include <string>
+#include <vector>
 
 
 // ****************************************************************************
@@ -84,8 +86,38 @@ avtStreamlineInfoQuery::~avtStreamlineInfoQuery()
 {
 }
 
+
 // ****************************************************************************
-// Method:  avtMomentOfInertiaQuery::VerifyInput
+// Method:  avtStreamlineInfoQuery::SetInputParams
+//
+// Programmer:  Kathleen Biagas 
+// Creation:    June 17, 2011
+//
+// ****************************************************************************
+
+void
+avtStreamlineInfoQuery::SetInputParams(const MapNode &params)
+{
+    if (params.HasEntry("dump_steps"))
+        SetDumpSteps(params.GetEntry("dump_steps")->AsInt());
+}
+
+// ****************************************************************************
+// Method:  avtStreamlineInfoQuery::GetDefaultInputParams
+//
+// Programmer:  Kathleen Biagas 
+// Creation:    July 15, 2011
+//
+// ****************************************************************************
+
+void
+avtStreamlineInfoQuery::GetDefaultInputParams(MapNode &params)
+{
+    params["dump_steps"] = 0;
+}
+
+// ****************************************************************************
+// Method:  avtStreamlineInfoQuery::VerifyInput
 //
 // Programmer:  Dave Pugmire
 // Creation:    November  9, 2010
@@ -222,7 +254,7 @@ avtStreamlineInfoQuery::Execute(vtkDataSet *data, const int chunk)
     float *scalar = (float *)data->GetPointData()->GetArray("colorVar");
     float *param = (float *)data->GetPointData()->GetArray("params");
 
-    int *segptr = segments;
+    vtkIdType *segptr = segments;
     double pt[3], p0[3];
     
     for (int i=0; i<ds->GetNumberOfLines(); i++)
@@ -231,7 +263,7 @@ avtStreamlineInfoQuery::Execute(vtkDataSet *data, const int chunk)
         segptr++; //Now segptr points at vtx0.
         
         float arcLen = 0.0;
-        vector<float> steps;
+        std::vector<float> steps;
         
         //Seed point.
         points->GetPoint(segptr[0], p0);

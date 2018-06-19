@@ -79,6 +79,11 @@ GetM3DC1ReadOptions(void)
     refinement.push_back("3");
     refinement.push_back("4");
     refinement.push_back("5");
+    refinement.push_back("6");
+    refinement.push_back("7");
+    refinement.push_back("8");
+    refinement.push_back("9");
+    refinement.push_back("10");
 //    refinement.push_back("Variable");
     rv->SetEnumStrings("Mesh refinement", refinement);
 
@@ -88,7 +93,7 @@ GetM3DC1ReadOptions(void)
     centering.push_back("Element");
     rv->SetEnumStrings("Linear mesh data location", centering);
  
-    rv->SetDouble("Perturbation scaling", 1.0);
+    rv->SetBool("Process Data Selections in the Reader", false);
 
     return rv;
 }

@@ -56,6 +56,8 @@
 #include <DebugStream.h>
 #include <InvalidLimitsException.h>
 
+#include <string>
+#include <vector>
 
 // ****************************************************************************
 //  Method: avtPoincarePlot constructor
@@ -375,6 +377,9 @@ avtPoincarePlot::SetAtts(const AttributeGroup *a)
 
 #ifdef ENGINE
 
+    poincareFilter->SetFieldType(atts.GetFieldType());
+    poincareFilter->SetFieldConstant(atts.GetFieldConstant());
+
     poincareFilter->SetMaxPunctures(atts.GetMaxPunctures());
     
     vtkPlane *intPlane = vtkPlane::New();
@@ -424,16 +429,24 @@ avtPoincarePlot::SetAtts(const AttributeGroup *a)
     poincareFilter->SetStreamlineAlgorithm(STREAMLINE_PARALLEL_OVER_DOMAINS,
                                            10, 3, 1);
     poincareFilter->SetMaxStepLength(atts.GetMaxStepLength());
-    poincareFilter->SetTolerances(atts.GetRelTol(),atts.GetAbsTol(), false);
 
+    double absTol = 0.;
+    bool doBBox = (atts.GetAbsTolSizeType() ==
+                   PoincareAttributes::FractionOfBBox);
+    if (doBBox)
+        absTol = atts.GetAbsTolBBox();
+    else
+        absTol = atts.GetAbsTolAbsolute();
+    poincareFilter->SetTolerances(atts.GetRelTol(), absTol, doBBox);
     
     poincareFilter->SetStreamlineAlgorithm(atts.GetStreamlineAlgorithmType(), 
                                            atts.GetMaxStreamlineProcessCount(),
                                            atts.GetMaxDomainCacheSize(),
                                            atts.GetWorkGroupSize());
 
-    if (atts.GetIntegrationType() == PoincareAttributes::M3DC13DIntegrator ||
-//      atts.GetIntegrationType() == PoincareAttributes::NIMRODIntegrator ||
+    if (atts.GetFieldType() == PoincareAttributes::M3DC12DField ||
+        atts.GetFieldType() == PoincareAttributes::M3DC13DField ||
+//      atts.GetIntegrationType() == PoincareAttributes::NIMRODField ||
         0 )
       poincareFilter->ConvertToCartesian( true );
     else
@@ -447,14 +460,14 @@ avtPoincarePlot::SetAtts(const AttributeGroup *a)
     poincareFilter->SetOverrideToroidalWinding( atts.GetOverrideToroidalWinding() );
     poincareFilter->SetOverridePoloidalWinding( atts.GetOverridePoloidalWinding() );
     poincareFilter->SetWindingPairConfidence( atts.GetWindingPairConfidence() );
-    poincareFilter->SetRationalTemplateSeedParm( atts.GetRationalTemplateSeedParm() );
+    poincareFilter->SetRationalSurfaceFactor( atts.GetRationalSurfaceFactor() );
     poincareFilter->SetOverlaps( atts.GetOverlaps() );
     poincareFilter->SetAdjustPlane( atts.GetAdjustPlane() );
 
 
     poincareFilter->SetShowCurves( atts.GetMeshType() == 0 );
 
-    vector < double > planes;
+    std::vector < double > planes;
     unsigned int nplanes = atts.GetNumberPlanes();
 
     // Offset of M_PI/2.0 gives a Y normal but whether the
@@ -503,12 +516,21 @@ avtPoincarePlot::SetAtts(const AttributeGroup *a)
     glyphMapper->SetLineStyle(Int2LineStyle(atts.GetLineStyle()));
     glyphMapper->SetScale(atts.GetPointSize());
     glyphMapper->DataScalingOff();
-    glyphMapper->SetGlyphType((int)atts.GetPointType());
+    if (atts.GetPointType() == PoincareAttributes::Box)
+        glyphMapper->SetGlyphType(avtPointGlypher::Box);
+    else if (atts.GetPointType() == PoincareAttributes::Axis)
+        glyphMapper->SetGlyphType(avtPointGlypher::Axis);
+    else if (atts.GetPointType() == PoincareAttributes::Icosahedron)
+        glyphMapper->SetGlyphType(avtPointGlypher::Icosahedron);
+    else if (atts.GetPointType() == PoincareAttributes::Point)
+        glyphMapper->SetGlyphType(avtPointGlypher::Point);
+    else if (atts.GetPointType() == PoincareAttributes::Sphere)
+        glyphMapper->SetGlyphType(avtPointGlypher::Sphere);
     SetPointGlyphSize();
 
     if (varname != NULL)
     {
-        glyphMapper->ColorByScalarOn(string(varname));
+        glyphMapper->ColorByScalarOn(std::string(varname));
     }
 
     //SetScaling(atts.GetScaling(), atts.GetSkewFactor());
@@ -535,7 +557,7 @@ avtPoincarePlot::SetAtts(const AttributeGroup *a)
 // ****************************************************************************
 
 void
-avtPoincarePlot::GetDataExtents(vector<double> &extents)
+avtPoincarePlot::GetDataExtents(std::vector<double> &extents)
 {
     double min, max;
 

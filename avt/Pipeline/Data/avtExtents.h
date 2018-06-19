@@ -84,6 +84,9 @@ class   vtkMatrix4x4;
 //    Hank Childs, Sun Nov 28 17:00:06 PST 2010
 //    Add a destruct method for void_ref_ptrs.
 //
+//    Eric Brugger, Thu Oct 27 09:58:47 PDT 2011
+//    Add const to the CopyTo method.
+//
 // ****************************************************************************
 
 class PIPELINE_API avtExtents
@@ -99,7 +102,7 @@ class PIPELINE_API avtExtents
     bool                  HasExtents(void) const;
     int                   GetDimension(void)  { return dimension; };
 
-    void                  CopyTo(double *);
+    void                  CopyTo(double *) const;
     void                  Set(const double *);
     void                  Clear(void);
 

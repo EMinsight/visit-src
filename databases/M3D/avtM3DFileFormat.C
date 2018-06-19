@@ -61,6 +61,8 @@
 #include <UnexpectedValueException.h>
 #include <DebugStream.h>
 
+#include <visit-hdf5.h>
+
 using namespace std;
 
 static bool doPlanes = false;
@@ -1156,8 +1158,8 @@ avtM3DFileFormat::CalcPlaneAngularSpacing()
     {
         float *plane = planes[i];
         float n[3] = {plane[0],plane[1],plane[2]};
-        float ang = acos( vtkMath::Dot( n0, n ) ) * vtkMath::RadiansToDegrees();
-        
+        float ang = vtkMath::DegreesFromRadians(vtkMath::Dot(n0, n));
+
         m_planeAngles.push_back( ang );
 
         //Calc the rotation matrix to move the plane into 2D.

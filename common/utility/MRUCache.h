@@ -39,11 +39,10 @@
 #ifndef MRU_CACHE_H
 #define MRU_CACHE_H
 
+#include <cstddef>
+#include <cstdlib>
 #include <map>
 #include <vector>
-using std::map;
-using std::vector;
-
 
 // ****************************************************************************
 //
@@ -159,8 +158,8 @@ class MRUCacheBase {
       const vT& operator[](const kT& key) const;
 
       // iterator (only allow const_iterator)
-      typedef typename map<kT,vT>::const_iterator const_iterator;
-      typedef typename map<kT,vT>::const_iterator iterator;
+      typedef typename std::map<kT,vT>::const_iterator const_iterator;
+      typedef typename std::map<kT,vT>::const_iterator iterator;
       const_iterator begin(void) const { return cache.begin(); };
       const_iterator end(void) const { return cache.end(); };
 
@@ -174,7 +173,7 @@ class MRUCacheBase {
       };
       const_iterator find(const kT& key) const { return cache.find(key); };
 
-      iterator find(const vector<kT>& keys)
+      iterator find(const std::vector<kT>& keys)
       {
           iterator mpos;
           for (size_t i = 0; i < keys.size(); i++)
@@ -185,7 +184,7 @@ class MRUCacheBase {
           }
           return mpos;
       }
-      const_iterator find(const vector<kT>& keys) const
+      const_iterator find(const std::vector<kT>& keys) const
       {
           iterator mpos;
           for (int i = 0; i < keys.size(); i++)
@@ -226,8 +225,8 @@ class MRUCacheBase {
 
       // cached values indexed by keys
       // (we use two maps so we can return an iterator to cache)
-      map<kT,vT>  cache;
-      map<kT,int> age;
+      std::map<kT,vT>  cache;
+      std::map<kT,int> age;
 };
 
 // The MRUCache class
@@ -334,7 +333,7 @@ bool MRUCacheBase<kT,vT,dM,nS>::exists(const kT& key) const
 template<class kT, class vT, MRUCache_DeleteMethod dM, size_t nS>
 void MRUCacheBase<kT,vT,dM,nS>::remove(const kT& key)
 {
-   typename map<kT,vT>::iterator k = cache.find(key);
+   typename std::map<kT,vT>::iterator k = cache.find(key);
    if (k == cache.end())
       return;
 
@@ -342,7 +341,7 @@ void MRUCacheBase<kT,vT,dM,nS>::remove(const kT& key)
    deleteit(k->second);
 
    // erase slots from the cache
-   typename map<kT,int>::iterator j = age.find(key);
+   typename std::map<kT,int>::iterator j = age.find(key);
    cache.erase(k);
    age.erase(j);
 }
@@ -362,7 +361,7 @@ void MRUCacheBase<kT,vT,dM,nS>::remove(const kT& key)
 template<class kT, class vT, MRUCache_DeleteMethod dM, size_t nS>
 void MRUCacheBase<kT,vT,dM,nS>::clear(void)
 {
-   typename map<kT,vT>::iterator i = cache.begin();
+   typename std::map<kT,vT>::iterator i = cache.begin();
 
    while (i != cache.end())
    {
@@ -388,7 +387,7 @@ void MRUCacheBase<kT,vT,dM,nS>::clear(void)
 template<class kT, class vT, MRUCache_DeleteMethod dM, size_t nS>
 vT& MRUCacheBase<kT,vT,dM,nS>::operator[](const kT& key)
 {
-   typename map<kT,vT>::iterator mpos = cache.find(key);
+   typename std::map<kT,vT>::iterator mpos = cache.find(key);
 
    if (mpos == cache.end())
    {
@@ -416,7 +415,7 @@ vT& MRUCacheBase<kT,vT,dM,nS>::operator[](const kT& key)
 template<class kT, class vT, MRUCache_DeleteMethod dM, size_t nS>
 const vT& MRUCacheBase<kT,vT,dM,nS>::operator[](const kT& key) const
 {
-   typename map<kT,vT>::const_iterator mpos = cache.find(key);
+   typename std::map<kT,vT>::const_iterator mpos = cache.find(key);
    return mpos->second;
 }
 
@@ -436,7 +435,7 @@ const vT& MRUCacheBase<kT,vT,dM,nS>::operator[](const kT& key) const
 template<class kT, class vT, MRUCache_DeleteMethod dM, size_t nS>
 const vT& MRUCacheBase<kT,vT,dM,nS>::mru(void) const
 {
-   typename map<kT,int>::iterator i = age.begin();
+   typename std::map<kT,int>::iterator i = age.begin();
    kT mruKey               = i->first;
    int newest              = i->second; 
 
@@ -494,7 +493,7 @@ size_t MRUCacheBase<kT,vT,dM,nS>::numslots(size_t newNumSlots)
 template<class kT, class vT, MRUCache_DeleteMethod dM, size_t nS>
 kT MRUCacheBase<kT,vT,dM,nS>::oldest(void)
 {
-   typename map<kT,int>::iterator i = age.begin();
+   typename std::map<kT,int>::iterator i = age.begin();
    kT retval               = i->first;
    int oldestAge           = i->second; 
 

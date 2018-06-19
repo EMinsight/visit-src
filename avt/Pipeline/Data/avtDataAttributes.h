@@ -45,13 +45,14 @@
 
 #include <pipeline_exports.h>
 
+#include <avtExtents.h>
+#include <avtMatrix.h>
+#include <avtTypes.h>
+#include <PlotInfoAttributes.h>
 #include <VisWindowTypes.h>
 
-#include <avtTypes.h>
 #include <vector>
 #include <string>
-#include <avtMatrix.h>
-#include <PlotInfoAttributes.h>
 
 class     avtDataObjectString;
 class     avtDataObjectWriter;
@@ -115,7 +116,6 @@ class     avtWebpage;
 //  Creation:   March 24, 2001
 //
 //  Modifications:
-//
 //    Hank Childs, Mon Aug 13 17:47:07 PDT 2001
 //    Added merge routines for extents.
 //
@@ -262,6 +262,13 @@ class     avtWebpage;
 //
 //    Hank Childs, Tue Jan 11 08:41:22 PST 2011
 //    Add data member for the time index.
+//
+//    Kathleen Biagas, Thu Sep 29 06:07:22 PDT 2011
+//    Add constructMultipleCurves member.
+//
+//    Eric Brugger, Thu Oct 27 10:11:25 PDT 2011
+//    Add GetMultiresExtents and GetMultiresCellSize to support adding
+//    a multi resolution display capability for AMR data.
 //
 // ****************************************************************************
 
@@ -552,6 +559,21 @@ class PIPELINE_API avtDataAttributes
     size_t                   GetLevelsOfDetail() const
                                { return levelsOfDetail; }
 
+    avtExtents              *GetMultiresExtents(void) const
+                               { return multiresExtents; };
+    void                     SetMultiresExtents(const avtExtents *extents)
+                               { *multiresExtents = *extents; };
+
+    void                     SetMultiresCellSize(double size)
+                               { multiresCellSize = size; }
+    double                   GetMultiresCellSize() const
+                               { return multiresCellSize; }
+
+    void                     SetConstructMultipleCurves(bool n)
+                               { constructMultipleCurves = n; }
+    bool                     GetConstructMultipleCurves() const
+                               { return constructMultipleCurves; }
+
   protected:
     int                      spatialDimension;
     int                      topologicalDimension;
@@ -590,6 +612,9 @@ class PIPELINE_API avtDataAttributes
     bool                     rectilinearGridHasTransform;
     double                   rectilinearGridTransform[16];
     size_t                   levelsOfDetail;
+    avtExtents              *multiresExtents;
+    double                   multiresCellSize;
+    bool                     constructMultipleCurves;
 
     avtExtents              *originalSpatial;
     avtExtents              *thisProcsOriginalSpatial;

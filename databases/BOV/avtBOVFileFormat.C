@@ -75,6 +75,7 @@
 #include <InvalidFilesException.h>
 #include <InvalidVariableException.h>
 
+#include <vector>
 
 static int FormatLine(char *line);
 
@@ -1964,10 +1965,13 @@ avtBOVFileFormat::ReadTOC(void)
                 }
             }
 
-            if (fortranOrder)
+            if (!fortranOrder)
             {
                 // Instead of reordering data, reorder axes
-                std::swap(full_size[0], full_size[2]);
+                if (full_size[2] == 1)
+                    std::swap(full_size[0], full_size[1]);
+                else
+                    std::swap(full_size[0], full_size[2]);
             }
         }
         else
@@ -2187,7 +2191,7 @@ avtBOVFileFormat::ReadTOC(void)
         // Note that the "Broadcast<Type>" calls serve to both
         // send from processor 0 and receive on other processors
         // simultaneously.
-        vector<int> vals(18);
+        std::vector<int> vals(18);
         vals[0]  = cycle;
         vals[1]  = full_size[0];
         vals[2]  = full_size[1];
@@ -2244,7 +2248,7 @@ avtBOVFileFormat::ReadTOC(void)
             BroadcastDoubleVector(var_brick_max, PAR_Rank());
         }
 
-        vector<double> valsd(9);
+        std::vector<double> valsd(9);
         valsd[0] = min;
         valsd[1] = max;
         valsd[2] = origin[0];

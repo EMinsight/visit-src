@@ -49,8 +49,6 @@
 #include <avtDataObject.h>
 #include <VisCallback.h>
 
-using std::map;
-
 class     vtkActor2D;
 class     vtkCamera;
 class     vtkImageData;
@@ -165,7 +163,7 @@ class PLOTTER_API avtExternallyRenderedImagesActor
 
     // used to send essential information to ERIA so that it will have that
     // information when it receives a render request
-    void                 PrepareForRender(const vtkCamera *const cam);
+    void                 PrepareForRender(vtkCamera *cam);
 
     // used to temporarily control visibility of ERIA while its in a window
     bool                 SetVisibility(const bool mode);
@@ -194,7 +192,7 @@ class PLOTTER_API avtExternallyRenderedImagesActor
     bool                 makeExternalRenderRequests;
 
     // used by Save/Restore Visibility interface
-    map<void*,bool>      savedVisibilityMap;
+    std::map<void*,bool> savedVisibilityMap;
 
     // the actor that gets added to a renderer for a vis window that handles
     // ALL externally rendered images in that vis window. 

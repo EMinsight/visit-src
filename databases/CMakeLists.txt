@@ -113,6 +113,13 @@
 #    Hank Childs, Thu Aug  4 13:22:36 PDT 2011
 #    Add VCell reader on behalf of Ed Boyce and UCHC team.
 #
+#    Brad Whitlock, Wed Aug 10 16:19:42 PDT 2011
+#    Add volimage reader for WPP code team.
+#
+#    Brad Whitlock, Thu Oct 20 14:01:42 PDT 2011
+#    Record that the H5Part plugin can also be dependent on FASTBIT being set
+#    so we can statically link.
+#
 #****************************************************************************/
 
 IF(NOT WIN32)
@@ -145,7 +152,14 @@ MACRO(THIRDPARTY_DEPENDENT_PLUGINS libname targets)
                 ENDFOREACH(lib)
             ENDIF(${libs})
         ENDIF(VISIT_STATIC)
-        SET(THIRDPARTY_DEPENDENT_PLUGINS ${THIRDPARTY_DEPENDENT_PLUGINS} ${alltargets})
+        # Add each target individually so we can check if it is already in the list. It might
+        # be in the list already if it might depend on multiple libraries (H5PART, FASTBIT)
+        FOREACH(target ${alltargets})
+            LIST(FIND THIRDPARTY_DEPENDENT_PLUGINS ${target} findVar)
+            IF(findVar EQUAL -1)
+                SET(THIRDPARTY_DEPENDENT_PLUGINS ${THIRDPARTY_DEPENDENT_PLUGINS} ${target})
+            ENDIF(findVar EQUAL -1)
+        ENDFOREACH(target)
     ENDIF(${libname2})
 ENDMACRO(THIRDPARTY_DEPENDENT_PLUGINS libname targets)
 
@@ -175,6 +189,7 @@ Chombo
 CosmosPP
 Enzo
 FLASH
+Geqdsk
 GTC
 H5Nimrod
 M3D
@@ -189,6 +204,7 @@ Vs
 ${XDMF_READER}
 )
 THIRDPARTY_DEPENDENT_PLUGINS(MDSPLUS  MDSplus)
+THIRDPARTY_DEPENDENT_PLUGINS(FASTBIT  H5Part)
 THIRDPARTY_DEPENDENT_PLUGINS(H5PART   H5Part)
 THIRDPARTY_DEPENDENT_PLUGINS(MILI     Mili)
 THIRDPARTY_DEPENDENT_PLUGINS(NETCDF   NETCDF S3D)
@@ -199,7 +215,9 @@ ELSE (NOT WIN32)
 ENDIF (NOT WIN32)
 THIRDPARTY_DEPENDENT_PLUGINS(VISUS    ViSUS)
 THIRDPARTY_DEPENDENT_PLUGINS(XDMF     Xdmf)
-THIRDPARTY_DEPENDENT_PLUGINS(ZLIB     VCellMTMD)
+IF (WIN32)
+    THIRDPARTY_DEPENDENT_PLUGINS(ZLIB     VCellMTMD)
+ENDIF (WIN32)
 
 # Add ITAPS
 IF(ITAPS_DIRS)
@@ -276,17 +294,20 @@ Tecplot
 VASP
 VTK
 WavefrontOBJ
+XSF
 XYZ
 Xmdv
 lata
 paraDIS
 paraDIS_tecplot
+volimage
 )
 
 IF (NOT WIN32)
     LIST(APPEND REQUIRED_DATABASE_PLUGINS 
         Claw
         STAR
+        VCellMTMD
         Vis5D
         ZipWrapper
     )

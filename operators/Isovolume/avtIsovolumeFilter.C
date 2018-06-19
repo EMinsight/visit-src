@@ -42,8 +42,6 @@
 
 #include <avtIsovolumeFilter.h>
 
-#include <float.h>
-
 #include <vtkVisItClipper.h>
 #include <vtkDataSet.h>
 #include <vtkDataArray.h>
@@ -58,6 +56,11 @@
 
 #include <DebugStream.h>
 #include <VisItException.h>
+
+#include <float.h>
+
+#include <string>
+#include <vector>
 
 
 // ****************************************************************************
@@ -362,13 +365,12 @@ avtIsovolumeFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
         out_pd->SetPoints(ugrid->GetPoints());
         out_pd->GetPointData()->ShallowCopy(ugrid->GetPointData());
         out_pd->GetCellData()->ShallowCopy(ugrid->GetCellData());
-        int ncells = ugrid->GetNumberOfCells();
+        vtkIdType ncells = ugrid->GetNumberOfCells();
         out_pd->Allocate(ncells);
-        for (int i = 0 ; i < ncells ; i++)
+        for (vtkIdType i = 0 ; i < ncells ; i++)
         {
             int celltype = ugrid->GetCellType(i);
-            vtkIdType *pts;
-            int npts;
+            vtkIdType *pts, npts;
             ugrid->GetCellPoints(i, npts, pts);
             out_pd->InsertNextCell(celltype, npts, pts);
         }
@@ -449,7 +451,7 @@ avtIsovolumeFilter::ModifyContract(avtContract_p in_spec)
     if (!skipGhost)
         spec->GetDataRequest()->SetDesiredGhostDataType(GHOST_ZONE_DATA);
 
-    string iso_var = atts.GetVariable();;
+    std::string iso_var(atts.GetVariable());
     if (iso_var == "default")
         iso_var = in_spec->GetDataRequest()->GetVariable();
 
@@ -458,7 +460,7 @@ avtIsovolumeFilter::ModifyContract(avtContract_p in_spec)
     {
         double min = atts.GetLbound();
         double max = atts.GetUbound();
-        vector<int> dl;
+        std::vector<int> dl;
         it->GetElementsListFromRange(&min, &max, dl);
         spec->GetDataRequest()->GetRestriction()->RestrictDomains(dl);
     }

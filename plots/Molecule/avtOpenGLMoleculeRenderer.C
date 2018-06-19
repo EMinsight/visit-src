@@ -78,6 +78,12 @@
 #include <DebugStream.h>
 #include "matrix.c"
 
+#include <string>
+#include <vector>
+
+using std::string;
+using std::vector;
+
 #define SHORTEN_BONDS
 
 #ifndef M_PI
@@ -739,7 +745,7 @@ avtOpenGLMoleculeRenderer::DrawBonds(vtkPolyData *data,
         hasVertex[atom] = true;
     }
 
-    int *segptr = segments;
+    vtkIdType *segptr = segments;
     for (int i=0; i<data->GetNumberOfLines(); i++)
     {
         if (*segptr == 2)

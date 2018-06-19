@@ -73,6 +73,12 @@
 #include <QvisVariableButton.h>
 #include <QvisVariableListLimiter.h>
 
+#define DEFAULT_FORCE_UPDATE false
+#define DEFAULT_UPDATE_PLOTS true
+
+#define ALLOW_CACHING      true
+#define DONT_ALLOW_CACHING false
+
 // ****************************************************************************
 // Method: QvisSelectionsWindow::QvisSelectionsWindow
 //
@@ -87,6 +93,8 @@
 // Creation:   Fri Aug  6 15:44:09 PDT 2010
 //
 // Modifications:
+//   Brad Whitlock, Wed Sep  7 15:43:35 PDT 2011
+//   Initialize allowCaching.
 //
 // ****************************************************************************
 
@@ -101,6 +109,7 @@ QvisSelectionsWindow::QvisSelectionsWindow(const QString &caption,
     windowInformation = 0;
 
     selectionPropsValid = false;
+    allowCaching = true;
     selectionCounter = 1;
 }
 
@@ -188,11 +197,6 @@ QvisSelectionsWindow::SubjectRemoved(Subject *s)
 void
 QvisSelectionsWindow::CreateWindowContents()
 {
-    automaticallyApply = new QCheckBox(tr("Automatically apply updated selections"), central);
-    connect(automaticallyApply, SIGNAL(toggled(bool)),
-            this, SLOT(automaticallyApplyChanged(bool)));
-    topLayout->addWidget(automaticallyApply);
-
     QSplitter *mainSplitter = new QSplitter(central);
     topLayout->addWidget(mainSplitter);
     topLayout->setStretchFactor(mainSplitter, 100);
@@ -284,6 +288,8 @@ QvisSelectionsWindow::CreatePropertiesTab(QWidget *parent)
     cqControls->setCheckable(true);
     connect(cqControls, SIGNAL(clicked(bool)),
             this, SLOT(cumulativeQueryClicked(bool)));
+
+
     QVBoxLayout *vLayout = new QVBoxLayout(cqControls);
     definitionLayout->addWidget(cqControls, 2,0,1,4);
     definitionLayout->setRowStretch(2, 10);
@@ -293,10 +299,17 @@ QvisSelectionsWindow::CreatePropertiesTab(QWidget *parent)
     cqTabs->addTab(CreateCQRangeControls(cqControls), tr("Range"));
     cqTabs->addTab(CreateCQHistogramControls(cqControls), tr("Histogram"));
 
-    updateButton = new QPushButton(tr("Update Selection"), f2);
-    connect(updateButton, SIGNAL(pressed()),
+
+    automaticallyApply = new QCheckBox(tr("Automatically apply updated selections"), f2);
+    connect(automaticallyApply, SIGNAL(toggled(bool)),
+            this, SLOT(automaticallyApplyChanged(bool)));
+    definitionLayout->addWidget(automaticallyApply, 3,0,1,2);
+
+
+    updateSelectionButton = new QPushButton(tr("Update Selection"), f2);
+    connect(updateSelectionButton, SIGNAL(pressed()),
             this, SLOT(updateSelection()));
-    definitionLayout->addWidget(updateButton, 3,3);
+    definitionLayout->addWidget(updateSelectionButton, 3,3);
 
     return f2;
 }
@@ -348,6 +361,13 @@ QvisSelectionsWindow::CreateCQRangeControls(QWidget *parent)
         "Coordinates plot."));
     lLayout->addWidget(cqInitializeVarButton, 0, 2);
 
+    
+    updateQueryButton1 = new QPushButton(tr("Update Query"), central);
+    connect(updateQueryButton1, SIGNAL(pressed()),
+            this, SLOT(updateQuery()));
+    lLayout->addWidget(updateQueryButton1, 0,3);
+
+
     // Add the variable list.
     cqLimits = new QvisVariableListLimiter(central);
     cqLimits->setMinimumHeight(200);
@@ -355,11 +375,11 @@ QvisSelectionsWindow::CreateCQRangeControls(QWidget *parent)
             this, SLOT(setVariableRange(const QString &,float,float)));
     connect(cqLimits, SIGNAL(deleteVariable(const QString &)),
             this, SLOT(deleteVariable(const QString &)));
-    lLayout->addWidget(cqLimits, 1, 0, 1, 3);
+    lLayout->addWidget(cqLimits, 1, 0, 1, 4);
 
     // Add the time controls
     cqTimeGroupBox = CreateTimeControls(central);
-    lLayout->addWidget(cqTimeGroupBox, 2, 0, 1, 3);
+    lLayout->addWidget(cqTimeGroupBox, 2, 0, 1, 4);
 
     return central;
 }
@@ -430,7 +450,9 @@ QvisSelectionsWindow::CreateTimeControls(QWidget *parent)
 // Creation:   Fri May 20 16:06:09 PDT 2011
 //
 // Modifications:
-//   
+//   Brad Whitlock, Wed Oct 12 12:23:00 PDT 2011
+//   Change cqHistogramVariable into a variable button.
+//
 // ****************************************************************************
 
 QWidget *
@@ -449,6 +471,11 @@ QvisSelectionsWindow::CreateCQHistogramControls(QWidget *parent)
     thLayout->addWidget(histLabel);
     cqHistogramTitle = new QLabel(titleParent);
     thLayout->addWidget(cqHistogramTitle, Qt::AlignLeft);
+
+    updateQueryButton2 = new QPushButton(tr("Update Query"), central);
+    connect(updateQueryButton2, SIGNAL(pressed()),
+            this, SLOT(updateQuery()));
+    thLayout->addWidget(updateQueryButton2);
 
     cqHistogram = new QvisHistogram(central);
     cqHistogram->setDrawBinLines(true);
@@ -478,18 +505,23 @@ QvisSelectionsWindow::CreateCQHistogramControls(QWidget *parent)
     cqHistogramType->addButton(id,2);
     cqHistogramType->addButton(cqHistogramVariableButton,3);
     aLayout->addWidget(timeSlice, 0, 1);
-    aLayout->addWidget(id, 0, 2);
-    aLayout->addWidget(matches, 1, 1);
+    aLayout->addWidget(id, 1, 1);
+    aLayout->addWidget(matches, 0, 2);
     aLayout->addWidget(cqHistogramVariableButton, 1, 2);
 
-    cqHistogramVariable = new QComboBox(axisGroup);
+    cqHistogramVariable = new QvisVariableButton(axisGroup);
+    cqHistogramVariable->setAddExpr(true);
+    cqHistogramVariable->setAddDefault(false);
+    cqHistogramVariable->setVarTypes(QvisVariableButton::Scalars);
+    cqHistogramVariable->setChangeTextOnVariableChange(true);
     aLayout->addWidget(cqHistogramVariable, 1, 3);
-    connect(cqHistogramVariable, SIGNAL(activated(int)),
-            this, SLOT(histogramVariableChanged(int)));
+    connect(cqHistogramVariable, SIGNAL(activated(const QString &)),
+            this, SLOT(histogramVariableChanged(const QString &)));
 
     cqHistogramNumBinsLabel = new QLabel(tr("Number of bins"), axisGroup);
     aLayout->addWidget(cqHistogramNumBinsLabel, 2, 0);
     cqHistogramNumBins = new QSpinBox(axisGroup);
+    cqHistogramNumBins->setRange(1,1024);
     connect(cqHistogramNumBins, SIGNAL(valueChanged(int)),
             this, SLOT(histogramNumBinsChanged(int)));
     aLayout->addWidget(cqHistogramNumBins, 2, 1);
@@ -512,6 +544,7 @@ QvisSelectionsWindow::CreateCQHistogramControls(QWidget *parent)
 
     cqHistogramMinLabel = new QLabel(tr("Minimum bin"), summationGroup);
     cqHistogramMin = new QSpinBox(summationGroup);
+    cqHistogramMin->setRange(0,1023);
     connect(cqHistogramMin, SIGNAL(valueChanged(int)),
             this, SLOT(histogramStartChanged(int)));
     sLayout->addWidget(cqHistogramMinLabel, 1, 0);
@@ -519,6 +552,7 @@ QvisSelectionsWindow::CreateCQHistogramControls(QWidget *parent)
 
     cqHistogramMaxLabel = new QLabel(tr("Maximum bin"), summationGroup);
     cqHistogramMax = new QSpinBox(summationGroup);
+    cqHistogramMax->setRange(0,1023);
     connect(cqHistogramMax, SIGNAL(valueChanged(int)),
             this, SLOT(histogramEndChanged(int)));
     sLayout->addWidget(cqHistogramMaxLabel, 1, 2);
@@ -651,7 +685,9 @@ QvisSelectionsWindow::UpdateWindow(bool doAll)
 // Creation:   Wed Dec 29 10:30:14 PST 2010
 //
 // Modifications:
-//   
+//   Brad Whitlock, Wed Oct 26 15:33:08 PDT 2011
+//   Make sure we read back the variable min/max values.
+//
 // ****************************************************************************
 
 void
@@ -695,6 +731,24 @@ QvisSelectionsWindow::GetCurrentValues(int which_widget)
         if(err)
             ResettingError(tr("time stride"), IntToQString(selectionProps.GetTimeStateStride()));
     }
+
+    if(which_widget == SelectionProperties::ID_variableMins ||
+       which_widget == SelectionProperties::ID_variableMaxs || doAll)
+    {
+        for(int i = 0; i < cqLimits->getNumVariables(); ++i)
+        {
+            float r0, r1;
+            cqLimits->getVariable(i)->getSelectedRange(r0, r1);
+
+            if(i < selectionProps.GetVariableMins().size())
+            {
+                selectionProps.GetVariableMins()[i] = r0;
+                selectionProps.GetVariableMaxs()[i] = r1;
+                selectionProps.SelectVariableMins();
+                selectionProps.SelectVariableMaxs();
+            }
+        }
+    }
 }
 
 // ****************************************************************************
@@ -707,20 +761,30 @@ QvisSelectionsWindow::GetCurrentValues(int which_widget)
 // Creation:   Fri Aug  6 15:44:09 PDT 2010
 //
 // Modifications:
-//   
+//   Brad Whitlock, Mon Aug 22 16:42:43 PDT 2011
+//   I added an updatePlots argument.
+//
+//   Brad Whitlock, Wed Sep  7 15:45:27 PDT 2011
+//   I added a caching argument.
+//
 // ****************************************************************************
 
 void
-QvisSelectionsWindow::Apply(bool forceUpdate)
+QvisSelectionsWindow::Apply(bool forceUpdate, bool updatePlots, bool caching)
 {
+    allowCaching &= caching;
+
     if(forceUpdate || AutoUpdate())
     {
         GetCurrentValues(-1);
 
         if(selectionListBox->currentItem() != 0)
         {
-            GetViewerMethods()->UpdateNamedSelection(selectionProps.GetName(), selectionProps);
+            GetViewerMethods()->UpdateNamedSelection(selectionProps.GetName(), 
+                selectionProps, updatePlots, allowCaching);
         }
+
+        allowCaching = true;
     }
 }
 
@@ -757,7 +821,7 @@ QvisSelectionsWindow::GetLoadHost() const
     }
     if(loadHost.isEmpty())
     {
-        stringVector engines(engineList->GetEngines());
+        const stringVector &engines = engineList->GetEngineName();
         if(engines.size() == 1) 
             loadHost = QString(engines[0].c_str());
     }
@@ -792,21 +856,41 @@ QvisSelectionsWindow::UpdateHistogram(const double *values, int nvalues,
         cqHistogram->setHistogramTexture(0,0);
     else
     {
+        if( nvalues != selectionProps.GetHistogramNumBins() )
+        {
+          selectionProps.SetHistogramNumBins(nvalues);
+          selectionProps.SetHistogramStartBin(0);
+          selectionProps.SetHistogramEndBin(nvalues-1);
+
+          minBin = 0;
+          maxBin = nvalues-1;
+          
+          Apply(DEFAULT_FORCE_UPDATE, DEFAULT_UPDATE_PLOTS, ALLOW_CACHING);
+          
+          UpdateMinMaxBins(true, true, true);
+        }
+
         float *normalized = new float[nvalues];
         bool  *mask = new bool[nvalues];
         double maxVal = values[0];
         for(int i = 1; i < nvalues; ++i)
         {
-            maxVal = (values[i] > maxVal) ? values[i] : maxVal;
+          if( maxVal < values[i] )
+            maxVal = values[i];
         }
 
         for(int i = 0; i < nvalues; ++i)
         {
-            normalized[i] = values[i] / maxVal;
-            mask[i] = (i >= minBin && i <= maxBin);
+            if( maxVal != 0 )
+              normalized[i] = values[i] / maxVal;
+            else
+              normalized[i] = 0;
+
+            mask[i] = (minBin <= i && i <= maxBin);
         }
 
-        cqHistogram->setHistogramTexture(normalized, useBins ? mask : 0, nvalues);
+        cqHistogram->setHistogramTexture(normalized, useBins ? mask : 0,
+                                         nvalues);
 
         delete [] normalized;
         delete [] mask;
@@ -841,9 +925,9 @@ QvisSelectionsWindow::UpdateHistogram()
         else
         {
             UpdateHistogram(&hist[0], hist.size(), 
-                selectionProps.GetHistogramStartBin(),
-                selectionProps.GetHistogramEndBin(),
-                selectionProps.GetHistogramType() != SelectionProperties::HistogramTime);
+                            selectionProps.GetHistogramStartBin(),
+                            selectionProps.GetHistogramEndBin(), true );
+//                selectionProps.GetHistogramType() != SelectionProperties::HistogramTime);
         }
     }
     else
@@ -905,7 +989,7 @@ void
 QvisSelectionsWindow::UpdateMinMaxBins(bool updateMin, bool updateMax, 
     bool updateValues)
 {
-    bool notTime = selectionProps.GetHistogramType() != SelectionProperties::HistogramTime;
+//    bool notTime = selectionProps.GetHistogramType() != SelectionProperties::HistogramTime;
 
     // Set the min value and extents.
     int hMin = 0, hMax = 100000;
@@ -914,20 +998,20 @@ QvisSelectionsWindow::UpdateMinMaxBins(bool updateMin, bool updateMax,
         int val = selectionProps.GetHistogramStartBin();
         if(val < 0)
             val = 0;
-        if(notTime)
+//        if(notTime)
         {
             hMin = 0;
             hMax = qMin(selectionProps.GetHistogramEndBin(),
                         selectionProps.GetHistogramNumBins()-1);
         }
         cqHistogramMin->blockSignals(true);
-        cqHistogramMin->setMinimum(hMin);
-        cqHistogramMin->setMaximum(hMax);
+        cqHistogramMin->setRange(hMin, hMax);
+
         if(updateValues)
             cqHistogramMin->setValue(val);
         cqHistogramMin->blockSignals(false);
-        cqHistogramMin->setEnabled(notTime);
-        cqHistogramMinLabel->setEnabled(notTime);
+//         cqHistogramMin->setEnabled(notTime);
+//         cqHistogramMinLabel->setEnabled(notTime);
     }
 
     if(updateMax)
@@ -936,19 +1020,19 @@ QvisSelectionsWindow::UpdateMinMaxBins(bool updateMin, bool updateMax,
         int val = selectionProps.GetHistogramEndBin();
         if(val >= selectionProps.GetHistogramNumBins()-1)
             val = selectionProps.GetHistogramNumBins()-1;
-        if(notTime)
+//        if(notTime)
         {
             hMin = qMax(selectionProps.GetHistogramStartBin(), 0);
             hMax = selectionProps.GetHistogramNumBins()-1;
         }
         cqHistogramMax->blockSignals(true);
-        cqHistogramMax->setMinimum(hMin);
-        cqHistogramMax->setMaximum(hMax);
+        cqHistogramMax->setRange(hMin, hMax);
+
         if(updateValues)
             cqHistogramMax->setValue(val);
         cqHistogramMax->blockSignals(false);
-        cqHistogramMax->setEnabled(notTime);
-        cqHistogramMaxLabel->setEnabled(notTime);
+//         cqHistogramMax->setEnabled(notTime);
+//         cqHistogramMaxLabel->setEnabled(notTime);
     }
 }
 
@@ -992,10 +1076,6 @@ QvisSelectionsWindow::UpdateSelectionProperties()
         cqHistogramType->button(0)->setChecked(true);
         cqHistogramType->blockSignals(false);
         cqHistogramVariableButton->setEnabled(true);
-
-        cqHistogramVariable->blockSignals(true);
-        cqHistogramVariable->clear();
-        cqHistogramVariable->blockSignals(false);
 
         SelectionProperties defaults;
         cqHistogramNumBins->blockSignals(true);
@@ -1107,14 +1187,7 @@ QvisSelectionsWindow::UpdateSelectionProperties()
         cqHistogramVariableButton->setEnabled(!selectionProps.GetVariables().empty());
 
         cqHistogramVariable->blockSignals(true);
-        cqHistogramVariable->clear();
-        for(size_t v = 0; v < selectionProps.GetVariables().size(); ++v)
-            cqHistogramVariable->addItem(QString(selectionProps.GetVariables()[v].c_str()));
-        if(selectionProps.GetHistogramVariableIndex() > 0 &&
-           selectionProps.GetHistogramVariableIndex() < 4)
-        {
-            cqHistogramVariable->setCurrentIndex(selectionProps.GetHistogramVariableIndex());
-        }
+        cqHistogramVariable->setVariable(selectionProps.GetHistogramVariable().c_str());
         cqHistogramVariable->blockSignals(false);
         cqHistogramVariable->setEnabled(!selectionProps.GetVariables().empty() &&
             selectionProps.GetHistogramType() == SelectionProperties::HistogramVariable);
@@ -1122,9 +1195,11 @@ QvisSelectionsWindow::UpdateSelectionProperties()
         cqHistogramNumBins->blockSignals(true);
         cqHistogramNumBins->setValue(selectionProps.GetHistogramNumBins());
         cqHistogramNumBins->blockSignals(false);
-        bool notTime = selectionProps.GetHistogramType() != SelectionProperties::HistogramTime;
-        cqHistogramNumBins->setEnabled(notTime);
-        cqHistogramNumBinsLabel->setEnabled(notTime);
+        bool setBins =
+          selectionProps.GetHistogramType() == SelectionProperties::HistogramID ||
+          selectionProps.GetHistogramType() == SelectionProperties::HistogramVariable;
+        cqHistogramNumBins->setEnabled(setBins);
+        cqHistogramNumBinsLabel->setEnabled(setBins);
 
         UpdateMinMaxBins(true, true, true);
 
@@ -1140,7 +1215,7 @@ QvisSelectionsWindow::UpdateSelectionProperties()
     // Set the enabled state of the load button.
     loadButton->setEnabled(!GetLoadHost().isEmpty());
 
-    updateButton->setEnabled(selectionPropsValid);
+    updateSelectionButton->setEnabled(selectionPropsValid);
 }
 
 // ****************************************************************************
@@ -1263,6 +1338,7 @@ QvisSelectionsWindow::UpdateWindowSingleItem()
         // Copy the list's selection properties into the working copy.
         selectionProps = selectionList->GetSelections(index);
     }
+    allowCaching = true;
 
     UpdateSelectionProperties();
     UpdateSelectionSummary();
@@ -1418,6 +1494,29 @@ QvisSelectionsWindow::deleteSelection()
 }
 
 // ****************************************************************************
+// Method: QvisSelectionsWindow::updateQuery
+//
+// Purpose: 
+//   This is a Qt slot function that is called to update a Selection.
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri Aug  6 15:44:09 PDT 2010
+//
+// Modifications:
+//   Brad Whitlock, Tue Dec 28 22:19:05 PST 2010
+//   Send the selection properties down.
+//
+// ****************************************************************************
+
+void
+QvisSelectionsWindow::updateQuery()
+{
+    // Force an update of the selection but do not update the plots that use it.
+    bool updatePlots = false;
+    Apply(true, updatePlots, DONT_ALLOW_CACHING);
+}
+
+// ****************************************************************************
 // Method: QvisSelectionsWindow::updateSelection
 //
 // Purpose: 
@@ -1435,7 +1534,8 @@ QvisSelectionsWindow::deleteSelection()
 void
 QvisSelectionsWindow::updateSelection()
 {
-    Apply(true);
+    // Force an update of the selection and update the plots that use it.
+    Apply(true, DEFAULT_UPDATE_PLOTS, ALLOW_CACHING);
 }
 
 // ****************************************************************************
@@ -1543,7 +1643,7 @@ QvisSelectionsWindow::cumulativeQueryClicked(bool value)
 {
     selectionProps.SetSelectionType(value ? SelectionProperties::CumulativeQuerySelection :
         SelectionProperties::BasicSelection);
-    Apply();
+    Apply(DEFAULT_FORCE_UPDATE, DEFAULT_UPDATE_PLOTS, DONT_ALLOW_CACHING);
 }
 
 // ****************************************************************************
@@ -1566,12 +1666,12 @@ void
 QvisSelectionsWindow::addVariable(const QString &var)
 {
     selectionProps.GetVariables().push_back(var.toStdString());
-    selectionProps.GetVariableMins().push_back(0.);
-    selectionProps.GetVariableMaxs().push_back(1.);
+    selectionProps.GetVariableMins().push_back(SelectionProperties::MIN);
+    selectionProps.GetVariableMaxs().push_back(SelectionProperties::MAX);
 
     // Update the window using the new selectionProps.
     UpdateSelectionProperties();
-    Apply();
+    Apply(DEFAULT_FORCE_UPDATE, DEFAULT_UPDATE_PLOTS, DONT_ALLOW_CACHING);
 }
 
 // ****************************************************************************
@@ -1602,7 +1702,7 @@ QvisSelectionsWindow::setVariableRange(const QString &var, float r0, float r1)
         {
             selectionProps.GetVariableMins()[i] = r0;
             selectionProps.GetVariableMaxs()[i] = r1;
-            Apply();
+            Apply(DEFAULT_FORCE_UPDATE, DEFAULT_UPDATE_PLOTS, DONT_ALLOW_CACHING);
             return;
         }
     }
@@ -1646,7 +1746,7 @@ QvisSelectionsWindow::deleteVariable(const QString &var)
             selectionProps.SetVariableMins(newmin);
             selectionProps.SetVariableMaxs(newmax);
 
-            Apply();
+            Apply(DEFAULT_FORCE_UPDATE, DEFAULT_UPDATE_PLOTS, DONT_ALLOW_CACHING);
             return;
         }
     }
@@ -1675,7 +1775,7 @@ QvisSelectionsWindow::summationChanged(int val)
         selectionProps.SetCombineRule(SelectionProperties::CombineOr);
     else
         selectionProps.SetCombineRule(SelectionProperties::CombineAnd);
-    Apply();
+    Apply(DEFAULT_FORCE_UPDATE, DEFAULT_UPDATE_PLOTS, ALLOW_CACHING);
 }
 
 // ****************************************************************************
@@ -1695,7 +1795,7 @@ void
 QvisSelectionsWindow::processTimeMin()
 {
     GetCurrentValues(SelectionProperties::ID_minTimeState);
-    Apply();
+    Apply(DEFAULT_FORCE_UPDATE, DEFAULT_UPDATE_PLOTS, DONT_ALLOW_CACHING);
 }
 
 // ****************************************************************************
@@ -1715,7 +1815,7 @@ void
 QvisSelectionsWindow::processTimeMax()
 {
     GetCurrentValues(SelectionProperties::ID_maxTimeState);
-    Apply();
+    Apply(DEFAULT_FORCE_UPDATE, DEFAULT_UPDATE_PLOTS, DONT_ALLOW_CACHING);
 }
 
 // ****************************************************************************
@@ -1735,7 +1835,7 @@ void
 QvisSelectionsWindow::processTimeStride()
 {
     GetCurrentValues(SelectionProperties::ID_timeStateStride);
-    Apply();
+    Apply(DEFAULT_FORCE_UPDATE, DEFAULT_UPDATE_PLOTS, DONT_ALLOW_CACHING);
 }
 
 // ****************************************************************************
@@ -1754,7 +1854,7 @@ QvisSelectionsWindow::processTimeStride()
 void
 QvisSelectionsWindow::initializeVariableList()
 {
-    Apply();
+    Apply(true, DEFAULT_UPDATE_PLOTS, DONT_ALLOW_CACHING);
 
     // Ask the viewer to populate the selection's variables using the
     // current plot's attributes.
@@ -1774,7 +1874,9 @@ QvisSelectionsWindow::initializeVariableList()
 // Creation:   Thu Jun  9 16:06:27 PDT 2011
 //
 // Modifications:
-//   
+//   Brad Whitlock, Wed Oct 12 12:27:41 PDT 2011
+//   I removed some error checking that was no longer needed.
+//
 // ****************************************************************************
 
 void
@@ -1792,40 +1894,22 @@ QvisSelectionsWindow::histogramTypeChanged(int value)
         selectionProps.SetHistogramType(SelectionProperties::HistogramID);
         break;
     case 3:
-        { // new scope.
-        bool err = false;
-
-        if(selectionProps.GetHistogramVariableIndex() < 0)
-        {
-           if(selectionProps.GetVariables().size() > 0)
-           {
-              // Select the first variable in the list.
-              selectionProps.SetHistogramVariableIndex(0);
-           }
-           else
-           {
-              Error(tr("Variable display is not supported when the selection "
-                       "does not have any variables."));
-              err = true;
-           }
-        }
-
-        if(!err)
-            selectionProps.SetHistogramType(SelectionProperties::HistogramVariable);
-        }
+        selectionProps.SetHistogramType(SelectionProperties::HistogramVariable);
         break;
     }
 
-    Apply();
+    Apply(DEFAULT_FORCE_UPDATE, DEFAULT_UPDATE_PLOTS, ALLOW_CACHING);
     UpdateHistogram(0,0,0,0,false); // invalidate the histogram
     UpdateHistogramTitle();
 
     cqHistogramVariableButton->setEnabled(!selectionProps.GetVariables().empty());
     cqHistogramVariable->setEnabled(!selectionProps.GetVariables().empty() &&
             selectionProps.GetHistogramType() == SelectionProperties::HistogramVariable);
-    bool notTime = selectionProps.GetHistogramType() != SelectionProperties::HistogramTime;
-    cqHistogramNumBins->setEnabled(notTime);
-    cqHistogramNumBinsLabel->setEnabled(notTime);
+    bool setBins =
+      selectionProps.GetHistogramType() == SelectionProperties::HistogramID ||
+      selectionProps.GetHistogramType() == SelectionProperties::HistogramVariable;
+    cqHistogramNumBins->setEnabled(setBins);
+    cqHistogramNumBinsLabel->setEnabled(setBins);
 
     UpdateMinMaxBins(true, true, true);
 }
@@ -1837,20 +1921,22 @@ QvisSelectionsWindow::histogramTypeChanged(int value)
 //   This Qt slot function is called when we change the histogram variable.
 //
 // Arguments:
-//   index : The histogram variable.
+//   var : The histogram variable.
 //
 // Programmer: Brad Whitlock
 // Creation:   Thu Jun  9 16:08:26 PDT 2011
 //
 // Modifications:
-//   
+//   Brad Whitlock, Wed Oct 12 12:25:54 PDT 2011
+//   I changed the histogram variable to a string.
+//
 // ****************************************************************************
 
 void
-QvisSelectionsWindow::histogramVariableChanged(int index)
+QvisSelectionsWindow::histogramVariableChanged(const QString &var)
 {
-    selectionProps.SetHistogramVariableIndex(index);
-    Apply();
+    selectionProps.SetHistogramVariable(var.toStdString());
+    Apply(DEFAULT_FORCE_UPDATE, DEFAULT_UPDATE_PLOTS, DONT_ALLOW_CACHING);
 }
 
 // ****************************************************************************
@@ -1885,7 +1971,7 @@ QvisSelectionsWindow::histogramNumBinsChanged(int index)
     selectionProps.SetHistogramStartBin(b0);
     selectionProps.SetHistogramEndBin(b1);
 
-    Apply();
+    Apply(DEFAULT_FORCE_UPDATE, DEFAULT_UPDATE_PLOTS, ALLOW_CACHING);
 
     UpdateMinMaxBins(true, true, true);
 }
@@ -1911,7 +1997,7 @@ QvisSelectionsWindow::histogramStartChanged(int index)
 {
     selectionProps.SetHistogramStartBin(index);
 
-    Apply();
+    Apply(DEFAULT_FORCE_UPDATE, DEFAULT_UPDATE_PLOTS, ALLOW_CACHING);
 
     UpdateMinMaxBins(false, true, false);
     UpdateHistogram();
@@ -1938,7 +2024,7 @@ QvisSelectionsWindow::histogramEndChanged(int index)
 {
     selectionProps.SetHistogramEndBin(index);
 
-    Apply();
+    Apply(DEFAULT_FORCE_UPDATE, DEFAULT_UPDATE_PLOTS, ALLOW_CACHING);
     UpdateMinMaxBins(true, false, false);
     UpdateHistogram();
 }

@@ -26,6 +26,9 @@
 !   Brad Whitlock, Wed Jul 27 10:46:13 PDT 2011
 !   Add visitgetsockets.
 !
+!   Brad Whitlock, Thu Aug 11 12:03:43 PDT 2011
+!   Added functions to set/get ghost zones on meshes.
+!
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
 !... Commonly useful declarations
@@ -155,6 +158,20 @@
       parameter   (VISIT_COORD_MODE_SEPARATE         = 0)
       integer      VISIT_COORD_MODE_INTERLEAVED
       parameter   (VISIT_COORD_MODE_INTERLEAVED      = 1)
+
+!... Ghost cell types
+      integer       VISIT_GHOSTCELL_REAL                
+      parameter    (VISIT_GHOSTCELL_REAL              = 0)
+      integer       VISIT_GHOSTCELL_INTERIOR_BOUNDARY     
+      parameter    (VISIT_GHOSTCELL_INTERIOR_BOUNDARY = 1)
+      integer       VISIT_GHOSTCELL_EXTERIOR_BOUNDARY     
+      parameter    (VISIT_GHOSTCELL_EXTERIOR_BOUNDARY = 2)
+      integer       VISIT_GHOSTCELL_ENHANCED_CONNECTIVITY 
+      parameter    (VISIT_GHOSTCELL_ENHANCED_CONNECTIVITY = 3)
+      integer       VISIT_GHOSTCELL_REDUCED_CONNECTIVITY  
+      parameter    (VISIT_GHOSTCELL_REDUCED_CONNECTIVITY = 4)
+      integer       VISIT_GHOSTCELL_BLANK                 
+      parameter    (VISIT_GHOSTCELL_BLANK             = 5)
 
 !... Image formats 
       integer      VISIT_IMAGEFORMAT_BMP
@@ -712,6 +729,38 @@
       external visitmdmeshgetzlabel
       integer  visitmdmeshgetzlabel
 
+! visitmdmeshsetcellorigin(visit_handle h, int origin)
+      external visitmdmeshsetcellorigin
+      integer visitmdmeshsetcellorigin
+
+! visitmdmeshgetcellorigin(visit_handle h, int origin)
+      external visitmdmeshgetcellorigin
+      integer visitmdmeshgetcellorigin
+
+! visitmdmeshsetnodeorigin(visit_handle h, int origin)
+      external visitmdmeshsetnodeorigin
+      integer visitmdmeshsetnodeorigin
+
+! visitmdmeshgetnodeorigin(visit_handle h, int origin)
+      external visitmdmeshgetnodeorigin
+      integer visitmdmeshgetnodeorigin
+
+! visitmdmeshsethasspatialextents(visit_handle h, int hasSE)
+      external visitmdmeshsethasspatialextents
+      integer visitmdmeshsethasspatialextents
+
+! visitmdmeshgethasspatialextents(visit_handle h, int hasSE)
+      external visitmdmeshgethasspatialextents
+      integer visitmdmeshgethasspatialextents
+
+! visitmdmeshsetspatialextents(visit_handle h, double extents[6])
+      external visitmdmeshsetspatialextents
+      integer visitmdmeshsetspatialextents
+
+! visitmdmeshgetspatialextents(visit_handle h, double extents[6])
+      external visitmdmeshgetspatialextents
+      integer visitmdmeshgetspatialextents
+
 
 ! VisIt_NameList functions
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
@@ -1004,7 +1053,13 @@
       external visitcurvmeshsetrealindices
       integer  visitcurvmeshsetrealindices
 
-! visitcurvmeshgetcoords(visit_handle obj, int ndims, int dims,
+! visitcurvmeshsetghostcells(visit_handle obj, visit_handle gz)
+      external visitcurvmeshsetghostcells
+      integer  visitcurvmeshsetghostcells
+
+! visitcurvmeshgetcoords(visit_handle obj, int ndims, int dims, int coordMode,
+!                        visit_handle x, visit_handle y, visit_handle z, 
+!                        visit_handle c)
       external visitcurvmeshgetcoords
       integer  visitcurvmeshgetcoords
 
@@ -1015,6 +1070,10 @@
 ! visitcurvmeshgetrealindices(visit_handle obj, int mins, int maxs)
       external visitcurvmeshgetrealindices
       integer  visitcurvmeshgetrealindices
+
+! visitcurvmeshgetghostcells(visit_handle obj, visit_handle gz)
+      external visitcurvmeshgetghostcells
+      integer  visitcurvmeshgetghostcells
 
 
 ! VisIt_DomainBoundaries functions
@@ -1177,6 +1236,10 @@
       external visitrectmeshsetrealindices
       integer  visitrectmeshsetrealindices
 
+! visitrectmeshsetghostcells(visit_handle obj, visit_handle gz)
+      external visitrectmeshsetghostcells
+      integer  visitrectmeshsetghostcells
+
 ! visitrectmeshgetcoords(visit_handle obj, int ndims, visit_handle x, 
 !                        visit_handle y, visit_handle z)
       external visitrectmeshgetcoords
@@ -1190,6 +1253,9 @@
       external visitrectmeshgetrealindices
       integer  visitrectmeshgetrealindices
 
+! visitrectmeshgetghostcells(visit_handle obj, visit_handle gz)
+      external visitrectmeshgetghostcells
+      integer  visitrectmeshgetghostcells
 
 ! VisIt_SpeciesData functions
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
@@ -1250,6 +1316,10 @@
       external visitucdmeshsetrealindices
       integer  visitucdmeshsetrealindices
 
+! visitucdmeshsetghostcells(visit_handle obj, visit_handle gz)
+      external visitucdmeshsetghostcells
+      integer  visitucdmeshsetghostcells
+
 ! visitucdmeshgetcoords(visit_handle obj, int ndims, int coordmode,  
 !     visit_handle x, visit_handle y, visit_handle z, visit_handle c)
       external visitucdmeshgetcoords
@@ -1263,6 +1333,9 @@
       external visitucdmeshgetrealindices
       integer  visitucdmeshgetrealindices
 
+! visitucdmeshgetghostcells(visit_handle obj, visit_handle gz)
+      external visitucdmeshgetghostcells
+      integer  visitucdmeshgetghostcells
 
 ! VisIt_VariableData functions
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc

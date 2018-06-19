@@ -43,7 +43,8 @@
 #include <VisWinRenderingWithWindow.h>
 
 #include <vtkQtRenderWindow.h>
-#include <vtkQtRenderWindowInteractor.h>
+#include <vtkRubberBandMapper2D.h>
+#include <vtkDashedXorGridMapper2D.h>
 
 #ifdef Q_WS_X11
 // We only need WindowMetrics here if we're on X11.
@@ -65,6 +66,9 @@
 //    Brad Whitlock, Mon Aug 18 14:45:18 PDT 2008
 //    Pass in the vtkQtRenderWindow that we'll be using.
 //
+//    Brad Whitlock, Tue Feb 22 15:06:20 PST 2011
+//    Delete code to create an interactor.
+//
 // ****************************************************************************
 
 VisWinRenderingWithWindow::VisWinRenderingWithWindow(
@@ -73,13 +77,11 @@ VisWinRenderingWithWindow::VisWinRenderingWithWindow(
 {
     cursorIndex = 0;
     fullScreenMode = false;
+    useLargeIcons = false;
 
     renWin = rw;
     ownRenderWindow = own;
-    InitializeRenderWindow(renWin);
- 
-    iren = vtkQtRenderWindowInteractor::New();
-    iren->SetRenderWindow(renWin);
+    InitializeRenderWindow(renWin->GetRenderWindow());
 }
 
 
@@ -88,6 +90,10 @@ VisWinRenderingWithWindow::VisWinRenderingWithWindow(
 //
 //  Programmer: Hank Childs
 //  Creation:   January 29, 2002
+//
+//  Modifications:
+//    Brad Whitlock, Tue Feb 22 15:06:40 PST 2011
+//    Remove interactor deletion.
 //
 // ****************************************************************************
 
@@ -98,13 +104,7 @@ VisWinRenderingWithWindow::~VisWinRenderingWithWindow()
         renWin->Delete();
         renWin = NULL;
     }
-    if (iren != NULL)
-    {
-        iren->Delete();
-        iren = NULL;
-    }
 }
- 
 
 // ****************************************************************************
 //  Method: VisWinRenderingWithWindow::RealizeRenderWindow
@@ -140,6 +140,30 @@ VisWinRenderingWithWindow::RealizeRenderWindow(void)
 }
 
 // ****************************************************************************
+// Method: VisWinRenderingWithWindow::SetSize
+//
+// Purpose: 
+//   Set the size of the render window.
+//
+// Arguments:
+//   w : the new width
+//   h : The new height.
+//
+// Programmer: Brad Whitlock
+// Creation:   Tue Feb 22 15:15:44 PST 2011
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+VisWinRenderingWithWindow::SetSize(int w, int h)
+{
+    if(ownRenderWindow)
+        renWin->resize(w, h);
+}
+
+// ****************************************************************************
 // Method: VisWinRenderingWithWindow::GetWindowSize
 //
 // Purpose: 
@@ -169,6 +193,72 @@ VisWinRenderingWithWindow::GetWindowSize(int &w, int &h)
 }
 
 // ****************************************************************************
+// Method: VisWinRenderingWithWindow::SetLocation
+//
+// Purpose: 
+//   Set the window's location.
+//
+// Arguments:
+//   x,y : The new location
+//
+// Programmer: Brad Whitlock
+// Creation:   Tue Feb 22 15:17:41 PST 2011
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+VisWinRenderingWithWindow::SetLocation(int x, int y)
+{
+    if(ownRenderWindow)
+        renWin->move(x, y);
+}
+
+// ****************************************************************************
+// Method: VisWinRenderingWithWindow::GetLocation
+//
+// Purpose: 
+//   Get the window's current location.
+//
+// Arguments:
+//   x,y : the window's location.
+//
+// Programmer: Brad Whitlock
+// Creation:   Tue Feb 22 15:18:11 PST 2011
+//
+// Modifications:
+//   
+// ****************************************************************************
+void
+VisWinRenderingWithWindow::GetLocation(int &x, int &y)
+{
+    x = renWin->pos().x();
+    y = renWin->pos().y();
+}
+
+// ****************************************************************************
+// Method: VisWinRenderingWithWindow::SetTitle
+//
+// Purpose: 
+//   Set the window's title.
+//
+// Arguments:
+//   title : The new window title.
+//
+// Programmer: Brad Whitlock
+// Creation:   Tue Feb 22 15:18:37 PST 2011
+//
+// Modifications:
+//   
+// ****************************************************************************
+void
+VisWinRenderingWithWindow::SetTitle(const char *title)
+{
+    renWin->setWindowTitle(title);
+}
+
+// ****************************************************************************
 //  Method: VisWinRenderingWithWindow::Iconify
 //
 //  Purpose:
@@ -192,7 +282,7 @@ VisWinRenderingWithWindow::GetWindowSize(int &w, int &h)
 void
 VisWinRenderingWithWindow::Iconify(void)
 {
-    if (realized)
+    if (realized && ownRenderWindow)
     {
 #if defined(Q_WS_WIN) || defined(Q_WS_MACX)
         renWin->hide();
@@ -485,12 +575,17 @@ VisWinRenderingWithWindow::SetShowCallback(void (*cb)(void *), void *data)
 //  Programmer: Hank Childs
 //  Creation:   January 29, 2002
 //
+//  Modifications:
+//    Brad Whitlock, Tue Feb 22 15:05:24 PST 2011
+//    Return the real VTK render window now that renWin is not a subclass of
+//    vtkRenderWindow.
+//
 // ****************************************************************************
 
 vtkRenderWindow *
 VisWinRenderingWithWindow::GetRenderWindow(void)
 {
-    return renWin;
+    return renWin->GetRenderWindow();
 }
 
 
@@ -507,12 +602,16 @@ VisWinRenderingWithWindow::GetRenderWindow(void)
 //  Programmer: Hank Childs
 //  Creation:   January 29, 2002
 //
+//  Modifications:
+//    Brad Whitlock, Tue Feb 22 15:04:51 PST 2011
+//    Return the interactor from the render window since we no longer create one.
+//
 // ****************************************************************************
 
 vtkRenderWindowInteractor *
 VisWinRenderingWithWindow::GetRenderWindowInteractor(void)
 {
-    return iren;
+    return renWin->GetInteractor();
 }
 
 // ****************************************************************************
@@ -530,13 +629,24 @@ VisWinRenderingWithWindow::GetRenderWindowInteractor(void)
 // Creation:   Wed Jan 29 14:40:30 PST 2003
 //
 // Modifications:
-//   
+//   Brad Whitlock, Tue Feb 22 14:38:04 PST 2011
+//   I moved the implementation from vtkQtRenderWindow.
+//
 // ****************************************************************************
 
 void *
 VisWinRenderingWithWindow::CreateToolbar(const char *name)
 {
-    return renWin->CreateToolbar(name);
+    void *t = (void *)renWin->addToolBar(name);
+    bool vertical = false;
+    if(strcmp(name, "Plots") == 0 || strcmp(name, "Operators") == 0) // hack for now
+    {
+        renWin->addToolBar(Qt::LeftToolBarArea, (QToolBar *)t);
+        renWin->addToolBarBreak(Qt::LeftToolBarArea);
+    }
+    if(strcmp(name, "Lock") == 0) // hack
+        renWin->addToolBarBreak();
+    return t;
 }
 
 // ****************************************************************************
@@ -558,7 +668,11 @@ VisWinRenderingWithWindow::CreateToolbar(const char *name)
 void
 VisWinRenderingWithWindow::SetLargeIcons(bool val)
 {
-    renWin->SetLargeIcons(val);
+    useLargeIcons = val;
+    if(useLargeIcons)
+        renWin->setIconSize(QSize(32,32));
+    else
+        renWin->setIconSize(QSize(20,20));
 }
 
 // ****************************************************************************
@@ -619,7 +733,6 @@ VisWinRenderingWithWindow::SetCursorForMode(INTERACTION_MODE m)
     }
 }
 
-
 // ****************************************************************************
 //  Method:  VisWinRenderingWithWindow::SetFullScreenMode
 //
@@ -638,4 +751,42 @@ void
 VisWinRenderingWithWindow::SetFullScreenMode(bool fs)
 {
     fullScreenMode = fs;
+}
+
+// ****************************************************************************
+//  Method:  VisWinRenderingWithWindow::CreateRubberbandMapper
+//
+//  Purpose:
+//    Create a mapper to use for rubber band rendering.
+//
+//  Programmer:  Brad Whitlock
+//  Creation:    Fri Oct 14 14:53:31 PDT 2011
+//
+// ****************************************************************************
+
+vtkPolyDataMapper2D *
+VisWinRenderingWithWindow::CreateRubberbandMapper()
+{
+    vtkRubberBandMapper2D *mapper = vtkRubberBandMapper2D::New();
+    mapper->SetWidget(renWin->GetGLWidget());
+    return mapper;
+}
+
+// ****************************************************************************
+//  Method:  VisWinRenderingWithWindow::CreateXorGridMapper
+//
+//  Purpose:
+//    Create a mapper to use for rubber band guideline rendering.
+//
+//  Programmer:  Brad Whitlock
+//  Creation:    Fri Oct 14 14:53:31 PDT 2011
+//
+// ****************************************************************************
+
+vtkPolyDataMapper2D *
+VisWinRenderingWithWindow::CreateXorGridMapper()
+{
+    vtkDashedXorGridMapper2D *mapper = vtkDashedXorGridMapper2D::New();
+    mapper->SetWidget(renWin->GetGLWidget());
+    return mapper;
 }

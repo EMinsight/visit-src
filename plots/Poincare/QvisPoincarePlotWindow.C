@@ -64,6 +64,11 @@
 
 using std::string;
 
+static void
+TurnOn(QWidget *w0, QWidget *w1=NULL);
+static void
+TurnOff(QWidget *w0, QWidget *w1=NULL);
+
 // ****************************************************************************
 // Method: QvisPoincarePlotWindow::QvisPoincarePlotWindow
 //
@@ -142,7 +147,7 @@ QvisPoincarePlotWindow::CreateWindowContents()
     // First tab
     // ----------------------------------------------------------------------
     firstTab = new QWidget(central);
-    propertyTabs->addTab(firstTab, tr("Streamlines"));
+    propertyTabs->addTab(firstTab, tr("Fieldlines"));
     
     QGridLayout *mainLayout = new QGridLayout(firstTab);
 
@@ -198,54 +203,119 @@ QvisPoincarePlotWindow::CreateWindowContents()
             this, SLOT(pointDensityChanged(int)));
     sourceLayout->addWidget(pointDensity, 2, 3);
 
-   // Create the integration group box.
-    QGroupBox *integrationGroup = new QGroupBox(firstTab);
+
+   // Create the field group box.
+    QGroupBox *fieldGroup = new QGroupBox(central);
+    fieldGroup->setTitle(tr("Field"));
+    mainLayout->addWidget(fieldGroup, 6, 0, 1, 1);
+//    mainLayout->setStretchFactor(fieldGroup, 100);
+    QGridLayout *fieldLayout = new QGridLayout(fieldGroup);
+    fieldLayout->setMargin(5);
+    fieldLayout->setSpacing(10);
+
+
+    fieldLayout->addWidget( new QLabel(tr("Field"), fieldGroup), 0,0);
+    fieldType = new QComboBox(fieldGroup);
+    fieldType->addItem(tr("Default"));
+    fieldType->addItem(tr("M3D-C1 2D"));
+    fieldType->addItem(tr("M3D-C1 3D"));
+    fieldType->addItem(tr("NIMROD"));
+    fieldType->addItem(tr("Flash"));
+    connect(fieldType, SIGNAL(activated(int)),
+            this, SLOT(fieldTypeChanged(int)));
+    fieldLayout->addWidget(fieldType, 0,1);
+    
+
+    // Create the field constant text field.
+    fieldConstantLabel = new QLabel(tr("Constant"), fieldGroup);
+    fieldConstant = new QLineEdit(fieldGroup);
+    connect(fieldConstant, SIGNAL(returnPressed()), this,
+            SLOT(fieldConstantProccessText()));
+    fieldLayout->addWidget(fieldConstantLabel, 0,2);
+    fieldLayout->addWidget(fieldConstant, 0,3);
+
+
+    // Create the widgets that specify a velocity source.
+    velocitySource = new QLineEdit(fieldGroup);
+    connect(velocitySource, SIGNAL(returnPressed()),
+            this, SLOT(velocitySourceProcessText()));
+    velocitySourceLabel = new QLabel(tr("Velocity"), fieldGroup);
+    velocitySourceLabel->setBuddy(velocitySource);
+    fieldLayout->addWidget(velocitySourceLabel, 1, 2);
+    fieldLayout->addWidget(velocitySource, 1, 3);
+
+
+    // Create the integration group box.
+    QGroupBox *integrationGroup = new QGroupBox(central);
     integrationGroup->setTitle(tr("Integration"));
-    mainLayout->addWidget(integrationGroup, 1, 0);
+    mainLayout->addWidget(integrationGroup, 7, 0, 5, 2);
 //    mainLayout->setStretchFactor(integrationGroup, 100);
     QGridLayout *integrationLayout = new QGridLayout(integrationGroup);
     integrationLayout->setMargin(5);
     integrationLayout->setSpacing(10);
 
-    integrationTypeLabel = new QLabel(tr("Integrator:"), integrationGroup);
-    integrationLayout->addWidget(integrationTypeLabel,0,0);
 
-    integrationTypeCombo = new QComboBox(integrationGroup);
-    integrationTypeCombo->addItem(tr("Dormand-Prince (Runge-Kutta)"));
-    integrationTypeCombo->addItem(tr("Adams-Bashforth (Multi-step)"));
-    integrationTypeCombo->addItem(tr("M3D-C1 2D Integrator (M3D-C1 2D data only)"));
-    integrationTypeCombo->addItem(tr("M3D-C1 3D Integrator (M3D-C1 3D data only)"));
-//    integrationTypeCombo->addItem(tr("NIMROD Integrator (NIMROD data only)"));
-    connect(integrationTypeCombo, SIGNAL(activated(int)),
-           this, SLOT(integrationTypeChanged(int)));
-    integrationLayout->addWidget(integrationTypeCombo, 0, 1);
-
-    maxStepLengthLabel = new QLabel(tr("Maxiumum step length"), integrationGroup);
-    integrationLayout->addWidget(maxStepLengthLabel,1,0);
+    integrationLayout->addWidget( new QLabel(tr("Integrator"), integrationGroup), 0,0);
+    integrationType = new QComboBox(integrationGroup);
+    integrationType->addItem(tr("Forward Euler (Single-step)"));
+    integrationType->addItem(tr("Leapfrog (Single-step)"));
+    integrationType->addItem(tr("Dormand-Prince (Runge-Kutta)"));
+    integrationType->addItem(tr("Adams-Bashforth (Multi-step)"));
+    integrationType->addItem(tr("Unused"));
+    integrationType->addItem(tr("M3D-C1 2D Integrator (M3D-C1 2D fields only)"));
+    connect(integrationType, SIGNAL(activated(int)),
+            this, SLOT(integrationTypeChanged(int)));
+    integrationLayout->addWidget(integrationType, 0,1);
+    
+    // Create the step length text field.
+    maxStepLengthLabel = new QLabel(tr("Step length"), integrationGroup);
     maxStepLength = new QLineEdit(integrationGroup);
     connect(maxStepLength, SIGNAL(returnPressed()),
             this, SLOT(maxStepLengthProcessText()));
+    integrationLayout->addWidget(maxStepLengthLabel, 1,0);
     integrationLayout->addWidget(maxStepLength, 1,1);
 
-    relTolLabel = new QLabel(tr("Relative tolerance"), integrationGroup);
-    integrationLayout->addWidget(relTolLabel,2,0);
-    relTol = new QLineEdit(integrationGroup);
+    limitMaxTimeStep = new QCheckBox(tr("Limit maximum time step"), integrationGroup);
+    connect(limitMaxTimeStep, SIGNAL(toggled(bool)), this, SLOT(limitMaxTimeStepChanged(bool)));
+    integrationLayout->addWidget(limitMaxTimeStep, 2, 0);
+    
+    // Create the step length text field.
+    maxTimeStep = new QLineEdit(integrationGroup);
+    connect(maxTimeStep, SIGNAL(returnPressed()),
+            this, SLOT(maxTimeStepProcessText()));
+    integrationLayout->addWidget(maxTimeStep, 2,1);
+
+    QGroupBox *toleranceGroup = new QGroupBox(central);
+    toleranceGroup->setTitle(tr("Tolerances: max error for step < max(abstol, reltol*velocity_i) for each component i"));
+    integrationLayout->addWidget(toleranceGroup, 4, 0, 1, 3);
+    QGridLayout *toleranceLayout = new QGridLayout(toleranceGroup);
+    toleranceLayout->setMargin(5);
+    toleranceLayout->setSpacing(10);
+
+    // Create the relative tolerance text field.
+    relTolLabel = new QLabel(tr("Relative tolerance"), toleranceGroup);
+    relTol = new QLineEdit(toleranceGroup);
     connect(relTol, SIGNAL(returnPressed()),
             this, SLOT(relTolProcessText()));
-    integrationLayout->addWidget(relTol, 2,1);
+    toleranceLayout->addWidget(relTolLabel, 0, 0);
+    toleranceLayout->addWidget(relTol, 0, 1);
 
-    absTolLabel = new QLabel(tr("Absolute tolerance"), integrationGroup);
-    integrationLayout->addWidget(absTolLabel,3,0);
-    absTol = new QLineEdit(integrationGroup);
-    connect(absTol, SIGNAL(returnPressed()),
-            this, SLOT(absTolProcessText()));
-    integrationLayout->addWidget(absTol, 3,1);
+    // Create the absolute tolerance text field.
+    absTolLabel = new QLabel(tr("Absolute tolerance"), toleranceGroup);
+    absTol = new QLineEdit(toleranceGroup);
+    connect(absTol, SIGNAL(returnPressed()), this, SLOT(absTolProcessText()));
+    toleranceLayout->addWidget(absTolLabel, 1, 0);
+    toleranceLayout->addWidget(absTol, 1, 1);
 
-    forceNodalLabel = new QLabel(tr("Force node centering"), integrationGroup);
-    forceNodal = new QCheckBox(integrationGroup);
+    absTolSizeType = new QComboBox(toleranceGroup);
+    absTolSizeType->addItem(tr("Absolute"), 0);
+    absTolSizeType->addItem(tr("Fraction of Bounding Box"), 1);
+    connect(absTolSizeType, SIGNAL(activated(int)), this, SLOT(absTolSizeTypeChanged(int)));
+    toleranceLayout->addWidget(absTolSizeType, 1, 2);
+
+    forceNodal = new QCheckBox(tr("Force node centering"), integrationGroup);
     connect(forceNodal, SIGNAL(toggled(bool)), this, SLOT(forceNodalChanged(bool)));
-    integrationLayout->addWidget(forceNodalLabel, 4,0);
-    integrationLayout->addWidget(forceNodal, 4, 1);
+    integrationLayout->addWidget(forceNodal, 9, 0);
 
 
     // Create the coordinate group
@@ -393,13 +463,13 @@ QvisPoincarePlotWindow::CreateWindowContents()
     analysisLayout->addWidget(windingPairConfidence, 3, 1);
 
 
-    rationalTemplateSeedParmLabel =
-      new QLabel(tr("Rational Template Seed Parameter"), secondTab);
-    analysisLayout->addWidget(rationalTemplateSeedParmLabel, 4, 0);
-    rationalTemplateSeedParm = new QLineEdit(secondTab);
-    connect(rationalTemplateSeedParm, SIGNAL(returnPressed()),
-            this, SLOT(rationalTemplateSeedParmProcessText()));
-    analysisLayout->addWidget(rationalTemplateSeedParm, 4, 1);
+    rationalSurfaceFactorLabel =
+      new QLabel(tr("Rational surface factor"), secondTab);
+    analysisLayout->addWidget(rationalSurfaceFactorLabel, 4, 0);
+    rationalSurfaceFactor = new QLineEdit(secondTab);
+    connect(rationalSurfaceFactor, SIGNAL(returnPressed()),
+            this, SLOT(rationalSurfaceFactorProcessText()));
+    analysisLayout->addWidget(rationalSurfaceFactor, 4, 1);
 
    // Create the O/X Point group box.
     QGroupBox *criticalPointGroup = new QGroupBox(secondTab);
@@ -740,7 +810,7 @@ QvisPoincarePlotWindow::CreateWindowContents()
     mainLayout = new QGridLayout(fourthTab);
 
     QGroupBox *algoGrp = new QGroupBox(fourthTab);
-    algoGrp->setTitle(tr("Parallel streamline options"));
+    algoGrp->setTitle(tr("Parallel fieldline options"));
     mainLayout->addWidget(algoGrp, 0, 0, 1, 4);
 
     // Algorithm group.
@@ -750,9 +820,9 @@ QvisPoincarePlotWindow::CreateWindowContents()
 
     slAlgoLabel = new QLabel(tr("Parallelize across"), algoGrp);
     slAlgo = new QComboBox(algoGrp);
-    slAlgo->addItem(tr("Streamlines"));
+    slAlgo->addItem(tr("Fieldlines"));
     slAlgo->addItem(tr("Domains"));
-    slAlgo->addItem(tr("Streamlines and Domains"));
+    slAlgo->addItem(tr("Fieldlines and Domains"));
     connect(slAlgo, SIGNAL(activated(int)),
             this, SLOT(streamlineAlgorithmChanged(int)));
     algoGLayout->addWidget( slAlgoLabel, 1,0);
@@ -896,6 +966,9 @@ QvisPoincarePlotWindow::UpdateWindow(bool doAll)
             sourceTypeCombo->setCurrentIndex((int)atts->GetSourceType());
             sourceTypeCombo->blockSignals(false);
             break;
+          case PoincareAttributes::ID_velocitySource:
+            velocitySource->setText(DoublesToQString(atts->GetVelocitySource(), 3));
+            break;
           case PoincareAttributes::ID_pointSource:
             pointSource->setText(DoublesToQString(atts->GetPointSource(), 3));
             break;
@@ -910,22 +983,102 @@ QvisPoincarePlotWindow::UpdateWindow(bool doAll)
             pointDensity->setValue(atts->GetPointDensity());
             pointDensity->blockSignals(false);
             break;
-          case PoincareAttributes::ID_integrationType:
+
+        case PoincareAttributes::ID_fieldType:
+            // Update lots of widget visibility and enabled states.
+            UpdateFieldAttributes();
+
+            fieldType->blockSignals(true);
+            fieldType->setCurrentIndex(atts->GetFieldType());
+            fieldType->blockSignals(false);
+
+            integrationType->blockSignals(true);
+            if (atts->GetFieldType() == PoincareAttributes::M3DC12DField)
+            {
+              atts->SetIntegrationType(PoincareAttributes::M3DC12DIntegrator);
+              integrationType->setCurrentIndex(PoincareAttributes::M3DC12DIntegrator);
+              UpdateIntegrationAttributes();
+            }
+            else if (atts->GetFieldType() == PoincareAttributes::NIMRODField)
+            {
+              atts->SetIntegrationType(PoincareAttributes::AdamsBashforth);
+              integrationType->setCurrentIndex(PoincareAttributes::AdamsBashforth);
+              UpdateIntegrationAttributes();
+            }
+            else if (atts->GetIntegrationType() == PoincareAttributes::M3DC12DIntegrator) 
+            {
+              atts->SetIntegrationType(PoincareAttributes::DormandPrince);
+              integrationType->setCurrentIndex(PoincareAttributes::DormandPrince);
+              UpdateIntegrationAttributes();
+            }
+            integrationType->blockSignals(false);
+
+            break;
+        case PoincareAttributes::ID_fieldConstant:
+            fieldConstant->setText(DoubleToQString(atts->GetFieldConstant()));
+            break;
+        case PoincareAttributes::ID_integrationType:
             // Update lots of widget visibility and enabled states.
             UpdateIntegrationAttributes();
 
-            integrationTypeCombo->blockSignals(true);
-            integrationTypeCombo->setCurrentIndex((int)atts->GetIntegrationType());
-            integrationTypeCombo->blockSignals(false);
+            integrationType->blockSignals(true);
+            integrationType->setCurrentIndex(atts->GetIntegrationType());
+            integrationType->blockSignals(false);
+
+            fieldType->blockSignals(true);
+            if (atts->GetIntegrationType() == PoincareAttributes::M3DC12DIntegrator)
+            {
+              atts->SetFieldType(PoincareAttributes::M3DC12DField);
+              fieldType->setCurrentIndex(PoincareAttributes::M3DC12DField);
+              UpdateFieldAttributes();
+            }
+            else if (atts->GetFieldType() == PoincareAttributes::M3DC12DField)
+            {
+              atts->SetFieldType(PoincareAttributes::Default);
+              fieldType->setCurrentIndex(PoincareAttributes::Default);
+              UpdateFieldAttributes();
+            }
+            fieldType->blockSignals(false);
+
             break;
-          case PoincareAttributes::ID_maxStepLength:
+        case PoincareAttributes::ID_maxStepLength:
             maxStepLength->setText(DoubleToQString(atts->GetMaxStepLength()));
             break;
-          case PoincareAttributes::ID_relTol:
+        case PoincareAttributes::ID_relTol:
             relTol->setText(DoubleToQString(atts->GetRelTol()));
             break;
-          case PoincareAttributes::ID_absTol:
-            absTol->setText(DoubleToQString(atts->GetAbsTol()));
+        case PoincareAttributes::ID_absTolSizeType:
+            absTolSizeType->blockSignals(true);
+            absTolSizeType->setCurrentIndex((int) atts->GetAbsTolSizeType());
+            absTolSizeType->blockSignals(false);
+            if (atts->GetAbsTolSizeType() == PoincareAttributes::FractionOfBBox)
+            {
+                QString temp;
+                temp.setNum(atts->GetAbsTolBBox());
+                absTol->setText(temp);
+            }
+            if (atts->GetAbsTolSizeType() == PoincareAttributes::Absolute)
+            {
+                QString temp;
+                temp.setNum(atts->GetAbsTolAbsolute());
+                absTol->setText(temp);
+            }
+            break;
+        case PoincareAttributes::ID_absTolBBox:
+            if (atts->GetAbsTolSizeType() == PoincareAttributes::FractionOfBBox)
+            {
+                QString temp;
+                temp.setNum(atts->GetAbsTolBBox());
+                absTol->setText(temp);
+            }
+            break;
+        case PoincareAttributes::ID_absTolAbsolute:
+            if (atts->GetAbsTolSizeType() == PoincareAttributes::Absolute)
+            {
+                QString temp;
+                temp.setNum(atts->GetAbsTolAbsolute());
+                absTol->setText(temp);
+            }
             break;
           case PoincareAttributes::ID_coordinateSystem:
 //          coordinateButtonGroup->blockSignals(true);
@@ -934,10 +1087,15 @@ QvisPoincarePlotWindow::UpdateWindow(bool doAll)
             break;
           case PoincareAttributes::ID_analysis:
             analysisButtonGroup->blockSignals(true);
-            if(analysisButtonGroup->button((int)atts->GetAnalysis()) != 0)
-                analysisButtonGroup->button((int)atts->GetAnalysis())->setChecked(true);
-            showLines->setChecked(atts->GetAnalysis());
-            showPoints->setChecked(!atts->GetAnalysis());
+            analysisButtonGroup->button((int)atts->GetAnalysis())->setChecked(true);
+            if(atts->GetAnalysis() == 0)
+            {
+              showLines->setChecked(false);
+              showPoints->setChecked(true);
+
+              atts->SetShowLines(false);
+              atts->SetShowPoints(false);
+            }
 
             analysisButtonGroup->blockSignals(false);
             break;
@@ -960,8 +1118,8 @@ QvisPoincarePlotWindow::UpdateWindow(bool doAll)
             windingPairConfidence->setText(DoubleToQString(atts->GetWindingPairConfidence()));
             break;
 
-          case PoincareAttributes::ID_rationalTemplateSeedParm:
-            rationalTemplateSeedParm->setText(DoubleToQString(atts->GetRationalTemplateSeedParm()));
+          case PoincareAttributes::ID_rationalSurfaceFactor:
+            rationalSurfaceFactor->setText(DoubleToQString(atts->GetRationalSurfaceFactor()));
             break;
           case PoincareAttributes::ID_adjustPlane:
             adjustPlane->blockSignals(true);
@@ -1112,6 +1270,13 @@ QvisPoincarePlotWindow::UpdateWindow(bool doAll)
             break;
           case PoincareAttributes::ID_showLines:
             showLines->blockSignals(true);
+
+            if(atts->GetAnalysis() == 0)
+            {
+              showLines->setChecked(false);
+              atts->SetShowLines(false);
+            }
+
             showLines->setChecked(atts->GetShowLines());
             lineWidthLabel->setEnabled( (atts->GetShowLines() == true ) );
             lineStyleLabel->setEnabled( (atts->GetShowLines() == true ) );
@@ -1218,6 +1383,20 @@ QvisPoincarePlotWindow::GetCurrentValues(int which_widget)
 {
     bool doAll = (which_widget == -1);
 
+    // Do velocitySource
+    if(which_widget == PoincareAttributes::ID_velocitySource || doAll)
+    {
+        double val[3];
+        if(LineEditGetDoubles(velocitySource, val, 3))
+            atts->SetVelocitySource(val);
+        else
+        {
+            ResettingError(tr("Velocity Source"),
+                DoublesToQString(atts->GetVelocitySource(),3));
+            atts->SetVelocitySource(atts->GetVelocitySource());
+        }
+    }
+
     // Do pointSource
     if(which_widget == PoincareAttributes::ID_pointSource || doAll)
     {
@@ -1260,6 +1439,20 @@ QvisPoincarePlotWindow::GetCurrentValues(int which_widget)
         }
     }
 
+    // Do fieldConstant
+    if(which_widget == PoincareAttributes::ID_fieldConstant || doAll)
+    {
+        double val;
+        if(LineEditGetDouble(fieldConstant, val))
+            atts->SetFieldConstant(val);
+        else
+        {
+            ResettingError(tr("field constant"),
+                DoubleToQString(atts->GetFieldConstant()));
+            atts->SetFieldConstant(atts->GetFieldConstant());
+        }
+    }
+
     // Do maxStepLength
     if(which_widget == PoincareAttributes::ID_maxStepLength || doAll)
     {
@@ -1289,16 +1482,30 @@ QvisPoincarePlotWindow::GetCurrentValues(int which_widget)
     }
 
     // Do absTol
-    if(which_widget == PoincareAttributes::ID_absTol || doAll)
+    if ((which_widget == PoincareAttributes::ID_absTolBBox || doAll)
+        && atts->GetAbsTolSizeType() == PoincareAttributes::FractionOfBBox)
     {
         double val;
         if(LineEditGetDouble(absTol, val))
-            atts->SetAbsTol(val);
+            atts->SetAbsTolBBox(val);
         else
         {
-            ResettingError(tr("Absolute tolerance"),
-                DoubleToQString(atts->GetAbsTol()));
-            atts->SetAbsTol(atts->GetAbsTol());
+            ResettingError(tr("absolute tolerance"),
+                DoubleToQString(atts->GetAbsTolBBox()));
+                atts->SetAbsTolBBox(atts->GetAbsTolBBox());
+        }
+    }
+    if ((which_widget == PoincareAttributes::ID_absTolAbsolute || doAll)
+        && atts->GetAbsTolSizeType() == PoincareAttributes::Absolute)
+    {
+        double val;
+        if(LineEditGetDouble(absTol, val))
+            atts->SetAbsTolAbsolute(val);
+        else
+        {
+            ResettingError(tr("absolute tolerance"),
+                DoubleToQString(atts->GetAbsTolAbsolute()));
+                atts->SetAbsTolAbsolute(atts->GetAbsTolAbsolute());
         }
     }
 
@@ -1316,17 +1523,17 @@ QvisPoincarePlotWindow::GetCurrentValues(int which_widget)
         }
     }
 
-    // Do rationalTemplateSeedParm
-    if(which_widget == PoincareAttributes::ID_rationalTemplateSeedParm || doAll)
+    // Do rationalSurfaceFactor
+    if(which_widget == PoincareAttributes::ID_rationalSurfaceFactor || doAll)
     {
         double val;
-        if(LineEditGetDouble(rationalTemplateSeedParm, val))
-            atts->SetRationalTemplateSeedParm(val);
+        if(LineEditGetDouble(rationalSurfaceFactor, val))
+            atts->SetRationalSurfaceFactor(val);
         else
         {
-            ResettingError(tr("rationalTemplateSeedParm"),
-                DoubleToQString(atts->GetRationalTemplateSeedParm()));
-            atts->SetRationalTemplateSeedParm(atts->GetRationalTemplateSeedParm());
+            ResettingError(tr("rationalSurfaceFactor"),
+                DoubleToQString(atts->GetRationalSurfaceFactor()));
+            atts->SetRationalSurfaceFactor(atts->GetRationalSurfaceFactor());
         }
     }
 
@@ -1380,54 +1587,6 @@ QvisPoincarePlotWindow::GetCurrentValues(int which_widget)
 
 
 // ****************************************************************************
-// Method: QvisPoincarePlotWindow::UpdateIntegrationAttributes
-//
-// Purpose: 
-//   Updates the widgets for the various integration types.
-//
-// Programmer: Dave Pugmire
-// Creation:   Thu Jul 31 14:41:00 EDT 2008
-//
-// ****************************************************************************
-
-void
-QvisPoincarePlotWindow::UpdateIntegrationAttributes()
-{
-    //Turn off everything.
-    maxStepLength->hide();
-    maxStepLengthLabel->hide();
-    relTol->hide();
-    relTolLabel->hide();
-    absTol->hide();
-    absTolLabel->hide();
-    
-    switch( atts->GetIntegrationType() )
-    {
-    case PoincareAttributes::DormandPrince:
-    case PoincareAttributes::M3DC13DIntegrator:
-        maxStepLength->show();
-        maxStepLengthLabel->show();
-        maxStepLengthLabel->setText(tr("Maximum step length"));
-        relTol->show();
-        relTolLabel->show();
-        absTol->show();
-        absTolLabel->show();
-        break;
-
-    case PoincareAttributes::AdamsBashforth:
-    case PoincareAttributes::M3DC12DIntegrator:
-    case PoincareAttributes::NIMRODIntegrator:
-        maxStepLength->show();
-        maxStepLengthLabel->show();
-        maxStepLengthLabel->setText(tr("Step length"));
-        absTol->show();
-        absTolLabel->show();
-        break;
-    }
-}
-
-
-// ****************************************************************************
 // Method: QvisPoincarePlotWindow::UpdateMeshTypeAttributes
 //
 // Purpose: 
@@ -1457,6 +1616,114 @@ QvisPoincarePlotWindow::UpdateMeshTypeAttributes()
     case PoincareAttributes::Surfaces:
         adjustPlaneLabel->show();
         adjustPlane->show();
+        break;
+    }
+}
+
+
+// ****************************************************************************
+// Method: QvisPoincarePlotWindow::UpdateFieldAttributes
+//
+// Purpose: 
+//   Updates the widgets for the various field types.
+//
+// Programmer: Dave Pugmire
+// Creation:   Thu Jul 31 14:41:00 EDT 2008
+//
+// ****************************************************************************
+
+void
+QvisPoincarePlotWindow::UpdateFieldAttributes()
+{
+    switch( atts->GetFieldType() )
+    {
+    case PoincareAttributes::M3DC12DField:
+      if( atts->GetIntegrationType() ==
+          PoincareAttributes::M3DC12DIntegrator ) 
+        TurnOn(fieldConstant, fieldConstantLabel);
+      else
+        TurnOff(fieldConstant, fieldConstantLabel);
+
+      TurnOff(velocitySource, velocitySourceLabel);
+
+      break;
+
+    case PoincareAttributes::FlashField:
+      TurnOn(fieldConstant, fieldConstantLabel);
+      TurnOn(velocitySource, velocitySourceLabel);
+      break;
+
+    case PoincareAttributes::NIMRODField:
+    default:
+      TurnOff(fieldConstant, fieldConstantLabel);
+      TurnOff(velocitySource, velocitySourceLabel);
+
+      break;
+    }
+}
+
+
+// ****************************************************************************
+// Method: QvisPoincarePlotWindow::UpdateIntegrationAttributes
+//
+// Purpose: 
+//   Updates the widgets for the various integration types.
+//
+// Programmer: Dave Pugmire
+// Creation:   Thu Jul 31 14:41:00 EDT 2008
+//
+// Modifications:
+//
+//   Dave Pugmire, Fri Aug 8 16:27:03 EDT 2008
+//   Change the step label text based on the integration method.
+//
+//   Hank Childs, Wed Sep 29 20:22:36 PDT 2010
+//   Add support for limiting the maximum time step.
+//
+// ****************************************************************************
+
+void
+QvisPoincarePlotWindow::UpdateIntegrationAttributes()
+{
+    //Turn off everything.
+    maxStepLength->hide();
+    maxStepLengthLabel->hide();
+    limitMaxTimeStep->hide();
+    maxTimeStep->hide();
+    relTol->hide();
+    relTolLabel->hide();
+    absTol->hide();
+    absTolLabel->hide();
+    absTolSizeType->hide();
+
+    switch( atts->GetIntegrationType() )
+    {
+    case PoincareAttributes::Euler:
+    case PoincareAttributes::Leapfrog:
+        maxStepLength->show();
+        maxStepLengthLabel->show();
+      break;
+
+    case PoincareAttributes::DormandPrince:
+        limitMaxTimeStep->show();
+        maxTimeStep->show();
+        relTol->show();
+        relTolLabel->show();
+        absTol->show();
+        absTolLabel->show();
+        absTolSizeType->show();
+        break;
+
+    case PoincareAttributes::AdamsBashforth:
+    case PoincareAttributes::M3DC12DIntegrator:
+        maxStepLength->show();
+        maxStepLengthLabel->show();
+        absTol->show();
+        absTolLabel->show();
+        absTolSizeType->show();
+        break;
+
+    default:
         break;
     }
 }
@@ -1622,6 +1889,14 @@ QvisPoincarePlotWindow::sourceTypeChanged(int val)
 
 
 void
+QvisPoincarePlotWindow::velocitySourceProcessText()
+{
+    GetCurrentValues(PoincareAttributes::ID_velocitySource);
+    Apply();
+}
+
+
+void
 QvisPoincarePlotWindow::pointSourceProcessText()
 {
     GetCurrentValues(PoincareAttributes::ID_pointSource);
@@ -1681,13 +1956,36 @@ QvisPoincarePlotWindow::puncturePlaneChanged(int val)
 
 
 void
+QvisPoincarePlotWindow::fieldTypeChanged(int val)
+ {
+    if(val != atts->GetFieldType())
+    {
+        atts->SetFieldType(PoincareAttributes::FieldType(val));
+        Apply();
+    }
+}   
+
+
+void
+QvisPoincarePlotWindow::fieldConstantProccessText()
+{
+    GetCurrentValues(PoincareAttributes::ID_fieldConstant);
+    Apply();
+}
+
+
+void
 QvisPoincarePlotWindow::integrationTypeChanged(int val)
 {
-    if(val != atts->GetIntegrationType())
+    if(val == 4) // Unused 
+        Apply();
+    
+    else if(val != atts->GetIntegrationType())
     {
         atts->SetIntegrationType(PoincareAttributes::IntegrationType(val));
         Apply();
     }
+
 }
 
 
@@ -1695,6 +1993,22 @@ void
 QvisPoincarePlotWindow::maxStepLengthProcessText()
 {
     GetCurrentValues(PoincareAttributes::ID_maxStepLength);
+    Apply();
+}
+
+
+void
+QvisPoincarePlotWindow::limitMaxTimeStepChanged(bool val)
+{
+    atts->SetLimitMaximumTimestep(val);
+    Apply();
+}
+
+
+void
+QvisPoincarePlotWindow::maxTimeStepProcessText()
+{
+    GetCurrentValues(PoincareAttributes::ID_maxTimeStep);
     Apply();
 }
 
@@ -1710,7 +2024,16 @@ QvisPoincarePlotWindow::relTolProcessText()
 void
 QvisPoincarePlotWindow::absTolProcessText()
 {
-    GetCurrentValues(PoincareAttributes::ID_absTol);
+    GetCurrentValues(PoincareAttributes::ID_absTolBBox);
+    GetCurrentValues(PoincareAttributes::ID_absTolAbsolute);
+    Apply();
+}
+
+
+void
+QvisPoincarePlotWindow::absTolSizeTypeChanged(int val)
+{
+    atts->SetAbsTolSizeType((PoincareAttributes::SizeType) val);
     Apply();
 }
 
@@ -1774,9 +2097,9 @@ QvisPoincarePlotWindow::windingPairConfidenceProcessText()
 
 
 void
-QvisPoincarePlotWindow::rationalTemplateSeedParmProcessText()
+QvisPoincarePlotWindow::rationalSurfaceFactorProcessText()
 {
-    GetCurrentValues(PoincareAttributes::ID_rationalTemplateSeedParm);
+    GetCurrentValues(PoincareAttributes::ID_rationalSurfaceFactor);
     Apply();
 }
 
@@ -2077,4 +2400,36 @@ QvisPoincarePlotWindow::forceNodalChanged(bool val)
 {
     atts->SetForceNodeCenteredData(val);
     Apply();
+}
+
+
+
+static void
+TurnOn(QWidget *w0, QWidget *w1)
+{
+    if (w0)
+    {
+        w0->setEnabled(true);
+        w0->show();
+    }
+    if (w1)
+    {
+        w1->setEnabled(true);
+        w1->show();
+    }
+}
+
+static void
+TurnOff(QWidget *w0, QWidget *w1)
+{
+    if (w0)
+    {
+        w0->setEnabled(false);
+        w0->hide();
+    }
+    if (w1)
+    {
+        w1->setEnabled(false);
+        w1->hide();
+    }
 }

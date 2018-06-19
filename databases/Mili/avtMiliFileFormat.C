@@ -42,12 +42,8 @@
 
 #include <avtMiliFileFormat.h>
 
-#include <vector>
-#include <string>
-using std::getline;
 #include <snprintf.h>
 #include <visitstream.h>
-#include <set>
 
 extern "C" {
 #include <mili_enum.h>
@@ -76,9 +72,16 @@ extern "C" {
 #include <InvalidVariableException.h>
 #include <UnexpectedValueException.h>
 
-using std::vector;
-using std::string;
+#include <set>
+#include <string>
+#include <utility>
+#include <vector>
+
+using std::getline;
 using std::ifstream;
+using std::pair;
+using std::string;
+using std::vector;
 
 static const char *free_nodes_str = "free_nodes";
 static const char *no_free_nodes_str = "no_free_nodes";
@@ -1291,49 +1294,54 @@ avtMiliFileFormat::ReadMesh(int dom)
             {
                 int *conn = conn_list[i][j];
                 int nelems = list_size[i][j];
+
                 for (k = 0 ; k < nelems ; k++)
                 {
+                    vtkIdType verts[100];
+                    for(int cc = 0; cc < conn_count[i]; ++cc)
+                        verts[cc] = (vtkIdType)conn[cc];
+
                     switch (elem_sclasses[i])
                     {
                       case M_TRUSS:
                         connectivity[dom][mesh_id]->InsertNextCell(VTK_LINE,
-                                                 conn_count[i], conn);
+                                                 conn_count[i], verts);
                         break;
                       case M_BEAM:
                         // Beams are lines that have a third point to define
                         // the normal. Since we don't need to visualize it,
                         // we just drop the normal point.
                         connectivity[dom][mesh_id]->InsertNextCell(VTK_LINE,
-                                                 2, conn);
+                                                 2, verts);
                         break;
                       case M_TRI:
                         connectivity[dom][mesh_id]->InsertNextCell(
                                                                   VTK_TRIANGLE,
-                                                 conn_count[i], conn);
+                                                 conn_count[i], verts);
                         break;
                       case M_QUAD:
                         connectivity[dom][mesh_id]->InsertNextCell(VTK_QUAD,
-                                                     conn_count[i], conn);
+                                                     conn_count[i], verts);
                         break;
                       case M_TET:
                         connectivity[dom][mesh_id]->InsertNextCell(VTK_TETRA,
-                                                     conn_count[i], conn);
+                                                     conn_count[i], verts);
                         break;
                       case M_PYRAMID:
                         connectivity[dom][mesh_id]->InsertNextCell(VTK_PYRAMID,
-                                                     conn_count[i], conn);
+                                                     conn_count[i], verts);
                         break;
                       case M_WEDGE:
                         connectivity[dom][mesh_id]->InsertNextCell(VTK_WEDGE,
-                                                     conn_count[i], conn);
+                                                     conn_count[i], verts);
                         break;
                       case M_HEX:
                         if (conn[2] == conn[3] && conn[4] == conn[5] &&
                             conn[5] == conn[6] && conn[6] == conn[7])
                         {
-                            int tet[4];
-                            tet[0] = conn[0]; tet[1] = conn[1];
-                            tet[2] = conn[2]; tet[3] = conn[4];
+                            vtkIdType tet[4];
+                            tet[0] = verts[0]; verts[1] = verts[1];
+                            tet[2] = verts[2]; verts[3] = verts[4];
                             connectivity[dom][mesh_id]->InsertNextCell(
                                                      VTK_TETRA,
                                                      4, tet);
@@ -1342,7 +1350,7 @@ avtMiliFileFormat::ReadMesh(int dom)
                         {
                             connectivity[dom][mesh_id]->InsertNextCell(
                                                      VTK_HEXAHEDRON,
-                                                     conn_count[i], conn);
+                                                     conn_count[i], verts);
                         }
                         break;
                       default:

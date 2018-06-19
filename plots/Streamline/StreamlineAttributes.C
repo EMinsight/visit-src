@@ -315,33 +315,72 @@ StreamlineAttributes::StreamlineAlgorithmType_FromString(const std::string &s, S
 }
 
 //
+// Enum conversion methods for StreamlineAttributes::FieldType
+//
+
+static const char *FieldType_strings[] = {
+"Default", "M3DC12DField", "M3DC13DField", 
+"NIMRODField", "FlashField"};
+
+std::string
+StreamlineAttributes::FieldType_ToString(StreamlineAttributes::FieldType t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 5) index = 0;
+    return FieldType_strings[index];
+}
+
+std::string
+StreamlineAttributes::FieldType_ToString(int t)
+{
+    int index = (t < 0 || t >= 5) ? 0 : t;
+    return FieldType_strings[index];
+}
+
+bool
+StreamlineAttributes::FieldType_FromString(const std::string &s, StreamlineAttributes::FieldType &val)
+{
+    val = StreamlineAttributes::Default;
+    for(int i = 0; i < 5; ++i)
+    {
+        if(s == FieldType_strings[i])
+        {
+            val = (FieldType)i;
+            return true;
+        }
+    }
+    return false;
+}
+
+//
 // Enum conversion methods for StreamlineAttributes::IntegrationType
 //
 
 static const char *IntegrationType_strings[] = {
-"DormandPrince", "AdamsBashforth", "M3DC12DIntegrator", 
-"M3DC13DIntegrator", "NIMRODIntegrator"};
+"Euler", "Leapfrog", "DormandPrince", 
+"AdamsBashforth", "Reserved_4", "M3DC12DIntegrator"
+};
 
 std::string
 StreamlineAttributes::IntegrationType_ToString(StreamlineAttributes::IntegrationType t)
 {
     int index = int(t);
-    if(index < 0 || index >= 5) index = 0;
+    if(index < 0 || index >= 6) index = 0;
     return IntegrationType_strings[index];
 }
 
 std::string
 StreamlineAttributes::IntegrationType_ToString(int t)
 {
-    int index = (t < 0 || t >= 5) ? 0 : t;
+    int index = (t < 0 || t >= 6) ? 0 : t;
     return IntegrationType_strings[index];
 }
 
 bool
 StreamlineAttributes::IntegrationType_FromString(const std::string &s, StreamlineAttributes::IntegrationType &val)
 {
-    val = StreamlineAttributes::DormandPrince;
-    for(int i = 0; i < 5; ++i)
+    val = StreamlineAttributes::Euler;
+    for(int i = 0; i < 6; ++i)
     {
         if(s == IntegrationType_strings[i])
         {
@@ -651,6 +690,11 @@ void StreamlineAttributes::Init()
     absTolSizeType = FractionOfBBox;
     absTolAbsolute = 1e-06;
     absTolBBox = 1e-06;
+    fieldType = Default;
+    fieldConstant = 1;
+    velocitySource[0] = 0;
+    velocitySource[1] = 0;
+    velocitySource[2] = 0;
     integrationType = DormandPrince;
     streamlineAlgorithmType = VisItSelects;
     maxStreamlineProcessCount = 10;
@@ -794,6 +838,12 @@ void StreamlineAttributes::Copy(const StreamlineAttributes &obj)
     absTolSizeType = obj.absTolSizeType;
     absTolAbsolute = obj.absTolAbsolute;
     absTolBBox = obj.absTolBBox;
+    fieldType = obj.fieldType;
+    fieldConstant = obj.fieldConstant;
+    velocitySource[0] = obj.velocitySource[0];
+    velocitySource[1] = obj.velocitySource[1];
+    velocitySource[2] = obj.velocitySource[2];
+
     integrationType = obj.integrationType;
     streamlineAlgorithmType = obj.streamlineAlgorithmType;
     maxStreamlineProcessCount = obj.maxStreamlineProcessCount;
@@ -1060,6 +1110,11 @@ StreamlineAttributes::operator == (const StreamlineAttributes &obj) const
     for(int i = 0; i < 6 && boxExtents_equal; ++i)
         boxExtents_equal = (boxExtents[i] == obj.boxExtents[i]);
 
+    // Compare the velocitySource arrays.
+    bool velocitySource_equal = true;
+    for(int i = 0; i < 3 && velocitySource_equal; ++i)
+        velocitySource_equal = (velocitySource[i] == obj.velocitySource[i]);
+
     // Create the return value
     return ((sourceType == obj.sourceType) &&
             pointSource_equal &&
@@ -1094,6 +1149,9 @@ StreamlineAttributes::operator == (const StreamlineAttributes &obj) const
             (absTolSizeType == obj.absTolSizeType) &&
             (absTolAbsolute == obj.absTolAbsolute) &&
             (absTolBBox == obj.absTolBBox) &&
+            (fieldType == obj.fieldType) &&
+            (fieldConstant == obj.fieldConstant) &&
+            velocitySource_equal &&
             (integrationType == obj.integrationType) &&
             (streamlineAlgorithmType == obj.streamlineAlgorithmType) &&
             (maxStreamlineProcessCount == obj.maxStreamlineProcessCount) &&
@@ -1451,6 +1509,9 @@ StreamlineAttributes::SelectAll()
     Select(ID_absTolSizeType,                     (void *)&absTolSizeType);
     Select(ID_absTolAbsolute,                     (void *)&absTolAbsolute);
     Select(ID_absTolBBox,                         (void *)&absTolBBox);
+    Select(ID_fieldType,                          (void *)&fieldType);
+    Select(ID_fieldConstant,                      (void *)&fieldConstant);
+    Select(ID_velocitySource,                     (void *)velocitySource, 3);
     Select(ID_integrationType,                    (void *)&integrationType);
     Select(ID_streamlineAlgorithmType,            (void *)&streamlineAlgorithmType);
     Select(ID_maxStreamlineProcessCount,          (void *)&maxStreamlineProcessCount);
@@ -1749,6 +1810,24 @@ StreamlineAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool f
     {
         addToParent = true;
         node->AddNode(new DataNode("absTolBBox", absTolBBox));
+    }
+
+    if(completeSave || !FieldsEqual(ID_fieldType, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("fieldType", FieldType_ToString(fieldType)));
+    }
+
+    if(completeSave || !FieldsEqual(ID_fieldConstant, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("fieldConstant", fieldConstant));
+    }
+
+    if(completeSave || !FieldsEqual(ID_velocitySource, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("velocitySource", velocitySource, 3));
     }
 
     if(completeSave || !FieldsEqual(ID_integrationType, &defaultObject))
@@ -2317,13 +2396,33 @@ StreamlineAttributes::SetFromNode(DataNode *parentNode)
         SetAbsTolAbsolute(node->AsDouble());
     if((node = searchNode->GetNode("absTolBBox")) != 0)
         SetAbsTolBBox(node->AsDouble());
-    if((node = searchNode->GetNode("integrationType")) != 0)
+    if((node = searchNode->GetNode("fieldType")) != 0)
     {
         // Allow enums to be int or string in the config file
         if(node->GetNodeType() == INT_NODE)
         {
             int ival = node->AsInt();
             if(ival >= 0 && ival < 5)
+                SetFieldType(FieldType(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            FieldType value;
+            if(FieldType_FromString(node->AsString(), value))
+                SetFieldType(value);
+        }
+    }
+    if((node = searchNode->GetNode("fieldConstant")) != 0)
+        SetFieldConstant(node->AsDouble());
+    if((node = searchNode->GetNode("velocitySource")) != 0)
+        SetVelocitySource(node->AsDoubleArray());
+    if((node = searchNode->GetNode("integrationType")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 6)
                 SetIntegrationType(IntegrationType(ival));
         }
         else if(node->GetNodeType() == STRING_NODE)
@@ -2913,6 +3012,29 @@ StreamlineAttributes::SetAbsTolBBox(double absTolBBox_)
 {
     absTolBBox = absTolBBox_;
     Select(ID_absTolBBox, (void *)&absTolBBox);
+}
+
+void
+StreamlineAttributes::SetFieldType(StreamlineAttributes::FieldType fieldType_)
+{
+    fieldType = fieldType_;
+    Select(ID_fieldType, (void *)&fieldType);
+}
+
+void
+StreamlineAttributes::SetFieldConstant(double fieldConstant_)
+{
+    fieldConstant = fieldConstant_;
+    Select(ID_fieldConstant, (void *)&fieldConstant);
+}
+
+void
+StreamlineAttributes::SetVelocitySource(const double *velocitySource_)
+{
+    velocitySource[0] = velocitySource_[0];
+    velocitySource[1] = velocitySource_[1];
+    velocitySource[2] = velocitySource_[2];
+    Select(ID_velocitySource, (void *)velocitySource, 3);
 }
 
 void
@@ -3659,6 +3781,30 @@ StreamlineAttributes::GetAbsTolBBox() const
     return absTolBBox;
 }
 
+StreamlineAttributes::FieldType
+StreamlineAttributes::GetFieldType() const
+{
+    return FieldType(fieldType);
+}
+
+double
+StreamlineAttributes::GetFieldConstant() const
+{
+    return fieldConstant;
+}
+
+const double *
+StreamlineAttributes::GetVelocitySource() const
+{
+    return velocitySource;
+}
+
+double *
+StreamlineAttributes::GetVelocitySource()
+{
+    return velocitySource;
+}
+
 StreamlineAttributes::IntegrationType
 StreamlineAttributes::GetIntegrationType() const
 {
@@ -4156,6 +4302,12 @@ StreamlineAttributes::SelectSingleColor()
 }
 
 void
+StreamlineAttributes::SelectVelocitySource()
+{
+    Select(ID_velocitySource, (void *)velocitySource, 3);
+}
+
+void
 StreamlineAttributes::SelectColoringVariable()
 {
     Select(ID_coloringVariable, (void *)&coloringVariable);
@@ -4230,6 +4382,9 @@ StreamlineAttributes::GetFieldName(int index) const
     case ID_absTolSizeType:                     return "absTolSizeType";
     case ID_absTolAbsolute:                     return "absTolAbsolute";
     case ID_absTolBBox:                         return "absTolBBox";
+    case ID_fieldType:                          return "fieldType";
+    case ID_fieldConstant:                      return "fieldConstant";
+    case ID_velocitySource:                     return "velocitySource";
     case ID_integrationType:                    return "integrationType";
     case ID_streamlineAlgorithmType:            return "streamlineAlgorithmType";
     case ID_maxStreamlineProcessCount:          return "maxStreamlineProcessCount";
@@ -4355,6 +4510,9 @@ StreamlineAttributes::GetFieldType(int index) const
     case ID_absTolSizeType:                     return FieldType_enum;
     case ID_absTolAbsolute:                     return FieldType_double;
     case ID_absTolBBox:                         return FieldType_double;
+    case ID_fieldType:                          return FieldType_enum;
+    case ID_fieldConstant:                      return FieldType_double;
+    case ID_velocitySource:                     return FieldType_doubleArray;
     case ID_integrationType:                    return FieldType_enum;
     case ID_streamlineAlgorithmType:            return FieldType_enum;
     case ID_maxStreamlineProcessCount:          return FieldType_int;
@@ -4480,6 +4638,9 @@ StreamlineAttributes::GetFieldTypeName(int index) const
     case ID_absTolSizeType:                     return "enum";
     case ID_absTolAbsolute:                     return "double";
     case ID_absTolBBox:                         return "double";
+    case ID_fieldType:                          return "enum";
+    case ID_fieldConstant:                      return "double";
+    case ID_velocitySource:                     return "doubleArray";
     case ID_integrationType:                    return "enum";
     case ID_streamlineAlgorithmType:            return "enum";
     case ID_maxStreamlineProcessCount:          return "int";
@@ -4777,6 +4938,26 @@ StreamlineAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
     case ID_absTolBBox:
         {  // new scope
         retval = (absTolBBox == obj.absTolBBox);
+        }
+        break;
+    case ID_fieldType:
+        {  // new scope
+        retval = (fieldType == obj.fieldType);
+        }
+        break;
+    case ID_fieldConstant:
+        {  // new scope
+        retval = (fieldConstant == obj.fieldConstant);
+        }
+        break;
+    case ID_velocitySource:
+        {  // new scope
+        // Compare the velocitySource arrays.
+        bool velocitySource_equal = true;
+        for(int i = 0; i < 3 && velocitySource_equal; ++i)
+            velocitySource_equal = (velocitySource[i] == obj.velocitySource[i]);
+
+        retval = velocitySource_equal;
         }
         break;
     case ID_integrationType:
@@ -5183,6 +5364,8 @@ StreamlineAttributes::ChangesRequireRecalculation(const StreamlineAttributes &ob
         terminateByTime != obj.terminateByTime ||
         termTime != obj.termTime ||
         streamlineDirection != obj.streamlineDirection ||
+        fieldType != obj.fieldType ||
+        fieldConstant != obj.fieldConstant ||
         integrationType != obj.integrationType ||
         coordinateSystem != obj.coordinateSystem ||
         phiScalingFlag != obj.phiScalingFlag ||
@@ -5224,6 +5407,11 @@ StreamlineAttributes::ChangesRequireRecalculation(const StreamlineAttributes &ob
     // We need velocities for illuminate streamlines rendered as lines
     if (lightingFlag != obj.lightingFlag && obj.lightingFlag == true)
         return true;
+
+    if (POINT_DIFFERS(velocitySource, obj.velocitySource))
+    {
+        return true;
+    }
 
     //Check by source type.
     if ((sourceType == SpecifiedPoint) && POINT_DIFFERS(pointSource, obj.pointSource))

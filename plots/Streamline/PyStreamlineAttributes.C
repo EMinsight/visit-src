@@ -390,9 +390,63 @@ PyStreamlineAttributes_ToString(const StreamlineAttributes *atts, const char *pr
     str += tmpStr;
     SNPRINTF(tmpStr, 1000, "%sabsTolBBox = %g\n", prefix, atts->GetAbsTolBBox());
     str += tmpStr;
-    const char *integrationType_names = "DormandPrince, AdamsBashforth, M3DC12DIntegrator, M3DC13DIntegrator, NIMRODIntegrator";
+    const char *fieldType_names = "Default, M3DC12DField, M3DC13DField, NIMRODField, FlashField";
+    switch (atts->GetFieldType())
+    {
+      case StreamlineAttributes::Default:
+          SNPRINTF(tmpStr, 1000, "%sfieldType = %sDefault  # %s\n", prefix, prefix, fieldType_names);
+          str += tmpStr;
+          break;
+      case StreamlineAttributes::M3DC12DField:
+          SNPRINTF(tmpStr, 1000, "%sfieldType = %sM3DC12DField  # %s\n", prefix, prefix, fieldType_names);
+          str += tmpStr;
+          break;
+      case StreamlineAttributes::M3DC13DField:
+          SNPRINTF(tmpStr, 1000, "%sfieldType = %sM3DC13DField  # %s\n", prefix, prefix, fieldType_names);
+          str += tmpStr;
+          break;
+      case StreamlineAttributes::NIMRODField:
+          SNPRINTF(tmpStr, 1000, "%sfieldType = %sNIMRODField  # %s\n", prefix, prefix, fieldType_names);
+          str += tmpStr;
+          break;
+      case StreamlineAttributes::FlashField:
+          SNPRINTF(tmpStr, 1000, "%sfieldType = %sFlashField  # %s\n", prefix, prefix, fieldType_names);
+          str += tmpStr;
+          break;
+      default:
+          break;
+    }
+
+    SNPRINTF(tmpStr, 1000, "%sfieldConstant = %g\n", prefix, atts->GetFieldConstant());
+    str += tmpStr;
+    {   const double *velocitySource = atts->GetVelocitySource();
+        SNPRINTF(tmpStr, 1000, "%svelocitySource = (", prefix);
+        str += tmpStr;
+        for(int i = 0; i < 3; ++i)
+        {
+            SNPRINTF(tmpStr, 1000, "%g", velocitySource[i]);
+            str += tmpStr;
+            if(i < 2)
+            {
+                SNPRINTF(tmpStr, 1000, ", ");
+                str += tmpStr;
+            }
+        }
+        SNPRINTF(tmpStr, 1000, ")\n");
+        str += tmpStr;
+    }
+    const char *integrationType_names = "Euler, Leapfrog, DormandPrince, AdamsBashforth, Reserved_4, "
+        "M3DC12DIntegrator";
     switch (atts->GetIntegrationType())
     {
+      case StreamlineAttributes::Euler:
+          SNPRINTF(tmpStr, 1000, "%sintegrationType = %sEuler  # %s\n", prefix, prefix, integrationType_names);
+          str += tmpStr;
+          break;
+      case StreamlineAttributes::Leapfrog:
+          SNPRINTF(tmpStr, 1000, "%sintegrationType = %sLeapfrog  # %s\n", prefix, prefix, integrationType_names);
+          str += tmpStr;
+          break;
       case StreamlineAttributes::DormandPrince:
           SNPRINTF(tmpStr, 1000, "%sintegrationType = %sDormandPrince  # %s\n", prefix, prefix, integrationType_names);
           str += tmpStr;
@@ -401,16 +455,12 @@ PyStreamlineAttributes_ToString(const StreamlineAttributes *atts, const char *pr
           SNPRINTF(tmpStr, 1000, "%sintegrationType = %sAdamsBashforth  # %s\n", prefix, prefix, integrationType_names);
           str += tmpStr;
           break;
+      case StreamlineAttributes::Reserved_4:
+          SNPRINTF(tmpStr, 1000, "%sintegrationType = %sReserved_4  # %s\n", prefix, prefix, integrationType_names);
+          str += tmpStr;
+          break;
       case StreamlineAttributes::M3DC12DIntegrator:
           SNPRINTF(tmpStr, 1000, "%sintegrationType = %sM3DC12DIntegrator  # %s\n", prefix, prefix, integrationType_names);
-          str += tmpStr;
-          break;
-      case StreamlineAttributes::M3DC13DIntegrator:
-          SNPRINTF(tmpStr, 1000, "%sintegrationType = %sM3DC13DIntegrator  # %s\n", prefix, prefix, integrationType_names);
-          str += tmpStr;
-          break;
-      case StreamlineAttributes::NIMRODIntegrator:
-          SNPRINTF(tmpStr, 1000, "%sintegrationType = %sNIMRODIntegrator  # %s\n", prefix, prefix, integrationType_names);
           str += tmpStr;
           break;
       default:
@@ -1995,6 +2045,118 @@ StreamlineAttributes_GetAbsTolBBox(PyObject *self, PyObject *args)
 }
 
 /*static*/ PyObject *
+StreamlineAttributes_SetFieldType(PyObject *self, PyObject *args)
+{
+    StreamlineAttributesObject *obj = (StreamlineAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the fieldType in the object.
+    if(ival >= 0 && ival < 5)
+        obj->data->SetFieldType(StreamlineAttributes::FieldType(ival));
+    else
+    {
+        fprintf(stderr, "An invalid fieldType value was given. "
+                        "Valid values are in the range of [0,4]. "
+                        "You can also use the following names: "
+                        "Default, M3DC12DField, M3DC13DField, NIMRODField, FlashField"
+                        ".");
+        return NULL;
+    }
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+StreamlineAttributes_GetFieldType(PyObject *self, PyObject *args)
+{
+    StreamlineAttributesObject *obj = (StreamlineAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetFieldType()));
+    return retval;
+}
+
+/*static*/ PyObject *
+StreamlineAttributes_SetFieldConstant(PyObject *self, PyObject *args)
+{
+    StreamlineAttributesObject *obj = (StreamlineAttributesObject *)self;
+
+    double dval;
+    if(!PyArg_ParseTuple(args, "d", &dval))
+        return NULL;
+
+    // Set the fieldConstant in the object.
+    obj->data->SetFieldConstant(dval);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+StreamlineAttributes_GetFieldConstant(PyObject *self, PyObject *args)
+{
+    StreamlineAttributesObject *obj = (StreamlineAttributesObject *)self;
+    PyObject *retval = PyFloat_FromDouble(obj->data->GetFieldConstant());
+    return retval;
+}
+
+/*static*/ PyObject *
+StreamlineAttributes_SetVelocitySource(PyObject *self, PyObject *args)
+{
+    StreamlineAttributesObject *obj = (StreamlineAttributesObject *)self;
+
+    double *dvals = obj->data->GetVelocitySource();
+    if(!PyArg_ParseTuple(args, "ddd", &dvals[0], &dvals[1], &dvals[2]))
+    {
+        PyObject     *tuple;
+        if(!PyArg_ParseTuple(args, "O", &tuple))
+            return NULL;
+
+        if(PyTuple_Check(tuple))
+        {
+            if(PyTuple_Size(tuple) != 3)
+                return NULL;
+
+            PyErr_Clear();
+            for(int i = 0; i < PyTuple_Size(tuple); ++i)
+            {
+                PyObject *item = PyTuple_GET_ITEM(tuple, i);
+                if(PyFloat_Check(item))
+                    dvals[i] = PyFloat_AS_DOUBLE(item);
+                else if(PyInt_Check(item))
+                    dvals[i] = double(PyInt_AS_LONG(item));
+                else if(PyLong_Check(item))
+                    dvals[i] = PyLong_AsDouble(item);
+                else
+                    dvals[i] = 0.;
+            }
+        }
+        else
+            return NULL;
+    }
+
+    // Mark the velocitySource in the object as modified.
+    obj->data->SelectVelocitySource();
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+StreamlineAttributes_GetVelocitySource(PyObject *self, PyObject *args)
+{
+    StreamlineAttributesObject *obj = (StreamlineAttributesObject *)self;
+    // Allocate a tuple the with enough entries to hold the velocitySource.
+    PyObject *retval = PyTuple_New(3);
+    const double *velocitySource = obj->data->GetVelocitySource();
+    for(int i = 0; i < 3; ++i)
+        PyTuple_SET_ITEM(retval, i, PyFloat_FromDouble(velocitySource[i]));
+    return retval;
+}
+
+/*static*/ PyObject *
 StreamlineAttributes_SetIntegrationType(PyObject *self, PyObject *args)
 {
     StreamlineAttributesObject *obj = (StreamlineAttributesObject *)self;
@@ -2004,15 +2166,15 @@ StreamlineAttributes_SetIntegrationType(PyObject *self, PyObject *args)
         return NULL;
 
     // Set the integrationType in the object.
-    if(ival >= 0 && ival < 5)
+    if(ival >= 0 && ival < 6)
         obj->data->SetIntegrationType(StreamlineAttributes::IntegrationType(ival));
     else
     {
         fprintf(stderr, "An invalid integrationType value was given. "
-                        "Valid values are in the range of [0,4]. "
+                        "Valid values are in the range of [0,5]. "
                         "You can also use the following names: "
-                        "DormandPrince, AdamsBashforth, M3DC12DIntegrator, M3DC13DIntegrator, NIMRODIntegrator"
-                        ".");
+                        "Euler, Leapfrog, DormandPrince, AdamsBashforth, Reserved_4, "
+                        "M3DC12DIntegrator.");
         return NULL;
     }
 
@@ -3832,6 +3994,12 @@ PyMethodDef PyStreamlineAttributes_methods[STREAMLINEATTRIBUTES_NMETH] = {
     {"GetAbsTolAbsolute", StreamlineAttributes_GetAbsTolAbsolute, METH_VARARGS},
     {"SetAbsTolBBox", StreamlineAttributes_SetAbsTolBBox, METH_VARARGS},
     {"GetAbsTolBBox", StreamlineAttributes_GetAbsTolBBox, METH_VARARGS},
+    {"SetFieldType", StreamlineAttributes_SetFieldType, METH_VARARGS},
+    {"GetFieldType", StreamlineAttributes_GetFieldType, METH_VARARGS},
+    {"SetFieldConstant", StreamlineAttributes_SetFieldConstant, METH_VARARGS},
+    {"GetFieldConstant", StreamlineAttributes_GetFieldConstant, METH_VARARGS},
+    {"SetVelocitySource", StreamlineAttributes_SetVelocitySource, METH_VARARGS},
+    {"GetVelocitySource", StreamlineAttributes_GetVelocitySource, METH_VARARGS},
     {"SetIntegrationType", StreamlineAttributes_SetIntegrationType, METH_VARARGS},
     {"GetIntegrationType", StreamlineAttributes_GetIntegrationType, METH_VARARGS},
     {"SetStreamlineAlgorithmType", StreamlineAttributes_SetStreamlineAlgorithmType, METH_VARARGS},
@@ -4106,18 +4274,37 @@ PyStreamlineAttributes_getattr(PyObject *self, char *name)
         return StreamlineAttributes_GetAbsTolAbsolute(self, NULL);
     if(strcmp(name, "absTolBBox") == 0)
         return StreamlineAttributes_GetAbsTolBBox(self, NULL);
+    if(strcmp(name, "fieldType") == 0)
+        return StreamlineAttributes_GetFieldType(self, NULL);
+    if(strcmp(name, "Default") == 0)
+        return PyInt_FromLong(long(StreamlineAttributes::Default));
+    if(strcmp(name, "M3DC12DField") == 0)
+        return PyInt_FromLong(long(StreamlineAttributes::M3DC12DField));
+    if(strcmp(name, "M3DC13DField") == 0)
+        return PyInt_FromLong(long(StreamlineAttributes::M3DC13DField));
+    if(strcmp(name, "NIMRODField") == 0)
+        return PyInt_FromLong(long(StreamlineAttributes::NIMRODField));
+    if(strcmp(name, "FlashField") == 0)
+        return PyInt_FromLong(long(StreamlineAttributes::FlashField));
+
+    if(strcmp(name, "fieldConstant") == 0)
+        return StreamlineAttributes_GetFieldConstant(self, NULL);
+    if(strcmp(name, "velocitySource") == 0)
+        return StreamlineAttributes_GetVelocitySource(self, NULL);
     if(strcmp(name, "integrationType") == 0)
         return StreamlineAttributes_GetIntegrationType(self, NULL);
+    if(strcmp(name, "Euler") == 0)
+        return PyInt_FromLong(long(StreamlineAttributes::Euler));
+    if(strcmp(name, "Leapfrog") == 0)
+        return PyInt_FromLong(long(StreamlineAttributes::Leapfrog));
     if(strcmp(name, "DormandPrince") == 0)
         return PyInt_FromLong(long(StreamlineAttributes::DormandPrince));
     if(strcmp(name, "AdamsBashforth") == 0)
         return PyInt_FromLong(long(StreamlineAttributes::AdamsBashforth));
+    if(strcmp(name, "Reserved_4") == 0)
+        return PyInt_FromLong(long(StreamlineAttributes::Reserved_4));
     if(strcmp(name, "M3DC12DIntegrator") == 0)
         return PyInt_FromLong(long(StreamlineAttributes::M3DC12DIntegrator));
-    if(strcmp(name, "M3DC13DIntegrator") == 0)
-        return PyInt_FromLong(long(StreamlineAttributes::M3DC13DIntegrator));
-    if(strcmp(name, "NIMRODIntegrator") == 0)
-        return PyInt_FromLong(long(StreamlineAttributes::NIMRODIntegrator));
 
     if(strcmp(name, "streamlineAlgorithmType") == 0)
         return StreamlineAttributes_GetStreamlineAlgorithmType(self, NULL);
@@ -4421,6 +4608,12 @@ PyStreamlineAttributes_setattr(PyObject *self, char *name, PyObject *args)
         obj = StreamlineAttributes_SetAbsTolAbsolute(self, tuple);
     else if(strcmp(name, "absTolBBox") == 0)
         obj = StreamlineAttributes_SetAbsTolBBox(self, tuple);
+    else if(strcmp(name, "fieldType") == 0)
+        obj = StreamlineAttributes_SetFieldType(self, tuple);
+    else if(strcmp(name, "fieldConstant") == 0)
+        obj = StreamlineAttributes_SetFieldConstant(self, tuple);
+    else if(strcmp(name, "velocitySource") == 0)
+        obj = StreamlineAttributes_SetVelocitySource(self, tuple);
     else if(strcmp(name, "integrationType") == 0)
         obj = StreamlineAttributes_SetIntegrationType(self, tuple);
     else if(strcmp(name, "streamlineAlgorithmType") == 0)

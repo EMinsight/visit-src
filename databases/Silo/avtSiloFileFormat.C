@@ -114,17 +114,18 @@
 #include <avtParallel.h>
 #endif
 
-#include <string>
-#include <vector>
 #include <map>
 #include <set>
+#include <string>
+#include <vector>
 
-using std::string;
-using std::vector;
 using std::map;
 using std::set;
+using std::string;
+using std::vector;
 using std::ostringstream;
 using namespace SiloDBOptions;
+
 
 static void      ExceptionGenerator(char *);
 static char     *GenerateName(const char *, const char *, const char *);
@@ -9160,6 +9161,13 @@ MakePHZonelistFromZonelistArbFragment(const int *nl, int shapecnt)
 //    Mark C. Miller, Tue Apr 13 18:00:45 PDT 2010
 //    When handling 2D arbitrary polygons, if its 3 or 4 nodes, call it a
 //    triangle or quad instead of leaving it as a polygon.
+//
+//    Cyrus Harrison, Thu Oct 20 13:00:53 PDT 2011
+//    For 2D arbitrary polygons: When we short cut the cell type to be
+//    a triangle or quad, make sure we reset the effective zone type to
+//    VTK_POLYGON when we encounter a cell that is *not* a triangle or
+//    quad.
+//
 // ****************************************************************************
 
 void
@@ -9225,7 +9233,7 @@ avtSiloFileFormat::ReadInConnectivity(vtkUnstructuredGrid *ugrid,
 
     vtkIdTypeArray *cellLocations = vtkIdTypeArray::New();
     cellLocations->SetNumberOfValues(numCells);
-    int *cl = cellLocations->GetPointer(0);
+    vtkIdType *cl = cellLocations->GetPointer(0);
 
     int currentIndex = 0;
     int zoneIndex = 0;
@@ -9323,6 +9331,8 @@ avtSiloFileFormat::ReadInConnectivity(vtkUnstructuredGrid *ugrid,
                             effective_vtk_zonetype = VTK_TRIANGLE;
                         else if (shapesize == 4)
                             effective_vtk_zonetype = VTK_QUAD;
+                        else
+                            effective_vtk_zonetype = VTK_POLYGON;
                     }
                     else
                     {
@@ -9333,9 +9343,11 @@ avtSiloFileFormat::ReadInConnectivity(vtkUnstructuredGrid *ugrid,
                         nodelist += ss+1;
                         /* correct stored cell type if its really a tri or quad */
                         if (ss == 3)
-                            effective_vtk_zonetype = VTK_TRIANGLE;
+                           effective_vtk_zonetype = VTK_TRIANGLE;
                         else if (ss == 4)
                             effective_vtk_zonetype = VTK_QUAD;
+                        else
+                            effective_vtk_zonetype = VTK_POLYGON;
                         effective_shapesize = ss;
                     }
                 }
@@ -9687,7 +9699,14 @@ ArbInsertTet(vtkUnstructuredGrid *ugrid, int *nids, unsigned int ocdata[2],
         nids[0] = nids[1];
         nids[1] = tmp;
     }
-    ugrid->InsertNextCell(VTK_TETRA, 4, nids);
+
+    vtkIdType ids[4];
+    ids[0] = (vtkIdType)nids[0];
+    ids[1] = (vtkIdType)nids[1];
+    ids[2] = (vtkIdType)nids[2];
+    ids[3] = (vtkIdType)nids[3];
+
+    ugrid->InsertNextCell(VTK_TETRA, 4, ids);
     vtkUnsignedIntArray *oca = vtkUnsignedIntArray::SafeDownCast(
         ugrid->GetCellData()->GetArray("avtOriginalCellNumbers"));
     oca->InsertNextTupleValue(ocdata);
@@ -9720,24 +9739,31 @@ ArbInsertPyramid(vtkUnstructuredGrid *ugrid, int *nids, unsigned int ocdata[2],
     // the base quad of the pyramid. The last node is the 5th node of the
     // pyramid.  Again, an affirmative from TetIsInverted means order
     // is ok for VTK
-    int tmpnids[5];
-    tmpnids[0] = nids[0];
-    tmpnids[1] = nids[1];
-    tmpnids[2] = nids[2];
-    tmpnids[3] = nids[4];
-    if (!TetIsInverted(tmpnids, ugrid))
+    int tet[4];
+    tet[0] = nids[0];
+    tet[1] = nids[1];
+    tet[2] = nids[2];
+    tet[3] = nids[4];
+    if (!TetIsInverted(tet, ugrid))
     {
         // Reverse the order of the 'base' quad's nodes.
-        tmpnids[0] = nids[3];
-        tmpnids[1] = nids[2];
-        tmpnids[2] = nids[1];
-        tmpnids[3] = nids[0];
-        tmpnids[4] = nids[4];
-        ugrid->InsertNextCell(VTK_PYRAMID, 5, tmpnids);
+        vtkIdType ids[5];
+        ids[0] = (vtkIdType)nids[3];
+        ids[1] = (vtkIdType)nids[2];
+        ids[2] = (vtkIdType)nids[1];
+        ids[3] = (vtkIdType)nids[0];
+        ids[4] = (vtkIdType)nids[4];
+        ugrid->InsertNextCell(VTK_PYRAMID, 5, ids);
     }
     else
     {
-        ugrid->InsertNextCell(VTK_PYRAMID, 5, nids);
+        vtkIdType ids[5];
+        ids[0] = (vtkIdType)nids[0];
+        ids[1] = (vtkIdType)nids[1];
+        ids[2] = (vtkIdType)nids[2];
+        ids[3] = (vtkIdType)nids[3];
+        ids[4] = (vtkIdType)nids[4];
+        ugrid->InsertNextCell(VTK_PYRAMID, 5, ids);
     }
     vtkUnsignedIntArray *oca = vtkUnsignedIntArray::SafeDownCast(
         ugrid->GetCellData()->GetArray("avtOriginalCellNumbers"));
@@ -9791,7 +9817,15 @@ ArbInsertWedge(vtkUnstructuredGrid *ugrid, int *nids, unsigned int ocdata[2],
         nids[3] = tmp;
     }
 
-    ugrid->InsertNextCell(VTK_WEDGE, 6, nids);
+    vtkIdType ids[6];
+    ids[0] = (vtkIdType)nids[0];
+    ids[1] = (vtkIdType)nids[1];
+    ids[2] = (vtkIdType)nids[2];
+    ids[3] = (vtkIdType)nids[3];
+    ids[4] = (vtkIdType)nids[4];
+    ids[5] = (vtkIdType)nids[5];
+
+    ugrid->InsertNextCell(VTK_WEDGE, 6, ids);
     vtkUnsignedIntArray *oca = vtkUnsignedIntArray::SafeDownCast(
         ugrid->GetCellData()->GetArray("avtOriginalCellNumbers"));
     oca->InsertNextTupleValue(ocdata);
@@ -9819,12 +9853,12 @@ ArbInsertHex(vtkUnstructuredGrid *ugrid, int *nids, unsigned int ocdata[2],
     // the VTK ordering, right hand rule on the first 4 nodes
     // defines an INward normal while on the last 4 defines
     // an outward normal.
-    int tmpnids[4];
-    tmpnids[0] = nids[0]; // first 3 nodes from first quad
-    tmpnids[1] = nids[1];
-    tmpnids[2] = nids[2];
-    tmpnids[3] = nids[4]; // last node from opposing quad
-    if (TetIsInverted(tmpnids, ugrid))
+    int tet[4];
+    tet[0] = nids[0]; // first 3 nodes from first quad
+    tet[1] = nids[1];
+    tet[2] = nids[2];
+    tet[3] = nids[4]; // last node from opposing quad
+    if (TetIsInverted(tet, ugrid))
     {
         // Reverse the order of the first 4 nodes by swaping the
         // ends and the middle nodes.
@@ -9835,11 +9869,11 @@ ArbInsertHex(vtkUnstructuredGrid *ugrid, int *nids, unsigned int ocdata[2],
         nids[2] = nids[1];
         nids[1] = tmp;
     }
-    tmpnids[0] = nids[4]; // first 3 nodes from opposing quad 
-    tmpnids[1] = nids[5];
-    tmpnids[2] = nids[6];
-    tmpnids[3] = nids[0]; // last node from first quad
-    if (!TetIsInverted(tmpnids, ugrid))
+    tet[0] = nids[4]; // first 3 nodes from opposing quad 
+    tet[1] = nids[5];
+    tet[2] = nids[6];
+    tet[3] = nids[0]; // last node from first quad
+    if (!TetIsInverted(tet, ugrid))
     {
         // Reverse the order of the last 4 nodes by swaping the
         // ends and the middle nodes.
@@ -9851,7 +9885,17 @@ ArbInsertHex(vtkUnstructuredGrid *ugrid, int *nids, unsigned int ocdata[2],
         nids[5] = tmp;
     }
 
-    ugrid->InsertNextCell(VTK_HEXAHEDRON, 8, nids);
+    vtkIdType ids[6];
+    ids[0] = (vtkIdType)nids[0];
+    ids[1] = (vtkIdType)nids[1];
+    ids[2] = (vtkIdType)nids[2];
+    ids[3] = (vtkIdType)nids[3];
+    ids[4] = (vtkIdType)nids[4];
+    ids[5] = (vtkIdType)nids[5];
+    ids[6] = (vtkIdType)nids[6];
+    ids[7] = (vtkIdType)nids[7];
+
+    ugrid->InsertNextCell(VTK_HEXAHEDRON, 8, ids);
     vtkUnsignedIntArray *oca = vtkUnsignedIntArray::SafeDownCast(
         ugrid->GetCellData()->GetArray("avtOriginalCellNumbers"));
     oca->InsertNextTupleValue(ocdata);

@@ -42,7 +42,6 @@
 
 #include <ViewerPlot.h>
 
-#include <string.h>
 #include <snprintf.h>
 
 #include <avtActor.h>
@@ -89,6 +88,11 @@
 #include <InvalidVariableException.h>
 #include <Expression.h>
 
+#include <string.h>
+
+#include <string>
+#include <vector>
+
 extern ViewerSubject *viewerSubject;   // FIX_ME This is a hack.
 
 //
@@ -102,7 +106,7 @@ extern ViewerSubject *viewerSubject;   // FIX_ME This is a hack.
 //
 avtActor_p ViewerPlot::nullActor((avtActor *)0);
 avtDataObjectReader_p ViewerPlot::nullReader((avtDataObjectReader *)0);
-vector<double> ViewerPlot::nullDataExtents;
+std::vector<double> ViewerPlot::nullDataExtents;
 int ViewerPlot::numPlotsCreated = 0;
 
 // ****************************************************************************
@@ -1641,7 +1645,7 @@ ViewerPlot::SetVariableName(const std::string &name)
     OperatorPluginManager *oPM = GetOperatorPluginManager();
     for (int j = 0; j < oPM->GetNEnabledPlugins(); j++)
     {
-        const string &mesh = GetMeshName();
+        const std::string &mesh = GetMeshName();
         std::string id = oPM->GetEnabledID(j);
         CommonOperatorPluginInfo *info = oPM->GetCommonPluginInfo(id);
         const avtDatabaseMetaData *md = GetMetaData();
@@ -3713,6 +3717,9 @@ ViewerPlot::SetSpatialExtentsType(avtExtentType extsType)
 //    Removed maintain data; moved maintain view from Global settings
 //    (Main window) to per-window Window Information (View window).
 //
+//    Brad Whitlock, Mon Aug 22 11:07:36 PDT 2011
+//    Selections are handled differently.
+//
 // ****************************************************************************
 
 bool
@@ -3728,17 +3735,7 @@ ViewerPlot::ExecuteEngineRPC()
     ViewerEngineManager *engineMgr = ViewerEngineManager::Instance();
     plotAtts->GetAtts(cacheIndex, curPlotAtts);
 
-    // If there is a named selection, we need to tell the engine before the
-    // plot is created.
-    if (namedSelection != "")
-    {
-        std::vector<std::string> ids;
-        ids.push_back(GetPlotName());
-        engineMgr->ApplyNamedSelection(engineKey, ids, namedSelection);
-    }
-
-    bool successful;
-    successful = engineMgr->MakePlot(engineKey, GetPlotName(),
+    bool successful = engineMgr->MakePlot(engineKey, GetPlotName(),
             GetPluginID(), curPlotAtts, nullDataExtents, 
             GetWindowId(), &networkID);
 
@@ -5832,4 +5829,47 @@ void
 ViewerPlot::SetNumPlotsCreated(int n)
 {
     numPlotsCreated = n;
+}
+
+// ****************************************************************************
+// Method: ViewerPlot::SetNamedSelection
+//
+// Purpose: 
+//   Set the named selection for the plot.
+//
+// Arguments:
+//   selName : The new selection name.
+//
+// Programmer: Brad Whitlock
+// Creation:   Mon Aug 22 10:57:35 PDT 2011
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+ViewerPlot::SetNamedSelection(const std::string &selName)
+{
+    namedSelection = selName;
+}
+
+// ****************************************************************************
+// Method: ViewerPlot::GetNamedSelection
+//
+// Purpose: 
+//   Return the name of the selection for the plot.
+//
+// Returns:    The name of the plot's selection.
+//
+// Programmer: Brad Whitlock
+// Creation:   Mon Aug 22 10:58:32 PDT 2011
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+const std::string &
+ViewerPlot::GetNamedSelection() const
+{
+    return namedSelection;
 }

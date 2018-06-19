@@ -81,7 +81,7 @@ class IVP_API avtIVPM3DC1Field: public avtIVPVTKField
   } edge;
   
  public:
-  avtIVPM3DC1Field( vtkDataSet* ds, avtCellLocator* loc ); 
+  avtIVPM3DC1Field( vtkDataSet* ds, avtCellLocator* loc, double fact ); 
   avtIVPM3DC1Field( float *elementsPtr, int nelements, int dim, int planes );
 
   ~avtIVPM3DC1Field();
@@ -133,8 +133,8 @@ class IVP_API avtIVPM3DC1Field: public avtIVPVTKField
     type* SetDataPointer( vtkDataSet *ds,
                           const type var,
                           const char* varname,
-                          const int ntuples,
-                          const int ncomponents );
+                          const int component_size,
+                          double factor = 1.0 );
   
   // Variables calculated in findElementNeighbors (trigtable,
   // neighbors) or read as part of the mesh (elements).
@@ -152,6 +152,7 @@ class IVP_API avtIVPM3DC1Field: public avtIVPVTKField
  public:
 
   bool reparameterize;
+  float factor;
 
   // 2D Variables variables on the mesh
   float *psi0, *f0;                  /* Equilibrium B field conponents */

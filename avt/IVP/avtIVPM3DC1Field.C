@@ -48,6 +48,8 @@
 #include <vtkIntArray.h>
 #include <vtkFloatArray.h>
 
+#include <InvalidVariableException.h>
+
 #define ELEMENT_SIZE_2D 7
 #define SCALAR_SIZE_2D 20
 
@@ -63,12 +65,13 @@
 // ****************************************************************************
 
 avtIVPM3DC1Field::avtIVPM3DC1Field( vtkDataSet* dataset, 
-                                    avtCellLocator* locator ) : 
+                                    avtCellLocator* locator,
+                                    double fact) : 
   avtIVPVTKField( dataset, locator ),
-  elements(0), neighbors(0),
+  elements(0), trigtable(0), neighbors(0),
   f0(0), psi0(0), fnr(0), fni(0), psinr(0), psini(0),
   I0(0), f(0), psi(0), I(0),
-  eqsubtract(0), linflag(0), tmode(0), bzero(0), rzero(0), F0(0),
+  eqsubtract(0), linflag(0), tmode(0), bzero(0), rzero(0), F0(0), factor(fact),
   nelms(0), element_dimension(0), nplanes(0), reparameterize(false)
 {
   // Pick off all of the data stored with the vtk field.
@@ -113,20 +116,20 @@ avtIVPM3DC1Field::avtIVPM3DC1Field( vtkDataSet* dataset,
     
   // The mesh elements.
   elements =
-    SetDataPointer( ds, fltVar, "hidden/elements",  nelms, element_size );
+    SetDataPointer( ds, fltVar, "hidden/elements", element_size );
 
   // Equalibrium field
-  intPtr = SetDataPointer( ds, intVar, "hidden/header/eqsubtract", nelms, 1 );
+  intPtr = SetDataPointer( ds, intVar, "hidden/header/eqsubtract", 1 );
   eqsubtract = intPtr[0];
   delete [] intPtr;
 
   if( eqsubtract )
   {
-    psi0 = SetDataPointer( ds, fltVar, "hidden/equilibrium/psi", nelms, scalar_size );
-    f0   = SetDataPointer( ds, fltVar, "hidden/equilibrium/f",   nelms, scalar_size );
+    psi0 = SetDataPointer( ds, fltVar, "hidden/equilibrium/psi", scalar_size );
+    f0   = SetDataPointer( ds, fltVar, "hidden/equilibrium/f",   scalar_size );
     
     if( element_size == ELEMENT_SIZE_3D )
-      I0 = SetDataPointer( ds, fltVar, "hidden/equilibrium/I",   nelms, scalar_size );
+      I0 = SetDataPointer( ds, fltVar, "hidden/equilibrium/I", scalar_size );
   }
 
 
@@ -134,19 +137,19 @@ avtIVPM3DC1Field::avtIVPM3DC1Field( vtkDataSet* dataset,
   {
     nplanes = 1;
 
-    intPtr = SetDataPointer( ds, intVar, "hidden/header/linear", nelms, 1 );
+    intPtr = SetDataPointer( ds, intVar, "hidden/header/linear", 1 );
     linflag = intPtr[0];
     delete [] intPtr;
 
-    intPtr = SetDataPointer( ds, intVar, "hidden/header/ntor",   nelms, 1 );
+    intPtr = SetDataPointer( ds, intVar, "hidden/header/ntor", 1 );
     tmode = intPtr[0];
     delete [] intPtr;
 
-    fltPtr = SetDataPointer( ds, fltVar, "hidden/header/bzero",  nelms, 1 );
+    fltPtr = SetDataPointer( ds, fltVar, "hidden/header/bzero", 1 );
     bzero = fltPtr[0];
     delete [] fltPtr;
 
-    fltPtr = SetDataPointer( ds, fltVar, "hidden/header/rzero",  nelms, 1 );
+    fltPtr = SetDataPointer( ds, fltVar, "hidden/header/rzero", 1 );
     rzero = fltPtr[0];
     delete [] fltPtr;
 
@@ -156,22 +159,22 @@ avtIVPM3DC1Field::avtIVPM3DC1Field( vtkDataSet* dataset,
     // Vector values from the field.
     if( linflag )
     {
-      psinr = SetDataPointer( ds, fltVar, "hidden/psi",             nelms, scalar_size );
-      psini = SetDataPointer( ds, fltVar, "hidden/psi_i",           nelms, scalar_size );
-      fnr   = SetDataPointer( ds, fltVar, "hidden/f",               nelms, scalar_size );
-      fni   = SetDataPointer( ds, fltVar, "hidden/f_i",             nelms, scalar_size );
+      psinr = SetDataPointer( ds, fltVar, "hidden/psi",   scalar_size, factor );
+      psini = SetDataPointer( ds, fltVar, "hidden/psi_i", scalar_size, factor );
+      fnr   = SetDataPointer( ds, fltVar, "hidden/f",   scalar_size, factor );
+      fni   = SetDataPointer( ds, fltVar, "hidden/f_i", scalar_size, factor );
     }
   }
   else //if( element_size == ELEMENT_SIZE_3D )
   {
     // Single values from the header attributes.
-    intPtr = SetDataPointer( ds, intVar, "hidden/header/nplanes", nelms, 1 );
+    intPtr = SetDataPointer( ds, intVar, "hidden/header/nplanes", 1 );
     nplanes = intPtr[0];
     delete [] intPtr;
 
-    f   = SetDataPointer( ds, fltVar, "hidden/f",   nelms, scalar_size );
-    psi = SetDataPointer( ds, fltVar, "hidden/psi", nelms, scalar_size );
-    I   = SetDataPointer( ds, fltVar, "hidden/I",   nelms, scalar_size );
+    f   = SetDataPointer( ds, fltVar, "hidden/f",   scalar_size, factor );
+    psi = SetDataPointer( ds, fltVar, "hidden/psi", scalar_size, factor );
+    I   = SetDataPointer( ds, fltVar, "hidden/I"  , scalar_size, factor );
   }
 
   // As such, construct a table with using elements from one plane.
@@ -263,8 +266,8 @@ template< class type >
 type* avtIVPM3DC1Field::SetDataPointer( vtkDataSet *ds,
                                         const type var,
                                         const char* varname,
-                                        const int ntuples,
-                                        const int ncomponents )
+                                        const int component_size,
+                                        double factor )
 {
   vtkDataArray *array;
   int XX;
@@ -287,20 +290,22 @@ type* avtIVPM3DC1Field::SetDataPointer( vtkDataSet *ds,
 
   if( array == 0 )
   {
-    debug1 << "Variable " << varname
-           << " does not exist"
-           << endl;
-    
+    if (DebugStream::Level1())
+        debug1 << "Variable " << varname
+               << " does not exist"
+               << endl;
     return 0;
   }
 
-  if( ntuples != array->GetNumberOfTuples() / XX ||
-      ncomponents != array->GetNumberOfComponents() )
+  const int ntuples = array->GetNumberOfTuples();
+  const int ncomponents = array->GetNumberOfComponents();
+
+  if( ntuples != nelms || ncomponents != component_size )
   {
-    debug1 << "Variable " << varname
-           << " size does not equal the number elements and/or components"
-           << endl;
-    
+    if (DebugStream::Level1())
+        debug1 << "Variable " << varname
+               << " size does not equal the number elements and/or components"
+               << endl;
     return 0;
   }
 
@@ -314,7 +319,8 @@ type* avtIVPM3DC1Field::SetDataPointer( vtkDataSet *ds,
 
   if( newptr == 0 )
   {
-    debug1 << "Variable " << varname << " can not allocated" << endl;
+    if (DebugStream::Level1())
+        debug1 << "Variable " << varname << " can not allocated" << endl;
     return 0;
   }
 
@@ -330,7 +336,7 @@ type* avtIVPM3DC1Field::SetDataPointer( vtkDataSet *ds,
 
     for( int i=0; i<ntuples; ++i )
       for( int j=0; j<ncomponents; ++j )
-        newptr[i*ncomponents+j] = ptr[i*XX*ncomponents+j];
+        newptr[i*ncomponents+j] = (type) (factor * ptr[i*XX*ncomponents+j]);
 
     return newptr;
   }
@@ -340,7 +346,13 @@ type* avtIVPM3DC1Field::SetDataPointer( vtkDataSet *ds,
 
     for( int i=0; i<ntuples; ++i )
       for( int j=0; j<ncomponents; ++j )
-        newptr[i*ncomponents+j] = ptr[i*XX*ncomponents+j];
+        newptr[i*ncomponents+j] = (type) (factor * ptr[i*XX*ncomponents+j]);
+
+//     std::cerr << varname << std::endl;
+//     for( int j=0; j<ncomponents; ++j )
+//       std::cerr << newptr[106795*ncomponents+j]  << "  ";
+//     std::cerr << std::endl;
+//     std::cerr << std::endl;
 
     return newptr;
   }
@@ -350,17 +362,17 @@ type* avtIVPM3DC1Field::SetDataPointer( vtkDataSet *ds,
 
     for( int i=0; i<ntuples; ++i )
       for( int j=0; j<ncomponents; ++j )
-        newptr[i*ncomponents+j] = ptr[i*XX*ncomponents+j];
+        newptr[i*ncomponents+j] = (type) (factor * ptr[i*XX*ncomponents+j]);
 
     return newptr;
   }
   else
   {
-    debug1 << "avtIVPM3DC1Field::SetDataPointer "
-           << "Variable " << varname
-           << " is not of type float - can not safely down cast"
-           << endl;
-    
+    if (DebugStream::Level1())
+        debug1 << "avtIVPM3DC1Field::SetDataPointer "
+               << "Variable " << varname
+               << " is not of type float - can not safely down cast"
+               << endl;
     return 0;
   }
 }
@@ -413,20 +425,20 @@ void avtIVPM3DC1Field::findElementNeighbors()
   int     el, vert, tri[3], vlen;
 
   /* Allocate, initialize neighbor table */
-  neighbors = (int *)malloc(3 * tElements * sizeof(int));
+  neighbors = (int *) malloc(3 * tElements * sizeof(int));
   if (neighbors == NULL) {
-    fputs("Insufficient memory in findElementNeighbors.\n", stderr);
-    exit(1);
+    EXCEPTION1( InvalidVariableException,
+                "M3DC1 findElementNeighbors - Insufficient memory for neighbors" );
   }
 
   for (el=0; el<3*tElements; el++)
     neighbors[el] = -1;
 
   /* Allocate trig table */
-  trigtable = (double *)malloc(2 * tElements * sizeof(double));
+  trigtable = (double *)malloc(2 * nplanes*tElements * sizeof(double));
   if (trigtable == NULL) {
-    fputs("Insufficient memory in findElementNeighbors.\n", stderr);
-    exit(1);
+    EXCEPTION1( InvalidVariableException,
+                "M3DC1 findElementNeighbors - Insufficient memory for trigtable" );
   }
 
   /* Loop over elements, finding vertices, edges, neighbors */
@@ -437,28 +449,41 @@ void avtIVPM3DC1Field::findElementNeighbors()
   // (x+(a+b)*cos(theta),z+(a+b)*sin(theta)),
   // (x+b*cos(theta)-c*sin(theta),z+b*sin(theta)+c*cos(theta)).
 
-  for (el=0; el<tElements; el++) {
-    ptr = elements + element_size*el;
-    co = trigtable[2*el]     = cos(ptr[3]);
-    sn = trigtable[2*el + 1] = sin(ptr[3]);
+  if( element_dimension == 2 )
+  {
+    for (el=0; el<tElements; el++) {
+      ptr = elements + element_size*el;
+      trigtable[2*el]     = cos(ptr[3]);
+      trigtable[2*el + 1] = sin(ptr[3]);
 
-    x[0] = ptr[4];
-    y[0] = ptr[5];
+      co = trigtable[2*el];
+      sn = trigtable[2*el + 1];
 
-    x[1] = x[0] + (ptr[0] + ptr[1])*co;
-    y[1] = y[0] + (ptr[0] + ptr[1])*sn;
+      x[0] = ptr[4];
+      y[0] = ptr[5];
 
-    x[2] = x[0] + ptr[1]*co - ptr[2]*sn;
-    y[2] = y[0] + ptr[1]*sn + ptr[2]*co;
+      x[1] = x[0] + (ptr[0] + ptr[1])*co;
+      y[1] = y[0] + (ptr[0] + ptr[1])*sn;
 
-    for (vert=0; vert<3; vert++)
-      tri[vert] = register_vert(vertexList, x[vert], y[vert]);
+      x[2] = x[0] + ptr[1]*co - ptr[2]*sn;
+      y[2] = y[0] + ptr[1]*sn + ptr[2]*co;
+
+      for (vert=0; vert<3; vert++)
+        tri[vert] = register_vert(vertexList, x[vert], y[vert]);
     
-    for (vert=0; vert<3; vert++)
-      add_edge(edgeListMap, tri, vert, el, neighbors);
+      for (vert=0; vert<3; vert++)
+        add_edge(edgeListMap, tri, vert, el, neighbors);
 
-  } /* end loop el */
-
+    } /* end loop el */
+  }
+  else //if( element_dimension == 3 )
+  {
+    for (el=0; el<nplanes*tElements; el++) {
+      ptr = elements + element_size*el;
+      trigtable[2*el]     = cos(ptr[3]);
+      trigtable[2*el + 1] = sin(ptr[3]);
+    }
+  }
 //   fprintf(stderr, "%d / %d unique vertices\n", vlen, 3*tElements);
 //   fprintf(stderr, "Neighbors of element 0: %d, %d, %d\n", neighbors[0],
 //           neighbors[1], neighbors[2]);
@@ -583,10 +608,10 @@ int avtIVPM3DC1Field::get_tri_coords2D(double *xin, int el, double *xout) const
   tri = elements + element_size*el;
 
   /* Compute coordinates local to the current element */
-  if( element_dimension == 2 )
+//   if( element_dimension == 2 )
     index = 2 * el;
-  else //if( element_dimension == 3 )
-    index = 2*(el%tElements);
+//   else //if( element_dimension == 3 )
+//     index = 2*(el%tElements);
 
   co = trigtable[index];
   sn = trigtable[index + 1];
@@ -629,77 +654,84 @@ int avtIVPM3DC1Field::get_tri_coords2D(double *xin, double *xout) const
   double co, sn, rrel, zrel;
   int    last=-1, next, flag0, flag1, flag2;
 
-  for (int count=0; count<tElements; ++count)
+  if( element_dimension == 2 )
   {
-    tri = elements + element_size*el;
-
-    /* Compute coordinates local to the current element */
-    co = trigtable[2*el];
-    sn = trigtable[2*el + 1];
-
-    rrel = xin[0] - (tri[4] + tri[1]*co);
-    zrel = xin[2] - (tri[5] + tri[1]*sn);
-
-    xout[0] = rrel*co + zrel*sn;  /* = xi */
-    xout[1] = zrel*co - rrel*sn;  /* = eta */
-
-    /* Determine whether point is inside element */
-    /* "Outside" side 0? */
-    if ((flag0 = ((tri[0] + tri[1])*xout[1] < 0.0)))
+    for (int count=0; count<tElements; ++count)
     {
-      if ((next = neighbors[3*el]) >= 0) {
-        if (next != last) // not on the boundary so continue;
-        {
-          last = el;
-          el = next;
-          continue;
+      tri = elements + element_size*el;
+      
+      /* Compute coordinates local to the current element */
+      co = trigtable[2*el];
+      sn = trigtable[2*el + 1];
+      
+      rrel = xin[0] - (tri[4] + tri[1]*co);
+      zrel = xin[2] - (tri[5] + tri[1]*sn);
+
+      xout[0] = rrel*co + zrel*sn;  /* = xi */
+      xout[1] = zrel*co - rrel*sn;  /* = eta */
+
+      /* Determine whether point is inside element */
+      /* "Outside" side 0? */
+      if ((flag0 = ((tri[0] + tri[1])*xout[1] < 0.0)))
+      {
+        if ((next = neighbors[3*el]) >= 0) {
+          if (next != last) // not on the boundary so continue;
+          {
+            last = el;
+            el = next;
+            continue;
+          }
+          else // on the boundary so reset the flag and check the other edges;
+            flag0 = 0;
         }
-        else // on the boundary so reset the flag and check the other edges;
-          flag0 = 0;
       }
-    }
 
-    /* "Outside" side 1? */
-    if ((flag1 = (tri[0]*xout[1] > tri[2]*(*tri - xout[0]))))
-    {
-      if ((next = neighbors[3*el + 1]) >= 0) {
-        if (next != last) // not on the boundary so continue;
-        {
-          last = el;
-          el = next;
-          continue;
+      /* "Outside" side 1? */
+      if ((flag1 = (tri[0]*xout[1] > tri[2]*(*tri - xout[0]))))
+      {
+        if ((next = neighbors[3*el + 1]) >= 0) {
+          if (next != last) // not on the boundary so continue;
+            {
+              last = el;
+              el = next;
+              continue;
+            }
+          else // on the boundary so reset the flag and check the other edges;
+            flag1 = 0;
         }
-        else // on the boundary so reset the flag and check the other edges;
-          flag1 = 0;
       }
-    }
 
-    /* "Outside" side 2? */
-    if ((flag2 = (tri[2]*xout[0] < tri[1]*(xout[1] - tri[2]))))
-    {
-      if ((next = neighbors[3*el + 2]) >= 0) {
-        if (next != last) // on the boundary so continue;
-        {
-          last = el;
-          el = next;
-          continue;
+      /* "Outside" side 2? */
+      if ((flag2 = (tri[2]*xout[0] < tri[1]*(xout[1] - tri[2]))))
+      {
+        if ((next = neighbors[3*el + 2]) >= 0) {
+          if (next != last) // on the boundary so continue;
+          {
+            last = el;
+            el = next;
+            continue;
+          }
+          else // on the boundary so reset the flag and check the other edges;
+            flag2 = 0;
         }
-        else // on the boundary so reset the flag and check the other edges;
-          flag2 = 0;
       }
-    }
-
-    if (flag0 || flag1 || flag2)
-      return -1;
-    else
-      break;
-
-  } /* end loop count */
+      
+      if (flag0 || flag1 || flag2)
+        return -1;
+      else
+        break;
+      
+    } /* end loop count */
 
 // fprintf(stderr, "Searched %d elements.\n", count);
 
-  if( element_dimension == 2 )
     return el;
+
+#ifdef COMMENT_OUT_ASSUMPTIONS_NOT_TRUE
+  if( element_dimension == 2 )
+  {
+    return el;
+  }
   else //if( element_dimension == 3 )
   {
     // The above finds the xi and eta for the phi = 0 plane. Which is
@@ -726,23 +758,59 @@ int avtIVPM3DC1Field::get_tri_coords2D(double *xin, double *xout) const
         xout[2] = phi - tri[8];
 
         if( xout[2] <= tri[7] ) // tri[7] == depth of the section
+        {
           return el + i * tElements;
+        }
       }
 
       // Go to the next plane
       tri += element_size*tElements;
     }
 
-//     tri = elements + element_size*el;
-
-//     for( int i=0; i<nplanes; ++i )
-//     {
-//       cerr << tri[8] << "  " <<  xin[1] << endl;
-//       // Go to the next plane
-//       tri += element_size*tElements;
-//     }
-
     return -1;
+  }
+#endif
+
+  }
+
+  // For 3D elements use VisIt's native cell search.
+  else //if( element_dimension == 3 )
+  {
+    avtInterpolationWeights iw[8];
+
+    double xpt[3];
+
+    double phi = xin[1];
+    
+    while( phi < 0 )
+      phi += 2.0*M_PI;
+    
+    while( phi >= 2.0*M_PI )
+      phi -= 2.0*M_PI;
+
+    xpt[0] = xin[0];
+    xpt[1] = phi;
+    xpt[2] = xin[2];
+
+    el = loc->FindCell( xpt, iw );
+
+    if( el < 0 )
+      return -1;
+
+    tri = elements + element_size*el;
+
+    /* Compute coordinates local to the current element */
+    co = trigtable[2*el];
+    sn = trigtable[2*el + 1];
+
+    rrel = xin[0] - (tri[4] + tri[1]*co);
+    zrel = xin[2] - (tri[5] + tri[1]*sn);
+
+    xout[0] = rrel*co + zrel*sn;  /* = xi */
+    xout[1] = zrel*co - rrel*sn;  /* = eta */
+    xout[2] = phi - tri[8];
+
+    return el;
   }
 }
 
@@ -765,10 +833,6 @@ avtIVPM3DC1Field::operator()( const double &t, const avtVector &p ) const
 {
   // NOTE: Assumes the point is in cylindrical coordiantes.
   double pt[3] = { p[0], p[1], p[2] };
-
-//   pt[0] = 3.75;
-//   pt[1] = 133.0/180*3.1415;
-//   pt[2] = 0.75;
 
   /* Find the element containing the point; get local coords xi,eta */
   double *xieta = new double[element_dimension];
@@ -985,6 +1049,14 @@ void avtIVPM3DC1Field::interpBcomps(float *B, double *x,
       interpdzdPhi(f, element, xieta);
     *B_phi += interp(I, element, xieta) / x[0];
 
+//     std::cerr << element << "  "
+//            << x[0] << "  " << x[1] << "  " << x[2] << "    "
+//            << x[0]*cos(x[1]) << "  " << x[0]*sin(x[1]) << "  " << x[2]
+//            << std::endl;
+//     std::cerr << element << "  "
+//            << xieta[0] << "  " << xieta[1] << "  " << xieta[2] << "    "
+//            << std::endl;
+
 //     std::cerr << std::endl;
 
 //     std::cerr << "-(dpsi/dZ)/R = " << -interpdz(psi, element, xieta) / x[0] << std::endl;
@@ -1116,10 +1188,10 @@ float avtIVPM3DC1Field::interpdR(float *var, int el, double *lcoords) const
   double xicoef, etacoef;
   int index;
 
-  if( element_dimension == 2 )
+//   if( element_dimension == 2 )
     index = 2 * el;
-  else //if( element_dimension == 3 )
-    index = 2*(el%tElements);
+//   else //if( element_dimension == 3 )
+//     index = 2*(el%tElements);
 
   interpdX( var, el, lcoords, xicoef, etacoef );
 
@@ -1138,10 +1210,10 @@ float avtIVPM3DC1Field::interpdz(float *var, int el, double *lcoords) const
   double xicoef, etacoef;
   int index;
 
-  if( element_dimension == 2 )
+//   if( element_dimension == 2 )
     index = 2 * el;
-  else //if( element_dimension == 3 )
-    index = 2*(el%tElements);
+//   else //if( element_dimension == 3 )
+//     index = 2*(el%tElements);
 
   interpdX( var, el, lcoords, xicoef, etacoef );
 
@@ -1274,10 +1346,10 @@ float avtIVPM3DC1Field::interpdR2(float *var, int el, double *lcoords) const
   double xixicoef, etaetacoef, xietacoef;
   int index;
 
-  if( element_dimension == 2 )
+//   if( element_dimension == 2 )
     index = 2 * el;
-  else //if( element_dimension == 3 )
-    index = 2*(el%tElements);
+//   else //if( element_dimension == 3 )
+//     index = 2*(el%tElements);
 
   interpdX2(var, el, lcoords, xixicoef, etaetacoef, xietacoef);
 
@@ -1299,10 +1371,10 @@ float avtIVPM3DC1Field::interpdz2(float *var, int el, double *lcoords) const
   double xixicoef, etaetacoef, xietacoef;
   int index;
 
-  if( element_dimension == 2 )
+//   if( element_dimension == 2 )
     index = 2 * el;
-  else //if( element_dimension == 3 )
-    index = 2*(el%tElements);
+//   else //if( element_dimension == 3 )
+//     index = 2*(el%tElements);
 
   interpdX2(var, el, lcoords, xixicoef, etaetacoef, xietacoef);
 
@@ -1346,7 +1418,8 @@ float avtIVPM3DC1Field::interpdRdz(float *var, int el, double *lcoords) const
   }
   else //if( element_dimension == 3 )
   {
-    index = 2*(el%tElements);
+//     index = 2*(el%tElements);
+    index = 2 * el;
 
     double zi = lcoords[2];
     double zi_q = 1;
@@ -1445,10 +1518,10 @@ float avtIVPM3DC1Field::interpdRdPhi(float *var, int el, double *lcoords) const
   double xicoef, etacoef;
   int index;
 
-  if( element_dimension == 2 )
+//   if( element_dimension == 2 )
     index = 2 * el;
-  else //if( element_dimension == 3 )
-    index = 2*(el%tElements);
+//   else //if( element_dimension == 3 )
+//     index = 2*(el%tElements);
 
   interpdXdPhi(var, el, lcoords, xicoef, etacoef);
 
@@ -1468,10 +1541,10 @@ float avtIVPM3DC1Field::interpdzdPhi(float *var, int el, double *lcoords) const
   double xicoef, etacoef;
   int index;
 
-  if( element_dimension == 2 )
+//   if( element_dimension == 2 )
     index = 2 * el;
-  else //if( element_dimension == 3 )
-    index = 2*(el%tElements);
+//   else //if( element_dimension == 3 )
+//     index = 2*(el%tElements);
 
   interpdXdPhi(var, el, lcoords, xicoef, etacoef);
 

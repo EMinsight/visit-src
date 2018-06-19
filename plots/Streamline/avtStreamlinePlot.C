@@ -426,6 +426,7 @@ avtStreamlinePlot::SetAtts(const AttributeGroup *a)
     //
     // Set the filter's attributes based on the plot attributes.
     //
+    streamlineFilter->SetVelocitySource(atts.GetVelocitySource());
 
     switch (atts.GetSourceType())
     {
@@ -476,6 +477,9 @@ avtStreamlinePlot::SetAtts(const AttributeGroup *a)
     }
 
     streamlineFilter->SetPathlines(atts.GetPathlines(), atts.GetPathlinesOverrideStartingTimeFlag(), atts.GetPathlinesOverrideStartingTime(), atts.GetPathlinesCMFE());
+
+    streamlineFilter->SetFieldType(atts.GetFieldType());
+    streamlineFilter->SetFieldConstant(atts.GetFieldConstant());
 
     streamlineFilter->SetIntegrationType(atts.GetIntegrationType());
     streamlineFilter->SetStreamlineAlgorithm(atts.GetStreamlineAlgorithmType(), 
@@ -701,6 +705,9 @@ avtStreamlinePlot::UpdateMapperAndLegend()
         break;
       case StreamlineAttributes::ColorByVariable:
         varLegend->SetVarName(atts.GetColoringVariable().c_str());
+        break;
+      default:
+        // ColorByCorrelationDistance
         break;
     }
 }

@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-400142
 # All rights reserved.
@@ -41,19 +41,36 @@
 #  Use glob to find all host profiles & ini files we want to install
 #  from svn_bin.
 #
+#  Gunther H. Weber, Tue Sep 20 13:11:08 PDT 2011
+#  Support installation of global host profiles on "make install". Set
+#  VISIT_INSTALL_PROFILES_TO_HOSTS to "nersc", "ornl" etc. to create
+#  a global "hosts" directory in the VisIt install and copy over the
+#  corresponding host profiles.
+#
+#  Brad Whitlock, Wed Oct 12 09:24:00 PDT 2011
+#  Move host-related files to hosts subdirectory.
+#
+#*****************************************************************************
 
 ## find all host profiles to install using a glob
-FILE(GLOB HPROF_FILES "${CMAKE_CURRENT_SOURCE_DIR}/host_*.xml")
+FILE(GLOB HPROF_FILES "${CMAKE_CURRENT_SOURCE_DIR}/hosts/host_*.xml")
 ## find all ini files to install using a glob
-FILE(GLOB INI_FILES   "${CMAKE_CURRENT_SOURCE_DIR}/visit-*.ini")
+FILE(GLOB INI_FILES   "${CMAKE_CURRENT_SOURCE_DIR}/hosts/visit-*.ini")
+
+IF(APPLE)
+    LIST(APPEND INI_FILES ${CMAKE_CURRENT_SOURCE_DIR}/hosts/default_configs.dat)
+    LIST(APPEND INI_FILES ${CMAKE_CURRENT_SOURCE_DIR}/hosts/networks.dat)
+ENDIF (APPLE)
 
 ## provide proper install structure windows vs other:
 IF(WIN32)
     SET(INI_DEST   ${VISIT_INSTALLED_VERSION_BIN})
     SET(HPROF_DEST ${VISIT_INSTALLED_VERSION_BIN}/allhosts)
+    SET(LPROF_DEST ${VISIT_INSTALLED_VERSION_BIN}/hosts)
 ELSE(WIN32)
     SET(INI_DEST   ${VISIT_VERSION}/.visit)
     SET(HPROF_DEST ${VISIT_VERSION}/.visit/allhosts)
+    SET(LPROF_DEST ${VISIT_VERSION}/.visit/hosts)
 ENDIF(WIN32)
 
 # Install the visit config files
@@ -67,3 +84,13 @@ INSTALL(FILES ${HPROF_FILES}
         DESTINATION ${HPROF_DEST}
         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ GROUP_WRITE WORLD_READ
 )
+
+# Install local host profiles if specified
+IF (VISIT_INSTALL_PROFILES_TO_HOSTS)
+    FILE(GLOB LPROF_FILES
+         "${CMAKE_CURRENT_SOURCE_DIR}/hosts/host_${VISIT_INSTALL_PROFILES_TO_HOSTS}_*.xml")
+    INSTALL(FILES ${LPROF_FILES}
+            DESTINATION ${LPROF_DEST}
+            PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ GROUP_WRITE WORLD_READ
+    ) 
+ENDIF (VISIT_INSTALL_PROFILES_TO_HOSTS)

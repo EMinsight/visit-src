@@ -37,7 +37,7 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                             avtPoincareFilter.C                           //
+//                             Avtpoincarefilter.C                           //
 // ************************************************************************* //
 
 #include <avtPoincareFilter.h>
@@ -62,14 +62,11 @@
 #include <avtPoincareIC.h>
 #include <utility>
 
-#include "StreamlineAnalyzerLib.h"
+#include "FieldlineAnalyzerLib.h"
 
 #ifdef STRAIGHTLINE_SKELETON
 #include "skelet.h"
 #endif
-
-
-using namespace std;
 
 #define SIGN(x) ((x) < 0.0 ? -1 : 1)
 
@@ -161,7 +158,7 @@ avtPoincareFilter::avtPoincareFilter() :
     overrideToroidalWinding( 0 ),
     overridePoloidalWinding( 0 ),
     windingPairConfidence( 0.90 ),
-    rationalTemplateSeedParm( 0.90 ),
+    rationalSurfaceFactor( 0.10 ),
     adjust_plane(-1),
     overlaps(1),
 
@@ -276,13 +273,15 @@ avtIntegralCurve *
 avtPoincareFilter::CreateIntegralCurve( const avtIVPSolver* model,
                                         avtIntegralCurve::Direction dir,
                                         const double& t_start,
-                                        const avtVector &p_start, long ID ) 
+                                        const avtVector &p_start,
+                                        const avtVector &v_start,
+                                        long ID ) 
 {
     // need at least these three attributes
     unsigned char attr = avtStateRecorderIntegralCurve::SAMPLE_POSITION;
 
     avtPoincareIC *rv = new avtPoincareIC( attr, model, dir, 
-                                           t_start, p_start, ID );
+                                           t_start, p_start, v_start, ID );
 
     if (intersectObj)
         rv->SetIntersectionCriteria(intersectObj, maxIntersections);
@@ -307,7 +306,7 @@ avtPoincareFilter::CreateIntegralCurve( const avtIVPSolver* model,
 // ****************************************************************************
 
 void
-avtPoincareFilter::GetIntegralCurvePoints(vector<avtIntegralCurve *> &ics)
+avtPoincareFilter::GetIntegralCurvePoints(std::vector<avtIntegralCurve *> &ics)
 {
     for ( int i=0; i<ics.size(); ++i )
     {
@@ -349,7 +348,7 @@ avtPoincareFilter::Execute()
 {
     avtStreamlineFilter::Execute();
 
-    vector<avtIntegralCurve *> ics;
+    std::vector<avtIntegralCurve *> ics;
     GetTerminatedIntegralCurves(ics);
 
     avtDataTree *dt = new avtDataTree();
@@ -377,16 +376,16 @@ avtPoincareFilter::Execute()
 bool
 avtPoincareFilter::ContinueExecute()
 {
-    debug5 << "Continue execute " << endl;
+    debug5 << "Continue execute " << std::endl;
 
-    vector<avtIntegralCurve *> ics;
+    std::vector<avtIntegralCurve *> ics;
     
     GetTerminatedIntegralCurves(ics);
     GetIntegralCurvePoints(ics);
 
     if (analysis && ! ClassifyStreamlines(ics))
     {
-      vector< int > ids_to_delete;
+      std::vector< int > ids_to_delete;
 
       // Because points are added the size will change so get the
       // inital size so that we do try to dao anything with the new
@@ -397,7 +396,8 @@ avtPoincareFilter::ContinueExecute()
       {
         avtPoincareIC * poincare_ic = (avtPoincareIC *) ics[i];
 
-#ifdef STRAIGHTLINE_SKELETON    
+#ifdef STRAIGHTLINE_SKELETON
+
         // For Island Chains add in the O Points.
         if( showOPoints &&
 
@@ -405,27 +405,32 @@ avtPoincareFilter::ContinueExecute()
              FieldlineProperties::ISLAND_CHAIN ||
 
              poincare_ic->properties.type ==
-             FieldlineProperties::ISLANDS_WITHIN_ISLANDS) &&
+             FieldlineProperties::ISLAND_WITH_SECONDARY_ISLANDS ||
+
+             poincare_ic->properties.type ==
+             FieldlineProperties::ISLAND_AMBIGUOUS_AXIS) &&
 
             poincare_ic->properties.analysisState ==
             FieldlineProperties::ADD_O_POINTS &&
 
             !(poincare_ic->properties.OPoints.empty()) )
         {
-
           // Change the state of the properties to complete now that
           // the seed point has been stripped off.
           poincare_ic->properties.analysisState =
-            FieldlineProperties::COMPLETED;
+            FieldlineProperties::TERMINATED;
 
           if( poincare_ic->properties.iteration < OPointMaxIterations )
           {
-            vector<avtIntegralCurve *> new_ics;
-            AddSeedPoint( poincare_ic->properties.OPoints[0], new_ics );
+            std::vector<avtIntegralCurve *> new_ics;
+            avtVector vec(0,0,0);
+
+            AddSeedPoint( poincare_ic->properties.OPoints[0], vec,
+                          new_ics );
           
             for( unsigned int j=0; j<new_ics.size(); j++ )
             {
-                cerr << "New island seed ids " << new_ics[j]->id << "  ";
+              std::cerr << "New island seed ids " << new_ics[j]->id << "  ";
 
                 avtPoincareIC * seed_poincare_ic = (avtPoincareIC *) new_ics[j];
 
@@ -442,7 +447,7 @@ avtPoincareFilter::ContinueExecute()
                   poincare_ic->properties.iteration + 1;
             }
 
-            cerr << endl;
+            std::cerr << std::endl;
           }
 
           // The source was an island_chain which meant the seed was
@@ -450,8 +455,9 @@ avtPoincareFilter::ContinueExecute()
           if( poincare_ic->properties.source ==
               FieldlineProperties::ISLAND_CHAIN )
           {
-            cerr << "Deleting old O Point seed " <<  poincare_ic->id << endl;
-
+            std::cerr << "Deleting old O Point seed "
+                      << poincare_ic->id << std::endl;
+            
             ids_to_delete.push_back( poincare_ic->id );
           }
         }
@@ -464,8 +470,10 @@ avtPoincareFilter::ContinueExecute()
     }
     // No analysis requested or analysis complete, no need to
     // continue.
-    else 
+    else
+    {
        return false;
+    }
 }
 
 
@@ -542,12 +550,12 @@ avtPoincareFilter::UpdateDataObjectInfo(void)
 // ****************************************************************************
 
 bool
-avtPoincareFilter::ClassifyStreamlines(vector<avtIntegralCurve *> &ics)
+avtPoincareFilter::ClassifyStreamlines(std::vector<avtIntegralCurve *> &ics)
 {
-    FusionPSE::FieldlineLib FLlib;
+    FieldlineLib FLlib;
     FLlib.verboseFlag = verboseFlag;
 
-    debug5 << "Classifying Fieldlines " << endl;
+    debug5 << "Classifying Fieldlines " << std::endl;
 
     bool analysisComplete = true;
 
@@ -559,8 +567,10 @@ avtPoincareFilter::ClassifyStreamlines(vector<avtIntegralCurve *> &ics)
         if( poincare_ic->properties.analysisState == FieldlineProperties::COMPLETED ||
             poincare_ic->properties.analysisState == FieldlineProperties::TERMINATED )
         {
-          cerr <<"Skipping Classified Streamline: id = "
-               << poincare_ic->id << endl;
+          poincare_ic->status = avtIntegralCurve::STATUS_FINISHED;
+
+         std::cerr <<"Skipping Classified Streamline: id = "
+               << poincare_ic->id << std::endl;
 
           continue;
         }
@@ -573,52 +583,58 @@ avtPoincareFilter::ClassifyStreamlines(vector<avtIntegralCurve *> &ics)
                                    overridePoloidalWinding,
                                    maximumToroidalWinding,
                                    windingPairConfidence,
+                                   rationalSurfaceFactor,
                                    showOPoints );
 
         // Make the number of punctures 2x because the Poincare analysis
         // uses only the punctures in the same direction as the plane normal
         // while the streamline uses the plane regardless of the normal.
 
-        if( poincare_ic->properties.nPuncturesNeeded > maxPunctures )
-          poincare_ic->properties.nPuncturesNeeded = maxPunctures;
-
-        // Check to see if there are enough points for the analysis.
-        if( poincare_ic->properties.nPuncturesNeeded != 0 &&
-            poincare_ic->properties.nPuncturesNeeded <= maxPunctures )
+        if( poincare_ic->maxIntersections / 2 >= maxPunctures ||
+            poincare_ic->properties.nPuncturesNeeded == 0 )
         {
-          analysisComplete = false;
+          if( poincare_ic->properties.analysisState ==
+              FieldlineProperties::COMPLETED )
+          poincare_ic->properties.analysisState =
+            FieldlineProperties::TERMINATED;
 
-          poincare_ic->maxIntersections =
-            2 * poincare_ic->properties.nPuncturesNeeded;
-
-          poincare_ic->status = avtIntegralCurve::STATUS_OK;
+          poincare_ic->status = avtIntegralCurve::STATUS_FINISHED;
         }
         else
         {
-          poincare_ic->status = avtIntegralCurve::STATUS_FINISHED;
+          if( poincare_ic->properties.nPuncturesNeeded > maxPunctures )
+            poincare_ic->properties.nPuncturesNeeded = maxPunctures;
+          
+          poincare_ic->maxIntersections =
+            2 * poincare_ic->properties.nPuncturesNeeded;
+          
+          poincare_ic->status = avtIntegralCurve::STATUS_OK;
+          
+          analysisComplete = false;
         }
 
         // See if O Points from an island need to be added.
-        if( poincare_ic->properties.analysisState & FieldlineProperties::ADD_O_POINTS )
+        if( poincare_ic->properties.analysisState &
+            FieldlineProperties::ADD_O_POINTS )
           analysisComplete = false;
 
         double safetyFactor;
         
         if ( poincare_ic->properties.poloidalWinding > 0 )
-            safetyFactor =
-              (double) poincare_ic->properties.toroidalWinding / (double) poincare_ic->properties.poloidalWinding;
+            safetyFactor = ( (double) poincare_ic->properties.toroidalWinding /
+                             (double) poincare_ic->properties.poloidalWinding );
         else
             safetyFactor = 0;
 
         if(verboseFlag )
-          cerr << "Classify Streamline: id = "<< poincare_ic->id
+         std::cerr << "Classify Streamline: id = "<< poincare_ic->id
                << "  ptCnt = " << poincare_ic->points.size()
                << "  type = " << poincare_ic->properties.type
                << "  toroidal/poloidal windings = "
                << poincare_ic->properties.toroidalWinding << ","
                << poincare_ic->properties.poloidalWinding
                << "  (" << safetyFactor << ")"
-               << "  toroidal/poloidal Resonance = "
+               << "  toroidal/poloidal resonance = "
                << poincare_ic->properties.toroidalResonance << ","
                << poincare_ic->properties.poloidalResonance
                << "  windingGroupOffset = "
@@ -626,15 +642,17 @@ avtPoincareFilter::ClassifyStreamlines(vector<avtIntegralCurve *> &ics)
                << "  islands = " << poincare_ic->properties.islands
                << "  nodes = " << poincare_ic->properties.nnodes
                << "  nPuncturesNeeded = " << poincare_ic->properties.nPuncturesNeeded
-               << "  complete " << (poincare_ic->properties.analysisState == FieldlineProperties::COMPLETED ? "Yes " : "No ")
+               << "  complete " << (poincare_ic->properties.analysisState ==
+                                    FieldlineProperties::COMPLETED ?
+                                    "Yes " : "No ")
 //               << (poincare_ic->ic->status == avtIntegralCurve::STATUS_FINISHED ? 
 //                   0 : poincare_ic->ic->maxIntersections )
-               << endl << endl;
+               << std::endl << std::endl;
     }
 
     debug5 << "Classifying Streaming "
          << (analysisComplete ? "Analysis completed" : "Analysis was not complete")
-         << endl;
+         << std::endl;
 
     return analysisComplete;
 }
@@ -654,18 +672,18 @@ avtPoincareFilter::ClassifyStreamlines(vector<avtIntegralCurve *> &ics)
 //
 // ****************************************************************************
 template< class T > int
-pairsortfirst( const pair < T, T > s0, const pair < T, T > s1 )
+pairsortfirst( const std::pair < T, T > s0, const std::pair < T, T > s1 )
 {
   return (s0.first > s1.first );
 }
 
 template< class T > int
-pairsortsecond( const pair < T, T > s0, const pair < T, T > s1 )
+pairsortsecond( const std::pair < T, T > s0, const std::pair < T, T > s1 )
 {
   return (s0.second > s1.second );
 }
 
-void realDFTamp( vector< double > &g, vector< double > &G )
+void realDFTamp( std::vector< double > &g, std::vector< double > &G )
 {
   unsigned int N = g.size();
 
@@ -718,17 +736,20 @@ void realDFTamp( vector< double > &g, vector< double > &G )
 //    Changed color to dataValue
 //
 //    Dave Pugmire, Wed May 27 15:03:42 EDT 2009
-//    Replaced cerr/cout with debug5.
+//    Replacedstd::cerr/cout with debug5.
 //
 // ****************************************************************************
 void
 avtPoincareFilter::CreatePoincareOutput( avtDataTree *dt,
-                                         vector<avtIntegralCurve *> &ic)
+                                         std::vector<avtIntegralCurve *> &ic)
 {
-    FusionPSE::FieldlineLib FLlib;
+    FieldlineLib FLlib;
     FLlib.verboseFlag = verboseFlag;
 
-    debug5 << "Creating output " << endl;
+    debug5 << "Creating output " << std::endl;
+
+    if( verboseFlag ) 
+       std::cerr << std::endl << std::endl << "count " << ic.size() << std::endl << std::endl;
 
     for ( int i=0; i<ic.size(); ++i )
     {
@@ -743,56 +764,89 @@ avtPoincareFilter::CreatePoincareOutput( avtDataTree *dt,
         unsigned int toroidalWinding    = properties.toroidalWinding;
         unsigned int poloidalWinding    = properties.poloidalWinding;
         unsigned int poloidalWindingP   = properties.poloidalWindingP;
-        unsigned int toroidalResonance   = properties.toroidalResonance;
-        unsigned int poloidalResonance   = properties.poloidalResonance;
+        unsigned int toroidalResonance  = properties.toroidalResonance;
+        unsigned int poloidalResonance  = properties.poloidalResonance;
         unsigned int windingGroupOffset = properties.windingGroupOffset;
         unsigned int islands            = properties.islands;
         unsigned int islandGroups       = properties.islandGroups;
         unsigned int nnodes             = properties.nnodes;
 
-        vector< avtVector > &OPoints         = properties.OPoints;
+        std::vector< avtVector > &OPoints = properties.OPoints;
 
         bool completeIslands = true;
 
         if( verboseFlag ) 
         {
-          cerr << "Surface id = " << poincare_ic->id << "  "
-               << "< " << poincare_ic->points[0].x << " "
-               << poincare_ic->points[0].y << " "
-               << poincare_ic->points[0].z << " >  "
-               << toroidalWinding << "," << poloidalWinding << " ("
-               << (double) toroidalWinding / (double) poloidalWinding << ")  "
-               << toroidalResonance << "," << poloidalResonance << "  ";
+          double safetyFactor;
+
+          if( poloidalWinding > 0 )
+            safetyFactor = (float) toroidalWinding / (float) poloidalWinding;
+          else
+            safetyFactor = 0;
+
+          std::cerr << "Surface id = " << poincare_ic->id << "  "
+                    << "< " << poincare_ic->points[0].x << " "
+                    << poincare_ic->points[0].y << " "
+                    << poincare_ic->points[0].z << " >  "
+                    << toroidalWinding << "," << poloidalWinding << " ("
+                    << safetyFactor << ")  ";
 
           if( type == FieldlineProperties::RATIONAL )
-            cerr << "rational surface  ";
-
+            std::cerr << "rational surface  ";
+          
           else if( type == FieldlineProperties::FLUX_SURFACE )
-            cerr << "flux surface  ";
-
+            std::cerr << "flux surface  ";
+          
           else if( type == FieldlineProperties::ISLAND_CHAIN )
-            cerr << islands << " island chain  ";
+            std::cerr << islands << " island chain with resonances: "
+                      << toroidalResonance << "," << poloidalResonance << "  ";
+          
+          else if( type == FieldlineProperties::ISLAND_WITH_SECONDARY_ISLANDS )
+            std::cerr << islands << " islands around "
+                      << islandGroups << " islandGroups with resonances: "
+                      << toroidalResonance << "," << poloidalResonance << "  ";
 
-          else if( type == FieldlineProperties::ISLANDS_WITHIN_ISLANDS )
-            cerr << islands << " islands around "
-                 << islandGroups << " islandGroups ";
+          else if( type == FieldlineProperties::ISLAND_AMBIGUOUS_AXIS )
+          {
+            std::cerr << islands << " island chain with an ambiguous axis: "
+//                    << toroidalResonance << "," << poloidalResonance << "  ";
 
+                      << toroidalWinding << "," << poloidalWindingP << " ("
+                      << (float) toroidalWinding / (float) poloidalWindingP << ")  ";
+          }
           else if( type == FieldlineProperties::CHAOTIC )
-            cerr << "chaotic  ";
-
+            std::cerr << "chaotic  ";
+          
           else if( type == FieldlineProperties::UNKNOWN_TYPE )
-            cerr << "unknown  ";
+            std::cerr << "unknown  ";
 
-          cerr << "with " << nnodes << " nodes"
-               << (complete ? " (Complete)  " : "  ")
-               << endl;
-
+          std::cerr << "with " << nnodes << " nodes"
+                    << (complete ? " (Complete)  " : "  ")
+                    << std::endl;
+          
           if( (type == FieldlineProperties::ISLAND_CHAIN ||
-               type == FieldlineProperties::ISLANDS_WITHIN_ISLANDS) &&
-              islands != toroidalWinding ) 
-            cerr << "WARNING - The island count does not match the toroidalWinding count" << endl;
+               type == FieldlineProperties::ISLAND_WITH_SECONDARY_ISLANDS ||
+               type == FieldlineProperties::ISLAND_AMBIGUOUS_AXIS) &&
+              toroidalWinding != poloidalWinding &&
+              islands != toroidalWinding )
+            std::cerr << "WARNING - The island count does not match the toroidalWinding count" << std::endl;
         }
-    
+        
+        if( toroidalWinding == poloidalWinding )
+        {
+          if( type == FieldlineProperties::ISLAND_AMBIGUOUS_AXIS )
+          {
+            poloidalWinding = poloidalWindingP;
+            islands = 0;
+          }
+          else //if( type != FieldlineProperties::ISLAND_AMBIGUOUS_AXIS )
+          {
+            toroidalWinding = poloidalWinding = 1;
+            windingGroupOffset = 0;
+          }
+        }
+
+          
         // If toroidal winding is zero, skip it.
         if( type == FieldlineProperties::CHAOTIC )
         {
@@ -813,12 +867,14 @@ avtPoincareFilter::CreatePoincareOutput( avtDataTree *dt,
           if( analysis == 0 )
           {
             toroidalWinding = 1;
+            poloidalWinding = 1;
+            poloidalWindingP = 1;
           }
           else
           {
             if( verboseFlag ) 
-              cerr << " id = " << poincare_ic->id
-                   << " SKIPPING UNKNOWN TYPE " << endl;
+              std::cerr << " id = " << poincare_ic->id
+                        << " SKIPPING UNKNOWN TYPE " << std::endl;
             
             std::pair< unsigned int, unsigned int > topo( 0, 0 );
             
@@ -828,8 +884,18 @@ avtPoincareFilter::CreatePoincareOutput( avtDataTree *dt,
         else if( toroidalWinding == 0 ) 
         {
             if( verboseFlag ) 
-              cerr << " id = " << poincare_ic->id
-                   << " SKIPPING TOROIDALWINDING OF 0" << endl;
+              std::cerr << " id = " << poincare_ic->id
+                        << " SKIPPING TOROIDAL WINDING OF 0" << std::endl;
+            
+            std::pair< unsigned int, unsigned int > topo( 0, 0 );
+            
+            continue;
+        }
+        else if( poloidalWinding == 0 ) 
+        {
+            if( verboseFlag ) 
+              std::cerr << " id = " << poincare_ic->id
+                        << " SKIPPING POLOIDAL WINDING OF 0" << std::endl;
             
             std::pair< unsigned int, unsigned int > topo( 0, 0 );
             
@@ -850,7 +916,7 @@ avtPoincareFilter::CreatePoincareOutput( avtDataTree *dt,
         
         puncturePts.resize( planes.size() );
 
-        std::vector < avtVector > tempPts;
+        std::vector < avtVector > distancePts;
 
         std::vector< std::vector < avtVector > > islandPts;
         
@@ -940,7 +1006,7 @@ avtPoincareFilter::CreatePoincareOutput( avtDataTree *dt,
                           double len = (puncturePts[p][bin][ic]-
                                         puncturePts[p][bin][ic+1]).length();
                   
-                          tempPts.push_back( Point( (float) tempPts.size()/50.0,
+                          distancePts.push_back( Point( (float) distancePts.size()/50.0,
                                                     0,
                                                     len) );
                         }
@@ -970,7 +1036,7 @@ avtPoincareFilter::CreatePoincareOutput( avtDataTree *dt,
                   
                 }
                 
-//              vector< pair< unsigned int, double > > stats;           
+//              std::vector< pair< unsigned int, double > > stats;           
 //              FLlib.periodicityStats( islandPts[j], stats, 2 );
               }
             }
@@ -1039,173 +1105,8 @@ avtPoincareFilter::CreatePoincareOutput( avtDataTree *dt,
           if( maxZ < currPt.z )
             maxZ = currPt.z;
         }
-   
-//      // Get the rest of the info only from the phi = zero plane.
-//         unsigned int p;
-        
-//         if( CCWstreamline )
-//             p = 0;
-//         else
-//             p = planes.size()-1;
-        
-//         // Get the centroid of each toroidal winding group and all
-//         // puncture points.
 
-//      Vector globalCentroid(0,0,0);
-//      unsigned int npts = 0;
-
-//         std::vector< Vector > localCentroids;
-//         std::vector< Vector > localSeparatrices[2];
-        
-//         localCentroids.resize(toroidalWinding);
-//         localSeparatrices[0].resize(toroidalWinding);
-//         localSeparatrices[1].resize(toroidalWinding);
-        
-//         for( unsigned int j=0; j<toroidalWinding; ++j ) 
-//         {
-//             localCentroids[j] = Vector(0,0,0);
-            
-//             for( unsigned int k=0; k<puncturePts[p][j].size(); ++k ) 
-//                 localCentroids[j] += (Vector) puncturePts[p][j][k];
-            
-//             if( puncturePts[p][j].size() ) 
-//             {
-//                 localCentroids[j] /= (double) puncturePts[p][j].size();
-//          }
-//         }
-
-
-//         // Get the direction of the points within a group.
-//         //    Vector v0 = (Vector) puncturePts[p][0][0] - globalCentroid;
-//         //    Vector v1 = (Vector) puncturePts[p][0][1] - globalCentroid;
-        
-//         //    bool groupCCW = (FLlib.ccw( v0, v1 ) == 1);
-//         //    cerr << 0.0<< "  " << groupCCW << endl;
-        
-//         if( type == ISLAND_CHAIN ) 
-//         {
-//             for( unsigned int j=0; j<toroidalWinding; ++j ) 
-//             {
-//                 unsigned int startIndex;
-//                 unsigned int middleIndex;
-//                 unsigned int stopIndex;
-//                 unsigned int nodes;
-                
-//                 Vector localCentroid;
-                
-//                 unsigned int turns =
-//                     FLlib.islandProperties( puncturePts[p][j], localCentroid,
-//                                             startIndex, middleIndex, stopIndex, nodes );
-                
-//                 //      cerr << "Island " << i  << "   "
-//                 //           << "Turns " << turns  << "   "
-//                 //           << "nodes " << nodes  << "   "
-//                 //           << "Indexes "
-//                 //           << startIndex  << "  "
-//                 //           << middleIndex << "  "
-//                 //           << stopIndex   << endl;
-                
-                
-//              if( turns < 3 )
-//                completeIslands = false;
-                
-//                 if( turns >= 2 ) 
-//                 {
-//                     //        localSeparatrices[0][j] = (Vector) puncturePts[p][j][startIndex];
-//                     //        localSeparatrices[1][j] = (Vector) puncturePts[p][j][middleIndex];
-//                 }
-                
-//                 if( turns == 3 ) 
-//                 {
-//                     unsigned int index0 = (middleIndex - startIndex ) / 2;
-//                     unsigned int index1 = (  stopIndex - middleIndex) / 2;
-                    
-//                     //      cerr << "Indexes mid " << nodes << " nodes "
-//                     //           << "  " << ( startIndex + index0)%nodes 
-//                     //           << "  " << (middleIndex - index0)%nodes
-//                     //           << "  " << (middleIndex + index1)%nodes
-//                     //           << "  " << (  stopIndex - index1)%nodes << endl;
-                    
-//                     localCentroids[j] =
-//                         ( (Vector) puncturePts[p][j][( startIndex + index0)%nodes] + 
-//                           (Vector) puncturePts[p][j][(middleIndex - index0)%nodes] +
-                          
-//                           (Vector) puncturePts[p][j][(middleIndex + index1)%nodes] + 
-//                           (Vector) puncturePts[p][j][(  stopIndex - index1)%nodes] ) / 4.0;
-//                 }
-//                 else if( turns == 2 ) 
-//                 {
-//                     unsigned int index0 = (middleIndex - startIndex ) / 2;
-                    
-//                     //      cerr << "Indexes mid " << nodes << " nodes "
-//                     //           << "  " << ( startIndex + index0)%nodes 
-//                     //           << "  " << (middleIndex - index0)%nodes
-//                     //           << "  " << (middleIndex + index1)%nodes
-//                     //           << "  " << (  stopIndex - index1)%nodes << endl;
-                    
-//                     localCentroids[j] =
-//                         ( (Vector) puncturePts[p][j][( startIndex + index0)%nodes] + 
-//                           (Vector) puncturePts[p][j][(middleIndex - index0)%nodes] ) / 2.0;
-                    
-//                 } 
-//                 else if( turns == 1 ) 
-//                 {
-//                     unsigned int index0 = (stopIndex - startIndex ) / 2;
-                    
-//                     //      cerr << "Indexes mid " << nodes << " nodes "
-//                     //           << "  " << ( startIndex + index0)%nodes 
-//                     //           << "  " << (middleIndex - index0)%nodes
-//                     //           << "  " << (middleIndex + index1)%nodes
-//                     //           << "  " << (  stopIndex - index1)%nodes << endl;
-                    
-//                     localCentroids[j] =
-//                         ( (Vector) puncturePts[p][j][(startIndex + index0)%nodes] + 
-//                           (Vector) puncturePts[p][j][( stopIndex - index0)%nodes] ) / 2.0;
-//                 }
-                
-//                 //      // Get the principal axes of the island.
-//                 //      Vector localCentroid(0,0,0);
-                
-//                 //      for( unsigned int k=0; k<puncturePts[p][j].size(); ++k )
-//                 //        localCentroid += (Vector) puncturePts[p][j][k];
-                
-//                 //      localCentroid /= (float) puncturePts[p][j].size();
-                
-//                 //      float Ixx = 0.0;
-//                 //      float Ixz = 0.0;
-//                 //      float Izz = 0.0;
-                
-//                 //      double maxDist = 0;
-                
-//                 //      for( unsigned int k=0; k<puncturePts[p][j].size(); k++ ) {
-                
-//                 //        Vector vec = (Vector) puncturePts[p][j][k] - localCentroid;
-                
-//                 //        if( maxDist < vec.length() )
-//                 //          maxDist = vec.length();
-                
-//                 //        Ixx += vec.z()*vec.z();
-//                 //        Ixz -= vec.x()*vec.z();
-//                 //        Izz += vec.x()*vec.x();
-//                 //      }
-                
-//                 //      float alpha = atan( 2.0 * Ixz / (Ixx - Izz) ) / 2.0;
-                
-//                 // //       cerr << "PRINCIPAL AXES " << alpha * 180.0 / M_PI << "    "
-//                 // //      << Ixx + Ixz * sin(alpha       )/cos(alpha       ) << "    "
-//                 // //      << Izz + Ixz * cos(alpha+M_PI/2)/sin(alpha+M_PI/2) << endl;
-                
-//                 //      if( Ixx + Ixz * sin(alpha       )/cos(alpha       ) >
-//                 //          Izz + Ixz * cos(alpha+M_PI/2)/sin(alpha+M_PI/2) )
-//                 //        localCentroid += Vector(  cos(alpha), 0, sin(alpha) ) * maxDist;
-//                 //      else
-//                 //        localCentroid += Vector( -sin(alpha), 0, cos(alpha) ) * maxDist;
-                
-//                 //      localCentroids[j] = localCentroid;
-                
-//             }
-//         }  // if( type == ISLAND_CHAIN )
-
+        // Have the puncture points now draw them ...
         for( unsigned int p=0; p<planes.size(); p++ ) 
         {
             if( type == FieldlineProperties::UNKNOWN_TYPE ||
@@ -1229,11 +1130,10 @@ avtPoincareFilter::CreatePoincareOutput( avtDataTree *dt,
             }
             else if( type == FieldlineProperties::ISLAND_CHAIN )
             {
-              cerr << "Overlaps " << overlaps << "  " << nnodes << endl;
-
               if( overlaps != 0 )
               {
-                if( properties.analysisState == FieldlineProperties::COMPLETED )
+                if( properties.analysisState == FieldlineProperties::COMPLETED ||
+                    properties.analysisState == FieldlineProperties::TERMINATED )
                 {
                   // Loop through each island.
                   for( unsigned int j=0; j<toroidalWinding; j++ )
@@ -1251,11 +1151,38 @@ avtPoincareFilter::CreatePoincareOutput( avtDataTree *dt,
                   // If the analysis did result in a complete island try
                   // to find the boundary manually
 //                if( verboseFlag )
-//                  cerr << "Cleaning up island " << endl;
+//                 std::cerr << "Cleaning up island " << std::endl;
 
 //                FLlib.removeOverlap( puncturePts[p], nnodes,
 //                                     toroidalWinding, poloidalWinding,
 //                                     windingGroupOffset, islands );
+                }
+              }
+            }
+            else if( type == FieldlineProperties::ISLAND_AMBIGUOUS_AXIS )
+            {
+              if( overlaps != 0 )
+              {
+
+                if( showLines )
+                  nnodes = 2;
+
+                bool tmpPoints = showPoints;
+
+                // Loop through each island.
+                for( unsigned int j=0; j<toroidalWinding; j++ )
+                {
+                  // Erase all of the overlapping points.
+                  puncturePts[p][j].erase( puncturePts[p][j].begin()+nnodes,
+                                           puncturePts[p][j].end() );
+
+                  if( showLines )
+                  {
+                    unsigned int n = (j+windingGroupOffset) % toroidalWinding;
+
+                    puncturePts[p][j][1] = puncturePts[p][j][0] +
+                      0.9 * (puncturePts[p][n][0] - puncturePts[p][j][0]);
+                  }
                 }
               }
             }
@@ -1271,34 +1198,38 @@ avtPoincareFilter::CreatePoincareOutput( avtDataTree *dt,
                 if( puncturePts[p][j].size() < 1 ) 
                 {
                     if( verboseFlag ) 
-                      cerr << "Clean up check failed - Plane " << p
+                     std::cerr << "Clean up check failed - Plane " << p
                            << " bin  " << j
                            << " number of points " << puncturePts[p][j].size()
-                           << endl;
+                           << std::endl;
                     
                     VALID = false;
                     
 //                    return NULL;
                 }
                 
-                //      cerr << "Surface " << i
+                //     std::cerr << "Surface " << i
                 //           << " plane " << p
                 //           << " bin " << j
                 //           << " base number of nodes " << nnodes
                 //           << " number of points " << puncturePts[p][j].size()
-                //           << endl;
+                //           << std::endl;
             }
         }
-
 
         if( !showIslands ||
             (showIslands &&
              (type == FieldlineProperties::ISLAND_CHAIN ||
-              type == FieldlineProperties::ISLANDS_WITHIN_ISLANDS)) )
+              type == FieldlineProperties::ISLAND_WITH_SECONDARY_ISLANDS)) )
         {
             double color_value;
-            
-            if( dataValue == DATA_FieldlineOrder )
+
+            if( !analysis )
+            {
+              dataValue == DATA_FieldlineOrder;
+              color_value = poincare_ic->id;
+            }
+            else if( dataValue == DATA_FieldlineOrder )
                 color_value = poincare_ic->id;
             else if( dataValue == DATA_ToroidalWindings )
                 color_value = toroidalWinding;
@@ -1317,14 +1248,14 @@ avtPoincareFilter::CreatePoincareOutput( avtDataTree *dt,
             }
             else if( dataValue == DATA_SafetyFactorQ_NotP )
             {
-              if( poloidalWinding == poloidalWindingP )
+              if( type != FieldlineProperties::ISLAND_AMBIGUOUS_AXIS )
                 color_value = (double) toroidalWinding / (double) poloidalWinding;
               else
                 continue;
             }
             else if( dataValue == DATA_SafetyFactorP_NotQ )
             {
-              if( poloidalWindingP != poloidalWinding )
+              if( type == FieldlineProperties::ISLAND_AMBIGUOUS_AXIS )
                 color_value = (double) toroidalWinding / (double) poloidalWindingP;
               else
                 continue;
@@ -1362,7 +1293,7 @@ avtPoincareFilter::CreatePoincareOutput( avtDataTree *dt,
                                    windingGroupOffset,
                                    dataValue, color_value );
               }
-              else if( 0 && type == FieldlineProperties::ISLANDS_WITHIN_ISLANDS )
+              else if( 0 && type == FieldlineProperties::ISLAND_WITH_SECONDARY_ISLANDS )
               {
                 drawIrrationalCurve( dt, puncturePts, nnodes, islands,
                                      windingGroupOffset,
@@ -1381,7 +1312,8 @@ avtPoincareFilter::CreatePoincareOutput( avtDataTree *dt,
 
               if( showOPoints &&
                   (type == FieldlineProperties::ISLAND_CHAIN ||
-                   type == FieldlineProperties::ISLANDS_WITHIN_ISLANDS) )
+                   type == FieldlineProperties::ISLAND_WITH_SECONDARY_ISLANDS ||
+                   type == FieldlineProperties::ISLAND_AMBIGUOUS_AXIS) )
               {
                 drawPoints( dt, OPoints );
               }
@@ -1394,9 +1326,9 @@ avtPoincareFilter::CreatePoincareOutput( avtDataTree *dt,
             }
 
             if( show1DPlots )
-              drawPeriodicity( dt, tempPts,
+              drawPeriodicity( dt, distancePts,
                                toroidalResonance,
-//                             tempPts.size(),
+//                             distancePts.size(),
                                nnodes, islands, poloidalWinding,
                                dataValue, color_value, true );
 
@@ -1419,174 +1351,10 @@ avtPoincareFilter::CreatePoincareOutput( avtDataTree *dt,
                                  dataValue, color_value, true );
               }
             }
-
-//     double best_period = 0;
-//     double best_amp = 0;
-
-
-//     vector< unsigned int > periodList;
-
-//     for(unsigned int p=2; p<ridgelinePts.size()/2; p++)
-//     {
-//       unsigned int N = p * (ridgelinePts.size() / p);
-
-//       if( find( periodList.begin(), periodList.end(), N/2 ) != periodList.end())
-//      continue;
-//       else
-//      periodList.push_back( N/2 );
-
-//       vector< pair < double, double > > dft;
-//       dft.resize( N/2 );
-
-//       vector< pair < double, double > > g, G;
-
-//       g.resize( N/2 );
-//       G.resize( N/2 );
-
-//       double local_best_period = 0;
-//       double local_best_amp = 0;
-
-//       for(unsigned int f=1; f<N/2; f++)
-//       {
-//      double freq = double(f) / double(N);
-        
-//      double GRe = 0;
-//      double GIm = 0;
-
-//      for( unsigned int cc=0; cc<N; cc++)
-//      {
-//        double a = -2.0 * M_PI * double(cc) * freq;
-// //        if(inverse) a *= -1.0;
-//        double ca = cos(a);
-//        double sa = sin(a);
-          
-//        GRe += ridgelinePts[cc].z * ca; // - in[x][1] * sa;
-//        GIm += ridgelinePts[cc].z * sa; // + in[x][1] * ca;
-//      }
-
-//      G[f].first  = GRe;
-//      G[f].second = GIm;
-
-//      double amp = sqrt(GRe*GRe + GIm*GIm);
-
-//      dft[f] = pair< double, double >(freq, amp);
-
-//      if( local_best_amp < amp )
-//      {
-//        local_best_amp = amp;
-//        local_best_period = 1.0 / freq;
-//      }
-//       }
-
-//       if( best_amp < local_best_amp )
-//       {
-//      best_amp = local_best_amp;
-//      best_period = local_best_period;
-//       }
-      
-//       cerr << "local  "
-//         << p << "  "
-//         << N << "  "
-//         << local_best_period << "  " << local_best_amp << endl;
-      
-//       continue;
-      
-//       for( unsigned int cc=1; cc<N/2; ++cc )
-//       {
-//      double period = ((int) (10000.0 / dft[cc].first) / 10000.0);
-        
-//      double amp_1 = dft[cc-1].second;
-//      double amp   = dft[cc  ].second;
-//      double amp1  = dft[cc+1].second;
-        
-// //       cerr << period << "  "
-// //      << dft[cc].first  << "  "
-// //      << dft[cc].second << "  "
-// //      << ((amp_1<amp && amp>amp1) ? "******" : "")
-// //      << endl;
-//       }
-//     }
-    
-//     cerr << "best overall  "
-//       << best_period << "  " << best_amp << endl;
-
-    ///////////////////////////
-  
-//     best_period = 0;
-//     best_amp = 0;
-
-//     unsigned int N = ridgelinePts.size();
-
-//     vector< double > height;
-//     vector< double > Gamp;
-//     vector< double > gamp;
-
-//     height.resize( N );
-
-//     for( unsigned int cc=0; cc<N; cc++)
-//       height[cc] = ridgelinePts[cc].z;
-
-//     // DFT of the original height signal
-//     realDFTamp( height, Gamp );
-
-// //     ridgelinePts.resize( N / 2 );
-// //     ridgelinePts[0].z = 0;
-// //     for(unsigned int f=1; f<ridgelinePts.size(); f++)
-// //       ridgelinePts[f].z = Gamp[f] / 100.0;
-
-//     // Throw awway the DC component and compute the log of the amplitude.
-//     gamp.resize( Gamp.size() - 1 );
-
-//     for( unsigned int cc=1; cc<Gamp.size(); cc++)
-//       gamp[cc-1] = log2( Gamp[cc] );
-
-//     // DFT of the amplitude signal
-//     realDFTamp( gamp, Gamp );
-
-//     bool foundFirstMin = false;
-//     double last_amp = 1.0e15;
-
-//     for(unsigned int cc=1; cc<Gamp.size(); cc++)
-//     {
-//       cerr << cc << "  " << Gamp[cc];
-
-//       if( 1<cc && cc<Gamp.size()-1 &&
-//        Gamp[cc-1] < Gamp[cc] && Gamp[cc] > Gamp[cc+1] )
-//      cerr << "**" << endl;
-//       else
-//      cerr << endl;
-
-//       if( !foundFirstMin && last_amp < Gamp[cc] )
-//      foundFirstMin = true;
-
-//       if( foundFirstMin && best_amp < Gamp[cc] )
-//       {
-//        best_amp = Gamp[cc];
-//        best_period = cc;
-//       }
-
-//       last_amp = Gamp[cc];
-//     }
-
-//     cerr << __LINE__ << endl;
-
-//     cerr << "best  " << best_period << "  " << best_amp << endl;
-
- //    ridgelinePts.resize( Gamp.size() - 1 );
-//     for(unsigned int f=1; f<Gamp.size(); f++)
-//       ridgelinePts[f-1].z = Gamp[f] / 100.0;
-
-
-//     loadPoints( dt, ridgelinePts, ridgelinePts.size(),
-//              nnodes, islands, poloidalWinding,
-//              dataValue, color_value, true );
         }
     }
     
-    if( verboseFlag ) 
-        cerr << endl << endl << "count " << ic.size() << endl << endl;
-
-    debug5 << "Finished creating output " << endl;
+    debug5 << "Finished creating output " << std::endl;
 }
 
 // ****************************************************************************
@@ -1609,7 +1377,7 @@ avtPoincareFilter::CreatePoincareOutput( avtDataTree *dt,
 
 void
 avtPoincareFilter::drawRationalCurve( avtDataTree *dt,
-                                      vector< vector < vector < avtVector > > > &nodes,
+                                      std::vector< std::vector < std::vector < avtVector > > > &nodes,
                                       unsigned int nnodes,
                                       unsigned int islands,
                                       unsigned int skip,
@@ -1637,7 +1405,7 @@ avtPoincareFilter::drawRationalCurve( avtDataTree *dt,
             
         cells->InsertNextCell(toroidalWindings+1);
         scalars->Allocate    (toroidalWindings+1);
-            
+
         // Loop through each toroidial group taking just the first
         // point from each group.
         for( unsigned int jj=0; jj<=toroidalWindings*skip; jj+=skip ) 
@@ -1750,7 +1518,8 @@ avtPoincareFilter::drawRationalCurve( avtDataTree *dt,
                                             nodes[p][j][i].y,
                                             nodes[p][j][i].z );
                     
-                    cells->InsertNextCell(1, (vtkIdType*) &i);
+                    vtkIdType id = (vtkIdType)i;
+                    cells->InsertNextCell(1, &id);
                     
                     if( color == DATA_PointOrder )
                       color_value = (i*toroidalWindings+j)*nplanes + p;
@@ -1806,7 +1575,7 @@ avtPoincareFilter::drawRationalCurve( avtDataTree *dt,
 
 void
 avtPoincareFilter::drawIrrationalCurve( avtDataTree *dt,
-                                        vector< vector < vector < avtVector > > > &nodes,
+                                        std::vector< std::vector < std::vector < avtVector > > > &nodes,
                                         unsigned int nnodes,
                                         unsigned int islands,
                                         unsigned int skip,
@@ -2078,7 +1847,8 @@ avtPoincareFilter::drawIrrationalCurve( avtDataTree *dt,
                                             nodes[p][j][i].y,
                                             nodes[p][j][i].z );
                   
-                    cells->InsertNextCell(1, (vtkIdType*) &i);
+                    vtkIdType id = (vtkIdType)i;
+                    cells->InsertNextCell(1, &id);
                   
                     if( color == DATA_PointOrder )
                       color_value = (i*toroidalWindings+j)*nplanes + p;
@@ -2138,7 +1908,7 @@ avtPoincareFilter::drawIrrationalCurve( avtDataTree *dt,
 
 void
 avtPoincareFilter::drawSurface( avtDataTree *dt,
-                                vector< vector < vector < avtVector > > > &nodes,
+                                std::vector< std::vector < std::vector < avtVector > > > &nodes,
                                 unsigned int nnodes,
                                 unsigned int islands,
                                 unsigned int skip,
@@ -2166,7 +1936,7 @@ avtPoincareFilter::drawSurface( avtDataTree *dt,
     scalars->Allocate(dims[0]*dims[1]);
     
     float *points_ptr = (float *) points->GetVoidPointer(0);
-    
+
     // Determine if the winding group order matches the point
     // ordering. This is only needed when building surfaces.
     Vector intra = nodes[0][   0][1] - nodes[0][0][0];
@@ -2199,7 +1969,7 @@ avtPoincareFilter::drawSurface( avtDataTree *dt,
             {
                 k = j;
             }
-            
+
             unsigned int jj = nplanes * j + p;
             
             if( color == DATA_PlaneOrder )
@@ -2359,7 +2129,7 @@ avtPoincareFilter::drawSurface( avtDataTree *dt,
 
 void
 avtPoincareFilter::drawPeriodicity( avtDataTree *dt,
-                                    vector < Point  > &nodes,
+                                    std::vector < Point  > &nodes,
                                     unsigned int period,
                                     unsigned int nnodes,
                                     unsigned int islands,
@@ -2497,7 +2267,8 @@ avtPoincareFilter::drawPeriodicity( avtDataTree *dt,
       else
         points->InsertNextPoint(nodes[i].x, nodes[i].y, nodes[i].z);
 
-      cells->InsertNextCell(1, (vtkIdType*) &i);
+      vtkIdType id = (vtkIdType)i;
+      cells->InsertNextCell(1, &id);
       
       if( color == DATA_PointOrder )
         color_value = i;
@@ -2555,7 +2326,7 @@ avtPoincareFilter::drawPeriodicity( avtDataTree *dt,
 
 void
 avtPoincareFilter::drawPoints( avtDataTree *dt,
-                               vector < avtVector > &nodes ) 
+                               std::vector < avtVector > &nodes ) 
 {
   vtkAppendPolyData *append = vtkAppendPolyData::New();
 
@@ -2572,7 +2343,8 @@ avtPoincareFilter::drawPoints( avtDataTree *dt,
     {      
       points->InsertNextPoint(nodes[i].x, nodes[i].y, nodes[i].z);
 
-      cells->InsertNextCell(1, (vtkIdType*) &i);
+      vtkIdType id = (vtkIdType)i;
+      cells->InsertNextCell(1, &id);
       
       scalars->InsertTuple1(i, 0);
     }

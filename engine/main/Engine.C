@@ -197,6 +197,11 @@ const int INTERRUPT_MESSAGE_TAG = GetUniqueStaticMessageTag();
 //   I added the ability to use a gateway machine when connecting to a
 //   remote host.
 //
+//   Eric Brugger, Tue Sep 27 09:03:03 PDT 2011
+//   I modified the remote launching to pass the remote user name to the
+//   ssh command to the gateway machine instead of to the ssh command to
+//   the remote machine.
+//
 // ****************************************************************************
 
 class ViewerRemoteProcess : public RemoteProcess
@@ -258,7 +263,8 @@ protected:
             debug5 << ")" << endl;
         }
 
-        RemoteProcess::Launch(rHost, createAsThoughLocal, false, "", viewerArgs);
+        RemoteProcess::Launch(rHost, createAsThoughLocal, false, "", "notset",
+                              viewerArgs);
     }
 };
 
@@ -327,6 +333,12 @@ protected:
 //    Tom Fogal, Wed May 26 09:26:08 MDT 2010
 //    State for launching X servers.
 //
+//    Kathleen Biagas, Fri Jul 15 11:08:44 PDT 2011
+//    Add queryParametersRPC.
+//
+//    Brad Whitlock, Mon Oct 10 11:22:45 PDT 2011
+//    Added enginePropertiesRPC.
+//
 // ****************************************************************************
 
 Engine::Engine() : viewerArgs()
@@ -369,6 +381,7 @@ Engine::Engine() : viewerArgs()
     executeRPC = NULL;
     clearCacheRPC = NULL;
     queryRPC = NULL;
+    queryParametersRPC = NULL;
     releaseDataRPC = NULL;
     openDatabaseRPC = NULL;
     defineVirtualDatabaseRPC = NULL;
@@ -378,6 +391,7 @@ Engine::Engine() : viewerArgs()
     procInfoRPC = NULL;
     simulationCommandRPC = NULL;
     setEFileOpenOptionsRPC = NULL;
+    enginePropertiesRPC = NULL;
 
 #if defined(PARALLEL) && defined(HAVE_ICET)
     useIceT = true;
@@ -418,6 +432,12 @@ Engine::Engine() : viewerArgs()
 //    Brad Whitlock, Thu Apr  9 11:57:07 PDT 2009
 //    Delete viewer and viewerP.
 //
+//    Kathleen Biagas, Fri Jul 15 11:08:44 PDT 2011
+//    Add queryParametersRPC.
+//
+//    Brad Whitlock, Mon Oct 10 11:23:14 PDT 2011
+//    Added enginePropertiesRPC.
+//
 // ****************************************************************************
 
 Engine::~Engine()
@@ -446,6 +466,7 @@ Engine::~Engine()
     delete executeRPC;
     delete clearCacheRPC;
     delete queryRPC;
+    delete queryParametersRPC;
     delete releaseDataRPC;
     delete openDatabaseRPC;
     delete defineVirtualDatabaseRPC;
@@ -458,6 +479,7 @@ Engine::~Engine()
     delete constructDataBinningRPC;
     delete namedSelectionRPC;
     delete setEFileOpenOptionsRPC;
+    delete enginePropertiesRPC;
 
     delete viewer;
     delete viewerP;
@@ -866,6 +888,12 @@ public:
 //    Hank Childs, Sat Aug 21 14:35:47 PDT 2010
 //    Rename DDF to DataBinning.
 //
+//    Kathleen Biagas, Fri Jul 15 11:08:44 PDT 2011
+//    Add queryParametersRPC.
+//
+//    Brad Whitlock, Mon Oct 10 11:23:14 PDT 2011
+//    Added enginePropertiesRPC.
+//
 // ****************************************************************************
 
 void
@@ -1001,6 +1029,7 @@ Engine::SetUpViewerInterface(int *argc, char **argv[])
     executeRPC                      = new ExecuteRPC;
     clearCacheRPC                   = new ClearCacheRPC;
     queryRPC                        = new QueryRPC;
+    queryParametersRPC              = new QueryParametersRPC;
     releaseDataRPC                  = new ReleaseDataRPC;
     openDatabaseRPC                 = new OpenDatabaseRPC;
     defineVirtualDatabaseRPC        = new DefineVirtualDatabaseRPC;
@@ -1013,6 +1042,7 @@ Engine::SetUpViewerInterface(int *argc, char **argv[])
     constructDataBinningRPC         = new ConstructDataBinningRPC;
     namedSelectionRPC               = new NamedSelectionRPC;
     setEFileOpenOptionsRPC          = new SetEFileOpenOptionsRPC;
+    enginePropertiesRPC             = new EnginePropertiesRPC;
 
     xfer->Add(quitRPC);
     xfer->Add(keepAliveRPC);
@@ -1027,6 +1057,7 @@ Engine::SetUpViewerInterface(int *argc, char **argv[])
     xfer->Add(executeRPC);
     xfer->Add(clearCacheRPC);
     xfer->Add(queryRPC);
+    xfer->Add(queryParametersRPC);
     xfer->Add(releaseDataRPC);
     xfer->Add(openDatabaseRPC);
     xfer->Add(defineVirtualDatabaseRPC);
@@ -1039,6 +1070,7 @@ Engine::SetUpViewerInterface(int *argc, char **argv[])
     xfer->Add(constructDataBinningRPC);
     xfer->Add(namedSelectionRPC);
     xfer->Add(setEFileOpenOptionsRPC);
+    xfer->Add(enginePropertiesRPC);
 
     // Create an object to implement the RPCs
     rpcExecutors.push_back(new RPCExecutor<QuitRPC>(quitRPC));
@@ -1057,6 +1089,7 @@ Engine::SetUpViewerInterface(int *argc, char **argv[])
     rpcExecutors.push_back(new RPCExecutor<ExecuteRPC>(executeRPC));
     rpcExecutors.push_back(new RPCExecutor<ClearCacheRPC>(clearCacheRPC));
     rpcExecutors.push_back(new RPCExecutor<QueryRPC>(queryRPC));
+    rpcExecutors.push_back(new RPCExecutor<QueryParametersRPC>(queryParametersRPC));
     rpcExecutors.push_back(new RPCExecutor<ReleaseDataRPC>(releaseDataRPC));
     rpcExecutors.push_back(new RPCExecutor<OpenDatabaseRPC>(openDatabaseRPC));
     rpcExecutors.push_back(new RPCExecutor<DefineVirtualDatabaseRPC>(defineVirtualDatabaseRPC));
@@ -1069,6 +1102,7 @@ Engine::SetUpViewerInterface(int *argc, char **argv[])
     rpcExecutors.push_back(new RPCExecutor<ConstructDataBinningRPC>(constructDataBinningRPC));
     rpcExecutors.push_back(new RPCExecutor<NamedSelectionRPC>(namedSelectionRPC));
     rpcExecutors.push_back(new RPCExecutor<SetEFileOpenOptionsRPC>(setEFileOpenOptionsRPC));
+    rpcExecutors.push_back(new RPCExecutor<EnginePropertiesRPC>(enginePropertiesRPC));
 
     // Hook up the expression list as an observed object.
     Parser *p = new ExprParser(new avtExprNodeFactory());
@@ -2249,7 +2283,7 @@ Engine::AlarmHandler(int signal)
 #ifdef PARALLEL
     PAR_Exit();
 #endif
-    exit(0);
+    exit(0); // HOOKS_IGNORE
 }
 
 // ****************************************************************************
@@ -2281,9 +2315,8 @@ Engine::NewHandler(void)
 #ifdef PARALLEL
     MPI_Abort(VISIT_MPI_COMM, 18);
 #else
-    abort();
+    abort(); // HOOKS_IGNORE
 #endif
-
 }
 
 // ****************************************************************************
@@ -3782,6 +3815,52 @@ Engine::GetProcessAttributes()
 }
 
 // ****************************************************************************
+// Method: Engine::GetEngineProperties
+//
+// Purpose: 
+//   Return engine properties.
+//
+// Arguments:
+//
+// Returns:    
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Mon Oct 10 12:01:23 PDT 2011
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+EngineProperties
+Engine::GetEngineProperties()
+{
+    EngineProperties props;
+
+    // The number of processors
+    props.SetNumProcessors(PAR_Size());
+
+    // Determine how many of the processors are using GPUs.
+    int usingGPU = 0;
+    if(this->renderingDisplay != NULL &&
+       this->renderingDisplay->GetDisplayType() == VisItDisplay::D_X)
+    {
+        usingGPU = 1;
+    }
+    SumIntAcrossAllProcessors(usingGPU);
+    props.SetNumProcessorsUsingGPUs(usingGPU);
+
+    // Determine the load balancing method.
+    props.SetDynamicLoadBalancing(LoadBalancer::GetAllowDynamic());
+    props.SetLoadBalancingScheme(LoadBalancer::GetSchemeAsString());
+
+    // Should we stick arbitrary stuff in a MapNode?
+
+    return props;
+}
+
+// ****************************************************************************
 //  Method: SetupDisplay
 //
 //  Purpose:
@@ -3831,6 +3910,9 @@ Engine::GetProcessAttributes()
 //    Tom Fogal, Wed May 11 07:14:04 MDT 2011
 //    (Hopefully) fix Win32 compilation problem.
 //
+//    Tom Fogal, Thu Sep 22 17:23:51 MDT 2011
+//    Add missing newline to debug print.
+//
 // ****************************************************************************
 
 void
@@ -3859,14 +3941,14 @@ Engine::SetupDisplay()
                static_cast<size_t>(rank-min) < this->nDisplays)
             {
                 display_num = rank-min;
-                this->renderingDisplay = VDisplay::Create(VDisplay::D_X);
+                this->renderingDisplay = VDisplay::Create(VisItDisplay::D_X);
             }
         }
     }
 #else
     if(this->nDisplays > 0)
     {
-        this->renderingDisplay = VDisplay::Create(VDisplay::D_X);
+        this->renderingDisplay = VDisplay::Create(VisItDisplay::D_X);
         avtCallback::SetSoftwareRendering(false);
         display_num = 0;
     }
@@ -3885,7 +3967,7 @@ Engine::SetupDisplay()
 
     if(this->renderingDisplay == NULL)
     {
-        this->renderingDisplay = VDisplay::Create(VDisplay::D_MESA);
+        this->renderingDisplay = VDisplay::Create(VisItDisplay::D_MESA);
         avtCallback::SetSoftwareRendering(true);
     }
     if(this->renderingDisplay->Initialize(disp,
@@ -3895,7 +3977,7 @@ Engine::SetupDisplay()
         {
             debug1 << "Display initialization succeeded, but connection "
                       "failed.  Try running with -debug_engine 5 and "
-                      "examining the log files.";
+                      "examining the log files.\n";
         }
     }
     else

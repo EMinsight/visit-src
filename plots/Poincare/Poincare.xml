@@ -11,12 +11,24 @@
         SpecifiedPoint
         SpecifiedLine
       </Enum>
+      <Enum name="FieldType">
+        Default
+        M3DC12DField
+        M3DC13DField
+        NIMRODField
+        FlashField
+      </Enum>
       <Enum name="IntegrationType">
+        Euler
+        Leapfrog
         DormandPrince
         AdamsBashforth
+        Reserved_4
         M3DC12DIntegrator
-        M3DC13DIntegrator
-        NIMRODIntegrator
+      </Enum>
+      <Enum name="SizeType">
+        Absolute
+        FractionOfBBox
       </Enum>
       <Enum name="CoordinateSystem">
         Cartesian
@@ -84,10 +96,10 @@
         1.000000
       </Field>
       <Field name="minPunctures" label="Minimum number of Punctures" type="int">
-        10
+        50
       </Field>
       <Field name="maxPunctures" label="Maximum number of Punctures" type="int">
-        100
+        500
       </Field>
       <Field name="puncturePlane" label="Puncture Plane" type="enum" subtype="PuncturePlaneType">
         Poloidal
@@ -113,6 +125,17 @@
       <Field name="pointDensity" label="Point density" type="int" enabler="sourceType:SpecifiedLine">
         1
       </Field>
+      <Field name="fieldType" label="Field" type="enum" subtype="FieldType">
+        Default
+      </Field>
+      <Field name="fieldConstant" label="Constant" type="double" subtype="FieldConstant">
+        1.0
+      </Field>
+      <Field name="velocitySource" label="Starting velocity" type="doubleArray" length="3" enabler="fieldType:FlashField">
+        0.000000
+        0.000000
+        0.000000
+      </Field>
       <Field name="integrationType" label="Integrator" type="enum" subtype="IntegrationType">
         AdamsBashforth
       </Field>
@@ -122,11 +145,23 @@
       <Field name="maxStepLength" label="maximum step length" type="double">
         0.100000
       </Field>
+      <Field name="limitMaximumTimestep" label="Limit Maximum Timestep (DoPri only)?" type="bool">
+        false
+      </Field>
+      <Field name="maxTimeStep" label="maximum time step length" type="double">
+        0.100000
+      </Field>
       <Field name="relTol" label="rel. tolerance" type="double">
         0.000100
       </Field>
-      <Field name="absTol" label="abs. tolerance" type="double">
+      <Field name="absTolSizeType" label="AbsoluteToleranceSizeType" type="enum" subtype="SizeType">
+        FractionOfBBox
+      </Field>
+      <Field name="absTolAbsolute" label="abs. tolerance" type="double" enabler="absTolSizeType:Absolute">
         0.000010
+      </Field>
+      <Field name="absTolBBox" label="AbsTolBBox" type="double" enabler="absTolSizeType:FractionOfBBox">
+        0.000001
       </Field>
       <Field name="analysis" label="Analysis" type="enum" subtype="AnalysisType">
         Normal
@@ -143,9 +178,8 @@
       <Field name="windingPairConfidence" label="Winding Pair Confidence" type="double">
         0.900000
       </Field>
-      <Field name="rationalTemplateSeedParm" label="Rational Template
-                                                    Seed Parameter" type="double">
-        0.900000
+      <Field name="rationalSurfaceFactor" label="Rational surface factor" type="double">
+        0.100000
       </Field>
       <Field name="adjustPlane" label="Adjust plane" type="int">
         -1

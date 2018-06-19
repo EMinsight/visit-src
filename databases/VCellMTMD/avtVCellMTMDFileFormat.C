@@ -49,7 +49,7 @@
 
 
 // ************************************************************************* //
-//                            avtVCellMTMDFileFormat.C                           //
+//                        avtVCellMTMDFileFormat.C                           //
 // ************************************************************************* //
 
 #include <avtVCellMTMDFileFormat.h>
@@ -1065,11 +1065,21 @@ avtVCellMTMDFileFormat::GetMesh(int timestate, int domain, const char *meshname)
         
         if(vcellMeshInfo.getSpatialdimension() == 3){
             for (int i=0; i<vcellMeshInfo.numMembraneElements; i++){
-                ugrid->InsertNextCell(VTK_QUAD,4,(membrQuadNodes+i*4));
+                vtkIdType ids[4];
+                int *iptr = membrQuadNodes+i*4;
+                ids[0] = (vtkIdType)iptr[0];
+                ids[1] = (vtkIdType)iptr[1];
+                ids[2] = (vtkIdType)iptr[2];
+                ids[3] = (vtkIdType)iptr[3];
+                ugrid->InsertNextCell(VTK_QUAD,4,ids);
             }
         }else{
             for (int i=0; i<vcellMeshInfo.numMembraneElements; i++){
-                ugrid->InsertNextCell(VTK_LINE,2,(membrQuadNodes+i*4));
+                vtkIdType ids[2];
+                int *iptr = membrQuadNodes+i*4;
+                ids[0] = (vtkIdType)iptr[0];
+                ids[1] = (vtkIdType)iptr[1];
+                ugrid->InsertNextCell(VTK_LINE,2,ids);
             }
         }
 
@@ -1430,12 +1440,13 @@ void avtVCellMTMDFileFormat::readVariableValues(const char * simFileName,string 
                     }
                 }
             }
+            delete [] regionValues;
         }else{
             dataHolder->SetNumberOfTuples(varDataBlock->size);
             double *values = (double *)dataHolder->GetVoidPointer(0);
             readDoubles(fp, values, varDataBlock->size);
         }
-}
+    }
 
     fclose(fp);
 }

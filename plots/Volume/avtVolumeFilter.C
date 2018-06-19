@@ -70,6 +70,8 @@
 #include <snprintf.h>
 #include <TimingsManager.h>
 
+#include <string>
+#include <vector>
 
 //
 // Function Prototypes
@@ -206,7 +208,7 @@ avtVolumeFilter::Execute(void)
         }
     }
 
-    std::string s = string(primaryVariable);
+    std::string s = std::string(primaryVariable);
     std::vector<VISIT_LONG_LONG> numvals(numValsInHist, 0);
     int t1 = visitTimer->StartTimer();
     avtDatasetExaminer::CalculateHistogram(ds, s, minmax[0], minmax[1], numvals);
@@ -733,6 +735,9 @@ avtVolumeFilter::GetNumberOfStages(const WindowAttributes &a)
 //    Modified to handle the splitting of the view attributes into 2d and
 //    3d parts.
 //
+//    Brad Whitlock, Wed Sep 28 13:54:02 PDT 2011
+//    Negate the image pan to account for changes in avtView3D.
+//
 // ****************************************************************************
 
 void
@@ -756,8 +761,8 @@ CreateViewInfoFromViewAttributes(avtViewInfo &vi, const View3DAttributes &view)
     view3d.nearPlane = view.GetNearPlane();
     view3d.farPlane = view.GetFarPlane();
     view3d.perspective = view.GetPerspective();
-    view3d.imagePan[0] = view.GetImagePan()[0];
-    view3d.imagePan[1] = view.GetImagePan()[1];
+    view3d.imagePan[0] = -view.GetImagePan()[0];
+    view3d.imagePan[1] = -view.GetImagePan()[1];
     view3d.imageZoom = view.GetImageZoom();
 
     //
@@ -848,7 +853,7 @@ avtVolumeFilter::ModifyContract(avtContract_p contract)
     }
     else if (atts.GetScaling() == VolumeAttributes::Log)
     {
-        string exprName = (string)"log_" + (string)var;
+        std::string exprName = (std::string)"log_" + (std::string)var;
         char exprDef[128];
         if (atts.GetUseColorVarMin())
         {

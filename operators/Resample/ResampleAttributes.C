@@ -108,6 +108,7 @@ void ResampleAttributes::Init()
     tieResolver = random;
     defaultValue = 0;
     distributedResample = true;
+    cellCenteredOutput = false;
 
     ResampleAttributes::SelectAll();
 }
@@ -144,6 +145,7 @@ void ResampleAttributes::Copy(const ResampleAttributes &obj)
     tieResolverVariable = obj.tieResolverVariable;
     defaultValue = obj.defaultValue;
     distributedResample = obj.distributedResample;
+    cellCenteredOutput = obj.cellCenteredOutput;
 
     ResampleAttributes::SelectAll();
 }
@@ -317,7 +319,8 @@ ResampleAttributes::operator == (const ResampleAttributes &obj) const
             (tieResolver == obj.tieResolver) &&
             (tieResolverVariable == obj.tieResolverVariable) &&
             (defaultValue == obj.defaultValue) &&
-            (distributedResample == obj.distributedResample));
+            (distributedResample == obj.distributedResample) &&
+            (cellCenteredOutput == obj.cellCenteredOutput));
 }
 
 // ****************************************************************************
@@ -476,6 +479,7 @@ ResampleAttributes::SelectAll()
     Select(ID_tieResolverVariable, (void *)&tieResolverVariable);
     Select(ID_defaultValue,        (void *)&defaultValue);
     Select(ID_distributedResample, (void *)&distributedResample);
+    Select(ID_cellCenteredOutput,  (void *)&cellCenteredOutput);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -598,6 +602,12 @@ ResampleAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool for
         node->AddNode(new DataNode("distributedResample", distributedResample));
     }
 
+    if(completeSave || !FieldsEqual(ID_cellCenteredOutput, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("cellCenteredOutput", cellCenteredOutput));
+    }
+
 
     // Add the node to the parent node.
     if(addToParent || forceAdd)
@@ -678,6 +688,8 @@ ResampleAttributes::SetFromNode(DataNode *parentNode)
         SetDefaultValue(node->AsDouble());
     if((node = searchNode->GetNode("distributedResample")) != 0)
         SetDistributedResample(node->AsBool());
+    if((node = searchNode->GetNode("cellCenteredOutput")) != 0)
+        SetCellCenteredOutput(node->AsBool());
     // The SetStartX, etc calls trample useExtents.
     // Set to the correct value at the end.
     if((node = searchNode->GetNode("useExtents")) != 0)
@@ -806,6 +818,13 @@ ResampleAttributes::SetDistributedResample(bool distributedResample_)
     Select(ID_distributedResample, (void *)&distributedResample);
 }
 
+void
+ResampleAttributes::SetCellCenteredOutput(bool cellCenteredOutput_)
+{
+    cellCenteredOutput = cellCenteredOutput_;
+    Select(ID_cellCenteredOutput, (void *)&cellCenteredOutput);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Get property methods
 ///////////////////////////////////////////////////////////////////////////////
@@ -906,6 +925,12 @@ ResampleAttributes::GetDistributedResample() const
     return distributedResample;
 }
 
+bool
+ResampleAttributes::GetCellCenteredOutput() const
+{
+    return cellCenteredOutput;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Select property methods
 ///////////////////////////////////////////////////////////////////////////////
@@ -955,6 +980,7 @@ ResampleAttributes::GetFieldName(int index) const
     case ID_tieResolverVariable: return "tieResolverVariable";
     case ID_defaultValue:        return "defaultValue";
     case ID_distributedResample: return "distributedResample";
+    case ID_cellCenteredOutput:  return "cellCenteredOutput";
     default:  return "invalid index";
     }
 }
@@ -994,6 +1020,7 @@ ResampleAttributes::GetFieldType(int index) const
     case ID_tieResolverVariable: return FieldType_variablename;
     case ID_defaultValue:        return FieldType_double;
     case ID_distributedResample: return FieldType_bool;
+    case ID_cellCenteredOutput:  return FieldType_bool;
     default:  return FieldType_unknown;
     }
 }
@@ -1033,6 +1060,7 @@ ResampleAttributes::GetFieldTypeName(int index) const
     case ID_tieResolverVariable: return "variablename";
     case ID_defaultValue:        return "double";
     case ID_distributedResample: return "bool";
+    case ID_cellCenteredOutput:  return "bool";
     default:  return "invalid index";
     }
 }
@@ -1132,6 +1160,11 @@ ResampleAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
     case ID_distributedResample:
         {  // new scope
         retval = (distributedResample == obj.distributedResample);
+        }
+        break;
+    case ID_cellCenteredOutput:
+        {  // new scope
+        retval = (cellCenteredOutput == obj.cellCenteredOutput);
         }
         break;
     default: retval = false;

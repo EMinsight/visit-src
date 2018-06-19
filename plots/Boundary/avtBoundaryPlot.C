@@ -42,8 +42,6 @@
 
 #include <avtBoundaryPlot.h>
 
-#include <algorithm>
-
 #include <BoundaryAttributes.h>
 
 #include <avtColorTables.h>
@@ -62,8 +60,15 @@
 #include <LineAttributes.h>
 #include <maptypes.h>
 
+#include <algorithm>
+#include <string>
+#include <utility>
+#include <vector>
+
 using std::sort;
+using std::string;
 using std::pair;
+using std::vector;
 
 
 // ****************************************************************************
@@ -246,7 +251,18 @@ avtBoundaryPlot::SetAtts(const AttributeGroup *a)
     {
         levelsMapper->DataScalingOff();
     }
-    levelsMapper->SetGlyphType((int)atts.GetPointType());
+
+    if (atts.GetPointType() == BoundaryAttributes::Box)
+        levelsMapper->SetGlyphType(avtPointGlypher::Box);
+    else if (atts.GetPointType() == BoundaryAttributes::Axis)
+        levelsMapper->SetGlyphType(avtPointGlypher::Axis);
+    else if (atts.GetPointType() == BoundaryAttributes::Icosahedron)
+        levelsMapper->SetGlyphType(avtPointGlypher::Icosahedron);
+    else if (atts.GetPointType() == BoundaryAttributes::Point)
+        levelsMapper->SetGlyphType(avtPointGlypher::Point);
+    else if (atts.GetPointType() == BoundaryAttributes::Sphere)
+        levelsMapper->SetGlyphType(avtPointGlypher::Sphere);
+    
     SetPointGlyphSize();
 }
 
@@ -281,7 +297,7 @@ avtBoundaryPlot::SetColorTable(const char *ctName)
     {
         // If the color table is "Default" or is the color table that is being
         // changed, set the colors.
-        bool usesCT = (atts.GetColorTableName() == std::string(ctName));
+        bool usesCT = (atts.GetColorTableName() == string(ctName));
         if (usesCT || atts.GetColorTableName() == "Default")
         {
             SetColors();

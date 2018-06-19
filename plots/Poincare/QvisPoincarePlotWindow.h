@@ -100,12 +100,14 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
   protected:
     void UpdateWindow(bool doAll);
     void GetCurrentValues(int which_widget);
+    void UpdateFieldAttributes();
     void UpdateIntegrationAttributes();
     void UpdateAlgorithmAttributes();
     void UpdateMeshTypeAttributes();
     void Apply(bool ignore = false);
   private slots:
     void sourceTypeChanged(int val);
+    void velocitySourceProcessText();
     void pointSourceProcessText();
     void lineStartProcessText();
     void lineEndProcessText();
@@ -113,17 +115,22 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     void minPuncturesChanged(int val);
     void maxPuncturesChanged(int val);
     void puncturePlaneChanged(int val);
+    void fieldTypeChanged(int val);
+    void fieldConstantProccessText();
     void integrationTypeChanged(int val);
     void maxStepLengthProcessText();
+    void limitMaxTimeStepChanged(bool val);
+    void maxTimeStepProcessText();
     void relTolProcessText();
     void absTolProcessText();
+    void absTolSizeTypeChanged(int);
     void coordinateButtonGroupChanged(int val);
     void analysisChanged(int val);
     void maximumToroidalWindingChanged(int val);
     void overrideToroidalWindingChanged(int val);
     void overridePoloidalWindingChanged(int val);
     void windingPairConfidenceProcessText();
-    void rationalTemplateSeedParmProcessText();
+    void rationalSurfaceFactorProcessText();
     void adjustPlaneChanged(int val);
     void overlapsChanged(int val);
     void meshTypeChanged(int val);
@@ -170,15 +177,34 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     QButtonGroup *puncturePlaneButtonGroup;
     QWidget   *sourceType;
     QComboBox *sourceTypeCombo;
+    QLineEdit *velocitySource;
     QLineEdit *pointSource;
     QLineEdit *lineStart;
     QLineEdit *lineEnd;
     QSpinBox  *pointDensity;
-    QWidget   *integrationType;
-    QComboBox *integrationTypeCombo;
+    QComboBox *fieldType;
+    QLabel    *fieldConstantLabel;
+    QLineEdit *fieldConstant;
+
+    QComboBox *integrationType;
+    QLabel *integrationTypeLabel;
+    QCheckBox *limitMaxTimeStep;
     QLineEdit *maxStepLength;
+    QLabel    *maxStepLengthLabel;
+    QLineEdit *maxTimeStep;
+    QLineEdit *maxSteps;
+    QCheckBox *limitMaxTime;
+    QLineEdit *maxTime;
+    QCheckBox *limitMaxDistance;
+    QLineEdit *maxDistance;
     QLineEdit *relTol;
+    QLabel    *relTolLabel;
     QLineEdit *absTol;
+    QComboBox *absTolSizeType;
+    QLabel    *absTolLabel;
+    QCheckBox *forceNodal;
+
+
     QButtonGroup *coordinateButtonGroup;
     QWidget      *analysis;
     QButtonGroup *analysisButtonGroup;
@@ -186,7 +212,7 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     QSpinBox *overrideToroidalWinding;
     QSpinBox *overridePoloidalWinding;
     QLineEdit *windingPairConfidence;
-    QLineEdit *rationalTemplateSeedParm;
+    QLineEdit *rationalSurfaceFactor;
     QWidget      *overlaps;
     QButtonGroup *overlapsButtonGroup;
     QWidget      *meshType;
@@ -229,22 +255,18 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     QLabel *minPuncturesLabel;
     QLabel *maxPuncturesLabel;
     QLabel *sourceTypeLabel;
+    QLabel *velocitySourceLabel;
     QLabel *pointSourceLabel;
     QLabel *lineStartLabel;
     QLabel *lineEndLabel;
     QLabel *pointDensityLabel;
-    QLabel *integrationTypeLabel;
-    QLabel *maxStepLengthLabel;
-    QLabel *relTolLabel;
-    QLabel *absTolLabel;
-    QLabel    *forceNodalLabel;
-    QCheckBox *forceNodal;
+
     QLabel *analysisLabel;
     QLabel *maximumToroidalWindingLabel;
     QLabel *overrideToroidalWindingLabel;
     QLabel *overridePoloidalWindingLabel;
     QLabel *windingPairConfidenceLabel;
-    QLabel *rationalTemplateSeedParmLabel;
+    QLabel *rationalSurfaceFactorLabel;
     QLabel *adjustPlaneLabel;
     QLabel *overlapsLabel;
     QLabel *meshTypeLabel;

@@ -69,8 +69,7 @@
 
 #include <maptypes.h>
 #include <set>
-
-using std::set;
+#include <vector>
 
 struct IntersectionPoint
 {
@@ -82,7 +81,7 @@ struct CellInfo
     int origCell;
     int origDomain;
     intVector currCell;
-    vector<IntersectionPoint> isect;  
+    std::vector<IntersectionPoint> isect;  
 } ;
 
 
@@ -897,7 +896,7 @@ avtLineoutFilter::CreateRGridFromOrigCells(vtkDataSet *ds, double *pt1,
     int origCell;
     int origDomain;
     double center[3];
-    vector<CellInfo> cellInfoList;
+    std::vector<CellInfo> cellInfoList;
     bool dup = false;
     for (i = 0; i < npts; i++)
     {
@@ -990,7 +989,7 @@ avtLineoutFilter::CreateRGridFromOrigCells(vtkDataSet *ds, double *pt1,
             else 
             {
                 sum = 0;
-                set<int> uniquePts;
+                std::set<int> uniquePts;
                 for (j = 0; j < nDups; j++)
                 { 
                     ds->GetCellPoints(cellInfoList[i].currCell[j], ptIds); 

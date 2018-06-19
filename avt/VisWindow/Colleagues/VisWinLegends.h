@@ -47,8 +47,7 @@
 
 #include <VisWinColleague.h>
 
-class     vtkTextActor;
-
+class     vtkVisItTextActor;
 
 // ****************************************************************************
 //  Class: VisWinLegends
@@ -90,6 +89,12 @@ class     vtkTextActor;
 //    Brad Whitlock, Mon Mar  2 14:10:22 PST 2009
 //    I added time scale and offset.
 //
+//    Kathleen Biagas, Wed Sep  7 16:22:39 PDT 2011
+//    Added timeInfo to SetVisibility call.
+//
+//    Brad Whitlock, Mon Sep 19 16:06:46 PDT 2011
+//    Switch to vtkVisItTextActor.
+//
 // ****************************************************************************
 
 class VISWINDOW_API VisWinLegends : public VisWinColleague
@@ -101,16 +106,18 @@ class VISWINDOW_API VisWinLegends : public VisWinColleague
     virtual void                  SetForegroundColor(double, double, double);
     virtual void                  UpdatePlotList(std::vector<avtActor_p> &);
 
-    void                          SetVisibility(bool db,
+    void                          SetVisibility(bool db, 
                                                 int path_exp_mode,
-                                                bool legend);
+                                                bool legend,
+                                                bool timeInfo);
     void                          SetDatabaseInfoTextAttributes(
                                       const VisWinTextAttributes &);
     void                          SetTimeScaleAndOffset(double,double);
   protected:
-    vtkTextActor                 *dbInfoActor;
+    vtkVisItTextActor            *dbInfoActor;
     bool                          dbInfoIsAdded;
     bool                          dbInfoVisible;
+    bool                          timeVisible;
     VisWinTextAttributes          dbInfoTextAttributes;
     double                        dbInfoTimeScale;
     double                        dbInfoTimeOffset;
@@ -122,7 +129,6 @@ class VISWINDOW_API VisWinLegends : public VisWinColleague
     static const double            leftColumnPosition;
     static const double            rightColumnPosition;
     static const double            dbInfoHeight;
-    static const double            dbInfoWidth;
 
     void                          UpdateLegendInfo(std::vector<avtActor_p> &);
     void                          UpdateDBInfo(std::vector<avtActor_p> &);

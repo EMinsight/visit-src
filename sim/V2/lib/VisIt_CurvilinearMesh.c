@@ -44,72 +44,72 @@ int
 VisIt_CurvilinearMesh_alloc(visit_handle *obj)
 {
     VISIT_DYNAMIC_EXECUTE(CurvilinearMesh_alloc,
-                    int (*)(visit_handle*),
-                    int (*cb)(visit_handle*),
-                    (*cb)(obj))
+                    int, (visit_handle*),
+                    (obj))
 }
 
 int
 VisIt_CurvilinearMesh_free(visit_handle obj)
 {
     VISIT_DYNAMIC_EXECUTE(CurvilinearMesh_free,
-                    int (*)(visit_handle), 
-                    int (*cb)(visit_handle), 
-                    (*cb)(obj));
+                    int, (visit_handle), 
+                    (obj));
 }
 
 int
 VisIt_CurvilinearMesh_setCoordsXY(visit_handle obj, int dims[2], visit_handle x, visit_handle y)
 {
     VISIT_DYNAMIC_EXECUTE(CurvilinearMesh_setCoordsXY,
-                    int (*)(visit_handle,int[2],visit_handle,visit_handle), 
-                    int (*cb)(visit_handle,int[2],visit_handle,visit_handle), 
-                    (*cb)(obj,dims,x,y));
+                    int, (visit_handle,int[2],visit_handle,visit_handle), 
+                    (obj,dims,x,y));
 }
 
 int
 VisIt_CurvilinearMesh_setCoordsXYZ(visit_handle obj, int dims[3], visit_handle x, visit_handle y, visit_handle z)
 {
     VISIT_DYNAMIC_EXECUTE(CurvilinearMesh_setCoordsXYZ,
-                    int (*)(visit_handle,int[3],visit_handle,visit_handle,visit_handle), 
-                    int (*cb)(visit_handle,int[3],visit_handle,visit_handle,visit_handle), 
-                    (*cb)(obj,dims,x,y,z));
+                    int, (visit_handle,int[3],visit_handle,visit_handle,visit_handle), 
+                    (obj,dims,x,y,z));
 }
 
 int
 VisIt_CurvilinearMesh_setCoords2(visit_handle obj, int dims[2], visit_handle c)
 {
     VISIT_DYNAMIC_EXECUTE(CurvilinearMesh_setCoords2,
-                    int (*)(visit_handle,int[2],visit_handle), 
-                    int (*cb)(visit_handle,int[2],visit_handle), 
-                    (*cb)(obj,dims,c));
+                    int, (visit_handle,int[2],visit_handle), 
+                    (obj,dims,c));
 }
 
 int
 VisIt_CurvilinearMesh_setCoords3(visit_handle obj, int dims[3], visit_handle c)
 {
     VISIT_DYNAMIC_EXECUTE(CurvilinearMesh_setCoords3,
-                    int (*)(visit_handle,int[3],visit_handle), 
-                    int (*cb)(visit_handle,int[3],visit_handle), 
-                    (*cb)(obj,dims,c));
+                    int, (visit_handle,int[3],visit_handle), 
+                    (obj,dims,c));
 }
 
 int
 VisIt_CurvilinearMesh_setRealIndices(visit_handle obj, int min[3], int max[3])
 {
     VISIT_DYNAMIC_EXECUTE(CurvilinearMesh_setRealIndices,
-                    int (*)(visit_handle,int[3], int[3]), 
-                    int (*cb)(visit_handle,int[3], int[3]), 
-                    (*cb)(obj,min,max));
+                    int, (visit_handle,int[3], int[3]), 
+                    (obj,min,max));
 }
 
 int
 VisIt_CurvilinearMesh_setBaseIndex(visit_handle obj, int base_index[3])
 {
     VISIT_DYNAMIC_EXECUTE(CurvilinearMesh_setBaseIndex,
-                    int (*)(visit_handle,int[3]), 
-                    int (*cb)(visit_handle,int[3]), 
-                    (*cb)(obj,base_index));
+                    int, (visit_handle,int[3]), 
+                    (obj,base_index));
+}
+
+int
+VisIt_CurvilinearMesh_setGhostCells(visit_handle obj, visit_handle gz)
+{
+    VISIT_DYNAMIC_EXECUTE(CurvilinearMesh_setGhostCells,
+                    int, (visit_handle,visit_handle), 
+                    (obj,gz));
 }
 
 int
@@ -118,27 +118,32 @@ VisIt_CurvilinearMesh_getCoords(visit_handle obj, int *ndims, int dims[3],
     visit_handle *x, visit_handle *y, visit_handle *z, visit_handle *c)
 {
     VISIT_DYNAMIC_EXECUTE(CurvilinearMesh_getCoords,
-                    int (*)(visit_handle,int*,int[3],int*,visit_handle*,visit_handle*,visit_handle*,visit_handle*), 
-                    int (*cb)(visit_handle,int*,int[3],int*,visit_handle*,visit_handle*,visit_handle*,visit_handle*), 
-                    (*cb)(obj,ndims,dims,coordMode,x,y,z,c));
+                    int, (visit_handle,int*,int[3],int*,visit_handle*,visit_handle*,visit_handle*,visit_handle*), 
+                    (obj,ndims,dims,coordMode,x,y,z,c));
 }
 
 int
 VisIt_CurvilinearMesh_getRealIndices(visit_handle obj, int min[3], int max[3])
 {
     VISIT_DYNAMIC_EXECUTE(CurvilinearMesh_getRealIndices,
-                    int (*)(visit_handle,int[3], int[3]), 
-                    int (*cb)(visit_handle,int[3], int[3]), 
-                    (*cb)(obj,min,max));
+                    int, (visit_handle,int[3], int[3]), 
+                    (obj,min,max));
 }
 
 int
 VisIt_CurvilinearMesh_getBaseIndex(visit_handle obj, int base_index[3])
 {
     VISIT_DYNAMIC_EXECUTE(CurvilinearMesh_getBaseIndex,
-                    int (*)(visit_handle,int[3]), 
-                    int (*cb)(visit_handle,int[3]), 
-                    (*cb)(obj,base_index));
+                    int, (visit_handle,int[3]), 
+                    (obj,base_index));
+}
+
+int
+VisIt_CurvilinearMesh_getGhostCells(visit_handle obj, visit_handle *gz)
+{
+    VISIT_DYNAMIC_EXECUTE(CurvilinearMesh_getGhostCells,
+                    int, (visit_handle,visit_handle*), 
+                    (obj,gz));
 }
 
 /************************** Fortran callable routines *************************/
@@ -151,9 +156,12 @@ VisIt_CurvilinearMesh_getBaseIndex(visit_handle obj, int base_index[3])
 #define F_VISITCURVMESHSETCOORDS3        F77_ID(visitcurvmeshsetcoords3_,visitcurvmeshsetcoords3,VISITCURVMESHSETCOORDS3)
 #define F_VISITCURVMESHSETBASEINDEX      F77_ID(visitcurvmeshsetbaseindex_,visitcurvmeshsetbaseindex,VISITCURVMESHSETBASEINDEX)
 #define F_VISITCURVMESHSETREALINDICES    F77_ID(visitcurvmeshsetrealindices_,visitcurvmeshsetrealindices,VISITCURVMESHSETREALINDICES)
+#define F_VISITCURVMESHSETGHOSTCELLS     F77_ID(visitcurvmeshsetghostcells_,visitcurvmeshsetghostcells,VISITCURVMESHSETGHOSTCELLS)
+
 #define F_VISITCURVMESHGETCOORDS         F77_ID(visitcurvmeshgetcoords_,visitcurvmeshgetcoords,VISITCURVMESHGETCOORDS)
 #define F_VISITCURVMESHGETBASEINDEX      F77_ID(visitcurvmeshgetbaseindex_,visitcurvmeshgetbaseindex,VISITCURVMESHGETBASEINDEX)
 #define F_VISITCURVMESHGETREALINDICES    F77_ID(visitcurvmeshgetrealindices_,visitcurvmeshgetrealindices,VISITCURVMESHGETREALINDICES)
+#define F_VISITCURVMESHGETGHOSTCELLS     F77_ID(visitcurvmeshgetghostcells_,visitcurvmeshgetghostcells,VISITCURVMESHGETGHOSTCELLS)
 
 int
 F_VISITCURVMESHALLOC(visit_handle *obj)
@@ -215,6 +223,12 @@ F_VISITCURVMESHSETREALINDICES(visit_handle *obj, int *mins, int *maxs)
 }
 
 int
+F_VISITCURVMESHSETGHOSTCELLS(visit_handle *obj, visit_handle *gz)
+{
+    return VisIt_CurvilinearMesh_setGhostCells(*obj, *gz);
+}
+
+int
 F_VISITCURVMESHGETCOORDS(visit_handle *obj, int *ndims, int *dims,
     int *coordMode, 
     visit_handle *x, visit_handle *y, visit_handle *z, visit_handle *c)
@@ -234,3 +248,8 @@ F_VISITCURVMESHGETREALINDICES(visit_handle *obj, int *mins, int *maxs)
     return VisIt_CurvilinearMesh_getRealIndices(*obj, mins, maxs);
 }
 
+int
+F_VISITCURVMESHGETGHOSTCELLS(visit_handle *obj, visit_handle *gz)
+{
+    return VisIt_CurvilinearMesh_getGhostCells(*obj, gz);
+}

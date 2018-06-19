@@ -108,12 +108,16 @@ avtIVPVTKField::avtIVPVTKField( vtkDataSet* dataset, avtCellLocator* locator )
 //   Christoph Garth, Fri Jul 9, 10:10:22 PDT 2010
 //   Incorporate vtkVisItInterpolatedVelocityField in avtIVPVTKField.
 //
+//   David Camp, Fri Jul 29 06:55:39 PDT 2011
+//   Release loc data set.
 // ****************************************************************************
 
 avtIVPVTKField::~avtIVPVTKField()
 {
     if( ds )
         ds->Delete();
+    if( loc )
+       loc->ReleaseDataSet();
 }
 
 // ****************************************************************************
@@ -226,10 +230,27 @@ avtIVPVTKField::operator()( const double &t, const avtVector &p ) const
     if( !FindCell( t, p ) )
         throw Undefined();
 
+    return FindValue( velData );
+}
+
+// ****************************************************************************
+//  Method: avtIVPVTKField::FindValue
+//
+//  Purpose:
+//      Evaluates a point after consulting a VTK grid.
+//
+//  Programmer: Christoph Garth
+//  Creation:   February 25, 2008
+//
+// ****************************************************************************
+
+avtVector
+avtIVPVTKField::FindValue( vtkDataArray* vectorData ) const
+{
     avtVector vel( 0.0, 0.0, 0.0 );
 
     if( velCellBased )
-        velData->GetTuple( lastCell, &vel.x );
+        vectorData->GetTuple( lastCell, &vel.x );
     else
     {
         double tmp[3];
@@ -237,7 +258,7 @@ avtIVPVTKField::operator()( const double &t, const avtVector &p ) const
         for( avtInterpolationWeights::const_iterator wi=lastWeights.begin();
              wi!=lastWeights.end(); ++wi )
         {
-            velData->GetTuple( wi->i, tmp );
+            vectorData->GetTuple( wi->i, tmp );
 
             vel.x += wi->w * tmp[0];
             vel.y += wi->w * tmp[1];
@@ -255,6 +276,7 @@ avtIVPVTKField::operator()( const double &t, const avtVector &p ) const
 
     return vel;
 }
+
 
 // ****************************************************************************
 //  Method: avtIVPVTKField::ConvertToCartesian

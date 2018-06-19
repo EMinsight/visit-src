@@ -45,6 +45,8 @@
 
 #include "avtParICAlgorithm.h"
 
+#include <vector>
+
 #ifdef PARALLEL
 
 class SlaveInfo;
@@ -86,6 +88,9 @@ class SlaveInfo;
 //
 //   Dave Pugmire, Thu Dec  2 11:21:06 EST 2010
 //   Add CheckNextTimeStepNeeded.
+//
+//   Kathleen Biagas, Mon Sep 26 7:15:32 MST 2011
+//   Change Sleep to NSleep to prevent collision on Windows.
 //
 // ****************************************************************************
 
@@ -130,7 +135,7 @@ class avtMasterSlaveICAlgorithm : public avtParICAlgorithm
     }
     
     int                        sleepMicroSec;
-    void                       Sleep();
+    void                       NSleep();
     
     static int                 MSG_STATUS, MSG_DONE, MSG_SEND_IC,
                                MSG_LOAD_DOMAIN, MSG_SEND_IC_HINT,
@@ -310,16 +315,16 @@ class SlaveInfo
     void AddIC(int icDomain, int domCache);
     void LoadDom( int icDomain );
     void RemoveIC( int dom );
-    void Update( vector<int> &status, bool debug=false );
+    void Update( std::vector<int> &status, bool debug=false );
     void Reset() { justUpdated = false; }
     void Debug();
 
     bool justUpdated, initialized;
     int canGive, canAccept, icCount, icLoadedCount, icOOBCount, rank;
     int domLoadedCount;
-    vector<int> domainCnt;
-    vector<bool> domainLoaded;
-    vector<int> domainHistory;
+    std::vector<int> domainCnt;
+    std::vector<bool> domainLoaded;
+    std::vector<int> domainHistory;
 };
 
 #endif

@@ -10,6 +10,7 @@
 #include "VsSchema.h"
 #include "VsH5Dataset.h"
 #include "VsLog.h"
+#include "VsUtils.h"
 
 #include <string>
 
@@ -17,6 +18,7 @@
 
 
 VsStructuredMesh::VsStructuredMesh(VsH5Dataset* data):VsMesh(data) {
+  maskAtt = NULL;
 }
 
 
@@ -75,20 +77,47 @@ bool VsStructuredMesh::initialize()
       << "an array of size [numPoints] but with no spatial dimension.  "
       << "Whereas the normal dimensions would be [numPoints][spatialDim] "
       << "As such, assume the spatial dimenson is 1." << std::endl;
-
+    numTopologicalDims = 1;
     numSpatialDims = 1;
   }
   else
   {
-    if( isCompMinor() )
+    if( isCompMinor() ) {
       numSpatialDims = dims[dims.size()-1];
-    else
+      numTopologicalDims = 0;
+      for (int i = 0; i < (dims.size() - 1); i++) {
+        if (dims[i] > 1) {
+          numTopologicalDims++;
+        }
+      }
+    }
+    else {
       numSpatialDims = dims[0];
+      numTopologicalDims = 0;
+      for (int i = 1; i < dims.size(); i++) {
+        if (dims[i] > 1) {
+          numTopologicalDims++;
+        }
+      } 
+    }
   }
+
+  VsLog::debugLog() << __CLASS__ << __FUNCTION__ << "  " << __LINE__ << "  "
+                    << "Structured mesh " << getShortName() << " has topological dimensionality = " 
+                    << numTopologicalDims << std::endl;
   
   VsLog::debugLog() << __CLASS__ << __FUNCTION__ << "  " << __LINE__ << "  "
                     << "Mesh has num spatial dims = " << numSpatialDims
                     << std::endl;
+
+  maskAtt = getAttribute(VsSchema::maskAtt);
+  if (maskAtt) {
+     VsLog::debugLog() << __CLASS__ << __FUNCTION__ << "  " << __LINE__ << "  "
+                       << "Mesh has a mask" << std::endl;
+  } else {
+    VsLog::debugLog() << __CLASS__ << __FUNCTION__ << "  " << __LINE__ << "  "
+                       << "Mesh does not have a mask" << std::endl;
+  }
     
   VsLog::debugLog() << __CLASS__ << __FUNCTION__ << "  " << __LINE__ << "  "
                     << "Exiting." << std::endl;
@@ -162,4 +191,25 @@ void VsStructuredMesh::getNumMeshDims(std::vector<int>& dims)
       dims.resize(dims.size()-1);
     }
   }
+}
+
+std::string VsStructuredMesh::getMaskName()
+{
+  if (!maskAtt) {
+    VsLog::debugLog() << __CLASS__ << __FUNCTION__ << "  " << __LINE__ << "  "
+                      << "No mask attribute, returning empty string." << std::endl;
+    return std::string("");
+  }
+
+  std::string maskName;
+  herr_t err = maskAtt->getStringValue(&maskName);
+  if (err < 0) {
+    VsLog::debugLog() << __CLASS__ << __FUNCTION__ << "  " << __LINE__ << "  "
+                      << "Cannot get mask name from attribute, returning empty string." << std::endl;
+    return std::string("");
+  }
+
+  VsLog::debugLog() << __CLASS__ << __FUNCTION__ << "  " << __LINE__ << "  "
+                    <<"Returning makeCanonicalName of " <<maskName <<std::endl;
+  return makeCanonicalName(getFullName(), maskName);
 }

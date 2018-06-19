@@ -48,15 +48,19 @@
 #include <avtDataObjectReader.h>
 #include <vectortypes.h>
 #include <EngineKey.h>
+#include <EngineProperties.h>
 #include <MachineProfile.h>
-#include <map>
-
 #include <ExternalRenderRequestInfo.h>
+
+#include <map>
+#include <string>
+#include <vector>
 
 // Forward declarations.
 class AttributeSubject;
 class EngineList;
 class EngineProxy;
+class ExpressionList;
 class MaterialAttributes;
 class MeshManagementAttributes;
 class PickAttributes;
@@ -299,6 +303,18 @@ class SelectionProperties;
 //    Brad Whitlock, Thu Feb 24 01:56:40 PST 2011
 //    Remove some const char * arguments and use std::string instead.
 //
+//    Kathleen Biagas, Fri Jul 15 11:35:27 PDT 2011
+//    Add GetQueryParameters.
+//
+//    Brad Whitlock, Fri Aug 19 09:59:19 PDT 2011
+//    Change function that sends expressions to the engine to be more general.
+//
+//    Brad Whitlock, Mon Aug 22 10:48:39 PDT 2011
+//    Remove ApplyNamedSelection.
+//
+//    Brad Whitlock, Mon Oct 10 12:26:40 PDT 2011
+//    Store EngineProperties with the engine information.
+//
 // ****************************************************************************
 
 class VIEWER_API ViewerEngineManager : public ViewerServerManager,
@@ -306,8 +322,9 @@ class VIEWER_API ViewerEngineManager : public ViewerServerManager,
 {
     struct EngineInformation
     {
-        EngineProxy *proxy;
-        MachineProfile  profile;
+        EngineProxy     *proxy;
+        EngineProperties properties;
+        MachineProfile   profile;
     };
   public:
     virtual ~ViewerEngineManager();
@@ -324,7 +341,7 @@ class VIEWER_API ViewerEngineManager : public ViewerServerManager,
     bool ConnectSim(const EngineKey &ek,
                     const std::vector<std::string> &arguments,
                     const std::string &simHost, int simPort,
-                    const string &simSecurityKey);
+                    const std::string &simSecurityKey);
     void SendSimulationCommand(const EngineKey &ek,
                                const std::string &command,
                                const std::string &argument);
@@ -389,7 +406,7 @@ class VIEWER_API ViewerEngineManager : public ViewerServerManager,
                        const AttributeSubject *atts);
     bool MakePlot(const EngineKey &ek, const std::string &plotName,
                   const std::string &pluginID,
-                  const AttributeSubject *atts, const vector<double> &,
+                  const AttributeSubject *atts, const std::vector<double> &,
                   int winID, int *networkId);
     bool UpdatePlotAttributes(const EngineKey &ek, const std::string &name,
                               int id, const AttributeSubject *atts);
@@ -410,15 +427,17 @@ class VIEWER_API ViewerEngineManager : public ViewerServerManager,
     bool ClearCache(const EngineKey &ek, const std::string &dbName = std::string(""));
     bool Query(const EngineKey &ek, const std::vector<int> &networkIds, 
                const QueryAttributes *atts, QueryAttributes &retAtts);
+    bool GetQueryParameters(const EngineKey &ek, const std::string &qname,
+                            std::string *params);
     bool GetProcInfo(const EngineKey &ek, ProcessAttributes &retAtts);
     bool ReleaseData(const EngineKey &ek, int id);
     bool CloneNetwork(const EngineKey &ek, int id, 
                       const QueryOverTimeAttributes *qatts);
     bool ExportDatabase(const EngineKey &ek, int id);
     bool ConstructDataBinning(const EngineKey &ek, int id);
-    bool ApplyNamedSelection(const EngineKey &ek, const std::vector<std::string> &ids, 
-                             const std::string &);
+
     bool CreateNamedSelection(const EngineKey &ek, int, const SelectionProperties &);
+    bool UpdateNamedSelection(const EngineKey &ek, int, const SelectionProperties &, bool allowCache);
     bool DeleteNamedSelection(const EngineKey &ek, const std::string &);
     bool LoadNamedSelection(const EngineKey &ek, const std::string &);
     bool SaveNamedSelection(const EngineKey &ek, const std::string &);
@@ -426,7 +445,7 @@ class VIEWER_API ViewerEngineManager : public ViewerServerManager,
     void CreateNode(DataNode *) const;
     void SetFromNode(DataNode *, const std::string &);
 
-    void UpdateExpressionsFromPlot(const ViewerPlot *);
+    bool UpdateExpressions(const EngineKey &ek, const ExpressionList &eL);
 
   protected:
     ViewerEngineManager();

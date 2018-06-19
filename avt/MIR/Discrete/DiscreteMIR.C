@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-400142
 * All rights reserved.
@@ -327,6 +327,8 @@ DiscreteMIR::Reconstruct2DMesh(vtkDataSet *mesh_orig, avtMaterial *mat_orig)
 //    Also, use random number generator in the range [0,1) so that we don't
 //    walk off the end of other arrays.
 //
+//    Mark C. Miller, Tue Aug 30 00:10:03 PDT 2011
+//    Fixed compiler warnings converting to 'int' from 'float'.
 // ****************************************************************************
 bool
 DiscreteMIR::ReconstructMesh(vtkDataSet *mesh_orig, avtMaterial *mat_orig, int dim)
@@ -484,9 +486,9 @@ DiscreteMIR::ReconstructMesh(vtkDataSet *mesh_orig, avtMaterial *mat_orig, int d
         int total = 0;
         for(int m = 0; m < nMaterials; ++m)
         {
-            target[m] =
-                DX * DY * DZ *
-                vfs[m];
+            target[m] = (int)
+                (DX * DY * DZ *
+                vfs[m]);
 
             total += target[m];
             count[m] = 0;
@@ -541,7 +543,7 @@ DiscreteMIR::ReconstructMesh(vtkDataSet *mesh_orig, avtMaterial *mat_orig, int d
     // cleanish.  Cleanish cells are non-mixed cells incident to mixed
     // cells.  They'll need some special handling to connect with
     // mixed cells.
-    int *conn_ptr = conn.connectivity;
+    vtkIdType *conn_ptr = conn.connectivity;
     zonesList.reserve(nCells);
     for(int k = 0; k < dimensions[2]; ++k)
         for(int j = 0; j < dimensions[1]; ++j)
@@ -551,7 +553,7 @@ DiscreteMIR::ReconstructMesh(vtkDataSet *mesh_orig, avtMaterial *mat_orig, int d
                 int cellid = id(cell);
 
                 int nIds = *conn_ptr;
-                const int *ids = conn_ptr+1;
+                const vtkIdType *ids = conn_ptr+1;
 
                 conn_ptr += nIds+1;
 
@@ -1336,6 +1338,7 @@ DiscreteMIR::GetDataset(std::vector<int> mats, vtkDataSet *ds,
             visitTimer->StopTimer(timerHandle,
                                   "MIR: Getting *completely* clean dataset");
             visitTimer->DumpTimings();
+            delete [] matFlag;
             return outmesh;
         }
         else
@@ -1343,6 +1346,7 @@ DiscreteMIR::GetDataset(std::vector<int> mats, vtkDataSet *ds,
             visitTimer->StopTimer(timerHandle,
                                   "MIR: Getting *empty* clean dataset");
             visitTimer->DumpTimings();
+            delete [] matFlag;
             return NULL;
         }
     }
@@ -1439,7 +1443,7 @@ DiscreteMIR::GetDataset(std::vector<int> mats, vtkDataSet *ds,
 
     vtkIdTypeArray *cellLocations = vtkIdTypeArray::New();
     cellLocations->SetNumberOfValues(ncells);
-    int *cl = cellLocations->GetPointer(0);
+    vtkIdType *cl = cellLocations->GetPointer(0);
 
     int offset = 0;
     for (int i=0; i<ncells; i++)
@@ -1450,7 +1454,7 @@ DiscreteMIR::GetDataset(std::vector<int> mats, vtkDataSet *ds,
 
         const int nnodes = zonesList[c].nnodes;
         *nl++ = nnodes;
-        const int *indices = &indexList[zonesList[c].startindex];
+        const vtkIdType *indices = &indexList[zonesList[c].startindex];
         for (int j=0; j<nnodes; j++)
             *nl++ = indices[j];
 
@@ -1674,12 +1678,12 @@ DiscreteMIR::ReconstructCleanMesh(vtkDataSet *mesh, avtMaterial *mat)
     // extract cells
     int        nCells  = conn.ncells;
     const int *matlist = mat->GetMatlist();
-    int *conn_ptr = conn.connectivity;
+    vtkIdType *conn_ptr = conn.connectivity;
     zonesList.resize(nCells);
     for (int c=0; c<nCells; c++)
     {
-        int        nIds = *conn_ptr;
-        const int *ids  = conn_ptr+1;
+        int        nIds = (int)*conn_ptr;
+        const vtkIdType *ids  = conn_ptr+1;
 
         ReconstructedZone &zone = zonesList[c];
         zone.origzone   = c;
@@ -1834,6 +1838,9 @@ unsigned char DiscreteMIR::get(size_t i, size_t j, size_t k) const
 //    Split labels into mixed and clean versions to avoid assumptions
 //    about signedness of pointers and sizes of integers and pointers.
 //
+//    Mark C. Miller, Tue Aug 30 00:09:28 PDT 2011
+//    Fixed compiler warnings converting to 'int' from either 'float' or
+//    'double'.
 // ***************************************************************************
 void DiscreteMIR::optimize()
 {
@@ -1856,15 +1863,15 @@ void DiscreteMIR::optimize()
     {
         for(int iteration = 0; iteration < 1000; ++iteration)
         {
-            cell = m_mixedCells[RANDOM * m_mixedCells.size()];
+            cell = m_mixedCells[(int)(RANDOM * m_mixedCells.size())];
             labels = m_mixedlabels[id(cell)];
 
             // Pick two sites within a cell with different labels.
             int incell = 10;
             do
             {
-                r  = DX * DY * DZ * RANDOM;
-                r2 = DX * DY * DZ * RANDOM;
+                r  = (int) (DX * DY * DZ * RANDOM);
+                r2 = (int) (DX * DY * DZ * RANDOM);
 
                 l  = labels[r];
                 l2 = labels[r2];

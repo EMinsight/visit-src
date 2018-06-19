@@ -239,8 +239,28 @@
 #    Add VISIT_FORCE_SSH_TUNNELING that always forces ssh tunneling for all
 #    data connections.
 #
+#    Gunther H. Weber, Wed Jul 20 15:32:26 PDT 2011
+#    Add support for creating a Mac App bundle by setting
+#    VISIT_CREATE_APPBUNDLE_PACKAGE to ON.
+#
 #    Kathleen Biagas, Mon Aug 8 08:08:42 MST 2011
 #    Use VISIT_3RDPARTY_DEP for all libdep vars. 
+#
+#    Kathleen Biagas, Wed Aug 17 10:59:33 PDT 2011
+#    Remove vtkzlib as a substitute for zlib.
+#
+#    Kathleen Biagas, Wed Aug 17 12:31:50 PDT 2011
+#    Make use of NSIS to create an installer an option.
+#
+#    Gunther H. Weber, Tue Sep 20 17:15:48 PDT 2011
+#    Use NERSC_HOST environment variable instead of hostname to determine if
+#    we are running on Franklin or Hopper.
+#
+#    Kathleen Biagas, Mon Sep 26 14:59:32 MST 2011
+#    Add mpi search support for Windows.
+#
+#    Gunther H. Weber, Wed Oct  5 19:14:27 PDT 2011
+#    Change NERSC_HOST to VISIT_HOSTNAME to make it more general
 #
 #****************************************************************************/
 
@@ -268,6 +288,14 @@ SET_PROPERTY(GLOBAL PROPERTY USE_FOLDERS ON)
 #----------------------------------------------------------------------------
 
 SITE_NAME(HOSTNAME)
+
+# Use NERSC_HOST environment variable to determine if we are running on Franklin
+# or Hopper. If so, use that hostname instead of the result of SITE_NAME which is
+# only the name of the login node we are running on.
+IF(NOT "$ENV{VISIT_HOSTNAME}" STREQUAL "")
+    SET(HOSTNAME "$ENV{VISIT_HOSTNAME}")
+ENDIF(NOT "$ENV{VISIT_HOSTNAME}" STREQUAL "")
+
 
 #-----------------------------------------------------------------------------
 # Helper function for setting build options via config-site file.
@@ -441,7 +469,10 @@ OPTION(VISIT_DATA_MANUAL_EXAMPLES "Build Getting Data Into VisIt examples" OFF)
 
 OPTION(IGNORE_THIRD_PARTY_LIB_PROBLEMS "Ignore problems finding requested third party libraries")
 OPTION(VISIT_FORCE_SSH_TUNNELING "Force ssh tunnelling for sockets" OFF)
-
+OPTION(VISIT_CREATE_APPBUNDLE_PACKAGE "Create DMG file with Mac App bundle with make package" OFF) 
+IF(WIN32)
+  OPTION(VISIT_MAKE_NSIS_INSTALLER "Create an installer package using NSIS" OFF)
+ENDIF(WIN32)
 
 MACRO(VISIT_3RDPARTY_VAR libvar comment)
     IF(NOT DEFINED VISIT_${libvar})
@@ -478,7 +509,9 @@ ENDMACRO(VISIT_3RDPARTY_DEP libvar comment)
 VISIT_3RDPARTY_VAR(VTK_DIR    "Path containing the VTK library's bin and lib")
 VISIT_3RDPARTY_VAR(QT_BIN     "Path to the Qt library's bin (path containing qmake)")
 VISIT_3RDPARTY_VAR(PYTHON_DIR "Path containing the Python library's include and lib")
-VISIT_3RDPARTY_VAR(MESA_DIR   "Path containing the Mesa library's include and lib")
+IF (NOT WIN32)
+  VISIT_3RDPARTY_VAR(MESA_DIR   "Path containing the Mesa library's include and lib")
+ENDIF (NOT WIN32)
 VISIT_3RDPARTY_VAR(ICET_DIR   "Path containing the Ice-T library's include and lib")
 VISIT_3RDPARTY_VAR(TCMALLOC_DIR   "Path containing the tcmalloc library's include and lib")
 
@@ -497,6 +530,7 @@ ENDIF(WIN32)
 #       needs to link but not to compile). Use the plugin's .xml file for
 #       libs a plugin is DIRECTLY dependent on (e.g. needs to both compile
 #       and link).
+VISIT_3RDPARTY_VAR(PYSIDE_DIR    "Path containing the PySide installation")
 VISIT_3RDPARTY_VAR(ADIOS_DIR     "Path containing the ADIOS library's include and lib")
 VISIT_3RDPARTY_VAR(ADVIO_DIR     "Path containing the AdvIO library's include and lib")
 VISIT_3RDPARTY_VAR(BOXLIB_DIR    "Path containing the Boxlib library's include and lib")
@@ -649,13 +683,27 @@ MACRO(VISIT_INSTALL_TARGETS)
             FOREACH(target ${ARGN})
                 GET_TARGET_PROPERTY(type ${target} TYPE)
                 IF(${type} STREQUAL "SHARED_LIBRARY")
-                    SET(filename lib${target}.dylib)
+                    # This turns out to be a better way to get the 
+                    # base filename of the output target.
+                    GET_TARGET_PROPERTY(filename ${target} LOCATION)
+                    GET_FILENAME_COMPONENT(filename ${filename} NAME)
                     INSTALL(CODE 
                         "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
                              COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/${filename}\"
                              OUTPUT_VARIABLE OSXOUT)
                          MESSAGE(STATUS \"\${OSXOUT}\")
                         ")
+                ELSEIF(${type} STREQUAL "MODULE_LIBRARY")
+                    # This turns out to be a better way to get the 
+                    # base filename of the output target.
+                    GET_TARGET_PROPERTY(filename ${target} LOCATION)
+                    GET_FILENAME_COMPONENT(filename ${filename} NAME)
+                    INSTALL(CODE 
+                        "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
+                             COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/${filename}\"
+                             OUTPUT_VARIABLE OSXOUT)
+                         MESSAGE(STATUS \"\${OSXOUT}\")
+                        ")                
                 ELSEIF(${type} STREQUAL "EXECUTABLE")
                     GET_TARGET_PROPERTY(filename ${target} OUTPUT_NAME)
                     IF(filename STREQUAL "filename-NOTFOUND")
@@ -747,9 +795,9 @@ IF(NOT VISIT_DBIO_ONLY)
 ENDIF(NOT VISIT_DBIO_ONLY)
 
 # Configure Mesa support.
-IF(NOT VISIT_DBIO_ONLY)
+IF(NOT WIN32 AND NOT VISIT_DBIO_ONLY)
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItMesa.cmake)
-ENDIF(NOT VISIT_DBIO_ONLY)
+ENDIF(NOT WIN32 AND NOT VISIT_DBIO_ONLY)
 
 # Configure VTK support.
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItVTK.cmake)
@@ -786,6 +834,14 @@ ENDIF(VISIT_PYTHON_FILTERS AND VISIT_DBIO_ONLY)
 # Configure Qt4 support.
 IF(NOT VISIT_DBIO_ONLY)
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItQt4.cmake)
+ENDIF(NOT VISIT_DBIO_ONLY)
+
+# Configure PySide Support
+IF(NOT VISIT_DBIO_ONLY)
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindPySide.cmake)
+    IF(PYSIDE_FOUND)
+        SET(HAVE_PYSIDE 1)
+    ENDIF(PYSIDE_FOUND)
 ENDIF(NOT VISIT_DBIO_ONLY)
 
 # Treat GLEW as a 3rd party builtin.
@@ -831,18 +887,14 @@ INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindTCMALLOC.cmake)
 # zlib, szip and jpeg
 IF(CMAKE_HOST_UNIX)
   SET(ZLIB_LIB z)
+  SET(ZLIB_FOUND 1)
   SET(DL_LIB dl)
   ADD_DEFINITIONS(-D_LARGEFILE64_SOURCE)
 ELSE(CMAKE_HOST_UNIX)
   IF(WIN32)
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindZlib.cmake)
-    IF(NOT ZLIB_FOUND)
-        SET(ZLIB_LIB vtkzlib)
-    ENDIF(NOT ZLIB_FOUND)
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindJPEG.cmake)
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindSzip.cmake)
-  ELSE(WIN32)
-      SET(ZLIB_LIB vtkzlib)
   ENDIF(WIN32)
 ENDIF(CMAKE_HOST_UNIX)
 
@@ -964,9 +1016,9 @@ IF(MDSPLUS_FOUND)
 ENDIF(MDSPLUS_FOUND)
 
 
-IF (WIN32)
+IF (WIN32 AND VISIT_MAKE_NSIS_INSTALLER)
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindNSIS.cmake)
-ENDIF (WIN32)
+ENDIF (WIN32 AND VISIT_MAKE_NSIS_INSTALLER)
 
 
 IF(VISIT_STATIC)
@@ -1051,38 +1103,84 @@ IF(VISIT_PARALLEL)
         ENDIF(VISIT_FORTRAN AND VISIT_MPI_FORTRAN_COMPILER)
 
     ELSE(VISIT_MPI_COMPILER)
-        MESSAGE(STATUS "Setting up MPI using user defined flags")
+        SET(VPFLAGS "-DPARALLEL -DMPICH_IGNORE_CXX_SEEK")
         IF(VISIT_MPI_LIBS OR VISIT_MPI_FORTRAN_LIBS)
-            SET(VISIT_PARALLEL_LIBS          ${VISIT_MPI_LIBS} CACHE STRING "MPI libraries")
-            SET(VISIT_PARALLEL_FORTRAN_LIBS  ${VISIT_MPI_FORTRAN_LIBS} CACHE STRING "MPI libraries for Fortran")
+            MESSAGE(STATUS "Setting up MPI using user defined flags")
+            SET(VISIT_PARALLEL_LIBS          ${VISIT_MPI_LIBS} 
+                CACHE STRING "MPI libraries")
+            SET(VISIT_PARALLEL_FORTRAN_LIBS  ${VISIT_MPI_FORTRAN_LIBS} 
+                CACHE STRING "MPI libraries for Fortran")
 
             IF(VISIT_MPI_C_FLAGS)
-                SET(VISIT_PARALLEL_CFLAGS  "-DPARALLEL -DMPICH_IGNORE_CXX_SEEK ${VISIT_MPI_C_FLAGS}" CACHE STRING "Parallel CFLAGS")
+                SET(VISIT_PARALLEL_CFLAGS  " ${VPFLAGS} ${VISIT_MPI_C_FLAGS}" 
+                    CACHE STRING "Parallel CFLAGS")
             ELSE(VISIT_MPI_C_FLAGS)
-                SET(VISIT_PARALLEL_CFLAGS  "-DPARALLEL -DMPICH_IGNORE_CXX_SEEK" CACHE STRING "Parallel CFLAGS")
+                SET(VISIT_PARALLEL_CFLAGS  "${VPFLAGS}" 
+                    CACHE STRING "Parallel CFLAGS")
             ENDIF(VISIT_MPI_C_FLAGS)
 
             IF(VISIT_MPI_CXX_FLAGS)
-                SET(VISIT_PARALLEL_CXXFLAGS  "-DPARALLEL -DMPICH_IGNORE_CXX_SEEK ${VISIT_MPI_CXX_FLAGS}" CACHE STRING "Parallel CXXFLAGS")
+                SET(VISIT_PARALLEL_CXXFLAGS "${VPFLAGS} ${VISIT_MPI_CXX_FLAGS}" 
+                    CACHE STRING "Parallel CXXFLAGS")
             ELSE(VISIT_MPI_CXX_FLAGS)
-                SET(VISIT_PARALLEL_CXXFLAGS  "-DPARALLEL -DMPICH_IGNORE_CXX_SEEK" CACHE STRING "Parallel CXXFLAGS")
+                SET(VISIT_PARALLEL_CXXFLAGS  "${VPFLAGS}"
+                    CACHE STRING "Parallel CXXFLAGS")
             ENDIF(VISIT_MPI_CXX_FLAGS)
 
             IF(VISIT_MPI_FORTRAN_FLAGS)
-                SET(VISIT_PARALLEL_FORTRANFLAGS  "-DPARALLEL -DMPICH_IGNORE_CXX_SEEK ${VISIT_MPI_FORTRAN_FLAGS}" CACHE STRING "Parallel Fortran flags")
+                SET(VISIT_PARALLEL_FORTRANFLAGS "${VPFLAGS} ${VISIT_MPI_FORTRAN_FLAGS}" 
+                    CACHE STRING "Parallel Fortran flags")
             ELSE(VISIT_MPI_FORTRAN_FLAGS)
-                SET(VISIT_PARALLEL_FORTRANFLAGS  "-DPARALLEL -DMPICH_IGNORE_CXX_SEEK" CACHE STRING "Parallel flags for Fortran")
+                SET(VISIT_PARALLEL_FORTRANFLAGS  "${VPFLAGS}" 
+                    CACHE STRING "Parallel flags for Fortran")
             ENDIF(VISIT_MPI_FORTRAN_FLAGS)
 
             IF(VISIT_MPI_LD_FLAGS)
-                SET(VISIT_PARALLEL_LINKER_FLAGS "${VISIT_MPI_LD_FLAGS}" CACHE STRING "Parallel LDFLAGS")
+                SET(VISIT_PARALLEL_LINKER_FLAGS "${VISIT_MPI_LD_FLAGS}" 
+                    CACHE STRING "Parallel LDFLAGS")
             ELSE(VISIT_MPI_LD_FLAGS)
-                SET(VISIT_PARALLEL_LINKER_FLAGS "" CACHE STRING "Parallel LDFLAGS")
+                SET(VISIT_PARALLEL_LINKER_FLAGS "" 
+                    CACHE STRING "Parallel LDFLAGS")
             ENDIF(VISIT_MPI_LD_FLAGS)
         ELSE(VISIT_MPI_LIBS OR VISIT_MPI_FORTRAN_LIBS)
-            MESSAGE(FATAL_ERROR "To build parallel VisIt, you must at a minimum define VISIT_MPI_COMPILER or VISIT_MPI_LIBS.
-                    You may also define VISIT_MPI_LD_FLAGS, VISIT_MPI_CXX_FLAGS." )
+            IF(WIN32)
+              INCLUDE(${CMAKE_ROOT}/Modules/FindMPI.cmake)
+              IF(MPI_FOUND)
+                IF(MPI_COMPILE_FLAGS)
+                    LIST(APPEND VPFLAGS "${MPI_COMPILE_FLAGS}")
+                ENDIF(MPI_COMPILE_FLAGS)
+                IF(MPI_INCLUDE_PATH)
+                    LIST(APPEND VPFLAGS "/I \"${MPI_INCLUDE_PATH}\"")
+                ENDIF(MPI_INCLUDE_PATH)
+                STRING(REPLACE ";" " " VPFLAGS "${VPFLAGS}")
+                SET(VISIT_PARALLEL_CFLAGS "${VPFLAGS}" 
+                    CACHE STRING "Parallel CFLAGS")
+                SET(VISIT_PARALLEL_CXXFLAGS "${VPFLAGS}" 
+                     CACHE STRING "Parallel CXXFLAGS")
+                SET(VISIT_PARALLEL_LIBS "${MPI_LIBRARY}"
+                    CACHE STRING "MPI libraries")
+                IF(MPI_LINK_FLAGS)
+                    SET(VISIT_PARALLEL_LINKER_FLAGS "${MPI_LINK_FLAGS}"
+                        CACHE STRING "Parallel LDFLAGS")
+                #ELSE(MPI_LINK_FLAGS)
+                #    SET(VISIT_PARALLEL_LINKER_FLAGS " "
+                #        CACHE STRING "Parallel LDFLAGS")
+                ENDIF(MPI_LINK_FLAGS)
+              ELSE(MPI_FOUND)
+                MESSAGE(FATAL_ERROR "To build parallel VisIt, you must at a " 
+                        "minimum define VISIT_MPI_COMPILER or VISIT_MPI_LIBS. "
+                        "You may also define VISIT_MPI_LD_FLAGS, "
+                        "VISIT_MPI_CXX_FLAGS." )
+              ENDIF(MPI_FOUND)
+            ELSE(WIN32)
+                MESSAGE(FATAL_ERROR "To build parallel VisIt, you must at a " 
+                        "minimum define VISIT_MPI_COMPILER or VISIT_MPI_LIBS. "
+                        "You may also define VISIT_MPI_LD_FLAGS, "
+                        "VISIT_MPI_CXX_FLAGS." )
+            ENDIF(WIN32)
+
         ENDIF(VISIT_MPI_LIBS OR VISIT_MPI_FORTRAN_LIBS)
+        UNSET(VPFLAGS)
     ENDIF(VISIT_MPI_COMPILER)
 
     MESSAGE(STATUS "Parallel version of VisIt")
@@ -1245,21 +1343,6 @@ SET(VISIT_COMMON_INCLUDES
     ${VISIT_SOURCE_DIR}/common/utility
     )
 
-
-# Override the OPENGL_glu_LIBRARY returned by CMake on the Mac because the
-# AGL framework does NOT contain gluTess functions. We want to instead use
-# Mesa's GLU functions.
-IF(APPLE AND NOT VISIT_DBIO_ONLY)
-    SET(OPENGL_glu_LIBRARY ${MESA_LIBRARY_DIR}/libMesaGLU.dylib CACHE INTERNAL "AGL lib for OSX")   
-ENDIF(APPLE AND NOT VISIT_DBIO_ONLY)
-
-# We use libGLU for its tessellation abilities but it requires libGL sometimes.
-IF(UNIX AND NOT APPLE)
-    SET(TESSELLATION_LIBRARY ${OPENGL_glu_LIBRARY} ${OPENGL_gl_LIBRARY})
-ELSE(UNIX AND NOT APPLE)
-    SET(TESSELLATION_LIBRARY ${OPENGL_glu_LIBRARY})
-ENDIF(UNIX AND NOT APPLE)
-
 # Windows-specific settings
 IF (WIN32)
   ADD_DEFINITIONS(-D_USE_MATH_DEFINES)
@@ -1313,6 +1396,16 @@ IF (WIN32)
   REPLACE_FLAG("/machine:I386" "" CMAKE_SHARED_LINKER_FLAGS
                "Flags used by the linker during creation of dll's.")
 ENDIF (WIN32)
+
+# Mac-specific function
+FUNCTION(MAC_NIB_INSTALL exename)
+    IF(VISIT_STATIC AND APPLE)
+        FOREACH(x classes.nib info.nib keyedobjects.nib)
+            FILE(COPY ${VISIT_SOURCE_DIR}/include/qt_menu.nib/${x}
+                 DESTINATION ${VISIT_EXECUTABLE_DIR}/${exename}.app/Contents/Resources/qt_menu.nib/)
+        ENDFOREACH(x)
+    ENDIF(VISIT_STATIC AND APPLE) 
+ENDFUNCTION(MAC_NIB_INSTALL)
 
 #-----------------------------------------------------------------------------
 # Read the SVN revision
@@ -1369,6 +1462,20 @@ ELSE(VISIT_STATIC)
         ENDIF(APPLE)
     ENDIF(WIN32)
 ENDIF(VISIT_STATIC)
+
+# Override the OPENGL_glu_LIBRARY returned by CMake on the Mac because the
+# AGL framework does NOT contain gluTess functions. We want to instead use
+# Mesa's GLU functions.
+IF(APPLE AND NOT VISIT_DBIO_ONLY)
+    SET(OPENGL_glu_LIBRARY ${MESA_LIBRARY_DIR}/libMesaGLU${VISIT_PLUGIN_EXTENSION} CACHE INTERNAL "AGL lib for OSX")   
+ENDIF(APPLE AND NOT VISIT_DBIO_ONLY)
+
+# We use libGLU for its tessellation abilities but it requires libGL sometimes.
+IF(UNIX AND NOT APPLE)
+    SET(TESSELLATION_LIBRARY ${OPENGL_glu_LIBRARY} ${OPENGL_gl_LIBRARY})
+ELSE(UNIX AND NOT APPLE)
+    SET(TESSELLATION_LIBRARY ${OPENGL_glu_LIBRARY})
+ENDIF(UNIX AND NOT APPLE)
 
 # Check for type sizes, endian
 SET(SIZEOF_BOOLEAN              ${CMAKE_SIZEOF_BOOLEAN})
@@ -1491,8 +1598,14 @@ IF(NOT VISIT_DISABLE_SELECT)
     ENDIF(WIN32)
 ENDIF(NOT VISIT_DISABLE_SELECT)
 
-MESSAGE(STATUS "Setting VISIT_RENDERING_SIZE_LIMIT to ${OSMESA_SIZE_LIMIT}")
-SET(VISIT_RENDERING_SIZE_LIMIT ${OSMESA_SIZE_LIMIT} CACHE INTERNAL "rendering size limit")
+IF (NOT WIN32)
+  MESSAGE(STATUS "Setting VISIT_RENDERING_SIZE_LIMIT to ${OSMESA_SIZE_LIMIT}")
+  SET(VISIT_RENDERING_SIZE_LIMIT ${OSMESA_SIZE_LIMIT} CACHE INTERNAL "rendering size limit")
+ELSE(NOT WIN32)
+  # totally arbitrary, but it is what Mesa was set to when built on Windows
+  MESSAGE(STATUS "Setting VISIT_RENDERING_SIZE_LIMIT to 16384")
+  SET(VISIT_RENDERING_SIZE_LIMIT 16384 CACHE INTERNAL "rendering size limit")
+ENDIF(NOT WIN32)
 
 CONFIGURE_FILE(${VISIT_SOURCE_DIR}/include/visit-cmake.h.in
                ${VISIT_BINARY_DIR}/include/visit-config.h @ONLY IMMEDIATE)
@@ -1819,38 +1932,46 @@ INSTALL(FILES ${VISIT_BINARY_DIR}/include/VisItLibraryDependencies.cmake
 #          packages up a VisIt distribution.
 #-----------------------------------------------------------------------------
 
+CONFIGURE_FILE(${VISIT_SOURCE_DIR}/svn_bin/Info.plist.in
+               ${VISIT_BINARY_DIR}/svn_bin/Info.plist @ONLY IMMEDIATE)
+
 # temporarily turn this off on windows
 IF (NOT WIN32)
-SET(CPACK_PACKAGE_NAME "visit")
-SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "VisIt ${VISIT_VERSION} is a parallel visualization and data analysis tool")
-SET(CPACK_PACKAGE_VENDOR "LLNS")
-SET(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/help/en_US/copyright.html")
+    IF (APPLE AND VISIT_CREATE_APPBUNDLE_PACKAGE)
+        SET (CPACK_GENERATOR "Bundle")
 
-# We should probably parse ${VISIT_VERSION} into its component parts instead.
-SET(CPACK_PACKAGE_VERSION_MAJOR "2")
-SET(CPACK_PACKAGE_VERSION_MINOR "0")
-SET(CPACK_PACKAGE_VERSION_PATCH "0")
+        SET (CPACK_PACKAGE_FILE_NAME "VisIt-${VISIT_VERSION}")
+        SET (CPACK_BUNDLE_NAME "VisIt")
+        SET (CPACK_BUNDLE_ICON "${VISIT_SOURCE_DIR}/common/icons/VisItIcon.icns")
+        SET (CPACK_BUNDLE_PLIST "${VISIT_BINARY_DIR}/svn_bin/Info.plist")
+        SET (CPACK_BUNDLE_STARTUP_COMMAND "${VISIT_SOURCE_DIR}/svn_bin/LaunchVisItFromAppBundle.sh")
+    ELSE(APPLE AND VISIT_CREATE_APPBUNDLE_PACKAGE)
+        SET(CPACK_GENERATOR "TGZ")
 
-#IF(WIN32)
-#    SET(CPACK_PACKAGE_FILE_NAME "visit${VISIT_VERSION}")
-#    SET(CPACK_PACKAGE_INSTALL_DIRECTORY "VisIt ${VISIT_VERSION}")
-#
-#    SET(CPACK_GENERATOR "NSIS")
-#ELSE(WIN32)
-    STRING(REPLACE "." "_" UL_VERSION ${VISIT_VERSION})
-    SET(CPACK_PACKAGE_FILE_NAME "visit${UL_VERSION}.${VISIT_INSTALL_PLATFORM}")
+        SET(CPACK_PACKAGE_NAME "visit")
+        SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "VisIt ${VISIT_VERSION} is a parallel visualization and data analysis tool")
+        SET(CPACK_PACKAGE_VENDOR "LLNS")
+        SET(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/help/en_US/copyright.html")
 
-    SET(CPACK_GENERATOR "TGZ")
-    IF(NOT APPLE)
-        SET(CPACK_STRIP_FILES TRUE)
-    ENDIF(NOT APPLE)
-#ENDIF(WIN32)
-INCLUDE(CPack)
+        # We should probably parse ${VISIT_VERSION} into its component parts instead.
+        SET(CPACK_PACKAGE_VERSION_MAJOR "2")
+        SET(CPACK_PACKAGE_VERSION_MINOR "0")
+        SET(CPACK_PACKAGE_VERSION_PATCH "0")
+
+        STRING(REPLACE "." "_" UL_VERSION ${VISIT_VERSION})
+        SET(CPACK_PACKAGE_FILE_NAME "visit${UL_VERSION}.${VISIT_INSTALL_PLATFORM}")
+
+        IF(NOT APPLE)
+            SET(CPACK_STRIP_FILES TRUE)
+        ENDIF(NOT APPLE)
+    ENDIF(APPLE AND VISIT_CREATE_APPBUNDLE_PACKAGE)
+    INCLUDE(CPack)
 ELSE (NOT WIN32)
-    # create a custom target that will run our nsis scripts.
-    # Make sure it won't run unless specifically called.
-    # 
-    IF (${MAKENSIS_FOUND})
+    IF(VISIT_MAKE_NSIS_INSTALLER)
+      IF(${MAKENSIS_FOUND})
+        # create a custom target that will run our nsis scripts.
+        # Make sure it won't run unless specifically called.
+        # 
         FILE(TO_NATIVE_PATH ${VISIT_SOURCE_DIR} VSD_NATIVE)
         FILE(TO_NATIVE_PATH ${CMAKE_INSTALL_PREFIX} CIP_NATIVE)
         ADD_CUSTOM_COMMAND(OUTPUT visit${VISIT_VERSION}.exe
@@ -1875,9 +1996,9 @@ ELSE (NOT WIN32)
             ADD_CUSTOM_COMMAND(TARGET _PACKAGE PRE_BUILD 
                 COMMAND ${CMAKE_COMMAND} -DBUILD_TYPE=${CMAKE_CFG_INTDIR} -P ${VISIT_BINARY_DIR}/data/cmake_install.cmake)
         ENDIF(IS_DIRECTORY ${VISIT_SOURCE_DIR}/../data)
- 
+
         SET_TARGET_PROPERTIES(_PACKAGE PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD 1)
-        
+
         # source installer
         ADD_CUSTOM_COMMAND(OUTPUT visitdev${VISIT_VERSION}.exe
             COMMAND ${MAKENSIS} 
@@ -1889,7 +2010,8 @@ ELSE (NOT WIN32)
         )
         ADD_CUSTOM_TARGET(_SRC_PACKAGE ALL DEPENDS visitdev${VISIT_VERSION}.exe)
         SET_TARGET_PROPERTIES(_SRC_PACKAGE PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD 1)
-    ENDIF (${MAKENSIS_FOUND})
+      ELSE(${MAKENSIS_FOUND})
+        MESSAGE(FATAL_ERROR "NSIS installer package requested, but 'makensis' could not be found.")
+      ENDIF(${MAKENSIS_FOUND})
+    ENDIF(VISIT_MAKE_NSIS_INSTALLER)
 ENDIF (NOT WIN32)
-
-

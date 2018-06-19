@@ -92,10 +92,13 @@ while read fline; do
     # Filter out other cases HandleCommonSkipCases doesn't catch
     #
     case $fname in
-        *.in|*.html|*.doc|*.odt|*.odm|*/third_party_builtin/*|*/common/icons/*|*.vcproj|*.sln|*.cmake|*.tcl|*/windowsbuild/ThirdParty/*)
+        *.in|*.html|*.doc|*.odt|*.odm|*.nib|*/third_party_builtin/*|*/common/icons/*|*.vcproj|*.sln|*.cmake|*.tcl|*/windowsbuild/ThirdParty/*)
             continue
             ;;
-        */src/configure|*/src/aclocal.m4|*/svn_bin/build_visit|*/bin/db_mktmpl)
+        */src/configure|*/src/aclocal.m4|*/bin/db_mktmpl)
+            continue
+            ;;
+        */svn_bin/build_visit|*/svn_bin/bv_support/*)
             continue
             ;;
         *Makefile)

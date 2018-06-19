@@ -55,9 +55,14 @@
 //    Brad Whitlock, Tue Dec 14 12:05:51 PST 2010
 //    I added selection properties and summary return value.
 //
+//    Brad Whitlock, Mon Aug 22 10:15:03 PDT 2011
+//    I removed items from the type string and added intializers.
+//
 // ****************************************************************************
 
-NamedSelectionRPC::NamedSelectionRPC() : NonBlockingRPC("is*sia", &summary)
+NamedSelectionRPC::NamedSelectionRPC() : NonBlockingRPC("iisba", &summary),
+    selOperation(NamedSelectionRPC::NS_CREATE), plotId(-1), selName(), 
+    properties(), allowCache(false), summary()
 {
 }
 
@@ -79,32 +84,7 @@ NamedSelectionRPC::~NamedSelectionRPC()
 }
 
 // ****************************************************************************
-// Method: ApplyNamedSelection
-//
-// Purpose: 
-//   Invocation method for apply.
-//
-// Arguments:
-//   ids     : The plot names of the plots to which we're applying a selection.
-//   selName : The nameof the selection to apply.
-//
-// Programmer: Brad Whitlock
-// Creation:   Tue Dec 14 12:09:51 PST 2010
-//
-// ****************************************************************************
-
-void
-NamedSelectionRPC::ApplyNamedSelection(const std::vector<std::string> &ids, const std::string &selName)
-{
-    SetPlotNames(ids);
-    SetSelectionName(selName);
-    SetNamedSelectionOperation(NS_APPLY);
-
-    Execute();
-}
-
-// ****************************************************************************
-// Method: ApplyNamedSelection
+// Method: CreateNamedSelection
 //
 // Purpose: 
 //   Invocation method for apply.
@@ -116,6 +96,10 @@ NamedSelectionRPC::ApplyNamedSelection(const std::vector<std::string> &ids, cons
 // Programmer: Brad Whitlock
 // Creation:   Tue Dec 14 12:09:51 PST 2010
 //
+// Modifications:
+//   Brad Whitlock, Wed Sep  7 14:24:21 PDT 2011
+//   Added allowCache.
+//
 // ****************************************************************************
 
 const SelectionSummary &
@@ -125,6 +109,49 @@ NamedSelectionRPC::CreateNamedSelection(int id, const SelectionProperties &p)
     SetSelectionName(p.GetName());
     SetSelectionProperties(p);
     SetNamedSelectionOperation(NS_CREATE);
+    SetAllowCache(false);
+
+    Execute();
+
+    // If the RPC returned an error, throw an exception.
+    if(GetReply()->GetStatus() == error)
+    {
+        EXCEPTION1(ImproperUseException, GetReply()->Message());
+    }
+
+    return summary;
+}
+
+// ****************************************************************************
+// Method: NamedSelectionRPC::UpdateNamedSelection
+//
+// Purpose: 
+//   Update the specified named selection.
+//
+// Arguments:
+//   id     : The network id of the plot that creates our selection.
+//   p      : The selection properties.
+//   cache  : Whether cached intermediate selection data can be considered.
+//
+// Returns:    
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Wed Sep  7 14:25:05 PDT 2011
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+const SelectionSummary &
+NamedSelectionRPC::UpdateNamedSelection(int id, const SelectionProperties &p, bool cache)
+{
+    SetPlotID(id);
+    SetSelectionName(p.GetName());
+    SetSelectionProperties(p);
+    SetNamedSelectionOperation(NS_UPDATE);
+    SetAllowCache(cache);
 
     Execute();
 
@@ -221,18 +248,41 @@ NamedSelectionRPC::SaveNamedSelection(const std::string &selName)
 //    Brad Whitlock, Tue Dec 14 12:05:07 PST 2010
 //    I added selection properties.
 //
+//    Brad Whitlock, Mon Aug 22 10:18:58 PDT 2011
+//    I removed plotIDs.
+//
+//    Brad Whitlock, Wed Sep  7 14:26:33 PDT 2011
+//    I added allowCache.
+//
 // ****************************************************************************
 
 void
 NamedSelectionRPC::SelectAll()
 {
-    Select(0, (void*)&plotId);
-    Select(1, (void*)&plotNames);
+    Select(0, (void*)&selOperation);
+    Select(1, (void*)&plotId);
     Select(2, (void*)&selName);
-    Select(3, (void*)&selOperation);
+    Select(3, (void*)&allowCache);
     Select(4, (void*)&properties);
 }
 
+// ****************************************************************************
+//  Method: NamedSelectionRPC::SetNamedSelectionOperation
+//
+//  Purpose: 
+//    This sets the selection type.
+//
+//  Programmer: Hank Childs
+//  Creation:   January 29, 2009
+//
+// ****************************************************************************
+
+void
+NamedSelectionRPC::SetNamedSelectionOperation(NamedSelectionOperation t)
+{
+    selOperation = t;
+    Select(0, (void*)&selOperation);
+}
 
 // ****************************************************************************
 //  Method: NamedSelectionRPC::SetPlotID
@@ -249,28 +299,8 @@ void
 NamedSelectionRPC::SetPlotID(int id)
 {
     plotId = id;
-    Select(0, (void*)&plotId);
+    Select(1, (void*)&plotId);
 }
-
-
-// ****************************************************************************
-//  Method: NamedSelectionRPC::SetPlotNames
-//
-//  Purpose: 
-//    This sets the plot names.
-//
-//  Programmer: Hank Childs
-//  Creation:   February 2, 2009
-//
-// ****************************************************************************
-
-void
-NamedSelectionRPC::SetPlotNames(const std::vector<std::string> &ids)
-{
-    plotNames = ids;
-    Select(1, (void*)&plotNames);
-}
-
 
 // ****************************************************************************
 //  Method: NamedSelectionRPC::SetSelectionName
@@ -290,25 +320,25 @@ NamedSelectionRPC::SetSelectionName(const std::string &n)
     Select(2, (void*)&selName);
 }
 
-
 // ****************************************************************************
-//  Method: NamedSelectionRPC::SetNamedSelectionOperation
+// Method: NamedSelectionRPC::SetAllowCache
 //
-//  Purpose: 
-//    This sets the selection type.
+// Purpose: 
+//   Set whether caching of intermediate selection results is allowed.
 //
-//  Programmer: Hank Childs
-//  Creation:   January 29, 2009
+// Programmer: Brad Whitlock
+// Creation:   Tue Dec 14 12:04:33 PST 2010
 //
+// Modifications:
+//   
 // ****************************************************************************
 
 void
-NamedSelectionRPC::SetNamedSelectionOperation(NamedSelectionOperation t)
+NamedSelectionRPC::SetAllowCache(bool c)
 {
-    selOperation = t;
-    Select(3, (void*)&selOperation);
+    allowCache = c;
+    Select(3, (void*)&allowCache);
 }
-
 
 // ****************************************************************************
 // Method: NamedSelectionRPC::SetSelectionProperties

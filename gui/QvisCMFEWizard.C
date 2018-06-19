@@ -925,6 +925,9 @@ QvisCMFEWizard::CreateInterpSelectionPage(void)
 //   Cyrus Harrison, Mon Aug 30 11:59:25 PDT 2010
 //   Simplify wizard & add ability to open new databases.
 //
+//   Cyrus Harrison, Fri Oct 21 13:57:57 PDT 2011
+//   Proper init for the expression diff var button.
+//
 // ****************************************************************************
 
 void
@@ -976,6 +979,7 @@ QvisCMFEWizard::CreateActivityPage(void)
                                          QvisBaseVariableButton::Vectors |
                                          QvisBaseVariableButton::Tensors,
                                          main_widget);
+    exprDiffVar->setText(tr("<Select>"));
     glayout2->addWidget(exprDiffVar, 0, 1, Qt::AlignLeft);
     connect(exprDiffVar, SIGNAL(activated(const QString &)),
             this, SLOT(exprDiffVarChanged(const QString &)));
@@ -1331,6 +1335,9 @@ QvisCMFEWizard::GetMeshForTargetDatabase(void)
 //   expression. Also account for difference variables that contain special
 //   characters.
 //
+//   Hank Childs, Mon Oct 10 10:54:45 PDT 2011
+//   Increment the expression name after creating the CMFE.  (cmfe0->cmfe1)
+//
 // ****************************************************************************
 
 void
@@ -1421,6 +1428,12 @@ QvisCMFEWizard::AddCMFEExpression(void)
     const std::string &active_src = windowInfo->GetActiveSource();
     if(active_src != decision_targetDatabase)
         GetViewerMethods()->ActivateDatabase(decision_targetDatabase);
+
+    char str[1024];
+    SNPRINTF(str, 1024, "cmfe%d", timesCompleted);
+    decision_exprname = str;
+    exprNameTxt->setText(tr(decision_exprname.c_str()));
+    timesCompleted++;
 }
 
 
@@ -1845,15 +1858,23 @@ QvisCMFEWizard::exprNameChanged(const QString &s)
 //   Cyrus Harrison, Mon Aug 30 11:59:25 PDT 2010
 //   Simplify wizard & add ability to open new databases.
 //
+//   Cyrus Harrison, Fri Oct 21 11:34:46 PDT 2011
+//   Disable the finish button until we have a valid diff var name.
+//
 // ****************************************************************************
 
 void 
 QvisCMFEWizard::exprTypeChanged(int v)
 {
     if (v == 0)
+    {
         decision_exprtype = EXPRESSION_SIMPLE;
+        button(QWizard::FinishButton)->setEnabled(true);
+    }
     else
     {
+        if( decision_diffvarname == "")
+            button(QWizard::FinishButton)->setEnabled(false);
         if (exprDiffTypeSelect->button(0)->isChecked())
             decision_exprtype = EXPRESSION_ABS_DIFF;
         else if (exprDiffTypeSelect->button(1)->isChecked())
@@ -1881,12 +1902,16 @@ QvisCMFEWizard::exprTypeChanged(int v)
 //   Cyrus Harrison, Mon Aug 30 11:59:25 PDT 2010
 //   Simplify wizard & add ability to open new databases.
 //
+//   Cyrus Harrison, Fri Oct 21 11:34:46 PDT 2011
+//   If we have a valid diff var name, reenable the Finish button.
+//
 // ****************************************************************************
 
 void 
 QvisCMFEWizard::exprDiffVarChanged(const QString &s)
 {
     decision_diffvarname = s.toStdString();
+    button(QWizard::FinishButton)->setEnabled(true);
 }
 
 // ****************************************************************************
@@ -1932,13 +1957,13 @@ void
 QvisCMFEWizard::targetDatabaseOpenClicked()
 {
     selectedTargetDatabase = "";
-    selectedDonorDatabase  = "";
     const std::string &active_src = windowInfo->GetActiveSource();
     QString name = QvisFileOpenDialog::getOpenFileName("", tr("Select Target Database"));
 
     if(name != QString(""))
     {
         selectedTargetDatabase  = name.toStdString();
+        GetViewerMethods()->OpenDatabase(selectedTargetDatabase);
         // change active source back...
         if(active_src != "notset")
             GetViewerMethods()->ActivateDatabase(active_src);
@@ -1963,7 +1988,6 @@ QvisCMFEWizard::targetDatabaseOpenClicked()
 void 
 QvisCMFEWizard::donorDatabaseOpenClicked()
 {
-    selectedTargetDatabase = "";
     selectedDonorDatabase  = "";
 
     const std::string &active_src= windowInfo->GetActiveSource();
@@ -1972,6 +1996,7 @@ QvisCMFEWizard::donorDatabaseOpenClicked()
     if(name != QString(""))
     {
         selectedDonorDatabase  = name.toStdString();
+        GetViewerMethods()->OpenDatabase(selectedDonorDatabase);
         // change active source back...
         if(active_src != "notset")
             GetViewerMethods()->ActivateDatabase(active_src);

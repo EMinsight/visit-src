@@ -1166,7 +1166,7 @@ $fullusage = "$usage
         -valgrind <args> <comp>
                              Run valgrind with <args> on component <comp>.
                              Default <args> is --tool=memcheck --error-limit=no
-                             --num-callers=64.
+                             --num-callers=50.
         -strace <args> <comp>
                              Run strace with <args> on component <comp>.
                              Default <args> is -ttt -T.
@@ -1292,6 +1292,7 @@ while (scalar(@ARGV) > 0) {
     elsif ($arg eq "-p" )        { $part = shift; $part_set = 1; }
     elsif ($arg eq "-b" )        { $bank = shift; $bank_set = 1; }
     elsif ($arg eq "-t")         { $time = shift; $time_set = 1; }
+    elsif ($arg eq "-wd")        { $cwd = shift; $wd_set = 1; }
     elsif ($arg eq "-machinefile") { $machinefile = shift; $machinefile_set = 1; }
     elsif ($arg eq "-expedite")  { if($exe_name eq "engine") { $expedite_engine = 1;} else { push @visitargs, $arg; }}
     elsif ($arg eq "-host")      { $remotehost = shift; $remotehost_set = 1; }
@@ -1772,7 +1773,7 @@ if ( ($parallel) and $exe_name eq "engine" and ($host =~ /jaguarpf/ or $host =~ 
 #
 # ----
 $IsRunningOnNautilus_UTK = 0;
-if ( $host =~ /^nautilus/ )
+if ( $host =~ /^nautilus/ or $host =~ /^arronax/ or $host =~ /^conseil/ )
 {
     chomp($domain = `hostname -d`);
     if ( $domain eq "nics.utk.edu" )
@@ -1782,6 +1783,40 @@ if ( $host =~ /^nautilus/ )
 }
 
 # ----
+# HACK for kraken.nics.utk.edu
+#
+# ----
+$IsRunningOnKraken_UTK = 0;
+if ( ($parallel) and $exe_name eq "engine" and $host =~ /krakenpf/)
+{
+    chomp($domain = `hostname -d`);
+    if ( $domain eq "nics.utk.edu" )
+    {
+        $IsRunningOnKraken_UTK = 1;
+        $remotehost = $host;
+        if ($host =~ /krakenpf/)
+        {
+            $remotehost =~ s/krakenpf/login/;
+            #$remotehost = `getent hosts $remotehost | awk '{printf \$1}'`
+        }
+
+    # The /sw filesystem is not accessible from the compute nodes.
+    # NICS requires that only required support files be present on /lustre.
+    # Here, we instruct the engine to use support files on /lustre.
+    $visitsupportdir = "/lustre/scratch/proj/sw/visit/support/$ver/linux-x86_64";
+        push @visitargs, "--mesa-lib", "$visitsupportdir/lib/libOSMesa.so";
+        push @visitargs, "-plugindir", "$visitsupportdir/plugins";
+
+    for (my $count = 0; $count < scalar(@visitargs); $count++) {
+        if($visitargs[$count] eq "-dir") {
+        $visitargs[$i+1] = $visitsupportdir;
+        }
+    }
+    }
+}
+
+
+# ----
 # HACK for franklin @ NERSC
 #
 # ----
@@ -1789,7 +1824,7 @@ $IsRunningOnFranklinNERSC = 0;
 if ( $host =~ /^nid/ )
 {
     $nodename=`/usr/syscom/nsg/bin/nodename`;
-    if ($nodename =~ /^franklin/)
+    if ($nodename =~ /^franklin/ || $nodename =~ /^nid/)
     {
         $IsRunningOnFranklinNERSC = 1;
         $ENV{LD_LIBRARY_PATH} = "/opt/gcc/4.4.4/snos/lib64";
@@ -2539,6 +2574,10 @@ if ($IsRunningOnJaguar_ORNL)
     $visitprivateplugins = "/lustre/widow1/scratch/$ENV{USER}/.visit/$ENV{VISITPLUGINVERSION}/$archdir/plugins";
     $visitprivateplugins_old = "/lustre/widow1/scratch/$ENV{USER}/.visit/$archdir/plugins";
 }
+elsif ($IsRunningOnKraken_UTK)
+{
+    $visitprivateplugins = "/lustre/scratch/$ENV{USER}/.visit/$archdir/plugins";
+}
 else
 {
     $visitprivateplugins = "$ENV{HOME}/.visit/$ENV{VISITPLUGINVERSION}/$archdir/plugins";
@@ -2668,6 +2707,10 @@ elsif ($pre_command ne "")
     @visitcmd = ($pre_command, "$visitbindir/$exe_name", @visitargs);
     @post_args = ($post_command);
 }
+elsif ($exe_name eq "engine_par" and $IsRunningOnKraken_UTK)
+{
+    @visitcmd = ("$visitsupportdir/bin/$exe_name", @visitargs);
+}
 else
 {
     @visitcmd = ("$visitbindir/$exe_name", @visitargs);
@@ -2679,8 +2722,38 @@ $printonly = grep(/^$exe_name$/, @norun) unless ($debug_totalview or
 
 if ($procs_set or ($parallel and $parlaunch_set))
 {
+    # aprun
+    if ($launch eq "aprun")
+    {
+        @parcmd = ("aprun");
+        push @parcmd, @launchargs if $launchargs_set;
+        push @parcmd, "-n", $procs if $procs_set;
+        push @parcmd, "-N",  $nodes if $nodes_set;
+        if ( $IsRunningOnFranklinNERSC || $IsRunningOnHopperNERSC || $IsRunningOnJaguar_ORNL )
+        {
+            push @parcmd, "$visitbindir/env";
+            push @parcmd, "LD_LIBRARY_PATH=$visitlibdir:$visitarchdir/system_libs";
+            push @parcmd, "MPICH_PTL_UNEX_EVENTS=6200000";
+            push @parcmd, "MPICH_MAX_SHORT_MSG_SIZE=12000";
+        }
+
+        push @parcmd,
+             generate_args_valgrind(@debug_valgrind_args) if $debug_valgrind;
+        push @parcmd, @visitcmd;
+        push @parcmd, "-plugindir";
+        push @parcmd, "$ENV{VISITPLUGINDIR}";
+        push @parcmd, "-visithome";
+        push @parcmd, "$ENV{VISITHOME}";
+        push @parcmd, "-visitarchhome";
+        push @parcmd, "$ENV{VISITARCHHOME}";
+
+        @printcmd = @parcmd;
+        if ($security_key_set) { push @parcmd, "-key", $security_key; }
+        push @parcmd, @post_args;
+        chomp($printcmd[0] = `basename $printcmd[0]`);
+    }
     # mpirun
-    if ($launch eq "mpirun")
+    elsif ($launch eq "mpirun")
     {
         if ($IsRunningOnEuclidNERSC)
         {
@@ -3032,6 +3105,11 @@ if ($procs_set or ($parallel and $parlaunch_set))
                 # Need a location visible from compute nodes
                 $cdcmd     = "cd /lustre/widow1/scratch/$ENV{USER}\n";
             }
+            elsif ($IsRunningOnKraken_UTK)
+            {
+                # Need a location visible from compute nodes
+                $cdcmd     = "cd /lustre/scratch/$ENV{USER}\n";
+            }
             else
             {
                 $cdcmd     = "cd $cwd\n";
@@ -3088,6 +3166,10 @@ if ($procs_set or ($parallel and $parlaunch_set))
                 {
                     push @mpicmd, "$visitbindir/env LD_LIBRARY_PATH=$visitlibdir:$visitarchdir/system_libs";
                 }
+                elsif ( $IsRunningOnKraken_UTK )
+                {
+                    push @mpicmd, "$visitsupportdir/bin/env LD_LIBRARY_PATH=$visitsupportdir/lib:$visitsupportdir/system_libs";
+                }
                 push @mpicmd, "@visitcmd\n";
             }
             elsif ($sublauncher eq "ibrun")
@@ -3111,6 +3193,12 @@ if ($procs_set or ($parallel and $parlaunch_set))
                       "implementation; you might have to hack " .
                       "internallauncher to load the module you need.\n";
                 print TFILE 'eval $(modulecmd sh swap PE-pgi PE-gnu)',"\n";
+            }
+            if ($IsRunningOnKraken_UTK)
+            {
+                print TFILE 'eval $(modulecmd sh unload PrgEnv-pgi)',"\n";
+                print TFILE 'eval $(modulecmd sh load PrgEnv-gnu)',"\n";
+
             }
             if ($IsRunningOnJaguar_ORNL)
             {
@@ -3265,18 +3353,25 @@ if ($procs_set or ($parallel and $parlaunch_set))
             }
             elsif ($IsRunningOnFranklinNERSC || $IsRunningOnHopperNERSC)
             {
+                push @parcmd, "-d", "$cwd" if $wd_set;
                 push @parcmd, "-l", "mppwidth=$procs";
-                if ($nodes_set) {
-                    push @parcmd, "-l", "mppnppn=$nodes";
-                }
+                push @parcmd, "-l", "mppnppn=$nodes" if $nodes_set;
             }
-            elsif ($IsRunningOnJaguar_ORNL || $IsRunningOnNautilus_UTK)
+            elsif ($IsRunningOnJaguar_ORNL || $IsRunningOnKraken_UTK)
             {
                 $qsubNumNodeStr = "size";
                 $asubPPNStr = "";
                 $qsubSeparator = "";
                 $nodes = $procs;
                 push @parcmd, "-l size=$procs";
+            }
+            elsif ($IsRunningOnNautilus_UTK)
+            {
+                $qsubNumNodeStr = "ncpus";
+                $asubPPNStr = "";
+                $qsubSeparator = "";
+                $nodes = $procs;
+                push @parcmd, "-l ncpus=$procs";
             }
             else
             {
@@ -3801,7 +3896,7 @@ sub generate_args_valgrind {
     if(scalar(@args_vg) != 0) {
         push(@cmd, @args_vg);
     } else {
-        push(@cmd, "--tool=memcheck", "--error-limit=no", "--num-callers=64");
+        push(@cmd, "--tool=memcheck", "--error-limit=no", "--num-callers=50");
     }
     return @cmd;
 }

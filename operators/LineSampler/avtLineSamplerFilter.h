@@ -44,7 +44,13 @@
 #define AVT_LineSampler_FILTER_H
 
 
-#include <avtPluginDataTreeIterator.h>
+//#include <avtPluginDataTreeIterator.h>
+#include <avtPluginFilter.h>
+#include <avtTimeLoopFilter.h>
+#include <avtDatasetToDatasetFilter.h>
+
+#include <avtExtents.h>
+
 #include <LineSamplerAttributes.h>
 
 class vtkTransform;
@@ -64,7 +70,9 @@ class vtkUnstructuredGrid;
 //
 // ****************************************************************************
 
-class avtLineSamplerFilter : public avtPluginDataTreeIterator
+class avtLineSamplerFilter : virtual public avtPluginFilter,
+                             virtual public avtTimeLoopFilter,
+                             virtual public avtDatasetToDatasetFilter
 {
   public:
                          avtLineSamplerFilter();
@@ -80,18 +88,32 @@ class avtLineSamplerFilter : public avtPluginDataTreeIterator
     virtual bool         Equivalent(const AttributeGroup*);
 
   protected:
-    LineSamplerAttributes   atts;
+    LineSamplerAttributes atts;
 
-    virtual vtkDataSet   *ExecuteData(vtkDataSet *, int, std::string);
+    virtual void InitializeTimeLoop(void);
 
-    virtual vtkPolyData *createLine( avtVector startPoint,
-                                     avtVector stopPoint );
+    virtual void ExamineContract(avtContract_p in_contract);
+    virtual void Execute(void);
+    virtual void CreateFinalOutput(void);
+    virtual bool ExecutionSuccessful(void);
+
+    virtual vtkDataSet *ExecuteChannelData(vtkDataSet *, int, std::string);
+//  virtual vtkDataSet *ExecuteChannelList(vtkDataSet *, int, std::string);
+
+    virtual vtkDataSet* createPoint( avtVector startPoint,
+                                     avtVector stopPoint,
+                                     bool allocateScalars );
   
-    virtual vtkUnstructuredGrid *createCone( avtVector startPoint,
-                                             avtVector stopPoint,
-                                             avtVector normal,
-                                             double radius,
-                                             double divergence );
+    virtual vtkDataSet *createLine( avtVector startPoint,
+                                    avtVector stopPoint,
+                                    bool allocateScalars );
+  
+    virtual vtkDataSet *createCone( avtVector startPoint,
+                                    avtVector stopPoint,
+                                    avtVector normal,
+                                    double radius,
+                                    double divergence,
+                                    bool allocateScalars );
 
     avtVector ProjectPointOnPlane( avtVector planePoint,
                                    avtVector planeNormal,
@@ -100,7 +122,16 @@ class avtLineSamplerFilter : public avtPluginDataTreeIterator
 
     void applyTransform( vtkTransform* transform, avtVector &point );
 
-    void checkExtents( avtVector &startPoint, avtVector &stopPoint );
-};
+    void checkBounds( vtkDataSet *in_ds,
+                      avtVector &startPoint, avtVector &stopPoint );
 
+    void checkWall( avtVector &startPoint, avtVector &stopPoint );
+
+    vtkDataSet *composite_ds;
+
+    double cachedAngle;
+
+    bool validTimeAxis;
+    double lastTimeAxisValue;
+};
 #endif

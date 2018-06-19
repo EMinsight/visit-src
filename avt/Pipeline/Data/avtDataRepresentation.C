@@ -68,6 +68,7 @@
 #include <DebugStream.h>
 #include <visitstream.h>
 #include <snprintf.h>
+#include <vtkVisItUtility.h>
 
 using std::string;
 using std::ostringstream;
@@ -768,8 +769,33 @@ avtDataRepresentation::InitializeNullDataset(void)
 
     nullDataset = ugrid;
     initializedNullDataset = true;
+
+#if defined(DEBUG_MEMORY_LEAKS)
+    atexit(DeleteNullDataset);
+#endif
 }
 
+// ****************************************************************************
+//  Function: DeleteNullDataset
+//
+//  Purpose:
+//      Delete the initializedNullDataset object. This is to help with memory
+//    tools to remove the still reachable memory.
+//
+//  Programmer: David Camp
+//  Creation:   August 16, 2011
+//
+// ****************************************************************************
+void 
+avtDataRepresentation::DeleteNullDataset(void)
+{
+    if (nullDataset)
+    {
+        nullDataset->Delete();
+        nullDataset = NULL;
+        initializedNullDataset = false;
+    }
+}
 
 // ****************************************************************************
 //  Function: DatasetTypeForVTK
@@ -956,6 +982,9 @@ avtDataRepresentation::GetTimeToDecompress() const
 //    Kathleen Bonnell, Tue Dec 14 12:31:40 PST 2010
 //    std::string doesn't like assignment to a NULL const char *, so don't
 //    assume array->GetName() doesn't return NULL.
+//
+//    Tom Fogal, Tue Sep 27 11:04:08 MDT 2011
+//    Fix warning.
 //
 // ****************************************************************************
 
@@ -1217,7 +1246,7 @@ avtDataRepresentation::DebugDump(avtWebpage *webpage, const char *prefix)
             oss << "<ul>";
             for (int i=0; i<data[fd]->GetNumberOfArrays(); i++)
             {
-                char *arr_type = "<unknown>";
+                const char *arr_type = "<unknown>";
                 switch (data[fd]->GetArray(i)->GetDataType())
                 {
                   case VTK_CHAR:
@@ -1270,7 +1299,7 @@ avtDataRepresentation::DebugDump(avtWebpage *webpage, const char *prefix)
         }
     }
 
-    SNPRINTF(str,strsize,oss.str().c_str());
+    SNPRINTF(str,strsize,"%s",oss.str().c_str());
     return str;
 }
 

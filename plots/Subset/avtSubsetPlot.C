@@ -42,8 +42,6 @@
 
 #include <avtSubsetPlot.h>
 
-#include <algorithm>
-
 #include <SubsetAttributes.h>
 
 #include <avtColorTables.h>
@@ -62,10 +60,15 @@
 #include <LineAttributes.h>
 #include <maptypes.h>
 
+#include <algorithm>
+#include <string>
+#include <utility>
+#include <vector>
 
 using std::sort;
+using std::string;
 using std::pair;
-
+using std::vector;
 
 // ****************************************************************************
 //  Method: avtSubsetPlot constructor
@@ -306,7 +309,16 @@ avtSubsetPlot::SetAtts(const AttributeGroup *a)
     {
         levelsMapper->DataScalingOff();
     }
-    levelsMapper->SetGlyphType((int)atts.GetPointType());
+    if (atts.GetPointType() == SubsetAttributes::Box)
+        levelsMapper->SetGlyphType(avtPointGlypher::Box);
+    else if (atts.GetPointType() == SubsetAttributes::Axis)
+        levelsMapper->SetGlyphType(avtPointGlypher::Axis);
+    else if (atts.GetPointType() == SubsetAttributes::Icosahedron)
+        levelsMapper->SetGlyphType(avtPointGlypher::Icosahedron);
+    else if (atts.GetPointType() == SubsetAttributes::Point)
+        levelsMapper->SetGlyphType(avtPointGlypher::Point);
+    else if (atts.GetPointType() == SubsetAttributes::Sphere)
+        levelsMapper->SetGlyphType(avtPointGlypher::Sphere);
     SetPointGlyphSize();
 }
 
@@ -338,7 +350,7 @@ avtSubsetPlot::SetColorTable(const char *ctName)
     {
         // If the color table is "Default" or is the color table that is being
         // changed, set the colors.
-        bool usesCT = (atts.GetColorTableName() == std::string(ctName));
+        bool usesCT = (atts.GetColorTableName() == string(ctName));
         if (usesCT || atts.GetColorTableName() == "Default")
         {
             SetColors();

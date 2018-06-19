@@ -45,6 +45,7 @@
 #include <visit-config.h>
 
 #include <string>
+#include <vector>
 
 #include <vtkFloatArray.h>
 #include <vtkRectilinearGrid.h>
@@ -78,9 +79,11 @@
 // is explicitly upgraded to the 1.8 API, this symbol should be removed.
 #define H5_USE_16_API
 #include <hdf5.h>
+#include <visit-hdf5.h>
 #endif
 
 using std::string;
+using std::vector;
 
 void avtEnzoFileFormat::Grid::PrintRecursive(vector<Grid> &grids, int level)
 {
@@ -2092,5 +2095,3 @@ avtEnzoFileFormat::RegisterDataSelections(const std::vector<avtDataSelection_p>&
         }
     }
 }
-
-

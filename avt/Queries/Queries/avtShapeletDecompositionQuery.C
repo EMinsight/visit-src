@@ -50,6 +50,7 @@
 #include <avtSourceFromAVTDataset.h>
 
 #include <vtkCellData.h>
+#include <vtkDataArray.h>
 #include <vtkRectilinearGrid.h>
 #include <vtkVisItUtility.h>
 
@@ -60,19 +61,25 @@
 
 #include <MapNode.h>
 
+#include <string>
+
 // ****************************************************************************
 //  Method: avtShapeletDecompositionQuery constructor
 //
 //  Programmer: Cyrus Harrison
 //  Creation:   December 14, 2007
 //
+//  Modifications:
+//    Kathleen Biagas, Tue Jul 26 13:57:27 PDT 2011
+//    Change intial value of beta to 5.0, nmax to 16 per Cyrus.
+//
 // ****************************************************************************
 
 avtShapeletDecompositionQuery::avtShapeletDecompositionQuery()
 :decompResult(NULL)
 {
-    beta = 1.0;
-    nmax = 1;
+    beta = 5.0;
+    nmax = 16;
     decompOutputFileName = "";
     recompOutputFileName = "";
 }
@@ -88,6 +95,78 @@ avtShapeletDecompositionQuery::avtShapeletDecompositionQuery()
 
 avtShapeletDecompositionQuery::~avtShapeletDecompositionQuery()
 {;}
+
+
+// ****************************************************************************
+//  Method: avtShapeletDecompositionQuery::GetInputParams
+//
+//  Purpose:  Allows this query to read input parameters set by user.
+//
+//  Arguments: 
+//    params    A MapNode containing the input parameters for this query.
+//
+//  Programmer: Kathleen Biagas 
+//  Creation:   June 20, 2011
+//
+// ****************************************************************************
+
+void 
+avtShapeletDecompositionQuery::SetInputParams(const MapNode & params)
+{
+    if (params.HasEntry("beta"))
+    {
+        double b = params.GetEntry("beta")->AsDouble();
+        if (b < 1.0)
+        {
+            EXCEPTION1(VisItException, "Shapelet Decomposition requires "
+                       "beta and nmax >= 1.");
+        }
+        SetBeta(b);
+    }
+    else
+    {
+        SetBeta(1.0);
+    }
+
+    if (params.HasEntry("nmax"))
+    {
+        int m = params.GetEntry("nmax")->AsInt();
+        SetNMax(m < 1 ? 1 : m);
+    }
+ 
+    SetDecompOutputFileName("");
+
+    if (params.HasEntry("recomp_file"))
+    {
+        SetRecompOutputFileName(params.GetEntry("recomp_file")->AsString());
+    }
+    else 
+    {
+        SetRecompOutputFileName("");
+    }
+}
+
+
+// ****************************************************************************
+//  Method: avtShapeletDecompositionQuery::GetDefaultInputParams
+//
+//  Purpose:  Retrieve default input values.
+//
+//  Arguments: 
+//    params    A MapNode to store the default input values.
+//
+//  Programmer: Kathleen Biagas 
+//  Creation:   July 15, 2011
+//
+// ****************************************************************************
+
+void 
+avtShapeletDecompositionQuery::GetDefaultInputParams(MapNode & params)
+{
+    params["beta"] = 5.0;
+    params["nmax"] = 16;
+    params["recomp_file"] = std::string("");
+}
 
 
 // ****************************************************************************
@@ -131,7 +210,7 @@ avtShapeletDecompositionQuery::PostExecute(void)
 {
     std::string msg = "";
     char buff[256];
-    string float_format = queryAtts.GetFloatFormat();
+    std::string float_format = queryAtts.GetFloatFormat();
     if(decompResult)
     {
         msg = "Shapelet decomposition using beta(";
@@ -224,7 +303,7 @@ avtShapeletDecompositionQuery::Execute(vtkDataSet *ds, const int dom)
     }
     
     // make sure this is a zonal varaible
-    string var = queryAtts.GetVariables()[0];
+    std::string var = queryAtts.GetVariables()[0];
     
     
     vtkDataArray *vals = rgrid->GetCellData()->GetArray(var.c_str());
@@ -282,7 +361,7 @@ avtShapeletDecompositionQuery::Execute(vtkDataSet *ds, const int dom)
 double
 avtShapeletDecompositionQuery::ComputeError(vtkRectilinearGrid *a,
                                             vtkRectilinearGrid *b,
-                                            const string &var_name)
+                                            const std::string &var_name)
 {
     vtkDataArray *a_arr = a->GetCellData()->GetArray(var_name.c_str());
     vtkDataArray *b_arr = b->GetCellData()->GetArray(var_name.c_str());

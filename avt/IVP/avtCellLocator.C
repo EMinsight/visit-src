@@ -63,8 +63,32 @@
 //
 //----------------------------------------------------------------------------
 
-avtCellLocator::avtCellLocator( vtkDataSet* ds ) : dataSet(ds)
+avtCellLocator::avtCellLocator( vtkDataSet* ds ) : dataSet(NULL)
 {
+    SetDataSet(ds);
+}
+
+// ****************************************************************************
+//  Method: avtCellLocator::SetDataSet
+//
+//  Purpose:
+//      Set the data set for this avtCellLocator
+//
+//  Programmer: David Camp
+//  Creation:   April 21, 2011
+//
+//  Modifications:
+//
+//  David Camp, Tue Sep 13 08:16:35 PDT 2011
+//  Needed to reset the pointer to the dataset
+//
+// ****************************************************************************
+
+void
+avtCellLocator::SetDataSet(vtkDataSet *ds)
+{
+    ReleaseDataSet();
+    dataSet = ds;
     dataSet->Register( NULL );
 
     cellIdxPtr = NULL;
@@ -81,9 +105,9 @@ avtCellLocator::avtCellLocator( vtkDataSet* ds ) : dataSet(ds)
     else if( vtkStructuredGrid* sg = vtkStructuredGrid::SafeDownCast( dataSet ) )
     {
         strDimPtr = sg->GetDimensions();
-        if (strDimPtr[0] > 1 && strDimPtr[0] > 1 && strDimPtr[2] == 1)
+        if (strDimPtr[0] > 1 && strDimPtr[1] > 1 && strDimPtr[2] == 1)
             normal2D = true;
-        else if (strDimPtr[0] > 1 && strDimPtr[0] > 1 && strDimPtr[2] > 1)
+        else if (strDimPtr[0] > 1 && strDimPtr[1] > 1 && strDimPtr[2] > 1)
             normal3D = true;
     }
 
@@ -112,9 +136,40 @@ avtCellLocator::avtCellLocator( vtkDataSet* ds ) : dataSet(ds)
 
 avtCellLocator::~avtCellLocator()
 {
-    dataSet->Delete();
+    if(dataSet)
+        dataSet->Delete();
 }
 
+// ****************************************************************************
+//  Method: avtCellLocator::ReleaseDataSet
+//
+//  Purpose:
+//      Release data set. This is needed for the load on demand to release 
+//    the data and it will be resigned if we load it again.
+//
+//  Programmer: David Camp
+//  Creation:   April 21, 2011
+//
+// ****************************************************************************
+
+void
+avtCellLocator::ReleaseDataSet()
+{
+    if(dataSet)
+    {
+        dataSet->Delete();
+        dataSet = NULL;
+
+        cellIdxPtr = NULL;
+        cellLocPtr = NULL;
+        strDimPtr  = NULL;
+        normal2D = false;
+        normal3D = false;
+
+        fCoordPtr = NULL;
+        dCoordPtr = NULL;
+    }
+}
 
 // ****************************************************************************
 //  Method: avtCellLocator::Destruct
@@ -134,7 +189,6 @@ avtCellLocator::Destruct(void *p)
     avtCellLocator *cl = (avtCellLocator *) p;
     delete cl;
 }
-
 
 //----------------------------------------------------------------------------
 // Modifications:
@@ -236,7 +290,7 @@ void avtCellLocator::CopyCell( vtkIdType cellid, vtkIdType* ids,
             int i = cellid % (strDimPtr[0] - 1);
             int j = (cellid / (strDimPtr[0] - 1)) % (strDimPtr[1] - 1);
             int k = cellid / ((strDimPtr[0] - 1) * (strDimPtr[1] - 1));
-    
+
             int idx = i + j*strDimPtr[0] + k*strDimPtr[0]*strDimPtr[1];
             int d0 = strDimPtr[0];
             int d1 = strDimPtr[0]*strDimPtr[1];
@@ -257,7 +311,7 @@ void avtCellLocator::CopyCell( vtkIdType cellid, vtkIdType* ids,
         {
             int i = cellid % (strDimPtr[0] - 1);
             int j = cellid / (strDimPtr[0] - 1);
-    
+
             int idx = i + j*strDimPtr[0];
             int d0 = strDimPtr[0];
             ids[0] = idx;

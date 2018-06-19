@@ -53,6 +53,7 @@
 #include <CloneNetworkRPC.h>
 #include <ConstructDataBinningRPC.h>
 #include <DefineVirtualDatabaseRPC.h>
+#include <EnginePropertiesRPC.h>
 #include <ExportDatabaseRPC.h>
 #include <MakePlotRPC.h>
 #include <NamedSelectionRPC.h>
@@ -60,6 +61,7 @@
 #include <PickRPC.h>
 #include <ProcInfoRPC.h>
 #include <QueryRPC.h>
+#include <QueryParametersRPC.h>
 #include <ReleaseDataRPC.h>
 #include <SetWinAnnotAttsRPC.h>
 #include <SimulationCommand.h>
@@ -316,6 +318,19 @@ class ParentProcess;
 //    Hank Childs, Sat Aug 21 14:35:47 PDT 2010
 //    Rename DDF to DataBinning.
 //
+//    Brad Whitlock, Mon Aug 22 10:07:44 PDT 2011
+//    I added a selection argument to ReadDataObject. I also removed
+//    ApplyNamedSelection.
+//
+//    Kathleen Biagas, Fri Jul 15 11:34:11 PDT 2011
+//    Added QueryParametersRPC.
+//
+//    Brad Whitlock, Wed Sep  7 14:29:35 PDT 2011
+//    Added UpdateNamedSelection.
+//
+//    Eric Brugger, Mon Oct 31 10:33:28 PDT 2011
+//    Added a window id to ReadDataObject.
+//
 // ****************************************************************************
 
 class ENGINE_PROXY_API EngineProxy : public RemoteProxyBase
@@ -359,14 +374,17 @@ public:
                                                    const stringVector &,
                                                    int = 0, bool=true,
                                                    bool=true);
-    void                     ReadDataObject(const std::string&,
-                                            const std::string&,
-                                            const std::string&, const int,
+    void                     ReadDataObject(const std::string &format,
+                                            const std::string &filename,
+                                            const std::string &var, const int ts,
                                             avtSILRestriction_p,
                                             const MaterialAttributes&,
                                             const ExpressionList &,
                                             const MeshManagementAttributes &,
-                                            bool, bool);
+                                            bool treatAllDbsAsTimeVarying,
+                                            bool ignoreExtents,
+                                            const std::string &selName,
+                                            int windowID);
     void                     ApplyOperator(const std::string&, 
                                            const AttributeSubject*);
     void                     ApplyNamedFunction(const std::string &name,
@@ -413,9 +431,8 @@ public:
     void                     ExportDatabase(int, const ExportDBAttributes *);
     void                     ConstructDataBinning(int, const ConstructDataBinningAttributes *);
 
-    void                     ApplyNamedSelection(const std::vector<std::string> &ids, 
-                                                 const std::string selName);
     const SelectionSummary  &CreateNamedSelection(int id, const SelectionProperties &props);
+    const SelectionSummary  &UpdateNamedSelection(int id, const SelectionProperties &props, bool cache);
     void                     DeleteNamedSelection(const std::string selName);
     void                     LoadNamedSelection(const std::string selName);
     void                     SaveNamedSelection(const std::string selName);
@@ -424,6 +441,8 @@ public:
                                           const QueryOverTimeAttributes *);
     void                     UpdateExpressions(const ExpressionList &);
 
+    std::string              GetQueryParameters(const std::string &qName);
+
     void                     GetProcInfo(ProcessAttributes &);
 
     void                     ExecuteSimulationControlCommand(
@@ -431,6 +450,7 @@ public:
     void                     ExecuteSimulationControlCommand(
                                                       const std::string &cmd,
                                                       const std::string &arg);
+    EngineProperties         GetEngineProperties();
 
 protected:
     virtual void             SetupComponentRPCs();
@@ -456,6 +476,7 @@ private:
     StartQueryRPC            startQueryRPC;
     ClearCacheRPC            clearCacheRPC;
     QueryRPC                 queryRPC;
+    QueryParametersRPC       queryParametersRPC;
     ReleaseDataRPC           releaseDataRPC;
     OpenDatabaseRPC          openDatabaseRPC;
     DefineVirtualDatabaseRPC defineVirtualDatabaseRPC;
@@ -469,6 +490,7 @@ private:
     ConstructDataBinningRPC  constructDataBinningRPC;
     NamedSelectionRPC        namedSelectionRPC;
     SetEFileOpenOptionsRPC   setEFileOpenOptionsRPC;
+    EnginePropertiesRPC      enginePropertiesRPC;
 
     // For indicating status.
     StatusAttributes        *statusAtts;

@@ -7132,158 +7132,46 @@ ViewerSubject::CopyPlotsToWindow(int from, int to)
     ViewerWindowManager::Instance()->CopyPlotListToWindow(from-1, to-1);
 }
 
+
 // ****************************************************************************
-// Method: ViewerSubject::DatabaseQuery
+// Method: ViewerSubject::Query
 //
 // Purpose: 
-//   Performs a database query.
+//   Performs a query.
 //
-// Programmer: Brad Whitlock
-// Creation:   Fri Sep 6 14:23:13 PST 2002
+// Programmer: Kathleen Bonnell 
+// Creation:   March 1, 2011 
 //
 // Modifications:
-//   Kathleen Bonnell, Mon Sep 30 14:38:33 PDT 2002
-//   Added call to ViewerQueryManager's DatabaseQuery method. 
-//   
-//   Kathleen Bonnell, Wed Jul 23 16:10:41 PDT 2003
-//   Added int args to qm->DatabaseQuery. 
-//   
-//   Kathleen Bonnell, Wed Dec 15 17:12:47 PST 2004 
-//   Added another bool arg to qm->DatabaseQuery. 
-//   
-//   Hank Childs, Tue Jul 11 14:34:06 PDT 2006
-//   Add double arguments.
-//
-//   Brad Whitlock, Wed Apr 30 09:27:08 PDT 2008
-//   Support for internationalization.
-//
-//   Dave Pugmire, Tue Nov  9 16:07:50 EST 2010
-//   Added dumpStates for streamline info query.
 //
 // ****************************************************************************
 
 void
-ViewerSubject::DatabaseQuery()
+ViewerSubject::Query()
 {
-    // Send the client a status message.
-    QString msg = tr("Performing %1 query...").
-                  arg(GetViewerState()->GetViewerRPC()->GetQueryName().c_str());
-    Status(msg);
-
-    ViewerWindow *vw = ViewerWindowManager::Instance()->GetActiveWindow();
     ViewerQueryManager *qm = ViewerQueryManager::Instance();
-    qm->DatabaseQuery(vw, GetViewerState()->GetViewerRPC()->GetQueryName(), GetViewerState()->GetViewerRPC()->GetQueryVariables(),
-                      GetViewerState()->GetViewerRPC()->GetBoolFlag(), 
-                      GetViewerState()->GetViewerRPC()->GetIntArg1(), GetViewerState()->GetViewerRPC()->GetIntArg2(),
-                      (bool)GetViewerState()->GetViewerRPC()->GetIntArg3(),(bool)GetViewerState()->GetViewerRPC()->GetIntArg4(),
-                      GetViewerState()->GetViewerRPC()->GetDoubleArg1(),
-                      GetViewerState()->GetViewerRPC()->GetDoubleArg2());
-
-    // Clear the status
-    ClearStatus();
+    qm->Query(GetViewerState()->GetViewerRPC()->GetQueryParams());
 }
 
+
 // ****************************************************************************
-// Method: ViewerSubject::PointQuery
+// Method: ViewerSubject::GetQueryParameters
 //
 // Purpose: 
-//   Performs a point query.
+//   Retrieves default parameters for a query.
 //
-// Programmer: Brad Whitlock
-// Creation:   Fri Sep 6 14:23:13 PST 2002
+// Programmer: Kathleen Biagas 
+// Creation:   July 15, 2011 
 //
 // Modifications:
-//   Kathleen Bonnell, Wed May 14 17:09:14 PDT 2003 
-//   Removed debug code, and special case handling.  Made ViewerQueryManager
-//   handle the query instead of ViewerWindowManager. 
-//
-//   Kathleen Bonnell, Wed Nov 26 14:33:23 PST 2003
-//   Use optional int args from RPC. 
-//
-//   Kathleen Bonnell, Thu Apr  1 19:13:59 PST 2004 
-//   Use optional bool flag from RPC. 
-//
-//   Kathleen Bonnell, Wed Dec 15 17:12:47 PST 2004 
-//   Added another bool arg to qm->DatabaseQuery. 
-//
-//   Brad Whitlock, Wed Apr 30 09:27:46 PDT 2008
-//   Support for internationalization.
-//
-//   Kathleen Bonnell, Tue Mar  1 11:15:43 PST 2011
-//   Added another int arg (for time query plot type).
-//   IntArg1 is the curvePlotType.
-//   IntArg2 is the element.
-//   IntArg3 is the domain.
-//   IntArg4 is the globalElement flag.
 //
 // ****************************************************************************
 
 void
-ViewerSubject::PointQuery()
+ViewerSubject::GetQueryParameters()
 {
-    // Send the client a status message.
-    QString msg = tr("Performing %1 query...").
-                  arg(GetViewerState()->GetViewerRPC()->GetQueryName().c_str());
-    Status(msg);
-
     ViewerQueryManager *qm = ViewerQueryManager::Instance();
-    qm->PointQuery(GetViewerState()->GetViewerRPC()->GetQueryName(), 
-                   GetViewerState()->GetViewerRPC()->GetQueryPoint1(),
-                   GetViewerState()->GetViewerRPC()->GetQueryVariables(),
-                   GetViewerState()->GetViewerRPC()->GetIntArg2(),
-                   GetViewerState()->GetViewerRPC()->GetIntArg3(),
-                   GetViewerState()->GetViewerRPC()->GetBoolFlag(),
-                   GetViewerState()->GetViewerRPC()->GetIntArg1(), 
-                   (bool)GetViewerState()->GetViewerRPC()->GetIntArg4()); 
-
-    // Clear the status
-    ClearStatus();
-}
-
-// ****************************************************************************
-// Method: ViewerSubject::LineQuery
-//
-// Purpose: 
-//   Performs a line query.
-//
-// Programmer: Brad Whitlock
-// Creation:   Fri Sep 6 14:23:13 PST 2002
-//
-// Modifications:
-//   Kathleen Bonnell, Fri Dec 20 11:36:11 PST 2002 
-//   ViewerQueryManager now handles the line queries.
-//
-//   Kathleen Bonnell, Wed Jul 23 16:10:41 PDT 2003
-//   Added IntArg1 to qm->LineQuery.
-//   
-//   Kathleen Bonnell, Fri Jul  9 16:24:56 PDT 2004 
-//   Changed Call from "LineQuery" to "StartLineQuery", added call to
-//   MessageRendererThread. 
-//   
-//   Kathleen Bonnell, Tue May 15 10:43:49 PDT 2007 
-//   Added bool arg to StartLineQuery. 
-//
-//   Brad Whitlock, Wed Apr 30 09:27:08 PDT 2008
-//   Support for internationalization.
-//   
-// ****************************************************************************
-
-void
-ViewerSubject::LineQuery()
-{
-    // Send the client a status message.
-    QString msg = tr("Performing %1 query...").
-                  arg(GetViewerState()->GetViewerRPC()->GetQueryName().c_str());
-    Status(msg);
-
-    ViewerQueryManager::Instance()->StartLineQuery( 
-        GetViewerState()->GetViewerRPC()->GetQueryName().c_str(),
-        GetViewerState()->GetViewerRPC()->GetQueryPoint1(), 
-        GetViewerState()->GetViewerRPC()->GetQueryPoint2(),
-        GetViewerState()->GetViewerRPC()->GetQueryVariables(), 
-        GetViewerState()->GetViewerRPC()->GetIntArg1(),
-        GetViewerState()->GetViewerRPC()->GetBoolFlag());
-    MessageRendererThread("finishLineQuery;");
+    qm->GetQueryParameters(GetViewerState()->GetViewerRPC()->GetQueryName());
 }
 
 // ****************************************************************************
@@ -7721,7 +7609,7 @@ ViewerSubject::ProcessRendererMessage()
                 char *str = msg + offset;
                 int len = strlen(str);
                 str[len-1] = '\0';
-                UpdateNamedSelection(std::string(str));
+                UpdateNamedSelection(std::string(str), true, false);
             }
         }
     }
@@ -8123,6 +8011,9 @@ ViewerSubject::HandleViewerRPC()
 //    Brad Whitlock, Fri Aug 27 10:29:23 PDT 2010
 //    I added RenamePickLabel.
 //
+//    Kathleen Bonnell, Fri Jun 17 16:33:17 PDT 2011
+//    Add Query, which replaces Database, Line and PointQuery.
+//
 // ****************************************************************************
 
 void
@@ -8330,14 +8221,8 @@ ViewerSubject::HandleViewerRPCEx()
     case ViewerRPC::SetRenderingAttributesRPC:
         SetRenderingAttributes();
         break;
-    case ViewerRPC::DatabaseQueryRPC:
-        DatabaseQuery();
-        break;
-    case ViewerRPC::PointQueryRPC:
-        PointQuery();
-        break;
-    case ViewerRPC::LineQueryRPC:
-        LineQuery();
+    case ViewerRPC::QueryRPC:
+        Query();
         break;
     case ViewerRPC::SetMaterialAttributesRPC:
         SetMaterialAttributes();
@@ -8518,6 +8403,9 @@ ViewerSubject::HandleViewerRPCEx()
         break;
     case ViewerRPC::RenamePickLabelRPC:
         RenamePickLabel();
+        break;
+    case ViewerRPC::GetQueryParametersRPC:
+        GetQueryParameters();
         break;
     case ViewerRPC::MaxRPC:
         break;
@@ -8779,7 +8667,7 @@ ViewerSubject::ProcessSpecialOpcodes(int opcode)
         debug1 << "Interrupt: telling engines to interrupt." << endl;
         ViewerEngineManager *eM = ViewerEngineManager::Instance();
         EngineList *engines = eM->GetEngineList();
-        const stringVector &hosts = engines->GetEngines();
+        const stringVector &hosts = engines->GetEngineName();
         const stringVector &sims  = engines->GetSimulationName();
         for(int i = 0; i < hosts.size(); ++i)
             eM->InterruptEngine(EngineKey(hosts[i], sims[i]));
@@ -10152,6 +10040,10 @@ ViewerSubject::SetCreateVectorMagnitudeExpressions()
 //    Brad Whitlock, Tue Aug 10 15:53:27 PDT 2010
 //    I improved how the code works.
 //
+//    Brad Whitlock, Mon Aug 22 11:03:00 PDT 2011
+//    I removed the code to tell the engine to apply the named selection since
+//    it is no longer necessary.
+//
 // ****************************************************************************
 
 void
@@ -10202,7 +10094,6 @@ ViewerSubject::ApplyNamedSelection()
     // is the originating plot for a selection since we can't apply a
     // selection to the plot that generates it.
     //
-    std::vector<std::string> plotNames;
     intVector ePlotIDs;
     ViewerPlot *plot0 = plist->GetPlot(plotIDs[0]);
     const EngineKey &engineKey = plot0->GetEngineKey();
@@ -10218,7 +10109,6 @@ ViewerSubject::ApplyNamedSelection()
         else if(plot->GetPlotName() != originatingPlot)
         {
             ePlotIDs.push_back(plotIDs[i]);
-            plotNames.push_back(plot->GetPlotName());
         }
     }
 
@@ -10227,34 +10117,23 @@ ViewerSubject::ApplyNamedSelection()
     //
     TRY
     {
-        if(ViewerEngineManager::Instance()->ApplyNamedSelection(
-            engineKey, plotNames, selName))
+        for(int i = 0; i < ePlotIDs.size(); ++i)
         {
-            // We were able to record the named selections so we need to 
-            // record the named selections in the plots and update the 
-            // plot list.
-            for(int i = 0; i < ePlotIDs.size(); ++i)
-            {
-                ViewerPlot *plot = plist->GetPlot(ePlotIDs[i]);
-                plot->SetNamedSelection(selName);
-                plot->ClearActors();
-            }
-            plist->RealizePlots(false);
-            plist->UpdatePlotList();
+            ViewerPlot *plot = plist->GetPlot(ePlotIDs[i]);
+            plot->SetNamedSelection(selName);
+            plot->ClearActors();
+        }
+        plist->RealizePlots(false);
+        plist->UpdatePlotList();
 
-            if(selName.size() > 0)
-                Message(tr("Applied named selection"));
-        }
-        else
-        {
-            Error(tr("Unable to apply named selection"));
-        }
+        if(!selName.empty())
+            Message(tr("Applied named selection"));
     }
     CATCH2(VisItException, e)
     {
         char message[1024];
         SNPRINTF(message, 1024, "(%s): %s\n", e.GetExceptionType().c_str(),
-                                             e.Message().c_str());
+                                              e.Message().c_str());
         Error(message);
     }
     ENDTRY
@@ -10276,6 +10155,10 @@ ViewerSubject::ApplyNamedSelection()
 //    Brad Whitlock, Tue Dec 14 11:44:41 PST 2010
 //    Pass selection properties to the engine manager. Allow that the selection
 //    might have been passed beforehand.
+//
+//    Brad Whitlock, Fri Aug 19 10:18:37 PDT 2011
+//    Send expressions down to the engine when we're creating a selection that
+//    is not based on a plot.
 //
 // ****************************************************************************
 
@@ -10338,6 +10221,14 @@ ViewerSubject::CreateNamedSelection()
 
         engineKey = EngineKey(host, sim);
         selSource = db;
+
+        // We're doing a selection based directly on the database. We need to
+        // send the expression definitions to the engine since we haven't yet
+        // created any plots.
+        ExpressionList exprList;
+        ViewerFileServer::Instance()->GetAllExpressions(exprList, host, db, 
+            ViewerFileServer::ANY_STATE);
+        ViewerEngineManager::Instance()->UpdateExpressions(engineKey, exprList);
     }
 
     TRY
@@ -10496,7 +10387,10 @@ GetNamedSelectionEngineKey(const std::string &selName, EngineKey &ek)
 // Creation:   Thu Aug 12 15:33:05 PDT 2010
 //
 // Modifications:
-//   
+//   Brad Whitlock, Mon Aug 22 11:04:50 PDT 2011
+//   I removed some code to associate selections with plots in the engine since
+//   it is no longer necessary.
+//
 // ****************************************************************************
 
 static void
@@ -10508,7 +10402,6 @@ ReplaceNamedSelection(const EngineKey &engineKey, const std::string &selName,
     // Replace the selection in all plots that use it.
     int nWindows = 0, *windowIndices = 0;
     windowIndices = wMgr->GetWindowIndices(&nWindows);
-    stringVector plotNames;
     bool *plotlistsChanged = new bool[nWindows+1];
     for(int i = 0; i < nWindows; ++i)
     {
@@ -10521,7 +10414,6 @@ ReplaceNamedSelection(const EngineKey &engineKey, const std::string &selName,
             ViewerPlot *plot = plist->GetPlot(j);
             if(plot->GetNamedSelection() == selName)
             {
-                plotNames.push_back(plot->GetPlotName());
                 plot->SetNamedSelection(newSelName);
                 plot->ClearActors();
 
@@ -10533,12 +10425,8 @@ ReplaceNamedSelection(const EngineKey &engineKey, const std::string &selName,
     // Update the plot list in the client.
     wMgr->GetActiveWindow()->GetPlotList()->UpdatePlotList();
 
-    // Apply the new selection to the affected plots
     TRY
-    {
-        ViewerEngineManager::Instance()->ApplyNamedSelection(
-            engineKey, plotNames, newSelName);
-    
+    {   
         // Reexecute all of the affected plots.
         for(int i = 0; i < nWindows; ++i)
         {
@@ -10696,7 +10584,9 @@ ViewerSubject::LoadNamedSelection()
 //   Update the specified named selection.
 //
 // Arguments:
-//   selName : The name of the selection to update.
+//   selName     : The name of the selection to update.
+//   updatePlots : Whether to update plots.
+//   allowCache  : Whether the NSM's intermediate data cache can be used.
 //
 // Returns:    
 //
@@ -10713,10 +10603,17 @@ ViewerSubject::LoadNamedSelection()
 //   Brad Whitlock, Thu Jun  9 11:26:20 PDT 2011
 //   Adjust to allow for selections that come from files.
 //
+//   Brad Whitlock, Fri Aug 19 12:33:03 PDT 2011
+//   Send expressions to the engine to make sure that it has them.
+//
+//   Brad Whitlock, Wed Sep  7 14:42:21 PDT 2011
+//   I added the allowCache argument.
+//
 // ****************************************************************************
 
 void
-ViewerSubject::UpdateNamedSelection(const std::string &selName)
+ViewerSubject::UpdateNamedSelection(const std::string &selName, bool updatePlots,
+    bool allowCache)
 {
     EngineKey engineKey;
     bool okay = GetNamedSelectionEngineKey(selName, engineKey);
@@ -10759,14 +10656,24 @@ ViewerSubject::UpdateNamedSelection(const std::string &selName)
     }
     delete [] windowIndices;
 
-    // Delete the selection
-    ViewerEngineManager::Instance()->DeleteNamedSelection(engineKey, selName);
+    // If we have a selection based on a database, send the expression list 
+    // to the engine.
+    if(networkId == -1)
+    {
+        ExpressionList exprList;
+        std::string host, db, sim, src(props.GetSource());
+        ViewerFileServer::Instance()->ExpandDatabaseName(src, host, db);
+        ViewerFileServer::Instance()->GetAllExpressions(exprList, host, db, 
+            ViewerFileServer::ANY_STATE);
+        ViewerEngineManager::Instance()->UpdateExpressions(engineKey, exprList);
+    }
 
     // Create the named selection again and reapply it to plots that use it.
-    if(ViewerEngineManager::Instance()->CreateNamedSelection(
-         engineKey, networkId, props))
+    if(ViewerEngineManager::Instance()->UpdateNamedSelection(
+         engineKey, networkId, props, allowCache))
     {
-        ReplaceNamedSelection(engineKey, selName, selName);
+        if(updatePlots)
+            ReplaceNamedSelection(engineKey, selName, selName);
     }
 
     // Send list of selections to the clients so the selection summary is 
@@ -10790,7 +10697,12 @@ ViewerSubject::UpdateNamedSelection(const std::string &selName)
 // Creation:   Fri Aug 13 14:00:58 PDT 2010
 //
 // Modifications:
-//   
+//   Brad Whitlock, Mon Aug 22 16:33:41 PDT 2011
+//   Get updatePlots flag from the rpc.
+//
+//   Brad Whitlock, Wed Sep  7 15:25:17 PDT 2011
+//   Get allowCache flag from the rpc.
+//
 // ****************************************************************************
 
 void
@@ -10810,7 +10722,10 @@ ViewerSubject::UpdateNamedSelection()
         props = *wMgr->GetSelectionProperties();
     }
 
-    UpdateNamedSelection(selName);
+    bool updatePlots = (GetViewerState()->GetViewerRPC()->GetIntArg1() != 0);
+    bool allowCache = (GetViewerState()->GetViewerRPC()->GetIntArg2() != 0);
+
+    UpdateNamedSelection(selName, updatePlots, allowCache);
 }
 
 // ****************************************************************************

@@ -54,6 +54,13 @@ static bool icDomainCompare(const avtIntegralCurve *icA,
     return icA->sortKey < icB->sortKey;
 }
 
+std::ostream &
+avtICAlgorithm::ICStatistics::operator << (std::ostream &out) const
+{
+    out<<this->nm<<" V: "<<this->value<<" "<<this->total<<" ["<<this->min<<", "<<this->max<<", "<<this->mean<<" : "<<this->sigma<<"]";
+    return out;
+}
+
 // ****************************************************************************
 //  Method: avtICAlgorithm::avtICAlgorithm
 //
@@ -83,6 +90,17 @@ avtICAlgorithm::avtICAlgorithm( avtPICSFilter *f ) :
     picsFilter = f;
     numDomains = picsFilter->numDomains;
     numTimeSteps = picsFilter->numTimeSteps;
+
+    domainsUsed = 0;
+    totDomainsLoaded = 0;
+    domainLoadedMin = 0;
+    domainLoadedMax = 0;
+    globalDomainsUsed = 0;
+    globalTotDomainsLoaded = 0;
+    globalDomainLoadedMin = 0;
+    globalDomainLoadedMax = 0;
+    avgDomainLoaded = 0.f;
+    globalAvgDomainLoaded = 0.f;
 }
 
 // ****************************************************************************
@@ -282,7 +300,8 @@ avtICAlgorithm::Execute()
 void
 avtICAlgorithm::PostExecute()
 {
-    debug1<<"avtICAlgorithm::PostExecute()\n";
+    if (DebugStream::Level1())
+        debug1<<"avtICAlgorithm::PostExecute()\n";
 
     vector<avtIntegralCurve *> v;
     
@@ -711,8 +730,12 @@ avtICAlgorithm::ComputeDomainLoadStatistic()
     if (totDomainsLoaded > 0)
         avgDomainLoaded = (float)totDomainsLoaded / (float)domainsUsed;
 
-    debug1<<"Local Dom report:"<<endl;
-    for (int i = 0; i < numDomains; i++) debug1<<setw(3)<<i<<": "<<domLoads[i]<<endl;
+    if (DebugStream::Level1())
+    {
+        debug1<<"Local Dom report:"<<endl;
+        for (int i = 0; i < numDomains; i++)
+            debug1<<setw(3)<<i<<": "<<domLoads[i]<<endl;
+    }
 
 #if PARALLEL
     globalDomainsUsed = 0;
@@ -723,10 +746,14 @@ avtICAlgorithm::ComputeDomainLoadStatistic()
 
     int *sums = new int[numDomains];
     SumIntArrayAcrossAllProcessors(domLoads, sums, numDomains);
-    
-    debug1<<"Global Dom report:"<<endl;
-    for (int i = 0; i < numDomains; i++) debug1<<setw(3)<<i<<": "<<sums[i]<<endl;
-        
+
+    if (DebugStream::Level1())
+    {
+        debug1<<"Global Dom report:"<<endl;
+        for (int i = 0; i < numDomains; i++)
+            debug1<<setw(3)<<i<<": "<<sums[i]<<endl;
+    }
+ 
     for (int i = 0; i < numDomains; i++)
     {
         if (sums[i] != 0)

@@ -48,7 +48,6 @@
 #include <time.h>
 #include "Field.h"
 
-using std::vector;
 
 #define GENERATOR_NAME "xml2atts"
 
@@ -202,6 +201,12 @@ using std::vector;
 //
 //    Brad Whitlock, Fri Dec 10 16:09:42 PST 2010
 //    I made protected members generate Set/Get methods like public members.
+//
+//    Kathleen Biagas, Thu Aug 25 14:21:58 MST 2011
+//    Allow fields in a persistent state object to be non-persistent.
+//
+//    Kathleen Biagas, Tue Mar  1 11:01:51 PST 2011
+//    Added Generator for MapNode type.
 //
 // ****************************************************************************
 
@@ -1323,6 +1328,28 @@ class AttsGeneratorAttVector : public virtual AttVector , public virtual AttsGen
     }
 };
 
+//
+// --------------------------------- MapNode ---------------------------------
+//
+class AttsGeneratorMapNode : public virtual MapNode , public virtual AttsGeneratorField
+{
+  public:
+    AttsGeneratorMapNode(const QString &n, const QString &l)
+        : Field("MapNode",n,l), MapNode(n,l), AttsGeneratorField("MapNode",n,l) { }
+    virtual bool CanHaveConst() { return true; }
+    virtual QString GetAttributeGroupID()
+    {
+        return "m";
+    }
+    virtual QString DataNodeConversion()
+    {
+        return "AsMapNode";
+    }
+    virtual void WriteSourceSetDefault(QTextStream &c)
+    {
+    }
+};
+
 
 //
 // ----------------------------------- Enum -----------------------------------
@@ -1529,6 +1556,9 @@ class AttsGeneratorLoadBalanceScheme : public virtual LoadBalanceSchemeField, pu
 //    Kathleen Bonnell, Thu Mar 22 16:58:23 PDT 2007 
 //    Added scalemode.
 //
+//    Kathleen Bonnell, Tue Mar  1 11:02:37 PST 2011
+//    Added MapNode.
+//
 // ----------------------------------------------------------------------------
 class AttsFieldFactory
 {
@@ -1565,6 +1595,7 @@ class AttsFieldFactory
         else if (type == "attVector")    f = new AttsGeneratorAttVector(subtype,name,label);
         else if (type == "enum")         f = new AttsGeneratorEnum(subtype, name, label);
         else if (type == "scalemode")    f = new AttsGeneratorScaleMode(name,label);
+        else if (type == "MapNode")       f = new AttsGeneratorMapNode(name,label);
 
         // Special built-in AVT enums
         else if (type == "avtCentering")      f = new AttsGeneratoravtCentering(name, label);
@@ -1616,13 +1647,20 @@ class AttsFieldFactory
 //
 //   Mark C. Miller, Tue Sep  1 09:19:06 PDT 2009
 //   Fixed missing call to SelectAll in implementation of Init() func.
+//
+//   Kathleen Biagas, Mon Sep 19 15:51:28 PDT 2011
+//   For atts with 'custombase', call baseClass' method instead of returning
+//   'FieldType_Unknown' or 'invalid index' in the default case for 
+//   GetFieldName, GetFieldType, GetFieldTypeName and FieldsEqual.
+//
 // ----------------------------------------------------------------------------
+
 #include <GeneratorBase.h>
 
 class AttsGeneratorAttribute : public GeneratorBase
 {
   public:
-    vector<AttsGeneratorField*> fields;
+    std::vector<AttsGeneratorField*> fields;
   public:
     AttsGeneratorAttribute(const QString &n, const QString &p, const QString &f,
                            const QString &e, const QString &ei, const QString &bc)
@@ -2797,6 +2835,11 @@ private:
                 c << "    // " << fields[i]->name << " is public and should not be saved." << Endl;
                 continue;
             }
+            if(!fields[i]->persistent)
+            {
+                c << "    // " << fields[i]->name << " is not persistent and should not be saved." << Endl;
+                continue;
+            }
 
             QString forceAdd("false"); 
             if(fields[i]->type != "color")
@@ -2905,6 +2948,11 @@ private:
                 c << "    // " << fields[i]->name << " is public and was not saved." << Endl;
                 continue;
             }
+            if(!fields[i]->persistent)
+            {
+                c << "    // " << fields[i]->name << " is not persistent and was not saved." << Endl;
+                continue;
+            }
 
             fields[i]->WriteSourceSetFromNode(c);
         } // end for
@@ -2934,7 +2982,10 @@ private:
             QString fieldID(PadStringWithSpaces(fields[i]->FieldID() + QString(":"), maxlen));
             c << "    case "<<fieldID<<" return \""<<fields[i]->name<<"\";" << Endl;
         }
-        c << "    default:  return \"invalid index\";" << Endl;
+        if (custombase)
+            c << "    default:  return " << baseClass << "::GetFieldName(index);" << Endl;
+        else
+            c << "    default:  return \"invalid index\";" << Endl;
         c << "    }" << Endl;
         c << "}" << Endl;
         c << Endl;
@@ -2952,7 +3003,10 @@ private:
             QString fieldID(PadStringWithSpaces(fields[i]->FieldID() + QString(":"), maxlen));
             c << "    case "<<fieldID<<" return FieldType_"<<fields[i]->GetFieldType()<<";" << Endl;
         }
-        c << "    default:  return FieldType_unknown;" << Endl;
+        if (custombase)
+            c << "    default:  return " << baseClass << "::GetFieldType(index);" << Endl;
+        else
+            c << "    default:  return FieldType_unknown;" << Endl;
         c << "    }" << Endl;
         c << "}" << Endl;
         c << Endl;
@@ -2970,7 +3024,10 @@ private:
             QString fieldID(PadStringWithSpaces(fields[i]->FieldID() + QString(":"), maxlen));
             c << "    case "<<fieldID<<" return \""<<fields[i]->type<<"\";" << Endl;
         }
-        c << "    default:  return \"invalid index\";" << Endl;
+        if (custombase)
+            c << "    default:  return " << baseClass << "::GetFieldTypeName(index);" << Endl;
+        else
+            c << "    default:  return \"invalid index\";" << Endl;
         c << "    }" << Endl;
         c << "}" << Endl;
         c << Endl;
@@ -3000,7 +3057,10 @@ private:
             c << ";" << Endl << "        }" << Endl;
             c << "        break;" << Endl;
         }
-        c << "    default: retval = false;" << Endl;
+        if (custombase)
+            c << "    default: retval = " << baseClass << "::FieldsEqual(index_, rhs);" << Endl;
+        else 
+            c << "    default: retval = false;" << Endl;
         c << "    }" << Endl << Endl;
         c << "    return retval;" << Endl;
         c << "}" << Endl << Endl;

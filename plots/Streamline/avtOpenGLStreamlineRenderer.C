@@ -72,6 +72,9 @@
 #include <vtkTriangleFilter.h>
 #include <vtkVisItSTLWriter.h>
 
+#include <string>
+#include <vector>
+
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -467,7 +470,7 @@ avtOpenGLStreamlineRenderer::DrawAsLines(vtkPolyData *data)
     if (illuminated && data->GetPointData()->GetArray(avtStreamlinePolyDataFilter::tangentsArrayName.c_str()))
         tangents = (float *)data->GetPointData()->GetArray(avtStreamlinePolyDataFilter::tangentsArrayName.c_str())->GetVoidPointer(0);
 
-    int *segptr = segments;
+    vtkIdType *segptr = segments;
     double pt[3];
 
     for (int i=0; i<data->GetNumberOfLines(); i++)
@@ -673,7 +676,7 @@ avtOpenGLStreamlineRenderer::DrawAsTubes(vtkPolyData *data)
         vtkCellArray *lines = data->GetLines();
         vtkIdType *segments = lines->GetPointer();
     
-        int *segptr = segments;
+        vtkIdType *segptr = segments;
         vtkAppendPolyData *append = vtkAppendPolyData::New();
         
         for (int i=0; i<data->GetNumberOfLines(); i++)
@@ -745,7 +748,7 @@ avtOpenGLStreamlineRenderer::DrawAsRibbons(vtkPolyData *data)
     else
         EXCEPTION1(ImproperUseException, "Expected a vorticity values for ribbon display.");
     
-    int *segptr = segments;
+    vtkIdType *segptr = segments;
 
     //Create new polylines and add the normals.
     for (int i=0; i<data->GetNumberOfLines(); i++)
@@ -868,7 +871,7 @@ avtOpenGLStreamlineRenderer::DrawSeedPoints(vtkPolyData *data)
     if (data->GetPointData()->GetArray(avtStreamlinePolyDataFilter::opacityArrayName.c_str()))
         o = (float *)data->GetPointData()->GetArray(avtStreamlinePolyDataFilter::opacityArrayName.c_str())->GetVoidPointer(0);
     
-    int *segptr = segments;
+    vtkIdType *segptr = segments;
     double pt[3];
     
     for (int i=0; i<data->GetNumberOfLines(); i++)
@@ -945,7 +948,7 @@ avtOpenGLStreamlineRenderer::DrawHeadGeom(vtkPolyData *data)
     if (data->GetPointData()->GetArray(avtStreamlinePolyDataFilter::opacityArrayName.c_str()))
         o = (float *)data->GetPointData()->GetArray(avtStreamlinePolyDataFilter::opacityArrayName.c_str())->GetVoidPointer(0);
     
-    int *segptr = segments;
+    vtkIdType *segptr = segments;
     double endPt[3], endPtPrev[3];
     float scalar, opacity=1.0;
 
@@ -1073,7 +1076,7 @@ avtOpenGLStreamlineRenderer::DrawHeadGeom(vtkPolyData *data)
 
 vtkPolyData *
 avtOpenGLStreamlineRenderer::MakeNewPolyline(vtkPolyData *data,
-                                             int *&segptr)
+                                             vtkIdType *&segptr)
 {
     vtkPoints *points = data->GetPoints();
     float *s = (float *)data->GetPointData()->GetArray(avtStreamlinePolyDataFilter::colorvarArrayName.c_str())->GetVoidPointer(0);
@@ -1527,7 +1530,7 @@ avtOpenGLStreamlineRenderer::InitColors()
     avtColorTables *ct = avtColorTables::Instance();
     
     if (colorTableName == "Default")
-        colorTableName = string(ct->GetDefaultContinuousColorTable());
+        colorTableName = std::string(ct->GetDefaultContinuousColorTable());
 
     // Make sure color table exists.
     if (!ct->ColorTableExists(colorTableName.c_str()))
@@ -1541,7 +1544,7 @@ avtOpenGLStreamlineRenderer::InitColors()
     //Fill in the colorTable.
     unsigned char rgb[3] = {0,0,0};
     
-    vector<unsigned char>::iterator iter = colorTable.begin();
+    std::vector<unsigned char>::iterator iter = colorTable.begin();
     if (ct->IsDiscrete(colorTableName.c_str()))
     {
         for (int i = 0; i < numColors; i++)
@@ -1558,7 +1561,7 @@ avtOpenGLStreamlineRenderer::InitColors()
         unsigned char *rgb = ct->GetSampledColors(colorTableName.c_str(), numColors);
         if (rgb)
         {
-            vector<unsigned char>::iterator iter = colorTable.begin();
+            std::vector<unsigned char>::iterator iter = colorTable.begin();
             for (int i = 0; i < numColors; i++)
             {
                 *iter++ = rgb[i*3 +0];
@@ -2136,7 +2139,7 @@ avtOpenGLStreamlineRenderer::GenerateSpherePolys(float x0,
 
 bool
 avtOpenGLStreamlineRenderer::GetEndPoints(vtkPolyData *data, 
-                                          int *segptr,
+                                          vtkIdType *segptr,
                                           int nPts,
                                           int &j0, 
                                           int &j1,
