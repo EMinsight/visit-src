@@ -37,6 +37,7 @@
 *****************************************************************************/
 
 #include <Curve2DPluginInfo.h>
+#include <avtCurve2DWriter.h>
 
 // ****************************************************************************
 //  Function:  GetEngineInfo
@@ -68,6 +69,6 @@ extern "C" DBP_EXPORT EngineDatabasePluginInfo* Curve2D_GetEngineInfo()
 avtDatabaseWriter *
 Curve2DEnginePluginInfo::GetWriter(void)
 {
-    return NULL;
+    return new avtCurve2DWriter;
 }
 

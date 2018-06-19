@@ -29,6 +29,9 @@
 #   Eric Brugger, Fri Mar 25 10:20:49 PDT 2011
 #   Added cielo.
 #
+#   Eric Brugger, Mon Jul 30 10:31:10 PDT 2012
+#   Added gremlin.
+#
 #-----------------------------------------------------------------------
 
 test=no
@@ -41,6 +44,7 @@ user=`whoami`
 termite=true
 terminator=false
 inca=true
+gremlin=true
 cielo=true
 
 ver=undefined
@@ -57,6 +61,7 @@ do
          termite=false
          terminator=false
          inca=false
+         gremlin=false
          cielo=false
          shift
          ;;
@@ -82,6 +87,14 @@ do
          ;;
       +inca)
          inca=true
+         shift
+         ;;
+      -gremlin)
+         gremlin=false
+         shift
+         ;;
+      +gremlin)
+         gremlin=true
          shift
          ;;
       -cielo)
@@ -195,12 +208,50 @@ then
 fi
 
 #
+# Install on gremlin.
+#
+rm -f gremlin
+cat <<EOF > gremlin
+#!/bin/sh
+./visit-install -private -c llnl_closed -g visit -b bdivp -gw -l $ver linux-x86_64-gremlin /usr/gapps/visit > installlog 2>&1
+mv /usr/gapps/visit/$ver+/linux-x86_64 /usr/gapps/visit/$ver+/linux-x86_64-chaos4
+rm -f resultlog
+echo ""                                               > resultlog 2>&1
+echo "        install of visit on gremlin"            >> resultlog 2>&1
+echo "       -----------------------------"           >> resultlog 2>&1
+echo ""                                               >> resultlog 2>&1
+df -k /usr/gapps/visit                                >> resultlog 2>&1
+echo ""                                               >> resultlog 2>&1
+ls -l /usr/gapps/visit/$ver+/linux-x86_64-chaos4/bin  >> resultlog 2>&1
+echo ""                                               >> resultlog 2>&1
+echo "number of database plugins = "\`ls /usr/gapps/visit/$ver+/linux-x86_64-chaos4/plugins/databases/libI* | wc -l\` >> resultlog 2>&1
+echo "number of operator plugins = "\`ls /usr/gapps/visit/$ver+/linux-x86_64-chaos4/plugins/operators/libI* | wc -l\` >> resultlog 2>&1
+echo "number of plot plugins = "\`ls /usr/gapps/visit/$ver+/linux-x86_64-chaos4/plugins/plots/libI* | wc -l\` >> resultlog 2>&1
+echo ""                                            >> resultlog 2>&1
+echo "The database plugins:"                       >> resultlog 2>&1
+ls /usr/gapps/visit/$ver+/linux-x86_64-chaos4/plugins/databases/libI* | sed "s/\/usr\/gapps\/visit\/$ver+\/linux-x86_64-chaos4\/plugins\/databases\/libI//" | sed "s/Database.so//" >> resultlog 2>&1
+mv resultlog resultlog.gremlin
+EOF
+
+if [ $gremlin = true ]
+then
+   if [ $test = no ]
+   then
+      scp gremlin3:/usr/tmp/$user/gremlin/visitbuild/visit$ver2.linux-x86_64.tar.gz visit$ver2.linux-x86_64-gremlin.tar.gz
+      scp visit$ver2.linux-x86_64-gremlin.tar.gz gremlin3:
+      scp visit-install gremlin3:
+      scp gremlin gremlin3:gremlin_install
+      ssh gremlin3 "chmod 750 gremlin_install;./gremlin_install"
+   fi
+fi
+
+#
 # Install on inca.
 #
 rm -f inca
 cat <<EOF > inca
 #!/bin/sh
-./visit-install -private -c llnl_closed -g visit -b bdivp -gw -l $ver linux-x86_64 /usr/gapps/visit > installlog 2>&1
+./visit-install -private -c llnl_closed -g visit -b bdivp -gw -l $ver linux-x86_64-inca /usr/gapps/visit > installlog 2>&1
 rm -f resultlog
 echo ""                                            > resultlog 2>&1
 echo "        install of visit on inca"            >> resultlog 2>&1
@@ -223,8 +274,8 @@ if [ $inca = true ]
 then
    if [ $test = no ]
    then
-      scp inca3:/usr/tmp/$user/inca/visitbuild/visit$ver2.linux-x86_64.tar.gz .
-      scp visit$ver2.linux-x86_64.tar.gz inca3:
+      scp inca3:/usr/tmp/$user/inca/visitbuild/visit$ver2.linux-x86_64.tar.gz visit$ver2.linux-x86_64-inca.tar.gz
+      scp visit$ver2.linux-x86_64-inca.tar.gz inca3:
       scp visit-install inca3:
       scp inca inca3:inca_install
       ssh inca3 "chmod 750 inca_install;./inca_install"
@@ -274,5 +325,5 @@ fi
 #
 if [ $test = no ]
 then
-   rm -f termite terminator inca cielo
+   rm -f termite terminator inca gremlin cielo
 fi

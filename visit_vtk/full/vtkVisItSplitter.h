@@ -61,6 +61,9 @@ class vtkUnstructuredGrid;
 //  Creation:    February 24, 2010
 //
 //  Modifications:
+//    Eric Brugger, Wed Jul 25 10:09:42 PDT 2012
+//    Increase the number of boundaries that can be handled by the mulit-pass
+//    CSG discretization from 128 to 512.
 //
 // ****************************************************************************
 
@@ -78,8 +81,8 @@ class VISIT_VTK_API vtkVisItSplitter
     virtual void SetClipScalars(vtkDataArray *, float);
     virtual void SetInsideOut(bool);
     virtual void SetUseZeroCrossings(bool);
-    virtual void SetOldTagBitField(std::vector<FixedLengthBitField<16> >*);
-    virtual void SetNewTagBitField(std::vector<FixedLengthBitField<16> > *);
+    virtual void SetOldTagBitField(std::vector<FixedLengthBitField<64> >*);
+    virtual void SetNewTagBitField(std::vector<FixedLengthBitField<64> > *);
     virtual void SetNewTagBit(int);
 
     void SetCellList(const vtkIdType *, vtkIdType);
@@ -105,8 +108,8 @@ class VISIT_VTK_API vtkVisItSplitter
         bool                 useZeroCrossings;
 
         int                  newTagBit;
-        std::vector<FixedLengthBitField<16> > *newTags;
-        std::vector<FixedLengthBitField<16> > *oldTags;
+        std::vector<FixedLengthBitField<64> > *newTags;
+        std::vector<FixedLengthBitField<64> > *oldTags;
     };
 
   protected:

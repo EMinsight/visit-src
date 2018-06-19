@@ -1,4 +1,4 @@
-#/usr/common/graphics/installs/visit_3rdparty/cmake/2.8.3/linux-x86_64_gcc-4.6/bin/cmake
+#/usr/common/usg/cmake/2.8.8/bin/cmake
 ##
 ## build_visit generated host.cmake
 ## created: Mon Nov 15 17:10:11 PST 2010
@@ -11,6 +11,7 @@
 SET(VISITHOME /usr/common/graphics/installs/visit_3rdparty)
 SET(VISITARCH linux-x86_64_gcc-4.6)
 #SET(VISIT_VERBOSE_MAKEFILE TRUE)
+SET(VISIT_INSTALL_PROFILES_TO_HOSTS "nersc")
 VISIT_OPTION_DEFAULT(CMAKE_INSTALL_PREFIX /usr/common/graphics/visit)
 VISIT_OPTION_DEFAULT(VISIT_INSTALL_THIRD_PARTY ON)
 VISIT_OPTION_DEFAULT(CMAKE_BUILD_TYPE Release)
@@ -157,7 +158,7 @@ VISIT_OPTION_DEFAULT(VISIT_SILO_LIBDEP HDF5_LIBRARY_DIR hdf5 ${VISIT_HDF5_LIBDEP
 ## MOAB implementation
 ITAPS_INCLUDE_DIRECTORIES(MOAB ${VISITHOME}/itaps/1.2/MOAB/4.0.1RC2/${VISITARCH}/include)
 ITAPS_FILE_PATTERNS(MOAB *.cub)
-ITAPS_LINK_LIBRARIES(MOAB iMesh MOAB hdf5 sz z netcdf_c++ netcdf vtkGraphics)
+ITAPS_LINK_LIBRARIES(MOAB iMesh MOAB hdf5_hl hdf5 sz z netcdf_c++ netcdf vtkGraphics)
 ITAPS_LINK_DIRECTORIES(MOAB  ${VISITHOME}/itaps/1.2/MOAB/4.0.1RC2/${VISITARCH}/lib  ${VISITHOME}/hdf5/1.8.7/${VISITARCH}/lib  ${VISITHOME}/szip/2.1/${VISITARCH}/lib  ${VISITHOME}/netcdf/4.1.1/${VISITARCH}/lib)
 ## FMDB implementation
 ITAPS_INCLUDE_DIRECTORIES(FMDB ${VISITHOME}/itaps/1.2/FMDB/1.2/${VISITARCH}/include)

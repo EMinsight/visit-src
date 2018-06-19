@@ -1070,7 +1070,12 @@ ViewerPlotList::BackwardStep()
 // Creation:   Mon Mar 22 15:43:18 PST 2004
 //
 // Modifications:
-//   
+//   Brad Whitlock, Mon Jul 23 11:38:44 PDT 2012
+//   Disable updates if we're clearing pick points since the extra redraw
+//   causes the window to blank until the UpdateFrame is done when we're in 
+//   SR mode. This way, the implicit Redraw down in ClearPickPoints has no
+//   effect and we explicitly redraw the window.
+//
 // ****************************************************************************
 
 void
@@ -1085,8 +1090,12 @@ ViewerPlotList::SetTimeSliderState(int state)
 
     if(state >= 0 && state < timeSliderNStates)
     {
-        if (state != timeSliderCurrentState)
+        bool clearPicks = (state != timeSliderCurrentState);
+        if(clearPicks)
+        {
+            window->DisableUpdates();
             window->ClearPickPoints();
+        }
 
         //
         // Get the correlation for the active time slider.
@@ -1135,6 +1144,11 @@ ViewerPlotList::SetTimeSliderState(int state)
         // Update the frame, which we mean to be the image on the screen.
         //
         UpdateFrame(false);
+
+        // If we disabled updates as a result of clearing pick points, enable
+        // updates again.
+        if(clearPicks)
+            window->EnableUpdates();
     }
 }
 
@@ -4735,7 +4749,7 @@ ViewerPlotList::CloseDatabase(const std::string &dbName)
 }
 
 // ****************************************************************************
-// Method: ViewerPlotList::ReplaceDatabase
+// Method: ViewerPlotList::ReplaceDatabaseHelper
 //
 // Purpose: 
 //   Replaces the database used in the current plots with a new database and
@@ -4808,12 +4822,15 @@ ViewerPlotList::CloseDatabase(const std::string &dbName)
 //   I modified the routine so that it only sets the SIL restriction from a
 //   compatible SIL if the plot variable is not material restricted.
 //
+//   Brad Whitlock, Wed Jul 11 10:36:35 PDT 2012
+//   I turned it into a helper function with an option to just update the SIL.
+//
 // ****************************************************************************
 
-void
-ViewerPlotList::ReplaceDatabase(const EngineKey &key,
-    const std::string &database, int timeState, bool setTimeState,
-    bool onlyReplaceSame, bool onlyReplaceActive)
+bool
+ViewerPlotList::ReplaceDatabaseHelper(const EngineKey &key,
+    const std::string &database, int timeState,
+    bool onlyReplaceSame, bool onlyReplaceActive, bool justUpdateSIL)
 {
     //
     // Loop through the list replacing the plot's database.
@@ -4869,12 +4886,6 @@ ViewerPlotList::ReplaceDatabase(const EngineKey &key,
                 if (*silr != 0)
                 {
                     //
-                    // First, adjust the plot's cache for new database
-                    //
-                    plot->PrepareCacheForReplace(timeState, numNewStates,
-                                                 GetKeyframeMode());
-
-                    //
                     // Try and set the new sil restriction from the old.
                     // This is useful for related files that have not been
                     // grouped.
@@ -4896,22 +4907,35 @@ ViewerPlotList::ReplaceDatabase(const EngineKey &key,
                             }
                         }
                     }
-
-                    //
-                    // Set the new host, database and SIL restriction.
-                    //
-                    plot->SetHostDatabaseName(key, database.c_str());
-                    plot->SetSILRestriction(silr);
                     plotsReplaced = true;
 
-                    //
-                    // Tell the plot to update its cache size and whether it should
-                    // clear out its actors when it does change the cache size.
-                    // Currently, we want to clear the actors but in the
-                    // future when we have CheckForNewStates fully implemented,
-                    // we may not want to clear actors.
-                    //
-                    plot->UpdateCacheSize(GetKeyframeMode(), true);
+                    if(justUpdateSIL)
+                    {
+                        plot->SetSILRestriction(silr, false);
+                    }
+                    else // We're replacing.
+                    {
+                        //
+                        // First, adjust the plot's cache for new database
+                        //
+                        plot->PrepareCacheForReplace(timeState, numNewStates,
+                                                     GetKeyframeMode());
+
+                        //
+                        // Set the new host, database and SIL restriction.
+                        //
+                        plot->SetHostDatabaseName(key, database);
+                        plot->SetSILRestriction(silr);
+
+                        //
+                        // Tell the plot to update its cache size and whether it should
+                        // clear out its actors when it does change the cache size.
+                        // Currently, we want to clear the actors but in the
+                        // future when we have CheckForNewStates fully implemented,
+                        // we may not want to clear actors.
+                        //
+                        plot->UpdateCacheSize(GetKeyframeMode(), true);
+                    }
                 }
             }
             CATCH(InvalidVariableException)
@@ -4931,6 +4955,43 @@ ViewerPlotList::ReplaceDatabase(const EngineKey &key,
             ENDTRY
         }
     }
+
+    return plotsReplaced;
+}
+
+// ****************************************************************************
+// Method: ViewerPlotList::ReplaceDatabase
+//
+// Purpose: 
+//   Replace the database for the plots in the plot list.
+//
+// Arguments:
+//   key          : The engine key.
+//   database     : The new database.
+//   timeState    : The new time state.
+//   setTimeState : Whether we should set the time slider too.
+//   onlyReplaceSame   : If true, only replace plots that have the same database
+//                       as the new database.
+//   onlyReplaceActive : If true, only replace active plots.
+//
+// Returns:    Whether any plots were updated.
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Wed Jul 11 10:34:05 PDT 2012
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+bool
+ViewerPlotList::ReplaceDatabase(const EngineKey &key,
+    const std::string &database, int timeState, bool setTimeState,
+    bool onlyReplaceSame, bool onlyReplaceActive)
+{
+    bool plotsReplaced = ReplaceDatabaseHelper(key, database, timeState, 
+                             onlyReplaceSame, onlyReplaceActive, false);
 
     //
     // Update the client attributes.
@@ -4954,6 +5015,44 @@ ViewerPlotList::ReplaceDatabase(const EngineKey &key,
         SetTimeSliderState(timeState);
     else
         UpdateFrame();
+
+    return plotsReplaced;
+}
+
+// ****************************************************************************
+// Method: ViewerPlotList::UpdateSILRestriction
+//
+// Purpose: 
+//   Update the SIL restriction for the plots that use the specified database.
+//
+// Arguments:
+//   key      : The engine key
+//   database : The database.
+//
+// Returns:    
+//
+// Note:       Sometimes the SIL for a database will change and we need to update
+//             the plot's SIL restriction to account for the changes (i.e. differing
+//             number of AMR patches, etc). Mainly used for simulations.
+//
+// Programmer: Brad Whitlock
+// Creation:   Wed Jul 11 10:34:19 PDT 2012
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+ViewerPlotList::UpdateSILRestriction(const EngineKey &key, const std::string &database)
+{
+    int  timeState = 0;
+    bool onlyReplaceSame = true;
+    bool onlyReplaceActive = false;
+    bool plotsReplaced = ReplaceDatabaseHelper(key, database, timeState, onlyReplaceSame, 
+                                               onlyReplaceActive, true);
+
+    if(plotsReplaced)
+        UpdateSILRestrictionAtts();
 }
 
 // ****************************************************************************

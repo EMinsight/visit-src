@@ -411,16 +411,16 @@ avtBATLFileFormat::FreeUpResources(void)
 // ****************************************************************************
 typedef struct
 {
-    int f[3];
+    double f[3];
     int   b;
-} IntInt;
+} DoubleInt;
 
 
 static int
 QsortiCoordSorter(const void *arg1, const void *arg2)
 {
-    IntInt *A = (IntInt *) arg1;
-    IntInt *B = (IntInt *) arg2;
+    DoubleInt *A = (DoubleInt *) arg1;
+    DoubleInt *B = (DoubleInt *) arg2;
 
     if (A->f[2] < B->f[2])
         return -1;
@@ -492,6 +492,12 @@ QsortiCoordSorter(const void *arg1, const void *arg2)
 //    from the SAMRAI plugin to get non-cartesian meshes to work and changed
 //    the orginization of the if (showProcessors) statements to something
 //    that seemed more logical to me.
+//
+//    Paul D. Stewart Mon Jul 16 2012
+//     Added logicalDimension and condensed things a bit.
+//   
+//    Paul D Stesart Jul 26, 2012
+//     Changed group origin to 0
 // ****************************************************************************
 
 void
@@ -505,112 +511,127 @@ avtBATLFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
     //    for block and level SIL categories
     if (numBlocks > 0)
     {
-        if (showProcessors)
+    avtMeshMetaData *mesh = new avtMeshMetaData;
+    vector<int> groupIds(numBlocks);
+    vector<string> pieceNames(numBlocks);
+    if (showProcessors)
+    {
+        mesh->name = "mesh_blockandproc";
+        mesh->originalName = "mesh_blockandproc";
+        mesh->numBlocks = numBlocks;
+        mesh->blockTitle = "Blocks";
+        mesh->blockPieceName = "block";
+        // Processor number as group
+        mesh->numGroups = numProcessors;
+        mesh->groupTitle = "Processor";
+        mesh->groupPieceName = "processor";
+        mesh->numGroups = numProcessors;
+        for (int i = 0; i < numBlocks; i++)
         {
-            avtMeshMetaData *bpmesh = new avtMeshMetaData;
-            bpmesh->name = "mesh_blockandproc";
-            ;
-            bpmesh->originalName = "mesh_blockandproc";
+            char tmpName[64];
+            sprintf(tmpName,"processor%d,block%d",blocks[i].procnum, blocks[i].ID);
+            groupIds[i] = blocks[i].procnum;
+            pieceNames[i] = tmpName;
+        }
+
+    }
+    else
+    {
+        mesh->name = "amr_mesh";
+        mesh->originalName = "amr_mesh";
+        mesh->numBlocks = numBlocks;
+        mesh->blockTitle = "Blocks";
+        mesh->blockPieceName = "block";
+        // Level number as group
+        mesh->numGroups = numLevels;
+        mesh->groupTitle = "Level";
+        mesh->groupPieceName = "level";
+        mesh->numGroups = numLevels;
+
+        for (int i = 0; i < numBlocks; i++)
+        {
+            char tmpName[64];
+            sprintf(tmpName,"level%d,block%d",blocks[i].level, blocks[i].ID);
+            groupIds[i] = blocks[i].level;
+            pieceNames[i] = tmpName;
+        }
+
+    }
+        debug5 << "PopulateDatabaseMetaData Marker 37" << endl;
+        mesh->blockNames = pieceNames;
+        mesh->groupIds = groupIds;
+        debug5 << "PopulateDatabaseMetaData Marker 38" << endl;
+
+   
+
+        mesh->meshType = AVT_AMR_MESH;
+        mesh->topologicalDimension = logicalDimension;
+        mesh->spatialDimension = dimension;
+        mesh->blockOrigin = 0;
+        mesh->groupOrigin = 0;
+
+        mesh->hasSpatialExtents = true;
+        mesh->minSpatialExtents[0] = minSpatialExtents[0];
+        mesh->maxSpatialExtents[0] = maxSpatialExtents[0];
+        mesh->minSpatialExtents[1] = minSpatialExtents[1];
+        mesh->maxSpatialExtents[1] = maxSpatialExtents[1];
+        mesh->minSpatialExtents[2] = minSpatialExtents[2];
+        mesh->maxSpatialExtents[2] = maxSpatialExtents[2];
+
+       
+        for (size_t l = 0; l < axisLabels.size(); l++)
+        {
+            if (l == 0)
+                mesh->xLabel = axisLabels[l];
+            else if (l == 1)
+                mesh->yLabel = axisLabels[l];
+            else if (l == 2)
+                mesh->zLabel = axisLabels[l];
+        }
 
 
-            bpmesh->meshType = AVT_AMR_MESH;
-            bpmesh->topologicalDimension = dimension;
-            bpmesh->spatialDimension = dimension;
-            bpmesh->blockOrigin = 1;
-            bpmesh->groupOrigin = 1;
 
-            bpmesh->hasSpatialExtents = true;
-            bpmesh->minSpatialExtents[0] = minSpatialExtents[0];
-            bpmesh->maxSpatialExtents[0] = maxSpatialExtents[0];
-            bpmesh->minSpatialExtents[1] = minSpatialExtents[1];
-            bpmesh->maxSpatialExtents[1] = maxSpatialExtents[1];
-            bpmesh->minSpatialExtents[2] = minSpatialExtents[2];
-            bpmesh->maxSpatialExtents[2] = maxSpatialExtents[2];
+        md->Add(mesh);
 
-            bpmesh->numBlocks = numBlocks;
-            bpmesh->blockTitle = "Blocks";
-            bpmesh->blockPieceName = "block";
-            // Processor number as group
-            bpmesh->numGroups = numProcessors;
-            bpmesh->groupTitle = "Processor";
-            bpmesh->groupPieceName = "processor";
-            bpmesh->numGroups = numProcessors;
-            vector<int> groupIds(numBlocks);
-            vector<string> pieceNames(numBlocks);
-            debug5 << "axisLabels" << endl;
-            for (size_t l = 0; l < axisLabels.size(); l++)
-            {
-                if (l == 0)
-                    bpmesh->xLabel = axisLabels[l];
-                else if (l == 1)
-                    bpmesh->yLabel = axisLabels[l];
-                else if (l == 2)
-                    bpmesh->zLabel = axisLabels[l];
-            }
-
-
-            for (int i = 0; i < numBlocks; i++)
-            {
-                char tmpName[64];
-                sprintf(tmpName,"processor%d,block%d",blocks[i].procnum, blocks[i].ID);
-                groupIds[i] = blocks[i].procnum;
-                pieceNames[i] = tmpName;
-            }
-            debug5 << "PopulateDatabaseMetaData Marker 37" << endl;
-            bpmesh->blockNames = pieceNames;
-            bpmesh->groupIds = groupIds;
-            debug5 << "PopulateDatabaseMetaData Marker 38" << endl;
-
-
-            md->Add(bpmesh);
-
-            // grid variables
-            for (int v = 0 ; v < nPlotVars; v++)
-            {
-                avtScalarMetaData *smd = new avtScalarMetaData;
-                smd->name = varNames[v];
+        // grid variables
+        for (int v = 0 ; v < nPlotVars; v++)
+        {
+            avtScalarMetaData *smd = new avtScalarMetaData;
+            smd->name = varNames[v];
+            if (showProcessors)
+                smd->meshName = "mesh_blockandproc";
+            else
                 smd->meshName = "amr_mesh";
-                smd->centering = AVT_ZONECENT;
-                smd->hasUnits = true;
-                smd->units = varUnits[v];
-                smd->hasDataExtents=true;
-                smd->minDataExtents = minVals[v];
-                smd->maxDataExtents = maxVals[v];
-                md->Add(smd);
-            }
+            smd->centering = AVT_ZONECENT;
+            smd->hasUnits = true;
+            smd->units = varUnits[v];
+            smd->hasDataExtents=true;
+            smd->minDataExtents = minVals[v];
+            smd->maxDataExtents = maxVals[v];
+            debug5 << varUnits[v] << endl;
+            debug5 << minVals[v] << endl;
+            debug5 << maxVals[v] << endl;
+            md->Add(smd);
+        }
 
-            if (isCutFile == 0)
+        if (isCutFile == 0)
+        {
+            avtMeshMetaData *mortMesh = new avtMeshMetaData;
+            if (showProcessors)
             {
-                avtMeshMetaData *mcbpmesh = new avtMeshMetaData;
-                mcbpmesh->name = "morton_blockandproc";
-                mcbpmesh->originalName = "morton_blockandproc";
-
-                mcbpmesh->meshType = AVT_UNSTRUCTURED_MESH;
-                mcbpmesh->topologicalDimension = 1;    //    It's a curve
-                mcbpmesh->spatialDimension = dimension;
-                mcbpmesh->blockOrigin = 0;
-                mcbpmesh->groupOrigin = 0;
-
-                mcbpmesh->hasSpatialExtents = true;
-                mcbpmesh->minSpatialExtents[0] = minSpatialExtents[0];
-                mcbpmesh->maxSpatialExtents[0] = maxSpatialExtents[0];
-                mcbpmesh->minSpatialExtents[1] = minSpatialExtents[1];
-                mcbpmesh->maxSpatialExtents[1] = maxSpatialExtents[1];
-                mcbpmesh->minSpatialExtents[2] = minSpatialExtents[2];
-                mcbpmesh->maxSpatialExtents[2] = maxSpatialExtents[2];
-
-
+                mortMesh->name = "morton_blockandproc";
+                mortMesh->originalName = "morton_blockandproc";
                 // DEFINING SUBSETS ON M. CURVE MESH (LIKE THAT ON BASE MESH "mesh")
                 // spoof a group/domain mesh for the AMR hierarchy
-                mcbpmesh->numBlocks = numBlocks;
+                mortMesh->numBlocks = numBlocks;
                 debug5 << "PopulateDatabaseMetaData Marker 5" << endl;
-                mcbpmesh->blockTitle = "Blocks";
-                mcbpmesh->blockPieceName = "block";
+                mortMesh->blockTitle = "Blocks";
+                mortMesh->blockPieceName = "block";
                 // Processor number as group
-                mcbpmesh->numGroups = numProcessors;
-                mcbpmesh->groupTitle = "Processor";
-                mcbpmesh->groupPieceName = "processor";
-                mcbpmesh->numGroups = numProcessors;
+                mortMesh->numGroups = numProcessors;
+                mortMesh->groupTitle = "Processor";
+                mortMesh->groupPieceName = "processor";
+                mortMesh->numGroups = numProcessors;
                 debug5 << "PopulateDatabaseMetaData Marker 36" << endl;
                 vector<int> groupIds(numBlocks);
                 vector<string> pieceNames(numBlocks);
@@ -621,122 +642,23 @@ avtBATLFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
                     groupIds[i] = blocks[i].procnum;
                     pieceNames[i] = tmpName;
                 }
-                debug5 << "PopulateDatabaseMetaData Marker 37" << endl;
-                mcbpmesh->blockNames = pieceNames;
-                mcbpmesh->groupIds = groupIds;
-                debug5 << "PopulateDatabaseMetaData Marker 38" << endl;
-
-                md->Add(mcbpmesh);
             }
-        }
-        else
-        {
-            avtMeshMetaData *mesh = new avtMeshMetaData;
-            mesh->name = "amr_mesh";
-            mesh->originalName = "amr_mesh";
-
-            mesh->meshType = AVT_AMR_MESH;
-            mesh->topologicalDimension = dimension;
-            mesh->spatialDimension = dimension;
-            mesh->blockOrigin = 1;
-            mesh->groupOrigin = 1;
-
-            mesh->hasSpatialExtents = true;
-            mesh->minSpatialExtents[0] = minSpatialExtents[0];
-            mesh->maxSpatialExtents[0] = maxSpatialExtents[0];
-            mesh->minSpatialExtents[1] = minSpatialExtents[1];
-            mesh->maxSpatialExtents[1] = maxSpatialExtents[1];
-            mesh->minSpatialExtents[2] = minSpatialExtents[2];
-            mesh->maxSpatialExtents[2] = maxSpatialExtents[2];
-
-            mesh->numBlocks = numBlocks;
-            mesh->blockTitle = "Blocks";
-            mesh->blockPieceName = "block";
-            // Processor number as group
-            mesh->numGroups = numLevels;
-            mesh->groupTitle = "Level";
-            mesh->groupPieceName = "level";
-            mesh->numGroups = numLevels;
-            vector<int> groupIds(numBlocks);
-            vector<string> pieceNames(numBlocks);
-            debug5 << "axisLabels" << endl;
-            for (size_t l = 0; l < axisLabels.size(); l++)
+            else
             {
-                if (l == 0)
-                    mesh->xLabel = axisLabels[l];
-                else if (l == 1)
-                    mesh->yLabel = axisLabels[l];
-                else if (l == 2)
-                    mesh->zLabel = axisLabels[l];
-            }
-
-
-            for (int i = 0; i < numBlocks; i++)
-            {
-                char tmpName[64];
-                sprintf(tmpName,"level%d,block%d",blocks[i].level, blocks[i].ID);
-                groupIds[i] = blocks[i].level;
-                pieceNames[i] = tmpName;
-            }
-            debug5 << "PopulateDatabaseMetaData Marker 37" << endl;
-            mesh->blockNames = pieceNames;
-            mesh->groupIds = groupIds;
-//             mesh->nodesAreCritical = true;
-            debug5 << "PopulateDatabaseMetaData Marker 38" << endl;
-
-
-            md->Add(mesh);
-
-            // grid variables
-            for (int v = 0 ; v < nPlotVars; v++)
-            {
-                avtScalarMetaData *smd = new avtScalarMetaData;
-                smd->name = varNames[v];
-                smd->meshName = "amr_mesh";
-                smd->centering = AVT_ZONECENT;
-                smd->hasUnits = true;
-                smd->units = varUnits[v];
-                smd->hasDataExtents=true;
-                smd->minDataExtents = minVals[v];
-                smd->maxDataExtents = maxVals[v];
-                debug5 << varUnits[v] << endl;
-                debug5 << minVals[v] << endl;
-                debug5 << maxVals[v] << endl;
-                md->Add(smd);
-            }
-
-            if (isCutFile == 0)
-            {
-                avtMeshMetaData *mcblmesh = new avtMeshMetaData;
-                mcblmesh->name = "morton_blockandlevel";
-                mcblmesh->originalName = "morton_blockandlevel";
-
-                mcblmesh->meshType = AVT_UNSTRUCTURED_MESH;
-                mcblmesh->topologicalDimension = 1;    //    It's a curve
-                mcblmesh->spatialDimension = dimension;
-                mcblmesh->blockOrigin = 0;
-                mcblmesh->groupOrigin = 0;
-
-                mcblmesh->hasSpatialExtents = true;
-                mcblmesh->minSpatialExtents[0] = minSpatialExtents[0];
-                mcblmesh->maxSpatialExtents[0] = maxSpatialExtents[0];
-                mcblmesh->minSpatialExtents[1] = minSpatialExtents[1];
-                mcblmesh->maxSpatialExtents[1] = maxSpatialExtents[1];
-                mcblmesh->minSpatialExtents[2] = minSpatialExtents[2];
-                mcblmesh->maxSpatialExtents[2] = maxSpatialExtents[2];
-
-
+ 
+                mortMesh->name = "morton_blockandlevel";
+                mortMesh->originalName = "morton_blockandlevel";
                 // DEFINING SUBSETS ON M. CURVE MESH (LIKE THAT ON BASE MESH "mesh")
                 // spoof a group/domain mesh for the AMR hierarchy
-                mcblmesh->numBlocks = numBlocks;
+                mortMesh->numBlocks = numBlocks;
                 debug5 << "PopulateDatabaseMetaData Marker 5" << endl;
-                mcblmesh->blockTitle = "Blocks";
-                mcblmesh->blockPieceName = "block";
+                mortMesh->blockTitle = "Blocks";
+                mortMesh->blockPieceName = "block";
                 // Processor number as group
-                mcblmesh->numGroups = numProcessors;
-                mcblmesh->groupTitle = "Level";
-                mcblmesh->groupPieceName = "level";
-                mcblmesh->numGroups = numProcessors;
+                mortMesh->numGroups = numLevels;
+                mortMesh->groupTitle = "Level";
+                mortMesh->groupPieceName = "level";
+                mortMesh->numGroups = numLevels;
                 debug5 << "PopulateDatabaseMetaData Marker 36" << endl;
                 vector<int> groupIds(numBlocks);
                 vector<string> pieceNames(numBlocks);
@@ -747,16 +669,34 @@ avtBATLFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
                     groupIds[i] = blocks[i].level;
                     pieceNames[i] = tmpName;
                 }
-                debug5 << "PopulateDatabaseMetaData Marker 37" << endl;
-                mcblmesh->blockNames = pieceNames;
-                mcblmesh->groupIds = groupIds;
-
-                debug5 << "PopulateDatabaseMetaData Marker 38" << endl;
-
-                md->Add(mcblmesh);
             }
+
+            mortMesh->meshType = AVT_UNSTRUCTURED_MESH;
+            mortMesh->topologicalDimension = 1;    //    It's a curve
+            mortMesh->spatialDimension = dimension;
+            mortMesh->blockOrigin = 0;
+            mortMesh->groupOrigin = 0;
+
+            mortMesh->hasSpatialExtents = true;
+            mortMesh->minSpatialExtents[0] = minSpatialExtents[0];
+            mortMesh->maxSpatialExtents[0] = maxSpatialExtents[0];
+            mortMesh->minSpatialExtents[1] = minSpatialExtents[1];
+            mortMesh->maxSpatialExtents[1] = maxSpatialExtents[1];
+            mortMesh->minSpatialExtents[2] = minSpatialExtents[2];
+            mortMesh->maxSpatialExtents[2] = maxSpatialExtents[2];
+
+
+
+            debug5 << "PopulateDatabaseMetaData Marker 37" << endl;
+            mortMesh->blockNames = pieceNames;
+            mortMesh->groupIds = groupIds;
+
+            debug5 << "PopulateDatabaseMetaData Marker 38" << endl;
+
+            md->Add(mortMesh);
         }
     }
+
     // curves
     if (numBlocks > 0 && dimension == 1)
     {
@@ -1096,7 +1036,7 @@ avtBATLFileFormat::GetMesh(int domain, const char *meshname)
             }
 
 
-            IntInt *di = new IntInt[numBlocks];
+            DoubleInt *di = new DoubleInt[numBlocks];
             for (int b=0; b<numBlocks; b++)
             {
                 di[b].f[0] = blocks[b].minSpatialExtents[0];
@@ -1109,7 +1049,7 @@ avtBATLFileFormat::GetMesh(int domain, const char *meshname)
             vector<double> yvals;
 
             // Sort them from left to right.
-            qsort(di, numBlocks, sizeof(IntInt), QsortiCoordSorter);
+            qsort(di, numBlocks, sizeof(DoubleInt), QsortiCoordSorter);
 
             vector<int> blocksInProgress;
             blocksInProgress.push_back(di[0].b);
@@ -1681,6 +1621,9 @@ avtBATLFileFormat::GetVectorVar(int visitDomain, const char *varname)
 //    version just reads a list of numbers.  Also fixed H5f_CLOSE_SEMI
 //    error here
 //
+//    Paul D. Stewart, July 16, 2012
+//    Only read processor numbers and block centers if they are needed.
+//
 // ****************************************************************************
 
 void
@@ -1731,15 +1674,15 @@ avtBATLFileFormat::ReadAllMetaData()
         debug5 << "ReadAllMetaData Marker 12" << endl;
         DetermineGlobalLogicalExtentsForAllBlocks();
         debug5 << "ReadAllMetaData Marker 14" << endl;
-        ReadCoordinates();
-        debug5 << "ReadAllMetaData Marker 14" << endl;
-        ReadProcessorNumbers();
-        debug5 << "ReadAllMetaData Marker 16" << endl;
         if (isCutFile == 0)
         {
             ReadMortonOrdering();
+            ReadCoordinates();
         }
-//         ReadBATLToVisItID();
+        if (showProcessors)
+        {
+            ReadProcessorNumbers();
+        }        
         patchesPerLevel.resize(numLevels);
 
         debug5 << "ReadAllMetaData Marker 17" << endl;
@@ -2040,9 +1983,15 @@ void avtBATLFileFormat::ReadBlockExtents()
 //  Programmer: Paul D. Stewart, May 9 2012
 //  I have a bunch of methods like this.  Just a generic hdf5 read.
 //
+//  modifications:
+//  Paul D. Stewart July 16, 2012
+//  If the file only has one refine level it may not be written so if 
+//  refine level does not exist in file fail silently and set refine 
+//  level for all blocks to 1
 // ****************************************************************************
 void avtBATLFileFormat::ReadRefinementLevels()
 {
+    H5Eset_auto(H5E_DEFAULT, NULL, NULL);
     debug5 << "ReadRefinementLevels Marker 1" << endl;
     //
     // Read the bounding box description for the blocks
@@ -2050,63 +1999,71 @@ void avtBATLFileFormat::ReadRefinementLevels()
     hid_t refinementId = H5Dopen(fileId, "refine level",H5P_DEFAULT);
     if (refinementId < 0)
     {
-        EXCEPTION1(InvalidFilesException, filename.c_str());
+        for (int b=0; b<numBlocks; b++)
+        {
+            blocks[b].level = 1;
+        }
     }
-    debug5 << "ReadRefinementLevels Marker 2" << endl;
-    hid_t refinementSpaceId = H5Dget_space(refinementId);
-
-    hsize_t refinement_dims[1];
-    hsize_t refinement_ndims = H5Sget_simple_extent_dims(refinementSpaceId,
-                               refinement_dims,NULL);
-    debug5 << "ReadRefinementLevels Marker 3" << endl;
-    if (refinement_ndims != 1 || refinement_dims[0] != numBlocks)
+    else
     {
-        EXCEPTION1(InvalidFilesException, filename.c_str());
-    }
+        debug5 << "ReadRefinementLevels Marker 2" << endl;
+        hid_t refinementSpaceId = H5Dget_space(refinementId);
 
-    hid_t refinement_raw_data_type = H5Dget_type(refinementId);
-    hid_t refinement_data_type = H5Tget_native_type(refinement_raw_data_type,
-                                 H5T_DIR_ASCEND);
-    debug5 << "ReadRefinementLevels Marker 4" << endl;
-    int *refinement_array = new int[numBlocks];
-    H5Dread(refinementId, refinement_data_type, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-            refinement_array);
-    debug5 << "ReadRefinementLevels Marker 5" << endl;
-    for (int b=0; b<numBlocks; b++)
-    {
-        int level = refinement_array[b];
-        blocks[b].level = level;
-    }
-    debug5 << "ReadRefinementLevels Marker 6" << endl;
-    // Done with the type
-    H5Tclose(refinement_data_type);
-    H5Tclose(refinement_raw_data_type);
-    debug5 << "ReadRefinementLevels Marker 7" << endl;
-    // Done with the space
-    H5Sclose(refinementSpaceId);
+        hsize_t refinement_dims[1];
+        hsize_t refinement_ndims = H5Sget_simple_extent_dims(refinementSpaceId,
+                                   refinement_dims,NULL);
+        debug5 << "ReadRefinementLevels Marker 3" << endl;
+        if (refinement_ndims != 1 || refinement_dims[0] != numBlocks)
+        {
+            EXCEPTION1(InvalidFilesException, filename.c_str());
+        }
 
-    // Done with the variable; don't leak it
-    H5Dclose(refinementId);
-    debug5 << "ReadRefinementLevels Marker 8" << endl;
-    // Delete the raw array
-    delete[] refinement_array;
-    debug5 << "ReadRefinementLevels Marker 9" << endl;
+        hid_t refinement_raw_data_type = H5Dget_type(refinementId);
+        hid_t refinement_data_type = H5Tget_native_type(refinement_raw_data_type,
+                                     H5T_DIR_ASCEND);
+        debug5 << "ReadRefinementLevels Marker 4" << endl;
+        int *refinement_array = new int[numBlocks];
+        H5Dread(refinementId, refinement_data_type, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+                refinement_array);
+        debug5 << "ReadRefinementLevels Marker 5" << endl;
+        for (int b=0; b<numBlocks; b++)
+        {
+            int level = refinement_array[b];
+            blocks[b].level = level;
+        }
+        debug5 << "ReadRefinementLevels Marker 6" << endl;
+        // Done with the type
+        H5Tclose(refinement_data_type);
+        H5Tclose(refinement_raw_data_type);
+        debug5 << "ReadRefinementLevels Marker 7" << endl;
+        // Done with the space
+        H5Sclose(refinementSpaceId);
+
+        // Done with the variable; don't leak it
+        H5Dclose(refinementId);
+        debug5 << "ReadRefinementLevels Marker 8" << endl;
+        // Delete the raw array
+        delete[] refinement_array;
+        debug5 << "ReadRefinementLevels Marker 9" << endl;
+    }
+    H5Eset_auto(H5E_DEFAULT, NULL, NULL);
 }
 
-// // ****************************************************************************
-// //  Method:  avtBATLFileFormat::ReadSimulationParameters
-// //
-// //  Purpose:
-// //    Read the simulation parameters from the file.
-// //
-// //  Arguments:
-// //    none
-// //
-// //  Programmer: Paul Stewart
-// //  Creation: Jan 23 2012
-// //
-// //
-// // ****************************************************************************
+// ****************************************************************************
+//  Method:  avtBATLFileFormat::ReadSimulationParameters
+//
+//  Purpose:
+//    Read the simulation parameters from the file.
+//
+//  Arguments:
+//    none
+//
+//  Programmer: Paul Stewart
+//  Creation: Jan 23 2012
+//
+//  Paul D. Stewart, July 16, 2012
+//  added logicalDimension
+// ****************************************************************************
 void avtBATLFileFormat::ReadSimulationParameters(hid_t fileId)
 {
 
@@ -2228,6 +2185,16 @@ void avtBATLFileFormat::ReadSimulationParameters(hid_t fileId)
     debug5 << "ReadSimulationParameters Marker 9" << endl;
     // Sanity check: size of the gid array better match number of blocks
     //               reported in the simulation parameters
+ 
+    if (simParams.typeGeometry == 12)
+    {
+        logicalDimension = 2;
+    }
+    else
+    {
+       logicalDimension = dimension;
+    }
+    
     simParams.total_blocks = numBlocks;
 
     if (simParams.nxb == 1)
@@ -2638,7 +2605,7 @@ void avtBATLFileFormat::DetermineGlobalLogicalExtentsForAllBlocks()
     debug5 << "DetermineGlobalLogicalExtentsForAllBlocks Marker 3" << endl;
     if (minLogicalExtents_ndims != 2 ||
         minLogicalExtents_dims[0] != numBlocks ||
-        minLogicalExtents_dims[1] != dimension)
+        minLogicalExtents_dims[1] != logicalDimension)
     {
         EXCEPTION1(InvalidFilesException, filename.c_str());
     }
@@ -2648,12 +2615,12 @@ void avtBATLFileFormat::DetermineGlobalLogicalExtentsForAllBlocks()
     debug5 << "DetermineGlobalLogicalExtentsForAllBlocks Marker 5" << endl;
     for (int b=0; b<numBlocks; b++)
     {
-        int *minGlobalLogicalExtents = &minLogicalExtents_array[dimension*b];
+        int *minGlobalLogicalExtents = &minLogicalExtents_array[logicalDimension*b];
         for (int d=0; d<3; d++)
         {
             if (d < dimension)
             {
-                blocks[b].minGlobalLogicalExtents[d]=minGlobalLogicalExtents[d];
+                blocks[b].minGlobalLogicalExtents[d]=minGlobalLogicalExtents[d]; 
                 blocks[b].maxGlobalLogicalExtents[d]=minGlobalLogicalExtents[d] + block_zdims[d];
             }
             else
@@ -2716,6 +2683,10 @@ void avtBATLFileFormat::DetermineGlobalLogicalExtentsForAllBlocks()
 //    Paul D Stewart, May 9, 2012,
 //    You no longer have a choice about seting up domain abutment information.
 //    Also added support for non-Cartesian grids.
+//    
+//    Paul D Stewart, Jul 26, 2012
+//     Cleaned up to reduce redundant code
+//
 // ****************************************************************************
 
 void
@@ -2731,9 +2702,21 @@ avtBATLFileFormat::BuildDomainNesting()
     //  ***********************************************************************
 
     // first, look to see if we don't already have it cached
-    void_ref_ptr vrTmp = cache->GetVoidRef("amr_mesh",
-                                           AUXILIARY_DATA_DOMAIN_NESTING_INFORMATION,
-                                           timestep, -1);
+    void_ref_ptr vrTmp; 
+    if (showProcessors)
+    {
+        vrTmp = cache->GetVoidRef("mesh_blockandproc",
+               AUXILIARY_DATA_DOMAIN_NESTING_INFORMATION,
+               timestep, -1);
+    }
+    else
+    {
+        vrTmp = cache->GetVoidRef("amr_mesh",
+               AUXILIARY_DATA_DOMAIN_NESTING_INFORMATION,
+               timestep, -1);
+    }
+
+
     debug5 << "BuildDomainNesting Marker 3" << endl;
 
     if ((*vrTmp == NULL))
@@ -2791,8 +2774,7 @@ avtBATLFileFormat::BuildDomainNesting()
 
             int t2 = visitTimer->StartTimer();
             avtStructuredDomainNesting *dn =
-                new avtStructuredDomainNesting(numBlocks, numLevels);
-
+            new avtStructuredDomainNesting(numBlocks, numLevels);
             dn->SetNumDimensions(dimension);
             debug5 << "BuildDomainNesting Marker 1" << endl;
 
@@ -2830,14 +2812,8 @@ avtBATLFileFormat::BuildDomainNesting()
                 logExts[2] = blocks[i].minGlobalLogicalExtents[2];
 
                 logExts[3] = blocks[i].maxGlobalLogicalExtents[0];
-                if (dimension >= 2)
-                    logExts[4] = blocks[i].maxGlobalLogicalExtents[1];
-                else
-                    logExts[4] = blocks[i].maxGlobalLogicalExtents[1];
-                if (dimension >= 3)
-                    logExts[5] = blocks[i].maxGlobalLogicalExtents[2];
-                else
-                    logExts[5] = blocks[i].maxGlobalLogicalExtents[2];
+                logExts[4] = blocks[i].maxGlobalLogicalExtents[1];
+                logExts[5] = blocks[i].maxGlobalLogicalExtents[2];
 
                 dn->SetNestingForDomain(i, blocks[i].level,
                                         childBlocks, logExts);
@@ -2846,125 +2822,22 @@ avtBATLFileFormat::BuildDomainNesting()
 
             void_ref_ptr vr = void_ref_ptr(dn,
                                            avtStructuredDomainNesting::Destruct);
-
-            cache->CacheVoidRef("amr_mesh",
+            if (showProcessors)
+            {
+                cache->CacheVoidRef("mesh_blockandproc",
                                 AUXILIARY_DATA_DOMAIN_NESTING_INFORMATION,
                                 timestep, -1, vr);
+            }
+            else
+            {
+                cache->CacheVoidRef("amr_mesh",
+                                AUXILIARY_DATA_DOMAIN_NESTING_INFORMATION,
+                                timestep, -1, vr);
+            }
             visitTimer->StopTimer(t2, "BATL setting up patch nesting");
         }
         debug5 << "BuildDomainNesting Marker 1" << endl;
 
-    }
-
-    //  ***********************************************************************
-    //  PROCESS THE "mesh_blockandproc" MESH
-    //  ***********************************************************************
-
-    if (showProcessors)
-    {
-        // first, look to see if we don't already have it cached
-        void_ref_ptr vrTmp2 = cache->GetVoidRef("mesh_blockandproc",
-                                                AUXILIARY_DATA_DOMAIN_NESTING_INFORMATION,
-                                                timestep, -1);
-
-        if ((*vrTmp2 == NULL))
-        {
-            int i;
-
-            avtStructuredDomainBoundaries *rdb = 0;
-
-            if (simParams.typeGeometry > 2)
-                rdb = new avtCurvilinearDomainBoundaries(true);
-            else
-                rdb = new avtRectilinearDomainBoundaries(true);
-
-            rdb->SetNumDomains(numBlocks);
-            for (i = 0; i < numBlocks; i++)
-            {
-                int logExts[6];
-                logExts[0] = blocks[i].minGlobalLogicalExtents[0];
-                logExts[1] = blocks[i].maxGlobalLogicalExtents[0];
-                logExts[2] = blocks[i].minGlobalLogicalExtents[1];
-                logExts[3] = blocks[i].maxGlobalLogicalExtents[1];
-                logExts[4] = blocks[i].minGlobalLogicalExtents[2];
-                logExts[5] = blocks[i].maxGlobalLogicalExtents[2];
-                rdb->SetIndicesForAMRPatch(i, blocks[i].level, logExts);
-
-            }
-            rdb->CalculateBoundaries();
-
-            void_ref_ptr vrdb = void_ref_ptr(rdb,
-                                             avtStructuredDomainBoundaries::Destruct);
-            cache->CacheVoidRef("any_mesh", AUXILIARY_DATA_DOMAIN_BOUNDARY_INFORMATION,
-                                timestep, -1, vrdb);
-
-            //
-            // build the avtDomainNesting object
-            //
-
-            if (numLevels > 0)
-            {
-                avtStructuredDomainNesting *dn =
-                    new avtStructuredDomainNesting(numBlocks, numLevels);
-
-                dn->SetNumDimensions(dimension);
-
-                //
-                // Set refinement level ratio information
-                //
-
-                // NOTE: BATL files always have a 2:1 ratio
-                vector<int> ratios(3);
-                ratios[0] = 1;
-                ratios[1] = 1;
-                ratios[2] = 1;
-                dn->SetLevelRefinementRatios(0, ratios);
-                for (i = 1; i < numLevels; i++)
-                {
-                    vector<int> ratios(3);
-                    ratios[0] = 2;
-                    ratios[1] = 2;
-                    ratios[2] = 2;
-                    dn->SetLevelRefinementRatios(i, ratios);
-                }
-
-                //
-                // set each domain's level, children and logical extents
-                //
-                for (i = 0; i < numBlocks; i++)
-                {
-                    vector<int> childBlocks;
-
-                    vector<int> logExts(6);
-
-                    logExts[0] = blocks[i].minGlobalLogicalExtents[0];
-                    logExts[1] = blocks[i].minGlobalLogicalExtents[1];
-                    logExts[2] = blocks[i].minGlobalLogicalExtents[2];
-
-                    logExts[3] = blocks[i].maxGlobalLogicalExtents[0];
-                    if (dimension >= 2)
-                        logExts[4] = blocks[i].maxGlobalLogicalExtents[1];
-                    else
-                        logExts[4] = blocks[i].maxGlobalLogicalExtents[1];
-                    if (dimension >= 3)
-                        logExts[5] = blocks[i].maxGlobalLogicalExtents[2];
-                    else
-                        logExts[5] = blocks[i].maxGlobalLogicalExtents[2];
-                    dn->SetNestingForDomain(i, blocks[i].level,
-                                            childBlocks, logExts);
-
-//                     dn->SetNestingForDomain(BATLIdToVisitId[i], blocks[i].level,
-//                                             childBlocks, logExts);
-                }
-
-                void_ref_ptr vr = void_ref_ptr(dn,
-                                               avtStructuredDomainNesting::Destruct);
-
-                cache->CacheVoidRef("mesh_blockandproc",
-                                    AUXILIARY_DATA_DOMAIN_NESTING_INFORMATION,
-                                    timestep, -1, vr);
-            }
-        }
     }
 }
 
@@ -2995,12 +2868,17 @@ avtBATLFileFormat::BuildDomainNesting()
 //
 //    Paul D. Stewart, May 9, 2012,
 //    Added DATA_DATA_EXTENTS
+//
+//    Paul D. Stewart, July 16, 2012
+//    allow reading of DATA_DATA extents to fail silently for files without
+//    DATA_DATA extents.
 // ****************************************************************************
 void *
 avtBATLFileFormat::GetAuxiliaryData(const char *var, int dom,
                                     const char * type, void *,
                                     DestructorFunction &df)
 {
+    H5Eset_auto(H5E_DEFAULT, NULL, NULL);
     debug5 << "GetAuxiliaryData Marker 1" << endl;
     debug5 << type << endl;
     void *retval = 0;
@@ -3089,6 +2967,7 @@ avtBATLFileFormat::GetAuxiliaryData(const char *var, int dom,
         retval = (void *)itree;
         df = avtIntervalTree::Destruct;
     }
+    H5Eset_auto(H5E_DEFAULT, NULL, NULL);
     return retval;
 }
 

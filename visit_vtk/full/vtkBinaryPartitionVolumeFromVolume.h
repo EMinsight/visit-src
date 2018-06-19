@@ -80,6 +80,10 @@ class vtkUnstructuredGrid;
 //   Brad Whitlock, Thu Mar 22 15:31:41 PDT 2012
 //   Use vtkIdType. Add double support.
 //
+//   Eric Brugger, Wed Jul 25 09:49:49 PDT 2012
+//   Increase the number of boundaries that can be handled by the mulit-pass
+//   CSG discretization from 128 to 512.
+//
 // ****************************************************************************
 
 class VISIT_VTK_API vtkBinaryPartitionVolumeFromVolume : private vtkVolumeFromVolume
@@ -94,14 +98,14 @@ class VISIT_VTK_API vtkBinaryPartitionVolumeFromVolume : private vtkVolumeFromVo
 
     void              ConstructDataSet(vtkPointData *, vtkCellData *,
                                        vtkUnstructuredGrid *, vtkPoints *,
-                                       std::vector<FixedLengthBitField<16> > *oldTags,
-                                       std::vector<FixedLengthBitField<16> > *newTags,
+                                       std::vector<FixedLengthBitField<64> > *oldTags,
+                                       std::vector<FixedLengthBitField<64> > *newTags,
                                        int newTagBit);
     void              ConstructDataSet(vtkPointData *, vtkCellData *,
                                        vtkUnstructuredGrid *, const int *,
                                        vtkDataArray *, vtkDataArray *, vtkDataArray *,
-                                       std::vector<FixedLengthBitField<16> > *oldTags,
-                                       std::vector<FixedLengthBitField<16> > *newTags,
+                                       std::vector<FixedLengthBitField<64> > *oldTags,
+                                       std::vector<FixedLengthBitField<64> > *newTags,
                                        int newTagBit);
 
     using vtkVolumeFromVolume::AddCentroidPoint;
@@ -169,8 +173,8 @@ class VISIT_VTK_API vtkBinaryPartitionVolumeFromVolume : private vtkVolumeFromVo
     std::vector<vtkIdType>   vertexTags;
     std::vector<vtkIdType>  *shapeTags[8];
 
-    void               ComputeTags(std::vector<FixedLengthBitField<16> > *oldTags,
-                                   std::vector<FixedLengthBitField<16> > *newTags,
+    void               ComputeTags(std::vector<FixedLengthBitField<64> > *oldTags,
+                                   std::vector<FixedLengthBitField<64> > *newTags,
                                    int newTagBit);
 };
 
