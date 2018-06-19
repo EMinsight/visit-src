@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-400142
 # All rights reserved.
@@ -35,16 +35,17 @@
 # DAMAGE.
 #
 # Modifications:
+#   Kathleen Bonnell, Mon Dec 27, 17:52:39 MST 2010
+#   Added high-level hdf5 lib to search on Windows. (hdf5_hldll).
 #
 #****************************************************************************/
 
 # Use the HDF5_DIR hint from the config-site .cmake file 
-# Except on windows, where it is part of the repo.
 
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/SetUpThirdParty.cmake)
 
 IF (WIN32)
-  SET_UP_THIRD_PARTY(HDF5 "lib/${VISIT_MSVC_VERSION};lib" include hdf5dll)
+  SET_UP_THIRD_PARTY(HDF5 "lib/${VISIT_MSVC_VERSION};lib" include hdf5dll hdf5_hldll)
 ELSE (WIN32)
   SET_UP_THIRD_PARTY(HDF5 lib include hdf5)
 ENDIF (WIN32)

@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-400142
 # All rights reserved.
@@ -38,21 +38,21 @@
 #   Kathleen Bonnell, Thu Dec  3 10:54:31 PST 2009
 #   Change the library name for windows.
 #
+#   Mark C. Miller, Wed Oct 27 19:21:10 PDT 2010
+#   Relocated explicit setting of LIBDEP to config-site files as different
+#   sites may have ExodusII installed differently.
+#
+#   Kathleen Bonnell, Mon Dec 27 18:47:01 MST 2010
+#   Change the library name for windows.
+#
 #****************************************************************************/
 
 # Use the EXODUSII_DIR hint from the config-site .cmake file 
 
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/SetUpThirdParty.cmake)
 
-# Take care of Exodus' NETCDF dependency
-IF(NOT NETCDF_FOUND)
-    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindNETCDF.cmake)
-ENDIF(NOT NETCDF_FOUND)
-SET(EXODUSII_LIBDEP ${NETCDF_LIBRARY_DIR} netcdf)
-
 IF (WIN32)
-  SET_UP_THIRD_PARTY(EXODUSII lib/${VISIT_MSVC_VERSION} include exodusII)
+  SET_UP_THIRD_PARTY(EXODUSII lib/${VISIT_MSVC_VERSION} include exoIIv2c)
 ELSE (WIN32)
   SET_UP_THIRD_PARTY(EXODUSII lib inc exoIIv2c)
 ENDIF (WIN32)
-

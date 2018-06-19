@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1062,6 +1062,9 @@ ViewerQueryManager::GetQueryClientAtts()
 //    case the query involves expressions that have not been sent to the engine
 //    yet.
 //
+//   Dave Pugmire, Tue Nov  9 16:08:30 EST 2010
+//   Add dumpSteps for streamline info query.
+//
 // ****************************************************************************
 
 void         
@@ -1069,6 +1072,7 @@ ViewerQueryManager::DatabaseQuery(ViewerWindow *oWin, const string &qName,
                             const stringVector &vars, const bool doTimeQuery,
                             const int arg1, const int arg2,
                             const bool elementIsGlobal,
+                            const bool dumpSteps,
                             const doubleVector darg1, const doubleVector darg2)
 {
     queryClientAtts->SetResultsMessage("");
@@ -1182,6 +1186,7 @@ ViewerQueryManager::DatabaseQuery(ViewerWindow *oWin, const string &qName,
     qa.SetFloatFormat(floatFormat);
     qa.SetName(qName);
     qa.SetUseGlobalId(elementIsGlobal);
+    qa.SetDumpSteps(dumpSteps);
 
     // Right now, use of Element and DataType are mutually
     // exclusive, and we don't necessarily have to know thich one
@@ -3270,7 +3275,7 @@ ViewerQueryManager::PointQuery(const string &qName, const double *pt,
         }
         win->Pick((int)pt[0], (int)pt[1], NODE_PICK);
     }
-    else if (qName == "Pick" || qName == "ZonePick (aka Pick)" || 
+    else if (qName == "ZonePick" || 
              qName == "NodePick" || qName == "PointPick (aka NodePick)")
     {
         if (!vars.empty())
@@ -3279,7 +3284,7 @@ ViewerQueryManager::PointQuery(const string &qName, const double *pt,
         }
 
         INTERACTION_MODE imode  = win->GetInteractionMode();
-        if (qName == "Pick" || qName == "ZonePick (aka Pick)")
+        if (qName == "ZonePick")
             win->SetInteractionMode(ZONE_PICK);
         else
             win->SetInteractionMode(NODE_PICK);
@@ -3814,6 +3819,7 @@ ViewerQueryManager::InitializeQueryList()
     QueryList::WindowType ccls_wt = QueryList::ConnCompSummary;
     QueryList::WindowType shp_wt  = QueryList::ShapeletsDecomp;
     QueryList::WindowType xri  = QueryList::XRayImage;
+    QueryList::WindowType sli  = QueryList::StreamlineInfo;
 
     QueryList::QueryMode qo = QueryList::QueryOnly;
     QueryList::QueryMode qt = QueryList::QueryAndTime;
@@ -3861,8 +3867,7 @@ ViewerQueryManager::InitializeQueryList()
     queryTypes->AddQuery("Variable Sum", dq, vr, basic, 1, 0, qt);
     queryTypes->AddQuery("Watertight", dq, mr, basic, 1, 0, qo);
     queryTypes->AddQuery("Weighted Variable Sum", dq, vr, basic, 1, 0, qt);
-    queryTypes->AddQuery("Pick", pq, pr, sp, 1, 0, qt);
-    queryTypes->AddQuery("ZonePick (aka Pick)", pq, pr, sp, 1, 0, qt);
+    queryTypes->AddQuery("ZonePick", pq, pr, sp, 1, 0, qt);
     queryTypes->AddQuery("NodePick", pq, pr, sp, 1, 0, qt);
     queryTypes->AddQuery("PointPick (aka NodePick)", pq, pr, sp, 1, 0, qt);
 
@@ -3904,6 +3909,8 @@ ViewerQueryManager::InitializeQueryList()
     queryTypes->AddQuery("Memory Usage", dq, misc_r, basic, 1, 0, qo);
     queryTypes->AddQuery("Sample Statistics", dq, vr, ad, 1, 0, qo);
     queryTypes->AddQuery("Population Statistics", dq, vr, ad, 1, 0, qo);
+
+    queryTypes->AddQuery("Streamline Info", dq, misc_r, sli, 1, 0, qo);
     queryTypes->SelectAll();
 }
 

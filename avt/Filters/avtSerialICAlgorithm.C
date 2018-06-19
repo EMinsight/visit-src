@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -214,6 +214,9 @@ avtSerialICAlgorithm::AddIntegralCurves(vector<avtIntegralCurve *> &ics)
 //   Rename several methods that reflect the new emphasis in particle 
 //   advection, as opposed to streamlines.
 //
+//   Hank Childs, Sat Nov 27 16:52:12 PST 2010
+//   Add progress reporting.
+//
 // ****************************************************************************
 
 void
@@ -230,6 +233,8 @@ avtSerialICAlgorithm::RunAlgorithm()
         GetDomain(s);
     }
 
+    int numParticlesTotal = activeICs.size();
+    int numParticlesResolved = 0;
     while (1)
     {
         // Integrate all loaded domains.
@@ -254,6 +259,9 @@ avtSerialICAlgorithm::RunAlgorithm()
                 if( s->status != avtIntegralCurve::STATUS_OK )
                 {
                     terminatedICs.push_back(s);
+                    numParticlesResolved++;
+                    picsFilter->UpdateProgress(numParticlesResolved,
+                                               numParticlesTotal);
                 }
                 else
                 {
@@ -298,6 +306,9 @@ avtSerialICAlgorithm::RunAlgorithm()
 //   Rename this method to reflect the new emphasis in particle advection, as 
 //   opposed to streamlines.
 //
+//   Dave Pugmire, Tue Nov 30 13:24:26 EST 2010
+//   Change IC status when ic to not-terminated.
+//
 // ****************************************************************************
 
 void
@@ -309,5 +320,33 @@ avtSerialICAlgorithm::ResetIntegralCurvesForContinueExecute()
         terminatedICs.pop_front();
         
         activeICs.push_back(s);
+        s->status = avtIntegralCurve::STATUS_OK;
     }
+}
+
+
+// ****************************************************************************
+// Method:  avtParDomICAlgorithm::CheckNextTimeStepNeeded
+//
+// Purpose: Is the next time slice required to continue?
+//   
+//
+// Programmer:  Dave Pugmire
+// Creation:    December  2, 2010
+//
+// ****************************************************************************
+
+bool
+avtSerialICAlgorithm::CheckNextTimeStepNeeded(int curTimeSlice)
+{
+    list<avtIntegralCurve *>::const_iterator it;
+    for (it = terminatedICs.begin(); it != terminatedICs.end(); it++)
+    {
+        if ((*it)->domain.domain != -1 && (*it)->domain.timeStep > curTimeSlice)
+        {
+            return true;
+        }
+    }
+    
+    return false;
 }

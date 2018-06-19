@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -65,6 +65,16 @@
 //    Christoph Garth, Tue July 10 17:34:33 PDT 2010
 //    Major rewrite around removing avtIVPStep storage.
 //
+//    Hank Childs, Fri Oct  8 23:30:27 PDT 2010
+//    Refactor into an abstract type.  Remove all data members specific to
+//    streamlines or Poincare.
+//
+//    Dave Pugmire, Fri Nov  5 15:36:31 EDT 2010
+//    Make historyMask public.
+//
+//    Hank Childs, Sun Dec  5 10:18:13 PST 2010
+//    Add an avtIVPField as an argument to CheckForTermination.
+//
 // ****************************************************************************
 
 class IVP_API avtStateRecorderIntegralCurve : public avtIntegralCurve
@@ -107,8 +117,6 @@ public:
     avtStateRecorderIntegralCurve();
     virtual ~avtStateRecorderIntegralCurve();
 
-    void          SetIntersectionObject(vtkObject *obj);
-
     virtual void  Serialize(MemStream::Mode mode, MemStream &buff, 
                                 avtIVPSolver *solver);
     virtual void  PrepareForSend(void)
@@ -127,6 +135,7 @@ public:
     size_t  GetNumberOfSamples() const;
     Sample  GetSample( size_t n ) const;
     
+    virtual bool CheckForTermination(avtIVPStep &step, avtIVPField *) = 0;
 
   protected:
     avtStateRecorderIntegralCurve( const avtStateRecorderIntegralCurve& );
@@ -134,19 +143,16 @@ public:
     
     size_t    GetSampleStride() const;
 
-    void      HandleIntersections(const avtIVPStep& step);
-    bool      IntersectPlane(const avtVector &p0, const avtVector &p1);
-
   public:
-
     unsigned long serializeFlags;
     long          sequenceCnt;
-
+    unsigned char      historyMask;
 
   protected:
+    double distance;
 
-    unsigned char      historyMask;
     std::vector<float> history;
+    static const double      epsilon;
 
     void RecordStep( const avtIVPField* field, 
                      const avtIVPStep& step, 
@@ -154,14 +160,6 @@ public:
 
     virtual void AnalyzeStep( avtIVPStep& step,
                               avtIVPField* field );
-
-    // Intersection points.
-    bool   intersectionsSet;
-    int    numIntersections;
-    double intersectPlaneEq[4];
-
-    double       distance;
-    unsigned int numSteps;
 };
 
 

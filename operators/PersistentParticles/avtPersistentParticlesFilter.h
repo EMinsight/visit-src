@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -108,6 +108,8 @@ class avtPersistentParticlesFilter
 
     string mainVariable;   
     int activeTimeStep;
+    int startTimeSlice;
+    int stopTimeSlice;
     bool haveData;
 };
 #endif

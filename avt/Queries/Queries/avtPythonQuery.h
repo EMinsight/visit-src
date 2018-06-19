@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -63,8 +63,11 @@ class avtPythonFilterEnvironment;
 //  Creation:   Tue Feb  9 15:15:41 PST 2010
 //
 //  Modifications:
-//  Cyrus Harrison, Tue Sep 21 11:14:21 PDT 2010
-//  Added SetPythonArgs()
+//   Cyrus Harrison, Tue Sep 21 11:14:21 PDT 2010
+//   Added SetPythonArgs()
+//
+//   Cyrus Harrison, Wed Jan 12 11:32:42 PST 2011
+//   Added queryType & qyeryDescription members.
 //
 // ****************************************************************************
 
@@ -117,6 +120,9 @@ class QUERY_API avtPythonQuery :  public avtDataObjectQuery,
     std::string                 resultMessage;
     doubleVector                resultValues;
     std::string                 resultXml;
+
+    std::string                 queryType;
+    std::string                 queryDescription;
 };
 
 

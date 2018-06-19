@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -2150,6 +2150,11 @@ avtNek5000FileFormat::GetFileName(int rawTimestep, int pardir, char *outFileName
 //    Hank Childs, Wed May 12 10:53:33 PDT 2010
 //    Adapt time setting for Nek files that are part of .visit files.
 //
+//    Hank Childs, Mon Jan 17 12:03:57 PST 2011
+//    Add support for case where there is non-parallel, binary Nek files
+//    with a new mesh at every time slice, and a bug where time and cycle
+//    get combined.
+//
 // ****************************************************************************
 
 void
@@ -2190,7 +2195,10 @@ avtNek5000FileFormat::UpdateCyclesAndTimes()
 
     if (!bParFormat)
     {
-        f >> dummy >> dummy >> dummy >> dummy >> t >> c >> v;  //skip #blocks and block size
+        std::string tString, cString;
+        f >> dummy >> dummy >> dummy >> dummy >> tString >> cString >> v;  //skip #blocks and block size
+        t = atof(tString.c_str());
+        c = atoi(cString.c_str());
     }
     else
     {
@@ -2223,6 +2231,12 @@ avtNek5000FileFormat::UpdateCyclesAndTimes()
     // cycle number will be X Y
     if (v.find("X") != std::string::npos)
         iTimestepsWithMesh[curTimestep] = true;
+
+    // Nek has a bug where the time and cycle sometimes run together (e.g. 2.52000E+0110110 for
+    // time 25.2, cycle 10110).  If that happens, then v will be Y
+    if (v.find("Y") != std::string::npos)
+        iTimestepsWithMesh[curTimestep] = true;
+
     delete[] meshfilename;
     readTimeInfoFor[curTimestep] = true;
 }
@@ -2652,7 +2666,10 @@ avtNek5000FileFormat::GetBoundingBoxIntervalTree(int timestep)
     errorReadingData = anyErrorReadingData;
 #endif
     if (errorReadingData)
+    {
+        delete[] bounds;
         return NULL;
+    }
 
 #ifdef PARALLEL
         float *mergedBounds = new float[iNumBlocks*6];
@@ -2899,7 +2916,10 @@ avtNek5000FileFormat::GetDataExtentsIntervalTree(int timestep, const char *var)
     errorReadingData = anyErrorReadingData;
 #endif
     if (errorReadingData)
+    {
+        delete[] bounds;
         return NULL;
+    }
 
 #ifdef PARALLEL
     float *mergedBounds = new float[iNumBlocks*2];

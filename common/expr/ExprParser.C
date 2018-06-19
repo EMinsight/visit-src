@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -78,6 +78,19 @@ ExprParser::ExprParser(ExprNodeFactory *f) : Parser(), factory(f)
     }
 
     SetGrammar(G);
+}
+
+// ****************************************************************************
+//  Destructor:  ExprParser::~ExprParser
+//
+//  Programmer:  David Camp
+//  Creation:    Tue Jan 11 11:09:24 PST 2011
+//
+// ****************************************************************************
+ExprParser::~ExprParser()
+{
+    if (factory)
+        delete factory;
 }
 
 // ****************************************************************************

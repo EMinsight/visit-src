@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -44,7 +44,7 @@
 //
 // Functions exposed to the VisIt module.
 //
-#define VECTORATTRIBUTES_NMETH 54
+#define VECTORATTRIBUTES_NMETH 56
 void           PyVectorAttributes_StartUp(VectorAttributes *subj, void *data);
 void           PyVectorAttributes_CloseDown();
 PyMethodDef *  PyVectorAttributes_GetMethodTable(int *nMethods);

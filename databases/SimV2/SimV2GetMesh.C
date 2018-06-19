@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -569,7 +569,9 @@ SimV2_GetMesh_Curvilinear(visit_handle h)
 // Creation:   Thu Feb 25 11:57:18 PST 2010
 //
 // Modifications:
-//   
+//   Brad Whitlock, Fri Jan 14 01:49:00 PST 2011
+//   Make all components the same type in 2D or bad things happen.
+//
 // ****************************************************************************
 
 vtkDataSet *
@@ -583,7 +585,7 @@ SimV2_GetMesh_Rectilinear(visit_handle h)
     //
     int ndims = 0, dims[3]={0,0,0};
     int minRealIndex[3]={0,0,0}, maxRealIndex[3]={0,0,0}, baseIndex[3]={0,0,0};
-    visit_handle x,y,z,c;   
+    visit_handle x,y,z;   
     if(simv2_RectilinearMesh_getCoords(h, &ndims, &x, &y, &z) == VISIT_ERROR ||
        simv2_RectilinearMesh_getRealIndices(h, minRealIndex, maxRealIndex) == VISIT_ERROR ||
        simv2_RectilinearMesh_getBaseIndex(h, baseIndex) == VISIT_ERROR)
@@ -625,7 +627,12 @@ SimV2_GetMesh_Rectilinear(visit_handle h)
     {
         if(ndims == 2 && i == 2)
         {
-            coords[i] = vtkFloatArray::New();
+            // We don't really have a Z dimension in 2D but create one
+            // and make it the same as the others.
+            if(dataType[0] == VISIT_DATATYPE_FLOAT)
+                coords[i] = vtkFloatArray::New();
+            else
+                coords[i] = vtkDoubleArray::New();
             coords[i]->SetNumberOfTuples(1);
             coords[i]->SetComponent(0, 0, 0);
         }
@@ -918,6 +925,9 @@ SimV2_Add_PolyhedralCell(vtkUnstructuredGrid *ugrid, const int **cellptr,
 //   Brad Whitlock, Wed Sep  1 09:44:34 PDT 2010
 //   I fixed an off by 1 that was pointed out.
 //
+//   Brad Whitlock, Tue Oct 26 16:26:39 PDT 2010
+//   I changed the interface to PolyhedralSplit.
+//
 // ****************************************************************************
 
 vtkDataSet *
@@ -994,8 +1004,7 @@ SimV2_GetMesh_Unstructured(int domain, visit_handle h, PolyhedralSplit **phSplit
     PolyhedralSplit *polyhedralSplit = 0;
     if(polyhedralCellCount > 0)
     {
-        polyhedralSplit = new PolyhedralSplit(normalCellCount,
-            polyhedralCellCount);
+        polyhedralSplit = new PolyhedralSplit;
     }
 
     // Iterate over the connectivity and add the appropriate cell types
@@ -1014,7 +1023,7 @@ SimV2_GetMesh_Unstructured(int domain, visit_handle h, PolyhedralSplit **phSplit
             // Add a polyhedral cell as a collection of smaller normal cells.
             int nsplits = SimV2_Add_PolyhedralCell(ugrid, &cell, nRealPoints, 
                 phIndex, polyhedralSplit);
-            polyhedralSplit->SetCellSplits(phIndex, numCells, nsplits);
+            polyhedralSplit->AppendCellSplits(numCells, nsplits);
             phIndex++;
         }
         else if(celltype >= VISIT_CELL_BEAM && celltype <= VISIT_CELL_HEX)

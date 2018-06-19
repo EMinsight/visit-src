@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -142,12 +142,11 @@ avtHistogramFilter::PreExecute(void)
 
     if (atts.GetBasedOn() == HistogramAttributes::ManyZonesForSingleVar)
     {
-        bool extentsSpecified = atts.GetSpecifyRange();
-        if (!extentsSpecified)
+        if ( !atts.GetMinFlag() || !atts.GetMaxFlag() )
             GetDataExtents(dataValueRange, pipelineVariable);
 
-        SetWorkingMin( (extentsSpecified ? atts.GetMin() : dataValueRange[0]) );
-        SetWorkingMax( (extentsSpecified ? atts.GetMax() : dataValueRange[1]) );
+        SetWorkingMin( (atts.GetMinFlag() ? atts.GetMin() : dataValueRange[0]) );
+        SetWorkingMax( (atts.GetMaxFlag() ? atts.GetMax() : dataValueRange[1]) );
         SetWorkingNumBins( atts.GetNumBins() );
         
         if (bins != NULL)

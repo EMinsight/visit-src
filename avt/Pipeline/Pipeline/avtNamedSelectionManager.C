@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -201,11 +201,13 @@ avtNamedSelectionManager::CreateNamedSelection(avtDataObject_p dob,
                                             GetArray("avtOriginalCellNumbers");
         if (ocn == NULL)
         {
+            delete [] leaves;
             EXCEPTION0(ImproperUseException);
         }
         unsigned int *ptr = (unsigned int *) ocn->GetVoidPointer(0);
         if (ptr == NULL)
         {
+            delete [] leaves;
             EXCEPTION0(ImproperUseException);
         }
 
@@ -219,6 +221,7 @@ avtNamedSelectionManager::CreateNamedSelection(avtDataObject_p dob,
             zones[curSize+j] = ptr[2*j+1];
         }
     }
+    delete [] leaves;
 
     // Note the poor use of MPI below, coded for expediency, as I believe all
     // of the named selections will be small.

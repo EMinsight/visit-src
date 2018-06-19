@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -45,6 +45,7 @@
 class HistogramAttributes;
 class QLabel;
 class QCheckBox;
+class QComboBox;
 class QGroupBox;
 class QLineEdit;
 class QSpinBox;
@@ -103,11 +104,13 @@ class QvisHistogramPlotWindow : public QvisPostableWindowObserver
     void weightTypeChanged(int val);
     void weightVariableChanged(const QString &varName);
     void dataScaleChanged(int val);
-    void binsScaleChanged(int val);
-    void specifyRangeChanged(bool val);
+    void binScaleChanged(int val);
+    void limitsSelectChanged(int);
+    void minToggled(bool on);
+    void maxToggled(bool on);
     void minProcessText();
     void maxProcessText();
-    void numBinsProcessText();
+    void numBinsChanged(int val);
     void domainProcessText();
     void zoneProcessText();
     void useBinWidthsChanged(bool val);
@@ -124,11 +127,13 @@ class QvisHistogramPlotWindow : public QvisPostableWindowObserver
     QButtonGroup        *weightTypeGroup;
     QvisVariableButton  *weightVariable;
     QButtonGroup        *dataScaleGroup;
-    QButtonGroup        *binsScaleGroup;
-    QCheckBox           *specifyRange;
-    QLineEdit           *min;
-    QLineEdit           *max;
-    QLineEdit           *numBins;
+    QButtonGroup        *binScaleGroup;
+    QComboBox           *limitsSelect;
+    QCheckBox           *minToggle;
+    QLineEdit           *minLineEdit;
+    QCheckBox           *maxToggle;
+    QLineEdit           *maxLineEdit;
+    QSpinBox            *numBins;
     QLineEdit           *domain;
     QLineEdit           *zone;
     QCheckBox           *useBinWidths;

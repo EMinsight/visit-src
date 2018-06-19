@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -196,7 +196,10 @@ void
 avtSpreadsheetPlot::CustomizeBehavior(void)
 {
     behavior->SetRenderOrder(MUST_GO_LAST);
-    behavior->GetInfo().GetAttributes().SetAdaptsToAnyWindowMode(true);
+    if(behavior->GetInfo().GetAttributes().GetTopologicalDimension() == 1)
+        behavior->GetInfo().GetAttributes().SetWindowMode(WINMODE_CURVE);
+    else
+        behavior->GetInfo().GetAttributes().SetAdaptsToAnyWindowMode(true);
 }
 
 

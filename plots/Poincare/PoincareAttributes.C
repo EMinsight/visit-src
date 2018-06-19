@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -84,21 +84,21 @@ PoincareAttributes::SourceType_FromString(const std::string &s, PoincareAttribut
 //
 
 static const char *IntegrationType_strings[] = {
-"DormandPrince", "AdamsBashforth", "M3DC1Integrator"
-};
+"DormandPrince", "AdamsBashforth", "M3DC1Integrator", 
+"NIMRODIntegrator"};
 
 std::string
 PoincareAttributes::IntegrationType_ToString(PoincareAttributes::IntegrationType t)
 {
     int index = int(t);
-    if(index < 0 || index >= 3) index = 0;
+    if(index < 0 || index >= 4) index = 0;
     return IntegrationType_strings[index];
 }
 
 std::string
 PoincareAttributes::IntegrationType_ToString(int t)
 {
-    int index = (t < 0 || t >= 3) ? 0 : t;
+    int index = (t < 0 || t >= 4) ? 0 : t;
     return IntegrationType_strings[index];
 }
 
@@ -106,11 +106,48 @@ bool
 PoincareAttributes::IntegrationType_FromString(const std::string &s, PoincareAttributes::IntegrationType &val)
 {
     val = PoincareAttributes::DormandPrince;
-    for(int i = 0; i < 3; ++i)
+    for(int i = 0; i < 4; ++i)
     {
         if(s == IntegrationType_strings[i])
         {
             val = (IntegrationType)i;
+            return true;
+        }
+    }
+    return false;
+}
+
+//
+// Enum conversion methods for PoincareAttributes::CoordinateSystem
+//
+
+static const char *CoordinateSystem_strings[] = {
+"Cartesian", "Cylindrical"};
+
+std::string
+PoincareAttributes::CoordinateSystem_ToString(PoincareAttributes::CoordinateSystem t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 2) index = 0;
+    return CoordinateSystem_strings[index];
+}
+
+std::string
+PoincareAttributes::CoordinateSystem_ToString(int t)
+{
+    int index = (t < 0 || t >= 2) ? 0 : t;
+    return CoordinateSystem_strings[index];
+}
+
+bool
+PoincareAttributes::CoordinateSystem_FromString(const std::string &s, PoincareAttributes::CoordinateSystem &val)
+{
+    val = PoincareAttributes::Cartesian;
+    for(int i = 0; i < 2; ++i)
+    {
+        if(s == CoordinateSystem_strings[i])
+        {
+            val = (CoordinateSystem)i;
             return true;
         }
     }
@@ -492,12 +529,14 @@ void PoincareAttributes::Init()
     lineEnd[2] = 0;
     pointDensity = 1;
     integrationType = AdamsBashforth;
+    coordinateSystem = Cartesian;
     maxStepLength = 0.1;
     relTol = 0.0001;
     absTol = 1e-05;
     analysis = Normal;
     maximumToroidalWinding = 0;
     overrideToroidalWinding = 0;
+    overridePoloidalWinding = 0;
     windingPairConfidence = 0.9;
     periodicityConsistency = 0.8;
     adjustPlane = -1;
@@ -573,12 +612,14 @@ void PoincareAttributes::Copy(const PoincareAttributes &obj)
 
     pointDensity = obj.pointDensity;
     integrationType = obj.integrationType;
+    coordinateSystem = obj.coordinateSystem;
     maxStepLength = obj.maxStepLength;
     relTol = obj.relTol;
     absTol = obj.absTol;
     analysis = obj.analysis;
     maximumToroidalWinding = obj.maximumToroidalWinding;
     overrideToroidalWinding = obj.overrideToroidalWinding;
+    overridePoloidalWinding = obj.overridePoloidalWinding;
     windingPairConfidence = obj.windingPairConfidence;
     periodicityConsistency = obj.periodicityConsistency;
     adjustPlane = obj.adjustPlane;
@@ -801,12 +842,14 @@ PoincareAttributes::operator == (const PoincareAttributes &obj) const
             lineEnd_equal &&
             (pointDensity == obj.pointDensity) &&
             (integrationType == obj.integrationType) &&
+            (coordinateSystem == obj.coordinateSystem) &&
             (maxStepLength == obj.maxStepLength) &&
             (relTol == obj.relTol) &&
             (absTol == obj.absTol) &&
             (analysis == obj.analysis) &&
             (maximumToroidalWinding == obj.maximumToroidalWinding) &&
             (overrideToroidalWinding == obj.overrideToroidalWinding) &&
+            (overridePoloidalWinding == obj.overridePoloidalWinding) &&
             (windingPairConfidence == obj.windingPairConfidence) &&
             (periodicityConsistency == obj.periodicityConsistency) &&
             (adjustPlane == obj.adjustPlane) &&
@@ -1023,12 +1066,14 @@ PoincareAttributes::SelectAll()
     Select(ID_lineEnd,                   (void *)lineEnd, 3);
     Select(ID_pointDensity,              (void *)&pointDensity);
     Select(ID_integrationType,           (void *)&integrationType);
+    Select(ID_coordinateSystem,          (void *)&coordinateSystem);
     Select(ID_maxStepLength,             (void *)&maxStepLength);
     Select(ID_relTol,                    (void *)&relTol);
     Select(ID_absTol,                    (void *)&absTol);
     Select(ID_analysis,                  (void *)&analysis);
     Select(ID_maximumToroidalWinding,    (void *)&maximumToroidalWinding);
     Select(ID_overrideToroidalWinding,   (void *)&overrideToroidalWinding);
+    Select(ID_overridePoloidalWinding,   (void *)&overridePoloidalWinding);
     Select(ID_windingPairConfidence,     (void *)&windingPairConfidence);
     Select(ID_periodicityConsistency,    (void *)&periodicityConsistency);
     Select(ID_adjustPlane,               (void *)&adjustPlane);
@@ -1164,6 +1209,12 @@ PoincareAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool for
         node->AddNode(new DataNode("integrationType", IntegrationType_ToString(integrationType)));
     }
 
+    if(completeSave || !FieldsEqual(ID_coordinateSystem, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("coordinateSystem", CoordinateSystem_ToString(coordinateSystem)));
+    }
+
     if(completeSave || !FieldsEqual(ID_maxStepLength, &defaultObject))
     {
         addToParent = true;
@@ -1198,6 +1249,12 @@ PoincareAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool for
     {
         addToParent = true;
         node->AddNode(new DataNode("overrideToroidalWinding", overrideToroidalWinding));
+    }
+
+    if(completeSave || !FieldsEqual(ID_overridePoloidalWinding, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("overridePoloidalWinding", overridePoloidalWinding));
     }
 
     if(completeSave || !FieldsEqual(ID_windingPairConfidence, &defaultObject))
@@ -1528,7 +1585,7 @@ PoincareAttributes::SetFromNode(DataNode *parentNode)
         if(node->GetNodeType() == INT_NODE)
         {
             int ival = node->AsInt();
-            if(ival >= 0 && ival < 3)
+            if(ival >= 0 && ival < 4)
                 SetIntegrationType(IntegrationType(ival));
         }
         else if(node->GetNodeType() == STRING_NODE)
@@ -1536,6 +1593,22 @@ PoincareAttributes::SetFromNode(DataNode *parentNode)
             IntegrationType value;
             if(IntegrationType_FromString(node->AsString(), value))
                 SetIntegrationType(value);
+        }
+    }
+    if((node = searchNode->GetNode("coordinateSystem")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 2)
+                SetCoordinateSystem(CoordinateSystem(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            CoordinateSystem value;
+            if(CoordinateSystem_FromString(node->AsString(), value))
+                SetCoordinateSystem(value);
         }
     }
     if((node = searchNode->GetNode("maxStepLength")) != 0)
@@ -1564,6 +1637,8 @@ PoincareAttributes::SetFromNode(DataNode *parentNode)
         SetMaximumToroidalWinding(node->AsInt());
     if((node = searchNode->GetNode("overrideToroidalWinding")) != 0)
         SetOverrideToroidalWinding(node->AsInt());
+    if((node = searchNode->GetNode("overridePoloidalWinding")) != 0)
+        SetOverridePoloidalWinding(node->AsInt());
     if((node = searchNode->GetNode("windingPairConfidence")) != 0)
         SetWindingPairConfidence(node->AsDouble());
     if((node = searchNode->GetNode("periodicityConsistency")) != 0)
@@ -1812,6 +1887,13 @@ PoincareAttributes::SetIntegrationType(PoincareAttributes::IntegrationType integ
 }
 
 void
+PoincareAttributes::SetCoordinateSystem(PoincareAttributes::CoordinateSystem coordinateSystem_)
+{
+    coordinateSystem = coordinateSystem_;
+    Select(ID_coordinateSystem, (void *)&coordinateSystem);
+}
+
+void
 PoincareAttributes::SetMaxStepLength(double maxStepLength_)
 {
     maxStepLength = maxStepLength_;
@@ -1851,6 +1933,13 @@ PoincareAttributes::SetOverrideToroidalWinding(int overrideToroidalWinding_)
 {
     overrideToroidalWinding = overrideToroidalWinding_;
     Select(ID_overrideToroidalWinding, (void *)&overrideToroidalWinding);
+}
+
+void
+PoincareAttributes::SetOverridePoloidalWinding(int overridePoloidalWinding_)
+{
+    overridePoloidalWinding = overridePoloidalWinding_;
+    Select(ID_overridePoloidalWinding, (void *)&overridePoloidalWinding);
 }
 
 void
@@ -2200,6 +2289,12 @@ PoincareAttributes::GetIntegrationType() const
     return IntegrationType(integrationType);
 }
 
+PoincareAttributes::CoordinateSystem
+PoincareAttributes::GetCoordinateSystem() const
+{
+    return CoordinateSystem(coordinateSystem);
+}
+
 double
 PoincareAttributes::GetMaxStepLength() const
 {
@@ -2234,6 +2329,12 @@ int
 PoincareAttributes::GetOverrideToroidalWinding() const
 {
     return overrideToroidalWinding;
+}
+
+int
+PoincareAttributes::GetOverridePoloidalWinding() const
+{
+    return overridePoloidalWinding;
 }
 
 double
@@ -2539,12 +2640,14 @@ PoincareAttributes::GetFieldName(int index) const
     case ID_lineEnd:                   return "lineEnd";
     case ID_pointDensity:              return "pointDensity";
     case ID_integrationType:           return "integrationType";
+    case ID_coordinateSystem:          return "coordinateSystem";
     case ID_maxStepLength:             return "maxStepLength";
     case ID_relTol:                    return "relTol";
     case ID_absTol:                    return "absTol";
     case ID_analysis:                  return "analysis";
     case ID_maximumToroidalWinding:    return "maximumToroidalWinding";
     case ID_overrideToroidalWinding:   return "overrideToroidalWinding";
+    case ID_overridePoloidalWinding:   return "overridePoloidalWinding";
     case ID_windingPairConfidence:     return "windingPairConfidence";
     case ID_periodicityConsistency:    return "periodicityConsistency";
     case ID_adjustPlane:               return "adjustPlane";
@@ -2617,12 +2720,14 @@ PoincareAttributes::GetFieldType(int index) const
     case ID_lineEnd:                   return FieldType_doubleArray;
     case ID_pointDensity:              return FieldType_int;
     case ID_integrationType:           return FieldType_enum;
+    case ID_coordinateSystem:          return FieldType_enum;
     case ID_maxStepLength:             return FieldType_double;
     case ID_relTol:                    return FieldType_double;
     case ID_absTol:                    return FieldType_double;
     case ID_analysis:                  return FieldType_enum;
     case ID_maximumToroidalWinding:    return FieldType_int;
     case ID_overrideToroidalWinding:   return FieldType_int;
+    case ID_overridePoloidalWinding:   return FieldType_int;
     case ID_windingPairConfidence:     return FieldType_double;
     case ID_periodicityConsistency:    return FieldType_double;
     case ID_adjustPlane:               return FieldType_int;
@@ -2695,12 +2800,14 @@ PoincareAttributes::GetFieldTypeName(int index) const
     case ID_lineEnd:                   return "doubleArray";
     case ID_pointDensity:              return "int";
     case ID_integrationType:           return "enum";
+    case ID_coordinateSystem:          return "enum";
     case ID_maxStepLength:             return "double";
     case ID_relTol:                    return "double";
     case ID_absTol:                    return "double";
     case ID_analysis:                  return "enum";
     case ID_maximumToroidalWinding:    return "int";
     case ID_overrideToroidalWinding:   return "int";
+    case ID_overridePoloidalWinding:   return "int";
     case ID_windingPairConfidence:     return "double";
     case ID_periodicityConsistency:    return "double";
     case ID_adjustPlane:               return "int";
@@ -2834,6 +2941,11 @@ PoincareAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (integrationType == obj.integrationType);
         }
         break;
+    case ID_coordinateSystem:
+        {  // new scope
+        retval = (coordinateSystem == obj.coordinateSystem);
+        }
+        break;
     case ID_maxStepLength:
         {  // new scope
         retval = (maxStepLength == obj.maxStepLength);
@@ -2862,6 +2974,11 @@ PoincareAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
     case ID_overrideToroidalWinding:
         {  // new scope
         retval = (overrideToroidalWinding == obj.overrideToroidalWinding);
+        }
+        break;
+    case ID_overridePoloidalWinding:
+        {  // new scope
+        retval = (overridePoloidalWinding == obj.overridePoloidalWinding);
         }
         break;
     case ID_windingPairConfidence:
@@ -3146,10 +3263,13 @@ PoincareAttributes::StreamlineAttsRequireRecalculation(const PoincareAttributes 
 bool
 PoincareAttributes::PoincareAttsRequireRecalculation(const PoincareAttributes &obj) const
 {
-    return analysis != obj.analysis ||
+    return coordinateSystem != obj.coordinateSystem ||
+ 
+           analysis != obj.analysis ||
 
            maximumToroidalWinding != obj.maximumToroidalWinding ||
            overrideToroidalWinding != obj.overrideToroidalWinding ||
+           overridePoloidalWinding != obj.overridePoloidalWinding ||
            windingPairConfidence != obj.windingPairConfidence ||
            periodicityConsistency != obj.periodicityConsistency ||
 

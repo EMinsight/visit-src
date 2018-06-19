@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -84,6 +84,9 @@ class SlaveInfo;
 //   Rename class "IC" from "SL", to reflect the emphasis on integral curves,
 //   as opposed to streamlines.
 //
+//   Dave Pugmire, Thu Dec  2 11:21:06 EST 2010
+//   Add CheckNextTimeStepNeeded.
+//
 // ****************************************************************************
 
 class avtMasterSlaveICAlgorithm : public avtParICAlgorithm
@@ -97,6 +100,7 @@ class avtMasterSlaveICAlgorithm : public avtParICAlgorithm
     virtual const char*       AlgoName() const {return "MasterSlave";}
     
     virtual void              ResetIntegralCurvesForContinueExecute();
+    virtual bool              CheckNextTimeStepNeeded(int curTimeSlice) { return true; }
     virtual void              AddIntegralCurves(std::vector<avtIntegralCurve*> &ics);
 
     static avtMasterSlaveICAlgorithm* Create(avtPICSFilter *picsFilter,
@@ -106,6 +110,8 @@ class avtMasterSlaveICAlgorithm : public avtParICAlgorithm
                                              int workGroupSz);
 
   protected:
+    bool                      ExchangeICs(std::list<avtIntegralCurve *> &streamlines,
+                                          std::vector<std::vector< avtIntegralCurve *> > &sendICs);
     int                        maxCnt, case4AThreshold;
     int                        NUM_DOMAINS;
     int                        DomToIdx(const DomainType &dom) const

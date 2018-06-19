@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -109,6 +109,7 @@
 #include <SyncAttributes.h>
 #include <QueryOverTimeAttributes.h>
 #include <Utility.h>
+#include <VariableMenuPopulator.h>
 #include <ViewerRPC.h>
 #include <Xfer.h>
 
@@ -4085,6 +4086,9 @@ ViewerSubject::CreateAttributesDataNode(const avtDefaultPlotMetaData *dp) const
 //    I added a call to ClearCache for simulations to force this method to
 //    block until metadata and SIL have come back from the simulation.
 //
+//    Hank Childs, Fri Nov 26 10:31:34 PST 2010
+//    Set up expressions from operators when we open a file.
+//
 // ****************************************************************************
 
 int
@@ -4215,6 +4219,9 @@ ViewerSubject::OpenDatabaseHelper(const std::string &entireDBName,
         // Update the expression list.
         //
         plotList->UpdateExpressionList(false);
+        ExpressionList *adder = ParsingExprList::Instance()->GetList();
+        VariableMenuPopulator::GetOperatorCreatedExpressions(*adder, md, 
+                                                    GetOperatorPluginManager());
 
         //
         // Determine the name of the simulation
@@ -7104,6 +7111,9 @@ ViewerSubject::CopyPlotsToWindow(int from, int to)
 //   Brad Whitlock, Wed Apr 30 09:27:08 PDT 2008
 //   Support for internationalization.
 //
+//   Dave Pugmire, Tue Nov  9 16:07:50 EST 2010
+//   Added dumpStates for streamline info query.
+//
 // ****************************************************************************
 
 void
@@ -7119,7 +7129,8 @@ ViewerSubject::DatabaseQuery()
     qm->DatabaseQuery(vw, GetViewerState()->GetViewerRPC()->GetQueryName(), GetViewerState()->GetViewerRPC()->GetQueryVariables(),
                       GetViewerState()->GetViewerRPC()->GetBoolFlag(), 
                       GetViewerState()->GetViewerRPC()->GetIntArg1(), GetViewerState()->GetViewerRPC()->GetIntArg2(),
-                      (bool)GetViewerState()->GetViewerRPC()->GetIntArg3(), GetViewerState()->GetViewerRPC()->GetDoubleArg1(),
+                      (bool)GetViewerState()->GetViewerRPC()->GetIntArg3(),(bool)GetViewerState()->GetViewerRPC()->GetIntArg4(),
+                      GetViewerState()->GetViewerRPC()->GetDoubleArg1(),
                       GetViewerState()->GetViewerRPC()->GetDoubleArg2());
 
     // Clear the status
@@ -10451,6 +10462,10 @@ ViewerSubject::DeleteNamedSelection()
 //  Programmer:  Hank Childs
 //  Creation:    January 28, 2009
 //
+//  Modifications:
+//    Brad Whitlock, Mon Oct 11 16:04:41 PDT 2010
+//    Add the new file-based selection to the list.
+//
 // ****************************************************************************
 
 void
@@ -10474,6 +10489,19 @@ ViewerSubject::LoadNamedSelection()
         if (ViewerEngineManager::Instance()->LoadNamedSelection(engineKey, selName))
         {
             Message(tr("Loaded named selection"));
+
+            ViewerWindowManager *wMgr = ViewerWindowManager::Instance();
+
+            // Remove any selection that may already exist by this name.
+            int index = wMgr->GetSelectionList()->GetSelection(selName);
+            wMgr->GetSelectionList()->RemoveSelections(index);
+
+            // Add a new selection to the selection list. Just set the name so
+            // it will not have an originating plot.
+            SelectionProperties props;
+            props.SetName(selName);
+            wMgr->GetSelectionList()->AddSelections(props);
+            wMgr->GetSelectionList()->Notify();
         }
         else
         {

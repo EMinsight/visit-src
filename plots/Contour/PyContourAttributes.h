@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -44,17 +44,21 @@
 //
 // Functions exposed to the VisIt module.
 //
+#define CONTOURATTRIBUTES_NMETH 42
 void           PyContourAttributes_StartUp(ContourAttributes *subj, void *data);
 void           PyContourAttributes_CloseDown();
-PyMethodDef *   PyContourAttributes_GetMethodTable(int *nMethods);
+PyMethodDef *  PyContourAttributes_GetMethodTable(int *nMethods);
 bool           PyContourAttributes_Check(PyObject *obj);
 ContourAttributes *  PyContourAttributes_FromPyObject(PyObject *obj);
-PyObject *      PyContourAttributes_New();
-PyObject *      PyContourAttributes_Wrap(const ContourAttributes *attr);
+PyObject *     PyContourAttributes_New();
+PyObject *     PyContourAttributes_Wrap(const ContourAttributes *attr);
 void           PyContourAttributes_SetParent(PyObject *obj, PyObject *parent);
 void           PyContourAttributes_SetDefaults(const ContourAttributes *atts);
 std::string    PyContourAttributes_GetLogString();
 std::string    PyContourAttributes_ToString(const ContourAttributes *, const char *);
+PyObject *     PyContourAttributes_getattr(PyObject *self, char *name);
+int            PyContourAttributes_setattr(PyObject *self, char *name, PyObject *args);
+extern PyMethodDef PyContourAttributes_methods[CONTOURATTRIBUTES_NMETH];
 
 #endif
 

@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-400142
 # All rights reserved.
@@ -35,13 +35,23 @@
 # DAMAGE.
 #
 # Modifications:
+#   Brad Whitlock, Tue Nov 30 11:32:08 PST 2010
+#   I added multiwindow example.
+#
+#   Kathleen Bonnell, Wed Jan 05 10:25:13 PST 2010
+#   Add FOLDER property.
 #
 #****************************************************************************/
 
-SET(SOURCES
+SET(SOURCES1
 CommandParser.C
 SimpleVisApp.C
 Synchronizer.C
+main.C
+)
+
+SET(SOURCES2
+MultiWindowVisApp.C
 main.C
 )
 
@@ -51,12 +61,18 @@ IF(VISIT_STATIC)
 ENDIF(VISIT_STATIC)
 
 # The subset of the sources that have Q_OBJECT in their header.
-SET(MOC_SOURCES
+SET(MOC_SOURCES1
 CommandParser.h
 SimpleVisApp.h
 Synchronizer.h
 )
-QT_WRAP_CPP(embedded SOURCES ${MOC_SOURCES})
+QT_WRAP_CPP(embedded SOURCES1 ${MOC_SOURCES1})
+
+# The subset of the sources that have Q_OBJECT in their header.
+SET(MOC_SOURCES2
+MultiWindowVisApp.h
+)
+QT_WRAP_CPP(multiwindow SOURCES2 ${MOC_SOURCES2})
 
 INCLUDE_DIRECTORIES(
 ${CMAKE_CURRENT_SOURCE_DIR}
@@ -82,14 +98,15 @@ ${VTK_INCLUDE_DIRS}
 LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY} ${QT_LIBRARY_DIR} ${MESA_LIBRARY_DIR} ${GLEW_LIBRARY_DIR} ${VTK_LIBRARY_DIRS})
 
 IF(NOT APPLE)
-    ADD_EXECUTABLE(embedded ${SOURCES} ${STATIC_SOURCES})
+    ADD_EXECUTABLE(embedded ${SOURCES1} ${STATIC_SOURCES1})
+    ADD_EXECUTABLE(multiwindow ${SOURCES2} ${STATIC_SOURCES2})
 ELSE(NOT APPLE)
     SET(GUI_ICON_FILE VisItIcon.icns)
     SET_SOURCE_FILES_PROPERTIES(${VISIT_SOURCE_DIR}/common/icons/${GUI_ICON_FILE} PROPERTIES
         MACOSX_PACKAGE_LOCATION Resources
     )
 
-    ADD_EXECUTABLE(embedded MACOSX_BUNDLE ${SOURCES}  ${STATIC_SOURCES} ${VISIT_SOURCE_DIR}/common/icons/${GUI_ICON_FILE})
+    ADD_EXECUTABLE(embedded MACOSX_BUNDLE ${SOURCES1}  ${STATIC_SOURCES1} ${VISIT_SOURCE_DIR}/common/icons/${GUI_ICON_FILE})
     SET(MACOSX_BUNDLE_BUNDLE_NAME          "Embedded viewer example ${VISIT_VERSION}")
     SET(MACOSX_BUNDLE_INFO_STRING          "Embedded viewer example")
     SET(MACOSX_BUNDLE_ICON_FILE            ${GUI_ICON_FILE})
@@ -97,7 +114,17 @@ ELSE(NOT APPLE)
     SET(MACOSX_BUNDLE_LONG_VERSION_STRING  "Embedded viewer example version ${VISIT_VERSION}")
     SET(MACOSX_BUNDLE_SHORT_VERSION_STRING "Embedded viewer example ${VISIT_VERSION}")
     SET(MACOSX_BUNDLE_BUNDLE_VERSION       ${VISIT_VERSION})
-    SET(MACOSX_BUNDLE_COPYRIGHT            "Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC")
+    SET(MACOSX_BUNDLE_COPYRIGHT            "Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC")
+
+    ADD_EXECUTABLE(multiwindow MACOSX_BUNDLE ${SOURCES2}  ${STATIC_SOURCES2} ${VISIT_SOURCE_DIR}/common/icons/${GUI_ICON_FILE})
+#    SET(MACOSX_BUNDLE_BUNDLE_NAME          "Multiwindow embedded viewer example ${VISIT_VERSION}")
+#    SET(MACOSX_BUNDLE_INFO_STRING          "Multiwindow embedded viewer example")
+#    SET(MACOSX_BUNDLE_ICON_FILE            ${GUI_ICON_FILE})
+#    SET(MACOSX_BUNDLE_GUI_IDENTIFIER       VISI)
+#    SET(MACOSX_BUNDLE_LONG_VERSION_STRING  "Multiwindow embedded viewer example version ${VISIT_VERSION}")
+#    SET(MACOSX_BUNDLE_SHORT_VERSION_STRING "Multiwindow embedded viewer example ${VISIT_VERSION}")
+#    SET(MACOSX_BUNDLE_BUNDLE_VERSION       ${VISIT_VERSION})
+#    SET(MACOSX_BUNDLE_COPYRIGHT            "Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC")
 ENDIF(NOT APPLE)
 
 SET(VIEWER_QT_LIBS 
@@ -116,7 +143,7 @@ IF(VISIT_STATIC)
     )
 ENDIF(VISIT_STATIC)
 
-TARGET_LINK_LIBRARIES(embedded 
+SET(EMBEDDED_VIEWER_LIBS
 ${viewer_exe_IOperator}
 ${viewer_exe_VOperator}
 ${viewer_exe_IPlot}
@@ -148,8 +175,16 @@ vtkqt
 ${VIEWER_QT_LIBS}
 )
 
+TARGET_LINK_LIBRARIES(embedded ${EMBEDDED_VIEWER_LIBS})
+TARGET_LINK_LIBRARIES(multiwindow ${EMBEDDED_VIEWER_LIBS})
+
 IF(APPLE)
+    # Hey, do we need this on 10.6?
     SET_TARGET_PROPERTIES(embedded 
+        PROPERTIES
+        LINK_FLAGS "-framework Carbon"
+    )
+    SET_TARGET_PROPERTIES(multiwindow 
         PROPERTIES
         LINK_FLAGS "-framework Carbon"
     )
@@ -164,4 +199,13 @@ IF(VISIT_STATIC)
         ${viewer_exe_IPlot}
         ${viewer_exe_VPlot}
     )
+
+    ADD_DEPENDENCIES(multiwindow
+        ${viewer_exe_IOperator}
+        ${viewer_exe_VOperator}
+        ${viewer_exe_IPlot}
+        ${viewer_exe_VPlot}
+    )
 ENDIF(VISIT_STATIC)
+
+VISIT_TOOLS_ADD_FOLDER(embedded embedded multiwindow)

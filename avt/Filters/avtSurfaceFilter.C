@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -62,6 +62,7 @@
 #include <avtDataAttributes.h>
 #include <avtDatasetExaminer.h>
 #include <avtExtents.h>
+#include <avtParallel.h>
 
 #include <ImproperUseException.h>
 #include <InvalidDimensionsException.h>
@@ -621,6 +622,9 @@ avtSurfaceFilter::VerifyInput(void)
 //    are streaming, not about whether we are doing dynamic load balancing.
 //    And the two are no longer synonymous.
 //
+//    Cyrus Harrison, Wed Jan  5 11:29:14 PST 2011
+//    Globalize fetched spatial extents.
+//
 // ****************************************************************************
 
 avtContract_p
@@ -632,6 +636,7 @@ avtSurfaceFilter::ModifyContract(avtContract_p spec)
     {
         avtDataset_p input = GetTypedInput();
         avtDatasetExaminer::GetSpatialExtents(input, spatialExtents);
+        UnifyMinMax(spatialExtents,6);
         CalculateScaleValues(dataExtents, spatialExtents);
         stillNeedExtents = false;
     }
@@ -694,6 +699,9 @@ avtSurfaceFilter::ModifyContract(avtContract_p spec)
 //    Jeremy Meredith, Thu Feb 15 11:55:03 EST 2007
 //    Call inherited PreExecute before everything else.
 //
+//    Cyrus Harrison, Wed Jan  5 11:29:14 PST 2011
+//    Globalize fetched spatial extents.
+//
 // ****************************************************************************
 
 void
@@ -711,7 +719,7 @@ avtSurfaceFilter::PreExecute(void)
         GetDataExtents(dataExtents, varname);
         avtDataset_p input = GetTypedInput();
         avtDatasetExaminer::GetSpatialExtents(input, spatialExtents);
-
+        UnifyMinMax(spatialExtents,6);
         CalculateScaleValues(dataExtents, spatialExtents);
     }
 

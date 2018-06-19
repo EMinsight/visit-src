@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -91,6 +91,8 @@ class     avtIOInformation;
 //    Mark C. Miller, Tue May 17 18:48:38 PDT 2005
 //    Added SetDatabaseMetaData and PopulateDatabaseMetaData. Removed GetCycle 
 //
+//    Mark C. Miller, Fri Oct 29 09:58:43 PDT 2010
+//    Moved implementation of SetDatabaseMetaData to the .C file.
 // ****************************************************************************
 
 class DATABASE_API avtSTMDFileFormat : public avtFileFormat
@@ -107,8 +109,7 @@ class DATABASE_API avtSTMDFileFormat : public avtFileFormat
                                { avtFileFormat::ActivateTimestep(); };
     virtual void           PopulateIOInformation(avtIOInformation& ioInfo)
                                { avtFileFormat::PopulateIOInformation(ioInfo); };
-    virtual void           SetDatabaseMetaData(avtDatabaseMetaData *md)
-                               { metadata = md; PopulateDatabaseMetaData(metadata); };
+    virtual void           SetDatabaseMetaData(avtDatabaseMetaData *md);
 
     void                   SetTimestep(int ts, int ns) 
                                  { timestep = ts; nTimesteps = ns; };

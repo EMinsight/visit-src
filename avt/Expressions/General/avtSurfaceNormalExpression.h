@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -46,6 +46,7 @@
 #include <avtSingleInputExpressionFilter.h>
 
 class     vtkDataArray;
+class     vtkRectilinearGrid;
 
 
 // ****************************************************************************
@@ -56,6 +57,11 @@ class     vtkDataArray;
 //          
 //  Programmer: Hank Childs
 //  Creation:   September 22, 2005
+//
+//  Modifications:
+//
+//    Hank Childs, Fri Sep 24 10:18:38 PDT 2010
+//    Add a method for rectilinear generation.
 //
 // ****************************************************************************
 
@@ -77,6 +83,7 @@ class EXPRESSION_API avtSurfaceNormalExpression
     virtual vtkDataArray     *DeriveVariable(vtkDataSet *);
     virtual bool              IsPointVariable(void)  { return isPoint; };
     virtual int               GetVariableDimension(void) { return 3; };
+    vtkDataArray             *RectilinearDeriveVariable(vtkRectilinearGrid *);
 };
 
 

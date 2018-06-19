@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -65,6 +65,9 @@ class vtkDataSet;
 //    Added UpdateDataObjectInfo to tell it the zone numbers are invalid
 //    and that we don't need normals.
 //
+//    Hank Childs, Wed Oct 20 20:30:37 PDT 2010
+//    Add support for scaling by fraction of the bounding box.
+//
 // ****************************************************************************
 
 class avtTubeFilter : public avtPluginDataTreeIterator
@@ -84,9 +87,12 @@ class avtTubeFilter : public avtPluginDataTreeIterator
 
   protected:
     TubeAttributes   atts;
+    double           scaleFactor;
 
+    virtual void          PreExecute(void);
     virtual void          UpdateDataObjectInfo(void);
     virtual vtkDataSet   *ExecuteData(vtkDataSet *, int, std::string);
+    virtual avtContract_p ModifyContract(avtContract_p);
 };
 
 

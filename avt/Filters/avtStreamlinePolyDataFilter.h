@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -96,10 +96,14 @@ class AVTFILTERS_API avtStreamlinePolyDataFilter : public avtStreamlineFilter
     static                    std::string thetaArrayName;
     static                    std::string tangentsArrayName;
 
+    void                      SetCoordinateSystem(int c) {coordinateSystem = c;}
+    void                      SetPhiFactor(double pf) {phiFactor = pf;}
+
   protected:
-    vtkPolyData*              GetVTKPolyData(avtIntegralCurve *sl, int id);
-    void                      CreateIntegralCurveOutput( 
-                                 vector<avtIntegralCurve *> &streamlines );
+    void                      CreateIntegralCurveOutput(vector<avtIntegralCurve *> &streamlines);
+
+    int    coordinateSystem;
+    double phiFactor;
 };
 
 

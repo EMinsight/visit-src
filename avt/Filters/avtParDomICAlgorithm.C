@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -37,7 +37,7 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                              avtParDomICAlgorithm.h                       //
+//                              avtParDomICAlgorithm.C                       //
 // ************************************************************************* //
 
 #include "avtParDomICAlgorithm.h"
@@ -129,6 +129,10 @@ avtParDomICAlgorithm::~avtParDomICAlgorithm()
 //   Hank Childs, Mon Jun  7 14:57:13 CDT 2010
 //   Reflect change in name to InitializeBuffers method.
 //
+//   Dave Pugmire, Fri Nov  5 15:39:58 EDT 2010
+//   Fix for unstructured meshes. Need to account for particles that are sent to domains
+//   that based on bounding box, and the particle does not lay in any cells.
+//
 // ****************************************************************************
 
 void
@@ -138,7 +142,7 @@ avtParDomICAlgorithm::Initialize(vector<avtIntegralCurve *> &seedPts)
     if (numRecvs > 64)
         numRecvs = 64;
     
-    avtParICAlgorithm::InitializeBuffers(seedPts, 3, numRecvs);
+    avtParICAlgorithm::InitializeBuffers(seedPts, 3, numRecvs, numRecvs);
     numICChange = 0;
     AddIntegralCurves(seedPts);
 }
@@ -210,6 +214,7 @@ avtParDomICAlgorithm::AddIntegralCurves(std::vector<avtIntegralCurve*> &ics)
 
     totalNumIntegralCurves = activeICs.size();
     SumIntAcrossAllProcessors(totalNumIntegralCurves);
+    origNumIntegralCurves = totalNumIntegralCurves;
     /*
     debug5<<"Init_totalNumIntegralCurves= "<<totalNumIntegralCurves<<endl;
     debug5<<"My ICs: "<<endl;
@@ -251,6 +256,15 @@ avtParDomICAlgorithm::AddIntegralCurves(std::vector<avtIntegralCurve*> &ics)
 //   Dave Pugmire, Tue Oct 19 10:53:51 EDT 2010
 //   Fix for unstructured meshes.
 //
+//   Dave Pugmire, Fri Nov  5 15:39:58 EDT 2010
+//   Fix for unstructured meshes. Need to account for particles that are sent to domains
+//   that based on bounding box, and the particle does not lay in any cells.
+//
+//   Hank Childs, Fri Nov 26 14:39:43 PST 2010
+//   Add progress updates based on number of particles completed.
+//
+//   Dave Pugmire, Wed Jan  5 07:57:21 EST 2011
+//   New datastructures for msg/ic/ds.
 //
 // ****************************************************************************
 
@@ -264,34 +278,39 @@ avtParDomICAlgorithm::ExchangeTermination()
         msg[0] = PARTICLE_TERMINATE_COUNT;
         msg[1] = numICChange;
         SendAllMsg(msg);
-        debug5<<rank<<": SEND TERMINATE "<<numICChange<<endl;
+        //debug5<<rank<<": SEND TERMINATE "<<numICChange<<endl;
         
         totalNumIntegralCurves += numICChange;
+        picsFilter->UpdateProgress(
+                       origNumIntegralCurves-totalNumIntegralCurves,
+                       origNumIntegralCurves);
         numICChange = 0;
     }
 
     // Check to see if msgs are coming in.
-    vector<vector<int> > msgs;
-    RecvMsgs(msgs);
+    vector<MsgCommData> msgs;
+    RecvMsg(msgs);
     for (int i = 0; i < msgs.size(); i++)
     {
-        int fromRank = msgs[i][0], msgType = msgs[i][1];
+        int fromRank = msgs[i].rank;
+        vector<int> &msg = msgs[i].message;
+        int msgType = msg[0];
         
         if (msgType == PARTICLE_TERMINATE_COUNT)
         {
-            totalNumIntegralCurves += msgs[i][2];
-            debug5<<fromRank<<": RECV DECR"<<endl;
+            totalNumIntegralCurves += msg[1];
+            //debug5<<fromRank<<": RECV DECR"<<endl;
         }
         else
         {
             //Find the right entry.
-            int icID = msgs[i][2], icCnt = msgs[i][3];
+            int icID = msg[1], icCnt = msg[2];
             pair<int,int> key(icID, icCnt);
 
             sendICInfoIterator i = sendICInfo.find(key);
             if (i == sendICInfo.end())
             {
-                debug5<<icID<<", "<<icCnt<<" not found in sendICInfo!!"<<endl;
+                //debug5<<icID<<", "<<icCnt<<" not found in sendICInfo!!"<<endl;
                 continue;
             }
 
@@ -371,13 +390,9 @@ avtParDomICAlgorithm::PreRunAlgorithm()
 //   Rename data members to reflect the new emphasis in particle advection, as
 //   opposed to streamlines.
 //
-//   Dave Pugmire, Fri Sep 24 12:42:49 EDT 2010
-//   Handle case where single IC goes to multiple places. Increase number of ICs.
-//   Decrement for early terminators.
-//
-//   Dave Pugmire, Tue Oct 19 10:53:51 EDT 2010
-//   Fix for unstructured meshes.
-//
+//   Dave Pugmire, Fri Nov  5 15:39:58 EDT 2010
+//   Fix for unstructured meshes. Need to account for particles that are sent to domains
+//   that based on bounding box, and the particle does not lay in any cells.
 //
 // ****************************************************************************
 
@@ -411,50 +426,55 @@ avtParDomICAlgorithm::RunAlgorithm()
         }
 
         HandleIncomingIC();
-        /*
-        //Check for new ICs.
-        int earlyTerminations = 0;
-        RecvICs(activeICs, earlyTerminations);
-        //numICChange -= earlyTerminations;
-        */
-
         ExchangeTermination();
         CheckPendingSendRequests();
     }
 
     CheckPendingSendRequests();
     TotalTime.value += visitTimer->StopTimer(timer, "Execute");
-
-    cout<<"All done. sendICInfo size= "<<sendICInfo.size()<<endl;
 }
 
+// ****************************************************************************
+// Method:  avtParDomICAlgorithm::HandleIncomingIC()
+//
+// Programmer:  Dave Pugmire
+// Creation:    November  5, 2010
+//
+// Modifications:
+//   Dave Pugmire, Wed Jan  5 07:57:21 EST 2011
+//   New datastructures for msg/ic/ds.
+//
+// ****************************************************************************
 
 void
 avtParDomICAlgorithm::HandleIncomingIC()
 {
-    list<avtIntegralCurve *> incoming;
-    list<int> ranks;
-    RecvICs(incoming, &ranks);
+    list<ICCommData> incoming;
+    RecvICs(incoming);
 
-    list<avtIntegralCurve *>::iterator s;
-    list<int>::iterator r = ranks.begin();
-    for (s = incoming.begin(); s != incoming.end(); s++, r++)
+    list<ICCommData>::iterator s;
+    for (s = incoming.begin(); s != incoming.end(); s++)
     {
+        avtIntegralCurve *ic = (*s).ic;
+        int sendRank = (*s).rank;
+        
         vector<int> msg(3);
         msg[0] = PARTICLE_USED;
-        msg[1] = (*s)->id;
-        msg[2] = (*s)->counter;
+        msg[1] = ic->id;
+        msg[2] = ic->counter;
 
         avtVector pt;
-        (*s)->CurrentLocation(pt);
-        if (PointInDomain(pt, (*s)->domain))
-            activeICs.push_back(*s);
+        ic->CurrentLocation(pt);
+        if (PointInDomain(pt, ic->domain))
+        {
+            activeICs.push_back(ic);
+        }
         else
         {
             msg[0] = PARTICLE_NOT_USED;
-            delete *s;
+            delete ic;
         }
-        SendMsg(*r, msg);
+        SendMsg(sendRank, msg);
     }
 }
 
@@ -489,6 +509,10 @@ avtParDomICAlgorithm::HandleIncomingIC()
 //   Dave Pugmire, Fri Sep 24 12:42:49 EDT 2010
 //   Handle case where single IC goes to multiple places. Increase number of ICs.
 //
+//   Dave Pugmire, Fri Nov  5 15:39:58 EDT 2010
+//   Fix for unstructured meshes. Need to account for particles that are sent to domains
+//   that based on bounding box, and the particle does not lay in any cells.
+//
 // ****************************************************************************
 
 void
@@ -512,7 +536,7 @@ avtParDomICAlgorithm::HandleOOBIC(avtIntegralCurve *s)
         if (domRank == rank)
         {
             activeICs.push_back(s);
-            debug5<<"Handle OOB: id= "<<s->id<<" "<<s->domain<<" --> me"<<endl;
+            //debug5<<"Handle OOB: id= "<<s->id<<" "<<s->domain<<" --> me"<<endl;
         }
         else
         {
@@ -522,7 +546,7 @@ avtParDomICAlgorithm::HandleOOBIC(avtIntegralCurve *s)
             SendICs(domRank, ics);
             sentRanks.insert(domRank);
             
-            debug5<<"Handle OOB: id= "<<s->id<<" "<<s->domain<<" --> "<<domRank<<endl;
+            //debug5<<"Handle OOB: id= "<<s->id<<" "<<s->domain<<" --> "<<domRank<<endl;
 
             //Add it to the sendICInfo.
             pair<int, int> key(s->id, s->counter);
@@ -561,6 +585,12 @@ avtParDomICAlgorithm::HandleOOBIC(avtIntegralCurve *s)
 //   Rename this method to reflect the new emphasis in particle advection, as
 //   opposed to streamlines.
 //
+//   Dave Pugmire, Mon Nov 29 09:28:07 EST 2010
+//   Need to synchronize to get number of total streamlines after continuation.
+//
+//   Dave Pugmire, Tue Nov 30 13:24:26 EST 2010
+//   Change IC status when ic to not-terminated.
+//
 // ****************************************************************************
 
 void
@@ -572,10 +602,42 @@ avtParDomICAlgorithm::ResetIntegralCurvesForContinueExecute()
         terminatedICs.pop_front();
         
         activeICs.push_back(s);
-        numICChange++;
+        s->status = avtIntegralCurve::STATUS_OK;
     }
-
-    ExchangeTermination();
+    
+    totalNumIntegralCurves = activeICs.size();
+    SumIntAcrossAllProcessors(totalNumIntegralCurves);
 }
+
+// ****************************************************************************
+// Method:  avtParDomICAlgorithm::CheckNextTimeStepNeeded
+//
+// Purpose: Is the next time slice required to continue?
+//   
+//
+// Programmer:  Dave Pugmire
+// Creation:    December  2, 2010
+//
+// ****************************************************************************
+
+
+bool
+avtParDomICAlgorithm::CheckNextTimeStepNeeded(int curTimeSlice)
+{
+    int val = 0;
+    list<avtIntegralCurve *>::const_iterator it;
+    for (it = terminatedICs.begin(); it != terminatedICs.end(); it++)
+    {
+        if ((*it)->domain.domain != -1 && (*it)->domain.timeStep > curTimeSlice)
+        {
+            val = 1;
+            break;
+        }
+    }
+    
+    SumIntAcrossAllProcessors(val);
+    return val > 0;
+}
+
 
 #endif

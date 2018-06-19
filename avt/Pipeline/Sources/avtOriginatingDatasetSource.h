@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -76,7 +76,7 @@ class PIPELINE_API avtOriginatingDatasetSource
                               avtOriginatingDatasetSource();
     virtual                  ~avtOriginatingDatasetSource();
 
-    void                      MergeExtents(vtkDataSet *);
+    void                      MergeExtents(vtkDataSet *, int dom, int ts, const char *);
 
   protected:
     avtDatasetVerifier        verifier;

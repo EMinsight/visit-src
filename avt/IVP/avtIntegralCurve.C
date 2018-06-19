@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -88,8 +88,14 @@ using namespace std;
 //   Separate out portions related to Streamline and Poincare into 
 //   avtStateRecorderIntegralCurve.
 //
-//   Dave Pugmire, Tue Oct 19 10:53:51 EDT 2010
-//   Fix for unstructured meshes.
+//   Hank Childs, Tue Oct  5 18:41:35 PDT 2010
+//   Remove references to "termination", which now go in derived type.
+//
+//   Dave Pugmire, Fri Nov  5 15:34:49 EDT 2010
+//   Add counter to handle communication of ICs
+//
+//   Hank Childs, Sun Dec  5 11:43:46 PST 2010
+//   Initialize encounteredNumericalProblems.
 //
 // ****************************************************************************
 
@@ -98,13 +104,13 @@ avtIntegralCurve::avtIntegralCurve( const avtIVPSolver* model,
                                     const double& t_start,
                                     const avtVector &p_start, 
                                     long ID )
-    : status(STATUS_OK), direction(dir), domain(-1), sortKey(0), id(ID), counter(0)
+    : status(STATUS_OK), direction(dir), domain(-1), sortKey(0), id(ID)
 {
     ivp = model->Clone();
     ivp->Reset( t_start, p_start );
-
-    termination = 0.0;
-    terminationType = TERMINATE_TIME;
+    counter = 0;
+    encounteredNumericalProblems = false;
+    postStepCallbackFunction = NULL;
 }
 
 
@@ -132,6 +138,15 @@ avtIntegralCurve::avtIntegralCurve( const avtIVPSolver* model,
 //   Separate out portions related to Streamline and Poincare into 
 //   avtStateRecorderIntegralCurve.
 //
+//   Hank Childs, Tue Oct  5 18:41:35 PDT 2010
+//   Remove references to "termination", which now go in derived type.
+//
+//   Dave Pugmire, Fri Nov  5 15:34:49 EDT 2010
+//   Add counter to handle communication of ICs
+//
+//   Hank Childs, Sun Dec  5 11:43:46 PST 2010
+//   Initialize encounteredNumericalProblems.
+//
 // ****************************************************************************
 
 avtIntegralCurve::avtIntegralCurve()
@@ -142,9 +157,9 @@ avtIntegralCurve::avtIntegralCurve()
     domain = -1;
     sortKey = 0;
     id = -1;
-
-    termination = 0.0;
-    terminationType = TERMINATE_TIME;
+    counter = 0;
+    encounteredNumericalProblems = false;
+    postStepCallbackFunction = NULL;
 }
 
 
@@ -201,6 +216,9 @@ avtIntegralCurve::~avtIntegralCurve()
 //    Christoph Garth, Wed Jul 21, 09:27:01 PDT 2010
 //    Rolled DoAdvance into this method since all it did was call it.
 //
+//    Hank Childs, Sun Dec  5 11:43:46 PST 2010
+//    Indicate when we have a numerical problem.
+//
 // ****************************************************************************
 
 void avtIntegralCurve::Advance( avtIVPField* field )
@@ -226,17 +244,15 @@ void avtIntegralCurve::Advance( avtIVPField* field )
     {
         tfinal = range[1];
 
-        if( terminationType == TERMINATE_TIME && 
-            termination < tfinal )
-            tfinal = termination;
+        if (UseFixedTerminationTime() && FixedTerminationTime() < tfinal)
+            tfinal = FixedTerminationTime();
     }
     else
     {
         tfinal = range[0];
 
-        if( terminationType == TERMINATE_TIME &&
-            termination > tfinal )
-            tfinal = termination;
+        if (UseFixedTerminationTime() && FixedTerminationTime() > tfinal)
+            tfinal = FixedTerminationTime();
     }
 
     // Loop doing integration steps.
@@ -355,9 +371,15 @@ void avtIntegralCurve::Advance( avtIVPField* field )
             if( DebugStream::Level5() )
                 debug5 << "avtIntegralCurve::Advance(): "
                        << "error during step, finished\n";
+            encounteredNumericalProblems = true;
 
             status = STATUS_FINISHED;
         }
+        
+        /*
+        if (status == STATUS_OK && postStepCallbackFunction != NULL)
+            postStepCallbackFunction();
+        */
     }
     while( status == STATUS_OK );
 
@@ -459,8 +481,14 @@ avtIntegralCurve::CurrentLocation(avtVector &end)
 //    Separate out portions related to sequence tracking into
 //    avtStateRecorderIntegralCurve.
 //
-//   Dave Pugmire, Tue Oct 19 10:53:51 EDT 2010
-//   Fix for unstructured meshes.
+//   Hank Childs, Tue Oct  5 18:41:35 PDT 2010
+//   Remove references to "termination", which now go in derived type.
+//
+//   Dave Pugmire, Fri Nov  5 15:34:49 EDT 2010
+//   Add counter to handle communication of ICs
+//
+//   Hank Childs, Sun Dec  5 11:43:46 PST 2010
+//   Send encounteredNumericalProblems.
 //
 // ****************************************************************************
 
@@ -476,9 +504,8 @@ avtIntegralCurve::Serialize(MemStream::Mode mode, MemStream &buff,
     buff.io(mode, direction);
     buff.io(mode, domain);
     buff.io(mode, status);
-    buff.io(mode, termination);
-    buff.io(mode, terminationType);
     buff.io(mode, counter);
+    buff.io(mode, encounteredNumericalProblems);
     
     if ( mode == MemStream::WRITE )
     {
@@ -504,7 +531,7 @@ avtIntegralCurve::Serialize(MemStream::Mode mode, MemStream &buff,
 
     if( DebugStream::Level5() )
         debug5 << "avtIntegralCurve::Serialize() size is " 
-               << buff.buffLen() << endl;
+               << buff.len() << endl;
 }
 
 bool

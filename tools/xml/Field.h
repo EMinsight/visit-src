@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -442,6 +442,10 @@ class IntArray : public virtual Field
         length = s.toInt();
         val    = new int[length];
     }
+    virtual ~IntArray()
+    {
+        if( val ) delete [] val;
+    }
     virtual QString GetCPPName(bool, const QString &) 
     {
         return "int";
@@ -602,6 +606,10 @@ class FloatArray : public virtual Field
         length = s.toInt();
         val    = new float[length];
     }
+    virtual ~FloatArray()
+    {
+        if( val ) delete [] val;
+    }
     virtual QString GetCPPName(bool, const QString &) 
     {
         return "float";
@@ -681,6 +689,10 @@ class DoubleArray : public virtual Field
     {
         length = s.toInt();
         val    = new double[length];
+    }
+    virtual ~DoubleArray()
+    {
+        if( val ) delete [] val;
     }
     virtual QString GetCPPName(bool, const QString &) 
     {
@@ -808,6 +820,10 @@ class UCharArray : public virtual Field
     {
         length = s.toInt();
         val    = new unsigned char[length];
+    }
+    virtual ~UCharArray()
+    {
+        if( val ) delete [] val;
     }
     virtual QString GetCPPName(bool, const QString &) 
     {

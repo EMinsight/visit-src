@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -2164,7 +2164,7 @@ vtkVisItScalarBarActor::GetCalculatedLabels(stringVector &v)
         char labelString[1024];
         for (size_t i = 0; i < definedDoubleLabels.size(); ++i)
         {
-            sprintf(labelString, "%f", definedDoubleLabels[i]);
+            sprintf(labelString, "%g", definedDoubleLabels[i]);
             v.push_back(labelString);
         }
     }

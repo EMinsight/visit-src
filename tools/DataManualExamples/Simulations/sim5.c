@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-400142
 * All rights reserved.
@@ -38,6 +38,7 @@
 
 /* SIMPLE SIMULATION SKELETON */
 #include <VisItControlInterface_V2.h>
+#include <VisItDataInterface_V2.h>
 #include <stdio.h>
 
 #include "SimulationExample.h"

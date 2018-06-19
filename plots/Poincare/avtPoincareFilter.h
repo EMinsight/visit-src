@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -46,7 +46,7 @@
 #include <avtStreamlineFilter.h>
 
 
-class avtStateRecorderIntegralCurve;
+class avtPoincareIC;
 
 
 // ****************************************************************************
@@ -78,6 +78,10 @@ class avtStateRecorderIntegralCurve;
 //    Convert references from avtStreamline to avtIntegralCurve, the new name
 //    for the abstract base type.
 //
+//    Hank Childs, Fri Oct  8 23:30:27 PDT 2010
+//    Change methods for setting up termination criteria to reflect refactor
+//    in integral curves.
+//
 // ****************************************************************************
 
 #include "StreamlineAnalyzerLib.h"
@@ -101,6 +105,8 @@ class avtPoincareFilter : public avtStreamlineFilter
       maximumToroidalWinding = value; };
     void SetOverrideToroidalWinding( unsigned int value) {
       overrideToroidalWinding = value; }
+    void SetOverridePoloidalWinding( unsigned int value) {
+      overridePoloidalWinding = value; }
 
     void SetWindingPairConfidence( double val ) { windingPairConfidence = val; }
     void SetPeriodicityConsistency( double val ) { periodicityConsistency = val; }
@@ -126,6 +132,9 @@ class avtPoincareFilter : public avtStreamlineFilter
     void SetVerboseFlag( bool val ) { verboseFlag = val; }
     void SetShowRidgelines( bool val )   { showRidgelines = val; }
 
+    // Methods to set the filter's attributes.
+    void                      SetIntersectionCriteria(vtkObject *obj, int);
+
   protected:
     // Streamline overides.
     virtual void Execute(void);
@@ -147,37 +156,42 @@ class avtPoincareFilter : public avtStreamlineFilter
                                  unsigned int color,
                                  double color_value );
 
-  virtual void loadCurve( avtDataTree *dt,
-                          vector< vector < vector < Point > > > &nodes,
-                          unsigned int nnodes,
-                          unsigned int islands,
-                          unsigned int skip,
-                          unsigned int color,
-                          double color_value );
+  virtual void drawRationalCurve( avtDataTree *dt,
+                                  vector< vector < vector < Point > > > &nodes,
+                                  unsigned int nnodes,
+                                  unsigned int islands,
+                                  unsigned int skip,
+                                  unsigned int color,
+                                  double color_value );
   
-  virtual void loadCurve( avtDataTree *dt,
-                          vector< vector < vector < Point > > > &nodes,
-                          unsigned int nnodes,
-                          unsigned int color,
-                          double color_value );
+  virtual void drawIrrationalCurve( avtDataTree *dt,
+                                    vector< vector < vector < Point > > > &nodes,
+                                    unsigned int nnodes,
+                                    unsigned int islands,
+                                    unsigned int skip,
+                                    unsigned int color,
+                                    double color_value,
+                                    bool connect = false,
+                                    bool modulo = false);
   
-  virtual void loadSurface( avtDataTree *dt,
+  virtual void drawSurface( avtDataTree *dt,
                             vector< vector < vector < Point > > > &nodes,
                             unsigned int nnodes,
                             unsigned int islands,
                             unsigned int skip,
                             unsigned int color,
-                            double color_value);
+                            double color_value,
+                            bool modulo = false);
 
-  virtual void loadPoints( avtDataTree *dt,
-                           vector < Point  > &nodes,
-                           unsigned int period,
-                           unsigned int nnodes,
-                           unsigned int islands,
-                           unsigned int poloidalWindings,
-                           unsigned int color,
-                           double color_value,
-                           bool ptFlag );
+  virtual void drawPeriodicity( avtDataTree *dt,
+                                vector < Point  > &nodes,
+                                unsigned int period,
+                                unsigned int nnodes,
+                                unsigned int islands,
+                                unsigned int poloidalWindings,
+                                unsigned int color,
+                                double color_value,
+                                bool ptFlag );
 
     // Poincare filter methods.
     bool                      ClassifyStreamlines();
@@ -195,6 +209,7 @@ class avtPoincareFilter : public avtStreamlineFilter
 
     unsigned int maximumToroidalWinding;
     unsigned int overrideToroidalWinding;
+    unsigned int overridePoloidalWinding;
 
     double windingPairConfidence;
     double periodicityConsistency;
@@ -207,6 +222,9 @@ class avtPoincareFilter : public avtStreamlineFilter
 
     unsigned int dataValue;
   
+    vtkObject *intersectObj; 
+    int maxIntersections;
+
     bool showOPoints, showIslands, showChaotic;
     bool showLines, showPoints, showRidgelines, verboseFlag;
     int  pointScale;
@@ -217,7 +235,7 @@ class avtPoincareFilter : public avtStreamlineFilter
         ICHelper() {}
         ~ICHelper() {}
 
-        avtStateRecorderIntegralCurve *ic;
+        avtPoincareIC *ic;
         std::vector<avtVector> points;
         FieldlineProperties properties;
         long int id;

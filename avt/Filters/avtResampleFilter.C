@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -226,7 +226,15 @@ avtResampleFilter::InputNeedsNoResampling(void)
     int n = 0;
     vtkDataSet **in_dss = inDT->GetAllLeaves(n);
     if (n && in_dss && in_dss[0] && in_dss[0]->GetDataObjectType() == VTK_POLY_DATA)
+    {
+        // Free the memory from the GetAllLeaves function call.
+        delete [] in_dss;
+
         return true;
+    }
+
+    // Free the memory from the GetAllLeaves function call.
+    delete [] in_dss;
 #endif
 
     return false;
@@ -898,8 +906,11 @@ avtResampleFilter::GetDimensions(int &width, int &height, int &depth,
 //    Hank Childs, Thu Aug 26 13:47:30 PDT 2010
 //    Change extents names.
 //
+//    Hank Childs, Tue Nov 30 21:54:43 PST 2010
+//    Remove const qualification.
+//
 // ****************************************************************************
-bool avtResampleFilter::GetBounds(double bounds[6]) const
+bool avtResampleFilter::GetBounds(double bounds[6])
 {
     bool is3D = true;
     if (atts.GetUseBounds())

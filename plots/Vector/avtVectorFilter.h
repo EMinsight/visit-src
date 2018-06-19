@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -86,6 +86,9 @@ class  vtkVertexFilter;
 //    This will let us calculate a much closer stride value if the
 //    user requests a particular number of vectors to be plotted.
 //
+//    Hank Childs, Wed Dec 22 01:27:33 PST 2010
+//    Add PostExecute method.
+//
 // ****************************************************************************
 
 class avtVectorFilter : public avtDataTreeIterator
@@ -115,6 +118,7 @@ class avtVectorFilter : public avtDataTreeIterator
     int                       approxDomains;
 
     virtual void              PreExecute(void);
+    virtual void              PostExecute(void);
     virtual vtkDataSet       *ExecuteData(vtkDataSet *, int, std::string);
     virtual void              UpdateDataObjectInfo(void);
     virtual avtContract_p

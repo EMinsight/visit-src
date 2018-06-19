@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -747,8 +747,6 @@ QvisMainWindow::QvisMainWindow(int orientation, const char *captionString)
                                           this, SLOT(toggleFullFrameMode()));
     spinModeAct = winPopup->addAction(tr("Spin mode"),
                                      this, SLOT(toggleSpinMode()));
-    navigateModeAct = winPopup->addAction(tr("Bounding box navigation"),
-                                         this, SLOT(toggleNavigateMode()));
 
     if(qApp->desktop()->height() < MIN_WINDOW_HEIGHT_BEFORE_POSTING_MAIN)
     {
@@ -1671,6 +1669,9 @@ QvisMainWindow::UpdateWindowList(bool doList)
 //   Hank Childs, Mon Dec 22 10:00:34 PST 2008
 //   Increment a counter so the menus get enabled.
 //
+//   Brad Whitlock, Mon Sep 20 16:38:00 PDT 2010
+//   I removed the navigate mode action.
+//
 // ****************************************************************************
 
 void
@@ -1731,8 +1732,6 @@ QvisMainWindow::UpdateWindowMenu(bool updateNumbers)
     fullFrameModeAct->setEnabled(enoughPlots);
     fullFrameModeAct->setChecked(windowInfo->GetFullFrame());
     
-    navigateModeAct->setEnabled(enoughPlots);
-    navigateModeAct->setChecked(windowInfo->GetBoundingBoxNavigate());
     spinModeAct->setEnabled(enoughPlots);
     spinModeAct->setChecked(windowInfo->GetSpin());
 }
@@ -3146,26 +3145,6 @@ void
 QvisMainWindow::clearPickPoints()
 {
     GetViewerMethods()->ClearPickPoints();
-}
-
-// ****************************************************************************
-// Method: QvisMainWindow::toggleNavigateMode
-//
-// Purpose: 
-//   This is a Qt slot function that causes the active window to toggle its
-//   bounding box navigation mode.
-//
-// Programmer: Brad Whitlock
-// Creation:   Mon Sep 16 17:25:51 PST 2002
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-void
-QvisMainWindow::toggleNavigateMode()
-{
-    GetViewerMethods()->ToggleBoundingBoxMode();
 }
 
 // ****************************************************************************

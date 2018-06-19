@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -99,6 +99,15 @@
 //   Rename class "IC" from "SL", to reflect the emphasis on integral curves,
 //   as opposed to streamlines.
 //
+//   Dave Pugmire, Thu Dec  2 11:21:06 EST 2010
+//   Add CheckNextTimeStepNeeded.
+//
+//   Dave Pugmire, Mon Dec 20 15:01:14 EST 2010
+//   Added Sleep() method.
+//
+//   Dave Pugmire, Fri Jan 14 11:06:09 EST 2011
+//   Added PostStepCallback() method.
+//
 // ****************************************************************************
 
 class avtICAlgorithm
@@ -111,10 +120,12 @@ class avtICAlgorithm
     virtual void              Initialize(std::vector<avtIntegralCurve *> &);
     void                      Execute();
     virtual void              ResetIntegralCurvesForContinueExecute() = 0;
+    virtual bool              CheckNextTimeStepNeeded(int curTimeSlice) = 0;
     virtual void              PostExecute();
     virtual void              GetTerminatedICs(vector<avtIntegralCurve *> &v);
     virtual void              AddIntegralCurves(std::vector<avtIntegralCurve*> &ics) = 0;
     virtual void              DeleteIntegralCurves(std::vector<int> &icIDs);
+    virtual bool              PostStepCallback() { return false; }
 
   protected:
     virtual void              RunAlgorithm() = 0;
@@ -131,6 +142,7 @@ class avtICAlgorithm
     virtual bool              PointInDomain(avtVector &pt, DomainType &dom)
     { return picsFilter->avtPICSFilter::PointInDomain(pt, dom); }
     virtual void              AdvectParticle(avtIntegralCurve *ic);
+    virtual void              AdvectParticle(avtIntegralCurve *ic, vtkDataSet *ds);
     vtkDataSet               *GetDomain(avtIntegralCurve *ic);
     vtkDataSet               *GetDomain(const DomainType &dom,
                                         double X=0, double Y=0, double Z=0);
@@ -146,6 +158,8 @@ class avtICAlgorithm
     //Utility functions.
     virtual void              SortIntegralCurves(std::list<avtIntegralCurve *> &);
     virtual void              SortIntegralCurves(std::vector<avtIntegralCurve *> &);
+    void                      Sleep(long nanoSec=10) const;
+    
     //Statistics and timers.
     class ICStatistics
     {
@@ -182,12 +196,12 @@ class avtICAlgorithm
     virtual void              ReportCounters(ostream &os, bool totals);
 
     void                      PrintTiming(ostream &os,
-                                          char *str, 
+                                          const char *str, 
                                           const ICStatistics &s,
                                           const ICStatistics &t,
                                           bool total);
     void                      PrintCounter(ostream &os,
-                                           char *str,
+                                           const char *str,
                                            const ICStatistics &s,
                                            bool total);
 

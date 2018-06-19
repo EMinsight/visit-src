@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -785,6 +785,14 @@ avtFilter::TryDataExtents(double *outexts, const char *varname)
 //    Hank Childs, Thu Aug 26 13:02:28 PDT 2010
 //    Change named of extents object.
 //
+//    Hank Childs, Thu Sep 23 13:57:01 PDT 2010
+//    Be more aggressive in setting back extents.  Also set it correctly
+//    with the input ... not with the output (wrong).
+//
+//    Hank Childs, Sun Nov 21 12:14:19 PST 2010
+//    Allow for input extents to be used in more cases for non-active 
+//    variables.
+//
 // ****************************************************************************
 
 void
@@ -800,13 +808,23 @@ avtFilter::GetDataExtents(double *outexts, const char *varname)
 
     bool hadThemAlready = false;
     avtDataAttributes &atts = GetInput()->GetInfo().GetAttributes();
-    if (varname == NULL || 
-        (atts.ValidActiveVariable() && atts.GetVariableName() == varname))
+    bool checkExtents = false;
+    if (varname != NULL)
     {
-        avtExtents *exts = atts.GetThisProcsOriginalDataExtents();
+        if (atts.ValidVariable(varname))
+            checkExtents = true;
+    }
+    else
+    {
+        if (atts.ValidActiveVariable())
+            checkExtents = true;
+    }
+    if (checkExtents)
+    {
+        avtExtents *exts = atts.GetThisProcsOriginalDataExtents(varname);
         if (exts->HasExtents())
         {
-            atts.GetThisProcsOriginalDataExtents()->CopyTo(outexts);
+            atts.GetThisProcsOriginalDataExtents(varname)->CopyTo(outexts);
             hadThemAlready = true;
         }
     }
@@ -818,15 +836,21 @@ avtFilter::GetDataExtents(double *outexts, const char *varname)
 
     UnifyMinMax(outexts, 2, 2);
 
-    if (varname == NULL)
+    //
+    // We now have determined the true data extents, so we may as well 
+    // set them back.
+    //
+    avtExtents *e = NULL;
+    TRY
     {
-        //
-        // We now have determined the true spatial extents, so we may as well 
-        // set them back.
-        //
-        GetOutput()->GetInfo().GetAttributes().GetOriginalDataExtents()
-                                                                ->Set(outexts);
+        e = GetInput()->GetInfo().GetAttributes().GetOriginalDataExtents(varname);
     }
+    CATCH(ImproperUseException)
+    {
+    }
+    ENDTRY
+    if (e != NULL)
+        e->Set(outexts);
 }
 
 
@@ -899,10 +923,13 @@ avtFilter::TrySpatialExtents(double *outexts) const
 //    Hank Childs, Thu Aug 26 13:02:28 PDT 2010
 //    Change named of extents object.
 //
+//    Hank Childs, Tue Nov 30 20:38:36 PST 2010
+//    Better support for getting extents when extents aren't known a priori.
+//
 // ****************************************************************************
 
 void
-avtFilter::GetSpatialExtents(double *newexts) const
+avtFilter::GetSpatialExtents(double *newexts)
 {
     if (TrySpatialExtents(newexts))
     {
@@ -913,7 +940,10 @@ avtFilter::GetSpatialExtents(double *newexts) const
     }
 
     const avtDataAttributes &atts = GetInput()->GetInfo().GetAttributes();
-    atts.GetThisProcsOriginalSpatialExtents()->CopyTo(newexts);
+    if (atts.GetThisProcsOriginalSpatialExtents()->HasExtents())
+        atts.GetThisProcsOriginalSpatialExtents()->CopyTo(newexts);
+    else
+        SearchDataForSpatialExtents(newexts);
 
     UnifyMinMax(newexts, atts.GetSpatialDimension()*2, 6);
 
@@ -1258,6 +1288,26 @@ avtFilter::SearchDataForDataExtents(double *, const char *)
 
 
 // ****************************************************************************
+//  Method: avtFilter::SearchDataForSpatialExtents
+//
+//  Purpose:
+//      This should search through the actual data to find the spatial extents.
+//      Since this class does not know what type of data it has, it will
+//      throw an exception.
+//
+//  Programmer: Hank Childs
+//  Creation:   November 30, 2010
+//
+// ****************************************************************************
+
+void
+avtFilter::SearchDataForSpatialExtents(double *)
+{
+    EXCEPTION0(ImproperUseException);
+}
+
+
+// ****************************************************************************
 //  Method: avtFilter::InitializeWebpage
 //
 //  Purpose:
@@ -1506,6 +1556,200 @@ avtFilter::CreateNamedSelection(avtContract_p c, const std::string &selname)
         return NULL;
  
     return GetInput()->GetSource()->CreateNamedSelection(c, selname);
+}
+
+
+// ****************************************************************************
+//  Method: avtFilter::FetchArbitraryRefPtr
+//
+//  Purpose:
+//      Checks to see if a void_ref_ptr was cached in the pipeline and fetches
+//      it if so.
+//
+//  Programmer: Hank Childs
+//  Creation:   November 28, 2010
+//
+// ****************************************************************************
+
+void_ref_ptr
+avtFilter::FetchArbitraryRefPtr(int dependencies, const char *name, int dom, 
+                                int ts, const char *type)
+{
+    // If we can't cache it, then there's something in the pipeline that
+    // subset the cells, transforms the data, etc.
+    // So, even if there is something in the cache, we can't use it ... it 
+    // might be appropriate for a different pipeline, but not ours.
+    bool canUse = CheckDependencies(dependencies);
+    if (! canUse)
+    {
+        void_ref_ptr vrp;
+        return vrp;
+    }
+
+    avtOriginatingSource *source = GetInput()->GetOriginatingSource();
+    return source->FetchArbitraryRefPtr(name, dom, ts, type);
+}
+
+
+// ****************************************************************************
+//  Method: avtFilter::StoreArbitraryRefPtr
+//
+//  Purpose:
+//      Stores a ref_ptr in the database cache.
+//
+//  Programmer: Hank Childs
+//  Creation:   November 28, 2010
+//
+// ****************************************************************************
+
+void
+avtFilter::StoreArbitraryRefPtr(int dependencies, const char *name, int dom, 
+                                int ts, const char *type, void_ref_ptr vrp)
+{
+    bool canUse = CheckDependencies(dependencies);
+    if (! canUse)
+    {
+        debug5 << "Cannot cache " << type << " for " << name << " because "
+               << "dependencies were not satisfied.\n"
+               << "This is an informational message, not an error." << endl;
+        return;
+    }
+
+    avtOriginatingSource *source = GetInput()->GetOriginatingSource();
+    source->StoreArbitraryRefPtr(name, dom, ts, type, vrp);
+}
+
+
+// ****************************************************************************
+//  Method: avtFilter::CheckDependencies
+//
+//  Purpose:
+//      Checks to see if the dependencies are satisfied for caching.
+//
+//  Arguments:
+//     dependencies    A bit vector of CacheItemDependences
+//
+//  Returns:
+//     true if you can use the cache, false if the dependencies are violated.
+//
+//  Programmer: Hank Childs
+//  Creation:   November 28, 2010
+//
+// ****************************************************************************
+
+bool
+avtFilter::CheckDependencies(int dependencies)
+{
+    if ((dependencies & DATA_DEPENDENCE) && (! CanCacheDataItem()))
+        return false;
+    if ((dependencies & SPATIAL_DEPENDENCE) && (! CanCacheSpatialItem()))
+        return false;
+    if ((dependencies & CONNECTIVITY_DEPENDENCE) && (! CanCacheConnectivityItem()))
+        return false;
+    
+    return true;
+}
+
+
+// ****************************************************************************
+//  Method: avtFilter::CanCacheDataItem
+//
+//  Purpose:
+//      Determines whether or not a data item can be cached.  If the scalar
+//      field has been modified, then it should not be cached.  This typically
+//      only happens when we commandeer variables (i.e. we take some existing
+//      variable and overwrite it for our own purposes).  And we don't do that
+//      very often.
+//
+//      So this method just checks to see if the zones haven't been modified, 
+//      etc.
+//
+//  Returns:   true if items that have a data dependence can be cached.
+//
+//  Programmer: Hank Childs
+//  Creation:   November 28, 2010
+//
+// ****************************************************************************
+
+bool
+avtFilter::CanCacheDataItem(void)
+{
+    avtDataValidity &validity = GetInput()->GetInfo().GetValidity();
+    if (! validity.GetDataMetaDataPreserved())
+       return false;
+    if (! validity.GetZonesPreserved())
+       return false;
+    if (! validity.GetNodesPreserved())
+       return false;
+    if (! validity.GetOriginalZonesIntact())
+       return false;
+
+    return true;
+}
+
+
+// ****************************************************************************
+//  Method: avtFilter::CanCacheSpatialItem
+//
+//  Purpose:
+//      Determines whether or not a spatial item can be cached. 
+//
+//  Returns:   true if items that have a spatial dependence can be cached.
+//
+//  Programmer: Hank Childs
+//  Creation:   November 28, 2010
+//
+//  Modifications:
+//
+//    Hank Childs, Sun Nov 28 12:34:06 PST 2010
+//    Fix up goof in initial implementation.
+//
+// ****************************************************************************
+
+bool
+avtFilter::CanCacheSpatialItem(void)
+{
+    avtDataValidity &validity = GetInput()->GetInfo().GetValidity();
+    if (! validity.GetSpatialMetaDataPreserved())
+       return false;
+    if (! validity.GetZonesPreserved())
+       return false;
+    if (! validity.GetNodesPreserved())
+       return false;
+    if (! validity.GetOriginalZonesIntact())
+       return false;
+    if (validity.GetPointsWereTransformed())
+       return false;
+
+    return true;
+}
+
+
+// ****************************************************************************
+//  Method: avtFilter::CanCacheConnectivityItem
+//
+//  Purpose:
+//      Determines if a mesh connectivity item can be cached.
+//
+//  Returns:   true if items that have a mesh dependence can be cached.
+//
+//  Programmer: Hank Childs
+//  Creation:   November 28, 2010
+//
+// ****************************************************************************
+
+bool
+avtFilter::CanCacheConnectivityItem(void)
+{
+    avtDataValidity &validity = GetInput()->GetInfo().GetValidity();
+    if (! validity.GetZonesPreserved())
+       return false;
+    if (! validity.GetNodesPreserved())
+       return false;
+    if (! validity.GetOriginalZonesIntact())
+       return false;
+
+    return true;
 }
 
 

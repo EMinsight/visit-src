@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -231,6 +231,9 @@ class WindowInformation;
 //   Brad Whitlock, Fri Aug  6 16:59:07 PDT 2010
 //   Added signal to open Selections window.
 //
+//   Brad Whitlock, Mon Sep 20 16:38:48 PDT 2010
+//   I removed navigate mode.
+//
 // ****************************************************************************
 
 class GUI_API QvisMainWindow : public QvisWindowBase, public SimpleObserver
@@ -362,7 +365,6 @@ private slots:
     void winset(int);
     void winset2(QAction *);
 
-    void toggleNavigateMode();
     void toggleSpinMode();
     void toggleFullFrameMode();
 
@@ -430,7 +432,6 @@ private:
     QAction                  *lockTimeAct;
     QAction                  *lockToolsAct;
     QAction                  *lockViewAct;
-    QAction                  *navigateModeAct;
     QAction                  *spinModeAct;
     QAction                  *fullFrameModeAct;
     QMenu                    *helpPopup;

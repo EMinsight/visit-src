@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -134,28 +134,31 @@ avtPythonExpression::CleanUp()
 //  Programmer: Cyrus Harrison
 //  Creation:   Tue Feb  2 13:50:10 PST 2010
 //
+//  Modifications:
+//   Cyrus Harrison,Tue Jan 11 16:33:27 PST 2011
+//    Don't return c_str() pointer from local string var.
+//
 // ****************************************************************************
 const char *
 avtPythonExpression::GetType()
 {
-    string res = "";
-
+    exprType="";
     // hook to pyavt filter
     avtPythonFilter *py_filter = pyEnv->Filter();
     if(py_filter == NULL)
         PYEXPR_ERROR("avtPythonExpression::GetType Error - "
                     "Python filter not initialized.")
 
-    if(py_filter && py_filter->GetAttribute("name",res))
+    if(py_filter && py_filter->GetAttribute("name",exprType))
     {
-        if(res != "avtPythonExpression")
-            res = "avtPythonExpression(" + res + ")";
+        if(exprType != "avtPythonExpression")
+            exprType = "avtPythonExpression(" + exprType + ")";
     }
     else
         PYEXPR_ERROR("avtPythonExpression::GetType Error - "
                      "fetch of python filter attribute 'name' failed");
 
-    return res.c_str();
+    return exprType.c_str();
 }
 
 // ****************************************************************************
@@ -167,13 +170,15 @@ avtPythonExpression::GetType()
 //  Programmer: Cyrus Harrison
 //  Creation:   Tue Feb  2 13:50:10 PST 2010
 //
+//  Modifications:
+//   Cyrus Harrison,Tue Jan 11 16:33:27 PST 2011
+//    Don't return c_str() pointer from local string var.
+//
 // ****************************************************************************
 const char *
 avtPythonExpression::GetDescription()
 {
-    // hook to pyavt filter
-    string res = "";
-
+    exprDescription = "";
     // hook to pyavt filter
     avtPythonFilter *py_filter = pyEnv->Filter();
     if(py_filter == NULL)
@@ -181,11 +186,11 @@ avtPythonExpression::GetDescription()
                      "Python filter not initialized.");
 
 
-    if(py_filter && !py_filter->GetAttribute("description",res))
+    if(py_filter && !py_filter->GetAttribute("description",exprDescription))
         PYEXPR_ERROR("avtPythonExpression::GetDescription Error - "
                       "fetch of python filter attribute 'description' failed");
 
-    return res.c_str();
+    return exprDescription.c_str();
 }
 
 // ****************************************************************************
@@ -455,8 +460,11 @@ avtPythonExpression::Execute()
     PyObject *py_domids = PyTuple_New(nsets);
 
      if(py_dsets == NULL || py_domids == NULL)
+     {
+            delete [] data_sets;
             PYEXPR_ERROR("avtPythonExpression::Execute Error - "
                          "Unable to create execution input lists");
+     }
 
     // array to hold output leaves
     avtDataTree_p *leaves = new avtDataTree_p[nsets];
@@ -465,13 +473,20 @@ avtPythonExpression::Execute()
     for(int i = 0; i < nsets ; i++)
     {
         if(PyTuple_SetItem(py_dsets,i,pyEnv->WrapVTKObject(data_sets[i],"vtkDataSet")) != 0)
+        {
+            delete [] data_sets;
             PYEXPR_ERROR("avtPythonExpression::Execute Error - "
                          "Unable to add data set to execution input list");
+        }
         if(PyTuple_SetItem(py_domids,i,PyInt_FromLong(domain_ids[i])) != 0)
+        {
+            delete [] data_sets;
             PYEXPR_ERROR("avtPythonExpression::Execute Error - "
                          "Unable to add domain id to execution input list");
+        }
 
     }
+    delete [] data_sets;
 
     // call execute on Filter
     PyObject *py_filter = pyEnv->Filter()->PythonObject();

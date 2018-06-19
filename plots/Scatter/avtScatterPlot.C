@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -390,6 +390,9 @@ avtScatterPlot::GetColorInformation(std::string &colorString,
 //    I made the pointSize in the atts be used for to set the point size for
 //    points, which is not the same as what's used for Box, Axis, Icosahedra.
 //   
+//    Kathleen Bonnell, Mon Jan 17 18:13:11 MST 2011
+//    Consider InvertColorTable flag when setting updateColors.
+//
 // ****************************************************************************
 
 void
@@ -399,7 +402,8 @@ avtScatterPlot::SetAtts(const AttributeGroup *a)
 
     // See if the colors will need to be updated.
     bool updateColors = (!colorsInitialized) ||
-         (atts.GetColorTableName() != newAtts->GetColorTableName()); 
+         (atts.GetColorTableName() != newAtts->GetColorTableName()) || 
+         (atts.GetInvertColorTable() != newAtts->GetInvertColorTable()); 
 
     needsRecalculation =
         atts.ChangesRequireRecalculation(*(const ScatterAttributes*)a);
@@ -429,23 +433,23 @@ avtScatterPlot::SetAtts(const AttributeGroup *a)
     GetColorInformation(colorString, mode, skew, minFlag, minVal,
         maxFlag, maxVal);
 
-    if(colorString.size() > 0)
-    {
-        glyphMapper->ColorByScalarOn(colorString);
-        varLegend->SetColorBarVisibility(1);
-        varLegend->SetVarRangeVisibility(1);
-    }
-    else if(atts.GetForegroundFlag())
+    if(atts.GetColorType() == ScatterAttributes::ColorByForegroundColor)
     {
         varLegend->SetColorBarVisibility(0);
         varLegend->SetVarRangeVisibility(0);
         glyphMapper->ColorBySingleColor(fgColor);
     }
-    else
+    else if(atts.GetColorType() == ScatterAttributes::ColorBySingleColor)
     {
         varLegend->SetColorBarVisibility(0);
         varLegend->SetVarRangeVisibility(0);
         glyphMapper->ColorBySingleColor(atts.GetSingleColor().GetColor());
+    }
+    else //if(atts.GetColorType() == ScatterAttributes::ColorByColorTable)
+    {
+        glyphMapper->ColorByScalarOn(colorString);
+        varLegend->SetColorBarVisibility(1);
+        varLegend->SetVarRangeVisibility(1);
     }
 
     SetScaling(mode, skew);
@@ -572,6 +576,8 @@ avtScatterPlot::SetLegend(bool legendOn)
 // Creation:   Tue Dec 14 13:55:32 PST 2004
 //
 // Modifications:
+//    Kathleen Bonnell, Mon Jan 17 18:13:11 MST 2011
+//    Retrieve invertColorTable flag and pass to avtLUT.
 //
 // ****************************************************************************
 
@@ -579,11 +585,12 @@ bool
 avtScatterPlot::SetColorTable(const char *ctName)
 {
     bool namesMatch = (atts.GetColorTableName() == std::string(ctName));
+    bool invert = atts.GetInvertColorTable();
 
     if (atts.GetColorTableName() == "Default")
-        return avtLUT->SetColorTable(NULL, namesMatch); 
+        return avtLUT->SetColorTable(NULL, namesMatch, false, invert); 
     else
-        return avtLUT->SetColorTable(ctName, namesMatch);
+        return avtLUT->SetColorTable(ctName, namesMatch, false, invert);
 }
 
 // ****************************************************************************
@@ -744,7 +751,7 @@ avtScatterPlot::SetForegroundColor(const double *fg)
 {
     bool retval = false;
 
-    if (atts.GetForegroundFlag())
+    if(atts.GetColorType() == ScatterAttributes::ColorByForegroundColor)
     {
        if (fgColor[0] != fg[0] || fgColor[1] != fg[1] || fgColor[2] != fg[2])
        {
@@ -943,4 +950,3 @@ avtScatterPlot::EnhanceSpecification(avtContract_p contract_in)
 
     return rv;
 }
-

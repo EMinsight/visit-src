@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -104,6 +104,8 @@ avtIVPDopri5::avtIVPDopri5()
      
      h_max = 0.0;
      nonsti = 0;
+
+     convertToCartesian = false;
 }
 
 
@@ -506,6 +508,10 @@ avtIVPDopri5::GuessInitialStep(const avtIVPField* field,
 //    Hank Childs, David Camp, and Christoph Garth, Fri Jul 23 14:31:57 PDT 2010
 //    Make sure we don't exceed the max step size.
 //
+//    Hank Childs and Christoph Garth, Thu Oct 21 14:34:37 PDT 2010
+//    Fix problem where stepsize can creep to infinity if no max step size is
+//    set.
+//
 // ****************************************************************************
 
 avtIVPSolver::Result 
@@ -621,6 +627,12 @@ avtIVPDopri5::Step(avtIVPField* field, double t_max,
             
         h_new = h / fac;
 
+        if( h_new > std::numeric_limits<double>::max() )
+            h_new = std::numeric_limits<double>::max();
+        
+        if( h_new < -std::numeric_limits<double>::max() )
+            h_new = std::numeric_limits<double>::max();
+
         if( err <= 1.0 ) 
         {
             // step accepted
@@ -675,13 +687,28 @@ avtIVPDopri5::Step(avtIVPField* field, double t_max,
             {
                 ivpstep->resize(5);
 
-                (*ivpstep)[0] = y;
-                (*ivpstep)[1] = y + (h*k1/4.);
-                (*ivpstep)[2] = (y + y_new)/2 + h*( (d1+1)*k1 + d3*k3 + d4*k4 
-                              + d5*k5 + d6*k6 + (d7-1)*k7 )/6.;
-                (*ivpstep)[3] = y_new - h*k7/4;
-                (*ivpstep)[4] = y_new;
-        
+                if( convertToCartesian )
+                {
+                  (*ivpstep)[0] = CylindricalToCartesian( y );
+                  (*ivpstep)[1] = CylindricalToCartesian( y + (h*k1/4.) );
+                  (*ivpstep)[2] = CylindricalToCartesian( (y + y_new)/2 +
+                                                          h*( (d1+1)*k1 +
+                                                              d3*k3 + d4*k4 +
+                                                              d5*k5 + d6*k6 +
+                                                              (d7-1)*k7 )/6. );
+                  (*ivpstep)[3] = CylindricalToCartesian( y_new - h*k7/4 );
+                  (*ivpstep)[4] = CylindricalToCartesian( y_new );
+                }
+                else
+                {
+                  (*ivpstep)[0] = y;
+                  (*ivpstep)[1] = y + (h*k1/4.);
+                  (*ivpstep)[2] = (y + y_new)/2 + h*( (d1+1)*k1 + d3*k3 + d4*k4 
+                                                      + d5*k5 + d6*k6 + (d7-1)*k7 )/6.;
+                  (*ivpstep)[3] = y_new - h*k7/4;
+                  (*ivpstep)[4] = y_new;
+                }
+
                 ivpstep->t0 = t;
                 ivpstep->t1 = t + h;
             }

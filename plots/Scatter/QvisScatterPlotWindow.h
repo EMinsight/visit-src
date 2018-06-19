@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -50,7 +50,8 @@ class QLineEdit;
 class QSpinBox;
 class QVBox;
 class QButtonGroup;
-class QvisColorTableButton;
+class QRadioButton;
+class QvisColorTableWidget;
 class QvisOpacitySlider;
 class QvisColorButton;
 class QvisLineStyleWidget;
@@ -77,6 +78,9 @@ class QvisVariableButton;
 //
 //   Cyrus Harrison, Thu Aug 19 13:19:11 PDT 2010
 //   Added var1 button & slot to capture var1 changes.
+//
+//   Kathleen Bonnell, Mon Jan 17 18:10:28 MST 2011
+//   Change colorTableButton to colorTableWidget to gain invert toggle.
 //
 // ****************************************************************************
 
@@ -136,12 +140,14 @@ private slots:
     void pointSizeProcessText();
     void pointTypeChanged(int val);
     void scaleCubeChanged(bool val);
+    void colorModeChanged(int index);
     void colorTableNameChanged(bool useDefault, const QString &ctName);
+    void invertColorTableToggled(bool val);
     void singleColorChanged(const QColor &color);
-    void foregroundFlagChanged(bool val);
     void legendToggled(bool val);
 private:
     int plotType;
+    bool haveColorRole;
     static const char *roleNames[5];
 
     QComboBox *var1Role;
@@ -189,26 +195,22 @@ private:
     QLabel    *pointSizeLabel;
     QComboBox *pointType;
     QCheckBox *scaleCube;
-    QvisColorTableButton *colorTableName;
-    QLabel *singleColorLabel;
+    QButtonGroup *colorModeButtons;
+    QRadioButton *colorTableRadioButton;
     QvisColorButton *singleColor;
-    QCheckBox *foregroundFlag;
+    QvisColorTableWidget *colorTableWidget;
     QCheckBox *legendToggle;
 
     QLabel *var1ScalingLabel;
-    QLabel *var1SkewFactorLabel;
 
     QLabel *var2Label;
     QLabel *var2ScalingLabel;
-    QLabel *var2SkewFactorLabel;
 
     QLabel *var3Label;
     QLabel *var3ScalingLabel;
-    QLabel *var3SkewFactorLabel;
 
     QLabel *var4Label;
     QLabel *var4ScalingLabel;
-    QLabel *var4SkewFactorLabel;
 
     ScatterAttributes *atts;
 };

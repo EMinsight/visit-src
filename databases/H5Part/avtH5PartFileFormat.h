@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -60,6 +60,12 @@
 #ifdef HAVE_LIBFASTBIT
 #include "hdf5_fastquery.h"
 #include "HistogramCache.h"
+
+#include <fastbit-config.h>
+#if FASTBIT_IBIS_INT_VERSION < 1020000
+#error "The H5Part plugin requires FastBit 1.2.0 or newer."
+#endif
+
 #endif
 
 class DBOptionsAttributes;

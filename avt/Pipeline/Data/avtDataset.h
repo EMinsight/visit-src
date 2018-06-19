@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -135,6 +135,13 @@ class   avtWebpage;
 //    Dave Pugmire, Fri Jul  2 14:22:34 EDT 2010
 //    Add friend status for avtResampleExpression.
 //
+//    Hank Childs, Thu Sep  2 07:54:12 PDT 2010
+//    Add method RenumberDomainIDs.
+//
+//    Hank Childs, Fri Sep 10 19:23:26 PDT 2010
+//    Add options to RenumberDomainIDs and CalculateSpatialIntervalTree
+//    to limit the calculations to the current processor only.
+//
 // ****************************************************************************
 
 class PIPELINE_API avtDataset : public avtDataObject
@@ -177,7 +184,8 @@ class PIPELINE_API avtDataset : public avtDataObject
     void                     WriteTreeStructure(ostream &os, int indent = 0);
     void                     Compact(void);
 
-    avtIntervalTree         *CalculateSpatialIntervalTree(void);
+    avtIntervalTree         *CalculateSpatialIntervalTree(bool acrossAllProcs = true);
+    void                     RenumberDomainIDs(bool acrossAllProcs = true);
     virtual void             DebugDump(avtWebpage *, const char *);
 
   protected:

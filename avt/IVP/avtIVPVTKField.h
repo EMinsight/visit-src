@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -103,7 +103,7 @@ class IVP_API avtIVPVTKField: public avtIVPField
     virtual void      SetScalarVariable( unsigned char index, 
                                          const std::string& name );
 
-    bool           IsInside( const double& t, const avtVector &pt ) const;
+    virtual bool      IsInside( const double& t, const avtVector &pt ) const;
     unsigned int   GetDimension() const;
     void           SetNormalized( bool v );
 

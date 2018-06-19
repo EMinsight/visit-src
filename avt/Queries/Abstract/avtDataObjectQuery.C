@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -74,11 +74,15 @@ void                *avtDataObjectQuery::initializeProgressCallbackArgs=NULL;
 //    Kathleen Bonnell, Tue Jul  8 18:03:40 PDT 2008
 //    Set default values for timeCurveSpecs.
 //
+//    Hank Childs, Fri Dec 24 17:52:28 PST 2010
+//    Initialize parallelizingOverTime.
+//
 // ****************************************************************************
 
 avtDataObjectQuery::avtDataObjectQuery()
 {
     timeVarying = false;
+    parallelizingOverTime = false;
     querySILR = NULL;
 
     // derived classes should overide these as necessary 

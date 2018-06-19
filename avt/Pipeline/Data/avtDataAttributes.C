@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -168,6 +168,12 @@ using     std::sort;
 //    Jeremy Meredith, Tue Jun  2 16:25:01 EDT 2009
 //    Added support for unit cell origin (previously assumed to be 0,0,0);
 //
+//    Hank Childs, Sun Sep 19 10:47:12 PDT 2010
+//    Add support for data replication.
+//
+//    Hank Childs, Tue Jan 11 08:41:22 PST 2011
+//    Add support for time index.
+//
 // ****************************************************************************
 
 avtDataAttributes::avtDataAttributes() : plotInfoAtts()
@@ -192,6 +198,7 @@ avtDataAttributes::avtDataAttributes() : plotInfoAtts()
     cycleIsAccurate        = false;
     dtime                  = 0.;
     timeIsAccurate         = false;
+    timeIndex              = 0;
     
     dynamicDomainDecomposition = false;
 
@@ -223,6 +230,7 @@ avtDataAttributes::avtDataAttributes() : plotInfoAtts()
     adaptsToAnyWindowMode = false;
 
     numStates = 1;
+    dataIsReplicatedOnAllProcessors = false;
     mirOccurred = false;
     canUseOrigZones = true;
     origElementsRequiredForPick = false;
@@ -477,6 +485,12 @@ avtDataAttributes::DestructSelf(void)
 //    Jeremy Meredith, Tue Jun  2 16:25:01 EDT 2009
 //    Added support for unit cell origin (previously assumed to be 0,0,0);
 //
+//    Hank Childs, Sun Sep 19 10:47:12 PDT 2010
+//    Add support for data replication.
+//
+//    Hank Childs, Tue Jan 11 08:41:22 PST 2011
+//    Add support for time index.
+//
 // ****************************************************************************
 
 void
@@ -496,6 +510,7 @@ avtDataAttributes::Print(ostream &out)
         out << "Cycle is not known. Suspected to be " << cycle << endl;
     else
         out << "Cycle = " << cycle << endl;
+    out << "Time index = " << timeIndex << endl;
 
     if (dynamicDomainDecomposition)
         out << "The data set is being decomposed in parallel dynamically" 
@@ -750,6 +765,8 @@ avtDataAttributes::Print(ostream &out)
     out << endl;
 
     out << "Num states: " << numStates << endl;
+    if (dataIsReplicatedOnAllProcessors)
+        out << "The data set has been replicated on all processors." << endl;
     if (mirOccurred)
         out << "Material Interace Reconstruction occurred. " << endl;
     if (canUseOrigZones)
@@ -974,6 +991,12 @@ avtDataAttributes::Print(ostream &out)
 //    Jeremy Meredith, Tue Jun  2 16:25:01 EDT 2009
 //    Added support for unit cell origin (previously assumed to be 0,0,0);
 //
+//    Hank Childs, Sun Sep 19 10:47:12 PDT 2010
+//    Add support for data replication.
+//
+//    Hank Childs, Tue Jan 11 08:41:22 PST 2011
+//    Add support for time index.
+//
 // ****************************************************************************
 
 void
@@ -1004,6 +1027,7 @@ avtDataAttributes::Copy(const avtDataAttributes &di)
     {
         timeIsAccurate = false;
     }
+    SetTimeIndex(di.timeIndex);
    
     SetDynamicDomainDecomposition(di.dynamicDomainDecomposition);
     SetMeshname(di.GetMeshname());
@@ -1062,6 +1086,7 @@ avtDataAttributes::Copy(const avtDataAttributes &di)
     adaptsToAnyWindowMode = di.adaptsToAnyWindowMode;
     selectionsApplied = di.selectionsApplied;
     numStates = di.numStates;
+    dataIsReplicatedOnAllProcessors = di.dataIsReplicatedOnAllProcessors;
     mirOccurred = di.mirOccurred;
     canUseOrigZones = di.canUseOrigZones;
     origElementsRequiredForPick = di.origElementsRequiredForPick;
@@ -1210,6 +1235,12 @@ avtDataAttributes::Copy(const avtDataAttributes &di)
 //    Brad Whitlock, Wed Jan  7 14:06:31 PST 2009
 //    I changed how plotInfoAtts is handled.
 //
+//    Hank Childs, Sun Sep 19 10:47:12 PDT 2010
+//    Add support for data replication.
+//
+//    Hank Childs, Tue Jan 11 08:41:22 PST 2011
+//    Add support for time index.
+//
 // ****************************************************************************
 
 void
@@ -1339,6 +1370,10 @@ avtDataAttributes::Merge(const avtDataAttributes &da,
     {
         EXCEPTION2(InvalidMergeException, dtime, da.dtime);
     }
+    if (timeIndex != da.timeIndex)
+    {
+        EXCEPTION2(InvalidMergeException, timeIndex, da.timeIndex);
+    }
     if (windowMode != da.windowMode)
     {
         EXCEPTION2(InvalidMergeException, windowMode, da.windowMode);
@@ -1351,6 +1386,10 @@ avtDataAttributes::Merge(const avtDataAttributes &da,
     if (numStates != da.numStates)
     {
         EXCEPTION2(InvalidMergeException, numStates, da.numStates);
+    }
+    if (dataIsReplicatedOnAllProcessors != da.dataIsReplicatedOnAllProcessors)
+    {
+        EXCEPTION2(InvalidMergeException, dataIsReplicatedOnAllProcessors, da.dataIsReplicatedOnAllProcessors);
     }
 
     if (selectionsApplied.size() != da.selectionsApplied.size())
@@ -2494,6 +2533,24 @@ avtDataAttributes::SetTime(double d)
 
 
 // ****************************************************************************
+//  Method: avtDataAttributes::SetTimeIndex
+//
+//  Purpose:
+//      Sets the time index.
+//
+//  Programmer: Hank Childs
+//  Creation:   January 11, 2011
+//
+// ****************************************************************************
+
+void
+avtDataAttributes::SetTimeIndex(int v)
+{
+    timeIndex = v;
+}
+
+
+// ****************************************************************************
 //  Method: avtDataAttributes::SetDynamicDomainDecomposition
 //
 //  Purpose:
@@ -2657,6 +2714,12 @@ avtDataAttributes::SetDynamicDomainDecomposition(bool ddd)
 //    Jeremy Meredith, Tue Jun  2 16:25:01 EDT 2009
 //    Added support for unit cell origin (previously assumed to be 0,0,0);
 //
+//    Hank Childs, Sun Sep 19 10:47:12 PDT 2010
+//    Add support for data replication.
+//
+//    Hank Childs, Tue Jan 11 08:41:22 PST 2011
+//    Add support for time index.
+//
 // ****************************************************************************
 
 void
@@ -2666,7 +2729,7 @@ avtDataAttributes::Write(avtDataObjectString &str,
     int   i, j;
 
     int varSize = 7;
-    int numVals = 32 + varSize*variables.size();
+    int numVals = 34 + varSize*variables.size();
     int *vals = new int[numVals];
     i = 0;
     vals[i++] = topologicalDimension;
@@ -2678,6 +2741,7 @@ avtDataAttributes::Write(avtDataObjectString &str,
     vals[i++] = cycle;
     vals[i++] = (cycleIsAccurate ? 1 : 0);
     vals[i++] = (timeIsAccurate ? 1 : 0);
+    vals[i++] = timeIndex;
     vals[i++] = (dynamicDomainDecomposition ? 1 : 0);
     vals[i++] = (int) containsGhostZones;
     vals[i++] = (int) containsExteriorBoundaryGhosts;
@@ -2692,6 +2756,7 @@ avtDataAttributes::Write(avtDataObjectString &str,
     vals[i++] = windowMode;
     vals[i++] = (adaptsToAnyWindowMode ? 1 : 0);
     vals[i++] = numStates;
+    vals[i++] = (dataIsReplicatedOnAllProcessors ? 1 : 0);
     vals[i++] = mirOccurred;
     vals[i++] = canUseOrigZones;
     vals[i++] = origElementsRequiredForPick;
@@ -2953,6 +3018,12 @@ avtDataAttributes::Write(avtDataObjectString &str,
 //    Jeremy Meredith, Tue Jun  2 16:25:01 EDT 2009
 //    Added support for unit cell origin (previously assumed to be 0,0,0);
 //
+//    Hank Childs, Sun Sep 19 10:47:12 PDT 2010
+//    Add support for data replication.
+//
+//    Hank Childs, Tue Jan 11 08:41:22 PST 2011
+//    Add support for time index.
+//
 // ****************************************************************************
 
 int
@@ -2998,6 +3069,10 @@ avtDataAttributes::Read(char *input)
     memcpy(&tmp, input, sizeof(int));
     input += sizeof(int); size += sizeof(int);
     timeIsAccurate = (tmp != 0 ? true : false);
+
+    memcpy(&tmp, input, sizeof(int));
+    input += sizeof(int); size += sizeof(int);
+    timeIndex = tmp;
 
     memcpy(&tmp, input, sizeof(int));
     input += sizeof(int); size += sizeof(int);
@@ -3054,6 +3129,10 @@ avtDataAttributes::Read(char *input)
     memcpy(&tmp, input, sizeof(int));
     input += sizeof(int); size += sizeof(int);
     numStates = tmp;
+
+    memcpy(&tmp, input, sizeof(int));
+    input += sizeof(int); size += sizeof(int);
+    dataIsReplicatedOnAllProcessors = (tmp != 0 ? true : false);
 
     memcpy(&tmp, input, sizeof(int));
     input += sizeof(int); size += sizeof(int);
@@ -4769,6 +4848,12 @@ avtDataAttributes::AddPlotInformation(const std::string &key,
 //    Hank Childs, Tue Dec 15 15:50:42 PST 2009
 //    Added dumping of labels.
 //
+//    Hank Childs, Sun Sep 19 10:47:12 PDT 2010
+//    Add support for data replication.
+//
+//    Hank Childs, Tue Jan 11 08:41:22 PST 2011
+//    Add support for time index.
+//
 // ****************************************************************************
 
 static const char *
@@ -4942,6 +5027,8 @@ avtDataAttributes::DebugDump(avtWebpage *webpage)
     webpage->AddTableEntry2("Mesh name", meshname.c_str());
     SNPRINTF(str, 4096, "%d", numStates);
     webpage->AddTableEntry2("Number of time slices?", str);
+    webpage->AddTableEntry2("Data is replicated on all processors?",
+                            YesOrNo(dataIsReplicatedOnAllProcessors));
     if (timeIsAccurate)
         SNPRINTF(str, 4096, "%f", dtime);
     else
@@ -4952,6 +5039,8 @@ avtDataAttributes::DebugDump(avtWebpage *webpage)
     else
         SNPRINTF(str, 4096, "%d (guess)", cycle);
     webpage->AddTableEntry2("Cycle", str);
+    SNPRINTF(str, 4096, "%d", timeIndex);
+    webpage->AddTableEntry2("Time index", str);
     webpage->EndTable();
 
     webpage->AddSubheading("Spatial extents attributes");

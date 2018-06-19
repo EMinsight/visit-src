@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -970,6 +970,10 @@ avtPlot::CombinedExecute(avtDataObject_p input, avtContract_p contract,
 //    glypher glyphs the points in the point list, not the vertices in the
 //    cell list.
 //
+//    Hank Childs, Wed Dec 15 13:56:17 PST 2010
+//    Always insert the ghost zone and facelist filter.  It will figure out
+//    whether or not we should remove ghosts.
+//
 // ****************************************************************************
 
 avtDataObject_p
@@ -993,15 +997,10 @@ avtPlot::ReduceGeometry(avtDataObject_p curDS)
         useFace = true;
     }
 
-    bool hasGhosts = (atts.GetContainsGhostZones() != AVT_NO_GHOSTS
-                     ? true : false);
-    if (hasGhosts || useFace)
-    {
-        ghostZoneAndFacelistFilter->SetInput(rv);
-        ((avtGhostZoneAndFacelistFilter*)ghostZoneAndFacelistFilter)
-             ->SetUseFaceFilter(useFace);
-        rv = ghostZoneAndFacelistFilter->GetOutput();
-    }
+    ghostZoneAndFacelistFilter->SetInput(rv);
+    ((avtGhostZoneAndFacelistFilter*)ghostZoneAndFacelistFilter)
+         ->SetUseFaceFilter(useFace);
+    rv = ghostZoneAndFacelistFilter->GetOutput();
 
     condenseDatasetFilter->SetInput(rv);
     if (atts.GetTopologicalDimension() == 0)

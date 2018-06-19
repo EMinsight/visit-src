@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-400142
 # All rights reserved.
@@ -41,7 +41,18 @@
 #   Kathleen Bonnell, Fri Jun  4 14:46:56 PDT 2010
 #   Change ${MILI_FOUND} to MILI_FOUND.
 #
+#   Kathleen Bonnell, Wed Jan 05 10:25:13 PST 2010
+#   Add FOLDER property.
+#
 #****************************************************************************/
+
+MACRO(VISIT_TOOLS_ADD_FOLDER type)
+    IF(${ARGC} GREATER 1)
+        SET_TARGET_PROPERTIES(${ARGN} PROPERTIES FOLDER tools/${type})
+    ELSE(${ARGC} GREATER 1)
+        SET_TARGET_PROPERTIES(${type} PROPERTIES FOLDER tools/${type})
+    ENDIF(${ARGC} GREATER 1)
+ENDMACRO(VISIT_TOOLS_ADD_FOLDER)
 
 IF(VISIT_DBIO_ONLY)
     ADD_SUBDIRECTORY(convert)
@@ -50,6 +61,7 @@ ELSE(VISIT_DBIO_ONLY)
     ADD_SUBDIRECTORY(annotations)
     ADD_SUBDIRECTORY(convert)
     ADD_SUBDIRECTORY(embedviewer)
+    ADD_SUBDIRECTORY(synthetic_diagnostic)
     ADD_SUBDIRECTORY(imagetools)
     IF(MILI_FOUND AND NOT WIN32)
         ADD_SUBDIRECTORY(makemili)

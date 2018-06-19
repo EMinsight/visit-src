@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -347,20 +347,23 @@ avtDatasetOnDemandFilter::GetDataAroundPoint(double X, double Y, double Z,
     GetInput()->Update(new_contract);
     vtkDataSet *rv = GetInputDataTree()->GetSingleLeaf();
 
-    // Add it to the cache.
-    DomainCacheEntry entry;
-    entry.domainID = domainId;
-    entry.timeStep = timeStep;
-    entry.ds = rv;
-    entry.cl = NULL;
-    rv->Register(NULL);
-    loadDSCount++;
-
-    domainQueue.push_front(entry);
-    if ( domainQueue.size() > maxQueueLength )
+    if( rv )
     {
-        domainQueue.pop_back();
-        purgeDSCount++;
+        // Add it to the cache.
+        DomainCacheEntry entry;
+        entry.domainID = domainId;
+        entry.timeStep = timeStep;
+        entry.ds = rv;
+        entry.cl = NULL;
+        rv->Register(NULL);
+        loadDSCount++;
+
+        domainQueue.push_front(entry);
+        if ( domainQueue.size() > maxQueueLength )
+        {
+            domainQueue.pop_back();
+            purgeDSCount++;
+        }
     }
 
     return rv;

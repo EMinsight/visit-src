@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -170,6 +170,9 @@ avtCurveConstructorFilter::~avtCurveConstructorFilter()
 //
 //    Brad Whitlock, Tue Mar 30 15:33:19 PDT 2010
 //    Pass along avtCurveTransform in the field data if it exists.
+//
+//    Kathleen Bonnell, Tue Dec 14 12:57:14 PST 2010
+//    Ensure the output variable is named.
 //
 // ****************************************************************************
 
@@ -467,6 +470,9 @@ void avtCurveConstructorFilter::Execute()
     }
 
     const char *varname = (pipelineVariable != NULL ? pipelineVariable : "");
+
+    // make sure the outputvar is named.
+    sortedVal->SetName(varname);
 
     avtDataRepresentation dr(outGrid, -1, varname);
     outTree = new avtDataTree(dr);

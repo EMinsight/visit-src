@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -6748,15 +6748,29 @@ avtDatabaseMetaData::Add(avtSubsetsMetaData *smd)
         if (VariableNamesEqual(Get ## VT(i).name, varname)) \
             return Get ## VT(i).matRestricted
 
-static intVector dummy_matnos;
 const intVector& avtDatabaseMetaData::GetRestrictedMatnos(const std::string& varname) const
 {
     int i;
+    static intVector dummy;
     CHECK_VAR_TYPE(Scalars);
     CHECK_VAR_TYPE(Vectors);
     CHECK_VAR_TYPE(Tensors);
     CHECK_VAR_TYPE(Arrays);
     CHECK_VAR_TYPE(Labels);
-    return dummy_matnos;
+    return dummy;
+}
+
+// ****************************************************************************
+//  Method: avtDatabaseMetaData::Empty
+//
+//  Purpose: Return whether md object is empty (devoid of any objects) 
+//
+//  Programmer: Mark C. Miller
+//  Creation:   28Oct10
+//
+// ****************************************************************************
+bool avtDatabaseMetaData::Empty() const
+{
+    return (GetNumMeshes() == 0 && GetNumCurves() == 0);
 }
 

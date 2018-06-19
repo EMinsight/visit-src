@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -652,7 +652,7 @@ RemovePrependedDirs(const char *path, char *name)
     //
     int  len = strlen(path);
     int lastSlash;
-    for (lastSlash=len ; path[lastSlash]!=visitcommon::SlashChar() && lastSlash>=0 ; lastSlash--)
+    for (lastSlash=len ; lastSlash>=0 && path[lastSlash]!=visitcommon::SlashChar() ; lastSlash--)
     {
         continue;
     }

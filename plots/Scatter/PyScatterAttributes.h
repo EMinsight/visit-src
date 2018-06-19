@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -44,7 +44,7 @@
 //
 // Functions exposed to the VisIt module.
 //
-#define SCATTERATTRIBUTES_NMETH 82
+#define SCATTERATTRIBUTES_NMETH 84
 void           PyScatterAttributes_StartUp(ScatterAttributes *subj, void *data);
 void           PyScatterAttributes_CloseDown();
 PyMethodDef *  PyScatterAttributes_GetMethodTable(int *nMethods);

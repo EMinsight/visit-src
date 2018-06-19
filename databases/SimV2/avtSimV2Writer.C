@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -649,7 +649,10 @@ avtSimV2Writer::WriteUnstructuredMesh(vtkUnstructuredGrid *ds, int chunk,
         {
             visit_handle h = VISIT_INVALID_HANDLE;
             if(simv2_UnstructuredMesh_alloc(&h) == VISIT_ERROR)
+            {
+                delete [] cellCopy;
                 return;
+            }
 
             // Send the coordinates down to the writer interleaved.
             visit_handle hc;
@@ -721,8 +724,6 @@ avtSimV2Writer::WritePolyDataMesh(vtkPolyData *ds, int chunk, visit_handle vmmd)
     debug1 << "avtSimV2Writer::WritePolyDataMesh(chunk=" << chunk << ")\n";
 
     // Build up an unstructured mesh from the types of data in the polydata.
-    vtkIdType pts[100];
-
     debug1 << "polydata npts   = " << ds->GetNumberOfPoints() << endl;
     debug1 << "polydata nverts = " << ds->GetVerts()->GetNumberOfCells() << endl;
     debug1 << "polydata nlines = " << ds->GetLines()->GetNumberOfCells() << endl;

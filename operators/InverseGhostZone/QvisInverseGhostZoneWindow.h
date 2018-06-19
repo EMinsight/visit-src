@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -87,12 +87,20 @@ class QvisInverseGhostZoneWindow : public QvisOperatorWindow
     virtual void GetCurrentValues(int which_widget);
   private slots:
     void requestGhostZonesChanged(bool val);
-    void showTypeChanged(int val);
+    void showDuplicatedChanged(bool val);
+    void showEnhancedConnectivityChanged(bool val);
+    void showReducedConnectivityChanged(bool val);
+    void showAMRRefinedChanged(bool val);
+    void showExteriorChanged(bool val);
+    void showNotApplicableChanged(bool val);
   private:
     QCheckBox *requestGhostZones;
-    QWidget      *showType;
-    QButtonGroup *showTypeButtonGroup;
-    QLabel *showTypeLabel;
+    QCheckBox *showDuplicated;
+    QCheckBox *showEnhancedConnectivity;
+    QCheckBox *showReducedConnectivity;
+    QCheckBox *showAMRRefined;
+    QCheckBox *showExterior;
+    QCheckBox *showNotApplicable;
 
     InverseGhostZoneAttributes *atts;
 };

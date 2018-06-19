@@ -1,8 +1,8 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -115,12 +115,36 @@ avtCellLocator::~avtCellLocator()
     dataSet->Delete();
 }
 
+
+// ****************************************************************************
+//  Method: avtCellLocator::Destruct
+//
+//  Purpose:
+//      A routine that a void_ref_ptr can call to cleanly destruct a cell 
+//      locator.
+//
+//  Programmer: Hank Childs
+//  Creation:   November 28, 2010
+//
+// ****************************************************************************
+
+void
+avtCellLocator::Destruct(void *p)
+{
+    avtCellLocator *cl = (avtCellLocator *) p;
+    delete cl;
+}
+
+
 //----------------------------------------------------------------------------
 // Modifications:
 //   Kathleen Bonnell, Fri Aug 13 08:20:15 MST 2010
 //   Fix compile error on windows. When creating an array like: a[npts], npts
 //   must be a constant whose value can be determined at compile time, or
 //   VisualStudio complains.
+//
+//   Hank Childs, Fri Nov 19 14:45:53 PST 2010
+//   Added TestVoxel.
 //
 //----------------------------------------------------------------------------
 
@@ -134,6 +158,10 @@ bool avtCellLocator::TestCell( vtkIdType cellid, const double pos[3],
         return TestTet( cellid, pos, weights );
     case VTK_HEXAHEDRON:
         return TestHex( cellid, pos, weights );
+    case VTK_WEDGE:
+        return TestPrism( cellid, pos, weights );
+    case VTK_VOXEL:
+        return TestVoxel( cellid, pos, weights );
     default:
         break;
     }
@@ -302,6 +330,59 @@ void avtCellLocator::CopyCell( vtkIdType cellid, vtkIdType* ids,
     }
 }
 
+bool avtCellLocator::TestVoxel( vtkIdType cellid, const double pos[3],
+                              avtInterpolationWeights* weights ) const
+{
+    vtkIdType ids[8];
+    double pts[8][3];
+
+    CopyCell( cellid, ids, pts );
+    
+    // bounding box test
+
+    if (pos[0] < pts[0][0] || pos[0] > pts[7][0])
+        return false;
+    if (pos[1] < pts[0][1] || pos[1] > pts[7][1])
+        return false;
+    if (pos[2] < pts[0][2] || pos[2] > pts[7][2])
+        return false;
+
+    double xl = pts[7][0]-pts[0][0];
+    double xp = 0.;
+    if (xl > 0.)
+        xp = (pos[0]-pts[0][0]) / xl;
+    double yl = pts[7][1]-pts[0][1];
+    double yp = 0.;
+    if (yl > 0.)
+        yp = (pos[1]-pts[0][1]) / yl;
+    double zl = pts[7][2]-pts[0][2];
+    double zp = 0.;
+    if (zl > 0.)
+        zp = (pos[2]-pts[0][2]) / zl;
+    double c[3] = { xp, yp, zp };
+
+    if( weights )
+    {
+        weights->resize( 8 );
+
+        const double d[3] = { 1.0-c[0], 1.0-c[1], 1.0-c[2] };
+
+        for( unsigned int i=0; i<8; ++i )
+            (*weights)[i].i = ids[i];
+
+        (*weights)[0].w = d[0]*d[1]*d[2];
+        (*weights)[1].w = c[0]*d[1]*d[2];
+        (*weights)[2].w = d[0]*c[1]*d[2];
+        (*weights)[3].w = c[0]*c[1]*d[2];
+        (*weights)[4].w = d[0]*d[1]*c[2];
+        (*weights)[5].w = c[0]*d[1]*c[2];
+        (*weights)[6].w = d[0]*c[1]*c[2];
+        (*weights)[7].w = c[0]*c[1]*c[2];
+    }
+
+    return true;
+}
+
 // ---------------------------------------------------------------------------
 
 bool avtCellLocator::TestHex( vtkIdType cellid, const double pos[3],
@@ -405,6 +486,107 @@ bool avtCellLocator::TestHex( vtkIdType cellid, const double pos[3],
         (*weights)[5].w = c[0]*d[1]*c[2];
         (*weights)[6].w = c[0]*c[1]*c[2];
         (*weights)[7].w = d[0]*c[1]*c[2];
+    }
+
+    return true;
+}
+
+// ---------------------------------------------------------------------------
+
+bool avtCellLocator::TestPrism( vtkIdType cellid, const double pos[3],
+                                avtInterpolationWeights* weights ) const
+{
+    vtkIdType ids[6];
+    double pts[6][3];
+
+    CopyCell( cellid, ids, pts );
+
+    // bounding box test
+
+    for( unsigned int j=0; j<3; ++j )
+    {
+        if( (pos[j] < pts[0][j] && pos[j] < pts[1][j] && pos[j] < pts[2][j] && pos[j] < pts[3][j] &&
+             pos[j] < pts[4][j] && pos[j] < pts[5][j]) ||
+            (pos[j] > pts[0][j] && pos[j] > pts[1][j] && pos[j] > pts[2][j] && pos[j] > pts[3][j] &&
+             pos[j] > pts[4][j] && pos[j] > pts[5][j]) )
+            return false;
+    }
+
+
+    // perform Newton iteration in local coordinates c
+    const int    maxiter = 8;
+    const double epsilon = 1e-4;
+
+    double h[3], D[3][3], p[3], c[3] = { 0.333, 0.333, 0.5 };
+
+    for( int iter=0; iter<maxiter; ++iter )
+    {
+        const double d[2] = { 1.0-c[0]-c[1], 1.0-c[2] };
+
+        // Note: Formulas below are arranged as a good compromise between numerical
+        // stability and speed. Rearrange at your own peril.
+        for( int i=0; i<3; ++i )
+        {
+            p[i] = pts[0][i]*d[0]*d[1] +
+                   pts[1][i]*c[0]*d[1] +
+                   pts[2][i]*c[1]*d[1] +
+                   pts[3][i]*d[0]*c[2] +
+                   pts[4][i]*c[0]*c[2] +
+                   pts[5][i]*c[1]*c[2] - pos[i];
+
+            D[0][i] = d[1]*( pts[1][i] - pts[0][i] ) + 
+                      c[2]*( pts[4][i] - pts[3][i] );
+
+            D[1][i] = d[1]*( pts[2][i] - pts[0][i] ) +
+                      c[2]*( pts[5][i] - pts[3][i] );
+
+            D[2][i] = d[0]*( pts[3][i] - pts[0][i] ) +
+                      c[0]*( pts[4][i] - pts[1][i] ) +
+                      c[1]*( pts[5][i] - pts[2][i] );
+        }
+
+        // update local coordinates by solving the linear system using
+        // Cramer's method
+        double denom = D[0][0]*(D[1][1]*D[2][2] - D[2][1]*D[1][2]) +
+                       D[1][0]*(D[2][1]*D[0][2] - D[0][1]*D[2][2]) +
+                       D[2][0]*(D[0][1]*D[1][2] - D[1][1]*D[0][2]);
+
+        c[0] -= (h[0] = ( p[0]*(D[1][1]*D[2][2] - D[2][1]*D[1][2]) +
+                          D[1][0]*(D[2][1]*p[2] - p[1]*D[2][2]) +
+                          D[2][0]*(p[1]*D[1][2] - D[1][1]*p[2]) ) / denom );
+
+        c[1] -= (h[1] = ( D[0][0]*(p[1]*D[2][2] - D[2][1]*p[2]) +
+                          p[0]*(D[2][1]*D[0][2] - D[0][1]*D[2][2]) +
+                          D[2][0]*(D[0][1]*p[2] - p[1]*D[0][2]) ) / denom );
+
+        c[2] -= (h[2] = ( D[0][0]*(D[1][1]*p[2] - p[1]*D[1][2]) +
+                          D[1][0]*(p[1]*D[0][2] - D[0][1]*p[2]) +
+                          p[0]*(D[0][1]*D[1][2] - D[1][1]*D[0][2]) ) / denom );
+
+        // if update is small enough, exit early
+        if( std::abs(h[0])<epsilon && std::abs(h[1])<epsilon && std::abs(h[2])<epsilon )
+            break;
+    }
+
+    if( c[0] < -0.001 || c[1] < -0.001 || c[2] < -0.001 ||
+        c[0] >  1.001 || c[1] >  1.001 || c[2] >  1.001 )
+        return false;
+
+    if( weights )
+    {
+        weights->resize( 6 );
+
+        for( unsigned int i=0; i<6; ++i )
+            (*weights)[i].i = ids[i];
+
+        const double d[2] = { 1.0-c[0]-c[1], 1.0-c[2] };
+
+        (*weights)[0].w = d[0]*d[1];
+        (*weights)[1].w = c[0]*d[1];
+        (*weights)[2].w = c[1]*d[1];
+        (*weights)[3].w = d[0]*c[2];
+        (*weights)[4].w = c[0]*c[2];
+        (*weights)[5].w = c[1]*c[2];
     }
 
     return true;

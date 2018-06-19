@@ -1,6 +1,6 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
 // LLNL-CODE-442911
 // All rights reserved.
@@ -62,7 +62,7 @@ import llnl.visit.ColorAttribute;
 
 public class StreamlineAttributes extends AttributeSubject implements Plugin
 {
-    private static int StreamlineAttributes_numAdditionalAtts = 68;
+    private static int StreamlineAttributes_numAdditionalAtts = 93;
 
     // Enum values
     public final static int SOURCETYPE_SPECIFIEDPOINT = 0;
@@ -81,6 +81,10 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
     public final static int COLORINGMETHOD_COLORBYSEEDPOINTID = 5;
     public final static int COLORINGMETHOD_COLORBYVARIABLE = 6;
 
+    public final static int COORDINATESYSTEM_ASIS = 0;
+    public final static int COORDINATESYSTEM_CYLINDRICALTOCARTESIAN = 1;
+    public final static int COORDINATESYSTEM_CARTESIANTOCYLINDRICAL = 2;
+
     public final static int DISPLAYMETHOD_LINES = 0;
     public final static int DISPLAYMETHOD_TUBES = 1;
     public final static int DISPLAYMETHOD_RIBBONS = 2;
@@ -89,19 +93,21 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
     public final static int INTEGRATIONDIRECTION_BACKWARD = 1;
     public final static int INTEGRATIONDIRECTION_BOTH = 2;
 
-    public final static int TERMINATIONTYPE_DISTANCE = 0;
-    public final static int TERMINATIONTYPE_TIME = 1;
-    public final static int TERMINATIONTYPE_STEP = 2;
+    public final static int REFERENCETYPE_DISTANCE = 0;
+    public final static int REFERENCETYPE_TIME = 1;
+    public final static int REFERENCETYPE_STEP = 2;
 
     public final static int STREAMLINEALGORITHMTYPE_LOADONDEMAND = 0;
     public final static int STREAMLINEALGORITHMTYPE_PARALLELSTATICDOMAINS = 1;
     public final static int STREAMLINEALGORITHMTYPE_MASTERSLAVE = 2;
+    public final static int STREAMLINEALGORITHMTYPE_VISITSELECTS = 3;
 
     public final static int INTEGRATIONTYPE_DORMANDPRINCE = 0;
     public final static int INTEGRATIONTYPE_ADAMSBASHFORTH = 1;
     public final static int INTEGRATIONTYPE_M3DC1INTEGRATOR = 2;
+    public final static int INTEGRATIONTYPE_NIMRODINTEGRATOR = 3;
 
-    public final static int OPACITYTYPE_NONE = 0;
+    public final static int OPACITYTYPE_FULLYOPAQUE = 0;
     public final static int OPACITYTYPE_CONSTANT = 1;
     public final static int OPACITYTYPE_RAMP = 2;
     public final static int OPACITYTYPE_VARIABLERANGE = 3;
@@ -114,14 +120,18 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
     public final static int GEOMDISPLAYTYPE_SPHERE = 0;
     public final static int GEOMDISPLAYTYPE_CONE = 1;
 
+    public final static int SIZETYPE_ABSOLUTE = 0;
+    public final static int SIZETYPE_FRACTIONOFBBOX = 1;
+
+    public final static int PATHLINESCMFE_CONN_CMFE = 0;
+    public final static int PATHLINESCMFE_POS_CMFE = 1;
+
 
     public StreamlineAttributes()
     {
         super(StreamlineAttributes_numAdditionalAtts);
 
         sourceType = SOURCETYPE_SPECIFIEDPOINT;
-        maxStepLength = 0.1;
-        termination = 10;
         pointSource = new double[3];
         pointSource[0] = 0;
         pointSource[1] = 0;
@@ -172,27 +182,35 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         sampleDensity0 = 2;
         sampleDensity1 = 2;
         sampleDensity2 = 2;
-        displayMethod = DISPLAYMETHOD_LINES;
-        showSeeds = false;
-        showHeads = false;
-        tubeRadius = 0.125;
-        ribbonWidth = 0.125;
-        lineWidth = 2;
-        coloringMethod = COLORINGMETHOD_COLORBYSPEED;
+        coloringMethod = COLORINGMETHOD_COLORBYTIME;
         colorTableName = new String("Default");
         singleColor = new ColorAttribute(0, 0, 0);
         legendFlag = true;
         lightingFlag = true;
         streamlineDirection = INTEGRATIONDIRECTION_FORWARD;
+        maxSteps = 1000;
+        terminateByDistance = false;
+        termDistance = 10;
+        terminateByTime = false;
+        termTime = 10;
+        maxStepLength = 0.1;
+        limitMaximumTimestep = false;
+        maxTimeStep = 0.1;
         relTol = 0.0001;
-        absTol = 1e-05;
-        terminationType = TERMINATIONTYPE_DISTANCE;
+        absTolSizeType = SIZETYPE_FRACTIONOFBBOX;
+        absTolAbsolute = 1e-06;
+        absTolBBox = 1e-06;
         integrationType = INTEGRATIONTYPE_DORMANDPRINCE;
-        streamlineAlgorithmType = STREAMLINEALGORITHMTYPE_PARALLELSTATICDOMAINS;
+        streamlineAlgorithmType = STREAMLINEALGORITHMTYPE_VISITSELECTS;
         maxStreamlineProcessCount = 10;
         maxDomainCacheSize = 3;
         workGroupSize = 32;
         pathlines = false;
+        pathlinesOverrideStartingTimeFlag = false;
+        pathlinesOverrideStartingTime = 0;
+        pathlinesCMFE = PATHLINESCMFE_POS_CMFE;
+        coordinateSystem = COORDINATESYSTEM_ASIS;
+        phiFactor = 0;
         coloringVariable = new String("");
         legendMinFlag = false;
         legendMaxFlag = false;
@@ -202,11 +220,26 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         displayEnd = 1;
         displayBeginFlag = false;
         displayEndFlag = false;
-        seedDisplayRadius = 0.25;
+        referenceTypeForDisplay = REFERENCETYPE_DISTANCE;
+        displayMethod = DISPLAYMETHOD_LINES;
+        tubeSizeType = SIZETYPE_FRACTIONOFBBOX;
+        tubeRadiusAbsolute = 0.125;
+        tubeRadiusBBox = 0.005;
+        ribbonWidthSizeType = SIZETYPE_FRACTIONOFBBOX;
+        ribbonWidthAbsolute = 0.125;
+        ribbonWidthBBox = 0.01;
+        lineWidth = 2;
+        showSeeds = true;
+        seedRadiusSizeType = SIZETYPE_FRACTIONOFBBOX;
+        seedRadiusAbsolute = 1;
+        seedRadiusBBox = 0.015;
+        showHeads = false;
         headDisplayType = GEOMDISPLAYTYPE_SPHERE;
-        headDisplayRadius = 0.25;
-        headDisplayHeight = 0.5;
-        opacityType = OPACITYTYPE_NONE;
+        headRadiusSizeType = SIZETYPE_FRACTIONOFBBOX;
+        headRadiusAbsolute = 0.25;
+        headRadiusBBox = 0.02;
+        headHeightRatio = 2;
+        opacityType = OPACITYTYPE_FULLYOPAQUE;
         opacityVariable = new String("");
         opacity = 1;
         opacityVarMin = 0;
@@ -215,14 +248,18 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         opacityVarMaxFlag = false;
         tubeDisplayDensity = 10;
         geomDisplayQuality = DISPLAYQUALITY_MEDIUM;
-        sampleDistance0 = 1;
-        sampleDistance1 = 1;
-        sampleDistance2 = 1;
+        sampleDistance0 = 10;
+        sampleDistance1 = 10;
+        sampleDistance2 = 10;
         fillInterior = true;
         randomSamples = false;
         randomSeed = 0;
         numberOfRandomSamples = 1;
         forceNodeCenteredData = false;
+        issueTerminationWarnings = true;
+        issueStiffnessWarnings = true;
+        issueCriticalPointsWarnings = true;
+        criticalPointThreshold = 0.001;
     }
 
     public StreamlineAttributes(int nMoreFields)
@@ -230,8 +267,6 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         super(StreamlineAttributes_numAdditionalAtts + nMoreFields);
 
         sourceType = SOURCETYPE_SPECIFIEDPOINT;
-        maxStepLength = 0.1;
-        termination = 10;
         pointSource = new double[3];
         pointSource[0] = 0;
         pointSource[1] = 0;
@@ -282,27 +317,35 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         sampleDensity0 = 2;
         sampleDensity1 = 2;
         sampleDensity2 = 2;
-        displayMethod = DISPLAYMETHOD_LINES;
-        showSeeds = false;
-        showHeads = false;
-        tubeRadius = 0.125;
-        ribbonWidth = 0.125;
-        lineWidth = 2;
-        coloringMethod = COLORINGMETHOD_COLORBYSPEED;
+        coloringMethod = COLORINGMETHOD_COLORBYTIME;
         colorTableName = new String("Default");
         singleColor = new ColorAttribute(0, 0, 0);
         legendFlag = true;
         lightingFlag = true;
         streamlineDirection = INTEGRATIONDIRECTION_FORWARD;
+        maxSteps = 1000;
+        terminateByDistance = false;
+        termDistance = 10;
+        terminateByTime = false;
+        termTime = 10;
+        maxStepLength = 0.1;
+        limitMaximumTimestep = false;
+        maxTimeStep = 0.1;
         relTol = 0.0001;
-        absTol = 1e-05;
-        terminationType = TERMINATIONTYPE_DISTANCE;
+        absTolSizeType = SIZETYPE_FRACTIONOFBBOX;
+        absTolAbsolute = 1e-06;
+        absTolBBox = 1e-06;
         integrationType = INTEGRATIONTYPE_DORMANDPRINCE;
-        streamlineAlgorithmType = STREAMLINEALGORITHMTYPE_PARALLELSTATICDOMAINS;
+        streamlineAlgorithmType = STREAMLINEALGORITHMTYPE_VISITSELECTS;
         maxStreamlineProcessCount = 10;
         maxDomainCacheSize = 3;
         workGroupSize = 32;
         pathlines = false;
+        pathlinesOverrideStartingTimeFlag = false;
+        pathlinesOverrideStartingTime = 0;
+        pathlinesCMFE = PATHLINESCMFE_POS_CMFE;
+        coordinateSystem = COORDINATESYSTEM_ASIS;
+        phiFactor = 0;
         coloringVariable = new String("");
         legendMinFlag = false;
         legendMaxFlag = false;
@@ -312,11 +355,26 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         displayEnd = 1;
         displayBeginFlag = false;
         displayEndFlag = false;
-        seedDisplayRadius = 0.25;
+        referenceTypeForDisplay = REFERENCETYPE_DISTANCE;
+        displayMethod = DISPLAYMETHOD_LINES;
+        tubeSizeType = SIZETYPE_FRACTIONOFBBOX;
+        tubeRadiusAbsolute = 0.125;
+        tubeRadiusBBox = 0.005;
+        ribbonWidthSizeType = SIZETYPE_FRACTIONOFBBOX;
+        ribbonWidthAbsolute = 0.125;
+        ribbonWidthBBox = 0.01;
+        lineWidth = 2;
+        showSeeds = true;
+        seedRadiusSizeType = SIZETYPE_FRACTIONOFBBOX;
+        seedRadiusAbsolute = 1;
+        seedRadiusBBox = 0.015;
+        showHeads = false;
         headDisplayType = GEOMDISPLAYTYPE_SPHERE;
-        headDisplayRadius = 0.25;
-        headDisplayHeight = 0.5;
-        opacityType = OPACITYTYPE_NONE;
+        headRadiusSizeType = SIZETYPE_FRACTIONOFBBOX;
+        headRadiusAbsolute = 0.25;
+        headRadiusBBox = 0.02;
+        headHeightRatio = 2;
+        opacityType = OPACITYTYPE_FULLYOPAQUE;
         opacityVariable = new String("");
         opacity = 1;
         opacityVarMin = 0;
@@ -325,14 +383,18 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         opacityVarMaxFlag = false;
         tubeDisplayDensity = 10;
         geomDisplayQuality = DISPLAYQUALITY_MEDIUM;
-        sampleDistance0 = 1;
-        sampleDistance1 = 1;
-        sampleDistance2 = 1;
+        sampleDistance0 = 10;
+        sampleDistance1 = 10;
+        sampleDistance2 = 10;
         fillInterior = true;
         randomSamples = false;
         randomSeed = 0;
         numberOfRandomSamples = 1;
         forceNodeCenteredData = false;
+        issueTerminationWarnings = true;
+        issueStiffnessWarnings = true;
+        issueCriticalPointsWarnings = true;
+        criticalPointThreshold = 0.001;
     }
 
     public StreamlineAttributes(StreamlineAttributes obj)
@@ -342,8 +404,6 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         int i;
 
         sourceType = obj.sourceType;
-        maxStepLength = obj.maxStepLength;
-        termination = obj.termination;
         pointSource = new double[3];
         pointSource[0] = obj.pointSource[0];
         pointSource[1] = obj.pointSource[1];
@@ -395,27 +455,35 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         sampleDensity0 = obj.sampleDensity0;
         sampleDensity1 = obj.sampleDensity1;
         sampleDensity2 = obj.sampleDensity2;
-        displayMethod = obj.displayMethod;
-        showSeeds = obj.showSeeds;
-        showHeads = obj.showHeads;
-        tubeRadius = obj.tubeRadius;
-        ribbonWidth = obj.ribbonWidth;
-        lineWidth = obj.lineWidth;
         coloringMethod = obj.coloringMethod;
         colorTableName = new String(obj.colorTableName);
         singleColor = new ColorAttribute(obj.singleColor);
         legendFlag = obj.legendFlag;
         lightingFlag = obj.lightingFlag;
         streamlineDirection = obj.streamlineDirection;
+        maxSteps = obj.maxSteps;
+        terminateByDistance = obj.terminateByDistance;
+        termDistance = obj.termDistance;
+        terminateByTime = obj.terminateByTime;
+        termTime = obj.termTime;
+        maxStepLength = obj.maxStepLength;
+        limitMaximumTimestep = obj.limitMaximumTimestep;
+        maxTimeStep = obj.maxTimeStep;
         relTol = obj.relTol;
-        absTol = obj.absTol;
-        terminationType = obj.terminationType;
+        absTolSizeType = obj.absTolSizeType;
+        absTolAbsolute = obj.absTolAbsolute;
+        absTolBBox = obj.absTolBBox;
         integrationType = obj.integrationType;
         streamlineAlgorithmType = obj.streamlineAlgorithmType;
         maxStreamlineProcessCount = obj.maxStreamlineProcessCount;
         maxDomainCacheSize = obj.maxDomainCacheSize;
         workGroupSize = obj.workGroupSize;
         pathlines = obj.pathlines;
+        pathlinesOverrideStartingTimeFlag = obj.pathlinesOverrideStartingTimeFlag;
+        pathlinesOverrideStartingTime = obj.pathlinesOverrideStartingTime;
+        pathlinesCMFE = obj.pathlinesCMFE;
+        coordinateSystem = obj.coordinateSystem;
+        phiFactor = obj.phiFactor;
         coloringVariable = new String(obj.coloringVariable);
         legendMinFlag = obj.legendMinFlag;
         legendMaxFlag = obj.legendMaxFlag;
@@ -425,10 +493,25 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         displayEnd = obj.displayEnd;
         displayBeginFlag = obj.displayBeginFlag;
         displayEndFlag = obj.displayEndFlag;
-        seedDisplayRadius = obj.seedDisplayRadius;
+        referenceTypeForDisplay = obj.referenceTypeForDisplay;
+        displayMethod = obj.displayMethod;
+        tubeSizeType = obj.tubeSizeType;
+        tubeRadiusAbsolute = obj.tubeRadiusAbsolute;
+        tubeRadiusBBox = obj.tubeRadiusBBox;
+        ribbonWidthSizeType = obj.ribbonWidthSizeType;
+        ribbonWidthAbsolute = obj.ribbonWidthAbsolute;
+        ribbonWidthBBox = obj.ribbonWidthBBox;
+        lineWidth = obj.lineWidth;
+        showSeeds = obj.showSeeds;
+        seedRadiusSizeType = obj.seedRadiusSizeType;
+        seedRadiusAbsolute = obj.seedRadiusAbsolute;
+        seedRadiusBBox = obj.seedRadiusBBox;
+        showHeads = obj.showHeads;
         headDisplayType = obj.headDisplayType;
-        headDisplayRadius = obj.headDisplayRadius;
-        headDisplayHeight = obj.headDisplayHeight;
+        headRadiusSizeType = obj.headRadiusSizeType;
+        headRadiusAbsolute = obj.headRadiusAbsolute;
+        headRadiusBBox = obj.headRadiusBBox;
+        headHeightRatio = obj.headHeightRatio;
         opacityType = obj.opacityType;
         opacityVariable = new String(obj.opacityVariable);
         opacity = obj.opacity;
@@ -446,6 +529,10 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         randomSeed = obj.randomSeed;
         numberOfRandomSamples = obj.numberOfRandomSamples;
         forceNodeCenteredData = obj.forceNodeCenteredData;
+        issueTerminationWarnings = obj.issueTerminationWarnings;
+        issueStiffnessWarnings = obj.issueStiffnessWarnings;
+        issueCriticalPointsWarnings = obj.issueCriticalPointsWarnings;
+        criticalPointThreshold = obj.criticalPointThreshold;
 
         SelectAll();
     }
@@ -515,8 +602,6 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         }
         // Create the return value
         return ((sourceType == obj.sourceType) &&
-                (maxStepLength == obj.maxStepLength) &&
-                (termination == obj.termination) &&
                 pointSource_equal &&
                 lineStart_equal &&
                 lineEnd_equal &&
@@ -531,27 +616,35 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
                 (sampleDensity0 == obj.sampleDensity0) &&
                 (sampleDensity1 == obj.sampleDensity1) &&
                 (sampleDensity2 == obj.sampleDensity2) &&
-                (displayMethod == obj.displayMethod) &&
-                (showSeeds == obj.showSeeds) &&
-                (showHeads == obj.showHeads) &&
-                (tubeRadius == obj.tubeRadius) &&
-                (ribbonWidth == obj.ribbonWidth) &&
-                (lineWidth == obj.lineWidth) &&
                 (coloringMethod == obj.coloringMethod) &&
                 (colorTableName.equals(obj.colorTableName)) &&
                 (singleColor == obj.singleColor) &&
                 (legendFlag == obj.legendFlag) &&
                 (lightingFlag == obj.lightingFlag) &&
                 (streamlineDirection == obj.streamlineDirection) &&
+                (maxSteps == obj.maxSteps) &&
+                (terminateByDistance == obj.terminateByDistance) &&
+                (termDistance == obj.termDistance) &&
+                (terminateByTime == obj.terminateByTime) &&
+                (termTime == obj.termTime) &&
+                (maxStepLength == obj.maxStepLength) &&
+                (limitMaximumTimestep == obj.limitMaximumTimestep) &&
+                (maxTimeStep == obj.maxTimeStep) &&
                 (relTol == obj.relTol) &&
-                (absTol == obj.absTol) &&
-                (terminationType == obj.terminationType) &&
+                (absTolSizeType == obj.absTolSizeType) &&
+                (absTolAbsolute == obj.absTolAbsolute) &&
+                (absTolBBox == obj.absTolBBox) &&
                 (integrationType == obj.integrationType) &&
                 (streamlineAlgorithmType == obj.streamlineAlgorithmType) &&
                 (maxStreamlineProcessCount == obj.maxStreamlineProcessCount) &&
                 (maxDomainCacheSize == obj.maxDomainCacheSize) &&
                 (workGroupSize == obj.workGroupSize) &&
                 (pathlines == obj.pathlines) &&
+                (pathlinesOverrideStartingTimeFlag == obj.pathlinesOverrideStartingTimeFlag) &&
+                (pathlinesOverrideStartingTime == obj.pathlinesOverrideStartingTime) &&
+                (pathlinesCMFE == obj.pathlinesCMFE) &&
+                (coordinateSystem == obj.coordinateSystem) &&
+                (phiFactor == obj.phiFactor) &&
                 (coloringVariable.equals(obj.coloringVariable)) &&
                 (legendMinFlag == obj.legendMinFlag) &&
                 (legendMaxFlag == obj.legendMaxFlag) &&
@@ -561,10 +654,25 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
                 (displayEnd == obj.displayEnd) &&
                 (displayBeginFlag == obj.displayBeginFlag) &&
                 (displayEndFlag == obj.displayEndFlag) &&
-                (seedDisplayRadius == obj.seedDisplayRadius) &&
+                (referenceTypeForDisplay == obj.referenceTypeForDisplay) &&
+                (displayMethod == obj.displayMethod) &&
+                (tubeSizeType == obj.tubeSizeType) &&
+                (tubeRadiusAbsolute == obj.tubeRadiusAbsolute) &&
+                (tubeRadiusBBox == obj.tubeRadiusBBox) &&
+                (ribbonWidthSizeType == obj.ribbonWidthSizeType) &&
+                (ribbonWidthAbsolute == obj.ribbonWidthAbsolute) &&
+                (ribbonWidthBBox == obj.ribbonWidthBBox) &&
+                (lineWidth == obj.lineWidth) &&
+                (showSeeds == obj.showSeeds) &&
+                (seedRadiusSizeType == obj.seedRadiusSizeType) &&
+                (seedRadiusAbsolute == obj.seedRadiusAbsolute) &&
+                (seedRadiusBBox == obj.seedRadiusBBox) &&
+                (showHeads == obj.showHeads) &&
                 (headDisplayType == obj.headDisplayType) &&
-                (headDisplayRadius == obj.headDisplayRadius) &&
-                (headDisplayHeight == obj.headDisplayHeight) &&
+                (headRadiusSizeType == obj.headRadiusSizeType) &&
+                (headRadiusAbsolute == obj.headRadiusAbsolute) &&
+                (headRadiusBBox == obj.headRadiusBBox) &&
+                (headHeightRatio == obj.headHeightRatio) &&
                 (opacityType == obj.opacityType) &&
                 (opacityVariable.equals(obj.opacityVariable)) &&
                 (opacity == obj.opacity) &&
@@ -581,7 +689,11 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
                 (randomSamples == obj.randomSamples) &&
                 (randomSeed == obj.randomSeed) &&
                 (numberOfRandomSamples == obj.numberOfRandomSamples) &&
-                (forceNodeCenteredData == obj.forceNodeCenteredData));
+                (forceNodeCenteredData == obj.forceNodeCenteredData) &&
+                (issueTerminationWarnings == obj.issueTerminationWarnings) &&
+                (issueStiffnessWarnings == obj.issueStiffnessWarnings) &&
+                (issueCriticalPointsWarnings == obj.issueCriticalPointsWarnings) &&
+                (criticalPointThreshold == obj.criticalPointThreshold));
     }
 
     public String GetName() { return "Streamline"; }
@@ -594,24 +706,12 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         Select(0);
     }
 
-    public void SetMaxStepLength(double maxStepLength_)
-    {
-        maxStepLength = maxStepLength_;
-        Select(1);
-    }
-
-    public void SetTermination(double termination_)
-    {
-        termination = termination_;
-        Select(2);
-    }
-
     public void SetPointSource(double[] pointSource_)
     {
         pointSource[0] = pointSource_[0];
         pointSource[1] = pointSource_[1];
         pointSource[2] = pointSource_[2];
-        Select(3);
+        Select(1);
     }
 
     public void SetPointSource(double e0, double e1, double e2)
@@ -619,7 +719,7 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         pointSource[0] = e0;
         pointSource[1] = e1;
         pointSource[2] = e2;
-        Select(3);
+        Select(1);
     }
 
     public void SetLineStart(double[] lineStart_)
@@ -627,7 +727,7 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         lineStart[0] = lineStart_[0];
         lineStart[1] = lineStart_[1];
         lineStart[2] = lineStart_[2];
-        Select(4);
+        Select(2);
     }
 
     public void SetLineStart(double e0, double e1, double e2)
@@ -635,7 +735,7 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         lineStart[0] = e0;
         lineStart[1] = e1;
         lineStart[2] = e2;
-        Select(4);
+        Select(2);
     }
 
     public void SetLineEnd(double[] lineEnd_)
@@ -643,7 +743,7 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         lineEnd[0] = lineEnd_[0];
         lineEnd[1] = lineEnd_[1];
         lineEnd[2] = lineEnd_[2];
-        Select(5);
+        Select(3);
     }
 
     public void SetLineEnd(double e0, double e1, double e2)
@@ -651,7 +751,7 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         lineEnd[0] = e0;
         lineEnd[1] = e1;
         lineEnd[2] = e2;
-        Select(5);
+        Select(3);
     }
 
     public void SetPlaneOrigin(double[] planeOrigin_)
@@ -659,7 +759,7 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         planeOrigin[0] = planeOrigin_[0];
         planeOrigin[1] = planeOrigin_[1];
         planeOrigin[2] = planeOrigin_[2];
-        Select(6);
+        Select(4);
     }
 
     public void SetPlaneOrigin(double e0, double e1, double e2)
@@ -667,7 +767,7 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         planeOrigin[0] = e0;
         planeOrigin[1] = e1;
         planeOrigin[2] = e2;
-        Select(6);
+        Select(4);
     }
 
     public void SetPlaneNormal(double[] planeNormal_)
@@ -675,7 +775,7 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         planeNormal[0] = planeNormal_[0];
         planeNormal[1] = planeNormal_[1];
         planeNormal[2] = planeNormal_[2];
-        Select(7);
+        Select(5);
     }
 
     public void SetPlaneNormal(double e0, double e1, double e2)
@@ -683,7 +783,7 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         planeNormal[0] = e0;
         planeNormal[1] = e1;
         planeNormal[2] = e2;
-        Select(7);
+        Select(5);
     }
 
     public void SetPlaneUpAxis(double[] planeUpAxis_)
@@ -691,7 +791,7 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         planeUpAxis[0] = planeUpAxis_[0];
         planeUpAxis[1] = planeUpAxis_[1];
         planeUpAxis[2] = planeUpAxis_[2];
-        Select(8);
+        Select(6);
     }
 
     public void SetPlaneUpAxis(double e0, double e1, double e2)
@@ -699,13 +799,13 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         planeUpAxis[0] = e0;
         planeUpAxis[1] = e1;
         planeUpAxis[2] = e2;
-        Select(8);
+        Select(6);
     }
 
     public void SetRadius(double radius_)
     {
         radius = radius_;
-        Select(9);
+        Select(7);
     }
 
     public void SetSphereOrigin(double[] sphereOrigin_)
@@ -713,7 +813,7 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         sphereOrigin[0] = sphereOrigin_[0];
         sphereOrigin[1] = sphereOrigin_[1];
         sphereOrigin[2] = sphereOrigin_[2];
-        Select(10);
+        Select(8);
     }
 
     public void SetSphereOrigin(double e0, double e1, double e2)
@@ -721,115 +821,127 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         sphereOrigin[0] = e0;
         sphereOrigin[1] = e1;
         sphereOrigin[2] = e2;
-        Select(10);
+        Select(8);
     }
 
     public void SetBoxExtents(double[] boxExtents_)
     {
         for(int i = 0; i < 6; ++i)
              boxExtents[i] = boxExtents_[i];
-        Select(11);
+        Select(9);
     }
 
     public void SetUseWholeBox(boolean useWholeBox_)
     {
         useWholeBox = useWholeBox_;
-        Select(12);
+        Select(10);
     }
 
     public void SetPointList(Vector pointList_)
     {
         pointList = pointList_;
-        Select(13);
+        Select(11);
     }
 
     public void SetSampleDensity0(int sampleDensity0_)
     {
         sampleDensity0 = sampleDensity0_;
-        Select(14);
+        Select(12);
     }
 
     public void SetSampleDensity1(int sampleDensity1_)
     {
         sampleDensity1 = sampleDensity1_;
-        Select(15);
+        Select(13);
     }
 
     public void SetSampleDensity2(int sampleDensity2_)
     {
         sampleDensity2 = sampleDensity2_;
-        Select(16);
-    }
-
-    public void SetDisplayMethod(int displayMethod_)
-    {
-        displayMethod = displayMethod_;
-        Select(17);
-    }
-
-    public void SetShowSeeds(boolean showSeeds_)
-    {
-        showSeeds = showSeeds_;
-        Select(18);
-    }
-
-    public void SetShowHeads(boolean showHeads_)
-    {
-        showHeads = showHeads_;
-        Select(19);
-    }
-
-    public void SetTubeRadius(double tubeRadius_)
-    {
-        tubeRadius = tubeRadius_;
-        Select(20);
-    }
-
-    public void SetRibbonWidth(double ribbonWidth_)
-    {
-        ribbonWidth = ribbonWidth_;
-        Select(21);
-    }
-
-    public void SetLineWidth(int lineWidth_)
-    {
-        lineWidth = lineWidth_;
-        Select(22);
+        Select(14);
     }
 
     public void SetColoringMethod(int coloringMethod_)
     {
         coloringMethod = coloringMethod_;
-        Select(23);
+        Select(15);
     }
 
     public void SetColorTableName(String colorTableName_)
     {
         colorTableName = colorTableName_;
-        Select(24);
+        Select(16);
     }
 
     public void SetSingleColor(ColorAttribute singleColor_)
     {
         singleColor = singleColor_;
-        Select(25);
+        Select(17);
     }
 
     public void SetLegendFlag(boolean legendFlag_)
     {
         legendFlag = legendFlag_;
-        Select(26);
+        Select(18);
     }
 
     public void SetLightingFlag(boolean lightingFlag_)
     {
         lightingFlag = lightingFlag_;
-        Select(27);
+        Select(19);
     }
 
     public void SetStreamlineDirection(int streamlineDirection_)
     {
         streamlineDirection = streamlineDirection_;
+        Select(20);
+    }
+
+    public void SetMaxSteps(int maxSteps_)
+    {
+        maxSteps = maxSteps_;
+        Select(21);
+    }
+
+    public void SetTerminateByDistance(boolean terminateByDistance_)
+    {
+        terminateByDistance = terminateByDistance_;
+        Select(22);
+    }
+
+    public void SetTermDistance(double termDistance_)
+    {
+        termDistance = termDistance_;
+        Select(23);
+    }
+
+    public void SetTerminateByTime(boolean terminateByTime_)
+    {
+        terminateByTime = terminateByTime_;
+        Select(24);
+    }
+
+    public void SetTermTime(double termTime_)
+    {
+        termTime = termTime_;
+        Select(25);
+    }
+
+    public void SetMaxStepLength(double maxStepLength_)
+    {
+        maxStepLength = maxStepLength_;
+        Select(26);
+    }
+
+    public void SetLimitMaximumTimestep(boolean limitMaximumTimestep_)
+    {
+        limitMaximumTimestep = limitMaximumTimestep_;
+        Select(27);
+    }
+
+    public void SetMaxTimeStep(double maxTimeStep_)
+    {
+        maxTimeStep = maxTimeStep_;
         Select(28);
     }
 
@@ -839,238 +951,386 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         Select(29);
     }
 
-    public void SetAbsTol(double absTol_)
+    public void SetAbsTolSizeType(int absTolSizeType_)
     {
-        absTol = absTol_;
+        absTolSizeType = absTolSizeType_;
         Select(30);
     }
 
-    public void SetTerminationType(int terminationType_)
+    public void SetAbsTolAbsolute(double absTolAbsolute_)
     {
-        terminationType = terminationType_;
+        absTolAbsolute = absTolAbsolute_;
         Select(31);
+    }
+
+    public void SetAbsTolBBox(double absTolBBox_)
+    {
+        absTolBBox = absTolBBox_;
+        Select(32);
     }
 
     public void SetIntegrationType(int integrationType_)
     {
         integrationType = integrationType_;
-        Select(32);
+        Select(33);
     }
 
     public void SetStreamlineAlgorithmType(int streamlineAlgorithmType_)
     {
         streamlineAlgorithmType = streamlineAlgorithmType_;
-        Select(33);
+        Select(34);
     }
 
     public void SetMaxStreamlineProcessCount(int maxStreamlineProcessCount_)
     {
         maxStreamlineProcessCount = maxStreamlineProcessCount_;
-        Select(34);
+        Select(35);
     }
 
     public void SetMaxDomainCacheSize(int maxDomainCacheSize_)
     {
         maxDomainCacheSize = maxDomainCacheSize_;
-        Select(35);
+        Select(36);
     }
 
     public void SetWorkGroupSize(int workGroupSize_)
     {
         workGroupSize = workGroupSize_;
-        Select(36);
+        Select(37);
     }
 
     public void SetPathlines(boolean pathlines_)
     {
         pathlines = pathlines_;
-        Select(37);
+        Select(38);
+    }
+
+    public void SetPathlinesOverrideStartingTimeFlag(boolean pathlinesOverrideStartingTimeFlag_)
+    {
+        pathlinesOverrideStartingTimeFlag = pathlinesOverrideStartingTimeFlag_;
+        Select(39);
+    }
+
+    public void SetPathlinesOverrideStartingTime(double pathlinesOverrideStartingTime_)
+    {
+        pathlinesOverrideStartingTime = pathlinesOverrideStartingTime_;
+        Select(40);
+    }
+
+    public void SetPathlinesCMFE(int pathlinesCMFE_)
+    {
+        pathlinesCMFE = pathlinesCMFE_;
+        Select(41);
+    }
+
+    public void SetCoordinateSystem(int coordinateSystem_)
+    {
+        coordinateSystem = coordinateSystem_;
+        Select(42);
+    }
+
+    public void SetPhiFactor(double phiFactor_)
+    {
+        phiFactor = phiFactor_;
+        Select(43);
     }
 
     public void SetColoringVariable(String coloringVariable_)
     {
         coloringVariable = coloringVariable_;
-        Select(38);
+        Select(44);
     }
 
     public void SetLegendMinFlag(boolean legendMinFlag_)
     {
         legendMinFlag = legendMinFlag_;
-        Select(39);
+        Select(45);
     }
 
     public void SetLegendMaxFlag(boolean legendMaxFlag_)
     {
         legendMaxFlag = legendMaxFlag_;
-        Select(40);
+        Select(46);
     }
 
     public void SetLegendMin(double legendMin_)
     {
         legendMin = legendMin_;
-        Select(41);
+        Select(47);
     }
 
     public void SetLegendMax(double legendMax_)
     {
         legendMax = legendMax_;
-        Select(42);
+        Select(48);
     }
 
     public void SetDisplayBegin(double displayBegin_)
     {
         displayBegin = displayBegin_;
-        Select(43);
+        Select(49);
     }
 
     public void SetDisplayEnd(double displayEnd_)
     {
         displayEnd = displayEnd_;
-        Select(44);
+        Select(50);
     }
 
     public void SetDisplayBeginFlag(boolean displayBeginFlag_)
     {
         displayBeginFlag = displayBeginFlag_;
-        Select(45);
+        Select(51);
     }
 
     public void SetDisplayEndFlag(boolean displayEndFlag_)
     {
         displayEndFlag = displayEndFlag_;
-        Select(46);
+        Select(52);
     }
 
-    public void SetSeedDisplayRadius(double seedDisplayRadius_)
+    public void SetReferenceTypeForDisplay(int referenceTypeForDisplay_)
     {
-        seedDisplayRadius = seedDisplayRadius_;
-        Select(47);
+        referenceTypeForDisplay = referenceTypeForDisplay_;
+        Select(53);
+    }
+
+    public void SetDisplayMethod(int displayMethod_)
+    {
+        displayMethod = displayMethod_;
+        Select(54);
+    }
+
+    public void SetTubeSizeType(int tubeSizeType_)
+    {
+        tubeSizeType = tubeSizeType_;
+        Select(55);
+    }
+
+    public void SetTubeRadiusAbsolute(double tubeRadiusAbsolute_)
+    {
+        tubeRadiusAbsolute = tubeRadiusAbsolute_;
+        Select(56);
+    }
+
+    public void SetTubeRadiusBBox(double tubeRadiusBBox_)
+    {
+        tubeRadiusBBox = tubeRadiusBBox_;
+        Select(57);
+    }
+
+    public void SetRibbonWidthSizeType(int ribbonWidthSizeType_)
+    {
+        ribbonWidthSizeType = ribbonWidthSizeType_;
+        Select(58);
+    }
+
+    public void SetRibbonWidthAbsolute(double ribbonWidthAbsolute_)
+    {
+        ribbonWidthAbsolute = ribbonWidthAbsolute_;
+        Select(59);
+    }
+
+    public void SetRibbonWidthBBox(double ribbonWidthBBox_)
+    {
+        ribbonWidthBBox = ribbonWidthBBox_;
+        Select(60);
+    }
+
+    public void SetLineWidth(int lineWidth_)
+    {
+        lineWidth = lineWidth_;
+        Select(61);
+    }
+
+    public void SetShowSeeds(boolean showSeeds_)
+    {
+        showSeeds = showSeeds_;
+        Select(62);
+    }
+
+    public void SetSeedRadiusSizeType(int seedRadiusSizeType_)
+    {
+        seedRadiusSizeType = seedRadiusSizeType_;
+        Select(63);
+    }
+
+    public void SetSeedRadiusAbsolute(double seedRadiusAbsolute_)
+    {
+        seedRadiusAbsolute = seedRadiusAbsolute_;
+        Select(64);
+    }
+
+    public void SetSeedRadiusBBox(double seedRadiusBBox_)
+    {
+        seedRadiusBBox = seedRadiusBBox_;
+        Select(65);
+    }
+
+    public void SetShowHeads(boolean showHeads_)
+    {
+        showHeads = showHeads_;
+        Select(66);
     }
 
     public void SetHeadDisplayType(int headDisplayType_)
     {
         headDisplayType = headDisplayType_;
-        Select(48);
+        Select(67);
     }
 
-    public void SetHeadDisplayRadius(double headDisplayRadius_)
+    public void SetHeadRadiusSizeType(int headRadiusSizeType_)
     {
-        headDisplayRadius = headDisplayRadius_;
-        Select(49);
+        headRadiusSizeType = headRadiusSizeType_;
+        Select(68);
     }
 
-    public void SetHeadDisplayHeight(double headDisplayHeight_)
+    public void SetHeadRadiusAbsolute(double headRadiusAbsolute_)
     {
-        headDisplayHeight = headDisplayHeight_;
-        Select(50);
+        headRadiusAbsolute = headRadiusAbsolute_;
+        Select(69);
+    }
+
+    public void SetHeadRadiusBBox(double headRadiusBBox_)
+    {
+        headRadiusBBox = headRadiusBBox_;
+        Select(70);
+    }
+
+    public void SetHeadHeightRatio(double headHeightRatio_)
+    {
+        headHeightRatio = headHeightRatio_;
+        Select(71);
     }
 
     public void SetOpacityType(int opacityType_)
     {
         opacityType = opacityType_;
-        Select(51);
+        Select(72);
     }
 
     public void SetOpacityVariable(String opacityVariable_)
     {
         opacityVariable = opacityVariable_;
-        Select(52);
+        Select(73);
     }
 
     public void SetOpacity(double opacity_)
     {
         opacity = opacity_;
-        Select(53);
+        Select(74);
     }
 
     public void SetOpacityVarMin(double opacityVarMin_)
     {
         opacityVarMin = opacityVarMin_;
-        Select(54);
+        Select(75);
     }
 
     public void SetOpacityVarMax(double opacityVarMax_)
     {
         opacityVarMax = opacityVarMax_;
-        Select(55);
+        Select(76);
     }
 
     public void SetOpacityVarMinFlag(boolean opacityVarMinFlag_)
     {
         opacityVarMinFlag = opacityVarMinFlag_;
-        Select(56);
+        Select(77);
     }
 
     public void SetOpacityVarMaxFlag(boolean opacityVarMaxFlag_)
     {
         opacityVarMaxFlag = opacityVarMaxFlag_;
-        Select(57);
+        Select(78);
     }
 
     public void SetTubeDisplayDensity(int tubeDisplayDensity_)
     {
         tubeDisplayDensity = tubeDisplayDensity_;
-        Select(58);
+        Select(79);
     }
 
     public void SetGeomDisplayQuality(int geomDisplayQuality_)
     {
         geomDisplayQuality = geomDisplayQuality_;
-        Select(59);
+        Select(80);
     }
 
     public void SetSampleDistance0(double sampleDistance0_)
     {
         sampleDistance0 = sampleDistance0_;
-        Select(60);
+        Select(81);
     }
 
     public void SetSampleDistance1(double sampleDistance1_)
     {
         sampleDistance1 = sampleDistance1_;
-        Select(61);
+        Select(82);
     }
 
     public void SetSampleDistance2(double sampleDistance2_)
     {
         sampleDistance2 = sampleDistance2_;
-        Select(62);
+        Select(83);
     }
 
     public void SetFillInterior(boolean fillInterior_)
     {
         fillInterior = fillInterior_;
-        Select(63);
+        Select(84);
     }
 
     public void SetRandomSamples(boolean randomSamples_)
     {
         randomSamples = randomSamples_;
-        Select(64);
+        Select(85);
     }
 
     public void SetRandomSeed(int randomSeed_)
     {
         randomSeed = randomSeed_;
-        Select(65);
+        Select(86);
     }
 
     public void SetNumberOfRandomSamples(int numberOfRandomSamples_)
     {
         numberOfRandomSamples = numberOfRandomSamples_;
-        Select(66);
+        Select(87);
     }
 
     public void SetForceNodeCenteredData(boolean forceNodeCenteredData_)
     {
         forceNodeCenteredData = forceNodeCenteredData_;
-        Select(67);
+        Select(88);
+    }
+
+    public void SetIssueTerminationWarnings(boolean issueTerminationWarnings_)
+    {
+        issueTerminationWarnings = issueTerminationWarnings_;
+        Select(89);
+    }
+
+    public void SetIssueStiffnessWarnings(boolean issueStiffnessWarnings_)
+    {
+        issueStiffnessWarnings = issueStiffnessWarnings_;
+        Select(90);
+    }
+
+    public void SetIssueCriticalPointsWarnings(boolean issueCriticalPointsWarnings_)
+    {
+        issueCriticalPointsWarnings = issueCriticalPointsWarnings_;
+        Select(91);
+    }
+
+    public void SetCriticalPointThreshold(double criticalPointThreshold_)
+    {
+        criticalPointThreshold = criticalPointThreshold_;
+        Select(92);
     }
 
     // Property getting methods
     public int            GetSourceType() { return sourceType; }
-    public double         GetMaxStepLength() { return maxStepLength; }
-    public double         GetTermination() { return termination; }
     public double[]       GetPointSource() { return pointSource; }
     public double[]       GetLineStart() { return lineStart; }
     public double[]       GetLineEnd() { return lineEnd; }
@@ -1085,27 +1345,35 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
     public int            GetSampleDensity0() { return sampleDensity0; }
     public int            GetSampleDensity1() { return sampleDensity1; }
     public int            GetSampleDensity2() { return sampleDensity2; }
-    public int            GetDisplayMethod() { return displayMethod; }
-    public boolean        GetShowSeeds() { return showSeeds; }
-    public boolean        GetShowHeads() { return showHeads; }
-    public double         GetTubeRadius() { return tubeRadius; }
-    public double         GetRibbonWidth() { return ribbonWidth; }
-    public int            GetLineWidth() { return lineWidth; }
     public int            GetColoringMethod() { return coloringMethod; }
     public String         GetColorTableName() { return colorTableName; }
     public ColorAttribute GetSingleColor() { return singleColor; }
     public boolean        GetLegendFlag() { return legendFlag; }
     public boolean        GetLightingFlag() { return lightingFlag; }
     public int            GetStreamlineDirection() { return streamlineDirection; }
+    public int            GetMaxSteps() { return maxSteps; }
+    public boolean        GetTerminateByDistance() { return terminateByDistance; }
+    public double         GetTermDistance() { return termDistance; }
+    public boolean        GetTerminateByTime() { return terminateByTime; }
+    public double         GetTermTime() { return termTime; }
+    public double         GetMaxStepLength() { return maxStepLength; }
+    public boolean        GetLimitMaximumTimestep() { return limitMaximumTimestep; }
+    public double         GetMaxTimeStep() { return maxTimeStep; }
     public double         GetRelTol() { return relTol; }
-    public double         GetAbsTol() { return absTol; }
-    public int            GetTerminationType() { return terminationType; }
+    public int            GetAbsTolSizeType() { return absTolSizeType; }
+    public double         GetAbsTolAbsolute() { return absTolAbsolute; }
+    public double         GetAbsTolBBox() { return absTolBBox; }
     public int            GetIntegrationType() { return integrationType; }
     public int            GetStreamlineAlgorithmType() { return streamlineAlgorithmType; }
     public int            GetMaxStreamlineProcessCount() { return maxStreamlineProcessCount; }
     public int            GetMaxDomainCacheSize() { return maxDomainCacheSize; }
     public int            GetWorkGroupSize() { return workGroupSize; }
     public boolean        GetPathlines() { return pathlines; }
+    public boolean        GetPathlinesOverrideStartingTimeFlag() { return pathlinesOverrideStartingTimeFlag; }
+    public double         GetPathlinesOverrideStartingTime() { return pathlinesOverrideStartingTime; }
+    public int            GetPathlinesCMFE() { return pathlinesCMFE; }
+    public int            GetCoordinateSystem() { return coordinateSystem; }
+    public double         GetPhiFactor() { return phiFactor; }
     public String         GetColoringVariable() { return coloringVariable; }
     public boolean        GetLegendMinFlag() { return legendMinFlag; }
     public boolean        GetLegendMaxFlag() { return legendMaxFlag; }
@@ -1115,10 +1383,25 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
     public double         GetDisplayEnd() { return displayEnd; }
     public boolean        GetDisplayBeginFlag() { return displayBeginFlag; }
     public boolean        GetDisplayEndFlag() { return displayEndFlag; }
-    public double         GetSeedDisplayRadius() { return seedDisplayRadius; }
+    public int            GetReferenceTypeForDisplay() { return referenceTypeForDisplay; }
+    public int            GetDisplayMethod() { return displayMethod; }
+    public int            GetTubeSizeType() { return tubeSizeType; }
+    public double         GetTubeRadiusAbsolute() { return tubeRadiusAbsolute; }
+    public double         GetTubeRadiusBBox() { return tubeRadiusBBox; }
+    public int            GetRibbonWidthSizeType() { return ribbonWidthSizeType; }
+    public double         GetRibbonWidthAbsolute() { return ribbonWidthAbsolute; }
+    public double         GetRibbonWidthBBox() { return ribbonWidthBBox; }
+    public int            GetLineWidth() { return lineWidth; }
+    public boolean        GetShowSeeds() { return showSeeds; }
+    public int            GetSeedRadiusSizeType() { return seedRadiusSizeType; }
+    public double         GetSeedRadiusAbsolute() { return seedRadiusAbsolute; }
+    public double         GetSeedRadiusBBox() { return seedRadiusBBox; }
+    public boolean        GetShowHeads() { return showHeads; }
     public int            GetHeadDisplayType() { return headDisplayType; }
-    public double         GetHeadDisplayRadius() { return headDisplayRadius; }
-    public double         GetHeadDisplayHeight() { return headDisplayHeight; }
+    public int            GetHeadRadiusSizeType() { return headRadiusSizeType; }
+    public double         GetHeadRadiusAbsolute() { return headRadiusAbsolute; }
+    public double         GetHeadRadiusBBox() { return headRadiusBBox; }
+    public double         GetHeadHeightRatio() { return headHeightRatio; }
     public int            GetOpacityType() { return opacityType; }
     public String         GetOpacityVariable() { return opacityVariable; }
     public double         GetOpacity() { return opacity; }
@@ -1136,6 +1419,10 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
     public int            GetRandomSeed() { return randomSeed; }
     public int            GetNumberOfRandomSamples() { return numberOfRandomSamples; }
     public boolean        GetForceNodeCenteredData() { return forceNodeCenteredData; }
+    public boolean        GetIssueTerminationWarnings() { return issueTerminationWarnings; }
+    public boolean        GetIssueStiffnessWarnings() { return issueStiffnessWarnings; }
+    public boolean        GetIssueCriticalPointsWarnings() { return issueCriticalPointsWarnings; }
+    public double         GetCriticalPointThreshold() { return criticalPointThreshold; }
 
     // Write and read methods.
     public void WriteAtts(CommunicationBuffer buf)
@@ -1143,139 +1430,189 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         if(WriteSelect(0, buf))
             buf.WriteInt(sourceType);
         if(WriteSelect(1, buf))
-            buf.WriteDouble(maxStepLength);
-        if(WriteSelect(2, buf))
-            buf.WriteDouble(termination);
-        if(WriteSelect(3, buf))
             buf.WriteDoubleArray(pointSource);
-        if(WriteSelect(4, buf))
+        if(WriteSelect(2, buf))
             buf.WriteDoubleArray(lineStart);
-        if(WriteSelect(5, buf))
+        if(WriteSelect(3, buf))
             buf.WriteDoubleArray(lineEnd);
-        if(WriteSelect(6, buf))
+        if(WriteSelect(4, buf))
             buf.WriteDoubleArray(planeOrigin);
-        if(WriteSelect(7, buf))
+        if(WriteSelect(5, buf))
             buf.WriteDoubleArray(planeNormal);
-        if(WriteSelect(8, buf))
+        if(WriteSelect(6, buf))
             buf.WriteDoubleArray(planeUpAxis);
-        if(WriteSelect(9, buf))
+        if(WriteSelect(7, buf))
             buf.WriteDouble(radius);
-        if(WriteSelect(10, buf))
+        if(WriteSelect(8, buf))
             buf.WriteDoubleArray(sphereOrigin);
-        if(WriteSelect(11, buf))
+        if(WriteSelect(9, buf))
             buf.WriteDoubleArray(boxExtents);
-        if(WriteSelect(12, buf))
+        if(WriteSelect(10, buf))
             buf.WriteBool(useWholeBox);
-        if(WriteSelect(13, buf))
+        if(WriteSelect(11, buf))
             buf.WriteDoubleVector(pointList);
-        if(WriteSelect(14, buf))
+        if(WriteSelect(12, buf))
             buf.WriteInt(sampleDensity0);
-        if(WriteSelect(15, buf))
+        if(WriteSelect(13, buf))
             buf.WriteInt(sampleDensity1);
-        if(WriteSelect(16, buf))
+        if(WriteSelect(14, buf))
             buf.WriteInt(sampleDensity2);
-        if(WriteSelect(17, buf))
-            buf.WriteInt(displayMethod);
-        if(WriteSelect(18, buf))
-            buf.WriteBool(showSeeds);
-        if(WriteSelect(19, buf))
-            buf.WriteBool(showHeads);
-        if(WriteSelect(20, buf))
-            buf.WriteDouble(tubeRadius);
-        if(WriteSelect(21, buf))
-            buf.WriteDouble(ribbonWidth);
-        if(WriteSelect(22, buf))
-            buf.WriteInt(lineWidth);
-        if(WriteSelect(23, buf))
+        if(WriteSelect(15, buf))
             buf.WriteInt(coloringMethod);
-        if(WriteSelect(24, buf))
+        if(WriteSelect(16, buf))
             buf.WriteString(colorTableName);
-        if(WriteSelect(25, buf))
+        if(WriteSelect(17, buf))
             singleColor.Write(buf);
-        if(WriteSelect(26, buf))
+        if(WriteSelect(18, buf))
             buf.WriteBool(legendFlag);
-        if(WriteSelect(27, buf))
+        if(WriteSelect(19, buf))
             buf.WriteBool(lightingFlag);
-        if(WriteSelect(28, buf))
+        if(WriteSelect(20, buf))
             buf.WriteInt(streamlineDirection);
+        if(WriteSelect(21, buf))
+            buf.WriteInt(maxSteps);
+        if(WriteSelect(22, buf))
+            buf.WriteBool(terminateByDistance);
+        if(WriteSelect(23, buf))
+            buf.WriteDouble(termDistance);
+        if(WriteSelect(24, buf))
+            buf.WriteBool(terminateByTime);
+        if(WriteSelect(25, buf))
+            buf.WriteDouble(termTime);
+        if(WriteSelect(26, buf))
+            buf.WriteDouble(maxStepLength);
+        if(WriteSelect(27, buf))
+            buf.WriteBool(limitMaximumTimestep);
+        if(WriteSelect(28, buf))
+            buf.WriteDouble(maxTimeStep);
         if(WriteSelect(29, buf))
             buf.WriteDouble(relTol);
         if(WriteSelect(30, buf))
-            buf.WriteDouble(absTol);
+            buf.WriteInt(absTolSizeType);
         if(WriteSelect(31, buf))
-            buf.WriteInt(terminationType);
+            buf.WriteDouble(absTolAbsolute);
         if(WriteSelect(32, buf))
-            buf.WriteInt(integrationType);
+            buf.WriteDouble(absTolBBox);
         if(WriteSelect(33, buf))
-            buf.WriteInt(streamlineAlgorithmType);
+            buf.WriteInt(integrationType);
         if(WriteSelect(34, buf))
-            buf.WriteInt(maxStreamlineProcessCount);
+            buf.WriteInt(streamlineAlgorithmType);
         if(WriteSelect(35, buf))
-            buf.WriteInt(maxDomainCacheSize);
+            buf.WriteInt(maxStreamlineProcessCount);
         if(WriteSelect(36, buf))
-            buf.WriteInt(workGroupSize);
+            buf.WriteInt(maxDomainCacheSize);
         if(WriteSelect(37, buf))
-            buf.WriteBool(pathlines);
+            buf.WriteInt(workGroupSize);
         if(WriteSelect(38, buf))
-            buf.WriteString(coloringVariable);
+            buf.WriteBool(pathlines);
         if(WriteSelect(39, buf))
-            buf.WriteBool(legendMinFlag);
+            buf.WriteBool(pathlinesOverrideStartingTimeFlag);
         if(WriteSelect(40, buf))
-            buf.WriteBool(legendMaxFlag);
+            buf.WriteDouble(pathlinesOverrideStartingTime);
         if(WriteSelect(41, buf))
-            buf.WriteDouble(legendMin);
+            buf.WriteInt(pathlinesCMFE);
         if(WriteSelect(42, buf))
-            buf.WriteDouble(legendMax);
+            buf.WriteInt(coordinateSystem);
         if(WriteSelect(43, buf))
-            buf.WriteDouble(displayBegin);
+            buf.WriteDouble(phiFactor);
         if(WriteSelect(44, buf))
-            buf.WriteDouble(displayEnd);
+            buf.WriteString(coloringVariable);
         if(WriteSelect(45, buf))
-            buf.WriteBool(displayBeginFlag);
+            buf.WriteBool(legendMinFlag);
         if(WriteSelect(46, buf))
-            buf.WriteBool(displayEndFlag);
+            buf.WriteBool(legendMaxFlag);
         if(WriteSelect(47, buf))
-            buf.WriteDouble(seedDisplayRadius);
+            buf.WriteDouble(legendMin);
         if(WriteSelect(48, buf))
-            buf.WriteInt(headDisplayType);
+            buf.WriteDouble(legendMax);
         if(WriteSelect(49, buf))
-            buf.WriteDouble(headDisplayRadius);
+            buf.WriteDouble(displayBegin);
         if(WriteSelect(50, buf))
-            buf.WriteDouble(headDisplayHeight);
+            buf.WriteDouble(displayEnd);
         if(WriteSelect(51, buf))
-            buf.WriteInt(opacityType);
+            buf.WriteBool(displayBeginFlag);
         if(WriteSelect(52, buf))
-            buf.WriteString(opacityVariable);
+            buf.WriteBool(displayEndFlag);
         if(WriteSelect(53, buf))
-            buf.WriteDouble(opacity);
+            buf.WriteInt(referenceTypeForDisplay);
         if(WriteSelect(54, buf))
-            buf.WriteDouble(opacityVarMin);
+            buf.WriteInt(displayMethod);
         if(WriteSelect(55, buf))
-            buf.WriteDouble(opacityVarMax);
+            buf.WriteInt(tubeSizeType);
         if(WriteSelect(56, buf))
-            buf.WriteBool(opacityVarMinFlag);
+            buf.WriteDouble(tubeRadiusAbsolute);
         if(WriteSelect(57, buf))
-            buf.WriteBool(opacityVarMaxFlag);
+            buf.WriteDouble(tubeRadiusBBox);
         if(WriteSelect(58, buf))
-            buf.WriteInt(tubeDisplayDensity);
+            buf.WriteInt(ribbonWidthSizeType);
         if(WriteSelect(59, buf))
-            buf.WriteInt(geomDisplayQuality);
+            buf.WriteDouble(ribbonWidthAbsolute);
         if(WriteSelect(60, buf))
-            buf.WriteDouble(sampleDistance0);
+            buf.WriteDouble(ribbonWidthBBox);
         if(WriteSelect(61, buf))
-            buf.WriteDouble(sampleDistance1);
+            buf.WriteInt(lineWidth);
         if(WriteSelect(62, buf))
-            buf.WriteDouble(sampleDistance2);
+            buf.WriteBool(showSeeds);
         if(WriteSelect(63, buf))
-            buf.WriteBool(fillInterior);
+            buf.WriteInt(seedRadiusSizeType);
         if(WriteSelect(64, buf))
-            buf.WriteBool(randomSamples);
+            buf.WriteDouble(seedRadiusAbsolute);
         if(WriteSelect(65, buf))
-            buf.WriteInt(randomSeed);
+            buf.WriteDouble(seedRadiusBBox);
         if(WriteSelect(66, buf))
-            buf.WriteInt(numberOfRandomSamples);
+            buf.WriteBool(showHeads);
         if(WriteSelect(67, buf))
+            buf.WriteInt(headDisplayType);
+        if(WriteSelect(68, buf))
+            buf.WriteInt(headRadiusSizeType);
+        if(WriteSelect(69, buf))
+            buf.WriteDouble(headRadiusAbsolute);
+        if(WriteSelect(70, buf))
+            buf.WriteDouble(headRadiusBBox);
+        if(WriteSelect(71, buf))
+            buf.WriteDouble(headHeightRatio);
+        if(WriteSelect(72, buf))
+            buf.WriteInt(opacityType);
+        if(WriteSelect(73, buf))
+            buf.WriteString(opacityVariable);
+        if(WriteSelect(74, buf))
+            buf.WriteDouble(opacity);
+        if(WriteSelect(75, buf))
+            buf.WriteDouble(opacityVarMin);
+        if(WriteSelect(76, buf))
+            buf.WriteDouble(opacityVarMax);
+        if(WriteSelect(77, buf))
+            buf.WriteBool(opacityVarMinFlag);
+        if(WriteSelect(78, buf))
+            buf.WriteBool(opacityVarMaxFlag);
+        if(WriteSelect(79, buf))
+            buf.WriteInt(tubeDisplayDensity);
+        if(WriteSelect(80, buf))
+            buf.WriteInt(geomDisplayQuality);
+        if(WriteSelect(81, buf))
+            buf.WriteDouble(sampleDistance0);
+        if(WriteSelect(82, buf))
+            buf.WriteDouble(sampleDistance1);
+        if(WriteSelect(83, buf))
+            buf.WriteDouble(sampleDistance2);
+        if(WriteSelect(84, buf))
+            buf.WriteBool(fillInterior);
+        if(WriteSelect(85, buf))
+            buf.WriteBool(randomSamples);
+        if(WriteSelect(86, buf))
+            buf.WriteInt(randomSeed);
+        if(WriteSelect(87, buf))
+            buf.WriteInt(numberOfRandomSamples);
+        if(WriteSelect(88, buf))
             buf.WriteBool(forceNodeCenteredData);
+        if(WriteSelect(89, buf))
+            buf.WriteBool(issueTerminationWarnings);
+        if(WriteSelect(90, buf))
+            buf.WriteBool(issueStiffnessWarnings);
+        if(WriteSelect(91, buf))
+            buf.WriteBool(issueCriticalPointsWarnings);
+        if(WriteSelect(92, buf))
+            buf.WriteDouble(criticalPointThreshold);
     }
 
     public void ReadAtts(int index, CommunicationBuffer buf)
@@ -1286,206 +1623,281 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
             SetSourceType(buf.ReadInt());
             break;
         case 1:
-            SetMaxStepLength(buf.ReadDouble());
-            break;
-        case 2:
-            SetTermination(buf.ReadDouble());
-            break;
-        case 3:
             SetPointSource(buf.ReadDoubleArray());
             break;
-        case 4:
+        case 2:
             SetLineStart(buf.ReadDoubleArray());
             break;
-        case 5:
+        case 3:
             SetLineEnd(buf.ReadDoubleArray());
             break;
-        case 6:
+        case 4:
             SetPlaneOrigin(buf.ReadDoubleArray());
             break;
-        case 7:
+        case 5:
             SetPlaneNormal(buf.ReadDoubleArray());
             break;
-        case 8:
+        case 6:
             SetPlaneUpAxis(buf.ReadDoubleArray());
             break;
-        case 9:
+        case 7:
             SetRadius(buf.ReadDouble());
             break;
-        case 10:
+        case 8:
             SetSphereOrigin(buf.ReadDoubleArray());
             break;
-        case 11:
+        case 9:
             SetBoxExtents(buf.ReadDoubleArray());
             break;
-        case 12:
+        case 10:
             SetUseWholeBox(buf.ReadBool());
             break;
-        case 13:
+        case 11:
             SetPointList(buf.ReadDoubleVector());
             break;
-        case 14:
+        case 12:
             SetSampleDensity0(buf.ReadInt());
             break;
-        case 15:
+        case 13:
             SetSampleDensity1(buf.ReadInt());
             break;
-        case 16:
+        case 14:
             SetSampleDensity2(buf.ReadInt());
             break;
-        case 17:
-            SetDisplayMethod(buf.ReadInt());
-            break;
-        case 18:
-            SetShowSeeds(buf.ReadBool());
-            break;
-        case 19:
-            SetShowHeads(buf.ReadBool());
-            break;
-        case 20:
-            SetTubeRadius(buf.ReadDouble());
-            break;
-        case 21:
-            SetRibbonWidth(buf.ReadDouble());
-            break;
-        case 22:
-            SetLineWidth(buf.ReadInt());
-            break;
-        case 23:
+        case 15:
             SetColoringMethod(buf.ReadInt());
             break;
-        case 24:
+        case 16:
             SetColorTableName(buf.ReadString());
             break;
-        case 25:
+        case 17:
             singleColor.Read(buf);
-            Select(25);
+            Select(17);
             break;
-        case 26:
+        case 18:
             SetLegendFlag(buf.ReadBool());
             break;
-        case 27:
+        case 19:
             SetLightingFlag(buf.ReadBool());
             break;
-        case 28:
+        case 20:
             SetStreamlineDirection(buf.ReadInt());
+            break;
+        case 21:
+            SetMaxSteps(buf.ReadInt());
+            break;
+        case 22:
+            SetTerminateByDistance(buf.ReadBool());
+            break;
+        case 23:
+            SetTermDistance(buf.ReadDouble());
+            break;
+        case 24:
+            SetTerminateByTime(buf.ReadBool());
+            break;
+        case 25:
+            SetTermTime(buf.ReadDouble());
+            break;
+        case 26:
+            SetMaxStepLength(buf.ReadDouble());
+            break;
+        case 27:
+            SetLimitMaximumTimestep(buf.ReadBool());
+            break;
+        case 28:
+            SetMaxTimeStep(buf.ReadDouble());
             break;
         case 29:
             SetRelTol(buf.ReadDouble());
             break;
         case 30:
-            SetAbsTol(buf.ReadDouble());
+            SetAbsTolSizeType(buf.ReadInt());
             break;
         case 31:
-            SetTerminationType(buf.ReadInt());
+            SetAbsTolAbsolute(buf.ReadDouble());
             break;
         case 32:
-            SetIntegrationType(buf.ReadInt());
+            SetAbsTolBBox(buf.ReadDouble());
             break;
         case 33:
-            SetStreamlineAlgorithmType(buf.ReadInt());
+            SetIntegrationType(buf.ReadInt());
             break;
         case 34:
-            SetMaxStreamlineProcessCount(buf.ReadInt());
+            SetStreamlineAlgorithmType(buf.ReadInt());
             break;
         case 35:
-            SetMaxDomainCacheSize(buf.ReadInt());
+            SetMaxStreamlineProcessCount(buf.ReadInt());
             break;
         case 36:
-            SetWorkGroupSize(buf.ReadInt());
+            SetMaxDomainCacheSize(buf.ReadInt());
             break;
         case 37:
-            SetPathlines(buf.ReadBool());
+            SetWorkGroupSize(buf.ReadInt());
             break;
         case 38:
-            SetColoringVariable(buf.ReadString());
+            SetPathlines(buf.ReadBool());
             break;
         case 39:
-            SetLegendMinFlag(buf.ReadBool());
+            SetPathlinesOverrideStartingTimeFlag(buf.ReadBool());
             break;
         case 40:
-            SetLegendMaxFlag(buf.ReadBool());
+            SetPathlinesOverrideStartingTime(buf.ReadDouble());
             break;
         case 41:
-            SetLegendMin(buf.ReadDouble());
+            SetPathlinesCMFE(buf.ReadInt());
             break;
         case 42:
-            SetLegendMax(buf.ReadDouble());
+            SetCoordinateSystem(buf.ReadInt());
             break;
         case 43:
-            SetDisplayBegin(buf.ReadDouble());
+            SetPhiFactor(buf.ReadDouble());
             break;
         case 44:
-            SetDisplayEnd(buf.ReadDouble());
+            SetColoringVariable(buf.ReadString());
             break;
         case 45:
-            SetDisplayBeginFlag(buf.ReadBool());
+            SetLegendMinFlag(buf.ReadBool());
             break;
         case 46:
-            SetDisplayEndFlag(buf.ReadBool());
+            SetLegendMaxFlag(buf.ReadBool());
             break;
         case 47:
-            SetSeedDisplayRadius(buf.ReadDouble());
+            SetLegendMin(buf.ReadDouble());
             break;
         case 48:
-            SetHeadDisplayType(buf.ReadInt());
+            SetLegendMax(buf.ReadDouble());
             break;
         case 49:
-            SetHeadDisplayRadius(buf.ReadDouble());
+            SetDisplayBegin(buf.ReadDouble());
             break;
         case 50:
-            SetHeadDisplayHeight(buf.ReadDouble());
+            SetDisplayEnd(buf.ReadDouble());
             break;
         case 51:
-            SetOpacityType(buf.ReadInt());
+            SetDisplayBeginFlag(buf.ReadBool());
             break;
         case 52:
-            SetOpacityVariable(buf.ReadString());
+            SetDisplayEndFlag(buf.ReadBool());
             break;
         case 53:
-            SetOpacity(buf.ReadDouble());
+            SetReferenceTypeForDisplay(buf.ReadInt());
             break;
         case 54:
-            SetOpacityVarMin(buf.ReadDouble());
+            SetDisplayMethod(buf.ReadInt());
             break;
         case 55:
-            SetOpacityVarMax(buf.ReadDouble());
+            SetTubeSizeType(buf.ReadInt());
             break;
         case 56:
-            SetOpacityVarMinFlag(buf.ReadBool());
+            SetTubeRadiusAbsolute(buf.ReadDouble());
             break;
         case 57:
-            SetOpacityVarMaxFlag(buf.ReadBool());
+            SetTubeRadiusBBox(buf.ReadDouble());
             break;
         case 58:
-            SetTubeDisplayDensity(buf.ReadInt());
+            SetRibbonWidthSizeType(buf.ReadInt());
             break;
         case 59:
-            SetGeomDisplayQuality(buf.ReadInt());
+            SetRibbonWidthAbsolute(buf.ReadDouble());
             break;
         case 60:
-            SetSampleDistance0(buf.ReadDouble());
+            SetRibbonWidthBBox(buf.ReadDouble());
             break;
         case 61:
-            SetSampleDistance1(buf.ReadDouble());
+            SetLineWidth(buf.ReadInt());
             break;
         case 62:
-            SetSampleDistance2(buf.ReadDouble());
+            SetShowSeeds(buf.ReadBool());
             break;
         case 63:
-            SetFillInterior(buf.ReadBool());
+            SetSeedRadiusSizeType(buf.ReadInt());
             break;
         case 64:
-            SetRandomSamples(buf.ReadBool());
+            SetSeedRadiusAbsolute(buf.ReadDouble());
             break;
         case 65:
-            SetRandomSeed(buf.ReadInt());
+            SetSeedRadiusBBox(buf.ReadDouble());
             break;
         case 66:
-            SetNumberOfRandomSamples(buf.ReadInt());
+            SetShowHeads(buf.ReadBool());
             break;
         case 67:
+            SetHeadDisplayType(buf.ReadInt());
+            break;
+        case 68:
+            SetHeadRadiusSizeType(buf.ReadInt());
+            break;
+        case 69:
+            SetHeadRadiusAbsolute(buf.ReadDouble());
+            break;
+        case 70:
+            SetHeadRadiusBBox(buf.ReadDouble());
+            break;
+        case 71:
+            SetHeadHeightRatio(buf.ReadDouble());
+            break;
+        case 72:
+            SetOpacityType(buf.ReadInt());
+            break;
+        case 73:
+            SetOpacityVariable(buf.ReadString());
+            break;
+        case 74:
+            SetOpacity(buf.ReadDouble());
+            break;
+        case 75:
+            SetOpacityVarMin(buf.ReadDouble());
+            break;
+        case 76:
+            SetOpacityVarMax(buf.ReadDouble());
+            break;
+        case 77:
+            SetOpacityVarMinFlag(buf.ReadBool());
+            break;
+        case 78:
+            SetOpacityVarMaxFlag(buf.ReadBool());
+            break;
+        case 79:
+            SetTubeDisplayDensity(buf.ReadInt());
+            break;
+        case 80:
+            SetGeomDisplayQuality(buf.ReadInt());
+            break;
+        case 81:
+            SetSampleDistance0(buf.ReadDouble());
+            break;
+        case 82:
+            SetSampleDistance1(buf.ReadDouble());
+            break;
+        case 83:
+            SetSampleDistance2(buf.ReadDouble());
+            break;
+        case 84:
+            SetFillInterior(buf.ReadBool());
+            break;
+        case 85:
+            SetRandomSamples(buf.ReadBool());
+            break;
+        case 86:
+            SetRandomSeed(buf.ReadInt());
+            break;
+        case 87:
+            SetNumberOfRandomSamples(buf.ReadInt());
+            break;
+        case 88:
             SetForceNodeCenteredData(buf.ReadBool());
+            break;
+        case 89:
+            SetIssueTerminationWarnings(buf.ReadBool());
+            break;
+        case 90:
+            SetIssueStiffnessWarnings(buf.ReadBool());
+            break;
+        case 91:
+            SetIssueCriticalPointsWarnings(buf.ReadBool());
+            break;
+        case 92:
+            SetCriticalPointThreshold(buf.ReadDouble());
             break;
         }
     }
@@ -1509,8 +1921,6 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         if(sourceType == SOURCETYPE_SPECIFIEDBOX)
             str = str + "SOURCETYPE_SPECIFIEDBOX";
         str = str + "\n";
-        str = str + doubleToString("maxStepLength", maxStepLength, indent) + "\n";
-        str = str + doubleToString("termination", termination, indent) + "\n";
         str = str + doubleArrayToString("pointSource", pointSource, indent) + "\n";
         str = str + doubleArrayToString("lineStart", lineStart, indent) + "\n";
         str = str + doubleArrayToString("lineEnd", lineEnd, indent) + "\n";
@@ -1525,19 +1935,6 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         str = str + intToString("sampleDensity0", sampleDensity0, indent) + "\n";
         str = str + intToString("sampleDensity1", sampleDensity1, indent) + "\n";
         str = str + intToString("sampleDensity2", sampleDensity2, indent) + "\n";
-        str = str + indent + "displayMethod = ";
-        if(displayMethod == DISPLAYMETHOD_LINES)
-            str = str + "DISPLAYMETHOD_LINES";
-        if(displayMethod == DISPLAYMETHOD_TUBES)
-            str = str + "DISPLAYMETHOD_TUBES";
-        if(displayMethod == DISPLAYMETHOD_RIBBONS)
-            str = str + "DISPLAYMETHOD_RIBBONS";
-        str = str + "\n";
-        str = str + boolToString("showSeeds", showSeeds, indent) + "\n";
-        str = str + boolToString("showHeads", showHeads, indent) + "\n";
-        str = str + doubleToString("tubeRadius", tubeRadius, indent) + "\n";
-        str = str + doubleToString("ribbonWidth", ribbonWidth, indent) + "\n";
-        str = str + intToString("lineWidth", lineWidth, indent) + "\n";
         str = str + indent + "coloringMethod = ";
         if(coloringMethod == COLORINGMETHOD_SOLID)
             str = str + "COLORINGMETHOD_SOLID";
@@ -1566,16 +1963,23 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         if(streamlineDirection == INTEGRATIONDIRECTION_BOTH)
             str = str + "INTEGRATIONDIRECTION_BOTH";
         str = str + "\n";
+        str = str + intToString("maxSteps", maxSteps, indent) + "\n";
+        str = str + boolToString("terminateByDistance", terminateByDistance, indent) + "\n";
+        str = str + doubleToString("termDistance", termDistance, indent) + "\n";
+        str = str + boolToString("terminateByTime", terminateByTime, indent) + "\n";
+        str = str + doubleToString("termTime", termTime, indent) + "\n";
+        str = str + doubleToString("maxStepLength", maxStepLength, indent) + "\n";
+        str = str + boolToString("limitMaximumTimestep", limitMaximumTimestep, indent) + "\n";
+        str = str + doubleToString("maxTimeStep", maxTimeStep, indent) + "\n";
         str = str + doubleToString("relTol", relTol, indent) + "\n";
-        str = str + doubleToString("absTol", absTol, indent) + "\n";
-        str = str + indent + "terminationType = ";
-        if(terminationType == TERMINATIONTYPE_DISTANCE)
-            str = str + "TERMINATIONTYPE_DISTANCE";
-        if(terminationType == TERMINATIONTYPE_TIME)
-            str = str + "TERMINATIONTYPE_TIME";
-        if(terminationType == TERMINATIONTYPE_STEP)
-            str = str + "TERMINATIONTYPE_STEP";
+        str = str + indent + "absTolSizeType = ";
+        if(absTolSizeType == SIZETYPE_ABSOLUTE)
+            str = str + "SIZETYPE_ABSOLUTE";
+        if(absTolSizeType == SIZETYPE_FRACTIONOFBBOX)
+            str = str + "SIZETYPE_FRACTIONOFBBOX";
         str = str + "\n";
+        str = str + doubleToString("absTolAbsolute", absTolAbsolute, indent) + "\n";
+        str = str + doubleToString("absTolBBox", absTolBBox, indent) + "\n";
         str = str + indent + "integrationType = ";
         if(integrationType == INTEGRATIONTYPE_DORMANDPRINCE)
             str = str + "INTEGRATIONTYPE_DORMANDPRINCE";
@@ -1583,6 +1987,8 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
             str = str + "INTEGRATIONTYPE_ADAMSBASHFORTH";
         if(integrationType == INTEGRATIONTYPE_M3DC1INTEGRATOR)
             str = str + "INTEGRATIONTYPE_M3DC1INTEGRATOR";
+        if(integrationType == INTEGRATIONTYPE_NIMRODINTEGRATOR)
+            str = str + "INTEGRATIONTYPE_NIMRODINTEGRATOR";
         str = str + "\n";
         str = str + indent + "streamlineAlgorithmType = ";
         if(streamlineAlgorithmType == STREAMLINEALGORITHMTYPE_LOADONDEMAND)
@@ -1591,11 +1997,30 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
             str = str + "STREAMLINEALGORITHMTYPE_PARALLELSTATICDOMAINS";
         if(streamlineAlgorithmType == STREAMLINEALGORITHMTYPE_MASTERSLAVE)
             str = str + "STREAMLINEALGORITHMTYPE_MASTERSLAVE";
+        if(streamlineAlgorithmType == STREAMLINEALGORITHMTYPE_VISITSELECTS)
+            str = str + "STREAMLINEALGORITHMTYPE_VISITSELECTS";
         str = str + "\n";
         str = str + intToString("maxStreamlineProcessCount", maxStreamlineProcessCount, indent) + "\n";
         str = str + intToString("maxDomainCacheSize", maxDomainCacheSize, indent) + "\n";
         str = str + intToString("workGroupSize", workGroupSize, indent) + "\n";
         str = str + boolToString("pathlines", pathlines, indent) + "\n";
+        str = str + boolToString("pathlinesOverrideStartingTimeFlag", pathlinesOverrideStartingTimeFlag, indent) + "\n";
+        str = str + doubleToString("pathlinesOverrideStartingTime", pathlinesOverrideStartingTime, indent) + "\n";
+        str = str + indent + "pathlinesCMFE = ";
+        if(pathlinesCMFE == PATHLINESCMFE_CONN_CMFE)
+            str = str + "PATHLINESCMFE_CONN_CMFE";
+        if(pathlinesCMFE == PATHLINESCMFE_POS_CMFE)
+            str = str + "PATHLINESCMFE_POS_CMFE";
+        str = str + "\n";
+        str = str + indent + "coordinateSystem = ";
+        if(coordinateSystem == COORDINATESYSTEM_ASIS)
+            str = str + "COORDINATESYSTEM_ASIS";
+        if(coordinateSystem == COORDINATESYSTEM_CYLINDRICALTOCARTESIAN)
+            str = str + "COORDINATESYSTEM_CYLINDRICALTOCARTESIAN";
+        if(coordinateSystem == COORDINATESYSTEM_CARTESIANTOCYLINDRICAL)
+            str = str + "COORDINATESYSTEM_CARTESIANTOCYLINDRICAL";
+        str = str + "\n";
+        str = str + doubleToString("phiFactor", phiFactor, indent) + "\n";
         str = str + stringToString("coloringVariable", coloringVariable, indent) + "\n";
         str = str + boolToString("legendMinFlag", legendMinFlag, indent) + "\n";
         str = str + boolToString("legendMaxFlag", legendMaxFlag, indent) + "\n";
@@ -1605,18 +2030,67 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         str = str + doubleToString("displayEnd", displayEnd, indent) + "\n";
         str = str + boolToString("displayBeginFlag", displayBeginFlag, indent) + "\n";
         str = str + boolToString("displayEndFlag", displayEndFlag, indent) + "\n";
-        str = str + doubleToString("seedDisplayRadius", seedDisplayRadius, indent) + "\n";
+        str = str + indent + "referenceTypeForDisplay = ";
+        if(referenceTypeForDisplay == REFERENCETYPE_DISTANCE)
+            str = str + "REFERENCETYPE_DISTANCE";
+        if(referenceTypeForDisplay == REFERENCETYPE_TIME)
+            str = str + "REFERENCETYPE_TIME";
+        if(referenceTypeForDisplay == REFERENCETYPE_STEP)
+            str = str + "REFERENCETYPE_STEP";
+        str = str + "\n";
+        str = str + indent + "displayMethod = ";
+        if(displayMethod == DISPLAYMETHOD_LINES)
+            str = str + "DISPLAYMETHOD_LINES";
+        if(displayMethod == DISPLAYMETHOD_TUBES)
+            str = str + "DISPLAYMETHOD_TUBES";
+        if(displayMethod == DISPLAYMETHOD_RIBBONS)
+            str = str + "DISPLAYMETHOD_RIBBONS";
+        str = str + "\n";
+        str = str + indent + "tubeSizeType = ";
+        if(tubeSizeType == SIZETYPE_ABSOLUTE)
+            str = str + "SIZETYPE_ABSOLUTE";
+        if(tubeSizeType == SIZETYPE_FRACTIONOFBBOX)
+            str = str + "SIZETYPE_FRACTIONOFBBOX";
+        str = str + "\n";
+        str = str + doubleToString("tubeRadiusAbsolute", tubeRadiusAbsolute, indent) + "\n";
+        str = str + doubleToString("tubeRadiusBBox", tubeRadiusBBox, indent) + "\n";
+        str = str + indent + "ribbonWidthSizeType = ";
+        if(ribbonWidthSizeType == SIZETYPE_ABSOLUTE)
+            str = str + "SIZETYPE_ABSOLUTE";
+        if(ribbonWidthSizeType == SIZETYPE_FRACTIONOFBBOX)
+            str = str + "SIZETYPE_FRACTIONOFBBOX";
+        str = str + "\n";
+        str = str + doubleToString("ribbonWidthAbsolute", ribbonWidthAbsolute, indent) + "\n";
+        str = str + doubleToString("ribbonWidthBBox", ribbonWidthBBox, indent) + "\n";
+        str = str + intToString("lineWidth", lineWidth, indent) + "\n";
+        str = str + boolToString("showSeeds", showSeeds, indent) + "\n";
+        str = str + indent + "seedRadiusSizeType = ";
+        if(seedRadiusSizeType == SIZETYPE_ABSOLUTE)
+            str = str + "SIZETYPE_ABSOLUTE";
+        if(seedRadiusSizeType == SIZETYPE_FRACTIONOFBBOX)
+            str = str + "SIZETYPE_FRACTIONOFBBOX";
+        str = str + "\n";
+        str = str + doubleToString("seedRadiusAbsolute", seedRadiusAbsolute, indent) + "\n";
+        str = str + doubleToString("seedRadiusBBox", seedRadiusBBox, indent) + "\n";
+        str = str + boolToString("showHeads", showHeads, indent) + "\n";
         str = str + indent + "headDisplayType = ";
         if(headDisplayType == GEOMDISPLAYTYPE_SPHERE)
             str = str + "GEOMDISPLAYTYPE_SPHERE";
         if(headDisplayType == GEOMDISPLAYTYPE_CONE)
             str = str + "GEOMDISPLAYTYPE_CONE";
         str = str + "\n";
-        str = str + doubleToString("headDisplayRadius", headDisplayRadius, indent) + "\n";
-        str = str + doubleToString("headDisplayHeight", headDisplayHeight, indent) + "\n";
+        str = str + indent + "headRadiusSizeType = ";
+        if(headRadiusSizeType == SIZETYPE_ABSOLUTE)
+            str = str + "SIZETYPE_ABSOLUTE";
+        if(headRadiusSizeType == SIZETYPE_FRACTIONOFBBOX)
+            str = str + "SIZETYPE_FRACTIONOFBBOX";
+        str = str + "\n";
+        str = str + doubleToString("headRadiusAbsolute", headRadiusAbsolute, indent) + "\n";
+        str = str + doubleToString("headRadiusBBox", headRadiusBBox, indent) + "\n";
+        str = str + doubleToString("headHeightRatio", headHeightRatio, indent) + "\n";
         str = str + indent + "opacityType = ";
-        if(opacityType == OPACITYTYPE_NONE)
-            str = str + "OPACITYTYPE_NONE";
+        if(opacityType == OPACITYTYPE_FULLYOPAQUE)
+            str = str + "OPACITYTYPE_FULLYOPAQUE";
         if(opacityType == OPACITYTYPE_CONSTANT)
             str = str + "OPACITYTYPE_CONSTANT";
         if(opacityType == OPACITYTYPE_RAMP)
@@ -1649,14 +2123,16 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
         str = str + intToString("randomSeed", randomSeed, indent) + "\n";
         str = str + intToString("numberOfRandomSamples", numberOfRandomSamples, indent) + "\n";
         str = str + boolToString("forceNodeCenteredData", forceNodeCenteredData, indent) + "\n";
+        str = str + boolToString("issueTerminationWarnings", issueTerminationWarnings, indent) + "\n";
+        str = str + boolToString("issueStiffnessWarnings", issueStiffnessWarnings, indent) + "\n";
+        str = str + boolToString("issueCriticalPointsWarnings", issueCriticalPointsWarnings, indent) + "\n";
+        str = str + doubleToString("criticalPointThreshold", criticalPointThreshold, indent) + "\n";
         return str;
     }
 
 
     // Attributes
     private int            sourceType;
-    private double         maxStepLength;
-    private double         termination;
     private double[]       pointSource;
     private double[]       lineStart;
     private double[]       lineEnd;
@@ -1671,27 +2147,35 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
     private int            sampleDensity0;
     private int            sampleDensity1;
     private int            sampleDensity2;
-    private int            displayMethod;
-    private boolean        showSeeds;
-    private boolean        showHeads;
-    private double         tubeRadius;
-    private double         ribbonWidth;
-    private int            lineWidth;
     private int            coloringMethod;
     private String         colorTableName;
     private ColorAttribute singleColor;
     private boolean        legendFlag;
     private boolean        lightingFlag;
     private int            streamlineDirection;
+    private int            maxSteps;
+    private boolean        terminateByDistance;
+    private double         termDistance;
+    private boolean        terminateByTime;
+    private double         termTime;
+    private double         maxStepLength;
+    private boolean        limitMaximumTimestep;
+    private double         maxTimeStep;
     private double         relTol;
-    private double         absTol;
-    private int            terminationType;
+    private int            absTolSizeType;
+    private double         absTolAbsolute;
+    private double         absTolBBox;
     private int            integrationType;
     private int            streamlineAlgorithmType;
     private int            maxStreamlineProcessCount;
     private int            maxDomainCacheSize;
     private int            workGroupSize;
     private boolean        pathlines;
+    private boolean        pathlinesOverrideStartingTimeFlag;
+    private double         pathlinesOverrideStartingTime;
+    private int            pathlinesCMFE;
+    private int            coordinateSystem;
+    private double         phiFactor;
     private String         coloringVariable;
     private boolean        legendMinFlag;
     private boolean        legendMaxFlag;
@@ -1701,10 +2185,25 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
     private double         displayEnd;
     private boolean        displayBeginFlag;
     private boolean        displayEndFlag;
-    private double         seedDisplayRadius;
+    private int            referenceTypeForDisplay;
+    private int            displayMethod;
+    private int            tubeSizeType;
+    private double         tubeRadiusAbsolute;
+    private double         tubeRadiusBBox;
+    private int            ribbonWidthSizeType;
+    private double         ribbonWidthAbsolute;
+    private double         ribbonWidthBBox;
+    private int            lineWidth;
+    private boolean        showSeeds;
+    private int            seedRadiusSizeType;
+    private double         seedRadiusAbsolute;
+    private double         seedRadiusBBox;
+    private boolean        showHeads;
     private int            headDisplayType;
-    private double         headDisplayRadius;
-    private double         headDisplayHeight;
+    private int            headRadiusSizeType;
+    private double         headRadiusAbsolute;
+    private double         headRadiusBBox;
+    private double         headHeightRatio;
     private int            opacityType;
     private String         opacityVariable;
     private double         opacity;
@@ -1722,5 +2221,9 @@ public class StreamlineAttributes extends AttributeSubject implements Plugin
     private int            randomSeed;
     private int            numberOfRandomSamples;
     private boolean        forceNodeCenteredData;
+    private boolean        issueTerminationWarnings;
+    private boolean        issueStiffnessWarnings;
+    private boolean        issueCriticalPointsWarnings;
+    private double         criticalPointThreshold;
 }
 

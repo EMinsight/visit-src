@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -44,17 +44,21 @@
 //
 // Functions exposed to the VisIt module.
 //
+#define FILLEDBOUNDARYATTRIBUTES_NMETH 46
 void           PyFilledBoundaryAttributes_StartUp(FilledBoundaryAttributes *subj, void *data);
 void           PyFilledBoundaryAttributes_CloseDown();
-PyMethodDef *   PyFilledBoundaryAttributes_GetMethodTable(int *nMethods);
+PyMethodDef *  PyFilledBoundaryAttributes_GetMethodTable(int *nMethods);
 bool           PyFilledBoundaryAttributes_Check(PyObject *obj);
 FilledBoundaryAttributes *  PyFilledBoundaryAttributes_FromPyObject(PyObject *obj);
-PyObject *      PyFilledBoundaryAttributes_New();
-PyObject *      PyFilledBoundaryAttributes_Wrap(const FilledBoundaryAttributes *attr);
+PyObject *     PyFilledBoundaryAttributes_New();
+PyObject *     PyFilledBoundaryAttributes_Wrap(const FilledBoundaryAttributes *attr);
 void           PyFilledBoundaryAttributes_SetParent(PyObject *obj, PyObject *parent);
 void           PyFilledBoundaryAttributes_SetDefaults(const FilledBoundaryAttributes *atts);
 std::string    PyFilledBoundaryAttributes_GetLogString();
 std::string    PyFilledBoundaryAttributes_ToString(const FilledBoundaryAttributes *, const char *);
+PyObject *     PyFilledBoundaryAttributes_getattr(PyObject *self, char *name);
+int            PyFilledBoundaryAttributes_setattr(PyObject *self, char *name, PyObject *args);
+extern PyMethodDef PyFilledBoundaryAttributes_methods[FILLEDBOUNDARYATTRIBUTES_NMETH];
 
 #endif
 

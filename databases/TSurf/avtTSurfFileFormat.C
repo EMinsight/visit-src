@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -379,6 +379,7 @@ avtTSurfFileFormat::ReadFile(const char *name, int nLines)
         // the size of the file.
         nPoints = fileSize / 60;
         nCells  = fileSize / 45;
+        fclose(fp);
 #endif
     }
     vtkPoints *pts = vtkPoints::New();

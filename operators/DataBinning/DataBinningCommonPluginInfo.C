@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -43,6 +43,21 @@
 #include <DataBinningPluginInfo.h>
 #include <DataBinningAttributes.h>
 
+#include <Expression.h>
+#include <ExpressionList.h>
+#include <avtDatabaseMetaData.h>
+#include <avtMeshMetaData.h>
+#include <avtSubsetsMetaData.h>
+#include <avtScalarMetaData.h>
+#include <avtVectorMetaData.h>
+#include <avtTensorMetaData.h>
+#include <avtSymmetricTensorMetaData.h>
+#include <avtArrayMetaData.h>
+#include <avtMaterialMetaData.h>
+#include <avtSpeciesMetaData.h>
+#include <avtCurveMetaData.h>
+#include <avtLabelMetaData.h>
+
 // ****************************************************************************
 //  Method: DataBinningCommonPluginInfo::AllocAttributes
 //
@@ -83,3 +98,49 @@ DataBinningCommonPluginInfo::CopyAttributes(AttributeSubject *to,
 {
     *((DataBinningAttributes *) to) = *((DataBinningAttributes *) from);
 }
+
+ExpressionList *
+DataBinningCommonPluginInfo::GetCreatedExpressions(const avtDatabaseMetaData *md)
+{
+    char name[1024];
+    char defn[1024];
+    ExpressionList *el = new ExpressionList;
+
+    for (int i = 0 ; i < md->GetNumMeshes() ; i++)
+    {
+        const char *mesh = md->GetMeshes(i).name.c_str();
+
+        Expression e2; 
+        sprintf(name, "operators/DataBinning/1D/%s", mesh);
+        e2.SetName(name);
+        e2.SetType(Expression::CurveMeshVar);
+        e2.SetFromOperator(true);
+        e2.SetOperatorName("DataBinning");
+        sprintf(defn, "cell_constant(%s, 0)", mesh);
+        e2.SetDefinition(defn);
+        el->AddExpressions(e2);
+    
+        Expression e; 
+        sprintf(name, "operators/DataBinning/2D/%s", mesh);
+        e.SetName(name);
+        e.SetType(Expression::ScalarMeshVar);
+        e.SetFromOperator(true);
+        e.SetOperatorName("DataBinning");
+        sprintf(defn, "cell_constant(%s, 0)", mesh);
+        e.SetDefinition(defn);
+        el->AddExpressions(e);
+    
+        Expression e3; 
+        sprintf(name, "operators/DataBinning/3D/%s", mesh);
+        e3.SetName(name);
+        e3.SetType(Expression::ScalarMeshVar);
+        e3.SetFromOperator(true);
+        e3.SetOperatorName("DataBinning");
+        sprintf(defn, "cell_constant(%s, 0)", mesh);
+        e3.SetDefinition(defn);
+        el->AddExpressions(e3);
+    }
+   
+    return el;
+}
+

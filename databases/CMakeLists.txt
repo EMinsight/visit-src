@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-400142
 # All rights reserved.
@@ -85,6 +85,13 @@
 #
 #    Mark C. Miller, Sun Aug 29 23:35:37 PDT 2010
 #    Fixed support for DBIO-ONLY build.
+#
+#    Brad Whitlock, Fri Oct 22 15:06:17 PDT 2010
+#    I added a GMV reader.
+#
+#    Eric Brugger, Fri Jan  7 13:35:31 PST 2011
+#    I replaced the BOXLIB2D and BOXLIB3D variables with just BOXLIB.
+#
 #****************************************************************************/
 IF(NOT WIN32)
     SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${VISIT_PLUGIN_DIR}/databases)
@@ -129,8 +136,7 @@ UNSET(TMP_THIRDPARTY_IO_LIBRARY_DIR)
 UNSET(TMP_THIRDPARTY_IO_LIB)
 THIRDPARTY_DEPENDENT_PLUGINS(ADIOS    ADIOS)
 THIRDPARTY_DEPENDENT_PLUGINS(ADVIO    Adventure)
-THIRDPARTY_DEPENDENT_PLUGINS(BOXLIB2D Boxlib2D)
-THIRDPARTY_DEPENDENT_PLUGINS(BOXLIB3D Boxlib3D)
+THIRDPARTY_DEPENDENT_PLUGINS(BOXLIB   Boxlib2D Boxlib3D)
 THIRDPARTY_DEPENDENT_PLUGINS(CCMIO    CCM)
 THIRDPARTY_DEPENDENT_PLUGINS(CFITSIO  FITS)
 THIRDPARTY_DEPENDENT_PLUGINS(CGNS     CGNS)
@@ -211,6 +217,7 @@ EnSight
 ExtrudedVol
 Fluent
 GGCM
+GMV
 GULP
 Gadget
 Image
@@ -235,6 +242,7 @@ SAR
 SAS
 STL
 Shapefile
+SimV2
 Spheral
 TFT
 TSurf
@@ -256,7 +264,7 @@ IF (NOT WIN32)
         ZipWrapper
     )
     IF(NOT VISIT_STATIC AND NOT VISIT_DBIO_ONLY)
-        LIST(APPEND REQUIRED_DATABASE_PLUGINS SimV1 SimV1Writer SimV2)
+        LIST(APPEND REQUIRED_DATABASE_PLUGINS SimV1 SimV1Writer)
     ENDIF(NOT VISIT_STATIC AND NOT VISIT_DBIO_ONLY)
     SET(OPTIONAL_DATABASE_PLUGINS
         Hex

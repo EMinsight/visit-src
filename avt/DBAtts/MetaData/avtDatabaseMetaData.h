@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -396,6 +396,7 @@ public:
     void AddDefaultSILRestrictionDescription(const std::string&);
     void         Add(avtSubsetsMetaData *);
     const intVector& GetRestrictedMatnos(const std::string&) const;
+    bool Empty() const;
 
     // IDs that can be used to identify fields in case statements
     enum {

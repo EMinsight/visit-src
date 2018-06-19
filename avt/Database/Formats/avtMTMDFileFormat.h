@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -88,6 +88,8 @@ class     avtIOInformation;
 //    Add support for time slice offsets (used when group MT files with .visit
 //    files).
 //
+//    Mark C. Miller, Fri Oct 29 09:58:43 PDT 2010
+//    Moved implementation of SetDatabaseMetaData to the .C file.
 // ****************************************************************************
 
 class DATABASE_API avtMTMDFileFormat : public avtFileFormat
@@ -112,8 +114,7 @@ class DATABASE_API avtMTMDFileFormat : public avtFileFormat
                                { avtFileFormat::ActivateTimestep(); };
     virtual void           PopulateIOInformation(int ts, avtIOInformation& ioInfo)
                                { avtFileFormat::PopulateIOInformation(ioInfo); };
-    virtual void           SetDatabaseMetaData(avtDatabaseMetaData *md, int ts = 0)
-                               { metadata = md; PopulateDatabaseMetaData(metadata, ts); };
+    virtual void           SetDatabaseMetaData(avtDatabaseMetaData *md, int ts = 0);
 
     void                   SetTimeSliceOffset(int ts) { timeSliceOffset = ts; };
 

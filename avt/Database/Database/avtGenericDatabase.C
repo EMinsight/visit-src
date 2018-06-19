@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -478,15 +478,43 @@ avtGenericDatabase::SetCycleTimeInDatabaseMetaData(avtDatabaseMetaData *md, int 
 //    domains could be read in double precision before any one domain is
 //    converted to float) to inside ReadDataset. Doh! Why didn't I think
 //    of that before.
+//
+//    Hank Childs, Mon Nov 22 10:47:22 PST 2010
+//    Call PopulateDataObjectInfo at the beginning of the method as well ...
+//    this makes sure the variable list is up-to-date when we calculate
+//    extents ... and this extents calculation happens before the PopDBObjInfo
+//    at the end.
+//
+//    Hank Childs, Sun Nov 28 16:51:28 PST 2010
+//    Pass meshname and time step to MergeExtents ... this gives it enough
+//    information to cache.
+//
+//    Hank Childs, Wed Dec 22 15:14:33 PST 2010
+//    Tell the file formats whether or not we are streaming.
+//
 // ****************************************************************************
 
 avtDataTree_p
 avtGenericDatabase::GetOutput(avtDataRequest_p spec,
                               avtSourceFromDatabase *src)
 {
+    avtDataValidity &validity = src->GetOutput()->GetInfo().GetValidity();
+    bool canDoCollectiveCommunication = !validity.AreWeStreaming();
+    Interface->DoingStreaming(validity.AreWeStreaming());
+
     int timerHandle = visitTimer->StartTimer();
     int timeStep = spec->GetTimestep();
+    avtDataObject_p dob = src->GetOutput();
     avtDatabaseMetaData *md = GetMetaData(timeStep);
+
+    //
+    // We call PopDataObjInfo twice in this method.  This time we do it so 
+    // that the variable list can be updated.  We need that so that MergeExtents
+    // will be right.
+    //
+    vector<bool> dummy;
+    PopulateDataObjectInformation(dob, spec->GetVariable(), timeStep, 
+                                  dummy, spec);
 
     UpdateInternalState(timeStep);
 
@@ -603,8 +631,6 @@ avtGenericDatabase::GetOutput(avtDataRequest_p spec,
     }
     ENDTRY
 
-    avtDataValidity &validity = src->GetOutput()->GetInfo().GetValidity();
-    bool canDoCollectiveCommunication = !validity.AreWeStreaming();
 #ifdef PARALLEL
     int t1 = visitTimer->StartTimer();
     if (canDoCollectiveCommunication)
@@ -808,7 +834,6 @@ avtGenericDatabase::GetOutput(avtDataRequest_p spec,
     // like may have changed slightly (we may have decided it had ghost zones
     // for example), so call this again.
     //
-    avtDataObject_p dob = src->GetOutput();
     if (nDomains == 0)
         dob->GetInfo().GetValidity().SetHasEverOwnedAnyDomain(false);
     if (didSimplifiedNesting)
@@ -1091,7 +1116,8 @@ avtGenericDatabase::GetDataset(const char *varname, int ts, int domain,
     // Make sure that every domain we read has its extents merged into the
     // extents for all the dataset.
     //
-    src->MergeExtents(rv);
+    string meshname  = GetMetaData(ts)->MeshForVar(varname);
+    src->MergeExtents(rv, domain, ts, meshname.c_str());
 
     return rv;
 }

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -134,83 +134,21 @@ avtDeferExpressionFilter::Equivalent(const AttributeGroup *a)
 
 
 // ****************************************************************************
-//  Method: avtDeferExpressionFilter::ModifyContract
+//  Method: avtDeferExpressionFilter::GetVariablesToEvaluate
 //
 //  Purpose:
-//      Allows the EEF to declare which variables it needs for the expressions
-//      whose evaluation are being deferred.
+//      Gets the list of variables to be evaluated with this filter's 
+//      execution.
 //
 //  Programmer: Hank Childs
-//  Creation:   September 1, 2005
+//  Creation:   September 23, 2010
 //
-//  Modifications:
-//    Brad Whitlock, Fri Mar 9 17:31:44 PST 2007
-//    Updated because of small change to ExpressionList.
-//
-//    Mark C. Miller, Wed Jun 17 14:27:08 PDT 2009
-//    Replaced CATCHALL(...) with CATCHALL.
 // ****************************************************************************
 
-avtContract_p
-avtDeferExpressionFilter::ModifyContract(avtContract_p spec)
+void
+avtDeferExpressionFilter::GetVariablesToEvaluate(std::vector<std::string> &vars)
 {
-    int  i, j;
-
-    //
-    // The pipeline specification may already contain two flavors of
-    // expressions.  Expressions whose evaluation should be deferred and
-    // expressions that will be evaluated at the top of the pipeline.
-    // 
-    // The EEF determines which variables an expression depends on and adds 
-    // those expressions to the pipeline specification.  We want to perform 
-    // this duty for only those expression whose evaluation we are deferring.
-    //
-    // The easiest way to do this is to modify the expression list.  We can
-    // make the expressions that are being deferred appear to be the only
-    // expressions that exist.  That way, this instance of the EEF will not
-    // interfere with the expressions that should be processed normally
-    // (ie at the top of the pipeline).
-    //
-    ExpressionList *el = ParsingExprList::Instance()->GetList();
-    ExpressionList new_el;
-    for (j = 0 ; j < atts.GetExprs().size() ; j++)
-    {
-        bool foundMatch = false;
-        for (i = 0 ; i < el->GetNumExpressions() ; i++)
-            if (atts.GetExprs()[j] == el->GetExpressions(i).GetName())
-            {
-                new_el.AddExpressions(el->GetExpressions(i));
-                foundMatch = true;
-                break;
-            }
-        if (!foundMatch)
-            EXCEPTION1(InvalidVariableException, atts.GetExprs()[j].c_str());
-
-        // If this is a vector, then look for the magnitude as well.
-        std::string newName = atts.GetExprs()[j] + "_AVT_mag";
-        for (i = 0 ; i < el->GetNumExpressions() ; i++)
-            if (newName == el->GetExpressions(i).GetName())
-                new_el.AddExpressions(el->GetExpressions(i));
-    }
-
-    ExpressionList orig_el = *el;
-    *el = new_el;
-
-    avtContract_p rv = spec;
-    TRY
-    {
-        rv = avtExpressionEvaluatorFilter::ModifyContract(spec);
-        *el = orig_el;
-    }
-    CATCHALL
-    {
-        *el = orig_el;
-
-        RETHROW;
-    }
-    ENDTRY
-
-    return rv;
+    vars = atts.GetExprs();
 }
 
 

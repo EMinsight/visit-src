@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -68,7 +68,6 @@
 #include <NoDefaultVariableException.h>
 #include <TimingsManager.h>
 
-
 using std::vector;
 using std::string;
 
@@ -116,6 +115,7 @@ avtContourFilter::avtContourFilter(const ContourOpAttributes &a)
     cf     = vtkVisItContourFilter::New();
     stillNeedExtents = true;
     shouldCreateLabels = true;
+    timeslice_index = 0;
 
     logFlag = (atts.GetScaling() == ContourOpAttributes::Linear ?
                false : true);
@@ -248,6 +248,9 @@ avtContourFilter::~avtContourFilter()
 //    Hank Childs, Thu Aug 26 17:13:59 PDT 2010
 //    Calculate the extents of the variable if we are doing "nlevels".
 //
+//    Hank Childs, Sun Nov 28 09:28:15 PST 2010
+//    Initialize timeslice_index.
+//
 // ****************************************************************************
 
 avtContract_p
@@ -262,6 +265,8 @@ avtContourFilter::ModifyContract(avtContract_p in_contract)
         varname = atts.GetVariable().c_str();
     else 
         varname = contract->GetDataRequest()->GetVariable();
+
+    timeslice_index = contract->GetDataRequest()->GetTimestep();
 
     if (GetInput()->GetInfo().GetAttributes().GetTopologicalDimension() == 3)
         contract->GetDataRequest()->SetNeedValidFaceConnectivity(true);
@@ -595,6 +600,9 @@ avtContourFilter::PreExecute(void)
 //    Hank Childs, Wed Jan  7 16:03:29 CST 2009
 //    Only use a scalar tree if we have multiple isolevels.
 //
+//    Hank Childs, Sun Nov 28 09:12:51 PST 2010
+//    Cache the scalar tree for later usage.
+//
 // ****************************************************************************
 
 avtDataTree_p 
@@ -671,17 +679,30 @@ avtContourFilter::ExecuteDataTree(vtkDataSet *in_ds, int domain, string label)
     // which could lead to a divide-by-0 when calculating progress.
     //
     int nLevels = isoValues.size();
-    bool useScalarTree = (nLevels > 1);
     int total = 4*nLevels+2;
     UpdateProgress(current_node*total + nLevels+1, total*nnodes);
 
-    vtkVisItScalarTree *tree = vtkVisItScalarTree::New();
+    //bool useScalarTree = (nLevels > 1);
+    bool useScalarTree = true; // now use scalar tree in all occasions, since we
+                               // can cache it for later use.
+    vtkVisItScalarTree *tree = NULL;
     if (useScalarTree)
     {
-         tree->SetDataSet(toBeContoured);
-         int id0 = visitTimer->StartTimer();
-         tree->BuildTree();
-         visitTimer->StopTimer(id0, "Building scalar tree");
+         int ts = timeslice_index;
+         tree = (vtkVisItScalarTree *) FetchArbitraryVTKObject(DATA_DEPENDENCE, 
+                                           contourVar, domain, ts, "SCALAR_TREE");
+         if (tree == NULL)
+         {
+             tree = vtkVisItScalarTree::New();
+             tree->SetDataSet(toBeContoured);
+             int id0 = visitTimer->StartTimer();
+             tree->BuildTree();
+             visitTimer->StopTimer(id0, "Building scalar tree");
+             StoreArbitraryVTKObject(DATA_DEPENDENCE, contourVar, domain, ts,
+                                     "SCALAR_TREE", tree);
+         }
+         else
+             tree->Register(NULL); // to account for later dereference
     }
 
     UpdateProgress(current_node*total + 2*nLevels+2, total*nnodes);
@@ -753,7 +774,8 @@ avtContourFilter::ExecuteDataTree(vtkDataSet *in_ds, int domain, string label)
     }
     delete [] out_ds;
     toBeContoured->Delete();
-    tree->Delete();
+    if (tree != NULL)
+        tree->Delete();
 
     visitTimer->StopTimer(tt1, "avtContourFilter::ExecuteData");
     current_node++;
@@ -1086,6 +1108,10 @@ avtContourFilter::CreateNIsoValues(double min, double max)
 //    Change print format to "%f" to preserve precision .. allows users to
 //    change the format of legend labels at will.
 //
+//    Kathleen Bonnell, Wed Dec 15 16:13:02 PST 2010
+//    Change print format to "%g", don't know what I was thinking using
+//    "%f".
+//
 // ****************************************************************************
 
 void
@@ -1105,7 +1131,7 @@ avtContourFilter::CreateLabels()
 
     for (int i = 0; i < isoValues.size(); i++)
     {
-        sprintf(temp, "%f", isoValues[i]);
+        sprintf(temp, "%g", isoValues[i]);
         isoLabels.push_back(temp);
     }
 }

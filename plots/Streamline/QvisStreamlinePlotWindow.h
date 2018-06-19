@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -127,6 +127,22 @@ class StreamlineAttributes;
 //   Dave Pugmire, Wed Jun 23 16:44:36 EDT 2010
 //   Repace fill interior checkbox with radio button.
 //
+//   Hank Childs, Wed Sep 29 20:22:36 PDT 2010
+//   Add methods for the maximum time step (DoPri), which is distinct from
+//   the step length (Adams/Bashforth).
+//
+//   Hank Childs, Thu Sep 30 01:22:24 PDT 2010
+//   Add widgets for choosing size type between fraction of bbox and absolute.
+//
+//   Hank Childs, Fri Oct  1 21:13:56 PDT 2010
+//   Add size type option for absTol.
+//
+//   Hank Childs, Wed Oct  6 20:27:09 PDT 2010
+//   Add options for different termination types.
+//
+//   Hank Childs, Sun Dec  5 04:59:00 PST 2010
+//   Add new data members for warnings for stiffness and critical points.
+//
 // ****************************************************************************
 
 class QvisStreamlinePlotWindow : public QvisPostableWindowObserver
@@ -157,17 +173,21 @@ class QvisStreamlinePlotWindow : public QvisPostableWindowObserver
     void TurnOffSourceAttributes();
     void UpdateAlgorithmAttributes();
     void UpdateIntegrationAttributes();
-    void UpdateTerminationType();
   private slots:
     void sourceTypeChanged(int val);
-    void termTypeChanged(int val);
     void integrationTypeChanged(int val);
     void streamlineAlgorithmChanged(int val);
     void directionTypeChanged(int val);
     void maxStepLengthProcessText();
-    void terminationProcessText();
+    void maxTimeStepProcessText();
+    void maxStepsProcessText();
+    void limitMaxTimeChanged(bool);
+    void maxTimeProcessText();
+    void limitMaxDistanceChanged(bool);
+    void maxDistanceProcessText();
     void relTolProcessText();
     void absTolProcessText();
+    void absTolSizeTypeChanged(int);
     void pointSourceProcessText();
     void lineStartProcessText();
     void lineEndProcessText();
@@ -198,14 +218,19 @@ class QvisStreamlinePlotWindow : public QvisPostableWindowObserver
     void ribbonWidthProcessText();
     void seedRadiusProcessText();
     void headRadiusProcessText();
-    void headHeightProcessText();
+    void headHeightRatioProcessText();
     void lineWidthChanged(int style);
     void coloringMethodChanged(int val);
     void colorTableNameChanged(bool useDefault, const QString &ctName);
     void singleColorChanged(const QColor &color);
     void legendFlagChanged(bool val);
     void lightingFlagChanged(bool val);
-    void pathlineFlagChanged(bool val);
+    void icButtonGroupChanged(int val);
+    void coordinateButtonGroupChanged(int val);
+    void phiFactorProcessText();
+    void pathlineOverrideStartingTimeFlagChanged(bool val);
+    void pathlineOverrideStartingTimeProcessText();
+    void pathlineCMFEButtonGroupChanged(int val);
     void useWholeBoxChanged(bool val);
     void coloringVariableChanged(const QString &var);
     void opacityTypeChanged(int val);
@@ -222,6 +247,7 @@ class QvisStreamlinePlotWindow : public QvisPostableWindowObserver
     void opacityMaxToggled(bool);
     void processOpacityVarMin();
     void processOpacityVarMax();
+    void displayReferenceTypeChanged(int val);
     void displayBeginToggled(bool);
     void displayEndToggled(bool);
     void tubeDisplayDensityChanged(int);
@@ -231,20 +257,39 @@ class QvisStreamlinePlotWindow : public QvisPostableWindowObserver
     void pointListDoubleClicked(QListWidgetItem*);
     void addPoint();
     void deletePoint();
+    void deletePoints();
     void readPoints();
     void textChanged(const QString &currentText);
     void forceNodalChanged(bool);
+    void limitMaxTimeStepChanged(bool);
+    void headSizeTypeChanged(int);
+    void seedSizeTypeChanged(int);
+    void tubeSizeTypeChanged(int);
+    void ribbonSizeTypeChanged(int);
+    void issueWarningForMaxStepsChanged(bool);
+    void issueWarningForStiffnessChanged(bool);
+    void issueWarningForCriticalPointsChanged(bool);
+    void criticalPointThresholdProcessText();
 
   private:
     int plotType;
     QComboBox *sourceType;
     QComboBox *directionType;
+    QLabel    *limitMaxTimeStepLabel;
+    QCheckBox *limitMaxTimeStep;
     QLineEdit *maxStepLength;
     QLabel    *maxStepLengthLabel;
-    QLineEdit *termination;
+    QLineEdit *maxTimeStep;
+    QLabel    *maxTimeStepLabel;
+    QLineEdit *maxSteps;
+    QCheckBox *limitMaxTime;
+    QLineEdit *maxTime;
+    QCheckBox *limitMaxDistance;
+    QLineEdit *maxDistance;
     QLineEdit *relTol;
     QLabel    *relTolLabel;
     QLineEdit *absTol;
+    QComboBox *absTolSizeType;
     QLabel    *absTolLabel;
     QLabel    *forceNodalLabel;
     QCheckBox *forceNodal;
@@ -255,7 +300,7 @@ class QvisStreamlinePlotWindow : public QvisPostableWindowObserver
     QLineEdit *lineEnd;
     QLabel    *lineEndLabel;
     QListWidget *pointList;
-    QPushButton *pointListDelPoint, *pointListAddPoint, *pointListReadPoints;
+    QPushButton *pointListDelPoint, *pointListDelAllPoints, *pointListAddPoint, *pointListReadPoints;
     QLineEdit *planeOrigin;
     QLabel    *planeOriginLabel;
     QLineEdit *planeNormal;
@@ -283,14 +328,17 @@ class QvisStreamlinePlotWindow : public QvisPostableWindowObserver
     QButtonGroup *fillButtonGroup;
     QRadioButton *fillButtons[2];
 
-
     QComboBox *displayMethod;
     QCheckBox *showSeeds, *showHeads;
     QLabel    *seedRadiusLabel, *headRadiusLabel, *headHeightLabel;
     QComboBox *headDisplayType;
+    QComboBox *headSizeType;
     QLabel    *headDisplayTypeLabel;
     QLineEdit *seedRadius, *headRadius, *headHeight;
+    QComboBox *seedSizeType;
     QLineEdit *tubeRadius, *ribbonWidth;
+    QComboBox *tubeSizeType;
+    QComboBox *ribbonSizeType;
     QLabel    *geomRadiusLabel;
     QvisLineWidthWidget *lineWidth;
     QLabel    *lineWidthLabel;
@@ -302,8 +350,13 @@ class QvisStreamlinePlotWindow : public QvisPostableWindowObserver
     QLabel    *singleColorLabel;
     QCheckBox *legendFlag;
     QCheckBox *lightingFlag;
-    QCheckBox *pathlineFlag;
-    QComboBox *termType;
+    QButtonGroup *icButtonGroup;
+    QButtonGroup *coordinateButtonGroup;
+    QLineEdit *phiFactor;
+    QLabel    *phiFactorLabel;
+    QCheckBox *pathlineOverrideStartingTimeFlag;
+    QLineEdit *pathlineOverrideStartingTime;
+    QButtonGroup *pathlineCMFEButtonGroup;
     QComboBox *integrationType;
     QLabel    *slAlgoLabel;
     QComboBox *slAlgo;
@@ -319,6 +372,7 @@ class QvisStreamlinePlotWindow : public QvisPostableWindowObserver
     QCheckBox *legendMinToggle;
     QLineEdit *legendMaxEdit;
     QLineEdit *legendMinEdit;
+    QComboBox *displayReferenceType;
     QLabel    *displayLabel;
     QCheckBox *displayBeginToggle;
     QCheckBox *displayEndToggle;
@@ -337,9 +391,16 @@ class QvisStreamlinePlotWindow : public QvisPostableWindowObserver
     QLabel    *geomDisplayQualityLabel;
     QComboBox *geomDisplayQuality;
 
+    QCheckBox *issueWarningForMaxSteps;
+    QCheckBox *issueWarningForStiffness;
+    QCheckBox *issueWarningForCriticalPoints;
+    QLineEdit *criticalPointThreshold;
+    QLabel    *criticalPointThresholdLabel;
+
     StreamlineAttributes *streamAtts;
 };
 
 
-
 #endif
+
+

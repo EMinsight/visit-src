@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -168,6 +168,9 @@ avtExpressionEvaluatorFilter::~avtExpressionEvaluatorFilter()
 //    Hank Childs, Mon Mar 23 11:02:55 CDT 2009
 //    Set contract with whether we are doing "onDemandProcessing".
 //
+//    Hank Childs, Wed Dec 22 12:56:36 PST 2010
+//    More passing along of contract data members to honor streaming.
+//
 // ****************************************************************************
 
 void
@@ -205,6 +208,8 @@ avtExpressionEvaluatorFilter::Execute(void)
                        lastUsedSpec->GetCalculateVariableExtentsList());
         contract->SetCalculateMeshExtents(lastUsedSpec->ShouldCalculateMeshExtents());
         contract->SetOnDemandStreaming(onDemandProcessing);
+        contract->UseLoadBalancing(lastUsedSpec->ShouldUseLoadBalancing());
+        contract->SetReplicateSingleDomainOnAllProcessors(replicateSingleDomainOnAllProcessors);
         bottom->Update(contract);
         GetOutput()->Copy(*(bottom->GetOutput()));
     } else {
@@ -906,6 +911,7 @@ avtExpressionEvaluatorFilter::ExamineContract(avtContract_p contract)
 {
     currentTimeState = contract->GetDataRequest()->GetTimestep();
     onDemandProcessing = contract->DoingOnDemandStreaming();
+    replicateSingleDomainOnAllProcessors = contract->ReplicateSingleDomainOnAllProcessors();
 }
 
 // ****************************************************************************

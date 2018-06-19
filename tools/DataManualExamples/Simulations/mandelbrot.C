@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -217,7 +217,6 @@ calculate_amr(patch_t *patch, int level, int max_levels, int ratio)
 
 #define SIM_STOPPED       0
 #define SIM_RUNNING       1
-#define SIM_RUNNING_SLOW  2
 
 struct simulation_data
 {
@@ -272,21 +271,21 @@ simulate_one_timestep(simulation_data *sim)
 {
     printf("Simulating time step: cycle=%d, time=%lg\n", sim->cycle, sim->time);
 
-    const float window0[] = {-1.6, 0.6, -1.1, 1.1};
-#define ORIGINX -1.5
-#define ORIGINY -0.5
-#define WSIZE 0.5
+    const float window0[] = {-1.6f, 0.6f, -1.1f, 1.1f};
+#define ORIGINX -1.5f
+#define ORIGINY -0.5f
+#define WSIZE 0.5f
     const float window1[] = {ORIGINX, ORIGINX + WSIZE, ORIGINY, ORIGINY + WSIZE};
 #define NX 256
 #define NY 256
 
     /* oscillate between 2 windows */
     float window[4];
-    float t = 0.5 * sin(sim->time) + 0.5;
-    window[0] = (1. - t)*window0[0] + t*window1[0];
-    window[1] = (1. - t)*window0[1] + t*window1[1];
-    window[2] = (1. - t)*window0[2] + t*window1[2];
-    window[3] = (1. - t)*window0[3] + t*window1[3];
+    float t = 0.5f * sin(sim->time) + 0.5f;
+    window[0] = (1.f - t)*window0[0] + t*window1[0];
+    window[1] = (1.f - t)*window0[1] + t*window1[1];
+    window[2] = (1.f - t)*window0[2] + t*window1[2];
+    window[3] = (1.f - t)*window0[3] + t*window1[3];
 
     /* Blow away the previous patch data and calculate. */
     patch_dtor(&sim->patch);
@@ -345,15 +344,11 @@ ProcessConsoleCommand(simulation_data *sim)
     /* Read A Command */
     char cmd[1000];
 
-    int iseof = (fgets(cmd, 1000, stdin) == NULL);
-    if (iseof)
+    if(VisItReadConsole(1000, cmd) == VISIT_ERROR)
     {
         sprintf(cmd, "quit");
         printf("quit\n");
     }
-
-    if (strlen(cmd)>0 && cmd[strlen(cmd)-1] == '\n')
-        cmd[strlen(cmd)-1] = '\0';
 
     if(strcmp(cmd, "quit") == 0)
         sim->done = 1;
@@ -478,7 +473,7 @@ void read_input_deck(void) { }
 
 void mainloop(void)
 {
-    int blocking, visitstate, timeout, err = 0;
+    int blocking, visitstate, err = 0;
 
     // Set up some simulation data.
     simulation_data sim;
@@ -496,9 +491,8 @@ void mainloop(void)
     do
     {
         blocking = (sim.runMode == SIM_STOPPED) ? 1 : 0;
-        timeout = (sim.runMode == SIM_RUNNING_SLOW) ? 500000 : 0;
         /* Get input from VisIt or timeout so the simulation can run. */
-        visitstate = VisItDetectInputWithTimeout(blocking, timeout, fileno(stdin));
+        visitstate = VisItDetectInput(blocking, fileno(stdin));
 
         /* Do different things depending on the output from VisItDetectInput. */
         if(visitstate >= -5 && visitstate <= -1)
@@ -516,7 +510,7 @@ void mainloop(void)
             /* VisIt is trying to connect to sim. */
             if(VisItAttemptToCompleteConnection() == VISIT_OKAY)
             {
-                sim.runMode = SIM_RUNNING_SLOW;
+                sim.runMode = SIM_STOPPED;
                 fprintf(stderr, "VisIt connected\n");
                 VisItSetCommandCallback(ControlCommandCallback, (void*)&sim);
 
@@ -725,7 +719,7 @@ SimGetMesh(int domain, const char *name, void *cbdata)
             for(i = 0; i < (patch->nx+1); ++i)
             {
                 float t = float(i) / float(patch->nx);
-                coordX[i] = (1.-t)*x0 + t*x1;
+                coordX[i] = (1.f-t)*x0 + t*x1;
             }
             /* Initialize Y coords. */
             float *coordY = (float *)malloc(sizeof(float) * (patch->ny+1));
@@ -735,7 +729,7 @@ SimGetMesh(int domain, const char *name, void *cbdata)
             for(i = 0; i < (patch->ny+1); ++i)
             {
                 float t = float(i) / float(patch->ny);
-                coordY[i] = (1.-t)*y0 + t*y1;
+                coordY[i] = (1.f-t)*y0 + t*y1;
             }
 
             /* Give the mesh some coordinates it can use. */

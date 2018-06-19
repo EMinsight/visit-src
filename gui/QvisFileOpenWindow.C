@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -480,6 +480,9 @@ QvisFileOpenWindow::ConnectSubjects(HostProfileList *hpl,
 //   Brad Whitlock, Tue May 11 12:01:11 PDT 2010
 //   I added code to set the gui's open file too.
 //
+//   Brad Whitlock, Mon Oct 11 16:26:08 PDT 2010
+//   Don't open the file if you're just selecting a filename.
+//
 // ****************************************************************************
 
 void
@@ -503,7 +506,8 @@ QvisFileOpenWindow::okClicked()
     }
 
     // If we selected a file, open it.
-    if(!emitFile.Empty())
+    if(!emitFile.Empty() &&
+       usageMode != SelectFilename)
     {
         // Identify the file format used to open the file.
         string forcedFormat = "";

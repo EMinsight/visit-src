@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -62,6 +62,11 @@ class     ExprPipelineState;
 //  Programmer: Hank Childs
 //  Creation:   May 20, 2010
 //
+//  Modifications:
+//
+//    Hank Childs, Thu Sep 23 14:10:45 PDT 2010
+//    Indicate this expression can deal with singletons (improves performance).
+//
 // ****************************************************************************
 
 class EXPRESSION_API avtBase10LogWithMinExpression 
@@ -78,6 +83,7 @@ class EXPRESSION_API avtBase10LogWithMinExpression
   protected:
     virtual void           DoOperation(vtkDataArray *in1, vtkDataArray *in2,
                                        vtkDataArray *out, int ncomps,int ntups);
+    virtual bool           CanHandleSingleton(void) { return true; };
 };
 
 

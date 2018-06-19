@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -132,6 +132,9 @@ avtSimulationCommandSpecification::CommandArgumentType_FromString(const std::str
 
 void avtSimulationCommandSpecification::Init()
 {
+    argumentType = CmdArgNone;
+    enabled = true;
+    isOn = true;
 
     avtSimulationCommandSpecification::SelectAll();
 }

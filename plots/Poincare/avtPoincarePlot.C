@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -347,6 +347,14 @@ avtPoincarePlot::CustomizeBehavior()
 //   Dave Pugmire, Thu Jul  1 13:55:28 EDT 2010
 //   Switch to variablePointGlyphMapper
 //
+//   Hank Childs, Sat Oct  2 21:23:41 PDT 2010
+//   Reflect new interface in absolute tolerance.  (The ones for the Poincare
+//   plots are not a fraction of the bounding box.)
+//
+//   Hank Childs, Fri Oct  8 23:30:27 PDT 2010
+//   Reflect new interface for terminations, due to refactoring of integral
+//   curves.
+//
 // ****************************************************************************
 
 void
@@ -367,14 +375,6 @@ avtPoincarePlot::SetAtts(const AttributeGroup *a)
 
 #ifdef ENGINE
 
-    // Streamline specific attributes (avtStreamlineFilter).
-
-    // Make the number of punctures 2x because the Poincare analysis
-    // uses only the punctures in the same direction as the plane normal
-    // while the streamline uses the plane regardless of the normal.
-    poincareFilter->SetTermination(STREAMLINE_TERMINATE_INTERSECTIONS,
-                             2*atts.GetMinPunctures());
-
     poincareFilter->SetMaxPunctures(atts.GetMaxPunctures());
     
     vtkPlane *intPlane = vtkPlane::New();
@@ -384,9 +384,11 @@ avtPoincarePlot::SetAtts(const AttributeGroup *a)
         intPlane->SetNormal( 0,0,1 );
     else if ( atts.GetPuncturePlane() == PoincareAttributes::Poloidal )
         intPlane->SetNormal( 0,1,0 );
-    poincareFilter->SetIntersectionObject(intPlane);    
-    intPlane->Delete();
     
+    // Make the number of punctures 2x because the Poincare analysis
+    // uses only the punctures in the same direction as the plane normal
+    // while the streamline uses the plane regardless of the normal.
+    poincareFilter->SetIntersectionCriteria(intPlane, 2*atts.GetMinPunctures());
     poincareFilter->SetIntegrationDirection(0);
 
     switch (atts.GetSourceType())
@@ -419,10 +421,10 @@ avtPoincarePlot::SetAtts(const AttributeGroup *a)
     // Set the streamline attributes.
     poincareFilter->SetIntegrationType(atts.GetIntegrationType());
 
-    poincareFilter->SetStreamlineAlgorithm(STREAMLINE_PARALLEL_STATIC_DOMAINS,
+    poincareFilter->SetStreamlineAlgorithm(STREAMLINE_PARALLEL_OVER_DOMAINS,
                                            10, 3, 1);
     poincareFilter->SetMaxStepLength(atts.GetMaxStepLength());
-    poincareFilter->SetTolerances(atts.GetRelTol(),atts.GetAbsTol());
+    poincareFilter->SetTolerances(atts.GetRelTol(),atts.GetAbsTol(), false);
 
     
     poincareFilter->SetStreamlineAlgorithm(atts.GetStreamlineAlgorithmType(), 
@@ -430,12 +432,18 @@ avtPoincarePlot::SetAtts(const AttributeGroup *a)
                                            atts.GetMaxDomainCacheSize(),
                                            atts.GetWorkGroupSize());
 
+    if (atts.GetIntegrationType() == PoincareAttributes::NIMRODIntegrator )
+      poincareFilter->ConvertToCartesian( true );
+    else
+      poincareFilter->ConvertToCartesian( false );
+
     // Poincare specific attributes.
     poincareFilter->SetPuncturePlane( atts.GetPuncturePlane() );
     poincareFilter->SetAnalysis( atts.GetAnalysis() );
 
     poincareFilter->SetMaximumToroidalWinding( atts.GetMaximumToroidalWinding() );
     poincareFilter->SetOverrideToroidalWinding( atts.GetOverrideToroidalWinding() );
+    poincareFilter->SetOverridePoloidalWinding( atts.GetOverridePoloidalWinding() );
     poincareFilter->SetWindingPairConfidence( atts.GetWindingPairConfidence() );
     poincareFilter->SetPeriodicityConsistency( atts.GetPeriodicityConsistency() );
     poincareFilter->SetOverlaps( atts.GetOverlaps() );
@@ -892,4 +900,3 @@ avtPoincarePlot::EnhanceSpecification(avtContract_p in_contract)
     avtContract_p out_contract = new avtContract(in_contract, out_dr);
     return out_contract;
 }
-

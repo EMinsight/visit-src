@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -282,6 +282,9 @@ avtStreamlinePlot::ApplyRenderingTransformation(avtDataObject_p input)
 //   Dave Pugmire, Tue Dec 29 14:37:53 EST 2009
 //   Add custom renderer and lots of appearance options to the streamlines plots.
 //
+//   Hank Childs, Wed Sep 29 19:11:51 PDT 2010
+//   Rename "None" to "FullyOpaque".
+//
 // ****************************************************************************
 
 void
@@ -289,7 +292,7 @@ avtStreamlinePlot::CustomizeBehavior(void)
 {
     UpdateMapperAndLegend();
 
-    if (atts.GetOpacityType() != StreamlineAttributes::None)
+    if (atts.GetOpacityType() != StreamlineAttributes::FullyOpaque)
     {
         behavior->SetRenderOrder(MUST_GO_LAST);
         behavior->SetAntialiasedRenderOrder(MUST_GO_LAST);
@@ -366,6 +369,7 @@ avtStreamlinePlot::EnhanceSpecification(avtContract_p in_contract)
 //
 //   Jeremy Meredith, Wed Apr  8 16:48:05 EDT 2009
 //   Initial steps to unification with Poincare attributes.
+//
 //   Hank Childs, Sun May  3 12:32:13 CDT 2009
 //   Added support for point list source types.
 //
@@ -387,8 +391,21 @@ avtStreamlinePlot::EnhanceSpecification(avtContract_p in_contract)
 //   Dave Pugmire, Thu Jun 10 10:44:02 EDT 2010
 //   New seed sources.
 //
-//   Hank Childs, Thu Oct 28 20:24:12 PDT 2010
-//   Make sure the LUT is set up correctly before we tell the legend about it.
+//   Hank Childs, Tue Sep  7 23:29:40 PDT 2010
+//   Tell the legend what color table we're using.
+//
+//   Hank Childs, Wed Sep 29 20:52:04 PDT 2010
+//   The DoPri option now has an explicit field for max time step.
+//
+//   Hank Childs, Fri Oct  1 20:35:21 PDT 2010
+//   Add support for absolute tolerances that are a fraction of the bounding
+//   box.
+//
+//   Hank Childs, Mon Oct  4 14:38:20 PDT 2010
+//   Add support for varying termination criteria.
+//
+//   Hank Childs, Sun Dec  5 11:43:46 PST 2010
+//   Pass along attributes for issuing warnings.
 //
 // ****************************************************************************
 
@@ -452,24 +469,50 @@ avtStreamlinePlot::SetAtts(const AttributeGroup *a)
         break;
     }
 
-    streamlineFilter->SetPathlines(atts.GetPathlines());
+    streamlineFilter->SetPathlines(atts.GetPathlines(), atts.GetPathlinesOverrideStartingTimeFlag(), atts.GetPathlinesOverrideStartingTime(), atts.GetPathlinesCMFE());
 
     streamlineFilter->SetIntegrationType(atts.GetIntegrationType());
     streamlineFilter->SetStreamlineAlgorithm(atts.GetStreamlineAlgorithmType(), 
                                              atts.GetMaxStreamlineProcessCount(),
                                              atts.GetMaxDomainCacheSize(),
                                              atts.GetWorkGroupSize());
-    streamlineFilter->SetMaxStepLength(atts.GetMaxStepLength());
-    streamlineFilter->SetTolerances(atts.GetRelTol(), atts.GetAbsTol());
+    if (atts.GetIntegrationType() == StreamlineAttributes::DormandPrince)
+    {
+        // For DoPri, the max time step is sent in to the PICS filter as the max step length.
+        double step = atts.GetMaxTimeStep();
+        if (! atts.GetLimitMaximumTimestep())
+            step = 0;
+        streamlineFilter->SetMaxStepLength(step);
+    }
+    else
+        streamlineFilter->SetMaxStepLength(atts.GetMaxStepLength());
+    double absTol = 0.;
+    bool doBBox = (atts.GetAbsTolSizeType() == StreamlineAttributes::FractionOfBBox);
+    if (doBBox)
+        absTol = atts.GetAbsTolBBox();
+    else
+        absTol = atts.GetAbsTolAbsolute();
+    streamlineFilter->SetTolerances(atts.GetRelTol(), absTol, doBBox);
 
-    streamlineFilter->SetTermination(atts.GetTerminationType(),
-                                     atts.GetTermination());
+    streamlineFilter->SetTermination(atts.GetMaxSteps(),
+                                     atts.GetTerminateByDistance(),
+                                     atts.GetTermDistance(),
+                                     atts.GetTerminateByTime(),
+                                     atts.GetTermTime());
     streamlineFilter->SetDisplayMethod(atts.GetDisplayMethod());
+    streamlineFilter->IssueWarningForMaxStepsTermination(atts.GetIssueTerminationWarnings());
+    streamlineFilter->IssueWarningForStiffness(atts.GetIssueStiffnessWarnings());
+    streamlineFilter->IssueWarningForCriticalPoints(atts.GetIssueCriticalPointsWarnings(), atts.GetCriticalPointThreshold());
 
     streamlineFilter->SetIntegrationDirection(atts.GetStreamlineDirection());
 
     streamlineFilter->SetColoringMethod(int(atts.GetColoringMethod()),
                                         atts.GetColoringVariable());
+    streamlineFilter->SetVelocitiesForLighting(atts.GetLightingFlag());
+    streamlineFilter->SetReferenceTypeForDisplay(atts.GetReferenceTypeForDisplay());
+
+    streamlineFilter->SetCoordinateSystem(atts.GetCoordinateSystem());
+    streamlineFilter->SetPhiFactor(atts.GetPhiFactor());
 
     if (atts.GetOpacityType() == StreamlineAttributes::VariableRange)
         streamlineFilter->SetOpacityVariable(atts.GetOpacityVariable());
@@ -478,7 +521,6 @@ avtStreamlinePlot::SetAtts(const AttributeGroup *a)
     UpdateMapperAndLegend();
 
     SetColorTable(atts.GetColorTableName().c_str());
-
     if (atts.GetLegendFlag())
     {
         varLegend->LegendOn();
@@ -491,7 +533,7 @@ avtStreamlinePlot::SetAtts(const AttributeGroup *a)
         avtLUT->SetLUTColors(atts.GetSingleColor().GetColor(), 1);
     else
         varLegend->SetLookupTable(avtLUT->GetLookupTable());
-    
+
     SetLighting(atts.GetLightingFlag());
 }
 
@@ -564,7 +606,7 @@ avtStreamlinePlot::SetLighting(bool lightingOn)
 }
 
 // ****************************************************************************
-// Method: avtStreamlinePlot::SetLegendRanges
+// Method: avtStreamlinePlot::UpdateMapperAndLegend
 //
 // Purpose: 
 //   Sets the range to use for the legend.
@@ -588,6 +630,9 @@ avtStreamlinePlot::SetLighting(bool lightingOn)
 //
 //   Hank Childs, Thu Feb 18 11:29:22 PST 2010
 //   Set up a reasonable range if there are no streamlines.
+//
+//   Hank Childs, Tue Sep  7 23:29:40 PDT 2010
+//   Tell the legend what variable we're using.
 //
 // ****************************************************************************
 
@@ -615,6 +660,30 @@ avtStreamlinePlot::UpdateMapperAndLegend()
     varLegend->SetScaling(0);
     varLegend->SetVarRange(min, max);
     varLegend->SetRange(min, max);
+    switch (atts.GetColoringMethod())
+    {
+      case StreamlineAttributes::Solid:
+        varLegend->SetVarName("Solid");
+        break;
+      case StreamlineAttributes::ColorBySpeed:
+        varLegend->SetVarName("Speed");
+        break;
+      case StreamlineAttributes::ColorByVorticity:
+        varLegend->SetVarName("Vorticity magnitude");
+        break;
+      case StreamlineAttributes::ColorByLength:
+        varLegend->SetVarName("Arc length");
+        break;
+      case StreamlineAttributes::ColorByTime:
+        varLegend->SetVarName("Time");
+        break;
+      case StreamlineAttributes::ColorBySeedPointID:
+        varLegend->SetVarName("Seed point ID");
+        break;
+      case StreamlineAttributes::ColorByVariable:
+        varLegend->SetVarName(atts.GetColoringVariable().c_str());
+        break;
+    }
 }
 
 // ****************************************************************************

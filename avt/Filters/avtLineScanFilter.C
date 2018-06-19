@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1189,7 +1189,7 @@ IntersectLineWithRevolvedSegment(const double *line_pt,
             int nInter = 0;
             if (det > 0)
             {
-                double soln1 = (-B + sqrt(det)) / (2*A);
+                 double soln1 = (-B + sqrt(det)) / (2*A);
                 double soln2 = (-B - sqrt(det)) / (2*A);
                 inter[nInter++] = soln1;
                 inter[nInter++] = soln2;

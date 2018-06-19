@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -245,6 +245,9 @@ avtMasterSlaveICAlgorithm::~avtMasterSlaveICAlgorithm()
 //   Hank Childs, Mon Jun  7 14:57:13 CDT 2010
 //   Reflect change in method name to InitializeBuffers.
 //
+//   Dave Pugmire, Fri Sep 10 14:03:45 EDT 2010
+//   Send in number of recvs for msgs and ics.
+//
 // ****************************************************************************
 
 void
@@ -254,7 +257,7 @@ avtMasterSlaveICAlgorithm::Initialize(std::vector<avtIntegralCurve *> &seedPts)
     if (numRecvs > 64)
         numRecvs = 64;
     
-    avtParICAlgorithm::InitializeBuffers(seedPts, 2+NUM_DOMAINS, numRecvs);
+    avtParICAlgorithm::InitializeBuffers(seedPts, 2+NUM_DOMAINS, numRecvs, numRecvs);
 }
 
 void
@@ -269,6 +272,40 @@ avtMasterSlaveICAlgorithm::AddIntegralCurves(std::vector<avtIntegralCurve*> &ics
     EXCEPTION0(ImproperUseException);
 }
 
+// ****************************************************************************
+// Method:  avtMasterSlaveICAlgorithm::ExchangeICs
+//
+// Purpose:
+//   
+// Programmer:  Dave Pugmire
+// Creation:    September 10, 2010
+//
+// ****************************************************************************
+
+bool
+avtMasterSlaveICAlgorithm::ExchangeICs(list<avtIntegralCurve *> &streamlines,
+                                       vector<vector< avtIntegralCurve *> > &sendICs)
+{
+    bool newIntegralCurves = false;
+    
+    // Do the IC sends.
+    for (int i = 0; i < nProcs; i++)
+    { 
+        vector<avtIntegralCurve *> &ic = sendICs[i];
+        if (i != rank)
+            SendICs(i, ic);
+        else // Pass them to myself....
+        {
+            for (int j = 0; j < ic.size(); j++)
+                streamlines.push_back(ic[j]);
+        }
+    }
+
+    // See if there are any recieves....
+    int numNewICs = RecvICs(streamlines);
+    newIntegralCurves = (numNewICs > 0);
+    return newIntegralCurves;
+}
 
 // ****************************************************************************
 //  Method: avtMasterSlaveICAlgorithm::Sleep
@@ -1008,31 +1045,42 @@ avtMasterICAlgorithm::SendStatus(bool forceSend)
 //  Programmer: Dave Pugmire
 //  Creation:   March 18, 2009
 //
+//   Dave Pugmire, Tue Jan 18 06:57:31 EST 2011
+//   Regression fix. Message processing assumed that src was in msg[0].
+//
 // ****************************************************************************
 
 void
 avtMasterICAlgorithm::ProcessMessages()
 {
-    vector<vector<int> > msgs;
-    RecvMsgs(msgs);
+    vector<MsgCommData> msgs;
+    RecvMsg(msgs);
 
     for (int i = 0; i < msgs.size(); i++)
     {
-        vector<int> &msg = msgs[i];
-        int src = msg[0];
-        int msgType = msg[1];
+        vector<int> &msg = msgs[i].message;
+        int src = msgs[i].rank;
+        int msgType = msg[0];
 
         if (msgType == MSG_DONE)
         {
             done = true;
             break;
         }
-        else if (msgType == MSG_STATUS)
-            ProcessSlaveUpdate(msg);
-        else if (msgType == MSG_MASTER_STATUS)
-            ProcessMasterUpdate(msg);
-        else if (msgType == MSG_OFFLOAD_IC)
-            ProcessOffloadIC(msg);
+        else
+        {
+            vector<int> status(msg.size()+1);
+            status[0] = src;
+            for (int i = 1; i < status.size(); i++)
+                status[i] = msg[i-1];
+            
+            if (msgType == MSG_STATUS)
+                ProcessSlaveUpdate(status);
+            else if (msgType == MSG_MASTER_STATUS)
+                ProcessMasterUpdate(status);
+            else if (msgType == MSG_OFFLOAD_IC)
+                ProcessOffloadIC(status);
+        }
     }
 }
 
@@ -1542,13 +1590,7 @@ avtMasterICAlgorithm::Case1(int &counter)
     }
 
     if (streamlinesToSend)
-    {
-        int earlyTerminations = 0;
-        ExchangeICs(activeICs, distributeICs, earlyTerminations);
-        
-        if (earlyTerminations != 0)
-            EXCEPTION0(ImproperUseException);
-    }    
+        ExchangeICs(activeICs, distributeICs);
 }
 
 
@@ -2253,7 +2295,11 @@ avtSlaveICAlgorithm::SendStatus(bool forceSend)
 //   Use avtStreamlines, not avtStreamlineWrappers.
 //
 //   Hank Childs, Sun Jun  6 12:21:30 CDT 2010
-//   Rename several methods called in this function to reflect the new emphasis //   in particle advection, as opposed to streamlines.
+//   Rename several methods called in this function to reflect the new emphasis
+//   in particle advection, as opposed to streamlines.
+//
+//   Dave Pugmire, Tue Jan 18 06:58:40 EST 2011
+//   Regression fix. The old recvICs code was doing a domain load, as a side effect.
 //
 // ****************************************************************************
 
@@ -2361,9 +2407,15 @@ avtSlaveICAlgorithm::RunAlgorithm()
         oobICs.clear();
         
         //See if we have any ICs.
-        int earlyTerminations = 0;
-        bool newICs = RecvICs(activeICs, earlyTerminations);
-        numTerminated += earlyTerminations;
+        list<avtIntegralCurve*> newICs;
+        if (RecvICs(newICs))
+        {
+            list<avtIntegralCurve*>::iterator it;
+            for (it = newICs.begin(); it != newICs.end(); it++)
+                if (! DomainLoaded((*it)->domain))
+                    GetDomain((*it)->domain);
+            activeICs.splice(activeICs.end(), newICs);
+        }
         ProcessMessages(done, newMsgs);
         CheckPendingSendRequests();
 
@@ -2429,17 +2481,17 @@ avtSlaveICAlgorithm::RunAlgorithm()
 void
 avtSlaveICAlgorithm::ProcessMessages(bool &done, bool &newMsgs)
 {
-    vector<vector<int> > msgs;
-    RecvMsgs(msgs);
+    vector<MsgCommData> msgs;
+    RecvMsg(msgs);
     
     done = false;
     newMsgs = (msgs.size() > 0);
     
     for (int i = 0; i < msgs.size(); i++)
     {
-        vector<int> &msg = msgs[i];
-        int src = msg[0];
-        int msgType = msg[1];
+        vector<int> &msg = msgs[i].message;
+        int src = msgs[i].rank;
+        int msgType = msg[0];
         
         if (msgType == MSG_DONE)
         {
@@ -2450,7 +2502,7 @@ avtSlaveICAlgorithm::ProcessMessages(bool &done, bool &newMsgs)
         //Load this domain.
         else if (msgType == MSG_LOAD_DOMAIN)
         {
-            DomainType dom(msg[2], msg[3]);
+            DomainType dom(msg[1], msg[2]);
             debug1<<"MSG: LoadDomain( "<<dom<<")\n";
             GetDomain(dom);
         }
@@ -2462,8 +2514,8 @@ avtSlaveICAlgorithm::ProcessMessages(bool &done, bool &newMsgs)
             debug1<<"Slave: MSG_OFFLOAD_IC I have "<<activeICs.size()<<" to offer"<<endl;
             debug1<<msg<<endl;
             
-            int dst = msg[2];
-            int numDoms = msg[3];
+            int dst = msg[1];
+            int numDoms = msg[2];
             int num = 10*maxCnt;
             if (msgType == MSG_OFFLOAD_IC)
                 num = 10*maxCnt;
@@ -2474,7 +2526,7 @@ avtSlaveICAlgorithm::ProcessMessages(bool &done, bool &newMsgs)
 
             for (int d = 0; d < numDoms; d++)
             {
-                int domIdx = msg[4+d];
+                int domIdx = msg[3+d];
                 DomainType dom = IdxToDom(domIdx);
                 
                 list<avtIntegralCurve *>::iterator s = activeICs.begin();
@@ -2517,9 +2569,9 @@ avtSlaveICAlgorithm::ProcessMessages(bool &done, bool &newMsgs)
         //Send streamlines to another slave.
         else if (msgType == MSG_SEND_IC)
         {
-            int dst = msg[2];
-            DomainType dom = IdxToDom(msg[3]);
-            int num = msg[4];
+            int dst = msg[1];
+            DomainType dom = IdxToDom(msg[2]);
+            int num = msg[3];
 
             debug1<<"MSG: Send "<<num<<" x dom= "<<dom<<" to "<<dst;
             list<avtIntegralCurve *>::iterator s = activeICs.begin();

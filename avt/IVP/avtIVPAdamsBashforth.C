@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -95,6 +95,7 @@ avtIVPAdamsBashforth::avtIVPAdamsBashforth()
     initialized = 0;
     degenerate_iterations = 0;
     stiffness_eps = tol / 1000.0;
+    convertToCartesian = false;
 }
 
 // ****************************************************************************
@@ -503,8 +504,18 @@ avtIVPAdamsBashforth::Step(avtIVPField* field, double t_max,
     if( res == avtIVPSolver::OK )
     {
         ivpstep->resize(2);
-        (*ivpstep)[0] = yCur;
-        (*ivpstep)[1] = yNew;
+
+        if( convertToCartesian )
+        {
+          (*ivpstep)[0] = CylindricalToCartesian( yCur );
+          (*ivpstep)[1] = CylindricalToCartesian( yNew );
+        }
+        else
+        {
+          (*ivpstep)[0] = yCur;
+          (*ivpstep)[1] = yNew;
+        }
+
         ivpstep->t0 = t;
         ivpstep->t1 = t + h;
         numStep++;
@@ -514,7 +525,7 @@ avtIVPAdamsBashforth::Step(avtIVPField* field, double t_max,
         history[3] = history[2];
         history[2] = history[1];
         history[1] = history[0];
-        history[0] = (*field)(t,yNew); 
+        history[0] = (*field)(t,yNew);
 
         yCur = yNew;
         t = t+h;

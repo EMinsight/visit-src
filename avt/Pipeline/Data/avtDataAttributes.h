@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -257,6 +257,12 @@ class     avtWebpage;
 //    Hank Childs, Thu Aug 26 13:02:28 PDT 2010
 //    Rename extents objects.
 //
+//    Hank Childs, Sun Sep 19 10:39:29 PDT 2010
+//    Add boolean that describes that the data is replicated on all processors.
+//
+//    Hank Childs, Tue Jan 11 08:41:22 PST 2011
+//    Add data member for the time index.
+//
 // ****************************************************************************
 
 class PIPELINE_API avtDataAttributes
@@ -282,6 +288,8 @@ class PIPELINE_API avtDataAttributes
     double                   GetTime(void) const { return dtime; };
     void                     SetTime(double);
     bool                     TimeIsAccurate(void) { return timeIsAccurate; };
+    int                      GetTimeIndex(void) const { return timeIndex; };
+    void                     SetTimeIndex(int);
 
     void                     SetDynamicDomainDecomposition(bool);
     bool                     GetDynamicDomainDecomposition(void) const
@@ -477,6 +485,11 @@ class PIPELINE_API avtDataAttributes
     void                     SetNumStates(int n)
                                    { numStates = n; };
 
+    bool                     DataIsReplicatedOnAllProcessors(void) const
+                                   { return dataIsReplicatedOnAllProcessors; };
+    void                     SetDataIsReplicatedOnAllProcessors(bool v)
+                                   { dataIsReplicatedOnAllProcessors = v; };
+
     bool                     MIROccurred(void) const
                                    { return mirOccurred; };
     void                     SetMIROccurred(bool mo)
@@ -550,6 +563,7 @@ class PIPELINE_API avtDataAttributes
     bool                     timeIsAccurate;
     int                      cycle;
     bool                     cycleIsAccurate;
+    int                      timeIndex;
     bool                     dynamicDomainDecomposition;
     avtGhostType             containsGhostZones;
     bool                     containsExteriorBoundaryGhosts;
@@ -564,6 +578,7 @@ class PIPELINE_API avtDataAttributes
     bool                     canUseTransform;
     bool                     canUseThisProcsAsOriginalOrActual;
     int                      numStates;
+    bool                     dataIsReplicatedOnAllProcessors;
     bool                     mirOccurred;
     bool                     canUseOrigZones;
     bool                     origElementsRequiredForPick;

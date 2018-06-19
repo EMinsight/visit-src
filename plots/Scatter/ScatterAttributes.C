@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -71,6 +71,44 @@ ScatterAttributes::Scaling_FromString(const std::string &s, ScatterAttributes::S
         if(s == Scaling_strings[i])
         {
             val = (Scaling)i;
+            return true;
+        }
+    }
+    return false;
+}
+
+//
+// Enum conversion methods for ScatterAttributes::ColoringMethod
+//
+
+static const char *ColoringMethod_strings[] = {
+"ColorByForegroundColor", "ColorBySingleColor", "ColorByColorTable"
+};
+
+std::string
+ScatterAttributes::ColoringMethod_ToString(ScatterAttributes::ColoringMethod t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 3) index = 0;
+    return ColoringMethod_strings[index];
+}
+
+std::string
+ScatterAttributes::ColoringMethod_ToString(int t)
+{
+    int index = (t < 0 || t >= 3) ? 0 : t;
+    return ColoringMethod_strings[index];
+}
+
+bool
+ScatterAttributes::ColoringMethod_FromString(const std::string &s, ScatterAttributes::ColoringMethod &val)
+{
+    val = ScatterAttributes::ColorByForegroundColor;
+    for(int i = 0; i < 3; ++i)
+    {
+        if(s == ColoringMethod_strings[i])
+        {
+            val = (ColoringMethod)i;
             return true;
         }
     }
@@ -206,7 +244,8 @@ void ScatterAttributes::Init()
     pointSizePixels = 1;
     pointType = Point;
     scaleCube = true;
-    foregroundFlag = true;
+    colorType = ColorByForegroundColor;
+    invertColorTable = false;
     legendFlag = true;
 
     ScatterAttributes::SelectAll();
@@ -265,9 +304,10 @@ void ScatterAttributes::Copy(const ScatterAttributes &obj)
     pointSizePixels = obj.pointSizePixels;
     pointType = obj.pointType;
     scaleCube = obj.scaleCube;
-    colorTableName = obj.colorTableName;
+    colorType = obj.colorType;
     singleColor = obj.singleColor;
-    foregroundFlag = obj.foregroundFlag;
+    colorTableName = obj.colorTableName;
+    invertColorTable = obj.invertColorTable;
     legendFlag = obj.legendFlag;
 
     ScatterAttributes::SelectAll();
@@ -295,7 +335,7 @@ const AttributeGroup::private_tmfs_t ScatterAttributes::TmfsStruct = {SCATTERATT
 
 ScatterAttributes::ScatterAttributes() : 
     AttributeSubject(ScatterAttributes::TypeMapFormatString),
-    colorTableName("hot"), singleColor(255, 0, 0)
+    singleColor(255, 0, 0), colorTableName("Default")
 {
     ScatterAttributes::Init();
 }
@@ -317,7 +357,7 @@ ScatterAttributes::ScatterAttributes() :
 
 ScatterAttributes::ScatterAttributes(private_tmfs_t tmfs) : 
     AttributeSubject(tmfs.tmfs),
-    colorTableName("hot"), singleColor(255, 0, 0)
+    singleColor(255, 0, 0), colorTableName("Default")
 {
     ScatterAttributes::Init();
 }
@@ -464,9 +504,10 @@ ScatterAttributes::operator == (const ScatterAttributes &obj) const
             (pointSizePixels == obj.pointSizePixels) &&
             (pointType == obj.pointType) &&
             (scaleCube == obj.scaleCube) &&
-            (colorTableName == obj.colorTableName) &&
+            (colorType == obj.colorType) &&
             (singleColor == obj.singleColor) &&
-            (foregroundFlag == obj.foregroundFlag) &&
+            (colorTableName == obj.colorTableName) &&
+            (invertColorTable == obj.invertColorTable) &&
             (legendFlag == obj.legendFlag));
 }
 
@@ -611,46 +652,47 @@ ScatterAttributes::NewInstance(bool copy) const
 void
 ScatterAttributes::SelectAll()
 {
-    Select(ID_var1,            (void *)&var1);
-    Select(ID_var1Role,        (void *)&var1Role);
-    Select(ID_var1MinFlag,     (void *)&var1MinFlag);
-    Select(ID_var1MaxFlag,     (void *)&var1MaxFlag);
-    Select(ID_var1Min,         (void *)&var1Min);
-    Select(ID_var1Max,         (void *)&var1Max);
-    Select(ID_var1Scaling,     (void *)&var1Scaling);
-    Select(ID_var1SkewFactor,  (void *)&var1SkewFactor);
-    Select(ID_var2Role,        (void *)&var2Role);
-    Select(ID_var2,            (void *)&var2);
-    Select(ID_var2MinFlag,     (void *)&var2MinFlag);
-    Select(ID_var2MaxFlag,     (void *)&var2MaxFlag);
-    Select(ID_var2Min,         (void *)&var2Min);
-    Select(ID_var2Max,         (void *)&var2Max);
-    Select(ID_var2Scaling,     (void *)&var2Scaling);
-    Select(ID_var2SkewFactor,  (void *)&var2SkewFactor);
-    Select(ID_var3Role,        (void *)&var3Role);
-    Select(ID_var3,            (void *)&var3);
-    Select(ID_var3MinFlag,     (void *)&var3MinFlag);
-    Select(ID_var3MaxFlag,     (void *)&var3MaxFlag);
-    Select(ID_var3Min,         (void *)&var3Min);
-    Select(ID_var3Max,         (void *)&var3Max);
-    Select(ID_var3Scaling,     (void *)&var3Scaling);
-    Select(ID_var3SkewFactor,  (void *)&var3SkewFactor);
-    Select(ID_var4Role,        (void *)&var4Role);
-    Select(ID_var4,            (void *)&var4);
-    Select(ID_var4MinFlag,     (void *)&var4MinFlag);
-    Select(ID_var4MaxFlag,     (void *)&var4MaxFlag);
-    Select(ID_var4Min,         (void *)&var4Min);
-    Select(ID_var4Max,         (void *)&var4Max);
-    Select(ID_var4Scaling,     (void *)&var4Scaling);
-    Select(ID_var4SkewFactor,  (void *)&var4SkewFactor);
-    Select(ID_pointSize,       (void *)&pointSize);
-    Select(ID_pointSizePixels, (void *)&pointSizePixels);
-    Select(ID_pointType,       (void *)&pointType);
-    Select(ID_scaleCube,       (void *)&scaleCube);
-    Select(ID_colorTableName,  (void *)&colorTableName);
-    Select(ID_singleColor,     (void *)&singleColor);
-    Select(ID_foregroundFlag,  (void *)&foregroundFlag);
-    Select(ID_legendFlag,      (void *)&legendFlag);
+    Select(ID_var1,             (void *)&var1);
+    Select(ID_var1Role,         (void *)&var1Role);
+    Select(ID_var1MinFlag,      (void *)&var1MinFlag);
+    Select(ID_var1MaxFlag,      (void *)&var1MaxFlag);
+    Select(ID_var1Min,          (void *)&var1Min);
+    Select(ID_var1Max,          (void *)&var1Max);
+    Select(ID_var1Scaling,      (void *)&var1Scaling);
+    Select(ID_var1SkewFactor,   (void *)&var1SkewFactor);
+    Select(ID_var2Role,         (void *)&var2Role);
+    Select(ID_var2,             (void *)&var2);
+    Select(ID_var2MinFlag,      (void *)&var2MinFlag);
+    Select(ID_var2MaxFlag,      (void *)&var2MaxFlag);
+    Select(ID_var2Min,          (void *)&var2Min);
+    Select(ID_var2Max,          (void *)&var2Max);
+    Select(ID_var2Scaling,      (void *)&var2Scaling);
+    Select(ID_var2SkewFactor,   (void *)&var2SkewFactor);
+    Select(ID_var3Role,         (void *)&var3Role);
+    Select(ID_var3,             (void *)&var3);
+    Select(ID_var3MinFlag,      (void *)&var3MinFlag);
+    Select(ID_var3MaxFlag,      (void *)&var3MaxFlag);
+    Select(ID_var3Min,          (void *)&var3Min);
+    Select(ID_var3Max,          (void *)&var3Max);
+    Select(ID_var3Scaling,      (void *)&var3Scaling);
+    Select(ID_var3SkewFactor,   (void *)&var3SkewFactor);
+    Select(ID_var4Role,         (void *)&var4Role);
+    Select(ID_var4,             (void *)&var4);
+    Select(ID_var4MinFlag,      (void *)&var4MinFlag);
+    Select(ID_var4MaxFlag,      (void *)&var4MaxFlag);
+    Select(ID_var4Min,          (void *)&var4Min);
+    Select(ID_var4Max,          (void *)&var4Max);
+    Select(ID_var4Scaling,      (void *)&var4Scaling);
+    Select(ID_var4SkewFactor,   (void *)&var4SkewFactor);
+    Select(ID_pointSize,        (void *)&pointSize);
+    Select(ID_pointSizePixels,  (void *)&pointSizePixels);
+    Select(ID_pointType,        (void *)&pointType);
+    Select(ID_scaleCube,        (void *)&scaleCube);
+    Select(ID_colorType,        (void *)&colorType);
+    Select(ID_singleColor,      (void *)&singleColor);
+    Select(ID_colorTableName,   (void *)&colorTableName);
+    Select(ID_invertColorTable, (void *)&invertColorTable);
+    Select(ID_legendFlag,       (void *)&legendFlag);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -899,10 +941,10 @@ ScatterAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool forc
         node->AddNode(new DataNode("scaleCube", scaleCube));
     }
 
-    if(completeSave || !FieldsEqual(ID_colorTableName, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_colorType, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("colorTableName", colorTableName));
+        node->AddNode(new DataNode("colorType", ColoringMethod_ToString(colorType)));
     }
 
         DataNode *singleColorNode = new DataNode("singleColor");
@@ -913,10 +955,16 @@ ScatterAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool forc
         }
         else
             delete singleColorNode;
-    if(completeSave || !FieldsEqual(ID_foregroundFlag, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_colorTableName, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("foregroundFlag", foregroundFlag));
+        node->AddNode(new DataNode("colorTableName", colorTableName));
+    }
+
+    if(completeSave || !FieldsEqual(ID_invertColorTable, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("invertColorTable", invertColorTable));
     }
 
     if(completeSave || !FieldsEqual(ID_legendFlag, &defaultObject))
@@ -1159,12 +1207,28 @@ ScatterAttributes::SetFromNode(DataNode *parentNode)
     }
     if((node = searchNode->GetNode("scaleCube")) != 0)
         SetScaleCube(node->AsBool());
-    if((node = searchNode->GetNode("colorTableName")) != 0)
-        SetColorTableName(node->AsString());
+    if((node = searchNode->GetNode("colorType")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 3)
+                SetColorType(ColoringMethod(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            ColoringMethod value;
+            if(ColoringMethod_FromString(node->AsString(), value))
+                SetColorType(value);
+        }
+    }
     if((node = searchNode->GetNode("singleColor")) != 0)
         singleColor.SetFromNode(node);
-    if((node = searchNode->GetNode("foregroundFlag")) != 0)
-        SetForegroundFlag(node->AsBool());
+    if((node = searchNode->GetNode("colorTableName")) != 0)
+        SetColorTableName(node->AsString());
+    if((node = searchNode->GetNode("invertColorTable")) != 0)
+        SetInvertColorTable(node->AsBool());
     if((node = searchNode->GetNode("legendFlag")) != 0)
         SetLegendFlag(node->AsBool());
 }
@@ -1426,10 +1490,10 @@ ScatterAttributes::SetScaleCube(bool scaleCube_)
 }
 
 void
-ScatterAttributes::SetColorTableName(const std::string &colorTableName_)
+ScatterAttributes::SetColorType(ScatterAttributes::ColoringMethod colorType_)
 {
-    colorTableName = colorTableName_;
-    Select(ID_colorTableName, (void *)&colorTableName);
+    colorType = colorType_;
+    Select(ID_colorType, (void *)&colorType);
 }
 
 void
@@ -1440,10 +1504,17 @@ ScatterAttributes::SetSingleColor(const ColorAttribute &singleColor_)
 }
 
 void
-ScatterAttributes::SetForegroundFlag(bool foregroundFlag_)
+ScatterAttributes::SetColorTableName(const std::string &colorTableName_)
 {
-    foregroundFlag = foregroundFlag_;
-    Select(ID_foregroundFlag, (void *)&foregroundFlag);
+    colorTableName = colorTableName_;
+    Select(ID_colorTableName, (void *)&colorTableName);
+}
+
+void
+ScatterAttributes::SetInvertColorTable(bool invertColorTable_)
+{
+    invertColorTable = invertColorTable_;
+    Select(ID_invertColorTable, (void *)&invertColorTable);
 }
 
 void
@@ -1697,16 +1768,10 @@ ScatterAttributes::GetScaleCube() const
     return scaleCube;
 }
 
-const std::string &
-ScatterAttributes::GetColorTableName() const
+ScatterAttributes::ColoringMethod
+ScatterAttributes::GetColorType() const
 {
-    return colorTableName;
-}
-
-std::string &
-ScatterAttributes::GetColorTableName()
-{
-    return colorTableName;
+    return ColoringMethod(colorType);
 }
 
 const ColorAttribute &
@@ -1721,10 +1786,22 @@ ScatterAttributes::GetSingleColor()
     return singleColor;
 }
 
-bool
-ScatterAttributes::GetForegroundFlag() const
+const std::string &
+ScatterAttributes::GetColorTableName() const
 {
-    return foregroundFlag;
+    return colorTableName;
+}
+
+std::string &
+ScatterAttributes::GetColorTableName()
+{
+    return colorTableName;
+}
+
+bool
+ScatterAttributes::GetInvertColorTable() const
+{
+    return invertColorTable;
 }
 
 bool
@@ -1762,15 +1839,15 @@ ScatterAttributes::SelectVar4()
 }
 
 void
-ScatterAttributes::SelectColorTableName()
-{
-    Select(ID_colorTableName, (void *)&colorTableName);
-}
-
-void
 ScatterAttributes::SelectSingleColor()
 {
     Select(ID_singleColor, (void *)&singleColor);
+}
+
+void
+ScatterAttributes::SelectColorTableName()
+{
+    Select(ID_colorTableName, (void *)&colorTableName);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1797,46 +1874,47 @@ ScatterAttributes::GetFieldName(int index) const
 {
     switch (index)
     {
-    case ID_var1:            return "var1";
-    case ID_var1Role:        return "var1Role";
-    case ID_var1MinFlag:     return "var1MinFlag";
-    case ID_var1MaxFlag:     return "var1MaxFlag";
-    case ID_var1Min:         return "var1Min";
-    case ID_var1Max:         return "var1Max";
-    case ID_var1Scaling:     return "var1Scaling";
-    case ID_var1SkewFactor:  return "var1SkewFactor";
-    case ID_var2Role:        return "var2Role";
-    case ID_var2:            return "var2";
-    case ID_var2MinFlag:     return "var2MinFlag";
-    case ID_var2MaxFlag:     return "var2MaxFlag";
-    case ID_var2Min:         return "var2Min";
-    case ID_var2Max:         return "var2Max";
-    case ID_var2Scaling:     return "var2Scaling";
-    case ID_var2SkewFactor:  return "var2SkewFactor";
-    case ID_var3Role:        return "var3Role";
-    case ID_var3:            return "var3";
-    case ID_var3MinFlag:     return "var3MinFlag";
-    case ID_var3MaxFlag:     return "var3MaxFlag";
-    case ID_var3Min:         return "var3Min";
-    case ID_var3Max:         return "var3Max";
-    case ID_var3Scaling:     return "var3Scaling";
-    case ID_var3SkewFactor:  return "var3SkewFactor";
-    case ID_var4Role:        return "var4Role";
-    case ID_var4:            return "var4";
-    case ID_var4MinFlag:     return "var4MinFlag";
-    case ID_var4MaxFlag:     return "var4MaxFlag";
-    case ID_var4Min:         return "var4Min";
-    case ID_var4Max:         return "var4Max";
-    case ID_var4Scaling:     return "var4Scaling";
-    case ID_var4SkewFactor:  return "var4SkewFactor";
-    case ID_pointSize:       return "pointSize";
-    case ID_pointSizePixels: return "pointSizePixels";
-    case ID_pointType:       return "pointType";
-    case ID_scaleCube:       return "scaleCube";
-    case ID_colorTableName:  return "colorTableName";
-    case ID_singleColor:     return "singleColor";
-    case ID_foregroundFlag:  return "foregroundFlag";
-    case ID_legendFlag:      return "legendFlag";
+    case ID_var1:             return "var1";
+    case ID_var1Role:         return "var1Role";
+    case ID_var1MinFlag:      return "var1MinFlag";
+    case ID_var1MaxFlag:      return "var1MaxFlag";
+    case ID_var1Min:          return "var1Min";
+    case ID_var1Max:          return "var1Max";
+    case ID_var1Scaling:      return "var1Scaling";
+    case ID_var1SkewFactor:   return "var1SkewFactor";
+    case ID_var2Role:         return "var2Role";
+    case ID_var2:             return "var2";
+    case ID_var2MinFlag:      return "var2MinFlag";
+    case ID_var2MaxFlag:      return "var2MaxFlag";
+    case ID_var2Min:          return "var2Min";
+    case ID_var2Max:          return "var2Max";
+    case ID_var2Scaling:      return "var2Scaling";
+    case ID_var2SkewFactor:   return "var2SkewFactor";
+    case ID_var3Role:         return "var3Role";
+    case ID_var3:             return "var3";
+    case ID_var3MinFlag:      return "var3MinFlag";
+    case ID_var3MaxFlag:      return "var3MaxFlag";
+    case ID_var3Min:          return "var3Min";
+    case ID_var3Max:          return "var3Max";
+    case ID_var3Scaling:      return "var3Scaling";
+    case ID_var3SkewFactor:   return "var3SkewFactor";
+    case ID_var4Role:         return "var4Role";
+    case ID_var4:             return "var4";
+    case ID_var4MinFlag:      return "var4MinFlag";
+    case ID_var4MaxFlag:      return "var4MaxFlag";
+    case ID_var4Min:          return "var4Min";
+    case ID_var4Max:          return "var4Max";
+    case ID_var4Scaling:      return "var4Scaling";
+    case ID_var4SkewFactor:   return "var4SkewFactor";
+    case ID_pointSize:        return "pointSize";
+    case ID_pointSizePixels:  return "pointSizePixels";
+    case ID_pointType:        return "pointType";
+    case ID_scaleCube:        return "scaleCube";
+    case ID_colorType:        return "colorType";
+    case ID_singleColor:      return "singleColor";
+    case ID_colorTableName:   return "colorTableName";
+    case ID_invertColorTable: return "invertColorTable";
+    case ID_legendFlag:       return "legendFlag";
     default:  return "invalid index";
     }
 }
@@ -1861,46 +1939,47 @@ ScatterAttributes::GetFieldType(int index) const
 {
     switch (index)
     {
-    case ID_var1:            return FieldType_string;
-    case ID_var1Role:        return FieldType_enum;
-    case ID_var1MinFlag:     return FieldType_bool;
-    case ID_var1MaxFlag:     return FieldType_bool;
-    case ID_var1Min:         return FieldType_double;
-    case ID_var1Max:         return FieldType_double;
-    case ID_var1Scaling:     return FieldType_enum;
-    case ID_var1SkewFactor:  return FieldType_double;
-    case ID_var2Role:        return FieldType_enum;
-    case ID_var2:            return FieldType_string;
-    case ID_var2MinFlag:     return FieldType_bool;
-    case ID_var2MaxFlag:     return FieldType_bool;
-    case ID_var2Min:         return FieldType_double;
-    case ID_var2Max:         return FieldType_double;
-    case ID_var2Scaling:     return FieldType_enum;
-    case ID_var2SkewFactor:  return FieldType_double;
-    case ID_var3Role:        return FieldType_enum;
-    case ID_var3:            return FieldType_string;
-    case ID_var3MinFlag:     return FieldType_bool;
-    case ID_var3MaxFlag:     return FieldType_bool;
-    case ID_var3Min:         return FieldType_double;
-    case ID_var3Max:         return FieldType_double;
-    case ID_var3Scaling:     return FieldType_enum;
-    case ID_var3SkewFactor:  return FieldType_double;
-    case ID_var4Role:        return FieldType_enum;
-    case ID_var4:            return FieldType_string;
-    case ID_var4MinFlag:     return FieldType_bool;
-    case ID_var4MaxFlag:     return FieldType_bool;
-    case ID_var4Min:         return FieldType_double;
-    case ID_var4Max:         return FieldType_double;
-    case ID_var4Scaling:     return FieldType_enum;
-    case ID_var4SkewFactor:  return FieldType_double;
-    case ID_pointSize:       return FieldType_double;
-    case ID_pointSizePixels: return FieldType_int;
-    case ID_pointType:       return FieldType_enum;
-    case ID_scaleCube:       return FieldType_bool;
-    case ID_colorTableName:  return FieldType_colortable;
-    case ID_singleColor:     return FieldType_color;
-    case ID_foregroundFlag:  return FieldType_bool;
-    case ID_legendFlag:      return FieldType_bool;
+    case ID_var1:             return FieldType_string;
+    case ID_var1Role:         return FieldType_enum;
+    case ID_var1MinFlag:      return FieldType_bool;
+    case ID_var1MaxFlag:      return FieldType_bool;
+    case ID_var1Min:          return FieldType_double;
+    case ID_var1Max:          return FieldType_double;
+    case ID_var1Scaling:      return FieldType_enum;
+    case ID_var1SkewFactor:   return FieldType_double;
+    case ID_var2Role:         return FieldType_enum;
+    case ID_var2:             return FieldType_string;
+    case ID_var2MinFlag:      return FieldType_bool;
+    case ID_var2MaxFlag:      return FieldType_bool;
+    case ID_var2Min:          return FieldType_double;
+    case ID_var2Max:          return FieldType_double;
+    case ID_var2Scaling:      return FieldType_enum;
+    case ID_var2SkewFactor:   return FieldType_double;
+    case ID_var3Role:         return FieldType_enum;
+    case ID_var3:             return FieldType_string;
+    case ID_var3MinFlag:      return FieldType_bool;
+    case ID_var3MaxFlag:      return FieldType_bool;
+    case ID_var3Min:          return FieldType_double;
+    case ID_var3Max:          return FieldType_double;
+    case ID_var3Scaling:      return FieldType_enum;
+    case ID_var3SkewFactor:   return FieldType_double;
+    case ID_var4Role:         return FieldType_enum;
+    case ID_var4:             return FieldType_string;
+    case ID_var4MinFlag:      return FieldType_bool;
+    case ID_var4MaxFlag:      return FieldType_bool;
+    case ID_var4Min:          return FieldType_double;
+    case ID_var4Max:          return FieldType_double;
+    case ID_var4Scaling:      return FieldType_enum;
+    case ID_var4SkewFactor:   return FieldType_double;
+    case ID_pointSize:        return FieldType_double;
+    case ID_pointSizePixels:  return FieldType_int;
+    case ID_pointType:        return FieldType_enum;
+    case ID_scaleCube:        return FieldType_bool;
+    case ID_colorType:        return FieldType_enum;
+    case ID_singleColor:      return FieldType_color;
+    case ID_colorTableName:   return FieldType_colortable;
+    case ID_invertColorTable: return FieldType_bool;
+    case ID_legendFlag:       return FieldType_bool;
     default:  return FieldType_unknown;
     }
 }
@@ -1925,46 +2004,47 @@ ScatterAttributes::GetFieldTypeName(int index) const
 {
     switch (index)
     {
-    case ID_var1:            return "string";
-    case ID_var1Role:        return "enum";
-    case ID_var1MinFlag:     return "bool";
-    case ID_var1MaxFlag:     return "bool";
-    case ID_var1Min:         return "double";
-    case ID_var1Max:         return "double";
-    case ID_var1Scaling:     return "enum";
-    case ID_var1SkewFactor:  return "double";
-    case ID_var2Role:        return "enum";
-    case ID_var2:            return "string";
-    case ID_var2MinFlag:     return "bool";
-    case ID_var2MaxFlag:     return "bool";
-    case ID_var2Min:         return "double";
-    case ID_var2Max:         return "double";
-    case ID_var2Scaling:     return "enum";
-    case ID_var2SkewFactor:  return "double";
-    case ID_var3Role:        return "enum";
-    case ID_var3:            return "string";
-    case ID_var3MinFlag:     return "bool";
-    case ID_var3MaxFlag:     return "bool";
-    case ID_var3Min:         return "double";
-    case ID_var3Max:         return "double";
-    case ID_var3Scaling:     return "enum";
-    case ID_var3SkewFactor:  return "double";
-    case ID_var4Role:        return "enum";
-    case ID_var4:            return "string";
-    case ID_var4MinFlag:     return "bool";
-    case ID_var4MaxFlag:     return "bool";
-    case ID_var4Min:         return "double";
-    case ID_var4Max:         return "double";
-    case ID_var4Scaling:     return "enum";
-    case ID_var4SkewFactor:  return "double";
-    case ID_pointSize:       return "double";
-    case ID_pointSizePixels: return "int";
-    case ID_pointType:       return "enum";
-    case ID_scaleCube:       return "bool";
-    case ID_colorTableName:  return "colortable";
-    case ID_singleColor:     return "color";
-    case ID_foregroundFlag:  return "bool";
-    case ID_legendFlag:      return "bool";
+    case ID_var1:             return "string";
+    case ID_var1Role:         return "enum";
+    case ID_var1MinFlag:      return "bool";
+    case ID_var1MaxFlag:      return "bool";
+    case ID_var1Min:          return "double";
+    case ID_var1Max:          return "double";
+    case ID_var1Scaling:      return "enum";
+    case ID_var1SkewFactor:   return "double";
+    case ID_var2Role:         return "enum";
+    case ID_var2:             return "string";
+    case ID_var2MinFlag:      return "bool";
+    case ID_var2MaxFlag:      return "bool";
+    case ID_var2Min:          return "double";
+    case ID_var2Max:          return "double";
+    case ID_var2Scaling:      return "enum";
+    case ID_var2SkewFactor:   return "double";
+    case ID_var3Role:         return "enum";
+    case ID_var3:             return "string";
+    case ID_var3MinFlag:      return "bool";
+    case ID_var3MaxFlag:      return "bool";
+    case ID_var3Min:          return "double";
+    case ID_var3Max:          return "double";
+    case ID_var3Scaling:      return "enum";
+    case ID_var3SkewFactor:   return "double";
+    case ID_var4Role:         return "enum";
+    case ID_var4:             return "string";
+    case ID_var4MinFlag:      return "bool";
+    case ID_var4MaxFlag:      return "bool";
+    case ID_var4Min:          return "double";
+    case ID_var4Max:          return "double";
+    case ID_var4Scaling:      return "enum";
+    case ID_var4SkewFactor:   return "double";
+    case ID_pointSize:        return "double";
+    case ID_pointSizePixels:  return "int";
+    case ID_pointType:        return "enum";
+    case ID_scaleCube:        return "bool";
+    case ID_colorType:        return "enum";
+    case ID_singleColor:      return "color";
+    case ID_colorTableName:   return "colortable";
+    case ID_invertColorTable: return "bool";
+    case ID_legendFlag:       return "bool";
     default:  return "invalid index";
     }
 }
@@ -2171,9 +2251,9 @@ ScatterAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (scaleCube == obj.scaleCube);
         }
         break;
-    case ID_colorTableName:
+    case ID_colorType:
         {  // new scope
-        retval = (colorTableName == obj.colorTableName);
+        retval = (colorType == obj.colorType);
         }
         break;
     case ID_singleColor:
@@ -2181,9 +2261,14 @@ ScatterAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (singleColor == obj.singleColor);
         }
         break;
-    case ID_foregroundFlag:
+    case ID_colorTableName:
         {  // new scope
-        retval = (foregroundFlag == obj.foregroundFlag);
+        retval = (colorTableName == obj.colorTableName);
+        }
+        break;
+    case ID_invertColorTable:
+        {  // new scope
+        retval = (invertColorTable == obj.invertColorTable);
         }
         break;
     case ID_legendFlag:
@@ -2291,7 +2376,8 @@ ScatterAttributes::ChangesRequireRecalculation(const ScatterAttributes &obj) con
             var4Changed = var4 != obj.var4;
     }
 
-    return var1Role != obj.var1Role ||
+    return colorType != obj.colorType ||
+           var1Role != obj.var1Role ||
            var2Role != obj.var2Role ||
            var3Role != obj.var3Role ||
            var4Role != obj.var4Role ||

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -67,6 +67,12 @@ public:
         Log,
         Skew
     };
+    enum ColoringMethod
+    {
+        ColorByForegroundColor,
+        ColorBySingleColor,
+        ColorByColorTable
+    };
     enum PointType
     {
         Box,
@@ -113,8 +119,8 @@ public:
     void SelectVar2();
     void SelectVar3();
     void SelectVar4();
-    void SelectColorTableName();
     void SelectSingleColor();
+    void SelectColorTableName();
 
     // Property setting methods
     void SetVar1(const std::string &var1_);
@@ -153,9 +159,10 @@ public:
     void SetPointSizePixels(int pointSizePixels_);
     void SetPointType(PointType pointType_);
     void SetScaleCube(bool scaleCube_);
-    void SetColorTableName(const std::string &colorTableName_);
+    void SetColorType(ColoringMethod colorType_);
     void SetSingleColor(const ColorAttribute &singleColor_);
-    void SetForegroundFlag(bool foregroundFlag_);
+    void SetColorTableName(const std::string &colorTableName_);
+    void SetInvertColorTable(bool invertColorTable_);
     void SetLegendFlag(bool legendFlag_);
 
     // Property getting methods
@@ -199,11 +206,12 @@ public:
     int                  GetPointSizePixels() const;
     PointType            GetPointType() const;
     bool                 GetScaleCube() const;
-    const std::string    &GetColorTableName() const;
-          std::string    &GetColorTableName();
+    ColoringMethod       GetColorType() const;
     const ColorAttribute &GetSingleColor() const;
           ColorAttribute &GetSingleColor();
-    bool                 GetForegroundFlag() const;
+    const std::string    &GetColorTableName() const;
+          std::string    &GetColorTableName();
+    bool                 GetInvertColorTable() const;
     bool                 GetLegendFlag() const;
 
     // Persistence methods
@@ -215,6 +223,11 @@ public:
     static bool Scaling_FromString(const std::string &, Scaling &);
 protected:
     static std::string Scaling_ToString(int);
+public:
+    static std::string ColoringMethod_ToString(ColoringMethod);
+    static bool ColoringMethod_FromString(const std::string &, ColoringMethod &);
+protected:
+    static std::string ColoringMethod_ToString(int);
 public:
     static std::string PointType_ToString(PointType);
     static bool PointType_FromString(const std::string &, PointType &);
@@ -274,9 +287,10 @@ public:
         ID_pointSizePixels,
         ID_pointType,
         ID_scaleCube,
-        ID_colorTableName,
+        ID_colorType,
         ID_singleColor,
-        ID_foregroundFlag,
+        ID_colorTableName,
+        ID_invertColorTable,
         ID_legendFlag,
         ID__LAST
     };
@@ -318,15 +332,16 @@ private:
     int            pointSizePixels;
     int            pointType;
     bool           scaleCube;
-    std::string    colorTableName;
+    int            colorType;
     ColorAttribute singleColor;
-    bool           foregroundFlag;
+    std::string    colorTableName;
+    bool           invertColorTable;
     bool           legendFlag;
 
     // Static class format string for type map.
     static const char *TypeMapFormatString;
     static const private_tmfs_t TmfsStruct;
 };
-#define SCATTERATTRIBUTES_TMFS "sibbddidisbbddidisbbddidisbbddiddiibsabb"
+#define SCATTERATTRIBUTES_TMFS "sibbddidisbbddidisbbddidisbbddiddiibiasbb"
 
 #endif

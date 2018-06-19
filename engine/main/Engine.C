@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -133,6 +133,49 @@ static void ResetEngineTimeout(void *p, int secs);
 // message tag for interrupt messages used in static abort callback function
 #ifdef PARALLEL
 const int INTERRUPT_MESSAGE_TAG = GetUniqueStaticMessageTag();
+#endif
+
+#ifdef _WIN32
+  #define BEGINSWITHQUOTE(A) (A[0] == '\'' || A[0] == '\"')
+  #define ENDSWITHQUOTE(A) (A[strlen(A)-1] == '\'' || A[strlen(A)-1] == '\"')
+  #define HASSPACE(A) (strstr(A, " ") != NULL)
+
+  void
+  StripSurroundingQuotes(std::string & s1)
+  {
+      if(s1.size() > 0 && (s1[0] == '\'' || s1[0] == '\"'))
+      {
+          s1 = s1.substr(1, s1.size()-1);
+      }
+      if(s1.size() > 0 && (s1[s1.size()-1] == '\'' || s1[s1.size()-1] == '\"'))
+      {
+          s1 = s1.substr(0, s1.size()-1);
+      }
+  }
+
+ 
+  std::string
+  GetNextArg(int argc, char **argv, int start, int &nargs)
+  {
+      std::string tmpArg(argv[start]);
+      if (BEGINSWITHQUOTE(argv[start]) && !ENDSWITHQUOTE(argv[start]))
+      {
+          // A path-with-spaces on Windows will get surrounded by quotes,
+          // but some system calls will still split the single arg into many,
+          // breaking on the spaces.  They need to be catenated back together
+          // into a single argument.
+          for (int j = start+1; j < argc; j++)
+          {
+              nargs++;
+              tmpArg += " ";
+              tmpArg += argv[j];
+              if (ENDSWITHQUOTE(argv[j]))
+                  break;
+          }
+      }
+      StripSurroundingQuotes(tmpArg);
+      return tmpArg;
+  }
 #endif
 
 // ****************************************************************************
@@ -290,6 +333,9 @@ Engine::Engine() : viewerArgs()
     netmgr = NULL;
     lb = NULL;
     procAtts = NULL;
+
+    simxfer = NULL;
+    simConnection = NULL;
     simulationCommandCallback = NULL;
     simulationCommandCallbackData = NULL;
     metaData = NULL;
@@ -365,6 +411,8 @@ Engine::~Engine()
 {
     delete xfer;
     delete lb;
+
+    delete simxfer;
     delete silAtts;
     delete metaData;
     delete commandFromSim;
@@ -393,12 +441,19 @@ Engine::~Engine()
     delete cloneNetworkRPC;
     delete procInfoRPC;
     delete simulationCommandRPC;
+    delete exportDatabaseRPC;
+    delete constructDataBinningRPC;
+    delete namedSelectionRPC;
     delete setEFileOpenOptionsRPC;
 
     delete viewer;
     delete viewerP;
 
     delete renderingDisplay;
+
+#ifdef DEBUG_MEMORY_LEAKS
+    delete parsingExprList;
+#endif
 
     // Delete the network manager last since it deletes plugin managers
     // and our RPC's may need to call plugin AttributeSubject destructors.
@@ -516,6 +571,8 @@ Engine::Initialize(int *argc, char **argv[], bool sigs)
     VisItInit::SetComponentName("engine");
     VisItInit::Initialize(*argc, *argv, 0,1, true, sigs);
 #endif
+
+    simxfer = new Xfer;
 
     // Configure external options.
     RuntimeSetting::parse_command_line(*argc, const_cast<const char**>(*argv));
@@ -796,6 +853,14 @@ Engine::SetUpViewerInterface(int *argc, char **argv[])
     else
         vtkConnection = viewerP->GetReadConnection(1);
 
+    if(simulationPluginsEnabled)
+    {
+        if(reverseLaunch)
+            simConnection = viewer->GetWriteConnection(2);
+        else
+            simConnection = viewerP->GetReadConnection(2);
+    }
+
     // Parse the command line.
     ProcessCommandLine(*argc, *argv);
 
@@ -978,15 +1043,18 @@ Engine::SetUpViewerInterface(int *argc, char **argv[])
     Parser *p = new ExprParser(new avtExprNodeFactory());
     ParsingExprList *l = new ParsingExprList(p);
     xfer->Add(l->GetList());
+#ifdef DEBUG_MEMORY_LEAKS
+    parsingExprList = l;
+#endif
 
     // Hook up metadata and SIL to be send back to the viewer.
     // This is intended to only be used for simulations.
     metaData = new avtDatabaseMetaData;
     silAtts = new SILAttributes;
     commandFromSim = new SimulationCommand;
-    xfer->Add(metaData);
-    xfer->Add(silAtts);
-    xfer->Add(commandFromSim);
+    simxfer->Add(metaData);
+    simxfer->Add(silAtts);
+    simxfer->Add(commandFromSim);
 
     //
     // Hook up the viewer connections to Xfer
@@ -998,6 +1066,9 @@ Engine::SetUpViewerInterface(int *argc, char **argv[])
             xfer->SetInputConnection(viewer->GetWriteConnection());
         else
             xfer->SetInputConnection(viewerP->GetWriteConnection());
+
+        if(simulationPluginsEnabled)
+            simxfer->SetOutputConnection(simConnection);
     }
     else
     {
@@ -1010,6 +1081,9 @@ Engine::SetUpViewerInterface(int *argc, char **argv[])
         xfer->SetInputConnection(viewer->GetWriteConnection());
     else
         xfer->SetInputConnection(viewerP->GetWriteConnection());
+
+    if(simulationPluginsEnabled)
+        simxfer->SetOutputConnection(simConnection);
 #endif
     if(reverseLaunch)
         xfer->SetOutputConnection(viewer->GetReadConnection());
@@ -1212,7 +1286,7 @@ Engine::ReverseLaunchViewer(int *argc, char **argv[])
                          0,                        // ssh port
                          false,                    // ssh tunnelling
                          1,                        // num read sockets
-                         2);                       // num write sockets
+                         simulationPluginsEnabled ? 3 : 2); // num write sockets
         }
         CATCH(VisItException)
         {
@@ -1285,10 +1359,11 @@ Engine::ConnectViewer(int *argc, char **argv[])
         {
             // The viewer launched the engine
             viewerP = new ParentProcess;
+            int nwrite = simulationPluginsEnabled ? 3 : 2;
 #ifdef PARALLEL
-            viewerP->Connect(1, 2, argc, argv, PAR_UIProcess());
+            viewerP->Connect(1, nwrite, argc, argv, PAR_UIProcess());
 #else
-            viewerP->Connect(1, 2, argc, argv, true);
+            viewerP->Connect(1, nwrite, argc, argv, true);
 #endif
         }
     }
@@ -1778,6 +1853,17 @@ Engine::ProcessInput()
 //
 //    Mark C. Miller, Tue Oct 19 21:59:16 PDT 2010
 //    Predicated some cerr warnings about timeout on !PAR_Rank()
+//
+//    Hank Childs, Sat Jan  1 14:17:58 PST 2011
+//    Add "-safe" flag.
+//
+//    Hank Childs, Tue Jan 18 09:39:17 PST 2011
+//    Add support for -auxsessionkey.
+//
+//    Kathleen Bonnell, Mon Jan 24 17:44:01 MST 2011
+//    For Windows, handle spaces and quotes for -dump and -infodump paths
+//    if specified.
+//
 // ****************************************************************************
 
 void
@@ -1943,8 +2029,15 @@ Engine::ProcessCommandLine(int argc, char **argv)
             // check for optional -dump output directory
             if( i+1 < argc && argv[i+1][0] !='-')
             {
+#ifndef _WIN32
                 avtDebugDumpOptions::SetDumpDirectory(argv[i+1]);
                 ++i;
+#else
+                // make sure spaces and surrounding quotes are handled
+                int nskip = 1;
+                avtDebugDumpOptions::SetDumpDirectory(GetNextArg(argc, argv, i+1, nskip));
+                i+= nskip;
+#endif
             }
         }
         else if (strcmp(argv[i], "-info-dump") == 0)
@@ -1955,8 +2048,15 @@ Engine::ProcessCommandLine(int argc, char **argv)
             // check for optional -dump output directory
             if( i+1 < argc && argv[i+1][0] !='-')
             {
+#ifndef _WIN32
                 avtDebugDumpOptions::SetDumpDirectory(argv[i+1]);
                 ++i;
+#else
+                // make sure spaces and surrounding quotes are handled
+                int nskip = 1;
+                avtDebugDumpOptions::SetDumpDirectory(GetNextArg(argc, argv, i+1, nskip));
+                i+= nskip;
+#endif
             }
         }
         else if (strcmp(argv[i], "-vtk-debug") == 0)
@@ -1964,6 +2064,10 @@ Engine::ProcessCommandLine(int argc, char **argv)
             avtDataObjectToDatasetFilter::SetVTKDebugMode(true);
             avtVariableCache::SetVTKDebugMode(true);
             vtkDebugStream::FrequentEventsFilter(true);
+        }
+        else if (strcmp(argv[i], "-safe") == 0)
+        {
+            avtCallback::EnableSafeMode();
         }
         else if (strcmp(argv[i], "-lb-block") == 0)
         {
@@ -2013,6 +2117,15 @@ Engine::ProcessCommandLine(int argc, char **argv)
         else if (strcmp(argv[i], "-no-icet") == 0)
         {
             this->useIceT = false;
+        }
+        else if(strcmp(argv[i], "-auxsessionkey") == 0)
+        {
+            if (i+1 < argc)
+            {
+                std::string s = argv[i+1];
+                avtCallback::SetAuxSessionKey(s);
+                i++;
+            }
         }
     }
     avtCallback::SetSoftwareRendering(!haveHWAccel);
@@ -3249,7 +3362,7 @@ Engine::PopulateSimulationMetaData(const std::string &db,
     // Send the metadata and SIL to the viewer
     if(!quitRPC->GetQuit())
     {
-        xfer->SetUpdate(true);
+        simxfer->SetUpdate(true);
         metaData->Notify();
         silAtts->SelectAll();
         silAtts->Notify();
@@ -3327,7 +3440,7 @@ Engine::SimulationInitiateCommand(const std::string &command)
     {
         // Allow the command to be sent, even if we're in the middle of an
         // Xfer::Process. This fixes a synchronization bug.
-        xfer->SetUpdate(true);
+        simxfer->SetUpdate(true);
 
         commandFromSim->SetCommand(command);
         commandFromSim->Notify();

@@ -32,11 +32,13 @@ class SimpleVisApp : public QMainWindow
 {
     Q_OBJECT
 public:
-    SimpleVisApp(VisItViewer *);
+    SimpleVisApp(VisItViewer *, int *, char ***);
     virtual ~SimpleVisApp();
 
 public slots:
     virtual void show();
+    void execFile(int openClFile=0);
+
 private slots:
     void selectFile();
     void openFile(const QString &);
@@ -46,7 +48,7 @@ private slots:
     void setNContours(int);
     void saveWindow();
     void openGUI();
-    void execFile();
+    void quitApp();
 private:
     static vtkQtRenderWindow *ReturnVisWin(void *);
     void resetWindow();
@@ -61,6 +63,8 @@ private:
     VisItViewer       *viewer;
 
     CommandParser     *cmd;
+
+    QString            clfilename;
 };
 
 #endif

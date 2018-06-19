@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-400142
 # All rights reserved.
@@ -35,6 +35,11 @@
 # DAMAGE.
 #
 # Modifications:
+#   Kathleen Bonnell, Wed Jan 05 10:25:13 PST 2010
+#   Add FOLDER property.
+#
+#   Kathleen Bonnell, Mon Jan 10 07:59:28 MST 2010
+#   Remove PROGRAM9 (xml2projectfile), and PROGRAM5 (xml2makefile).
 #
 #****************************************************************************/
 
@@ -46,15 +51,11 @@ SET(PROGRAM3_SOURCES main3.C)
 
 SET(PROGRAM4_SOURCES main4.C)
 
-SET(PROGRAM5_SOURCES main5.C)
-
 SET(PROGRAM6_SOURCES main6.C)
 
 SET(PROGRAM7_SOURCES main7.C)
 
 SET(PROGRAM8_SOURCES main8.C)
-
-SET(PROGRAM9_SOURCES main9.C)
 
 SET(PROGRAM10_SOURCES main10.C)
 
@@ -108,3 +109,4 @@ TARGET_LINK_LIBRARIES(xml2sim    ${RELEVANT_QT_LIBS})
 
 # Install the targets
 VISIT_INSTALL_TARGETS(xmltest xml2atts xml2window xml2info xml2avt xml2python xml2java xml2cmake)
+VISIT_TOOLS_ADD_FOLDER(xml xmltest xml2atts xml2window xml2info xml2avt xml2python xml2java xml2cmake xml2sim)

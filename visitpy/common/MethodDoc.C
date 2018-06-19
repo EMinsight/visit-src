@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -2495,6 +2495,28 @@ const char *visit_GetAnnotationAttributes_doc =
 "a.gradientColor1 = (0, 0, 255)\n"
 "SetAnnotationAttributes(a)\n"
 ;
+const char *visit_GetAnnotationObjectNames_doc =
+"GetAnnotationObjectNames\n"
+"-Returns a tuple of names of all currently defined annotation objects\n"
+"\n"
+"\n"
+"Synopsis:\n"
+"\n"
+"GetAnnotationObjectNames() -> tuple of strings\n"
+"\n"
+"\n"
+"Returns:\n"
+"\n"
+"\n"
+"GetAnnotationObjectNames returns a tuple of strings of the names of all\n"
+"annotation objects defined for the currently active window.\n"
+"\n"
+"Example:\n"
+"\n"
+"names = GetAnnotationObjectNames()\n"
+"names\n"
+"[\"plot0000\", \"Line2D1\", \"TimeSlider1\"]\n"
+;
 const char *visit_GetAnnotationObject_doc = 
 "GetAnnotationObject\n"
 "-Returns a reference to the annotation object at the specified index in\n"
@@ -2503,13 +2525,13 @@ const char *visit_GetAnnotationObject_doc =
 "\n"
 "Synopsis:\n"
 "\n"
-"GetAnnotationObject(index) -> Annotation object\n"
+"GetAnnotationObject(string) -> Annotation object\n"
 "\n"
 "\n"
 "Arguments:\n"
 "\n"
-"index\n"
-"A zero-based integer index into the annotation object list.\n"
+"string\n"
+"The name of the annotation object as returned by GetAnnotationObjectNames.\n"
 "\n"
 "\n"
 "Returns:\n"
@@ -2521,12 +2543,14 @@ const char *visit_GetAnnotationObject_doc =
 "Description:\n"
 "\n"
 "GetAnnotationObject returns a reference to an annotation object that was\n"
-"created using the CreateAnnotationObject function (see page 50). The index\n"
-"argument is a zero-based integer that specifies the index of the object for\n"
-"which we want to return another reference. This function is not currently\n"
-"necessary unless the annotation object that you used to create an\n"
+"created using the CreateAnnotationObject function (see page 50). The string\n"
+"argument specifies the name of the desired annotation object. It must be\n"
+"one of the names returned by GetAnnotationObjectNames. This function is not\n"
+"currently necessary unless the annotation object that you used to create an\n"
 "annotation has gone out of scope and you need to create another reference\n"
-"to the object to set its properties.\n"
+"to the object to set its properties. Also note that although this function\n"
+"will apparently also accept an integer index, that mode of access is not\n"
+"reliably and should be avoided.\n"
 "\n"
 "\n"
 "Example:\n"
@@ -2537,7 +2561,9 @@ const char *visit_GetAnnotationObject_doc =
 "DrawPlots()\n"
 "\n"
 "a = CreateAnnotationObject(\"TimeSlider\")\n"
-"ref = GetAnnotationObject(0)\n"
+"GetAnnotationObjectNames()\n"
+"[\"plot0000\", \"TimeSlider1\"]\n"
+"ref = GetAnnotationObject(\"TimeSlider1\")\n"
 "print ref\n"
 ;
 const char *visit_GetCallbackNames_doc = 
@@ -3189,7 +3215,7 @@ const char *visit_GetPickOutput_doc =
 "AddPlot(\"Pseudocolor\", \"d\")\n"
 "DrawPlots()\n"
 "\n"
-"Pick((0.4, 0.6), (\"default\", \"u\", \"v\"))\n"
+"ZonePick((0.4, 0.6), (\"default\", \"u\", \"v\"))\n"
 "s = GetPickOutput()\n"
 "print s\n"
 ;
@@ -4586,17 +4612,12 @@ const char *visit_OverlayDatabase_doc =
 "\n"
 "OverlayDatabase(\"riptide:/usr/gapps/visit/data/curv3d.silo\")\n"
 ;
-const char *visit_Pick_doc = 
-"Pick\n"
+const char *visit_ZonePick_doc = 
+"ZonePick\n"
 "-Performs a zonal pick on a plot.\n"
 "\n"
 "\n"
 "Synopsis:\n"
-"\n"
-"Pick(point) -> integer\n"
-"Pick(point, variables) -> integer\n"
-"Pick(sx, sy) -> integer\n"
-"Pick(sx, sy, variables) -> integer\n"
 "\n"
 "ZonePick(point) -> integer\n"
 "ZonePick(point, variables) -> integer\n"
@@ -4623,7 +4644,7 @@ const char *visit_Pick_doc =
 "\n"
 "Returns:\n"
 "\n"
-"The Pick function prints pick information for the cell (a.k.a zone) that\n"
+"The ZonePick function prints pick information for the cell (a.k.a zone) that\n"
 "contains the specified point. The point can be specified as a 2D or 3D\n"
 "point in world space or it can be specified as a pixel location in screen\n"
 "space. If the point is specified as a pixel location then VisIt finds the\n"
@@ -4640,10 +4661,10 @@ const char *visit_Pick_doc =
 "AddPlot(\"Pseudocolor\", \"hgslice\")\n"
 "DrawPlots()\n"
 "\n"
-"# Perform node pick in screen space\n"
-"Pick(300,300)\n"
-"# Perform node pick in world space.\n"
-"Pick((-5.0, 5.0))\n"
+"# Perform zone pick in screen space\n"
+"ZonePick(300,300)\n"
+"# Perform zone pick in world space.\n"
+"ZonePick((-5.0, 5.0))\n"
 ;
 const char *visit_PickByGlobalNode_doc = 
 "PickByGlobalNode\n"
@@ -6837,14 +6858,14 @@ const char *visit_SetPickAttributes_doc =
 "AddPlot(\"Pseudocolor\", \"hgslice\")\n"
 "DrawPlots()\n"
 "\n"
-"Pick((-5,5))\n"
+"ZonePick((-5,5))\n"
 "\n"
 "p = GetPickAttributes()\n"
 "p.showTimeStep = 0\n"
 "p.showMeshName = 0\n"
 "p.showZoneId = 0\n"
 "SetPickAttributes(p)\n"
-"Pick((0,5))\n"
+"ZonePick((0,5))\n"
 ;
 const char *visit_SetPipelineCachingMode_doc = 
 "SetPipelineCachingMode\n"

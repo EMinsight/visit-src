@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-400142
 # All rights reserved.
@@ -44,6 +44,8 @@
 #   Hank Childs, Thu Aug 19 12:26:29 PDT 2010
 #   Move DDF to DataBinning.
 #
+#   Mark C. Miller, Fri Oct 29 10:02:16 PDT 2010
+#   Added DBYieldedNoDataException
 #****************************************************************************/
 
 SET(COMM_SOURCES
@@ -68,6 +70,7 @@ ENDIF(WIN32)
 
 SET(EXCEPTION_SOURCES
 Exceptions/Database/BadPermissionException.C
+Exceptions/Database/DBYieldedNoDataException.C
 Exceptions/Database/FileDoesNotExistException.C
 Exceptions/Database/InvalidDBTypeException.C
 Exceptions/Database/InvalidFilesException.C
@@ -75,6 +78,7 @@ Exceptions/Database/InvalidSourceException.C
 Exceptions/Database/InvalidTimeStepException.C
 Exceptions/Database/InvalidVariableException.C
 Exceptions/Database/InvalidZoneTypeException.C
+Exceptions/Database/NonCompliantException.C
 Exceptions/Database/NonCompliantFileException.C
 Exceptions/Database/PointerNotInCacheException.C
 Exceptions/Database/SiloException.C
@@ -312,6 +316,12 @@ ADD_LIBRARY(visitcommon
 # Specify the libraries to link against on Windows
 IF(WIN32)
     TARGET_LINK_LIBRARIES(visitcommon ws2_32 shlwapi userenv)
+ELSE(WIN32)
+    ADD_EXECUTABLE(StringHelpers_test utility/StringHelpers_test.C)
+    TARGET_LINK_LIBRARIES(StringHelpers_test visitcommon ${CMAKE_THREAD_LIBS} ${DL_LIB})
+    ADD_EXECUTABLE(Namescheme_test utility/Namescheme_test.C)
+    TARGET_LINK_LIBRARIES(Namescheme_test visitcommon ${CMAKE_THREAD_LIBS} ${DL_LIB})
+    ADD_EXECUTABLE(MRUCache_test utility/MRUCache_test.C)
 ENDIF(WIN32)
 
 VISIT_INSTALL_TARGETS(visitcommon)

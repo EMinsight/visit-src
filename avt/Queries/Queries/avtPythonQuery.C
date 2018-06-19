@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -136,28 +136,31 @@ avtPythonQuery::CleanUp()
 //  Programmer: Cyrus Harrison
 //  Creation:   April 17, 2009
 //
+//  Modifications:
+//   Cyrus Harrison,Tue Jan 11 16:33:27 PST 2011
+//    Don't return c_str() pointer from local string var.
+//
 // ****************************************************************************
 const char*
 avtPythonQuery::GetType()
 {
-    string res = "";
-
+    queryType = "";
     // hook to pyavt filter
     avtPythonFilter *py_filter = pyEnv->Filter();
     if(py_filter == NULL)
         PYQUERY_ERROR("avtPythonQuery::GetType Error - "
                        "Python filter not initialized.");
 
-    if(py_filter->GetAttribute("name",res))
+    if(py_filter->GetAttribute("name",queryType))
     {
-        if(res != "avtPythonQuery")
-            res = "avtPythonQuery(" + res + ")";
+        if(queryType != "avtPythonQuery")
+            queryType = "avtPythonQuery(" + queryType + ")";
     }
     else
         PYQUERY_ERROR("avtPythonQuery::GetType Error - "
                       "fetch of python filter attribute 'name' failed");
 
-    return res.c_str();
+    return queryType.c_str();
 }
 
 // ****************************************************************************
@@ -169,24 +172,26 @@ avtPythonQuery::GetType()
 //  Programmer: Cyrus Harrison
 //  Creation:   April 17, 2009
 //
+//  Modifications:
+//   Cyrus Harrison,Tue Jan 11 16:33:27 PST 2011
+//    Don't return c_str() pointer from local string var.
+//
 // ****************************************************************************
 const char*
 avtPythonQuery::GetDescription()
 {
-    // hook to pyavt filter
-    string res = "";
-
+    queryDescription ="";
     // hook to pyavt filter
     avtPythonFilter *py_filter = pyEnv->Filter();
     if(py_filter == NULL)
         PYQUERY_ERROR("avtPythonQuery::GetDescription Error - "
                        "Python filter not initialized.");
 
-    if(!py_filter->GetAttribute("description",res))
+    if(!py_filter->GetAttribute("description",queryDescription))
         PYQUERY_ERROR("avtPythonQuery::GetDescription Error - "
                       "fetch of python filter attribute 'description' failed");
 
-    return res.c_str();
+    return queryDescription.c_str();
 }
 
 // ****************************************************************************
@@ -548,6 +553,9 @@ avtPythonQuery::Execute()
                           "Unable to add domain id to execution input list");
     }
 
+    // Free the memory from the GetAllLeaves function call.
+    delete [] data_sets;
+
     // call execute on Filter
     PyObject *py_filter = pyEnv->Filter()->PythonObject();
     if(py_filter == NULL)
@@ -555,7 +563,7 @@ avtPythonQuery::Execute()
                       "Python filter not initialized.");
 
     // get the execute method
-    PyObject *py_exe= PyString_FromString("execute");
+    PyObject *py_exe = PyString_FromString("execute");
     if(py_exe == NULL)
         PYQUERY_ERROR("avtPythonQuery::Execute Error - "
                      "Error preparing for call of 'execute' method.");
@@ -571,7 +579,6 @@ avtPythonQuery::Execute()
     Py_DECREF(py_dsets);
     Py_DECREF(py_domids);
     Py_DECREF(py_exe);
-
 }
 
 // ****************************************************************************

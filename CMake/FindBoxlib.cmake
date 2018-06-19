@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-400142
 # All rights reserved.
@@ -38,18 +38,39 @@
 #   Kathleen Bonnell, Thu Dec  3 10:30:15 PST 2009
 #   Use only 1 if-def block, fix libarary names for windows.
 #
+#   Eric Brugger, Fri Jan  7 13:50:15 PST 2011
+#   I replaced the BOXLIB2D and BOXLIB3D variables with just BOXLIB.
+#
+#   Kathleen Bonnell, Thu Jan 13 15:21:47 MST 2011
+#   Restore separate vars for libraries (to handle different names on
+#   different platforms).
+#
+#   Kathleen Bonnell, Mon Jan 17 17:24:44 MST 2011
+#   Don't set BOXLIB_2D/3D_LIB unless BOXLIB_FOUND.
+#
 #****************************************************************************/
 
-# Use the BOXLIB2D_DIR, BOXLIB3D_DIR hints from the config-site .cmake file 
+# Use the BOXLIB_DIR hint from the config-site .cmake file 
 
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/SetUpThirdParty.cmake)
 
 IF (WIN32)
-  SET_UP_THIRD_PARTY(BOXLIB2D lib/${VISIT_MSVC_VERSION} include boxlib2D)
-  SET_UP_THIRD_PARTY(BOXLIB3D lib/${VISIT_MSVC_VERSION} include boxlib3D)
+  SET_UP_THIRD_PARTY(BOXLIB lib/${VISIT_MSVC_VERSION} include BoxLib2D BoxLib3D)
 ELSE (WIN32)
-  SET_UP_THIRD_PARTY(BOXLIB2D lib include/2D box2D)
-  SET_UP_THIRD_PARTY(BOXLIB3D lib include/3D box3D)
+  SET_UP_THIRD_PARTY(BOXLIB lib include box2D box3D)
 ENDIF (WIN32)
+
+IF(BOXLIB_FOUND)
+  # place the 2D and 3D libraries into separate vars for plugin use.
+  LIST(GET BOXLIB_LIB 0 tmp)
+  SET(BOXLIB_2D_LIB ${tmp} CACHE STRING "2D boxlib" FORCE)
+
+  LIST(GET BOXLIB_LIB 1 tmp)
+  SET(BOXLIB_3D_LIB ${tmp} CACHE STRING "3D boxlib" FORCE)
+
+  # unset unneeded vars.
+  UNSET(tmp)
+  UNSET(BOXLIB_LIB CACHE)
+ENDIF(BOXLIB_FOUND)
 
 

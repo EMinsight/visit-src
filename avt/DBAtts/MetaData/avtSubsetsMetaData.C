@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -132,10 +132,13 @@ avtSubsetsMetaData::DecompMode_FromString(const std::string &s, avtSubsetsMetaDa
 
 void avtSubsetsMetaData::Init()
 {
+    catCount = 0;
     isChunkCat = false;
     isMaterialCat = false;
     isUnionOfChunks = false;
     hasPartialCells = false;
+    decompMode = None;
+    maxTopoDim = 0;
 
     avtSubsetsMetaData::SelectAll();
 }

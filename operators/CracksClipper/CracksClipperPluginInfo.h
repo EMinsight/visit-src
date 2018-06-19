@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -75,6 +75,7 @@ class CracksClipperCommonPluginInfo : public virtual CommonOperatorPluginInfo, p
   public:
     virtual AttributeSubject *AllocAttributes();
     virtual void CopyAttributes(AttributeSubject *to, AttributeSubject *from);
+    virtual ExpressionList *GetCreatedExpressions(const char *);
 };
 
 class CracksClipperGUIPluginInfo : public virtual GUIOperatorPluginInfo, public virtual CracksClipperCommonPluginInfo

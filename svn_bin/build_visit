@@ -52,22 +52,23 @@
 #        build, either through run string options or the dialog gui. If
 #        the tarballs don't exist they will not be built or downloaded
 #           Library  Version  Source Tarball Name    Command Option
-#           Boxlib   2.5      boxlib.tar.gz          -b
-#           CCMIO    2.6.1    libccmio-2.6.1.tar.gz  -C
-#           CFITSIO  3006     cfitsio3006.tar.gz     -f
-#           CGNS     2.4.3    cgnslib_2.4-3.tar.gz   -c
-#           ExodusII 4.46     exodusii-4.46.tar.gz   -e
-#           FastBit  0.9.9    fastbit-b0.9.9.tar.gz  -r
-#           GDAL     1.3.2    gdal-1.3.2.tar.gz      -g (no AIX)
-#           H5part   1.6.0    H5Part-1.6.0.tar.gz    -r
-#           HDF4     2.4.1    HDF4.2r1.tar.gz        -4
-#           HDF5     1.8.4    hdf5-1.8.4.tar.gz      -5
+#           Boxlib   2.5      boxlib.tar.gz          --boxlib
+#           CCMIO    2.6.1    libccmio-2.6.1.tar.gz  --ccmio
+#           CFITSIO  3006     cfitsio3006.tar.gz     --cfitsio
+#           CGNS     3.0.8    cgns-3.0.8-Source.tar.gz --cgns
+#           ExodusII 4.98     exodusii-4.98.tar.gz   -exodus
+#           FastBit  0.9.9    fastbit-b0.9.9.tar.gz  
+#           GDAL     1.3.2    gdal-1.3.2.tar.gz      --gdal
+#           H5part   1.6.0    H5Part-1.6.0.tar.gz    --h5part
+#           HDF4     2.4.1    HDF4.2r1.tar.gz        --hdf4
+#                    2.5      hdf-4.2.5.tar.gz       (on Mac)
+#           HDF5     1.8.4    hdf5-1.8.4.tar.gz      --hdf5
 #           MDSplus  2.2      mdsplus-2.2-4.tar.gz
-#           Mili     1.10     mili-1.10a.tar.gz      -m (internal)
-#           NetCDF   3.6.0    netcdf.tar.gz          -n
-#           AdvIO    1.2.0    AdvIO-1.2.tar.gz
-#           Silo     4.7.2    silo-4.7.2.tar.gz
-#           szip     2.1      szip-2.1.tar.gz
+#           Mili     1.10     mili-1.10a.tar.gz      --mili
+#           NetCDF   4.1,1    netcdf-4.1.1.tar.gz    --netcdf
+#           AdvIO    1.2.0    AdvIO-1.2.tar.gz       --advio
+#           Silo     4.8      silo-4.8.tar.gz        --silo
+#           szip     2.1      szip-2.1.tar.gz        --szip
 #
 #         Experimental (internal)
 #           ITAPS             ITAPS-FMDB-1.1-30Aug10.tar.gz
@@ -210,7 +211,7 @@
 #
 #     Kathleen Bonnell, Mon Aug 27 08:42:06 PDT 2007
 #     Changed -DMANGLED_OSMESA_INCLUDE to -DMANGLED_OSMESA_INCLUDE_DIR
-#     in build_vtk. 
+#     in build_vtk.
 #
 #     Gunther H. Weber, Wed Aug 29 12:34:58 PDT 2007
 #     - Added rv=0 to beginning of check_parallel to fix error when trying
@@ -946,9 +947,33 @@
 #     Mark C. Miller, Mon Aug 30 17:57:47 PDT 2010
 #     Update ITAPS-FMDB tarball to something known to compile correctly.
 #
+#     Mark C. Miller, Tue Sep 21 05:46:10 PDT 2010
+#     Fix DBIO_ONLY mode.
+#
+#     Gunther H. Weber, Tue Sep 28 14:38:30 PDT 2010
+#     Updated FastBit to 1.2.0. Do not enable HDF5 by default if FastBit is
+#     built. Even though both are used in H5Part, FastBit can be built
+#     independently from HDF5.
+#
+#     Gunther H. Weber, Mon Oct  4 11:32:31 PDT 2010
+#     Cleaned-up build_boxlib after trnasition to new current boxlib version.
+#
+#     Tom Fogal, Wed Oct  6 00:12:56 MDT 2010
+#     Added a hack to workaround a Mesa issue.
+#     Only apply said hack on Linux, though.
+#
+#     Brad Whitlock, Mon Oct 11 11:23:18 PDT 2010
+#     Added support for NETCDF 4.1.1
+#
+#     Brad Whitlock, Tue Oct 19 11:28:16 PDT 2010
+#     I added support for cgns 3.0.8
+#
 #     Cyrus Harrison, Wed Oct 27 09:33:22 PDT 2010
 #     Added SVN_SOURCE_PATH, to allow us to tie a versioned build_visit
 #     release to a specific svn tag.
+#
+#     Mark C. Miller, Fri Oct 29 10:02:58 PDT 2010
+#     Update to use Silo 4.8
 #
 #     Eric Brugger, Tue Nov  2 14:06:10 PDT 2010
 #     I set the VisIt version number to 2.1.1.
@@ -978,6 +1003,79 @@
 #     Eric Brugger, Thu Dec 16 09:48:56 PST 2010
 #     I disabled PostgreSQL and curl support in GDAL. These were causing
 #     linking errors at runtime on older Linux systems.
+#
+#     Brad Whitlock, Mon Dec 27 10:18:32 PST 2010
+#     I updated to cmake 2.8.3 to fix Mac build problems. I also updated 
+#     HDF4 to 2.5 on Mac. We can update it for Linux later.
+#
+#     Mark C. Miller, Tue Jan  4 08:41:47 PST 2011
+#     Removed setting of SVN_SOURCE_PATH to something other than 'trunk/src'.
+#     Added --disable-dap to netcdf build to eliminate dap and curl dependence.
+#     Fixed patching of netcdf4 to include all 3 places where netcdf sizing
+#     constants need to be changed; libsrc/netcdf.h, libsrc4/netcdf.h and
+#     libsrc4/netcdf_base.h. Conditioned setting of PAR_INCLUDE_STRING for
+#     IceT build for non-Darwin on whether or not it was already defined.
+#
+#     Mark C. Miller, Tue Jan  4 09:06:12 PST 2011
+#     Added missing backslash for VISIT_EXODUSII_LIBDEP line in config-site
+#     file when referencing VISIT_NETCDF_LIBDEP.
+#
+#     Eric Brugger, Tue Jan  4 09:39:43 PST 2011
+#     I modified the script to tell the user to use "make package" instead
+#     of "svn_bin/visit-bin-dist" to create a distribution. I also modified
+#     the script to output that message to the terminal in addition to the
+#     log file.
+#
+#     Cyrus Harrison, Wed Jan  5 09:54:16 PST 2011
+#     Log full invocation w/ arguments.
+#
+#     Eric Brugger, Thu Jan  6 14:40:29 PST 2011
+#     I moved the HDF4, HDF5 and NetCDF third party library options before
+#     the others and alphabetized them again. There were some order issues
+#     and it seemed simplest to put the libraries that other libraries
+#     depend on first.
+#
+#     Gunther H. Weber, Thu Jan  6 15:30:19 PST 2011
+#     Update H5Part to most recent version 1.6.2. Download H5Part from LBNL
+#     Codeforge page (like FastBit). Make it possible to use already installed
+#     cmake and system python via CMAKE_INSTALL and VISIT_PYTHON_DIR
+#     environment variables.
+#
+#     Eric Brugger, Fri Jan  7 13:36:40 PST 2011
+#     I replace the BOXLIB2D and BOXLIB3D variables with just BOXLIB in
+#     the config site file.
+#
+#     Eric Brugger, Mon Jan 10 12:33:31 PST 2011
+#     I modified the script to build exodus 4.98 instead of exodus 4.46.
+#
+#     Eric Brugger, Mon Jan 10 16:00:13 PST 2011
+#     I modified the script to use https instead of http for anonymous svn
+#     checkouts.
+#
+#     Cyrus Harrison, Tue Jan 11 11:59:32 PST 2011
+#     Use cmake type STRING when passing the value of CMAKE_BUILD_TYPE
+#
+#     Jeremy Meredith, Wed Jan 12 11:21:11 EST 2011
+#     Changed HDF4 libdep generation to point to VTK jpeg library.
+#
+#     Cyrus Harrison, Wed Jan 12 11:22:02 PST 2011
+#     Change config-site gen to add TYPE arguments to VISIT_OPTION_DEFAULT
+#
+#     Eric Brugger, Thu Jan 13 11:18:47 PST 2011
+#     I modified the script to build IceT 1.0.0 instead of 0.5.4. I also
+#     modified it to add -fPIC to the compiler options.
+#
+#     Eric Brugger, Wed Jan 19 10:13:02 PST 2011
+#     I modified the script to set the svn source path to the 2.2.0 tagged
+#     source.
+#
+#     Eric Brugger, Thu Jan 20 15:19:55 PST 2011
+#     I modified the script to add hdf5_hl as a dependent library for
+#     netcdf if using netcdf with hdf5.
+#
+#     Jeremy Meredith, Thu Jan 27 16:21:08 EST 2011
+#     HDF4 libdep generation needs to use libvtkjpeg on only Darwin/AIX,
+#     and the normal libjpeg everywhere else.
 #
 # *****************************************************************************
 
@@ -1290,7 +1388,7 @@ if [[ "$CXX_COMPILER" == "g++" ]] ; then
 fi
 
 
-export SVN_ANON_ROOT_PATH="http://portal.nersc.gov/svn/visit"
+export SVN_ANON_ROOT_PATH="https://portal.nersc.gov/svn/visit"
 # Setup svn path: use SVN_NERSC_NAME if set
 if test -z "$SVN_NERSC_NAME" ; then
     export SVN_REPO_ROOT_PATH="svn+ssh://svn.nersc.gov/svn/visit"
@@ -1313,8 +1411,7 @@ fi
 ###
 # Release:
 ###
-export SVN_SOURCE_PATH="tags/2.1.2/src"
-
+export SVN_SOURCE_PATH="tags/2.2.0/src"
 
 if [[ "$OPSYS" != "Darwin" ]]; then
     WGET_MINOR_VERSION=$(wget --version| head -n 1|cut -d. -f 2)
@@ -1341,9 +1438,9 @@ export VTK_FILE=${VTK_FILE:-"vtk-5.0.0g.tar.gz"}
 export VTK_VERSION=${VTK_VERSION:-"5.0.0g"}
 export VTK_BUILD_DIR=${VTK_BUILD_DIR:-"VTK"}
 
-export CMAKE_FILE=${CMAKE_FILE:-"cmake-2.8.0.tar.gz"}
-export CMAKE_VERSION=${CMAKE_VERSION:-"2.8.0"}
-export CMAKE_BUILD_DIR=${CMAKE_BUILD_DIR:-"cmake-2.8.0"}
+export CMAKE_FILE=${CMAKE_FILE:-"cmake-2.8.3.tar.gz"}
+export CMAKE_VERSION=${CMAKE_VERSION:-"2.8.3"}
+export CMAKE_BUILD_DIR=${CMAKE_BUILD_DIR:-"cmake-2.8.3"}
 
 export MESA_FILE=${MESA_FILE:-"MesaLib-7.8.2.tar.gz"}
 export MESA_VERSION=${MESA_VERSION:-"7.8.2"}
@@ -1380,61 +1477,69 @@ export HDF5_BUILD_DIR=${HDF5_BUILD_DIR:-"hdf5-${HDF5_VERSION}"}
 # Note: Versions of HDF5 1.6.5 and earlier DO NOT have last path component
 export HDF5_URL=${HDF5_URL:-"http://www.hdfgroup.org/ftp/HDF5/prev-releases/hdf5-${HDF5_VERSION}/src"}
 
+if [[ "$OPSYS" == "Darwin" ]]; then
+export HDF4_FILE=${HDF4_FILE:-"hdf-4.2.5.tar.gz"}
+export HDF4_VERSION=${HDF4_VERSION:-"4.2.5"}
+export HDF4_COMPATIBILITY_VERSION=${HDF4_COMPATIBILITY_VERSION:-"4.2"}
+export HDF4_BUILD_DIR=${HDF4_BUILD_DIR:-"hdf-4.2.5"}
+else
 export HDF4_FILE=${HDF4_FILE:-"HDF4.2r1.tar.gz"}
 export HDF4_VERSION=${HDF4_VERSION:-"4.2.1"}
 export HDF4_COMPATIBILITY_VERSION=${HDF4_COMPATIBILITY_VERSION:-"4.0"}
 export HDF4_BUILD_DIR=${HDF4_BUILD_DIR:-"HDF4.2r1"}
+fi
 
 export MILI_FILE=${MILI_FILE:-"mili-1.10a.tar.gz"}
 export MILI_VERSION=${MILI_VERSION:-"1.10.0"}
 export MILI_COMPATIBILITY_VERSION=${MILI_COMPATIBILITY_VERSION:-"1.0"}
 export MILI_BUILD_DIR=${MILI_BUILD_DIR:-"mili"}
 
-export NETCDF_VERSION=${NETCDF_VERSION-"3.6.3"}
+export NETCDF_VERSION=${NETCDF_VERSION-"4.1.1"}
 export NETCDF_FILE=${NETCDF_FILE-"netcdf-${NETCDF_VERSION}.tar.gz"}
-export NETCDF_COMPATIBILITY_VERSION=${NETCDF_COMPATIBILITY_VERSION-"3.6"}
-export NETCDF_BUILD_DIR=${NETCDF_BUILD_DIR-"netcdf-3.6.3"}
+export NETCDF_COMPATIBILITY_VERSION=${NETCDF_COMPATIBILITY_VERSION-"4.1"}
+export NETCDF_BUILD_DIR=${NETCDF_BUILD_DIR-"netcdf-4.1.1"}
 
 export ADVIO_FILE=${ADVIO_FILE:-"AdvIO-1.2.tar.gz"}
 export ADVIO_VERSION=${ADVIO_VERSION:-"1.2"}
 export ADVIO_COMPATIBILITY_VERSION=${ADVIO_COMPATIBILITY_VERSION:-"1.2"}
 export ADVIO_BUILD_DIR=${ADVIO_BUILD_DIR:-AdvIO-1.2}
 
-export CGNS_FILE=${CGNS_FILE:-"cgnslib_2.4-3.tar.gz"}
-export CGNS_VERSION=${CGNS_VERSION:-"2.4"}
-export CGNS_COMPATIBILITY_VERSION=${CGNS_COMPATIBILITY_VERSION:-"2.4"}
-export CGNS_BUILD_DIR=${CGNS_BUILD_DIR:-${CGNS_FILE%-3.tar*}}
+export CGNS_FILE=${CGNS_FILE:-"cgns-3.0.8-Source.tar.gz"}
+export CGNS_VERSION=${CGNS_VERSION:-"3.0.8"}
+export CGNS_COMPATIBILITY_VERSION=${CGNS_COMPATIBILITY_VERSION:-"3.0"}
+export CGNS_BUILD_DIR=${CGNS_BUILD_DIR:-"cgns-3.0.8-Source/src"}
 
 export GDAL_FILE=${GDAL_FILE:-"gdal-1.7.1.tar.gz"}
 export GDAL_VERSION=${GDAL_VERSION:-"1.7.1"}
 export GDAL_COMPATIBILITY_VERSION=${GDAL_COMPATIBILITY_VERSION:-"1.7"}
 export GDAL_BUILD_DIR=${GDAL_BUILD_DIR:-"gdal-1.7.1"}
 
-export EXODUS_FILE=${EXODUS_FILE:-"exodusii-4.46.tar.gz"}
-export EXODUS_VERSION=${EXODUS_VERSION:-"4.46"}
+export EXODUS_FILE=${EXODUS_FILE:-"exodusii-4.98.tar.gz"}
+export EXODUS_VERSION=${EXODUS_VERSION:-"4.98"}
 export EXODUS_COMPATIBILITY_VERSION=${EXODUS_COMPATIBILITY_VERSION:-"4.0"}
-export EXODUS_BUILD_DIR=${EXODUS_BUILD_DIR:-"exodusii-4.46"}
+export EXODUS_BUILD_DIR=${EXODUS_BUILD_DIR:-"exodusii-4.98"}
 
-export BOXLIB_FILE=${BOXLIB_FILE:-"boxlib.tar.gz"}
-export BOXLIB_VERSION=${BOXLIB_VERSION:-"2.5"}
-export BOXLIB_COMPATIBILITY_VERSION=${BOXLIB_COMPATIBILITY_VERSION:-"2.0"}
-export BOXLIB_BUILD_DIR=${BOXLIB_BUILD_DIR:-"CCSEApps/BoxLib"}
+export BOXLIB_VERSION=${BOXLIB_VERSION:-"2010.10.01"}
+export BOXLIB_FILE=${BOXLIB_FILE:-"BoxLib-${BOXLIB_VERSION}.tar.gz"}
+export BOXLIB_COMPATIBILITY_VERSION=${BOXLIB_COMPATIBILITY_VERSION:-"2010.10.01"}
+export BOXLIB_BUILD_DIR=${BOXLIB_BUILD_DIR:-"BoxLib-${BOXLIB_VERSION}/BoxLib"}
 
 export CFITSIO_FILE=${CFITSIO_FILE:-"cfitsio3006.tar.gz"}
 export CFITSIO_VERSION=${CFITSIO_VERSION:-"3006"}
 export CFITSIO_COMPATIBILITY_VERSION=${CFITSIO_COMPATIBILITY_VERSION:-"3.0"}
 export CFITSIO_BUILD_DIR=${CFITSIO_BUILD_DIR:-"cfitsio"}
 
-export H5PART_VERSION=${H5PART_VERSION:-"1.6.0"}
+export H5PART_VERSION=${H5PART_VERSION:-"1.6.2"}
 export H5PART_FILE=${H5PART_FILE:-"H5Part-${H5PART_VERSION}.tar.gz"}
 export H5PART_COMPATIBILITY_VERSION=${H5PART_COMPATIBILITY_VERSION:-"1.6"}
+export H5PART_URL=${H5PART_URL:-"https://codeforge.lbl.gov/frs/download.php/191"}
 export H5PART_BUILD_DIR=${H5PART_BUILD_DIR:-"H5Part-${H5PART_VERSION}"}
 
-export FASTBIT_VERSION=${FASTBIT_VERSION:-"1.0.9"}
+export FASTBIT_VERSION=${FASTBIT_VERSION:-"1.2.0"}
 export FASTBIT_FILE=${FASTBIT_FILE:-"fastbit-ibis${FASTBIT_VERSION}.tar.gz"}
-# Note: last 2-digit field in URL changes with version.
-export FASTBIT_URL=${FASTBIT_URL:-"https://codeforge.lbl.gov/frs/download.php/62"}
-export FASTBIT_BUILD_DIR=${FASTBIT_BUILD_DIR:-"fastbit-ibis1.0.9"}
+# Note: last 3-digit field in URL changes with version.
+export FASTBIT_URL=${FASTBIT_URL:-"https://codeforge.lbl.gov/frs/download.php/208"}
+export FASTBIT_BUILD_DIR=${FASTBIT_BUILD_DIR:-"fastbit-ibis${FASTBIT_VERSION}"}
 
 export MDSPLUS_VERSION=${MDSPLUS_VERSION:-"2.2"}
 export MDSPLUS_FILE=${MDSPLUS_FILE:-"mdsplus-${MDSPLUS_VERSION}-4.tar.gz"}
@@ -1446,9 +1551,9 @@ export CCMIO_VERSION=${CCMIO_VERSION:-"2.6.1"}
 export CCMIO_COMPATIBILITY_VERSION=${CCMIO_COMPATIBILITY_VERSION:-"2.0"}
 export CCMIO_BUILD_DIR=${CCMIO_BUILD_DIR:-"libccmio-2.6.1"}
 
-export SILO_VERSION=${SILO_VERSION:-"4.7.2"}
+export SILO_VERSION=${SILO_VERSION:-"4.8"}
 export SILO_FILE=${SILO_FILE:-"silo-${SILO_VERSION}.tar.gz"}
-export SILO_COMPATIBILITY_VERSION=${SILO_COMPATIBILITY_VERSION:-"4.7.2"}
+export SILO_COMPATIBILITY_VERSION=${SILO_COMPATIBILITY_VERSION:-"4.8"}
 export SILO_BUILD_DIR=${SILO_BUILD_DIR:-"silo-${SILO_VERSION}"}
 export SILO_URL=${SILO_URL:-https://wci.llnl.gov/codes/silo/silo-${SILO_VERSION}}
 
@@ -1482,10 +1587,10 @@ export XDMF_VERSION=${XDMF_VERSION:-"2.1"}
 export XDMF_COMPATIBILITY_VERSION=${XDMF_COMPATIBILITY_VERSION:-"2.1"}
 export XDMF_BUILD_DIR=${XDMF_BUILD_DIR:-"Xdmf"}
 
-export ICET_FILE=${ICET_FILE:-"IceT-0-5-4.tar.gz"}
-export ICET_VERSION=${ICET_VERSION:-"0.5.4"}
-export ICET_COMPATIBILITY_VERSION=${ICET_COMPATIBILITY_VERSION:-"0.5.4"}
-export ICET_BUILD_DIR=${ICET_BUILD_DIR:-"IceT-0-5-4"}
+export ICET_FILE=${ICET_FILE:-"IceT-1-0-0.tar.gz"}
+export ICET_VERSION=${ICET_VERSION:-"1.0.0"}
+export ICET_COMPATIBILITY_VERSION=${ICET_COMPATIBILITY_VERSION:-"1.0.0"}
+export ICET_BUILD_DIR=${ICET_BUILD_DIR:-"IceT-1-0-0"}
 
 # Dialog-related variables.
 DLG="dialog"
@@ -1686,6 +1791,10 @@ function uncompress_untar
 #                                                                             #
 #   Mark C. Miller, Wed Feb  3 09:47:52 PST 2010                              #
 #   Made it fall back to anon svn checkout                                    #
+#                                                                             #
+#   Eric Brugger, Mon Jan 10 16:00:13 PST 2011                                #
+#   I made it always fall back to anonymous svn checkout.                     #
+#                                                                             #
 # *************************************************************************** #
 
 function download_file
@@ -1727,28 +1836,40 @@ function download_file
         rm -f $dfile
     fi
 
-    if [[ "$1" == "" ]] ; then
-        # If SVN was not requested or if it failed...
-        if [[ "$dfile" == "$VISIT_FILE" ]] ; then
-            try_download_file https://wci.llnl.gov/codes/visit/$VISIT_VERSION/$dfile $dfile
-        else
-            try_download_file https://wci.llnl.gov/codes/visit/3rd_party/$dfile $dfile
-        fi
-
+    # If the visit source code is requested try that next.
+    if [[ "$dfile" == "$VISIT_FILE" ]] ; then
+        try_download_file https://wci.llnl.gov/codes/visit/$VISIT_VERSION/$dfile $dfile
         if [[ $? == 0 ]] ; then
             return 0
         fi
     fi
 
-    # Ok, if any of above had succeeded, they would have returned early.
-    # So, now try various places listed.
-    # try all sites listed incl. falling back to visit's 3rd_party
-    for site in $* https://wci.llnl.gov/codes/visit/3rd_party; do
-        try_download_file $site/$dfile $dfile
+    # Now try the various places listed.
+    if [[ "$1" != "" ]] ; then
+        for site in $* ; do
+            try_download_file $site/$dfile $dfile
+            if [[ $? == 0 ]] ; then
+                return 0
+            fi
+        done
+    fi
+
+    # Now try anonymous svn unless we tried it above.
+    if [[ "$DO_SVN" != "yes" && "$DO_ANON_SVN" != "yes" ]] ; then
+        svn cat $SVN_ANON_ROOT_PATH/trunk/third_party/$dfile > $dfile
+        if [[ $? == 0 && -e $dfile ]] ; then
+            info "Anonymous SVN download succeeded: $SVN_ANON_ROOT_PATH/trunk/third_party/$dfile"
+            return 0
+        fi
+        warn "Anonymous SVN download attempt failed: $SVN_ANON_ROOT_PATH/trunk/third_party/$dfile"
+        rm -f $dfile
+    fi
+
+    # Now try visit's 3rd_party.
+    try_download_file https://wci.llnl.gov/codes/visit/3rd_party/$dfile $dfile
     if [[ $? == 0 ]] ; then
         return 0
     fi
-    done
     info "Failed to download $dfile"
     return 1
 }
@@ -2015,6 +2136,12 @@ function check_files
 #    Keep dependencies for VTK (CMake, Python, and Mesa) but made sure they
 #    are only checked once.
 #
+#    Mark C. Miller, Tue Sep 21 22:33:53 PDT 2010
+#    When DO_VTK was added as a conditional to trigger python and mesa 
+#    builds, dbio-only mode could no longer prevent python/mesa from being
+#    built even though they are NOT required for dbio-only mode because
+#    dbio-only does require VTK. So, I added logic to prevent python and
+#    mesa from being built in that case.
 # *************************************************************************** #
 
 function check_required_3rdparty
@@ -2024,25 +2151,32 @@ function check_required_3rdparty
     #
     # Check for required files.
     #
-
-    if [[ "$DO_CMAKE" == "yes" || "$DO_VTK" == "yes" ]] ; then
-        ensure_built_or_ready "cmake"  $CMAKE_VERSION  $CMAKE_BUILD_DIR  $CMAKE_FILE
-        if [[ $? != 0 ]] ; then
-            return 1
+    if [[ "$CMAKE_INSTALL" == "" ]]; then 
+        if [[ "$DO_CMAKE" == "yes" || "$DO_VTK" == "yes" ]] ; then
+            ensure_built_or_ready "cmake"  $CMAKE_VERSION  $CMAKE_BUILD_DIR  $CMAKE_FILE
+            if [[ $? != 0 ]] ; then
+                return 1
+            fi
         fi
     fi
 
-    if [[ "$DO_PYTHON" == "yes" || "$DO_VTK" == "yes" ]] ; then
-        ensure_built_or_ready "python" $PYTHON_VERSION $PYTHON_BUILD_DIR $PYTHON_FILE
-        if [[ $? != 0 ]] ; then
-            return 1
+    if [[ "$DO_DBIO_ONLY" != "yes" ]]; then
+        if [[ "$VISIT_PYTHON_DIR" == "" ]]; then
+            if [[ "$DO_PYTHON" == "yes" || "$DO_VTK" == "yes" ]] ; then
+                ensure_built_or_ready "python" $PYTHON_VERSION $PYTHON_BUILD_DIR $PYTHON_FILE
+                if [[ $? != 0 ]] ; then
+                    return 1
+                fi
+            fi
         fi
     fi
 
-    if [[ "$DO_MESA" == "yes" || "$DO_VTK" == "yes" ]] ; then
-        ensure_built_or_ready "mesa"   $MESA_VERSION   $MESA_BUILD_DIR   $MESA_FILE $MESA_URL
-        if [[ $? != 0 ]] ; then
-            return 1
+    if [[ "$DO_DBIO_ONLY" != "yes" ]]; then
+        if [[ "$DO_MESA" == "yes" || "$DO_VTK" == "yes" ]] ; then
+            ensure_built_or_ready "mesa"   $MESA_VERSION   $MESA_BUILD_DIR   $MESA_FILE $MESA_URL
+            if [[ $? != 0 ]] ; then
+                return 1
+            fi
         fi
     fi
 
@@ -2138,6 +2272,10 @@ function check_visit_source_code
 #    Brad Whitlock, Mon Apr 26 14:04:16 PST 2010
 #    I added Xdmf support.
 #
+#    Cyrus Harrison, Wed Oct 13 13:30:35 PDT 2010
+#    Added pass of BOXLIB_VERSION to ensure_built_or_ready, now that boxlib
+#    has a version number.
+#
 # *************************************************************************** #
 
 function check_optional_3rdparty
@@ -2154,7 +2292,7 @@ function check_optional_3rdparty
     fi
 
     if [[ "$DO_BOXLIB" == "yes" ]] ; then
-        ensure_built_or_ready "boxlib"  "" $BOXLIB_BUILD_DIR  $BOXLIB_FILE
+        ensure_built_or_ready "boxlib" $BOXLIB_VERSION  $BOXLIB_BUILD_DIR  $BOXLIB_FILE
         if [[ $? != 0 ]] ; then
             ANY_ERRORS="yes"
             DO_BOXLIB="no"
@@ -2228,7 +2366,7 @@ function check_optional_3rdparty
     fi
     
     if [[ "$DO_H5PART" == "yes" ]] ; then
-        ensure_built_or_ready "h5part" $H5PART_VERSION $H5PART_BUILD_DIR $H5PART_FILE
+        ensure_built_or_ready "h5part" $H5PART_VERSION $H5PART_BUILD_DIR $H5PART_FILE $H5PART_URL
         if [[ $? != 0 ]] ; then
             ANY_ERRORS="yes"
             DO_H5PART="no"
@@ -2965,19 +3103,40 @@ function apply_mesa_782_patch_1
 {
    patch -p0 <<\EOF
 diff -c a/src/mesa/drivers/osmesa/osmesa.c Mesa-7.8.2/src/mesa/drivers/osmesa/osmesa.c
-*** a/src/mesa/drivers/osmesa/osmesa.c
---- Mesa-7.8.2/src/mesa/drivers/osmesa/osmesa.c
+*** a/src/mesa/drivers/osmesa/osmesa.c	Tue Jun 15 10:43:47 2010
+--- Mesa-7.8.2/src/mesa/drivers/osmesa/osmesa.c	Tue Jan 11 10:13:25 2011
 ***************
-*** 1329,1334 ****
---- 1329,1335 ----
+*** 1328,1336 ****
+      * that converts rendering from CHAN_BITS to the user-requested channel
       * size.
       */
-     osmesa->rb = new_osmesa_renderbuffer(&osmesa->mesa, osmesa->format, type);
-+    _mesa_remove_renderbuffer(osmesa->gl_buffer, BUFFER_FRONT_LEFT);
-     _mesa_add_renderbuffer(osmesa->gl_buffer, BUFFER_FRONT_LEFT, osmesa->rb);
-     assert(osmesa->rb->RefCount == 2);
-
+!    osmesa->rb = new_osmesa_renderbuffer(&osmesa->mesa, osmesa->format, type);
+!    _mesa_add_renderbuffer(osmesa->gl_buffer, BUFFER_FRONT_LEFT, osmesa->rb);
+!    assert(osmesa->rb->RefCount == 2);
+  
+     /* Set renderbuffer fields.  Set width/height = 0 to force 
+      * osmesa_renderbuffer_storage() being called by _mesa_resize_framebuffer()
+--- 1328,1339 ----
+      * that converts rendering from CHAN_BITS to the user-requested channel
+      * size.
+      */
+!    if (!osmesa->rb) {
+!       osmesa->rb = new_osmesa_renderbuffer(&osmesa->mesa, osmesa->format, type);
+!       _mesa_remove_renderbuffer(osmesa->gl_buffer, BUFFER_FRONT_LEFT);
+!       _mesa_add_renderbuffer(osmesa->gl_buffer, BUFFER_FRONT_LEFT, osmesa->rb);
+!       assert(osmesa->rb->RefCount == 2);
+!    }
+  
+     /* Set renderbuffer fields.  Set width/height = 0 to force 
+      * osmesa_renderbuffer_storage() being called by _mesa_resize_framebuffer()
 EOF
+
+   if [[ $? != 0 ]] ; then
+      warn "Unable to apply patch 1 to Mesa 7.8.2."
+      return 1
+   else
+      return 0
+   fi
 }
 
 function apply_mesa_782_patch_2
@@ -3062,6 +3221,13 @@ index a156823..8434491 100644
 -- 
 1.7.0.2
 EOF
+
+   if [[ $? != 0 ]] ; then
+      warn "Unable to apply patch 2 to Mesa 7.8.2."
+      return 1
+   else
+      return 0
+   fi
 }
 
 function apply_mesa_patch
@@ -3086,6 +3252,9 @@ function apply_mesa_patch
       fi
    elif [[ ${MESA_VERSION} == "7.8.2" ]] ; then
       apply_mesa_782_patch_1
+      if [[ $? != 0 ]] ; then
+        return 1
+      fi
       apply_mesa_782_patch_2
       if [[ $? != 0 ]] ; then
         return 1
@@ -3723,7 +3892,7 @@ function build_vtk
     # CMake is the build system for VTK.  Call another script that will build
     # that program.
     #
-    CMAKE_INSTALL="$VISITDIR/cmake/${CMAKE_VERSION}/$VISITARCH/bin"
+    CMAKE_INSTALL=${CMAKE_INSTALL:-"$VISITDIR/cmake/${CMAKE_VERSION}/$VISITARCH/bin"}
     if [[ -e ${CMAKE_INSTALL}/cmake ]] ; then
        info "VTK: CMake found"
     else
@@ -3737,14 +3906,18 @@ function build_vtk
     #
     # We need python to build the vtk python bindings.
     #
-    PYTHON_INSTALL="$VISITDIR/python/${PYTHON_VERSION}/$VISITARCH/bin"
+    VISIT_PYTHON_DIR=${VISIT_PYTHON_DIR:-"$VISITDIR/python/${PYTHON_VERSION}/${VISITARCH}"}
+    PYTHON_INSTALL="${VISIT_PYTHON_DIR}/bin"
+echo " $PYTHON_INSTALL ${PYTHON_INSTALL}/python"
     if [[ -e ${PYTHON_INSTALL}/python ]] ; then
        info "VTK: Python found"
     else
-       build_python
-       if [[ $? != 0 ]] ; then
-          warn "Unable to build python. Giving up"
-          return 1
+       if [[ "$DO_DBIO_ONLY" != "yes" ]]; then
+          build_python
+          if [[ $? != 0 ]] ; then
+             warn "Unable to build python. Giving up"
+             return 1
+          fi
        fi
     fi
 
@@ -3755,10 +3928,12 @@ function build_vtk
     if [[ -e ${MESA_INSTALL} ]] ; then
        info "VTK: Mesa found"
     else
-       build_mesa
-       if [[ $? != 0 ]] ; then
-          warn "Unable to build Mesa. Giving up"
-          return 1
+       if [[ "$DO_DBIO_ONLY" != "yes" ]]; then
+          build_mesa
+          if [[ $? != 0 ]] ; then
+             warn "Unable to build Mesa. Giving up"
+             return 1
+          fi
        fi
     fi
 
@@ -3788,9 +3963,10 @@ function build_vtk
     # Setup paths and libs for python for the VTK build.
     #
 
-    VISIT_PYTHON_DIR="$VISITDIR/python/${PYTHON_VERSION}/${VISITARCH}"
     if [[ "$OPSYS" == "Darwin" ]]; then
-        export DYLD_LIBRARY_PATH="${VISIT_PYTHON_DIR}/lib/:$DYLD_LIBRARY_PATH"
+        if [[ "${VISIT_PYTHON_DIR}/lib" != "/usr/lib" ]]; then
+            export DYLD_LIBRARY_PATH="${VISIT_PYTHON_DIR}/lib/:$DYLD_LIBRARY_PATH"
+        fi
     else
         export LD_LIBRARY_PATH="${VISIT_PYTHON_DIR}/lib/:$LD_LIBRARY_PATH"
     fi
@@ -3830,7 +4006,7 @@ function build_vtk
             -DUSE_ANSI_STD_LIB:BOOL=ON\
             -DVTK_USE_MANGLED_MESA:BOOL=ON\
             -DVTK_USE_HYBRID:BOOL=ON\
-            -DCMAKE_BUILD_TYPE=Release\
+            -DCMAKE_BUILD_TYPE:STRING=Release\
             -DCMAKE_CXX_FLAGS:STRING="${CXXFLAGS}"\
             -DCMAKE_CXX_COMPILER:STRING=${CXX_COMPILER}\
             -DCMAKE_C_FLAGS:STRING="${CFLAGS}"\
@@ -3858,7 +4034,7 @@ function build_vtk
             -DUSE_ANSI_STD_LIB:BOOL=ON\
             -DVTK_USE_MANGLED_MESA:BOOL=ON\
             -DVTK_USE_HYBRID:BOOL=ON\
-            -DCMAKE_BUILD_TYPE=Release\
+            -DCMAKE_BUILD_TYPE:STRING=Release\
             -DCMAKE_CXX_FLAGS:STRING="${CXXFLAGS}"\
             -DCMAKE_CXX_COMPILER:STRING=${CXX_COMPILER}\
             -DCMAKE_C_FLAGS:STRING="${CFLAGS}"\
@@ -3886,7 +4062,7 @@ function build_vtk
             -DUSE_ANSI_STD_LIB:BOOL=ON\
             -DVTK_USE_MANGLED_MESA:BOOL=ON\
             -DVTK_USE_HYBRID:BOOL=ON\
-            -DCMAKE_BUILD_TYPE=Release\
+            -DCMAKE_BUILD_TYPE:STRING=Release\
             -DCMAKE_CXX_FLAGS:STRING="${CXXFLAGS}"\
             -DCMAKE_CXX_COMPILER:STRING=${CXX_COMPILER}\
             -DCMAKE_C_FLAGS:STRING="${CFLAGS}"\
@@ -3909,7 +4085,7 @@ function build_vtk
         -DUSE_ANSI_STD_LIB:BOOL=ON\
         -DVTK_USE_MANGLED_MESA:BOOL=ON\
         -DVTK_USE_HYBRID:BOOL=ON\
-        -DCMAKE_BUILD_TYPE=Release\
+        -DCMAKE_BUILD_TYPE:STRING=Release\
         -DCMAKE_CXX_FLAGS:STRING="${CXXFLAGS} -LANG:std -64"\
         -DCMAKE_CXX_COMPILER:STRING=${CXX_COMPILER}\
         -DCMAKE_C_FLAGS:STRING="${CFLAGS}" \
@@ -3939,7 +4115,7 @@ function build_vtk
                -DUSE_ANSI_STD_LIB:BOOL=ON\
                -DVTK_USE_MANGLED_MESA:BOOL=OFF\
                -DVTK_USE_HYBRID:BOOL=ON\
-               -DCMAKE_BUILD_TYPE=Release\
+               -DCMAKE_BUILD_TYPE:STRING=Release\
                -DCMAKE_CXX_FLAGS:STRING="${CXXFLAGS}"\
                -DCMAKE_CXX_COMPILER:STRING=${CXX_COMPILER}\
                -DCMAKE_C_FLAGS:STRING="${CFLAGS}"\
@@ -3947,11 +4123,7 @@ function build_vtk
                -DVTK_USE_TK:BOOL=OFF\
                -DTK_INCLUDE_PATH:FILEPATH=""\
                -DTK_LIBRARY:FILEPATH=""\
-               -DVTK_WRAP_PYTHON:BOOL=ON\
-               -DPYTHON_EXECUTABLE:FILEPATH="${VISIT_PYTHON_DIR}/bin/python"\
-               -DPYTHON_INCLUDE_PATH:FILEPATH="${VISIT_PYTHON_DIR}/include/python${PYTHON_COMPATIBILITY_VERSION}/"\
-               -DPYTHON_LIBRARY:FILEPATH="${VISIT_PYTHON_DIR}/lib/libpython${PYTHON_COMPATIBILITY_VERSION}.${LIBEXT}"\
-               -DPYTHON_EXTRA_LIBS:STRING="$VTK_PY_LIBS" \
+               -DVTK_WRAP_PYTHON:BOOL=OFF\
                .
        else
            if [[ "$DO_STATIC_BUILD" == "yes" ]]; then
@@ -3963,7 +4135,7 @@ function build_vtk
                -DUSE_ANSI_STD_LIB:BOOL=ON\
                -DVTK_USE_MANGLED_MESA:BOOL=ON\
                -DVTK_USE_HYBRID:BOOL=ON\
-               -DCMAKE_BUILD_TYPE=Release\
+               -DCMAKE_BUILD_TYPE:STRING=Release\
                -DCMAKE_CXX_FLAGS:STRING="${CXXFLAGS}"\
                -DCMAKE_CXX_COMPILER:STRING=${CXX_COMPILER}\
                -DCMAKE_C_FLAGS:STRING="${CFLAGS}"\
@@ -3984,7 +4156,7 @@ function build_vtk
                -DUSE_ANSI_STD_LIB:BOOL=ON\
                -DVTK_USE_MANGLED_MESA:BOOL=ON\
                -DVTK_USE_HYBRID:BOOL=ON\
-               -DCMAKE_BUILD_TYPE=Release\
+               -DCMAKE_BUILD_TYPE:STRING=Release\
                -DCMAKE_CXX_FLAGS:STRING="${CXXFLAGS}"\
                -DCMAKE_CXX_COMPILER:STRING=${CXX_COMPILER}\
                -DCMAKE_C_FLAGS:STRING="${CFLAGS}"\
@@ -4738,7 +4910,7 @@ function build_hdf5
     #
     # Build HDF5
     #
-    info "Building HDF5 . . . (~2 minutes)"
+    info "Building HDF5 . . . (~5 minutes)"
     $MAKE $MAKE_OPT_FLAGS
     if [[ $? != 0 ]] ; then
        warn "HDF5 build failed.  Giving up"
@@ -5924,11 +6096,14 @@ function build_hdf4
     info "Invoking command to configure HDF4"
     MAKEOPS=""
     if [[ "$OPSYS" == "Darwin" || "$OPSYS" == "AIX" ]]; then
+        mv configure configure.old
+        sed "s/-ljpeg/-lvtkjpeg/g" configure.old | sed "s/jpeg_start_decompress/vtk_jpeg_start_decompress/g" > configure
+        chmod 700 configure
         export DYLD_LIBRARY_PATH="$VISITDIR/szip/$SZIP_VERSION/$VISITARCH/lib":$DYLD_LIBRARY_PATH
         ./configure CXX="$CXX_COMPILER" CC="$C_COMPILER" \
         CFLAGS="$CFLAGS $C_OPT_FLAGS" \
-        CPPFLAGS="-I$VISITDIR/vtk/${VTK_VERSION}/$VISITARCH/Utilities \
-        -I$VISITDIR/vtk/${VTK_VERSION}/$VISITARCH/Utilities/vtkjpeg" \
+        CPPFLAGS="-I$VISITDIR/vtk/${VTK_VERSION}/$VISITARCH/include/vtk-5.0 \
+        -I$VISITDIR/vtk/${VTK_VERSION}/$VISITARCH/include/vtk-5.0/vtkjpeg" \
         --prefix="$VISITDIR/hdf4/$HDF4_VERSION/$VISITARCH" \
         --with-jpeg="$VISITDIR/vtk/${VTK_VERSION}/$VISITARCH" \
         --with-szlib="$VISITDIR/szip/$SZIP_VERSION/$VISITARCH" \
@@ -6026,57 +6201,117 @@ function build_hdf4
 
 # *************************************************************************** #
 #                         Function 8.4, build_netcdf                          #
+#                                                                             #
+# Mark C. Miller, Wed Oct 27 19:25:09 PDT 2010                                #
+# Added patch for exodusII. This way, a single netcdf installation should     #
+# work for 'normal' netcdf operations as well as for ExodusII.                #
 # *************************************************************************** #
-
-function apply_netcdf_360_patch
+function apply_netcdf_patch_for_exodusii
 {
-  patch -p0 << \EOF
-*** netcdf-3.6.0-p1.orig/src/libsrc/netcdf.h	Tue Sep 14 06:41:22 2004
---- netcdf-3.6.0-p1/src/libsrc/netcdf.h	Thu Apr 26 14:14:41 2007
-*************** typedef enum {
-*** 130,140 ****
+    local retval=0
+    pushd $NETCDF_BUILD_DIR 1>/dev/null 2>&1
+    patch -p0 << \EOF
+*** libsrc/netcdf.h	Wed Oct 27 11:50:22 2010
+--- libsrc/netcdf.h.ex	Wed Oct 27 11:50:31 2010
+***************
+*** 141,151 ****
    * applications and utilities.  However, nothing is statically allocated to
    * these sizes internally.
    */
-! #define NC_MAX_DIMS	512	 /* max dimensions per file */
-  #define NC_MAX_ATTRS	4096	 /* max global or per variable attributes */
-! #define NC_MAX_VARS	4096	 /* max variables per file */
-  #define NC_MAX_NAME	128	 /* max length of a name */
+! #define NC_MAX_DIMS	1024	 /* max dimensions per file */
+! #define NC_MAX_ATTRS	8192	 /* max global or per variable attributes */
+! #define NC_MAX_VARS	8192	 /* max variables per file */
+! #define NC_MAX_NAME	256	 /* max length of a name */
 ! #define NC_MAX_VAR_DIMS	NC_MAX_DIMS /* max per variable dimensions */
   
-  
   /*
---- 130,140 ----
+   * The netcdf version 3 functions all return integer error status.
+--- 141,152 ----
    * applications and utilities.  However, nothing is statically allocated to
    * these sizes internally.
    */
 ! #define NC_MAX_DIMS	65536	 /* max dimensions per file */
-  #define NC_MAX_ATTRS	4096	 /* max global or per variable attributes */
+! #define NC_MAX_ATTRS	8192	 /* max global or per variable attributes */
 ! #define NC_MAX_VARS	524288	 /* max variables per file */
-  #define NC_MAX_NAME	128	 /* max length of a name */
-! #define NC_MAX_VAR_DIMS	8 	 /* max per variable dimensions */
-  
+! #define NC_MAX_NAME	256	 /* max length of a name */
+! #define NC_MAX_VAR_DIMS 8      /* max per variable dimensions */
+! 
   
   /*
+   * The netcdf version 3 functions all return integer error status.
 EOF
-  if [[ $? != 0 ]] ; then
-      warn "Unable to patch NetCDF. Wrong version?"
-      return 1
-  fi
-
-  return 0
+    retval1=$?
+    patch -p0 << \EOF
+*** libsrc4/netcdf.h	2010-04-12 11:48:02.000000000 -0700
+--- libsrc4/netcdf.h.ex	2011-01-03 15:51:46.000000000 -0800
+***************
+*** 199,209 ****
+   * applications and utilities.  However, nothing is statically allocated to
+   * these sizes internally.
+   */
+! #define NC_MAX_DIMS	1024	 /* max dimensions per file */
+  #define NC_MAX_ATTRS	8192	 /* max global or per variable attributes */
+! #define NC_MAX_VARS	8192	 /* max variables per file */
+  #define NC_MAX_NAME	256	 /* max length of a name */
+! #define NC_MAX_VAR_DIMS	NC_MAX_DIMS /* max per variable dimensions */
+  
+  /* In HDF5 files you can set the endianness of variables with
+   * nc_def_var_endian(). These defines are used there. */   
+--- 199,209 ----
+   * applications and utilities.  However, nothing is statically allocated to
+   * these sizes internally.
+   */
+! #define NC_MAX_DIMS	65536	 /* max dimensions per file */
+  #define NC_MAX_ATTRS	8192	 /* max global or per variable attributes */
+! #define NC_MAX_VARS	524288	 /* max variables per file */
+  #define NC_MAX_NAME	256	 /* max length of a name */
+! #define NC_MAX_VAR_DIMS	8        /* max per variable dimensions */
+  
+  /* In HDF5 files you can set the endianness of variables with
+   * nc_def_var_endian(). These defines are used there. */   
+EOF
+    retval2=$?
+    patch -p0 << \EOF
+*** libsrc4/netcdf_base.h	2010-01-21 08:00:18.000000000 -0800
+--- libsrc4/netcdf_base.h.ex	2011-01-03 16:03:36.000000000 -0800
+***************
+*** 192,202 ****
+   * applications and utilities.  However, nothing is statically allocated to
+   * these sizes internally.
+   */
+! #define NC_MAX_DIMS	1024	 /* max dimensions per file */
+  #define NC_MAX_ATTRS	8192	 /* max global or per variable attributes */
+! #define NC_MAX_VARS	8192	 /* max variables per file */
+  #define NC_MAX_NAME	256	 /* max length of a name */
+! #define NC_MAX_VAR_DIMS	NC_MAX_DIMS /* max per variable dimensions */
+  
+  /* In HDF5 files you can set the endianness of variables with
+   * nc_def_var_endian(). These defines are used there. */   
+--- 192,202 ----
+   * applications and utilities.  However, nothing is statically allocated to
+   * these sizes internally.
+   */
+! #define NC_MAX_DIMS	65536	 /* max dimensions per file */
+  #define NC_MAX_ATTRS	8192	 /* max global or per variable attributes */
+! #define NC_MAX_VARS	524288	 /* max variables per file */
+  #define NC_MAX_NAME	256	 /* max length of a name */
+! #define NC_MAX_VAR_DIMS	8        /* max per variable dimensions */
+  
+  /* In HDF5 files you can set the endianness of variables with
+   * nc_def_var_endian(). These defines are used there. */   
+EOF
+    retval3=$?
+    popd 1>/dev/null 2>&1
+    if [[ $retval1 -eq 0 && $retval2 -eq 0 && $retval3 -eq 0 ]]; then
+        return 0
+    fi
+    return 1
 }
 
 function apply_netcdf_patch
 {
-   if [[ ${NETCDF_VERSION} == 3.6.0 ]] ; then
-       apply_netcdf_360_patch
-       if [[ $? != 0 ]] ; then
-           return 1
-       fi
-   fi
-
-   return 0
+   apply_netcdf_patch_for_exodusii
+   return $?
 }
 
 function build_netcdf
@@ -6119,10 +6354,27 @@ function build_netcdf
     else
         EXTRA_FLAGS=""
     fi
+    H5ARGS=""
+    if [[ "$DO_HDF5" == "yes" ]] ; then
+        H5ARGS="--enable-netcdf4"
+        H5ARGS="$H5ARGS --with-hdf5=$VISITDIR/hdf5/$HDF5_VERSION/$VISITARCH"
+        if [[ "$DO_SZIP" == "yes" ]] ; then
+            H5ARGS="$H5ARGS --with-szlib=$VISITDIR/szip/$SZIP_VERSION/$VISITARCH"
+        fi
+    fi
+
+    info "./configure CXX=\"$CXX_COMPILER\" CC=\"$C_COMPILER\" \
+        CFLAGS=\"$C_OPT_FLAGS\" CXXFLAGS=\"$CXX_OPT_FLAGS\" \
+        FC=\"\" $EXTRA_FLAGS --enable-cxx-4 $H5ARGS \
+        --disable-dap \
+        --prefix=\"$VISITDIR/netcdf/$NETCDF_VERSION/$VISITARCH\""
+
     ./configure CXX="$CXX_COMPILER" CC="$C_COMPILER" \
         CFLAGS="$CFLAGS $C_OPT_FLAGS" CXXFLAGS="$CXXFLAGS $CXX_OPT_FLAGS" \
-        FC="" $EXTRA_FLAGS \
+        FC="" $EXTRA_FLAGS --enable-cxx-4 $H5ARGS \
+        --disable-dap \
         --prefix="$VISITDIR/netcdf/$NETCDF_VERSION/$VISITARCH"
+
     if [[ $? != 0 ]] ; then
         warn "NetCDF configure failed.  Giving up"
         return 1
@@ -6189,9 +6441,22 @@ function build_cgns
     info "Configuring CGNS . . ."
     cd $CGNS_BUILD_DIR || error "Can't cd to CGNS build dir."
     info "Invoking command to configure CGNS"
+    # optionally add HDF5 and szip to the configure.
+    H5ARGS=""
+    if [[ "$DO_HDF5" == "yes" ]] ; then
+        H5ARGS="--with-hdf5=$VISITDIR/hdf5/$HDF5_VERSION/$VISITARCH"
+        if [[ "$DO_SZIP" == "yes" ]] ; then
+            H5ARGS="$H5ARGS --with-szlib=$VISITDIR/szip/$SZIP_VERSION/$VISITARCH"
+        fi
+    fi
+    info "    env CXX=\"$CXX_COMPILER\" CC=\"$C_COMPILER\" \
+       CFLAGS=\"$C_OPT_FLAGS\" CXXFLAGS=\"$CXX_OPT_FLAGS\" \
+       ./configure $H5ARGS --prefix=\"$VISITDIR/cgns/$CGNS_VERSION/$VISITARCH\""
+
     env CXX="$CXX_COMPILER" CC="$C_COMPILER" \
        CFLAGS="$CFLAGS $C_OPT_FLAGS" CXXFLAGS="$CXXFLAGS $CXX_OPT_FLAGS" \
-       ./configure --prefix="$VISITDIR/cgns/$CGNS_VERSION/$VISITARCH"
+       ./configure $H5ARGS --prefix="$VISITDIR/cgns/$CGNS_VERSION/$VISITARCH"
+
     if [[ $? != 0 ]] ; then
        warn "CGNS configure failed.  Giving up"
        return 1
@@ -6241,8 +6506,15 @@ function build_cgns
         else
            INSTALLNAMEPATH="@executable_path/../lib"
         fi
+        H5LINK=""
+        if [[ "$DO_HDF5" == "yes" ]] ; then
+            H5LINK="$VISITDIR/hdf5/$HDF5_VERSION/$VISITARCH/lib/libhdf5.dylib"
+            if [[ "$DO_SZIP" == "yes" ]] ; then
+                H5LINK="$H5LINK $VISITDIR/szip/$SZIP_VERSION/$VISITARCH/lib/libsz.dylib"
+            fi
+        fi
         /usr/bin/libtool -o libcgns.${SO_EXT} -dynamic DARWIN/libcgns.a \
-           -lSystem $USESTUBS -headerpad_max_install_names \
+           -lSystem $USESTUBS $H5LINK -headerpad_max_install_names \
            -install_name $INSTALLNAMEPATH/libcgns.${SO_EXT} \
            -compatibility_version $CGNS_COMPATIBILITY_VERSION \
            -current_version $CGNS_VERSION
@@ -6251,6 +6523,7 @@ function build_cgns
            return 1
         fi
         cp libcgns.${SO_EXT} "$VISITDIR/cgns/$CGNS_VERSION/$VISITARCH/lib"
+        rm "$VISITDIR/cgns/$CGNS_VERSION/$VISITARCH/lib/libcgns.a"
     fi
 
     if [[ "$DO_GROUP" == "yes" ]] ; then
@@ -6410,6 +6683,11 @@ EOF
 
 # *************************************************************************** #
 #                         Function 8.7, build_exodus                          #
+#                                                                             #
+#  Mark C. Miller, Wed Oct 27 19:26:16 PDT 2010                               #
+#  Removed copies of libnetcdf.a and netcdf.h. The header file dependence     #
+#  is handled via Exodus plugin's .xml file. The lib dependence is handled    #
+#  through LIBDEP.                                                            #
 # *************************************************************************** #
 
 function build_exodus
@@ -6472,10 +6750,6 @@ function build_exodus
         cp libexoIIv2c.${SO_EXT} \
            "$VISITDIR/exodus/$EXODUS_VERSION/$VISITARCH/lib"
         cp ../include/*.h "$VISITDIR/exodus/$EXODUS_VERSION/$VISITARCH/inc"
-        cp "$VISITDIR/netcdf/$NETCDF_VERSION/$VISITARCH/include/netcdf.h" \
-           "$VISITDIR/exodus/$EXODUS_VERSION/$VISITARCH/inc"
-        cp "$VISITDIR/netcdf/$NETCDF_VERSION/$VISITARCH/lib/libnetcdf.${SO_EXT}" \
-           "$VISITDIR/exodus/$EXODUS_VERSION/$VISITARCH/lib"
     else
         ar -cr libexoIIv2c.a *.o
         if [[ $? != 0 ]] ; then
@@ -6487,10 +6761,6 @@ function build_exodus
            "$VISITDIR/exodus/$EXODUS_VERSION/$VISITARCH/inc"
         cp ../include/exodusII_ext.h \
            "$VISITDIR/exodus/$EXODUS_VERSION/$VISITARCH/inc"
-        cp "$VISITDIR/netcdf/$NETCDF_VERSION/$VISITARCH/include/netcdf.h" \
-           "$VISITDIR/exodus/$EXODUS_VERSION/$VISITARCH/inc"
-        cp "$VISITDIR/netcdf/$NETCDF_VERSION/$VISITARCH/lib/libnetcdf.a" \
-           "$VISITDIR/exodus/$EXODUS_VERSION/$VISITARCH/lib"
     fi
 
     if [[ "$DO_GROUP" == "yes" ]] ; then
@@ -6502,569 +6772,9 @@ function build_exodus
     return 0
 }
 
-
 # *************************************************************************** #
 #                         Function 8.8, build_boxlib                          #
 # *************************************************************************** #
-
-function apply_boxlib_25_aix_patch
-{
-   patch -p0 << \EOF
-diff -c a/BoxLib/GNUmakefile CCSEApps/BoxLib/GNUmakefile
-*** a/BoxLib/GNUmakefile
---- CCSEApps/BoxLib/GNUmakefile
-***************
-*** 7,16 ****
-  TOP = $(PBOXLIB_HOME)
-  
-  PRECISION = DOUBLE
-! DEBUG     = TRUE
-  DIM       = 3
-! COMP      = KCC
-! USE_MPI   = TRUE
-  #NAMESPACE = TRUE
-  NAMESPACE = FALSE
-  
---- 7,16 ----
-  TOP = $(PBOXLIB_HOME)
-  
-  PRECISION = DOUBLE
-! DEBUG     = FALSE
-  DIM       = 3
-! COMP      = xlC
-! USE_MPI   = FALSE
-  #NAMESPACE = TRUE
-  NAMESPACE = FALSE
-  
-EOF
-
-   if [[ $? != 0 ]] ; then
-       warn "Unable to patch Boxlib 3D. Wrong version?"
-       return 1
-   fi
-
-   return 0
-}
-
-function apply_boxlib_25_gcc_patch
-{
-    patch -p0 << \EOF
-diff -c a/BoxLib/GNUmakefile CCSEApps/BoxLib/GNUmakefile
-*** a/BoxLib/GNUmakefile
---- CCSEApps/BoxLib/GNUmakefile
-*************** PBOXLIB_HOME = ..
-*** 7,16 ****
-  TOP = $(PBOXLIB_HOME)
-
-  PRECISION = DOUBLE
-! DEBUG     = TRUE
-  DIM       = 3
-! COMP      = KCC
-! USE_MPI   = TRUE
-  #NAMESPACE = TRUE
-  NAMESPACE = FALSE
-
---- 7,16 ----
-  TOP = $(PBOXLIB_HOME)
-
-  PRECISION = DOUBLE
-! DEBUG     = FALSE
-  DIM       = 3
-! COMP      = 
-! USE_MPI   = FALSE
-  #NAMESPACE = TRUE
-  NAMESPACE = FALSE
-
-EOF
-   if [[ $? != 0 ]] ; then
-       warn "Unable to patch Boxlib 3D. Wrong version?"
-       return 1
-   fi
-
-   return 0
-}
-
-function apply_boxlib_25_darwin_patch
-{
-   patch -p0 << \EOF
-diff -rp a/BoxLib/BaseFab.cpp CCSEApps/BoxLib/BaseFab.cpp
-*** a/BoxLib/BaseFab.cpp
---- CCSEApps/BoxLib/BaseFab.cpp
-***************
-*** 28,34 ****
-  #include <BArena.H>
-  #include <CArena.H>
-  #include <Thread.H>
-! #include <SPECIALIZE_F.H>
-  
-  int BoxLib::BF_init::m_cnt = 0;
-  
---- 28,34 ----
-  #include <BArena.H>
-  #include <CArena.H>
-  #include <Thread.H>
-! //#include <SPECIALIZE_F.H>
-  
-  int BoxLib::BF_init::m_cnt = 0;
-  
-*************** BaseFab<Real>::performCopy (const BaseFa
-*** 98,105 ****
-  
-      BL_PROFILE("template<> BaseFab<Real>::performCopy()");
-  
-!     if (destbox == domain && srcbox == src.box())
-!     {
-          Real*       data_dst = dataPtr(destcomp);
-          const Real* data_src = src.dataPtr(srccomp);
-  
---- 98,105 ----
-  
-      BL_PROFILE("template<> BaseFab<Real>::performCopy()");
-  
-! //    if (destbox == domain && srcbox == src.box())
-! //    {
-          Real*       data_dst = dataPtr(destcomp);
-          const Real* data_src = src.dataPtr(srccomp);
-  
-*************** BaseFab<Real>::performCopy (const BaseFa
-*** 107,138 ****
-          {
-              *data_dst++ = *data_src++;
-          }
-!     }
-!     else
-!     {
-!         const int* destboxlo  = destbox.loVect();
-!         const int* destboxhi  = destbox.hiVect();
-!         const int* _th_plo    = loVect();
-!         const int* _th_phi    = hiVect();
-!         const int* _x_lo      = srcbox.loVect();
-!         const int* _x_hi      = srcbox.hiVect(); 
-!         const int* _x_plo     = src.loVect();
-!         const int* _x_phi     = src.hiVect();
-!         Real*       _th_p     = dataPtr(destcomp);
-!         const Real* _x_p      = src.dataPtr(srccomp);
-! 
-!         FORT_FASTCOPY(_th_p,
-!                       ARLIM(_th_plo),
-!                       ARLIM(_th_phi),
-!                       D_DECL(destboxlo[0],destboxlo[1],destboxlo[2]),
-!                       D_DECL(destboxhi[0],destboxhi[1],destboxhi[2]),
-!                       _x_p,
-!                       ARLIM(_x_plo),
-!                       ARLIM(_x_phi),
-!                       D_DECL(_x_lo[0],_x_lo[1],_x_lo[2]),
-!                       D_DECL(_x_hi[0],_x_hi[1],_x_hi[2]),
-!                       numcomp);
-!     }
-  }
-  
-  template<>
---- 107,138 ----
-          {
-              *data_dst++ = *data_src++;
-          }
-! //    }
-! //    else
-! //    {
-! //        const int* destboxlo  = destbox.loVect();
-! //        const int* destboxhi  = destbox.hiVect();
-! //        const int* _th_plo    = loVect();
-! //        const int* _th_phi    = hiVect();
-! //        const int* _x_lo      = srcbox.loVect();
-! //        const int* _x_hi      = srcbox.hiVect(); 
-! //        const int* _x_plo     = src.loVect();
-! //        const int* _x_phi     = src.hiVect();
-! //        Real*       _th_p     = dataPtr(destcomp);
-! //        const Real* _x_p      = src.dataPtr(srccomp);
-! //
-! //        FORT_FASTCOPY(_th_p,
-! //                      ARLIM(_th_plo),
-! //                      ARLIM(_th_phi),
-! //                      D_DECL(destboxlo[0],destboxlo[1],destboxlo[2]),
-! //                      D_DECL(destboxhi[0],destboxhi[1],destboxhi[2]),
-! //                      _x_p,
-! //                      ARLIM(_x_plo),
-! //                      ARLIM(_x_phi),
-! //                      D_DECL(_x_lo[0],_x_lo[1],_x_lo[2]),
-! //                      D_DECL(_x_hi[0],_x_hi[1],_x_hi[2]),
-! //                      numcomp);
-! //    }
-  }
-  
-  template<>
-*************** BaseFab<Real>::performSetVal (Real      
-*** 145,175 ****
-      BL_ASSERT(domain.contains(bx));
-      BL_ASSERT(ns >= 0 && ns + num <= nvar);
-  
-!     if (bx == domain)
-!     {
-          Real* data = &dptr[ns*numpts];
-  
-          for (long i = 0, N = num*numpts; i < N; i++)
-          {
-              *data++ = val;
-          }
-!     }
-!     else
-!     {
-!         const int* _box_lo = bx.loVect();            
-!         const int* _box_hi = bx.hiVect();            
-!         const int* _th_plo = loVect();                           
-!         const int* _th_phi = hiVect();
-! 
-!         Real* _th_p = dataPtr(ns);
-! 
-!         FORT_FASTSETVAL(&val,
-!                         _box_lo,
-!                         _box_hi,
-!                         _th_p,
-!                         ARLIM(_th_plo),
-!                         ARLIM(_th_phi),
-!                         num);
-!     }
-  }
-  #endif
---- 145,175 ----
-      BL_ASSERT(domain.contains(bx));
-      BL_ASSERT(ns >= 0 && ns + num <= nvar);
-  
-! //    if (bx == domain)
-! //    {
-          Real* data = &dptr[ns*numpts];
-  
-          for (long i = 0, N = num*numpts; i < N; i++)
-          {
-              *data++ = val;
-          }
-! //    }
-! //    else
-! //    {
-! //        const int* _box_lo = bx.loVect();            
-! //        const int* _box_hi = bx.hiVect();            
-! //        const int* _th_plo = loVect();                           
-! //        const int* _th_phi = hiVect();
-! 
-! //        Real* _th_p = dataPtr(ns);
-! 
-! //        FORT_FASTSETVAL(&val,
-! //                        _box_lo,
-! //                        _box_hi,
-! //                        _th_p,
-! //                        ARLIM(_th_plo),
-! //                        ARLIM(_th_phi),
-! //                        num);
-! //    }
-  }
-  #endif
-diff -c a/BoxLib/FPC.cpp CCSEApps/BoxLib/FPC.cpp
-*** a/BoxLib/FPC.cpp
---- CCSEApps/BoxLib/FPC.cpp
-*************** FPC::NativeLongDescriptor ()
-*** 64,70 ****
-  #endif
-  
-  #if defined(__sgi) || \
-!     defined(__sun) || \
-      defined(_AIX)  || \
-      defined(_CRAYT3E)  || \
-      defined(__hpux)
---- 64,70 ----
-  #endif
-  
-  #if defined(__sgi) || \
-!     defined(__sun) || defined(__ppc__) || defined(__ppc64__) || \
-      defined(_AIX)  || \
-      defined(_CRAYT3E)  || \
-      defined(__hpux)
-*************** FPC::NativeRealDescriptor ()
-*** 91,97 ****
-  #endif
-  
-  #if defined(__sgi) || \
-!     defined(__sun) || \
-      defined(_AIX)  || \
-      defined(_CRAYT3E)  || \
-      defined(__hpux)
---- 91,97 ----
-  #endif
-  
-  #if defined(__sgi) || \
-!     defined(__sun) || defined(__ppc__) || defined(__ppc64__) || \
-      defined(_AIX)  || \
-      defined(_CRAYT3E)  || \
-      defined(__hpux)
-*************** FPC::Ieee64NormalRealDescriptor ()
-*** 137,143 ****
-        defined(_CRAY1)     || \
-        defined(_CRAYT3E)   || \
-        defined(__sgi)      || \
-!       defined(__sun)      || \
-        defined(__i486__)   || \
-        defined(i386)       || \
-        defined(__i386__)   || \
---- 137,143 ----
-        defined(_CRAY1)     || \
-        defined(_CRAYT3E)   || \
-        defined(__sgi)      || \
-!       defined(__sun)      || defined(__ppc__) || defined(__ppc64__) || \
-        defined(__i486__)   || \
-        defined(i386)       || \
-        defined(__i386__)   || \
-diff -c a/BoxLib/Make.package CCSEApps/BoxLib/Make.package
-*** a/BoxLib/Make.package
---- CCSEApps/BoxLib/Make.package
-*************** T_headers += ccse-mpi.H
-*** 91,99 ****
-  # Fortran interface routines.
-  #
-  
-! f$(BOXLIB_BASE)_sources += BLutil_F.f
-! f$(BOXLIB_BASE)_sources += BLParmParse_F.f
-! f$(BOXLIB_BASE)_sources += BLBoxLib_F.f
-  
-! F$(BOXLIB_BASE)_sources += SPECIALIZE_$(DIM)D.F
-! F$(BOXLIB_BASE)_headers += SPECIALIZE_F.H
---- 91,99 ----
-  # Fortran interface routines.
-  #
-  
-! #f$(BOXLIB_BASE)_sources += BLutil_F.f
-! #f$(BOXLIB_BASE)_sources += BLParmParse_F.f
-! #f$(BOXLIB_BASE)_sources += BLBoxLib_F.f
-  
-! #F$(BOXLIB_BASE)_sources += SPECIALIZE_$(DIM)D.F
-! #F$(BOXLIB_BASE)_headers += SPECIALIZE_F.H
-EOF
-    if [[ $? != 0 ]] ; then
-       warn "Unable to patch Boxlib 3D. Wrong version?"
-       return 1
-    fi
-
-    return 0
-}
-
-# Modifies the makefile to use `gfortran' instead of `g77'.
-function apply_boxlib_25_gfortran_patch
-{
-
-    patch -u -p0 << \EOF
---- CCSEApps/mk/Make.Linux	2003-02-05 09:33:24.000000000 -0700
-+++ CCSEApps/mk/Make.Linux.gfortran	2008-10-06 16:47:30.000000000 -0600
-@@ -51,7 +51,7 @@
-   fOPTF += $(INTEL_EXTRA_OPT_FLAGS)
- else
- ifeq ($(FCOMP),f77)
--  FC       := g77 -fno-second-underscore
-+  FC       := gfortran -fno-second-underscore
-   fC       := $(FC)
-   # default g77/f77 version
-   FOPTF += -O
-EOF
-}
-
-# Modifies the makefile to include `-fPIC' int he compiler flags.
-function apply_boxlib_25_fPIC_patch
-{
-    patch -u -p0 << \EOF
---- CCSEApps/mk/Make.Linux	2003-02-05 09:33:24.000000000 -0700
-+++ CCSEApps/mk/Make.Linux.fPIC	2008-10-06 16:46:16.000000000 -0600
-@@ -54,10 +54,10 @@
-   FC       := g77 -fno-second-underscore
-   fC       := $(FC)
-   # default g77/f77 version
--  FOPTF += -O
--  fOPTF += -O
--  FDEBF += -g
--  fDEBF += -g
-+  FOPTF += -O -fPIC
-+  fOPTF += -O -fPIC
-+  FDEBF += -g -fPIC
-+  fDEBF += -g -fPIC
-   #DEFINES += -DBL_FORT_USE_UNDERSCORE
-   #override XTRALIBS +=  -lf2c
- # LIBRARY_LOCATIONS += /usr/lib/gcc-lib/i386-redhat-linux/2.96
-EOF
-}
-
-# Adds some defines so that boxlib builds properly on linux-ppc64
-function apply_boxlib_25_ppc_patch
-{
-    patch -u -p1 << \EOF
---- visit-build-old/CCSEApps/BoxLib/FPC.cpp	2006-01-11 14:13:06.000000000 -0500
-+++ visit-build/CCSEApps/BoxLib/FPC.cpp	2009-02-19 18:41:26.616492453 -0500
-@@ -64,7 +64,7 @@
- #endif
- 
- #if defined(__sgi) || \
--    defined(__sun) || \
-+    defined(__sun) || defined powerpc || defined __powerpc || defined ppc || defined __ppc || \
-     defined(_AIX)  || \
-     defined(_CRAYT3E)  || \
-     defined(__hpux)
-@@ -91,7 +91,7 @@
- #endif
- 
- #if defined(__sgi) || \
--    defined(__sun) || \
-+    defined(__sun) || defined powerpc || defined __powerpc || defined ppc || defined __ppc || \
-     defined(_AIX)  || \
-     defined(_CRAYT3E)  || \
-     defined(__hpux)
-@@ -137,7 +137,7 @@
-       defined(_CRAY1)     || \
-       defined(_CRAYT3E)   || \
-       defined(__sgi)      || \
--      defined(__sun)      || \
-+      defined(__sun)      || defined powerpc || defined __powerpc || defined ppc || defined __ppc || \
-       defined(__i486__)   || \
-       defined(i386)       || \
-       defined(__i386__)   || \
-EOF
-}
-
-# Modifies the VisMF.cpp to use more const.
-function apply_boxlib_25_const_patch
-{
-    patch -u -p0 << \EOF
---- CCSEApps/BoxLib/VisMF.cpp	2010-02-10 22:49:11.728859467 -0800
-+++ CCSEApps/BoxLib/VisMF.cpp.const	2010-02-10 22:48:52.828860805 -0800
-@@ -343,7 +343,7 @@
- {
-     BL_ASSERT(filename[filename.length() - 1] != '/');
- 
--    if (char* slash = strrchr(filename.c_str(), '/'))
-+    if (const char* slash = strrchr(filename.c_str(), '/'))
-     {
-         //
-         // Got at least one slash -- give'm the following tail.
-@@ -368,7 +368,7 @@
- 
-     const char* str = filename.c_str();    
- 
--    if (char* slash = strrchr(str, '/'))
-+    if (const char* slash = strrchr(str, '/'))
-     {
-         //
-         // Got at least one slash -- give'm the dirname including last slash.
-EOF
-}
-
-function apply_boxlib_25_patch
-{
-   # We start by fixing the Makefiles ... one way for AIX, one way for GCC
-   if [[ "$OPSYS" == "AIX" ]]; then
-       apply_boxlib_25_aix_patch
-       if [[ $? != 0 ]] ; then
-           return 1
-       fi
-   else
-       apply_boxlib_25_gcc_patch
-       if [[ $? != 0 ]] ; then
-           return 1
-       fi
-       apply_boxlib_25_fPIC_patch
-       # Do we need to use gfortran instead of g77?
-       if test -z `which g77`; then
-           warn "g77 not found; patching BoxLib for gfortran compile."
-           apply_boxlib_25_gfortran_patch
-       fi
-   fi
-
-   # Fix some const
-   apply_boxlib_25_const_patch
-
-   # Now make the OPSYS specific changes
-   if [[ "$OPSYS" == "Darwin" ]]; then
-       apply_boxlib_25_darwin_patch
-       if [[ $? != 0 ]] ; then
-           return 1
-       fi
-   elif test `uname -m` = "ppc64" ; then
-       apply_boxlib_25_ppc_patch
-   fi
-
-   return 0
-}
-
-function apply_boxlib_patch
-{
-   if [[ ${BOXLIB_VERSION} == 2.5 ]] ; then
-       apply_boxlib_25_patch
-       if [[ $? != 0 ]] ; then
-           return 1
-       fi
-   fi
-
-   return 0
-}
-
-function change_boxlib_dim_using_patches
-{
-    #
-    # Apply patches
-    #
-    if [[ ${BOXLIB_VERSION} == 2.5 ]] ; then
-       info "Changing the Boxlib dimension from 3 to 2! Going to $START_DIR"
-       cd $START_DIR || error "Can't cd to ${START_DIR}"
-       if [[ "$OPSYS" == "AIX" ]]; then
-          info "PATCHING AIX"
-          patch -p0 << \EOF
-diff -c a/BoxLib/GNUmakefile CCSEApps/BoxLib/GNUmakefile
-*** a/BoxLib/GNUmakefile
---- CCSEApps/BoxLib/GNUmakefile
-*************** TOP = $(PBOXLIB_HOME)
-*** 8,14 ****
-  
-  PRECISION = DOUBLE
-  DEBUG     = FALSE
-! DIM       = 3
-  COMP      = xlC
-  USE_MPI   = FALSE
-  #NAMESPACE = TRUE
---- 8,14 ----
-  
-  PRECISION = DOUBLE
-  DEBUG     = FALSE
-! DIM       = 2
-  COMP      = xlC
-  USE_MPI   = FALSE
-  #NAMESPACE = TRUE
-EOF
-       else
-          info "PATCHING GCC"
-          patch -p0 << \EOF
-diff -c a/BoxLib/GNUmakefile CCSEApps/BoxLib/GNUmakefile
-*** a/BoxLib/GNUmakefile
---- CCSEApps/BoxLib/GNUmakefile
-*************** TOP = $(PBOXLIB_HOME)
-*** 8,14 ****
-  
-  PRECISION = DOUBLE
-  DEBUG     = FALSE
-! DIM       = 3
-  COMP      = 
-  USE_MPI   = FALSE
-  #NAMESPACE = TRUE
---- 8,14 ----
-  
-  PRECISION = DOUBLE
-  DEBUG     = FALSE
-! DIM       = 2
-  COMP      = 
-  USE_MPI   = FALSE
-  #NAMESPACE = TRUE
-EOF
-       fi
-       if [[ $? != 0 ]] ; then
-           warn "Unable to patch Boxlib 2D. Wrong version?"
-           return 1
-       fi
-    fi
-
-    return 0
-}
 
 function build_boxlib
 {
@@ -7078,151 +6788,94 @@ function build_boxlib
        return 1
     fi
 
-    #
-    # Apply patches
-    #
-    info "Patching Boxlib . . ."
-    apply_boxlib_patch
-    if [[ $? != 0 ]] ; then
-       if [[ $untarred_boxlib == 1 ]] ; then
-          warn "Giving up on Boxlib build because the patch failed."
-          return 1
-       else
-          warn "Patch failed, but continuing.  I believe that this script\n" \
-               "tried to apply a patch to an existing directory which had\n" \
-               "already been patched ... that is, that the patch is\n" \
-               "failing harmlessly on a second application." 
-       fi
-    fi
-
     cd $BOXLIB_BUILD_DIR || error "Can't cd to BoxLib build dir."
-    #
-    # Build Boxlib 3D
-    #
-    info "Building Boxlib 3D. . . (~2 minutes)"
 
-    if [[ "$OPSYS" == "Darwin" ]]; then
-       cp ../mk/Make.FreeBSD ../mk/Make.Darwin
-    fi
-    $MAKE -f GNUmakefile CXX="$CXX_COMPILER" CC="$C_COMPILER" \
-       CCFLAGS="$CFLAGS $C_OPT_FLAGS" CXXFLAGS="$CXXFLAGS $CXX_OPT_FLAGS"
-    if [[ $? != 0 ]] ; then
-       warn "Boxlib build failed.  Giving up"
-       return 1
-    fi
     #
-    # Install into the VisIt third party location.
+    # Build BoxLib
     #
-    info "Installing Boxlib 3D. . ."
+    info "Building Boxlib. . . (~4 minutes)"
 
-    mkdir "$VISITDIR/boxlib"
-    mkdir "$VISITDIR/boxlib/$VISITARCH"
-    mkdir "$VISITDIR/boxlib/$VISITARCH/include"
-    mkdir "$VISITDIR/boxlib/$VISITARCH/lib"
-    mkdir "$VISITDIR/boxlib/$VISITARCH/include/2D"
-    mkdir "$VISITDIR/boxlib/$VISITARCH/include/3D"
+    if [[ "$OPSYS" == "AIX" ]]; then
+        $MAKE -f GNUmakefile CXX="$CXX_COMPILER" CC="$C_COMPILER" \
+           CCFLAGS="$CFLAGS $C_OPT_FLAGS" CXXFLAGS="$CXXFLAGS $CXX_OPT_FLAGS" \
+           DEBUG="FALSE" DIM=3 COMP="xlC" USE_MPI="FALSE" \
+           BL_NO_FORT="TRUE" || error "Boxlib build failed. Giving up"
+
+        $MAKE -f GNUmakefile CXX="$CXX_COMPILER" CC="$C_COMPILER" \
+           CCFLAGS="$CFLAGS $C_OPT_FLAGS" CXXFLAGS="$CXXFLAGS $CXX_OPT_FLAGS" \
+           DEBUG="FALSE" DIM=2 COMP="xlC" USE_MPI="FALSE" \
+           BL_NO_FORT="TRUE" || error "Boxlib build failed. Giving up"
+    else
+        $MAKE -f GNUmakefile CXX="$CXX_COMPILER" CC="$C_COMPILER" \
+           CCFLAGS="$CFLAGS $C_OPT_FLAGS" CXXFLAGS="$CXXFLAGS $CXX_OPT_FLAGS" \
+           DEBUG="FALSE" DIM=3 USE_MPI="FALSE" \
+           BL_NO_FORT="TRUE" || error "Boxlib build failed. Giving up"
+
+        $MAKE -f GNUmakefile CXX="$CXX_COMPILER" CC="$C_COMPILER" \
+           CCFLAGS="$CFLAGS $C_OPT_FLAGS" CXXFLAGS="$CXXFLAGS $CXX_OPT_FLAGS" \
+           DEBUG="FALSE" DIM=2 USE_MPI="FALSE" \
+           BL_NO_FORT="TRUE" || error "Boxlib build failed. Giving up"
+    fi
+
+    #
+    # Create dynamic library for Darwin
+    #
     if [[ "$DO_STATIC_BUILD" == "no" && "$OPSYS" == "Darwin" ]]; then
         if [[ $ABS_PATH == "yes" ]]; then
-           INSTALLNAMEPATH="$VISITDIR/boxlib/$VISITARCH/lib"
+           INSTALLNAMEPATH="$VISITDIR/boxlib/$BOXLIB_VERSION/$VISITARCH/lib"
         else
            INSTALLNAMEPATH="@executable_path/../lib"
         fi
-        mkdir tmp
-        cd tmp
-        ar x ../libbox3d.Darwin.CC.f77.a
-        $CXX_COMPILER -dynamiclib -o libbox3D.$SO_EXT *.o \
+        $CXX_COMPILER -dynamiclib -o libbox3D.$SO_EXT o/3d.Darwin.*/*.o \
           -lSystem -Wl,-headerpad_max_install_names \
           -Wl,-install_name,$INSTALLNAMEPATH/libbox3D.$SO_EXT \
           -Wl,-compatibility_version,$BOXLIB_COMPATIBILITY_VERSION \
-          -Wl,-current_version,$BOXLIB_VERSION
-        if [[ $? != 0 ]] ; then
-          warn "Creation of dynamic 3D Boxlib library failed.  Giving up"
-          return 1
-        fi
-        cp libbox3D.$SO_EXT "$VISITDIR/boxlib/$VISITARCH/lib/"
-        rm *.o
-        cd ..
-        tar cf Boxlib3D.h.tar *.H
-    else
-       cp libbox3d*.a \
-       "$VISITDIR/boxlib/$VISITARCH/lib/libbox3D.a"
-       $TAR cf Boxlib3D.h.tar *.H
-       if [[ $? != 0 ]] ; then
-          warn "Boxlib install failed.  Giving up"
-          return 1
-       fi
-    fi
-    $MAKE clean
-
-    change_boxlib_dim_using_patches
-
-    cd $BOXLIB_BUILD_DIR || error "Can't cd to BoxLib build dir."
-    #
-    # Build Boxlib 2D
-    #
-    info "Building Boxlib 2D. . . (~2 minutes)"
-
-    if [[ "$OPSYS" == "Darwin" ]]; then
-       cp ../mk/Make.FreeBSD ../mk/Make.Darwin
-    fi
-    $MAKE -f GNUmakefile CXX="$CXX_COMPILER" CC="$C_COMPILER" \
-       CCFLAGS="$CFLAGS $C_OPT_FLAGS" CXXFLAGS="$CXXFLAGS $CXX_OPT_FLAGS" 
-    if [[ $? != 0 ]] ; then
-       warn "Boxlib build failed.  Giving up"
-       return 1
-    fi
-    info "Installing Boxlib 2D. . ." 
-
-    if [[ "$DO_STATIC_BUILD" == "no" && "$OPSYS" == "Darwin" ]]; then
-        if [[ $ABS_PATH == "yes" ]]; then
-           INSTALLNAMEPATH="$VISITDIR/boxlib/$VISITARCH/lib"
-        else
-           INSTALLNAMEPATH="@executable_path/../lib"
-        fi
-        cd tmp
-        ar x ../libbox2d.Darwin.CC.f77.a
-        $CXX_COMPILER -dynamiclib -o libbox2D.$SO_EXT *.o \
+          -Wl,-current_version,$BOXLIB_VERSION || \
+          error "Creation of dynamic 3D Boxlib library failed. Giving up!"
+        $CXX_COMPILER -dynamiclib -o libbox2D.$SO_EXT o/2d.Darwin.*/*.o \
           -lSystem -Wl,-headerpad_max_install_names \
           -Wl,-install_name,$INSTALLNAMEPATH/libbox2D.$SO_EXT \
           -Wl,-compatibility_version,$BOXLIB_COMPATIBILITY_VERSION \
-          -Wl,-current_version,$BOXLIB_VERSION
-        if [[ $? != 0 ]] ; then
-          warn "Creation of dynamic 2D Boxlib library failed.  Giving up"
-          return 1
-        fi
-        cp libbox2D.$SO_EXT "$VISITDIR/boxlib/$VISITARCH/lib/"
-        rm *.o
-        cd ..
-        rmdir tmp
-        $TAR cf Boxlib2D.h.tar *.H
+          -Wl,-current_version,$BOXLIB_VERSION || \
+          error "Creation of dynamic 2D Boxlib library failed. Giving up!"
+        boxlib_ext=$SO_EXT
     else
-        cp libbox2d*.a \
-        "$VISITDIR/boxlib/$VISITARCH/lib/libbox2D.a"
-        $TAR cf Boxlib2D.h.tar *.H
-        if [[ $? != 0 ]] ; then
-          warn "Boxlib install failed.  Giving up"
-          return 1
-        fi
+        mv libbox3d.*.a libbox3D.a
+        mv libbox2d.*.a libbox2D.a
+        boxlib_ext=a
     fi
 
-    info "Installing Boxlib includes. . ."
+    #
+    # Install into the VisIt third party location.
+    #
+    info "Installing Boxlib . . ."
 
-    cp Boxlib2D.h.tar "$VISITDIR/boxlib/$VISITARCH/include/2D"
-    cp Boxlib3D.h.tar "$VISITDIR/boxlib/$VISITARCH/include/3D"
-    cd "$VISITDIR/boxlib/$VISITARCH/include/2D"
-    tar xf Boxlib2D.h.tar
-    cd "$VISITDIR/boxlib/$VISITARCH/include/3D"
-    tar xf Boxlib3D.h.tar
+    mkdir "$VISITDIR/boxlib"
+    mkdir "$VISITDIR/boxlib/$BOXLIB_VERSION"
+    mkdir "$VISITDIR/boxlib/$BOXLIB_VERSION/$VISITARCH"
+    mkdir "$VISITDIR/boxlib/$BOXLIB_VERSION/$VISITARCH/include"
+    mkdir "$VISITDIR/boxlib/$BOXLIB_VERSION/$VISITARCH/lib"
+
+    cp libbox3D.$boxlib_ext \
+       "$VISITDIR/boxlib/$BOXLIB_VERSION/$VISITARCH/lib/" || \
+       error "Boxlib install failed. Giving up!"
+
+    cp libbox2D.$boxlib_ext \
+       "$VISITDIR/boxlib/$BOXLIB_VERSION/$VISITARCH/lib/" || \
+       error "Boxlib install failed. Giving up!"
+
+    cp *.H "$VISITDIR/boxlib/$BOXLIB_VERSION/$VISITARCH/include" || \
+       error "Boxlib install failed. Giving up!"
 
     if [[ "$DO_GROUP" == "yes" ]] ; then
        chmod -R ug+w,a+rX "$VISITDIR/boxlib"
        chgrp -R ${GROUP} "$VISITDIR/boxlib"
     fi
+
     cd "$START_DIR"
-    info "Done with Boxlib"
+    info "Done with BoxLib"
     return 0
 }
-
 
 # *************************************************************************** #
 #                         Function 8.9, build_cfitsio                         #
@@ -7431,7 +7084,7 @@ $LD_LIBRARY_PATH
 }
 
 # *************************************************************************** #
-#                         Function 8.11, build_ccmio                         #
+#                         Function 8.11, build_ccmio                          #
 # *************************************************************************** #
 
 function apply_ccmio_261_darwin_patch
@@ -7468,7 +7121,7 @@ diff -c a/config/config.system libccmio-2.6.1/config/config.system
       ppc64-unknown-linux-gnu)
   	echo ppc64-unknown-linux-gnu ;;
   
-!     i386-apple-darwin8* | i386-apple-darwin9*)
+!     i386-apple-darwin8* | i386-apple-darwin9* | i386-apple-darwin10*)
   	echo i386-apple-darwin8 ;;
   
 +     powerpc-apple-darwin7* | powerpc-apple-darwin8* | powerpc-apple-darwin9* )
@@ -7793,6 +7446,73 @@ function build_tcmalloc
 #                           Function 8.13, build_icet                         #
 # *************************************************************************** #
 
+function apply_icet_100_patch
+{
+   patch -p0 <<\EOF
+diff -c a/src/CMakeLists.txt IceT-1-0-0/src/CMakeLists.txt
+*** a/src/CMakeLists.txt
+--- IceT-1-0-0/src/CMakeLists.txt
+***************
+*** 18,35 ****
+        "${CMAKE_CURRENT_SOURCE_DIR}/communication"
+        "${CMAKE_CURRENT_SOURCE_DIR}/strategies")
+    SET(filesToInstall)
+!   FOREACH(p IN ${resPath})
+        SET(tmpFilesToInstall)
+        SET(exts "${p}/*.h;${p}/*.hxx;${p}/*.txx")
+!       FOREACH(ext IN ${exts})
+            FILE(GLOB tmpFilesToInstall
+            RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+            "${ext}")
+            IF(tmpFilesToInstall)
+                SET(filesToInstall "${filesToInstall};${tmpFilesToInstall}")
+            ENDIF(tmpFilesToInstall)
+!       ENDFOREACH(ext IN ${exts})
+!   ENDFOREACH(p IN ${resPath})
+    INSTALL(
+        FILES ${filesToInstall}
+        DESTINATION "${ICET_INSTALL_INCLUDE_DIR}/ice-t"
+--- 18,35 ----
+        "${CMAKE_CURRENT_SOURCE_DIR}/communication"
+        "${CMAKE_CURRENT_SOURCE_DIR}/strategies")
+    SET(filesToInstall)
+!   FOREACH(p ${resPath})
+        SET(tmpFilesToInstall)
+        SET(exts "${p}/*.h;${p}/*.hxx;${p}/*.txx")
+!       FOREACH(ext ${exts})
+            FILE(GLOB tmpFilesToInstall
+            RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+            "${ext}")
+            IF(tmpFilesToInstall)
+                SET(filesToInstall "${filesToInstall};${tmpFilesToInstall}")
+            ENDIF(tmpFilesToInstall)
+!       ENDFOREACH(ext)
+!   ENDFOREACH(p)
+    INSTALL(
+        FILES ${filesToInstall}
+        DESTINATION "${ICET_INSTALL_INCLUDE_DIR}/ice-t"
+EOF
+   if [[ $? != 0 ]] ; then
+        warn "Unable to apply patch to IceT 1.0.0."
+        return 1
+   else
+        return 0
+   fi
+}
+
+function apply_icet_patch
+{
+   info "Patching IceT . . ."
+   if [[ ${ICET_VERSION} == "1.0.0" ]] ; then
+      apply_icet_100_patch
+      if [[ $? != 0 ]] ; then
+        return 1
+      fi
+   fi
+
+   return 0
+}
+
 function build_icet
 {
     PAR_INCLUDE_STRING=""
@@ -7804,7 +7524,9 @@ function build_icet
         if [[ "$OPSYS" == "Darwin" && "$PAR_COMPILER" == "/usr/bin/mpic++" ]]; then
             PAR_INCLUDE_STRING="-I/usr/include/"
         else
-            PAR_INCLUDE_STRING=`$PAR_COMPILER --showme:compile`    
+            if [[ -z "$PAR_INCLUDE_STRING" ]]; then
+                PAR_INCLUDE_STRING=`$PAR_COMPILER --showme:compile`    
+            fi
         fi
     fi
     
@@ -7865,6 +7587,8 @@ function build_icet
        return 1
     fi
 
+    apply_icet_patch
+
     info "Executing CMake on Ice-T"
     cd $ICET_BUILD_DIR || error "Can't cd to IceT build dir."
     if [[ "$DO_STATIC_BUILD" == "no" ]]; then
@@ -7878,7 +7602,7 @@ function build_icet
         -DCMAKE_INSTALL_PREFIX:PATH="$VISITDIR/icet/${ICET_VERSION}/${VISITARCH}"\
         -DOPENGL_INCLUDE_DIR:PATH="$VISITDIR/mesa/${MESA_VERSION}/${VISITARCH}/include"\
         -DOPENGL_gl_LIBRARY:FILEPATH="$VISITDIR/mesa/${MESA_VERSION}/${VISITARCH}/lib/libOSMesa.${LIBEXT}"\
-        -DCMAKE_C_FLAGS:STRING="-DUSE_MGL_NAMESPACE ${CFLAGS} ${C_OPT_FLAGS}"\
+        -DCMAKE_C_FLAGS:STRING="-fPIC -DUSE_MGL_NAMESPACE ${CFLAGS} ${C_OPT_FLAGS}"\
         -DMPI_INCLUDE_PATH:PATH="${PAR_INCLUDE_DIR}"\
         -DMPI_LIBRARY:FILEPATH="./fakempi.${LIBEXT}"\
         -DBUILD_TESTING:BOOL=OFF\
@@ -8410,7 +8134,7 @@ function build_mdsplus
     info "Configuring MDSplus . . ."
     cd $MDSPLUS_BUILD_DIR || error "Can't cd to mdsplus build dir."
     info "Invoking command to configure MDSplus"
-    ./configure ${OPTIONAL} CXX="$CXX_COMPILER" \
+    ./configure ${OPTIONAL} --disable-java CXX="$CXX_COMPILER" \
        CC="$C_COMPILER" CFLAGS="$CFLAGS $C_OPT_FLAGS" CXXFLAGS="$CXXFLAGS $CXX_OPT_FLAGS" \
        --prefix="$VISITDIR/mdsplus/$MDSPLUS_VERSION/$VISITARCH"
     if [[ $? != 0 ]] ; then
@@ -8447,6 +8171,10 @@ function build_mdsplus
 
 # *************************************************************************** #
 #                          Function 9, build_hostconf                         #
+#                                                                             #
+# Mark C. Miller, Wed Oct 27 19:29:19 PDT 2010                                #
+# Adjusted ordering of database lib variables to ensure LIBDEP gets processed #
+# correctly. Added comments to host conf file regarding ordering issue.       #
 # *************************************************************************** #
 
 function build_hostconf
@@ -8470,7 +8198,11 @@ function build_hostconf
     # of cmake.
 
     THIRD_PARTY_ABS_PATH=$(pushd $THIRD_PARTY_PATH 1,2>/dev/null; pwd; popd 1,2>/dev/null)
-    echo "#$THIRD_PARTY_ABS_PATH/cmake/$CMAKE_VERSION/$VISITARCH/bin/cmake" > $HOSTCONF
+    if [[ "$CMAKE_INSTALL" != "" ]]; then
+        echo "#$CMAKE_INSTALL/cmake" > $HOSTCONF
+    else
+        echo "#$THIRD_PARTY_ABS_PATH/cmake/$CMAKE_VERSION/$VISITARCH/bin/cmake" > $HOSTCONF
+    fi
     echo "##" >> $HOSTCONF
     echo "## $0 generated host.cmake" >> $HOSTCONF
     echo "## created: $(date)" >> $HOSTCONF
@@ -8497,7 +8229,7 @@ function build_hostconf
     echo >> $HOSTCONF
     echo "##" >> $HOSTCONF
     echo "## Specify the Qt4 binary dir. " >> $HOSTCONF
-    echo "## (qmake us used to locate & setup Qt4 dependencies)" >> $HOSTCONF
+    echo "## (qmake is used to locate & setup Qt4 dependencies)" >> $HOSTCONF
     echo "##" >> $HOSTCONF
     echo "VISIT_OPTION_DEFAULT(VISIT_QT_BIN \${VISITHOME}/qt/$QT_VERSION/\${VISITARCH}/bin)" >> $HOSTCONF
     echo >> $HOSTCONF
@@ -8505,21 +8237,25 @@ function build_hostconf
     echo \
 "## Specify the location of the python." >> $HOSTCONF
     echo "##" >> $HOSTCONF
-    echo "VISIT_OPTION_DEFAULT(VISIT_PYTHON_DIR \${VISITHOME}/python/$PYTHON_VERSION/\${VISITARCH})" >> $HOSTCONF
+    if [[ "$VISIT_PYTHON_DIR" != "" ]]; then
+        echo "VISIT_OPTION_DEFAULT(VISIT_PYTHON_DIR $VISIT_PYTHON_DIR)" >> $HOSTCONF
+    else
+        echo "VISIT_OPTION_DEFAULT(VISIT_PYTHON_DIR \${VISITHOME}/python/$PYTHON_VERSION/\${VISITARCH})" >> $HOSTCONF
+    fi
     echo >> $HOSTCONF
     echo "##" >> $HOSTCONF
     echo "## Compiler flags." >> $HOSTCONF
     echo "##" >> $HOSTCONF
-    echo "VISIT_OPTION_DEFAULT(VISIT_C_COMPILER $C_COMPILER)">> $HOSTCONF
-    echo "VISIT_OPTION_DEFAULT(VISIT_CXX_COMPILER $CXX_COMPILER)" >> $HOSTCONF
-    echo "VISIT_OPTION_DEFAULT(CMAKE_BUILD_TYPE Release)" >> $HOSTCONF
+    echo "VISIT_OPTION_DEFAULT(VISIT_C_COMPILER $C_COMPILER TYPE STRING)">> $HOSTCONF
+    echo "VISIT_OPTION_DEFAULT(VISIT_CXX_COMPILER $CXX_COMPILER TYPE STRING)" >> $HOSTCONF
+    echo "VISIT_OPTION_DEFAULT(CMAKE_BUILD_TYPE Release TYPE STRING)" >> $HOSTCONF
 
     if [[ "$USE_VISIBILITY_HIDDEN" == "yes" ]] ; then
-        echo "VISIT_OPTION_DEFAULT(VISIT_C_FLAGS \"$CFLAGS -fvisibility=hidden\")" >> $HOSTCONF
-        echo "VISIT_OPTION_DEFAULT(VISIT_CXX_FLAGS \"$CXXFLAGS -fvisibility=hidden\")" >> $HOSTCONF
+        echo "VISIT_OPTION_DEFAULT(VISIT_C_FLAGS \"$CFLAGS -fvisibility=hidden\" TYPE STRING)" >> $HOSTCONF
+        echo "VISIT_OPTION_DEFAULT(VISIT_CXX_FLAGS \"$CXXFLAGS -fvisibility=hidden\" TYPE STRING)" >> $HOSTCONF
     else
-        echo "VISIT_OPTION_DEFAULT(VISIT_C_FLAGS \"$CFLAGS\")" >> $HOSTCONF
-        echo "VISIT_OPTION_DEFAULT(VISIT_CXX_FLAGS \"$CXXFLAGS\")" >> $HOSTCONF
+        echo "VISIT_OPTION_DEFAULT(VISIT_C_FLAGS \"$CFLAGS\" TYPE STRING)" >> $HOSTCONF
+        echo "VISIT_OPTION_DEFAULT(VISIT_CXX_FLAGS \"$CXXFLAGS\" TYPE STRING)" >> $HOSTCONF
     fi
 
     if [[ "$parallel" == "yes" ]] ; then
@@ -8527,17 +8263,17 @@ function build_hostconf
         echo "##" >> $HOSTCONF
         echo "## Parallel Build Setup." >> $HOSTCONF
         echo "##" >> $HOSTCONF
-        echo "VISIT_OPTION_DEFAULT(VISIT_PARALLEL ON)" >> $HOSTCONF
+        echo "VISIT_OPTION_DEFAULT(VISIT_PARALLEL ON TYPE BOOL)" >> $HOSTCONF
         # we either set an mpi wrapper compiler in the host conf
         if [[ "$VISIT_MPI_COMPILER" != "" ]] ; then
             echo "## (configured w/ mpi compiler wrapper)" >> $HOSTCONF
-            echo "VISIT_OPTION_DEFAULT(VISIT_MPI_COMPILER $VISIT_MPI_COMPILER)"  >> $HOSTCONF
+            echo "VISIT_OPTION_DEFAULT(VISIT_MPI_COMPILER $VISIT_MPI_COMPILER TYPE STRING)"  >> $HOSTCONF
         else
             # or we just set the flags.
             echo "## (configued w/ user provided CXX (PAR_INCLUDE) & LDFLAGS (PAR_LIBS) flags)" \
              >> $HOSTCONF
-            echo "VISIT_OPTION_DEFAULT(VISIT_MPI_CXX_FLAGS \"$PAR_INCLUDE\")"     >> $HOSTCONF
-            echo "VISIT_OPTION_DEFAULT(VISIT_MPI_LD_FLAGS  \"$PAR_LINKER_FLAGS\")" >> $HOSTCONF
+            echo "VISIT_OPTION_DEFAULT(VISIT_MPI_CXX_FLAGS \"$PAR_INCLUDE\" TYPE STRING)"     >> $HOSTCONF
+            echo "VISIT_OPTION_DEFAULT(VISIT_MPI_LD_FLAGS  \"$PAR_LINKER_FLAGS\" TYPE STRING)" >> $HOSTCONF
             echo "VISIT_OPTION_DEFAULT(VISIT_MPI_LIBS        $PAR_LIBRARY_NAMES)" >> $HOSTCONF
         fi
     fi
@@ -8548,7 +8284,7 @@ function build_hostconf
 	echo "## Static build" >> $HOSTCONF
         echo "##" >> $HOSTCONF
         echo \
-        "VISIT_OPTION_DEFAULT(VISIT_STATIC ON)" >> $HOSTCONF
+        "VISIT_OPTION_DEFAULT(VISIT_STATIC ON TYPE BOOL)" >> $HOSTCONF
     fi
 
     echo >> $HOSTCONF
@@ -8557,8 +8293,84 @@ function build_hostconf
     echo "##" >> $HOSTCONF
     echo "## Database reader plugin support libraries" >> $HOSTCONF
     echo "##" >> $HOSTCONF
+    echo "## The HDF4, HDF5 and NetCDF libraries must be first so that" >> $HOSTCONF
+    echo "## their libdeps are defined for any plugins that need them." >> $HOSTCONF
+    echo "##" >> $HOSTCONF
+    echo "## For libraries with LIBDEP settings, order matters." >> $HOSTCONF
+    echo "## Libraries with LIBDEP settings that depend on other" >> $HOSTCONF
+    echo "## Library's LIBDEP settings must come after them." >> $HOSTCONF
     echo \
 "##############################################################" >> $HOSTCONF
+
+#
+# Although the code below originally ordered things alphabetically by library
+# name, that is NOT appropriate due to ordering dependency of LIBDEP processing.
+#
+    if [[ "$DO_HDF4" == "yes" ]] ; then
+        echo >> $HOSTCONF
+        echo "##" >> $HOSTCONF
+        echo "## HDF4" >> $HOSTCONF
+        echo "##" >> $HOSTCONF
+        echo \
+        "VISIT_OPTION_DEFAULT(VISIT_HDF4_DIR \${VISITHOME}/hdf4/$HDF4_VERSION/\${VISITARCH})" \
+        >> $HOSTCONF
+        if [[ "$OPSYS" == "Darwin" || "$OPSYS" == "AIX" ]]; then
+          if [[ "$DO_SZIP" == "yes" ]] ; then
+            echo \
+            "VISIT_OPTION_DEFAULT(VISIT_HDF4_LIBDEP \${VISITHOME}/szip/$SZIP_VERSION/\${VISITARCH}/lib sz \${VISITHOME}/vtk/$VTK_VERSION/\${VISITARCH}/lib vtkjpeg)" \
+            >> $HOSTCONF
+          else
+            echo \
+            "VISIT_OPTION_DEFAULT(VISIT_HDF4_LIBDEP \${VISITHOME}/vtk/$VTK_VERSION/\${VISITARCH}/lib vtkjpeg)" \
+            >> $HOSTCONF
+          fi
+        else
+          if [[ "$DO_SZIP" == "yes" ]] ; then
+            echo \
+            "VISIT_OPTION_DEFAULT(VISIT_HDF4_LIBDEP \${VISITHOME}/szip/$SZIP_VERSION/\${VISITARCH}/lib sz /usr/lib jpeg)" \
+            >> $HOSTCONF
+          else
+            echo \
+            "VISIT_OPTION_DEFAULT(VISIT_HDF4_LIBDEP /usr/lib jpeg)" \
+            >> $HOSTCONF
+          fi
+        fi
+        >> $HOSTCONF
+    fi
+
+    if [[ "$DO_HDF5" == "yes" ]] ; then
+        echo >> $HOSTCONF
+        echo "##" >> $HOSTCONF
+        echo "## HDF5" >> $HOSTCONF
+        echo "##" >> $HOSTCONF
+        echo \
+        "VISIT_OPTION_DEFAULT(VISIT_HDF5_DIR \${VISITHOME}/hdf5/$HDF5_VERSION/\${VISITARCH})" \
+        >> $HOSTCONF 
+        if [[ "$DO_SZIP" == "yes" ]] ; then
+            echo \
+            "VISIT_OPTION_DEFAULT(VISIT_HDF5_LIBDEP \${VISITHOME}/szip/$SZIP_VERSION/\${VISITARCH}/lib sz /usr/lib z)" \
+            >> $HOSTCONF
+        else
+            echo \
+            "VISIT_OPTION_DEFAULT(VISIT_HDF5_LIBDEP /usr/lib z)" \
+            >> $HOSTCONF
+        fi
+    fi
+
+    if [[ "$DO_NETCDF" == "yes" ]] ; then
+        echo >> $HOSTCONF
+        echo "##" >> $HOSTCONF
+        echo "## NetCDF" >> $HOSTCONF
+        echo "##" >> $HOSTCONF
+        echo \
+        "VISIT_OPTION_DEFAULT(VISIT_NETCDF_DIR \${VISITHOME}/netcdf/$NETCDF_VERSION/\${VISITARCH})" \
+        >> $HOSTCONF
+        if [[ "$DO_HDF5" == "yes" ]] ; then
+            echo \
+            "VISIT_OPTION_DEFAULT(VISIT_NETCDF_LIBDEP HDF5_LIBRARY_DIR hdf5_hl HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP})" \
+            >> $HOSTCONF
+        fi
+    fi
 
     if [[ "$DO_ADVIO" == "yes" ]] ; then
         echo >> $HOSTCONF
@@ -8576,10 +8388,8 @@ function build_hostconf
         echo "## Boxlib" >> $HOSTCONF
         echo "##" >> $HOSTCONF
         echo \
-        "VISIT_OPTION_DEFAULT(VISIT_BOXLIB2D_DIR \${VISITHOME}/boxlib/\${VISITARCH})" \
+        "VISIT_OPTION_DEFAULT(VISIT_BOXLIB_DIR \${VISITHOME}/boxlib/$BOXLIB_VERSION/\${VISITARCH})" \
         >> $HOSTCONF
-        echo \
-        "VISIT_OPTION_DEFAULT(VISIT_BOXLIB3D_DIR \${VISITHOME}/boxlib/\${VISITARCH})" \
         >> $HOSTCONF
     fi
 
@@ -8611,6 +8421,11 @@ function build_hostconf
         echo \
         "VISIT_OPTION_DEFAULT(VISIT_CGNS_DIR \${VISITHOME}/cgns/$CGNS_VERSION/\${VISITARCH})" \
         >> $HOSTCONF
+        if [[ "$DO_HDF5" == "yes" ]] ; then
+            echo \
+            "VISIT_OPTION_DEFAULT(VISIT_CGNS_LIBDEP HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP})" \
+            >> $HOSTCONF
+        fi
     fi
 
     if [[ "$DO_EXODUS" == "yes" ]] ; then
@@ -8621,15 +8436,8 @@ function build_hostconf
         echo \
         "VISIT_OPTION_DEFAULT(VISIT_EXODUSII_DIR \${VISITHOME}/exodus/$EXODUS_VERSION/\${VISITARCH})" \
         >> $HOSTCONF
-    fi
-
-    if [[ "$DO_GDAL" == "yes" ]] ; then
-        echo >> $HOSTCONF
-        echo "##" >> $HOSTCONF
-        echo "## GDAL" >> $HOSTCONF
-        echo "##" >> $HOSTCONF
         echo \
-        "VISIT_OPTION_DEFAULT(VISIT_GDAL_DIR \${VISITHOME}/gdal/$GDAL_VERSION/\${VISITARCH})" \
+        "VISIT_OPTION_DEFAULT(VISIT_EXODUSII_LIBDEP NETCDF_LIBRARY_DIR netcdf \${VISIT_NETCDF_LIBDEP})" \
         >> $HOSTCONF
     fi
 
@@ -8643,43 +8451,14 @@ function build_hostconf
         >> $HOSTCONF
     fi
 
-    if [[ "$DO_HDF4" == "yes" ]] ; then
+    if [[ "$DO_GDAL" == "yes" ]] ; then
         echo >> $HOSTCONF
         echo "##" >> $HOSTCONF
-        echo "## HDF4" >> $HOSTCONF
+        echo "## GDAL" >> $HOSTCONF
         echo "##" >> $HOSTCONF
         echo \
-        "VISIT_OPTION_DEFAULT(VISIT_HDF4_DIR \${VISITHOME}/hdf4/$HDF4_VERSION/\${VISITARCH})" \
+        "VISIT_OPTION_DEFAULT(VISIT_GDAL_DIR \${VISITHOME}/gdal/$GDAL_VERSION/\${VISITARCH})" \
         >> $HOSTCONF
-        if [[ "$DO_SZIP" == "yes" ]] ; then
-            echo \
-            "VISIT_OPTION_DEFAULT(VISIT_HDF4_LIBDEP \${VISITHOME}/szip/$SZIP_VERSION/\${VISITARCH}/lib sz /usr/lib jpeg)" \
-            >> $HOSTCONF
-        else
-            echo \
-            "VISIT_OPTION_DEFAULT(VISIT_HDF4_LIBDEP jpeg)" \
-            >> $HOSTCONF
-        fi
-        >> $HOSTCONF
-    fi
-
-    if [[ "$DO_HDF5" == "yes" ]] ; then
-        echo >> $HOSTCONF
-        echo "##" >> $HOSTCONF
-        echo "## HDF5" >> $HOSTCONF
-        echo "##" >> $HOSTCONF
-        echo \
-        "VISIT_OPTION_DEFAULT(VISIT_HDF5_DIR \${VISITHOME}/hdf5/$HDF5_VERSION/\${VISITARCH})" \
-        >> $HOSTCONF 
-        if [[ "$DO_SZIP" == "yes" ]] ; then
-            echo \
-            "VISIT_OPTION_DEFAULT(VISIT_HDF5_LIBDEP \${VISITHOME}/szip/$SZIP_VERSION/\${VISITARCH}/lib sz /usr/lib z)" \
-            >> $HOSTCONF
-        else
-            echo \
-            "VISIT_OPTION_DEFAULT(VISIT_HDF5_LIBDEP /usr/lib z)" \
-            >> $HOSTCONF
-        fi
     fi
 
     if [[ "$DO_H5PART" == "yes" ]] ; then
@@ -8717,16 +8496,6 @@ function build_hostconf
         echo "##" >> $HOSTCONF
         echo \
         "VISIT_OPTION_DEFAULT(VISIT_MILI_DIR \${VISITHOME}/mili/$MILI_VERSION/\${VISITARCH})" \
-        >> $HOSTCONF
-    fi
-
-    if [[ "$DO_NETCDF" == "yes" ]] ; then
-        echo >> $HOSTCONF
-        echo "##" >> $HOSTCONF
-        echo "## NetCDF" >> $HOSTCONF
-        echo "##" >> $HOSTCONF
-        echo \
-        "VISIT_OPTION_DEFAULT(VISIT_NETCDF_DIR \${VISITHOME}/netcdf/$NETCDF_VERSION/\${VISITARCH})" \
         >> $HOSTCONF
     fi
 
@@ -9205,7 +8974,6 @@ usage () {
   printf "%-15s %s [%s]\n" "--flags-debug" "Add '-g' to C[XX]FLAGS" "false"
   printf "%-15s %s [%s]\n" "--gdal" "Build GDAL" "$DO_GDAL"
   printf "%-15s %s [%s]\n" "--group" "Group name of installed libraries" "$GROUP"
-  printf "%-15s %s [%s]\n" "--mdsplus" "Build MDSplus" "$DO_MDSPLUS"
   printf "%-15s %s [%s]\n" "--h5part" "Build H5Part" "$DO_H5PART"
   printf "%-15s %s [%s]\n" "--hdf4" "Build HDF4" "${DO_HDF4}"
   printf "%-15s %s [%s]\n" "--hdf5" "Build HDF5" "${DO_HDF5}"
@@ -9448,8 +9216,7 @@ for arg in "${arguments[@]}" ; do
         --dbio-only) DO_DBIO_ONLY="yes";;
         --debug) set -vx;;
         --download-only) DOWNLOAD_ONLY="yes";;
-        --fastbit) DO_FASTBIT="yes"; ON_FASTBIT="on"
-                  DO_HDF5="yes"; ON_HDF5="on";;
+        --fastbit) DO_FASTBIT="yes"; ON_FASTBIT="on";;
         --exodus) DO_EXODUS="yes"; ON_EXODUS="on"
                   DO_NETCDF="yes"; ON_NETCDF="on";;
         --flags-debug) next_arg="flags-debug";;
@@ -9646,6 +9413,9 @@ if [[ "$GRAPHICAL" == "yes" ]] ; then
               warn "Please hit enter to continue."
               (read junkvar)
             fi
+        else
+            warn "Some versions of 'whiptail' fail to display anything with --infobox."
+            warn "Continuing in command line mode..."
         fi
     fi
 fi
@@ -9988,13 +9758,15 @@ else
 fi
 
 #
-# Log the start time.  Especially helpful if there are multiple starts
-# dumped into the same log.
+# Log build_visit invocation w/ arguments & the start time.
+# Especially helpful if there are multiple starts dumped into the
+# same log.
 #
 LINES="------------------------------------------------------------" 
-echo $LINES
-echo "Starting $0 at " $(date)
-echo $LINES 
+log $LINES
+log $0 $@
+log "Started:" $(date)
+log $LINES
 
 if [[ "$DO_SVN" == "yes" ]] ; then
     check_svn_client
@@ -10149,7 +9921,7 @@ if [[ "$DO_HDF5" == "yes" ]] ; then
     if [[ $? == 0 ]] ; then
         info "Skipping HDF5 build.  HDF5 is already installed."
     else
-        info "Building HDF5 (~2 minutes)"
+        info "Building HDF5 (~5 minutes)"
         build_hdf5
         if [[ $? != 0 ]] ; then
             error "Unable to build or install HDF5.  Bailing out."
@@ -10209,7 +9981,7 @@ if [[ "$DO_NETCDF" == "yes" ]] ; then
    if [[ $? == 0 ]] ; then
         info "Skipping NetCDF build.  NetCDF is already installed."
    else
-        info "Building NetCDF (~2 minutes)"
+        info "Building NetCDF (~5 minutes)"
         build_netcdf
         if [[ $? != 0 ]] ; then
             error "Unable to build or install NetCDF.  Bailing out."
@@ -10285,7 +10057,7 @@ fi
 
 cd "$START_DIR"
 if [[ "$DO_BOXLIB" == "yes" ]] ; then
-    check_if_installed "boxlib"
+    check_if_installed "boxlib" $BOXLIB_VERSION
     if [[ $? == 0 ]] ; then
         info "Skipping Boxlib build.  Boxlib is already installed."
     else
@@ -10497,33 +10269,34 @@ if [[ "$DO_VISIT" == "yes" ]] ; then
     fi
     info "Done building VisIt"
     if [[ "$DO_SVN" == "yes" && "$USE_VISIT_FILE" == "no" ]] ; then
-        echo \
+        info \
         "You may now try to run VisIt by cd'ing into the src/bin"
     else
-        echo \
+        info \
         "You may now try to run VisIt by cd'ing into the ${VISIT_FILE%.tar*}/src/bin"
     fi
-    echo "directory and invoking \"visit\"."
-    echo 
-    echo "To create a binary distribution tarball from this build, cd to"
+    info "directory and invoking \"visit\"."
+    info
+    info "To create a binary distribution tarball from this build, cd to"
     if [[ "$DO_SVN" == "yes" && "$USE_VISIT_FILE" == "no" ]] ; then
-        echo "${START_DIR}/src"
+        info "${START_DIR}/src"
     else
-        echo "${START_DIR}/${VISIT_FILE%.tar*}/src"
+        info "${START_DIR}/${VISIT_FILE%.tar*}/src"
     fi
-    echo "then enter: \"svn_bin/visit-bin-dist\""
-    echo "Will produce a tarball called visitVERSION.ARCH.tar.gz, where"
-    echo "VERSION is the version number, and ARCH is the OS architecure."
-    echo 
-    echo "To install the above tarball in a directory called "INSTALL_DIR_PATH","
-    echo "enter: svn_bin/visit-install VERSION ARCH INSTALL_DIR_PATH"
-    echo 
-    echo "If you run into problems, contact visit-users@ornl.gov"
+    info "then enter: \"make package\""
+    info
+    info "This will produce a tarball called visitVERSION.ARCH.tar.gz, where"
+    info "VERSION is the version number, and ARCH is the OS architecure."
+    info
+    info "To install the above tarball in a directory called "INSTALL_DIR_PATH","
+    info "enter: svn_bin/visit-install VERSION ARCH INSTALL_DIR_PATH"
+    info
+    info "If you run into problems, contact visit-users@ornl.gov"
 else
     if [[ $ANY_ERRORS == "no" ]] ; then
-        echo "Finished!"
+        info "Finished!"
     else
-        echo "Finished with Errors"
+        info "Finished with Errors"
     fi
 fi
 

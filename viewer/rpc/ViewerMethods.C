@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -4671,12 +4671,15 @@ ViewerMethods::SetWindowArea(int x, int y, int w, int h)
 //   Hank Childs, Mon Jul 10 17:37:14 PDT 2006
 //   Added two double arguments.
 //
+//   Dave Pugmire, Tue Nov  9 16:09:04 EST 2010
+//   Add dumpSteps for streamline info query.
+//
 // ****************************************************************************
 
 void
 ViewerMethods::DatabaseQuery(const std::string &queryName,
     const stringVector &vars, const bool bflag, const int arg1, const int arg2,
-    const bool globalFlag, const doubleVector &darg1, const doubleVector &darg2)
+    const bool globalFlag, const bool dumpStepsFlag, const doubleVector &darg1, const doubleVector &darg2)
 {
     //
     // Set the rpc type.
@@ -4688,6 +4691,7 @@ ViewerMethods::DatabaseQuery(const std::string &queryName,
     state->GetViewerRPC()->SetIntArg2(arg2);
     state->GetViewerRPC()->SetBoolFlag(bflag);
     state->GetViewerRPC()->SetIntArg3((int)globalFlag);
+    state->GetViewerRPC()->SetIntArg4((int)dumpStepsFlag);
     state->GetViewerRPC()->SetDoubleArg1(darg1);
     state->GetViewerRPC()->SetDoubleArg2(darg2);
 
@@ -4822,7 +4826,7 @@ ViewerMethods::LineQuery(const std::string &queryName, const double pt1[3],
 // ****************************************************************************
 
 void
-ViewerMethods::Pick(int x, int y, const stringVector &vars)
+ViewerMethods::ZonePick(int x, int y, const stringVector &vars)
 {
     double pt[3];
     pt[0] = (double)x;
@@ -4852,9 +4856,9 @@ ViewerMethods::Pick(int x, int y, const stringVector &vars)
 // ****************************************************************************
 
 void
-ViewerMethods::Pick(double xyz[3], const stringVector &vars)
+ViewerMethods::ZonePick(double xyz[3], const stringVector &vars)
 {
-    PointQuery("Pick", xyz, vars);
+    PointQuery("ZonePick", xyz, vars);
 }
 
 // ****************************************************************************

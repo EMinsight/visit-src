@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-400142
 # All rights reserved.
@@ -169,8 +169,14 @@
 #    Kathleen Bonnell, Thu Sep 2 15:44:22 PDT 2010 
 #    Add flag to windows nsis-installer script for 64 bit.
 #
+#    Mark C. Miller, Tue Sep 21 13:47:27 PDT 2010
+#    Fix DBIO_ONLY mode.
+#
 #    Tom Fogal, Wed Sep 22 13:45:36 MDT 2010
 #    Fix HAVE_LIBGLEW definition.
+#
+#    Mark C. Miller, Fri Oct 22 12:28:25 PDT 2010
+#    Added missing LIBDEP support for ExodusII dependence on (its own) netcdf.
 #
 #    Brad Whitlock, Fri Oct 29 16:56:34 PDT 2010
 #    I added some more filtering when generating VisItLibraryDependencies.cmake
@@ -189,6 +195,29 @@
 #    Cyrus Harrison, Mon Dec 20 10:50:29 PST 2010
 #    Use FORCE when setting various install paths.
 #
+#    Kathleen Bonnell, Tue Dec 28 17:06:41 MST 2010 
+#    Add VISIT_3RDPARTY_VAR for VISIT_SZIP_DIR and VISIT_JPEG_DIR for Windows,
+#    and VISIT_H5PART_LIBDEP for all platforms. Call find for szip, zlib and
+#    jpeg before Finds for any libs that may have dependencies on them.
+#
+#    Kathleen Bonnell, Wed Jan 5 10:36:29 PST 2010
+#    Turn on use of FOLDER property.
+#    Move Plugin macros to their own CMake file.
+#
+#    Kathleen Bonnell, Thu Jan 6 15:31:12 PST 2010
+#    Allow data dir to be built on windows.
+#
+#    Eric Brugger, Fri Jan  7 13:24:41 PST 2011
+#    I replaced the BOXLIB2D and BOXLIB3D variables with just BOXLIB.
+#
+#    Cyrus Harrison, Wed Jan 12 11:41:21 PST 2011
+#    Add support for optional TYPE [CMAKE_TYPE] arg par to the
+#    VISIT_OPTION_DEFAULT function.
+#
+#    Cyrus Harrison, Wed Jan 12 11:41:21 PST 2011
+#    Added init of opt_ARG_PREV in VISIT_OPTION_DEFAULT to avoid cmake 
+#    warning message.
+#
 #****************************************************************************/
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8.0 FATAL_ERROR)
@@ -206,6 +235,9 @@ SET(CMAKE_SKIP_RULE_DEPENDENCY 1)
 # for now...
 SET(BUILD_SHARED_LIBS 1)
 
+# this turns on the FOLDER property for generators that may make use of it, like Visual Studio
+# should have no effect for generators that do not use.
+SET_PROPERTY(GLOBAL PROPERTY USE_FOLDERS ON)
 
 #-----------------------------------------------------------------------------
 # Get this computer's hostname using cmake's cross platform helper function.
@@ -214,31 +246,32 @@ SET(BUILD_SHARED_LIBS 1)
 SITE_NAME(HOSTNAME)
 
 #-----------------------------------------------------------------------------
-# Add an option to not force cache for 3rd party
-#----------------------------------------------------------------------------
-
-OPTION(VISIT_OPTION_DEFAULT_NOFORCE
-  "Do not force replacement in cache." OFF)
+# Helper function for setting build options via config-site file.
+# Supports optional argument pair: TYPE [CMAKE_TYPE], default type = PATH
+#-----------------------------------------------------------------------------
+FUNCTION(VISIT_OPTION_DEFAULT var)
+  SET(opt_ARGS "")
+  SET(opt_TYPE "PATH")
+  SET(opt_ARG_PREV "[unset]")
+  FOREACH(opt_ARG ${ARGN})
+    ## if arg is TYPE:
+    ##   we want to use the next value as the cmake var type
+    ## otherwise:
+    ##   we want to append the argument to the list of args used for "SET"
+    IF( ${opt_ARG_PREV} STREQUAL "TYPE")
+        SET(opt_TYPE ${opt_ARG})
+    ELSEIF(NOT ${opt_ARG} STREQUAL "TYPE")
+        LIST(APPEND opt_ARGS ${opt_ARG})
+    ENDIF(${opt_ARG_PREV} STREQUAL "TYPE")
+    SET(opt_ARG_PREV ${opt_ARG})
+  ENDFOREACH(opt_ARG in ${ARGN})
+  SET(${var} "${opt_ARGS}" CACHE ${opt_TYPE} "${var} default value" FORCE)
+ENDFUNCTION(VISIT_OPTION_DEFAULT var)
+INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/CMake/SetupITAPS.cmake)
 
 #-----------------------------------------------------------------------------
 # Include this computer's config-site if one exists
 #-----------------------------------------------------------------------------
-FUNCTION(VISIT_OPTION_DEFAULT var)
-  IF(VISIT_OPTION_DEFAULT_NOFORCE)
-    # MESSAGE(STATUS "VISIT_OPTION_DEFAULT_NOFORCE is on.")
-    IF(NOT ${var})
-      MESSAGE(STATUS "Setting ${var}.")
-      SET(${var} ${ARGN} CACHE PATH "${var} default value")
-    ELSE()
-      MESSAGE(STATUS "Not setting ${var}.")
-    ENDIF()
-  ELSE()
-    # MESSAGE(STATUS "VISIT_OPTION_DEFAULT_NOFORCE is off.")
-    SET(${var} ${ARGN} CACHE PATH "${var} default value" FORCE)
-  ENDIF()
-ENDFUNCTION(VISIT_OPTION_DEFAULT var)
-INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/CMake/SetupITAPS.cmake)
-
 IF (NOT WIN32)
   IF(VISIT_CONFIG_SITE)
       SET(VISIT_CONFIG_SITE_FILE ${VISIT_CONFIG_SITE})
@@ -302,7 +335,20 @@ IF (WIN32)
       INCLUDE(config-site/windows.cmake)
   ENDIF (VISIT_CONFIG_SITE)
   SET(CMAKE_SKIP_RPATH ON CACHE INTERNAL "VisIt builds with rpath set." FORCE)
-  SET(VISIT_WIN_ICON_RESOURCE ${VISIT_WINDOWS_DIR}/resources/visitresources.rc)
+  IF(NOT VISIT_WINDOWS_DIR)
+    MESSAGE(FATAL_ERROR "VISIT_WINDOWS_DIR is not defined.")
+  ENDIF()
+  IF(NOT EXISTS ${VISIT_WINDOWS_DIR})
+    MESSAGE(FATAL_ERROR "${VISIT_WINDOWS_DIR} does not exist.")
+  ENDIF()
+  IF(EXISTS ${VISIT_WINDOWS_DIR}/resources/visitresources.rc)
+    SET(VISIT_WIN_ICON_RESOURCE ${VISIT_WINDOWS_DIR}/resources/visitresources.rc)
+  ELSEIF(EXISTS ${VISIT_WINDOWS_DIR}/visitresources/visitresources.rc)
+    SET(VISIT_WIN_ICON_RESOURCE ${VISIT_WINDOWS_DIR}/visitresources/visitresources.rc)
+  ELSE()
+    MESSAGE(FATAL_ERROR "Cannot find visitresources.rc in either ${VISIT_WINDOWS_DIR}/resources or ${VISIT_WINDOWS_DIR}/visitresources")
+  ENDIF()
+  MESSAGE(STATUS "VISIT_WIN_ICON_RESOURCE = ${VISIT_WIN_ICON_RESOURCE}")
 ENDIF (WIN32)
 
 #-----------------------------------------------------------------------------
@@ -395,6 +441,13 @@ VISIT_3RDPARTY_VAR(VISIT_MESA_DIR   "Path containing the Mesa library's include 
 VISIT_3RDPARTY_VAR(VISIT_ICET_DIR   "Path containing the Ice-T library's include and lib" ICET_DIR)
 VISIT_3RDPARTY_VAR(VISIT_TCMALLOC_DIR   "Path containing the tcmalloc library's include and lib" TCMALLOC_DIR)
 
+# Libraries some third-parties are dependent upon
+IF(WIN32)
+  VISIT_3RDPARTY_VAR(VISIT_JPEG_DIR   "Path containing the jpeg library's include and lib" JPEG_DIR)
+  VISIT_3RDPARTY_VAR(VISIT_SZIP_DIR   "Path containing the szip library's include and lib" SZIP_DIR)
+  VISIT_3RDPARTY_VAR(VISIT_ZLIB_DIR   "Path containing the zlib library's include and lib" ZLIB_DIR)
+ENDIF(WIN32)
+
 # Define the options that let us pick I/O library installation locations. When 
 # the library option is defined then we also define the variable name passed as
 # the 3rd argument. That variable is what is used in our various Find routines.
@@ -405,12 +458,13 @@ VISIT_3RDPARTY_VAR(VISIT_TCMALLOC_DIR   "Path containing the tcmalloc library's 
 #       and link).
 VISIT_3RDPARTY_VAR(VISIT_ADIOS_DIR     "Path containing the ADIOS library's include and lib" ADIOS_DIR)
 VISIT_3RDPARTY_VAR(VISIT_ADVIO_DIR     "Path containing the AdvIO library's include and lib" ADVIO_DIR)
-VISIT_3RDPARTY_VAR(VISIT_BOXLIB2D_DIR  "Path containing the Boxlib 2D library's include and lib" BOXLIB2D_DIR)
-VISIT_3RDPARTY_VAR(VISIT_BOXLIB3D_DIR  "Path containing the Boxlib 3D library's include and lib" BOXLIB3D_DIR)
+VISIT_3RDPARTY_VAR(VISIT_BOXLIB_DIR    "Path containing the Boxlib library's include and lib" BOXLIB_DIR)
 VISIT_3RDPARTY_VAR(VISIT_CCMIO_DIR     "Path containing the CCMIO library's include and lib" CCMIO_DIR)
 VISIT_3RDPARTY_VAR(VISIT_CFITSIO_DIR   "Path containing the CFITSIO library's include and lib" CFITSIO_DIR)
 VISIT_3RDPARTY_VAR(VISIT_CGNS_DIR      "Path containing the CGNS library's include and lib" CGNS_DIR)
+VISIT_3RDPARTY_VAR(VISIT_CGNS_LIBDEP   "CGNS library dependencies" CGNS_LIBDEP)
 VISIT_3RDPARTY_VAR(VISIT_EXODUSII_DIR  "Path containing the ExodusII library's include and lib" EXODUSII_DIR)
+VISIT_3RDPARTY_VAR(VISIT_EXODUSII_LIBDEP "ExodusII library dependencies" EXODUSII_LIBDEP)
 VISIT_3RDPARTY_VAR(VISIT_FASTBIT_DIR   "Path containing the Fastbit library's include and lib" FASTBIT_DIR)
 VISIT_3RDPARTY_VAR(VISIT_GDAL_DIR      "Path containing the GDAL library's include and lib" GDAL_DIR)
 VISIT_3RDPARTY_VAR(VISIT_HDF4_DIR      "Path containing the HDF4 library's include and lib" HDF4_DIR)
@@ -418,16 +472,16 @@ VISIT_3RDPARTY_DEP(VISIT_HDF4_LIBDEP   "HDF4 library dependencies" HDF4_LIBDEP)
 VISIT_3RDPARTY_VAR(VISIT_HDF5_DIR      "Path containing the HDF5 library's include and lib" HDF5_DIR)
 VISIT_3RDPARTY_DEP(VISIT_HDF5_LIBDEP   "HDF5 library dependencies" HDF5_LIBDEP)
 VISIT_3RDPARTY_VAR(VISIT_H5PART_DIR    "Path containing the H5Part library's include and lib" H5PART_DIR)
+VISIT_3RDPARTY_VAR(VISIT_H5PART_LIBDEP "H5Part library dependencies" H5PART_LIBDEP)
 VISIT_3RDPARTY_VAR(VISIT_MILI_DIR      "Path containing the Mili library's include and lib" MILI_DIR)
 VISIT_3RDPARTY_VAR(VISIT_NETCDF_DIR    "Path containing the NETCDF library's include and lib" NETCDF_DIR)
+VISIT_3RDPARTY_VAR(VISIT_NETCDF_LIBDEP "NETCDF library dependencies" NETCDF_LIBDEP)
 VISIT_3RDPARTY_VAR(VISIT_SILO_DIR      "Path containing the Silo library's include and lib" SILO_DIR)
 VISIT_3RDPARTY_DEP(VISIT_SILO_LIBDEP   "Silo library dependencies" SILO_LIBDEP)
 VISIT_3RDPARTY_VAR(VISIT_VISUS_DIR     "Path containing the ViSUS library's include and lib" VISUS_DIR)
 VISIT_3RDPARTY_VAR(VISIT_XDMF_DIR      "Path containing the Xdmf library's include and lib" XDMF_DIR)
+VISIT_3RDPARTY_VAR(VISIT_XDMF_LIBDEP   "Xdmf library dependencies" XDMF_LIBDEP)
 VISIT_3RDPARTY_VAR(VISIT_MDSPLUS_DIR   "Path containing the MDSplus library's include and lib" MDSPLUS_DIR)
-IF(WIN32)
-  VISIT_3RDPARTY_VAR(VISIT_ZLIB_DIR   "Path containing the zlib library's include and lib" ZLIB_DIR)
-ENDIF(WIN32)
 #-----------------------------------------------------------------------------
 # Read the version
 #-----------------------------------------------------------------------------
@@ -588,63 +642,6 @@ MACRO(VISIT_INSTALL_TARGETS)
     ENDIF(VISIT_STATIC)
 ENDMACRO(VISIT_INSTALL_TARGETS)
 
-MACRO(VISIT_INSTALL_PLUGINS type)
-    IF(NOT VISIT_STATIC)
-        IF(VISIT_RPATH_RELATIVE_TO_EXECUTABLE_PATH)
-            SET_TARGET_PROPERTIES(${ARGN} PROPERTIES INSTALL_RPATH "$ORIGIN/../../lib")
-        ENDIF(VISIT_RPATH_RELATIVE_TO_EXECUTABLE_PATH)
-        IF(NOT WIN32)
-            INSTALL(TARGETS ${ARGN}
-                LIBRARY DESTINATION ${VISIT_INSTALLED_VERSION_PLUGINS}/${type}
-                RUNTIME DESTINATION ${VISIT_INSTALLED_VERSION_PLUGINS}/${type}
-                PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE 
-                            GROUP_READ GROUP_WRITE GROUP_EXECUTE 
-                            WORLD_READ             WORLD_EXECUTE
-                CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
-            )
-        ELSE(NOT WIN32)
-            # ${BUILD_TYPE} refers to the configuration option chosen (Release,
-            # Debug, etc). It is a var that will be given a value during compile
-            # not configure, so the dollar sign must be escaped in the string
-            # below.  Then during install, ${BUILD_TYPE} will be expanded.
-            FOREACH(target ${ARGN})
-                SET(filename "${VISIT_BINARY_DIR}/exe/\${BUILD_TYPE}/${type}/lib${target}.dll")
-                INSTALL(FILES ${filename}
-                    DESTINATION ${VISIT_INSTALLED_VERSION_PLUGINS}/${type}
-                    COMPONENT RUNTIME
-                    PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE 
-                                GROUP_READ GROUP_WRITE GROUP_EXECUTE 
-                                WORLD_READ             WORLD_EXECUTE
-                    CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
-                )
-            ENDFOREACH(target)
-        ENDIF(NOT WIN32)
-        IF(APPLE)
-            FOREACH(target ${ARGN})
-                SET(filename lib${target}.dylib)
-                INSTALL(CODE 
-                    "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
-                         COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_PLUGINS}/${type}/${filename}\"
-                         OUTPUT_VARIABLE OSXOUT)
-                     MESSAGE(STATUS \"\${OSXOUT}\")
-                    ")
-            ENDFOREACH(target)
-        ENDIF(APPLE)
-    ENDIF(NOT VISIT_STATIC)
-ENDMACRO(VISIT_INSTALL_PLUGINS)
-
-MACRO(VISIT_INSTALL_DATABASE_PLUGINS)
-    VISIT_INSTALL_PLUGINS(databases ${ARGN})
-ENDMACRO(VISIT_INSTALL_DATABASE_PLUGINS)
-
-MACRO(VISIT_INSTALL_OPERATOR_PLUGINS)
-    VISIT_INSTALL_PLUGINS(operators ${ARGN})
-ENDMACRO(VISIT_INSTALL_OPERATOR_PLUGINS)
-
-MACRO(VISIT_INSTALL_PLOT_PLUGINS)
-    VISIT_INSTALL_PLUGINS(plots ${ARGN})
-ENDMACRO(VISIT_INSTALL_PLOT_PLUGINS)
-
 # Install the headers for directories that we need in order to build plugins
 INSTALL(DIRECTORY avt common engine gui launcher mdserver third_party_builtin viewer visit_vtk visitpy vtkqt winutil
     DESTINATION ${VISIT_INSTALLED_VERSION_INCLUDE}/visit
@@ -661,12 +658,6 @@ INSTALL(DIRECTORY avt common engine gui launcher mdserver third_party_builtin vi
     PATTERN "CMakeFiles" EXCLUDE
 )
 
-MACRO(VISIT_PLUGIN_TARGET_PREFIX) 
-    IF(WIN32)
-        SET_TARGET_PROPERTIES(${ARGN} PROPERTIES PREFIX "../lib")
-    ENDIF(WIN32)
-ENDMACRO(VISIT_PLUGIN_TARGET_PREFIX)
-
 #-----------------------------------------------------------------------------
 # Detect packages here. We could probably write macros that we can include from
 # elsewhere for this. 
@@ -680,9 +671,9 @@ INCLUDE(${CMAKE_ROOT}/Modules/CheckSymbolExists.cmake)
 INCLUDE(${CMAKE_ROOT}/Modules/FindX11.cmake)
 INCLUDE(${CMAKE_ROOT}/Modules/TestBigEndian.cmake)
 
-IF(VISIT_PYTHON_SCRIPTING)
+IF(VISIT_PYTHON_SCRIPTING AND NOT VISIT_DBIO_ONLY)
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItPython.cmake)
-ENDIF(VISIT_PYTHON_SCRIPTING)
+ENDIF(VISIT_PYTHON_SCRIPTING AND NOT VISIT_DBIO_ONLY)
 
 IF(VISIT_JAVA)
     INCLUDE(${CMAKE_ROOT}/Modules/FindJava.cmake)
@@ -710,10 +701,14 @@ CHECK_INCLUDE_FILES (zlib.h      HAVE_ZLIB_H)
 CHECK_INCLUDE_FILES (stdbool.h   HAVE_STDBOOL_H)
 
 # Configure OpenGL support.
-INCLUDE(${CMAKE_ROOT}/Modules/FindOpenGL.cmake)
+IF(NOT VISIT_DBIO_ONLY)
+    INCLUDE(${CMAKE_ROOT}/Modules/FindOpenGL.cmake)
+ENDIF(NOT VISIT_DBIO_ONLY)
 
 # Configure Mesa support.
-INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItMesa.cmake)
+IF(NOT VISIT_DBIO_ONLY)
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItMesa.cmake)
+ENDIF(NOT VISIT_DBIO_ONLY)
 
 # Configure VTK support.
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItVTK.cmake)
@@ -742,8 +737,15 @@ IF(VISIT_PYTHON_FILTERS AND VISIT_NOLINK_MPI_WITH_LIBRARIES)
     MESSAGE(STATUS "Python Engine Filters disabled because VISIT_NOLINK_MPI_WITH_LIBRARIES was selected.")
 ENDIF(VISIT_PYTHON_FILTERS AND VISIT_NOLINK_MPI_WITH_LIBRARIES)
 
+IF(VISIT_PYTHON_FILTERS AND VISIT_DBIO_ONLY)
+    SET(VISIT_PYTHON_FILTERS OFF)
+    MESSAGE(STATUS "Python Engine Filters disabled because VISIT_DBIO_ONLY was selected.")
+ENDIF(VISIT_PYTHON_FILTERS AND VISIT_DBIO_ONLY)
+
 # Configure Qt4 support.
-INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItQt4.cmake)
+IF(NOT VISIT_DBIO_ONLY)
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItQt4.cmake)
+ENDIF(NOT VISIT_DBIO_ONLY)
 
 # Treat GLEW as a 3rd party builtin.
 SET(GLEW_FOUND 1)
@@ -785,6 +787,30 @@ ENDIF(VISIT_PARALLEL)
 # Include TCMALLOC support if we can.
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindTCMALLOC.cmake)
 
+# zlib, szip and jpeg
+IF(CMAKE_HOST_UNIX)
+  SET(ZLIB_LIB z)
+  SET(DL_LIB dl)
+  ADD_DEFINITIONS(-D_LARGEFILE64_SOURCE)
+ELSE(CMAKE_HOST_UNIX)
+  IF(WIN32)
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindZlib.cmake)
+    IF(NOT ZLIB_FOUND)
+        SET(ZLIB_LIB vtkzlib)
+    ENDIF(NOT ZLIB_FOUND)
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindJPEG.cmake)
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindSzip.cmake)
+  ELSE(WIN32)
+      SET(ZLIB_LIB vtkzlib)
+  ENDIF(WIN32)
+ENDIF(CMAKE_HOST_UNIX)
+
+# Configure HDF5 support. Do it before the other libraries since many can depend on it.
+INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindHDF5.cmake)
+IF(HDF5_FOUND)
+    SET(HAVE_LIBHDF5 1)
+ENDIF(HDF5_FOUND)
+
 # Configure adios support.
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindADIOS.cmake)
 IF(ADIOS_FOUND)
@@ -799,12 +825,9 @@ ENDIF(ADVIO_FOUND)
 
 # Configure Boxlib support.
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindBoxlib.cmake)
-IF(BOXLIB2D_FOUND)
-    SET(HAVE_LIBBOXLIB2D 1)
-ENDIF(BOXLIB2D_FOUND)
-IF(BOXLIB3D_FOUND)
-    SET(HAVE_LIBBOXLIB3D 1)
-ENDIF(BOXLIB3D_FOUND)
+IF(BOXLIB_FOUND)
+    SET(HAVE_LIBBOXLIB 1)
+ENDIF(BOXLIB_FOUND)
 
 # Configure ccmio support.
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindCCMIO.cmake)
@@ -847,12 +870,6 @@ ELSE(VISIT_STATIC)
       SET(HAVE_LIBHDF4 1)
   ENDIF(HDF4_FOUND)
 ENDIF(VISIT_STATIC)
-
-# Configure HDF5 support.
-INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindHDF5.cmake)
-IF(HDF5_FOUND)
-    SET(HAVE_LIBHDF5 1)
-ENDIF(HDF5_FOUND)
 
 # Configure h5part support.
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindH5Part.cmake)
@@ -905,21 +922,6 @@ IF(MDSPLUS_FOUND)
     SET(HAVE_LIBMDSPLUS 1)
 ENDIF(MDSPLUS_FOUND)
 
-
-IF(CMAKE_HOST_UNIX)
-  SET(ZLIB_LIB z)
-  SET(DL_LIB dl)
-  ADD_DEFINITIONS(-D_LARGEFILE64_SOURCE)
-ELSE(CMAKE_HOST_UNIX)
-  IF(WIN32)
-    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindZlib.cmake)
-    IF(NOT ZLIB_FOUND)
-        SET(ZLIB_LIB vtkzlib)
-    ENDIF(NOT ZLIB_FOUND)
-  ELSE(WIN32)
-      SET(ZLIB_LIB vtkzlib)
-  ENDIF(WIN32)
-ENDIF(CMAKE_HOST_UNIX)
 
 IF (WIN32)
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindNSIS.cmake)
@@ -1200,19 +1202,15 @@ SET(VISIT_COMMON_INCLUDES
     ${VISIT_SOURCE_DIR}/common/proxybase
     ${VISIT_SOURCE_DIR}/common/state
     ${VISIT_SOURCE_DIR}/common/utility
-    ${VISIT_SOURCE_DIR}/common/common/misc
-    ${VISIT_SOURCE_DIR}/common/common/plugin
-    ${VISIT_SOURCE_DIR}/common/common/state
-    ${VISIT_SOURCE_DIR}/common/common/utility
     )
 
 
 # Override the OPENGL_glu_LIBRARY returned by CMake on the Mac because the
 # AGL framework does NOT contain gluTess functions. We want to instead use
 # Mesa's GLU functions.
-IF(APPLE)
+IF(APPLE AND NOT VISIT_DBIO_ONLY)
     SET(OPENGL_glu_LIBRARY ${MESA_LIBRARY_DIR}/libMesaGLU.dylib CACHE INTERNAL "AGL lib for OSX")   
-ENDIF(APPLE)
+ENDIF(APPLE AND NOT VISIT_DBIO_ONLY)
 
 # We use libGLU for its tessellation abilities but it requires libGL sometimes.
 IF(UNIX AND NOT APPLE)
@@ -1401,7 +1399,7 @@ FUNCTION(CHECK_ISFINITE_EXISTS VAR)
     ELSE(tmpVar)
         MESSAGE(STATUS "Check for isfinite - not found")
         IF (NOT WIN32)
-            MESSAGE("Check for isfinite - ${outvar}")
+            MESSAGE(STATUS "Check for isfinite - ${outvar}")
         ENDIF (NOT WIN32)
     ENDIF(tmpVar)
 ENDFUNCTION(CHECK_ISFINITE_EXISTS)
@@ -1592,9 +1590,7 @@ ENDIF(VISIT_DBIO_ONLY)
 IF(NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)
     ADD_SUBDIRECTORY(launcher)
     ADD_SUBDIRECTORY(mdserver)
-    IF(UNIX)
-        ADD_SUBDIRECTORY(sim)
-    ENDIF(UNIX)
+    ADD_SUBDIRECTORY(sim)
 ENDIF(NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)
 IF(NOT VISIT_SERVER_COMPONENTS_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)
     ADD_SUBDIRECTORY(vtkqt)
@@ -1683,13 +1679,23 @@ ADD_SUBDIRECTORY(svn_bin)
 #-----------------------------------------------------------------------------
 # Add the "data" directory if it exists
 #-----------------------------------------------------------------------------
-IF(NOT WIN32 AND IS_DIRECTORY ${VISIT_SOURCE_DIR}/../data)
+IF(IS_DIRECTORY ${VISIT_SOURCE_DIR}/../data)
+    IF(WIN32)
+        # Don't want the data dir files to be added to the main VISIT 
+        # solution file, so 'EXCLUDE_FROM_ALL' here, and create a new 
+        # PROJECT in data/CMakeLists.txt
+        SET(V_EX "EXCLUDE_FROM_ALL")
+     ENDIF(WIN32)
     IF(VISIT_OUT_OF_SOURCE_BUILD)
-        ADD_SUBDIRECTORY(${VISIT_SOURCE_DIR}/../data ${CMAKE_CURRENT_BINARY_DIR}/data )
+        ADD_SUBDIRECTORY(${VISIT_SOURCE_DIR}/../data 
+                         ${CMAKE_CURRENT_BINARY_DIR}/data 
+                         ${V_EX})
     ELSE(VISIT_OUT_OF_SOURCE_BUILD)
-        ADD_SUBDIRECTORY(${VISIT_SOURCE_DIR}/../data ${VISIT_SOURCE_DIR}/../data)
+        ADD_SUBDIRECTORY(${VISIT_SOURCE_DIR}/../data 
+                         ${VISIT_SOURCE_DIR}/../data 
+                         ${V_EX})
     ENDIF(VISIT_OUT_OF_SOURCE_BUILD)
-ENDIF(NOT WIN32 AND IS_DIRECTORY ${VISIT_SOURCE_DIR}/../data)
+ENDIF(IS_DIRECTORY ${VISIT_SOURCE_DIR}/../data)
 
 #-----------------------------------------------------------------------------
 # Create library dependencies file
@@ -1811,20 +1817,24 @@ ELSE (NOT WIN32)
             COMMAND ${MAKENSIS} 
                     /DVISIT_SOURCE_DIR=${VSD_NATIVE} 
                     /DINSTALL_PREFIX=${CIP_NATIVE} 
-                     ${VISIT_WINDOWS_DIR}/installation/CreateDBSections.nsi
+                    ${VISIT_WINDOWS_DIR}/installation/CreateDBSections.nsi
             COMMAND ${MAKENSIS} 
                     /DVisItVersion=${VISIT_VERSION} 
                     /DCOMPILER=${VISIT_MSVC_VERSION} 
                     /DVISIT_SOURCE_DIR=${VSD_NATIVE} 
                     /DINSTALL_PREFIX=${CIP_NATIVE} 
                     /DCL_64=${CMAKE_CL_64}
-                     ${VISIT_WINDOWS_DIR}/installation/binaryinstallation.nsi
+                    ${VISIT_WINDOWS_DIR}/installation/binaryinstallation.nsi
             DEPENDS ${VISIT_WINDOWS_DIR}/installation/CreateDBSections.nsi
                     ${VISIT_WINDOWS_DIR}/installation/binaryinstallation.nsi
         )
         ADD_CUSTOM_TARGET(_PACKAGE ALL DEPENDS visit${VISIT_VERSION}.exe)
         ADD_CUSTOM_COMMAND(TARGET _PACKAGE PRE_BUILD 
             COMMAND ${CMAKE_COMMAND} -DBUILD_TYPE=${CMAKE_CFG_INTDIR} -P cmake_install.cmake)
+        IF(IS_DIRECTORY ${VISIT_SOURCE_DIR}/../data)
+            ADD_CUSTOM_COMMAND(TARGET _PACKAGE PRE_BUILD 
+                COMMAND ${CMAKE_COMMAND} -DBUILD_TYPE=${CMAKE_CFG_INTDIR} -P ${VISIT_BINARY_DIR}/data/cmake_install.cmake)
+        ENDIF(IS_DIRECTORY ${VISIT_SOURCE_DIR}/../data)
  
         SET_TARGET_PROPERTIES(_PACKAGE PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD 1)
         

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -444,7 +444,10 @@ class avtIVPSolver
     virtual void    PutState(const avtIVPState&);
             
     virtual avtIVPSolver* Clone() const = 0;
-            
+
+    bool convertToCartesian;
+    avtVector CylindricalToCartesian(const avtVector& pt) const;
+
 protected:
     virtual void    AcceptStateVisitor(avtIVPStateHelper& sv) = 0;
 };

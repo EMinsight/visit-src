@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -83,8 +83,10 @@ avtFileDescriptorManager::avtFileDescriptorManager()
 
 avtFileDescriptorManager::~avtFileDescriptorManager()
 {
-    // Can't really think of a good reason to make all of the files be closed.
-    // This should never be called anyway.
+    closeFileCallbacks.clear();
+    closeFileArgs.clear();
+    fileIsOpen.clear();
+    fileTimestamp.clear();
 }
 
 

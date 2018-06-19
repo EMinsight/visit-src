@@ -54,7 +54,6 @@
 
 #include <avtCallback.h>
 #include <avtOpenGLStreamlineRenderer.h>
-#include <avtMesaStreamlineRenderer.h>
 
 #include <ImproperUseException.h>
 #include <InvalidLimitsException.h>
@@ -159,6 +158,12 @@ avtStreamlineRenderer::New()
 //  Dave Pugmire, Fri Feb 12 14:02:57 EST 2010
 //  Pass in camera to do transparency sorting.
 //
+//  Hank Childs, Thu Sep 30 00:45:38 PDT 2010
+//  Pass along the bounding box to the renderer implementation.
+//
+//  Kathleen Bonnell, Tue Nov 16 10:24:26 PST 2010
+//  The distinction between Mesa and OpenGL no longer exits at the plot level.
+//
 // ****************************************************************************
 
 void
@@ -169,10 +174,7 @@ avtStreamlineRenderer::Render(vtkDataSet *ds)
         if (rendererImplementation)
             delete rendererImplementation;
 
-        if (avtCallback::GetNowinMode())
-            rendererImplementation = new avtMesaStreamlineRenderer;
-        else
-            rendererImplementation = new avtOpenGLStreamlineRenderer;
+        rendererImplementation = new avtOpenGLStreamlineRenderer;
         
         currentRendererIsValid = true;
         rendererImplementation->SetLevelsLUT(levelsLUT);
@@ -194,6 +196,7 @@ avtStreamlineRenderer::Render(vtkDataSet *ds)
     winsize[0] = VTKRen->GetVTKWindow()->GetSize()[0];
     winsize[1] = VTKRen->GetVTKWindow()->GetSize()[1];
 
+    rendererImplementation->SetBoundingBox(bbox);
     rendererImplementation->Render(polydata,
                                    atts,
                                    immediateModeRendering,

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -205,6 +205,9 @@ typedef ref_ptr<avtDataRequest> avtDataRequest_p;
 //    Jeremy Meredith, Fri Feb 13 11:22:39 EST 2009
 //    Added MIR iteration capability.
 //
+//    Hank Childs, Fri Sep  3 12:10:47 PDT 2010
+//    Added Boolean for whether the velocity field must be continuous.
+//
 // ****************************************************************************
 
 class PIPELINE_API avtDataRequest
@@ -280,6 +283,11 @@ class PIPELINE_API avtDataRequest
                                      { return needStructuredIndices; };
     void                         SetNeedStructuredIndices(bool v)
                                      { needStructuredIndices = v; };
+
+    bool                         VelocityFieldMustBeContinuous(void)
+                                     { return velocityMustBeContinuous; };
+    void                         SetVelocityFieldMustBeContinuous(bool v)
+                                     { velocityMustBeContinuous = v; };
 
     int                          NeedAMRIndices(void)
                                      { return needAMRIndices; };
@@ -480,6 +488,7 @@ class PIPELINE_API avtDataRequest
     bool                         needMixedVariableReconstruction;
     bool                         needSmoothMaterialInterfaces;
     bool                         needCleanZonesOnly;
+    bool                         velocityMustBeContinuous;
     int                          mirAlgorithm;
     int                          mirNumIterations;
     float                        mirIterationDamping;

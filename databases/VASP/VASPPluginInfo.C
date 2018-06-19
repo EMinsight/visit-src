@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -169,6 +169,7 @@ VASPGeneralPluginInfo::GetDefaultFilePatterns() const
     defaultPatterns.push_back("OUT*");
     defaultPatterns.push_back("POS*");
     defaultPatterns.push_back("CHG*");
+    defaultPatterns.push_back("CONT*");
 
     return defaultPatterns;
 }

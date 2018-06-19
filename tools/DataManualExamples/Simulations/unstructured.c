@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-400142
 * All rights reserved.
@@ -142,13 +142,12 @@ ProcessConsoleCommand(simulation_data *sim)
 }
 
 /* SIMULATE ONE TIME STEP */
-#include <unistd.h>
 void simulate_one_timestep(simulation_data *sim)
 {
     ++sim->cycle;
     sim->time += 0.0134;
     printf("Simulating time step: cycle=%d, time=%lg\n", sim->cycle, sim->time);
-    sleep(1);
+    sim_sleep(1);
     VisItTimeStepChanged();
 }
 

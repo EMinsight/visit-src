@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -597,18 +597,11 @@ VisItUnlockPythonInterpreter(PyThreadState *myThreadState)
 //
 // VisIt module functions that are written in Python.
 //
-// Modifications:
-//   Cyrus Harrison, Wed Dec  8 09:15:26 PST 2010
-//   Beffer error message: raise 'ValueError' instead of a string.
-//
 static const char visit_EvalCubicSpline[] =
 "def EvalCubicSpline(t, allX, allY):\n"
 "    n = len(allY)\n"
 "    if((allX[0] > t) or (allX[n-1] < t)):\n"
-"        emsg  = 't must be in the range between the first and last X\\n'\n"
-"        emsg += 'Passed arguments t=%s, first X=%s, last X=%s'\n"
-"        emsg  = emsg % (str(t),str(allX[0]),str(allX[n-1]))\n"
-"        raise ValueError(emsg)\n"
+"        raise 't must be in the range between the first and last X'\n"
 "    for i in range(1, n):\n"
 "        if(allX[i] >= t):\n"
 "            break\n"
@@ -7404,87 +7397,6 @@ visit_SetPlotDescription(PyObject *self, PyObject *args)
 }
 
 // ****************************************************************************
-// Method: visit_SetPlotFollowsTime
-//
-// Purpose: 
-//   Sets the followsTime flag on the active plots.
-//
-// Programmer: Brad Whitlock
-// Creation:   Wed Dec  8 16:02:51 PST 2010
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-STATIC PyObject *
-visit_SetPlotFollowsTime(PyObject *self, PyObject *args)
-{
-    ENSURE_VIEWER_EXISTS();
-
-    bool setPL = true;
-    int ifollowsTime = -1;
-    if (!PyArg_ParseTuple(args, "i", &ifollowsTime))
-    {
-        // We're just going to toggle the values.
-        NO_ARGUMENTS();
-        PyErr_Clear();
-        setPL = false;
-    }
-
-    intVector curAP, newAP;
-    int retval = 0;
-    if(setPL)
-    {
-        // We're going to try and set all active plots to a specific follows time
-        // value.
-        bool followsTime = (ifollowsTime != 0) ? true : false;
-
-        // Get the current list of active plots and the list of active plots
-        // whose follow time does not match what we're setting.
-        retval = Synchronize();
-
-        PlotList *pL = GetViewerState()->GetPlotList();
-        for(int i = 0; i < pL->GetNumPlots(); ++i)
-        { 
-            if(pL->GetPlots(i).GetActiveFlag())
-            {
-                curAP.push_back(i);
-
-                if(pL->GetPlots(i).GetFollowsTime() != followsTime)
-                    newAP.push_back(i);
-            }
-        }
-    }
- 
-    if(setPL && newAP.empty())
-    {
-        // There were no plots that needed to be updated.
-        ;
-    }
-    else
-    {
-        MUTEX_LOCK();
-       
-        if(!newAP.empty())
-            GetViewerMethods()->SetActivePlots(newAP);
-
-        // Toggle the "follows time" flag on the plots that did not match
-        // the desired setting.
-        GetViewerMethods()->SetPlotFollowsTime();
-
-        if(!newAP.empty())
-            GetViewerMethods()->SetActivePlots(curAP);
-
-        MUTEX_UNLOCK();
-
-        retval = Synchronize();
-    }
-
-    // Return the success value.
-    return IntReturnValue(retval);
-}
-
-// ****************************************************************************
 // Function: visit_MovePlotOrderTowardLast
 //
 // Purpose:
@@ -10643,6 +10555,9 @@ visit_WriteConfigFile(PyObject *self, PyObject *args)
 //   Eric Brugger, Wed Jun 30 14:17:49 PDT 2010
 //   I added support for parsing the x ray image query.
 //
+//   Dave Pugmire, Tue Nov  9 16:11:06 EST 2010
+//   Added streamline info query.
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -10653,6 +10568,7 @@ visit_Query(PyObject *self, PyObject *args)
     char *output_name = NULL;
     int arg1 = 0, arg2 = 0;
     doubleVector darg1(3), darg2(3);
+    bool dumpSteps = false;
     PyObject *tuple = NULL;
     
     bool parse_success = false;
@@ -10689,6 +10605,22 @@ visit_Query(PyObject *self, PyObject *args)
             else if (strcmp(imageType, "rawfloats") == 0)
                 arg1 = 4;
         }
+    }
+
+    if (!parse_success)
+    {
+        //streamline info
+        PyErr_Clear();
+        char *dump = NULL;
+        parse_success = PyArg_ParseTuple(args, "ss|O", &queryName, &dump);
+        if (parse_success && strcmp(queryName, "Streamline Info") == 0 &&
+            (strcmp(dump, "DumpSteps") == 0 ||
+             strcmp(dump, "dumpSteps") == 0))
+        {
+            dumpSteps = true;
+        }
+        else
+            parse_success = false;
     }
 
     if(!parse_success)
@@ -10768,9 +10700,12 @@ visit_Query(PyObject *self, PyObject *args)
     // we could not parse the args!
     if(!parse_success)
         return NULL;
-    
+
     // Check for global flag.
     std::string qname(queryName);
+    if (qname == "Pick")
+        qname = "ZonePick";
+
     bool doGlobal = false;
 #if defined(_WIN32)
     if (_strnicmp(queryName, "Global ", 7) == 0)
@@ -10783,7 +10718,7 @@ visit_Query(PyObject *self, PyObject *args)
         qname = qname.substr(pos1+1);
         doGlobal = true;
     }
-
+    
     // Check the tuple argument.
     stringVector vars;
     GetStringVectorFromPyObject(tuple, vars);
@@ -10810,7 +10745,7 @@ visit_Query(PyObject *self, PyObject *args)
     }
 
     MUTEX_LOCK();
-        GetViewerMethods()->DatabaseQuery(qname, vars, false, arg1, arg2, doGlobal,
+    GetViewerMethods()->DatabaseQuery(qname, vars, false, arg1, arg2, doGlobal, dumpSteps,
                               darg1, darg2);
     MUTEX_UNLOCK();
 
@@ -11212,6 +11147,9 @@ visit_QueryOverTime(PyObject *self, PyObject *args)
     }
 
     MUTEX_LOCK();
+        if (queryName == "Pick")
+            queryName = "ZonePick";
+
         GetViewerMethods()->DatabaseQuery(queryName, vars, true, arg1, arg2);
 
         char tmp[1024];
@@ -11227,7 +11165,7 @@ visit_QueryOverTime(PyObject *self, PyObject *args)
 
 
 // ****************************************************************************
-// Function: visit_Pick
+// Function: visit_ZonePick
 //
 // Purpose:
 //   Tells the viewer to do pick.
@@ -11256,10 +11194,13 @@ visit_QueryOverTime(PyObject *self, PyObject *args)
 //   Brad Whitlock, Tue Jan 10 14:05:47 PST 2006
 //   Changed logging.
 //
+//   Kathleen Bonnell, Thu Dec  9 10:17:24 PST 2010
+//   Renamed to ZonePick, as that is its actual functionality.
+//
 // ****************************************************************************
 
 STATIC PyObject *
-visit_Pick(PyObject *self, PyObject *args)
+visit_ZonePick(PyObject *self, PyObject *args)
 {
     ENSURE_VIEWER_EXISTS();
 
@@ -11295,9 +11236,9 @@ visit_Pick(PyObject *self, PyObject *args)
 
     MUTEX_LOCK();
         if (!wp)
-            GetViewerMethods()->Pick(x, y, vars);
+            GetViewerMethods()->ZonePick(x, y, vars);
         else
-            GetViewerMethods()->Pick(pt,  vars);
+            GetViewerMethods()->ZonePick(pt,  vars);
 
         char tmp[1024];
         SNPRINTF(tmp, 1024, "Pick(%d, %d, %s)\n", x, y,
@@ -14717,9 +14658,6 @@ AddMethod(const char *methodName,
 //   Brad Whitlock, Fri Aug 27 10:37:20 PDT 2010
 //   I added RenamePickLabel.
 //
-//   Brad Whitlock, Wed Dec  8 16:04:37 PST 2010
-//   I exposed SetPlotFollowsTime.
-//
 // ****************************************************************************
 
 static void
@@ -14838,7 +14776,7 @@ AddDefaultMethods()
     AddMethod("GetAnnotationObject", visit_GetAnnotationObject,
                                                 visit_GetAnnotationObject_doc);
     AddMethod("GetAnnotationObjectNames", visit_GetAnnotationObjectNames,
-                                                NULL);
+                                                visit_GetAnnotationObjectNames_doc);
 
     AddMethod("GetLocalHostName", visit_GetLocalHostName,
                                                        visit_GetLocalName_doc);
@@ -14931,7 +14869,7 @@ AddDefaultMethods()
     AddMethod("OpenCLI", visit_OpenCLI);
     AddMethod("OverlayDatabase", visit_OverlayDatabase,
                                                     visit_OverlayDatabase_doc);
-    AddMethod("Pick", visit_Pick, visit_Pick_doc);
+    AddMethod("Pick", visit_ZonePick, visit_ZonePick_doc);
     AddMethod("PickByNode", visit_PickByNode, visit_PickByNode_doc);
     AddMethod("PickByZone", visit_PickByZone, visit_PickByZone_doc);
     AddMethod("PickByGlobalNode", visit_PickByGlobalNode,
@@ -15038,7 +14976,6 @@ AddDefaultMethods()
     AddMethod("SetPlotDatabaseState", visit_SetPlotDatabaseState,
                                                visit_SetPlotDatabaseState_doc);
     AddMethod("SetPlotDescription", visit_SetPlotDescription, NULL /*DOCUMENT ME*/);
-    AddMethod("SetPlotFollowsTime", visit_SetPlotFollowsTime, NULL /*DOCUMENT ME*/);
     AddMethod("SetPlotFrameRange", visit_SetPlotFrameRange,
                                                   visit_SetPlotFrameRange_doc);
     AddMethod("SetPlotOptions", visit_SetPlotOptions,visit_SetPlotOptions_doc);
@@ -15108,7 +15045,7 @@ AddDefaultMethods()
     AddMethod("RedoView",  visit_RedoView, visit_RedoView_doc);
     AddMethod("WriteConfigFile",  visit_WriteConfigFile,
                                                     visit_WriteConfigFile_doc);
-    AddMethod("ZonePick", visit_Pick, visit_Pick_doc);
+    AddMethod("ZonePick", visit_ZonePick, visit_ZonePick_doc);
 
     //
     // Extra methods that are not part of the ViewerProxy but allow the
@@ -16422,16 +16359,19 @@ GetViewerMethods()
 // Creation:   Mon Dec 17 17:24:00 PST 2001
 //
 // Modifications:
+//   Cyrus Harrison, Wed Jan  5 16:12:43 PST 2011
+//   Run code defining helper functions using the visit module's dictionary.
+//   This will ensure the functions import correctly.
 //
 // ****************************************************************************
 
 static void
-initscriptfunctions()
+initscriptfunctions(PyObject *dict)
 {
-    PyRun_SimpleString((char*)(visit_EvalLinear));
-    PyRun_SimpleString((char*)(visit_EvalQuadratic));
-    PyRun_SimpleString((char*)(visit_EvalCubic));
-    PyRun_SimpleString((char*)(visit_EvalCubicSpline));
+    PyRun_String((char*)(visit_EvalLinear),Py_file_input,dict,dict);
+    PyRun_String((char*)(visit_EvalQuadratic),Py_file_input,dict,dict);
+    PyRun_String((char*)(visit_EvalCubic),Py_file_input,dict,dict);
+    PyRun_String((char*)(visit_EvalCubicSpline),Py_file_input,dict,dict);
 }
 
 // ****************************************************************************
@@ -16466,6 +16406,9 @@ initscriptfunctions()
 //   Jeremy Meredith, Thu Aug  7 15:06:45 EDT 2008
 //   Assyme PyErr_NewException won't modify its string argument and cast
 //   literals to char*'s before passing in.
+//
+//   Cyrus Harrison, Thu Jan  6 09:59:30 PST 2011
+//   Pass proper dictionary to initscriptfunctions.
 //
 // ****************************************************************************
 
@@ -16504,7 +16447,7 @@ initvisit()
     PyDict_SetItemString(d, "VisItInterrupt", VisItInterrupt);
 
     // Define builtin visit functions that are written in python.
-    initscriptfunctions();
+    initscriptfunctions(d);
 }
 
 // ****************************************************************************
@@ -16534,6 +16477,9 @@ initvisit()
 //   Jeremy Meredith, Thu Aug  7 15:06:45 EDT 2008
 //   Assyme PyErr_NewException won't modify its string argument and cast
 //   literals to char*'s before passing in.
+//
+//   Cyrus Harrison, Thu Jan  6 09:59:30 PST 2011
+//   Pass proper dictionary to initscriptfunctions.
 //
 // ****************************************************************************
 
@@ -16595,7 +16541,7 @@ initvisit2()
     PyDict_SetItemString(d, "VisItInterrupt", VisItInterrupt);
 
     // Define builtin visit functions that are written in python.
-    initscriptfunctions();
+    initscriptfunctions(d);
 }
 
 // ****************************************************************************

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -76,6 +76,7 @@ class NetworkManager;
 class NonBlockingRPC;
 class Observer;
 class ParentProcess;
+class ParsingExprList;
 class ProcessAttributes;
 class ViewerRemoteProcess;
 class VisItDisplay;
@@ -368,9 +369,15 @@ class ENGINE_MAIN_API Engine
     NamedSelectionRPC        *namedSelectionRPC;
     SetEFileOpenOptionsRPC   *setEFileOpenOptionsRPC;
 
+#ifdef DEBUG_MEMORY_LEAKS
+    ParsingExprList          *parsingExprList;
+#endif
+
     // The metadata, filename, format, control data for a simulation
     std::string               filename;
     std::string               format;
+    Xfer                     *simxfer;
+    Connection               *simConnection;
     avtDatabaseMetaData      *metaData;
     SILAttributes            *silAtts;
     SimulationCommand        *commandFromSim;

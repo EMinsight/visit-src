@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -552,9 +552,10 @@ avtMTSDFileFormatInterface::SetDatabaseMetaData(avtDatabaseMetaData *md,
         }
         if (times.size() != nTotalTimesteps)
             timesLookGood = false;
-        if (timesLookGood == false)
+        if (0 && timesLookGood == false)
         {
             vector<double> timesFromMassCall = times;
+
             times.clear();
             for (i = 0; i < nTotalTimesteps; i++)
             {

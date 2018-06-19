@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -50,6 +50,10 @@
 
 #include <vector>
 #include <string>
+
+#include <visit-config.h>
+
+#include <cmath>
 
 
 class     vtkDataArray;
@@ -127,6 +131,9 @@ class     vtkDataArray;
 //
 //    Hank Childs, Fri May 21 11:22:21 CDT 2010
 //    Added CCalculateHistogram.
+//
+//    Hank Childs, Sat Jan  1 17:35:23 PST 2011
+//    Moved visitIsFinite to header, so other classes can use it.
 //
 // ****************************************************************************
 
@@ -245,6 +252,38 @@ typedef struct
     std::string                    variable;
     std::vector<VISIT_LONG_LONG>   numVals;
 } CalculateHistogramArgs;
+
+
+// ****************************************************************************
+//  Function: visitIsFinite
+//
+//  Purpose:
+//      Determines if a given number is finite.
+//
+//  Programmer: Hank Childs
+//  Creation:   September 19, 2010
+//
+//  Modifications:
+//    Kathleen Bonnell, Mon Sep 20 10:40:15 MST 2010
+//    Use _finite on Windows.
+//
+//    Mark C. Miller, Mon Jan 10 07:20:17 PST 2011
+//    Added 'std::' to non-win32 variant. Otherwise, failed to compile on 
+//    ancient RH3-gcc-3.2.3 system.
+// ****************************************************************************
+
+template <class T>
+inline bool visitIsFinite(T t)
+{
+#ifndef _WIN32
+#ifdef HAVE_ISFINITE
+    return std::isfinite(t);
+#endif
+#else
+    return _finite(t);
+#endif
+    return true;
+}
 
 
 #endif

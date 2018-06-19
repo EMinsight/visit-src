@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -210,6 +210,19 @@ class vtkAppendPolyData;
 //   Dave Pugmire, Fri Jun 11 15:12:04 EDT 2010
 //   Remove seed densities.
 //
+//   Hank Childs, Mon Oct  4 14:50:01 PDT 2010
+//   Specify termination type at avtStreamlineFilter, not avtPICSFilter.
+//   Add data member for reference type for display.
+//
+//   Dave Pugmire, Fri Nov  5 15:38:33 EDT 2010
+//   Add GenerateAttributeFields method.
+//
+//   Hank Childs, Sun Dec  5 10:43:57 PST 2010
+//   Add new data members for warnings.
+//
+//   Dave Pugmire, Fri Jan 14 11:10:44 EST 2011
+//   Set default communication pattern to RestoreSequenceAssembleUniformly.
+//
 // ****************************************************************************
 
 class AVTFILTERS_API avtStreamlineFilter : virtual public avtPICSFilter
@@ -229,8 +242,9 @@ class AVTFILTERS_API avtStreamlineFilter : virtual public avtPICSFilter
                                         const double& t_start,
                                         const avtVector &p_start, long ID);
 
-    // Methods to set the filter's attributes.
-    void                      SetIntersectionObject(vtkObject *obj);
+    void                      SetTermination(int maxSteps, 
+                                             bool doDistance, double maxDistance, 
+                                             bool doTime, double maxTime);
 
     void                      SetPointSource(const double *p);
     void                      SetLineSource(const double *p0, const double *p1,
@@ -252,7 +266,18 @@ class AVTFILTERS_API avtStreamlineFilter : virtual public avtPICSFilter
 
     void                      SetDisplayMethod(int d);
     void                      SetColoringMethod(int, const std::string &var="");
+    void                      SetVelocitiesForLighting(bool v) { storeVelocitiesForLighting = v; };
     void                      SetOpacityVariable(const std::string &var);
+
+    void                      SetReferenceTypeForDisplay(int d) 
+                                               { referenceTypeForDisplay = d; };
+    void                      IssueWarningForMaxStepsTermination(bool v) 
+                                      { issueWarningForMaxStepsTermination = v; };
+    void                      IssueWarningForStiffness(bool v) 
+                                      { issueWarningForStiffness = v; };
+    void                      IssueWarningForCriticalPoints(bool v, double speed) 
+                                      { issueWarningForCriticalPoints = v;
+                                        criticalPointThreshold = speed; };
 
     virtual avtIVPField      *GetFieldForDomain(const DomainType&, vtkDataSet*);
 
@@ -264,7 +289,14 @@ class AVTFILTERS_API avtStreamlineFilter : virtual public avtPICSFilter
     int    sourceType;   
     int    displayMethod;
     int    coloringMethod;
+    int    referenceTypeForDisplay;
     std::string coloringVariable, opacityVariable;
+
+    int      maxSteps;
+    bool     doDistance;
+    double   maxDistance;
+    bool     doTime;
+    double   maxTime;
 
     // Various starting locations for streamlines.
     std::vector<avtVector> pointList;
@@ -277,10 +309,14 @@ class AVTFILTERS_API avtStreamlineFilter : virtual public avtPICSFilter
     bool      randomSamples;
     int       randomSeed;
     bool      fill, useBBox;
+    bool      storeVelocitiesForLighting;
+
+    bool      issueWarningForMaxStepsTermination;
+    bool      issueWarningForStiffness;
+    bool      issueWarningForCriticalPoints;
+    double    criticalPointThreshold;
 
     std::string             SeedInfoString() const;
-
-    vtkObject *intersectObj;
 
     void                      GenerateSeedPointsFromPoint(std::vector<avtVector> &pts);
     void                      GenerateSeedPointsFromLine(std::vector<avtVector> &pts);
@@ -290,9 +326,11 @@ class AVTFILTERS_API avtStreamlineFilter : virtual public avtPICSFilter
     void                      GenerateSeedPointsFromCircle(std::vector<avtVector> &pts);
     void                      GenerateSeedPointsFromPointList(std::vector<avtVector> &pts);
 
+    unsigned char             GenerateAttributeFields() const;
+
     virtual std::vector<avtVector> GetInitialLocations(void);
     virtual CommunicationPattern   GetCommunicationPattern(void)
-                                      { return RestoreSequence; };
+                                      { return RestoreSequenceAssembleUniformly; };
 
 };
 

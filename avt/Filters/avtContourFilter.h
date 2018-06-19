@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -126,6 +126,7 @@ class AVTFILTERS_API avtContourFilter : public avtSIMODataTreeIterator
 
     int                        nnodes;
     int                        current_node;
+    int                        timeslice_index;
 
     virtual avtContract_p
                                ModifyContract(avtContract_p);

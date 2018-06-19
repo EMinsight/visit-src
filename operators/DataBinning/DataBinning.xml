@@ -1,5 +1,8 @@
 <?xml version="1.0"?>
-  <Plugin name="DataBinning" type="operator" label="DataBinning" version="1.0" enabled="true" mdspecificcode="false" engspecificcode="false" onlyengine="false" noengine="false" category="Analysis">
+  <Plugin name="DataBinning" type="operator" label="DataBinning" version="1.0" enabled="true" mdspecificcode="false" engspecificcode="false" onlyengine="false" noengine="false" category="Analysis" createExpression="true" exprInType="mesh" exprOutType="scalar,curve">
+    <CXXFLAGS>
+      ${VISIT_INCLUDE_DIR}/avt/DataBinning
+    </CXXFLAGS>
     <Attribute name="DataBinningAttributes" purpose="The attributes for the DataBinning operator" persistent="true" keyframe="true" exportAPI="" exportInclude="" codefile="DataBinningAttributes.code">
       <Enum name="ReductionOperator">
         Average
@@ -81,11 +84,16 @@
       </Function>
       <Function name="CreateConstructionAtts" user="true" member="true">
       </Function>
+      <Function name="DataBinningCommonPluginInfo::GetCreatedExpressions" user="false" member="true">
+      </Function>
       <Include file="header" quoted="false">
         ConstructDataBinningAttributes.h
       </Include>
       <Include file="header" quoted="false">
         Expression.h
+      </Include>
+      <Include file="header" quoted="false">
+        cstring
       </Include>
     </Attribute>
   </Plugin>

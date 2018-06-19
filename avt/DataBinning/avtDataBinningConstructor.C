@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -378,6 +378,10 @@ avtDataBinningConstructor::ConstructDataBinning(
             int val = UnifyMaximumValue((hasError ? 1 : 0));
             if (val > 0)
             {
+                // Free the memory from the GetAllLeaves function call.
+                delete [] leaves;
+                delete [] isNodal;
+
                 debug1 << "Could not create data binning because either a "
                                   "variable could not be located, or because"
                                   " the centering of the variables do not "

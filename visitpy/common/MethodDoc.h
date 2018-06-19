@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -91,6 +91,7 @@ extern const char *visit_GetActiveTimeSlider_doc;
 extern const char *visit_GetAnimationTimeout_doc;
 extern const char *visit_GetAnimationNumStates_doc;
 extern const char *visit_GetAnnotationAttributes_doc;
+extern const char *visit_GetAnnotationObjectNames_doc;
 extern const char *visit_GetAnnotationObject_doc;
 extern const char *visit_GetCallbackNames_doc;
 extern const char *visit_GetDatabaseNStates_doc;
@@ -145,7 +146,6 @@ extern const char *visit_OpenDatabase_doc;
 extern const char *visit_OpenMDServer_doc;
 extern const char *visit_OperatorPlugins_doc;
 extern const char *visit_OverlayDatabase_doc;
-extern const char *visit_Pick_doc;
 extern const char *visit_PickByGlobalNode_doc;
 extern const char *visit_PickByGlobalZone_doc;
 extern const char *visit_PickByNode_doc;
@@ -228,3 +228,4 @@ extern const char *visit_ToggleMode_doc;
 extern const char *visit_Turn_doc;
 extern const char *visit_UndoView_doc;
 extern const char *visit_WriteConfigFile_doc;
+extern const char *visit_ZonePick_doc;

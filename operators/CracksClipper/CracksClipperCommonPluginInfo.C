@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -43,6 +43,9 @@
 #include <CracksClipperPluginInfo.h>
 #include <CracksClipperAttributes.h>
 
+#include <Expression.h>
+#include <ExpressionList.h>
+
 // ****************************************************************************
 //  Method: CracksClipperCommonPluginInfo::AllocAttributes
 //
@@ -83,3 +86,36 @@ CracksClipperCommonPluginInfo::CopyAttributes(AttributeSubject *to,
 {
     *((CracksClipperAttributes *) to) = *((CracksClipperAttributes *) from);
 }
+
+// ***************************************************************************
+//  Method: CracksClipperCommonPluginInfo::GetCreatedExpressions
+//
+//  Purpose: Adds expressions to the pipeline that will be evaluated after
+//           this operator is executed.
+//
+//  Programmer:  Kathleen Bonnell
+//  Creation:    September 27, 2010
+//
+//  Modifications:
+//    
+// ***************************************************************************
+
+ExpressionList *
+CracksClipperCommonPluginInfo::GetCreatedExpressions(const char *mesh)
+{
+    char name[1024];
+    char defn[1024];
+    ExpressionList *el = new ExpressionList;
+  
+    Expression e2;
+    sprintf(name, "operators/CracksClipper/%s/den", mesh);
+    e2.SetName(name);
+    e2.SetType(Expression::ScalarMeshVar);
+    e2.SetFromOperator(true);
+    sprintf(defn, "cell_constant(%s, 0.)", mesh);
+    e2.SetDefinition(defn);
+    el->AddExpressions(e2);
+
+    return el;
+}
+

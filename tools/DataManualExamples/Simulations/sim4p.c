@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-400142
 * All rights reserved.
@@ -39,13 +39,15 @@
 /* SIMPLE PARALLEL SIMULATION SKELETON */
 #include <VisItControlInterface_V2.h>
 #include <stdio.h>
-#include <mpi.h>
+
 
 #include "SimulationExample.h"
 
 #include <stubs.c>
 
 #ifdef PARALLEL
+#include <mpi.h>
+
 static int visit_broadcast_int_callback(int *value, int sender)
 {
     return MPI_Bcast(value, 1, MPI_INT, sender, MPI_COMM_WORLD);

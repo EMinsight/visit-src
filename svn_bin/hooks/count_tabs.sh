@@ -56,6 +56,15 @@
 #   Tom Fogal, Tue Aug 10 11:34:35 MDT 2010
 #   Allow XPMs to have tabs, they might be autogenned.
 #
+#   Brad Whitlock, Thu Sep  9 15:04:03 PDT 2010
+#   Allow .doc,.odt,.odm files to contain tabs.
+#
+#   Kathleen Bonnell, Wed Nov 17 10:02:46 PST 2010
+#   Add vendor_branches to skip list.
+#
+#   Cyrus Harrison, Fri Jan 14 10:48:50 PST 2011
+#   Add docs to the skip list.
+#
 ##############################################################################
 REPOS="$1"
 TXN="$2"
@@ -80,7 +89,7 @@ while read fline; do
     # Filter out other cases HandleCommonSkipCases doesn't catch
     #
     case $fname in
-        *.in|*.html|*/third_party_builtin/*|*/common/icons/*|*.vcproj|*.sln|*.cmake|*.tcl|*/windowsbuild/ThirdParty/*)
+        *.in|*.html|*.doc|*.odt|*.odm|*/third_party_builtin/*|*/common/icons/*|*.vcproj|*.sln|*.cmake|*.tcl|*/windowsbuild/ThirdParty/*)
             continue
             ;;
         */src/configure|*/src/aclocal.m4|*/svn_bin/build_visit|*/bin/db_mktmpl)
@@ -96,6 +105,12 @@ while read fline; do
             continue
             ;;
         *xpm)
+            continue
+            ;;
+        */docs/*)
+            continue
+            ;;
+        */vendor_branches/*)
             continue
             ;;
     esac

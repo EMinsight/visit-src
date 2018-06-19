@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-400142
 # All rights reserved.
@@ -35,6 +35,8 @@
 # DAMAGE.
 #
 # Modifications:
+#   Kathleen Bonnell, Wed Jan 05 10:25:13 PST 2010
+#   Add FOLDER property.
 #   
 #****************************************************************************/
 
@@ -60,6 +62,7 @@ FUNCTION(ADD_EXAMPLE target)
     SET_TARGET_PROPERTIES(example_${target} PROPERTIES
         OUTPUT_NAME ${target}
         RUNTIME_OUTPUT_DIRECTORY ${VISIT_BINARY_DIR}/tools/DataManualExamples/CreatingCompatible
+        FOLDER tools/DataManualExamples/CreatingCompatible
     )
     IF(NOT VISIT_DATA_MANUAL_EXAMPLES)
         SET_TARGET_PROPERTIES(example_${target} PROPERTIES
@@ -78,6 +81,7 @@ FUNCTION(ADD_SILO_EXAMPLE target)
         SET_TARGET_PROPERTIES(example_${target} PROPERTIES
             OUTPUT_NAME ${target}
             RUNTIME_OUTPUT_DIRECTORY ${VISIT_BINARY_DIR}/tools/DataManualExamples/CreatingCompatible
+            FOLDER tools/DataManualExamples/CreatingCompatible
         )
         IF(NOT VISIT_DATA_MANUAL_EXAMPLES)
             SET_TARGET_PROPERTIES(example_${target} PROPERTIES

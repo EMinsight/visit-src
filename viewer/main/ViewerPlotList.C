@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -2499,6 +2499,9 @@ ViewerPlotList::GetNumVisiblePlots() const
 //    Hank Childs, Tue Aug 31 13:33:00 PDT 2010
 //    Expand the plot automatically when we add an auto-operator.
 //
+//    Hank Childs, Thu Dec 30 12:56:21 PST 2010
+//    Add support for operator expression from scalars, vectors, tensors, etc.
+//
 // ****************************************************************************
 
 int
@@ -2610,10 +2613,10 @@ ViewerPlotList::AddPlot(int type, const std::string &var, bool replacePlots,
     OperatorPluginManager *oPM = GetOperatorPluginManager();
     for (int j = 0; j < oPM->GetNEnabledPlugins(); j++)
     {
-        const string &mesh = newPlot->GetMeshName();
         std::string id = oPM->GetEnabledID(j);
         CommonOperatorPluginInfo *info = oPM->GetCommonPluginInfo(id);
-        ExpressionList *exprs = info->GetCreatedExpressions(mesh.c_str());
+        const avtDatabaseMetaData *md = newPlot->GetMetaData();
+        ExpressionList *exprs = info->GetCreatedExpressions(md);
         if (exprs == NULL)
             continue;
         for (int k = 0 ; k < exprs->GetNumExpressions() ; k++)
@@ -3315,6 +3318,10 @@ ViewerPlotList::SimpleAddPlot(ViewerPlot *plot, bool replacePlots)
 //   Brad Whitlock, Tue Apr 29 15:58:55 PDT 2008
 //   Added tr().
 //
+//   Brad Whitlock, Thu Jan 13 22:44:08 PST 2011
+//   Use the first active plot as the source of operators instead of using
+//   the first plot all the time.
+//
 // ****************************************************************************
 
 ViewerPlot *
@@ -3441,16 +3448,30 @@ ViewerPlotList::NewPlot(int type, const EngineKey &ek,
     ENDTRY
 
     //
-    // Apply the same operators that are on the old plot to the new plot.
+    // Apply the same operators that are on the first active plot to 
+    // the new plot.
     //
     if (plot && applyOperators && (nPlots > 0))
     {
-        for (int j = 0; j < plots[0].plot->GetNOperators(); ++j)
+        // Find the index of the first active plot.
+        int firstActive = -1;
+        for(int j = 0; j < nPlots; ++j)
         {
-             ViewerOperator *op = plots[0].plot->GetOperator(j);
-             plot->AddOperator(op->GetType());
-             ViewerOperator *newOp = plot->GetOperator(j);
-             newOp->SetOperatorAtts(op->GetOperatorAtts());
+            if(plots[j].active)
+            {
+                firstActive = j;
+                break;
+            }
+        }
+        firstActive = (firstActive < 0) ? 0 : firstActive;
+
+        // Apply the first active plot's operators
+        for (int j = 0; j < plots[firstActive].plot->GetNOperators(); ++j)
+        {
+            ViewerOperator *op = plots[firstActive].plot->GetOperator(j);
+            plot->AddOperator(op->GetType());
+            ViewerOperator *newOp = plot->GetOperator(j);
+            newOp->SetOperatorAtts(op->GetOperatorAtts());
         }
     }
 
@@ -7782,6 +7803,9 @@ ViewerPlotList::UpdateSILRestrictionAtts()
 //   Add code to send the expression being used to the operator as part of
 //   the expression.
 //
+//   Hank Childs, Thu Dec 30 13:09:36 PST 2010
+//   Add support for operator expressions from scalars, vectors, and tensors.
+//
 // ****************************************************************************
 
 void
@@ -7869,7 +7893,8 @@ ViewerPlotList::UpdateExpressionList(bool considerPlots, bool update)
         for (int j = 0 ; j < plot->GetNOperators() ; j++)
         {
             ViewerOperator *oper = plot->GetOperator(j);
-            ExpressionList *exprs = oper->GetCreatedVariables(mesh.c_str());
+            const avtDatabaseMetaData *md = plot->GetMetaData();
+            ExpressionList *exprs = oper->GetCreatedVariables(md);
             if (exprs != NULL)
             {
                 for (int k = 0 ; k < exprs->GetNumExpressions() ; k++)

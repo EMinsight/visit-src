@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -259,6 +259,10 @@ avtPlainTextFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
 //
 //    Mark C. Miller, Wed Oct 29 12:32:11 PDT 2008
 //    Made it possible for curves to have any column as the abscissa
+//
+//    Jeremy Meredith, Thu Jan 20 13:26:04 EST 2011
+//    Fixed a copy/paste bug with creating 1D/2D point meshes.  (3D was okay.)
+//
 // ****************************************************************************
 
 vtkDataSet *
@@ -341,8 +345,8 @@ avtPlainTextFileFormat::GetMesh(const char *meshname)
             for (int j = 0 ; j < nrows ; j++)
             {
                 float x = (xcol<0 || xcol>=ncolumns) ? 0 : data[j][xcol];
-                float y = (xcol<0 || ycol>=ncolumns) ? 0 : data[j][ycol];
-                float z = (xcol<0 || zcol>=ncolumns) ? 0 : data[j][zcol];
+                float y = (ycol<0 || ycol>=ncolumns) ? 0 : data[j][ycol];
+                float z = (zcol<0 || zcol>=ncolumns) ? 0 : data[j][zcol];
                 pts->SetPoint(j, x, y, z);
             }
  

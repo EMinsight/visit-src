@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -81,6 +81,9 @@ class vtkDataSet;
 //    Cyrus Harrison, Mon Mar 30 11:34:27 PDT 2009
 //    Added support for per component bounding boxes.
 //
+//    Cyrus Harrison, Wed Dec 22 14:53:33 PST 2010
+//    Added output for the number of processors each component spans.
+//
 // ****************************************************************************
 
 class QUERY_API avtConnComponentsSummaryQuery 
@@ -108,11 +111,12 @@ class QUERY_API avtConnComponentsSummaryQuery
     std::string                variableName;
 
     vector<int>                nCellsPerComp;
+    vector<int>                nProcsPerComp;
 
     vector<double>             xCentroidPerComp;
     vector<double>             yCentroidPerComp;
     vector<double>             zCentroidPerComp;
-    
+
     // for computing per component bounds
     vector<double>             xMinPerComp;
     vector<double>             xMaxPerComp;
@@ -120,7 +124,7 @@ class QUERY_API avtConnComponentsSummaryQuery
     vector<double>             yMaxPerComp;
     vector<double>             zMinPerComp;
     vector<double>             zMaxPerComp;
-    
+
     vector<double>             areaPerComp;
     vector<double>             volPerComp;
 

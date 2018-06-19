@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -47,6 +47,9 @@
 #
 #   Brad Whitlock, Tue Aug 17 09:17:19 PDT 2010
 #   I added NETCDF_CXX_LIB.
+#
+#   Brad Whitlock, Wed Oct 27 14:12:19 PDT 2010
+#   Make sure that TESSELLATION_LIBRARY gets saved.
 #
 #   Kathleen Bonnell, Thu Dec 2 15:45:44 MST 2010
 #   Allow plugin installs on Windows. 
@@ -100,10 +103,6 @@ SET(VISIT_COMMON_INCLUDES
     ${VISIT_INCLUDE_DIR}/visit/common/proxybase
     ${VISIT_INCLUDE_DIR}/visit/common/state
     ${VISIT_INCLUDE_DIR}/visit/common/utility
-    ${VISIT_INCLUDE_DIR}/visit/common/common/misc
-    ${VISIT_INCLUDE_DIR}/visit/common/common/plugin
-    ${VISIT_INCLUDE_DIR}/visit/common/common/state
-    ${VISIT_INCLUDE_DIR}/visit/common/common/utility
 )
 
 # VisIt options
@@ -130,12 +129,16 @@ SET(GLEW_LIBRARY_DIR ${VISIT_LIBRARY_DIR})
 SET(GLEW_LIB         @GLEW_LIB@)
 ADD_DEFINITIONS(-DHAVE_LIBGLEW)
 
-# Set up BOOST
-SET(BOOST_INCLUDE_DIR ${VISIT_INCLUDE_DIR}/visit/third_party_builtin/bilib/boost_1_42_0)
+# Set up OpenGL
+SET(OPENGL_INCLUDE_DIR  @OPENGL_INCLUDE_DIR@)
+SET(OPENGL_gl_LIBRARY   @OPENGL_gl_LIBRARY@)
+SET(OPENGL_glu_LIBRARY  @OPENGL_glu_LIBRARY@)
 
-# Set up Tessellation libary
+# Set up the tessellation library
 SET(TESSELLATION_LIBRARY @TESSELLATION_LIBRARY@)
 
+# Set up BOOST
+SET(BOOST_INCLUDE_DIR ${VISIT_INCLUDE_DIR}/visit/third_party_builtin/bilib/boost_1_42_0)
 
 # Set up Qt
 SET(QT_INCLUDE_DIR           ${VISIT_INCLUDE_DIR}/qt/include)

@@ -86,7 +86,7 @@
 //    with "-I" as include paths.
 //
 //    Kathleen Bonnell, Fri May 21 14:15:23 MST 2010 
-//    Add DLL_NETCDF, _CGNSDLL EXODUSII_BUILD_SHARED_ZIBS defines for 
+//    Add DLL_NETCDF, _CGNSDLL EXODUSII_BUILD_SHARED_LIBS defines for 
 //    windows projects linking with NETCDF, CGNS or EXODUSII.
 //
 //    Kathleen Bonnell, Thu May 27 14:59:13 MST 2010 
@@ -97,10 +97,31 @@
 //    Add ENGINE target definition for operators if they contain 
 //    engine-specific code.
 //
+//    Kathleen Bonnell, Tue Nov 16 16:26:47 PST 2010
+//    Remove logic for mesa.  Add newline after each extraInclude for 
+//    legibility in the CMakeLists.txt files.
+//
+//    David Camp, Wed Nov 17 14:54:02 PST 2010
+//    Added the LIBS libraries to the Plot and Operators, did the samething
+//    the database code was doing. Also added the link dirs from the ldflags.
+//
 //    Kathleen Bonnell, Fri Sep 24 11:25:32 MST 2010 
 //    Fix windows issues with viewer and gui libs building against an 
 //    installed version of VisIt.  Convert Windows paths to CMake paths 
 //    since we are creating a CMake file.
+//
+//    Kathleen Bonnell, Tue Jan  4 08:38:03 PST 2011
+//    Fix CGNS dll define, due to update of cgns library.
+//    Add call to VISIT_PLUGIN_TARGET_FOLDER for project grouping in VS.
+//
+//    Eric Brugger, Fri Jan  7 13:38:59 PST 2011
+//    I replaced the BOXLIB2D and BOXLIB3D variables with just BOXLIB.
+//
+//    Kathleen Bonnell, Tue Jan 11 17:06:21 MST 2011 
+//    Removed setting EXODUSII_BUILD_SHARED_LIBS definition.
+//
+//    Kathleen Bonnell, Thu Jan 13 17:54:38 MST 2011
+//    Only use VISIT_PLUGIN_TARGET_FOLDER if building from dev.
 //
 // ****************************************************************************
 
@@ -172,11 +193,19 @@ class CMakeGeneratorPlugin : public Plugin
     }
 
     QString
-    ToString(const vector<QString> &vec) const
+    ToString(const vector<QString> &vec, bool withNewline=false) const
     {
         QString s;
-        for(size_t i = 0; i < vec.size(); ++i)
-            s += (ConvertDollarParenthesis(vec[i]) + " ");
+        if (withNewline)
+        {
+            for(size_t i = 0; i < vec.size(); ++i)
+                s += (ConvertDollarParenthesis(vec[i]) + "\n");
+        }
+        else 
+        {
+            for(size_t i = 0; i < vec.size(); ++i)
+                s += (ConvertDollarParenthesis(vec[i]) + " ");
+        }
         return s;
     }
 
@@ -264,10 +293,9 @@ class CMakeGeneratorPlugin : public Plugin
         out << "${QT_QTGUI_INCLUDE_DIR}" << endl;
         out << "${VTK_INCLUDE_DIRS} " << endl;
         out << "${PYTHON_INCLUDE_PATH} " << endl;
-        out << VisItIncludeDir() << "/visitpy/visitpy ";
+        out << VisItIncludeDir() << "/visitpy/visitpy " << endl;
         if(extraIncludes.size() > 0)
-            out << ToString(extraIncludes);
-        out << endl;
+            out << ToString(extraIncludes, true);
         out << ")" << endl;
     }
 
@@ -277,7 +305,11 @@ class CMakeGeneratorPlugin : public Plugin
     {
         out << "PROJECT(" << name<< ")" << endl;
         out << endl;
-
+        if (using_dev)
+        {
+        out << "INCLUDE(${VISIT_SOURCE_DIR}/CMake/PluginMacros.cmake)" <<endl;
+        out << endl;
+        }
         out << "SET(COMMON_SOURCES" << endl;
         out << name << "PluginInfo.C" << endl;
         out << name << "CommonPluginInfo.C" << endl;
@@ -348,12 +380,10 @@ class CMakeGeneratorPlugin : public Plugin
         out << ")" << endl;
         out << endl;
 
-        // Special rules for OpenGL and Mesa sources.
-        std::set<QString> openglFiles, mesaFiles;
+        // Special rules for OpenGL sources.
+        std::set<QString> openglFiles;
         GetFilesWith("OpenGL", customvfiles ? vfiles : defaultvfiles, openglFiles);
         GetFilesWith("OpenGL", customefiles ? efiles : defaultefiles, openglFiles);
-        GetFilesWith("Mesa", customvfiles ? vfiles : defaultvfiles, mesaFiles);
-        GetFilesWith("Mesa", customefiles ? efiles : defaultefiles, mesaFiles);
         if(openglFiles.size() > 0)
         {
             out << "IF (NOT WIN32)" << endl;
@@ -367,18 +397,6 @@ class CMakeGeneratorPlugin : public Plugin
             out << "        COMPILE_FLAGS \"-I ${OPENGL_INCLUDE_DIR}\"" << endl;
             out << "    )" << endl;
             out << "ENDIF (NOT WIN32)" << endl;
-        }
-        if(mesaFiles.size() > 0)
-        {
-            out << "SET_SOURCE_FILES_PROPERTIES(";
-            for(std::set<QString>::iterator it = mesaFiles.begin();
-                it != mesaFiles.end(); ++it)
-            {
-                 out << *it << " ";
-            }
-            out << "\n    PROPERTIES" << endl;
-            out << "    COMPILE_FLAGS \"-I ${MESA_INCLUDE_DIR}\"" << endl;
-            out << ")" << endl;
         }
 
         WriteCMake_PlotOperator_Includes(out, false);
@@ -400,7 +418,16 @@ class CMakeGeneratorPlugin : public Plugin
 #endif
 
         out << endl;
-        out << "LINK_DIRECTORIES(${VISIT_LIBRARY_DIR} ${QT_LIBRARY_DIR} ${MESA_LIBRARY_DIR} ${GLEW_LIBRARY_DIR} ${VTK_LIBRARY_DIRS})" << endl;
+        // Extract extra link directories from LDFLAGS if they have ${},$(),-L
+        vector<QString> linkDirs;
+        for (size_t i=0; i<ldflags.size(); i++)
+        {
+            if(ldflags[i].startsWith("${") || ldflags[i].startsWith("$("))
+                 linkDirs.push_back(ldflags[i]);
+            else if(ldflags[i].startsWith("-L"))
+                 linkDirs.push_back(ldflags[i].right(ldflags[i].size()-2));
+        }
+        out << "LINK_DIRECTORIES(${VISIT_LIBRARY_DIR} ${QT_LIBRARY_DIR} ${GLEW_LIBRARY_DIR} ${VTK_LIBRARY_DIRS} " << ToString(linkDirs) << ")" << endl;
         out << endl;
         out << "ADD_LIBRARY(I"<<name<<"Plot ${LIBI_SOURCES})" << endl;
         out << "TARGET_LINK_LIBRARIES(I"<<name<<"Plot visitcommon)" << endl;
@@ -411,11 +438,13 @@ class CMakeGeneratorPlugin : public Plugin
 
         out << "    ADD_LIBRARY(G"<<name<<"Plot ${LIBG_SOURCES})" << endl;
         out << "    TARGET_LINK_LIBRARIES(G" << name << "Plot visitcommon "
-            << guilibname << " " << ToString(glibs) << ")" << endl;
+            << guilibname << " " << ToString(libs) << ToString(glibs) 
+            << ")" << endl;
         out << endl;
         out << "    ADD_LIBRARY(V"<<name<<"Plot ${LIBV_SOURCES})" << endl;
         out << "    TARGET_LINK_LIBRARIES(V" << name << "Plot visitcommon "
-            << viewerlibname << " " << ToString(vlibs) << ")" << endl;
+            << viewerlibname << " " << ToString(libs) << ToString(vlibs) 
+            << ")" << endl;
         out << endl;
         out << "    SET(INSTALLTARGETS ${INSTALLTARGETS} G"<<name<<"Plot V"<<name<<"Plot)" << endl;
         out << endl;
@@ -455,19 +484,21 @@ class CMakeGeneratorPlugin : public Plugin
         out << endl;
 
         out << "ADD_LIBRARY(E"<<name<<"Plot_ser ${LIBE_SOURCES})" << endl;
-        out << "TARGET_LINK_LIBRARIES(E"<<name<<"Plot_ser visitcommon avtplotter_ser avtpipeline_ser "<< ToString(elibsSer) << ")" << endl;
+        out << "TARGET_LINK_LIBRARIES(E"<<name<<"Plot_ser visitcommon avtplotter_ser avtpipeline_ser " << ToString(libs) << ToString(elibsSer) << ")" << endl;
         out << "SET(INSTALLTARGETS ${INSTALLTARGETS} E"<<name<<"Plot_ser)" << endl;
         out << "ADD_TARGET_DEFINITIONS(E"<<name<<"Plot_ser ENGINE)" << endl;
         out << endl;
         out << "IF(VISIT_PARALLEL)" << endl;
         out << "    ADD_PARALLEL_LIBRARY(E"<<name<<"Plot_par ${LIBE_SOURCES})" << endl;
-        out << "    TARGET_LINK_LIBRARIES(E"<<name<<"Plot_par visitcommon avtplotter_par avtpipeline_par "<< ToString(elibsPar) << ")" << endl;
+        out << "    TARGET_LINK_LIBRARIES(E"<<name<<"Plot_par visitcommon avtplotter_par avtpipeline_par " << ToString(libs) << ToString(elibsPar) << ")" << endl;
         out << "    SET(INSTALLTARGETS ${INSTALLTARGETS} E"<<name<<"Plot_par)" << endl;
         out << "    ADD_TARGET_DEFINITIONS(E"<<name<<"Plot_par ENGINE)" << endl;
         out << "ENDIF(VISIT_PARALLEL)" << endl;
         out << endl;
         out << "VISIT_INSTALL_PLOT_PLUGINS(${INSTALLTARGETS})" << endl;
         out << "VISIT_PLUGIN_TARGET_PREFIX(${INSTALLTARGETS})" << endl;
+        if (using_dev)
+          out << "VISIT_PLUGIN_TARGET_FOLDER(plots ${INSTALLTARGETS})" << endl;
         out << endl;
     }
 
@@ -477,7 +508,11 @@ class CMakeGeneratorPlugin : public Plugin
     {
         out << "PROJECT(" << name<< ")" << endl;
         out << endl;
-
+        if (using_dev)
+        {
+        out << "INCLUDE(${VISIT_SOURCE_DIR}/CMake/PluginMacros.cmake)" <<endl;
+        out << endl;
+        }
         out << "SET(COMMON_SOURCES" << endl;
         out << name << "PluginInfo.C" << endl;
         out << name << "CommonPluginInfo.C" << endl;
@@ -563,7 +598,16 @@ class CMakeGeneratorPlugin : public Plugin
 #endif
 
         out << endl;
-        out << "LINK_DIRECTORIES(${VISIT_LIBRARY_DIR} ${QT_LIBRARY_DIR} ${MESA_LIBRARY_DIR} ${GLEW_LIBRARY_DIR} ${VTK_LIBRARY_DIRS})" << endl;
+        // Extract extra link directories from LDFLAGS if they have ${},$(),-L
+        vector<QString> linkDirs;
+        for (size_t i=0; i<ldflags.size(); i++)
+        {
+            if(ldflags[i].startsWith("${") || ldflags[i].startsWith("$("))
+                 linkDirs.push_back(ldflags[i]);
+            else if(ldflags[i].startsWith("-L"))
+                 linkDirs.push_back(ldflags[i].right(ldflags[i].size()-2));
+        }
+        out << "LINK_DIRECTORIES(${VISIT_LIBRARY_DIR} ${QT_LIBRARY_DIR} ${GLEW_LIBRARY_DIR} ${VTK_LIBRARY_DIRS} " << ToString(linkDirs) << ")" << endl;
         out << endl;
         out << "ADD_LIBRARY(I"<<name<<"Operator ${LIBI_SOURCES})" << endl;
         out << "TARGET_LINK_LIBRARIES(I"<<name<<"Operator visitcommon)" << endl;
@@ -574,11 +618,13 @@ class CMakeGeneratorPlugin : public Plugin
 
         out << "    ADD_LIBRARY(G"<<name<<"Operator ${LIBG_SOURCES})" << endl;
         out << "    TARGET_LINK_LIBRARIES(G" << name << "Operator visitcommon "
-            << guilibname << " " << ToString(glibs) << ")" << endl;
+            << guilibname << " " << ToString(libs) << ToString(glibs) 
+            << ")" << endl;
         out << endl;
         out << "    ADD_LIBRARY(V"<<name<<"Operator ${LIBV_SOURCES})" << endl;
         out << "    TARGET_LINK_LIBRARIES(V" << name << "Operator visitcommon "
-            << viewerlibname << " " << ToString(vlibs) << ")" << endl;
+            << viewerlibname << " " << ToString(libs) << ToString(vlibs) 
+            << ")" << endl;
         out << "    SET(INSTALLTARGETS ${INSTALLTARGETS} G"<<name<<"Operator V"<<name<<"Operator)" << endl;
         out << endl;
         // libS sources
@@ -615,14 +661,14 @@ class CMakeGeneratorPlugin : public Plugin
         out << endl;
 
         out << "ADD_LIBRARY(E"<<name<<"Operator_ser ${LIBE_SOURCES})" << endl;
-        out << "TARGET_LINK_LIBRARIES(E"<<name<<"Operator_ser visitcommon avtexpressions_ser avtfilters_ser avtpipeline_ser "<< ToString(elibsSer) << ")" << endl;
+        out << "TARGET_LINK_LIBRARIES(E"<<name<<"Operator_ser visitcommon avtexpressions_ser avtfilters_ser avtpipeline_ser " << ToString(libs) << ToString(elibsSer) << ")" << endl;
         out << "SET(INSTALLTARGETS ${INSTALLTARGETS} E"<<name<<"Operator_ser)" << endl;
         if (hasEngineSpecificCode)
             out << "ADD_TARGET_DEFINITIONS(E"<<name<<"Operator_ser ENGINE)" << endl;
         out << endl;
         out << "IF(VISIT_PARALLEL)" << endl;
         out << "    ADD_PARALLEL_LIBRARY(E"<<name<<"Operator_par ${LIBE_SOURCES})" << endl;
-        out << "    TARGET_LINK_LIBRARIES(E"<<name<<"Operator_par visitcommon avtexpressions_par avtfilters_par avtpipeline_par "<< ToString(elibsPar) << ")" << endl;
+        out << "    TARGET_LINK_LIBRARIES(E"<<name<<"Operator_par visitcommon avtexpressions_par avtfilters_par avtpipeline_par " << ToString(libs) << ToString(elibsPar) << ")" << endl;
         out << "    SET(INSTALLTARGETS ${INSTALLTARGETS} E"<<name<<"Operator_par)" << endl;
         if (hasEngineSpecificCode)
             out << "    ADD_TARGET_DEFINITIONS(E"<<name<<"Operator_par ENGINE)" << endl;
@@ -630,6 +676,8 @@ class CMakeGeneratorPlugin : public Plugin
         out << endl;
         out << "VISIT_INSTALL_OPERATOR_PLUGINS(${INSTALLTARGETS})" << endl;
         out << "VISIT_PLUGIN_TARGET_PREFIX(${INSTALLTARGETS})" << endl;
+        if (using_dev)
+          out << "VISIT_PLUGIN_TARGET_FOLDER(operators ${INSTALLTARGETS})" << endl;
         out << endl;
     }
 
@@ -637,6 +685,11 @@ class CMakeGeneratorPlugin : public Plugin
     {
         out << "PROJECT("<<name<<")" << endl;
         out << endl;
+        if (using_dev)
+        {
+        out << "INCLUDE(${VISIT_SOURCE_DIR}/CMake/PluginMacros.cmake)" <<endl;
+        out << endl;
+        }
         out << "SET(COMMON_SOURCES" << endl;
         out << ""<<name<<"PluginInfo.C" << endl;
         out << ""<<name<<"CommonPluginInfo.C" << endl;
@@ -726,7 +779,7 @@ class CMakeGeneratorPlugin : public Plugin
         out << "INCLUDE_DIRECTORIES(" << endl;
         out << "${CMAKE_CURRENT_SOURCE_DIR}" << endl;
         if(extraIncludes.size() > 0)
-            out << ToString(extraIncludes) << endl;
+            out << ToString(extraIncludes, true) ;
         out << "${VISIT_COMMON_INCLUDES}" << endl;
         out << VisItIncludeDir() << "/avt/DBAtts/MetaData" << endl;
         out << VisItIncludeDir() << "/avt/DBAtts/SIL" << endl;
@@ -761,9 +814,7 @@ class CMakeGeneratorPlugin : public Plugin
         bool needWindowsDefines = false;
         for (size_t i=0; i<libs.size() && !needWindowsDefines; i++)
         {
-            if(libs[i].contains("BOXLIB2D"))
-                 needWindowsDefines = true;
-            else if(libs[i].contains("BOXLIB3D"))
+            if(libs[i].contains("BOXLIB"))
                  needWindowsDefines = true;
             else if(libs[i].contains("HDF5"))
                  needWindowsDefines = true;
@@ -783,9 +834,7 @@ class CMakeGeneratorPlugin : public Plugin
             out << "IF(WIN32)" << endl;
             for (size_t i=0; i<libs.size(); i++)
             {
-                if(libs[i].contains("BOXLIB2D"))
-                     out << "  ADD_DEFINITIONS(-DBL_FORT_USE_UPPERCASE)" << endl;
-                else if(libs[i].contains("BOXLIB3D"))
+                if(libs[i].contains("BOXLIB"))
                      out << "  ADD_DEFINITIONS(-DBL_FORT_USE_UPPERCASE)" << endl;
                 else if(libs[i].contains("HDF5"))
                      out << "  ADD_DEFINITIONS(-D_HDF5USEDLL_)" << endl;
@@ -796,9 +845,7 @@ class CMakeGeneratorPlugin : public Plugin
                 else if(libs[i].contains("NETCDF"))
                      out << "  ADD_DEFINITIONS(-DDLL_NETCDF)" << endl;
                 else if(libs[i].contains("CGNS"))
-                     out << "  ADD_DEFINITIONS(-D_CGNSDLL)" << endl;
-                else if(libs[i].contains("EXODUSII"))
-                     out << "  ADD_DEFINITIONS(-DEXODUSII_BUILD_SHARED_ZIBS)" << endl;
+                     out << "  ADD_DEFINITIONS(-DUSE_DLL)" << endl;
             }
             out << "ENDIF(WIN32)" << endl;
         }
@@ -827,7 +874,7 @@ class CMakeGeneratorPlugin : public Plugin
             if (customwmfiles)
                 out << "     ${LIBM_WIN32_SOURCES}";
             out << "    )" << endl;
-            out << "    TARGET_LINK_LIBRARIES(M"<<name<<"Database visitcommon avtdbatts avtdatabase_ser "<< ToString(libs) << ToString(mlibs) << ")" << endl;
+            out << "    TARGET_LINK_LIBRARIES(M"<<name<<"Database visitcommon avtdbatts avtdatabase_ser " << ToString(libs) << ToString(mlibs) << ")" << endl;
             out << "    ADD_TARGET_DEFINITIONS(M"<<name<<"Database MDSERVER)" << endl;
             out << "    SET(INSTALLTARGETS ${INSTALLTARGETS} M"<<name<<"Database)" << endl;
             out << "ENDIF(NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)" << endl;
@@ -839,13 +886,13 @@ class CMakeGeneratorPlugin : public Plugin
             if (customwefiles)
                 out << " ${LIBE_WIN32_SOURCES}";
             out << ")" << endl;
-            out << "TARGET_LINK_LIBRARIES(E"<<name<<"Database_ser visitcommon avtdatabase_ser avtpipeline_ser "<< ToString(libs) << ToString(elibsSer) << ")" << endl;
+            out << "TARGET_LINK_LIBRARIES(E"<<name<<"Database_ser visitcommon avtdatabase_ser avtpipeline_ser " << ToString(libs) << ToString(elibsSer) << ")" << endl;
             out << "ADD_TARGET_DEFINITIONS(E"<<name<<"Database_ser ENGINE)" << endl;
             out << "SET(INSTALLTARGETS ${INSTALLTARGETS} E"<<name<<"Database_ser)" << endl;
             out << endl;
             out << "IF(VISIT_PARALLEL)" << endl;
             out << "    ADD_PARALLEL_LIBRARY(E"<<name<<"Database_par ${LIBE_SOURCES})" << endl;
-            out << "    TARGET_LINK_LIBRARIES(E"<<name<<"Database_par visitcommon avtdatabase_par avtpipeline_par "<< ToString(libs) << ToString(elibsPar) << ")" << endl;
+            out << "    TARGET_LINK_LIBRARIES(E"<<name<<"Database_par visitcommon avtdatabase_par avtpipeline_par " << ToString(libs) << ToString(elibsPar) << ")" << endl;
             out << "    ADD_TARGET_DEFINITIONS(E"<<name<<"Database_par ENGINE)" << endl;
             out << "    SET(INSTALLTARGETS ${INSTALLTARGETS} E"<<name<<"Database_par)" << endl;
             out << "ENDIF(VISIT_PARALLEL)" << endl;
@@ -853,6 +900,9 @@ class CMakeGeneratorPlugin : public Plugin
         }
         out << "VISIT_INSTALL_DATABASE_PLUGINS(${INSTALLTARGETS})" << endl;
         out << "VISIT_PLUGIN_TARGET_PREFIX(${INSTALLTARGETS})" << endl;
+        if (using_dev)
+          out << "VISIT_PLUGIN_TARGET_FOLDER(databases ${INSTALLTARGETS})" << endl;
+        out << endl;
     }
 
     void WriteCMake(QTextStream &out)

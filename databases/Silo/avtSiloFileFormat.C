@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -512,6 +512,9 @@ avtSiloFileFormat::GetFile(int f)
 //
 //    Mark C. Miller Tue Mar 30 16:28:48 PDT 2010
 //    Fix DBOpen logic for DB_UNKNOWN case to test for non-NULL result.
+//
+//    Mark C. Miller, Thu Jan  6 17:17:25 PST 2011
+//    Set driver type for unknown case by asking file what its type was.
 // ****************************************************************************
 
 DBfile *
@@ -554,6 +557,11 @@ avtSiloFileFormat::OpenFile(int f, bool skipGlobalInfo)
     {
         debug1 << "Succeeding in opening Silo file with DB_UNKNOWN driver" << endl;
         siloDriver = DB_UNKNOWN;
+#ifdef SILO_VERSION_GE
+#if SILO_VERSION_GE(4,5,1)
+        siloDriver = DBGetDriverType(dbfiles[f]);
+#endif
+#endif
     }
     else
     {
@@ -1101,6 +1109,9 @@ avtSiloFileFormat::FreeUpResources(void)
 //    Error if we openend a file with nothing in it to prevent false
 //    positives when detecting Silo files.  Happens only in strict mode.
 //
+//    Mark C. Miller, Fri Oct 29 10:01:16 PDT 2010
+//    Removed logic looking for empty md and throwing invalid file exception.
+//    Thats handled by VisIt now in the format classes.
 // ****************************************************************************
 
 void
@@ -1140,16 +1151,6 @@ avtSiloFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
     // To be nice to other functions, tell Silo to turn back on reading all
     // of the data.
     DBSetDataReadMask(DBAll);
-
-    // If we got nothing, it may be that this was a PDB file or
-    // an HDF5 file, for example, but not really a Silo file.
-    if (GetStrictMode() &&
-        md->GetNumMeshes() == 0 &&
-        md->GetNumCurves() == 0)
-    {
-        EXCEPTION1(InvalidFilesException, filenames[0]);
-    }
-        
 }
 
 // ****************************************************************************
@@ -2444,10 +2445,19 @@ avtSiloFileFormat::ReadCSGmeshes(DBfile *dbfile,
 }
 
 // ****************************************************************************
-// Function: Get the material indices (not the same as matnos) to which a
-// subsetting variable is restricted.
+//  Function: GetRestrictedMaterialIndices
 //
-// Created: Mark C. Miller, Mon Aug 30 01:32:15 PDT 2010
+//  Purpose:
+//     Get the material indices (not the same as matnos) to which a
+//     subsetting variable is restricted.
+//
+//  Programmer: Mark C. Miller
+//  Creation:   August 30, 2010
+//
+//  Modifications:
+//
+//   Hank Childs, Sat Jan  1 15:11:10 PST 2011
+//   Fix sscanf problem from compiler warning.
 //
 // ****************************************************************************
 
@@ -2509,7 +2519,7 @@ GetRestrictedMaterialIndices(const avtDatabaseMetaData *md, const char *const va
             {
                 int matno;
                 char matname[256];
-                int nmatches = sscanf(mmd->materialNames[j].c_str(), "%d %s", &matno, &matname);
+                int nmatches = sscanf(mmd->materialNames[j].c_str(), "%d %s", &matno, matname);
                 debug3 << "            matno=" << matno << ", matname=\"" << matname << "\"";
                 if (nmatches == 1) // have matno only
                 {
@@ -3783,6 +3793,13 @@ avtSiloFileFormat::ReadMultispecies(DBfile *dbfile,
 //  Modifications:
 //    Mark C. Miller, Thu Jun 18 20:56:08 PDT 2009
 //    Replaced DBtoc* arg. with list of object names.
+//
+//    Mark C. Miller, Thu Jan  6 17:17:47 PST 2011
+//    Handle gui hide flag for expressions. There is a bug causing segv in
+//    PDB driver for version of silo prior to 4.8.
+//
+//    Mark C. Miller, Thu Jan  6 19:33:41 PST 2011
+//    Simplifed logic for setting gui hide flag for expressions.
 // ****************************************************************************
 void
 avtSiloFileFormat::ReadDefvars(DBfile *dbfile,
@@ -3834,6 +3851,8 @@ avtSiloFileFormat::ReadDefvars(DBfile *dbfile,
                         expr.SetName(defv->names[j]);
                         expr.SetDefinition(defv->defns[j]);
                         expr.SetType(vartype);
+                        if (defv->guihides)
+                            expr.SetHidden(defv->guihides[j]);
                     md->AddExpression(&expr);
                 }
             }
@@ -4433,12 +4452,25 @@ avtSiloFileFormat::FindDecomposedMeshType(DBfile *dbfile)
 //    Added call to FindDecomposedMeshType() to help with creating the 
 //    correct type of domain boundries object.
 //
+//    Hank Childs, Wed Dec 22 15:14:33 PST 2010
+//    Early return when we are streaming.
+//
 // ****************************************************************************
 
 void
 avtSiloFileFormat::GetConnectivityAndGroupInformation(DBfile *dbfile, 
                                                       bool force)
 {
+    //
+    // This routine is not implemented for streaming.  We declared earlier that
+    // the Silo format can never do streaming.  And yet here we are doing
+    // streaming.  This means we are likely pulling out a single chunk of 
+    // data.  If that's the case, we don't need the conn and group info.  
+    // So just return.
+    //
+    if (doingStreaming)
+        return;
+
     int ts = (connectivityIsTimeVarying || force) ? timestep : -1;
 
     void_ref_ptr vr = cache->GetVoidRef("any_mesh",

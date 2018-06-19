@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -81,6 +81,12 @@ public:
         ColorBySeedPointID,
         ColorByVariable
     };
+    enum CoordinateSystem
+    {
+        AsIs,
+        CylindricalToCartesian,
+        CartesianToCylindrical
+    };
     enum DisplayMethod
     {
         Lines,
@@ -93,7 +99,7 @@ public:
         Backward,
         Both
     };
-    enum TerminationType
+    enum ReferenceType
     {
         Distance,
         Time,
@@ -103,17 +109,19 @@ public:
     {
         LoadOnDemand,
         ParallelStaticDomains,
-        MasterSlave
+        MasterSlave,
+        VisItSelects
     };
     enum IntegrationType
     {
         DormandPrince,
         AdamsBashforth,
-        M3DC1Integrator
+        M3DC1Integrator,
+        NIMRODIntegrator
     };
     enum OpacityType
     {
-        None,
+        FullyOpaque,
         Constant,
         Ramp,
         VariableRange
@@ -129,6 +137,16 @@ public:
     {
         Sphere,
         Cone
+    };
+    enum SizeType
+    {
+        Absolute,
+        FractionOfBBox
+    };
+    enum PathlinesCMFE
+    {
+        CONN_CMFE,
+        POS_CMFE
     };
 
     // These constructors are for objects of this class
@@ -172,8 +190,6 @@ public:
 
     // Property setting methods
     void SetSourceType(SourceType sourceType_);
-    void SetMaxStepLength(double maxStepLength_);
-    void SetTermination(double termination_);
     void SetPointSource(const double *pointSource_);
     void SetLineStart(const double *lineStart_);
     void SetLineEnd(const double *lineEnd_);
@@ -188,27 +204,35 @@ public:
     void SetSampleDensity0(int sampleDensity0_);
     void SetSampleDensity1(int sampleDensity1_);
     void SetSampleDensity2(int sampleDensity2_);
-    void SetDisplayMethod(DisplayMethod displayMethod_);
-    void SetShowSeeds(bool showSeeds_);
-    void SetShowHeads(bool showHeads_);
-    void SetTubeRadius(double tubeRadius_);
-    void SetRibbonWidth(double ribbonWidth_);
-    void SetLineWidth(int lineWidth_);
     void SetColoringMethod(ColoringMethod coloringMethod_);
     void SetColorTableName(const std::string &colorTableName_);
     void SetSingleColor(const ColorAttribute &singleColor_);
     void SetLegendFlag(bool legendFlag_);
     void SetLightingFlag(bool lightingFlag_);
     void SetStreamlineDirection(IntegrationDirection streamlineDirection_);
+    void SetMaxSteps(int maxSteps_);
+    void SetTerminateByDistance(bool terminateByDistance_);
+    void SetTermDistance(double termDistance_);
+    void SetTerminateByTime(bool terminateByTime_);
+    void SetTermTime(double termTime_);
+    void SetMaxStepLength(double maxStepLength_);
+    void SetLimitMaximumTimestep(bool limitMaximumTimestep_);
+    void SetMaxTimeStep(double maxTimeStep_);
     void SetRelTol(double relTol_);
-    void SetAbsTol(double absTol_);
-    void SetTerminationType(TerminationType terminationType_);
+    void SetAbsTolSizeType(SizeType absTolSizeType_);
+    void SetAbsTolAbsolute(double absTolAbsolute_);
+    void SetAbsTolBBox(double absTolBBox_);
     void SetIntegrationType(IntegrationType integrationType_);
     void SetStreamlineAlgorithmType(StreamlineAlgorithmType streamlineAlgorithmType_);
     void SetMaxStreamlineProcessCount(int maxStreamlineProcessCount_);
     void SetMaxDomainCacheSize(int maxDomainCacheSize_);
     void SetWorkGroupSize(int workGroupSize_);
     void SetPathlines(bool pathlines_);
+    void SetPathlinesOverrideStartingTimeFlag(bool pathlinesOverrideStartingTimeFlag_);
+    void SetPathlinesOverrideStartingTime(double pathlinesOverrideStartingTime_);
+    void SetPathlinesCMFE(PathlinesCMFE pathlinesCMFE_);
+    void SetCoordinateSystem(CoordinateSystem coordinateSystem_);
+    void SetPhiFactor(double phiFactor_);
     void SetColoringVariable(const std::string &coloringVariable_);
     void SetLegendMinFlag(bool legendMinFlag_);
     void SetLegendMaxFlag(bool legendMaxFlag_);
@@ -218,10 +242,25 @@ public:
     void SetDisplayEnd(double displayEnd_);
     void SetDisplayBeginFlag(bool displayBeginFlag_);
     void SetDisplayEndFlag(bool displayEndFlag_);
-    void SetSeedDisplayRadius(double seedDisplayRadius_);
+    void SetReferenceTypeForDisplay(ReferenceType referenceTypeForDisplay_);
+    void SetDisplayMethod(DisplayMethod displayMethod_);
+    void SetTubeSizeType(SizeType tubeSizeType_);
+    void SetTubeRadiusAbsolute(double tubeRadiusAbsolute_);
+    void SetTubeRadiusBBox(double tubeRadiusBBox_);
+    void SetRibbonWidthSizeType(SizeType ribbonWidthSizeType_);
+    void SetRibbonWidthAbsolute(double ribbonWidthAbsolute_);
+    void SetRibbonWidthBBox(double ribbonWidthBBox_);
+    void SetLineWidth(int lineWidth_);
+    void SetShowSeeds(bool showSeeds_);
+    void SetSeedRadiusSizeType(SizeType seedRadiusSizeType_);
+    void SetSeedRadiusAbsolute(double seedRadiusAbsolute_);
+    void SetSeedRadiusBBox(double seedRadiusBBox_);
+    void SetShowHeads(bool showHeads_);
     void SetHeadDisplayType(GeomDisplayType headDisplayType_);
-    void SetHeadDisplayRadius(double headDisplayRadius_);
-    void SetHeadDisplayHeight(double headDisplayHeight_);
+    void SetHeadRadiusSizeType(SizeType headRadiusSizeType_);
+    void SetHeadRadiusAbsolute(double headRadiusAbsolute_);
+    void SetHeadRadiusBBox(double headRadiusBBox_);
+    void SetHeadHeightRatio(double headHeightRatio_);
     void SetOpacityType(OpacityType opacityType_);
     void SetOpacityVariable(const std::string &opacityVariable_);
     void SetOpacity(double opacity_);
@@ -239,11 +278,13 @@ public:
     void SetRandomSeed(int randomSeed_);
     void SetNumberOfRandomSamples(int numberOfRandomSamples_);
     void SetForceNodeCenteredData(bool forceNodeCenteredData_);
+    void SetIssueTerminationWarnings(bool issueTerminationWarnings_);
+    void SetIssueStiffnessWarnings(bool issueStiffnessWarnings_);
+    void SetIssueCriticalPointsWarnings(bool issueCriticalPointsWarnings_);
+    void SetCriticalPointThreshold(double criticalPointThreshold_);
 
     // Property getting methods
     SourceType           GetSourceType() const;
-    double               GetMaxStepLength() const;
-    double               GetTermination() const;
     const double         *GetPointSource() const;
           double         *GetPointSource();
     const double         *GetLineStart() const;
@@ -267,12 +308,6 @@ public:
     int                  GetSampleDensity0() const;
     int                  GetSampleDensity1() const;
     int                  GetSampleDensity2() const;
-    DisplayMethod        GetDisplayMethod() const;
-    bool                 GetShowSeeds() const;
-    bool                 GetShowHeads() const;
-    double               GetTubeRadius() const;
-    double               GetRibbonWidth() const;
-    int                  GetLineWidth() const;
     ColoringMethod       GetColoringMethod() const;
     const std::string    &GetColorTableName() const;
           std::string    &GetColorTableName();
@@ -281,15 +316,29 @@ public:
     bool                 GetLegendFlag() const;
     bool                 GetLightingFlag() const;
     IntegrationDirection GetStreamlineDirection() const;
+    int                  GetMaxSteps() const;
+    bool                 GetTerminateByDistance() const;
+    double               GetTermDistance() const;
+    bool                 GetTerminateByTime() const;
+    double               GetTermTime() const;
+    double               GetMaxStepLength() const;
+    bool                 GetLimitMaximumTimestep() const;
+    double               GetMaxTimeStep() const;
     double               GetRelTol() const;
-    double               GetAbsTol() const;
-    TerminationType      GetTerminationType() const;
+    SizeType             GetAbsTolSizeType() const;
+    double               GetAbsTolAbsolute() const;
+    double               GetAbsTolBBox() const;
     IntegrationType      GetIntegrationType() const;
     StreamlineAlgorithmType GetStreamlineAlgorithmType() const;
     int                  GetMaxStreamlineProcessCount() const;
     int                  GetMaxDomainCacheSize() const;
     int                  GetWorkGroupSize() const;
     bool                 GetPathlines() const;
+    bool                 GetPathlinesOverrideStartingTimeFlag() const;
+    double               GetPathlinesOverrideStartingTime() const;
+    PathlinesCMFE        GetPathlinesCMFE() const;
+    CoordinateSystem     GetCoordinateSystem() const;
+    double               GetPhiFactor() const;
     const std::string    &GetColoringVariable() const;
           std::string    &GetColoringVariable();
     bool                 GetLegendMinFlag() const;
@@ -300,10 +349,25 @@ public:
     double               GetDisplayEnd() const;
     bool                 GetDisplayBeginFlag() const;
     bool                 GetDisplayEndFlag() const;
-    double               GetSeedDisplayRadius() const;
+    ReferenceType        GetReferenceTypeForDisplay() const;
+    DisplayMethod        GetDisplayMethod() const;
+    SizeType             GetTubeSizeType() const;
+    double               GetTubeRadiusAbsolute() const;
+    double               GetTubeRadiusBBox() const;
+    SizeType             GetRibbonWidthSizeType() const;
+    double               GetRibbonWidthAbsolute() const;
+    double               GetRibbonWidthBBox() const;
+    int                  GetLineWidth() const;
+    bool                 GetShowSeeds() const;
+    SizeType             GetSeedRadiusSizeType() const;
+    double               GetSeedRadiusAbsolute() const;
+    double               GetSeedRadiusBBox() const;
+    bool                 GetShowHeads() const;
     GeomDisplayType      GetHeadDisplayType() const;
-    double               GetHeadDisplayRadius() const;
-    double               GetHeadDisplayHeight() const;
+    SizeType             GetHeadRadiusSizeType() const;
+    double               GetHeadRadiusAbsolute() const;
+    double               GetHeadRadiusBBox() const;
+    double               GetHeadHeightRatio() const;
     OpacityType          GetOpacityType() const;
     const std::string    &GetOpacityVariable() const;
           std::string    &GetOpacityVariable();
@@ -322,6 +386,10 @@ public:
     int                  GetRandomSeed() const;
     int                  GetNumberOfRandomSamples() const;
     bool                 GetForceNodeCenteredData() const;
+    bool                 GetIssueTerminationWarnings() const;
+    bool                 GetIssueStiffnessWarnings() const;
+    bool                 GetIssueCriticalPointsWarnings() const;
+    double               GetCriticalPointThreshold() const;
 
     // Persistence methods
     virtual bool CreateNode(DataNode *node, bool completeSave, bool forceAdd);
@@ -338,6 +406,11 @@ public:
 protected:
     static std::string ColoringMethod_ToString(int);
 public:
+    static std::string CoordinateSystem_ToString(CoordinateSystem);
+    static bool CoordinateSystem_FromString(const std::string &, CoordinateSystem &);
+protected:
+    static std::string CoordinateSystem_ToString(int);
+public:
     static std::string DisplayMethod_ToString(DisplayMethod);
     static bool DisplayMethod_FromString(const std::string &, DisplayMethod &);
 protected:
@@ -348,10 +421,10 @@ public:
 protected:
     static std::string IntegrationDirection_ToString(int);
 public:
-    static std::string TerminationType_ToString(TerminationType);
-    static bool TerminationType_FromString(const std::string &, TerminationType &);
+    static std::string ReferenceType_ToString(ReferenceType);
+    static bool ReferenceType_FromString(const std::string &, ReferenceType &);
 protected:
-    static std::string TerminationType_ToString(int);
+    static std::string ReferenceType_ToString(int);
 public:
     static std::string StreamlineAlgorithmType_ToString(StreamlineAlgorithmType);
     static bool StreamlineAlgorithmType_FromString(const std::string &, StreamlineAlgorithmType &);
@@ -378,6 +451,16 @@ public:
 protected:
     static std::string GeomDisplayType_ToString(int);
 public:
+    static std::string SizeType_ToString(SizeType);
+    static bool SizeType_FromString(const std::string &, SizeType &);
+protected:
+    static std::string SizeType_ToString(int);
+public:
+    static std::string PathlinesCMFE_ToString(PathlinesCMFE);
+    static bool PathlinesCMFE_FromString(const std::string &, PathlinesCMFE &);
+protected:
+    static std::string PathlinesCMFE_ToString(int);
+public:
 
     // Keyframing methods
     virtual std::string               GetFieldName(int index) const;
@@ -392,8 +475,6 @@ public:
     // IDs that can be used to identify fields in case statements
     enum {
         ID_sourceType = 0,
-        ID_maxStepLength,
-        ID_termination,
         ID_pointSource,
         ID_lineStart,
         ID_lineEnd,
@@ -408,27 +489,35 @@ public:
         ID_sampleDensity0,
         ID_sampleDensity1,
         ID_sampleDensity2,
-        ID_displayMethod,
-        ID_showSeeds,
-        ID_showHeads,
-        ID_tubeRadius,
-        ID_ribbonWidth,
-        ID_lineWidth,
         ID_coloringMethod,
         ID_colorTableName,
         ID_singleColor,
         ID_legendFlag,
         ID_lightingFlag,
         ID_streamlineDirection,
+        ID_maxSteps,
+        ID_terminateByDistance,
+        ID_termDistance,
+        ID_terminateByTime,
+        ID_termTime,
+        ID_maxStepLength,
+        ID_limitMaximumTimestep,
+        ID_maxTimeStep,
         ID_relTol,
-        ID_absTol,
-        ID_terminationType,
+        ID_absTolSizeType,
+        ID_absTolAbsolute,
+        ID_absTolBBox,
         ID_integrationType,
         ID_streamlineAlgorithmType,
         ID_maxStreamlineProcessCount,
         ID_maxDomainCacheSize,
         ID_workGroupSize,
         ID_pathlines,
+        ID_pathlinesOverrideStartingTimeFlag,
+        ID_pathlinesOverrideStartingTime,
+        ID_pathlinesCMFE,
+        ID_coordinateSystem,
+        ID_phiFactor,
         ID_coloringVariable,
         ID_legendMinFlag,
         ID_legendMaxFlag,
@@ -438,10 +527,25 @@ public:
         ID_displayEnd,
         ID_displayBeginFlag,
         ID_displayEndFlag,
-        ID_seedDisplayRadius,
+        ID_referenceTypeForDisplay,
+        ID_displayMethod,
+        ID_tubeSizeType,
+        ID_tubeRadiusAbsolute,
+        ID_tubeRadiusBBox,
+        ID_ribbonWidthSizeType,
+        ID_ribbonWidthAbsolute,
+        ID_ribbonWidthBBox,
+        ID_lineWidth,
+        ID_showSeeds,
+        ID_seedRadiusSizeType,
+        ID_seedRadiusAbsolute,
+        ID_seedRadiusBBox,
+        ID_showHeads,
         ID_headDisplayType,
-        ID_headDisplayRadius,
-        ID_headDisplayHeight,
+        ID_headRadiusSizeType,
+        ID_headRadiusAbsolute,
+        ID_headRadiusBBox,
+        ID_headHeightRatio,
         ID_opacityType,
         ID_opacityVariable,
         ID_opacity,
@@ -459,13 +563,15 @@ public:
         ID_randomSeed,
         ID_numberOfRandomSamples,
         ID_forceNodeCenteredData,
+        ID_issueTerminationWarnings,
+        ID_issueStiffnessWarnings,
+        ID_issueCriticalPointsWarnings,
+        ID_criticalPointThreshold,
         ID__LAST
     };
 
 private:
     int            sourceType;
-    double         maxStepLength;
-    double         termination;
     double         pointSource[3];
     double         lineStart[3];
     double         lineEnd[3];
@@ -480,27 +586,35 @@ private:
     int            sampleDensity0;
     int            sampleDensity1;
     int            sampleDensity2;
-    int            displayMethod;
-    bool           showSeeds;
-    bool           showHeads;
-    double         tubeRadius;
-    double         ribbonWidth;
-    int            lineWidth;
     int            coloringMethod;
     std::string    colorTableName;
     ColorAttribute singleColor;
     bool           legendFlag;
     bool           lightingFlag;
     int            streamlineDirection;
+    int            maxSteps;
+    bool           terminateByDistance;
+    double         termDistance;
+    bool           terminateByTime;
+    double         termTime;
+    double         maxStepLength;
+    bool           limitMaximumTimestep;
+    double         maxTimeStep;
     double         relTol;
-    double         absTol;
-    int            terminationType;
+    int            absTolSizeType;
+    double         absTolAbsolute;
+    double         absTolBBox;
     int            integrationType;
     int            streamlineAlgorithmType;
     int            maxStreamlineProcessCount;
     int            maxDomainCacheSize;
     int            workGroupSize;
     bool           pathlines;
+    bool           pathlinesOverrideStartingTimeFlag;
+    double         pathlinesOverrideStartingTime;
+    int            pathlinesCMFE;
+    int            coordinateSystem;
+    double         phiFactor;
     std::string    coloringVariable;
     bool           legendMinFlag;
     bool           legendMaxFlag;
@@ -510,10 +624,25 @@ private:
     double         displayEnd;
     bool           displayBeginFlag;
     bool           displayEndFlag;
-    double         seedDisplayRadius;
+    int            referenceTypeForDisplay;
+    int            displayMethod;
+    int            tubeSizeType;
+    double         tubeRadiusAbsolute;
+    double         tubeRadiusBBox;
+    int            ribbonWidthSizeType;
+    double         ribbonWidthAbsolute;
+    double         ribbonWidthBBox;
+    int            lineWidth;
+    bool           showSeeds;
+    int            seedRadiusSizeType;
+    double         seedRadiusAbsolute;
+    double         seedRadiusBBox;
+    bool           showHeads;
     int            headDisplayType;
-    double         headDisplayRadius;
-    double         headDisplayHeight;
+    int            headRadiusSizeType;
+    double         headRadiusAbsolute;
+    double         headRadiusBBox;
+    double         headHeightRatio;
     int            opacityType;
     std::string    opacityVariable;
     double         opacity;
@@ -531,11 +660,15 @@ private:
     int            randomSeed;
     int            numberOfRandomSamples;
     bool           forceNodeCenteredData;
+    bool           issueTerminationWarnings;
+    bool           issueStiffnessWarnings;
+    bool           issueCriticalPointsWarnings;
+    double         criticalPointThreshold;
 
     // Static class format string for type map.
     static const char *TypeMapFormatString;
     static const private_tmfs_t TmfsStruct;
 };
-#define STREAMLINEATTRIBUTES_TMFS "iddDDDDDDdDDbd*iiiibbddiisabbiddiiiiiibsbbddddbbdiddisdddbbiidddbbiib"
+#define STREAMLINEATTRIBUTES_TMFS "iDDDDDDdDDbd*iiiisabbiibdbddbddiddiiiiibbdiidsbbddddbbiiiddiddibiddbiidddisdddbbiidddbbiibbbbd"
 
 #endif

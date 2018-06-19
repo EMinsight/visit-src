@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -345,6 +345,10 @@ avtWellBorePlot::SetAtts(const AttributeGroup *a)
 //  Programmer: Eric Brugger
 //  Creation:   October 1, 2008
 //
+//  Modifications:
+//    Kathleen Bonnell, Mon Jan 17 18:19:07 MST 2011
+//    Retrieve invertColorTable flag and send to color table.
+//
 // ****************************************************************************
 
 void
@@ -397,6 +401,8 @@ avtWellBorePlot::SetColors()
             EXCEPTION1(InvalidColortableException, ctName);
         }
 
+        bool invert = atts.GetInvertColorTable();
+
         //
         // Add a color for each subset name.
         //
@@ -406,7 +412,7 @@ avtWellBorePlot::SetColors()
             for(int i = 0; i < atts.GetNWellBores(); ++i)
             {
                 unsigned char rgb[3] = {0,0,0};
-                ct->GetControlPointColor(ctName.c_str(), i, rgb);
+                ct->GetControlPointColor(ctName.c_str(), i, rgb, invert);
                 *cptr++ = rgb[0];
                 *cptr++ = rgb[1];
                 *cptr++ = rgb[2];
@@ -420,7 +426,8 @@ avtWellBorePlot::SetColors()
             // The CT is continuous, sample the CT so we have a unique color
             // for each element.
             unsigned char *rgb = ct->GetSampledColors(ctName.c_str(),
-                                                      atts.GetNWellBores());
+                                                      atts.GetNWellBores(),
+                                                      invert);
             if(rgb)
             {
                 for(int i = 0; i < atts.GetNWellBores(); ++i)

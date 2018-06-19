@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -55,28 +55,30 @@ class vtkDataArray;
 // Creation:   Fri Mar 12 11:29:46 PST 2010
 //
 // Modifications:
+//   Brad Whitlock, Tue Oct 26 16:23:45 PDT 2010
+//   I turned polyhedralSplit into a vector so we could add polyhedral split
+//   information as we discover it.
 //   
 // ****************************************************************************
 
 class PolyhedralSplit
 {
 public:
-    PolyhedralSplit(int nnorm, int npoly);
+    PolyhedralSplit();
     ~PolyhedralSplit();
 
     static void Destruct(void *);
 
-    void SetCellSplits(int i, int cellid, int nsplits);
+    void AppendCellSplits(int cellid, int nsplits);
 
     void AppendPolyhedralNode(int);
 
-    vtkDataArray *ExpandDataArray(vtkDataArray *input, bool zoneCent) const;
+    vtkDataArray *ExpandDataArray(vtkDataArray *input, bool zoneCent,
+                                  bool averageNodes=true) const;
     vtkDataArray *CreateOriginalCells(int domain, int normalCellCount) const;
 
 private:
-    int *polyhedralSplit;
-    int  polyhedralCellCount;
-    int  normalCellCount;
+    intVector polyhedralSplit;
     intVector nodesForPolyhedralCells;
 };
 

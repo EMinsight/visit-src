@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -809,6 +809,8 @@ avtDataTree::GetSingleLeaf(void)
     vtkDataSet **ds = GetAllLeaves(nLeaves);
     if (nLeaves != 1)
     {
+        delete [] ds;
+
         // Hmmm... we were earlier quoted one leaf, but now we got more than
         // one.
         debug1 << "avtDataTree::GetSingleLeaf ... unexpected case."

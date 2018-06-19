@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -195,6 +195,17 @@ avtICAlgorithm::AdvectParticle(avtIntegralCurve *s)
     IntegrateCnt.value++;
 }
 
+
+void
+avtICAlgorithm::AdvectParticle(avtIntegralCurve *s, vtkDataSet *ds)
+{
+    int timerHandle = visitTimer->StartTimer();
+
+    picsFilter->AdvectParticle(s, ds);
+    IntegrateTime.value += visitTimer->StopTimer(timerHandle, "AdvectParticle()");
+    IntegrateCnt.value++;
+}
+
 // ****************************************************************************
 //  Method: avtICAlgorithm::Initialize
 //
@@ -381,6 +392,29 @@ avtICAlgorithm::SortIntegralCurves(vector<avtIntegralCurve *> &ic)
     sort(ic.begin(), ic.end(), icDomainCompare);
     
     SortTime.value += visitTimer->StopTimer(timerHandle, "SortIntegralCurves()");
+}
+
+// ****************************************************************************
+// Method:  avtICAlgorithm::Sleep
+//
+// Purpose: Sleep for a spell.
+//   
+// Programmer:  Dave Pugmire
+// Creation:    December 20, 2010
+//
+// Modifications:
+//   Kathleen Bonnell, Tue Dec 28, 14:19:27 MST 2010
+//   Work-around compile issue on Windows.
+//
+// ****************************************************************************
+
+void
+avtICAlgorithm::Sleep(long nanoSec) const
+{
+#ifndef _WIN32
+    struct timespec ts = {0, nanoSec};
+    nanosleep(&ts, 0);
+#endif
 }
 
 // ****************************************************************************
@@ -911,7 +945,7 @@ avtICAlgorithm::ReportCounters(ostream &os, bool totals)
 // ****************************************************************************
 void
 avtICAlgorithm::PrintTiming(ostream &os, 
-                            char *str, 
+                            const char *str, 
                             const ICStatistics &s,
                             const ICStatistics &t,
                             bool total)
@@ -963,7 +997,7 @@ avtICAlgorithm::PrintTiming(ostream &os,
 // ****************************************************************************
 void
 avtICAlgorithm::PrintCounter(ostream &os, 
-                             char *str, 
+                             const char *str, 
                              const ICStatistics &s,
                              bool total)
 {

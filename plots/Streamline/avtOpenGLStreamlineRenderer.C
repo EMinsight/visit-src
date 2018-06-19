@@ -37,7 +37,7 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                          avtOpenGLStreamlineRenderer.C                      //
+//                        avtOpenGLStreamlineRenderer.C                      //
 // ************************************************************************* //
 
 #include "avtOpenGLStreamlineRenderer.h"
@@ -387,12 +387,15 @@ avtOpenGLStreamlineRenderer::Render(vtkPolyData *data,
 //   Dave Pugmire, Fri Feb 12 14:02:57 EST 2010
 //   Support for transparency sorting.
 //
+//   Hank Childs, Wed Sep 29 19:12:39 PDT 2010
+//   Rename None to FullyOpaque.
+//
 // ****************************************************************************
 
 void
 avtOpenGLStreamlineRenderer::DrawStreamlines(vtkPolyData *data)
 {
-    if (atts.GetOpacityType() != StreamlineAttributes::None)
+    if (atts.GetOpacityType() != StreamlineAttributes::FullyOpaque)
         appendForTranspPolys = vtkAppendPolyData::New();
     if (atts.GetOpacityType() == StreamlineAttributes::VariableRange)
         InitVarOpacity(data);
@@ -605,6 +608,7 @@ avtOpenGLStreamlineRenderer::DrawAsLines(vtkPolyData *data)
         shader->Disable();
 }
 
+
 // ****************************************************************************
 //  Method:  avtOpenGLStreamlineRenderer::DrawAsTubes
 //
@@ -623,6 +627,9 @@ avtOpenGLStreamlineRenderer::DrawAsLines(vtkPolyData *data)
 //   Dave Pugmire, Fri Feb 12 14:02:57 EST 2010
 //   Support for transparency sorting.
 //
+//   Hank Childs, Thu Sep 30 01:11:03 PDT 2010
+//   Add an option for sizing based on a fraction of the bounding box.
+//
 //   Hank Childs, Sun Oct 31 13:04:54 PST 2010
 //   Add support for the end points being outside the range for a given
 //   streamline.
@@ -633,7 +640,10 @@ void
 avtOpenGLStreamlineRenderer::DrawAsTubes(vtkPolyData *data)
 {
     vtkTubeFilter *tube = vtkTubeFilter::New();
-    tube->SetRadius(atts.GetTubeRadius());
+    double tubeRadius = atts.GetTubeRadiusAbsolute();
+    if (atts.GetTubeSizeType() == StreamlineAttributes::FractionOfBBox)
+        tubeRadius = atts.GetTubeRadiusBBox() * GetBBoxSize();
+    tube->SetRadius(tubeRadius);
 
     tube->SetNumberOfSides(atts.GetTubeDisplayDensity());
     tube->SetCapping(1);
@@ -698,6 +708,9 @@ avtOpenGLStreamlineRenderer::DrawAsTubes(vtkPolyData *data)
 //
 //   Dave Pugmire, Fri Feb 12 14:02:57 EST 2010
 //   Support for transparency sorting.
+//
+//   Hank Childs, Thu Sep 30 01:11:03 PDT 2010
+//   Add an option for sizing based on a fraction of the bounding box.
 //
 //   Hank Childs, Sun Oct 31 13:04:54 PST 2010
 //   Add support for the end points being outside the range for a given
@@ -783,7 +796,10 @@ avtOpenGLStreamlineRenderer::DrawAsRibbons(vtkPolyData *data)
         lineNormalGenerator->Delete();
         
         vtkRibbonFilter *ribbons = vtkRibbonFilter::New();
-        ribbons->SetWidth(atts.GetRibbonWidth());
+        double ribbonWidth = atts.GetRibbonWidthAbsolute();
+        if (atts.GetRibbonWidthSizeType() == StreamlineAttributes::FractionOfBBox)
+            ribbonWidth = atts.GetRibbonWidthBBox() * GetBBoxSize();
+        ribbons->SetWidth(ribbonWidth);
         ribbons->SetInput(pd);
         ribbons->Update();
         
@@ -812,8 +828,11 @@ avtOpenGLStreamlineRenderer::DrawAsRibbons(vtkPolyData *data)
 //   Dave Pugmire, Wed Jan 20 09:28:59 EST 2010
 //   Changed some attribute names.
 //
-//  Dave Pugmire, Fri Feb 12 14:02:57 EST 2010
-//  Support for transparency sorting.
+//   Dave Pugmire, Fri Feb 12 14:02:57 EST 2010
+//   Support for transparency sorting.
+//
+//   Hank Childs, Thu Sep 30 01:11:03 PDT 2010
+//   Add an option for sizing based on a fraction of the bounding box.
 //
 // ****************************************************************************
 
@@ -821,7 +840,9 @@ void
 avtOpenGLStreamlineRenderer::DrawSeedPoints(vtkPolyData *data)
 {
     CalculateSpherePts();
-    double rad = atts.GetSeedDisplayRadius();
+    double rad = atts.GetSeedRadiusAbsolute();
+    if (atts.GetSeedRadiusSizeType() == StreamlineAttributes::FractionOfBBox)
+        rad = atts.GetSeedRadiusBBox() * GetBBoxSize();
     int quality = (int)(atts.GetGeomDisplayQuality());
 
     vtkPoints *points = data->GetPoints();
@@ -879,6 +900,12 @@ avtOpenGLStreamlineRenderer::DrawSeedPoints(vtkPolyData *data)
 //   Dave Pugmire, Thu Mar 25 16:34:23 EDT 2010
 //   Fixed indexing problem.
 //
+//   Hank Childs, Thu Sep 30 01:11:03 PDT 2010
+//   Add an option for sizing based on a fraction of the bounding box.
+//
+//   Hank Childs, Fri Oct  8 23:30:27 PDT 2010
+//   Allow for display begin/end to be from distance/time/steps.
+//
 //   Hank Childs, Sun Oct 31 13:04:54 PST 2010
 //   Add support for the end points being outside the range for a given
 //   streamline.  Also re-arrange indexing.
@@ -889,8 +916,10 @@ void
 avtOpenGLStreamlineRenderer::DrawHeadGeom(vtkPolyData *data)
 {
     CalculateSpherePts();
-    double rad = atts.GetHeadDisplayRadius();
-    double height = atts.GetHeadDisplayHeight();
+    double rad = atts.GetHeadRadiusAbsolute();
+    if (atts.GetHeadRadiusSizeType() == StreamlineAttributes::FractionOfBBox)
+        rad = atts.GetHeadRadiusBBox() * GetBBoxSize();
+    double height = rad*atts.GetHeadHeightRatio();
     int quality = (int)(atts.GetGeomDisplayQuality());
 
     vtkPoints *points = data->GetPoints();
@@ -950,7 +979,21 @@ avtOpenGLStreamlineRenderer::DrawHeadGeom(vtkPolyData *data)
         
         if (appendForTranspPolys)
         {
-            float param = atts.GetTermination();
+            float param = 1000000;
+            switch (atts.GetReferenceTypeForDisplay())
+            {
+               case StreamlineAttributes::Distance:
+                 if (atts.GetTerminateByDistance())
+                     param = atts.GetTermDistance();
+                 break;
+               case StreamlineAttributes::Time:
+                 if (atts.GetTerminateByTime())
+                     param = atts.GetTermTime();
+                 break;
+               case StreamlineAttributes::Step:
+                 param = atts.GetMaxSteps();
+                 break;
+            }
             if (atts.GetDisplayEndFlag())
                 param = atts.GetDisplayEnd();
             vtkPolyData *pd = NULL;
@@ -1083,8 +1126,11 @@ avtOpenGLStreamlineRenderer::MakeNewPolyline(vtkPolyData *data,
                            (pi[1]-pt[1])*(pi[1]-pt[1])+
                            (pi[2]-pt[2])*(pi[2]-pt[2]));
         makeStartPoint = true;
+        double tubeRadius = atts.GetTubeRadiusAbsolute();
+        if (atts.GetTubeSizeType() == StreamlineAttributes::FractionOfBBox)
+            tubeRadius = atts.GetTubeRadiusBBox() * GetBBoxSize();
         if (atts.GetDisplayMethod() == StreamlineAttributes::Tubes &&
-            dist < 0.1*atts.GetTubeRadius())
+            dist < 0.1*tubeRadius)
             makeStartPoint = false;
         if (makeStartPoint)
             nNewPts++;
@@ -1106,8 +1152,11 @@ avtOpenGLStreamlineRenderer::MakeNewPolyline(vtkPolyData *data,
                            (pi[1]-pt[1])*(pi[1]-pt[1])+
                            (pi[2]-pt[2])*(pi[2]-pt[2]));
         makeEndPoint = true;
+        double tubeRadius = atts.GetTubeRadiusAbsolute();
+        if (atts.GetTubeSizeType() == StreamlineAttributes::FractionOfBBox)
+            tubeRadius = atts.GetTubeRadiusBBox() * GetBBoxSize();
         if (atts.GetDisplayMethod() == StreamlineAttributes::Tubes &&
-            dist < 0.1*atts.GetTubeRadius())
+            dist < 0.1*tubeRadius)
             makeEndPoint = false;
         if (makeEndPoint)
             nNewPts++;
@@ -1437,6 +1486,9 @@ avtOpenGLStreamlineRenderer::SetColor(const float &scalar,
 //
 //  Modifications:
 //
+//   Hank Childs, Wed Sep 29 19:12:39 PDT 2010
+//   Rename None to FullyOpaque.
+//
 // ****************************************************************************
 
 void
@@ -1447,7 +1499,7 @@ avtOpenGLStreamlineRenderer::InitColors()
         unsigned char rgba[4];
         
         memcpy(rgba, atts.GetSingleColor().GetColor(), 4);
-        if (atts.GetOpacityType() == StreamlineAttributes::None)
+        if (atts.GetOpacityType() == StreamlineAttributes::FullyOpaque)
             rgba[3] = (unsigned char)255;
         else if (atts.GetOpacityType() == StreamlineAttributes::Constant)
             rgba[3] = (unsigned char)(atts.GetOpacity()*255.0f);
@@ -2060,6 +2112,9 @@ avtOpenGLStreamlineRenderer::GenerateSpherePolys(float x0,
 //
 //  Modifications:
 //
+//   Hank Childs, Fri Oct  8 23:30:27 PDT 2010
+//   Allow for display begin/end to be from distance/time/steps.
+//
 //   Hank Childs, Sun Oct 31 13:04:54 PST 2010
 //   Add support for the end points being outside the range for a given
 //   streamline.
@@ -2112,9 +2167,25 @@ avtOpenGLStreamlineRenderer::GetEndPoints(vtkPolyData *data,
            j0 = nPts+1;
     }
     
+    float termination = 1000000;
+    switch (atts.GetReferenceTypeForDisplay())
+    {
+       case StreamlineAttributes::Distance:
+         if (atts.GetTerminateByDistance())
+             termination = atts.GetTermDistance();
+         break;
+       case StreamlineAttributes::Time:
+         if (atts.GetTerminateByTime())
+             termination = atts.GetTermTime();
+         break;
+       case StreamlineAttributes::Step:
+         termination = atts.GetMaxSteps();
+         break;
+    }
+
     // Find the end.
     double end = atts.GetDisplayEnd();
-    if (atts.GetDisplayEndFlag() && end < atts.GetTermination())
+    if (atts.GetDisplayEndFlag() && end < termination)
     {
         for (int i = nPts-1; i >= 0; i--)
         {
@@ -2150,12 +2221,32 @@ avtOpenGLStreamlineRenderer::GetEndPoints(vtkPolyData *data,
 //
 //  Modifications:
 //
+//   Hank Childs, Fri Oct  8 23:30:27 PDT 2010
+//   Allow for display begin/end to be from distance/time/steps.
+//
 // ****************************************************************************
 
 float
 avtOpenGLStreamlineRenderer::ComputeRampOpacity(const float &p) const
 {
-    float p0 = 0, p1 = atts.GetTermination();
+    float p1 = 100000;
+    switch (atts.GetReferenceTypeForDisplay())
+    {
+       case StreamlineAttributes::Distance:
+         if (atts.GetTerminateByDistance())
+             p1 = atts.GetTermDistance();
+         break;
+       case StreamlineAttributes::Time:
+         if (atts.GetTerminateByTime())
+             p1 = atts.GetTermTime();
+         break;
+       case StreamlineAttributes::Step:
+         p1 = atts.GetMaxSteps();
+         break;
+    }
+
+    // Find the end.
+    float p0 = 0;
     if (atts.GetDisplayBeginFlag())
         p0 = atts.GetDisplayBegin();
     if (atts.GetDisplayEndFlag())

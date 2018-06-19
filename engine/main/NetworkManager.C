@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -259,6 +259,10 @@ NetworkManager::NetworkManager(void) : virtualDatabases()
 //    Hank Childs, Sat Aug 21 14:35:47 PDT 2010
 //    Rename DDF to DataBinning.
 //
+//    David Camp, Thu Jan 13 11:15:00 PST 2011
+//    Added the call to DeleteInstance of the avtColorTables. 
+//    Help debug memory leaks.
+//
 // ****************************************************************************
 
 NetworkManager::~NetworkManager(void)
@@ -277,6 +281,8 @@ NetworkManager::~NetworkManager(void)
     delete databasePlugins;
     delete operatorPlugins;
     delete plotPlugins;
+
+    avtColorTables::Instance()->DeleteInstance();
 }
 
 // ****************************************************************************

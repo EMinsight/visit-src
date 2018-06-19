@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1197,6 +1197,7 @@ avtH5PartFileFormat::GetFieldMesh(int timestate, const char *meshname)
     coords[2]->Delete();
 
     visitTimer->StopTimer(t1, "H5PartFileFormat::GetFieldMesh()");
+
     return rgrid;
 }
 

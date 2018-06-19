@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -44,17 +44,21 @@
 //
 // Functions exposed to the VisIt module.
 //
+#define TENSORATTRIBUTES_NMETH 24
 void           PyTensorAttributes_StartUp(TensorAttributes *subj, void *data);
 void           PyTensorAttributes_CloseDown();
-PyMethodDef *   PyTensorAttributes_GetMethodTable(int *nMethods);
+PyMethodDef *  PyTensorAttributes_GetMethodTable(int *nMethods);
 bool           PyTensorAttributes_Check(PyObject *obj);
 TensorAttributes *  PyTensorAttributes_FromPyObject(PyObject *obj);
-PyObject *      PyTensorAttributes_New();
-PyObject *      PyTensorAttributes_Wrap(const TensorAttributes *attr);
+PyObject *     PyTensorAttributes_New();
+PyObject *     PyTensorAttributes_Wrap(const TensorAttributes *attr);
 void           PyTensorAttributes_SetParent(PyObject *obj, PyObject *parent);
 void           PyTensorAttributes_SetDefaults(const TensorAttributes *atts);
 std::string    PyTensorAttributes_GetLogString();
 std::string    PyTensorAttributes_ToString(const TensorAttributes *, const char *);
+PyObject *     PyTensorAttributes_getattr(PyObject *self, char *name);
+int            PyTensorAttributes_setattr(PyObject *self, char *name, PyObject *args);
+extern PyMethodDef PyTensorAttributes_methods[TENSORATTRIBUTES_NMETH];
 
 #endif
 

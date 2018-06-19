@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -105,6 +105,25 @@ avtExtents::~avtExtents()
         delete [] extents;
         extents = NULL;
     }
+}
+
+
+// ****************************************************************************
+//  Method: avtExtents::Destruct
+//
+//  Purpose:
+//      A destructor function that is compatible with void_ref_ptr.
+//
+//  Programmer: Hank Childs
+//  Creation:   November 28, 2010
+//
+// ****************************************************************************
+
+void
+avtExtents::Destruct(void *p)
+{
+    avtExtents *e = (avtExtents *) p;
+    delete e;
 }
 
 

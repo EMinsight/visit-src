@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -87,6 +87,7 @@ Consider the leaveDomains SLs and the balancing at the same time.
 #include <avtMetaData.h>
 #include <avtParallel.h>
 #include <avtStateRecorderIntegralCurve.h>
+#include <avtStreamlineIC.h>
 #include <avtVector.h>
 
 #include <DebugStream.h>
@@ -182,12 +183,16 @@ static float random_11()
 //   Dave Pugmire, Fri Jun 11 15:12:04 EDT 2010
 //   Remove seed densities.
 //
+//   Hank Childs, Sun Dec  5 10:43:57 PST 2010
+//   Initialize data members for warnings.
+//
 // ****************************************************************************
 
 avtStreamlineFilter::avtStreamlineFilter()
 {
     coloringMethod = STREAMLINE_COLOR_SPEED;
     displayMethod = STREAMLINE_DISPLAY_LINES;
+    referenceTypeForDisplay = 0;
 
     //
     // Initialize source values.
@@ -201,7 +206,11 @@ avtStreamlineFilter::avtStreamlineFilter()
     fill = false;
     useBBox = false;
 
-    intersectObj = NULL;
+    storeVelocitiesForLighting = false;
+    issueWarningForMaxStepsTermination = true;
+    issueWarningForStiffness = true;
+    issueWarningForCriticalPoints = true;
+    criticalPointThreshold = 1e-3;
 }
 
 
@@ -234,9 +243,65 @@ avtStreamlineFilter::avtStreamlineFilter()
 
 avtStreamlineFilter::~avtStreamlineFilter()
 {
-    if (intersectObj)
-        intersectObj->Delete();
 }
+
+// ****************************************************************************
+// Method:  avtStreamlineFilter::GenerateAttributeFields() const
+//
+// Programmer:  Dave Pugmire
+// Creation:    November  5, 2010
+//
+// ****************************************************************************
+
+unsigned char
+avtStreamlineFilter::GenerateAttributeFields() const
+{
+
+    // need at least these three attributes
+    unsigned char attr = avtStateRecorderIntegralCurve::SAMPLE_POSITION;
+
+    if (storeVelocitiesForLighting)
+        attr |= avtStateRecorderIntegralCurve::SAMPLE_VELOCITY;
+
+    switch (referenceTypeForDisplay)
+    {
+      case 0:  // Distance
+        attr |= avtStateRecorderIntegralCurve::SAMPLE_ARCLENGTH;
+        break;
+      case 1:  // Time
+        attr |= avtStateRecorderIntegralCurve::SAMPLE_TIME;
+        break;
+      case 2:  // Steps
+        break;
+    }
+
+    // color scalars
+    switch( coloringMethod )
+    {
+      case STREAMLINE_COLOR_SPEED:
+        attr |= avtStateRecorderIntegralCurve::SAMPLE_VELOCITY;
+        break;
+      case STREAMLINE_COLOR_TIME:
+        attr |= avtStateRecorderIntegralCurve::SAMPLE_TIME;
+        break;
+      case STREAMLINE_COLOR_VORTICITY:
+        attr |= avtStateRecorderIntegralCurve::SAMPLE_VORTICITY;
+        break;
+      case STREAMLINE_COLOR_ARCLENGTH:
+        attr |= avtStateRecorderIntegralCurve::SAMPLE_ARCLENGTH;
+        break;
+      case STREAMLINE_COLOR_VARIABLE:
+        attr |= avtStateRecorderIntegralCurve::SAMPLE_SCALAR0;
+        break;
+    }
+
+    // opacity scalar
+    if( !opacityVariable.empty() )
+        attr |= avtStateRecorderIntegralCurve::SAMPLE_SCALAR1;
+
+    return attr;
+}
+
 
 // ****************************************************************************
 //  Method: avtStreamlineFilter::CreateIntegralCurve
@@ -247,14 +312,50 @@ avtStreamlineFilter::~avtStreamlineFilter()
 //
 //  Programmer: Hank Childs
 //  Creation:   June 5, 2010
+//
+//  Modifications:
+//
+//    Hank Childs, Mon Oct  4 14:53:13 PDT 2010
+//    Create an avtStreamline (not an avtStateRecorderIntegralCurve) and
+//    put the termination criteria into the signature.
+//
+//   Dave Pugmire, Fri Nov  5 15:38:33 EDT 2010
+//   Set maxSteps and historyMask.
 //
 // ****************************************************************************
 
 avtIntegralCurve *
-avtStreamlineFilter::CreateIntegralCurve() 
+avtStreamlineFilter::CreateIntegralCurve()
 {
-    return new avtStateRecorderIntegralCurve();
+    avtStreamlineIC *ic = new avtStreamlineIC();
+    ic->maxSteps = maxSteps;
+    ic->historyMask = GenerateAttributeFields();
+    return ic;
 }
+
+
+// ****************************************************************************
+//  Method: avtStreamlineFilter::SetTermination
+//
+//  Purpose:
+//      Sets the termination criteria for a streamline.
+//
+//  Programmer: Hank Childs
+//  Creation:   October 5, 2010
+//
+// ****************************************************************************
+
+void
+avtStreamlineFilter::SetTermination(int maxSteps_, bool doDistance_,
+                            double maxDistance_, bool doTime_, double maxTime_)
+{
+    maxSteps = maxSteps_;
+    doDistance = doDistance_;
+    maxDistance = maxDistance_;
+    doTime = doTime_;
+    maxTime = maxTime_;
+}
+
 
 // ****************************************************************************
 //  Method: avtStreamlineFilter::CreateIntegralCurve
@@ -265,6 +366,12 @@ avtStreamlineFilter::CreateIntegralCurve()
 //
 //  Programmer: Hank Childs
 //  Creation:   June 5, 2010
+//
+//  Modifications:
+//
+//    Hank Childs, Mon Oct  4 14:53:13 PDT 2010
+//    Create an avtStreamline (not an avtStateRecorderIntegralCurve) and
+//    put the termination criteria into the signature.
 //
 // ****************************************************************************
 
@@ -274,72 +381,13 @@ avtStreamlineFilter::CreateIntegralCurve( const avtIVPSolver* model,
                                           const double& t_start,
                                           const avtVector &p_start, long ID ) 
 {
-    // need at least these three attributes
-    unsigned char attr = 
-        avtStateRecorderIntegralCurve::SAMPLE_TIME |
-        avtStateRecorderIntegralCurve::SAMPLE_POSITION |
-        avtStateRecorderIntegralCurve::SAMPLE_VELOCITY;
-
-    // color scalars
-    switch( coloringMethod )
-    {
-    case STREAMLINE_COLOR_VORTICITY:
-        attr |= avtStateRecorderIntegralCurve::SAMPLE_VORTICITY;
-        break;
-    case STREAMLINE_COLOR_ARCLENGTH:
-        attr |= avtStateRecorderIntegralCurve::SAMPLE_ARCLENGTH;
-        break;
-    case STREAMLINE_COLOR_VARIABLE:
-        attr |= avtStateRecorderIntegralCurve::SAMPLE_SCALAR0;
-        break;
-    }
-
-    // parameter scalars
-    switch( terminationType )
-    {
-    case avtIntegralCurve::TERMINATE_DISTANCE:
-        attr |= avtStateRecorderIntegralCurve::SAMPLE_ARCLENGTH;
-        break;
-    }
-
-    // opacity scalar
-    if( !opacityVariable.empty() )
-        attr |= avtStateRecorderIntegralCurve::SAMPLE_SCALAR1;
+    unsigned char attr = GenerateAttributeFields();
 
     avtStateRecorderIntegralCurve *rv = 
-        new avtStateRecorderIntegralCurve( attr, model, dir, t_start, p_start, ID );
-
-    if (intersectObj)
-        rv->SetIntersectionObject(intersectObj);
+        new avtStreamlineIC(maxSteps, doDistance, maxDistance, doTime, maxTime,
+                            attr, model, dir, t_start, p_start, ID);
 
     return rv;
-}
-
-
-// ****************************************************************************
-// Method: avtStreamlineFilter::SetIntersectionObject
-//
-// Purpose: 
-//   Sets the intersection object.
-//
-// Arguments:
-//   obj : Intersection object.
-//
-// Programmer: Dave Pugmire
-// Creation:   11 August 2009
-//
-// Modifications:
-//
-// ****************************************************************************
-
-void
-avtStreamlineFilter::SetIntersectionObject(vtkObject *obj)
-{
-    if (obj)
-    {
-        intersectObj = obj;
-        intersectObj->Register(NULL);
-    }
 }
 
 
@@ -878,7 +926,10 @@ randMinus1_1()
 //  Modifications:
 //
 //   Dave Pugmire, Thu Jun 10 10:44:02 EDT 2010
-//   New seed sources. 
+//   New seed sources.
+//
+//   Dave Pugmire, Wed Nov 10 09:20:06 EST 2010
+//   Handle 2D datasets better.
 //
 // ****************************************************************************
 
@@ -905,6 +956,14 @@ avtStreamlineFilter::GetInitialLocations(void)
         GenerateSeedPointsFromCircle(seedPts);
     else if(sourceType == STREAMLINE_SOURCE_POINT_LIST)
         GenerateSeedPointsFromPointList(seedPts);
+
+    //Check for 2D input.
+    if (GetInput()->GetInfo().GetAttributes().GetSpatialDimension() == 2)
+    {
+        vector<avtVector>::iterator it;
+        for (it = seedPts.begin(); it != seedPts.end(); it++)
+            (*it)[2] = 0.0f;
+    }
 
     return seedPts;
 }
@@ -1298,6 +1357,9 @@ avtStreamlineFilter::GenerateSeedPointsFromSphere(std::vector<avtVector> &pts)
 //   Dave Pugmire, Thu Jun 10 10:44:02 EDT 2010
 //   New seed sources.
 //
+//   Dave Pugmire, Wed Nov 10 09:20:32 EST 2010
+//   If box sampling is 1, use the mid value.
+//
 // ****************************************************************************
 
 void
@@ -1366,9 +1428,17 @@ avtStreamlineFilter::GenerateSeedPointsFromBox(std::vector<avtVector> &pts)
     }
     else
     {
-        diff.x /= (sampleDensity[0]-1);
-        diff.y /= (sampleDensity[1]-1);
-        diff.z /= (sampleDensity[2]-1);
+        // If sample density is 1, sample at the mid point.
+        diff.x /= (sampleDensity[0] == 1 ? 2.0 : (sampleDensity[0]-1));
+        diff.y /= (sampleDensity[1] == 1 ? 2.0 : (sampleDensity[1]-1));
+        diff.z /= (sampleDensity[2] == 1 ? 2.0 : (sampleDensity[2]-1));
+
+        if (sampleDensity[0] == 1)
+            points[0].x += diff.x;
+        if (sampleDensity[1] == 1)
+            points[0].y += diff.y;
+        if (sampleDensity[2] == 1)
+            points[0].z += diff.z;
 
         if (fill)
         {
@@ -1466,13 +1536,15 @@ avtStreamlineFilter::GenerateSeedPointsFromPointList(std::vector<avtVector> &pts
 //   Hank Childs, Sat Jun  5 19:01:55 CDT 2010
 //   Strip out the pieces that belong in PICS.
 //
+//   Hank Childs, Sun Nov 28 05:37:44 PST 2010
+//   Always add necessary secondary variables, regardless of whether there
+//   is "colorVar" in the contract.
+//
 // ****************************************************************************
 
 avtContract_p
-avtStreamlineFilter::ModifyContract(avtContract_p in_contract0)
+avtStreamlineFilter::ModifyContract(avtContract_p in_contract)
 {
-    avtContract_p in_contract = avtPICSFilter::ModifyContract(in_contract0);
-
     avtDataRequest_p in_dr = in_contract->GetDataRequest();
     avtDataRequest_p out_dr = NULL;
 
@@ -1482,13 +1554,15 @@ avtStreamlineFilter::ModifyContract(avtContract_p in_contract0)
         // The avtStreamlinePlot requested "colorVar", so remove that from the
         // contract now.
         out_dr = new avtDataRequest(in_dr,in_dr->GetOriginalVariable());
-
-        if (coloringMethod == STREAMLINE_COLOR_VARIABLE)
-            out_dr->AddSecondaryVariable(coloringVariable.c_str());
-
-        if (opacityVariable != "")
-            out_dr->AddSecondaryVariable(opacityVariable.c_str());
     }
+    else
+        out_dr = new avtDataRequest(in_dr);
+
+    if (coloringMethod == STREAMLINE_COLOR_VARIABLE)
+        out_dr->AddSecondaryVariable(coloringVariable.c_str());
+
+    if (opacityVariable != "")
+        out_dr->AddSecondaryVariable(opacityVariable.c_str());
 
     avtContract_p out_contract;
     if ( *out_dr )
@@ -1496,7 +1570,7 @@ avtStreamlineFilter::ModifyContract(avtContract_p in_contract0)
     else
         out_contract = new avtContract(in_contract);
 
-    return out_contract;
+    return avtPICSFilter::ModifyContract(out_contract);
 }
 
 

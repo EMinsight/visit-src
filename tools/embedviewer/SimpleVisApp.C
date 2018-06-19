@@ -25,6 +25,22 @@
 
 #include "CommandParser.h"
 
+QWidget *
+create_application_main_window(VisItViewer *v, int *argc, char ***argv)
+{
+    return new SimpleVisApp(v, argc, argv);
+}
+
+void
+show_application_main_window(QWidget *w)
+{
+    // Do it like this since virtual show isn't working...
+    SimpleVisApp *app = (SimpleVisApp *)w;
+    app->show();
+    app->raise();
+    app->execFile(1);
+}
+
 vtkQtRenderWindow *
 SimpleVisApp::ReturnVisWin(void *data)
 {
@@ -50,7 +66,8 @@ SimpleVisApp::ReturnVisWin(void *data)
 //
 // ****************************************************************************
 
-SimpleVisApp::SimpleVisApp(VisItViewer *v) : QMainWindow()
+SimpleVisApp::SimpleVisApp(VisItViewer *v, int *argc, char ***argv)
+    : QMainWindow()
 {
     viewer = v;
     setWindowTitle(tr("Simple visualization"));
@@ -114,7 +131,7 @@ SimpleVisApp::SimpleVisApp(VisItViewer *v) : QMainWindow()
     fileMenu->addSeparator();
     fileMenu->addAction(tr("Save window"), this, SLOT(saveWindow()));
     fileMenu->addSeparator();
-    fileMenu->addAction(tr("Quit"), qApp, SLOT(quit()));
+    fileMenu->addAction(tr("Quit"), this, SLOT(quitApp()));
     
     QMenu *controlsMenu = menuBar()->addMenu(tr("Controls"));
     controlsMenu->addAction(tr("Open GUI"), this, SLOT(openGUI()));
@@ -130,11 +147,20 @@ SimpleVisApp::SimpleVisApp(VisItViewer *v) : QMainWindow()
     resetWindow();
 
     cmd = 0;
+
+    if (*argc > 1)
+        clfilename = (*argv)[1];
 }
 
 SimpleVisApp::~SimpleVisApp()
 {
     delete cmd;
+}
+
+void
+SimpleVisApp::quitApp()
+{
+    qApp->quit();
 }
 
 void
@@ -156,10 +182,6 @@ SimpleVisApp::resetWindow()
     viewer->Methods()->DeleteActivePlots();
 }
 
-//
-// Qt slots
-//
-
 void
 SimpleVisApp::show()
 {
@@ -172,6 +194,10 @@ SimpleVisApp::show()
 
     QMainWindow::show();
 }
+
+//
+// Qt slots
+//
 
 // ****************************************************************************
 // Method: SimpleVisApp::selectFile
@@ -315,13 +341,21 @@ SimpleVisApp::openGUI()
 }
 
 void
-SimpleVisApp::execFile()
+SimpleVisApp::execFile(int openClFile)
 {
-    // Get a filename from the file dialog.
-    QString filename = QFileDialog::getOpenFileName(this,
-               tr("Open File"),
-               QDir::current().path(),
-               tr("command files (*.txt)"));
+    QString filename;
+    if (openClFile != 0)
+    {
+        filename = clfilename;
+    }
+    else
+    {
+        // Get a filename from the file dialog.
+        filename = QFileDialog::getOpenFileName(this,
+            tr("Open File"),
+            QDir::current().path(),
+            tr("command files (*.txt)"));
+    }
         
     if(!filename.isEmpty())
     {
@@ -339,6 +373,8 @@ SimpleVisApp::execFile()
                     this, SLOT(setNContours(int)));
             connect(cmd, SIGNAL(saveWindow()),
                     this, SLOT(saveWindow()));
+            connect(cmd, SIGNAL(quitApp()),
+                    this, SLOT(quitApp()));
         }
 
         cmd->ProcessCommands(filename);

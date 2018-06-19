@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -44,17 +44,21 @@
 //
 // Functions exposed to the VisIt module.
 //
+#define WELLBOREATTRIBUTES_NMETH 40
 void           PyWellBoreAttributes_StartUp(WellBoreAttributes *subj, void *data);
 void           PyWellBoreAttributes_CloseDown();
-PyMethodDef *   PyWellBoreAttributes_GetMethodTable(int *nMethods);
+PyMethodDef *  PyWellBoreAttributes_GetMethodTable(int *nMethods);
 bool           PyWellBoreAttributes_Check(PyObject *obj);
 WellBoreAttributes *  PyWellBoreAttributes_FromPyObject(PyObject *obj);
-PyObject *      PyWellBoreAttributes_New();
-PyObject *      PyWellBoreAttributes_Wrap(const WellBoreAttributes *attr);
+PyObject *     PyWellBoreAttributes_New();
+PyObject *     PyWellBoreAttributes_Wrap(const WellBoreAttributes *attr);
 void           PyWellBoreAttributes_SetParent(PyObject *obj, PyObject *parent);
 void           PyWellBoreAttributes_SetDefaults(const WellBoreAttributes *atts);
 std::string    PyWellBoreAttributes_GetLogString();
 std::string    PyWellBoreAttributes_ToString(const WellBoreAttributes *, const char *);
+PyObject *     PyWellBoreAttributes_getattr(PyObject *self, char *name);
+int            PyWellBoreAttributes_setattr(PyObject *self, char *name, PyObject *args);
+extern PyMethodDef PyWellBoreAttributes_methods[WELLBOREATTRIBUTES_NMETH];
 
 #endif
 

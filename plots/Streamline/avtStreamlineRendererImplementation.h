@@ -39,6 +39,8 @@
 #ifndef AVT_STREAMLINE_RENDERER_IMPLEMENTATION_H
 #define AVT_STREAMLINE_RENDERER_IMPLEMENTATION_H
 
+#include <math.h>
+
 class avtLookupTable;
 class vtkPolyData;
 class vtkDataArray;
@@ -63,6 +65,9 @@ struct avtViewInfo;
 //  Dave Pugmire, Fri Feb 12 14:02:57 EST 2010
 //  Support for transparency sorting.
 //
+//  Hank Childs, Thu Sep 30 00:45:38 PDT 2010
+//  Store the bounding box.
+//
 // ****************************************************************************
 class avtStreamlineRendererImplementation
 {
@@ -74,7 +79,35 @@ class avtStreamlineRendererImplementation
         varMin = min;
         varMax = max;
     }
-    
+    void           SetBoundingBox(const double *b)
+    {
+        for (int i = 0 ; i < 6 ; i++)
+            bbox[i] = b[i];
+    }
+    double         GetBBoxSize(void)
+    {
+        double vol = 1;
+        int    numDims = 0;
+        if (bbox[1] > bbox[0])
+        {
+            vol *= (bbox[1]-bbox[0]);
+            numDims++;
+        }
+        if (bbox[3] > bbox[2])
+        {
+            vol *= (bbox[3]-bbox[2]);
+            numDims++;
+        }
+        if (bbox[5] > bbox[4])
+        {
+            vol *= (bbox[5]-bbox[4]);
+            numDims++;
+        }
+
+        double length = pow(vol, 1.0/numDims);
+        return length;
+    }
+   
     virtual void   Render(vtkPolyData *data, const StreamlineAttributes&,
                           bool immediateModeRendering,
                           double vMin, double vMax,
@@ -88,6 +121,7 @@ class avtStreamlineRendererImplementation
     
 protected:
     double varMin, varMax;
+    double bbox[6];
 };
 
 #endif

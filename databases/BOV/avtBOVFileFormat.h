@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -79,6 +79,13 @@
 //    Hank Childs, Sat Apr 24 18:21:42 PDT 2010
 //    Add proper support for time.
 //
+//    Hank Childs, Tue Nov 30 11:41:44 PST 2010
+//    Only overset the time if we know if it is accurate.
+//
+//    Hank Childs, Tue Nov 30 13:43:49 PST 2010
+//    Return INVALID_CYCLE and INVALID_TIME if we don't know them.  This 
+//    prevents oversetting elsewhere.
+//
 // ****************************************************************************
 
 class avtBOVFileFormat : public avtSTMDFileFormat
@@ -98,8 +105,8 @@ class avtBOVFileFormat : public avtSTMDFileFormat
 
     virtual void               PopulateDatabaseMetaData(avtDatabaseMetaData *);
 
-    virtual int                GetCycle(void) { return cycle; };
-    virtual double             GetTime(void) { return dtime; };
+    virtual int                GetCycle(void) { return (cycleIsAccurate ? cycle : INVALID_CYCLE); };
+    virtual double             GetTime(void) { return (timeIsAccurate ? dtime : INVALID_TIME); };
     virtual bool               ReturnsValidCycle(void) { return haveReadTOC; };
     void                       ActivateTimestep(void);
 
@@ -123,7 +130,9 @@ class avtBOVFileFormat : public avtSTMDFileFormat
     char                      *path;
     std::string                file_pattern;
     int                        cycle;
+    bool                       cycleIsAccurate;
     double                     dtime;
+    bool                       timeIsAccurate;
     long long                  full_size[3];
     long long                  bricklet_size[3];
     long long                  byteOffset;

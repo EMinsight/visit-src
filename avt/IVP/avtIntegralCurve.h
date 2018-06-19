@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -50,6 +50,8 @@
 #include <avtVector.h>
 
 class vtkObject;
+
+typedef bool (*avtIntegralCurveCallback)(void);
 
 // ****************************************************************************
 // Class: DomainType
@@ -174,6 +176,15 @@ class IVP_API DomainType
 //   Hank Childs, Tue Jun  8 09:30:45 CDT 2010
 //   Put sequence tracking code into avtStateRecorderIntegralCurve.
 //
+//   Hank Childs, Mon Oct  4 15:03:43 PDT 2010
+//   Remove termination code.  It now goes in derived types.
+//
+//   Dave Pugmire, Fri Nov  5 15:34:49 EDT 2010
+//   Add counter to handle communication of ICs
+//
+//   Hank Childs, Sun Dec  5 11:43:46 PST 2010
+//   Added data member for tracking when we encounter numerical problems.
+//
 // ****************************************************************************
 
 class IVP_API avtIntegralCurve
@@ -190,14 +201,6 @@ class IVP_API avtIntegralCurve
     {
         STATUS_OK       = 0,
         STATUS_FINISHED = 1,
-    };
-
-    enum TerminationType
-    {
-        TERMINATE_TIME          = 0,
-        TERMINATE_DISTANCE      = 1,
-        TERMINATE_STEPS         = 2,
-        TERMINATE_INTERSECTIONS = 3
     };
 
     enum SerializeFlags
@@ -228,23 +231,29 @@ class IVP_API avtIntegralCurve
     virtual bool      SameCurve(avtIntegralCurve *ic)
                                { return id == ic->id; };
 
-    static bool DomainCompare(const avtIntegralCurve *slA,
-                              const avtIntegralCurve *slB);
+    static bool       DomainCompare(const avtIntegralCurve *slA,
+                                    const avtIntegralCurve *slB);
+
+    bool              EncounteredNumericalProblems(void)
+                             { return encounteredNumericalProblems; };
+
+    void     SetPostStepCallback(avtIntegralCurveCallback func) {postStepCallbackFunction = func; }
 
   protected:
+    avtIntegralCurveCallback postStepCallbackFunction;
+
     avtIntegralCurve( const avtIntegralCurve& );
     avtIntegralCurve& operator=( const avtIntegralCurve& );
     
     virtual void AnalyzeStep( avtIVPStep& step,
                               avtIVPField* field ) = 0;
+    virtual bool    UseFixedTerminationTime(void) { return false; };
+    virtual double  FixedTerminationTime(void)    { return 0; };
 
   public:
 
     Status    status;
     Direction direction;
-
-    double          termination;
-    TerminationType terminationType;
 
     // Helpers needed for figuring out which domain to use next
     std::vector<DomainType> seedPtDomainList;
@@ -254,6 +263,7 @@ class IVP_API avtIntegralCurve
     long id;
     int counter;
 
+    bool   encounteredNumericalProblems;
   protected:
 
     avtIVPSolver*       ivp;
@@ -272,24 +282,6 @@ inline std::ostream& operator<<( std::ostream& out,
         return out << "OK";
     case avtIntegralCurve::STATUS_FINISHED:
         return out << "FINISHED";
-    default:
-        return out << "UNKNOWN";
-    }
-}
-
-inline std::ostream& operator<<( std::ostream& out, 
-                                 avtIntegralCurve::TerminationType term )
-{
-    switch( term )
-    {
-    case avtIntegralCurve::TERMINATE_TIME:
-        return out << "TIME";
-    case avtIntegralCurve::TERMINATE_STEPS:
-        return out << "STEPS";
-    case avtIntegralCurve::TERMINATE_DISTANCE:
-        return out << "DISTANCE";
-    case avtIntegralCurve::TERMINATE_INTERSECTIONS:
-        return out << "INTERSECTIONS";
     default:
         return out << "UNKNOWN";
     }

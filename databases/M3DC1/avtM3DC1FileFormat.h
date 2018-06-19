@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -100,7 +100,6 @@ class avtM3DC1FileFormat : public avtMTSDFileFormat
     vtkDataArray  *GetFieldVar(int, const char *);
 
     vtkPoints *GetMeshPoints(float *elements,
-                             int poloidalPlanes,
                              int refinementLevel);
 
     float * GetElements(int timestate, const char *meshname);
@@ -116,20 +115,25 @@ class avtM3DC1FileFormat : public avtMTSDFileFormat
     hid_t m_fileID;
     std::string m_filename;
     int m_refinement;
-    int m_poloidalPlanes;
     avtCentering m_dataLocation;
     float m_perturbationScale;
 
     std::vector<int>    m_cycles;
     std::vector<double> m_times;
 
-  public:
+public:
     std::vector<std::string> m_scalarVarNames;
     std::vector<std::string> m_fieldVarNames;
 
     // Variables read from mesh and field attributes.
     int nelms;
+    int nvertices;
+    int nplanes;
 
+    int element_dimension;
+    unsigned int element_size;
+    unsigned int scalar_size;
+    
   protected:
     virtual void           PopulateDatabaseMetaData(avtDatabaseMetaData *, int);
 };

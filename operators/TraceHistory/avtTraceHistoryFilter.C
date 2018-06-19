@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -270,6 +270,9 @@ avtTraceHistoryFilter::InitializeDataset(void)
         atts.RemoveVariable(atts.GetVariableName(0));
         nVars = atts.GetNumberOfVariables();
     }
+
+    // Free the memory from the GetAllLeaves function call.
+    delete [] ds;
 
     return rv;
 }

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -43,6 +43,7 @@
 #ifndef AVT_PICS_FILTER_H
 #define AVT_PICS_FILTER_H
 
+#include <avtCellLocator.h>
 #include <avtIntegralCurve.h>
 #include <avtDatasetOnDemandFilter.h>
 #include <avtDatasetToDatasetFilter.h>
@@ -56,7 +57,6 @@
 #include <mpi.h>
 #endif
 
-class avtCellLocator;
 class DomainType;
 class avtICAlgorithm;
 
@@ -68,10 +68,16 @@ class avtICAlgorithm;
 #define STREAMLINE_INTEGRATE_DORMAND_PRINCE 0
 #define STREAMLINE_INTEGRATE_ADAMS_BASHFORTH 1
 #define STREAMLINE_INTEGRATE_M3D_C1_INTEGRATOR 2
+#define STREAMLINE_INTEGRATE_NIMROD_INTEGRATOR 3
 
-#define STREAMLINE_LOAD_ONDEMAND 0
-#define STREAMLINE_PARALLEL_STATIC_DOMAINS 1
-#define STREAMLINE_MASTER_SLAVE 2
+#define STREAMLINE_SERIAL                0
+#define STREAMLINE_PARALLEL_OVER_DOMAINS 1
+#define STREAMLINE_PARALLEL_MASTER_SLAVE 2
+#define STREAMLINE_VISIT_SELECTS         3
+
+
+#define STREAMLINE_PARALLEL_COMM_DOMAINS 4
+
 
 // ****************************************************************************
 // Class: avtPICSFilter
@@ -98,8 +104,29 @@ class avtICAlgorithm;
 //   Christoph Garth, Fri Jul 9 12:53:11 PDF 2010
 //   Replace vtkVisItCellLocator by avtCellLocator
 // 
+//   Hank Childs, Sun Sep 19 11:04:32 PDT 2010
+//   Added UpdateDataObjectInfo.
+//
+//   Hank Childs, Fri Oct  1 20:35:21 PDT 2010
+//   Add an argument for absTol that is a fraction of the bounding box.
+//
+//   Hank Childs, Fri Oct  8 23:30:27 PDT 2010
+//   Allow for multiple termination criterias.
+//
 //   Hank Childs, Thu Oct 21 08:54:51 PDT 2010
 //   Add support for cases where we have an empty data set.
+//
+//   Hank Childs, Sat Nov 27 16:52:12 PST 2010
+//   Add method for updating progress.  This method exists in the base class, 
+//   but is protected.  The purpose of this method is to make it public to the
+//   IC algorithms.
+//
+//   Hank Childs, Sun Nov 28 12:20:12 PST 2010
+//   Add support for caching locators in the database.
+//
+//   Dave Pugmire, Fri Jan 14 11:09:59 EST 2011
+//   Add new communication pattern: RestoreSequenceAssembleUniformly, and
+//   PostStepCallback()
 //
 // ****************************************************************************
 
@@ -110,7 +137,8 @@ class AVTFILTERS_API avtPICSFilter :
   public:
     enum CommunicationPattern
     {
-        RestoreSequence = 0,
+        RestoreSequenceAssembleOnCurrentProcessor = 0,
+        RestoreSequenceAssembleUniformly,
         ReturnToOriginatingProcessor,
         LeaveOnCurrentProcessor,
         UndefinedCommunicationPattern
@@ -135,37 +163,45 @@ class AVTFILTERS_API avtPICSFilter :
 
     // Methods to set the filter's attributes.
     void                      SetMaxStepLength(double len);
-    void                      SetTermination(int type, double term);
-    void                      SetPathlines(bool pathlines, double time0=0.0);
+    void                      SetPathlines(bool pathlines, bool overrideTime, double time0, int _pathlineCMFE);
     void                      SetIntegrationType(int algo);
     void                      SetStreamlineAlgorithm(int algo, int maxCnt,
                                                      int domainCache,
                                                      int workGrpSz);
-    void                      SetTolerances(double reltol, double abstol);
+    void                      SetTolerances(double reltol, double abstol, bool isFraction);
 
     void                      SetIntegrationDirection(int dir);
 
     void                      InitializeLocators(void);
+    void                      UpdateProgress(int amt, int total)
+                                 { avtFilter::UpdateProgress(amt, total); };
 
     virtual void              ReleaseData(void);
+    virtual void              UpdateDataObjectInfo(void);
+
+    void                      ConvertToCartesian(bool val) { convertToCartesian = val; };
+    bool                      PostStepCallback();
+
 
   protected:
     bool   emptyDataset;
     double maxStepLength;
     double relTol;
     double absTol;
-    avtIntegralCurve::TerminationType terminationType;
-    int integrationType;
-    double termination;
+    bool   absTolIsFraction;
+    int    integrationType;
     int    integrationDirection;
     int    dataSpatialDimension;
+    bool   convertToCartesian;
+
     avtICAlgorithm *icAlgo;
 
     avtContract_p lastContract;
 
     std::vector<std::vector<double> > domainTimeIntervals;
-    std::string pathlineVar, pathlineNextTimeVar;
     bool   doPathlines;
+    bool   pathlineOverrideTime;
+    int    pathlineCMFE;
     double seedTime0;
     int    seedTimeStep0;
 
@@ -176,14 +212,17 @@ class AVTFILTERS_API avtPICSFilter :
     int numDomains, numTimeSteps, cacheQLen;
     std::vector<int> domainToRank;
     std::vector<vtkDataSet*>dataSets;
-    std::map<DomainType, avtCellLocator*> domainToCellLocatorMap;
+    std::map<DomainType, avtCellLocator_p> domainToCellLocatorMap;
 
     std::vector<double> pointList;
 
     // Data retrieved from contract
     int activeTimeStep;
 
-    //Timings helpers.
+    // Time slice currently read and being processed
+    int curTimeSlice;
+
+    // Timings helpers.
     int                       numSeedPts, MaxID;
     int                       method;
     int                       maxCount, workGroupSz;
@@ -199,15 +238,15 @@ class AVTFILTERS_API avtPICSFilter :
     virtual bool              CheckOnDemandViability(void);
 
     void                      AdvectParticle(avtIntegralCurve *ic, int maxSteps=-1);
+    void                      AdvectParticle(avtIntegralCurve *ic, vtkDataSet *ds, int maxSteps=-1);
     void                      IntegrateDomain(avtIntegralCurve *ic, 
                                               vtkDataSet *ds,
                                               double *extents,
                                               int maxSteps=-1);
     virtual vtkDataSet        *GetDomain(const DomainType &, double = 0.0, double = 0.0, double = 0.0);
-    virtual int               GetTimeStep(double &t) const;
+    bool                      LoadNextTimeSlice();
+    virtual int               GetTimeStep(double t) const;
     virtual bool              DomainLoaded(DomainType &) const;
-
-    void                      SetZToZero(vtkPolyData *) const;
 
     int                       GetNextCurveID(){ int id = MaxID; MaxID++; return id;}
     void                      CreateIntegralCurvesFromSeeds(std::vector<avtVector> &pts,
@@ -217,9 +256,10 @@ class AVTFILTERS_API avtPICSFilter :
     void                      AddSeedpoints(std::vector<avtVector> &pts,
                                             std::vector<std::vector<int> > &ids);
     void                      DeleteIntegralCurves(std::vector<int> &icIDs);
-    virtual void              CreateIntegralCurveOutput(vector<avtIntegralCurve *> &ics)
-                                                    = 0;
+    virtual void              CreateIntegralCurveOutput(vector<avtIntegralCurve *> &ics) = 0;
     void                      GetTerminatedIntegralCurves(vector<avtIntegralCurve *> &ics);
+
+    virtual void              GetPathlineVelocityMeshVariables(avtDataRequest_p &dataRequest, std::string &velocity, std::string &mesh);
 
     // Helper functions.
     bool                      PointInDomain(avtVector &pt, DomainType &domain);
@@ -231,14 +271,14 @@ class AVTFILTERS_API avtPICSFilter :
     void                      ComputeRankList(const std::vector<int> &domList,
                                               std::vector<int> &ranks,
                                               std::vector<int> &doms );
+    double                    GetLengthScale(void);
+    bool                      CacheLocators(void);
 
-    avtCellLocator           *SetupLocator(const DomainType &, vtkDataSet *);
+    avtCellLocator_p          SetupLocator(const DomainType &, vtkDataSet *);
     virtual avtIVPField      *GetFieldForDomain(const DomainType&, vtkDataSet*);
 
     friend class avtICAlgorithm;
 };
 
-
 #endif
-
 

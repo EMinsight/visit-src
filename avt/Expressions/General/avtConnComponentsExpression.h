@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -106,6 +106,9 @@ class EXPRESSION_API avtConnComponentsExpression : public avtExpressionFilter
     //  Programmer: Cyrus Harrison
     //  Creation:   January 23, 2007
     //
+    //  Modifications:
+    //   Use pointers for faster access.
+    //
     // ************************************************************************
     class UnionFind
     {
@@ -127,9 +130,14 @@ class EXPRESSION_API avtConnComponentsExpression : public avtExpressionFilter
       protected:
         std::vector<int>      ranks;
         std::vector<int>      parents;
-        std::vector<bool>     valid;
+        std::vector<int>      valid;
         std::vector<int>      finalLabels;
         int                   nFinalLabels;
+
+        int  *ranksPtr;
+        int  *parentsPtr;
+        int  *validPtr;
+        int  *finalLabelsPtr;
 
     };
 

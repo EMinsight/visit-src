@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -63,6 +63,19 @@ Parser::Parser()
 {
     G = NULL;
     Init();
+}
+
+// ****************************************************************************
+//  Destructor:  Parser::~Parser
+//
+//  Programmer:  David Camp
+//  Creation:    Tue Jan 11 11:09:24 PST 2011
+//
+// ****************************************************************************
+Parser::~Parser()
+{
+    if (G)
+        delete G;
 }
 
 // ****************************************************************************

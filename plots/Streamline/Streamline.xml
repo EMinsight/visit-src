@@ -5,7 +5,6 @@
     </CXXFLAGS>
     <Files components="V">
       avtStreamlineRenderer.C
-      avtMesaStreamlineRenderer.C
       avtOpenGLStreamlineRenderer.C
       avtGLSLProgram.C
     </Files>
@@ -14,7 +13,6 @@
     </LIBS>
     <Files components="E">
       avtStreamlineRenderer.C
-      avtMesaStreamlineRenderer.C
       avtOpenGLStreamlineRenderer.C
       avtGLSLProgram.C
     </Files>
@@ -43,6 +41,11 @@
         ColorBySeedPointID
         ColorByVariable
       </Enum>
+      <Enum name="CoordinateSystem">
+        AsIs
+        CylindricalToCartesian
+        CartesianToCylindrical
+      </Enum>
       <Enum name="DisplayMethod">
         Lines
         Tubes
@@ -53,7 +56,7 @@
         Backward
         Both
       </Enum>
-      <Enum name="TerminationType">
+      <Enum name="ReferenceType">
         Distance
         Time
         Step
@@ -62,14 +65,16 @@
         LoadOnDemand
         ParallelStaticDomains
         MasterSlave
+        VisItSelects
       </Enum>
       <Enum name="IntegrationType">
         DormandPrince
         AdamsBashforth
         M3DC1Integrator
+        NIMRODIntegrator
       </Enum>
       <Enum name="OpacityType">
-        None
+        FullyOpaque
         Constant
         Ramp
         VariableRange
@@ -84,14 +89,16 @@
         Sphere
         Cone
       </Enum>
+      <Enum name="SizeType">
+        Absolute
+        FractionOfBBox
+      </Enum>
+      <Enum name="PathlinesCMFE">
+        CONN_CMFE
+        POS_CMFE
+      </Enum>
       <Field name="sourceType" label="Source" type="enum" subtype="SourceType">
         SpecifiedPoint
-      </Field>
-      <Field name="maxStepLength" label="maximum step length" type="double">
-        0.100000
-      </Field>
-      <Field name="termination" label="Termination" type="double">
-        10.000000
       </Field>
       <Field name="pointSource" label="Starting point" type="doubleArray" length="3" enabler="sourceType:SpecifiedPoint">
         0.000000
@@ -162,26 +169,8 @@
       <Field name="sampleDensity2" label="sampleDensity2" type="int">
         2
       </Field>
-      <Field name="displayMethod" label="Display method" type="enum" subtype="DisplayMethod">
-        Lines
-      </Field>
-      <Field name="showSeeds" label="Show seed points" type="bool">
-        false
-      </Field>
-      <Field name="showHeads" label="show heads" type="bool">
-        false
-      </Field>
-      <Field name="tubeRadius" label="Radius" type="double">
-        0.125000
-      </Field>
-      <Field name="ribbonWidth" label="ribbonWidth" type="double">
-        0.125000
-      </Field>
-      <Field name="lineWidth" label="Line width" type="linewidth">
-        2
-      </Field>
       <Field name="coloringMethod" label="Coloring method" type="enum" subtype="ColoringMethod">
-        ColorBySpeed
+        ColorByTime
       </Field>
       <Field name="colorTableName" label="Color table" type="colortable">
         Default
@@ -201,20 +190,47 @@
       <Field name="streamlineDirection" label="streamlineDirection" type="enum" subtype="IntegrationDirection">
         Forward
       </Field>
+      <Field name="maxSteps" label="Maximum number of steps" type="int">
+        1000
+      </Field>
+      <Field name="terminateByDistance" label="Use the distance criteria for termination" type="bool">
+        false
+      </Field>
+      <Field name="termDistance" label="Distance for Termination" type="double" enabler="terminateByDistance:true">
+        10.000000
+      </Field>
+      <Field name="terminateByTime" label="Use the time criteria for termination" type="bool">
+        false
+      </Field>
+      <Field name="termTime" label="Time Elapsed for Particle Before Termination" type="double" enabler="terminateByTime:true">
+        10.000000
+      </Field>
+      <Field name="maxStepLength" label="maximum step length" type="double">
+        0.100000
+      </Field>
+      <Field name="limitMaximumTimestep" label="Limit Maximum Timestep (DoPri only)?" type="bool">
+        false
+      </Field>
+      <Field name="maxTimeStep" label="maximum time step length" type="double">
+        0.100000
+      </Field>
       <Field name="relTol" label="rel. tolerance" type="double">
         0.000100
       </Field>
-      <Field name="absTol" label="abs. tolerance" type="double">
-        0.000010
+      <Field name="absTolSizeType" label="AbsoluteToleranceSizeType" type="enum" subtype="SizeType">
+        FractionOfBBox
       </Field>
-      <Field name="terminationType" label="Termination Type" type="enum" subtype="TerminationType">
-        Distance
+      <Field name="absTolAbsolute" label="abs. tolerance" type="double" enabler="absTolSizeType:Absolute">
+        0.000001
+      </Field>
+      <Field name="absTolBBox" label="AbsTolBBox" type="double" enabler="absTolSizeType:FractionOfBBox">
+        0.000001
       </Field>
       <Field name="integrationType" label="Integrator" type="enum" subtype="IntegrationType">
         DormandPrince
       </Field>
       <Field name="streamlineAlgorithmType" label="Streamline algorithm type" type="enum" subtype="StreamlineAlgorithmType">
-        ParallelStaticDomains
+        VisItSelects
       </Field>
       <Field name="maxStreamlineProcessCount" label="maxStreamlineProcessCount" type="int">
         10
@@ -227,6 +243,21 @@
       </Field>
       <Field name="pathlines" label="Do pathlines" type="bool">
         false
+      </Field>
+      <Field name="pathlinesOverrideStartingTimeFlag" label="Override Starting Time" type="bool" enabler="pathlines:true">
+        false
+      </Field>
+      <Field name="pathlinesOverrideStartingTime" label="Starting Time" type="double" enabler="pathlines:true">
+        0.000000
+      </Field>
+      <Field name="pathlinesCMFE" label="CMFE" type="enum" subtype="PathlinesCMFE">
+        POS_CMFE
+      </Field>
+      <Field name="coordinateSystem" label="coordinateSystem" type="enum" subtype="CoordinateSystem">
+        AsIs
+      </Field>
+      <Field name="phiFactor" label="Phi Factor" type="double">
+        0.0
       </Field>
       <Field name="coloringVariable" label="unnamed1" type="string">
       </Field>
@@ -254,20 +285,65 @@
       <Field name="displayEndFlag" label="displayEndFlag" type="bool">
         false
       </Field>
-      <Field name="seedDisplayRadius" label="displaySeedRadius" type="double">
-        0.250000
+      <Field name="referenceTypeForDisplay" label="Reference Type for Display" type="enum" subtype="ReferenceType">
+        Distance
+      </Field>
+      <Field name="displayMethod" label="Display method" type="enum" subtype="DisplayMethod">
+        Lines
+      </Field>
+      <Field name="tubeSizeType" label="tubeSizeType" type="enum" subtype="SizeType">
+        FractionOfBBox
+      </Field>
+      <Field name="tubeRadiusAbsolute" label="Radius (Absolute)" type="double" enabler="tubeSizeType:Absolute">
+        0.125000
+      </Field>
+      <Field name="tubeRadiusBBox" label="Radius (BBox Fraction)" type="double" enabler="tubeSizeType:FractionOfBBox">
+        0.005000
+      </Field>
+      <Field name="ribbonWidthSizeType" label="ribbonWidthSizeType" type="enum" subtype="SizeType">
+        FractionOfBBox
+      </Field>
+      <Field name="ribbonWidthAbsolute" label="ribbonWidthAbsolute" type="double" enabler="ribbonWidthSizeType:Absolute">
+        0.125000
+      </Field>
+      <Field name="ribbonWidthBBox" label="ribbonWidthBBox" type="double" enabler="ribbonWidthSizeType:FractionOfBBox">
+        0.010000
+      </Field>
+      <Field name="lineWidth" label="Line width" type="linewidth">
+        2
+      </Field>
+      <Field name="showSeeds" label="Show seed points" type="bool">
+        true
+      </Field>
+      <Field name="seedRadiusSizeType" label="seedRadiusSizeType" type="enum" subtype="SizeType">
+        FractionOfBBox
+      </Field>
+      <Field name="seedRadiusAbsolute" label="seedRadiusAbsolute" type="double" enabler="seedRadiusSizeType:Absolute">
+        1.000000
+      </Field>
+      <Field name="seedRadiusBBox" label="seedRadiusBBox" type="double" enabler="seedRadiusSizeType:FractionOfBBox">
+        0.015000
+      </Field>
+      <Field name="showHeads" label="show heads" type="bool">
+        false
       </Field>
       <Field name="headDisplayType" label="headDisplayType" type="enum" subtype="GeomDisplayType">
         Sphere
       </Field>
-      <Field name="headDisplayRadius" label="headDisplayRadius" type="double">
+      <Field name="headRadiusSizeType" label="headRadiusSizeType" type="enum" subtype="SizeType">
+        FractionOfBBox
+      </Field>
+      <Field name="headRadiusAbsolute" label="headRadiusAbsolute" type="double" enabler="headRadiusSizeType:Absolute">
         0.250000
       </Field>
-      <Field name="headDisplayHeight" label="headDisplayHeight" type="double">
-        0.500000
+      <Field name="headRadiusBBox" label="headRadiusBBox" type="double" enabler="headRadiusSizeType:FractionOfBBox">
+        0.020000
+      </Field>
+      <Field name="headHeightRatio" label="headHeightRatio" type="double">
+        2.000000
       </Field>
       <Field name="opacityType" label="opacityType" type="enum" subtype="OpacityType">
-        None
+        FullyOpaque
       </Field>
       <Field name="opacityVariable" label="opacityVariable" type="string">
       </Field>
@@ -293,13 +369,13 @@
         Medium
       </Field>
       <Field name="sampleDistance0" label="sampleDistance0" type="double">
-        1.000000
+        10.000000
       </Field>
       <Field name="sampleDistance1" label="sampleDistance1" type="double">
-        1.000000
+        10.000000
       </Field>
       <Field name="sampleDistance2" label="sampleDistance2" type="double">
-        1.000000
+        10.000000
       </Field>
       <Field name="fillInterior" label="fillInterior" type="bool">
         true
@@ -315,6 +391,18 @@
       </Field>
       <Field name="forceNodeCenteredData" label="forceNodeCenteredData" type="bool">
         false
+      </Field>
+      <Field name="issueTerminationWarnings" label="Issue Warning When Termination Criteria Is Not Met" type="bool">
+        true
+      </Field>
+      <Field name="issueStiffnessWarnings" label="Issue warnings when stiffness is encountered" type="bool">
+        true
+      </Field>
+      <Field name="issueCriticalPointsWarnings" label="Issue warnings when critical points are reached" type="bool">
+        true
+      </Field>
+      <Field name="criticalPointThreshold" label="criticalPointThreshold" type="double" enabler="issueCriticalPointsWarnings:true">
+        0.001000
       </Field>
       <Function name="CopyAttributes" user="false" member="true">
       </Function>

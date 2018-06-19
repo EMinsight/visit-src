@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-400142
 # All rights reserved.
@@ -38,6 +38,13 @@
 #   Brad Whitlock, Wed May 26 09:54:12 PDT 2010
 #   I added Jean Favre's life.c which simulates the "game of life".
 #
+#   Kathleen Bonnell, Wed Jan 05 10:25:13 PST 2010
+#   Add FOLDER property.
+#
+#   Brad Whitlock, Tue Jan 18 00:32:18 PST 2011
+#   Force C++ linker for serial SimV2 examples. Otherwise I've noticed we
+#   are exposed to exceptions on newer Linux versions.
+#
 #****************************************************************************/
 
 INCLUDE_DIRECTORIES(
@@ -57,6 +64,7 @@ FUNCTION(SET_SIMULATION_PROPERTIES target)
     SET_TARGET_PROPERTIES(sim_${target} PROPERTIES
         OUTPUT_NAME ${target}
         RUNTIME_OUTPUT_DIRECTORY ${VISIT_BINARY_DIR}/tools/DataManualExamples/Simulations
+        FOLDER tools/DataManualExamples/Simulations
     )
     IF(NOT VISIT_DATA_MANUAL_EXAMPLES)
         SET_TARGET_PROPERTIES(sim_${target} PROPERTIES
@@ -74,10 +82,14 @@ FUNCTION(ADD_EXPORT_DYNAMIC_LINK_FLAGS target)
     )
 ENDFUNCTION(ADD_EXPORT_DYNAMIC_LINK_FLAGS)
 
-# We need more libraries on Linux
-IF(NOT APPLE)
-    SET(EXTRA_SIM_LIBS dl m)
-ENDIF(NOT APPLE)
+# We need more libraries on Linux and Windows
+IF(WIN32)
+    SET(EXTRA_SIM_LIBS ws2_32)
+ELSE(WIN32)
+    IF(NOT APPLE)
+        SET(EXTRA_SIM_LIBS dl m)
+    ENDIF(NOT APPLE)
+ENDIF(WIN32)
 
 ##
 ## SimV1 functions
@@ -139,6 +151,7 @@ ENDFUNCTION(ADD_PARALLEL_FORTRAN_SIMV1_SIMULATION)
 FUNCTION(ADD_SIMV2_SIMULATION target)
     ADD_EXECUTABLE(sim_${target} ${ARGN})
     SET_SIMULATION_PROPERTIES(${target})
+    SET_TARGET_PROPERTIES(sim_${target} PROPERTIES HAS_CXX ON)
     TARGET_LINK_LIBRARIES(sim_${target} simV2 ${EXTRA_SIM_LIBS})
     ADD_TARGET_COMPILE_FLAGS(sim_${target}
         -I${VISIT_SOURCE_DIR}/sim/V2/lib

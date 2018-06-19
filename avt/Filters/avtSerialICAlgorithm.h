@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -74,6 +74,9 @@
 //   Rename class "IC" from "SL", to reflect the emphasis on integral curves,
 //   as opposed to streamlines.
 //
+//   Dave Pugmire, Thu Dec  2 11:21:06 EST 2010
+//   Add CheckNextTimeStepNeeded.
+//
 // ****************************************************************************
 
 class avtSerialICAlgorithm : public avtICAlgorithm
@@ -85,6 +88,7 @@ class avtSerialICAlgorithm : public avtICAlgorithm
     virtual const char*       AlgoName() const {return "Serial";}
     virtual void              Initialize(std::vector<avtIntegralCurve *> &);
     virtual void              ResetIntegralCurvesForContinueExecute();
+    virtual bool              CheckNextTimeStepNeeded(int curTimeSlice);
     virtual void              AddIntegralCurves(std::vector<avtIntegralCurve*> &ics);
 
   protected:

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -304,6 +304,24 @@ int   VisItDetectInputWithTimeout(int blocking, int timeout_usec, int consoledes
  *
  * ****************************************************************************/
 int   VisItAttemptToCompleteConnection(void);
+
+/******************************************************************************
+ * Function: VisItReadConsole
+ *
+ * Purpose: 
+ *   Read characters from the console.
+ *
+ * Arguments: 
+ *   maxlen : The size of the buffer.
+ *   buffer : the buffer into which the values will be read.
+ *
+ * Returns:   VISIT_OKAY on success; VISIT_ERROR on failure
+ *
+ * Note:      This function should be called when VisItDetectInput returns 3.
+ *            Only the root processor should call this function.
+ *
+ * ****************************************************************************/
+int VisItReadConsole(int maxlen, char *buffer);
 
 /******************************************************************************
  * Function: VisItSetSlaveProcessCallback

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -395,4 +395,24 @@ avtCustomRenderer::SetSurfaceRepresentation(int rep)
 {
     ;
 }
+
+
+// ****************************************************************************
+//  Method: avtCustomRenderer::SetBoundingBox
+//
+//  Purpose:
+//      Sets the bounding box of the input.
+//
+//  Programmer: Hank Childs
+//  Creation:   September 30, 2010
+//
+// ****************************************************************************
+
+void
+avtCustomRenderer::SetBoundingBox(const double *b)
+{
+    for (int i = 0 ; i < 6 ; i++)
+        bbox[i] = b[i];
+}
+
 

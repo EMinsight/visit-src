@@ -362,22 +362,22 @@ avtIVPM3DC1Integrator::Step(avtIVPField* field, double t_max,
 
     if( res == avtIVPSolver::OK )
     {
-        ivpstep->resize( 4 );
+        ivpstep->resize( 2 );
 
+        // The integration is done in cylindrical coordinates so
+        // convert to cartesian coordinates. M3D C1 uses right hand coordinats.
         avtVector yCurCart,  yNewCart;
 
-        yCurCart[0] = yCur[0] * sin(yCur[1]);
-        yCurCart[1] = yCur[0] * cos(yCur[1]);
+        yCurCart[0] = yCur[0] * cos(yCur[1]);
+        yCurCart[1] = yCur[0] * sin(yCur[1]);
         yCurCart[2] = yCur[2];
 
-        yNewCart[0] = yNew[0] * sin(yNew[1]);
-        yNewCart[1] = yNew[0] * cos(yNew[1]);
+        yNewCart[0] = yNew[0] * cos(yNew[1]);
+        yNewCart[1] = yNew[0] * sin(yNew[1]);
         yNewCart[2] = yNew[2];
         
         (*ivpstep)[0] = yCurCart;
-        (*ivpstep)[1] = (*ivpstep)[0] + getBfield(field,yCur) * h/3.0;
-        (*ivpstep)[2] = (*ivpstep)[3] - getBfield(field,yNew) * h/3.0;
-        (*ivpstep)[3] = yNewCart;
+        (*ivpstep)[1] = yNewCart;
 
         ivpstep->t0 = t;
         ivpstep->t1 = t + h;
@@ -644,7 +644,8 @@ avtIVPM3DC1Integrator::getBfield1(const avtIVPField* field,
   case 2: /* B3 = curl A_z */
     if (icomp) { /* phi: d^2f/dR^2 + (1/R)df/dR + F0/R^2 */
       *Bout = m3dField->interpdR2(m3dField->f0, element, xieta) +
-        (m3dField->interpdR(m3dField->f0, element, xieta) + m3dField->F0/x[0])/ x[0];
+        (m3dField->interpdR(m3dField->f0, element, xieta) +
+         m3dField->F0/x[0])/ x[0];
       if (dflag) { /* dB3/dphi = d^2f'/dR^2 + (1/R)df'/dR */
         *Bpout = 0.0;
       }
@@ -684,7 +685,7 @@ avtIVPM3DC1Integrator::getBfield2(const avtIVPField* field,
   int    element;
 
   // FIX THIS CODE - It would be preferable to use a dynamic cast but
-  // because the field is passd down a const it can not be used.
+  // because the field is passd down as a const it can not be used.
   avtIVPM3DC1Field *m3dField = (avtIVPM3DC1Field *)(field);
 
   /* Find the element containing the point x; get local coords xi,eta */

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -117,9 +117,11 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     void maxStepLengthProcessText();
     void relTolProcessText();
     void absTolProcessText();
+    void coordinateButtonGroupChanged(int val);
     void analysisChanged(int val);
     void maximumToroidalWindingChanged(int val);
     void overrideToroidalWindingChanged(int val);
+    void overridePoloidalWindingChanged(int val);
     void windingPairConfidenceProcessText();
     void periodicityConsistencyProcessText();
     void adjustPlaneChanged(int val);
@@ -177,10 +179,12 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     QLineEdit *maxStepLength;
     QLineEdit *relTol;
     QLineEdit *absTol;
+    QButtonGroup *coordinateButtonGroup;
     QWidget      *analysis;
     QButtonGroup *analysisButtonGroup;
     QSpinBox *maximumToroidalWinding;
     QSpinBox *overrideToroidalWinding;
+    QSpinBox *overridePoloidalWinding;
     QLineEdit *windingPairConfidence;
     QLineEdit *periodicityConsistency;
     QWidget      *overlaps;
@@ -238,6 +242,7 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     QLabel *analysisLabel;
     QLabel *maximumToroidalWindingLabel;
     QLabel *overrideToroidalWindingLabel;
+    QLabel *overridePoloidalWindingLabel;
     QLabel *windingPairConfidenceLabel;
     QLabel *periodicityConsistencyLabel;
     QLabel *adjustPlaneLabel;
@@ -269,7 +274,4 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
 
     PoincareAttributes *atts;
 };
-
-
-
 #endif

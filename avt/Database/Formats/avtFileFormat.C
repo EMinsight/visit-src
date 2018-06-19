@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -95,6 +95,9 @@ const double avtFileFormat::FORMAT_INVALID_TIME  = INVALID_TIME / 10.0;
 //    Jeremy Meredith, Fri Jan  8 16:15:02 EST 2010
 //    Added ability to turn on stricter file format error checking.
 //
+//    Hank Childs, Sun Dec 26 12:13:19 PST 2010
+//    Initialize doingStreaming.
+//
 // ****************************************************************************
 
 avtFileFormat::avtFileFormat()
@@ -103,6 +106,7 @@ avtFileFormat::avtFileFormat()
     materialName = NULL;
     doMaterialSelection = false;
     canDoStreaming = true;
+    doingStreaming = false;
     metadata = NULL;
     closingFile = false;
     resultMustBeProducedOnlyOnThisProcessor = false;

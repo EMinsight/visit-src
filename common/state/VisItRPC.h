@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -154,8 +154,9 @@ public:
         std::string curStageName;
         AttributeSubject *replyData;
     public:
-        CompletionData() : AttributeSubject("iiiisa"), percent(0),
-                           curStageNum(0), maxStageNum(0), replyData(NULL){ };
+        CompletionData() : AttributeSubject("iiiisa"), percent(0), replyLen(0),
+                           curStageNum(0), maxStageNum(0), curStageName(),
+                           replyData(NULL){ };
         virtual ~CompletionData()                               { };
         void SetPercent(int p)      { percent=p;      Select(0,&percent); };
         int  GetPercent() const     { return percent;        };

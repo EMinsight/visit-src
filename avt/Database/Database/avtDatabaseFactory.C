@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -63,11 +63,13 @@
 #include <DBOptionsAttributes.h>
 
 #include <BadPermissionException.h>
+#include <DBYieldedNoDataException.h>
 #include <FileDoesNotExistException.h>
 #include <DebugStream.h>
 #include <ImproperUseException.h>
 #include <InvalidFilesException.h>
 #include <InvalidDBTypeException.h>
+#include <NonCompliantException.h>
 #include <NonCompliantFileException.h>
 #include <TimingsManager.h>
 
@@ -272,6 +274,9 @@ avtDatabaseFactory::SetDefaultFileOpenOptions(const FileOpenOptions &opts)
 //    We still try preferred plugins before giving up, even if they
 //    don't match the filename.
 //
+//    Hank Childs, Sun Sep 19 09:02:05 PDT 2010
+//    Add parsing for explicit setting of times by user.
+//
 //    Jeremy Meredith, Thu Sep 30 12:16:00 EDT 2010
 //    Allow specified file type to look for a name match, now allowing
 //    "VTK" (as well as "VTK_1.0" which previously worked), for example.
@@ -282,6 +287,16 @@ avtDatabaseFactory::SetDefaultFileOpenOptions(const FileOpenOptions &opts)
 //    failure will at least be relevant (unlike the general case when we
 //    get that failure when guessing which plugin to use).
 //
+//    Mark C. Miller, Fri Oct 29 09:57:32 PDT 2010
+//    Added catch/rethrow of DBYieldedNoDataException
+//
+//    Mark C. Miller, Mon Nov  1 11:28:33 PDT 2010
+//    Fixed handling of DBYieldedNoDataException. Re-throws only when format
+//    is specified. Otherwise, handled like any other exception. This ensures
+//    desired behavior, where empty db moves on to next candidate, occurs.
+//    Also, removed whole TRY/CATCH construct from the format!=NULL case as
+//    per Jeremy's advice that none of the exceptions in that case require
+//    special handling here.
 // ****************************************************************************
 
 avtDatabase *
@@ -301,17 +316,32 @@ avtDatabaseFactory::FileList(DatabasePluginManager *dbmgr,
     int fileIndex = 0;
 
     int nBlocks = 1;
-    if (strstr(filelist[fileIndex], "!NBLOCKS") != NULL)
+    vector<double> times;
+    for (int f = 0 ; f < filelistN ; f++)
     {
-        nBlocks = atoi(filelist[fileIndex] + strlen("!NBLOCKS "));
-        debug1 << "Found a multi-block file with " << nBlocks << " blocks."
-               << endl;
-        fileIndex++;
-    }
-    if (nBlocks <= 0)
-    {
-        debug1 << "BAD SYNTAX FOR N BLOCKS, RESETTING TO 1"  << endl;
-        nBlocks = 1;
+         if (strstr(filelist[fileIndex], "!NBLOCKS ") != NULL)
+         {
+             nBlocks = atoi(filelist[fileIndex] + strlen("!NBLOCKS "));
+             if (nBlocks <= 0)
+             {
+                 debug1 << "BAD SYNTAX FOR N BLOCKS, RESETTING TO 1"  << endl;
+                 nBlocks = 1;
+             }
+             else
+                 debug1 << "Found a multi-block file with " << nBlocks << " blocks."
+                        << endl;
+             fileIndex++;
+         }
+         else if (strstr(filelist[fileIndex], "!TIME ") != NULL)
+         {
+             times.push_back(atof(filelist[fileIndex] + strlen("!TIME ")));
+             fileIndex++;
+         }
+         else
+         {
+             // The whole file index thing mandates that the '!'s go first in the file.
+             break;
+         }
     }
 
     //
@@ -375,33 +405,10 @@ avtDatabaseFactory::FileList(DatabasePluginManager *dbmgr,
                 info->SetReadOptions(new DBOptionsAttributes(*opts));
             }
         }
-        TRY
-        {
-            plugins.push_back(info ? info->GetName(): "");
-            rv = SetupDatabase(info, filelist, filelistN, timestep, fileIndex,
-                               nBlocks, forceReadAllCyclesAndTimes,
-                               treatAllDBsAsTimeVarying, false);
-        }
-        CATCH(NonCompliantFileException)
-        {
-            rv = NULL;
-            RETHROW;
-        }
-        CATCH(ImproperUseException)
-        {
-            rv = NULL;
-            RETHROW;
-        }
-        CATCH(InvalidFilesException)
-        {
-            rv = NULL;
-            RETHROW;
-        }
-        CATCHALL
-        {
-            rv = NULL;
-        }
-        ENDTRY
+        plugins.push_back(info ? info->GetName(): "");
+        rv = SetupDatabase(info, filelist, filelistN, timestep, fileIndex,
+                           nBlocks, forceReadAllCyclesAndTimes,
+                           treatAllDBsAsTimeVarying, false, times);
 
         if (rv == NULL)
         {
@@ -488,7 +495,12 @@ avtDatabaseFactory::FileList(DatabasePluginManager *dbmgr,
             rv = SetupDatabase(info, filelist, filelistN,
                                timestep, fileIndex,
                                nBlocks, forceReadAllCyclesAndTimes,
-                               treatAllDBsAsTimeVarying, true);
+                               treatAllDBsAsTimeVarying, true, times);
+        }
+        CATCH(NonCompliantException)
+        {
+            rv = NULL;
+            RETHROW;
         }
         CATCH(NonCompliantFileException)
         {
@@ -557,7 +569,7 @@ avtDatabaseFactory::FileList(DatabasePluginManager *dbmgr,
                 avtDatabase *dbtmp =
                     SetupDatabase(info, filelist, filelistN, timestep,
                                fileIndex, nBlocks, forceReadAllCyclesAndTimes,
-                               treatAllDBsAsTimeVarying, true);
+                               treatAllDBsAsTimeVarying, true, times);
                 if (dbtmp)
                 {
                     succeeded.push_back(info->GetName());
@@ -566,6 +578,11 @@ avtDatabaseFactory::FileList(DatabasePluginManager *dbmgr,
                     else
                         delete dbtmp;
                 }
+            }
+            CATCH(NonCompliantException)
+            {
+                rv = NULL;
+                RETHROW;
             }
             CATCH(NonCompliantFileException)
             {
@@ -675,7 +692,12 @@ avtDatabaseFactory::FileList(DatabasePluginManager *dbmgr,
             rv = SetupDatabase(info, filelist, filelistN,
                                timestep, fileIndex,
                                nBlocks, forceReadAllCyclesAndTimes,
-                               treatAllDBsAsTimeVarying, true);
+                               treatAllDBsAsTimeVarying, true, times);
+        }
+        CATCH(NonCompliantException)
+        {
+            rv = NULL;
+            RETHROW;
         }
         CATCH(NonCompliantFileException)
         {
@@ -747,6 +769,9 @@ avtDatabaseFactory::FileList(DatabasePluginManager *dbmgr,
 //    Added a new strict file reading mode used when we're trying to
 //    determine what type of file something is.
 //
+//    Hank Childs, Sun Sep 19 09:02:05 PDT 2010
+//    Add argument for explicit setting of times by user.
+//
 // ****************************************************************************
 
 avtDatabase *
@@ -755,7 +780,8 @@ avtDatabaseFactory::SetupDatabase(CommonDatabasePluginInfo *info,
                                   int timestep, int fileIndex, int nBlocks,
                                   bool forceReadAllCyclesAndTimes,
                                   bool treatAllDBsAsTimeVarying, 
-                                  bool strictMode)
+                                  bool strictMode,
+                                  const std::vector<double> &times)
 {
     if (info == 0)
     {
@@ -791,9 +817,21 @@ avtDatabaseFactory::SetupDatabase(CommonDatabasePluginInfo *info,
         rv->SetFileFormat(info->GetID());
         bool forceReadThisStateCycleTime = false;
         if (timestep != -2)
-            rv->GetMetaData(timestep, forceReadAllCyclesAndTimes, 
+        {
+            avtDatabaseMetaData *md = rv->GetMetaData(timestep, 
+                            forceReadAllCyclesAndTimes, 
                             forceReadThisStateCycleTime,
                             treatAllDBsAsTimeVarying);
+            int nStates = md->GetNumStates();
+            // Expectation is that nStates == times.size() or times.size() == 0
+            int nToDo = (nStates < times.size() ? nStates : times.size());
+            for (int i = 0 ; i < nToDo ; i++)
+            {
+                md->SetTime(i, times[i]);
+                md->SetTimeIsAccurate(true, i);
+            }
+        }
+       
         visitTimer->StopTimer(t0, "Forcing file format to do initialization");
         debug4 << "File open appears to be successful." << endl;
     }

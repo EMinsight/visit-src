@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -2582,8 +2582,6 @@ PF3DFileFormat::MasterInformation::Read(PDBFileObject *pdb)
             //
             if (ndims != 2)
             {
-                // Make an array of the proper size
-                double *xyzloc = new double[6*ndom*sizeof(double)];
                 // get a pointer to the domloc array
                 long *domloc = 0;
                 for (int it = 0; it < members.size(); ++it)
@@ -2600,6 +2598,8 @@ PF3DFileFormat::MasterInformation::Read(PDBFileObject *pdb)
                     debug4 << mName << " domloc is not present in the master file" << endl;
                     return false;
                 }
+                // Make an array of the proper size
+                double *xyzloc = new double[6*ndom*sizeof(double)];
                 double xyzbase[6];
                 memcpy(xyzbase, members[i]->data, 6*sizeof(double));
                 for (int id = 0; id < ndom; ++id)

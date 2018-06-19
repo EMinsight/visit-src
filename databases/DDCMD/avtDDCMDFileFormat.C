@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -2219,7 +2219,7 @@ avtDDCMDFileFormat::avtDDCMDFileFormat(const char *filename)
     // only cgrid files were supported and the file was a zero length
     // file.
     //
-    int       maxlen, lbuf;
+    int       maxlen, lbuf=0;
     char      str[1024], *buf, *b;
     FILE     *file;
 

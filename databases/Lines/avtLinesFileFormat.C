@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -288,6 +288,7 @@ avtLinesFileFormat::ReadFile(void)
         string  lineName;
         if (GetPoint(ifile, x, y, z, lineName))
         {
+cerr << "Got point " << x << ", " << y << ", " << z << endl;
             if (headerName.find_first_not_of(" ") != string::npos)
             {
                 lineNames.push_back(headerName);
@@ -324,6 +325,7 @@ avtLinesFileFormat::ReadFile(void)
     //
     int start = 0;
     cutoff.push_back(xl.size());  // Make logic easier.
+cerr << "Cutoff = " << cutoff.size() << endl;
     for (int i = 0 ; i < cutoff.size() ; i++)
     {
         if (start == cutoff[i])
@@ -349,6 +351,7 @@ avtLinesFileFormat::ReadFile(void)
         //
         vtkCellArray *line = vtkCellArray::New();
         pd->SetLines(line);
+cerr << "Inserting lines for " << nPts << " points" << endl;
         for (int k = 1 ; k < nPts ; k++)
         {
             line->InsertNextCell(2);

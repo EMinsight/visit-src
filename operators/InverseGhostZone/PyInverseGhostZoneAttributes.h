@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -44,7 +44,7 @@
 //
 // Functions exposed to the VisIt module.
 //
-#define INVERSEGHOSTZONEATTRIBUTES_NMETH 6
+#define INVERSEGHOSTZONEATTRIBUTES_NMETH 16
 void           PyInverseGhostZoneAttributes_StartUp(InverseGhostZoneAttributes *subj, void *data);
 void           PyInverseGhostZoneAttributes_CloseDown();
 PyMethodDef *  PyInverseGhostZoneAttributes_GetMethodTable(int *nMethods);
