@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2016, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -89,6 +89,7 @@ class avtXDATFileFormat : public avtMTSDFileFormat
     ifstream in;
     std::string filename;
     bool metadata_read;
+    bool full_header;
 
     bool selective_dynamics;
     bool cartesian;
@@ -110,6 +111,7 @@ class avtXDATFileFormat : public avtMTSDFileFormat
     std::vector<int> element_map;
 
     void OpenFileAtBeginning();
+    void ReadHeader( bool read_full_header = 0 );
     void ReadMetaData();
     void ReadTimestep(int);
 };

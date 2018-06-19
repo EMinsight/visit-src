@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2016, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -542,7 +542,12 @@ avtIntegralCurveFilter::UpdateDataObjectInfo(void)
 //    avtPluginFilter::UpdateDataObjectInfo();
     avtPICSFilter::UpdateDataObjectInfo();
 
-    out_atts.AddFilterMetaData("IntegralCurve");
+    // Encode some filter information in the output metadata.
+    std::string params("dataValue=");
+    params += IntegralCurveAttributes::DataValue_ToString(atts.GetDataValue());
+    if(atts.GetDataValue() == IntegralCurveAttributes::Variable)
+        params += (std::string(",dataVariable=") + atts.GetDataVariable());
+    out_atts.AddFilterMetaData("IntegralCurve", params);
 }
 
 

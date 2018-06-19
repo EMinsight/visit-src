@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2016, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -384,7 +384,11 @@ avtFileWriter::CreateFilename(const char *base, bool family, bool fileChecks)
                     msg = statmsg;
                 }
             }
+#if defined(_WIN32)
+            else if (statbuf.st_mode & _S_IWRITE)
+#else
             else if (statbuf.st_mode & S_IWUSR)
+#endif
             {
                 isWriteable = true;
             }

@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2016, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -67,6 +67,9 @@
 #   Eric Brugger, Thu Jan 14 08:44:32 PST 2016
 #   Add linking of vtkm library.
 #
+#   Cyrus Harrison, Mon Nov  7 10:03:35 PST 2016
+#   Add avtPolylineCleanupFilter
+#
 #****************************************************************************/
 
 SET(AVTFILTERS_SOURCES
@@ -96,6 +99,7 @@ avtMultiresFilter.C
 avtNamedSelectionFilter.C
 avtPointToGlyphFilter.C
 avtPolylineAddEndPointsFilter.C
+avtPolylineCleanupFilter.C
 avtPolylineToRibbonFilter.C
 avtPolylineToTubeFilter.C
 avtRayCompositer.C

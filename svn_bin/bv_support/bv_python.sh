@@ -114,7 +114,12 @@ function bv_python_alt_python_dir
 
 function bv_python_depends_on
 {
-    echo ""
+    if [[ "$DO_OPENSSL" == "yes" ]] ; then
+        echo "openssl"
+    else
+        echo ""
+    fi
+
 }
 
 function bv_python_info
@@ -254,32 +259,6 @@ EOF
     return 0
 }
 
-function apply_python_icc_patch
-{
-    info "Patching Python: fix ffi64 issue for icc"
-    patch -f -p0 << \EOF
-diff -c Modules/_ctypes/libffi/src/x86/ffi64.c.orig Modules/_ctypes/libffi/src/x86/ffi64.c
-*** Modules/_ctypes/libffi/src/x86/ffi64.c.orig 2013-11-12 15:02:51.585653535 -0800
---- Modules/_ctypes/libffi/src/x86/ffi64.c      2013-11-12 15:20:47.000000000 -0800
-***************
-*** 39,44 ****
---- 39,45 ----
-  #define MAX_SSE_REGS 8
-  
-  #if defined(__INTEL_COMPILER)
-+ #include "xmmintrin.h"
-  #define UINT128 __m128
-  #else
-  #if defined(__SUNPRO_C)
-EOF
-    if [[ $? != 0 ]] ; then
-        warn "Python patch for icc fialed."
-        return 1
-    fi
-
-    return 0
-}
-
 function apply_python_patch
 {
     if [[ "$OPSYS" == "Darwin" ]]; then
@@ -289,12 +268,6 @@ function apply_python_patch
             if [[ $? != 0 ]] ; then
                 return 1
             fi
-        fi
-    fi
-    if [[ "${C_COMPILER}" == "icc" ]]; then
-        apply_python_icc_patch
-        if [[ $? != 0 ]] ; then
-            return 1
         fi
     fi
 
@@ -349,26 +322,34 @@ function build_python
     fi
     PYTHON_OPT="$cFlags"
     PYTHON_LDFLAGS=""
+    PYTHON_CPPFLAGS=""
     PYTHON_PREFIX_DIR="$VISITDIR/python/$PYTHON_VERSION/$VISITARCH"
     if [[ "$DO_STATIC_BUILD" == "no" ]]; then
         PYTHON_SHARED="--enable-shared"
-        if [[ "$C_COMPILER" == "gcc" ]]; then
-            #
-            # python's --enable-shared configure flag doesn't link
-            # the exes it builds correclty when installed to a non standard
-            # prefix. To resolve this we need to add a rpath linker flags.
-            #
-            mkdir -p ${PYTHON_PREFIX_DIR}/lib/
-            if [[ $? != 0 ]] ; then
-                warn "Python configure failed.  Giving up"
-                return 1
-            fi
+        #
+        # python's --enable-shared configure flag doesn't link
+        # the exes it builds correclty when installed to a non standard
+        # prefix. To resolve this we need to add a rpath linker flags.
+        #
+        mkdir -p ${PYTHON_PREFIX_DIR}/lib/
+        if [[ $? != 0 ]] ; then
+            warn "Python configure failed.  Giving up"
+            return 1
+        fi
 
-            if [[ "$OPSYS" != "Darwin" || ${VER%%.*} -ge 9 ]]; then
-                PYTHON_LDFLAGS="-Wl,-rpath,${PYTHON_PREFIX_DIR}/lib/ -pthread"
-            fi
+        if [[ "$OPSYS" != "Darwin" || ${VER%%.*} -ge 9 ]]; then
+            PYTHON_LDFLAGS="-Wl,-rpath,${PYTHON_PREFIX_DIR}/lib/ -pthread"
         fi
     fi
+
+    if [[ "$DO_OPENSSL" == "yes" ]]; then
+        OPENSSL_INCLUDE="$VISITDIR/openssl/$OPENSSL_VERSION/$VISITARCH/include"
+        OPENSSL_LIB="$VISITDIR/openssl/$OPENSSL_VERSION/$VISITARCH/lib"
+        PYTHON_LDFLAGS="${PYTHON_LDFLAGS} -L ${OPENSSL_LIB}"
+        PYTHON_CPPFLAGS="-I ${OPENSSL_INCLUDE}"
+    fi
+    
+    
     if [[ "$OPSYS" == "AIX" ]]; then
         info "Configuring Python (AIX): ./configure OPT=\"$PYTHON_OPT\" CXX=\"$cxxCompiler\" CC=\"$cCompiler\"" \
              "--prefix=\"$PYTHON_PREFIX_DIR\" --disable-ipv6"
@@ -376,9 +357,11 @@ function build_python
                     --prefix="$PYTHON_PREFIX_DIR" --disable-ipv6
     else
         info "Configuring Python : ./configure OPT=\"$PYTHON_OPT\" CXX=\"$cxxCompiler\" CC=\"$cCompiler\"" \
-             "LDFLAGS=\"$PYTHON_LDFLAGS\""\
+             "LDFLAGS=\"$PYTHON_LDFLAGS\" CPPFLAGS=\"$PYTHON_CPPFLAGS\""\
              "${PYTHON_SHARED} --prefix=\"$PYTHON_PREFIX_DIR\" --disable-ipv6"
-        ./configure OPT="$PYTHON_OPT" CXX="$cxxCompiler" CC="$cCompiler" LDFLAGS="$PYTHON_LDFLAGS" \
+        ./configure OPT="$PYTHON_OPT" CXX="$cxxCompiler" CC="$cCompiler" \
+                    LDFLAGS="$PYTHON_LDFLAGS" \
+                    CPPFLAGS="$PYTHON_CPPFLAGS" \
                     ${PYTHON_SHARED} \
                     --prefix="$PYTHON_PREFIX_DIR" --disable-ipv6
     fi

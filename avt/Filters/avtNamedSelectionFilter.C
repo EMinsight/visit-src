@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2016, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -254,4 +254,26 @@ avtNamedSelectionFilter::ModifyContract(avtContract_p contract)
     return rv;
 }
 
+// ****************************************************************************
+//  Method: avtNamedSelectionFilter::UpdateDataObjectInfo
+//
+//  Purpose:
+//      Changes to the output.
+//
+//  Programmer: Hank Childs
+//  Creation:   February 2, 2009
+//
+//  Modifications:
+//
 
+void
+avtNamedSelectionFilter::UpdateDataObjectInfo(void)
+{
+    avtDataValidity &outValidity = GetOutput()->GetInfo().GetValidity();
+   
+    // We need to set these as invalid, or else caching could
+    // kick in and we might end up using acceleration structures
+    // across pipeline executions that were no longer valid.
+    outValidity.InvalidateNodes();
+    outValidity.InvalidateZones();
+}

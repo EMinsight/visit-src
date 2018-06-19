@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2016, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -118,6 +118,9 @@ class PseudocolorAttributes;
 //   Eric Brugger, Wed Oct 26 09:12:16 PDT 2016
 //   I modified the plot to support independently setting the point style
 //   for the two end points of lines.
+//
+//   Cyrus Harrison, Wed Nov  2 19:09:51 PDT 2016
+//   Remove tubeRadiusVarLabel, the check box used for this includes a label.
 //
 // ****************************************************************************
 
@@ -256,7 +259,6 @@ private:
     QComboBox          *tubeRadiusSizeType;
 
     QCheckBox          *tubeRadiusVarEnabled;
-    QLabel             *tubeRadiusVarLabel;
     QvisVariableButton *tubeRadiusVar;
     QLabel             *tubeRadiusVarRatioLabel;
     QLineEdit          *tubeRadiusVarRatio;

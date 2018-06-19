@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2016, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -547,7 +547,7 @@ void IntegralCurveAttributes::Init()
     velocitySource[0] = 0;
     velocitySource[1] = 0;
     velocitySource[2] = 0;
-    integrationType = AdamsBashforth;
+    integrationType = DormandPrince;
     parallelizationAlgorithmType = VisItSelects;
     maxProcessCount = 10;
     maxDomainCacheSize = 3;

@@ -1,6 +1,6 @@
 #****************************************************************************
 #
-# Copyright (c) 2000 - 2016, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -185,6 +185,9 @@
 #
 #    Kathleen Biagas, Wed Sep 23 09:38:22 MST 2015 
 #    Don't attempt to build HDFS on Windows.
+#
+#    Kathleen Biagas, Fri Jan 6 12:43:32 MST 2017 
+#    Enable Claw on Windows.
 #
 #****************************************************************************/
 
@@ -394,6 +397,7 @@ AUXFile
 AugDecomp
 BOV
 CEAucd
+Claw
 CMAT
 CTRL
 Cube
@@ -462,7 +466,6 @@ ENDIF(TARGET vtkIOEnSight)
 
 IF (NOT WIN32)
     LIST(APPEND REQUIRED_DATABASE_PLUGINS 
-        Claw
         HDFS
         STAR
         TCGA

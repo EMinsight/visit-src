@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2016, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -64,6 +64,9 @@
 #
 #   Cameron Christensen, Thursday, May 22, 2014
 #   I added InvalidConversionException.
+#
+#   Kathleen Biagas, Mon Oct 31 15:23:31 PDT 2016
+#   Add ZLIB_LIB to link libraries for visitcommon on Windows.
 #
 #****************************************************************************/
 
@@ -350,7 +353,7 @@ ADD_LIBRARY(visitcommon
 
 # Specify the libraries to link against on Windows
 IF(WIN32)
-    TARGET_LINK_LIBRARIES(visitcommon ws2_32 shlwapi userenv)
+    TARGET_LINK_LIBRARIES(visitcommon ws2_32 shlwapi userenv ${ZLIB_LIB})
 ELSE(WIN32)
     TARGET_LINK_LIBRARIES(visitcommon ${ZLIB_LIB} ${CMAKE_THREAD_LIBS} ${DL_LIB})
     ADD_EXECUTABLE(StringHelpers_test utility/StringHelpers_test.C)

@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2016, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -56,3 +56,7 @@ IF(NEKTAR++_FOUND)
 ENDIF()
 
 SET_UP_THIRD_PARTY(BOOST lib include ${BOOST_LIBS} )
+
+if(BOOST_FOUND)
+    set(HAVE_BOOST true CACHE BOOL "Have boost ")
+endif()

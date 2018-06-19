@@ -372,8 +372,8 @@ if test "$post" = "true" ; then
 
     # Post the results.
     cd ..
-    scp src/svn_bin/visit-update-test-website $userNersc@$nerscHost:
-    ssh $userNersc@$nerscHost "./visit-update-test-website ${branch}_html.tar.gz"
+    scp src/svn_bin/visit-copy-test-results $userNersc@$nerscHost:
+    ssh $userNersc@$nerscHost "./visit-copy-test-results ${branch}_html.tar.gz"
     if test "$debug" = "true" ; then
         echo "Results posted at: `date`" | mail -s "Results posted" $userEmail
     fi
@@ -407,5 +407,5 @@ chmod 750 $testHost
 if test "$testHost" = "surface" ; then
     scp surface surface:surface_testit
     subTag=`date +%Y-%m-%d-%H:%M`
-    ssh surface "msub -l nodes=1:ppn=16 -l gres=ignore -l walltime=12:00:00 -o surface_testit_$subTag.out -q pbatch -A views -z ./surface_testit"
+    ssh cab "msub -l nodes=1:ppn=16 -l gres=ignore -l walltime=7:00:00 -o surface_testit_$subTag.out -q pbatch -A wbronze -z ./surface_testit"
 fi

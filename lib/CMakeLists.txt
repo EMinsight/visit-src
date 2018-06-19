@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2016, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -171,7 +171,7 @@ IF(VISIT_PYTHON_DIR)
 ENDIF()
 
 # prepare site-packages
-IF(VISIT_PYTHON_FILTERS OR (VISIT_PYTHON_SCRIPTING AND HAVE_PYSIDE))
+IF(VISIT_PYTHON_FILTERS OR (VISIT_PYTHON_SCRIPTING AND HAVE_LIBPYSIDE))
     IF(NOT WIN32)
         EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E make_directory
                         ${CMAKE_CURRENT_BINARY_DIR}/site-packages
@@ -184,7 +184,7 @@ IF(VISIT_PYTHON_FILTERS OR (VISIT_PYTHON_SCRIPTING AND HAVE_PYSIDE))
             MESSAGE(WARNING "Failed to create lib/site-packages/")
         ENDIF(NOT "${LIB_SITE_PKGS_MKDIR}" STREQUAL "0")
     ENDIF(NOT WIN32)
-ENDIF(VISIT_PYTHON_FILTERS OR (VISIT_PYTHON_SCRIPTING AND HAVE_PYSIDE))
+ENDIF(VISIT_PYTHON_FILTERS OR (VISIT_PYTHON_SCRIPTING AND HAVE_LIBPYSIDE))
 
 IF(VISIT_PYTHON_FILTERS)
 # We need to be able to locate the vtk python wrapper lib at run time.
@@ -224,7 +224,7 @@ IF(VISIT_PYTHON_FILTERS)
     ENDIF (NOT WIN32)
 ENDIF(VISIT_PYTHON_FILTERS)
 
-IF(VISIT_PYTHON_SCRIPTING AND HAVE_PYSIDE)
+IF(VISIT_PYTHON_SCRIPTING AND HAVE_LIBPYSIDE)
     MESSAGE(STATUS "Adding PySide to lib/site-packages/")
     IF (NOT WIN32)
         FILE(GLOB PYSIDE_MODULE_ITEMS "${PYSIDE_PYTHONPATH}/*")
@@ -244,13 +244,15 @@ IF(VISIT_PYTHON_SCRIPTING AND HAVE_PYSIDE)
             ENDIF(NOT "${PYSIDE_MODULE_SYM_CREATE}" STREQUAL "0")
         ENDFOREACH(ITM ${PYSIDE_MODULE_ITEMS})
     ELSE (NOT WIN32)
-        ADD_CUSTOM_TARGET(pyside_modules ALL)
-        ADD_CUSTOM_COMMAND(TARGET pyside_modules POST_BUILD
+        ADD_CUSTOM_TARGET(pyside_modules ALL
             COMMAND ${CMAKE_COMMAND} -E copy_directory
                     ${PYSIDE_PYTHONPATH}/PySide
                     ${VISIT_LIBRARY_DIR}/site-packages/PySide
             COMMENT "Copying ${PYSIDE_PYTHONPATH}/PySide to ${VISIT_LIBRARY_DIR}/site-packages/PySide"
-            )
+        )
+        if(VISIT_NO_ALLBUILD)
+            add_dependencies(visit_special_builds pyside_modules)
+        endif()
     ENDIF (NOT WIN32)
-ENDIF(VISIT_PYTHON_SCRIPTING AND HAVE_PYSIDE)
+ENDIF(VISIT_PYTHON_SCRIPTING AND HAVE_LIBPYSIDE)
 

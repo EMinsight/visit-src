@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2016, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -162,6 +162,7 @@ class PIPELINE_API avtZoneIdNamedSelection : public avtNamedSelection
     virtual SELECTION_TYPE  GetType(void) { return ZONE_ID; };
 
     virtual avtContract_p ModifyContract(avtContract_p c0) const;
+    virtual avtDataSelection *CreateSelection(void);
 
     virtual void  Allocate(size_t);
     virtual void  Append(vtkDataSet *ds);

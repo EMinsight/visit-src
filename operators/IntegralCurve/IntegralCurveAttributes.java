@@ -1,6 +1,6 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2016, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
 // LLNL-CODE-442911
 // All rights reserved.
@@ -210,7 +210,7 @@ public class IntegralCurveAttributes extends AttributeSubject implements Plugin
         velocitySource[0] = 0;
         velocitySource[1] = 0;
         velocitySource[2] = 0;
-        integrationType = INTEGRATIONTYPE_ADAMSBASHFORTH;
+        integrationType = INTEGRATIONTYPE_DORMANDPRINCE;
         parallelizationAlgorithmType = PARALLELIZATIONALGORITHMTYPE_VISITSELECTS;
         maxProcessCount = 10;
         maxDomainCacheSize = 3;
@@ -326,7 +326,7 @@ public class IntegralCurveAttributes extends AttributeSubject implements Plugin
         velocitySource[0] = 0;
         velocitySource[1] = 0;
         velocitySource[2] = 0;
-        integrationType = INTEGRATIONTYPE_ADAMSBASHFORTH;
+        integrationType = INTEGRATIONTYPE_DORMANDPRINCE;
         parallelizationAlgorithmType = PARALLELIZATIONALGORITHMTYPE_VISITSELECTS;
         maxProcessCount = 10;
         maxDomainCacheSize = 3;

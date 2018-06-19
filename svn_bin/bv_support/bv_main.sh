@@ -332,6 +332,7 @@ function initialize_build_visit()
     export VISIT_BUILD_MODE="Release"
     export VISIT_SELECTED_DATABASE_PLUGINS=""
     export DO_XDB="no"
+    export VISIT_INSTALL_NETWORK=""
     DOWNLOAD_ONLY="no"
 
 
@@ -843,6 +844,7 @@ function run_build_visit()
                 log-file) LOG_FILE="${arg}";;
                 makeflags) MAKE_OPT_FLAGS="${arg}";;
                 prefix) VISIT_INSTALL_PREFIX="${arg}";;
+                install-network) VISIT_INSTALL_NETWORK="${arg}";;
                 group) GROUP="${arg}";;
                 svn) SVNREVISION="${arg}";;
                 tarball) VISIT_FILE="${arg}";;
@@ -945,6 +947,7 @@ function run_build_visit()
             --fortran) DO_FORTRAN="yes"; ON_FORTRAN="on";;
             --group) next_arg="group"; DO_GROUP="yes"; ON_GROUP="on";;
             -h|--help) next_action="help";;
+            --install-network) next_arg="install-network";;
             --java) DO_JAVA="yes"; ON_JAVA="on";;
             --makeflags) next_arg="makeflags";;
             --no-hostconf) DO_HOSTCONF="no"; ON_HOSTCONF="off";;
@@ -1458,12 +1461,17 @@ function run_build_visit()
     fi
 
     if [[ $VISITARCH == "" ]] ; then
-        export VISITARCH=${ARCH}_${C_COMPILER}
-        if [[ "$CXX_COMPILER" == "g++" ]] ; then
-            VERSION=$(g++ -v 2>&1 | grep "gcc version" | cut -d' ' -f3 | cut -d'.' -f1-2)
+        C_COMPILER_BASENAME=$(basename ${C_COMPILER})
+        CXX_COMPILER_BASENAME=$(basename ${CXX_COMPILER})
+        export VISITARCH=${ARCH}_${C_COMPILER_BASENAME}
+        if [[ "$CXX_COMPILER_BASENAME" == "g++" ]] ; then
+            VERSION=$(${CXX_COMPILER} -v 2>&1 | grep "gcc version" | cut -d' ' -f3 | cut -d'.' -f1-2)
             if [[ ${#VERSION} == 3 ]] ; then
                 VISITARCH=${VISITARCH}-${VERSION}
             fi
+        elif [[ "$CXX_COMPILER_BASENAME" == "icpc" ]] ; then
+            VERSION=$(${CXX_COMPILER} -v 2>&1 | cut -d' ' -f3)
+            VISITARCH=${VISITARCH}-${VERSION}
         fi
     fi
 

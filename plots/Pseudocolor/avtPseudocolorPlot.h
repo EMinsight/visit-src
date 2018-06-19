@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2016, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -53,6 +53,7 @@ class     avtPseudocolorFilter;
 class     avtShiftCenteringFilter;
 class     avtVariablePointGlyphMapper;
 class     avtVariableLegend;
+class     avtPolylineCleanupFilter;
 class     avtPolylineAddEndPointsFilter;
 class     avtPolylineToRibbonFilter;
 class     avtPolylineToTubeFilter;
@@ -171,6 +172,8 @@ class avtPseudocolorPlot : public avtSurfaceDataPlot
     avtLegend_p                 varLegendRefPtr;
     PseudocolorAttributes       atts;
     avtPseudocolorFilter       *pcfilter;
+
+    avtPolylineCleanupFilter   *polylineCleanupFilter;
     avtPolylineAddEndPointsFilter *polylineAddEndPointsFilter;
     avtPolylineToRibbonFilter  *polylineToRibbonFilter;
     avtPolylineToTubeFilter    *polylineToTubeFilter;

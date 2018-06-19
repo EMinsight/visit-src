@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2016, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -44,7 +44,6 @@
 
 #include <vtkRibbonFilter.h>
 #include <vtkAppendPolyData.h>
-#include <vtkCleanPolyData.h>
 #include <vtkDataSet.h>
 #include <vtkPointData.h>
 #include <vtkPolyData.h>
@@ -126,13 +125,6 @@ avtPolylineToRibbonFilter::ExecuteData(avtDataRepresentation *inDR)
 
     vtkPolyData *data = vtkPolyData::SafeDownCast(inDS);
 
-    // Clean duplicate points from the polydata.
-    vtkCleanPolyData *cleanFilter = vtkCleanPolyData::New();
-
-    cleanFilter->SetInputData(data);
-
-    cleanFilter->Update();
-
     // Create the ribbon polydata.
     vtkRibbonFilter *ribbonFilter = vtkRibbonFilter::New();
 
@@ -147,9 +139,7 @@ avtPolylineToRibbonFilter::ExecuteData(avtDataRepresentation *inDR)
             data->GetPointData()->SetActiveScalars(widthVar.c_str());
     }
 
-    ribbonFilter->SetInputData(cleanFilter->GetOutput());
-
-    cleanFilter->Delete();
+    ribbonFilter->SetInputData(data);
 
     ribbonFilter->Update();
 

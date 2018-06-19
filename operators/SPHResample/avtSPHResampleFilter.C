@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- * Copyright (c) 2000 - 2016, Lawrence Livermore National Security, LLC
+ * Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
  * Produced at the Lawrence Livermore National Laboratory
  * LLNL-CODE-442911
  * All rights reserved.
@@ -780,6 +780,9 @@ avtSPHResampleFilter::SampleNMS(vector<double>& scalarValues)
         totalCells = totalCells * gridCells[2];
     }
     
+    // Compute the step size.
+    vector<double> stepXYZ = stepSize<Dim>(latticeMin, latticeMax, gridCells);
+    
     debug5 << "Sampling to " << totalCells << " cells..." << endl;
     
     vector<int> partIdx = GetParticipatingIndices(data_sets, nsets);
@@ -815,8 +818,7 @@ avtSPHResampleFilter::SampleNMS(vector<double>& scalarValues)
             debug5 << npart << " particles to " << gridCells[0] << "x" << gridCells[1] << " cells" << endl;
         }
         
-        // Compute the step size.
-        vector<double> stepXYZ = stepSize<Dim>(latticeMin, latticeMax, gridCells);
+        
         
         // Prepare the output
         vector<double> m0(totalCells, 0.0);  // moments of data points
@@ -1320,6 +1322,8 @@ avtSPHResampleFilter::Sample(vector<sphData>& data)
             ExtendBoundsIfNeeded(bounds);
         }
         
+         visitTimer->StopTimer(timerHandle, "avtSPHResample::Sample - stop 1");
+        
         // Synchronize moments
         if(data.size() > 0)
         {
@@ -1330,6 +1334,8 @@ avtSPHResampleFilter::Sample(vector<sphData>& data)
             sphData fakeData(0, Dim);
             SynchMoments(fakeData);
         }
+        
+        timerHandle = visitTimer->StartTimer();
         
         // Compute A and B Correction Values
         for(int i=0; i<data.size(); i++)
@@ -1624,6 +1630,8 @@ avtSPHResampleFilter::Sample(vector<sphData>& data)
         }
     } // End Else
     
+    visitTimer->StopTimer(timerHandle, "avtSPHResample::Sample - stop 2");
+    
     // Synchronize scalar values
     if(data.size() > 0)
     {
@@ -1640,7 +1648,7 @@ avtSPHResampleFilter::Sample(vector<sphData>& data)
         appender->Delete();
     }
     
-    visitTimer->StopTimer(timerHandle, "avtSPHResample::Sample");
+//    visitTimer->StopTimer(timerHandle, "avtSPHResample::Sample");
 }
 
 // ****************************************************************************
@@ -1797,13 +1805,18 @@ avtSPHResampleFilter::ExecuteNMS()
 // Creation:    Tue Jun 21 16:37:00 PDT 2016
 //
 //  Modifications:
+//      Kevin Griffin, Thu Dec 22 13:08:30 PST 2016
+//      Commented out the filtering code. The filtering needs to use the
+//      smoothing (influence) length in addtion to the bounds. The current
+//      implementation caused too many particles to be removed which resulted in
+//      the appearance of "holes" in the final image.
 //
 // ****************************************************************************
 vector<int>
 avtSPHResampleFilter::GetParticipatingIndices(vtkDataSet **dsets, const int nsets)
 {
     vector<int> partIdx;
-    bool good;
+    /*bool good;
     double bounds[6];
     
     double latticeMinXYZ[3] = {atts.GetMinX(), atts.GetMinY(), nDim == 3 ? atts.GetMinZ() : 0};
@@ -1828,7 +1841,12 @@ avtSPHResampleFilter::GetParticipatingIndices(vtkDataSet **dsets, const int nset
         {
             partIdx.push_back(j);
         }
+    }*/
+    for(int j=0; j<nsets; j++)
+    {
+        partIdx.push_back(j);
     }
+    
     
     return partIdx;
 }
