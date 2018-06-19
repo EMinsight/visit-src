@@ -1,0 +1,123 @@
+#/usr/bin/cmake
+##
+## ./build_visit generated host.cmake
+## created: Fri Jul 28 08:25:12 EDT 2017
+## system: Linux whoopingcough 4.4.0-83-generic #106-Ubuntu SMP Mon Jun 26 17:54:43 UTC 2017 x86_64 x86_64 x86_64 GNU/Linux
+## by: pugmire
+
+##
+## Setup VISITHOME & VISITARCH variables.
+##
+SET(VISITHOME /apps/visit/thirdparty/visit)
+SET(VISITARCH linux-x86_64_gcc-5.4)
+
+## Compiler flags.
+##
+VISIT_OPTION_DEFAULT(VISIT_C_COMPILER gcc TYPE FILEPATH)
+VISIT_OPTION_DEFAULT(VISIT_CXX_COMPILER g++ TYPE FILEPATH)
+VISIT_OPTION_DEFAULT(VISIT_C_FLAGS " -m64 -fPIC -fvisibility=hidden" TYPE STRING)
+VISIT_OPTION_DEFAULT(VISIT_CXX_FLAGS " -m64 -fPIC -fvisibility=hidden" TYPE STRING)
+
+##
+## Parallel Build Setup.
+##
+VISIT_OPTION_DEFAULT(VISIT_PARALLEL ON TYPE BOOL)
+## (configured w/ mpi compiler wrapper)
+VISIT_OPTION_DEFAULT(VISIT_MPI_COMPILER /usr/bin/mpicc TYPE FILEPATH)
+
+##
+## VisIt Thread Option
+##
+VISIT_OPTION_DEFAULT(VISIT_THREAD OFF TYPE BOOL)
+
+##############################################################
+##
+## Database reader plugin support libraries
+##
+## The HDF4, HDF5 and NetCDF libraries must be first so that
+## their libdeps are defined for any plugins that need them.
+##
+## For libraries with LIBDEP settings, order matters.
+## Libraries with LIBDEP settings that depend on other
+## Library's LIBDEP settings must come after them.
+##############################################################
+##
+
+##
+## Python
+##
+VISIT_OPTION_DEFAULT(VISIT_PYTHON_DIR /usr)
+VISIT_OPTION_DEFAULT(PYTHON_INCLUDE_PATH /usr/include/python2.7 )
+VISIT_OPTION_DEFAULT(PYTHON_LIBRARY /usr/lib/x86_64-linux-gnu/libpython2.7.so)
+VISIT_OPTION_DEFAULT(PYTHON_LIBRARY_DIR /usr/lib/x86_64-linux-gnu)
+VISIT_OPTION_DEFAULT(PYTHON_VERSION 2.7)
+SET(VISIT_PYTHON_SKIP_INSTALL ON)
+
+##
+## Qt
+##
+SETUP_APP_VERSION(QT 4.8.7)
+VISIT_OPTION_DEFAULT(QT_QTUITOOLS_INCLUDE_DIR /usr/include/qt4/QtUiTools)
+VISIT_OPTION_DEFAULT(VISIT_QT_BIN /usr/lib/x86_64-linux-gnu/qt4/bin)
+SET(VISIT_QT_SKIP_INSTALL ON)
+
+##
+## QWT
+##
+SETUP_APP_VERSION(QWT 6.1.2)
+VISIT_OPTION_DEFAULT(VISIT_QWT_DIR ${VISITHOME}/qwt/${QWT_VERSION}/${VISITARCH})
+
+##
+## VTK
+##
+SETUP_APP_VERSION(VTK 6.1.0)
+VISIT_OPTION_DEFAULT(VISIT_VTK_DIR ${VISITHOME}/vtk/${VTK_VERSION}/${VISITARCH})
+
+##
+## ADIOS
+## (configured w/ mpi compiler wrapper)
+##
+SETUP_APP_VERSION(ADIOS 1.12.0)
+VISIT_OPTION_DEFAULT(VISIT_ADIOS_DIR ${VISITHOME}/adios/${ADIOS_VERSION}/${VISITARCH})
+
+##
+## SZIP
+##
+VISIT_OPTION_DEFAULT(VISIT_SZIP_DIR ${VISITHOME}/szip/2.1/${VISITARCH})
+
+##
+## HDF5
+##
+VISIT_OPTION_DEFAULT(VISIT_HDF5_DIR ${VISITHOME}/hdf5/1.8.14/${VISITARCH})
+VISIT_OPTION_DEFAULT(VISIT_HDF5_LIBDEP ${VISITHOME}/szip/2.1/${VISITARCH}/lib sz /usr/lib/x86_64-linux-gnu z TYPE STRING)
+
+##
+## Conduit
+##
+VISIT_OPTION_DEFAULT(VISIT_CONDUIT_DIR ${VISITHOME}/conduit/0.2.1/${VISITARCH})
+VISIT_OPTION_DEFAULT(VISIT_CONDUIT_LIBDEP HDF5_LIBRARY_DIR hdf5 ${VISIT_HDF5_LIBDEP} TYPE STRING)
+
+##
+## Ice-T
+##
+VISIT_OPTION_DEFAULT(VISIT_ICET_DIR ${VISITHOME}/icet/1.0.0/${VISITARCH})
+##
+
+##
+## NetCDF
+##
+VISIT_OPTION_DEFAULT(VISIT_NETCDF_DIR ${VISITHOME}/netcdf/4.1.1/${VISITARCH})
+VISIT_OPTION_DEFAULT(VISIT_NETCDF_LIBDEP HDF5_LIBRARY_DIR hdf5_hl HDF5_LIBRARY_DIR hdf5 ${VISIT_HDF5_LIBDEP} TYPE STRING)
+
+##
+## Silo
+##
+VISIT_OPTION_DEFAULT(VISIT_SILO_DIR ${VISITHOME}/silo/4.10.1/${VISITARCH})
+VISIT_OPTION_DEFAULT(VISIT_SILO_LIBDEP HDF5_LIBRARY_DIR hdf5 ${VISIT_HDF5_LIBDEP} /usr/lib/x86_64-linux-gnu z TYPE STRING)
+
+##
+## Xdmf
+##
+VISIT_OPTION_DEFAULT(VISIT_XDMF_DIR ${VISITHOME}/Xdmf/2.1.1/${VISITARCH})
+VISIT_OPTION_DEFAULT(VISIT_XDMF_LIBDEP HDF5_LIBRARY_DIR hdf5  VTK_LIBRARY_DIRS vtklibxml2-${VTK_MAJOR_VERSION}.${VTK_MINOR_VERSION}  TYPE STRING)
+
