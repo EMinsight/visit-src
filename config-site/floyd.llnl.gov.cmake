@@ -43,15 +43,15 @@ VISIT_OPTION_DEFAULT(VISIT_PYSIDE_DIR ${VISITHOME}/pyside/1.1.1/${VISITARCH}/)
 ##
 VISIT_OPTION_DEFAULT(VISIT_C_COMPILER gcc TYPE STRING)
 VISIT_OPTION_DEFAULT(VISIT_CXX_COMPILER g++ TYPE STRING)
-VISIT_OPTION_DEFAULT(VISIT_C_FLAGS " -m64 -fPIC -fvisibility=hidden" TYPE STRING)
-VISIT_OPTION_DEFAULT(VISIT_CXX_FLAGS " -m64 -fPIC -fvisibility=hidden" TYPE STRING)
+VISIT_OPTION_DEFAULT(VISIT_C_FLAGS " -m64 -fvisibility=hidden" TYPE STRING)
+VISIT_OPTION_DEFAULT(VISIT_CXX_FLAGS " -m64 -fvisibility=hidden" TYPE STRING)
 
 ##
 ## Parallel Build Setup.
 ##
 VISIT_OPTION_DEFAULT(VISIT_PARALLEL ON TYPE BOOL)
 ## (configured w/ mpi compiler wrapper)
-VISIT_OPTION_DEFAULT(VISIT_MPI_COMPILER /home/miller86/visit/visit/install/mpich2-1.4/linux-x86_64_gcc-4.1/bin/mpic++ TYPE STRING)
+VISIT_OPTION_DEFAULT(VISIT_MPI_COMPILER /home/miller86/visit/visit/install/mpich2-1.4/linux-x86_64_gcc-4.1/bin/mpicc TYPE STRING)
 
 ##############################################################
 ##

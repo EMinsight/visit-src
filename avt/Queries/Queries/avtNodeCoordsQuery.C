@@ -98,21 +98,28 @@ avtNodeCoordsQuery::~avtNodeCoordsQuery()
 //  Programmer: Kathleen Biagas 
 //  Creation:   June 20, 2011 
 //
+//  Modifications:
+//    Kathleen Biagas, Mon Dec  3 17:32:31 PST 2012
+//    Remove 'domain' requirement.  Single-domain problems shouldn't need to 
+//    have a domain specified.
+//
+//    Kathleen Biagas, Thu Jan 10 08:12:47 PST 2013
+//    Use newer MapNode methods that check for numeric entries and retrieves 
+//    to specific type.
+//
 // ****************************************************************************
 
 void
 avtNodeCoordsQuery::SetInputParams(const MapNode &params)
 {
-    if (params.HasEntry("use_global_id"))
-        useGlobalId = params.GetEntry("use_global_id")->AsInt();
+    if (params.HasNumericEntry("use_global_id"))
+        useGlobalId = params.GetEntry("use_global_id")->ToBool();
 
-    if (params.HasEntry("domain"))
-        domain = params.GetEntry("domain")->AsInt();
-    else if (!useGlobalId)
-        EXCEPTION1(QueryArgumentException, "domain");
+    if (params.HasNumericEntry("domain"))
+        domain = params.GetEntry("domain")->ToInt();
 
-    if (params.HasEntry("element"))
-        element = params.GetEntry("element")->AsInt();
+    if (params.HasNumericEntry("element"))
+        element = params.GetEntry("element")->ToInt();
     else
         EXCEPTION1(QueryArgumentException, "element");
 }
@@ -173,6 +180,10 @@ avtNodeCoordsQuery::GetDefaultInputParams(MapNode &params)
 //    Kathleen Biagas, Tue Jun 21 10:24:16 PDT 2011
 //    Domain, element, useGlobalId retrieved in SetInputParams.
 //
+//    Kathleen Biagas, Mon Dec  3 17:34:56 PST 2012
+//    Remove use of nodeOrigin to set output message. Element is the correct
+//    id, nodeOrigin taken into acount in the 'Find???Coord' methods.
+//
 // ****************************************************************************
 
 void
@@ -225,7 +236,6 @@ avtNodeCoordsQuery::PerformQuery(QueryAttributes *qA)
 
     char msg[120];
 
-    int nodeOrigin = GetInput()->GetInfo().GetAttributes().GetNodeOrigin();
     if (success)
     {
         int dim = GetInput()->GetInfo().GetAttributes().GetSpatialDimension();
@@ -239,7 +249,7 @@ avtNodeCoordsQuery::PerformQuery(QueryAttributes *qA)
                 format = "The coords of %s node %d are (" + floatFormat + ", " 
                                                           + floatFormat + ").";
                 SNPRINTF(msg, 120, format.c_str(), 
-                         global.c_str(), element+nodeOrigin, coord[0], coord[1]);
+                         global.c_str(), element, coord[0], coord[1]);
             }
             else 
             {
@@ -247,7 +257,7 @@ avtNodeCoordsQuery::PerformQuery(QueryAttributes *qA)
                                                           + floatFormat + ", " 
                                                           + floatFormat + ").";
                 SNPRINTF(msg, 120, format.c_str(), 
-                         global.c_str(), element+nodeOrigin, 
+                         global.c_str(), element, 
                          coord[0], coord[1], coord[2]);
             }
         }
@@ -265,7 +275,7 @@ avtNodeCoordsQuery::PerformQuery(QueryAttributes *qA)
                 format = "The coords of node %d (%s) are (" + floatFormat +", " 
                                                             + floatFormat +").";
                 SNPRINTF(msg, 120, format.c_str(), 
-                         element+nodeOrigin, domainName.c_str(),
+                         element, domainName.c_str(),
                          coord[0], coord[1]);
             }
             else 
@@ -275,7 +285,7 @@ avtNodeCoordsQuery::PerformQuery(QueryAttributes *qA)
                                                             + floatFormat +").";
 
                 SNPRINTF(msg, 120, format.c_str(), 
-                         element+nodeOrigin, domainName.c_str(),
+                         element, domainName.c_str(),
                          coord[0], coord[1], coord[2]);
             }
         }
@@ -291,7 +301,7 @@ avtNodeCoordsQuery::PerformQuery(QueryAttributes *qA)
         if (singleDomain)
         {
             SNPRINTF(msg, 120, "The coords of node %d could not be determined.",
-                     element+nodeOrigin);
+                     element);
         }
         else
         {
@@ -303,7 +313,7 @@ avtNodeCoordsQuery::PerformQuery(QueryAttributes *qA)
             string domainName;
             src->GetDomainName(var, ts, dom, domainName);
             SNPRINTF(msg, 120, "The coords of node %d (%s) could not be determined.",
-                     element+nodeOrigin, domainName.c_str());
+                     element, domainName.c_str());
         }
     }
 

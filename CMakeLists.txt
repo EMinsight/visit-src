@@ -308,6 +308,18 @@
 #    Kathleen Biagas, Wed Sep 12 16:02:02 PDT 2012
 #    Added VISIT_INSTALL_PROFILES_TO_HOST as a first-class VisIt option.
 #
+#    Kathleen Biagas, Mon Dec 17 16:56:38 MST 2012
+#    Use CMake's FindMPI module for windows.
+#
+#    Cyrus Harrison, Thu Jan 10 10:03:50 PST 2013
+#    Try to capture the full cmake invocation command line.
+#    On non windows systems, generate a script that allows re-config
+#    from scratch using the captured invocation command line.
+#
+#    Mark C. Miller, Tue Jan 15 17:15:43 PST 2013
+#    Modified cmake invokation logic to ensure the CMAKE_INVOKE variable
+#    is indeed (forced) cached so it winds up in CMakeCache.txt and
+#    adjusted name of the shell script to recmake_visit.sh.
 #****************************************************************************/
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8.8 FATAL_ERROR)
@@ -315,6 +327,38 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.8.8 FATAL_ERROR)
 IF (COMMAND cmake_policy)
     cmake_policy(SET CMP0003 NEW)
 ENDIF (COMMAND cmake_policy)
+
+#
+# Try to capture the initial set of cmake command line args passed by
+# the user for configuration.
+# Recipe taken from http://stackoverflow.com/questions/10205986/how-to-capture-cmake-command-line-arguments
+#
+# Note: The entrires will live on CMakeCache.txt, so re-configuring with
+# a command line that doesn't include an option won't remove it. You need
+# to remove the CMakeCache.txt file, or override the value via the command line.
+#
+#
+GET_CMAKE_PROPERTY(CACHE_VARS CACHE_VARIABLES)
+FOREACH(CACHE_VAR ${CACHE_VARS})
+  GET_PROPERTY(CACHE_VAR_HELPSTRING CACHE ${CACHE_VAR} PROPERTY HELPSTRING)
+  IF(CACHE_VAR_HELPSTRING STREQUAL "No help, variable specified on the command line.")
+    GET_PROPERTY(CACHE_VAR_TYPE CACHE ${CACHE_VAR} PROPERTY TYPE)
+    IF(CACHE_VAR_TYPE STREQUAL "UNINITIALIZED")
+      SET(CACHE_VAR_TYPE)
+    ELSE(CACHE_VAR_TYPE STREQUAL "UNINITIALIZED")
+      SET(CACHE_VAR_TYPE :${CACHE_VAR_TYPE})
+    ENDIF()
+    SET(CMAKE_INVOKE_ARGS "${CMAKE_INVOKE_ARGS} -D${CACHE_VAR}${CACHE_VAR_TYPE}=\"${${CACHE_VAR}}\"")
+  ENDIF()
+ENDFOREACH(CACHE_VAR ${CACHE_VARS})
+# Record the full command line invocation.
+SET(CMAKE_INVOKE "${CMAKE_COMMAND} ${CMAKE_INVOKE_ARGS} ${CMAKE_CURRENT_SOURCE_DIR}" CACHE STRING "Command used to invoke cmake" FORCE)
+# Create a simple shell script that allows us to reinvoke cmake with the captured command line.
+IF (NOT WIN32)
+    FILE(WRITE ${CMAKE_BINARY_DIR}/recmake_visit.sh "!/bin/sh\n"
+                                                     "rm -f CMakeCache.txt\n"
+                                                     "${CMAKE_INVOKE}\n")
+ENDIF (NOT WIN32)
 
 
 # Tell the CMake makefile generator to not have rules depend on
@@ -874,6 +918,12 @@ INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItVTK.cmake)
 #   Disable python filters.
 #-----------------------------------------------------------------------------
 
+# Disable Python filters if we don't have Python.
+IF(VISIT_PYTHON_FILTERS AND NOT PYTHONLIBS_FOUND)
+    SET(VISIT_PYTHON_FILTERS OFF)
+    MESSAGE(STATUS "Python Engine Filters disabled because Python was not found.")
+ENDIF(VISIT_PYTHON_FILTERS AND NOT PYTHONLIBS_FOUND)
+
 # VTK Python's wrappers are not available with a static build of VTK.
 IF(VISIT_PYTHON_FILTERS AND VISIT_STATIC)
     SET(VISIT_PYTHON_FILTERS OFF)
@@ -904,16 +954,18 @@ IF(NOT VISIT_DBIO_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_SERVER_COMPONENTS
 ENDIF(NOT VISIT_DBIO_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_SERVER_COMPONENTS_ONLY)
 
 # Configure PySide Support
-IF(VISIT_PYTHON_SCRIPTING AND NOT VISIT_DBIO_ONLY
+IF(VISIT_PYTHON_SCRIPTING AND PYTHONLIBS_FOUND
+                          AND NOT VISIT_DBIO_ONLY
                           AND NOT VISIT_ENGINE_ONLY
                           AND NOT VISIT_SERVER_COMPONENTS_ONLY)
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindPySide.cmake)
     IF(PYSIDE_FOUND)
         SET(HAVE_PYSIDE 1)
     ENDIF(PYSIDE_FOUND)
-ENDIF(VISIT_PYTHON_SCRIPTING AND NOT VISIT_DBIO_ONLY
-                          AND NOT VISIT_ENGINE_ONLY
-                          AND NOT VISIT_SERVER_COMPONENTS_ONLY)
+ENDIF(VISIT_PYTHON_SCRIPTING AND PYTHONLIBS_FOUND
+                             AND NOT VISIT_DBIO_ONLY
+                             AND NOT VISIT_ENGINE_ONLY
+                             AND NOT VISIT_SERVER_COMPONENTS_ONLY)
 
 # Treat GLEW as a 3rd party builtin.
 SET(GLEW_FOUND 1)
@@ -1226,7 +1278,7 @@ IF(VISIT_PARALLEL)
         ELSE(VISIT_MPI_LIBS OR VISIT_MPI_FORTRAN_LIBS)
             IF(WIN32)
               IF(NOT MPI_FOUND)
-                INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindMPI.cmake)
+                INCLUDE(${CMAKE_ROOT}/Modules/FindMPI.cmake)
                 IF(MPI_FOUND)
                   STRING(REPLACE " " ";" VPFLAGS "${VPFLAGS}")
                   SET(VISIT_PARALLEL_DEFS "${VPFLAGS}"
@@ -2185,4 +2237,10 @@ ELSE (NOT WIN32)
         MESSAGE(FATAL_ERROR "NSIS installer package requested, but 'makensis' could not be found.")
       ENDIF(${MAKENSIS_FOUND})
     ENDIF(VISIT_MAKE_NSIS_INSTALLER)
+ENDIF (NOT WIN32)
+
+IF (NOT WIN32)
+    MESSAGE(STATUS "\n\nUse recmake_visit.sh or search for `CMAKE_INVOKE' in CMakeCache.txt to re-run CMake with the same arguments\n\n")
+ELSE (NOT WIN32)
+    MESSAGE(STATUS "\n\nSearch for `CMAKE_INVOKE' in CMakeCache.txt to re-run CMake with the same arguments\n\n")
 ENDIF (NOT WIN32)

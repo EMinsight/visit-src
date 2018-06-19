@@ -18,14 +18,14 @@ VISIT_OPTION_DEFAULT(CMAKE_INSTALL_PREFIX /sw/analysis-x64/visit)
 ##
 VISIT_OPTION_DEFAULT(VISIT_C_COMPILER gcc TYPE FILEPATH)
 VISIT_OPTION_DEFAULT(VISIT_CXX_COMPILER g++ TYPE FILEPATH)
-VISIT_OPTION_DEFAULT(VISIT_C_FLAGS " -m64 -fPIC -fvisibility=hidden" TYPE STRING)
-VISIT_OPTION_DEFAULT(VISIT_CXX_FLAGS " -m64 -fPIC -fvisibility=hidden" TYPE STRING)
+VISIT_OPTION_DEFAULT(VISIT_C_FLAGS " -m64 -fvisibility=hidden" TYPE STRING)
+VISIT_OPTION_DEFAULT(VISIT_CXX_FLAGS " -m64 -fvisibility=hidden" TYPE STRING)
 
 ## 
 ## Parallel Build Setup. 
 ## 
 ## (configured w/ mpi compiler wrapper) 
-VISIT_OPTION_DEFAULT(VISIT_MPI_COMPILER /sw/analysis-x64/ompi/1.4.2/centos5.5_gnu4.4.4/bin/mpicxx TYPE STRING) 
+VISIT_OPTION_DEFAULT(VISIT_MPI_COMPILER /sw/analysis-x64/ompi/1.4.2/centos5.5_gnu4.4.4/bin/mpicc TYPE STRING) 
 
 
 ##############################################################

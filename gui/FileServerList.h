@@ -53,6 +53,7 @@
 
 // Forward declarations.
 class avtDatabaseMetaData;
+class HostProfileList;
 class MessageAttributes;
 
 // ****************************************************************************
@@ -238,6 +239,7 @@ public:
     virtual void Notify();
     void SilentNotify();
     void Initialize();
+    void SetProfiles(const HostProfileList *);
 
     virtual bool CreateNode(DataNode *, bool, bool);
     virtual void SetFromNode(DataNode *);
@@ -313,6 +315,7 @@ public:
     stringVector GetVirtualFileDefinition(const QualifiedFilename &) const;
     int GetVirtualFileDefinitionSize(const QualifiedFilename &) const;
 
+    void SetStartServerCallback(ConnectCallback *cb, void *data);
     void SetConnectCallback(ConnectCallback *cb, void *data);
     void SetProgressCallback(bool (*cb)(void *, int), void *data);
 
@@ -414,15 +417,19 @@ private:
     StringStringVectorMap virtualFiles;
 
     // Used to tell the viewer to launch an mdserver.
+    ConnectCallback *startServerCallback;
+    void            *startServerCallbackData;
     ConnectCallback *connectCallback;
     void            *connectCallbackData;
     // Used to update the GUI while launching an mdserver.
     bool           (*progressCallback)(void *, int);
     void            *progressCallbackData;
 
-    // Used to tell the
     // Used for error messaging.
     MessageAttributes      *messageAtts;
+
+    // Used when we need the host profiles.
+    const HostProfileList  *profiles;
 };
 
 #endif

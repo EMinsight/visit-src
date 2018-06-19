@@ -136,7 +136,19 @@ function bv_vtk_dry_run
 
 function apply_vtk_580a_patch
 {
+
     # As of 11/4/2012 all patches were rolled into 5.8.0.a.
+    if [[ ! -e ${VTK_BUILD_DIR}/Wrapping/Python/CMakeLists.txt ]]; then
+        return 0
+    fi
+    patch ${VTK_BUILD_DIR}/Wrapping/Python/CMakeLists.txt <<\EOF
+189a190,193
+> IF (VTK_USE_GNU_R)
+>   SET(VTKPYTHON_LINK_LIBS ${VTKPYTHON_LINK_LIBS}  ${R_LIBRARIES})
+> ENDIF(VTK_USE_GNU_R)
+> 
+EOF
+
     return 0
 }
 
@@ -408,7 +420,7 @@ function build_vtk
             #remove python since mangle vtk libraries does not support python (yet:TODO:Fix this)
             VTK_LIB_NAMES="libMapReduceMPI libmpistubs libmtkCommon libmtkDICOMParser libmtkFiltering libmtkGenericFiltering libmtkGeovis libmtkGraphics libmtkHybrid libmtkInfovis libmtkIO libmtkImaging libmtkRendering libmtkViews libmtkVolumeRendering libmtkWidgets libmtkalglib libmtkexpat libmtkfreetype libmtkftgl libmtkjpeg libmtklibxml2 libmtkpng libmtkproj4 libmtksqlite libmtksys libmtktiff libmtkverdict libmtkzlib"
         else
-            VTK_LIB_NAMES="libMapReduceMPI libmpistubs libvtkCommon libvtkCommonPythonD libvtkDICOMParser libvtkFiltering libvtkFilteringPythonD libvtkGenericFiltering libvtkGenericFilteringPythonD libvtkGeovis libGeovisPythonD libvtkGraphics libvtkGraphicsPythonD libvtkHybrid libvtkHybridPythonD libvtkInfovis libvtkInfovisPythonD libvtkIO libvtkIOPythonD libvtkImaging libvtkImagingPythonD libvtkPythonCore libvtkRendering libvtkRenderingPythonD libvtkViews libvtkViewsPythonD libvtkVolumeRendering libvtkVolumeRenderingPythonD libvtkWidgets libvtkWidgetsPythonD libvtkalglib libvtkexpat libvtkfreetype libvtkftgl libvtkjpeg libvtklibxml2 libvtkpng libvtkproj4 libvtksqlite libvtksys libvtktiff libvtkverdict libvtkzlib"
+            VTK_LIB_NAMES="libMapReduceMPI libmpistubs libvtkCommon libvtkCommonPythonD libvtkDICOMParser libvtkFiltering libvtkFilteringPythonD libvtkGenericFiltering libvtkGenericFilteringPythonD libvtkGeovis libvtkGeovisPythonD libvtkGraphics libvtkGraphicsPythonD libvtkHybrid libvtkHybridPythonD libvtkInfovis libvtkInfovisPythonD libvtkIO libvtkIOPythonD libvtkImaging libvtkImagingPythonD libvtkPythonCore libvtkRendering libvtkRenderingPythonD libvtkViews libvtkViewsPythonD libvtkVolumeRendering libvtkVolumeRenderingPythonD libvtkWidgets libvtkWidgetsPythonD libvtkalglib libvtkexpat libvtkfreetype libvtkftgl libvtkjpeg libvtklibxml2 libvtkpng libvtkproj4 libvtksqlite libvtksys libvtktiff libvtkverdict libvtkzlib"
         fi
         for i in $VTK_LIB_NAMES
         do

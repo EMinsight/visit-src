@@ -966,33 +966,19 @@ function check_parallel
 
         #
         # Check the environment that mpicc would set up as a first stab.
+        # Since VisIt currently only ever uses MPI's C interface, we need
+        # only the information to link to MPI's implementation of its C
+        # interface. So, although VisIt is largely a C++ code, it is fine
+        # and correct to utilize an MPI C compiler here.
         #
         MPICC_CPPFLAGS=""
         MPICC_LDFLAGS=""
-        MPIWRAPPER=$(which mpic++)
+        MPIWRAPPER=$(which mpicc)
         if [[ "${MPIWRAPPER#no }" != "${MPIWRAPPER}" ]] ; then
            MPIWRAPPER=""
         fi
         if [[ "$MPIWRAPPER" == "" ]] ; then
-            MPIWRAPPER=$(which mpicxx)
-            if [[ "${MPIWRAPPER#no }" != "${MPIWRAPPER}" ]] ; then
-                MPIWRAPPER=""
-            fi
-            if [[ "$MPIWRAPPER" == "" ]] ; then
-                MPIWRAPPER=$(which mpiCC)
-                if [[ "${MPIWRAPPER#no }" != "${MPIWRAPPER}" ]] ; then
-                    MPIWRAPPER=""
-                fi
-                if [[ "$MPIWRAPPER" == "" ]] ; then
-                    MPIWRAPPER=$(which mpicc)
-                    if [[ "${MPIWRAPPER#no }" != "${MPIWRAPPER}" ]] ; then
-                        MPIWRAPPER=""
-                    fi
-                    if [[ "$MPIWRAPPER" == "" ]] ; then
-                        warn "Unable to find mpiCC..."
-                    fi
-                fi
-            fi
+            warn "Unable to find mpicc..."
         fi
 
         #
@@ -1074,8 +1060,8 @@ function check_parallel
         if [[ "$PAR_INCLUDE" == "" || "$PAR_LIBRARY_NAMES" == "" || "$PAR_LINKER_FLAGS" == "" ]] ; then
             warn \
 "To configure parallel VisIt you must satisfy one of the following conditions:
-    The PAR_COMPILER env var provides a path to a mpi compiler wrapper (such as mpic++).
-    A mpi compiler wrapper (such as mpic++) to exists in your path.
+    The PAR_COMPILER env var provides a path to a mpi compiler wrapper (such as mpicc).
+    A mpi compiler wrapper (such as mpicc) to exists in your path.
     The PAR_INCLUDE & PAR_LIBS env vars provide necessary CXX & LDFLAGS to use mpi.
 
  To build ICE-T the PAR_INCLUDE env var must provide the include path to your mpi headers.
@@ -1195,6 +1181,32 @@ function check_variables
 # Kathleen Biagas, Mon Aug 8 08:12:37 MST 2011                                #
 # Use FILEPATH type for compilers, STRING type for libdep.                    # 
 # *************************************************************************** #
+hostconf_library_success=""
+function hostconf_library
+ {
+    local build_lib=$1
+    local depends_on=""
+
+    # if already in success list then ignore..
+    if [[ "$hostconf_library_success" == *$build_lib* ]]; then
+        return
+    fi
+
+    depends_on=$("bv_${build_lib}_depends_on")
+
+    #replace commas with spaces if there are any..
+    depends_on=${depends_on//,/ }
+
+    for depend_lib in `echo $depends_on`;
+    do
+        hostconf_library $depend_lib
+    done
+
+    #build ..
+    $"bv_${build_lib}_host_profile"
+    hostconf_library_success="${hostconf_library_success} ${build_lib}"
+}
+
 
 function build_hostconf
 {
@@ -1310,14 +1322,12 @@ function build_hostconf
 
     for (( bv_i=0; bv_i<${#reqlibs[*]}; ++bv_i ))
     do
-        initialize="bv_${reqlibs[$bv_i]}_host_profile"
-        $initialize
+        hostconf_library ${reqlibs[$bv_i]}
     done
 
     for (( bv_i=0; bv_i<${#optlibs[*]}; ++bv_i ))
     do
-        initialize="bv_${optlibs[$bv_i]}_host_profile"
-        $initialize
+        hostconf_library ${optlibs[$bv_i]}
     done
     echo >> $HOSTCONF
 
