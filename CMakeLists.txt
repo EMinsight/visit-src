@@ -176,6 +176,19 @@
 #    I added some more filtering when generating VisItLibraryDependencies.cmake
 #    so it does not include local path names for Qt and Python.
 #
+#    Kathleen Bonnell, Thu Dec 2 15:49:04 MST 2010 
+#    Changed how ZLIB is handled on Windows.  Add compiler version messages
+#    for MSVC to PluginVsInstall.cmake.  Make windows-specific string 
+#    replacements in VisItLibraryDependencies.cmake.  Allow '*.hpp' when
+#    adding headers.  Add VisItGenerator.cmake file for plugin development
+#    against an Installed VisIt on Windows.
+#
+#    Kathleen Bonnell, Fri Dec 10 14:37:15 PST 2010 
+#    Add VISIT_3RDPARTY_VAR(VISIT_ZLIB_DIR for windows.
+#
+#    Cyrus Harrison, Mon Dec 20 10:50:29 PST 2010
+#    Use FORCE when setting various install paths.
+#
 #****************************************************************************/
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8.0 FATAL_ERROR)
@@ -412,6 +425,9 @@ VISIT_3RDPARTY_DEP(VISIT_SILO_LIBDEP   "Silo library dependencies" SILO_LIBDEP)
 VISIT_3RDPARTY_VAR(VISIT_VISUS_DIR     "Path containing the ViSUS library's include and lib" VISUS_DIR)
 VISIT_3RDPARTY_VAR(VISIT_XDMF_DIR      "Path containing the Xdmf library's include and lib" XDMF_DIR)
 VISIT_3RDPARTY_VAR(VISIT_MDSPLUS_DIR   "Path containing the MDSplus library's include and lib" MDSPLUS_DIR)
+IF(WIN32)
+  VISIT_3RDPARTY_VAR(VISIT_ZLIB_DIR   "Path containing the zlib library's include and lib" ZLIB_DIR)
+ENDIF(WIN32)
 #-----------------------------------------------------------------------------
 # Read the version
 #-----------------------------------------------------------------------------
@@ -455,19 +471,19 @@ ELSE(WIN32)
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/DetermineVisItArchitecture.cmake)
     DETERMINE_VISIT_ARCHITECTURE(VISIT_INSTALL_PLATFORM)
     SET(VISIT_INSTALLED_VERSION ${VISIT_VERSION}/${VISIT_INSTALL_PLATFORM} 
-        CACHE PATH "VisIt install directory")
+        CACHE PATH "VisIt install directory" FORCE)
     SET(VISIT_INSTALLED_VERSION_BIN ${VISIT_INSTALLED_VERSION}/bin 
-        CACHE PATH "VisIt bin install directory")
+        CACHE PATH "VisIt bin install directory" FORCE)
     SET(VISIT_INSTALLED_VERSION_LIB ${VISIT_INSTALLED_VERSION}/lib 
-        CACHE PATH "VisIt lib install directory")
+        CACHE PATH "VisIt lib install directory" FORCE)
     SET(VISIT_INSTALLED_VERSION_INCLUDE ${VISIT_INSTALLED_VERSION}/include 
-        CACHE PATH "VisIt include install directory")
+        CACHE PATH "VisIt include install directory" FORCE)
     SET(VISIT_INSTALLED_VERSION_HELP ${VISIT_INSTALLED_VERSION}/help 
-        CACHE PATH "VisIt help install directory")
+        CACHE PATH "VisIt help install directory" FORCE)
     SET(VISIT_INSTALLED_VERSION_PLUGINS ${VISIT_INSTALLED_VERSION}/plugins 
-        CACHE PATH "VisIt plugins install directory")
+        CACHE PATH "VisIt plugins install directory" FORCE)
     SET(VISIT_INSTALLED_VERSION_ARCHIVES ${VISIT_INSTALLED_VERSION}/archives 
-        CACHE PATH "3rd party I/O archives install directory")
+        CACHE PATH "3rd party I/O archives install directory" FORCE)
 
     IF(VISIT_RPATH_RELATIVE_TO_EXECUTABLE_PATH)
         SET(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
@@ -640,6 +656,7 @@ INSTALL(DIRECTORY avt common engine gui launcher mdserver third_party_builtin vi
                           WORLD_READ             WORLD_EXECUTE
     CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
     FILES_MATCHING PATTERN "*.h"
+    PATTERN "*.hpp"
     PATTERN ".svn" EXCLUDE
     PATTERN "CMakeFiles" EXCLUDE
 )
@@ -895,21 +912,10 @@ IF(CMAKE_HOST_UNIX)
   ADD_DEFINITIONS(-D_LARGEFILE64_SOURCE)
 ELSE(CMAKE_HOST_UNIX)
   IF(WIN32)
-    SET(ZLIB_LIBRARY_DIR ${VISIT_WINDOWS_DIR}/ThirdParty/zlib/lib/${VISIT_MSVC_VERSION})
-    IF(EXISTS ${ZLIB_LIBRARY_DIR}/zlib1.dll)
-      SET(ZLIB_LIB ${ZLIB_LIBRARY_DIR}/zlib1.lib)
-      EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E copy 
-                      ${ZLIB_LIBRARY_DIR}/zlib1.dll
-                      ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/ThirdParty)
-      INSTALL(FILES ${ZLIB_LIBRARY_DIR}/zlib1.dll
-          DESTINATION ${VISIT_INSTALLED_VERSION_BIN}
-          PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE 
-                      GROUP_READ GROUP_WRITE GROUP_EXECUTE 
-                      WORLD_READ             WORLD_EXECUTE
-          CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
-          )
-
-    ENDIF()
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindZlib.cmake)
+    IF(NOT ZLIB_FOUND)
+        SET(ZLIB_LIB vtkzlib)
+    ENDIF(NOT ZLIB_FOUND)
   ELSE(WIN32)
       SET(ZLIB_LIB vtkzlib)
   ENDIF(WIN32)
@@ -1515,7 +1521,25 @@ IF(NOT WIN32)
 
         ENDFOREACH(CMAKE_COMPILER_VERSION_FLAG ${CMAKE_COMPILER_VERSION_FLAGS})
     ENDFOREACH(CMAKE_COMPILER_NAME CMAKE_C_COMPILER CMAKE_CXX_COMPILER)
-
+ELSE(NOT WIN32)
+    SET(CMAKE_C_COMPILER_VERSION_MESSAGE " ${CMAKE_GENERATOR}")
+    IF(MSVC)
+        INCLUDE(CMakeDetermineVSServicePack)
+        DetermineVSServicePack(my_service_pack)
+        IF(my_service_pack)
+            SET(CMAKE_C_COMPILER_VERSION_MESSAGE "${CMAKE_C_COMPILER_VERSION_MESSAGE} (${my_service_pack})")
+        ENDIF(my_service_pack)
+        SET(CMAKE_CXX_COMPILER_VERSION_MESSAGE " Visual C/C++ version number: ${MSVC_VERSION}")
+        FILE(WRITE ${VISIT_BINARY_DIR}/CMake/VisItGenerator.cmake 
+            "SET(CMAKE_GENERATOR \"${CMAKE_GENERATOR}\" CACHE INTERNAL \"\" FORCE)"
+        )
+        INSTALL(FILES ${VISIT_BINARY_DIR}/CMake/VisItGenerator.cmake
+                DESTINATION ${VISIT_INSTALLED_VERSION_INCLUDE}
+                PERMISSIONS OWNER_READ OWNER_WRITE 
+                            GROUP_READ GROUP_WRITE 
+                            WORLD_READ
+        )
+    ENDIF(MSVC)
 ENDIF(NOT WIN32)
 
 # Store some configure information into a C file (like version, SVN version
@@ -1672,6 +1696,10 @@ ENDIF(NOT WIN32 AND IS_DIRECTORY ${VISIT_SOURCE_DIR}/../data)
 #-----------------------------------------------------------------------------
 EXPORT_LIBRARY_DEPENDENCIES(${VISIT_BINARY_DIR}/include/VisItLibraryDependencies.cmake.in)
 
+IF(WIN32)
+    get_filename_component(PD ${PYTHON_LIBRARIES} PATH)
+ENDIF(WIN32)
+
 INSTALL(CODE "
 FUNCTION(FILTER_LIBRARY_DEPENDENCIES filename)
     FILE(STRINGS \${filename}.in lines)
@@ -1693,10 +1721,39 @@ FUNCTION(FILTER_LIBRARY_DEPENDENCIES filename)
             ENDIF(\"\${line}\" MATCHES \".*\${suppress}_LIB_DEPENDS.*\")
         ENDFOREACH(suppress)
         IF(\${outputLine} STREQUAL \"TRUE\")
-            STRING(REPLACE \"${QT_LIBRARY_DIR}/\" \"\\\${VISIT_LIBRARY_DIR}/\" filteredline \"\${line}\")
-            STRING(REPLACE \"${VISIT_PYTHON_DIR}/lib/\" \"\\\${VISIT_LIBRARY_DIR}/\" filteredline2 \"\${filteredline}\")
-            STRING(REPLACE \"/libQtUiTools.a\" \"/../archives/libQtUiTools.a\" filteredline3 \"\${filteredline2}\")
-            FILE(APPEND \${filename} \"\${filteredline3}\\n\")
+            STRING(REPLACE \"${QT_LIBRARY_DIR}/\" 
+                   \"\\\${VISIT_LIBRARY_DIR}/\" 
+                   filteredline 
+                   \"\${line}\")
+            STRING(REPLACE \"${VISIT_PYTHON_DIR}/lib/\" 
+                   \"\\\${VISIT_LIBRARY_DIR}/\" 
+                   filteredline2 
+                   \"\${filteredline}\")
+            STRING(REPLACE \"/libQtUiTools.a\" 
+                   \"/../archives/libQtUiTools.a\" 
+                   filteredline3 
+                   \"\${filteredline2}\")
+            IF(NOT WIN32)
+                FILE(APPEND \${filename} \"\${filteredline3}\\n\")
+            ELSE(NOT WIN32)
+                # extra replacements that need to be made on Windows.
+                STRING(REPLACE \"${PD}\" 
+                       \"\\\${VISIT_LIBRARY_DIR}\" 
+                       filteredline4 
+                       \"\${filteredline3}\")
+                STRING(REPLACE \"${ZLIB_LIBRARY_DIR}\" 
+                       \"\\\${VISIT_LIBRARY_DIR}\" 
+                       filteredline5 
+                       \"\${filteredline4}\")
+                STRING(REPLACE \"viewer_LIB_DEPENDS\" 
+                       \"viewerlib_LIB_DEPENDS\" 
+                       filteredline6 
+                       \"\${filteredline5}\")
+                STRING(REPLACE \"gui_LIB_DEPENDS\" 
+                       \"guilib_LIB_DEPENDS\" 
+                       filteredline7 \"\${filteredline6}\")
+                FILE(APPEND \${filename} \"\${filteredline7}\\n\")
+            ENDIF(NOT WIN32)
         ENDIF(\${outputLine} STREQUAL \"TRUE\")
     ENDFOREACH(line)
 ENDFUNCTION(FILTER_LIBRARY_DEPENDENCIES)

@@ -597,11 +597,18 @@ VisItUnlockPythonInterpreter(PyThreadState *myThreadState)
 //
 // VisIt module functions that are written in Python.
 //
+// Modifications:
+//   Cyrus Harrison, Wed Dec  8 09:15:26 PST 2010
+//   Beffer error message: raise 'ValueError' instead of a string.
+//
 static const char visit_EvalCubicSpline[] =
 "def EvalCubicSpline(t, allX, allY):\n"
 "    n = len(allY)\n"
 "    if((allX[0] > t) or (allX[n-1] < t)):\n"
-"        raise 't must be in the range between the first and last X'\n"
+"        emsg  = 't must be in the range between the first and last X\\n'\n"
+"        emsg += 'Passed arguments t=%s, first X=%s, last X=%s'\n"
+"        emsg  = emsg % (str(t),str(allX[0]),str(allX[n-1]))\n"
+"        raise ValueError(emsg)\n"
 "    for i in range(1, n):\n"
 "        if(allX[i] >= t):\n"
 "            break\n"
@@ -1443,7 +1450,7 @@ visit_GetDebugLevel(PyObject *self, PyObject *args)
 }
 
 // ****************************************************************************
-// Function: visit_GetDebugLevel
+// Function: visit_GetLastError
 //
 // Purpose:
 //   Returns the last error that VisIt sent back to the cli.
@@ -2126,6 +2133,10 @@ visit_GetTimeSliders(PyObject *self, PyObject *args)
 //   I added support for getting the number of states when we're in keyframing
 //   mode.
 //
+//   Tom Fogal, Tue Nov 16 17:27:48 MST 2010
+//   I provided a sensible error path if there is no time slider available.
+//   Match what happens for other invalid cases.
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -2138,7 +2149,13 @@ visit_TimeSliderGetNStates(PyObject *self, PyObject *args)
     // Get the number of states for the active time slider.
     //
     WindowInformation *wi = GetViewerState()->GetWindowInformation();
-    const std::string &ts = wi->GetTimeSliders()[wi->GetActiveTimeSlider()];
+    int active = wi->GetActiveTimeSlider();
+    if(-1 == active)
+    {
+        debug1 << "No active time slider!\n";
+        return PyLong_FromLong(static_cast<long>(1));
+    }
+    const std::string &ts = wi->GetTimeSliders()[active];
     int nStates = 1;
     if(GetViewerState()->GetKeyframeAttributes()->GetEnabled() && ts == "Keyframe animation")
         nStates = GetViewerState()->GetKeyframeAttributes()->GetNFrames();
@@ -7384,6 +7401,87 @@ visit_SetPlotDescription(PyObject *self, PyObject *args)
 
     // Return the success value.
     return IntReturnValue(Synchronize());
+}
+
+// ****************************************************************************
+// Method: visit_SetPlotFollowsTime
+//
+// Purpose: 
+//   Sets the followsTime flag on the active plots.
+//
+// Programmer: Brad Whitlock
+// Creation:   Wed Dec  8 16:02:51 PST 2010
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+STATIC PyObject *
+visit_SetPlotFollowsTime(PyObject *self, PyObject *args)
+{
+    ENSURE_VIEWER_EXISTS();
+
+    bool setPL = true;
+    int ifollowsTime = -1;
+    if (!PyArg_ParseTuple(args, "i", &ifollowsTime))
+    {
+        // We're just going to toggle the values.
+        NO_ARGUMENTS();
+        PyErr_Clear();
+        setPL = false;
+    }
+
+    intVector curAP, newAP;
+    int retval = 0;
+    if(setPL)
+    {
+        // We're going to try and set all active plots to a specific follows time
+        // value.
+        bool followsTime = (ifollowsTime != 0) ? true : false;
+
+        // Get the current list of active plots and the list of active plots
+        // whose follow time does not match what we're setting.
+        retval = Synchronize();
+
+        PlotList *pL = GetViewerState()->GetPlotList();
+        for(int i = 0; i < pL->GetNumPlots(); ++i)
+        { 
+            if(pL->GetPlots(i).GetActiveFlag())
+            {
+                curAP.push_back(i);
+
+                if(pL->GetPlots(i).GetFollowsTime() != followsTime)
+                    newAP.push_back(i);
+            }
+        }
+    }
+ 
+    if(setPL && newAP.empty())
+    {
+        // There were no plots that needed to be updated.
+        ;
+    }
+    else
+    {
+        MUTEX_LOCK();
+       
+        if(!newAP.empty())
+            GetViewerMethods()->SetActivePlots(newAP);
+
+        // Toggle the "follows time" flag on the plots that did not match
+        // the desired setting.
+        GetViewerMethods()->SetPlotFollowsTime();
+
+        if(!newAP.empty())
+            GetViewerMethods()->SetActivePlots(curAP);
+
+        MUTEX_UNLOCK();
+
+        retval = Synchronize();
+    }
+
+    // Return the success value.
+    return IntReturnValue(retval);
 }
 
 // ****************************************************************************
@@ -14619,6 +14717,9 @@ AddMethod(const char *methodName,
 //   Brad Whitlock, Fri Aug 27 10:37:20 PDT 2010
 //   I added RenamePickLabel.
 //
+//   Brad Whitlock, Wed Dec  8 16:04:37 PST 2010
+//   I exposed SetPlotFollowsTime.
+//
 // ****************************************************************************
 
 static void
@@ -14937,6 +15038,7 @@ AddDefaultMethods()
     AddMethod("SetPlotDatabaseState", visit_SetPlotDatabaseState,
                                                visit_SetPlotDatabaseState_doc);
     AddMethod("SetPlotDescription", visit_SetPlotDescription, NULL /*DOCUMENT ME*/);
+    AddMethod("SetPlotFollowsTime", visit_SetPlotFollowsTime, NULL /*DOCUMENT ME*/);
     AddMethod("SetPlotFrameRange", visit_SetPlotFrameRange,
                                                   visit_SetPlotFrameRange_doc);
     AddMethod("SetPlotOptions", visit_SetPlotOptions,visit_SetPlotOptions_doc);

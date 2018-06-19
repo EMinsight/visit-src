@@ -227,15 +227,24 @@
 #
 #    Hank Childs, Wed Oct 20 08:23:39 PDT 2010
 #    Change bank from prompt to false.
-#    
+#
 #    Eric Brugger, Fri Oct 29 09:40:23 PDT 2010
-#    Added profiles for aztec, edge and inca.
+#    Added the profiles for aztec, edge and inca.
 #
 #    Hank Childs, Sun Oct 31 20:48:23 PDT 2010
 #    Add ANL / MCS login profiles.
 #
 #    Eric Brugger, Fri Nov  5 16:13:21 PDT 2010
-#    Deleted profiles for hopi, purple, um, ilx, up and yana.
+#    Deleted the profiles for hopi, purple, um, ilx, up and yana.
+#
+#    Eric Brugger, Fri Dec 10 16:25:23 PST 2010
+#    Deleted the profiles for gauss, ellipse and xchem.
+#
+#    Cyrus Harrison, Fri Dec 10 16:50:44 PST 2010
+#    Added profile for muir.
+#
+#    Cyrus Harrison, Fri Dec 17 11:25:51 PST 2010
+#    Added profile for sierra.
 #
 #-----------------------------------------------------------------------
 
@@ -620,11 +629,11 @@ if ($config == anl) then
 else if ($config == llnl_closed) then
    ln -s visit-config-llnl_closed.ini "$dir"/$version+/.visit/config
    cp "$dir"/$version+/.visit/allhosts/host_llnl_closed_eos.xml     "$dir"/$version+/.visit/hosts/
-   cp "$dir"/$version+/.visit/allhosts/host_llnl_closed_gauss.xml   "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/.visit/allhosts/host_llnl_closed_graph.xml   "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/.visit/allhosts/host_llnl_closed_inca.xml    "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/.visit/allhosts/host_llnl_closed_juno.xml    "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/.visit/allhosts/host_llnl_closed_minos.xml   "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_llnl_closed_muir.xml    "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/.visit/allhosts/host_llnl_closed_rhea.xml    "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/.visit/allhosts/host_llnl_closed_tempest.xml "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/.visit/allhosts/host_snl_closed_redrose.xml  "$dir"/$version+/.visit/hosts/
@@ -633,11 +642,10 @@ else if ($config == llnl_open) then
    cp "$dir"/$version+/.visit/allhosts/host_llnl_alastor.xml "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/.visit/allhosts/host_llnl_atlas.xml   "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/.visit/allhosts/host_llnl_aztec.xml   "$dir"/$version+/.visit/hosts/
-   cp "$dir"/$version+/.visit/allhosts/host_llnl_edge.xml   "$dir"/$version+/.visit/hosts/
-   cp "$dir"/$version+/.visit/allhosts/host_llnl_ellipse.xml "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_llnl_edge.xml    "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/.visit/allhosts/host_llnl_hera.xml    "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/.visit/allhosts/host_llnl_prism.xml   "$dir"/$version+/.visit/hosts/
-   cp "$dir"/$version+/.visit/allhosts/host_llnl_xchem.xml   "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/.visit/allhosts/host_llnl_sierra.xml  "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/.visit/allhosts/host_llnl_zeus.xml    "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/.visit/allhosts/host_slac_red.xml     "$dir"/$version+/.visit/hosts/
 else if ($config == nersc) then

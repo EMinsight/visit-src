@@ -35,48 +35,20 @@
 # DAMAGE.
 #
 # Modifications:
-#    Cyrus Harrison, Wed Mar 10 14:28:33 PST 2010   
-#    Use proper python include path ${PYTHON_INCLUDE_PATH}, instead of 
-#    ${PYTHON_INCLUDE_DIRS}
+#   Kathleen Bonnell, Fri Dec 10 14:36:52 PST 2010
+#   Set ZLIB_LIB to full path.
 #
 #****************************************************************************/
 
-SET(AVTPYTHON_FILTERS_SOURCES
-PythonInterpreter.C
-PyContract.C
-PyDataRequest.C
-PyDataSelection.C
-PySILRequest.C
-${VISIT_SOURCE_DIR}/visitpy/common/PySILRestrictionBase.C
-avtPythonFilterEnvironment.C
-avtPythonFilter.C
-)
+# Use the ZLIB_DIR hint from the config-site .cmake file 
 
-INCLUDE_DIRECTORIES(
-${CMAKE_CURRENT_SOURCE_DIR}
-${VISIT_COMMON_INCLUDES}
-${VISIT_SOURCE_DIR}/avt/Pipeline/Data/
-${VISIT_SOURCE_DIR}/avt/Pipeline/Pipeline/
-${VISIT_SOURCE_DIR}/avt/DBAtts/
-${VISIT_SOURCE_DIR}/avt/DBAtts/MetaData/
-${VISIT_SOURCE_DIR}/avt/DBAtts/SIL/
-${VISIT_SOURCE_DIR}/visitpy/common/
-${VTK_INCLUDE_DIRS}
-${PYTHON_INCLUDE_PATH}
-)
+INCLUDE(${VISIT_SOURCE_DIR}/CMake/SetUpThirdParty.cmake)
 
-# Add link directories
-LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY} ${VTK_LIBRARY_DIRS} ${PYTHON_DIR})
+IF (WIN32)
+  SET_UP_THIRD_PARTY(ZLIB lib/${VISIT_MSVC_VERSION} include zlib1)
+  IF (ZLIB_FOUND)
+      # use full path here, instead of just lib file.
+      SET(ZLIB_LIB "${ZLIB_LIBRARY_DIR}/${ZLIB_LIB}" CACHE STRING "zlib library" FORCE)
+  ENDIF (ZLIB_FOUND)
+ENDIF (WIN32)
 
-
-#********************************* SERIAL ************************************
-ADD_LIBRARY(avtpythonfilters_ser ${AVTPYTHON_FILTERS_SOURCES})
-TARGET_LINK_LIBRARIES(avtpythonfilters_ser visitcommon avtdbatts avtpipeline_ser ${PYTHON_LIBRARIES} )
-VISIT_INSTALL_TARGETS(avtpythonfilters_ser)
-
-#********************************* PARALLEL **********************************
-IF(VISIT_PARALLEL)
-    ADD_PARALLEL_LIBRARY(avtpythonfilters_par ${AVTPYTHON_FILTERS_SOURCES})
-    TARGET_LINK_LIBRARIES(avtpythonfilters_par visitcommon avtdbatts avtpipeline_par ${PYTHON_LIBRARIES})
-    VISIT_INSTALL_TARGETS(avtpythonfilters_par)
-ENDIF(VISIT_PARALLEL)
