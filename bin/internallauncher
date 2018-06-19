@@ -685,6 +685,16 @@ $0 = shift @ARGV;
 #    for a msub or qsub job if the user does not have write permission in
 #    the directory where visit was started.
 #
+#    Brad Whitlock, Tue Jan 25 11:34:37 PST 2011
+#    I made MacOS X 10.6 and later use the darwin-x86_64 architecture string.
+#
+#    Hank Childs, Mon Feb 14 13:27:04 PST 2011
+#    Make sure Eureka support doesn't spill into other "login1" nodes.
+#
+#    Hank Childs, Mon Feb 14 23:38:46 UTC 2011
+#    If we can't locate the current machine's architecture, at least tell them
+#    which architectures we could locate.
+#
 ###############################################################################
 
 use POSIX qw(ceil);
@@ -1797,7 +1807,7 @@ $IsRunningOnHopperNERSC = 0;
 if ( $host =~ /^hopper/ )
 {
     $IsRunningOnHopperNERSC = 1;
-    $ENV{LD_LIBRARY_PATH} = "/opt/gcc/4.3.3/snos/lib64";
+    $ENV{LD_LIBRARY_PATH} = "/opt/gcc/4.5.2/snos/lib64";
 
     if ($exe_name eq "gui")
     {
@@ -1900,28 +1910,27 @@ if ( $host =~ /^up\d+$/ or $host =~ /^purple\d+$/)
 # HACK for Eureka @ Argonne
 # ----
 $IsRunningOnEureka_ANL = 0;
-$matchesLonghorn = 0;
-if ($host =~ /login1.longhorn/)
+if (($parallel) and $exe_name eq "engine" and ($host =~ /eureka/) and
+    ($host =~ /alcf/))
 {
-   $matchesLonghorn = 1;
-}
-if ( ($parallel) and $exe_name eq "engine" and (($host =~ /login1/) and ($matchesLonghorn eq 0))  )
-{
-    $IsRunningOnEureka_ANL = 1;
     chomp($domain   = `hostname -d`);
-    if ( $domain eq "gadzooks.alcf.anl.gov" )
+    if ( $domain eq "gadzooks.alcf.anl.gov" or $domain eq "mcs.anl.gov" or $domain eq "eureka.alcf.anl.gov")
     {
-        $remotehost = "login1-mgmt.gadzooks";
-    }
-    else
-    {
-        if ( $domain eq "mcs.anl.gov" )
+        $IsRunningOnEureka_ANL = 1;
+        if ( $domain eq "gadzooks.alcf.anl.gov" )
         {
-            # Don't need to set remotehost.
+            $remotehost = "login1-mgmt.gadzooks";
         }
         else
         {
-            $remotehost = "login1-mgmt.eureka";
+            if ( $domain eq "mcs.anl.gov" )
+            {
+                # Don't need to set remotehost.
+            }
+            else
+            {
+                $remotehost = "login1-mgmt.eureka";
+            }
         }
     }
 }
@@ -2063,6 +2072,9 @@ for ($os) {
         elsif ($req_compiler eq "i386") {
                 push @supportedarchs, "darwin-i386";
         }
+        elsif ($req_compiler eq "x86_64") {
+                push @supportedarchs, "darwin-x86_64";
+        }
         elsif ( -d "$visitdir/darwin")
         {
             push @supportedarchs, "darwin";
@@ -2071,7 +2083,15 @@ for ($os) {
         {
             chomp( $mach    = `uname -p` );
             if ($mach =~ /i386/) {
-                push @supportedarchs, "darwin-i386";
+                # For MacOS X 10.6 and above, use x86_64.
+                chomp( $darwinver = `uname -r`);
+                my @darwinversions = split('\.', $darwinver);
+                if ($darwinversions[0] >= 10) {
+                    push @supportedarchs, "darwin-x86_64";
+                }
+                else {
+                    push @supportedarchs, "darwin-i386";
+                }
             }
             elsif ($mach =~ /x86_64/) {
                 push @supportedarchs, "darwin-x86_64";
@@ -2237,6 +2257,16 @@ else # We're running a public version.
         if ($exe_name eq "engine_par")
         {
             print STDERR "Note that the serial engine may still work.\n";
+        }
+        $dirs = `ls -1 $visitdir/ | grep -v bin`;
+        if ($dirs eq "")
+        {
+            print STDERR "VisIt cannot locate binaries for any architectures.\n";
+        }
+        else
+        {
+            print STDERR "VisIt located binaries for the following architectures:\n";
+            print STDERR "\t$dirs";
         }
         exit 1;
     }

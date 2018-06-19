@@ -14,7 +14,8 @@
       <Enum name="IntegrationType">
         DormandPrince
         AdamsBashforth
-        M3DC1Integrator
+        M3DC12DIntegrator
+        M3DC13DIntegrator
         NIMRODIntegrator
       </Enum>
       <Enum name="CoordinateSystem">
@@ -217,6 +218,7 @@
         0
       </Field>
       <Field name="lineStyle" label="lineStyle" type="linestyle">
+        0
       </Field>
       <Field name="showPoints" label="Show Points" type="bool">
         false

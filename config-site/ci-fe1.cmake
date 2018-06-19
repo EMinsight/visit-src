@@ -1,15 +1,15 @@
-#/misc/gapps/visit/cmake/2.8.3/linux-i686_gcc-4.1/bin/cmake
+#/usr/projects/views/visit/cmake/2.8.3/linux-x86_64_gcc-4.5/bin/cmake
 ##
 ## ./build_visit generated host.cmake
-## created: Tue Jan 11 13:30:33 PST 2011
-## system: Linux terminator.isrd.llnl.gov 2.6.18-194.11.4.el5 #1 SMP Fri Sep 17 04:55:26 EDT 2010 i686 i686 i386 GNU/Linux
-## by: brugger1
+## created: Mon Feb 14 10:34:26 MST 2011
+## system: Linux ci-fe4 2.6.27.48-0.12-default #1 SMP 2010-09-20 11:03:26 -0400 x86_64 x86_64 x86_64 GNU/Linux
+## by: brugger
 
 ##
 ## Setup VISITHOME & VISITARCH variables.
 ##
-SET(VISITHOME /misc/gapps/visit)
-SET(VISITARCH linux-i686_gcc-4.1)
+SET(VISITHOME /usr/projects/views/visit)
+SET(VISITARCH linux-x86_64_gcc-4.5)
 
 ##
 ## Specify the location of the mesa.
@@ -35,10 +35,18 @@ VISIT_OPTION_DEFAULT(VISIT_PYTHON_DIR ${VISITHOME}/python/2.6.4/${VISITARCH})
 ##
 ## Compiler flags.
 ##
-VISIT_OPTION_DEFAULT(VISIT_C_COMPILER gcc)
-VISIT_OPTION_DEFAULT(VISIT_CXX_COMPILER g++)
-VISIT_OPTION_DEFAULT(VISIT_C_FLAGS " -fvisibility=hidden")
-VISIT_OPTION_DEFAULT(VISIT_CXX_FLAGS " -fvisibility=hidden")
+VISIT_OPTION_DEFAULT(VISIT_C_COMPILER gcc TYPE STRING)
+VISIT_OPTION_DEFAULT(VISIT_CXX_COMPILER g++ TYPE STRING)
+VISIT_OPTION_DEFAULT(VISIT_C_FLAGS " -Wno-deprecated -m64 -fPIC -fvisibility=hidden" TYPE STRING)
+VISIT_OPTION_DEFAULT(VISIT_CXX_FLAGS " -Wno-deprecated -m64 -fPIC -fvisibility=hidden" TYPE STRING)
+
+##
+## Add parallel arguments.
+##
+VISIT_OPTION_DEFAULT(VISIT_PARALLEL ON)
+VISIT_OPTION_DEFAULT(VISIT_MPI_CXX_FLAGS "-I/opt/cray/mpt/5.1.2/xt/gemini/mpich2-gnu/include/44 -I/opt/cray/mpt/5.1.2/xt/gemini/mpich2-gnu/include")
+VISIT_OPTION_DEFAULT(VISIT_MPI_LD_FLAGS "-L/opt/cray/mpt/5.1.2/xt/gemini/mpich2-gnu/lib/44 -L/opt/cray/mpt/5.1.2/xt/gemini/mpich2-gnu/lib")
+VISIT_OPTION_DEFAULT(VISIT_MPI_LIBS mpich)
 
 ##############################################################
 ##
@@ -55,8 +63,8 @@ VISIT_OPTION_DEFAULT(VISIT_CXX_FLAGS " -fvisibility=hidden")
 ##
 ## HDF4
 ##
-VISIT_OPTION_DEFAULT(VISIT_HDF4_DIR ${VISITHOME}/hdf4/4.2.1/${VISITARCH})
-VISIT_OPTION_DEFAULT(VISIT_HDF4_LIBDEP ${VISITHOME}/szip/2.1/${VISITARCH}/lib sz /usr/lib jpeg)
+VISIT_OPTION_DEFAULT(VISIT_HDF4_DIR ${VISITHOME}/hdf4/4.2.5/${VISITARCH})
+VISIT_OPTION_DEFAULT(VISIT_HDF4_LIBDEP ${VISITHOME}/szip/2.1/${VISITARCH}/lib sz ${VISITHOME}/vtk/5.0.0g/${VISITARCH}/lib vtkjpeg)
 
 ##
 ## HDF5
@@ -100,7 +108,7 @@ VISIT_OPTION_DEFAULT(VISIT_EXODUSII_LIBDEP NETCDF_LIBRARY_DIR netcdf ${VISIT_NET
 ##
 ## GDAL
 ##
-#VISIT_OPTION_DEFAULT(VISIT_GDAL_DIR ${VISITHOME}/gdal/1.7.1/${VISITARCH})
+VISIT_OPTION_DEFAULT(VISIT_GDAL_DIR ${VISITHOME}/gdal/1.7.1/${VISITARCH})
 
 ##
 ## H5Part
@@ -129,4 +137,9 @@ VISIT_OPTION_DEFAULT(VISIT_SILO_LIBDEP HDF5_LIBRARY_DIR hdf5 ${VISIT_HDF5_LIBDEP
 ##
 VISIT_OPTION_DEFAULT(VISIT_XDMF_DIR ${VISITHOME}/Xdmf/2.1/${VISITARCH})
 VISIT_OPTION_DEFAULT(VISIT_XDMF_LIBDEP HDF5_LIBRARY_DIR hdf5 ${VISIT_HDF5_LIBDEP})
+
+##
+## Ice-T
+##
+VISIT_OPTION_DEFAULT(VISIT_ICET_DIR ${VISITHOME}/icet/1.0.0/${VISITARCH})
 
