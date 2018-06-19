@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2016, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -672,7 +672,7 @@ QvisScatterPlotWindow::CreateWindowContents()
     scalingLayout->setMargin(5);
     scalingLayout->setSpacing(10);
  
-    scaleCube = new QCheckBox(tr("Normalize the axis to a cube"), appearanceGroup);
+    scaleCube = new QCheckBox(tr("Normalize the axes to a cube"), appearanceGroup);
     connect(scaleCube, SIGNAL(toggled(bool)),
             this, SLOT(scaleCubeChanged(bool)));
     scalingLayout->addWidget(scaleCube, 0, 0 );

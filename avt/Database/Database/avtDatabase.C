@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2016, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -867,9 +867,9 @@ avtDatabase::PopulateDataObjectInformation(avtDataObject_p &dob,
         {
             if (selectionsApplied[i])
             {
-                // We need to set these as invalid, or else caching could kick in
-                // and we might end up using acceleration structures across
-                // pipeline executions that were no longer valid.
+                // We need to set these as invalid, or else caching could
+                // kick in and we might end up using acceleration structures
+                // across pipeline executions that were no longer valid.
                 validity.InvalidateZones();
                 validity.InvalidateNodes();
                 break;
