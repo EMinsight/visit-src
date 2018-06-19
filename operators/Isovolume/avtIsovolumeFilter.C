@@ -220,6 +220,7 @@ avtIsovolumeFilter::ExecuteSingleClip(vtkDataSet *in_ds, float val, bool flip)
     else
     {
         debug1 << "Could not find any data for isovolume operation\n";
+        clipper->Delete();
         EXCEPTION1(VisItException, "No variable was present for the Isovolume");
     }
 
@@ -324,6 +325,13 @@ inline void IsovolumeMinMax(double &min, double &max, Accessor access)
 //    Eric Brugger, Wed Jul 30 18:49:46 PDT 2014
 //    Modified the class to work with avtDataRepresentation.
 //
+//    Brad Whitlock, Fri Sep  5 11:09:06 PDT 2014
+//    Fix reference counting.
+//
+//    Eric Brugger, Fri Sep 26 08:49:02 PDT 2014
+//    I modified the routine to return a NULL in the case where it previously
+//    returned an avtDataRepresentation with a NULL vtkDataSet.
+//
 // ****************************************************************************
 
 avtDataRepresentation *
@@ -379,18 +387,34 @@ avtIsovolumeFilter::ExecuteData(avtDataRepresentation *in_dr)
     // Do the clipping!
     //
     vtkDataSet *out_ds = in_ds;
-    if (doMinClip)
-        out_ds = ExecuteSingleClip(out_ds, atts.GetLbound(), true);
-    if (out_ds->GetNumberOfCells() > 0 && doMaxClip)
-        out_ds = ExecuteSingleClip(out_ds, atts.GetUbound(), false);
+    if(doMinClip && doMaxClip)
+    {
+        vtkDataSet *intermediate = NULL;
+        intermediate = ExecuteSingleClip(in_ds, atts.GetLbound(), true);
+        if(intermediate->GetNumberOfCells() > 0)
+        {
+            out_ds = ExecuteSingleClip(intermediate, atts.GetUbound(), false);
+            intermediate->Delete();
+        }
+        else
+            out_ds = intermediate;
+    }
+    else if(doMinClip)
+        out_ds = ExecuteSingleClip(in_ds, atts.GetLbound(), true);
+    else if(doMaxClip)
+        out_ds = ExecuteSingleClip(in_ds, atts.GetUbound(), false);
+    bool own = out_ds != in_ds;
 
     //
     // Make sure there's something there
     //
     if (out_ds->GetNumberOfCells() <= 0)
     {
-        out_ds->Delete();
-        out_ds = NULL;
+        // We can't delete the out_ds unless we made it and own it. 
+        // Otherwise, we're deleting the reference out from under the in_ds.
+        if(own)
+            out_ds->Delete();
+        return NULL;
     }
 
     //
@@ -399,7 +423,7 @@ avtIsovolumeFilter::ExecuteData(avtDataRepresentation *in_dr)
     // necessarily have a ugrid, since it might be that we didn't process the
     // dataset.
     //
-    if (in_ds->GetDataObjectType() == VTK_POLY_DATA && out_ds != NULL &&
+    if (in_ds->GetDataObjectType() == VTK_POLY_DATA &&
         out_ds->GetDataObjectType() == VTK_UNSTRUCTURED_GRID)
     {
         vtkUnstructuredGrid *ugrid = (vtkUnstructuredGrid *) out_ds;
@@ -416,14 +440,16 @@ avtIsovolumeFilter::ExecuteData(avtDataRepresentation *in_dr)
             ugrid->GetCellPoints(i, npts, pts);
             out_pd->InsertNextCell(celltype, npts, pts);
         }
-        out_ds->Delete();
+        if(own)
+            out_ds->Delete();
         out_ds = out_pd;
+        own = true;
     }
 
     avtDataRepresentation *out_dr = new avtDataRepresentation(out_ds,
         in_dr->GetDomain(), in_dr->GetLabel());
 
-    if (out_ds != NULL)
+    if (own && out_ds != NULL)
         out_ds->Delete();
 
     return out_dr;

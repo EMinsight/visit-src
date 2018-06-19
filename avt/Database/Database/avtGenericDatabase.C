@@ -2938,6 +2938,9 @@ avtGenericDatabase::GetLabelVariable(const char *varname, int ts, int domain,
 //    Hank Childs, Tue Dec 20 11:51:30 PST 2011
 //    Add support for caching with selections.
 //
+//    Kathleen Biagas, Thu Sep 11 09:10:42 PDT 2014
+//    Keep avtOriginalNodeNumbers if present.
+// 
 // ****************************************************************************
 
 vtkDataSet *
@@ -3003,15 +3006,6 @@ avtGenericDatabase::GetMesh(const char *meshname, int ts, int domain,
                    << domain << ", material = " << material << endl;
             return NULL;
         }
-
-        //
-        // Force an Update.  This needs to be done and if we do it when we
-        // read it in, then it guarantees it only happens once.
-        //
-        // FIX_ME_VTK6.0, ESB, I assume this needs to be done for VTK based
-        // readers. Can we eliminate this or do we need to move it somewhere
-        // else. All the tests pass with this commented out.
-        // mesh->Update();
 
         //
         // VTK creates a trivial producer for each data set.  It later does
@@ -3085,6 +3079,12 @@ avtGenericDatabase::GetMesh(const char *meshname, int ts, int domain,
         rv->GetCellData()->AddArray(
             mesh->GetCellData()->GetArray("avtOriginalCellNumbers"));
         GetMetaData(ts)->SetContainsOriginalCells(meshname, true);
+    }
+    if (mesh->GetPointData()->GetArray("avtOriginalNodeNumbers"))
+    {
+        rv->GetPointData()->AddArray(
+            mesh->GetPointData()->GetArray("avtOriginalNodeNumbers"));
+        GetMetaData(ts)->SetContainsOriginalNodes(meshname, true);
     }
     rv->GetFieldData()->ShallowCopy(mesh->GetFieldData());
 
@@ -11055,6 +11055,10 @@ avtGenericDatabase::GetDomainName(const string &varName, const int ts,
 //
 //    Mark C. Miller, Wed Nov 16 10:46:36 PST 2005
 //    Changed dummy args for type conversion to dummy arg for data spec
+//
+//    Kathleen Biagas, Tue Sep  9 13:57:55 PDT 2014
+//    Don't take ghost zones into account if they came from DB.
+//
 // ****************************************************************************
 
 bool
@@ -11071,15 +11075,18 @@ avtGenericDatabase::QueryCoords(const string &varName, const int dom,
         if (currentid == -1) 
             return false;
     }
+    avtDatabaseMetaData *md = GetMetaData(ts);
     string meshName;
     if (mN == NULL || strcmp(mN, "default") == 0)
-        meshName = GetMetaData(ts)->MeshForVar(varName);
+        meshName = md->MeshForVar(varName);
     else 
         meshName = mN; 
+    int ghostType = md->GetContainsGhostZones(meshName);
     vtkDataSet *ds =  NULL;
     TRY
     {
-        // dataRequest is a placeholder for when this information will come from elsewhere 
+        // dataRequest is a placeholder for when this information will come
+        // from elsewhere
         avtDataRequest_p dataRequest;
         ds = GetMeshDataset(meshName.c_str(), ts, dom, "_all", dataRequest);
     }
@@ -11097,7 +11104,8 @@ avtGenericDatabase::QueryCoords(const string &varName, const int dom,
             if (ds->GetDataObjectType() == VTK_RECTILINEAR_GRID ||
                 ds->GetDataObjectType() == VTK_STRUCTURED_GRID) 
             {
-                if (ds->GetCellData()->GetArray("avtGhostZones") != NULL) 
+                if ((ds->GetCellData()->GetArray("avtGhostZones") != NULL) &&
+                    (ghostType != AVT_HAS_GHOSTS))
                 {
                     int dims[3], ijk[3] = {0, 0, 0};
                     vtkVisItUtility::GetDimensions(ds, dims);
@@ -11124,7 +11132,8 @@ avtGenericDatabase::QueryCoords(const string &varName, const int dom,
             if (ds->GetDataObjectType() == VTK_RECTILINEAR_GRID ||
                 ds->GetDataObjectType() == VTK_STRUCTURED_GRID) 
             {
-                if (ds->GetCellData()->GetArray("avtGhostZones") != NULL) 
+                if ((ds->GetCellData()->GetArray("avtGhostZones") != NULL) &&
+                    (ghostType != AVT_HAS_GHOSTS))
                 {
                     int dims[3], ijk[3] = {0, 0, 0};
                     vtkVisItUtility::GetDimensions(ds, dims);
