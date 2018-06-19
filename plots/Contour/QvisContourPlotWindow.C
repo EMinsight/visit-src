@@ -238,9 +238,6 @@ QvisContourPlotWindow::CreateWindowContents()
            this, SLOT(processSelectByText()));
     dataLayout->addWidget(selectByLineEdit, 2, 2);
 
-
-
-
     // Create the contour color group box.
     contourColorGroup = new QGroupBox(central);
     contourColorGroup->setTitle(tr("Contour colors"));

@@ -50,14 +50,16 @@ class QLineEdit;
 class QSpinBox;
 class QVBox;
 class QButtonGroup;
+class QRadioButton;
 class QComboBox;
 class QGroupBox;
 class QvisColorTableButton;
 class QvisOpacitySlider;
 class QvisColorButton;
-class QvisLineStyleWidget;
 class QvisLineWidthWidget;
 class QvisVariableButton;
+class QvisPointControl;
+class QvisLineStyleWidget;
 
 // ****************************************************************************
 // Class: QvisPoincarePlotWindow
@@ -74,6 +76,9 @@ class QvisVariableButton;
 //   
 //   Allen Sanderson, Sun Mar  7 12:49:56 PST 2010
 //   Change layout of window for 2.0 interface changes.
+//
+//   Dave Pugmire, Thu Jul  8 09:03:20 EDT 2010
+//   Add force node centering option.
 //
 // ****************************************************************************
 
@@ -95,26 +100,33 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
   protected:
     void UpdateWindow(bool doAll);
     void GetCurrentValues(int which_widget);
+    void UpdateIntegrationAttributes();
+    void UpdateAlgorithmAttributes();
+    void UpdateMeshTypeAttributes();
     void Apply(bool ignore = false);
   private slots:
-    void minPuncturesProcessText();
-    void maxPuncturesProcessText();
     void sourceTypeChanged(int val);
     void pointSourceProcessText();
     void lineStartProcessText();
     void lineEndProcessText();
-    void pointDensityProcessText();
+    void pointDensityChanged(int val);
+    void minPuncturesChanged(int val);
+    void maxPuncturesChanged(int val);
+    void puncturePlaneChanged(int val);
     void integrationTypeChanged(int val);
     void maxStepLengthProcessText();
     void relTolProcessText();
     void absTolProcessText();
-    void maxToroidalWindingProcessText();
-    void overrideToroidalWindingProcessText();
-    void hitRateProcessText();
-    void adjustPlaneProcessText();
+    void analysisChanged(int val);
+    void maximumToroidalWindingChanged(int val);
+    void overrideToroidalWindingChanged(int val);
+    void windingPairConfidenceProcessText();
+    void periodicityConsistencyProcessText();
+    void adjustPlaneChanged(int val);
     void overlapsChanged(int val);
     void meshTypeChanged(int val);
-    void numberPlanesProcessText();
+    void numberPlanesChanged(int val);
+    void singlePlaneProcessText();
     void minProcessText();
     void maxProcessText();
     void minFlagChanged(bool val);
@@ -122,40 +134,62 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     void colorTypeChanged(int val);
     void singleColorChanged(const QColor &color);
     void colorTableNameChanged(bool useDefault, const QString &ctName);
+    void setOpaacityClicked(int on);
+    void changedOpacity(int opacity, const void *);
     void dataValueChanged(int val);
     void showOPointsChanged(bool val);
+    void OPointMaxIterationsChanged(int val);
     void showIslandsChanged(bool val);
+    void showChaoticChanged(bool val);
     void showLinesChanged(bool val);
+    void lineWidthChanged(int val);
+    void lineStyleChanged(int val);
     void showPointsChanged(bool val);
+    void pointSizeChanged(double val);
+    void pointSizePixelsChanged(int val);
+    void pointTypeChanged(int val);
     void verboseFlagChanged(bool val);
+    void showRidgelinesChanged(bool val);
     void legendToggled(bool val);
     void lightingToggled(bool val);
+    void streamlineAlgorithmChanged(int val);
+    void maxSLCountChanged(int val);
+    void maxDomainCacheChanged(int val);
+    void workGroupSizeChanged(int val);
+    void forceNodalChanged(bool);
   private:
     QTabWidget      *propertyTabs;
 
     int plotType;
-    QLineEdit *minPunctures;
-    QLineEdit *maxPunctures;
-    QWidget      *sourceType;
+    QSpinBox  *minPunctures;
+    QSpinBox  *maxPunctures;
+    QLabel       *puncturePlaneLabel;
+    QWidget      *puncturePlane;
+    QButtonGroup *puncturePlaneButtonGroup;
+    QWidget   *sourceType;
     QComboBox *sourceTypeCombo;
     QLineEdit *pointSource;
     QLineEdit *lineStart;
     QLineEdit *lineEnd;
-    QLineEdit *pointDensity;
-    QWidget      *integrationType;
+    QSpinBox  *pointDensity;
+    QWidget   *integrationType;
     QComboBox *integrationTypeCombo;
     QLineEdit *maxStepLength;
     QLineEdit *relTol;
     QLineEdit *absTol;
-    QLineEdit *maxToroidalWinding;
-    QLineEdit *overrideToroidalWinding;
-    QLineEdit *hitRate;
-    QLineEdit *adjustPlane;
+    QWidget      *analysis;
+    QButtonGroup *analysisButtonGroup;
+    QSpinBox *maximumToroidalWinding;
+    QSpinBox *overrideToroidalWinding;
+    QLineEdit *windingPairConfidence;
+    QLineEdit *periodicityConsistency;
     QWidget      *overlaps;
     QButtonGroup *overlapsButtonGroup;
     QWidget      *meshType;
     QComboBox *meshTypeCombo;
-    QLineEdit *numberPlanes;
+    QSpinBox  *numberPlanes;
+    QLineEdit *singlePlane;
+    QSpinBox *adjustPlane;
     QLineEdit *min;
     QLineEdit *max;
     QCheckBox *minFlag;
@@ -164,12 +198,27 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     QButtonGroup *colorTypeButtonGroup;
     QvisColorButton *singleColor;
     QvisColorTableButton *colorTableName;
+    QLabel               *opacityButtonsLabel;
+    QButtonGroup         *opacityButtons;
+    QRadioButton         *opacityButtonSetExplicit;
+    QRadioButton         *opacityButtonColorTable;
+    QLabel               *opacitySliderLabel;
+    QvisOpacitySlider    *opacitySlider;
     QWidget      *dataValue;
     QComboBox *dataValueCombo;
     QCheckBox *showOPoints;
+    QLabel *OPointMaxIterationsLabel;
+    QSpinBox *OPointMaxIterations;
+    QCheckBox *showChaotic;
     QCheckBox *showIslands;
-    QCheckBox *showLines;
+    QLabel *lineWidthLabel, *lineStyleLabel;
     QCheckBox *showPoints;
+    QvisPointControl *pointControl;
+    QCheckBox *showLines;
+    QvisLineWidthWidget *lineWidth;
+    QvisLineStyleWidget *lineStyle;
+
+    QCheckBox *showRidgelines;
     QCheckBox *verboseFlag;
     QCheckBox *legendToggle;
     QCheckBox *lightingToggle;
@@ -184,13 +233,18 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     QLabel *maxStepLengthLabel;
     QLabel *relTolLabel;
     QLabel *absTolLabel;
-    QLabel *maxToroidalWindingLabel;
+    QLabel    *forceNodalLabel;
+    QCheckBox *forceNodal;
+    QLabel *analysisLabel;
+    QLabel *maximumToroidalWindingLabel;
     QLabel *overrideToroidalWindingLabel;
-    QLabel *hitRateLabel;
+    QLabel *windingPairConfidenceLabel;
+    QLabel *periodicityConsistencyLabel;
     QLabel *adjustPlaneLabel;
     QLabel *overlapsLabel;
     QLabel *meshTypeLabel;
     QLabel *numberPlanesLabel;
+    QLabel *singlePlaneLabel;
     QLabel *minLabel;
     QLabel *maxLabel;
     QLabel *colorTypeLabel;
@@ -198,9 +252,19 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     QLabel *colorTableNameLabel;
     QLabel *dataValueLabel;
 
+    QLabel    *slAlgoLabel;
+    QComboBox *slAlgo;
+    QLabel    *maxSLCountLabel;
+    QSpinBox  *maxSLCount;
+    QLabel    *maxDomainCacheLabel;
+    QSpinBox  *maxDomainCache;
+    QLabel    *workGroupSizeLabel;
+    QSpinBox  *workGroupSize;
+
     QWidget *firstTab;
     QWidget *secondTab;
     QWidget *thirdTab;
+    QWidget *fourthTab;
     QGroupBox *sourceGroup;
 
     PoincareAttributes *atts;

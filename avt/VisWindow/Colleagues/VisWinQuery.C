@@ -253,6 +253,9 @@ VisWinQuery::SetForegroundColor(double fr, double fg, double fb)
 //    Kathleen Bonnell, Fri Jun 11 14:49:39 PDT 2004 
 //    Add back in the line that computes and sets the Scale for a pick.
 //
+//    Jeremy Meredith, Wed May 19 14:15:58 EDT 2010
+//    Account for 3D axis scaling (3D equivalent of full-frame mode).
+//
 // ****************************************************************************
 
 void
@@ -284,6 +287,18 @@ VisWinQuery::UpdateView()
                 if (mediator.GetFullFrameMode())
                 {
                     it->pickActor->Translate(transVec);
+                }
+            }
+            else
+            {
+                double scale[3] = {1,1,1};
+                if (mediator.Get3DAxisScalingFactors(scale))
+                {
+                    double newShift[3] = {shiftVec[0]/scale[0],
+                                          shiftVec[1]/scale[1],
+                                          shiftVec[2]/scale[2]};
+                    it->pickActor->ResetPosition(newShift);
+                    it->pickActor->Translate(scale);
                 }
             }
             it->pickActor->UpdateView();
@@ -443,7 +458,7 @@ VisWinQuery::Pick(const VisualCueInfo *vq)
 
     pp->UseGlyph(vq->GetGlyphType() != "");
     
-    pp->SetDesignator(vq->GetLabel().c_str());
+    pp->SetDesignator(vq->GetLabel());
 
     double fg[3];
     mediator.GetForegroundColor(fg);
@@ -718,16 +733,21 @@ VisWinQuery::ClearLineouts()
 //
 //    Mark C. Miller, Tue Jan 18 12:44:34 PST 2005
 //    Added code to store visual cue info back into the cache
-//    
+//
+//    Brad Whitlock, Thu Aug 26 16:56:57 PDT 2010
+//    I added code to update the pick actor. I made the matching of actors
+//    use a new passed id so we can rename the pick labels in the cue info.
+//
 // ****************************************************************************
  
 void
-VisWinQuery::UpdateQuery(const VisualCueInfo *vq)
+VisWinQuery::UpdateQuery(const std::string &id, const VisualCueInfo *vq)
 {
+    // Try and update the lineouts
     std::vector< LineEntry >::iterator it;
     for (it = lineOuts.begin() ; it != lineOuts.end() ; it++)
     {
-        if (it->lineActor->GetDesignator() == vq->GetLabel())
+        if (it->lineActor->GetDesignator() == id)
         {
             //
             // Pull the lineout actors a little closer to the camera to make sure
@@ -769,6 +789,20 @@ VisWinQuery::UpdateQuery(const VisualCueInfo *vq)
             it->vqInfo = *vq;
         }
     }
+
+    // Try and update the pick points
+    std::vector<PickEntry>::iterator pit;
+    for(pit = pickPoints.begin(); pit != pickPoints.end(); ++pit)
+    {
+        if(pit->pickActor->GetDesignator() == id)
+        {
+            // Just update the pick label for now.
+            pit->pickActor->SetDesignator(vq->GetLabel());
+
+            pit->vqInfo = *vq;
+        }
+    }
+
     //
     //  Issue a render call so changes take effect.
     //
@@ -1194,4 +1228,41 @@ VisWinQuery::Start3DMode()
 {
     // Remove 2d pick actors if they exists
     ClearPickPoints(2);
+}
+
+// ****************************************************************************
+// Method:  VisWinQuery::Set3DAxisScalingFactors
+//
+// Purpose:
+//   Reset the pick point positions in 3D if the scaling changes.
+//
+// Programmer:  Jeremy Meredith
+// Creation:    May 19, 2010
+//
+// ****************************************************************************
+void
+VisWinQuery::Set3DAxisScalingFactors(bool doscaling,const double scale[3])
+{
+    if (!pickPoints.empty())
+    {
+        double distance = CalculateShiftDistance();
+        double shiftVec[3];
+        CreateShiftVector(shiftVec, distance);
+        std::vector< PickEntry >::iterator it;
+        for (it = pickPoints.begin() ; it != pickPoints.end() ; it++)
+        {
+            if (doscaling)
+            {
+                double newShift[3] = {shiftVec[0]/scale[0],
+                                      shiftVec[1]/scale[1],
+                                      shiftVec[2]/scale[2]};
+                it->pickActor->ResetPosition(newShift);
+                it->pickActor->Translate(scale);
+            }
+            else
+            {
+                it->pickActor->ResetPosition(shiftVec);
+            }
+        }
+    }
 }

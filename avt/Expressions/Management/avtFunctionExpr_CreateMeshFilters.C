@@ -37,6 +37,7 @@
 *****************************************************************************/
 #include <avtExprNode.h>
 
+#include <avtCoordinateExtremaExpression.h>
 #include <avtCylindricalRadiusExpression.h>
 #include <avtDataIdExpression.h>
 #include <avtExpressionComponentMacro.h>
@@ -61,6 +62,12 @@
 // Creation:   Thu May 21 08:55:58 PDT 2009
 //
 // Modifications:
+//   
+//   Hank Childs, Mon Jun 28 06:43:20 PDT 2010
+//   Add avtCoordinateExtrema.
+//
+//   Hank Childs, Thu Jul  8 08:11:06 PDT 2010
+//   Change coordinate extrema to include polar coordinates.
 //   
 // ****************************************************************************
 
@@ -155,7 +162,21 @@ avtFunctionExpr::CreateMeshFilters(const string &functionName) const
         return ecm;
     }
     else if (functionName == "zonetype")
+    {
         return new avtZoneTypeExpression();
+    }
+    else if (functionName == "min_coord")
+    {
+        avtCoordinateExtremaExpression *ce = new avtCoordinateExtremaExpression;
+        ce->SetGetMinimum(true);
+        return ce;
+    }
+    else if (functionName == "max_coord")
+    {
+        avtCoordinateExtremaExpression *ce = new avtCoordinateExtremaExpression;
+        ce->SetGetMinimum(false);
+        return ce;
+    }
 
     return 0;
 }

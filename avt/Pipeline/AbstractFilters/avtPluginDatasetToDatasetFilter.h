@@ -53,12 +53,19 @@
 //  Programmer:  Hank Childs
 //  Creation:    January 24, 2008
 //
+//  Modifications:
+//    Kathleen Bonnell, Mon Aug 23 15:22:34 MST 2010
+//    Added constructor/destructor.
+//
 // ****************************************************************************
 
 class PIPELINE_API avtPluginDatasetToDatasetFilter : 
     public virtual avtDatasetToDatasetFilter, 
     public virtual avtPluginFilter
 {
+public:
+    avtPluginDatasetToDatasetFilter();
+    virtual ~avtPluginDatasetToDatasetFilter();
 };
 
 #endif

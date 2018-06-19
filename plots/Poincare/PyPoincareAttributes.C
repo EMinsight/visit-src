@@ -77,10 +77,46 @@ PyPoincareAttributes_ToString(const PoincareAttributes *atts, const char *prefix
     std::string str; 
     char tmpStr[1000]; 
 
-    SNPRINTF(tmpStr, 1000, "%sminPunctures = %g\n", prefix, atts->GetMinPunctures());
+    const char *opacityType_names = "Explicit, ColorTable";
+    switch (atts->GetOpacityType())
+    {
+      case PoincareAttributes::Explicit:
+          SNPRINTF(tmpStr, 1000, "%sopacityType = %sExplicit  # %s\n", prefix, prefix, opacityType_names);
+          str += tmpStr;
+          break;
+      case PoincareAttributes::ColorTable:
+          SNPRINTF(tmpStr, 1000, "%sopacityType = %sColorTable  # %s\n", prefix, prefix, opacityType_names);
+          str += tmpStr;
+          break;
+      default:
+          break;
+    }
+
+    SNPRINTF(tmpStr, 1000, "%sopacity = %g\n", prefix, atts->GetOpacity());
     str += tmpStr;
-    SNPRINTF(tmpStr, 1000, "%smaxPunctures = %g\n", prefix, atts->GetMaxPunctures());
+    SNPRINTF(tmpStr, 1000, "%sminPunctures = %d\n", prefix, atts->GetMinPunctures());
     str += tmpStr;
+    SNPRINTF(tmpStr, 1000, "%smaxPunctures = %d\n", prefix, atts->GetMaxPunctures());
+    str += tmpStr;
+    const char *puncturePlane_names = "Poloidal, Toroidal, Arbitrary";
+    switch (atts->GetPuncturePlane())
+    {
+      case PoincareAttributes::Poloidal:
+          SNPRINTF(tmpStr, 1000, "%spuncturePlane = %sPoloidal  # %s\n", prefix, prefix, puncturePlane_names);
+          str += tmpStr;
+          break;
+      case PoincareAttributes::Toroidal:
+          SNPRINTF(tmpStr, 1000, "%spuncturePlane = %sToroidal  # %s\n", prefix, prefix, puncturePlane_names);
+          str += tmpStr;
+          break;
+      case PoincareAttributes::Arbitrary:
+          SNPRINTF(tmpStr, 1000, "%spuncturePlane = %sArbitrary  # %s\n", prefix, prefix, puncturePlane_names);
+          str += tmpStr;
+          break;
+      default:
+          break;
+    }
+
     const char *sourceType_names = "SpecifiedPoint, SpecifiedLine";
     switch (atts->GetSourceType())
     {
@@ -171,11 +207,28 @@ PyPoincareAttributes_ToString(const PoincareAttributes *atts, const char *prefix
     str += tmpStr;
     SNPRINTF(tmpStr, 1000, "%sabsTol = %g\n", prefix, atts->GetAbsTol());
     str += tmpStr;
-    SNPRINTF(tmpStr, 1000, "%smaxToroidalWinding = %d\n", prefix, atts->GetMaxToroidalWinding());
+    const char *analysis_names = "None, Normal";
+    switch (atts->GetAnalysis())
+    {
+      case PoincareAttributes::None:
+          SNPRINTF(tmpStr, 1000, "%sanalysis = %sNone  # %s\n", prefix, prefix, analysis_names);
+          str += tmpStr;
+          break;
+      case PoincareAttributes::Normal:
+          SNPRINTF(tmpStr, 1000, "%sanalysis = %sNormal  # %s\n", prefix, prefix, analysis_names);
+          str += tmpStr;
+          break;
+      default:
+          break;
+    }
+
+    SNPRINTF(tmpStr, 1000, "%smaximumToroidalWinding = %d\n", prefix, atts->GetMaximumToroidalWinding());
     str += tmpStr;
     SNPRINTF(tmpStr, 1000, "%soverrideToroidalWinding = %d\n", prefix, atts->GetOverrideToroidalWinding());
     str += tmpStr;
-    SNPRINTF(tmpStr, 1000, "%shitRate = %g\n", prefix, atts->GetHitRate());
+    SNPRINTF(tmpStr, 1000, "%swindingPairConfidence = %g\n", prefix, atts->GetWindingPairConfidence());
+    str += tmpStr;
+    SNPRINTF(tmpStr, 1000, "%speriodicityConsistency = %g\n", prefix, atts->GetPeriodicityConsistency());
     str += tmpStr;
     SNPRINTF(tmpStr, 1000, "%sadjustPlane = %d\n", prefix, atts->GetAdjustPlane());
     str += tmpStr;
@@ -219,6 +272,8 @@ PyPoincareAttributes_ToString(const PoincareAttributes *atts, const char *prefix
 
     SNPRINTF(tmpStr, 1000, "%snumberPlanes = %d\n", prefix, atts->GetNumberPlanes());
     str += tmpStr;
+    SNPRINTF(tmpStr, 1000, "%ssinglePlane = %g\n", prefix, atts->GetSinglePlane());
+    str += tmpStr;
     SNPRINTF(tmpStr, 1000, "%smin = %g\n", prefix, atts->GetMin());
     str += tmpStr;
     SNPRINTF(tmpStr, 1000, "%smax = %g\n", prefix, atts->GetMax());
@@ -253,11 +308,15 @@ PyPoincareAttributes_ToString(const PoincareAttributes *atts, const char *prefix
     str += tmpStr;
     SNPRINTF(tmpStr, 1000, "%scolorTableName = \"%s\"\n", prefix, atts->GetColorTableName().c_str());
     str += tmpStr;
-    const char *dataValue_names = "OriginalValue, InputOrder, PointIndex, Plane, WindingOrder, "
-        "WindingPointOrder, WindingPointOrderModulo, ToroidalWindings, PoloidalWindings, "
-        "SafetyFactor, Confidence, RidgelineVariance";
+    const char *dataValue_names = "Solid, OriginalValue, InputOrder, PointIndex, Plane, "
+        "WindingOrder, WindingPointOrder, WindingPointOrderModulo, ToroidalWindings, "
+        "PoloidalWindings, SafetyFactor, Confidence, RidgelineVariance";
     switch (atts->GetDataValue())
     {
+      case PoincareAttributes::Solid:
+          SNPRINTF(tmpStr, 1000, "%sdataValue = %sSolid  # %s\n", prefix, prefix, dataValue_names);
+          str += tmpStr;
+          break;
       case PoincareAttributes::OriginalValue:
           SNPRINTF(tmpStr, 1000, "%sdataValue = %sOriginalValue  # %s\n", prefix, prefix, dataValue_names);
           str += tmpStr;
@@ -315,26 +374,81 @@ PyPoincareAttributes_ToString(const PoincareAttributes *atts, const char *prefix
     else
         SNPRINTF(tmpStr, 1000, "%sshowOPoints = 0\n", prefix);
     str += tmpStr;
+    SNPRINTF(tmpStr, 1000, "%sOPointMaxInterations = %d\n", prefix, atts->GetOPointMaxInterations());
+    str += tmpStr;
+    if(atts->GetShowXPoints())
+        SNPRINTF(tmpStr, 1000, "%sshowXPoints = 1\n", prefix);
+    else
+        SNPRINTF(tmpStr, 1000, "%sshowXPoints = 0\n", prefix);
+    str += tmpStr;
+    SNPRINTF(tmpStr, 1000, "%sXPointMaxInterations = %d\n", prefix, atts->GetXPointMaxInterations());
+    str += tmpStr;
+    if(atts->GetShowChaotic())
+        SNPRINTF(tmpStr, 1000, "%sshowChaotic = 1\n", prefix);
+    else
+        SNPRINTF(tmpStr, 1000, "%sshowChaotic = 0\n", prefix);
+    str += tmpStr;
     if(atts->GetShowIslands())
         SNPRINTF(tmpStr, 1000, "%sshowIslands = 1\n", prefix);
     else
         SNPRINTF(tmpStr, 1000, "%sshowIslands = 0\n", prefix);
-    str += tmpStr;
-    if(atts->GetShowLines())
-        SNPRINTF(tmpStr, 1000, "%sshowLines = 1\n", prefix);
-    else
-        SNPRINTF(tmpStr, 1000, "%sshowLines = 0\n", prefix);
-    str += tmpStr;
-    if(atts->GetShowPoints())
-        SNPRINTF(tmpStr, 1000, "%sshowPoints = 1\n", prefix);
-    else
-        SNPRINTF(tmpStr, 1000, "%sshowPoints = 0\n", prefix);
     str += tmpStr;
     if(atts->GetVerboseFlag())
         SNPRINTF(tmpStr, 1000, "%sverboseFlag = 1\n", prefix);
     else
         SNPRINTF(tmpStr, 1000, "%sverboseFlag = 0\n", prefix);
     str += tmpStr;
+    if(atts->GetShowRidgelines())
+        SNPRINTF(tmpStr, 1000, "%sshowRidgelines = 1\n", prefix);
+    else
+        SNPRINTF(tmpStr, 1000, "%sshowRidgelines = 0\n", prefix);
+    str += tmpStr;
+    if(atts->GetShowLines())
+        SNPRINTF(tmpStr, 1000, "%sshowLines = 1\n", prefix);
+    else
+        SNPRINTF(tmpStr, 1000, "%sshowLines = 0\n", prefix);
+    str += tmpStr;
+    SNPRINTF(tmpStr, 1000, "%slineWidth = %d\n", prefix, atts->GetLineWidth());
+    str += tmpStr;
+    const char *lineStyle_values[] = {"SOLID", "DASH", "DOT", "DOTDASH"};
+    SNPRINTF(tmpStr, 1000, "%slineStyle = %s%s  # SOLID, DASH, DOT, DOTDASH\n", prefix, prefix, lineStyle_values[atts->GetLineStyle()]);
+    str += tmpStr;
+    if(atts->GetShowPoints())
+        SNPRINTF(tmpStr, 1000, "%sshowPoints = 1\n", prefix);
+    else
+        SNPRINTF(tmpStr, 1000, "%sshowPoints = 0\n", prefix);
+    str += tmpStr;
+    SNPRINTF(tmpStr, 1000, "%spointSize = %g\n", prefix, atts->GetPointSize());
+    str += tmpStr;
+    SNPRINTF(tmpStr, 1000, "%spointSizePixels = %d\n", prefix, atts->GetPointSizePixels());
+    str += tmpStr;
+    const char *pointType_names = "Box, Axis, Icosahedron, Point, Sphere";
+    switch (atts->GetPointType())
+    {
+      case PoincareAttributes::Box:
+          SNPRINTF(tmpStr, 1000, "%spointType = %sBox  # %s\n", prefix, prefix, pointType_names);
+          str += tmpStr;
+          break;
+      case PoincareAttributes::Axis:
+          SNPRINTF(tmpStr, 1000, "%spointType = %sAxis  # %s\n", prefix, prefix, pointType_names);
+          str += tmpStr;
+          break;
+      case PoincareAttributes::Icosahedron:
+          SNPRINTF(tmpStr, 1000, "%spointType = %sIcosahedron  # %s\n", prefix, prefix, pointType_names);
+          str += tmpStr;
+          break;
+      case PoincareAttributes::Point:
+          SNPRINTF(tmpStr, 1000, "%spointType = %sPoint  # %s\n", prefix, prefix, pointType_names);
+          str += tmpStr;
+          break;
+      case PoincareAttributes::Sphere:
+          SNPRINTF(tmpStr, 1000, "%spointType = %sSphere  # %s\n", prefix, prefix, pointType_names);
+          str += tmpStr;
+          break;
+      default:
+          break;
+    }
+
     if(atts->GetLegendFlag())
         SNPRINTF(tmpStr, 1000, "%slegendFlag = 1\n", prefix);
     else
@@ -344,6 +458,36 @@ PyPoincareAttributes_ToString(const PoincareAttributes *atts, const char *prefix
         SNPRINTF(tmpStr, 1000, "%slightingFlag = 1\n", prefix);
     else
         SNPRINTF(tmpStr, 1000, "%slightingFlag = 0\n", prefix);
+    str += tmpStr;
+    const char *streamlineAlgorithmType_names = "LoadOnDemand, ParallelStaticDomains, MasterSlave";
+    switch (atts->GetStreamlineAlgorithmType())
+    {
+      case PoincareAttributes::LoadOnDemand:
+          SNPRINTF(tmpStr, 1000, "%sstreamlineAlgorithmType = %sLoadOnDemand  # %s\n", prefix, prefix, streamlineAlgorithmType_names);
+          str += tmpStr;
+          break;
+      case PoincareAttributes::ParallelStaticDomains:
+          SNPRINTF(tmpStr, 1000, "%sstreamlineAlgorithmType = %sParallelStaticDomains  # %s\n", prefix, prefix, streamlineAlgorithmType_names);
+          str += tmpStr;
+          break;
+      case PoincareAttributes::MasterSlave:
+          SNPRINTF(tmpStr, 1000, "%sstreamlineAlgorithmType = %sMasterSlave  # %s\n", prefix, prefix, streamlineAlgorithmType_names);
+          str += tmpStr;
+          break;
+      default:
+          break;
+    }
+
+    SNPRINTF(tmpStr, 1000, "%smaxStreamlineProcessCount = %d\n", prefix, atts->GetMaxStreamlineProcessCount());
+    str += tmpStr;
+    SNPRINTF(tmpStr, 1000, "%smaxDomainCacheSize = %d\n", prefix, atts->GetMaxDomainCacheSize());
+    str += tmpStr;
+    SNPRINTF(tmpStr, 1000, "%sworkGroupSize = %d\n", prefix, atts->GetWorkGroupSize());
+    str += tmpStr;
+    if(atts->GetForceNodeCenteredData())
+        SNPRINTF(tmpStr, 1000, "%sforceNodeCenteredData = 1\n", prefix);
+    else
+        SNPRINTF(tmpStr, 1000, "%sforceNodeCenteredData = 0\n", prefix);
     str += tmpStr;
     return str;
 }
@@ -358,7 +502,40 @@ PoincareAttributes_Notify(PyObject *self, PyObject *args)
 }
 
 /*static*/ PyObject *
-PoincareAttributes_SetMinPunctures(PyObject *self, PyObject *args)
+PoincareAttributes_SetOpacityType(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the opacityType in the object.
+    if(ival >= 0 && ival < 2)
+        obj->data->SetOpacityType(PoincareAttributes::Opacity(ival));
+    else
+    {
+        fprintf(stderr, "An invalid opacityType value was given. "
+                        "Valid values are in the range of [0,1]. "
+                        "You can also use the following names: "
+                        "Explicit, ColorTable.");
+        return NULL;
+    }
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_GetOpacityType(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetOpacityType()));
+    return retval;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_SetOpacity(PyObject *self, PyObject *args)
 {
     PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
 
@@ -366,8 +543,32 @@ PoincareAttributes_SetMinPunctures(PyObject *self, PyObject *args)
     if(!PyArg_ParseTuple(args, "d", &dval))
         return NULL;
 
+    // Set the opacity in the object.
+    obj->data->SetOpacity(dval);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_GetOpacity(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+    PyObject *retval = PyFloat_FromDouble(obj->data->GetOpacity());
+    return retval;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_SetMinPunctures(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
     // Set the minPunctures in the object.
-    obj->data->SetMinPunctures(dval);
+    obj->data->SetMinPunctures((int)ival);
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -377,7 +578,7 @@ PoincareAttributes_SetMinPunctures(PyObject *self, PyObject *args)
 PoincareAttributes_GetMinPunctures(PyObject *self, PyObject *args)
 {
     PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
-    PyObject *retval = PyFloat_FromDouble(obj->data->GetMinPunctures());
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetMinPunctures()));
     return retval;
 }
 
@@ -386,12 +587,12 @@ PoincareAttributes_SetMaxPunctures(PyObject *self, PyObject *args)
 {
     PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
 
-    double dval;
-    if(!PyArg_ParseTuple(args, "d", &dval))
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
         return NULL;
 
     // Set the maxPunctures in the object.
-    obj->data->SetMaxPunctures(dval);
+    obj->data->SetMaxPunctures((int)ival);
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -401,7 +602,40 @@ PoincareAttributes_SetMaxPunctures(PyObject *self, PyObject *args)
 PoincareAttributes_GetMaxPunctures(PyObject *self, PyObject *args)
 {
     PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
-    PyObject *retval = PyFloat_FromDouble(obj->data->GetMaxPunctures());
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetMaxPunctures()));
+    return retval;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_SetPuncturePlane(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the puncturePlane in the object.
+    if(ival >= 0 && ival < 3)
+        obj->data->SetPuncturePlane(PoincareAttributes::PuncturePlaneType(ival));
+    else
+    {
+        fprintf(stderr, "An invalid puncturePlane value was given. "
+                        "Valid values are in the range of [0,2]. "
+                        "You can also use the following names: "
+                        "Poloidal, Toroidal, Arbitrary.");
+        return NULL;
+    }
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_GetPuncturePlane(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetPuncturePlane()));
     return retval;
 }
 
@@ -730,7 +964,7 @@ PoincareAttributes_GetAbsTol(PyObject *self, PyObject *args)
 }
 
 /*static*/ PyObject *
-PoincareAttributes_SetMaxToroidalWinding(PyObject *self, PyObject *args)
+PoincareAttributes_SetAnalysis(PyObject *self, PyObject *args)
 {
     PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
 
@@ -738,18 +972,51 @@ PoincareAttributes_SetMaxToroidalWinding(PyObject *self, PyObject *args)
     if(!PyArg_ParseTuple(args, "i", &ival))
         return NULL;
 
-    // Set the maxToroidalWinding in the object.
-    obj->data->SetMaxToroidalWinding((int)ival);
+    // Set the analysis in the object.
+    if(ival >= 0 && ival < 2)
+        obj->data->SetAnalysis(PoincareAttributes::AnalysisType(ival));
+    else
+    {
+        fprintf(stderr, "An invalid analysis value was given. "
+                        "Valid values are in the range of [0,1]. "
+                        "You can also use the following names: "
+                        "None, Normal.");
+        return NULL;
+    }
 
     Py_INCREF(Py_None);
     return Py_None;
 }
 
 /*static*/ PyObject *
-PoincareAttributes_GetMaxToroidalWinding(PyObject *self, PyObject *args)
+PoincareAttributes_GetAnalysis(PyObject *self, PyObject *args)
 {
     PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
-    PyObject *retval = PyInt_FromLong(long(obj->data->GetMaxToroidalWinding()));
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetAnalysis()));
+    return retval;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_SetMaximumToroidalWinding(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the maximumToroidalWinding in the object.
+    obj->data->SetMaximumToroidalWinding((int)ival);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_GetMaximumToroidalWinding(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetMaximumToroidalWinding()));
     return retval;
 }
 
@@ -778,7 +1045,7 @@ PoincareAttributes_GetOverrideToroidalWinding(PyObject *self, PyObject *args)
 }
 
 /*static*/ PyObject *
-PoincareAttributes_SetHitRate(PyObject *self, PyObject *args)
+PoincareAttributes_SetWindingPairConfidence(PyObject *self, PyObject *args)
 {
     PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
 
@@ -786,18 +1053,42 @@ PoincareAttributes_SetHitRate(PyObject *self, PyObject *args)
     if(!PyArg_ParseTuple(args, "d", &dval))
         return NULL;
 
-    // Set the hitRate in the object.
-    obj->data->SetHitRate(dval);
+    // Set the windingPairConfidence in the object.
+    obj->data->SetWindingPairConfidence(dval);
 
     Py_INCREF(Py_None);
     return Py_None;
 }
 
 /*static*/ PyObject *
-PoincareAttributes_GetHitRate(PyObject *self, PyObject *args)
+PoincareAttributes_GetWindingPairConfidence(PyObject *self, PyObject *args)
 {
     PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
-    PyObject *retval = PyFloat_FromDouble(obj->data->GetHitRate());
+    PyObject *retval = PyFloat_FromDouble(obj->data->GetWindingPairConfidence());
+    return retval;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_SetPeriodicityConsistency(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+
+    double dval;
+    if(!PyArg_ParseTuple(args, "d", &dval))
+        return NULL;
+
+    // Set the periodicityConsistency in the object.
+    obj->data->SetPeriodicityConsistency(dval);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_GetPeriodicityConsistency(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+    PyObject *retval = PyFloat_FromDouble(obj->data->GetPeriodicityConsistency());
     return retval;
 }
 
@@ -912,6 +1203,30 @@ PoincareAttributes_GetNumberPlanes(PyObject *self, PyObject *args)
 {
     PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
     PyObject *retval = PyInt_FromLong(long(obj->data->GetNumberPlanes()));
+    return retval;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_SetSinglePlane(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+
+    double dval;
+    if(!PyArg_ParseTuple(args, "d", &dval))
+        return NULL;
+
+    // Set the singlePlane in the object.
+    obj->data->SetSinglePlane(dval);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_GetSinglePlane(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+    PyObject *retval = PyFloat_FromDouble(obj->data->GetSinglePlane());
     return retval;
 }
 
@@ -1155,16 +1470,17 @@ PoincareAttributes_SetDataValue(PyObject *self, PyObject *args)
         return NULL;
 
     // Set the dataValue in the object.
-    if(ival >= 0 && ival < 12)
+    if(ival >= 0 && ival < 13)
         obj->data->SetDataValue(PoincareAttributes::DataValue(ival));
     else
     {
         fprintf(stderr, "An invalid dataValue value was given. "
-                        "Valid values are in the range of [0,11]. "
+                        "Valid values are in the range of [0,12]. "
                         "You can also use the following names: "
-                        "OriginalValue, InputOrder, PointIndex, Plane, WindingOrder, "
-                        "WindingPointOrder, WindingPointOrderModulo, ToroidalWindings, PoloidalWindings, "
-                        "SafetyFactor, Confidence, RidgelineVariance.");
+                        "Solid, OriginalValue, InputOrder, PointIndex, Plane, "
+                        "WindingOrder, WindingPointOrder, WindingPointOrderModulo, ToroidalWindings, "
+                        "PoloidalWindings, SafetyFactor, Confidence, RidgelineVariance"
+                        ".");
         return NULL;
     }
 
@@ -1205,6 +1521,102 @@ PoincareAttributes_GetShowOPoints(PyObject *self, PyObject *args)
 }
 
 /*static*/ PyObject *
+PoincareAttributes_SetOPointMaxInterations(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the OPointMaxInterations in the object.
+    obj->data->SetOPointMaxInterations((int)ival);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_GetOPointMaxInterations(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetOPointMaxInterations()));
+    return retval;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_SetShowXPoints(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the showXPoints in the object.
+    obj->data->SetShowXPoints(ival != 0);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_GetShowXPoints(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(obj->data->GetShowXPoints()?1L:0L);
+    return retval;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_SetXPointMaxInterations(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the XPointMaxInterations in the object.
+    obj->data->SetXPointMaxInterations((int)ival);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_GetXPointMaxInterations(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetXPointMaxInterations()));
+    return retval;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_SetShowChaotic(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the showChaotic in the object.
+    obj->data->SetShowChaotic(ival != 0);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_GetShowChaotic(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(obj->data->GetShowChaotic()?1L:0L);
+    return retval;
+}
+
+/*static*/ PyObject *
 PoincareAttributes_SetShowIslands(PyObject *self, PyObject *args)
 {
     PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
@@ -1225,6 +1637,54 @@ PoincareAttributes_GetShowIslands(PyObject *self, PyObject *args)
 {
     PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
     PyObject *retval = PyInt_FromLong(obj->data->GetShowIslands()?1L:0L);
+    return retval;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_SetVerboseFlag(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the verboseFlag in the object.
+    obj->data->SetVerboseFlag(ival != 0);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_GetVerboseFlag(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(obj->data->GetVerboseFlag()?1L:0L);
+    return retval;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_SetShowRidgelines(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the showRidgelines in the object.
+    obj->data->SetShowRidgelines(ival != 0);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_GetShowRidgelines(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(obj->data->GetShowRidgelines()?1L:0L);
     return retval;
 }
 
@@ -1253,6 +1713,63 @@ PoincareAttributes_GetShowLines(PyObject *self, PyObject *args)
 }
 
 /*static*/ PyObject *
+PoincareAttributes_SetLineWidth(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the lineWidth in the object.
+    obj->data->SetLineWidth(ival);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_GetLineWidth(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetLineWidth()));
+    return retval;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_SetLineStyle(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the lineStyle in the object.
+    if(ival >= 0 && ival <= 3)
+        obj->data->SetLineStyle(ival);
+    else
+    {
+        fprintf(stderr, "An invalid  value was given. "
+                        "Valid values are in the range of [0,3]. "
+                        "You can also use the following names: "
+                        "\"SOLID\", \"DASH\", \"DOT\", \"DOTDASH\"\n");
+        return NULL;
+    }
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_GetLineStyle(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetLineStyle()));
+    return retval;
+}
+
+/*static*/ PyObject *
 PoincareAttributes_SetShowPoints(PyObject *self, PyObject *args)
 {
     PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
@@ -1277,7 +1794,31 @@ PoincareAttributes_GetShowPoints(PyObject *self, PyObject *args)
 }
 
 /*static*/ PyObject *
-PoincareAttributes_SetVerboseFlag(PyObject *self, PyObject *args)
+PoincareAttributes_SetPointSize(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+
+    double dval;
+    if(!PyArg_ParseTuple(args, "d", &dval))
+        return NULL;
+
+    // Set the pointSize in the object.
+    obj->data->SetPointSize(dval);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_GetPointSize(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+    PyObject *retval = PyFloat_FromDouble(obj->data->GetPointSize());
+    return retval;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_SetPointSizePixels(PyObject *self, PyObject *args)
 {
     PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
 
@@ -1285,18 +1826,52 @@ PoincareAttributes_SetVerboseFlag(PyObject *self, PyObject *args)
     if(!PyArg_ParseTuple(args, "i", &ival))
         return NULL;
 
-    // Set the verboseFlag in the object.
-    obj->data->SetVerboseFlag(ival != 0);
+    // Set the pointSizePixels in the object.
+    obj->data->SetPointSizePixels((int)ival);
 
     Py_INCREF(Py_None);
     return Py_None;
 }
 
 /*static*/ PyObject *
-PoincareAttributes_GetVerboseFlag(PyObject *self, PyObject *args)
+PoincareAttributes_GetPointSizePixels(PyObject *self, PyObject *args)
 {
     PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
-    PyObject *retval = PyInt_FromLong(obj->data->GetVerboseFlag()?1L:0L);
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetPointSizePixels()));
+    return retval;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_SetPointType(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the pointType in the object.
+    if(ival >= 0 && ival < 5)
+        obj->data->SetPointType(PoincareAttributes::PointType(ival));
+    else
+    {
+        fprintf(stderr, "An invalid pointType value was given. "
+                        "Valid values are in the range of [0,4]. "
+                        "You can also use the following names: "
+                        "Box, Axis, Icosahedron, Point, Sphere"
+                        ".");
+        return NULL;
+    }
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_GetPointType(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetPointType()));
     return retval;
 }
 
@@ -1348,14 +1923,149 @@ PoincareAttributes_GetLightingFlag(PyObject *self, PyObject *args)
     return retval;
 }
 
+/*static*/ PyObject *
+PoincareAttributes_SetStreamlineAlgorithmType(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the streamlineAlgorithmType in the object.
+    if(ival >= 0 && ival < 3)
+        obj->data->SetStreamlineAlgorithmType(PoincareAttributes::StreamlineAlgorithmType(ival));
+    else
+    {
+        fprintf(stderr, "An invalid streamlineAlgorithmType value was given. "
+                        "Valid values are in the range of [0,2]. "
+                        "You can also use the following names: "
+                        "LoadOnDemand, ParallelStaticDomains, MasterSlave.");
+        return NULL;
+    }
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_GetStreamlineAlgorithmType(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetStreamlineAlgorithmType()));
+    return retval;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_SetMaxStreamlineProcessCount(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the maxStreamlineProcessCount in the object.
+    obj->data->SetMaxStreamlineProcessCount((int)ival);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_GetMaxStreamlineProcessCount(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetMaxStreamlineProcessCount()));
+    return retval;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_SetMaxDomainCacheSize(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the maxDomainCacheSize in the object.
+    obj->data->SetMaxDomainCacheSize((int)ival);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_GetMaxDomainCacheSize(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetMaxDomainCacheSize()));
+    return retval;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_SetWorkGroupSize(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the workGroupSize in the object.
+    obj->data->SetWorkGroupSize((int)ival);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_GetWorkGroupSize(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetWorkGroupSize()));
+    return retval;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_SetForceNodeCenteredData(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the forceNodeCenteredData in the object.
+    obj->data->SetForceNodeCenteredData(ival != 0);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_GetForceNodeCenteredData(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(obj->data->GetForceNodeCenteredData()?1L:0L);
+    return retval;
+}
+
 
 
 PyMethodDef PyPoincareAttributes_methods[POINCAREATTRIBUTES_NMETH] = {
     {"Notify", PoincareAttributes_Notify, METH_VARARGS},
+    {"SetOpacityType", PoincareAttributes_SetOpacityType, METH_VARARGS},
+    {"GetOpacityType", PoincareAttributes_GetOpacityType, METH_VARARGS},
+    {"SetOpacity", PoincareAttributes_SetOpacity, METH_VARARGS},
+    {"GetOpacity", PoincareAttributes_GetOpacity, METH_VARARGS},
     {"SetMinPunctures", PoincareAttributes_SetMinPunctures, METH_VARARGS},
     {"GetMinPunctures", PoincareAttributes_GetMinPunctures, METH_VARARGS},
     {"SetMaxPunctures", PoincareAttributes_SetMaxPunctures, METH_VARARGS},
     {"GetMaxPunctures", PoincareAttributes_GetMaxPunctures, METH_VARARGS},
+    {"SetPuncturePlane", PoincareAttributes_SetPuncturePlane, METH_VARARGS},
+    {"GetPuncturePlane", PoincareAttributes_GetPuncturePlane, METH_VARARGS},
     {"SetSourceType", PoincareAttributes_SetSourceType, METH_VARARGS},
     {"GetSourceType", PoincareAttributes_GetSourceType, METH_VARARGS},
     {"SetPointSource", PoincareAttributes_SetPointSource, METH_VARARGS},
@@ -1374,12 +2084,16 @@ PyMethodDef PyPoincareAttributes_methods[POINCAREATTRIBUTES_NMETH] = {
     {"GetRelTol", PoincareAttributes_GetRelTol, METH_VARARGS},
     {"SetAbsTol", PoincareAttributes_SetAbsTol, METH_VARARGS},
     {"GetAbsTol", PoincareAttributes_GetAbsTol, METH_VARARGS},
-    {"SetMaxToroidalWinding", PoincareAttributes_SetMaxToroidalWinding, METH_VARARGS},
-    {"GetMaxToroidalWinding", PoincareAttributes_GetMaxToroidalWinding, METH_VARARGS},
+    {"SetAnalysis", PoincareAttributes_SetAnalysis, METH_VARARGS},
+    {"GetAnalysis", PoincareAttributes_GetAnalysis, METH_VARARGS},
+    {"SetMaximumToroidalWinding", PoincareAttributes_SetMaximumToroidalWinding, METH_VARARGS},
+    {"GetMaximumToroidalWinding", PoincareAttributes_GetMaximumToroidalWinding, METH_VARARGS},
     {"SetOverrideToroidalWinding", PoincareAttributes_SetOverrideToroidalWinding, METH_VARARGS},
     {"GetOverrideToroidalWinding", PoincareAttributes_GetOverrideToroidalWinding, METH_VARARGS},
-    {"SetHitRate", PoincareAttributes_SetHitRate, METH_VARARGS},
-    {"GetHitRate", PoincareAttributes_GetHitRate, METH_VARARGS},
+    {"SetWindingPairConfidence", PoincareAttributes_SetWindingPairConfidence, METH_VARARGS},
+    {"GetWindingPairConfidence", PoincareAttributes_GetWindingPairConfidence, METH_VARARGS},
+    {"SetPeriodicityConsistency", PoincareAttributes_SetPeriodicityConsistency, METH_VARARGS},
+    {"GetPeriodicityConsistency", PoincareAttributes_GetPeriodicityConsistency, METH_VARARGS},
     {"SetAdjustPlane", PoincareAttributes_SetAdjustPlane, METH_VARARGS},
     {"GetAdjustPlane", PoincareAttributes_GetAdjustPlane, METH_VARARGS},
     {"SetOverlaps", PoincareAttributes_SetOverlaps, METH_VARARGS},
@@ -1388,6 +2102,8 @@ PyMethodDef PyPoincareAttributes_methods[POINCAREATTRIBUTES_NMETH] = {
     {"GetMeshType", PoincareAttributes_GetMeshType, METH_VARARGS},
     {"SetNumberPlanes", PoincareAttributes_SetNumberPlanes, METH_VARARGS},
     {"GetNumberPlanes", PoincareAttributes_GetNumberPlanes, METH_VARARGS},
+    {"SetSinglePlane", PoincareAttributes_SetSinglePlane, METH_VARARGS},
+    {"GetSinglePlane", PoincareAttributes_GetSinglePlane, METH_VARARGS},
     {"SetMin", PoincareAttributes_SetMin, METH_VARARGS},
     {"GetMin", PoincareAttributes_GetMin, METH_VARARGS},
     {"SetMax", PoincareAttributes_SetMax, METH_VARARGS},
@@ -1406,18 +2122,48 @@ PyMethodDef PyPoincareAttributes_methods[POINCAREATTRIBUTES_NMETH] = {
     {"GetDataValue", PoincareAttributes_GetDataValue, METH_VARARGS},
     {"SetShowOPoints", PoincareAttributes_SetShowOPoints, METH_VARARGS},
     {"GetShowOPoints", PoincareAttributes_GetShowOPoints, METH_VARARGS},
+    {"SetOPointMaxInterations", PoincareAttributes_SetOPointMaxInterations, METH_VARARGS},
+    {"GetOPointMaxInterations", PoincareAttributes_GetOPointMaxInterations, METH_VARARGS},
+    {"SetShowXPoints", PoincareAttributes_SetShowXPoints, METH_VARARGS},
+    {"GetShowXPoints", PoincareAttributes_GetShowXPoints, METH_VARARGS},
+    {"SetXPointMaxInterations", PoincareAttributes_SetXPointMaxInterations, METH_VARARGS},
+    {"GetXPointMaxInterations", PoincareAttributes_GetXPointMaxInterations, METH_VARARGS},
+    {"SetShowChaotic", PoincareAttributes_SetShowChaotic, METH_VARARGS},
+    {"GetShowChaotic", PoincareAttributes_GetShowChaotic, METH_VARARGS},
     {"SetShowIslands", PoincareAttributes_SetShowIslands, METH_VARARGS},
     {"GetShowIslands", PoincareAttributes_GetShowIslands, METH_VARARGS},
-    {"SetShowLines", PoincareAttributes_SetShowLines, METH_VARARGS},
-    {"GetShowLines", PoincareAttributes_GetShowLines, METH_VARARGS},
-    {"SetShowPoints", PoincareAttributes_SetShowPoints, METH_VARARGS},
-    {"GetShowPoints", PoincareAttributes_GetShowPoints, METH_VARARGS},
     {"SetVerboseFlag", PoincareAttributes_SetVerboseFlag, METH_VARARGS},
     {"GetVerboseFlag", PoincareAttributes_GetVerboseFlag, METH_VARARGS},
+    {"SetShowRidgelines", PoincareAttributes_SetShowRidgelines, METH_VARARGS},
+    {"GetShowRidgelines", PoincareAttributes_GetShowRidgelines, METH_VARARGS},
+    {"SetShowLines", PoincareAttributes_SetShowLines, METH_VARARGS},
+    {"GetShowLines", PoincareAttributes_GetShowLines, METH_VARARGS},
+    {"SetLineWidth", PoincareAttributes_SetLineWidth, METH_VARARGS},
+    {"GetLineWidth", PoincareAttributes_GetLineWidth, METH_VARARGS},
+    {"SetLineStyle", PoincareAttributes_SetLineStyle, METH_VARARGS},
+    {"GetLineStyle", PoincareAttributes_GetLineStyle, METH_VARARGS},
+    {"SetShowPoints", PoincareAttributes_SetShowPoints, METH_VARARGS},
+    {"GetShowPoints", PoincareAttributes_GetShowPoints, METH_VARARGS},
+    {"SetPointSize", PoincareAttributes_SetPointSize, METH_VARARGS},
+    {"GetPointSize", PoincareAttributes_GetPointSize, METH_VARARGS},
+    {"SetPointSizePixels", PoincareAttributes_SetPointSizePixels, METH_VARARGS},
+    {"GetPointSizePixels", PoincareAttributes_GetPointSizePixels, METH_VARARGS},
+    {"SetPointType", PoincareAttributes_SetPointType, METH_VARARGS},
+    {"GetPointType", PoincareAttributes_GetPointType, METH_VARARGS},
     {"SetLegendFlag", PoincareAttributes_SetLegendFlag, METH_VARARGS},
     {"GetLegendFlag", PoincareAttributes_GetLegendFlag, METH_VARARGS},
     {"SetLightingFlag", PoincareAttributes_SetLightingFlag, METH_VARARGS},
     {"GetLightingFlag", PoincareAttributes_GetLightingFlag, METH_VARARGS},
+    {"SetStreamlineAlgorithmType", PoincareAttributes_SetStreamlineAlgorithmType, METH_VARARGS},
+    {"GetStreamlineAlgorithmType", PoincareAttributes_GetStreamlineAlgorithmType, METH_VARARGS},
+    {"SetMaxStreamlineProcessCount", PoincareAttributes_SetMaxStreamlineProcessCount, METH_VARARGS},
+    {"GetMaxStreamlineProcessCount", PoincareAttributes_GetMaxStreamlineProcessCount, METH_VARARGS},
+    {"SetMaxDomainCacheSize", PoincareAttributes_SetMaxDomainCacheSize, METH_VARARGS},
+    {"GetMaxDomainCacheSize", PoincareAttributes_GetMaxDomainCacheSize, METH_VARARGS},
+    {"SetWorkGroupSize", PoincareAttributes_SetWorkGroupSize, METH_VARARGS},
+    {"GetWorkGroupSize", PoincareAttributes_GetWorkGroupSize, METH_VARARGS},
+    {"SetForceNodeCenteredData", PoincareAttributes_SetForceNodeCenteredData, METH_VARARGS},
+    {"GetForceNodeCenteredData", PoincareAttributes_GetForceNodeCenteredData, METH_VARARGS},
     {NULL, NULL}
 };
 
@@ -1446,10 +2192,28 @@ PoincareAttributes_compare(PyObject *v, PyObject *w)
 PyObject *
 PyPoincareAttributes_getattr(PyObject *self, char *name)
 {
+    if(strcmp(name, "opacityType") == 0)
+        return PoincareAttributes_GetOpacityType(self, NULL);
+    if(strcmp(name, "Explicit") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::Explicit));
+    if(strcmp(name, "ColorTable") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::ColorTable));
+
+    if(strcmp(name, "opacity") == 0)
+        return PoincareAttributes_GetOpacity(self, NULL);
     if(strcmp(name, "minPunctures") == 0)
         return PoincareAttributes_GetMinPunctures(self, NULL);
     if(strcmp(name, "maxPunctures") == 0)
         return PoincareAttributes_GetMaxPunctures(self, NULL);
+    if(strcmp(name, "puncturePlane") == 0)
+        return PoincareAttributes_GetPuncturePlane(self, NULL);
+    if(strcmp(name, "Poloidal") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::Poloidal));
+    if(strcmp(name, "Toroidal") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::Toroidal));
+    if(strcmp(name, "Arbitrary") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::Arbitrary));
+
     if(strcmp(name, "sourceType") == 0)
         return PoincareAttributes_GetSourceType(self, NULL);
     if(strcmp(name, "SpecifiedPoint") == 0)
@@ -1480,12 +2244,21 @@ PyPoincareAttributes_getattr(PyObject *self, char *name)
         return PoincareAttributes_GetRelTol(self, NULL);
     if(strcmp(name, "absTol") == 0)
         return PoincareAttributes_GetAbsTol(self, NULL);
-    if(strcmp(name, "maxToroidalWinding") == 0)
-        return PoincareAttributes_GetMaxToroidalWinding(self, NULL);
+    if(strcmp(name, "analysis") == 0)
+        return PoincareAttributes_GetAnalysis(self, NULL);
+    if(strcmp(name, "None") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::None));
+    if(strcmp(name, "Normal") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::Normal));
+
+    if(strcmp(name, "maximumToroidalWinding") == 0)
+        return PoincareAttributes_GetMaximumToroidalWinding(self, NULL);
     if(strcmp(name, "overrideToroidalWinding") == 0)
         return PoincareAttributes_GetOverrideToroidalWinding(self, NULL);
-    if(strcmp(name, "hitRate") == 0)
-        return PoincareAttributes_GetHitRate(self, NULL);
+    if(strcmp(name, "windingPairConfidence") == 0)
+        return PoincareAttributes_GetWindingPairConfidence(self, NULL);
+    if(strcmp(name, "periodicityConsistency") == 0)
+        return PoincareAttributes_GetPeriodicityConsistency(self, NULL);
     if(strcmp(name, "adjustPlane") == 0)
         return PoincareAttributes_GetAdjustPlane(self, NULL);
     if(strcmp(name, "overlaps") == 0)
@@ -1508,6 +2281,8 @@ PyPoincareAttributes_getattr(PyObject *self, char *name)
 
     if(strcmp(name, "numberPlanes") == 0)
         return PoincareAttributes_GetNumberPlanes(self, NULL);
+    if(strcmp(name, "singlePlane") == 0)
+        return PoincareAttributes_GetSinglePlane(self, NULL);
     if(strcmp(name, "min") == 0)
         return PoincareAttributes_GetMin(self, NULL);
     if(strcmp(name, "max") == 0)
@@ -1529,6 +2304,8 @@ PyPoincareAttributes_getattr(PyObject *self, char *name)
         return PoincareAttributes_GetColorTableName(self, NULL);
     if(strcmp(name, "dataValue") == 0)
         return PoincareAttributes_GetDataValue(self, NULL);
+    if(strcmp(name, "Solid") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::Solid));
     if(strcmp(name, "OriginalValue") == 0)
         return PyInt_FromLong(long(PoincareAttributes::OriginalValue));
     if(strcmp(name, "InputOrder") == 0)
@@ -1556,18 +2333,75 @@ PyPoincareAttributes_getattr(PyObject *self, char *name)
 
     if(strcmp(name, "showOPoints") == 0)
         return PoincareAttributes_GetShowOPoints(self, NULL);
+    if(strcmp(name, "OPointMaxInterations") == 0)
+        return PoincareAttributes_GetOPointMaxInterations(self, NULL);
+    if(strcmp(name, "showXPoints") == 0)
+        return PoincareAttributes_GetShowXPoints(self, NULL);
+    if(strcmp(name, "XPointMaxInterations") == 0)
+        return PoincareAttributes_GetXPointMaxInterations(self, NULL);
+    if(strcmp(name, "showChaotic") == 0)
+        return PoincareAttributes_GetShowChaotic(self, NULL);
     if(strcmp(name, "showIslands") == 0)
         return PoincareAttributes_GetShowIslands(self, NULL);
-    if(strcmp(name, "showLines") == 0)
-        return PoincareAttributes_GetShowLines(self, NULL);
-    if(strcmp(name, "showPoints") == 0)
-        return PoincareAttributes_GetShowPoints(self, NULL);
     if(strcmp(name, "verboseFlag") == 0)
         return PoincareAttributes_GetVerboseFlag(self, NULL);
+    if(strcmp(name, "showRidgelines") == 0)
+        return PoincareAttributes_GetShowRidgelines(self, NULL);
+    if(strcmp(name, "showLines") == 0)
+        return PoincareAttributes_GetShowLines(self, NULL);
+    if(strcmp(name, "lineWidth") == 0)
+        return PoincareAttributes_GetLineWidth(self, NULL);
+    if(strcmp(name, "lineStyle") == 0)
+        return PoincareAttributes_GetLineStyle(self, NULL);
+    if(strcmp(name, "SOLID") == 0)
+        return PyInt_FromLong(long(0));
+    else if(strcmp(name, "DASH") == 0)
+        return PyInt_FromLong(long(1));
+    else if(strcmp(name, "DOT") == 0)
+        return PyInt_FromLong(long(2));
+    else if(strcmp(name, "DOTDASH") == 0)
+        return PyInt_FromLong(long(3));
+
+    if(strcmp(name, "showPoints") == 0)
+        return PoincareAttributes_GetShowPoints(self, NULL);
+    if(strcmp(name, "pointSize") == 0)
+        return PoincareAttributes_GetPointSize(self, NULL);
+    if(strcmp(name, "pointSizePixels") == 0)
+        return PoincareAttributes_GetPointSizePixels(self, NULL);
+    if(strcmp(name, "pointType") == 0)
+        return PoincareAttributes_GetPointType(self, NULL);
+    if(strcmp(name, "Box") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::Box));
+    if(strcmp(name, "Axis") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::Axis));
+    if(strcmp(name, "Icosahedron") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::Icosahedron));
+    if(strcmp(name, "Point") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::Point));
+    if(strcmp(name, "Sphere") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::Sphere));
+
     if(strcmp(name, "legendFlag") == 0)
         return PoincareAttributes_GetLegendFlag(self, NULL);
     if(strcmp(name, "lightingFlag") == 0)
         return PoincareAttributes_GetLightingFlag(self, NULL);
+    if(strcmp(name, "streamlineAlgorithmType") == 0)
+        return PoincareAttributes_GetStreamlineAlgorithmType(self, NULL);
+    if(strcmp(name, "LoadOnDemand") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::LoadOnDemand));
+    if(strcmp(name, "ParallelStaticDomains") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::ParallelStaticDomains));
+    if(strcmp(name, "MasterSlave") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::MasterSlave));
+
+    if(strcmp(name, "maxStreamlineProcessCount") == 0)
+        return PoincareAttributes_GetMaxStreamlineProcessCount(self, NULL);
+    if(strcmp(name, "maxDomainCacheSize") == 0)
+        return PoincareAttributes_GetMaxDomainCacheSize(self, NULL);
+    if(strcmp(name, "workGroupSize") == 0)
+        return PoincareAttributes_GetWorkGroupSize(self, NULL);
+    if(strcmp(name, "forceNodeCenteredData") == 0)
+        return PoincareAttributes_GetForceNodeCenteredData(self, NULL);
 
     return Py_FindMethod(PyPoincareAttributes_methods, self, name);
 }
@@ -1582,10 +2416,16 @@ PyPoincareAttributes_setattr(PyObject *self, char *name, PyObject *args)
     Py_INCREF(args);
     PyObject *obj = NULL;
 
-    if(strcmp(name, "minPunctures") == 0)
+    if(strcmp(name, "opacityType") == 0)
+        obj = PoincareAttributes_SetOpacityType(self, tuple);
+    else if(strcmp(name, "opacity") == 0)
+        obj = PoincareAttributes_SetOpacity(self, tuple);
+    else if(strcmp(name, "minPunctures") == 0)
         obj = PoincareAttributes_SetMinPunctures(self, tuple);
     else if(strcmp(name, "maxPunctures") == 0)
         obj = PoincareAttributes_SetMaxPunctures(self, tuple);
+    else if(strcmp(name, "puncturePlane") == 0)
+        obj = PoincareAttributes_SetPuncturePlane(self, tuple);
     else if(strcmp(name, "sourceType") == 0)
         obj = PoincareAttributes_SetSourceType(self, tuple);
     else if(strcmp(name, "pointSource") == 0)
@@ -1604,12 +2444,16 @@ PyPoincareAttributes_setattr(PyObject *self, char *name, PyObject *args)
         obj = PoincareAttributes_SetRelTol(self, tuple);
     else if(strcmp(name, "absTol") == 0)
         obj = PoincareAttributes_SetAbsTol(self, tuple);
-    else if(strcmp(name, "maxToroidalWinding") == 0)
-        obj = PoincareAttributes_SetMaxToroidalWinding(self, tuple);
+    else if(strcmp(name, "analysis") == 0)
+        obj = PoincareAttributes_SetAnalysis(self, tuple);
+    else if(strcmp(name, "maximumToroidalWinding") == 0)
+        obj = PoincareAttributes_SetMaximumToroidalWinding(self, tuple);
     else if(strcmp(name, "overrideToroidalWinding") == 0)
         obj = PoincareAttributes_SetOverrideToroidalWinding(self, tuple);
-    else if(strcmp(name, "hitRate") == 0)
-        obj = PoincareAttributes_SetHitRate(self, tuple);
+    else if(strcmp(name, "windingPairConfidence") == 0)
+        obj = PoincareAttributes_SetWindingPairConfidence(self, tuple);
+    else if(strcmp(name, "periodicityConsistency") == 0)
+        obj = PoincareAttributes_SetPeriodicityConsistency(self, tuple);
     else if(strcmp(name, "adjustPlane") == 0)
         obj = PoincareAttributes_SetAdjustPlane(self, tuple);
     else if(strcmp(name, "overlaps") == 0)
@@ -1618,6 +2462,8 @@ PyPoincareAttributes_setattr(PyObject *self, char *name, PyObject *args)
         obj = PoincareAttributes_SetMeshType(self, tuple);
     else if(strcmp(name, "numberPlanes") == 0)
         obj = PoincareAttributes_SetNumberPlanes(self, tuple);
+    else if(strcmp(name, "singlePlane") == 0)
+        obj = PoincareAttributes_SetSinglePlane(self, tuple);
     else if(strcmp(name, "min") == 0)
         obj = PoincareAttributes_SetMin(self, tuple);
     else if(strcmp(name, "max") == 0)
@@ -1636,23 +2482,55 @@ PyPoincareAttributes_setattr(PyObject *self, char *name, PyObject *args)
         obj = PoincareAttributes_SetDataValue(self, tuple);
     else if(strcmp(name, "showOPoints") == 0)
         obj = PoincareAttributes_SetShowOPoints(self, tuple);
+    else if(strcmp(name, "OPointMaxInterations") == 0)
+        obj = PoincareAttributes_SetOPointMaxInterations(self, tuple);
+    else if(strcmp(name, "showXPoints") == 0)
+        obj = PoincareAttributes_SetShowXPoints(self, tuple);
+    else if(strcmp(name, "XPointMaxInterations") == 0)
+        obj = PoincareAttributes_SetXPointMaxInterations(self, tuple);
+    else if(strcmp(name, "showChaotic") == 0)
+        obj = PoincareAttributes_SetShowChaotic(self, tuple);
     else if(strcmp(name, "showIslands") == 0)
         obj = PoincareAttributes_SetShowIslands(self, tuple);
-    else if(strcmp(name, "showLines") == 0)
-        obj = PoincareAttributes_SetShowLines(self, tuple);
-    else if(strcmp(name, "showPoints") == 0)
-        obj = PoincareAttributes_SetShowPoints(self, tuple);
     else if(strcmp(name, "verboseFlag") == 0)
         obj = PoincareAttributes_SetVerboseFlag(self, tuple);
+    else if(strcmp(name, "showRidgelines") == 0)
+        obj = PoincareAttributes_SetShowRidgelines(self, tuple);
+    else if(strcmp(name, "showLines") == 0)
+        obj = PoincareAttributes_SetShowLines(self, tuple);
+    else if(strcmp(name, "lineWidth") == 0)
+        obj = PoincareAttributes_SetLineWidth(self, tuple);
+    else if(strcmp(name, "lineStyle") == 0)
+        obj = PoincareAttributes_SetLineStyle(self, tuple);
+    else if(strcmp(name, "showPoints") == 0)
+        obj = PoincareAttributes_SetShowPoints(self, tuple);
+    else if(strcmp(name, "pointSize") == 0)
+        obj = PoincareAttributes_SetPointSize(self, tuple);
+    else if(strcmp(name, "pointSizePixels") == 0)
+        obj = PoincareAttributes_SetPointSizePixels(self, tuple);
+    else if(strcmp(name, "pointType") == 0)
+        obj = PoincareAttributes_SetPointType(self, tuple);
     else if(strcmp(name, "legendFlag") == 0)
         obj = PoincareAttributes_SetLegendFlag(self, tuple);
     else if(strcmp(name, "lightingFlag") == 0)
         obj = PoincareAttributes_SetLightingFlag(self, tuple);
+    else if(strcmp(name, "streamlineAlgorithmType") == 0)
+        obj = PoincareAttributes_SetStreamlineAlgorithmType(self, tuple);
+    else if(strcmp(name, "maxStreamlineProcessCount") == 0)
+        obj = PoincareAttributes_SetMaxStreamlineProcessCount(self, tuple);
+    else if(strcmp(name, "maxDomainCacheSize") == 0)
+        obj = PoincareAttributes_SetMaxDomainCacheSize(self, tuple);
+    else if(strcmp(name, "workGroupSize") == 0)
+        obj = PoincareAttributes_SetWorkGroupSize(self, tuple);
+    else if(strcmp(name, "forceNodeCenteredData") == 0)
+        obj = PoincareAttributes_SetForceNodeCenteredData(self, tuple);
 
     if(obj != NULL)
         Py_DECREF(obj);
 
     Py_DECREF(tuple);
+    if( obj == NULL)
+        PyErr_Format(PyExc_RuntimeError, "Unable to set unknown attribute: '%s'", name);
     return (obj != NULL) ? 0 : -1;
 }
 

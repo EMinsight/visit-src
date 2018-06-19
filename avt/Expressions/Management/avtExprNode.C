@@ -48,7 +48,7 @@
 #include <DebugStream.h>
 #include <snprintf.h>
 
-#include <avtApplyDDFExpression.h>
+#include <avtApplyDataBinningExpression.h>
 #include <avtApplyEnumerationExpression.h>
 #include <avtApplyMapExpression.h>
 #include <avtArrayComposeExpression.h>
@@ -83,6 +83,7 @@
 #include <avtRecenterExpression.h>
 #include <avtRectilinearLaplacianExpression.h>
 #include <avtRelativeDifferenceExpression.h>
+#include <avtResampleExpression.h>
 #include <avtResradExpression.h>
 #include <avtTimeExpression.h>
 #include <avtUnaryMinusExpression.h>
@@ -459,6 +460,19 @@ avtVectorExpr::CreateFilters(ExprPipelineState *state)
 //    Cyrus Harrison, Tue Feb  2 14:54:25 PST 2010
 //    Added the "python" expression.
 //
+//    Dave Pugmire, Fri Jul  2 14:22:34 EDT 2010
+//    Added the "resample" expression.
+//
+//    Cyrus Harrison, Wed Jul  7 09:13:09 PDT 2010
+//    Added 'zonal_constant' & 'nodal_constant' as aliases for the
+//    existing 'cell_constant' & 'point_constant' expressions.
+//
+//    Hank Childs, Sat Aug 21 13:59:11 PDT 2010
+//    Rename apply_ddf to apply_data_binning.
+//
+//    Cyrus Harrison, Wed Aug 25 16:45:25 PDT 2010
+//    Preserve 'apply_ddf' as alias for 'apply_data_binning'.
+//
 // ****************************************************************************
 
 avtExpressionFilter *
@@ -498,6 +512,8 @@ avtFunctionExpr::CreateFilters(string functionName)
         return new avtLocalizedCompactnessExpression();
     if (functionName == "recenter")
         return new avtRecenterExpression();
+    if (functionName == "resample")
+        return new avtResampleExpression();
     if (functionName == "displacement")
         return new avtDisplacementExpression();
     if (functionName == "degree")
@@ -553,8 +569,8 @@ avtFunctionExpr::CreateFilters(string functionName)
         return new avtRelativeDifferenceExpression();
     if (functionName == "var_skew")
         return new avtVariableSkewExpression();
-    if (functionName == "apply_ddf")
-        return new avtApplyDDFExpression();
+    if (functionName == "apply_data_binning" || functionName == "apply_ddf")
+        return new avtApplyDataBinningExpression();
 
     if (functionName == "distance_to_best_fit_line")
         return new avtDistanceToBestFitLineExpression(true);
@@ -582,9 +598,13 @@ avtFunctionExpr::CreateFilters(string functionName)
         return new avtHSVColorComposeExpression;
     if (functionName == "colorlookup")
         return new avtPerformColorTableLookupExpression;
-    if (functionName == "cell_constant")
+    if (functionName == "cell_constant"  ||
+        functionName == "zonal_constant" ||
+        functionName == "zone_constant")
         return new avtConstantFunctionExpression(false);
-    if (functionName == "point_constant")
+    if (functionName == "point_constant" ||
+        functionName == "nodal_constant" ||
+        functionName == "node_constant" )
         return new avtConstantFunctionExpression(true);
     if (functionName == "curve_domain")
         return new avtCurveDomainExpression();

@@ -49,7 +49,7 @@
 #include <visit-config.h>
 
 #include <PyAnnotationAttributes.h>
-#include <PyConstructDDFAttributes.h>
+#include <PyConstructDataBinningAttributes.h>
 #include <PyExportDBAttributes.h>
 #include <PyGlobalLineoutAttributes.h>
 #include <PyInteractorAttributes.h>
@@ -1266,33 +1266,64 @@ static std::string log_DatabaseQueryRPC(ViewerRPC *rpc)
     std::string s, qName;
     char str[SLEN];
 
-    if(rpc->GetIntArg3() > 0)
+    // Cyrus Harrison, Wed Jul  7 11:32:09 PDT 2010
+    //
+    // Fix (/hack) logging for chord/ray length dist.
+    // This really points to another weakness with our argument
+    // passing scheme for queries in general.
+    //
+    // IntArg3() isn't always used to mark "Global" queries,
+    // in some cases it is just a general param, or 'unset'.
+    //
+    // The fact that this was 1 for calls to the chord/ray len
+    // distribution queries caused "global" to be prepended
+    // to the recored query name, and broke recording.
+    //
+    // I am pretty sure most queries are recorded incorrectly,
+    // this should be addressed with a query infrastructured overhaul...
+    //
+
+    qName = rpc->GetQueryName();
+    if( (qName.find("Chord Length Dist") != string::npos) ||
+        (qName.find("Ray Length Dist") != string::npos)
+    )
     {
-        qName = "Global";
-        qName += rpc->GetQueryName();
+        SNPRINTF(str, SLEN,"Query(\"%s\", %d, %d, %g, %g)\n",
+                    qName.c_str(),
+                    rpc->GetIntArg1(),rpc->GetIntArg2(),
+                    rpc->GetDoubleArg1()[0],rpc->GetDoubleArg2()[0]);
+        s+=str;
     }
     else
-        qName = rpc->GetQueryName();
-
-    SNPRINTF(str, SLEN, "%s(\"%s\", %d, %d, ", 
-             rpc->GetBoolFlag() ? "QueryOverTime" : "Query",
-             qName.c_str(),
-             rpc->GetIntArg1(), rpc->GetIntArg2());
-    s += str;
-    const stringVector &vars = rpc->GetQueryVariables();
-    if(vars.size() > 1)
-        s += "(";
-    for(unsigned int i = 0; i < vars.size(); ++i)
     {
-        s += "\"";
-        s += vars[i];
-        s += "\"";
-        if(i < vars.size()-1)
-            s += ", ";
+        if(rpc->GetIntArg3() > 0)
+        {
+            qName = "Global";
+            qName += rpc->GetQueryName();
+        }
+        else
+            qName = rpc->GetQueryName();
+
+        SNPRINTF(str, SLEN, "%s(\"%s\", %d, %d, ", 
+                rpc->GetBoolFlag() ? "QueryOverTime" : "Query",
+                qName.c_str(),
+                rpc->GetIntArg1(), rpc->GetIntArg2());
+        s += str;
+        const stringVector &vars = rpc->GetQueryVariables();
+        if(vars.size() > 1)
+            s += "(";
+        for(unsigned int i = 0; i < vars.size(); ++i)
+        {
+            s += "\"";
+            s += vars[i];
+            s += "\"";
+            if(i < vars.size()-1)
+                s += ", ";
+        }
+        if(vars.size() > 1)
+            s += ")";
+        s += ")\n";
     }
-    if(vars.size() > 1)
-        s += ")";
-    s += ")\n";
     return s;
 }
 
@@ -1598,6 +1629,13 @@ static std::string log_ResetPickLetterRPC(ViewerRPC *rpc)
     return std::string("ResetPickLetter()\n");
 }
 
+static std::string log_RenamePickLabelRPC(ViewerRPC *rpc)
+{
+    return std::string("RenamePickLabel(\"") + 
+           rpc->GetStringArg1() + std::string("\", \"") + 
+           rpc->GetStringArg2() + std::string("\")\n");
+}
+
 static std::string log_SetDefaultPickAttributesRPC(ViewerRPC *rpc)
 {
     std::string s(PyPickAttributes_GetLogString());
@@ -1698,10 +1736,10 @@ static std::string log_UpdateDBPluginInfoRPC(ViewerRPC *rpc)
     return MESSAGE_COMMENT("UpdateDBPluginInfo", MSG_UNSUPPORTED);
 }
 
-static std::string log_ConstructDDFRPC(ViewerRPC *rpc)
+static std::string log_ConstructDataBinningRPC(ViewerRPC *rpc)
 {
-    std::string s(PyConstructDDFAttributes_GetLogString());
-    s += "ConstructDDFtabase(ConstructDDFAtts)\n";
+    std::string s(PyConstructDataBinningAttributes_GetLogString());
+    s += "ConstructDataBinningtabase(ConstructDataBinningAtts)\n";
     return s;
 }
 
@@ -1814,6 +1852,16 @@ static std::string log_ApplyNamedSelectionRPC(ViewerRPC *rpc)
     return std::string("ApplyNamedSelection(\"") + rpc->GetStringArg1() + "\")\n"; 
 }
 
+static std::string log_SetNamedSelectionAutoApplyRPC(ViewerRPC *rpc)
+{
+    return std::string("SetNamedSelectionAutoApply(\"") + std::string(rpc->GetBoolFlag()?"1":"0") + "\")\n"; 
+}
+
+static std::string log_UpdateNamedSelectionRPC(ViewerRPC *rpc)
+{
+    return std::string("UpdateNamedSelection(\"") + rpc->GetStringArg1() + "\")\n"; 
+}
+
 static std::string log_SetPlotDescriptionRPC(ViewerRPC *rpc)
 {
     char str[SLEN];
@@ -1885,6 +1933,15 @@ static std::string log_SetPlotOrderToFirstRPC(ViewerRPC *rpc)
 //   Jeremy Meredith, Wed Feb  3 15:35:08 EST 2010
 //   Removed maintain data; moved maintain view from Global settings
 //   (Main window) to per-window Window Information (View window).
+//
+//   Brad Whitlock, Fri Aug 13 14:57:23 PDT 2010
+//   I added UpdateNamedSelection.
+//
+//   Hank Childs, Sat Aug 21 14:05:14 PDT 2010
+//   Rename ddf to data binning.
+//
+//   Brad Whitlock, Fri Aug 27 10:43:32 PDT 2010
+//   I added RenamePickLabel.
 //
 // ****************************************************************************
 
@@ -2388,8 +2445,8 @@ LogRPCs(Subject *subj, void *)
     case ViewerRPC::MoveAndResizeWindowRPC:
         str = log_MoveAndResizeWindowRPC(rpc);
         break;
-    case ViewerRPC::ConstructDDFRPC:
-        str = log_ConstructDDFRPC(rpc);
+    case ViewerRPC::ConstructDataBinningRPC:
+        str = log_ConstructDataBinningRPC(rpc);
         break;
     case ViewerRPC::RequestMetaDataRPC:
         str = log_RequestMetaDataRPC(rpc);
@@ -2412,6 +2469,12 @@ LogRPCs(Subject *subj, void *)
     case ViewerRPC::ApplyNamedSelectionRPC:
         str = log_ApplyNamedSelectionRPC(rpc);
         break;
+    case ViewerRPC::SetNamedSelectionAutoApplyRPC:
+        str = log_SetNamedSelectionAutoApplyRPC(rpc);
+        break;
+    case ViewerRPC::UpdateNamedSelectionRPC:
+        str = log_UpdateNamedSelectionRPC(rpc);
+        break;
     case ViewerRPC::SetPlotDescriptionRPC:
         str = log_SetPlotDescriptionRPC(rpc);
         break;
@@ -2426,6 +2489,9 @@ LogRPCs(Subject *subj, void *)
         break;
     case ViewerRPC::SetPlotOrderToLastRPC:
         str = log_SetPlotOrderToLastRPC(rpc);
+        break;
+    case ViewerRPC::RenamePickLabelRPC:
+        str = log_RenamePickLabelRPC(rpc);
         break;
 
     // RPCs that we don't want to log:

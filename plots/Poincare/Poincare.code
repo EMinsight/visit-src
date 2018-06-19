@@ -144,13 +144,16 @@ PoincareAttributes::StreamlineAttsRequireRecalculation(const PoincareAttributes 
     bool densityMatters = ((sourceType == SpecifiedLine) &&
                            (pointDensity != obj.pointDensity));
 
-    return (minPunctures != obj.minPunctures ||
-            maxPunctures != obj.maxPunctures ||
+    return (sourceType != obj.sourceType ||
             sourcePointsDiffer ||
             sourceLineDiffers ||
             densityMatters ||
 
-            sourceType != obj.sourceType ||
+            minPunctures != obj.minPunctures ||
+            maxPunctures != obj.maxPunctures ||
+
+            puncturePlane != obj.puncturePlane ||
+
             integrationType != obj.integrationType ||
             maxStepLength != obj.maxStepLength ||
             relTol != obj.relTol ||
@@ -176,20 +179,32 @@ Definition:
 bool
 PoincareAttributes::PoincareAttsRequireRecalculation(const PoincareAttributes &obj) const
 {
-    return maxToroidalWinding != obj.maxToroidalWinding ||
+    return analysis != obj.analysis ||
+
+           maximumToroidalWinding != obj.maximumToroidalWinding ||
            overrideToroidalWinding != obj.overrideToroidalWinding ||
-           hitRate != obj.hitRate ||
-           adjustPlane != obj.adjustPlane ||
+           windingPairConfidence != obj.windingPairConfidence ||
+           periodicityConsistency != obj.periodicityConsistency ||
+
+           showOPoints != obj.showOPoints ||
+           OPointMaxInterations != obj.OPointMaxInterations ||
+
            overlaps != obj.overlaps ||
+
+           showIslands != obj.showIslands ||
+           showRidgelines != obj.showRidgelines ||
+           showChaotic != obj.showChaotic ||
+           verboseFlag != obj.verboseFlag ||
+ 
+           dataValue != obj.dataValue ||
 
            meshType != obj.meshType ||
            numberPlanes != obj.numberPlanes ||
+           singlePlane != obj.singlePlane ||
 
-           dataValue != obj.dataValue ||
+           adjustPlane != obj.adjustPlane ||
 
-           showIslands != obj.showIslands ||
            showLines != obj.showLines ||
-           showPoints != obj.showPoints ||
-           verboseFlag != obj.verboseFlag;
+           showPoints != obj.showPoints;
 }
 

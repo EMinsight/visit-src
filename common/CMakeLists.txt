@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2008, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-400142
 # All rights reserved.
@@ -35,6 +35,14 @@
 # DAMAGE.
 #
 # Modifications:
+#   Hank Childs, Thu Jul 22 09:55:03 PDT 2010
+#   Add attributes for multi-window saves.
+#
+#   Brad Whitlock, Fri Jul 23 11:14:02 PDT 2010
+#   I added SelectionProperties and SelectionList.
+#
+#   Hank Childs, Thu Aug 19 12:26:29 PDT 2010
+#   Move DDF to DataBinning.
 #
 #****************************************************************************/
 
@@ -182,7 +190,7 @@ state/ColorTableAttributes.C
 state/ColorTableManager.C
 state/CompactSILRestrictionAttributes.C
 state/ConfigManager.C
-state/ConstructDDFAttributes.C
+state/ConstructDataBinningAttributes.C
 state/ContourOpAttributes.C
 state/DatabaseAttributes.C
 state/DatabaseCorrelation.C
@@ -238,6 +246,10 @@ state/QueryOverTimeAttributes.C
 state/QuitRPC.C
 state/RenderingAttributes.C
 state/SaveWindowAttributes.C
+state/SaveSubWindowAttributes.C
+state/SaveSubWindowsAttributes.C
+state/SelectionList.C
+state/SelectionProperties.C
 state/SILArrayAttributes.C
 state/SILAttributes.C
 state/SILMatrixAttributes.C

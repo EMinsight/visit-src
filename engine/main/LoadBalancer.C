@@ -523,6 +523,12 @@ LoadBalancer::DetermineAppropriateScheme(avtContract_p input)
 //    Use the streaming ghost generator to direct the load balancing,
 //    if there is a streaming ghost generator.
 //
+//    Dave Pugmire, Tue May 25 10:15:35 EDT 2010
+//    Add domain single domain replication to all processors.
+//
+//    Dave Pugmire, Mon Jun 14 14:16:57 EDT 2010
+//    Single domain replication needs to mark pipeline update complete.
+//
 // ****************************************************************************
 
 avtDataRequest_p
@@ -649,6 +655,13 @@ LoadBalancer::Reduce(avtContract_p input)
         vector<int> list;
         vector<int> mylist;
         trav.GetDomainList(list);
+
+        if (input->ReplicateSingleDomainOnAllProcessors() && list.size() == 1)
+        {
+            silr->RestrictDomainsForLoadBalance(list);
+            pipelineInfo[input->GetPipelineIndex()].complete = true;
+            return data;
+        }
 
         //
         // For variables (including meshes) that require specific types of

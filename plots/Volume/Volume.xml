@@ -99,8 +99,12 @@
       </Enum>
       <Enum name="Scaling">
         Linear
-        Log10
+        Log
         Skew
+      </Enum>
+      <Enum name="LimitsMode">
+        OriginalData
+        CurrentPlot
       </Enum>
       <Enum name="SamplingType">
         KernelBased
@@ -189,6 +193,9 @@
       </Field>
       <Field name="skewFactor" label="skewFactor" type="double" enabler="scaling:Skew">
         1.000000
+      </Field>
+      <Field name="limitsMode" label="Limits Mode" type="enum" subtype="LimitsMode">
+        OriginalData
       </Field>
       <Field name="sampling" label="Sampling Type" type="enum" subtype="SamplingType" enabler="rendererType:RayCasting">
         Rasterization

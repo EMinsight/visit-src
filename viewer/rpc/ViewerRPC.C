@@ -101,28 +101,29 @@ static const char *ViewerRPCType_strings[] = {
 "OpenCLIClientRPC", "SuppressQueryOutputRPC", "SetQueryFloatFormatRPC", 
 "SetMeshManagementAttributesRPC", "SetDefaultMeshManagementAttributesRPC", "ResetMeshManagementAttributesRPC", 
 "ResizeWindowRPC", "MoveWindowRPC", "MoveAndResizeWindowRPC", 
-"SetStateLoggingRPC", "ConstructDDFRPC", "RequestMetaDataRPC", 
+"SetStateLoggingRPC", "ConstructDataBinningRPC", "RequestMetaDataRPC", 
 "SetTreatAllDBsAsTimeVaryingRPC", "SetCreateMeshQualityExpressionsRPC", "SetCreateTimeDerivativeExpressionsRPC", 
 "SetCreateVectorMagnitudeExpressionsRPC", "CopyActivePlotsRPC", "SetPlotFollowsTimeRPC", 
 "TurnOffAllLocksRPC", "SetDefaultFileOpenOptionsRPC", "SetSuppressMessagesRPC", 
 "ApplyNamedSelectionRPC", "CreateNamedSelectionRPC", "DeleteNamedSelectionRPC", 
-"LoadNamedSelectionRPC", "SaveNamedSelectionRPC", "MenuQuitRPC", 
-"SetPlotDescriptionRPC", "MovePlotOrderTowardFirstRPC", "MovePlotOrderTowardLastRPC", 
-"SetPlotOrderToFirstRPC", "SetPlotOrderToLastRPC", "MaxRPC"
+"LoadNamedSelectionRPC", "SaveNamedSelectionRPC", "SetNamedSelectionAutoApplyRPC", 
+"UpdateNamedSelectionRPC", "MenuQuitRPC", "SetPlotDescriptionRPC", 
+"MovePlotOrderTowardFirstRPC", "MovePlotOrderTowardLastRPC", "SetPlotOrderToFirstRPC", 
+"SetPlotOrderToLastRPC", "RenamePickLabelRPC", "MaxRPC"
 };
 
 std::string
 ViewerRPC::ViewerRPCType_ToString(ViewerRPC::ViewerRPCType t)
 {
     int index = int(t);
-    if(index < 0 || index >= 192) index = 0;
+    if(index < 0 || index >= 195) index = 0;
     return ViewerRPCType_strings[index];
 }
 
 std::string
 ViewerRPC::ViewerRPCType_ToString(int t)
 {
-    int index = (t < 0 || t >= 192) ? 0 : t;
+    int index = (t < 0 || t >= 195) ? 0 : t;
     return ViewerRPCType_strings[index];
 }
 
@@ -130,7 +131,7 @@ bool
 ViewerRPC::ViewerRPCType_FromString(const std::string &s, ViewerRPC::ViewerRPCType &val)
 {
     val = ViewerRPC::CloseRPC;
-    for(int i = 0; i < 192; ++i)
+    for(int i = 0; i < 195; ++i)
     {
         if(s == ViewerRPCType_strings[i])
         {

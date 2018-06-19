@@ -852,15 +852,15 @@ ViewerMethods::DeleteNamedSelection(const std::string &selName)
 
 void
 ViewerMethods::LoadNamedSelection(const std::string &selName,
-        const std::string& hostName, const std::string& simName)
+    const std::string& hostName, const std::string& simName)
 {
     //
     // Set the rpc type and arguments.
     //
     state->GetViewerRPC()->SetRPCType(ViewerRPC::LoadNamedSelectionRPC);
     state->GetViewerRPC()->SetStringArg1(selName);
-    state->GetViewerRPC()->SetStringArg1(selName);
     state->GetViewerRPC()->SetProgramHost(hostName);
+    state->GetViewerRPC()->SetProgramSim(simName);
 
     //
     // Issue the RPC.
@@ -878,21 +878,71 @@ ViewerMethods::LoadNamedSelection(const std::string &selName,
 // Creation:   January 28, 2009
 //
 // Modifications:
-//    Gunther H. Weber, Mon Apr  6 19:04:24 PDT 2009
+//    Brad Whitlock, Wed Aug 11 15:18:48 PDT 2010
+//    I removed some arguments.
 //
 // ****************************************************************************
 
 void
-ViewerMethods::SaveNamedSelection(const std::string &selName,
-        const std::string& hostName, const std::string& simName)
+ViewerMethods::SaveNamedSelection(const std::string &selName)
 {
     //
     // Set the rpc type and arguments.
     //
     state->GetViewerRPC()->SetRPCType(ViewerRPC::SaveNamedSelectionRPC);
     state->GetViewerRPC()->SetStringArg1(selName);
-    state->GetViewerRPC()->SetProgramHost(hostName);
-    state->GetViewerRPC()->SetProgramSim(simName);
+
+    //
+    // Issue the RPC.
+    //
+    state->GetViewerRPC()->Notify();
+}
+
+// ****************************************************************************
+// Method: ViewerMethods::SetNamedSelectionAutoApply
+//
+// Purpose: 
+//     Sets whether named selections are applied immediately when they change.
+//
+// Programmer: Brad Whitlock
+// Creation:   Wed Aug 11 16:09:26 PDT 2010
+//
+// ****************************************************************************
+
+void
+ViewerMethods::SetNamedSelectionAutoApply(bool val)
+{
+    //
+    // Set the rpc type and arguments.
+    //
+    state->GetViewerRPC()->SetRPCType(ViewerRPC::SetNamedSelectionAutoApplyRPC);
+    state->GetViewerRPC()->SetBoolFlag(val);
+
+    //
+    // Issue the RPC.
+    //
+    state->GetViewerRPC()->Notify();
+}
+
+// ****************************************************************************
+// Method: ViewerMethods::UpdateNamedSelection
+//
+// Purpose: 
+//     Updates a named selection.
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri Aug 13 14:28:09 PDT 2010
+//
+// ****************************************************************************
+
+void
+ViewerMethods::UpdateNamedSelection(const std::string &selName)
+{
+    //
+    // Set the rpc type and arguments.
+    //
+    state->GetViewerRPC()->SetRPCType(ViewerRPC::UpdateNamedSelectionRPC);
+    state->GetViewerRPC()->SetStringArg1(selName);
 
     //
     // Issue the RPC.
@@ -926,23 +976,28 @@ ViewerMethods::ExportDatabase()
 }
 
 // ****************************************************************************
-// Method: ViewerMethods::ConstructDDF
+// Method: ViewerMethods::ConstructDataBinning
 //
 // Purpose: 
-//     Construct a DDF.
+//     Construct a data binning.
 //
 // Programmer: Hank Childs
 // Creation:   February 13, 2006
 //
+// Modifications:
+//
+//   Hank Childs, Sat Aug 21 14:20:04 PDT 2010
+//   Rename method: DDF to DataBinning.
+//
 // ****************************************************************************
 
 void
-ViewerMethods::ConstructDDF()
+ViewerMethods::ConstructDataBinning()
 {
     //
     // Set the rpc type and arguments.
     //
-    state->GetViewerRPC()->SetRPCType(ViewerRPC::ConstructDDFRPC);
+    state->GetViewerRPC()->SetRPCType(ViewerRPC::ConstructDataBinningRPC);
 
     //
     // Issue the RPC.
@@ -3308,6 +3363,38 @@ ViewerMethods::ResetPickLetter()
     state->GetViewerRPC()->Notify();
 }
 
+// ****************************************************************************
+// Method: ViewerMethods::RenamePickLabel
+//
+// Purpose: 
+//   Rename the pick label.
+//
+// Arguments:
+//   oldLabel : The old pick label.
+//   newLabel : The new pick label.
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri Aug 27 10:39:42 PDT 2010
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+ViewerMethods::RenamePickLabel(const std::string &oldLabel, const std::string &newLabel)
+{
+    //
+    // Set the rpc type.
+    //
+    state->GetViewerRPC()->SetRPCType(ViewerRPC::RenamePickLabelRPC);
+    state->GetViewerRPC()->SetStringArg1(oldLabel);
+    state->GetViewerRPC()->SetStringArg2(newLabel);
+
+    //
+    // Issue the RPC.
+    //
+    state->GetViewerRPC()->Notify();
+}
 
 // ****************************************************************************
 // Method: ViewerMethods::ResetPickAttributes

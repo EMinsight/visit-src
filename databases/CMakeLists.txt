@@ -60,6 +60,12 @@
 #    I deleted the PlasmaState plugin from the build since it no longer
 #    exists.
 #
+#    Cyrus Harrison, Thu Mar 18 17:07:55 PDT 2010
+#    Temporarily removed the paraDIS due to a build issue.
+#
+#    Cyrus Harrison, Mon Mar 22 09:01:32 PDT 2010
+#    Added back paraDIS after build issue was resolved.
+#
 #    Brad Whitlock, Mon Apr 26 13:35:37 PST 2010
 #    I made Xdmf use the Xdmf library. I renamed our old XDMF reader to 
 #    VisItXdmf and I made it get used when the Xdmf reader that uses the
@@ -68,6 +74,17 @@
 #    Kathleen Bonnell, Wed May 5 12:04:22 PST 2010 
 #    Enable VASP reader on windows. 
 #
+#    Tom Fogal, Wed Aug  4 15:14:56 MDT 2010
+#    Build STAR database.
+#
+#    Tom Fogal, Tue Aug 10 17:35:23 MDT 2010
+#    Don't build STAR on Windows.
+#
+#    Jeremy Meredith, Thu Aug 12 13:54:57 EDT 2010
+#    Added PuReMD.
+#
+#    Mark C. Miller, Sun Aug 29 23:35:37 PDT 2010
+#    Fixed support for DBIO-ONLY build.
 #****************************************************************************/
 IF(NOT WIN32)
     SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${VISIT_PLUGIN_DIR}/databases)
@@ -118,7 +135,6 @@ THIRDPARTY_DEPENDENT_PLUGINS(CCMIO    CCM)
 THIRDPARTY_DEPENDENT_PLUGINS(CFITSIO  FITS)
 THIRDPARTY_DEPENDENT_PLUGINS(CGNS     CGNS)
 THIRDPARTY_DEPENDENT_PLUGINS(EXODUSII Exodus TimeVaryingExodus)
-THIRDPARTY_DEPENDENT_PLUGINS(FASTBIT  HDF_UC)
 THIRDPARTY_DEPENDENT_PLUGINS(GDAL     GDAL)
 THIRDPARTY_DEPENDENT_PLUGINS(HDF4     Cosmos ZeusMP)
 IF(NOT XDMF_FOUND)
@@ -142,6 +158,7 @@ Velodyne
 Vs
 ${XDMF_READER}
 )
+THIRDPARTY_DEPENDENT_PLUGINS(MDSPLUS  MDSplus)
 THIRDPARTY_DEPENDENT_PLUGINS(H5PART   H5Part)
 THIRDPARTY_DEPENDENT_PLUGINS(MILI     Mili)
 THIRDPARTY_DEPENDENT_PLUGINS(NETCDF   NETCDF S3D)
@@ -194,6 +211,7 @@ EnSight
 ExtrudedVol
 Fluent
 GGCM
+GULP
 Gadget
 Image
 LAMMPS
@@ -206,6 +224,7 @@ Nek5000
 OVERFLOW
 OpenFOAM
 PATRAN
+PuReMD
 PLOT2D
 PLOT3D
 PlainText
@@ -232,12 +251,13 @@ paraDIS_tecplot
 IF (NOT WIN32)
     LIST(APPEND REQUIRED_DATABASE_PLUGINS 
         Claw
+        STAR
         Vis5D
         ZipWrapper
     )
-    IF(NOT VISIT_STATIC)
+    IF(NOT VISIT_STATIC AND NOT VISIT_DBIO_ONLY)
         LIST(APPEND REQUIRED_DATABASE_PLUGINS SimV1 SimV1Writer SimV2)
-    ENDIF(NOT VISIT_STATIC)
+    ENDIF(NOT VISIT_STATIC AND NOT VISIT_DBIO_ONLY)
     SET(OPTIONAL_DATABASE_PLUGINS
         Hex
         Rect

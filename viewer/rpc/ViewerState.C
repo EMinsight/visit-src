@@ -46,7 +46,7 @@
 #include <ClientInformation.h>
 #include <ClientInformationList.h>
 #include <ColorTableAttributes.h>
-#include <ConstructDDFAttributes.h>
+#include <ConstructDataBinningAttributes.h>
 #include <DatabaseCorrelationList.h>
 #include <DBPluginInfoAttributes.h>
 #include <ExportDBAttributes.h>
@@ -76,6 +76,7 @@
 #include <QueryList.h>
 #include <RenderingAttributes.h>
 #include <SaveWindowAttributes.h>
+#include <SelectionList.h>
 #include <StatusAttributes.h>
 #include <SILRestrictionAttributes.h>
 #include <SyncAttributes.h>

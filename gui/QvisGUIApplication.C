@@ -90,12 +90,14 @@
 #include <ObserverToCallback.h>
 #include <PickAttributes.h>
 #include <QueryAttributes.h>
+#include <ParsingExprList.h>
 #include <PlotList.h>
 #include <Plot.h>
 #include <PluginManagerAttributes.h>
 #include <PrinterAttributes.h>
 #include <RenderingAttributes.h>
 #include <SILRestrictionAttributes.h>
+#include <SelectionList.h>
 #include <SyncAttributes.h>
 #include <QueryOverTimeAttributes.h>
 #include <WindowInformation.h>
@@ -109,6 +111,7 @@
 #include <QvisAnimationWindow.h>
 #include <QvisAnnotationWindow.h>
 #include <QvisAppearanceWindow.h>
+#include <QvisCMFEWizard.h>
 #include <QvisColorTableWindow.h>
 #include <QvisCommandWindow.h>
 #include <QvisDatabaseCorrelationListWindow.h>
@@ -140,6 +143,7 @@
 #include <QvisRenderingWindow.h>
 #include <QvisSaveMovieWizard.h>
 #include <QvisSaveWindow.h>
+#include <QvisSelectionsWindow.h>
 #include <QvisSessionFileDatabaseLoader.h>
 #include <QvisSimulationWindow.h>
 #include <QvisSessionSourceChangerDialog.h>
@@ -223,6 +227,7 @@
 #define WINDOW_MESH_MANAGEMENT  30
 #define WINDOW_FILE_OPEN        31
 #define WINDOW_MACRO            32
+#define WINDOW_SELECTIONS       33
 
 #define BEGINSWITHQUOTE(A) (A[0] == '\'' || A[0] == '\"')
 #define ENDSWITHQUOTE(A) (A[strlen(A)-1] == '\'' || A[strlen(A)-1] == '\"')
@@ -603,6 +608,9 @@ GUI_LogQtMessages(QtMsgType type, const char *msg)
 //   Use Queued signal/slot connection instead of QTimer::singleShot for
 //   init to work around a Qt/Glib init problem in linux.
 //
+//   Brad Whitlock, Fri Aug  6 16:54:29 PDT 2010
+//   Added Selections to windowNames.
+//
 // ****************************************************************************
 
 QvisGUIApplication::QvisGUIApplication(int &argc, char **argv) :
@@ -675,6 +683,7 @@ QvisGUIApplication::QvisGUIApplication(int &argc, char **argv) :
     allowFileSelectionChange = true;
     visitUpdate = 0;
     saveMovieWizard = 0;    
+    setupCMFEWizard = 0;
     interpreter = 0;
     movieProgress = 0;
     sessionFileHelper = 0;
@@ -807,6 +816,7 @@ QvisGUIApplication::QvisGUIApplication(int &argc, char **argv) :
     windowNames += tr("Mesh Management Options");
     windowNames += tr("File open");
     windowNames += tr("Macros");
+    windowNames += tr("Selections");
 
     // If the geometry was not passed on the command line then the 
     // savedGUIGeometry flag will still be set to false. If we
@@ -2908,6 +2918,7 @@ QvisGUIApplication::CreateMainWindow()
     connect(mainWin, SIGNAL(activateAboutWindow()), this, SLOT(AboutVisIt()));
     connect(mainWin, SIGNAL(saveWindow()), this, SLOT(SaveWindow()));
     connect(mainWin, SIGNAL(saveMovie()), this, SLOT(SaveMovie()));
+    connect(mainWin, SIGNAL(setupCMFE()), this, SLOT(SetupCMFE()));
     connect(mainWin, SIGNAL(printWindow()), this, SLOT(PrintWindow()));
     connect(mainWin, SIGNAL(activatePrintWindow()), this, SLOT(SetPrinterOptions()));
     
@@ -2926,6 +2937,7 @@ QvisGUIApplication::CreateMainWindow()
     connect(mainWin, SIGNAL(restoreSession()), this, SLOT(RestoreSession()));
     connect(mainWin, SIGNAL(restoreSessionWithSources()), this, SLOT(RestoreSessionWithDifferentSources()));
     connect(mainWin, SIGNAL(saveSession()), this, SLOT(SaveSession()));
+    connect(mainWin, SIGNAL(saveSessionAs()), this, SLOT(SaveSessionAs()));
     connect(mainWin, SIGNAL(saveCrashRecoveryFile()), 
            this, SLOT(SaveCrashRecoveryFile()));
     connect(mainWin, SIGNAL(updateVisIt()), this, SLOT(updateVisIt()));
@@ -2993,6 +3005,12 @@ QvisGUIApplication::CreateMainWindow()
 //   Gunther H. Weber, Fri Aug 15 10:46:55 PDT 2008
 //   Connect signals necessary for redoing a pick. 
 //
+//   Brad Whitlock, Fri Aug  6 17:00:02 PDT 2010
+//   Add Selections window.
+//
+//   Eric Brugger, Tue Aug 24 13:22:09 PDT 2010
+//   Added the ability to enable/disable the popping up of warning messages.
+//
 // ****************************************************************************
 
 void
@@ -3042,6 +3060,8 @@ QvisGUIApplication::SetupWindows()
              mainWin, SLOT(SetShowSelectedFiles(bool)));
      connect(preferencesWin, SIGNAL(allowFileSelectionChange(bool)),
              mainWin, SLOT(SetAllowFileSelectionChange(bool)));
+     connect(preferencesWin, SIGNAL(enableWarningPopups(bool)),
+             messageWin, SLOT(EnableWarningPopups(bool)));
 
      colorTableWin = (QvisColorTableWindow *)GetWindowPointer(WINDOW_COLORTABLE);
      connect(mainWin, SIGNAL(activateColorTableWindow()),
@@ -3116,6 +3136,10 @@ QvisGUIApplication::SetupWindows()
              this, SLOT(showMeshManagementWindow()));
      connect(mainWin, SIGNAL(activateMacroWindow()),
              this, SLOT(showMacroWindow()));
+     connect(mainWin, SIGNAL(activateSelectionsWindow()),
+             this, SLOT(showSelectionsWindow()));
+     connect(mainWin->GetPlotManager(), SIGNAL(activateSelectionsWindow(const QString &)),
+             this, SLOT(showSelectionsWindow2(const QString &)));
 }
 
 // ****************************************************************************
@@ -3181,6 +3205,10 @@ QvisGUIApplication::SetupWindows()
 //   Brad Whitlock, Mon Apr 21 15:29:03 PDT 2008
 //   Set the application locale into the Help window so we can look for other
 //   language help documents.
+//
+//   Brad Whitlock, Fri Aug  6 16:56:40 PDT 2010
+//   I added the Selections window and I changed how the Subset window gets
+//   set up.
 //
 // ****************************************************************************
 
@@ -3257,8 +3285,13 @@ QvisGUIApplication::WindowFactory(int i)
         break;
     case WINDOW_SUBSET:
         // Create the subset window.
-        win = new QvisSubsetWindow(GetViewerState()->GetSILRestrictionAttributes(),
-            windowNames[i], tr("Subset"), mainWin->GetNotepad());
+        { QvisSubsetWindow *sWin = new QvisSubsetWindow(windowNames[i], 
+            tr("Subset"), mainWin->GetNotepad());
+          sWin->ConnectSILRestrictionAttributes(GetViewerState()->GetSILRestrictionAttributes());
+          sWin->ConnectSelectionList(GetViewerState()->GetSelectionList());
+          sWin->ConnectPlotList(GetViewerState()->GetPlotList());
+          win = sWin;
+        }
         break;
     case WINDOW_PLUGINMANAGER:
         // Create the plugin manager window.
@@ -3418,6 +3451,15 @@ QvisGUIApplication::WindowFactory(int i)
                                   mainWin->GetNotepad());
         connect(win, SIGNAL(runCommand(const QString &)),
                 this, SLOT(Interpret(const QString &)));
+        break;
+    case WINDOW_SELECTIONS:
+        // Create the Selections window.
+        { QvisSelectionsWindow *sWin = new QvisSelectionsWindow(windowNames[i], 
+              tr("Selections"), mainWin->GetNotepad());
+          sWin->ConnectSelectionList(GetViewerState()->GetSelectionList());
+          sWin->ConnectPlotList(GetViewerState()->GetPlotList());
+          win = sWin;
+        }
         break;
     }
 
@@ -4015,6 +4057,9 @@ QvisGUIApplication::EnsureOperatorWindowIsCreated(int i)
 //    Brad Whitlock, Tue Jul 25 10:19:22 PDT 2006
 //    I added code to make the main window save its settings.
 //
+//    Eric Brugger, Tue Aug 24 13:22:09 PDT 2010
+//    Added the ability to enable/disable the popping up of warning messages.
+//
 // ****************************************************************************
 
 bool
@@ -4088,6 +4133,11 @@ QvisGUIApplication::WriteConfigFile(const char *filename)
         new DataNode("allowFileSelectionChange",
                      mainWin->GetAllowFileSelectionChange()));
 
+    // Save whether to enable warning message popups.
+    guiNode->AddNode(
+        new DataNode("enableWarningMessagePopups",
+                     preferencesWin->GetEnableWarningPopups()));
+
     // Try to open the output file.
     if((fp = fopen(filename, "wt")) == 0)
         return false;
@@ -4156,6 +4206,31 @@ QvisGUIApplication::WritePluginWindowConfigs(DataNode *parentNode)
 // Programmer: Brad Whitlock
 // Creation:   Mon Jul 14 11:52:52 PDT 2003
 //
+// ****************************************************************************
+
+void
+QvisGUIApplication::SaveSession()
+{
+    if( sessionFile.isEmpty() )
+        SaveSessionAs();
+    else
+    {
+        ++sessionCount;
+        SaveSessionFile(sessionFile);
+        UpdateSessionDir(sessionFile.toStdString());
+    }
+}
+
+// ****************************************************************************
+// Method: QvisGUIApplication::SaveSessionAs
+//
+// Purpose: 
+//   This is a Qt slot function that tells the viewer to save out all of its
+//   state to an XML file.
+//
+// Programmer: Brad Whitlock
+// Creation:   Mon Jul 14 11:52:52 PDT 2003
+//
 // Modifications:
 //   Brad Whitlock, Tue Aug 12 11:23:52 PDT 2003
 //   Added code to force the session file to have a .session extension.
@@ -4179,7 +4254,7 @@ QvisGUIApplication::WritePluginWindowConfigs(DataNode *parentNode)
 // ****************************************************************************
 
 void
-QvisGUIApplication::SaveSession()
+QvisGUIApplication::SaveSessionAs()
 {
     QString sessionExtension(".session");
 
@@ -4197,6 +4272,8 @@ QvisGUIApplication::SaveSession()
     // to that file.
     if(!fileName.isNull())
     {
+        sessionFile = fileName;  // Save the name for saving later.
+
         ++sessionCount;
         SaveSessionFile(fileName);
         UpdateSessionDir(fileName.toStdString());
@@ -4563,6 +4640,9 @@ QvisGUIApplication::RestoreSessionWithDifferentSources()
         
         UpdateSessionDir(s.toStdString());
     }
+
+    sessionFile = QString(""); // Make sure the session file name is
+                               // null as it was used for the restore.
 }
 
 // ****************************************************************************
@@ -4616,12 +4696,14 @@ QvisGUIApplication::RestoreSessionWithDifferentSources()
 // ****************************************************************************
 
 void
-QvisGUIApplication::RestoreSessionFile(const QString &s, 
-    const stringVector &sources)
+QvisGUIApplication::RestoreSessionFile(const QString &s,
+                                       const stringVector &sources)
 {
     // If the user chose a file, tell the viewer to import that session file.
     if(!s.isEmpty())
     {
+        sessionFile = s;  // Save the name for saving later.
+
         restoringSession = true;
         std::string filename(s.toStdString());
           
@@ -4923,6 +5005,9 @@ QvisGUIApplication::ProcessConfigSettings(DataNode *node, bool systemConfig)
 //   passing the value from savedGUIGeometry, pass false so values stored in
 //   session file aren't overwritten.
 //
+//   Eric Brugger, Tue Aug 24 13:22:09 PDT 2010
+//   Added the ability to enable/disable the popping up of warning messages.
+//
 // ****************************************************************************
 
 void
@@ -4969,6 +5054,14 @@ QvisGUIApplication::ProcessWindowConfigSettings(DataNode *node)
         allowFileSelectionChange = afscNode->AsBool();
         mainWin->SetAllowFileSelectionChange(afscNode->AsBool());
         preferencesWin->SetAllowFileSelectionChange(afscNode->AsBool());
+    }
+
+    // Get whether to enable warning popups.
+    DataNode *swpNode = 0; 
+    if((swpNode = guiNode->GetNode("enableWarningMessagePopups")) != 0)
+    {
+        messageWin->SetEnableWarningPopups(swpNode->AsBool());
+        preferencesWin->SetEnableWarningPopups(swpNode->AsBool());
     }
 
     // Read the config file stuff for the plugin windows.
@@ -6372,6 +6465,8 @@ QvisGUIApplication::SaveWindow()
 void
 QvisGUIApplication::SetPrinterOptions()
 {
+    PrinterAttributes *p = GetViewerState()->GetPrinterAttributes();
+
 #if defined(Q_WS_MACX) && !defined(VISIT_MAC_NO_CARBON)
     //
     // If we're on MacOS X and the Mac application style is being used, manage
@@ -6392,7 +6487,7 @@ QvisGUIApplication::SetPrinterOptions()
         {
             if(PMCreateSession(&psession) != kPMNoError)
             {
-            EXCEPTION0(VisItException);
+                EXCEPTION0(VisItException);
             }
             nObjectsToFree = 1;
         
@@ -6423,9 +6518,7 @@ QvisGUIApplication::SetPrinterOptions()
             Boolean accepted = false;
             if(PMSessionPrintDialog(psession, psettings, pformat, &accepted) == kPMNoError &&
                accepted == true)
-            {
-                PrinterAttributes *p = GetViewerState()->GetPrinterAttributes();
-        
+            {       
                 // Get the name of the printer to use for printing the image.
                 CFArrayRef printerList = NULL;
                 CFIndex currentIndex;
@@ -6475,6 +6568,7 @@ QvisGUIApplication::SetPrinterOptions()
      
                 // Set some of the last properties
                 p->SetOutputToFile(false);
+                p->SetOutputToFileName("");
                 p->SetPrintColor(true);
                 p->SetCreator(GetViewerProxy()->GetLocalUserName());
 
@@ -6515,20 +6609,25 @@ QvisGUIApplication::SetPrinterOptions()
         // print once the options are set.
         //
         if(okayToPrint)
-            PrintWindow();
+            GetViewerMethods()->PrintWindow();
     }
     else
     {
+#endif
+#if defined(Q_WS_MACX)
+        // Each time through on the Mac, clear out the printer's save to filename.
+        bool setupPrinter = true;
+        p->SetOutputToFile(false);
+        p->SetOutputToFileName("");
+#else
+        bool setupPrinter = false;
 #endif
         //
         // If we've never set up the printer options, set them up now using
         // Qt's printer object and printer dialog.
         //
-        PrinterAttributes *p = GetViewerState()->GetPrinterAttributes();
         if(printer == 0)
         {
-            int timeid = visitTimer->StartTimer();
-
             // Create a new printer object.
             printer = new QPrinter;
 
@@ -6546,12 +6645,15 @@ QvisGUIApplication::SetPrinterOptions()
             printerObserver = new ObserverToCallback(p,
                 UpdatePrinterAttributes, (void *)printer);
 
-            // Store the printer attributes into the printer object.
-            PrinterAttributesToQPrinter(p, printer);
-
-            visitTimer->StopTimer(timeid, "Setting up printer");
+            // Indicate that we need to set up the printer.
+            setupPrinter = true;
         }
 
+        // Store the printer attributes into the printer object.
+        if(setupPrinter)
+            PrinterAttributesToQPrinter(p, printer);
+
+        // Execute the printer dialog
         QPrintDialog printDialog(printer, mainWin);
         if(printDialog.exec() == QDialog::Accepted)
         {
@@ -6569,7 +6671,7 @@ QvisGUIApplication::SetPrinterOptions()
             // options. This says to me that applications expect to print once
             // the options are set.
             //
-            PrintWindow();
+            GetViewerMethods()->PrintWindow();
 #endif
         }
 #if defined(Q_WS_MACX) && !defined(VISIT_MAC_NO_CARBON)
@@ -6587,13 +6689,19 @@ QvisGUIApplication::SetPrinterOptions()
 // Creation:   Wed Feb 20 12:41:13 PDT 2002
 //
 // Modifications:
-//   
+//   Brad Whitlock, Mon Aug 30 11:36:10 PDT 2010
+//   If no printer options have been set up yet then we should do 
+//   SetPrinterOptions.
+//
 // ****************************************************************************
 
 void
 QvisGUIApplication::PrintWindow()
 {
-    GetViewerMethods()->PrintWindow();
+    if(printer == 0)
+        SetPrinterOptions();
+    else
+        GetViewerMethods()->PrintWindow();
 }
 
 // ****************************************************************************
@@ -6613,6 +6721,9 @@ QvisGUIApplication::PrintWindow()
 //   Cyrus Harrison, Tue Jul  1 09:14:16 PDT 2008
 //   Initial Qt4 Port.
 //
+//   Brad Whitlock, Mon Aug 30 14:58:11 PDT 2010
+//   Be more agressive about setting empty strings.
+//
 // ****************************************************************************
 
 static void
@@ -6620,17 +6731,32 @@ QPrinterToPrinterAttributes(QPrinter *printer, PrinterAttributes *p)
 {
     if(!printer->printerName().isNull())
         p->SetPrinterName(printer->printerName().toStdString());
+
     if(!printer->outputFileName().isNull())
+    {
         p->SetOutputToFileName(printer->outputFileName().toStdString());
+        p->SetOutputToFile(true);
+    }
+    else
+    {
+        p->SetOutputToFileName("");
+        p->SetOutputToFile(false);
+    }
+
     if(!printer->printProgram().isNull())
         p->SetPrintProgram(printer->printProgram().toStdString());
+    else
+        p->SetPrintProgram("");
+
     if(!printer->docName().isNull())
         p->SetDocumentName(printer->docName().toStdString());
-    p->SetOutputToFile(!printer->outputFileName().isNull());
+    else
+        p->SetDocumentName("untitled");
+
     p->SetNumCopies(printer->numCopies());
     p->SetPortrait(printer->orientation() == QPrinter::Portrait);
     p->SetPrintColor(printer->colorMode() == QPrinter::Color);
-    p->SetPageSize(printer->pageSize());
+    p->SetPageSize((int)printer->paperSize());
 }
 
 // ****************************************************************************
@@ -6679,9 +6805,11 @@ PrinterAttributesToQPrinter(PrinterAttributes *p, QPrinter *printer)
     printer->setFromTo(1, 1);
     printer->setColorMode(p->GetPrintColor() ? QPrinter::Color :
         QPrinter::GrayScale);
-    printer->setOutputFileName(p->GetOutputToFileName().c_str());
-    //printer->setOutputToFile(p->GetOutputToFile());
-    printer->setPageSize((QPrinter::PageSize)p->GetPageSize());
+    if(p->GetOutputToFile())
+        printer->setOutputFileName(p->GetOutputToFileName().c_str());
+    else
+        printer->setOutputFileName(QString());
+    printer->setPaperSize((QPrinter::PaperSize)p->GetPageSize());
 }
 
 // ****************************************************************************
@@ -6837,6 +6965,12 @@ QvisGUIApplication::HandleMetaDataUpdate()
 //   
 //   Brad Whitlock, Tue Jun 24 11:53:56 PDT 2008
 //   Get the plugin manager from the viewer proxy.
+//
+//   Rob Sisneros, Sun Aug 29 20:13:10 CDT 2010
+//   Add support for operators that add expressions.
+//
+//   Hank Childs, Tue Aug 31 10:10:39 PDT 2010
+//   Move Rob's auto-add operator code to the viewer.
 //
 // ****************************************************************************
 
@@ -7779,6 +7913,33 @@ MakeCodeSlashes(const QString &s)
 }
 
 // ****************************************************************************
+// Method: QvisGUIApplication::SetupCMFE
+//
+// Purpose:
+//   This is a Qt slot function that initiates the Data-Level comparison
+//   wizard.
+//
+// Programmer: Hank Childs
+// Creation:   August 1, 2010
+//
+// ****************************************************************************
+
+void
+QvisGUIApplication::SetupCMFE()
+{
+    if (setupCMFEWizard == NULL);
+        setupCMFEWizard = new QvisCMFEWizard(GetViewerState()->GetExpressionList(), 
+                                             mainWin);
+    setupCMFEWizard->SetGlobalAttributes(GetViewerState()->GetGlobalAttributes());
+    setupCMFEWizard->SetWindowInformation(GetViewerState()->GetWindowInformation());
+    setupCMFEWizard->SetExpressionList(GetViewerState()->GetExpressionList());
+
+    if (setupCMFEWizard->Exec() == QDialog::Accepted)
+        setupCMFEWizard->AddCMFEExpression();
+}
+
+
+// ****************************************************************************
 // Method: QvisGUIApplication::SaveMovie
 //
 // Purpose: 
@@ -8372,3 +8533,13 @@ void QvisGUIApplication::showSimulationWindow()      { GetInitializedWindowPoint
 void QvisGUIApplication::showExportDBWindow()        { GetInitializedWindowPointer(WINDOW_EXPORT_DB)->show(); }
 void QvisGUIApplication::showMeshManagementWindow()  { GetInitializedWindowPointer(WINDOW_MESH_MANAGEMENT)->show(); }
 void QvisGUIApplication::showMacroWindow()           { GetInitializedWindowPointer(WINDOW_MACRO)->show(); }
+void QvisGUIApplication::showSelectionsWindow()      { GetInitializedWindowPointer(WINDOW_SELECTIONS)->show(); }
+
+void
+QvisGUIApplication::showSelectionsWindow2(const QString &selName)
+{
+    QvisSelectionsWindow *selWindow = (QvisSelectionsWindow *)GetInitializedWindowPointer(WINDOW_SELECTIONS);
+
+    selWindow->show();
+    selWindow->highlightSelection(selName);
+}

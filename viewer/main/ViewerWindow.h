@@ -59,7 +59,7 @@
 #include <WindowAttributes.h>
 #include <ViewStack.h>
 #include <vectortypes.h>
-#include <map>
+#include <maptypes.h>
 
 #include <ExternalRenderRequestInfo.h>
 
@@ -457,6 +457,15 @@ class ViewerToolbar;
 //    Jeremy Meredith, Fri Apr 30 14:39:07 EDT 2010
 //    Added automatic depth cueing mode.
 //
+//    Jeremy Meredith, Wed May 19 14:15:58 EDT 2010
+//    Support 3D axis scaling (3D equivalent of full-frame mode).
+//
+//    Dave Pugmire, Tue Aug 24 11:32:12 EDT 2010
+//    Add compact domain options.
+//
+//    Brad Whitlock, Thu Aug 26 15:41:38 PDT 2010
+//    I added a force option to SetAnnotationAttributes.
+//
 // ****************************************************************************
 
 class VIEWER_API ViewerWindow : public ViewerBase
@@ -475,7 +484,7 @@ public:
     void CreateNode(DataNode *parentNode, 
                     const std::map<std::string, std::string> &, 
                     bool detailed);
-    void SetFromNode(DataNode *parentNode,
+    bool SetFromNode(DataNode *parentNode,
                      const std::map<std::string, std::string> &,
                      const std::string &configVersion);
     static bool SessionContainsErrors(DataNode *parentNode);
@@ -571,10 +580,12 @@ public:
     void CopyViewAttributes(const ViewerWindow *);
     void UpdateCameraView();
 
-    void SetAnnotationAttributes(const AnnotationAttributes *);
+    void SetAnnotationAttributes(const AnnotationAttributes *, bool force=false);
     const AnnotationAttributes *GetAnnotationAttributes() const;
     void CopyAnnotationAttributes(const ViewerWindow *);
-    void CopyAnnotationObjectList(const ViewerWindow *, bool copyLegends);
+    void CopyAnnotationObjectList(const ViewerWindow *, 
+                                  const StringStringMap &nameMap, 
+                                  bool copyLegends);
     bool AddAnnotationObject(int annotType, const std::string &annotName);
     void HideActiveAnnotationObjects();
     void DeleteActiveAnnotationObjects();
@@ -603,6 +614,7 @@ public:
     void SetPickFunction(void (*func)(void *, bool, const PickAttributes *),
                          void *data, bool);
     void ClearPickPoints();
+    void RenamePickLabel(const std::string &, const std::string &);
 
     void ValidateQuery(const PickAttributes *, const Line *);
     void UpdateQuery(const Line *);
@@ -637,6 +649,7 @@ public:
     void SetFullFrameActivationMode(const int mode);
     int  GetFullFrameActivationMode() const;
     void GetScaleFactorAndType(double &s, int &t);
+    bool Get3DAxisScalingFactors(double s[3]);
     bool DoAllPlotsAxesHaveSameUnits();
 
     void ConvertFromLeftEyeToRightEye(void);
@@ -669,6 +682,11 @@ public:
     int  GetScalableActivationMode() const;
     int  SetScalableAutoThreshold(int threshold);
     int  GetScalableAutoThreshold() const;
+    int  SetCompactDomainsActivationMode(int mode);
+    int  GetCompactDomainsActivationMode() const;
+    int  SetCompactDomainsAutoThreshold(int val);
+    int  GetCompactDomainsAutoThreshold() const;
+
     void SetSpecularProperties(bool,double,double,const ColorAttribute&);
     bool  GetSpecularFlag() const;
     double GetSpecularCoeff() const;
@@ -679,6 +697,7 @@ public:
     double GetShadingStrength() const;
     void SetDepthCueingProperties(bool,bool,const double[3],const double[3]);
     bool GetDoDepthCueing() const;
+
     bool GetDepthCueingAutomatic() const;
     const double *GetStartCuePoint() const;
     const double *GetEndCuePoint() const;

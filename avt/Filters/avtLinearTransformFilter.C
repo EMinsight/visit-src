@@ -99,6 +99,9 @@ avtLinearTransformFilter::~avtLinearTransformFilter()
 //
 //  Modifications:
 //
+//    Dave Pugmire, Fri May 14 08:04:43 EDT 2010
+//    Flag for vector transformations.
+//
 // ****************************************************************************
 
 void
@@ -111,6 +114,7 @@ avtLinearTransformFilter::SetAtts(const AttributeGroup *a)
     if (invM)
         invM->Delete();
     invM = NULL;
+    SetVectorTransform(atts.GetTransformVectors());
 }
 
 
@@ -124,6 +128,9 @@ avtLinearTransformFilter::SetAtts(const AttributeGroup *a)
 //  Creation:    April 15, 2008
 //
 //  Modifications:
+//
+//    Tom Fogal, Thu Jul 29 10:27:34 MDT 2010
+//    Account for 4x4 transforms.
 //
 // ****************************************************************************
 
@@ -142,14 +149,22 @@ avtLinearTransformFilter::SetupMatrix()
     (*M)[0][0] = atts.GetM00();
     (*M)[0][1] = atts.GetM01();
     (*M)[0][2] = atts.GetM02();
+    (*M)[0][3] = atts.GetM03();
 
     (*M)[1][0] = atts.GetM10();
     (*M)[1][1] = atts.GetM11();
     (*M)[1][2] = atts.GetM12();
+    (*M)[1][3] = atts.GetM13();
 
     (*M)[2][0] = atts.GetM20();
     (*M)[2][1] = atts.GetM21();
     (*M)[2][2] = atts.GetM22();
+    (*M)[2][3] = atts.GetM23();
+
+    (*M)[3][0] = atts.GetM30();
+    (*M)[3][1] = atts.GetM31();
+    (*M)[3][2] = atts.GetM32();
+    (*M)[3][3] = atts.GetM33();
 
     if (atts.GetInvertLinearTransform())
     {

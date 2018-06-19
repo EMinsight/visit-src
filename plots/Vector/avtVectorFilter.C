@@ -458,6 +458,9 @@ avtVectorFilter::SetMagVarName(const string &mname)
 //    Disable streaming if we need to calculate a stride based on the
 //    number of requested vectors and the number of domains.
 //
+//    Hank Childs, Thu Aug 26 18:10:49 PDT 2010
+//    Make sure we calculate the extents of the magnitude of the vector.
+//
 // ****************************************************************************
 
 avtContract_p
@@ -486,6 +489,7 @@ avtVectorFilter::ModifyContract(avtContract_p contract)
                 ds->GetTimestep(), ds->GetRestriction());
     nds->AddSecondaryVariable(magVarName.c_str());
     rv = new avtContract(contract, nds);
+    rv->SetCalculateVariableExtents(magVarName, true);
     
     // If we're not using the stride, then we have to calculate
     // the per-domain vectorc count by dividing by the number of

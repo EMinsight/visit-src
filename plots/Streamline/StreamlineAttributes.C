@@ -280,20 +280,21 @@ StreamlineAttributes::StreamlineAlgorithmType_FromString(const std::string &s, S
 //
 
 static const char *IntegrationType_strings[] = {
-"DormandPrince", "AdamsBashforth"};
+"DormandPrince", "AdamsBashforth", "M3DC1Integrator"
+};
 
 std::string
 StreamlineAttributes::IntegrationType_ToString(StreamlineAttributes::IntegrationType t)
 {
     int index = int(t);
-    if(index < 0 || index >= 2) index = 0;
+    if(index < 0 || index >= 3) index = 0;
     return IntegrationType_strings[index];
 }
 
 std::string
 StreamlineAttributes::IntegrationType_ToString(int t)
 {
-    int index = (t < 0 || t >= 2) ? 0 : t;
+    int index = (t < 0 || t >= 3) ? 0 : t;
     return IntegrationType_strings[index];
 }
 
@@ -301,7 +302,7 @@ bool
 StreamlineAttributes::IntegrationType_FromString(const std::string &s, StreamlineAttributes::IntegrationType &val)
 {
     val = StreamlineAttributes::DormandPrince;
-    for(int i = 0; i < 2; ++i)
+    for(int i = 0; i < 3; ++i)
     {
         if(s == IntegrationType_strings[i])
         {
@@ -463,11 +464,10 @@ void StreamlineAttributes::Init()
     planeUpAxis[0] = 0;
     planeUpAxis[1] = 1;
     planeUpAxis[2] = 0;
-    planeRadius = 1;
+    radius = 1;
     sphereOrigin[0] = 0;
     sphereOrigin[1] = 0;
     sphereOrigin[2] = 0;
-    sphereRadius = 1;
     boxExtents[0] = 0;
     boxExtents[1] = 1;
     boxExtents[2] = 0;
@@ -484,7 +484,9 @@ void StreamlineAttributes::Init()
     pointList.push_back(0);
     pointList.push_back(1);
     pointList.push_back(0);
-    pointDensity = 2;
+    sampleDensity0 = 1;
+    sampleDensity1 = 1;
+    sampleDensity2 = 1;
     displayMethod = Lines;
     showSeeds = false;
     showHeads = false;
@@ -524,6 +526,14 @@ void StreamlineAttributes::Init()
     opacityVarMaxFlag = false;
     tubeDisplayDensity = 10;
     geomDisplayQuality = Medium;
+    sampleDistance0 = 1;
+    sampleDistance1 = 1;
+    sampleDistance2 = 1;
+    fillInterior = true;
+    randomSamples = false;
+    randomSeed = 0;
+    numberOfRandomSamples = 1;
+    forceNodeCenteredData = false;
 
     StreamlineAttributes::SelectAll();
 }
@@ -573,18 +583,19 @@ void StreamlineAttributes::Copy(const StreamlineAttributes &obj)
     planeUpAxis[1] = obj.planeUpAxis[1];
     planeUpAxis[2] = obj.planeUpAxis[2];
 
-    planeRadius = obj.planeRadius;
+    radius = obj.radius;
     sphereOrigin[0] = obj.sphereOrigin[0];
     sphereOrigin[1] = obj.sphereOrigin[1];
     sphereOrigin[2] = obj.sphereOrigin[2];
 
-    sphereRadius = obj.sphereRadius;
     for(int i = 0; i < 6; ++i)
         boxExtents[i] = obj.boxExtents[i];
 
     useWholeBox = obj.useWholeBox;
     pointList = obj.pointList;
-    pointDensity = obj.pointDensity;
+    sampleDensity0 = obj.sampleDensity0;
+    sampleDensity1 = obj.sampleDensity1;
+    sampleDensity2 = obj.sampleDensity2;
     displayMethod = obj.displayMethod;
     showSeeds = obj.showSeeds;
     showHeads = obj.showHeads;
@@ -628,6 +639,14 @@ void StreamlineAttributes::Copy(const StreamlineAttributes &obj)
     opacityVarMaxFlag = obj.opacityVarMaxFlag;
     tubeDisplayDensity = obj.tubeDisplayDensity;
     geomDisplayQuality = obj.geomDisplayQuality;
+    sampleDistance0 = obj.sampleDistance0;
+    sampleDistance1 = obj.sampleDistance1;
+    sampleDistance2 = obj.sampleDistance2;
+    fillInterior = obj.fillInterior;
+    randomSamples = obj.randomSamples;
+    randomSeed = obj.randomSeed;
+    numberOfRandomSamples = obj.numberOfRandomSamples;
+    forceNodeCenteredData = obj.forceNodeCenteredData;
 
     StreamlineAttributes::SelectAll();
 }
@@ -836,13 +855,14 @@ StreamlineAttributes::operator == (const StreamlineAttributes &obj) const
             planeOrigin_equal &&
             planeNormal_equal &&
             planeUpAxis_equal &&
-            (planeRadius == obj.planeRadius) &&
+            (radius == obj.radius) &&
             sphereOrigin_equal &&
-            (sphereRadius == obj.sphereRadius) &&
             boxExtents_equal &&
             (useWholeBox == obj.useWholeBox) &&
             (pointList == obj.pointList) &&
-            (pointDensity == obj.pointDensity) &&
+            (sampleDensity0 == obj.sampleDensity0) &&
+            (sampleDensity1 == obj.sampleDensity1) &&
+            (sampleDensity2 == obj.sampleDensity2) &&
             (displayMethod == obj.displayMethod) &&
             (showSeeds == obj.showSeeds) &&
             (showHeads == obj.showHeads) &&
@@ -885,7 +905,15 @@ StreamlineAttributes::operator == (const StreamlineAttributes &obj) const
             (opacityVarMinFlag == obj.opacityVarMinFlag) &&
             (opacityVarMaxFlag == obj.opacityVarMaxFlag) &&
             (tubeDisplayDensity == obj.tubeDisplayDensity) &&
-            (geomDisplayQuality == obj.geomDisplayQuality));
+            (geomDisplayQuality == obj.geomDisplayQuality) &&
+            (sampleDistance0 == obj.sampleDistance0) &&
+            (sampleDistance1 == obj.sampleDistance1) &&
+            (sampleDistance2 == obj.sampleDistance2) &&
+            (fillInterior == obj.fillInterior) &&
+            (randomSamples == obj.randomSamples) &&
+            (randomSeed == obj.randomSeed) &&
+            (numberOfRandomSamples == obj.numberOfRandomSamples) &&
+            (forceNodeCenteredData == obj.forceNodeCenteredData));
 }
 
 // ****************************************************************************
@@ -946,6 +974,9 @@ StreamlineAttributes::TypeName() const
 //    Hank Childs, Sat Mar  3 09:00:12 PST 2007
 //    Disable useWholeBox if we are copying box extents.
 //
+//    Dave Pugmire, Thu Jun 10 10:44:02 EDT 2010
+//    New seed sources.
+//
 // ****************************************************************************
 
 bool
@@ -981,13 +1012,14 @@ StreamlineAttributes::CopyAttributes(const AttributeGroup *atts)
     }
     else if(atts->TypeName() == "PlaneAttributes")
     {
-        if(sourceType == SpecifiedPlane)
+        if(sourceType == SpecifiedPlane || sourceType == SpecifiedCircle)
         {
             const PlaneAttributes *plane = (const PlaneAttributes *)atts;
             SetPlaneOrigin(plane->GetOrigin());
             SetPlaneNormal(plane->GetNormal());
             SetPlaneUpAxis(plane->GetUpAxis());
-            SetPlaneRadius(plane->GetRadius());
+            if (sourceType == SpecifiedCircle)
+                SetRadius(plane->GetRadius());
             retval = true;
         }
     }
@@ -997,22 +1029,10 @@ StreamlineAttributes::CopyAttributes(const AttributeGroup *atts)
         {
             const SphereAttributes *sphere = (const SphereAttributes *)atts;
             SetSphereOrigin(sphere->GetOrigin());
-            SetSphereRadius(sphere->GetRadius());
+            SetRadius(sphere->GetRadius());
             retval = true;
         }
     }   
-    else if(atts->TypeName() == "CircleAttributes")
-    {
-        if(sourceType == SpecifiedCircle)
-        {
-            const PlaneAttributes *plane = (const PlaneAttributes *)atts;
-            SetPlaneOrigin(plane->GetOrigin());
-            SetPlaneNormal(plane->GetNormal());
-            SetPlaneUpAxis(plane->GetUpAxis());
-            SetPlaneRadius(plane->GetRadius());
-            retval = true;
-        }
-    }
     else if(atts->TypeName() == "BoxExtents")
     {
         if(sourceType == SpecifiedBox)
@@ -1074,7 +1094,7 @@ StreamlineAttributes::CreateCompatible(const std::string &tname) const
         p->SetOrigin(GetPlaneOrigin());
         p->SetNormal(GetPlaneNormal());
         p->SetUpAxis(GetPlaneUpAxis());
-        p->SetRadius(GetPlaneRadius());
+        p->SetRadius(GetRadius());
         p->SetHaveRadius(true);
         retval = p;
     }
@@ -1082,7 +1102,7 @@ StreamlineAttributes::CreateCompatible(const std::string &tname) const
     {
         SphereAttributes *s = new SphereAttributes;
         s->SetOrigin(GetSphereOrigin());
-        s->SetRadius(GetSphereRadius());
+        s->SetRadius(GetRadius());
         retval = s;
     }
     else if(tname == "CircleAttributes")
@@ -1091,7 +1111,7 @@ StreamlineAttributes::CreateCompatible(const std::string &tname) const
         p->SetOrigin(GetPlaneOrigin());
         p->SetNormal(GetPlaneNormal());
         p->SetUpAxis(GetPlaneUpAxis());
-        p->SetRadius(GetPlaneRadius());
+        p->SetRadius(GetRadius());
         p->SetHaveRadius(true);
         retval = p;
     }
@@ -1159,13 +1179,14 @@ StreamlineAttributes::SelectAll()
     Select(ID_planeOrigin,               (void *)planeOrigin, 3);
     Select(ID_planeNormal,               (void *)planeNormal, 3);
     Select(ID_planeUpAxis,               (void *)planeUpAxis, 3);
-    Select(ID_planeRadius,               (void *)&planeRadius);
+    Select(ID_radius,                    (void *)&radius);
     Select(ID_sphereOrigin,              (void *)sphereOrigin, 3);
-    Select(ID_sphereRadius,              (void *)&sphereRadius);
     Select(ID_boxExtents,                (void *)boxExtents, 6);
     Select(ID_useWholeBox,               (void *)&useWholeBox);
     Select(ID_pointList,                 (void *)&pointList);
-    Select(ID_pointDensity,              (void *)&pointDensity);
+    Select(ID_sampleDensity0,            (void *)&sampleDensity0);
+    Select(ID_sampleDensity1,            (void *)&sampleDensity1);
+    Select(ID_sampleDensity2,            (void *)&sampleDensity2);
     Select(ID_displayMethod,             (void *)&displayMethod);
     Select(ID_showSeeds,                 (void *)&showSeeds);
     Select(ID_showHeads,                 (void *)&showHeads);
@@ -1209,6 +1230,14 @@ StreamlineAttributes::SelectAll()
     Select(ID_opacityVarMaxFlag,         (void *)&opacityVarMaxFlag);
     Select(ID_tubeDisplayDensity,        (void *)&tubeDisplayDensity);
     Select(ID_geomDisplayQuality,        (void *)&geomDisplayQuality);
+    Select(ID_sampleDistance0,           (void *)&sampleDistance0);
+    Select(ID_sampleDistance1,           (void *)&sampleDistance1);
+    Select(ID_sampleDistance2,           (void *)&sampleDistance2);
+    Select(ID_fillInterior,              (void *)&fillInterior);
+    Select(ID_randomSamples,             (void *)&randomSamples);
+    Select(ID_randomSeed,                (void *)&randomSeed);
+    Select(ID_numberOfRandomSamples,     (void *)&numberOfRandomSamples);
+    Select(ID_forceNodeCenteredData,     (void *)&forceNodeCenteredData);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1295,22 +1324,16 @@ StreamlineAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool f
         node->AddNode(new DataNode("planeUpAxis", planeUpAxis, 3));
     }
 
-    if(completeSave || !FieldsEqual(ID_planeRadius, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_radius, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("planeRadius", planeRadius));
+        node->AddNode(new DataNode("radius", radius));
     }
 
     if(completeSave || !FieldsEqual(ID_sphereOrigin, &defaultObject))
     {
         addToParent = true;
         node->AddNode(new DataNode("sphereOrigin", sphereOrigin, 3));
-    }
-
-    if(completeSave || !FieldsEqual(ID_sphereRadius, &defaultObject))
-    {
-        addToParent = true;
-        node->AddNode(new DataNode("sphereRadius", sphereRadius));
     }
 
     if(completeSave || !FieldsEqual(ID_boxExtents, &defaultObject))
@@ -1331,10 +1354,22 @@ StreamlineAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool f
         node->AddNode(new DataNode("pointList", pointList));
     }
 
-    if(completeSave || !FieldsEqual(ID_pointDensity, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_sampleDensity0, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("pointDensity", pointDensity));
+        node->AddNode(new DataNode("sampleDensity0", sampleDensity0));
+    }
+
+    if(completeSave || !FieldsEqual(ID_sampleDensity1, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("sampleDensity1", sampleDensity1));
+    }
+
+    if(completeSave || !FieldsEqual(ID_sampleDensity2, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("sampleDensity2", sampleDensity2));
     }
 
     if(completeSave || !FieldsEqual(ID_displayMethod, &defaultObject))
@@ -1597,6 +1632,54 @@ StreamlineAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool f
         node->AddNode(new DataNode("geomDisplayQuality", DisplayQuality_ToString(geomDisplayQuality)));
     }
 
+    if(completeSave || !FieldsEqual(ID_sampleDistance0, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("sampleDistance0", sampleDistance0));
+    }
+
+    if(completeSave || !FieldsEqual(ID_sampleDistance1, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("sampleDistance1", sampleDistance1));
+    }
+
+    if(completeSave || !FieldsEqual(ID_sampleDistance2, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("sampleDistance2", sampleDistance2));
+    }
+
+    if(completeSave || !FieldsEqual(ID_fillInterior, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("fillInterior", fillInterior));
+    }
+
+    if(completeSave || !FieldsEqual(ID_randomSamples, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("randomSamples", randomSamples));
+    }
+
+    if(completeSave || !FieldsEqual(ID_randomSeed, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("randomSeed", randomSeed));
+    }
+
+    if(completeSave || !FieldsEqual(ID_numberOfRandomSamples, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("numberOfRandomSamples", numberOfRandomSamples));
+    }
+
+    if(completeSave || !FieldsEqual(ID_forceNodeCenteredData, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("forceNodeCenteredData", forceNodeCenteredData));
+    }
+
 
     // Add the node to the parent node.
     if(addToParent || forceAdd)
@@ -1665,20 +1748,22 @@ StreamlineAttributes::SetFromNode(DataNode *parentNode)
         SetPlaneNormal(node->AsDoubleArray());
     if((node = searchNode->GetNode("planeUpAxis")) != 0)
         SetPlaneUpAxis(node->AsDoubleArray());
-    if((node = searchNode->GetNode("planeRadius")) != 0)
-        SetPlaneRadius(node->AsDouble());
+    if((node = searchNode->GetNode("radius")) != 0)
+        SetRadius(node->AsDouble());
     if((node = searchNode->GetNode("sphereOrigin")) != 0)
         SetSphereOrigin(node->AsDoubleArray());
-    if((node = searchNode->GetNode("sphereRadius")) != 0)
-        SetSphereRadius(node->AsDouble());
     if((node = searchNode->GetNode("boxExtents")) != 0)
         SetBoxExtents(node->AsDoubleArray());
     if((node = searchNode->GetNode("useWholeBox")) != 0)
         SetUseWholeBox(node->AsBool());
     if((node = searchNode->GetNode("pointList")) != 0)
         SetPointList(node->AsDoubleVector());
-    if((node = searchNode->GetNode("pointDensity")) != 0)
-        SetPointDensity(node->AsInt());
+    if((node = searchNode->GetNode("sampleDensity0")) != 0)
+        SetSampleDensity0(node->AsInt());
+    if((node = searchNode->GetNode("sampleDensity1")) != 0)
+        SetSampleDensity1(node->AsInt());
+    if((node = searchNode->GetNode("sampleDensity2")) != 0)
+        SetSampleDensity2(node->AsInt());
     if((node = searchNode->GetNode("displayMethod")) != 0)
     {
         // Allow enums to be int or string in the config file
@@ -1771,7 +1856,7 @@ StreamlineAttributes::SetFromNode(DataNode *parentNode)
         if(node->GetNodeType() == INT_NODE)
         {
             int ival = node->AsInt();
-            if(ival >= 0 && ival < 2)
+            if(ival >= 0 && ival < 3)
                 SetIntegrationType(IntegrationType(ival));
         }
         else if(node->GetNodeType() == STRING_NODE)
@@ -1891,6 +1976,22 @@ StreamlineAttributes::SetFromNode(DataNode *parentNode)
                 SetGeomDisplayQuality(value);
         }
     }
+    if((node = searchNode->GetNode("sampleDistance0")) != 0)
+        SetSampleDistance0(node->AsDouble());
+    if((node = searchNode->GetNode("sampleDistance1")) != 0)
+        SetSampleDistance1(node->AsDouble());
+    if((node = searchNode->GetNode("sampleDistance2")) != 0)
+        SetSampleDistance2(node->AsDouble());
+    if((node = searchNode->GetNode("fillInterior")) != 0)
+        SetFillInterior(node->AsBool());
+    if((node = searchNode->GetNode("randomSamples")) != 0)
+        SetRandomSamples(node->AsBool());
+    if((node = searchNode->GetNode("randomSeed")) != 0)
+        SetRandomSeed(node->AsInt());
+    if((node = searchNode->GetNode("numberOfRandomSamples")) != 0)
+        SetNumberOfRandomSamples(node->AsInt());
+    if((node = searchNode->GetNode("forceNodeCenteredData")) != 0)
+        SetForceNodeCenteredData(node->AsBool());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1973,10 +2074,10 @@ StreamlineAttributes::SetPlaneUpAxis(const double *planeUpAxis_)
 }
 
 void
-StreamlineAttributes::SetPlaneRadius(double planeRadius_)
+StreamlineAttributes::SetRadius(double radius_)
 {
-    planeRadius = planeRadius_;
-    Select(ID_planeRadius, (void *)&planeRadius);
+    radius = radius_;
+    Select(ID_radius, (void *)&radius);
 }
 
 void
@@ -1986,13 +2087,6 @@ StreamlineAttributes::SetSphereOrigin(const double *sphereOrigin_)
     sphereOrigin[1] = sphereOrigin_[1];
     sphereOrigin[2] = sphereOrigin_[2];
     Select(ID_sphereOrigin, (void *)sphereOrigin, 3);
-}
-
-void
-StreamlineAttributes::SetSphereRadius(double sphereRadius_)
-{
-    sphereRadius = sphereRadius_;
-    Select(ID_sphereRadius, (void *)&sphereRadius);
 }
 
 void
@@ -2018,10 +2112,24 @@ StreamlineAttributes::SetPointList(const doubleVector &pointList_)
 }
 
 void
-StreamlineAttributes::SetPointDensity(int pointDensity_)
+StreamlineAttributes::SetSampleDensity0(int sampleDensity0_)
 {
-    pointDensity = pointDensity_;
-    Select(ID_pointDensity, (void *)&pointDensity);
+    sampleDensity0 = sampleDensity0_;
+    Select(ID_sampleDensity0, (void *)&sampleDensity0);
+}
+
+void
+StreamlineAttributes::SetSampleDensity1(int sampleDensity1_)
+{
+    sampleDensity1 = sampleDensity1_;
+    Select(ID_sampleDensity1, (void *)&sampleDensity1);
+}
+
+void
+StreamlineAttributes::SetSampleDensity2(int sampleDensity2_)
+{
+    sampleDensity2 = sampleDensity2_;
+    Select(ID_sampleDensity2, (void *)&sampleDensity2);
 }
 
 void
@@ -2325,6 +2433,62 @@ StreamlineAttributes::SetGeomDisplayQuality(StreamlineAttributes::DisplayQuality
     Select(ID_geomDisplayQuality, (void *)&geomDisplayQuality);
 }
 
+void
+StreamlineAttributes::SetSampleDistance0(double sampleDistance0_)
+{
+    sampleDistance0 = sampleDistance0_;
+    Select(ID_sampleDistance0, (void *)&sampleDistance0);
+}
+
+void
+StreamlineAttributes::SetSampleDistance1(double sampleDistance1_)
+{
+    sampleDistance1 = sampleDistance1_;
+    Select(ID_sampleDistance1, (void *)&sampleDistance1);
+}
+
+void
+StreamlineAttributes::SetSampleDistance2(double sampleDistance2_)
+{
+    sampleDistance2 = sampleDistance2_;
+    Select(ID_sampleDistance2, (void *)&sampleDistance2);
+}
+
+void
+StreamlineAttributes::SetFillInterior(bool fillInterior_)
+{
+    fillInterior = fillInterior_;
+    Select(ID_fillInterior, (void *)&fillInterior);
+}
+
+void
+StreamlineAttributes::SetRandomSamples(bool randomSamples_)
+{
+    randomSamples = randomSamples_;
+    Select(ID_randomSamples, (void *)&randomSamples);
+}
+
+void
+StreamlineAttributes::SetRandomSeed(int randomSeed_)
+{
+    randomSeed = randomSeed_;
+    Select(ID_randomSeed, (void *)&randomSeed);
+}
+
+void
+StreamlineAttributes::SetNumberOfRandomSamples(int numberOfRandomSamples_)
+{
+    numberOfRandomSamples = numberOfRandomSamples_;
+    Select(ID_numberOfRandomSamples, (void *)&numberOfRandomSamples);
+}
+
+void
+StreamlineAttributes::SetForceNodeCenteredData(bool forceNodeCenteredData_)
+{
+    forceNodeCenteredData = forceNodeCenteredData_;
+    Select(ID_forceNodeCenteredData, (void *)&forceNodeCenteredData);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Get property methods
 ///////////////////////////////////////////////////////////////////////////////
@@ -2420,9 +2584,9 @@ StreamlineAttributes::GetPlaneUpAxis()
 }
 
 double
-StreamlineAttributes::GetPlaneRadius() const
+StreamlineAttributes::GetRadius() const
 {
-    return planeRadius;
+    return radius;
 }
 
 const double *
@@ -2435,12 +2599,6 @@ double *
 StreamlineAttributes::GetSphereOrigin()
 {
     return sphereOrigin;
-}
-
-double
-StreamlineAttributes::GetSphereRadius() const
-{
-    return sphereRadius;
 }
 
 const double *
@@ -2474,9 +2632,21 @@ StreamlineAttributes::GetPointList()
 }
 
 int
-StreamlineAttributes::GetPointDensity() const
+StreamlineAttributes::GetSampleDensity0() const
 {
-    return pointDensity;
+    return sampleDensity0;
+}
+
+int
+StreamlineAttributes::GetSampleDensity1() const
+{
+    return sampleDensity1;
+}
+
+int
+StreamlineAttributes::GetSampleDensity2() const
+{
+    return sampleDensity2;
 }
 
 StreamlineAttributes::DisplayMethod
@@ -2761,6 +2931,54 @@ StreamlineAttributes::GetGeomDisplayQuality() const
     return DisplayQuality(geomDisplayQuality);
 }
 
+double
+StreamlineAttributes::GetSampleDistance0() const
+{
+    return sampleDistance0;
+}
+
+double
+StreamlineAttributes::GetSampleDistance1() const
+{
+    return sampleDistance1;
+}
+
+double
+StreamlineAttributes::GetSampleDistance2() const
+{
+    return sampleDistance2;
+}
+
+bool
+StreamlineAttributes::GetFillInterior() const
+{
+    return fillInterior;
+}
+
+bool
+StreamlineAttributes::GetRandomSamples() const
+{
+    return randomSamples;
+}
+
+int
+StreamlineAttributes::GetRandomSeed() const
+{
+    return randomSeed;
+}
+
+int
+StreamlineAttributes::GetNumberOfRandomSamples() const
+{
+    return numberOfRandomSamples;
+}
+
+bool
+StreamlineAttributes::GetForceNodeCenteredData() const
+{
+    return forceNodeCenteredData;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Select property methods
 ///////////////////////////////////////////////////////////////////////////////
@@ -2876,13 +3094,14 @@ StreamlineAttributes::GetFieldName(int index) const
     case ID_planeOrigin:               return "planeOrigin";
     case ID_planeNormal:               return "planeNormal";
     case ID_planeUpAxis:               return "planeUpAxis";
-    case ID_planeRadius:               return "planeRadius";
+    case ID_radius:                    return "radius";
     case ID_sphereOrigin:              return "sphereOrigin";
-    case ID_sphereRadius:              return "sphereRadius";
     case ID_boxExtents:                return "boxExtents";
     case ID_useWholeBox:               return "useWholeBox";
     case ID_pointList:                 return "pointList";
-    case ID_pointDensity:              return "pointDensity";
+    case ID_sampleDensity0:            return "sampleDensity0";
+    case ID_sampleDensity1:            return "sampleDensity1";
+    case ID_sampleDensity2:            return "sampleDensity2";
     case ID_displayMethod:             return "displayMethod";
     case ID_showSeeds:                 return "showSeeds";
     case ID_showHeads:                 return "showHeads";
@@ -2926,6 +3145,14 @@ StreamlineAttributes::GetFieldName(int index) const
     case ID_opacityVarMaxFlag:         return "opacityVarMaxFlag";
     case ID_tubeDisplayDensity:        return "tubeDisplayDensity";
     case ID_geomDisplayQuality:        return "geomDisplayQuality";
+    case ID_sampleDistance0:           return "sampleDistance0";
+    case ID_sampleDistance1:           return "sampleDistance1";
+    case ID_sampleDistance2:           return "sampleDistance2";
+    case ID_fillInterior:              return "fillInterior";
+    case ID_randomSamples:             return "randomSamples";
+    case ID_randomSeed:                return "randomSeed";
+    case ID_numberOfRandomSamples:     return "numberOfRandomSamples";
+    case ID_forceNodeCenteredData:     return "forceNodeCenteredData";
     default:  return "invalid index";
     }
 }
@@ -2959,13 +3186,14 @@ StreamlineAttributes::GetFieldType(int index) const
     case ID_planeOrigin:               return FieldType_doubleArray;
     case ID_planeNormal:               return FieldType_doubleArray;
     case ID_planeUpAxis:               return FieldType_doubleArray;
-    case ID_planeRadius:               return FieldType_double;
+    case ID_radius:                    return FieldType_double;
     case ID_sphereOrigin:              return FieldType_doubleArray;
-    case ID_sphereRadius:              return FieldType_double;
     case ID_boxExtents:                return FieldType_doubleArray;
     case ID_useWholeBox:               return FieldType_bool;
     case ID_pointList:                 return FieldType_doubleVector;
-    case ID_pointDensity:              return FieldType_int;
+    case ID_sampleDensity0:            return FieldType_int;
+    case ID_sampleDensity1:            return FieldType_int;
+    case ID_sampleDensity2:            return FieldType_int;
     case ID_displayMethod:             return FieldType_enum;
     case ID_showSeeds:                 return FieldType_bool;
     case ID_showHeads:                 return FieldType_bool;
@@ -3009,6 +3237,14 @@ StreamlineAttributes::GetFieldType(int index) const
     case ID_opacityVarMaxFlag:         return FieldType_bool;
     case ID_tubeDisplayDensity:        return FieldType_int;
     case ID_geomDisplayQuality:        return FieldType_enum;
+    case ID_sampleDistance0:           return FieldType_double;
+    case ID_sampleDistance1:           return FieldType_double;
+    case ID_sampleDistance2:           return FieldType_double;
+    case ID_fillInterior:              return FieldType_bool;
+    case ID_randomSamples:             return FieldType_bool;
+    case ID_randomSeed:                return FieldType_int;
+    case ID_numberOfRandomSamples:     return FieldType_int;
+    case ID_forceNodeCenteredData:     return FieldType_bool;
     default:  return FieldType_unknown;
     }
 }
@@ -3042,13 +3278,14 @@ StreamlineAttributes::GetFieldTypeName(int index) const
     case ID_planeOrigin:               return "doubleArray";
     case ID_planeNormal:               return "doubleArray";
     case ID_planeUpAxis:               return "doubleArray";
-    case ID_planeRadius:               return "double";
+    case ID_radius:                    return "double";
     case ID_sphereOrigin:              return "doubleArray";
-    case ID_sphereRadius:              return "double";
     case ID_boxExtents:                return "doubleArray";
     case ID_useWholeBox:               return "bool";
     case ID_pointList:                 return "doubleVector";
-    case ID_pointDensity:              return "int";
+    case ID_sampleDensity0:            return "int";
+    case ID_sampleDensity1:            return "int";
+    case ID_sampleDensity2:            return "int";
     case ID_displayMethod:             return "enum";
     case ID_showSeeds:                 return "bool";
     case ID_showHeads:                 return "bool";
@@ -3092,6 +3329,14 @@ StreamlineAttributes::GetFieldTypeName(int index) const
     case ID_opacityVarMaxFlag:         return "bool";
     case ID_tubeDisplayDensity:        return "int";
     case ID_geomDisplayQuality:        return "enum";
+    case ID_sampleDistance0:           return "double";
+    case ID_sampleDistance1:           return "double";
+    case ID_sampleDistance2:           return "double";
+    case ID_fillInterior:              return "bool";
+    case ID_randomSamples:             return "bool";
+    case ID_randomSeed:                return "int";
+    case ID_numberOfRandomSamples:     return "int";
+    case ID_forceNodeCenteredData:     return "bool";
     default:  return "invalid index";
     }
 }
@@ -3193,9 +3438,9 @@ StreamlineAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = planeUpAxis_equal;
         }
         break;
-    case ID_planeRadius:
+    case ID_radius:
         {  // new scope
-        retval = (planeRadius == obj.planeRadius);
+        retval = (radius == obj.radius);
         }
         break;
     case ID_sphereOrigin:
@@ -3206,11 +3451,6 @@ StreamlineAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
             sphereOrigin_equal = (sphereOrigin[i] == obj.sphereOrigin[i]);
 
         retval = sphereOrigin_equal;
-        }
-        break;
-    case ID_sphereRadius:
-        {  // new scope
-        retval = (sphereRadius == obj.sphereRadius);
         }
         break;
     case ID_boxExtents:
@@ -3233,9 +3473,19 @@ StreamlineAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (pointList == obj.pointList);
         }
         break;
-    case ID_pointDensity:
+    case ID_sampleDensity0:
         {  // new scope
-        retval = (pointDensity == obj.pointDensity);
+        retval = (sampleDensity0 == obj.sampleDensity0);
+        }
+        break;
+    case ID_sampleDensity1:
+        {  // new scope
+        retval = (sampleDensity1 == obj.sampleDensity1);
+        }
+        break;
+    case ID_sampleDensity2:
+        {  // new scope
+        retval = (sampleDensity2 == obj.sampleDensity2);
         }
         break;
     case ID_displayMethod:
@@ -3453,6 +3703,46 @@ StreamlineAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (geomDisplayQuality == obj.geomDisplayQuality);
         }
         break;
+    case ID_sampleDistance0:
+        {  // new scope
+        retval = (sampleDistance0 == obj.sampleDistance0);
+        }
+        break;
+    case ID_sampleDistance1:
+        {  // new scope
+        retval = (sampleDistance1 == obj.sampleDistance1);
+        }
+        break;
+    case ID_sampleDistance2:
+        {  // new scope
+        retval = (sampleDistance2 == obj.sampleDistance2);
+        }
+        break;
+    case ID_fillInterior:
+        {  // new scope
+        retval = (fillInterior == obj.fillInterior);
+        }
+        break;
+    case ID_randomSamples:
+        {  // new scope
+        retval = (randomSamples == obj.randomSamples);
+        }
+        break;
+    case ID_randomSeed:
+        {  // new scope
+        retval = (randomSeed == obj.randomSeed);
+        }
+        break;
+    case ID_numberOfRandomSamples:
+        {  // new scope
+        retval = (numberOfRandomSamples == obj.numberOfRandomSamples);
+        }
+        break;
+    case ID_forceNodeCenteredData:
+        {  // new scope
+        retval = (forceNodeCenteredData == obj.forceNodeCenteredData);
+        }
+        break;
     default: retval = false;
     }
 
@@ -3499,95 +3789,126 @@ StreamlineAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
 bool
 StreamlineAttributes::ChangesRequireRecalculation(const StreamlineAttributes &obj) const
 {
-    // If we're in point source mode and the points differ, sourcePointsDiffer
-    // evaluates to true.
-    bool sourcePointsDiffer = ((sourceType == SpecifiedPoint) &&
-       POINT_DIFFERS(pointSource, obj.pointSource));
+    //Check the general stuff first...
+    if (sourceType != obj.sourceType ||
+        termination != obj.termination ||
+        terminationType != obj.terminationType ||
+        streamlineDirection != obj.streamlineDirection ||
+        integrationType != obj.integrationType ||
+        maxStepLength != obj.maxStepLength ||
+        relTol != obj.relTol ||
+        absTol != obj.absTol ||
+        forceNodeCenteredData != obj.forceNodeCenteredData ||
+        pathlines != obj.pathlines ||
+        coloringVariable != obj.coloringVariable ||
+        (displayMethod != obj.displayMethod && obj.displayMethod == Ribbons) ||
+        (coloringMethod != obj.coloringMethod && obj.coloringMethod != Solid) ||
 
-    // If we're in line source mode and the line differs, sourceLineDiffers
-    // evaluates to true.
-    bool sourceLineDiffers = ((sourceType == SpecifiedLine) &&
-       (POINT_DIFFERS(lineStart, obj.lineStart) ||
-        POINT_DIFFERS(lineEnd, obj.lineEnd)));
-
-    // If we're in plane source mode and the plane differs, sourcePlaneDiffers
-    // evaluates to true.
-    bool sourcePlaneDiffers = ((sourceType == SpecifiedPlane) &&
-       (POINT_DIFFERS(planeOrigin, obj.planeOrigin) ||
-        POINT_DIFFERS(planeNormal, obj.planeNormal) ||
-        POINT_DIFFERS(planeUpAxis, obj.planeUpAxis) ||
-        planeRadius != obj.planeRadius));
-
-    // If we're in sphere source mode and the sphere differs, sourceSphereDiffers
-    // evaluates to true.
-    bool sourceSphereDiffers = ((sourceType == SpecifiedSphere) &&
-       (POINT_DIFFERS(sphereOrigin, obj.sphereOrigin) ||
-        (sphereRadius != obj.sphereRadius)));
-
-    bool sourcePointListDiffers = (sourceType == SpecifiedPointList);
-    if (sourcePointListDiffers)
+        ((opacityType == VariableRange) && (obj.opacityType != VariableRange ||
+                                            opacityVariable != obj.opacityVariable)))
     {
-        sourcePointListDiffers = false;
+        return true;
+    }
+         
+    //Check by source type.
+    if ((sourceType == SpecifiedPoint) && POINT_DIFFERS(pointSource, obj.pointSource))
+    {
+        return true;
+    }
+
+    if (sourceType == SpecifiedLine)
+    {
+        if (POINT_DIFFERS(lineStart, obj.lineStart) ||
+            POINT_DIFFERS(lineEnd, obj.lineEnd) ||
+            randomSamples != obj.randomSamples ||
+            (!randomSamples && (sampleDensity0 != obj.sampleDensity0)) ||
+            (randomSamples && (randomSeed != obj.randomSeed ||
+                               numberOfRandomSamples != obj.numberOfRandomSamples)))
+        {
+            return true;
+        }
+    }
+
+    if (sourceType == SpecifiedPlane)
+    {
+        if (POINT_DIFFERS(planeOrigin, obj.planeOrigin) ||
+            POINT_DIFFERS(planeNormal, obj.planeNormal) ||
+            POINT_DIFFERS(planeUpAxis, obj.planeUpAxis) ||
+            sampleDistance0 != obj.sampleDistance0 ||
+            sampleDistance1 != obj.sampleDistance1 ||
+            randomSamples != obj.randomSamples ||
+            fillInterior != obj.fillInterior ||
+            (randomSamples && (randomSeed != obj.randomSeed ||
+                               numberOfRandomSamples != obj.numberOfRandomSamples)) ||
+            (!randomSamples && (sampleDensity0 != obj.sampleDensity0 ||
+                                sampleDensity1 != obj.sampleDensity1)))
+        {
+            return true;
+        }
+    }
+
+    if (sourceType == SpecifiedCircle)
+    {
+        if (POINT_DIFFERS(planeOrigin, obj.planeOrigin) ||
+            POINT_DIFFERS(planeNormal, obj.planeNormal) ||
+            POINT_DIFFERS(planeUpAxis, obj.planeUpAxis) ||
+            radius != obj.radius ||
+            randomSamples != obj.randomSamples ||
+            fillInterior != obj.fillInterior ||
+            (randomSamples && (randomSeed != obj.randomSeed ||
+                               numberOfRandomSamples != obj.numberOfRandomSamples)) ||
+            (!randomSamples && fillInterior && (sampleDensity0 != obj.sampleDensity0 ||
+                                                sampleDensity1 != obj.sampleDensity1)) ||
+            (!randomSamples && !fillInterior && (sampleDensity0 != obj.sampleDensity0)))
+        {
+            return true;
+        }
+    }
+
+    if (sourceType == SpecifiedSphere)
+    {
+        if (POINT_DIFFERS(sphereOrigin, obj.sphereOrigin) ||
+            radius != obj.radius ||
+            randomSamples != obj.randomSamples ||
+            fillInterior != obj.fillInterior ||
+            (randomSamples && (randomSeed != obj.randomSeed ||
+                               numberOfRandomSamples != obj.numberOfRandomSamples)) ||
+            (!randomSamples && (sampleDensity0 != obj.sampleDensity0 ||
+                                sampleDensity1 != obj.sampleDensity1 ||
+                                sampleDensity2 != obj.sampleDensity2)))
+        {
+            return true;
+        }
+    }
+
+    if (sourceType == SpecifiedBox)
+    {
+        if (POINT_DIFFERS(boxExtents, obj.boxExtents) ||
+            POINT_DIFFERS(boxExtents+3, obj.boxExtents+3) ||
+            useWholeBox != obj.useWholeBox ||
+            randomSamples != obj.randomSamples ||
+            fillInterior != obj.fillInterior ||
+            (randomSamples && (randomSeed != obj.randomSeed ||
+                               numberOfRandomSamples != obj.numberOfRandomSamples)) ||
+            (!randomSamples && (sampleDensity0 != obj.sampleDensity0 ||
+                                sampleDensity1 != obj.sampleDensity1 ||
+                                sampleDensity2 != obj.sampleDensity2)))
+        {
+            return true;
+        }
+    }
+    
+    if (sourceType == SpecifiedPointList)
+    {
         if (pointList.size() != obj.pointList.size())
-            sourcePointListDiffers = true;
+            return true;
         else
             for (int i = 0 ; i < pointList.size() ; i++)
                 if (pointList[i] != obj.pointList[i])
-                    sourcePointListDiffers = true;
+                    return true;
     }
 
-    // If we're in circle source mode and the plane differs, sourcePlaneDiffers
-    // evaluates to true.
-    bool sourceCircleDiffers = ((sourceType == SpecifiedCircle) &&
-       (POINT_DIFFERS(planeOrigin, obj.planeOrigin) ||
-        POINT_DIFFERS(planeNormal, obj.planeNormal) ||
-        POINT_DIFFERS(planeUpAxis, obj.planeUpAxis) ||
-        planeRadius != obj.planeRadius));
-
-    // If we're in box source mode and the box differs, boxDiffers
-    // evaluates to true.
-    bool boxSourceDiffers = (sourceType == SpecifiedBox) &&
-        (POINT_DIFFERS(boxExtents, obj.boxExtents) ||
-         POINT_DIFFERS(boxExtents+3, obj.boxExtents+3));
-    if (useWholeBox != obj.useWholeBox)
-        boxSourceDiffers = true;
-
-    // Other things need to be true before we start paying attention to
-    // point density.
-    bool densityMatters = (sourceType == SpecifiedLine ||
-        sourceType == SpecifiedPlane || sourceType == SpecifiedSphere ||
-        sourceType == SpecifiedBox || sourceType == SpecifiedCircle) &&
-        (pointDensity != obj.pointDensity);
-
-    //If opacity is turned on, or the variable changes...
-    bool opacityMatters = (opacityType == VariableRange) &&
-                          (obj.opacityType != VariableRange ||
-                           opacityVariable != obj.opacityVariable);
-
-    //Ribbons requires the engine to calculate vorticity.
-    bool displayMatters = (displayMethod != obj.displayMethod && obj.displayMethod == Ribbons);
-
-    return (sourceType != obj.sourceType) ||
-           (streamlineDirection != obj.streamlineDirection) ||
-           displayMatters ||
-           (termination != obj.termination) ||
-           (terminationType != obj.terminationType) ||
-           (integrationType != obj.integrationType) ||
-           (maxStepLength != obj.maxStepLength) ||
-           (relTol != obj.relTol) ||
-           (absTol != obj.absTol) ||
-           (coloringMethod != obj.coloringMethod && obj.coloringMethod != Solid) ||
-           (pathlines != obj.pathlines) ||
-           (coloringVariable != obj.coloringVariable) ||
-           opacityMatters ||
-           sourcePointsDiffer ||
-           sourceLineDiffers ||
-           sourcePlaneDiffers ||
-           sourceSphereDiffers ||
-           sourceCircleDiffers ||
-           sourcePointListDiffers ||
-           boxSourceDiffers ||
-           densityMatters;
+    return false;
 }
 
 // ****************************************************************************

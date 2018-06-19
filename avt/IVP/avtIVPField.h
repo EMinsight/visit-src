@@ -46,8 +46,6 @@
 #include <stdexcept>
 #include <avtVector.h>
 #include <ivp_exports.h>
-#include <string>
-
 
 // ****************************************************************************
 //  Class: avtIVPField
@@ -59,7 +57,8 @@
 //      existing interpolation facilities. If the queried point is invalid, 
 //      avtIVPField can throw an exception that will pass through avtIVPSolver.
 //
-//      The IVP right-hand side is made accessible to an IVP solver by means of //      the avtIVPField class, allowing the IVP solver to query points of the 
+//      The IVP right-hand side is made accessible to an IVP solver by means of 
+//      the avtIVPField class, allowing the IVP solver to query points of the 
 //      given vector field. 
 //
 //  Programmer: Christoph Garth
@@ -79,6 +78,9 @@
 //   Dave Pugmire, Tue Dec 29 14:37:53 EST 2009
 //   Generalize the compute scalar variable.
 //
+//   Christoph Garth, July 13 16:49:12 PDT 2010
+//   Compute scalars by index instead of by name.
+//
 // ****************************************************************************
 
 class IVP_API avtIVPField
@@ -93,22 +95,26 @@ class IVP_API avtIVPField
         }
     };
 
-                         avtIVPField() {};
+                         avtIVPField() {}
+    virtual             ~avtIVPField() {}
 
     virtual avtVector    operator()(const double& t, 
                                     const avtVector& x) const = 0;
     virtual double       ComputeVorticity(const double& t, 
                                           const avtVector& x ) const = 0;
-    virtual double       ComputeScalarVariable(const std::string &var,
+    virtual double       ComputeScalarVariable(unsigned char index,
                                                const double& t,
                                                const avtVector& x) const = 0;
 
-    virtual bool         IsInside(const double& t, 
-                                  const avtVector& x) const = 0;
-    virtual unsigned int GetDimension() const = 0;
-    virtual bool         GetValidTimeRange(double range[]) const = 0;
+    virtual void         SetScalarVariable( unsigned char index, 
+                                            const std::string& name ) = 0;
+
+    virtual bool         IsInside( const double& t, 
+                                   const avtVector& x ) const = 0;
+
+    virtual void         GetTimeRange( double range[2] ) const = 0;
+    virtual void         GetExtents( double  extents[6] ) const = 0;
     virtual bool         HasGhostZones() const = 0;
-    virtual void         GetExtents(double *extents) const = 0;
 };
 
 #endif

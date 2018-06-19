@@ -37,14 +37,17 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                              avtPoincareFilter.h                              //
+//                          avtPoincareFilter.h                              //
 // ************************************************************************* //
 
 #ifndef AVT_Poincare_FILTER_H
 #define AVT_Poincare_FILTER_H
 
-
 #include <avtStreamlineFilter.h>
+
+
+class avtStateRecorderIntegralCurve;
+
 
 // ****************************************************************************
 //  Class: avtPoincareFilter
@@ -68,10 +71,16 @@
 //    Dave Pugmire, Tue Aug 18 09:10:49 EDT 2009
 //    Add ability to restart streamline integration.
 //
+//    Hank Childs, Fri Jun  4 19:58:30 CDT 2010
+//    Use avtStreamlines, not avtStreamlineWrappers.
+//
+//    Hank Childs, Sun Jun  6 14:54:08 CDT 2010
+//    Convert references from avtStreamline to avtIntegralCurve, the new name
+//    for the abstract base type.
+//
 // ****************************************************************************
 
 #include "StreamlineAnalyzerLib.h"
-
 
 class avtPoincareFilter : public avtStreamlineFilter
 {
@@ -83,13 +92,18 @@ class avtPoincareFilter : public avtStreamlineFilter
     virtual const char       *GetDescription(void) {
       return "Performing Poincare"; };
 
+    void SetPuncturePlane( unsigned int val ) { puncturePlane = val; }
+    void SetAnalysis( unsigned int val ) { analysis = val; }
+
     void SetMaxPunctures( double punctures ) { maxPunctures = punctures; }
 
-    void SetMaxToroidalWinding( unsigned int value ) {
-      maxToroidalWinding = value; };
-    void SetOverrideToroidalWinding( unsigned int value) { override = value; }
+    void SetMaximumToroidalWinding( unsigned int value ) {
+      maximumToroidalWinding = value; };
+    void SetOverrideToroidalWinding( unsigned int value) {
+      overrideToroidalWinding = value; }
 
-    void SetHitRate( double val ) { hitrate = val; }
+    void SetWindingPairConfidence( double val ) { windingPairConfidence = val; }
+    void SetPeriodicityConsistency( double val ) { periodicityConsistency = val; }
 
     void SetAdjustPlane( int val ) { adjust_plane = val; }
 
@@ -104,21 +118,29 @@ class avtPoincareFilter : public avtStreamlineFilter
     void SetDataValue( unsigned int val ) { dataValue = val; }
 
     void SetShowOPoints( bool val ) { showOPoints = val; }
+    void SetShowChaotic( bool val ) { showChaotic = val; }
     void SetShowIslands( bool val ) { showIslands = val; }
     void SetShowLines( bool val )   { showLines = val; }
     void SetShowPoints( bool val )  { showPoints = val; }
+    void SetPointScale(int scale)   { pointScale = scale; }
     void SetVerboseFlag( bool val ) { verboseFlag = val; }
+    void SetShowRidgelines( bool val )   { showRidgelines = val; }
 
   protected:
     // Streamline overides.
-    virtual void              Execute(void);
-    virtual bool              ContinueExecute();
-    virtual void              PreExecute(void);
-    virtual void              PostExecute(void);
-    virtual avtContract_p     ModifyContract(avtContract_p);
-    virtual void              UpdateDataObjectInfo(void);
-    virtual void              CreateStreamlineOutput( 
-                                   vector<avtStreamlineWrapper *> &sls);
+    virtual void Execute(void);
+    virtual bool ContinueExecute();
+    virtual void PreExecute(void);
+    virtual void PostExecute(void);
+    virtual void UpdateDataObjectInfo(void);
+    virtual void GetIntegralCurvePoints(vector<avtIntegralCurve *> &ic);
+    virtual avtIntegralCurve *CreateIntegralCurve( const avtIVPSolver* model,
+                                                   avtIntegralCurve::Direction,
+                                                   const double& t_start,
+                                                   const avtVector &p_start, long ID );
+
+  virtual void drawPoints( avtDataTree *dt,
+                           vector < Point > &nodes );
 
   virtual void findIslandCenter( avtDataTree *dt,
                                  vector< vector < vector < Point > > > &nodes,
@@ -161,35 +183,47 @@ class avtPoincareFilter : public avtStreamlineFilter
     bool                      ClassifyStreamlines();
     avtDataTree               *CreatePoincareOutput();
 
+    void CreateIntegralCurveOutput(std::vector<avtIntegralCurve*,
+                                   std::allocator<avtIntegralCurve*> >&) {};
 
     FusionPSE::FieldlineLib FLlib;         
 
-    double maxPunctures;
-    unsigned int maxToroidalWinding;
-    unsigned int override;
+    unsigned int puncturePlane;
+    unsigned int analysis;
 
-    double hitrate;
-    int adjust_plane;
+    double maxPunctures;
+
+    unsigned int maximumToroidalWinding;
+    unsigned int overrideToroidalWinding;
+
+    double windingPairConfidence;
+    double periodicityConsistency;
+
     unsigned int overlaps;
 
     bool is_curvemesh;
     std::vector< double > planes;
+    int adjust_plane;
+
     unsigned int dataValue;
   
-    bool showOPoints, showIslands;
-    bool showLines, showPoints, verboseFlag;
+    bool showOPoints, showIslands, showChaotic;
+    bool showLines, showPoints, showRidgelines, verboseFlag;
+    int  pointScale;
 
-    class SLHelper
+    class ICHelper
     {
       public:
-        SLHelper() {}
-        ~SLHelper() {}
-        avtStreamlineWrapper *slSeg;
-        std::vector<avtVector> streamlinePts;
+        ICHelper() {}
+        ~ICHelper() {}
+
+        avtStateRecorderIntegralCurve *ic;
+        std::vector<avtVector> points;
+        FieldlineProperties properties;
+        long int id;
     };
 
-    std::vector<SLHelper> streamlines;
-    std::vector<FieldlineInfo> poincareClassification;
+    std::map< long int, ICHelper > fieldlines;
 };
 
 

@@ -50,6 +50,8 @@
 #include <avtVariableMapper.h>
 #include <avtLookupTable.h>
 
+#include <avtCallback.h>
+
 #include <StreamlineAttributes.h>
 
 // ****************************************************************************
@@ -217,9 +219,8 @@ avtStreamlinePlot::ApplyOperators(avtDataObject_p input)
     if (input->GetInfo().GetAttributes().ValidVariable(varname))
         centering = input->GetInfo().GetAttributes().GetCentering(varname);
 
-    // If the variable centering is zonal, convert it to nodal or the
-    // streamline filter will not play with it.
-    if(centering == AVT_ZONECENT)
+    //Convert from zonal to nodal, if requested.
+    if(centering == AVT_ZONECENT && atts.GetForceNodeCenteredData())
     {
         if(shiftCenteringFilter != NULL)
             delete shiftCenteringFilter;
@@ -380,6 +381,12 @@ avtStreamlinePlot::EnhanceSpecification(avtContract_p in_contract)
 //   Allen Sanderson, Mon Mar  8 19:57:29 PST 2010
 //   Safer setting of attributes (more checks for enums).
 //
+//   Hank Childs, Sun Jun  6 11:53:33 CDT 2010
+//   Change method name from streamline direction to integration direction.
+//
+//   Dave Pugmire, Thu Jun 10 10:44:02 EDT 2010
+//   New seed sources.
+//
 // ****************************************************************************
 
 void
@@ -397,51 +404,48 @@ avtStreamlinePlot::SetAtts(const AttributeGroup *a)
     switch (atts.GetSourceType())
     {
       case StreamlineAttributes::SpecifiedPoint:
-        streamlineFilter->SetSourceType(STREAMLINE_SOURCE_POINT);
         streamlineFilter->SetPointSource(atts.GetPointSource());
         break;
-
       case StreamlineAttributes::SpecifiedPointList:
-        streamlineFilter->SetSourceType(STREAMLINE_SOURCE_POINT_LIST);
         streamlineFilter->SetPointListSource(atts.GetPointList());
         break;
 
       case StreamlineAttributes::SpecifiedLine:
-        streamlineFilter->SetSourceType(STREAMLINE_SOURCE_LINE);
-        streamlineFilter->SetLineSource(atts.GetLineStart(), atts.GetLineEnd());
-        streamlineFilter->SetPointDensity(atts.GetPointDensity());
+        streamlineFilter->SetLineSource(atts.GetLineStart(), atts.GetLineEnd(),
+                                        atts.GetSampleDensity0(),
+                                        atts.GetRandomSamples(), atts.GetRandomSeed(), atts.GetNumberOfRandomSamples());
+        break;
+      case StreamlineAttributes::SpecifiedPlane:
+        streamlineFilter->SetPlaneSource(atts.GetPlaneOrigin(),
+                                         atts.GetPlaneNormal(),
+                                         atts.GetPlaneUpAxis(),
+                                         atts.GetSampleDensity0(), atts.GetSampleDensity1(),
+                                         atts.GetSampleDistance0(), atts.GetSampleDistance1(),
+                                         atts.GetFillInterior(),
+                                         atts.GetRandomSamples(), atts.GetRandomSeed(), atts.GetNumberOfRandomSamples());
         break;
 
       case StreamlineAttributes::SpecifiedCircle:
-        streamlineFilter->SetSourceType(STREAMLINE_SOURCE_CIRCLE);
-        streamlineFilter->SetPlaneSource(atts.GetPlaneOrigin(),
-                                         atts.GetPlaneNormal(),
-                                         atts.GetPlaneUpAxis(),
-                                         atts.GetPlaneRadius());
-        streamlineFilter->SetPointDensity(atts.GetPointDensity());
+        streamlineFilter->SetCircleSource(atts.GetPlaneOrigin(),
+                                          atts.GetPlaneNormal(),
+                                          atts.GetPlaneUpAxis(),
+                                          atts.GetRadius(),
+                                          atts.GetSampleDensity0(), atts.GetSampleDensity1(),
+                                          atts.GetFillInterior(),
+                                          atts.GetRandomSamples(), atts.GetRandomSeed(), atts.GetNumberOfRandomSamples());
         break;
-
-      case StreamlineAttributes::SpecifiedPlane:
-        streamlineFilter->SetSourceType(STREAMLINE_SOURCE_PLANE);
-        streamlineFilter->SetPlaneSource(atts.GetPlaneOrigin(),
-                                         atts.GetPlaneNormal(),
-                                         atts.GetPlaneUpAxis(),
-                                         atts.GetPlaneRadius());
-        streamlineFilter->SetPointDensity(atts.GetPointDensity());
-        break;
-
       case StreamlineAttributes::SpecifiedSphere:
-        streamlineFilter->SetSourceType(STREAMLINE_SOURCE_SPHERE);
-        streamlineFilter->SetSphereSource(atts.GetSphereOrigin(),
-                                          atts.GetSphereRadius());
-        streamlineFilter->SetPointDensity(atts.GetPointDensity());
+        streamlineFilter->SetSphereSource(atts.GetSphereOrigin(), atts.GetRadius(),
+                                          atts.GetSampleDensity0(), atts.GetSampleDensity1(), atts.GetSampleDensity2(),
+                                          atts.GetFillInterior(),
+                                          atts.GetRandomSamples(), atts.GetRandomSeed(), atts.GetNumberOfRandomSamples());
         break;
 
       case StreamlineAttributes::SpecifiedBox:
-        streamlineFilter->SetSourceType(STREAMLINE_SOURCE_BOX);
-        streamlineFilter->SetBoxSource(atts.GetBoxExtents());
-        streamlineFilter->SetUseWholeBox(atts.GetUseWholeBox());
-        streamlineFilter->SetPointDensity(atts.GetPointDensity());
+        streamlineFilter->SetBoxSource(atts.GetBoxExtents(),atts.GetUseWholeBox(),
+                                       atts.GetSampleDensity0(), atts.GetSampleDensity1(), atts.GetSampleDensity2(),
+                                       atts.GetFillInterior(),
+                                       atts.GetRandomSamples(), atts.GetRandomSeed(), atts.GetNumberOfRandomSamples());
         break;
     }
 
@@ -459,7 +463,7 @@ avtStreamlinePlot::SetAtts(const AttributeGroup *a)
                                      atts.GetTermination());
     streamlineFilter->SetDisplayMethod(atts.GetDisplayMethod());
 
-    streamlineFilter->SetStreamlineDirection(atts.GetStreamlineDirection());
+    streamlineFilter->SetIntegrationDirection(atts.GetStreamlineDirection());
 
     streamlineFilter->SetColoringMethod(int(atts.GetColoringMethod()),
                                         atts.GetColoringVariable());
@@ -531,11 +535,14 @@ avtStreamlinePlot::SetColorTable(const char *ctName)
 //
 //  Modifications:
 //
-//    Hank Childs, Fri Oct 29 10:06:24 PDT 2004
-//    Account for specular lighting.
+//   Hank Childs, Fri Oct 29 10:06:24 PDT 2004
+//   Account for specular lighting.
 //
 //   Dave Pugmire, Tue Dec 29 14:37:53 EST 2009
 //   Add custom renderer and lots of appearance options to the streamlines plots.
+//
+//   Hank Childs, Sun Aug 29 21:08:30 PDT 2010
+//   Lighting options were reversed ... this only showed up in SR mode.
 //
 // ****************************************************************************
 
@@ -544,11 +551,11 @@ avtStreamlinePlot::SetLighting(bool lightingOn)
 {
     if (lightingOn)
     {
-        mapper->GlobalLightingOff();
+        mapper->GlobalLightingOn();
     }
     else
     {
-        mapper->GlobalLightingOn();
+        mapper->GlobalLightingOff();
     }
 }
 

@@ -42,9 +42,9 @@
 #       try to download them.
 #       You must have:
 #          Qt       qt-everywhere-opensource-src-4.6.1.tar.gz
-#          Mesa     MesaLib-7.5.tar.gz
+#          Mesa     MesaLib-7.8.2.tar.gz
 #          Python   Python-2.6.4tgz
-#          VTK      vtk-5.0.0f.tar.gz
+#          VTK      vtk-5.0.0g.tar.gz
 #          CMake    cmake-2.8.0.tar.gz
 #
 #        The following optional libraries need to be in the current directory
@@ -59,9 +59,10 @@
 #           ExodusII 4.46     exodusii-4.46.tar.gz   -e
 #           FastBit  0.9.9    fastbit-b0.9.9.tar.gz  -r
 #           GDAL     1.3.2    gdal-1.3.2.tar.gz      -g (no AIX)
-#           H5part   1.4.2    H5Part-1.6.0.tar.gz    -r
+#           H5part   1.6.0    H5Part-1.6.0.tar.gz    -r
 #           HDF4     2.4.1    HDF4.2r1.tar.gz        -4
 #           HDF5     1.8.4    hdf5-1.8.4.tar.gz      -5
+#           MDSplus  2.2      mdsplus-2.2-4.tar.gz
 #           Mili     1.10     mili-1.10a.tar.gz      -m (internal)
 #           NetCDF   3.6.0    netcdf.tar.gz          -n
 #           AdvIO    1.2.0    AdvIO-1.2.tar.gz
@@ -69,7 +70,7 @@
 #           szip     2.1      szip-2.1.tar.gz
 #
 #         Experimental (internal)
-#           ITAPS             ITAPS-FMDB-1.1-03Jun10.tar.gz
+#           ITAPS             ITAPS-FMDB-1.1-30Aug10.tar.gz
 #           ITAPS             ITAPS-GRUMMP-0.5.0-03Jun10.tar.gz
 #           ITAPS             ITAPS-MOAB-3.99-10Jun10.tar.gz
 #           ViSUS             visus_26Feb07.tar.gz      -V
@@ -106,6 +107,8 @@
 #     Function 8.16, build_itaps_fmdb: build FMDB impl. of ITAPS
 #     Function 8.17, build_itaps_grummp: build GRUMMP impl. of ITAPS
 #     Function 8.18, build_advio:   build AdvIO
+#     Function 8.19, build_xdmf  :  build XDMF
+#     Function 8.20, build_mdsplus: build MDSplus
 #     Function 8, build_silo:       build Silo
 #     Function 9, build_hostconf:   build the config-site/host.conf file
 #     Function 9.1, build_visit:    build the VisIt source code
@@ -930,6 +933,18 @@
 #     for silo in the case of using hdf5 since it will now get it from the
 #     hdf5 dependent libraries.
 #
+#     Tom Fogal, Sun Aug 15 19:18:07 MDT 2010
+#     Added a recursive chmod in hopes of fixing Qt perm issues.
+#
+#     Eric Brugger, Thu Aug 26 10:40:34 PDT 2010
+#     I modified the script to use vtk-5.0.0g. I also removed all the vtk
+#     patches since they are all incorporated in vtk-5.0.0g.
+#
+#     Eric Brugger, Mon Aug 30 13:45:59 PDT 2010
+#     I set the VisIt version number to 2.1.0.
+#
+#     Mark C. Miller, Mon Aug 30 17:57:47 PDT 2010
+#     Update ITAPS-FMDB tarball to something known to compile correctly.
 # *****************************************************************************
 #                                                                             #
 # *************************************************************************** #
@@ -1145,6 +1160,8 @@ export DO_H5PART="no"
 export ON_H5PART="off"
 export DO_FASTBIT="no"
 export ON_FASTBIT="off"
+export DO_MDSPLUS="no"
+export ON_MDSPLUS="off"
 export DO_SVN="no"
 export DO_SVN_ANON="no"
 export ON_SVN="off"
@@ -1228,21 +1245,21 @@ if [[ "$VISIT_FILE" != "" ]] ; then
   USE_VISIT_FILE="yes"
   ON_USE_VISIT_FILE="on"
 fi
-export VISIT_VERSION=${VISIT_VERSION:-"2.0.2"}
+export VISIT_VERSION=${VISIT_VERSION:-"2.1.0"}
 export VISIT_FILE=${VISIT_FILE:-"visit${VISIT_VERSION}.tar.gz"}
 
-export VTK_FILE=${VTK_FILE:-"vtk-5.0.0f.tar.gz"}
-export VTK_VERSION=${VTK_VERSION:-"5.0.0f"}
+export VTK_FILE=${VTK_FILE:-"vtk-5.0.0g.tar.gz"}
+export VTK_VERSION=${VTK_VERSION:-"5.0.0g"}
 export VTK_BUILD_DIR=${VTK_BUILD_DIR:-"VTK"}
 
 export CMAKE_FILE=${CMAKE_FILE:-"cmake-2.8.0.tar.gz"}
 export CMAKE_VERSION=${CMAKE_VERSION:-"2.8.0"}
 export CMAKE_BUILD_DIR=${CMAKE_BUILD_DIR:-"cmake-2.8.0"}
 
-export MESA_FILE=${MESA_FILE:-"MesaLib-7.5.tar.gz"}
-export MESA_VERSION=${MESA_VERSION:-"7.5"}
-export MESA_BUILD_DIR=${MESA_BUILD_DIR:-"Mesa-7.5"}
-export MESA_URL="http://downloads.sourceforge.net/project/mesa3d/MesaLib/7.5"
+export MESA_FILE=${MESA_FILE:-"MesaLib-7.8.2.tar.gz"}
+export MESA_VERSION=${MESA_VERSION:-"7.8.2"}
+export MESA_BUILD_DIR=${MESA_BUILD_DIR:-"Mesa-7.8.2"}
+export MESA_URL="ftp://ftp.freedesktop.org/pub/mesa/7.8.2"
 
 export PYTHON_FILE_SUFFIX="tgz"
 export PYTHON_VERSION="2.6.4"
@@ -1324,11 +1341,16 @@ export H5PART_FILE=${H5PART_FILE:-"H5Part-${H5PART_VERSION}.tar.gz"}
 export H5PART_COMPATIBILITY_VERSION=${H5PART_COMPATIBILITY_VERSION:-"1.6"}
 export H5PART_BUILD_DIR=${H5PART_BUILD_DIR:-"H5Part-${H5PART_VERSION}"}
 
-export FASTBIT_VERSION=${FASTBIT_VERSION:-"1.0.9"}
+export FASTBIT_VERSION=${FASTBIT_VERSION:-"1.1.9"}
 export FASTBIT_FILE=${FASTBIT_FILE:-"fastbit-ibis${FASTBIT_VERSION}.tar.gz"}
 # Note: last 2-digit field in URL changes with version.
-export FASTBIT_URL=${FASTBIT_URL:-"https://codeforge.lbl.gov/frs/download.php/62"}
-export FASTBIT_BUILD_DIR=${FASTBIT_BUILD_DIR:-"fastbit-ibis1.0.9"}
+export FASTBIT_URL=${FASTBIT_URL:-"https://codeforge.lbl.gov/frs/download.php/186"}
+export FASTBIT_BUILD_DIR=${FASTBIT_BUILD_DIR:-"fastbit-ibis1.1.9"}
+
+export MDSPLUS_VERSION=${MDSPLUS_VERSION:-"2.2"}
+export MDSPLUS_FILE=${MDSPLUS_FILE:-"mdsplus-${MDSPLUS_VERSION}-4.tar.gz"}
+export MDSPLUS_COMPATIBILITY_VERSION=${MDSPLUS_COMPATIBILITY_VERSION:-"2.2"}
+export MDSPLUS_BUILD_DIR=${MDSPLUS_BUILD_DIR:-"mdsplus-${MDSPLUS_VERSION}"}
 
 export CCMIO_FILE=${CCMIO_FILE:-"libccmio-2.6.1.tar.gz"}
 export CCMIO_VERSION=${CCMIO_VERSION:-"2.6.1"}
@@ -1346,9 +1368,9 @@ export ITAPS_MOAB_VERSION=${ITAPS_MOAB_VERSION:-"3.99-10Jun10"}
 export ITAPS_MOAB_COMPATIBILITY_VERSION=${ITAPS_MOAB_COMPATIBILITY_VERSION:-"3.99-10Jun10"}
 export ITAPS_MOAB_BUILD_DIR=${ITAPS_MOAB_BUILD_DIR:-"${ITAPS_MOAB_FILE%.tar*}"}
 
-export ITAPS_FMDB_FILE=${ITAPS_FMDB_FILE:-"ITAPS-FMDB-1.1-03Jun10.tar.gz"}
-export ITAPS_FMDB_VERSION=${ITAPS_FMDB_VERSION:-"1.1-03Jun10"}
-export ITAPS_FMDB_COMPATIBILITY_VERSION=${ITAPS_FMDB_COMPATIBILITY_VERSION:-"1.1-03Jun10"}
+export ITAPS_FMDB_FILE=${ITAPS_FMDB_FILE:-"ITAPS-FMDB-1.1-30Aug10.tar.gz"}
+export ITAPS_FMDB_VERSION=${ITAPS_FMDB_VERSION:-"1.1-30Aug10"}
+export ITAPS_FMDB_COMPATIBILITY_VERSION=${ITAPS_FMDB_COMPATIBILITY_VERSION:-"1.1-30Aug10"}
 export ITAPS_FMDB_BUILD_DIR=${ITAPS_FMDB_BUILD_DIR:-"${ITAPS_FMDB_FILE%.tar*}"}
 
 export ITAPS_GRUMMP_FILE=${ITAPS_GRUMMP_FILE:-"ITAPS-GRUMMP-0.5.0-03Jun10.tar.gz"}
@@ -2107,6 +2129,15 @@ function check_optional_3rdparty
         fi
     fi
     
+    if [[ "$DO_MDSPLUS" == "yes" ]] ; then
+        ensure_built_or_ready "mdsplus" $MDSPLUS_VERSION $MDSPLUS_BUILD_DIR $MDSPLUS_FILE
+        if [[ $? != 0 ]] ; then
+            ANY_ERRORS="yes"
+            DO_MDSPLUS="no"
+            error "Unable to build MDSplus.  ${MDSPLUS_FILE} not found."
+        fi
+    fi
+    
     if [[ "$DO_H5PART" == "yes" ]] ; then
         ensure_built_or_ready "h5part" $H5PART_VERSION $H5PART_BUILD_DIR $H5PART_FILE
         if [[ $? != 0 ]] ; then
@@ -2826,10 +2857,30 @@ EOF
 }
 
 
+function apply_mesa_782_patch_1
+{
+   patch -p0 <<\EOF
+diff -c a/src/mesa/drivers/osmesa/osmesa.c Mesa-7.8.2/src/mesa/drivers/osmesa/osmesa.c
+*** a/src/mesa/drivers/osmesa/osmesa.c
+--- Mesa-7.8.2/src/mesa/drivers/osmesa/osmesa.c
+***************
+*** 1329,1334 ****
+--- 1329,1335 ----
+      * size.
+      */
+     osmesa->rb = new_osmesa_renderbuffer(&osmesa->mesa, osmesa->format, type);
++    _mesa_remove_renderbuffer(osmesa->gl_buffer, BUFFER_FRONT_LEFT);
+     _mesa_add_renderbuffer(osmesa->gl_buffer, BUFFER_FRONT_LEFT, osmesa->rb);
+     assert(osmesa->rb->RefCount == 2);
+
+EOF
+}
+
+
 function apply_mesa_patch
 {
    info "Patching Mesa . . ."
-   if [[ ${MESA_VERSION} == 7.5 ]] ; then
+   if [[ ${MESA_VERSION} == "7.5" ]] ; then
       apply_mesa_75_patch_1
       if [[ $? != 0 ]] ; then
         return 1
@@ -2846,9 +2897,14 @@ function apply_mesa_patch
       if [[ $? != 0 ]] ; then
         return 1
       fi
+   elif [[ ${MESA_VERSION} == "7.8.2" ]] ; then
+      apply_mesa_782_patch_1
+      if [[ $? != 0 ]] ; then
+        return 1
+      fi
    else
-       warn "Unsupported Mesa Version ${MESA_VERSION}"
-       return 1
+      warn "Unsupported Mesa Version ${MESA_VERSION}"
+      return 1
    fi
 
    return 0
@@ -3361,6 +3417,9 @@ function build_qt
     info "Installing Qt4 . . . "
     $MAKE install
 
+    # Qt screws up permissions in some cases.  Try to fix that.
+    chmod -R a+rX ${VISITDIR}/qt/${QT_VERSION}
+
     #
     # Visit expects .so suffix on qt libs but xlc uses .a suffixe even 
     # for shared libs (however subversioned qts libs end up with a .so suffix)
@@ -3462,522 +3521,6 @@ function build_cmake
 #                            Function 6, build_vtk                            #
 # *************************************************************************** #
 
-function apply_vtk_500d_generic_patch_1
-{
-  patch -p0 << \EOF
-diff -c a/Utilities/DICOMParser/DICOMParser.cxx VTK/Utilities/DICOMParser/DICOMParser.cxx
-*** a/Utilities/DICOMParser/DICOMParser.cxx
---- VTK/Utilities/DICOMParser/DICOMParser.cxx
-***************
-*** 37,42 ****
---- 37,43 ----
-  #endif
-  
-  #include <string>
-+ #include <string.h>
-  #include <map>
-  #include <cstring>
-  
-EOF
-  if [[ $? != 0 ]] ; then
-     warn "Unable to patch VTK. Wrong version?"
-     return 1
-  fi
-
-  return 0
-}
-
-function apply_vtk_500d_generic_patch_2
-{
-   patch -p0 << \EOF
-diff -c a/Utilities/DICOMParser/DICOMAppHelper.cxx VTK/Utilities/DICOMParser/DICOMAppHelper.cxx
-*** a/Utilities/DICOMParser/DICOMAppHelper.cxx
---- VTK/Utilities/DICOMParser/DICOMAppHelper.cxx
-***************
-*** 32,37 ****
---- 32,38 ----
-  #include <stdlib.h>
-  #include <stdio.h>
-  #include <string>
-+ #include <string.h>
-  #include <math.h>
-  #include <algorithm>
-  #include <cstring>
-EOF
-   if [[ $? != 0 ]] ; then
-      warn "Unable to patch VTK. Wrong version?"
-      return 1
-   fi
-}
-
-function apply_vtk_500d_generic_patch_3
-{
-   patch -p0 << \EOF
-diff -c a/Utilities/DICOMParser/DICOMFile.cxx VTK/Utilities/DICOMParser/DICOMFile.cxx
-*** a/Utilities/DICOMParser/DICOMFile.cxx
---- VTK/Utilities/DICOMParser/DICOMFile.cxx
-***************
-*** 24,29 ****
---- 24,30 ----
-  
-  #include <stdio.h>
-  #include <string>
-+ #include <string.h>
-  #include <cstring>
-  
-  #include "DICOMConfig.h"
-EOF
-    if [[ $? != 0 ]] ; then
-       warn "Unable to patch VTK. Wrong version?"
-       return 1
-    fi
-}
-
-function apply_vtk_500d_generic_patch_4
-{
-   patch -p0 << \EOF
-diff -c a/CMake/cmVTKGenerateJavaDependencies.c VTK/CMake/cmVTKGenerateJavaDependencies.c
-*** a/CMake/cmVTKGenerateJavaDependencies.c
---- VTK/CMake/cmVTKGenerateJavaDependencies.c
-***************
-*** 43,49 ****
-    const char *endTempFile;
-  
-    FILE* outfile = 0;
-!   const char* filename = 0;
-  
-    if(argc < 2 )
-      {
---- 43,49 ----
-    const char *endTempFile;
-  
-    FILE* outfile = 0;
-!   char* filename = 0;
-  
-    if(argc < 2 )
-      {
-EOF
-    if [[ $? != 0 ]] ; then
-       warn "Unable to patch VTK. Wrong version?"
-       return 1
-    fi
-}
-
-function apply_vtk_500d_generic_patch_5
-{
-   patch -p0 << \EOF
-diff -c a/CMake/cmVTKWrapPython2Command.c VTK/CMake/cmVTKWrapPython2Command.c
-*** a/CMake/cmVTKWrapPython2Command.c
---- VTK/CMake/cmVTKWrapPython2Command.c
-***************
-*** 124,130 ****
-      return 0;
-      }
-    
-!   info->CAPI->ExpandSourceListArguments(mf, argc, argv, 
-                                          &newArgc, &newArgv, 2);
-    
-    /* Now check and see if the value has been stored in the cache */
---- 124,130 ----
-      return 0;
-      }
-    
-!   info->CAPI->ExpandSourceListArguments(mf, argc, (const char **)argv, 
-                                          &newArgc, &newArgv, 2);
-    
-    /* Now check and see if the value has been stored in the cache */
-***************
-*** 233,239 ****
-    info->CAPI->SourceFileSetProperty(cfile,"ABSTRACT","0");
-    newName = (char *)malloc(strlen(newArgv[0]) + 5);
-    sprintf(newName,"%sInit",newArgv[0]);
-!   CreateInitFile(info,mf,newArgv[0],numClasses,classes);
-    info->CAPI->SourceFileSetName2(cfile, newName, 
-                                   info->CAPI->GetCurrentOutputDirectory(mf),
-                                   "cxx",0);
---- 233,239 ----
-    info->CAPI->SourceFileSetProperty(cfile,"ABSTRACT","0");
-    newName = (char *)malloc(strlen(newArgv[0]) + 5);
-    sprintf(newName,"%sInit",newArgv[0]);
-!   CreateInitFile(info,mf,newArgv[0],numClasses,(const char **)classes);
-    info->CAPI->SourceFileSetName2(cfile, newName, 
-                                   info->CAPI->GetCurrentOutputDirectory(mf),
-                                   "cxx",0);
-***************
-*** 301,307 ****
-      numArgs++;
-      info->CAPI->AddCustomCommand(mf, args[0],
-                         wpython, numArgs, args, numDepends, depends, 
-!                        1, &res, cdata->LibraryName);
-      free(res);
-      }
-  }
---- 301,307 ----
-      numArgs++;
-      info->CAPI->AddCustomCommand(mf, args[0],
-                         wpython, numArgs, args, numDepends, depends, 
-!                        1, (const char **) &res, cdata->LibraryName);
-      free(res);
-      }
-  }
-EOF
-    if [[ $? != 0 ]] ; then
-       warn "Unable to patch VTK. Wrong version?"
-       return 1
-    fi
-}
-
-function apply_vtk_500d_generic_patch_6
-{
-   patch -p0 << \EOF
-diff -c a/CMake/cmVTKWrapTcl2Command.c VTK/CMake/cmVTKWrapTcl2Command.c
-*** a/CMake/cmVTKWrapTcl2Command.c
---- VTK/CMake/cmVTKWrapTcl2Command.c
-***************
-*** 203,214 ****
-    
-    if (!strcmp(argv[1],"SOURCES"))
-      {
-!     info->CAPI->ExpandSourceListArguments(mf, argc, argv, &newArgc, 
-                                            &newArgv, 3);
-      }
-    else
-      {
-!     info->CAPI->ExpandSourceListArguments(mf, argc, argv, 
-                                            &newArgc, &newArgv, 2);
-      }
-    
---- 203,214 ----
-    
-    if (!strcmp(argv[1],"SOURCES"))
-      {
-!     info->CAPI->ExpandSourceListArguments(mf, argc, (const char **)argv, &newArgc, 
-                                            &newArgv, 3);
-      }
-    else
-      {
-!     info->CAPI->ExpandSourceListArguments(mf, argc, (const char **)argv, 
-                                            &newArgc, &newArgv, 2);
-      }
-    
-***************
-*** 350,356 ****
-      info->CAPI->SourceFileSetProperty(cfile,"ABSTRACT","0");
-      newName = (char *)malloc(strlen(argv[0]) + 5);
-      sprintf(newName,"%sInit",argv[0]);
-!     CreateInitFile(info,mf,argv[0],numConcrete,concrete,numCommands,commands);
-      info->CAPI->SourceFileSetName2(cfile, newName, 
-                                     info->CAPI->GetCurrentOutputDirectory(mf),
-                                     "cxx",0);
---- 350,356 ----
-      info->CAPI->SourceFileSetProperty(cfile,"ABSTRACT","0");
-      newName = (char *)malloc(strlen(argv[0]) + 5);
-      sprintf(newName,"%sInit",argv[0]);
-!     CreateInitFile(info,mf,argv[0],numConcrete,(const char **)concrete,numCommands,(const char **)commands);
-      info->CAPI->SourceFileSetName2(cfile, newName, 
-                                     info->CAPI->GetCurrentOutputDirectory(mf),
-                                     "cxx",0);
-***************
-*** 429,435 ****
-      numArgs++;
-      info->CAPI->AddCustomCommand(mf, args[0],
-                         wtcl, numArgs, args, numDepends, depends, 
-!                        1, &res, cdata->LibraryName);
-      free(res);
-      }
-  }
---- 429,435 ----
-      numArgs++;
-      info->CAPI->AddCustomCommand(mf, args[0],
-                         wtcl, numArgs, args, numDepends, depends, 
-!                        1, (const char **)&res, cdata->LibraryName);
-      free(res);
-      }
-  }
-EOF
-    if [[ $? != 0 ]] ; then
-       warn "Unable to patch VTK. Wrong version?"
-       return 1
-    fi
-}
-
-function apply_vtk_500d_darwin_patch
-{
-   patch -p0 << \EOF
-diff -rp a/CMakeLists.txt VTK/CMakeLists.txt
-*** a/CMakeLists.txt
---- VTK/CMakeLists.txt
-*************** ELSE(CMAKE_COMPILER_IS_GNUCXX)
-*** 302,312 ****
-  ENDIF(CMAKE_COMPILER_IS_GNUCXX)
-  
-  IF(APPLE)
-!   SET(CMAKE_SHARED_LIBRARY_CREATE_C_FLAGS "${CMAKE_SHARED_LIBRARY_CREATE_C_FLAGS} -Wl,-flat_namespace,-U,_environ")
-!   SET(CMAKE_SHARED_MODULE_CREATE_C_FLAGS "${CMAKE_SHARED_MODULE_CREATE_C_FLAGS} -Wl,-flat_namespace,-U,_environ")
-    IF(CMAKE_COMPILER_IS_GNUCXX)
-!     SET(VTK_REQUIRED_C_FLAGS "${VTK_REQUIRED_C_FLAGS} -no-cpp-precomp")
-!     SET(VTK_REQUIRED_CXX_FLAGS "${VTK_REQUIRED_CXX_FLAGS} -no-cpp-precomp")
-      IF(VTK_USE_CARBON)
-        SET(VTK_REQUIRED_CXX_FLAGS "${VTK_REQUIRED_CXX_FLAGS} -fpascal-strings")
-      ENDIF(VTK_USE_CARBON)
---- 301,311 ----
-  ENDIF(CMAKE_COMPILER_IS_GNUCXX)
-  
-  IF(APPLE)
-!   SET(CMAKE_SHARED_LIBRARY_CREATE_C_FLAGS "${CMAKE_SHARED_LIBRARY_CREATE_C_FLAGS} -Wl,-twolevel_namespace,-headerpad_max_install_names")
-!   SET(CMAKE_SHARED_MODULE_CREATE_C_FLAGS "${CMAKE_SHARED_MODULE_CREATE_C_FLAGS} -Wl,-twolevel_namespace,-headerpad_max_install_names")
-    IF(CMAKE_COMPILER_IS_GNUCXX)
-!     SET(VTK_REQUIRED_C_FLAGS "${VTK_REQUIRED_C_FLAGS} -fno-common -fexceptions")
-!     SET(VTK_REQUIRED_CXX_FLAGS "${VTK_REQUIRED_CXX_FLAGS} -fno-common -fexceptions")
-      IF(VTK_USE_CARBON)
-        SET(VTK_REQUIRED_CXX_FLAGS "${VTK_REQUIRED_CXX_FLAGS} -fpascal-strings")
-      ENDIF(VTK_USE_CARBON)
---- 1352,1357 ----
-diff -rp a/Rendering/vtkImagingFactory.cxx VTK/Rendering/vtkImagingFactory.cxx
-*** a/Rendering/vtkImagingFactory.cxx
---- VTK/Rendering/vtkImagingFactory.cxx
-*************** vtkObject* vtkImagingFactory::CreateInst
-*** 200,233 ****
---- 200,269 ----
-  #ifdef VTK_USE_CARBON
-    if (!strcmp("CarbonOpenGL",rl))
-      {
-      if(strcmp(vtkclassname, "vtkTextMapper") == 0)
-        {
-+ #if defined(VTK_USE_MANGLED_MESA)
-+       if ( vtkImagingFactory::UseMesaClasses )
-+         {
-+         return vtkMesaFreeTypeTextMapper::New();
-+         }
-+ #endif
-        return vtkOpenGLFreeTypeTextMapper::New();
-        }
-      if(strcmp(vtkclassname, "vtkImageMapper") == 0)
-        {
-+ #if defined(VTK_USE_MANGLED_MESA)
-+       if ( vtkImagingFactory::UseMesaClasses )
-+         {
-+         return vtkMesaImageMapper::New();
-+         }
-+ #endif
-        return vtkOpenGLImageMapper::New();
-        }
-      if(strcmp(vtkclassname, "vtkPolyDataMapper2D") == 0)
-        {
-+ #if defined(VTK_USE_MANGLED_MESA)
-+       if ( vtkImagingFactory::UseMesaClasses )
-+         {
-+         return vtkMesaPolyDataMapper2D::New();
-+         }
-+ #endif
-        return vtkOpenGLPolyDataMapper2D::New();
-        }
-      }
-  #endif
-  #ifdef VTK_USE_COCOA
-    if (!strcmp("CocoaOpenGL",rl))
-      {
-      if(strcmp(vtkclassname, "vtkTextMapper") == 0)
-        {
-+ #if defined(VTK_USE_MANGLED_MESA)
-+       if ( vtkImagingFactory::UseMesaClasses )
-+         {
-+         return vtkMesaFreeTypeTextMapper::New();
-+         }
-+ #endif
-        return vtkOpenGLFreeTypeTextMapper::New();
-        }
-      if(strcmp(vtkclassname, "vtkImageMapper") == 0)
-        {
-+ #if defined(VTK_USE_MANGLED_MESA)
-+       if ( vtkImagingFactory::UseMesaClasses )
-+         {
-+         return vtkMesaImageMapper::New();
-+         }
-+ #endif
-        return vtkOpenGLImageMapper::New();
-        }
-      if(strcmp(vtkclassname, "vtkPolyDataMapper2D") == 0)
-        {
-+ #if defined(VTK_USE_MANGLED_MESA)
-+       if ( vtkImagingFactory::UseMesaClasses )
-+         {
-+         return vtkMesaPolyDataMapper2D::New();
-+         }
-+ #endif
-        return vtkOpenGLPolyDataMapper2D::New();
-        }
-      }
-  #endif
-diff -rp a/Utilities/ftgl/CMakeLists.txt VTK/Utilities/ftgl/CMakeLists.txt
-*** a/Utilities/ftgl/CMakeLists.txt
---- VTK/Utilities/ftgl/CMakeLists.txt
-*************** IF(NOT OPENGL_FOUND)
-*** 134,144 ****
-  ENDIF(NOT OPENGL_FOUND)
-  SET (VTKFTGL_LIBS "${VTKFTGL_LIBS};${OPENGL_gl_LIBRARY}")
-  
-! IF(WIN32)
-    IF (FTGL_SUPPORT_MANGLE_MESA)
-      SET (VTKFTGL_LIBS "${VTKFTGL_LIBS};${MANGLED_MESA_LIBRARY}")
-    ENDIF (FTGL_SUPPORT_MANGLE_MESA)
-! ENDIF(WIN32)
-  
-  #
-  # We obviously need FreeType
---- 134,144 ----
-  ENDIF(NOT OPENGL_FOUND)
-  SET (VTKFTGL_LIBS "${VTKFTGL_LIBS};${OPENGL_gl_LIBRARY}")
-  
-! IF(APPLE OR WIN32)
-    IF (FTGL_SUPPORT_MANGLE_MESA)
-      SET (VTKFTGL_LIBS "${VTKFTGL_LIBS};${MANGLED_MESA_LIBRARY}")
-    ENDIF (FTGL_SUPPORT_MANGLE_MESA)
-! ENDIF(APPLE OR WIN32)
-  
-  #
-  # We obviously need FreeType
-EOF
-   if [[ $? != 0 ]] ; then
-      warn "VTK patch for V5.0.0c and Darwin failed."
-      return 1
-   fi
-
-   # Check for version 6.x.x (MacOS 10.2, Jaguar)
-   VER=$(uname -r)
-   if (( ${VER%%.*} < 7 )) ; then
-       patch -p0 << \EOF
-diff -rp a/Rendering/vtkCarbonRenderWindow.cxx VTK/Rendering/vtkCarbonRenderWindow.cxx
-*** a/Rendering/vtkCarbonRenderWindow.cxx
---- VTK/Rendering/vtkCarbonRenderWindow.cxx
-*************** void vtkCarbonRenderWindow::CreateAWindo
-*** 737,743 ****
-        ShowWindow(this->RootWindow);
-      }
-  
-- 
-    // install event handler for updating gl region
-    // this works for a supplied HIView and an HIView made here
-    if(this->WindowId && !this->RegionEventHandler)
---- 737,742 ----
-*************** void vtkCarbonRenderWindow::CreateAWindo
-*** 745,751 ****
-      EventTypeSpec region_events [] = 
-        {
-          { kEventClassControl, kEventControlOwningWindowChanged},
-!         { kEventClassControl, kEventControlVisibilityChanged },
-          { kEventClassControl, kEventControlBoundsChanged }
-        };
-      this->RegionEventHandlerUPP = NewEventHandlerUPP(vtkCarbonRenderWindow::RegionEventProcessor);
---- 744,750 ----
-      EventTypeSpec region_events [] = 
-        {
-          { kEventClassControl, kEventControlOwningWindowChanged},
-!         { kEventClassControl, 157 },
-          { kEventClassControl, kEventControlBoundsChanged }
-        };
-      this->RegionEventHandlerUPP = NewEventHandlerUPP(vtkCarbonRenderWindow::RegionEventProcessor);
-*************** WindowPtr vtkCarbonRenderWindow::GetRoot
-*** 1145,1151 ****
-    // if not, then WindowId is set and we're using HIViews.
-    // Instead of storing the RootWindow, we ask for it in case of a dynamic 
-    // GUI where the root window can change
-!   return this->RootWindow ? this->RootWindow : HIViewGetWindow(this->WindowId);
-  }
-  
-  //----------------------------------------------------------------------------
---- 1144,1150 ----
-    // if not, then WindowId is set and we're using HIViews.
-    // Instead of storing the RootWindow, we ask for it in case of a dynamic 
-    // GUI where the root window can change
-!   return this->RootWindow ? this->RootWindow : (WindowPtr)this->WindowId;
-  }
-  
-  //----------------------------------------------------------------------------
-*************** OSStatus vtkCarbonRenderWindow::RegionEv
-*** 1183,1189 ****
-        {
-        switch (event_kind)
-          {
-!         case kEventControlVisibilityChanged:
-          case kEventControlOwningWindowChanged:
-          case kEventControlBoundsChanged:
-            vtk_win->UpdateGLRegion();
---- 1182,1188 ----
-        {
-        switch (event_kind)
-          {
-!         case 157:
-          case kEventControlOwningWindowChanged:
-          case kEventControlBoundsChanged:
-            vtk_win->UpdateGLRegion();
-EOF
-     if [[ $? != 0 ]] ; then
-        warn "Unable to patch VTK. Wrong version?"
-        return 1
-     fi
-   fi
-
-   return 0
-}
-
-function apply_vtk_500d_generic_patches
-{
-   apply_vtk_500d_generic_patch_1
-   if [[ $? != 0 ]] ; then
-       return 1
-   fi
-   apply_vtk_500d_generic_patch_2
-   if [[ $? != 0 ]] ; then
-       return 1
-   fi
-   apply_vtk_500d_generic_patch_3
-   if [[ $? != 0 ]] ; then
-       return 1
-   fi
-   apply_vtk_500d_generic_patch_4
-   if [[ $? != 0 ]] ; then
-       return 1
-   fi
-   apply_vtk_500d_generic_patch_5
-   if [[ $? != 0 ]] ; then
-       return 1
-   fi
-   apply_vtk_500d_generic_patch_6
-   if [[ $? != 0 ]] ; then
-       return 1
-   fi
-}
-
-function apply_vtk_500d_patch
-{
-   apply_vtk_500d_generic_patches
-   if [[ $? != 0 ]] ; then
-       return 1
-   fi
-
-   if [[ "$OPSYS" == "Darwin" ]]; then
-       apply_vtk_500d_darwin_patch
-       if [[ $? != 0 ]] ; then
-           return 1
-       fi
-   fi
-
-   return 0
-}
-
-function apply_vtk_patch
-{
-   if [[ ${VTK_VERSION} == 5.0.0f ]] ; then
-       apply_vtk_500d_patch
-       if [[ $? != 0 ]] ; then
-           return 1
-       fi
-   fi
-
-   return 0
-}
-
 function build_vtk
 {
     #
@@ -4037,23 +3580,6 @@ function build_vtk
     if [[ $untarred_vtk == -1 ]] ; then
        warn "Unable to prepare VTK build directory. Giving Up!"
        return 1
-    fi
-
-    #
-    # Apply patches
-    #
-    info "Patching vtk . . ."
-    apply_vtk_patch
-    if [[ $? != 0 ]] ; then
-       if [[ $untarred_vtk == 1 ]] ; then
-          warn "Giving up on VTK build because the patch failed."
-          return 1
-       else
-          warn "Patch failed, but continuing.  I believe that this script\n" \
-               "tried to apply a patch to an existing directory which had " \
-               "already been patched ... that is, that the patch is " \
-               "failing harmlessly on a second application."
-       fi
     fi
 
     # 
@@ -8613,6 +8139,69 @@ function build_xdmf
     return 0
 }
 
+# ***************************************************************************
+#                         Function 8.20, build_mdsplus
+#
+# Modifications:
+#
+#  Mark C. Miller, Tue Oct 28 11:10:36 PDT 2008
+#  Added -DH5_USE_16_API to CFLAGS for configuring MDSplus. This should be
+#  harmless when building MDSplus against versions of HDF5 before 1.8 and
+#  necessary when building against versions of HDF5 1.8 or later. It tells
+#  HDF5 which version of the HDF5 API MDSplus was implemented with.
+# ***************************************************************************
+
+function build_mdsplus
+{
+    #
+    # Prepare build dir
+    #
+    prepare_build_dir $MDSPLUS_BUILD_DIR $MDSPLUS_FILE
+    untarred_mdsplus=$?
+    if [[ $untarred_mdsplus == -1 ]] ; then
+       warn "Unable to prepare MDSplus Build Directory. Giving Up"
+       return 1
+    fi
+
+    #
+    info "Configuring MDSplus . . ."
+    cd $MDSPLUS_BUILD_DIR || error "Can't cd to mdsplus build dir."
+    info "Invoking command to configure MDSplus"
+    ./configure ${OPTIONAL} CXX="$CXX_COMPILER" \
+       CC="$C_COMPILER" CFLAGS="$C_OPT_FLAGS" CXXFLAGS="$CXX_OPT_FLAGS" \
+       --prefix="$VISITDIR/mdsplus/$MDSPLUS_VERSION/$VISITARCH"
+    if [[ $? != 0 ]] ; then
+       warn "MDSplus configure failed.  Giving up"
+       return 1
+    fi
+
+    #
+    # Build MDSplus
+    #
+    info "Building MDSplus . . . (~1 minutes)"
+
+    $MAKE $MAKE_OPT_FLAGS
+    if [[ $? != 0 ]] ; then
+       warn "MDSplus build failed.  Giving up"
+       return 1
+    fi
+    info "Installing MDSplus . . ."
+
+    $MAKE install
+    if [[ $? != 0 ]] ; then
+       warn "MDSplus build (make install) failed.  Giving up"
+       return 1
+    fi
+
+    if [[ "$DO_GROUP" == "yes" ]] ; then
+       chmod -R ug+w,a+rX "$VISITDIR/mdsplus"
+       chgrp -R ${GROUP} "$VISITDIR/mdsplus"
+    fi
+    cd "$START_DIR"
+    info "Done with MDSplus"
+    return 0
+}
+
 # *************************************************************************** #
 #                          Function 9, build_hostconf                         #
 # *************************************************************************** #
@@ -8861,6 +8450,20 @@ function build_hostconf
         >> $HOSTCONF
         echo \
         "VISIT_OPTION_DEFAULT(VISIT_H5PART_LIBDEP HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP})" \
+        >> $HOSTCONF
+
+    fi
+
+    if [[ "$DO_MDSPLUS" == "yes" ]] ; then
+        echo >> $HOSTCONF
+        echo "##" >> $HOSTCONF
+        echo "## Mdsplus" >> $HOSTCONF
+        echo "##" >> $HOSTCONF
+        echo \
+        "VISIT_OPTION_DEFAULT(VISIT_MDSPLUS_DIR \${VISITHOME}/mdsplus/$MDSPLUS_VERSION/\${VISITARCH})" \
+        >> $HOSTCONF
+        echo \
+        "VISIT_OPTION_DEFAULT(VISIT_MDSPLUS_LIBDEP HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP})" \
         >> $HOSTCONF
 
     fi
@@ -9272,6 +8875,11 @@ printvariables () {
   printf "%s%s\n" "GDAL_COMPATIBILITY_VERSION=" "${GDAL_COMPATIBILITY_VERSION}"
   printf "%s%s\n" "GDAL_BUILD_DIR=" "${GDAL_BUILD_DIR}"
 
+  printf "%s%s\n" "MDSPLUS_FILE=" "${MDSPLUS_FILE}"
+  printf "%s%s\n" "MDSPLUS_VERSION=" "${MDSPLUS_VERSION}"
+  printf "%s%s\n" "MDSPLUS_COMPATIBILITY_VERSION=" "${MDSPLUS_COMPATIBILITY_VERSION}"
+  printf "%s%s\n" "MDSPLUS_BUILD_DIR=" "${MDSPLUS_BUILD_DIR}"
+
   printf "%s%s\n" "H5PART_FILE=" "${H5PART_FILE}"
   printf "%s%s\n" "H5PART_VERSION=" "${H5PART_VERSION}"
   printf "%s%s\n" "H5PART_COMPATIBILITY_VERSION=" "${H5PART_COMPATIBILITY_VERSION}"
@@ -9353,6 +8961,7 @@ usage () {
   printf "%-15s %s [%s]\n" "--flags-debug" "Add '-g' to C[XX]FLAGS" "false"
   printf "%-15s %s [%s]\n" "--gdal" "Build GDAL" "$DO_GDAL"
   printf "%-15s %s [%s]\n" "--group" "Group name of installed libraries" "$GROUP"
+  printf "%-15s %s [%s]\n" "--mdsplus" "Build MDSplus" "$DO_MDSPLUS"
   printf "%-15s %s [%s]\n" "--h5part" "Build H5Part" "$DO_H5PART"
   printf "%-15s %s [%s]\n" "--hdf4" "Build HDF4" "${DO_HDF4}"
   printf "%-15s %s [%s]\n" "--hdf5" "Build HDF5" "${DO_HDF5}"
@@ -9361,6 +8970,7 @@ usage () {
   printf "%-15s %s [%s]\n" "--icet" "Build Ice-T (parallel rendering lib)" "$DO_ICET"
   printf "%-15s %s [%s]\n" "--itaps" "Build ITAPS" "${DO_ITAPS}"
   printf "%-15s %s [%s]\n" "--java" "Build with the Java client library" "${DO_JAVA}"
+  printf "%-15s %s [%s]\n" "--mdsplus" "Build MDSplus" "${DO_MDSPLUS}"
   printf "%-15s %s [%s]\n" "--mesa" "Build Mesa" "built by default unless --no-thirdparty flag is used"
   printf "%-15s %s [%s]\n" "--mili" "Build Mili" "$DO_MILI"
   printf "\t\t%15s\n" "NOTE: not available for download from web"
@@ -9610,6 +9220,7 @@ for arg in "${arguments[@]}" ; do
         --itaps) DO_ITAPS="yes"; ON_ITAPS="on";;
         --java) DO_JAVA="yes"; ON_JAVA="on";;
         --makeflags) next_arg="makeflags";;
+        --mdsplus) DO_MDSPLUS="yes"; ON_MDSPLUS="on";;
         --mesa) DO_MESA="yes"; ON_MESA="on";;
         --mili) DO_MILI="yes"; ON_MILI="on";;
         --netcdf) DO_NETCDF="yes"; ON_NETCDF="on";;
@@ -9718,6 +9329,8 @@ if [[ "$DO_DBIO_ONLY" == "yes" ]]; then
     ON_NETCDF="on"
     DO_H5PART="yes"
     ON_H5PART="on"
+    DO_MDSPLUS="yes"
+    ON_MDSPLUS="on"
     DO_SZIP="yes"
     ON_SZIP="on"
     DO_CCMIO="yes"
@@ -9888,6 +9501,7 @@ if [[ "$DO_OPTIONAL" == "yes" && "$GRAPHICAL" == "yes" ]] ; then
            "HDF5"     "$HDF5_VERSION  $HDF5_FILE"      $ON_HDF5 \
            "IceT"     "$ICET_VERSION  $ICET_FILE"      $ON_ICET \
            "ITAPS"    "Jun-2010 Versions of MOAB, FMDB, GRUMMP"    $ON_ITAPS \
+           "MDSplus"  "$MDSPLUS_VERSION  $MDSPLUS_FILE"    $ON_MDSPLUS \
            "Mili"     "$MILI_VERSION $MILI_FILE (not available from the web)"      $ON_MILI \
            "NetCDF"   "$NETCDF_VERSION  $NETCDF_FILE"    $ON_NETCDF \
            "TCMALLOC" "$TCMALLOC_VERSION   $TCMALLOC_FILE (not available from the web)"      $ON_TCMALLOC \
@@ -9912,6 +9526,7 @@ if [[ "$DO_OPTIONAL" == "yes" && "$GRAPHICAL" == "yes" ]] ; then
         DO_HDF4="no"
         DO_HDF5="no"
         DO_ICET="no"
+        DO_MDSPLUS="no"
         DO_MILI="no"
         DO_NETCDF="no"
         DO_SILO="no"
@@ -9950,6 +9565,8 @@ if [[ "$DO_OPTIONAL" == "yes" && "$GRAPHICAL" == "yes" ]] ; then
                  DO_HDF5="yes";;
               IceT)
                  DO_ICET="yes";;
+              MDSplus)
+                 DO_MDSPLUS="yes";;
               Mili)
                  DO_MILI="yes";;
               NetCDF)
@@ -10410,6 +10027,21 @@ if [[ "$DO_CFITSIO" == "yes" ]] ; then
             error "Unable to build or install CFITSIO.  Bailing out."
         fi
         info "Done building CFITSIO"
+    fi
+fi
+
+cd "$START_DIR"
+if [[ "$DO_MDSPLUS" == "yes" ]] ; then
+    check_if_installed "mdsplus" $MDSPLUS_VERSION
+    if [[ $? == 0 ]] ; then
+        info "Skipping MDSplus build.  MDSplus is already installed."
+    else
+        info "Building MDSplus (~1 minutes)"
+        build_mdsplus
+        if [[ $? != 0 ]] ; then
+            error "Unable to build or install MDSplus.  Bailing out."
+        fi
+        info "Done building MDSplus"
     fi
 fi
 

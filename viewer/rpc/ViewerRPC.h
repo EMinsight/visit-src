@@ -232,7 +232,7 @@ public:
         MoveWindowRPC,
         MoveAndResizeWindowRPC,
         SetStateLoggingRPC,
-        ConstructDDFRPC,
+        ConstructDataBinningRPC,
         RequestMetaDataRPC,
         SetTreatAllDBsAsTimeVaryingRPC,
         SetCreateMeshQualityExpressionsRPC,
@@ -248,12 +248,15 @@ public:
         DeleteNamedSelectionRPC,
         LoadNamedSelectionRPC,
         SaveNamedSelectionRPC,
+        SetNamedSelectionAutoApplyRPC,
+        UpdateNamedSelectionRPC,
         MenuQuitRPC,
         SetPlotDescriptionRPC,
         MovePlotOrderTowardFirstRPC,
         MovePlotOrderTowardLastRPC,
         SetPlotOrderToFirstRPC,
         SetPlotOrderToLastRPC,
+        RenamePickLabelRPC,
         MaxRPC
     };
 

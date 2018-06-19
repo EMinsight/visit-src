@@ -159,6 +159,12 @@ avtTransformFilter::Create()
 //    Made coordinate system convert filter's coordinate type enum be
 //    within the filter's namespace.
 //
+//    Dave Pugmire, Fri May 14 08:04:43 EDT 2010
+//    Flag for vector transformations.
+//
+//    Tom Fogal, Tue Jul 27 11:05:54 MDT 2010
+//    Forward 4x4 matrix elements.
+//
 // ****************************************************************************
 
 void
@@ -191,6 +197,7 @@ avtTransformFilter::SetAtts(const AttributeGroup *a)
         st_atts.SetTranslateX(atts.GetTranslateX());
         st_atts.SetTranslateY(atts.GetTranslateY());
         st_atts.SetTranslateZ(atts.GetTranslateZ());
+        st_atts.SetTransformVectors(atts.GetTransformVectors());
     
         stf->SetAtts(&st_atts);
     }
@@ -242,16 +249,26 @@ avtTransformFilter::SetAtts(const AttributeGroup *a)
         lt_atts.SetM00(atts.GetM00());
         lt_atts.SetM01(atts.GetM01());
         lt_atts.SetM02(atts.GetM02());
+        lt_atts.SetM03(atts.GetM03());
 
         lt_atts.SetM10(atts.GetM10());
         lt_atts.SetM11(atts.GetM11());
         lt_atts.SetM12(atts.GetM12());
+        lt_atts.SetM13(atts.GetM13());
 
         lt_atts.SetM20(atts.GetM20());
         lt_atts.SetM21(atts.GetM21());
         lt_atts.SetM22(atts.GetM22());
+        lt_atts.SetM23(atts.GetM23());
+
+        lt_atts.SetM30(atts.GetM30());
+        lt_atts.SetM31(atts.GetM31());
+        lt_atts.SetM32(atts.GetM32());
+        lt_atts.SetM33(atts.GetM33());
 
         lt_atts.SetInvertLinearTransform(atts.GetInvertLinearTransform());
+        lt_atts.SetTransformVectors(atts.GetTransformVectors());
+
         ltf->SetAtts(&lt_atts);
     }
 }

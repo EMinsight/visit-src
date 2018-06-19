@@ -1910,6 +1910,9 @@ ViewerQueryManager::ClearPickPoints()
 //    Kathleen Bonnell, Fri May  7 10:35:51 PDT 2010
 //    Revert yesterdays change, it causes other problems.
 //
+//    Jeremy Meredith, Wed May 19 14:15:58 EDT 2010
+//    Support 3D axis scaling (3D equivalent of full-frame mode).
+//
 // ****************************************************************************
 
 bool
@@ -2079,6 +2082,20 @@ ViewerQueryManager::ComputePick(PICK_POINT_INFO *ppi, const int dom,
             {
                 rp1[1] /= scale;
                 rp2[1] /= scale;
+            }
+        }
+        else if (win->GetWindowMode() == WINMODE_3D && !ptsEqual)
+        {
+            double scale[3] = {1,1,1};
+            if (win->Get3DAxisScalingFactors(scale))
+            {
+                rp1[0] /= scale[0];
+                rp1[1] /= scale[1];
+                rp1[2] /= scale[2];
+
+                rp2[0] /= scale[0];
+                rp2[1] /= scale[1];
+                rp2[2] /= scale[2];
             }
         }
 
@@ -3750,6 +3767,9 @@ GetUniqueVars(const stringVector &vars, const string &activeVar,
 //    individual/aggregate "Ray Length Distribution" queries so that they do
 //    not use special characters.
 //
+//    Eric Brugger, Wed Jun 30 14:10:00 PDT 2010
+//    Added the xray image query.
+//
 // ****************************************************************************
 
 void
@@ -3793,7 +3813,7 @@ ViewerQueryManager::InitializeQueryList()
     QueryList::WindowType hf  = QueryList::HohlraumFlux;
     QueryList::WindowType ccls_wt = QueryList::ConnCompSummary;
     QueryList::WindowType shp_wt  = QueryList::ShapeletsDecomp;
-    //QueryList::WindowType av = QueryList::ActualDataVars;
+    QueryList::WindowType xri  = QueryList::XRayImage;
 
     QueryList::QueryMode qo = QueryList::QueryOnly;
     QueryList::QueryMode qt = QueryList::QueryAndTime;
@@ -3855,6 +3875,7 @@ ViewerQueryManager::InitializeQueryList()
     queryTypes->AddQuery("Connected Components Summary", dq, ccl_r, ccls_wt, 1, 0, qo);
 
     queryTypes->AddQuery("Shapelet Decomposition", dq, sr, shp_wt, 1, 0, qo);
+    queryTypes->AddQuery("XRay Image", dq, sr, xri, 1, 0, qo, 0);
 
     // always add python query here, error checking if python filters were built
     // happens on the engine.

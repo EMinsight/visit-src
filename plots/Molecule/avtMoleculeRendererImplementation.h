@@ -61,6 +61,9 @@ struct avtViewInfo;
 //    John Schreiner, Fri Feb 12 19:19:34 MST 2010
 //    Removed window size parameter to Render().
 //
+//    Jeremy Meredith, Thu Apr 22 14:11:20 EDT 2010
+//    Added 2D mode.
+//
 // ****************************************************************************
 class avtMoleculeRendererImplementation
 {
@@ -72,7 +75,8 @@ class avtMoleculeRendererImplementation
                           float varmin, float varmax,
                           float ambient_coeff,
                           float spec_coeff, float spec_power,
-                          float spec_r, float spec_g, float spec_b) = 0;
+                          float spec_r, float spec_g, float spec_b,
+                          bool is2D) = 0;
     virtual void   InvalidateColors() { };
     virtual void   SetLevelsLUT(avtLookupTable *) = 0;
 private:

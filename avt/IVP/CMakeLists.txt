@@ -36,9 +36,20 @@
 #
 # Modifications:
 #
+#   Hank Childs, Sat Jun  5 16:26:46 CDT 2010
+#   Add avtStateRecorderIntegralCurve.
+#
+#   Hank Childs, Sun Jun  6 12:01:50 PDT 2010
+#   Delete avtStreamline.C and add its replacement, avtIntegralCurve.C.
+#
 #****************************************************************************/
 
 SET(AVTIVP_SOURCES
+avtCellLocator.C
+avtCellLocatorClassic.C
+avtCellLocatorBIH.C
+avtCellLocatorRect.C
+avtIntegralCurve.C
 avtIVPAdamsBashforth.C
 avtIVPDopri5.C
 avtIVPSolver.C
@@ -46,7 +57,7 @@ avtIVPM3DC1Field.C
 avtIVPM3DC1Integrator.C
 avtIVPVTKField.C
 avtIVPVTKTimeVaryingField.C
-avtStreamline.C
+avtStateRecorderIntegralCurve.C
 MemStream.C
 )
 
@@ -54,6 +65,7 @@ INCLUDE_DIRECTORIES(
 ${CMAKE_CURRENT_SOURCE_DIR}
 ${VISIT_COMMON_INCLUDES}
 ${VISIT_SOURCE_DIR}/avt/Math
+${VISIT_SOURCE_DIR}/visit_vtk/lightweight
 ${VISIT_SOURCE_DIR}/visit_vtk/full
 ${VTK_INCLUDE_DIRS}
 )

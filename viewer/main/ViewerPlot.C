@@ -59,6 +59,7 @@
 #include <CompactSILRestrictionAttributes.h>
 #include <DatabaseAttributes.h>
 #include <GlobalAttributes.h>
+#include <OperatorPluginInfo.h>
 #include <OperatorPluginManager.h>
 #include <Plot.h>
 #include <PlotPluginInfo.h>
@@ -1488,6 +1489,15 @@ ViewerPlot::GetExpressions() const
 //    Set the meshname data member, and do it independent of what we
 //    find for the SIL/SILR.
 //
+//    Mark C. Miller, Sun Aug 29 23:34:44 PDT 2010
+//    Added logic to set SIL when variable is defined on subsets (materials).
+//
+//    Hank Childs, Tue Aug 31 11:32:31 PDT 2010
+//    If we get an operator variable, then add that variable.
+//
+//    Hank Childs, Tue Aug 31 13:33:00 PDT 2010
+//    Expand the plot automatically when we add an auto-operator.
+//
 // ****************************************************************************
 
 bool
@@ -1538,8 +1548,9 @@ ViewerPlot::SetVariableName(const std::string &name)
                 // The new variable has a different top set from the
                 // old variable. Set the top set in the SIL restriction.
                 //
+                intVector restrictToMats = md->GetRestrictedMatnos(name);
                 avtSILSet_p current = silr->GetSILSet(silr->GetTopSet());
-                if (meshName != current->GetName())
+                if (meshName != current->GetName() || restrictToMats.size())
                 {
                     avtSILRestriction_p new_sil = 
                                                new avtSILRestriction(silr);
@@ -1554,6 +1565,7 @@ ViewerPlot::SetVariableName(const std::string &name)
                             break;
                         }
                     }
+
                     //
                     // Change the top set in the current SIL restriction.
                     // This is sufficient due to the previous call to
@@ -1563,6 +1575,9 @@ ViewerPlot::SetVariableName(const std::string &name)
                     new_sil->SetTopSet(topSet);
                     new_sil->TurnOffAll();
                     new_sil->TurnOnSet(topSet);
+                    const int mat_role = 5;
+                    if (restrictToMats.size())
+                        new_sil->RestrictToSetsOfRole(mat_role, restrictToMats);
                     silr = new_sil;
 
                     //
@@ -1617,6 +1632,46 @@ ViewerPlot::SetVariableName(const std::string &name)
         queryAtts->SetChangeType(PlotQueryInfo::VarName);
         queryAtts->Notify();
     }
+
+    // If a plot of an operator variable is added, let's find the operator
+    // and add it to the execution pipeline
+    OperatorPluginManager *oPM = GetOperatorPluginManager();
+    for (int j = 0; j < oPM->GetNEnabledPlugins(); j++)
+    {
+        const string &mesh = GetMeshName();
+        std::string id = oPM->GetEnabledID(j);
+        CommonOperatorPluginInfo *info = oPM->GetCommonPluginInfo(id);
+        ExpressionList *exprs = info->GetCreatedExpressions(mesh.c_str());
+        if (exprs == NULL)
+            continue;
+        for (int k = 0 ; k < exprs->GetNumExpressions() ; k++)
+        {
+            Expression expr = exprs->GetExpressions(k);
+            if (name == expr.GetName())
+            {
+                if (expr.GetFromOperator()) // should always be true
+                {
+                    // See if it already has the operator
+                    int nOps = GetNOperators();
+                    bool hasAlready = false;
+                    for (int opId = 0 ; opId < nOps ; opId++)
+                    {
+                        ViewerOperator *op = GetOperator(opId);
+                        if (op->GetPluginID() == id)
+                            hasAlready = true;
+                    }
+
+                    if (!hasAlready)
+                    {
+                        AddOperator(j, true);
+                        SetExpanded(true);
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
 
     return retval;
 }
@@ -2053,6 +2108,10 @@ ViewerPlot::SetErrorFlag(bool val)
 //    Brad Whitlock, Tue Apr 29 15:12:04 PDT 2008
 //    Support for internationalization.
 //
+//    Eric Brugger, Tue Aug 24 11:55:49 PDT 2010
+//    I modified the warning message that warns about applying the same
+//    operator multiple times to only apply to the slice operator.
+//
 // ****************************************************************************
 
 int
@@ -2071,12 +2130,11 @@ ViewerPlot::AddOperator(const int type, const bool fromDefault)
 
         for (int i = 0; i < nOperators; i++)
         {
-            if (type == operators[i]->GetType())
+            if (type == operators[i]->GetType() &&
+                strcmp(operators[i]->GetName(), "Slice") == 0)
             {
-                QString msg = tr("You have added the \"%1\" operator "
-                    "multiple times. For some operators, like \"Slice\", this "
-                    "can lead to an empty plot but is otherwise harmless.").
-                    arg(operators[i]->GetMenuName());
+                QString msg = tr("You have added the \"Slice\" operator "
+                    "multiple times. This can lead to an empty plot.");
                 Warning(msg);
                 break;
             }
@@ -3500,6 +3558,9 @@ ViewerPlot::GetSpatialDimension() const
 //    Brad Whitlock, Sat Jan 31 23:33:10 PST 2004
 //    I removed the frame argument.
 //
+//    Hank Childs, Thu Aug 26 13:47:30 PDT 2010
+//    Change extents names.
+//
 // ****************************************************************************
 
 double *
@@ -3533,7 +3594,7 @@ ViewerPlot::GetSpatialExtents(avtExtentType extsType) const
     }
     else if (realExtsType == AVT_ACTUAL_EXTENTS)
     {
-        if (atts.GetCurrentSpatialExtents(buffer))
+        if (atts.GetActualSpatialExtents(buffer))
         {
             return buffer;
         }

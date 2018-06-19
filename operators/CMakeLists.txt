@@ -36,6 +36,12 @@
 #
 # Modifications:
 #
+#   Tom Fogal, Wed Aug  4 18:54:25 MDT 2010
+#   Add multires operator.
+#
+#   Hank Childs, Sat Aug  7 03:39:33 PDT 2010
+#   Add DataBinning operator.
+#
 #****************************************************************************/
 IF(NOT WIN32)
     SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${VISIT_PLUGIN_DIR}/operators)
@@ -44,6 +50,7 @@ ELSE(NOT WIN32)
 ENDIF(NOT WIN32)
 
 SET(REQUIRED_OPERATOR_PLUGINS
+AMRStitchCell
 BoundaryOp
 Box
 Clip
@@ -52,6 +59,7 @@ CoordSwap
 CracksClipper
 CreateBonds
 Cylinder
+DataBinning
 Decimate
 Delaunay
 DeferExpression
@@ -66,6 +74,7 @@ Isosurface
 Isovolume
 Lineout
 Merge
+MultiresControl
 OnionPeel
 PDF
 PersistentParticles

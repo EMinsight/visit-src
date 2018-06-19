@@ -156,6 +156,20 @@
 //    Kathleen Bonnell, Mon Apr 27 17:35:25 PDT 2009
 //    Added sinh, cosh, tanh to expr_trig.
 //
+//    Hank Childs, Mon Jun 28 06:49:16 PDT 2010
+//    Add [min|max][x|y|z]_coord.
+//
+//    Dave Pugmire, Fri Jul  2 14:22:34 EDT 2010
+//    Add resample expression.
+//
+//    Cyrus Harrison, Wed Jul  7 09:34:00 PDT 2010
+//    Added 'zonal_constant' and 'nodal_constant'
+//
+//    Hank Childs, Thu Jul  8 08:12:26 PDT 2010
+//    Retire [min|max][x|y|z] coord, replaced with min_coord and max_coord.
+//    Adding polar coordinates and I really didn't think there should be
+//    12 expressions for this minor functionality.
+//
 // ****************************************************************************
 
 struct ExprNameList
@@ -311,6 +325,8 @@ const char *expr_mesh[] = {
     "external_node",
     "global_nodeid",
     "global_zoneid",
+    "max_coord",
+    "min_coord",
     "nodeid",
     "polar",
     "polar_radius",
@@ -337,14 +353,17 @@ const char *expr_misc[] = {
     "ijk_gradient",
     "Laplacian",
     "mean_curvature",
+    "nodal_constant",
     "point_constant",
     "recenter",
+    "resample",
     "resrad",
     "surface_normal",
     "   point_surface_normal",
     "   cell_surface_normal",
     "time",
     "timestep",
+    "zonal_constant",
     NULL
 };
 
@@ -412,13 +431,18 @@ ExprNameList exprlist[NUM_EXPRESSION_CATEGORIES];
 //   Hank Childs, Sun Feb 22 09:01:29 PST 2009
 //   Add time iteration category.
 //
+//   Hank Childs, Mon Jul  5 11:20:47 PDT 2010
+//   Enable Load and Save buttons.
+//
 // ****************************************************************************
 
 QvisExpressionsWindow::QvisExpressionsWindow(
     ExpressionList *exprList_, const QString &caption,
     const QString &shortName, QvisNotepadArea *notepad) :
     QvisPostableWindowObserver(exprList_, caption, shortName, notepad,
-                               QvisPostableWindowObserver::ApplyButton,
+                               QvisPostableWindowObserver::ApplyButton |
+                               QvisPostableWindowObserver::LoadButton |
+                               QvisPostableWindowObserver::SaveButton,
                                false)
 {
     // Populate the expression categories. If you add a new one, increment
@@ -551,8 +575,8 @@ QvisExpressionsWindow::CreateWindowContents()
 
     nameEditLabel = new QLabel(tr("Name"), f2);
     nameEdit = new QNarrowLineEdit(f2);
-    definitionLayout->addWidget(nameEditLabel, row,0, 1,1);
-    definitionLayout->addWidget(nameEdit, row,1, 1,3);
+    definitionLayout->addWidget(nameEditLabel, row,0);
+    definitionLayout->addWidget(nameEdit, row,1);
     row++;
 
     typeLabel = new QLabel(tr("Type"), f2);
@@ -565,12 +589,12 @@ QvisExpressionsWindow::CreateWindowContents()
     typeList->addItem(tr("Array Mesh Variable"));
     typeList->addItem(tr("Curve Mesh Variable"));
 
-    definitionLayout->addWidget(typeLabel, row,0, 1,1);
-    definitionLayout->addWidget(typeList, row,1, 1,3);
+    definitionLayout->addWidget(typeLabel, row,0);
+    definitionLayout->addWidget(typeList, row,1);
     row++;
 
     notHidden = new QCheckBox(tr("Show variable in plot menus"), f2);
-    definitionLayout->addWidget(notHidden, row,1, 1,3);
+    definitionLayout->addWidget(notHidden, row,1);
     row++;
 
     editorTabs = new QTabWidget(f2);
@@ -583,7 +607,8 @@ QvisExpressionsWindow::CreateWindowContents()
     editorTabs->addTab(pyEditorWidget, "Python Expression Editor");
 
 
-    definitionLayout->addWidget(editorTabs,row,0,1,4);
+    definitionLayout->addWidget(editorTabs,row,0,1,2);
+    definitionLayout->setColumnStretch(1, 10);
 
     mainSplitter->addWidget(f2);
 
@@ -628,6 +653,7 @@ QvisExpressionsWindow::CreateStandardEditor()
     stdEditorWidget = new QWidget();
 
     QGridLayout *layout = new QGridLayout(stdEditorWidget);
+    layout->setMargin(5);
     int row = 0;
 
     stdDefinitionEditLabel = new QLabel(tr("Definition"), stdEditorWidget);
@@ -691,6 +717,7 @@ QvisExpressionsWindow::CreatePythonFilterEditor()
     pyEditorWidget = new QWidget();
 
     QGridLayout *layout = new QGridLayout(pyEditorWidget);
+    layout->setMargin(5);
     int row = 0;
 
     pyArgsEditLabel = new QLabel(tr("Arguments"), pyEditorWidget);
@@ -1537,6 +1564,15 @@ QvisExpressionsWindow::UpdateStandardExpressionEditor(const QString &expr_def)
 //
 //  Modifications:
 //
+//    Dave Pugmire, Fri Jul  2 14:22:34 EDT 2010
+//    Add resample expression.
+//
+//    Dave Pugmire, Fri Jul  2 14:22:34 EDT 2010
+//    Added 'zonal_constant' & 'nodal_constant'.
+//
+//    Hank Childs, Thu Jul  8 08:14:23 PDT 2010
+//    Added min_coord and max_coord.
+//    
 // ****************************************************************************
 
 QString
@@ -1634,6 +1670,16 @@ QvisExpressionsWindow::ExpandFunction(const QString &func_name)
         res += QString("(<var>, [\"nodal\", \"zonal\", \"toggle\"])");
         doParens = false;
     }
+    else if (func_name == "resample")
+    {
+        res += QString("(<var>, sX, sY, sZ)");
+        doParens = false;
+    }
+    else if (func_name == "min_coord" || func_name == "max_coord")
+    {
+        res += QString("(<mesh>, [\"X\", \"Y\", \"Z\", \"Radius\", \"Theta\", \"Phi\"])");
+        doParens = false;
+    }
     else if(func_name == "value_for_material")
     {
         stdDefinitionEdit->insertPlainText("(<var>, <material-name-or-number>)");
@@ -1644,7 +1690,10 @@ QvisExpressionsWindow::ExpandFunction(const QString &func_name)
         res += QString("(<var>, [<val-if-0>, <val-if-1>, ...])");
         doParens = false;
     }
-    else if (func_name == "cell_constant" || func_name == "point_constant")
+    else if (func_name == "cell_constant"  ||
+             func_name == "zonal_constant" ||
+             func_name == "point_constant" ||
+             func_name == "nodal_constant" )
     {
         res += QString("(<meshvar>, <constantvalue>)");
         doParens = false;

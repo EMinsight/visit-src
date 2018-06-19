@@ -151,6 +151,80 @@ VectorAttributes::LimitsMode_FromString(const std::string &s, VectorAttributes::
     return false;
 }
 
+//
+// Enum conversion methods for VectorAttributes::GlyphType
+//
+
+static const char *GlyphType_strings[] = {
+"Arrow", "Ellipsoid"};
+
+std::string
+VectorAttributes::GlyphType_ToString(VectorAttributes::GlyphType t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 2) index = 0;
+    return GlyphType_strings[index];
+}
+
+std::string
+VectorAttributes::GlyphType_ToString(int t)
+{
+    int index = (t < 0 || t >= 2) ? 0 : t;
+    return GlyphType_strings[index];
+}
+
+bool
+VectorAttributes::GlyphType_FromString(const std::string &s, VectorAttributes::GlyphType &val)
+{
+    val = VectorAttributes::Arrow;
+    for(int i = 0; i < 2; ++i)
+    {
+        if(s == GlyphType_strings[i])
+        {
+            val = (GlyphType)i;
+            return true;
+        }
+    }
+    return false;
+}
+
+//
+// Enum conversion methods for VectorAttributes::GlyphLocation
+//
+
+static const char *GlyphLocation_strings[] = {
+"AdaptsToMeshResolution", "UniformInSpace"};
+
+std::string
+VectorAttributes::GlyphLocation_ToString(VectorAttributes::GlyphLocation t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 2) index = 0;
+    return GlyphLocation_strings[index];
+}
+
+std::string
+VectorAttributes::GlyphLocation_ToString(int t)
+{
+    int index = (t < 0 || t >= 2) ? 0 : t;
+    return GlyphLocation_strings[index];
+}
+
+bool
+VectorAttributes::GlyphLocation_FromString(const std::string &s, VectorAttributes::GlyphLocation &val)
+{
+    val = VectorAttributes::AdaptsToMeshResolution;
+    for(int i = 0; i < 2; ++i)
+    {
+        if(s == GlyphLocation_strings[i])
+        {
+            val = (GlyphLocation)i;
+            return true;
+        }
+    }
+    return false;
+}
+
 // ****************************************************************************
 // Method: VectorAttributes::VectorAttributes
 //
@@ -168,6 +242,7 @@ VectorAttributes::LimitsMode_FromString(const std::string &s, VectorAttributes::
 
 void VectorAttributes::Init()
 {
+    glyphLocation = AdaptsToMeshResolution;
     useStride = false;
     stride = 1;
     nVectors = 400;
@@ -190,6 +265,7 @@ void VectorAttributes::Init()
     geometryQuality = Fast;
     stemWidth = 0.08;
     origOnly = true;
+    glyphType = Arrow;
 
     VectorAttributes::SelectAll();
 }
@@ -211,6 +287,7 @@ void VectorAttributes::Init()
 
 void VectorAttributes::Copy(const VectorAttributes &obj)
 {
+    glyphLocation = obj.glyphLocation;
     useStride = obj.useStride;
     stride = obj.stride;
     nVectors = obj.nVectors;
@@ -235,6 +312,7 @@ void VectorAttributes::Copy(const VectorAttributes &obj)
     geometryQuality = obj.geometryQuality;
     stemWidth = obj.stemWidth;
     origOnly = obj.origOnly;
+    glyphType = obj.glyphType;
 
     VectorAttributes::SelectAll();
 }
@@ -394,7 +472,8 @@ bool
 VectorAttributes::operator == (const VectorAttributes &obj) const
 {
     // Create the return value
-    return ((useStride == obj.useStride) &&
+    return ((glyphLocation == obj.glyphLocation) &&
+            (useStride == obj.useStride) &&
             (stride == obj.stride) &&
             (nVectors == obj.nVectors) &&
             (lineStyle == obj.lineStyle) &&
@@ -417,7 +496,8 @@ VectorAttributes::operator == (const VectorAttributes &obj) const
             (lineStem == obj.lineStem) &&
             (geometryQuality == obj.geometryQuality) &&
             (stemWidth == obj.stemWidth) &&
-            (origOnly == obj.origOnly));
+            (origOnly == obj.origOnly) &&
+            (glyphType == obj.glyphType));
 }
 
 // ****************************************************************************
@@ -561,6 +641,7 @@ VectorAttributes::NewInstance(bool copy) const
 void
 VectorAttributes::SelectAll()
 {
+    Select(ID_glyphLocation,    (void *)&glyphLocation);
     Select(ID_useStride,        (void *)&useStride);
     Select(ID_stride,           (void *)&stride);
     Select(ID_nVectors,         (void *)&nVectors);
@@ -585,6 +666,7 @@ VectorAttributes::SelectAll()
     Select(ID_geometryQuality,  (void *)&geometryQuality);
     Select(ID_stemWidth,        (void *)&stemWidth);
     Select(ID_origOnly,         (void *)&origOnly);
+    Select(ID_glyphType,        (void *)&glyphType);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -616,6 +698,12 @@ VectorAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool force
     bool addToParent = false;
     // Create a node for VectorAttributes.
     DataNode *node = new DataNode("VectorAttributes");
+
+    if(completeSave || !FieldsEqual(ID_glyphLocation, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("glyphLocation", GlyphLocation_ToString(glyphLocation)));
+    }
 
     if(completeSave || !FieldsEqual(ID_useStride, &defaultObject))
     {
@@ -763,6 +851,12 @@ VectorAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool force
         node->AddNode(new DataNode("origOnly", origOnly));
     }
 
+    if(completeSave || !FieldsEqual(ID_glyphType, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("glyphType", GlyphType_ToString(glyphType)));
+    }
+
 
     // Add the node to the parent node.
     if(addToParent || forceAdd)
@@ -799,6 +893,22 @@ VectorAttributes::SetFromNode(DataNode *parentNode)
         return;
 
     DataNode *node;
+    if((node = searchNode->GetNode("glyphLocation")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 2)
+                SetGlyphLocation(GlyphLocation(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            GlyphLocation value;
+            if(GlyphLocation_FromString(node->AsString(), value))
+                SetGlyphLocation(value);
+        }
+    }
     if((node = searchNode->GetNode("useStride")) != 0)
         SetUseStride(node->AsBool());
     if((node = searchNode->GetNode("stride")) != 0)
@@ -889,11 +999,34 @@ VectorAttributes::SetFromNode(DataNode *parentNode)
         SetStemWidth(node->AsDouble());
     if((node = searchNode->GetNode("origOnly")) != 0)
         SetOrigOnly(node->AsBool());
+    if((node = searchNode->GetNode("glyphType")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 2)
+                SetGlyphType(GlyphType(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            GlyphType value;
+            if(GlyphType_FromString(node->AsString(), value))
+                SetGlyphType(value);
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // Set property methods
 ///////////////////////////////////////////////////////////////////////////////
+
+void
+VectorAttributes::SetGlyphLocation(VectorAttributes::GlyphLocation glyphLocation_)
+{
+    glyphLocation = glyphLocation_;
+    Select(ID_glyphLocation, (void *)&glyphLocation);
+}
 
 void
 VectorAttributes::SetUseStride(bool useStride_)
@@ -1063,9 +1196,22 @@ VectorAttributes::SetOrigOnly(bool origOnly_)
     Select(ID_origOnly, (void *)&origOnly);
 }
 
+void
+VectorAttributes::SetGlyphType(VectorAttributes::GlyphType glyphType_)
+{
+    glyphType = glyphType_;
+    Select(ID_glyphType, (void *)&glyphType);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Get property methods
 ///////////////////////////////////////////////////////////////////////////////
+
+VectorAttributes::GlyphLocation
+VectorAttributes::GetGlyphLocation() const
+{
+    return GlyphLocation(glyphLocation);
+}
 
 bool
 VectorAttributes::GetUseStride() const
@@ -1223,6 +1369,12 @@ VectorAttributes::GetOrigOnly() const
     return origOnly;
 }
 
+VectorAttributes::GlyphType
+VectorAttributes::GetGlyphType() const
+{
+    return GlyphType(glyphType);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Select property methods
 ///////////////////////////////////////////////////////////////////////////////
@@ -1263,6 +1415,7 @@ VectorAttributes::GetFieldName(int index) const
 {
     switch (index)
     {
+    case ID_glyphLocation:    return "glyphLocation";
     case ID_useStride:        return "useStride";
     case ID_stride:           return "stride";
     case ID_nVectors:         return "nVectors";
@@ -1287,6 +1440,7 @@ VectorAttributes::GetFieldName(int index) const
     case ID_geometryQuality:  return "geometryQuality";
     case ID_stemWidth:        return "stemWidth";
     case ID_origOnly:         return "origOnly";
+    case ID_glyphType:        return "glyphType";
     default:  return "invalid index";
     }
 }
@@ -1311,6 +1465,7 @@ VectorAttributes::GetFieldType(int index) const
 {
     switch (index)
     {
+    case ID_glyphLocation:    return FieldType_enum;
     case ID_useStride:        return FieldType_bool;
     case ID_stride:           return FieldType_int;
     case ID_nVectors:         return FieldType_int;
@@ -1335,6 +1490,7 @@ VectorAttributes::GetFieldType(int index) const
     case ID_geometryQuality:  return FieldType_enum;
     case ID_stemWidth:        return FieldType_double;
     case ID_origOnly:         return FieldType_bool;
+    case ID_glyphType:        return FieldType_enum;
     default:  return FieldType_unknown;
     }
 }
@@ -1359,6 +1515,7 @@ VectorAttributes::GetFieldTypeName(int index) const
 {
     switch (index)
     {
+    case ID_glyphLocation:    return "enum";
     case ID_useStride:        return "bool";
     case ID_stride:           return "int";
     case ID_nVectors:         return "int";
@@ -1383,6 +1540,7 @@ VectorAttributes::GetFieldTypeName(int index) const
     case ID_geometryQuality:  return "enum";
     case ID_stemWidth:        return "double";
     case ID_origOnly:         return "bool";
+    case ID_glyphType:        return "enum";
     default:  return "invalid index";
     }
 }
@@ -1409,6 +1567,11 @@ VectorAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
     bool retval = false;
     switch (index_)
     {
+    case ID_glyphLocation:
+        {  // new scope
+        retval = (glyphLocation == obj.glyphLocation);
+        }
+        break;
     case ID_useStride:
         {  // new scope
         retval = (useStride == obj.useStride);
@@ -1529,6 +1692,11 @@ VectorAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (origOnly == obj.origOnly);
         }
         break;
+    case ID_glyphType:
+        {  // new scope
+        retval = (glyphType == obj.glyphType);
+        }
+        break;
     default: retval = false;
     }
 
@@ -1544,6 +1712,7 @@ VectorAttributes::ChangesRequireRecalculation(const VectorAttributes &obj)
 {
     return ((useStride != obj.useStride) ||
             (stride != obj.stride) ||
+            (glyphLocation != obj.glyphLocation) ||
             (nVectors != obj.nVectors) ||
             (origOnly != obj.origOnly));
 }

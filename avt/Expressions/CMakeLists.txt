@@ -42,6 +42,15 @@
 #    Use proper python include path ${PYTHON_INCLUDE_PATH}, instead of 
 #    ${PYTHON_INCLUDE_DIRS}
 #
+#    Hank Childs, Thu May 20 21:26:47 PDT 2010
+#    Add Base10LogWithMin.
+#
+#    Hank Childs, Mon Jun 28 06:43:20 PDT 2010
+#    Add CoordinateExtrema.
+#
+#    Hank Childs, Sat Aug 21 14:05:14 PDT 2010
+#    Rename ApplyDDFExpression to ApplyDataBinningExpression.
+#
 #****************************************************************************/
 
 SET(ABSTRACT_SOURCES
@@ -99,7 +108,7 @@ Derivations/avtTensorMaximumShearExpression.C
 )
 
 SET(GENERAL_SOURCES
-General/avtApplyDDFExpression.C
+General/avtApplyDataBinningExpression.C
 General/avtApplyEnumerationExpression.C
 General/avtApplyMapExpression.C 
 General/avtArrayComposeExpression.C
@@ -108,6 +117,7 @@ General/avtArrayDecomposeExpression.C
 General/avtColorComposeExpression.C
 General/avtConnComponentsExpression.C
 General/avtConstantFunctionExpression.C
+General/avtCoordinateExtremaExpression.C
 General/avtCurlExpression.C
 General/avtCurveDomainExpression.C
 General/avtCurveExpression.C
@@ -139,6 +149,7 @@ General/avtRandomExpression.C
 General/avtRecenterExpression.C
 General/avtRectilinearLaplacianExpression.C
 General/avtRelativeDifferenceExpression.C
+General/avtResampleExpression.C
 General/avtResradExpression.C
 General/avtSpecMFExpression.C
 General/avtSurfaceNormalExpression.C
@@ -188,6 +199,7 @@ Math/avtArcsinExpression.C
 Math/avtArctanExpression.C
 Math/avtArctan2Expression.C
 Math/avtBase10LogExpression.C
+Math/avtBase10LogWithMinExpression.C
 Math/avtBinaryAddExpression.C
 Math/avtBinaryAndExpression.C
 Math/avtBinaryDivideExpression.C
@@ -298,7 +310,7 @@ ${VISIT_SOURCE_DIR}/avt/VisWindow/VisWindow
 ${VISIT_SOURCE_DIR}/avt/DBAtts/MetaData
 ${VISIT_SOURCE_DIR}/avt/DBAtts/SIL
 ${VISIT_SOURCE_DIR}/avt/Database/Database
-${VISIT_SOURCE_DIR}/avt/DDF
+${VISIT_SOURCE_DIR}/avt/DataBinning
 ${VISIT_SOURCE_DIR}/avt/Filters
 ${VISIT_SOURCE_DIR}/avt/MIR/Base
 ${VISIT_SOURCE_DIR}/avt/MIR/Tet
@@ -333,7 +345,7 @@ ENDIF(VISIT_PYTHON_FILTERS)
 
 #********************************* SERIAL ************************************
 ADD_LIBRARY(avtexpressions_ser ${AVTEXPRESSIONS_SOURCES})
-TARGET_LINK_LIBRARIES(avtexpressions_ser visitcommon avtdbatts avtdatabase_ser avtddf_ser avtplotter_ser avtfilters_ser avtpipeline_ser)
+TARGET_LINK_LIBRARIES(avtexpressions_ser visitcommon avtdbatts avtdatabase_ser avtdbin_ser avtplotter_ser avtfilters_ser avtpipeline_ser)
 IF(VISIT_PYTHON_FILTERS)
     TARGET_LINK_LIBRARIES(avtexpressions_ser avtpythonfilters_ser)
 ENDIF(VISIT_PYTHON_FILTERS)
@@ -342,7 +354,7 @@ VISIT_INSTALL_TARGETS(avtexpressions_ser)
 #********************************* PARALLEL **********************************
 IF(VISIT_PARALLEL)
     ADD_PARALLEL_LIBRARY(avtexpressions_par ${AVTEXPRESSIONS_SOURCES})
-    TARGET_LINK_LIBRARIES(avtexpressions_par visitcommon avtdbatts avtdatabase_par avtddf_par avtplotter_par avtfilters_par avtpipeline_par)
+    TARGET_LINK_LIBRARIES(avtexpressions_par visitcommon avtdbatts avtdatabase_par avtdbin_par avtplotter_par avtfilters_par avtpipeline_par)
     IF(VISIT_PYTHON_FILTERS)
         TARGET_LINK_LIBRARIES(avtexpressions_par avtpythonfilters_par)
     ENDIF(VISIT_PYTHON_FILTERS)

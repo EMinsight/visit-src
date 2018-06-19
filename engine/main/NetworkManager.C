@@ -48,7 +48,7 @@
 #include <DebugStream.h>
 #include <avtDatabaseFactory.h>
 #include <LoadBalancer.h>
-#include <ConstructDDFAttributes.h>
+#include <ConstructDataBinningAttributes.h>
 #include <DBOptionsAttributes.h>
 #include <ExportDBAttributes.h>
 #include <MaterialAttributes.h>
@@ -69,7 +69,7 @@
 #include <PickAttributes.h>
 #include <VisualCueInfo.h>
 #include <VisualCueList.h>
-#include <avtApplyDDFExpression.h>
+#include <avtApplyDataBinningExpression.h>
 #include <avtCallback.h>
 #include <avtColorTables.h>
 #include <avtDebugDumpOptions.h>
@@ -96,8 +96,8 @@
 #include <avtZonePickQuery.h>
 #include <avtCurvePickQuery.h>
 #include <avtSoftwareShader.h>
-#include <avtDDF.h>
-#include <avtDDFConstructor.h>
+#include <avtDataBinning.h>
+#include <avtDataBinningConstructor.h>
 #include <avtSourceFromAVTImage.h>
 #include <avtSourceFromImage.h>
 #include <avtSourceFromNullData.h>
@@ -141,7 +141,7 @@ static void   DumpImage(avtDataObject_p, const char *fmt, bool allprocs=true);
 static void   DumpImage(avtImage_p, const char *fmt, bool allprocs=true);
 static ref_ptr<avtDatabase> GetDatabase(void *, const std::string &,
                                         int, const char *);
-static avtDDF *GetDDFCallbackBridge(void *arg, const char *name);
+static avtDataBinning *GetDataBinningCallbackBridge(void *arg, const char *name);
 static bool OnlyRootNodeHasData(avtImage_p &);
 static void BroadcastImage(avtImage_p &, bool, int);
 #ifdef PARALLEL
@@ -210,6 +210,9 @@ void                      *NetworkManager::progressCallbackArgs = NULL;
 //    Tom Fogal, Wed Dec  9 14:10:01 MST 2009
 //    Remove creation of window 0; we'll do it dynamically when needed.
 //
+//    Hank Childs, Sat Aug 21 14:35:47 PDT 2010
+//    Rename DDF to DataBinning.
+//
 // ****************************************************************************
 NetworkManager::NetworkManager(void) : virtualDatabases()
 {
@@ -221,9 +224,9 @@ NetworkManager::NetworkManager(void) : virtualDatabases()
     uniqueNetworkId = 0;
 
     avtCallback::RegisterGetDatabaseCallback(GetDatabase, this);
-    avtApplyDDFExpression::RegisterGetDDFCallback(GetDDFCallbackBridge, this);
-    avtExpressionEvaluatorFilter::RegisterGetDDFCallback(
-                                                  GetDDFCallbackBridge, this);
+    avtApplyDataBinningExpression::RegisterGetDataBinningCallback(GetDataBinningCallbackBridge, this);
+    avtExpressionEvaluatorFilter::RegisterGetDataBinningCallback(
+                                                  GetDataBinningCallbackBridge, this);
 
     databasePlugins = new DatabasePluginManager;
     operatorPlugins = new OperatorPluginManager;
@@ -253,6 +256,9 @@ NetworkManager::NetworkManager(void) : virtualDatabases()
 //    Brad Whitlock, Tue Jun 24 15:41:08 PDT 2008
 //    Added plugin managers.
 //
+//    Hank Childs, Sat Aug 21 14:35:47 PDT 2010
+//    Rename DDF to DataBinning.
+//
 // ****************************************************************************
 
 NetworkManager::~NetworkManager(void)
@@ -265,8 +271,8 @@ NetworkManager::~NetworkManager(void)
     for (it = viswinMap.begin(); it != viswinMap.end(); it++)
         delete it->second.viswin;
 
-    for (size_t d = 0 ; d < ddf.size() ; d++)
-        delete ddf[d];
+    for (size_t d = 0 ; d < dataBinnings.size() ; d++)
+        delete dataBinnings[d];
 
     delete databasePlugins;
     delete operatorPlugins;
@@ -1319,38 +1325,39 @@ NetworkManager::MakePlot(const string &plotName, const string &pluginID,
 //    Hank Childs, Mon Apr  6 13:06:22 PDT 2009
 //    Add support for sending named selection info to all filters.
 //
+//    Brad Whitlock, Tue Aug 10 16:11:25 PDT 2010
+//    Use find() method.
+//
 // ****************************************************************************
+
 int
 NetworkManager::EndNetwork(int windowID)
 {
     std::map<std::string, std::string>::iterator it;
-    for (it = namedSelectionsToApply.begin() ; 
-         it != namedSelectionsToApply.end() ; it++)
+    it = namedSelectionsToApply.find(workingNet->GetPlotName());
+    if (it != namedSelectionsToApply.end())
     {
-        if ((it)->first == workingNet->GetPlotName())
+        avtNamedSelectionFilter *f = new avtNamedSelectionFilter();
+        f->SetSelectionName(it->second);
+        NetnodeFilter *filt = new NetnodeFilter(f, "NamedSelection");
+        Netnode *n = workingNetnodeList.back();
+        workingNetnodeList.pop_back();
+        filt->GetInputNodes().push_back(n);
+
+        // Push the ExpressionEvaluator onto the working list.
+        workingNetnodeList.push_back(filt);
+
+        workingNet->AddNode(filt);
+
+        std::vector<Netnode *> netnodes = workingNet->GetNodeList();
+        for (int i = 0 ; i < netnodes.size() ; i++)
         {
-            avtNamedSelectionFilter *f = new avtNamedSelectionFilter();
-            f->SetSelectionName(it->second);
-            NetnodeFilter *filt = new NetnodeFilter(f, "NamedSelection");
-            Netnode *n = workingNetnodeList.back();
-            workingNetnodeList.pop_back();
-            filt->GetInputNodes().push_back(n);
-
-            // Push the ExpressionEvaluator onto the working list.
-            workingNetnodeList.push_back(filt);
-
-            workingNet->AddNode(filt);
-
-            std::vector<Netnode *> netnodes = workingNet->GetNodeList();
-            for (int i = 0 ; i < netnodes.size() ; i++)
-            {
-                avtFilter *filt = netnodes[i]->GetFilter();
-                if (filt == NULL)
-                    continue;
-                filt->RegisterNamedSelection(it->second);
-            }
-            workingNet->GetPlot()->RegisterNamedSelection(it->second);
+            avtFilter *filt = netnodes[i]->GetFilter();
+            if (filt == NULL)
+                continue;
+            filt->RegisterNamedSelection(it->second);
         }
+        workingNet->GetPlot()->RegisterNamedSelection(it->second);
     }
 
     // Checking to see if the network has been built successfully.
@@ -1645,6 +1652,48 @@ NetworkManager::GetScalableThreshold(int windowID) const
     int t = RenderingAttributes::GetEffectiveScalableThreshold(
                                     scalableActivationMode,
                                     scalableAutoThreshold);
+
+    return t;
+}
+
+
+// ****************************************************************************
+// Method:  NetworkManager::GetCompactDomainsThreshold
+//
+// Purpose: Get/Set compact domains options.
+//   
+//
+// Programmer:  Dave Pugmire
+// Creation:    August 24, 2010
+//
+// ****************************************************************************
+
+int
+NetworkManager::GetCompactDomainsThreshold(int windowId) const
+{
+    int compactDomainsAutoThreshold = RenderingAttributes::DEFAULT_COMPACT_DOMAINS_AUTO_THRESHOLD;
+    RenderingAttributes::TriStateMode compactDomainsActivationMode = 
+       (RenderingAttributes::TriStateMode)RenderingAttributes::DEFAULT_COMPACT_DOMAINS_ACTIVATION_MODE;
+
+    // since we're in a const method, we can't use the [] operator to index
+    // into the map directly becuase that operator will modify the map if the
+    // key is new
+    std::map<int, EngineVisWinInfo>::const_iterator it;
+    it = viswinMap.find(windowId);
+    if(it != viswinMap.end())
+    {
+        const EngineVisWinInfo &viswinInfo = it->second;
+        const WindowAttributes &windowAttributes = viswinInfo.windowAttributes; 
+
+        compactDomainsAutoThreshold = 
+            windowAttributes.GetRenderAtts().GetCompactDomainsAutoThreshold();
+        compactDomainsActivationMode = 
+            windowAttributes.GetRenderAtts().GetCompactDomainsActivationMode();
+    }
+
+    
+    int t = RenderingAttributes::GetEffectiveCompactDomainsThreshold(compactDomainsActivationMode,
+                                                                     compactDomainsAutoThreshold);
     return t;
 }
 
@@ -2420,6 +2469,9 @@ NetworkManager::Render(bool checkThreshold, intVector plotIds, bool getZBuffer,
 //
 // Modifications:
 //   
+//    Hank Childs, Thu Aug 26 13:47:30 PDT 2010
+//    Change extents names.
+//
 // ****************************************************************************
 
 bool
@@ -2468,7 +2520,7 @@ NetworkManager::SaveWindow(const std::string &filename, int imageWidth, int imag
                     if (*obj != NULL)
                     {
                         avtDataAttributes &atts = obj->GetInfo().GetAttributes();
-                        atts.GetCumulativeTrueSpatialExtents()->CopyTo(extents);
+                        atts.GetThisProcsOriginalSpatialExtents()->CopyTo(extents);
                         extentsInit = true;
                         // Override the view so it's set to something valid.
                         View3DAttributes newView3D; newView3D.ResetView(extents);
@@ -3733,21 +3785,33 @@ NetworkManager::CreateNamedSelection(int id, const std::string &selName)
 //      Applies a named selection to a plot.
 //
 //  Arguments:
-//    ids        The networks to use.
+//    ids        The names of the plots to which the selection will apply.
 //    selName    The name of the selection.
 //
 //  Programmer:  Hank Childs
 //  Creation:    January 30, 2009
 //
+//  Modifications:
+//    Brad Whitlock, Tue Aug 10 16:13:27 PDT 2010
+//    Remove a named selection from a plot if the selName is empty.
+//
 // ****************************************************************************
 
 void
 NetworkManager::ApplyNamedSelection(const std::vector<std::string> &ids, 
-                                     const std::string &selName)
+                                    const std::string &selName)
 {
     for (int i = 0 ; i < ids.size() ; i++)
     {
-        namedSelectionsToApply[ids[i]] = selName;
+        if(selName.size() > 0)
+            namedSelectionsToApply[ids[i]] = selName;
+        else
+        {
+            std::map<std::string,std::string>::iterator it;
+            it = namedSelectionsToApply.find(ids[i]);
+            if(it != namedSelectionsToApply.end())
+                namedSelectionsToApply.erase(it);
+        }
     }
 }
 
@@ -3819,14 +3883,14 @@ NetworkManager::SaveNamedSelection(const std::string &selName)
 
 
 // ****************************************************************************
-//  Method:  NetworkManager::ConstructDDF
+//  Method:  NetworkManager::ConstructDataBinning
 //
 //  Purpose:
 //      Constructs a derived data function.
 //
 //  Arguments:
 //    id         The network to use.
-//    atts       The ConstructDDF attributes.
+//    atts       The ConstructDataBinning attributes.
 //
 //  Programmer:  Hank Childs
 //  Creation:    February 13, 2006
@@ -3837,10 +3901,13 @@ NetworkManager::SaveNamedSelection(const std::string &selName)
 //    Have DDF class write out the data set.  Also make reference to DDF
 //    result in the first DDF, not the last.
 //
+//    Hank Childs, Sat Aug 21 14:35:47 PDT 2010
+//    Rename DDF to DataBinning.
+//
 // ****************************************************************************
 
 void
-NetworkManager::ConstructDDF(int id, ConstructDDFAttributes *atts)
+NetworkManager::ConstructDataBinning(int id, ConstructDataBinningAttributes *atts)
 {
     if (id >= networkCache.size())
     {
@@ -3852,7 +3919,7 @@ NetworkManager::ConstructDDF(int id, ConstructDDFAttributes *atts)
  
     if (networkCache[id] == NULL)
     {
-        debug1 << "Asked to construct a DDF from a network that has already "
+        debug1 << "Asked to construct a DataBinning from a network that has already "
                << "been cleared." << endl;
         EXCEPTION0(ImproperUseException);
     }
@@ -3870,54 +3937,54 @@ NetworkManager::ConstructDDF(int id, ConstructDDFAttributes *atts)
 
     if (*dob == NULL)
     {
-        debug1 << "Could not find a valid data set to construct a DDF from"
+        debug1 << "Could not find a valid data set to construct a DataBinning from"
                << endl;
         EXCEPTION0(NoInputException);
     }
 
-    avtDDFConstructor ddfc;
+    avtDataBinningConstructor ddfc;
     ddfc.SetInput(dob);
     avtContract_p spec = networkCache[id]->GetContract();
     loadBalancer->ResetPipeline(spec->GetPipelineIndex());
-    avtDDF *d = ddfc.ConstructDDF(atts, spec);
+    avtDataBinning *d = ddfc.ConstructDataBinning(atts, spec);
     // This should be cleaned up at some point.
     if (d != NULL)
     {
-        d->OutputDDF(atts->GetDdfName());
+        d->OutputDataBinning(atts->GetName());
         bool foundMatch = false;
-        for (size_t i = 0 ; i < ddf_names.size() ; i++)
-            if (ddf_names[i] == atts->GetDdfName())
+        for (size_t i = 0 ; i < dataBinningNames.size() ; i++)
+            if (dataBinningNames[i] == atts->GetName())
             {
                 foundMatch = true;
-                ddf[i] = d;
+                dataBinnings[i] = d;
             }
         if (!foundMatch)
         {
-            ddf.push_back(d);
-            ddf_names.push_back(atts->GetDdfName());
+            dataBinnings.push_back(d);
+            dataBinningNames.push_back(atts->GetName());
         }
     }
 }
 
 
 // ****************************************************************************
-//  Method: NetworkManager::GetDDF
+//  Method: NetworkManager::GetDataBinning
 //
 //  Purpose:
-//      Gets a DDF.
+//      Gets a DataBinning.
 //
 //  Programmer: Hank Childs
 //  Creation:   February 18, 2006
 //
 // ****************************************************************************
 
-avtDDF *
-NetworkManager::GetDDF(const char *name)
+avtDataBinning *
+NetworkManager::GetDataBinning(const char *name)
 {
-    for (size_t i = 0 ; i < ddf_names.size() ; i++)
+    for (size_t i = 0 ; i < dataBinningNames.size() ; i++)
     {
-        if (ddf_names[i] == name)
-            return ddf[i];
+        if (dataBinningNames[i] == name)
+            return dataBinnings[i];
     }
 
     return NULL;
@@ -4578,21 +4645,26 @@ GetDatabase(void *nm, const std::string &filename, int time,const char *format)
 
 
 // ****************************************************************************
-//  Function: GetDDFCallbackBridge
+//  Function: GetDataBinningCallbackBridge
 //
 //  Purpose:
-//      The bridge that can go to the network manager and ask for a DDF.
+//      The bridge that can go to the network manager and ask for a DataBinning.
 //
 //  Programmer: Hank Childs
 //  Creation:   February 18, 2006
 //
+//  Modifications:
+//
+//    Hank Childs, Sat Aug 21 14:35:47 PDT 2010
+//    Rename DDF to DataBinning.
+//
 // ****************************************************************************
 
-static avtDDF *
-GetDDFCallbackBridge(void *arg, const char *name)
+static avtDataBinning *
+GetDataBinningCallbackBridge(void *arg, const char *name)
 {
     NetworkManager *nm = (NetworkManager *) arg;
-    return nm->GetDDF(name);
+    return nm->GetDataBinning(name);
 }
 
 #ifdef PARALLEL

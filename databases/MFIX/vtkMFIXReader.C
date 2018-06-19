@@ -14,7 +14,7 @@
 =========================================================================*/
 // Thanks to Phil Nicoletti and Brian Dotson at the National Energy 
 // Technology Laboratory who developed this class.
-// Please address all comments to Brian Dotson (brian.dotson@netl.doe.gov)
+// Please address all comments to Terry Jordan (terry.jordan@netl.doe.gov)
 //
 
 #include <vtkMFIXReader.h>
@@ -986,6 +986,45 @@ void vtkMFIXReader::GetBlockOfFloats(istream& in, vtkFloatArray *v, int n)
     in.read( (char*)&tempArray , 512 );
     if (!in)
         EXCEPTION1(InvalidFilesException, "unknown");
+    for (int j=0; j<numberOfFloatsInBlock; ++j)
+      {
+      if (c < n) 
+        {
+        float temp = tempArray[j];
+        this->SwapFloat(temp);
+        if ( this->Flag->GetValue(c) < 10) 
+          {
+          v->InsertValue(cnt, temp);
+          cnt++;
+          }
+        ++c;
+        }
+      }
+    }
+}
+
+//----------------------------------------------------------------------------
+void vtkMFIXReader::GetBlockOfFloats(FILE* in, vtkFloatArray *v, int n)
+{
+  const int numberOfFloatsInBlock = 512/sizeof(float);
+  float tempArray[numberOfFloatsInBlock];
+  int numberOfRecords;
+
+  if ( n%numberOfFloatsInBlock == 0)
+    {
+    numberOfRecords = n/numberOfFloatsInBlock;
+    }
+  else
+    {
+    numberOfRecords = 1 + n/numberOfFloatsInBlock;
+    }
+
+  int c = 0;
+  int cnt = 0;
+  for (int i=0; i<numberOfRecords; ++i)
+    {
+      fread( (char*)&tempArray , 512 , 1 , in );
+   // in.read( (char*)&tempArray , 512 );
     for (int j=0; j<numberOfFloatsInBlock; ++j)
       {
       if (c < n) 
@@ -2081,7 +2120,7 @@ void vtkMFIXReader::GetTimeSteps()
         case 7:
           {
           numberOfVariables = this->NMax->GetValue(0);
-          for (int m=0; m<this->MMAX; ++m)
+          for (int m=1; m<=this->MMAX; ++m)
             {
             numberOfVariables += this->NMax->GetValue(m);
             }
@@ -2221,12 +2260,14 @@ void vtkMFIXReader::GetVariableAtTimestep(int vari , int tstep,
   int index = (vari*this->MaximumTimestep) + tstep;
   long long nBytesSkip = this->SPXTimestepIndexTable->GetValue(index);
 #ifdef _WIN32
-  ifstream in(fileName,ios::binary);
+  FILE* in = fopen(fileName,"rb");
+  int result = _fseeki64(in,nBytesSkip,SEEK_SET);
+  this->GetBlockOfFloats (in, v, this->IJKMaximum2);
 #else
   ifstream in(fileName);
-#endif
   in.seekg(nBytesSkip,ios::beg);
   this->GetBlockOfFloats (in, v, this->IJKMaximum2);
+#endif
 }
 
 //----------------------------------------------------------------------------
@@ -2272,6 +2313,14 @@ void vtkMFIXReader::GetNumberOfVariablesInSPXFiles()
 {
   int NumberOfVariablesInSPX = 0;
   int skip = 0;
+
+  //initialize VariablesToSkipTable to 0
+  //for windows
+  for(int i=0;i<this->VariableNames->GetMaxId()+1;i++)
+    {
+    this->VariableToSkipTable->InsertValue(i,0);
+    }
+
   for (int j=1; j<this->NumberOfSPXFilesUsed; j++)
     {
     for(int i=0;i<this->VariableNames->GetMaxId()+1;i++)
@@ -2415,7 +2464,7 @@ void vtkMFIXReader::GetAllTimes(vtkInformationVector *outputVector)
     }
 
 #ifdef _WIN32
-  ifstream tfile(fileName, ios::binary);
+  FILE* tfile = fopen(fileName, "rb");
 #else
   ifstream tfile(fileName);
 #endif
@@ -2430,18 +2479,34 @@ void vtkMFIXReader::GetAllTimes(vtkInformationVector *outputVector)
   int numberOfVariablesInSPX = this->SPXToNVarTable->GetValue(tmpval);
   int offset = 512-(int)sizeof(float) + 
     512*(numberOfVariablesInSPX*SPXRecordsPerTimestep);
-  tfile.clear();
+#ifdef _WIN32
+  fseek(tfile, 3*512, SEEK_SET); // first time
+#else
   tfile.seekg( 3*512, ios::beg ); // first time
+#endif
   float time;
   double* steps = new double[this->NumberOfTimeSteps];
 
   for (int i = 0; i < this->NumberOfTimeSteps; i++)
     {
+#ifdef _WIN32
+    fread((char*)&time, sizeof(float), 1, tfile);
+#else
     tfile.read( (char*)&time,sizeof(float) );
+#endif
     SwapFloat(time);
     steps[i] = (double)time;
+#ifdef _WIN32
+    _fseeki64(tfile,offset,SEEK_CUR);
+#else
     tfile.seekg(offset,ios::cur);
+#endif
     }
+#ifdef _WIN32
+    fclose(tfile);
+#else
+    tfile.close();
+#endif
 
   vtkInformation* outInfo = outputVector->GetInformationObject(0);
   outInfo->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), 

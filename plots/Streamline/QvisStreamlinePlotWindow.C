@@ -49,15 +49,25 @@
 #include <QLayout>
 #include <QLineEdit>
 #include <QSpinBox>
+#include <QPushButton>
 #include <QTabWidget>
 #include <QToolTip>
+#include <QButtonGroup>
+#include <QRadioButton>
 #include <QvisColorTableButton.h>
 #include <QvisColorButton.h>
 #include <QvisLineWidthWidget.h>
 #include <QvisVariableButton.h>
 #include <QvisOpacitySlider.h>
+#include <QListWidget>
+#include <QFileDialog>
 #include <stdio.h>
+#include <iostream>
 
+static void
+TurnOn(QWidget *w0, QWidget *w1=NULL);
+static void
+TurnOff(QWidget *w0, QWidget *w1=NULL);
 
 // ****************************************************************************
 // Method: QvisStreamlinePlotWindow::QvisStreamlinePlotWindow
@@ -169,6 +179,12 @@ QvisStreamlinePlotWindow::~QvisStreamlinePlotWindow()
 //   Allen Sanderson, Sun Mar  7 12:49:56 PST 2010
 //   Change layout of window for 2.0 interface changes.
 //
+//   Dave Pugmire, Thu Jun 10 10:44:02 EDT 2010
+//   New seed sources.
+//
+//   Dave Pugmire, Mon Jul 12 15:34:29 EDT 2010
+//   Rename Exterior to Boundary.
+//
 // ****************************************************************************
 
 void
@@ -184,6 +200,7 @@ QvisStreamlinePlotWindow::CreateWindowContents()
     propertyTabs->addTab(streamlineTab, tr("Streamlines"));
     
     QGridLayout *mainLayout = new QGridLayout(streamlineTab);
+    mainLayout->setMargin(5);
 
     // Create the source group box.
     QGroupBox *sourceGroup = new QGroupBox(central);
@@ -220,19 +237,7 @@ QvisStreamlinePlotWindow::CreateWindowContents()
     geometryLayout->setSpacing(10);
     geometryLayout->setRowStretch(5,10);
 
-
-    //
-    // Create the widget that lets the user set the point density.
-    //
     int gRow = 0;
-    pointDensityLabel = new QLabel(tr("Point density"), sourceGroup);
-    geometryLayout->addWidget(pointDensityLabel, gRow, 0);
-    pointDensity = new QSpinBox(sourceGroup);
-    pointDensity->setMinimum(1);
-    pointDensity->setMaximum(1000);
-    connect(pointDensity, SIGNAL(valueChanged(int)), this, SLOT(pointDensityChanged(int)));
-    geometryLayout->addWidget(pointDensity, gRow, 1);
-    ++gRow;
 
     // Create the widgets that specify a point source.
     pointSource = new QLineEdit(sourceGroup);
@@ -244,20 +249,26 @@ QvisStreamlinePlotWindow::CreateWindowContents()
     geometryLayout->addWidget(pointSource, gRow, 1);
     ++gRow;
 
+    //Point list.
+    pointList = new QListWidget(sourceGroup);
+    geometryLayout->addWidget(pointList, gRow, 0);
+    connect(pointList, SIGNAL(itemDoubleClicked(QListWidgetItem*)), this, SLOT(pointListDoubleClicked(QListWidgetItem*)));
+    connect(pointList, SIGNAL(itemClicked(QListWidgetItem*)), this, SLOT(pointListClicked(QListWidgetItem*)));
+    connect(pointList, SIGNAL(currentTextChanged(const QString&)), this, SLOT(textChanged(QString)));
 
-    // Create the widgets that specify a point list.
-    pointList = new QLineEdit(sourceGroup);
-    connect(pointList, SIGNAL(returnPressed()),
-            this, SLOT(pointListProcessText()));
-    pointListLabel = new QLabel(tr("Locations"), sourceGroup);
-    pointListInfo = new QLabel(tr("Format as \"X1 Y1 Z1 X2 Y2 Z2 ...\".  For 2D, use 0 for Z."), sourceGroup);
-    pointListLabel->setBuddy(pointList);
-    geometryLayout->addWidget(pointListLabel, gRow, 0);
-    geometryLayout->addWidget(pointList, gRow, 1);
-    ++gRow;
-    geometryLayout->addWidget(pointListInfo, gRow, 0, 1, 2);
-    ++gRow;
+    pointListReadPoints = new QPushButton(tr("Read Text File"), sourceGroup);
+    geometryLayout->addWidget(pointListReadPoints, gRow, 1);
+    connect(pointListReadPoints, SIGNAL(clicked()), this, SLOT(readPoints()));
 
+    gRow++;
+
+    pointListAddPoint = new QPushButton(tr("Add Point"), sourceGroup);
+    pointListDelPoint = new QPushButton(tr("Delete Point"), sourceGroup);
+    connect(pointListAddPoint, SIGNAL(clicked()), this, SLOT(addPoint()));
+    connect(pointListDelPoint, SIGNAL(clicked()), this, SLOT(deletePoint()));
+    geometryLayout->addWidget(pointListAddPoint, gRow, 0);
+    geometryLayout->addWidget(pointListDelPoint, gRow, 1);
+    gRow++;
 
     // Create the widgets that specify a line source.
     lineStart = new QLineEdit(sourceGroup);
@@ -306,15 +317,6 @@ QvisStreamlinePlotWindow::CreateWindowContents()
     geometryLayout->addWidget(planeUpAxis, gRow,1);
     ++gRow;
 
-    planeRadius = new QLineEdit(sourceGroup);
-    connect(planeRadius, SIGNAL(returnPressed()),
-            this, SLOT(planeRadiusProcessText()));
-    planeRadiusLabel = new QLabel(tr("Radius"), sourceGroup);
-    planeRadiusLabel->setBuddy(planeRadius);
-    geometryLayout->addWidget(planeRadiusLabel,gRow,0);
-    geometryLayout->addWidget(planeRadius, gRow,1);
-    ++gRow;
-
     // Create the widgets that specify a sphere source.
     sphereOrigin = new QLineEdit(sourceGroup);
     connect(sphereOrigin, SIGNAL(returnPressed()),
@@ -325,13 +327,12 @@ QvisStreamlinePlotWindow::CreateWindowContents()
     geometryLayout->addWidget(sphereOrigin, gRow,1);
     ++gRow;
 
-    sphereRadius = new QLineEdit(sourceGroup);
-    connect(sphereRadius, SIGNAL(returnPressed()),
-            this, SLOT(sphereRadiusProcessText()));
-    sphereRadiusLabel = new QLabel(tr("Radius"), sourceGroup);
-    sphereRadiusLabel->setBuddy(sphereRadius);
-    geometryLayout->addWidget(sphereRadiusLabel,gRow,0);
-    geometryLayout->addWidget(sphereRadius, gRow,1);
+    radius = new QLineEdit(sourceGroup);
+    connect(radius, SIGNAL(returnPressed()), this, SLOT(radiusProcessText()));
+    radiusLabel = new QLabel(tr("Radius"), sourceGroup);
+    radiusLabel->setBuddy(radius);
+    geometryLayout->addWidget(radiusLabel,gRow,0);
+    geometryLayout->addWidget(radius, gRow,1);
     ++gRow;
 
     // Create the widgets that specify a box source
@@ -366,7 +367,94 @@ QvisStreamlinePlotWindow::CreateWindowContents()
     boxExtentsLabel[2]->setBuddy(boxExtents[2]);
     geometryLayout->addWidget(boxExtentsLabel[2], gRow, 0);
     geometryLayout->addWidget(boxExtents[2], gRow, 1);
+    gRow++;
 
+    //Sampling options.
+    samplingGroup = new QGroupBox(sourceGroup);
+    samplingGroup->setTitle(tr("Sampling"));
+    sourceLayout->addWidget(samplingGroup, gRow, 0, 1, 5);
+    QGridLayout *samplingLayout = new QGridLayout(samplingGroup);
+    samplingLayout->setMargin(5);
+    samplingLayout->setSpacing(10);
+    samplingLayout->setRowStretch(5,10);
+    gRow++;
+    
+    int sRow = 0;
+    fillLabel = new QLabel(tr("Sampling along:"), samplingGroup);
+    samplingLayout->addWidget(fillLabel, sRow, 0);
+    fillButtonGroup = new QButtonGroup(samplingGroup);
+    fillButtons[0] = new QRadioButton(tr("Boundary"), samplingGroup);
+    fillButtons[1] = new QRadioButton(tr("Interior"), samplingGroup);
+    fillButtons[0]->setChecked(true);
+    fillButtonGroup->addButton(fillButtons[0], 0);
+    fillButtonGroup->addButton(fillButtons[1], 1);
+    samplingLayout->addWidget(fillButtons[0], sRow, 1);
+    samplingLayout->addWidget(fillButtons[1], sRow, 2);
+    connect(fillButtonGroup, SIGNAL(buttonClicked(int)), this, SLOT(fillChanged(int)));
+    sRow++;
+    
+    randomSamples = new QCheckBox(tr("Random"), samplingGroup);
+    connect(randomSamples, SIGNAL(toggled(bool)),this, SLOT(randomSamplesChanged(bool)));
+    samplingLayout->addWidget(randomSamples, sRow, 0);
+
+    numberOfRandomSamplesLabel = new QLabel(tr("Number of Samples"), samplingGroup);
+    samplingLayout->addWidget(numberOfRandomSamplesLabel, sRow, 1);
+    numberOfRandomSamples = new QSpinBox(samplingGroup);
+    numberOfRandomSamples->setMinimum(1);
+    numberOfRandomSamples->setMaximum(100000000);
+    connect(numberOfRandomSamples, SIGNAL(valueChanged(int)), this, SLOT(numberOfRandomSamplesChanged(int)));
+    samplingLayout->addWidget(numberOfRandomSamples, sRow, 2);
+
+    randomSeedLabel = new QLabel(tr("Seed"), samplingGroup);
+    samplingLayout->addWidget(randomSeedLabel, sRow, 3);
+    randomSeed = new QSpinBox(samplingGroup);
+    randomSeed->setMinimum(0);
+    randomSeed->setMaximum(100000000);
+    connect(randomSeed, SIGNAL(valueChanged(int)), this, SLOT(randomSeedChanged(int)));
+    samplingLayout->addWidget(randomSeed, sRow, 4);
+    randomSeedLabel->setBuddy(randomSeed);
+
+    sRow++;    
+
+    sampleDensityLabel[0] = new QLabel(tr("Sample density 0"), samplingGroup);
+    sampleDensityLabel[1] = new QLabel(tr("Sample density 1"), samplingGroup);
+    sampleDensityLabel[2] = new QLabel(tr("Sample density 2"), samplingGroup);
+    sampleDensity[0] = new QSpinBox(samplingGroup);
+    sampleDensity[1] = new QSpinBox(samplingGroup);
+    sampleDensity[2] = new QSpinBox(samplingGroup);
+    sampleDensity[0]->setMinimum(1);
+    sampleDensity[0]->setMaximum(10000000);
+    sampleDensity[1]->setMinimum(1);
+    sampleDensity[1]->setMaximum(10000000);
+    sampleDensity[2]->setMinimum(1);
+    sampleDensity[1]->setMaximum(10000000);
+    connect(sampleDensity[0], SIGNAL(valueChanged(int)), this, SLOT(sampleDensity0Changed(int)));
+    connect(sampleDensity[1], SIGNAL(valueChanged(int)), this, SLOT(sampleDensity1Changed(int)));
+    connect(sampleDensity[2], SIGNAL(valueChanged(int)), this, SLOT(sampleDensity2Changed(int)));
+    samplingLayout->addWidget(sampleDensityLabel[0], sRow, 0);
+    samplingLayout->addWidget(sampleDensity[0], sRow, 1);
+    samplingLayout->addWidget(sampleDensityLabel[1], sRow, 2);
+    samplingLayout->addWidget(sampleDensity[1], sRow, 3);
+    samplingLayout->addWidget(sampleDensityLabel[2], sRow, 4);
+    samplingLayout->addWidget(sampleDensity[2], sRow, 5);
+    sRow++;
+
+    sampleDistanceLabel[0] = new QLabel(tr("Sample distance 0"), samplingGroup);
+    sampleDistanceLabel[1] = new QLabel(tr("Sample distance 1"), samplingGroup);
+    sampleDistanceLabel[2] = new QLabel(tr("Sample distance 2"), samplingGroup);
+    sampleDistance[0] = new QLineEdit(samplingGroup);
+    sampleDistance[1] = new QLineEdit(samplingGroup);
+    sampleDistance[2] = new QLineEdit(samplingGroup);
+    connect(sampleDistance[0], SIGNAL(returnPressed()), this, SLOT(sampleDistance0ProcessText()));
+    connect(sampleDistance[1], SIGNAL(returnPressed()), this, SLOT(sampleDistance1ProcessText()));
+    connect(sampleDistance[2], SIGNAL(returnPressed()), this, SLOT(sampleDistance2ProcessText()));
+    samplingLayout->addWidget(sampleDistanceLabel[0], sRow, 0);
+    samplingLayout->addWidget(sampleDistance[0], sRow, 1);
+    samplingLayout->addWidget(sampleDistanceLabel[1], sRow, 2);
+    samplingLayout->addWidget(sampleDistance[1], sRow, 3);
+    samplingLayout->addWidget(sampleDistanceLabel[2], sRow, 4);
+    samplingLayout->addWidget(sampleDistance[2], sRow, 5);
+    sRow++;
 
     // Create the termination group box.
     QGroupBox *terminationGroup = new QGroupBox(central);
@@ -422,6 +510,7 @@ QvisStreamlinePlotWindow::CreateWindowContents()
     integrationType = new QComboBox(integrationGroup);
     integrationType->addItem(tr("Dormand-Prince (Runge-Kutta)"));
     integrationType->addItem(tr("Adams-Bashforth (Multi-step)"));
+    integrationType->addItem(tr("M3D-C1 Integrator"));
     connect(integrationType, SIGNAL(activated(int)),
             this, SLOT(integrationTypeChanged(int)));
     integrationLayout->addWidget(integrationType, 0,1);
@@ -445,10 +534,16 @@ QvisStreamlinePlotWindow::CreateWindowContents()
     // Create the absolute tolerance text field.
     absTolLabel = new QLabel(tr("Absolute tolerance"), integrationGroup);
     absTol = new QLineEdit(integrationGroup);
-    connect(absTol, SIGNAL(returnPressed()),
-            this, SLOT(absTolProcessText()));
+    connect(absTol, SIGNAL(returnPressed()), this, SLOT(absTolProcessText()));
     integrationLayout->addWidget(absTolLabel, 3,0);
     integrationLayout->addWidget(absTol, 3, 1);
+
+    forceNodalLabel = new QLabel(tr("Force node centering"), integrationGroup);
+    forceNodal = new QCheckBox(integrationGroup);
+    connect(forceNodal, SIGNAL(toggled(bool)), this, SLOT(forceNodalChanged(bool)));
+    integrationLayout->addWidget(forceNodalLabel, 4,0);
+    integrationLayout->addWidget(forceNodal, 4, 1);
+    
 
     // ----------------------------------------------------------------------
     // Appearance tab
@@ -518,7 +613,13 @@ QvisStreamlinePlotWindow::CreateAppearanceTab(QWidget *pageAppearance)
             this, SLOT(coloringMethodChanged(int)));
     dataLayout->addWidget(dataValueComboBox, 0, 1);
 
-    dataLayout->addWidget(new QLabel(tr("   "), central), 0, 2);
+
+    coloringVar = new QvisVariableButton(false, true, true,
+                                         QvisVariableButton::Scalars,
+                                         dataGroup);
+    dataLayout->addWidget(coloringVar, 0, 2);
+    connect(coloringVar, SIGNAL(activated(const QString &)),
+            this, SLOT(coloringVariableChanged(const QString&)));
 
     // Create the limits group box.
     QGroupBox *limitsGroup = new QGroupBox(central);
@@ -549,16 +650,7 @@ QvisStreamlinePlotWindow::CreateAppearanceTab(QWidget *pageAppearance)
             this, SLOT(processMaxLimitText()));
     limitsLayout->addWidget(legendMaxEdit, 0, 4);
 
-    
-    coloringVarLabel = new QLabel(tr("Variable"), dataGroup);
-    coloringVar = new QvisVariableButton(false, true, true, QvisVariableButton::Scalars,
-                                         dataGroup);
-    dataLayout->addWidget(coloringVarLabel,2,1);
-    dataLayout->addWidget(coloringVar,2,2);
-    connect(coloringVar, SIGNAL(activated(const QString &)),
-            this, SLOT(coloringVariableChanged(const QString&)));
-
-    // Create the display group
+        // Create the display group
     QGroupBox *displayGrp = new QGroupBox(pageAppearance);
     displayGrp->setTitle(tr("Display"));
     appearanceLayout->addWidget(displayGrp);
@@ -607,10 +699,10 @@ QvisStreamlinePlotWindow::CreateAppearanceTab(QWidget *pageAppearance)
             this, SLOT(tubeRadiusProcessText()));
     connect(ribbonWidth, SIGNAL(returnPressed()),
             this, SLOT(ribbonWidthProcessText()));
-    radiusLabel = new QLabel(tr("Radius"), displayGrp);
-    radiusLabel->setBuddy(tubeRadius);
-    radiusLabel->setToolTip(tr("Radius used for tubes and ribbons."));
-    drawLayout->addWidget(radiusLabel, 1, 0, Qt::AlignRight);
+    geomRadiusLabel = new QLabel(tr("Radius"), displayGrp);
+    geomRadiusLabel->setBuddy(tubeRadius);
+    geomRadiusLabel->setToolTip(tr("Radius used for tubes and ribbons."));
+    drawLayout->addWidget(geomRadiusLabel, 1, 0, Qt::AlignRight);
     drawLayout->addWidget(tubeRadius, 1, 1);
     drawLayout->addWidget(ribbonWidth, 1, 1);
 
@@ -1033,20 +1125,31 @@ QvisStreamlinePlotWindow::UpdateWindow(bool doAll)
         case StreamlineAttributes::ID_planeUpAxis:
             planeUpAxis->setText(DoublesToQString(streamAtts->GetPlaneUpAxis(),3));
             break;
-        case StreamlineAttributes::ID_planeRadius:
-            temp.setNum(streamAtts->GetPlaneRadius());
-            planeRadius->setText(temp);
+        case StreamlineAttributes::ID_radius:
+            temp.setNum(streamAtts->GetRadius());
+            radius->setText(temp);
             break;
         case StreamlineAttributes::ID_sphereOrigin:
             sphereOrigin->setText(DoublesToQString(streamAtts->GetSphereOrigin(),3));
             break;
-        case StreamlineAttributes::ID_sphereRadius:
-            temp.setNum(streamAtts->GetSphereRadius());
-            sphereRadius->setText(temp);
-            break;
         case StreamlineAttributes::ID_pointList:
-            pointList->setText(DoublesToQString(streamAtts->GetPointList()));
-            break;
+            {
+                std::vector<double> points = streamAtts->GetPointList();
+
+                pointList->clear();
+                for (int i = 0; i < points.size(); i+= 3)
+                {
+                    char tmp[256];
+                    sprintf(tmp, "%lf %lf %lf", points[i], points[i+1], points[i+2]);
+                    QString str = tmp;
+                    QListWidgetItem *item = new QListWidgetItem(str, pointList);
+                    item->setFlags(item->flags() | Qt::ItemIsEditable);
+                    pointList->setCurrentItem(item);
+                }
+
+                break;
+            }
+            
         case StreamlineAttributes::ID_boxExtents:
             boxExtents[0]->setText(DoublesToQString(streamAtts->GetBoxExtents(),2));
             boxExtents[1]->setText(DoublesToQString(streamAtts->GetBoxExtents()+2,2));
@@ -1075,11 +1178,36 @@ QvisStreamlinePlotWindow::UpdateWindow(bool doAll)
             }
             useWholeBox->blockSignals(false);
             break;
-        case StreamlineAttributes::ID_pointDensity:
-            pointDensity->blockSignals(true);
-            pointDensity->setValue(streamAtts->GetPointDensity());
-            pointDensity->blockSignals(false);
+
+        case StreamlineAttributes::ID_sampleDensity0:
+            sampleDensity[0]->blockSignals(true);
+            sampleDensity[0]->setValue(streamAtts->GetSampleDensity0());
+            sampleDensity[0]->blockSignals(false);
             break;
+        case StreamlineAttributes::ID_sampleDensity1:
+            sampleDensity[1]->blockSignals(true);
+            sampleDensity[1]->setValue(streamAtts->GetSampleDensity1());
+            sampleDensity[1]->blockSignals(false);
+            break;
+        case StreamlineAttributes::ID_sampleDensity2:
+            sampleDensity[2]->blockSignals(true);
+            sampleDensity[2]->setValue(streamAtts->GetSampleDensity2());
+            sampleDensity[2]->blockSignals(false);
+            break;
+
+        case StreamlineAttributes::ID_sampleDistance0:
+            temp.setNum(streamAtts->GetSampleDistance0());
+            sampleDistance[0]->setText(temp);
+            break;
+        case StreamlineAttributes::ID_sampleDistance1:
+            temp.setNum(streamAtts->GetSampleDistance1());
+            sampleDistance[1]->setText(temp);
+            break;
+        case StreamlineAttributes::ID_sampleDistance2:
+            temp.setNum(streamAtts->GetSampleDistance2());
+            sampleDistance[2]->setText(temp);
+            break;
+
 
           case StreamlineAttributes::ID_tubeDisplayDensity:
             tubeDisplayDensity->blockSignals(true);
@@ -1124,7 +1252,7 @@ QvisStreamlinePlotWindow::UpdateWindow(bool doAll)
 
                 tubeRadius->hide();
                 ribbonWidth->hide();
-                radiusLabel->hide();
+                geomRadiusLabel->hide();
                 tubeDisplayDensityLabel->hide();
                 tubeDisplayDensity->hide();
             }
@@ -1144,7 +1272,7 @@ QvisStreamlinePlotWindow::UpdateWindow(bool doAll)
                     tubeRadius->hide();
                 }
                 
-                radiusLabel->show();
+                geomRadiusLabel->show();
                 tubeDisplayDensityLabel->show();
                 tubeDisplayDensity->show();
                 geomDisplayQualityLabel->show();
@@ -1244,16 +1372,12 @@ QvisStreamlinePlotWindow::UpdateWindow(bool doAll)
 
             if (streamAtts->GetColoringMethod() == StreamlineAttributes::ColorByVariable)
             {
-                coloringVarLabel->setEnabled(true);
                 coloringVar->setEnabled(true);
-                coloringVarLabel->show();
                 coloringVar->show();
             }
             else
             {
-                coloringVarLabel->setEnabled(false);
                 coloringVar->setEnabled(false);
-                coloringVarLabel->hide();
                 coloringVar->hide();
             }
             }
@@ -1460,8 +1584,79 @@ QvisStreamlinePlotWindow::UpdateWindow(bool doAll)
               opacityVarMax->setEnabled(streamAtts->GetOpacityVarMaxFlag());
               opacityMaxToggle->blockSignals(false);
               break;
+
+            case StreamlineAttributes::ID_randomSamples:
+              randomSamples->blockSignals(true);
+              randomSamples->setChecked(streamAtts->GetRandomSamples());
+              UpdateSourceAttributes();
+              randomSamples->blockSignals(false);
+              break;
+
+            case StreamlineAttributes::ID_fillInterior:
+              fillButtonGroup->blockSignals(true);
+              fillButtonGroup->button(streamAtts->GetFillInterior()?1:0)->setChecked(true);
+              UpdateSourceAttributes();
+              fillButtonGroup->blockSignals(false);
+              break;
+
+            case StreamlineAttributes::ID_randomSeed:
+              randomSeed->blockSignals(true);
+              randomSeed->setValue(streamAtts->GetRandomSeed());
+              randomSeed->blockSignals(false);
+              break;
+              
+            case StreamlineAttributes::ID_numberOfRandomSamples:
+              numberOfRandomSamples->blockSignals(true);
+              numberOfRandomSamples->setValue(streamAtts->GetNumberOfRandomSamples());
+              numberOfRandomSamples->blockSignals(false);
+              break;
+
+        case StreamlineAttributes::ID_forceNodeCenteredData:
+            forceNodal->blockSignals(true);
+            forceNodal->setChecked(streamAtts->GetForceNodeCenteredData());
+            forceNodal->blockSignals(false);
+            break;
         }
     }
+}
+
+void
+QvisStreamlinePlotWindow::TurnOffSourceAttributes()
+{
+    TurnOff(pointSource, pointSourceLabel);
+
+    TurnOff(lineStart, lineStartLabel);
+    TurnOff(lineEnd, lineEndLabel);
+
+    TurnOff(planeOrigin, planeOriginLabel);
+    TurnOff(planeNormal, planeNormalLabel);
+    TurnOff(planeUpAxis, planeUpAxisLabel);
+
+    TurnOff(sphereOrigin, sphereOriginLabel);
+
+    TurnOff(radius, radiusLabel);
+
+    TurnOff(useWholeBox);
+    for (int i = 0; i < 3; i++)
+        TurnOff(boxExtents[i], boxExtentsLabel[i]);
+
+    TurnOff(pointList);
+    TurnOff(pointListDelPoint);
+    TurnOff(pointListAddPoint);
+    TurnOff(pointListReadPoints);
+
+    TurnOff(randomSamples);
+    TurnOff(numberOfRandomSamples, numberOfRandomSamplesLabel);
+    TurnOff(randomSeed, randomSeedLabel);
+    TurnOff(fillLabel);
+    TurnOff(fillButtons[0]);
+    TurnOff(fillButtons[1]);
+    for (int i = 0; i < 3; i++)
+    {
+        TurnOff(sampleDensity[i], sampleDensityLabel[i]);
+        TurnOff(sampleDistance[i], sampleDistanceLabel[i]);
+    }
+    TurnOff(samplingGroup);
 }
 
 // ****************************************************************************
@@ -1487,175 +1682,158 @@ QvisStreamlinePlotWindow::UpdateWindow(bool doAll)
 void
 QvisStreamlinePlotWindow::UpdateSourceAttributes()
 {
-    bool usePoint =
-      streamAtts->GetSourceType() == StreamlineAttributes::SpecifiedPoint;
-    bool usePointList =
-      streamAtts->GetSourceType() == StreamlineAttributes::SpecifiedPointList;
-    bool useLine  =
-      streamAtts->GetSourceType() == StreamlineAttributes::SpecifiedLine;
-    bool useCircle =
-      streamAtts->GetSourceType() == StreamlineAttributes::SpecifiedCircle;
-    bool usePlane =
-      streamAtts->GetSourceType() == StreamlineAttributes::SpecifiedPlane;
-    bool useSphere =
-      streamAtts->GetSourceType() == StreamlineAttributes::SpecifiedSphere;
-    bool useBox =
-      streamAtts->GetSourceType() == StreamlineAttributes::SpecifiedBox;
-    //
-    // Update the point widgets.
-    //
-    pointSource->setEnabled(usePoint);
-    pointSourceLabel->setEnabled(usePoint);
-    if(usePoint)
-    {
-        pointSource->show();
-        pointSourceLabel->show();
-    }
-    else
-    {
-        pointSource->hide();
-        pointSourceLabel->hide();
-    }
+    TurnOffSourceAttributes();
 
-    //
-    // Update the line widgets.
-    //
-    lineStart->setEnabled(useLine);
-    lineEnd->setEnabled(useLine);
-    lineStartLabel->setEnabled(useLine);
-    lineEndLabel->setEnabled(useLine);
-    if(useLine)
+    bool showSampling = false, enableRandom = false, enableFill = false;
+    
+    if (streamAtts->GetSourceType() == StreamlineAttributes::SpecifiedPoint)
+        TurnOn(pointSource, pointSourceLabel);
+    else if (streamAtts->GetSourceType() == StreamlineAttributes::SpecifiedLine)
     {
-        lineStart->show();
-        lineEnd->show();
-        lineStartLabel->show();
-        lineEndLabel->show();
-    }
-    else
-    {
-        lineStart->hide();
-        lineEnd->hide();
-        lineStartLabel->hide();
-        lineEndLabel->hide();
-    }
-
-    //
-    // Update the plane widgets.
-    //
-    planeOrigin->setEnabled(usePlane || useCircle);
-    planeNormal->setEnabled(usePlane || useCircle);
-    planeUpAxis->setEnabled(usePlane || useCircle);
-    planeRadius->setEnabled(usePlane || useCircle);
-    planeOriginLabel->setEnabled(usePlane || useCircle);
-    planeNormalLabel->setEnabled(usePlane || useCircle);
-    planeUpAxisLabel->setEnabled(usePlane || useCircle);
-    planeRadiusLabel->setEnabled(usePlane || useCircle);
-    if(usePlane || useCircle)
-    {
-        planeOrigin->show();
-        planeNormal->show();
-        planeUpAxis->show();
-        planeRadius->show();
-        planeOriginLabel->show();
-        planeNormalLabel->show();
-        planeUpAxisLabel->show();
-        planeRadiusLabel->show();
-    }
-    else
-    {
-        planeOrigin->hide();
-        planeNormal->hide();
-        planeUpAxis->hide();
-        planeRadius->hide();
-        planeOriginLabel->hide();
-        planeNormalLabel->hide();
-        planeUpAxisLabel->hide();
-        planeRadiusLabel->hide();
-    }
-
-    //
-    // Update the sphere widgets.
-    //
-    sphereOrigin->setEnabled(useSphere);
-    sphereRadius->setEnabled(useSphere);
-    sphereOriginLabel->setEnabled(useSphere);
-    sphereRadiusLabel->setEnabled(useSphere);
-    if(useSphere)
-    {
-        sphereOrigin->show();
-        sphereRadius->show();
-        sphereOriginLabel->show();
-        sphereRadiusLabel->show();
-    }
-    else
-    {
-        sphereOrigin->hide();
-        sphereRadius->hide();
-        sphereOriginLabel->hide();
-        sphereRadiusLabel->hide();
-    }
-
-    //
-    // Update the box widgets
-    //
-    if(useBox)
-    {
-        useWholeBox->show();
-    }
-    else
-        useWholeBox->hide();
-    for(int i = 0; i < 3; ++i)
-    {
-        boxExtents[i]->setEnabled(useBox);
-        boxExtentsLabel[i]->setEnabled(useBox);
-        if(useBox)
+        TurnOn(lineStart, lineStartLabel);
+        TurnOn(lineEnd, lineEndLabel);
+        if (! streamAtts->GetRandomSamples())
         {
-            boxExtents[i]->show();
-            boxExtentsLabel[i]->show();
-            if (streamAtts->GetUseWholeBox())
+            TurnOn(sampleDensity[0], sampleDensityLabel[0]);
+            sampleDensityLabel[0]->setText(tr("Samples along line:"));
+            sampleDensity[0]->setMinimum(1);
+        }
+
+        enableRandom = true;
+        showSampling = true;
+    }
+    else if (streamAtts->GetSourceType() == StreamlineAttributes::SpecifiedPlane)
+    {
+        TurnOn(planeOrigin, planeOriginLabel);
+        TurnOn(planeNormal, planeNormalLabel);
+        TurnOn(planeUpAxis, planeUpAxisLabel);
+        TurnOn(sampleDistance[0], sampleDistanceLabel[0]);
+        TurnOn(sampleDistance[1], sampleDistanceLabel[1]);
+        sampleDistanceLabel[0]->setText(tr("Distance in X:"));
+        sampleDistanceLabel[1]->setText(tr("Distance in Y:"));
+
+        if (! streamAtts->GetRandomSamples())
+        {
+            TurnOn(sampleDensity[0], sampleDensityLabel[0]);
+            TurnOn(sampleDensity[1], sampleDensityLabel[1]);
+            sampleDensityLabel[0]->setText(tr("Samples in X:"));
+            sampleDensityLabel[1]->setText(tr("Samples in Y:"));
+            for (int i = 0; i < 2; i++)
+                sampleDensity[i]->setMinimum(2);
+        }
+        enableRandom = true;
+        enableFill = true;
+        showSampling = true;
+    }
+    else if (streamAtts->GetSourceType() == StreamlineAttributes::SpecifiedCircle)
+    {
+        TurnOn(planeOrigin, planeOriginLabel);
+        TurnOn(planeNormal, planeNormalLabel);
+        TurnOn(planeUpAxis, planeUpAxisLabel);
+        TurnOn(radius, radiusLabel);
+        if (! streamAtts->GetRandomSamples())
+        {
+            if (streamAtts->GetFillInterior())
+            {
+                TurnOn(sampleDensity[0], sampleDensityLabel[0]);
+                TurnOn(sampleDensity[1], sampleDensityLabel[1]);
+                sampleDensityLabel[0]->setText(tr("Samples in Theta:"));
+                sampleDensityLabel[1]->setText(tr("Samples in R:"));
+            }
+            else
+            {
+                TurnOn(sampleDensity[0], sampleDensityLabel[0]);
+                sampleDensityLabel[0]->setText(tr("Samples in Theta:"));
+            }
+        }
+        enableRandom = true;
+        enableFill = true;
+        showSampling = true;
+    }
+    else if (streamAtts->GetSourceType() == StreamlineAttributes::SpecifiedSphere)
+    {
+        TurnOn(sphereOrigin, sphereOriginLabel);
+        TurnOn(radius, radiusLabel);
+        
+        if (! streamAtts->GetRandomSamples())
+        {
+            TurnOn(sampleDensity[0], sampleDensityLabel[0]);
+            TurnOn(sampleDensity[1], sampleDensityLabel[1]);
+            sampleDensityLabel[0]->setText(tr("Samples in Latitude:"));
+            sampleDensityLabel[1]->setText(tr("Samples in Longitude:"));
+
+            if (streamAtts->GetFillInterior())
+            {
+                TurnOn(sampleDensity[2], sampleDensityLabel[2]);
+                sampleDensityLabel[2]->setText(tr("Samples in R:"));
+            }
+        }
+
+        enableRandom = true;
+        enableFill = true;
+        showSampling = true;
+    }
+    else if (streamAtts->GetSourceType() == StreamlineAttributes::SpecifiedBox)
+    {
+        TurnOn(useWholeBox);
+        for (int i = 0; i < 3; i++)
+            TurnOn(boxExtents[i], boxExtentsLabel[i]);
+
+        if (streamAtts->GetUseWholeBox())
+        {
+            for (int i = 0; i < 3; i++)
             {
                 boxExtents[i]->setEnabled(false);
                 boxExtentsLabel[i]->setEnabled(false);
             }
         }
-        else
+
+        if (! streamAtts->GetRandomSamples())
         {
-            boxExtents[i]->hide();
-            boxExtentsLabel[i]->hide();
+            TurnOn(sampleDensity[0], sampleDensityLabel[0]);
+            TurnOn(sampleDensity[1], sampleDensityLabel[1]);
+            TurnOn(sampleDensity[2], sampleDensityLabel[2]);
+            sampleDensityLabel[0]->setText(tr("Samples in X:"));
+            sampleDensityLabel[1]->setText(tr("Samples in Y:"));
+            sampleDensityLabel[2]->setText(tr("Samples in Z:"));
+            for (int i = 0; i < 3; i++)
+                sampleDensity[i]->setMinimum(2);
+        }
+
+        enableRandom = true;
+        enableFill = true;
+        showSampling = true;
+    }
+    else if (streamAtts->GetSourceType() == StreamlineAttributes::SpecifiedPointList)
+    {
+        TurnOn(pointList);
+        TurnOn(pointListDelPoint);
+        TurnOn(pointListAddPoint);
+        TurnOn(pointListReadPoints);
+    }
+
+    if (enableRandom)
+    {
+        TurnOn(randomSamples);
+        TurnOn(randomSeed, randomSeedLabel);
+        TurnOn(numberOfRandomSamples, numberOfRandomSamplesLabel);
+        if (! streamAtts->GetRandomSamples())
+        {
+            randomSeed->setEnabled(false);
+            randomSeedLabel->setEnabled(false);
+            numberOfRandomSamples->setEnabled(false);
+            numberOfRandomSamplesLabel->setEnabled(false);
         }
     }
-
-    //
-    // Update the point list widgets.
-    //
-    pointList->setEnabled(usePointList);
-    pointListLabel->setEnabled(usePointList);
-    pointListInfo->setEnabled(usePointList);
-    if(usePointList)
+    
+    if (enableFill)
     {
-        pointList->show();
-        pointListLabel->show();
-        pointListInfo->show();
+        TurnOn(fillLabel);
+        TurnOn(fillButtons[0]);
+        TurnOn(fillButtons[1]);
     }
-    else
-    {
-        pointList->hide();
-        pointListLabel->hide();
-        pointListInfo->hide();
-    }
-
-    if (usePoint || usePointList)
-    {
-        pointDensity->setEnabled(false);
-        pointDensityLabel->hide();
-        pointDensity->hide();
-    }
-    else
-    {
-        pointDensity->setEnabled(true);
-        pointDensityLabel->show();
-        pointDensity->show();
-    }
+    if (showSampling)
+        TurnOn(samplingGroup);
 }
 
 // ****************************************************************************
@@ -1677,9 +1855,6 @@ QvisStreamlinePlotWindow::UpdateSourceAttributes()
 void
 QvisStreamlinePlotWindow::UpdateIntegrationAttributes()
 {
-    bool useDormandPrince = streamAtts->GetIntegrationType() == StreamlineAttributes::DormandPrince;
-    bool useAdamsBashforth = streamAtts->GetIntegrationType() == StreamlineAttributes::AdamsBashforth;
-
     //Turn off everything.
     maxStepLength->hide();
     maxStepLengthLabel->hide();
@@ -1688,8 +1863,9 @@ QvisStreamlinePlotWindow::UpdateIntegrationAttributes()
     absTol->hide();
     absTolLabel->hide();
 
-    if ( useDormandPrince )
+    switch( streamAtts->GetIntegrationType() )
     {
+    case StreamlineAttributes::DormandPrince:
         maxStepLength->show();
         maxStepLengthLabel->show();
         maxStepLengthLabel->setText(tr("Maximum step length"));
@@ -1697,14 +1873,16 @@ QvisStreamlinePlotWindow::UpdateIntegrationAttributes()
         relTolLabel->show();
         absTol->show();
         absTolLabel->show();
-    }
-    else if ( useAdamsBashforth )
-    {
+        break;
+
+    case StreamlineAttributes::AdamsBashforth:
+    case StreamlineAttributes::M3DC1Integrator:
         maxStepLength->show();
         maxStepLengthLabel->show();
         maxStepLengthLabel->setText(tr("Step length"));
         absTol->show();
         absTolLabel->show();
+        break;
     }
 }
 
@@ -1971,17 +2149,57 @@ QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
         }
     }
 
-    // Do planeRadius
-    if(which_widget == StreamlineAttributes::ID_planeRadius || doAll)
+    // Do radius
+    if(which_widget == StreamlineAttributes::ID_radius || doAll)
     {
         double val;
-        if(LineEditGetDouble(planeRadius, val))
-            streamAtts->SetPlaneRadius(val);
+        if(LineEditGetDouble(radius, val))
+            streamAtts->SetRadius(val);
         else
         {
             ResettingError(tr("plane radius"),
-                DoubleToQString(streamAtts->GetPlaneRadius()));
-            streamAtts->SetPlaneRadius(streamAtts->GetPlaneRadius());
+                DoubleToQString(streamAtts->GetRadius()));
+            streamAtts->SetRadius(streamAtts->GetRadius());
+        }
+    }
+
+    // Do sampleDistance 0
+    if(which_widget == StreamlineAttributes::ID_sampleDistance0 || doAll)
+    {
+        double val;
+        if(LineEditGetDouble(sampleDistance[0], val))
+            streamAtts->SetSampleDistance0(val);
+        else
+        {
+            ResettingError(tr("Sample distance 0"),
+                DoubleToQString(streamAtts->GetSampleDistance0()));
+            streamAtts->SetSampleDistance0(streamAtts->GetSampleDistance0());
+        }
+    }
+    // Do sampleDistance 1
+    if(which_widget == StreamlineAttributes::ID_sampleDistance1 || doAll)
+    {
+        double val;
+        if(LineEditGetDouble(sampleDistance[1], val))
+            streamAtts->SetSampleDistance1(val);
+        else
+        {
+            ResettingError(tr("Sample distance 1"),
+                DoubleToQString(streamAtts->GetSampleDistance1()));
+            streamAtts->SetSampleDistance1(streamAtts->GetSampleDistance1());
+        }
+    }
+    // Do sampleDistance 2
+    if(which_widget == StreamlineAttributes::ID_sampleDistance2 || doAll)
+    {
+        double val;
+        if(LineEditGetDouble(sampleDistance[2], val))
+            streamAtts->SetSampleDistance2(val);
+        else
+        {
+            ResettingError(tr("Sample distance 1"),
+                DoubleToQString(streamAtts->GetSampleDistance2()));
+            streamAtts->SetSampleDistance2(streamAtts->GetSampleDistance2());
         }
     }
 
@@ -1996,20 +2214,6 @@ QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
             ResettingError(tr("sphere origin"),
                 DoublesToQString(streamAtts->GetSphereOrigin(), 3));
             streamAtts->SetSphereOrigin(streamAtts->GetSphereOrigin());
-        }
-    }
-
-    // Do sphereRadius
-    if(which_widget == StreamlineAttributes::ID_sphereRadius || doAll)
-    {
-        double val;
-        if(LineEditGetDouble(sphereRadius, val))
-            streamAtts->SetSphereRadius(val);
-        else
-        {
-            ResettingError(tr("sphere radius"),
-                DoubleToQString(streamAtts->GetSphereRadius()));
-            streamAtts->SetSphereRadius(streamAtts->GetSphereRadius());
         }
     }
 
@@ -2037,39 +2241,21 @@ QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
     // Do pointList
     if(which_widget == StreamlineAttributes::ID_pointList || doAll)
     {
-        double d[3];
-        bool allOkay = true;
-        std::vector<double> pointListV;
-        if(!LineEditGetDoubles(pointList, pointListV))
-            allOkay = false;
-        bool multipleOf3Error = false;
-        if ((pointListV.size() % 3) != 0)
+        std::vector<double> points;
+        double x,y,z;
+        for (int i = 0; i < pointList->count(); i++)
         {
-            allOkay = false;
-            multipleOf3Error = true;
+            QListWidgetItem *item = pointList->item(i);
+            if (item)
+            {
+                string str = item->text().toLatin1().data();
+                sscanf(str.c_str(), "%lf %lf %lf", &x, &y, &z);
+                points.push_back(x);
+                points.push_back(y);
+                points.push_back(z);
+            }
         }
-
-        if(!allOkay)
-        {
-            if (multipleOf3Error)
-                Message(tr("The number of values in the point list was not a multiple" 
-                           " of three, so the previous values will be used."));
-            else
-                Message(tr("The point list contained errors so the previous "
-                           "values will be used."));
-            streamAtts->SelectPointList();
-        }
-        else
-            streamAtts->SetPointList(pointListV);
-    }
-
-    // pointDensity
-    if (which_widget == StreamlineAttributes::ID_pointDensity|| doAll)
-    {
-        // This can only be an integer, so no error checking is needed.
-        int val = pointDensity->value();
-        if (val >= 1)
-            streamAtts->SetPointDensity(val);
+        streamAtts->SetPointList(points);
     }
 
     // Do radius
@@ -2213,7 +2399,6 @@ QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
             streamAtts->SetHeadDisplayHeight(val);
         else
         {
-            cout<<"val= "<<val<<endl;
             ResettingError(tr("Head height"),
                 DoubleToQString(streamAtts->GetHeadDisplayHeight()));
             streamAtts->SetHeadDisplayHeight(streamAtts->GetHeadDisplayHeight());
@@ -2247,6 +2432,7 @@ QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
             streamAtts->SetOpacityVarMax(streamAtts->GetOpacityVarMax());
         }
     }
+    
 }
 
 
@@ -2458,9 +2644,30 @@ QvisStreamlinePlotWindow::planeUpAxisProcessText()
 }
 
 void
-QvisStreamlinePlotWindow::planeRadiusProcessText()
+QvisStreamlinePlotWindow::radiusProcessText()
 {
-    GetCurrentValues(StreamlineAttributes::ID_planeRadius);
+    GetCurrentValues(StreamlineAttributes::ID_radius);
+    Apply();
+}
+
+void
+QvisStreamlinePlotWindow::sampleDistance0ProcessText()
+{
+    GetCurrentValues(StreamlineAttributes::ID_sampleDistance0);
+    Apply();
+}
+
+void
+QvisStreamlinePlotWindow::sampleDistance1ProcessText()
+{
+    GetCurrentValues(StreamlineAttributes::ID_sampleDistance1);
+    Apply();
+}
+
+void
+QvisStreamlinePlotWindow::sampleDistance2ProcessText()
+{
+    GetCurrentValues(StreamlineAttributes::ID_sampleDistance2);
     Apply();
 }
 
@@ -2471,17 +2678,25 @@ QvisStreamlinePlotWindow::sphereOriginProcessText()
     Apply();
 }
 
+
 void
-QvisStreamlinePlotWindow::sphereRadiusProcessText()
+QvisStreamlinePlotWindow::sampleDensity0Changed(int val)
 {
-    GetCurrentValues(StreamlineAttributes::ID_sphereRadius);
+    streamAtts->SetSampleDensity0(val);
     Apply();
 }
 
 void
-QvisStreamlinePlotWindow::pointDensityChanged(int val)
+QvisStreamlinePlotWindow::sampleDensity1Changed(int val)
 {
-    streamAtts->SetPointDensity(val);
+    streamAtts->SetSampleDensity1(val);
+    Apply();
+}
+
+void
+QvisStreamlinePlotWindow::sampleDensity2Changed(int val)
+{
+    streamAtts->SetSampleDensity2(val);
     Apply();
 }
 
@@ -2676,6 +2891,13 @@ QvisStreamlinePlotWindow::absTolProcessText()
 }
 
 void
+QvisStreamlinePlotWindow::forceNodalChanged(bool val)
+{
+    streamAtts->SetForceNodeCenteredData(val);
+    Apply();
+}
+
+void
 QvisStreamlinePlotWindow::pointSourceProcessText()
 {
     GetCurrentValues(StreamlineAttributes::ID_pointSource);
@@ -2786,3 +3008,134 @@ QvisStreamlinePlotWindow::tubeDisplayDensityChanged(int val)
     streamAtts->SetTubeDisplayDensity(val);
     Apply();
 }
+
+void
+QvisStreamlinePlotWindow::randomSamplesChanged(bool val)
+{
+    streamAtts->SetRandomSamples(val);
+    Apply();
+}
+
+void
+QvisStreamlinePlotWindow::fillChanged(int index)
+{
+    streamAtts->SetFillInterior(index == 1);
+    Apply();
+}
+
+void
+QvisStreamlinePlotWindow::randomSeedChanged(int val)
+{
+    streamAtts->SetRandomSeed(val);
+    Apply();
+}
+
+void
+QvisStreamlinePlotWindow::numberOfRandomSamplesChanged(int val)
+{
+    streamAtts->SetNumberOfRandomSamples(val);
+    Apply();
+}
+
+void
+QvisStreamlinePlotWindow::pointListDoubleClicked(QListWidgetItem *item)
+{
+    item->setFlags(item->flags() | Qt::ItemIsEditable);
+}
+
+void
+QvisStreamlinePlotWindow::pointListClicked(QListWidgetItem *item)
+{
+}
+
+void
+QvisStreamlinePlotWindow::textChanged(const QString &currentText)
+{
+}
+
+void
+QvisStreamlinePlotWindow::addPoint()
+{
+    QListWidgetItem *item = new QListWidgetItem("0 0 0", pointList);
+    item->setFlags(item->flags() | Qt::ItemIsEditable);
+    pointList->setCurrentItem(item);
+}
+
+void
+QvisStreamlinePlotWindow::deletePoint()
+{
+    if (!pointList->selectedItems().empty())
+    {
+        qDeleteAll(pointList->selectedItems());
+    }
+}
+
+void
+QvisStreamlinePlotWindow::readPoints()
+{
+    QString res = QFileDialog::getOpenFileName(NULL, tr("Open text file"), ".");
+    string filename = res.toLatin1().data();
+
+    if (filename == "")
+        return;
+    std::ifstream f;
+    f.open(filename.c_str());
+    while (f.good())
+    {
+        char tmp[256];
+        f.getline(tmp, 256);
+        if (strlen(tmp) == 0)
+            break;
+
+        float x, y, z;
+        int n = sscanf(tmp, "%f %f %f", &x, &y, &z);
+        if (n != 3)
+            n = sscanf(tmp, "%f, %f, %f", &x, &y, &z);
+        if (n == 2)
+        {
+            z = 0.0;
+            n = 3;
+        }
+        if (n == 3)
+        {
+            char vals[256];
+            sprintf(vals, "%f %f %f", x,y,z);
+            QListWidgetItem *item = new QListWidgetItem(vals, pointList);
+            item->setFlags(item->flags() | Qt::ItemIsEditable);
+            pointList->setCurrentItem(item);
+        }
+    }
+
+    f.close();
+}
+
+static void
+TurnOn(QWidget *w0, QWidget *w1)
+{
+    if (w0)
+    {
+        w0->setEnabled(true);
+        w0->show();
+    }
+    if (w1)
+    {
+        w1->setEnabled(true);
+        w1->show();
+    }
+}
+
+static void
+TurnOff(QWidget *w0, QWidget *w1)
+{
+    if (w0)
+    {
+        w0->setEnabled(false);
+        w0->hide();
+    }
+    if (w1)
+    {
+        w1->setEnabled(false);
+        w1->hide();
+    }
+}
+

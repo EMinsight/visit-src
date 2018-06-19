@@ -260,6 +260,10 @@ avtTimeIteratorExpression::ModifyContract(avtContract_p c)
 //    Also add a barrier, since otherwise one processor may finish well before 
 //    the another (like 30 minutes before) and ultimately timeout.
 //
+//    Hank Childs, Thu Aug 26 23:36:03 PDT 2010
+//    Don't calculate extents for each of the time slices.
+//    Also remove check added by Allen Sanderson.
+//
 // ****************************************************************************
 
 void
@@ -267,6 +271,7 @@ avtTimeIteratorExpression::Execute(void)
 {
     FinalizeTimeLoop();
     avtContract_p contract = ConstructContractWithVarnames();
+    contract->DisableExtentsCalculations();
 
     // Store off the original expression list.
     ParsingExprList *pel = ParsingExprList::Instance();
@@ -303,6 +308,7 @@ avtTimeIteratorExpression::Execute(void)
                                                    false, false);
         currentCycle = md->GetCycles()[timeSlice];
         currentTime  = md->GetTimes()[timeSlice];
+
         ProcessDataTree(myeef.GetTypedOutput()->GetDataTree(), i);
         debug1 << "Time iterating expression done working on time slice " 
                << timeSlice << endl;

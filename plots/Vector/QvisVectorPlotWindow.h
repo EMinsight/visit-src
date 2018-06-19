@@ -47,6 +47,7 @@ class QCheckBox;
 class QComboBox;
 class QLabel;
 class QLineEdit;
+class QRadioButton;
 class QvisColorButton;
 class QvisColorTableButton;
 class QvisLineStyleWidget;
@@ -96,6 +97,12 @@ class VectorAttributes;
 //   Allen Sanderson, Sun Mar  7 12:49:56 PST 2010
 //   Change layout of window for 2.0 interface changes.
 //
+//   Dave Pugmire, Mon Jul 19 09:38:17 EDT 2010
+//   Add ellipsoid glyphing.   
+//
+//   Hank Childs, Tue Aug 24 07:37:27 PDT 2010
+//   Add option for glyph location.
+//
 // ****************************************************************************
 
 class QvisVectorPlotWindow : public QvisPostableWindowObserver
@@ -125,6 +132,7 @@ private slots:
     void autoScaleToggled(bool);
     void processHeadSizeText();
     void reduceMethodChanged(int index);
+    void locationMethodChanged(int index);
     void processNVectorsText();
     void processStrideText();
     void legendToggled(bool);
@@ -132,6 +140,7 @@ private slots:
     void colorModeChanged(int);
     void colorTableClicked(bool useDefault, const QString &ctName);
     void originTypeChanged(int);
+    void glyphTypeChanged(int newType);
 
     void minToggled(bool on);
     void maxToggled(bool on);
@@ -158,9 +167,11 @@ private:
     QCheckBox            *scaleByMagnitudeToggle;
     QCheckBox            *autoScaleToggle;
 
+    QButtonGroup         *locationButtonGroup;
     QButtonGroup         *reduceButtonGroup;
     QLineEdit            *nVectorsLineEdit;
     QLineEdit            *strideLineEdit;
+    QRadioButton         *strideRB;
 
     QButtonGroup         *geometryQualityButtons;
     QCheckBox            *legendToggle;
@@ -169,6 +180,8 @@ private:
     QButtonGroup         *lineStemButtonGroup; 
     QvisLineStyleWidget  *lineStyle;
     QvisLineWidthWidget  *lineWidth;
+    QLabel               *glyphTypeLabel;
+    QComboBox            *glyphType;
     QLabel               *lineStyleLabel;
     QLabel               *lineWidthLabel;
     QLineEdit            *stemWidthEdit;

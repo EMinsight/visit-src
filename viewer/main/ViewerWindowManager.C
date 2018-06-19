@@ -69,6 +69,8 @@
 #include <PrinterAttributes.h>
 #include <RenderingAttributes.h>
 #include <SaveWindowAttributes.h>
+#include <SelectionList.h>
+#include <SelectionProperties.h>
 #include <ViewCurveAttributes.h>
 #include <View2DAttributes.h>
 #include <View3DAttributes.h>
@@ -99,6 +101,7 @@
 #include <avtDatabaseMetaData.h>
 #include <avtImage.h>
 #include <avtImageTiler.h>
+#include <avtMultiWindowSaver.h>
 #include <avtFileWriter.h>
 #include <avtToolInterface.h>
 #include <ImproperUseException.h>
@@ -141,8 +144,7 @@ WindowInformation *ViewerWindowManager::windowInfo=0;
 RenderingAttributes *ViewerWindowManager::renderAtts=0;
 AnnotationObjectList *ViewerWindowManager::annotationObjectList = 0;
 AnnotationObjectList *ViewerWindowManager::defaultAnnotationObjectList = 0;
-
-
+SelectionList *ViewerWindowManager::selectionList = 0;
 
 //
 // Global variables.  These should be removed.
@@ -542,6 +544,9 @@ ViewerWindowManager::SetGeometry(const char *windowGeometry)
 //    Brad Whitlock, Wed Apr 30 09:44:17 PDT 2008
 //    Added tr().
 //
+//    Brad Whitlock, Fri Aug 13 16:36:28 PDT 2010
+//    Fix legend renaming.
+//
 // ****************************************************************************
 
 void
@@ -569,11 +574,15 @@ ViewerWindowManager::AddWindow(bool copyAtts)
         ViewerWindow *src = windows[activeWindow];
         dest->CopyGeneralAttributes(src);
         dest->CopyAnnotationAttributes(src);
-        dest->CopyAnnotationObjectList(src, true);
         dest->CopyLightList(src);
         dest->CopyViewAttributes(src);
-        dest->GetPlotList()->CopyFrom(src->GetPlotList(), true);
+        
+        StringStringMap nameMap = dest->GetPlotList()->CopyFrom(src->
+            GetPlotList(), true);
         dest->GetActionManager()->CopyFrom(src->GetActionManager());
+
+        dest->CopyAnnotationObjectList(src, nameMap, true);
+
     }
     referenced[windowIndex] = true;
 
@@ -710,7 +719,7 @@ ViewerWindowManager::CopyAnnotationsToWindow(int from, int to)
     if(windows[from] != 0 && windows[to] != 0)
     {
         windows[to]->CopyAnnotationAttributes(windows[from]);
-        windows[to]->CopyAnnotationObjectList(windows[from], false);
+        windows[to]->CopyAnnotationObjectList(windows[from], StringStringMap(), false);
         if(to == activeWindow)
         {
             UpdateAnnotationAtts();
@@ -817,7 +826,8 @@ ViewerWindowManager::CopyPlotListToWindow(int from, int to)
     // If the Window pointers are valid then perform the operation.
     if(windows[from] != 0 && windows[to] != 0)
     {
-        windows[to]->GetPlotList()->CopyFrom(windows[from]->GetPlotList(),true);
+        StringStringMap nameMap = windows[to]->GetPlotList()->CopyFrom(
+            windows[from]->GetPlotList(),true);
     }
 }
 
@@ -1630,6 +1640,9 @@ ViewerWindowManager::ChooseCenterOfRotation(int windowIndex,
 //    Jeremy Meredith, Tue Jun 24 12:27:54 EDT 2008
 //    Use the actual OSMesa size limit for the window limit.
 //
+//    Hank Childs, Thu Jul 22 09:55:03 PDT 2010
+//    Added support for advanced multi-window saves.
+//
 // ****************************************************************************
 
 void
@@ -1843,7 +1856,18 @@ ViewerWindowManager::SaveWindow(int windowIndex)
                     image2 = CreateTiledImage(w, h, false);
                 }
             }
-            else 
+            else if (saveWindowClientAtts->GetAdvancedMultiWindowSave())
+            {
+                // Do an advanced multi-window save for the left eye.
+                image = AdvancedMultiWindowSave(w, h, true);
+
+                // Do an advanced multi-window save for the right eye.
+                if (saveWindowClientAtts->GetStereo())
+                {
+                    image2 = AdvancedMultiWindowSave(w, h, false);
+                }
+            }
+            else
             {
                 // Create the left eye.
                 image = CreateSingleImage(windowIndex, w, h,
@@ -2205,6 +2229,101 @@ ViewerWindowManager::CreateTiledImage(int width, int height, bool leftEye)
 }
 
 // ****************************************************************************
+//  Method: ViewerWindowManager::AdvancedMultiWindowSave
+//
+//  Purpose: 
+//    This method does an advanced multi-window save.
+//
+//  Arguments:
+//    width     The desired width of the tiled image.
+//    height    The desired height of the tiled image.
+//    leftEye   True if this is for the left eye.
+//
+//  Returns:    An image containing results from multiple windows.
+//
+//  Programmer: Hank Childs
+//  Creation:   July 16, 2010
+//
+// ****************************************************************************
+
+avtImage_p
+ViewerWindowManager::AdvancedMultiWindowSave(int width, int height, 
+                                             bool leftEye)
+{
+    //
+    // Determine which windows actually have plots to save.
+    // Also sort the windows into the sortedWindows array.
+    // We need to do this because if any windows have ever been deleted,
+    // new windows can appear in the first unused slot in the windows array.
+    // Thus the windows array does not contain windows in any given order.
+    // Since we want to always tile the image so that windows are in order
+    // (1, 2, 3, ...) we sort.
+    //
+    int windowIndex, windowWithPlot = -1, windowsWithPlots = 0;
+    ViewerWindow **sortedWindows = new ViewerWindow*[maxWindows];
+    for(windowIndex = 0; windowIndex < maxWindows; ++windowIndex)
+        sortedWindows[windowIndex] = 0;
+    for(windowIndex = 0; windowIndex < maxWindows; ++windowIndex)
+    {
+        ViewerWindow *win = windows[windowIndex];
+        if(win != 0 && win->GetPlotList()->GetNumPlots() > 0)
+        {
+            sortedWindows[win->GetWindowId()] = win;
+            if(windowWithPlot == -1)
+                windowWithPlot = windowIndex;
+            ++windowsWithPlots;
+        }
+    }
+
+    // 
+    // Return early if none of the windows have plots.
+    //
+    if(windowsWithPlots == 0)
+    {
+        delete [] sortedWindows;
+        Warning(tr("VisIt did not do an advanced window save because none of "
+                   "the windows had any plots."));
+        return NULL;
+    }
+
+    //
+    // If we're not in screen capture mode then divide up the prescribed
+    // image size among the tiles that we have.
+    //
+    avtMultiWindowSaver mws(saveWindowClientAtts->GetSubWindowAtts());
+    mws.SetImageSize(width, height);
+
+    //
+    // Get an image for each window that has plots and add the images to the
+    // multi-window-saver (mws) object.
+    //
+    for(int index = 0; index < maxWindows; ++index)
+    {
+        if(sortedWindows[index] != 0)
+        {
+            bool doScreenCapture = false;
+            int  winId = sortedWindows[index]->GetWindowId();
+            SaveSubWindowsAttributes &atts = 
+                                      saveWindowClientAtts->GetSubWindowAtts();
+            SaveSubWindowAttributes winAtts = atts.GetAttsForWindow(winId+1);
+            if (winAtts.GetOmitWindow())
+                continue;
+            const int *size = winAtts.GetSize();
+            mws.AddImage(CreateSingleImage(winId,
+                size[0], size[1],
+                doScreenCapture, leftEye), winId+1);
+            Message(tr("Saving tiled image..."));
+        }
+    }
+    delete [] sortedWindows;
+
+    //
+    // Return the tiled image returned by the tiler.
+    //
+    return mws.CreateImage();
+}
+
+// ****************************************************************************
 // Method: ViewerWindowManager::GetDataset
 //
 // Purpose:
@@ -2271,6 +2390,10 @@ ViewerWindowManager::GetDataset(int windowIndex,
 //   Brad Whitlock, Tue May 27 14:26:18 PDT 2008
 //   Qt 4.
 //
+//   Brad Whitlock, Mon Aug 30 14:58:49 PDT 2010
+//   I added debugging log statements and I made the printer use the doc name
+//   for regular printing and the output filename for file printing.
+//
 // ****************************************************************************
 
 void
@@ -2321,21 +2444,52 @@ ViewerWindowManager::PrintWindow(int windowIndex)
     //
     vtkQtImagePrinter *imagePrinter = vtkQtImagePrinter::New();
     QPrinter &printer = imagePrinter->printer();
+    debug1 << "Setting printer attributes: " << endl;
     printer.setPrinterName(printerAtts->GetPrinterName().c_str());
+    debug1 << "\tprinterName=" << printerAtts->GetPrinterName() << endl;
+
     if(!printerAtts->GetPrintProgram().empty())
+    {
         printer.setPrintProgram(printerAtts->GetPrintProgram().c_str());
+        debug1 << "\tprintProgram=" << printerAtts->GetPrintProgram() << endl;
+    }
+
     printer.setCreator(printerAtts->GetCreator().c_str());
+    debug1 << "\tcreator=" << printerAtts->GetCreator() << endl;
+
     printer.setDocName(printerAtts->GetDocumentName().c_str());
+    debug1 << "\tdocName=" << printerAtts->GetDocumentName() << endl;
+
     printer.setNumCopies(printerAtts->GetNumCopies());
+    debug1 << "\tnumCopies=" << printerAtts->GetNumCopies() << endl;
+
     printer.setOrientation(printerAtts->GetPortrait() ? QPrinter::Portrait :
         QPrinter::Landscape);
+    debug1 << "\torientation="
+           << (printerAtts->GetPortrait()?"portrait":"landscape") << endl;
+
     printer.setFromTo(1,1);
+    debug1 << "\tfromTo=1,1" << endl;
+
     printer.setColorMode(printerAtts->GetPrintColor() ? QPrinter::Color :
         QPrinter::GrayScale);
-    printer.setOutputFileName(printerAtts->GetOutputToFileName().c_str());
+    debug1 << "\tprintColor="
+           << (printerAtts->GetPrintColor()?"color":"grayscale") << endl;
+
     if(printerAtts->GetOutputToFile())
+    {
         printer.setOutputFormat(QPrinter::PdfFormat);
-    printer.setPageSize((QPrinter::PageSize)printerAtts->GetPageSize());
+        debug1 << "\toutputFormat=PDF" << endl;
+        printer.setOutputFileName(printerAtts->GetOutputToFileName().c_str());
+        debug1 << "\toutputFilename=" << printerAtts->GetOutputToFileName() << endl;
+    }
+    else
+    {
+        printer.setOutputFileName(QString());
+        debug1 << "\toutputFilename=(empty)" << endl;
+    }
+    printer.setPaperSize((QPrinter::PageSize)printerAtts->GetPageSize());
+    debug1 << "\tpaperSize=" << printerAtts->GetPageSize() << endl;
 
     //
     // Create an image that will fit on the printer, else scale the
@@ -2362,8 +2516,16 @@ ViewerWindowManager::PrintWindow(int windowIndex)
     //
     avtDataObject_p dob;
     CopyTo(dob, image);
-    fileWriter->WriteImageDirectly(imagePrinter,
-                                  printerAtts->GetDocumentName().c_str(), dob);
+    if(printerAtts->GetOutputToFile())
+    {
+        fileWriter->WriteImageDirectly(imagePrinter,
+            printerAtts->GetOutputToFileName().c_str(), dob);
+    }
+    else
+    {
+        fileWriter->WriteImageDirectly(imagePrinter,
+            printerAtts->GetDocumentName().c_str(), dob);
+    }
 
     //
     // Delete the image printer.
@@ -2867,6 +3029,12 @@ ViewerWindowManager::SetView2DFromClient()
 //    Have the call to UpdateViewAtts tell the routine not to bother
 //    updating the atttributes for the Axis Array window modality.
 //
+//    Jeremy Meredith, Wed May 19 14:15:58 EDT 2010
+//    Support 3D axis scaling (3D equivalent of full-frame mode).
+//
+//    Jeremy Meredith, Mon Aug  2 14:23:08 EDT 2010
+//    Add shear for oblique projection support.
+//
 // ****************************************************************************
 
 void
@@ -2896,6 +3064,13 @@ ViewerWindowManager::SetView3DFromClient()
     view3d.centerOfRotation[0] = view3DClientAtts->GetCenterOfRotation()[0];
     view3d.centerOfRotation[1] = view3DClientAtts->GetCenterOfRotation()[1];
     view3d.centerOfRotation[2] = view3DClientAtts->GetCenterOfRotation()[2];
+    view3d.axis3DScaleFlag = view3DClientAtts->GetAxis3DScaleFlag();
+    view3d.axis3DScales[0] = view3DClientAtts->GetAxis3DScales()[0];
+    view3d.axis3DScales[1] = view3DClientAtts->GetAxis3DScales()[1];
+    view3d.axis3DScales[2] = view3DClientAtts->GetAxis3DScales()[2];
+    view3d.shear[0] = view3DClientAtts->GetShear()[0];
+    view3d.shear[1] = view3DClientAtts->GetShear()[1];
+    view3d.shear[2] = view3DClientAtts->GetShear()[2];
 
     //
     // Set the 3D view for the active viewer window.
@@ -3146,6 +3321,9 @@ ViewerWindowManager::SetViewExtentsType(avtExtentType viewType,
 //   Jeremy Meredith, Fri Apr 30 14:39:07 EDT 2010
 //   Added automatic depth cueing mode.
 //
+//    Dave Pugmire, Tue Aug 24 11:32:12 EDT 2010
+//    Add compact domain options.
+//
 // ****************************************************************************
 
 void
@@ -3185,6 +3363,13 @@ ViewerWindowManager::SetRenderingAttributes(int windowIndex)
         if (windows[index]->GetScalableActivationMode() !=
             renderAtts->GetScalableActivationMode())
             windows[index]->SetScalableActivationMode(renderAtts->GetScalableActivationMode());
+        
+        if (windows[index]->GetCompactDomainsActivationMode() !=
+            renderAtts->GetCompactDomainsActivationMode())
+            windows[index]->SetCompactDomainsActivationMode(renderAtts->GetCompactDomainsActivationMode());
+        if (windows[index]->GetCompactDomainsAutoThreshold() !=
+            renderAtts->GetCompactDomainsAutoThreshold())
+            windows[index]->SetCompactDomainsAutoThreshold(renderAtts->GetCompactDomainsAutoThreshold());
 
         if (windows[index]->GetCompressionActivationMode() !=
             renderAtts->GetCompressionActivationMode())
@@ -4301,6 +4486,9 @@ ViewerWindowManager::SetWindowLayout(const int windowLayout)
 //    Brad Whitlock, Wed Apr 30 09:58:30 PDT 2008
 //    Added tr().
 //
+//    Brad Whitlock, Fri Aug 13 16:38:06 PDT 2010
+//    Fix legend names.
+//
 // ****************************************************************************
 
 void
@@ -4341,10 +4529,10 @@ ViewerWindowManager::SetActiveWindow(const int windowId)
             //
             dest->CopyGeneralAttributes(src);
             dest->CopyAnnotationAttributes(src);
-            dest->CopyAnnotationObjectList(src, true);
             dest->CopyLightList(src);
             dest->CopyViewAttributes(src);
-            dest->GetPlotList()->CopyFrom(src->GetPlotList(), true);
+            StringStringMap nameMap = dest->GetPlotList()->CopyFrom(src->GetPlotList(), true);
+            dest->CopyAnnotationObjectList(src, nameMap, true);
         }
     }
     else
@@ -8675,6 +8863,29 @@ ViewerWindowManager::SetDefaultAnnotationObjectListFromClient()
 }
 
 // ****************************************************************************
+// Method: ViewerWindowManager::GetSelectionList
+//
+// Purpose: 
+//   Return the selection list, creating it first if needed.
+//
+// Returns:    The selection list object.
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri Jul 23 11:27:10 PDT 2010
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+SelectionList *
+ViewerWindowManager::GetSelectionList()
+{
+    if(selectionList == 0)
+        selectionList = new SelectionList;
+    return selectionList;
+}
+
+// ****************************************************************************
 // Method: ViewerWindowManager::GetLineoutWindow
 //
 // Purpose:    
@@ -9171,6 +9382,9 @@ ViewerWindowManager::EnableExternalRenderRequestsAllWindows(
 //   Removed maintain data; moved maintain view from Global settings
 //   (Main window) to per-window Window Information (View window).
 //
+//   Brad Whitlock, Wed Aug 11 16:54:22 PDT 2010
+//   I added the selection list.
+//
 // ****************************************************************************
 
 void
@@ -9182,6 +9396,8 @@ ViewerWindowManager::CreateNode(DataNode *parentNode,
 
     DataNode *mgrNode = new DataNode("ViewerWindowManager");
     parentNode->AddNode(mgrNode);
+
+    GetSelectionList()->CreateNode(mgrNode, true, true);    
 
     //
     // Add information about the ViewerWindowManager.
@@ -9275,6 +9491,10 @@ ViewerWindowManager::CreateNode(DataNode *parentNode,
 //   Removed maintain data; moved maintain view from Global settings
 //   (Main window) to per-window Window Information (View window).
 //
+//   Brad Whitlock, Wed Aug 11 16:54:38 PDT 2010
+//   I added the selection node and code to regenerate named selections from
+//   the plots that generate them.
+//
 // ****************************************************************************
 
 void
@@ -9288,6 +9508,10 @@ ViewerWindowManager::SetFromNode(DataNode *parentNode,
     DataNode *searchNode = parentNode->GetNode("ViewerWindowManager");
     if(searchNode == 0)
         return;
+
+    // Load the selection list
+    GetSelectionList()->SetFromNode(searchNode);
+    GetSelectionList()->Notify();
 
     //
     // Load information specific to ViewerWindowManager.  The following
@@ -9478,16 +9702,100 @@ ViewerWindowManager::SetFromNode(DataNode *parentNode,
     //
     DataNode **wNodes = windowsNode->GetChildren();
     int childCount = 0;
+    bool *doUpdate = new bool[maxWindows];
     for(i = 0; i < maxWindows; ++i)
     {
+        doUpdate[i] = false;
         referenced[i] = false;
         if(windows[i] != 0 && childCount < newNWindows)
         {
-            windows[i]->SetFromNode(wNodes[childCount++], sourceToDB, configVersion);
+            doUpdate[i] = windows[i]->SetFromNode(wNodes[childCount++], sourceToDB, configVersion);
             if(windows[i]->GetPlotList()->GetNumPlots() > 0)
                 referenced[i] = true;
         }
     }
+
+    //
+    // If we have selections then iterate over all of them.
+    //
+    if(GetSelectionList()->GetNumSelections() > 0)
+    {
+        bool tmpApply = GetSelectionList()->GetAutoApplyUpdates();
+        GetSelectionList()->SetAutoApplyUpdates(false);
+
+        // Look over the plots in all windows and save the indices of the 
+        // originating plots for a selection. Save the name too.
+        intVector *originatingPlots = new intVector[maxWindows];
+        stringVector *selNames = new stringVector[maxWindows];
+        for(i = 0; i < maxWindows; ++i)
+        {
+            if(windows[i] == 0)
+                continue;
+            for(int j = 0; j < windows[i]->GetPlotList()->GetNumPlots(); ++j)
+            {
+                for(int k = 0; k < GetSelectionList()->GetNumSelections(); ++k)
+                {
+                    if(GetSelectionList()->GetSelections(k).GetOriginatingPlot() ==
+                       windows[i]->GetPlotList()->GetPlot(j)->GetPlotName())
+                    {
+                        selNames[i].push_back(GetSelectionList()->GetSelections(k).GetName());
+                        originatingPlots[i].push_back(j);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Update the originating plots in windows that contain them and use
+        // them to create the named selections they define.
+        for(i = 0; i < maxWindows; ++i)
+        {
+            const intVector &origPlots = originatingPlots[i];
+            if(!origPlots.empty())
+            {
+                // Cause this window's originating plots to be created.
+                windows[i]->DisableUpdates();
+                windows[i]->GetPlotList()->UpdateFrameForPlots(origPlots);
+
+                // Now create the selections that use those originating plots.
+                for(int j = 0; j < origPlots.size(); ++j)
+                {
+                    TRY
+                    {
+                        debug4 << "Creating named selection " << selNames[i][j]
+                               << " from plot " << origPlots[j] << " in window "
+                               << i << endl;
+                        ViewerEngineManager::Instance()->CreateNamedSelection(
+                            windows[i]->GetPlotList()->GetPlot(origPlots[j])->GetEngineKey(),
+                            windows[i]->GetPlotList()->GetPlot(origPlots[j])->GetNetworkID(),
+                            selNames[i][j]);
+                    }
+                    CATCH(VisItException)
+                    {
+                        Error(tr("Could not create named selection %1.").arg(selNames[i][j].c_str()));
+                    }
+                    ENDTRY
+                }
+
+                windows[i]->EnableUpdates();
+            }
+        }
+
+        GetSelectionList()->SetAutoApplyUpdates(tmpApply);
+        delete [] originatingPlots;
+        delete [] selNames;
+    }
+
+    //
+    // For windows that need it, send an update message so the window gets its 
+    // plots realized.
+    //
+    for(i = 0; i < maxWindows; ++i)
+    {
+        if(doUpdate[i])
+            windows[i]->SendUpdateFrameMessage();
+    }
+    delete [] doUpdate;
 
     //
     // Set the active window.

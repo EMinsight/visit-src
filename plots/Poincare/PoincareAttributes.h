@@ -84,13 +84,30 @@ public:
         Curves,
         Surfaces
     };
+    enum PuncturePlaneType
+    {
+        Poloidal,
+        Toroidal,
+        Arbitrary
+    };
+    enum AnalysisType
+    {
+        None,
+        Normal
+    };
     enum ColoringMethod
     {
         ColorBySingleColor,
         ColorByColorTable
     };
+    enum Opacity
+    {
+        Explicit,
+        ColorTable
+    };
     enum DataValue
     {
+        Solid,
         OriginalValue,
         InputOrder,
         PointIndex,
@@ -103,6 +120,20 @@ public:
         SafetyFactor,
         Confidence,
         RidgelineVariance
+    };
+    enum StreamlineAlgorithmType
+    {
+        LoadOnDemand,
+        ParallelStaticDomains,
+        MasterSlave
+    };
+    enum PointType
+    {
+        Box,
+        Axis,
+        Icosahedron,
+        Point,
+        Sphere
     };
 
     // These constructors are for objects of this class
@@ -137,8 +168,11 @@ public:
     void SelectColorTableName();
 
     // Property setting methods
-    void SetMinPunctures(double minPunctures_);
-    void SetMaxPunctures(double maxPunctures_);
+    void SetOpacityType(Opacity opacityType_);
+    void SetOpacity(double opacity_);
+    void SetMinPunctures(int minPunctures_);
+    void SetMaxPunctures(int maxPunctures_);
+    void SetPuncturePlane(PuncturePlaneType puncturePlane_);
     void SetSourceType(SourceType sourceType_);
     void SetPointSource(const double *pointSource_);
     void SetLineStart(const double *lineStart_);
@@ -148,13 +182,16 @@ public:
     void SetMaxStepLength(double maxStepLength_);
     void SetRelTol(double relTol_);
     void SetAbsTol(double absTol_);
-    void SetMaxToroidalWinding(int maxToroidalWinding_);
+    void SetAnalysis(AnalysisType analysis_);
+    void SetMaximumToroidalWinding(int maximumToroidalWinding_);
     void SetOverrideToroidalWinding(int overrideToroidalWinding_);
-    void SetHitRate(double hitRate_);
+    void SetWindingPairConfidence(double windingPairConfidence_);
+    void SetPeriodicityConsistency(double periodicityConsistency_);
     void SetAdjustPlane(int adjustPlane_);
     void SetOverlaps(OverlapType overlaps_);
     void SetMeshType(ShowMeshType meshType_);
     void SetNumberPlanes(int numberPlanes_);
+    void SetSinglePlane(double singlePlane_);
     void SetMin(double min_);
     void SetMax(double max_);
     void SetMinFlag(bool minFlag_);
@@ -164,16 +201,34 @@ public:
     void SetColorTableName(const std::string &colorTableName_);
     void SetDataValue(DataValue dataValue_);
     void SetShowOPoints(bool showOPoints_);
+    void SetOPointMaxInterations(int OPointMaxInterations_);
+    void SetShowXPoints(bool showXPoints_);
+    void SetXPointMaxInterations(int XPointMaxInterations_);
+    void SetShowChaotic(bool showChaotic_);
     void SetShowIslands(bool showIslands_);
-    void SetShowLines(bool showLines_);
-    void SetShowPoints(bool showPoints_);
     void SetVerboseFlag(bool verboseFlag_);
+    void SetShowRidgelines(bool showRidgelines_);
+    void SetShowLines(bool showLines_);
+    void SetLineWidth(int lineWidth_);
+    void SetLineStyle(int lineStyle_);
+    void SetShowPoints(bool showPoints_);
+    void SetPointSize(double pointSize_);
+    void SetPointSizePixels(int pointSizePixels_);
+    void SetPointType(PointType pointType_);
     void SetLegendFlag(bool legendFlag_);
     void SetLightingFlag(bool lightingFlag_);
+    void SetStreamlineAlgorithmType(StreamlineAlgorithmType streamlineAlgorithmType_);
+    void SetMaxStreamlineProcessCount(int maxStreamlineProcessCount_);
+    void SetMaxDomainCacheSize(int maxDomainCacheSize_);
+    void SetWorkGroupSize(int workGroupSize_);
+    void SetForceNodeCenteredData(bool forceNodeCenteredData_);
 
     // Property getting methods
-    double               GetMinPunctures() const;
-    double               GetMaxPunctures() const;
+    Opacity              GetOpacityType() const;
+    double               GetOpacity() const;
+    int                  GetMinPunctures() const;
+    int                  GetMaxPunctures() const;
+    PuncturePlaneType    GetPuncturePlane() const;
     SourceType           GetSourceType() const;
     const double         *GetPointSource() const;
           double         *GetPointSource();
@@ -186,13 +241,16 @@ public:
     double               GetMaxStepLength() const;
     double               GetRelTol() const;
     double               GetAbsTol() const;
-    int                  GetMaxToroidalWinding() const;
+    AnalysisType         GetAnalysis() const;
+    int                  GetMaximumToroidalWinding() const;
     int                  GetOverrideToroidalWinding() const;
-    double               GetHitRate() const;
+    double               GetWindingPairConfidence() const;
+    double               GetPeriodicityConsistency() const;
     int                  GetAdjustPlane() const;
     OverlapType          GetOverlaps() const;
     ShowMeshType         GetMeshType() const;
     int                  GetNumberPlanes() const;
+    double               GetSinglePlane() const;
     double               GetMin() const;
     double               GetMax() const;
     bool                 GetMinFlag() const;
@@ -204,12 +262,27 @@ public:
           std::string    &GetColorTableName();
     DataValue            GetDataValue() const;
     bool                 GetShowOPoints() const;
+    int                  GetOPointMaxInterations() const;
+    bool                 GetShowXPoints() const;
+    int                  GetXPointMaxInterations() const;
+    bool                 GetShowChaotic() const;
     bool                 GetShowIslands() const;
-    bool                 GetShowLines() const;
-    bool                 GetShowPoints() const;
     bool                 GetVerboseFlag() const;
+    bool                 GetShowRidgelines() const;
+    bool                 GetShowLines() const;
+    int                  GetLineWidth() const;
+    int                  GetLineStyle() const;
+    bool                 GetShowPoints() const;
+    double               GetPointSize() const;
+    int                  GetPointSizePixels() const;
+    PointType            GetPointType() const;
     bool                 GetLegendFlag() const;
     bool                 GetLightingFlag() const;
+    StreamlineAlgorithmType GetStreamlineAlgorithmType() const;
+    int                  GetMaxStreamlineProcessCount() const;
+    int                  GetMaxDomainCacheSize() const;
+    int                  GetWorkGroupSize() const;
+    bool                 GetForceNodeCenteredData() const;
 
     // Persistence methods
     virtual bool CreateNode(DataNode *node, bool completeSave, bool forceAdd);
@@ -236,15 +309,40 @@ public:
 protected:
     static std::string ShowMeshType_ToString(int);
 public:
+    static std::string PuncturePlaneType_ToString(PuncturePlaneType);
+    static bool PuncturePlaneType_FromString(const std::string &, PuncturePlaneType &);
+protected:
+    static std::string PuncturePlaneType_ToString(int);
+public:
+    static std::string AnalysisType_ToString(AnalysisType);
+    static bool AnalysisType_FromString(const std::string &, AnalysisType &);
+protected:
+    static std::string AnalysisType_ToString(int);
+public:
     static std::string ColoringMethod_ToString(ColoringMethod);
     static bool ColoringMethod_FromString(const std::string &, ColoringMethod &);
 protected:
     static std::string ColoringMethod_ToString(int);
 public:
+    static std::string Opacity_ToString(Opacity);
+    static bool Opacity_FromString(const std::string &, Opacity &);
+protected:
+    static std::string Opacity_ToString(int);
+public:
     static std::string DataValue_ToString(DataValue);
     static bool DataValue_FromString(const std::string &, DataValue &);
 protected:
     static std::string DataValue_ToString(int);
+public:
+    static std::string StreamlineAlgorithmType_ToString(StreamlineAlgorithmType);
+    static bool StreamlineAlgorithmType_FromString(const std::string &, StreamlineAlgorithmType &);
+protected:
+    static std::string StreamlineAlgorithmType_ToString(int);
+public:
+    static std::string PointType_ToString(PointType);
+    static bool PointType_FromString(const std::string &, PointType &);
+protected:
+    static std::string PointType_ToString(int);
 public:
 
     // Keyframing methods
@@ -260,8 +358,11 @@ public:
 
     // IDs that can be used to identify fields in case statements
     enum {
-        ID_minPunctures = 0,
+        ID_opacityType = 0,
+        ID_opacity,
+        ID_minPunctures,
         ID_maxPunctures,
+        ID_puncturePlane,
         ID_sourceType,
         ID_pointSource,
         ID_lineStart,
@@ -271,13 +372,16 @@ public:
         ID_maxStepLength,
         ID_relTol,
         ID_absTol,
-        ID_maxToroidalWinding,
+        ID_analysis,
+        ID_maximumToroidalWinding,
         ID_overrideToroidalWinding,
-        ID_hitRate,
+        ID_windingPairConfidence,
+        ID_periodicityConsistency,
         ID_adjustPlane,
         ID_overlaps,
         ID_meshType,
         ID_numberPlanes,
+        ID_singlePlane,
         ID_min,
         ID_max,
         ID_minFlag,
@@ -287,18 +391,36 @@ public:
         ID_colorTableName,
         ID_dataValue,
         ID_showOPoints,
+        ID_OPointMaxInterations,
+        ID_showXPoints,
+        ID_XPointMaxInterations,
+        ID_showChaotic,
         ID_showIslands,
-        ID_showLines,
-        ID_showPoints,
         ID_verboseFlag,
+        ID_showRidgelines,
+        ID_showLines,
+        ID_lineWidth,
+        ID_lineStyle,
+        ID_showPoints,
+        ID_pointSize,
+        ID_pointSizePixels,
+        ID_pointType,
         ID_legendFlag,
         ID_lightingFlag,
+        ID_streamlineAlgorithmType,
+        ID_maxStreamlineProcessCount,
+        ID_maxDomainCacheSize,
+        ID_workGroupSize,
+        ID_forceNodeCenteredData,
         ID__LAST
     };
 
 private:
-    double         minPunctures;
-    double         maxPunctures;
+    int            opacityType;
+    double         opacity;
+    int            minPunctures;
+    int            maxPunctures;
+    int            puncturePlane;
     int            sourceType;
     double         pointSource[3];
     double         lineStart[3];
@@ -308,13 +430,16 @@ private:
     double         maxStepLength;
     double         relTol;
     double         absTol;
-    int            maxToroidalWinding;
+    int            analysis;
+    int            maximumToroidalWinding;
     int            overrideToroidalWinding;
-    double         hitRate;
+    double         windingPairConfidence;
+    double         periodicityConsistency;
     int            adjustPlane;
     int            overlaps;
     int            meshType;
     int            numberPlanes;
+    double         singlePlane;
     double         min;
     double         max;
     bool           minFlag;
@@ -324,17 +449,32 @@ private:
     std::string    colorTableName;
     int            dataValue;
     bool           showOPoints;
+    int            OPointMaxInterations;
+    bool           showXPoints;
+    int            XPointMaxInterations;
+    bool           showChaotic;
     bool           showIslands;
-    bool           showLines;
-    bool           showPoints;
     bool           verboseFlag;
+    bool           showRidgelines;
+    bool           showLines;
+    int            lineWidth;
+    int            lineStyle;
+    bool           showPoints;
+    double         pointSize;
+    int            pointSizePixels;
+    int            pointType;
     bool           legendFlag;
     bool           lightingFlag;
+    int            streamlineAlgorithmType;
+    int            maxStreamlineProcessCount;
+    int            maxDomainCacheSize;
+    int            workGroupSize;
+    bool           forceNodeCenteredData;
 
     // Static class format string for type map.
     static const char *TypeMapFormatString;
     static const private_tmfs_t TmfsStruct;
 };
-#define POINCAREATTRIBUTES_TMFS "ddiDDDiidddiidiiiiddbbiasibbbbbbb"
+#define POINCAREATTRIBUTES_TMFS "idiiiiDDDiidddiiiddiiiidddbbiasibibibbbbbiibdiibbiiiib"
 
 #endif

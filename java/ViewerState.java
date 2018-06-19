@@ -58,6 +58,9 @@ import java.util.Vector;
 //   so we'll just skip over the plot info atts in xfer when they come from
 //   the client.
 //
+//   Brad Whitlock, Thu Aug 26 10:39:25 PDT 2010
+//   I added SelectionList.
+//
 // ****************************************************************************
 /**
  * ViewerState contains all of the state objects that make up the 
@@ -94,8 +97,8 @@ public class ViewerState
             Register(attsDBPluginInfoAttributes);
         attsExportDBAttributes = new ExportDBAttributes();
             Register(attsExportDBAttributes);
-        attsConstructDDFAttributes = new ConstructDDFAttributes();
-            Register(attsConstructDDFAttributes);
+        attsConstructDataBinningAttributes = new ConstructDataBinningAttributes();
+            Register(attsConstructDataBinningAttributes);
         attsClientMethod = new ClientMethod();
             Register(attsClientMethod);
         attsClientInformation = new ClientInformation();
@@ -172,6 +175,8 @@ public class ViewerState
             Register(attsLogRPC);
         attsFileOpenOptions = new FileOpenOptions();
             Register(attsFileOpenOptions);
+        attsSelectionList = new SelectionList();
+            Register(attsSelectionList);
     }
 
     //
@@ -186,7 +191,7 @@ public class ViewerState
     public SILAttributes             GetSILAttributes() { return attsSILAttributes; }
     public DBPluginInfoAttributes    GetDBPluginInfoAttributes() { return attsDBPluginInfoAttributes; }
     public ExportDBAttributes        GetExportDBAttributes() { return attsExportDBAttributes; }
-    public ConstructDDFAttributes    GetConstructDDFAttributes() { return attsConstructDDFAttributes; }
+    public ConstructDataBinningAttributes    GetConstructDataBinningAttributes() { return attsConstructDataBinningAttributes; }
     public ClientMethod              GetClientMethod() { return attsClientMethod; }
     public ClientInformation         GetClientInformation() { return attsClientInformation; }
     public ClientInformationList     GetClientInformationList() { return attsClientInformationList; }
@@ -225,6 +230,7 @@ public class ViewerState
     public MeshManagementAttributes  GetMeshManagementAttributes() { return attsMeshManagementAttributes; }
     public ViewerRPC                 GetLogRPC() { return attsLogRPC; }
     public FileOpenOptions           GetFileOpenOptions() { return attsFileOpenOptions; }
+    public SelectionList             GetSelectionList() { return attsSelectionList; }
 
     /**
      * Returns the i'th state object.
@@ -348,7 +354,7 @@ public class ViewerState
     private SILAttributes            attsSILAttributes;
     private DBPluginInfoAttributes   attsDBPluginInfoAttributes;
     private ExportDBAttributes       attsExportDBAttributes;
-    private ConstructDDFAttributes   attsConstructDDFAttributes;
+    private ConstructDataBinningAttributes   attsConstructDataBinningAttributes;
     private ClientMethod             attsClientMethod;
     private ClientInformation        attsClientInformation;
     private ClientInformationList    attsClientInformationList;
@@ -387,6 +393,7 @@ public class ViewerState
     private MeshManagementAttributes attsMeshManagementAttributes;
     private ViewerRPC                attsLogRPC;
     private FileOpenOptions          attsFileOpenOptions;
+    private SelectionList            attsSelectionList;
 
     private Vector objVector;
     private int nPlots;

@@ -1,4 +1,8 @@
 #!/bin/sh
+#
+# Modifications:
+#   Mark C. Miller, Thu Jul 29 23:35:19 PDT 2010
+#   Added option to ignore third party lib problems to cmake invokation.
 
 #
 # Determine the users name and e-mail address.
@@ -123,7 +127,8 @@ skipList_for_Alastor="\
     alastor,scalable,parallel,icet:tests/operators/transform.py:ops_transform05 \
     alastor,parallel:tests/rendering/compositing.py \
     alastor,scalable,parallel,icet:tests/rendering/compositing.py \
-    alastor,scalable,parallel,icet:tests/session/legendproperties.py:legendproperties00"
+    alastor,parallel:tests/session/legendproperties.py:legendproperties00,legendproperties01 \
+    alastor,scalable,parallel,icet:tests/session/legendproperties.py:legendproperties00,legendproperties01"
 
 skipList="\$skipList_for_Alastor"
 
@@ -172,7 +177,7 @@ ln -s yana1.cmake config-site/\`hostname\`.cmake
 if test "$serial" = "true" ; then
     sed -i "s/VISIT_PARALLEL ON/VISIT_PARALLEL OFF/" config-site/yana1.cmake
 fi
-/usr/gapps/visit/cmake/2.8.0/linux-x86_64_gcc-4.1/bin/cmake . -DCMAKE_BUILD_TYPE=Release -DVISIT_BUILD_ALL_PLUGINS=1 >> ../buildlog 2>&1
+/usr/gapps/visit/cmake/2.8.0/linux-x86_64_gcc-4.1/bin/cmake . -DCMAKE_BUILD_TYPE=Release -DVISIT_BUILD_ALL_PLUGINS=1 -DIGNORE_THIRD_PARTY_LIB_PROBLEMS:BOOL=ON >> ../buildlog 2>&1
 make -j 12 >> ../buildlog 2>&1
 if test "$debug" = "true" ; then
     echo "Source build completed at: \`date\`" | mail -s "Source build completed" $userEmail
@@ -198,7 +203,7 @@ for m in \$modes; do
     fi
 
     # Run the test
-    ./runtest -q -s "\$skipList_for_Alastor" -m "\$m" -l 1200 \$diffTols -notrackmem >> ../buildlog 2>&1
+    ./runtest -q -s "\$skipList_for_Alastor" -m "\$m" -l 600 \$diffTols -notrackmem >> ../buildlog 2>&1
 
     # Move the results to the consolidation directory
     theMode=\`echo \$m | tr ',' '_'\`
@@ -258,7 +263,7 @@ scp alastor alastor:alastor_testit
 scp visit-notify-test-failure alastor:
 
 # Run the test suite.
-ssh alastor "srun -n 1 -p pdebug -t 8:00:00 --exclusive ./alastor_testit"
+ssh alastor "srun -n 1 -p pdebug -t 12:00:00 --exclusive ./alastor_testit"
 
 # Copy the results to euclid
 ssh alastor "scp /nfs/tmp2/$user/$workingDir/test/html.tar.gz $userNersc@euclid.nersc.gov:"

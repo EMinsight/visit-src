@@ -41,43 +41,6 @@
 #include <Line.h>
 
 //
-// Enum conversion methods for CurveAttributes::RenderMode
-//
-
-static const char *RenderMode_strings[] = {
-"RenderAsLines", "RenderAsSymbols"};
-
-std::string
-CurveAttributes::RenderMode_ToString(CurveAttributes::RenderMode t)
-{
-    int index = int(t);
-    if(index < 0 || index >= 2) index = 0;
-    return RenderMode_strings[index];
-}
-
-std::string
-CurveAttributes::RenderMode_ToString(int t)
-{
-    int index = (t < 0 || t >= 2) ? 0 : t;
-    return RenderMode_strings[index];
-}
-
-bool
-CurveAttributes::RenderMode_FromString(const std::string &s, CurveAttributes::RenderMode &val)
-{
-    val = CurveAttributes::RenderAsLines;
-    for(int i = 0; i < 2; ++i)
-    {
-        if(s == RenderMode_strings[i])
-        {
-            val = (RenderMode)i;
-            return true;
-        }
-    }
-    return false;
-}
-
-//
 // Enum conversion methods for CurveAttributes::CurveColor
 //
 
@@ -115,34 +78,71 @@ CurveAttributes::CurveColor_FromString(const std::string &s, CurveAttributes::Cu
 }
 
 //
+// Enum conversion methods for CurveAttributes::FillMode
+//
+
+static const char *FillMode_strings[] = {
+"Static", "Dynamic"};
+
+std::string
+CurveAttributes::FillMode_ToString(CurveAttributes::FillMode t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 2) index = 0;
+    return FillMode_strings[index];
+}
+
+std::string
+CurveAttributes::FillMode_ToString(int t)
+{
+    int index = (t < 0 || t >= 2) ? 0 : t;
+    return FillMode_strings[index];
+}
+
+bool
+CurveAttributes::FillMode_FromString(const std::string &s, CurveAttributes::FillMode &val)
+{
+    val = CurveAttributes::Static;
+    for(int i = 0; i < 2; ++i)
+    {
+        if(s == FillMode_strings[i])
+        {
+            val = (FillMode)i;
+            return true;
+        }
+    }
+    return false;
+}
+
+//
 // Enum conversion methods for CurveAttributes::SymbolTypes
 //
 
 static const char *SymbolTypes_strings[] = {
-"TriangleUp", "TriangleDown", "Square", 
-"Circle", "Plus", "X"
-};
+"Point", "TriangleUp", "TriangleDown", 
+"Square", "Circle", "Plus", 
+"X"};
 
 std::string
 CurveAttributes::SymbolTypes_ToString(CurveAttributes::SymbolTypes t)
 {
     int index = int(t);
-    if(index < 0 || index >= 6) index = 0;
+    if(index < 0 || index >= 7) index = 0;
     return SymbolTypes_strings[index];
 }
 
 std::string
 CurveAttributes::SymbolTypes_ToString(int t)
 {
-    int index = (t < 0 || t >= 6) ? 0 : t;
+    int index = (t < 0 || t >= 7) ? 0 : t;
     return SymbolTypes_strings[index];
 }
 
 bool
 CurveAttributes::SymbolTypes_FromString(const std::string &s, CurveAttributes::SymbolTypes &val)
 {
-    val = CurveAttributes::TriangleUp;
-    for(int i = 0; i < 6; ++i)
+    val = CurveAttributes::Point;
+    for(int i = 0; i < 7; ++i)
     {
         if(s == SymbolTypes_strings[i])
         {
@@ -170,16 +170,24 @@ CurveAttributes::SymbolTypes_FromString(const std::string &s, CurveAttributes::S
 
 void CurveAttributes::Init()
 {
+    showLines = true;
     lineStyle = 0;
     lineWidth = 0;
-    showLabels = true;
     showPoints = false;
+    symbol = Point;
     pointSize = 5;
-    showLegend = true;
-    curveColorSource = Cycle;
-    renderMode = RenderAsLines;
-    symbol = TriangleUp;
+    pointFillMode = Static;
+    pointStride = 1;
     symbolDensity = 50;
+    curveColorSource = Cycle;
+    showLegend = true;
+    showLabels = true;
+    doBallTimeCue = false;
+    timeCueBallSize = 0.01;
+    doLineTimeCue = false;
+    lineTimeCueWidth = 0;
+    doCropTimeCue = false;
+    timeForTimeCue = 0;
 
     CurveAttributes::SelectAll();
 }
@@ -201,18 +209,28 @@ void CurveAttributes::Init()
 
 void CurveAttributes::Copy(const CurveAttributes &obj)
 {
+    showLines = obj.showLines;
     lineStyle = obj.lineStyle;
     lineWidth = obj.lineWidth;
+    showPoints = obj.showPoints;
+    symbol = obj.symbol;
+    pointSize = obj.pointSize;
+    pointFillMode = obj.pointFillMode;
+    pointStride = obj.pointStride;
+    symbolDensity = obj.symbolDensity;
+    curveColorSource = obj.curveColorSource;
     curveColor = obj.curveColor;
+    showLegend = obj.showLegend;
     showLabels = obj.showLabels;
     designator = obj.designator;
-    showPoints = obj.showPoints;
-    pointSize = obj.pointSize;
-    showLegend = obj.showLegend;
-    curveColorSource = obj.curveColorSource;
-    renderMode = obj.renderMode;
-    symbol = obj.symbol;
-    symbolDensity = obj.symbolDensity;
+    doBallTimeCue = obj.doBallTimeCue;
+    ballTimeCueColor = obj.ballTimeCueColor;
+    timeCueBallSize = obj.timeCueBallSize;
+    doLineTimeCue = obj.doLineTimeCue;
+    lineTimeCueColor = obj.lineTimeCueColor;
+    lineTimeCueWidth = obj.lineTimeCueWidth;
+    doCropTimeCue = obj.doCropTimeCue;
+    timeForTimeCue = obj.timeForTimeCue;
 
     CurveAttributes::SelectAll();
 }
@@ -239,7 +257,8 @@ const AttributeGroup::private_tmfs_t CurveAttributes::TmfsStruct = {CURVEATTRIBU
 
 CurveAttributes::CurveAttributes() : 
     AttributeSubject(CurveAttributes::TypeMapFormatString),
-    curveColor(0, 0, 0)
+    curveColor(0, 0, 0), ballTimeCueColor(0, 0, 0), 
+    lineTimeCueColor(0, 0, 0)
 {
     CurveAttributes::Init();
 }
@@ -261,7 +280,8 @@ CurveAttributes::CurveAttributes() :
 
 CurveAttributes::CurveAttributes(private_tmfs_t tmfs) : 
     AttributeSubject(tmfs.tmfs),
-    curveColor(0, 0, 0)
+    curveColor(0, 0, 0), ballTimeCueColor(0, 0, 0), 
+    lineTimeCueColor(0, 0, 0)
 {
     CurveAttributes::Init();
 }
@@ -372,18 +392,28 @@ bool
 CurveAttributes::operator == (const CurveAttributes &obj) const
 {
     // Create the return value
-    return ((lineStyle == obj.lineStyle) &&
+    return ((showLines == obj.showLines) &&
+            (lineStyle == obj.lineStyle) &&
             (lineWidth == obj.lineWidth) &&
+            (showPoints == obj.showPoints) &&
+            (symbol == obj.symbol) &&
+            (pointSize == obj.pointSize) &&
+            (pointFillMode == obj.pointFillMode) &&
+            (pointStride == obj.pointStride) &&
+            (symbolDensity == obj.symbolDensity) &&
+            (curveColorSource == obj.curveColorSource) &&
             (curveColor == obj.curveColor) &&
+            (showLegend == obj.showLegend) &&
             (showLabels == obj.showLabels) &&
             (designator == obj.designator) &&
-            (showPoints == obj.showPoints) &&
-            (pointSize == obj.pointSize) &&
-            (showLegend == obj.showLegend) &&
-            (curveColorSource == obj.curveColorSource) &&
-            (renderMode == obj.renderMode) &&
-            (symbol == obj.symbol) &&
-            (symbolDensity == obj.symbolDensity));
+            (doBallTimeCue == obj.doBallTimeCue) &&
+            (ballTimeCueColor == obj.ballTimeCueColor) &&
+            (timeCueBallSize == obj.timeCueBallSize) &&
+            (doLineTimeCue == obj.doLineTimeCue) &&
+            (lineTimeCueColor == obj.lineTimeCueColor) &&
+            (lineTimeCueWidth == obj.lineTimeCueWidth) &&
+            (doCropTimeCue == obj.doCropTimeCue) &&
+            (timeForTimeCue == obj.timeForTimeCue));
 }
 
 // ****************************************************************************
@@ -518,18 +548,28 @@ CurveAttributes::NewInstance(bool copy) const
 void
 CurveAttributes::SelectAll()
 {
+    Select(ID_showLines,        (void *)&showLines);
     Select(ID_lineStyle,        (void *)&lineStyle);
     Select(ID_lineWidth,        (void *)&lineWidth);
+    Select(ID_showPoints,       (void *)&showPoints);
+    Select(ID_symbol,           (void *)&symbol);
+    Select(ID_pointSize,        (void *)&pointSize);
+    Select(ID_pointFillMode,    (void *)&pointFillMode);
+    Select(ID_pointStride,      (void *)&pointStride);
+    Select(ID_symbolDensity,    (void *)&symbolDensity);
+    Select(ID_curveColorSource, (void *)&curveColorSource);
     Select(ID_curveColor,       (void *)&curveColor);
+    Select(ID_showLegend,       (void *)&showLegend);
     Select(ID_showLabels,       (void *)&showLabels);
     Select(ID_designator,       (void *)&designator);
-    Select(ID_showPoints,       (void *)&showPoints);
-    Select(ID_pointSize,        (void *)&pointSize);
-    Select(ID_showLegend,       (void *)&showLegend);
-    Select(ID_curveColorSource, (void *)&curveColorSource);
-    Select(ID_renderMode,       (void *)&renderMode);
-    Select(ID_symbol,           (void *)&symbol);
-    Select(ID_symbolDensity,    (void *)&symbolDensity);
+    Select(ID_doBallTimeCue,    (void *)&doBallTimeCue);
+    Select(ID_ballTimeCueColor, (void *)&ballTimeCueColor);
+    Select(ID_timeCueBallSize,  (void *)&timeCueBallSize);
+    Select(ID_doLineTimeCue,    (void *)&doLineTimeCue);
+    Select(ID_lineTimeCueColor, (void *)&lineTimeCueColor);
+    Select(ID_lineTimeCueWidth, (void *)&lineTimeCueWidth);
+    Select(ID_doCropTimeCue,    (void *)&doCropTimeCue);
+    Select(ID_timeForTimeCue,   (void *)&timeForTimeCue);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -562,6 +602,12 @@ CurveAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool forceA
     // Create a node for CurveAttributes.
     DataNode *node = new DataNode("CurveAttributes");
 
+    if(completeSave || !FieldsEqual(ID_showLines, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("showLines", showLines));
+    }
+
     if(completeSave || !FieldsEqual(ID_lineStyle, &defaultObject))
     {
         addToParent = true;
@@ -574,6 +620,48 @@ CurveAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool forceA
         node->AddNode(new DataNode("lineWidth", lineWidth));
     }
 
+    if(completeSave || !FieldsEqual(ID_showPoints, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("showPoints", showPoints));
+    }
+
+    if(completeSave || !FieldsEqual(ID_symbol, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("symbol", SymbolTypes_ToString(symbol)));
+    }
+
+    if(completeSave || !FieldsEqual(ID_pointSize, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("pointSize", pointSize));
+    }
+
+    if(completeSave || !FieldsEqual(ID_pointFillMode, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("pointFillMode", FillMode_ToString(pointFillMode)));
+    }
+
+    if(completeSave || !FieldsEqual(ID_pointStride, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("pointStride", pointStride));
+    }
+
+    if(completeSave || !FieldsEqual(ID_symbolDensity, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("symbolDensity", symbolDensity));
+    }
+
+    if(completeSave || !FieldsEqual(ID_curveColorSource, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("curveColorSource", CurveColor_ToString(curveColorSource)));
+    }
+
         DataNode *curveColorNode = new DataNode("curveColor");
         if(curveColor.CreateNode(curveColorNode, completeSave, true))
         {
@@ -582,6 +670,12 @@ CurveAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool forceA
         }
         else
             delete curveColorNode;
+    if(completeSave || !FieldsEqual(ID_showLegend, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("showLegend", showLegend));
+    }
+
     if(completeSave || !FieldsEqual(ID_showLabels, &defaultObject))
     {
         addToParent = true;
@@ -594,46 +688,56 @@ CurveAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool forceA
         node->AddNode(new DataNode("designator", designator));
     }
 
-    if(completeSave || !FieldsEqual(ID_showPoints, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_doBallTimeCue, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("showPoints", showPoints));
+        node->AddNode(new DataNode("doBallTimeCue", doBallTimeCue));
     }
 
-    if(completeSave || !FieldsEqual(ID_pointSize, &defaultObject))
+        DataNode *ballTimeCueColorNode = new DataNode("ballTimeCueColor");
+        if(ballTimeCueColor.CreateNode(ballTimeCueColorNode, completeSave, true))
+        {
+            addToParent = true;
+            node->AddNode(ballTimeCueColorNode);
+        }
+        else
+            delete ballTimeCueColorNode;
+    if(completeSave || !FieldsEqual(ID_timeCueBallSize, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("pointSize", pointSize));
+        node->AddNode(new DataNode("timeCueBallSize", timeCueBallSize));
     }
 
-    if(completeSave || !FieldsEqual(ID_showLegend, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_doLineTimeCue, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("showLegend", showLegend));
+        node->AddNode(new DataNode("doLineTimeCue", doLineTimeCue));
     }
 
-    if(completeSave || !FieldsEqual(ID_curveColorSource, &defaultObject))
+        DataNode *lineTimeCueColorNode = new DataNode("lineTimeCueColor");
+        if(lineTimeCueColor.CreateNode(lineTimeCueColorNode, completeSave, true))
+        {
+            addToParent = true;
+            node->AddNode(lineTimeCueColorNode);
+        }
+        else
+            delete lineTimeCueColorNode;
+    if(completeSave || !FieldsEqual(ID_lineTimeCueWidth, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("curveColorSource", CurveColor_ToString(curveColorSource)));
+        node->AddNode(new DataNode("lineTimeCueWidth", lineTimeCueWidth));
     }
 
-    if(completeSave || !FieldsEqual(ID_renderMode, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_doCropTimeCue, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("renderMode", RenderMode_ToString(renderMode)));
+        node->AddNode(new DataNode("doCropTimeCue", doCropTimeCue));
     }
 
-    if(completeSave || !FieldsEqual(ID_symbol, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_timeForTimeCue, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("symbol", SymbolTypes_ToString(symbol)));
-    }
-
-    if(completeSave || !FieldsEqual(ID_symbolDensity, &defaultObject))
-    {
-        addToParent = true;
-        node->AddNode(new DataNode("symbolDensity", symbolDensity));
+        node->AddNode(new DataNode("timeForTimeCue", timeForTimeCue));
     }
 
 
@@ -672,22 +776,52 @@ CurveAttributes::SetFromNode(DataNode *parentNode)
         return;
 
     DataNode *node;
+    if((node = searchNode->GetNode("showLines")) != 0)
+        SetShowLines(node->AsBool());
     if((node = searchNode->GetNode("lineStyle")) != 0)
         SetLineStyle(node->AsInt());
     if((node = searchNode->GetNode("lineWidth")) != 0)
         SetLineWidth(node->AsInt());
-    if((node = searchNode->GetNode("curveColor")) != 0)
-        curveColor.SetFromNode(node);
-    if((node = searchNode->GetNode("showLabels")) != 0)
-        SetShowLabels(node->AsBool());
-    if((node = searchNode->GetNode("designator")) != 0)
-        SetDesignator(node->AsString());
     if((node = searchNode->GetNode("showPoints")) != 0)
         SetShowPoints(node->AsBool());
+    if((node = searchNode->GetNode("symbol")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 7)
+                SetSymbol(SymbolTypes(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            SymbolTypes value;
+            if(SymbolTypes_FromString(node->AsString(), value))
+                SetSymbol(value);
+        }
+    }
     if((node = searchNode->GetNode("pointSize")) != 0)
         SetPointSize(node->AsDouble());
-    if((node = searchNode->GetNode("showLegend")) != 0)
-        SetShowLegend(node->AsBool());
+    if((node = searchNode->GetNode("pointFillMode")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 2)
+                SetPointFillMode(FillMode(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            FillMode value;
+            if(FillMode_FromString(node->AsString(), value))
+                SetPointFillMode(value);
+        }
+    }
+    if((node = searchNode->GetNode("pointStride")) != 0)
+        SetPointStride(node->AsInt());
+    if((node = searchNode->GetNode("symbolDensity")) != 0)
+        SetSymbolDensity(node->AsInt());
     if((node = searchNode->GetNode("curveColorSource")) != 0)
     {
         // Allow enums to be int or string in the config file
@@ -704,45 +838,42 @@ CurveAttributes::SetFromNode(DataNode *parentNode)
                 SetCurveColorSource(value);
         }
     }
-    if((node = searchNode->GetNode("renderMode")) != 0)
-    {
-        // Allow enums to be int or string in the config file
-        if(node->GetNodeType() == INT_NODE)
-        {
-            int ival = node->AsInt();
-            if(ival >= 0 && ival < 2)
-                SetRenderMode(RenderMode(ival));
-        }
-        else if(node->GetNodeType() == STRING_NODE)
-        {
-            RenderMode value;
-            if(RenderMode_FromString(node->AsString(), value))
-                SetRenderMode(value);
-        }
-    }
-    if((node = searchNode->GetNode("symbol")) != 0)
-    {
-        // Allow enums to be int or string in the config file
-        if(node->GetNodeType() == INT_NODE)
-        {
-            int ival = node->AsInt();
-            if(ival >= 0 && ival < 6)
-                SetSymbol(SymbolTypes(ival));
-        }
-        else if(node->GetNodeType() == STRING_NODE)
-        {
-            SymbolTypes value;
-            if(SymbolTypes_FromString(node->AsString(), value))
-                SetSymbol(value);
-        }
-    }
-    if((node = searchNode->GetNode("symbolDensity")) != 0)
-        SetSymbolDensity(node->AsInt());
+    if((node = searchNode->GetNode("curveColor")) != 0)
+        curveColor.SetFromNode(node);
+    if((node = searchNode->GetNode("showLegend")) != 0)
+        SetShowLegend(node->AsBool());
+    if((node = searchNode->GetNode("showLabels")) != 0)
+        SetShowLabels(node->AsBool());
+    if((node = searchNode->GetNode("designator")) != 0)
+        SetDesignator(node->AsString());
+    if((node = searchNode->GetNode("doBallTimeCue")) != 0)
+        SetDoBallTimeCue(node->AsBool());
+    if((node = searchNode->GetNode("ballTimeCueColor")) != 0)
+        ballTimeCueColor.SetFromNode(node);
+    if((node = searchNode->GetNode("timeCueBallSize")) != 0)
+        SetTimeCueBallSize(node->AsDouble());
+    if((node = searchNode->GetNode("doLineTimeCue")) != 0)
+        SetDoLineTimeCue(node->AsBool());
+    if((node = searchNode->GetNode("lineTimeCueColor")) != 0)
+        lineTimeCueColor.SetFromNode(node);
+    if((node = searchNode->GetNode("lineTimeCueWidth")) != 0)
+        SetLineTimeCueWidth(node->AsInt());
+    if((node = searchNode->GetNode("doCropTimeCue")) != 0)
+        SetDoCropTimeCue(node->AsBool());
+    if((node = searchNode->GetNode("timeForTimeCue")) != 0)
+        SetTimeForTimeCue(node->AsDouble());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // Set property methods
 ///////////////////////////////////////////////////////////////////////////////
+
+void
+CurveAttributes::SetShowLines(bool showLines_)
+{
+    showLines = showLines_;
+    Select(ID_showLines, (void *)&showLines);
+}
 
 void
 CurveAttributes::SetLineStyle(int lineStyle_)
@@ -759,10 +890,66 @@ CurveAttributes::SetLineWidth(int lineWidth_)
 }
 
 void
+CurveAttributes::SetShowPoints(bool showPoints_)
+{
+    showPoints = showPoints_;
+    Select(ID_showPoints, (void *)&showPoints);
+}
+
+void
+CurveAttributes::SetSymbol(CurveAttributes::SymbolTypes symbol_)
+{
+    symbol = symbol_;
+    Select(ID_symbol, (void *)&symbol);
+}
+
+void
+CurveAttributes::SetPointSize(double pointSize_)
+{
+    pointSize = pointSize_;
+    Select(ID_pointSize, (void *)&pointSize);
+}
+
+void
+CurveAttributes::SetPointFillMode(CurveAttributes::FillMode pointFillMode_)
+{
+    pointFillMode = pointFillMode_;
+    Select(ID_pointFillMode, (void *)&pointFillMode);
+}
+
+void
+CurveAttributes::SetPointStride(int pointStride_)
+{
+    pointStride = pointStride_;
+    Select(ID_pointStride, (void *)&pointStride);
+}
+
+void
+CurveAttributes::SetSymbolDensity(int symbolDensity_)
+{
+    symbolDensity = symbolDensity_;
+    Select(ID_symbolDensity, (void *)&symbolDensity);
+}
+
+void
+CurveAttributes::SetCurveColorSource(CurveAttributes::CurveColor curveColorSource_)
+{
+    curveColorSource = curveColorSource_;
+    Select(ID_curveColorSource, (void *)&curveColorSource);
+}
+
+void
 CurveAttributes::SetCurveColor(const ColorAttribute &curveColor_)
 {
     curveColor = curveColor_;
     Select(ID_curveColor, (void *)&curveColor);
+}
+
+void
+CurveAttributes::SetShowLegend(bool showLegend_)
+{
+    showLegend = showLegend_;
+    Select(ID_showLegend, (void *)&showLegend);
 }
 
 void
@@ -780,57 +967,70 @@ CurveAttributes::SetDesignator(const std::string &designator_)
 }
 
 void
-CurveAttributes::SetShowPoints(bool showPoints_)
+CurveAttributes::SetDoBallTimeCue(bool doBallTimeCue_)
 {
-    showPoints = showPoints_;
-    Select(ID_showPoints, (void *)&showPoints);
+    doBallTimeCue = doBallTimeCue_;
+    Select(ID_doBallTimeCue, (void *)&doBallTimeCue);
 }
 
 void
-CurveAttributes::SetPointSize(double pointSize_)
+CurveAttributes::SetBallTimeCueColor(const ColorAttribute &ballTimeCueColor_)
 {
-    pointSize = pointSize_;
-    Select(ID_pointSize, (void *)&pointSize);
+    ballTimeCueColor = ballTimeCueColor_;
+    Select(ID_ballTimeCueColor, (void *)&ballTimeCueColor);
 }
 
 void
-CurveAttributes::SetShowLegend(bool showLegend_)
+CurveAttributes::SetTimeCueBallSize(double timeCueBallSize_)
 {
-    showLegend = showLegend_;
-    Select(ID_showLegend, (void *)&showLegend);
+    timeCueBallSize = timeCueBallSize_;
+    Select(ID_timeCueBallSize, (void *)&timeCueBallSize);
 }
 
 void
-CurveAttributes::SetCurveColorSource(CurveAttributes::CurveColor curveColorSource_)
+CurveAttributes::SetDoLineTimeCue(bool doLineTimeCue_)
 {
-    curveColorSource = curveColorSource_;
-    Select(ID_curveColorSource, (void *)&curveColorSource);
+    doLineTimeCue = doLineTimeCue_;
+    Select(ID_doLineTimeCue, (void *)&doLineTimeCue);
 }
 
 void
-CurveAttributes::SetRenderMode(CurveAttributes::RenderMode renderMode_)
+CurveAttributes::SetLineTimeCueColor(const ColorAttribute &lineTimeCueColor_)
 {
-    renderMode = renderMode_;
-    Select(ID_renderMode, (void *)&renderMode);
+    lineTimeCueColor = lineTimeCueColor_;
+    Select(ID_lineTimeCueColor, (void *)&lineTimeCueColor);
 }
 
 void
-CurveAttributes::SetSymbol(CurveAttributes::SymbolTypes symbol_)
+CurveAttributes::SetLineTimeCueWidth(int lineTimeCueWidth_)
 {
-    symbol = symbol_;
-    Select(ID_symbol, (void *)&symbol);
+    lineTimeCueWidth = lineTimeCueWidth_;
+    Select(ID_lineTimeCueWidth, (void *)&lineTimeCueWidth);
 }
 
 void
-CurveAttributes::SetSymbolDensity(int symbolDensity_)
+CurveAttributes::SetDoCropTimeCue(bool doCropTimeCue_)
 {
-    symbolDensity = symbolDensity_;
-    Select(ID_symbolDensity, (void *)&symbolDensity);
+    doCropTimeCue = doCropTimeCue_;
+    Select(ID_doCropTimeCue, (void *)&doCropTimeCue);
+}
+
+void
+CurveAttributes::SetTimeForTimeCue(double timeForTimeCue_)
+{
+    timeForTimeCue = timeForTimeCue_;
+    Select(ID_timeForTimeCue, (void *)&timeForTimeCue);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // Get property methods
 ///////////////////////////////////////////////////////////////////////////////
+
+bool
+CurveAttributes::GetShowLines() const
+{
+    return showLines;
+}
 
 int
 CurveAttributes::GetLineStyle() const
@@ -844,6 +1044,48 @@ CurveAttributes::GetLineWidth() const
     return lineWidth;
 }
 
+bool
+CurveAttributes::GetShowPoints() const
+{
+    return showPoints;
+}
+
+CurveAttributes::SymbolTypes
+CurveAttributes::GetSymbol() const
+{
+    return SymbolTypes(symbol);
+}
+
+double
+CurveAttributes::GetPointSize() const
+{
+    return pointSize;
+}
+
+CurveAttributes::FillMode
+CurveAttributes::GetPointFillMode() const
+{
+    return FillMode(pointFillMode);
+}
+
+int
+CurveAttributes::GetPointStride() const
+{
+    return pointStride;
+}
+
+int
+CurveAttributes::GetSymbolDensity() const
+{
+    return symbolDensity;
+}
+
+CurveAttributes::CurveColor
+CurveAttributes::GetCurveColorSource() const
+{
+    return CurveColor(curveColorSource);
+}
+
 const ColorAttribute &
 CurveAttributes::GetCurveColor() const
 {
@@ -854,6 +1096,12 @@ ColorAttribute &
 CurveAttributes::GetCurveColor()
 {
     return curveColor;
+}
+
+bool
+CurveAttributes::GetShowLegend() const
+{
+    return showLegend;
 }
 
 bool
@@ -875,45 +1123,63 @@ CurveAttributes::GetDesignator()
 }
 
 bool
-CurveAttributes::GetShowPoints() const
+CurveAttributes::GetDoBallTimeCue() const
 {
-    return showPoints;
+    return doBallTimeCue;
+}
+
+const ColorAttribute &
+CurveAttributes::GetBallTimeCueColor() const
+{
+    return ballTimeCueColor;
+}
+
+ColorAttribute &
+CurveAttributes::GetBallTimeCueColor()
+{
+    return ballTimeCueColor;
 }
 
 double
-CurveAttributes::GetPointSize() const
+CurveAttributes::GetTimeCueBallSize() const
 {
-    return pointSize;
+    return timeCueBallSize;
 }
 
 bool
-CurveAttributes::GetShowLegend() const
+CurveAttributes::GetDoLineTimeCue() const
 {
-    return showLegend;
+    return doLineTimeCue;
 }
 
-CurveAttributes::CurveColor
-CurveAttributes::GetCurveColorSource() const
+const ColorAttribute &
+CurveAttributes::GetLineTimeCueColor() const
 {
-    return CurveColor(curveColorSource);
+    return lineTimeCueColor;
 }
 
-CurveAttributes::RenderMode
-CurveAttributes::GetRenderMode() const
+ColorAttribute &
+CurveAttributes::GetLineTimeCueColor()
 {
-    return RenderMode(renderMode);
-}
-
-CurveAttributes::SymbolTypes
-CurveAttributes::GetSymbol() const
-{
-    return SymbolTypes(symbol);
+    return lineTimeCueColor;
 }
 
 int
-CurveAttributes::GetSymbolDensity() const
+CurveAttributes::GetLineTimeCueWidth() const
 {
-    return symbolDensity;
+    return lineTimeCueWidth;
+}
+
+bool
+CurveAttributes::GetDoCropTimeCue() const
+{
+    return doCropTimeCue;
+}
+
+double
+CurveAttributes::GetTimeForTimeCue() const
+{
+    return timeForTimeCue;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -930,6 +1196,18 @@ void
 CurveAttributes::SelectDesignator()
 {
     Select(ID_designator, (void *)&designator);
+}
+
+void
+CurveAttributes::SelectBallTimeCueColor()
+{
+    Select(ID_ballTimeCueColor, (void *)&ballTimeCueColor);
+}
+
+void
+CurveAttributes::SelectLineTimeCueColor()
+{
+    Select(ID_lineTimeCueColor, (void *)&lineTimeCueColor);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -956,18 +1234,28 @@ CurveAttributes::GetFieldName(int index) const
 {
     switch (index)
     {
+    case ID_showLines:        return "showLines";
     case ID_lineStyle:        return "lineStyle";
     case ID_lineWidth:        return "lineWidth";
+    case ID_showPoints:       return "showPoints";
+    case ID_symbol:           return "symbol";
+    case ID_pointSize:        return "pointSize";
+    case ID_pointFillMode:    return "pointFillMode";
+    case ID_pointStride:      return "pointStride";
+    case ID_symbolDensity:    return "symbolDensity";
+    case ID_curveColorSource: return "curveColorSource";
     case ID_curveColor:       return "curveColor";
+    case ID_showLegend:       return "showLegend";
     case ID_showLabels:       return "showLabels";
     case ID_designator:       return "designator";
-    case ID_showPoints:       return "showPoints";
-    case ID_pointSize:        return "pointSize";
-    case ID_showLegend:       return "showLegend";
-    case ID_curveColorSource: return "curveColorSource";
-    case ID_renderMode:       return "renderMode";
-    case ID_symbol:           return "symbol";
-    case ID_symbolDensity:    return "symbolDensity";
+    case ID_doBallTimeCue:    return "doBallTimeCue";
+    case ID_ballTimeCueColor: return "ballTimeCueColor";
+    case ID_timeCueBallSize:  return "timeCueBallSize";
+    case ID_doLineTimeCue:    return "doLineTimeCue";
+    case ID_lineTimeCueColor: return "lineTimeCueColor";
+    case ID_lineTimeCueWidth: return "lineTimeCueWidth";
+    case ID_doCropTimeCue:    return "doCropTimeCue";
+    case ID_timeForTimeCue:   return "timeForTimeCue";
     default:  return "invalid index";
     }
 }
@@ -992,18 +1280,28 @@ CurveAttributes::GetFieldType(int index) const
 {
     switch (index)
     {
+    case ID_showLines:        return FieldType_bool;
     case ID_lineStyle:        return FieldType_linestyle;
     case ID_lineWidth:        return FieldType_linewidth;
+    case ID_showPoints:       return FieldType_bool;
+    case ID_symbol:           return FieldType_enum;
+    case ID_pointSize:        return FieldType_double;
+    case ID_pointFillMode:    return FieldType_enum;
+    case ID_pointStride:      return FieldType_int;
+    case ID_symbolDensity:    return FieldType_int;
+    case ID_curveColorSource: return FieldType_enum;
     case ID_curveColor:       return FieldType_color;
+    case ID_showLegend:       return FieldType_bool;
     case ID_showLabels:       return FieldType_bool;
     case ID_designator:       return FieldType_string;
-    case ID_showPoints:       return FieldType_bool;
-    case ID_pointSize:        return FieldType_double;
-    case ID_showLegend:       return FieldType_bool;
-    case ID_curveColorSource: return FieldType_enum;
-    case ID_renderMode:       return FieldType_enum;
-    case ID_symbol:           return FieldType_enum;
-    case ID_symbolDensity:    return FieldType_int;
+    case ID_doBallTimeCue:    return FieldType_bool;
+    case ID_ballTimeCueColor: return FieldType_color;
+    case ID_timeCueBallSize:  return FieldType_double;
+    case ID_doLineTimeCue:    return FieldType_bool;
+    case ID_lineTimeCueColor: return FieldType_color;
+    case ID_lineTimeCueWidth: return FieldType_int;
+    case ID_doCropTimeCue:    return FieldType_bool;
+    case ID_timeForTimeCue:   return FieldType_double;
     default:  return FieldType_unknown;
     }
 }
@@ -1028,18 +1326,28 @@ CurveAttributes::GetFieldTypeName(int index) const
 {
     switch (index)
     {
+    case ID_showLines:        return "bool";
     case ID_lineStyle:        return "linestyle";
     case ID_lineWidth:        return "linewidth";
+    case ID_showPoints:       return "bool";
+    case ID_symbol:           return "enum";
+    case ID_pointSize:        return "double";
+    case ID_pointFillMode:    return "enum";
+    case ID_pointStride:      return "int";
+    case ID_symbolDensity:    return "int";
+    case ID_curveColorSource: return "enum";
     case ID_curveColor:       return "color";
+    case ID_showLegend:       return "bool";
     case ID_showLabels:       return "bool";
     case ID_designator:       return "string";
-    case ID_showPoints:       return "bool";
-    case ID_pointSize:        return "double";
-    case ID_showLegend:       return "bool";
-    case ID_curveColorSource: return "enum";
-    case ID_renderMode:       return "enum";
-    case ID_symbol:           return "enum";
-    case ID_symbolDensity:    return "int";
+    case ID_doBallTimeCue:    return "bool";
+    case ID_ballTimeCueColor: return "color";
+    case ID_timeCueBallSize:  return "double";
+    case ID_doLineTimeCue:    return "bool";
+    case ID_lineTimeCueColor: return "color";
+    case ID_lineTimeCueWidth: return "int";
+    case ID_doCropTimeCue:    return "bool";
+    case ID_timeForTimeCue:   return "double";
     default:  return "invalid index";
     }
 }
@@ -1066,6 +1374,11 @@ CurveAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
     bool retval = false;
     switch (index_)
     {
+    case ID_showLines:
+        {  // new scope
+        retval = (showLines == obj.showLines);
+        }
+        break;
     case ID_lineStyle:
         {  // new scope
         retval = (lineStyle == obj.lineStyle);
@@ -1076,9 +1389,49 @@ CurveAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (lineWidth == obj.lineWidth);
         }
         break;
+    case ID_showPoints:
+        {  // new scope
+        retval = (showPoints == obj.showPoints);
+        }
+        break;
+    case ID_symbol:
+        {  // new scope
+        retval = (symbol == obj.symbol);
+        }
+        break;
+    case ID_pointSize:
+        {  // new scope
+        retval = (pointSize == obj.pointSize);
+        }
+        break;
+    case ID_pointFillMode:
+        {  // new scope
+        retval = (pointFillMode == obj.pointFillMode);
+        }
+        break;
+    case ID_pointStride:
+        {  // new scope
+        retval = (pointStride == obj.pointStride);
+        }
+        break;
+    case ID_symbolDensity:
+        {  // new scope
+        retval = (symbolDensity == obj.symbolDensity);
+        }
+        break;
+    case ID_curveColorSource:
+        {  // new scope
+        retval = (curveColorSource == obj.curveColorSource);
+        }
+        break;
     case ID_curveColor:
         {  // new scope
         retval = (curveColor == obj.curveColor);
+        }
+        break;
+    case ID_showLegend:
+        {  // new scope
+        retval = (showLegend == obj.showLegend);
         }
         break;
     case ID_showLabels:
@@ -1091,39 +1444,44 @@ CurveAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (designator == obj.designator);
         }
         break;
-    case ID_showPoints:
+    case ID_doBallTimeCue:
         {  // new scope
-        retval = (showPoints == obj.showPoints);
+        retval = (doBallTimeCue == obj.doBallTimeCue);
         }
         break;
-    case ID_pointSize:
+    case ID_ballTimeCueColor:
         {  // new scope
-        retval = (pointSize == obj.pointSize);
+        retval = (ballTimeCueColor == obj.ballTimeCueColor);
         }
         break;
-    case ID_showLegend:
+    case ID_timeCueBallSize:
         {  // new scope
-        retval = (showLegend == obj.showLegend);
+        retval = (timeCueBallSize == obj.timeCueBallSize);
         }
         break;
-    case ID_curveColorSource:
+    case ID_doLineTimeCue:
         {  // new scope
-        retval = (curveColorSource == obj.curveColorSource);
+        retval = (doLineTimeCue == obj.doLineTimeCue);
         }
         break;
-    case ID_renderMode:
+    case ID_lineTimeCueColor:
         {  // new scope
-        retval = (renderMode == obj.renderMode);
+        retval = (lineTimeCueColor == obj.lineTimeCueColor);
         }
         break;
-    case ID_symbol:
+    case ID_lineTimeCueWidth:
         {  // new scope
-        retval = (symbol == obj.symbol);
+        retval = (lineTimeCueWidth == obj.lineTimeCueWidth);
         }
         break;
-    case ID_symbolDensity:
+    case ID_doCropTimeCue:
         {  // new scope
-        retval = (symbolDensity == obj.symbolDensity);
+        retval = (doCropTimeCue == obj.doCropTimeCue);
+        }
+        break;
+    case ID_timeForTimeCue:
+        {  // new scope
+        retval = (timeForTimeCue == obj.timeForTimeCue);
         }
         break;
     default: retval = false;
@@ -1142,39 +1500,50 @@ CurveAttributes::ChangesRequireRecalculation(const CurveAttributes &obj) const
     return false;
 }
 
+// ****************************************************************************
+// Method: CurveAttributes::ProcessOldVersions
+//
+// Purpose: 
+//   This method creates modifies a DataNode representation of the object
+//   so it conforms to the newest representation of the object, which can
+//   can be read back in.
+//
+// Programmer: Kathleen Bonnell 
+// Creation:   August 16, 2010
+//
+// Modifications:
+//
+// ****************************************************************************
+
 void
-CurveAttributes::Print(ostream &out, bool selected_only) const
+CurveAttributes::ProcessOldVersions(DataNode *parentNode,
+                                         const char *configVersion)
 {
-    out << "CurveAttributes" << "\n";
-    out << "{";
-    for(int i = 0; i < NumAttributes(); ++i)
+    if (parentNode == 0)
+        return;
+
+    DataNode *searchNode = parentNode->GetNode("CurveAttributes");
+    if (searchNode == 0)
+        return;
+
+    if (VersionLessThan(configVersion, "2.1.0"))
     {
-        if(selected_only && !IsSelected(i))
-            continue;
-
-        switch(i)
+        DataNode *k = 0;
+        if (( k = searchNode->GetNode("renderMode")) != 0)
         {
-          case  0: out << "lineStyle=  " << GetLineStyle();      break;
-          case  1: out << "lineWidth=  " << GetLineWidth();      break;
-          case  2: double color[4];
-                   GetCurveColor().GetRgba(color);
-                   out << "color=      " 
-                       << color[0] << " " << color[1] << " " 
-                       << color[2] << " " << color[3];
-                   GetDesignator();    break;
-          case  3: out << "showLabels= " << GetShowLabels();    break;
-          case  4: out << "designator= " << GetDesignator().c_str();    break;
-          case  5: out << "showPoints= " << GetShowPoints();    break;
-          case  6: out << "pointSize=  " << GetPointSize();    break;
-          case  7: out << "legend=  " << (GetShowLegend()?"true":"false");    break;
-//          case  8: out << "curveColor=" << (GetCurveColor()==CurveColor::Cycle?"cycle":"custom"); break;
-          case  9: out << "renderMode=" << RenderMode_ToString(GetRenderMode()).c_str(); break;
-          case  10: out << "symbol=" << SymbolTypes_ToString(GetSymbol()).c_str(); break;
-          case  11: out << "symbolDensity=" << GetSymbolDensity(); break;
+            int rm = k->AsInt();
+            searchNode->RemoveNode(k, true);
+            if (rm == 0) // asLines
+            {
+                searchNode->AddNode(new DataNode("showLines", true));
+                searchNode->AddNode(new DataNode("pointFillMode", FillMode_ToString(CurveAttributes::Static)));
+            }
+            else 
+            {
+                searchNode->AddNode(new DataNode("showLines", false));
+                searchNode->AddNode(new DataNode("pointFillMode", FillMode_ToString(CurveAttributes::Dynamic)));
+            }
         }
-        out << ",";
     }
-
-    out << "}";
 }
 

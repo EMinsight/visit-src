@@ -45,17 +45,21 @@
 //
 // Functions exposed to the VisIt module.
 //
+#define SAVEWINDOWATTRIBUTES_NMETH 38
 void VISITPY_API           PySaveWindowAttributes_StartUp(SaveWindowAttributes *subj, void *data);
 void VISITPY_API           PySaveWindowAttributes_CloseDown();
-VISITPY_API PyMethodDef *   PySaveWindowAttributes_GetMethodTable(int *nMethods);
+VISITPY_API PyMethodDef *  PySaveWindowAttributes_GetMethodTable(int *nMethods);
 bool VISITPY_API           PySaveWindowAttributes_Check(PyObject *obj);
 VISITPY_API SaveWindowAttributes *  PySaveWindowAttributes_FromPyObject(PyObject *obj);
-VISITPY_API PyObject *      PySaveWindowAttributes_New();
-VISITPY_API PyObject *      PySaveWindowAttributes_Wrap(const SaveWindowAttributes *attr);
+VISITPY_API PyObject *     PySaveWindowAttributes_New();
+VISITPY_API PyObject *     PySaveWindowAttributes_Wrap(const SaveWindowAttributes *attr);
 void VISITPY_API           PySaveWindowAttributes_SetParent(PyObject *obj, PyObject *parent);
 void VISITPY_API           PySaveWindowAttributes_SetDefaults(const SaveWindowAttributes *atts);
 std::string VISITPY_API    PySaveWindowAttributes_GetLogString();
 std::string VISITPY_API    PySaveWindowAttributes_ToString(const SaveWindowAttributes *, const char *);
+VISITPY_API PyObject *     PySaveWindowAttributes_getattr(PyObject *self, char *name);
+int VISITPY_API            PySaveWindowAttributes_setattr(PyObject *self, char *name, PyObject *args);
+VISITPY_API extern PyMethodDef PySaveWindowAttributes_methods[SAVEWINDOWATTRIBUTES_NMETH];
 
 #endif
 

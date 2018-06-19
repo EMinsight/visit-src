@@ -170,7 +170,7 @@
       MoveWindowRPC
       MoveAndResizeWindowRPC
       SetStateLoggingRPC
-      ConstructDDFRPC
+      ConstructDataBinningRPC
       RequestMetaDataRPC
       SetTreatAllDBsAsTimeVaryingRPC
       SetCreateMeshQualityExpressionsRPC
@@ -186,12 +186,15 @@
       DeleteNamedSelectionRPC
       LoadNamedSelectionRPC
       SaveNamedSelectionRPC
+      SetNamedSelectionAutoApplyRPC
+      UpdateNamedSelectionRPC
       MenuQuitRPC
       SetPlotDescriptionRPC
       MovePlotOrderTowardFirstRPC
       MovePlotOrderTowardLastRPC
       SetPlotOrderToFirstRPC
       SetPlotOrderToLastRPC
+      RenamePickLabelRPC
       MaxRPC
     </Enum>
     <Field name="RPCType" label="RPCType" type="enum" subtype="ViewerRPCType">

@@ -77,6 +77,16 @@ public:
         OriginalData,
         CurrentPlot
     };
+    enum GlyphType
+    {
+        Arrow,
+        Ellipsoid
+    };
+    enum GlyphLocation
+    {
+        AdaptsToMeshResolution,
+        UniformInSpace
+    };
 
     // These constructors are for objects of this class
     VectorAttributes();
@@ -107,6 +117,7 @@ public:
     void SelectColorTableName();
 
     // Property setting methods
+    void SetGlyphLocation(GlyphLocation glyphLocation_);
     void SetUseStride(bool useStride_);
     void SetStride(int stride_);
     void SetNVectors(int nVectors_);
@@ -131,8 +142,10 @@ public:
     void SetGeometryQuality(Quality geometryQuality_);
     void SetStemWidth(double stemWidth_);
     void SetOrigOnly(bool origOnly_);
+    void SetGlyphType(GlyphType glyphType_);
 
     // Property getting methods
+    GlyphLocation        GetGlyphLocation() const;
     bool                 GetUseStride() const;
     int                  GetStride() const;
     int                  GetNVectors() const;
@@ -159,6 +172,7 @@ public:
     Quality              GetGeometryQuality() const;
     double               GetStemWidth() const;
     bool                 GetOrigOnly() const;
+    GlyphType            GetGlyphType() const;
 
     // Persistence methods
     virtual bool CreateNode(DataNode *node, bool completeSave, bool forceAdd);
@@ -180,6 +194,16 @@ public:
 protected:
     static std::string LimitsMode_ToString(int);
 public:
+    static std::string GlyphType_ToString(GlyphType);
+    static bool GlyphType_FromString(const std::string &, GlyphType &);
+protected:
+    static std::string GlyphType_ToString(int);
+public:
+    static std::string GlyphLocation_ToString(GlyphLocation);
+    static bool GlyphLocation_FromString(const std::string &, GlyphLocation &);
+protected:
+    static std::string GlyphLocation_ToString(int);
+public:
 
     // Keyframing methods
     virtual std::string               GetFieldName(int index) const;
@@ -192,7 +216,8 @@ public:
 
     // IDs that can be used to identify fields in case statements
     enum {
-        ID_useStride = 0,
+        ID_glyphLocation = 0,
+        ID_useStride,
         ID_stride,
         ID_nVectors,
         ID_lineStyle,
@@ -216,10 +241,12 @@ public:
         ID_geometryQuality,
         ID_stemWidth,
         ID_origOnly,
+        ID_glyphType,
         ID__LAST
     };
 
 private:
+    int            glyphLocation;
     bool           useStride;
     int            stride;
     int            nVectors;
@@ -244,11 +271,12 @@ private:
     int            geometryQuality;
     double         stemWidth;
     bool           origOnly;
+    int            glyphType;
 
     // Static class format string for type map.
     static const char *TypeMapFormatString;
     static const private_tmfs_t TmfsStruct;
 };
-#define VECTORATTRIBUTES_TMFS "biiiidbbdbbbasibbiddbidb"
+#define VECTORATTRIBUTES_TMFS "ibiiiidbbdbbbasibbiddbidbi"
 
 #endif

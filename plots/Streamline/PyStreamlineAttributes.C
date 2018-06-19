@@ -213,7 +213,7 @@ PyStreamlineAttributes_ToString(const StreamlineAttributes *atts, const char *pr
         SNPRINTF(tmpStr, 1000, ")\n");
         str += tmpStr;
     }
-    SNPRINTF(tmpStr, 1000, "%splaneRadius = %g\n", prefix, atts->GetPlaneRadius());
+    SNPRINTF(tmpStr, 1000, "%sradius = %g\n", prefix, atts->GetRadius());
     str += tmpStr;
     {   const double *sphereOrigin = atts->GetSphereOrigin();
         SNPRINTF(tmpStr, 1000, "%ssphereOrigin = (", prefix);
@@ -231,8 +231,6 @@ PyStreamlineAttributes_ToString(const StreamlineAttributes *atts, const char *pr
         SNPRINTF(tmpStr, 1000, ")\n");
         str += tmpStr;
     }
-    SNPRINTF(tmpStr, 1000, "%ssphereRadius = %g\n", prefix, atts->GetSphereRadius());
-    str += tmpStr;
     {   const double *boxExtents = atts->GetBoxExtents();
         SNPRINTF(tmpStr, 1000, "%sboxExtents = (", prefix);
         str += tmpStr;
@@ -270,7 +268,11 @@ PyStreamlineAttributes_ToString(const StreamlineAttributes *atts, const char *pr
         SNPRINTF(tmpStr, 1000, ")\n");
         str += tmpStr;
     }
-    SNPRINTF(tmpStr, 1000, "%spointDensity = %d\n", prefix, atts->GetPointDensity());
+    SNPRINTF(tmpStr, 1000, "%ssampleDensity0 = %d\n", prefix, atts->GetSampleDensity0());
+    str += tmpStr;
+    SNPRINTF(tmpStr, 1000, "%ssampleDensity1 = %d\n", prefix, atts->GetSampleDensity1());
+    str += tmpStr;
+    SNPRINTF(tmpStr, 1000, "%ssampleDensity2 = %d\n", prefix, atts->GetSampleDensity2());
     str += tmpStr;
     const char *displayMethod_names = "Lines, Tubes, Ribbons";
     switch (atts->GetDisplayMethod())
@@ -400,7 +402,7 @@ PyStreamlineAttributes_ToString(const StreamlineAttributes *atts, const char *pr
           break;
     }
 
-    const char *integrationType_names = "DormandPrince, AdamsBashforth";
+    const char *integrationType_names = "DormandPrince, AdamsBashforth, M3DC1Integrator";
     switch (atts->GetIntegrationType())
     {
       case StreamlineAttributes::DormandPrince:
@@ -409,6 +411,10 @@ PyStreamlineAttributes_ToString(const StreamlineAttributes *atts, const char *pr
           break;
       case StreamlineAttributes::AdamsBashforth:
           SNPRINTF(tmpStr, 1000, "%sintegrationType = %sAdamsBashforth  # %s\n", prefix, prefix, integrationType_names);
+          str += tmpStr;
+          break;
+      case StreamlineAttributes::M3DC1Integrator:
+          SNPRINTF(tmpStr, 1000, "%sintegrationType = %sM3DC1Integrator  # %s\n", prefix, prefix, integrationType_names);
           str += tmpStr;
           break;
       default:
@@ -562,6 +568,31 @@ PyStreamlineAttributes_ToString(const StreamlineAttributes *atts, const char *pr
           break;
     }
 
+    SNPRINTF(tmpStr, 1000, "%ssampleDistance0 = %g\n", prefix, atts->GetSampleDistance0());
+    str += tmpStr;
+    SNPRINTF(tmpStr, 1000, "%ssampleDistance1 = %g\n", prefix, atts->GetSampleDistance1());
+    str += tmpStr;
+    SNPRINTF(tmpStr, 1000, "%ssampleDistance2 = %g\n", prefix, atts->GetSampleDistance2());
+    str += tmpStr;
+    if(atts->GetFillInterior())
+        SNPRINTF(tmpStr, 1000, "%sfillInterior = 1\n", prefix);
+    else
+        SNPRINTF(tmpStr, 1000, "%sfillInterior = 0\n", prefix);
+    str += tmpStr;
+    if(atts->GetRandomSamples())
+        SNPRINTF(tmpStr, 1000, "%srandomSamples = 1\n", prefix);
+    else
+        SNPRINTF(tmpStr, 1000, "%srandomSamples = 0\n", prefix);
+    str += tmpStr;
+    SNPRINTF(tmpStr, 1000, "%srandomSeed = %d\n", prefix, atts->GetRandomSeed());
+    str += tmpStr;
+    SNPRINTF(tmpStr, 1000, "%snumberOfRandomSamples = %d\n", prefix, atts->GetNumberOfRandomSamples());
+    str += tmpStr;
+    if(atts->GetForceNodeCenteredData())
+        SNPRINTF(tmpStr, 1000, "%sforceNodeCenteredData = 1\n", prefix);
+    else
+        SNPRINTF(tmpStr, 1000, "%sforceNodeCenteredData = 0\n", prefix);
+    str += tmpStr;
     return str;
 }
 
@@ -981,7 +1012,7 @@ StreamlineAttributes_GetPlaneUpAxis(PyObject *self, PyObject *args)
 }
 
 /*static*/ PyObject *
-StreamlineAttributes_SetPlaneRadius(PyObject *self, PyObject *args)
+StreamlineAttributes_SetRadius(PyObject *self, PyObject *args)
 {
     StreamlineAttributesObject *obj = (StreamlineAttributesObject *)self;
 
@@ -989,18 +1020,18 @@ StreamlineAttributes_SetPlaneRadius(PyObject *self, PyObject *args)
     if(!PyArg_ParseTuple(args, "d", &dval))
         return NULL;
 
-    // Set the planeRadius in the object.
-    obj->data->SetPlaneRadius(dval);
+    // Set the radius in the object.
+    obj->data->SetRadius(dval);
 
     Py_INCREF(Py_None);
     return Py_None;
 }
 
 /*static*/ PyObject *
-StreamlineAttributes_GetPlaneRadius(PyObject *self, PyObject *args)
+StreamlineAttributes_GetRadius(PyObject *self, PyObject *args)
 {
     StreamlineAttributesObject *obj = (StreamlineAttributesObject *)self;
-    PyObject *retval = PyFloat_FromDouble(obj->data->GetPlaneRadius());
+    PyObject *retval = PyFloat_FromDouble(obj->data->GetRadius());
     return retval;
 }
 
@@ -1055,30 +1086,6 @@ StreamlineAttributes_GetSphereOrigin(PyObject *self, PyObject *args)
     const double *sphereOrigin = obj->data->GetSphereOrigin();
     for(int i = 0; i < 3; ++i)
         PyTuple_SET_ITEM(retval, i, PyFloat_FromDouble(sphereOrigin[i]));
-    return retval;
-}
-
-/*static*/ PyObject *
-StreamlineAttributes_SetSphereRadius(PyObject *self, PyObject *args)
-{
-    StreamlineAttributesObject *obj = (StreamlineAttributesObject *)self;
-
-    double dval;
-    if(!PyArg_ParseTuple(args, "d", &dval))
-        return NULL;
-
-    // Set the sphereRadius in the object.
-    obj->data->SetSphereRadius(dval);
-
-    Py_INCREF(Py_None);
-    return Py_None;
-}
-
-/*static*/ PyObject *
-StreamlineAttributes_GetSphereRadius(PyObject *self, PyObject *args)
-{
-    StreamlineAttributesObject *obj = (StreamlineAttributesObject *)self;
-    PyObject *retval = PyFloat_FromDouble(obj->data->GetSphereRadius());
     return retval;
 }
 
@@ -1224,7 +1231,7 @@ StreamlineAttributes_GetPointList(PyObject *self, PyObject *args)
 }
 
 /*static*/ PyObject *
-StreamlineAttributes_SetPointDensity(PyObject *self, PyObject *args)
+StreamlineAttributes_SetSampleDensity0(PyObject *self, PyObject *args)
 {
     StreamlineAttributesObject *obj = (StreamlineAttributesObject *)self;
 
@@ -1232,18 +1239,66 @@ StreamlineAttributes_SetPointDensity(PyObject *self, PyObject *args)
     if(!PyArg_ParseTuple(args, "i", &ival))
         return NULL;
 
-    // Set the pointDensity in the object.
-    obj->data->SetPointDensity((int)ival);
+    // Set the sampleDensity0 in the object.
+    obj->data->SetSampleDensity0((int)ival);
 
     Py_INCREF(Py_None);
     return Py_None;
 }
 
 /*static*/ PyObject *
-StreamlineAttributes_GetPointDensity(PyObject *self, PyObject *args)
+StreamlineAttributes_GetSampleDensity0(PyObject *self, PyObject *args)
 {
     StreamlineAttributesObject *obj = (StreamlineAttributesObject *)self;
-    PyObject *retval = PyInt_FromLong(long(obj->data->GetPointDensity()));
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetSampleDensity0()));
+    return retval;
+}
+
+/*static*/ PyObject *
+StreamlineAttributes_SetSampleDensity1(PyObject *self, PyObject *args)
+{
+    StreamlineAttributesObject *obj = (StreamlineAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the sampleDensity1 in the object.
+    obj->data->SetSampleDensity1((int)ival);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+StreamlineAttributes_GetSampleDensity1(PyObject *self, PyObject *args)
+{
+    StreamlineAttributesObject *obj = (StreamlineAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetSampleDensity1()));
+    return retval;
+}
+
+/*static*/ PyObject *
+StreamlineAttributes_SetSampleDensity2(PyObject *self, PyObject *args)
+{
+    StreamlineAttributesObject *obj = (StreamlineAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the sampleDensity2 in the object.
+    obj->data->SetSampleDensity2((int)ival);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+StreamlineAttributes_GetSampleDensity2(PyObject *self, PyObject *args)
+{
+    StreamlineAttributesObject *obj = (StreamlineAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetSampleDensity2()));
     return retval;
 }
 
@@ -1707,14 +1762,14 @@ StreamlineAttributes_SetIntegrationType(PyObject *self, PyObject *args)
         return NULL;
 
     // Set the integrationType in the object.
-    if(ival >= 0 && ival < 2)
+    if(ival >= 0 && ival < 3)
         obj->data->SetIntegrationType(StreamlineAttributes::IntegrationType(ival));
     else
     {
         fprintf(stderr, "An invalid integrationType value was given. "
-                        "Valid values are in the range of [0,1]. "
+                        "Valid values are in the range of [0,2]. "
                         "You can also use the following names: "
-                        "DormandPrince, AdamsBashforth.");
+                        "DormandPrince, AdamsBashforth, M3DC1Integrator.");
         return NULL;
     }
 
@@ -2414,6 +2469,198 @@ StreamlineAttributes_GetGeomDisplayQuality(PyObject *self, PyObject *args)
     return retval;
 }
 
+/*static*/ PyObject *
+StreamlineAttributes_SetSampleDistance0(PyObject *self, PyObject *args)
+{
+    StreamlineAttributesObject *obj = (StreamlineAttributesObject *)self;
+
+    double dval;
+    if(!PyArg_ParseTuple(args, "d", &dval))
+        return NULL;
+
+    // Set the sampleDistance0 in the object.
+    obj->data->SetSampleDistance0(dval);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+StreamlineAttributes_GetSampleDistance0(PyObject *self, PyObject *args)
+{
+    StreamlineAttributesObject *obj = (StreamlineAttributesObject *)self;
+    PyObject *retval = PyFloat_FromDouble(obj->data->GetSampleDistance0());
+    return retval;
+}
+
+/*static*/ PyObject *
+StreamlineAttributes_SetSampleDistance1(PyObject *self, PyObject *args)
+{
+    StreamlineAttributesObject *obj = (StreamlineAttributesObject *)self;
+
+    double dval;
+    if(!PyArg_ParseTuple(args, "d", &dval))
+        return NULL;
+
+    // Set the sampleDistance1 in the object.
+    obj->data->SetSampleDistance1(dval);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+StreamlineAttributes_GetSampleDistance1(PyObject *self, PyObject *args)
+{
+    StreamlineAttributesObject *obj = (StreamlineAttributesObject *)self;
+    PyObject *retval = PyFloat_FromDouble(obj->data->GetSampleDistance1());
+    return retval;
+}
+
+/*static*/ PyObject *
+StreamlineAttributes_SetSampleDistance2(PyObject *self, PyObject *args)
+{
+    StreamlineAttributesObject *obj = (StreamlineAttributesObject *)self;
+
+    double dval;
+    if(!PyArg_ParseTuple(args, "d", &dval))
+        return NULL;
+
+    // Set the sampleDistance2 in the object.
+    obj->data->SetSampleDistance2(dval);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+StreamlineAttributes_GetSampleDistance2(PyObject *self, PyObject *args)
+{
+    StreamlineAttributesObject *obj = (StreamlineAttributesObject *)self;
+    PyObject *retval = PyFloat_FromDouble(obj->data->GetSampleDistance2());
+    return retval;
+}
+
+/*static*/ PyObject *
+StreamlineAttributes_SetFillInterior(PyObject *self, PyObject *args)
+{
+    StreamlineAttributesObject *obj = (StreamlineAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the fillInterior in the object.
+    obj->data->SetFillInterior(ival != 0);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+StreamlineAttributes_GetFillInterior(PyObject *self, PyObject *args)
+{
+    StreamlineAttributesObject *obj = (StreamlineAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(obj->data->GetFillInterior()?1L:0L);
+    return retval;
+}
+
+/*static*/ PyObject *
+StreamlineAttributes_SetRandomSamples(PyObject *self, PyObject *args)
+{
+    StreamlineAttributesObject *obj = (StreamlineAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the randomSamples in the object.
+    obj->data->SetRandomSamples(ival != 0);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+StreamlineAttributes_GetRandomSamples(PyObject *self, PyObject *args)
+{
+    StreamlineAttributesObject *obj = (StreamlineAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(obj->data->GetRandomSamples()?1L:0L);
+    return retval;
+}
+
+/*static*/ PyObject *
+StreamlineAttributes_SetRandomSeed(PyObject *self, PyObject *args)
+{
+    StreamlineAttributesObject *obj = (StreamlineAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the randomSeed in the object.
+    obj->data->SetRandomSeed((int)ival);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+StreamlineAttributes_GetRandomSeed(PyObject *self, PyObject *args)
+{
+    StreamlineAttributesObject *obj = (StreamlineAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetRandomSeed()));
+    return retval;
+}
+
+/*static*/ PyObject *
+StreamlineAttributes_SetNumberOfRandomSamples(PyObject *self, PyObject *args)
+{
+    StreamlineAttributesObject *obj = (StreamlineAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the numberOfRandomSamples in the object.
+    obj->data->SetNumberOfRandomSamples((int)ival);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+StreamlineAttributes_GetNumberOfRandomSamples(PyObject *self, PyObject *args)
+{
+    StreamlineAttributesObject *obj = (StreamlineAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetNumberOfRandomSamples()));
+    return retval;
+}
+
+/*static*/ PyObject *
+StreamlineAttributes_SetForceNodeCenteredData(PyObject *self, PyObject *args)
+{
+    StreamlineAttributesObject *obj = (StreamlineAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the forceNodeCenteredData in the object.
+    obj->data->SetForceNodeCenteredData(ival != 0);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+StreamlineAttributes_GetForceNodeCenteredData(PyObject *self, PyObject *args)
+{
+    StreamlineAttributesObject *obj = (StreamlineAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(obj->data->GetForceNodeCenteredData()?1L:0L);
+    return retval;
+}
+
 
 
 PyMethodDef PyStreamlineAttributes_methods[STREAMLINEATTRIBUTES_NMETH] = {
@@ -2436,20 +2683,22 @@ PyMethodDef PyStreamlineAttributes_methods[STREAMLINEATTRIBUTES_NMETH] = {
     {"GetPlaneNormal", StreamlineAttributes_GetPlaneNormal, METH_VARARGS},
     {"SetPlaneUpAxis", StreamlineAttributes_SetPlaneUpAxis, METH_VARARGS},
     {"GetPlaneUpAxis", StreamlineAttributes_GetPlaneUpAxis, METH_VARARGS},
-    {"SetPlaneRadius", StreamlineAttributes_SetPlaneRadius, METH_VARARGS},
-    {"GetPlaneRadius", StreamlineAttributes_GetPlaneRadius, METH_VARARGS},
+    {"SetRadius", StreamlineAttributes_SetRadius, METH_VARARGS},
+    {"GetRadius", StreamlineAttributes_GetRadius, METH_VARARGS},
     {"SetSphereOrigin", StreamlineAttributes_SetSphereOrigin, METH_VARARGS},
     {"GetSphereOrigin", StreamlineAttributes_GetSphereOrigin, METH_VARARGS},
-    {"SetSphereRadius", StreamlineAttributes_SetSphereRadius, METH_VARARGS},
-    {"GetSphereRadius", StreamlineAttributes_GetSphereRadius, METH_VARARGS},
     {"SetBoxExtents", StreamlineAttributes_SetBoxExtents, METH_VARARGS},
     {"GetBoxExtents", StreamlineAttributes_GetBoxExtents, METH_VARARGS},
     {"SetUseWholeBox", StreamlineAttributes_SetUseWholeBox, METH_VARARGS},
     {"GetUseWholeBox", StreamlineAttributes_GetUseWholeBox, METH_VARARGS},
     {"SetPointList", StreamlineAttributes_SetPointList, METH_VARARGS},
     {"GetPointList", StreamlineAttributes_GetPointList, METH_VARARGS},
-    {"SetPointDensity", StreamlineAttributes_SetPointDensity, METH_VARARGS},
-    {"GetPointDensity", StreamlineAttributes_GetPointDensity, METH_VARARGS},
+    {"SetSampleDensity0", StreamlineAttributes_SetSampleDensity0, METH_VARARGS},
+    {"GetSampleDensity0", StreamlineAttributes_GetSampleDensity0, METH_VARARGS},
+    {"SetSampleDensity1", StreamlineAttributes_SetSampleDensity1, METH_VARARGS},
+    {"GetSampleDensity1", StreamlineAttributes_GetSampleDensity1, METH_VARARGS},
+    {"SetSampleDensity2", StreamlineAttributes_SetSampleDensity2, METH_VARARGS},
+    {"GetSampleDensity2", StreamlineAttributes_GetSampleDensity2, METH_VARARGS},
     {"SetDisplayMethod", StreamlineAttributes_SetDisplayMethod, METH_VARARGS},
     {"GetDisplayMethod", StreamlineAttributes_GetDisplayMethod, METH_VARARGS},
     {"SetShowSeeds", StreamlineAttributes_SetShowSeeds, METH_VARARGS},
@@ -2536,6 +2785,22 @@ PyMethodDef PyStreamlineAttributes_methods[STREAMLINEATTRIBUTES_NMETH] = {
     {"GetTubeDisplayDensity", StreamlineAttributes_GetTubeDisplayDensity, METH_VARARGS},
     {"SetGeomDisplayQuality", StreamlineAttributes_SetGeomDisplayQuality, METH_VARARGS},
     {"GetGeomDisplayQuality", StreamlineAttributes_GetGeomDisplayQuality, METH_VARARGS},
+    {"SetSampleDistance0", StreamlineAttributes_SetSampleDistance0, METH_VARARGS},
+    {"GetSampleDistance0", StreamlineAttributes_GetSampleDistance0, METH_VARARGS},
+    {"SetSampleDistance1", StreamlineAttributes_SetSampleDistance1, METH_VARARGS},
+    {"GetSampleDistance1", StreamlineAttributes_GetSampleDistance1, METH_VARARGS},
+    {"SetSampleDistance2", StreamlineAttributes_SetSampleDistance2, METH_VARARGS},
+    {"GetSampleDistance2", StreamlineAttributes_GetSampleDistance2, METH_VARARGS},
+    {"SetFillInterior", StreamlineAttributes_SetFillInterior, METH_VARARGS},
+    {"GetFillInterior", StreamlineAttributes_GetFillInterior, METH_VARARGS},
+    {"SetRandomSamples", StreamlineAttributes_SetRandomSamples, METH_VARARGS},
+    {"GetRandomSamples", StreamlineAttributes_GetRandomSamples, METH_VARARGS},
+    {"SetRandomSeed", StreamlineAttributes_SetRandomSeed, METH_VARARGS},
+    {"GetRandomSeed", StreamlineAttributes_GetRandomSeed, METH_VARARGS},
+    {"SetNumberOfRandomSamples", StreamlineAttributes_SetNumberOfRandomSamples, METH_VARARGS},
+    {"GetNumberOfRandomSamples", StreamlineAttributes_GetNumberOfRandomSamples, METH_VARARGS},
+    {"SetForceNodeCenteredData", StreamlineAttributes_SetForceNodeCenteredData, METH_VARARGS},
+    {"GetForceNodeCenteredData", StreamlineAttributes_GetForceNodeCenteredData, METH_VARARGS},
     {NULL, NULL}
 };
 
@@ -2597,20 +2862,22 @@ PyStreamlineAttributes_getattr(PyObject *self, char *name)
         return StreamlineAttributes_GetPlaneNormal(self, NULL);
     if(strcmp(name, "planeUpAxis") == 0)
         return StreamlineAttributes_GetPlaneUpAxis(self, NULL);
-    if(strcmp(name, "planeRadius") == 0)
-        return StreamlineAttributes_GetPlaneRadius(self, NULL);
+    if(strcmp(name, "radius") == 0)
+        return StreamlineAttributes_GetRadius(self, NULL);
     if(strcmp(name, "sphereOrigin") == 0)
         return StreamlineAttributes_GetSphereOrigin(self, NULL);
-    if(strcmp(name, "sphereRadius") == 0)
-        return StreamlineAttributes_GetSphereRadius(self, NULL);
     if(strcmp(name, "boxExtents") == 0)
         return StreamlineAttributes_GetBoxExtents(self, NULL);
     if(strcmp(name, "useWholeBox") == 0)
         return StreamlineAttributes_GetUseWholeBox(self, NULL);
     if(strcmp(name, "pointList") == 0)
         return StreamlineAttributes_GetPointList(self, NULL);
-    if(strcmp(name, "pointDensity") == 0)
-        return StreamlineAttributes_GetPointDensity(self, NULL);
+    if(strcmp(name, "sampleDensity0") == 0)
+        return StreamlineAttributes_GetSampleDensity0(self, NULL);
+    if(strcmp(name, "sampleDensity1") == 0)
+        return StreamlineAttributes_GetSampleDensity1(self, NULL);
+    if(strcmp(name, "sampleDensity2") == 0)
+        return StreamlineAttributes_GetSampleDensity2(self, NULL);
     if(strcmp(name, "displayMethod") == 0)
         return StreamlineAttributes_GetDisplayMethod(self, NULL);
     if(strcmp(name, "Lines") == 0)
@@ -2683,6 +2950,8 @@ PyStreamlineAttributes_getattr(PyObject *self, char *name)
         return PyInt_FromLong(long(StreamlineAttributes::DormandPrince));
     if(strcmp(name, "AdamsBashforth") == 0)
         return PyInt_FromLong(long(StreamlineAttributes::AdamsBashforth));
+    if(strcmp(name, "M3DC1Integrator") == 0)
+        return PyInt_FromLong(long(StreamlineAttributes::M3DC1Integrator));
 
     if(strcmp(name, "streamlineAlgorithmType") == 0)
         return StreamlineAttributes_GetStreamlineAlgorithmType(self, NULL);
@@ -2768,6 +3037,22 @@ PyStreamlineAttributes_getattr(PyObject *self, char *name)
     if(strcmp(name, "Super") == 0)
         return PyInt_FromLong(long(StreamlineAttributes::Super));
 
+    if(strcmp(name, "sampleDistance0") == 0)
+        return StreamlineAttributes_GetSampleDistance0(self, NULL);
+    if(strcmp(name, "sampleDistance1") == 0)
+        return StreamlineAttributes_GetSampleDistance1(self, NULL);
+    if(strcmp(name, "sampleDistance2") == 0)
+        return StreamlineAttributes_GetSampleDistance2(self, NULL);
+    if(strcmp(name, "fillInterior") == 0)
+        return StreamlineAttributes_GetFillInterior(self, NULL);
+    if(strcmp(name, "randomSamples") == 0)
+        return StreamlineAttributes_GetRandomSamples(self, NULL);
+    if(strcmp(name, "randomSeed") == 0)
+        return StreamlineAttributes_GetRandomSeed(self, NULL);
+    if(strcmp(name, "numberOfRandomSamples") == 0)
+        return StreamlineAttributes_GetNumberOfRandomSamples(self, NULL);
+    if(strcmp(name, "forceNodeCenteredData") == 0)
+        return StreamlineAttributes_GetForceNodeCenteredData(self, NULL);
 
     return Py_FindMethod(PyStreamlineAttributes_methods, self, name);
 }
@@ -2800,20 +3085,22 @@ PyStreamlineAttributes_setattr(PyObject *self, char *name, PyObject *args)
         obj = StreamlineAttributes_SetPlaneNormal(self, tuple);
     else if(strcmp(name, "planeUpAxis") == 0)
         obj = StreamlineAttributes_SetPlaneUpAxis(self, tuple);
-    else if(strcmp(name, "planeRadius") == 0)
-        obj = StreamlineAttributes_SetPlaneRadius(self, tuple);
+    else if(strcmp(name, "radius") == 0)
+        obj = StreamlineAttributes_SetRadius(self, tuple);
     else if(strcmp(name, "sphereOrigin") == 0)
         obj = StreamlineAttributes_SetSphereOrigin(self, tuple);
-    else if(strcmp(name, "sphereRadius") == 0)
-        obj = StreamlineAttributes_SetSphereRadius(self, tuple);
     else if(strcmp(name, "boxExtents") == 0)
         obj = StreamlineAttributes_SetBoxExtents(self, tuple);
     else if(strcmp(name, "useWholeBox") == 0)
         obj = StreamlineAttributes_SetUseWholeBox(self, tuple);
     else if(strcmp(name, "pointList") == 0)
         obj = StreamlineAttributes_SetPointList(self, tuple);
-    else if(strcmp(name, "pointDensity") == 0)
-        obj = StreamlineAttributes_SetPointDensity(self, tuple);
+    else if(strcmp(name, "sampleDensity0") == 0)
+        obj = StreamlineAttributes_SetSampleDensity0(self, tuple);
+    else if(strcmp(name, "sampleDensity1") == 0)
+        obj = StreamlineAttributes_SetSampleDensity1(self, tuple);
+    else if(strcmp(name, "sampleDensity2") == 0)
+        obj = StreamlineAttributes_SetSampleDensity2(self, tuple);
     else if(strcmp(name, "displayMethod") == 0)
         obj = StreamlineAttributes_SetDisplayMethod(self, tuple);
     else if(strcmp(name, "showSeeds") == 0)
@@ -2900,11 +3187,29 @@ PyStreamlineAttributes_setattr(PyObject *self, char *name, PyObject *args)
         obj = StreamlineAttributes_SetTubeDisplayDensity(self, tuple);
     else if(strcmp(name, "geomDisplayQuality") == 0)
         obj = StreamlineAttributes_SetGeomDisplayQuality(self, tuple);
+    else if(strcmp(name, "sampleDistance0") == 0)
+        obj = StreamlineAttributes_SetSampleDistance0(self, tuple);
+    else if(strcmp(name, "sampleDistance1") == 0)
+        obj = StreamlineAttributes_SetSampleDistance1(self, tuple);
+    else if(strcmp(name, "sampleDistance2") == 0)
+        obj = StreamlineAttributes_SetSampleDistance2(self, tuple);
+    else if(strcmp(name, "fillInterior") == 0)
+        obj = StreamlineAttributes_SetFillInterior(self, tuple);
+    else if(strcmp(name, "randomSamples") == 0)
+        obj = StreamlineAttributes_SetRandomSamples(self, tuple);
+    else if(strcmp(name, "randomSeed") == 0)
+        obj = StreamlineAttributes_SetRandomSeed(self, tuple);
+    else if(strcmp(name, "numberOfRandomSamples") == 0)
+        obj = StreamlineAttributes_SetNumberOfRandomSamples(self, tuple);
+    else if(strcmp(name, "forceNodeCenteredData") == 0)
+        obj = StreamlineAttributes_SetForceNodeCenteredData(self, tuple);
 
     if(obj != NULL)
         Py_DECREF(obj);
 
     Py_DECREF(tuple);
+    if( obj == NULL)
+        PyErr_Format(PyExc_RuntimeError, "Unable to set unknown attribute: '%s'", name);
     return (obj != NULL) ? 0 : -1;
 }
 

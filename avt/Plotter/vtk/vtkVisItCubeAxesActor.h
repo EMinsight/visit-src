@@ -48,6 +48,20 @@ All rights reserve
 //   Jeremy Meredith, Wed May  5 14:31:37 EDT 2010
 //   Added support for title visibility separate from label visibility.
 //
+//   Jeremy Meredith, Tue May 18 12:49:48 EDT 2010
+//   Renamed some instances of Range to Bounds to reflect their true
+//   usage (since in theory, the range of an axis need not be tied to
+//   its location in physical space).
+//
+//   Jeremy Meredith, Tue May 18 13:14:37 EDT 2010
+//   Removed unused CornerOffset.
+//
+//   Jeremy Meredith, Tue May 18 13:23:21 EDT 2010
+//   Added a concept of Range which is independent of Bounds.
+//   Removed trivial and now mislabeled AdjustAxes
+//   Renamed AdjustBounds and AdjustValues to ComputeLabelExponent and
+//   ComputeLabelFormat, respectively.
+//
 
 #ifndef __vtkVisItCubeAxesActor_h
 #define __vtkVisItCubeAxesActor_h
@@ -93,6 +107,14 @@ public:
   void GetBounds(double& xmin, double& xmax, double& ymin, double& ymax, 
                  double& zmin, double& zmax);
   void GetBounds(double bounds[6]);
+
+  // Description:
+  // Explicitly specify the actual min/max values assigned to each
+  // of the three axes.  This is what controls the actual numbers
+  // displayed on the axes, and for the typical auto-set axes with
+  // no scaling, will be exactly the same as the bounds.
+  vtkSetVector6Macro(Ranges,double);
+  double *GetRanges();
 
   // Description:
   // Set/Get the camera to perform scaling and translation of the 
@@ -149,13 +171,6 @@ public:
   // to another).
   vtkSetClampMacro(Inertia, int, 1, VTK_LARGE_INTEGER);
   vtkGetMacro(Inertia, int);
-
-  // Description:
-  // Specify an offset value to "pull back" the axes from the corner at
-  // which they are joined to avoid overlap of axes labels. The 
-  // "CornerOffset" is the fraction of the axis length to pull back.
-  vtkSetMacro(CornerOffset, double);
-  vtkGetMacro(CornerOffset, double);
 
   // Description:
   // Release any graphics resources that are being consumed by this actor.
@@ -312,6 +327,7 @@ protected:
   ~vtkVisItCubeAxesActor();
 
   double       Bounds[6]; //Define bounds explicitly
+  double       Ranges[6]; //Define ranges explicitly
 
   vtkCamera *Camera;
   int FlyMode;
@@ -420,9 +436,9 @@ private:
   int lastXAxisDigits;
   int lastYAxisDigits;
   int lastZAxisDigits;
-  double LastXRange[2];
-  double LastYRange[2];
-  double LastZRange[2];
+  double LastXBounds[2];
+  double LastYBounds[2];
+  double LastZBounds[2];
   int   LastFlyMode;
 
   int   renderAxesX[4];
@@ -444,13 +460,9 @@ private:
   // various helper methods
   void  TransformBounds(vtkViewport *viewport, const double bounds[6], 
                         double pts[8][3]);
-  void  AdjustAxes(double bounds[6], double xCoords[4][6], double yCoords[4][6], 
-                   double zCoords[4][6], double xRange[2], double yRange[2], 
-                   double zRange[2]);
-
   bool  ComputeTickSize(double bounds[6]);
-  void  AdjustValues(const double bounds[6]);
-  void  AdjustRange(const double bounds[6]);
+  void  ComputeLabelExponent(const double bounds[6]);
+  void  ComputeLabelFormat(const double bounds[6]);
   void  BuildAxes(vtkViewport *);
   void  DetermineRenderAxes(vtkViewport *);
   void  SetNonDependentAttributes(void);

@@ -41,7 +41,7 @@
 // ************************************************************************* //
 
 #include <avtScatterFilter.h>
-
+#include <avtParallel.h>
 #include <vtkAppendPolyData.h>
 #include <vtkCellArray.h>
 #include <vtkCellData.h>
@@ -105,10 +105,13 @@
 //    Brad Whitlock, Mon Jul 18 11:07:35 PDT 2005
 //    Added extents arrays and flags.
 //
+//    Cyrus Harrison, Thu Aug 19 13:33:53 PDT 2010
+//    Removed unused code.
+//
 // ****************************************************************************
 
-avtScatterFilter::avtScatterFilter(const std::string &v, const ScatterAttributes &a)
-    : avtDataTreeIterator(), variableName(v), atts(a)
+avtScatterFilter::avtScatterFilter(const ScatterAttributes &a)
+    : avtDataTreeIterator(),atts(a)
 {
     needXExtents = false;
     xExtents[0] = 0., xExtents[1] = 1.;
@@ -121,41 +124,6 @@ avtScatterFilter::avtScatterFilter(const std::string &v, const ScatterAttributes
 
     needColorExtents = false;
     colorExtents[0] = 0., colorExtents[1] = 0.;
-
-#ifdef THE_FILTER_KNOWS_HOW_TO_ADD_ITS_OWN_VARS
-    stringVector vars;
-
-    //
-    // Add the secondary variables.
-    //
-    if(atts.GetVar2Role() != ScatterAttributes::None &&
-       atts.GetVar2().size() > 0 &&
-       atts.GetVar2() != "default")
-    {
-        vars.push_back(atts.GetVar2());
-    }
-
-    if(atts.GetVar3Role() != ScatterAttributes::None &&
-       atts.GetVar3().size() > 0 &&
-       atts.GetVar3() != "default")
-    {
-        vars.push_back(atts.GetVar3());
-    }
-
-    if(atts.GetVar4Role() != ScatterAttributes::None &&
-       atts.GetVar4().size() > 0 &&
-       atts.GetVar4() != "default")
-    {
-        vars.push_back(atts.GetVar4());
-    }
-
-    if(vars.size() > 0)
-    {
-        SetActiveVariable(vars[0].c_str());
-        for(int i = 1; i < vars.size(); ++i)
-            AddSecondaryVariable(vars[i].c_str());
-    }
-#endif
 }
 
 
@@ -228,6 +196,8 @@ avtScatterFilter::PreExecute(void)
         debug1 << "avtScatterFilter::PreExecute: Calculated colorExtents=" <<
              colorExtents[0] << ", " << colorExtents[1] << endl;
     }
+
+    thisProcsSpatialExtents = vector<double>(6,0.0);
 }
 
 // ****************************************************************************
@@ -257,6 +227,12 @@ avtScatterFilter::PreExecute(void)
 //    Brad Whitlock, Fri Jul 16 14:24:25 PDT 2010
 //    Work around curve variable centering being unknown.
 //
+//    Cyrus Harrison, Tue Aug 17 11:51:28 PDT 2010
+//    Moved logic that modifies the output data atts to PostExecute.
+//
+//    Cyrus Harrison, Thu Aug 19 13:34:28 PDT 2010
+//    Obtain var1 from atts.
+//
 // ****************************************************************************
 
 vtkDataSet *
@@ -264,9 +240,9 @@ avtScatterFilter::ExecuteData(vtkDataSet *inDS, int, std::string)
 {
 debug4 << "avtScatterFilter::ExecuteData" << endl;
     avtDataAttributes &datts = GetInput()->GetInfo().GetAttributes();
- 
+
     // Determine the name of the first variable.
-    std::string var1Name(variableName);
+    std::string var1Name(atts.GetVar1());
 
     // Determine the name of the second variable.
     std::string var2Name(atts.GetVar2());
@@ -373,29 +349,6 @@ debug4 << "avtScatterFilter::ExecuteData" << endl;
                 outDS->GetPointData()->SetScalars(orderedArrays[3].data);
             }
 
-            //
-            // Remove all of the variables that are not the color variable.
-            //
-            avtDataAttributes &dataAtts = GetOutput()->GetInfo().GetAttributes();
-            std::string colorVarName(orderedArrays[3].data->GetName());
-            int nvars = dataAtts.GetNumberOfVariables();
-            int delIndex = 0;
-            for(int ivar = 0; ivar < nvars; ++ivar)
-            {
-                std::string currentVar(dataAtts.GetVariableName(delIndex));
-                if(currentVar == colorVarName)
-                {
-                    ++delIndex;
-                    dataAtts.SetCentering(AVT_NODECENT, colorVarName.c_str());
-                }
-                else
-                    dataAtts.RemoveVariable(currentVar);
-            }
-
-            // Set the new active var and its extents
-            dataAtts.SetActiveVariable(colorVarName.c_str());
-            dataAtts.GetCumulativeTrueDataExtents()->Set(colorExtents);
-
             if(!createdData && !deleteArray4)
             {
                 // The input dataset owns the data array. Make the output dataset
@@ -436,6 +389,91 @@ debug4 << "avtScatterFilter::ExecuteData" << endl;
 }
 
 // ****************************************************************************
+// Method: avtScatterFilter::PostExecute
+//
+// Purpose:
+//   Executes after all domains are processed. Sets thisProcs spatial extents
+//   and if a color var is selected, sets this var as the active variable for
+//   display in the legend.
+//
+// Note: Refactored from ExecuteDataset to prevent parallel hang with when
+//  there are more processors than chunks to process.
+//
+// Programmer: Cyrus Harrison
+// Creation:   Tue Aug 17 11:43:37 PDT 2010
+//
+// Modifications:
+//
+//    Hank Childs, Thu Aug 26 13:47:30 PDT 2010
+//    Change extents names.
+//
+// ****************************************************************************
+
+void
+avtScatterFilter::PostExecute(void)
+{
+    avtDataTreeIterator::PostExecute();
+    avtDataAttributes &out_datts = GetOutput()->GetInfo().GetAttributes();
+
+    if(atts.GetVar4Role() != ScatterAttributes::None)
+    {
+        string color_var = atts.GetVar1();
+        // Determine the name of the 4th variable.
+        std::string var4name(atts.GetVar4());
+        if(var4name != "default")
+            color_var = var4name;
+        //
+        // Remove all of the variables that are not the color variable.
+        //
+        int nvars = out_datts.GetNumberOfVariables();
+        int delIndex = 0;
+        for(int ivar = 0; ivar < nvars; ++ivar)
+        {
+            std::string current_var(out_datts.GetVariableName(delIndex));
+            if(current_var == color_var)
+            {
+                ++delIndex;
+                out_datts.SetCentering(AVT_NODECENT, color_var.c_str());
+            }
+            else
+                out_datts.RemoveVariable(current_var);
+        }
+
+        // Set the new active var and its extents
+        out_datts.SetActiveVariable(color_var.c_str());
+        out_datts.GetThisProcsOriginalDataExtents()->Set(colorExtents);
+    }
+
+    // correclty set the proper thisProcs spatial extents
+    out_datts.GetThisProcsOriginalSpatialExtents()->Clear();
+    out_datts.GetOriginalSpatialExtents()->Clear();
+
+
+
+    if(NeedSpatialExtents())
+    {
+        // make sure all procs have the proper spatial extents
+        // (unify here b/c processors that didn't have chunks may have invalid
+        //  extents)
+        UnifyMinMax(&thisProcsSpatialExtents[0],6);
+        out_datts.GetThisProcsOriginalSpatialExtents()->Set(&thisProcsSpatialExtents[0]);
+
+        debug4 << "avtScatterFilter::PostExecute() Final ThisProcs Spatial Extents: "
+               << "xExtents = ["
+               << thisProcsSpatialExtents[0] << ", "
+               << thisProcsSpatialExtents[1]<< "] "
+               << "yExtents = ["
+               << thisProcsSpatialExtents[2] << ", "
+               << thisProcsSpatialExtents[3]<< "] "
+               << "zExtents = ["
+               << thisProcsSpatialExtents[4] << ", "
+               << thisProcsSpatialExtents[5]<< "]" << endl;
+    }
+
+
+}
+
+// ****************************************************************************
 //  Method: avtScatterFilter::PointMeshFromVariables
 //
 //  Purpose:
@@ -463,7 +501,11 @@ debug4 << "avtScatterFilter::ExecuteData" << endl;
 //    from all domains.
 //
 //    Hank Childs, Thu Sep 14 09:16:23 PDT 2006
-//    Fix indexing bug and initialization bugs pointed out by Matt Wheeler.  
+//    Fix indexing bug and initialization bugs pointed out by Matt Wheeler.
+//
+//    Cyrus Harrison, Tue Aug 17 11:51:28 PDT 2010
+//    Moved logic that modifies the output data atts to PostExecute.
+//    Removed extents logic that was #ifdef-ed out.
 //
 // ****************************************************************************
 
@@ -866,84 +908,16 @@ avtScatterFilter::PointMeshFromVariables(DataInput *d1,
     // the points to get a better spatial layout.
     //
 
-#if 1
     //
-    // Clear the cumulative true spatial extents and the true spatial extents.
+    // Set the final spatial extents value.
     //
-    dataAtts.GetCumulativeTrueSpatialExtents()->Clear();
-    dataAtts.GetTrueSpatialExtents()->Clear();
 
-    //
-    // If spatial extents were necessary then they should be available now.
-    //
-    if(NeedSpatialExtents())
-    {
-        double spatialExtents[6];
-        spatialExtents[0] = xMin;
-        spatialExtents[1] = xMax;
-        spatialExtents[2] = yMin;
-        spatialExtents[3] = yMax;
-        spatialExtents[4] = zMin;
-        spatialExtents[5] = zMax;
-        dataAtts.GetCumulativeTrueSpatialExtents()->Set(spatialExtents);
-
-        debug4 << mName << "After scaling: "
-               << "xExtents = [" << xMin << ", " << xMax << "] "
-               << "yExtents = [" << yMin << ", " << yMax << "] "
-               << "zExtents = [" << zMin << ", " << zMax << "]" << endl;
-    }
-#else
-    //
-    // Set the spatial extents.
-    //
-    if(arr3 == 0) 
-    {
-        avtExtents newSE(2);
-        float dX = xMax - xMin;
-        float dY = yMax - yMin;
-        if(dX < EPSILON && dY < EPSILON)
-        {
-            xMax += 1.;
-            yMax += 1.;
-        }
-        else if(dX < EPSILON)
-        {
-            xMax += dY;
-        }
-        else if(dY < EPSILON)
-            yMax += dX;
-        const double de[] = {xMin, xMax, yMin, yMax};
-        newSE.Set(de);
-        *se = newSE;
-    }
-    else
-    {
-        avtExtents *se = GetOutput()->GetInfo().GetAttributes().GetCumulativeTrueSpatialExtents();
-        avtExtents newSE(3);
-        float dX = xMax - xMin;
-        float dY = yMax - yMin;
-        float dZ = zMax - zMin;
-        if(dX < EPSILON && dY < EPSILON && dZ < EPSILON)
-        {
-            xMax += 1.;
-            yMax += 1.;
-            zMax += 1.;
-        }
-        else
-        {
-            float halfDist = 0.5 * sqrt(dX*dX + dY*dY + dZ*dZ);
-            if(dX < EPSILON)
-                xMax += halfDist;
-            if(dY < EPSILON)
-                yMax += halfDist;
-            if(dZ < EPSILON)
-                zMax += halfDist;
-        }
-        const double de[] = {xMin, xMax, yMin, yMax, zMin, zMax};
-        newSE.Set(de);
-        *se = newSE;
-    }
-#endif
+    thisProcsSpatialExtents[0] = xMin;
+    thisProcsSpatialExtents[1] = xMax;
+    thisProcsSpatialExtents[2] = yMin;
+    thisProcsSpatialExtents[3] = yMax;
+    thisProcsSpatialExtents[4] = zMin;
+    thisProcsSpatialExtents[5] = zMax;
 
     ManageMemory(outDS);
     outDS->Delete();
@@ -1151,20 +1125,20 @@ avtScatterFilter::PopulateDataInputs(DataInput *orderedArrays, vtkDataArray **ar
 void
 avtScatterFilter::PopulateNames(const char **names) const
 {
-    names[int(atts.GetVar1Role())] = variableName.c_str();
+    names[int(atts.GetVar1Role())] = atts.GetVar1().c_str();
 
     if(atts.GetVar2() == "default")
-        names[int(atts.GetVar2Role())] = variableName.c_str();
+        names[int(atts.GetVar2Role())] = atts.GetVar1().c_str();
     else
         names[int(atts.GetVar2Role())] = atts.GetVar2().c_str();
 
     if(atts.GetVar3() == "default")
-        names[int(atts.GetVar3Role())] = variableName.c_str();
+        names[int(atts.GetVar3Role())] = atts.GetVar1().c_str();
     else
         names[int(atts.GetVar3Role())] = atts.GetVar3().c_str();
 
     if(atts.GetVar4() == "default")
-        names[int(atts.GetVar4Role())] = variableName.c_str();
+        names[int(atts.GetVar4Role())] = atts.GetVar1().c_str();
     else
         names[int(atts.GetVar4Role())] = atts.GetVar4().c_str();
 }
@@ -1192,10 +1166,10 @@ debug4 << "avtScatterFilter::UpdateDataObjectInfo" << endl;
     std::string v1Units(""), v2Units(""), v3Units(""), v4Units("");
 
     if(atts.GetVar1Role() != ScatterAttributes::None)
-    {    
-        if (dataAtts.ValidVariable(variableName.c_str()))
+    {
+        if (dataAtts.ValidVariable(atts.GetVar1().c_str()))
         {
-            v1Units = dataAtts.GetVariableUnits(variableName.c_str());
+            v1Units = dataAtts.GetVariableUnits(atts.GetVar1().c_str());
         }
     }
 
@@ -1229,7 +1203,7 @@ debug4 << "avtScatterFilter::UpdateDataObjectInfo" << endl;
     //
     const char *labels[5] = {0,0,0,0,0};
     const char *units[5] = {0,0,0,0,0};
-    labels[int(atts.GetVar1Role())] = variableName.c_str();
+    labels[int(atts.GetVar1Role())] = atts.GetVar1().c_str();
     units[int(atts.GetVar1Role())] = v1Units.c_str();
     labels[int(atts.GetVar2Role())] = atts.GetVar2().c_str();
     units[int(atts.GetVar2Role())] = v2Units.c_str();

@@ -29,13 +29,17 @@ avtSpreadsheetRenderer.C
 avtSpreadsheetRenderer_Viewer.C
 avtSpreadsheetTraceRenderer.C
 avtOpenGLSpreadsheetTraceRenderer.C
-avtMesaSpreadsheetTraceRenderer.C
 SpreadsheetViewer.C
 SpreadsheetCurveViewer.C
 SpreadsheetTable.C
 SpreadsheetTabWidget.C
 ${COMMON_SOURCES}
 )
+
+IF(MESA_FOUND)
+  SET(LIBV_SOURCES ${LIBV_SOURCES} avtMesaSpreadsheetTraceRenderer.C)
+ENDIF()
+
 SET(LIBV_MOC_SOURCES
 SpreadsheetViewer.h
 SpreadsheetCurveViewer.h
@@ -52,9 +56,12 @@ avtSpreadsheetRenderer.C
 avtSpreadsheetRenderer_Engine.C
 avtSpreadsheetTraceRenderer.C
 avtOpenGLSpreadsheetTraceRenderer.C
-avtMesaSpreadsheetTraceRenderer.C
 ${COMMON_SOURCES}
 )
+
+IF(MESA_FOUND)
+  SET(LIBE_SOURCES ${LIBE_SOURCES} avtMesaSpreadsheetTraceRenderer.C)
+ENDIF()
 
 IF (NOT WIN32)
     SET_SOURCE_FILES_PROPERTIES(avtOpenGLSpreadsheetTraceRenderer.C 

@@ -83,10 +83,9 @@ int globalNDims;
 // Static prototypes
 //
 
-static double    EquationsValueAtPoint(const double *, int, int, int, 
+static double   EquationsValueAtPoint(const double *, int, int, int, 
                                       const double *);
 static bool     Intersects(const double *, double, int, int, const double *);
-static bool     Intersects(double [3], double[3], int, int, const double *);
 static bool     AxiallySymmetricLineIntersection(const double *, const double*,
                                                  int, const double *);
 static int      QsortBoundsSorter(const void *arg1, const void *arg2);
@@ -94,6 +93,10 @@ static bool     IntersectsWithRay(double [3], double[3], int, int,
                                   const double *, double[3]);
 static bool     IntersectsWithLine(double [3], double[3], int, int, 
                                    const double *, double[3]);
+static inline bool LineIntersectsBox2D(double *, double, double,
+                                       double, double, int, int);
+static inline bool LineIntersectsBox(double *, double, double, double,
+                                     double, double, double, int, int, int);
 
 
 // ****************************************************************************
@@ -1340,48 +1343,6 @@ avtIntervalTree::GetElementExtents(int elementIndex, double *extents) const
 
 
 // ****************************************************************************
-//  Function: Intersects
-//
-//  Purpose:
-//      Determine if the range of values for the current node is intersected 
-//      by the line designated by origin and rayDir. 
-//
-//  Arguments:
-//      origin       The origin of the ray. 
-//      rayDir       The xyz components of the ray direction.
-//      block        The block in the nodeExtents that should be checked for an
-//                   intersection.
-//      nDims        The number of dimensions of the var.
-//      nodeExtents  The extents at each node.
-//
-//  Returns:    true if there is an intersection, false otherwise.
-//
-//  Programmer: Kathleen Bonnell
-//  Creation:   December 19, 2003 
-//
-// ****************************************************************************
-
-bool
-Intersects(double origin[3], double rayDir[3], int block, int nDims,
-           const double *nodeExtents)
-{
-    double bnds[6] = { 0., 0., 0., 0., 0., 0.};
-    double coord[3] = { 0., 0., 0.};
-
-    for (int i = 0; i < nDims; i++)
-    {
-        bnds[2*i] = nodeExtents[block*nDims*2 + 2*i];
-        bnds[2*i+1] = nodeExtents[block*nDims*2 + 2*i + 1];
-    }
-
-    if (vtkCellIntersections::IntersectBox(bnds, origin, rayDir, coord))
-        return true;
-    else 
-        return false;
-}
-
-
-// ****************************************************************************
 //  Method: avtIntervalTree::GetElementsList
 //
 //  Purpose:
@@ -1404,6 +1365,9 @@ Intersects(double origin[3], double rayDir[3], int block, int nDims,
 //    Mark C. Miller, Mon Oct 18 14:36:49 PDT 2004
 //    Added code to throw an exception of the tree hasn't been calculated
 //
+//    Eric Brugger, Mon Jul 12 14:11:51 PDT 2010
+//    I replaced the code that caluculates line box intersections.
+//
 // ****************************************************************************
 
 void
@@ -1417,6 +1381,19 @@ avtIntervalTree::GetElementsList(double origin[3], double rayDir[3],
 
     list.clear();
 
+    //
+    // Pre-calculate some values used by the line box intersection routine.
+    //
+    double invDirX = 1 / rayDir[0];
+    double invDirY = 1 / rayDir[1];
+    double invDirZ = 1 / rayDir[2];
+    int signX = invDirX < 0;
+    int signY = invDirY < 0;
+    int signZ = invDirZ < 0;
+    double originX = origin[0];
+    double originY = origin[1];
+    double originZ = origin[2];
+
     int nodeStack[100]; // Only need log amount
     int nodeStackSize = 0;
 
@@ -1427,31 +1404,71 @@ avtIntervalTree::GetElementsList(double origin[3], double rayDir[3],
     nodeStack[0] = 0;
     nodeStackSize++;
 
-    while (nodeStackSize > 0)
+    if (nDims < 3)
     {
-        nodeStackSize--;
-        int stackIndex = nodeStack[nodeStackSize];
-        if ( Intersects(origin, rayDir, stackIndex, nDims, nodeExtents) )
+        double bounds[4] = {0, 0, 0, 0};
+        while (nodeStackSize > 0)
         {
-            //
-            // The equation has a solution contained by the current extents.
-            //
-            if (nodeIDs[stackIndex] < 0)
+            nodeStackSize--;
+            int stackIndex = nodeStack[nodeStackSize];
+            for (int i = 0; i < nDims*2; i++)
+                bounds[i] = nodeExtents[(stackIndex*nDims*2)+i];
+            if (LineIntersectsBox2D(bounds, invDirX, invDirY,
+                originX, originY, signX, signY))
             {
                 //
-                // This is not a leaf, so put children on stack
+                // The line intersects the current extents.
                 //
-                nodeStack[nodeStackSize] = 2 * stackIndex + 1;
-                nodeStackSize++;
-                nodeStack[nodeStackSize] = 2 * stackIndex + 2;
-                nodeStackSize++;
+                if (nodeIDs[stackIndex] < 0)
+                {
+                    //
+                    // This is not a leaf, so put children on stack
+                    //
+                    nodeStack[nodeStackSize] = 2 * stackIndex + 1;
+                    nodeStackSize++;
+                    nodeStack[nodeStackSize] = 2 * stackIndex + 2;
+                    nodeStackSize++;
+                }
+                else
+                {
+                    //
+                    // Leaf node, put in list
+                    //
+                    list.push_back(nodeIDs[stackIndex]);
+                }
             }
-            else
+        }
+    }
+    else
+    {
+        while (nodeStackSize > 0)
+        {
+            nodeStackSize--;
+            int stackIndex = nodeStack[nodeStackSize];
+            double *bounds = nodeExtents + (stackIndex*nDims*2);
+            if (LineIntersectsBox(bounds, invDirX, invDirY, invDirZ,
+                originX, originY, originZ, signX, signY, signZ))
             {
                 //
-                // Leaf node, put in list
+                // The line intersects the current extents.
                 //
-                list.push_back(nodeIDs[stackIndex]);
+                if (nodeIDs[stackIndex] < 0)
+                {
+                    //
+                    // This is not a leaf, so put children on stack
+                    //
+                    nodeStack[nodeStackSize] = 2 * stackIndex + 1;
+                    nodeStackSize++;
+                    nodeStack[nodeStackSize] = 2 * stackIndex + 2;
+                    nodeStackSize++;
+                }
+                else
+                {
+                    //
+                    // Leaf node, put in list
+                    //
+                    list.push_back(nodeIDs[stackIndex]);
+                }
             }
         }
     }
@@ -1729,4 +1746,72 @@ IntersectsWithLine(double pt1[3], double pt2[3], int block,  int nDims,
     }
     else 
         return false;
+}
+
+
+// ****************************************************************************
+//  Function: LineIntersectsBox2D
+//
+//  Purpose:
+//      Used to determine if a line intersects an axis aligned 2D box.
+//
+//  Returns:    true if line intersects the box, false otherwise.
+//
+//  Programmer: Eric Brugger
+//  Creation:   July 12, 2010 
+//
+// ****************************************************************************
+
+bool
+LineIntersectsBox2D(double *bounds, double invDirX, double invDirY,
+    double originX, double originY, int signX, int signY)
+{
+    double tmin, tmax, tymin, tymax, tzmin, tzmax;
+
+    tmin  = (bounds[signX]   - originX) * invDirX;
+    tmax  = (bounds[1-signX] - originX) * invDirX;
+    tymin = (bounds[signY+2]   - originY) * invDirY;
+    tymax = (bounds[1-signY+2] - originY) * invDirY;
+    if ( (tmin > tymax) || (tymin > tmax) )
+        return false;
+    return true;
+}
+
+
+// ****************************************************************************
+//  Function: LineIntersectsBox
+//
+//  Purpose:
+//      Used to determine if a line intersects an axis aligned box.
+//
+//  Returns:    true if line intersects the box, false otherwise.
+//
+//  Programmer: Eric Brugger
+//  Creation:   July 12, 2010 
+//
+// ****************************************************************************
+
+bool
+LineIntersectsBox(double *bounds,
+    double invDirX, double invDirY, double invDirZ,
+    double originX, double originY, double originZ,
+    int signX, int signY, int signZ)
+{
+    double tmin, tmax, tymin, tymax, tzmin, tzmax;
+
+    tmin  = (bounds[signX]   - originX) * invDirX;
+    tmax  = (bounds[1-signX] - originX) * invDirX;
+    tymin = (bounds[signY+2]   - originY) * invDirY;
+    tymax = (bounds[1-signY+2] - originY) * invDirY;
+    if ( (tmin > tymax) || (tymin > tmax) )
+        return false;
+    if (tymin > tmin)
+        tmin = tymin;
+    if (tymax < tmax)
+        tmax = tymax;
+    tzmin = (bounds[signZ+4]   - originZ) * invDirZ;
+    tzmax = (bounds[1-signZ+4] - originZ) * invDirZ;
+    if ( (tmin > tzmax) || (tzmin > tmax) )
+        return false;
+    return true;
 }

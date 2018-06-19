@@ -290,7 +290,7 @@ avtVolumePlot::SetAtts(const AttributeGroup *a)
     varLegend->SetRange(min, max);
     if (atts.GetScaling() == VolumeAttributes::Linear)
         varLegend->SetScaling(0);
-    else if (atts.GetScaling() == VolumeAttributes::Log10)
+    else if (atts.GetScaling() == VolumeAttributes::Log)
         varLegend->SetScaling(1);
     else if (atts.GetScaling() == VolumeAttributes::Skew)
         varLegend->SetScaling(2, atts.GetSkewFactor());
@@ -650,6 +650,11 @@ avtVolumePlot::CustomizeBehavior(void)
 //  Programmer: Hank Childs
 //  Creation:   November 15, 2001
 //
+//  Modifications:
+//
+//    Hank Childs, Thu Aug 26 17:44:13 PDT 2010
+//    Calculate the extents for the opacity variable.
+//
 // ****************************************************************************
 
 avtContract_p
@@ -680,6 +685,7 @@ avtVolumePlot::EnhanceSpecification(avtContract_p spec)
                                       ds->GetTimestep(), ds->GetRestriction());
     nds->AddSecondaryVariable(ov.c_str());
     avtContract_p rv = new avtContract(spec, nds);
+    rv->SetCalculateVariableExtents(ov, true);
 
     return rv;
 }

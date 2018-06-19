@@ -89,6 +89,7 @@ class Line;
 class PrinterAttributes;
 class RenderingAttributes;
 class SaveWindowAttributes;
+class SelectionList;
 class ViewerWindow;
 class ViewerAnimation;
 class ViewCurveAttributes;
@@ -420,6 +421,12 @@ typedef struct {
 //    Remove reference to bounding box mode.  Now handled through interactor
 //    attributes.
 //
+//    Hank Childs, Thu Jul 22 09:55:03 PDT 2010
+//    Added a method for AdvancedMultiWindowSaves.
+//
+//    Brad Whitlock, Fri Jul 23 11:23:25 PDT 2010
+//    I added selection support.
+//
 // ****************************************************************************
 
 class VIEWER_API ViewerWindowManager : public ViewerBase
@@ -617,6 +624,7 @@ class VIEWER_API ViewerWindowManager : public ViewerBase
     static AnnotationObjectList          *GetAnnotationObjectList();
     static AnnotationObjectList          *GetDefaultAnnotationObjectList();
     static void                          SetDefaultAnnotationObjectListFromClient();
+    static SelectionList                 *GetSelectionList();
 
     void SetInteractorAttsFromClient();
     void SetInteractorAttsFromDefault();
@@ -644,6 +652,7 @@ class VIEWER_API ViewerWindowManager : public ViewerBase
     avtImage_p CreateSingleImage(int windowIndex, int width, int height,
                                  bool screenCapture, bool leftEye);
     avtImage_p CreateTiledImage(int width, int height, bool leftEye);
+    avtImage_p AdvancedMultiWindowSave(int width, int height, bool leftEye);
     avtDataset_p GetDataset(int windowIndex, bool&);
     bool AskForCorrelationPermission(const QString &, const QString &,
                                      const stringVector &dbs) const;
@@ -685,6 +694,7 @@ class VIEWER_API ViewerWindowManager : public ViewerBase
     static AnnotationObjectList          *defaultAnnotationObjectList;
     static InteractorAttributes          *interactorClientAtts;
     static InteractorAttributes          *interactorDefaultAtts;
+    static SelectionList                 *selectionList;
 
     int               layout;
     int               layoutIndex;

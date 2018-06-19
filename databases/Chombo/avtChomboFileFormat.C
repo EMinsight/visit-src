@@ -47,6 +47,7 @@
 #include <cstring>
 #include <limits>
 #include <algorithm>
+#include <sstream>
 
 #include <vtkFieldData.h>
 #include <vtkCellData.h>
@@ -65,6 +66,7 @@
 #include <avtDatabase.h>
 #include <avtDatabaseMetaData.h>
 #include <avtIntervalTree.h>
+#include <avtResolutionSelection.h>
 #include <avtStructuredDomainBoundaries.h>
 #include <avtStructuredDomainNesting.h>
 #include <avtVariableCache.h>
@@ -75,6 +77,7 @@
 #include <FileFunctions.h>
 
 #include <BadDomainException.h>
+#include <ImproperUseException.h>
 #include <DebugStream.h>
 #include <InvalidDBTypeException.h>
 #include <InvalidFilesException.h>
@@ -142,6 +145,7 @@ avtChomboFileFormat::avtChomboFileFormat(const char *filename,
     mappingIs3D = false;
     hasParticles = false;
     connectParticles = false;
+    alwaysComputeDomainBoundaries = false;
     if (atts != NULL)
     {
         for (int i = 0; i < atts->GetNumberOfOptions(); ++i)
@@ -156,6 +160,8 @@ avtChomboFileFormat::avtChomboFileFormat(const char *filename,
                 checkForMappingFile = atts->GetBool("Check for mapping file and import coordinates if available");
             else if (atts->GetName(i) == "Use particle_nid and polymer_id to connect particles")
                 connectParticles = atts->GetBool("Use particle_nid and polymer_id to connect particles");
+            else if (atts->GetName(i) == "Always compute domain boundaries (hack for AMR stitch cells)")
+                alwaysComputeDomainBoundaries = atts->GetBool("Always compute domain boundaries (hack for AMR stitch cells)");
             else
                 debug1 << "Ignoring unknown option " << atts->GetName(i) << endl;
         }
@@ -1214,6 +1220,9 @@ avtChomboFileFormat::InitializeReader(void)
 //    Improve the test for whether or not to create the domain boundaries
 //    object.
 //
+//    Tom Fogal, Thu Aug  5 16:45:30 MDT 2010
+//    Fix incorrect destructor function.
+//
 // ****************************************************************************
 
 void
@@ -1280,7 +1289,7 @@ avtChomboFileFormat::CalculateDomainNesting(void)
     // Now set up the data structure for patch boundaries.  The data 
     // does all the work ... it just needs to know the extents of each patch.
     //
-    if (!allowedToUseGhosts || !fileContainsGhosts)
+    if (alwaysComputeDomainBoundaries || !allowedToUseGhosts || !fileContainsGhosts)
     {
         int t2 = visitTimer->StartTimer();
         avtRectilinearDomainBoundaries *rdb 
@@ -1303,7 +1312,7 @@ avtChomboFileFormat::CalculateDomainNesting(void)
         }
         rdb->CalculateBoundaries();
         void_ref_ptr vrdb = void_ref_ptr(rdb,
-                                       avtStructuredDomainBoundaries::Destruct);
+                                       avtRectilinearDomainBoundaries::Destruct);
         cache->CacheVoidRef("any_mesh", AUXILIARY_DATA_DOMAIN_BOUNDARY_INFORMATION,
                             timestep, -1, vrdb);
         visitTimer->StopTimer(t2, "Chombo reader doing rect domain boundaries");
@@ -1477,6 +1486,9 @@ avtChomboFileFormat::CalculateDomainNesting(void)
 //    Gunther H. Weber, Tue Sep 15 11:26:12 PDT 2009
 //    Added support for 3D mappings for 2D files.
 //
+//    Tom Fogal, Thu Aug  5 20:11:04 MDT 2010
+//    Add support for resolution selection contract.
+//
 // ****************************************************************************
 
 void
@@ -1530,6 +1542,7 @@ avtChomboFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
     mesh->containsExteriorBoundaryGhosts = allowedToUseGhosts && fileContainsGhosts;
     std::vector<int> groupIds(totalPatches);
     std::vector<string> blockPieceNames(totalPatches);
+    int levels_of_detail = 0;
     for (i = 0 ; i < totalPatches ; i++)
     {
         char tmpName[128];
@@ -1538,8 +1551,11 @@ avtChomboFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
         groupIds[i] = level;
         sprintf(tmpName, "level%d,patch%d", level, local_patch);
         blockPieceNames[i] = tmpName;
+        levels_of_detail = std::max(levels_of_detail, level);
     }
     mesh->blockNames = blockPieceNames;
+    mesh->LODs = levels_of_detail;
+    this->resolution = levels_of_detail; // current acceptable res = max res.
     md->Add(mesh);
     md->AddGroupInformation(num_levels, totalPatches, groupIds);
 
@@ -2548,6 +2564,9 @@ avtChomboFileFormat::GetMesh(int patch, const char *meshname)
 //    Gunther H. Weber, Wed Jun 10 18:28:24 PDT 2009
 //    Added ability to handle particle data in Chombo files.
 //
+//    Tom Fogal, Fri Aug  6 16:29:16 MDT 2010
+//    Add support for resolution selection contract.
+//
 // ****************************************************************************
 
 vtkDataArray *
@@ -2576,6 +2595,13 @@ avtChomboFileFormat::GetVar(int patch, const char *varname)
         if (level >= num_levels)
         {
             EXCEPTION1(InvalidVariableException, varname);
+        }
+        if (level > this->resolution)
+        {
+            std::ostringstream err;
+            err << "Level '" << level << "' exceeds current resolution, '"
+                << this->resolution << "'.";
+            EXCEPTION1(ImproperUseException, err.str());
         }
 
         if (local_patch >= patchesPerLevel[level])
@@ -3053,5 +3079,30 @@ avtChomboFileFormat::GetMaterial(const char *var, int patch,
     return (void*) mat;
 }
 
-
-
+// ****************************************************************************
+//  Method: avtChomboFileFormat::RegisterDataSelections
+//
+//  Purpose:
+//      Tries to read requests for specific resolutions.
+//
+//  Programmer: Tom Fogal
+//  Creation:   August 5, 2010
+//
+//  Modifications:
+//
+// ****************************************************************************
+void avtChomboFileFormat::RegisterDataSelections(
+       const std::vector<avtDataSelection_p>& sels,
+       std::vector<bool>* applied)
+{
+    for(size_t i=0; i < sels.size(); ++i)
+    {
+        if(strcmp(sels[i]->GetType(), "avtResolutionSelection") == 0)
+        {
+            const avtResolutionSelection* sel =
+                static_cast<const avtResolutionSelection*>(*sels[i]);
+            this->resolution = sel->resolution();
+            (*applied)[i] = true;
+        }
+    }
+}

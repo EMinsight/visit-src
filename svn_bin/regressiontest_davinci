@@ -210,9 +210,31 @@
 #    Set pixel diff tolerances slightly above zero for scalable modes. This
 #    is to help reduce need for mode-specific baselines.
 #
+#    Mark C. Miller, Thu Apr  1 14:20:50 PDT 2010
+#    Make sure we can actually generate core files; added ulimit call.
+#
+#    Mark C. Miller, Thu Apr  1 14:26:36 PDT 2010
+#    Moved ulimit call to runtest instead. That way, anyone running runtest
+#    will get desired behavior.
+#
+#    Mark C. Miller, Fri Apr  2 17:37:22 PDT 2010
+#    Removed some visus tests from skip list as those tests have been
+#    eliminated. Removed some csg tests from skip list as those tests have
+#    been improved. Temporarily removed some whole .py files from skip list.
+#
+#    Mark C. Miller, Mon Apr 12 18:27:02 PDT 2010
+#    Added mpich installation to PATH
+#
+#    Eric Brugger, Mon Nov  2 17:17:59 PST 2009
+#    I added some more partial skips for tuvok.
+#
 #    Eric Brugger, Tue Apr 27 08:23:23 PDT 2010
 #    Corrected a bug where the large baseline image would always be the non
 #    mode specific version regardless of the mode the test was being run in.
+#
+#    Mark C. Miller, Wed May 12 09:58:44 PDT 2010
+#    Added logic to check for a previous instance of this script still
+#    running.
 #
 #    Eric Brugger, Thu May 27 17:04:35 PDT 2010
 #    Removed the partial skips for arbpoly.
@@ -360,7 +382,7 @@ EOF
 }
 
 # set up the environment
-PATH=/usr/common/usg/bin:/usr/common/mss/bin:/usr/common/pbs/bin:/global/u1/m/miller86/bin:/usr/common/mss/bin:/usr/common/usg/bin:/usr/local/bin:/usr/bin/X11:/usr/bin:/bin:/usr/lib/java/jre/bin:.
+PATH=/project/projectdirs/visit/visit_3rdparty/mpich/1.2.7p1/linux-ia64_gcc-4.1.2/bin:/usr/common/usg/bin:/usr/common/mss/bin:/usr/common/pbs/bin:/global/u1/m/miller86/bin:/usr/common/mss/bin:/usr/common/usg/bin:/usr/local/bin:/usr/bin/X11:/usr/bin:/bin:/usr/lib/java/jre/bin:.
 export PATH
 
 optError=0
@@ -412,6 +434,14 @@ if test $optError -eq 1; then
     echo "                          specified address. Implies -force, too."
     echo "        -trace            set -x."
     exit 1
+fi
+
+# check to see if (due to slow system) a previous instance of this script
+# is still running from a previous night.
+prevRun=$(ps -f -U $USER | tr '\n' '@')
+prevRun=$(echo $prevRun | tr '@' '\n' | grep $0 | grep -v $$)
+if test -n "$prevRun"; then
+    checkAndHandleError 1 fatal "A previous instance of $0 is running"
 fi
 
 # check that /projectdir is actually there. Sometimes it is down for maint.
@@ -539,29 +569,25 @@ skipList_dueTo_clientServer="\
           davinci,scalable,parallel,icet:tests/hybrid/locus.py \
           davinci,scalable,parallel,icet:tests/rendering/saveformats.py \
           davinci,scalable,parallel,icet:tests/queries/bestfitline.py"
+# Temporarily overrid above (MCM - 02Apr10)
+skipList_dueTo_clientServer=""
 
 skipList_dueTo_parallelRendering="\
           davinci,scalable,parallel,icet:tests/databases/boxlib.py"
 
 skipList_dueTo_temporaryBugs="\
           davinci,scalable,parallel,icet:tests/operators/transform.py:ops_transform05 \
-          davinci,serial:tests/rendering/tuvok.py:tuvok_2,tuvok_4,tuvok_6 \
-          davinci,parallel:tests/rendering/tuvok.py:tuvok_2,tuvok_4,tuvok_6 \
-          davinci,scalable,parallel,icet:tests/rendering/tuvok.py:tuvok_2,tuvok_4,tuvok_6 \
+          davinci,serial:tests/rendering/tuvok.py:tuvok_1,tuvok_2,tuvok_3,tuvok_4,tuvok_6 \
+          davinci,parallel:tests/rendering/tuvok.py:tuvok_1,tuvok_2,tuvok_3,tuvok_4,tuvok_6 \
+          davinci,scalable,parallel,icet:tests/rendering/tuvok.py:tuvok_1,tuvok_2,tuvok_3,tuvok_4,tuvok_6 \
           davinci,serial:tests/rendering/specular.py:specular_02,specular_03,specular_04,specular_05,specular_10 \
           davinci,parallel:tests/rendering/specular.py:specular_02,specular_03,specular_04,specular_05,specular_10 \
           davinci,scalable,parallel,icet:tests/rendering/specular.py:specular_02,specular_03,specular_04,specular_05,specular_10"
 
 skipList_for_Davinci="\
-          davinci,serial:tests/meshtype/csg.py:csg_02 \
-          davinci,parallel:tests/meshtype/csg.py:csg_02 \
-          davinci,scalable,parallel,icet:tests/meshtype/csg.py:csg_02 \
           davinci,serial:tests/databases/itaps.py:itaps_14,itaps_15 \
           davinci,parallel:tests/databases/itaps.py:itaps_14,itaps_15 \
           davinci,scalable,parallel,icet:tests/databases/itaps.py:itaps_14,itaps_15 \
-          davinci,serial:tests/databases/visus.py:visus_07,visus_08,visus_09 \
-          davinci,parallel:tests/databases/visus.py:visus_07,visus_08,visus_09 \
-          davinci,scalable,parallel,icet:tests/databases/visus.py:visus_07,visus_08,visus_09 \
           davinci,parallel:tests/rendering/compositing.py \
           davinci,scalable,parallel,icet:tests/rendering/compositing.py \
           davinci,parallel:tests/queries/line_scan.py:ls_1_16,ls_1_18 \

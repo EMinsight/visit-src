@@ -42,7 +42,13 @@
 #   Added QvisPythonFilterEditor
 #
 #   Cyrus Harrison, Mon Mar 15 13:27:16 PDT 2010
-#   Added  QvisTimeSliderControlWidget & QvisSourceManagerWidget.
+#   Added QvisTimeSliderControlWidget & QvisSourceManagerWidget.
+#
+#   Hank Childs, Sun Aug  1 14:41:50 PDT 2010
+#   Add QvisCMFEWizard.
+#
+#   Brad Whitlock, Fri Aug  6 16:34:54 PDT 2010
+#   Added QvisSelectionsWindow.
 #
 #****************************************************************************/
 
@@ -73,6 +79,7 @@ QvisAnnotationWindow.C
 QvisAppearanceWindow.C
 QvisApplication.C
 QvisAxisAttributesWidget.C
+QvisCMFEWizard.C
 QvisColorButton.C
 QvisColorGridWidget.C
 QvisColorManagerWidget.C
@@ -159,6 +166,7 @@ QvisSaveWindow.C
 QvisScreenPositionEdit.C
 QvisScreenPositioner.C
 QvisScribbleOpacityBar.C
+QvisSelectionsWindow.C
 QvisSequenceButton.C
 QvisSequenceMappingModel.C
 QvisSequenceTransition.C
@@ -274,6 +282,7 @@ QvisSaveWindow.h
 QvisScreenPositionEdit.h
 QvisScreenPositioner.h
 QvisScribbleOpacityBar.h
+QvisSelectionsWindow.h
 QvisSessionFileDatabaseLoader.h
 QvisSessionSourceChanger.h
 QvisSessionSourceChangerDialog.h
@@ -293,6 +302,7 @@ SimCommandSlots.h
 QvisSimulationMessageWindow.h
 QvisSimulationCommandWindow.h
 QvisFileOpenDialog.h
+QvisCMFEWizard.h
 QvisColorManagerWidget.h
 QvisColorSwatchListWidget.h
 QvisSILSetSelector.h
@@ -344,7 +354,9 @@ ${QT_QTXML_INCLUDE_DIR}
 ${QT_QTUITOOLS_INCLUDE_DIR}
 )
 
-LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY} ${QT_LIBRARY_DIR})
+LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY}
+  ${QT_SHAREDLIB_DIR} ${QT_LIBRARY_DIR}
+)
 
 SET(GUI_QT_LIBS
 ${QT_QTUITOOLS_LIBRARY}
@@ -387,6 +399,13 @@ IF(APPLE)
     SET_TARGET_PROPERTIES(gui 
         PROPERTIES
         LINK_FLAGS "-framework Carbon"
+    )
+ELSEIF(WIN32)
+# Needed because QT-4.6.3 has one library, QT_QTUITOOLS_LIBRARY,
+# with a default link library in it.
+    SET_TARGET_PROPERTIES(gui
+        PROPERTIES
+        LINK_FLAGS "/NODEFAULTLIB:libcmt"
     )
 ENDIF(APPLE)
 

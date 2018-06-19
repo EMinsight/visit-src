@@ -109,6 +109,12 @@ class QNarrowLineEdit : public QLineEdit
 //    Added choice for multiple ways one might want to transform a vector
 //    in coordinate system conversions.
 //
+//    Dave Pugmire, Fri May 14 08:04:43 EDT 2010
+//    Flag for vector transformations.
+//
+//    Tom Fogal, Tue Jul 27 11:08:13 MDT 2010
+//    Add widgets for 4x4 matrices.
+//
 // ****************************************************************************
 
 class QvisTransformWindow : public QvisOperatorWindow
@@ -145,6 +151,7 @@ class QvisTransformWindow : public QvisOperatorWindow
     void outputCoordChanged(int);
     void ltElementtChanged();
     void linearInvertChanged(bool val);
+    void transformVectorsChanged(bool val);
     void vectorMethodChanged(int);
   private:
     QTabWidget      *transformTypeTabs;
@@ -180,13 +187,21 @@ class QvisTransformWindow : public QvisOperatorWindow
     QNarrowLineEdit *m00;
     QNarrowLineEdit *m01;
     QNarrowLineEdit *m02;
+    QNarrowLineEdit *m03;
     QNarrowLineEdit *m10;
     QNarrowLineEdit *m11;
     QNarrowLineEdit *m12;
+    QNarrowLineEdit *m13;
     QNarrowLineEdit *m20;
     QNarrowLineEdit *m21;
     QNarrowLineEdit *m22;
+    QNarrowLineEdit *m23;
+    QNarrowLineEdit *m30;
+    QNarrowLineEdit *m31;
+    QNarrowLineEdit *m32;
+    QNarrowLineEdit *m33;
     QCheckBox       *linearInvert;
+    QCheckBox       *transformVectors1, *transformVectors3;
 
     QButtonGroup    *inputCoord;
     QButtonGroup    *outputCoord;
@@ -197,7 +212,4 @@ class QvisTransformWindow : public QvisOperatorWindow
     QWidget *secondPage;
     QWidget *thirdPage;
 };
-
-
-
 #endif

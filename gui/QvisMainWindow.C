@@ -72,6 +72,7 @@
 #include <MessageAttributes.h>
 #include <NameSimplifier.h>
 #include <PlotList.h>
+#include <SelectionList.h>
 #include <StatusAttributes.h>
 #include <TimeFormat.h>
 #include <UnicodeHelper.h>
@@ -96,6 +97,7 @@
 #include <icons/plugin.xpm>
 #include <icons/rainbow.xpm>
 #include <icons/savemovie.xpm>
+#include <icons/selection.xpm>
 #include <icons/subset.xpm>
 #include <icons/view.xpm>
 #include <icons/output_blue.xpm>
@@ -358,6 +360,15 @@
 //    For displays with low vertical resolution: don't use scroll bars when
 //    posting the main window.
 //
+//    Hank Childs, Wed Aug  4 13:27:57 PDT 2010
+//    Add Data-Level Comparisons.
+//
+//    Brad Whitlock, Fri Aug  6 16:58:31 PDT 2010
+//    Add Selections window.
+//
+//    Brad Whitlock, Mon Aug 30 11:47:46 PDT 2010
+//    Don't do "Set print options" on Mac.
+//
 // ****************************************************************************
 
 QvisMainWindow::QvisMainWindow(int orientation, const char *captionString)
@@ -368,7 +379,7 @@ QvisMainWindow::QvisMainWindow(int orientation, const char *captionString)
     setAttribute(Qt::WA_DeleteOnClose,true);
     int     id;
     QPixmap saveIcon, computerIcon, printIcon, rainbowIcon;
-    QPixmap annotIcon, lightIcon, subsetIcon, viewIcon;
+    QPixmap annotIcon, lightIcon, subsetIcon, selectionIcon, viewIcon;
     QPixmap exprIcon, animIcon, pluginIcon, pickIcon, copyIcon, lockIcon;
     QPixmap saveMovieIcon, commandIcon, keyframeIcon, materialIcon;
     QPixmap globalLineoutIcon, correlationIcon;
@@ -403,6 +414,7 @@ QvisMainWindow::QvisMainWindow(int orientation, const char *captionString)
     annotIcon = QPixmap(annot_xpm);
     lightIcon = QPixmap(light_xpm);
     subsetIcon = QPixmap(subset_xpm);
+    selectionIcon = QPixmap(selection_xpm);
     viewIcon = QPixmap(view_xpm);
     exprIcon = QPixmap(expression_xpm);
     animIcon = QPixmap(animate_xpm);
@@ -471,12 +483,22 @@ QvisMainWindow::QvisMainWindow(int orientation, const char *captionString)
     filePopup->addAction(tr("File &information . . ."), 
                          this, SIGNAL(activateFileInformationWindow()),
                          QKeySequence(Qt::CTRL + Qt::Key_I));
-    filePopup->addAction(tr("Compute &engines . . ."), 
-                         this, SIGNAL(activateEngineWindow()),
-                         QKeySequence(Qt::CTRL + Qt::Key_E));
+
+    filePopup->addSeparator();
+
+    filePopup->addAction(tr("Save session"),
+                         this, SIGNAL(saveSession()));
+    filePopup->addAction(tr("Save session as . . ."),
+                         this, SIGNAL(saveSessionAs()));
+    filePopup->addAction(tr("Restore session . . ."),
+                         this, SIGNAL(restoreSession()));
+    filePopup->addAction(tr("Restore session with sources . . ."),
+                         this, SIGNAL(restoreSessionWithSources()));
+
+    filePopup->addSeparator();
+
     filePopup->addAction(tr("Simulations . . ."),
-                         this, SIGNAL(activateSimulationWindow()),
-                         QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_S));
+                         this, SIGNAL(activateSimulationWindow()));
 
     filePopup->addSeparator();
 
@@ -488,22 +510,32 @@ QvisMainWindow::QvisMainWindow(int orientation, const char *captionString)
                          QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_O));
     filePopup->addAction(saveMovieIcon, tr("Save movie . . ."),
                          this, SIGNAL(saveMovie()));
-    filePopup->addAction(tr("Export database . . ."),
-                         this, SIGNAL(activateExportDBWindow()));
+
+#ifdef Q_WS_MACX
+    // Only have "Print window" on Mac and always make it activate the
+    // printer dialog.
+    filePopup->addAction(printIcon, tr("Print window"),
+                         this, SIGNAL(activatePrintWindow()),
+                         QKeySequence(Qt::CTRL + Qt::Key_P));
+#else
     filePopup->addAction(printIcon, tr("Print window"),
                          this, SIGNAL(printWindow()));
+
     filePopup->addAction(tr("Set Print options . . ."),
                          this, SIGNAL(activatePrintWindow()),
                          QKeySequence(Qt::CTRL + Qt::Key_P));
+#endif
 
     filePopup->addSeparator();
 
-    filePopup->addAction(tr("Save session . . ."),
-                         this, SIGNAL(saveSession()));
-    filePopup->addAction(tr("Restore session . . ."),
-                         this, SIGNAL(restoreSession()));
-    filePopup->addAction(tr("Restore session with sources . . ."),
-                         this, SIGNAL(restoreSessionWithSources()));
+    filePopup->addAction(tr("Export database . . ."),
+                         this, SIGNAL(activateExportDBWindow()));
+
+    filePopup->addSeparator();
+
+    filePopup->addAction(tr("Compute &engines . . ."), 
+                         this, SIGNAL(activateEngineWindow()),
+                         QKeySequence(Qt::CTRL + Qt::Key_E));
 
     filePopup->addSeparator();
 
@@ -532,6 +564,9 @@ QvisMainWindow::QvisMainWindow(int orientation, const char *captionString)
     ctrls->addAction(commandIcon, tr("Command . . ."),
                      this, SIGNAL(activateCommandWindow()), 
                      QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_C));
+    ctrls->addAction(tr("&Data-Level Comparisons . . ."),
+                     this, SIGNAL(setupCMFE()), 
+                     QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_D));
     ctrls->addAction(correlationIcon, tr("&Database correlations . . ."),
                       this, SIGNAL(activateCorrelationListWindow()), 
                       QKeySequence(Qt::CTRL + Qt::Key_D));
@@ -574,6 +609,9 @@ QvisMainWindow::QvisMainWindow(int orientation, const char *captionString)
                      this, SIGNAL(activateQueryWindow()), 
                      QKeySequence(Qt::CTRL + Qt::Key_Q));
 #endif
+    ctrls->addAction(selectionIcon, tr("Selections . . ."),
+                     this, SIGNAL(activateSelectionsWindow()),
+                     QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_S));
     ctrls->addAction(subsetIcon, tr("S&ubset . . ."),
                      this, SIGNAL(activateSubsetWindow()), 
                      QKeySequence(Qt::CTRL + Qt::Key_U));
@@ -612,7 +650,7 @@ QvisMainWindow::QvisMainWindow(int orientation, const char *captionString)
 
     winPopup = menuBar()->addMenu(tr("&Windows"));
 
-    winPopup->addAction(QPixmap(newwindow_xpm), tr("Add"),
+    winPopup->addAction(QPixmap(newwindow_xpm), tr("New"),
                         this, SLOT(windowAdd())
 #ifndef Q_WS_MACX
                          , QKeySequence(Qt::CTRL + Qt::Key_Insert)
@@ -988,6 +1026,9 @@ QvisMainWindow::AddHelpMenu(void)
 //   Brad Whitlock, Fri May  7 12:06:14 PDT 2010
 //   I removed the global area so I could create it elsewhere.
 //
+//   Brad Whitlock, Fri Jul 23 15:40:19 PDT 2010
+//   I added code to connect the selection list.
+//
 // ****************************************************************************
 
 void
@@ -1024,6 +1065,7 @@ QvisMainWindow::CreateMainContents(QSplitter *parent)
     plotManager->ConnectGlobalAttributes(GetViewerState()->GetGlobalAttributes());
     plotManager->ConnectExpressionList(GetViewerState()->GetExpressionList());
     plotManager->ConnectWindowInformation(GetViewerState()->GetWindowInformation());
+    plotManager->ConnectSelectionList(GetViewerState()->GetSelectionList());
     layout->addWidget(plotManager, 10);
 
     parent->addWidget(mainControls);

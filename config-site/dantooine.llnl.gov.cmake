@@ -46,11 +46,12 @@ VISIT_OPTION_DEFAULT(VISIT_CXX_FLAGS "-O2 -fno-common -fexceptions -fvisibility=
 VISIT_OPTION_DEFAULT(VISIT_PARALLEL ON)
 ## (configured w/ mpi compiler wrapper)
 VISIT_OPTION_DEFAULT(VISIT_MPI_COMPILER /usr/bin/mpic++)
+#VISIT_OPTION_DEFAULT(VISIT_MPI_FORTRAN_COMPILER /usr/bin/mpif77)
 
 ##
 ## Enable fortran for example programs.
 ##
-#VISIT_OPTION_DEFAULT(VISIT_FORTRAN ON)
+VISIT_OPTION_DEFAULT(VISIT_FORTRAN ON)
 
 ##############################################################
 ##
@@ -99,7 +100,6 @@ VISIT_OPTION_DEFAULT(VISIT_HDF5_LIBDEP ${VISITHOME}/szip/2.1/${VISITARCH}/lib sz
 ## H5Part
 ##
 VISIT_OPTION_DEFAULT(VISIT_H5PART_DIR ${VISITHOME}/h5part/1.6.0/${VISITARCH})
-VISIT_OPTION_DEFAULT(VISIT_H5PART_LIBDEP HDF5_LIBRARY_DIR hdf5 ${VISIT_HDF5_LIBDEP})
 
 ##
 ## Mili

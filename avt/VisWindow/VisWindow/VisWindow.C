@@ -242,6 +242,9 @@ VisWindow::VisWindow(bool callInit)
 //    Eric Brugger, Tue Dec  9 14:33:57 PST 2008
 //    Added the AxisParallel window mode.
 //
+//    Hank Childs, Fri Aug 27 15:27:25 PDT 2010
+//    Initialize 3D axis scaling options.
+//
 // ****************************************************************************
 
 void
@@ -277,6 +280,8 @@ VisWindow::Initialize(VisWinRendering *ren)
     SetViewport(0., 0., 1., 1.);
     EnableUpdates();
     NoPlots();
+    doAxisScaling = false;
+    axisScaling[0] = axisScaling[1] = axisScaling[2] = 1.0;
 
     //
     // rendering must be the first colleague added since it must change window
@@ -2154,6 +2159,9 @@ VisWindow::NoPlots(void)
 //    plot, and the functionality has been accomodated in a new window
 //    modality supporting the correct style annotations.
 //
+//    Jeremy Meredith, Wed May 19 14:15:58 EDT 2010
+//    Support 3D axis scaling (3D equivalent of full-frame mode).
+//
 // ****************************************************************************
 
 void
@@ -2162,7 +2170,9 @@ VisWindow::AddPlot(avtActor_p &p)
     plots->AddPlot(p);
     double bnds[6];
     plots->GetBounds(bnds);
-    axes3D->SetBounds(bnds);
+    double scales3D[3] = {1,1,1};
+    Get3DAxisScalingFactors(scales3D);
+    axes3D->SetBounds(bnds, scales3D);
 }
 
 
@@ -2183,6 +2193,9 @@ VisWindow::AddPlot(avtActor_p &p)
 //    Kathleen Bonnell, Mon Jun 18 14:56:09 PDT 2001 
 //    Reset bounds for axes3D after plot is removed.
 //
+//    Jeremy Meredith, Wed May 19 14:15:58 EDT 2010
+//    Support 3D axis scaling (3D equivalent of full-frame mode).
+//
 // ****************************************************************************
 
 void
@@ -2191,7 +2204,9 @@ VisWindow::RemovePlot(avtActor_p &p)
     plots->RemovePlot(p);
     double bnds[6];
     plots->GetBounds(bnds);
-    axes3D->SetBounds(bnds);
+    double scales3D[3] = {1,1,1};
+    Get3DAxisScalingFactors(scales3D);
+    axes3D->SetBounds(bnds, scales3D);
 }
 
 
@@ -2300,6 +2315,9 @@ VisWindow::EndBoundingBox(void)
 //    Add "auto" setting.  Implement logic here, so code outside VisWindow can
 //    still depend on true/false.
 //
+//    Jeremy Meredith, Wed May 19 14:15:58 EDT 2010
+//    Support 3D axis scaling (3D equivalent of full-frame mode).
+//
 // ****************************************************************************
 
 bool
@@ -2346,7 +2364,9 @@ VisWindow::SetViewExtentsType(avtExtentType vt, const double *const expbnds)
         for (int i = 0; i < 6; i++)
             bnds[i] = expbnds[i];
     }
-    axes3D->SetBounds(bnds);
+    double scales3D[3] = {1,1,1};
+    Get3DAxisScalingFactors(scales3D);
+    axes3D->SetBounds(bnds, scales3D);
 }
 
 
@@ -2908,6 +2928,14 @@ VisWindow::Render(void)
 //    Eric Brugger, Tue Dec  9 14:33:57 PST 2008
 //    Added the AxisParallel window mode.
 //
+//    Jeremy Meredith, Wed May 19 14:15:58 EDT 2010
+//    Support 3D axis scaling (3D equivalent of full-frame mode).
+//    Here's where we check to make sure no scaling factors are nonpositive.
+//
+//    Hank Childs, Fri Aug 27 14:37:31 PDT 2010
+//    1e+18 data seems to be too much for OpenGL and Mesa.  Scale it down 
+//    using our axis scales infrastructure before rendering.
+//
 // *****************************************************************************
 
 void
@@ -2941,8 +2969,37 @@ VisWindow::UpdateView()
     {
         avtViewInfo viewInfo;
 
+        double fixedScales[3] = {1,1,1};
+        if (view3D.axis3DScales[0] > 0)
+            fixedScales[0] = view3D.axis3DScales[0];
+        if (view3D.axis3DScales[1] > 0)
+            fixedScales[1] = view3D.axis3DScales[1];
+        if (view3D.axis3DScales[2] > 0)
+            fixedScales[2] = view3D.axis3DScales[2];
+        bool doScale = view3D.axis3DScaleFlag;
+
         view3D.SetViewInfoFromView(viewInfo);
+        if (viewInfo.parallelScale > 1e+18)
+        {
+            double factor = viewInfo.parallelScale/1e+18;
+            viewInfo.parallelScale = viewInfo.parallelScale/factor;  // 1e+18
+            viewInfo.camera[0] = viewInfo.camera[0]/factor;
+            viewInfo.camera[1] = viewInfo.camera[1]/factor;
+            viewInfo.camera[2] = viewInfo.camera[2]/factor;
+            viewInfo.focus[0] = viewInfo.focus[0]/factor;
+            viewInfo.focus[1] = viewInfo.focus[1]/factor;
+            viewInfo.focus[2] = viewInfo.focus[2]/factor;
+            viewInfo.nearPlane = viewInfo.nearPlane/factor;
+            viewInfo.farPlane = viewInfo.farPlane/factor;
+            fixedScales[0] /= factor;
+            fixedScales[1] /= factor;
+            fixedScales[2] /= factor;
+            doScale = true;
+        }
+        Set3DAxisScalingFactors(doScale, fixedScales);
         view->SetViewInfo(viewInfo);
+
+        Render();
     }
     else if (mode == WINMODE_CURVE)
     {
@@ -3514,14 +3571,19 @@ VisWindow::SetShowCallback(VisCallback *cb, void *data)
 //   Eric Brugger, Tue Dec  9 14:33:57 PST 2008
 //   Added the AxisParallel window mode.
 //
+//   Brad Whitlock, Thu Aug 26 15:37:10 PDT 2010
+//   I added force so we don't have to have different annotation attributes
+//   in order to force the update. This is needed when we are constructing
+//   the axes for the first time with default atts.
+//
 // ****************************************************************************
 
 void
-VisWindow::SetAnnotationAtts(const AnnotationAttributes *atts)
+VisWindow::SetAnnotationAtts(const AnnotationAttributes *atts, bool force)
 {
     bool changed = (annotationAtts != *atts);
 
-    if (changed)
+    if (changed || force)
     {
         // Set the background and foreground colors.
         double bg[3], fg[3], gbg1[3], gbg2[3];
@@ -5125,7 +5187,7 @@ VisWindow::QueryIsValid(const VisualCueInfo *pickCue, const VisualCueInfo *lineC
 // ****************************************************************************
 
 void
-VisWindow::GetScaleFactorAndType(double &s, int &t) 
+VisWindow::GetScaleFactorAndType(double &s, int &t)
 {
     if (mode == WINMODE_2D)
     {
@@ -5160,27 +5222,68 @@ VisWindow::GetScaleFactorAndType(double &s, int &t)
 
 
 // ****************************************************************************
+// Method:  VisWindow::Get3DAxisScalingFactors
+//
+// Purpose:
+//   Get the 3D scaling factors, if they are applied and we are in 
+//   3D mode -- otherwise, fill them with (1,1,1).  Return true if they
+//   are active.
+//
+// Arguments:
+//   s     (o) the axis scaling factors
+//
+// Programmer:  Jeremy Meredith
+// Creation:    May 19, 2010
+//
+//  Modifications:
+//
+//    Hank Childs, Fri Aug 27 15:27:25 PDT 2010
+//    Use explicit data members for 3D axis scaling.
+//
+// ****************************************************************************
+bool
+VisWindow::Get3DAxisScalingFactors(double s[3])  const
+{
+    s[0] = s[1] = s[2] = 1.0;
+    if (mode == WINMODE_3D && doAxisScaling)
+    {
+        s[0] = axisScaling[0];
+        s[1] = axisScaling[1];
+        s[2] = axisScaling[2];
+        return true;
+    }
+
+    return false;
+}
+
+
+// ****************************************************************************
 //  Method: VisWindow::UpdateQuery
 //
 //  Purpose:
 //    Tells the query colleague to do an update. 
 //
 //  Arguments:
-//    lineAtts  Attributes that specify which query is to be updated.
+//    id   which query to update
+//    cue  Attributes used to update the query.
 //
 //  Programmer: Kathleen Bonnell
 //  Creation:   June 18, 2002 
 //
 //  Modifications:
-//
 //    Mark C. Miller Wed Jun  9 17:44:38 PDT 2004
 //    Changed interface to use VisualCueInfo object
+//
+//    Brad Whitlock, Fri Aug 27 11:30:00 PDT 2010
+//    I made selecting the id separate from the label in the cue, which lets
+//    us pass a new label for picks.
+//
 // ****************************************************************************
  
 void
-VisWindow::UpdateQuery(const VisualCueInfo *lineCue)
+VisWindow::UpdateQuery(const std::string &id, const VisualCueInfo *cue)
 {
-    queries->UpdateQuery(lineCue);
+    queries->UpdateQuery(id, cue);
 }
 
 
@@ -5934,6 +6037,72 @@ VisWindow::GetScalableAutoThreshold() const
 }
 
 // ****************************************************************************
+// Method:  VisWindow::SetCompactDomainsActivationMode
+//
+// Purpose: Get/Set compact domains options.
+//   
+// Programmer:  Dave Pugmire
+// Creation:    August 24, 2010
+//
+// ****************************************************************************
+
+void
+VisWindow::SetCompactDomainsActivationMode(int mode)
+{
+    rendering->SetCompactDomainsActivationMode(mode);
+}
+
+// ****************************************************************************
+// Method:  VisWindow::GetCompactDomainsActivationMode
+//
+// Purpose: Get/Set compact domains options.
+//   
+// Programmer:  Dave Pugmire
+// Creation:    August 24, 2010
+//
+// ****************************************************************************
+
+int
+VisWindow::GetCompactDomainsActivationMode() const
+{
+    return rendering->GetCompactDomainsActivationMode();
+}
+
+// ****************************************************************************
+// Method:  VisWindow::SetCompactDomainsAutoThreshold
+//
+// Purpose: Get/Set compact domains options.
+//   
+// Programmer:  Dave Pugmire
+// Creation:    August 24, 2010
+//
+// ****************************************************************************
+
+void
+VisWindow::SetCompactDomainsAutoThreshold(int val)
+{
+    rendering->SetCompactDomainsAutoThreshold(val);
+}
+
+// ****************************************************************************
+// Method:  VisWindow::GetCompactDomainsAutoThreshold
+//
+// Purpose: Get/Set compact domains options.
+//   
+// Programmer:  Dave Pugmire
+// Creation:    August 24, 2010
+//
+// ****************************************************************************
+
+int
+VisWindow::GetCompactDomainsAutoThreshold() const
+{
+    return rendering->GetCompactDomainsAutoThreshold();
+}
+
+
+
+// ****************************************************************************
 // Method: VisWindow::CreateToolbar
 //
 // Purpose: 
@@ -6051,6 +6220,41 @@ VisWindow::FullFrameOn(const double scale, const int type)
 
 
 // ****************************************************************************
+//  Method: VisWindow::Set3DAxisScalingFactors
+//
+//  Purpose:
+//    Updated colleagues with new scaling factors.
+//
+//  Arguments:
+//    on        true if scaling is applied
+//    s         the axis scaling factors
+//
+//  Programmer: Jeremy Meredith
+//  Creation:   May 19, 2010
+//
+//  Modifications:
+//
+//    Hank Childs, Fri Aug 27 15:27:25 PDT 2010
+//    Use explicit data members for 3D axis scaling.
+//
+// ****************************************************************************
+
+void
+VisWindow::Set3DAxisScalingFactors(bool on, const double s[3])
+{
+    doAxisScaling = on;
+    axisScaling[0] = s[0];
+    axisScaling[1] = s[1];
+    axisScaling[2] = s[2];
+    std::vector< VisWinColleague * >::iterator it;
+    for (it = colleagues.begin() ; it != colleagues.end() ; it++)
+    {
+        (*it)->Set3DAxisScalingFactors(on, s);
+    }
+}
+
+
+// ****************************************************************************
 //  Method: VisWindow::GetFullFrameMode
 //
 //  Purpose:
@@ -6078,7 +6282,7 @@ VisWindow::FullFrameOn(const double scale, const int type)
 // ****************************************************************************
 
 bool
-VisWindow::GetFullFrameMode()
+VisWindow::GetFullFrameMode() const
 {
     if ((mode == WINMODE_2D && view2D.fullFrame) ||
         (mode == WINMODE_CURVE) ||

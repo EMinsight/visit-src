@@ -26,7 +26,8 @@ MoleculeViewerPluginInfo.C
 avtMoleculePlot.C
 avtMoleculeRenderer.C
 avtOpenGLMoleculeRenderer.C
-avtOpenGLAtomTexturer.C
+avtOpenGLAtomTexturer2D.C
+avtOpenGLAtomTexturer3D.C
 avtMoleculeFilter.C
 ${COMMON_SOURCES}
 )
@@ -36,13 +37,14 @@ MoleculeEnginePluginInfo.C
 avtMoleculePlot.C
 avtMoleculeRenderer.C
 avtOpenGLMoleculeRenderer.C
-avtOpenGLAtomTexturer.C
+avtOpenGLAtomTexturer2D.C
+avtOpenGLAtomTexturer3D.C
 avtMoleculeFilter.C
 ${COMMON_SOURCES}
 )
 
 IF (NOT WIN32)
-    SET_SOURCE_FILES_PROPERTIES(avtOpenGLAtomTexturer.C avtOpenGLMoleculeRenderer.C 
+    SET_SOURCE_FILES_PROPERTIES(avtOpenGLAtomTexturer2D.C avtOpenGLAtomTexturer3D.C avtOpenGLMoleculeRenderer.C 
         PROPERTIES
         COMPILE_FLAGS "-I ${OPENGL_INCLUDE_DIR}"
     )

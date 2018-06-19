@@ -429,6 +429,9 @@ VisitLineTool::UpdateView()
 //   Kathleen Bonnell, Fri Jun  6 15:36:24 PDT 2003 
 //   Added support for full-frame mode.
 //   
+//   Jeremy Meredith, Wed May 19 14:15:58 EDT 2010
+//   Account for 3D axis scaling (3D equivalent of full-frame mode).
+//
 // ****************************************************************************
 
 void
@@ -459,6 +462,16 @@ VisitLineTool::UpdateTool()
             hotPoints[0].pt.y *= scale;
             hotPoints[1].pt.y *= scale;
             hotPoints[2].pt.y *= scale;
+        }
+    }
+    double axisscale[3];
+    if (proxy.Get3DAxisScalingFactors(axisscale))
+    {
+        for (int i=0; i<3; i++)
+        {
+            hotPoints[i].pt.x *= axisscale[0];
+            hotPoints[i].pt.y *= axisscale[1];
+            hotPoints[i].pt.z *= axisscale[2];
         }
     }
 
@@ -631,6 +644,13 @@ VisitLineTool::RemoveText()
 //   Kathleen Bonnell, Fri Dec 13 16:41:12 PST 2002
 //   Replace mapper with actor.
 //
+//   Jeremy Meredith, Wed May 19 11:42:11 EDT 2010
+//   Added full frame support.
+//
+//   Jeremy Meredith, Wed May 19 14:15:58 EDT 2010
+//   Account for 3D axis scaling (3D equivalent of full-frame mode).
+//   Changed code slightly to be more legible.
+//
 // ****************************************************************************
 
 void
@@ -640,9 +660,31 @@ VisitLineTool::UpdateText()
 
     for(int i = 0; i < 2; ++i)
     {
+        double px = hotPoints[i].pt.x;
+        double py = hotPoints[i].pt.y;
+        double pz = hotPoints[i].pt.z;
+
         char str[100];
-        sprintf(str, "%s <%1.3g %1.3g %1.3g>", prefix[i],
-                hotPoints[i].pt.x, hotPoints[i].pt.y, hotPoints[i].pt.z);
+        if (proxy.GetFullFrameMode())
+        {
+            double scale;
+            int type;
+            proxy.GetScaleFactorAndType(scale, type);
+            if (type == 0 ) // x_axis
+                px /= scale;
+            else // y_axis
+                py /= scale;
+        }
+        double axisscale[3];
+        if (proxy.Get3DAxisScalingFactors(axisscale))
+        {
+            px /= axisscale[0];
+            py /= axisscale[1];
+            pz /= axisscale[2];
+        }
+        
+        sprintf(str, "%s <%1.3g %1.3g %1.3g>", prefix[i], px, py, pz);
+
         pointTextActor[i]->SetInput(str);
         avtVector originScreen = ComputeWorldToDisplay(hotPoints[i].pt);
         double pt[3] = {originScreen.x, originScreen.y, 0.};
@@ -875,7 +917,9 @@ VisitLineTool::UpdateGuide(int pointIndex)
 // Creation:   Wed Jun 19 11:08:13 PDT 2002
 //
 // Modifications:
-//   
+//   Jeremy Meredith, Wed May 19 14:15:58 EDT 2010
+//   Account for 3D axis scaling (3D equivalent of full-frame mode).
+//
 // ****************************************************************************
 
 void
@@ -886,6 +930,16 @@ VisitLineTool::GetGuidePoints(int pi, avtVector *pts)
     // Fill the return pts array.
     double bounds[6];
     proxy.GetBounds(bounds);
+    double axisscale[3];
+    if (proxy.Get3DAxisScalingFactors(axisscale))
+    {
+        bounds[0] *= axisscale[0];
+        bounds[1] *= axisscale[0];
+        bounds[2] *= axisscale[1];
+        bounds[3] *= axisscale[1];
+        bounds[4] *= axisscale[2];
+        bounds[5] *= axisscale[2];
+    }
     double xmin = bounds[0];
     double xmax = bounds[1];
     double ymin = bounds[2];
@@ -941,6 +995,8 @@ VisitLineTool::GetGuidePoints(int pi, avtVector *pts)
 // Creation:   Tue Jun 18 16:12:37 PST 2002
 //
 // Modifications:
+//   Jeremy Meredith, Wed May 19 14:15:58 EDT 2010
+//   Account for 3D axis scaling (3D equivalent of full-frame mode).
 //   
 // ****************************************************************************
 
@@ -952,6 +1008,18 @@ VisitLineTool::CallCallback()
 
     // Point 2
     avtVector pt2(hotPoints[1].pt);
+
+    double axisscale[3];
+    if (proxy.Get3DAxisScalingFactors(axisscale))
+    {
+        pt1.x /= axisscale[0];
+        pt1.y /= axisscale[1];
+        pt1.z /= axisscale[2];
+
+        pt2.x /= axisscale[0];
+        pt2.y /= axisscale[1];
+        pt2.z /= axisscale[2];
+    }
 
     Interface.SetPoint1(pt1.x, pt1.y, pt1.z);
     Interface.SetPoint2(pt2.x, pt2.y, pt2.z);
@@ -1242,6 +1310,27 @@ VisitLineTool::FullFrameOff()
     }
 }
 
+// ****************************************************************************
+// Method:  VisitLineTool::Set3DAxisScalingFactors
+//
+// Purpose:
+//   If the 3D scaling changes, update the tool.
+//
+// Arguments:
+//   ignored
+//
+// Programmer:  Jeremy Meredith
+// Creation:    May 19, 2010
+//
+// ****************************************************************************
+void
+VisitLineTool::Set3DAxisScalingFactors(bool, const double[3])
+{
+    if(IsEnabled())
+    {
+        UpdateTool();
+    }
+}
 
 //
 // Static callback functions.

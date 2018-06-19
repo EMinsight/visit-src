@@ -58,7 +58,8 @@ class QLineEdit;
 class QPushButton;
 class QvisColorTableButton;
 class QRadioButton;
-class QSlider;
+class QSpinBox;
+class QDoubleSpinBox;
 class QVBoxLayout;
 class QvisColorSelectionWidget;
 class QvisGaussianOpacityBar;
@@ -149,6 +150,9 @@ typedef int WidgetID;
 //    curve shape power, and an optional max-grad-mag-value clamp useful both
 //    as an extra tweak and for making animations not have erratic lighting.
 //
+//    Hank Childs, Fri May 21 12:05:03 PDT 2010
+//    Add argument to UpdateHistogram.
+//
 // ****************************************************************************
 
 class QvisVolumePlotWindow : public QvisPostableWindowObserver
@@ -161,13 +165,15 @@ public:
                          QvisNotepadArea *notepad = 0);
     virtual ~QvisVolumePlotWindow();
     virtual void CreateWindowContents();
+
+    virtual void ProcessOldVersions(DataNode *node, const char *configVersion);
 public slots:
     virtual void apply();
     virtual void makeDefault();
     virtual void reset();
 protected:
     void UpdateWindow(bool doAll);
-    void UpdateHistogram();
+    void UpdateHistogram(bool need2D);
     void UpdateColorControlPoints();
     void UpdateGaussianControlPoints();
     void UpdateFreeform();
@@ -175,13 +181,11 @@ protected:
     void Apply(bool ignore = false);
     void GetCurrentValues(int which_widget);
     void CopyGaussianOpacitiesToFreeForm();
-    void SetResampleTargetSliderFromAtts();
-    void SetRendererSamplesSliderFromAtts();
     QWidget *Create1DTransferFunctionGroup(int);
     QWidget *Create2DTransferFunctionGroup();
+    QWidget *CreateRendererOptionsGroup(int);
     void CreateColorGroup(QWidget *, QVBoxLayout *, int);
     void CreateOpacityGroup(QWidget *, QVBoxLayout *, int);
-    void CreateOptions(int);
 private slots:
     void addControlPoint();
     void removeControlPoint();
@@ -197,6 +201,7 @@ private slots:
     void lowGradientLightingReductionChanged(int val);
     void lowGradientClampToggled(bool val);
     void lowGradientClampProcessText();
+    void limitsSelectChanged(int);
     void colorMinToggled(bool val);
     void colorMinProcessText();
     void colorMaxToggled(bool val);
@@ -210,20 +215,16 @@ private slots:
     void smoothDataToggled(bool val);
     void equalSpacingToggled(bool val);
     void alphaValuesChanged();
-    void resampleTargetProcessText();
-    void resampleTargetSliderChanged(int val);
-    void resampleTargetSliderReleased();
-    void samplesPerRayProcessText();
+    void resampleTargetChanged(int val);
+    void samplesPerRayChanged(int val);
     void rendererTypeChanged(int val);
     void gradientTypeChanged(int val);
     void samplingTypeChanged(int val);
-    void num3DSlicesProcessText();
+    void num3DSlicesChanged(int val);
     void processSkewText();
     void scaleClicked(int scale);
     void colorTableClicked(bool useDefault, const QString &ctName);
-    void rendererSamplesProcessText();
-    void rendererSamplesSliderChanged(int val);
-    void rendererSamplesSliderReleased();
+    void rendererSamplesChanged(double val);
     void transferDimChanged(int);
     void updateTransferFunc2D();
     void updateTransferFunc2D(WidgetID id);
@@ -240,12 +241,12 @@ private:
     QCheckBox                *equalCheckBox;
     QvisSpectrumBar          *spectrumBar;
     QvisColorSelectionWidget *colorSelect;
+    QComboBox                *limitsSelect;
     QCheckBox                *colorMinToggle;
     QLineEdit                *colorMin;
     QCheckBox                *colorMaxToggle;
     QLineEdit                *colorMax;
-    QComboBox                *scaling;
-    QLabel                   *skewLabel;
+    QButtonGroup             *scalingButtons;
     QLineEdit                *skewLineEdit;
     QvisVariableButton       *opacityVariable;
     QCheckBox                *opacityMinToggle;
@@ -272,6 +273,9 @@ private:
     QWidget                  *tfParent2D;
     QvisCMap2Widget          *transferFunc2D;
 
+    // 2D transfer function widgets
+    QWidget                  *tfRendererOptions;
+
     // General widgets
     QCheckBox                *legendToggle;
     QCheckBox                *lightingToggle;
@@ -292,14 +296,12 @@ private:
     QRadioButton             *centeredDiffButton;
     QRadioButton             *sobelButton;
     QLabel                   *resampleTargetLabel;
-    QLineEdit                *resampleTarget;
-    QSlider                  *resampleTargetSlider;
+    QSpinBox                 *resampleTarget;
     QLabel                   *num3DSlicesLabel;
-    QLineEdit                *num3DSlices;
+    QSpinBox                 *num3DSlices;
     QLabel                   *samplesPerRayLabel;
-    QLineEdit                *samplesPerRay;
+    QSpinBox                 *samplesPerRay;
     QLabel                   *rendererSamplesLabel;
-    QSlider                  *rendererSamplesSlider;
-    QLineEdit                *rendererSamples;
+    QDoubleSpinBox           *rendererSamples;
 };
 #endif

@@ -134,6 +134,41 @@
 #    I modified the file to add -DMPICH_IGNORE_CXX_SEEK wherever -DPARALLEL
 #    is specified to eliminate a compile failure with some versions of mpi.
 #
+#    Mark C. Miller, Thu Jul 29 17:36:48 PDT 2010
+#    Added logic to include compiler version information as a comment int
+#    The PluginVsInstall.cmake file.
+#
+#    Mark C. Miller, Thu Jul 29 23:43:52 PDT 2010
+#    Added option to ignore problems finding third party libs. It is OFF
+#    by default.
+#
+#    Kathleen Bonnell, Thu Aug 5 9:34:52 PDT 2010 
+#    For winodws, only override cmake's default CMAKE_INSTALL_PREFIX if it
+#    wasn't specified on the command line.
+#
+#    Tom Fogal, Thu Aug  5 18:28:17 MDT 2010
+#    Add missing include/visit directory to default include path.
+#
+#    Kathleen Bonnell, Fri Aug 13 9:59:37 MST 2010 
+#    Allow host-specific config-site files for Windows build.  If there is no
+#    host-specific file, then windows.cmake is still used.
+#
+#    Kathleen Bonnell, Fri Aug 13 10:50:15 MST 2010 
+#    Allow config-site file to be specified on command-line.  Overrides
+#    host-specific (all platforms) or windows.cmake (on windows).
+#    usage:  -D VISIT_CONFIG_SITE="/path/to/config-site/file"
+#
+#    Cyrus Harrison, Mon Aug 16 13:12:17 PDT 2010
+#    1) Disable python filters if VISIT_NOLINK_MPI_WITH_LIBRARIES is true b/c
+#       the mpicom module (a shared lib) must link to mpi.
+#    2) (Non-windows) add extra info about success of config-site include.
+#
+#    Kathleen Bonnell, Thu Aug 19 18:05:27 MST 2010 
+#    Fix broken plugin install target on windows.
+#
+#    Kathleen Bonnell, Thu Sep 2 15:44:22 PDT 2010 
+#    Add flag to windows nsis-installer script for 64 bit.
+#
 #****************************************************************************/
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8.0 FATAL_ERROR)
@@ -159,16 +194,46 @@ SET(BUILD_SHARED_LIBS 1)
 SITE_NAME(HOSTNAME)
 
 #-----------------------------------------------------------------------------
+# Add an option to not force cache for 3rd party
+#----------------------------------------------------------------------------
+
+OPTION(VISIT_OPTION_DEFAULT_NOFORCE
+  "Do not force replacement in cache." OFF)
+
+#-----------------------------------------------------------------------------
 # Include this computer's config-site if one exists
 #-----------------------------------------------------------------------------
 FUNCTION(VISIT_OPTION_DEFAULT var)
+  IF(VISIT_OPTION_DEFAULT_NOFORCE)
+    # MESSAGE(STATUS "VISIT_OPTION_DEFAULT_NOFORCE is on.")
+    IF(NOT ${var})
+      MESSAGE(STATUS "Setting ${var}.")
+      SET(${var} ${ARGN} CACHE PATH "${var} default value")
+    ELSE()
+      MESSAGE(STATUS "Not setting ${var}.")
+    ENDIF()
+  ELSE()
+    # MESSAGE(STATUS "VISIT_OPTION_DEFAULT_NOFORCE is off.")
     SET(${var} ${ARGN} CACHE PATH "${var} default value" FORCE)
+  ENDIF()
 ENDFUNCTION(VISIT_OPTION_DEFAULT var)
 INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/CMake/SetupITAPS.cmake)
 
 IF (NOT WIN32)
-  MESSAGE(STATUS "Trying to include config-site/${HOSTNAME}.cmake")
-  INCLUDE(config-site/${HOSTNAME}.cmake OPTIONAL)
+  IF(VISIT_CONFIG_SITE)
+      SET(VISIT_CONFIG_SITE_FILE ${VISIT_CONFIG_SITE})
+  ELSE(VISIT_CONFIG_SITE)
+      SET(VISIT_CONFIG_SITE_FILE "config-site/${HOSTNAME}.cmake")
+  ENDIF(VISIT_CONFIG_SITE)
+
+  MESSAGE(STATUS "Trying to include config-site file '${VISIT_CONFIG_SITE_FILE}'")
+  INCLUDE(${VISIT_CONFIG_SITE_FILE} OPTIONAL RESULT_VARIABLE VISIT_CONFIG_SITE_FILE_FOUND)
+  IF("${VISIT_CONFIG_SITE_FILE_FOUND}" STREQUAL  "NOTFOUND")
+        MESSAGE(STATUS "NOT FOUND: '${VISIT_CONFIG_SITE_FILE}'")
+  ELSE("${VISIT_CONFIG_SITE_FILE_FOUND}" STREQUAL  "NOTFOUND")
+        MESSAGE(STATUS "Included: '${VISIT_CONFIG_SITE_FILE}'")
+  ENDIF("${VISIT_CONFIG_SITE_FILE_FOUND}" STREQUAL  "NOTFOUND")
+
 ENDIF (NOT WIN32)
 
 
@@ -206,8 +271,16 @@ ENDIF("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
 # the windows cmake file.
 #-----------------------------------------------------------------------------
 IF (WIN32)
-  MESSAGE(STATUS "Trying to include config-site/windows.cmake")
-  INCLUDE(config-site/windows.cmake)
+  IF (VISIT_CONFIG_SITE)
+      MESSAGE(STATUS "Trying to include ${VISIT_CONFIG_SITE}")
+      INCLUDE(${VISIT_CONFIG_SITE})
+  ELSEIF (EXISTS ${VISIT_SOURCE_DIR}/config-site/${HOSTNAME}.cmake)
+      MESSAGE(STATUS "Trying to include config-site/${HOSTNAME}.cmake")
+      INCLUDE(config-site/${HOSTNAME}.cmake)
+  ELSE (VISIT_CONFIG_SITE)
+      MESSAGE(STATUS "Trying to include config-site/windows.cmake")
+      INCLUDE(config-site/windows.cmake)
+  ENDIF (VISIT_CONFIG_SITE)
   SET(CMAKE_SKIP_RPATH ON CACHE INTERNAL "VisIt builds with rpath set." FORCE)
   SET(VISIT_WIN_ICON_RESOURCE ${VISIT_WINDOWS_DIR}/resources/visitresources.rc)
 ENDIF (WIN32)
@@ -268,6 +341,8 @@ OPTION(VISIT_RPATH_RELATIVE_TO_EXECUTABLE_PATH "Install rpath relative to execut
 OPTION(VISIT_FORTRAN "Enable compilation of Fortran example progams" OFF)
 OPTION(VISIT_DATA_MANUAL_EXAMPLES "Build Getting Data Into VisIt examples" OFF)
 
+OPTION(IGNORE_THIRD_PARTY_LIB_PROBLEMS "Ignore problems finding requested third party libraries")
+
 
 MACRO(VISIT_3RDPARTY_VAR vvar comment libvar)
     # Create a path variable 
@@ -303,6 +378,11 @@ VISIT_3RDPARTY_VAR(VISIT_TCMALLOC_DIR   "Path containing the tcmalloc library's 
 # Define the options that let us pick I/O library installation locations. When 
 # the library option is defined then we also define the variable name passed as
 # the 3rd argument. That variable is what is used in our various Find routines.
+#
+# Note: Define LIBDEP ONLY for libs a plugin is INdirectly dependent on (e.g.
+#       needs to link but not to compile). Use the plugin's .xml file for
+#       libs a plugin is DIRECTLY dependent on (e.g. needs to both compile
+#       and link).
 VISIT_3RDPARTY_VAR(VISIT_ADIOS_DIR     "Path containing the ADIOS library's include and lib" ADIOS_DIR)
 VISIT_3RDPARTY_VAR(VISIT_ADVIO_DIR     "Path containing the AdvIO library's include and lib" ADVIO_DIR)
 VISIT_3RDPARTY_VAR(VISIT_BOXLIB2D_DIR  "Path containing the Boxlib 2D library's include and lib" BOXLIB2D_DIR)
@@ -318,14 +398,13 @@ VISIT_3RDPARTY_DEP(VISIT_HDF4_LIBDEP   "HDF4 library dependencies" HDF4_LIBDEP)
 VISIT_3RDPARTY_VAR(VISIT_HDF5_DIR      "Path containing the HDF5 library's include and lib" HDF5_DIR)
 VISIT_3RDPARTY_DEP(VISIT_HDF5_LIBDEP   "HDF5 library dependencies" HDF5_LIBDEP)
 VISIT_3RDPARTY_VAR(VISIT_H5PART_DIR    "Path containing the H5Part library's include and lib" H5PART_DIR)
-VISIT_3RDPARTY_DEP(VISIT_H5PART_LIBDEP "H5Part library dependencies" H5PART_LIBDEP)
 VISIT_3RDPARTY_VAR(VISIT_MILI_DIR      "Path containing the Mili library's include and lib" MILI_DIR)
 VISIT_3RDPARTY_VAR(VISIT_NETCDF_DIR    "Path containing the NETCDF library's include and lib" NETCDF_DIR)
 VISIT_3RDPARTY_VAR(VISIT_SILO_DIR      "Path containing the Silo library's include and lib" SILO_DIR)
 VISIT_3RDPARTY_DEP(VISIT_SILO_LIBDEP   "Silo library dependencies" SILO_LIBDEP)
 VISIT_3RDPARTY_VAR(VISIT_VISUS_DIR     "Path containing the ViSUS library's include and lib" VISUS_DIR)
 VISIT_3RDPARTY_VAR(VISIT_XDMF_DIR      "Path containing the Xdmf library's include and lib" XDMF_DIR)
-
+VISIT_3RDPARTY_VAR(VISIT_MDSPLUS_DIR   "Path containing the MDSplus library's include and lib" MDSPLUS_DIR)
 #-----------------------------------------------------------------------------
 # Read the version
 #-----------------------------------------------------------------------------
@@ -340,11 +419,17 @@ SET(VISIT_VERSION ${VERSION})
 #-----------------------------------------------------------------------------
 
 IF(WIN32)
-    IF( NOT APPENDED_VISIT_VERSION_TO_INSTALL_PATH)
+    # override cmake's default of %Program Files% for CMAKE_INSTALL_PREFIX
+    # if it wasn't specified via command line, 
+    IF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+      IF( NOT APPENDED_VISIT_VERSION_TO_INSTALL_PATH)
         SET(CMAKE_INSTALL_PREFIX "${VISIT_BINARY_DIR}/VisIt ${VISIT_VERSION}" 
             CACHE PATH "Install path prefix, prepended onto install directories" FORCE)
         SET(APPENDED_VISIT_VERSION_TO_INSTALL_PATH TRUE CACHE INTERNAL "")
-    ENDIF( NOT APPENDED_VISIT_VERSION_TO_INSTALL_PATH)
+      ENDIF( NOT APPENDED_VISIT_VERSION_TO_INSTALL_PATH)
+    ENDIF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+
+    # set up directories
     SET(VISIT_INSTALLED_VERSION ${CMAKE_INSTALL_PREFIX}
         CACHE PATH "VisIt install directory" FORCE)
     SET(VISIT_INSTALLED_VERSION_BIN ${CMAKE_INSTALL_PREFIX} 
@@ -570,7 +655,6 @@ INCLUDE(${CMAKE_ROOT}/Modules/CheckFunctionExists.cmake)
 INCLUDE(${CMAKE_ROOT}/Modules/CheckSymbolExists.cmake)
 INCLUDE(${CMAKE_ROOT}/Modules/FindX11.cmake)
 INCLUDE(${CMAKE_ROOT}/Modules/TestBigEndian.cmake)
-#INCLUDE(${CMAKE_ROOT}/Modules/CheckPrototypeExists.cmake)
 
 IF(VISIT_PYTHON_SCRIPTING)
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItPython.cmake)
@@ -626,6 +710,13 @@ IF(VISIT_PYTHON_FILTERS AND NOT VTK_PYTHON_WRAPPERS_FOUND)
     SET(VISIT_PYTHON_FILTERS OFF)
     MESSAGE(STATUS "Python Engine Filters disabled because VTK python wrappers are not installed.")
 ENDIF(VISIT_PYTHON_FILTERS AND NOT VTK_PYTHON_WRAPPERS_FOUND)
+
+# Disable python filters if 'VISIT_NOLINK_MPI_WITH_LIBRARIES' is true.
+# The mpicom python module (a shared lib) must be linked to mpi.
+IF(VISIT_PYTHON_FILTERS AND VISIT_NOLINK_MPI_WITH_LIBRARIES)
+    SET(VISIT_PYTHON_FILTERS OFF)
+    MESSAGE(STATUS "Python Engine Filters disabled because VISIT_NOLINK_MPI_WITH_LIBRARIES was selected.")
+ENDIF(VISIT_PYTHON_FILTERS AND VISIT_NOLINK_MPI_WITH_LIBRARIES)
 
 # Configure Qt4 support.
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItQt4.cmake)
@@ -784,6 +875,12 @@ IF(XDMF_FOUND)
     SET(HAVE_LIBXDMF 1)
 ENDIF(XDMF_FOUND)
 
+# Configure MDSplus support.
+INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindMDSplus.cmake)
+IF(MDSPLUS_FOUND)
+    SET(HAVE_LIBMDSPLUS 1)
+ENDIF(MDSPLUS_FOUND)
+
 
 IF(CMAKE_HOST_UNIX)
   SET(ZLIB_LIB z)
@@ -791,7 +888,8 @@ IF(CMAKE_HOST_UNIX)
   ADD_DEFINITIONS(-D_LARGEFILE64_SOURCE)
 ELSE(CMAKE_HOST_UNIX)
   IF(WIN32)
-      SET(ZLIB_LIBRARY_DIR ${VISIT_WINDOWS_DIR}/ThirdParty/zlib/lib/${VISIT_MSVC_VERSION})
+    SET(ZLIB_LIBRARY_DIR ${VISIT_WINDOWS_DIR}/ThirdParty/zlib/lib/${VISIT_MSVC_VERSION})
+    IF(EXISTS ${ZLIB_LIBRARY_DIR}/zlib1.dll)
       SET(ZLIB_LIB ${ZLIB_LIBRARY_DIR}/zlib1.lib)
       EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E copy 
                       ${ZLIB_LIBRARY_DIR}/zlib1.dll
@@ -804,6 +902,7 @@ ELSE(CMAKE_HOST_UNIX)
           CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
           )
 
+    ENDIF()
   ELSE(WIN32)
       SET(ZLIB_LIB vtkzlib)
   ENDIF(WIN32)
@@ -1112,11 +1211,12 @@ ENDIF(UNIX AND NOT APPLE)
 # Windows-specific settings
 IF (WIN32)
   ADD_DEFINITIONS(-D_USE_MATH_DEFINES)
-  IF ("${VISIT_MSVC_VERSION}" STREQUAL "MSVC80")
+  # we want GTE 1400
+  IF (MSVC_VERSION GREATER 1399)
       ADD_DEFINITIONS(-D_CRT_SECURE_NO_DEPRECATE -D_CRT_NONSTDC_NO_DEPRECATE)
       ADD_DEFINITIONS(-D_SCL_NO_DEPRECATE -D_SCL_SECURE_NO_DEPRECATE)
       ADD_DEFINITIONS(-D_CRT_SECURE_NO_WARNINGS)
-  ENDIF ("${VISIT_MSVC_VERSION}" STREQUAL "MSVC80")
+  ENDIF (MSVC_VERSION GREATER 1399)
 
   # cmake automatically uses _DEBUG and MDd for Debug flags, but our
   # third-party libs are NOT debug versions, so we won't be able to
@@ -1373,6 +1473,44 @@ ELSE(NOT WIN32)
     SET(VISIT_PLUGIN_DIR  ${VISIT_EXECUTABLE_DIR} CACHE INTERNAL "Path to VisIt's plugins")
 ENDIF(NOT WIN32)
 
+# Obtain compiler version information for inclusion in PluginVsInstall.cmake
+# Note: This code block makes use of indirect variable reference (${${...}})
+IF(NOT WIN32)
+
+    # known different ways to get a compiler to spit out its version
+    SET(CMAKE_COMPILER_VERSION_FLAGS "--version" "-V" "-v")
+
+    FOREACH(CMAKE_COMPILER_NAME CMAKE_C_COMPILER CMAKE_CXX_COMPILER)
+        FOREACH(CMAKE_COMPILER_VERSION_FLAG ${CMAKE_COMPILER_VERSION_FLAGS})
+
+            EXECUTE_PROCESS(COMMAND ${${CMAKE_COMPILER_NAME}}
+                ${CMAKE_COMPILER_VERSION_FLAG} TIMEOUT 3 
+                RESULT_VARIABLE COMPILER_VERSION_RETURN
+                OUTPUT_VARIABLE COMPILER_VERSION_STDOUT
+                ERROR_VARIABLE COMPILER_VERSION_STDERR)
+
+            # If stderr=="" AND $?==0 AND stdout!=""...
+            IF("${COMPILER_VERSION_STDERR}" STREQUAL "" AND
+                ${COMPILER_VERSION_RETURN} EQUAL 0 AND
+                NOT ("${COMPILER_VERSION_STDOUT}" STREQUAL ""))
+
+                # Looks like we got something useful from the compiler.
+                # Reformat it so it looks like a cmake comment and break
+                # out of the loop over version flags.
+                STRING(REGEX REPLACE "\n" "\n# "
+                    ${CMAKE_COMPILER_NAME}_VERSION_MESSAGE
+                    "${COMPILER_VERSION_STDOUT}")
+                BREAK()
+
+            ENDIF("${COMPILER_VERSION_STDERR}" STREQUAL "" AND
+                ${COMPILER_VERSION_RETURN} EQUAL 0 AND
+                NOT ("${COMPILER_VERSION_STDOUT}" STREQUAL ""))
+
+        ENDFOREACH(CMAKE_COMPILER_VERSION_FLAG ${CMAKE_COMPILER_VERSION_FLAGS})
+    ENDFOREACH(CMAKE_COMPILER_NAME CMAKE_C_COMPILER CMAKE_CXX_COMPILER)
+
+ENDIF(NOT WIN32)
+
 # Store some configure information into a C file (like version, SVN version
 # and platform things that change).
 CONFIGURE_FILE(${VISIT_SOURCE_DIR}/CMake/PluginVsInstall.cmake.in
@@ -1612,6 +1750,7 @@ ELSE (NOT WIN32)
                     /DCOMPILER=${VISIT_MSVC_VERSION} 
                     /DVISIT_SOURCE_DIR=${VSD_NATIVE} 
                     /DINSTALL_PREFIX=${CIP_NATIVE} 
+                    /DCL_64=${CMAKE_CL_64}
                      ${VISIT_WINDOWS_DIR}/installation/binaryinstallation.nsi
             DEPENDS ${VISIT_WINDOWS_DIR}/installation/CreateDBSections.nsi
                     ${VISIT_WINDOWS_DIR}/installation/binaryinstallation.nsi

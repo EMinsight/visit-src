@@ -82,6 +82,11 @@
 //    Brad Whitlock, Thu Jul 28 10:07:18 PDT 2005
 //    Added new members for storing user-specified axis titles and units.
 //
+//    Jeremy Meredith, Tue May 18 13:12:06 EDT 2010
+//    Removed unused CornerOffset.
+//
+//    Mark C. Miller, Mon Jul 26 21:24:12 PDT 2010
+//    Added initialization of currentScaleFactors to fix UMR.
 // ****************************************************************************
 
 VisWinAxes3D::VisWinAxes3D(VisWindowColleagueProxy &p) : VisWinColleague(p),
@@ -91,7 +96,6 @@ VisWinAxes3D::VisWinAxes3D(VisWindowColleagueProxy &p) : VisWinColleague(p),
     axes = vtkVisItCubeAxesActor::New();
     axes->SetFlyModeToClosestTriad();
     axes->GetProperty()->SetColor(0, 0, 0);
-    axes->SetCornerOffset(0.);
     axes->PickableOff();
 
     axesBoxSource = vtkOutlineSource::New();
@@ -109,6 +113,9 @@ VisWinAxes3D::VisWinAxes3D(VisWindowColleagueProxy &p) : VisWinColleague(p),
         currentBounds[i] = -1;
     }
     addedAxes3D = false;
+
+    for (int i = 0; i < 3; i++)
+        currentScaleFactors[i] = 1.0;
 
     userXUnitsFlag = false;
     userYUnitsFlag = false;
@@ -368,7 +375,7 @@ VisWinAxes3D::RemoveAxes3DFromWindow(void)
 //    bounds    The bounds as min-x, max-x, min-y, max-y, min-z, and max-z.
 //
 //  Programmer: Kathleen Bonnell 
-//  Creation:   June 20, 2l01
+//  Creation:   June 20, 2001
 //
 //  Modifications:
 //    Kathleen Bonnell, Tue Oct 30 10:30:10 PST 2001 
@@ -379,19 +386,38 @@ VisWinAxes3D::RemoveAxes3DFromWindow(void)
 //    Added code to check for DBL_MAX to avoid doing math that
 //    exceeded maximums and cause a crash.
 //
+//    Jeremy Meredith, Tue May 18 15:14:55 EDT 2010
+//    Axes now support a range which is independent of the bounds.
+//    For now, we set the range to be the same as the bounds until we
+//    add support for independent control.
+//
+//    Jeremy Meredith, Wed May 19 14:15:58 EDT 2010
+//    Account for 3D axis scaling (3D equivalent of full-frame mode).
+//    This affects the extents where the bounding box is drawn, but 
+//    not the labels applied to the axes.
+//
 // ****************************************************************************
 
 void
-VisWinAxes3D::SetBounds(double bounds[6])
+VisWinAxes3D::SetBounds(double bounds[6], double scales[3])
 {
     bool boundsChanged = false; 
 
+    // See if any bounds have changed
     for (int i = 0; i < 6 ; i++)
     {
       if (currentBounds[i] == bounds[i])
-      {
           continue;
-      }
+
+      boundsChanged = true; 
+      break;
+    }
+
+    // Scaling affects the bounds
+    for (int i = 0; i < 3 ; i++)
+    {
+      if (currentScaleFactors[i] == scales[i])
+          continue;
 
       boundsChanged = true; 
       break;
@@ -399,6 +425,17 @@ VisWinAxes3D::SetBounds(double bounds[6])
 
     if (boundsChanged)
     {
+        currentBounds[0] = bounds[0];
+        currentBounds[1] = bounds[1];
+        currentBounds[2] = bounds[2];
+        currentBounds[3] = bounds[3];
+        currentBounds[4] = bounds[4];
+        currentBounds[5] = bounds[5];
+        currentScaleFactors[0] = scales[0];
+        currentScaleFactors[1] = scales[1];
+        currentScaleFactors[2] = scales[2];
+        
+
         double fudgeX;
         double fudgeY;
         double fudgeZ;
@@ -427,15 +464,30 @@ VisWinAxes3D::SetBounds(double bounds[6])
         // Add a fudge-factor to prevent axes from being obscured by plots
         // that fill their full extents. 
         //
-        currentBounds[0] = bounds[0] - fudgeX;
-        currentBounds[1] = bounds[1] + fudgeX;
-        currentBounds[2] = bounds[2] - fudgeY;
-        currentBounds[3] = bounds[3] + fudgeY;
-        currentBounds[4] = bounds[4] - fudgeZ;
-        currentBounds[5] = bounds[5] + fudgeZ;
 
-        axes->SetBounds(currentBounds);
-        axesBoxSource->SetBounds(currentBounds);
+        double fudgedBounds[6] = {
+            bounds[0] - fudgeX,
+            bounds[1] + fudgeX,
+            bounds[2] - fudgeY,
+            bounds[3] + fudgeY,
+            bounds[4] - fudgeZ,
+            bounds[5] + fudgeZ
+        };
+        axes->SetRanges(fudgedBounds);
+
+        //
+        // Yeah, scale the fudge factors as well
+        //
+        double scaledBounds[6] = {
+            fudgedBounds[0] * scales[0],
+            fudgedBounds[1] * scales[0],
+            fudgedBounds[2] * scales[1],
+            fudgedBounds[3] * scales[1],
+            fudgedBounds[4] * scales[2],
+            fudgedBounds[5] * scales[2]
+        };
+        axes->SetBounds(scaledBounds);
+        axesBoxSource->SetBounds(scaledBounds);
     }
 }
 
@@ -1353,5 +1405,35 @@ VisWinAxes3D::UpdateLabelTextAttributes(double fr, double fg, double fb)
     axes->SetLabelScale(labelTextAttributes[0].scale,
                         labelTextAttributes[1].scale,
                         labelTextAttributes[2].scale);
+}
+
+
+// ****************************************************************************
+// Method:  VisWinAxes3D::Set3DAxisScalingFactors
+//
+// Purpose:
+//   Scaling factors affect the bounds.  If these have changed, then
+//   update the bounds with the new info.
+//
+// Arguments:
+//   scale      true if scaling applied
+//   s          the axis scaling factors
+//
+// Programmer:  Jeremy Meredith
+// Creation:    May 19, 2010
+//
+// ****************************************************************************
+void
+VisWinAxes3D::Set3DAxisScalingFactors(bool scale,
+                                      const double s[3])
+{
+    double newS[3] = {scale ?  s[0] : 1, scale ? s[1] : 1, scale ? s[2] : 1};
+    bool dirty = (s[0] != currentScaleFactors[0]) ||
+                 (s[1] != currentScaleFactors[1]) ||
+                 (s[2] != currentScaleFactors[2]);
+    if (dirty)
+    {
+        SetBounds(currentBounds, newS);
+    }
 }
 

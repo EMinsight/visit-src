@@ -193,6 +193,81 @@ PoincareAttributes::ShowMeshType_FromString(const std::string &s, PoincareAttrib
 }
 
 //
+// Enum conversion methods for PoincareAttributes::PuncturePlaneType
+//
+
+static const char *PuncturePlaneType_strings[] = {
+"Poloidal", "Toroidal", "Arbitrary"
+};
+
+std::string
+PoincareAttributes::PuncturePlaneType_ToString(PoincareAttributes::PuncturePlaneType t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 3) index = 0;
+    return PuncturePlaneType_strings[index];
+}
+
+std::string
+PoincareAttributes::PuncturePlaneType_ToString(int t)
+{
+    int index = (t < 0 || t >= 3) ? 0 : t;
+    return PuncturePlaneType_strings[index];
+}
+
+bool
+PoincareAttributes::PuncturePlaneType_FromString(const std::string &s, PoincareAttributes::PuncturePlaneType &val)
+{
+    val = PoincareAttributes::Poloidal;
+    for(int i = 0; i < 3; ++i)
+    {
+        if(s == PuncturePlaneType_strings[i])
+        {
+            val = (PuncturePlaneType)i;
+            return true;
+        }
+    }
+    return false;
+}
+
+//
+// Enum conversion methods for PoincareAttributes::AnalysisType
+//
+
+static const char *AnalysisType_strings[] = {
+"None", "Normal"};
+
+std::string
+PoincareAttributes::AnalysisType_ToString(PoincareAttributes::AnalysisType t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 2) index = 0;
+    return AnalysisType_strings[index];
+}
+
+std::string
+PoincareAttributes::AnalysisType_ToString(int t)
+{
+    int index = (t < 0 || t >= 2) ? 0 : t;
+    return AnalysisType_strings[index];
+}
+
+bool
+PoincareAttributes::AnalysisType_FromString(const std::string &s, PoincareAttributes::AnalysisType &val)
+{
+    val = PoincareAttributes::None;
+    for(int i = 0; i < 2; ++i)
+    {
+        if(s == AnalysisType_strings[i])
+        {
+            val = (AnalysisType)i;
+            return true;
+        }
+    }
+    return false;
+}
+
+//
 // Enum conversion methods for PoincareAttributes::ColoringMethod
 //
 
@@ -230,40 +305,153 @@ PoincareAttributes::ColoringMethod_FromString(const std::string &s, PoincareAttr
 }
 
 //
+// Enum conversion methods for PoincareAttributes::Opacity
+//
+
+static const char *Opacity_strings[] = {
+"Explicit", "ColorTable"};
+
+std::string
+PoincareAttributes::Opacity_ToString(PoincareAttributes::Opacity t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 2) index = 0;
+    return Opacity_strings[index];
+}
+
+std::string
+PoincareAttributes::Opacity_ToString(int t)
+{
+    int index = (t < 0 || t >= 2) ? 0 : t;
+    return Opacity_strings[index];
+}
+
+bool
+PoincareAttributes::Opacity_FromString(const std::string &s, PoincareAttributes::Opacity &val)
+{
+    val = PoincareAttributes::Explicit;
+    for(int i = 0; i < 2; ++i)
+    {
+        if(s == Opacity_strings[i])
+        {
+            val = (Opacity)i;
+            return true;
+        }
+    }
+    return false;
+}
+
+//
 // Enum conversion methods for PoincareAttributes::DataValue
 //
 
 static const char *DataValue_strings[] = {
-"OriginalValue", "InputOrder", "PointIndex", 
-"Plane", "WindingOrder", "WindingPointOrder", 
-"WindingPointOrderModulo", "ToroidalWindings", "PoloidalWindings", 
-"SafetyFactor", "Confidence", "RidgelineVariance"
-};
+"Solid", "OriginalValue", "InputOrder", 
+"PointIndex", "Plane", "WindingOrder", 
+"WindingPointOrder", "WindingPointOrderModulo", "ToroidalWindings", 
+"PoloidalWindings", "SafetyFactor", "Confidence", 
+"RidgelineVariance"};
 
 std::string
 PoincareAttributes::DataValue_ToString(PoincareAttributes::DataValue t)
 {
     int index = int(t);
-    if(index < 0 || index >= 12) index = 0;
+    if(index < 0 || index >= 13) index = 0;
     return DataValue_strings[index];
 }
 
 std::string
 PoincareAttributes::DataValue_ToString(int t)
 {
-    int index = (t < 0 || t >= 12) ? 0 : t;
+    int index = (t < 0 || t >= 13) ? 0 : t;
     return DataValue_strings[index];
 }
 
 bool
 PoincareAttributes::DataValue_FromString(const std::string &s, PoincareAttributes::DataValue &val)
 {
-    val = PoincareAttributes::OriginalValue;
-    for(int i = 0; i < 12; ++i)
+    val = PoincareAttributes::Solid;
+    for(int i = 0; i < 13; ++i)
     {
         if(s == DataValue_strings[i])
         {
             val = (DataValue)i;
+            return true;
+        }
+    }
+    return false;
+}
+
+//
+// Enum conversion methods for PoincareAttributes::StreamlineAlgorithmType
+//
+
+static const char *StreamlineAlgorithmType_strings[] = {
+"LoadOnDemand", "ParallelStaticDomains", "MasterSlave"
+};
+
+std::string
+PoincareAttributes::StreamlineAlgorithmType_ToString(PoincareAttributes::StreamlineAlgorithmType t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 3) index = 0;
+    return StreamlineAlgorithmType_strings[index];
+}
+
+std::string
+PoincareAttributes::StreamlineAlgorithmType_ToString(int t)
+{
+    int index = (t < 0 || t >= 3) ? 0 : t;
+    return StreamlineAlgorithmType_strings[index];
+}
+
+bool
+PoincareAttributes::StreamlineAlgorithmType_FromString(const std::string &s, PoincareAttributes::StreamlineAlgorithmType &val)
+{
+    val = PoincareAttributes::LoadOnDemand;
+    for(int i = 0; i < 3; ++i)
+    {
+        if(s == StreamlineAlgorithmType_strings[i])
+        {
+            val = (StreamlineAlgorithmType)i;
+            return true;
+        }
+    }
+    return false;
+}
+
+//
+// Enum conversion methods for PoincareAttributes::PointType
+//
+
+static const char *PointType_strings[] = {
+"Box", "Axis", "Icosahedron", 
+"Point", "Sphere"};
+
+std::string
+PoincareAttributes::PointType_ToString(PoincareAttributes::PointType t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 5) index = 0;
+    return PointType_strings[index];
+}
+
+std::string
+PoincareAttributes::PointType_ToString(int t)
+{
+    int index = (t < 0 || t >= 5) ? 0 : t;
+    return PointType_strings[index];
+}
+
+bool
+PoincareAttributes::PointType_FromString(const std::string &s, PoincareAttributes::PointType &val)
+{
+    val = PoincareAttributes::Box;
+    for(int i = 0; i < 5; ++i)
+    {
+        if(s == PointType_strings[i])
+        {
+            val = (PointType)i;
             return true;
         }
     }
@@ -287,8 +475,11 @@ PoincareAttributes::DataValue_FromString(const std::string &s, PoincareAttribute
 
 void PoincareAttributes::Init()
 {
+    opacityType = Explicit;
+    opacity = 1;
     minPunctures = 10;
     maxPunctures = 100;
+    puncturePlane = Poloidal;
     sourceType = SpecifiedPoint;
     pointSource[0] = 0;
     pointSource[1] = 0;
@@ -304,26 +495,43 @@ void PoincareAttributes::Init()
     maxStepLength = 0.1;
     relTol = 0.0001;
     absTol = 1e-05;
-    maxToroidalWinding = 30;
+    analysis = Normal;
+    maximumToroidalWinding = 0;
     overrideToroidalWinding = 0;
-    hitRate = 0.9;
+    windingPairConfidence = 0.9;
+    periodicityConsistency = 0.8;
     adjustPlane = -1;
     overlaps = Remove;
     meshType = Curves;
     numberPlanes = 1;
+    singlePlane = 0;
     min = 0;
     max = 0;
     minFlag = false;
     maxFlag = false;
-    colorType = ColorBySingleColor;
+    colorType = ColorByColorTable;
     dataValue = SafetyFactor;
     showOPoints = false;
+    OPointMaxInterations = 2;
+    showXPoints = false;
+    XPointMaxInterations = 2;
+    showChaotic = false;
     showIslands = false;
-    showLines = true;
-    showPoints = false;
     verboseFlag = true;
+    showRidgelines = false;
+    showLines = true;
+    lineWidth = 0;
+    showPoints = false;
+    pointSize = 1;
+    pointSizePixels = 1;
+    pointType = Point;
     legendFlag = true;
     lightingFlag = true;
+    streamlineAlgorithmType = LoadOnDemand;
+    maxStreamlineProcessCount = 10;
+    maxDomainCacheSize = 3;
+    workGroupSize = 32;
+    forceNodeCenteredData = false;
 
     PoincareAttributes::SelectAll();
 }
@@ -345,8 +553,11 @@ void PoincareAttributes::Init()
 
 void PoincareAttributes::Copy(const PoincareAttributes &obj)
 {
+    opacityType = obj.opacityType;
+    opacity = obj.opacity;
     minPunctures = obj.minPunctures;
     maxPunctures = obj.maxPunctures;
+    puncturePlane = obj.puncturePlane;
     sourceType = obj.sourceType;
     pointSource[0] = obj.pointSource[0];
     pointSource[1] = obj.pointSource[1];
@@ -365,13 +576,16 @@ void PoincareAttributes::Copy(const PoincareAttributes &obj)
     maxStepLength = obj.maxStepLength;
     relTol = obj.relTol;
     absTol = obj.absTol;
-    maxToroidalWinding = obj.maxToroidalWinding;
+    analysis = obj.analysis;
+    maximumToroidalWinding = obj.maximumToroidalWinding;
     overrideToroidalWinding = obj.overrideToroidalWinding;
-    hitRate = obj.hitRate;
+    windingPairConfidence = obj.windingPairConfidence;
+    periodicityConsistency = obj.periodicityConsistency;
     adjustPlane = obj.adjustPlane;
     overlaps = obj.overlaps;
     meshType = obj.meshType;
     numberPlanes = obj.numberPlanes;
+    singlePlane = obj.singlePlane;
     min = obj.min;
     max = obj.max;
     minFlag = obj.minFlag;
@@ -381,12 +595,27 @@ void PoincareAttributes::Copy(const PoincareAttributes &obj)
     colorTableName = obj.colorTableName;
     dataValue = obj.dataValue;
     showOPoints = obj.showOPoints;
+    OPointMaxInterations = obj.OPointMaxInterations;
+    showXPoints = obj.showXPoints;
+    XPointMaxInterations = obj.XPointMaxInterations;
+    showChaotic = obj.showChaotic;
     showIslands = obj.showIslands;
-    showLines = obj.showLines;
-    showPoints = obj.showPoints;
     verboseFlag = obj.verboseFlag;
+    showRidgelines = obj.showRidgelines;
+    showLines = obj.showLines;
+    lineWidth = obj.lineWidth;
+    lineStyle = obj.lineStyle;
+    showPoints = obj.showPoints;
+    pointSize = obj.pointSize;
+    pointSizePixels = obj.pointSizePixels;
+    pointType = obj.pointType;
     legendFlag = obj.legendFlag;
     lightingFlag = obj.lightingFlag;
+    streamlineAlgorithmType = obj.streamlineAlgorithmType;
+    maxStreamlineProcessCount = obj.maxStreamlineProcessCount;
+    maxDomainCacheSize = obj.maxDomainCacheSize;
+    workGroupSize = obj.workGroupSize;
+    forceNodeCenteredData = obj.forceNodeCenteredData;
 
     PoincareAttributes::SelectAll();
 }
@@ -561,8 +790,11 @@ PoincareAttributes::operator == (const PoincareAttributes &obj) const
         lineEnd_equal = (lineEnd[i] == obj.lineEnd[i]);
 
     // Create the return value
-    return ((minPunctures == obj.minPunctures) &&
+    return ((opacityType == obj.opacityType) &&
+            (opacity == obj.opacity) &&
+            (minPunctures == obj.minPunctures) &&
             (maxPunctures == obj.maxPunctures) &&
+            (puncturePlane == obj.puncturePlane) &&
             (sourceType == obj.sourceType) &&
             pointSource_equal &&
             lineStart_equal &&
@@ -572,13 +804,16 @@ PoincareAttributes::operator == (const PoincareAttributes &obj) const
             (maxStepLength == obj.maxStepLength) &&
             (relTol == obj.relTol) &&
             (absTol == obj.absTol) &&
-            (maxToroidalWinding == obj.maxToroidalWinding) &&
+            (analysis == obj.analysis) &&
+            (maximumToroidalWinding == obj.maximumToroidalWinding) &&
             (overrideToroidalWinding == obj.overrideToroidalWinding) &&
-            (hitRate == obj.hitRate) &&
+            (windingPairConfidence == obj.windingPairConfidence) &&
+            (periodicityConsistency == obj.periodicityConsistency) &&
             (adjustPlane == obj.adjustPlane) &&
             (overlaps == obj.overlaps) &&
             (meshType == obj.meshType) &&
             (numberPlanes == obj.numberPlanes) &&
+            (singlePlane == obj.singlePlane) &&
             (min == obj.min) &&
             (max == obj.max) &&
             (minFlag == obj.minFlag) &&
@@ -588,12 +823,27 @@ PoincareAttributes::operator == (const PoincareAttributes &obj) const
             (colorTableName == obj.colorTableName) &&
             (dataValue == obj.dataValue) &&
             (showOPoints == obj.showOPoints) &&
+            (OPointMaxInterations == obj.OPointMaxInterations) &&
+            (showXPoints == obj.showXPoints) &&
+            (XPointMaxInterations == obj.XPointMaxInterations) &&
+            (showChaotic == obj.showChaotic) &&
             (showIslands == obj.showIslands) &&
-            (showLines == obj.showLines) &&
-            (showPoints == obj.showPoints) &&
             (verboseFlag == obj.verboseFlag) &&
+            (showRidgelines == obj.showRidgelines) &&
+            (showLines == obj.showLines) &&
+            (lineWidth == obj.lineWidth) &&
+            (lineStyle == obj.lineStyle) &&
+            (showPoints == obj.showPoints) &&
+            (pointSize == obj.pointSize) &&
+            (pointSizePixels == obj.pointSizePixels) &&
+            (pointType == obj.pointType) &&
             (legendFlag == obj.legendFlag) &&
-            (lightingFlag == obj.lightingFlag));
+            (lightingFlag == obj.lightingFlag) &&
+            (streamlineAlgorithmType == obj.streamlineAlgorithmType) &&
+            (maxStreamlineProcessCount == obj.maxStreamlineProcessCount) &&
+            (maxDomainCacheSize == obj.maxDomainCacheSize) &&
+            (workGroupSize == obj.workGroupSize) &&
+            (forceNodeCenteredData == obj.forceNodeCenteredData));
 }
 
 // ****************************************************************************
@@ -762,39 +1012,60 @@ PoincareAttributes::NewInstance(bool copy) const
 void
 PoincareAttributes::SelectAll()
 {
-    Select(ID_minPunctures,            (void *)&minPunctures);
-    Select(ID_maxPunctures,            (void *)&maxPunctures);
-    Select(ID_sourceType,              (void *)&sourceType);
-    Select(ID_pointSource,             (void *)pointSource, 3);
-    Select(ID_lineStart,               (void *)lineStart, 3);
-    Select(ID_lineEnd,                 (void *)lineEnd, 3);
-    Select(ID_pointDensity,            (void *)&pointDensity);
-    Select(ID_integrationType,         (void *)&integrationType);
-    Select(ID_maxStepLength,           (void *)&maxStepLength);
-    Select(ID_relTol,                  (void *)&relTol);
-    Select(ID_absTol,                  (void *)&absTol);
-    Select(ID_maxToroidalWinding,      (void *)&maxToroidalWinding);
-    Select(ID_overrideToroidalWinding, (void *)&overrideToroidalWinding);
-    Select(ID_hitRate,                 (void *)&hitRate);
-    Select(ID_adjustPlane,             (void *)&adjustPlane);
-    Select(ID_overlaps,                (void *)&overlaps);
-    Select(ID_meshType,                (void *)&meshType);
-    Select(ID_numberPlanes,            (void *)&numberPlanes);
-    Select(ID_min,                     (void *)&min);
-    Select(ID_max,                     (void *)&max);
-    Select(ID_minFlag,                 (void *)&minFlag);
-    Select(ID_maxFlag,                 (void *)&maxFlag);
-    Select(ID_colorType,               (void *)&colorType);
-    Select(ID_singleColor,             (void *)&singleColor);
-    Select(ID_colorTableName,          (void *)&colorTableName);
-    Select(ID_dataValue,               (void *)&dataValue);
-    Select(ID_showOPoints,             (void *)&showOPoints);
-    Select(ID_showIslands,             (void *)&showIslands);
-    Select(ID_showLines,               (void *)&showLines);
-    Select(ID_showPoints,              (void *)&showPoints);
-    Select(ID_verboseFlag,             (void *)&verboseFlag);
-    Select(ID_legendFlag,              (void *)&legendFlag);
-    Select(ID_lightingFlag,            (void *)&lightingFlag);
+    Select(ID_opacityType,               (void *)&opacityType);
+    Select(ID_opacity,                   (void *)&opacity);
+    Select(ID_minPunctures,              (void *)&minPunctures);
+    Select(ID_maxPunctures,              (void *)&maxPunctures);
+    Select(ID_puncturePlane,             (void *)&puncturePlane);
+    Select(ID_sourceType,                (void *)&sourceType);
+    Select(ID_pointSource,               (void *)pointSource, 3);
+    Select(ID_lineStart,                 (void *)lineStart, 3);
+    Select(ID_lineEnd,                   (void *)lineEnd, 3);
+    Select(ID_pointDensity,              (void *)&pointDensity);
+    Select(ID_integrationType,           (void *)&integrationType);
+    Select(ID_maxStepLength,             (void *)&maxStepLength);
+    Select(ID_relTol,                    (void *)&relTol);
+    Select(ID_absTol,                    (void *)&absTol);
+    Select(ID_analysis,                  (void *)&analysis);
+    Select(ID_maximumToroidalWinding,    (void *)&maximumToroidalWinding);
+    Select(ID_overrideToroidalWinding,   (void *)&overrideToroidalWinding);
+    Select(ID_windingPairConfidence,     (void *)&windingPairConfidence);
+    Select(ID_periodicityConsistency,    (void *)&periodicityConsistency);
+    Select(ID_adjustPlane,               (void *)&adjustPlane);
+    Select(ID_overlaps,                  (void *)&overlaps);
+    Select(ID_meshType,                  (void *)&meshType);
+    Select(ID_numberPlanes,              (void *)&numberPlanes);
+    Select(ID_singlePlane,               (void *)&singlePlane);
+    Select(ID_min,                       (void *)&min);
+    Select(ID_max,                       (void *)&max);
+    Select(ID_minFlag,                   (void *)&minFlag);
+    Select(ID_maxFlag,                   (void *)&maxFlag);
+    Select(ID_colorType,                 (void *)&colorType);
+    Select(ID_singleColor,               (void *)&singleColor);
+    Select(ID_colorTableName,            (void *)&colorTableName);
+    Select(ID_dataValue,                 (void *)&dataValue);
+    Select(ID_showOPoints,               (void *)&showOPoints);
+    Select(ID_OPointMaxInterations,      (void *)&OPointMaxInterations);
+    Select(ID_showXPoints,               (void *)&showXPoints);
+    Select(ID_XPointMaxInterations,      (void *)&XPointMaxInterations);
+    Select(ID_showChaotic,               (void *)&showChaotic);
+    Select(ID_showIslands,               (void *)&showIslands);
+    Select(ID_verboseFlag,               (void *)&verboseFlag);
+    Select(ID_showRidgelines,            (void *)&showRidgelines);
+    Select(ID_showLines,                 (void *)&showLines);
+    Select(ID_lineWidth,                 (void *)&lineWidth);
+    Select(ID_lineStyle,                 (void *)&lineStyle);
+    Select(ID_showPoints,                (void *)&showPoints);
+    Select(ID_pointSize,                 (void *)&pointSize);
+    Select(ID_pointSizePixels,           (void *)&pointSizePixels);
+    Select(ID_pointType,                 (void *)&pointType);
+    Select(ID_legendFlag,                (void *)&legendFlag);
+    Select(ID_lightingFlag,              (void *)&lightingFlag);
+    Select(ID_streamlineAlgorithmType,   (void *)&streamlineAlgorithmType);
+    Select(ID_maxStreamlineProcessCount, (void *)&maxStreamlineProcessCount);
+    Select(ID_maxDomainCacheSize,        (void *)&maxDomainCacheSize);
+    Select(ID_workGroupSize,             (void *)&workGroupSize);
+    Select(ID_forceNodeCenteredData,     (void *)&forceNodeCenteredData);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -827,6 +1098,18 @@ PoincareAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool for
     // Create a node for PoincareAttributes.
     DataNode *node = new DataNode("PoincareAttributes");
 
+    if(completeSave || !FieldsEqual(ID_opacityType, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("opacityType", Opacity_ToString(opacityType)));
+    }
+
+    if(completeSave || !FieldsEqual(ID_opacity, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("opacity", opacity));
+    }
+
     if(completeSave || !FieldsEqual(ID_minPunctures, &defaultObject))
     {
         addToParent = true;
@@ -837,6 +1120,12 @@ PoincareAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool for
     {
         addToParent = true;
         node->AddNode(new DataNode("maxPunctures", maxPunctures));
+    }
+
+    if(completeSave || !FieldsEqual(ID_puncturePlane, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("puncturePlane", PuncturePlaneType_ToString(puncturePlane)));
     }
 
     if(completeSave || !FieldsEqual(ID_sourceType, &defaultObject))
@@ -893,10 +1182,16 @@ PoincareAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool for
         node->AddNode(new DataNode("absTol", absTol));
     }
 
-    if(completeSave || !FieldsEqual(ID_maxToroidalWinding, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_analysis, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("maxToroidalWinding", maxToroidalWinding));
+        node->AddNode(new DataNode("analysis", AnalysisType_ToString(analysis)));
+    }
+
+    if(completeSave || !FieldsEqual(ID_maximumToroidalWinding, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("maximumToroidalWinding", maximumToroidalWinding));
     }
 
     if(completeSave || !FieldsEqual(ID_overrideToroidalWinding, &defaultObject))
@@ -905,10 +1200,16 @@ PoincareAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool for
         node->AddNode(new DataNode("overrideToroidalWinding", overrideToroidalWinding));
     }
 
-    if(completeSave || !FieldsEqual(ID_hitRate, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_windingPairConfidence, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("hitRate", hitRate));
+        node->AddNode(new DataNode("windingPairConfidence", windingPairConfidence));
+    }
+
+    if(completeSave || !FieldsEqual(ID_periodicityConsistency, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("periodicityConsistency", periodicityConsistency));
     }
 
     if(completeSave || !FieldsEqual(ID_adjustPlane, &defaultObject))
@@ -933,6 +1234,12 @@ PoincareAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool for
     {
         addToParent = true;
         node->AddNode(new DataNode("numberPlanes", numberPlanes));
+    }
+
+    if(completeSave || !FieldsEqual(ID_singlePlane, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("singlePlane", singlePlane));
     }
 
     if(completeSave || !FieldsEqual(ID_min, &defaultObject))
@@ -991,10 +1298,46 @@ PoincareAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool for
         node->AddNode(new DataNode("showOPoints", showOPoints));
     }
 
+    if(completeSave || !FieldsEqual(ID_OPointMaxInterations, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("OPointMaxInterations", OPointMaxInterations));
+    }
+
+    if(completeSave || !FieldsEqual(ID_showXPoints, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("showXPoints", showXPoints));
+    }
+
+    if(completeSave || !FieldsEqual(ID_XPointMaxInterations, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("XPointMaxInterations", XPointMaxInterations));
+    }
+
+    if(completeSave || !FieldsEqual(ID_showChaotic, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("showChaotic", showChaotic));
+    }
+
     if(completeSave || !FieldsEqual(ID_showIslands, &defaultObject))
     {
         addToParent = true;
         node->AddNode(new DataNode("showIslands", showIslands));
+    }
+
+    if(completeSave || !FieldsEqual(ID_verboseFlag, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("verboseFlag", verboseFlag));
+    }
+
+    if(completeSave || !FieldsEqual(ID_showRidgelines, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("showRidgelines", showRidgelines));
     }
 
     if(completeSave || !FieldsEqual(ID_showLines, &defaultObject))
@@ -1003,16 +1346,40 @@ PoincareAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool for
         node->AddNode(new DataNode("showLines", showLines));
     }
 
+    if(completeSave || !FieldsEqual(ID_lineWidth, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("lineWidth", lineWidth));
+    }
+
+    if(completeSave || !FieldsEqual(ID_lineStyle, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("lineStyle", lineStyle));
+    }
+
     if(completeSave || !FieldsEqual(ID_showPoints, &defaultObject))
     {
         addToParent = true;
         node->AddNode(new DataNode("showPoints", showPoints));
     }
 
-    if(completeSave || !FieldsEqual(ID_verboseFlag, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_pointSize, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("verboseFlag", verboseFlag));
+        node->AddNode(new DataNode("pointSize", pointSize));
+    }
+
+    if(completeSave || !FieldsEqual(ID_pointSizePixels, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("pointSizePixels", pointSizePixels));
+    }
+
+    if(completeSave || !FieldsEqual(ID_pointType, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("pointType", PointType_ToString(pointType)));
     }
 
     if(completeSave || !FieldsEqual(ID_legendFlag, &defaultObject))
@@ -1025,6 +1392,36 @@ PoincareAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool for
     {
         addToParent = true;
         node->AddNode(new DataNode("lightingFlag", lightingFlag));
+    }
+
+    if(completeSave || !FieldsEqual(ID_streamlineAlgorithmType, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("streamlineAlgorithmType", StreamlineAlgorithmType_ToString(streamlineAlgorithmType)));
+    }
+
+    if(completeSave || !FieldsEqual(ID_maxStreamlineProcessCount, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("maxStreamlineProcessCount", maxStreamlineProcessCount));
+    }
+
+    if(completeSave || !FieldsEqual(ID_maxDomainCacheSize, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("maxDomainCacheSize", maxDomainCacheSize));
+    }
+
+    if(completeSave || !FieldsEqual(ID_workGroupSize, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("workGroupSize", workGroupSize));
+    }
+
+    if(completeSave || !FieldsEqual(ID_forceNodeCenteredData, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("forceNodeCenteredData", forceNodeCenteredData));
     }
 
 
@@ -1063,10 +1460,44 @@ PoincareAttributes::SetFromNode(DataNode *parentNode)
         return;
 
     DataNode *node;
+    if((node = searchNode->GetNode("opacityType")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 2)
+                SetOpacityType(Opacity(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            Opacity value;
+            if(Opacity_FromString(node->AsString(), value))
+                SetOpacityType(value);
+        }
+    }
+    if((node = searchNode->GetNode("opacity")) != 0)
+        SetOpacity(node->AsDouble());
     if((node = searchNode->GetNode("minPunctures")) != 0)
-        SetMinPunctures(node->AsDouble());
+        SetMinPunctures(node->AsInt());
     if((node = searchNode->GetNode("maxPunctures")) != 0)
-        SetMaxPunctures(node->AsDouble());
+        SetMaxPunctures(node->AsInt());
+    if((node = searchNode->GetNode("puncturePlane")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 3)
+                SetPuncturePlane(PuncturePlaneType(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            PuncturePlaneType value;
+            if(PuncturePlaneType_FromString(node->AsString(), value))
+                SetPuncturePlane(value);
+        }
+    }
     if((node = searchNode->GetNode("sourceType")) != 0)
     {
         // Allow enums to be int or string in the config file
@@ -1113,12 +1544,30 @@ PoincareAttributes::SetFromNode(DataNode *parentNode)
         SetRelTol(node->AsDouble());
     if((node = searchNode->GetNode("absTol")) != 0)
         SetAbsTol(node->AsDouble());
-    if((node = searchNode->GetNode("maxToroidalWinding")) != 0)
-        SetMaxToroidalWinding(node->AsInt());
+    if((node = searchNode->GetNode("analysis")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 2)
+                SetAnalysis(AnalysisType(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            AnalysisType value;
+            if(AnalysisType_FromString(node->AsString(), value))
+                SetAnalysis(value);
+        }
+    }
+    if((node = searchNode->GetNode("maximumToroidalWinding")) != 0)
+        SetMaximumToroidalWinding(node->AsInt());
     if((node = searchNode->GetNode("overrideToroidalWinding")) != 0)
         SetOverrideToroidalWinding(node->AsInt());
-    if((node = searchNode->GetNode("hitRate")) != 0)
-        SetHitRate(node->AsDouble());
+    if((node = searchNode->GetNode("windingPairConfidence")) != 0)
+        SetWindingPairConfidence(node->AsDouble());
+    if((node = searchNode->GetNode("periodicityConsistency")) != 0)
+        SetPeriodicityConsistency(node->AsDouble());
     if((node = searchNode->GetNode("adjustPlane")) != 0)
         SetAdjustPlane(node->AsInt());
     if((node = searchNode->GetNode("overlaps")) != 0)
@@ -1155,6 +1604,8 @@ PoincareAttributes::SetFromNode(DataNode *parentNode)
     }
     if((node = searchNode->GetNode("numberPlanes")) != 0)
         SetNumberPlanes(node->AsInt());
+    if((node = searchNode->GetNode("singlePlane")) != 0)
+        SetSinglePlane(node->AsDouble());
     if((node = searchNode->GetNode("min")) != 0)
         SetMin(node->AsDouble());
     if((node = searchNode->GetNode("max")) != 0)
@@ -1189,7 +1640,7 @@ PoincareAttributes::SetFromNode(DataNode *parentNode)
         if(node->GetNodeType() == INT_NODE)
         {
             int ival = node->AsInt();
-            if(ival >= 0 && ival < 12)
+            if(ival >= 0 && ival < 13)
                 SetDataValue(DataValue(ival));
         }
         else if(node->GetNodeType() == STRING_NODE)
@@ -1201,18 +1652,76 @@ PoincareAttributes::SetFromNode(DataNode *parentNode)
     }
     if((node = searchNode->GetNode("showOPoints")) != 0)
         SetShowOPoints(node->AsBool());
+    if((node = searchNode->GetNode("OPointMaxInterations")) != 0)
+        SetOPointMaxInterations(node->AsInt());
+    if((node = searchNode->GetNode("showXPoints")) != 0)
+        SetShowXPoints(node->AsBool());
+    if((node = searchNode->GetNode("XPointMaxInterations")) != 0)
+        SetXPointMaxInterations(node->AsInt());
+    if((node = searchNode->GetNode("showChaotic")) != 0)
+        SetShowChaotic(node->AsBool());
     if((node = searchNode->GetNode("showIslands")) != 0)
         SetShowIslands(node->AsBool());
-    if((node = searchNode->GetNode("showLines")) != 0)
-        SetShowLines(node->AsBool());
-    if((node = searchNode->GetNode("showPoints")) != 0)
-        SetShowPoints(node->AsBool());
     if((node = searchNode->GetNode("verboseFlag")) != 0)
         SetVerboseFlag(node->AsBool());
+    if((node = searchNode->GetNode("showRidgelines")) != 0)
+        SetShowRidgelines(node->AsBool());
+    if((node = searchNode->GetNode("showLines")) != 0)
+        SetShowLines(node->AsBool());
+    if((node = searchNode->GetNode("lineWidth")) != 0)
+        SetLineWidth(node->AsInt());
+    if((node = searchNode->GetNode("lineStyle")) != 0)
+        SetLineStyle(node->AsInt());
+    if((node = searchNode->GetNode("showPoints")) != 0)
+        SetShowPoints(node->AsBool());
+    if((node = searchNode->GetNode("pointSize")) != 0)
+        SetPointSize(node->AsDouble());
+    if((node = searchNode->GetNode("pointSizePixels")) != 0)
+        SetPointSizePixels(node->AsInt());
+    if((node = searchNode->GetNode("pointType")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 5)
+                SetPointType(PointType(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            PointType value;
+            if(PointType_FromString(node->AsString(), value))
+                SetPointType(value);
+        }
+    }
     if((node = searchNode->GetNode("legendFlag")) != 0)
         SetLegendFlag(node->AsBool());
     if((node = searchNode->GetNode("lightingFlag")) != 0)
         SetLightingFlag(node->AsBool());
+    if((node = searchNode->GetNode("streamlineAlgorithmType")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 3)
+                SetStreamlineAlgorithmType(StreamlineAlgorithmType(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            StreamlineAlgorithmType value;
+            if(StreamlineAlgorithmType_FromString(node->AsString(), value))
+                SetStreamlineAlgorithmType(value);
+        }
+    }
+    if((node = searchNode->GetNode("maxStreamlineProcessCount")) != 0)
+        SetMaxStreamlineProcessCount(node->AsInt());
+    if((node = searchNode->GetNode("maxDomainCacheSize")) != 0)
+        SetMaxDomainCacheSize(node->AsInt());
+    if((node = searchNode->GetNode("workGroupSize")) != 0)
+        SetWorkGroupSize(node->AsInt());
+    if((node = searchNode->GetNode("forceNodeCenteredData")) != 0)
+        SetForceNodeCenteredData(node->AsBool());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1220,17 +1729,38 @@ PoincareAttributes::SetFromNode(DataNode *parentNode)
 ///////////////////////////////////////////////////////////////////////////////
 
 void
-PoincareAttributes::SetMinPunctures(double minPunctures_)
+PoincareAttributes::SetOpacityType(PoincareAttributes::Opacity opacityType_)
+{
+    opacityType = opacityType_;
+    Select(ID_opacityType, (void *)&opacityType);
+}
+
+void
+PoincareAttributes::SetOpacity(double opacity_)
+{
+    opacity = opacity_;
+    Select(ID_opacity, (void *)&opacity);
+}
+
+void
+PoincareAttributes::SetMinPunctures(int minPunctures_)
 {
     minPunctures = minPunctures_;
     Select(ID_minPunctures, (void *)&minPunctures);
 }
 
 void
-PoincareAttributes::SetMaxPunctures(double maxPunctures_)
+PoincareAttributes::SetMaxPunctures(int maxPunctures_)
 {
     maxPunctures = maxPunctures_;
     Select(ID_maxPunctures, (void *)&maxPunctures);
+}
+
+void
+PoincareAttributes::SetPuncturePlane(PoincareAttributes::PuncturePlaneType puncturePlane_)
+{
+    puncturePlane = puncturePlane_;
+    Select(ID_puncturePlane, (void *)&puncturePlane);
 }
 
 void
@@ -1303,10 +1833,17 @@ PoincareAttributes::SetAbsTol(double absTol_)
 }
 
 void
-PoincareAttributes::SetMaxToroidalWinding(int maxToroidalWinding_)
+PoincareAttributes::SetAnalysis(PoincareAttributes::AnalysisType analysis_)
 {
-    maxToroidalWinding = maxToroidalWinding_;
-    Select(ID_maxToroidalWinding, (void *)&maxToroidalWinding);
+    analysis = analysis_;
+    Select(ID_analysis, (void *)&analysis);
+}
+
+void
+PoincareAttributes::SetMaximumToroidalWinding(int maximumToroidalWinding_)
+{
+    maximumToroidalWinding = maximumToroidalWinding_;
+    Select(ID_maximumToroidalWinding, (void *)&maximumToroidalWinding);
 }
 
 void
@@ -1317,10 +1854,17 @@ PoincareAttributes::SetOverrideToroidalWinding(int overrideToroidalWinding_)
 }
 
 void
-PoincareAttributes::SetHitRate(double hitRate_)
+PoincareAttributes::SetWindingPairConfidence(double windingPairConfidence_)
 {
-    hitRate = hitRate_;
-    Select(ID_hitRate, (void *)&hitRate);
+    windingPairConfidence = windingPairConfidence_;
+    Select(ID_windingPairConfidence, (void *)&windingPairConfidence);
+}
+
+void
+PoincareAttributes::SetPeriodicityConsistency(double periodicityConsistency_)
+{
+    periodicityConsistency = periodicityConsistency_;
+    Select(ID_periodicityConsistency, (void *)&periodicityConsistency);
 }
 
 void
@@ -1349,6 +1893,13 @@ PoincareAttributes::SetNumberPlanes(int numberPlanes_)
 {
     numberPlanes = numberPlanes_;
     Select(ID_numberPlanes, (void *)&numberPlanes);
+}
+
+void
+PoincareAttributes::SetSinglePlane(double singlePlane_)
+{
+    singlePlane = singlePlane_;
+    Select(ID_singlePlane, (void *)&singlePlane);
 }
 
 void
@@ -1415,10 +1966,52 @@ PoincareAttributes::SetShowOPoints(bool showOPoints_)
 }
 
 void
+PoincareAttributes::SetOPointMaxInterations(int OPointMaxInterations_)
+{
+    OPointMaxInterations = OPointMaxInterations_;
+    Select(ID_OPointMaxInterations, (void *)&OPointMaxInterations);
+}
+
+void
+PoincareAttributes::SetShowXPoints(bool showXPoints_)
+{
+    showXPoints = showXPoints_;
+    Select(ID_showXPoints, (void *)&showXPoints);
+}
+
+void
+PoincareAttributes::SetXPointMaxInterations(int XPointMaxInterations_)
+{
+    XPointMaxInterations = XPointMaxInterations_;
+    Select(ID_XPointMaxInterations, (void *)&XPointMaxInterations);
+}
+
+void
+PoincareAttributes::SetShowChaotic(bool showChaotic_)
+{
+    showChaotic = showChaotic_;
+    Select(ID_showChaotic, (void *)&showChaotic);
+}
+
+void
 PoincareAttributes::SetShowIslands(bool showIslands_)
 {
     showIslands = showIslands_;
     Select(ID_showIslands, (void *)&showIslands);
+}
+
+void
+PoincareAttributes::SetVerboseFlag(bool verboseFlag_)
+{
+    verboseFlag = verboseFlag_;
+    Select(ID_verboseFlag, (void *)&verboseFlag);
+}
+
+void
+PoincareAttributes::SetShowRidgelines(bool showRidgelines_)
+{
+    showRidgelines = showRidgelines_;
+    Select(ID_showRidgelines, (void *)&showRidgelines);
 }
 
 void
@@ -1429,6 +2022,20 @@ PoincareAttributes::SetShowLines(bool showLines_)
 }
 
 void
+PoincareAttributes::SetLineWidth(int lineWidth_)
+{
+    lineWidth = lineWidth_;
+    Select(ID_lineWidth, (void *)&lineWidth);
+}
+
+void
+PoincareAttributes::SetLineStyle(int lineStyle_)
+{
+    lineStyle = lineStyle_;
+    Select(ID_lineStyle, (void *)&lineStyle);
+}
+
+void
 PoincareAttributes::SetShowPoints(bool showPoints_)
 {
     showPoints = showPoints_;
@@ -1436,10 +2043,24 @@ PoincareAttributes::SetShowPoints(bool showPoints_)
 }
 
 void
-PoincareAttributes::SetVerboseFlag(bool verboseFlag_)
+PoincareAttributes::SetPointSize(double pointSize_)
 {
-    verboseFlag = verboseFlag_;
-    Select(ID_verboseFlag, (void *)&verboseFlag);
+    pointSize = pointSize_;
+    Select(ID_pointSize, (void *)&pointSize);
+}
+
+void
+PoincareAttributes::SetPointSizePixels(int pointSizePixels_)
+{
+    pointSizePixels = pointSizePixels_;
+    Select(ID_pointSizePixels, (void *)&pointSizePixels);
+}
+
+void
+PoincareAttributes::SetPointType(PoincareAttributes::PointType pointType_)
+{
+    pointType = pointType_;
+    Select(ID_pointType, (void *)&pointType);
 }
 
 void
@@ -1456,20 +2077,73 @@ PoincareAttributes::SetLightingFlag(bool lightingFlag_)
     Select(ID_lightingFlag, (void *)&lightingFlag);
 }
 
+void
+PoincareAttributes::SetStreamlineAlgorithmType(PoincareAttributes::StreamlineAlgorithmType streamlineAlgorithmType_)
+{
+    streamlineAlgorithmType = streamlineAlgorithmType_;
+    Select(ID_streamlineAlgorithmType, (void *)&streamlineAlgorithmType);
+}
+
+void
+PoincareAttributes::SetMaxStreamlineProcessCount(int maxStreamlineProcessCount_)
+{
+    maxStreamlineProcessCount = maxStreamlineProcessCount_;
+    Select(ID_maxStreamlineProcessCount, (void *)&maxStreamlineProcessCount);
+}
+
+void
+PoincareAttributes::SetMaxDomainCacheSize(int maxDomainCacheSize_)
+{
+    maxDomainCacheSize = maxDomainCacheSize_;
+    Select(ID_maxDomainCacheSize, (void *)&maxDomainCacheSize);
+}
+
+void
+PoincareAttributes::SetWorkGroupSize(int workGroupSize_)
+{
+    workGroupSize = workGroupSize_;
+    Select(ID_workGroupSize, (void *)&workGroupSize);
+}
+
+void
+PoincareAttributes::SetForceNodeCenteredData(bool forceNodeCenteredData_)
+{
+    forceNodeCenteredData = forceNodeCenteredData_;
+    Select(ID_forceNodeCenteredData, (void *)&forceNodeCenteredData);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Get property methods
 ///////////////////////////////////////////////////////////////////////////////
 
+PoincareAttributes::Opacity
+PoincareAttributes::GetOpacityType() const
+{
+    return Opacity(opacityType);
+}
+
 double
+PoincareAttributes::GetOpacity() const
+{
+    return opacity;
+}
+
+int
 PoincareAttributes::GetMinPunctures() const
 {
     return minPunctures;
 }
 
-double
+int
 PoincareAttributes::GetMaxPunctures() const
 {
     return maxPunctures;
+}
+
+PoincareAttributes::PuncturePlaneType
+PoincareAttributes::GetPuncturePlane() const
+{
+    return PuncturePlaneType(puncturePlane);
 }
 
 PoincareAttributes::SourceType
@@ -1544,10 +2218,16 @@ PoincareAttributes::GetAbsTol() const
     return absTol;
 }
 
-int
-PoincareAttributes::GetMaxToroidalWinding() const
+PoincareAttributes::AnalysisType
+PoincareAttributes::GetAnalysis() const
 {
-    return maxToroidalWinding;
+    return AnalysisType(analysis);
+}
+
+int
+PoincareAttributes::GetMaximumToroidalWinding() const
+{
+    return maximumToroidalWinding;
 }
 
 int
@@ -1557,9 +2237,15 @@ PoincareAttributes::GetOverrideToroidalWinding() const
 }
 
 double
-PoincareAttributes::GetHitRate() const
+PoincareAttributes::GetWindingPairConfidence() const
 {
-    return hitRate;
+    return windingPairConfidence;
+}
+
+double
+PoincareAttributes::GetPeriodicityConsistency() const
+{
+    return periodicityConsistency;
 }
 
 int
@@ -1584,6 +2270,12 @@ int
 PoincareAttributes::GetNumberPlanes() const
 {
     return numberPlanes;
+}
+
+double
+PoincareAttributes::GetSinglePlane() const
+{
+    return singlePlane;
 }
 
 double
@@ -1652,10 +2344,46 @@ PoincareAttributes::GetShowOPoints() const
     return showOPoints;
 }
 
+int
+PoincareAttributes::GetOPointMaxInterations() const
+{
+    return OPointMaxInterations;
+}
+
+bool
+PoincareAttributes::GetShowXPoints() const
+{
+    return showXPoints;
+}
+
+int
+PoincareAttributes::GetXPointMaxInterations() const
+{
+    return XPointMaxInterations;
+}
+
+bool
+PoincareAttributes::GetShowChaotic() const
+{
+    return showChaotic;
+}
+
 bool
 PoincareAttributes::GetShowIslands() const
 {
     return showIslands;
+}
+
+bool
+PoincareAttributes::GetVerboseFlag() const
+{
+    return verboseFlag;
+}
+
+bool
+PoincareAttributes::GetShowRidgelines() const
+{
+    return showRidgelines;
 }
 
 bool
@@ -1664,16 +2392,40 @@ PoincareAttributes::GetShowLines() const
     return showLines;
 }
 
+int
+PoincareAttributes::GetLineWidth() const
+{
+    return lineWidth;
+}
+
+int
+PoincareAttributes::GetLineStyle() const
+{
+    return lineStyle;
+}
+
 bool
 PoincareAttributes::GetShowPoints() const
 {
     return showPoints;
 }
 
-bool
-PoincareAttributes::GetVerboseFlag() const
+double
+PoincareAttributes::GetPointSize() const
 {
-    return verboseFlag;
+    return pointSize;
+}
+
+int
+PoincareAttributes::GetPointSizePixels() const
+{
+    return pointSizePixels;
+}
+
+PoincareAttributes::PointType
+PoincareAttributes::GetPointType() const
+{
+    return PointType(pointType);
 }
 
 bool
@@ -1686,6 +2438,36 @@ bool
 PoincareAttributes::GetLightingFlag() const
 {
     return lightingFlag;
+}
+
+PoincareAttributes::StreamlineAlgorithmType
+PoincareAttributes::GetStreamlineAlgorithmType() const
+{
+    return StreamlineAlgorithmType(streamlineAlgorithmType);
+}
+
+int
+PoincareAttributes::GetMaxStreamlineProcessCount() const
+{
+    return maxStreamlineProcessCount;
+}
+
+int
+PoincareAttributes::GetMaxDomainCacheSize() const
+{
+    return maxDomainCacheSize;
+}
+
+int
+PoincareAttributes::GetWorkGroupSize() const
+{
+    return workGroupSize;
+}
+
+bool
+PoincareAttributes::GetForceNodeCenteredData() const
+{
+    return forceNodeCenteredData;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1746,39 +2528,60 @@ PoincareAttributes::GetFieldName(int index) const
 {
     switch (index)
     {
-    case ID_minPunctures:            return "minPunctures";
-    case ID_maxPunctures:            return "maxPunctures";
-    case ID_sourceType:              return "sourceType";
-    case ID_pointSource:             return "pointSource";
-    case ID_lineStart:               return "lineStart";
-    case ID_lineEnd:                 return "lineEnd";
-    case ID_pointDensity:            return "pointDensity";
-    case ID_integrationType:         return "integrationType";
-    case ID_maxStepLength:           return "maxStepLength";
-    case ID_relTol:                  return "relTol";
-    case ID_absTol:                  return "absTol";
-    case ID_maxToroidalWinding:      return "maxToroidalWinding";
-    case ID_overrideToroidalWinding: return "overrideToroidalWinding";
-    case ID_hitRate:                 return "hitRate";
-    case ID_adjustPlane:             return "adjustPlane";
-    case ID_overlaps:                return "overlaps";
-    case ID_meshType:                return "meshType";
-    case ID_numberPlanes:            return "numberPlanes";
-    case ID_min:                     return "min";
-    case ID_max:                     return "max";
-    case ID_minFlag:                 return "minFlag";
-    case ID_maxFlag:                 return "maxFlag";
-    case ID_colorType:               return "colorType";
-    case ID_singleColor:             return "singleColor";
-    case ID_colorTableName:          return "colorTableName";
-    case ID_dataValue:               return "dataValue";
-    case ID_showOPoints:             return "showOPoints";
-    case ID_showIslands:             return "showIslands";
-    case ID_showLines:               return "showLines";
-    case ID_showPoints:              return "showPoints";
-    case ID_verboseFlag:             return "verboseFlag";
-    case ID_legendFlag:              return "legendFlag";
-    case ID_lightingFlag:            return "lightingFlag";
+    case ID_opacityType:               return "opacityType";
+    case ID_opacity:                   return "opacity";
+    case ID_minPunctures:              return "minPunctures";
+    case ID_maxPunctures:              return "maxPunctures";
+    case ID_puncturePlane:             return "puncturePlane";
+    case ID_sourceType:                return "sourceType";
+    case ID_pointSource:               return "pointSource";
+    case ID_lineStart:                 return "lineStart";
+    case ID_lineEnd:                   return "lineEnd";
+    case ID_pointDensity:              return "pointDensity";
+    case ID_integrationType:           return "integrationType";
+    case ID_maxStepLength:             return "maxStepLength";
+    case ID_relTol:                    return "relTol";
+    case ID_absTol:                    return "absTol";
+    case ID_analysis:                  return "analysis";
+    case ID_maximumToroidalWinding:    return "maximumToroidalWinding";
+    case ID_overrideToroidalWinding:   return "overrideToroidalWinding";
+    case ID_windingPairConfidence:     return "windingPairConfidence";
+    case ID_periodicityConsistency:    return "periodicityConsistency";
+    case ID_adjustPlane:               return "adjustPlane";
+    case ID_overlaps:                  return "overlaps";
+    case ID_meshType:                  return "meshType";
+    case ID_numberPlanes:              return "numberPlanes";
+    case ID_singlePlane:               return "singlePlane";
+    case ID_min:                       return "min";
+    case ID_max:                       return "max";
+    case ID_minFlag:                   return "minFlag";
+    case ID_maxFlag:                   return "maxFlag";
+    case ID_colorType:                 return "colorType";
+    case ID_singleColor:               return "singleColor";
+    case ID_colorTableName:            return "colorTableName";
+    case ID_dataValue:                 return "dataValue";
+    case ID_showOPoints:               return "showOPoints";
+    case ID_OPointMaxInterations:      return "OPointMaxInterations";
+    case ID_showXPoints:               return "showXPoints";
+    case ID_XPointMaxInterations:      return "XPointMaxInterations";
+    case ID_showChaotic:               return "showChaotic";
+    case ID_showIslands:               return "showIslands";
+    case ID_verboseFlag:               return "verboseFlag";
+    case ID_showRidgelines:            return "showRidgelines";
+    case ID_showLines:                 return "showLines";
+    case ID_lineWidth:                 return "lineWidth";
+    case ID_lineStyle:                 return "lineStyle";
+    case ID_showPoints:                return "showPoints";
+    case ID_pointSize:                 return "pointSize";
+    case ID_pointSizePixels:           return "pointSizePixels";
+    case ID_pointType:                 return "pointType";
+    case ID_legendFlag:                return "legendFlag";
+    case ID_lightingFlag:              return "lightingFlag";
+    case ID_streamlineAlgorithmType:   return "streamlineAlgorithmType";
+    case ID_maxStreamlineProcessCount: return "maxStreamlineProcessCount";
+    case ID_maxDomainCacheSize:        return "maxDomainCacheSize";
+    case ID_workGroupSize:             return "workGroupSize";
+    case ID_forceNodeCenteredData:     return "forceNodeCenteredData";
     default:  return "invalid index";
     }
 }
@@ -1803,39 +2606,60 @@ PoincareAttributes::GetFieldType(int index) const
 {
     switch (index)
     {
-    case ID_minPunctures:            return FieldType_double;
-    case ID_maxPunctures:            return FieldType_double;
-    case ID_sourceType:              return FieldType_enum;
-    case ID_pointSource:             return FieldType_doubleArray;
-    case ID_lineStart:               return FieldType_doubleArray;
-    case ID_lineEnd:                 return FieldType_doubleArray;
-    case ID_pointDensity:            return FieldType_int;
-    case ID_integrationType:         return FieldType_enum;
-    case ID_maxStepLength:           return FieldType_double;
-    case ID_relTol:                  return FieldType_double;
-    case ID_absTol:                  return FieldType_double;
-    case ID_maxToroidalWinding:      return FieldType_int;
-    case ID_overrideToroidalWinding: return FieldType_int;
-    case ID_hitRate:                 return FieldType_double;
-    case ID_adjustPlane:             return FieldType_int;
-    case ID_overlaps:                return FieldType_enum;
-    case ID_meshType:                return FieldType_enum;
-    case ID_numberPlanes:            return FieldType_int;
-    case ID_min:                     return FieldType_double;
-    case ID_max:                     return FieldType_double;
-    case ID_minFlag:                 return FieldType_bool;
-    case ID_maxFlag:                 return FieldType_bool;
-    case ID_colorType:               return FieldType_enum;
-    case ID_singleColor:             return FieldType_color;
-    case ID_colorTableName:          return FieldType_colortable;
-    case ID_dataValue:               return FieldType_enum;
-    case ID_showOPoints:             return FieldType_bool;
-    case ID_showIslands:             return FieldType_bool;
-    case ID_showLines:               return FieldType_bool;
-    case ID_showPoints:              return FieldType_bool;
-    case ID_verboseFlag:             return FieldType_bool;
-    case ID_legendFlag:              return FieldType_bool;
-    case ID_lightingFlag:            return FieldType_bool;
+    case ID_opacityType:               return FieldType_enum;
+    case ID_opacity:                   return FieldType_opacity;
+    case ID_minPunctures:              return FieldType_int;
+    case ID_maxPunctures:              return FieldType_int;
+    case ID_puncturePlane:             return FieldType_enum;
+    case ID_sourceType:                return FieldType_enum;
+    case ID_pointSource:               return FieldType_doubleArray;
+    case ID_lineStart:                 return FieldType_doubleArray;
+    case ID_lineEnd:                   return FieldType_doubleArray;
+    case ID_pointDensity:              return FieldType_int;
+    case ID_integrationType:           return FieldType_enum;
+    case ID_maxStepLength:             return FieldType_double;
+    case ID_relTol:                    return FieldType_double;
+    case ID_absTol:                    return FieldType_double;
+    case ID_analysis:                  return FieldType_enum;
+    case ID_maximumToroidalWinding:    return FieldType_int;
+    case ID_overrideToroidalWinding:   return FieldType_int;
+    case ID_windingPairConfidence:     return FieldType_double;
+    case ID_periodicityConsistency:    return FieldType_double;
+    case ID_adjustPlane:               return FieldType_int;
+    case ID_overlaps:                  return FieldType_enum;
+    case ID_meshType:                  return FieldType_enum;
+    case ID_numberPlanes:              return FieldType_int;
+    case ID_singlePlane:               return FieldType_double;
+    case ID_min:                       return FieldType_double;
+    case ID_max:                       return FieldType_double;
+    case ID_minFlag:                   return FieldType_bool;
+    case ID_maxFlag:                   return FieldType_bool;
+    case ID_colorType:                 return FieldType_enum;
+    case ID_singleColor:               return FieldType_color;
+    case ID_colorTableName:            return FieldType_colortable;
+    case ID_dataValue:                 return FieldType_enum;
+    case ID_showOPoints:               return FieldType_bool;
+    case ID_OPointMaxInterations:      return FieldType_int;
+    case ID_showXPoints:               return FieldType_bool;
+    case ID_XPointMaxInterations:      return FieldType_int;
+    case ID_showChaotic:               return FieldType_bool;
+    case ID_showIslands:               return FieldType_bool;
+    case ID_verboseFlag:               return FieldType_bool;
+    case ID_showRidgelines:            return FieldType_bool;
+    case ID_showLines:                 return FieldType_bool;
+    case ID_lineWidth:                 return FieldType_linewidth;
+    case ID_lineStyle:                 return FieldType_linestyle;
+    case ID_showPoints:                return FieldType_bool;
+    case ID_pointSize:                 return FieldType_double;
+    case ID_pointSizePixels:           return FieldType_int;
+    case ID_pointType:                 return FieldType_enum;
+    case ID_legendFlag:                return FieldType_bool;
+    case ID_lightingFlag:              return FieldType_bool;
+    case ID_streamlineAlgorithmType:   return FieldType_enum;
+    case ID_maxStreamlineProcessCount: return FieldType_int;
+    case ID_maxDomainCacheSize:        return FieldType_int;
+    case ID_workGroupSize:             return FieldType_int;
+    case ID_forceNodeCenteredData:     return FieldType_bool;
     default:  return FieldType_unknown;
     }
 }
@@ -1860,39 +2684,60 @@ PoincareAttributes::GetFieldTypeName(int index) const
 {
     switch (index)
     {
-    case ID_minPunctures:            return "double";
-    case ID_maxPunctures:            return "double";
-    case ID_sourceType:              return "enum";
-    case ID_pointSource:             return "doubleArray";
-    case ID_lineStart:               return "doubleArray";
-    case ID_lineEnd:                 return "doubleArray";
-    case ID_pointDensity:            return "int";
-    case ID_integrationType:         return "enum";
-    case ID_maxStepLength:           return "double";
-    case ID_relTol:                  return "double";
-    case ID_absTol:                  return "double";
-    case ID_maxToroidalWinding:      return "int";
-    case ID_overrideToroidalWinding: return "int";
-    case ID_hitRate:                 return "double";
-    case ID_adjustPlane:             return "int";
-    case ID_overlaps:                return "enum";
-    case ID_meshType:                return "enum";
-    case ID_numberPlanes:            return "int";
-    case ID_min:                     return "double";
-    case ID_max:                     return "double";
-    case ID_minFlag:                 return "bool";
-    case ID_maxFlag:                 return "bool";
-    case ID_colorType:               return "enum";
-    case ID_singleColor:             return "color";
-    case ID_colorTableName:          return "colortable";
-    case ID_dataValue:               return "enum";
-    case ID_showOPoints:             return "bool";
-    case ID_showIslands:             return "bool";
-    case ID_showLines:               return "bool";
-    case ID_showPoints:              return "bool";
-    case ID_verboseFlag:             return "bool";
-    case ID_legendFlag:              return "bool";
-    case ID_lightingFlag:            return "bool";
+    case ID_opacityType:               return "enum";
+    case ID_opacity:                   return "opacity";
+    case ID_minPunctures:              return "int";
+    case ID_maxPunctures:              return "int";
+    case ID_puncturePlane:             return "enum";
+    case ID_sourceType:                return "enum";
+    case ID_pointSource:               return "doubleArray";
+    case ID_lineStart:                 return "doubleArray";
+    case ID_lineEnd:                   return "doubleArray";
+    case ID_pointDensity:              return "int";
+    case ID_integrationType:           return "enum";
+    case ID_maxStepLength:             return "double";
+    case ID_relTol:                    return "double";
+    case ID_absTol:                    return "double";
+    case ID_analysis:                  return "enum";
+    case ID_maximumToroidalWinding:    return "int";
+    case ID_overrideToroidalWinding:   return "int";
+    case ID_windingPairConfidence:     return "double";
+    case ID_periodicityConsistency:    return "double";
+    case ID_adjustPlane:               return "int";
+    case ID_overlaps:                  return "enum";
+    case ID_meshType:                  return "enum";
+    case ID_numberPlanes:              return "int";
+    case ID_singlePlane:               return "double";
+    case ID_min:                       return "double";
+    case ID_max:                       return "double";
+    case ID_minFlag:                   return "bool";
+    case ID_maxFlag:                   return "bool";
+    case ID_colorType:                 return "enum";
+    case ID_singleColor:               return "color";
+    case ID_colorTableName:            return "colortable";
+    case ID_dataValue:                 return "enum";
+    case ID_showOPoints:               return "bool";
+    case ID_OPointMaxInterations:      return "int";
+    case ID_showXPoints:               return "bool";
+    case ID_XPointMaxInterations:      return "int";
+    case ID_showChaotic:               return "bool";
+    case ID_showIslands:               return "bool";
+    case ID_verboseFlag:               return "bool";
+    case ID_showRidgelines:            return "bool";
+    case ID_showLines:                 return "bool";
+    case ID_lineWidth:                 return "linewidth";
+    case ID_lineStyle:                 return "linestyle";
+    case ID_showPoints:                return "bool";
+    case ID_pointSize:                 return "double";
+    case ID_pointSizePixels:           return "int";
+    case ID_pointType:                 return "enum";
+    case ID_legendFlag:                return "bool";
+    case ID_lightingFlag:              return "bool";
+    case ID_streamlineAlgorithmType:   return "enum";
+    case ID_maxStreamlineProcessCount: return "int";
+    case ID_maxDomainCacheSize:        return "int";
+    case ID_workGroupSize:             return "int";
+    case ID_forceNodeCenteredData:     return "bool";
     default:  return "invalid index";
     }
 }
@@ -1919,6 +2764,16 @@ PoincareAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
     bool retval = false;
     switch (index_)
     {
+    case ID_opacityType:
+        {  // new scope
+        retval = (opacityType == obj.opacityType);
+        }
+        break;
+    case ID_opacity:
+        {  // new scope
+        retval = (opacity == obj.opacity);
+        }
+        break;
     case ID_minPunctures:
         {  // new scope
         retval = (minPunctures == obj.minPunctures);
@@ -1927,6 +2782,11 @@ PoincareAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
     case ID_maxPunctures:
         {  // new scope
         retval = (maxPunctures == obj.maxPunctures);
+        }
+        break;
+    case ID_puncturePlane:
+        {  // new scope
+        retval = (puncturePlane == obj.puncturePlane);
         }
         break;
     case ID_sourceType:
@@ -1989,9 +2849,14 @@ PoincareAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (absTol == obj.absTol);
         }
         break;
-    case ID_maxToroidalWinding:
+    case ID_analysis:
         {  // new scope
-        retval = (maxToroidalWinding == obj.maxToroidalWinding);
+        retval = (analysis == obj.analysis);
+        }
+        break;
+    case ID_maximumToroidalWinding:
+        {  // new scope
+        retval = (maximumToroidalWinding == obj.maximumToroidalWinding);
         }
         break;
     case ID_overrideToroidalWinding:
@@ -1999,9 +2864,14 @@ PoincareAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (overrideToroidalWinding == obj.overrideToroidalWinding);
         }
         break;
-    case ID_hitRate:
+    case ID_windingPairConfidence:
         {  // new scope
-        retval = (hitRate == obj.hitRate);
+        retval = (windingPairConfidence == obj.windingPairConfidence);
+        }
+        break;
+    case ID_periodicityConsistency:
+        {  // new scope
+        retval = (periodicityConsistency == obj.periodicityConsistency);
         }
         break;
     case ID_adjustPlane:
@@ -2022,6 +2892,11 @@ PoincareAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
     case ID_numberPlanes:
         {  // new scope
         retval = (numberPlanes == obj.numberPlanes);
+        }
+        break;
+    case ID_singlePlane:
+        {  // new scope
+        retval = (singlePlane == obj.singlePlane);
         }
         break;
     case ID_min:
@@ -2069,9 +2944,39 @@ PoincareAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (showOPoints == obj.showOPoints);
         }
         break;
+    case ID_OPointMaxInterations:
+        {  // new scope
+        retval = (OPointMaxInterations == obj.OPointMaxInterations);
+        }
+        break;
+    case ID_showXPoints:
+        {  // new scope
+        retval = (showXPoints == obj.showXPoints);
+        }
+        break;
+    case ID_XPointMaxInterations:
+        {  // new scope
+        retval = (XPointMaxInterations == obj.XPointMaxInterations);
+        }
+        break;
+    case ID_showChaotic:
+        {  // new scope
+        retval = (showChaotic == obj.showChaotic);
+        }
+        break;
     case ID_showIslands:
         {  // new scope
         retval = (showIslands == obj.showIslands);
+        }
+        break;
+    case ID_verboseFlag:
+        {  // new scope
+        retval = (verboseFlag == obj.verboseFlag);
+        }
+        break;
+    case ID_showRidgelines:
+        {  // new scope
+        retval = (showRidgelines == obj.showRidgelines);
         }
         break;
     case ID_showLines:
@@ -2079,14 +2984,34 @@ PoincareAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (showLines == obj.showLines);
         }
         break;
+    case ID_lineWidth:
+        {  // new scope
+        retval = (lineWidth == obj.lineWidth);
+        }
+        break;
+    case ID_lineStyle:
+        {  // new scope
+        retval = (lineStyle == obj.lineStyle);
+        }
+        break;
     case ID_showPoints:
         {  // new scope
         retval = (showPoints == obj.showPoints);
         }
         break;
-    case ID_verboseFlag:
+    case ID_pointSize:
         {  // new scope
-        retval = (verboseFlag == obj.verboseFlag);
+        retval = (pointSize == obj.pointSize);
+        }
+        break;
+    case ID_pointSizePixels:
+        {  // new scope
+        retval = (pointSizePixels == obj.pointSizePixels);
+        }
+        break;
+    case ID_pointType:
+        {  // new scope
+        retval = (pointType == obj.pointType);
         }
         break;
     case ID_legendFlag:
@@ -2097,6 +3022,31 @@ PoincareAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
     case ID_lightingFlag:
         {  // new scope
         retval = (lightingFlag == obj.lightingFlag);
+        }
+        break;
+    case ID_streamlineAlgorithmType:
+        {  // new scope
+        retval = (streamlineAlgorithmType == obj.streamlineAlgorithmType);
+        }
+        break;
+    case ID_maxStreamlineProcessCount:
+        {  // new scope
+        retval = (maxStreamlineProcessCount == obj.maxStreamlineProcessCount);
+        }
+        break;
+    case ID_maxDomainCacheSize:
+        {  // new scope
+        retval = (maxDomainCacheSize == obj.maxDomainCacheSize);
+        }
+        break;
+    case ID_workGroupSize:
+        {  // new scope
+        retval = (workGroupSize == obj.workGroupSize);
+        }
+        break;
+    case ID_forceNodeCenteredData:
+        {  // new scope
+        retval = (forceNodeCenteredData == obj.forceNodeCenteredData);
         }
         break;
     default: retval = false;
@@ -2164,13 +3114,16 @@ PoincareAttributes::StreamlineAttsRequireRecalculation(const PoincareAttributes 
     bool densityMatters = ((sourceType == SpecifiedLine) &&
                            (pointDensity != obj.pointDensity));
 
-    return (minPunctures != obj.minPunctures ||
-            maxPunctures != obj.maxPunctures ||
+    return (sourceType != obj.sourceType ||
             sourcePointsDiffer ||
             sourceLineDiffers ||
             densityMatters ||
 
-            sourceType != obj.sourceType ||
+            minPunctures != obj.minPunctures ||
+            maxPunctures != obj.maxPunctures ||
+
+            puncturePlane != obj.puncturePlane ||
+
             integrationType != obj.integrationType ||
             maxStepLength != obj.maxStepLength ||
             relTol != obj.relTol ||
@@ -2193,20 +3146,32 @@ PoincareAttributes::StreamlineAttsRequireRecalculation(const PoincareAttributes 
 bool
 PoincareAttributes::PoincareAttsRequireRecalculation(const PoincareAttributes &obj) const
 {
-    return maxToroidalWinding != obj.maxToroidalWinding ||
+    return analysis != obj.analysis ||
+
+           maximumToroidalWinding != obj.maximumToroidalWinding ||
            overrideToroidalWinding != obj.overrideToroidalWinding ||
-           hitRate != obj.hitRate ||
-           adjustPlane != obj.adjustPlane ||
+           windingPairConfidence != obj.windingPairConfidence ||
+           periodicityConsistency != obj.periodicityConsistency ||
+
+           showOPoints != obj.showOPoints ||
+           OPointMaxInterations != obj.OPointMaxInterations ||
+
            overlaps != obj.overlaps ||
+
+           showIslands != obj.showIslands ||
+           showRidgelines != obj.showRidgelines ||
+           showChaotic != obj.showChaotic ||
+           verboseFlag != obj.verboseFlag ||
+ 
+           dataValue != obj.dataValue ||
 
            meshType != obj.meshType ||
            numberPlanes != obj.numberPlanes ||
+           singlePlane != obj.singlePlane ||
 
-           dataValue != obj.dataValue ||
+           adjustPlane != obj.adjustPlane ||
 
-           showIslands != obj.showIslands ||
            showLines != obj.showLines ||
-           showPoints != obj.showPoints ||
-           verboseFlag != obj.verboseFlag;
+           showPoints != obj.showPoints;
 }
 

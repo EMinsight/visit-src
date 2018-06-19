@@ -367,12 +367,40 @@ VisitPointTool::UpdateView()
 //   Brad Whitlock, Fri Apr  3 14:23:26 PDT 2009
 //   I added UpdateSphere().
 //
+//   Jeremy Meredith, Wed May 19 11:42:11 EDT 2010
+//   Added full frame support.
+//
+//   Jeremy Meredith, Wed May 19 14:15:58 EDT 2010
+//   Account for 3D axis scaling (3D equivalent of full-frame mode).
+//
 // ****************************************************************************
 
 void
 VisitPointTool::UpdateTool()
 {
     hotPoints[0].pt = avtVector((double*)Interface.GetPoint());
+
+    if (proxy.GetFullFrameMode())
+    {
+        // 
+        // Translate the hotPoints so they appear in the correct position
+        // in full-frame mode. 
+        // 
+        double scale;
+        int type;
+        proxy.GetScaleFactorAndType(scale, type);
+        if (type == 0 ) // x_axis
+            hotPoints[0].pt.x *= scale;
+        else            // x_axis
+            hotPoints[0].pt.y *= scale;
+    }
+    double axisscale[3];
+    if (proxy.Get3DAxisScalingFactors(axisscale))
+    {
+        hotPoints[0].pt.x *= axisscale[0];
+        hotPoints[0].pt.y *= axisscale[1];
+        hotPoints[0].pt.z *= axisscale[2];
+    }
 
     UpdateSphere();
     UpdateText();
@@ -464,14 +492,44 @@ VisitPointTool::RemoveText()
 // Programmer: Akira Haddox
 // Creation:   Mon Jun  9 09:21:40 PDT 2003
 //
+// Modifications:
+//   Jeremy Meredith, Wed May 19 11:42:11 EDT 2010
+//   Added full frame support.
+//
+//   Jeremy Meredith, Wed May 19 14:15:58 EDT 2010
+//   Account for 3D axis scaling (3D equivalent of full-frame mode).
+//   Changed code slightly to be more legible.
+//
 // ****************************************************************************
 
 void
 VisitPointTool::UpdateText()
 {
     char str[100];
-    sprintf(str, "XYZ<%1.3g %1.3g %1.3g>", 
-            hotPoints[0].pt.x, hotPoints[0].pt.y, hotPoints[0].pt.z);
+    double px = hotPoints[0].pt.x;
+    double py = hotPoints[0].pt.y;
+    double pz = hotPoints[0].pt.z;
+
+    if (proxy.GetFullFrameMode())
+    {
+        double scale;
+        int type;
+        proxy.GetScaleFactorAndType(scale, type);
+        if (type == 0 ) // x_axis
+            px /= scale;
+        else // y_axis
+            py /= scale;
+    }
+    double axisscale[3];
+    if (proxy.Get3DAxisScalingFactors(axisscale))
+    {
+        px /= axisscale[0];
+        py /= axisscale[1];
+        pz /= axisscale[2];
+    }
+
+    sprintf(str, "XYZ<%1.3g %1.3g %1.3g>", px, py, pz);
+
     pointTextActor->SetInput(str);
     avtVector originScreen = ComputeWorldToDisplay(hotPoints[0].pt);
     double pt[3] = {originScreen.x, originScreen.y, 0.};
@@ -735,6 +793,10 @@ VisitPointTool::UpdateGuide()
 // Programmer: Akira Haddox
 // Creation:   Mon Jun  9 09:21:40 PDT 2003
 //
+// Modifications:
+//   Jeremy Meredith, Wed May 19 14:15:58 EDT 2010
+//   Account for 3D axis scaling (3D equivalent of full-frame mode).
+//
 // ****************************************************************************
 
 void
@@ -745,6 +807,16 @@ VisitPointTool::GetGuidePoints(avtVector *pts)
     // Fill the return pts array.
     double bounds[6];
     proxy.GetBounds(bounds);
+    double axisscale[3];
+    if (proxy.Get3DAxisScalingFactors(axisscale))
+    {
+        bounds[0] *= axisscale[0];
+        bounds[1] *= axisscale[0];
+        bounds[2] *= axisscale[1];
+        bounds[3] *= axisscale[1];
+        bounds[4] *= axisscale[2];
+        bounds[5] *= axisscale[2];
+    }
     double xmin = bounds[0];
     double xmax = bounds[1];
     double ymin = bounds[2];
@@ -868,6 +940,10 @@ VisitPointTool::UpdateSphere()
 // Programmer: Akira Haddox
 // Creation:   Mon Jun  9 09:21:40 PDT 2003
 //
+// Modifications:
+//   Jeremy Meredith, Wed May 19 14:15:58 EDT 2010
+//   Account for 3D axis scaling (3D equivalent of full-frame mode).
+//
 // ****************************************************************************
 
 void
@@ -875,6 +951,14 @@ VisitPointTool::CallCallback()
 {
     // Point 1
     avtVector pt1(hotPoints[0].pt);
+
+    double axisscale[3];
+    if (proxy.Get3DAxisScalingFactors(axisscale))
+    {
+        pt1.x /= axisscale[0];
+        pt1.y /= axisscale[1];
+        pt1.z /= axisscale[2];
+    }
 
     Interface.SetPoint(pt1.x, pt1.y, pt1.z);
     Interface.ExecuteCallback();
@@ -1149,4 +1233,74 @@ VisitPointTool::TranslateCallback(VisitInteractiveTool *it, CB_ENUM e,
 {
     VisitPointTool *lt = (VisitPointTool *)it;
     lt->Translate(e, ctrl, shift, x, y, 0);
+}
+
+// ****************************************************************************
+//  Method:  VisitPointTool::FullFrameOn
+//
+//  Purpose: Updates the tool.
+//
+//  Arguments:
+//    <unused>   The axis scale factor.
+//    <unused>   The axis scale type.
+//
+//  Programmer:  Jeremy Meredith
+//  Creation:    May 19, 2010
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+void
+VisitPointTool::FullFrameOn(const double, const int)
+{
+    if(IsEnabled())
+    {
+        UpdateTool();
+    }
+}
+
+
+// ****************************************************************************
+//  Method:  VisitPointTool::FullFrameOn
+//
+//  Purpose: Updates the tool.
+//
+//  Programmer:  Jeremy Meredith
+//  Creation:    May 19, 2010
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+void
+VisitPointTool::FullFrameOff()
+{
+    if(IsEnabled())
+    {
+        UpdateTool();
+    }
+}
+
+
+// ****************************************************************************
+// Method:  VisitPointTool::Set3DAxisScalingFactors
+//
+// Purpose:
+//   If the 3D scaling changes, update the tool.
+//
+// Arguments:
+//   ignored
+//
+// Programmer:  Jeremy Meredith
+// Creation:    May 19, 2010
+//
+// ****************************************************************************
+void
+VisitPointTool::Set3DAxisScalingFactors(bool, const double[3])
+{
+    if(IsEnabled())
+    {
+        UpdateTool();
+    }
 }

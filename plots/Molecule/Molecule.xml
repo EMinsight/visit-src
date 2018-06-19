@@ -6,7 +6,8 @@
     <Files components="V">
       avtMoleculeRenderer.C
       avtOpenGLMoleculeRenderer.C
-      avtOpenGLAtomTexturer.C
+      avtOpenGLAtomTexturer2D.C
+      avtOpenGLAtomTexturer3D.C
       avtMoleculeFilter.C
     </Files>
     <LIBS components="V">
@@ -16,7 +17,8 @@
     <Files components="E">
       avtMoleculeRenderer.C
       avtOpenGLMoleculeRenderer.C
-      avtOpenGLAtomTexturer.C
+      avtOpenGLAtomTexturer2D.C
+      avtOpenGLAtomTexturer3D.C
       avtMoleculeFilter.C
     </Files>
     <LIBS components="ESer">

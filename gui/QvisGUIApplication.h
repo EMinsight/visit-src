@@ -60,6 +60,7 @@ class QSocketNotifier;
 class QTimer;
 class QvisAppearanceWindow;
 class QvisApplication;
+class QvisCMFEWizard;
 class QvisColorTableWindow;
 class QvisInterpreter;
 class QvisMainWindow;
@@ -336,6 +337,12 @@ class SplashScreen;
 //    Allow for the -o command line option to take an optional ,<pluginID>
 //    suffix, e.g. "-o foobar,LAMMPS_1.0".
 //
+//    Hank Childs, Sun Aug  1 14:36:01 PDT 2010
+//    Added a CMFE wizard.
+//
+//    Brad Whitlock, Fri Aug  6 16:55:58 PDT 2010
+//    Added Selections window.
+//
 // ****************************************************************************
 
 class GUI_API QvisGUIApplication : public QObject, public ConfigManager, public GUIBase
@@ -453,6 +460,8 @@ private slots:
     void RestoreSession();
     void RestoreSessionWithDifferentSources();
     void SaveSession();
+    void SaveSessionAs();
+    void SetupCMFE();
     void sessionFileHelper_LoadFile(const QString &);
     void sessionFileHelper_LoadSession(const QString &);
     void sessionFileHelper_LoadSessionWithDifferentSources(const QString &,
@@ -493,6 +502,8 @@ private slots:
     void showSimulationWindow();
     void showExportDBWindow();
     void showMeshManagementWindow();
+    void showSelectionsWindow();
+    void showSelectionsWindow2(const QString &);
 
     void updateVisIt();
     void updateVisItCompleted(const QString &);
@@ -541,6 +552,7 @@ private:
     QvisPreferencesWindow        *preferencesWin;
     QvisColorTableWindow         *colorTableWin;
     QvisSaveMovieWizard          *saveMovieWizard;
+    QvisCMFEWizard               *setupCMFEWizard;
     QvisMovieProgressDialog      *movieProgress;
 
     // Important objects

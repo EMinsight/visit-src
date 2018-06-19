@@ -36,6 +36,9 @@
 #
 # Modifications:
 #
+#   Tom Fogal, Thu Mar 25 14:24:49 MDT 2010
+#   Fix GDAL library naming convention on OS X.
+#
 #****************************************************************************/
 
 # Use the GDAL_DIR hint from the config-site .cmake file 
@@ -46,15 +49,18 @@ IF (WIN32)
   SET_UP_THIRD_PARTY(GDAL lib/${VISIT_MSVC_VERSION} include gdal_i libjpeg libpng13)
   # normally handled in InstallThirdParty.cmake, but gdal has a weird
   # naming convention on windows
-  EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E copy
+  IF(EXISTS ${GDAL_LIBRARY_DIR}/gdal13.dll)
+    EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E copy
       ${GDAL_LIBRARY_DIR}/gdal13.dll
       ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/ThirdParty)
-  INSTALL(FILES ${GDAL_LIBRARY_DIR}/gdal13.dll
+    INSTALL(FILES ${GDAL_LIBRARY_DIR}/gdal13.dll
       DESTINATION ${VISIT_INSTALLED_VERSION_BIN}
       PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_WRITE GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
       CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
       )
-
+  ENDIF(EXISTS ${GDAL_LIBRARY_DIR}/gdal13.dll)
+ELSEIF(APPLE)
+  SET_UP_THIRD_PARTY(GDAL lib include gdal.1)
 ELSE (WIN32)
   SET_UP_THIRD_PARTY(GDAL lib include gdal)
 ENDIF (WIN32)

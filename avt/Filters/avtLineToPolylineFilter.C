@@ -108,6 +108,10 @@ avtLineToPolylineFilter::~avtLineToPolylineFilter()
 //
 //  Modifications:
 //
+//    Tom Fogal, Mon Apr 26 17:27:44 MDT 2010
+//    Break out of a loop to prevent incrementing a singular iterator.
+//    Use `empty' instead of 'size'.
+//
 // ****************************************************************************
 
 struct edge
@@ -204,7 +208,7 @@ avtLineToPolylineFilter::ExecuteData(vtkDataSet *inDS, int, string)
     int lineOffset = input->GetVerts()->GetNumberOfCells();
     int ptsBufSize = 200;
     pts = new vtkIdType[ptsBufSize];
-    while(freeEdges.size() > 0)
+    while(!freeEdges.empty())
     {
         std::deque<vtkIdType> shape;
 
@@ -235,6 +239,7 @@ avtLineToPolylineFilter::ExecuteData(vtkDataSet *inDS, int, string)
                     shape.push_front(pos->second);
                     freeEdges.erase(pos);
                     found = true;
+                    break;
                 }
                 else if(currentEdge.first == pos->second)
                 {
@@ -242,6 +247,7 @@ avtLineToPolylineFilter::ExecuteData(vtkDataSet *inDS, int, string)
                     shape.push_front(pos->first);
                     freeEdges.erase(pos);
                     found = true;
+                    break;
                 }
                 else if(currentEdge.second == pos->first)
                 {
@@ -249,6 +255,7 @@ avtLineToPolylineFilter::ExecuteData(vtkDataSet *inDS, int, string)
                     shape.push_back(pos->second);
                     freeEdges.erase(pos);
                     found = true;
+                    break;
                 }
                 else if(currentEdge.second == pos->second)
                 {
@@ -256,6 +263,7 @@ avtLineToPolylineFilter::ExecuteData(vtkDataSet *inDS, int, string)
                     shape.push_back(pos->first);
                     freeEdges.erase(pos);
                     found = true;
+                    break;
                 }
             }
         } while(found);

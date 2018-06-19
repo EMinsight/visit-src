@@ -251,12 +251,17 @@ typedef struct _GroupInfo
 //    Added haveAmrGroupInfo, which is used to prevent collsion of amr
 //    levels info with connectivity group info.
 //
+//    Mark C. Miller, Mon Mar 29 17:30:10 PDT 2010
+//    Added siloDriver so we know what driver succeeded in openig the file.
+//
 //    Eric Brugger, Thu May 27 15:54:50 PDT 2010
 //    I added RemapFacelistForPolyhedronZones.
 //
 //    Cyrus Harrison, Mon Jun 14 15:45:46 PDT 2010
 //    Added metadataIsTimeVaryingChecked & CheckForTimeVaryingMetadata().
 //
+//    Mark C. Miller, Sun Aug 29 23:19:50 PDT 2010
+//    Added method to expand (material) subsetted ucd variables.
 // ****************************************************************************
 
 class avtSiloFileFormat : public avtSTMDFileFormat
@@ -296,6 +301,7 @@ class avtSiloFileFormat : public avtSTMDFileFormat
     DBfile              **dbfiles;
     int                   tocIndex;
     int                   dontForceSingle; // used primarily for testing
+    int                   siloDriver;
     AANTriState           ignoreSpatialExtentsAAN;
     AANTriState           ignoreDataExtentsAAN;
     bool                  ignoreSpatialExtents;
@@ -383,6 +389,8 @@ class avtSiloFileFormat : public avtSTMDFileFormat
     vtkDataArray         *GetNodelistsVar(int);
     vtkDataArray         *GetAnnotIntNodelistsVar(int, string);
     vtkDataArray         *GetQuadVar(DBfile *, const char *, const char *,int);
+    void                  ExpandUcdvar(DBucdvar *uv, const char *vname, const char *tvn,
+                              int domain);
     vtkDataArray         *GetUcdVar(DBfile *, const char *, const char *, int);
     vtkDataArray         *GetPointVar(DBfile *, const char *);
     vtkDataArray         *GetCsgVar(DBfile *, const char *);

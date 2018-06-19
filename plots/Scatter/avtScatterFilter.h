@@ -60,17 +60,29 @@
 //    Added overrides of PreExecute, ModifyContract, and added new 
 //    method PopulateDataInputs. Also added extents members.
 //
+//    Cyrus Harrison, Tue Aug 17 11:52:24 PDT 2010
+//    Added PostExecute method to:
+//      1) Set legend if a color var is selected.
+//      (This logic was moved out of ExecuteData to prevent a parallel hang
+//       when there are more procs than chunks to process.)
+//      2) Set proper spatial extents.
+//
+//    Cyrus Harrison, Thu Aug 19 13:35:08 PDT 2010
+//    Changes to support using var1 from atts.
+//
+//    Hank Childs, Thu Aug 26 13:47:30 PDT 2010
+//    Change extents name.
+//
 // ****************************************************************************
 
 class avtScatterFilter : public avtDataTreeIterator
 {
   public:
-                               avtScatterFilter(const std::string &v,
-                                                const ScatterAttributes &);
+                               avtScatterFilter(const ScatterAttributes &);
     virtual                   ~avtScatterFilter();
 
     virtual const char        *GetType(void)  { return "avtScatterFilter"; };
-    virtual const char        *GetDescription(void)  
+    virtual const char        *GetDescription(void)
                                    { return "Creating point mesh"; };
 
 protected:
@@ -85,7 +97,6 @@ protected:
         float         skew;
     };
 
-    std::string                variableName;
     ScatterAttributes          atts;
     double                     xExtents[2];
     double                     yExtents[2];
@@ -96,8 +107,11 @@ protected:
     bool                       needZExtents;
     bool                       needColorExtents;
 
+    doubleVector               thisProcsSpatialExtents;
+
     virtual void               PreExecute(void);
     virtual vtkDataSet        *ExecuteData(vtkDataSet *, int, std::string);
+    virtual void               PostExecute(void);
     virtual void               UpdateDataObjectInfo(void);
     virtual avtContract_p     
                                ModifyContract(avtContract_p spec);

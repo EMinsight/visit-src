@@ -118,12 +118,13 @@ PyViewerRPC_ToString(const ViewerRPC *atts, const char *prefix)
         "OpenClientRPC, OpenGUIClientRPC, OpenCLIClientRPC, SuppressQueryOutputRPC, "
         "SetQueryFloatFormatRPC, SetMeshManagementAttributesRPC, SetDefaultMeshManagementAttributesRPC, ResetMeshManagementAttributesRPC, "
         "ResizeWindowRPC, MoveWindowRPC, MoveAndResizeWindowRPC, SetStateLoggingRPC, "
-        "ConstructDDFRPC, RequestMetaDataRPC, SetTreatAllDBsAsTimeVaryingRPC, SetCreateMeshQualityExpressionsRPC, "
+        "ConstructDataBinningRPC, RequestMetaDataRPC, SetTreatAllDBsAsTimeVaryingRPC, SetCreateMeshQualityExpressionsRPC, "
         "SetCreateTimeDerivativeExpressionsRPC, SetCreateVectorMagnitudeExpressionsRPC, CopyActivePlotsRPC, SetPlotFollowsTimeRPC, "
         "TurnOffAllLocksRPC, SetDefaultFileOpenOptionsRPC, SetSuppressMessagesRPC, ApplyNamedSelectionRPC, "
         "CreateNamedSelectionRPC, DeleteNamedSelectionRPC, LoadNamedSelectionRPC, SaveNamedSelectionRPC, "
-        "MenuQuitRPC, SetPlotDescriptionRPC, MovePlotOrderTowardFirstRPC, MovePlotOrderTowardLastRPC, "
-        "SetPlotOrderToFirstRPC, SetPlotOrderToLastRPC, MaxRPC";
+        "SetNamedSelectionAutoApplyRPC, UpdateNamedSelectionRPC, MenuQuitRPC, SetPlotDescriptionRPC, "
+        "MovePlotOrderTowardFirstRPC, MovePlotOrderTowardLastRPC, SetPlotOrderToFirstRPC, SetPlotOrderToLastRPC, "
+        "RenamePickLabelRPC, MaxRPC";
     switch (atts->GetRPCType())
     {
       case ViewerRPC::CloseRPC:
@@ -802,8 +803,8 @@ PyViewerRPC_ToString(const ViewerRPC *atts, const char *prefix)
           SNPRINTF(tmpStr, 1000, "%sRPCType = %sSetStateLoggingRPC  # %s\n", prefix, prefix, RPCType_names);
           str += tmpStr;
           break;
-      case ViewerRPC::ConstructDDFRPC:
-          SNPRINTF(tmpStr, 1000, "%sRPCType = %sConstructDDFRPC  # %s\n", prefix, prefix, RPCType_names);
+      case ViewerRPC::ConstructDataBinningRPC:
+          SNPRINTF(tmpStr, 1000, "%sRPCType = %sConstructDataBinningRPC  # %s\n", prefix, prefix, RPCType_names);
           str += tmpStr;
           break;
       case ViewerRPC::RequestMetaDataRPC:
@@ -866,6 +867,14 @@ PyViewerRPC_ToString(const ViewerRPC *atts, const char *prefix)
           SNPRINTF(tmpStr, 1000, "%sRPCType = %sSaveNamedSelectionRPC  # %s\n", prefix, prefix, RPCType_names);
           str += tmpStr;
           break;
+      case ViewerRPC::SetNamedSelectionAutoApplyRPC:
+          SNPRINTF(tmpStr, 1000, "%sRPCType = %sSetNamedSelectionAutoApplyRPC  # %s\n", prefix, prefix, RPCType_names);
+          str += tmpStr;
+          break;
+      case ViewerRPC::UpdateNamedSelectionRPC:
+          SNPRINTF(tmpStr, 1000, "%sRPCType = %sUpdateNamedSelectionRPC  # %s\n", prefix, prefix, RPCType_names);
+          str += tmpStr;
+          break;
       case ViewerRPC::MenuQuitRPC:
           SNPRINTF(tmpStr, 1000, "%sRPCType = %sMenuQuitRPC  # %s\n", prefix, prefix, RPCType_names);
           str += tmpStr;
@@ -888,6 +897,10 @@ PyViewerRPC_ToString(const ViewerRPC *atts, const char *prefix)
           break;
       case ViewerRPC::SetPlotOrderToLastRPC:
           SNPRINTF(tmpStr, 1000, "%sRPCType = %sSetPlotOrderToLastRPC  # %s\n", prefix, prefix, RPCType_names);
+          str += tmpStr;
+          break;
+      case ViewerRPC::RenamePickLabelRPC:
+          SNPRINTF(tmpStr, 1000, "%sRPCType = %sRenamePickLabelRPC  # %s\n", prefix, prefix, RPCType_names);
           str += tmpStr;
           break;
       case ViewerRPC::MaxRPC:
@@ -1129,12 +1142,12 @@ ViewerRPC_SetRPCType(PyObject *self, PyObject *args)
         return NULL;
 
     // Set the RPCType in the object.
-    if(ival >= 0 && ival < 192)
+    if(ival >= 0 && ival < 195)
         obj->data->SetRPCType(ViewerRPC::ViewerRPCType(ival));
     else
     {
         fprintf(stderr, "An invalid RPCType value was given. "
-                        "Valid values are in the range of [0,191]. "
+                        "Valid values are in the range of [0,194]. "
                         "You can also use the following names: "
                         "CloseRPC, DetachRPC, AddWindowRPC, DeleteWindowRPC, SetWindowLayoutRPC, "
                         "SetActiveWindowRPC, ClearWindowRPC, ClearAllWindowsRPC, OpenDatabaseRPC, "
@@ -1178,12 +1191,13 @@ ViewerRPC_SetRPCType(PyObject *self, PyObject *args)
                         "OpenClientRPC, OpenGUIClientRPC, OpenCLIClientRPC, SuppressQueryOutputRPC, "
                         "SetQueryFloatFormatRPC, SetMeshManagementAttributesRPC, SetDefaultMeshManagementAttributesRPC, ResetMeshManagementAttributesRPC, "
                         "ResizeWindowRPC, MoveWindowRPC, MoveAndResizeWindowRPC, SetStateLoggingRPC, "
-                        "ConstructDDFRPC, RequestMetaDataRPC, SetTreatAllDBsAsTimeVaryingRPC, SetCreateMeshQualityExpressionsRPC, "
+                        "ConstructDataBinningRPC, RequestMetaDataRPC, SetTreatAllDBsAsTimeVaryingRPC, SetCreateMeshQualityExpressionsRPC, "
                         "SetCreateTimeDerivativeExpressionsRPC, SetCreateVectorMagnitudeExpressionsRPC, CopyActivePlotsRPC, SetPlotFollowsTimeRPC, "
                         "TurnOffAllLocksRPC, SetDefaultFileOpenOptionsRPC, SetSuppressMessagesRPC, ApplyNamedSelectionRPC, "
                         "CreateNamedSelectionRPC, DeleteNamedSelectionRPC, LoadNamedSelectionRPC, SaveNamedSelectionRPC, "
-                        "MenuQuitRPC, SetPlotDescriptionRPC, MovePlotOrderTowardFirstRPC, MovePlotOrderTowardLastRPC, "
-                        "SetPlotOrderToFirstRPC, SetPlotOrderToLastRPC, MaxRPC.");
+                        "SetNamedSelectionAutoApplyRPC, UpdateNamedSelectionRPC, MenuQuitRPC, SetPlotDescriptionRPC, "
+                        "MovePlotOrderTowardFirstRPC, MovePlotOrderTowardLastRPC, SetPlotOrderToFirstRPC, SetPlotOrderToLastRPC, "
+                        "RenamePickLabelRPC, MaxRPC.");
         return NULL;
     }
 
@@ -2766,8 +2780,8 @@ PyViewerRPC_getattr(PyObject *self, char *name)
         return PyInt_FromLong(long(ViewerRPC::MoveAndResizeWindowRPC));
     if(strcmp(name, "SetStateLoggingRPC") == 0)
         return PyInt_FromLong(long(ViewerRPC::SetStateLoggingRPC));
-    if(strcmp(name, "ConstructDDFRPC") == 0)
-        return PyInt_FromLong(long(ViewerRPC::ConstructDDFRPC));
+    if(strcmp(name, "ConstructDataBinningRPC") == 0)
+        return PyInt_FromLong(long(ViewerRPC::ConstructDataBinningRPC));
     if(strcmp(name, "RequestMetaDataRPC") == 0)
         return PyInt_FromLong(long(ViewerRPC::RequestMetaDataRPC));
     if(strcmp(name, "SetTreatAllDBsAsTimeVaryingRPC") == 0)
@@ -2798,6 +2812,10 @@ PyViewerRPC_getattr(PyObject *self, char *name)
         return PyInt_FromLong(long(ViewerRPC::LoadNamedSelectionRPC));
     if(strcmp(name, "SaveNamedSelectionRPC") == 0)
         return PyInt_FromLong(long(ViewerRPC::SaveNamedSelectionRPC));
+    if(strcmp(name, "SetNamedSelectionAutoApplyRPC") == 0)
+        return PyInt_FromLong(long(ViewerRPC::SetNamedSelectionAutoApplyRPC));
+    if(strcmp(name, "UpdateNamedSelectionRPC") == 0)
+        return PyInt_FromLong(long(ViewerRPC::UpdateNamedSelectionRPC));
     if(strcmp(name, "MenuQuitRPC") == 0)
         return PyInt_FromLong(long(ViewerRPC::MenuQuitRPC));
     if(strcmp(name, "SetPlotDescriptionRPC") == 0)
@@ -2810,6 +2828,8 @@ PyViewerRPC_getattr(PyObject *self, char *name)
         return PyInt_FromLong(long(ViewerRPC::SetPlotOrderToFirstRPC));
     if(strcmp(name, "SetPlotOrderToLastRPC") == 0)
         return PyInt_FromLong(long(ViewerRPC::SetPlotOrderToLastRPC));
+    if(strcmp(name, "RenamePickLabelRPC") == 0)
+        return PyInt_FromLong(long(ViewerRPC::RenamePickLabelRPC));
     if(strcmp(name, "MaxRPC") == 0)
         return PyInt_FromLong(long(ViewerRPC::MaxRPC));
 
@@ -2966,6 +2986,8 @@ PyViewerRPC_setattr(PyObject *self, char *name, PyObject *args)
         Py_DECREF(obj);
 
     Py_DECREF(tuple);
+    if( obj == NULL)
+        PyErr_Format(PyExc_RuntimeError, "Unable to set unknown attribute: '%s'", name);
     return (obj != NULL) ? 0 : -1;
 }
 

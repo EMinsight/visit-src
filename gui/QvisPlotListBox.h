@@ -88,6 +88,9 @@ class PlotList;
 //   Brad Whitlock, Tue Oct 20 15:16:39 PDT 2009
 //   I added signals for manipulating the plot list.
 //
+//   Brad Whitlock, Fri Jul 23 15:34:25 PDT 2010
+//   I added support for selections.
+//
 // ****************************************************************************
 
 class GUI_API QvisPlotListBox : public QListWidget
@@ -100,7 +103,9 @@ public:
     bool isExpanded(int) const;
     int  activeOperatorIndex(int) const;
 
-    bool NeedsToBeRegenerated(const PlotList *, const stringVector &indices) const;
+    bool NeedsToBeRegenerated(const PlotList *, 
+                              const stringVector &prefixes, 
+                              const stringVector &createdSelections) const;
     bool NeedToUpdateSelection(const PlotList *) const;
 
     void triggerPlotRename(int, const QString &);
@@ -109,6 +114,7 @@ public:
 signals:
     void itemExpansionChanged();
     void activateSubsetWindow();
+    void activateSelectionsWindow(const QString &);
     void activatePlotWindow(int plotType);
     void activateOperatorWindow(int operatorType);
     void promoteOperator(int operatorIndex);
@@ -119,7 +125,7 @@ signals:
     void deleteThisPlot();
     void drawThisPlot();
     void clearThisPlot();
-    void copyThisPlot();
+    void cloneThisPlot();
     void copyToWinThisPlot();
     void redrawThisPlot();
     void disconnectThisPlot();
@@ -139,13 +145,16 @@ protected:
     void contextMenuEvent( QContextMenuEvent *event );
 private:
     void contextMenuCreateActions();
+public:
+    void contextMenuCreate();
     
+private:
     QMenu      *plotContextMenu;
     QAction    *hideShowAct;
     QAction    *deleteAct;
     QAction    *drawAct;
     QAction    *clearAct;
-    QAction    *copyAct;
+    QAction    *cloneAct;
     QAction    *copyToWinAct;
     QAction    *redrawAct;
     QAction    *disconnectAct;

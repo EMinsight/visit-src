@@ -44,17 +44,21 @@
 //
 // Functions exposed to the VisIt module.
 //
+#define SCATTERATTRIBUTES_NMETH 82
 void           PyScatterAttributes_StartUp(ScatterAttributes *subj, void *data);
 void           PyScatterAttributes_CloseDown();
-PyMethodDef *   PyScatterAttributes_GetMethodTable(int *nMethods);
+PyMethodDef *  PyScatterAttributes_GetMethodTable(int *nMethods);
 bool           PyScatterAttributes_Check(PyObject *obj);
 ScatterAttributes *  PyScatterAttributes_FromPyObject(PyObject *obj);
-PyObject *      PyScatterAttributes_New();
-PyObject *      PyScatterAttributes_Wrap(const ScatterAttributes *attr);
+PyObject *     PyScatterAttributes_New();
+PyObject *     PyScatterAttributes_Wrap(const ScatterAttributes *attr);
 void           PyScatterAttributes_SetParent(PyObject *obj, PyObject *parent);
 void           PyScatterAttributes_SetDefaults(const ScatterAttributes *atts);
 std::string    PyScatterAttributes_GetLogString();
 std::string    PyScatterAttributes_ToString(const ScatterAttributes *, const char *);
+PyObject *     PyScatterAttributes_getattr(PyObject *self, char *name);
+int            PyScatterAttributes_setattr(PyObject *self, char *name, PyObject *args);
+extern PyMethodDef PyScatterAttributes_methods[SCATTERATTRIBUTES_NMETH];
 
 #endif
 

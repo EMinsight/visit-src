@@ -268,6 +268,9 @@ static void RotateAroundY(const avtView3D&, double, avtView3D&);
 //    Jeremy Meredith, Fri Apr 30 14:39:07 EDT 2010
 //    Added automatic depth cueing mode.
 //
+//    Brad Whitlock, Thu Aug 26 15:39:57 PDT 2010
+//    I added a force option to SetAnnotationAttributes.
+//
 // ****************************************************************************
 
 ViewerWindow::ViewerWindow(int windowIndex) : ViewerBase(0),
@@ -288,7 +291,7 @@ ViewerWindow::ViewerWindow(int windowIndex) : ViewerBase(0),
     visWindow->SetExternalRenderCallback(ExternalRenderCallback, (void*)this);
     visWindow->CreateAnnotationObjectsFromList(
         *ViewerWindowManager::GetDefaultAnnotationObjectList());
-    SetAnnotationAttributes(ViewerWindowManager::GetAnnotationDefaultAtts());
+    SetAnnotationAttributes(ViewerWindowManager::GetAnnotationDefaultAtts(), true);
     SetLightList(ViewerWindowManager::GetLightListDefaultAtts());
     SetInteractorAtts(ViewerWindowManager::GetInteractorDefaultAtts());
 
@@ -1386,6 +1389,12 @@ ViewerWindow::MoveViewKeyframe(int oldIndex, int newIndex)
 //    Brad Whitlock, Wed Apr 30 09:32:47 PDT 2008
 //    Support for internationalization.
 //
+//    Jeremy Meredith, Wed May 19 14:15:58 EDT 2010
+//    Support 3D axis scaling (3D equivalent of full-frame mode).
+//
+//    Jeremy Meredith, Mon Aug  2 14:23:08 EDT 2010
+//    Add shear for oblique projection support.
+//
 // ****************************************************************************
 
 void
@@ -1435,6 +1444,9 @@ ViewerWindow::SetViewKeyframe()
         curView3D->SetImageZoom(view3d.imageZoom);
         curView3D->SetPerspective(view3d.perspective);
         curView3D->SetEyeAngle(view3d.eyeAngle);
+        curView3D->SetAxis3DScaleFlag(view3d.axis3DScaleFlag);
+        curView3D->SetAxis3DScales(view3d.axis3DScales);
+        curView3D->SetShear(view3d.shear);
         view3DAtts->SetAtts(curIndex, curView3D);
 
         //
@@ -2245,6 +2257,9 @@ ViewerWindow::InvertBackgroundColor()
 //   Jeremy Meredith, Fri Apr 30 14:39:07 EDT 2010
 //   Added automatic depth cueing mode.
 //
+//    Dave Pugmire, Tue Aug 24 11:32:12 EDT 2010
+//    Add compact domain options.
+//
 // ****************************************************************************
 
 void
@@ -2260,6 +2275,8 @@ ViewerWindow::CopyGeneralAttributes(const ViewerWindow *source)
     SetNotifyForEachRender(source->GetNotifyForEachRender());
     SetScalableAutoThreshold(source->GetScalableAutoThreshold());
     SetScalableActivationMode(source->GetScalableActivationMode());
+    SetCompactDomainsActivationMode(source->GetCompactDomainsActivationMode());
+    SetCompactDomainsAutoThreshold(source->GetCompactDomainsAutoThreshold());
     SetSpecularProperties(source->GetSpecularFlag(),
                           source->GetSpecularCoeff(),
                           source->GetSpecularPower(),
@@ -3227,12 +3244,15 @@ ViewerWindow::RedoViewEnabled() const
 //    Eric Brugger, Fri Nov  2 14:59:33 PST 2001
 //    I added a const qualifier for atts.
 //
+//    Brad Whitlock, Thu Aug 26 15:39:24 PDT 2010
+//    I added a force option.
+//
 // ****************************************************************************
 
 void
-ViewerWindow::SetAnnotationAttributes(const AnnotationAttributes *atts)
+ViewerWindow::SetAnnotationAttributes(const AnnotationAttributes *atts, bool force)
 {
-    visWindow->SetAnnotationAtts(atts);
+    visWindow->SetAnnotationAtts(atts, force);
 }
 
 // ****************************************************************************
@@ -3296,11 +3316,26 @@ ViewerWindow::CopyAnnotationAttributes(const ViewerWindow *source)
 //   Brad Whitlock, Mon Mar 26 14:49:53 PST 2007
 //   Added copyLegends.
 //
+//   Brad Whitlock, Fri Aug 13 16:43:02 PDT 2010
+//   I added code to rename annotation objects if needed. This helps line up
+//   annotation objects with new plots when we copy plot lists.
+//
 // ****************************************************************************
+
+static void
+RenameAnnotationObjects(AnnotationObjectList &obj, const StringStringMap &names)
+{
+    for(int i = 0; i < obj.GetNumAnnotations(); ++i)
+    {
+         StringStringMap::const_iterator it;
+         if((it = names.find(obj[i].GetObjectName())) != names.end())
+             obj[i].SetObjectName(it->second);
+    }
+}
 
 void
 ViewerWindow::CopyAnnotationObjectList(const ViewerWindow *source, 
-    bool copyLegends)
+    const StringStringMap &nameMap, bool copyLegends)
 {
     // Get the properties of all of the source window's annotations.
     AnnotationObjectList annots;
@@ -3312,6 +3347,7 @@ ViewerWindow::CopyAnnotationObjectList(const ViewerWindow *source,
         // First delete all of the annotation objects.
         visWindow->DeleteAllAnnotationObjects();
 
+        RenameAnnotationObjects(annots, nameMap);
         visWindow->CreateAnnotationObjectsFromList(annots);
     }
     else
@@ -3337,6 +3373,7 @@ ViewerWindow::CopyAnnotationObjectList(const ViewerWindow *source,
         // First delete all of the annotation objects.
         visWindow->DeleteAllAnnotationObjects();
 
+        RenameAnnotationObjects(annots, nameMap);
         visWindow->CreateAnnotationObjectsFromList(allAnnots);
     }
 }
@@ -3908,6 +3945,27 @@ ViewerWindow::GetScaleFactorAndType(double &s, int &t)
     visWindow->GetScaleFactorAndType(s, t);
 }
 
+
+// ****************************************************************************
+// Method:  ViewerWindow::Get3DAxisScalingFactors
+//
+// Purpose:
+//   Gets the 3D axis scaling factors and returns true if it is active.
+//
+// Arguments:
+//   s          the axis scaling factors
+//
+// Programmer:  Jeremy Meredith
+// Creation:    May 19, 2010
+//
+// ****************************************************************************
+bool
+ViewerWindow::Get3DAxisScalingFactors(double s[3])
+{
+    return visWindow->Get3DAxisScalingFactors(s);
+}
+
+
 // ****************************************************************************
 //  Method: ViewerWindow::RecenterViewCurve
 //
@@ -4175,6 +4233,9 @@ ViewerWindow::RecenterView2d(const double *limits)
 //    I added code to set the center of rotation to handle the case where
 //    the navigation mode is dolly.
 //
+//    Jeremy Meredith, Wed May 19 14:15:58 EDT 2010
+//    Support 3D axis scaling (3D equivalent of full-frame mode).
+//
 // ****************************************************************************
 
 void
@@ -4237,22 +4298,29 @@ ViewerWindow::RecenterView3d(const double *limits)
         boundingBox3d[i] = limits[i];
     }
 
+    // Get the actual sizes
+    double sizeOrig[3] = {boundingBox3d[1] - boundingBox3d[0],
+                          boundingBox3d[3] - boundingBox3d[2],
+                          boundingBox3d[5] - boundingBox3d[4]};
+    double sizeScaled[3] = {sizeOrig[0] * (view3D.axis3DScaleFlag ?
+                                           view3D.axis3DScales[0] : 1.0),
+                            sizeOrig[1] * (view3D.axis3DScaleFlag ?
+                                           view3D.axis3DScales[1] : 1.0),
+                            sizeOrig[2] * (view3D.axis3DScaleFlag ?
+                                           view3D.axis3DScales[2] : 1.0)};
     //
     // Calculate the new focal point.
     //
-    view3D.focus[0] = (boundingBox3d[1] + boundingBox3d[0]) / 2.;
-    view3D.focus[1] = (boundingBox3d[3] + boundingBox3d[2]) / 2.;
-    view3D.focus[2] = (boundingBox3d[5] + boundingBox3d[4]) / 2.;
+    view3D.focus[0] = sizeScaled[0]/2. + boundingBox3d[0];
+    view3D.focus[1] = sizeScaled[1]/2. + boundingBox3d[2];
+    view3D.focus[2] = sizeScaled[2]/2. + boundingBox3d[4];
 
     //
     // Calculate the new parallel scale.
     //
-    width = 0.5 * sqrt(((boundingBox3d[1] - boundingBox3d[0]) *
-                        (boundingBox3d[1] - boundingBox3d[0])) +
-                       ((boundingBox3d[3] - boundingBox3d[2]) *
-                        (boundingBox3d[3] - boundingBox3d[2])) +
-                       ((boundingBox3d[5] - boundingBox3d[4]) *
-                        (boundingBox3d[5] - boundingBox3d[4])));
+    width = 0.5 * sqrt(sizeScaled[0]*sizeScaled[0] +
+                       sizeScaled[1]*sizeScaled[1] +
+                       sizeScaled[2]*sizeScaled[2]);
 
     view3D.parallelScale = width / zoomFactor;
 
@@ -4669,6 +4737,12 @@ ViewerWindow::ResetView2d()
 //    the center of rotation to handle the case where the navigation mode
 //    is dolly.
 //
+//    Jeremy Meredith, Wed May 19 14:15:58 EDT 2010
+//    Support 3D axis scaling (3D equivalent of full-frame mode).
+//
+//    Jeremy Meredith, Mon Aug  2 14:23:08 EDT 2010
+//    Add shear for oblique projection support.
+//
 // ****************************************************************************
 
 void
@@ -4791,6 +4865,22 @@ ViewerWindow::ResetView3d()
     view3D.centerOfRotation[0] = view3D.focus[0];
     view3D.centerOfRotation[1] = view3D.focus[1];
     view3D.centerOfRotation[2] = view3D.focus[2];
+
+    //
+    // Reset the 3D scale factors.
+    //
+    view3D.axis3DScaleFlag = false;
+    view3D.axis3DScales[0] = 1.0;
+    view3D.axis3DScales[1] = 1.0;
+    view3D.axis3DScales[2] = 1.0;
+
+    //
+    // Reset the view shear.
+    //
+    view3D.shear[0] = 0.;
+    view3D.shear[1] = 0.;
+    view3D.shear[2] = 1.;
+
 
     //
     // Update the view.
@@ -6152,6 +6242,9 @@ ViewerWindow::SetLargeIcons(bool val)
 //   Jeremy Meredith, Fri Apr 30 14:39:07 EDT 2010
 //   Added automatic depth cueing mode.
 //
+//    Dave Pugmire, Tue Aug 24 11:32:12 EDT 2010
+//    Add compact domain options.
+//
 // ****************************************************************************
 
 WindowAttributes
@@ -6222,6 +6315,8 @@ ViewerWindow::GetWindowAttributes() const
     renderAtts.SetScalableAutoThreshold(GetScalableThreshold());
     renderAtts.SetScalableActivationMode(
         (RenderingAttributes::TriStateMode) GetScalableActivationMode());
+    renderAtts.SetCompactDomainsAutoThreshold(GetCompactDomainsAutoThreshold());
+    renderAtts.SetCompactDomainsActivationMode((RenderingAttributes::TriStateMode) GetCompactDomainsActivationMode());
 
     renderAtts.SetDisplayListMode(
         (RenderingAttributes::TriStateMode) GetDisplayListMode());
@@ -6819,9 +6914,12 @@ ViewerWindow::ValidateQuery(const PickAttributes *pa, const Line *lineAtts)
 //  Creation:   June 10, 2002
 //
 //  Modifications:
-//
 //    Mark C. Miller, Wed Jun  9 17:44:38 PDT 2004
 //    Added code to build visual cue infos from line attributes
+//
+//    Brad Whitlock, Fri Aug 27 11:25:17 PDT 2010
+//    Use the cue label with UpdateQuery.
+//
 // ****************************************************************************
  
 void
@@ -6829,9 +6927,42 @@ ViewerWindow::UpdateQuery(const Line *lineAtts)
 {
     VisualCueInfo cue;
     cue.SetFromL(lineAtts);
-    visWindow->UpdateQuery(&cue);
+    visWindow->UpdateQuery(cue.GetLabel(), &cue);
 }
 
+// ****************************************************************************
+// Method: ViewerWindow::RenamePickLabel
+//
+// Purpose: 
+//   Renames a pick label with a new label.
+//
+// Arguments:
+//   oldLabel : The old pick label.
+//   newLabel : The new pick label.
+//
+// Programmer: Brad Whitlock
+// Creation:   Thu Aug 26 17:05:12 PDT 2010
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+ViewerWindow::RenamePickLabel(const std::string &oldLabel, const std::string &newLabel)
+{
+    std::vector<const VisualCueInfo *> cues;
+    visWindow->GetVisualCues(VisualCueInfo::PickPoint, cues);
+    for(size_t i = 0; i < cues.size(); ++i)
+    {
+        if(cues[i]->GetLabel() == oldLabel)
+        {
+            VisualCueInfo newCue(*(cues[i]));
+            newCue.SetLabel(newLabel);
+            visWindow->UpdateQuery(oldLabel, &newCue);
+            return;
+        }
+    }
+}
 
 // ****************************************************************************
 //  Method: ViewerWindow::DeleteQuery
@@ -7810,6 +7941,77 @@ ViewerWindow::GetIsCompressingScalableImage() const
 }
 
 // ****************************************************************************
+// Method:  ViewerWindow::SetCompactDomainsActivationMode
+//
+// Purpose: Set/Get compact domains activation mode
+//
+// Programmer:  Dave Pugmire
+// Creation:    August 24, 2010
+//
+// ****************************************************************************
+
+int
+ViewerWindow::SetCompactDomainsActivationMode(int mode)
+{
+    int oldMode = GetCompactDomainsActivationMode();
+    
+    if (mode != oldMode)
+        visWindow->SetCompactDomainsActivationMode(mode);
+    return oldMode;
+}
+
+// ****************************************************************************
+// Method:  ViewerWindow::GetCompactDomainsActivationMode
+//
+// Purpose: Set/Get compact domains activation mode
+//
+// Programmer:  Dave Pugmire
+// Creation:    August 24, 2010
+//
+// ****************************************************************************
+
+int
+ViewerWindow::GetCompactDomainsActivationMode() const
+{
+    return visWindow->GetCompactDomainsActivationMode();
+}
+
+// ****************************************************************************
+// Method:  ViewerWindow::GetCompactDomainsAutoThreshold
+//
+// Purpose: Set/Get compact domains auto threshold
+//
+// Programmer:  Dave Pugmire
+// Creation:    August 24, 2010
+//
+// ****************************************************************************
+
+int
+ViewerWindow::SetCompactDomainsAutoThreshold(int val)
+{
+    int oldThreshold = GetCompactDomainsAutoThreshold();
+    if (val != oldThreshold)
+        visWindow->SetCompactDomainsAutoThreshold(val);
+    return oldThreshold;
+}
+
+// ****************************************************************************
+// Method:  ViewerWindow::GetCompactDomainsAutoThreshold
+//
+// Purpose: Set/Get compact domains auto threshold
+//
+// Programmer:  Dave Pugmire
+// Creation:    August 24, 2010
+//
+// ****************************************************************************
+
+int
+ViewerWindow::GetCompactDomainsAutoThreshold() const
+{
+    return visWindow->GetCompactDomainsAutoThreshold();
+}
+
+// ****************************************************************************
 // Method: ViewerWindow::CreateNode
 //
 // Purpose: 
@@ -7964,6 +8166,8 @@ ViewerWindow::CreateNode(DataNode *parentNode,
         //
         windowNode->AddNode(new DataNode("scalableAutoThreshold", GetScalableAutoThreshold()));
         windowNode->AddNode(new DataNode("scalableActivationMode", GetScalableActivationMode()));
+        windowNode->AddNode(new DataNode("compactDomainsAutoThreshold", GetCompactDomainsAutoThreshold()));
+        windowNode->AddNode(new DataNode("compactDomainsActivationMode", GetCompactDomainsActivationMode()));
         windowNode->AddNode(new DataNode("notifyForEachRender", GetNotifyForEachRender()));
         windowNode->AddNode(new DataNode("surfaceRepresentation", GetSurfaceRepresentation()));
         windowNode->AddNode(new DataNode("displayListMode", GetDisplayListMode()));
@@ -8163,21 +8367,31 @@ ViewerWindow::CreateNode(DataNode *parentNode,
 //   Jeremy Meredith, Fri Apr 30 14:39:07 EDT 2010
 //   Added automatic depth cueing mode.
 //
+//   Brad Whitlock, Tue Aug 17 14:13:20 PDT 2010
+//   I made it return whether the window needs to be updated.
+//
+//   Dave Pugmire, Tue Aug 24 11:32:12 EDT 2010
+//   Add compact domain options.
+//
+//   Brad Whitlock, Thu Aug 26 15:40:31 PDT 2010
+//   I added a force option to SetAnnotationAttributes.
+//
 // ****************************************************************************
 
-void
+bool
 ViewerWindow::SetFromNode(DataNode *parentNode, 
     const std::map<std::string, std::string> &sourceToDB, 
     const std::string &configVersion)
 {
     DataNode *node;
+    bool needsUpdate = false;
 
     if(parentNode == 0)
-        return;
+        return false;
 
     DataNode *windowNode = parentNode->GetNode("ViewerWindow");
     if(windowNode == 0)
-        return;
+        return false;
     //
     // Reset the view centering flags.
     //
@@ -8208,8 +8422,7 @@ ViewerWindow::SetFromNode(DataNode *parentNode,
     //
     // Read in the plot list.
     //
-    if(GetPlotList()->SetFromNode(windowNode, sourceToDB, configVersion))
-        SendUpdateFrameMessage();
+    needsUpdate = GetPlotList()->SetFromNode(windowNode, sourceToDB, configVersion);
 
     //
     // Read in the view and set the view.
@@ -8289,6 +8502,10 @@ ViewerWindow::SetFromNode(DataNode *parentNode,
         SetScalableAutoThreshold(node->AsInt());
     if((node = windowNode->GetNode("scalableActivationMode")) != 0)
         SetScalableActivationMode(node->AsInt());
+    if((node = windowNode->GetNode("compactDomainsActivationMode")) != 0)
+        SetCompactDomainsActivationMode(node->AsInt());
+    if((node = windowNode->GetNode("compactDomainsAutoThreshold")) != 0)
+        SetCompactDomainsAutoThreshold(node->AsInt());
     if((node = windowNode->GetNode("notifyForEachRender")) != 0)
         SetNotifyForEachRender(node->AsBool());
     if((node = windowNode->GetNode("surfaceRepresentation")) != 0)
@@ -8406,7 +8623,7 @@ ViewerWindow::SetFromNode(DataNode *parentNode,
         AnnotationAttributes annot;
         annot.ProcessOldVersions(windowNode, configVersion.c_str());
         annot.SetFromNode(windowNode);
-        SetAnnotationAttributes(&annot);
+        SetAnnotationAttributes(&annot, true);
     }
 
     //
@@ -8516,6 +8733,8 @@ ViewerWindow::SetFromNode(DataNode *parentNode,
             }
         }
     }
+
+    return needsUpdate;
 }
 
 // ****************************************************************************
@@ -8950,6 +9169,9 @@ ViewerWindow::UpdateLastExternalRenderRequestInfo(
 //    Hank Childs, Tue Oct  2 17:16:45 PDT 2007
 //    Don't check to see if the annotation objects have changed.
 //
+//    Dave Pugmire, Tue Aug 24 11:32:12 EDT 2010
+//    Add compact domain options.
+//
 // ****************************************************************************
 
 bool
@@ -8969,11 +9191,17 @@ ViewerWindow::CanSkipExternalRender(const ExternalRenderRequestInfo& thisRequest
     int lastScalableAutoThreshold = lastRequest.winAtts.GetRenderAtts().GetScalableAutoThreshold();
     int lastScalableActivationMode = lastRequest.winAtts.GetRenderAtts().GetScalableActivationMode();
     int lastCompressionActivationMode = lastRequest.winAtts.GetRenderAtts().GetCompressionActivationMode();
+    int lastCompactDomainsActivationMode = lastRequest.winAtts.GetRenderAtts().GetCompactDomainsActivationMode();
+    int lastCompactDomainsAutoThreshold = lastRequest.winAtts.GetRenderAtts().GetCompactDomainsAutoThreshold();
     tmpWinAtts.GetRenderAtts().SetScalableAutoThreshold(lastScalableAutoThreshold);
     tmpWinAtts.GetRenderAtts().SetScalableActivationMode(
         (RenderingAttributes::TriStateMode) lastScalableActivationMode);
     tmpWinAtts.GetRenderAtts().SetCompressionActivationMode(
         (RenderingAttributes::TriStateMode) lastCompressionActivationMode);
+    tmpWinAtts.GetRenderAtts().SetCompactDomainsActivationMode(
+        (RenderingAttributes::TriStateMode) lastCompactDomainsActivationMode);
+    tmpWinAtts.GetRenderAtts().SetCompactDomainsAutoThreshold(lastCompactDomainsAutoThreshold);
+
     View3DAttributes lastView3D = lastRequest.winAtts.GetView3D();
     tmpWinAtts.GetView3D().SetCenterOfRotationSet(lastView3D.GetCenterOfRotationSet());
     tmpWinAtts.GetView3D().SetCenterOfRotation(lastView3D.GetCenterOfRotation());

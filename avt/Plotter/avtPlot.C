@@ -45,7 +45,7 @@
 #include <avtCallback.h>
 #include <avtCompactTreeFilter.h>
 #include <avtCondenseDatasetFilter.h>
-#include <avtCurrentExtentFilter.h>
+#include <avtActualExtentsFilter.h>
 #include <avtMeshLogFilter.h>
 #include <avtDatasetToDatasetFilter.h>
 #include <avtDataObjectString.h>
@@ -60,6 +60,7 @@
 #include <avtOriginatingSource.h>
 #include <avtVertexNormalsFilter.h>
 #include <avtSmoothPolyDataFilter.h>
+#include <RenderingAttributes.h>
 
 #include <vtkPolyData.h>
 #include <vtkDataSet.h>
@@ -130,6 +131,9 @@
 //    Added logMeshFilter, xScaleMode, yScaleMode, havePerformedLogX, 
 //    havePerformedLogY.
 //
+//    Dave Pugmire, Tue Aug 24 11:32:12 EDT 2010
+//    Add compact domains options.
+//
 // ****************************************************************************
 
 avtPlot::avtPlot()
@@ -143,7 +147,7 @@ avtPlot::avtPlot()
     condenseDatasetFilter      = new avtCondenseDatasetFilter;
     ghostZoneAndFacelistFilter = new avtGhostZoneAndFacelistFilter;
     compactTreeFilter          = new avtCompactTreeFilter;
-    currentExtentFilter        = new avtCurrentExtentFilter;
+    actualExtentsFilter        = new avtActualExtentsFilter;
     logMeshFilter              = new avtMeshLogFilter;
     vertexNormalsFilter        = new avtVertexNormalsFilter;
     smooth                     = new avtSmoothPolyDataFilter();
@@ -225,10 +229,10 @@ avtPlot::~avtPlot()
         delete compactTreeFilter;
         compactTreeFilter = NULL;
     }
-    if (currentExtentFilter != NULL)
+    if (actualExtentsFilter != NULL)
     {
-        delete currentExtentFilter;
-        currentExtentFilter = NULL;
+        delete actualExtentsFilter;
+        actualExtentsFilter = NULL;
     }
     if (logMeshFilter != NULL)
     {
@@ -485,13 +489,25 @@ avtPlot::Execute(avtDataObject_p input, avtContract_p contract,
 //    Calculate the current extents, even for plots that don't
 //    "UtilizeRenderingFilters".
 //
+//    Dave Pugmire, Tue Aug 24 11:32:12 EDT 2010
+//    Add compact domains options.
+//
+//    Hank Childs, Thu Aug 26 16:57:24 PDT 2010
+//    Explicitly state which variables should have 
 // ****************************************************************************
 
 avtDataObjectWriter_p
 avtPlot::Execute(avtDataObject_p input, avtContract_p contract,
                  const WindowAttributes *atts, const bool combinedExecute)
 {
-    SetVarName(contract->GetDataRequest()->GetVariable());
+    std::string varname = contract->GetDataRequest()->GetVariable();
+    SetVarName(varname.c_str());
+
+    //
+    // We don't know that the varname is has extents.  It might be a mesh or a material.  But
+    // that won't hurt anything ... the extents calculation won't happen in that case any way.
+    //
+    contract->SetCalculateVariableExtents(varname, true);
 
     if (*input == NULL)
     {
@@ -513,10 +529,11 @@ avtPlot::Execute(avtDataObject_p input, avtContract_p contract,
     if (UtilizeRenderingFilters() && 
         strcmp(dob->GetType(), "avtDataset") == 0)
     {
+        RenderingAttributes renderAtts = atts->GetRenderAtts();
         dob = ReduceGeometry(dob);
-        dob = CompactTree(dob);
+        dob = CompactTree(dob, renderAtts);
     }
-    dob = SetCurrentExtents(dob);
+    dob = SetActualExtents(dob);
 
     contract = EnhanceSpecification(contract);
 
@@ -1038,11 +1055,22 @@ avtPlot::ReduceGeometry(avtDataObject_p curDS)
 //    Kathleen Bonnell, Fri Oct 12 11:38:41 PDT 2001
 //    Set flag specifiying that execution depends on DLB. 
 //
+//    Dave Pugmire, Tue Aug 24 11:32:12 EDT 2010
+//    Add compact domains options.
+//
 // ****************************************************************************
 
 avtDataObject_p
-avtPlot::CompactTree(avtDataObject_p curDS)
+avtPlot::CompactTree(avtDataObject_p curDS, const RenderingAttributes &renderAtts)
 {
+    if (renderAtts.GetCompactDomainsActivationMode() == RenderingAttributes::Auto)
+        compactTreeFilter->SetCompactDomainsMode(avtCompactTreeFilter::Auto,
+                                                 renderAtts.GetCompactDomainsAutoThreshold());
+    else if (renderAtts.GetCompactDomainsActivationMode() == RenderingAttributes::Never)
+        compactTreeFilter->SetCompactDomainsMode(avtCompactTreeFilter::Never);
+    else if (renderAtts.GetCompactDomainsActivationMode() == RenderingAttributes::Always)
+        compactTreeFilter->SetCompactDomainsMode(avtCompactTreeFilter::Always);
+        
     avtDataObject_p rv = curDS;
     compactTreeFilter->SetInput(rv);
     ((avtCompactTreeFilter*)compactTreeFilter)->DLBDependentExecutionON();
@@ -1206,10 +1234,10 @@ avtPlot::SetForegroundColor(const double *)
 
 
 // ****************************************************************************
-//  Method: avtPlot::SetCurrentExtents
+//  Method: avtPlot::SetActualExtents
 //
 //  Purpose: 
-//    This method sets the current extents using the current extent filter. 
+//    This method sets the actual extents using the current extent filter. 
 //
 //  Arguments:
 //    curDS     The data object. 
@@ -1222,11 +1250,11 @@ avtPlot::SetForegroundColor(const double *)
 // ****************************************************************************
 
 avtDataObject_p
-avtPlot::SetCurrentExtents(avtDataObject_p curDS)
+avtPlot::SetActualExtents(avtDataObject_p curDS)
 {
     avtDataObject_p rv = curDS;
-    currentExtentFilter->SetInput(rv);
-    rv = currentExtentFilter->GetOutput();
+    actualExtentsFilter->SetInput(rv);
+    rv = actualExtentsFilter->GetOutput();
     return rv;
 }
 
@@ -1418,7 +1446,7 @@ avtPlot::ReleaseData(void)
     condenseDatasetFilter->ReleaseData();
     ghostZoneAndFacelistFilter->ReleaseData();
     compactTreeFilter->ReleaseData();
-    currentExtentFilter->ReleaseData();
+    actualExtentsFilter->ReleaseData();
     logMeshFilter->ReleaseData();
     vertexNormalsFilter->ReleaseData();
     if (GetMapper() != NULL)

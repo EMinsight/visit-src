@@ -90,7 +90,7 @@
 #include <ClientInformation.h>
 #include <ClientInformationList.h>
 #include <ColorTableAttributes.h>
-#include <ConstructDDFAttributes.h>
+#include <ConstructDataBinningAttributes.h>
 #include <DatabaseCorrelationList.h>
 #include <DatabaseCorrelation.h>
 #include <DBPluginInfoAttributes.h>
@@ -140,7 +140,7 @@
 #include <PyColorAttributeList.h>
 #include <PyColorControlPoint.h>
 #include <PyColorControlPointList.h>
-#include <PyConstructDDFAttributes.h>
+#include <PyConstructDataBinningAttributes.h>
 #include <PyDatabaseCorrelation.h>
 #include <PyExportDBAttributes.h>
 #include <PyFileOpenOptions.h>
@@ -179,6 +179,7 @@
 #include <PyWindowInformation.h>
 #include <PyavtDatabaseMetaData.h>
 #include <PyViewerRPC.h>
+
 
 // Variant & MapNode Helpers:
 #include <PyVariant.h>
@@ -389,7 +390,7 @@ public:
                     statusAtts->GetCurrentStage(),
                     statusAtts->GetMaxStage());
             }
-        }        
+        }
     }
 private:
     bool verbose;
@@ -450,6 +451,11 @@ typedef struct
 
 static std::map<std::string, AnnotationObjectRef> localObjectMap;
 
+// pickle related
+bool      pickleReady=false;
+PyObject *pickleDumps=NULL;
+PyObject *pickleLoads=NULL;
+
 #ifdef THREADS
 #if defined(_WIN32)
 static CRITICAL_SECTION      mutex;
@@ -459,7 +465,7 @@ static ObserverToCallback   *synchronizeCallback = 0;
 static HANDLE                received_sync_from_viewer = INVALID_HANDLE_VALUE;
 #define THREAD_INIT()
 #define MUTEX_CREATE()       InitializeCriticalSection(&mutex)
-#define MUTEX_DESTROY() 
+#define MUTEX_DESTROY()
 #define MUTEX_LOCK()         EnterCriticalSection(&mutex)
 #define MUTEX_UNLOCK()       LeaveCriticalSection(&mutex)
 
@@ -481,7 +487,7 @@ static HANDLE                received_sync_from_viewer = INVALID_HANDLE_VALUE;
 // ****************************************************************************
 // Function: WakeMainThread
 //
-// Purpose: 
+// Purpose:
 //   Called by the listener thread when SyncAttributes is read from the viewer.
 //
 // Programmer: Brad Whitlock
@@ -529,7 +535,7 @@ static ObserverToCallback   *synchronizeCallback = 0;
 // ****************************************************************************
 // Function: WakeMainThread
 //
-// Purpose: 
+// Purpose:
 //   Called by the listener thread when SyncAttributes is read from the viewer.
 //
 // Programmer: Brad Whitlock
@@ -591,7 +597,7 @@ VisItUnlockPythonInterpreter(PyThreadState *myThreadState)
 //
 // VisIt module functions that are written in Python.
 //
-static const char visit_EvalCubicSpline[] = 
+static const char visit_EvalCubicSpline[] =
 "def EvalCubicSpline(t, allX, allY):\n"
 "    n = len(allY)\n"
 "    if((allX[0] > t) or (allX[n-1] < t)):\n"
@@ -616,11 +622,11 @@ static const char visit_EvalCubicSpline[] =
 "    u = (t - X[1])\n"
 "    return (Y[1] + dy1*u + ddy2*u*u + dddy3*u*u*(u-dx))\n";
 
-static const char visit_EvalLinear[] = 
+static const char visit_EvalLinear[] =
 "def EvalLinear(t, c0, c1):\n"
 "    return ((c0*(1. - float(t))) + (c1*float(t)))\n";
 
-static const char visit_EvalQuadratic[] = 
+static const char visit_EvalQuadratic[] =
 "def EvalQuadratic(t, c0, c1, c2):\n"
 "    T = float(t)\n"
 "    T2 = T * T\n"
@@ -628,7 +634,7 @@ static const char visit_EvalQuadratic[] =
 "    OMT2 = OMT * OMT\n"
 "    return ((c0*OMT2) + (c1*(2.*OMT*T)) + (c2*T2))\n";
 
-static const char visit_EvalCubic[] = 
+static const char visit_EvalCubic[] =
 "def EvalCubic(t, c0, c1, c2, c3):\n"
 "    T = float(t)\n"
 "    T2 = T * T\n"
@@ -641,9 +647,9 @@ static const char visit_EvalCubic[] =
 // ****************************************************************************
 // Function: IntReturnValue
 //
-// Purpose: 
+// Purpose:
 //   Returns a Python long, which indicates the success value for the VisIt
-//   methods. If errorFlag < 0 then the viewer died. Return 0 so the 
+//   methods. If errorFlag < 0 then the viewer died. Return 0 so the
 //   interpreter stops.
 //
 // Arguments:
@@ -654,7 +660,7 @@ static const char visit_EvalCubic[] =
 // Creation:   Fri Dec 19 12:31:01 PDT 2003
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 PyObject *
@@ -671,7 +677,7 @@ IntReturnValue(int errorFlag)
 // ****************************************************************************
 // Function: DeprecatedMessage
 //
-// Purpose: 
+// Purpose:
 //   Prints a message for a deprecated function.
 //
 // Arguments:
@@ -683,14 +689,14 @@ IntReturnValue(int errorFlag)
 // Creation:   Tue Mar 2 08:58:03 PDT 2004
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 void
 DeprecatedMessage(const char *deprecatedFunction, const char *ver,
     const char *newFunction)
 {
-    fprintf(stderr, 
+    fprintf(stderr,
             "***\n"
             "*** %s was deprecated in version %s.\n"
             "*** Calling %s will still work for now but you should\n"
@@ -702,7 +708,7 @@ DeprecatedMessage(const char *deprecatedFunction, const char *ver,
 // ****************************************************************************
 // Method: StringVectorToTupleString
 //
-// Purpose: 
+// Purpose:
 //   Converts a stringVector into a suitable string representation of a Python
 //   tuple.
 //
@@ -711,13 +717,13 @@ DeprecatedMessage(const char *deprecatedFunction, const char *ver,
 //
 // Returns:    A string representation of the string tuple.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Tue Jan 10 14:02:23 PST 2006
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 static std::string
@@ -744,7 +750,7 @@ StringVectorToTupleString(const stringVector &s)
 // ****************************************************************************
 // Method: GetStringVectorFromPyObject
 //
-// Purpose: 
+// Purpose:
 //   Populates a string vector from values in a PyObject.
 //
 // Arguments:
@@ -760,7 +766,7 @@ StringVectorToTupleString(const stringVector &s)
 // Creation:   Tue Mar 2 09:51:39 PDT 2004
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 bool
@@ -821,7 +827,7 @@ GetStringVectorFromPyObject(PyObject *obj, stringVector &vec)
 // ****************************************************************************
 // Method: GetDoubleArrayFromPyObject
 //
-// Purpose: 
+// Purpose:
 //   Fills a double array with values from a tuple or list.
 //
 // Arguments:
@@ -835,7 +841,7 @@ GetStringVectorFromPyObject(PyObject *obj, stringVector &vec)
 // Creation:   Tue Mar 2 10:14:33 PDT 2004
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 bool
@@ -895,6 +901,35 @@ GetDoubleArrayFromPyObject(PyObject *obj, double *array, int maxLen)
     return retval;
 }
 
+// ****************************************************************************
+//  Method:  PickleInit
+//
+//  Purpose:
+//    Sets up pointer to pickle.dumps & pickle.loads methods.
+//
+//
+//  Programmer:  Cyrus Harrison
+//  Creation:    Fri Jul  9 14:27:52 PDT 2010
+//
+//  Modifications:
+//
+// ****************************************************************************
+void PickleInit()
+{
+    if(!pickleReady)
+    {
+        PyObject *pickleModule = PyImport_ImportModule("pickle"); // new ref
+        PyObject *pickleDict   = PyModule_GetDict(pickleModule);  // borrowed
+
+        pickleDumps  = PyDict_GetItemString(pickleDict, "dumps"); // borrowed
+        pickleLoads  = PyDict_GetItemString(pickleDict, "loads"); // borrowed
+        Py_INCREF(pickleDumps);
+        Py_INCREF(pickleLoads  );
+
+        Py_DECREF(pickleModule);
+        pickleReady = true;
+    }
+}
 
 // ****************************************************************************
 //  Method:  FillDBOptionsFromDictionary
@@ -1102,7 +1137,7 @@ CreateDictionaryFromDBOptions(DBOptionsAttributes &opts)
 // ****************************************************************************
 // Function: visit_AddArgument
 //
-// Purpose: 
+// Purpose:
 //   This is a Python callback that can be used to add arguments that are
 //   passed to the viewer before it is created.
 //
@@ -1141,7 +1176,7 @@ visit_AddArgument(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_Version
 //
-// Purpose: 
+// Purpose:
 //   This is a Python callback that returns the Version of the VisIt module.
 //
 // Note:       Can be called before the viewer is created.
@@ -1150,7 +1185,7 @@ visit_AddArgument(PyObject *self, PyObject *args)
 // Creation:   Tue Sep 18 14:04:06 PST 2001
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -1163,7 +1198,7 @@ visit_Version(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_Launch
 //
-// Purpose: 
+// Purpose:
 //   This is a Python callback that launches the viewer.
 //
 // Note:       Only has an effect before the viewer is created.
@@ -1236,7 +1271,7 @@ visit_Launch(PyObject *self, PyObject *args)
 
     //
     // Wait for the viewer to tell us to load the plugins.
-    //    
+    //
     DelayedLoadPlugins();
 
     debug1 << "Launch: 4" << endl;
@@ -1301,7 +1336,7 @@ visit_Launch(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_LaunchNowin
 //
-// Purpose: 
+// Purpose:
 //   This is a Python callback that launches the viewer without a window.
 //
 // Note:       Only has an effect before the viewer is created.
@@ -1310,7 +1345,7 @@ visit_Launch(PyObject *self, PyObject *args)
 // Creation:   Tue Sep 18 14:04:06 PST 2001
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -1324,7 +1359,7 @@ visit_LaunchNowin(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_SetDebugLevel
 //
-// Purpose: 
+// Purpose:
 //   This is a Python callback that can be used to set the debug level that
 //   the viewer uses.
 //
@@ -1371,7 +1406,7 @@ visit_SetDebugLevel(PyObject *self, PyObject *args)
             SNPRINTF(tmp, 10, "%db", moduleDebugLevel);
         else
             SNPRINTF(tmp, 10, "%d", moduleDebugLevel);
-        GetViewerProxy()->AddArgument(tmp); 
+        GetViewerProxy()->AddArgument(tmp);
     }
     else
     {
@@ -1387,7 +1422,7 @@ visit_SetDebugLevel(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_GetDebugLevel
 //
-// Purpose: 
+// Purpose:
 //   This is a Python callback that returns the debug level that the viewer
 //   is using.
 //
@@ -1397,7 +1432,7 @@ visit_SetDebugLevel(PyObject *self, PyObject *args)
 // Creation:   Tue Sep 18 14:04:06 PST 2001
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -1410,14 +1445,14 @@ visit_GetDebugLevel(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_GetDebugLevel
 //
-// Purpose: 
+// Purpose:
 //   Returns the last error that VisIt sent back to the cli.
 //
 // Programmer: Brad Whitlock
 // Creation:   Fri Jul 26 12:15:57 PDT 2002
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -1435,7 +1470,7 @@ visit_GetLastError(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_LocalNameSpace
 //
-// Purpose: 
+// Purpose:
 //   Determines how plugins are added to the Python namespace. If this
 //   function is called, all the plugin methods are added to the top-level
 //   as if "from visit import *" was specified.
@@ -1444,7 +1479,7 @@ visit_GetLastError(PyObject *self, PyObject *args)
 // Creation:   Fri Nov 9 19:00:31 PST 2001
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -1460,14 +1495,14 @@ visit_LocalNameSpace(PyObject *, PyObject *args)
 // ****************************************************************************
 // Function: visit_GetLocalHostName
 //
-// Purpose: 
+// Purpose:
 //   Returns the local host name.
 //
 // Programmer: Brad Whitlock
 // Creation:   Thu Feb 21 10:09:52 PDT 2002
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -1480,14 +1515,14 @@ visit_GetLocalHostName(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_GetLocalUserName
 //
-// Purpose: 
+// Purpose:
 //   Returns the user's login name.
 //
 // Programmer: Brad Whitlock
 // Creation:   Thu Feb 21 10:09:52 PDT 2002
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -1500,7 +1535,7 @@ visit_GetLocalUserName(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_Close
 //
-// Purpose: 
+// Purpose:
 //   This is a Python callback that closes the viewer.
 //
 // Note:       Only has an effect if the viewer is created.
@@ -1509,7 +1544,7 @@ visit_GetLocalUserName(PyObject *self, PyObject *args)
 // Creation:   Tue Sep 18 14:04:06 PST 2001
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -1534,7 +1569,7 @@ visit_Close(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: LongFileName
 //
-// Purpose: 
+// Purpose:
 //   Converts a Windows short filename into a long filename.
 //
 // Arguments:
@@ -1542,13 +1577,13 @@ visit_Close(PyObject *self, PyObject *args)
 //
 // Returns:    The long windows name of the file.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Fri Dec 5 14:10:18 PST 2003
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -1582,7 +1617,7 @@ visit_LongFileName(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to add a window.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: John Bemis, Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
@@ -1613,7 +1648,7 @@ visit_AddWindow(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to show its windows.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Fri Dec 19 12:52:36 PDT 2003
@@ -1642,7 +1677,7 @@ visit_ShowAllWindows(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to clone the active window.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Oct 16 10:18:46 PDT 2002
@@ -1670,7 +1705,7 @@ visit_CloneWindow(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_GetDatabaseNStates
 //
-// Purpose: 
+// Purpose:
 //   Gets the number of time states in the open database.
 //
 // Notes:
@@ -1717,14 +1752,14 @@ visit_GetDatabaseNStates(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_TimeSliderNextState
 //
-// Purpose: 
+// Purpose:
 //   Tells the viewer to advance the active time slider to the next state.
 //
 // Programmer: Brad Whitlock
 // Creation:   Tue Mar 2 08:51:02 PDT 2004
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -1744,14 +1779,14 @@ visit_TimeSliderNextState(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_TimeSliderPreviousState
 //
-// Purpose: 
+// Purpose:
 //   Tells the viewer to set the active time slider to the previous state.
 //
 // Programmer: Brad Whitlock
 // Creation:   Tue Mar 2 08:51:02 PDT 2004
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -1771,7 +1806,7 @@ visit_TimeSliderPreviousState(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_SetTimeSliderState
 //
-// Purpose: 
+// Purpose:
 //   Tells the viewer to set the time state for the active time slider.
 //
 // Programmer: Brad Whitlock
@@ -1826,7 +1861,7 @@ visit_SetTimeSliderState(PyObject *self, PyObject *args)
     {
         fprintf(stderr, "The active time slider, %s, has states in this range:"
             " [0,%d]. You cannot use %d for the new time slider state because "
-            "that value is not in the range for the time slider\n", 
+            "that value is not in the range for the time slider\n",
             ts.c_str(), nStates-1, state);
         return NULL;
     }
@@ -1842,10 +1877,10 @@ visit_SetTimeSliderState(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_SetTreatAllDBsAsTimeVarying
 //
-// Purpose: Tells the viewer to treat all databases as time varying 
+// Purpose: Tells the viewer to treat all databases as time varying
 //
 // Programmer: Mark C. Miller
-// Creation:   May 27, 2005 
+// Creation:   May 27, 2005
 //
 // ****************************************************************************
 
@@ -1873,7 +1908,7 @@ visit_SetTreatAllDBsAsTimeVarying(PyObject *self, PyObject *args)
 // Purpose: Tells the viewer to try harder to obtain accurate cycles/times
 //
 // Programmer: Mark C. Miller
-// Creation:   May 27, 2005 
+// Creation:   May 27, 2005
 //
 // ****************************************************************************
 
@@ -1901,7 +1936,7 @@ visit_SetTryHarderCyclesTimes(PyObject *self, PyObject *args)
 //          of mesh quality expressions.
 //
 // Programmer: Kathleen Bonnell
-// Creation:   October 9, 2007 
+// Creation:   October 9, 2007
 //
 // ****************************************************************************
 
@@ -1929,7 +1964,7 @@ visit_SetCreateMeshQualityExpressions(PyObject *self, PyObject *args)
 //          of time derivative expressions.
 //
 // Programmer: Kathleen Bonnell
-// Creation:   October 9, 2007 
+// Creation:   October 9, 2007
 //
 // ****************************************************************************
 
@@ -1981,7 +2016,7 @@ visit_SetCreateVectorMagnitudeExpressions(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_SetActiveTimeSlider
 //
-// Purpose: 
+// Purpose:
 //   Sets the active time slider in the viewer.
 //
 // Programmer: Brad Whitlock
@@ -2017,14 +2052,14 @@ visit_SetActiveTimeSlider(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Method: visit_GetActiveTimeSlider
 //
-// Purpose: 
+// Purpose:
 //   Returns the active time slider.
 //
 // Programmer: Brad Whitlock
 // Creation:   Fri Mar 19 11:05:01 PDT 2004
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -2043,14 +2078,14 @@ visit_GetActiveTimeSlider(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Method: visit_GetTimeSliders
 //
-// Purpose: 
+// Purpose:
 //   Returns a dictionary containing the time sliders with their states.
 //
 // Programmer: Brad Whitlock
 // Creation:   Fri Mar 19 11:15:13 PDT 2004
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -2078,7 +2113,7 @@ visit_GetTimeSliders(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_TimeSliderGetNStates
 //
-// Purpose: 
+// Purpose:
 //   Returns the number of states for the active time slider.
 //
 // Notes:
@@ -2122,7 +2157,7 @@ visit_TimeSliderGetNStates(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_AnimationSetNFrames
 //
-// Purpose: 
+// Purpose:
 //   Sets the number of frames in the animation.
 //
 // Notes:
@@ -2161,7 +2196,7 @@ visit_AnimationSetNFrames(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to change the window layout
 //
-// Notes:      
+// Notes:
 //
 // Programmer: John Bemis, Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
@@ -2195,7 +2230,7 @@ visit_SetWindowLayout(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to set a new active window
 //
-// Notes:      
+// Notes:
 //
 // Programmer: John Bemis, Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
@@ -2229,13 +2264,13 @@ visit_SetActiveWindow(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to iconify all the windows.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: John Bemis, Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -2258,13 +2293,13 @@ visit_IconifyAllWindows(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to show all the iconified windows
 //
-// Notes:      
+// Notes:
 //
 // Programmer: John Bemis, Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -2287,7 +2322,7 @@ visit_DeIconifyAllWindows(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to open a database.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: John Bemis, Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
@@ -2352,7 +2387,7 @@ visit_OpenDatabase(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to re-open a database.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Tue Jul 30 14:37:57 PST 2002
@@ -2387,7 +2422,7 @@ visit_ReOpenDatabase(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to overlay a database.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Thu Mar 7 18:05:58 PST 2002
@@ -2429,7 +2464,7 @@ visit_OverlayDatabase(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to replace a database.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Thu Mar 7 18:07:42 PST 2002
@@ -2473,7 +2508,7 @@ visit_ReplaceDatabase(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_ActivateDatabase
 //
-// Purpose: 
+// Purpose:
 //   Tells the viewer to make the specified database be the active source.
 //   This is not quite as much work as opening the database so the database
 //   must already be open.
@@ -2482,7 +2517,7 @@ visit_ReplaceDatabase(PyObject *self, PyObject *args)
 // Creation:   Tue Mar 2 10:21:24 PDT 2004
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -2506,17 +2541,17 @@ visit_ActivateDatabase(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_CheckForNewStates
 //
-// Purpose: 
+// Purpose:
 //   Tells the viewer to look for new time states for the specified database.
 //   This function is meant to be a cheaper version of Reopen that does not
-//   mess with the plots or metadata but just adds new time states to the 
-//   database.     
+//   mess with the plots or metadata but just adds new time states to the
+//   database.
 //
 // Programmer: Brad Whitlock
 // Creation:   Tue Mar 2 10:22:34 PDT 2004
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -2540,14 +2575,14 @@ visit_CheckForNewStates(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_CloseDatabase
 //
-// Purpose: 
+// Purpose:
 //   Tells the viewer to close the specified database.
 //
 // Programmer: Brad Whitlock
 // Creation:   Thu Mar 18 14:02:38 PST 2004
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -2571,14 +2606,14 @@ visit_CloseDatabase(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_GetMetaData
 //
-// Purpose: 
+// Purpose:
 //   Requests metadata for a specific file and returns a copy.
 //
 // Programmer: Brad Whitlock
 // Creation:   Thu Mar 18 14:02:38 PST 2004
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -2608,7 +2643,7 @@ visit_GetMetaData(PyObject *self, PyObject *args)
     MUTEX_LOCK();
         mdObj = PyavtDatabaseMetaData_New();
         // Copy the metadata into the new object's metadata object.
-        *PyavtDatabaseMetaData_FromPyObject(mdObj) = 
+        *PyavtDatabaseMetaData_FromPyObject(mdObj) =
             *GetViewerState()->GetDatabaseMetaData();
     MUTEX_UNLOCK();
 
@@ -2619,7 +2654,7 @@ visit_GetMetaData(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_CreateDatabaseCorrelation
 //
-// Purpose: 
+// Purpose:
 //   Creates a new database correlation that involves the specified databases
 //   and uses the specified correlation method.
 //
@@ -2627,7 +2662,7 @@ visit_GetMetaData(PyObject *self, PyObject *args)
 // Creation:   Tue Mar 2 09:47:25 PDT 2004
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -2671,14 +2706,14 @@ visit_CreateDatabaseCorrelation(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_AlterDatabaseCorrelation
 //
-// Purpose: 
+// Purpose:
 //   Changes the definition for the named database correlation.
 //
 // Programmer: Brad Whitlock
 // Creation:   Tue Mar 2 09:46:32 PDT 2004
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -2722,14 +2757,14 @@ visit_AlterDatabaseCorrelation(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Method: visit_DeleteDatabaseCorrelation
 //
-// Purpose: 
+// Purpose:
 //   Deletes the named database correlation.
 //
 // Programmer: Brad Whitlock
 // Creation:   Tue Mar 2 09:45:53 PDT 2004
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -2753,14 +2788,14 @@ visit_DeleteDatabaseCorrelation(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Method: visit_SetDatabaseCorrelationOptions
 //
-// Purpose: 
+// Purpose:
 //   Set the default correlation options.
 //
 // Programmer: Brad Whitlock
 // Creation:   Fri Mar 19 17:42:14 PST 2004
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -2787,7 +2822,7 @@ visit_SetDatabaseCorrelationOptions(PyObject *self, PyObject *args)
         "VisIt must be told when you want to automatically correlate:\n"
         "   0 - CorrelateAlways\n"
         "   1 - CorrelateNever\n"
-        "   2 - CorrelateOnlyIfSameLength\n"); 
+        "   2 - CorrelateOnlyIfSameLength\n");
         return NULL;
     }
 
@@ -2810,7 +2845,7 @@ visit_SetDatabaseCorrelationOptions(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_GetDatabaseCorrelation
 //
-// Purpose: 
+// Purpose:
 //   Returns a read-only database correlation object that contains the
 //   attributes for the specified database correlation.
 //
@@ -2849,7 +2884,7 @@ visit_GetDatabaseCorrelation(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_GetDatabaseCorrelationNames
 //
-// Purpose: 
+// Purpose:
 //   Returns the names of all of the database correlations.
 //
 // Programmer: Brad Whitlock
@@ -2890,7 +2925,7 @@ visit_GetDatabaseCorrelationNames(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to create a new expression.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Sean Ahern
 // Creation:   Fri Jun 28 15:52:21 PDT 2002
@@ -2907,7 +2942,7 @@ visit_GetDatabaseCorrelationNames(PyObject *self, PyObject *args)
 //    Moved ENSURE_VIEWER_EXISTS in here, just to tidy things up a bit.
 //
 //    Brad Whitlock, Tue May 8 16:13:35 PST 2007
-//    Added code to get the expression if it exists instead of always adding 
+//    Added code to get the expression if it exists instead of always adding
 //    a new expression.
 //
 // ****************************************************************************
@@ -2960,7 +2995,7 @@ ExpressionDefinitionHelper(PyObject *args, const char *name, Expression::ExprTyp
 // Purpose:
 //   Tells the viewer to create a new expression.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Sean Ahern
 // Creation:   Fri Jun 28 15:52:21 PDT 2002
@@ -2983,7 +3018,7 @@ ExpressionDefinitionHelper(PyObject *args, const char *name, Expression::ExprTyp
 //    Hank Childs, Thu Jul 21 14:26:03 PDT 2005
 //    Added DefineArrayExpression.
 //
-//    Kathleen Bonnell, Tue Aug  1 09:13:45 PDT 2006 
+//    Kathleen Bonnell, Tue Aug  1 09:13:45 PDT 2006
 //    Added DefineCurveExpression.
 //
 // ****************************************************************************
@@ -3042,7 +3077,7 @@ visit_DefineSpeciesExpression(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to delete an expression.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Sean Ahern
 // Creation:   Fri Jun 28 16:08:14 PDT 2002
@@ -3050,11 +3085,11 @@ visit_DefineSpeciesExpression(PyObject *self, PyObject *args)
 // Modifications:
 //   Kathleen Bonnell, Wed Dec 22 12:50:20 PST 2004
 //   Notify viewer that ExpressionList has been modified.
-//   
+//
 //   Cyrus Harrison, Thu Nov 29 09:52:41 PST 2007
 //   To maintain consistency with the GUI, made sure we guard against deletion
 //   of database expressions and auto expressions. Also added descriptive error
-//   messages if no expression is deleted. 
+//   messages if no expression is deleted.
 //
 //   Jeremy Meredith, Tue Feb 19 14:37:10 EST 2008
 //   Don't allow users to delete expressions created by an operator.
@@ -3139,7 +3174,7 @@ visit_DeleteExpression(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to open a compute engine or an mdserver.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
@@ -3152,14 +3187,14 @@ visit_DeleteExpression(PyObject *self, PyObject *args)
 //   I made it use a stringVector.
 //
 //   Brad Whitlock, Mon Jan 13 10:57:56 PDT 2003
-//   I renamed the function to OpenComponentHelper and I made it 
+//   I renamed the function to OpenComponentHelper and I made it
 //   also responsible for telling the viewer to open mdservers.
 //
 //   Brad Whitlock, Tue Mar 2 09:55:05 PDT 2004
 //   I made it use GetStringVectorFromPyObject.
 //
 //   Hank Childs, Tue Feb 20 16:12:41 PST 2007
-//   Improve the error message for the case where the user specifies the 
+//   Improve the error message for the case where the user specifies the
 //   processor count as an integer, not a string.
 //
 //   Jeremy Meredith, Thu Aug  7 15:06:45 EDT 2008
@@ -3244,7 +3279,7 @@ visit_OpenMDServer(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: OpenClientHelper
 //
-// Purpose: 
+// Purpose:
 //   Helps us open a client.
 //
 // Programmer: Brad Whitlock
@@ -3253,7 +3288,10 @@ visit_OpenMDServer(PyObject *self, PyObject *args)
 // Modifications:
 //   Jeremy Meredith, Thu Aug  7 15:06:45 EDT 2008
 //   Change string literals to const char*'s.
-//   
+//
+//   Cyrus Harrison, Wed Jul 14 11:17:21 PDT 2010
+//   Added case for OpenCLI() method.
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -3272,6 +3310,22 @@ OpenClientHelper(PyObject *self, PyObject *args, int componentNumber)
         clientName = "GUI";
         program = "visit";
         argv.push_back("-gui");
+
+        // Make sure it's a tuple.
+        if(!GetStringVectorFromPyObject(args, argv))
+        {
+            VisItErrorFunc(OCEError);
+            return NULL;
+        }
+
+        PyErr_Clear();
+    }
+    if(componentNumber == 2)
+    {
+        clientName = "CLI";
+        program = "visit";
+        argv.push_back("-cli");
+        argv.push_back("-newconsole");
 
         // Make sure it's a tuple.
         if(!GetStringVectorFromPyObject(args, argv))
@@ -3327,19 +3381,25 @@ visit_OpenGUI(PyObject *self, PyObject *args)
     return OpenClientHelper(self, args, 1);
 }
 
+STATIC PyObject *
+visit_OpenCLI(PyObject *self, PyObject *args)
+{
+    return OpenClientHelper(self, args, 2);
+}
+
 // ****************************************************************************
 // Function: visit_InvertBackgroundColor
 //
 // Purpose:
 //   Tells the viewer to swap its background and foreground colors.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon May 6 17:19:28 PST 2002
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -3363,7 +3423,7 @@ visit_InvertBackgroundColor(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to add a plot of the specified type.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: John Bemis, Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
@@ -3406,7 +3466,7 @@ visit_AddPlot(PyObject *self, PyObject *args)
             else PyErr_Clear();
         }
         else
-            PyErr_Clear();    
+            PyErr_Clear();
     }
 
     // Find the plot index from the name. Throw a python exception if we are
@@ -3471,7 +3531,7 @@ visit_AddPlot(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to add an operator to the selected plots.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: John Bemis, Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
@@ -3485,7 +3545,7 @@ visit_AddPlot(PyObject *self, PyObject *args)
 //   I made it return a success value.
 //
 //   Gunther H. Weber, Tue Apr  1 15:46:53 PDT 2008
-//   Removed SetApplySelection() since we do not affect SIL selection 
+//   Removed SetApplySelection() since we do not affect SIL selection
 //
 //   Gunther H. Weber, Tue Apr  1 16:42:15 PDT 2008
 //   Save state of "apply operator toggle"
@@ -3559,7 +3619,7 @@ visit_AddOperator(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to draw the plots that have not been realized.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: John Bemis, Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
@@ -3587,7 +3647,7 @@ visit_DrawPlots(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_CloseComputeEngine
 //
-// Purpose: 
+// Purpose:
 //   This is a Python callback function that closes a compute engine.
 //
 // Note:       The hostname of the engine can be omitted and the first engine
@@ -3738,7 +3798,7 @@ visit_DeletePlotKeyframe(PyObject *self, PyObject *args)
 // Note:
 //
 // Programmer: Eric Brugger
-// Creation:   Tue Jan 28 13:53:33 PST 2003 
+// Creation:   Tue Jan 28 13:53:33 PST 2003
 //
 // Modifications:
 //
@@ -3769,7 +3829,7 @@ visit_MovePlotKeyframe(PyObject *self, PyObject *args)
 // Note:
 //
 // Programmer: Eric Brugger
-// Creation:   Mon Dec 30 13:16:58 PST 2002 
+// Creation:   Mon Dec 30 13:16:58 PST 2002
 //
 // Modifications:
 //
@@ -3800,7 +3860,7 @@ visit_SetPlotDatabaseState(PyObject *self, PyObject *args)
 // Note:
 //
 // Programmer: Eric Brugger
-// Creation:   Mon Dec 30 13:16:58 PST 2002 
+// Creation:   Mon Dec 30 13:16:58 PST 2002
 //
 // Modifications:
 //
@@ -3858,7 +3918,7 @@ visit_MovePlotDatabaseKeyframe(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to change variables for the selected plots.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: John Bemis, Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
@@ -3889,10 +3949,10 @@ visit_ChangeActivePlotsVar(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_CopyAnnotationsToWindow
 //
-// Purpose: 
+// Purpose:
 //   Tells the viewer to copy the annotations from one window to another.
 //
-// Notes:       
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Thu Jun 27 16:55:05 PST 2002
@@ -3923,10 +3983,10 @@ visit_CopyAnnotationsToWindow(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_CopyLightingToWindow
 //
-// Purpose: 
+// Purpose:
 //   Tells the viewer to copy the lighting from one window to another.
 //
-// Notes:       
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Thu Jun 27 16:55:05 PST 2002
@@ -3957,10 +4017,10 @@ visit_CopyLightingToWindow(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_CopyViewToWindow
 //
-// Purpose: 
+// Purpose:
 //   Tells the viewer to copy the view from one window to another.
 //
-// Notes:       
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Thu Jun 27 16:55:05 PST 2002
@@ -3991,10 +4051,10 @@ visit_CopyViewToWindow(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_CopyPlotsToWindow
 //
-// Purpose: 
+// Purpose:
 //   Tells the viewer to copy the plots from one window to another.
 //
-// Notes:       
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Oct 16 10:19:33 PDT 2002
@@ -4023,7 +4083,7 @@ visit_CopyPlotsToWindow(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_DeleteActivePlots
 //
-// Purpose: 
+// Purpose:
 //   This is a Python callback that deletes all active plots in the plot list.
 //
 // Programmer: John Bemis, Brad Whitlock
@@ -4052,7 +4112,7 @@ visit_DeleteActivePlots(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_DeleteAllPlots
 //
-// Purpose: 
+// Purpose:
 //   This is a Python callback that deletes all plots in the plot list.
 //
 // Programmer: John Bemis, Brad Whitlock
@@ -4096,7 +4156,7 @@ visit_DeleteAllPlots(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to remove the last operator from the selected plots.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: John Bemis, Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
@@ -4109,7 +4169,7 @@ visit_DeleteAllPlots(PyObject *self, PyObject *args)
 //   I made it return a success value.
 //
 //   Gunther H. Weber, Tue Apr  1 15:46:53 PDT 2008
-//   Removed SetApplySelection() since we do not affect SIL selection 
+//   Removed SetApplySelection() since we do not affect SIL selection
 //
 //   Gunther H. Weber, Tue Apr  1 16:42:15 PDT 2008
 //   Save state of "apply operator toggle"
@@ -4149,7 +4209,7 @@ visit_RemoveLastOperator(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to remove all operators from the selected plots.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: John Bemis, Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
@@ -4162,7 +4222,7 @@ visit_RemoveLastOperator(PyObject *self, PyObject *args)
 //   I made it return a success value.
 //
 //   Gunther H. Weber, Tue Apr  1 15:46:53 PDT 2008
-//   Removed SetApplySelection() since we do not affect SIL selection 
+//   Removed SetApplySelection() since we do not affect SIL selection
 //
 //   Gunther H. Weber, Tue Apr  1 16:42:15 PDT 2008
 //   Save state of "apply operator toggle"
@@ -4202,13 +4262,13 @@ visit_RemoveAllOperators(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to clear the window of plots.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: John Bemis, Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -4230,13 +4290,13 @@ visit_ClearWindow(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to clear all of its windows.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: John Bemis, Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -4259,7 +4319,7 @@ visit_ClearAllWindows(PyObject *self, PyObject *args)
 //   Tells the viewer to clear the cache for the compute engine running on
 //   the specified host.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Tue Jul 30 13:55:52 PST 2002
@@ -4305,13 +4365,13 @@ visit_ClearCache(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to clear the cache for all compute engines.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Thu Feb 26 13:39:52 PST 2004
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -4334,13 +4394,13 @@ visit_ClearCacheForAllEngines(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to clear all pick points.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon May 6 17:19:28 PST 2002
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -4364,13 +4424,13 @@ visit_ClearPickPoints(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to clear all reference lines.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon May 6 17:19:28 PST 2002
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -4394,7 +4454,7 @@ visit_ClearReferenceLines(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to save the active window.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: John Bemis, Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
@@ -4442,7 +4502,7 @@ visit_SaveWindow(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to delete the active window.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: John Bemis, Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
@@ -4473,13 +4533,13 @@ visit_DeleteWindow(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to disable redrawing.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -4502,13 +4562,13 @@ visit_DisableRedraw(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to redraw the window.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -4527,14 +4587,14 @@ visit_RedrawWindow(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_MoveAndResizeWindow
 //
-// Purpose: 
+// Purpose:
 //   Moves a window.
 //
 // Programmer: Brad Whitlock
 // Creation:   Thu Nov 17 17:00:00 PST 2005
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -4556,14 +4616,14 @@ visit_ResizeWindow(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_MoveWindow
 //
-// Purpose: 
+// Purpose:
 //   Moves a window.
 //
 // Programmer: Brad Whitlock
 // Creation:   Thu Nov 17 17:00:00 PST 2005
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -4585,14 +4645,14 @@ visit_MoveWindow(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_MoveAndResizeWindow
 //
-// Purpose: 
+// Purpose:
 //   Moves and resizes a window.
 //
 // Programmer: Brad Whitlock
 // Creation:   Thu Nov 17 17:00:00 PST 2005
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -4617,13 +4677,13 @@ visit_MoveAndResizeWindow(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to recenter the view.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon May 6 17:12:11 PST 2002
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -4645,13 +4705,13 @@ visit_RecenterView(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to reset the view.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -4673,13 +4733,13 @@ visit_ResetView(PyObject *self, PyObject *args)
 // Purpose:
 //   Sets the center of rotation for the active window.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -4705,13 +4765,13 @@ visit_SetCenterOfRotation(PyObject *self, PyObject *args)
 //   Tells the viewer to use the center of the screen to update the center
 //   of rotation.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -4724,7 +4784,7 @@ visit_ChooseCenterOfRotation(PyObject *self, PyObject *args)
     if(!PyArg_ParseTuple(args, "dd", &sx, &sy))
     {
         havePoint = false;
-        PyErr_Clear(); 
+        PyErr_Clear();
     }
     
 
@@ -4750,13 +4810,13 @@ visit_ChooseCenterOfRotation(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to read in a session file.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Jul 30 14:36:49 PST 2003
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -4764,7 +4824,7 @@ visit_RestoreSession(PyObject *self, PyObject *args)
 {
     ENSURE_VIEWER_EXISTS();
 
-    char *filename;    
+    char *filename;
     int sessionStoredInVisItDir = 1;
     if(!PyArg_ParseTuple(args, "si", &filename, &sessionStoredInVisItDir))
         return NULL;
@@ -4784,13 +4844,13 @@ visit_RestoreSession(PyObject *self, PyObject *args)
 //   Tells the viewer to read in a session file but use a different list of
 //   databases when restoring it.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Fri Nov 10 11:16:04 PDT 2006
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -4798,7 +4858,7 @@ visit_RestoreSessionWithDifferentSources(PyObject *self, PyObject *args)
 {
     ENSURE_VIEWER_EXISTS();
 
-    char *filename;    
+    char *filename;
     int sessionStoredInVisItDir = 1;
     PyObject *tuple = 0;
     if(!PyArg_ParseTuple(args, "siO", &filename, &sessionStoredInVisItDir,
@@ -4829,16 +4889,16 @@ visit_RestoreSessionWithDifferentSources(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to save the session to the named session file.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Jul 30 14:43:02 PST 2003
 //
 // Modifications:
-//   
+//
 //    Cyrus Harrison, Wed Sep 12 15:22:13 PDT 2007
-//    Automatically append ".session" to the session file name if not 
-//    included by the user. 
+//    Automatically append ".session" to the session file name if not
+//    included by the user.
 //
 // ****************************************************************************
 
@@ -4847,7 +4907,7 @@ visit_SaveSession(PyObject *self, PyObject *args)
 {
     ENSURE_VIEWER_EXISTS();
    
-    char *filename;    
+    char *filename;
     if(!PyArg_ParseTuple(args, "s", &filename))
         return NULL;
 
@@ -4872,13 +4932,13 @@ visit_SaveSession(PyObject *self, PyObject *args)
 //   Returns a tuple containing the names of the hosts that we're running
 //   engines on.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -4907,7 +4967,7 @@ visit_GetEngineList(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to hide the active plots.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: John Bemis, Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
@@ -4935,14 +4995,14 @@ visit_HideActivePlots(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_HideToolbars
 //
-// Purpose: 
+// Purpose:
 //   Hides the toolbars for the active window or for all windows.
 //
 // Programmer: Brad Whitlock
 // Creation:   Fri Aug 29 11:18:05 PDT 2003
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -4968,14 +5028,14 @@ visit_HideToolbars(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_ShowToolbars
 //
-// Purpose: 
+// Purpose:
 //   Shows the toolbars for the active window or for all windows.
 //
 // Programmer: Brad Whitlock
 // Creation:   Fri Aug 29 11:18:05 PDT 2003
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -5004,13 +5064,13 @@ visit_ShowToolbars(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to use the new animation attributes we're sending.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Dec 12 15:16:17 PST 2007
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -5049,13 +5109,13 @@ visit_SetAnimationAttributes(PyObject *self, PyObject *args)
 // Purpose:
 //   Returns the Animation attributes for the active window.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Dec 12 15:16:17 PST 2007
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -5079,13 +5139,13 @@ visit_GetAnimationAttributes(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to use the new annotation attributes we're sending.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -5124,13 +5184,13 @@ visit_SetAnnotationAttributes(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to use the clone window on first reference flag.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Eric Brugger
 // Creation:   Thu Dec 18 15:29:44 PST 2003
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -5158,13 +5218,13 @@ visit_SetCloneWindowOnFirstRef(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to save the default annotation attributes.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -5203,13 +5263,13 @@ visit_SetDefaultAnnotationAttributes(PyObject *self, PyObject *args)
 // Purpose:
 //   Returns the annotation attributes for the active window.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -5308,13 +5368,13 @@ visit_GetKeyframeAttributes(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to use the new material attributes we're sending.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Jeremy Meredith
 // Creation:   October 24, 2002
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -5353,13 +5413,13 @@ visit_SetMaterialAttributes(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to save the default material attributes.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Jeremy Meredith
 // Creation:   October 24, 2002
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -5398,13 +5458,13 @@ visit_SetDefaultMaterialAttributes(PyObject *self, PyObject *args)
 // Purpose:
 //   Returns the material attributes for the active window.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Jeremy Meredith
 // Creation:   October 24, 2002
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -5429,13 +5489,13 @@ visit_GetMaterialAttributes(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to use the new printer attributes we're sending.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Feb 20 14:16:49 PST 2002
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -5473,13 +5533,13 @@ visit_SetPrinterAttributes(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to use the new save window attributes.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
 //
 // Modifications:
-//   
+//
 //   Hank Childs, Fri May 24 08:37:28 PDT 2002
 //   Renamed SaveImageAtts to SaveWindowAtts.
 //
@@ -5520,13 +5580,13 @@ visit_SetSaveWindowAttributes(PyObject *self, PyObject *args)
 // Purpose:
 //   Returns the save window attributes that we're using.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
 //
 // Modifications:
-//   
+//
 //   Hank Childs, Fri May 24 08:37:28 PDT 2002
 //   Renamed SaveImageAtts to SaveWindowAtts.
 //
@@ -5553,7 +5613,7 @@ visit_GetSaveWindowAttributes(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to export the database.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Hank Childs
 // Creation:   June 30, 2005
@@ -5593,7 +5653,7 @@ visit_ExportDatabase(PyObject *self, PyObject *args)
     const std::string &db_type = va->GetDb_type();
 
     MUTEX_LOCK();
-        DBPluginInfoAttributes *dbplugininfo = 
+        DBPluginInfoAttributes *dbplugininfo =
                         GetViewerState()->GetDBPluginInfoAttributes();
     MUTEX_UNLOCK();
 
@@ -5657,7 +5717,7 @@ visit_ExportDatabase(PyObject *self, PyObject *args)
 // Purpose:
 //   Gets the write options for a DB plugin as a Dictionary.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Jeremy Meredith
 // Creation:   October 11, 2007
@@ -5678,7 +5738,7 @@ visit_GetExportOptions(PyObject *self, PyObject *args)
         return NULL;
 
     MUTEX_LOCK();
-        DBPluginInfoAttributes *dbplugininfo = 
+        DBPluginInfoAttributes *dbplugininfo =
                         GetViewerState()->GetDBPluginInfoAttributes();
     MUTEX_UNLOCK();
 
@@ -5955,48 +6015,76 @@ visit_SetPreferredFileFormats(PyObject *self, PyObject *args)
 }
 
 // ****************************************************************************
-// Function: visit_ConstructDDF
+// Function: visit_ConstructDataBinning
 //
 // Purpose:
-//     Tells the viewer to construct a DDF.
+//     Tells the viewer to construct a DataBinning.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Hank Childs
 // Creation:   Mon Feb 13 21:18:22 PST 2006
 //
 // Modifications:
-//   
+//
+//   Hank Childs, Sat Aug 21 14:20:04 PDT 2010
+//   Rename method: DDF to DataBinning.
+//
 // ****************************************************************************
 
 STATIC PyObject *
-visit_ConstructDDF(PyObject *self, PyObject *args)
+visit_ConstructDataBinning(PyObject *self, PyObject *args)
 {
     ENSURE_VIEWER_EXISTS();
 
-    PyObject *ddf_info = NULL;
+    PyObject *db_info = NULL;
     // Try and get the view pointer.
-    if(!PyArg_ParseTuple(args,"O",&ddf_info))
+    if(!PyArg_ParseTuple(args,"O",&db_info))
     {
-        VisItErrorFunc("ConstructDDF: Cannot parse object!");
+        VisItErrorFunc("ConstructDataBinning: Cannot parse object!");
         return NULL;
     }
-    if(!PyConstructDDFAttributes_Check(ddf_info))
+    if(!PyConstructDataBinningAttributes_Check(db_info))
     {
-        VisItErrorFunc("Argument is not a ConstructDDFAttributes object");
+        VisItErrorFunc("Argument is not a ConstructDataBinningAttributes object");
         return NULL;
     }
 
     MUTEX_LOCK();
-        ConstructDDFAttributes *va = PyConstructDDFAttributes_FromPyObject(ddf_info);
+        ConstructDataBinningAttributes *va = PyConstructDataBinningAttributes_FromPyObject(db_info);
 
-        // Copy the object into the constructDDF attributes.
-        *(GetViewerState()->GetConstructDDFAttributes()) = *va;
-        GetViewerState()->GetConstructDDFAttributes()->Notify();
-        GetViewerMethods()->ConstructDDF();
+        // Copy the object into the constructDataBinning attributes.
+        *(GetViewerState()->GetConstructDataBinningAttributes()) = *va;
+        GetViewerState()->GetConstructDataBinningAttributes()->Notify();
+        GetViewerMethods()->ConstructDataBinning();
     MUTEX_UNLOCK();
 
     return IntReturnValue(Synchronize());
+}
+
+// ****************************************************************************
+// Function: visit_ConstructDataBinningAttributes
+//
+// Purpose:
+//     Stub that returns an instance of ConstructDataBinningAttributes, used
+//     to when "ConstructDDFAttributes" is called to provide backward
+//     compatialibty with prev python API.
+//
+// Notes:
+//
+// Programmer: Cyrus Harrison
+// Creation:   Wed Aug 25 16:34:30 PDT 2010
+//
+// Modifications:
+//
+// ****************************************************************************
+
+STATIC PyObject *
+visit_ConstructDataBinningAttributes(PyObject *self, PyObject *args)
+{
+    ENSURE_VIEWER_EXISTS();
+
+    return PyConstructDataBinningAttributes_New();
 }
 
 // ****************************************************************************
@@ -6005,13 +6093,13 @@ visit_ConstructDDF(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to use the new axis array view we're giving it.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Jeremy Meredith
 // Creation:   February  4, 2008
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -6051,13 +6139,13 @@ visit_SetViewAxisArray(PyObject *self, PyObject *args)
 // Purpose:
 //   Returns the axis array view.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Jeremy Meredith
 // Creation:   February  4, 2008
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -6081,13 +6169,13 @@ visit_GetViewAxisArray(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to use the new curve view we're giving it.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Eric Brugger
 // Creation:   Wed Aug 20 14:20:25 PDT 2003
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -6126,13 +6214,13 @@ visit_SetViewCurve(PyObject *self, PyObject *args)
 // Purpose:
 //   Returns the curve view.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Eric Brugger
 // Creation:   Fri Aug 15 14:34:27 PDT 2003
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -6156,7 +6244,7 @@ visit_GetViewCurve(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to use the new 2D view we're giving it.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
@@ -6164,7 +6252,7 @@ visit_GetViewCurve(PyObject *self, PyObject *args)
 // Modifications:
 //   Eric Brugger, Wed Aug 20 14:20:25 PDT 2003
 //   Modified to handle a generic view attribute or a 2d view attribute.
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -6227,7 +6315,7 @@ visit_SetView2D(PyObject *self, PyObject *args)
 // Purpose:
 //   Returns the 2D view.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
@@ -6235,7 +6323,7 @@ visit_SetView2D(PyObject *self, PyObject *args)
 // Modifications:
 //   Eric Brugger, Wed Aug 20 14:20:25 PDT 2003
 //   Modify to return a 2d view attribute.
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -6259,7 +6347,7 @@ visit_GetView2D(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to use the 3D view we're giving it.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
@@ -6267,7 +6355,7 @@ visit_GetView2D(PyObject *self, PyObject *args)
 // Modifications:
 //   Eric Brugger, Wed Aug 20 14:20:25 PDT 2003
 //   Modified to handle a generic view attribute or a 3d view attribute.
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -6338,7 +6426,7 @@ visit_SetView3D(PyObject *self, PyObject *args)
 // Purpose:
 //   Returns the 3D view.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
@@ -6346,7 +6434,7 @@ visit_SetView3D(PyObject *self, PyObject *args)
 // Modifications:
 //   Eric Brugger, Wed Aug 20 14:20:25 PDT 2003
 //   Modify to return a 3d view attribute.
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -6370,13 +6458,13 @@ visit_GetView3D(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to clear the view keyframes for the active window.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Eric Brugger
 // Creation:   Fri Jan  3 16:18:44 PST 2003
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -6398,13 +6486,13 @@ visit_ClearViewKeyframes(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to delete a view keyframe from the active window.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Eric Brugger
 // Creation:   Fri Jan  3 16:18:44 PST 2003
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -6429,13 +6517,13 @@ visit_DeleteViewKeyframe(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to move a view keyframe for the active window.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Eric Brugger
 // Creation:   Tue Jan 28 13:53:33 PST 2003
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -6460,13 +6548,13 @@ visit_MoveViewKeyframe(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to set a view keyframe for the active window.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Eric Brugger
 // Creation:   Fri Jan  3 16:18:44 PST 2003
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -6485,16 +6573,16 @@ visit_SetViewKeyframe(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_SetViewExtentsType
 //
-// Purpose: 
+// Purpose:
 //   Sets the view extents type. This determines how the viewer sets the view.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Tue Sep 24 09:42:53 PDT 2002
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -6538,7 +6626,7 @@ visit_SetViewExtentsType(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_GetGlobalAttributes
 //
-// Purpose: 
+// Purpose:
 //   Returns a GlobalAttributes object with the current state of the active
 //   window.
 //
@@ -6546,7 +6634,7 @@ visit_SetViewExtentsType(PyObject *self, PyObject *args)
 // Creation:   Fri Mar 19 08:54:23 PDT 2004
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -6571,13 +6659,13 @@ visit_GetGlobalAttributes(PyObject *self, PyObject *args)
 //   Returns a window information object with the current state of the
 //   active window.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Tue Sep 24 09:45:07 PDT 2002
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -6602,13 +6690,13 @@ visit_GetWindowInformation(PyObject *self, PyObject *args)
 //   Returns a rendering attributes object with the current state of the
 //   active window.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Tue Sep 24 09:45:07 PDT 2002
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -6632,13 +6720,13 @@ visit_GetRenderingAttributes(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to use the rendering attributes we're giving it.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Tue Sep 24 09:51:19 PDT 2002
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -6675,14 +6763,14 @@ visit_SetRenderingAttributes(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_SetColorTexturingEnabled
 //
-// Purpose: 
+// Purpose:
 //   This function sets the color texturing mode in the rendering atts.
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Sep 18 11:36:24 PDT 2006
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -6711,7 +6799,7 @@ visit_SetColorTexturingEnabled(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to set the window mode.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon May 6 17:19:28 PST 2002
@@ -6720,12 +6808,12 @@ visit_SetColorTexturingEnabled(PyObject *self, PyObject *args)
 //   Brad Whitlock, Tue Sep 24 12:53:03 PDT 2002
 //   Cleared the error flag.
 //
-//   Kathleen Bonnell, Tue Jul 22 10:47:46 PDT 2003 
+//   Kathleen Bonnell, Tue Jul 22 10:47:46 PDT 2003
 //   Added zone pick, node pick and lineout, ensured mode numbers being
 //   set from string names is correct. (based on WindowActions).
 //
 //   Gunther H. Weber, Wed Mar 19 18:52:36 PDT 2008
-//   Added spreadsheet pick 
+//   Added spreadsheet pick
 //
 // ****************************************************************************
 
@@ -6773,7 +6861,7 @@ visit_SetWindowMode(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to enable or disable certain interactive tools.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon May 6 17:19:28 PST 2002
@@ -6816,7 +6904,7 @@ visit_EnableTool(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_ListPlots
 //
-// Purpose: 
+// Purpose:
 //   This is a Python callback that prints out the contents of the plot list.
 //
 // Programmer: John Bemis & Brad Whitlock
@@ -6956,7 +7044,7 @@ visit_ListPlots(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_GetPlotList
 //
-// Purpose: 
+// Purpose:
 //   This is a Python callback that gets the PlotList object
 //
 // Programmer: Brad Whitlock
@@ -6975,7 +7063,7 @@ visit_GetPlotList(PyObject *self, PyObject *args)
     MUTEX_LOCK();
         ret = PyPlotList_New();
         // Copy the plot list into the new object's PlotList object.
-        *PyPlotList_FromPyObject(ret) = 
+        *PyPlotList_FromPyObject(ret) =
             *GetViewerState()->GetPlotList();
 
     MUTEX_UNLOCK();
@@ -6990,13 +7078,13 @@ visit_GetPlotList(PyObject *self, PyObject *args)
 // Purpose:
 //   Returns a tuple containing the expressions.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Sean Ahern
 // Creation:   Fri Jun 28 16:02:21 PDT 2002
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 STATIC PyObject *
 visit_Expressions(PyObject *self, PyObject *args)
@@ -7027,7 +7115,7 @@ visit_Expressions(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_ResetOperatorOptions
 //
-// Purpose: 
+// Purpose:
 //   This is a Python callback that tells the viewer to reset the operator
 //   attributes for the specified operator type.
 //
@@ -7046,7 +7134,7 @@ visit_Expressions(PyObject *self, PyObject *args)
 //   Made it use the "enabled" plugin index instead the "all" index.
 //
 //   Gunther H. Weber, Tue Apr  1 15:46:53 PDT 2008
-//   Removed SetApplySelection() since we do not affect SIL selection 
+//   Removed SetApplySelection() since we do not affect SIL selection
 //
 //   Gunther H. Weber, Tue Apr  1 16:42:15 PDT 2008
 //   Save state of "apply operator toggle"
@@ -7117,7 +7205,7 @@ visit_ResetOperatorOptions(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_ResetPlotOptions
 //
-// Purpose: 
+// Purpose:
 //   This is a Python callback that tells the viewer to reset the plot
 //   attributes for the specified plot type.
 //
@@ -7184,7 +7272,7 @@ visit_ResetPlotOptions(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_SetActivePlots
 //
-// Purpose: 
+// Purpose:
 //   This is a Python callback that sets the active plots in the plot list.
 //
 // Note:       This function accepts a tuple or single int value.
@@ -7267,7 +7355,7 @@ visit_SetActivePlots(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_SetPlotDescription
 //
-// Purpose: 
+// Purpose:
 //   This is a Python callback that sets the plot description.
 //
 // Programmer: Brad Whitlock
@@ -7298,8 +7386,8 @@ visit_SetPlotDescription(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_MovePlotOrderTowardLast
 //
-// Purpose: 
-//   This is a Python callback that moves a plot toward the last index in the 
+// Purpose:
+//   This is a Python callback that moves a plot toward the last index in the
 //   plot list
 //
 // Programmer: Brad Whitlock
@@ -7329,8 +7417,8 @@ visit_MovePlotOrderTowardLast(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_MovePlotOrderTowardFirst
 //
-// Purpose: 
-//   This is a Python callback that moves a plot toward the First index in the 
+// Purpose:
+//   This is a Python callback that moves a plot toward the First index in the
 //   plot list
 //
 // Programmer: Brad Whitlock
@@ -7360,8 +7448,8 @@ visit_MovePlotOrderTowardFirst(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_SetPlotOrderToLast
 //
-// Purpose: 
-//   This is a Python callback that moves a plot toward the last index in the 
+// Purpose:
+//   This is a Python callback that moves a plot toward the last index in the
 //   plot list
 //
 // Programmer: Brad Whitlock
@@ -7391,8 +7479,8 @@ visit_SetPlotOrderToLast(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_SetPlotOrderToFirst
 //
-// Purpose: 
-//   This is a Python callback that moves a plot toward the First index in the 
+// Purpose:
+//   This is a Python callback that moves a plot toward the First index in the
 //   plot list
 //
 // Programmer: Brad Whitlock
@@ -7427,7 +7515,7 @@ visit_SetPlotOrderToFirst(PyObject *self, PyObject *args)
 //   AttributeSubject that is copied to the appropriate operator attributes
 //   and applied to the active plots.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Tue Sep 4 15:30:50 PST 2001
@@ -7447,7 +7535,7 @@ visit_SetPlotOrderToFirst(PyObject *self, PyObject *args)
 //   Made it use the "enabled" plugin index instead the "all" index.
 //
 //   Gunther H. Weber, Tue Apr  1 15:46:53 PDT 2008
-//   Removed SetApplySelection() since we do not affect SIL selection 
+//   Removed SetApplySelection() since we do not affect SIL selection
 //
 //   Gunther H. Weber, Tue Apr  1 16:42:15 PDT 2008
 //   Save state of "apply operator toggle"
@@ -7588,15 +7676,15 @@ visit_SetOperatorOptions(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to promote, demote, or remove operators.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Thu Apr 17 15:39:18 PST 2003
 //
 // Modifications:
-//    
+//
 //   Gunther H. Weber, Tue Apr  1 15:46:53 PDT 2008
-//   Removed SetApplySelection() since we do not affect SIL selection 
+//   Removed SetApplySelection() since we do not affect SIL selection
 //
 //   Gunther H. Weber, Tue Apr  1 16:42:15 PDT 2008
 //   Save state of "apply operator toggle"
@@ -7656,14 +7744,14 @@ PromoteDemoteRemoveOperatorHelper(PyObject *self, PyObject *args, int option)
 // ****************************************************************************
 // Method: visit_PromoteOperator
 //
-// Purpose: 
+// Purpose:
 //   Tells the viewer to promote an operator.
 //
 // Programmer: Brad Whitlock
 // Creation:   Thu Apr 17 15:42:12 PST 2003
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -7675,14 +7763,14 @@ visit_PromoteOperator(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Method: visit_DemoteOperator
 //
-// Purpose: 
+// Purpose:
 //   Tells the viewer to demote an operator.
 //
 // Programmer: Brad Whitlock
 // Creation:   Thu Apr 17 15:42:12 PST 2003
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -7694,14 +7782,14 @@ visit_DemoteOperator(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Method: visit_RemoveOperator
 //
-// Purpose: 
+// Purpose:
 //   Tells the viewer to promote an operator.
 //
 // Programmer: Brad Whitlock
 // Creation:   Thu Apr 17 15:42:12 PST 2003
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -7718,7 +7806,7 @@ visit_RemoveOperator(PyObject *self, PyObject *args)
 //   AttributeSubject that is copied to the appropriate operator attributes
 //   and used to set the default attributes.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Tue Sep 4 15:30:50 PST 2001
@@ -7807,7 +7895,7 @@ visit_SetDefaultOperatorOptions(PyObject *self, PyObject *args)
 //   AttributeSubject that is copied to the appropriate plot attributes and
 //   used to set the default attributes.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Tue Sep 4 15:30:50 PST 2001
@@ -7896,7 +7984,7 @@ visit_SetDefaultPlotOptions(PyObject *self, PyObject *args)
 //   AttributeSubject that is copied to the appropriate plot attributes and
 //   applied to the active plots.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Tue Sep 4 15:30:50 PST 2001
@@ -7975,16 +8063,16 @@ visit_SetPlotOptions(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Method: visit_GetPlotOptions
 //
-// Purpose: 
+// Purpose:
 //   Returns a copy of the plot options for the first active plot or the first
 //   plot if no plots are active.
 //
 // Arguments:
 //
-// Returns:    A PyObject copy of the plot attributes or None if there are 
+// Returns:    A PyObject copy of the plot attributes or None if there are
 //             no plots.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Fri Feb 15 10:09:18 PST 2008
@@ -8031,16 +8119,16 @@ visit_GetPlotOptions(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Method: visit_GetOperatorOptions
 //
-// Purpose: 
-//   Returns a copy of the operator options for i'th operator in the the first 
+// Purpose:
+//   Returns a copy of the operator options for i'th operator in the the first
 //   active plot or the first plot if no plots are active.
 //
 // Arguments:
 //
-// Returns:    A PyObject copy of the operator attributes or None if there are 
+// Returns:    A PyObject copy of the operator attributes or None if there are
 //             no plots.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Fri Feb 15 10:09:18 PST 2008
@@ -8122,7 +8210,7 @@ visit_GetOperatorOptions(PyObject *self, PyObject *args)
                     }
                     activeOperatorIds[plotIndex] = operatorIndex;
                     expandedPlots[plotIndex] = 1;
-                    GetViewerMethods()->SetActivePlots(activePlots, 
+                    GetViewerMethods()->SetActivePlots(activePlots,
                         activeOperatorIds, expandedPlots);
 
                     // Wait for the selected operator attributes to come back.
@@ -8130,19 +8218,19 @@ visit_GetOperatorOptions(PyObject *self, PyObject *args)
                     Synchronize();
                     MUTEX_LOCK();
 
-                    // Create the current operator attributes since they've now 
+                    // Create the current operator attributes since they've now
                     // come back for the selected operator
                     AttributeSubject *opAtts = GetViewerState()->
                         GetOperatorAttributes(operatorType);
                     retval = GetPyObjectPluginAttributes(opAtts, true, GetViewerProxy());
 
-                    // Restore the active operator and plot expansion for the 
+                    // Restore the active operator and plot expansion for the
                     // affected plot.
                     debug3 << "GetOperatorOptions: Restoring the active operator."
                            << endl;
                     activeOperatorIds[plotIndex] = plCopy[plotIndex].GetActiveOperator();
                     expandedPlots[plotIndex] = plCopy[plotIndex].GetExpandedFlag()?1:0;
-                    GetViewerMethods()->SetActivePlots(activePlots, 
+                    GetViewerMethods()->SetActivePlots(activePlots,
                         activeOperatorIds, expandedPlots);
 
                     // Wait for the old operator attributes to come back.
@@ -8167,7 +8255,7 @@ visit_GetOperatorOptions(PyObject *self, PyObject *args)
 // Purpose:
 //   Sets the SIL restriction for the selected plots.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Tue Dec 18 11:55:02 PDT 2001
@@ -8186,7 +8274,7 @@ visit_GetOperatorOptions(PyObject *self, PyObject *args)
 //   Changed how the applyToAllPlots works a little.
 //
 //   Gunther H. Weber, Tue Apr  1 15:46:53 PDT 2008
-//   Removed SetApplyOperator() since we do not affect operators 
+//   Removed SetApplyOperator() since we do not affect operators
 //
 //   Gunther H. Weber, Tue Apr  1 16:50:33 PDT 2008
 //   Restore state of setApplySelection toggle
@@ -8254,15 +8342,15 @@ visit_SetPlotSILRestriction(PyObject *self, PyObject *args)
 // Purpose:
 //   Returns the pick output for the active window.
 //
-// Notes:      
+// Notes:
 //
-// Programmer: Kathleen Bonnell 
-// Creation:   May 14, 2003 
+// Programmer: Kathleen Bonnell
+// Creation:   May 14, 2003
 //
 // Modifications:
 //   Kathleen Bonnell, Tue May  4 14:44:33 PDT 2004
 //   Use PickAtts' error message if available.
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -8283,7 +8371,7 @@ visit_GetPickOutput(PyObject *self, PyObject *args)
             pickOut = pa->GetErrorMessage();
         else
             pickOut = "Either no Pick has been performed, "
-                      "or the last Pick was invalid.\n"; 
+                      "or the last Pick was invalid.\n";
     }
     return PyString_FromString(pickOut.c_str());
 }
@@ -8294,13 +8382,13 @@ visit_GetPickOutput(PyObject *self, PyObject *args)
 // Purpose:
 //   Returns the query output as a string for the active window.
 //
-// Notes:      
+// Notes:
 //
-// Programmer: Kathleen Bonnell 
-// Creation:   July 11, 2003 
+// Programmer: Kathleen Bonnell
+// Creation:   July 11, 2003
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -8321,14 +8409,14 @@ visit_GetQueryOutputString(PyObject *self, PyObject *args)
 // Purpose:
 //   Returns the query output value for the active window.
 //
-// Notes:      
+// Notes:
 //
-// Programmer: Kathleen Bonnell 
-// Creation:   July 11, 2003 
+// Programmer: Kathleen Bonnell
+// Creation:   July 11, 2003
 //
 // Modifications:
 //   Kathleen Bonnell, Wed Nov 12 17:55:14 PST 2003
-//   If the query returned multiple values, return them in a python tuple. 
+//   If the query returned multiple values, return them in a python tuple.
 //
 // ****************************************************************************
 
@@ -8392,7 +8480,7 @@ visit_GetQueryOutputXML(PyObject *self, PyObject *args)
 //
 //
 // Programmer: Cyrus Harrison
-// Creation:   December 17, 2007 
+// Creation:   December 17, 2007
 //
 // ****************************************************************************
 
@@ -8413,21 +8501,21 @@ visit_GetQueryOutputObject(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Method: visit_GetPlotInformation
 //
-// Purpose: 
+// Purpose:
 //   Returns a dictionary of information created from the first active plot's
 //   plot info attributes.
 //
 // Arguments:
 //
-// Returns:    
+// Returns:
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Jan  7 10:23:43 PST 2009
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -8448,7 +8536,7 @@ visit_GetPlotInformation(PyObject *self, PyObject *args)
             const Plot &p = pL->GetPlots(i);
             if(p.GetActiveFlag())
             {
-                plotType = p.GetPlotType(); 
+                plotType = p.GetPlotType();
                 break;
             }
         }
@@ -8470,7 +8558,7 @@ visit_GetPlotInformation(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: ListCategoryHelper
 //
-// Purpose: 
+// Purpose:
 //   This is a helper function that lists the members of a category like
 //   domains or materials.
 //
@@ -8481,13 +8569,13 @@ visit_GetPlotInformation(PyObject *self, PyObject *args)
 // Creation:   Wed Nov 13 13:30:52 PST 2002
 //
 // Modifications:
-//   
+//
 //   Hank Childs, Mon Dec  2 14:11:12 PST 2002
 //   Use reference counted SIL restrictions to meet new interface.
 //
-//   Kathleen Bonnell, Thu Jul 21 13:11:49 PDT 2005 
+//   Kathleen Bonnell, Thu Jul 21 13:11:49 PDT 2005
 //   Removed test for number of maps, so that domains can still be listed
-//   even with the presense of groups in the data. 
+//   even with the presense of groups in the data.
 //
 //   Hank Childs, Tue Dec 15 13:40:40 PST 2009
 //   Adapt to new SIL interface.
@@ -8512,7 +8600,7 @@ ListCategoryHelper(SILCategoryRole role)
                 int nsets = collection->GetNumberOfSubsets();
                 if(nsets > 0)
                 {
-                    if(collection->GetSupersetIndex() == silr->GetTopSet()) 
+                    if(collection->GetSupersetIndex() == silr->GetTopSet())
                     {
                         printf("%s:\n", collection->GetCategory().c_str());
                         for(int j = 0; j < nsets; ++j)
@@ -8536,7 +8624,7 @@ ListCategoryHelper(SILCategoryRole role)
 // ****************************************************************************
 // Function: GetCategoryTupleHelper
 //
-// Purpose: 
+// Purpose:
 //   Returns a tuple of the names of the sets that belong to a certain category.
 //
 // Arguments:
@@ -8544,13 +8632,13 @@ ListCategoryHelper(SILCategoryRole role)
 //
 // Returns:    A Python tuple of strings.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Nov 13 13:31:46 PST 2002
 //
 // Modifications:
-//   
+//
 //   Hank Childs, Mon Dec  2 14:11:12 PST 2002
 //   Use reference counted SIL restrictions to meet new interface.
 //
@@ -8611,7 +8699,7 @@ GetCategoryTupleHelper(SILCategoryRole role)
 // ****************************************************************************
 // Function: TurnOnOffHelper
 //
-// Purpose: 
+// Purpose:
 //   This is a helper function for turning sets on and off in the SIL restriction.
 //
 // Arguments:
@@ -8634,12 +8722,12 @@ GetCategoryTupleHelper(SILCategoryRole role)
 //   I made it return a boolean value indicating whether or not there were
 //   errors.
 //
-//   Kathleen Bonnell, Thu Jul 21 13:11:49 PDT 2005 
+//   Kathleen Bonnell, Thu Jul 21 13:11:49 PDT 2005
 //   Removed test for number of maps, so that domains can still be turned
-//   on/off even with the presense of groups in the data. 
+//   on/off even with the presense of groups in the data.
 //
 //   Gunther H. Weber, Tue Apr  1 15:46:53 PDT 2008
-//   Removed SetApplyOperator() since we do not affect operators 
+//   Removed SetApplyOperator() since we do not affect operators
 //
 //   Gunther H. Weber, Tue Apr  1 16:50:33 PDT 2008
 //   Restore state of setApplySelection toggle
@@ -8664,7 +8752,7 @@ TurnOnOffHelper(SILCategoryRole role, bool val, const stringVector &names)
             int nsets = collection->GetNumberOfSubsets();
             if(nsets > 0)
             {
-                if(collection->GetSupersetIndex() == silr->GetTopSet()) 
+                if(collection->GetSupersetIndex() == silr->GetTopSet())
                 {
                     silr->SuspendCorrectnessChecking();
 
@@ -8698,7 +8786,7 @@ TurnOnOffHelper(SILCategoryRole role, bool val, const stringVector &names)
                     else if(val)
                         silr->TurnOnAll();
                     else
-                        silr->TurnOffAll();                    
+                        silr->TurnOffAll();
 
                     silr->EnableCorrectnessChecking();
                     break;
@@ -8725,7 +8813,7 @@ TurnOnOffHelper(SILCategoryRole role, bool val, const stringVector &names)
 // ****************************************************************************
 // Function: GetNamesHelper
 //
-// Purpose: 
+// Purpose:
 //   Reads the names of the sets that we want to turn on/off.
 //
 // Arguments:
@@ -8733,13 +8821,13 @@ TurnOnOffHelper(SILCategoryRole role, bool val, const stringVector &names)
 //
 // Returns:    true if the arguments were okay; false otherwise.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Nov 13 13:34:34 PST 2002
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 bool
@@ -8784,7 +8872,7 @@ GetNamesHelper(PyObject *self, PyObject *args, stringVector &names)
 // ****************************************************************************
 // Function: TurnCategoryHelper
 //
-// Purpose: 
+// Purpose:
 //   This is a helper function for turning categories on/off.
 //
 // Arguments:
@@ -8793,7 +8881,7 @@ GetNamesHelper(PyObject *self, PyObject *args, stringVector &names)
 //
 // Returns:    Whether or not the SIL was successfully changed.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Nov 13 13:35:43 PST 2002
@@ -8838,14 +8926,14 @@ TurnCategoryHelper(PyObject *self, PyObject *args, SILCategoryRole role, bool va
 // ****************************************************************************
 // Function: visit_TurnMaterialsOn
 //
-// Purpose: 
+// Purpose:
 //   Turns materials on.
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Nov 13 13:37:16 PST 2002
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -8859,14 +8947,14 @@ visit_TurnMaterialsOn(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_TurnMaterialsOff
 //
-// Purpose: 
+// Purpose:
 //   Turns materials off.
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Nov 13 13:37:16 PST 2002
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -8880,14 +8968,14 @@ visit_TurnMaterialsOff(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_TurnDomainsOn
 //
-// Purpose: 
+// Purpose:
 //   Turns domains on.
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Nov 13 13:37:16 PST 2002
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -8901,14 +8989,14 @@ visit_TurnDomainsOn(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_TurnDomainsOff
 //
-// Purpose: 
+// Purpose:
 //   Turns domains off.
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Nov 13 13:37:16 PST 2002
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -8922,14 +9010,14 @@ visit_TurnDomainsOff(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_ListMaterials
 //
-// Purpose: 
+// Purpose:
 //   Prints a list of materials for the selected plot.
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Nov 13 07:46:34 PDT 2002
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -8947,14 +9035,14 @@ visit_ListMaterials(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_GetMaterials
 //
-// Purpose: 
+// Purpose:
 //   Returns a tuple of material names for the selected plot.
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Nov 13 13:37:16 PST 2002
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -8969,14 +9057,14 @@ visit_GetMaterials(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_ListDomains
 //
-// Purpose: 
+// Purpose:
 //   Prints a list of domains for the selected plot.
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Nov 13 07:46:34 PDT 2002
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -8994,14 +9082,14 @@ visit_ListDomains(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_GetDomains
 //
-// Purpose: 
+// Purpose:
 //   Returns a tuple of domain names for the selected plot.
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Nov 13 13:37:16 PST 2002
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -9019,13 +9107,13 @@ visit_GetDomains(PyObject *self, PyObject *args)
 // Purpose:
 //   Returns a tuple containins the names of the colortables.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -9058,13 +9146,13 @@ visit_ColorTableNames(PyObject *self, PyObject *args)
 // Purpose:
 //   Returns the number of colortables.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -9085,7 +9173,7 @@ visit_NumColorTables(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to set a new active continuous colortable.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
@@ -9121,13 +9209,13 @@ visit_SetActiveContinuousColorTable(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to set a new active discrete colortable.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Tue Dec 3 11:08:02 PDT 2002
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -9155,13 +9243,13 @@ visit_SetActiveDiscreteColorTable(PyObject *self, PyObject *args)
 // Purpose:
 //   Returns the active continuous colortable.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -9181,13 +9269,13 @@ visit_GetActiveContinuousColorTable(PyObject *self, PyObject *args)
 // Purpose:
 //   Returns the active discrete colortable.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Tue Dec 3 11:10:10 PDT 2002
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -9205,14 +9293,14 @@ visit_GetActiveDiscreteColorTable(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Method: visit_AddColorTable
 //
-// Purpose: 
+// Purpose:
 //   Adds a color control point list as a new color table.
 //
 // Programmer: Brad Whitlock
 // Creation:   Tue Mar 13 16:15:25 PST 2007
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -9253,14 +9341,14 @@ visit_AddColorTable(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Method: visit_RemoveColorTable
 //
-// Purpose: 
+// Purpose:
 //   Removes a color table.
 //
 // Programmer: Brad Whitlock
 // Creation:   Tue Mar 13 16:17:33 PST 2007
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -9287,16 +9375,16 @@ visit_RemoveColorTable(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Method: visit_ColorTable
 //
-// Purpose: 
+// Purpose:
 //   Gets the named color table definition.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Tue Jul 3 16:26:42 PST 2007
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -9341,13 +9429,13 @@ visit_SetColorTable(PyObject *self, PyObject *args)
 // Purpose:
 //   Returns the number of plots in the active window.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -9365,7 +9453,7 @@ visit_GetNumPlots(PyObject *self, PyObject *args)
 // Purpose:
 //   Returns a tuple containing the plot plugin names.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
@@ -9373,7 +9461,7 @@ visit_GetNumPlots(PyObject *self, PyObject *args)
 // Modifications:
 //   Brad Whitlock, Tue Jun 24 12:20:37 PDT 2008
 //   Get the plugin manager via the viewer proxy.
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -9405,7 +9493,7 @@ visit_PlotPlugins(PyObject *self, PyObject *args)
 // Purpose:
 //   Returns the number of plot plugins.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
@@ -9413,7 +9501,7 @@ visit_PlotPlugins(PyObject *self, PyObject *args)
 // Modifications:
 //   Brad Whitlock, Tue Jun 24 12:20:37 PDT 2008
 //   Get the plugin manager via the viewer proxy.
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -9435,13 +9523,13 @@ visit_NumPlotPlugins(PyObject *self, PyObject *args)
 // Purpose:
 //   Returns a tuple containing the names of the operator plugins.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
 //
 // Modifications:
-//   
+//
 //   Jeremy Meredith, Tue Jun 17 17:41:04 PDT 2003
 //   Made it use the "enabled" plugin index instead the "all" index.
 //
@@ -9480,13 +9568,13 @@ visit_OperatorPlugins(PyObject *self, PyObject *args)
 //   Returns a tuple containing the names of queries that can be used with
 //   the Query command.
 //
-// Notes:      
+// Notes:
 //
-// Programmer: Kathleen Bonnell 
-// Creation:   November 12, 2003 
+// Programmer: Kathleen Bonnell
+// Creation:   November 12, 2003
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -9499,7 +9587,7 @@ visit_Queries(PyObject *self, PyObject *args)
 
     // We only want to include Database queries, so count them.
     intVector types = GetViewerState()->GetQueryList()->GetTypes();
-    int nQueries = 0; 
+    int nQueries = 0;
     for(int i = 0; i < types.size(); ++i)
     {
         if (types[i] == QueryList::DatabaseQuery)
@@ -9531,16 +9619,16 @@ visit_Queries(PyObject *self, PyObject *args)
 //   Returns a tuple containing the names of queries that can be used with
 //   the QueryOverTime command.
 //
-// Notes:      
+// Notes:
 //
-// Programmer: Kathleen Bonnell 
-// Creation:   March 23, 2004 
+// Programmer: Kathleen Bonnell
+// Creation:   March 23, 2004
 //
 // Modifications:
 //   Kathleen Bonnell, Tue Nov  8 10:45:43 PST 2005
 //   Reflect changes to QueryList: QueryTime is now QueryMode, and
 //   has three values, QueryOnly, QueryAndTime, and TimeOnly.
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -9554,10 +9642,10 @@ visit_QueriesOverTime(PyObject *self, PyObject *args)
     // We only want to include Database time queries, so count them.
     intVector types = GetViewerState()->GetQueryList()->GetTypes();
     intVector mode = GetViewerState()->GetQueryList()->GetQueryMode();
-    int nQueries = 0; 
+    int nQueries = 0;
     for(int i = 0; i < types.size(); ++i)
     {
-        if (types[i] == QueryList::DatabaseQuery && 
+        if (types[i] == QueryList::DatabaseQuery &&
             mode[i] != QueryList::QueryOnly )
             nQueries++;
     }
@@ -9567,7 +9655,7 @@ visit_QueriesOverTime(PyObject *self, PyObject *args)
 
     for(int j = 0, k = 0; j < queries.size(); ++j)
     {
-        if (types[j] == QueryList::DatabaseQuery && 
+        if (types[j] == QueryList::DatabaseQuery &&
             mode[j] != QueryList::QueryOnly)
         {
             PyObject *dval = PyString_FromString(queries[j].c_str());
@@ -9587,7 +9675,7 @@ visit_QueriesOverTime(PyObject *self, PyObject *args)
 // Purpose:
 //   Returns the number of operator plugins.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
@@ -9595,7 +9683,7 @@ visit_QueriesOverTime(PyObject *self, PyObject *args)
 // Modifications:
 //   Brad Whitlock, Tue Jun 24 12:20:37 PDT 2008
 //   Get the plugin manager via the viewer proxy.
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -9616,7 +9704,7 @@ visit_NumOperatorPlugins(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to print the active window.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Feb 20 14:04:50 PST 2002
@@ -9644,14 +9732,14 @@ visit_PrintWindow(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_SetWindowArea
 //
-// Purpose: 
+// Purpose:
 //   This a Python callback that sets the viewer's window area (its workspace)
 //
 // Programmer: Brad Whitlock
 // Creation:   Thu Feb 21 16:55:16 PST 2002
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -9676,7 +9764,7 @@ visit_SetWindowArea(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to change the animation timeout
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Fri Aug 16 15:01:39 PST 2002
@@ -9714,16 +9802,16 @@ visit_SetAnimationTimeout(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_GetAnimationTimeout
 //
-// Purpose: 
+// Purpose:
 //   Returns the animation timeout.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Fri Aug 16 15:04:56 PST 2002
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -9740,7 +9828,7 @@ visit_GetAnimationTimeout(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer whether or not to cache animations.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Fri Aug 16 15:01:39 PST 2002
@@ -9772,16 +9860,16 @@ visit_SetPipelineCachingMode(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_GetPipelineCachingMode
 //
-// Purpose: 
+// Purpose:
 //   Returns the pipeline caching mode.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Fri Aug 16 15:04:56 PST 2002
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -9906,7 +9994,7 @@ visit_SaveAttribute(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_SetLight
 //
-// Purpose: 
+// Purpose:
 //   Sets a light by index (0..7)
 //
 // Programmer: Jeremy Meredith
@@ -9932,8 +10020,8 @@ visit_SetLight(PyObject *self, PyObject *args)
     if (index == 0 && !light->GetEnabledFlag())
     {
         light->SetEnabledFlag(true);
-        cerr << "Warning:  Cannot un-enable light 0.  To turn off lighting " 
-             << "for all plots, change light 0 type to Ambient." << endl; 
+        cerr << "Warning:  Cannot un-enable light 0.  To turn off lighting "
+             << "for all plots, change light 0 type to Ambient." << endl;
     }
     MUTEX_LOCK();
     LightList *lightlist = GetViewerState()->GetLightList();
@@ -9948,7 +10036,7 @@ visit_SetLight(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_GetLight
 //
-// Purpose: 
+// Purpose:
 //   Gets a light by index (0..7)
 //
 // Programmer: Jeremy Meredith
@@ -9983,7 +10071,7 @@ visit_GetLight(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_Source
 //
-// Purpose: 
+// Purpose:
 //   This is a Python callback that opens a Python file and executes it.
 //
 // Programmer: John Bemis & Brad Whitlock
@@ -10004,7 +10092,7 @@ visit_GetLight(PyObject *self, PyObject *args)
 //   Added book keeping to track execution stack of source files.
 //
 //   Cyrus Harrison, Wed Sep 30 07:53:17 PDT 2009
-//   Added spoofing of __name__ for Source() executiuon so we can use 
+//   Added spoofing of __name__ for Source() executiuon so we can use
 //   standard python check:
 //     if __name__ == "__main__"
 //   To delineate between '-s' and sourced scripts.
@@ -10090,14 +10178,14 @@ visit_Source(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_ToggleMaintainViewMode
 //
-// Purpose: 
+// Purpose:
 //   Tells the viewer whether or not it should maintain the view limits.
 //
 // Programmer: Eric Brugger
 // Creation:   Fri Apr 18 17:03:31 PDT 2003
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -10116,14 +10204,14 @@ visit_ToggleMaintainViewMode(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_ToggleLockTime
 //
-// Purpose: 
+// Purpose:
 //   Tells the viewer to toggle time locking for the active vis window.
 //
 // Programmer: Brad Whitlock
 // Creation:   Tue Mar 23 16:04:03 PST 2004
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -10142,14 +10230,14 @@ visit_ToggleLockTime(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_ToggleLockTools
 //
-// Purpose: 
+// Purpose:
 //   Tells the viewer to toggle tool locking for the active vis window.
 //
 // Programmer: Brad Whitlock
 // Creation:   Thu Mar 17 10:15:55 PDT 2005
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -10171,13 +10259,13 @@ visit_ToggleLockTools(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to toggle its bbox mode.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon May 6 17:19:28 PST 2002
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -10199,13 +10287,13 @@ visit_ToggleBoundingBoxMode(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to lock current window's view.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon May 6 17:19:28 PST 2002
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -10227,13 +10315,13 @@ visit_ToggleLockViewMode(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to toggle the spin mode for the active window.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Thu Jun 27 16:51:17 PST 2002
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -10255,13 +10343,13 @@ visit_ToggleSpinMode(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to toggle the camera view mode for the active window.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Eric Brugger
 // Creation:   Fri Jan  3 16:18:44 PST 2003
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -10281,14 +10369,14 @@ visit_ToggleCameraViewMode(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_ToggleFullFrameMode
 //
-// Purpose: 
+// Purpose:
 //   Tells the viewer whether or not it should use full frame mode.
 //
-// Programmer: Kathleen Bonnell 
-// Creation:   May 13, 2003 
+// Programmer: Kathleen Bonnell
+// Creation:   May 13, 2003
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -10310,13 +10398,13 @@ visit_ToggleFullFrameMode(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to undo the last view operation.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -10338,13 +10426,13 @@ visit_UndoView(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to redo the last view operation.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Tue Mar 7 16:39:03 PST 2006
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -10366,13 +10454,13 @@ visit_RedoView(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to write its config file.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -10395,27 +10483,27 @@ visit_WriteConfigFile(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to do a query.
 //
-// Notes:      
+// Notes:
 //
-// Programmer: Kathleen Bonnell 
-// Creation:   July 11, 2003 
+// Programmer: Kathleen Bonnell
+// Creation:   July 11, 2003
 //
 // Modifications:
 //   Kathleen Bonnell, Wed Jul 23 17:37:33 PDT 2003
 //   Allow for two optional integer args.
 //
-//   Kathleen Bonnell, Tue Dec  2 07:34:48 PST 2003  
-//   Parse correctly if only 1 integer argument is given. Use new helper 
+//   Kathleen Bonnell, Tue Dec  2 07:34:48 PST 2003
+//   Parse correctly if only 1 integer argument is given. Use new helper
 //   method ParseTupleForVars.
 //
-//   Kathleen Bonnell, Wed Dec  3 13:11:34 PST 2003 
+//   Kathleen Bonnell, Wed Dec  3 13:11:34 PST 2003
 //   Allow "original" and "actual" to substitute in the vars arg for arg1.
 //
 //   Brad Whitlock, Tue Mar 2 10:12:44 PDT 2004
 //   Made it use GetStringVectorFromPyObject.
 //
-//   Kathleen Bonnell, Thu Apr 22 15:28:31 PDT 2004 
-//   Changed arg1 default to 1 (is used to specify 'actual' data). 
+//   Kathleen Bonnell, Thu Apr 22 15:28:31 PDT 2004
+//   Changed arg1 default to 1 (is used to specify 'actual' data).
 //
 //   Kathleen Bonnell, Tue Aug 24 15:31:56 PDT 2004
 //   Changed arg1 default to 0 (is used to specify 'original' data).
@@ -10434,7 +10522,7 @@ visit_WriteConfigFile(PyObject *self, PyObject *args)
 //
 //   Dave Bremer, Fri Jan 19 16:46:19 PST 2007
 //   Patched to call PyErr_Clear() after each failed attempt to parse
-//   the tuple.  
+//   the tuple.
 //
 //   Cyrus Harrison, Tue Dec 18 21:06:34 PST 2007
 //   Added support for Shapelet Decomposition, removed nested parsing
@@ -10444,12 +10532,15 @@ visit_WriteConfigFile(PyObject *self, PyObject *args)
 //   Fixed parsing conflict.
 //
 //   Cyrus Harrison, Thu Jan  3 11:42:16 PST 2008
-//   Another stab at fixing the parsing conflict. 
+//   Another stab at fixing the parsing conflict.
 //
 //   Eric Brugger, Mon May 11 12:06:33 PDT 2009
 //   I added parsing that would allow the Hohlraum flux query to take an
 //   optional second integer value that would control if it used the emissivity
 //   divided by the absortivity in place of the emissivity.
+//
+//   Eric Brugger, Wed Jun 30 14:17:49 PDT 2010
+//   I added support for parsing the x ray image query.
 //
 // ****************************************************************************
 
@@ -10472,6 +10563,35 @@ visit_Query(PyObject *self, PyObject *args)
                                      &tuple);
     if(!parse_success)
     {
+        // Handle the x ray image query.
+        char *imageType = NULL;
+        PyErr_Clear();
+        darg1.resize(3);
+        darg2.resize(6);
+        parse_success = PyArg_ParseTuple(args, "ssiddddddddd|O", &queryName,
+                                         &imageType, &arg2,
+                                         &(darg1[0]), &(darg1[1]), &(darg1[2]),
+                                         &(darg2[0]), &(darg2[1]), &(darg2[2]),
+                                         &(darg2[3]), &(darg2[4]), &(darg2[5]),
+                                         &tuple);
+        if (parse_success)
+        {
+            arg1 = 2;
+            if (strcmp(imageType, "bmp") == 0)
+                arg1 = 0;
+            else if (strcmp(imageType, "jpeg") == 0)
+                arg1 = 1;
+            else if (strcmp(imageType, "png") == 0)
+                arg1 = 2;
+            else if (strcmp(imageType, "tiff") == 0)
+                arg1 = 3;
+            else if (strcmp(imageType, "rawfloats") == 0)
+                arg1 = 4;
+        }
+    }
+
+    if(!parse_success)
+    {
         PyErr_Clear();
         darg1.resize(3);
         darg2.resize(3);
@@ -10487,7 +10607,7 @@ visit_Query(PyObject *self, PyObject *args)
         darg1.resize(1);
         darg2.resize(1);
         parse_success = PyArg_ParseTuple(args, "siidd|O", &queryName, &arg1,
-                                         &arg2, &(darg1[0]), &(darg2[0]), 
+                                         &arg2, &(darg1[0]), &(darg2[0]),
                                          &tuple);
     }
     
@@ -10497,7 +10617,7 @@ visit_Query(PyObject *self, PyObject *args)
         PyErr_Clear();
         darg1.resize(1);
         darg2.resize(0);
-        parse_success = PyArg_ParseTuple(args, "sdis|O", &queryName, 
+        parse_success = PyArg_ParseTuple(args, "sdis|O", &queryName,
                                          &(darg1[0]), &arg1, &output_name,
                                          &tuple);
     }
@@ -10506,7 +10626,7 @@ visit_Query(PyObject *self, PyObject *args)
     if(!parse_success)
     {
         PyErr_Clear();
-        parse_success = PyArg_ParseTuple(args, "sdi|O", &queryName, 
+        parse_success = PyArg_ParseTuple(args, "sdi|O", &queryName,
                                          &(darg1[0]), &arg1, &tuple);
     }
 
@@ -10610,6 +10730,8 @@ visit_Query(PyObject *self, PyObject *args)
 // Creation:   Wed Mar 17 11:07:35 PDT 2010
 //
 // Modifications:
+//  Cyrus Harrison, Fri Jul  9 11:49:44 PDT 2010
+//  Support passing of arbitary arguments via "args" keyword.
 //
 // ****************************************************************************
 
@@ -10621,16 +10743,19 @@ visit_PythonQuery(PyObject *self, PyObject *args, PyObject *kwargs)
     char     *source_text   = NULL;
     char     *source_file   = NULL;
     PyObject *py_vars_tuple = NULL;
+    PyObject *py_args       = NULL;
 
-    static char *kwlist[] = {"source", "file", "vars",NULL};
+    static char *kwlist[] = {"source", "file", "vars","args",NULL};
 
     // keyword arguments
     // source: string containg the python filter source
     // file: string containing the location of a script file
     // vars: tuple containing variable names
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|ssO", kwlist,
-                                     &source_text, &source_file, &py_vars_tuple))
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|ssOO", kwlist,
+                                     &source_text, &source_file,
+                                     &py_vars_tuple,
+                                     &py_args))
         return NULL;
 
     stringVector vars;
@@ -10638,6 +10763,27 @@ visit_PythonQuery(PyObject *self, PyObject *args, PyObject *kwargs)
     if(py_vars_tuple != NULL)
     {
         GetStringVectorFromPyObject(py_vars_tuple, vars);
+    }
+
+    if(py_args != NULL)
+    {
+        debug5 << "Using passed 'args' as Python Query arguments" << endl;
+        if(!pickleReady)
+            PickleInit();
+        PyObject *res = PyObject_CallFunctionObjArgs(pickleDumps,py_args,NULL);
+        if(res == NULL)
+        {
+            PyErr_SetString(VisItError,
+                            "PythonQuery: Failed to pickle passed 'args' value.");
+            return NULL;
+        }
+        char *res_str = PyString_AS_STRING(res);
+        vars.push_back(res_str);
+    }
+    else
+    {
+        // if there were no args, use blank string as a place holder.
+        vars.push_back("");
     }
 
     if(source_text != NULL)
@@ -10844,15 +10990,15 @@ visit_SuppressQueryOutputOn(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_SuppressQueryOutputOff
 //
-// Purpose: 
+// Purpose:
 //   Turns off the suppression of query output (the automatic printing
-//   of the QueryOutput string.) 
+//   of the QueryOutput string.)
 //
-// Programmer: Kathleen Bonnell 
-// Creation:   July 27, 2005 
+// Programmer: Kathleen Bonnell
+// Creation:   July 27, 2005
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -10910,17 +11056,17 @@ visit_SetQueryFloatFormat(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to do a time-query.
 //
-// Notes:      
+// Notes:
 //
-// Programmer: Kathleen Bonnell 
-// Creation:   March 23, 2004 
+// Programmer: Kathleen Bonnell
+// Creation:   March 23, 2004
 //
 // Modifications:
-//   Kathleen Bonnell, Thu Apr 22 15:28:31 PDT 2004 
-//   Changed arg1 default to 1 (is used to specify 'actual' data). 
+//   Kathleen Bonnell, Thu Apr 22 15:28:31 PDT 2004
+//   Changed arg1 default to 1 (is used to specify 'actual' data).
 //
-//   Kathleen Bonnell, Wed Feb 23 11:23:23 PST 2005 
-//   Changed arg1 default to 0 (is used to specify 'original' data). 
+//   Kathleen Bonnell, Wed Feb 23 11:23:23 PST 2005
+//   Changed arg1 default to 0 (is used to specify 'original' data).
 //
 //   Brad Whitlock, Tue Jan 10 14:04:35 PST 2006
 //   Changed logging.
@@ -10985,7 +11131,7 @@ visit_QueryOverTime(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to do pick.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Fri Sep 6 14:45:46 PST 2002
@@ -10994,13 +11140,13 @@ visit_QueryOverTime(PyObject *self, PyObject *args)
 //   Brad Whitlock, Fri Dec 27 11:18:44 PDT 2002
 //   I made it package the pick arguments in a stringVector.
 //
-//   Kathleen Bonnell, Mon Jun 30 10:48:25 PDT 2003  
-//   Allow the vars tuple argument to be optional. 
+//   Kathleen Bonnell, Mon Jun 30 10:48:25 PDT 2003
+//   Allow the vars tuple argument to be optional.
 //
-//   Kathleen Bonnell, Wed Jul 23 13:05:01 PDT 2003 
-//   Allow pick coordinates to be expressed in a tuple (world Pick). 
+//   Kathleen Bonnell, Wed Jul 23 13:05:01 PDT 2003
+//   Allow pick coordinates to be expressed in a tuple (world Pick).
 //
-//   Kathleen Bonnell, Tue Dec  2 07:34:48 PST 2003  
+//   Kathleen Bonnell, Tue Dec  2 07:34:48 PST 2003
 //   Use new helper method ParseTupleForVars.
 //
 //   Brad Whitlock, Tue Mar 2 10:11:57 PDT 2004
@@ -11049,7 +11195,7 @@ visit_Pick(PyObject *self, PyObject *args)
     MUTEX_LOCK();
         if (!wp)
             GetViewerMethods()->Pick(x, y, vars);
-        else 
+        else
             GetViewerMethods()->Pick(pt,  vars);
 
         char tmp[1024];
@@ -11069,16 +11215,16 @@ visit_Pick(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to do NodePick.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Kathleen Bonnell
-// Creation:   June 25, 2003 
+// Creation:   June 25, 2003
 //
 // Modifications:
-//   Kathleen Bonnell, Wed Jul 23 13:05:01 PDT 2003 
-//   Allow pick coordinates to be expressed in a tuple (world Pick). 
+//   Kathleen Bonnell, Wed Jul 23 13:05:01 PDT 2003
+//   Allow pick coordinates to be expressed in a tuple (world Pick).
 //
-//   Kathleen Bonnell, Tue Dec  2 07:34:48 PST 2003  
+//   Kathleen Bonnell, Tue Dec  2 07:34:48 PST 2003
 //   Use new helper method ParseTupleForVars.
 //
 //   Brad Whitlock, Tue Mar 2 10:10:45 PDT 2004
@@ -11105,7 +11251,7 @@ visit_NodePick(PyObject *self, PyObject *args)
             return NULL;
         }
         wp = true;
-        PyErr_Clear(); 
+        PyErr_Clear();
     }
     // Extract the world-coordinate point from the first object.
     double pt[3] = {0.,0.,0.};
@@ -11126,7 +11272,7 @@ visit_NodePick(PyObject *self, PyObject *args)
     MUTEX_LOCK();
         if (!wp)
             GetViewerMethods()->NodePick(x, y, vars);
-        else 
+        else
             GetViewerMethods()->NodePick(pt, vars);
 
         char tmp[1024];
@@ -11143,9 +11289,9 @@ visit_NodePick(PyObject *self, PyObject *args)
 // Function: visit_ResetPickLetter
 //
 // Purpose:
-//   Tells the viewer to reset the pick letter used in pick output. 
+//   Tells the viewer to reset the pick letter used in pick output.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Kathleen Bonnell
 // Creation:   December 9, 2003
@@ -11168,15 +11314,48 @@ visit_ResetPickLetter(PyObject *self, PyObject *args)
 }
 
 // ****************************************************************************
+// Function: visit_RenamePickLabel
+//
+// Purpose:
+//   Tells the viewer to rename the pick label in the visual cue.
+//
+// Notes:
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri Aug 27 10:33:33 PDT 2010
+//
+// Modifications:
+//
+// ****************************************************************************
+
+STATIC PyObject *
+visit_RenamePickLabel(PyObject *self, PyObject *args)
+{
+    ENSURE_VIEWER_EXISTS();
+
+    char *oldLabel = NULL, *newLabel = NULL;
+    if(!PyArg_ParseTuple(args,"ss",&oldLabel, &newLabel))
+    {
+        return NULL;
+    }
+
+    MUTEX_LOCK();
+        GetViewerMethods()->RenamePickLabel(oldLabel, newLabel);
+    MUTEX_UNLOCK();
+
+    return IntReturnValue(Synchronize());
+}
+
+// ****************************************************************************
 // Function: visit_ResetLineoutColor
 //
 // Purpose:
-//   Tells the viewer to reset the color used in lineout. 
+//   Tells the viewer to reset the color used in lineout.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Kathleen Bonnell
-// Creation:   August 5, 2005 
+// Creation:   August 5, 2005
 //
 // Modifications:
 //
@@ -11199,9 +11378,9 @@ visit_ResetLineoutColor(PyObject *self, PyObject *args)
 // Function: visit_ResetPickAttributes
 //
 // Purpose:
-//   Tells the viewer to reset the new pick attributes to default. 
+//   Tells the viewer to reset the new pick attributes to default.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Kathleen Bonnell
 // Creation:   December 1, 2003
@@ -11229,10 +11408,10 @@ visit_ResetPickAttributes(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to use the new pick attributes we're sending.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Kathleen Bonnell
-// Creation:   June 30, 2003 
+// Creation:   June 30, 2003
 //
 // Modifications:
 //
@@ -11275,13 +11454,13 @@ visit_SetPickAttributes(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to save the default pick attributes.
 //
-// Notes:      
+// Notes:
 //
-// Programmer: Kathleen Bonnell 
-// Creation:   December 9, 2003 
+// Programmer: Kathleen Bonnell
+// Creation:   December 9, 2003
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -11320,13 +11499,13 @@ visit_SetDefaultPickAttributes(PyObject *self, PyObject *args)
 // Purpose:
 //   Returns the current pick attributes.
 //
-// Notes:      
+// Notes:
 //
-// Programmer: Kathleen Bonnell 
-// Creation:   June 30, 2003 
+// Programmer: Kathleen Bonnell
+// Creation:   June 30, 2003
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -11349,12 +11528,12 @@ visit_GetPickAttributes(PyObject *self, PyObject *args)
 // Function: visit_ResetInteractorAttributes
 //
 // Purpose:
-//   Tells the viewer to reset the new interactor attributes to default. 
+//   Tells the viewer to reset the new interactor attributes to default.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Kathleen Bonnell
-// Creation:   August 16, 2004 
+// Creation:   August 16, 2004
 //
 // Modifications:
 //
@@ -11380,10 +11559,10 @@ visit_ResetInteractorAttributes(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to use the new Interactor attributes we're sending.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Kathleen Bonnell
-// Creation:   August 16, 2004 
+// Creation:   August 16, 2004
 //
 // Modifications:
 //
@@ -11426,13 +11605,13 @@ visit_SetInteractorAttributes(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to save the default interactor attributes.
 //
-// Notes:      
+// Notes:
 //
-// Programmer: Kathleen Bonnell 
-// Creation:   August 16, 2004 
+// Programmer: Kathleen Bonnell
+// Creation:   August 16, 2004
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -11471,13 +11650,13 @@ visit_SetDefaultInteractorAttributes(PyObject *self, PyObject *args)
 // Purpose:
 //   Returns the current interactor attributes.
 //
-// Notes:      
+// Notes:
 //
-// Programmer: Kathleen Bonnell 
+// Programmer: Kathleen Bonnell
 // Creation:   August 16, 2004
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -11500,12 +11679,12 @@ visit_GetInteractorAttributes(PyObject *self, PyObject *args)
 // Function: visit_ResetQueryOverTimeAttributes
 //
 // Purpose:
-//   Tells the viewer to reset the time query attributes to default. 
+//   Tells the viewer to reset the time query attributes to default.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Kathleen Bonnell
-// Creation:   March 30, 2004 
+// Creation:   March 30, 2004
 //
 // Modifications:
 //
@@ -11530,10 +11709,10 @@ visit_ResetQueryOverTimeAttributes(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to use the time query attributes we're sending.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Kathleen Bonnell
-// Creation:   March 30, 2004 
+// Creation:   March 30, 2004
 //
 // Modifications:
 //
@@ -11558,7 +11737,7 @@ visit_SetQueryOverTimeAttributes(PyObject *self, PyObject *args)
     }
 
     MUTEX_LOCK();
-        QueryOverTimeAttributes *tqa = 
+        QueryOverTimeAttributes *tqa =
             PyQueryOverTimeAttributes_FromPyObject(queryOverTime);
 
         // Copy the object into the pick attributes.
@@ -11577,13 +11756,13 @@ visit_SetQueryOverTimeAttributes(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to save the default time query attributes.
 //
-// Notes:      
+// Notes:
 //
-// Programmer: Kathleen Bonnell 
-// Creation:   March 30, 2004 
+// Programmer: Kathleen Bonnell
+// Creation:   March 30, 2004
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -11605,7 +11784,7 @@ visit_SetDefaultQueryOverTimeAttributes(PyObject *self, PyObject *args)
     }
 
     MUTEX_LOCK();
-        QueryOverTimeAttributes *tqa = 
+        QueryOverTimeAttributes *tqa =
             PyQueryOverTimeAttributes_FromPyObject(queryOverTime);
 
         // Copy the object into the time query attributes.
@@ -11623,13 +11802,13 @@ visit_SetDefaultQueryOverTimeAttributes(PyObject *self, PyObject *args)
 // Purpose:
 //   Returns the current time query attributes.
 //
-// Notes:      
+// Notes:
 //
-// Programmer: Kathleen Bonnell 
-// Creation:   March 30, 2004 
+// Programmer: Kathleen Bonnell
+// Creation:   March 30, 2004
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -11654,10 +11833,10 @@ visit_GetQueryOverTimeAttributes(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to use the global lineout attributes we're sending.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Kathleen Bonnell
-// Creation:   July 22, 2004 
+// Creation:   July 22, 2004
 //
 // Modifications:
 //
@@ -11682,7 +11861,7 @@ visit_SetGlobalLineoutAttributes(PyObject *self, PyObject *args)
     }
 
     MUTEX_LOCK();
-        GlobalLineoutAttributes *gla = 
+        GlobalLineoutAttributes *gla =
             PyGlobalLineoutAttributes_FromPyObject(globalLineout);
 
         // Copy the object into the global lineout attributes.
@@ -11701,13 +11880,13 @@ visit_SetGlobalLineoutAttributes(PyObject *self, PyObject *args)
 // Purpose:
 //   Returns the current global lineout attributes.
 //
-// Notes:      
+// Notes:
 //
-// Programmer: Kathleen Bonnell 
-// Creation:   July 22, 2004 
+// Programmer: Kathleen Bonnell
+// Creation:   July 22, 2004
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -11732,25 +11911,25 @@ visit_GetGlobalLineoutAttributes(PyObject *self, PyObject *args)
 // Purpose:
 //   The generic method for PickByZone, PickByNode.
 //
-// Notes:      
+// Notes:
 //
-// Programmer: Kathleen Bonnell 
+// Programmer: Kathleen Bonnell
 // Creation:   December 1, 2003
 //
 // Modifications:
 //   Kathleen Bonnell, Thu Apr  1 20:12:56 PST 2004
-//   New bool arg required by PointQuery. 
+//   New bool arg required by PointQuery.
 //
-//   Kathleen Bonnell, Tue Jun  1 08:29:54 PDT 2004 
-//   Swapped order of dom/el in args list, and in call to PointQuery. 
+//   Kathleen Bonnell, Tue Jun  1 08:29:54 PDT 2004
+//   Swapped order of dom/el in args list, and in call to PointQuery.
 //
-//   Kathleen Bonnell, Thu Dec 16 17:31:10 PST 2004 
-//   Added bool arg, indicating of node/zone is global or not. 
+//   Kathleen Bonnell, Thu Dec 16 17:31:10 PST 2004
+//   Added bool arg, indicating of node/zone is global or not.
 //
 // ****************************************************************************
 
 STATIC PyObject *
-visit_DomainPick(const char *type, int el, int dom, stringVector vars, 
+visit_DomainPick(const char *type, int el, int dom, stringVector vars,
                  bool doGlobal)
 {
     double pt[3] = {0., 0., 0};
@@ -11768,19 +11947,19 @@ visit_DomainPick(const char *type, int el, int dom, stringVector vars,
 // Function: visit_PickByZone
 //
 // Purpose:
-//   Tells the viewer to perform Pick via domain and zone. 
+//   Tells the viewer to perform Pick via domain and zone.
 //
-// Notes:      
+// Notes:
 //
-// Programmer: Kathleen Bonnell 
+// Programmer: Kathleen Bonnell
 // Creation:   December 1, 2003
 //
 // Modifications:
 //   Brad Whitlock, Tue Mar 2 09:59:30 PDT 2004
 //   I made it use GetStringVectorFromPyObject. which is slightly more general.
 //
-//   Kathleen Bonnell, Tue Jun  1 08:29:54 PDT 2004 
-//   Swapped order of dom/zone in call to DomainPick. 
+//   Kathleen Bonnell, Tue Jun  1 08:29:54 PDT 2004
+//   Swapped order of dom/zone in call to DomainPick.
 //
 //   Jeremy Meredith, Thu Aug  7 15:06:45 EDT 2008
 //   Change string literals to const char*'s.
@@ -11801,7 +11980,7 @@ visit_PickByZone(PyObject *self, PyObject *args)
         {
             return NULL;
         }
-        PyErr_Clear(); 
+        PyErr_Clear();
     }
 
     // Check the tuple argument.
@@ -11816,11 +11995,11 @@ visit_PickByZone(PyObject *self, PyObject *args)
 // Function: visit_PickByGlobalZone
 //
 // Purpose:
-//   Tells the viewer to perform Pick via global zone id. 
+//   Tells the viewer to perform Pick via global zone id.
 //
-// Notes:      
+// Notes:
 //
-// Programmer: Kathleen Bonnell 
+// Programmer: Kathleen Bonnell
 // Creation:   December 16, 2004
 //
 // Modifications:
@@ -11855,19 +12034,19 @@ visit_PickByGlobalZone(PyObject *self, PyObject *args)
 // Function: visit_PickByNode
 //
 // Purpose:
-//   Tells the viewer to perform Pick via domain and node. 
+//   Tells the viewer to perform Pick via domain and node.
 //
-// Notes:      
+// Notes:
 //
-// Programmer: Kathleen Bonnell 
+// Programmer: Kathleen Bonnell
 // Creation:   December 1, 2003
 //
 // Modifications:
 //   Brad Whitlock, Tue Mar 2 09:59:30 PDT 2004
 //   I made it use GetStringVectorFromPyObject. which is slightly more general.
 //
-//   Kathleen Bonnell, Tue Jun  1 08:29:54 PDT 2004 
-//   Swapped order of dom/node in call to DomainPick. 
+//   Kathleen Bonnell, Tue Jun  1 08:29:54 PDT 2004
+//   Swapped order of dom/node in call to DomainPick.
 //
 //   Jeremy Meredith, Thu Aug  7 15:06:45 EDT 2008
 //   Change string literals to const char*'s.
@@ -11887,7 +12066,7 @@ visit_PickByNode(PyObject *self, PyObject *args)
         {
             return NULL;
         }
-        PyErr_Clear(); 
+        PyErr_Clear();
     }
 
     // Check the tuple argument.
@@ -11903,11 +12082,11 @@ visit_PickByNode(PyObject *self, PyObject *args)
 // Function: visit_PickByGlobalNode
 //
 // Purpose:
-//   Tells the viewer to perform Pick via global node id. 
+//   Tells the viewer to perform Pick via global node id.
 //
-// Notes:      
+// Notes:
 //
-// Programmer: Kathleen Bonnell 
+// Programmer: Kathleen Bonnell
 // Creation:   December 16, 2004
 //
 // Modifications:
@@ -11944,7 +12123,7 @@ visit_PickByGlobalNode(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to perform a lineout.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Fri Sep 6 14:44:58 PST 2002
@@ -11953,23 +12132,23 @@ visit_PickByGlobalNode(PyObject *self, PyObject *args)
 //    Brad Whitlock, Fri Dec 27 11:20:46 PDT 2002
 //    I changed the routine so its arguments are world coordinates.
 //
-//    Kathleen Bonnell, Wed Jul 23 17:37:33 PDT 2003 
+//    Kathleen Bonnell, Wed Jul 23 17:37:33 PDT 2003
 //    Allow an optional integer argument for samples.
 //
-//    Kathleen Bonnell, Tue Dec  2 07:34:48 PST 2003  
+//    Kathleen Bonnell, Tue Dec  2 07:34:48 PST 2003
 //    Use new helper method ParseTupleForVars.
 //
-//    Kathleen Bonnell, Fri Mar  5 16:07:06 PST 2004 
-//    Set ApplyOperator (to all plots ) to false. 
+//    Kathleen Bonnell, Fri Mar  5 16:07:06 PST 2004
+//    Set ApplyOperator (to all plots ) to false.
 //
 //    Brad Whitlock, Tue Mar 2 10:08:54 PDT 2004
 //    I made it use GetDoubleArrayFromPyObject and GetStringVectorFromPyObject.
 //
-//    Kathleen Bonnell, Tue May 15 10:36:47 PDT 2007 
-//    Added haveSamples. 
+//    Kathleen Bonnell, Tue May 15 10:36:47 PDT 2007
+//    Added haveSamples.
 //
 //   Gunther H. Weber, Tue Apr  1 15:46:53 PDT 2008
-//   Removed SetApplySelection() since we do not affect SIL selection 
+//   Removed SetApplySelection() since we do not affect SIL selection
 //
 //   Gunther H. Weber, Tue Apr  1 16:42:15 PDT 2008
 //   Save state of "apply operator toggle"
@@ -12034,7 +12213,7 @@ visit_Lineout(PyObject *self, PyObject *args)
     GetStringVectorFromPyObject(tuple, vars);
 
     MUTEX_LOCK();
-        // Lineout should not be applied to more than one plot at a time. 
+        // Lineout should not be applied to more than one plot at a time.
         bool applyOperatorSave = GetViewerState()->GetGlobalAttributes()->GetApplyOperator();
         GetViewerState()->GetGlobalAttributes()->SetApplyOperator(false);
         GetViewerState()->GetGlobalAttributes()->Notify();
@@ -12059,7 +12238,7 @@ visit_Lineout(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: UpdateAnnotationsHelper
 //
-// Purpose: 
+// Purpose:
 //   This is a helper function that is called when setting the attributes
 //   of an annotation object. The purpose is to send the annotation
 //   object list to the viewer.
@@ -12084,7 +12263,7 @@ UpdateAnnotationHelper(AnnotationObject *annot)
     // Make sure that the annotation object annot is in the localObjectMap.
     debug1 << "Searching for " << annot->GetObjectName()
            << " in the local object map... ";
-    std::map<std::string, AnnotationObjectRef>::iterator pos = 
+    std::map<std::string, AnnotationObjectRef>::iterator pos =
         localObjectMap.find(annot->GetObjectName());
 
     if(pos == localObjectMap.end())
@@ -12116,7 +12295,7 @@ UpdateAnnotationHelper(AnnotationObject *annot)
 
             if(viewerAnnot.GetObjectName() == annot->GetObjectName())
             {
-                found = true;                
+                found = true;
 
                 debug1 << mName << "Sending annotation object "
                        << annot->GetObjectName() << "'s attributes to the viewer."
@@ -12150,7 +12329,7 @@ UpdateAnnotationHelper(AnnotationObject *annot)
 // ****************************************************************************
 // Function: DeleteAnnotationObjectHelper
 //
-// Purpose: 
+// Purpose:
 //   This method is called by AnnotationObject wrapper classes so they can
 //   delete themselces from the annotation object list.
 //
@@ -12163,7 +12342,7 @@ UpdateAnnotationHelper(AnnotationObject *annot)
 // Modifications:
 //   Brad Whitlock, Tue Mar 13 11:01:38 PDT 2007
 //   Updated due to code generation changes.
-//   
+//
 // ****************************************************************************
 
 bool
@@ -12180,7 +12359,7 @@ DeleteAnnotationObjectHelper(AnnotationObject *annot)
     // Reduce the reference count.
     debug1 << mName << "Looking for annotation object "
            << annot->GetObjectName() << " in the local object map...";
-    std::map<std::string, AnnotationObjectRef>::iterator pos = 
+    std::map<std::string, AnnotationObjectRef>::iterator pos =
         localObjectMap.find(annot->GetObjectName());
     if(pos != localObjectMap.end())
     {
@@ -12245,7 +12424,7 @@ DeleteAnnotationObjectHelper(AnnotationObject *annot)
 // ****************************************************************************
 // Function: CreateAnnotationWrapper
 //
-// Purpose: 
+// Purpose:
 //   Factory method for creating annotation wrapper objects.
 //
 // Arguments:
@@ -12315,7 +12494,7 @@ CreateAnnotationWrapper(AnnotationObject *annot)
 // ****************************************************************************
 // Function: visit_CreateAnnotationObject
 //
-// Purpose: 
+// Purpose:
 //   Creates an annotation object of the named type.
 //
 // Programmer: Brad Whitlock
@@ -12443,7 +12622,7 @@ visit_CreateAnnotationObject(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_GetAnnotationObject
 //
-// Purpose: 
+// Purpose:
 //   Creates an annotation wrapper object for the i'th annotation.
 //
 // Programmer: Brad Whitlock
@@ -12452,7 +12631,7 @@ visit_CreateAnnotationObject(PyObject *self, PyObject *args)
 // Modifications:
 //   Brad Whitlock, Thu Mar 22 03:24:48 PDT 2007
 //   Rewrote for new annotation object scheme.
-//  
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -12481,7 +12660,7 @@ visit_GetAnnotationObject(PyObject *self, PyObject *args)
 
     if(useIndex)
     {
-        if(annotIndex >= 0 && 
+        if(annotIndex >= 0 &&
            annotIndex < GetViewerState()->GetAnnotationObjectList()->GetNumAnnotations())
         {
             debug1 << mName << "Look in the map for an object that has index equal to "
@@ -12517,7 +12696,7 @@ visit_GetAnnotationObject(PyObject *self, PyObject *args)
     {
         debug1 << mName << "Look in the map for an object called "
                << annotName << endl;
-        std::map<std::string, AnnotationObjectRef>::iterator pos = 
+        std::map<std::string, AnnotationObjectRef>::iterator pos =
             localObjectMap.find(annotName);
         if(pos != localObjectMap.end())
         {
@@ -12582,13 +12761,13 @@ visit_GetAnnotationObject(PyObject *self, PyObject *args)
 // Purpose:
 //   Returns a tuple containing the annotation object names.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Fri Mar 23 18:24:31 PST 2007
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -12623,11 +12802,11 @@ visit_GetAnnotationObjectNames(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_GetProcessAttributes
 //
-// Purpose: Gets Unix process attributes for a visit component by name 
+// Purpose: Gets Unix process attributes for a visit component by name
 //
-// Programmer: Mark C. Miller 
-// Creation:   Tuesday, January 18, 2005 
-//   
+// Programmer: Mark C. Miller
+// Creation:   Tuesday, January 18, 2005
+//
 // Modifications:
 //   Jeremy Meredith, Thu Aug  7 15:06:45 EDT 2008
 //   Change string literals to const char*'s.
@@ -12707,8 +12886,8 @@ visit_GetProcessAttributes(PyObject *self, PyObject *args)
 //          of the active window.
 //
 // Programmer: Mark C. Miller
-// Creation:   November 6, 2005 
-//   
+// Creation:   November 6, 2005
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -12732,8 +12911,8 @@ visit_GetMeshManagementAttributes(PyObject *self, PyObject *args)
 // Purpose: Tells the viewer to use the mesh management attributes we're
 //          giving it.
 //
-// Programmer: Mark C. Miller 
-// Creation:   November 5, 2005 
+// Programmer: Mark C. Miller
+// Creation:   November 5, 2005
 //
 // ****************************************************************************
 
@@ -12773,7 +12952,7 @@ visit_SetMeshManagementAttributes(PyObject *self, PyObject *args)
 //
 // Purpose: Tells the viewer to save the default mesh management attributes.
 //
-// Programmer: Mark C. Miller 
+// Programmer: Mark C. Miller
 // Creation:   November 15, 2005
 //
 // ****************************************************************************
@@ -12811,14 +12990,14 @@ visit_SetDefaultMeshManagementAttributes(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_ApplyNamedSelection
 //
-// Purpose: 
+// Purpose:
 //   Tells the viewer to apply a named selection to the current plot.
 //
 // Programmer: Hank Childs
 // Creation:   January 28, 2009
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -12842,7 +13021,7 @@ visit_ApplyNamedSelection(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_CreateNamedSelection
 //
-// Purpose: 
+// Purpose:
 //   Tells the viewer to make a named selection out of the elements in the
 //   current plot.
 //
@@ -12850,7 +13029,7 @@ visit_ApplyNamedSelection(PyObject *self, PyObject *args)
 // Creation:   January 28, 2009
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -12874,14 +13053,14 @@ visit_CreateNamedSelection(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_DeleteNamedSelection
 //
-// Purpose: 
+// Purpose:
 //   Tells the viewer to delete a named selection.
 //
 // Programmer: Hank Childs
 // Creation:   January 28, 2009
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -12903,9 +13082,40 @@ visit_DeleteNamedSelection(PyObject *self, PyObject *args)
 }
 
 // ****************************************************************************
-// Function: visit_LoadNamedSelection
+// Function: visit_UpdateNamedSelection
 //
 // Purpose: 
+//   Tells the viewer to update a named selection.
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri Aug 13 14:39:21 PDT 2010
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+STATIC PyObject *
+visit_UpdateNamedSelection(PyObject *self, PyObject *args)
+{
+    ENSURE_VIEWER_EXISTS();
+
+    char *selName;
+    if (!PyArg_ParseTuple(args, "s", &selName))
+       return NULL;
+
+    // Activate the database.
+    MUTEX_LOCK();
+        GetViewerMethods()->UpdateNamedSelection(selName);
+    MUTEX_UNLOCK();
+
+    // Return the success value.
+    return IntReturnValue(Synchronize());
+}
+
+// ****************************************************************************
+// Function: visit_LoadNamedSelection
+//
+// Purpose:
 //   Tells the viewer to load a named selection from a file.
 //
 // Programmer: Hank Childs
@@ -12914,7 +13124,7 @@ visit_DeleteNamedSelection(PyObject *self, PyObject *args)
 // Modifications:
 //    Gunther H. Weber, Mon Apr  6 18:55:15 PDT 2009
 //    Pass engine and simulation name to LoadNamedSelection RPC.
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -12985,7 +13195,7 @@ visit_LoadNamedSelection(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_SaveNamedSelection
 //
-// Purpose: 
+// Purpose:
 //   Tells the viewer to save the named selection to a file.
 //
 // Programmer: Hank Childs
@@ -12994,6 +13204,10 @@ visit_LoadNamedSelection(PyObject *self, PyObject *args)
 // Modifications:
 //    Gunther H. Weber, Mon Apr  6 18:55:15 PDT 2009
 //    Pass engine and simulation name to SaveNamedSelection RPC.
+//
+//    Brad Whitlock, Wed Aug 11 15:22:47 PDT 2010
+//    Ignore the engine and sim name since they're implicitly associated with
+//    a plot which has an engine.
 //
 // ****************************************************************************
 
@@ -13016,45 +13230,47 @@ visit_SaveNamedSelection(PyObject *self, PyObject *args)
                 return NULL;
 
             PyErr_Clear();
-            // Indicate that we want to close the first engine in the list.
-            useFirstEngine = true;
         }
         else
         {
             PyErr_Clear();
-            // Indicate that we want to close the first simulation on that host
-            useFirstSimulation = true;
         }
     }
 
     // Activate the database.
     MUTEX_LOCK();
-        if(useFirstEngine)
-        {
-            const stringVector &engines = GetViewerState()->GetEngineList()->GetEngines();
-            const stringVector &sims = GetViewerState()->GetEngineList()->GetSimulationName();
-            if(engines.size() > 0)
-            {
-                engineName = engines[0].c_str();
-                simulationName = sims[0].c_str();
-            }
-        }
-        else if (useFirstSimulation)
-        {
-            const stringVector &engines = GetViewerState()->GetEngineList()->GetEngines();
-            const stringVector &sims = GetViewerState()->GetEngineList()->GetSimulationName();
-            for (int i=0; i<engines.size(); i++)
-            {
-                if (engines[i] == engineName)
-                {
-                    simulationName = sims[i].c_str();
-                    break;
-                }
-            }
-        }
+        GetViewerMethods()->SaveNamedSelection(selName);
+    MUTEX_UNLOCK();
 
-        if (engineName != 0 && simulationName != 0)
-            GetViewerMethods()->SaveNamedSelection(selName, engineName, simulationName);
+    // Return the success value.
+    return IntReturnValue(Synchronize());
+}
+
+// ****************************************************************************
+// Function: visit_SetNamedSelectionAutoApply
+//
+// Purpose: 
+//   Tells the viewer to set the named selection auto apply mode.
+//
+// Programmer: Brad Whitlock
+// Creation:   Wed Aug 11 16:05:26 PDT 2010
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+STATIC PyObject *
+visit_SetNamedSelectionAutoApply(PyObject *self, PyObject *args)
+{
+    ENSURE_VIEWER_EXISTS();
+
+    int apply = 0;
+    if (!PyArg_ParseTuple(args, "i", &apply))
+       return NULL;
+
+    // Activate the database.
+    MUTEX_LOCK();
+        GetViewerMethods()->SetNamedSelectionAutoApply(apply != 0);
     MUTEX_UNLOCK();
 
     // Return the success value.
@@ -13067,7 +13283,7 @@ visit_SaveNamedSelection(PyObject *self, PyObject *args)
 // Purpose:
 //   Tells the viewer to send a command to the simulation
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Cihan Altinay
 // Creation:   October 28, 2009
@@ -13106,14 +13322,14 @@ visit_SendSimulationCommand(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_Argv
 //
-// Purpose: 
+// Purpose:
 //   Returns all arguments after the -s script.py argument.
 //
 // Programmer: Brad Whitlock
 // Creation:   Fri Jun 8 10:43:56 PDT 2007
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -13140,11 +13356,11 @@ visit_Argv(PyObject *self, PyObject *args)
 //
 // Purpose: Load the ultra command wrapper, which runs until 'quit' is entered.
 //
-// Programmer: Kathleen Bonnell 
+// Programmer: Kathleen Bonnell
 // Creation:   November 19, 2008
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 STATIC PyObject *
 visit_SetUltraScript(PyObject *self, PyObject *args)
@@ -13153,11 +13369,11 @@ visit_SetUltraScript(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "s", &sname))
     {
         PyErr_Clear();
-        ultraScriptFile = ""; 
+        ultraScriptFile = "";
     }
     else
     {
-        ultraScriptFile = sname; 
+        ultraScriptFile = sname;
     }
     return PyInt_FromLong(1);
 }
@@ -13173,7 +13389,7 @@ visit_LoadUltra(PyObject *self, PyObject *args)
 {
     NO_ARGUMENTS();
 
-    string parserFile = string(getenv("VISITULTRAHOME")) + 
+    string parserFile = string(getenv("VISITULTRAHOME")) +
                         string("/ultraparse.py");
 
     PyObject *argTuple = PyTuple_New(1);
@@ -13186,7 +13402,7 @@ visit_LoadUltra(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: PopulateMethodArgs
 //
-// Purpose: 
+// Purpose:
 //   Recurses and populates the client method arguments from the python
 //   object provided.
 //
@@ -13196,13 +13412,13 @@ visit_LoadUltra(PyObject *self, PyObject *args)
 //
 // Returns:    false if there was an error.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed May 4 17:38:04 PST 2005
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 static bool
@@ -13247,7 +13463,7 @@ PopulateMethodArgs(ClientMethod *m, PyObject *obj)
 // ****************************************************************************
 // Function: visit_ClientMethod
 //
-// Purpose: 
+// Purpose:
 //   Tells VisIt to execute a client method.
 //
 // Programmer: Brad Whitlock
@@ -13307,7 +13523,7 @@ visit_ClientMethod(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_RegisterMacro
 //
-// Purpose: 
+// Purpose:
 //   Gives a function a name that can be called from the VisIt GUI.
 //
 // Programmer: Brad Whitlock
@@ -13316,7 +13532,7 @@ visit_ClientMethod(PyObject *self, PyObject *args)
 // Modifications:
 //   Brad Whitlock, Mon Apr 7 11:43:40 PDT 2008
 //   Use a mutex to access ClientMethod so it can't be overwritten by thread 2.
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -13374,7 +13590,7 @@ visit_RegisterMacro(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_ExecuteMacro
 //
-// Purpose: 
+// Purpose:
 //   Calls a function registered with RegisterMacro.
 //
 // Programmer: Brad Whitlock
@@ -13384,7 +13600,7 @@ visit_RegisterMacro(PyObject *self, PyObject *args)
 //   Brad Whitlock, Mon Apr 7 11:43:40 PDT 2008
 //   Use a mutex to access macroFunctions. Guard against the Python callback
 //   returning NULL somehow.
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -13427,7 +13643,7 @@ visit_ExecuteMacro(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Function: visit_ClearMacro
 //
-// Purpose: 
+// Purpose:
 //   Gives a function a name that can be called from the VisIt GUI.
 //
 // Programmer: Brad Whitlock
@@ -13435,7 +13651,7 @@ visit_ExecuteMacro(PyObject *self, PyObject *args)
 //
 // Modifications:
 //   Brad Whitlock, Mon Apr 7 11:50:24 PDT 2008
-//   Access macroFunctions and ClientMethod with a mutex to protect against 
+//   Access macroFunctions and ClientMethod with a mutex to protect against
 //   thread 2.
 //
 // ****************************************************************************
@@ -13472,8 +13688,8 @@ visit_ClearMacros(PyObject *self, PyObject *args)
 //
 // Purpose: set suppression level for status messages generated by viewer
 //
-// Programmer: Mark C. Miller 
-// Creation:   Tue Nov 27 10:01:03 PST 2007 
+// Programmer: Mark C. Miller
+// Creation:   Tue Nov 27 10:01:03 PST 2007
 //
 // ****************************************************************************
 
@@ -13493,7 +13709,7 @@ visit_SuppressMessages(PyObject *self, PyObject *args)
 // ****************************************************************************
 // Method: ENSURE_CALLBACK_MANAGER_EXISTS
 //
-// Purpose: 
+// Purpose:
 //   Creates the callback manager if it does not already exist.
 //
 // Programmer: Brad Whitlock
@@ -13524,7 +13740,7 @@ ENSURE_CALLBACK_MANAGER_EXISTS()
 // ****************************************************************************
 // Method: visit_GetCallbackNames
 //
-// Purpose: 
+// Purpose:
 //   Get the names of the available objects on which the user can set callback
 //   functions.
 //
@@ -13532,7 +13748,7 @@ ENSURE_CALLBACK_MANAGER_EXISTS()
 // Creation:   Fri Feb  1 16:53:02 PST 2008
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 PyObject *
@@ -13562,14 +13778,14 @@ visit_GetCallbackNames(PyObject *, PyObject *args)
 // ****************************************************************************
 // Method: visit_GetCallbackArgumentCount
 //
-// Purpose: 
+// Purpose:
 //   Returns the number of arguments for a callback.
 //
 // Programmer: Brad Whitlock
 // Creation:   Tue Feb  5 15:31:32 PST 2008
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 PyObject *
@@ -13637,7 +13853,7 @@ visit_GetCallbackArgumentCount(PyObject *, PyObject *args)
 // ****************************************************************************
 // Method: visit_RegisterCallback
 //
-// Purpose: 
+// Purpose:
 //   Registers a user-defined callback with a named state object.
 //
 // Programmer: Brad Whitlock
@@ -13645,7 +13861,7 @@ visit_GetCallbackArgumentCount(PyObject *, PyObject *args)
 //
 // Modifications:
 //   Brad Whitlock, Wed Feb  6 10:17:24 PST 2008
-//   Added optional callback data and made it possible to unregister a 
+//   Added optional callback data and made it possible to unregister a
 //   callback by passing just the name.
 //
 // ****************************************************************************
@@ -13714,14 +13930,14 @@ visit_RegisterCallback(PyObject *, PyObject *args)
 // ****************************************************************************
 // Function: visit_UserActionFinished
 //
-// Purpose: 
+// Purpose:
 //   Returns all arguments after the -s script.py argument.
 //
 // Programmer: Tilo Ochotta
 // Creation:   Tue May 26 14:10:12 MST 2009
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -13740,7 +13956,7 @@ visit_UserActionFinished(PyObject *self, PyObject *args)
 //   This method is a thread callback function whose sole purpose is to
 //   execute the method stored in the ClientMethod object that is passed in.
 //
-// Notes:      If the method being asked for is implemented here, try and 
+// Notes:      If the method being asked for is implemented here, try and
 //             execute it.
 //
 // Programmer: Brad Whitlock
@@ -13821,7 +14037,7 @@ visit_exec_client_method(void *data)
 // Creation:   Wed May 4 16:58:15 PST 2005
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 static void
@@ -13847,13 +14063,13 @@ ExecuteClientMethodHelper(Subject *subj, void *)
 // Function: ExecuteClientMethod
 //
 // Purpose:
-//   This method executes client methods and optionally spawns a new thread 
+//   This method executes client methods and optionally spawns a new thread
 //   to execute them.
 //
-// Notes:      If the method being asked for is implemented here, try and 
+// Notes:      If the method being asked for is implemented here, try and
 //             execute it. We may execute the method on a new thread because
 //             this method is usually called by the 2nd thread, which is the
-//             messaging thread and it must return so it can listen for 
+//             messaging thread and it must return so it can listen for
 //             synchronizes and other data from the viewer.
 //
 // Programmer: Brad Whitlock
@@ -13912,7 +14128,7 @@ ExecuteClientMethod(ClientMethod *method, bool onNewThread)
         // means that calling Notify on the client information would not make
         // xfer send it to the viewer. To combat this problem, we set xfer's
         // update to true temporarily so we can send the object to the viewer.
-        // We only do it on the 2nd thread because if this method is called 
+        // We only do it on the 2nd thread because if this method is called
         // from the first thread, we did not arrive here from xfer and
         // turning off its updates messes up Synchronize.
         if(onNewThread)
@@ -13954,7 +14170,7 @@ ExecuteClientMethod(ClientMethod *method, bool onNewThread)
             // means that calling Notify on the client information would not make
             // xfer send it to the viewer. To combat this problem, we set xfer's
             // update to true temporarily so we can send the object to the viewer.
-            // We only do it on the 2nd thread because if this method is called 
+            // We only do it on the 2nd thread because if this method is called
             // from the first thread, we did not arrive here from xfer and
             // turning off its updates messes up Synchronize.
             if(onNewThread)
@@ -13998,7 +14214,7 @@ ExecuteClientMethod(ClientMethod *method, bool onNewThread)
         else
         {
             //
-            // We're going to interpret the Python code. We need another 
+            // We're going to interpret the Python code. We need another
             // thread so this thread can get back to reading output from the
             // viewer.
             //
@@ -14176,7 +14392,7 @@ AddMethod(const char *methodName,
 //   I added AnimationSetNFrames.  I renamed GetAnimationNumStates to
 //   GetDatabaseNStates.
 //
-//   Eric Brugger, Mon Dec 30 13:16:58 PST 2002 
+//   Eric Brugger, Mon Dec 30 13:16:58 PST 2002
 //   I added SetPlotDatabaseState and DeletePlotDatabaseKeyframe.
 //
 //   Eric Brugger, Fri Jan  3 16:18:44 PST 2003
@@ -14188,28 +14404,28 @@ AddMethod(const char *methodName,
 //
 //   Eric Brugger, Tue Jan 28 13:53:33 PST 2003
 //   I added MovePlotKeyframe, MovePlotDatabaseKeyframe and MoveViewKeyframe.
-// 
+//
 //   Brad Whitlock, Thu Apr 17 15:43:12 PST 2003
 //   I added PromoteOperator, DemoteOperator, and RemoveOperator.
 //
 //   Eric Brugger, Fri Apr 18 17:03:31 PDT 2003
 //   I replaced ToggleAutoCenterMode with ToggleMaintainViewMode.
 //
-//   Kathleen Bonnell, Thu May 15 10:26:00 PDT 2003  
+//   Kathleen Bonnell, Thu May 15 10:26:00 PDT 2003
 //   I added ToggleFullFrameMode.
 //
 //   Hank Childs, Thu May 22 18:34:24 PDT 2003
 //   Added SurfaceArea.
 //
-//   Kathleen Bonnell, Wed Jun 25 13:27:59 PDT 2003 
+//   Kathleen Bonnell, Wed Jun 25 13:27:59 PDT 2003
 //   Added NodePick, ZonePick. (ZonePick == Pick).
 //
-//   Kathleen Bonnell, Fri Jul 11 15:53:04 PDT 2003 
+//   Kathleen Bonnell, Fri Jul 11 15:53:04 PDT 2003
 //   Replace SurfaceArea with generic Query.  Added GetQueryOutputString,
-//   GetQueryOutputValue. 
+//   GetQueryOutputValue.
 //
-//   Kathleen Bonnell, Wed Jul 23 13:05:01 PDT 2003 
-//   Added WorldPick and WorldNodePick. 
+//   Kathleen Bonnell, Wed Jul 23 13:05:01 PDT 2003
+//   Added WorldPick and WorldNodePick.
 //
 //   Brad Whitlock, Mon Jul 28 16:40:37 PST 2003
 //   Added AnimationGetNFrames, SaveSession, RestoreSession.
@@ -14220,7 +14436,7 @@ AddMethod(const char *methodName,
 //   Brad Whitlock, Fri Aug 29 11:11:30 PDT 2003
 //   Added HideToolbars and ShowToolbars.
 //
-//   Kathleen Bonnell, Mon Dec  1 18:04:41 PST 2003 
+//   Kathleen Bonnell, Mon Dec  1 18:04:41 PST 2003
 //   Added PickByNode, PickByZone and ResetPickAttributes.
 //
 //   Brad Whitlock, Wed Dec 3 17:25:06 PST 2003
@@ -14246,7 +14462,7 @@ AddMethod(const char *methodName,
 //   GetActiveTimeSlider, GetTimeSliders, SetDatabaseCorrelationOptions,
 //   ToggleLockTime.
 //
-//   Kathleen Bonnell, Wed Mar 31 11:38:36 PST 2004 
+//   Kathleen Bonnell, Wed Mar 31 11:38:36 PST 2004
 //   Added methods in support of queries over time: GetQueryOverTimeAttributes,
 //   QueryOverTime, SetQueryOverTimeAttributes, ResetQueryOverTimeAttributes,
 //   SetDefaultQueryOverTimeAttributes, QueriesOverTime.
@@ -14257,21 +14473,21 @@ AddMethod(const char *methodName,
 //   Kathleen Bonnell, Thu Jul 22 15:57:23 PDT 2004
 //   Added Set/Get GlobalLineoutAttributes.
 //
-//   Kathleen Bonnell, Thu Aug  5 10:44:22 PDT 2004 
+//   Kathleen Bonnell, Thu Aug  5 10:44:22 PDT 2004
 //   Added resetLineoutColor.
 //
-//   Kathleen Bonnell, Wed Sep  8 10:33:24 PDT 2004 
+//   Kathleen Bonnell, Wed Sep  8 10:33:24 PDT 2004
 //   Removed WorldPick and WorldNodePick, as they are unnecessary and handled
-//   by Pick and NodePick. 
+//   by Pick and NodePick.
 //
 //   Jeremy Meredith, Fri Oct 29 16:47:57 PDT 2004
 //   Added methods to support lighting.
 //
 //   Kathleen Bonnell, Thu Dec 16 17:31:10 PST 2004
-//   Added PickByGlobalZone and PickByGlobalNode. 
+//   Added PickByGlobalZone and PickByGlobalNode.
 //
-//   Kathleen Bonnell, Thu Jan  6 11:06:29 PST 2005 
-//   Added GetViewCurve. 
+//   Kathleen Bonnell, Thu Jan  6 11:06:29 PST 2005
+//   Added GetViewCurve.
 //
 //   Brad Whitlock, Tue Mar 8 16:43:51 PST 2005
 //   I removed some deprecated functions and added TimeSliderSetState, which
@@ -14301,13 +14517,13 @@ AddMethod(const char *methodName,
 //   Brad Whitlock, Tue Mar 7 16:39:38 PST 2006
 //   Added RedoView.
 //
-//   Kathleen Bonnell, Tue May  9 15:45:04 PDT 2006 
+//   Kathleen Bonnell, Tue May  9 15:45:04 PDT 2006
 //   Added 'PointPick', an alias for 'NodePick'.
 //
-//   Kathleen Bonnell, Tue Jun 20 16:02:38 PDT 2006 
+//   Kathleen Bonnell, Tue Jun 20 16:02:38 PDT 2006
 //   Added GetOutputArray.
 //
-//   Kathleen Bonnell, Tue Aug  1 09:13:45 PDT 2006 
+//   Kathleen Bonnell, Tue Aug  1 09:13:45 PDT 2006
 //   Added DefineCurveExpression.
 //
 //   Brad Whitlock, Mon Sep 18 11:38:05 PDT 2006
@@ -14328,9 +14544,9 @@ AddMethod(const char *methodName,
 //   Cyrus Harrison, Wed Sep 19 08:43:42 PDT 2007
 //   Added SetQueryFloatFormat function.
 //
-//   Kathleen Bonnell, Tue Oct  9 14:40:10 PDT 2007 
+//   Kathleen Bonnell, Tue Oct  9 14:40:10 PDT 2007
 //   Added methods to control automatic creation of MeshQuality and
-//   TimeDerivative expressions. 
+//   TimeDerivative expressions.
 //
 //   Jeremy Meredith, Fri Oct 12 10:32:05 EDT 2007
 //   Added GetExportOptions.
@@ -14345,7 +14561,7 @@ AddMethod(const char *methodName,
 //   Added Set/GetAnimationAttributes, which I thought I added a long time ago.
 //
 //   Cyrus Harrison, Mon Dec 17 14:49:25 PST 2007
-//   Added GetQueryOutputXML() and GetQueryOutputObject() 
+//   Added GetQueryOutputXML() and GetQueryOutputObject()
 //
 //   Jeremy Meredith, Wed Jan 23 15:27:20 EST 2008
 //   Added Get/SetDefaultFileOpenOptions.
@@ -14385,6 +14601,21 @@ AddMethod(const char *methodName,
 //   Cyrus Harrison, Wed Mar 17 16:25:04 PDT 2010
 //   Added 'PythonQuery' and 'DefinePythonExpression'.
 //
+//   Cyrus Harrison, Wed Jul 14 11:21:39 PDT 2010
+//   Added 'OpenCLI'.
+//
+//   Brad Whitlock, Wed Aug 11 16:08:03 PDT 2010
+//   Added SetNamedSelectionAutoApply and UpdateNamedSelection.
+//
+//   Hank Childs, Sat Aug 21 14:05:14 PDT 2010
+//   Rename ddf to data binning.
+//
+//   Cyrus Harrison, Wed Aug 25 17:03:50 PDT 2010
+//   Add stubs for old ddf function names to support prev api.
+//
+//   Brad Whitlock, Fri Aug 27 10:37:20 PDT 2010
+//   I added RenamePickLabel.
+//
 // ****************************************************************************
 
 static void
@@ -14409,21 +14640,21 @@ AddDefaultMethods()
     //
     // Viewer proxy methods.
     //
-    AddMethod("ActivateDatabase", visit_ActivateDatabase, 
+    AddMethod("ActivateDatabase", visit_ActivateDatabase,
                                                    visit_ActivateDatabase_doc);
     AddMethod("AddOperator", visit_AddOperator, visit_AddOperator_doc);
     AddMethod("AddPlot", visit_AddPlot, visit_AddPlot_doc);
     AddMethod("AddWindow",  visit_AddWindow, visit_AddWindow_doc);
-    AddMethod("AlterDatabaseCorrelation", visit_AlterDatabaseCorrelation, 
+    AddMethod("AlterDatabaseCorrelation", visit_AlterDatabaseCorrelation,
                                            visit_AlterDatabaseCorrelation_doc);
     AddMethod("ApplyNamedSelection", visit_ApplyNamedSelection,
                                            visit_ApplyNamedSelection_doc);
     AddMethod("AnimationSetNFrames", visit_AnimationSetNFrames, NULL);
-    AddMethod("ChangeActivePlotsVar", visit_ChangeActivePlotsVar, 
+    AddMethod("ChangeActivePlotsVar", visit_ChangeActivePlotsVar,
                                                visit_ChangeActivePlotsVar_doc);
-    AddMethod("CheckForNewStates", visit_CheckForNewStates, 
+    AddMethod("CheckForNewStates", visit_CheckForNewStates,
                                                   visit_CheckForNewStates_doc);
-    AddMethod("ChooseCenterOfRotation",  visit_ChooseCenterOfRotation, 
+    AddMethod("ChooseCenterOfRotation",  visit_ChooseCenterOfRotation,
                                              visit_ChooseCenterOfRotation_doc);
     AddMethod("ClearAllWindows", visit_ClearAllWindows, visit_Clear_doc);
     AddMethod("ClearCache", visit_ClearCache, visit_ClearCache_doc);
@@ -14438,10 +14669,13 @@ AddDefaultMethods()
     AddMethod("ClearWindow", visit_ClearWindow, visit_Clear_doc);
     AddMethod("ClientMethod", visit_ClientMethod);
     AddMethod("CloneWindow",  visit_CloneWindow, visit_CloneWindow_doc);
-    AddMethod("CloseComputeEngine", visit_CloseComputeEngine, 
+    AddMethod("CloseComputeEngine", visit_CloseComputeEngine,
                                                  visit_CloseComputeEngine_doc);
     AddMethod("CloseDatabase", visit_CloseDatabase, visit_CloseDatabase_doc);
-    AddMethod("ConstructDDF", visit_ConstructDDF, visit_ConstructDDF_doc);
+    AddMethod("ConstructDataBinning", visit_ConstructDataBinning, visit_ConstructDataBinning_doc);
+    AddMethod("ConstructDDF", visit_ConstructDataBinning, visit_ConstructDataBinning_doc);
+    AddMethod("ConstructDDFAttributes", visit_ConstructDataBinningAttributes, visit_ConstructDataBinning_doc);
+
     AddMethod("CopyAnnotationsToWindow", visit_CopyAnnotationsToWindow,
                                                                visit_Copy_doc);
     AddMethod("CopyLightingToWindow", visit_CopyLightingToWindow,
@@ -14549,7 +14783,6 @@ AddDefaultMethods()
                                                      visit_GetQueryOutput_doc);
     AddMethod("GetQueryOutputObject", visit_GetQueryOutputObject,
                                                      visit_GetQueryOutput_doc);
-    
     AddMethod("GetPlotInformation", visit_GetPlotInformation,
                                                      visit_GetPlotInformation_doc);
     AddMethod("GetPreferredFileFormats", visit_GetPreferredFileFormats,
@@ -14591,12 +14824,13 @@ AddDefaultMethods()
                                                   visit_OpenComputeEngine_doc);
     AddMethod("OpenGUI", visit_OpenGUI);
     AddMethod("OpenMDServer", visit_OpenMDServer, visit_OpenMDServer_doc);
-    AddMethod("OverlayDatabase", visit_OverlayDatabase, 
+    AddMethod("OpenCLI", visit_OpenCLI);
+    AddMethod("OverlayDatabase", visit_OverlayDatabase,
                                                     visit_OverlayDatabase_doc);
     AddMethod("Pick", visit_Pick, visit_Pick_doc);
     AddMethod("PickByNode", visit_PickByNode, visit_PickByNode_doc);
     AddMethod("PickByZone", visit_PickByZone, visit_PickByZone_doc);
-    AddMethod("PickByGlobalNode", visit_PickByGlobalNode, 
+    AddMethod("PickByGlobalNode", visit_PickByGlobalNode,
                                                    visit_PickByGlobalNode_doc);
     AddMethod("PickByGlobalZone", visit_PickByGlobalZone,
                                                    visit_PickByGlobalZone_doc);
@@ -14615,6 +14849,7 @@ AddDefaultMethods()
     AddMethod("RemoveLastOperator", visit_RemoveLastOperator,
                                                      visit_RemoveOperator_doc);
     AddMethod("RemoveOperator", visit_RemoveOperator,visit_RemoveOperator_doc);
+    AddMethod("RenamePickLabel", visit_RenamePickLabel, NULL /* DOCUMENT ME*/);
     AddMethod("ReOpenDatabase", visit_ReOpenDatabase,visit_ReOpenDatabase_doc);
     AddMethod("ReplaceDatabase", visit_ReplaceDatabase,
                                                     visit_ReplaceDatabase_doc);
@@ -14623,15 +14858,15 @@ AddDefaultMethods()
     AddMethod("ResetOperatorOptions", visit_ResetOperatorOptions,
                                                visit_ResetOperatorOptions_doc);
     AddMethod("ResetPickAttributes", visit_ResetPickAttributes);
-    AddMethod("ResetPickLetter", visit_ResetPickLetter, 
+    AddMethod("ResetPickLetter", visit_ResetPickLetter,
                                                     visit_ResetPickLetter_doc);
-    AddMethod("ResetPlotOptions", visit_ResetPlotOptions, 
+    AddMethod("ResetPlotOptions", visit_ResetPlotOptions,
                                                    visit_ResetPlotOptions_doc);
     AddMethod("ResetQueryOverTimeAttributes", visit_ResetQueryOverTimeAttributes);
     AddMethod("ResetView", visit_ResetView, visit_ResetView_doc);
     AddMethod("ResizeWindow", visit_ResizeWindow, visit_ResizeWindow_doc);
     AddMethod("RestoreSession", visit_RestoreSession,visit_RestoreSession_doc);
-    AddMethod("RestoreSessionWithDifferentSources", 
+    AddMethod("RestoreSessionWithDifferentSources",
               visit_RestoreSessionWithDifferentSources,
               visit_RestoreSession_doc);
     AddMethod("SaveSession", visit_SaveSession, visit_SaveSession_doc);
@@ -14640,9 +14875,9 @@ AddDefaultMethods()
     AddMethod("SaveWindow", visit_SaveWindow, visit_SaveWindow_doc);
     AddMethod("SendSimulationCommand", visit_SendSimulationCommand,visit_SendSimulationCommand_doc);
     AddMethod("SetActivePlots", visit_SetActivePlots,visit_SetActivePlots_doc);
-    AddMethod("SetActiveTimeSlider", visit_SetActiveTimeSlider, 
+    AddMethod("SetActiveTimeSlider", visit_SetActiveTimeSlider,
                                                 visit_SetActiveTimeSlider_doc);
-    AddMethod("SetActiveWindow", visit_SetActiveWindow, 
+    AddMethod("SetActiveWindow", visit_SetActiveWindow,
                                                     visit_SetActiveWindow_doc);
     AddMethod("SetAnimationAttributes", visit_SetAnimationAttributes,
                                                 NULL/* DOCUMENT ME*/);
@@ -14650,13 +14885,13 @@ AddDefaultMethods()
                                                 visit_SetAnimationTimeout_doc);
     AddMethod("SetAnnotationAttributes", visit_SetAnnotationAttributes,
                                             visit_SetAnnotationAttributes_doc);
-    AddMethod("SetCreateMeshQualityExpressions", 
+    AddMethod("SetCreateMeshQualityExpressions",
                visit_SetCreateMeshQualityExpressions,
                visit_SetCreateMeshQualityExpressions_doc);
-    AddMethod("SetCreateTimeDerivativeExpressions", 
+    AddMethod("SetCreateTimeDerivativeExpressions",
                visit_SetCreateTimeDerivativeExpressions,
                visit_SetCreateTimeDerivativeExpressions_doc);
-    AddMethod("SetCreateVectorMagnitudeExpressions", 
+    AddMethod("SetCreateVectorMagnitudeExpressions",
                visit_SetCreateVectorMagnitudeExpressions,
                visit_SetCreateVectorMagnitudeExpressions_doc);
     AddMethod("SetCenterOfRotation", visit_SetCenterOfRotation,
@@ -14689,6 +14924,7 @@ AddDefaultMethods()
                                             visit_SetMaterialAttributes_doc);
     AddMethod("SetMeshManagementAttributes", visit_SetMeshManagementAttributes,
                                         visit_SetMeshManagementAttributes_doc);
+    AddMethod("SetNamedSelectionAutoApply", visit_SetNamedSelectionAutoApply, NULL /*DOCUMENT ME*/);
     AddMethod("SetOperatorOptions", visit_SetOperatorOptions,
                                                  visit_SetOperatorOptions_doc);
     AddMethod("SetPickAttributes", visit_SetPickAttributes,
@@ -14761,9 +14997,11 @@ AddDefaultMethods()
                                                          visit_ToggleMode_doc);
     AddMethod("ToggleSpinMode", visit_ToggleSpinMode, visit_ToggleMode_doc);
     AddMethod("UndoView",  visit_UndoView, visit_UndoView_doc);
+    AddMethod("UpdateNamedSelection", visit_UpdateNamedSelection, NULL /*DOCUMENT ME*/);
+
     AddMethod("UserActionFinished",visit_UserActionFinished,NULL);
     AddMethod("RedoView",  visit_RedoView, visit_RedoView_doc);
-    AddMethod("WriteConfigFile",  visit_WriteConfigFile, 
+    AddMethod("WriteConfigFile",  visit_WriteConfigFile,
                                                     visit_WriteConfigFile_doc);
     AddMethod("ZonePick", visit_Pick, visit_Pick_doc);
 
@@ -14826,7 +15064,7 @@ AddDefaultMethods()
     AddMethod("RemoveColorTable", visit_RemoveColorTable, NULL /*DOCUMENT ME*/);
     AddMethod("GetColorTable", visit_GetColorTable, NULL /*DOCUMENT ME*/);
     AddMethod("SetColorTable", visit_SetColorTable, NULL /*DOCUMENT ME*/);
-    AddMethod("ColorTableNames", visit_ColorTableNames, 
+    AddMethod("ColorTableNames", visit_ColorTableNames,
                                                     visit_ColorTableNames_doc);
     AddMethod("NumColorTableNames", visit_NumColorTables,
                                                  visit_NumColorTableNames_doc);
@@ -14845,7 +15083,7 @@ AddDefaultMethods()
 // ****************************************************************************
 // Function: AddExtensions
 //
-// Purpose: 
+// Purpose:
 //   This function adds all of the type extensions to the VisIt module.
 //
 // Programmer: Brad Whitlock
@@ -14883,14 +15121,14 @@ AddDefaultMethods()
 //   Added ConstructDDFAttributes.
 //
 //   Brad Whitlock, Tue Mar 13 16:05:56 PST 2007
-//   Added ColorControlPoint, ColorControlPointList, ColorAttribute, 
+//   Added ColorControlPoint, ColorControlPointList, ColorAttribute,
 //   ColorAttributeList, GaussianControlPoint, GaussianControlPointList.
 //
 //   Brad Whitlock, Wed Dec 12 15:09:20 PST 2007
 //   Added AnimationAttributes.
 //
 //   Brad Whitlock, Fri Jan 25 16:58:12 PST 2008
-//   Added Axes2D Axes3D AxisAttributes AxisLabels AxisTickMarks AxisTitles 
+//   Added Axes2D Axes3D AxisAttributes AxisLabels AxisTickMarks AxisTitles
 //   FontAttributes. All are part of AnnotationAttributes.
 //
 //   Jeremy Meredith, Mon Feb  4 13:42:08 EST 2008
@@ -14913,7 +15151,7 @@ AddExtensions()
     ADD_EXTENSION(PyColorAttributeList_GetMethodTable);
     ADD_EXTENSION(PyColorControlPoint_GetMethodTable);
     ADD_EXTENSION(PyColorControlPointList_GetMethodTable);
-    ADD_EXTENSION(PyConstructDDFAttributes_GetMethodTable);
+    ADD_EXTENSION(PyConstructDataBinningAttributes_GetMethodTable);
     ADD_EXTENSION(PyExportDBAttributes_GetMethodTable);
     ADD_EXTENSION(PyGaussianControlPoint_GetMethodTable);
     ADD_EXTENSION(PyGaussianControlPointList_GetMethodTable);
@@ -14950,7 +15188,7 @@ AddExtensions()
 // ****************************************************************************
 // Function: InitializeExtensions
 //
-// Purpose: 
+// Purpose:
 //   This function is called after the viewer is running and we have the
 //   default values from the config file. This function calls the startup
 //   function for the extensions.
@@ -15007,7 +15245,7 @@ InitializeExtensions()
 {
     PyAnimationAttributes_StartUp(GetViewerState()->GetAnimationAttributes(), 0);
     PyAnnotationAttributes_StartUp(GetViewerState()->GetAnnotationAttributes(), 0);
-    PyConstructDDFAttributes_StartUp(GetViewerState()->GetConstructDDFAttributes(), 0);
+    PyConstructDataBinningAttributes_StartUp(GetViewerState()->GetConstructDataBinningAttributes(), 0);
     PyExportDBAttributes_StartUp(GetViewerState()->GetExportDBAttributes(), 0);
     PyGlobalAttributes_StartUp(GetViewerState()->GetGlobalAttributes(), 0);
     PyLaunchProfile_StartUp(0, 0);
@@ -15030,7 +15268,7 @@ InitializeExtensions()
 // ****************************************************************************
 // Function: CloseExtensions
 //
-// Purpose: 
+// Purpose:
 //   This method closes down all of the extensions.
 //
 // Programmer: Brad Whitlock
@@ -15106,6 +15344,9 @@ CloseExtensions()
 //   This allows these methods to be accessed from imported python modules
 //   if we are running the cli.
 //
+//   Brad Whitlock, Wed Sep  1 15:26:17 PDT 2010
+//   Don't add to the visitModule if it wasn't created!
+//
 // ****************************************************************************
 
 static void
@@ -15155,21 +15396,24 @@ PlotPluginAddInterface()
                     Py_DECREF(v);
                 }
             }
-            // make sure to add this method to the visitmodule dictionary
-            d = PyModule_GetDict(visitModule);
-            PyMethodDef *method = (PyMethodDef *)methods;
-            for(int j = 0; j < nMethods; ++j, ++method)
+            if(visitModule != 0)
             {
-                debug1 << "\tAdded \"" << method->ml_name << "\" "
-                       << "method to the visitmodule dictionary." << endl;
+                // make sure to add this method to the visitmodule dictionary
+                d = PyModule_GetDict(visitModule);
+                PyMethodDef *method = (PyMethodDef *)methods;
+                for(int j = 0; j < nMethods; ++j, ++method)
+                {
+                    debug1 << "\tAdded \"" << method->ml_name << "\" "
+                           << "method to the visitmodule dictionary." << endl;
 
-                // Add the method to the dictionary.
-                PyObject *v = PyCFunction_New(method, Py_None);
-                if(v == NULL)
-                    continue;
-                if(PyDict_SetItemString(d, method->ml_name, v) != 0)
-                    continue;
-                Py_DECREF(v);
+                    // Add the method to the dictionary.
+                    PyObject *v = PyCFunction_New(method, Py_None);
+                    if(v == NULL)
+                        continue;
+                    if(PyDict_SetItemString(d, method->ml_name, v) != 0)
+                        continue;
+                    Py_DECREF(v);
+                }
             }
         }
     }
@@ -15201,6 +15445,9 @@ PlotPluginAddInterface()
 //   Always add Operator Plugin Interface Methods to the visitmodule.
 //   This allows these methods to be accessed from imported python modules
 //   if we are running the cli.
+//
+//   Brad Whitlock, Wed Sep  1 15:26:17 PDT 2010
+//   Don't add to the visitModule if it wasn't created!
 //
 // ****************************************************************************
 
@@ -15251,21 +15498,24 @@ OperatorPluginAddInterface()
                     Py_DECREF(v);
                 }
             }
-            // make sure to add this method to the visitmodule dictionary
-            d = PyModule_GetDict(visitModule);
-            PyMethodDef *method = (PyMethodDef *)methods;
-            for(int j = 0; j < nMethods; ++j, ++method)
+            if(visitModule != 0)
             {
-                debug1 << "\tAdded \"" << method->ml_name << "\" "
-                       << "method to the visitmodule dictionary." << endl;
+                // make sure to add this method to the visitmodule dictionary
+                d = PyModule_GetDict(visitModule);
+                PyMethodDef *method = (PyMethodDef *)methods;
+                for(int j = 0; j < nMethods; ++j, ++method)
+                {
+                    debug1 << "\tAdded \"" << method->ml_name << "\" "
+                           << "method to the visitmodule dictionary." << endl;
 
-                // Add the method to the dictionary.
-                PyObject *v = PyCFunction_New(method, Py_None);
-                if(v == NULL)
-                    continue;
-                if(PyDict_SetItemString(d, method->ml_name, v) != 0)
-                    continue;
-                Py_DECREF(v);
+                    // Add the method to the dictionary.
+                    PyObject *v = PyCFunction_New(method, Py_None);
+                    if(v == NULL)
+                        continue;
+                    if(PyDict_SetItemString(d, method->ml_name, v) != 0)
+                        continue;
+                    Py_DECREF(v);
+                }
             }
         }
     }
@@ -15276,7 +15526,7 @@ OperatorPluginAddInterface()
 // ****************************************************************************
 // Method: DelayedLoadPlugins
 //
-// Purpose: 
+// Purpose:
 //   This function is called when the viewer tells us what plugins it has.
 //   With that information, we load plugins and add them to the interface
 //   that the VisIt module exposes to Python.
@@ -15315,7 +15565,7 @@ DelayedLoadPlugins()
 // ****************************************************************************
 // Function: NeedToLoadPlugins
 //
-// Purpose: 
+// Purpose:
 //   This is a callback function for the pluginLoader observer to callback
 //   object.
 //
@@ -15327,7 +15577,7 @@ DelayedLoadPlugins()
 // Creation:   Fri Nov 9 19:57:29 PST 2001
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 static void
@@ -15473,7 +15723,7 @@ InitializeModule()
             SNPRINTF(tmp, 10, "%db", moduleDebugLevel);
         else
             SNPRINTF(tmp, 10, "%d", moduleDebugLevel);
-        GetViewerProxy()->AddArgument(tmp);        
+        GetViewerProxy()->AddArgument(tmp);
     }
 
     //
@@ -15525,7 +15775,7 @@ InitializeModule()
 // ****************************************************************************
 // Function: ReadVisItPluginDir
 //
-// Purpose: 
+// Purpose:
 //   Reads VISITPLUGINDIR that would be set up by the VisIt script that
 //   is passed into this function.
 //
@@ -15536,13 +15786,13 @@ InitializeModule()
 // Returns:    A new string containing the contents of VISITPLUGINDIR or
 //             NULL if there was a problem.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Nov 22 15:17:56 PST 2006
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 char *
@@ -15606,7 +15856,7 @@ ReadVisItPluginDir(const char *visitProgram)
 // Purpose:
 //   This function launches the viewer and creates the listening thread.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Sep 17 16:57:11 PST 2001
@@ -15656,12 +15906,12 @@ LaunchViewer(const char *visitProgram)
     TRY
     {
         // Read the plugin info
-        GetViewerProxy()->InitializePlugins(PlotPluginManager::Scripting, 
+        GetViewerProxy()->InitializePlugins(PlotPluginManager::Scripting,
                                             VISITPLUGINDIR);
     }
     CATCH(VisItException)
     {
-        if(freeVPD) 
+        if(freeVPD)
             free(VISITPLUGINDIR);
         // Return since we could not initialize VisIt.
         CATCH_RETURN(1);
@@ -15669,7 +15919,7 @@ LaunchViewer(const char *visitProgram)
     ENDTRY
 
     // Free the VISITPLUGINDIR array if we need to.
-    if(freeVPD) 
+    if(freeVPD)
         free(VISITPLUGINDIR);
 
     TRY
@@ -15703,7 +15953,7 @@ LaunchViewer(const char *visitProgram)
 //   Creates that thread that listens for and processes information from
 //   the viewer.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Fri Nov 9 19:29:16 PST 2001
@@ -15751,7 +16001,7 @@ CreateListenerThread()
 // ****************************************************************************
 // Function: CloseModule
 //
-// Purpose: 
+// Purpose:
 //   This function is used to close down the viewer and all of the objects
 //   that are used by the VisIt module.
 //
@@ -15869,7 +16119,7 @@ CloseModule()
 // ****************************************************************************
 // Function: VisItErrorFunc
 //
-// Purpose: 
+// Purpose:
 //   This function sets the Python error string if we're allowing Python
 //   exceptions to be thrown from the VisIt module.
 //
@@ -15880,7 +16130,7 @@ CloseModule()
 // Creation:   Mon Sep 17 11:44:43 PDT 2001
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 void
@@ -15896,7 +16146,7 @@ VisItErrorFunc(const char *errString)
 //   This function is called by programs wishing to embed the Python
 //   interpreter and VisIt.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Fri Dec 7 15:43:50 PST 2001
@@ -15939,7 +16189,7 @@ cli_initvisit(int debugLevel, bool verbose, int argc, char **argv,
 // ****************************************************************************
 // Function: cli_runscript
 //
-// Purpose: 
+// Purpose:
 //   This function executes the Python script stored in the specified file.
 //
 // Arguments:
@@ -15996,13 +16246,13 @@ cli_runscript(const char *fileName)
 // Purpose:
 //   Gets the viewer proxy.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Tue Feb 13 11:57:53 PDT 2007
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 ViewerProxy *
@@ -16014,7 +16264,7 @@ GetViewerProxy()
 // ****************************************************************************
 // Function: GetViewerState
 //
-// Purpose: 
+// Purpose:
 //   Returns a pointer to the viewer's state.
 //
 // Returns:    A pointer to the viewer's state
@@ -16023,7 +16273,7 @@ GetViewerProxy()
 // Creation:   Tue Feb 13 11:48:45 PDT 2007
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 ViewerState *
@@ -16035,7 +16285,7 @@ GetViewerState()
 // ****************************************************************************
 // Function: GetViewerMethods
 //
-// Purpose: 
+// Purpose:
 //   Returns a pointer to the viewer's methods.
 //
 // Returns:    A pointer to the viewer's methods.
@@ -16044,7 +16294,7 @@ GetViewerState()
 // Creation:   Tue Feb 13 11:48:05 PDT 2007
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 ViewerMethods *
@@ -16061,13 +16311,13 @@ GetViewerMethods()
 //   functions. This allows us to include Python functions in this C++
 //   extension module.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Dec 17 17:24:00 PST 2001
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 static void
@@ -16082,7 +16332,7 @@ initscriptfunctions()
 // ****************************************************************************
 // Function: initvisit
 //
-// Purpose: 
+// Purpose:
 //   This is the module initialization function that is called by Python.
 //
 // Programmer: Brad Whitlock
@@ -16155,7 +16405,7 @@ initvisit()
 // ****************************************************************************
 // Method: initvisit2
 //
-// Purpose: 
+// Purpose:
 //   Same as initvisit except that if the "visit" module is not already
 //   available then we add functions to the global namespace instead of
 //   to the "visit" module.
@@ -16179,7 +16429,7 @@ initvisit()
 //   Jeremy Meredith, Thu Aug  7 15:06:45 EDT 2008
 //   Assyme PyErr_NewException won't modify its string argument and cast
 //   literals to char*'s before passing in.
-//   
+//
 // ****************************************************************************
 
 void
@@ -16246,8 +16496,8 @@ initvisit2()
 // ****************************************************************************
 // Function: terminatevisit
 //
-// Purpose: 
-//   This function is called when Python exits. Its job is to close down the 
+// Purpose:
+//   This function is called when Python exits. Its job is to close down the
 //   viewer if it is not already closed.
 //
 // Programmer: Brad Whitlock
@@ -16369,7 +16619,7 @@ visit_eventloop(void *)
 // ****************************************************************************
 // Function: Synchronize
 //
-// Purpose: 
+// Purpose:
 //   This function sends a syncAtts object to the viewer and waits for the
 //   viewer to send it back.
 //
@@ -16403,7 +16653,7 @@ visit_eventloop(void *)
 //   Brad Whitlock, Mon Mar 20 12:57:13 PDT 2006
 //   I made mutex unlocking be part of SYNC_COND_WAIT because the win32
 //   implementation has to have the mutex be unlocked at the start while the
-//   UNIX version unlocks it at the end. Making the mutex unlocking part of 
+//   UNIX version unlocks it at the end. Making the mutex unlocking part of
 //   the macro allows us to put it where we want.
 //
 // ****************************************************************************

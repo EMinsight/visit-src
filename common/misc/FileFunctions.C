@@ -52,13 +52,13 @@
 #endif
 
 // ****************************************************************************
-// Method: VisItStat 
+// Method: VisItStat
 //
 // Purpose: platform independent stat function that supports large files
 // when possible
 //
-// Programmer: Mark C. Miller 
-// Creation:   March 23, 2006 
+// Programmer: Mark C. Miller
+// Creation:   March 23, 2006
 //
 // ****************************************************************************
 
@@ -79,7 +79,7 @@ VisItStat(const char *file_name, VisItStat_t *buf)
 }
 
 // ****************************************************************************
-// Method: VisItFStat 
+// Method: VisItFStat
 //
 // Purpose: platform independent fstat function that supports large files
 // when possible
@@ -172,7 +172,7 @@ ReadAndProcessDirectory(const std::string &directory,
         {
             do
             {
-                bool isDir = 
+                bool isDir =
                     ((fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0) ||
                      (strcmp(fd.cFileName, "..") == 0) ||
                      (strcmp(fd.cFileName, ".") == 0) ;

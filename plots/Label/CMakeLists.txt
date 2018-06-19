@@ -28,10 +28,14 @@ avtLabelFilter.C
 avtLabelSubsetsFilter.C
 avtLabelsMapper.C
 avtLabelRenderer.C
-avtMesaLabelRenderer.C
 avtOpenGLLabelRenderer.C
 ${COMMON_SOURCES}
 )
+
+IF(MESA_FOUND)
+  SET(LIBV_SOURCES ${LIBV_SOURCES} avtMesaLabelRenderer.C)
+ENDIF(MESA_FOUND)
+
 
 SET(LIBE_SOURCES
 LabelEnginePluginInfo.C
@@ -40,10 +44,13 @@ avtLabelFilter.C
 avtLabelSubsetsFilter.C
 avtLabelsMapper.C
 avtLabelRenderer.C
-avtMesaLabelRenderer.C
 avtOpenGLLabelRenderer.C
 ${COMMON_SOURCES}
 )
+
+IF(MESA_FOUND)
+  SET(LIBE_SOURCES ${LIBE_SOURCES} avtMesaLabelRenderer.C)
+ENDIF(MESA_FOUND)
 
 IF (NOT WIN32)
     SET_SOURCE_FILES_PROPERTIES(avtOpenGLLabelRenderer.C 

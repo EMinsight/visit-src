@@ -85,6 +85,14 @@
 //    the database plugins to also treat all flags in CXXFLAGS that start
 //    with "-I" as include paths.
 //
+//    Kathleen Bonnell, Fri May 21 14:15:23 MST 2010 
+//    Add DLL_NETCDF, _CGNSDLL EXODUSII_BUILD_SHARED_ZIBS defines for 
+//    windows projects linking with NETCDF, CGNS or EXODUSII.
+//
+//    Kathleen Bonnell, Thu May 27 14:59:13 MST 2010 
+//    Add some more defines for HDF4, discovered as necessary when compiling
+//    with Visual Studio 9.
+//
 // ****************************************************************************
 
 class CMakeGeneratorPlugin : public Plugin
@@ -724,6 +732,12 @@ class CMakeGeneratorPlugin : public Plugin
                  needWindowsDefines = true;
             else if(libs[i].contains("FITS"))
                  needWindowsDefines = true;
+            else if(libs[i].contains("NETCDF"))
+                 needWindowsDefines = true;
+            else if(libs[i].contains("CGNS"))
+                 needWindowsDefines = true;
+            else if(libs[i].contains("EXODUSII"))
+                 needWindowsDefines = true;
         }
         if (needWindowsDefines)
         {
@@ -737,9 +751,15 @@ class CMakeGeneratorPlugin : public Plugin
                 else if(libs[i].contains("HDF5"))
                      out << "  ADD_DEFINITIONS(-D_HDF5USEDLL_)" << endl;
                 else if(libs[i].contains("HDF4"))
-                     out << "  ADD_DEFINITIONS(-DMFHDFLIB_ -D_HDFLIB_)" << endl;
+                     out << "  ADD_DEFINITIONS(-D_HDFDLL_ -D_MFHDFLIB_ -D_HDFLIB_ -DINTEL86)" << endl;
                 else if(libs[i].contains("FITS"))
                      out << "  ADD_DEFINITIONS(-D_HDF5USEDLL_)" << endl;
+                else if(libs[i].contains("NETCDF"))
+                     out << "  ADD_DEFINITIONS(-DDLL_NETCDF)" << endl;
+                else if(libs[i].contains("CGNS"))
+                     out << "  ADD_DEFINITIONS(-D_CGNSDLL)" << endl;
+                else if(libs[i].contains("EXODUSII"))
+                     out << "  ADD_DEFINITIONS(-DEXODUSII_BUILD_SHARED_ZIBS)" << endl;
             }
             out << "ENDIF(WIN32)" << endl;
         }

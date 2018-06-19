@@ -416,6 +416,18 @@ class VisitInteractor;
 //    Add "auto" setting to bounding box mode.  Remove call to 
 //    SetBoundingBoxMode, since that is now done through the interactor atts.
 //
+//    Jeremy Meredith, Wed May 19 14:15:58 EDT 2010
+//    Support 3D axis scaling (3D equivalent of full-frame mode).
+//
+//    Dave Pugmire, Tue Aug 24 11:29:43 EDT 2010
+//    Add compact domains options.
+//
+//    Brad Whitlock, Thu Aug 26 15:36:31 PDT 2010
+//    I added  a force option to SetAnnotationAtts.
+//
+//    Hank Childs, Fri Aug 27 15:27:25 PDT 2010
+//    Add explicit data members for 3D axis scaling.
+//
 // ****************************************************************************
 
 class VISWINDOW_API VisWindow
@@ -522,10 +534,12 @@ public:
 
     WINDOW_MODE          GetWindowMode() const;
     void                 GetScaleFactorAndType(double &s, int &t);
-    bool                 GetFullFrameMode(void);
+    bool                 GetFullFrameMode(void) const;
     void                 FullFrameOn(const double, const int);
     void                 FullFrameOff(void);
     bool                 DoAllPlotsAxesHaveSameUnits();
+    bool                 Get3DAxisScalingFactors(double s[3]) const;
+    void                 Set3DAxisScalingFactors(bool, const double s[3]);
 
 
     void                 ShowMenu(void);
@@ -538,7 +552,7 @@ public:
     void                 SetPickCB(VisCallback *cb, void *data);
     void                 SetLineoutCB(VisCallback *cb, void *data);
 
-    void                 SetAnnotationAtts(const AnnotationAttributes *);
+    void                 SetAnnotationAtts(const AnnotationAttributes *, bool force=false);
     const AnnotationAttributes *GetAnnotationAtts() const;
     bool                 AddAnnotationObject(int annotType, const std::string &annotName);
     void                 HideActiveAnnotationObjects();
@@ -574,7 +588,7 @@ public:
 
     void                 QueryIsValid(const VisualCueInfo *, 
                                       const VisualCueInfo *);
-    void                 UpdateQuery(const VisualCueInfo *);
+    void                 UpdateQuery(const std::string &, const VisualCueInfo *);
     void                 DeleteQuery(const VisualCueInfo *);
     void                 ScalePlots(const double [3]);
 
@@ -620,6 +634,11 @@ public:
     bool                 GetScalableRendering() const;
     void                 SetScalableRendering(bool mode);
     int                  GetScalableThreshold() const;
+    void                 SetCompactDomainsActivationMode(int mode);
+    int                  GetCompactDomainsActivationMode() const;
+    void                 SetCompactDomainsAutoThreshold(int val);
+    int                  GetCompactDomainsAutoThreshold() const;
+
     void                 SetSpecularProperties(bool,double,double,
                                                const ColorAttribute&);
     bool                 GetSpecularFlag();
@@ -698,6 +717,8 @@ protected:
     avtView3D                          view3D;
     avtViewCurve                       viewCurve;
     avtViewAxisArray                   viewAxisArray;
+    bool                               doAxisScaling;
+    double                             axisScaling[3];
 
     VisCallback                       *showMenuCallback;
     void                              *showMenuCallbackData;

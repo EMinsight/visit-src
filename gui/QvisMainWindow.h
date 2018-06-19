@@ -225,6 +225,12 @@ class WindowInformation;
 //   Cyrus Harrison, Fri Mar 12 10:50:26 PST 2010
 //   More shuffling to provide better layouts. 
 //
+//   Hank Childs, Sun Aug  1 12:02:45 PDT 2010
+//   Add signal for setting up CMFEs.
+//
+//   Brad Whitlock, Fri Aug  6 16:59:07 PDT 2010
+//   Added signal to open Selections window.
+//
 // ****************************************************************************
 
 class GUI_API QvisMainWindow : public QvisWindowBase, public SimpleObserver
@@ -296,15 +302,18 @@ signals:
     void activateQueryOverTimeWindow();
     void activateInteractorWindow();
     void activateMeshManagementWindow();
+    void activateSelectionsWindow();
     void updateVisIt();
 
     void saveSettings();
     void saveWindow();
     void saveMovie();
+    void setupCMFE();
     void printWindow();
 
     void refreshFileList();
     void saveSession();
+    void saveSessionAs();
     void restoreSession();
     void restoreSessionWithSources();
     void reopenOnNextFrame();

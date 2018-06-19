@@ -40,6 +40,7 @@
 
 #include <CurveAttributes.h>
 #include <ViewerProxy.h>
+#include <ImproperUseException.h>
 
 #include <QButtonGroup>
 #include <QGroupBox>
@@ -93,8 +94,6 @@ QvisCurvePlotWindow::QvisCurvePlotWindow(const int type,
 {
     plotType = type;
     atts = subj;
-
-    renderMode = 0;
 }
 
 
@@ -147,6 +146,13 @@ QvisCurvePlotWindow::~QvisCurvePlotWindow()
 //   Allen Sanderson, Sun Mar  7 12:49:56 PST 2010
 //   Change layout of window for 2.0 interface changes.
 //
+//   Hank Childs, Thu Jul 15 18:20:26 PDT 2010
+//   Add cues for the current location.
+//
+//   Kathleen Bonnell, Wed Aug 11 09:34:41 PDT 2010
+//   Modified layout of geometry group.  Symbols/Points can now be drawn
+//   same time as lines. Added pointStride for Static symbols.
+//
 // ****************************************************************************
 
 void
@@ -156,7 +162,7 @@ QvisCurvePlotWindow::CreateWindowContents()
     // Create the geometry
     //
     QGroupBox * geometryGroup = new QGroupBox(central);
-    geometryGroup->setTitle(tr("Line Geometry"));
+    geometryGroup->setTitle(tr("Line/Point Geometry"));
     topLayout->addWidget(geometryGroup);
 
     QGridLayout *geometryLayout = new QGridLayout(geometryGroup);
@@ -164,55 +170,53 @@ QvisCurvePlotWindow::CreateWindowContents()
     geometryLayout->setSpacing(10);
  
 
-    renderMode = new QButtonGroup(central);
-    connect(renderMode, SIGNAL(buttonClicked(int)),
-            this, SLOT(renderModeChanged(int)));
-    QRadioButton *rb0 = new QRadioButton(tr("Draw curve using lines"), central);
-    renderMode->addButton(rb0, 0);
-    geometryLayout->addWidget(rb0, 0, 0, 1, 4);
-    QRadioButton *rb1 = new QRadioButton(tr("Draw curve using symbols"), central);
-    renderMode->addButton(rb1, 1);
-    geometryLayout->addWidget(rb1, 3, 0, 1, 4);
-
-    geometryLayout->addWidget(new QLabel("     ", central), 1, 0);
-
+    int ROW = 0;
     //
     // Create line related controls.
     //
+    showLines = new QCheckBox(tr("Show lines"), central);
+    connect(showLines, SIGNAL(toggled(bool)),
+            this, SLOT(showLinesChanged(bool)));
+
+    geometryLayout->addWidget(showLines, ROW, 0, 1, 2);
+
+    ++ROW;
+
+    geometryLayout->addWidget(new QLabel("     ", central), ROW, 0, 1, 1);
+
     lineStyle = new QvisLineStyleWidget(0, central);
     lineStyleLabel = new QLabel(tr("Line style"), central);
     lineStyleLabel->setBuddy(lineStyle);
-    geometryLayout->addWidget(lineStyleLabel, 1, 1);
-    geometryLayout->addWidget(lineStyle, 1, 2);
 
     connect(lineStyle, SIGNAL(lineStyleChanged(int)),
             this, SLOT(lineStyleChanged(int)));
 
+    geometryLayout->addWidget(lineStyleLabel, ROW, 1, 1, 1);
+    geometryLayout->addWidget(lineStyle, ROW, 2, 1, 1);
+
     lineWidth = new QvisLineWidthWidget(0, central);
     lineWidthLabel = new QLabel(tr("Line width"), central);
     lineWidthLabel->setBuddy(lineWidth);
-    geometryLayout->addWidget(lineWidthLabel, 1, 3);
-    geometryLayout->addWidget(lineWidth, 1, 4);
+
+    geometryLayout->addWidget(lineWidthLabel, ROW, 3, 1, 1);
+    geometryLayout->addWidget(lineWidth, ROW, 4, 1, 1);
 
     connect(lineWidth, SIGNAL(lineWidthChanged(int)),
             this, SLOT(lineWidthChanged(int)));
 
-    showPoints = new QCheckBox(tr("Show points"), central);
-    geometryLayout->addWidget(showPoints, 2, 1);
+    ++ROW;
 
+    // 
+    // Create point related controls.
+    //
+
+    showPoints = new QCheckBox(tr("Show points"), central);
     connect(showPoints, SIGNAL(toggled(bool)),
             this, SLOT(showPointsChanged(bool)));
 
-    // Create the point size line edit
-    pointSize = new QNarrowLineEdit(central);
-    pointSizeLabel = new QLabel(tr("Point size"), central);
-    pointSizeLabel->setBuddy(pointSize);
-    geometryLayout->addWidget(pointSizeLabel, 2, 2,
-                              Qt::AlignRight | Qt::AlignVCenter);
-    geometryLayout->addWidget(pointSize, 2, 3);
+    geometryLayout->addWidget(showPoints, ROW, 0, 1, 2);
 
-    connect(pointSize, SIGNAL(returnPressed()),
-            this, SLOT(processPointSizeText())); 
+    ++ROW;
 
     //
     // Create symbol-related controls
@@ -240,29 +244,81 @@ QvisCurvePlotWindow::CreateWindowContents()
     CREATE_PIXMAP(pix6, "visit_curvewindow_ci_x", ci_x_xpm)
 
     symbolType = new QComboBox(central);
-    symbolType->setMinimumHeight(35);
+    symbolType->setMinimumHeight(20);
+    symbolType->addItem(tr("Point"));
     symbolType->addItem(QIcon(pix1), tr("triangle up"));
     symbolType->addItem(QIcon(pix2), tr("triangle down"));
     symbolType->addItem(QIcon(pix3), tr("square"));
     symbolType->addItem(QIcon(pix4), tr("circle"));
     symbolType->addItem(QIcon(pix5), tr("plus"));
     symbolType->addItem(QIcon(pix6), tr("X"));
+
     connect(symbolType, SIGNAL(activated(int)),
             this, SLOT(symbolTypeChanged(int)));
+
     symbolTypeLabel = new QLabel(tr("Symbol"), central);
     symbolTypeLabel->setBuddy(symbolType);
-    geometryLayout->addWidget(symbolTypeLabel, 4, 1);
-    geometryLayout->addWidget(symbolType, 4, 2);
 
+    geometryLayout->addWidget(new QLabel("    ", central), ROW, 0, 1 ,1);
+    geometryLayout->addWidget(symbolTypeLabel, ROW, 1, 1, 1);
+    geometryLayout->addWidget(symbolType, ROW, 2, 1, 1);
+
+
+    // Create the point size line edit
+    pointSize = new QNarrowLineEdit(central);
+    pointSizeLabel = new QLabel(tr("Point size"), central);
+    pointSizeLabel->setBuddy(pointSize);
+
+    connect(pointSize, SIGNAL(returnPressed()),
+            this, SLOT(processPointSizeText())); 
+
+    geometryLayout->addWidget(pointSizeLabel, ROW, 3, 1, 1);
+    geometryLayout->addWidget(pointSize, ROW, 4, 1, 1);
+
+    ++ROW;
+
+    fillModeGroup = new QButtonGroup(geometryGroup);
+
+    connect(fillModeGroup, SIGNAL(buttonClicked(int)),
+            this, SLOT(fillModeChanged(int)));
+
+    staticButton = new QRadioButton(tr("Static"), geometryGroup);
+    staticButton->setChecked(true);
+    fillModeGroup->addButton(staticButton, 0);
+    geometryLayout->addWidget(staticButton, ROW, 1, 1, 2);
+
+    // Create the point stride 
+    pointStride = new QSpinBox(central);
+    pointStride->setMinimum(1);
+    pointStride->setMaximum(5000);
+    pointStrideLabel = new QLabel(tr("Point stride"), central);
+    pointStrideLabel->setBuddy(pointStride);
+
+    connect(pointStride, SIGNAL(valueChanged(int)),
+            this, SLOT(pointStrideChanged(int))); 
+
+    geometryLayout->addWidget(pointStrideLabel, ROW, 3, 1, 1);
+    geometryLayout->addWidget(pointStride, ROW, 4, 1, 1);
+
+    ++ROW;
+
+    dynamicButton = new QRadioButton(tr("Dynamic"), geometryGroup);
+    fillModeGroup->addButton(dynamicButton, 1);
+
+    geometryLayout->addWidget(dynamicButton, ROW, 1, 1, 2);
+
+    // Create the point density spin box
     symbolDensity = new QSpinBox(central);
     symbolDensity->setMinimum(10);
     symbolDensity->setMaximum(1000);
+    symbolDensityLabel = new QLabel(tr("Point density"), central);
+    symbolDensityLabel->setBuddy(symbolDensity);
+
     connect(symbolDensity, SIGNAL(valueChanged(int)),
             this, SLOT(symbolDensityChanged(int)));
-    symbolDensityLabel = new QLabel(tr("Density"), central);
-    symbolDensityLabel->setBuddy(symbolDensity);
-    geometryLayout->addWidget(symbolDensityLabel, 4, 3);
-    geometryLayout->addWidget(symbolDensity, 4, 4);
+
+    geometryLayout->addWidget(symbolDensityLabel, ROW, 3, 1, 1);
+    geometryLayout->addWidget(symbolDensity, ROW, 4, 1, 1);
 
     //
     // Create the color
@@ -280,7 +336,7 @@ QvisCurvePlotWindow::CreateWindowContents()
 
     curveColorButtons = new QButtonGroup(central);
 
-    QRadioButton * rb = new QRadioButton(tr("Cycle"), central);
+    QRadioButton *rb = new QRadioButton(tr("Cycle"), central);
     rb->setChecked(true);
     curveColorButtons->addButton(rb, 0);
     colorLayout->addWidget(rb, 0, 1);
@@ -298,6 +354,64 @@ QvisCurvePlotWindow::CreateWindowContents()
             this, SLOT(curveColorChanged(const QColor &)));
     colorLayout->addWidget(curveColor, 0, 3);
 
+    //
+    // Create the time cue stuff
+    //
+    QGroupBox * timeCueGroup = new QGroupBox(central);
+    timeCueGroup->setTitle(tr("Create Cue For Current Location"));
+    topLayout->addWidget(timeCueGroup);
+
+    QGridLayout *timeCueLayout = new QGridLayout(timeCueGroup);
+    timeCueLayout->setMargin(5);
+    timeCueLayout->setSpacing(10);
+ 
+    doBallTimeCue = new QCheckBox(tr("Add Ball"), central);
+    connect(doBallTimeCue, SIGNAL(toggled(bool)),
+            this, SLOT(doBallTimeCueChanged(bool)));
+    timeCueLayout->addWidget(doBallTimeCue, 0,0);
+
+    ballTimeCueColor = new QvisColorButton(central);
+    connect(ballTimeCueColor, SIGNAL(selectedColor(const QColor&)),
+            this, SLOT(ballTimeCueColorChanged(const QColor&)));
+    timeCueLayout->addWidget(ballTimeCueColor, 0,1);
+
+    timeCueBallSizeLabel = new QLabel(tr("Ball size"), central);
+    timeCueLayout->addWidget(timeCueBallSizeLabel,0,2);
+    timeCueBallSize = new QLineEdit(central);
+    connect(timeCueBallSize, SIGNAL(returnPressed()),
+            this, SLOT(timeCueBallSizeProcessText()));
+    timeCueLayout->addWidget(timeCueBallSize, 0,3);
+
+    doLineTimeCue = new QCheckBox(tr("Add Line"), central);
+    connect(doLineTimeCue, SIGNAL(toggled(bool)),
+            this, SLOT(doLineTimeCueChanged(bool)));
+    timeCueLayout->addWidget(doLineTimeCue, 1,0);
+
+    lineTimeCueColor = new QvisColorButton(central);
+    connect(lineTimeCueColor, SIGNAL(selectedColor(const QColor&)),
+            this, SLOT(lineTimeCueColorChanged(const QColor&)));
+    timeCueLayout->addWidget(lineTimeCueColor, 1,1);
+
+    lineTimeCueWidth = new QvisLineWidthWidget(0, central);
+    lineTimeCueWidthLabel = new QLabel(tr("Line width"), central);
+    lineTimeCueWidthLabel->setBuddy(lineTimeCueWidth);
+    timeCueLayout->addWidget(lineTimeCueWidthLabel,1,2);
+    connect(lineTimeCueWidth, SIGNAL(lineWidthChanged(int)),
+            this, SLOT(lineTimeCueWidthChanged(int)));
+
+    timeCueLayout->addWidget(lineTimeCueWidth, 1,3);
+
+    doCropTimeCue = new QCheckBox(tr("Crop"), central);
+    connect(doCropTimeCue, SIGNAL(toggled(bool)),
+            this, SLOT(doCropTimeCueChanged(bool)));
+    timeCueLayout->addWidget(doCropTimeCue, 2,0);
+
+    timeForTimeCueLabel = new QLabel(tr("Position of cue"), central);
+    timeCueLayout->addWidget(timeForTimeCueLabel,3,0);
+    timeForTimeCue = new QLineEdit(central);
+    connect(timeForTimeCue, SIGNAL(returnPressed()),
+            this, SLOT(timeForTimeCueProcessText()));
+    timeCueLayout->addWidget(timeForTimeCue, 3,1);
 
     //
     // Create the misc stuff
@@ -354,6 +468,12 @@ QvisCurvePlotWindow::CreateWindowContents()
 //   Brad Whitlock, Fri Jul 18 10:45:33 PDT 2008
 //   Qt 4.
 //
+//   Hank Childs, Thu Jul 15 18:20:26 PDT 2010
+//   Add cue for the current location.
+//
+//   Kathleen Bonnell, Wed Aug 11 09:34:41 PDT 2010
+//   Added pointStride, PointFillMode.  Updated widget 'enabled' dependencies.
+//
 // ****************************************************************************
 
 void
@@ -372,6 +492,15 @@ QvisCurvePlotWindow::UpdateWindow(bool doAll)
 
         switch(i)
         {
+          case CurveAttributes::ID_showLines:
+            showLines->blockSignals(true);
+            showLines->setChecked(atts->GetShowLines());
+            lineStyle->setEnabled(atts->GetShowLines());
+            lineStyleLabel->setEnabled(atts->GetShowLines());
+            lineWidth->setEnabled(atts->GetShowLines());
+            lineWidthLabel->setEnabled(atts->GetShowLines());
+            showLines->blockSignals(false);
+            break;
           case CurveAttributes::ID_lineStyle:
             lineStyle->blockSignals(true);
             lineStyle->SetLineStyle(atts->GetLineStyle());
@@ -381,6 +510,65 @@ QvisCurvePlotWindow::UpdateWindow(bool doAll)
             lineWidth->blockSignals(true);
             lineWidth->SetLineWidth(atts->GetLineWidth());
             lineWidth->blockSignals(false);
+            break;
+          case CurveAttributes::ID_showPoints:
+            {
+            showPoints->blockSignals(true);
+            showPoints->setChecked(atts->GetShowPoints());
+            pointSize->setEnabled(atts->GetShowPoints());
+            pointSizeLabel->setEnabled(atts->GetShowPoints());
+            symbolType->setEnabled(atts->GetShowPoints());
+            symbolTypeLabel->setEnabled(atts->GetShowPoints());
+            bool StaticMode = (atts->GetPointFillMode() == CurveAttributes::Static);
+            staticButton->setEnabled(atts->GetShowPoints());
+            pointStride->setEnabled(atts->GetShowPoints() && StaticMode);
+            pointStrideLabel->setEnabled(atts->GetShowPoints() && StaticMode);
+            dynamicButton->setEnabled(atts->GetShowPoints());
+            symbolDensity->setEnabled(atts->GetShowPoints() && !StaticMode);
+            symbolDensityLabel->setEnabled(atts->GetShowPoints() && !StaticMode);
+            showPoints->blockSignals(false);
+            }
+            break;
+          case CurveAttributes::ID_symbol:
+            symbolType->blockSignals(true);
+            symbolType->setCurrentIndex((int)atts->GetSymbol());
+            symbolType->blockSignals(false);
+            break;
+          case CurveAttributes::ID_pointSize:
+            tempText.setNum(atts->GetPointSize());
+            pointSize->setText(tempText);
+            break;
+          case CurveAttributes::ID_pointFillMode:
+            {
+            fillModeGroup->blockSignals(true);
+            bool StaticMode = (atts->GetPointFillMode() == CurveAttributes::Static);
+            if (StaticMode)
+                fillModeGroup->button(0)->setChecked(true);
+            else 
+                fillModeGroup->button(1)->setChecked(true);
+            pointStride->setEnabled(StaticMode && atts->GetShowPoints());
+            pointStrideLabel->setEnabled(StaticMode && atts->GetShowPoints());
+            symbolDensity->setEnabled(!StaticMode && atts->GetShowPoints());
+            symbolDensityLabel->setEnabled(!StaticMode && atts->GetShowPoints());
+            fillModeGroup->blockSignals(false);
+            }
+            break;
+          case CurveAttributes::ID_pointStride:
+            pointStride->blockSignals(true);
+            pointStride->setValue(atts->GetPointStride());
+            pointStride->blockSignals(false);
+            break;
+          case CurveAttributes::ID_symbolDensity:
+            symbolDensity->blockSignals(true);
+            symbolDensity->setValue(atts->GetSymbolDensity());
+            symbolDensity->blockSignals(false);
+            break;
+          case CurveAttributes::ID_curveColorSource:
+            curveColorButtons->blockSignals(true);
+            curveColorButtons->button(atts->GetCurveColorSource())->setChecked(true);
+            curveColorButtons->blockSignals(false);
+
+            curveColor->setEnabled(atts->GetCurveColorSource());
             break;
           case CurveAttributes::ID_curveColor:
             { // new scope
@@ -395,66 +583,109 @@ QvisCurvePlotWindow::UpdateWindow(bool doAll)
               }
             }
             break;
+          case CurveAttributes::ID_showLegend:
+            legendToggle->setChecked(atts->GetShowLegend());
+            break;
           case CurveAttributes::ID_showLabels:
             labelsToggle->setChecked(atts->GetShowLabels());
             break;
           case CurveAttributes::ID_designator: // internal
             break;
-          case CurveAttributes::ID_showPoints:
-            showPoints->blockSignals(true);
-            showPoints->setChecked(atts->GetShowPoints());
-            pointSize->setEnabled(atts->GetShowPoints());
-            pointSizeLabel->setEnabled(atts->GetShowPoints());
-            showPoints->blockSignals(false);
-            break;
-          case CurveAttributes::ID_pointSize:
-            tempText.setNum(atts->GetPointSize());
-            pointSize->setText(tempText);
-            break;
-          case CurveAttributes::ID_showLegend:
-            legendToggle->setChecked(atts->GetShowLegend());
-            break;
-
-          case CurveAttributes::ID_curveColorSource:
-            curveColorButtons->blockSignals(true);
-            curveColorButtons->button(atts->GetCurveColorSource())->setChecked(true);
-            curveColorButtons->blockSignals(false);
-
-            curveColor->setEnabled(atts->GetCurveColorSource());
-            break;
-          case CurveAttributes::ID_renderMode:
+         case CurveAttributes::ID_doBallTimeCue:
+            if (atts->GetDoBallTimeCue() == true)
             {
-            renderMode->blockSignals(true);
-            renderMode->button((int)atts->GetRenderMode())->setChecked(true);
-            renderMode->blockSignals(false);
-
-            bool asLines = atts->GetRenderMode() == CurveAttributes::RenderAsLines;
-            showPoints->setEnabled(asLines);
-            lineStyle->setEnabled(asLines);
-            lineStyleLabel->setEnabled(asLines);
-            lineWidth->setEnabled(asLines);
-            lineWidthLabel->setEnabled(asLines);
-            pointSize->setEnabled(asLines && atts->GetShowPoints());
-            pointSizeLabel->setEnabled(asLines && atts->GetShowPoints());
-
-            symbolType->setEnabled(!asLines);
-            symbolTypeLabel->setEnabled(!asLines);
-            symbolDensity->setEnabled(!asLines);
-            symbolDensityLabel->setEnabled(!asLines);
+                ballTimeCueColor->setEnabled(true);
+            }
+            else
+            {
+                ballTimeCueColor->setEnabled(false);
+            }
+            if (atts->GetDoBallTimeCue() == true)
+            {
+                timeCueBallSize->setEnabled(true);
+                if(timeCueBallSizeLabel)
+                    timeCueBallSizeLabel->setEnabled(true);
+            }
+            else
+            {
+                timeCueBallSize->setEnabled(false);
+                if(timeCueBallSizeLabel)
+                    timeCueBallSizeLabel->setEnabled(false);
+            }
+            doBallTimeCue->blockSignals(true);
+            doBallTimeCue->setChecked(atts->GetDoBallTimeCue());
+            doBallTimeCue->blockSignals(false);
+            break;
+          case CurveAttributes::ID_ballTimeCueColor:
+            { // new scope
+                QColor tempcolor = QColor(atts->GetBallTimeCueColor().Red(),
+                                   atts->GetBallTimeCueColor().Green(),
+                                   atts->GetBallTimeCueColor().Blue());
+                ballTimeCueColor->blockSignals(true);
+                ballTimeCueColor->setButtonColor(tempcolor);
+                ballTimeCueColor->blockSignals(false);
             }
             break;
-          case CurveAttributes::ID_symbol:
-            symbolType->blockSignals(true);
-            symbolType->setCurrentIndex((int)atts->GetSymbol());
-            symbolType->blockSignals(false);
+          case CurveAttributes::ID_timeCueBallSize:
+            timeCueBallSize->setText(DoubleToQString(atts->GetTimeCueBallSize()));
             break;
-          case CurveAttributes::ID_symbolDensity:
-            symbolDensity->blockSignals(true);
-            symbolDensity->setValue(atts->GetSymbolDensity());
-            symbolDensity->blockSignals(false);
+          case CurveAttributes::ID_doLineTimeCue:
+            if (atts->GetDoLineTimeCue() == true)
+            {
+                lineTimeCueColor->setEnabled(true);
+            }
+            else
+            {
+                lineTimeCueColor->setEnabled(false);
+            }
+            if (atts->GetDoLineTimeCue() == true)
+            {
+                lineTimeCueWidth->setEnabled(true);
+                if(lineTimeCueWidthLabel)
+                    lineTimeCueWidthLabel->setEnabled(true);
+            }
+            else
+            {
+                lineTimeCueWidth->setEnabled(false);
+                if(lineTimeCueWidthLabel)
+                    lineTimeCueWidthLabel->setEnabled(false);
+            }
+            doLineTimeCue->blockSignals(true);
+            doLineTimeCue->setChecked(atts->GetDoLineTimeCue());
+            doLineTimeCue->blockSignals(false);
+            break;
+          case CurveAttributes::ID_lineTimeCueColor:
+            { // new scope
+                QColor tempcolor = QColor(atts->GetLineTimeCueColor().Red(),
+                                   atts->GetLineTimeCueColor().Green(),
+                                   atts->GetLineTimeCueColor().Blue());
+                lineTimeCueColor->blockSignals(true);
+                lineTimeCueColor->setButtonColor(tempcolor);
+                lineTimeCueColor->blockSignals(false);
+            }
+            break;
+          case CurveAttributes::ID_lineTimeCueWidth:
+            lineTimeCueWidth->blockSignals(true);
+            lineTimeCueWidth->SetLineWidth(atts->GetLineTimeCueWidth());
+            lineTimeCueWidth->blockSignals(false);
+            break;
+          case CurveAttributes::ID_doCropTimeCue:
+            doCropTimeCue->blockSignals(true);
+            doCropTimeCue->setChecked(atts->GetDoCropTimeCue());
+            doCropTimeCue->blockSignals(false);
+            break;
+          case CurveAttributes::ID_timeForTimeCue:
+            timeForTimeCue->setText(DoubleToQString(atts->GetTimeForTimeCue()));
             break;
         }
     }
+
+    bool shouldEnableWidget = atts->GetDoBallTimeCue() ||
+                               atts->GetDoLineTimeCue() ||
+                               atts->GetDoCropTimeCue();
+    
+    timeForTimeCueLabel->setEnabled(shouldEnableWidget);
+    timeForTimeCue->setEnabled(shouldEnableWidget);
 }
 
 
@@ -481,6 +712,9 @@ QvisCurvePlotWindow::UpdateWindow(bool doAll)
 //   Brad Whitlock, Fri Jul 18 10:48:24 PDT 2008
 //   Qt 4.
 //
+//   Hank Childs, Thu Jul 15 18:20:26 PDT 2010
+//   Add cue for the current location.
+//
 // ****************************************************************************
 
 void
@@ -501,9 +735,44 @@ QvisCurvePlotWindow::GetCurrentValues(int which_widget)
         }
     }
 
+    // Do pointStride
+    if(which_widget == CurveAttributes::ID_pointStride || doAll)
+        if (pointStride->value() != atts->GetPointStride())
+            atts->SetPointStride(pointStride->value());
+
+    // Do symbolDensity
     if (which_widget == CurveAttributes::ID_symbolDensity || doAll)
         if (symbolDensity->value() != atts->GetSymbolDensity())
             atts->SetSymbolDensity(symbolDensity->value());
+
+
+    // Do timeCueBallSize
+    if(which_widget == CurveAttributes::ID_timeCueBallSize || doAll)
+    {
+        double val;
+        if(LineEditGetDouble(timeCueBallSize, val))
+            atts->SetTimeCueBallSize(val);
+        else
+        {
+            ResettingError(tr("Time Cue Ball Size"),
+                DoubleToQString(atts->GetTimeCueBallSize()));
+            atts->SetTimeCueBallSize(atts->GetTimeCueBallSize());
+        }
+    }
+
+    // Do timeForTimeCue
+    if(which_widget == CurveAttributes::ID_timeForTimeCue || doAll)
+    {
+        double val;
+        if(LineEditGetDouble(timeForTimeCue, val))
+            atts->SetTimeForTimeCue(val);
+        else
+        {
+            ResettingError(tr("timeForTimeCue"),
+                DoubleToQString(atts->GetTimeForTimeCue()));
+            atts->SetTimeForTimeCue(atts->GetTimeForTimeCue());
+        }
+    }
 }
 
 
@@ -653,6 +922,13 @@ QvisCurvePlotWindow::legendToggled(bool val)
 }
 
 void
+QvisCurvePlotWindow::showLinesChanged(bool val)
+{
+    atts->SetShowLines(val);
+    Apply();
+}
+
+void
 QvisCurvePlotWindow::showPointsChanged(bool val)
 {
     atts->SetShowPoints(val);
@@ -667,9 +943,10 @@ QvisCurvePlotWindow::processPointSizeText()
 }
 
 void
-QvisCurvePlotWindow::renderModeChanged(int val)
+QvisCurvePlotWindow::pointStrideChanged(int val)
 {
-    atts->SetRenderMode((CurveAttributes::RenderMode)val);
+    atts->SetPointStride(val);
+    SetUpdate(false);
     Apply();
 }
 
@@ -686,6 +963,95 @@ QvisCurvePlotWindow::symbolDensityChanged(int val)
 {
     atts->SetSymbolDensity(val);
     SetUpdate(false);
+    Apply();
+}
+
+
+void
+QvisCurvePlotWindow::fillModeChanged(int val)
+{
+    switch(val)
+    {
+      case 0:
+        atts->SetPointFillMode(CurveAttributes::Static);
+        break;
+      case 1:
+        atts->SetPointFillMode(CurveAttributes::Dynamic);
+        break;
+      default:
+        EXCEPTION1(ImproperUseException,
+                   "The Curve plot received a signal for a fill mode"
+                   "that it didn't understand");
+        break;
+    }
+    Apply();
+}
+
+
+void
+QvisCurvePlotWindow::doBallTimeCueChanged(bool val)
+{
+    atts->SetDoBallTimeCue(val);
+    Apply();
+}
+
+
+void
+QvisCurvePlotWindow::ballTimeCueColorChanged(const QColor &color)
+{
+    ColorAttribute temp(color.red(), color.green(), color.blue());
+    atts->SetBallTimeCueColor(temp);
+    SetUpdate(false);
+    Apply();
+}
+
+
+void
+QvisCurvePlotWindow::timeCueBallSizeProcessText()
+{
+    GetCurrentValues(CurveAttributes::ID_timeCueBallSize);
+    Apply();
+}
+
+
+void
+QvisCurvePlotWindow::doLineTimeCueChanged(bool val)
+{
+    atts->SetDoLineTimeCue(val);
+    Apply();
+}
+
+
+void
+QvisCurvePlotWindow::lineTimeCueColorChanged(const QColor &color)
+{
+    ColorAttribute temp(color.red(), color.green(), color.blue());
+    atts->SetLineTimeCueColor(temp);
+    SetUpdate(false);
+    Apply();
+}
+
+
+void
+QvisCurvePlotWindow::lineTimeCueWidthChanged(int val)
+{
+    atts->SetLineTimeCueWidth(val);
+    Apply();
+}
+
+
+void
+QvisCurvePlotWindow::doCropTimeCueChanged(bool val)
+{
+    atts->SetDoCropTimeCue(val);
+    Apply();
+}
+
+
+void
+QvisCurvePlotWindow::timeForTimeCueProcessText()
+{
+    GetCurrentValues(CurveAttributes::ID_timeForTimeCue);
     Apply();
 }
 

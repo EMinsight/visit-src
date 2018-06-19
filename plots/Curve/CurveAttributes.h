@@ -62,18 +62,19 @@
 class CurveAttributes : public AttributeSubject
 {
 public:
-    enum RenderMode
-    {
-        RenderAsLines,
-        RenderAsSymbols
-    };
     enum CurveColor
     {
         Cycle,
         Custom
     };
+    enum FillMode
+    {
+        Static,
+        Dynamic
+    };
     enum SymbolTypes
     {
+        Point,
         TriangleUp,
         TriangleDown,
         Square,
@@ -109,51 +110,75 @@ public:
     virtual void SelectAll();
     void SelectCurveColor();
     void SelectDesignator();
+    void SelectBallTimeCueColor();
+    void SelectLineTimeCueColor();
 
     // Property setting methods
+    void SetShowLines(bool showLines_);
     void SetLineStyle(int lineStyle_);
     void SetLineWidth(int lineWidth_);
+    void SetShowPoints(bool showPoints_);
+    void SetSymbol(SymbolTypes symbol_);
+    void SetPointSize(double pointSize_);
+    void SetPointFillMode(FillMode pointFillMode_);
+    void SetPointStride(int pointStride_);
+    void SetSymbolDensity(int symbolDensity_);
+    void SetCurveColorSource(CurveColor curveColorSource_);
     void SetCurveColor(const ColorAttribute &curveColor_);
+    void SetShowLegend(bool showLegend_);
     void SetShowLabels(bool showLabels_);
     void SetDesignator(const std::string &designator_);
-    void SetShowPoints(bool showPoints_);
-    void SetPointSize(double pointSize_);
-    void SetShowLegend(bool showLegend_);
-    void SetCurveColorSource(CurveColor curveColorSource_);
-    void SetRenderMode(RenderMode renderMode_);
-    void SetSymbol(SymbolTypes symbol_);
-    void SetSymbolDensity(int symbolDensity_);
+    void SetDoBallTimeCue(bool doBallTimeCue_);
+    void SetBallTimeCueColor(const ColorAttribute &ballTimeCueColor_);
+    void SetTimeCueBallSize(double timeCueBallSize_);
+    void SetDoLineTimeCue(bool doLineTimeCue_);
+    void SetLineTimeCueColor(const ColorAttribute &lineTimeCueColor_);
+    void SetLineTimeCueWidth(int lineTimeCueWidth_);
+    void SetDoCropTimeCue(bool doCropTimeCue_);
+    void SetTimeForTimeCue(double timeForTimeCue_);
 
     // Property getting methods
+    bool                 GetShowLines() const;
     int                  GetLineStyle() const;
     int                  GetLineWidth() const;
+    bool                 GetShowPoints() const;
+    SymbolTypes          GetSymbol() const;
+    double               GetPointSize() const;
+    FillMode             GetPointFillMode() const;
+    int                  GetPointStride() const;
+    int                  GetSymbolDensity() const;
+    CurveColor           GetCurveColorSource() const;
     const ColorAttribute &GetCurveColor() const;
           ColorAttribute &GetCurveColor();
+    bool                 GetShowLegend() const;
     bool                 GetShowLabels() const;
     const std::string    &GetDesignator() const;
           std::string    &GetDesignator();
-    bool                 GetShowPoints() const;
-    double               GetPointSize() const;
-    bool                 GetShowLegend() const;
-    CurveColor           GetCurveColorSource() const;
-    RenderMode           GetRenderMode() const;
-    SymbolTypes          GetSymbol() const;
-    int                  GetSymbolDensity() const;
+    bool                 GetDoBallTimeCue() const;
+    const ColorAttribute &GetBallTimeCueColor() const;
+          ColorAttribute &GetBallTimeCueColor();
+    double               GetTimeCueBallSize() const;
+    bool                 GetDoLineTimeCue() const;
+    const ColorAttribute &GetLineTimeCueColor() const;
+          ColorAttribute &GetLineTimeCueColor();
+    int                  GetLineTimeCueWidth() const;
+    bool                 GetDoCropTimeCue() const;
+    double               GetTimeForTimeCue() const;
 
     // Persistence methods
     virtual bool CreateNode(DataNode *node, bool completeSave, bool forceAdd);
     virtual void SetFromNode(DataNode *node);
 
     // Enum conversion functions
-    static std::string RenderMode_ToString(RenderMode);
-    static bool RenderMode_FromString(const std::string &, RenderMode &);
-protected:
-    static std::string RenderMode_ToString(int);
-public:
     static std::string CurveColor_ToString(CurveColor);
     static bool CurveColor_FromString(const std::string &, CurveColor &);
 protected:
     static std::string CurveColor_ToString(int);
+public:
+    static std::string FillMode_ToString(FillMode);
+    static bool FillMode_FromString(const std::string &, FillMode &);
+protected:
+    static std::string FillMode_ToString(int);
 public:
     static std::string SymbolTypes_ToString(SymbolTypes);
     static bool SymbolTypes_FromString(const std::string &, SymbolTypes &);
@@ -169,43 +194,63 @@ public:
 
     // User-defined methods
     bool ChangesRequireRecalculation(const CurveAttributes &) const;
-    void Print(ostream &, bool) const;
+    virtual void  ProcessOldVersions(DataNode *parentNode, const char *configVersion);
 
     // IDs that can be used to identify fields in case statements
     enum {
-        ID_lineStyle = 0,
+        ID_showLines = 0,
+        ID_lineStyle,
         ID_lineWidth,
+        ID_showPoints,
+        ID_symbol,
+        ID_pointSize,
+        ID_pointFillMode,
+        ID_pointStride,
+        ID_symbolDensity,
+        ID_curveColorSource,
         ID_curveColor,
+        ID_showLegend,
         ID_showLabels,
         ID_designator,
-        ID_showPoints,
-        ID_pointSize,
-        ID_showLegend,
-        ID_curveColorSource,
-        ID_renderMode,
-        ID_symbol,
-        ID_symbolDensity,
+        ID_doBallTimeCue,
+        ID_ballTimeCueColor,
+        ID_timeCueBallSize,
+        ID_doLineTimeCue,
+        ID_lineTimeCueColor,
+        ID_lineTimeCueWidth,
+        ID_doCropTimeCue,
+        ID_timeForTimeCue,
         ID__LAST
     };
 
 private:
+    bool           showLines;
     int            lineStyle;
     int            lineWidth;
+    bool           showPoints;
+    int            symbol;
+    double         pointSize;
+    int            pointFillMode;
+    int            pointStride;
+    int            symbolDensity;
+    int            curveColorSource;
     ColorAttribute curveColor;
+    bool           showLegend;
     bool           showLabels;
     std::string    designator;
-    bool           showPoints;
-    double         pointSize;
-    bool           showLegend;
-    int            curveColorSource;
-    int            renderMode;
-    int            symbol;
-    int            symbolDensity;
+    bool           doBallTimeCue;
+    ColorAttribute ballTimeCueColor;
+    double         timeCueBallSize;
+    bool           doLineTimeCue;
+    ColorAttribute lineTimeCueColor;
+    int            lineTimeCueWidth;
+    bool           doCropTimeCue;
+    double         timeForTimeCue;
 
     // Static class format string for type map.
     static const char *TypeMapFormatString;
     static const private_tmfs_t TmfsStruct;
 };
-#define CURVEATTRIBUTES_TMFS "iiabsbdbiiii"
+#define CURVEATTRIBUTES_TMFS "biibidiiiiabbsbadbaibd"
 
 #endif

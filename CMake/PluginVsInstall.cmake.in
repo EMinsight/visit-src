@@ -42,6 +42,12 @@
 #   Brad Whitlock, Thu May 27 09:30:00 PDT 2010
 #   Wrap setting the compiler in an if-exists test.
 #
+#   Mark C. Miller, Thu Jul 29 17:37:32 PDT 2010
+#   Added block for compiler version comments.
+#
+#   Brad Whitlock, Tue Aug 17 09:17:19 PDT 2010
+#   I added NETCDF_CXX_LIB.
+#
 #****************************************************************************/
 
 ##
@@ -60,6 +66,15 @@ ENDIF(EXISTS @CMAKE_C_COMPILER@)
 IF(EXISTS @CMAKE_CXX_COMPILER@)
     SET(CMAKE_CXX_COMPILER @CMAKE_CXX_COMPILER@)
 ENDIF(EXISTS @CMAKE_CXX_COMPILER@)
+
+# The comment below is intended to capture version information
+# of the compiler in use at the time CMake was invoked to build
+# VisIt. If there is no comment in the intervening lines, then
+# compiler version information was not successfully obtained.
+# -------------------------------------------------------------
+# @CMAKE_C_COMPILER_VERSION_MESSAGE@
+# @CMAKE_CXX_COMPILER_VERSION_MESSAGE@
+# -------------------------------------------------------------
 
 # Commonly used VisIt include directories
 SET(VISIT_COMMON_INCLUDES
@@ -195,6 +210,7 @@ SET(MILI_LIB @MILI_LIB@)
 SET(NETCDF_INCLUDE_DIR ${VISIT_INCLUDE_DIR}/netcdf/include)
 SET(NETCDF_LIBRARY_DIR ${VISIT_LIBRARY_DIR} ${VISIT_ARCHIVE_DIR})
 SET(NETCDF_LIB @NETCDF_LIB@)
+SET(NETCDF_CXX_LIB @NETCDF_CXX_LIB@)
 
 SET(PDB_INCLUDE_DIR ${VISIT_INCLUDE_DIR}/silo/include)
 SET(PDB_LIBRARY_DIR ${VISIT_LIBRARY_DIR} ${VISIT_ARCHIVE_DIR})

@@ -141,13 +141,13 @@ const int INTERRUPT_MESSAGE_TAG = GetUniqueStaticMessageTag();
 // Purpose:
 //   This class is used when the engine needs to reverse launch the viewer.
 //
-// Notes:      
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Thu Apr  9 11:51:35 PDT 2009
 //
 // Modifications:
-//   
+//
 // ****************************************************************************
 
 class ViewerRemoteProcess : public RemoteProcess
@@ -174,7 +174,7 @@ protected:
         for(size_t i = 0; i < commandLine.size(); ++i)
         {
             if(commandLine[i] == "-host" ||
-               commandLine[i] == "-port" || 
+               commandLine[i] == "-port" ||
                commandLine[i] == "-key")
             {
                 launchArgs[commandLine[i]] = commandLine[i+1];
@@ -466,13 +466,13 @@ Engine *Engine::Instance()
 //    Added timer
 //
 //    Cyrus Harrison, Wed Jan 23 09:21:18 PST 2008
-//    Changed set_new_handler to std::set_new_handler b/c of change from 
+//    Changed set_new_handler to std::set_new_handler b/c of change from
 //    deprecated <new.h> to <new>
-//  
+//
 //    Cyrus Harrison, Thu Jan 31 14:48:18 PST 2008
-//    Removed a lingering cerr message showing the MPI rank of the engine 
+//    Removed a lingering cerr message showing the MPI rank of the engine
 //    process.
-//  
+//
 //    Mark C. Miller, Thu Apr  3 14:36:48 PDT 2008
 //    Moved setting of component name to before Initialize
 //
@@ -781,6 +781,9 @@ public:
 //    other processors over MPI. I also added timing information for loading
 //    plugins in parallel.
 //
+//    Hank Childs, Sat Aug 21 14:35:47 PDT 2010
+//    Rename DDF to DataBinning.
+//
 // ****************************************************************************
 
 void
@@ -911,7 +914,7 @@ Engine::SetUpViewerInterface(int *argc, char **argv[])
     procInfoRPC                     = new ProcInfoRPC;
     simulationCommandRPC            = new SimulationCommandRPC;
     exportDatabaseRPC               = new ExportDatabaseRPC;
-    constructDDFRPC                 = new ConstructDDFRPC;
+    constructDataBinningRPC         = new ConstructDataBinningRPC;
     namedSelectionRPC               = new NamedSelectionRPC;
     setEFileOpenOptionsRPC          = new SetEFileOpenOptionsRPC;
 
@@ -937,7 +940,7 @@ Engine::SetUpViewerInterface(int *argc, char **argv[])
     xfer->Add(procInfoRPC);
     xfer->Add(simulationCommandRPC);
     xfer->Add(exportDatabaseRPC);
-    xfer->Add(constructDDFRPC);
+    xfer->Add(constructDataBinningRPC);
     xfer->Add(namedSelectionRPC);
     xfer->Add(setEFileOpenOptionsRPC);
 
@@ -967,7 +970,7 @@ Engine::SetUpViewerInterface(int *argc, char **argv[])
     rpcExecutors.push_back(new RPCExecutor<ProcInfoRPC>(procInfoRPC));
     rpcExecutors.push_back(new RPCExecutor<SimulationCommandRPC>(simulationCommandRPC));
     rpcExecutors.push_back(new RPCExecutor<ExportDatabaseRPC>(exportDatabaseRPC));
-    rpcExecutors.push_back(new RPCExecutor<ConstructDDFRPC>(constructDDFRPC));
+    rpcExecutors.push_back(new RPCExecutor<ConstructDataBinningRPC>(constructDataBinningRPC));
     rpcExecutors.push_back(new RPCExecutor<NamedSelectionRPC>(namedSelectionRPC));
     rpcExecutors.push_back(new RPCExecutor<SetEFileOpenOptionsRPC>(setEFileOpenOptionsRPC));
 
@@ -2569,6 +2572,9 @@ ParallelMergeClonedWriterOutputs(avtDataObject_p dob,
 //    Tom Fogal, Tue Jul 21 17:11:47 MDT 2009
 //    Debug statements.
 //
+//    Hank Childs, Thu Aug 26 13:47:30 PDT 2010
+//    Change extents names.
+//
 // ****************************************************************************
 void
 Engine::WriteData(NonBlockingRPC *rpc, avtDataObjectWriter_p &writer,
@@ -2658,7 +2664,7 @@ Engine::WriteData(NonBlockingRPC *rpc, avtDataObjectWriter_p &writer,
         visitTimer->StopTimer(collectData, "Collecting data");
 
         // indicate that cumulative extents in data object now as good as true extents
-        ui_dob->GetInfo().GetAttributes().SetCanUseCumulativeAsTrueOrCurrent(true);
+        ui_dob->GetInfo().GetAttributes().SetCanUseThisProcsAsOriginalOrActual(true);
 
         //
         // See if there was an error on another processor.
@@ -2756,7 +2762,7 @@ Engine::WriteData(NonBlockingRPC *rpc, avtDataObjectWriter_p &writer,
 
 #else // serial
     avtDataObject_p dob = writer->GetInput();
-    dob->GetInfo().GetAttributes().SetCanUseCumulativeAsTrueOrCurrent(true);
+    dob->GetInfo().GetAttributes().SetCanUseThisProcsAsOriginalOrActual(true);
     avtDataValidity &v = dob->GetInfo().GetValidity();
     if (!v.HasErrorOccurred())
     {

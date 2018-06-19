@@ -14,10 +14,21 @@
         OriginalData
         CurrentPlot
       </Enum>
-      <Field name="useStride" label="Use stride" type="bool">
+      <Enum name="GlyphType">
+        Arrow
+        Ellipsoid
+      </Enum>
+      <Enum name="GlyphLocation">
+        AdaptsToMeshResolution
+        UniformInSpace
+      </Enum>
+      <Field name="glyphLocation" label="Glyph Location" type="enum" subtype="GlyphLocation">
+        AdaptsToMeshResolution
+      </Field>
+      <Field name="useStride" label="Use stride" type="bool" enabler="glyphLocation:AdaptsToMeshResolution">
         false
       </Field>
-      <Field name="stride" label="Stride" type="int">
+      <Field name="stride" label="Stride" type="int" enabler="glyphLocation:AdaptsToMeshResolution">
         1
       </Field>
       <Field name="nVectors" label="Num vectors" type="int">
@@ -88,6 +99,9 @@
       </Field>
       <Field name="origOnly" label="Limit to original node/cell" type="bool">
         true
+      </Field>
+      <Field name="glyphType" label="glyphType" type="enum" subtype="GlyphType">
+        Arrow
       </Field>
       <Function name="ChangesRequireRecalculation" user="true" member="true">
       </Function>

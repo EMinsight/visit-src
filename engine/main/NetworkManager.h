@@ -59,7 +59,7 @@ class LoadBalancer;
 class DataNetwork;
 class Netnode;
 class NetnodeDB;
-class ConstructDDFAttributes;
+class ConstructDataBinningAttributes;
 class ExportDBAttributes;
 class OperatorPluginManager;
 class PickAttributes;
@@ -69,7 +69,7 @@ class QueryOverTimeAttributes;
 class MaterialAttributes;
 class MeshManagementAttributes;
 class VisWindow;
-class avtDDF;
+class avtDataBinning;
 class avtWholeImageCompositer;
 
 
@@ -406,6 +406,12 @@ typedef void   (*ProgressCallback)(void *, const char *, const char *,int,int);
 //    Tom Fogal, Tue Jul 21 19:27:00 MDT 2009
 //    Propagate bool for skipping SR threshold down.
 //
+//    Hank Childs, Sat Aug 21 14:35:47 PDT 2010
+//    Rename DDF to DataBinning.
+//
+//    Dave Pugmire, Tue Aug 24 11:32:12 EDT 2010
+//    Add compact domain options.
+//
 // ****************************************************************************
 
 class ENGINE_MAIN_API NetworkManager
@@ -468,6 +474,7 @@ class ENGINE_MAIN_API NetworkManager
     int           GetTotalGlobalCellCounts(int winID) const;
     void          SetGlobalCellCount(int netId, int cellCount);
     int           GetScalableThreshold(int winId) const;
+    int           GetCompactDomainsThreshold(int winId) const;
     bool          GetShouldUseCompression(int winId) const;
     void          DoneWithNetwork(int);
 
@@ -509,8 +516,8 @@ class ENGINE_MAIN_API NetworkManager
     void          PickForIntersection(const int, PickAttributes *);
     void          Query(const std::vector<int> &, QueryAttributes*);
     void          ExportDatabase(const int, ExportDBAttributes *);
-    void          ConstructDDF(const int, ConstructDDFAttributes *);
-    avtDDF       *GetDDF(const char *);
+    void          ConstructDataBinning(const int, ConstructDataBinningAttributes *);
+    avtDataBinning *GetDataBinning(const char *);
     void          ApplyNamedSelection(const std::vector<std::string> &, 
                                       const std::string &);
     void          CreateNamedSelection(int, const std::string &);
@@ -606,8 +613,8 @@ class ENGINE_MAIN_API NetworkManager
     bool                        inQueryMode;
     LoadBalancer               *loadBalancer;
 
-    std::vector<avtDDF *>       ddf;
-    std::vector<std::string>    ddf_names;
+    std::vector<avtDataBinning *>  dataBinnings;
+    std::vector<std::string>       dataBinningNames;
 
     static InitializeProgressCallback
                                 initializeProgressCallback;
