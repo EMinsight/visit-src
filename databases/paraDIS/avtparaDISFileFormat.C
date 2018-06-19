@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * All rights reserved.
 *
@@ -77,21 +77,36 @@ using     rclib::Point;
  
 avtparaDISFileFormat::avtparaDISFileFormat(const char *filename,
                                            DBOptionsAttributes *rdatts)
-  : avtSTSDFileFormat(filename), 
-    mFilename(filename), mFormat(PARADIS_NO_FORMAT), 
-    mParallelData(filename), mDumpfile(filename, rdatts) {
+  : avtSTSDFileFormat(filename), mDumpfile(filename, rdatts),mParallelData(filename) {
+
+  cerr << "using avtparaDISFileFormat::avtparaDISFileFormat version 2.3.4" << endl; 
+  if (filename) {
+    mFilename = filename; 
+  }
+  mFormat = PARADIS_NO_FORMAT;
+  mVerbosity = 0; 
 
   if (mParallelData.ParseMetaDataFile()) {  
-     mFormat = PARADIS_PARALLEL_FORMAT;
+    mFormat = PARADIS_PARALLEL_FORMAT;
   } else if (mDumpfile.FileIsValid()) {
     mFormat = PARADIS_DUMPFILE_FORMAT; 
   }
   debug1 << "avtparaDISFileFormat, filename="<<filename<<";  development code" << endl;
+
   return; 
 }
 
 
+void avtparaDISFileFormat::Clear(void) {
+  mFilename = ""; 
+  mFormat = PARADIS_NO_FORMAT;
+  mVerbosity = 0; 
+  mDumpfile.Clear(); 
+  mParallelData.Clear(); 
 
+    
+  return; 
+}
 
 // ****************************************************************************
 //  Method: avtparaDISFileFormat::FreeUpResources
@@ -110,6 +125,7 @@ avtparaDISFileFormat::avtparaDISFileFormat(const char *filename,
 void
 avtparaDISFileFormat::FreeUpResources(void)
 {
+  debug1 << "avtparaDISFileFormat::FreeUpResources(void)" << endl; 
   return; 
 }
 
@@ -236,8 +252,7 @@ avtparaDISFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
     // use a material for the node types 
     AddMaterialToMetaData(md, "Node-Num-Neighbors", "nodes", mDumpfile.mNodeNeighborValues.size(), mDumpfile.mNodeNeighborValues);
     
-    AddScalarVarToMetaData(md, "Node-Simulation-Domain", "nodes", AVT_NODECENT); 
-    AddScalarVarToMetaData(md, "Node-Simulation-ID", "nodes", AVT_NODECENT); 
+    AddScalarVarToMetaData(md, "Node-ID-Hash", "nodes", AVT_NODECENT); 
     AddScalarVarToMetaData(md, "Node-Index", "nodes", AVT_NODECENT); 
 
     // Can't use enumerated scalar here because nodes can have almost arbitrary types.  
@@ -316,21 +331,6 @@ avtparaDISFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
     }
     md->Add(matype_smd);    
     
-    avtScalarMetaData *mn_smd =
-      new avtScalarMetaData("Segment-MN-Type", "segments", AVT_ZONECENT);
-    mn_smd->SetEnumerationType(avtScalarMetaData::ByValue);
-    for (int i=-1; i<11; i++) {
-      mn_smd->AddEnumNameValue(ArmTypeNames(i), i);
-    }
-    md->Add(mn_smd);
-
-    /* avtScalarMetaData *segment_dup =
-       new avtScalarMetaData("Segment-Duplicates", "segments", AVT_ZONECENT);
-       segment_dup->SetEnumerationType(avtScalarMetaData::ByValue);
-       segment_dup->AddEnumNameValue("NOT DUPLICATED", 0);
-       segment_dup->AddEnumNameValue("DUPLICATE", 1);
-       md->Add(segment_dup);
-    */ 
     /*! 
       ==============================================
       Add a mesh for the meta-arms for dumpfile (serial) 
@@ -398,10 +398,10 @@ avtparaDISFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
 vtkDataSet *
 avtparaDISFileFormat::GetMesh(const char *meshname)
 {  
-    
-  debug2 << "avtparaDISFileFormat::GetMesh("<<meshname<<") from file "<<mFilename<<endl;
+   
+  debug2 << "avtparaDISFileFormat 2.3.4::GetMesh("<<meshname<<") from file "<<mFilename<<endl;
   vtkDataSet *mesh = NULL; 
-    
+  
   if (mFormat == PARADIS_DUMPFILE_FORMAT) {
     mesh = mDumpfile.GetMesh(meshname); 
   }  else {

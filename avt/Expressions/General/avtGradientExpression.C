@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -326,7 +326,7 @@ avtGradientExpression::PreExecute(void)
 // ****************************************************************************
 
 vtkDataArray *
-avtGradientExpression::DeriveVariable(vtkDataSet *in_ds)
+avtGradientExpression::DeriveVariable(vtkDataSet *in_ds, int currentDomainsIndex)
 {
     if (GetInput()->GetInfo().GetAttributes().GetTopologicalDimension() == 0)
     {
@@ -448,7 +448,7 @@ avtGradientExpression::CalculateGradient(vtkDataSet *in_ds,
         }
 
         vtkCellDataToPointData *cd2pd = vtkCellDataToPointData::New();
-        cd2pd->SetInput(in_ds);
+        cd2pd->SetInputData(in_ds);
         cd2pd->Update();
 
         scalarValues = cd2pd->GetOutput()->GetPointData()->GetScalars();
@@ -527,7 +527,7 @@ avtGradientExpression::CalculateGradient(vtkDataSet *in_ds,
         new_ds->GetPointData()->SetVectors(results);
 
         vtkPointDataToCellData *pd2cd = vtkPointDataToCellData::New();
-        pd2cd->SetInput(new_ds);
+        pd2cd->SetInputData(new_ds);
         pd2cd->Update();
         
         vtkDataArray *new_results = pd2cd->GetOutput()->GetCellData()
@@ -1340,7 +1340,7 @@ avtGradientExpression::NodalToZonalQuadHexGrad(vtkStructuredGrid *in_ds,
                 new_ds->CopyStructure(in_ds);
                 char *name = val->GetName();
                 new_ds->GetCellData()->AddArray(val);
-                cd2pd->SetInput(new_ds);
+                cd2pd->SetInputData(new_ds);
                 cd2pd->Update();
                 val = cd2pd->GetOutput()->GetPointData()->GetArray(name);
                 val->Register(NULL);
@@ -1689,7 +1689,7 @@ avtGradientExpression::FastGradient(vtkDataSet *in_ds,
     new_ds->CopyStructure(in_ds);
     new_ds->GetCellData()->AddArray(cellGrad);
     vtkCellDataToPointData *cd2pd = vtkCellDataToPointData::New();
-    cd2pd->SetInput(new_ds);
+    cd2pd->SetInputData(new_ds);
     cd2pd->Update();
     vtkDataArray *rv = cd2pd->GetOutput()->GetPointData()->GetArray("tmpGrad");
     rv->Register(NULL);

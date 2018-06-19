@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * All rights reserved.
 *
@@ -47,9 +47,12 @@
 
 struct Dumpfile: public ParaDISFileSet {
  public:
-  Dumpfile(std::string filename, DBOptionsAttributes *rdatts); 
+ 
+  Dumpfile(const char *filename, DBOptionsAttributes *rdatts); 
   ~Dumpfile(); 
 
+  void Clear(void); 
+  //void Init(std::string filename, DBOptionsAttributes *rdatts); 
   bool FileIsValid(void);
   virtual vtkDataSet *GetMesh(std::string meshname);
   virtual vtkDataArray *GetVar(std::string varname); 

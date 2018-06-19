@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -253,7 +253,7 @@ int avtM3DC1Field::register_vert(std::vector< vertex > &vlist,
 
   vlist.push_back( vert );
 
-  return vlist.size() - 1;
+  return (int)vlist.size() - 1;
 }
 
 

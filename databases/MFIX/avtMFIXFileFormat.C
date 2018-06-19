@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1690,10 +1690,10 @@ avtMFIXFileFormat::BuildMesh(int xDomain, int yDomain, int zDomain)
             }
         rgrid->GetCellData()->AddArray(ghostCells);
         ghostCells->Delete(); // held alive by ref count
-        rgrid->SetUpdateGhostLevel(0);
+        rgrid->GetInformation()->Set(
+            vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_GHOST_LEVELS(), 0); 
 
         return rgrid;
-
     }
     else if (!strcmp(this->CoordinateSystem,"CARTESIAN") &&
         (this->KMaximum2 == 1)) {
@@ -1756,7 +1756,8 @@ avtMFIXFileFormat::BuildMesh(int xDomain, int yDomain, int zDomain)
 
         rgrid->GetCellData()->AddArray(ghostCells);
         ghostCells->Delete(); // held alive by ref count
-        rgrid->SetUpdateGhostLevel(0);
+        rgrid->GetInformation()->Set(
+            vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_GHOST_LEVELS(), 0); 
 
         return rgrid;
     }
@@ -1831,7 +1832,8 @@ avtMFIXFileFormat::BuildMesh(int xDomain, int yDomain, int zDomain)
 
         sgrid->GetCellData()->AddArray(ghostCells);
         ghostCells->Delete(); // held alive by ref count
-        sgrid->SetUpdateGhostLevel(0);
+        sgrid->GetInformation()->Set(
+            vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_GHOST_LEVELS(), 0); 
 
         return sgrid;
     } else {
@@ -1915,7 +1917,8 @@ avtMFIXFileFormat::BuildMesh(int xDomain, int yDomain, int zDomain)
             }
         sgrid->GetCellData()->AddArray(ghostCells);
         ghostCells->Delete(); // held alive by ref count
-        sgrid->SetUpdateGhostLevel(0);
+        sgrid->GetInformation()->Set(
+            vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_GHOST_LEVELS(), 0); 
 
         return sgrid;
     }

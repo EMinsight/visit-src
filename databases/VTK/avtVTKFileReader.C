@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -392,6 +392,9 @@ avtVTKFileReader::ReadInFile(void)
 //    Eric Brugger, Mon Jun 18 12:28:25 PDT 2012
 //    I enhanced the reader so that it can read parallel VTK files.
 //
+//    Kathleen Biagas, Mon Jan 28 11:06:32 PST 2013
+//    Remove calls to ds->Update.
+//
 //    Eric Brugger, Tue Jul  9 09:36:44 PDT 2013
 //    I modified the reading of pvti, pvtr and pvts files to handle the case
 //    where the piece extent was a subset of the whole extent.
@@ -437,13 +440,6 @@ avtVTKFileReader::ReadInDataset(int domain)
             EXCEPTION1(InvalidFilesException, pieceFileNames[domain]);
         }
         dataset->Register(NULL);
-
-        //
-        // Force the read and make sure that the reader is really gone, 
-        // so we don't eat up too many file descriptors.
-        //
-        dataset->Update();
-        //dataset->SetSource(NULL);
         reader->Delete();
     }
     else if (pieceExtension == "vti")
@@ -457,8 +453,6 @@ avtVTKFileReader::ReadInDataset(int domain)
             EXCEPTION1(InvalidFilesException, pieceFileNames[domain]);
         }
         dataset->Register(NULL);
-        dataset->Update();
-        //dataset->SetSource(NULL);
         reader->Delete();
     } 
     else if (pieceExtension == "vtr") 
@@ -473,8 +467,6 @@ avtVTKFileReader::ReadInDataset(int domain)
             EXCEPTION1(InvalidFilesException, pieceFileNames[domain]);
         }
         dataset->Register(NULL);
-        dataset->Update();
-        //dataset->SetSource(NULL);
         reader->Delete();
     } 
     else if (pieceExtension == "vts")
@@ -489,8 +481,6 @@ avtVTKFileReader::ReadInDataset(int domain)
             EXCEPTION1(InvalidFilesException, pieceFileNames[domain]);
         }
         dataset->Register(NULL);
-        dataset->Update();
-        //dataset->SetSource(NULL);
         reader->Delete();
     } 
     else if (pieceExtension == "vtp") 
@@ -504,8 +494,6 @@ avtVTKFileReader::ReadInDataset(int domain)
             EXCEPTION1(InvalidFilesException, pieceFileNames[domain]);
         }
         dataset->Register(NULL);
-        dataset->Update();
-        //dataset->SetSource(NULL);
         reader->Delete();
     } 
     else if (pieceExtension == "vtu") 
@@ -520,8 +508,6 @@ avtVTKFileReader::ReadInDataset(int domain)
             EXCEPTION1(InvalidFilesException, pieceFileNames[domain]);
         }
         dataset->Register(NULL);
-        dataset->Update();
-        //dataset->SetSource(NULL);
         reader->Delete();
     } 
     else
@@ -752,7 +738,7 @@ avtVTKFileReader::GetAuxiliaryData(const char *var, int domain,
             matnamestmp[i] = (char*) matnames[i].c_str();
         }
 
-        avtMaterial *mat = new avtMaterial(matnos.size(), //silomat->nmat,
+        avtMaterial *mat = new avtMaterial((int)matnos.size(), //silomat->nmat,
                                            matnostmp,     //silomat->matnos,
                                            matnamestmp,   //silomat->matnames,
                                            1,             //silomat->ndims,
@@ -1394,7 +1380,7 @@ avtVTKFileReader::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
             }
 
             avtMaterialMetaData *mmd = new avtMaterialMetaData("materials", MESHNAME,
-                                               valMap.size(), matnames);
+                                              (int)valMap.size(), matnames);
             md->Add(mmd);
 
             if (strncmp(name, "internal_var_Subsets", strlen("internal_var_Subsets")) == 0)

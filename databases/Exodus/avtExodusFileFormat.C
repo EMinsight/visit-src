@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -84,7 +84,7 @@
 #include <InvalidVariableException.h>
 #include <InvalidFilesException.h>
 #include <UnexpectedValueException.h>
-#include <Utility.h> // CXX_strndup
+#include <Utility.h>
 
 #include <string.h>
 #include <boost/cstdint.hpp>
@@ -203,7 +203,7 @@ static char **GetStringListFromExodusIINCvar(int exfid, char const *var_name)
     char *p;
     retval = (char**) malloc((nstrings + 1) * sizeof(char*));
     for (i = 0, p = buf; i < nstrings; i++, p += len_string)
-        retval[i] = CXX_strndup(p,len_string);
+        retval[i] = C_strndup(p,len_string);
     retval[i] = 0;
     free(buf);
 
@@ -247,9 +247,11 @@ static int SizeOfNCType(int type)
         case NC_INT:
         case NC_UINT:
             return sizeof(int);
+#ifdef HAVE_VTK_SIZEOF___INT64
         case NC_INT64:
         case NC_UINT64:
             return sizeof(int64_t);
+#endif
         case NC_FLOAT:
             return sizeof(float);
         case NC_DOUBLE:
@@ -430,11 +432,12 @@ GetData(int exncfid, int ts, const char *visit_varname, int numBlocks, nc_type *
         // double vals_elem_var1eb1(time_step, num_el_in_blk1) ;
         // double vals_elem_var2eb1(time_step, num_el_in_blk1) ;
         int num_elem = 0;
+        buf = 0;
         for (int pass = 0; pass < 2; pass++)
         {
             int ndims, dimids[NC_MAX_VAR_DIMS];
             size_t dlen;
-            char *p = (char *) buf;  // buf is unitialized at this point!!!!! VC compiler issues warning
+            char *p = (char *) buf; // p not relevant on first pass
             for (int i = 0; i < numBlocks; i++)
             {
                 int elem_varid;
@@ -638,24 +641,23 @@ MakeVTKDataArrayByTakingOwnershipOfNCVarData(nc_type type,
 }
 
 
-static vector<int>
-GetExodusSetIDs(int exncfid, string stype)
+static void
+GetExodusSetIDs(int exncfid, string stype, vector<int>& retval)
 {
     int ncerr;
     int num_set = 0;
-    vector<int> retval;
 
     if (stype != "elblk")
     {
         int num_set_dimid;
         ncerr = nc_inq_dimid(exncfid, string("num_" + stype + "_sets").c_str(), &num_set_dimid);
-        if (ncerr != NC_NOERR) return retval;
+        if (ncerr != NC_NOERR) return;
 
         size_t dlen = 0;
         ncerr = nc_inq_dimlen(exncfid, num_set_dimid, &dlen);
-        if (ncerr != NC_NOERR) return retval;
+        if (ncerr != NC_NOERR) return;
         num_set = (int) dlen;
-        if (!num_set) return retval;
+        if (!num_set) return;
     }
 
     // Populate retval with default ids (1...num_sets)
@@ -668,21 +670,19 @@ GetExodusSetIDs(int exncfid, string stype)
     else if (stype == "elblk") pnm = "eb";
     int prop1_varid;
     ncerr = nc_inq_varid(exncfid, string(pnm + "_prop1").c_str(), &prop1_varid);
-    if (ncerr != NC_NOERR) return retval;
+    if (ncerr != NC_NOERR) return;
 
     nc_type type;
     int ndims, dimids[NC_MAX_VAR_DIMS], natts;
     ncerr = nc_inq_var(exncfid, prop1_varid, 0, &type, &ndims, dimids, &natts);
-    if (ncerr != NC_NOERR) return retval;
+    if (ncerr != NC_NOERR) return;
 //warning WHAT ABOUT 64-BIT INTEGER TYPE
-    if (type != NC_INT || ndims != 1 || natts != 1) return retval;
-    ncerr = nc_inq_att(exncfid, prop1_varid, "ID", 0, 0);
-    if (ncerr != NC_NOERR) return retval;
+    if (type != NC_INT || ndims != 1 || natts != 1) return;
+    ncerr = nc_inq_att(exncfid, prop1_varid, "name", 0, 0);
+    if (ncerr != NC_NOERR) return;
 
     // Read integer data directly into STL vector obj's buffer
     ncerr = nc_get_var_int(exncfid, prop1_varid, &retval[0]);
-
-    return retval;
 }
 
 static vtkBitArray*
@@ -771,8 +771,6 @@ GetExodusSetsVar(int exncfid, int ts, char const *var, int numNodes, int numElem
 
     delete [] status;
 
-    retval->Print(cerr);
-
     return retval;
 }
 
@@ -852,7 +850,9 @@ GetElementBlockNamesAndIds(int ncExIIId, int numBlocks,
     switch (vtype)
     {
         case NC_INT:   READ_BLOCK_IDS(ncExIIId, eb_blockid_varid, numBlocks, blockId, int); break;
-//        case NC_INT64: READ_BLOCK_IDS(ncExIIId, eb_blockid_varid, numBlocks, blockId, int64_t); break;
+#ifdef HAVE_VTK_SIZEOF___INT64
+        case NC_INT64: READ_BLOCK_IDS(ncExIIId, eb_blockid_varid, numBlocks, blockId, int64_t); break;
+#endif
     }
 }
 
@@ -882,7 +882,7 @@ avtExodusFileFormat::RegisterFileList(const char *const *list, int nlist)
 
     globalFileLists->push_back(thisList);
 
-    return globalFileLists->size()-1;
+    return (int)globalFileLists->size()-1;
 }
 
 // ****************************************************************************
@@ -1184,106 +1184,213 @@ static void PlusEqual(vtkDataArray *lhs, vtkDataArray *rhs)
     }
 }
 
+// ****************************************************************************
+//  Modifications:
+//    Kathleen Biagas, Tue Sep 10 16:06:30 PDT 2013
+//    Add 'num_nodes' argument and use it to determine if cell types are
+//    quadratic.  Borrowing from vtk's reader, reduced complexity by only 
+//    comparing first 3 chars of ex_elem_type_att in most instances, and 
+//    supporting more exodus types.  Set vtk_celltype to -1 for types that
+//    VisIt may not yet support. 
+//
+// ****************************************************************************
+
 static void 
-DecodeExodusElemTypeAttText(const char *ex_elem_type_att, int *tdim, int *vtk_celltype)
+DecodeExodusElemTypeAttText(const char *ex_elem_type_att, int *tdim, int *vtk_celltype, int num_nodes)
 {
-    if (!STRNCASECMP(ex_elem_type_att, "circle", strlen("circle")))
+    std::string elemType(ex_elem_type_att);
+    std::transform(elemType.begin(), elemType.end(), elemType.begin(), ::tolower);    
+    if (elemType.substr(0, 3) == "cir")
     {
         if (tdim) *tdim = 2;
         if (vtk_celltype) *vtk_celltype = VTK_VERTEX;
         return;
     }
-    else if (!STRNCASECMP(ex_elem_type_att, "sphere", strlen("sphere")))
+    else if (elemType.substr(0, 3) == "sph")
     {
         if (tdim) *tdim = 3;
         if (vtk_celltype) *vtk_celltype = VTK_VERTEX;
         return;
     }
-    else if (!STRNCASECMP(ex_elem_type_att, "quad4", strlen("quad4")))
+    else if (elemType.substr(0, 3) == "qua")
     {
         if (tdim) *tdim = 2;
-        if (vtk_celltype) *vtk_celltype = VTK_QUAD;
+        if (vtk_celltype) 
+        {
+            if (4 == num_nodes)
+                *vtk_celltype = VTK_QUAD;
+            else if (8 == num_nodes)
+                *vtk_celltype = VTK_QUADRATIC_QUAD;
+            else if (9 == num_nodes)
+                *vtk_celltype = VTK_BIQUADRATIC_QUAD;
+        }
         return;
     }
-    else if (!STRNCASECMP(ex_elem_type_att, "quad", strlen("quad")))
+    else if (elemType.substr(0, 3) == "tri")
     {
         if (tdim) *tdim = 2;
-        if (vtk_celltype) *vtk_celltype = VTK_QUAD;
+        if (vtk_celltype)
+        {
+            if (3 == num_nodes)
+                *vtk_celltype = VTK_TRIANGLE;
+            else if (6 == num_nodes)
+                *vtk_celltype = VTK_QUADRATIC_TRIANGLE;
+        }
         return;
     }
-    else if (!STRNCASECMP(ex_elem_type_att, "tri3", strlen("tri3")))
+    else if (elemType.substr(0, 4) == "nsid")
     {
         if (tdim) *tdim = 2;
-        if (vtk_celltype) *vtk_celltype = VTK_TRIANGLE;
+        if (vtk_celltype) *vtk_celltype = VTK_POLYGON;
         return;
     }
-    else if (!STRNCASECMP(ex_elem_type_att, "triangle", strlen("triangle")))
+    else if (elemType.substr(0, 3) == "she")
     {
         if (tdim) *tdim = 2;
-        if (vtk_celltype) *vtk_celltype = VTK_TRIANGLE;
+        if (vtk_celltype)
+        {
+            if (3 == num_nodes)
+                *vtk_celltype = VTK_TRIANGLE;
+            else if (4 == num_nodes)
+                *vtk_celltype = VTK_QUAD;
+            else if (8 == num_nodes)
+                *vtk_celltype = VTK_QUADRATIC_QUAD;
+            else if (8 == num_nodes)
+            {
+                *vtk_celltype = VTK_QUADRATIC_QUAD;
+                num_nodes = 8;
+            }
+        }
         return;
     }
-    else if (!STRNCASECMP(ex_elem_type_att, "shell4", strlen("shell4")))
-    {
-        if (tdim) *tdim = 2;
-        if (vtk_celltype) *vtk_celltype = VTK_QUAD;
-        return;
-    }
-    else if (!STRNCASECMP(ex_elem_type_att, "shell", strlen("shell")))
-    {
-        if (tdim) *tdim = 2;
-        if (vtk_celltype) *vtk_celltype = VTK_QUAD;
-        return;
-    }
-    else if (!STRNCASECMP(ex_elem_type_att, "hex8", strlen("hex8")))
+    else if (elemType.substr(0, 3) == "hex")
     {
         if (tdim) *tdim = 3;
-        if (vtk_celltype) *vtk_celltype = VTK_HEXAHEDRON;
+        if (vtk_celltype)
+        {
+            if (8 == num_nodes)
+                *vtk_celltype = VTK_HEXAHEDRON;
+            else if (20 == num_nodes)
+                *vtk_celltype = VTK_QUADRATIC_HEXAHEDRON;
+            else if (21 == num_nodes)
+            {
+                *vtk_celltype = VTK_QUADRATIC_HEXAHEDRON;
+                num_nodes = 20;
+            }
+            //else if (27 == num_nodes)
+            //    *vtk_celltype = VTK_TRIQUADRATIC_HEXAHEDRON;
+        }
         return;
     }
-    else if (!STRNCASECMP(ex_elem_type_att, "hex", strlen("hex")))
+    else if (elemType.substr(0, 3) == "tet")
     {
         if (tdim) *tdim = 3;
-        if (vtk_celltype) *vtk_celltype = VTK_HEXAHEDRON;
+        if (vtk_celltype)
+        {
+            if (4 == num_nodes)
+                *vtk_celltype = VTK_TETRA;
+            else if (10 == num_nodes)
+                *vtk_celltype = VTK_QUADRATIC_TETRA;
+            else if (11 == num_nodes)
+            {
+                *vtk_celltype = VTK_QUADRATIC_TETRA;
+                num_nodes = 10;
+            }
+        }
         return;
     }
-    else if (!STRNCASECMP(ex_elem_type_att, "tetra", strlen("tetra")))
+    else if (elemType.substr(0, 3) == "wed")
     {
         if (tdim) *tdim = 3;
-        if (vtk_celltype) *vtk_celltype = VTK_TETRA;
+        if (vtk_celltype)
+        {
+            if (6 == num_nodes)
+                *vtk_celltype = VTK_WEDGE;
+            else if (15 == num_nodes)
+                *vtk_celltype = VTK_QUADRATIC_WEDGE;
+        }
         return;
     }
-    else if (!STRNCASECMP(ex_elem_type_att, "wedge", strlen("wedge")))
+    else if (elemType.substr(0, 3) == "pyr")
     {
         if (tdim) *tdim = 3;
-        if (vtk_celltype) *vtk_celltype = VTK_WEDGE;
+        if (vtk_celltype)
+        {
+            if (5 == num_nodes)
+                *vtk_celltype = VTK_PYRAMID;
+            else if (13 == num_nodes)
+                *vtk_celltype = VTK_QUADRATIC_PYRAMID;
+        }
         return;
     }
-    else if (!STRNCASECMP(ex_elem_type_att, "pyramid", strlen("pyramid")))
-    {
-        if (tdim) *tdim = 3;
-        if (vtk_celltype) *vtk_celltype = VTK_PYRAMID;
-        return;
-    }
-    else if (!STRNCASECMP(ex_elem_type_att, "beam", strlen("beam")))
+    else if (elemType.substr(0, 3) == "tru")
     {
         if (tdim) *tdim = 1;
-        if (vtk_celltype) *vtk_celltype = VTK_LINE;
+        if (vtk_celltype)
+        {
+            if (2 == num_nodes)
+                *vtk_celltype = VTK_LINE;
+            else if (3 == num_nodes)
+                *vtk_celltype = VTK_QUADRATIC_EDGE;
+        }
         return;
     }
-    else if (!STRNCASECMP(ex_elem_type_att, "bar", strlen("bar")))
+    else if (elemType.substr(0, 3) == "bea")
     {
         if (tdim) *tdim = 1;
-        if (vtk_celltype) *vtk_celltype = VTK_LINE;
+        if (vtk_celltype)
+        {
+            if (2 == num_nodes)
+                *vtk_celltype = VTK_LINE;
+            else if (3 == num_nodes)
+                *vtk_celltype = VTK_QUADRATIC_EDGE;
+        }
         return;
     }
-    else if (!STRNCASECMP(ex_elem_type_att, "edge", strlen("edge")))
+    else if (elemType.substr(0, 3) == "bar")
     {
         if (tdim) *tdim = 1;
-        if (vtk_celltype) *vtk_celltype = VTK_LINE;
+        if (vtk_celltype)
+        {
+            if (2 == num_nodes)
+                *vtk_celltype = VTK_LINE;
+            else if (3 == num_nodes)
+                *vtk_celltype = VTK_QUADRATIC_EDGE;
+        }
         return;
     }
-    else if (!STRNCASECMP(ex_elem_type_att, "null", strlen("null")))
+    else if (elemType.substr(0, 3) == "edg")
+    {
+        if (tdim) *tdim = 1;
+        if (vtk_celltype)
+        {
+            if (2 == num_nodes)
+                *vtk_celltype = VTK_LINE;
+            else if (3 == num_nodes)
+                *vtk_celltype = VTK_QUADRATIC_EDGE;
+        }
+        return;
+    }
+    else if (elemType.substr(0, 8) == "straight")
+    {
+        if (tdim) *tdim = 1;
+        if (vtk_celltype)
+        {
+            if (2 == num_nodes)
+                *vtk_celltype = VTK_LINE;
+        }
+        return;
+    }
+    else if (elemType.substr(0, 3) == "sup")
+    {
+        if (tdim) *tdim = 1;
+        if (vtk_celltype)
+        {
+            *vtk_celltype = VTK_POLY_VERTEX;
+        }
+        return;
+    }
+    else if (elemType.substr(0, 4) == "null")
     {
         if (tdim) *tdim = 0;
         if (vtk_celltype) *vtk_celltype = VTK_EMPTY_CELL;
@@ -1297,15 +1404,26 @@ static int
 ExodusElemTypeAtt2TopoDim(const char *ex_elem_type_att)
 {
     int tdim;
-    DecodeExodusElemTypeAttText(ex_elem_type_att, &tdim, 0);
+    DecodeExodusElemTypeAttText(ex_elem_type_att, &tdim, 0, 0);
+    debug5 << "For element type attribute text \"" << ex_elem_type_att << "\""
+           << ", got topo dim = " << tdim << endl;
     return tdim;
 }
 
+// ****************************************************************************
+//  Modifications:
+//    Kathleen Biagas, Tue Sep 10 16:06:30 PDT 2013
+//    Add 'num_nodes' argument and pass it to DecodeExodusElemTypeAttText.
+//
+// ****************************************************************************
+
 static int
-ExodusElemTypeAtt2VTKCellType(const char *ex_elem_type_att)
+ExodusElemTypeAtt2VTKCellType(const char *ex_elem_type_att, int num_nodes)
 {
-    int ctype;
-    DecodeExodusElemTypeAttText(ex_elem_type_att, 0, &ctype);
+    int ctype = -1;
+    DecodeExodusElemTypeAttText(ex_elem_type_att, 0, &ctype, num_nodes);
+    debug5 << "For element type attribute text \"" << ex_elem_type_att << "\" "
+           << "and num_nodes = " << num_nodes << ", got vtk_celltype = " << ctype << endl;
     return ctype;
 }
 
@@ -1388,7 +1506,15 @@ avtExodusFileFormat::AddVar(avtDatabaseMetaData *md, char const *vname,
 //    Hank Childs, Thu Dec  2 08:45:31 PST 2010
 //    No longer sort the block names.  It creates indexing issues later.
 //
+//    Mark C. Miller, Tue Sep 17 16:04:32 PDT 2013
+//    Add logic to populate *both* composite variables like vectors and
+//    tensors as well as scalar components.
 // ****************************************************************************
+
+#ifdef MAX
+#undef MAX
+#endif
+#define MAX(A,B) ((A)>(B)?(A):(B))
 
 void
 avtExodusFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md,
@@ -1417,11 +1543,6 @@ avtExodusFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md,
     size_t num_el_blk_len;
     VisItNCErr = nc_inq_dimlen(ncExIIId, num_el_blk_dimId, &num_el_blk_len);
     CheckNCError(nc_inq_dimlen);
-
-#ifdef MAX
-#undef MAX
-#endif
-#define MAX(A,B) ((A)>(B)?(A):(B))
 
     int topologicalDimension = -1;
     numBlocks = (int) num_el_blk_len;
@@ -1525,41 +1646,47 @@ avtExodusFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md,
 
     char **node_var_names = GetStringListFromExodusIINCvar(ncExIIId, "name_nod_var");
     i = 0;
+    int skip_composite = -1;
     while (node_var_names[i])
     {
-        char composite_name[NC_MAX_NAME];
-        int ncomps;
-        if (AreSuccessiveStringsRelatedComponentNames(node_var_names, i,
+        if (i > skip_composite)
+        {
+            char composite_name[NC_MAX_NAME];
+            int ncomps;
+            if (AreSuccessiveStringsRelatedComponentNames(node_var_names, i,
                 &ncomps, composite_name))
-        {
-            AddVar(md, composite_name, topologicalDimension, ncomps, AVT_NODECENT);
-            i += ncomps;
+            {
+                AddVar(md, composite_name, topologicalDimension, ncomps, AVT_NODECENT);
+                skip_composite = i + ncomps - 1;
+            }
         }
-        else
-        {
-            AddVar(md, node_var_names[i], topologicalDimension, 1, AVT_NODECENT);
-            i++;
-        }
+
+        // Add the scalar (component) variable.
+        AddVar(md, node_var_names[i], topologicalDimension, 1, AVT_NODECENT);
+        i++;
     }
     FreeStringListFromExodusIINCvar(node_var_names);
 
     char **elem_var_names = GetStringListFromExodusIINCvar(ncExIIId, "name_elem_var");
     i = 0;
+    skip_composite = -1;
     while (elem_var_names[i])
     {
-        char composite_name[NC_MAX_NAME];
-        int ncomps;
-        if (AreSuccessiveStringsRelatedComponentNames(elem_var_names, i,
+        if (i > skip_composite)
+        {
+            char composite_name[NC_MAX_NAME];
+            int ncomps;
+            if (AreSuccessiveStringsRelatedComponentNames(elem_var_names, i,
                 &ncomps, composite_name))
-        {
-            AddVar(md, composite_name, topologicalDimension, ncomps, AVT_ZONECENT);
-            i += ncomps;
+            {
+                AddVar(md, composite_name, topologicalDimension, ncomps, AVT_ZONECENT);
+                skip_composite = i + ncomps - 1;
+            }
         }
-        else
-        {
-            AddVar(md, elem_var_names[i], topologicalDimension, 1, AVT_ZONECENT);
-            i++;
-        }
+
+        // Add the scalar (component) variable.
+        AddVar(md, elem_var_names[i], topologicalDimension, 1, AVT_ZONECENT);
+        i++;
     }
     FreeStringListFromExodusIINCvar(elem_var_names);
 
@@ -1616,7 +1743,8 @@ avtExodusFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md,
     //
     // Add exodus nodsets, if any exist, as enumerated scalars
     //
-    vector<int> nsids = GetExodusSetIDs(ncExIIId, "node");
+    vector<int> nsids;
+    GetExodusSetIDs(ncExIIId, "node", nsids);
     if (nsids.size())
     {
         avtScalarMetaData *smd = new avtScalarMetaData("Nodesets", "Mesh", AVT_NODECENT);
@@ -1635,10 +1763,11 @@ avtExodusFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md,
     //
     // Add exodus sidesets, if any exist, as enumerated scalars
     //
-    vector<int> ssids = GetExodusSetIDs(ncExIIId, "side");
+    vector<int> ssids;
+    GetExodusSetIDs(ncExIIId, "side", ssids);
     if (ssids.size())
     {
-        avtScalarMetaData *smd = new avtScalarMetaData("Sidesets", "Mesh", AVT_ZONECENT);
+        avtScalarMetaData *smd = new avtScalarMetaData("Sidesets", "Mesh", AVT_NODECENT);
         for (int i = 0; i < ssids.size(); i++)
         {
             char tmp[32];
@@ -1680,6 +1809,14 @@ avtExodusFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md,
 //
 //    Mark C. Miller, Thu Jun 27 10:13:46 PDT 2013
 //    Removed logic to automagically add displacements.
+//
+//    Kathleen Biagas, Mon Sep  9 15:51:17 PDT 2013
+//    Use num_nodes_per_elem when determining vtk_celltype so quadratic cells
+//    are handled correctly.  Change 'verts' size to 20 to handle quadratic
+//    hexes. 
+//
+//    Mark C. Miller, Thu Sep 26 12:01:01 PDT 2013
+//    Fixed assumption that length of connect variable was always dimension 0.
 // ****************************************************************************
 
 vtkDataSet *
@@ -1796,7 +1933,11 @@ avtExodusFileFormat::GetMesh(int ts, const char *mesh)
         SNPRINTF(connect_varname, sizeof(connect_varname), "connect%d", i+1);
         VisItNCErr = nc_inq_varid(ncExIIId, connect_varname, &connect_varid);
         if (VisItNCErr != NC_NOERR) continue;
-
+        int connect_vardimids[NC_MAX_VAR_DIMS];
+        nc_inq_var(ncExIIId, connect_varid, 0, 0, 0, connect_vardimids, 0);
+        size_t connect_dim0varlen;
+        VisItNCErr = nc_inq_dimlen(ncExIIId, connect_vardimids[0], &connect_dim0varlen);
+        CheckNCError(nc_inq_dimlen);
         nc_type connect_vartype;
         VisItNCErr = nc_inq_vartype(ncExIIId, connect_varid, &connect_vartype);
         CheckNCError(nc_inq_varid);
@@ -1806,8 +1947,6 @@ avtExodusFileFormat::GetMesh(int ts, const char *mesh)
         VisItNCErr = nc_get_att_text(ncExIIId, connect_varid, "elem_type", connect_elem_type_attval);
         if (VisItNCErr != NC_NOERR)
             strcpy(connect_elem_type_attval, "unknown");
-        int vtk_celltype = ExodusElemTypeAtt2VTKCellType(connect_elem_type_attval);
-        delete [] connect_elem_type_attval;
 
         char num_el_in_blk_dimname[NC_MAX_NAME+1];
         SNPRINTF(num_el_in_blk_dimname, sizeof(num_el_in_blk_dimname), "num_el_in_blk%d", i+1);
@@ -1828,15 +1967,46 @@ avtExodusFileFormat::GetMesh(int ts, const char *mesh)
         VisItNCErr = nc_inq_dimlen(ncExIIId, num_nod_per_dimId, &num_nod_per_len);
         CheckNCError(nc_inq_dimlen);
         int num_nodes_per_elem = (int) num_nod_per_len;
+        int vtk_celltype = ExodusElemTypeAtt2VTKCellType(connect_elem_type_attval, num_nodes_per_elem);
+        delete [] connect_elem_type_attval;
+
+        int *ebepecnt_buf = 0;
+        int connect_varlen = num_elems_in_blk * num_nodes_per_elem;
+        if (vtk_celltype == VTK_POLYGON)
+        {
+            int ebepecnt_varid;
+            char ebepecnt_varname[NC_MAX_NAME+1];
+            SNPRINTF(ebepecnt_varname, sizeof(ebepecnt_varname), "ebepecnt%d", i+1);
+            VisItNCErr = nc_inq_varid(ncExIIId, ebepecnt_varname, &ebepecnt_varid);
+            if (VisItNCErr != NC_NOERR)
+            {
+                char msg[256];
+                SNPRINTF(msg, sizeof(msg), "Unable to get var id for ebepecnt%d: \"%s\"", i+1, nc_strerror(VisItNCErr));
+                EXCEPTION1(InvalidFilesException, msg);
+            }
+
+            ebepecnt_buf = new int[num_elems_in_blk];
+            VisItNCErr = nc_get_var_int(ncExIIId, ebepecnt_varid, ebepecnt_buf);
+            CheckNCError(nc_get_var_int);
+            if (VisItNCErr != NC_NOERR)
+            {
+                char msg[256];
+                SNPRINTF(msg, sizeof(msg), "Unable to read ebepecnt%d: \"%s\"", i+1, nc_strerror(VisItNCErr));
+                EXCEPTION1(InvalidFilesException, msg);
+            }
+
+            connect_varlen = connect_dim0varlen;
+        }
 
         blockIdToMatMap[i+1] = num_elems_in_blk;
 
-        vtkIdType verts[16];
+        // Note: for poly-case, num_nodes_per_elem should be size of entire connect array
+        vtkIdType *verts = new vtkIdType[num_nodes_per_elem];
         switch (connect_vartype)
         {
             case NC_INT:
             {
-                int *conn_buf = new int[num_nodes_per_elem * num_elems_in_blk];
+                int *conn_buf = new int[connect_varlen];
                 VisItNCErr = nc_get_var_int(ncExIIId, connect_varid, conn_buf);
                 CheckNCError(nc_get_var_int);
                 if (VisItNCErr != NC_NOERR)
@@ -1848,18 +2018,17 @@ avtExodusFileFormat::GetMesh(int ts, const char *mesh)
                 int *p = conn_buf;
                 for (int j = 0; j < num_elems_in_blk; j++)
                 {
-                    for (int k = 0; k < num_nodes_per_elem; k++, p++)
-                    {
+                    int nnodes = ebepecnt_buf?ebepecnt_buf[j]:num_nodes_per_elem;
+                    for (int k = 0; k < nnodes; k++, p++)
                         verts[k] = (vtkIdType) *p-1; // Exodus is 1-origin
-                    }
-                    ugrid->InsertNextCell(vtk_celltype, num_nodes_per_elem, verts);
+                    ugrid->InsertNextCell(vtk_celltype, nnodes, verts);
                 }
                 delete [] conn_buf;
                 break;
             }
             case NC_INT64:
             {
-                long long *conn_buf = new long long[num_nodes_per_elem * num_elems_in_blk];
+                long long *conn_buf = new long long[connect_varlen];
                 VisItNCErr = nc_get_var_longlong(ncExIIId, connect_varid, conn_buf);
                 CheckNCError(nc_get_var_longlong);
                 if (VisItNCErr != NC_NOERR)
@@ -1871,9 +2040,10 @@ avtExodusFileFormat::GetMesh(int ts, const char *mesh)
                 long long *p = conn_buf;
                 for (int j = 0; j < num_elems_in_blk; j++)
                 {
-                    for (int k = 0; k < num_nodes_per_elem; k++, p++)
+                    int nnodes = ebepecnt_buf?ebepecnt_buf[j]:num_nodes_per_elem;
+                    for (int k = 0; k < nnodes; k++, p++)
                         verts[k] = (vtkIdType) *p-1; // Exodus is 1-origin
-                    ugrid->InsertNextCell(vtk_celltype, num_nodes_per_elem, verts);
+                    ugrid->InsertNextCell(vtk_celltype, nnodes, verts);
                 }
                 delete [] conn_buf;
                 break;
@@ -1883,6 +2053,8 @@ avtExodusFileFormat::GetMesh(int ts, const char *mesh)
                 EXCEPTION2(UnexpectedValueException, "NC_INT || NC_INT64", connect_vartype);
             }
         }
+        if (ebepecnt_buf) delete [] ebepecnt_buf;
+        delete [] verts;
     }
 
     return ugrid;
@@ -1951,6 +2123,9 @@ avtExodusFileFormat::GetVar(int ts, const char *var)
 //    Hank Childs, Tue Apr  8 10:58:18 PDT 2003
 //    Make sure the file is read in before proceeding.
 //
+//    Kathleen Biagas, Wed Sep 11 08:37:55 PDT 2013
+//    Convert 2-component vector if mesh is 3D.
+//
 // ****************************************************************************
 
 vtkDataArray *
@@ -1962,7 +2137,27 @@ avtExodusFileFormat::GetVectorVar(int ts, const char *var)
 
     GetData(ncExIIId, ts, var, numBlocks, &type, &num_comps, &num_vals, &buf);
 
-    return MakeVTKDataArrayByTakingOwnershipOfNCVarData(type, num_comps, num_vals, buf);
+    vtkDataArray *arr = MakeVTKDataArrayByTakingOwnershipOfNCVarData(type, 
+                            num_comps, num_vals, buf);
+
+    // See if the vector needs converting.
+    if (num_comps == 2 && metadata != NULL && 
+        metadata->GetMesh("Mesh")->spatialDimension == 3)
+    {
+        // convert the 2-component vector to 3-component
+        vtkDataArray *vec = arr->NewInstance();
+        vec->SetNumberOfComponents(3);
+        vec->SetNumberOfTuples(num_vals);
+        for (int i = 0; i < num_vals; ++i)
+        {
+            vec->SetComponent(i, 0, arr->GetComponent(i, 0));
+            vec->SetComponent(i, 1, arr->GetComponent(i, 1));
+            vec->SetComponent(i, 2, 0);
+        }
+        arr->Delete();
+        return vec;
+    }
+    return arr;
 }
 
 
@@ -2148,27 +2343,4 @@ avtExodusFileFormat::GetAuxiliaryData(const char *var, int ts,
     }
 
     return NULL;
-}
-
-
-// ****************************************************************************
-//  Method: avtExodusFileFormat::SetTimestep
-//
-//  Purpose:
-//      Sets the timestep of the Exodus file.
-//
-//  Programmer: Hank Childs
-//  Creation:   October 9, 2001
-//
-// ****************************************************************************
-
-void
-avtExodusFileFormat::SetTimestep(int ts)
-{
-    int nTimesteps = GetNTimesteps();
-    if (ts < 0 || ts >= nTimesteps)
-    {
-        EXCEPTION2(BadIndexException, ts, nTimesteps);
-    }
-    debug1 << "avtExodusFileFormat::SetTimestep called but don't know what to do about about" << endl;
 }

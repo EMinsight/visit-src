@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * All rights reserved.
 *
@@ -120,13 +120,6 @@ parse_dirname(char *wholePath)
 }
 
 
-
-//===============================================
-FileSet::FileSet(): mNumFiles(0), mBytesPerElem(0), mFilesAreBinary(false) {
-  mDataTypeSizes[0] = mDataTypeSizes[2] = 8; // doubles and longs
-  mDataTypeSizes[1] = mDataTypeSizes[3] = 4; //floats and ints
-  return; 
-}
 
 //===============================================
 void FileSet::AddVar(string varname, string vartype, int components) {
@@ -640,14 +633,18 @@ inline void VarElementFetcher::InterpretBinaryElement(char *elementData){
   return; 
 }
 
+
 //=============================================================
 /*
-  ParallelData constructor
+  ParallelData initializer
  */
-ParallelData::ParallelData(string filename): mMetaDataFileName(filename) {
+void ParallelData::Clear(void) {
+  mMetaDataFileName = "";
+  mDataDescription = ""; 
+  mNodeFiles.Clear(); 
+  mSegmentFiles.Clear(); 
   return; 
 }
-
 //=============================================================
 /*
   ParallelData destructor
@@ -916,9 +913,9 @@ ParallelData::GetAuxiliaryData(const char *var, const char *type,
   FileSet *fileset = NULL; 
   if (mNodeFiles.HaveVar(varname)) {
     fileset = &mNodeFiles;
-  }  else if (varname == "Burgers type" || mSegmentFiles.HaveVar(varname)) {
+  } else if (varname == "Burgers type" || mSegmentFiles.HaveVar(varname)) {
     fileset = &mSegmentFiles;
-    }  
+  } 
   if (!fileset) {
     debug1 << "WARNING ParallelData::GetVar is unable to find a fileset that contains the variable requested" << endl; 
     return NULL; 

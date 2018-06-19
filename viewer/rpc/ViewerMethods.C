@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -5382,6 +5382,25 @@ ViewerMethods::SetCreateVectorMagnitudeExpressions(int flag)
 }
 
 // ****************************************************************************
+//  Method: ViewerMethods::SetPrecisionType
+//
+//  Purpose: Tells viewer to set the precision type used in the pipeline.
+//
+//  Programmer: Kathleen Biagas
+//  Creation:   August 7, 2013
+//
+// ****************************************************************************
+
+void
+ViewerMethods::SetPrecisionType(int flag)
+{
+    state->GetViewerRPC()->SetRPCType(
+        ViewerRPC::SetPrecisionTypeRPC);
+    state->GetViewerRPC()->SetIntArg1(flag);
+    state->GetViewerRPC()->Notify();
+}
+
+// ****************************************************************************
 //  Method: ViewerMethods::SetSuppressMessages
 //
 //  Purpose: Tells viewer to turn on/off message suppression.
@@ -5431,5 +5450,42 @@ ViewerMethods::DDTFocus(int domain)
 {
     state->GetViewerRPC()->SetRPCType(ViewerRPC::DDTFocusRPC);
     state->GetViewerRPC()->SetIntArg1(domain);
+    state->GetViewerRPC()->Notify();
+}
+
+// ****************************************************************************
+//  Method: ViewerMethods::Export functions
+//
+//  Purpose: A set of Export functions
+//
+//  Programmer:
+//  Creation:   September 9, 2013
+//
+// ****************************************************************************
+
+void
+ViewerMethods::ExportWindows(const intVector &windowIds, const std::string &format)
+{
+    JSONNode node;
+    node["action"] = "ExportWindows";
+    node["plotIds"] = windowIds;
+    node["format"] = format;
+
+    state->GetViewerRPC()->SetRPCType(ViewerRPC::ExportRPC);
+    state->GetViewerRPC()->SetStringArg1(node.ToString());
+    state->GetViewerRPC()->Notify();
+}
+
+void
+ViewerMethods::ExportHostProfile(const std::string& profile, const std::string& filename, const bool &saveInUserDir)
+{
+    JSONNode node;
+    node["action"] = "ExportHostProfile";
+    node["profileName"] = profile;
+    node["fileName"] = filename;
+    node["saveInUserDir"] = saveInUserDir;
+
+    state->GetViewerRPC()->SetRPCType(ViewerRPC::ExportRPC);
+    state->GetViewerRPC()->SetStringArg1(node.ToString());
     state->GetViewerRPC()->Notify();
 }

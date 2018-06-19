@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -101,7 +101,7 @@ class ZoomAxisArray;
 //    Added zoom interactor for AxisArray mode.
 //
 //    Eric Brugger, Tue Dec  9 14:44:12 PST 2008
-//    Added the AxisParallel window mode.
+//    Added the ParallelAxes window mode.
 //
 //    Eric Brugger, Mon Jun 24 13:36:10 PDT 2013
 //    I modified the 2d and 3d zoom interactors to once again constrain the
@@ -143,12 +143,12 @@ public:
     void              Start3DMode(INTERACTION_MODE mode);
     void              StartCurveMode(INTERACTION_MODE mode);
     void              StartAxisArrayMode(INTERACTION_MODE mode);
-    void              StartAxisParallelMode(INTERACTION_MODE mode);
+    void              StartParallelAxesMode(INTERACTION_MODE mode);
     void              Stop2DMode();
     void              Stop3DMode();
     void              StopCurveMode();
     void              StopAxisArrayMode();
-    void              StopAxisParallelMode();
+    void              StopParallelAxesMode();
 private:
     VisitInteractor  *currentInteractor;
 

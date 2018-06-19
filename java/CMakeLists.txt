@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -165,6 +165,9 @@ Variant.java
 View2DAttributes.java 
 View3DAttributes.java 
 ViewAxisArrayAttributes.java 
+ViewerClientAttributes.java
+ViewerClientInformation.java
+ViewerClientInformationElement.java
 ViewCurveAttributes.java 
 ViewerRPC.java 
 WindowInformation.java

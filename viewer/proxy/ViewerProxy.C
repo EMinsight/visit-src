@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -511,7 +511,7 @@ bool ViewerProxy::ConnectToExistingViewer(const std::string& host, const int& po
 #ifndef _WIN32
     int nwrite = write(testSocket,handshake.str().c_str(),handshake.str().length());
 #else
-    int nwrite = _write(testSocket,handshake.str().c_str(),handshake.str().length());
+    int nwrite = _write(testSocket,handshake.str().c_str(),(unsigned int)handshake.str().length());
 #endif
     if(nwrite < 0)
     {

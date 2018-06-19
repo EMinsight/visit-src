@@ -103,8 +103,8 @@ echo ""
 function bv_python_info
 {
 export PYTHON_FILE_SUFFIX="tgz"
-export PYTHON_VERSION=${PYTHON_VERSION:-"2.6.4"}
-export PYTHON_COMPATIBILITY_VERSION=${PYTHON_COMPATIBILITY_VERSION:-"2.6"}
+export PYTHON_VERSION=${PYTHON_VERSION:-"2.7.5"}
+export PYTHON_COMPATIBILITY_VERSION=${PYTHON_COMPATIBILITY_VERSION:-"2.7"}
 export PYTHON_FILE="Python-$PYTHON_VERSION.$PYTHON_FILE_SUFFIX"
 export PYTHON_BUILD_DIR="Python-$PYTHON_VERSION"
 
@@ -114,7 +114,7 @@ export PIL_BUILD_DIR=${PIL_BUILD_DIR:-"Imaging-1.1.6"}
 
 export PYPARSING_FILE=${PYPARSING_FILE:-"pyparsing-1.5.2.tar.gz"}
 export PYPARSING_BUILD_DIR=${PYPARSING_BUILD_DIR:-"pyparsing-1.5.2"}
-export PYTHON_MD5_CHECKSUM="17dcac33e4f3adb69a57c2607b6de246"
+export PYTHON_MD5_CHECKSUM="2cf641732ac23b18d139be077bd906cd"
 export PYTHON_SHA256_CHECKSUM=""
 }
 
@@ -372,10 +372,11 @@ diff -c Imaging-1.1.6.orig/setup.py Imaging-1.1.6/setup.py
 --- Imaging-1.1.6/setup.py      Tue Dec 14 13:39:39 2010
 ***************
 *** 196,201 ****
---- 196,204 ----
+--- 196,205 ----
           add_directory(library_dirs, "/usr/local/lib")
           add_directory(include_dirs, "/usr/local/include")
 
++         add_directory(library_dirs, "/usr/lib/x86_64-linux-gnu")
 +         add_directory(library_dirs, "/usr/lib64")
 +         add_directory(include_dirs, "/usr/include")
 +

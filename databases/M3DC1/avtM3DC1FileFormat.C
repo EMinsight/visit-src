@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -138,7 +138,7 @@ avtM3DC1FileFormat::avtM3DC1FileFormat(const char *filename,
 int
 avtM3DC1FileFormat::GetNTimesteps(void)
 {
-    return m_times.size();
+    return (int)m_times.size();
 }
 
 

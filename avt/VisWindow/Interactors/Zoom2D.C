@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -140,7 +140,7 @@ Zoom2D::Zoom2D(VisWindowInteractorProxy &v) : ZoomInteractor(v)
     lines->Delete();
 #endif
     guideLinesMapper = proxy.CreateXorGridMapper();
-    guideLinesMapper->SetInput(guideLines);
+    guideLinesMapper->SetInputData(guideLines);
 //    guideLinesMapper->SetDots(2, 3);
     
     guideLinesActor  = vtkActor2D::New();
