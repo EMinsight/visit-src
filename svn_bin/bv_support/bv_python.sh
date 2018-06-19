@@ -114,7 +114,12 @@ function bv_python_alt_python_dir
 
 function bv_python_depends_on
 {
-    echo ""
+    if [[ "$DO_OPENSSL" == "yes" ]] ; then
+        echo "openssl"
+    else
+        echo ""
+    fi
+
 }
 
 function bv_python_info
@@ -138,9 +143,16 @@ function bv_python_info
     export PYREQUESTS_BUILD_DIR=${PYREQUESTS_BUILD_DIR:-"requests-2.5.1"}
 
     export SEEDME_URL=${SEEDME_URL:-"https://seedme.org/sites/seedme.org/files/downloads/clients/"}
-    export SEEDME_FILE=${SEEDME_FILE:-"seedme-python-client-v1.1.0.zip"}
-    export SEEDME_BUILD_DIR=${SEEDME_BUILD_DIR:-"seedme-python-client-v1.1.0"}
+    export SEEDME_FILE=${SEEDME_FILE:-"seedme-python-client-v1.2.4.zip"}
+    export SEEDME_BUILD_DIR=${SEEDME_BUILD_DIR:-"seedme-python-client-v1.2.4"}
 
+    export SETUPTOOLS_URL=${SETUPTOOLS_URL:-"https://pypi.python.org/packages/f7/94/eee867605a99ac113c4108534ad7c292ed48bf1d06dfe7b63daa51e49987/"}
+    export SETUPTOOLS_FILE=${SETUPTOOLS_FILE:-"setuptools-28.0.0.tar.gz"}
+    export SETUPTOOLS_BUILD_DIR=${SETUPTOOLS_BUILD_DIR:-"setuptools-28.0.0"}
+
+    export NUMPY_URL=${NUMPY_URL:-"https://pypi.python.org/packages/16/f5/b432f028134dd30cfbf6f21b8264a9938e5e0f75204e72453af08d67eb0b/"}
+    export NUMPY_FILE=${NUMPY_FILE:-"numpy-1.11.2.tar.gz"}
+    export NUMPY_BUILD_DIR=${NUMPY_BUILD_DIR:-"numpy-1.11.2"}
 }
 
 function bv_python_print
@@ -342,6 +354,7 @@ function build_python
     fi
     PYTHON_OPT="$cFlags"
     PYTHON_LDFLAGS=""
+    PYTHON_CPPFLAGS=""
     PYTHON_PREFIX_DIR="$VISITDIR/python/$PYTHON_VERSION/$VISITARCH"
     if [[ "$DO_STATIC_BUILD" == "no" ]]; then
         PYTHON_SHARED="--enable-shared"
@@ -362,6 +375,15 @@ function build_python
             fi
         fi
     fi
+
+    if [[ "$DO_OPENSSL" == "yes" ]]; then
+        OPENSSL_INCLUDE="$VISITDIR/openssl/$OPENSSL_VERSION/$VISITARCH/include"
+        OPENSSL_LIB="$VISITDIR/openssl/$OPENSSL_VERSION/$VISITARCH/lib"
+        PYTHON_LDFLAGS="${PYTHON_LDFLAGS} -L ${OPENSSL_LIB}"
+        PYTHON_CPPFLAGS="-I ${OPENSSL_INCLUDE}"
+    fi
+    
+    
     if [[ "$OPSYS" == "AIX" ]]; then
         info "Configuring Python (AIX): ./configure OPT=\"$PYTHON_OPT\" CXX=\"$cxxCompiler\" CC=\"$cCompiler\"" \
              "--prefix=\"$PYTHON_PREFIX_DIR\" --disable-ipv6"
@@ -369,9 +391,11 @@ function build_python
                     --prefix="$PYTHON_PREFIX_DIR" --disable-ipv6
     else
         info "Configuring Python : ./configure OPT=\"$PYTHON_OPT\" CXX=\"$cxxCompiler\" CC=\"$cCompiler\"" \
-             "LDFLAGS=\"$PYTHON_LDFLAGS\""\
+             "LDFLAGS=\"$PYTHON_LDFLAGS\" CPPFLAGS=\"$PYTHON_CPPFLAGS\""\
              "${PYTHON_SHARED} --prefix=\"$PYTHON_PREFIX_DIR\" --disable-ipv6"
-        ./configure OPT="$PYTHON_OPT" CXX="$cxxCompiler" CC="$cCompiler" LDFLAGS="$PYTHON_LDFLAGS" \
+        ./configure OPT="$PYTHON_OPT" CXX="$cxxCompiler" CC="$cCompiler" \
+                    LDFLAGS="$PYTHON_LDFLAGS" \
+                    CPPFLAGS="$PYTHON_CPPFLAGS" \
                     ${PYTHON_SHARED} \
                     --prefix="$PYTHON_PREFIX_DIR" --disable-ipv6
     fi
@@ -643,6 +667,69 @@ function build_seedme
     return 0
 }
 
+# *************************************************************************** #
+#                                  build_numpy                                #
+# *************************************************************************** #
+function build_numpy
+{
+    # download
+    if ! test -f ${SETUPTOOLS_FILE} ; then
+        download_file ${SETUPTOOLS_FILE}
+        if [[ $? != 0 ]] ; then
+            warn "Could not download ${SETUPTOOLS_FILE}"
+            return 1
+        fi
+    fi
+
+    if ! test -f ${NUMPY_FILE} ; then
+        download_file ${NUMPY_FILE}
+        if [[ $? != 0 ]] ; then
+            warn "Could not download ${NUMPY_FILE}"
+            return 1
+        fi
+    fi
+
+    # extract
+    if ! test -d ${SETUPTOOLS_BUILD_DIR} ; then
+        info "Extracting setuptools ..."
+        uncompress_untar ${SETUPTOOLS_FILE}
+        if test $? -ne 0 ; then
+            warn "Could not extract ${SETUPTOOLS_FILE}"
+            return 1
+        fi
+    fi
+
+    if ! test -d ${NUMPY_BUILD_DIR} ; then
+        info "Extracting numpy ..."
+        uncompress_untar ${NUMPY_FILE}
+        if test $? -ne 0 ; then
+            warn "Could not extract ${NUMPY_FILE}"
+            return 1
+        fi
+    fi
+
+    # install
+    PYHOME="${VISITDIR}/python/${PYTHON_VERSION}/${VISITARCH}"
+    pushd $SETUPTOOLS_BUILD_DIR > /dev/null
+    info "Installing setuptools (~1 min) ..."
+    ${PYHOME}/bin/python ./setup.py install --prefix="${PYHOME}"
+    popd > /dev/null
+
+    pushd $NUMPY_BUILD_DIR > /dev/null
+    info "Installing numpy (~ 2 min) ..."
+    ${PYHOME}/bin/python ./setup.py install --prefix="${PYHOME}"
+    popd > /dev/null
+
+    # fix the perms
+    if [[ "$DO_GROUP" == "yes" ]] ; then
+        chmod -R ug+w,a+rX "$VISITDIR/python"
+        chgrp -R ${GROUP} "$VISITDIR/python"
+    fi
+
+    info "Done with numpy."
+    return 0
+}
+
 function bv_python_is_enabled
 {
     if [[ $DO_PYTHON == "yes" ]]; then
@@ -688,6 +775,14 @@ function bv_python_build
             fi
             info "Done building the Python Imaging Library"
 
+            info "Building the numpy module"
+            build_numpy
+            if [[ $? != 0 ]] ; then
+                warn "numpy build failed."
+            fi
+            info "Done building the numpy module."
+
+            info "Building the pyparsing module"
             build_pyparsing
             if [[ $? != 0 ]] ; then
                 warn "pyparsing build failed."

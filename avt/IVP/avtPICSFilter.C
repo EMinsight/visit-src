@@ -117,8 +117,8 @@ Consider the leaveDomains ICs and the balancing at the same time.
 #endif
 
 #include <vector>
-#include <math.h>
-#include <string.h>
+#include <limits>
+#include <cmath>
 
 #ifndef _WIN32
 #include <dirent.h>
@@ -130,6 +130,8 @@ Consider the leaveDomains ICs and the balancing at the same time.
 #endif
 
 bool PRINT = false;
+
+static const double epsilon = std::numeric_limits<double>::epsilon();
 
 static const char restartFilename[] = "PICS_Restart";
 
@@ -1406,6 +1408,10 @@ avtPICSFilter::Execute(void)
     }
     else
     {
+        // Clear _ics, which would contain stale pointers to ic's that
+        // no longer seem to exist. This comes up in export.
+        _ics.clear();
+
         GetIntegralCurvesFromInitialSeeds(_ics);
 
         icAlgo->SetAllSeedsSentToAllProcs( GetAllSeedsSentToAllProcs() );
@@ -1575,7 +1581,7 @@ avtPICSFilter::InitializeTimeInformation(int currentTimeSliderIndex)
 
           double intPart, fracPart = modf(period / timeSliceInterval, &intPart);
 
-          if( fracPart > FLT_EPSILON )
+          if( fracPart > epsilon )
           {
             EXCEPTION1(VisItException, "Periodic Pathlines - "
                        "the period must be an integer multiple of the "
@@ -1615,7 +1621,7 @@ avtPICSFilter::InitializeTimeInformation(int currentTimeSliderIndex)
                            "increasing or equal in time.");
             }
 
-            if (period && fabs((intv[1]-intv[0]) - timeSliceInterval) > FLT_EPSILON )
+            if (period && fabs((intv[1]-intv[0]) - timeSliceInterval) > epsilon )
             {
                 EXCEPTION1(VisItException, "Periodic Pathlines - "
                            "Found two adjacent time steps that do not have the "
@@ -2440,7 +2446,7 @@ avtPICSFilter::OnFace(const avtIntegralCurve *ic,
         vec = -vec;
 
     // Guess at the next step using a very small step size.
-    avtVector nextPt = pt + h * vec * FLT_EPSILON;
+    avtVector nextPt = pt + h * vec * epsilon;
 
     int val = 0;  // To start assume the points stays on the face.
 

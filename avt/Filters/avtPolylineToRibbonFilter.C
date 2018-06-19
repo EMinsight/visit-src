@@ -94,6 +94,11 @@ avtPolylineToRibbonFilter::~avtPolylineToRibbonFilter()
 //  Programmer: Allen Sanderson
 //  Creation:   Feb 12 2016
 //
+//  Modifications:
+//    Eric Brugger, Thu Oct 20 14:51:51 PDT 2016
+//    I added code to remove duplicate points from the lines since the 
+//    vtkRibbonFilter exits on any lines that have duplicate points.
+//
 // ****************************************************************************
 
 avtDataRepresentation *
@@ -118,8 +123,9 @@ avtPolylineToRibbonFilter::ExecuteData(avtDataRepresentation *inDR)
 
     vtkDataArray *activeScalars = inDS->GetPointData()->GetScalars();
 
-    vtkPolyData *data = vtkPolyData::SafeDownCast( inDS );
+    vtkPolyData *data = vtkPolyData::SafeDownCast(inDS);
 
+    // Create the ribbon polydata.
     vtkRibbonFilter *ribbonFilter = vtkRibbonFilter::New();
 
     ribbonFilter->SetWidth( width );
@@ -127,50 +133,45 @@ avtPolylineToRibbonFilter::ExecuteData(avtDataRepresentation *inDR)
     ribbonFilter->SetVaryWidth( varyWidth );
     ribbonFilter->ReleaseDataFlagOn();
 
-    if( varyWidth && widthVar != "" && widthVar != "\0" )
+    if (varyWidth && widthVar != "" && widthVar != "\0")
     {
-      if (widthVar != "default")
-        data->GetPointData()->SetActiveScalars( widthVar.c_str() );
+        if (widthVar != "default")
+            data->GetPointData()->SetActiveScalars(widthVar.c_str());
     }
 
     ribbonFilter->SetInputData(data);
 
-    // Create the ribbon polydata.
     ribbonFilter->Update();
 
     // Append the original data and ribbon polydata
     vtkAppendPolyData *append = vtkAppendPolyData::New();
 
-    append->AddInputData( data );
-    append->AddInputData( ribbonFilter->GetOutput() );
+    append->AddInputData(data);
+    append->AddInputData(ribbonFilter->GetOutput());
     
     ribbonFilter->Delete();
 
-    // Update.
     append->Update();
+
+    // Get the output.
     vtkPolyData *outPD = append->GetOutput();
     outPD->Register(NULL);
     append->Delete();
     
-    // Now go through all of the cells and remove the lines.
-    int nCells = outPD->GetNumberOfCells();
-
-    for( int i=0; i<nCells; ++i )
-      if( outPD->GetCellType( i ) == VTK_POLY_LINE )
-        outPD->DeleteCell( i );
-
+    // Remove the lines.
+    outPD->SetLines(NULL);
     outPD->RemoveDeletedCells();
 
     // Restore the active scalars.
-    if( activeScalars )
+    if (activeScalars)
     {
-      data->GetPointData()->SetActiveScalars(activeScalars->GetName());
-      outPD->GetPointData()->SetActiveScalars(activeScalars->GetName());
+        data->GetPointData()->SetActiveScalars(activeScalars->GetName());
+        outPD->GetPointData()->SetActiveScalars(activeScalars->GetName());
     }
 
-    // Crearte the output data rep.
+    // Create the output data rep.
     avtDataRepresentation *outDR =
-      new avtDataRepresentation( outPD, inDR->GetDomain(), inDR->GetLabel() );
+        new avtDataRepresentation( outPD, inDR->GetDomain(), inDR->GetLabel() );
 
     return outDR;
 }

@@ -1,14 +1,14 @@
-#/usr/gapps/visit/thirdparty_shared/2.11.0/cmake/3.0.2/linux-x86_64_gcc-4.4/bin/cmake
+#/usr/workspace/wsa/visit/visit/thirdparty_shared/2.12.0/cmake/3.0.2/linux-x86_64_gcc-4.4/bin/cmake
 ##
-## ./build_visit2_11_0 generated host.cmake
-## created: Thu Sep  1 12:03:35 PDT 2016
-## system: Linux aztec90 2.6.32-573.26.1.1chaos.ch5.4.x86_64 #1 SMP Wed May 4 15:27:57 PDT 2016 x86_64 x86_64 x86_64 GNU/Linux
+## ./build_visit2_12_0 generated host.cmake
+## created: Wed Nov  2 09:21:13 PDT 2016
+## system: Linux surface7 2.6.32-642.6.2.1chaos.ch5.5.x86_64 #1 SMP Mon Oct 24 10:49:01 PDT 2016 x86_64 x86_64 x86_64 GNU/Linux
 ## by: brugger
 
 ##
 ## Setup VISITHOME & VISITARCH variables.
 ##
-SET(VISITHOME /usr/gapps/visit/thirdparty_shared/2.11.0)
+SET(VISITHOME /usr/workspace/wsa/visit/visit/thirdparty_shared/2.12.0)
 SET(VISITARCH linux-x86_64_gcc-4.4)
 VISIT_OPTION_DEFAULT(VISIT_SLIVR TRUE TYPE BOOL)
 
@@ -30,8 +30,10 @@ VISIT_OPTION_DEFAULT(VISIT_THREAD OFF TYPE BOOL)
 VISIT_OPTION_DEFAULT(VISIT_PARALLEL ON TYPE BOOL)
 VISIT_OPTION_DEFAULT(VISIT_MPI_CXX_FLAGS -I/usr/local/tools/mvapich2-gnu/include TYPE STRING)
 VISIT_OPTION_DEFAULT(VISIT_MPI_C_FLAGS   -I/usr/local/tools/mvapich2-gnu/include TYPE STRING)
+VISIT_OPTION_DEFAULT(VISIT_MPI_FORTRAN_FLAGS -I/usr/local/tools/mvapich2-gnu/include TYPE STRING)
 VISIT_OPTION_DEFAULT(VISIT_MPI_LD_FLAGS  "-L/usr/local/tools/mvapich2-gnu/lib -Wl,-rpath=/usr/local/tools/mvapich2-gnu/lib" TYPE STRING)
 VISIT_OPTION_DEFAULT(VISIT_MPI_LIBS     mpich mpl pmi)
+VISIT_OPTION_DEFAULT(VISIT_MPI_FORTRAN_LIBS    fmpich mpich mpl pmi)
 VISIT_OPTION_DEFAULT(VISIT_PARALLEL_RPATH  "/usr/local/tools/mvapich2-gnu/lib")
 
 ##
@@ -122,9 +124,9 @@ VISIT_OPTION_DEFAULT(VISIT_ZLIB_DIR ${VISITHOME}/zlib/1.2.7/${VISITARCH})
 ## HDF5
 ##
 VISIT_OPTION_DEFAULT(VISIT_HDF5_DIR ${VISITHOME}/hdf5/1.8.14/${VISITARCH})
-VISIT_OPTION_DEFAULT(VISIT_HDF5_MPIPAR_DIR /usr/gapps/visit/thirdparty_shared/2.11.0/hdf5_mpi/1.8.14/linux-x86_64_gcc-4.4)
+VISIT_OPTION_DEFAULT(VISIT_HDF5_MPI_DIR ${VISITHOME}/hdf5_mpi/1.8.14/${VISITARCH})
 VISIT_OPTION_DEFAULT(VISIT_HDF5_LIBDEP ${VISITHOME}/szip/2.1/${VISITARCH}/lib sz ${VISITHOME}/zlib/1.2.7/${VISITARCH}/lib z TYPE STRING)
-VISIT_OPTION_DEFAULT(VISIT_HDF5_MPIPAR_LIBDEP ${VISITHOME}/szip/2.1/${VISITARCH}/lib sz ${VISITHOME}/zlib/1.2.7/${VISITARCH}/lib z TYPE STRING)
+VISIT_OPTION_DEFAULT(VISIT_HDF5_MPI_LIBDEP ${VISITHOME}/szip/2.1/${VISITARCH}/lib sz ${VISITHOME}/zlib/1.2.7/${VISITARCH}/lib z TYPE STRING)
 
 ##
 ## CGNS
@@ -168,6 +170,14 @@ VISIT_OPTION_DEFAULT(VISIT_MFEM_DIR ${VISITHOME}/mfem/3.1/${VISITARCH})
 ## Mili
 ##
 VISIT_OPTION_DEFAULT(VISIT_MILI_DIR ${VISITHOME}/mili/15.1/${VISITARCH})
+
+##
+## MOAB 
+##
+VISIT_OPTION_DEFAULT(VISIT_MOAB_DIR ${VISITHOME}/moab/4.9.2-RC0/${VISITARCH})
+VISIT_OPTION_DEFAULT(VISIT_MOAB_LIBDEP HDF5_LIBRARY_DIR hdf5 ${VISIT_HDF5_LIBDEP} TYPE STRING)
+VISIT_OPTION_DEFAULT(VISIT_MOAB_MPI_DIR ${VISITHOME}/moab_mpi/4.9.2-RC0/${VISITARCH})
+VISIT_OPTION_DEFAULT(VISIT_MOAB_MPI_LIBDEP HDF5_MPI_LIBRARY_DIR hdf5_mpi ${VISIT_HDF5_MPI_LIBDEP} TYPE STRING)
 
 ##
 ## Nektar++

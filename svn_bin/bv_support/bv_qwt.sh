@@ -111,7 +111,7 @@ function bv_qwt_host_profile
 
 function bv_qwt_ensure
 {    
-    if [[ "$DO_QWT" == "yes" ]] ; then
+    if [[ "$DO_QWT" == "yes" && "$DO_SERVER_COMPONENTS_ONLY" == "no" ]] ; then
         ensure_built_or_ready "qwt" $QWT_VERSION $QWT_BUILD_DIR $QWT_FILE
         if [[ $? != 0 ]] ; then
             ANY_ERRORS="yes"
@@ -229,6 +229,17 @@ function apply_qwt_patch
 function build_qwt
 {
     #
+    # we need or patch to work for any successive configure to build qwt
+    # the easiest and most robust way to tackle this is to always delete
+    # the source dir if it exists
+    
+    if [[ -d ${QWT_BUILD_DIR} ]] ; then
+        info "Removing old Qwt build dir ${QWT_BUILD_DIR} . . ."
+        rm -rf ${QWT_BUILD_DIR}
+    fi
+
+    
+    #
     # Prepare build dir
     #
     prepare_build_dir $QWT_BUILD_DIR $QWT_FILE
@@ -259,14 +270,14 @@ function build_qwt
     #
     # Build Qwt
     #
-    info "Building Qwt project. . . (~1 minute)"
+    info "Configuring Qwt . . . (~1 minute)"
     ${QT_BIN_DIR}/qmake qwt.pro
     if [[ $? != 0 ]] ; then
         warn "Qwt project build failed.  Giving up"
         return 1
     fi
     
-    info "Building Qwt. . . (~2 minutes)"
+    info "Building Qwt . . . (~2 minutes)"
     $MAKE
     if [[ $? != 0 ]] ; then
         warn "Qwt build failed.  Giving up"
@@ -311,6 +322,9 @@ function build_qwt
 
 function bv_qwt_is_enabled
 {
+    if [[ "$DO_SERVER_COMPONENTS_ONLY" == "yes" ]]; then
+        return 0
+    fi
     if [[ $DO_QWT == "yes" ]]; then
         return 1    
     fi
@@ -329,12 +343,12 @@ function bv_qwt_is_installed
 function bv_qwt_build
 {
     cd "$START_DIR"
-    if [[ "$DO_QWT" == "yes" ]] ; then
+    if [[ "$DO_QWT" == "yes" && "$DO_SERVER_COMPONENTS_ONLY" == "no" ]] ; then
         check_if_installed "qwt" $QWT_VERSION
         if [[ $? == 0 ]] ; then
-            info "Skipping QWT build. Qwt is already installed."
+            info "Skipping Qwt build. Qwt is already installed."
         else
-            info "Building QWT (~3 minutes)"
+            info "Building Qwt (~3 minutes)"
             build_qwt
             if [[ $? != 0 ]] ; then
                 error "Unable to build or install Qwt. Bailing out."

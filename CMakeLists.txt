@@ -407,6 +407,10 @@
 #
 #    Mark C. Miller, Mon Aug 22 15:23:12 PDT 2016
 #    Add tools/writer to installed headers
+#
+#    Kathleen Biagas, Mon Oct 31 15:23:31 PDT 2016
+#    Add ZLIB_INCLUDE_DIR to VISIT_COMMON_INCLUDES when HAVE_ZLIB_H is true.
+#
 #****************************************************************************/
 
 CMAKE_MINIMUM_REQUIRED(VERSION 3.0 FATAL_ERROR)
@@ -565,15 +569,17 @@ ENDIF()
 # If the config-site file above has not set a NEKTAR++ version set a
 # default NEKTAR++ version of 4.0.0.  
 #-----------------------------------------------------------------------------
-IF(NOT NEKTAR++_VERSION)
-  IF(VISIT_NEKTAR++_VERSION)
+IF(EXISTS ${VISIT_NEKTAR++_DIR})
+  IF(NOT NEKTAR++_VERSION)
+    IF(VISIT_NEKTAR++_VERSION)
       IF(${VISIT_NEKTAR++_VERSION} VERSION_LESS ${NEKTAR++_MINIMUM_VERSION})
           MESSAGE(FATAL_ERROR "NEKTAR++ version must be at least ${NEKTAR++_MINIMUM_VERSION}")
       ENDIF()
       SETUP_APP_VERSION(NEKTAR++ ${VISIT_NEKTAR++_VERSION})
-  ELSE()
+    ELSE()
       MESSAGE(STATUS "VISIT_NEKTAR++_VERSION NOT FOUND assuming 4.0.0")
       SETUP_APP_VERSION(NEKTAR++ 4.0.0)
+    ENDIF()
   ENDIF()
 ENDIF()
 
@@ -1093,7 +1099,11 @@ ENDIF(VISIT_JAVA)
 
 CHECK_INCLUDE_FILES (fcntl.h     HAVE_FCNTL_H)
 CHECK_INCLUDE_FILES (inttypes.h  HAVE_INTTYPES_H)
-CHECK_INCLUDE_FILES (malloc.h    HAVE_MALLOC_H)
+IF(NOT APPLE)
+    CHECK_INCLUDE_FILES (malloc.h    HAVE_MALLOC_H)
+ELSE(NOT APPLE)
+    CHECK_INCLUDE_FILES (malloc/malloc.h    HAVE_MALLOC_H)
+ENDIF(NOT APPLE)
 CHECK_INCLUDE_FILES (limits.h    HAVE_LIMITS_H)
 CHECK_INCLUDE_FILES (memory.h    HAVE_MEMORY_H)
 CHECK_INCLUDE_FILES (stdint.h    HAVE_STDINT_H)
@@ -1287,6 +1297,9 @@ INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindTCMALLOC.cmake)
 
 # zlib
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindZlib.cmake)
+IF(ZLIB_FOUND)
+    SET(HAVE_LIBZ 1)
+ENDIF(ZLIB_FOUND)
 
 # szip and jpeg
 IF(WIN32)
@@ -1781,6 +1794,10 @@ SET(VISIT_COMMON_INCLUDES
     ${VISIT_SOURCE_DIR}/common/utility
     )
 
+if(HAVE_ZLIB_H)
+    list(APPEND VISIT_COMMON_INCLUDES ${ZLIB_INCLUDE_DIR})
+endif()
+
 # macros/defines also needed by PluginVsInstall.cmake.in
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/VisItMacros.cmake)
 
@@ -2131,6 +2148,9 @@ ELSE(NOT WIN32)
                             WORLD_READ
         )
     ENDIF(MSVC)
+    if(VISIT_NO_ALLBUILD)
+        add_custom_target(visit_special_builds ALL)
+    endif()
 ENDIF(NOT WIN32)
 
 # Store some configure information into a C file (like version, SVN version
@@ -2661,6 +2681,7 @@ ELSE (NOT WIN32)
                     /DINSTALL_PREFIX=${CIP_NATIVE}
                     /DBIN_DIR=${CBD_NATIVE}
                     /DCL_64=${CMAKE_CL_64}
+                    /DQT5=${VISIT_QT5}
                     ${VISIT_WINDOWS_DIR}/distribution/installation/CreateDBSections.nsi
             COMMAND ${MAKENSIS}
                     /DVisItVersion=${VISIT_VERSION}
@@ -2669,6 +2690,7 @@ ELSE (NOT WIN32)
                     /DINSTALL_PREFIX=${CIP_NATIVE}
                     /DBIN_DIR=${CBD_NATIVE}
                     /DCL_64=${CMAKE_CL_64}
+                    /DQT5=${VISIT_QT5}
                     ${VISIT_WINDOWS_DIR}/distribution/installation/binaryinstallation.nsi
             DEPENDS ${VISIT_WINDOWS_DIR}/distribution/installation/CreateDBSections.nsi
                     ${VISIT_WINDOWS_DIR}/distribution/installation/binaryinstallation.nsi
@@ -2681,7 +2703,9 @@ ELSE (NOT WIN32)
                 COMMAND ${CMAKE_COMMAND} -DBUILD_TYPE=${CMAKE_CFG_INTDIR} -P ${VISIT_BINARY_DIR}/data/cmake_install.cmake)
         ENDIF(IS_DIRECTORY ${VISIT_SOURCE_DIR}/../data)
 
-        SET_TARGET_PROPERTIES(_PACKAGE PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD 1)
+        SET_TARGET_PROPERTIES(_PACKAGE PROPERTIES 
+                              EXCLUDE_FROM_DEFAULT_BUILD 1 
+                              EXCLUDE_FROM_ALL 1 )
 
         # source installer
         ADD_CUSTOM_COMMAND(OUTPUT visitdev${VISIT_VERSION}.exe
@@ -2693,7 +2717,9 @@ ELSE (NOT WIN32)
             DEPENDS ${VISIT_WINDOWS_DIR}/distribution/installation/sourceinstallation.nsi
         )
         ADD_CUSTOM_TARGET(_SRC_PACKAGE ALL DEPENDS visitdev${VISIT_VERSION}.exe)
-        SET_TARGET_PROPERTIES(_SRC_PACKAGE PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD 1)
+        SET_TARGET_PROPERTIES(_SRC_PACKAGE PROPERTIES 
+                              EXCLUDE_FROM_DEFAULT_BUILD 1
+                              EXCLUDE_FROM_ALL 1)
         UNSET(VSD_NATIVE)
         UNSET(CIP_NATIVE)
         UNSET(CBD_NATIVE)

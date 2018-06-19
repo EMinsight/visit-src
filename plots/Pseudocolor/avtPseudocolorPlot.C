@@ -47,6 +47,7 @@
 #include <avtColorTables.h>
 #include <avtExtents.h>
 #include <avtLookupTable.h>
+#include <avtPolylineCleanupFilter.h>
 #include <avtPolylineAddEndPointsFilter.h>
 #include <avtPolylineToRibbonFilter.h>
 #include <avtPolylineToTubeFilter.h>
@@ -119,6 +120,7 @@ avtPseudocolorPlot::avtPseudocolorPlot()
     filter = NULL;
     pcfilter = NULL;
     staggeringFilter = NULL;
+    polylineCleanupFilter = NULL;
     polylineAddEndPointsFilter = NULL;
     polylineToRibbonFilter = NULL;
     polylineToTubeFilter = NULL;
@@ -168,6 +170,12 @@ avtPseudocolorPlot::~avtPseudocolorPlot()
     {
         delete staggeringFilter;
         staggeringFilter = NULL;
+    }
+
+    if (polylineCleanupFilter != NULL)
+    {
+        delete polylineCleanupFilter;
+        polylineCleanupFilter = NULL;
     }
 
     if (polylineToTubeFilter != NULL)
@@ -375,6 +383,10 @@ avtPseudocolorPlot::ApplyOperators(avtDataObject_p input)
 //    For ease of code reading and maintenance, I forced the
 //    avtShiftCenteringFilter to take avtCentering type, rather than int.
 //
+//    Eric Brugger, Wed Oct 26 09:36:37 PDT 2016
+//    I modified the plot to support independently setting the point style
+//    for the two end points of lines.
+//
 // ****************************************************************************
 
 avtDataObject_p
@@ -408,6 +420,17 @@ avtPseudocolorPlot::ApplyRenderingTransformation(avtDataObject_p input)
         dob = filter->GetOutput();
     }
 
+    // PolylineCleanup Filter
+    if (polylineCleanupFilter != NULL)
+    {
+      delete polylineCleanupFilter;
+      polylineCleanupFilter = NULL;
+    }
+
+    polylineCleanupFilter = new avtPolylineCleanupFilter();
+    polylineCleanupFilter->SetInput(dob);
+    dob = polylineCleanupFilter->GetOutput();
+
     // PolylineAddEndPoints Filter
     if (polylineAddEndPointsFilter != NULL)
     {
@@ -415,12 +438,16 @@ avtPseudocolorPlot::ApplyRenderingTransformation(avtDataObject_p input)
       polylineAddEndPointsFilter = NULL;
     }
 
-    if( atts.GetEndPointType() != PseudocolorAttributes::None )
+    if( atts.GetTailStyle() != PseudocolorAttributes::None ||
+        atts.GetHeadStyle() != PseudocolorAttributes::None)
     {
       double bbox[6] = {0.,1.,0.,1.,0.,1.};
       dob->GetInfo().GetAttributes().GetOriginalSpatialExtents()->CopyTo(bbox);
 
       polylineAddEndPointsFilter = new avtPolylineAddEndPointsFilter();
+
+      polylineAddEndPointsFilter->tailStyle    = atts.GetTailStyle();
+      polylineAddEndPointsFilter->headStyle    = atts.GetHeadStyle();
 
       if( atts.GetEndPointRadiusSizeType() == PseudocolorAttributes::Absolute )
         polylineAddEndPointsFilter->radius = atts.GetEndPointRadiusAbsolute();
@@ -428,8 +455,6 @@ avtPseudocolorPlot::ApplyRenderingTransformation(avtDataObject_p input)
         polylineAddEndPointsFilter->radius =
           atts.GetEndPointRadiusBBox() * GetBBoxSize( bbox );
 
-      polylineAddEndPointsFilter->type         = atts.GetEndPointType();
-      polylineAddEndPointsFilter->style        = atts.GetEndPointStyle();
       polylineAddEndPointsFilter->ratio        = atts.GetEndPointRatio();
 
       polylineAddEndPointsFilter->varyRadius   = atts.GetEndPointRadiusVarEnabled();
@@ -1324,6 +1349,11 @@ avtPseudocolorPlot::ReleaseData(void)
     if (staggeringFilter != NULL)
     {
         staggeringFilter->ReleaseData();
+    }
+
+    if (polylineCleanupFilter != NULL)
+    {
+        polylineCleanupFilter->ReleaseData();
     }
 
     if (polylineToTubeFilter != NULL)

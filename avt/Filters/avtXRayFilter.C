@@ -2375,6 +2375,7 @@ avtXRayFilter::CheckDataSets(int nDataSets, vtkDataSet **dataSets)
 {
     int numBins;
     cellDataType = -1;
+    
     for (int i = 0; i < nDataSets; i++)
     {
         vtkDataArray *abs  = dataSets[i]->GetCellData()->GetArray(absVarName.c_str());
@@ -2391,8 +2392,8 @@ avtXRayFilter::CheckDataSets(int nDataSets, vtkDataSet **dataSets)
                                   absVarName.c_str());
             }
             else
-                SNPRINTF(msg,256, "Variable %s not found.",
-                                  absVarName.c_str());
+                SNPRINTF(msg,256, "Variable %s not found.", absVarName.c_str());
+            
             EXCEPTION1(VisItException, msg);
         }
         if (emis == NULL)

@@ -115,6 +115,13 @@ class PseudocolorAttributes;
 //   Kathleen Bonnell, Mon Jan 17 18:02:39 MST 2011
 //   Change colorTableButton to colorTableWidget to gain invert toggle.
 //
+//   Eric Brugger, Wed Oct 26 09:12:16 PDT 2016
+//   I modified the plot to support independently setting the point style
+//   for the two end points of lines.
+//
+//   Cyrus Harrison, Wed Nov  2 19:09:51 PDT 2016
+//   Remove tubeRadiusVarLabel, the check box used for this includes a label.
+//
 // ****************************************************************************
 
 class QvisPseudocolorPlotWindow : public QvisPostableWindowObserver
@@ -182,11 +189,11 @@ private slots:
     void tubeRadiusVarRatioProcessText();
     void tubeResolutionChanged(int val);
 
-    void endPointTypeChanged(int newType);
-    void endPointStyleChanged(int newStyle);
-    void endPointRadiusSizeTypeChanged(int v);
+    void tailStyleChanged(int newStyle);
+    void headStyleChanged(int newStyle);
   
     void endPointRadiusProcessText();
+    void endPointRadiusSizeTypeChanged(int v);
     void endPointRatioProcessText();
     void endPointRadiusVarToggled(bool val);
     void endPointRadiusVarChanged(const QString &var);
@@ -252,7 +259,6 @@ private:
     QComboBox          *tubeRadiusSizeType;
 
     QCheckBox          *tubeRadiusVarEnabled;
-    QLabel             *tubeRadiusVarLabel;
     QvisVariableButton *tubeRadiusVar;
     QLabel             *tubeRadiusVarRatioLabel;
     QLineEdit          *tubeRadiusVarRatio;
@@ -260,10 +266,10 @@ private:
     QLabel             *tubeResolutionLabel;
     QSpinBox           *tubeResolution;
 
-    QLabel    *endPointTypeLabel;
-    QComboBox *endPointType;
-    QLabel    *endPointStyleLabel;
-    QComboBox *endPointStyle;
+    QLabel    *tailStyleLabel;
+    QComboBox *tailStyle;
+    QLabel    *headStyleLabel;
+    QComboBox *headStyle;
 
     QLabel    *endPointRadiusLabel;
     QLineEdit *endPointRadius;
@@ -272,7 +278,6 @@ private:
     QLineEdit *endPointRatio;
 
     QCheckBox          *endPointRadiusVarEnabled;
-    QLabel             *endPointRadiusVarLabel;
     QvisVariableButton *endPointRadiusVar;
     QLabel             *endPointRadiusVarRatioLabel;
     QLineEdit          *endPointRadiusVarRatio;
