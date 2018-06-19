@@ -1,0 +1,95 @@
+#/sw/sources/visit/xt5/thirdparty/visit/cmake/2.6.4/linux-x86_64_gcc-4.4/bin/cmake
+##
+## ./build_visit generated host.cmake
+## created: Tue Mar 16 09:17:53 EDT 2010
+## system: Linux jaguarpf-login5 2.6.16.60-0.39_1.0102.4787.2.2.41-ss #1 SMP Thu Nov 12 18:05:54 CST 2009 x86_64 x86_64 x86_64 GNU/Linux
+## by: pugmire
+
+##
+## Setup VISITHOME & VISITARCH variables.
+##
+SET(VISITHOME /sw/sources/visit/xt5/thirdparty/visit)
+SET(VISITARCH linux-x86_64_gcc-4.4)
+SET(VISIT_VERBOSE_MAKEFILE TRUE)
+
+##
+## Specify the location of the mesa.
+##
+VISIT_OPTION_DEFAULT(VISIT_MESA_DIR ${VISITHOME}/mesa/7.5/${VISITARCH})
+
+##
+## Specify the location of the vtk.
+##
+VISIT_OPTION_DEFAULT(VISIT_VTK_DIR ${VISITHOME}/vtk/5.0.0d/${VISITARCH}/lib/vtk-5.0/)
+
+##
+## Specify the Qt4 binary dir. 
+## (qmake us used to locate & setup Qt4 dependencies)
+##
+VISIT_OPTION_DEFAULT(VISIT_QT_BIN ${VISITHOME}/qt/4.4.3/${VISITARCH}/bin)
+
+##
+## Specify the location of the python.
+##
+VISIT_OPTION_DEFAULT(VISIT_PYTHON_DIR ${VISITHOME}/python/2.5/${VISITARCH})
+
+##
+## Compiler flags.
+##
+VISIT_OPTION_DEFAULT(VISIT_C_COMPILER gcc)
+VISIT_OPTION_DEFAULT(VISIT_CXX_COMPILER g++)
+VISIT_OPTION_DEFAULT(VISIT_C_FLAGS " -m64 -fPIC")
+VISIT_OPTION_DEFAULT(VISIT_CXX_FLAGS " -m64 -fPIC")
+
+##
+## Parallel Build Setup.
+##
+VISIT_OPTION_DEFAULT(VISIT_PARALLEL ON)
+VISIT_OPTION_DEFAULT(VISIT_MPI_CXX_FLAGS "-DMPICH_SKIP_MPICXX -I/opt/mpt/3.5.1/xt/mpich2-gnu/include/44 -I/opt/mpt/3.5.1/xt/mpich2-gnu/include -I/opt/xt-libsci/10.4.1/gnu/include -I/opt/mpt/3.5.1/xt/sma/include -I/opt/mpt/3.5.1/xt/pmi/include -I/opt/xt-pe/2.2.41A/include -I/opt/xt-pe/default/include")
+VISIT_OPTION_DEFAULT(VISIT_MPI_LD_FLAGS "-L/opt/mpt/3.5.1/xt/mpich2-gnu/lib/44 -L/opt/mpt/3.5.1/xt/mpich2-gnu/lib -L/opt/xt-libsci/10.4.1/gnu/lib/44 -L/opt/xt-libsci/10.4.1/gnu/lib -L/opt/mpt/3.5.1/xt/sma/lib -L/opt/mpt/3.5.1/xt/util/lib -L/opt/mpt/3.5.1/xt/pmi/lib -L/opt/xt-pe/2.2.41A/lib -L/opt/xt-pe/default/lib -L/opt/xt-pe/2.2.41A/lib/snos64 -L/opt/xt-pe/default/lib -L/usr/lib/alps")
+VISIT_OPTION_DEFAULT(VISIT_MPI_LIBS sci_istanbul gfortran sma mpichcxx mpich rt pmi alpslli alpsutil gfortran portals pthread)
+
+##############################################################
+##
+## Database reader plugin support libraries
+##
+##############################################################
+
+##
+## Boxlib
+##
+VISIT_OPTION_DEFAULT(VISIT_BOXLIB2D_DIR ${VISITHOME}/boxlib/${VISITARCH})
+VISIT_OPTION_DEFAULT(VISIT_BOXLIB3D_DIR ${VISITHOME}/boxlib/${VISITARCH})
+
+##
+## HDF4
+##
+VISIT_OPTION_DEFAULT(VISIT_HDF4_DIR ${VISITHOME}/hdf4/4.2.1/${VISITARCH})
+VISIT_OPTION_DEFAULT(VISIT_HDF4_LIBDEP ${VISITHOME}/szip/2.1/${VISITARCH}/lib sz /usr/lib jpeg)
+
+##
+## HDF5
+##
+VISIT_OPTION_DEFAULT(VISIT_HDF5_DIR ${VISITHOME}/hdf5/1.8.4/${VISITARCH})
+VISIT_OPTION_DEFAULT(VISIT_HDF5_LIBDEP ${VISITHOME}/szip/2.1/${VISITARCH}/lib sz)
+
+##
+## Mili
+##
+VISIT_OPTION_DEFAULT(VISIT_MILI_DIR ${VISITHOME}/mili/1.10.0/${VISITARCH})
+
+##
+## NetCDF
+##
+VISIT_OPTION_DEFAULT(VISIT_NETCDF_DIR ${VISITHOME}/netcdf/3.6.3/${VISITARCH})
+
+##
+## SZIP
+##
+VISIT_OPTION_DEFAULT(VISIT_SZIP_DIR ${VISITHOME}/szip/2.1/${VISITARCH})
+
+##
+## Silo
+##
+VISIT_OPTION_DEFAULT(VISIT_SILO_DIR ${VISITHOME}/silo/4.7.2/${VISITARCH})
+VISIT_OPTION_DEFAULT(VISIT_SILO_LIBDEP HDF5_LIBRARY_DIR hdf5 ${VISIT_HDF5_LIBDEP})

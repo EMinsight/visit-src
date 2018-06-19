@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+  <Plugin name="EnSight" type="database" label="EnSight" version="1.0" enabled="true" dbtype="MTMD" haswriter="false">
+    <CXXFLAGS>
+      $(ENSIGHT_FLAGS)
+    </CXXFLAGS>
+    <LIBS>
+      $(ENSIGHT_LIBS)
+    </LIBS>
+    <FilePatterns>
+      *.case
+    </FilePatterns>
+    <Files components="M">
+      avtEnSightFileFormat.C
+      vtkVisItGenericEnSightReader.C
+      vtkVisItEnSightReader.C
+      vtkVisItEnSight6Reader.C
+      vtkVisItEnSight6BinaryReader.C
+      vtkVisItEnSightGoldReader.C
+      vtkVisItEnSightGoldBinaryReader.C
+    </Files>
+    <Files components="E">
+      avtEnSightFileFormat.C
+      vtkVisItGenericEnSightReader.C
+      vtkVisItEnSightReader.C
+      vtkVisItEnSight6Reader.C
+      vtkVisItEnSight6BinaryReader.C
+      vtkVisItEnSightGoldReader.C
+      vtkVisItEnSightGoldBinaryReader.C
+    </Files>
+    <Attribute name="" purpose="" persistent="false" exportAPI="" exportInclude="">
+    </Attribute>
+  </Plugin>
