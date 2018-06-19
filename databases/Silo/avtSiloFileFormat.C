@@ -2451,7 +2451,7 @@ avtSiloFileFormat::ReadCSGmeshes(DBfile *dbfile,
 //
 // ****************************************************************************
 
-static int 
+static bool
 GetRestrictedMaterialIndices(const avtDatabaseMetaData *md, const char *const varname,
     const char *const meshname, const char *const *const region_pnames,
     vector<int>* restrictToMats)
@@ -2469,14 +2469,18 @@ GetRestrictedMaterialIndices(const avtDatabaseMetaData *md, const char *const va
 
     int i, j;
     bool regionNamesButMaterialNumbers = true;
+    debug3 << "For mat-restricted variable \"" << varname << "\"..." << endl;
     for (i = 0; region_pnames[i]; i++)
     {
+        debug3 << "    Looking for materials matching region_pname[" << i
+               << "] = \"" << region_pnames[i] << "\"..." << endl;
         int rnlen = strlen(region_pnames[i]);
         int rnspn = strspn(region_pnames[i], "0123456789");
         if (rnlen == rnspn) // Must be just a number
         {
             int regno = strtol(region_pnames[i], 0, 10);
             regionNamesButMaterialNumbers = false;
+            debug3 << "        Comparing using regno=" << regno << "..." << endl; 
             for (j = 0; j < mmd->numMaterials; j++)
             {
                 // The 'materialNames' Silo plugin creates are either
@@ -2484,25 +2488,46 @@ GetRestrictedMaterialIndices(const avtDatabaseMetaData *md, const char *const va
                 // strtol should convert the number part correctly.
                 errno = 0;
                 int matno = strtol(mmd->materialNames[j].c_str(), 0, 10);
+                debug3 << "            for \"" << mmd->materialNames[j]
+                       << "\" got matno=" << matno; 
                 if (errno == 0 && regno == matno)
+                {
+                    debug3 << " matched" << endl;
                     restrictToMats->push_back(j);
+                    break;
+                }
+                else
+                {
+                    debug3 << " DID NOT match" << endl;
+                }
             }
         }
         else // Not just a number (a name?)
         {
+            debug3 << "        Comparing using region name..." << endl;
             for (j = 0; j < mmd->numMaterials; j++)
             {
-                int mnlen = strlen(mmd->materialNames[j].c_str());
-                int mnspn = strspn(mmd->materialNames[j].c_str(), "0123456789");
-                if (mnlen == mnspn) // Must be just a number
+                int matno;
+                char matname[256];
+                int nmatches = sscanf(mmd->materialNames[j].c_str(), "%d %s", &matno, &matname);
+                debug3 << "            matno=" << matno << ", matname=\"" << matname << "\"";
+                if (nmatches == 1) // have matno only
                 {
+                    debug3 << " CANNOT match matno alone" << endl;
                     continue;
                 }
-                else // Not just a number (a name?)
+                else
                 {
-                    regionNamesButMaterialNumbers = false;
-                    if (strcmp(region_pnames[i], &(mmd->materialNames[j].c_str()[mnspn])))
+                    if (!strcmp(region_pnames[i], matname))
+                    {
+                        debug3 << " matched" << endl;
                         restrictToMats->push_back(j);
+                        break;
+                    }
+                    else
+                    {
+                        debug3 << " DID NOT match" << endl;
+                    }
                 }
             }
         }
@@ -2523,7 +2548,8 @@ GetRestrictedMaterialIndices(const avtDatabaseMetaData *md, const char *const va
 
     debug3 << "Variable \"" << varname << "\" is restricted to the following regions..." << endl;
     for (i = 0; i < restrictToMats->size(); i++)
-        debug3 << "\"" << mmd->materialNames[restrictToMats->operator[](i)] << "\" (mat-index = " << i << ")" << endl;
+        debug3 << "\"" << mmd->materialNames[restrictToMats->operator[](i)] << "\" (mat-index = "
+               << restrictToMats->operator[](i) << ")" << endl;
 
     return true;
 }
@@ -2536,6 +2562,10 @@ GetRestrictedMaterialIndices(const avtDatabaseMetaData *md, const char *const va
 //    Mark C. Miller, Thu Jun 18 20:56:08 PDT 2009
 //    Replaced DBtoc* arg. with list of object names. Also added logic to
 //    handle freeing of multivar during exceptions.
+//
+//    Mark C. Miller, Wed Nov  3 09:24:48 PDT 2010
+//    Don't call GetRestrictedMaterialIndices on individual blocks if we
+//    already have 'em from the multi-block.
 // ****************************************************************************
 void
 avtSiloFileFormat::ReadMultivars(DBfile *dbfile,
@@ -2642,6 +2672,9 @@ avtSiloFileFormat::ReadMultivars(DBfile *dbfile,
                         }
                         centering = (uv->centering == DB_ZONECENT ? AVT_ZONECENT 
                                                                   : AVT_NODECENT);
+                        if (uv->region_pnames && !selectedMats.size())
+                            valid_var = GetRestrictedMaterialIndices(md, name_w_dir,
+                                meshname.c_str(), uv->region_pnames, &selectedMats);
                         nvals = uv->nvals;
                         treatAsASCII = (uv->ascii_labels);
                         if(uv->units != 0)
@@ -2660,6 +2693,9 @@ avtSiloFileFormat::ReadMultivars(DBfile *dbfile,
                         }
                         centering = (qv->align[0] == 0. ? AVT_NODECENT 
                                                         : AVT_ZONECENT);
+                        if (qv->region_pnames && !selectedMats.size())
+                            valid_var = GetRestrictedMaterialIndices(md, name_w_dir,
+                                meshname.c_str(), qv->region_pnames, &selectedMats);
                         nvals = qv->nvals;
                         treatAsASCII = (qv->ascii_labels);
                         if(qv->units != 0)
@@ -2677,6 +2713,9 @@ avtSiloFileFormat::ReadMultivars(DBfile *dbfile,
                             valid_var = false;
                             break;
                         }
+                        if (pv->region_pnames && !selectedMats.size())
+                            valid_var = GetRestrictedMaterialIndices(md, name_w_dir,
+                                meshname.c_str(), pv->region_pnames, &selectedMats);
                         nvals = pv->nvals;
                         treatAsASCII = (pv->ascii_labels);
                         if(pv->units != 0)
@@ -2697,6 +2736,9 @@ avtSiloFileFormat::ReadMultivars(DBfile *dbfile,
                             valid_var = false;
                             break;
                         }
+                        if (csgv->region_pnames && !selectedMats.size())
+                            valid_var = GetRestrictedMaterialIndices(md, name_w_dir,
+                                meshname.c_str(), csgv->region_pnames, &selectedMats);
                         nvals = csgv->nvals;
                         treatAsASCII = (csgv->ascii_labels);
                         if(csgv->units != 0)
@@ -2920,7 +2962,6 @@ avtSiloFileFormat::ReadUcdvars(DBfile *dbfile,
             if (uv->region_pnames)
                 valid_var = GetRestrictedMaterialIndices(md, name_w_dir,
                     meshname_w_dir, uv->region_pnames, &selectedMats);
-
             //
             // Get the dimension of the variable.
             //
@@ -4072,6 +4113,10 @@ avtSiloFileFormat::ReadDir(DBfile *dbfile, const char *dirname,
 //
 //    Mark C. Miller, Tue Jun 10 22:36:25 PDT 2008
 //    Added logic to pass along ignore extents bools.
+//
+//    Cyrus Harrison, Thu Sep 23 11:02:22 PDT 2010
+//    Added missing broadcast for 'haveAMRGroupInfo'.
+//
 // ****************************************************************************
 void
 avtSiloFileFormat::BroadcastGlobalInfo(avtDatabaseMetaData *metadata)
@@ -4155,7 +4200,7 @@ avtSiloFileFormat::BroadcastGlobalInfo(avtDatabaseMetaData *metadata)
     BroadcastInt(maxAnnotIntLists);
     if (maxAnnotIntLists > 0)
         avtScalarMetaData::BuildEnumNChooseRMap(maxAnnotIntLists, maxCoincidentNodelists, pascalsTriangleMap);
-    
+
     //
     // Broadcast Group Info
     //
@@ -4172,6 +4217,10 @@ avtSiloFileFormat::BroadcastGlobalInfo(avtDatabaseMetaData *metadata)
     ignore_extents = ignoreDataExtents;
     BroadcastInt(ignore_extents);
     ignoreDataExtents = ignore_extents;
+    int have_amr_group_info =haveAmrGroupInfo;
+    BroadcastInt(have_amr_group_info);
+    haveAmrGroupInfo = have_amr_group_info;
+
 #endif
 }
 
@@ -7675,34 +7724,61 @@ ConvertToFloat(int silotype, void *data, int nels)
 // a 'full' ucdvar. Templated to deal with all of Silo's datatypes.
 //
 // Created: Mark C. Miller, Sun Aug 29 23:18:32 PDT 2010
+//
+// Modifications:
+//    Mark C. Miller, Wed Sep  1 13:06:03 PDT 2010
+//    Added support for node-centered variables, which require the associated
+//    mesh's zonelist to perform the traversal.
+//
+//    Mark C. Miller, Thu Sep  2 21:06:06 PDT 2010
+//    Replace new with malloc. Doh? We're using the data to populate a DBucdvar
+//    which is later going to be free'd by a DBFreeUcdvar() which assumes 
+//    it was malloc'd.
+//
+//    Mark C. Miller, Wed Sep  8 14:09:33 PDT 2010
+//    Fix initialization of vals arrays to go over nnodes or nzones depending
+//    on whether ugrid is present.
 // ****************************************************************************
 
 template <typename T>
 static void
 TraverseMaterialForSubsettedUcdvar(const DBucdvar *const uv,
-    avtMaterial *mat, const intVector& restrictToMats,
-    void **_newvals, void **_newmixvals, T uval)
+    avtMaterial *mat, vtkUnstructuredGrid *ugrid,
+    const intVector& restrictToMats,
+    void **_newvals, void **_newmixvals)
 {
     int i, j;
     int nzones = mat->GetNZones();
-    T **newvals = new T*[uv->nvals];
+    int nnodes = ugrid?ugrid->GetNumberOfPoints():0;
+    T **newvals = (T**) malloc((uv->nvals)*sizeof(T*));
     for (i = 0; i < uv->nvals; i++)
     {
-        newvals[i] = new T[nzones];
-        for (j = 0; j < nzones; j++)
+        newvals[i] = (T*) malloc((ugrid?nnodes:nzones)*sizeof(T));
+        // Initialize the array to be same as zero entry.
+        for (j = 0; j < (ugrid?nnodes:nzones); j++)
             newvals[i][j] = ((T**)uv->vals)[i][0];
     }
     T **newmixvals = 0;
     if (mat->GetMixlen() > 0)
     {
-        newmixvals = new T*[uv->nvals];
+        newmixvals = (T**) malloc((uv->nvals)*sizeof(T*));
         for (i = 0; i < uv->nvals; i++)
         {
-            newmixvals[i] = new T[mat->GetMixlen()];
-            for (j = 0; j < mat->GetMixlen(); j++)
-                newmixvals[i][j] = uval; // sentinal for uninit.
+            newmixvals[i] = (T*) malloc((mat->GetMixlen())*sizeof(T));
+            // Initialize the array to be same as zero entry.
+            if (uv->mixvals)
+            {
+                for (j = 0; j < mat->GetMixlen(); j++)
+                    newmixvals[i][j] = ((T**)uv->mixvals)[i][0]; 
+            }
+            else
+            {
+                for (j = 0; j < mat->GetMixlen(); j++)
+                    newmixvals[i][j] = ((T**)uv->vals)[i][0]; 
+            }
         }
     }
+    map<vtkIdType,bool> haveVisitedPoint;
     int nvals = 0;
     int nmixvals = 0;
     for (i = 0; i < nzones; i++)
@@ -7714,8 +7790,25 @@ TraverseMaterialForSubsettedUcdvar(const DBucdvar *const uv,
                 if (mat->GetMatlist()[i] == restrictToMats[j]) is_selected = true;
             if (is_selected)
             {
-                for (j = 0; j < uv->nvals; j++)
-                    newvals[j][i] = ((T**)uv->vals)[j][nvals++];
+                if (ugrid) // node-centered case
+                {
+                    vtkCell *cell = ugrid->GetCell(i);
+                    for (j = 0; j < cell->GetNumberOfPoints(); j++)
+                    {
+                        vtkIdType ptId = cell->GetPointId(j);
+                        if (haveVisitedPoint.find(ptId) == haveVisitedPoint.end())
+                        {
+                            haveVisitedPoint[ptId] = true;
+                            for (int k = 0; k < uv->nvals; k++)
+                                newvals[k][(int)ptId] = ((T**)uv->vals)[k][nvals++];
+                        }
+                    }
+                }
+                else // zone-centered case
+                {
+                    for (j = 0; j < uv->nvals; j++)
+                        newvals[j][i] = ((T**)uv->vals)[j][nvals++];
+                }
             }
         }
         else // mixed case
@@ -7728,12 +7821,49 @@ TraverseMaterialForSubsettedUcdvar(const DBucdvar *const uv,
                     if (mat->GetMixMat()[mix_idx] == restrictToMats[j]) is_selected = true;
                 if (is_selected)
                 {
-                    for (j = 0; j < uv->nvals; j++)
+                    if (ugrid) // node-centered case
                     {
                         if (restrictToMats.size() == 1) // single material optimization
-                            newmixvals[j][mix_idx] = ((T**)uv->vals)[j][nvals++];
-                        else
-                            newmixvals[j][mix_idx] = ((T**)uv->mixvals)[j][nmixvals++];
+                        {
+                            vtkCell *cell = ugrid->GetCell(i);
+                            for (j = 0; j < cell->GetNumberOfPoints(); j++)
+                            {
+                                vtkIdType ptId = cell->GetPointId(j);
+                                if (haveVisitedPoint.find(ptId) == haveVisitedPoint.end())
+                                {
+                                    haveVisitedPoint[ptId] = true;
+                                    for (int k = 0; k < uv->nvals; k++)
+                                        newvals[k][(int)ptId] = ((T**)uv->vals)[k][nvals++];
+                                }
+                            }
+                        }
+                        else // multiple material case
+                        {
+                            vtkCell *cell = ugrid->GetCell(i);
+                            for (j = 0; j < cell->GetNumberOfPoints(); j++)
+                            {
+                                vtkIdType ptId = cell->GetPointId(j);
+                                if (haveVisitedPoint.find(ptId) == haveVisitedPoint.end())
+                                {
+                                    haveVisitedPoint[ptId] = true;
+                                    for (int k = 0; k < uv->nvals; k++)
+                                        newmixvals[k][(int)ptId] = ((T**)uv->mixvals)[k][nmixvals++];
+                                }
+                            }
+                        }
+                    }
+                    else // zone-centered case
+                    {
+                        if (restrictToMats.size() == 1) // single material optimization
+                        {
+                            for (j = 0; j < uv->nvals; j++)
+                                newmixvals[j][mix_idx] = ((T**)uv->vals)[j][nvals++];
+                        }
+                        else // multiple material case
+                        {
+                            for (j = 0; j < uv->nvals; j++)
+                                newmixvals[j][mix_idx] = ((T**)uv->mixvals)[j][nmixvals++];
+                        }
                     }
                 }
                 mix_idx = mat->GetMixNext()[mix_idx]-1;
@@ -7751,6 +7881,11 @@ TraverseMaterialForSubsettedUcdvar(const DBucdvar *const uv,
 // associated material object.
 //
 // Created: Mark C. Miller, Sun Aug 29 23:18:32 PDT 2010
+//
+// Modifications:
+//    Mark C. Miller, Wed Sep  1 13:06:03 PDT 2010
+//    Added support for node-centered variables, which require the associated
+//    mesh's zonelist to perform the traversal.
 // ****************************************************************************
 void
 avtSiloFileFormat::ExpandUcdvar(DBucdvar *uv,  
@@ -7789,47 +7924,70 @@ avtSiloFileFormat::ExpandUcdvar(DBucdvar *uv,
         EXCEPTION1(InvalidVariableException, msg);
     }
 
+    // For node centered variables, we also need the mesh's zonelist.
+    // Because VisIt's generic db always issues the associated GetMesh()
+    // BEFORE issuing GetVar(), we can safely assume the mesh must be in
+    // the cache and look ONLY there for it. Failure to obtain it is a 
+    // problem we cannot recover from.
+    vtkUnstructuredGrid  *ugrid = 0;
+    if (uv->centering == DB_NODECENT)
+    {
+        vtkDataSet *ds = (vtkDataSet *) cache->GetVTKObject(meshName.c_str(),
+                                            avtVariableCache::DATASET_NAME,
+                                            timestep, domain, "_all");
+        if (ds == 0)
+        {
+            char msg[256];
+            SNPRINTF(msg, sizeof(msg), "Cannot find cached mesh \"%s\" for domain %d to "
+                "traverse subsetted node-centered variable, \"%s\"", meshName.c_str(),
+                 domain, vname);
+            EXCEPTION1(ImproperUseException, msg);
+        }
+
+        ugrid = vtkUnstructuredGrid::SafeDownCast(ds);
+    }
+
     vector<int> restrictToMats;
     if (!GetRestrictedMaterialIndices(metadata, vname, meshName.c_str(),
         uv->region_pnames, &restrictToMats))
     {
         char msg[256];
-        SNPRINTF(msg, sizeof(msg), "Unable to material indices variable \"%s\" "
-            "is restricted to", vname); 
+        SNPRINTF(msg, sizeof(msg), "Unable to determine material indices "
+            "variable \"%s\" is restricted to", vname); 
         EXCEPTION1(InvalidVariableException, msg);
     }
 
-    int i, nzones = mat->GetNZones();
-    void *newvals, *newmixvals;
+    int i, nzones = mat->GetNZones(), nnodes = ugrid?ugrid->GetNumberOfPoints():0;
+    void *newvals=0, *newmixvals=0;
     if (uv->datatype == DB_DOUBLE)
-        TraverseMaterialForSubsettedUcdvar<double>(uv, mat, restrictToMats,
-            &newvals, &newmixvals, -DBL_MAX);
+        TraverseMaterialForSubsettedUcdvar<double>(uv, mat, ugrid, restrictToMats,
+            &newvals, &newmixvals);
     else if (uv->datatype == DB_FLOAT)
-        TraverseMaterialForSubsettedUcdvar<float>(uv, mat, restrictToMats,
-            &newvals, &newmixvals, -FLT_MAX);
+        TraverseMaterialForSubsettedUcdvar<float>(uv, mat, ugrid, restrictToMats,
+            &newvals, &newmixvals);
     else if (uv->datatype == DB_INT)
-        TraverseMaterialForSubsettedUcdvar<int>(uv, mat, restrictToMats,
-            &newvals, &newmixvals, -INT_MAX);
+        TraverseMaterialForSubsettedUcdvar<int>(uv, mat, ugrid, restrictToMats,
+            &newvals, &newmixvals);
     else if (uv->datatype == DB_CHAR)
-        TraverseMaterialForSubsettedUcdvar<char>(uv, mat, restrictToMats,
-            &newvals, &newmixvals, 0xFF);
+        TraverseMaterialForSubsettedUcdvar<char>(uv, mat, ugrid, restrictToMats,
+            &newvals, &newmixvals);
     else if (uv->datatype == DB_SHORT)
-        TraverseMaterialForSubsettedUcdvar<short>(uv, mat, restrictToMats,
-            &newvals, &newmixvals, -(0xFFFF-1));
+        TraverseMaterialForSubsettedUcdvar<short>(uv, mat, ugrid, restrictToMats,
+            &newvals, &newmixvals);
     else if (uv->datatype == DB_LONG)
-        TraverseMaterialForSubsettedUcdvar<long>(uv, mat, restrictToMats,
-            &newvals, &newmixvals, -LONG_MAX);
+        TraverseMaterialForSubsettedUcdvar<long>(uv, mat, ugrid, restrictToMats,
+            &newvals, &newmixvals);
 #ifdef DB_LONG_LONG
     else if (uv->datatype == DB_LONG_LONG)
-        TraverseMaterialForSubsettedUcdvar<long long>(uv, mat, restrictToMats,
-            &newvals, &newmixvals, -LONG_MAX);
+        TraverseMaterialForSubsettedUcdvar<long long>(uv, mat, ugrid, restrictToMats,
+            &newvals, &newmixvals);
 #endif
 
     // Overwite DBucdvar's old contents with stuff we just expanded.
     for (i = 0; i < uv->nvals; i++)
         free(uv->vals[i]);
     free(uv->vals);
-    uv->nels = nzones;
+    uv->nels = ugrid?nnodes:nzones;
 #ifdef DB_DTPTR
     uv->vals = (DB_DTPTR**) newvals;
 #else
@@ -7907,12 +8065,19 @@ avtSiloFileFormat::ExpandUcdvar(DBucdvar *uv,
 //
 //    Mark C. Miller, Sun Aug 29 23:19:50 PDT 2010
 //    Added logic to expand (material) subsetted variables.
+//
+//    Mark C. Miller, Tue Sep  7 22:57:28 PDT 2010
+//    Just as for meshes, with vars defined on subsets, we need to accomodate
+//    possible EMPTY domains.
 // ****************************************************************************
 
 vtkDataArray *
 avtSiloFileFormat::GetUcdVar(DBfile *dbfile, const char *vname,
                              const char *tvn, int domain)
 {
+    if (string(vname) == "EMPTY")
+        return 0;
+
     //
     // It's ridiculous, but Silo does not have all of the `const's in their
     // library, so let's cast it away.

@@ -185,6 +185,12 @@ QvisStreamlinePlotWindow::~QvisStreamlinePlotWindow()
 //   Dave Pugmire, Mon Jul 12 15:34:29 EDT 2010
 //   Rename Exterior to Boundary.
 //
+//   Hank Childs, Sat Oct 30 11:25:04 PDT 2010
+//   Initialize sample density.  Otherwise, atts set from the CLI gets overset,
+//   because we set the density based on the value of the text field, and we
+//   get a signal that causes us to use the default value before we ever set
+//   the field with the correct value.
+// 
 // ****************************************************************************
 
 void
@@ -424,10 +430,13 @@ QvisStreamlinePlotWindow::CreateWindowContents()
     sampleDensity[2] = new QSpinBox(samplingGroup);
     sampleDensity[0]->setMinimum(1);
     sampleDensity[0]->setMaximum(10000000);
+    sampleDensity[0]->setValue(streamAtts->GetSampleDensity0());
     sampleDensity[1]->setMinimum(1);
     sampleDensity[1]->setMaximum(10000000);
+    sampleDensity[1]->setValue(streamAtts->GetSampleDensity1());
     sampleDensity[2]->setMinimum(1);
-    sampleDensity[1]->setMaximum(10000000);
+    sampleDensity[2]->setMaximum(10000000);
+    sampleDensity[2]->setValue(streamAtts->GetSampleDensity2());
     connect(sampleDensity[0], SIGNAL(valueChanged(int)), this, SLOT(sampleDensity0Changed(int)));
     connect(sampleDensity[1], SIGNAL(valueChanged(int)), this, SLOT(sampleDensity1Changed(int)));
     connect(sampleDensity[2], SIGNAL(valueChanged(int)), this, SLOT(sampleDensity2Changed(int)));
@@ -579,6 +588,9 @@ QvisStreamlinePlotWindow::CreateWindowContents()
 //
 //   Dave Pugmire, Tue Apr  6 08:15:33 EDT 2010
 //   Rearrange the color by variable widgets.
+//
+//   Hank Childs, Sun Oct 31 13:00:53 PST 2010
+//   Make UI for cropping away portions of a streamline more clear.
 //
 // ****************************************************************************
 
@@ -786,38 +798,29 @@ QvisStreamlinePlotWindow::CreateAppearanceTab(QWidget *pageAppearance)
     showLayout->addWidget(geomDisplayQuality, 3, 1);
 
 
-    // Splitter
-    splitter = new QFrame(displayGrp);
-    splitter->setFrameStyle(QFrame::HLine + QFrame::Raised);
-    dLayout->addWidget(splitter, 7, 0, 1, 5);
+    // Create the display group
+    QGroupBox *cropGrp = new QGroupBox(pageAppearance);
+    cropGrp->setTitle(tr("Crop away portion of streamlines (for animations)"));
+    appearanceLayout->addWidget(cropGrp);
 
+    QGridLayout *cropLayout = new QGridLayout(cropGrp);
+    cropLayout->setMargin(5);
+    cropLayout->setSpacing(10);
 
-    QWidget *ddGroup = new QWidget(displayGrp);
-    dLayout->addWidget(ddGroup, 8, 0, 1, 5);
-
-    QHBoxLayout *ddLayout = new QHBoxLayout(ddGroup);
-    ddLayout->setMargin(5);
-    ddLayout->setSpacing(10);
-
-
-    displayLabel = new QLabel(tr("Display"), displayGrp);
-    displayBeginToggle = new QCheckBox(tr("Begin"), displayGrp);
-    displayEndToggle = new QCheckBox(tr("End"), displayGrp);
+    displayBeginToggle = new QCheckBox(tr("Retain from"), cropGrp);
+    displayEndToggle = new QCheckBox(tr("To"), cropGrp);
     connect(displayBeginToggle, SIGNAL(toggled(bool)), this, SLOT(displayBeginToggled(bool)));
     connect(displayEndToggle, SIGNAL(toggled(bool)), this, SLOT(displayEndToggled(bool)));
 
-    displayBeginEdit = new QLineEdit(displayGrp);
-    displayEndEdit = new QLineEdit(displayGrp);
+    displayBeginEdit = new QLineEdit(cropGrp);
+    displayEndEdit = new QLineEdit(cropGrp);
     connect(displayBeginEdit, SIGNAL(returnPressed()), this, SLOT(processDisplayBeginText()));
     connect(displayEndEdit, SIGNAL(returnPressed()), this, SLOT(processDisplayEndText()));
 
-    ddLayout->addWidget(displayLabel, 0);
-    ddLayout->addWidget(displayBeginToggle, 1);
-    ddLayout->addWidget(displayBeginEdit, 2);
-    ddLayout->addWidget(displayEndToggle, 3, Qt::AlignRight);
-    ddLayout->addWidget(displayEndEdit, 4);
-
-
+    cropLayout->addWidget(displayBeginToggle, 0, 0);
+    cropLayout->addWidget(displayBeginEdit, 0, 1);
+    cropLayout->addWidget(displayEndToggle, 0, 2);
+    cropLayout->addWidget(displayEndEdit, 0, 3);
 
     QGroupBox *colorGrp = new QGroupBox(pageAppearance);
     colorGrp->setTitle(tr("Color"));

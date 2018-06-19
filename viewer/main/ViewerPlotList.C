@@ -699,10 +699,9 @@ ViewerPlotList::ValidateTimeSlider()
             FindCorrelation(hostDatabaseName);
         if(srcCorrelation != 0)
         {
-            if(TimeSliderExists(hostDatabaseName))
-                activeTimeSlider = hostDatabaseName;
-            else
+            if(!TimeSliderExists(hostDatabaseName))
                 CreateTimeSlider(hostDatabaseName, 0);
+            activeTimeSlider = hostDatabaseName;
             tsChanged = true;
         }
     }
@@ -5256,6 +5255,9 @@ InitializeSILRestrictionFromDatabase(avtSILRestriction_p tmpSilr, int topSet,
 //
 //   Mark C. Miller, Sun Aug 29 23:33:21 PDT 2010
 //   Added logic to set SIL when variable is defined on subsets (materials).
+//
+//   Mark C. Miller, Thu Sep  2 20:58:05 PDT 2010
+//   Added missing call to SetTopSet for subsetted variables.
 // ****************************************************************************
 
 avtSILRestriction_p
@@ -5384,6 +5386,7 @@ ViewerPlotList::GetDefaultSILRestriction(const std::string &host,
         intVector restrictToMats = md->GetRestrictedMatnos(realvar);
         if (restrictToMats.size())
         {
+            silr->SetTopSet(topSet);
             silr->RestrictToSetsOfRole((int)SIL_MATERIAL, restrictToMats);
         }
     }

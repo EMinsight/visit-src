@@ -137,8 +137,10 @@ void VsRegistry::buildGroupObjects() {
       VsMesh::buildObject(group);
     } else if (type == VsSchema::vsVarsKey) {
       buildExpressions(group);
-//    } else if (type == VsSchema::timeKey) {
-//      loadTime(group);
+    } else if (type == VsSchema::timeKey) {
+      loadTime(group);
+    } else if (type == VsSchema::runInfoKey) {
+      loadRunInfo(group);
     } else {
       VsLog::debugLog() <<"VsRegistry::buildGroupObjects - object is of unrecognized type " <<type <<std::endl;
     }
@@ -163,6 +165,7 @@ void VsRegistry::loadTime(VsH5Group* group) {
       VsLog::debugLog() <<"VsRegistry::loadTime(): Error " <<err <<" while trying to load time attribute." <<std::endl;
     } else {
       foundTime = in[0];
+      VsLog::debugLog() <<"VsRegistry::loadTime() - loaded time: " <<foundTime  <<std::endl;
     }
   }
 
@@ -176,6 +179,7 @@ void VsRegistry::loadTime(VsH5Group* group) {
       VsLog::debugLog() <<"VsRegistry::loadTime(): Error " <<err <<" while trying to load step attribute." <<std::endl;
     } else {
       foundStep = in[0];
+      VsLog::debugLog() <<"VsRegistry::loadTime() - loaded step: " <<foundStep <<std::endl;
     }
   }
  
@@ -183,19 +187,25 @@ void VsRegistry::loadTime(VsH5Group* group) {
   if ((foundTime != -1) && hasTime() && (foundTime != getTime())) {
     VsLog::warningLog() <<"VsRegistry::loadTime() - was asked to load time data again, but time data already exists." <<std::endl;
     VsLog::warningLog() <<"VsRegistry::loadTime() - and is in conflict: " <<foundTime <<" vs " <<getTime() <<std::endl;
-    return;
+  } else {
+    timeValue = foundTime;
   }
   
   if ((foundStep != -1) && hasStep() && (foundStep != getStep())) {
     VsLog::warningLog() <<"VsRegistry::loadTime() - was asked to load step data again, but step data already exists." <<std::endl;
     VsLog::warningLog() <<"VsRegistry::loadTime() - and is in conflict: " <<foundStep <<" vs " <<getStep() <<std::endl;
+  } else {
+    step = foundStep;
+  }
+}
+
+void VsRegistry::loadRunInfo(VsH5Group* group) {
+  if (!group) {
+    VsLog::debugLog() <<"VsRegistry::loadRunInfo() - Group is NULL?" <<std::endl;
     return;
   }
 
-  VsLog::debugLog() <<"VsRegistry::loadTime() - loaded time: " <<foundTime <<" and step " <<foundStep <<std::endl;
-
-  timeValue = foundTime;
-  step = foundStep;
+  VsLog::debugLog() <<"VsRegistry::loadRunInfo() - not loading any information at this time." <<std::endl;
 }
 
 /*********** VsH5Datasets***********/
@@ -278,16 +288,29 @@ void VsRegistry::buildDatasetObjects() {
      it != allDatasets.end(); it++)  {
     VsH5Dataset* dataset = it->second;
     VsLog::debugLog() <<"VsRegistry::buildDatasetObjects() - looking at dataset " <<dataset->getFullName() <<std::endl;
-    
+
+    //Try to determine the type of the object
+    std::string type;    
     VsH5Attribute* typeAtt = dataset->getAttribute(VsSchema::typeAtt);
     if (!typeAtt) {
-      VsLog::warningLog() <<"VsRegistry::buildDatasetObjects() - unable to find attribute " <<VsSchema::typeAtt
-        <<".  Skipping object " <<dataset->getFullName() <<std::endl;
-      continue;
+      VsLog::warningLog() <<"VsRegistry::buildDatasetObjects() - unable to find attribute " <<VsSchema::typeAtt <<std::endl;
+      
+      //If the object contains the "vsMesh" attribute, then it is probably intended to be a variable
+      //So continue with that assumption
+      VsLog::warningLog() <<"VsRegistry::buildDatasetObjects() - Second chance - looking for attribute " <<VsSchema::meshAtt <<std::endl;
+      VsH5Attribute* meshAtt = dataset->getAttribute(VsSchema::meshAtt);
+      if (meshAtt) {
+        VsLog::warningLog() <<"VsRegistry::buildDatasetObjects() - Found attribute " <<VsSchema::meshAtt <<" assuming that this is a variable." <<std::endl;
+        type = VsSchema::varKey;
+      } else {
+        VsLog::warningLog() <<"VsRegistry::buildDatasetObjects() - Did not find attribute " <<VsSchema::meshAtt
+                  <<", second chance option has failed.  Skipping object: " <<dataset->getFullName() <<std::endl;
+        continue;
+      }
+    } else {
+      typeAtt->getStringValue(&type);
     }
     
-    std::string type;
-    typeAtt->getStringValue(&type);
     VsLog::debugLog() <<"VsRegistry::buildDatasetObjects() - object is of type " <<type <<std::endl;
     if (type == VsSchema::meshKey) {
       VsMesh::buildObject(dataset);
@@ -872,7 +895,9 @@ std::map<std::string, std::string>* VsRegistry::getAllExpressions() {
   return &allExpressions;
 }
 
-
+int VsRegistry::numExpressions() {
+  return allExpressions.size();
+}
 
 void VsRegistry::createComponents(bool useStride, std::vector<int> stride) {
   VsLog::debugLog() <<"VsRegistry::createComponents() - Entering" <<std::endl;

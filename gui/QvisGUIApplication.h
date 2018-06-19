@@ -418,6 +418,8 @@ private:
 
     void ExtractSystemDefaultAppearance();
     void ShowAllWindows();
+    bool IsFullyInitialized() const;
+    void SetWindowArea(int x, int y, int w, int h);
 
 public slots:
     void newExpression();
@@ -453,7 +455,6 @@ private slots:
     void SaveMovie();
     void SaveMovieMain();
     void SaveWindow();
-    void SetPrinterOptions();
     void PrintWindow();
     void RefreshFileList();
     void RefreshFileListAndNextFrame();
@@ -585,6 +586,8 @@ private:
     int                          screenW;
     int                          screenH;
     bool                         useWindowMetrics;
+    bool                         noViewerGeometry;
+
     // Command line gui geometry.
     bool                         savedGUIGeometry;
     int                          savedGUISize[2];

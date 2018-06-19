@@ -272,6 +272,16 @@ avtDatabaseFactory::SetDefaultFileOpenOptions(const FileOpenOptions &opts)
 //    We still try preferred plugins before giving up, even if they
 //    don't match the filename.
 //
+//    Jeremy Meredith, Thu Sep 30 12:16:00 EDT 2010
+//    Allow specified file type to look for a name match, now allowing
+//    "VTK" (as well as "VTK_1.0" which previously worked), for example.
+//
+//    Jeremy Meredith, Thu Oct 28 12:50:53 EDT 2010
+//    When using "Open As", report the error given from the reader even if 
+//    it throws a standard InvalidFilesException, since the details of the
+//    failure will at least be relevant (unlike the general case when we
+//    get that failure when guessing which plugin to use).
+//
 // ****************************************************************************
 
 avtDatabase *
@@ -317,6 +327,13 @@ avtDatabaseFactory::FileList(DatabasePluginManager *dbmgr,
         debug3 << "avtDatabaseFactory: specifically told to use "
                << format << endl;
         int formatindex = dbmgr->GetAllIndex(format);
+        if (formatindex < 0)
+        {
+            formatindex = dbmgr->GetAllIndexFromName(format);
+            debug3 << "avtDatabaseFactory: couldn't find "
+                   << format << " by ID, attempt at a name match "
+                   << ((formatindex>=0) ? "succeeded" : "failed") << endl;
+        }
         if (formatindex < 0)
         {
             char msg[1000];
@@ -371,6 +388,11 @@ avtDatabaseFactory::FileList(DatabasePluginManager *dbmgr,
             RETHROW;
         }
         CATCH(ImproperUseException)
+        {
+            rv = NULL;
+            RETHROW;
+        }
+        CATCH(InvalidFilesException)
         {
             rv = NULL;
             RETHROW;

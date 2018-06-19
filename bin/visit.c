@@ -52,13 +52,6 @@
 #include <vector>
 #include <string>
 #include <iostream>
-#if _MSC_VER <= 1310
-#define _VISIT_MSVC "MSVC7.Net"
-#elif _MSC_VER <= 1400
-#define _VISIT_MSVC "MSVC8.Net"
-#else
-#define _VISIT_MSVC ""
-#endif
 
 using std::vector;
 using std::string;
@@ -122,12 +115,20 @@ static const char usage[] =
 "\n"
 "    Debugging arguments:\n"
 "        -debug <level>       Run with <level> levels of output logging.\n"
-"                             <level> must be between 1 and 5.\n";
+"                             <level> must be between 1 and 5.\n"
+"\n"
+"    Developer arguments:\n"
+"        -xml2cmake           Run the xml2cmake tool.\n"
+"        -public              xml2cmake: force install plugins publicly\n"
+"        -private             xml2cmake: force install plugins privately\n"
+"        -clobber             Permit xml2... tools to overwrite old files\n"
+"        -noprint             Silence debugging output from xml2... tools\n"
+"\n";
 
 /*
  * Prototypes
  */
-char *AddEnvironment(int);
+char *AddEnvironment(const int, const int);
 void  AddPath(char *, const char *, const char*);
 int   ReadKey(const char *key, char **keyval);
 void  TestForConfigFiles(const char *component);
@@ -226,6 +227,9 @@ void  TestForConfigFiles(const char *component);
  *   Kathleen Bonnell, Fri Jan 29 9:01:15 MST 2009
  *   Changed engine executable name to engine_ser.
  *
+ *   Kathleen Bonnell, Wed Dec 1 08:45:12 MST 2010
+ *   Add support for xml2cmake.
+ *
  *****************************************************************************/
 
 int
@@ -236,6 +240,7 @@ main(int argc, char *argv[])
          *visitargs = 0, *cptr = 0, *cptr2 = 0, tmpArg[512];
     int i, j, size = 0, retval = 0, skipping = 0, nArgsSkip = 0, tmplen = 0;
     int addMovieArguments = 0, addVISITARGS = 1, useShortFileName = 0;
+    int addPluginVars = 0;
     int newConsole = 0;
     int noloopback = 0;
     int parallel = 0;
@@ -362,6 +367,12 @@ main(int argc, char *argv[])
             hostset = 1;
             PUSHARG("-host");
         }
+        else if(ARG("-xml2cmake"))
+        {
+            strcpy(component, "xml2cmake.exe");
+            addVISITARGS = 0;
+            addPluginVars = 1;
+        }
         else
         {
             if (!BEGINSWITHQUOTE(argv[i]) && HASSPACE(argv[i]))
@@ -412,7 +423,7 @@ main(int argc, char *argv[])
     /*
      * Add some stuff to the environment.
      */
-    visitpath = AddEnvironment(useShortFileName);
+    visitpath = AddEnvironment(useShortFileName, addPluginVars);
 
     /*
      * Migrate config files 
@@ -787,10 +798,13 @@ ReadKey(const char *key, char **keyval)
  *   Kathleen Bonnell, Tue Mar 30 16:46:19 MST 2010
  *   Test for dev dir and set vars accordingly.
  *
+ *   Kathleen Bonnell, Wed Dec 1 08:43:44 MST 2010 
+ *   Add variables necessary for plugin development if necessary.
+ *
  *****************************************************************************/
 
 char *
-AddEnvironment(int useShortFileName)
+AddEnvironment(const int useShortFileName, const int addPluginVars)
 {
     char *tmp, *visitpath = 0;
     char *visitdevdir = 0;
@@ -866,7 +880,7 @@ AddEnvironment(int useShortFileName)
      * Determine visit user path (Path to My Documents).
      */
     {
-        char visituserpath[512], expvisituserpath[512];
+        char visituserpath[MAX_PATH], expvisituserpath[MAX_PATH];
         int haveVISITUSERHOME=0;
         TCHAR szPath[MAX_PATH];
         struct _stat fs;
@@ -935,14 +949,28 @@ AddEnvironment(int useShortFileName)
             PathAppend(appData, "LLNL");
             PathAppend(appData, "VisIt");
             sprintf(tmp, "VISITPLUGINDIR=%s;%s", appData, visitpath);
+            putenv(tmp);
+            if (addPluginVars)
+            {
+                sprintf(tmp, "VISITPLUGININSTPRI=%s\LLNL\VisIt", appData);
+                putenv(tmp);
+            }
         }
         else
         {
             sprintf(tmp, "VISITPLUGINDIR=%s", visitpath);
+            putenv(tmp);
         }
     }
 
-    putenv(tmp);
+    if (addPluginVars)
+    {
+        sprintf(tmp, "VISITPLUGININSTPUB=%s", visitpath);
+        putenv(tmp);
+        sprintf(tmp, "VISITARCHHOME=%s", visitpath);
+        putenv(tmp);
+    }
+
 
     /*
      * Set the help dir.

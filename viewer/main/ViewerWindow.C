@@ -4236,6 +4236,13 @@ ViewerWindow::RecenterView2d(const double *limits)
 //    Jeremy Meredith, Wed May 19 14:15:58 EDT 2010
 //    Support 3D axis scaling (3D equivalent of full-frame mode).
 //
+//    Jeremy Meredith, Thu Sep  2 15:06:26 EDT 2010
+//    When using 3D scaling, everything (including the lower bounding box
+//    limits) is rescaled -- set the focus accordingly.  Also, ignore
+//    effects of 3D scaling when setting parallel scale -- if you don't, then
+//    repeated re-centering with a non-1:1:1 3D scale will cause the parallel
+//    scale to keep shrinking/growing.
+//
 // ****************************************************************************
 
 void
@@ -4277,16 +4284,16 @@ ViewerWindow::RecenterView3d(const double *limits)
     //
     // Determine the zoom factor.
     //
-    double    width;
+    double    oldWidth;
     double    zoomFactor;
 
-    width = 0.5 * sqrt(((boundingBox3d[1] - boundingBox3d[0]) *
-                        (boundingBox3d[1] - boundingBox3d[0])) +
-                       ((boundingBox3d[3] - boundingBox3d[2]) *
-                        (boundingBox3d[3] - boundingBox3d[2])) +
-                       ((boundingBox3d[5] - boundingBox3d[4]) *
-                        (boundingBox3d[5] - boundingBox3d[4])));
-    zoomFactor = width / view3D.parallelScale;
+    oldWidth = 0.5 * sqrt(((boundingBox3d[1] - boundingBox3d[0]) *
+                           (boundingBox3d[1] - boundingBox3d[0])) +
+                          ((boundingBox3d[3] - boundingBox3d[2]) *
+                           (boundingBox3d[3] - boundingBox3d[2])) +
+                          ((boundingBox3d[5] - boundingBox3d[4]) *
+                           (boundingBox3d[5] - boundingBox3d[4])));
+    zoomFactor = oldWidth / view3D.parallelScale;
 
     //
     // Set the new window.
@@ -4308,27 +4315,35 @@ ViewerWindow::RecenterView3d(const double *limits)
                                            view3D.axis3DScales[1] : 1.0),
                             sizeOrig[2] * (view3D.axis3DScaleFlag ?
                                            view3D.axis3DScales[2] : 1.0)};
+    double startScaled[3] ={boundingBox3d[0] * (view3D.axis3DScaleFlag ?
+                                                view3D.axis3DScales[0] : 1.0),
+                            boundingBox3d[2] * (view3D.axis3DScaleFlag ?
+                                                view3D.axis3DScales[1] : 1.0),
+                            boundingBox3d[4] * (view3D.axis3DScaleFlag ?
+                                                view3D.axis3DScales[2] : 1.0)};
+
     //
     // Calculate the new focal point.
     //
-    view3D.focus[0] = sizeScaled[0]/2. + boundingBox3d[0];
-    view3D.focus[1] = sizeScaled[1]/2. + boundingBox3d[2];
-    view3D.focus[2] = sizeScaled[2]/2. + boundingBox3d[4];
+    view3D.focus[0] = sizeScaled[0]/2. + startScaled[0];
+    view3D.focus[1] = sizeScaled[1]/2. + startScaled[1];
+    view3D.focus[2] = sizeScaled[2]/2. + startScaled[2];
 
     //
     // Calculate the new parallel scale.
     //
-    width = 0.5 * sqrt(sizeScaled[0]*sizeScaled[0] +
-                       sizeScaled[1]*sizeScaled[1] +
-                       sizeScaled[2]*sizeScaled[2]);
+    double newWidth;
+    newWidth = 0.5 * sqrt(sizeOrig[0]*sizeOrig[0] +
+                          sizeOrig[1]*sizeOrig[1] +
+                          sizeOrig[2]*sizeOrig[2]);
 
-    view3D.parallelScale = width / zoomFactor;
+    view3D.parallelScale = newWidth / zoomFactor;
 
     //
     // Calculate the near and far clipping planes.
     //
-    view3D.nearPlane = - 2.0 * width;
-    view3D.farPlane  =   2.0 * width;
+    view3D.nearPlane = - 2.0 * newWidth;
+    view3D.farPlane  =   2.0 * newWidth;
 
     //
     // Reset the center of rotation.
@@ -6944,7 +6959,9 @@ ViewerWindow::UpdateQuery(const Line *lineAtts)
 // Creation:   Thu Aug 26 17:05:12 PDT 2010
 //
 // Modifications:
-//   
+//   Brad Whitlock, Fri Oct 29 11:19:12 PDT 2010
+//   I rewrote it to use a map keyed off of the oldLabel.
+//
 // ****************************************************************************
 
 void
@@ -6952,13 +6969,26 @@ ViewerWindow::RenamePickLabel(const std::string &oldLabel, const std::string &ne
 {
     std::vector<const VisualCueInfo *> cues;
     visWindow->GetVisualCues(VisualCueInfo::PickPoint, cues);
+
+    // The oldLabel value will always be something like "A", "B", etc. We use
+    // that to see if we've redefined the label already. If we have then the current
+    // label will be set to something user-defined.
+    std::string currentLabel(oldLabel);
+    StringStringMap::iterator it = cueRenaming.find(oldLabel);
+    if(it != cueRenaming.end())
+    {
+        currentLabel = it->second;
+    }
+    cueRenaming[oldLabel] = newLabel;
+
+    // Try and find the currentLabel in the cue labels.
     for(size_t i = 0; i < cues.size(); ++i)
     {
-        if(cues[i]->GetLabel() == oldLabel)
+        if(cues[i]->GetLabel() == currentLabel)
         {
             VisualCueInfo newCue(*(cues[i]));
             newCue.SetLabel(newLabel);
-            visWindow->UpdateQuery(oldLabel, &newCue);
+            visWindow->UpdateQuery(currentLabel, &newCue);
             return;
         }
     }

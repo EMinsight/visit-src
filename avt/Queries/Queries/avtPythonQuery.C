@@ -83,7 +83,7 @@ using std::string;
 // ****************************************************************************
 
 avtPythonQuery::avtPythonQuery()
-: avtDataObjectQuery(), avtDatasetSink(), pyEnv(NULL)
+: avtDataObjectQuery(), avtDatasetSink(), pyEnv(NULL), pyScript(""),pyArgs("")
 {
     pyEnv = new avtPythonFilterEnvironment();
 }
@@ -209,6 +209,27 @@ avtPythonQuery::SetPythonScript(const std::string &py_script)
 }
 
 // ****************************************************************************
+//  Method: avtPythonQuery::SetPythonArgs
+//
+//  Purpose:
+//    Sets the python args scring used to setup the python query. This string
+//    should contain a pickled list.
+//
+//  Programmer: Cyrus Harrison
+//  Creation:   September 21, 2010
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+void
+avtPythonQuery::SetPythonArgs(const std::string &py_args)
+{
+    pyArgs = py_args;
+}
+
+
+// ****************************************************************************
 //  Method: avtPythonQuery::PerformQuery
 //
 //  Purpose:
@@ -221,6 +242,9 @@ avtPythonQuery::SetPythonScript(const std::string &py_script)
 //  Modifications:
 //    Cyrus Harrison,Wed Mar 17 12:32:40 PDT 2010
 //    Remove catch b/c it prevented script errors from being reported.
+//
+//    Cyrus Harrison, Thu Oct 28 13:14:22 PDT 2010
+//    Add more info to the empty dataset error message.
 //
 // ****************************************************************************
 void
@@ -273,8 +297,10 @@ avtPythonQuery::PerformQuery(QueryAttributes *qatts)
     else
     {
         queryAtts.SetResultsMessage(std::string(GetType()) +
-                    " was asked to execute on an empty data set.  The query "
-                    "produced the following message: " + resultMessage);
+                    " was asked to execute on an empty data set.\n"
+                    "This error condition will occur if you query an empty plot "
+                    "or if you request an invalid variable.\n"
+                    "The python query filter returned the following message: " + resultMessage);
                     queryAtts.SetResultsValue(resultValues);
     }
 
@@ -319,6 +345,8 @@ avtPythonQuery::GetSecondaryVariables(std::vector<std::string> &res)
 //  Creation:   Wed Feb 17 09:30:46 PST 2010
 //
 //  Modifications:
+//    Cyrus Harrison, Tue Sep 21 11:29:47 PDT 2010
+//    Unpickle passed args from pyArgs member.
 //
 // ****************************************************************************
 
@@ -411,10 +439,9 @@ avtPythonQuery::UpdateContract()
     }
 
     // get any other args
-    std::string args_str = varNames[varNames.size()-1];
-    if(args_str != "")
+    if(pyArgs != "")
     {
-        PyObject *py_args = pyEnv->Unpickle(args_str);
+        PyObject *py_args = pyEnv->Unpickle(pyArgs);
         if(!pyEnv->Filter()->SetAttribute("arguments",py_args))
             PYQUERY_ERROR("avtPythonQuery::UpdateContract Error - "
                       "Unable to set Python Query 'arguments' attribute.");

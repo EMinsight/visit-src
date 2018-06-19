@@ -398,6 +398,8 @@ RemoteProxyBase::AddArgument(const std::string &arg)
 //    Jeremy Meredith, Fri Feb 19 09:55:03 EST 2010
 //    Remove assumption that the machine profile has an active launch profile.
 //
+//    Mark C. Miller, Tue Oct 19 21:42:22 PDT 2010
+//    Name of '-timeout' argument was changed to '-idle-timeout'.
 // ****************************************************************************
 
 void
@@ -572,7 +574,7 @@ RemoteProxyBase::AddProfileArguments(const MachineProfile &machine,
     // Add the timeout argument
     char temp[10];
     SNPRINTF(temp, 10, "%d", launch->GetTimeout());
-    AddArgument("-timeout");
+    AddArgument("-idle-timeout");
     AddArgument(temp);
 
     //
@@ -615,6 +617,11 @@ RemoteProxyBase::Parallel() const
 // Creation:   Fri May 2 15:01:39 PST 2003
 //
 // Modifications:
+//   Kathleen Bonnell, Fri Oct 8 08:50:11 PDT 2010
+//   On Windows, append "visit" instead of "bin/visit".
+//   
+//   Kathleen Bonnell, Fri Nov 19 17:34:04 MST 2010
+//   Revert windows-specific change.
 //   
 // ****************************************************************************
 
