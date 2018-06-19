@@ -58,7 +58,10 @@ function python_set_vars_helper
            PYTHON_LIBRARY="lib${PYTHON_LIBRARY}.so"
       fi
   fi
-  PYTHON_LIBRARY_DIR="${VISIT_PYTHON_DIR}/lib"
+  #
+  # use python's distutils info to get the proper library directory.
+  #
+  PYTHON_LIBRARY_DIR=`"$PYTHON_COMMAND" -c "import sys;from distutils.sysconfig import get_config_var; sys.stdout.write(get_config_var('LIBDIR'))"`
   if [ ! -e "${PYTHON_LIBRARY_DIR}/${PYTHON_LIBRARY}" ]
   then
       # some systems eg fedora use lib64...
@@ -112,16 +115,16 @@ echo ""
 function bv_python_info
 {
 export PYTHON_FILE_SUFFIX="tgz"
-export PYTHON_VERSION=${PYTHON_VERSION:-"2.7.6"}
+export PYTHON_VERSION=${PYTHON_VERSION:-"2.7.11"}
 export PYTHON_COMPATIBILITY_VERSION=${PYTHON_COMPATIBILITY_VERSION:-"2.7"}
 export PYTHON_FILE="Python-$PYTHON_VERSION.$PYTHON_FILE_SUFFIX"
 export PYTHON_BUILD_DIR="Python-$PYTHON_VERSION"
-export PYTHON_MD5_CHECKSUM="2cf641732ac23b18d139be077bd906cd"
+export PYTHON_MD5_CHECKSUM="6b6076ec9e93f05dd63e47eb9c15728b"
 export PYTHON_SHA256_CHECKSUM=""
 
 export PIL_URL=${PIL_URL:-"http://effbot.org/media/downloads"}
-export PIL_FILE=${PIL_FILE:-"Imaging-1.1.6.tar.gz"}
-export PIL_BUILD_DIR=${PIL_BUILD_DIR:-"Imaging-1.1.6"}
+export PIL_FILE=${PIL_FILE:-"Imaging-1.1.7.tar.gz"}
+export PIL_BUILD_DIR=${PIL_BUILD_DIR:-"Imaging-1.1.7"}
 
 export PYPARSING_FILE=${PYPARSING_FILE:-"pyparsing-1.5.2.tar.gz"}
 export PYPARSING_BUILD_DIR=${PYPARSING_BUILD_DIR:-"pyparsing-1.5.2"}
@@ -129,9 +132,9 @@ export PYPARSING_BUILD_DIR=${PYPARSING_BUILD_DIR:-"pyparsing-1.5.2"}
 export PYREQUESTS_FILE=${PYREQUESTS_FILE:-"requests-2.5.1.tar.gz"}
 export PYREQUESTS_BUILD_DIR=${PYREQUESTS_BUILD_DIR:-"requests-2.5.1"}
 
-export SEEDME_FILE=${SEEDME_FILE:-"seedme-seedme-python-client-0a365da9c861.tar.gz"}
-export SEEDME_BUILD_DIR=${SEEDME_BUILD_DIR:-"seedme-seedme-python-client-0a365da9c861"}
-
+export SEEDME_URL=${SEEDME_URL:-"https://seedme.org/sites/seedme.org/files/downloads/clients/"}
+export SEEDME_FILE=${SEEDME_FILE:-"seedme-python-client-v1.1.0.zip"}
+export SEEDME_BUILD_DIR=${SEEDME_BUILD_DIR:-"seedme-python-client-v1.1.0"}
 
 }
 
@@ -419,12 +422,12 @@ function apply_python_pil_patch
 {
    info "Patching PIL: Add /usr/lib64/ to lib search path."
    patch -f -p0 << \EOF
-diff -c Imaging-1.1.6.orig/setup.py Imaging-1.1.6/setup.py
-*** Imaging-1.1.6.orig/setup.py Sun Dec  3 03:37:29 2006
---- Imaging-1.1.6/setup.py      Tue Dec 14 13:39:39 2010
+diff -c Imaging-1.1.7.orig/setup.py  Imaging-1.1.7/setup.py
+*** Imaging-1.1.7.orig/setup.py Wed Jan  6 11:39:52 2016
+--- Imaging-1.1.7/setup.py      Wed Jan  6 11:41:13 2016
 ***************
-*** 196,201 ****
---- 196,205 ----
+*** 211,216 ****
+--- 211,220 ----
           add_directory(library_dirs, "/usr/local/lib")
           add_directory(include_dirs, "/usr/local/include")
 
@@ -594,7 +597,7 @@ function build_seedme
         info "Extracting seedme python module ..."
         uncompress_untar ${SEEDME_FILE}
         if test $? -ne 0 ; then
-            warn "Could not extract ${SEEDME_BUILD_DIR}"
+            warn "Could not extract ${SEEDME_FILE}"
             return 1
         fi
     fi
@@ -677,7 +680,7 @@ if [[ "$DO_PYTHON" == "yes" && "$USE_SYSTEM_PYTHON" == "no" ]] ; then
         if [[ $? != 0 ]] ; then
             warn "seedme python module build failed."
         fi
-        info "Done building the requests seedme python module."
+        info "Done building the seedme python module."
 
     fi
 fi

@@ -195,6 +195,7 @@ static int nConfigArgs = 1;
 #endif
 
 #include <algorithm>
+#include <sstream>
 
 #include <visit-config.h>
 #ifdef HAVE_OSMESA
@@ -5246,7 +5247,11 @@ ViewerSubject::DeferCommandFromSimulation(const EngineKey &key,
 //
 //   Brad Whitlock, Fri Aug 14 11:56:26 PDT 2015
 //   I added some arguments to export.
-// 
+//
+//   Brad Whitlock, Tue Sep 29 11:06:58 PDT 2015
+//   Get the entire ExportDBAttributes from the simulation so we get the export
+//   options too.
+//
 // ****************************************************************************
 
 void
@@ -5327,9 +5332,21 @@ ViewerSubject::HandleCommandFromSimulation(const EngineKey &key,
         SaveWindowAttributes::FileFormat fmt = SaveWindowAttributes::PNG;
         SaveWindowAttributes::FileFormat_FromString(s[5], fmt);
 
+        debug5 << "SaveWindow" << endl;
+        debug5 << "\toutputDirectory = " << s[1] << endl;
+        debug5 << "\tfilename = " << s[2] << endl;
+        debug5 << "\twidth = " << w << endl;
+        debug5 << "\theight = " << h << endl;
+        debug5 << "\tformat = " << s[5] << endl;
+
+        // Output to the current directory if the simulation did not
+        // specify a directory. This at least lets it work client-side
+        // when the simulation just passes filenames.
+        bool outputCurrentDirectory = (s[1].empty() || s[1] == ".");
+
         SaveWindowAttributes *swa = GetViewerState()->GetSaveWindowAttributes();
         swa->SetFileName(s[2]);
-        swa->SetOutputToCurrentDirectory(false);
+        swa->SetOutputToCurrentDirectory(outputCurrentDirectory);
         swa->SetOutputDirectory(s[1]);
         swa->SetFamily(false);
         swa->SetFormat(fmt);
@@ -5343,33 +5360,20 @@ ViewerSubject::HandleCommandFromSimulation(const EngineKey &key,
     }
     else if(command.substr(0,14) == "ExportDatabase")
     {
-        stringVector s = SplitValues(command, ':');
-        // s[0] = ExportDatabase
-        // s[1] = name
-        // s[2] = id
-        // s[3] = dName
-        // s[4] = fName
-        // s[5] = writeUsingGroups (int)
-        // s[6] = groupSize (int)
-        // s[7] = var0
-        // ...   more vars.
-
-        stringVector vars;
-        for(size_t i = 7; i < s.size(); ++i)
-            vars.push_back(s[i]);
-
+        // The message is formatted like: ExportDatabase:XML
+        std::stringstream xml(command.substr(15));
         ExportDBAttributes *atts = GetViewerState()->GetExportDBAttributes();
-        atts->SetAllTimes(false);
-        atts->SetDb_type(s[1]);
-        atts->SetDb_type_fullname(s[2]);
-        atts->SetDirname(s[3]);
-        atts->SetFilename(s[4]);
-        atts->SetWriteUsingGroups(atoi(s[5].c_str()) > 0);
-        atts->SetGroupSize(atoi(s[6].c_str()));
-        atts->SetVariables(vars);
-        atts->Notify();
-
-        GetViewerMethods()->ExportDatabase();
+        SingleAttributeConfigManager mgr(atts);
+        if(mgr.Import(xml))
+        {
+            atts->Notify();
+            GetViewerMethods()->ExportDatabase();
+        }
+        else
+        {
+            debug5 << "Export failed because the ExportDBAttributes could not "
+                      "be read from simulation." << endl;
+        }
     }
     else if(command.substr(0,14) == "RestoreSession")
     {
@@ -5402,9 +5406,14 @@ ViewerSubject::HandleCommandFromSimulation(const EngineKey &key,
                 id = thisID;
         }
         if(!id.empty())
-        {
+        { 
+            bool applyOperatorSave = GetViewerState()->GetGlobalAttributes()->GetApplyOperator();
+            GetViewerState()->GetGlobalAttributes()->SetApplyOperator(false);
+
             int plotIndex = GetPlotPluginManager()->GetEnabledIndex(id);
             GetViewerMethods()->AddPlot(plotIndex, s[2]);
+
+            GetViewerState()->GetGlobalAttributes()->SetApplyOperator(applyOperatorSave);
         }
     }
     else if(command.substr(0,11) == "AddOperator")

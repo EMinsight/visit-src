@@ -1,14 +1,14 @@
-#/home/visit/visit/thirdparty_shared/2.9.0/cmake/3.0.2/linux-x86_64_gcc-4.8/bin/cmake
+#/home/visit/visit/thirdparty_shared/2.10.0/cmake/3.0.2/linux-x86_64_gcc-4.8/bin/cmake
 ##
-## ./build_visit2_9_0 generated host.cmake
-## created: Mon Feb 23 17:34:47 PST 2015
+## ./build_visit2_10_0 generated host.cmake
+## created: Tue Oct  6 07:32:32 PDT 2015
 ## system: Linux ubuntu1404-64.sqalab-vmware.box 3.13.0-43-generic #72-Ubuntu SMP Mon Dec 8 19:35:06 UTC 2014 x86_64 x86_64 x86_64 GNU/Linux
 ## by: visit
 
 ##
 ## Setup VISITHOME & VISITARCH variables.
 ##
-SET(VISITHOME /home/visit/visit/thirdparty_shared/2.9.0)
+SET(VISITHOME /home/visit/visit/thirdparty_shared/2.10.0)
 SET(VISITARCH linux-x86_64_gcc-4.8)
 VISIT_OPTION_DEFAULT(VISIT_SLIVR TRUE)
 
@@ -58,7 +58,7 @@ VISIT_OPTION_DEFAULT(VISIT_VTK_DIR ${VISITHOME}/vtk/${VTK_VERSION}/${VISITARCH})
 ## ADIOS
 ## (configured w/ mpi compiler wrapper)
 ##
-VISIT_OPTION_DEFAULT(VISIT_ADIOS_DIR ${VISITHOME}/adios/1.7.0/${VISITARCH})
+VISIT_OPTION_DEFAULT(VISIT_ADIOS_DIR ${VISITHOME}/adios/1.9.0/${VISITARCH})
 
 ##
 ## AdvIO
@@ -94,7 +94,7 @@ VISIT_OPTION_DEFAULT(VISIT_SZIP_DIR ${VISITHOME}/szip/2.1/${VISITARCH})
 ##
 ## HDF5
 ##
-VISIT_OPTION_DEFAULT(VISIT_HDF5_DIR ${VISITHOME}/hdf5/1.8.7/${VISITARCH})
+VISIT_OPTION_DEFAULT(VISIT_HDF5_DIR ${VISITHOME}/hdf5/1.8.14/${VISITARCH})
 VISIT_OPTION_DEFAULT(VISIT_HDF5_LIBDEP ${VISITHOME}/szip/2.1/${VISITARCH}/lib sz /usr/lib/x86_64-linux-gnu z TYPE STRING)
 
 ##
@@ -132,9 +132,28 @@ VISIT_OPTION_DEFAULT(VISIT_NETCDF_DIR ${VISITHOME}/netcdf/4.1.1/${VISITARCH})
 VISIT_OPTION_DEFAULT(VISIT_NETCDF_LIBDEP HDF5_LIBRARY_DIR hdf5_hl HDF5_LIBRARY_DIR hdf5 ${VISIT_HDF5_LIBDEP} TYPE STRING)
 
 ##
+## ITAPS
+##
+## MOAB implementation
+ITAPS_INCLUDE_DIRECTORIES(MOAB ${VISITHOME}/itaps/1.4/MOAB/4.8.1/${VISITARCH}/include)
+ITAPS_FILE_PATTERNS(MOAB *.cub)
+ITAPS_LINK_LIBRARIES(MOAB iMesh MOAB hdf5_hl hdf5 sz z netcdf_c++ netcdf )
+ITAPS_LINK_DIRECTORIES(MOAB  ${VISITHOME}/itaps/1.4/MOAB/4.8.1/${VISITARCH}/lib  ${VISITHOME}/hdf5/1.8.14/${VISITARCH}/lib  ${VISITHOME}/szip/2.1/${VISITARCH}/lib  ${VISITHOME}/netcdf/4.1.1/${VISITARCH}/lib )
+## FMDB implementation
+ITAPS_INCLUDE_DIRECTORIES(FMDB ${VISITHOME}/itaps/1.4/FMDB/1.4.0/${VISITARCH}/include)
+ITAPS_FILE_PATTERNS(FMDB *.sms)
+ITAPS_LINK_LIBRARIES(FMDB FMDB SCORECModel SCORECUtil )
+ITAPS_LINK_DIRECTORIES(FMDB ${VISITHOME}/itaps/1.4/FMDB/1.4.0/${VISITARCH}/lib)
+## GRUMMP implementation
+ITAPS_INCLUDE_DIRECTORIES(GRUMMP ${VISITHOME}/itaps/1.4/GRUMMP/0.6.5/${VISITARCH}/include)
+ITAPS_FILE_PATTERNS(GRUMMP *.bdry *.smesh *.vmesh)
+ITAPS_LINK_LIBRARIES(GRUMMP iMesh_GRUMMP GR_3D GR_surf GR_2D GR_geom GR_base SUMAAlog_lite OptMS cgm dl)
+ITAPS_LINK_DIRECTORIES(GRUMMP ${VISITHOME}/itaps/1.4/GRUMMP/0.6.5/${VISITARCH}/lib)
+
+##
 ## MFEM 
 ##
-VISIT_OPTION_DEFAULT(VISIT_MFEM_DIR ${VISITHOME}/mfem/3.0.1/${VISITARCH})
+VISIT_OPTION_DEFAULT(VISIT_MFEM_DIR ${VISITHOME}/mfem/3.1/${VISITARCH})
 
 ##
 ## PySide

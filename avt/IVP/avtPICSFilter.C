@@ -713,6 +713,11 @@ avtPICSFilter::LoadNextTimeSlice()
         // time slice.  But the next time slice may have a different 
         // number of domains.  So we need to go to the database and get
         // the correct domain list.
+
+        // ARS - the assumption that one can go back to the database
+        // is not correct as it is possible for an upstream operator
+        // to modify the nmber of domains. This information should
+        // come from the upstream operator.
         std::string db = GetInput()->GetInfo().GetAttributes().GetFullDBName();
         ref_ptr<avtDatabase> dbp = avtCallback::GetDatabase(db, 0, NULL);
         if (*dbp == NULL)
@@ -1162,17 +1167,46 @@ AlgorithmToString(int algo)
 void
 avtPICSFilter::SetICAlgorithm()
 {
+    // ARS - When SetICAlgorithm is called via ModifyContract the
+    // needed attributes such as the DataIsReplicatedOnAllProcessors
+    // has been set by the upstream operator. 
+    avtDataAttributes &in_dataatts = GetInput()->GetInfo().GetAttributes();
+
     int actualAlgo = selectedAlgo;
 
+    std::string db = in_dataatts.GetFullDBName();
+    ref_ptr<avtDatabase> dbp = avtCallback::GetDatabase(db, 0, NULL);
+    if (*dbp == NULL)
+      EXCEPTION1(InvalidFilesException, db.c_str());
+    avtDatabaseMetaData *md = dbp->GetMetaData(0);
+
+    std::string velocityName, meshName;
+    avtDataRequest_p dr = lastContract->GetDataRequest();
+    GetPathlineVelocityMeshVariables(dr, velocityName, meshName);
+
+    // ARS - This value be should be based on the input data not the
+    // metadata.
+    numDomains = md->GetNDomains( velocityName );
+
+// HANK:
+//  Proposed algorithm:
+//    if (data is replicated) // and the PICS is setting that field correctly,
+//       --> SERIAL
+//    else
+//       if (metadata is invalid) // and the PICS is declaring invalid when it creates single block output
+//          --> PARALLELIZE_OVER_DOMAIN
+//       else 
+//          --> get num domains from MD and do logic as you currently have it
+
 #ifdef PARALLEL
+    if( in_dataatts.DataIsReplicatedOnAllProcessors() )
+        actualAlgo = PICS_SERIAL;
 
     // With multiple domains the filter will not operate on demand, as
     // such the algorithm *has* to be parallel static domains.
-    if (numDomains > 1)
+    else if (numDomains > 1)
     {
         actualAlgo = PICS_PARALLEL_OVER_DOMAINS;
-
-        // std::cerr << "Multiple domains, not operating on demand, using parallel static domains instead." << std::endl;
 
         if (DebugStream::Level1()) 
         {
@@ -1185,8 +1219,6 @@ avtPICSFilter::SetICAlgorithm()
     else if (numDomains == 1 || actualAlgo == PICS_VISIT_SELECTS)
     {
         actualAlgo = PICS_SERIAL;
-
-        // std::cerr << "Forcing load-on-demand because there is only one domain." << std::endl;
 
         if (DebugStream::Level1()) 
         {
@@ -1211,9 +1243,6 @@ avtPICSFilter::SetICAlgorithm()
 
     if (DebugStream::Level4())
     {
-    // std::cerr << "selected " << AlgorithmToString(selectedAlgo) << "  "
-    //        << "actual " << AlgorithmToString(actualAlgo) << std::endl;
-
         debug4 << "selected " << AlgorithmToString(selectedAlgo) << "  "
                << "actual " << AlgorithmToString(actualAlgo) << std::endl;
 
@@ -1273,9 +1302,6 @@ avtPICSFilter::CheckOnDemandViability(void)
         avtIntervalTree *it = GetMetaData()->GetSpatialExtents(curTimeSlice);
         val = (it == NULL ? false : true);
     }
-
-    // std::cerr << "avtPICSFilter::CheckOnDemandViability(): = " << val << std::endl;
-
 
     if (DebugStream::Level1()) 
     {
@@ -1382,6 +1408,7 @@ avtPICSFilter::Execute(void)
     if( restart != -1 )
     {
         RestoreICs(_ics, restart);
+
         icAlgo->SetAllSeedsSentToAllProcs( true );
         icAlgo->RestoreInitialize(_ics, curTimeSlice);
     }
@@ -1692,11 +1719,15 @@ void
 avtPICSFilter::InitializeIntervalTree()
 {
     // Get/Compute the interval tree.
+
+    // ARS - This should be based on the input data not the meta data.
     avtIntervalTree *it_tmp = GetMetaData()->GetSpatialExtents( curTimeSlice );
 
     bool dontUseIntervalTree = false;
-    if (GetInput()->GetInfo().GetAttributes().GetDynamicDomainDecomposition() ||
-        !GetInput()->GetInfo().GetValidity().GetSpatialMetaDataPreserved())
+    if( GetInput()->GetInfo().GetAttributes().DataIsReplicatedOnAllProcessors()  ||
+        GetInput()->GetInfo().GetAttributes().GetDynamicDomainDecomposition() ||
+        !GetInput()->GetInfo().GetValidity().GetSpatialMetaDataPreserved() )
+        
     {
         // The reader returns an interval tree with one domain (for everything).
         // This is not what we want.  So forget about this one, as we will be 
@@ -1720,10 +1751,7 @@ avtPICSFilter::InitializeIntervalTree()
     else
     {
       EXCEPTION1(ImproperUseException, "No initial interval tree");
-      numDomains  = 0;
     }
-
-    std::cerr << "Number of domains " << numDomains << std::endl;
 }
 
 
@@ -1777,6 +1805,7 @@ avtPICSFilter::UpdateIntervalTree(int timeSlice)
             // OnDemand processing in the method CheckOnDemandViability.
             if (intervalTree)
                 delete intervalTree;
+
             intervalTree = new avtIntervalTree(it_tmp);
         }
     }
@@ -1799,12 +1828,6 @@ avtPICSFilter::UpdateIntervalTree(int timeSlice)
 
             intervalTree = GetTypedInput()->CalculateSpatialIntervalTree(
                                            performCalculationsOverAllProcs);
-
-            // std::cerr << __FUNCTION__ << "  " << __LINE__ << "  "
-            //        << "dataIsReplicated  " << dataIsReplicated << "  "
-            //        << "nleaves " << intervalTree->GetNLeaves() << "  "
-            //        << std::endl;
-
         }
         CATCH(VisItException)
         {
@@ -1845,13 +1868,6 @@ avtPICSFilter::InitializeLocators(void)
 {
     if (doPathlines || OperatingOnDemand() || specifyPoint)
         return;  // maybe this makes sense; haven't thought about it
-
-    debug1 << "avtPICSFilter::InitializeLocators " << std::endl;
-
-    // avtDataAttributes  &in_dataatts =  GetInput()->GetInfo().GetAttributes();
-
-    // if( in_dataatts.DataIsReplicatedOnAllProcessors() )
-    //   return;
 
     int t1 = visitTimer->StartTimer();
     for (int i = 0 ; i < numDomains ; i++)
@@ -1930,7 +1946,8 @@ avtPICSFilter::UpdateDataObjectInfo(void)
     avtDatasetToDatasetFilter::UpdateDataObjectInfo();
     avtDatasetOnDemandFilter::UpdateDataObjectInfo();
 
-    GetOutput()->GetInfo().GetAttributes().SetDataIsReplicatedOnAllProcessors(true);
+// HANK: this should be true if it is true, and false when it is false
+//    GetOutput()->GetInfo().GetAttributes().SetDataIsReplicatedOnAllProcessors(true);
     GetOutput()->GetInfo().GetValidity().SetWhetherStreamingPossible(false);
 }
 
@@ -2535,9 +2552,8 @@ avtPICSFilter::ComputeDomainToRankMapping()
         bool dummy = false;
         GetInputDataTree()->Traverse(CGetAllDatasets, (void*)&ds_list, dummy);
 
-
-        std::cerr << __FUNCTION__ << "  " << __LINE__ << "  "
-                  <<  ds_list.domains.size() << std::endl;
+        // std::cerr << __FUNCTION__ << "  " << __LINE__ << "  "
+        //           <<  ds_list.domains.size() << std::endl;
 
         // Set and communicate all the domains.
 #ifdef PARALLEL
@@ -2592,11 +2608,19 @@ avtPICSFilter::ComputeDomainToRankMapping()
 
     if (DebugStream::Level5())
     {
-        debug5<< "Domain/Data setup:" << std::endl;
-
+        debug5 << "Domain/Data setup:" << std::endl;
+        debug5 << "numDomains = " << numDomains 
+               << ", domainToRank.size()=" << domainToRank.size()
+               << ", dataSets.size()=" << dataSets.size() << endl;
         for (int i = 0; i < numDomains; i++)
-            debug5 << "domain: " << i << ": rank= " << domainToRank[i]
-                   << " ds= " << dataSets[i] << std::endl;
+        {
+            debug5 << "domain: " << i << ": rank= " << domainToRank[i];
+            if(!OperatingOnDemand())
+            {
+                debug5 << " ds= " << dataSets[i];
+            }
+            debug5 << std::endl;
+        }
     }
 }
 
@@ -2800,7 +2824,6 @@ avtPICSFilter::PreExecute(void)
 
     // Some methods need random number generator.
     srand(time(0));
-    srandom(time(0));
 
     emptyDataset = false;
 
@@ -2861,6 +2884,8 @@ avtPICSFilter::PreExecute(void)
       solver->SetBaseTime( baseTime );
       solver->SetToCartesian( convertToCartesian );
     }
+
+    InitializeIntervalTree();
 
     ComputeDomainToRankMapping();
 }
@@ -3428,11 +3453,10 @@ avtPICSFilter::ModifyContract(avtContract_p in_contract)
 
     lastContract = out_contract;
 
-    // Figure out here which IC algorithm is going to be used which in
-    // turn affects the CheckOnDemandViability which is called in the
-    // parent class, avtDatasetOnDemandFilter.
-    InitializeIntervalTree();
-
+    // Set which IC algorithm is going to be used which in turn
+    // affects the CheckOnDemandViability return
+    // value. CheckOnDemandViability is called in the parent class,
+    // avtDatasetOnDemandFilter::ModifyContract.
     SetICAlgorithm();
 
     return avtDatasetOnDemandFilter::ModifyContract(out_contract);

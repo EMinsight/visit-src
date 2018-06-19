@@ -14,6 +14,7 @@
 #include <avtDataObject.h>
 #include <avtContract.h>
 
+class DBOptionsAttributes;
 class vtkDataSet;
 class avtParallelContext;
 
@@ -33,7 +34,7 @@ class avtParallelContext;
 class VXDB_API avtFieldViewXDBWriterInternal
 {
 public:
-    avtFieldViewXDBWriterInternal();
+    avtFieldViewXDBWriterInternal(DBOptionsAttributes *opts);
     ~avtFieldViewXDBWriterInternal();
 
     static std::string GetCopyright();
@@ -59,6 +60,7 @@ public:
     void          WriteChunk(avtDataObject_p input, vtkDataSet *, int,
                              int, const std::string &);
     void          CloseFile(avtDataObject_p input);
+    void          WriteRootFile();
 
     int           GetCombineMode(avtDataObject_p input, const std::string &plotName) const;
     bool          CreateNormals(avtDataObject_p input) const;

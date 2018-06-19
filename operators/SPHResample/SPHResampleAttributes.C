@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -65,7 +65,7 @@ void SPHResampleAttributes::Init()
     minZ = 0;
     maxZ = 1;
     znum = 10;
-    RK = false;
+    RK = true;
 
     SPHResampleAttributes::SelectAll();
 }

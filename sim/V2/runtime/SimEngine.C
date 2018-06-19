@@ -49,6 +49,7 @@
 #include <NetworkManager.h>
 #include <Netnodes.h>
 #include <avtDatabaseFactory.h>
+#include <SingleAttributeConfigManager.h>
 #include <StackTimer.h>
 #include <TimingsManager.h>
 #include <FileFunctions.h>
@@ -86,6 +87,7 @@
 
 #include <avtParallel.h>
 #include <cstring>
+#include <sstream>
 
 // ****************************************************************************
 // Class: SimViewerFactory
@@ -558,40 +560,38 @@ SimEngine::ExportDatabase(const std::string &filename, const std::string &format
     exportOptions.Merge(opt);
     debug5 << "exportOptions = " << exportOptions << endl;
 
+    // Fill in the export db attributes.
+    ExportDBAttributes atts;
+    atts.SetAllTimes(false);
+    atts.SetDb_type(name);
+    atts.SetDb_type_fullname(id);
+    atts.SetDirname(dName);
+    atts.SetFilename(fName);
+    atts.SetVariables(vars);
+    atts.SetWriteUsingGroups(writeUsingGroups > 0);
+    atts.SetGroupSize(groupSize);
+    atts.SetOpts(exportOptions);
+
 #ifdef SIMV2_VIEWER_INTEGRATION
     if(viewerInitialized)
     {
-        ExportDBAttributes *atts = GetViewerState()->GetExportDBAttributes();
-        atts->SetAllTimes(false);
-        atts->SetDb_type(name);
-        atts->SetDb_type_fullname(id);
-        atts->SetDirname(dName);
-        atts->SetFilename(fName);
-        atts->SetVariables(vars);
-        atts->SetWriteUsingGroups(writeUsingGroups > 0);
-        atts->SetGroupSize(groupSize);
-        atts->SetOpts(exportOptions);
-        atts->Notify();
-
+        // Set the export db attributes into the state and export the database.
+        ExportDBAttributes *eAtts = GetViewerState()->GetExportDBAttributes();
+        *eAtts = atts;
+        eAtts->Notify();
         GetViewerMethods()->ExportDatabase();
         retval = true;
     }
     else
     {
 #endif
-        // Send a message to the viewer indicating we want it to export.
-        char tmp[2048];
-        SNPRINTF(tmp, 2048, "ExportDatabase:%s:%s:%s:%s:%d:%d:",
-            name.c_str(), id.c_str(), dName.c_str(), fName.c_str(),
-            writeUsingGroups, groupSize);
-        std::string cmd(tmp);
-        for(size_t i = 0; i < vars.size(); ++i)
-        {
-            cmd.append(vars[i]);
-            if(i < vars.size()-1)
-                cmd.append(":");
-        }
-        SimulationInitiateCommand(cmd);
+        // Serialize the export db attributes using the XML form so we can 
+        // send them to the viewer as a string command.
+        std::stringstream cmd;
+        cmd << "ExportDatabase:";
+        SingleAttributeConfigManager mgr(&atts);
+        mgr.Export(cmd);
+        SimulationInitiateCommand(cmd.str());
         retval = true;
 #ifdef SIMV2_VIEWER_INTEGRATION
     }
@@ -676,6 +676,11 @@ SimEngine::RestoreSession(const std::string &filename)
 // Creation:   Thu Sep 18 16:42:38 PDT 2014
 //
 // Modifications:
+//   Brad Whitlock, Wed Sep 30 12:12:48 PDT 2015
+//   Don't get the current working directory. Instead, pass a basically empty
+//   working directory and set the "output to current directory" flag accordingly.
+//   This lets simulations save client-side for interactive connections when
+//   they do not specify an output path.
 //
 // ****************************************************************************
 
@@ -704,8 +709,7 @@ SimEngine::SaveWindow(const std::string &filename, int w, int h, int format)
 
         std::string dName(FileFunctions::Dirname(filename));
         std::string fName(FileFunctions::Basename(filename));
-        if(dName.empty() || dName == ".")
-            dName = FileFunctions::GetCurrentWorkingDirectory();
+        bool outputCurrentDirectory = (dName.empty() || dName == ".");
 
 #ifdef SIMV2_VIEWER_INTEGRATION
         // Viewer based method.
@@ -713,7 +717,7 @@ SimEngine::SaveWindow(const std::string &filename, int w, int h, int format)
         {
             SaveWindowAttributes *swa = GetViewerState()->GetSaveWindowAttributes();
             swa->SetFileName(fName);
-            swa->SetOutputToCurrentDirectory(false);
+            swa->SetOutputToCurrentDirectory(outputCurrentDirectory);
             swa->SetOutputDirectory(dName);
             swa->SetFamily(false);
             swa->SetFormat(fmt);
@@ -735,6 +739,14 @@ SimEngine::SaveWindow(const std::string &filename, int w, int h, int format)
             char cmd[2048];
             SNPRINTF(cmd, 2048, "SaveWindow:%s:%s:%d:%d:%s",
                 dName.c_str(), fName.c_str(), w, h, f.c_str());
+
+            debug5 << "SaveWindow" << endl;
+            debug5 << "\toutputDirectory = " << dName << endl;
+            debug5 << "\tfilename = " << fName << endl;
+            debug5 << "\twidth = " << w << endl;
+            debug5 << "\theight = " << h << endl;
+            debug5 << "\tformat = " << f << endl;
+
             SimulationInitiateCommand(cmd);
             retval = true;
 #ifdef SIMV2_VIEWER_INTEGRATION
@@ -800,10 +812,10 @@ SimEngine::AddPlot(const std::string &plotType, const std::string &var)
         if(viewerInitialized)
         {
             int plotIndex = GetNetMgr()->GetPlotPluginManager()->GetEnabledIndex(id);
-#if 1
+
             // Go directly through the plot list so we can know if there was an error.
             bool replacePlots = GetViewerState()->GetGlobalAttributes()->GetReplacePlots();
-            bool applyOperator = GetViewerState()->GetGlobalAttributes()->GetApplyOperator();
+            bool applyOperator = false;
             bool applySelection = GetViewerState()->GetGlobalAttributes()->GetApplySelection();
             bool inheritSILRestriction = GetViewerState()->GetGlobalAttributes()->
                                          GetNewPlotsInheritSILRestriction();
@@ -811,11 +823,6 @@ SimEngine::AddPlot(const std::string &plotType, const std::string &var)
             ViewerPlotList *pL = ViewerWindowManager::Instance()->GetActiveWindow()->GetPlotList();
             retval = pL->AddPlot(plotIndex, var.c_str(), replacePlots, applyOperator,
                         inheritSILRestriction, applySelection) >= 0;
-#else
-// cout << "Viewer-based AddPlot(" << plotIndex << "=" << id << ", " << var << ")" << endl;
-            GetViewerMethods()->AddPlot(plotIndex, var);
-            retval = true;
-#endif
         }
         else
         {
@@ -885,7 +892,7 @@ SimEngine::AddOperator(const std::string &operatorType, bool applyToAll)
         if(viewerInitialized)
         {
             bool applyOperatorSave = GetViewerState()->GetGlobalAttributes()->GetApplyOperator();
-            GetViewerState()->GetGlobalAttributes()->SetApplyOperator(applyToAll != 0);
+            GetViewerState()->GetGlobalAttributes()->SetApplyOperator(applyToAll);
 
 // cout << "Viewer-based AddOperator(" << operatorIndex << "=" << id << ", " << var << ")" << endl;
             GetViewerMethods()->AddOperator(operatorIndex);

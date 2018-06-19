@@ -81,7 +81,9 @@ typedef vector<string> stringVector;
 #define ENDSWITHQUOTE(A) (A[strlen(A)-1] == '\'' || A[strlen(A)-1] == '\"')
 
 #define HASSPACE(A) (strstr(A, " ") != NULL)
-#define SQUOTEARG(A) (tmpArg = string("\'") + string(A) + string("\'"))
+#define HASANGLEBRACKET(A) (strstr(A, "<") != NULL || strstr(A, ">") != NULL)
+#define HASSPECIAL(A) (HASSPACE(A) || HASANGLEBRACKET(A))
+#define DQUOTEARG(A) (tmpArg = string("\"") + string(A) + string("\""))
 
 
 /*
@@ -283,6 +285,15 @@ static bool EndsWith(const char *s, const char *suffix)
  *
  *   Kathleen Biagas, Wed Dec 19 17:35:21 MST 2012
  *   Return '0' instead of '1' when only printing environment.
+ *
+ *   Kathleen Biagas, Tue Sep 29 15:51:12 MST 2015
+ *   Add movie args before any others when running -movie.
+ *
+ *   Kathleen Biagas, Tue Dec 15 13:30:47 MST 2015
+ *   Add '<' and '>' to the list of special characters that indicate an
+ *   argument needs to be re-surrounded by quotes when passing along to
+ *   visit's components.  Use double-quotes when re-surrounding instead of
+ *   single.
  *
  *****************************************************************************/
 
@@ -508,9 +519,9 @@ VisItLauncherMain(int argc, char *argv[])
         }
         else
         {
-            if (!BEGINSWITHQUOTE(argv[i]) && HASSPACE(argv[i]))
+            if (!BEGINSWITHQUOTE(argv[i]) && HASSPECIAL(argv[i]))
             {
-                SQUOTEARG(argv[i]); 
+                DQUOTEARG(argv[i]); 
                 componentArgs.push_back(tmpArg);
             }
             else if (BEGINSWITHQUOTE(argv[i]) && !ENDSWITHQUOTE(argv[i]))
@@ -658,6 +669,13 @@ VisItLauncherMain(int argc, char *argv[])
         command.push_back(program);
     }
 
+    if(addMovieArguments)
+    {
+        command.push_back("-s");
+        command.push_back(quote + visitpath + string("\\makemoviemain.py") + quote);
+        command.push_back("-nowin");
+    }
+
     for(size_t i = 0; i < componentArgs.size(); ++i)
     {
         if((componentArgs[i] == "-host") && !noloopback)
@@ -667,9 +685,9 @@ VisItLauncherMain(int argc, char *argv[])
         }
 
         if (!BEGINSWITHQUOTE(componentArgs[i].c_str()) && 
-            HASSPACE(componentArgs[i].c_str()))
+            HASSPECIAL(componentArgs[i].c_str()))
         {
-            SQUOTEARG(componentArgs[i].c_str());
+            DQUOTEARG(componentArgs[i].c_str());
             command.push_back(tmpArg);
         }
         else
@@ -689,12 +707,6 @@ VisItLauncherMain(int argc, char *argv[])
             eArgs.append(engineArgs[i]);
         }
         command.push_back(eArgs);
-    }
-    if(addMovieArguments)
-    {
-        command.push_back("-s");
-        command.push_back(quote + visitpath + string("\\makemoviemain.py") + quote);
-        command.push_back("-nowin");
     }
 
     //

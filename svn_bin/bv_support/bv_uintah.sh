@@ -102,6 +102,7 @@ function bv_uintah_host_profile
             echo "VISIT_OPTION_DEFAULT(VISIT_UINTAH_DIR $UINTAH_INSTALL_DIR)" >> $HOSTCONF 
             echo "SET(VISIT_USE_SYSTEM_UINTAH TRUE)" >> $HOSTCONF
         else
+            echo "SETUP_APP_VERSION(UINTAH $UINTAH_VERSION)" >> $HOSTCONF
             echo \
             "VISIT_OPTION_DEFAULT(VISIT_UINTAH_DIR \${VISITHOME}/uintah/$UINTAH_VERSION/\${VISITARCH})" \
             >> $HOSTCONF 
@@ -234,8 +235,7 @@ function build_uintah
     if [[ "$FC_COMPILER" == "no" ]] ; then
 
         warn "Uintah may require fortran to be enabled. It does not appear that the --fortran "
-        warn "agrument was set. If Uintah fails to build try adding the --fortra
-	n argument"
+        warn "agrument was set. If Uintah fails to build try adding the --fortran argument"
         FORTRANARGS="--without-fortran"
         #return 1
 

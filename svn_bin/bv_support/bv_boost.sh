@@ -142,13 +142,25 @@ function build_boost
 
     if [[ "$DO_NEKTAR_PLUS_PLUS" == "yes" ]] ; then
 	libs="$libs \
-              iostreams thread date_time filesystem \
-              system program_options regex"
+              chrono iostreams thread date_time filesystem \
+              system program_options regex timer"
 
-        build_libs="$build_libs --with-libraries=\"iostreams,thread,date_time,filesystem,system,program_options,regex\" "
+        build_libs="chrono,iostreams,thread,date_time,filesystem,system,program_options,regex,timer"
+    fi
+
+    if [[ "$DO_DAMARIS" == "yes" ]] ; then
+        libs="$libs \
+              date_time system filesystem"
+        if [[ "$build_libs" != ""  ]] ; then
+          build_libs="$build_libs,date_time,system,filesystem"
+        else
+          build_libs="date_time,system,filesystem"
+        fi
     fi
 
     if [[ "$build_libs" != ""  ]] ; then
+
+        build_libs=" --with-libraries=\"$build_libs\" "
 
         info "Configuring BOOST . . . $build_libs"
 
@@ -215,11 +227,22 @@ function build_boost
 		    -id $INSTALLNAMEPATH/libboost_${lib}.${SO_EXT} \
                     $INSTALLNAMEPATH/libboost_${lib}.${SO_EXT}
 
-		# The filesystem and thread library depend on the 
-		# system library so fix up those paths as well
-		if [[ $lib == "filesystem" || $lib == "thread" ]] ; then
+		# The filesystem, thread, and chrono libraries depend
+		# on the system library so fix up those paths as well
+		if [[ $lib == "filesystem" || $lib == "thread" || $lib == "chrono" ]] ; then
 		    install_name_tool -change \
 			libboost_system.${SO_EXT} $INSTALLNAMEPATH/libboost_system.${SO_EXT} \
+			$INSTALLNAMEPATH/libboost_${lib}.${SO_EXT}
+		fi
+
+		# The timer library depends on the system and chrono
+		# library so fix up those paths as well
+		if [[ $lib == "timer" ]] ; then
+		    install_name_tool -change \
+			libboost_system.${SO_EXT} $INSTALLNAMEPATH/libboost_system.${SO_EXT} \
+			$INSTALLNAMEPATH/libboost_${lib}.${SO_EXT}
+		    install_name_tool -change \
+			libboost_chrono.${SO_EXT} $INSTALLNAMEPATH/libboost_chrono.${SO_EXT} \
 			$INSTALLNAMEPATH/libboost_${lib}.${SO_EXT}
 		fi
             done

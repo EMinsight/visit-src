@@ -1,14 +1,14 @@
-#/usr/gapps/visit/thirdparty_shared/2.9.0/cmake/3.0.2/linux-x86_64_gcc-4.4/bin/cmake
+#/usr/gapps/visit/thirdparty_shared/2.10.0/cmake/3.0.2/linux-x86_64_gcc-4.4/bin/cmake
 ##
-## ./build_visit2_9_0 generated host.cmake
-## created: Wed Feb 18 16:43:53 PST 2015
-## system: Linux kickit 2.6.32-504.3.3.el6.x86_64 #1 SMP Fri Dec 12 16:05:43 EST 2014 x86_64 x86_64 x86_64 GNU/Linux
+## ./build_visit2_10_0 generated host.cmake
+## created: Wed Sep 23 15:58:38 PDT 2015
+## system: Linux kickit 2.6.32-573.3.1.el6.x86_64 #1 SMP Mon Aug 10 09:44:54 EDT 2015 x86_64 x86_64 x86_64 GNU/Linux
 ## by: brugger1
 
 ##
 ## Setup VISITHOME & VISITARCH variables.
 ##
-SET(VISITHOME /usr/gapps/visit/thirdparty_shared/2.9.0)
+SET(VISITHOME /usr/gapps/visit/thirdparty_shared/2.10.0)
 SET(VISITARCH linux-x86_64_gcc-4.4)
 VISIT_OPTION_DEFAULT(VISIT_SLIVR TRUE)
 
@@ -24,7 +24,7 @@ VISIT_OPTION_DEFAULT(VISIT_CXX_FLAGS " -m64 -fPIC -fvisibility=hidden" TYPE STRI
 ##
 VISIT_OPTION_DEFAULT(VISIT_PARALLEL ON TYPE BOOL)
 ## (configured w/ mpi compiler wrapper)
-VISIT_OPTION_DEFAULT(VISIT_MPI_COMPILER /usr/gapps/visit/thirdparty_shared/2.9.0/mpich/3.0.4/linux-x86_64_gcc-4.4/bin/mpicc TYPE FILEPATH)
+VISIT_OPTION_DEFAULT(VISIT_MPI_COMPILER /usr/gapps/visit/thirdparty_shared/2.10.0/mpich/3.0.4/linux-x86_64_gcc-4.4/bin/mpicc TYPE FILEPATH)
 
 ##
 ## VisIt Thread Option
@@ -43,11 +43,6 @@ VISIT_OPTION_DEFAULT(VISIT_THREAD OFF TYPE BOOL)
 ## Library's LIBDEP settings must come after them.
 ##############################################################
 ##
-
-##
-## Mesa
-##
-VISIT_OPTION_DEFAULT(VISIT_MESA_DIR ${VISITHOME}/mesa/7.10.2/${VISITARCH})
 
 ##
 ## Python
@@ -82,7 +77,7 @@ VISIT_OPTION_DEFAULT(VISIT_PARALLEL ON)
 ## ADIOS
 ## (configured w/ mpi compiler wrapper)
 ##
-VISIT_OPTION_DEFAULT(VISIT_ADIOS_DIR ${VISITHOME}/adios/1.7.0/${VISITARCH})
+VISIT_OPTION_DEFAULT(VISIT_ADIOS_DIR ${VISITHOME}/adios/1.9.0/${VISITARCH})
 
 ##
 ## AdvIO
@@ -118,7 +113,7 @@ VISIT_OPTION_DEFAULT(VISIT_SZIP_DIR ${VISITHOME}/szip/2.1/${VISITARCH})
 ##
 ## HDF5
 ##
-VISIT_OPTION_DEFAULT(VISIT_HDF5_DIR ${VISITHOME}/hdf5/1.8.7/${VISITARCH})
+VISIT_OPTION_DEFAULT(VISIT_HDF5_DIR ${VISITHOME}/hdf5/1.8.14/${VISITARCH})
 VISIT_OPTION_DEFAULT(VISIT_HDF5_LIBDEP ${VISITHOME}/szip/2.1/${VISITARCH}/lib sz /usr/lib z TYPE STRING)
 
 ##
@@ -164,10 +159,10 @@ VISIT_OPTION_DEFAULT(VISIT_NETCDF_LIBDEP HDF5_LIBRARY_DIR hdf5_hl HDF5_LIBRARY_D
 ## ITAPS
 ##
 ## MOAB implementation
-ITAPS_INCLUDE_DIRECTORIES(MOAB ${VISITHOME}/itaps/1.4/MOAB/4.6.0/${VISITARCH}/include)
+ITAPS_INCLUDE_DIRECTORIES(MOAB ${VISITHOME}/itaps/1.4/MOAB/4.8.1/${VISITARCH}/include)
 ITAPS_FILE_PATTERNS(MOAB *.cub)
 ITAPS_LINK_LIBRARIES(MOAB iMesh MOAB hdf5_hl hdf5 sz z netcdf_c++ netcdf )
-ITAPS_LINK_DIRECTORIES(MOAB  ${VISITHOME}/itaps/1.4/MOAB/4.6.0/${VISITARCH}/lib  ${VISITHOME}/hdf5/1.8.7/${VISITARCH}/lib  ${VISITHOME}/szip/2.1/${VISITARCH}/lib  ${VISITHOME}/netcdf/4.1.1/${VISITARCH}/lib )
+ITAPS_LINK_DIRECTORIES(MOAB  ${VISITHOME}/itaps/1.4/MOAB/4.8.1/${VISITARCH}/lib  ${VISITHOME}/hdf5/1.8.14/${VISITARCH}/lib  ${VISITHOME}/szip/2.1/${VISITARCH}/lib  ${VISITHOME}/netcdf/4.1.1/${VISITARCH}/lib )
 ## FMDB implementation
 ITAPS_INCLUDE_DIRECTORIES(FMDB ${VISITHOME}/itaps/1.4/FMDB/1.4.0/${VISITARCH}/include)
 ITAPS_FILE_PATTERNS(FMDB *.sms)
@@ -182,12 +177,12 @@ ITAPS_LINK_DIRECTORIES(GRUMMP ${VISITHOME}/itaps/1.4/GRUMMP/0.6.5/${VISITARCH}/l
 ##
 ## MFEM 
 ##
-VISIT_OPTION_DEFAULT(VISIT_MFEM_DIR ${VISITHOME}/mfem/3.0.1/${VISITARCH})
+VISIT_OPTION_DEFAULT(VISIT_MFEM_DIR ${VISITHOME}/mfem/3.1/${VISITARCH})
 
 ##
 ## Mili
 ##
-VISIT_OPTION_DEFAULT(VISIT_MILI_DIR ${VISITHOME}/mili/13.1.1-patch/${VISITARCH})
+VISIT_OPTION_DEFAULT(VISIT_MILI_DIR ${VISITHOME}/mili/15.1/${VISITARCH})
 
 ##
 ## PySide
@@ -203,6 +198,7 @@ VISIT_OPTION_DEFAULT(VISIT_SILO_LIBDEP HDF5_LIBRARY_DIR hdf5 ${VISIT_HDF5_LIBDEP
 ##
 ## Uintah
 ##
+SETUP_APP_VERSION(UINTAH 1.6.0)
 VISIT_OPTION_DEFAULT(VISIT_UINTAH_DIR ${VISITHOME}/uintah/1.6.0/${VISITARCH})
 
 ##

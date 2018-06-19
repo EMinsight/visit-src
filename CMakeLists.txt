@@ -386,6 +386,9 @@
 #    Kathleen Biagas, Tue Apr 14 14:56:12 MST 2015
 #    Added find_file for MS HPC Scheduler.
 #
+#    Matthieu Dorier  via Cyrus Harrison, Thu Aug 20 09:07:08 PDT 2015
+#    Added Damaris support.
+#
 #****************************************************************************/
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8.8 FATAL_ERROR)
@@ -777,6 +780,7 @@ VISIT_3RDPARTY_VAR(CCMIO_DIR     "Path containing the CCMIO library's include an
 VISIT_3RDPARTY_VAR(CFITSIO_DIR   "Path containing the CFITSIO library's include and lib")
 VISIT_3RDPARTY_VAR(CGNS_DIR      "Path containing the CGNS library's include and lib")
 VISIT_3RDPARTY_DEP(CGNS_LIBDEP   "CGNS library dependencies")
+VISIT_3RDPARTY_VAR(DAMARIS_DIR   "Path containing the Damaris library's include and lib")
 VISIT_3RDPARTY_VAR(EAVL_DIR      "Path containing the eavl library's include and lib")
 VISIT_3RDPARTY_VAR(FASTBIT_DIR   "Path containing the Fastbit library's include and lib")
 VISIT_3RDPARTY_VAR(GDAL_DIR      "Path containing the GDAL library's include and lib")
@@ -802,6 +806,8 @@ VISIT_3RDPARTY_VAR(UINTAH_DIR    "Path containing the Uintah library's include a
 VISIT_3RDPARTY_VAR(VISUS_DIR     "Path containing the Visus library's include and lib")
 VISIT_3RDPARTY_VAR(XDMF_DIR      "Path containing the Xdmf library's include and lib")
 VISIT_3RDPARTY_DEP(XDMF_LIBDEP   "Xdmf library dependencies")
+VISIT_3RDPARTY_VAR(XERCESC_DIR   "Path containing the Xerces-C library's include and lib")
+VISIT_3RDPARTY_VAR(XSD_DIR       "Path containing the XSD library's include and lib")
 VISIT_3RDPARTY_VAR(MDSPLUS_DIR   "Path containing the MDSplus library's include and lib")
 VISIT_3RDPARTY_VAR(MANTA_DIR     "Path containing the Manta library's include and lib")
 VISIT_3RDPARTY_VAR(ZLIB_DIR      "Path containing the zlib library's include and lib")
@@ -1037,6 +1043,10 @@ IF(NEKTAR++_FOUND)
     SET(HAVE_LIBNEKTAR++ 1)
 ENDIF(NEKTAR++_FOUND)
 
+INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItDamaris.cmake)
+IF(DAMARIS_FOUND)
+    SET(HAVE_DAMARIS 1)
+ENDIF(DAMARIS_FOUND)
 
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItBoost.cmake)
 IF(BOOST_FOUND)
@@ -1519,18 +1529,22 @@ IF(VISIT_PARALLEL)
             ENDIF(VISIT_MPI_CXX_FLAGS)
 
             IF(VISIT_MPI_FORTRAN_FLAGS)
-                SET(VISIT_PARALLEL_FORTRANFLAGS "${VPFLAGS} ${VISIT_MPI_FORTRAN_FLAGS}"
+                SET(VISIT_PARALLEL_FORTRAN_FLAGS "${VPFLAGS} ${VISIT_MPI_FORTRAN_FLAGS}"
                     CACHE STRING "Parallel Fortran flags")
             ELSE(VISIT_MPI_FORTRAN_FLAGS)
-                SET(VISIT_PARALLEL_FORTRANFLAGS  "${VPFLAGS}"
+                SET(VISIT_PARALLEL_FORTRAN_FLAGS  "${VPFLAGS}"
                     CACHE STRING "Parallel flags for Fortran")
             ENDIF(VISIT_MPI_FORTRAN_FLAGS)
 
             IF(VISIT_MPI_LD_FLAGS)
                 SET(VISIT_PARALLEL_LINKER_FLAGS "${VISIT_MPI_LD_FLAGS}"
                     CACHE STRING "Parallel LDFLAGS")
+                SET(VISIT_PARALLEL_FORTRAN_LINKER_FLAGS "${VISIT_MPI_LD_FLAGS}"
+                    CACHE STRING "Parallel LDFLAGS")
             ELSE(VISIT_MPI_LD_FLAGS)
                 SET(VISIT_PARALLEL_LINKER_FLAGS ""
+                    CACHE STRING "Parallel LDFLAGS")
+                SET(VISIT_PARALLEL_FORTRAN_LINKER_FLAGS ""
                     CACHE STRING "Parallel LDFLAGS")
             ENDIF(VISIT_MPI_LD_FLAGS)
         ELSE(VISIT_MPI_LIBS OR VISIT_MPI_FORTRAN_LIBS)
@@ -2407,6 +2421,15 @@ FUNCTION(FILTER_LIBRARY_DEPENDENCIES filename)
                 SET(outputLine FALSE)
             ENDIF(\"\${line}\" MATCHES \".*\${suppress}_LIB_DEPENDS.*\")
         ENDFOREACH(suppress)
+
+        # If we get here with outputLine true, we need to output a filtered version.
+        #   * Since all of VisIt's libs get 'installed' to VISIT_LIBRARY_DIR,
+        #     we replace instances of lib-specific LIBRARY_DIR variables with
+        #     VISIT_LIBRARY_DIR; QT, PYTHON, MPICH (It appears LibQtUiTools.a
+        #     is explicitly handled specially here too. No idea why.).
+        #   * Find all instances of absolute paths of the form '/*lib*.*'
+        #     and replace with {VISIT_LIBRARY_DIR}/ as well.
+
         IF(\${outputLine} STREQUAL \"TRUE\")
             STRING(REPLACE \"${QT_LIBRARY_DIR}/\"
                    \"\\\${VISIT_LIBRARY_DIR}/\"
@@ -2421,13 +2444,46 @@ FUNCTION(FILTER_LIBRARY_DEPENDENCIES filename)
                    filteredline3
                    \"\${filteredline2}\")
 
+            # Repeatedly regex replace abs paths to lib*.a, lib*.so, lib*.dylib
+            # With just the library file names themsevles. Do similarly for
+            # .framework references. We exlude system libs in /usr..., /etc...
+            # and /lib... by first finding and replacing them with @@@@@@@
+            # and then unduing that at the end.
+            # Input to this block = filteredline3
+            # Output from this block = filteredline3b
+            SET(filteredline3a \"\")
+            SET(filteredline3b \"\")
+            WHILE(NOT \"\${filteredline3b}\" STREQUAL \"\${filteredline3}\")
+                IF(NOT \"\${filteredline3b}\" STREQUAL \"\")
+                    SET(filteredline3 \"\${filteredline3b}\")
+                ENDIF(NOT \"\${filteredline3b}\" STREQUAL \"\")
+                STRING(REGEX REPLACE \";/(usr/lib|usr/local/lib|lib|etc)([^;]*)/lib(.*)\\\\.(a|so|dylib)\"
+                    \";@@@@@@@@\\\\1\\\\2/lib\\\\3.\\\\4\"
+                    filteredline3aa
+                    \"\${filteredline3}\")
+
+                STRING(REGEX REPLACE \";/[^;]*/lib(.*)\\\\.(a|so|dylib)\"
+                    \";\\\${VISIT_LIBRARY_DIR}/lib\\\\1.\\\\2\"
+                    filteredline3a
+                    \"\${filteredline3aa}\")
+                STRING(REGEX REPLACE \";/[^;]*/(.*)\\\\.framework\"
+                    \";\\\${VISIT_LIBRARY_DIR}/\\\\1.framework\"
+                    filteredline3bb
+                    \"\${filteredline3a}\")
+
+                STRING(REGEX REPLACE \";@@@@@@@@([^;]*)\"
+                    \";/\\\\1\"
+                    filteredline3b
+                    \"\${filteredline3bb}\")
+            ENDWHILE(NOT \"\${filteredline3b}\" STREQUAL \"\${filteredline3}\")
+
             IF(\"${VISIT_MPICH_DIR}\" STREQUAL \"\")
-                SET(filteredline4 \"\${filteredline3}\")
+                SET(filteredline4 \"\${filteredline3b}\")
             ELSE(\"${VISIT_MPICH_DIR}\" STREQUAL \"\")
                 STRING(REPLACE \"${VISIT_MPICH_DIR}/lib/\"
                        \"\\\${VISIT_LIBRARY_DIR}/\"
                        filteredline4
-                       \"\${filteredline3}\")
+                       \"\${filteredline3b}\")
             ENDIF(\"${VISIT_MPICH_DIR}\" STREQUAL \"\")
             
             #

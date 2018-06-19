@@ -212,7 +212,6 @@ QvisSPHResampleWindow::CreateWindowContents()
     connect(RK, SIGNAL(toggled(bool)),
             this, SLOT(RKChanged(bool)));
     mainLayout->addWidget(RK, 11, 0, 1, -1, Qt::AlignLeft);
-    
 }
 
 
@@ -545,5 +544,3 @@ QvisSPHResampleWindow::RKChanged(bool val)
     SetUpdate(false);
     Apply();
 }
-
-

@@ -276,8 +276,10 @@ function uncompress_untar
         COMPRESSTYPE="targzip"
     elif [[ $(echo $1 | egrep "\.tar.gz$" ) != "" ]] ; then
         COMPRESSTYPE="targzip"
+    elif [[ $(echo $1 | egrep "\.zip$" ) != "" ]] ; then
+        COMPRESSTYPE="zip"
     else
-        warn "unsupported uncompression method"
+        warn "unsupported decompression method"
         return 1
     fi
     TARVERSION=$($TAR --version >/dev/null 2>&1)
@@ -285,7 +287,14 @@ function uncompress_untar
         case $COMPRESSTYPE in
             gzip|targzip) $TAR zxf $1;;
             bzip) $TAR jxf $1;;
+            zip) unzip $1;;
         esac
+        
+        if [[ $? != 0 ]]; then
+            warn "error decompressing $1"
+            return 1
+        fi
+
     else
         case $COMPRESSTYPE in
             gzip) 
@@ -300,7 +309,15 @@ function uncompress_untar
                bunzip2 $1
                $TAR xf ${1%.bz2}
                ;;
+            zip)
+               unzip $1
+               ;;
         esac
+        
+        if [[ $? != 0 ]]; then
+            warn "error decompressing $1"
+            return 1
+        fi
     fi
 }
 
@@ -490,9 +507,18 @@ function download_file
     # Now try the various places listed.
     if [[ "$1" != "" ]] ; then
         for site in $* ; do
-            try_download_file $site/$dfile $dfile
-            if [[ $? == 0 ]] ; then
-                return 0
+            # check if we have a google shortened url that won't accept
+            # the actual file name (we need this for mfem's urls)
+            if [[ $site == *goo.gl* ]] ; then
+                try_download_file_from_shortened_url $site $dfile
+                if [[ $? == 0 ]] ; then
+                    return 0
+                fi
+            else
+                try_download_file $site/$dfile $dfile
+                if [[ $? == 0 ]] ; then
+                    return 0
+                fi
             fi
         done
     fi
@@ -565,6 +591,44 @@ function try_download_file
         return 1
     fi
 }
+
+# *************************************************************************** 
+# Function: try_download_file_from_shortened_url
+#
+# Purpose: DONT USE THIS FUNCTION. USE download_file.
+#
+# New variant of try_download_file, downloads a file using wget or curl
+# using an explicit file name. This is necessary for shortened urls. 
+#
+# Programmer: Cyrus Harrison 
+# Creation: June 1, 2016
+#
+# *************************************************************************** 
+
+function try_download_file_from_shortened_url
+{
+    if [[ "$OPSYS" == "Darwin" ]]; then
+        # MaxOS X comes with curl
+        /usr/bin/curl -o $2 -ksfLO $1
+    else
+        check_wget
+        if [[ $? != 0 ]] ; then
+            error "Need to download $1, but \
+                   cannot locate the wget utility to do so."
+        fi
+        wget $WGET_OPTS -O $2 -o /dev/null $1
+    fi
+
+    if [[ $? == 0 && -e $2 ]] ; then
+        info "Download succeeded: $1"
+        return 0
+    else    
+        warn "Download attempt failed: $1"
+        rm -f $2
+        return 1
+    fi
+}
+
 
 
 # *************************************************************************** #
@@ -1341,11 +1405,11 @@ function build_hostconf
         echo "## BG/Q-specific settings" >> $HOSTCONF
         echo "##" >> $HOSTCONF
         echo "SET(CMAKE_CROSSCOMPILING    ON)" >> $HOSTCONF
-        echo "VISIT_OPTION_DEFAULT(VISIT_USE_X            OFF)" >> $HOSTCONF
-        echo "VISIT_OPTION_DEFAULT(VISIT_USE_GLEW         OFF)" >> $HOSTCONF
-        echo "VISIT_OPTION_DEFAULT(VISIT_SLIVR            OFF)" >> $HOSTCONF
-        echo "VISIT_OPTION_DEFAULT(VISIT_DISABLE_SELECT   ON)" >> $HOSTCONF
-        echo "VISIT_OPTION_DEFAULT(VISIT_USE_NOSPIN_BCAST OFF)" >> $HOSTCONF
+        echo "VISIT_OPTION_DEFAULT(VISIT_USE_X            OFF TYPE BOOL)" >> $HOSTCONF
+        echo "VISIT_OPTION_DEFAULT(VISIT_USE_GLEW         OFF TYPE BOOL)" >> $HOSTCONF
+        echo "VISIT_OPTION_DEFAULT(VISIT_SLIVR            OFF TYPE BOOL)" >> $HOSTCONF
+        echo "VISIT_OPTION_DEFAULT(VISIT_DISABLE_SELECT   ON  TYPE BOOL)" >> $HOSTCONF
+        echo "VISIT_OPTION_DEFAULT(VISIT_USE_NOSPIN_BCAST OFF TYPE BOOL)" >> $HOSTCONF
         echo "VISIT_OPTION_DEFAULT(VISIT_OPENGL_DIR       \${VISITHOME}/mesa/$MESA_VERSION/\${VISITARCH})" >> $HOSTCONF
         echo "ADD_DEFINITIONS(-DVISIT_BLUE_GENE_Q)" >> $HOSTCONF
         echo >> $HOSTCONF
@@ -1371,7 +1435,6 @@ function build_hostconf
                 echo "" >> $HOSTCONF
                 echo "## (inserted by build_visit for BG/Q. Configuration as of 10/15/2014.)" >> $HOSTCONF
                 echo "SET(BLUEGENEQ /bgsys/drivers/V1R2M0/ppc64)" >> $HOSTCONF
-                echo "VISIT_OPTION_DEFAULT(VISIT_PARALLEL ON TYPE BOOL)" >> $HOSTCONF
                 echo "VISIT_OPTION_DEFAULT(VISIT_MPI_CXX_FLAGS \"-I\${BLUEGENEQ} -I\${BLUEGENEQ}/comm/sys/include -I\${BLUEGENEQ}/spi/include -I\${BLUEGENEQ}/spi/include/kernel/cnk -I\${BLUEGENEQ}/comm/xl/include\" TYPE STRING)" >> $HOSTCONF
                 echo "VISIT_OPTION_DEFAULT(VISIT_MPI_C_FLAGS   \"-I\${BLUEGENEQ} -I\${BLUEGENEQ}/comm/sys/include -I\${BLUEGENEQ}/spi/include -I\${BLUEGENEQ}/spi/include/kernel/cnk -I\${BLUEGENEQ}/comm/xl/include\" TYPE STRING)" >> $HOSTCONF
                 echo "VISIT_OPTION_DEFAULT(VISIT_MPI_LD_FLAGS  \"-L\${BLUEGENEQ}/spi/lib -L\${BLUEGENEQ}/comm/sys/lib -L\${BLUEGENEQ}/spi/lib -L\${BLUEGENEQ}/comm/xl/lib -R/opt/ibmcmp/lib64/bg/bglib64\" TYPE STRING)" >> $HOSTCONF

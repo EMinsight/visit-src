@@ -36,8 +36,7 @@
 *
 *****************************************************************************/
 #include <QvisSessionFileDialog.h>
-#include <QComboBox>
-
+#include <FileServerList.h>
 
 // ****************************************************************************
 // Method: QvisSessionFileDialog::QvisSessionvisFileDialog
@@ -53,12 +52,26 @@
 // Creation:   Tue Aug  4 11:04:14 PDT 2015
 //
 // Modifications:
+//   Kathleen Biagas, Tue Oct 13 09:23:54 PDT 2015
+//   Save filter, file grouping settings from file server so they can
+//   be restored when this dialog is finished.
 //
 // ****************************************************************************
 
 QvisSessionFileDialog::QvisSessionFileDialog(const QString &caption) : 
     QvisFileOpenDialog(caption)
 {
+    origFilter = fileServer->GetFilter();
+    autoFileGrouping  = fileServer->GetAutomaticFileGrouping();
+    smartFileGrouping = fileServer->GetSmartFileGrouping();
+    
+    // this prevents the file list pane from flashing files filtered by
+    // the filter stored in fileServer
+    fileServer->SetFilter("*.session");
+
+    // prevents sessionfiles from being grouped together
+    fileServer->SetAutomaticFileGrouping(false);
+    fileServer->SetSmartFileGrouping(false);
 }
 
 // ****************************************************************************
@@ -71,11 +84,23 @@ QvisSessionFileDialog::QvisSessionFileDialog(const QString &caption) :
 // Creation:   Tue Aug  4 11:04:14 PDT 2015
 //
 // Modifications:
-//   
+//   Kathleen Biagas, Tue Oct 13 09:23:26 PDT 2015
+//   Restore the original filter, grouping settings to the file server.
+//
 // ****************************************************************************
 
 QvisSessionFileDialog::~QvisSessionFileDialog()
 {
+    RestoreFileServerSettings();
+}
+
+
+void
+QvisSessionFileDialog::RestoreFileServerSettings()
+{
+    fileServer->SetFilter(origFilter);
+    fileServer->SetAutomaticFileGrouping(autoFileGrouping);
+    fileServer->SetSmartFileGrouping(smartFileGrouping);
 }
 
 // ****************************************************************************
@@ -99,6 +124,12 @@ QvisSessionFileDialog::~QvisSessionFileDialog()
 // Creation:   Thu Aug  6 07:32:42 PDT 2015
 //
 // Modifications:
+//   Kathleen Biagas, Tue Oct 13 09:49:51 PDT 2015
+//   Windows hasn't used '.vses' in a very long time, so don't use it.
+//
+//   Kathleen Biagas, Tue Mar 15 18:14:44 MST 2016
+//   Restore fileserver settings after filename is retrieved, so that
+//   SessionSourceChanger (if used) will be using the correct settings.
 //
 // ****************************************************************************
 
@@ -108,22 +139,19 @@ QvisSessionFileDialog::getFileName(DLG_TYPE type,
                                    QualifiedFilename &filename)
 {
     QString qfilename;
-#if defined(_WIN32)
-    QString fltr("*.session *.vses");
-#else
     QString fltr("*.session");
-#endif
 
     SetUsageMode(QvisFileOpenDialog::SelectFilename);
     SetHideFileFormat(true);
     SetHideOptions(true);
-    if(type == SAVE_DLG)
-        SetShowFilename(true);
+    SetShowFilename(true);
     qfilename = getOpenFileNameEx(initialFile, fltr);
 
     if(!qfilename.isEmpty())
     {
         filename.SetFromString(qfilename.toStdString());
     }
+
+    RestoreFileServerSettings();
 }
 
