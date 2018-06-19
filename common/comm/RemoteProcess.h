@@ -136,6 +136,9 @@ class Connection;
 //    regular command line so we can better support gateway machines with
 //    SSH tunneling.
 //
+//    Brad Whitlock, Wed Jun 13 11:12:25 PDT 2012
+//    I added KillProcess.
+//
 // ****************************************************************************
 
 class COMM_API RemoteProcess
@@ -164,7 +167,8 @@ public:
     void SetProgressCallback(bool (*)(void *, int), void *);
     std::map<int,int> GetPortTunnelMap() { return portTunnelMap; }
 
-    static void SetAuthenticationCallback(void (*)(const char *, const char *, int));    
+    static void SetAuthenticationCallback(void (*)(const char *, const char *, int));
+    static void SetChangeUserNameCallback(bool (*)(const std::string &,std::string&));
     static void DisablePTY();
 protected:
     bool StartMakingConnection(const std::string &rHost, int numRead,
@@ -186,6 +190,7 @@ protected:
     virtual void Launch(const stringVector &);
     void LaunchLocal(const stringVector &);
     void LaunchRemote(const std::string &host, const stringVector &);
+    void KillProcess();
 protected:
     int                      listenPortNum;
     std::string              localHost, localUserName;
@@ -213,6 +218,7 @@ private:
     std::map<int,int>        portTunnelMap;
 
     static void            (*getAuthentication)(const char *, const char *, int);
+    static bool            (*changeUsername)(const std::string &, std::string&);
     static bool              disablePTY;
 };
 

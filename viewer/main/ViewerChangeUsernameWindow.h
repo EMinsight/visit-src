@@ -38,15 +38,9 @@
 
 #ifndef VIEWERCHANGEUSERNAMEWINDOW_H
 #define VIEWERCHANGEUSERNAMEWINDOW_H
-
-#include <visit-config.h>
-#include <QDialog>
+#include <VisItChangeUsernameWindow.h>
 
 #include <string>
-
-// Forward declarations
-class QLineEdit;
-class QLabel;
 
 // ****************************************************************************
 //  Class:  ViewerChangeUsernameWindow
@@ -64,21 +58,23 @@ class QLabel;
 //    Brad Whitlock, Fri May 23 10:36:48 PDT 2008
 //    Qt 4.
 //
+//    Brad Whitlock, Tue Jun 12 15:55:34 PST 2012
+//    I made it inherit from VisItChangeUsernameWindow.
+//
 // ****************************************************************************
 
-class ViewerChangeUsernameWindow : public QDialog
+class ViewerChangeUsernameWindow : public VisItChangeUsernameWindow
 {
     Q_OBJECT
-  public:
+public:
     ViewerChangeUsernameWindow(QWidget *parent = 0);
-    ~ViewerChangeUsernameWindow();
+    virtual ~ViewerChangeUsernameWindow();
 
+    static bool changeUsername(const std::string &hostname, std::string& username);
     static bool changeUsername(const std::string &hostname);
-    static std::string getUsername(void);
 
-  private:
-    QLineEdit *usernameedit;
-    QLabel    *label;
+private:
+    std::string username;
     static ViewerChangeUsernameWindow *instance;
 };
 

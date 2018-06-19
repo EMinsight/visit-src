@@ -71,6 +71,7 @@
 #include <IncompatibleSecurityTokenException.h>
 #include <CancelledConnectException.h>
 #include <CouldNotConnectException.h>
+#include <ChangeUsernameException.h>
 #include <InstallationFunctions.h>
 
 #include <DebugStream.h>
@@ -116,6 +117,7 @@ struct ThreadCallbackDataStruct
 // Static data
 //
 void (*RemoteProcess::getAuthentication)(const char *, const char *, int) = NULL;
+bool (*RemoteProcess::changeUsername)(const std::string &, std::string&) = NULL;
 bool RemoteProcess::disablePTY = false;
 
 using std::map;
@@ -515,6 +517,9 @@ RemoteProcess::GetProcessId() const
 //    Brad Whitlock, Fri May 12 11:56:59 PDT 2006
 //    Added more Windows error logging.
 //
+//    Brad Whitlock, Tue Jun 19 17:10:39 PDT 2012
+//    Add VISIT_INITIAL_PORT environment variable.
+//
 // ****************************************************************************
 
 bool
@@ -543,6 +548,13 @@ RemoteProcess::GetSocketAndPort()
     sin.sin_family = AF_INET;
     sin.sin_addr.s_addr = htonl(INADDR_ANY);
     listenPortNum = INITIAL_PORT_NUMBER;
+    const char *visitPort = getenv("VISIT_INITIAL_PORT");
+    if(visitPort != NULL)
+    {
+        listenPortNum = atoi(visitPort);
+        if(listenPortNum < 1024)
+            listenPortNum = 1024;
+    }
     debug5 << mName << "Looking for available port starting with: "
            << listenPortNum << endl;
     while (!portFound && listenPortNum < 32767)
@@ -1287,6 +1299,13 @@ RemoteProcess::WaitForTermination()
 //   overwritten with new values and we were walking off the end of an array
 //   and causing a seg fault.
 //
+//   Jeremy Meredith, Fri May  4 12:13:49 EDT 2012
+//   Check for errors from listen() and re-try the process a number of
+//   times before giving up.  On some systems, launching multiple
+//   VisIt processes at once caused multiple VisIt's to bind to
+//   a specific port successfully; it was only the listen() call that
+//   gave any indication this happened, via an EADDRINUSE.
+//
 // ****************************************************************************
 
 bool
@@ -1424,23 +1443,36 @@ RemoteProcess::StartMakingConnection(const std::string &rHost, int numRead,
     // Open the socket for listening
     //
     debug5 << mName << "Calling GetSocketAndPort" << endl;
-    if(!GetSocketAndPort())
+
+    int retrycount = 100;
+    bool success = false;
+    while (--retrycount >= 0 && success == false)
     {
-        // Could not open socket and port
-        debug5 << mName << "GetSocketAndPort returned false" << endl;
-        return false;
+        // Find a port
+        if(!GetSocketAndPort())
+        {
+            // Could not open socket and port
+            debug5 << mName << "GetSocketAndPort returned false" << endl;
+            return false;
+        }
+
+        // Start listening for connections.
+        debug5 << mName << "Start listening for connections." << endl;
+#if defined(_WIN32)
+        success = (listen(listenSocketNum, 5) != SOCKET_ERROR);
+        if (!success)
+            LogWindowsSocketError(mName, "listen");
+#else
+        success = (listen(listenSocketNum, 5) == 0);
+#endif
+        if (!success)
+            CloseListenSocket();
     }
 
-    //
-    // Start listening for connections.
-    //
-    debug5 << mName << "Start listening for connections." << endl;
-#if defined(_WIN32)
-    if(listen(listenSocketNum, 5) == SOCKET_ERROR)
-        LogWindowsSocketError(mName, "listen");
-#else
-    listen(listenSocketNum, 5);
-#endif
+    // NOTE: returning false from here simply
+    //       leads to aborts; returning true
+    //       leads to a more graceful recovery.
+    //return success;   <-- no, bad things happen
     return true;
 }
 
@@ -2171,6 +2203,9 @@ RemoteProcess::CreateCommandLine(stringVector &args, const std::string &rHost,
 //    I moved all of the decisions about the command line we'll execute higher
 //    up in the call stack to make this method simpler.
 //
+//    Brad Whitlock, Wed Jun 13 11:11:59 PDT 2012
+//    Call KillProcess method instead of kill().
+//
 // ****************************************************************************
 
 void
@@ -2251,13 +2286,95 @@ RemoteProcess::LaunchRemote(const std::string &host, const stringVector &args)
             (*getAuthentication)(remoteUserName.c_str(), host.c_str(),
                                  ptyFileDescriptor);
         }
+        CATCH(ChangeUsernameException)
+        {
+            //std::cout << "User Selected Change UserName Exception" << std::endl;
+            std::string newUserName = "";
+            if(changeUsername && changeUsername(host,newUserName))
+            {
+                //if the user selects blank, revert back to old name..
+                if(newUserName == "")
+                    newUserName = remoteUserName;
+
+                //close everything..
+                // Close the file descriptor allocated for the PTY
+                close(ptyFileDescriptor);
+
+                // Kill the SSH proces
+                KillProcess();
+
+                // Clean up memory
+                DestroySplitCommandLine(argv, argc);
+
+                // Close the listen socket.
+                //CloseListenSocket();
+
+                //set new user name and connect...
+                SetRemoteUserName(newUserName);
+
+                //check to see if args has remoteUserName already..
+                //if so replace with this otherwise add ..
+                bool match = false;
+                bool foundIt = false;
+                stringVector args2;
+                args2.reserve( args.size() + 2 ); //one more
+
+                for(int i = 0; i < args.size(); ++i)
+                {
+                    //replace..
+                    std::string var = args[i];
+
+                    if(match == true)
+                    {
+                        var = newUserName;
+                        match = false;
+                        foundIt = true;
+                    }
+                    else if(var == "-l")
+                    {
+                        match = true; //arguments already have username..
+                    }
+                    else if(foundIt == false && var == host)
+                    {
+                        //if we have reached remoteProgram and -l not found
+                        //then user is default then we must add the new one..
+                        args2.push_back("-l");
+                        args2.push_back(newUserName);
+                    }
+
+                    //std::cout << var << std::endl;
+                    args2.push_back(var);
+                }
+
+                //recursively call connection..
+                LaunchRemote(host, args2);
+                return; //unnecessary
+            }
+            else
+            {
+                //do same thing as CouldNotConnectException
+                // Close the file descriptor allocated for the PTY
+                close(ptyFileDescriptor);
+
+                // Kill the SSH proces
+                KillProcess();
+
+                // Clean up memory
+                DestroySplitCommandLine(argv, argc);
+
+                // Close the listen socket.
+                CloseListenSocket();
+
+                RETHROW;
+            }
+        }
         CATCH(CouldNotConnectException)
         {
             // Close the file descriptor allocated for the PTY
             close(ptyFileDescriptor);
 
             // Kill the SSH proces
-            kill(remoteProgramPid, SIGTERM);
+            KillProcess();
 
             // Clean up memory
             DestroySplitCommandLine(argv, argc);
@@ -2274,6 +2391,42 @@ RemoteProcess::LaunchRemote(const std::string &host, const stringVector &args)
 
     // Clean up memory
     DestroySplitCommandLine(argv, argc);
+}
+
+// ****************************************************************************
+// Method: RemoteProcess::KillProcess
+//
+// Purpose: 
+//   Intentionally kill the process that we launched.
+//
+// Note:       We don't just call kill() since there is the matter of the
+//             catch_dead_child handler. We don't want the intentional kill to
+//             cause that signal handler to fire since it can cause a lockup.
+//
+// Programmer: Brad Whitlock
+// Creation:   Wed Jun 13 11:10:21 PDT 2012
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+RemoteProcess::KillProcess()
+{
+    if(remoteProgramPid != -1)
+    {
+        childDied[remoteProgramPid] = false;
+
+#if !defined(_WIN32)
+        // Stop watching for dead children so we don't get a signal when we
+        // intentionally kill it.
+        signal(SIGCHLD, SIG_DFL);
+
+        // Kill the process
+        kill(remoteProgramPid, SIGTERM);
+#endif
+        remoteProgramPid = -1;
+    }
 }
 
 // ****************************************************************************
@@ -2550,4 +2703,29 @@ RemoteProcess::SetProgressCallback(bool (*callback)(void *, int), void *data)
 {
     progressCallback = callback;
     progressCallbackData = data;
+}
+
+// ****************************************************************************
+// Method: RemoteProcess::SetChangeUserNameCallback
+//
+// Purpose:
+//   Allows user to change username if set
+//
+// Arguments:
+//   callback : The callback function.
+//   data     : Data for the callback function.
+//
+// Note:       The progress callback is only called when we have threads.
+//
+// Programmer: Brad Whitlock
+// Creation:   Thu Sep 26 17:11:57 PST 2002
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+RemoteProcess::SetChangeUserNameCallback(bool (*callback)(const std::string &, std::string& ))
+{
+    changeUsername = callback;
 }

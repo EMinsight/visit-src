@@ -754,6 +754,15 @@ $0 = shift @ARGV;
 #    openmpi 1.4.1, when it should use openmpi 1.4.4. I removed support
 #    for xchem.
 #
+#    Eric Brugger, Fri Jun  8 11:20:44 PDT 2012
+#    I modified the script so that the date portion of the temporary filename
+#    created for the batch script that launches a compute engine in the batch
+#    system can no longer have spaces.
+#
+#    Eric Brugger, Wed Jun 13 10:27:14 PDT 2012
+#    I modified the script to run the chaos 4 version if running on atlas,
+#    prism or rzthriller.
+#
 ###############################################################################
 
 use POSIX qw(ceil);
@@ -2087,7 +2096,12 @@ for ($os) {
             push @supportedarchs, "linux-ia64";
         }
         elsif ($mach =~ /x86_64/) {
-            push @supportedarchs, "linux-x86_64";
+            if ($host =~ /^atlas/ || $host =~ /^prism/ || $host =~ /^rzthriller/) {
+                push @supportedarchs, "linux-x86_64-chaos4";
+            }
+            else {
+                push @supportedarchs, "linux-x86_64";
+            }
         }
         elsif ($mach =~ /ppc64/) {
             if ($exe_name eq "engine" && $req_compiler eq "powerpc-bgp-linux-g++") {
@@ -2977,7 +2991,7 @@ if ($procs_set or ($parallel and $parlaunch_set))
             @mpicmd = "@visitcmd";
         }
 
-        chomp($tdate = `date | cut -c 12-19`);
+        chomp($tdate = `date | sed "s/ /-/g"`);
         chomp($tuser = `whoami`);
         $script_dir="/tmp";
         $tfilename = "$script_dir/visit.$tuser.$tdate";
@@ -3056,7 +3070,7 @@ if ($procs_set or ($parallel and $parlaunch_set))
         ($psubcmd, $sublauncher) = split /\W+/, substr($launch,4);
         $plauncher = substr($launch,0,4);
         $sublauncher = "" if (!defined $sublauncher);
-        chomp($tdate = `date | cut -c 12-19`);
+        chomp($tdate = `date | sed "s/ /-/g"`);
         chomp($tuser = `whoami`);
         $script_dir="/tmp";
         if ($IsRunningOnEureka_ANL)

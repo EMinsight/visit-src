@@ -135,9 +135,9 @@ protected:
 
     int                    GetFileHandle();
     void                   ReadTimes();
-    bool                   GetCoords(int base, int zone, const cgsize_t *zsize,
-                                     bool structured, float **coords,
-                                     int *ncoords);
+    bool                   GetCoords(int timestate, int base, int zone, const cgsize_t *zsize,
+                                     int cell_dim, int phys_dim,
+                                     bool structured, float **coords);
     void                   AddReferenceStateExpressions(avtDatabaseMetaData *md,
                                      int base, int nBases, const std::string &baseName,
                                      const std::string &meshName);
@@ -152,10 +152,10 @@ protected:
     bool                   BaseContainsUnits(int base);
     void                   InitializeMaps(int timeState);
 
-    vtkDataSet *           GetCurvilinearMesh(int, int, const char *,
-                                              const cgsize_t *);
-    vtkDataSet *           GetUnstructuredMesh(int, int, const char *,
-                                               const cgsize_t *);
+    vtkDataSet *           GetCurvilinearMesh(int, int, int, const char *,
+                                              const cgsize_t *, int, int);
+    vtkDataSet *           GetUnstructuredMesh(int, int, int, const char *,
+                                               const cgsize_t *, int);
 
     void PrintVarInfo(ostream &out, const VarInfo &var, const char *indent);
     void PrintStringVarInfoMap(ostream &out, const StringVarInfoMap &vars, const char *indent);

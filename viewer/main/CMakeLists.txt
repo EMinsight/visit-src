@@ -38,6 +38,9 @@
 #  Cyrus Harrison, Tue Jan 10 14:51:38 PST 2012
 #  Add link of ${CMAKE_THREAD_LIBS} to the viewer.
 #
+#  Brad Whitlock, Fri May 18 16:09:34 PST 2012
+#  Use different resource file.
+#
 #****************************************************************************/
 IF(VISIT_PARALLEL AND WIN32)
     SET(VIEWERLIB_WIN32_SOURCES
@@ -97,6 +100,8 @@ ViewerToolbar.C
 ViewerWindow.C
 ViewerWindowManager.C
 ViewerWindowManagerAttributes.C
+VisItChangeUsernameWindow.C
+VisItPasswordWindow.C
 VisItViewer.C
 WindowActions.C
 ${VIEWERLIB_WIN32_SOURCES}
@@ -127,6 +132,8 @@ ViewerServerManager.h
 ViewerStateBuffered.h
 ViewerSubject.h
 ViewerWindowManager.h
+VisItChangeUsernameWindow.h
+VisItPasswordWindow.h
 )
 QT_WRAP_CPP(viewer VIEWERLIB_SOURCES ${VIEWERLIB_MOC_SOURCES})
 
@@ -222,7 +229,7 @@ ${CMAKE_THREAD_LIBS}
 
 #*************************** The viewer executable ***************************
 IF(NOT APPLE)
-    ADD_EXECUTABLE(viewer_exe ${VISIT_APPLICATION_STYLE} viewer.C ${VIEWER_STATIC_SOURCES} ${VISIT_WIN_ICON_RESOURCE})
+    ADD_EXECUTABLE(viewer_exe ${VISIT_APPLICATION_STYLE} viewer.C ${VIEWER_STATIC_SOURCES} ${VISIT_VIEWER_RESOURCE_FILE})
 ELSE(NOT APPLE)
     SET(VIEWER_ICON_FILE VisItIcon.icns)
     SET_SOURCE_FILES_PROPERTIES(${VISIT_SOURCE_DIR}/common/icons/${VIEWER_ICON_FILE} PROPERTIES

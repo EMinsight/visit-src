@@ -43,12 +43,13 @@
 #ifndef AVT_VTK_FILE_FORMAT_H
 #define AVT_VTK_FILE_FORMAT_H
 
-#include <avtSTSDFileFormat.h>
+#include <avtSTMDFileFormat.h>
 #include <map>
 #include <string>
 
 class vtkRectilinearGrid;
 class vtkStructuredPoints;
+class vtkVisItXMLPDataReader;
 
 class DBOptionsAttributes;
 
@@ -94,18 +95,21 @@ class DBOptionsAttributes;
 //    Brad Whitlock, Wed Oct 26 11:01:00 PDT 2011
 //    I added vtkCurves.
 //
+//    Eric Brugger, Mon Jun 18 12:26:52 PDT 2012
+//    I enhanced the reader so that it can read parallel VTK files.
+//
 // ****************************************************************************
 
-class avtVTKFileFormat : public avtSTSDFileFormat
+class avtVTKFileFormat : public avtSTMDFileFormat
 {
   public:
                           avtVTKFileFormat(const char *,DBOptionsAttributes *);
     virtual              ~avtVTKFileFormat();
 
-    virtual vtkDataSet   *GetMesh(const char *);
-    virtual vtkDataArray *GetVar(const char *);
-    virtual vtkDataArray *GetVectorVar(const char *);
-    virtual void         *GetAuxiliaryData(const char *var,
+    virtual vtkDataSet   *GetMesh(int, const char *);
+    virtual vtkDataArray *GetVar(int, const char *);
+    virtual vtkDataArray *GetVectorVar(int, const char *);
+    virtual void         *GetAuxiliaryData(const char *var, int,
                               const char *type, void *, DestructorFunction &df);
 
     virtual const char   *GetType(void)  { return "VTK File Format"; };
@@ -119,8 +123,13 @@ class avtVTKFileFormat : public avtSTSDFileFormat
     virtual int           GetCycle(void);
 
   protected:
-    vtkDataSet           *dataset;
+    char                 *filename;
+
     bool                  readInDataset;
+
+    int                   nblocks;
+    char                **pieceFileNames;
+    vtkDataSet          **pieceDatasets;
 
     static const char    *MESHNAME;
     static const char    *VARNAME;
@@ -130,11 +139,13 @@ class avtVTKFileFormat : public avtSTSDFileFormat
     double                vtk_time;
     int                   vtk_cycle;
 
-    std::string           extension;
+    std::string           fileExtension;
+    std::string           pieceExtension;
 
     std::map<std::string, vtkRectilinearGrid *> vtkCurves;
 
-    void                  ReadInDataset(void);
+    void                  ReadInFile(void);
+    void                  ReadInDataset(int);
     vtkDataSet           *ConvertStructuredPointsToRGrid(vtkStructuredPoints *);
     void                  CreateCurves(vtkRectilinearGrid *rgrid);
 };
