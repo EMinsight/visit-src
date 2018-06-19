@@ -113,18 +113,22 @@ function bv_python_alt_python_dir
     PYTHON_CONFIG_COMMAND="$PYTHON_ALT_DIR/bin/python-config"
     PYTHON_FILE=""
     python_set_vars_helper #set vars..
-
 }
 
 
 function bv_python_depends_on
 {
+    local depends_on=""
+
     if [[ "$DO_OPENSSL" == "yes" ]] ; then
-        echo "openssl"
-    else
-        echo ""
+        depends_on="openssl"
     fi
 
+    if [[ "$DO_ZLIB" == "yes" ]] ; then
+        depends_on="$depends_on zlib"
+    fi
+
+    echo $depends_on
 }
 
 function bv_python_info
@@ -159,9 +163,9 @@ function bv_python_info
     export CYTHON_FILE=${CYTHON_FILE:-"Cython-0.25.2.tar.gz"}
     export CYTHON_BUILD_DIR=${CYTHON_BUILD_DIR:-"Cython-0.25.2"}
 
-    export NUMPY_URL=${NUMPY_URL:-"https://pypi.python.org/packages/16/f5/b432f028134dd30cfbf6f21b8264a9938e5e0f75204e72453af08d67eb0b/"}
-    export NUMPY_FILE=${NUMPY_FILE:-"numpy-1.11.2.tar.gz"}
-    export NUMPY_BUILD_DIR=${NUMPY_BUILD_DIR:-"numpy-1.11.2"}
+    export NUMPY_URL=${NUMPY_URL:-"https://pypi.python.org/packages/a3/99/74aa456fc740a7e8f733af4e8302d8e61e123367ec660cd89c53a3cd4d70/"}
+    export NUMPY_FILE=${NUMPY_FILE:-"numpy-1.14.1.zip"}
+    export NUMPY_BUILD_DIR=${NUMPY_BUILD_DIR:-"numpy-1.14.1"}
 
     export MPI4PY_URL=${MPI4PY_URL:-"https://pypi.python.org/pypi/mpi4py"}
     export MPI4PY_FILE=${MPI4PY_FILE:-"mpi4py-2.0.0.tar.gz"}
@@ -178,10 +182,10 @@ function bv_python_print
 
 function bv_python_print_usage
 {
-    printf "%-15s %s [%s]\n" "--python" "Build Python" "built by default unless --no-thirdparty flag is used"
-    printf "%-15s %s [%s]\n" "--system-python" "Use the system installed Python"
-    printf "%-15s %s [%s]\n" "--alt-python-dir" "Use Python from an alternative directory"
-    printf "%-15s %s [%s]\n" "--mpi4py" "Build mpi4py with Python"
+    printf "%-20s %s\n" "--python" "Build Python" 
+    printf "%-20s %s [%s]\n" "--system-python" "Use the system installed Python"
+    printf "%-20s %s [%s]\n" "--alt-python-dir" "Use Python from an alternative directory"
+    printf "%-20s %s [%s]\n" "--mpi4py" "Build mpi4py with Python"
 }
 
 function bv_python_host_profile
@@ -359,8 +363,15 @@ function build_python
     if [[ "$DO_OPENSSL" == "yes" ]]; then
         OPENSSL_INCLUDE="$VISITDIR/openssl/$OPENSSL_VERSION/$VISITARCH/include"
         OPENSSL_LIB="$VISITDIR/openssl/$OPENSSL_VERSION/$VISITARCH/lib"
-        PYTHON_LDFLAGS="${PYTHON_LDFLAGS} -L ${OPENSSL_LIB}"
-        PYTHON_CPPFLAGS="-I ${OPENSSL_INCLUDE}"
+        PYTHON_LDFLAGS="${PYTHON_LDFLAGS} -L${OPENSSL_LIB}"
+        PYTHON_CPPFLAGS="${PTYHON_CPPFLAGS} -I${OPENSSL_INCLUDE}"
+    fi
+
+    if [[ "$DO_ZLIB" == "yes" ]]; then
+        PY_ZLIB_INCLUDE="$VISITDIR/zlib/$ZLIB_VERSION/$VISITARCH/include"
+        PY_ZLIB_LIB="$VISITDIR/zlib/$ZLIB_VERSION/$VISITARCH/lib"
+        PYTHON_LDFLAGS="${PYTHON_LDFLAGS} -L${PY_ZLIB_LIB}"
+        PYTHON_CPPFLAGS="${PYTHON_CPPFLAGS} -I${PY_ZLIB_INCLUDE}"
     fi
 
     if [[ "$OPSYS" == "AIX" ]]; then
@@ -758,6 +769,7 @@ function build_numpy
 
     pushd $NUMPY_BUILD_DIR > /dev/null
     info "Installing numpy (~ 2 min) ..."
+    sed -i 's#\\\\\"%s\\\\\"#%s#' numpy/distutils/system_info.py
     ${PYHOME}/bin/python ./setup.py install --prefix="${PYHOME}"
     popd > /dev/null
 

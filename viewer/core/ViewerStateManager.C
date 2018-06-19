@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2018, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -914,6 +914,8 @@ ViewerStateManager::RestoreSession(const std::string &filename,
 // Creation:   Thu Aug 28 22:20:20 PDT 2014
 //
 // Modifications:
+//    Kathleen Biagas, Thu May 17, 2018
+//    Support UNC style paths on Windows.
 //
 // ****************************************************************************
 
@@ -953,6 +955,11 @@ ViewerStateManager::BuildSourceMap(DataNode *viewerNode, const stringVector &sou
             }
             // Ensure we save a fully host-qualified name.
             FileFunctions::SplitHostDatabase(source, tmpHost, tmpDB);
+#ifdef WIN32
+            if (tmpDB.substr(0,2) == "\\\\")
+                sourceToDB[std::string(tmp)] = tmpDB;
+            else
+#endif
             sourceToDB[std::string(tmp)] = tmpHost + std::string(":") + tmpDB;
         }
     }

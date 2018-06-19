@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2018, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -229,7 +229,7 @@
 # if defined(visitmodule_EXPORTS)
 #  define VISITMODULE_API __declspec(dllexport)
 # else
-#  define VISITMODULE_API 
+#  define VISITMODULE_API __declspec(dllimport)
 # endif
 #else
 # if __GNUC__ >= 4
@@ -474,11 +474,12 @@ static std::map<std::string, AnnotationObjectRef> localObjectMap;
 
 static bool                  suppressQueryOutputState = false;
 
-static enum QueryOutputReturnType {
+typedef enum QueryOutputReturnType {
     QueryString = 0,
     QueryValue,
     QueryObject
-} queryOutputReturnType = QueryString;
+};
+static QueryOutputReturnType queryOutputReturnType = QueryString;
 
 // pickle related
 bool      pickleReady=false;
@@ -14743,30 +14744,37 @@ visit_CreateAnnotationObject(PyObject *self, PyObject *args)
     const char *mName = "visit_CreateAnnotationObject: ";
     ENSURE_VIEWER_EXISTS();
 
+    int createAsVisible = -1; // not specified
     const char *annotType = 0, *annotName = 0;
-    if (!PyArg_ParseTuple(args, "ss", &annotType, &annotName))
-    {
-        if (!PyArg_ParseTuple(args, "s", &annotType))
-            return NULL;
 
+    if      (PyArg_ParseTuple(args, "ssi", &annotType, &annotName, &createAsVisible))
+        ; // no-op
+    else if (PyArg_ParseTuple(args, "ss", &annotType, &annotName))
+        ; // no-op
+    else if (PyArg_ParseTuple(args, "si", &annotType, &createAsVisible))
         annotName = "";
-        PyErr_Clear();
-    }
+    else if (PyArg_ParseTuple(args, "s", &annotType))
+        annotName = "";
+    else
+        return NULL;
+    PyErr_Clear();
+    if (createAsVisible < 0)
+        createAsVisible = 1;
 
     // See if it is an annotation type that we know about
-    int annotTypeIndex;
+    int annotTypeAndFlags;
     if(strcmp(annotType, "TimeSlider") == 0)
-        annotTypeIndex = 2;
+        annotTypeAndFlags = 2;
     else if(strcmp(annotType, "Text2D") == 0)
-        annotTypeIndex = 0;
+        annotTypeAndFlags = 0;
     else if(strcmp(annotType, "Text3D") == 0)
-        annotTypeIndex = 1;
+        annotTypeAndFlags = 1;
     else if(strcmp(annotType, "Line2D") == 0)
-        annotTypeIndex = 3;
+        annotTypeAndFlags = 3;
     else if(strcmp(annotType, "Line3D") == 0)
-        annotTypeIndex = 4;
+        annotTypeAndFlags = 4;
     else if(strcmp(annotType, "Image") == 0)
-        annotTypeIndex = 8;
+        annotTypeAndFlags = 8;
     else if(strcmp(annotType, "LegendAttributes") == 0)
     {
         VisItErrorFunc("Legends are created by plots and the legend attributes "
@@ -14787,11 +14795,16 @@ visit_CreateAnnotationObject(PyObject *self, PyObject *args)
         return NULL;
     }
 
+    // To avoid protocol changes, we pass creation flag(s) in annotType
+    int const static CREATE_ANNOTATION_OBJECT_AS_NOT_VISIBLE = 0x00010000;
+    if (!createAsVisible)
+        annotTypeAndFlags |= CREATE_ANNOTATION_OBJECT_AS_NOT_VISIBLE;
+
     // Create the annotation.
     MUTEX_LOCK();
         debug1 << mName << "Telling the viewer to create a new " << annotType
                << " annotation object called \"" << annotName << "\"\n";
-        GetViewerMethods()->AddAnnotationObject(annotTypeIndex, annotName);
+        GetViewerMethods()->AddAnnotationObject(annotTypeAndFlags, annotName);
     MUTEX_UNLOCK();
     int errorFlag = Synchronize();
 

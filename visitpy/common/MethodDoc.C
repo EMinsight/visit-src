@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2018, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1194,13 +1194,24 @@ const char *visit_CreateAnnotationObject_doc =
 "\n"
 "Synopsis:\n"
 "\n"
-"CreateAnnotationObject(annotType) -> annotation object\n"
+"CreateAnnotationObject(annotType[,annotName,visibleFlag]) -> annotation object\n"
 "\n"
 "\n"
 "Arguments:\n"
 "\n"
 "annotType\n"
-"A string containing the name of the type of annotation object to create.\n"
+"    A string containing the name of the type of annotation object to create.\n"
+"\n"
+"annotName\n"
+"    An optional string for a user-defined name of the annotation object to create.\n"
+"    By default, VisIt creates names like 'newObject0', 'newObject1',....\n"
+"\n"
+"visibleFlag\n"
+"    An optional integer to indicate if the annotation object should be created\n"
+"    with initial visibility on or off. Pass 0 for off and non-zero for on.\n"
+"    By default, VisIt creates annotation objects with visibility on. If you\n"
+"    wish only to pass the visibleFlag argument, there is no need to also pass\n"
+"    the annotName argument.\n"
 "\n"
 "\n"
 "Returns:\n"

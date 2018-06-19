@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2018, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -57,6 +57,7 @@
 #include <QStyle>
 #include <QStyleFactory>
 #include <QTranslator>
+#include <QList>
 
 #include <QMenuBar>
 #include <QTimer>
@@ -170,7 +171,13 @@
 #include <AccessViewerSession.h>
 
 #if defined(_WIN32)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h> // for LoadLibrary
+#include <TlHelp32.h> // for Tool help
+#else
+#include <unistd.h>
 #endif
 
 #include <snprintf.h>
@@ -666,7 +673,7 @@ QvisGUIApplication::QvisGUIApplication(int &argc, char **argv, ViewerProxy *prox
     ConfigManager(), GUIBase(), windowNames(), message(), plotWindows(),
     operatorWindows(), otherWindows(), foregroundColor(), backgroundColor(),
     applicationStyle(), applicationLocale("default"), loadFile(), sessionFile(), 
-    sessionDir(), movieArguments()
+    sessionDir(), movieArguments(), recoveryFiles()
 {
     completeInit = visitTimer->StartTimer();
     int total = visitTimer->StartTimer();
@@ -749,6 +756,8 @@ QvisGUIApplication::QvisGUIApplication(int &argc, char **argv, ViewerProxy *prox
     fileServer = new FileServerList;
     fileServer->SetProfiles(GetViewerState()->GetHostProfileList());
     embeddedGUI = false;
+    
+    visitPIDStr = GetVisItPIDString();
 
     // Process any GUI arguments that should not be passed on to other programs.
     // This also has the effect of setting color/style attributes. This must
@@ -2083,10 +2092,7 @@ QvisGUIApplication::Quit()
         }
     }
 
-    // Remove the gui's crash recovery file if present. Don't remove the 
-    // viewer's crash recovery file though since that's what we check for
-    // in determining whether we have a crash recovery file and it makes
-    // sense for the viewer to remove its file.
+    // Remove the viewer and gui's crash recovery file if present.
     RemoveCrashRecoveryFile(false);
 
     // Save default restore session file.
@@ -4566,6 +4572,9 @@ QvisGUIApplication::SaveSession()
 //   David Camp, Tue Aug  4 11:04:14 PDT 2015
 //   Added new dialog to be able to save session files on remote host.
 //
+//   Kathleen Biagas, Thu May 18, 2018
+//   Support UNC style paths on Windows.
+//
 // ****************************************************************************
 
 void
@@ -4574,9 +4583,18 @@ QvisGUIApplication::SaveSessionAs()
     // Create the name of a VisIt session file to use.
     QString defaultFile;
     if(sessionHost.empty())
+    {
         defaultFile.sprintf("%svisit%04d.session", sessionDir.c_str(), sessionCount);
+    }
     else
+    {
+#ifdef WIN32
+        if (sessionDir.substr(0,2) == "\\\\")
+            defaultFile.sprintf("%svisit%04d.session", sessionDir.c_str(), sessionCount);
+        else
+#endif
         defaultFile.sprintf("%s:%svisit%04d.session", sessionHost.c_str(), sessionDir.c_str(), sessionCount);
+    }
 
     // Get the name of the file that the user saved.
     QualifiedFilename qfilename;
@@ -5135,49 +5153,86 @@ QvisGUIApplication::RestoreSessionFile(const QString &s,
 // Creation:   Mon Jul 20 02:21:50 PDT 2015
 //
 // Modifications:
+//    Kathleen Biagas, Wed May 30, 2018
+//    Ensure session-with-different-sources is restored properly if node
+//    is NULL.
+//
 // ****************************************************************************
 
 void
-QvisGUIApplication::ProcessSessionNode(DataNode *node, const std::string &filename, 
-                                       const stringVector &sources, const std::string &hostname)
+QvisGUIApplication::ProcessSessionNode(DataNode *node,
+     const std::string &filename,
+     const stringVector &sources,
+     const std::string &hostname)
 {
-        if(node)
-        {
-            ProcessConfigSettings(node, false);
-            CreateInitiallyVisibleWindows(node);
-            ProcessWindowConfigSettings(node); 
+    if(node)
+    {
+        ProcessConfigSettings(node, false);
+        CreateInitiallyVisibleWindows(node);
+        ProcessWindowConfigSettings(node); 
 
-            // Look for the VisIt tree.
-            DataNode *visitRoot = node->GetNode("VisIt");
-            if(visitRoot != 0)
+        // Look for the VisIt tree.
+        DataNode *visitRoot = node->GetNode("VisIt");
+        if(visitRoot != 0)
+        {
+            // Get the gui node.
+            DataNode *guiNode = visitRoot->GetNode("GUI");
+            if(guiNode != 0)
             {
-                // Get the gui node.
-                DataNode *guiNode = visitRoot->GetNode("GUI");
-                if(guiNode != 0)
+                //
+                // Customize the GUI's appearance based on the session.
+                //
+                GetViewerState()->GetAppearanceAttributes()->SetFromNode(guiNode);
+                CustomizeAppearance(true);
+
+                //
+                // Create a session file helper if needed and disconnect it
+                // so we can hook it up based on how we're feeding it the
+                // source filenames.
+                //
+                if(sessionFileHelper == 0)
+                {
+                    sessionFileHelper = new QvisSessionFileDatabaseLoader(this);
+                    connect(sessionFileHelper, SIGNAL(loadFile(const QString &)),
+                        this, SLOT(sessionFileHelper_LoadFile(const QString &)));
+                }
+                disconnect(sessionFileHelper, SIGNAL(complete(const QString &)),
+                    this, SLOT(sessionFileHelper_LoadSession(const QString &)));
+                disconnect(sessionFileHelper,
+                    SIGNAL(complete(const QString &, const stringVector &)),
+                    this,
+                    SLOT(sessionFileHelper_LoadSessionWithDifferentSources(
+                        const QString &, const stringVector &)));
+
+                if(sources.size() > 0)
                 {
                     //
-                    // Customize the GUI's appearance based on the session.
+                    // If we're going to be opening up files, have the
+                    // viewer tell all engines to clear their caches.
                     //
-                    GetViewerState()->GetAppearanceAttributes()->SetFromNode(guiNode);
-                    CustomizeAppearance(true);
+                    GetViewerMethods()->ClearCacheForAllEngines();
 
-                    //
-                    // Create a session file helper if needed and disconnect it
-                    // so we can hook it up based on how we're feeding it the
-                    // source filenames.
-                    //
-                    if(sessionFileHelper == 0)
-                    {
-                        sessionFileHelper = new QvisSessionFileDatabaseLoader(this);
-                        connect(sessionFileHelper, SIGNAL(loadFile(const QString &)),
-                                this, SLOT(sessionFileHelper_LoadFile(const QString &)));
-                    }
-                    disconnect(sessionFileHelper, SIGNAL(complete(const QString &)),
-                               this, SLOT(sessionFileHelper_LoadSession(const QString &)));
-                    disconnect(sessionFileHelper, SIGNAL(complete(const QString &, const stringVector &)),
-                               this, SLOT(sessionFileHelper_LoadSessionWithDifferentSources(const QString &, const stringVector &)));
+                    // Make sure that when the helper has loaded all of the
+                    // files, it calls back to this object and tells the
+                    // viewer to restore with different sources.
+                    connect(sessionFileHelper,
+                        SIGNAL(complete(const QString &, const stringVector &)),
+                        this, 
+                        SLOT(sessionFileHelper_LoadSessionWithDifferentSources(
+                            const QString &, const stringVector &)));
 
-                    if(sources.size() > 0)
+                    // Start loading files.
+                    sessionFileHelper->SetDatabases(sources);
+                    sessionFileHelper->Start(filename.c_str());
+                }
+                else
+                {
+                    //
+                    // Look for the list of files that we need to open up
+                    // and if we find it, open up each one of them.
+                    //
+                    DataNode *plotDatabases = guiNode->GetNode("plotDatabases");
+                    if(plotDatabases)
                     {
                         //
                         // If we're going to be opening up files, have the
@@ -5187,60 +5242,45 @@ QvisGUIApplication::ProcessSessionNode(DataNode *node, const std::string &filena
 
                         // Make sure that when the helper has loaded all of the
                         // files, it calls back to this object and tells the
-                        // viewer to restore with different sources.
+                        // viewer to restore the session.
                         connect(sessionFileHelper,
-                                SIGNAL(complete(const QString &, const stringVector &)),
-                                this, 
-                                SLOT(sessionFileHelper_LoadSessionWithDifferentSources(const QString &, const stringVector &)));
+                            SIGNAL(complete(const QString &)),
+                            this,
+                            SLOT(sessionFileHelper_LoadSession(const QString &)));
 
                         // Start loading files.
-                        sessionFileHelper->SetDatabases(sources);
+                        sessionFileHelper->SetDatabases(
+                            plotDatabases->AsStringVector());
                         sessionFileHelper->Start(filename.c_str());
                     }
                     else
                     {
-                        //
-                        // Look for the list of files that we need to open up
-                        // and if we find it, open up each one of them.
-                        //
-                        DataNode *plotDatabases = guiNode->GetNode("plotDatabases");
-                        if(plotDatabases)
-                        {
-                            //
-                            // If we're going to be opening up files, have the
-                            // viewer tell all engines to clear their caches.
-                            //
-                            GetViewerMethods()->ClearCacheForAllEngines();
-
-                            // Make sure that when the helper has loaded all of the
-                            // files, it calls back to this object and tells the
-                            // viewer to restore the session.
-                            connect(sessionFileHelper, SIGNAL(complete(const QString &)),
-                                    this, SLOT(sessionFileHelper_LoadSession(const QString &)));
-
-                            // Start loading files.
-                            sessionFileHelper->SetDatabases(plotDatabases->AsStringVector());
-                            sessionFileHelper->Start(filename.c_str());
-                        }
-                        else
-                        {
-                            // If there are no plots, we still need to restore
-                            GetViewerMethods()->ImportEntireState(filename, false, hostname);
-                        }
+                        // If there are no plots, we still need to restore
+                        GetViewerMethods()->ImportEntireState(filename, false,
+                            hostname);
                     }
                 }
             }
+        }
 
-            delete node;
+        delete node;
+    }
+    else
+    {
+        // Have the viewer read in its part of the config. Note that we
+        // pass the inVisItDir flag as false because we don't want to have
+        // the viewer prepend the .visit directory to the file since it's
+        // already part of the filename.
+        if(sources.size() > 0)
+        {
+            GetViewerMethods()->ImportEntireStateWithDifferentSources(filename,
+                false, sources, hostname);
         }
         else
         {
-            // Have the viewer read in its part of the config. Note that we
-            // pass the inVisItDir flag as false because we don't want to have
-            // the viewer prepend the .visit directory to the file since it's
-            // already part of the filename.
             GetViewerMethods()->ImportEntireState(filename, false, hostname);
         }
+    }
 }
 
 // ****************************************************************************
@@ -5522,6 +5562,9 @@ QvisGUIApplication::ProcessWindowConfigSettings(DataNode *node)
 //   Went back to using GetMenuName for the key, as it matches what is used
 //   to write the plugin settings.
 //
+//   Mark C. Miller, Sat May  5 19:42:11 PDT 2018
+//   Fix leak of QString menuName.
+//
 // ****************************************************************************
 
 void
@@ -5540,7 +5583,9 @@ QvisGUIApplication::ReadPluginWindowConfigs(DataNode *parentNode,
         GUIPlotPluginInfo *GUIInfo = plotPluginManager->GetGUIPluginInfo(
             plotPluginManager->GetEnabledID(i));
 
-        std::string key(GUIInfo->GetMenuName()->toStdString());
+        QString *menuName = GUIInfo->GetMenuName();
+        std::string key(menuName->toStdString());
+        delete menuName;
         key += " plot attributes";
 
         if(plotWindows[i] != 0 &&
@@ -5571,7 +5616,9 @@ QvisGUIApplication::ReadPluginWindowConfigs(DataNode *parentNode,
         GUIOperatorPluginInfo *GUIInfo = operatorPluginManager->GetGUIPluginInfo(
                                        operatorPluginManager->GetEnabledID(i));
 
-        std::string key(GUIInfo->GetMenuName()->toStdString());
+        QString *menuName = GUIInfo->GetMenuName();
+        std::string key(menuName->toStdString());
+        delete menuName;
         key += " operator attributes";
 
         if(operatorWindows[i] != 0 &&
@@ -6453,11 +6500,18 @@ QvisGUIApplication::ReadFromViewer(int)
     {
         debug1 << "Reading from the viewer's socket is currently not allowed!"
                << endl;
+
 #if defined(_WIN32)
+        // This no longer seems necessary, at least with QT 5.
+        // Removing it for Qt5-enabled fixes problem running VisIt
+        // on newer Windows OS (8, 10) and also running on Windows VM.
+        // Leaving code in place for older qt, just in case.
+#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
         // If we ignore the socket read on Windows, we don't tend to keep
         // getting the message so call this function again though the event
         // loop using a timer.
         QTimer::singleShot(10, this, SLOT(DelayedReadFromViewer()));
+#endif
 #endif
     }
 }
@@ -8676,6 +8730,9 @@ QvisGUIApplication::InterpreterSync()
 // Modifications:
 //   Kathleen Bonnell, Fri Jun 18 15:15:11 MST 2010 
 //   Windows sessions now use '.session' extinsion.
+//
+//   Kevin Griffin, Mon Mar 12 14:18:57 PDT 2018
+//   Added VisIt PID to the crash recovery file name.
 //   
 // ****************************************************************************
 
@@ -8683,9 +8740,108 @@ QString
 QvisGUIApplication::CrashRecoveryFile() const
 {
     QString s(GetUserVisItDirectory().c_str());
-    s += "crash_recovery";
+    s += "crash_recovery.";
+    s += visitPIDStr.c_str();
     s += ".session";
     return s;
+}
+
+// ****************************************************************************
+// Method: QvisGUIApplication::GetCrashFilePIDs
+//
+// Purpose:
+//   Parses all PIDs embedded in the saved crash file names.
+//
+// Arguments:
+//   fileList:  List of crash recovery files.
+//   outPIDS:   The output vector storing the all the parsed PIDs
+//
+// Programmer: Kevin Griffin
+// Creation:   Mon Mar 12 14:18:57 PDT 2018
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+QvisGUIApplication::GetCrashFilePIDs(const QFileInfoList &fileList, intVector &outPIDs)
+{
+    for(int i=0; i<fileList.size(); i++)
+    {
+        QString fn = fileList.at(i).fileName();
+        QStringList tokens = fn.split(".", QString::SkipEmptyParts);
+        
+        if(tokens.size() > 2) {
+            bool ok;
+            int pid = tokens[1].toInt(&ok, 10);
+            
+            if(ok)
+            {
+                outPIDs.push_back(pid);
+            }
+        }
+    }
+}
+
+// ****************************************************************************
+// Method: QvisGUIApplication::GetSystemPIDS
+//
+// Purpose:
+//   Get the PIDs of the currently running processes.
+//
+// Arguments:
+//   outPIDS:   The output vector storing the all the parsed PIDs
+//
+// Programmer: Kevin Griffin
+// Creation:   Mon Mar 12 14:18:57 PDT 2018
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+QvisGUIApplication::GetSystemPIDs(std::vector<int> &outPIDs)
+{
+#if !defined(Q_OS_WIN)
+    bool ok;
+    char buf[2048];
+    
+    FILE *f = popen("ps -A", "r");
+    
+    while(fgets(buf, 2048, f) != NULL)
+    {
+        QString pidStr(buf);
+        QStringList tokens = pidStr.split(QRegExp("\\s+"), QString::SkipEmptyParts); // whitespace character
+        
+        int pid = tokens[0].toInt(&ok, 10);
+        
+        if(ok)
+        {
+            outPIDs.push_back(pid);
+        }
+    }
+    
+    pclose(f);
+#else
+    HANDLE hProcessSnap;
+    PROCESSENTRY32 pe32;
+
+    hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+
+    if(hProcessSnap != INVALID_HANDLE_VALUE)
+    {
+        pe32.dwSize = sizeof(PROCESSENTRY32);
+
+        while(Process32Next(hProcessSnap, &pe32))
+        {
+            int pid = static_cast<int>(pe32.th32ProcessID);
+            outPIDs.push_back(pid);
+        }
+    }
+
+    CloseHandle(hProcessSnap);
+
+#endif
 }
 
 // ****************************************************************************
@@ -8700,40 +8856,147 @@ QvisGUIApplication::CrashRecoveryFile() const
 // Modifications:
 //   Brad Whitlock, Tue Apr  8 16:29:55 PDT 2008
 //   Support for internationalization.
+//
+//   Kevin Griffin, Mon Mar 12 14:18:57 PDT 2018
+//   Move the dialog prompt to a new method and now supporting multiple
+//   crash recovery files.
 //   
 // ****************************************************************************
 
 void
 QvisGUIApplication::RestoreCrashRecoveryFile()
 {
-    QString filename(CrashRecoveryFile());
-    QFile cr(filename);
-    if(cr.exists())
+    // Get list of crash recovery files
+    QDir dir(GetUserVisItDirectory().c_str());
+    dir.setFilter(QDir::Files);
+    
+    QStringList nameFilters;
+    nameFilters << "crash_recovery.*.session";
+    dir.setNameFilters(nameFilters);
+    
+    QFileInfoList crashFiles = dir.entryInfoList();
+    
+    if(crashFiles.size() > 0)
     {
+        // Crash file PIDs
+        intVector crashFilePIDs;
+        GetCrashFilePIDs(crashFiles, crashFilePIDs);
+
+        // System PIDs
+        intVector systemPIDs;
+        GetSystemPIDs(systemPIDs);
+        
+        // Exclude crash files of any currently running VisIt processes
+        for(int i=0; i<crashFilePIDs.size(); i++)
+        {
+            int crashFilePID = crashFilePIDs[i];
+            bool addFile = true;
+            
+            for(int j=0; j<systemPIDs.size(); j++)
+            {
+                if(crashFilePID == systemPIDs[j])
+                {
+                    addFile = false;
+                    break;
+                }
+            }
+            
+            if(addFile)
+            {
+                recoveryFiles.append(crashFiles[i]);
+            }
+        }
+        
+        if(recoveryFiles.size() > 0)
+        {
+            ShowCrashRecoveryDialog(recoveryFiles);
+        }
+    }
+}
+
+// ****************************************************************************
+// Method: QvisGUIApplication::ShowCrashRecoveryDialog
+//
+// Purpose:
+//   Shows the crash recovery dialog and potentially the file open dialog if
+//   there are more than one crash recovery file to choose from.
+//
+// Arguments:
+//   fileInfoList : List of crash recovery files.
+//
+// Programmer: Kevin Griffin
+// Creation:   Mon Mar 12 14:18:57 PDT 2018
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+QvisGUIApplication::ShowCrashRecoveryDialog(const QFileInfoList &fileInfoList)
+{
+    if(fileInfoList.size() == 1)
+    {
+        QString filename(fileInfoList.at(0).absoluteFilePath());
         int btn = QMessageBox::question(0, tr("Crash recovery"),
-            tr("VisIt found a crash recovery session file. Would you like to "
-               "restore it to return to the last saved state?"), QMessageBox::Yes,
-            QMessageBox::No);
+                                        tr("VisIt found a crash recovery session file. Would you like to "
+                                           "restore it to return to the last saved state?"),
+                                        QMessageBox::Yes,
+                                        QMessageBox::No);
         if(btn == QMessageBox::Yes)
         {
-            stringVector files;
-            std::string host;
-            debug1 << "Restoring a crash recovery file: "
-                   << filename.toStdString() << endl;
-            RestoreSessionFile(filename, files, host);
-
-            sessionFile = QString(""); // Make sure the session file name is
-            // null as it was used for the recovery which forces a
-            // Save Session As to occur if the user does a Save Session
+            PerformRestoreSessionFile(filename);
         }
-
-        // Remove the crash recovery file since we've consumed it. Note that
-        // we don't remove it when the GUI exits because we let the viewer
-        // do that since it's more crash prone. That way, if the viewer does
-        // not exit cleanly, we encounter the crash file when we run the gui
-        // the next time,
-        Synchronize(REMOVE_CRASH_RECOVERY_TAG);
     }
+    else
+    {
+        QString msg = QString("VisIt found %1 crash recovery session files. Would you like to select one to "
+                              "restore and return to the last saved state?").arg(fileInfoList.size());
+        int btn = QMessageBox::question(0, tr("Crash recovery"),
+                                        tr(msg.toStdString().c_str()),
+                                        QMessageBox::Yes,
+                                        QMessageBox::No);
+        if(btn == QMessageBox::Yes)
+        {
+            QString filename = QFileDialog::getOpenFileName(0, tr("Select Crash Recovery File"),
+                                                            GetUserVisItDirectory().c_str(),
+                                                            tr("Session files (*.session)"));
+            if(filename != NULL)
+            {
+                PerformRestoreSessionFile(filename);
+            }
+        }
+    }
+    
+    Synchronize(REMOVE_CRASH_RECOVERY_TAG);
+}
+
+// ****************************************************************************
+// Method: QvisGUIApplication::PerformRestoreSessionFile
+//
+// Purpose:
+//   Restore the crash recovery file.
+//
+// Arguments:
+//   filename : The crash recovery file name
+//
+// Programmer: Kevin Griffin
+// Creation:   Mon Mar 12 14:18:57 PDT 2018
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+QvisGUIApplication::PerformRestoreSessionFile(const QString &filename)
+{
+    stringVector files;
+    std::string host;
+    debug1 << "Restoring a crash recovery file: " << filename.toStdString() << endl;
+    RestoreSessionFile(filename, files, host);
+    
+    sessionFile = QString(""); // Make sure the session file name is
+    // null as it was used for the recovery which forces a
+    // Save Session As to occur if the user does a Save Session
 }
 
 // ****************************************************************************
@@ -8754,25 +9017,68 @@ QvisGUIApplication::RestoreCrashRecoveryFile()
 // ****************************************************************************
 
 void
-QvisGUIApplication::RemoveCrashRecoveryFile(bool removeViewerFile) const
+QvisGUIApplication::RemoveCrashRecoveryFile(bool removeOldRecoveryFiles) const
 {
-    if(removeViewerFile)
+    QFile cr(CrashRecoveryFile());
+    
+    if(cr.exists())
     {
-        QFile cr(CrashRecoveryFile());
-        if(cr.exists())
-        {
-            debug1 << "Removing crash recovery file: "
-                   << cr.fileName().toStdString() << endl;
-            cr.remove();
-        }
+        debug1 << "Removing crash recovery file: " << cr.fileName().toStdString() << endl;
+        cr.remove();
     }
-
+    
     QFile gcr(CrashRecoveryFile() + ".gui");
+    
     if(gcr.exists())
     {
-        debug1 << "Removing crash recovery gui file: "
-               << gcr.fileName().toStdString() << endl;
+        debug1 << "Removing crash recovery gui file: " << gcr.fileName().toStdString() << endl;
         gcr.remove();
+    }
+    
+    // Remove any old recovery files
+    if(removeOldRecoveryFiles)
+    {
+        RemoveCrashRecoveryFileList();
+    }
+}
+
+// ****************************************************************************
+// Method: QvisGUIApplication::RemoveCrashRecoveryFileList
+//
+// Purpose:
+//   Remove the list of crash recovery files.
+//
+// Arguments:
+//   fileInfoList : The list of crash recovery files
+//
+// Programmer: Kevin Griffin
+// Creation:   Mon Mar 12 14:18:57 PDT 2018
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+QvisGUIApplication::RemoveCrashRecoveryFileList() const
+{
+    for(int i=0; i<recoveryFiles.size(); i++)
+    {
+        QString absFilePath = recoveryFiles[i].absoluteFilePath();
+        QFile cr(absFilePath);
+        
+        if(cr.exists())
+        {
+            debug1 << "Removing crash recovery file: " << cr.fileName().toStdString() << endl;
+            cr.remove();
+        }
+        
+        QFile gcr(absFilePath + ".gui");
+        
+        if(gcr.exists())
+        {
+            debug1 << "Removing crash recovery gui file: " << gcr.fileName().toStdString() << endl;
+            gcr.remove();
+        }
     }
 }
 
@@ -8824,7 +9130,7 @@ QvisGUIApplication::redoPick()
 }
 
 // ****************************************************************************
-// Method: QvisGUIApplication::SaveCrashRecoveryFile
+// Method: QvisGUIApplication::restorePickAttributesAfterRepick
 //
 // Purpose: 
 //   Trigger restoring the pick attributes after a repick.

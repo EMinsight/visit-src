@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2018, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1297,6 +1297,10 @@ VariableMenuPopulator::ItemEnabled(int varType) const
 //   Mark C. Miller, Thu Jun  8 15:26:45 PDT 2017
 //   Compute hash of variable names and stuff result into both menu and
 //   variable list. 
+//
+//   Mark C. Miller, Tue May  8 18:39:18 PDT 2018
+//   Remove call to parent->addMenu for case where popup is not found becase
+//   the widget is already parented in the constructor where it is created. 
 // ****************************************************************************
 
 void
@@ -1991,4 +1995,3 @@ void VariableMenuPopulator::GroupingInfo::operator = (
     grouping = obj.grouping;
     required = obj.required;
 }
-

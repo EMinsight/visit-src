@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2018, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1764,6 +1764,9 @@ QvisFileWindowBase::pathChanged(int)
 //   Cyrus Harrison, Tue Jul  8 14:29:55 PDT 2008
 //   Initial Qt4 Port.
 //
+//   Kathleen Biagas, Thu May 17, 2018
+//   Account for UNC style paths on Windows.
+//
 // ****************************************************************************
 
 void
@@ -1813,6 +1816,16 @@ QvisFileWindowBase::changeDirectory(QListWidgetItem *item)
                     if(newPath.size() == 0)
                         newPath = separator;
                 }
+#ifdef WIN32
+                if (newPath.substr(0,2) == "\\\\")
+                {
+                    // need to determine if we are attempting to access root
+                    // directory.  If there are no more separators beyond the
+                    // \\, should it be set to "My Computer" or "My Network"??
+                    if (newPath.find(separator, 2) == std::string::npos)
+                        newPath = "My Computer";
+                }
+#endif
 
                 // Try and switch to the new path.
                 fileServer->SetPath(newPath);

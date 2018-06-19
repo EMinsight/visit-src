@@ -16,13 +16,35 @@
 #   Eric Brugger, Mon Jan  9 13:43:22 PST 2017
 #   I modified the script to no longer set usettc when on inca.
 #
+#   Eric Brugger, Thu Mar 29 08:32:40 PDT 2018
+#   I modified the script to set ttc when running on rztrona.
+#
 ###############################################################################
 
 class JobSubmitter_qsub_LLNL(JobSubmitter_qsub):
     def __init__(self, launcher):
         super(JobSubmitter_qsub_LLNL, self).__init__(launcher)
-        self.usettc = self.sectorname() in ("agate", "borax", "rzalastor")
+        self.usettc = self.sectorname() in ("agate", "borax", "rzalastor", "rztrona")
         self.useppn = (self.sectorname() == "graph") or (self.sectorname() == "tr-fe")
+
+###############################################################################
+# Class: JobSubmitter_mpirun_LLNL
+#
+# Purpose:    Custom "mpirun" job submitter for LLNL.
+#
+# Programmer: Eric Brugger
+# Date:       Thu Feb 15 09:38:48 PST 2018
+#
+###############################################################################
+
+class JobSubmitter_mpirun_LLNL(JobSubmitter_mpirun):
+    def __init__(self, launcher):
+        super(JobSubmitter_mpirun_LLNL, self).__init__(launcher)
+
+    def Executable(self):
+        if self.sectorname() in ("quartz", "borax"):
+            return ["/usr/tce/packages/openmpi/openmpi-2.1.0-gcc-4.9.3/bin/mpirun"]
+        return super(JobSubmitter_mpirun_LLNL, self).Executable()
 
 
 ###############################################################################
@@ -63,6 +85,15 @@ class JobSubmitter_qsub_LLNL(JobSubmitter_qsub):
 #   Eric Brugger, Wed Mar 22 14:17:24 PDT 2017
 #   I added the MPI library paths to the LD_LIBRARY_PATH for jade and agate.
 #   I removed the logic that sets the LD_LIBRARY_PATH if running on cielo.
+#
+#   Eric Brugger, Mon Mar 19 12:55:14 PDT 2018
+#   I set visitarch to linux-x86_64-toss3 for all the toss3 machines.
+#
+#   Eric Brugger, Mon Apr 30 09:18:14 PDT 2018
+#   I added rzhasgpu to the list of toss3 machines.
+#
+#   Eric Brugger, Fri May 25 11:55:08 PDT 2018
+#   I added pascal to the list of toss3 machines.
 #
 ###############################################################################
 
@@ -124,17 +155,22 @@ class LLNLLauncher(MainLauncher):
 
         #
         # Set the LD_LIBRARY_PATH to include the path to MPI on borax,
-        # quartz, rzgenie, rztopaz, rztrona, jade and agate.
+        # pascal, quartz, rzgenie, rzhasgpu, rztopaz, rztrona, jade, mica,
+        # and agate.
         #
         if self.sectorname() == "borax" or \
-           self.sectorname() == "quartz" or \
-           self.sectorname() == "rzgenie" or \
-           self.sectorname() == "rztopaz" or \
-           self.sectorname() == "rztrona" or \
-           self.sectorname() == "jade" or \
-           self.sectorname() == "agate":
+            self.sectorname() == "pascal" or \
+            self.sectorname() == "quartz" or \
+            self.sectorname() == "rzgenie" or \
+            self.sectorname() == "rzhasgpu" or \
+            self.sectorname() == "rztopaz" or \
+            self.sectorname() == "rztrona" or \
+            self.sectorname() == "jade" or \
+            self.sectorname() == "mica" or \
+            self.sectorname() == "agate":
             mpi_ld_library_paths = ["/usr/tce/packages/mvapich2/mvapich2-2.2-intel-16.0.3/lib", "/usr/tce/packages/intel/intel-16.0.3/lib/intel64"]
             SETENV("LD_LIBRARY_PATH", self.joinpaths(mpi_ld_library_paths))
+            self.visitarch = "linux-x86_64-toss3"
 
     #
     # Override the JobSubmitterFactory method so the custom job submitter can
@@ -143,6 +179,8 @@ class LLNLLauncher(MainLauncher):
     def JobSubmitterFactory(self, launch):
         if launch[:4] == "qsub" or launch[:4] == "msub":
             return JobSubmitter_qsub_LLNL(self)
+        if launch[:6] == "mpirun":
+            return JobSubmitter_mpirun_LLNL(self)
         return super(LLNLLauncher, self).JobSubmitterFactory(launch)
 
 # Launcher creation function

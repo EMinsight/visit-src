@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2018, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -4785,6 +4785,14 @@ avtSiloFileFormat::BroadcastGlobalInfo(avtDatabaseMetaData *metadata)
 //    Limited support for Silo nameschemes, use new multi block cache data
 //    structures.
 //
+//    Eric Brugger, Thu Mar 15 17:02:43 PDT 2018
+//    Modify the method to not only add a blank name to firstSubMeshVarName
+//    when the meshnum was greater than the number of blocks, but also when
+//    it was negative. This ensures that allSubMeshVarName and actualMeshName
+//    are the same length, which is assumed elsewhere in the plugin. The
+//    meshnum can be negative when the multimesh is invalid, such as when
+//    the number of blocks is specified as zero.
+//
 // ****************************************************************************
 void
 avtSiloFileFormat::StoreMultimeshInfo(const char *const dirname,
@@ -4806,7 +4814,7 @@ avtSiloFileFormat::StoreMultimeshInfo(const char *const dirname,
             firstSubMeshVarName.push_back(var);
         allSubMeshDirs[allSubMeshDirs.size()-1].push_back(dir);
     }
-    if (meshnum >= nblocks)
+    if (meshnum < 0 || meshnum >= nblocks)
         firstSubMeshVarName.push_back("");
 }
 

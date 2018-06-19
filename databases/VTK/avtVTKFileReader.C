@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2018, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -543,6 +543,9 @@ avtVTKFileReader::ReadInFile(int _domain)
 //    Kathleen Biagas, Fri Feb  6 06:00:16 PST 2015
 //    Added ability for parsing 'MeshName' field data from vtk file.
 //
+//    Matt Larsen, Fri Mar 2 09:00:15 PST 2018
+//    Getting image data extents correctly from vti files
+//
 // ****************************************************************************
 
 void
@@ -687,8 +690,23 @@ avtVTKFileReader::ReadInDataset(int domain)
         // The old dataset passed in will be deleted, a new one will be
         // returned.
         //
-        dataset = ConvertStructuredPointsToRGrid((vtkStructuredPoints*)dataset,
-                                                 pieceExtents[domain]);
+        if(pieceExtents[domain] == NULL  &&
+           dataset->GetDataObjectType() == VTK_IMAGE_DATA) 
+        {
+        
+          vtkImageData *img = vtkImageData::SafeDownCast(dataset); 
+          if(img)
+          {
+            int *ext  = img->GetExtent(); 
+            dataset = ConvertStructuredPointsToRGrid((vtkStructuredPoints*)dataset,
+                                                      ext);
+          }
+        }
+        else
+        {
+            dataset = ConvertStructuredPointsToRGrid((vtkStructuredPoints*)dataset,
+                                                     pieceExtents[domain]);
+        }
     }
 
     if(dataset->GetDataObjectType() == VTK_RECTILINEAR_GRID)
@@ -805,6 +823,9 @@ avtVTKFileReader::CreateCurves(vtkRectilinearGrid *rgrid)
 //    Eric Brugger, Mon Jun 18 12:28:25 PDT 2012
 //    I enhanced the reader so that it can read parallel VTK files.
 //
+//    Kathleen Biagas, Mon Nov 20 13:04:51 PST 2017
+//    Pass domain to the GetVar call when retrieving materials.
+//
 // ****************************************************************************
 
 void *
@@ -850,7 +871,7 @@ avtVTKFileReader::GetAuxiliaryData(const char *var, int domain,
             dataset = pieceDatasets[domain];
         }
 
-        vtkIntArray *matarr = vtkIntArray::SafeDownCast(GetVar(0, matvarname));
+        vtkIntArray *matarr = vtkIntArray::SafeDownCast(GetVar(domain, matvarname));
 
 
         // again, if we haven't called PopulateDatabaseMetaData().

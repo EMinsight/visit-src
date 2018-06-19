@@ -154,13 +154,6 @@ class avtVsFileFormat: public avtSTMDFileFormat {
    */
   virtual void ActivateTimestep(void);
   
-  /**
-   * Updates cycles and times in the given database metadata object
-   * Deprecated 06.02.2011 in favor of GetCycle and GetTime
-   * Marc Durant
-   */
-  virtual void UpdateCyclesAndTimes(avtDatabaseMetaData* md);
-  
   protected:
   /**
    * Get the cycle for the associated file
@@ -229,8 +222,15 @@ class avtVsFileFormat: public avtSTMDFileFormat {
    *
    * @param mmd a pointer to the object that needs the axis labels.
    */
-  void setAxisLabels(avtMeshMetaData* mmd);
+  void setAxisLabels(avtMeshMetaData* mmd, bool transform = false);
 
+  /**
+   * Set the global extents for a mesh.
+   *
+   * @param mmd a pointer to the object that needs the axis labels.
+   */
+  void setGlobalExtents(avtMeshMetaData* mmd);
+  
   /**
    * Create various meshes.
    */

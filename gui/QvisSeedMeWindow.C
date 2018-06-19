@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2018, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -955,7 +955,14 @@ QvisSeedMeWindow::GetCurrentValues(int which_widget)
     if(which_widget == SeedMeAttributes::ID_frameRate || doAll)
     {
         int val;
-        atts->SetFrameRate(val);
+        if(LineEditGetInt(frameRate, val))
+            atts->SetFrameRate(val);
+        else
+        {
+            ResettingError(tr("frame rate"),
+                IntToQString(atts->GetFrameRate()));
+            atts->SetFrameRate(atts->GetFrameRate());
+        }
     }
 
     // Do queryColID

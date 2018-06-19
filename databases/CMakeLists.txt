@@ -1,6 +1,6 @@
 #****************************************************************************
 #
-# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2018, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -302,7 +302,7 @@ CHECK_THIRDPARTY_SATISFIED(SAMI SILO)
 
 CHECK_THIRDPARTY_SATISFIED(Nektar++ NEKTAR++ BOOST)
 CHECK_THIRDPARTY_SATISFIED(NETCDF NETCDF)
-CHECK_THIRDPARTY_SATISFIED(S3D NETCDF)
+CHECK_THIRDPARTY_SATISFIED(S3D NETCDF_CXX)
 CHECK_THIRDPARTY_SATISFIED(Exodus NETCDF)
 
 CHECK_THIRDPARTY_SATISFIED(MFIXCDF NETCDF_CXX)

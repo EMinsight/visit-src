@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2018, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -102,6 +102,7 @@ EllipsoidSlice
 ExternalSurface
 ExtractPointFunction2D
 Extrude
+Explode
 FFT
 FiveFoldTetSubdivision
 Flux

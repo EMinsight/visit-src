@@ -92,9 +92,9 @@ function bv_vtk_print
 
 function bv_vtk_print_usage
 {
-    printf "%-15s %s [%s]\n" "--vtk" "Build VTK" "built by default unless --no-thirdparty flag is used"
-    printf "%-15s %s [%s]\n" "--system-vtk" "Use the system installed VTK"
-    printf "%-15s %s [%s]\n" "--alt-vtk-dir" "Use VTK from an alternative directory"
+    printf "%-20s %s\n" "--vtk" "Build VTK" 
+    printf "%-20s %s [%s]\n" "--system-vtk" "Use the system installed VTK"
+    printf "%-20s %s [%s]\n" "--alt-vtk-dir" "Use VTK from an alternative directory"
 }
 
 function bv_vtk_host_profile
@@ -748,7 +748,7 @@ function build_vtk
             if [[ "$DO_SERVER_COMPONENTS_ONLY" != "yes" ]]; then
                 vopts="${vopts} -DModule_vtkGUISupportQtOpenGL:BOOL=true"
                 vopts="${vopts} -DQT_QMAKE_EXECUTABLE:FILEPATH=${QT_BIN_DIR}/qmake"
-                if [[ ${IS_QT5} == "yes" ]]; then
+                if [[ ${IS_QT4} == "no" ]]; then
                     vopts="${vopts} -DVTK_QT_VERSION=5"
                     vopts="${vopts} -DCMAKE_PREFIX_PATH=${QT_INSTALL_DIR}/lib/cmake"
                 fi
