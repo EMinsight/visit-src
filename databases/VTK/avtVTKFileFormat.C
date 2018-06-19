@@ -2,7 +2,7 @@
 *
 * Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -131,7 +131,10 @@ avtVTKFileFormat::avtVTKFileFormat(const char *fname, DBOptionsAttributes *)
     for(i = len-1; i >= 0; i--)
     {
         if(fname[i] == '.')
+        {
             start = i;
+            break;
+        }
         else if(fname[i] == '/' || fname[i] == '\\')
         {
             // We hit a path separator. There is no file extension.

@@ -2,7 +2,7 @@
 *
 * Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -931,6 +931,10 @@ VisitHotPointInteractor::StartLeftButtonAction()
 //    Jeremy Meredith, Fri Feb  1 18:01:15 EST 2008
 //    Added new data value to hotpoints that is passed to callback.
 //
+//    Brad Whitlock, Wed Jul 14 14:08:27 PDT 2010
+//    I added a render after the tool has executed so its extra actors are
+//    guaranteed to be removed from the window.
+//
 // ****************************************************************************
 
 void
@@ -959,6 +963,8 @@ VisitHotPointInteractor::EndLeftButtonAction()
                                         ctrl, shift, x, y,
                                         currentHotPoint.data);
             currentHotPoint.tool->SetLastLocation(-1, -1);
+
+            proxy.Render();
         }
 
         hotPointMode = false;

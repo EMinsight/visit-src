@@ -2,7 +2,7 @@
 *
 * Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -87,6 +87,9 @@ class avtVariableCache;
 //   Brad Whitlock, Thu Dec  4 11:33:09 PST 2008
 //   I exposed ReadMaterialNames as a static, public method.
 //
+//   Brad Whitlock, Fri Jun 18 09:38:04 PDT 2010
+//   I added a method to count the number of lasers.
+//
 // ****************************************************************************
 
 class PP_ZFileReader : public PDBReader
@@ -135,6 +138,7 @@ protected:
     vtkDataSet *GetRayMesh(int state, const char *var);
     vtkDataSet *ConstructRayMesh(int state, bool is3d);
     vtkDataArray *GetRayVar(int state, const std::string &varStr);
+    int GetNumLasers(const std::string &);
 
     static vtkDataSet *RevolveDataSet(vtkDataSet *in_ds, const double *axis,
                                       double start_angle, double stop_angle,

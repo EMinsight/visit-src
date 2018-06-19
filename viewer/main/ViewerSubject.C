@@ -2,7 +2,7 @@
 *
 * Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -6183,6 +6183,9 @@ ViewerSubject::ImportEntireStateWithDifferentSources()
 //   Brad Whitlock, Fri May  9 14:54:53 PDT 2008
 //   Qt 4.
 //
+//   Kathleen Bonnell, Fri Jun 18 15:11:42 MST 2010
+//   Use '.session' as extension on windows, too.
+//
 // ****************************************************************************
 
 void
@@ -6190,11 +6193,7 @@ ViewerSubject::RemoveCrashRecoveryFile() const
 {
     QString filename(GetUserVisItDirectory().c_str());
     filename += "crash_recovery";
-#if defined(_WIN32)
-    filename += ".vses";
-#else
     filename += ".session";
-#endif
     // Remove the viewer's crash recovery file if it exists.
     QFile cr(filename);
     if(cr.exists())
@@ -8921,6 +8920,11 @@ ViewerSubject::DiscoverClientInformation()
 //
 //    Mark C. Miller, Wed Jun 17 17:46:18 PDT 2009
 //    Replaced CATCHALL(...) with CATCHALL
+//
+//    Brad Whitlock, Wed May 12 14:09:23 PST 2010
+//    Add an extra Show() for MacOS X since 10.5 versions weren't showing new
+//    windows.
+//
 // ****************************************************************************
 
 void
@@ -8929,6 +8933,9 @@ ViewerSubject::ConnectWindow(ViewerWindow *win)
     TRY
     {
         win->GetActionManager()->EnableActions(ViewerWindowManager::Instance()->GetWindowAtts());
+#ifdef Q_WS_MACX
+        win->Show();
+#endif
     }
     CATCHALL
     {

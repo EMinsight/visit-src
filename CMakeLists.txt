@@ -121,6 +121,19 @@
 #    Kathleen Bonnell, Tue May 11 13:01:44 MST 2010 
 #    Set HAVE_SELECT to TRUE on windows. 
 #
+#    Kathleen Bonnell, Fri Jun 4 7:58:34 PDT 2010
+#    Changed logic for finding SVN_REVISION so check is not performed on
+#    any platform if not building from a working copy. 
+#
+#    Eric Brugger, Wed Jun  9 13:06:18 PDT 2010
+#    I made a correction to a MESSAGE statement in the code that adds the
+#    current link to the installation directory and added a comment that
+#    explains why the flawed code we have there is actually what we want.
+#
+#    Eric Brugger, Thu Jun 17 13:38:03 PDT 2010
+#    I modified the file to add -DMPICH_IGNORE_CXX_SEEK wherever -DPARALLEL
+#    is specified to eliminate a compile failure with some versions of mpi.
+#
 #****************************************************************************/
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8.0 FATAL_ERROR)
@@ -368,8 +381,23 @@ ELSE(WIN32)
         SET(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
         SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
     ENDIF(VISIT_RPATH_RELATIVE_TO_EXECUTABLE_PATH)
+    #
+    # Note that the last line in the EXECUTE_PROCESS command below should
+    # have a "\" before the ${CMAKE_INSTALL_PREFIX} to be truely correct.
+    # The code creates a symbolic link from "current" to the current visit
+    # version number.  Because of the coding error it succeeds when doing
+    # a "make install" and fails when doing a "make package", which is
+    # exactly what we want.  We do this because CPACK may create an
+    # invalid tar file if the distribution contains a link to a directory.
+    # This happens because CPACK removes the symbolic link and replaces all
+    # the files in the directory pointed to by the symbolic link with hard
+    # links.  It only stores 100 characters of path information in the hard
+    # link so long paths may get truncated resulting in invalid files.  We
+    # have a bunch of files with paths greater than 100 character so this
+    # fails in our case.
+    #
     INSTALL(CODE "
-      MESSAGE(STATUS \"Symlinking current to \${VISIT_VERSION}\")
+      MESSAGE(\"Symlinking current to ${VISIT_VERSION}\")
       EXECUTE_PROCESS(WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}
         COMMAND \${CMAKE_COMMAND} -E create_symlink
         \"${VISIT_VERSION}\"
@@ -822,7 +850,7 @@ FUNCTION(DETECT_MPI_SETTINGS COMP mlibs mflags mlflags mrpath)
         ENDFOREACH(I)
 
         SET(${mlibs}   ${MPI_LIBRARIES} CACHE STRING "MPI libraries")
-        SET(${mflags}  "-DPARALLEL ${MPI_INCLUDE_PATH_CONV} ${MPI_COMPILE_FLAGS}" CACHE STRING "Parallel compiler flags")
+        SET(${mflags}  "-DPARALLEL -DMPICH_IGNORE_CXX_SEEK ${MPI_INCLUDE_PATH_CONV} ${MPI_COMPILE_FLAGS}" CACHE STRING "Parallel compiler flags")
         SET(${mlflags} "${MPI_LINK_FLAGS}" CACHE STRING "Parallel linker flags")
 
         #
@@ -874,21 +902,21 @@ IF(VISIT_PARALLEL)
             SET(VISIT_PARALLEL_FORTRAN_LIBS  ${VISIT_MPI_FORTRAN_LIBS} CACHE STRING "MPI libraries for Fortran")
 
             IF(VISIT_MPI_C_FLAGS)
-                SET(VISIT_PARALLEL_CFLAGS  "-DPARALLEL ${VISIT_MPI_C_FLAGS}" CACHE STRING "Parallel CFLAGS")
+                SET(VISIT_PARALLEL_CFLAGS  "-DPARALLEL -DMPICH_IGNORE_CXX_SEEK ${VISIT_MPI_C_FLAGS}" CACHE STRING "Parallel CFLAGS")
             ELSE(VISIT_MPI_C_FLAGS)
-                SET(VISIT_PARALLEL_CFLAGS  "-DPARALLEL" CACHE STRING "Parallel CFLAGS")
+                SET(VISIT_PARALLEL_CFLAGS  "-DPARALLEL -DMPICH_IGNORE_CXX_SEEK" CACHE STRING "Parallel CFLAGS")
             ENDIF(VISIT_MPI_C_FLAGS)
 
             IF(VISIT_MPI_CXX_FLAGS)
-                SET(VISIT_PARALLEL_CXXFLAGS  "-DPARALLEL ${VISIT_MPI_CXX_FLAGS}" CACHE STRING "Parallel CXXFLAGS")
+                SET(VISIT_PARALLEL_CXXFLAGS  "-DPARALLEL -DMPICH_IGNORE_CXX_SEEK ${VISIT_MPI_CXX_FLAGS}" CACHE STRING "Parallel CXXFLAGS")
             ELSE(VISIT_MPI_CXX_FLAGS)
-                SET(VISIT_PARALLEL_CXXFLAGS  "-DPARALLEL" CACHE STRING "Parallel CXXFLAGS")
+                SET(VISIT_PARALLEL_CXXFLAGS  "-DPARALLEL -DMPICH_IGNORE_CXX_SEEK" CACHE STRING "Parallel CXXFLAGS")
             ENDIF(VISIT_MPI_CXX_FLAGS)
 
             IF(VISIT_MPI_FORTRAN_FLAGS)
-                SET(VISIT_PARALLEL_FORTRANFLAGS  "-DPARALLEL ${VISIT_MPI_FORTRAN_FLAGS}" CACHE STRING "Parallel Fortran flags")
+                SET(VISIT_PARALLEL_FORTRANFLAGS  "-DPARALLEL -DMPICH_IGNORE_CXX_SEEK ${VISIT_MPI_FORTRAN_FLAGS}" CACHE STRING "Parallel Fortran flags")
             ELSE(VISIT_MPI_FORTRAN_FLAGS)
-                SET(VISIT_PARALLEL_FORTRANFLAGS  "-DPARALLEL" CACHE STRING "Parallel flags for Fortran")
+                SET(VISIT_PARALLEL_FORTRANFLAGS  "-DPARALLEL -DMPICH_IGNORE_CXX_SEEK" CACHE STRING "Parallel flags for Fortran")
             ENDIF(VISIT_MPI_FORTRAN_FLAGS)
 
             IF(VISIT_MPI_LD_FLAGS)
@@ -1143,25 +1171,23 @@ SET(VISIT_SVN_REVISION "Unknown")
 IF(EXISTS SVN_REVISION)
     FILE(STRINGS SVN_REVISION VISIT_SVN_REVISION)
 ELSE(EXISTS SVN_REVISION)
-    FIND_PACKAGE(Subversion)
-    IF(Subversion_FOUND)
-        IF(UNIX AND EXISTS ${VISIT_SOURCE_DIR}/.svn)
-            # Only try and determine the version number if it looks like
-            # we're in a working copy (a .svn directory should be present)
+    IF (EXISTS ${VISIT_SOURCE_DIR}/.svn)
+        # Only try and determine the version number if it looks like
+        # we're in a working copy (a .svn directory should be present)
+        FIND_PACKAGE(Subversion)
+        IF(Subversion_FOUND)
             Subversion_WC_INFO(${PROJECT_SOURCE_DIR} VISIT)
             SET(VISIT_SVN_REVISION "${VISIT_WC_REVISION}")
-        ENDIF(UNIX AND EXISTS ${VISIT_SOURCE_DIR}/.svn)
-    ELSE(Subversion_FOUND)
-        IF(WIN32)
-            # THIS NEEDS TO BE UPDATED: FindTortoiseSVN.cmake needs to use
-            # keyword substituion and templates!@
-            INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindTortoiseSVN.cmake)
-            IF(TortoiseSVN_FOUND)
-                TortoiseSVN_WC_INFO(${PROJECT_SOURCE_DIR} VISIT)
-                SET(VISIT_SVN_REVISION "${VISIT_WC_REVISION}")
-            ENDIF(TortoiseSVN_FOUND)
-        ENDIF(WIN32)
-    ENDIF(Subversion_FOUND)
+        ELSE(Subversion_FOUND)
+            IF(WIN32)
+                INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindTortoiseSVN.cmake)
+                IF(TortoiseSVN_FOUND)
+                    TortoiseSVN_WC_INFO(${PROJECT_SOURCE_DIR} VISIT)
+                    SET(VISIT_SVN_REVISION "${VISIT_WC_REVISION}")
+                ENDIF(TortoiseSVN_FOUND)
+            ENDIF(WIN32)
+        ENDIF(Subversion_FOUND)
+    ENDIF (EXISTS ${VISIT_SOURCE_DIR}/.svn)
 ENDIF(EXISTS SVN_REVISION)
 
 #-----------------------------------------------------------------------------
@@ -1595,6 +1621,18 @@ ELSE (NOT WIN32)
             COMMAND ${CMAKE_COMMAND} -DBUILD_TYPE=${CMAKE_CFG_INTDIR} -P cmake_install.cmake)
  
         SET_TARGET_PROPERTIES(_PACKAGE PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD 1)
+        
+        # source installer
+        ADD_CUSTOM_COMMAND(OUTPUT visitdev${VISIT_VERSION}.exe
+            COMMAND ${MAKENSIS} 
+                    /DVisItVersion=${VISIT_VERSION} 
+                    /DVISIT_SOURCE_DIR=${VSD_NATIVE} 
+                    /DINSTALLER_LOCATION=${VISIT_BINARY_DIR} 
+                     ${VISIT_WINDOWS_DIR}/installation/sourceinstallation.nsi
+            DEPENDS ${VISIT_WINDOWS_DIR}/installation/sourceinstallation.nsi
+        )
+        ADD_CUSTOM_TARGET(_SRC_PACKAGE ALL DEPENDS visitdev${VISIT_VERSION}.exe)
+        SET_TARGET_PROPERTIES(_SRC_PACKAGE PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD 1)
     ENDIF (${MAKENSIS_FOUND})
 ENDIF (NOT WIN32)
 

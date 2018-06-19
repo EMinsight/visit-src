@@ -2,7 +2,7 @@
 *
 * Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -683,14 +683,15 @@ ClipAttributes::CreateCompatible(const std::string &tname) const
         }
 
         // Compute up vector
-        avtVector temp(0, 0, 1);
-        avtVector normal(normal_arr);
-        if (normal.x == 0 && normal.y == 0)
-            temp.y = 1;
-        avtVector up = normal % temp;
-        double up_a[3] = { up.x, up.y, up.z };
+        double temp[3] = {0, 0, 1};
+        if (normal_arr[0] == 0 && normal_arr[1] == 0)
+            temp[1] = 1;
+        double up[3];
+        up[0] = normal_arr[1]*temp[2] - normal_arr[2]*temp[1];
+        up[1] = normal_arr[2]*temp[0] - normal_arr[0]*temp[2];
+        up[2] = normal_arr[0]*temp[1] - normal_arr[1]*temp[0];
 
-        p->SetUpAxis(up_a);
+        p->SetUpAxis(up);
         p->SetThreeSpace(true);
 
         retval = p;

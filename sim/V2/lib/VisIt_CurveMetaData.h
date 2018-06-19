@@ -2,7 +2,7 @@
 *
 * Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -57,7 +57,7 @@ int VisIt_CurveMetaData_setYLabel(visit_handle h, const char *);
 int VisIt_CurveMetaData_getYLabel(visit_handle h, char **);
 
 #ifdef __cplusplus
-};
+}
 #endif
 
 #endif

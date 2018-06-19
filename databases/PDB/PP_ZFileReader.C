@@ -2,7 +2,7 @@
 *
 * Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -1392,6 +1392,43 @@ PP_ZFileReader::PopulateDatabaseMetaData(int timestep, avtDatabaseMetaData *md)
 }
 
 // ****************************************************************************
+// Method: PP_ZFileReader::GetNumLasers
+//
+// Purpose: 
+//   Determine the size of the irayu array, which determines the number of 
+//   lasers.
+//
+// Arguments:
+//    irayu : The name of the irayu variable.
+//
+// Returns:    The number of lasers.
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri Jun 18 09:41:32 PDT 2010
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+int
+PP_ZFileReader::GetNumLasers(const std::string &irayu)
+{
+    int nRayDomains = 1;
+    TypeEnum irayu_type;
+    int irayu_nTotalElements = 0, *irayu_dims = NULL, irayu_ndims = 0;
+    if(pdb->SymbolExists(irayu.c_str(), &irayu_type, &irayu_nTotalElements, 
+        &irayu_dims, &irayu_ndims))
+    {
+        if(irayu_ndims == 1)
+            nRayDomains = irayu_dims[0];
+        delete [] irayu_dims;
+    }
+    return nRayDomains; 
+}
+
+// ****************************************************************************
 // Method: PP_ZFileReader::AddRayMetaData
 //
 // Purpose: 
@@ -1409,6 +1446,9 @@ PP_ZFileReader::PopulateDatabaseMetaData(int timestep, avtDatabaseMetaData *md)
 //
 //   Brad Whitlock, Thu May  7 16:58:42 PDT 2009
 //   I set the cell and node origins to 1.
+//
+//   Brad Whitlock, Fri Jun 18 09:42:25 PDT 2010
+//   I added laserid and rayid variables.
 //
 // ****************************************************************************
 
@@ -1472,6 +1512,12 @@ PP_ZFileReader::AddRayMetaData(avtDatabaseMetaData *md)
     bool haveRayPower = pdb->SymbolExists(rayPowerVar.c_str());
 
     //
+    // Check to see if irayu exists. If so, its size determines the number of lasers
+    //
+    std::string irayu(std::string("irayu") + suffix);
+    int nLasers = GetNumLasers(irayu);
+
+    //
     // If we had all of the 2d ray arrays, add a 2d ray mesh. 
     //
     if(haveRay2d)
@@ -1492,6 +1538,23 @@ PP_ZFileReader::AddRayMetaData(avtDatabaseMetaData *md)
             md->Add(new avtScalarMetaData("ray/rel_power", "ray", AVT_NODECENT));
             varStorage["rel_power"] = new VariableData(rayPowerVar);
         }
+
+        if(nLasers >= 1)
+        {
+            avtScalarMetaData *laserid = new avtScalarMetaData("ray/laserid", "ray", 
+                AVT_NODECENT);
+            laserid->SetEnumerationType(avtScalarMetaData::ByValue);
+            for (int lsr = 0; lsr < nLasers; ++lsr)
+            {
+                char lasername[32];
+                SNPRINTF(lasername, 32, "laser%03d", lsr+1);
+                laserid->AddEnumNameValue(lasername, lsr+1);
+            }
+            md->Add(laserid);
+
+            md->Add(new avtScalarMetaData("ray/rayid", "ray", AVT_NODECENT));
+            varStorage["laserid"] = new VariableData(irayu);
+        }
     }
 
     //
@@ -1511,6 +1574,22 @@ PP_ZFileReader::AddRayMetaData(avtDatabaseMetaData *md)
         {
             md->Add(new avtScalarMetaData("ray3d/power", "ray3d", AVT_NODECENT));
             md->Add(new avtScalarMetaData("ray3d/rel_power", "ray3d", AVT_NODECENT));
+        }
+
+        if(nLasers >= 1)
+        {
+            avtScalarMetaData *laserid = new avtScalarMetaData("ray3d/laserid", "ray3d", 
+                AVT_NODECENT);
+            laserid->SetEnumerationType(avtScalarMetaData::ByValue);
+            for (int lsr = 0; lsr < nLasers; ++lsr)
+            {
+                char lasername[32];
+                SNPRINTF(lasername, 32, "laser%03d", lsr+1);
+                laserid->AddEnumNameValue(lasername, lsr+1);
+            }
+            md->Add(laserid);
+
+            md->Add(new avtScalarMetaData("ray3d/rayid", "ray3d", AVT_NODECENT));
         }
     }
 }
@@ -2087,7 +2166,9 @@ PP_ZFileReader::GetRayMesh(int state, const char *mesh)
 // Creation:   Mon Jun 7 09:44:13 PDT 2004
 //
 // Modifications:
-//   
+//   Brad Whitlock, Mon Jun 21 09:51:31 PDT 2010
+//   I fixed the order of the coordinates.
+//
 // ****************************************************************************
 
 template <class T>
@@ -2120,9 +2201,9 @@ ConstructRayMesh_CreateMesh_3D(const int *mxp, const int *kptryp,
 
             for(int i = i1; i < i2; ++i)
             {
-                *tmp++ = float(raypz[i]);
                 *tmp++ = float(raypx[i]);
                 *tmp++ = float(raypy[i]);
+                *tmp++ = float(raypz[i]);
 
                 if(i > i1)
                 {
@@ -2929,13 +3010,11 @@ PP_ZFileReader::GetRayVar(int state, const std::string &varStr)
     //
     // Read in the the required variables.
     //
-    ReadVariable(varStr);
     ReadVariable("kptryp");
     ReadVariable("mxp");
 
     VariableData *kptryp_data = varStorage["kptryp"];
     VariableData *mxp_data = varStorage["mxp"];
-    VariableData *var_data = varStorage[varStr];
 
     if(kptryp_data->dataType == INTEGERARRAY_TYPE &&
        mxp_data->dataType == INTEGERARRAY_TYPE)
@@ -2956,40 +3035,84 @@ PP_ZFileReader::GetRayVar(int state, const std::string &varStr)
         //
         // Create the data array
         //
-        bool relative = (varStr == "rel_power");
-        if(var_data->dataType == DOUBLEARRAY_TYPE)
+        if(varStr == "laserid" || varStr == "rayid")
         {
-            vtkDoubleArray *dscalars = vtkDoubleArray::New();
-            dscalars->SetNumberOfTuples(npts);
-            retval = dscalars;
-            double *ptr = (double *)dscalars->GetVoidPointer(0);
+            ReadVariable("laserid");
+            VariableData *irayu_data = varStorage["laserid"];
+ 
+            if(irayu_data->dataType == INTEGER_TYPE ||
+               irayu_data->dataType == INTEGERARRAY_TYPE)
+            {
+                vtkFloatArray *fscalars = vtkFloatArray::New();
+                fscalars->SetNumberOfTuples(npts);
+                retval = fscalars;
+                float *ptr = (float *)fscalars->GetVoidPointer(0);
 
-            // Add an offset the data pointer so they are at the desired
-            // time state.
-            const double *dataPointer = (const double *)var_data->data;
-            ADD_TIME_OFFSET(dataPointer, var_data);
+                const int *irayu = (const int *)irayu_data->data;
+                int lastRay = irayu[irayu_data->dims[0]-1];
 
-            GetRayVar_StoreRayData(ptr, dataPointer, mxp, kptryp, 
-                nRays, relative);
-        }
-        else if(var_data->dataType == FLOATARRAY_TYPE)
-        {
-            vtkFloatArray *fscalars = vtkFloatArray::New();
-            fscalars->SetNumberOfTuples(npts);
-            retval = fscalars;
-            float *ptr = (float *)fscalars->GetVoidPointer(0);
+                bool doLaser = varStr == "laserid";
+                int laser = 1;
+                int irayu_index = 0;
+                for(int nrr = 0; nrr < nRays; ++nrr)
+                {
+                    if((nrr+1) > irayu[irayu_index])
+                    {
+                        laser++;
+                        irayu_index++;
+                    }
 
-            // Add an offset the data pointer so they are at the desired
-            // time state.
-            const float *dataPointer = (const float *)var_data->data;
-            ADD_TIME_OFFSET(dataPointer, var_data);
-
-            GetRayVar_StoreRayData(ptr, dataPointer, mxp, kptryp, 
-                nRays, relative);
+                    if(mxp[nrr] != 0)
+                    {
+                        int i1 = kptryp[nrr];
+                        int i2 = kptryp[nrr] + mxp[nrr];
+                        int value = doLaser ? laser : (nrr+1);
+                        for(int i = i1; i < i2; ++i)
+                            *ptr++ = value;
+                    }
+                }
+            }
         }
         else
         {
-            debug4 << "The ray data is not of a supported type." << endl;
+            ReadVariable(varStr);
+            VariableData *var_data = varStorage[varStr];
+
+            bool relative = (varStr == "rel_power");
+            if(var_data->dataType == DOUBLEARRAY_TYPE)
+            {
+                vtkDoubleArray *dscalars = vtkDoubleArray::New();
+                dscalars->SetNumberOfTuples(npts);
+                retval = dscalars;
+                double *ptr = (double *)dscalars->GetVoidPointer(0);
+
+                // Add an offset the data pointer so they are at the desired
+                // time state.
+                const double *dataPointer = (const double *)var_data->data;
+                ADD_TIME_OFFSET(dataPointer, var_data);
+
+                GetRayVar_StoreRayData(ptr, dataPointer, mxp, kptryp, 
+                    nRays, relative);
+            }
+            else if(var_data->dataType == FLOATARRAY_TYPE)
+            {
+                vtkFloatArray *fscalars = vtkFloatArray::New();
+                fscalars->SetNumberOfTuples(npts);
+                retval = fscalars;
+                float *ptr = (float *)fscalars->GetVoidPointer(0);
+
+                // Add an offset the data pointer so they are at the desired
+                // time state.
+                const float *dataPointer = (const float *)var_data->data;
+                ADD_TIME_OFFSET(dataPointer, var_data);
+
+                GetRayVar_StoreRayData(ptr, dataPointer, mxp, kptryp, 
+                    nRays, relative);
+            }
+            else
+            {
+                debug4 << "The ray data is not of a supported type." << endl;
+            }
         }
     }
     else

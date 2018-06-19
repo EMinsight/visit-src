@@ -2,7 +2,7 @@
 *
 * Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -116,9 +116,12 @@ avtLinesFileFormat::~avtLinesFileFormat()
 //  Creation:   August 22, 2001
 //
 //  Modifications:
-//
 //    Hank Childs, Tue Apr  8 09:10:58 PDT 2003
 //    Make sure we have read in the file.
+//
+//    Brad Whitlock, Wed Jul 14 16:46:09 PDT 2010
+//    Increase the reference count for the polydata so VisIt will know it is
+//    really owned by the file format.
 //
 // ****************************************************************************
 
@@ -140,6 +143,7 @@ avtLinesFileFormat::GetMesh(int dom, const char *name)
         EXCEPTION1(InvalidVariableException, name);
     }
 
+    lines[dom]->Register(NULL);
     return lines[dom];
 }
 

@@ -44,7 +44,7 @@
 #          Qt       qt-everywhere-opensource-src-4.6.1.tar.gz
 #          Mesa     MesaLib-7.5.tar.gz
 #          Python   Python-2.6.4tgz
-#          VTK      vtk-5.0.0e.tar.gz
+#          VTK      vtk-5.0.0f.tar.gz
 #          CMake    cmake-2.8.0.tar.gz
 #
 #        The following optional libraries need to be in the current directory
@@ -69,9 +69,9 @@
 #           szip     2.1      szip-2.1.tar.gz
 #
 #         Experimental (internal)
-#           ITAPS             ITAPS-FMDB-1.0-15Apr09.tar.gz
-#           ITAPS             ITAPS-GRUMMP-0.5.0-20Apr09.tar.gz
-#           ITAPS             ITAPS-MOAB-3.99-20Apr09.tar.gz
+#           ITAPS             ITAPS-FMDB-1.1-03Jun10.tar.gz
+#           ITAPS             ITAPS-GRUMMP-0.5.0-03Jun10.tar.gz
+#           ITAPS             ITAPS-MOAB-3.99-10Jun10.tar.gz
 #           ViSUS             visus_26Feb07.tar.gz      -V
 #
 #   Layout:
@@ -891,6 +891,45 @@
 #     Cyrus Harrison, Fri May  7 13:58:35 PDT 2010
 #     Added build & install of pyparsing module to the python build process.
 #
+#     Brad Whitlock, Mon May 24 15:30:40 PDT 2010
+#     I added more patching for VTK using Mac and Cocoa. This prevents a crash
+#     later in offscreen saves that have annotations.
+#
+#     Mark C. Miller, Thu Jun 10 10:42:25 PDT 2010
+#     Updated ITAPS libs to what was available begining of June, 2010.
+#
+#     Mark C. Miller, Thu Jun 10 10:45:56 PDT 2010
+#     Update date in message regarding ITAPS libs.
+#
+#     Eric Brugger, Thu Jun 10 16:20:09 PDT 2010
+#     I added zlib to the list of dependent libraries for silo in the config
+#     site file.
+#
+#     Eric Brugger, Thu Jun 10 17:35:17 PDT 2010
+#     I added the option "--download-only", which only downloads the files.
+#
+#     Mark C. Miller, Mon Jun 14 08:53:09 PDT 2010
+#     Removed --enable-iMesh from build_moab as newer versions of MOAB don't
+#     use that configure flag.
+#
+#     Eric Brugger, Thu Jun 17 15:48:19 PDT 2010
+#     I modified the script to use vtk-5.0.0f.
+#
+#     Eric Brugger, Thu Jun 17 17:06:14 PDT 2010
+#     I modified some of the vtk patches to work with vtk-5.0.0f.
+#
+#     Eric Brugger, Mon Jun 21 09:11:33 PDT 2010
+#     I set the VisIt version number to 2.0.1.
+#
+#     Eric Brugger, Mon Jul 19 12:57:52 PDT 2010
+#     I set the VisIt version number to 2.0.2.
+#
+#     Eric Brugger, Tue Jul 20 14:38:54 PDT 2010
+#     I added zlib to the list of dependent libraries for hdf5 in the config
+#     site file.  I also removed zlib from the list of dependent libraries
+#     for silo in the case of using hdf5 since it will now get it from the
+#     hdf5 dependent libraries.
+#
 # *****************************************************************************
 #                                                                             #
 # *************************************************************************** #
@@ -1153,6 +1192,7 @@ export ON_MORE="off"
 export DO_DBIO_ONLY="no"
 export DO_STATIC_BUILD="no"
 export USE_VISIBILITY_HIDDEN="no"
+DOWNLOAD_ONLY="no"
 
 if [[ "$CXX_COMPILER" == "g++" ]] ; then
     VERSION=$(g++ -v 2>&1 | grep "gcc version" | cut -d' ' -f3 | cut -d'.' -f1-1)
@@ -1188,11 +1228,11 @@ if [[ "$VISIT_FILE" != "" ]] ; then
   USE_VISIT_FILE="yes"
   ON_USE_VISIT_FILE="on"
 fi
-export VISIT_VERSION=${VISIT_VERSION:-"2.0.0"}
+export VISIT_VERSION=${VISIT_VERSION:-"2.0.2"}
 export VISIT_FILE=${VISIT_FILE:-"visit${VISIT_VERSION}.tar.gz"}
 
-export VTK_FILE=${VTK_FILE:-"vtk-5.0.0e.tar.gz"}
-export VTK_VERSION=${VTK_VERSION:-"5.0.0e"}
+export VTK_FILE=${VTK_FILE:-"vtk-5.0.0f.tar.gz"}
+export VTK_VERSION=${VTK_VERSION:-"5.0.0f"}
 export VTK_BUILD_DIR=${VTK_BUILD_DIR:-"VTK"}
 
 export CMAKE_FILE=${CMAKE_FILE:-"cmake-2.8.0.tar.gz"}
@@ -1301,19 +1341,19 @@ export SILO_COMPATIBILITY_VERSION=${SILO_COMPATIBILITY_VERSION:-"4.7.2"}
 export SILO_BUILD_DIR=${SILO_BUILD_DIR:-"silo-${SILO_VERSION}"}
 export SILO_URL=${SILO_URL:-https://wci.llnl.gov/codes/silo/silo-${SILO_VERSION}}
 
-export ITAPS_MOAB_FILE=${ITAPS_MOAB_FILE:-"ITAPS-MOAB-3.99-20Apr09.tar.gz"}
-export ITAPS_MOAB_VERSION=${ITAPS_MOAB_VERSION:-"3.99-20Apr09"}
-export ITAPS_MOAB_COMPATIBILITY_VERSION=${ITAPS_MOAB_COMPATIBILITY_VERSION:-"3.99-20Apr09"}
+export ITAPS_MOAB_FILE=${ITAPS_MOAB_FILE:-"ITAPS-MOAB-3.99-10Jun10.tar.gz"}
+export ITAPS_MOAB_VERSION=${ITAPS_MOAB_VERSION:-"3.99-10Jun10"}
+export ITAPS_MOAB_COMPATIBILITY_VERSION=${ITAPS_MOAB_COMPATIBILITY_VERSION:-"3.99-10Jun10"}
 export ITAPS_MOAB_BUILD_DIR=${ITAPS_MOAB_BUILD_DIR:-"${ITAPS_MOAB_FILE%.tar*}"}
 
-export ITAPS_FMDB_FILE=${ITAPS_FMDB_FILE:-"ITAPS-FMDB-1.0-15Apr09.tar.gz"}
-export ITAPS_FMDB_VERSION=${ITAPS_FMDB_VERSION:-"1.0-15Apr09"}
-export ITAPS_FMDB_COMPATIBILITY_VERSION=${ITAPS_FMDB_COMPATIBILITY_VERSION:-"1.0-15Apr09"}
+export ITAPS_FMDB_FILE=${ITAPS_FMDB_FILE:-"ITAPS-FMDB-1.1-03Jun10.tar.gz"}
+export ITAPS_FMDB_VERSION=${ITAPS_FMDB_VERSION:-"1.1-03Jun10"}
+export ITAPS_FMDB_COMPATIBILITY_VERSION=${ITAPS_FMDB_COMPATIBILITY_VERSION:-"1.1-03Jun10"}
 export ITAPS_FMDB_BUILD_DIR=${ITAPS_FMDB_BUILD_DIR:-"${ITAPS_FMDB_FILE%.tar*}"}
 
-export ITAPS_GRUMMP_FILE=${ITAPS_GRUMMP_FILE:-"ITAPS-GRUMMP-0.5.0-20Apr09.tar.gz"}
-export ITAPS_GRUMMP_VERSION=${ITAPS_GRUMMP_VERSION:-"0.5.0-20Apr09"}
-export ITAPS_GRUMMP_COMPATIBILITY_VERSION=${ITAPS_GRUMMP_COMPATIBILITY_VERSION:-"0.5.0-20Apr09"}
+export ITAPS_GRUMMP_FILE=${ITAPS_GRUMMP_FILE:-"ITAPS-GRUMMP-0.5.0-03Jun10.tar.gz"}
+export ITAPS_GRUMMP_VERSION=${ITAPS_GRUMMP_VERSION:-"0.5.0-03Jun10"}
+export ITAPS_GRUMMP_COMPATIBILITY_VERSION=${ITAPS_GRUMMP_COMPATIBILITY_VERSION:-"0.5.0-03Jun10"}
 export ITAPS_GRUMMP_BUILD_DIR=${ITAPS_GRUMMP_BUILD_DIR:-"${ITAPS_GRUMMP_FILE%.tar*}"}
 
 export VISUS_FILE=${VISUS_FILE:-"visus_26Feb07.tar.gz"}
@@ -3436,8 +3476,8 @@ diff -c a/Utilities/DICOMParser/DICOMParser.cxx VTK/Utilities/DICOMParser/DICOMP
   #include <string>
 + #include <string.h>
   #include <map>
+  #include <cstring>
   
-  #include "DICOMConfig.h"
 EOF
   if [[ $? != 0 ]] ; then
      warn "Unable to patch VTK. Wrong version?"
@@ -3462,7 +3502,7 @@ diff -c a/Utilities/DICOMParser/DICOMAppHelper.cxx VTK/Utilities/DICOMParser/DIC
 + #include <string.h>
   #include <math.h>
   #include <algorithm>
-  
+  #include <cstring>
 EOF
    if [[ $? != 0 ]] ; then
       warn "Unable to patch VTK. Wrong version?"
@@ -3483,9 +3523,9 @@ diff -c a/Utilities/DICOMParser/DICOMFile.cxx VTK/Utilities/DICOMParser/DICOMFil
   #include <stdio.h>
   #include <string>
 + #include <string.h>
+  #include <cstring>
   
   #include "DICOMConfig.h"
-  #include "DICOMFile.h"
 EOF
     if [[ $? != 0 ]] ; then
        warn "Unable to patch VTK. Wrong version?"
@@ -3697,8 +3737,10 @@ diff -rp a/Rendering/vtkImagingFactory.cxx VTK/Rendering/vtkImagingFactory.cxx
 *** a/Rendering/vtkImagingFactory.cxx
 --- VTK/Rendering/vtkImagingFactory.cxx
 *************** vtkObject* vtkImagingFactory::CreateInst
-*** 202,215 ****
---- 202,233 ----
+*** 200,233 ****
+--- 200,269 ----
+  #ifdef VTK_USE_CARBON
+    if (!strcmp("CarbonOpenGL",rl))
       {
       if(strcmp(vtkclassname, "vtkTextMapper") == 0)
         {
@@ -3731,6 +3773,42 @@ diff -rp a/Rendering/vtkImagingFactory.cxx VTK/Rendering/vtkImagingFactory.cxx
         return vtkOpenGLPolyDataMapper2D::New();
         }
       }
+  #endif
+  #ifdef VTK_USE_COCOA
+    if (!strcmp("CocoaOpenGL",rl))
+      {
+      if(strcmp(vtkclassname, "vtkTextMapper") == 0)
+        {
++ #if defined(VTK_USE_MANGLED_MESA)
++       if ( vtkImagingFactory::UseMesaClasses )
++         {
++         return vtkMesaFreeTypeTextMapper::New();
++         }
++ #endif
+        return vtkOpenGLFreeTypeTextMapper::New();
+        }
+      if(strcmp(vtkclassname, "vtkImageMapper") == 0)
+        {
++ #if defined(VTK_USE_MANGLED_MESA)
++       if ( vtkImagingFactory::UseMesaClasses )
++         {
++         return vtkMesaImageMapper::New();
++         }
++ #endif
+        return vtkOpenGLImageMapper::New();
+        }
+      if(strcmp(vtkclassname, "vtkPolyDataMapper2D") == 0)
+        {
++ #if defined(VTK_USE_MANGLED_MESA)
++       if ( vtkImagingFactory::UseMesaClasses )
++         {
++         return vtkMesaPolyDataMapper2D::New();
++         }
++ #endif
+        return vtkOpenGLPolyDataMapper2D::New();
+        }
+      }
+  #endif
 diff -rp a/Utilities/ftgl/CMakeLists.txt VTK/Utilities/ftgl/CMakeLists.txt
 *** a/Utilities/ftgl/CMakeLists.txt
 --- VTK/Utilities/ftgl/CMakeLists.txt
@@ -3890,7 +3968,7 @@ function apply_vtk_500d_patch
 
 function apply_vtk_patch
 {
-   if [[ ${VTK_VERSION} == 5.0.0e ]] ; then
+   if [[ ${VTK_VERSION} == 5.0.0f ]] ; then
        apply_vtk_500d_patch
        if [[ $? != 0 ]] ; then
            return 1
@@ -8182,7 +8260,7 @@ function build_itaps_moab
     ./configure CXX="$CXX_COMPILER" CC="$C_COMPILER" \
         CFLAGS="$C_OPT_FLAGS" CXXFLAGS="$CXX_OPT_FLAGS" \
         --prefix="$VISITDIR/itaps/MOAB/$ITAPS_MOAB_VERSION/$VISITARCH" \
-        --enable-imesh=nofortran --with-zlib \
+        --with-zlib \
         $WITHHDF5ARG "$WITHSZIPARG" "$WITHNETCDFARG"
     if [[ $? != 0 ]] ; then
        warn "ITAPS_MOAB configure failed.  Giving up"
@@ -8764,7 +8842,11 @@ function build_hostconf
         >> $HOSTCONF 
         if [[ "$DO_SZIP" == "yes" ]] ; then
             echo \
-            "VISIT_OPTION_DEFAULT(VISIT_HDF5_LIBDEP \${VISITHOME}/szip/$SZIP_VERSION/\${VISITARCH}/lib sz)" \
+            "VISIT_OPTION_DEFAULT(VISIT_HDF5_LIBDEP \${VISITHOME}/szip/$SZIP_VERSION/\${VISITARCH}/lib sz /usr/lib z)" \
+            >> $HOSTCONF
+        else
+            echo \
+            "VISIT_OPTION_DEFAULT(VISIT_HDF5_LIBDEP /usr/lib z)" \
             >> $HOSTCONF
         fi
     fi
@@ -8824,6 +8906,10 @@ function build_hostconf
         if [[ "$DO_HDF5" == "yes" ]] ; then
             echo \
             "VISIT_OPTION_DEFAULT(VISIT_SILO_LIBDEP HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP})" \
+            >> $HOSTCONF
+        else
+            echo \
+            "VISIT_OPTION_DEFAULT(VISIT_SILO_LIBDEP /usr/lib z \${VISIT_HDF5_LIBDEP})" \
             >> $HOSTCONF
         fi
     fi
@@ -8975,6 +9061,8 @@ function build_visit
     # A dbio-only build disables pretty much everything else.
     if [[ "${DO_DBIO_ONLY}" == "yes" ]] ; then
        EXTRA_FEATURES="--enable-dbio-only"
+    else
+       EXTRA_FEATURES="${EXTRA_FEATURES} --enable-install-thirdparty"
     fi
     ./configure ${PARFLAGS} ${EXTRA_FEATURES}
     if [[ $? != 0 ]] ; then
@@ -9259,6 +9347,7 @@ usage () {
   printf "%-15s %s [%s]\n" "--console" "Do not use dialog ('graphical') interface" "!$GRAPHICAL"
   printf "%-15s %s [%s]\n" "--dbio-only" "Disables EVERYTHING but I/O." "$DO_DBIO_ONLY"
   printf "%-15s %s [%s]\n" "--debug"   "Enable debugging for this script" "false"
+  printf "%-15s %s [%s]\n" "--download-only" "Only download the specified packages" "false"
   printf "%-15s %s [%s]\n" "--exodus" "Build Exodus (requires NetCDF)" "$DO_EXODUS"
   printf "%-15s %s [%s]\n" "--fastbit" "Build FastBit" "$DO_FASTBIT"
   printf "%-15s %s [%s]\n" "--flags-debug" "Add '-g' to C[XX]FLAGS" "false"
@@ -9502,6 +9591,7 @@ for arg in "${arguments[@]}" ; do
         --console) GRAPHICAL="no"; ON_GRAPHICAL="off";;
         --dbio-only) DO_DBIO_ONLY="yes";;
         --debug) set -vx;;
+        --download-only) DOWNLOAD_ONLY="yes";;
         --fastbit) DO_FASTBIT="yes"; ON_FASTBIT="on"
                   DO_HDF5="yes"; ON_HDF5="on";;
         --exodus) DO_EXODUS="yes"; ON_EXODUS="on"
@@ -9797,7 +9887,7 @@ if [[ "$DO_OPTIONAL" == "yes" && "$GRAPHICAL" == "yes" ]] ; then
            "HDF4"     "$HDF4_VERSION  $HDF4_FILE"      $ON_HDF4 \
            "HDF5"     "$HDF5_VERSION  $HDF5_FILE"      $ON_HDF5 \
            "IceT"     "$ICET_VERSION  $ICET_FILE"      $ON_ICET \
-           "ITAPS"    "15Apr09 Versions of MOAB, FMDB, GRUMMP"    $ON_ITAPS \
+           "ITAPS"    "Jun-2010 Versions of MOAB, FMDB, GRUMMP"    $ON_ITAPS \
            "Mili"     "$MILI_VERSION $MILI_FILE (not available from the web)"      $ON_MILI \
            "NetCDF"   "$NETCDF_VERSION  $NETCDF_FILE"    $ON_NETCDF \
            "TCMALLOC" "$TCMALLOC_VERSION   $TCMALLOC_FILE (not available from the web)"      $ON_TCMALLOC \
@@ -9924,23 +10014,25 @@ if [[ $VISITARCH == "" ]] ; then
     fi
 fi
 
-if [[ ! -d "$THIRD_PARTY_PATH" ]] ; then
-   if [[ "$THIRD_PARTY_PATH" == "./visit" ]] ; then
-      mkdir "$THIRD_PARTY_PATH"
-      if [[ $? != 0 ]] ; then
-          error "Unable to write files to the third party library location." \
-                "Bailing out."
-      fi
-   else
-      error "The location to install the third party libraries does not exit." \
-            "Bailing out"
-   fi
-fi
-
 START_DIR="$PWD"
-cd "$THIRD_PARTY_PATH"
-if [[ $? != 0 ]] ; then
-   error "Unable to access the third party location. Bailing out."
+if [[ "$DOWNLOAD_ONLY" == "no" ]] ; then
+   if [[ ! -d "$THIRD_PARTY_PATH" ]] ; then
+      if [[ "$THIRD_PARTY_PATH" == "./visit" ]] ; then
+         mkdir "$THIRD_PARTY_PATH"
+         if [[ $? != 0 ]] ; then
+            error "Unable to write files to the third party library location." \
+                  "Bailing out."
+         fi
+      else
+         error "The location to install the third party libraries does not exist." \
+               "Bailing out"
+      fi
+   fi
+
+   cd "$THIRD_PARTY_PATH"
+   if [[ $? != 0 ]] ; then
+      error "Unable to access the third party location. Bailing out."
+   fi
 fi
 export VISITDIR=${VISITDIR:-$(pwd)}
 
@@ -9975,7 +10067,7 @@ if [[ $? == 0 ]] ; then
    DO_QT="no"
 fi
 
-if [[ "$DO_QT" == "yes" ]] ; then
+if [[ "$DO_QT" == "yes" && "$DOWNLOAD_ONLY" == "no" ]] ; then
     qt_license_prompt
     if [[ $? != 0 ]] ;then
         error "Qt4 Open Source Edition License Declined. Bailing out."
@@ -10020,6 +10112,13 @@ if [[ $? != 0 ]] ; then
    error "Stopping build because necessary files aren't available."
 fi
 
+#
+# Exit if we were told to only download the files.
+#
+if [[ "$DOWNLOAD_ONLY" == "yes" ]] ; then
+    info "Successfully downloaded the specified files."
+    exit 0
+fi
 
 #
 # We are now ready to build.

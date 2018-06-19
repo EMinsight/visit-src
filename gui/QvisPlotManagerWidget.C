@@ -2,7 +2,7 @@
 *
 * Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -862,19 +862,13 @@ QvisPlotManagerWidget::Update(Subject *TheChangedSubject)
             UpdatePlotList();
         }
 
-        if(globalAtts->IsSelected(GlobalAttributes::ID_applyOperator))
-        {
-            applyOperatorCheckBox->blockSignals(true);
-            applyOperatorCheckBox->setChecked(globalAtts->GetApplyOperator());
-            applyOperatorCheckBox->blockSignals(false);
-        }
+        applyOperatorCheckBox->blockSignals(true);
+        applyOperatorCheckBox->setChecked(globalAtts->GetApplyOperator());
+        applyOperatorCheckBox->blockSignals(false);
 
-        if(globalAtts->IsSelected(GlobalAttributes::ID_applySelection))
-        {
-            applySelectionCheckBox->blockSignals(true);
-            applySelectionCheckBox->setChecked(globalAtts->GetApplySelection());
-            applySelectionCheckBox->blockSignals(false);
-        }
+        applySelectionCheckBox->blockSignals(true);
+        applySelectionCheckBox->setChecked(globalAtts->GetApplySelection());
+        applySelectionCheckBox->blockSignals(false);
 
         //
         // When the globalAtts change, we might have to update the

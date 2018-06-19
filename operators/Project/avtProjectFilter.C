@@ -2,7 +2,7 @@
 *
 * Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -159,6 +159,9 @@ avtProjectFilter::Equivalent(const AttributeGroup *a)
 //    Jeremy Meredith, Fri Sep 10 16:15:55 PDT 2004
 //    Added projection of vectors.
 //
+//    Hank Childs, Tue Aug  3 09:28:35 PDT 2010
+//    Fix bug with project of cell-centered vectors.
+//
 // ****************************************************************************
 
 vtkDataSet *
@@ -208,8 +211,8 @@ avtProjectFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
         arr->Allocate(3*vectors->GetNumberOfTuples());
         ProjectVectors(in_ds, out_ds, vectors, arr, true);
         arr->SetName(vectors->GetName());
-        out_ds->GetPointData()->RemoveArray(vectors->GetName());
-        out_ds->GetPointData()->SetVectors(arr);
+        out_ds->GetCellData()->RemoveArray(vectors->GetName());
+        out_ds->GetCellData()->SetVectors(arr);
         arr->Delete();
     }
 

@@ -2,7 +2,7 @@
 *
 * Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -95,6 +95,10 @@ class VariableMenuPopulator;
 //   Added support for a stripped down version that can stand in for the 
 //   real thing in designer.
 //
+//   Cyrus Harrison, Fri May 21 11:35:34 PDT 2010
+//   Added onDefaultVar & onCreateExpr slots to reenable actions for the
+//   'default var' & 'create new expr' top level menu items.
+//
 // ****************************************************************************
 
 class WINUTIL_API QvisVariableButton : public QPushButton
@@ -160,6 +164,9 @@ private slots:
     void connectMenu();
     void disconnectMenu();
     void deferredDisconnectMenu();
+    void onDefaultVar();
+    void onCreateExpr();
+
 private:
     void UpdateMenu();
     void InitializeCategoryNames();

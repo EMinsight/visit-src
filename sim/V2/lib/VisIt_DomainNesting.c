@@ -2,7 +2,7 @@
 *
 * Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -90,7 +90,7 @@ VisIt_DomainNesting_set_nestingForPatch(visit_handle obj, int patch, int level,
 #define F_VISITDNESTINGALLOC                    F77_ID(visitdnestingalloc_,visitdnestingalloc,VISITDNESTINGALLOC)
 #define F_VISITDNESTINGFREE                     F77_ID(visitdnestingfree_,visitdnestingfree,VISITDNESTINGFREE)
 #define F_VISITDNESTINGSETDIMENSIONS            F77_ID(visitdnestingsetdimensions_,visitdnestingsetdimensions,VISITDNESTINGSETDIMENSIONS)
-#define F_VISITDNESTINGSETLEVELREFINEMENTRATIOS F77_ID(visitdnestingsetlevelrefinementratios_,visitdnestingsetlevelrefinmentratios,VISITDNESTINGSETLEVELREFINEMENTRATIOS)
+#define F_VISITDNESTINGSETLEVELREFINEMENT       F77_ID(visitdnestingsetlevelrefinement_,visitdnestingsetlevelrefinment,VISITDNESTINGSETLEVELREFINEMENT)
 #define F_VISITDNESTINGSETNESTINGFORPATCH       F77_ID(visitdnestingsetnestingforpatch_,visitdnestingsetnestingforpatch,VISITDNESTINGSETNESTINGFORPATCH)
 
 int

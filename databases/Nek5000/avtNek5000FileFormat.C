@@ -2,7 +2,7 @@
 *
 * Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -78,6 +78,7 @@
 #include <InvalidFilesException.h>
 #include <InvalidVariableException.h>
 #include <InvalidDBTypeException.h>
+#include <NonCompliantFileException.h>
 
 #include <TimingsManager.h>
 #ifdef PARALLEL
@@ -306,7 +307,7 @@ avtNek5000FileFormat::avtNek5000FileFormat(const char *filename)
 
 
 // ****************************************************************************
-//  Method: avtNek5000FileFormat::ParseNekFileHeader
+//  Method: avtNek5000FileFormat::ParseMetaDataFile
 //
 //  Purpose:
 //      This method is called as part of initialization.  It parses the text
@@ -418,8 +419,8 @@ avtNek5000FileFormat::ParseMetaDataFile(const char *filename)
             }
             else
             {
-                EXCEPTION1(InvalidDBTypeException, 
-                    "Value following type: \"ascii\" or \"binary\" or \"binary6\"" );
+                EXCEPTION2(NonCompliantFileException, "Nek",
+                    "Value following \"type\" must be \"ascii\" or \"binary\" or \"binary6\"" );
             }
         }
         else if (STREQUAL("numoutputdirs:", tag.c_str())==0)
@@ -446,14 +447,14 @@ avtNek5000FileFormat::ParseMetaDataFile(const char *filename)
         else
         {
             SNPRINTF(buf, 2048, "Error parsing file.  Unknown tag %s", tag.c_str());
-            EXCEPTION1(InvalidDBTypeException, buf);
+            EXCEPTION2(NonCompliantFileException, "Nek", buf);
         }
     }
 
     //Do a little consistency checking before moving on
     if (fileTemplate == "")
     {
-        EXCEPTION1(InvalidDBTypeException, 
+        EXCEPTION2(NonCompliantFileException, "Nek",
             "A tag called filetemplate: must be specified" );
     }
     f.close();
@@ -549,8 +550,8 @@ avtNek5000FileFormat::ParseNekFileHeader()
     if (!f.is_open())
     {
         char msg[1024];
-        SNPRINTF(msg, 1024, "Could not open file %s.", filename);
-        EXCEPTION1(InvalidFilesException, msg);
+        SNPRINTF(msg, 1024, "Could not open file %s, which should exist according to header file %s.", blockfilename, filename);
+        EXCEPTION2(NonCompliantFileException, "Nek", msg);
     }
 
     // Determine the type (ascii or binary)
@@ -726,17 +727,35 @@ avtNek5000FileFormat::ParseNekFileHeader()
 //    Hank Childs, Tue May 11 20:27:34 PDT 2010
 //    More support for legacy scalars.
 //
+//    Hank Childs, Thu May 20 10:53:30 PDT 2010
+//    Add support for legacy passive scalars where trailing white spaces
+//    followed by numbers can get confused for numbers of passive scalars.
+//
+//    Hank Childs, Thu May 20 13:59:07 PDT 2010
+//    Issue a warning when there are no coordinates.
+//
 // ****************************************************************************
 
 void avtNek5000FileFormat::ParseFieldTags(ifstream &f)
 {
+    int numSpacesInARow = 0;
+    bool foundCoordinates = false;
     while (f.tellg() < iHeaderSize)
     {
         char c = f.get();
+        if (numSpacesInARow >= 5)
+            continue;
         if (c == ' ')
+        {
+            numSpacesInARow++;
             continue;
+        }
+        numSpacesInARow = 0;
         if (c == 'X' || c == 'Y' || c == 'Z')
+        {
+            foundCoordinates = true;
             continue;
+        }
         else if (c == 'U')
             bHasVelocity = true;
         else if (c == 'P')
@@ -767,6 +786,12 @@ void avtNek5000FileFormat::ParseFieldTags(ifstream &f)
         }
         else
             break;
+    }
+    if (!foundCoordinates)
+    {
+        EXCEPTION2(NonCompliantFileException, "Nek",
+                   "The first time step in a Nek file must contain a mesh");
+        
     }
 }
 
@@ -892,7 +917,7 @@ avtNek5000FileFormat::ReadBlockLocations()
         char msg[1024];
         SNPRINTF(msg, 1024, "Could not open file \"%s\" to read block "
                             "locations.", blockfilename);
-        EXCEPTION1(InvalidDBTypeException, msg);
+        EXCEPTION2(NonCompliantFileException, "Nek", msg);
     }
 
     delete[] blockfilename;
@@ -915,7 +940,7 @@ avtNek5000FileFormat::ReadBlockLocations()
 
     if (sum != iNumBlocks)
     {
-        EXCEPTION1(InvalidDBTypeException, 
+        EXCEPTION2(NonCompliantFileException, "Nek",
                    "Sum of blocks per file does not equal total number of blocks");
     }
 
@@ -2061,12 +2086,12 @@ avtNek5000FileFormat::GetFileName(int rawTimestep, int pardir, char *outFileName
 
     if (!bParFormat && nPrintfTokens != 1)
     {
-        EXCEPTION1(ImproperUseException, 
+        EXCEPTION2(NonCompliantFileException, "Nek",
             "The filetemplate tag must receive only one printf token for serial Nek files.");
     }
     else if (bParFormat && (nPrintfTokens < 2 || nPrintfTokens > 3))
     {
-        EXCEPTION1(ImproperUseException, 
+        EXCEPTION2(NonCompliantFileException, "Nek",
             "The filetemplate tag must receive either 2 or 3 printf tokens for parallel Nek files.");
     }
     int len;

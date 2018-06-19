@@ -2,7 +2,7 @@
 *
 * Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -68,6 +68,7 @@
 #include <ImproperUseException.h>
 #include <InvalidFilesException.h>
 #include <InvalidDBTypeException.h>
+#include <NonCompliantFileException.h>
 #include <TimingsManager.h>
 
 #if !defined(_WIN32)
@@ -259,6 +260,12 @@ avtDatabaseFactory::SetDefaultFileOpenOptions(const FileOpenOptions &opts)
 //    Brad Whitlock, Wed Mar 10 10:50:00 PST 2010
 //    Rethrow a caught ImproperUseException so its message won't be changed.
 //
+//    Hank Childs, Thu May 20 14:32:06 PDT 2010
+//    Add support for NonCompliantFileExceptions, a new type which should 
+//    immediately issue their warnings to the user.  You use these when
+//    you know that you have a file of a certain type, but that type is 
+//    a non-compliant file.
+//
 // ****************************************************************************
 
 avtDatabase *
@@ -352,6 +359,11 @@ avtDatabaseFactory::FileList(DatabasePluginManager *dbmgr,
                                nBlocks, forceReadAllCyclesAndTimes,
                                treatAllDBsAsTimeVarying, false);
         }
+        CATCH(NonCompliantFileException)
+        {
+            rv = NULL;
+            RETHROW;
+        }
         CATCH(ImproperUseException)
         {
             rv = NULL;
@@ -433,6 +445,11 @@ avtDatabaseFactory::FileList(DatabasePluginManager *dbmgr,
                     else
                         delete dbtmp;
                 }
+            }
+            CATCH(NonCompliantFileException)
+            {
+                rv = NULL;
+                RETHROW;
             }
             CATCHALL
             {
@@ -538,13 +555,17 @@ avtDatabaseFactory::FileList(DatabasePluginManager *dbmgr,
                                nBlocks, forceReadAllCyclesAndTimes,
                                treatAllDBsAsTimeVarying, true);
         }
+        CATCH(NonCompliantFileException)
+        {
+            rv = NULL;
+            RETHROW;
+        }
         CATCHALL
         {
             rv = NULL;
         }
         ENDTRY
     }
- 
 
     return rv;
 }

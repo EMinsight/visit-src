@@ -98,27 +98,23 @@ do
    echo "The VisIt executable $property"           >> $output
    echo ""                                         >> $output
    $cmd INSTALL_NOTES                              >> $output
-   $cmd visit-install                              >> $output
+   $cmd VisIt-$version-i386-installer.dmg          >> $output
+   $cmd VisIt-$version-x86_64-installer.dmg        >> $output
+   $cmd visit-install$version2                     >> $output
    $cmd jvisit$version.tar.gz                      >> $output
    $cmd visit$version.exe                          >> $output
-   $cmd visit$version2.darwin-i386.tar.gz          >> $output
-   $cmd visit$version2.darwin-x86_64.tar.gz        >> $output
+   $cmd visit$version2.darwin-i386-10.4.tar.gz     >> $output
    $cmd visit$version2.ibm-aix-pwr.tar.gz          >> $output
    $cmd visit$version2.ibm-aix-pwr64.tar.gz        >> $output
-   $cmd visit$version2.linux-altix.tar.gz          >> $output
-   $cmd visit$version2.linux-ellipse.tar.gz        >> $output
    $cmd visit$version2.linux-rhel3.tar.gz          >> $output
-   $cmd visit$version2.linux-ubuntu8.tar.gz        >> $output
-   $cmd visit$version2.linux-x86_64-fedora4.tar.gz >> $output
+   $cmd visit$version2.linux-x86_64-rhel4.tar.gz   >> $output
    $cmd visit$version2.linux-x86_64-ubuntu8.tar.gz >> $output
    $cmd visit$version2.linux-x86_64.tar.gz         >> $output
 
    echo ""                                         >> $output
    echo "The VisIt source code $property"          >> $output
    echo ""                                         >> $output
-   $cmd BUILD_NOTES                                >> $output
-   $cmd BUILD_NOTES_MacOSX                         >> $output
-   $cmd build_visit                                >> $output
+   $cmd build_visit$version2                       >> $output
    $cmd $dist.tar.gz                               >> $output
    $cmd visitdev$version.exe                       >> $output
    cd ../visit_third_party
@@ -136,6 +132,7 @@ do
    $cmd MesaLib-7.5.tar.gz                         >> ../visit$version/$output
    $cmd Python-2.5.tgz                             >> ../visit$version/$output
    $cmd Python-2.6.4.tgz                           >> ../visit$version/$output
+   $cmd Xdmf-2.1.tar.gz                            >> ../visit$version/$output
    $cmd boxlib.tar.gz                              >> ../visit$version/$output
    $cmd cfitsio3006.tar.gz                         >> ../visit$version/$output
    $cmd cgnslib_2.4-3.tar.gz                       >> ../visit$version/$output
@@ -159,6 +156,7 @@ do
    $cmd vtk-5.0.0c.tar.gz                          >> ../visit$version/$output
    $cmd vtk-5.0.0d.tar.gz                          >> ../visit$version/$output
    $cmd vtk-5.0.0e.tar.gz                          >> ../visit$version/$output
+   $cmd vtk-5.0.0f.tar.gz                          >> ../visit$version/$output
    cd ../visit$version
 
    shift

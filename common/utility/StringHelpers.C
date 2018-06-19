@@ -2,7 +2,7 @@
 *
 * Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -501,11 +501,15 @@ StringHelpers::Replace(const string &source,
 //   pass here would look like...
 //
 //                                               V--substring reference
-//                      "<.*_([0-9]{4})_.*\\..*> \1"
+//                      "<.*_([0-9]{4})_.*\\..*> \0"
 //          opening char-^                     ^--closing char
 //                        ^------RE part------^
 //
 //  Do a 'man 7 regex' to get more information on regular expression syntax
+//
+//  Note: The substring reference implemented here is a zero-origin index.
+//  That is NOT consistent with 'man 7 regex' which uses a one-origin index.
+//  We should probably update this logic to use one-origin index.
 //
 //  Programmer: Mark C. Miller 
 //  Creation:   June 12, 2007 

@@ -624,6 +624,9 @@ printf("=============\n");
  *   Kathleen Bonnell, Fri Feb 29 16:43:46 PST 2008 
  *   Only malloc keyval if it is null. 
  *
+ *   Kathleen Bonnell, Thu Jun 17 20:23:51 MST 2010
+ *   Location of VisIt's registry keys has changed to Software\Classes.
+ *
  *****************************************************************************/
 
 int
@@ -636,7 +639,7 @@ ReadKeyFromRoot(HKEY which_root, const char *key, char **keyval)
     /* 
      * Try and read the key from the system registry. 
      */
-    sprintf(regkey, "VISIT%s", VISIT_VERSION);
+    sprintf(regkey, "Software\\Classes\\VISIT%s", VISIT_VERSION);
     if (*keyval == 0)
         *keyval = (char *)malloc(500);
     
@@ -678,6 +681,9 @@ ReadKeyFromRoot(HKEY which_root, const char *key, char **keyval)
  *   in a couple places. This is to avoid the situation where VisIt won't
  *   run when installed without Administrator access.
  *
+ *   Kathleen Bonnell, Thu Jun 17 20:23:51 MST 2010
+ *   VisIt's registry keys are stored in HKLM or HKCU.
+ *
  *****************************************************************************/
 
 int
@@ -685,7 +691,7 @@ ReadKey(const char *key, char **keyval)
 {
     int retval = 0;
 
-    if((retval = ReadKeyFromRoot(HKEY_CLASSES_ROOT, key, keyval)) == 0)
+    if((retval = ReadKeyFromRoot(HKEY_LOCAL_MACHINE, key, keyval)) == 0)
         retval = ReadKeyFromRoot(HKEY_CURRENT_USER, key, keyval);
     
     return retval;     
@@ -1172,6 +1178,8 @@ HandleConfigFiles(const char *path, void (*cb)(const char *, void *),
             char *ini = fd.cFileName + len-4;
             char *vses = fd.cFileName + len-5;
             char *vsesgui = fd.cFileName + len-5-4;
+            char *session = fd.cFileName + len-8;
+            char *sessiongui = fd.cFileName + len-8-4;
 
             if(log != NULL)
             {
@@ -1179,11 +1187,15 @@ HandleConfigFiles(const char *path, void (*cb)(const char *, void *),
                 if(ini >= fd.cFileName)     fprintf(log, "\t\t%s\n", ini);
                 if(vses >= fd.cFileName)    fprintf(log, "\t\t%s\n", vses);
                 if(vsesgui >= fd.cFileName) fprintf(log, "\t\t%s\n", vsesgui);
+                if(session >= fd.cFileName)    fprintf(log, "\t\t%s\n", session);
+                if(sessiongui >= fd.cFileName) fprintf(log, "\t\t%s\n", sessiongui);
             }
 
             if((ini >= fd.cFileName && _stricmp(ini, ".ini") == 0)   ||
-               (vses >= fd.cFileName && _stricmp(vses, ".vses") == 0) ||
-               (vsesgui >= fd.cFileName && _stricmp(vsesgui, ".vses.gui") == 0)
+              (vses >= fd.cFileName && _stricmp(vses, ".vses") == 0) ||
+             (vsesgui >= fd.cFileName && _stricmp(vsesgui, ".vses.gui") == 0) ||
+             (session >= fd.cFileName && _stricmp(session, ".session") == 0) ||
+             (sessiongui >= fd.cFileName && _stricmp(sessiongui, ".session.gui") == 0)
               )
             {
                 if(_strnicmp(fd.cFileName, "visit-config", 12) == 0)

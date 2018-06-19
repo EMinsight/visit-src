@@ -2,7 +2,7 @@
 *
 * Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -1413,7 +1413,12 @@ QvisVolumePlotWindow::UpdateWindow(bool doAll)
                 centeredDiffButton->setEnabled(true);
                 sobelButton->setEnabled(true);
 #ifdef HAVE_LIBSLIVR
+#ifdef USE_TUVOK
                 rendererTypesComboBox->setCurrentIndex(5);
+#else
+                // There's no Tuvok so we use slot 4.
+                rendererTypesComboBox->setCurrentIndex(4);
+#endif
                 num3DSlicesLabel->setEnabled(false);
                 num3DSlices->setEnabled(false);
                 rendererSamplesLabel->setEnabled(true);
@@ -3295,6 +3300,9 @@ QvisVolumePlotWindow::samplingTypeChanged(int val)
 //    Josh Stratton, Mon Dec 15 13:01:07 MST 2008
 //    Added Tuvok support.
 //
+//    Tom Fogal, Thu May 13 09:43:31 MDT 2010
+//    Fix case where tuvok is missing.
+//
 // ****************************************************************************
 void
 QvisVolumePlotWindow::rendererTypeChanged(int val)
@@ -3314,9 +3322,20 @@ QvisVolumePlotWindow::rendererTypeChanged(int val)
         volumeAtts->SetRendererType(VolumeAttributes::RayCastingIntegration);
         break;
       case 4:
+        // Ugh.  Our combo box changes based on VRer availability.  If we have
+        // tuvok it's at slot 4.  If we don't have Tuvok AND we have SLIVR,
+        // though, SLIVR will be at slot 4.
+#ifdef USE_TUVOK
         volumeAtts->SetRendererType(VolumeAttributes::Tuvok);
+#elif HAVE_LIBSLIVR
+        volumeAtts->SetRendererType(VolumeAttributes::SLIVR);
+#else
+        Warning("Renderer is not available. VisIt will revert to 3D texturing.");
+        volumeAtts->SetRendererType(VolumeAttributes::Texture3D);
+#endif
         break;
       case 5:
+        // If we've got both Tuvok AND SLIVR, SLIVR will end up in slot 5.
 #ifdef HAVE_LIBSLIVR
         volumeAtts->SetRendererType(VolumeAttributes::SLIVR);
 #else

@@ -2,7 +2,7 @@
 *
 * Copyright (c) 2000 - 2010, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
-* LLNL-CODE-400124
+* LLNL-CODE-442911
 * All rights reserved.
 *
 * This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
@@ -50,6 +50,7 @@
 #include <QMessageBox>
 #include <QPrintDialog>
 #include <QPrinter>
+#include <QPrinterInfo>
 #include <QProcess>
 #include <QSocketNotifier>
 #include <QStatusBar>
@@ -4171,16 +4172,16 @@ QvisGUIApplication::WritePluginWindowConfigs(DataNode *parentNode)
 //   Brad Whitlock, Tue Apr  8 16:29:55 PDT 2008
 //   Support for internationalization.
 //
+//   Kathleen Bonnell, Fri Jun 18 15:15:11 MST 2010 
+//   Use '.session' on windows, too. Send sessionDir to getSaveFileName 
+//   instead of '.'
+//
 // ****************************************************************************
 
 void
 QvisGUIApplication::SaveSession()
 {
-#if defined(_WIN32)
-    QString sessionExtension(".vses");
-#else
     QString sessionExtension(".session");
-#endif
 
     // Create the name of a VisIt session file to use.
     QString defaultFile;
@@ -4190,7 +4191,7 @@ QvisGUIApplication::SaveSession()
 
     // Get the name of the file that the user saved.
     QString sFilter(tr("VisIt session") + QString(" (*") + sessionExtension + ")");
-    QString fileName = QFileDialog::getSaveFileName(mainWin,tr("Save Session File"),".", sFilter);
+    QString fileName = QFileDialog::getSaveFileName(mainWin,tr("Save Session File"), sessionDir.c_str(), sFilter);
 
     // If the user chose to save a file, tell the viewer to write its state
     // to that file.
@@ -4215,17 +4216,15 @@ QvisGUIApplication::SaveSession()
 // Creation:   Mon May 9 14:57:08 PST 2005
 //
 // Modifications:
+//   Kathleen Bonnell, Fri Jun 18 15:15:11 MST 2010 
+//   Use '.session' on windows, too. 
 //   
 // ****************************************************************************
 
 QString
 QvisGUIApplication::SaveSessionFile(const QString &fileName)
 {
-#if defined(_WIN32)
-    QString sessionExtension(".vses");
-#else
     QString sessionExtension(".session");
-#endif
 
     // Force the file to have a .session extension.
     QString sessionName(fileName);
@@ -4445,6 +4444,9 @@ QvisGUIApplication::ReadConfigFile(const char *filename)
 //   Cyrus Harrison, Mon Feb  4 09:45:22 PST 2008
 //   Resolved AIX linking error w/ auto std::string to QString conversion.
 //
+//   Kathleen Bonnell, Fri Jun 18 15:15:11 MST 2010 
+//   Search for '.session' on windows. Keep .vses for loading older sessions.
+//   
 // ****************************************************************************
 
 void
@@ -4454,7 +4456,7 @@ QvisGUIApplication::RestoreSession()
     QString s(QFileDialog::getOpenFileName(mainWin,tr("Open VisIt Session File"),
                                            sessionDir.c_str(),
 #if defined(_WIN32)
-              "VisIt session (*.vses)"));
+              "VisIt session (*.session *.vses)"));
 #else
               "VisIt session (*.session)"));
 #endif
@@ -4495,6 +4497,9 @@ QvisGUIApplication::RestoreSession()
 //   Jeremy Meredith, Thu Aug  7 15:39:55 EDT 2008
 //   Removed unused var.
 //
+//   Kathleen Bonnell, Fri Jun 18 15:15:11 MST 2010 
+//   Search for '.session' on windows. Keep .vses for loading older sessions.
+//   
 // ****************************************************************************
 
 void
@@ -4504,7 +4509,7 @@ QvisGUIApplication::RestoreSessionWithDifferentSources()
     QString s(QFileDialog::getOpenFileName(mainWin,tr("Open VisIt Session File"),
                                            sessionDir.c_str(),
 #if defined(_WIN32)
-              "VisIt session (*.vses)"));
+              "VisIt session (*.session *.vses)"));
 #else
               "VisIt session (*.session)"));
 #endif
@@ -5472,6 +5477,10 @@ QvisGUIApplication::GetVirtualDatabaseDefinitions(
 //   Brad Whitlock, Fri Feb 15 14:53:27 PST 2008
 //   Fixed the comparison of the stringVectors.
 //
+//   Kathleen Bonnell, Wed Jul 28 09:54:27 PDT 2010
+//   Return early if there are no old virtual defintions. Prevents a crash
+//   on Windows platforms.
+//
 // ****************************************************************************
 
 void
@@ -5484,6 +5493,9 @@ QvisGUIApplication::RefreshFileList()
     // Save the definitions for the virtual databases.
     StringStringVectorMap oldVirtualDefinitions;
     GetVirtualDatabaseDefinitions(oldVirtualDefinitions);
+
+    if (oldVirtualDefinitions.empty())
+        return;
 
     //
     // Create a list of hosts,paths for which we must get a new list of files.
@@ -6345,11 +6357,15 @@ QvisGUIApplication::SaveWindow()
 //   Brad Whitlock, Tue Apr  8 16:29:55 PDT 2008
 //   Support for internationalization.
 //
-//   Guntehr H. Weber, Mon Oct 26 10:52:46 PDT 2009
+//   Gunther H. Weber, Mon Oct 26 10:52:46 PDT 2009
 //   Disable using native MacOS print dialog if VISIT_MAC_NO_CARBON is set
 //   since Snow Leopard is removing Carbon, which is used to create the dialog.
 //   This change makes compilation possible, but trying to print on Snow
 //   Snow Leopard will crash.
+//
+//   Brad Whitlock, Mon May 24 13:36:14 PDT 2010
+//   Set the QPrinter's printer name into the printer attributes if there was
+//   no valid printer name. Print after the dialog is dismissed on Mac too.
 //
 // ****************************************************************************
     
@@ -6499,7 +6515,7 @@ QvisGUIApplication::SetPrinterOptions()
         // print once the options are set.
         //
         if(okayToPrint)
-            GetViewerMethods()->PrintWindow();
+            PrintWindow();
     }
     else
     {
@@ -6508,17 +6524,31 @@ QvisGUIApplication::SetPrinterOptions()
         // If we've never set up the printer options, set them up now using
         // Qt's printer object and printer dialog.
         //
+        PrinterAttributes *p = GetViewerState()->GetPrinterAttributes();
         if(printer == 0)
         {
             int timeid = visitTimer->StartTimer();
+
+            // Create a new printer object.
             printer = new QPrinter;
-            printerObserver = new ObserverToCallback(
-                GetViewerState()->GetPrinterAttributes(),
+
+            // If the printer attributes have no printer name then set the
+            // printer object's name into the printer attributes.
+            p->SetCreator("VisIt");
+            if(p->GetPrinterName() == "")
+            {
+                p->SetPrinterName(printer->printerName().toStdString());
+                p->Notify();
+            }
+
+            // Create an observer for the printer attributes that will copy
+            // their values into the printer object when there are changes.
+            printerObserver = new ObserverToCallback(p,
                 UpdatePrinterAttributes, (void *)printer);
-            GetViewerState()->GetPrinterAttributes()->SetCreator(
-                GetViewerProxy()->GetLocalUserName());
-            PrinterAttributesToQPrinter(GetViewerState()->GetPrinterAttributes(),
-                printer);
+
+            // Store the printer attributes into the printer object.
+            PrinterAttributesToQPrinter(p, printer);
+
             visitTimer->StopTimer(timeid, "Setting up printer");
         }
 
@@ -6528,17 +6558,16 @@ QvisGUIApplication::SetPrinterOptions()
             //
             // Send all of the Qt printer options to the viewer
             //
-            PrinterAttributes *p = GetViewerState()->GetPrinterAttributes();
             QPrinterToPrinterAttributes(printer, p);
-            p->SetCreator(GetViewerProxy()->GetLocalUserName());
+            p->SetCreator("VisIt");
             printerObserver->SetUpdate(false);
             p->Notify();
-#ifdef WIN32
+#if defined(WIN32) || defined(Q_WS_MACX)
             //
-            // Tell the viewer to print the image because the Windows printer
-            // dialog has the word "Print" to click when you're done setting
-            // options. This says to me that Windows applications expect to
-            // print once the options are set.
+            // Tell the viewer to print the image because Windows & Mac printer
+            // dialogs have the word "Print" to click when you're done setting
+            // options. This says to me that applications expect to print once
+            // the options are set.
             //
             PrintWindow();
 #endif
@@ -6621,12 +6650,26 @@ QPrinterToPrinterAttributes(QPrinter *printer, PrinterAttributes *p)
 //   Cyrus Harrison, Tue Jul  1 09:14:16 PDT 2008
 //   Initial Qt4 Port.
 //
+//   Brad Whitlock, Mon May 24 13:42:17 PDT 2010
+//   Only allow valid printer names.
+//
 // ****************************************************************************
 
 static void
 PrinterAttributesToQPrinter(PrinterAttributes *p, QPrinter *printer)
 {
-    printer->setPrinterName(p->GetPrinterName().c_str());
+    // Only set the printer name if it is a valid name.
+    QString printerName(p->GetPrinterName().c_str());
+    QList<QPrinterInfo> availablePrinters(QPrinterInfo::availablePrinters());
+    for(int i = 0; i < availablePrinters.size(); ++i)
+    {
+        if(availablePrinters[i].printerName() == printerName)
+        {
+            printer->setPrinterName(printerName);
+            break;
+        }
+    }
+
     printer->setPrintProgram(p->GetPrintProgram().c_str());
     printer->setCreator(p->GetCreator().c_str());
     printer->setDocName(p->GetDocumentName().c_str());
@@ -7015,6 +7058,9 @@ QvisGUIApplication::updateVisIt()
 //   Brad Whitlock, Thu Oct  2 14:41:25 PDT 2008
 //   Qt 4.
 //
+//   Kathleen Bonnell, Fri Jun 18 15:15:11 MST 2010 
+//   Windows sessions now use '.session' extension.
+//   
 // ****************************************************************************
 
 void
@@ -7031,11 +7077,7 @@ QvisGUIApplication::updateVisItCompleted(const QString &program)
 
         QString visitDir(GetUserVisItDirectory().c_str());
         QString fileName(visitDir + "update_version");
-#if defined(_WIN32)
-        fileName += ".vses";
-#else
         fileName += ".session";
-#endif
 
         // Tell the viewer to save a session file.
         GetViewerMethods()->ExportEntireState(fileName.toStdString());
@@ -7682,13 +7724,19 @@ QvisGUIApplication::GetNumMovieFrames()
 //   Brad Whitlock, Thu Jan 31 10:07:59 PST 2008
 //   Windows portability.
 //
+//   Kathleen Bonnell, Fri Jun 18 12:10:15 MST 2010 
+//   Cannot assume path separators are stored according to platform specifics.
+//   Check unix style first.  Also don't substitute if idx < 0.
+//
 // ****************************************************************************
 
 void
 QvisGUIApplication::UpdateSessionDir( const std::string &sessionFileName )
 {
-    int idx = sessionFileName.rfind(VISIT_SLASH_STRING);
-    if ( idx != 0 )
+    int idx = sessionFileName.rfind("/");
+    if (idx < 0)
+        idx = sessionFileName.rfind("\\");
+    if ( idx > 0 )
         sessionDir = sessionFileName.substr( 0, idx+1 );
 }
 
@@ -8130,6 +8178,8 @@ QvisGUIApplication::InterpreterSync()
 // Creation:   Thu Jan 31 11:05:37 PST 2008
 //
 // Modifications:
+//   Kathleen Bonnell, Fri Jun 18 15:15:11 MST 2010 
+//   Windows sessions now use '.session' extinsion.
 //   
 // ****************************************************************************
 
@@ -8138,11 +8188,7 @@ QvisGUIApplication::CrashRecoveryFile() const
 {
     QString s(GetUserVisItDirectory().c_str());
     s += "crash_recovery";
-#if defined(_WIN32)
-    s += ".vses";
-#else
     s += ".session";
-#endif
     return s;
 }
 
