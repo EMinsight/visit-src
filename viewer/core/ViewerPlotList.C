@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2016, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -9658,13 +9658,18 @@ ViewerPlotList::GetEngineKey() const
 //  Programmer:  Mark C. Miller 
 //  Creation:    May 11, 2004
 //
+// Modifications:
+//
+//    Burlen Loring, Sun Sep  6 14:58:03 PDT 2015
+//    Changed the return type of GetNumberOfCells to long long
+//
 // ****************************************************************************
-int
+
+long long
 ViewerPlotList::GetNumberOfCells(bool polysOnly) const
 {
-    int i;
-    int sum = 0;
-    for (i = 0; i < nPlots; i++)
+    long long sum = 0;
+    for (int i = 0; i < nPlots; i++)
     {
         if (plots[i].realized)
         {

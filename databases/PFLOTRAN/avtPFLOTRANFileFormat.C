@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2016, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -798,7 +798,7 @@ avtPFLOTRANFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData * md,
             for (size_t i=0;i<nvals;i++)
                 matls[matlist[i]] = true;
 
-            int nmats = matls.size();
+            int nmats = (int)matls.size();
             char **names = new char*[nmats];
             int i = 0;
             for (map<int,bool>::iterator iter = matls.begin(); iter != matls.end();++iter)
@@ -1556,7 +1556,7 @@ void      *avtPFLOTRANFileFormat::GetAuxiliaryData(const char *var, int timestep
         for (size_t i=0;i<nvals;i++)
             matls[matlist[i]] = true;
 
-        int nmats = matls.size();
+        int nmats = (int)matls.size();
         int *matnos = new int[nmats];
         char **names = new char*[nmats];
         int i = 0;
@@ -1615,7 +1615,7 @@ void      *avtPFLOTRANFileFormat::GetAuxiliaryData(const char *var, int timestep
 void
 avtPFLOTRANFileFormat::GetTimes(std::vector<double> &t)
 {
-    int nt = times.size();
-    for(int i=0;i<nt;i++)
+    size_t nt = times.size();
+    for(size_t i=0;i<nt;i++)
         t.push_back(times[i].first);
 }

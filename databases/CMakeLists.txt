@@ -1,6 +1,6 @@
 #****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2016, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -326,6 +326,8 @@ CHECK_THIRDPARTY_SATISIFED(Tetrad HDF5)
 CHECK_THIRDPARTY_SATISIFED(UNIC HDF5)
 CHECK_THIRDPARTY_SATISIFED(Velodyne HDF5)
 CHECK_THIRDPARTY_SATISIFED(Vs HDF5)
+CHECK_THIRDPARTY_SATISIFED(XGC HDF5)
+CHECK_THIRDPARTY_SATISIFED(MOAB MOAB)
 
 # if we don't have the xdmf lib, we can fall back to VisIt's xdmf reader
 # that only uses hdf5
@@ -362,27 +364,11 @@ IF(WIN32)
 ELSE()
     CHECK_THIRDPARTY_SATISIFED(H5Part FASTBIT H5PART)
     CHECK_THIRDPARTY_SATISIFED(Vista SILO)
-    CHECK_THIRDPARTY_SATISIFED(paraDIS BOOST)
-    CHECK_THIRDPARTY_SATISIFED(paraDIS_tecplot BOOST)
+    if(VISIT_PARADIS)
+        CHECK_THIRDPARTY_SATISIFED(paraDIS BOOST)
+        CHECK_THIRDPARTY_SATISIFED(paraDIS_tecplot BOOST)
+    endif()
 ENDIF()
-
-
-# Add ITAPS
-IF(ITAPS_DIRS)
-    LIST(APPEND THIRDPARTY_DEPENDENT_PLUGINS ${ITAPS_DIRS})
-    IF(VISIT_STATIC)
-        FOREACH(impl ${ITAPS_DIRS})
-            SET(itapslib "${impl}_LIB")
-            IF(${itapslib})
-                LIST(APPEND TMP_THIRDPARTY_IO_LIB  ${${itapslib}})
-            ENDIF(${itapslib})
-            SET(itapslibdir "${imps}_LIBRARY_DIR")
-            IF(${itapslibdir})
-                LIST(APPEND TMP_THIRDPARTY_IO_LIBRARY_DIR ${${itapslibdir}})
-            ENDIF(${itapslibdir})
-        ENDFOREACH(impl)
-    ENDIF(VISIT_STATIC)
-ENDIF(ITAPS_DIRS)
 
 # Save the list of all library dirs and libs so the engine can use it
 IF(VISIT_STATIC)

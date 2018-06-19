@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2016, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -389,9 +389,27 @@
 #    Matthieu Dorier  via Cyrus Harrison, Thu Aug 20 09:07:08 PDT 2015
 #    Added Damaris support.
 #
+#    Burlen Loring, Thu Oct  8 10:45:36 PDT 2015
+#    Added define for aligned_alloc in visit-config.h
+#
+#    Eric Brugger, Wed Dec  9 12:05:18 PST 2015
+#    Added support for VTKm.
+#
+#    Eric Brugger, Thu Jan 14 08:43:03 PST 2016
+#    Added vtkm directory that builds vtkm library.
+#
+#    Cyrus Harrison, Thu Jun 16 08:44:43 PDT 2016
+#    Added support for conduit (software.llnl.gov/conduit).
+#
+#    Iulian R. Grindeanu & Vijay S. Mahadevan via Mark C Miller
+#    Wed Aug 10 14:54:05 PDT 2016
+#    Added support for ANL's Mesh Object datABase (MOAB)
+#
+#    Mark C. Miller, Mon Aug 22 15:23:12 PDT 2016
+#    Add tools/writer to installed headers
 #****************************************************************************/
 
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8.8 FATAL_ERROR)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.0 FATAL_ERROR)
 
 IF (COMMAND cmake_policy)
     cmake_policy(SET CMP0003 NEW)
@@ -490,8 +508,6 @@ FUNCTION(VISIT_OPTION_DEFAULT var)
       SET(${var} "${opt_ARGS}" CACHE ${opt_TYPE} "${var} value" FORCE)
   ENDIF(NOT "${default_base_val}" STREQUAL "${opt_ARGS}")
 ENDFUNCTION(VISIT_OPTION_DEFAULT var)
-
-INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/CMake/SetupITAPS.cmake)
 
 SET(VTK_MINIMUM_VERSION "6.0.0" CACHE INTERNAL "minimum version of vtk that VisIt can use")
 
@@ -668,7 +684,7 @@ OPTION(VISIT_BUILD_ALL_PLUGINS     "Build all of VisIt's plugins." OFF)
 OPTION(VISIT_BUILD_MINIMAL_PLUGINS "Build a minimal set of VisIt's plugins." OFF)
 OPTION(VISIT_ZLIB "Use VisIt's internal libz" OFF)
 OPTION(VISIT_JAVA "Build the VisIt Java client interface" OFF)
-OPTION(VISIT_PARADIS "Build the VisIt paraDIS client interface" OFF)
+OPTION(VISIT_PARADIS "Build the VisIt paraDIS client interface" ON)
 OPTION(VISIT_SERVER_COMPONENTS_ONLY "Build only vcl, mdserver, engine and their plugins" OFF)
 OPTION(VISIT_ENGINE_ONLY "Build only the compute engine and its plugins" OFF)
 OPTION(VISIT_DBIO_ONLY "Build only visitconvert and engine plugins" OFF)
@@ -751,6 +767,7 @@ ENDMACRO(VISIT_3RDPARTY_DEP libvar comment)
 # and so on.
 VISIT_3RDPARTY_VAR(VTK_DIR    "Path containing the VTK library's bin and lib")
 VISIT_3RDPARTY_VAR(QT_BIN     "Path to the Qt library's bin (path containing qmake)")
+VISIT_3RDPARTY_VAR(QWT_DIR    "Path containing the Qwt library's include and lib")
 VISIT_3RDPARTY_VAR(PYTHON_DIR "Path containing the Python library's include and lib")
 IF (NOT WIN32)
   VISIT_3RDPARTY_VAR(MESA_DIR   "Path containing the Mesa library's include and lib")
@@ -772,6 +789,11 @@ ENDIF(WIN32)
 #       needs to link but not to compile). Use the plugin's .xml file for
 #       libs a plugin is DIRECTLY dependent on (e.g. needs to both compile
 #       and link).
+#
+# _MPI_ variables are needed *only* for TPLs that support *both* serial and mpi
+# parallel variants. Otherwise, the TPL is assumed to be either serial only or parallel
+# only and not require separate varibles for both serial and MPI parallel variants.
+#
 VISIT_3RDPARTY_VAR(ADIOS_DIR     "Path containing the ADIOS library's include and lib")
 VISIT_3RDPARTY_VAR(ADVIO_DIR     "Path containing the AdvIO library's include and lib")
 VISIT_3RDPARTY_VAR(BOOST_DIR     "Path containing the BOOST library's include and lib")
@@ -780,6 +802,8 @@ VISIT_3RDPARTY_VAR(CCMIO_DIR     "Path containing the CCMIO library's include an
 VISIT_3RDPARTY_VAR(CFITSIO_DIR   "Path containing the CFITSIO library's include and lib")
 VISIT_3RDPARTY_VAR(CGNS_DIR      "Path containing the CGNS library's include and lib")
 VISIT_3RDPARTY_DEP(CGNS_LIBDEP   "CGNS library dependencies")
+VISIT_3RDPARTY_VAR(CONDUIT_DIR   "Path containing the Conduit library's include and lib")
+VISIT_3RDPARTY_VAR(CONDUIT_LIBDEP "Conduit library dependencies")
 VISIT_3RDPARTY_VAR(DAMARIS_DIR   "Path containing the Damaris library's include and lib")
 VISIT_3RDPARTY_VAR(EAVL_DIR      "Path containing the eavl library's include and lib")
 VISIT_3RDPARTY_VAR(FASTBIT_DIR   "Path containing the Fastbit library's include and lib")
@@ -789,6 +813,8 @@ VISIT_3RDPARTY_VAR(HDF4_DIR      "Path containing the HDF4 library's include and
 VISIT_3RDPARTY_DEP(HDF4_LIBDEP   "HDF4 library dependencies")
 VISIT_3RDPARTY_VAR(HDF5_DIR      "Path containing the HDF5 library's include and lib")
 VISIT_3RDPARTY_DEP(HDF5_LIBDEP   "HDF5 library dependencies")
+VISIT_3RDPARTY_VAR(HDF5_MPI_DIR  "Path containing the parallel HDF5 library's include and lib")
+VISIT_3RDPARTY_DEP(HDF5_MPI_LIBDEP "HDF5 parallel library dependencies")
 VISIT_3RDPARTY_VAR(H5PART_DIR    "Path containing the H5Part library's include and lib")
 VISIT_3RDPARTY_DEP(H5PART_LIBDEP "H5Part library dependencies")
 VISIT_3RDPARTY_VAR(MFEM_DIR      "Path containing the mfem library's include and lib")
@@ -804,6 +830,7 @@ VISIT_3RDPARTY_VAR(SILO_DIR      "Path containing the Silo library's include and
 VISIT_3RDPARTY_DEP(SILO_LIBDEP   "Silo library dependencies")
 VISIT_3RDPARTY_VAR(UINTAH_DIR    "Path containing the Uintah library's include and lib")
 VISIT_3RDPARTY_VAR(VISUS_DIR     "Path containing the Visus library's include and lib")
+VISIT_3RDPARTY_VAR(VTKM_DIR      "Path containing the VTKm library's include and lib")
 VISIT_3RDPARTY_VAR(XDMF_DIR      "Path containing the Xdmf library's include and lib")
 VISIT_3RDPARTY_DEP(XDMF_LIBDEP   "Xdmf library dependencies")
 VISIT_3RDPARTY_VAR(XERCESC_DIR   "Path containing the Xerces-C library's include and lib")
@@ -811,6 +838,8 @@ VISIT_3RDPARTY_VAR(XSD_DIR       "Path containing the XSD library's include and 
 VISIT_3RDPARTY_VAR(MDSPLUS_DIR   "Path containing the MDSplus library's include and lib")
 VISIT_3RDPARTY_VAR(MANTA_DIR     "Path containing the Manta library's include and lib")
 VISIT_3RDPARTY_VAR(ZLIB_DIR      "Path containing the zlib library's include and lib")
+VISIT_3RDPARTY_VAR(MOAB_DIR      "Path containing the MOAB library's include and lib")
+VISIT_3RDPARTY_VAR(MOAB_MPI_DIR  "Path containing the parallel MOAB library's include and lib")
 
 #-----------------------------------------------------------------------------
 # Read the version
@@ -992,7 +1021,7 @@ ENDMACRO(VISIT_INSTALL_TARGETS)
 IF(VISIT_HEADERS_SKIP_INSTALL)
     MESSAGE(STATUS "Skipping VisIt headers installation")
 ELSE(VISIT_HEADERS_SKIP_INSTALL)
-    INSTALL(DIRECTORY avt common engine gui launcher mdserver third_party_builtin viewer visit_vtk visitpy vtkqt winutil
+    INSTALL(DIRECTORY avt common engine gui launcher mdserver third_party_builtin tools/writer viewer visit_vtk visitpy vtkm vtkqt winutil
         DESTINATION ${VISIT_INSTALLED_VERSION_INCLUDE}/visit
         FILE_PERMISSIONS OWNER_READ OWNER_WRITE
                          GROUP_READ GROUP_WRITE
@@ -1035,12 +1064,11 @@ ELSE(VISIT_USE_X)
 ENDIF(VISIT_USE_X)
 INCLUDE(${CMAKE_ROOT}/Modules/TestBigEndian.cmake)
 
-
 # Configure Nektar++ support. 
 # Do it before the other libraries like boost because many can depend on it.
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindNektar++.cmake)
 IF(NEKTAR++_FOUND)
-    SET(HAVE_LIBNEKTAR++ 1)
+    SET(HAVE_NEKTAR_PP 1)
 ENDIF(NEKTAR++_FOUND)
 
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItDamaris.cmake)
@@ -1052,7 +1080,6 @@ INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItBoost.cmake)
 IF(BOOST_FOUND)
   SET(HAVE_BOOST 1)
 ENDIF(BOOST_FOUND)
-
 
 IF( (VISIT_PYTHON_SCRIPTING OR VISIT_PYTHON_FILTERS) AND NOT VISIT_DBIO_ONLY)
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItPython.cmake)
@@ -1136,6 +1163,13 @@ ELSE(VISIT_THREAD)
     MESSAGE(STATUS "Threading for VisIt: OFF")
 ENDIF(VISIT_THREAD)
 
+IF(VISIT_OSPRAY)
+    ADD_DEFINITIONS(-DVISIT_OSPRAY)
+    MESSAGE(STATUS "OSPRAY for VisIt: ON")
+ELSE(VISIT_OSPRAY)
+    MESSAGE(STATUS "OSPRAY for VisIt: OFF")
+ENDIF(VISIT_OSPRAY)
+
 #-----------------------------------------------------------------------------
 # If we are doing a static build or the VTK Python wrappers do not exist:
 #   Disable python filters.
@@ -1185,9 +1219,10 @@ IF(VISIT_PYTHON_FILTERS AND VISIT_DBIO_ONLY)
     MESSAGE(STATUS "Python Engine Filters disabled because VISIT_DBIO_ONLY was selected.")
 ENDIF(VISIT_PYTHON_FILTERS AND VISIT_DBIO_ONLY)
 
-# Configure Qt4 support.
+# Configure Qt and Qwt support.
 IF(NOT VISIT_DBIO_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_SERVER_COMPONENTS_ONLY)
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItQt.cmake)
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindQwt.cmake)
 ENDIF(NOT VISIT_DBIO_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_SERVER_COMPONENTS_ONLY)
 
 # Configure PySide Support
@@ -1272,6 +1307,9 @@ IF(NOT VISIT_BUILD_MINIMAL_PLUGINS OR VISIT_SELECTED_DATABASE_PLUGINS)
     IF(HDF5_FOUND)
         SET(HAVE_LIBHDF5 1)
     ENDIF(HDF5_FOUND)
+    IF(HDF5_MPI_FOUND)
+        SET(HAVE_LIBHDF5_MPI 1)
+    ENDIF(HDF5_MPI_FOUND)
 
     # Configure adios support.
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindADIOS.cmake)
@@ -1309,6 +1347,13 @@ IF(NOT VISIT_BUILD_MINIMAL_PLUGINS OR VISIT_SELECTED_DATABASE_PLUGINS)
         SET(HAVE_LIBCGNS 1)
     ENDIF(CGNS_FOUND)
 
+    # Configure Conduit support.
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindConduit.cmake)
+    IF(CONDUIT_FOUND)
+        SET(HAVE_LIBCONDUIT 1)
+    ENDIF(CONDUIT_FOUND)
+
+
     # Configure eavl support.
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindEAVL.cmake)
     IF(EAVL_FOUND)
@@ -1345,8 +1390,14 @@ IF(NOT VISIT_BUILD_MINIMAL_PLUGINS OR VISIT_SELECTED_DATABASE_PLUGINS)
         SET(HAVE_LIBH5PART 1)
     ENDIF(H5PART_FOUND)
 
-    # Configure ITAPS support -- it's treated specially.
-    CONFIGURE_ITAPS()
+    # Configure MOAB support.
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindMOAB.cmake)
+    IF(MOAB_FOUND)
+      SET(HAVE_LIBMOAB 1)
+    ENDIF(MOAB_FOUND)
+    IF(MOAB_MPI_FOUND)
+      SET(HAVE_LIBMOAB_MPI 1)
+    ENDIF(MOAB_MPI_FOUND)
 
     # Configure mfem support.
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindMFEM.cmake)
@@ -1395,6 +1446,12 @@ IF(NOT VISIT_BUILD_MINIMAL_PLUGINS OR VISIT_SELECTED_DATABASE_PLUGINS)
     IF(VISUS_FOUND)
         SET(HAVE_LIBVISUS 1)
     ENDIF(VISUS_FOUND)
+
+    # Configure VTKm support.
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVTKm.cmake)
+    IF(VTKM_FOUND)
+        SET(HAVE_LIBVTKM 1)
+    ENDIF(VTKM_FOUND)
 
     # Configure GFortran support.
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindGFortran.cmake)
@@ -1872,7 +1929,7 @@ ENDIF(WIN32)
 
 # manually check for socklen_t as CHECK_SYMBOL_EXISTS
 # doesn't appear to work on linux (at least)
-IF ("HAVE_SOCKLEN_T" MATCHES "^HAVE_SOCKLEN_T$")
+IF (HAVE_SOCKLEN_T MATCHES "^HAVE_SOCKLEN_T$")
     MESSAGE(STATUS "Check for socklen_t")
     TRY_COMPILE(HAVE_SOCKLEN_T
         ${CMAKE_CURRENT_BINARY_DIR}
@@ -1886,7 +1943,7 @@ IF ("HAVE_SOCKLEN_T" MATCHES "^HAVE_SOCKLEN_T$")
         SET(HAVE_SOCKLEN_T 0 CACHE INTERNAL "support for socklen_t")
         MESSAGE(STATUS "Check for socklen_t - not found")
     ENDIF (HAVE_SOCKLEN_T)
-ENDIF ("HAVE_SOCKLEN_T" MATCHES "^HAVE_SOCKLEN_T$")
+ENDIF ()
 
 # Check for setbuf being a public member in fstream. We could test via
 # TRY_COMPILE in CMake 2.6.2. I think this is only false on the Suns, which
@@ -1900,7 +1957,7 @@ IF(NOT WIN32)
 ENDIF(NOT WIN32)
 
 FUNCTION(CHECK_ISFINITE_EXISTS VAR)
-  IF("${VAR}" MATCHES "^${VAR}$")
+  IF(${VAR} MATCHES "^${VAR}$")
     MESSAGE(STATUS "Check for isfinite")
     TRY_COMPILE(tmpVar
             ${CMAKE_CURRENT_BINARY_DIR}
@@ -1917,11 +1974,11 @@ FUNCTION(CHECK_ISFINITE_EXISTS VAR)
             MESSAGE(STATUS "Check for isfinite - ${outvar}")
         ENDIF (NOT WIN32)
     ENDIF(tmpVar)
-  ENDIF("${VAR}" MATCHES "^${VAR}$")
+  ENDIF()
 ENDFUNCTION(CHECK_ISFINITE_EXISTS)
 
 FUNCTION(CHECK_STRTOF_PROTOTYPE VAR)
-  IF("${VAR}" MATCHES "^${VAR}$")
+  IF(${VAR} MATCHES "^${VAR}$")
     MESSAGE(STATUS "Check for strtof prototype")
     TRY_COMPILE(tmpVar
             ${CMAKE_CURRENT_BINARY_DIR}
@@ -1934,11 +1991,11 @@ FUNCTION(CHECK_STRTOF_PROTOTYPE VAR)
         SET(${VAR} 0 CACHE INTERNAL "strtof prototype")
         MESSAGE(STATUS "Check for strtof prototype - not found")
     ENDIF(tmpVar)
-  ENDIF("${VAR}" MATCHES "^${VAR}$")
+  ENDIF()
 ENDFUNCTION(CHECK_STRTOF_PROTOTYPE)
 
 FUNCTION(CHECK_FTIME_PROTOTYPE VAR)
-  IF("${VAR}" MATCHES "^${VAR}$")
+  IF(${VAR} MATCHES "^${VAR}$")
     MESSAGE(STATUS "Check for ftime prototype")
     TRY_COMPILE(tmpVar
             ${CMAKE_CURRENT_BINARY_DIR}
@@ -1951,7 +2008,7 @@ FUNCTION(CHECK_FTIME_PROTOTYPE VAR)
         SET(${VAR} 0 CACHE INTERNAL "ftime prototype")
         MESSAGE(STATUS "Check for ftime prototype - not found")
     ENDIF(tmpVar)
-  ENDIF("${VAR}" MATCHES "^${VAR}$")
+  ENDIF()
 ENDFUNCTION(CHECK_FTIME_PROTOTYPE)
 
 # Check for some functions
@@ -1959,6 +2016,7 @@ CHECK_FUNCTION_EXISTS(memmove HAVE_MEMMOVE)
 CHECK_FUNCTION_EXISTS(div HAVE_DIV)
 CHECK_FUNCTION_EXISTS(setenv HAVE_SETENV)
 CHECK_FUNCTION_EXISTS(strtof HAVE_STRTOF)
+CHECK_FUNCTION_EXISTS(aligned_alloc HAVE_ALIGNED_ALLOC)
 CHECK_STRTOF_PROTOTYPE(HAVE_STRTOF_PROTOTYPE)
 CHECK_FTIME_PROTOTYPE(HAVE_FTIME_PROTOTYPE)
 CHECK_ISFINITE_EXISTS(HAVE_ISFINITE)
@@ -1971,6 +2029,8 @@ IF(NOT VISIT_DISABLE_SELECT)
         CHECK_FUNCTION_EXISTS(select HAVE_SELECT)
     ENDIF(WIN32)
 ENDIF(NOT VISIT_DISABLE_SELECT)
+
+
 
 # Set the rendering size limit to 16384 so that we are not unnecessarily
 # constraining the user. There is no way to set this properly since this
@@ -2078,7 +2138,8 @@ ENDIF(NOT WIN32)
 
 # Fix some third-party include paths that are different on windows than unix.
 IF(UNIX)
-   SET(python_include_relative_path "/python/include/python@PYTHON_VERSION@")
+   #SET(python_include_relative_path "/python/include/python@PYTHON_VERSION@")
+   SET(python_include_relative_path "/python/include/python${PYTHON_VERSION}")
    SET(exodusii_include_relative_path "/exodusii/inc")
    SET(vtk_include_relative_path "/vtk/vtk-${VTK_MAJOR_VERSION}.${VTK_MINOR_VERSION}")
 ELSE(UNIX)
@@ -2211,6 +2272,7 @@ ENDFUNCTION(CREATE_PLUGIN_DEPENDENCIES)
 ADD_SUBDIRECTORY(third_party_builtin)
 ADD_SUBDIRECTORY(common)
 ADD_SUBDIRECTORY(visit_vtk)
+ADD_SUBDIRECTORY(vtkm)
 ADD_SUBDIRECTORY(avt)
 
 IF(NOT VISIT_DBIO_ONLY)

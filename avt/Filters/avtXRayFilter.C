@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2016, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1130,7 +1130,7 @@ avtXRayFilter::CartesianExecute(vtkDataSet *ds, int &nLinesPerDataset,
 
             vector<int> list;
             tree.GetElementsList(pt1, dir, list);
-            int nCells = list.size();
+            int nCells = (int)list.size();
             if (nCells == 0)
                 continue;  // No intersection
 
@@ -1305,7 +1305,7 @@ avtXRayFilter::CartesianExecute(vtkDataSet *ds, int &nLinesPerDataset,
 
             vector<int> list;
             tree.GetElementsList(pt1, dir, list);
-            int nCells = list.size();
+            int nCells = (int)list.size();
             if (nCells == 0)
                 continue;  // No intersection
 
@@ -1398,7 +1398,7 @@ avtXRayFilter::CartesianExecute(vtkDataSet *ds, int &nLinesPerDataset,
 
             vector<int> list;
             tree.GetElementsList(pt1, dir, list);
-            int nCells = list.size();
+            int nCells = (int)list.size();
             if (nCells == 0)
                 continue;  // No intersection
 
@@ -1564,7 +1564,7 @@ avtXRayFilter::CartesianExecute(vtkDataSet *ds, int &nLinesPerDataset,
 
             vector<int> list;
             tree.GetElementsList(pt1, dir, list);
-            int nCells = list.size();
+            int nCells = (int)list.size();
             if (nCells == 0)
                 continue;  // No intersection
 
@@ -1772,7 +1772,7 @@ avtXRayFilter::CylindricalExecute(vtkDataSet *ds, int &nLinesPerDataset,
 
         vector<int> list;
         tree.GetElementsFromAxiallySymmetricLineIntersection(pt1, dir, list);
-        int nCells = list.size();
+        int nCells = (int)list.size();
         if (nCells == 0)
             continue;  // No intersection
 

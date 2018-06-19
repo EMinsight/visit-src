@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2016, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -540,15 +540,15 @@ avtCosmosPPFileFormat::ReadDataset(int ts, int dom)
         {
             int nparts = numParticles[i];
             if (nparts > 0) {
-            for (j = 0; j < numParticleScalars[i]; j++) 
+            for (int j = 0; j < numParticleScalars[i]; j++) 
             {
                 vtkFloatArray *arr = vtkFloatArray::New();
                 string fieldname = particleTypeNames[i] + "_" + particleScalarVarNames[i][j];
                 arr->SetName(fieldname.c_str());
                 arr->SetNumberOfTuples(nparts);
-                for (j = 0 ; j < nparts ; j++)
+                for (int k = 0 ; k < nparts ; k++)
                 {
-                    arr->SetTuple1(j, *current);
+                    arr->SetTuple1(k, *current);
                     current++;
                 }
                 particleDataset[i][ts][dom]->GetCellData()->AddArray(arr);
@@ -646,7 +646,7 @@ avtCosmosPPFileFormat::ReadDataset(int ts, int dom)
         float x = current_tmp[0];
         bounds[0] = (x < bounds[0] ? x : bounds[0]);
         bounds[1] = (x > bounds[1] ? x : bounds[1]);
-        float y = current_tmp[1];
+        float y = current_tmp[0];
         bounds[2] = (y < bounds[2] ? y : bounds[2]);
         bounds[3] = (y > bounds[3] ? y : bounds[3]);
         if (rank == 3)
@@ -989,7 +989,10 @@ avtCosmosPPFileFormat::GetVar(int ts, int dom, const char *name)
     }
 
     int maxitype = particleTypeNames.size() - 1;
-    EXCEPTION2(BadIndexException, itype, maxitype);
+    if ((itype < -1))
+    {
+        EXCEPTION2(BadIndexException, itype, maxitype);
+    }
 }
 
 
@@ -1241,7 +1244,7 @@ GetDirName(const char *path)
 {
     string dir = "";
 
-    int len = strlen(path);
+    int len = (int)strlen(path);
     const char *last = path + (len-1);
     while (*last != '/' && last > path)
     {

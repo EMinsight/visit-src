@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2016, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -73,6 +73,7 @@ simv2_ExpressionMetaData.C
 simv2_MaterialData.C
 simv2_MaterialMetaData.C
 simv2_MeshMetaData.C
+simv2_MessageMetaData.C
 simv2_NameList.C
 simv2_OptionList.C
 simv2_PointMesh.C

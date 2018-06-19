@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2016, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -521,7 +521,7 @@ VisItLauncherMain(int argc, char *argv[])
         {
             if (!BEGINSWITHQUOTE(argv[i]) && HASSPECIAL(argv[i]))
             {
-                DQUOTEARG(argv[i]); 
+                DQUOTEARG(argv[i]);
                 componentArgs.push_back(tmpArg);
             }
             else if (BEGINSWITHQUOTE(argv[i]) && !ENDSWITHQUOTE(argv[i]))

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2016, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -173,7 +173,7 @@ avtMFEMFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
 
     // enumerate datasets)
 
-    for(size_t i=0;i<dset_names.size();i++)
+    for(int i=0;i<(int)dset_names.size();i++)
     {
         JSONRootDataSet &dset =  root_md.DataSet(dset_names[i]);
         int nblocks      = dset.NumberOfDomains();
@@ -435,6 +435,10 @@ avtMFEMFileFormat::GetVectorVar(int domain, const char *varname)
 //   Change MFEM Mesh constructor call to resolve coordinate system issue
 //   (See: http://visitbugs.ornl.gov/issues/2578)
 //
+//   Cyrus Harrison, Mon Aug 22 20:00:57 PDT 2016
+//   Additional change to MFEM Mesh constructor call to resolve 
+//   coordinate system issue
+//
 // ****************************************************************************
 Mesh *
 avtMFEMFileFormat::FetchMesh(const std::string &mesh_name,int domain)
@@ -464,7 +468,7 @@ avtMFEMFileFormat::FetchMesh(const std::string &mesh_name,int domain)
         EXCEPTION1(InvalidFilesException, msg.str());
     }
    
-    mesh = new Mesh(imesh, 1, 1, false);
+    mesh = new Mesh(imesh, 1, 0, false);
     imesh.close();
    
     return mesh;

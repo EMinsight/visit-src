@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2016, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -121,6 +121,8 @@ PoincareViewerEnginePluginInfo::GetDefaultAtts()
 void
 PoincareViewerEnginePluginInfo::SetClientAtts(AttributeSubject *atts)
 {
+  std::cerr << __FUNCTION__ << "  " << __LINE__ << std::endl;
+
     *clientAtts = *(PoincareAttributes *)atts;
     clientAtts->Notify();
 }

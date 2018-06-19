@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2016, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -236,6 +236,7 @@ SimEngine::InitializeViewer(const std::vector<std::string> &plotPlugins,
         GetViewerProperties()->SetNowin(true);
         GetViewerProperties()->SetNoConfig(noconfig);
         GetViewerProperties()->SetMasterProcess(PAR_UIProcess());
+        GetViewerProperties()->SetInSitu(true);
         GetViewerStateManager()->CreateState();
 
         // Install a callback to schedule execution of internal commands.
@@ -725,6 +726,7 @@ SimEngine::SaveWindow(const std::string &filename, int w, int h, int format)
             swa->SetHeight(h);
             swa->SetSaveTiled(false);
             swa->SetScreenCapture(false);
+            swa->SetResConstraint(SaveWindowAttributes::NoConstraint);
             swa->Notify();
 
             GetViewerMethods()->SaveWindow();
